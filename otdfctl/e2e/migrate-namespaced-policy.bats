@@ -155,7 +155,58 @@ track_obligation_trigger_id() {
   TRACKED_OBLIGATION_TRIGGER_IDS="${TRACKED_OBLIGATION_TRIGGER_IDS}${obligation_trigger_id}"$'\n'
 }
 
-create_global_action() {
+remove_tracked_id() {
+  local remove_id="$1"
+  local tracked_ids="$2"
+  local remaining_ids=""
+  local tracked_id
+
+  while IFS= read -r tracked_id; do
+    [ -n "$tracked_id" ] || continue
+    [ "$tracked_id" != "$remove_id" ] || continue
+    remaining_ids="${remaining_ids}${tracked_id}"$'\n'
+  done <<< "$tracked_ids"
+
+  printf '%s' "$remaining_ids"
+}
+
+untrack_action_id() {
+  local action_id="$1"
+  TRACKED_ACTION_IDS="$(remove_tracked_id "$action_id" "$TRACKED_ACTION_IDS")"
+  [ -z "$TRACKED_ACTION_IDS" ] || TRACKED_ACTION_IDS="${TRACKED_ACTION_IDS}"$'\n'
+}
+
+untrack_registered_resource_id() {
+  local resource_id="$1"
+  TRACKED_REGISTERED_RESOURCE_IDS="$(remove_tracked_id "$resource_id" "$TRACKED_REGISTERED_RESOURCE_IDS")"
+  [ -z "$TRACKED_REGISTERED_RESOURCE_IDS" ] || TRACKED_REGISTERED_RESOURCE_IDS="${TRACKED_REGISTERED_RESOURCE_IDS}"$'\n'
+}
+
+untrack_registered_resource_value_id() {
+  local resource_value_id="$1"
+  TRACKED_REGISTERED_RESOURCE_VALUE_IDS="$(remove_tracked_id "$resource_value_id" "$TRACKED_REGISTERED_RESOURCE_VALUE_IDS")"
+  [ -z "$TRACKED_REGISTERED_RESOURCE_VALUE_IDS" ] || TRACKED_REGISTERED_RESOURCE_VALUE_IDS="${TRACKED_REGISTERED_RESOURCE_VALUE_IDS}"$'\n'
+}
+
+untrack_scs_id() {
+  local scs_id="$1"
+  TRACKED_SCS_IDS="$(remove_tracked_id "$scs_id" "$TRACKED_SCS_IDS")"
+  [ -z "$TRACKED_SCS_IDS" ] || TRACKED_SCS_IDS="${TRACKED_SCS_IDS}"$'\n'
+}
+
+untrack_subject_mapping_id() {
+  local subject_mapping_id="$1"
+  TRACKED_SUBJECT_MAPPING_IDS="$(remove_tracked_id "$subject_mapping_id" "$TRACKED_SUBJECT_MAPPING_IDS")"
+  [ -z "$TRACKED_SUBJECT_MAPPING_IDS" ] || TRACKED_SUBJECT_MAPPING_IDS="${TRACKED_SUBJECT_MAPPING_IDS}"$'\n'
+}
+
+untrack_obligation_trigger_id() {
+  local obligation_trigger_id="$1"
+  TRACKED_OBLIGATION_TRIGGER_IDS="$(remove_tracked_id "$obligation_trigger_id" "$TRACKED_OBLIGATION_TRIGGER_IDS")"
+  [ -z "$TRACKED_OBLIGATION_TRIGGER_IDS" ] || TRACKED_OBLIGATION_TRIGGER_IDS="${TRACKED_OBLIGATION_TRIGGER_IDS}"$'\n'
+}
+
+create_action() {
   local result_var="$1"
   local action_name="$2"
   shift 2
@@ -169,6 +220,19 @@ create_global_action() {
 
   track_action_id "$created_action_id"
   printf -v "$result_var" '%s' "$created_action_id"
+}
+
+create_global_action() {
+  create_action "$@"
+}
+
+create_namespaced_action() {
+  local result_var="$1"
+  local namespace_id="$2"
+  local action_name="$3"
+  shift 3
+
+  create_action "$result_var" "$action_name" --namespace "$namespace_id" "$@"
 }
 
 create_global_scs() {
@@ -247,6 +311,23 @@ create_global_registered_resource() {
   shift 2
 
   run_otdfctl_registered_resources create --name "$resource_name" "$@" --json
+  assert_success
+
+  local created_resource_id
+  created_resource_id=$(echo "$output" | jq -r '.id // empty')
+  assert_not_equal "$created_resource_id" ""
+
+  track_registered_resource_id "$created_resource_id"
+  printf -v "$result_var" '%s' "$created_resource_id"
+}
+
+create_namespaced_registered_resource() {
+  local result_var="$1"
+  local namespace_id="$2"
+  local resource_name="$3"
+  shift 3
+
+  run_otdfctl_registered_resources create --name "$resource_name" --namespace "$namespace_id" "$@" --json
   assert_success
 
   local created_resource_id
@@ -590,6 +671,27 @@ assert_legacy_subject_mapping_still_exists() {
   assert_equal "$(echo "$legacy_mapping_json" | jq -r '.attribute_value.id')" "$attribute_value_id"
 }
 
+assert_legacy_subject_mapping_pruned() {
+  local source_mapping_id="$1"
+
+  run ./otdfctl --host http://localhost:8080 --with-client-creds-file ./creds.json policy subject-mappings get --id "$source_mapping_id" --json
+  assert_failure
+}
+
+assert_subject_mapping_target_still_exists() {
+  local target_mapping_id="$1"
+  local namespace_id="$2"
+  local source_mapping_id="$3"
+
+  local target_mapping_json
+  run_otdfctl_sm get --id "$target_mapping_id" --json
+  target_mapping_json="$output"
+
+  assert_equal "$(echo "$target_mapping_json" | jq -r '.id // empty')" "$target_mapping_id"
+  assert_equal "$(echo "$target_mapping_json" | jq -r '.namespace.id')" "$namespace_id"
+  assert_equal "$(echo "$target_mapping_json" | jq -r '.metadata.labels.migrated_from')" "$source_mapping_id"
+}
+
 assert_no_subject_mappings_in_namespace() {
   local namespace_id="$1"
   local namespace_state
@@ -888,6 +990,13 @@ assert_legacy_custom_action_still_exists() {
   assert_equal "$(echo "$legacy_action_json" | jq -r '.namespace.id // empty')" ""
 }
 
+assert_legacy_custom_action_pruned() {
+  local action_id="$1"
+
+  run ./otdfctl --host http://localhost:8080 --with-client-creds-file ./creds.json policy actions get --id "$action_id" --json
+  assert_failure
+}
+
 assert_scs_created_in_namespace() {
   local source_scs_id="$1"
   local namespace_id="$2"
@@ -1034,6 +1143,70 @@ assert_legacy_registered_resource_still_exists() {
   assert_equal "$(echo "$legacy_resource_value_json" | jq -r '.value')" "$resource_value"
 }
 
+assert_legacy_registered_resource_pruned() {
+  local source_resource_id="$1"
+  local source_value_id="$2"
+
+  run ./otdfctl --host http://localhost:8080 --with-client-creds-file ./creds.json policy registered-resources get --id "$source_resource_id" --json
+  assert_failure
+
+  run ./otdfctl --host http://localhost:8080 --with-client-creds-file ./creds.json policy registered-resources values get --id "$source_value_id" --json
+  assert_failure
+}
+
+assert_registered_resource_target_still_exists() {
+  local target_resource_id="$1"
+  local target_value_id="$2"
+  local namespace_id="$3"
+  local source_resource_id="$4"
+  local source_value_id="$5"
+
+  local target_resource_json
+  run_otdfctl_registered_resources get --id "$target_resource_id" --json
+  target_resource_json="$output"
+
+  assert_equal "$(echo "$target_resource_json" | jq -r '.id // empty')" "$target_resource_id"
+  assert_equal "$(echo "$target_resource_json" | jq -r '.namespace.id')" "$namespace_id"
+  assert_equal "$(echo "$target_resource_json" | jq -r '.metadata.labels.migrated_from')" "$source_resource_id"
+
+  local target_value_json
+  run_otdfctl_registered_resource_values get --id "$target_value_id" --json
+  target_value_json="$output"
+
+  assert_equal "$(echo "$target_value_json" | jq -r '.id // empty')" "$target_value_id"
+  assert_equal "$(echo "$target_value_json" | jq -r '.metadata.labels.migrated_from')" "$source_value_id"
+}
+
+assert_registered_resource_unlabeled_target_still_exists() {
+  local target_resource_id="$1"
+  local target_value_id="$2"
+  local namespace_id="$3"
+  local resource_name="$4"
+  local resource_value="$5"
+  local action_id="$6"
+  local attribute_value_id="$7"
+
+  local target_resource_json
+  run_otdfctl_registered_resources get --id "$target_resource_id" --json
+  target_resource_json="$output"
+
+  assert_equal "$(echo "$target_resource_json" | jq -r '.id // empty')" "$target_resource_id"
+  assert_equal "$(echo "$target_resource_json" | jq -r '.namespace.id')" "$namespace_id"
+  assert_equal "$(echo "$target_resource_json" | jq -r '.name')" "$resource_name"
+  assert_equal "$(echo "$target_resource_json" | jq -r '.metadata.labels.migrated_from // empty')" ""
+
+  local target_value_json
+  run_otdfctl_registered_resource_values get --id "$target_value_id" --json
+  target_value_json="$output"
+
+  assert_equal "$(echo "$target_value_json" | jq -r '.id // empty')" "$target_value_id"
+  assert_equal "$(echo "$target_value_json" | jq -r '.value')" "$resource_value"
+  assert_equal "$(echo "$target_value_json" | jq -r '.action_attribute_values | length')" "1"
+  assert_equal "$(echo "$target_value_json" | jq -r '.action_attribute_values[0].action.id')" "$action_id"
+  assert_equal "$(echo "$target_value_json" | jq -r '.action_attribute_values[0].attribute_value.id')" "$attribute_value_id"
+  assert_equal "$(echo "$target_value_json" | jq -r '.metadata.labels.migrated_from // empty')" ""
+}
+
 assert_obligation_trigger_created_in_namespace() {
   local source_trigger_id="$1"
   local namespace_id="$2"
@@ -1134,6 +1307,48 @@ assert_legacy_obligation_trigger_still_exists() {
   assert_equal "$(echo "$legacy_trigger_json" | jq -r '.context[0].pep.client_id')" "$client_id"
 }
 
+assert_legacy_obligation_trigger_pruned() {
+  local source_trigger_id="$1"
+  local namespace_id="$2"
+  local triggers_json
+
+  run_otdfctl_obligation_triggers list --namespace "$namespace_id" --limit 100 --offset 0 --json
+  triggers_json="$output"
+
+  assert_equal "$(echo "$triggers_json" | jq -r --arg source_trigger_id "$source_trigger_id" '[(.triggers // [])[] | select(.id == $source_trigger_id)] | length')" "0"
+}
+
+assert_obligation_trigger_target_still_exists() {
+  local target_trigger_id="$1"
+  local namespace_id="$2"
+  local source_trigger_id="$3"
+
+  local target_trigger_json
+  target_trigger_json=$(obligation_trigger_json_by_id "$target_trigger_id" "$namespace_id")
+
+  assert_equal "$(echo "$target_trigger_json" | jq -r '.id // empty')" "$target_trigger_id"
+  assert_equal "$(echo "$target_trigger_json" | jq -r '.metadata.labels.migrated_from')" "$source_trigger_id"
+}
+
+assert_obligation_trigger_unlabeled_target_still_exists() {
+  local target_trigger_id="$1"
+  local namespace_id="$2"
+  local attribute_value_id="$3"
+  local action_id="$4"
+  local obligation_value_id="$5"
+  local client_id="$6"
+
+  local target_trigger_json
+  target_trigger_json=$(obligation_trigger_json_by_id "$target_trigger_id" "$namespace_id")
+
+  assert_equal "$(echo "$target_trigger_json" | jq -r '.id // empty')" "$target_trigger_id"
+  assert_equal "$(echo "$target_trigger_json" | jq -r '.attribute_value.id')" "$attribute_value_id"
+  assert_equal "$(echo "$target_trigger_json" | jq -r '.action.id')" "$action_id"
+  assert_equal "$(echo "$target_trigger_json" | jq -r '.obligation_value.id')" "$obligation_value_id"
+  assert_equal "$(echo "$target_trigger_json" | jq -r '.context[0].pep.client_id')" "$client_id"
+  assert_equal "$(echo "$target_trigger_json" | jq -r '.metadata.labels.migrated_from // empty')" ""
+}
+
 assert_scs_already_migrated_in_namespace() {
   local source_scs_id="$1"
   local namespace_id="$2"
@@ -1163,10 +1378,37 @@ assert_legacy_scs_still_exists() {
   assert_equal "$(echo "$legacy_scs_json" | jq -r '.namespace.id // empty')" ""
 }
 
+assert_legacy_scs_pruned() {
+  local source_scs_id="$1"
+
+  run ./otdfctl --host http://localhost:8080 --with-client-creds-file ./creds.json policy scs get --id "$source_scs_id" --json
+  assert_failure
+}
+
+assert_scs_target_still_exists() {
+  local target_scs_id="$1"
+  local namespace_id="$2"
+  local source_scs_id="$3"
+
+  local target_scs_json
+  run_otdfctl_scs get --id "$target_scs_id" --json
+  target_scs_json="$output"
+
+  assert_equal "$(echo "$target_scs_json" | jq -r '.id // empty')" "$target_scs_id"
+  assert_equal "$(echo "$target_scs_json" | jq -r '.namespace.id')" "$namespace_id"
+  assert_equal "$(echo "$target_scs_json" | jq -r '.metadata.labels.migrated_from')" "$source_scs_id"
+}
+
 run_namespaced_policy_commit() {
   local scope="$1"
 
   run_otdfctl_migrate --commit namespaced-policy --scope "$scope"
+}
+
+run_namespaced_policy_prune_commit() {
+  local scope="$1"
+
+  run_otdfctl_migrate --commit prune namespaced-policy --scope "$scope"
 }
 
 setup() {
@@ -1845,4 +2087,615 @@ teardown_file() {
   assert_subject_mapping_already_migrated_in_namespace "$mapping_id" "$NS_A_ID" "$mapping_target_id"
   assert_registered_resource_already_migrated_in_namespace "$rr_id" "$NS_A_ID" "$rr_target_id"
   assert_obligation_trigger_already_migrated_in_namespace "$trigger_id" "$NS_A_ID" "$trigger_target_id"
+}
+
+# Paths intentionally covered here for prune:
+# - prune command validation rejects empty, invalid, and multi-scope CSV input
+#   and leaves otherwise-prunable fixtures untouched
+# - action prune deletes labeled migrated legacy actions and retains actions
+#   that are still in use or were not migrated
+# - SCS prune deletes labeled migrated legacy SCS and retains in-use,
+#   not-migrated, and unlabeled-target cases
+# - subject-mapping prune deletes labeled migrated legacy mappings and retains
+#   not-migrated and unlabeled-target cases
+# - registered-resource prune deletes labeled migrated legacy resources and
+#   values and retains not-migrated, unlabeled-target, and multi-namespace
+#   source cases
+# - obligation-trigger prune deletes labeled migrated legacy triggers and
+#   retains not-migrated and unlabeled-target cases
+# - every covered prune scope verifies idempotent reruns and uses namespace
+#   delta checks to confirm no unexpected target churn
+#
+# Paths that are not in these e2e prune tests:
+# - planner-only or dry-run prune output, summary formatting, and explicit
+#   status bucket assertions such as delete/blocked/unresolved
+# - interactive prune review and backup-confirmation flows
+
+# Covers prune scope validation paths:
+# - reject an explicitly empty scope value
+# - leave a prunable legacy source and migrated target untouched
+@test "prune namespaced-policy rejects an empty scope" {
+  local action_name="${TEST_PREFIX}-prune-empty-scope"
+  local action_id
+  local action_target_id
+  local ns_a_state_before
+  local ns_a_state_after
+
+  create_global_action action_id "$action_name" --label "test_case=prune-empty-scope" --label "fixture=${TEST_PREFIX}-source"
+  create_namespaced_action action_target_id "$NS_A_ID" "$action_name" --label "test_case=prune-empty-scope" --label "fixture=${TEST_PREFIX}-target" --label "migrated_from=$action_id" --label "migration_run=${TEST_PREFIX}-manual"
+
+  ns_a_state_before=$(namespace_state_json "$NS_A_ID")
+
+  run ./otdfctl --host http://localhost:8080 --with-client-creds-file ./creds.json migrate prune namespaced-policy --commit --scope ""
+  assert_failure
+  assert_output --partial "Flag '--scope' is required"
+
+  ns_a_state_after=$(namespace_state_json "$NS_A_ID")
+  assert_namespace_state_delta "$ns_a_state_before" "$ns_a_state_after" 0 0 0 0 0
+
+  assert_legacy_custom_action_still_exists "$action_id" "$action_name"
+  assert_action_already_migrated_in_namespace "$action_name" "$NS_A_ID" "$action_target_id"
+}
+
+# Covers prune scope validation paths:
+# - reject an invalid scope value
+# - leave a prunable legacy source and migrated target untouched
+@test "prune namespaced-policy rejects an invalid scope" {
+  local action_name="${TEST_PREFIX}-prune-invalid-scope"
+  local action_id
+  local action_target_id
+  local ns_a_state_before
+  local ns_a_state_after
+
+  create_global_action action_id "$action_name" --label "test_case=prune-invalid-scope" --label "fixture=${TEST_PREFIX}-source"
+  create_namespaced_action action_target_id "$NS_A_ID" "$action_name" --label "test_case=prune-invalid-scope" --label "fixture=${TEST_PREFIX}-target" --label "migrated_from=$action_id" --label "migration_run=${TEST_PREFIX}-manual"
+
+  ns_a_state_before=$(namespace_state_json "$NS_A_ID")
+
+  run ./otdfctl --host http://localhost:8080 --with-client-creds-file ./creds.json migrate prune namespaced-policy --commit --scope "not-a-real-scope"
+  assert_failure
+  assert_output --partial "invalid migration scope: not-a-real-scope"
+
+  ns_a_state_after=$(namespace_state_json "$NS_A_ID")
+  assert_namespace_state_delta "$ns_a_state_before" "$ns_a_state_after" 0 0 0 0 0
+
+  assert_legacy_custom_action_still_exists "$action_id" "$action_name"
+  assert_action_already_migrated_in_namespace "$action_name" "$NS_A_ID" "$action_target_id"
+}
+
+# Covers prune scope validation paths:
+# - reject CSV scope values containing more than one scope
+# - leave a prunable legacy source and migrated target untouched
+@test "prune namespaced-policy rejects multiple CSV scopes" {
+  local action_name="${TEST_PREFIX}-prune-multiple-scopes"
+  local action_id
+  local action_target_id
+  local ns_a_state_before
+  local ns_a_state_after
+
+  create_global_action action_id "$action_name" --label "test_case=prune-multiple-scopes" --label "fixture=${TEST_PREFIX}-source"
+  create_namespaced_action action_target_id "$NS_A_ID" "$action_name" --label "test_case=prune-multiple-scopes" --label "fixture=${TEST_PREFIX}-target" --label "migrated_from=$action_id" --label "migration_run=${TEST_PREFIX}-manual"
+
+  ns_a_state_before=$(namespace_state_json "$NS_A_ID")
+
+  run ./otdfctl --host http://localhost:8080 --with-client-creds-file ./creds.json migrate prune namespaced-policy --commit --scope "actions,registered-resources"
+  assert_failure
+  assert_output --partial "prune planner accepts exactly one scope"
+
+  ns_a_state_after=$(namespace_state_json "$NS_A_ID")
+  assert_namespace_state_delta "$ns_a_state_before" "$ns_a_state_after" 0 0 0 0 0
+
+  assert_legacy_custom_action_still_exists "$action_id" "$action_name"
+  assert_action_already_migrated_in_namespace "$action_name" "$NS_A_ID" "$action_target_id"
+}
+
+
+# Prune mixed-state coverage: each scope is pruned once while the plan contains
+# deletable candidates and candidates that must remain.
+# Covers action prune paths:
+# - delete legacy custom actions with labeled migrated targets
+# - retain legacy actions still referenced by subject mappings, registered resources, or obligation triggers
+# - retain actions that were not migrated
+# - check idempotency
+@test "prune namespaced-policy actions handles delete, in-use, and not-migrated states together" {
+  local delete_a_name="${TEST_PREFIX}-prune-action-delete-a"
+  local delete_b_name="${TEST_PREFIX}-prune-action-delete-b"
+  local used_by_mapping_name="${TEST_PREFIX}-prune-action-used-by-mapping"
+  local used_by_rr_name="${TEST_PREFIX}-prune-action-used-by-rr"
+  local used_by_trigger_name="${TEST_PREFIX}-prune-action-used-by-trigger"
+  local not_migrated_name="${TEST_PREFIX}-prune-action-not-migrated"
+  local shared_scs='[{"condition_groups":[{"conditions":[{"operator":1,"subject_external_values":["'"${TEST_PREFIX}"'-prune-action"],"subject_external_selector_value":".org.name"}],"boolean_operator":1}]}]'
+  local delete_a_id
+  local delete_b_id
+  local used_by_mapping_id
+  local used_by_rr_id
+  local used_by_trigger_id
+  local not_migrated_id
+  local delete_a_target_id
+  local delete_b_target_id
+  local shared_scs_id
+  local mapping_id
+  local rr_id
+  local rr_value_id
+  local obligation_id
+  local obligation_value_id
+  local trigger_id
+  local ns_a_state_before
+  local ns_a_state_after
+
+  create_global_action delete_a_id "$delete_a_name" --label "test_case=prune-actions" --label "fixture=${TEST_PREFIX}-delete-a-source"
+  create_global_action delete_b_id "$delete_b_name" --label "test_case=prune-actions" --label "fixture=${TEST_PREFIX}-delete-b-source"
+  create_global_action used_by_mapping_id "$used_by_mapping_name" --label "test_case=prune-actions" --label "fixture=${TEST_PREFIX}-used-by-mapping-source"
+  create_global_action used_by_rr_id "$used_by_rr_name" --label "test_case=prune-actions" --label "fixture=${TEST_PREFIX}-used-by-rr-source"
+  create_global_action used_by_trigger_id "$used_by_trigger_name" --label "test_case=prune-actions" --label "fixture=${TEST_PREFIX}-used-by-trigger-source"
+  create_global_action not_migrated_id "$not_migrated_name" --label "test_case=prune-actions" --label "fixture=${TEST_PREFIX}-not-migrated-source"
+
+  create_namespaced_action delete_a_target_id "$NS_A_ID" "$delete_a_name" --label "test_case=prune-actions" --label "fixture=${TEST_PREFIX}-delete-a-target" --label "migrated_from=$delete_a_id" --label "migration_run=${TEST_PREFIX}-manual"
+  create_namespaced_action delete_b_target_id "$NS_A_ID" "$delete_b_name" --label "test_case=prune-actions" --label "fixture=${TEST_PREFIX}-delete-b-target" --label "migrated_from=$delete_b_id" --label "migration_run=${TEST_PREFIX}-manual"
+
+  create_global_scs shared_scs_id "$shared_scs" --label "test_case=prune-actions" --label "fixture=${TEST_PREFIX}-shared-scs"
+  create_legacy_subject_mapping mapping_id "$ATTR_A_VAL_1_ID" "$used_by_mapping_id" "$shared_scs_id" --label "test_case=prune-actions" --label "fixture=${TEST_PREFIX}-mapping-reference"
+  create_global_registered_resource rr_id "${TEST_PREFIX}-prune-action-rr" --label "test_case=prune-actions" --label "fixture=${TEST_PREFIX}-rr-reference"
+  create_registered_resource_value rr_value_id "$rr_id" "${TEST_PREFIX}-prune-action-rr-value" --action-attribute-value "$used_by_rr_id;$ATTR_A_VAL_1_ID" --label "test_case=prune-actions" --label "fixture=${TEST_PREFIX}-rr-value-reference"
+  create_namespaced_obligation obligation_id "$NS_A_ID" "${TEST_PREFIX}-prune-action-obligation" --label "test_case=prune-actions" --label "fixture=${TEST_PREFIX}-obligation-reference"
+  create_obligation_value obligation_value_id "$obligation_id" "${TEST_PREFIX}-prune-action-obligation-value" --label "test_case=prune-actions" --label "fixture=${TEST_PREFIX}-obligation-value-reference"
+  create_legacy_obligation_trigger trigger_id "$ATTR_A_VAL_1_ID" "$used_by_trigger_id" "$obligation_value_id" --client-id "${TEST_PREFIX}-prune-action-client" --label "test_case=prune-actions" --label "fixture=${TEST_PREFIX}-trigger-reference"
+
+  ns_a_state_before=$(namespace_state_json "$NS_A_ID")
+
+  run_namespaced_policy_prune_commit "actions"
+  assert_success
+
+  ns_a_state_after=$(namespace_state_json "$NS_A_ID")
+  assert_namespace_state_delta "$ns_a_state_before" "$ns_a_state_after" 0 0 0 0 0
+
+  assert_legacy_custom_action_pruned "$delete_a_id"
+  assert_legacy_custom_action_pruned "$delete_b_id"
+  untrack_action_id "$delete_a_id"
+  untrack_action_id "$delete_b_id"
+  assert_action_already_migrated_in_namespace "$delete_a_name" "$NS_A_ID" "$delete_a_target_id"
+  assert_action_already_migrated_in_namespace "$delete_b_name" "$NS_A_ID" "$delete_b_target_id"
+  assert_legacy_custom_action_still_exists "$used_by_mapping_id" "$used_by_mapping_name"
+  assert_legacy_custom_action_still_exists "$used_by_rr_id" "$used_by_rr_name"
+  assert_legacy_custom_action_still_exists "$used_by_trigger_id" "$used_by_trigger_name"
+  assert_legacy_custom_action_still_exists "$not_migrated_id" "$not_migrated_name"
+
+  ns_a_state_before="$ns_a_state_after"
+
+  run_namespaced_policy_prune_commit "actions"
+  assert_success
+
+  ns_a_state_after=$(namespace_state_json "$NS_A_ID")
+  assert_namespace_state_delta "$ns_a_state_before" "$ns_a_state_after" 0 0 0 0 0
+
+  assert_legacy_custom_action_pruned "$delete_a_id"
+  assert_legacy_custom_action_pruned "$delete_b_id"
+  assert_action_already_migrated_in_namespace "$delete_a_name" "$NS_A_ID" "$delete_a_target_id"
+  assert_action_already_migrated_in_namespace "$delete_b_name" "$NS_A_ID" "$delete_b_target_id"
+  assert_legacy_custom_action_still_exists "$used_by_mapping_id" "$used_by_mapping_name"
+  assert_legacy_custom_action_still_exists "$used_by_rr_id" "$used_by_rr_name"
+  assert_legacy_custom_action_still_exists "$used_by_trigger_id" "$used_by_trigger_name"
+  assert_legacy_custom_action_still_exists "$not_migrated_id" "$not_migrated_name"
+}
+
+# Covers SCS prune paths:
+# - delete legacy SCS with labeled migrated targets
+# - retain SCS still referenced by a subject mapping
+# - retain SCS that were not migrated
+# - retain SCS with an unlabeled target
+# - check idempotency
+@test "prune namespaced-policy subject-condition-sets handles delete, in-use, not-migrated, and unlabeled-target states together" {
+  local delete_a_sets='[{"condition_groups":[{"conditions":[{"operator":1,"subject_external_values":["'"${TEST_PREFIX}"'-prune-scs-delete-a"],"subject_external_selector_value":".org.name"}],"boolean_operator":1}]}]'
+  local delete_b_sets='[{"condition_groups":[{"conditions":[{"operator":1,"subject_external_values":["'"${TEST_PREFIX}"'-prune-scs-delete-b"],"subject_external_selector_value":".org.name"}],"boolean_operator":1}]}]'
+  local used_sets='[{"condition_groups":[{"conditions":[{"operator":1,"subject_external_values":["'"${TEST_PREFIX}"'-prune-scs-used"],"subject_external_selector_value":".org.name"}],"boolean_operator":1}]}]'
+  local not_migrated_sets='[{"condition_groups":[{"conditions":[{"operator":1,"subject_external_values":["'"${TEST_PREFIX}"'-prune-scs-not-migrated"],"subject_external_selector_value":".org.name"}],"boolean_operator":1}]}]'
+  local unlabeled_target_sets='[{"condition_groups":[{"conditions":[{"operator":1,"subject_external_values":["'"${TEST_PREFIX}"'-prune-scs-unlabeled-target"],"subject_external_selector_value":".org.name"}],"boolean_operator":1}]}]'
+  local delete_a_id
+  local delete_b_id
+  local used_id
+  local not_migrated_id
+  local unlabeled_id
+  local delete_a_target_id
+  local delete_b_target_id
+  local used_target_id
+  local unlabeled_target_id
+  local action_id
+  local mapping_id
+  local ns_a_state_before
+  local ns_a_state_after
+
+  create_global_scs delete_a_id "$delete_a_sets" --label "test_case=prune-scs" --label "fixture=${TEST_PREFIX}-delete-a-source"
+  create_global_scs delete_b_id "$delete_b_sets" --label "test_case=prune-scs" --label "fixture=${TEST_PREFIX}-delete-b-source"
+  create_global_scs used_id "$used_sets" --label "test_case=prune-scs" --label "fixture=${TEST_PREFIX}-used-source"
+  create_global_scs not_migrated_id "$not_migrated_sets" --label "test_case=prune-scs" --label "fixture=${TEST_PREFIX}-not-migrated-source"
+  create_global_scs unlabeled_id "$unlabeled_target_sets" --label "test_case=prune-scs" --label "fixture=${TEST_PREFIX}-unlabeled-target-source"
+
+  create_namespaced_scs delete_a_target_id "$NS_A_ID" "$delete_a_sets" --label "test_case=prune-scs" --label "fixture=${TEST_PREFIX}-delete-a-target" --label "migrated_from=$delete_a_id" --label "migration_run=${TEST_PREFIX}-manual"
+  create_namespaced_scs delete_b_target_id "$NS_A_ID" "$delete_b_sets" --label "test_case=prune-scs" --label "fixture=${TEST_PREFIX}-delete-b-target" --label "migrated_from=$delete_b_id" --label "migration_run=${TEST_PREFIX}-manual"
+  create_namespaced_scs used_target_id "$NS_A_ID" "$used_sets" --label "test_case=prune-scs" --label "fixture=${TEST_PREFIX}-used-target" --label "migrated_from=$used_id" --label "migration_run=${TEST_PREFIX}-manual"
+  create_namespaced_scs unlabeled_target_id "$NS_A_ID" "$unlabeled_target_sets" --label "test_case=prune-scs" --label "fixture=${TEST_PREFIX}-unlabeled-target"
+
+  create_global_action action_id "${TEST_PREFIX}-prune-scs-action" --label "test_case=prune-scs" --label "fixture=${TEST_PREFIX}-action-reference"
+  create_legacy_subject_mapping mapping_id "$ATTR_A_VAL_1_ID" "$action_id" "$used_id" --label "test_case=prune-scs" --label "fixture=${TEST_PREFIX}-mapping-reference"
+
+  ns_a_state_before=$(namespace_state_json "$NS_A_ID")
+
+  run_namespaced_policy_prune_commit "subject-condition-sets"
+  assert_success
+
+  ns_a_state_after=$(namespace_state_json "$NS_A_ID")
+  assert_namespace_state_delta "$ns_a_state_before" "$ns_a_state_after" 0 0 0 0 0
+
+  assert_legacy_scs_pruned "$delete_a_id"
+  assert_legacy_scs_pruned "$delete_b_id"
+  untrack_scs_id "$delete_a_id"
+  untrack_scs_id "$delete_b_id"
+  assert_scs_target_still_exists "$delete_a_target_id" "$NS_A_ID" "$delete_a_id"
+  assert_scs_target_still_exists "$delete_b_target_id" "$NS_A_ID" "$delete_b_id"
+  assert_legacy_scs_still_exists "$used_id"
+  assert_legacy_scs_still_exists "$not_migrated_id"
+  assert_legacy_scs_still_exists "$unlabeled_id"
+  assert_scs_target_still_exists "$used_target_id" "$NS_A_ID" "$used_id"
+
+  local unlabeled_target_json
+  run_otdfctl_scs get --id "$unlabeled_target_id" --json
+  unlabeled_target_json="$output"
+  assert_equal "$(echo "$unlabeled_target_json" | jq -r '.id // empty')" "$unlabeled_target_id"
+  assert_equal "$(echo "$unlabeled_target_json" | jq -r '.namespace.id')" "$NS_A_ID"
+  assert_equal "$(echo "$unlabeled_target_json" | jq -r '.metadata.labels.migrated_from // empty')" ""
+
+  ns_a_state_before="$ns_a_state_after"
+
+  run_namespaced_policy_prune_commit "subject-condition-sets"
+  assert_success
+
+  ns_a_state_after=$(namespace_state_json "$NS_A_ID")
+  assert_namespace_state_delta "$ns_a_state_before" "$ns_a_state_after" 0 0 0 0 0
+
+  assert_legacy_scs_pruned "$delete_a_id"
+  assert_legacy_scs_pruned "$delete_b_id"
+  assert_scs_target_still_exists "$delete_a_target_id" "$NS_A_ID" "$delete_a_id"
+  assert_scs_target_still_exists "$delete_b_target_id" "$NS_A_ID" "$delete_b_id"
+  assert_legacy_scs_still_exists "$used_id"
+  assert_legacy_scs_still_exists "$not_migrated_id"
+  assert_legacy_scs_still_exists "$unlabeled_id"
+  assert_scs_target_still_exists "$used_target_id" "$NS_A_ID" "$used_id"
+  run_otdfctl_scs get --id "$unlabeled_target_id" --json
+  unlabeled_target_json="$output"
+  assert_equal "$(echo "$unlabeled_target_json" | jq -r '.id // empty')" "$unlabeled_target_id"
+  assert_equal "$(echo "$unlabeled_target_json" | jq -r '.namespace.id')" "$NS_A_ID"
+  assert_equal "$(echo "$unlabeled_target_json" | jq -r '.metadata.labels.migrated_from // empty')" ""
+}
+
+# Covers subject-mapping prune paths:
+# - delete migrated legacy mappings
+# - retain mappings that were not migrated
+# - retain mappings whose matching target is not labeled as migrated_from the source
+# - check idempotency
+@test "prune namespaced-policy subject-mappings handles delete, not-migrated, and unlabeled-target states together" {
+  local delete_a_action_name="${TEST_PREFIX}-prune-sm-delete-a"
+  local delete_b_action_name="${TEST_PREFIX}-prune-sm-delete-b"
+  local not_migrated_global_action_name="${TEST_PREFIX}-prune-sm-not-migrated"
+  local unlabeled_global_action_name="${TEST_PREFIX}-prune-sm-unlabeled-target"
+  local delete_a_sets='[{"condition_groups":[{"conditions":[{"operator":1,"subject_external_values":["'"${TEST_PREFIX}"'-prune-sm-delete-a"],"subject_external_selector_value":".org.name"}],"boolean_operator":1}]}]'
+  local delete_b_sets='[{"condition_groups":[{"conditions":[{"operator":1,"subject_external_values":["'"${TEST_PREFIX}"'-prune-sm-delete-b"],"subject_external_selector_value":".org.name"}],"boolean_operator":1}]}]'
+  local not_migrated_global_sets='[{"condition_groups":[{"conditions":[{"operator":1,"subject_external_values":["'"${TEST_PREFIX}"'-prune-sm-not-migrated"],"subject_external_selector_value":".org.name"}],"boolean_operator":1}]}]'
+  local unlabeled_global_sets='[{"condition_groups":[{"conditions":[{"operator":1,"subject_external_values":["'"${TEST_PREFIX}"'-prune-sm-unlabeled-target"],"subject_external_selector_value":".org.name"}],"boolean_operator":1}]}]'
+  local delete_a_action_id
+  local delete_b_action_id
+  local not_migrated_global_action_id
+  local unlabeled_global_action_id
+  local unlabeled_action_target_id
+  local delete_a_scs_id
+  local delete_b_scs_id
+  local not_migrated_global_scs_id
+  local unlabeled_global_scs_id
+  local unlabeled_scs_target_id
+  local delete_a_mapping_id
+  local delete_b_mapping_id
+  local not_migrated_global_mapping_id
+  local unlabeled_global_mapping_id
+  local delete_a_mapping_target_id
+  local delete_b_mapping_target_id
+  local unlabeled_mapping_target_id
+  local ns_a_state_before
+  local ns_a_state_after
+
+  create_global_action delete_a_action_id "$delete_a_action_name" --label "test_case=prune-subject-mappings" --label "fixture=${TEST_PREFIX}-delete-a-action"
+  create_global_action delete_b_action_id "$delete_b_action_name" --label "test_case=prune-subject-mappings" --label "fixture=${TEST_PREFIX}-delete-b-action"
+  create_global_scs delete_a_scs_id "$delete_a_sets" --label "test_case=prune-subject-mappings" --label "fixture=${TEST_PREFIX}-delete-a-scs"
+  create_global_scs delete_b_scs_id "$delete_b_sets" --label "test_case=prune-subject-mappings" --label "fixture=${TEST_PREFIX}-delete-b-scs"
+  create_legacy_subject_mapping delete_a_mapping_id "$ATTR_A_VAL_1_ID" "$delete_a_action_id" "$delete_a_scs_id" --label "test_case=prune-subject-mappings" --label "fixture=${TEST_PREFIX}-delete-a-mapping"
+  create_legacy_subject_mapping delete_b_mapping_id "$ATTR_A_VAL_2_ID" "$delete_b_action_id" "$delete_b_scs_id" --label "test_case=prune-subject-mappings" --label "fixture=${TEST_PREFIX}-delete-b-mapping"
+
+  run_namespaced_policy_commit "subject-mappings"
+  assert_success
+
+  delete_a_mapping_target_id=$(subject_mapping_id_by_migrated_from "$NS_A_ID" "$delete_a_mapping_id")
+  delete_b_mapping_target_id=$(subject_mapping_id_by_migrated_from "$NS_A_ID" "$delete_b_mapping_id")
+
+  create_global_action not_migrated_global_action_id "$not_migrated_global_action_name" --label "test_case=prune-subject-mappings" --label "fixture=${TEST_PREFIX}-not-migrated-action"
+  create_global_scs not_migrated_global_scs_id "$not_migrated_global_sets" --label "test_case=prune-subject-mappings" --label "fixture=${TEST_PREFIX}-not-migrated-scs"
+  create_legacy_subject_mapping not_migrated_global_mapping_id "$ATTR_A_VAL_1_ID" "$not_migrated_global_action_id" "$not_migrated_global_scs_id" --label "test_case=prune-subject-mappings" --label "fixture=${TEST_PREFIX}-not-migrated-mapping"
+
+  create_global_action unlabeled_global_action_id "$unlabeled_global_action_name" --label "test_case=prune-subject-mappings" --label "fixture=${TEST_PREFIX}-unlabeled-target-action"
+  create_global_scs unlabeled_global_scs_id "$unlabeled_global_sets" --label "test_case=prune-subject-mappings" --label "fixture=${TEST_PREFIX}-unlabeled-target-scs"
+  create_legacy_subject_mapping unlabeled_global_mapping_id "$ATTR_A_VAL_2_ID" "$unlabeled_global_action_id" "$unlabeled_global_scs_id" --label "test_case=prune-subject-mappings" --label "fixture=${TEST_PREFIX}-unlabeled-target-mapping"
+  create_namespaced_action unlabeled_action_target_id "$NS_A_ID" "$unlabeled_global_action_name" --label "test_case=prune-subject-mappings" --label "fixture=${TEST_PREFIX}-unlabeled-target-action-target" --label "migrated_from=$unlabeled_global_action_id" --label "migration_run=${TEST_PREFIX}-manual"
+  create_namespaced_scs unlabeled_scs_target_id "$NS_A_ID" "$unlabeled_global_sets" --label "test_case=prune-subject-mappings" --label "fixture=${TEST_PREFIX}-unlabeled-target-scs-target" --label "migrated_from=$unlabeled_global_scs_id" --label "migration_run=${TEST_PREFIX}-manual"
+  create_namespaced_subject_mapping unlabeled_mapping_target_id "$NS_A_ID" "$ATTR_A_VAL_2_ID" "$unlabeled_action_target_id" "$unlabeled_scs_target_id" --label "test_case=prune-subject-mappings" --label "fixture=${TEST_PREFIX}-unlabeled-target-mapping-target"
+
+  ns_a_state_before=$(namespace_state_json "$NS_A_ID")
+
+  run_namespaced_policy_prune_commit "subject-mappings"
+  assert_success
+
+  ns_a_state_after=$(namespace_state_json "$NS_A_ID")
+  assert_namespace_state_delta "$ns_a_state_before" "$ns_a_state_after" 0 0 0 0 0
+
+  assert_legacy_subject_mapping_pruned "$delete_a_mapping_id"
+  assert_legacy_subject_mapping_pruned "$delete_b_mapping_id"
+  untrack_subject_mapping_id "$delete_a_mapping_id"
+  untrack_subject_mapping_id "$delete_b_mapping_id"
+  assert_subject_mapping_target_still_exists "$delete_a_mapping_target_id" "$NS_A_ID" "$delete_a_mapping_id"
+  assert_subject_mapping_target_still_exists "$delete_b_mapping_target_id" "$NS_A_ID" "$delete_b_mapping_id"
+  assert_legacy_subject_mapping_still_exists "$ATTR_A_VAL_1_ID" "$not_migrated_global_mapping_id"
+  assert_legacy_subject_mapping_still_exists "$ATTR_A_VAL_2_ID" "$unlabeled_global_mapping_id"
+  assert_legacy_custom_action_still_exists "$delete_a_action_id" "$delete_a_action_name"
+  assert_legacy_scs_still_exists "$delete_a_scs_id"
+  assert_legacy_custom_action_still_exists "$delete_b_action_id" "$delete_b_action_name"
+  assert_legacy_scs_still_exists "$delete_b_scs_id"
+  assert_legacy_custom_action_still_exists "$not_migrated_global_action_id" "$not_migrated_global_action_name"
+  assert_legacy_scs_still_exists "$not_migrated_global_scs_id"
+  assert_legacy_custom_action_still_exists "$unlabeled_global_action_id" "$unlabeled_global_action_name"
+  assert_legacy_scs_still_exists "$unlabeled_global_scs_id"
+
+  local unlabeled_mapping_target_json
+  run_otdfctl_sm get --id "$unlabeled_mapping_target_id" --json
+  unlabeled_mapping_target_json="$output"
+  assert_equal "$(echo "$unlabeled_mapping_target_json" | jq -r '.id // empty')" "$unlabeled_mapping_target_id"
+  assert_equal "$(echo "$unlabeled_mapping_target_json" | jq -r '.namespace.id')" "$NS_A_ID"
+  assert_equal "$(echo "$unlabeled_mapping_target_json" | jq -r '.metadata.labels.migrated_from // empty')" ""
+
+  ns_a_state_before="$ns_a_state_after"
+
+  run_namespaced_policy_prune_commit "subject-mappings"
+  assert_success
+
+  ns_a_state_after=$(namespace_state_json "$NS_A_ID")
+  assert_namespace_state_delta "$ns_a_state_before" "$ns_a_state_after" 0 0 0 0 0
+
+  assert_legacy_subject_mapping_pruned "$delete_a_mapping_id"
+  assert_legacy_subject_mapping_pruned "$delete_b_mapping_id"
+  assert_subject_mapping_target_still_exists "$delete_a_mapping_target_id" "$NS_A_ID" "$delete_a_mapping_id"
+  assert_subject_mapping_target_still_exists "$delete_b_mapping_target_id" "$NS_A_ID" "$delete_b_mapping_id"
+  assert_legacy_subject_mapping_still_exists "$ATTR_A_VAL_1_ID" "$not_migrated_global_mapping_id"
+  assert_legacy_subject_mapping_still_exists "$ATTR_A_VAL_2_ID" "$unlabeled_global_mapping_id"
+  assert_legacy_custom_action_still_exists "$delete_a_action_id" "$delete_a_action_name"
+  assert_legacy_scs_still_exists "$delete_a_scs_id"
+  assert_legacy_custom_action_still_exists "$delete_b_action_id" "$delete_b_action_name"
+  assert_legacy_scs_still_exists "$delete_b_scs_id"
+  assert_legacy_custom_action_still_exists "$not_migrated_global_action_id" "$not_migrated_global_action_name"
+  assert_legacy_scs_still_exists "$not_migrated_global_scs_id"
+  assert_legacy_custom_action_still_exists "$unlabeled_global_action_id" "$unlabeled_global_action_name"
+  assert_legacy_scs_still_exists "$unlabeled_global_scs_id"
+
+  run_otdfctl_sm get --id "$unlabeled_mapping_target_id" --json
+  unlabeled_mapping_target_json="$output"
+  assert_equal "$(echo "$unlabeled_mapping_target_json" | jq -r '.id // empty')" "$unlabeled_mapping_target_id"
+  assert_equal "$(echo "$unlabeled_mapping_target_json" | jq -r '.namespace.id')" "$NS_A_ID"
+  assert_equal "$(echo "$unlabeled_mapping_target_json" | jq -r '.metadata.labels.migrated_from // empty')" ""
+}
+
+# Covers registered-resource prune paths:
+# - delete migrated legacy resources and values
+# - retain RRs that were not migrated
+# - retain resources whose matching target is not labeled as migrated_from the source
+# - retain a source resource with values from multiple namespaces
+# - check idempotency
+@test "prune namespaced-policy registered-resources handles delete, not-migrated, unlabeled-target, and multi-namespace-source states together" {
+  local delete_a_action_name="${TEST_PREFIX}-prune-rr-delete-a"
+  local delete_b_action_name="${TEST_PREFIX}-prune-rr-delete-b"
+  local not_migrated_global_action_name="${TEST_PREFIX}-prune-rr-not-migrated"
+  local unlabeled_global_action_name="${TEST_PREFIX}-prune-rr-unlabeled-target"
+  local delete_a_action_id
+  local delete_b_action_id
+  local not_migrated_global_action_id
+  local unlabeled_global_action_id
+  local unlabeled_action_target_id
+  local ns_a_read_action_id
+  local delete_a_rr_id
+  local delete_b_rr_id
+  local not_migrated_global_rr_id
+  local unlabeled_global_rr_id
+  local multi_namespace_rr_id
+  local delete_a_value_id
+  local delete_b_value_id
+  local not_migrated_global_value_id
+  local unlabeled_global_value_id
+  local multi_namespace_value_a_id
+  local multi_namespace_value_b_id
+  local delete_a_rr_target_id
+  local delete_b_rr_target_id
+  local delete_a_value_target_id
+  local delete_b_value_target_id
+  local unlabeled_rr_target_id
+  local unlabeled_value_target_id
+  local multi_namespace_rr_target_id
+  local multi_namespace_value_target_id
+  local ns_a_state_before
+  local ns_a_state_after
+
+  create_global_action delete_a_action_id "$delete_a_action_name" --label "test_case=prune-registered-resources" --label "fixture=${TEST_PREFIX}-delete-a-action"
+  create_global_action delete_b_action_id "$delete_b_action_name" --label "test_case=prune-registered-resources" --label "fixture=${TEST_PREFIX}-delete-b-action"
+  create_global_registered_resource delete_a_rr_id "${TEST_PREFIX}-prune-rr-delete-a" --label "test_case=prune-registered-resources" --label "fixture=${TEST_PREFIX}-delete-a-rr"
+  create_global_registered_resource delete_b_rr_id "${TEST_PREFIX}-prune-rr-delete-b" --label "test_case=prune-registered-resources" --label "fixture=${TEST_PREFIX}-delete-b-rr"
+  create_registered_resource_value delete_a_value_id "$delete_a_rr_id" "${TEST_PREFIX}-delete-a-value" --action-attribute-value "$delete_a_action_id;$ATTR_A_VAL_1_ID" --label "test_case=prune-registered-resources" --label "fixture=${TEST_PREFIX}-delete-a-value"
+  create_registered_resource_value delete_b_value_id "$delete_b_rr_id" "${TEST_PREFIX}-delete-b-value" --action-attribute-value "$delete_b_action_id;$ATTR_A_VAL_2_ID" --label "test_case=prune-registered-resources" --label "fixture=${TEST_PREFIX}-delete-b-value"
+
+  run_namespaced_policy_commit "registered-resources"
+  assert_success
+
+  delete_a_rr_target_id=$(registered_resource_id_by_migrated_from "$NS_A_ID" "$delete_a_rr_id")
+  delete_b_rr_target_id=$(registered_resource_id_by_migrated_from "$NS_A_ID" "$delete_b_rr_id")
+  delete_a_value_target_id=$(registered_resource_value_id_by_migrated_from "$delete_a_rr_target_id" "$delete_a_value_id")
+  delete_b_value_target_id=$(registered_resource_value_id_by_migrated_from "$delete_b_rr_target_id" "$delete_b_value_id")
+
+  create_global_action not_migrated_global_action_id "$not_migrated_global_action_name" --label "test_case=prune-registered-resources" --label "fixture=${TEST_PREFIX}-not-migrated-action"
+  create_global_registered_resource not_migrated_global_rr_id "${TEST_PREFIX}-prune-rr-not-migrated" --label "test_case=prune-registered-resources" --label "fixture=${TEST_PREFIX}-not-migrated-rr"
+  create_registered_resource_value not_migrated_global_value_id "$not_migrated_global_rr_id" "${TEST_PREFIX}-not-migrated-value" --action-attribute-value "$not_migrated_global_action_id;$ATTR_A_VAL_1_ID" --label "test_case=prune-registered-resources" --label "fixture=${TEST_PREFIX}-not-migrated-value"
+
+  create_global_action unlabeled_global_action_id "$unlabeled_global_action_name" --label "test_case=prune-registered-resources" --label "fixture=${TEST_PREFIX}-unlabeled-target-action"
+  create_global_registered_resource unlabeled_global_rr_id "${TEST_PREFIX}-prune-rr-unlabeled-target" --label "test_case=prune-registered-resources" --label "fixture=${TEST_PREFIX}-unlabeled-target-rr"
+  create_registered_resource_value unlabeled_global_value_id "$unlabeled_global_rr_id" "${TEST_PREFIX}-unlabeled-target-value" --action-attribute-value "$unlabeled_global_action_id;$ATTR_A_VAL_2_ID" --label "test_case=prune-registered-resources" --label "fixture=${TEST_PREFIX}-unlabeled-target-value"
+  create_namespaced_action unlabeled_action_target_id "$NS_A_ID" "$unlabeled_global_action_name" --label "test_case=prune-registered-resources" --label "fixture=${TEST_PREFIX}-unlabeled-target-action-target" --label "migrated_from=$unlabeled_global_action_id" --label "migration_run=${TEST_PREFIX}-manual"
+  create_namespaced_registered_resource unlabeled_rr_target_id "$NS_A_ID" "${TEST_PREFIX}-prune-rr-unlabeled-target" --label "test_case=prune-registered-resources" --label "fixture=${TEST_PREFIX}-unlabeled-target-rr-target"
+  create_registered_resource_value unlabeled_value_target_id "$unlabeled_rr_target_id" "${TEST_PREFIX}-unlabeled-target-value" --action-attribute-value "$unlabeled_action_target_id;$ATTR_A_VAL_2_ID" --label "test_case=prune-registered-resources" --label "fixture=${TEST_PREFIX}-unlabeled-target-value-target"
+
+  lookup_namespaced_action_id ns_a_read_action_id "read" "$NS_A_ID"
+  create_global_registered_resource multi_namespace_rr_id "${TEST_PREFIX}-prune-rr-multi-namespace" --label "test_case=prune-registered-resources" --label "fixture=${TEST_PREFIX}-multi-namespace-rr"
+  create_registered_resource_value multi_namespace_value_a_id "$multi_namespace_rr_id" "${TEST_PREFIX}-multi-namespace-a" --action-attribute-value "$GLOBAL_READ_ID;$ATTR_A_VAL_1_ID" --label "test_case=prune-registered-resources" --label "fixture=${TEST_PREFIX}-multi-namespace-value-a"
+  create_registered_resource_value multi_namespace_value_b_id "$multi_namespace_rr_id" "${TEST_PREFIX}-multi-namespace-b" --action-attribute-value "$GLOBAL_READ_ID;$ATTR_B_VAL_1_ID" --label "test_case=prune-registered-resources" --label "fixture=${TEST_PREFIX}-multi-namespace-value-b"
+  create_namespaced_registered_resource multi_namespace_rr_target_id "$NS_A_ID" "${TEST_PREFIX}-prune-rr-multi-namespace" --label "test_case=prune-registered-resources" --label "fixture=${TEST_PREFIX}-multi-namespace-rr-target" --label "migrated_from=$multi_namespace_rr_id" --label "migration_run=${TEST_PREFIX}-manual"
+  create_registered_resource_value multi_namespace_value_target_id "$multi_namespace_rr_target_id" "${TEST_PREFIX}-multi-namespace-a" --action-attribute-value "$ns_a_read_action_id;$ATTR_A_VAL_1_ID" --label "test_case=prune-registered-resources" --label "fixture=${TEST_PREFIX}-multi-namespace-value-target" --label "migrated_from=$multi_namespace_value_a_id" --label "migration_run=${TEST_PREFIX}-manual"
+
+  ns_a_state_before=$(namespace_state_json "$NS_A_ID")
+
+  run_namespaced_policy_prune_commit "registered-resources"
+  assert_success
+
+  ns_a_state_after=$(namespace_state_json "$NS_A_ID")
+  assert_namespace_state_delta "$ns_a_state_before" "$ns_a_state_after" 0 0 0 0 0
+
+  assert_legacy_registered_resource_pruned "$delete_a_rr_id" "$delete_a_value_id"
+  assert_legacy_registered_resource_pruned "$delete_b_rr_id" "$delete_b_value_id"
+  untrack_registered_resource_id "$delete_a_rr_id"
+  untrack_registered_resource_id "$delete_b_rr_id"
+  untrack_registered_resource_value_id "$delete_a_value_id"
+  untrack_registered_resource_value_id "$delete_b_value_id"
+  assert_registered_resource_target_still_exists "$delete_a_rr_target_id" "$delete_a_value_target_id" "$NS_A_ID" "$delete_a_rr_id" "$delete_a_value_id"
+  assert_registered_resource_target_still_exists "$delete_b_rr_target_id" "$delete_b_value_target_id" "$NS_A_ID" "$delete_b_rr_id" "$delete_b_value_id"
+  assert_legacy_registered_resource_still_exists "$not_migrated_global_rr_id" "$not_migrated_global_value_id" "${TEST_PREFIX}-prune-rr-not-migrated" "${TEST_PREFIX}-not-migrated-value"
+  assert_legacy_registered_resource_still_exists "$unlabeled_global_rr_id" "$unlabeled_global_value_id" "${TEST_PREFIX}-prune-rr-unlabeled-target" "${TEST_PREFIX}-unlabeled-target-value"
+  assert_legacy_registered_resource_still_exists "$multi_namespace_rr_id" "$multi_namespace_value_a_id" "${TEST_PREFIX}-prune-rr-multi-namespace" "${TEST_PREFIX}-multi-namespace-a"
+  assert_legacy_registered_resource_still_exists "$multi_namespace_rr_id" "$multi_namespace_value_b_id" "${TEST_PREFIX}-prune-rr-multi-namespace" "${TEST_PREFIX}-multi-namespace-b"
+  assert_registered_resource_target_still_exists "$multi_namespace_rr_target_id" "$multi_namespace_value_target_id" "$NS_A_ID" "$multi_namespace_rr_id" "$multi_namespace_value_a_id"
+  assert_registered_resource_unlabeled_target_still_exists "$unlabeled_rr_target_id" "$unlabeled_value_target_id" "$NS_A_ID" "${TEST_PREFIX}-prune-rr-unlabeled-target" "${TEST_PREFIX}-unlabeled-target-value" "$unlabeled_action_target_id" "$ATTR_A_VAL_2_ID"
+
+  ns_a_state_before="$ns_a_state_after"
+
+  run_namespaced_policy_prune_commit "registered-resources"
+  assert_success
+
+  ns_a_state_after=$(namespace_state_json "$NS_A_ID")
+  assert_namespace_state_delta "$ns_a_state_before" "$ns_a_state_after" 0 0 0 0 0
+
+  assert_legacy_registered_resource_pruned "$delete_a_rr_id" "$delete_a_value_id"
+  assert_legacy_registered_resource_pruned "$delete_b_rr_id" "$delete_b_value_id"
+  assert_registered_resource_target_still_exists "$delete_a_rr_target_id" "$delete_a_value_target_id" "$NS_A_ID" "$delete_a_rr_id" "$delete_a_value_id"
+  assert_registered_resource_target_still_exists "$delete_b_rr_target_id" "$delete_b_value_target_id" "$NS_A_ID" "$delete_b_rr_id" "$delete_b_value_id"
+  assert_legacy_registered_resource_still_exists "$not_migrated_global_rr_id" "$not_migrated_global_value_id" "${TEST_PREFIX}-prune-rr-not-migrated" "${TEST_PREFIX}-not-migrated-value"
+  assert_legacy_registered_resource_still_exists "$unlabeled_global_rr_id" "$unlabeled_global_value_id" "${TEST_PREFIX}-prune-rr-unlabeled-target" "${TEST_PREFIX}-unlabeled-target-value"
+  assert_legacy_registered_resource_still_exists "$multi_namespace_rr_id" "$multi_namespace_value_a_id" "${TEST_PREFIX}-prune-rr-multi-namespace" "${TEST_PREFIX}-multi-namespace-a"
+  assert_legacy_registered_resource_still_exists "$multi_namespace_rr_id" "$multi_namespace_value_b_id" "${TEST_PREFIX}-prune-rr-multi-namespace" "${TEST_PREFIX}-multi-namespace-b"
+  assert_registered_resource_unlabeled_target_still_exists "$unlabeled_rr_target_id" "$unlabeled_value_target_id" "$NS_A_ID" "${TEST_PREFIX}-prune-rr-unlabeled-target" "${TEST_PREFIX}-unlabeled-target-value" "$unlabeled_action_target_id" "$ATTR_A_VAL_2_ID"
+  assert_registered_resource_target_still_exists "$multi_namespace_rr_target_id" "$multi_namespace_value_target_id" "$NS_A_ID" "$multi_namespace_rr_id" "$multi_namespace_value_a_id"
+}
+
+# Covers obligation-trigger prune paths:
+# - delete migrated legacy triggers
+# - retain triggers that were not migrated
+# - retain triggers whose matching target is not labeled as migrated_from the source
+# - check idempotency
+@test "prune namespaced-policy obligation-triggers handles delete, not-migrated, and unlabeled-target states together" {
+  local delete_a_action_name="${TEST_PREFIX}-prune-trigger-delete-a"
+  local delete_b_action_name="${TEST_PREFIX}-prune-trigger-delete-b"
+  local not_migrated_global_action_name="${TEST_PREFIX}-prune-trigger-not-migrated"
+  local unlabeled_global_action_name="${TEST_PREFIX}-prune-trigger-unlabeled-target"
+  local delete_a_action_id
+  local delete_b_action_id
+  local not_migrated_global_action_id
+  local unlabeled_global_action_id
+  local unlabeled_action_target_id
+  local delete_a_obligation_id
+  local delete_b_obligation_id
+  local not_migrated_source_obligation_id
+  local unlabeled_source_obligation_id
+  local delete_a_value_id
+  local delete_b_value_id
+  local not_migrated_source_value_id
+  local unlabeled_source_value_id
+  local delete_a_trigger_id
+  local delete_b_trigger_id
+  local not_migrated_source_trigger_id
+  local unlabeled_source_trigger_id
+  local delete_a_trigger_target_id
+  local delete_b_trigger_target_id
+  local unlabeled_trigger_target_id
+  local ns_a_state_before
+  local ns_a_state_after
+
+  create_global_action delete_a_action_id "$delete_a_action_name" --label "test_case=prune-obligation-triggers" --label "fixture=${TEST_PREFIX}-delete-a-action"
+  create_global_action delete_b_action_id "$delete_b_action_name" --label "test_case=prune-obligation-triggers" --label "fixture=${TEST_PREFIX}-delete-b-action"
+  create_namespaced_obligation delete_a_obligation_id "$NS_A_ID" "${TEST_PREFIX}-prune-trigger-delete-a" --label "test_case=prune-obligation-triggers" --label "fixture=${TEST_PREFIX}-delete-a-obligation"
+  create_namespaced_obligation delete_b_obligation_id "$NS_A_ID" "${TEST_PREFIX}-prune-trigger-delete-b" --label "test_case=prune-obligation-triggers" --label "fixture=${TEST_PREFIX}-delete-b-obligation"
+  create_obligation_value delete_a_value_id "$delete_a_obligation_id" "${TEST_PREFIX}-delete-a-value" --label "test_case=prune-obligation-triggers" --label "fixture=${TEST_PREFIX}-delete-a-value"
+  create_obligation_value delete_b_value_id "$delete_b_obligation_id" "${TEST_PREFIX}-delete-b-value" --label "test_case=prune-obligation-triggers" --label "fixture=${TEST_PREFIX}-delete-b-value"
+  create_legacy_obligation_trigger delete_a_trigger_id "$ATTR_A_VAL_1_ID" "$delete_a_action_id" "$delete_a_value_id" --client-id "${TEST_PREFIX}-delete-a-client" --label "test_case=prune-obligation-triggers" --label "fixture=${TEST_PREFIX}-delete-a-trigger"
+  create_legacy_obligation_trigger delete_b_trigger_id "$ATTR_A_VAL_2_ID" "$delete_b_action_id" "$delete_b_value_id" --client-id "${TEST_PREFIX}-delete-b-client" --label "test_case=prune-obligation-triggers" --label "fixture=${TEST_PREFIX}-delete-b-trigger"
+
+  run_namespaced_policy_commit "obligation-triggers"
+  assert_success
+
+  delete_a_trigger_target_id=$(obligation_trigger_id_by_migrated_from "$NS_A_ID" "$delete_a_trigger_id")
+  delete_b_trigger_target_id=$(obligation_trigger_id_by_migrated_from "$NS_A_ID" "$delete_b_trigger_id")
+
+  create_global_action not_migrated_global_action_id "$not_migrated_global_action_name" --label "test_case=prune-obligation-triggers" --label "fixture=${TEST_PREFIX}-not-migrated-action"
+  create_namespaced_obligation not_migrated_source_obligation_id "$NS_A_ID" "${TEST_PREFIX}-prune-trigger-not-migrated" --label "test_case=prune-obligation-triggers" --label "fixture=${TEST_PREFIX}-not-migrated-obligation"
+  create_obligation_value not_migrated_source_value_id "$not_migrated_source_obligation_id" "${TEST_PREFIX}-not-migrated-value" --label "test_case=prune-obligation-triggers" --label "fixture=${TEST_PREFIX}-not-migrated-value"
+  create_legacy_obligation_trigger not_migrated_source_trigger_id "$ATTR_A_VAL_1_ID" "$not_migrated_global_action_id" "$not_migrated_source_value_id" --client-id "${TEST_PREFIX}-not-migrated-client" --label "test_case=prune-obligation-triggers" --label "fixture=${TEST_PREFIX}-not-migrated-trigger"
+
+  create_global_action unlabeled_global_action_id "$unlabeled_global_action_name" --label "test_case=prune-obligation-triggers" --label "fixture=${TEST_PREFIX}-unlabeled-target-action"
+  create_namespaced_obligation unlabeled_source_obligation_id "$NS_A_ID" "${TEST_PREFIX}-prune-trigger-unlabeled-target" --label "test_case=prune-obligation-triggers" --label "fixture=${TEST_PREFIX}-unlabeled-target-obligation"
+  create_obligation_value unlabeled_source_value_id "$unlabeled_source_obligation_id" "${TEST_PREFIX}-unlabeled-target-value" --label "test_case=prune-obligation-triggers" --label "fixture=${TEST_PREFIX}-unlabeled-target-value"
+  create_legacy_obligation_trigger unlabeled_source_trigger_id "$ATTR_A_VAL_2_ID" "$unlabeled_global_action_id" "$unlabeled_source_value_id" --client-id "${TEST_PREFIX}-unlabeled-target-client" --label "test_case=prune-obligation-triggers" --label "fixture=${TEST_PREFIX}-unlabeled-target-trigger"
+  create_namespaced_action unlabeled_action_target_id "$NS_A_ID" "$unlabeled_global_action_name" --label "test_case=prune-obligation-triggers" --label "fixture=${TEST_PREFIX}-unlabeled-target-action-target" --label "migrated_from=$unlabeled_global_action_id" --label "migration_run=${TEST_PREFIX}-manual"
+  run_otdfctl_obligation_triggers create --attribute-value "$ATTR_A_VAL_2_ID" --action "$unlabeled_action_target_id" --obligation-value "$unlabeled_source_value_id" --client-id "${TEST_PREFIX}-unlabeled-target-client" --label "test_case=prune-obligation-triggers" --label "fixture=${TEST_PREFIX}-unlabeled-target-trigger-target" --json
+  unlabeled_trigger_target_id=$(echo "$output" | jq -r '.id // empty')
+  assert_not_equal "$unlabeled_trigger_target_id" ""
+  track_obligation_trigger_id "$unlabeled_trigger_target_id"
+
+  ns_a_state_before=$(namespace_state_json "$NS_A_ID")
+
+  run_namespaced_policy_prune_commit "obligation-triggers"
+  assert_success
+
+  ns_a_state_after=$(namespace_state_json "$NS_A_ID")
+  assert_namespace_state_delta "$ns_a_state_before" "$ns_a_state_after" 0 0 0 0 -2 # Obligation triggers are already namespaced, they just need to be deleted/recreated; that's why there should be 2 less after prune.
+
+  assert_legacy_obligation_trigger_pruned "$delete_a_trigger_id" "$NS_A_ID"
+  assert_legacy_obligation_trigger_pruned "$delete_b_trigger_id" "$NS_A_ID"
+  untrack_obligation_trigger_id "$delete_a_trigger_id"
+  untrack_obligation_trigger_id "$delete_b_trigger_id"
+  assert_obligation_trigger_target_still_exists "$delete_a_trigger_target_id" "$NS_A_ID" "$delete_a_trigger_id"
+  assert_obligation_trigger_target_still_exists "$delete_b_trigger_target_id" "$NS_A_ID" "$delete_b_trigger_id"
+  assert_legacy_obligation_trigger_still_exists "$not_migrated_source_trigger_id" "$NS_A_ID" "$ATTR_A_VAL_1_ID" "$not_migrated_global_action_id" "$not_migrated_source_value_id" "${TEST_PREFIX}-not-migrated-client"
+  assert_legacy_obligation_trigger_still_exists "$unlabeled_source_trigger_id" "$NS_A_ID" "$ATTR_A_VAL_2_ID" "$unlabeled_global_action_id" "$unlabeled_source_value_id" "${TEST_PREFIX}-unlabeled-target-client"
+  assert_obligation_trigger_unlabeled_target_still_exists "$unlabeled_trigger_target_id" "$NS_A_ID" "$ATTR_A_VAL_2_ID" "$unlabeled_action_target_id" "$unlabeled_source_value_id" "${TEST_PREFIX}-unlabeled-target-client"
+
+  ns_a_state_before="$ns_a_state_after"
+
+  run_namespaced_policy_prune_commit "obligation-triggers"
+  assert_success
+
+  ns_a_state_after=$(namespace_state_json "$NS_A_ID")
+  assert_namespace_state_delta "$ns_a_state_before" "$ns_a_state_after" 0 0 0 0 0
+
+  assert_legacy_obligation_trigger_pruned "$delete_a_trigger_id" "$NS_A_ID"
+  assert_legacy_obligation_trigger_pruned "$delete_b_trigger_id" "$NS_A_ID"
+  assert_obligation_trigger_target_still_exists "$delete_a_trigger_target_id" "$NS_A_ID" "$delete_a_trigger_id"
+  assert_obligation_trigger_target_still_exists "$delete_b_trigger_target_id" "$NS_A_ID" "$delete_b_trigger_id"
+  assert_legacy_obligation_trigger_still_exists "$not_migrated_source_trigger_id" "$NS_A_ID" "$ATTR_A_VAL_1_ID" "$not_migrated_global_action_id" "$not_migrated_source_value_id" "${TEST_PREFIX}-not-migrated-client"
+  assert_legacy_obligation_trigger_still_exists "$unlabeled_source_trigger_id" "$NS_A_ID" "$ATTR_A_VAL_2_ID" "$unlabeled_global_action_id" "$unlabeled_source_value_id" "${TEST_PREFIX}-unlabeled-target-client"
+  assert_obligation_trigger_unlabeled_target_still_exists "$unlabeled_trigger_target_id" "$NS_A_ID" "$ATTR_A_VAL_2_ID" "$unlabeled_action_target_id" "$unlabeled_source_value_id" "${TEST_PREFIX}-unlabeled-target-client"
 }

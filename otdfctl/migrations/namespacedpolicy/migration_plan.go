@@ -30,7 +30,7 @@ type Unresolved struct {
 	Message string
 }
 
-type Plan struct {
+type MigrationPlan struct {
 	Scopes               []Scope                    `json:"scopes"`
 	Actions              []*ActionPlan              `json:"actions"`
 	SubjectConditionSets []*SubjectConditionSetPlan `json:"subject_condition_sets"`
@@ -50,7 +50,6 @@ const (
 )
 
 type ExecutionResult struct {
-	RunID           string `json:"run_id,omitempty"`
 	Applied         bool   `json:"applied,omitempty"`
 	CreatedTargetID string `json:"created_target_id,omitempty"`
 	Failure         string `json:"failure,omitempty"`
@@ -271,7 +270,7 @@ func (t *ObligationTriggerTargetPlan) TargetID() string {
 	return t.ExistingID
 }
 
-func (p *Plan) LookupActionTarget(sourceID, namespaceID string) *ActionTargetPlan {
+func (p *MigrationPlan) LookupActionTarget(sourceID, namespaceID string) *ActionTargetPlan {
 	if p == nil || sourceID == "" || namespaceID == "" {
 		return nil
 	}
@@ -290,7 +289,7 @@ func (p *Plan) LookupActionTarget(sourceID, namespaceID string) *ActionTargetPla
 	return nil
 }
 
-func (p *Plan) LookupSubjectConditionSetTarget(sourceID, namespaceID string) *SubjectConditionSetTargetPlan {
+func (p *MigrationPlan) LookupSubjectConditionSetTarget(sourceID, namespaceID string) *SubjectConditionSetTargetPlan {
 	if p == nil || sourceID == "" || namespaceID == "" {
 		return nil
 	}

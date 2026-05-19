@@ -7,7 +7,7 @@ import (
 	"github.com/opentdf/platform/protocol/go/policy"
 )
 
-func (e *Executor) rememberActionTarget(sourceID string, target *ActionTargetPlan) {
+func (e *MigrationExecutor) rememberActionTarget(sourceID string, target *ActionTargetPlan) {
 	if e == nil || sourceID == "" || target == nil {
 		return
 	}
@@ -27,7 +27,7 @@ func (e *Executor) rememberActionTarget(sourceID string, target *ActionTargetPla
 	e.actionTargets[sourceID][namespaceKey] = target
 }
 
-func (e *Executor) cachedActionTargetID(sourceID string, namespace *policy.Namespace) string {
+func (e *MigrationExecutor) cachedActionTargetID(sourceID string, namespace *policy.Namespace) string {
 	if e == nil || sourceID == "" {
 		return ""
 	}
@@ -50,7 +50,7 @@ func (e *Executor) cachedActionTargetID(sourceID string, namespace *policy.Names
 	return target.TargetID()
 }
 
-func (e *Executor) executeActions(ctx context.Context, actionPlans []*ActionPlan) error {
+func (e *MigrationExecutor) executeActions(ctx context.Context, actionPlans []*ActionPlan) error {
 	for _, actionPlan := range actionPlans {
 		if actionPlan == nil || actionPlan.Source == nil {
 			continue
@@ -70,7 +70,7 @@ func (e *Executor) executeActions(ctx context.Context, actionPlans []*ActionPlan
 	return nil
 }
 
-func (e *Executor) executeActionTarget(ctx context.Context, actionPlan *ActionPlan, target *ActionTargetPlan) error {
+func (e *MigrationExecutor) executeActionTarget(ctx context.Context, actionPlan *ActionPlan, target *ActionTargetPlan) error {
 	switch target.Status {
 	case TargetStatusExistingStandard, TargetStatusAlreadyMigrated:
 		if target.TargetID() == "" {
@@ -93,7 +93,7 @@ func (e *Executor) executeActionTarget(ctx context.Context, actionPlan *ActionPl
 	}
 }
 
-func (e *Executor) createActionTarget(ctx context.Context, actionPlan *ActionPlan, target *ActionTargetPlan) error {
+func (e *MigrationExecutor) createActionTarget(ctx context.Context, actionPlan *ActionPlan, target *ActionTargetPlan) error {
 	namespace := namespaceIdentifier(target.Namespace)
 	if namespace == "" {
 		return fmt.Errorf("%w: action %q", ErrTargetNamespaceRequired, actionPlan.Source.GetId())
@@ -106,26 +106,22 @@ func (e *Executor) createActionTarget(ctx context.Context, actionPlan *ActionPla
 		metadataForCreate(
 			actionPlan.Source.GetId(),
 			metadataLabels(actionPlan.Source.GetMetadata()),
-			e.runID,
 		),
 	)
 	if err != nil {
 		target.Execution = &ExecutionResult{
-			RunID:   e.runID,
 			Failure: err.Error(),
 		}
 		return fmt.Errorf("create action %q in namespace %q: %w", actionPlan.Source.GetId(), namespaceLabel(target.Namespace), err)
 	}
 	if created.GetId() == "" {
 		target.Execution = &ExecutionResult{
-			RunID:   e.runID,
 			Failure: ErrMissingCreatedTargetID.Error(),
 		}
 		return fmt.Errorf("%w: action %q target %q", ErrMissingCreatedTargetID, actionPlan.Source.GetId(), namespaceLabel(target.Namespace))
 	}
 
 	target.Execution = &ExecutionResult{
-		RunID:           e.runID,
 		Applied:         true,
 		CreatedTargetID: created.GetId(),
 	}

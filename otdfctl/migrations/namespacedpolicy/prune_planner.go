@@ -28,7 +28,7 @@ var (
 // Each prune item is classified as delete, blocked, or unresolved and carries
 // the migrated target context that justified that decision.
 type PrunePlanner struct {
-	planner *Planner
+	planner *MigrationPlanner
 	scopes  scopeSet
 }
 
@@ -82,7 +82,7 @@ func NewPrunePlanner(handler PolicyClient, scopeCSV string, opts ...PruneOption)
 		config.pageSize = defaultPlannerPageSize
 	}
 
-	planner, err := NewPlanner(handler, scopeCSV, WithPageSize(config.pageSize))
+	planner, err := NewMigrationPlanner(handler, scopeCSV, WithPageSize(config.pageSize))
 	if err != nil {
 		return nil, err
 	}

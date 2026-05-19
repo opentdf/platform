@@ -53,7 +53,7 @@ func TestExecutePruneDispatchesOnlyPlanScope(t *testing.T) {
 			handler := &mockExecutorHandler{}
 			plan := mixedPrunePlan(tt.scope)
 
-			executor, err := NewExecutor(handler)
+			executor, err := NewPruneExecutor(handler)
 			require.NoError(t, err)
 
 			err = executor.ExecutePrune(t.Context(), plan)
@@ -80,7 +80,7 @@ func TestExecutePruneRecordsFailureAndStops(t *testing.T) {
 		},
 	}
 
-	executor, err := NewExecutor(handler)
+	executor, err := NewPruneExecutor(handler)
 	require.NoError(t, err)
 
 	err = executor.ExecutePrune(t.Context(), plan)
@@ -96,7 +96,7 @@ func TestExecutePruneRecordsFailureAndStops(t *testing.T) {
 
 func TestExecutePruneRequiresSingleScope(t *testing.T) {
 	handler := &mockExecutorHandler{}
-	executor, err := NewExecutor(handler)
+	executor, err := NewPruneExecutor(handler)
 	require.NoError(t, err)
 
 	err = executor.ExecutePrune(t.Context(), &PrunePlan{})

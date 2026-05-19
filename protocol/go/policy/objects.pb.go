@@ -243,17 +243,19 @@ const (
 	KasPublicKeyAlgEnum_KAS_PUBLIC_KEY_ALG_ENUM_EC_SECP256R1 KasPublicKeyAlgEnum = 5
 	KasPublicKeyAlgEnum_KAS_PUBLIC_KEY_ALG_ENUM_EC_SECP384R1 KasPublicKeyAlgEnum = 6
 	KasPublicKeyAlgEnum_KAS_PUBLIC_KEY_ALG_ENUM_EC_SECP521R1 KasPublicKeyAlgEnum = 7
+	KasPublicKeyAlgEnum_KAS_PUBLIC_KEY_ALG_ENUM_MLKEM_768    KasPublicKeyAlgEnum = 13
 )
 
 // Enum value maps for KasPublicKeyAlgEnum.
 var (
 	KasPublicKeyAlgEnum_name = map[int32]string{
-		0: "KAS_PUBLIC_KEY_ALG_ENUM_UNSPECIFIED",
-		1: "KAS_PUBLIC_KEY_ALG_ENUM_RSA_2048",
-		2: "KAS_PUBLIC_KEY_ALG_ENUM_RSA_4096",
-		5: "KAS_PUBLIC_KEY_ALG_ENUM_EC_SECP256R1",
-		6: "KAS_PUBLIC_KEY_ALG_ENUM_EC_SECP384R1",
-		7: "KAS_PUBLIC_KEY_ALG_ENUM_EC_SECP521R1",
+		0:  "KAS_PUBLIC_KEY_ALG_ENUM_UNSPECIFIED",
+		1:  "KAS_PUBLIC_KEY_ALG_ENUM_RSA_2048",
+		2:  "KAS_PUBLIC_KEY_ALG_ENUM_RSA_4096",
+		5:  "KAS_PUBLIC_KEY_ALG_ENUM_EC_SECP256R1",
+		6:  "KAS_PUBLIC_KEY_ALG_ENUM_EC_SECP384R1",
+		7:  "KAS_PUBLIC_KEY_ALG_ENUM_EC_SECP521R1",
+		13: "KAS_PUBLIC_KEY_ALG_ENUM_MLKEM_768",
 	}
 	KasPublicKeyAlgEnum_value = map[string]int32{
 		"KAS_PUBLIC_KEY_ALG_ENUM_UNSPECIFIED":  0,
@@ -262,6 +264,7 @@ var (
 		"KAS_PUBLIC_KEY_ALG_ENUM_EC_SECP256R1": 5,
 		"KAS_PUBLIC_KEY_ALG_ENUM_EC_SECP384R1": 6,
 		"KAS_PUBLIC_KEY_ALG_ENUM_EC_SECP521R1": 7,
+		"KAS_PUBLIC_KEY_ALG_ENUM_MLKEM_768":    13,
 	}
 )
 
@@ -296,12 +299,13 @@ func (KasPublicKeyAlgEnum) EnumDescriptor() ([]byte, []int) {
 type Algorithm int32
 
 const (
-	Algorithm_ALGORITHM_UNSPECIFIED Algorithm = 0
-	Algorithm_ALGORITHM_RSA_2048    Algorithm = 1
-	Algorithm_ALGORITHM_RSA_4096    Algorithm = 2
-	Algorithm_ALGORITHM_EC_P256     Algorithm = 3
-	Algorithm_ALGORITHM_EC_P384     Algorithm = 4
-	Algorithm_ALGORITHM_EC_P521     Algorithm = 5
+	Algorithm_ALGORITHM_UNSPECIFIED  Algorithm = 0
+	Algorithm_ALGORITHM_RSA_2048     Algorithm = 1
+	Algorithm_ALGORITHM_RSA_4096     Algorithm = 2
+	Algorithm_ALGORITHM_EC_P256      Algorithm = 3
+	Algorithm_ALGORITHM_EC_P384      Algorithm = 4
+	Algorithm_ALGORITHM_EC_P521      Algorithm = 5
+	Algorithm_ALGORITHM_ML_KEM_768   Algorithm = 6
 )
 
 // Enum value maps for Algorithm.
@@ -313,6 +317,7 @@ var (
 		3: "ALGORITHM_EC_P256",
 		4: "ALGORITHM_EC_P384",
 		5: "ALGORITHM_EC_P521",
+		6: "ALGORITHM_ML_KEM_768",
 	}
 	Algorithm_value = map[string]int32{
 		"ALGORITHM_UNSPECIFIED": 0,
@@ -321,6 +326,7 @@ var (
 		"ALGORITHM_EC_P256":     3,
 		"ALGORITHM_EC_P384":     4,
 		"ALGORITHM_EC_P521":     5,
+		"ALGORITHM_ML_KEM_768":  6,
 	}
 )
 

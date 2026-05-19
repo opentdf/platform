@@ -63,13 +63,12 @@ func (b *BasicManager) Decrypt(ctx context.Context, keyDetails trust.KeyDetails,
 		return nil, fmt.Errorf("failed to unwrap private key: %w", err)
 	}
 
-	decrypter, err := ocrypto.FromPrivatePEM(string(privKey))
-	if err != nil {
-		return nil, fmt.Errorf("failed to create decryptor from private PEM: %w", err)
-	}
-
 	switch keyDetails.Algorithm() {
 	case ocrypto.RSA2048Key, ocrypto.RSA4096Key:
+		decrypter, err := ocrypto.FromPrivatePEM(string(privKey))
+		if err != nil {
+			return nil, fmt.Errorf("failed to create decryptor from private PEM: %w", err)
+		}
 		plaintext, err := decrypter.Decrypt(ciphertext)
 		if err != nil {
 			return nil, fmt.Errorf("failed to decrypt with RSA: %w", err)
@@ -93,6 +92,17 @@ func (b *BasicManager) Decrypt(ctx context.Context, keyDetails trust.KeyDetails,
 			return nil, fmt.Errorf("failed to decrypt with ephemeral key: %w", err)
 		}
 		protectedKey, err := ocrypto.NewAESProtectedKey(plaintext)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create protected key: %w", err)
+		}
+		return protectedKey, nil
+	case ocrypto.MLKEM768Key:
+		// wrappedKey = ml_kem_ciphertext [1088 bytes] || aes_wrapped_dek
+		dek, err := ocrypto.MLKEMDecapsulateAndUnwrap(privKey, ciphertext)
+		if err != nil {
+			return nil, fmt.Errorf("failed to decapsulate ML-KEM-768 wrapped key: %w", err)
+		}
+		protectedKey, err := ocrypto.NewAESProtectedKey(dek)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create protected key: %w", err)
 		}

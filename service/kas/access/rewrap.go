@@ -750,6 +750,17 @@ func (p *Provider) verifyRewrapRequests(ctx context.Context, req *kaspb.Unsigned
 			var kidsToCheck []trust.KeyIdentifier
 			if kao.GetKeyAccessObject().GetKid() != "" {
 				kid := trust.KeyIdentifier(kao.GetKeyAccessObject().GetKid())
+
+				// Gate ML-KEM-768 behind the preview flag.
+				keyDetails, lookupErr := p.KeyDelegator.FindKeyByID(ctx, kid)
+				if lookupErr == nil && keyDetails.Algorithm() == ocrypto.MLKEM768Key {
+					if !p.Preview.MLKEMEnabled {
+						p.Logger.WarnContext(ctx, "mlkem:768 not enabled")
+						failedKAORewrap(results, kao, err400("mlkem:768 not enabled"))
+						continue
+					}
+				}
+
 				kidsToCheck = []trust.KeyIdentifier{kid}
 			} else {
 				kidsToCheck = p.listLegacyKeys(ctx)

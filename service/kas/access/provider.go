@@ -59,6 +59,7 @@ type KASConfig struct {
 type Preview struct {
 	ECTDFEnabled  bool `mapstructure:"ec_tdf_enabled" json:"ec_tdf_enabled"`
 	KeyManagement bool `mapstructure:"key_management" json:"key_management"`
+	MLKEMEnabled  bool `mapstructure:"mlkem_enabled" json:"mlkem_enabled"`
 }
 
 // Specifies the preferred/default key for a given algorithm type.

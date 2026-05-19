@@ -1,7 +1,6 @@
 package namespacedpolicy
 
 import (
-	"context"
 	"testing"
 
 	"github.com/opentdf/platform/protocol/go/common"
@@ -700,7 +699,7 @@ func TestPrunePlannerPlanFailsWhenMigratedTargetIDIsEmpty(t *testing.T) {
 		},
 	}
 
-	_, err := buildPrunePlanFromResolved(scopesFromSlice([]Scope{ScopeSubjectMappings}), resolved, nil)
+	_, err := buildPrunePlanFromResolved(scopesFromSlice([]Scope{ScopeSubjectMappings}), resolved)
 
 	require.Error(t, err)
 	require.ErrorIs(t, err, ErrInvalidPruneResolvedTarget)
@@ -729,7 +728,7 @@ func TestPrunePlannerPlanClassifiesMismatchedMigrationLabelAsUnresolved(t *testi
 		},
 	}
 
-	plan, err := buildPrunePlanFromResolved(scopesFromSlice([]Scope{ScopeSubjectMappings}), resolved, nil)
+	plan, err := buildPrunePlanFromResolved(scopesFromSlice([]Scope{ScopeSubjectMappings}), resolved)
 
 	require.NoError(t, err)
 	require.Len(t, plan.SubjectMappings, 1)
@@ -749,33 +748,11 @@ func TestPrunePlannerPlanSkipsRegisteredResourceWhenResolvedSourceIsMissing(t *t
 	plan, err := buildPrunePlanFromResolved(
 		scopesFromSlice([]Scope{ScopeRegisteredResources}),
 		resolved,
-		map[string]*policy.RegisteredResource{},
 	)
 
 	require.NoError(t, err)
 	require.NotNil(t, plan)
 	assert.Empty(t, plan.RegisteredResources)
-}
-
-func TestPrunePlannerPlanFailsWhenRegisteredResourceSourceIsNotReloaded(t *testing.T) {
-	t.Parallel()
-
-	source := testRegisteredResource("resource-1", "documents")
-	resolved := &ResolvedTargets{
-		RegisteredResources: []*ResolvedRegisteredResource{
-			{Source: source},
-		},
-	}
-
-	_, err := buildPrunePlanFromResolved(
-		scopesFromSlice([]Scope{ScopeRegisteredResources}),
-		resolved,
-		map[string]*policy.RegisteredResource{},
-	)
-
-	require.Error(t, err)
-	require.ErrorIs(t, err, ErrInvalidPruneResolvedSource)
-	assert.Contains(t, err.Error(), `registered resource source "resource-1" not found`)
 }
 
 func TestPrunePlannerPlanClassifiesUnmigratedRegisteredResourceAsNeedsMigration(t *testing.T) {
@@ -824,7 +801,7 @@ func TestPrunePlannerPlanClassifiesUnmigratedRegisteredResourceAsNeedsMigration(
 	assert.True(t, plan.RegisteredResources[0].MigratedTarget.IsZero())
 }
 
-func TestPrunePlannerPlanMarksFilteredRegisteredResourceSourceAsUnresolved(t *testing.T) {
+func TestPrunePlannerPlanBlocksUnmigratedMultiNamespaceRegisteredResourceForManualDelete(t *testing.T) {
 	t.Parallel()
 
 	leftNamespace := &policy.Namespace{Id: "ns-1", Fqn: "https://left.example.com"}
@@ -847,11 +824,6 @@ func TestPrunePlannerPlanMarksFilteredRegisteredResourceSourceAsUnresolved(t *te
 		),
 	)
 	legacyResource := testRegisteredResource("resource-1", "documents", leftValue, rightValue)
-	targetResource := &policy.RegisteredResource{
-		Id:       "target-resource-1",
-		Name:     legacyResource.GetName(),
-		Metadata: migratedMetadata(legacyResource.GetId()),
-	}
 	handler := &plannerTestHandler{
 		actionsByNamespace: map[string]*actions.ListActionsResponse{
 			"": {
@@ -870,28 +842,21 @@ func TestPrunePlannerPlanMarksFilteredRegisteredResourceSourceAsUnresolved(t *te
 			Pagination: emptyPageResponse(),
 		},
 	}
-	reviewer := registeredResourceFilterReviewer{
-		namespace: leftNamespace,
-		target:    targetResource,
-	}
-
-	planner, err := NewPrunePlanner(handler, "registered-resources", WithPruneInteractiveReviewer(reviewer))
+	planner, err := NewPrunePlanner(handler, "registered-resources")
 	require.NoError(t, err)
 
 	plan, err := planner.Plan(t.Context())
 	require.NoError(t, err)
 
 	require.Len(t, plan.RegisteredResources, 1)
-	assert.Equal(t, PruneStatusUnresolved, plan.RegisteredResources[0].Status)
-	assertPruneMigratedTarget(t, plan.RegisteredResources[0].MigratedTarget, leftNamespace, targetResource.GetId())
-	assert.Equal(t, PruneStatusReasonTypeRegisteredResourceSourceMismatch, plan.RegisteredResources[0].Reason.Type)
-	assert.Contains(t, plan.RegisteredResources[0].Reason.Message, "resolved registered resource view does not match the full source object")
-	assert.Contains(t, plan.RegisteredResources[0].Reason.Message, leftNamespace.GetFqn())
-	require.Len(t, plan.RegisteredResources[0].Source.GetValues(), 1)
-	require.Len(t, plan.RegisteredResources[0].FullSource.GetValues(), 2)
+	assert.Equal(t, PruneStatusBlocked, plan.RegisteredResources[0].Status)
+	assert.True(t, plan.RegisteredResources[0].MigratedTarget.IsZero())
+	assert.Equal(t, PruneStatusReasonTypeMultiNamespaceManualDelete, plan.RegisteredResources[0].Reason.Type)
+	assert.Equal(t, pruneStatusReasonMessageMultiNamespaceManualDelete, plan.RegisteredResources[0].Reason.Message)
+	require.Len(t, plan.RegisteredResources[0].Source.GetValues(), 2)
 }
 
-func TestPrunePlannerPlanDeletesRegisteredResourceWhenFullSourceMatchesMigratedTarget(t *testing.T) {
+func TestPrunePlannerPlanDeletesRegisteredResourceWhenMigratedTargetMatches(t *testing.T) {
 	t.Parallel()
 
 	targetNamespace := &policy.Namespace{Id: "ns-1", Fqn: "https://example.com"}
@@ -953,8 +918,6 @@ func TestPrunePlannerPlanDeletesRegisteredResourceWhenFullSourceMatchesMigratedT
 	assertPruneMigratedTarget(t, plan.RegisteredResources[0].MigratedTarget, targetNamespace, targetResource.GetId())
 	assert.True(t, plan.RegisteredResources[0].Reason.IsZero())
 	require.NotNil(t, plan.RegisteredResources[0].Source)
-	require.NotNil(t, plan.RegisteredResources[0].FullSource)
-	assert.True(t, registeredResourceCanonicalEqual(plan.RegisteredResources[0].Source, plan.RegisteredResources[0].FullSource))
 }
 
 // Scope: obligation triggers.
@@ -1192,29 +1155,4 @@ func assertPruneMigratedTarget(t *testing.T, actual TargetRef, namespace *policy
 	assert.Equal(t, id, actual.ID)
 	assert.Equal(t, namespace.GetId(), actual.NamespaceID)
 	assert.Equal(t, namespace.GetFqn(), actual.NamespaceFQN)
-}
-
-type registeredResourceFilterReviewer struct {
-	namespace *policy.Namespace
-	target    *policy.RegisteredResource
-}
-
-func (r registeredResourceFilterReviewer) Review(_ context.Context, resolved *ResolvedTargets, _ []*policy.Namespace) error {
-	for _, resource := range resolved.RegisteredResources {
-		if resource == nil || resource.Source == nil {
-			continue
-		}
-
-		filtered, err := filterRegisteredResourceToNamespace(resource.Source, r.namespace)
-		if err != nil {
-			return err
-		}
-		resource.Source = filtered
-		resource.Namespace = r.namespace
-		resource.Unresolved = nil
-		resource.AlreadyMigrated = r.target
-		resource.NeedsCreate = false
-	}
-
-	return nil
 }

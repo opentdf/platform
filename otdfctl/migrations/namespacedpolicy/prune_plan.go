@@ -20,23 +20,23 @@ const (
 type PruneStatusReasonType string
 
 const (
-	PruneStatusReasonTypeMigratedTargetNotFound           PruneStatusReasonType = "MigratedTargetNotFound"
-	PruneStatusReasonTypeNoMatchingLabelsFound            PruneStatusReasonType = "NoMatchingLabelsFound"
-	PruneStatusReasonTypeMismatchedMigrationLabel         PruneStatusReasonType = "MismatchedMigrationLabel"
-	PruneStatusReasonTypeMissingMigrationLabel            PruneStatusReasonType = "MissingMigrationLabel"
-	PruneStatusReasonTypeInUse                            PruneStatusReasonType = "InUse"
-	PruneStatusReasonTypeNeedsMigration                   PruneStatusReasonType = "NeedsMigration"
-	PruneStatusReasonTypeRegisteredResourceSourceMismatch PruneStatusReasonType = "RegisteredResourceSourceMismatch"
-	PruneStatusReasonTypeSkippedByUser                    PruneStatusReasonType = "SkippedByUser"
+	PruneStatusReasonTypeMigratedTargetNotFound     PruneStatusReasonType = "MigratedTargetNotFound"
+	PruneStatusReasonTypeNoMatchingLabelsFound      PruneStatusReasonType = "NoMatchingLabelsFound"
+	PruneStatusReasonTypeMismatchedMigrationLabel   PruneStatusReasonType = "MismatchedMigrationLabel"
+	PruneStatusReasonTypeMissingMigrationLabel      PruneStatusReasonType = "MissingMigrationLabel"
+	PruneStatusReasonTypeInUse                      PruneStatusReasonType = "InUse"
+	PruneStatusReasonTypeNeedsMigration             PruneStatusReasonType = "NeedsMigration"
+	PruneStatusReasonTypeMultiNamespaceManualDelete PruneStatusReasonType = "MultiNamespaceManualDelete"
+	PruneStatusReasonTypeSkippedByUser              PruneStatusReasonType = "SkippedByUser"
 
-	pruneStatusReasonMessageMigratedTargetNotFound              = "no migrated target was found for this source"
-	pruneStatusReasonMessageInUse                               = "source object is still referenced by legacy policy"
-	pruneStatusReasonMessageNoMatchingLabelsFound               = "canonical migrated targets were found, but none carry migrated_from for this source"
-	pruneStatusReasonMessageMismatchedMigrationLabel            = "migrated target carries migrated_from metadata for a different source"
-	pruneStatusReasonMessageMissingMigrationLabel               = "migrated target is missing migrated_from metadata for this source"
-	pruneStatusReasonMessageNeedsMigration                      = "source object does not have a migrated target yet"
-	pruneStatusReasonMessageSkippedByUser                       = "skipped by user"
-	pruneStatusReasonMessageRegisteredResourceSourceMismatchFmt = "resolved registered resource view does not match the full source object for target namespace %q; source contains values outside the resolved migration view"
+	pruneStatusReasonMessageMigratedTargetNotFound     = "no migrated target was found for this source"
+	pruneStatusReasonMessageInUse                      = "source object is still referenced by legacy policy"
+	pruneStatusReasonMessageNoMatchingLabelsFound      = "canonical migrated targets were found, but none carry migrated_from for this source"
+	pruneStatusReasonMessageMismatchedMigrationLabel   = "migrated target carries migrated_from metadata for a different source"
+	pruneStatusReasonMessageMissingMigrationLabel      = "migrated target is missing migrated_from metadata for this source"
+	pruneStatusReasonMessageNeedsMigration             = "source object does not have a migrated target yet"
+	pruneStatusReasonMessageMultiNamespaceManualDelete = "registered resource spans multiple target namespaces and was not migrated; must be deleted manually"
+	pruneStatusReasonMessageSkippedByUser              = "skipped by user"
 )
 
 type PruneStatusReason struct {
@@ -310,10 +310,8 @@ func (p *PruneSubjectMappingPlan) setExecution(execution *ExecutionResult) {
 // for deletion and the single migrated target RR matched to it by migration
 // metadata.
 type PruneRegisteredResourcePlan struct {
-	// Source is the resolved RR source from planning and may be filtered by interactive review.
-	Source *policy.RegisteredResource `json:"source"`
-	// FullSource is the authoritative RR source reloaded from the global namespace for prune verification.
-	FullSource     *policy.RegisteredResource `json:"full_source,omitempty"`
+	// Source is the legacy RR source being considered for deletion.
+	Source         *policy.RegisteredResource `json:"source"`
 	Status         PruneStatus                `json:"status"`
 	MigratedTarget TargetRef                  `json:"migrated_target,omitzero"`
 	Reason         PruneStatusReason          `json:"reason,omitzero"`

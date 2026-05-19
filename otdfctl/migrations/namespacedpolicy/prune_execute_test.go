@@ -173,24 +173,10 @@ func mixedPrunePlan(scope Scope) *PrunePlan {
 		RegisteredResources: []*PruneRegisteredResourcePlan{
 			{
 				Source: &policy.RegisteredResource{Id: "resource-delete-1"},
-				FullSource: &policy.RegisteredResource{
-					Id: "resource-delete-1",
-					Values: []*policy.RegisteredResourceValue{
-						{Id: "value-1"},
-						{Id: "value-2"},
-					},
-				},
 				Status: PruneStatusDelete,
 			},
 			{
 				Source: &policy.RegisteredResource{Id: "resource-delete-2"},
-				FullSource: &policy.RegisteredResource{
-					Id: "resource-delete-2",
-					Values: []*policy.RegisteredResourceValue{
-						{Id: "value-3"},
-						{Id: "value-4"},
-					},
-				},
 				Status: PruneStatusDelete,
 			},
 			{

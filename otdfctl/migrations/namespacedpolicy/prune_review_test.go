@@ -1,7 +1,6 @@
 package namespacedpolicy
 
 import (
-	"fmt"
 	"testing"
 
 	"github.com/opentdf/platform/protocol/go/policy"
@@ -160,55 +159,6 @@ func TestReviewPrunePlanSubjectMappingPromptIncludesActionNames(t *testing.T) {
 		"scs_source=scs-1",
 		`found_migrated_target=id: "target-mapping-1" namespace: "https://example.com"`,
 		"reason=MissingMigrationLabel: migrated target is missing migrated_from metadata for this source",
-	}, prompter.lastSelectPrompt.Description)
-}
-
-func TestReviewPrunePlanRegisteredResourceMismatchPromptShowsFilteredAndFullSource(t *testing.T) {
-	t.Parallel()
-
-	secretValue := testAttributeValue("https://example.com/attr/classification/value/secret", testNamespace("https://example.com"))
-	filteredSource := testRegisteredResource(
-		"resource-1",
-		"dataset",
-		testRegisteredResourceValue("prod", testActionAttributeValue("action-1", "read", secretValue)),
-	)
-	fullSource := testRegisteredResource(
-		"resource-1",
-		"dataset",
-		testRegisteredResourceValue("prod", testActionAttributeValue("action-1", "read", secretValue)),
-		testRegisteredResourceValue("dev", testActionAttributeValue("action-2", "write", secretValue)),
-	)
-	plan := &PrunePlan{
-		RegisteredResources: []*PruneRegisteredResourcePlan{
-			{
-				Source:     filteredSource,
-				FullSource: fullSource,
-				Status:     PruneStatusUnresolved,
-				MigratedTarget: TargetRef{
-					ID:           "target-resource-1",
-					NamespaceFQN: "https://example.com",
-				},
-				Reason: newPruneReason(
-					PruneStatusReasonTypeRegisteredResourceSourceMismatch,
-					fmt.Sprintf(pruneStatusReasonMessageRegisteredResourceSourceMismatchFmt, "https://example.com"),
-				),
-			},
-		},
-	}
-	prompter := &testInteractivePrompter{selectValue: pruneReviewSkip}
-
-	err := ReviewPrunePlan(t.Context(), plan, prompter)
-	require.NoError(t, err)
-
-	require.Equal(t, 1, prompter.selectCalls)
-	require.NotNil(t, prompter.lastSelectPrompt)
-	assert.Equal(t, `Delete unresolved registered resource "dataset"?`, prompter.lastSelectPrompt.Title)
-	assert.Equal(t, []string{
-		"source_id=resource-1",
-		`source=values="prod" (action_bindings="read" -> https://example.com/attr/classification/value/secret)`,
-		`found_migrated_target=id: "target-resource-1" namespace: "https://example.com"`,
-		`full_source=values="prod", "dev" (action_bindings="read" -> https://example.com/attr/classification/value/secret, "write" -> https://example.com/attr/classification/value/secret)`,
-		`reason=RegisteredResourceSourceMismatch: resolved registered resource view does not match the full source object for target namespace "https://example.com"; source contains values outside the resolved migration view`,
 	}, prompter.lastSelectPrompt.Description)
 }
 

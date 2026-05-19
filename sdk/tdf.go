@@ -811,12 +811,15 @@ func allowListFromKASRegistry(ctx context.Context, logger *slog.Logger, kasRegis
 //	if ok, _ := sdk.IsValidTdf(file); !ok {
 //	    // pass through unchanged
 //	}
-//	reader, _ := s.LoadTDF(file)
-//	_ = reader.Init(ctx)
-//	_, _ = s.CreateTDF(out, transformed, sdk.WithPolicyFrom(reader))
+//	reader, err := s.LoadTDF(file)
+//	if err != nil {
+//	    return err
+//	}
+//	_, err = s.CreateTDF(out, transformed, sdk.WithPolicyFrom(reader))
 //
-// The reader must be initialized via [Reader.Init] before being passed here —
-// [Reader.DataAttributes] requires the policy field to be parsed.
+// [Reader.Init] is not required: [Reader.DataAttributes] reads the policy
+// from the manifest, which [SDK.LoadTDF] has already populated. Calling
+// Init would trigger an unnecessary KAS rewrap.
 func WithPolicyFrom(r *Reader) TDFOption {
 	return func(c *TDFConfig) error {
 		if r == nil {

@@ -73,7 +73,7 @@ func TestExecutePruneRecordsFailureAndStops(t *testing.T) {
 		},
 	}
 	plan := &PrunePlan{
-		Scopes: []Scope{ScopeActions},
+		Scope: ScopeActions,
 		Actions: []*PruneActionPlan{
 			{Source: &policy.Action{Id: "action-delete"}, Status: PruneStatusDelete},
 			{Source: &policy.Action{Id: "action-pending"}, Status: PruneStatusDelete},
@@ -101,11 +101,6 @@ func TestExecutePruneRequiresSingleScope(t *testing.T) {
 
 	err = executor.ExecutePrune(t.Context(), &PrunePlan{})
 	require.ErrorIs(t, err, ErrEmptyPlannerScope)
-
-	err = executor.ExecutePrune(t.Context(), &PrunePlan{
-		Scopes: []Scope{ScopeActions, ScopeRegisteredResources},
-	})
-	require.ErrorIs(t, err, ErrMultiplePruneScopes)
 }
 
 func verifyPruneActionsExecuted(t *testing.T, plan *PrunePlan) {
@@ -152,7 +147,7 @@ func verifyPruneObligationTriggersExecuted(t *testing.T, plan *PrunePlan) {
 
 func mixedPrunePlan(scope Scope) *PrunePlan {
 	return &PrunePlan{
-		Scopes: []Scope{scope},
+		Scope: scope,
 		Actions: []*PruneActionPlan{
 			{Source: &policy.Action{Id: "action-delete-1"}, Status: PruneStatusDelete},
 			{Source: &policy.Action{Id: "action-delete-2"}, Status: PruneStatusDelete},

@@ -19,7 +19,7 @@ func TestRenderNamespacedPolicyPruneSummaryDryRunShowsWillDelete(t *testing.T) {
 	t.Parallel()
 
 	plan := &PrunePlan{
-		Scopes: []Scope{ScopeActions},
+		Scope: ScopeActions,
 		Actions: []*PruneActionPlan{
 			{
 				Source: &policy.Action{Id: "action-delete", Name: "archive"},
@@ -67,7 +67,7 @@ func TestRenderNamespacedPolicyPruneSummaryCommitSeparatesDeletedPendingAndFaile
 	t.Parallel()
 
 	plan := &PrunePlan{
-		Scopes: []Scope{ScopeActions},
+		Scope: ScopeActions,
 		Actions: []*PruneActionPlan{
 			{
 				Source:    &policy.Action{Id: "action-deleted", Name: "archive"},
@@ -103,7 +103,7 @@ func TestRenderNamespacedPolicyPruneSummaryCommitShowsSkippedDeletes(t *testing.
 	t.Parallel()
 
 	plan := &PrunePlan{
-		Scopes: []Scope{ScopeActions},
+		Scope: ScopeActions,
 		Actions: []*PruneActionPlan{
 			{
 				Source: &policy.Action{Id: "action-skipped", Name: "archive"},
@@ -129,7 +129,7 @@ func TestRenderNamespacedPolicyPruneSummaryActionsCoversEveryStatus(t *testing.T
 	t.Parallel()
 
 	plan := &PrunePlan{
-		Scopes: []Scope{ScopeActions},
+		Scope: ScopeActions,
 		Actions: []*PruneActionPlan{
 			{
 				Source:    &policy.Action{Id: "action-deleted", Name: "archive"},
@@ -173,7 +173,7 @@ func TestRenderNamespacedPolicyPruneSummarySubjectConditionSetsCoversEveryStatus
 	t.Parallel()
 
 	plan := &PrunePlan{
-		Scopes: []Scope{ScopeSubjectConditionSets},
+		Scope: ScopeSubjectConditionSets,
 		SubjectConditionSets: []*PruneSubjectConditionSetPlan{
 			{
 				Source:    pruneSummarySubjectConditionSet("scs-deleted"),
@@ -217,7 +217,7 @@ func TestRenderNamespacedPolicyPruneSummarySubjectMappingsCoversEveryStatus(t *t
 	t.Parallel()
 
 	plan := &PrunePlan{
-		Scopes: []Scope{ScopeSubjectMappings},
+		Scope: ScopeSubjectMappings,
 		SubjectMappings: []*PruneSubjectMappingPlan{
 			{
 				Source:         pruneSummarySubjectMapping("mapping-deleted", "read"),
@@ -266,7 +266,7 @@ func TestRenderNamespacedPolicyPruneSummaryRegisteredResourcesCoversEveryStatus(
 	t.Parallel()
 
 	plan := &PrunePlan{
-		Scopes: []Scope{ScopeRegisteredResources},
+		Scope: ScopeRegisteredResources,
 		RegisteredResources: []*PruneRegisteredResourcePlan{
 			{
 				Source:         pruneSummaryRegisteredResource("resource-deleted", "dataset-deleted", "read"),
@@ -315,7 +315,7 @@ func TestRenderNamespacedPolicyPruneSummaryRegisteredResourceManualDeleteReason(
 	t.Parallel()
 
 	plan := &PrunePlan{
-		Scopes: []Scope{ScopeRegisteredResources},
+		Scope: ScopeRegisteredResources,
 		RegisteredResources: []*PruneRegisteredResourcePlan{
 			{
 				Source: pruneSummaryRegisteredResource("resource-1", "dataset", "read"),
@@ -338,7 +338,7 @@ func TestRenderNamespacedPolicyPruneSummaryObligationTriggersCoversEveryStatus(t
 	t.Parallel()
 
 	plan := &PrunePlan{
-		Scopes: []Scope{ScopeObligationTriggers},
+		Scope: ScopeObligationTriggers,
 		ObligationTriggers: []*PruneObligationTriggerPlan{
 			{
 				Source:         pruneSummaryObligationTrigger("trigger-deleted", "read"),

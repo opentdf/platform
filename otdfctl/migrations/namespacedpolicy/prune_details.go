@@ -186,15 +186,11 @@ func (p *PruneSubjectMappingPlan) pruneDetails(styled bool, styles *migrations.D
 }
 
 func (p *PruneRegisteredResourcePlan) pruneDetails(styled bool, styles *migrations.DisplayStyles) []string {
-	details := []string{
+	return []string{
 		formatPruneDetail("source_id", pruneIDValue(styled, styles, p.Source.GetId())),
 		registeredResourceSourcePruneDetail("source", p.Source, styled, styles),
 		targetRefPruneDetail("found_migrated_target", p.MigratedTarget, styled, styles),
 	}
-	if !styled && p.Reason.Type == PruneStatusReasonTypeRegisteredResourceSourceMismatch {
-		details = append(details, formatPruneDetail("full_source", plainRegisteredResourceSourceSummary(p.FullSource)))
-	}
-	return details
 }
 
 func (p *PruneObligationTriggerPlan) pruneDetails(styled bool, styles *migrations.DisplayStyles) []string {

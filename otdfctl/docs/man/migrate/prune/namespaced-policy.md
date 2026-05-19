@@ -33,8 +33,8 @@ The parent `migrate` command provides the shared `--commit` and `--interactive` 
 An object is safe to delete only when prune can tie the legacy source object to the expected migrated target and prove the source is no longer needed.
 
 - `delete`: the source has the expected migrated target and prune found no remaining legacy dependency that still requires the source object.
-- `blocked`: prune will not delete the source. Common reasons are that the source is still referenced by legacy policy or that the source object has not actually been migrated yet.
-- `unresolved`: prune found something close to a migrated target, but it cannot prove the source and target match safely. Common reasons are missing or mismatched `migrated_from` labels, no matching labeled target, or a registered resource source that still contains values outside the resolved migration view.
+- `blocked`: prune will not delete the source. Common reasons are that the source is still referenced by legacy policy, that the source object has not actually been migrated yet, or that an unmigrated registered resource spans multiple target namespaces and must be deleted manually.
+- `unresolved`: prune found something close to a migrated target, but it cannot prove the source and target match safely. Common reasons are missing or mismatched `migrated_from` labels or no matching labeled target.
 
 In practice, prune relies on current legacy references plus `migrated_from` metadata on the namespaced targets. If that evidence is incomplete or inconsistent, the object is left in place instead of being deleted.
 
@@ -63,10 +63,17 @@ otdfctl migrate prune namespaced-policy --scope=obligation-triggers --interactiv
 
 ## Other Information
 
-1. Action / Subject-Condition-Set pruning
+Action / Subject-Condition-Set pruning
 
-   1a. Actions and subject-condition-sets are pruned a little differently from the other scopes. Instead of reusing the resolved migration view, prune classifies them directly from the current legacy objects, their current legacy references, and the canonical migrated targets it can find.
+- Actions and subject-condition-sets are pruned a little differently from the other scopes. Instead of reusing the resolved migration view, prune classifies them directly from the current legacy objects, their current legacy references, and the canonical migrated targets it can find.
+- They are expected to be pruned last. By the time you reach those scopes, their legacy dependents such as subject mappings, registered resources, and obligation triggers should already be gone, so the safest decision comes from checking the live legacy dependency graph at prune time.
+- Some actions or subject-condition-sets that were never used by any other legacy policy object can still end up `blocked`.
+- If prune cannot find a canonical migrated target for the source object, it leaves the source in place as `blocked` instead of assuming it is safe to delete.
+- Example: if a custom action `decrypt` is no longer referenced by any legacy subject mapping, registered resource, or obligation trigger and prune finds a namespaced `decrypt` target with `metadata.labels.migrated_from=<legacy-action-id>`, the source action is safe to delete. If no canonical namespaced `decrypt` target exists, the source action is reported as `blocked` because prune cannot prove that the object was actually migrated.
 
-   1b. We do that because actions and subject-condition-sets are expected to be pruned last. By the time you reach those scopes, their legacy dependents such as subject mappings, registered resources, and obligation triggers should already be gone, so the safest decision comes from checking the live legacy dependency graph at prune time. That also means some actions or subject-condition-sets that were never used by any other legacy policy object can still end up `blocked`.
+Registered-Resource manual deletion
 
-   1c. If prune cannot find a canonical migrated target for the source object, it leaves the source in place as `blocked` instead of assuming it is safe to delete. For example, if a custom action `decrypt` is no longer referenced by any legacy subject mapping, registered resource, or obligation trigger and prune finds a namespaced `decrypt` target with `metadata.labels.migrated_from=<legacy-action-id>`, the source action is safe to delete. If no canonical namespaced `decrypt` target exists, the source action is reported as `blocked` because prune cannot prove that the object was actually migrated.
+- A legacy registered resource can only be auto-pruned when migration resolved it to one target namespace and prune can match it to the expected migrated target.
+- If a registered resource spans multiple target namespaces and was never migrated, prune reports it as `blocked` with the `MultiNamespaceManualDelete` reason.
+- In that case prune does not guess which namespace copy should have existed, and it does not delete the legacy source automatically.
+- Clean this up manually after you verify the intended namespaced registered resources already exist and the legacy object is no longer needed.

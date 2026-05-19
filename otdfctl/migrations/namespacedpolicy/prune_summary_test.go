@@ -330,7 +330,7 @@ func TestRenderNamespacedPolicyPruneSummaryRegisteredResourceManualDeleteReason(
 
 	summary := stripANSI(RenderNamespacedPolicyPruneSummary(plan, false, PruneSummaryResultSuccess))
 
-	assert.Contains(t, summary, `registered resource "dataset" (source_id=resource-1, source=values="prod" (action_bindings="read" -> https://example.com/attr/classification/value/secret), found_migrated_target=(none)): reason=MultiNamespaceManualDelete: registered resource spans multiple target namespaces and was not migrated; delete it manually`)
+	assert.Contains(t, summary, `registered resource "dataset" (source_id=resource-1, source=values="prod" (action_bindings="read" -> https://example.com/attr/classification/value/secret), found_migrated_target=(none)): reason=MultiNamespaceManualDelete: registered resource spans multiple target namespaces and was not migrated; must be deleted manually`)
 	assert.NotContains(t, summary, "full_source=")
 }
 

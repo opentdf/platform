@@ -4,7 +4,6 @@ package policy.attributes;
 
 import "buf/validate/validate.proto";
 import "common/common.proto";
-import "google/api/annotations.proto";
 import "google/protobuf/wrappers.proto";
 import "policy/objects.proto";
 import "policy/selectors.proto";
@@ -456,7 +455,6 @@ service AttributesService {
     option idempotency_level = NO_SIDE_EFFECTS;
   }
   rpc GetAttributeValuesByFqns(GetAttributeValuesByFqnsRequest) returns (GetAttributeValuesByFqnsResponse) {
-    option (google.api.http) = {get: "/attributes/*/fqn"};
     option idempotency_level = NO_SIDE_EFFECTS;
   }
 

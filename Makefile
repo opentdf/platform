@@ -93,10 +93,6 @@ proto-generate: toolcheck
 	buf generate service --template buf.gen.grpc.docs.yaml
 	buf generate service --template buf.gen.openapi.docs.yaml
 
-	buf generate buf.build/grpc-ecosystem/grpc-gateway -o tmp-gen
-	buf generate buf.build/grpc-ecosystem/grpc-gateway -o tmp-gen --template buf.gen.grpc.docs.yaml
-	buf generate buf.build/grpc-ecosystem/grpc-gateway -o tmp-gen --template buf.gen.openapi.docs.yaml
-
 	cd protocol/codegen && go run .
 	go run ./sdk/codegen
 

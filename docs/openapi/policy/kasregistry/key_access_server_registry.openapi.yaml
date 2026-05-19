@@ -2,49 +2,28 @@ openapi: 3.1.0
 info:
   title: policy.kasregistry
 paths:
-  /key-access-servers:
-    get:
+  /policy.kasregistry.KeyAccessServerRegistryService/ListKeyAccessServers:
+    post:
       tags:
         - policy.kasregistry.KeyAccessServerRegistryService
       summary: ListKeyAccessServers
       operationId: policy.kasregistry.KeyAccessServerRegistryService.ListKeyAccessServers
       parameters:
-        - name: pagination.limit
-          in: query
-          description: |-
-            Optional
-             Set to configured default limit if not provided
-             Maximum limit set in platform config and enforced by services
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
           schema:
-            type: integer
-            title: limit
-            format: int32
-            description: |-
-              Optional
-               Set to configured default limit if not provided
-               Maximum limit set in platform config and enforced by services
-        - name: pagination.offset
-          in: query
-          description: |-
-            Optional
-             Defaulted if not provided
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
           schema:
-            type: integer
-            title: offset
-            format: int32
-            description: |-
-              Optional
-               Defaulted if not provided
-        - name: sort.field
-          in: query
-          schema:
-            title: field
-            $ref: '#/components/schemas/policy.kasregistry.SortKeyAccessServersType'
-        - name: sort.direction
-          in: query
-          schema:
-            title: direction
-            $ref: '#/components/schemas/policy.SortDirection'
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/policy.kasregistry.ListKeyAccessServersRequest'
+        required: true
       responses:
         default:
           description: Error

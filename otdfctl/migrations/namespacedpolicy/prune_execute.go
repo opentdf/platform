@@ -32,7 +32,7 @@ func (e *PruneExecutor) ExecutePrune(ctx context.Context, plan *PrunePlan) error
 		return err
 	}
 
-	switch plan.Scopes[0] {
+	switch plan.Scope {
 	case ScopeObligationTriggers:
 		return e.executePruneObligationTriggers(ctx, plan.ObligationTriggers)
 	case ScopeSubjectMappings:
@@ -44,7 +44,7 @@ func (e *PruneExecutor) ExecutePrune(ctx context.Context, plan *PrunePlan) error
 	case ScopeActions:
 		return e.executePruneActions(ctx, plan.Actions)
 	default:
-		return fmt.Errorf("%w: %s", ErrInvalidScope, plan.Scopes[0])
+		return fmt.Errorf("%w: %s", ErrInvalidScope, plan.Scope)
 	}
 }
 
@@ -55,11 +55,8 @@ func (e *PruneExecutor) validatePrunePlan(plan *PrunePlan) error {
 	if plan == nil {
 		return ErrNilPruneExecutionPlan
 	}
-	if len(plan.Scopes) == 0 {
+	if plan.Scope == "" {
 		return ErrEmptyPlannerScope
-	}
-	if len(plan.Scopes) != 1 {
-		return ErrMultiplePruneScopes
 	}
 
 	return nil

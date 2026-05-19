@@ -105,7 +105,7 @@ func (r PruneStatusReason) String() string {
 }
 
 type PrunePlan struct {
-	Scopes               []Scope                         `json:"scopes"`
+	Scope                Scope                           `json:"scope"`
 	Actions              []*PruneActionPlan              `json:"actions"`
 	SubjectConditionSets []*PruneSubjectConditionSetPlan `json:"subject_condition_sets"`
 	SubjectMappings      []*PruneSubjectMappingPlan      `json:"subject_mappings"`

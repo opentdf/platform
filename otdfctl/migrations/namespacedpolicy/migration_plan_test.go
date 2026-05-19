@@ -26,7 +26,7 @@ func TestPlanLookupActionTarget(t *testing.T) {
 	targetA := &ActionTargetPlan{Namespace: nsA, Status: TargetStatusCreate}
 	targetB := &ActionTargetPlan{Namespace: nsB, Status: TargetStatusCreate}
 
-	plan := &Plan{
+	plan := &MigrationPlan{
 		Actions: []*ActionPlan{
 			nil,
 			{Source: nil, Targets: []*ActionTargetPlan{targetA}},
@@ -44,7 +44,7 @@ func TestPlanLookupActionTarget(t *testing.T) {
 
 	tests := []struct {
 		name        string
-		plan        *Plan
+		plan        *MigrationPlan
 		sourceID    string
 		namespaceID string
 		want        *ActionTargetPlan
@@ -74,7 +74,7 @@ func TestPlanLookupSubjectConditionSetTarget(t *testing.T) {
 	targetA := &SubjectConditionSetTargetPlan{Namespace: nsA, Status: TargetStatusCreate}
 	targetB := &SubjectConditionSetTargetPlan{Namespace: nsB, Status: TargetStatusCreate}
 
-	plan := &Plan{
+	plan := &MigrationPlan{
 		SubjectConditionSets: []*SubjectConditionSetPlan{
 			nil,
 			{Source: nil, Targets: []*SubjectConditionSetTargetPlan{targetA}},
@@ -92,7 +92,7 @@ func TestPlanLookupSubjectConditionSetTarget(t *testing.T) {
 
 	tests := []struct {
 		name        string
-		plan        *Plan
+		plan        *MigrationPlan
 		sourceID    string
 		namespaceID string
 		want        *SubjectConditionSetTargetPlan

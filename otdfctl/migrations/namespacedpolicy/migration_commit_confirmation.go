@@ -1,4 +1,3 @@
-//nolint:forbidigo // interactive migration review requires terminal prompts
 package namespacedpolicy
 
 import (
@@ -7,93 +6,33 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/opentdf/platform/otdfctl/migrations"
 	"github.com/opentdf/platform/protocol/go/policy"
 )
 
 const (
-	namespacedPolicyCommitConfirm = "confirm"
-	namespacedPolicyCommitSkip    = "skip"
-	namespacedPolicyCommitAbort   = "abort"
-	noneLabel                     = "(none)"
-	skippedByUserReason           = "skipped by user"
-
-	//nolint:gosec // user-facing backup prompt text, not credentials
-	backupWarningTitle  = "WARNING: This operation will migrate namespaced policy objects and may create new policy objects."
-	backupWarningBody   = "It is STRONGLY recommended to take a complete backup of your system before proceeding.\n"
-	backupConfirmTitle  = "Have you taken a complete backup?"
-	backupConfirmDetail = "Commit mode will apply namespaced policy changes to the target system."
-	backupAbortDetail   = "Choose abort if you have not created a backup yet."
-	backupConfirmLabel  = "Yes, continue"
-	backupCancelLabel   = "Abort"
-
-	//nolint:gosec // user-facing backup prompt text, not credentials
-	pruneBackupWarningTitle  = "WARNING: This operation will prune migrated namespaced policy and permanently delete legacy policy objects."
-	pruneBackupConfirmDetail = "Commit mode will delete legacy/global policy objects from the target system."
-	sourceIDText             = "Source ID: "
-	actionText               = "Action: "
-	actionsText              = "Actions: "
-	resourceText             = "Resource: "
-	targetNamespaceText      = "Target namespace: "
-	attributeValueText       = "Attribute value: "
-	obligationValueText      = "Obligation value: "
-	valuesText               = "Values: "
-	actionBindingsText       = "Action bindings: "
-	subjectSetsTextFmt       = "Subject sets: %d"
-	scsSourceText            = "Subject condition set source: "
-
+	sourceIDText                    = "Source ID: "
+	actionText                      = "Action: "
+	actionsText                     = "Actions: "
+	resourceText                    = "Resource: "
+	targetNamespaceText             = "Target namespace: "
+	attributeValueText              = "Attribute value: "
+	obligationValueText             = "Obligation value: "
+	valuesText                      = "Values: "
+	actionBindingsText              = "Action bindings: "
+	subjectSetsTextFmt              = "Subject sets: %d"
+	scsSourceText                   = "Subject condition set source: "
 	createActionDescription         = "This will create a new namespaced action."
 	createSubjectConditionSetDesc   = "This will create a new namespaced subject condition set."
 	createSubjectMappingDescription = "This will create a new namespaced subject mapping."
 	createRegisteredResourceDesc    = "This will create a new namespaced registered resource and its values."
 	createObligationTriggerDesc     = "This will create a new namespaced obligation trigger."
-
-	confirmMigrationLabel       = "Confirm migration"
-	confirmMigrationDescription = "apply this create operation"
-	skipObjectLabel             = "Skip this object"
-	skipObjectDescription       = "leave this object untouched"
-	abortMigrationLabel         = "Abort entire migration"
-	abortMigrationDescription   = "stop without applying remaining changes"
+	confirmMigrationLabel           = "Confirm migration"
+	confirmMigrationDescription     = "apply this create operation"
+	abortMigrationLabel             = "Abort entire migration"
+	abortMigrationDescription       = "stop without applying remaining changes"
 )
 
-var ErrNamespacedPolicyBackupNotConfirmed = errors.New("user did not confirm backup")
-
-func ConfirmNamespacedPolicyBackup(ctx context.Context, prompter InteractivePrompter) error {
-	return confirmNamespacedPolicyBackup(ctx, prompter, backupWarningTitle, backupConfirmDetail)
-}
-
-func ConfirmNamespacedPolicyPruneBackup(ctx context.Context, prompter InteractivePrompter) error {
-	return confirmNamespacedPolicyBackup(ctx, prompter, pruneBackupWarningTitle, pruneBackupConfirmDetail)
-}
-
-func confirmNamespacedPolicyBackup(ctx context.Context, prompter InteractivePrompter, warningTitle, confirmDetail string) error {
-	if prompter == nil {
-		prompter = &HuhPrompter{}
-	}
-
-	styles := migrations.NewDisplayStyles()
-	fmt.Println(styles.Warning().Render(warningTitle))
-	fmt.Println(styles.Warning().Render(backupWarningBody))
-
-	err := prompter.Confirm(ctx, ConfirmPrompt{
-		Title: backupConfirmTitle,
-		Description: []string{
-			confirmDetail,
-			backupAbortDetail,
-		},
-		ConfirmLabel: backupConfirmLabel,
-		CancelLabel:  backupCancelLabel,
-	})
-	if err == nil {
-		return nil
-	}
-	if errors.Is(err, ErrInteractiveReviewAborted) {
-		return ErrNamespacedPolicyBackupNotConfirmed
-	}
-	return err
-}
-
-func ReviewNamespacedPolicyInteractiveCommit(ctx context.Context, plan *Plan, prompter InteractivePrompter) error {
+func ConfirmMigrationPlan(ctx context.Context, plan *MigrationPlan, prompter InteractivePrompter) error {
 	if plan == nil {
 		return nil
 	}
@@ -207,8 +146,6 @@ func ReviewNamespacedPolicyInteractiveCommit(ctx context.Context, plan *Plan, pr
 	return nil
 }
 
-var errInteractiveSkipSelected = errors.New("interactive commit target skipped by user")
-
 type interactiveCommitReviewState struct {
 	skippedActions map[string]map[string]string
 	skippedSCS     map[string]map[string]string
@@ -302,24 +239,6 @@ func interactiveReviewNamespaceKey(namespace *policy.Namespace) string {
 	return strings.ToLower(strings.TrimSpace(namespace.GetFqn()))
 }
 
-func applyInteractiveDecision(ctx context.Context, prompter InteractivePrompter, prompt SelectPrompt) error {
-	choice, err := prompter.Select(ctx, prompt)
-	if err != nil {
-		return err
-	}
-
-	switch choice {
-	case namespacedPolicyCommitConfirm:
-		return nil
-	case namespacedPolicyCommitSkip:
-		return errInteractiveSkipSelected
-	case namespacedPolicyCommitAbort:
-		return ErrInteractiveReviewAborted
-	default:
-		return fmt.Errorf("invalid interactive commit selection %q", choice)
-	}
-}
-
 func actionPrompt(actionPlan *ActionPlan, target *ActionTargetPlan) SelectPrompt {
 	return SelectPrompt{
 		Title: fmt.Sprintf("Migrate action %q to %s?", actionPlan.Source.GetName(), namespaceDisplay(target.Namespace)),
@@ -346,7 +265,7 @@ func subjectConditionSetPrompt(scsPlan *SubjectConditionSetPlan, target *Subject
 	}
 }
 
-func subjectMappingPrompt(plan *Plan, mappingPlan *SubjectMappingPlan) SelectPrompt {
+func subjectMappingPrompt(plan *MigrationPlan, mappingPlan *SubjectMappingPlan) SelectPrompt {
 	return SelectPrompt{
 		Title: fmt.Sprintf("Migrate subject mapping %q to %s?", mappingPlan.Source.GetId(), namespaceDisplay(mappingPlan.Target.Namespace)),
 		Description: []string{
@@ -361,7 +280,7 @@ func subjectMappingPrompt(plan *Plan, mappingPlan *SubjectMappingPlan) SelectPro
 	}
 }
 
-func registeredResourcePrompt(plan *Plan, resourcePlan *RegisteredResourcePlan) SelectPrompt {
+func registeredResourcePrompt(plan *MigrationPlan, resourcePlan *RegisteredResourcePlan) SelectPrompt {
 	description := []string{
 		sourceIDText + resourcePlan.Source.GetId(),
 		resourceText + resourcePlan.Source.GetName(),
@@ -378,7 +297,7 @@ func registeredResourcePrompt(plan *Plan, resourcePlan *RegisteredResourcePlan) 
 	}
 }
 
-func obligationTriggerPrompt(plan *Plan, triggerPlan *ObligationTriggerPlan) SelectPrompt {
+func obligationTriggerPrompt(plan *MigrationPlan, triggerPlan *ObligationTriggerPlan) SelectPrompt {
 	return SelectPrompt{
 		Title: fmt.Sprintf("Migrate obligation trigger %q to %s?", triggerPlan.Source.GetId(), namespaceDisplay(triggerPlan.Target.Namespace)),
 		Description: []string{
@@ -401,7 +320,7 @@ func confirmSkipAbortOptions() []PromptOption {
 	}
 }
 
-func plainActionNamesSummary(plan *Plan, sourceIDs []string) string {
+func plainActionNamesSummary(plan *MigrationPlan, sourceIDs []string) string {
 	names := make([]string, 0, len(sourceIDs))
 	seen := make(map[string]struct{}, len(sourceIDs))
 	for _, sourceID := range sourceIDs {
@@ -444,7 +363,7 @@ func plainRegisteredResourceValueFQNsSummary(resource *RegisteredResourcePlan) s
 	return strings.Join(values, ", ")
 }
 
-func plainRegisteredResourceActionBindingsSummary(plan *Plan, resource *RegisteredResourcePlan) string {
+func plainRegisteredResourceActionBindingsSummary(plan *MigrationPlan, resource *RegisteredResourcePlan) string {
 	bindings := make([]string, 0)
 	seen := make(map[string]struct{})
 	for _, valuePlan := range resource.Target.Values {

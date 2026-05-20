@@ -5,7 +5,6 @@ import (
 	"errors"
 	"strings"
 
-	"github.com/google/uuid"
 	"github.com/opentdf/platform/protocol/go/common"
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/registeredresources"
@@ -23,13 +22,11 @@ var (
 	ErrMissingSubjectConditionSetTarget = errors.New("missing subject condition set target")
 	ErrTargetNamespaceRequired          = errors.New("target namespace is required")
 	ErrMissingCreatedTargetID           = errors.New("missing created target id")
-	ErrMissingPruneSourceID             = errors.New("missing prune source id")
 	ErrUnsupportedStatus                = errors.New("unsupported status")
 )
 
 const (
 	migrationLabelMigratedFrom = "migrated_from"
-	migrationLabelRun          = "migration_run"
 	unknownLabel               = "<unknown>"
 )
 
@@ -49,28 +46,26 @@ type ExecutorHandler interface {
 	DeleteObligationTrigger(ctx context.Context, id string) (*policy.ObligationTrigger, error)
 }
 
-type Executor struct {
+type MigrationExecutor struct {
 	handler              ExecutorHandler
-	runID                string
 	actionTargets        map[string]map[string]*ActionTargetPlan
 	subjectConditionSets map[string]map[string]*SubjectConditionSetTargetPlan
 }
 
-func NewExecutor(handler ExecutorHandler) (*Executor, error) {
+func NewMigrationExecutor(handler ExecutorHandler) (*MigrationExecutor, error) {
 	if handler == nil {
 		return nil, ErrNilExecutorHandler
 	}
 
-	return &Executor{
+	return &MigrationExecutor{
 		handler:              handler,
-		runID:                uuid.NewString(),
 		actionTargets:        make(map[string]map[string]*ActionTargetPlan),
 		subjectConditionSets: make(map[string]map[string]*SubjectConditionSetTargetPlan),
 	}, nil
 }
 
-func (e *Executor) Execute(ctx context.Context, plan *Plan) error {
-	if err := e.validatePlan(plan); err != nil {
+func (e *MigrationExecutor) ExecuteMigration(ctx context.Context, plan *MigrationPlan) error {
+	if err := e.validateMigrationPlan(plan); err != nil {
 		return err
 	}
 
@@ -93,7 +88,7 @@ func (e *Executor) Execute(ctx context.Context, plan *Plan) error {
 	return nil
 }
 
-func (e *Executor) validatePlan(plan *Plan) error {
+func (e *MigrationExecutor) validateMigrationPlan(plan *MigrationPlan) error {
 	if e == nil || e.handler == nil {
 		return ErrNilExecutorHandler
 	}
@@ -104,14 +99,13 @@ func (e *Executor) validatePlan(plan *Plan) error {
 	return nil
 }
 
-func metadataForCreate(sourceID string, sourceLabels map[string]string, runID string) *common.MetadataMutable {
+func metadataForCreate(sourceID string, sourceLabels map[string]string) *common.MetadataMutable {
 	labels := map[string]string{}
 	for key, value := range sourceLabels {
 		labels[key] = value
 	}
 
 	labels[migrationLabelMigratedFrom] = sourceID
-	labels[migrationLabelRun] = runID
 
 	return &common.MetadataMutable{
 		Labels: labels,

@@ -699,7 +699,7 @@ func TestPrunePlannerPlanFailsWhenMigratedTargetIDIsEmpty(t *testing.T) {
 		},
 	}
 
-	_, err := buildPrunePlanFromResolved(scopesFromSlice([]Scope{ScopeSubjectMappings}), resolved)
+	_, err := buildPrunePlanFromResolved(ScopeSubjectMappings, resolved)
 
 	require.Error(t, err)
 	require.ErrorIs(t, err, ErrInvalidPruneResolvedTarget)
@@ -728,7 +728,7 @@ func TestPrunePlannerPlanClassifiesMismatchedMigrationLabelAsUnresolved(t *testi
 		},
 	}
 
-	plan, err := buildPrunePlanFromResolved(scopesFromSlice([]Scope{ScopeSubjectMappings}), resolved)
+	plan, err := buildPrunePlanFromResolved(ScopeSubjectMappings, resolved)
 
 	require.NoError(t, err)
 	require.Len(t, plan.SubjectMappings, 1)
@@ -746,7 +746,7 @@ func TestPrunePlannerPlanSkipsRegisteredResourceWhenResolvedSourceIsMissing(t *t
 	}
 
 	plan, err := buildPrunePlanFromResolved(
-		scopesFromSlice([]Scope{ScopeRegisteredResources}),
+		ScopeRegisteredResources,
 		resolved,
 	)
 

@@ -5,7 +5,6 @@ import (
 	"errors"
 	"strings"
 
-	"github.com/google/uuid"
 	"github.com/opentdf/platform/protocol/go/common"
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/registeredresources"
@@ -28,7 +27,6 @@ var (
 
 const (
 	migrationLabelMigratedFrom = "migrated_from"
-	migrationLabelRun          = "migration_run"
 	unknownLabel               = "<unknown>"
 )
 
@@ -40,30 +38,34 @@ type ExecutorHandler interface {
 	CreateRegisteredResource(ctx context.Context, namespace string, name string, values []string, metadata *common.MetadataMutable) (*policy.RegisteredResource, error)
 	CreateRegisteredResourceValue(ctx context.Context, resourceID string, value string, actionAttributeValues []*registeredresources.ActionAttributeValue, metadata *common.MetadataMutable) (*policy.RegisteredResourceValue, error)
 	GetRegisteredResource(ctx context.Context, id, name, namespace string) (*policy.RegisteredResource, error)
+	DeleteAction(ctx context.Context, id string) error
+	DeleteSubjectConditionSet(ctx context.Context, id string) error
+	DeleteSubjectMapping(ctx context.Context, id string) (*policy.SubjectMapping, error)
+	DeleteRegisteredResource(ctx context.Context, id string) error
+	DeleteRegisteredResourceValue(ctx context.Context, id string) error
+	DeleteObligationTrigger(ctx context.Context, id string) (*policy.ObligationTrigger, error)
 }
 
-type Executor struct {
+type MigrationExecutor struct {
 	handler              ExecutorHandler
-	runID                string
 	actionTargets        map[string]map[string]*ActionTargetPlan
 	subjectConditionSets map[string]map[string]*SubjectConditionSetTargetPlan
 }
 
-func NewExecutor(handler ExecutorHandler) (*Executor, error) {
+func NewMigrationExecutor(handler ExecutorHandler) (*MigrationExecutor, error) {
 	if handler == nil {
 		return nil, ErrNilExecutorHandler
 	}
 
-	return &Executor{
+	return &MigrationExecutor{
 		handler:              handler,
-		runID:                uuid.NewString(),
 		actionTargets:        make(map[string]map[string]*ActionTargetPlan),
 		subjectConditionSets: make(map[string]map[string]*SubjectConditionSetTargetPlan),
 	}, nil
 }
 
-func (e *Executor) Execute(ctx context.Context, plan *Plan) error {
-	if err := e.validatePlan(plan); err != nil {
+func (e *MigrationExecutor) ExecuteMigration(ctx context.Context, plan *MigrationPlan) error {
+	if err := e.validateMigrationPlan(plan); err != nil {
 		return err
 	}
 
@@ -86,7 +88,7 @@ func (e *Executor) Execute(ctx context.Context, plan *Plan) error {
 	return nil
 }
 
-func (e *Executor) validatePlan(plan *Plan) error {
+func (e *MigrationExecutor) validateMigrationPlan(plan *MigrationPlan) error {
 	if e == nil || e.handler == nil {
 		return ErrNilExecutorHandler
 	}
@@ -97,14 +99,13 @@ func (e *Executor) validatePlan(plan *Plan) error {
 	return nil
 }
 
-func metadataForCreate(sourceID string, sourceLabels map[string]string, runID string) *common.MetadataMutable {
+func metadataForCreate(sourceID string, sourceLabels map[string]string) *common.MetadataMutable {
 	labels := map[string]string{}
 	for key, value := range sourceLabels {
 		labels[key] = value
 	}
 
 	labels[migrationLabelMigratedFrom] = sourceID
-	labels[migrationLabelRun] = runID
 
 	return &common.MetadataMutable{
 		Labels: labels,

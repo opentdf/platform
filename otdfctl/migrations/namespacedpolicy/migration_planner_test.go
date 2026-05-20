@@ -5,6 +5,7 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/opentdf/platform/otdfctl/pkg/handlers"
 	"github.com/opentdf/platform/protocol/go/common"
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/actions"
@@ -68,7 +69,7 @@ func TestPlannerPlanMarksActionAlreadyMigratedWithoutMetadata(t *testing.T) {
 		},
 	}
 
-	planner, err := NewPlanner(handler, "actions")
+	planner, err := NewMigrationPlanner(handler, "actions")
 	require.NoError(t, err)
 
 	plan, err := planner.Plan(t.Context())
@@ -198,7 +199,7 @@ func TestPlannerPlanDoesNotLeakSupportSubjectMappingsIntoActionScope(t *testing.
 		},
 	}
 
-	planner, err := NewPlanner(handler, "subject-condition-sets,registered-resources")
+	planner, err := NewMigrationPlanner(handler, "subject-condition-sets,registered-resources")
 	require.NoError(t, err)
 
 	plan, err := planner.Plan(t.Context())
@@ -360,7 +361,7 @@ func TestPlannerRetrieveUsesRequestedScopeBoundaries(t *testing.T) {
 				},
 			}
 
-			planner, err := NewPlanner(handler, tt.scopeCSV)
+			planner, err := NewMigrationPlanner(handler, tt.scopeCSV)
 			require.NoError(t, err)
 
 			retrieved, err := planner.retrieve(t.Context())
@@ -487,7 +488,7 @@ func TestPlannerPlanAllScopesBuildsAllPlanSections(t *testing.T) {
 		},
 	}
 
-	planner, err := NewPlanner(handler, "actions,subject-condition-sets,subject-mappings,registered-resources,obligation-triggers")
+	planner, err := NewMigrationPlanner(handler, "actions,subject-condition-sets,subject-mappings,registered-resources,obligation-triggers")
 	require.NoError(t, err)
 
 	plan, err := planner.Plan(t.Context())
@@ -637,7 +638,7 @@ func TestPlannerPlanCarriesMultiActionMappingsAndMultiBindingRegisteredResources
 		},
 	}
 
-	planner, err := NewPlanner(handler, "subject-mappings,registered-resources")
+	planner, err := NewMigrationPlanner(handler, "subject-mappings,registered-resources")
 	require.NoError(t, err)
 
 	plan, err := planner.Plan(t.Context())
@@ -737,7 +738,7 @@ func TestPlannerPlanInvokesInteractiveReviewerWhenConfigured(t *testing.T) {
 		},
 	}
 
-	planner, err := NewPlanner(handler, "actions", WithInteractiveReviewer(reviewer))
+	planner, err := NewMigrationPlanner(handler, "actions", WithInteractiveReviewer(reviewer))
 	require.NoError(t, err)
 
 	plan, err := planner.Plan(t.Context())
@@ -796,7 +797,7 @@ func TestPlannerPlanPropagatesInteractiveReviewerError(t *testing.T) {
 		},
 	}
 
-	planner, err := NewPlanner(handler, "actions", WithInteractiveReviewer(reviewer))
+	planner, err := NewMigrationPlanner(handler, "actions", WithInteractiveReviewer(reviewer))
 	require.NoError(t, err)
 
 	_, err = planner.Plan(t.Context())
@@ -857,7 +858,7 @@ func TestPlannerPlanInteractiveReviewerLeavesCurrentUnresolvedPlanShapeUntouched
 		},
 	}
 
-	planner, err := NewPlanner(handler, "registered-resources", WithInteractiveReviewer(reviewer))
+	planner, err := NewMigrationPlanner(handler, "registered-resources", WithInteractiveReviewer(reviewer))
 	require.NoError(t, err)
 
 	plan, err := planner.Plan(t.Context())
@@ -930,7 +931,7 @@ func TestPlannerPlanHuhInteractiveReviewerResolvesRegisteredResourceConflict(t *
 		},
 	}
 
-	planner, err := NewPlanner(handler, "registered-resources", WithInteractiveReviewer(NewHuhInteractiveReviewer(handler, prompter)))
+	planner, err := NewMigrationPlanner(handler, "registered-resources", WithInteractiveReviewer(NewHuhInteractiveReviewer(handler, prompter)))
 	require.NoError(t, err)
 
 	plan, err := planner.Plan(t.Context())
@@ -975,7 +976,7 @@ func (h *plannerTestHandler) ListActions(_ context.Context, limit, offset int32,
 	return &actions.ListActionsResponse{Pagination: emptyPageResponse()}, nil
 }
 
-func (h *plannerTestHandler) ListSubjectConditionSets(_ context.Context, limit, offset int32, namespace string) (*subjectmapping.ListSubjectConditionSetsResponse, error) {
+func (h *plannerTestHandler) ListSubjectConditionSets(_ context.Context, limit, offset int32, namespace string, sort handlers.SortOption) (*subjectmapping.ListSubjectConditionSetsResponse, error) {
 	h.subjectConditionSetCalls = append(h.subjectConditionSetCalls, namespace)
 	if resp, ok := h.subjectConditionSetsByNamespace[namespace]; ok {
 		return resp, nil
@@ -983,7 +984,7 @@ func (h *plannerTestHandler) ListSubjectConditionSets(_ context.Context, limit, 
 	return &subjectmapping.ListSubjectConditionSetsResponse{Pagination: emptyPageResponse()}, nil
 }
 
-func (h *plannerTestHandler) ListSubjectMappings(_ context.Context, limit, offset int32, namespace string) (*subjectmapping.ListSubjectMappingsResponse, error) {
+func (h *plannerTestHandler) ListSubjectMappings(_ context.Context, limit, offset int32, namespace string, sort handlers.SortOption) (*subjectmapping.ListSubjectMappingsResponse, error) {
 	h.subjectMappingCalls = append(h.subjectMappingCalls, namespace)
 	if resp, ok := h.subjectMappingsByNamespace[namespace]; ok {
 		return resp, nil
@@ -991,7 +992,7 @@ func (h *plannerTestHandler) ListSubjectMappings(_ context.Context, limit, offse
 	return &subjectmapping.ListSubjectMappingsResponse{Pagination: emptyPageResponse()}, nil
 }
 
-func (h *plannerTestHandler) ListRegisteredResources(_ context.Context, limit, offset int32, namespace string) (*registeredresources.ListRegisteredResourcesResponse, error) {
+func (h *plannerTestHandler) ListRegisteredResources(_ context.Context, limit, offset int32, namespace string, sort handlers.SortOption) (*registeredresources.ListRegisteredResourcesResponse, error) {
 	h.registeredResourceCalls = append(h.registeredResourceCalls, namespace)
 	if resp, ok := h.registeredResourcesByNamespace[namespace]; ok {
 		return resp, nil
@@ -1028,7 +1029,7 @@ func (h *plannerTestHandler) ListObligationTriggers(_ context.Context, namespace
 	return &obligations.ListObligationTriggersResponse{Pagination: emptyPageResponse()}, nil
 }
 
-func (h *plannerTestHandler) ListNamespaces(_ context.Context, state common.ActiveStateEnum, limit, offset int32) (*namespaces.ListNamespacesResponse, error) {
+func (h *plannerTestHandler) ListNamespaces(_ context.Context, state common.ActiveStateEnum, limit, offset int32, sort handlers.SortOption) (*namespaces.ListNamespacesResponse, error) {
 	if h.namespacesResponse != nil {
 		return h.namespacesResponse, nil
 	}

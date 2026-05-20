@@ -2,12 +2,22 @@ openapi: 3.1.0
 info:
   title: authorization
 paths:
-  /v1/authorization:
+  /authorization.AuthorizationService/GetDecisions:
     post:
       tags:
         - authorization.AuthorizationService
       summary: GetDecisions
       operationId: authorization.AuthorizationService.GetDecisions
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
       requestBody:
         content:
           application/json:
@@ -27,251 +37,28 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/authorization.GetDecisionsResponse'
-  /v1/token/authorization:
+  /authorization.AuthorizationService/GetDecisionsByToken:
     post:
       tags:
         - authorization.AuthorizationService
       summary: GetDecisionsByToken
       operationId: authorization.AuthorizationService.GetDecisionsByToken
       parameters:
-        - name: decisionRequests.actions.id
-          in: query
-          description: Generated uuid in database
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
           schema:
-            type: string
-            title: id
-            description: Generated uuid in database
-        - name: decisionRequests.actions.standard
-          in: query
-          description: Deprecated
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
           schema:
-            title: standard
-            description: Deprecated
-            $ref: '#/components/schemas/policy.Action.StandardAction'
-        - name: decisionRequests.actions.custom
-          in: query
-          description: Deprecated
-          schema:
-            type: string
-            title: custom
-            description: Deprecated
-        - name: decisionRequests.actions.name
-          in: query
-          schema:
-            type: string
-            title: name
-        - name: decisionRequests.actions.namespace.id
-          in: query
-          description: generated uuid in database
-          schema:
-            type: string
-            title: id
-            description: generated uuid in database
-        - name: decisionRequests.actions.namespace.name
-          in: query
-          description: |-
-            used to partition Attribute Definitions, support by namespace AuthN and
-             enable federation
-          schema:
-            type: string
-            title: name
-            description: |-
-              used to partition Attribute Definitions, support by namespace AuthN and
-               enable federation
-        - name: decisionRequests.actions.namespace.fqn
-          in: query
-          schema:
-            type: string
-            title: fqn
-        - name: decisionRequests.actions.namespace.active.value
-          in: query
-          description: The bool value.
-          schema:
-            type: boolean
-            title: value
-            description: The bool value.
-        - name: decisionRequests.actions.namespace.metadata.createdAt.seconds
-          in: query
-          description: |-
-            Represents seconds of UTC time since Unix epoch 1970-01-01T00:00:00Z. Must
-             be between -315576000000 and 315576000000 inclusive (which corresponds to
-             0001-01-01T00:00:00Z to 9999-12-31T23:59:59Z).
-          schema:
-            type:
-              - integer
-              - string
-            title: seconds
-            format: int64
-            description: |-
-              Represents seconds of UTC time since Unix epoch 1970-01-01T00:00:00Z. Must
-               be between -315576000000 and 315576000000 inclusive (which corresponds to
-               0001-01-01T00:00:00Z to 9999-12-31T23:59:59Z).
-        - name: decisionRequests.actions.namespace.metadata.createdAt.nanos
-          in: query
-          description: |-
-            Non-negative fractions of a second at nanosecond resolution. This field is
-             the nanosecond portion of the duration, not an alternative to seconds.
-             Negative second values with fractions must still have non-negative nanos
-             values that count forward in time. Must be between 0 and 999,999,999
-             inclusive.
-          schema:
-            type: integer
-            title: nanos
-            format: int32
-            description: |-
-              Non-negative fractions of a second at nanosecond resolution. This field is
-               the nanosecond portion of the duration, not an alternative to seconds.
-               Negative second values with fractions must still have non-negative nanos
-               values that count forward in time. Must be between 0 and 999,999,999
-               inclusive.
-        - name: decisionRequests.actions.namespace.metadata.labels.key
-          in: query
-          schema:
-            type: string
-            title: key
-        - name: decisionRequests.actions.namespace.metadata.labels.value
-          in: query
-          schema:
-            type: string
-            title: value
-        - name: decisionRequests.actions.namespace.grants.id
-          in: query
-          schema:
-            type: string
-            title: id
-        - name: decisionRequests.actions.namespace.grants.uri
-          in: query
-          description: Address of a KAS instance
-          schema:
-            type: string
-            title: uri
-            description: |+
-              Address of a KAS instance
-              URI must be a valid URL (e.g., 'https://demo.com/') followed by additional segments. Each segment must start and end with an alphanumeric character, can contain hyphens, alphanumeric characters, and slashes.:
-              ```
-              this.matches('^https?://[a-zA-Z0-9]([a-zA-Z0-9\\-]{0,61}[a-zA-Z0-9])?(\\.[a-zA-Z0-9]([a-zA-Z0-9\\-]{0,61}[a-zA-Z0-9])?)*(:[0-9]+)?(/.*)?$')
-              ```
-
-        - name: decisionRequests.actions.namespace.grants.publicKey.remote
-          in: query
-          description: kas public key url - optional since can also be retrieved via public key
-          schema:
-            type: string
-            title: remote
-            description: |+
-              kas public key url - optional since can also be retrieved via public key
-              URI must be a valid URL (e.g., 'https://demo.com/') followed by additional segments. Each segment must start and end with an alphanumeric character, can contain hyphens, alphanumeric characters, and slashes.:
-              ```
-              this.matches('^https://[a-zA-Z0-9]([a-zA-Z0-9\\-]{0,61}[a-zA-Z0-9])?(\\.[a-zA-Z0-9]([a-zA-Z0-9\\-]{0,61}[a-zA-Z0-9])?)*(/.*)?$')
-              ```
-
-        - name: decisionRequests.actions.namespace.grants.publicKey.cached.keys.pem
-          in: query
-          description: x509 ASN.1 content in PEM envelope, usually
-          schema:
-            type: string
-            title: pem
-            maxLength: 8192
-            minLength: 1
-            description: x509 ASN.1 content in PEM envelope, usually
-        - name: decisionRequests.actions.namespace.grants.publicKey.cached.keys.kid
-          in: query
-          description: A unique string identifier for this key
-          schema:
-            type: string
-            title: kid
-            maxLength: 32
-            minLength: 1
-            description: A unique string identifier for this key
-        - name: decisionRequests.actions.namespace.grants.publicKey.cached.keys.alg
-          in: query
-          description: |-
-            A known algorithm type with any additional parameters encoded.
-             To start, these may be `rsa:2048` for RSA-based wrapping and
-             `ec:secp256r1` for EC-based wrapping, but more formats may be added as needed.
-          schema:
-            not:
-              enum:
-                - 0
-            title: alg
-            description: |-
-              A known algorithm type with any additional parameters encoded.
-               To start, these may be `rsa:2048` for RSA-based wrapping and
-               `ec:secp256r1` for EC-based wrapping, but more formats may be added as needed.
-            $ref: '#/components/schemas/policy.KasPublicKeyAlgEnum'
-        - name: decisionRequests.actions.namespace.grants.sourceType
-          in: query
-          description: 'The source of the KAS: (INTERNAL, EXTERNAL)'
-          schema:
-            title: source_type
-            description: 'The source of the KAS: (INTERNAL, EXTERNAL)'
-            $ref: '#/components/schemas/policy.SourceType'
-        - name: decisionRequests.actions.namespace.grants.kasKeys.kasUri
-          in: query
-          description: The URL of the Key Access Server
-          schema:
-            type: string
-            title: kas_uri
-            description: The URL of the Key Access Server
-        - name: decisionRequests.actions.namespace.grants.kasKeys.publicKey.algorithm
-          in: query
-          schema:
-            title: algorithm
-            $ref: '#/components/schemas/policy.Algorithm'
-        - name: decisionRequests.actions.namespace.grants.kasKeys.publicKey.kid
-          in: query
-          schema:
-            type: string
-            title: kid
-        - name: decisionRequests.actions.namespace.grants.kasKeys.publicKey.pem
-          in: query
-          schema:
-            type: string
-            title: pem
-        - name: decisionRequests.actions.namespace.grants.kasKeys.kasId
-          in: query
-          description: The ID of the Key Access Server
-          schema:
-            type: string
-            title: kas_id
-            description: The ID of the Key Access Server
-        - name: decisionRequests.actions.namespace.grants.name
-          in: query
-          description: |-
-            Optional
-             Unique name of the KAS instance
-          schema:
-            type: string
-            title: name
-            description: |-
-              Optional
-               Unique name of the KAS instance
-        - name: decisionRequests.tokens.id
-          in: query
-          description: ephemeral id for tracking between request and response
-          schema:
-            type: string
-            title: id
-            description: ephemeral id for tracking between request and response
-        - name: decisionRequests.tokens.jwt
-          in: query
-          description: the token
-          schema:
-            type: string
-            title: jwt
-            description: the token
-        - name: decisionRequests.resourceAttributes.resourceAttributesId
-          in: query
-          schema:
-            type: string
-            title: resource_attributes_id
-        - name: decisionRequests.resourceAttributes.attributeValueFqns
-          in: query
-          schema:
-            type: array
-            items:
-              type: string
-            title: attribute_value_fqns
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/authorization.GetDecisionsByTokenRequest'
+        required: true
       responses:
         default:
           description: Error
@@ -285,12 +72,22 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/authorization.GetDecisionsByTokenResponse'
-  /v1/entitlements:
+  /authorization.AuthorizationService/GetEntitlements:
     post:
       tags:
         - authorization.AuthorizationService
       summary: GetEntitlements
       operationId: authorization.AuthorizationService.GetEntitlements
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
       requestBody:
         content:
           application/json:

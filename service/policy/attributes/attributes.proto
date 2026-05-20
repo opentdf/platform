@@ -4,7 +4,6 @@ package policy.attributes;
 
 import "buf/validate/validate.proto";
 import "common/common.proto";
-import "google/api/annotations.proto";
 import "google/protobuf/wrappers.proto";
 import "policy/objects.proto";
 import "policy/selectors.proto";
@@ -252,6 +251,17 @@ message ListAttributeValuesResponse {
   policy.PageResponse pagination = 10;
 }
 
+message AttributeValueObligationTriggerRequest {
+  // Required. Existing obligation value to associate with the newly created attribute value.
+  common.IdFqnIdentifier obligation_value = 1 [(buf.validate.field).required = true];
+  // Required. Action that, together with the newly created attribute value, triggers the obligation value.
+  common.IdNameIdentifier action = 2 [(buf.validate.field).required = true];
+  // Optional. Request context for the obligation trigger.
+  policy.RequestContext context = 11;
+  // Optional. Common metadata for the obligation trigger.
+  common.MetadataMutable metadata = 100;
+}
+
 message CreateAttributeValueRequest {
   // Required
   string attribute_id = 1 [(buf.validate.field).string.uuid = true];
@@ -269,6 +279,10 @@ message CreateAttributeValueRequest {
   // deprecated members on values
   reserved "members";
   reserved 3;
+
+  // Optional
+  // Existing obligation values to trigger for the newly created attribute value.
+  repeated AttributeValueObligationTriggerRequest obligation_triggers = 11;
 
   // Optional
   // Common metadata
@@ -441,7 +455,6 @@ service AttributesService {
     option idempotency_level = NO_SIDE_EFFECTS;
   }
   rpc GetAttributeValuesByFqns(GetAttributeValuesByFqnsRequest) returns (GetAttributeValuesByFqnsResponse) {
-    option (google.api.http) = {get: "/attributes/*/fqn"};
     option idempotency_level = NO_SIDE_EFFECTS;
   }
 

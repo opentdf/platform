@@ -13,7 +13,6 @@ import (
 var (
 	ErrMultiplePruneScopes        = errors.New("prune planner accepts exactly one scope")
 	ErrInvalidPruneResolvedTarget = errors.New("invalid prune resolved target")
-	ErrInvalidPruneResolvedSource = errors.New("invalid prune resolved source")
 )
 
 // PrunePlanner classifies whether legacy policy objects can be deleted after
@@ -29,13 +28,12 @@ var (
 // Each prune item is classified as delete, blocked, or unresolved and carries
 // the migrated target context that justified that decision.
 type PrunePlanner struct {
-	planner *Planner
-	scopes  scopeSet
+	planner *MigrationPlanner
+	scope   Scope
 }
 
 type prunePlannerConfig struct {
 	pageSize int32
-	reviewer InteractiveReviewer
 }
 
 type PruneOption func(*prunePlannerConfig)
@@ -55,9 +53,9 @@ type pruneMigratedObject interface {
 }
 
 // NewPrunePlanner constructs a single-scope prune planner on top of the shared
-// migration planner infrastructure. Interactive review is still supported for
-// the resolved-object scopes, and direct-prune scopes reuse the same retriever
-// and namespace discovery logic.
+// migration planner infrastructure. Direct-prune scopes reuse the same
+// retriever and namespace discovery logic, while resolved-object scopes reuse
+// the resolver state without planner-time interactive review.
 func NewPrunePlanner(handler PolicyClient, scopeCSV string, opts ...PruneOption) (*PrunePlanner, error) {
 	if handler == nil {
 		return nil, ErrNilPlannerHandler
@@ -84,31 +82,20 @@ func NewPrunePlanner(handler PolicyClient, scopeCSV string, opts ...PruneOption)
 		config.pageSize = defaultPlannerPageSize
 	}
 
-	plannerOpts := []Option{WithPageSize(config.pageSize)}
-	if config.reviewer != nil {
-		plannerOpts = append(plannerOpts, WithInteractiveReviewer(config.reviewer))
-	}
-
-	planner, err := NewPlanner(handler, scopeCSV, plannerOpts...)
+	planner, err := NewMigrationPlanner(handler, scopeCSV, WithPageSize(config.pageSize))
 	if err != nil {
 		return nil, err
 	}
 
 	return &PrunePlanner{
 		planner: planner,
-		scopes:  normalizedScopes,
+		scope:   normalizedScopes.ordered()[0],
 	}, nil
 }
 
 func WithPrunePageSize(pageSize int32) PruneOption {
 	return func(config *prunePlannerConfig) {
 		config.pageSize = pageSize
-	}
-}
-
-func WithPruneInteractiveReviewer(reviewer InteractiveReviewer) PruneOption {
-	return func(config *prunePlannerConfig) {
-		config.reviewer = reviewer
 	}
 }
 
@@ -123,30 +110,27 @@ func (p *PrunePlanner) Plan(ctx context.Context) (*PrunePlan, error) {
 	if p == nil || p.planner == nil {
 		return nil, ErrNilPlannerHandler
 	}
-	if len(p.scopes) == 0 {
+	if p.scope == "" {
 		return nil, ErrEmptyPlannerScope
 	}
-	if p.scopes.has(ScopeActions) {
+	switch p.scope {
+	case ScopeActions:
 		return p.planActions(ctx)
-	}
-	if p.scopes.has(ScopeSubjectConditionSets) {
+	case ScopeSubjectConditionSets:
 		return p.planSubjectConditionSets(ctx)
-	}
+	case ScopeSubjectMappings, ScopeRegisteredResources, ScopeObligationTriggers:
+		resolved, err := p.planner.resolve(ctx)
+		if err != nil {
+			return nil, err
+		}
+		if resolved == nil {
+			return nil, ErrNilResolvedTargets
+		}
 
-	resolved, err := p.planner.resolve(ctx)
-	if err != nil {
-		return nil, err
+		return buildPrunePlanFromResolved(p.scope, resolved)
+	default:
+		return nil, fmt.Errorf("%w: %s", ErrInvalidScope, p.scope)
 	}
-	if resolved == nil {
-		return nil, ErrNilResolvedTargets
-	}
-
-	sourceRegisteredResources, err := p.sourceRegisteredResources(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	return buildPrunePlanFromResolved(p.scopes, resolved, sourceRegisteredResources)
 }
 
 func (p *PrunePlanner) planActions(ctx context.Context) (*PrunePlan, error) {
@@ -157,7 +141,7 @@ func (p *PrunePlanner) planActions(ctx context.Context) (*PrunePlan, error) {
 	sourceActions = customLegacyActions(sourceActions)
 
 	plan := &PrunePlan{
-		Scopes:  p.scopes.ordered(),
+		Scope:   p.scope,
 		Actions: make([]*PruneActionPlan, 0, len(sourceActions)),
 	}
 	if len(sourceActions) == 0 {
@@ -181,7 +165,7 @@ func (p *PrunePlanner) planActions(ctx context.Context) (*PrunePlan, error) {
 	}
 
 	for _, source := range sourceActions {
-		if source == nil || source.GetId() == "" {
+		if source.GetId() == "" {
 			continue
 		}
 
@@ -208,7 +192,7 @@ func (p *PrunePlanner) planSubjectConditionSets(ctx context.Context) (*PrunePlan
 	}
 
 	plan := &PrunePlan{
-		Scopes:               p.scopes.ordered(),
+		Scope:                p.scope,
 		SubjectConditionSets: make([]*PruneSubjectConditionSetPlan, 0, len(sourceSCS)),
 	}
 	if len(sourceSCS) == 0 {
@@ -250,19 +234,6 @@ func (p *PrunePlanner) planSubjectConditionSets(ctx context.Context) (*PrunePlan
 	}
 
 	return plan, nil
-}
-
-func (p *PrunePlanner) sourceRegisteredResources(ctx context.Context) (map[string]*policy.RegisteredResource, error) {
-	if !p.scopes.has(ScopeRegisteredResources) {
-		return map[string]*policy.RegisteredResource{}, nil
-	}
-
-	resources, err := p.planner.retriever.retrieveRegisteredResources(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	return sourceRegisteredResourcesByID(resources), nil
 }
 
 func (p *PrunePlanner) usedLegacyActionsByID(ctx context.Context, sourceIDs map[string]struct{}) (map[string]struct{}, error) {
@@ -351,48 +322,46 @@ func (p *PrunePlanner) usedLegacySubjectConditionSetsByID(ctx context.Context, s
 	return used, nil
 }
 
-func buildPrunePlanFromResolved(scopes scopeSet, resolved *ResolvedTargets, sourceRegisteredResources map[string]*policy.RegisteredResource) (*PrunePlan, error) {
+func buildPrunePlanFromResolved(scope Scope, resolved *ResolvedTargets) (*PrunePlan, error) {
 	if resolved == nil {
 		return &PrunePlan{}, nil
 	}
 
-	builder := newPrunePlanBuilder(scopes, resolved, sourceRegisteredResources)
+	builder := newPrunePlanBuilder(scope, resolved)
 	return builder.build()
 }
 
 type prunePlanBuilder struct {
-	scopes                    scopeSet
-	resolved                  *ResolvedTargets
-	sourceRegisteredResources map[string]*policy.RegisteredResource
+	scope    Scope
+	resolved *ResolvedTargets
 }
 
-func newPrunePlanBuilder(scopes scopeSet, resolved *ResolvedTargets, sourceRegisteredResources map[string]*policy.RegisteredResource) *prunePlanBuilder {
+func newPrunePlanBuilder(scope Scope, resolved *ResolvedTargets) *prunePlanBuilder {
 	return &prunePlanBuilder{
-		scopes:                    scopes,
-		resolved:                  resolved,
-		sourceRegisteredResources: sourceRegisteredResources,
+		scope:    scope,
+		resolved: resolved,
 	}
 }
 
 func (b *prunePlanBuilder) build() (*PrunePlan, error) {
 	plan := &PrunePlan{
-		Scopes: b.scopes.ordered(),
+		Scope: b.scope,
 	}
-	if b.scopes.has(ScopeSubjectMappings) {
+	if b.scope == ScopeSubjectMappings {
 		subjectMappings, err := b.subjectMappings()
 		if err != nil {
 			return nil, err
 		}
 		plan.SubjectMappings = subjectMappings
 	}
-	if b.scopes.has(ScopeRegisteredResources) {
+	if b.scope == ScopeRegisteredResources {
 		registeredResources, err := b.registeredResources()
 		if err != nil {
 			return nil, err
 		}
 		plan.RegisteredResources = registeredResources
 	}
-	if b.scopes.has(ScopeObligationTriggers) {
+	if b.scope == ScopeObligationTriggers {
 		obligationTriggers, err := b.obligationTriggers()
 		if err != nil {
 			return nil, err
@@ -425,11 +394,10 @@ func (b *prunePlanBuilder) subjectMappings() ([]*PruneSubjectMappingPlan, error)
 	return plans, nil
 }
 
-// registeredResources verifies prune safety against the authoritative source RR.
-// It first reloads the full source RR and marks the plan unresolved if the
-// planner's resolved source is only a filtered view. For a full-source match, it
-// then classifies the RR based on whether a migrated target exists and whether
-// that target carries the expected migration metadata for the source RR.
+// registeredResources classifies each resolved RR prune decision directly from
+// the resolved migration state. Multi-namespace legacy RRs are blocked when no
+// migrated target exists because the migration planner cannot determine a single
+// target namespace for them and prune cannot safely auto-delete them.
 func (b *prunePlanBuilder) registeredResources() ([]*PruneRegisteredResourcePlan, error) {
 	plans := make([]*PruneRegisteredResourcePlan, 0, len(b.resolved.RegisteredResources))
 
@@ -441,33 +409,26 @@ func (b *prunePlanBuilder) registeredResources() ([]*PruneRegisteredResourcePlan
 			continue
 		}
 
-		fullSource, err := b.registeredResourceSource(resource)
-		if err != nil {
-			return nil, err
-		}
-
-		if !registeredResourceCanonicalEqual(resource.Source, fullSource) {
+		if pruneManualDeleteRequired(resource) {
 			plans = append(plans, &PruneRegisteredResourcePlan{
 				Source:         resource.Source,
-				FullSource:     fullSource,
-				Status:         PruneStatusUnresolved,
+				Status:         PruneStatusBlocked,
 				MigratedTarget: migratedTarget(resource.AlreadyMigrated, resource.Namespace),
-				Reason: newPruneReasonf(
-					PruneStatusReasonTypeRegisteredResourceSourceMismatch,
-					pruneStatusReasonMessageRegisteredResourceSourceMismatchFmt,
-					namespaceLabel(resource.Namespace)),
+				Reason: newPruneReason(
+					PruneStatusReasonTypeMultiNamespaceManualDelete,
+					pruneStatusReasonMessageMultiNamespaceManualDelete,
+				),
 			})
 			continue
 		}
 
-		status, reason, err := pruneStatusForRegisteredResource(fullSource, resource.AlreadyMigrated)
+		status, reason, err := pruneStatusForRegisteredResource(resource.Source, resource.AlreadyMigrated)
 		if err != nil {
 			return nil, fmt.Errorf("registered resource %q: %w", resource.Source.GetId(), err)
 		}
 
 		plans = append(plans, &PruneRegisteredResourcePlan{
 			Source:         resource.Source,
-			FullSource:     fullSource,
 			Status:         status,
 			MigratedTarget: migratedTarget(resource.AlreadyMigrated, resource.Namespace),
 			Reason:         reason,
@@ -477,23 +438,11 @@ func (b *prunePlanBuilder) registeredResources() ([]*PruneRegisteredResourcePlan
 	return plans, nil
 }
 
-func (b *prunePlanBuilder) registeredResourceSource(resource *ResolvedRegisteredResource) (*policy.RegisteredResource, error) {
-	source := resource.Source
-	if b.sourceRegisteredResources == nil {
-		return nil, fmt.Errorf("%w: source registered resource verifier was not loaded", ErrInvalidPruneResolvedSource)
-	}
-
-	sourceID := source.GetId()
-	if sourceID == "" {
-		return nil, fmt.Errorf("%w: registered resource source has empty id", ErrInvalidPruneResolvedSource)
-	}
-
-	fullSource := b.sourceRegisteredResources[sourceID]
-	if fullSource == nil {
-		return nil, fmt.Errorf("%w: registered resource source %q not found during prune verification", ErrInvalidPruneResolvedSource, sourceID)
-	}
-
-	return fullSource, nil
+func pruneManualDeleteRequired(resource *ResolvedRegisteredResource) bool {
+	return resource != nil &&
+		resource.AlreadyMigrated == nil &&
+		resource.Unresolved != nil &&
+		resource.Unresolved.Reason == UnresolvedReasonRegisteredResourceConflictingNamespaces
 }
 
 func (b *prunePlanBuilder) obligationTriggers() ([]*PruneObligationTriggerPlan, error) {
@@ -517,17 +466,6 @@ func (b *prunePlanBuilder) obligationTriggers() ([]*PruneObligationTriggerPlan, 
 	}
 
 	return plans, nil
-}
-
-func sourceRegisteredResourcesByID(resources []*policy.RegisteredResource) map[string]*policy.RegisteredResource {
-	byID := make(map[string]*policy.RegisteredResource, len(resources))
-	for _, resource := range resources {
-		if resource == nil || resource.GetId() == "" {
-			continue
-		}
-		byID[resource.GetId()] = resource
-	}
-	return byID
 }
 
 func customLegacyActions(actions []*policy.Action) []*policy.Action {
@@ -697,10 +635,6 @@ func newPruneReason(reasonType PruneStatusReasonType, message string) PruneStatu
 		Type:    reasonType,
 		Message: message,
 	}
-}
-
-func newPruneReasonf(reasonType PruneStatusReasonType, format string, args ...any) PruneStatusReason {
-	return newPruneReason(reasonType, fmt.Sprintf(format, args...))
 }
 
 func pruneStatusReasonForMigrationLabel(target pruneObject) PruneStatusReason {

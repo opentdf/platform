@@ -419,6 +419,7 @@ func policyListKasKeys(cmd *cobra.Command, args []string) {
 	if err != nil {
 		cli.ExitWithError("Invalid legacy flag", err)
 	}
+	sort := getSortOption(c)
 
 	kasLookup, err := resolveKasIdentifier(kasIdentifier)
 	if err != nil {
@@ -426,7 +427,7 @@ func policyListKasKeys(cmd *cobra.Command, args []string) {
 	}
 
 	// Get the list of keys.
-	resp, err := h.ListKasKeys(c.Context(), limit, offset, alg, kasLookup, legacy)
+	resp, err := h.ListKasKeys(c.Context(), limit, offset, alg, kasLookup, legacy, sort)
 	if err != nil {
 		cli.ExitWithError("Failed to list kas keys", err)
 	}
@@ -883,6 +884,7 @@ func initKASKeysCommands() {
 		createDoc.GetDocFlag("private-key-pem").Description,
 	)
 	injectLabelFlags(&createDoc.Command, false)
+	createDoc.MarkSensitiveFlags()
 
 	// Get Kas Key
 	getDoc := man.Docs.GetCommand("policy/kas-registry/key/get",
@@ -935,6 +937,7 @@ func initKASKeysCommands() {
 		listDoc.GetDocFlag("legacy").Description,
 	)
 	injectListPaginationFlags(listDoc)
+	injectListSortFlags(listDoc)
 
 	// Rotate Kas Key
 	rotateDoc := man.Docs.GetCommand("policy/kas-registry/key/rotate",
@@ -1001,6 +1004,7 @@ func initKASKeysCommands() {
 		rotateDoc.GetDocFlag("private-key-pem").Description,
 	)
 	injectLabelFlags(&rotateDoc.Command, true)
+	rotateDoc.MarkSensitiveFlags()
 
 	// Import Kas Key
 	importDoc := man.Docs.GetCommand("policy/kas-registry/key/import",
@@ -1055,6 +1059,7 @@ func initKASKeysCommands() {
 		importDoc.GetDocFlag("legacy").Description,
 	)
 	injectLabelFlags(&importDoc.Command, false)
+	importDoc.MarkSensitiveFlags()
 
 	mappingsDoc := man.Docs.GetCommand("policy/kas-registry/key/list-mappings",
 		man.WithRun(policyListKeyMappings),

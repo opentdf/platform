@@ -115,30 +115,28 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/policy.attributes.GetAttributeResponse'
-  /attributes/*/fqn:
-    get:
+  /policy.attributes.AttributesService/GetAttributeValuesByFqns:
+    post:
       tags:
         - policy.attributes.AttributesService
       summary: GetAttributeValuesByFqns
       operationId: policy.attributes.AttributesService.GetAttributeValuesByFqns
       parameters:
-        - name: fqns
-          in: query
-          description: |-
-            Required
-             Fully Qualified Names of attribute values (i.e. https://<namespace>/attr/<attribute_name>/value/<value_name>), normalized to lower case.
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
           schema:
-            type: array
-            items:
-              type: string
-              maxItems: 250
-              minItems: 1
-            title: fqns
-            maxItems: 250
-            minItems: 1
-            description: |-
-              Required
-               Fully Qualified Names of attribute values (i.e. https://<namespace>/attr/<attribute_name>/value/<value_name>), normalized to lower case.
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/policy.attributes.GetAttributeValuesByFqnsRequest'
+        required: true
       responses:
         default:
           description: Error
@@ -795,6 +793,40 @@ components:
         - SORT_ATTRIBUTES_TYPE_NAME
         - SORT_ATTRIBUTES_TYPE_CREATED_AT
         - SORT_ATTRIBUTES_TYPE_UPDATED_AT
+    common.IdFqnIdentifier:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+          format: uuid
+        fqn:
+          type: string
+          title: fqn
+          minLength: 1
+          format: uri
+      title: IdFqnIdentifier
+      additionalProperties: false
+    common.IdNameIdentifier:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+          format: uuid
+        name:
+          type: string
+          title: name
+          maxLength: 253
+          minLength: 1
+          description: |+
+            Name must be an alphanumeric string, allowing hyphens and underscores but not as the first or last character. The stored name will be normalized to lower case.:
+            ```
+            this.matches('^[a-zA-Z0-9](?:[a-zA-Z0-9_-]*[a-zA-Z0-9])?$')
+            ```
+
+      title: IdNameIdentifier
+      additionalProperties: false
     common.Metadata:
       type: object
       properties:
@@ -1267,6 +1299,10 @@ components:
           items:
             $ref: '#/components/schemas/policy.RequestContext'
           title: context
+        namespace:
+          title: namespace
+          description: The source namespace for this trigger, derived from the attribute value and action.
+          $ref: '#/components/schemas/policy.Namespace'
         metadata:
           title: metadata
           $ref: '#/components/schemas/common.Metadata'
@@ -1430,6 +1466,10 @@ components:
           description: |-
             the common name for the group of resource mappings, which must be unique
              per namespace
+        fqn:
+          type: string
+          title: fqn
+          description: the fully qualified name of the resource mapping group
         metadata:
           title: metadata
           description: Common metadata
@@ -1714,6 +1754,30 @@ components:
       title: AttributeKeyAccessServer
       additionalProperties: false
       description: Deprecated
+    policy.attributes.AttributeValueObligationTriggerRequest:
+      type: object
+      properties:
+        obligationValue:
+          title: obligation_value
+          description: Required. Existing obligation value to associate with the newly created attribute value.
+          $ref: '#/components/schemas/common.IdFqnIdentifier'
+        action:
+          title: action
+          description: Required. Action that, together with the newly created attribute value, triggers the obligation value.
+          $ref: '#/components/schemas/common.IdNameIdentifier'
+        context:
+          title: context
+          description: Optional. Request context for the obligation trigger.
+          $ref: '#/components/schemas/policy.RequestContext'
+        metadata:
+          title: metadata
+          description: Optional. Common metadata for the obligation trigger.
+          $ref: '#/components/schemas/common.MetadataMutable'
+      title: AttributeValueObligationTriggerRequest
+      required:
+        - obligationValue
+        - action
+      additionalProperties: false
     policy.attributes.AttributesSort:
       type: object
       properties:
@@ -1807,6 +1871,14 @@ components:
             this.matches('^[a-zA-Z0-9](?:[a-zA-Z0-9_-]*[a-zA-Z0-9])?$')
             ```
 
+        obligationTriggers:
+          type: array
+          items:
+            $ref: '#/components/schemas/policy.attributes.AttributeValueObligationTriggerRequest'
+          title: obligation_triggers
+          description: |-
+            Optional
+             Existing obligation values to trigger for the newly created attribute value.
         metadata:
           title: metadata
           description: |-

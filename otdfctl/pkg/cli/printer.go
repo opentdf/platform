@@ -5,9 +5,12 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"sync/atomic"
 )
 
 var ErrPrinterExpectsCommand = errors.New("printer expects a command")
+
+var defaultJSONOutput atomic.Bool
 
 type Printer struct {
 	enabled bool
@@ -15,7 +18,7 @@ type Printer struct {
 	debug   bool
 }
 
-func newPrinter(cli *Cli) *Printer {
+func newPrinter(json bool) *Printer {
 	p := &Printer{
 		enabled: true,
 		json:    false,
@@ -23,8 +26,8 @@ func newPrinter(cli *Cli) *Printer {
 	}
 
 	// if json output is enabled, disable the printer
-	printJSON := cli.Flags.GetOptionalBool("json")
-	p.setJSON(printJSON)
+	defaultJSONOutput.Store(json)
+	p.setJSON(json)
 
 	return p
 }
@@ -56,4 +59,12 @@ func (c *Cli) SetJSONOutput(enabled bool) {
 		return
 	}
 	c.printer.setJSON(enabled)
+}
+
+func defaultPrinter() *Printer {
+	json := defaultJSONOutput.Load()
+	return &Printer{
+		enabled: !json,
+		json:    json,
+	}
 }

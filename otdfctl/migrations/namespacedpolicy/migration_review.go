@@ -303,19 +303,6 @@ func registeredResourceConflictLines(resource *policy.RegisteredResource) []stri
 	return lines
 }
 
-func actionLabel(action *policy.Action) string {
-	if action == nil {
-		return unknownLabel
-	}
-	if name := strings.TrimSpace(action.GetName()); name != "" {
-		return name
-	}
-	if id := strings.TrimSpace(action.GetId()); id != "" {
-		return id
-	}
-	return unknownLabel
-}
-
 func namespaceSelectionValue(namespace *policy.Namespace) string {
 	return namespaceRefKey(namespace)
 }

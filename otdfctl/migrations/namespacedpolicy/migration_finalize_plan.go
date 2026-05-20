@@ -6,9 +6,9 @@ import (
 
 var ErrNilResolvedTargets = errors.New("planner resolved state is required")
 
-// finalizePlan converts the fully resolved graph into the current Plan shape.
+// finalizePlan converts the fully resolved graph into the current migration plan shape.
 // This is the last planner stage before artifact building/execution wiring.
-func finalizePlan(resolved *ResolvedTargets) (*Plan, error) {
+func finalizePlan(resolved *ResolvedTargets) (*MigrationPlan, error) {
 	if resolved == nil {
 		return nil, ErrNilResolvedTargets
 	}
@@ -70,8 +70,8 @@ func newPlanFinalizer(resolved *ResolvedTargets) *planFinalizer {
 	}
 }
 
-func (f *planFinalizer) build() *Plan {
-	return &Plan{
+func (f *planFinalizer) build() *MigrationPlan {
+	return &MigrationPlan{
 		Scopes:               append([]Scope(nil), f.resolved.Scopes...),
 		Actions:              append([]*ActionPlan(nil), f.actions...),
 		SubjectConditionSets: append([]*SubjectConditionSetPlan(nil), f.subjectConditionSets...),

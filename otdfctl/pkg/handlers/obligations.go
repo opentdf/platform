@@ -63,7 +63,7 @@ func (h Handler) GetObligation(ctx context.Context, id, fqn string) (*policy.Obl
 	return resp.GetObligation(), nil
 }
 
-func (h Handler) ListObligations(ctx context.Context, limit, offset int32, namespace string) (*obligations.ListObligationsResponse, error) {
+func (h Handler) ListObligations(ctx context.Context, limit, offset int32, namespace string, sort SortOption) (*obligations.ListObligationsResponse, error) {
 	req := &obligations.ListObligationsRequest{
 		Pagination: &policy.PageRequest{
 			Limit:  limit,
@@ -72,6 +72,19 @@ func (h Handler) ListObligations(ctx context.Context, limit, offset int32, names
 	}
 	if namespace != "" {
 		req.NamespaceId, req.NamespaceFqn = getNamespaceIDAndFQN(namespace)
+	}
+	if !sort.IsZero() {
+		allowedFields := map[string]obligations.SortObligationsType{
+			"name":       obligations.SortObligationsType_SORT_OBLIGATIONS_TYPE_NAME,
+			"fqn":        obligations.SortObligationsType_SORT_OBLIGATIONS_TYPE_FQN,
+			"created_at": obligations.SortObligationsType_SORT_OBLIGATIONS_TYPE_CREATED_AT,
+			"updated_at": obligations.SortObligationsType_SORT_OBLIGATIONS_TYPE_UPDATED_AT,
+		}
+		field, err := sortField("obligations", sort, allowedFields)
+		if err != nil {
+			return nil, err
+		}
+		req.Sort = []*obligations.ObligationsSort{{Field: field, Direction: sort.Direction}}
 	}
 	return h.sdk.Obligations.ListObligations(ctx, req)
 }

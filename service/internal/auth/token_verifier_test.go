@@ -25,6 +25,22 @@ type tokenVerifierFixture struct {
 }
 
 func newTokenVerifierFixture(t *testing.T) *tokenVerifierFixture {
+	privateKey, publicKeyJWK := newTokenVerifierKeyPair(t)
+	require.NoError(t, publicKeyJWK.Set(jwk.AlgorithmKey, jwa.RS256))
+
+	return newTokenVerifierFixtureWithPublicKey(t, privateKey, publicKeyJWK)
+}
+
+func newTokenVerifierFixtureWithoutPublicKeyAlgorithm(t *testing.T) *tokenVerifierFixture {
+	privateKey, publicKeyJWK := newTokenVerifierKeyPair(t)
+	require.NoError(t, publicKeyJWK.Remove(jwk.AlgorithmKey))
+	_, hasAlgorithm := publicKeyJWK.Get(jwk.AlgorithmKey)
+	require.False(t, hasAlgorithm)
+
+	return newTokenVerifierFixtureWithPublicKey(t, privateKey, publicKeyJWK)
+}
+
+func newTokenVerifierKeyPair(t *testing.T) (*rsa.PrivateKey, jwk.Key) {
 	t.Helper()
 
 	privateKey, err := rsa.GenerateKey(rand.Reader, 2048)
@@ -33,7 +49,12 @@ func newTokenVerifierFixture(t *testing.T) *tokenVerifierFixture {
 	publicKeyJWK, err := jwk.FromRaw(privateKey.PublicKey)
 	require.NoError(t, err)
 	require.NoError(t, publicKeyJWK.Set(jws.KeyIDKey, "test-key"))
-	require.NoError(t, publicKeyJWK.Set(jwk.AlgorithmKey, jwa.RS256))
+
+	return privateKey, publicKeyJWK
+}
+
+func newTokenVerifierFixtureWithPublicKey(t *testing.T, privateKey *rsa.PrivateKey, publicKeyJWK jwk.Key) *tokenVerifierFixture {
+	t.Helper()
 
 	keySet := jwk.NewSet()
 	require.NoError(t, keySet.AddKey(publicKeyJWK))
@@ -148,6 +169,24 @@ func TestTokenVerifier_VerifyAccessToken(t *testing.T) {
 
 		_, err = verifier.VerifyAccessToken(t.Context(), token)
 		require.Error(t, err)
+	})
+
+	t.Run("valid token with JWKS key missing alg", func(t *testing.T) {
+		missingAlgFixture := newTokenVerifierFixtureWithoutPublicKeyAlgorithm(t)
+
+		missingAlgVerifier, err := NewTokenVerifier(t.Context(), AuthNConfig{
+			Issuer:       missingAlgFixture.server.URL,
+			Audience:     "test-audience",
+			CacheRefresh: "15m",
+			TokenSkew:    time.Minute,
+		}, logger.CreateTestLogger())
+		require.NoError(t, err)
+
+		token := missingAlgFixture.signToken(t, missingAlgFixture.server.URL, "test-audience", missingAlgFixture.privateKey)
+
+		verifiedToken, err := missingAlgVerifier.VerifyAccessToken(t.Context(), token)
+		require.NoError(t, err)
+		assert.Equal(t, "user-123", verifiedToken.Subject())
 	})
 }
 

@@ -7,9 +7,9 @@ setup_file() {
     export HOST='--host http://localhost:8080'
 
     # Create two namespaced values to be used in other tests
-        NS_NAME="resource-mapping-groups.io"
+        export NS_NAME="resource-mapping-groups.io"
         export NS_ID=$(./otdfctl $HOST $WITH_CREDS policy attributes namespaces create -n "$NS_NAME" --json | jq -r '.id')
-        NS_NAME2="resource-mapping-groups-2.io"
+        export NS_NAME2="resource-mapping-groups-2.io"
         export NS2_ID=$(./otdfctl $HOST $WITH_CREDS policy attributes namespaces create -n "$NS_NAME2" --json | jq -r '.id')
         ATTR_ID=$(./otdfctl $HOST $WITH_CREDS policy attributes create --namespace "$NS_ID" --name attr1 --rule ANY_OF --json | jq -r '.id')
         # Name is prefixed with RMG to avoid conflicts across tests when running in parallel
@@ -17,6 +17,7 @@ setup_file() {
     
     # Create a resource mapping group
         export RMG1_NAME="rmgrp-test"
+        export RMG1_FQN="https://${NS_NAME}/resm/${RMG1_NAME}"
         export RMG1_ID=$(./otdfctl $HOST $WITH_CREDS policy resource-mapping-groups create --namespace-id "$NS_ID" --name "$RMG1_NAME" --json | jq -r '.id')
 
     # Create a couple resource mappings to val1 - comma separated
@@ -42,7 +43,7 @@ teardown_file() {
     ./otdfctl $HOST $WITH_CREDS policy attributes namespaces unsafe delete --force --id "$NS_ID"
     ./otdfctl $HOST $WITH_CREDS policy attributes namespaces unsafe delete --force --id "$NS2_ID"
 
-    unset HOST WITH_CREDS RMG_VAL1_ID NS_ID NS2_ID RM1_TERMS RM1_ID RM1_OTHER_TERMS RM1_OTHER_ID RMG1_NAME RMG1_ID
+    unset HOST WITH_CREDS RMG_VAL1_ID NS_NAME NS_ID NS_NAME2 NS2_ID RM1_TERMS RM1_ID RM1_OTHER_TERMS RM1_OTHER_ID RMG1_NAME RMG1_FQN RMG1_ID
 }
 
 @test "Create resource mapping group" {
@@ -51,6 +52,10 @@ teardown_file() {
     assert_success
     assert_output --partial "rmgrp1"
     assert_line --regexp "Namespace Id.*$NS_ID"
+
+    run_otdfctl_rmg create --namespace-id "$NS_ID" --name rmgrp1-json --json
+    assert_success
+    assert_equal "$(echo "$output" | jq -r '.fqn')" "https://${NS_NAME}/resm/rmgrp1-json"
 
     # ns id flag must be uuid
     run_otdfctl_rmg create --namespace-id "something" --name testing
@@ -77,6 +82,7 @@ teardown_file() {
         [ $(echo $output | jq -r '.id') = "$RMG1_ID" ]
         [ $(echo $output | jq -r '.namespace_id') = "$NS_ID" ]
         [ $(echo $output | jq -r '.name') = "$RMG1_NAME" ]
+        [ $(echo $output | jq -r '.fqn') = "$RMG1_FQN" ]
     
     # id required
     run_otdfctl_rmg get
@@ -104,6 +110,10 @@ teardown_file() {
         assert_output --partial "new-rsmg-name"
         refute_output --partial "$NS_ID"
         assert_output --partial "$NS2_ID"
+
+    run_otdfctl_rmg update --id "$NEW_RMG_ID" --name "new-rsmg-name-json" --json
+        assert_success
+        assert_equal "$(echo "$output" | jq -r '.fqn')" "https://${NS_NAME2}/resm/new-rsmg-name-json"
 }
 
 @test "List resource mapping groups" {
@@ -121,6 +131,7 @@ teardown_file() {
     found_rmg=$(echo "$output" | jq -c --arg id "$RMG1_ID" '.resource_mapping_groups as $a | ($a | map(.id) | index($id)) as $i | $a[$i]')
     assert_equal "$(echo "$found_rmg" | jq -r '.id')" "$RMG1_ID"
     assert_equal "$(echo "$found_rmg" | jq -r '.name')" "$RMG1_NAME"
+    assert_equal "$(echo "$found_rmg" | jq -r '.fqn')" "$RMG1_FQN"
     [[ "$(echo "$output" | jq -r '.pagination.total')" -ge 1 ]]
     assert_equal "$(echo "$output" | jq -r '.pagination.current_offset')" "null"
     assert_equal "$(echo "$output" | jq -r '.pagination.next_offset')" "null"
@@ -133,4 +144,9 @@ teardown_file() {
         assert_line --regexp "Id.*$RMG1_ID"
         assert_line --regexp "Namespace Id.*$NS_ID"
         assert_line --regexp "Name.*$RMG1_NAME"
+
+    NEW_RMG_ID=$(./otdfctl $HOST $WITH_CREDS policy resource-mapping-groups create --namespace-id "$NS_ID" --name rmgrp-delete-json --json | jq -r '.id')
+    run_otdfctl_rmg delete --id "$NEW_RMG_ID" --force --json
+        assert_success
+        assert_equal "$(echo "$output" | jq -r '.fqn')" "https://${NS_NAME}/resm/rmgrp-delete-json"
 }

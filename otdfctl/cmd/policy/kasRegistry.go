@@ -61,8 +61,9 @@ func listKeyAccessRegistries(cmd *cobra.Command, args []string) {
 
 	limit := c.Flags.GetRequiredInt32("limit")
 	offset := c.Flags.GetRequiredInt32("offset")
+	sort := getSortOption(c)
 
-	resp, err := h.ListKasRegistryEntries(cmd.Context(), limit, offset)
+	resp, err := h.ListKasRegistryEntries(cmd.Context(), limit, offset, sort)
 	if err != nil {
 		cli.ExitWithError("Failed to list Registered KAS entries", err)
 	}
@@ -226,6 +227,7 @@ func initKASRegistryCommands() {
 		man.WithRun(listKeyAccessRegistries),
 	)
 	injectListPaginationFlags(listDoc)
+	injectListSortFlags(listDoc)
 
 	createDoc := man.Docs.GetCommand("policy/kas-registry/create",
 		man.WithRun(createKeyAccessRegistry),

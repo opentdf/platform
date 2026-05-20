@@ -2,28 +2,28 @@ openapi: 3.1.0
 info:
   title: kas
 paths:
-  /kas/v2/kas_public_key:
-    get:
+  /kas.AccessService/PublicKey:
+    post:
       tags:
         - kas.AccessService
       summary: PublicKey
       operationId: kas.AccessService.PublicKey
       parameters:
-        - name: algorithm
-          in: query
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
           schema:
-            type: string
-            title: algorithm
-        - name: fmt
-          in: query
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
           schema:
-            type: string
-            title: fmt
-        - name: v
-          in: query
-          schema:
-            type: string
-            title: v
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/kas.PublicKeyRequest'
+        required: true
       responses:
         default:
           description: Error
@@ -37,8 +37,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/kas.PublicKeyResponse'
-  /kas/kas_public_key:
-    get:
+  /kas.AccessService/LegacyPublicKey:
+    post:
       tags:
         - kas.AccessService
       summary: LegacyPublicKey
@@ -50,11 +50,21 @@ paths:
          buf:lint:ignore RPC_RESPONSE_STANDARD_NAME
       operationId: kas.AccessService.LegacyPublicKey
       parameters:
-        - name: algorithm
-          in: query
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
           schema:
-            type: string
-            title: algorithm
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/kas.LegacyPublicKeyRequest'
+        required: true
       responses:
         default:
           description: Error
@@ -68,12 +78,23 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/google.protobuf.StringValue'
-  /kas/v2/rewrap:
+      deprecated: true
+  /kas.AccessService/Rewrap:
     post:
       tags:
         - kas.AccessService
       summary: Rewrap
       operationId: kas.AccessService.Rewrap
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
       requestBody:
         content:
           application/json:

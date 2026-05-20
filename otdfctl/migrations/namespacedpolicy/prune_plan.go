@@ -10,35 +10,38 @@ import (
 type PruneStatus string
 
 const (
-	PruneStatusDelete     PruneStatus = "delete"
-	PruneStatusBlocked    PruneStatus = "blocked"
-	PruneStatusUnresolved PruneStatus = "unresolved"
+	PruneStatusDelete            PruneStatus = "delete"
+	PruneStatusBlocked           PruneStatus = "blocked"
+	PruneStatusUnresolved        PruneStatus = "unresolved"
+	PruneStatusSkipped           PruneStatus = "skipped"
+	targetRefSummaryPartCapacity             = 2
 )
 
 type PruneStatusReasonType string
 
 const (
-	PruneStatusReasonTypeMigratedTargetNotFound           PruneStatusReasonType = "MigratedTargetNotFound"
-	PruneStatusReasonTypeNoMatchingLabelsFound            PruneStatusReasonType = "NoMatchingLabelsFound"
-	PruneStatusReasonTypeMismatchedMigrationLabel         PruneStatusReasonType = "MismatchedMigrationLabel"
-	PruneStatusReasonTypeMissingMigrationLabel            PruneStatusReasonType = "MissingMigrationLabel"
-	PruneStatusReasonTypeInUse                            PruneStatusReasonType = "InUse"
-	PruneStatusReasonTypeNeedsMigration                   PruneStatusReasonType = "NeedsMigration"
-	PruneStatusReasonTypeRegisteredResourceSourceMismatch PruneStatusReasonType = "RegisteredResourceSourceMismatch"
+	PruneStatusReasonTypeMigratedTargetNotFound     PruneStatusReasonType = "MigratedTargetNotFound"
+	PruneStatusReasonTypeNoMatchingLabelsFound      PruneStatusReasonType = "NoMatchingLabelsFound"
+	PruneStatusReasonTypeMismatchedMigrationLabel   PruneStatusReasonType = "MismatchedMigrationLabel"
+	PruneStatusReasonTypeMissingMigrationLabel      PruneStatusReasonType = "MissingMigrationLabel"
+	PruneStatusReasonTypeInUse                      PruneStatusReasonType = "InUse"
+	PruneStatusReasonTypeNeedsMigration             PruneStatusReasonType = "NeedsMigration"
+	PruneStatusReasonTypeMultiNamespaceManualDelete PruneStatusReasonType = "MultiNamespaceManualDelete"
+	PruneStatusReasonTypeSkippedByUser              PruneStatusReasonType = "SkippedByUser"
 
-	pruneStatusReasonMessageMigratedTargetNotFound              = "no migrated target was found for this source"
-	pruneStatusReasonMessageInUse                               = "source object is still referenced by legacy policy"
-	pruneStatusReasonMessageNoMatchingLabelsFound               = "canonical migrated targets were found, but none carry migrated_from for this source"
-	pruneStatusReasonMessageMismatchedMigrationLabel            = "migrated target carries migrated_from metadata for a different source"
-	pruneStatusReasonMessageMissingMigrationLabel               = "migrated target is missing migrated_from metadata for this source"
-	pruneStatusReasonMessageNeedsMigration                      = "source object does not have a migrated target yet"
-	pruneStatusReasonMessageRegisteredResourceSourceMismatchFmt = "resolved registered resource view does not match the full source object for target namespace %q; source contains values outside the resolved migration view"
+	pruneStatusReasonMessageMigratedTargetNotFound     = "no migrated target was found for this source"
+	pruneStatusReasonMessageInUse                      = "source object is still referenced by legacy policy"
+	pruneStatusReasonMessageNoMatchingLabelsFound      = "canonical migrated targets were found, but none carry migrated_from for this source"
+	pruneStatusReasonMessageMismatchedMigrationLabel   = "migrated target carries migrated_from metadata for a different source"
+	pruneStatusReasonMessageMissingMigrationLabel      = "migrated target is missing migrated_from metadata for this source"
+	pruneStatusReasonMessageNeedsMigration             = "source object does not have a migrated target yet"
+	pruneStatusReasonMessageMultiNamespaceManualDelete = "registered resource spans multiple target namespaces and was not migrated; must be deleted manually"
+	pruneStatusReasonMessageSkippedByUser              = "skipped by user"
 )
 
 type PruneStatusReason struct {
 	Type    PruneStatusReasonType `json:"type"`
 	Message string                `json:"message"`
-	fmt.Stringer
 }
 
 // TargetRef identifies the migrated target object that the planner
@@ -57,11 +60,31 @@ func (t TargetRef) IsZero() bool {
 }
 
 func (t TargetRef) String() string {
-	namespace := strings.TrimSpace(t.NamespaceFQN)
-	if namespace == "" {
-		namespace = strings.TrimSpace(t.NamespaceID)
+	return targetRefSummary(t)
+}
+
+func targetRefSummary(target TargetRef) string {
+	if target.IsZero() {
+		return noneLabel
 	}
-	return appendDetails("id="+strconvQuote(strings.TrimSpace(t.ID)), "namespace="+strconvQuote(namespace))
+
+	parts := make([]string, 0, targetRefSummaryPartCapacity)
+	if id := strings.TrimSpace(target.ID); id != "" {
+		parts = append(parts, "id: "+strconvQuote(id))
+	}
+
+	namespace := strings.TrimSpace(target.NamespaceFQN)
+	if namespace == "" {
+		namespace = strings.TrimSpace(target.NamespaceID)
+	}
+	if namespace != "" {
+		parts = append(parts, "namespace: "+strconvQuote(namespace))
+	}
+
+	if len(parts) == 0 {
+		return noneLabel
+	}
+	return strings.Join(parts, " ")
 }
 
 func (r PruneStatusReason) IsZero() bool {
@@ -82,7 +105,7 @@ func (r PruneStatusReason) String() string {
 }
 
 type PrunePlan struct {
-	Scopes               []Scope                         `json:"scopes"`
+	Scope                Scope                           `json:"scope"`
 	Actions              []*PruneActionPlan              `json:"actions"`
 	SubjectConditionSets []*PruneSubjectConditionSetPlan `json:"subject_condition_sets"`
 	SubjectMappings      []*PruneSubjectMappingPlan      `json:"subject_mappings"`
@@ -92,10 +115,13 @@ type PrunePlan struct {
 
 type prunePlanItem interface {
 	hasSource() bool
+	sourceID() string
 	status() PruneStatus
 	setStatus(PruneStatus)
 	reason() PruneStatusReason
 	setReason(PruneStatusReason)
+	execution() *ExecutionResult
+	setExecution(*ExecutionResult)
 }
 
 // PruneActionPlan records the source action being considered for deletion and
@@ -105,6 +131,14 @@ type PruneActionPlan struct {
 	Status          PruneStatus       `json:"status"`
 	MigratedTargets []TargetRef       `json:"migrated_targets,omitempty"`
 	Reason          PruneStatusReason `json:"reason,omitzero"`
+	Execution       *ExecutionResult  `json:"execution,omitempty"` // The CreatedTargetID is not used for the PrunePlans.
+}
+
+func (p *PruneActionPlan) sourceID() string {
+	if !p.hasSource() {
+		return ""
+	}
+	return p.Source.GetId()
 }
 
 func (p *PruneActionPlan) hasSource() bool {
@@ -137,6 +171,19 @@ func (p *PruneActionPlan) setReason(reason PruneStatusReason) {
 	}
 }
 
+func (p *PruneActionPlan) execution() *ExecutionResult {
+	if p == nil {
+		return nil
+	}
+	return p.Execution
+}
+
+func (p *PruneActionPlan) setExecution(execution *ExecutionResult) {
+	if p != nil {
+		p.Execution = execution
+	}
+}
+
 // PruneSubjectConditionSetPlan records the source SCS being considered for
 // deletion and any migrated target subject condition sets that still reference
 // or replace it.
@@ -145,6 +192,14 @@ type PruneSubjectConditionSetPlan struct {
 	Status          PruneStatus                 `json:"status"`
 	MigratedTargets []TargetRef                 `json:"migrated_targets,omitempty"`
 	Reason          PruneStatusReason           `json:"reason,omitzero"`
+	Execution       *ExecutionResult            `json:"execution,omitempty"`
+}
+
+func (p *PruneSubjectConditionSetPlan) sourceID() string {
+	if !p.hasSource() {
+		return ""
+	}
+	return p.Source.GetId()
 }
 
 func (p *PruneSubjectConditionSetPlan) hasSource() bool {
@@ -177,6 +232,19 @@ func (p *PruneSubjectConditionSetPlan) setReason(reason PruneStatusReason) {
 	}
 }
 
+func (p *PruneSubjectConditionSetPlan) execution() *ExecutionResult {
+	if p == nil {
+		return nil
+	}
+	return p.Execution
+}
+
+func (p *PruneSubjectConditionSetPlan) setExecution(execution *ExecutionResult) {
+	if p != nil {
+		p.Execution = execution
+	}
+}
+
 // PruneSubjectMappingPlan records the source subject mapping being considered
 // for deletion and the single migrated target subject mapping matched to it by
 // migration metadata.
@@ -185,6 +253,14 @@ type PruneSubjectMappingPlan struct {
 	Status         PruneStatus            `json:"status"`
 	MigratedTarget TargetRef              `json:"migrated_target,omitzero"`
 	Reason         PruneStatusReason      `json:"reason,omitzero"`
+	Execution      *ExecutionResult       `json:"execution,omitempty"`
+}
+
+func (p *PruneSubjectMappingPlan) sourceID() string {
+	if !p.hasSource() {
+		return ""
+	}
+	return p.Source.GetId()
 }
 
 func (p *PruneSubjectMappingPlan) hasSource() bool {
@@ -217,17 +293,36 @@ func (p *PruneSubjectMappingPlan) setReason(reason PruneStatusReason) {
 	}
 }
 
+func (p *PruneSubjectMappingPlan) execution() *ExecutionResult {
+	if p == nil {
+		return nil
+	}
+	return p.Execution
+}
+
+func (p *PruneSubjectMappingPlan) setExecution(execution *ExecutionResult) {
+	if p != nil {
+		p.Execution = execution
+	}
+}
+
 // PruneRegisteredResourcePlan records the resolved RR source being considered
 // for deletion and the single migrated target RR matched to it by migration
 // metadata.
 type PruneRegisteredResourcePlan struct {
-	// Source is the resolved RR source from planning and may be filtered by interactive review.
-	Source *policy.RegisteredResource `json:"source"`
-	// FullSource is the authoritative RR source reloaded from the global namespace for prune verification.
-	FullSource     *policy.RegisteredResource `json:"full_source,omitempty"`
+	// Source is the legacy RR source being considered for deletion.
+	Source         *policy.RegisteredResource `json:"source"`
 	Status         PruneStatus                `json:"status"`
 	MigratedTarget TargetRef                  `json:"migrated_target,omitzero"`
 	Reason         PruneStatusReason          `json:"reason,omitzero"`
+	Execution      *ExecutionResult           `json:"execution,omitempty"`
+}
+
+func (p *PruneRegisteredResourcePlan) sourceID() string {
+	if !p.hasSource() {
+		return ""
+	}
+	return p.Source.GetId()
 }
 
 func (p *PruneRegisteredResourcePlan) hasSource() bool {
@@ -260,6 +355,19 @@ func (p *PruneRegisteredResourcePlan) setReason(reason PruneStatusReason) {
 	}
 }
 
+func (p *PruneRegisteredResourcePlan) execution() *ExecutionResult {
+	if p == nil {
+		return nil
+	}
+	return p.Execution
+}
+
+func (p *PruneRegisteredResourcePlan) setExecution(execution *ExecutionResult) {
+	if p != nil {
+		p.Execution = execution
+	}
+}
+
 // PruneObligationTriggerPlan records the source obligation trigger being
 // considered for deletion and the single migrated target obligation trigger
 // matched to it by migration metadata.
@@ -268,6 +376,14 @@ type PruneObligationTriggerPlan struct {
 	Status         PruneStatus               `json:"status"`
 	MigratedTarget TargetRef                 `json:"migrated_target,omitzero"`
 	Reason         PruneStatusReason         `json:"reason,omitzero"`
+	Execution      *ExecutionResult          `json:"execution,omitempty"`
+}
+
+func (p *PruneObligationTriggerPlan) sourceID() string {
+	if !p.hasSource() {
+		return ""
+	}
+	return p.Source.GetId()
 }
 
 func (p *PruneObligationTriggerPlan) hasSource() bool {
@@ -297,5 +413,18 @@ func (p *PruneObligationTriggerPlan) reason() PruneStatusReason {
 func (p *PruneObligationTriggerPlan) setReason(reason PruneStatusReason) {
 	if p != nil {
 		p.Reason = reason
+	}
+}
+
+func (p *PruneObligationTriggerPlan) execution() *ExecutionResult {
+	if p == nil {
+		return nil
+	}
+	return p.Execution
+}
+
+func (p *PruneObligationTriggerPlan) setExecution(execution *ExecutionResult) {
+	if p != nil {
+		p.Execution = execution
 	}
 }

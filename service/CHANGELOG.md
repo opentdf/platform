@@ -1,5 +1,27 @@
 # Changelog
 
+## [0.15.0](https://github.com/opentdf/platform/compare/service/v0.14.0...service/v0.15.0) (2026-05-06)
+
+
+### Features
+
+* **core:** pass access token verifier down to registered services ([#3428](https://github.com/opentdf/platform/issues/3428)) ([b8abf17](https://github.com/opentdf/platform/commit/b8abf17a0b71b29468b10ae397c688dca0081149))
+* **policy:** add sort support to listkaskeys ([#3344](https://github.com/opentdf/platform/issues/3344)) ([de1fe92](https://github.com/opentdf/platform/commit/de1fe926e306a15ff50fa0042b4fee988b3be1e6))
+* **policy:** support inline obligation triggers on attribute value create ([#3432](https://github.com/opentdf/platform/issues/3432)) ([876f512](https://github.com/opentdf/platform/commit/876f512f9ff944cebd3b6d65c7937446a74ace87))
+
+
+### Bug Fixes
+
+* **core:** infer JWT algorithms for JWKS keys without alg ([#3434](https://github.com/opentdf/platform/issues/3434)) ([83285e7](https://github.com/opentdf/platform/commit/83285e74c4602ebd8b485c91e32985a9bbc985a2))
+* **deps:** bump github.com/Azure/go-ntlmssp from 0.0.0-20221128193559-754e69321358 to 0.1.1 in /service ([#3388](https://github.com/opentdf/platform/issues/3388)) ([ef79989](https://github.com/opentdf/platform/commit/ef79989261b287e4500ea81e8581ed3469fb993c))
+* **deps:** bump github.com/jackc/pgx/v5 from 5.9.0 to 5.9.2 in /service ([#3371](https://github.com/opentdf/platform/issues/3371)) ([ab0974b](https://github.com/opentdf/platform/commit/ab0974b99b8d03608ec603aa391cea506954225b))
+* **deps:** bump github.com/opentdf/platform/lib/identifier from 0.3.0 to 0.4.0 in /service ([#3366](https://github.com/opentdf/platform/issues/3366)) ([4650e9b](https://github.com/opentdf/platform/commit/4650e9b69a3e656df3a191603a5b2bbd0ae640d0))
+* **deps:** bump github.com/opentdf/platform/protocol/go from 0.25.0 to 0.26.0 in /service ([#3381](https://github.com/opentdf/platform/issues/3381)) ([ebc65f6](https://github.com/opentdf/platform/commit/ebc65f6778b5faafaa7e893a72ab967577efce5c))
+* **deps:** bump github.com/opentdf/platform/protocol/go from 0.26.0 to 0.27.0 in /service ([#3392](https://github.com/opentdf/platform/issues/3392)) ([0c36cfa](https://github.com/opentdf/platform/commit/0c36cfaaaa8f658ff94c778e6ea45939dfeb3c0d))
+* **deps:** bump github.com/opentdf/platform/protocol/go from 0.27.0 to 0.28.0 in /service ([#3416](https://github.com/opentdf/platform/issues/3416)) ([bc137f6](https://github.com/opentdf/platform/commit/bc137f67b666b429306e0d63f37b7fe9b0673058))
+* **deps:** bump github.com/opentdf/platform/sdk from 0.16.0 to 0.17.0 in /service ([#3395](https://github.com/opentdf/platform/issues/3395)) ([0382742](https://github.com/opentdf/platform/commit/0382742ec7a6d501d41a0f7fd7e4441e70f5136a))
+* **deps:** bump github.com/opentdf/platform/sdk from 0.17.0 to 0.19.0 in /service ([#3423](https://github.com/opentdf/platform/issues/3423)) ([969ac33](https://github.com/opentdf/platform/commit/969ac339aafd859789683a32860f8e4092b563d5))
+
 ## [0.14.0](https://github.com/opentdf/platform/compare/service/v0.13.0...service/v0.14.0) (2026-04-21)
 
 

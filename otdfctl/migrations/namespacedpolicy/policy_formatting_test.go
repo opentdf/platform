@@ -163,7 +163,7 @@ func TestPlainRequestContextsSummary(t *testing.T) {
 				{Pep: &policy.PolicyEnforcementPoint{ClientId: "tdf-client"}},
 				{Pep: &policy.PolicyEnforcementPoint{ClientId: "admin-client"}},
 			},
-			want: `client_id="tdf-client", client_id="admin-client"`,
+			want: `client_id: "tdf-client", client_id: "admin-client"`,
 		},
 	}
 

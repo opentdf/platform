@@ -10,7 +10,7 @@ import (
 	"github.com/opentdf/platform/protocol/go/policy/registeredresources"
 )
 
-func (e *Executor) executeRegisteredResources(ctx context.Context, plans []*RegisteredResourcePlan) error {
+func (e *MigrationExecutor) executeRegisteredResources(ctx context.Context, plans []*RegisteredResourcePlan) error {
 	if len(plans) == 0 {
 		return nil
 	}
@@ -32,7 +32,7 @@ func (e *Executor) executeRegisteredResources(ctx context.Context, plans []*Regi
 	return nil
 }
 
-func (e *Executor) executeRegisteredResourceTarget(ctx context.Context, plan *RegisteredResourcePlan, target *RegisteredResourceTargetPlan) error {
+func (e *MigrationExecutor) executeRegisteredResourceTarget(ctx context.Context, plan *RegisteredResourcePlan, target *RegisteredResourceTargetPlan) error {
 	//nolint:exhaustive // Registered-resource execution only handles create and already-migrated explicitly; all other statuses are unsupported.
 	switch target.Status {
 	case TargetStatusAlreadyMigrated:
@@ -51,7 +51,7 @@ func (e *Executor) executeRegisteredResourceTarget(ctx context.Context, plan *Re
 	}
 }
 
-func (e *Executor) createRegisteredResourceTarget(ctx context.Context, plan *RegisteredResourcePlan, target *RegisteredResourceTargetPlan) error {
+func (e *MigrationExecutor) createRegisteredResourceTarget(ctx context.Context, plan *RegisteredResourcePlan, target *RegisteredResourceTargetPlan) error {
 	namespace := namespaceIdentifier(target.Namespace)
 	if namespace == "" {
 		return fmt.Errorf("%w: registered resource %q", ErrTargetNamespaceRequired, plan.Source.GetId())
@@ -65,33 +65,28 @@ func (e *Executor) createRegisteredResourceTarget(ctx context.Context, plan *Reg
 		metadataForCreate(
 			plan.Source.GetId(),
 			metadataLabels(plan.Source.GetMetadata()),
-			e.runID,
 		),
 	)
 	if err != nil {
 		target.Execution = &ExecutionResult{
-			RunID:   e.runID,
 			Failure: err.Error(),
 		}
 		return fmt.Errorf("%w: create registered resource %q in namespace %q", err, plan.Source.GetId(), namespaceLabel(target.Namespace))
 	}
 	if created == nil {
 		target.Execution = &ExecutionResult{
-			RunID:   e.runID,
 			Failure: ErrMissingCreatedTargetID.Error(),
 		}
 		return fmt.Errorf("%w: registered resource %q target %q", ErrMissingCreatedTargetID, plan.Source.GetId(), namespaceLabel(target.Namespace))
 	}
 	if created.GetId() == "" {
 		target.Execution = &ExecutionResult{
-			RunID:   e.runID,
 			Failure: ErrMissingCreatedTargetID.Error(),
 		}
 		return fmt.Errorf("%w: registered resource %q target %q", ErrMissingCreatedTargetID, plan.Source.GetId(), namespaceLabel(target.Namespace))
 	}
 
 	target.Execution = &ExecutionResult{
-		RunID:           e.runID,
 		Applied:         true,
 		CreatedTargetID: created.GetId(),
 	}
@@ -106,7 +101,6 @@ func (e *Executor) createRegisteredResourceTarget(ctx context.Context, plan *Reg
 		// values that already exist on the chosen parent RR.
 		if existingID := existingValues[registeredResourceValueKey(valuePlan.Source.GetValue())]; existingID != "" {
 			valuePlan.Execution = &ExecutionResult{
-				RunID:           e.runID,
 				Applied:         true,
 				CreatedTargetID: existingID,
 			}
@@ -121,11 +115,10 @@ func (e *Executor) createRegisteredResourceTarget(ctx context.Context, plan *Reg
 	return nil
 }
 
-func (e *Executor) createRegisteredResourceValue(ctx context.Context, target *RegisteredResourceTargetPlan, valuePlan *RegisteredResourceValuePlan) error {
+func (e *MigrationExecutor) createRegisteredResourceValue(ctx context.Context, target *RegisteredResourceTargetPlan, valuePlan *RegisteredResourceValuePlan) error {
 	actionAttributeValues, err := e.registeredResourceActionAttributeValues(target.Namespace, valuePlan)
 	if err != nil {
 		valuePlan.Execution = &ExecutionResult{
-			RunID:   e.runID,
 			Failure: err.Error(),
 		}
 		return fmt.Errorf("%w: build registered resource value %q action bindings for namespace %q", err, valuePlan.Source.GetId(), namespaceLabel(target.Namespace))
@@ -139,26 +132,22 @@ func (e *Executor) createRegisteredResourceValue(ctx context.Context, target *Re
 		metadataForCreate(
 			valuePlan.Source.GetId(),
 			metadataLabels(valuePlan.Source.GetMetadata()),
-			e.runID,
 		),
 	)
 	if err != nil {
 		valuePlan.Execution = &ExecutionResult{
-			RunID:   e.runID,
 			Failure: err.Error(),
 		}
 		return fmt.Errorf("%w: create registered resource value %q for resource %q in namespace %q", err, valuePlan.Source.GetId(), target.TargetID(), namespaceLabel(target.Namespace))
 	}
 	if created.GetId() == "" {
 		valuePlan.Execution = &ExecutionResult{
-			RunID:   e.runID,
 			Failure: ErrMissingCreatedTargetID.Error(),
 		}
 		return fmt.Errorf("%w: registered resource value %q for target %q", ErrMissingCreatedTargetID, valuePlan.Source.GetId(), namespaceLabel(target.Namespace))
 	}
 
 	valuePlan.Execution = &ExecutionResult{
-		RunID:           e.runID,
 		Applied:         true,
 		CreatedTargetID: created.GetId(),
 	}
@@ -166,7 +155,7 @@ func (e *Executor) createRegisteredResourceValue(ctx context.Context, target *Re
 	return nil
 }
 
-func (e *Executor) registeredResourceActionAttributeValues(namespace *policy.Namespace, valuePlan *RegisteredResourceValuePlan) ([]*registeredresources.ActionAttributeValue, error) {
+func (e *MigrationExecutor) registeredResourceActionAttributeValues(namespace *policy.Namespace, valuePlan *RegisteredResourceValuePlan) ([]*registeredresources.ActionAttributeValue, error) {
 	if valuePlan == nil {
 		return nil, nil
 	}

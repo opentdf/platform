@@ -909,6 +909,10 @@
                 </li>
               
                 <li>
+                  <a href="#policy.attributes.AttributeValueObligationTriggerRequest"><span class="badge">M</span>AttributeValueObligationTriggerRequest</a>
+                </li>
+              
+                <li>
                   <a href="#policy.attributes.AttributesSort"><span class="badge">M</span>AttributesSort</a>
                 </li>
               
@@ -3156,6 +3160,13 @@ enable federation </p></td>
                 </tr>
               
                 <tr>
+                  <td>namespace</td>
+                  <td><a href="#policy.Namespace">Namespace</a></td>
+                  <td></td>
+                  <td><p>The source namespace for this trigger, derived from the attribute value and action. </p></td>
+                </tr>
+              
+                <tr>
                   <td>metadata</td>
                   <td><a href="#common.Metadata">common.Metadata</a></td>
                   <td></td>
@@ -3435,6 +3446,13 @@ Base64 encoded public key in PEM format </p></td>
                 </tr>
               
                 <tr>
+                  <td>fqn</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
                   <td>metadata</td>
                   <td><a href="#common.Metadata">common.Metadata</a></td>
                   <td></td>
@@ -3599,6 +3617,13 @@ Base64 encoded public key in PEM format </p></td>
                   <td></td>
                   <td><p>the common name for the group of resource mappings, which must be unique
 per namespace </p></td>
+                </tr>
+              
+                <tr>
+                  <td>fqn</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>the fully qualified name of the resource mapping group </p></td>
                 </tr>
               
                 <tr>
@@ -5007,54 +5032,6 @@ string</p></td>
         </table>
 
         
-          
-          
-          <h4>Methods with HTTP bindings</h4>
-          <table>
-            <thead>
-              <tr>
-                <td>Method Name</td>
-                <td>Method</td>
-                <td>Pattern</td>
-                <td>Body</td>
-              </tr>
-            </thead>
-            <tbody>
-            
-              
-              
-              <tr>
-                <td>GetDecisions</td>
-                <td>POST</td>
-                <td>/v1/authorization</td>
-                <td>*</td>
-              </tr>
-              
-            
-              
-              
-              <tr>
-                <td>GetDecisionsByToken</td>
-                <td>POST</td>
-                <td>/v1/token/authorization</td>
-                <td></td>
-              </tr>
-              
-            
-              
-              
-              <tr>
-                <td>GetEntitlements</td>
-                <td>POST</td>
-                <td>/v1/entitlements</td>
-                <td>*</td>
-              </tr>
-              
-            
-            </tbody>
-          </table>
-          
-        
     
       
       <div class="file-heading">
@@ -5997,44 +5974,6 @@ i.e. https://&lt;namespace&gt;/obl/&lt;definition name&gt;/value/&lt;value&gt; <
           </tbody>
         </table>
 
-        
-          
-          
-          <h4>Methods with HTTP bindings</h4>
-          <table>
-            <thead>
-              <tr>
-                <td>Method Name</td>
-                <td>Method</td>
-                <td>Pattern</td>
-                <td>Body</td>
-              </tr>
-            </thead>
-            <tbody>
-            
-              
-              
-              <tr>
-                <td>ResolveEntities</td>
-                <td>POST</td>
-                <td>/entityresolution/resolve</td>
-                <td>*</td>
-              </tr>
-              
-            
-              
-              
-              <tr>
-                <td>CreateEntityChainFromJwt</td>
-                <td>POST</td>
-                <td>/entityresolution/entitychain</td>
-                <td>*</td>
-              </tr>
-              
-            
-            </tbody>
-          </table>
-          
         
     
       
@@ -7124,54 +7063,6 @@ buf:lint:ignore RPC_RESPONSE_STANDARD_NAME</p></td>
         
           
           
-          <h4>Methods with HTTP bindings</h4>
-          <table>
-            <thead>
-              <tr>
-                <td>Method Name</td>
-                <td>Method</td>
-                <td>Pattern</td>
-                <td>Body</td>
-              </tr>
-            </thead>
-            <tbody>
-            
-              
-              
-              <tr>
-                <td>PublicKey</td>
-                <td>GET</td>
-                <td>/kas/v2/kas_public_key</td>
-                <td></td>
-              </tr>
-              
-            
-              
-              
-              <tr>
-                <td>LegacyPublicKey</td>
-                <td>GET</td>
-                <td>/kas/kas_public_key</td>
-                <td></td>
-              </tr>
-              
-            
-              
-              
-              <tr>
-                <td>Rewrap</td>
-                <td>POST</td>
-                <td>/kas/v2/rewrap</td>
-                <td>*</td>
-              </tr>
-              
-            
-            </tbody>
-          </table>
-          
-        
-          
-          
           <h4>Methods with idempotency_level option</h4>
           <table>
             <thead>
@@ -8237,6 +8128,51 @@ Custom actions only: replaces the existing action name </p></td>
 
         
       
+        <h3 id="policy.attributes.AttributeValueObligationTriggerRequest">AttributeValueObligationTriggerRequest</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>obligation_value</td>
+                  <td><a href="#common.IdFqnIdentifier">common.IdFqnIdentifier</a></td>
+                  <td></td>
+                  <td><p>Required. Existing obligation value to associate with the newly created attribute value. </p></td>
+                </tr>
+              
+                <tr>
+                  <td>action</td>
+                  <td><a href="#common.IdNameIdentifier">common.IdNameIdentifier</a></td>
+                  <td></td>
+                  <td><p>Required. Action that, together with the newly created attribute value, triggers the obligation value. </p></td>
+                </tr>
+              
+                <tr>
+                  <td>context</td>
+                  <td><a href="#policy.RequestContext">policy.RequestContext</a></td>
+                  <td></td>
+                  <td><p>Optional. Request context for the obligation trigger. </p></td>
+                </tr>
+              
+                <tr>
+                  <td>metadata</td>
+                  <td><a href="#common.MetadataMutable">common.MetadataMutable</a></td>
+                  <td></td>
+                  <td><p>Optional. Common metadata for the obligation trigger. </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
         <h3 id="policy.attributes.AttributesSort">AttributesSort</h3>
         <p></p>
 
@@ -8380,6 +8316,14 @@ but will not be able to be decrypted until such attribute values exist. </p></td
                   <td><a href="#string">string</a></td>
                   <td></td>
                   <td><p>Required </p></td>
+                </tr>
+              
+                <tr>
+                  <td>obligation_triggers</td>
+                  <td><a href="#policy.attributes.AttributeValueObligationTriggerRequest">AttributeValueObligationTriggerRequest</a></td>
+                  <td>repeated</td>
+                  <td><p>Optional
+Existing obligation values to trigger for the newly created attribute value. </p></td>
                 </tr>
               
                 <tr>
@@ -9552,34 +9496,6 @@ Value RPCs
                 <td>RemoveKeyAccessServerFromValue</td>
                 <td><p>true</p></td>
               </tr>
-            
-            </tbody>
-          </table>
-          
-        
-          
-          
-          <h4>Methods with HTTP bindings</h4>
-          <table>
-            <thead>
-              <tr>
-                <td>Method Name</td>
-                <td>Method</td>
-                <td>Pattern</td>
-                <td>Body</td>
-              </tr>
-            </thead>
-            <tbody>
-            
-              
-              
-              <tr>
-                <td>GetAttributeValuesByFqns</td>
-                <td>GET</td>
-                <td>/attributes/*/fqn</td>
-                <td></td>
-              </tr>
-              
             
             </tbody>
           </table>
@@ -11871,34 +11787,6 @@ Request to create a new key in the Key Access Service.</p></td>
         
           
           
-          <h4>Methods with HTTP bindings</h4>
-          <table>
-            <thead>
-              <tr>
-                <td>Method Name</td>
-                <td>Method</td>
-                <td>Pattern</td>
-                <td>Body</td>
-              </tr>
-            </thead>
-            <tbody>
-            
-              
-              
-              <tr>
-                <td>ListKeyAccessServers</td>
-                <td>GET</td>
-                <td>/key-access-servers</td>
-                <td></td>
-              </tr>
-              
-            
-            </tbody>
-          </table>
-          
-        
-          
-          
           <h4>Methods with idempotency_level option</h4>
           <table>
             <thead>
@@ -13094,7 +12982,7 @@ Namespace &lt;&gt; Key RPCs
 
       
         <h3 id="policy.obligations.AddObligationTriggerRequest">AddObligationTriggerRequest</h3>
-        <p></p>
+        <p>Obligation Triggers are owned by the namespace that owns the action and attribute value, which must</p><p>be the same. In this way, a trigger can intentionally cross namespace boundaries: associating</p><p>obligation values of a different namespace than the one that owns the action being taken or the attribute value.</p>
 
         
           <table class="field-table">
@@ -18036,34 +17924,6 @@ Kas Key RPCs
           </tbody>
         </table>
 
-        
-          
-          
-          <h4>Methods with HTTP bindings</h4>
-          <table>
-            <thead>
-              <tr>
-                <td>Method Name</td>
-                <td>Method</td>
-                <td>Pattern</td>
-                <td>Body</td>
-              </tr>
-            </thead>
-            <tbody>
-            
-              
-              
-              <tr>
-                <td>GetWellKnownConfiguration</td>
-                <td>GET</td>
-                <td>/.well-known/opentdf-configuration</td>
-                <td></td>
-              </tr>
-              
-            
-            </tbody>
-          </table>
-          
         
           
           

@@ -30,8 +30,10 @@ command:
       description: Identifier related to the wrapping key. Its meaning depends on the `mode`. For `local` mode, it's a descriptive ID for the `wrappingKey` you provide. For `provider` or `remote` mode, it's the ID of the key within the external provider/system used for wrapping.
     - name: wrapping-key
       shorthand: w
-      description: The symmetric key material (AES cipher, base64 encoded) used to wrap the generated private key. Primarily used when `mode` is `local`.
+      sensitive: true
+      description: The symmetric key material (AES cipher, hex encoded) used to wrap the generated private key. Primarily used when `mode` is `local`.
     - name: private-key-pem
+      sensitive: true
       description: The private key PEM (encrypted by an AES 32-byte key, then base64 encoded). Used when importing an existing key pair, typically with `provider` mode.
     - name: provider-config-id
       shorthand: p
@@ -54,7 +56,7 @@ This command replaces an existing key with a new one while maintaining reference
 Rotate an existing key to a new key in local mode, where the KAS generates the key pair and the private key is wrapped by the provided `wrappingKey`:
 
 ```shell
-otdfctl policy kas-registry key rotate --key "old-key-id" --kas "https://kas.example.com/kas" --key-id "new-key-v2" --algorithm "rsa:2048" --mode "local" --wrapping-key-id "virtru-stored-key" --wrapping-key "YWVzIGtleQ=="
+otdfctl policy kas-registry key rotate --key "old-key-id" --kas "https://kas.example.com/kas" --key-id "new-key-v2" --algorithm "rsa:2048" --mode "local" --wrapping-key-id "virtru-stored-key" --wrapping-key "a8c4824daafcfa38ed0d13002e92b08720e6c4fcee67d52e954c1a6e045907d1"
 ```
 
 ### Rotate a key in `provider` mode

@@ -13,8 +13,36 @@ type EntitlementPolicyCacheConfig struct {
 	RefreshInterval string `mapstructure:"refresh_interval" json:"refresh_interval" default:"30s"`
 }
 
+type RequestLimitsConfig struct {
+	ResourceAttributeValuesMax   int `mapstructure:"resource_attribute_values_max" json:"resource_attribute_values_max" default:"20"`
+	EntityChainEntitiesMax       int `mapstructure:"entity_chain_entities_max" json:"entity_chain_entities_max" default:"10"`
+	FulfillableObligationFqnsMax int `mapstructure:"fulfillable_obligation_fqns_max" json:"fulfillable_obligation_fqns_max" default:"50"`
+	MultiResourceRequestMax      int `mapstructure:"multi_resource_request_max" json:"multi_resource_request_max" default:"1000"`
+	BulkDecisionRequestMax       int `mapstructure:"bulk_decision_request_max" json:"bulk_decision_request_max" default:"200"`
+}
+
+func (c RequestLimitsConfig) Validate() error {
+	if c.ResourceAttributeValuesMax < 1 {
+		return fmt.Errorf("authorization request limit resource_attribute_values_max [%d] must be greater than 0", c.ResourceAttributeValuesMax)
+	}
+	if c.EntityChainEntitiesMax < 1 {
+		return fmt.Errorf("authorization request limit entity_chain_entities_max [%d] must be greater than 0", c.EntityChainEntitiesMax)
+	}
+	if c.FulfillableObligationFqnsMax < 0 {
+		return fmt.Errorf("authorization request limit fulfillable_obligation_fqns_max [%d] must be greater than or equal to 0", c.FulfillableObligationFqnsMax)
+	}
+	if c.MultiResourceRequestMax < 1 {
+		return fmt.Errorf("authorization request limit multi_resource_request_max [%d] must be greater than 0", c.MultiResourceRequestMax)
+	}
+	if c.BulkDecisionRequestMax < 1 {
+		return fmt.Errorf("authorization request limit bulk_decision_request_max [%d] must be greater than 0", c.BulkDecisionRequestMax)
+	}
+	return nil
+}
+
 type Config struct {
-	Cache EntitlementPolicyCacheConfig `mapstructure:"entitlement_policy_cache" json:"entitlement_policy_cache"`
+	Cache         EntitlementPolicyCacheConfig `mapstructure:"entitlement_policy_cache" json:"entitlement_policy_cache"`
+	RequestLimits RequestLimitsConfig          `mapstructure:"request_limits" json:"request_limits"`
 
 	// experimental features
 
@@ -48,6 +76,9 @@ func (c *Config) Validate() error {
 			)
 		}
 	}
+	if err := c.RequestLimits.Validate(); err != nil {
+		return fmt.Errorf("invalid authorization request limits config: %w", err)
+	}
 	return nil
 }
 
@@ -57,6 +88,15 @@ func (c *Config) LogValue() slog.Value {
 			slog.GroupValue(
 				slog.Bool("enabled", c.Cache.Enabled),
 				slog.String("refresh_interval", c.Cache.RefreshInterval),
+			),
+		),
+		slog.Any("request_limits",
+			slog.GroupValue(
+				slog.Int("resource_attribute_values_max", c.RequestLimits.ResourceAttributeValuesMax),
+				slog.Int("entity_chain_entities_max", c.RequestLimits.EntityChainEntitiesMax),
+				slog.Int("fulfillable_obligation_fqns_max", c.RequestLimits.FulfillableObligationFqnsMax),
+				slog.Int("multi_resource_request_max", c.RequestLimits.MultiResourceRequestMax),
+				slog.Int("bulk_decision_request_max", c.RequestLimits.BulkDecisionRequestMax),
 			),
 		),
 		slog.Bool("allow_direct_entitlements", c.AllowDirectEntitlements),

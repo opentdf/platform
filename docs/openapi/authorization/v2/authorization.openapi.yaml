@@ -241,10 +241,10 @@ components:
             entityChain:
               title: entity_chain
               description: |+
-                chain of one or more entities and at most 10
-                entities must be provided and between 1 and 10 in count:
+                chain of one or more entities
+                entities must be provided and contain at least 1 entity:
                 ```
-                has(this.entities) && this.entities.size() > 0 && this.entities.size() <= 10
+                has(this.entities) && this.entities.size() > 0
                 ```
 
               $ref: '#/components/schemas/entity.EntityChain'
@@ -305,7 +305,6 @@ components:
           items:
             $ref: '#/components/schemas/authorization.v2.GetDecisionMultiResourceRequest'
           title: decision_requests
-          maxItems: 200
           minItems: 1
       title: GetDecisionBulkRequest
       additionalProperties: false
@@ -340,25 +339,24 @@ components:
           items:
             $ref: '#/components/schemas/authorization.v2.Resource'
           title: resources
-          maxItems: 1000
           minItems: 1
         fulfillableObligationFqns:
           type: array
           items:
             type: string
             description: |+
-              if provided, fulfillable_obligation_fqns must be between 1 and 50 in count with all valid FQNs:
+              if provided, fulfillable_obligation_fqns must contain only valid FQNs:
               ```
-              this.size() == 0 || (this.size() <= 50 && this.all(item, item.isUri()))
+              this.size() == 0 || this.all(item, item.isUri())
               ```
 
           title: fulfillable_obligation_fqns
           description: |+
             obligations (fully qualified values) the requester is capable of fulfilling
              i.e. https://<namespace>/obl/<definition name>/value/<value>
-            if provided, fulfillable_obligation_fqns must be between 1 and 50 in count with all valid FQNs:
+            if provided, fulfillable_obligation_fqns must contain only valid FQNs:
             ```
-            this.size() == 0 || (this.size() <= 50 && this.all(item, item.isUri()))
+            this.size() == 0 || this.all(item, item.isUri())
             ```
 
       title: GetDecisionMultiResourceRequest
@@ -374,7 +372,7 @@ components:
 
          If entitled, checks obligation policy: fulfillable obligations must satisfy all triggered.
 
-         Note: this is a more performant bulk request for multiple resource decisions, up to 1000 per request
+         Note: this is a more performant bulk request for multiple resource decisions
         action.name must be provided:
         ```
         has(this.action.name)
@@ -414,18 +412,18 @@ components:
           items:
             type: string
             description: |+
-              if provided, fulfillable_obligation_fqns must be between 1 and 50 in count with all valid FQNs:
+              if provided, fulfillable_obligation_fqns must contain only valid FQNs:
               ```
-              this.size() == 0 || (this.size() <= 50 && this.all(item, item.isUri()))
+              this.size() == 0 || this.all(item, item.isUri())
               ```
 
           title: fulfillable_obligation_fqns
           description: |+
             obligations (fully qualified values) the requester is capable of fulfilling
              i.e. https://<namespace>/obl/<definition name>/value/<value>
-            if provided, fulfillable_obligation_fqns must be between 1 and 50 in count with all valid FQNs:
+            if provided, fulfillable_obligation_fqns must contain only valid FQNs:
             ```
-            this.size() == 0 || (this.size() <= 50 && this.all(item, item.isUri()))
+            this.size() == 0 || this.all(item, item.isUri())
             ```
 
       title: GetDecisionRequest
@@ -495,10 +493,10 @@ components:
             attributeValues:
               title: attribute_values
               description: |+
-                a set of attribute value FQNs, such as those on a TDF, between 1 and 20 in count
-                if provided, resource.attribute_values must be between 1 and 20 in count with all valid FQNs:
+                a set of attribute value FQNs, such as those on a TDF, containing at least 1 value
+                if provided, resource.attribute_values must contain at least 1 valid FQN:
                 ```
-                this.fqns.size() > 0 && this.fqns.size() <= 20 && this.fqns.all(item, item.isUri())
+                this.fqns.size() > 0 && this.fqns.all(item, item.isUri())
                 ```
 
               $ref: '#/components/schemas/authorization.v2.Resource.AttributeValues'

@@ -166,6 +166,10 @@ func (as *Service) GetDecision(ctx context.Context, req *connect.Request[authzV2
 	ctx, span := as.Start(ctx, "GetDecision")
 	defer span.End()
 
+	if err := as.validateGetDecisionRequest(req.Msg); err != nil {
+		return nil, err
+	}
+
 	pdp, err := access.NewJustInTimePDP(ctx, as.logger, as.sdk, as.cache, as.config.AllowDirectEntitlements, as.config.EnforceNamespacedEntitlements)
 	if err != nil {
 		return nil, statusifyError(ctx, as.logger, errors.Join(ErrFailedToInitPDP, err))
@@ -211,6 +215,10 @@ func (as *Service) GetDecisionMultiResource(ctx context.Context, req *connect.Re
 
 	ctx, span := as.Start(ctx, "GetDecisionMultiResource")
 	defer span.End()
+
+	if err := as.validateGetDecisionMultiResourceRequest(req.Msg, ""); err != nil {
+		return nil, err
+	}
 
 	pdp, err := access.NewJustInTimePDP(ctx, as.logger, as.sdk, as.cache, as.config.AllowDirectEntitlements, as.config.EnforceNamespacedEntitlements)
 	if err != nil {
@@ -260,6 +268,10 @@ func (as *Service) GetDecisionBulk(ctx context.Context, req *connect.Request[aut
 
 	ctx, span := as.Start(ctx, "GetDecisionBulk")
 	defer span.End()
+
+	if err := as.validateGetDecisionBulkRequest(req.Msg); err != nil {
+		return nil, err
+	}
 
 	pdp, err := access.NewJustInTimePDP(ctx, as.logger, as.sdk, as.cache, as.config.AllowDirectEntitlements, as.config.EnforceNamespacedEntitlements)
 	if err != nil {

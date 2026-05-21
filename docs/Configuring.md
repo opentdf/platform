@@ -445,6 +445,11 @@ Root level key `authorization`
 | ------------------------------------------- | -------------------------------------------------------------- | ------- | --------------------- |
 | `entitlement_policy_cache.enabled`          | Enable the entitlement policy cache                            | `false` |                       |
 | `entitlement_policy_cache.refresh_interval` | How often to refresh the entitlement policy cache (e.g. `30s`) |         |                       |
+| `request_limits.resource_attribute_values_max` | Maximum attribute value FQNs allowed in `resource.attribute_values.fqns` | `20` | |
+| `request_limits.entity_chain_entities_max` | Maximum entities allowed in `entity_identifier.entity_chain.entities` | `10` | |
+| `request_limits.fulfillable_obligation_fqns_max` | Maximum fulfillable obligation FQNs allowed per decision request | `50` | |
+| `request_limits.multi_resource_request_max` | Maximum resources allowed in `GetDecisionMultiResourceRequest.resources` | `1000` | |
+| `request_limits.bulk_decision_request_max` | Maximum decision requests allowed in `GetDecisionBulkRequest.decision_requests` | `200` | |
 
 #### Example: Authorization v1
 
@@ -464,6 +469,12 @@ services:
     entitlement_policy_cache:
       enabled: false
       refresh_interval: 30s
+    request_limits:
+      resource_attribute_values_max: 20
+      entity_chain_entities_max: 10
+      fulfillable_obligation_fqns_max: 50
+      multi_resource_request_max: 1000
+      bulk_decision_request_max: 200
 ```
 
 ### Entity Resolution

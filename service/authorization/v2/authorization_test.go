@@ -377,42 +377,6 @@ var (
 			expectedValidationError: "registered_resource_value_fqn",
 		},
 		{
-			name: "too many obligations",
-			request: &authzV2.GetDecisionMultiResourceRequest{
-				EntityIdentifier: &authzV2.EntityIdentifier{
-					Identifier: &authzV2.EntityIdentifier_EntityChain{
-						EntityChain: &entity.EntityChain{
-							EphemeralId: "1234",
-							Entities: []*entity.Entity{
-								{
-									EphemeralId: "chained-1",
-									EntityType:  &entity.Entity_EmailAddress{EmailAddress: "test@test.com"},
-									Category:    entity.Entity_CATEGORY_SUBJECT,
-								},
-							},
-						},
-					},
-				},
-				Action: sampleActionCreate,
-				Resources: []*authzV2.Resource{
-					{
-						Resource: &authzV2.Resource_AttributeValues_{
-							AttributeValues: &authzV2.Resource_AttributeValues{
-								Fqns: []string{sampleResourceFQN},
-							},
-						},
-					},
-					{
-						Resource: &authzV2.Resource_RegisteredResourceValueFqn{
-							RegisteredResourceValueFqn: sampleRegisteredResourceFQN,
-						},
-					},
-				},
-				FulfillableObligationFqns: getTooManyObligations(),
-			},
-			expectedValidationError: "obligation_value_fqns_valid",
-		},
-		{
 			name: "invalid obligation",
 			request: &authzV2.GetDecisionMultiResourceRequest{
 				EntityIdentifier: &authzV2.EntityIdentifier{
@@ -443,7 +407,7 @@ func getValidator() protovalidate.Validator {
 	return v
 }
 
-func Test_EntityIdentifier_ManyChainedEntities(t *testing.T) {
+func Test_EntityIdentifier_ProtoValidationAllowsManyChainedEntities(t *testing.T) {
 	v := getValidator()
 	// many entities in chain
 	entityIdentifier := &authzV2.EntityIdentifier{
@@ -471,10 +435,10 @@ func Test_EntityIdentifier_ManyChainedEntities(t *testing.T) {
 		Category:    entity.Entity_CATEGORY_SUBJECT,
 	})
 	err = v.Validate(entityIdentifier)
-	require.Error(t, err, "validation should fail for request with 11 entities in chain")
+	require.NoError(t, err, "validation should allow more than 10 entities in chain so the service can enforce configured limits")
 }
 
-func Test_Resource_ManyAttributeValues(t *testing.T) {
+func Test_Resource_ProtoValidationAllowsManyAttributeValues(t *testing.T) {
 	v := getValidator()
 	resource := &authzV2.Resource{
 		Resource: &authzV2.Resource_AttributeValues_{
@@ -492,7 +456,7 @@ func Test_Resource_ManyAttributeValues(t *testing.T) {
 	// add one more
 	resource.GetAttributeValues().Fqns = append(resource.GetAttributeValues().Fqns, "https://example.com/attr/any_of_attr_name/value/val20")
 	err = v.Validate(resource)
-	require.Error(t, err, "validation should fail for request with 21 attribute values")
+	require.NoError(t, err, "validation should allow more than 20 attribute values so the service can enforce configured limits")
 }
 
 func Test_GetDecisionRequest_Succeeds(t *testing.T) {
@@ -501,6 +465,7 @@ func Test_GetDecisionRequest_Succeeds(t *testing.T) {
 	for i := range 50 {
 		fiftyObligations[i] = sampleObligationValueFQN
 	}
+	fiftyOneObligations := append(append([]string{}, fiftyObligations...), sampleObligationValueFQN)
 
 	cases := []struct {
 		name    string
@@ -691,6 +656,23 @@ func Test_GetDecisionRequest_Succeeds(t *testing.T) {
 					},
 				},
 				FulfillableObligationFqns: fiftyObligations,
+			},
+		},
+		{
+			name: "entity: registered resource, action: create, resource: registered, obligations - 51",
+			request: &authzV2.GetDecisionRequest{
+				EntityIdentifier: &authzV2.EntityIdentifier{
+					Identifier: &authzV2.EntityIdentifier_RegisteredResourceValueFqn{
+						RegisteredResourceValueFqn: sampleRegisteredResourceFQN,
+					},
+				},
+				Action: sampleActionCreate,
+				Resource: &authzV2.Resource{
+					Resource: &authzV2.Resource_RegisteredResourceValueFqn{
+						RegisteredResourceValueFqn: sampleRegisteredResourceFQN,
+					},
+				},
+				FulfillableObligationFqns: fiftyOneObligations,
 			},
 		},
 	}
@@ -946,24 +928,6 @@ func Test_GetDecisionRequest_Fails(t *testing.T) {
 			expectedValidationError: "entities",
 		},
 		{
-			name: "too many obligations",
-			request: &authzV2.GetDecisionRequest{
-				EntityIdentifier: &authzV2.EntityIdentifier{
-					Identifier: &authzV2.EntityIdentifier_RegisteredResourceValueFqn{
-						RegisteredResourceValueFqn: sampleRegisteredResourceFQN,
-					},
-				},
-				Action: sampleActionCreate,
-				Resource: &authzV2.Resource{
-					Resource: &authzV2.Resource_RegisteredResourceValueFqn{
-						RegisteredResourceValueFqn: sampleRegisteredResourceFQN,
-					},
-				},
-				FulfillableObligationFqns: getTooManyObligations(),
-			},
-			expectedValidationError: "obligation_value_fqns_valid",
-		},
-		{
 			name: "invalid obligation format",
 			request: &authzV2.GetDecisionRequest{
 				EntityIdentifier: &authzV2.EntityIdentifier{
@@ -1009,7 +973,7 @@ func Test_GetDecisionMultiResourceRequest_Succeeds(t *testing.T) {
 	}
 }
 
-func Test_GetDecisionMultiResourceRequest_ResourceLimit(t *testing.T) {
+func Test_GetDecisionMultiResourceRequest_ProtoValidationAllowsManyResources(t *testing.T) {
 	v := getValidator()
 	upperBoundLimit := 1000
 
@@ -1046,7 +1010,7 @@ func Test_GetDecisionMultiResourceRequest_ResourceLimit(t *testing.T) {
 		},
 	})
 	err = v.Validate(req)
-	require.Error(t, err, "validation should fail for request with 1001 resources")
+	require.NoError(t, err, "validation should allow more than 1000 resources so the service can enforce configured limits")
 }
 
 func Test_GetDecisionMultiResourceRequest_Fails(t *testing.T) {
@@ -1145,13 +1109,15 @@ func Test_GetDecisionBulkRequest_Fails(t *testing.T) {
 	}
 }
 
-func Test_GetDecisionBulkRequest_Limits(t *testing.T) {
+func Test_GetDecisionBulkRequest_RequiresAtLeastOneDecisionRequest(t *testing.T) {
 	v := getValidator()
-	// requests must be between 1 and 200
 	req := &authzV2.GetDecisionBulkRequest{}
 	err := v.Validate(req)
 	require.Error(t, err, "validation should fail for bulk request without any multi resource decision requests")
+}
 
+func Test_GetDecisionBulkRequest_ProtoValidationAllowsManyDecisionRequests(t *testing.T) {
+	v := getValidator()
 	dr := &authzV2.GetDecisionMultiResourceRequest{
 		EntityIdentifier: &authzV2.EntityIdentifier{
 			Identifier: &authzV2.EntityIdentifier_Token{
@@ -1172,16 +1138,17 @@ func Test_GetDecisionBulkRequest_Limits(t *testing.T) {
 			},
 		},
 	}
+	req := &authzV2.GetDecisionBulkRequest{}
 	req.DecisionRequests = make([]*authzV2.GetDecisionMultiResourceRequest, 201)
 	for i := range req.GetDecisionRequests() {
 		req.DecisionRequests[i] = dr
 	}
-	err = v.Validate(req)
-	require.Error(t, err, "validation should fail for bulk request with more than 200 multi resource decision requests")
+	err := v.Validate(req)
+	require.NoError(t, err, "validation should allow more than 200 decision requests so the service can enforce configured limits")
 
 	req.DecisionRequests = append(req.GetDecisionRequests(), dr)
 	err = v.Validate(req)
-	require.Error(t, err, "validation should fail for bulk request with more than 200 multi resource decision requests")
+	require.NoError(t, err, "validation should allow more than 200 decision requests so the service can enforce configured limits")
 }
 
 func Test_GetEntitlementsRequest_Succeeds(t *testing.T) {
@@ -1614,14 +1581,6 @@ func getRandomValidObligationValueFQNsList() []string {
 		randomList[i] = getRandomObligationValueFQN()
 	}
 	return randomList
-}
-
-func getTooManyObligations() []string {
-	tooMany := make([]string, 51)
-	for i := range tooMany {
-		tooMany[i] = getRandomObligationValueFQN()
-	}
-	return tooMany
 }
 
 const charset = "abcdefghijklmnopqrstuvwxyz"

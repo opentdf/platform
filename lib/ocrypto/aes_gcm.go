@@ -56,16 +56,6 @@ func (aesGcm AesGcm) EncryptInPlace(data []byte) ([]byte, []byte, error) {
 	return cipherText, nonce, nil
 }
 
-// EncryptWithIV is unsupported because strict FIPS mode requires internally generated AES-GCM nonces.
-func (AesGcm) EncryptWithIV(_, _ []byte) ([]byte, error) {
-	return nil, fmt.Errorf("caller-managed IV encryption is not supported: %w", ErrUnsupportedAESGCMConfiguration)
-}
-
-// EncryptWithIVAndTagSize is unsupported because strict FIPS mode requires internally generated AES-GCM nonces.
-func (AesGcm) EncryptWithIVAndTagSize(_, _ []byte, authTagSize int) ([]byte, error) {
-	return nil, fmt.Errorf("caller-managed IV encryption with tag size %d is not supported: %w", authTagSize, ErrUnsupportedAESGCMConfiguration)
-}
-
 // Decrypt decrypts data with a 12-byte nonce prefix and a 16-byte AES-GCM authentication tag.
 func (aesGcm AesGcm) Decrypt(data []byte) ([]byte, error) {
 	if len(data) < GcmStandardNonceSize+aes.BlockSize {

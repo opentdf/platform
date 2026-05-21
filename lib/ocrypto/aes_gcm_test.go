@@ -169,24 +169,6 @@ func TestCreateAESGcm_WithUnsupportedAuthTags(t *testing.T) {
 	}
 }
 
-func TestCreateAESGcm_EncryptWithCallerManagedIVUnsupported(t *testing.T) {
-	key, _ := hex.DecodeString("66af5c10753139c6161d0f0eee125bbc9545d6704d64890e396c5c8d4f4820d4")
-	aesGcm, err := NewAESGcm(key)
-	if err != nil {
-		t.Fatalf("Fail to create AesGcm: %v", err)
-	}
-
-	_, err = aesGcm.EncryptWithIV(make([]byte, GcmStandardNonceSize), []byte("test"))
-	if !errors.Is(err, ErrUnsupportedAESGCMConfiguration) {
-		t.Fatalf("expected ErrUnsupportedAESGCMConfiguration, got %v", err)
-	}
-
-	_, err = aesGcm.EncryptWithIVAndTagSize(make([]byte, GcmStandardNonceSize), []byte("test"), aes.BlockSize)
-	if !errors.Is(err, ErrUnsupportedAESGCMConfiguration) {
-		t.Fatalf("expected ErrUnsupportedAESGCMConfiguration, got %v", err)
-	}
-}
-
 func BenchmarkAESGcm_ForTDF3(b *testing.B) {
 	// Create 2mb buffer and fill with character 'X'
 	twoMB := 2 * 1024 * 1024
@@ -298,29 +280,6 @@ func TestDecryptWithTagSize_TooShortData(t *testing.T) {
 	}
 	if !errors.Is(err, ErrInvalidCiphertext) {
 		t.Errorf("expected ErrInvalidCiphertext, got %v", err)
-	}
-}
-
-func TestEncryptWithIVAndTagSize_Unsupported(t *testing.T) {
-	key, _ := hex.DecodeString("66af5c10753139c6161d0f0eee125bbc9545d6704d64890e396c5c8d4f4820d4")
-	aesGcm, _ := NewAESGcm(key)
-
-	ivs := [][]byte{
-		{},
-		make([]byte, 11),
-		make([]byte, 12),
-		make([]byte, 13),
-		make([]byte, 16),
-	}
-
-	for _, iv := range ivs {
-		_, err := aesGcm.EncryptWithIVAndTagSize(iv, []byte("test"), 16)
-		if err == nil {
-			t.Errorf("expected error for %d-byte IV, got nil", len(iv))
-		}
-		if !errors.Is(err, ErrUnsupportedAESGCMConfiguration) {
-			t.Errorf("expected ErrUnsupportedAESGCMConfiguration for %d-byte IV, got %v", len(iv), err)
-		}
 	}
 }
 

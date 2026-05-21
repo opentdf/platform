@@ -165,6 +165,9 @@ func wrapKeyWithPublicKey(symKey []byte, pubKeyInfo keysplit.KASPublicKey) (stri
 	// Determine key type based on algorithm
 	ktype := ocrypto.KeyType(pubKeyInfo.Algorithm)
 
+	if ocrypto.IsHybridKeyType(ktype) {
+		return wrapKeyWithHybrid(ktype, pubKeyInfo.PEM, symKey)
+	}
 	if ocrypto.IsECKeyType(ktype) {
 		// Handle EC key wrapping
 		return wrapKeyWithEC(ktype, pubKeyInfo.PEM, symKey)
@@ -244,4 +247,12 @@ func wrapKeyWithRSA(kasPublicKeyPEM string, symKey []byte) (string, error) {
 	}
 
 	return string(ocrypto.Base64Encode(encryptedKey)), nil
+}
+
+func wrapKeyWithHybrid(ktype ocrypto.KeyType, kasPublicKeyPEM string, symKey []byte) (string, string, string, error) {
+	wrappedDER, err := ocrypto.HybridWrapDEK(ktype, kasPublicKeyPEM, symKey)
+	if err != nil {
+		return "", "", "", fmt.Errorf("hybrid wrap failed: %w", err)
+	}
+	return string(ocrypto.Base64Encode(wrappedDER)), "hybrid-wrapped", "", nil
 }

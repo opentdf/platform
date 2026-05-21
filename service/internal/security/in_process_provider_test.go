@@ -218,14 +218,14 @@ func TestInProcessProviderDetermineKeyType(t *testing.T) {
 	provider, ok := providerIface.(*InProcessProvider)
 	require.True(t, ok)
 
-	keyType, err := provider.determineKeyType(t.Context(), material.rsaKid)
+	keyType, err := provider.determineKeyType(material.rsaKid)
 	require.NoError(t, err)
 	assert.Equal(t, AlgorithmRSA2048, keyType)
 
-	keyType, err = provider.determineKeyType(t.Context(), material.ecKid)
+	keyType, err = provider.determineKeyType(material.ecKid)
 	require.NoError(t, err)
 	assert.Equal(t, AlgorithmECP256R1, keyType)
 
-	_, err = provider.determineKeyType(t.Context(), "missing")
+	_, err = provider.determineKeyType("missing")
 	require.Error(t, err)
 }

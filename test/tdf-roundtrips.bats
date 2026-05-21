@@ -26,6 +26,69 @@
   printf '%s\n' "$output" | grep "Hello EC wrappers!"
 }
 
+@test "examples: roundtrip Z-TDF with X-Wing wrapped KAO" {
+  echo "[INFO] create a tdf3 format file"
+  run go run ./examples encrypt -o sensitive-with-xwing.txt.tdf --autoconfigure=false -A "hpqt:xwing" "Hello X-Wing wrappers!"
+  echo "[INFO] echoing output; if successful, this is just the manifest"
+  echo "$output"
+
+  echo "[INFO] Validate the manifest lists the expected type in its KAO"
+  kaotype=$(jq -r '.encryptionInformation.keyAccess[0].type' <<<"${output}")
+  echo "kao.type=$kaotype"
+  [ "$kaotype" = hybrid-wrapped ]
+
+  kid=$(jq -r '.encryptionInformation.keyAccess[0].kid' <<<"${output}")
+  echo "kao.kid=$kid"
+  [ "$kid" = x1 ]
+
+  echo "[INFO] decrypting..."
+  run go run ./examples decrypt sensitive-with-xwing.txt.tdf
+  echo "$output"
+  printf '%s\n' "$output" | grep "Hello X-Wing wrappers!"
+}
+
+@test "examples: roundtrip Z-TDF with P256+ML-KEM-768 wrapped KAO" {
+  echo "[INFO] create a tdf3 format file"
+  run go run ./examples encrypt -o sensitive-with-p256mlkem768.txt.tdf --autoconfigure=false -A "hpqt:secp256r1-mlkem768" "Hello P256+ML-KEM-768 wrappers!"
+  echo "[INFO] echoing output; if successful, this is just the manifest"
+  echo "$output"
+
+  echo "[INFO] Validate the manifest lists the expected type in its KAO"
+  kaotype=$(jq -r '.encryptionInformation.keyAccess[0].type' <<<"${output}")
+  echo "$kaotype"
+  [ "$kaotype" = hybrid-wrapped ]
+
+  kid=$(jq -r '.encryptionInformation.keyAccess[0].kid' <<<"${output}")
+  echo "kao.kid=$kid"
+  [ "$kid" = h1 ]
+
+  echo "[INFO] decrypting..."
+  run go run ./examples decrypt sensitive-with-p256mlkem768.txt.tdf
+  echo "$output"
+  printf '%s\n' "$output" | grep "Hello P256+ML-KEM-768 wrappers!"
+}
+
+@test "examples: roundtrip Z-TDF with P384+ML-KEM-1024 wrapped KAO" {
+  echo "[INFO] create a tdf3 format file"
+  run go run ./examples encrypt -o sensitive-with-p384mlkem1024.txt.tdf --autoconfigure=false -A "hpqt:secp384r1-mlkem1024" "Hello P384+ML-KEM-1024 wrappers!"
+  echo "[INFO] echoing output; if successful, this is just the manifest"
+  echo "$output"
+
+  echo "[INFO] Validate the manifest lists the expected type in its KAO"
+  kaotype=$(jq -r '.encryptionInformation.keyAccess[0].type' <<<"${output}")
+  echo "$kaotype"
+  [ "$kaotype" = hybrid-wrapped ]
+
+  kid=$(jq -r '.encryptionInformation.keyAccess[0].kid' <<<"${output}")
+  echo "kao.kid=$kid"
+  [ "$kid" = h2 ]
+
+  echo "[INFO] decrypting..."
+  run go run ./examples decrypt sensitive-with-p384mlkem1024.txt.tdf
+  echo "$output"
+  printf '%s\n' "$output" | grep "Hello P384+ML-KEM-1024 wrappers!"
+}
+
 @test "examples: legacy key support Z-TDF" {
   echo "[INFO] validating default key is r1"
   echo "[INFO] default key result: $(grpcurl "localhost:8080" "kas.AccessService/PublicKey")"
@@ -77,7 +140,7 @@
   echo "[INFO] validating default key is r1"
   echo "[INFO] default key result: $(grpcurl "localhost:8080" "kas.AccessService/PublicKey")"
 
-  [ $(grpcurl "localhost:8080" "kas.AccessService/PublicKey" | jq -e -r .kid) = r1 ]
+  [ "$(grpcurl "localhost:8080" "kas.AccessService/PublicKey" | jq -e -r .kid)" = r1 ]
 
   echo "[INFO] validating keys are correct by alg"
   [ "$(grpcurl -d '{"algorithm":"ec:secp256r1"}' "localhost:8080" "kas.AccessService/PublicKey" | jq -e -r .kid)" = e1 ]
@@ -98,10 +161,21 @@ wait_for_green() {
   done
 }
 
+write_opentdf_config() {
+  local tmp
+
+  tmp=$(mktemp "./opentdf.yaml.tmp.XXXXXX")
+  if ! cat >"$tmp"; then
+    rm -f "$tmp"
+    return 1
+  fi
+  mv -f "$tmp" opentdf.yaml
+}
+
 downgrade_config() {
   ec_current_key=$1
   rsa_current_key=$2
-  cat >opentdf.yaml <<EOF
+  write_opentdf_config <<EOF
 logger:
   level: debug
   type: text
@@ -167,7 +241,7 @@ update_config() {
   rsa_current_key=$3
   rsa_legacy_key=$4
 
-  cat >opentdf.yaml <<EOF
+  write_opentdf_config <<EOF
 logger:
   level: debug
   type: text
@@ -175,7 +249,10 @@ logger:
 services:
   kas:
     enabled: true
-    ec_tdf_enabled: true
+    preview:
+      ec_tdf_enabled: true
+      hybrid_tdf_enabled: true
+      key_management: false
     keyring:
       - kid: ${ec_current_key}
         alg: ec:secp256r1
@@ -187,6 +264,12 @@ services:
       - kid: ${rsa_legacy_key}
         alg: rsa:2048
         legacy: true
+      - kid: x1
+        alg: hpqt:xwing
+      - kid: h1
+        alg: hpqt:secp256r1-mlkem768
+      - kid: h2
+        alg: hpqt:secp384r1-mlkem1024
   policy:
     enabled: true
   authorization:
@@ -234,6 +317,18 @@ server:
           alg: ec:secp256r1
           private: kas-ec-private.pem
           cert: kas-ec-cert.pem
+        - kid: x1
+          alg: hpqt:xwing
+          private: kas-xwing-private.pem
+          cert: kas-xwing-public.pem
+        - kid: h1
+          alg: hpqt:secp256r1-mlkem768
+          private: kas-p256mlkem768-private.pem
+          cert: kas-p256mlkem768-public.pem
+        - kid: h2
+          alg: hpqt:secp384r1-mlkem1024
+          private: kas-p384mlkem1024-private.pem
+          cert: kas-p384mlkem1024-public.pem
   port: 8080
 opa:
   embedded: true

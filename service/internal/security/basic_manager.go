@@ -97,6 +97,57 @@ func (b *BasicManager) Decrypt(ctx context.Context, keyDetails trust.KeyDetails,
 			return nil, fmt.Errorf("failed to create protected key: %w", err)
 		}
 		return protectedKey, nil
+	case ocrypto.HybridXWingKey:
+		if len(ephemeralPublicKey) > 0 {
+			return nil, errors.New("ephemeral public key should not be provided for X-Wing decryption")
+		}
+		xwingPrivKey, err := ocrypto.XWingPrivateKeyFromPem(privKey)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create X-Wing private key from PEM: %w", err)
+		}
+		plaintext, err := ocrypto.XWingUnwrapDEK(xwingPrivKey, ciphertext)
+		if err != nil {
+			return nil, fmt.Errorf("failed to decrypt with X-Wing: %w", err)
+		}
+		protectedKey, err := ocrypto.NewAESProtectedKey(plaintext)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create protected key: %w", err)
+		}
+		return protectedKey, nil
+	case ocrypto.HybridSecp256r1MLKEM768Key:
+		if len(ephemeralPublicKey) > 0 {
+			return nil, errors.New("ephemeral public key should not be provided for hybrid decryption")
+		}
+		privKeyBytes, err := ocrypto.P256MLKEM768PrivateKeyFromPem(privKey)
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse P256-MLKEM768 private key from PEM: %w", err)
+		}
+		plaintext, err := ocrypto.P256MLKEM768UnwrapDEK(privKeyBytes, ciphertext)
+		if err != nil {
+			return nil, fmt.Errorf("failed to decrypt with P256-MLKEM768: %w", err)
+		}
+		protectedKey, err := ocrypto.NewAESProtectedKey(plaintext)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create protected key: %w", err)
+		}
+		return protectedKey, nil
+	case ocrypto.HybridSecp384r1MLKEM1024Key:
+		if len(ephemeralPublicKey) > 0 {
+			return nil, errors.New("ephemeral public key should not be provided for hybrid decryption")
+		}
+		privKeyBytes, err := ocrypto.P384MLKEM1024PrivateKeyFromPem(privKey)
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse P384-MLKEM1024 private key from PEM: %w", err)
+		}
+		plaintext, err := ocrypto.P384MLKEM1024UnwrapDEK(privKeyBytes, ciphertext)
+		if err != nil {
+			return nil, fmt.Errorf("failed to decrypt with P384-MLKEM1024: %w", err)
+		}
+		protectedKey, err := ocrypto.NewAESProtectedKey(plaintext)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create protected key: %w", err)
+		}
+		return protectedKey, nil
 	}
 
 	return nil, fmt.Errorf("unsupported algorithm: %s", keyDetails.Algorithm())

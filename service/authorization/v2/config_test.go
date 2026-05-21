@@ -99,7 +99,7 @@ func Test_ValidateConfig_InvalidRequestLimits(t *testing.T) {
 			tc.mutate(config)
 
 			err := config.Validate()
-			require.Error(t, err)
+			require.ErrorIs(t, err, ErrInvalidRequestLimitConfig)
 			assert.Contains(t, err.Error(), tc.expectedErr)
 		})
 	}

@@ -1,7 +1,6 @@
 package authorization
 
 import (
-	"context"
 	"strconv"
 	"testing"
 
@@ -134,7 +133,7 @@ func Test_validateDecisionRequests_UseCustomRequestLimits(t *testing.T) {
 func Test_GetDecision_ReturnsInvalidArgumentForConfiguredLimit(t *testing.T) {
 	service := newHandlerTestService(t, nil)
 
-	_, err := service.GetDecision(context.Background(), connect.NewRequest(newDecisionRequestWithAttributeValueCount(21)))
+	_, err := service.GetDecision(t.Context(), connect.NewRequest(newDecisionRequestWithAttributeValueCount(21)))
 	require.Error(t, err)
 	assert.Equal(t, connect.CodeInvalidArgument, connect.CodeOf(err))
 	assert.Contains(t, err.Error(), "resource.attribute_values.fqns exceeds maximum count: got 21, max 20")
@@ -145,7 +144,7 @@ func Test_GetEntitlements_ReturnsInvalidArgumentForConfiguredLimit(t *testing.T)
 		config.RequestLimits.EntityIdentifierEntityChainEntitiesMax = 1
 	})
 
-	_, err := service.GetEntitlements(context.Background(), connect.NewRequest(newEntitlementsRequestWithEntityChainCount(2)))
+	_, err := service.GetEntitlements(t.Context(), connect.NewRequest(newEntitlementsRequestWithEntityChainCount(2)))
 	require.Error(t, err)
 	assert.Equal(t, connect.CodeInvalidArgument, connect.CodeOf(err))
 	assert.Contains(t, err.Error(), "entity_identifier.entity_chain.entities exceeds maximum count: got 2, max 1")
@@ -156,7 +155,7 @@ func Test_GetDecisionMultiResource_UsesCustomConfiguredLimit(t *testing.T) {
 		config.RequestLimits.GetDecisionMultiResourceResourcesMax = 2
 	})
 
-	_, err := service.GetDecisionMultiResource(context.Background(), connect.NewRequest(newDecisionMultiResourceRequestWithResourceCount(3)))
+	_, err := service.GetDecisionMultiResource(t.Context(), connect.NewRequest(newDecisionMultiResourceRequestWithResourceCount(3)))
 	require.Error(t, err)
 	assert.Equal(t, connect.CodeInvalidArgument, connect.CodeOf(err))
 	assert.Contains(t, err.Error(), "resources exceeds maximum count: got 3, max 2")
@@ -167,7 +166,7 @@ func Test_GetDecisionBulk_ReturnsInvalidArgumentForConfiguredLimit(t *testing.T)
 		config.RequestLimits.GetDecisionBulkDecisionRequestsMax = 1
 	})
 
-	_, err := service.GetDecisionBulk(context.Background(), connect.NewRequest(newDecisionBulkRequestWithDecisionCount(2)))
+	_, err := service.GetDecisionBulk(t.Context(), connect.NewRequest(newDecisionBulkRequestWithDecisionCount(2)))
 	require.Error(t, err)
 	assert.Equal(t, connect.CodeInvalidArgument, connect.CodeOf(err))
 	assert.Contains(t, err.Error(), "decision_requests exceeds maximum count: got 2, max 1")

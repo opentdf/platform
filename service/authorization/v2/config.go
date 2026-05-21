@@ -1,10 +1,13 @@
 package authorization
 
 import (
+	"errors"
 	"fmt"
 	"log/slog"
 	"time"
 )
+
+var ErrInvalidRequestLimitConfig = errors.New("invalid request limit configuration")
 
 // Manage config for EntitlementPolicyCache: attributes, subject mappings, and registered resources
 // Default: caching disabled, and if enabled, refresh interval defaulted to 30 seconds.
@@ -23,21 +26,25 @@ type RequestLimitsConfig struct {
 
 func (c RequestLimitsConfig) Validate() error {
 	if c.ResourceAttributeValuesFqnsMax < 1 {
-		return fmt.Errorf("authorization request limit resource_attribute_values_fqns_max [%d] must be greater than 0", c.ResourceAttributeValuesFqnsMax)
+		return requestLimitConfigError("resource_attribute_values_fqns_max", c.ResourceAttributeValuesFqnsMax)
 	}
 	if c.EntityIdentifierEntityChainEntitiesMax < 1 {
-		return fmt.Errorf("authorization request limit entity_identifier_entity_chain_entities_max [%d] must be greater than 0", c.EntityIdentifierEntityChainEntitiesMax)
+		return requestLimitConfigError("entity_identifier_entity_chain_entities_max", c.EntityIdentifierEntityChainEntitiesMax)
 	}
 	if c.DecisionRequestFulfillableObligationFqnsMax < 1 {
-		return fmt.Errorf("authorization request limit decision_request_fulfillable_obligation_fqns_max [%d] must be greater than 0", c.DecisionRequestFulfillableObligationFqnsMax)
+		return requestLimitConfigError("decision_request_fulfillable_obligation_fqns_max", c.DecisionRequestFulfillableObligationFqnsMax)
 	}
 	if c.GetDecisionMultiResourceResourcesMax < 1 {
-		return fmt.Errorf("authorization request limit get_decision_multi_resource_resources_max [%d] must be greater than 0", c.GetDecisionMultiResourceResourcesMax)
+		return requestLimitConfigError("get_decision_multi_resource_resources_max", c.GetDecisionMultiResourceResourcesMax)
 	}
 	if c.GetDecisionBulkDecisionRequestsMax < 1 {
-		return fmt.Errorf("authorization request limit get_decision_bulk_decision_requests_max [%d] must be greater than 0", c.GetDecisionBulkDecisionRequestsMax)
+		return requestLimitConfigError("get_decision_bulk_decision_requests_max", c.GetDecisionBulkDecisionRequestsMax)
 	}
 	return nil
+}
+
+func requestLimitConfigError(name string, value int) error {
+	return fmt.Errorf("%s [%d] must be greater than 0: %w", name, value, ErrInvalidRequestLimitConfig)
 }
 
 type Config struct {

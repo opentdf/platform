@@ -73,28 +73,3 @@ func (aesGcm AesGcm) Decrypt(data []byte) ([]byte, error) {
 
 	return plainData, nil
 }
-
-// DecryptWithTagSize decrypts data when authTagSize is the standard 16-byte AES-GCM tag size.
-func (aesGcm AesGcm) DecryptWithTagSize(data []byte, authTagSize int) ([]byte, error) {
-	if authTagSize != aes.BlockSize {
-		return nil, fmt.Errorf("AES-GCM tag size %d is not supported: %w", authTagSize, ErrUnsupportedAESGCMConfiguration)
-	}
-
-	return aesGcm.Decrypt(data)
-}
-
-// DecryptWithIVAndTagSize decrypts split IV and ciphertext when authTagSize is the standard 16-byte AES-GCM tag size.
-func (aesGcm AesGcm) DecryptWithIVAndTagSize(iv, data []byte, authTagSize int) ([]byte, error) {
-	if len(iv) != GcmStandardNonceSize {
-		return nil, ErrInvalidCiphertext
-	}
-
-	if authTagSize != aes.BlockSize {
-		return nil, fmt.Errorf("AES-GCM tag size %d is not supported: %w", authTagSize, ErrUnsupportedAESGCMConfiguration)
-	}
-
-	sealed := make([]byte, 0, len(iv)+len(data))
-	sealed = append(sealed, iv...)
-	sealed = append(sealed, data...)
-	return aesGcm.Decrypt(sealed)
-}

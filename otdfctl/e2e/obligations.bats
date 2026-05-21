@@ -576,7 +576,7 @@ teardown_file() {
   # non-existent obligation fqn
   run_otdfctl_obl_values create --obligation invalid_fqn --value test_create_obl_val
     assert_failure
-    assert_output --partial "obligation_fqn: value must be a valid URI [string.uri]"
+    assert_output --regexp "obligation_fqn: (value )?must be a valid URI \[string\.uri\]"
   
   # conflict
   run_otdfctl_obl_values create --obligation "$OBL_ID" --value test_create_obl_val_conflict --json

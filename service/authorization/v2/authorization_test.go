@@ -973,6 +973,34 @@ func Test_GetDecisionMultiResourceRequest_Succeeds(t *testing.T) {
 	}
 }
 
+func Test_GetDecisionMultiResourceRequest_ProtoValidationAllowsManyObligations(t *testing.T) {
+	v := getValidator()
+
+	fiftyOneObligations := make([]string, 51)
+	for i := range 51 {
+		fiftyOneObligations[i] = sampleObligationValueFQN
+	}
+
+	req := &authzV2.GetDecisionMultiResourceRequest{
+		EntityIdentifier: &authzV2.EntityIdentifier{
+			Identifier: &authzV2.EntityIdentifier_RegisteredResourceValueFqn{
+				RegisteredResourceValueFqn: sampleRegisteredResourceFQN,
+			},
+		},
+		Action: sampleActionCreate,
+		Resources: []*authzV2.Resource{
+			{
+				Resource: &authzV2.Resource_RegisteredResourceValueFqn{
+					RegisteredResourceValueFqn: sampleRegisteredResourceFQN,
+				},
+			},
+		},
+		FulfillableObligationFqns: fiftyOneObligations,
+	}
+	err := v.Validate(req)
+	require.NoError(t, err, "validation should allow more than 50 obligations so the service can enforce configured limits")
+}
+
 func Test_GetDecisionMultiResourceRequest_ProtoValidationAllowsManyResources(t *testing.T) {
 	v := getValidator()
 	upperBoundLimit := 1000

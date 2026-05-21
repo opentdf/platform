@@ -57,13 +57,34 @@ func Test_validateGetEntitlementsRequest_DefaultRequestLimit(t *testing.T) {
 	assert.Contains(t, err.Error(), "entity_identifier.entity_chain.entities exceeds maximum count: got 11, max 10")
 }
 
-func Test_validateGetDecisionMultiResourceRequest_DefaultRequestLimit(t *testing.T) {
+func Test_validateGetDecisionMultiResourceRequest_DefaultRequestLimits(t *testing.T) {
 	service := newValidationTestService(t, nil)
 
-	err := service.validateGetDecisionMultiResourceRequest(newDecisionMultiResourceRequestWithResourceCount(1001), "")
-	require.Error(t, err)
-	assert.Equal(t, connect.CodeInvalidArgument, connect.CodeOf(err))
-	assert.Contains(t, err.Error(), "resources exceeds maximum count: got 1001, max 1000")
+	cases := []struct {
+		name        string
+		request     *authzV2.GetDecisionMultiResourceRequest
+		expectedErr string
+	}{
+		{
+			name:        "resources",
+			request:     newDecisionMultiResourceRequestWithResourceCount(1001),
+			expectedErr: "resources exceeds maximum count: got 1001, max 1000",
+		},
+		{
+			name:        "fulfillable obligation fqns",
+			request:     newDecisionMultiResourceRequestWithObligationCount(51),
+			expectedErr: "fulfillable_obligation_fqns exceeds maximum count: got 51, max 50",
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			err := service.validateGetDecisionMultiResourceRequest(tc.request, "")
+			require.Error(t, err)
+			assert.Equal(t, connect.CodeInvalidArgument, connect.CodeOf(err))
+			assert.Contains(t, err.Error(), tc.expectedErr)
+		})
+	}
 }
 
 func Test_validateGetDecisionBulkRequest_DefaultRequestLimit(t *testing.T) {
@@ -106,6 +127,7 @@ func Test_validateGetDecisionMultiResourceRequest_ExactlyAtDefaultLimitPasses(t 
 	service := newValidationTestService(t, nil)
 
 	require.NoError(t, service.validateGetDecisionMultiResourceRequest(newDecisionMultiResourceRequestWithResourceCount(1000), ""))
+	require.NoError(t, service.validateGetDecisionMultiResourceRequest(newDecisionMultiResourceRequestWithObligationCount(50), ""))
 }
 
 func Test_validateGetDecisionBulkRequest_ExactlyAtDefaultLimitPasses(t *testing.T) {
@@ -127,6 +149,7 @@ func Test_validateDecisionRequests_UseCustomRequestLimits(t *testing.T) {
 	require.NoError(t, service.validateGetDecisionRequest(newDecisionRequestWithAttributeValueCount(21)))
 	require.NoError(t, service.validateGetDecisionRequest(newDecisionRequestWithObligationCount(51)))
 	require.NoError(t, service.validateGetDecisionMultiResourceRequest(newDecisionMultiResourceRequestWithResourceCount(1001), ""))
+	require.NoError(t, service.validateGetDecisionMultiResourceRequest(newDecisionMultiResourceRequestWithObligationCount(51), ""))
 	require.NoError(t, service.validateGetDecisionBulkRequest(newDecisionBulkRequestWithDecisionCount(201)))
 }
 
@@ -272,6 +295,21 @@ func newDecisionMultiResourceRequestWithAttributeValueCount(count int) *authzV2.
 				},
 			},
 		},
+	}
+}
+
+func newDecisionMultiResourceRequestWithObligationCount(count int) *authzV2.GetDecisionMultiResourceRequest {
+	return &authzV2.GetDecisionMultiResourceRequest{
+		EntityIdentifier: newTokenEntityIdentifier(),
+		Action:           sampleActionCreate,
+		Resources: []*authzV2.Resource{
+			{
+				Resource: &authzV2.Resource_RegisteredResourceValueFqn{
+					RegisteredResourceValueFqn: sampleRegisteredResourceFQN,
+				},
+			},
+		},
+		FulfillableObligationFqns: newObligationFQNs(count),
 	}
 }
 

@@ -3,6 +3,7 @@ package ocrypto
 import (
 	"crypto/aes"
 	"crypto/cipher"
+	"errors"
 	"fmt"
 )
 
@@ -14,6 +15,9 @@ type AesGcm struct {
 const DefaultNonceSize = 16
 
 const GcmStandardNonceSize = 12
+
+// ErrUnsupportedAESGCMConfiguration is returned for AES-GCM options that Go strict FIPS mode does not allow.
+var ErrUnsupportedAESGCMConfiguration = errors.New("unsupported AES-GCM configuration")
 
 // NewAESGcm creates and returns a new AesGcm.
 func NewAESGcm(key []byte) (AesGcm, error) {
@@ -32,79 +36,47 @@ func NewAESGcm(key []byte) (AesGcm, error) {
 // Encrypt encrypts data with symmetric key.
 // NOTE: This method use nonce of 12 bytes and auth tag as aes block size(16 bytes).
 func (aesGcm AesGcm) Encrypt(data []byte) ([]byte, error) {
-	nonce, err := RandomBytes(GcmStandardNonceSize)
+	gcm, err := cipher.NewGCMWithRandomNonce(aesGcm.block)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("cipher.NewGCMWithRandomNonce failed: %w", err)
 	}
 
-	gcm, err := cipher.NewGCMWithNonceSize(aesGcm.block, GcmStandardNonceSize)
-	if err != nil {
-		return nil, fmt.Errorf("cipher.NewGCMWithNonceSize failed: %w", err)
-	}
-
-	cipherText := gcm.Seal(nonce, nonce, data, nil)
+	cipherText := gcm.Seal(nil, nil, data, nil)
 	return cipherText, nil
 }
 
 func (aesGcm AesGcm) EncryptInPlace(data []byte) ([]byte, []byte, error) {
-	nonce, err := RandomBytes(GcmStandardNonceSize)
+	gcm, err := cipher.NewGCMWithRandomNonce(aesGcm.block)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, fmt.Errorf("cipher.NewGCMWithRandomNonce failed: %w", err)
 	}
 
-	gcm, err := cipher.NewGCMWithNonceSize(aesGcm.block, GcmStandardNonceSize)
-	if err != nil {
-		return nil, nil, fmt.Errorf("cipher.NewGCMWithNonceSize failed: %w", err)
-	}
-
-	cipherText := gcm.Seal(data[:0], nonce, data, nil)
+	sealed := gcm.Seal(data[:0], nil, data, nil)
+	nonce, cipherText := sealed[:GcmStandardNonceSize], sealed[GcmStandardNonceSize:]
 	return cipherText, nonce, nil
 }
 
-// EncryptWithIV encrypts data with symmetric key.
-// NOTE: This method use default auth tag as aes block size(16 bytes)
-// and expects iv of 16 bytes.
-func (aesGcm AesGcm) EncryptWithIV(iv, data []byte) ([]byte, error) {
-	gcm, err := cipher.NewGCMWithNonceSize(aesGcm.block, len(iv))
-	if err != nil {
-		return nil, fmt.Errorf("cipher.NewGCMWithNonceSize failed: %w", err)
-	}
-
-	cipherText := gcm.Seal(iv, iv, data, nil)
-	return cipherText, nil
+// EncryptWithIV is unsupported because strict FIPS mode requires internally generated AES-GCM nonces.
+func (AesGcm) EncryptWithIV(_, _ []byte) ([]byte, error) {
+	return nil, fmt.Errorf("caller-managed IV encryption is not supported: %w", ErrUnsupportedAESGCMConfiguration)
 }
 
-// EncryptWithIVAndTagSize encrypts data with symmetric key.
-// NOTE: This method expects gcm standard nonce size(12) of iv.
-func (aesGcm AesGcm) EncryptWithIVAndTagSize(iv, data []byte, authTagSize int) ([]byte, error) {
-	if len(iv) != GcmStandardNonceSize {
-		return nil, ErrInvalidCiphertext
-	}
-
-	gcm, err := cipher.NewGCMWithTagSize(aesGcm.block, authTagSize)
-	if err != nil {
-		return nil, fmt.Errorf("cipher.NewGCMWithTagSize failed: %w", err)
-	}
-
-	cipherText := gcm.Seal(iv, iv, data, nil)
-	return cipherText, nil
+// EncryptWithIVAndTagSize is unsupported because strict FIPS mode requires internally generated AES-GCM nonces.
+func (AesGcm) EncryptWithIVAndTagSize(_, _ []byte, authTagSize int) ([]byte, error) {
+	return nil, fmt.Errorf("caller-managed IV encryption with tag size %d is not supported: %w", authTagSize, ErrUnsupportedAESGCMConfiguration)
 }
 
-// Decrypt decrypts data with symmetric key.
-// NOTE: This method use nonce of 12 bytes and auth tag as aes block size(16 bytes)
-// also expects IV as preamble of data.
-func (aesGcm AesGcm) Decrypt(data []byte) ([]byte, error) { // extract nonce and cipherText
+// Decrypt decrypts data with a 12-byte nonce prefix and a 16-byte AES-GCM authentication tag.
+func (aesGcm AesGcm) Decrypt(data []byte) ([]byte, error) {
 	if len(data) < GcmStandardNonceSize {
 		return nil, ErrInvalidCiphertext
 	}
-	nonce, cipherText := data[:GcmStandardNonceSize], data[GcmStandardNonceSize:]
-
-	gcm, err := cipher.NewGCMWithNonceSize(aesGcm.block, GcmStandardNonceSize)
+	gcm, err := cipher.NewGCMWithRandomNonce(aesGcm.block)
 	if err != nil {
-		return nil, fmt.Errorf("cipher.NewGCMWithNonceSize failed: %w", err)
+		return nil, fmt.Errorf("cipher.NewGCMWithRandomNonce failed: %w", err)
 	}
 
-	plainData, err := gcm.Open(nil, nonce, cipherText, nil)
+	plainData, err := gcm.Open(nil, nil, data, nil)
 	if err != nil {
 		return nil, fmt.Errorf("gcm.Open failed: %w", err)
 	}
@@ -112,44 +84,31 @@ func (aesGcm AesGcm) Decrypt(data []byte) ([]byte, error) { // extract nonce and
 	return plainData, nil
 }
 
-// DecryptWithTagSize decrypts data with symmetric key.
-// NOTE: This method expects gcm standard nonce size(12) of iv.
+// DecryptWithTagSize decrypts data when authTagSize is the standard 16-byte AES-GCM tag size.
 func (aesGcm AesGcm) DecryptWithTagSize(data []byte, authTagSize int) ([]byte, error) {
+	if authTagSize != aes.BlockSize {
+		return nil, fmt.Errorf("AES-GCM tag size %d is not supported: %w", authTagSize, ErrUnsupportedAESGCMConfiguration)
+	}
+
 	if len(data) < GcmStandardNonceSize {
 		return nil, ErrInvalidCiphertext
 	}
-	// extract nonce and cipherText
-	nonce, cipherText := data[:GcmStandardNonceSize], data[GcmStandardNonceSize:]
 
-	gcm, err := cipher.NewGCMWithTagSize(aesGcm.block, authTagSize)
-	if err != nil {
-		return nil, fmt.Errorf("cipher.NewGCMWithTagSize failed: %w", err)
-	}
-
-	plainData, err := gcm.Open(nil, nonce, cipherText, nil)
-	if err != nil {
-		return nil, fmt.Errorf("gcm.Open failed: %w", err)
-	}
-
-	return plainData, nil
+	return aesGcm.Decrypt(data)
 }
 
-// DecryptWithIVAndTagSize decrypts data with symmetric key.
-// NOTE: This method expects gcm standard nonce size(12) of iv.
+// DecryptWithIVAndTagSize decrypts split IV and ciphertext when authTagSize is the standard 16-byte AES-GCM tag size.
 func (aesGcm AesGcm) DecryptWithIVAndTagSize(iv, data []byte, authTagSize int) ([]byte, error) {
 	if len(iv) != GcmStandardNonceSize {
 		return nil, ErrInvalidCiphertext
 	}
 
-	gcm, err := cipher.NewGCMWithTagSize(aesGcm.block, authTagSize)
-	if err != nil {
-		return nil, fmt.Errorf("cipher.NewGCMWithTagSize failed: %w", err)
+	if authTagSize != aes.BlockSize {
+		return nil, fmt.Errorf("AES-GCM tag size %d is not supported: %w", authTagSize, ErrUnsupportedAESGCMConfiguration)
 	}
 
-	plainData, err := gcm.Open(nil, iv, data, nil)
-	if err != nil {
-		return nil, fmt.Errorf("gcm.Open failed: %w", err)
-	}
-
-	return plainData, nil
+	sealed := make([]byte, 0, len(iv)+len(data))
+	sealed = append(sealed, iv...)
+	sealed = append(sealed, data...)
+	return aesGcm.Decrypt(sealed)
 }

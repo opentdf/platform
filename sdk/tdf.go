@@ -802,6 +802,37 @@ func allowListFromKASRegistry(ctx context.Context, logger *slog.Logger, kasRegis
 	return kasAllowlist, nil
 }
 
+// WithPolicyFrom returns a [TDFOption] that binds the source TDF's policy
+// (its attribute value FQNs) to the new TDF being created.
+//
+// Use this in re-wrap pipelines to preserve the source policy without
+// having to know about the manifest's base64 + JSON encoding:
+//
+//	if ok, _ := sdk.IsValidTdf(file); !ok {
+//	    // pass through unchanged
+//	}
+//	reader, err := s.LoadTDF(file)
+//	if err != nil {
+//	    return err
+//	}
+//	_, err = s.CreateTDF(out, transformed, sdk.WithPolicyFrom(reader))
+//
+// [Reader.Init] is not required: [Reader.DataAttributes] reads the policy
+// from the manifest, which [SDK.LoadTDF] has already populated. Calling
+// Init would trigger an unnecessary KAS rewrap.
+func WithPolicyFrom(r *Reader) TDFOption {
+	return func(c *TDFConfig) error {
+		if r == nil {
+			return errors.New("WithPolicyFrom: nil Reader")
+		}
+		attrs, err := r.DataAttributes()
+		if err != nil {
+			return fmt.Errorf("WithPolicyFrom: extracting source attributes: %w", err)
+		}
+		return WithDataAttributes(attrs...)(c)
+	}
+}
+
 // LoadTDF loads the tdf and prepare for reading the payload from TDF
 func (s SDK) LoadTDF(reader io.ReadSeeker, opts ...TDFReaderOption) (*Reader, error) {
 	if s.kasSessionKey != nil {

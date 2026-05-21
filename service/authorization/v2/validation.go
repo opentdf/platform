@@ -27,8 +27,8 @@ func (as *Service) validateGetDecisionMultiResourceRequest(request *authzV2.GetD
 	}
 
 	resources := request.GetResources()
-	if len(resources) > as.config.RequestLimits.MultiResourceRequestMax {
-		return limitExceededError(prefix+"resources", len(resources), as.config.RequestLimits.MultiResourceRequestMax)
+	if len(resources) > as.config.RequestLimits.GetDecisionMultiResourceResourcesMax {
+		return limitExceededError(prefix+"resources", len(resources), as.config.RequestLimits.GetDecisionMultiResourceResourcesMax)
 	}
 	for idx, resource := range resources {
 		if err := as.validateResourceRequestLimits(resource, fmt.Sprintf("%sresources[%d]", prefix, idx)); err != nil {
@@ -41,8 +41,8 @@ func (as *Service) validateGetDecisionMultiResourceRequest(request *authzV2.GetD
 
 func (as *Service) validateGetDecisionBulkRequest(request *authzV2.GetDecisionBulkRequest) error {
 	decisionRequests := request.GetDecisionRequests()
-	if len(decisionRequests) > as.config.RequestLimits.BulkDecisionRequestMax {
-		return limitExceededError("decision_requests", len(decisionRequests), as.config.RequestLimits.BulkDecisionRequestMax)
+	if len(decisionRequests) > as.config.RequestLimits.GetDecisionBulkDecisionRequestsMax {
+		return limitExceededError("decision_requests", len(decisionRequests), as.config.RequestLimits.GetDecisionBulkDecisionRequestsMax)
 	}
 
 	for idx, decisionRequest := range decisionRequests {
@@ -61,8 +61,8 @@ func (as *Service) validateEntityIdentifierRequestLimits(entityIdentifier *authz
 	}
 
 	entities := entityChain.GetEntities()
-	if len(entities) > as.config.RequestLimits.EntityChainEntitiesMax {
-		return limitExceededError(path+".entity_chain.entities", len(entities), as.config.RequestLimits.EntityChainEntitiesMax)
+	if len(entities) > as.config.RequestLimits.EntityIdentifierEntityChainEntitiesMax {
+		return limitExceededError(path+".entity_chain.entities", len(entities), as.config.RequestLimits.EntityIdentifierEntityChainEntitiesMax)
 	}
 
 	return nil
@@ -75,16 +75,16 @@ func (as *Service) validateResourceRequestLimits(resource *authzV2.Resource, pat
 	}
 
 	fqns := attributeValues.GetFqns()
-	if len(fqns) > as.config.RequestLimits.ResourceAttributeValuesMax {
-		return limitExceededError(path+".attribute_values.fqns", len(fqns), as.config.RequestLimits.ResourceAttributeValuesMax)
+	if len(fqns) > as.config.RequestLimits.ResourceAttributeValuesFqnsMax {
+		return limitExceededError(path+".attribute_values.fqns", len(fqns), as.config.RequestLimits.ResourceAttributeValuesFqnsMax)
 	}
 
 	return nil
 }
 
 func (as *Service) validateFulfillableObligationRequestLimits(fqns []string, path string) error {
-	if len(fqns) > as.config.RequestLimits.FulfillableObligationFqnsMax {
-		return limitExceededError(path, len(fqns), as.config.RequestLimits.FulfillableObligationFqnsMax)
+	if len(fqns) > as.config.RequestLimits.DecisionRequestFulfillableObligationFqnsMax {
+		return limitExceededError(path, len(fqns), as.config.RequestLimits.DecisionRequestFulfillableObligationFqnsMax)
 	}
 
 	return nil

@@ -14,28 +14,28 @@ type EntitlementPolicyCacheConfig struct {
 }
 
 type RequestLimitsConfig struct {
-	ResourceAttributeValuesMax   int `mapstructure:"resource_attribute_values_max" json:"resource_attribute_values_max" default:"20"`
-	EntityChainEntitiesMax       int `mapstructure:"entity_chain_entities_max" json:"entity_chain_entities_max" default:"10"`
-	FulfillableObligationFqnsMax int `mapstructure:"fulfillable_obligation_fqns_max" json:"fulfillable_obligation_fqns_max" default:"50"`
-	MultiResourceRequestMax      int `mapstructure:"multi_resource_request_max" json:"multi_resource_request_max" default:"1000"`
-	BulkDecisionRequestMax       int `mapstructure:"bulk_decision_request_max" json:"bulk_decision_request_max" default:"200"`
+	ResourceAttributeValuesFqnsMax              int `mapstructure:"resource_attribute_values_fqns_max" json:"resource_attribute_values_fqns_max" default:"20"`
+	EntityIdentifierEntityChainEntitiesMax      int `mapstructure:"entity_identifier_entity_chain_entities_max" json:"entity_identifier_entity_chain_entities_max" default:"10"`
+	DecisionRequestFulfillableObligationFqnsMax int `mapstructure:"decision_request_fulfillable_obligation_fqns_max" json:"decision_request_fulfillable_obligation_fqns_max" default:"50"`
+	GetDecisionMultiResourceResourcesMax        int `mapstructure:"get_decision_multi_resource_resources_max" json:"get_decision_multi_resource_resources_max" default:"1000"`
+	GetDecisionBulkDecisionRequestsMax          int `mapstructure:"get_decision_bulk_decision_requests_max" json:"get_decision_bulk_decision_requests_max" default:"200"`
 }
 
 func (c RequestLimitsConfig) Validate() error {
-	if c.ResourceAttributeValuesMax < 1 {
-		return fmt.Errorf("authorization request limit resource_attribute_values_max [%d] must be greater than 0", c.ResourceAttributeValuesMax)
+	if c.ResourceAttributeValuesFqnsMax < 1 {
+		return fmt.Errorf("authorization request limit resource_attribute_values_fqns_max [%d] must be greater than 0", c.ResourceAttributeValuesFqnsMax)
 	}
-	if c.EntityChainEntitiesMax < 1 {
-		return fmt.Errorf("authorization request limit entity_chain_entities_max [%d] must be greater than 0", c.EntityChainEntitiesMax)
+	if c.EntityIdentifierEntityChainEntitiesMax < 1 {
+		return fmt.Errorf("authorization request limit entity_identifier_entity_chain_entities_max [%d] must be greater than 0", c.EntityIdentifierEntityChainEntitiesMax)
 	}
-	if c.FulfillableObligationFqnsMax < 0 {
-		return fmt.Errorf("authorization request limit fulfillable_obligation_fqns_max [%d] must be greater than or equal to 0", c.FulfillableObligationFqnsMax)
+	if c.DecisionRequestFulfillableObligationFqnsMax < 0 {
+		return fmt.Errorf("authorization request limit decision_request_fulfillable_obligation_fqns_max [%d] must be greater than or equal to 0", c.DecisionRequestFulfillableObligationFqnsMax)
 	}
-	if c.MultiResourceRequestMax < 1 {
-		return fmt.Errorf("authorization request limit multi_resource_request_max [%d] must be greater than 0", c.MultiResourceRequestMax)
+	if c.GetDecisionMultiResourceResourcesMax < 1 {
+		return fmt.Errorf("authorization request limit get_decision_multi_resource_resources_max [%d] must be greater than 0", c.GetDecisionMultiResourceResourcesMax)
 	}
-	if c.BulkDecisionRequestMax < 1 {
-		return fmt.Errorf("authorization request limit bulk_decision_request_max [%d] must be greater than 0", c.BulkDecisionRequestMax)
+	if c.GetDecisionBulkDecisionRequestsMax < 1 {
+		return fmt.Errorf("authorization request limit get_decision_bulk_decision_requests_max [%d] must be greater than 0", c.GetDecisionBulkDecisionRequestsMax)
 	}
 	return nil
 }
@@ -92,11 +92,11 @@ func (c *Config) LogValue() slog.Value {
 		),
 		slog.Any("request_limits",
 			slog.GroupValue(
-				slog.Int("resource_attribute_values_max", c.RequestLimits.ResourceAttributeValuesMax),
-				slog.Int("entity_chain_entities_max", c.RequestLimits.EntityChainEntitiesMax),
-				slog.Int("fulfillable_obligation_fqns_max", c.RequestLimits.FulfillableObligationFqnsMax),
-				slog.Int("multi_resource_request_max", c.RequestLimits.MultiResourceRequestMax),
-				slog.Int("bulk_decision_request_max", c.RequestLimits.BulkDecisionRequestMax),
+				slog.Int("resource_attribute_values_fqns_max", c.RequestLimits.ResourceAttributeValuesFqnsMax),
+				slog.Int("entity_identifier_entity_chain_entities_max", c.RequestLimits.EntityIdentifierEntityChainEntitiesMax),
+				slog.Int("decision_request_fulfillable_obligation_fqns_max", c.RequestLimits.DecisionRequestFulfillableObligationFqnsMax),
+				slog.Int("get_decision_multi_resource_resources_max", c.RequestLimits.GetDecisionMultiResourceResourcesMax),
+				slog.Int("get_decision_bulk_decision_requests_max", c.RequestLimits.GetDecisionBulkDecisionRequestsMax),
 			),
 		),
 		slog.Bool("allow_direct_entitlements", c.AllowDirectEntitlements),

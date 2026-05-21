@@ -91,11 +91,11 @@ func Test_validateGetDecisionBulkRequest_NestedLimitErrorIncludesPath(t *testing
 
 func Test_validateDecisionRequests_UseCustomRequestLimits(t *testing.T) {
 	service := newValidationTestService(t, &RequestLimitsConfig{
-		ResourceAttributeValuesMax:   21,
-		EntityChainEntitiesMax:       11,
-		FulfillableObligationFqnsMax: 51,
-		MultiResourceRequestMax:      1001,
-		BulkDecisionRequestMax:       201,
+		ResourceAttributeValuesFqnsMax:              21,
+		EntityIdentifierEntityChainEntitiesMax:      11,
+		DecisionRequestFulfillableObligationFqnsMax: 51,
+		GetDecisionMultiResourceResourcesMax:        1001,
+		GetDecisionBulkDecisionRequestsMax:          201,
 	})
 
 	require.NoError(t, service.validateGetDecisionRequest(newDecisionRequestWithEntityChainCount(11)))
@@ -116,7 +116,7 @@ func Test_GetDecision_ReturnsInvalidArgumentForConfiguredLimit(t *testing.T) {
 
 func Test_GetEntitlements_ReturnsInvalidArgumentForConfiguredLimit(t *testing.T) {
 	service := newHandlerTestService(t, func(config *Config) {
-		config.RequestLimits.EntityChainEntitiesMax = 1
+		config.RequestLimits.EntityIdentifierEntityChainEntitiesMax = 1
 	})
 
 	_, err := service.GetEntitlements(context.Background(), connect.NewRequest(newEntitlementsRequestWithEntityChainCount(2)))
@@ -127,7 +127,7 @@ func Test_GetEntitlements_ReturnsInvalidArgumentForConfiguredLimit(t *testing.T)
 
 func Test_GetDecisionMultiResource_UsesCustomConfiguredLimit(t *testing.T) {
 	service := newHandlerTestService(t, func(config *Config) {
-		config.RequestLimits.MultiResourceRequestMax = 2
+		config.RequestLimits.GetDecisionMultiResourceResourcesMax = 2
 	})
 
 	_, err := service.GetDecisionMultiResource(context.Background(), connect.NewRequest(newDecisionMultiResourceRequestWithResourceCount(3)))
@@ -138,7 +138,7 @@ func Test_GetDecisionMultiResource_UsesCustomConfiguredLimit(t *testing.T) {
 
 func Test_GetDecisionBulk_ReturnsInvalidArgumentForConfiguredLimit(t *testing.T) {
 	service := newHandlerTestService(t, func(config *Config) {
-		config.RequestLimits.BulkDecisionRequestMax = 1
+		config.RequestLimits.GetDecisionBulkDecisionRequestsMax = 1
 	})
 
 	_, err := service.GetDecisionBulk(context.Background(), connect.NewRequest(newDecisionBulkRequestWithDecisionCount(2)))

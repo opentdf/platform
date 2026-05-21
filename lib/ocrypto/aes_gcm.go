@@ -51,7 +51,7 @@ func (aesGcm AesGcm) EncryptInPlace(data []byte) ([]byte, []byte, error) {
 		return nil, nil, fmt.Errorf("cipher.NewGCMWithRandomNonce failed: %w", err)
 	}
 
-	sealed := gcm.Seal(data[:0], nil, data, nil)
+	sealed := gcm.Seal(nil, nil, data, nil)
 	nonce, cipherText := sealed[:GcmStandardNonceSize], sealed[GcmStandardNonceSize:]
 	return cipherText, nonce, nil
 }
@@ -68,7 +68,7 @@ func (AesGcm) EncryptWithIVAndTagSize(_, _ []byte, authTagSize int) ([]byte, err
 
 // Decrypt decrypts data with a 12-byte nonce prefix and a 16-byte AES-GCM authentication tag.
 func (aesGcm AesGcm) Decrypt(data []byte) ([]byte, error) {
-	if len(data) < GcmStandardNonceSize {
+	if len(data) < GcmStandardNonceSize+aes.BlockSize {
 		return nil, ErrInvalidCiphertext
 	}
 	gcm, err := cipher.NewGCMWithRandomNonce(aesGcm.block)
@@ -88,10 +88,6 @@ func (aesGcm AesGcm) Decrypt(data []byte) ([]byte, error) {
 func (aesGcm AesGcm) DecryptWithTagSize(data []byte, authTagSize int) ([]byte, error) {
 	if authTagSize != aes.BlockSize {
 		return nil, fmt.Errorf("AES-GCM tag size %d is not supported: %w", authTagSize, ErrUnsupportedAESGCMConfiguration)
-	}
-
-	if len(data) < GcmStandardNonceSize {
-		return nil, ErrInvalidCiphertext
 	}
 
 	return aesGcm.Decrypt(data)

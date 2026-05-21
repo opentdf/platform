@@ -96,25 +96,47 @@ func TestCreateAESGcm_EncryptInPlace(t *testing.T) {
 	}
 
 	plainText := []byte("Virtru")
-	cipherText, nonce, err := aesGcm.EncryptInPlace(append([]byte{}, plainText...))
-	if err != nil {
-		t.Fatalf("Fail to encrypt in place: %v", err)
+	tests := []struct {
+		name string
+		data []byte
+	}{
+		{
+			name: "exact capacity",
+			data: append([]byte{}, plainText...),
+		},
+		{
+			name: "spare capacity",
+			data: func() []byte {
+				buf := make([]byte, len(plainText), len(plainText)+GcmStandardNonceSize+aes.BlockSize)
+				copy(buf, plainText)
+				return buf
+			}(),
+		},
 	}
 
-	if len(nonce) != GcmStandardNonceSize {
-		t.Fatalf("unexpected nonce length: got %d", len(nonce))
-	}
-	if len(cipherText) != len(plainText)+aes.BlockSize {
-		t.Fatalf("unexpected ciphertext length: got %d", len(cipherText))
-	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			cipherText, nonce, err := aesGcm.EncryptInPlace(test.data)
+			if err != nil {
+				t.Fatalf("Fail to encrypt in place: %v", err)
+			}
 
-	decipherText, err := aesGcm.DecryptWithIVAndTagSize(nonce, cipherText, aes.BlockSize)
-	if err != nil {
-		t.Fatalf("Fail to decrypt split ciphertext: %v", err)
-	}
+			if len(nonce) != GcmStandardNonceSize {
+				t.Fatalf("unexpected nonce length: got %d", len(nonce))
+			}
+			if len(cipherText) != len(plainText)+aes.BlockSize {
+				t.Fatalf("unexpected ciphertext length: got %d", len(cipherText))
+			}
 
-	if string(plainText) != string(decipherText) {
-		t.Errorf("gcm decryption test don't match: expected %v, got %v", string(plainText), string(decipherText))
+			decipherText, err := aesGcm.DecryptWithIVAndTagSize(nonce, cipherText, aes.BlockSize)
+			if err != nil {
+				t.Fatalf("Fail to decrypt split ciphertext: %v", err)
+			}
+
+			if string(plainText) != string(decipherText) {
+				t.Errorf("gcm decryption test don't match: expected %v, got %v", string(plainText), string(decipherText))
+			}
+		})
 	}
 }
 

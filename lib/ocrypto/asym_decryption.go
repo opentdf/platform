@@ -171,6 +171,10 @@ func (e ECDecryptor) DecryptWithEphemeralKey(data, ephemeral []byte) ([]byte, er
 		return nil, fmt.Errorf("hkdf failure: %w", err)
 	}
 
+	if len(data) < GcmStandardNonceSize+aes.BlockSize {
+		return nil, errors.New("ciphertext too short")
+	}
+
 	// Decrypt data with derived key using AES-GCM.
 	block, err := aes.NewCipher(derivedKey)
 	if err != nil {
@@ -180,10 +184,6 @@ func (e ECDecryptor) DecryptWithEphemeralKey(data, ephemeral []byte) ([]byte, er
 	gcm, err := cipher.NewGCMWithRandomNonce(block)
 	if err != nil {
 		return nil, fmt.Errorf("cipher.NewGCMWithRandomNonce failure: %w", err)
-	}
-
-	if len(data) < GcmStandardNonceSize+aes.BlockSize {
-		return nil, errors.New("ciphertext too short")
 	}
 
 	plaintext, err := gcm.Open(nil, nil, data, nil)

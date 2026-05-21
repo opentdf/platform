@@ -49,6 +49,15 @@ func Test_validateGetDecisionRequest_DefaultRequestLimits(t *testing.T) {
 	}
 }
 
+func Test_validateGetEntitlementsRequest_DefaultRequestLimit(t *testing.T) {
+	service := newValidationTestService(t, nil)
+
+	err := service.validateGetEntitlementsRequest(newEntitlementsRequestWithEntityChainCount(11))
+	require.Error(t, err)
+	assert.Equal(t, connect.CodeInvalidArgument, connect.CodeOf(err))
+	assert.Contains(t, err.Error(), "entity_identifier.entity_chain.entities exceeds maximum count: got 11, max 10")
+}
+
 func Test_validateGetDecisionMultiResourceRequest_DefaultRequestLimit(t *testing.T) {
 	service := newValidationTestService(t, nil)
 
@@ -103,6 +112,17 @@ func Test_GetDecision_ReturnsInvalidArgumentForConfiguredLimit(t *testing.T) {
 	require.Error(t, err)
 	assert.Equal(t, connect.CodeInvalidArgument, connect.CodeOf(err))
 	assert.Contains(t, err.Error(), "resource.attribute_values.fqns exceeds maximum count: got 21, max 20")
+}
+
+func Test_GetEntitlements_ReturnsInvalidArgumentForConfiguredLimit(t *testing.T) {
+	service := newHandlerTestService(t, func(config *Config) {
+		config.RequestLimits.EntityChainEntitiesMax = 1
+	})
+
+	_, err := service.GetEntitlements(context.Background(), connect.NewRequest(newEntitlementsRequestWithEntityChainCount(2)))
+	require.Error(t, err)
+	assert.Equal(t, connect.CodeInvalidArgument, connect.CodeOf(err))
+	assert.Contains(t, err.Error(), "entity_identifier.entity_chain.entities exceeds maximum count: got 2, max 1")
 }
 
 func Test_GetDecisionMultiResource_UsesCustomConfiguredLimit(t *testing.T) {
@@ -169,6 +189,19 @@ func newDecisionRequestWithEntityChainCount(count int) *authzV2.GetDecisionReque
 		Resource: &authzV2.Resource{
 			Resource: &authzV2.Resource_RegisteredResourceValueFqn{
 				RegisteredResourceValueFqn: sampleRegisteredResourceFQN,
+			},
+		},
+	}
+}
+
+func newEntitlementsRequestWithEntityChainCount(count int) *authzV2.GetEntitlementsRequest {
+	return &authzV2.GetEntitlementsRequest{
+		EntityIdentifier: &authzV2.EntityIdentifier{
+			Identifier: &authzV2.EntityIdentifier_EntityChain{
+				EntityChain: &entity.EntityChain{
+					EphemeralId: "entity-chain",
+					Entities:    newEntities(count),
+				},
 			},
 		},
 	}

@@ -139,6 +139,10 @@ func (as *Service) GetEntitlements(ctx context.Context, req *connect.Request[aut
 	ctx, span := as.Start(ctx, "GetEntitlements")
 	defer span.End()
 
+	if err := as.validateGetEntitlementsRequest(req.Msg); err != nil {
+		return nil, err
+	}
+
 	entityIdentifier := req.Msg.GetEntityIdentifier()
 	withComprehensiveHierarchy := req.Msg.GetWithComprehensiveHierarchy()
 

@@ -17,6 +17,10 @@ func (as *Service) validateGetDecisionRequest(request *authzV2.GetDecisionReques
 	return as.validateFulfillableObligationRequestLimits(request.GetFulfillableObligationFqns(), "fulfillable_obligation_fqns")
 }
 
+func (as *Service) validateGetEntitlementsRequest(request *authzV2.GetEntitlementsRequest) error {
+	return as.validateEntityIdentifierRequestLimits(request.GetEntityIdentifier(), "entity_identifier")
+}
+
 func (as *Service) validateGetDecisionMultiResourceRequest(request *authzV2.GetDecisionMultiResourceRequest, prefix string) error {
 	if err := as.validateEntityIdentifierRequestLimits(request.GetEntityIdentifier(), prefix+"entity_identifier"); err != nil {
 		return err

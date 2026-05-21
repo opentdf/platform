@@ -89,6 +89,32 @@ func Test_validateGetDecisionBulkRequest_NestedLimitErrorIncludesPath(t *testing
 	assert.Contains(t, err.Error(), "decision_requests[0].resources[0].attribute_values.fqns exceeds maximum count: got 21, max 20")
 }
 
+func Test_validateGetDecisionRequest_ExactlyAtDefaultLimitPasses(t *testing.T) {
+	service := newValidationTestService(t, nil)
+
+	require.NoError(t, service.validateGetDecisionRequest(newDecisionRequestWithEntityChainCount(10)))
+	require.NoError(t, service.validateGetDecisionRequest(newDecisionRequestWithAttributeValueCount(20)))
+	require.NoError(t, service.validateGetDecisionRequest(newDecisionRequestWithObligationCount(50)))
+}
+
+func Test_validateGetEntitlementsRequest_ExactlyAtDefaultLimitPasses(t *testing.T) {
+	service := newValidationTestService(t, nil)
+
+	require.NoError(t, service.validateGetEntitlementsRequest(newEntitlementsRequestWithEntityChainCount(10)))
+}
+
+func Test_validateGetDecisionMultiResourceRequest_ExactlyAtDefaultLimitPasses(t *testing.T) {
+	service := newValidationTestService(t, nil)
+
+	require.NoError(t, service.validateGetDecisionMultiResourceRequest(newDecisionMultiResourceRequestWithResourceCount(1000), ""))
+}
+
+func Test_validateGetDecisionBulkRequest_ExactlyAtDefaultLimitPasses(t *testing.T) {
+	service := newValidationTestService(t, nil)
+
+	require.NoError(t, service.validateGetDecisionBulkRequest(newDecisionBulkRequestWithDecisionCount(200)))
+}
+
 func Test_validateDecisionRequests_UseCustomRequestLimits(t *testing.T) {
 	service := newValidationTestService(t, &RequestLimitsConfig{
 		ResourceAttributeValuesFqnsMax:              21,

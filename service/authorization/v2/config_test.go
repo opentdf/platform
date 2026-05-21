@@ -71,11 +71,11 @@ func Test_ValidateConfig_InvalidRequestLimits(t *testing.T) {
 			expectedErr: "entity_identifier_entity_chain_entities_max [0] must be greater than 0",
 		},
 		{
-			name: "fulfillable obligation fqns max can be zero but not negative",
+			name: "fulfillable obligation fqns max must be positive",
 			mutate: func(config *Config) {
-				config.RequestLimits.DecisionRequestFulfillableObligationFqnsMax = -1
+				config.RequestLimits.DecisionRequestFulfillableObligationFqnsMax = 0
 			},
-			expectedErr: "decision_request_fulfillable_obligation_fqns_max [-1] must be greater than or equal to 0",
+			expectedErr: "decision_request_fulfillable_obligation_fqns_max [0] must be greater than 0",
 		},
 		{
 			name: "multi resource request max must be positive",

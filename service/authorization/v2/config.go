@@ -28,8 +28,8 @@ func (c RequestLimitsConfig) Validate() error {
 	if c.EntityIdentifierEntityChainEntitiesMax < 1 {
 		return fmt.Errorf("authorization request limit entity_identifier_entity_chain_entities_max [%d] must be greater than 0", c.EntityIdentifierEntityChainEntitiesMax)
 	}
-	if c.DecisionRequestFulfillableObligationFqnsMax < 0 {
-		return fmt.Errorf("authorization request limit decision_request_fulfillable_obligation_fqns_max [%d] must be greater than or equal to 0", c.DecisionRequestFulfillableObligationFqnsMax)
+	if c.DecisionRequestFulfillableObligationFqnsMax < 1 {
+		return fmt.Errorf("authorization request limit decision_request_fulfillable_obligation_fqns_max [%d] must be greater than 0", c.DecisionRequestFulfillableObligationFqnsMax)
 	}
 	if c.GetDecisionMultiResourceResourcesMax < 1 {
 		return fmt.Errorf("authorization request limit get_decision_multi_resource_resources_max [%d] must be greater than 0", c.GetDecisionMultiResourceResourcesMax)

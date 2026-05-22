@@ -109,7 +109,7 @@ Suggested config surface:
 
 Behavior:
 
-- Dora writes one fragment per module into `.dora/scip/`.
+- Dora writes one fragment per module into `.dora/scip/` using unique names derived from module paths.
 - Dora merges those fragments before conversion to SQLite.
 - Dora rewrites each document path from **module-relative** to **repo-relative**.
 - Dora normalizes metadata so the final index is rooted at the repo root.
@@ -202,7 +202,7 @@ For each module directory, use Go tooling to identify real packages that should 
 A good default is something equivalent to:
 
 ```bash
-go list -e -f '{{if or .GoFiles .CgoFiles}}{{.ImportPath}}{{end}}' ./...
+go list -e -f '{{if or .GoFiles .CgoFiles}}{{.ImportPath}}{{end}}' ./... | sed '/^$/d'
 ```
 
 Why this matters:
@@ -216,7 +216,7 @@ Why this matters:
 For each discovered module:
 
 ```bash
-scip-go index <import-paths...> --module-root <module-dir> --output <fragment>
+scip-go index <package-patterns...> --module-root <module-dir> --output <fragment>
 ```
 
 Optional policy:

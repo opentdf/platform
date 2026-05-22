@@ -62,6 +62,13 @@ Prefer `make` targets at repo root:
 - DCO sign-off is required: use `git commit -s -m "feat(scope): summary"`. See `CONTRIBUTING.md`.
 - PRs should describe changes, include testing notes, and update docs/tests when applicable (see `.github/pull_request_template.md`).
 
+## Dora Code Index
+
+- If the repo already has a Dora index (`.dora/dora.db`), prefer Dora for broad code navigation, symbol lookup, dependency analysis, and repo maps.
+- Treat Dora refresh as a lightweight preflight step: if the `dora` CLI is installed and the repo has Dora config, run `dora index` before relying on Dora results so the index is current.
+- If Dora is unavailable or re-indexing fails, fall back to direct inspection with `rg`, `go list`, and file reads.
+- Treat `.dora/` contents as local generated artifacts; do not commit Dora databases or generated SCIP indexes.
+
 ## Security & Configuration Tips
 
 - Don’t commit secrets/keys. Use local configs like `opentdf-dev.yaml` and follow `SECURITY.md`.

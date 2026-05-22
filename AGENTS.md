@@ -64,9 +64,10 @@ Prefer `make` targets at repo root:
 
 ## Dora Code Index
 
-- If the repo already has a Dora index (`.dora/dora.db`), prefer Dora for broad code navigation, symbol lookup, dependency analysis, and repo maps.
-- Treat Dora refresh as a lightweight preflight step: if the `dora` CLI is installed and the repo has Dora config, run `dora index` before relying on Dora results so the index is current.
-- If Dora is unavailable or re-indexing fails, fall back to direct inspection with `rg`, `go list`, and file reads.
+- For broad code navigation, symbol lookup, dependency analysis, and repo maps, prefer Dora when the `dora` CLI is available.
+- Treat Dora refresh as an automatic preflight step: if `dora` is installed, run `bash scripts/dora-ensure.sh` before relying on Dora results. Do this proactively rather than waiting for the user to ask.
+- `scripts/dora-ensure.sh` is the repo-tracked entrypoint. It writes local Dora config under `.dora/`, runs the workspace-aware indexer, and refreshes the local Dora database.
+- If Dora is unavailable or the refresh script fails, fall back to direct inspection with `rg`, `go list`, and file reads.
 - Treat `.dora/` contents as local generated artifacts; do not commit Dora databases or generated SCIP indexes.
 
 ## Security & Configuration Tips

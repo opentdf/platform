@@ -16,6 +16,11 @@ type EntitlementPolicyCacheConfig struct {
 type Config struct {
 	Cache EntitlementPolicyCacheConfig `mapstructure:"entitlement_policy_cache" json:"entitlement_policy_cache"`
 
+	// PolicyFile points at a YAML/JSON snapshot of namespaces, attributes, and
+	// subject mappings. When set, the authorization endpoints serve from the
+	// in-memory snapshot instead of round-tripping to the policy service.
+	PolicyFile string `mapstructure:"policy_file" json:"policy_file"`
+
 	// experimental features
 
 	// enable entity direct entitlements that do not require subject mappings
@@ -59,6 +64,7 @@ func (c *Config) LogValue() slog.Value {
 				slog.String("refresh_interval", c.Cache.RefreshInterval),
 			),
 		),
+		slog.String("policy_file", c.PolicyFile),
 		slog.Bool("allow_direct_entitlements", c.AllowDirectEntitlements),
 		slog.Bool("enforce_namespaced_entitlements", c.EnforceNamespacedEntitlements),
 	)

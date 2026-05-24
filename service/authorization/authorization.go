@@ -33,6 +33,7 @@ import (
 	"github.com/opentdf/platform/service/pkg/config"
 	"github.com/opentdf/platform/service/pkg/db"
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
+	"github.com/opentdf/platform/service/policy/filestore"
 	"go.opentelemetry.io/otel/trace"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -41,16 +42,22 @@ import (
 var ErrEmptyStringAttribute = errors.New("resource attributes must have at least one attribute value fqn")
 
 type AuthorizationService struct { //nolint:revive // AuthorizationService is a valid name for this struct
-	sdk    *otdf.SDK
-	config *Config
-	logger *logger.Logger
-	eval   rego.PreparedEvalQuery
+	sdk         *otdf.SDK
+	config      *Config
+	logger      *logger.Logger
+	eval        rego.PreparedEvalQuery
+	policyStore *filestore.Store
 	trace.Tracer
 }
 
 type Config struct {
 	// Custom Rego Policy To Load
 	Rego CustomRego `mapstructure:"rego"`
+	// PolicyFile points at a YAML/JSON file holding a read-only policy
+	// snapshot (namespaces, attributes, subject mappings, ...). When set,
+	// the authorization endpoints serve from this in-memory snapshot and
+	// no longer call the policy service, allowing a Postgres-free runtime.
+	PolicyFile string `mapstructure:"policy_file" json:"policy_file"`
 }
 
 type CustomRego struct {
@@ -133,6 +140,20 @@ func NewRegistration() *serviceregistry.Service[authorizationconnect.Authorizati
 				if err := as.loadRegoAndBuiltins(authZCfg); err != nil {
 					logger.Error("failed to load rego and builtins", slog.String("error", err.Error()))
 					panic(fmt.Errorf("failed to load rego and builtins: %w", err))
+				}
+				if authZCfg.PolicyFile != "" {
+					store, err := filestore.NewStoreFromFile(authZCfg.PolicyFile)
+					if err != nil {
+						logger.Error("failed to load policy file",
+							slog.String("path", authZCfg.PolicyFile),
+							slog.String("error", err.Error()),
+						)
+						panic(fmt.Errorf("failed to load policy file %q: %w", authZCfg.PolicyFile, err))
+					}
+					as.policyStore = store
+					logger.Info("authorization service using file-backed policy provider",
+						slog.String("path", authZCfg.PolicyFile),
+					)
 				}
 				as.config = authZCfg
 				as.Tracer = srp.Tracer
@@ -290,52 +311,9 @@ func (as *AuthorizationService) GetEntitlements(ctx context.Context, req *connec
 	ctx, span := as.Start(ctx, "GetEntitlements")
 	defer span.End()
 
-	var nextOffset int32
-	attrsList := make([]*policy.Attribute, 0)
-	subjectMappingsList := make([]*policy.SubjectMapping, 0)
-
-	// If quantity of attributes exceeds maximum list pagination, all are needed to determine entitlements
-	for {
-		listed, err := as.sdk.Attributes.ListAttributes(ctx, &attr.ListAttributesRequest{
-			State: common.ActiveStateEnum_ACTIVE_STATE_ENUM_ACTIVE,
-			Pagination: &policy.PageRequest{
-				Offset: nextOffset,
-			},
-		})
-		if err != nil {
-			as.logger.ErrorContext(ctx, "failed to list attributes", slog.String("error", err.Error()))
-			return nil, connect.NewError(connect.CodeInternal, errors.New("failed to list attributes"))
-		}
-
-		nextOffset = listed.GetPagination().GetNextOffset()
-		attrsList = append(attrsList, listed.GetAttributes()...)
-
-		// offset becomes zero when list is exhausted
-		if nextOffset <= 0 {
-			break
-		}
-	}
-
-	// If quantity of subject mappings exceeds maximum list pagination, all are needed to determine entitlements
-	nextOffset = 0
-	for {
-		listed, err := as.sdk.SubjectMapping.ListSubjectMappings(ctx, &subjectmapping.ListSubjectMappingsRequest{
-			Pagination: &policy.PageRequest{
-				Offset: nextOffset,
-			},
-		})
-		if err != nil {
-			as.logger.ErrorContext(ctx, "failed to list subject mappings", slog.String("error", err.Error()))
-			return nil, connect.NewError(connect.CodeInternal, errors.New("failed to list subject mappings"))
-		}
-
-		nextOffset = listed.GetPagination().GetNextOffset()
-		subjectMappingsList = append(subjectMappingsList, listed.GetSubjectMappings()...)
-
-		// offset becomes zero when list is exhausted
-		if nextOffset <= 0 {
-			break
-		}
+	attrsList, subjectMappingsList, err := as.loadEntitlementPolicy(ctx)
+	if err != nil {
+		return nil, err
 	}
 	// create a lookup map of attribute value FQNs (based on request scope)
 	scopeMap := makeScopeMap(req.Msg.GetScope())
@@ -514,7 +492,7 @@ func (as *AuthorizationService) getDecisions(ctx context.Context, dr *authorizat
 	var dataAttrDefsAndVals map[string]*attr.GetAttributeValuesByFqnsResponse_AttributeAndValue
 	allPertinentFQNS.AttributeValueFqns, err = getAttributesFromRas(dr.GetResourceAttributes())
 	if err == nil {
-		dataAttrDefsAndVals, err = retrieveAttributeDefinitions(ctx, allPertinentFQNS.GetAttributeValueFqns(), as.sdk)
+		dataAttrDefsAndVals, err = as.retrieveAttributeDefinitions(ctx, allPertinentFQNS.GetAttributeValueFqns())
 	}
 	if err != nil {
 		// if attribute an FQN does not exist
@@ -719,12 +697,91 @@ func (as *AuthorizationService) getDecisions(ctx context.Context, dr *authorizat
 	return response, nil
 }
 
-func retrieveAttributeDefinitions(ctx context.Context, attrFqns []string, sdk *otdf.SDK) (map[string]*attr.GetAttributeValuesByFqnsResponse_AttributeAndValue, error) {
+// loadEntitlementPolicy returns the active attributes and subject mappings used by
+// GetEntitlements. When a file-backed policy store is configured the data is
+// served from memory; otherwise the policy service is queried via SDK as before.
+func (as *AuthorizationService) loadEntitlementPolicy(ctx context.Context) ([]*policy.Attribute, []*policy.SubjectMapping, error) {
+	if as.policyStore != nil {
+		attrs, err := as.policyStore.ListActiveAttributes(ctx)
+		if err != nil {
+			return nil, nil, connect.NewError(connect.CodeInternal, fmt.Errorf("filestore attributes: %w", err))
+		}
+		sms, err := as.policyStore.ListAllSubjectMappings(ctx)
+		if err != nil {
+			return nil, nil, connect.NewError(connect.CodeInternal, fmt.Errorf("filestore subject mappings: %w", err))
+		}
+		return attrs, sms, nil
+	}
+
+	var nextOffset int32
+	attrsList := make([]*policy.Attribute, 0)
+	for {
+		listed, err := as.sdk.Attributes.ListAttributes(ctx, &attr.ListAttributesRequest{
+			State: common.ActiveStateEnum_ACTIVE_STATE_ENUM_ACTIVE,
+			Pagination: &policy.PageRequest{
+				Offset: nextOffset,
+			},
+		})
+		if err != nil {
+			as.logger.ErrorContext(ctx, "failed to list attributes", slog.String("error", err.Error()))
+			return nil, nil, connect.NewError(connect.CodeInternal, errors.New("failed to list attributes"))
+		}
+		nextOffset = listed.GetPagination().GetNextOffset()
+		attrsList = append(attrsList, listed.GetAttributes()...)
+		if nextOffset <= 0 {
+			break
+		}
+	}
+
+	subjectMappingsList := make([]*policy.SubjectMapping, 0)
+	nextOffset = 0
+	for {
+		listed, err := as.sdk.SubjectMapping.ListSubjectMappings(ctx, &subjectmapping.ListSubjectMappingsRequest{
+			Pagination: &policy.PageRequest{
+				Offset: nextOffset,
+			},
+		})
+		if err != nil {
+			as.logger.ErrorContext(ctx, "failed to list subject mappings", slog.String("error", err.Error()))
+			return nil, nil, connect.NewError(connect.CodeInternal, errors.New("failed to list subject mappings"))
+		}
+		nextOffset = listed.GetPagination().GetNextOffset()
+		subjectMappingsList = append(subjectMappingsList, listed.GetSubjectMappings()...)
+		if nextOffset <= 0 {
+			break
+		}
+	}
+	return attrsList, subjectMappingsList, nil
+}
+
+// retrieveAttributeDefinitions fetches attribute-and-value pairs for the given
+// FQNs. The file-backed store is preferred when configured; otherwise the
+// policy service is queried via SDK.
+func (as *AuthorizationService) retrieveAttributeDefinitions(ctx context.Context, attrFqns []string) (map[string]*attr.GetAttributeValuesByFqnsResponse_AttributeAndValue, error) {
 	if len(attrFqns) == 0 {
 		return make(map[string]*attr.GetAttributeValuesByFqnsResponse_AttributeAndValue), nil
 	}
+	if as.policyStore != nil {
+		vals, err := as.policyStore.GetAttributeValuesByFqns(ctx, attrFqns)
+		if err != nil {
+			return nil, err
+		}
+		out := make(map[string]*attr.GetAttributeValuesByFqnsResponse_AttributeAndValue, len(attrFqns))
+		for _, fqn := range attrFqns {
+			normalized := strings.ToLower(fqn)
+			v, ok := vals[normalized]
+			if !ok || v == nil {
+				return nil, status.Error(codes.NotFound, db.ErrTextNotFound)
+			}
+			out[normalized] = &attr.GetAttributeValuesByFqnsResponse_AttributeAndValue{
+				Attribute: as.policyStore.AttributeForValueFQN(normalized),
+				Value:     v,
+			}
+		}
+		return out, nil
+	}
 
-	resp, err := sdk.Attributes.GetAttributeValuesByFqns(ctx, &attr.GetAttributeValuesByFqnsRequest{
+	resp, err := as.sdk.Attributes.GetAttributeValuesByFqns(ctx, &attr.GetAttributeValuesByFqnsRequest{
 		Fqns: attrFqns,
 	})
 	if err != nil {

@@ -1,0 +1,100 @@
+# Sample read-only policy snapshot for the authorization service.
+#
+# Reference this file from opentdf.yaml as:
+#
+#   services:
+#     authorization:
+#       policy_file: ./examples/config/policy.example.yaml
+#
+# Run the platform without the policy CRUD service to skip Postgres entirely:
+#
+#   mode: core,-policy
+#
+# Author this file by hand or export it from the policy CRUD admin server
+# (where otdfctl writes). The runtime treats it as immutable; restart the
+# process to pick up changes.
+
+namespaces:
+  - name: example.com
+
+key_access_servers:
+  - id: kas-default
+    uri: https://kas.example.com
+
+attributes:
+  - namespace: example.com
+    name: classification
+    rule: hierarchy
+    grants:
+      - id: kas-default
+    values:
+      - value: topsecret
+      - value: secret
+      - value: confidential
+      - value: public
+
+  - namespace: example.com
+    name: department
+    rule: anyOf
+    values:
+      - value: engineering
+      - value: sales
+      - value: legal
+
+subject_mappings:
+  - attribute_value_fqn: https://example.com/attr/classification/value/topsecret
+    inline_condition_set:
+      subject_sets:
+        - condition_groups:
+            - boolean_operator: AND
+              conditions:
+                - subject_external_selector_value: .realm_access.roles
+                  operator: IN
+                  subject_external_values:
+                    - topsecret-cleared
+    actions:
+      - name: read
+        standard: TRANSMIT
+
+  - attribute_value_fqn: https://example.com/attr/department/value/engineering
+    inline_condition_set:
+      subject_sets:
+        - condition_groups:
+            - boolean_operator: AND
+              conditions:
+                - subject_external_selector_value: .department
+                  operator: IN
+                  subject_external_values:
+                    - engineering
+    actions:
+      - name: read
+        standard: TRANSMIT
+
+# Registered resources let the v2 PDP grant entitlements to non-user principals
+# (machines, services, devices). Each value binds an action to an attribute
+# value that gates it. FQN: https://<namespace>/reg_res/<name>/value/<value>
+# (or legacy https://reg_res/... when namespace is omitted).
+registered_resources:
+  - namespace: example.com
+    name: laptop
+    values:
+      - value: corp
+        action_attribute_values:
+          - action: read
+            attribute_value_fqn: https://example.com/attr/department/value/engineering
+
+# Obligations fire when their trigger conditions match a decision request.
+# Each trigger pairs an action with an attribute value FQN; optional context
+# entries scope the trigger to a specific Policy Enforcement Point client_id.
+obligations:
+  - namespace: example.com
+    name: watermark
+    values:
+      - value: required
+        triggers:
+          - attribute_value_fqn: https://example.com/attr/classification/value/topsecret
+            action: read
+          - attribute_value_fqn: https://example.com/attr/classification/value/secret
+            action: read
+            context:
+              - pep_client_id: my-pep

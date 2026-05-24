@@ -40,6 +40,9 @@ type JustInTimePDP struct {
 	pdp *PolicyDecisionPoint
 	// embedded obligations PDP
 	obligationsPDP *obligations.ObligationsPolicyDecisionPoint
+	// optional local subject mapping matcher; when set, getMatchedSubjectMappings
+	// avoids an SDK round-trip and serves from the in-memory store.
+	matcher SubjectMappingMatcher
 }
 
 // NewJustInTimePDP creates a new Policy Decision Point instance with no in-memory policy and a remote connection
@@ -70,9 +73,12 @@ func NewJustInTimePDP(
 	}
 
 	// If no store is provided, have EntitlementPolicyRetriever fetch from policy services
-	if !store.IsEnabled() || !store.IsReady(ctx) {
+	if store == nil || !store.IsEnabled() || !store.IsReady(ctx) {
 		log.DebugContext(ctx, "no EntitlementPolicyStore provided or not yet ready, will retrieve directly from policy services")
 		store = NewEntitlementPolicyRetriever(sdk)
+	}
+	if m, ok := store.(SubjectMappingMatcher); ok {
+		p.matcher = m
 	}
 
 	allAttributes, err := store.ListAllAttributes(ctx)
@@ -339,6 +345,11 @@ func (p *JustInTimePDP) getMatchedSubjectMappings(
 				}
 			}
 		}
+	}
+
+	// Prefer a local matcher (e.g. file-backed store) to avoid an SDK round-trip.
+	if p.matcher != nil {
+		return p.matcher.MatchSubjectMappings(ctx, subjectProperties)
 	}
 
 	// Greedily retrieve the filtered subject mappings that match one of the subject properties

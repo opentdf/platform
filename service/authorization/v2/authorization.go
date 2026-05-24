@@ -19,6 +19,7 @@ import (
 	ctxAuth "github.com/opentdf/platform/service/pkg/auth"
 	"github.com/opentdf/platform/service/pkg/cache"
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
+	"github.com/opentdf/platform/service/policy/filestore"
 	"go.opentelemetry.io/otel/trace"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
@@ -35,7 +36,7 @@ type Service struct {
 	config *Config
 	logger *logger.Logger
 	trace.Tracer
-	cache *EntitlementPolicyCache
+	cache access.EntitlementPolicyStore
 }
 
 func NewRegistration() *serviceregistry.Service[authzV2Connect.AuthorizationServiceHandler] {
@@ -80,6 +81,25 @@ func NewRegistration() *serviceregistry.Service[authzV2Connect.AuthorizationServ
 				}
 				l.Debug("authorization service config", slog.Any("config", authZCfg.LogValue()))
 
+				// A file-backed policy snapshot takes precedence over the SDK-backed
+				// cache: it's already in memory, validated at load, and never needs
+				// refresh. The CRUD admin server is responsible for producing the file.
+				if authZCfg.PolicyFile != "" {
+					store, err := filestore.NewStoreFromFile(authZCfg.PolicyFile)
+					if err != nil {
+						l.Error("failed to load policy file",
+							slog.String("path", authZCfg.PolicyFile),
+							slog.Any("error", err),
+						)
+						panic(fmt.Errorf("failed to load policy file %q: %w", authZCfg.PolicyFile, err))
+					}
+					as.cache = store
+					l.Info("authorization service using file-backed policy provider",
+						slog.String("path", authZCfg.PolicyFile),
+					)
+					return as, nil
+				}
+
 				if !authZCfg.Cache.Enabled {
 					l.Debug("entitlement policy cache is disabled")
 					return as, nil
@@ -121,8 +141,8 @@ func NewRegistration() *serviceregistry.Service[authzV2Connect.AuthorizationServ
 // Close gracefully shuts down the authorization service, closing the entitlement policy cache.
 func (as *Service) Close() {
 	as.logger.Info("gracefully shutting down authorization service")
-	if as.cache != nil {
-		as.cache.Stop()
+	if c, ok := as.cache.(*EntitlementPolicyCache); ok && c != nil {
+		c.Stop()
 	}
 }
 

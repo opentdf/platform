@@ -1,0 +1,42 @@
+# Runs the production runtime (authorization + KAS) with NO Postgres dependency.
+#
+# How it works:
+#   * `mode: core,-policy` registers the core services but excludes the policy
+#     CRUD service, so no database client is ever initialized.
+#   * The authorization service is given a read-only, in-memory policy snapshot
+#     via `services.authorization.policy_file`. All entitlement and decision
+#     calls are served from this snapshot.
+#
+# CRUD against attributes/subject mappings/etc. must run on a separate admin
+# server (the standard `mode: all` config with Postgres). That server is the
+# source of truth and produces the policy snapshot consumed here. otdfctl talks
+# to the admin server, not to this runtime.
+mode: core,-policy
+
+sdk_config:
+  entityresolution:
+    endpoint: http://localhost:8181
+    plaintext: true
+  client_id: opentdf
+  client_secret: secret
+
+logger:
+  level: info
+  type: text
+  output: stderr
+
+services:
+  authorization:
+    # Path to the policy snapshot (YAML or JSON). See
+    # examples/config/policy.example.yaml for the schema.
+    policy_file: ./examples/config/policy.example.yaml
+
+server:
+  auth:
+    enabled: false
+    enforceDPoP: false
+    audience: 'http://localhost:8080'
+    issuer: http://localhost:8888/auth/realms/tdf
+  grpc:
+    reflectionEnabled: true
+  port: 8383

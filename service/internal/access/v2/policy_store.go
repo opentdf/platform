@@ -23,6 +23,13 @@ type EntitlementPolicyStore interface {
 	IsReady(context.Context) bool
 }
 
+// SubjectMappingMatcher is implemented by stores that can filter subject
+// mappings locally without round-tripping to the policy service. When a store
+// satisfies this interface the JIT PDP uses it instead of an SDK call.
+type SubjectMappingMatcher interface {
+	MatchSubjectMappings(ctx context.Context, properties []*policy.SubjectProperty) ([]*policy.SubjectMapping, error)
+}
+
 var (
 	ErrFailedToFetchAttributes          = errors.New("failed to fetch attributes from policy service")
 	ErrFailedToFetchSubjectMappings     = errors.New("failed to fetch subject mappings from policy service")

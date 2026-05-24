@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"net/http"
 	"time"
 
 	"connectrpc.com/connect"
@@ -81,6 +82,8 @@ func NewRegistration() *serviceregistry.Service[authzV2Connect.AuthorizationServ
 				}
 				l.Debug("authorization service config", slog.Any("config", authZCfg.LogValue()))
 
+				rarHandler := buildRARHandler(as, authZCfg, srp)
+
 				// A file-backed policy snapshot takes precedence over the SDK-backed
 				// cache: it's already in memory, validated at load, and never needs
 				// refresh. The CRUD admin server is responsible for producing the file.
@@ -97,12 +100,12 @@ func NewRegistration() *serviceregistry.Service[authzV2Connect.AuthorizationServ
 					l.Info("authorization service using file-backed policy provider",
 						slog.String("path", authZCfg.PolicyFile),
 					)
-					return as, nil
+					return as, rarHandler
 				}
 
 				if !authZCfg.Cache.Enabled {
 					l.Debug("entitlement policy cache is disabled")
-					return as, nil
+					return as, rarHandler
 				}
 
 				cacheClient, err := srp.NewCacheClient(cache.Options{})
@@ -132,9 +135,43 @@ func NewRegistration() *serviceregistry.Service[authzV2Connect.AuthorizationServ
 					l.Info("direct entitlements are enabled for authorization service")
 				}
 
-				return as, nil
+				return as, rarHandler
 			},
 		},
+	}
+}
+
+// buildRARHandler wires the RFC 8693 + RFC 9396 token-exchange endpoint when
+// enabled. Returns nil when the feature is off, in which case the platform
+// HTTP mux logs a benign "no extra http handlers" message and moves on.
+func buildRARHandler(svc *Service, cfg *Config, srp serviceregistry.RegistrationParams) serviceregistry.HandlerServer {
+	if !cfg.RAR.Enabled {
+		return nil
+	}
+	ttl, err := time.ParseDuration(cfg.RAR.TokenTTL)
+	if err != nil {
+		srp.Logger.Error("invalid rar.token_ttl, falling back to 1h", slog.String("value", cfg.RAR.TokenTTL), slog.Any("error", err))
+		ttl = time.Hour
+	}
+	signer, err := NewEphemeralRARSigner(cfg.RAR.Issuer, ttl)
+	if err != nil {
+		srp.Logger.Error("failed to create rar signer; rar endpoint will be disabled", slog.Any("error", err))
+		return nil
+	}
+	srp.Logger.Info("rar token endpoint enabled",
+		slog.String("issuer", cfg.RAR.Issuer),
+		slog.String("token_ttl", ttl.String()),
+		slog.String("token_path", rarTokenPath),
+		slog.String("jwks_path", rarJWKSPath),
+	)
+	endpoint := &RAREndpoint{
+		pdp:      svc,
+		signer:   signer,
+		verifier: srp.AccessTokenVerifier,
+	}
+	return func(_ context.Context, mux *http.ServeMux) error {
+		endpoint.Mount(mux)
+		return nil
 	}
 }
 

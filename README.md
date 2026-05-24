@@ -1,10 +1,4 @@
-# OpenTDF
-
-![Vulnerability Check](https://github.com/opentdf/platform/actions/workflows/vulnerability-check.yaml/badge.svg?branch=main)
-
-> [!NOTE]
-> It is advised to familiarize yourself with the [terms and concepts](./README.md#terms-and-concepts) used in the
-> OpenTDF platform.
+# OpenTDF fork for the Arkavo network
 
 ## Documentation
 

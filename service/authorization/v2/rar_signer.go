@@ -14,6 +14,8 @@ import (
 	"github.com/lestrrat-go/jwx/v2/jwk"
 	"github.com/lestrrat-go/jwx/v2/jws"
 	"github.com/lestrrat-go/jwx/v2/jwt"
+
+	"github.com/opentdf/platform/service/access/local"
 )
 
 // RARSigner mints RFC 9396 access tokens signed with an Ed25519 keypair.
@@ -71,8 +73,10 @@ func NewEphemeralRARSigner(issuer string, ttl time.Duration) (*RARSigner, error)
 }
 
 // Issue mints a signed JWT carrying the RFC 9396 authorization_details claim
-// plus the standard subject/audience/expiry framing.
-func (s *RARSigner) Issue(subject, audience string, details []AuthorizationDetail) (string, time.Time, error) {
+// plus the standard subject/audience/expiry framing. The grants are written
+// using the local.Grant shape so that resource servers parsing the token
+// recover the exact type the local Access PDP consumes.
+func (s *RARSigner) Issue(subject, audience string, grants []local.Grant) (string, time.Time, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	now := time.Now()
@@ -101,10 +105,10 @@ func (s *RARSigner) Issue(subject, audience string, details []AuthorizationDetai
 	if err := tok.Set(jwt.JwtIDKey, uuid.NewString()); err != nil {
 		return "", time.Time{}, err
 	}
-	if len(details) > 0 {
+	if len(grants) > 0 {
 		// Round-trip through JSON so the claim is plain map[string]any —
 		// jwx's serializer chokes on typed structs in custom claims.
-		payload, err := json.Marshal(details)
+		payload, err := local.MarshalGrants(grants)
 		if err != nil {
 			return "", time.Time{}, fmt.Errorf("rar: marshal authorization_details: %w", err)
 		}
@@ -112,7 +116,7 @@ func (s *RARSigner) Issue(subject, audience string, details []AuthorizationDetai
 		if err := json.Unmarshal(payload, &generic); err != nil {
 			return "", time.Time{}, fmt.Errorf("rar: re-decode authorization_details: %w", err)
 		}
-		if err := tok.Set("authorization_details", generic); err != nil {
+		if err := tok.Set(local.AuthorizationDetailsClaim, generic); err != nil {
 			return "", time.Time{}, err
 		}
 	}

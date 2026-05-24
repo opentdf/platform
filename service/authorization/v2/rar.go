@@ -1,24 +1,28 @@
 // Package authorization adds an RFC 8693 token-exchange endpoint that issues
 // access tokens carrying RFC 9396 authorization_details claims. The endpoint
-// is a thin "token decoration" layer: it does NOT implement a full OAuth 2.0
-// Authorization Server — no /authorize, no PKCE, no refresh tokens, no client
-// registration. The caller MUST present a subject token verified by the
-// platform's existing token verifier (i.e. an IdP-issued JWT).
+// implements the Entitlement PDP described in the
+// entitlement-vs-access-PDP taxonomy: it materializes a grant set for the
+// subject and embeds it in a signed token. Resource servers run the local
+// Access PDP (service/access/local) against the resulting token to render
+// per-request boolean decisions.
 //
-// Flow per request:
+// Two request modes are supported:
 //
-//  1. Parse RFC 8693 form parameters (grant_type, subject_token,
-//     subject_token_type, requested_token_type, authorization_details).
-//  2. Verify subject_token using the configured AccessTokenVerifier.
-//  3. For each authorization_details entry, fan out to the existing v2 PDP.
-//     Only (action, location) combinations the PDP permits make it into the
-//     issued token.
-//  4. Mint and sign a JWT with the granted authorization_details, return as
-//     application/json per RFC 8693 §2.2.
+//   - Full materialization (no authorization_details supplied): the endpoint
+//     calls GetEntitlements once, then GetDecisionMultiResource per action to
+//     attach triggered obligations. Every (action × resource) combination the
+//     subject is entitled to ends up in the token. This is the canonical
+//     Entitlement PDP shape — the client doesn't pre-declare what it wants.
 //
-// The issuer's signing key is ephemeral by default — restarting the process
-// invalidates outstanding tokens. The public JWKS is exposed at the companion
-// endpoint so resource servers can verify.
+//   - Projection (authorization_details supplied): the endpoint narrows the
+//     materialized set to the requested actions and locations. Useful for
+//     audience-scoped or short-lived tokens that should carry only a subset
+//     of the subject's full entitlements.
+//
+// This endpoint is NOT a full OAuth 2.0 Authorization Server — no /authorize,
+// no PKCE, no refresh tokens, no client registration. It performs token
+// decoration on a subject_token verified by the platform's existing
+// AccessTokenVerifier. Signing keys are ephemeral; restart rotates them.
 package authorization
 
 import (
@@ -28,6 +32,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"sort"
 	"strings"
 	"time"
 
@@ -35,6 +40,7 @@ import (
 	authzV2 "github.com/opentdf/platform/protocol/go/authorization/v2"
 	"github.com/opentdf/platform/protocol/go/entity"
 	"github.com/opentdf/platform/protocol/go/policy"
+	"github.com/opentdf/platform/service/access/local"
 	authn "github.com/opentdf/platform/service/internal/auth"
 	"github.com/opentdf/platform/service/logger/audit"
 	ctxAuth "github.com/opentdf/platform/service/pkg/auth"
@@ -50,34 +56,27 @@ const (
 	tokenTypeAccessToken = "urn:ietf:params:oauth:token-type:access_token" //nolint:gosec // RFC 8693 IANA URI
 	tokenTypeIDToken     = "urn:ietf:params:oauth:token-type:id_token"     //nolint:gosec // RFC 8693 IANA URI
 
-	// Custom RAR detail type understood by this POC. Other type values cause
-	// the detail to be rejected at validation time.
-	detailTypeOpenTDFAttribute = "opentdf_attribute"
-
 	rarTokenPath = "/v2/authorization/token"
 	rarJWKSPath  = "/v2/authorization/jwks.json"
 )
 
-// AuthorizationDetail mirrors the RFC 9396 object. Only the fields meaningful
-// to the POC are typed; unknown keys round-trip via UnknownFields so policy
-// authors can add metadata without us silently dropping it.
-type AuthorizationDetail struct {
-	Type          string         `json:"type"`
-	Actions       []string       `json:"actions,omitempty"`
-	Locations     []string       `json:"locations,omitempty"`
-	Datatypes     []string       `json:"datatypes,omitempty"`
-	Identifier    string         `json:"identifier,omitempty"`
-	Privileges    []string       `json:"privileges,omitempty"`
-	UnknownFields map[string]any `json:"-"`
+// authzDetailRequest is a parsed authorization_details entry from the inbound
+// request. The wire shape matches RFC 9396; only the fields meaningful to
+// projection are retained, the rest are dropped since the issuer owns the
+// grant schema (clients don't get to inject arbitrary keys).
+type authzDetailRequest struct {
+	Type      string   `json:"type"`
+	Actions   []string `json:"actions,omitempty"`
+	Locations []string `json:"locations,omitempty"`
 }
 
 // tokenExchangeResponse follows RFC 8693 §2.2.
 type tokenExchangeResponse struct {
-	AccessToken          string                `json:"access_token"`
-	IssuedTokenType      string                `json:"issued_token_type"`
-	TokenType            string                `json:"token_type"`
-	ExpiresIn            int64                 `json:"expires_in"`
-	AuthorizationDetails []AuthorizationDetail `json:"authorization_details,omitempty"`
+	AccessToken          string        `json:"access_token"`
+	IssuedTokenType      string        `json:"issued_token_type"`
+	TokenType            string        `json:"token_type"`
+	ExpiresIn            int64         `json:"expires_in"`
+	AuthorizationDetails []local.Grant `json:"authorization_details,omitempty"`
 }
 
 // rarErrorResponse follows RFC 6749 §5.2.
@@ -87,8 +86,8 @@ type rarErrorResponse struct {
 }
 
 // RAREndpoint owns the dependencies for the token issuance flow. The PDP
-// dependency is the same Service that hosts GetDecision*, so policy reuse is
-// implicit — no second copy of the entitlement store.
+// dependency is the same Service that hosts GetEntitlements/GetDecision*, so
+// policy reuse is implicit — no second copy of the entitlement store.
 type RAREndpoint struct {
 	pdp      *Service
 	signer   *RARSigner
@@ -109,7 +108,6 @@ func (r *RAREndpoint) handleJWKS(w http.ResponseWriter, _ *http.Request) {
 	w.Header().Set("Content-Type", "application/jwk-set+json")
 	w.Header().Set("Cache-Control", "public, max-age=300")
 	if err := json.NewEncoder(w).Encode(r.signer.JWKS()); err != nil {
-		// Already wrote the header; nothing useful to do but log.
 		r.pdp.logger.Error("failed to encode JWKS", slog.Any("error", err))
 	}
 }
@@ -169,9 +167,6 @@ func (r *RAREndpoint) handleToken(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	// Propagate the verified caller identity into the gRPC metadata the
-	// downstream PDP reads via ctxAuth.GetClientIDFromContext. Without this,
-	// GetDecisionMultiResource fails with "no metadata found within context".
 	subject, _ := verified.Get("sub")
 	subjectStr, _ := subject.(string)
 	if subjectStr == "" {
@@ -181,49 +176,44 @@ func (r *RAREndpoint) handleToken(w http.ResponseWriter, req *http.Request) {
 	if clientID != "" {
 		ctx = ctxAuth.EnrichIncomingContextMetadataWithAuthn(ctx, r.pdp.logger, clientID)
 	}
-	// The PDP emits audit events through audit.LogAuditEvent which expects an
-	// auditTransaction in context. The normal HTTP/Connect interceptor chain
-	// would set this up; the RAR endpoint installs its own transaction keyed
-	// on the verified subject so that decisions are still audited.
 	actorID := subjectStr
 	if actorID == "" {
 		actorID = clientID
 	}
 	ctx = audit.ContextWithActorID(ctx, actorID)
 
-	requestedDetails, err := parseAuthorizationDetails(req.PostForm.Get("authorization_details"))
+	filter, err := parseAuthorizationDetails(req.PostForm.Get("authorization_details"))
 	if err != nil {
 		writeError(w, http.StatusBadRequest, "invalid_authorization_details", err.Error())
 		return
 	}
-	if len(requestedDetails) == 0 {
-		writeError(w, http.StatusBadRequest, "invalid_authorization_details",
-			"at least one authorization_details entry is required")
-		return
-	}
-	for i, d := range requestedDetails {
-		if err := validateDetail(d); err != nil {
+	for i, d := range filter {
+		if err := validateProjectionFilter(d); err != nil {
 			writeError(w, http.StatusBadRequest, "invalid_authorization_details",
 				fmt.Sprintf("entry %d: %s", i, err.Error()))
 			return
 		}
 	}
 
-	granted, err := r.evaluate(ctx, subjectToken, requestedDetails)
+	grants, err := r.materialize(ctx, subjectToken, filter)
 	if err != nil {
 		r.pdp.logger.ErrorContext(ctx, "rar PDP evaluation failed", slog.Any("error", err))
 		writeError(w, http.StatusInternalServerError, "server_error",
 			"policy evaluation failed")
 		return
 	}
-	if len(granted) == 0 {
-		// Nothing was permitted — RFC 9396 §6.1 mandates access_denied.
+	if len(grants) == 0 {
+		// No materialized grants. RFC 9396 §6.1 mandates access_denied when
+		// the request was a filtered projection; for unfiltered "give me
+		// everything" calls a permissionless subject is also access_denied —
+		// returning an empty allow-list would be just as denying without the
+		// hint that the request was processed correctly.
 		writeError(w, http.StatusForbidden, "access_denied",
-			"none of the requested authorization_details were granted")
+			"subject has no entitlements that match the request")
 		return
 	}
 
-	signed, exp, err := r.signer.Issue(subjectStr, audience, granted)
+	signed, exp, err := r.signer.Issue(subjectStr, audience, grants)
 	if err != nil {
 		r.pdp.logger.ErrorContext(ctx, "rar token sign failed", slog.Any("error", err))
 		writeError(w, http.StatusInternalServerError, "server_error", "could not mint access token")
@@ -238,67 +228,32 @@ func (r *RAREndpoint) handleToken(w http.ResponseWriter, req *http.Request) {
 		IssuedTokenType:      tokenTypeJWT,
 		TokenType:            "Bearer",
 		ExpiresIn:            int64(time.Until(exp).Seconds()),
-		AuthorizationDetails: granted,
+		AuthorizationDetails: grants,
 	}); err != nil {
 		r.pdp.logger.Error("failed to encode rar response", slog.Any("error", err))
 	}
 }
 
-// evaluate fans the requested details out to the existing v2 PDP and returns
-// only the (action, location) combinations that PERMIT.
-func (r *RAREndpoint) evaluate(ctx context.Context, subjectToken string, requested []AuthorizationDetail) ([]AuthorizationDetail, error) {
-	granted := make([]AuthorizationDetail, 0, len(requested))
-	for _, detail := range requested {
-		grantedActions := make([]string, 0, len(detail.Actions))
-		grantedLocations := make(map[string]struct{})
-		for _, actionName := range detail.Actions {
-			permitted, err := r.decideAction(ctx, subjectToken, actionName, detail.Locations)
-			if err != nil {
-				return nil, fmt.Errorf("action %q: %w", actionName, err)
-			}
-			if len(permitted) == 0 {
-				continue
-			}
-			grantedActions = append(grantedActions, actionName)
-			for _, loc := range permitted {
-				grantedLocations[loc] = struct{}{}
-			}
-		}
-		if len(grantedActions) == 0 {
-			continue
-		}
-		locations := make([]string, 0, len(grantedLocations))
-		// Preserve request order — RFC 9396 is silent on ordering, but
-		// stability makes the response predictable.
-		for _, loc := range detail.Locations {
-			if _, ok := grantedLocations[loc]; ok {
-				locations = append(locations, loc)
-			}
-		}
-		grantedDetail := detail
-		grantedDetail.Actions = grantedActions
-		grantedDetail.Locations = locations
-		granted = append(granted, grantedDetail)
+// materialize produces the materialized grant set. When filter is empty the
+// full entitlement set is materialized; otherwise the set is projected to
+// (actions × locations) intersection of the filter.
+func (r *RAREndpoint) materialize(ctx context.Context, subjectToken string, filter []authzDetailRequest) ([]local.Grant, error) {
+	entitled, err := r.entitlementsByAction(ctx, subjectToken)
+	if err != nil {
+		return nil, err
 	}
-	return granted, nil
+	if len(filter) > 0 {
+		entitled = applyProjectionFilter(entitled, filter)
+	}
+	return r.attachObligationsAndGroup(ctx, subjectToken, entitled)
 }
 
-func (r *RAREndpoint) decideAction(ctx context.Context, subjectToken, actionName string, locations []string) ([]string, error) {
-	if len(locations) == 0 {
-		return nil, nil
-	}
-	resources := make([]*authzV2.Resource, 0, len(locations))
-	for i, loc := range locations {
-		resources = append(resources, &authzV2.Resource{
-			EphemeralId: fmt.Sprintf("loc-%d", i),
-			Resource: &authzV2.Resource_AttributeValues_{
-				AttributeValues: &authzV2.Resource_AttributeValues{
-					Fqns: []string{loc},
-				},
-			},
-		})
-	}
-	req := connect.NewRequest(&authzV2.GetDecisionMultiResourceRequest{
+// entitlementsByAction asks the existing Entitlement PDP for the subject's
+// full grant set, then inverts the (fqn → actions) map into (action → fqns)
+// — the orientation needed for the per-action GetDecisionMultiResource calls
+// that follow.
+func (r *RAREndpoint) entitlementsByAction(ctx context.Context, subjectToken string) (map[string][]string, error) {
+	req := connect.NewRequest(&authzV2.GetEntitlementsRequest{
 		EntityIdentifier: &authzV2.EntityIdentifier{
 			Identifier: &authzV2.EntityIdentifier_Token{
 				Token: &entity.Token{
@@ -307,31 +262,188 @@ func (r *RAREndpoint) decideAction(ctx context.Context, subjectToken, actionName
 				},
 			},
 		},
-		Action:    &policy.Action{Name: actionName},
-		Resources: resources,
 	})
-	resp, err := r.pdp.GetDecisionMultiResource(ctx, req)
+	resp, err := r.pdp.GetEntitlements(ctx, req)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("get entitlements: %w", err)
 	}
-	permitted := make([]string, 0, len(resources))
-	for i, rd := range resp.Msg.GetResourceDecisions() {
-		if rd.GetDecision() == authzV2.Decision_DECISION_PERMIT {
-			permitted = append(permitted, locations[i])
+	byAction := make(map[string]map[string]struct{})
+	for _, ent := range resp.Msg.GetEntitlements() {
+		for fqn, actions := range ent.GetActionsPerAttributeValueFqn() {
+			for _, a := range actions.GetActions() {
+				name := a.GetName()
+				if name == "" {
+					continue
+				}
+				if _, ok := byAction[name]; !ok {
+					byAction[name] = map[string]struct{}{}
+				}
+				byAction[name][strings.ToLower(fqn)] = struct{}{}
+			}
 		}
 	}
-	return permitted, nil
+	out := make(map[string][]string, len(byAction))
+	for action, set := range byAction {
+		locations := make([]string, 0, len(set))
+		for fqn := range set {
+			locations = append(locations, fqn)
+		}
+		sort.Strings(locations)
+		out[action] = locations
+	}
+	return out, nil
+}
+
+// applyProjectionFilter narrows the entitled set so only actions and
+// locations referenced in the filter remain. Filter entries whose location
+// the subject is not entitled to are silently dropped (denied — not an
+// error), matching the per-resource semantics of GetDecisionMultiResource.
+func applyProjectionFilter(entitled map[string][]string, filter []authzDetailRequest) map[string][]string {
+	if len(filter) == 0 {
+		return entitled
+	}
+	allowedActions := map[string]struct{}{}
+	allowedLocations := map[string]struct{}{}
+	for _, f := range filter {
+		for _, a := range f.Actions {
+			allowedActions[a] = struct{}{}
+		}
+		for _, l := range f.Locations {
+			allowedLocations[strings.ToLower(l)] = struct{}{}
+		}
+	}
+	out := make(map[string][]string)
+	for action, locations := range entitled {
+		if _, ok := allowedActions[action]; !ok {
+			continue
+		}
+		kept := make([]string, 0, len(locations))
+		for _, loc := range locations {
+			if _, ok := allowedLocations[loc]; ok {
+				kept = append(kept, loc)
+			}
+		}
+		if len(kept) > 0 {
+			out[action] = kept
+		}
+	}
+	return out
+}
+
+// attachObligationsAndGroup calls GetDecisionMultiResource once per action to
+// (a) confirm the Access PDP also permits each entitled (action, location) —
+// it always should, but rules like attribute hierarchy may add constraints —
+// and (b) pull the per-resource obligations the Obligation PDP wants the PEP
+// to fulfill. Every known obligation value FQN is passed as "fulfillable" so
+// the PDP treats unfulfilled obligations as informational rather than as a
+// reason to deny: at materialization time we want the obligations recorded
+// in the grant, not enforced. The downstream PEP enforces at access time
+// using the local Access PDP.
+//
+// Results are grouped into local.Grant entries sharing the same
+// (action, obligation-set) combination so the token stays compact.
+func (r *RAREndpoint) attachObligationsAndGroup(ctx context.Context, subjectToken string, entitled map[string][]string) ([]local.Grant, error) {
+	fulfillable, err := r.allObligationValueFQNs(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("enumerate obligations: %w", err)
+	}
+	// Stable iteration so the output ordering is deterministic — useful for
+	// debugging, audit logs, and tests.
+	actions := make([]string, 0, len(entitled))
+	for a := range entitled {
+		actions = append(actions, a)
+	}
+	sort.Strings(actions)
+
+	type bucketKey struct {
+		action      string
+		obligations string
+	}
+	type bucket struct {
+		action      string
+		obligations []string
+		locations   []string
+	}
+	buckets := make(map[bucketKey]*bucket)
+	bucketOrder := make([]bucketKey, 0)
+
+	for _, action := range actions {
+		locations := entitled[action]
+		if len(locations) == 0 {
+			continue
+		}
+		resources := make([]*authzV2.Resource, 0, len(locations))
+		for i, loc := range locations {
+			resources = append(resources, &authzV2.Resource{
+				EphemeralId: fmt.Sprintf("loc-%d", i),
+				Resource: &authzV2.Resource_AttributeValues_{
+					AttributeValues: &authzV2.Resource_AttributeValues{
+						Fqns: []string{loc},
+					},
+				},
+			})
+		}
+		decisionReq := connect.NewRequest(&authzV2.GetDecisionMultiResourceRequest{
+			EntityIdentifier: &authzV2.EntityIdentifier{
+				Identifier: &authzV2.EntityIdentifier_Token{
+					Token: &entity.Token{
+						EphemeralId: "rar-subject",
+						Jwt:         subjectToken,
+					},
+				},
+			},
+			Action:                    &policy.Action{Name: action},
+			Resources:                 resources,
+			FulfillableObligationFqns: fulfillable,
+		})
+		resp, err := r.pdp.GetDecisionMultiResource(ctx, decisionReq)
+		if err != nil {
+			return nil, fmt.Errorf("decide action %q: %w", action, err)
+		}
+		for i, rd := range resp.Msg.GetResourceDecisions() {
+			if rd.GetDecision() != authzV2.Decision_DECISION_PERMIT {
+				continue
+			}
+			obligations := append([]string(nil), rd.GetRequiredObligations()...)
+			sort.Strings(obligations)
+			key := bucketKey{action: action, obligations: strings.Join(obligations, "\x00")}
+			b, ok := buckets[key]
+			if !ok {
+				b = &bucket{action: action, obligations: obligations}
+				buckets[key] = b
+				bucketOrder = append(bucketOrder, key)
+			}
+			b.locations = append(b.locations, locations[i])
+		}
+	}
+
+	grants := make([]local.Grant, 0, len(buckets))
+	for _, key := range bucketOrder {
+		b := buckets[key]
+		sort.Strings(b.locations)
+		g := local.Grant{
+			Type:      local.GrantTypeAttribute,
+			Actions:   []string{b.action},
+			Locations: b.locations,
+		}
+		if len(b.obligations) > 0 {
+			g.Obligations = b.obligations
+		}
+		grants = append(grants, g)
+	}
+	return grants, nil
 }
 
 // parseAuthorizationDetails decodes the RFC 9396 array — accepted as either a
 // JSON array literal or a JSON-encoded string (browsers tend to URL-encode it
-// either way, but the body parser already URL-decoded).
-func parseAuthorizationDetails(raw string) ([]AuthorizationDetail, error) {
+// either way, but the body parser already URL-decoded). Returns nil when the
+// caller omitted the parameter, signalling "materialize everything".
+func parseAuthorizationDetails(raw string) ([]authzDetailRequest, error) {
 	raw = strings.TrimSpace(raw)
 	if raw == "" {
 		return nil, nil
 	}
-	var details []AuthorizationDetail
+	var details []authzDetailRequest
 	if err := json.Unmarshal([]byte(raw), &details); err != nil {
 		// Try unwrapping one layer of JSON-string-ification (some clients
 		// double-encode when stuffing into form bodies).
@@ -346,12 +458,12 @@ func parseAuthorizationDetails(raw string) ([]AuthorizationDetail, error) {
 	return details, nil
 }
 
-func validateDetail(d AuthorizationDetail) error {
+func validateProjectionFilter(d authzDetailRequest) error {
 	if d.Type == "" {
 		return errors.New("type is required")
 	}
-	if d.Type != detailTypeOpenTDFAttribute {
-		return fmt.Errorf("unsupported type %q (expected %q)", d.Type, detailTypeOpenTDFAttribute)
+	if d.Type != local.GrantTypeAttribute {
+		return fmt.Errorf("unsupported type %q (expected %q)", d.Type, local.GrantTypeAttribute)
 	}
 	if len(d.Actions) == 0 {
 		return errors.New("actions is required")
@@ -360,6 +472,32 @@ func validateDetail(d AuthorizationDetail) error {
 		return errors.New("locations is required")
 	}
 	return nil
+}
+
+// allObligationValueFQNs enumerates every obligation value FQN in the policy
+// snapshot, used as the fulfillable set when running the Access PDP at
+// materialization time so obligations are reported as required without
+// causing a deny.
+func (r *RAREndpoint) allObligationValueFQNs(ctx context.Context) ([]string, error) {
+	store, ok := r.pdp.cache.(interface {
+		ListAllObligations(ctx context.Context) ([]*policy.Obligation, error)
+	})
+	if !ok {
+		return nil, nil
+	}
+	obls, err := store.ListAllObligations(ctx)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]string, 0)
+	for _, o := range obls {
+		for _, v := range o.GetValues() {
+			if fqn := v.GetFqn(); fqn != "" {
+				out = append(out, fqn)
+			}
+		}
+	}
+	return out, nil
 }
 
 // clientIDFromToken pulls the OAuth client identifier from the verified

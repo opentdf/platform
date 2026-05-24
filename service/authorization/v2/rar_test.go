@@ -19,6 +19,7 @@ import (
 	entityresolutionV2 "github.com/opentdf/platform/protocol/go/entityresolution/v2"
 	otdf "github.com/opentdf/platform/sdk"
 	"github.com/opentdf/platform/sdk/sdkconnect"
+	"github.com/opentdf/platform/service/access/local"
 	"github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/policy/filestore"
 	"github.com/stretchr/testify/assert"
@@ -33,51 +34,44 @@ func TestRARSigner_RoundTripSignAndVerify(t *testing.T) {
 	signer, err := NewEphemeralRARSigner("https://opentdf.local", time.Hour)
 	require.NoError(t, err)
 
-	details := []AuthorizationDetail{
+	grants := []local.Grant{
 		{
-			Type:      detailTypeOpenTDFAttribute,
+			Type:      local.GrantTypeAttribute,
 			Actions:   []string{"read"},
 			Locations: []string{"https://example.com/attr/classification/value/secret"},
 		},
 	}
-	signed, exp, err := signer.Issue("user-1", "kas.example", details)
+	signed, exp, err := signer.Issue("user-1", "kas.example", grants)
 	require.NoError(t, err)
 	assert.True(t, exp.After(time.Now()))
 
-	// Resource server side: pull the public JWKS, parse the token against it.
-	set := signer.JWKS()
-	parsed, err := jwt.Parse(
-		[]byte(signed),
-		jwt.WithKeySet(set),
+	// Resource server side: pull the public JWKS, parse the token against it,
+	// hand the parsed token to the local Access PDP.
+	parsed, err := jwt.Parse([]byte(signed),
+		jwt.WithKeySet(signer.JWKS()),
 		jwt.WithValidate(true),
 		jwt.WithIssuer("https://opentdf.local"),
 		jwt.WithAudience("kas.example"),
 	)
 	require.NoError(t, err)
-
-	assert.Equal(t, "user-1", parsed.Subject())
-	rawDetails, ok := parsed.Get("authorization_details")
-	require.True(t, ok)
-	rawJSON, err := json.Marshal(rawDetails)
+	got, err := local.GrantsFromToken(parsed)
 	require.NoError(t, err)
-	var roundTripped []AuthorizationDetail
-	require.NoError(t, json.Unmarshal(rawJSON, &roundTripped))
-	require.Len(t, roundTripped, 1)
-	assert.Equal(t, details[0].Type, roundTripped[0].Type)
-	assert.Equal(t, details[0].Actions, roundTripped[0].Actions)
-	assert.Equal(t, details[0].Locations, roundTripped[0].Locations)
+	require.Len(t, got, 1)
+	assert.Equal(t, grants[0].Actions, got[0].Actions)
+	assert.Equal(t, grants[0].Locations, got[0].Locations)
+
+	// And the local Access PDP renders the expected boolean.
+	d := local.Decide(got, "read", "https://example.com/attr/classification/value/secret")
+	assert.True(t, d.Allow)
 }
 
 func TestRARSigner_JWKSContainsPublicKeyOnly(t *testing.T) {
 	signer, err := NewEphemeralRARSigner("iss", time.Minute)
 	require.NoError(t, err)
-
 	set := signer.JWKS()
 	require.Equal(t, 1, set.Len())
 	pub, _ := set.Key(0)
-	// Symbol() / KeyType for OKP is "OKP"; signing key would be private.
 	assert.Equal(t, jwa.OKP, pub.KeyType())
-	// A public Ed25519 key must NOT serialize a "d" (private scalar) parameter.
 	buf, err := json.Marshal(pub)
 	require.NoError(t, err)
 	assert.NotContains(t, string(buf), `"d":`, "public JWK leaked private scalar")
@@ -95,15 +89,15 @@ func TestParseAuthorizationDetails(t *testing.T) {
 	})
 	t.Run("double-encoded", func(t *testing.T) {
 		inner := `[{"type":"opentdf_attribute","actions":["read"],"locations":["https://x/y/value/z"]}]`
-		raw, _ := json.Marshal(inner) // produces a JSON string literal
+		raw, _ := json.Marshal(inner)
 		got, err := parseAuthorizationDetails(string(raw))
 		require.NoError(t, err)
 		require.Len(t, got, 1)
 	})
-	t.Run("empty", func(t *testing.T) {
+	t.Run("empty signals full materialization", func(t *testing.T) {
 		got, err := parseAuthorizationDetails("")
 		require.NoError(t, err)
-		assert.Empty(t, got)
+		assert.Nil(t, got)
 	})
 	t.Run("garbage", func(t *testing.T) {
 		_, err := parseAuthorizationDetails("not json")
@@ -111,23 +105,19 @@ func TestParseAuthorizationDetails(t *testing.T) {
 	})
 }
 
-func TestValidateDetail(t *testing.T) {
-	good := AuthorizationDetail{
-		Type:      detailTypeOpenTDFAttribute,
-		Actions:   []string{"read"},
-		Locations: []string{"https://x"},
-	}
-	require.NoError(t, validateDetail(good))
+func TestValidateProjectionFilter(t *testing.T) {
+	good := authzDetailRequest{Type: local.GrantTypeAttribute, Actions: []string{"read"}, Locations: []string{"https://x"}}
+	require.NoError(t, validateProjectionFilter(good))
 
-	cases := map[string]AuthorizationDetail{
+	cases := map[string]authzDetailRequest{
 		"missing type":      {Actions: []string{"read"}, Locations: []string{"x"}},
 		"wrong type":        {Type: "other", Actions: []string{"read"}, Locations: []string{"x"}},
-		"missing actions":   {Type: detailTypeOpenTDFAttribute, Locations: []string{"x"}},
-		"missing locations": {Type: detailTypeOpenTDFAttribute, Actions: []string{"read"}},
+		"missing actions":   {Type: local.GrantTypeAttribute, Locations: []string{"x"}},
+		"missing locations": {Type: local.GrantTypeAttribute, Actions: []string{"read"}},
 	}
 	for name, d := range cases {
 		t.Run(name, func(t *testing.T) {
-			require.Error(t, validateDetail(d))
+			require.Error(t, validateProjectionFilter(d))
 		})
 	}
 }
@@ -167,10 +157,16 @@ subject_mappings:
                   subject_external_values: [topsecret, none]
     actions:
       - name: read
+obligations:
+  - namespace: example.com
+    name: watermark
+    values:
+      - value: required
+        triggers:
+          - attribute_value_fqn: https://example.com/attr/classification/value/secret
+            action: read
 `
 
-// stubVerifier accepts a fixed subject token and returns a synthetic jwt.Token.
-// In production this would be the IdP-backed verifier from internal/auth.
 type stubVerifier struct {
 	expectedToken string
 	subject       string
@@ -190,8 +186,6 @@ type assertError string
 
 func (a assertError) Error() string { return string(a) }
 
-// stubERS returns a fixed entity representation regardless of input — the test
-// owns the policy file, so it owns what selectors need to match.
 type stubERS struct {
 	props map[string]interface{}
 }
@@ -258,11 +252,11 @@ func newTestEndpoint(t *testing.T, clearance string) (*RAREndpoint, string) {
 	return endpoint, "subject-token"
 }
 
-func TestRAREndpoint_GrantsPermittedDetails(t *testing.T) {
+// Full materialization: no authorization_details supplied. Endpoint should
+// return the subject's complete entitlement set as a signed grant claim.
+func TestRAREndpoint_MaterializesFullEntitlementsByDefault(t *testing.T) {
 	endpoint, subjectToken := newTestEndpoint(t, "topsecret")
-	mux := http.NewServeMux()
-	endpoint.Mount(mux)
-	srv := httptest.NewServer(mux)
+	srv := newServer(endpoint)
 	defer srv.Close()
 
 	form := url.Values{}
@@ -270,103 +264,124 @@ func TestRAREndpoint_GrantsPermittedDetails(t *testing.T) {
 	form.Set("subject_token", subjectToken)
 	form.Set("subject_token_type", tokenTypeIDToken)
 	form.Set("audience", "kas.example")
-	form.Set("authorization_details", `[
-        {
-            "type": "opentdf_attribute",
-            "actions": ["read"],
-            "locations": [
-                "https://example.com/attr/classification/value/secret",
-                "https://example.com/attr/classification/value/public"
-            ]
-        }
-    ]`)
+	// Note: no authorization_details — we expect EVERYTHING.
 
-	resp, err := http.Post(srv.URL+rarTokenPath, "application/x-www-form-urlencoded", strings.NewReader(form.Encode()))
-	require.NoError(t, err)
-	defer resp.Body.Close()
-	require.Equal(t, http.StatusOK, resp.StatusCode)
+	body := doTokenRequest(t, srv.URL, form)
+	require.Equal(t, "Bearer", body.TokenType)
+	require.NotEmpty(t, body.AccessToken)
 
-	var body tokenExchangeResponse
-	require.NoError(t, json.NewDecoder(resp.Body).Decode(&body))
-	assert.Equal(t, "Bearer", body.TokenType)
-	assert.Equal(t, tokenTypeJWT, body.IssuedTokenType)
-	assert.Greater(t, body.ExpiresIn, int64(0))
-	require.Len(t, body.AuthorizationDetails, 1)
-	got := body.AuthorizationDetails[0]
-	assert.Equal(t, []string{"read"}, got.Actions)
+	// Both locations the subject is entitled to should be present.
+	allLocations := []string{}
+	for _, g := range body.AuthorizationDetails {
+		allLocations = append(allLocations, g.Locations...)
+	}
 	assert.ElementsMatch(t,
 		[]string{
 			"https://example.com/attr/classification/value/secret",
 			"https://example.com/attr/classification/value/public",
-		}, got.Locations)
+		}, allLocations)
 
-	// Verify the issued JWT is valid under the published JWKS.
-	parsed, err := jwt.Parse(
-		[]byte(body.AccessToken),
+	// Drive the local Access PDP against the issued token end-to-end.
+	parsed, err := jwt.Parse([]byte(body.AccessToken),
 		jwt.WithKeySet(endpoint.signer.JWKS()),
 		jwt.WithValidate(true),
 		jwt.WithIssuer("https://opentdf.local"),
 		jwt.WithAudience("kas.example"),
 	)
 	require.NoError(t, err)
-	assert.Equal(t, "user-1", parsed.Subject())
+	grants, err := local.GrantsFromToken(parsed)
+	require.NoError(t, err)
+
+	// /secret: permitted AND carries the watermark obligation.
+	dSecret := local.Decide(grants, "read", "https://example.com/attr/classification/value/secret")
+	assert.True(t, dSecret.Allow)
+	assert.Equal(t, []string{"https://example.com/obl/watermark/value/required"}, dSecret.RequiredObligations)
+
+	// /public: permitted, no obligation.
+	dPublic := local.Decide(grants, "read", "https://example.com/attr/classification/value/public")
+	assert.True(t, dPublic.Allow)
+	assert.Empty(t, dPublic.RequiredObligations)
+
+	// An unrelated location is denied.
+	dDeny := local.Decide(grants, "read", "https://example.com/attr/classification/value/topsecret")
+	assert.False(t, dDeny.Allow)
 }
 
-func TestRAREndpoint_FiltersOutDeniedLocations(t *testing.T) {
-	endpoint, subjectToken := newTestEndpoint(t, "none")
-	mux := http.NewServeMux()
-	endpoint.Mount(mux)
-	srv := httptest.NewServer(mux)
+// Grants with different obligation sets must end up in separate detail
+// entries — otherwise the local PDP would over-attach obligations.
+func TestRAREndpoint_GroupsByObligationSet(t *testing.T) {
+	endpoint, subjectToken := newTestEndpoint(t, "topsecret")
+	srv := newServer(endpoint)
 	defer srv.Close()
 
-	form := url.Values{}
-	form.Set("grant_type", grantTypeTokenExchange)
-	form.Set("subject_token", subjectToken)
-	form.Set("subject_token_type", tokenTypeIDToken)
+	body := doTokenRequest(t, srv.URL, baseForm(subjectToken))
+	// At least one grant should carry the obligation, at least one should not.
+	var withOb, withoutOb int
+	for _, g := range body.AuthorizationDetails {
+		if len(g.Obligations) > 0 {
+			withOb++
+		} else {
+			withoutOb++
+		}
+	}
+	assert.GreaterOrEqual(t, withOb, 1, "expected an obligation-bearing grant")
+	assert.GreaterOrEqual(t, withoutOb, 1, "expected an obligation-free grant")
+}
+
+// Projection: client supplies authorization_details to narrow the issued
+// token to a subset of the subject's entitlements.
+func TestRAREndpoint_ProjectionNarrowsToFilter(t *testing.T) {
+	endpoint, subjectToken := newTestEndpoint(t, "topsecret")
+	srv := newServer(endpoint)
+	defer srv.Close()
+
+	form := baseForm(subjectToken)
 	form.Set("authorization_details", `[
-        {
-            "type": "opentdf_attribute",
-            "actions": ["read"],
-            "locations": [
-                "https://example.com/attr/classification/value/secret",
-                "https://example.com/attr/classification/value/public"
-            ]
-        }
+        {"type":"opentdf_attribute",
+         "actions":["read"],
+         "locations":["https://example.com/attr/classification/value/public"]}
     ]`)
+	body := doTokenRequest(t, srv.URL, form)
 
-	resp, err := http.Post(srv.URL+rarTokenPath, "application/x-www-form-urlencoded", strings.NewReader(form.Encode()))
-	require.NoError(t, err)
-	defer resp.Body.Close()
-	require.Equal(t, http.StatusOK, resp.StatusCode)
-
-	var body tokenExchangeResponse
-	require.NoError(t, json.NewDecoder(resp.Body).Decode(&body))
 	require.Len(t, body.AuthorizationDetails, 1)
 	got := body.AuthorizationDetails[0]
-	// "none" clearance: only the /public mapping matches.
 	assert.Equal(t, []string{"https://example.com/attr/classification/value/public"}, got.Locations)
+	// The secret entitlement is filtered out by the projection even though
+	// the subject is entitled to it.
+	parsed, err := jwt.Parse([]byte(body.AccessToken),
+		jwt.WithKeySet(endpoint.signer.JWKS()),
+		jwt.WithValidate(true),
+		jwt.WithIssuer("https://opentdf.local"),
+	)
+	require.NoError(t, err)
+	grants, err := local.GrantsFromToken(parsed)
+	require.NoError(t, err)
+	assert.False(t, local.Decide(grants, "read", "https://example.com/attr/classification/value/secret").Allow)
 }
 
-func TestRAREndpoint_DeniesWhenNothingPermitted(t *testing.T) {
-	endpoint, subjectToken := newTestEndpoint(t, "")
-	mux := http.NewServeMux()
-	endpoint.Mount(mux)
-	srv := httptest.NewServer(mux)
+// "none" clearance: subject is only entitled to /public via the second
+// subject mapping. /secret is filtered by the Entitlement PDP itself.
+func TestRAREndpoint_LowerClearanceMaterializesNarrowerSet(t *testing.T) {
+	endpoint, subjectToken := newTestEndpoint(t, "none")
+	srv := newServer(endpoint)
 	defer srv.Close()
 
-	form := url.Values{}
-	form.Set("grant_type", grantTypeTokenExchange)
-	form.Set("subject_token", subjectToken)
-	form.Set("subject_token_type", tokenTypeIDToken)
-	form.Set("authorization_details", `[
-        {
-            "type": "opentdf_attribute",
-            "actions": ["read"],
-            "locations": ["https://example.com/attr/classification/value/secret"]
-        }
-    ]`)
+	body := doTokenRequest(t, srv.URL, baseForm(subjectToken))
+	all := []string{}
+	for _, g := range body.AuthorizationDetails {
+		all = append(all, g.Locations...)
+	}
+	assert.Equal(t, []string{"https://example.com/attr/classification/value/public"}, all)
+}
 
-	resp, err := http.Post(srv.URL+rarTokenPath, "application/x-www-form-urlencoded", strings.NewReader(form.Encode()))
+// Subject with zero entitlements gets access_denied per RFC 9396 §6.1.
+func TestRAREndpoint_DeniesWhenSubjectHasNoEntitlements(t *testing.T) {
+	endpoint, subjectToken := newTestEndpoint(t, "")
+	srv := newServer(endpoint)
+	defer srv.Close()
+
+	resp, err := http.Post(srv.URL+rarTokenPath, "application/x-www-form-urlencoded",
+		strings.NewReader(baseForm(subjectToken).Encode()))
 	require.NoError(t, err)
 	defer resp.Body.Close()
 	require.Equal(t, http.StatusForbidden, resp.StatusCode)
@@ -377,16 +392,13 @@ func TestRAREndpoint_DeniesWhenNothingPermitted(t *testing.T) {
 
 func TestRAREndpoint_RejectsBadSubjectToken(t *testing.T) {
 	endpoint, _ := newTestEndpoint(t, "topsecret")
-	mux := http.NewServeMux()
-	endpoint.Mount(mux)
-	srv := httptest.NewServer(mux)
+	srv := newServer(endpoint)
 	defer srv.Close()
 
 	form := url.Values{}
 	form.Set("grant_type", grantTypeTokenExchange)
 	form.Set("subject_token", "wrong-token")
 	form.Set("subject_token_type", tokenTypeIDToken)
-	form.Set("authorization_details", `[{"type":"opentdf_attribute","actions":["read"],"locations":["x"]}]`)
 
 	resp, err := http.Post(srv.URL+rarTokenPath, "application/x-www-form-urlencoded", strings.NewReader(form.Encode()))
 	require.NoError(t, err)
@@ -396,9 +408,7 @@ func TestRAREndpoint_RejectsBadSubjectToken(t *testing.T) {
 
 func TestRAREndpoint_RejectsWrongGrantType(t *testing.T) {
 	endpoint, _ := newTestEndpoint(t, "topsecret")
-	mux := http.NewServeMux()
-	endpoint.Mount(mux)
-	srv := httptest.NewServer(mux)
+	srv := newServer(endpoint)
 	defer srv.Close()
 
 	form := url.Values{}
@@ -411,17 +421,42 @@ func TestRAREndpoint_RejectsWrongGrantType(t *testing.T) {
 
 func TestRAREndpoint_JWKSEndpoint(t *testing.T) {
 	endpoint, _ := newTestEndpoint(t, "topsecret")
-	mux := http.NewServeMux()
-	endpoint.Mount(mux)
-	srv := httptest.NewServer(mux)
+	srv := newServer(endpoint)
 	defer srv.Close()
 
 	resp, err := http.Get(srv.URL + rarJWKSPath)
 	require.NoError(t, err)
 	defer resp.Body.Close()
 	require.Equal(t, http.StatusOK, resp.StatusCode)
-
 	set, err := jwk.ParseReader(resp.Body)
 	require.NoError(t, err)
 	require.Equal(t, 1, set.Len())
+}
+
+// --- helpers -----------------------------------------------------------------
+
+func newServer(endpoint *RAREndpoint) *httptest.Server {
+	mux := http.NewServeMux()
+	endpoint.Mount(mux)
+	return httptest.NewServer(mux)
+}
+
+func baseForm(subjectToken string) url.Values {
+	form := url.Values{}
+	form.Set("grant_type", grantTypeTokenExchange)
+	form.Set("subject_token", subjectToken)
+	form.Set("subject_token_type", tokenTypeIDToken)
+	return form
+}
+
+func doTokenRequest(t *testing.T, baseURL string, form url.Values) tokenExchangeResponse {
+	t.Helper()
+	resp, err := http.Post(baseURL+rarTokenPath, "application/x-www-form-urlencoded",
+		strings.NewReader(form.Encode()))
+	require.NoError(t, err)
+	defer resp.Body.Close()
+	require.Equal(t, http.StatusOK, resp.StatusCode, "expected 200; got %d", resp.StatusCode)
+	var body tokenExchangeResponse
+	require.NoError(t, json.NewDecoder(resp.Body).Decode(&body))
+	return body
 }

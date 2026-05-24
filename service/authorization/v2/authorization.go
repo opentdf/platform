@@ -16,6 +16,7 @@ import (
 	"github.com/opentdf/platform/protocol/go/policy"
 	otdf "github.com/opentdf/platform/sdk"
 	"github.com/opentdf/platform/service/internal/access/v2"
+	authn "github.com/opentdf/platform/service/internal/auth"
 	"github.com/opentdf/platform/service/logger"
 	ctxAuth "github.com/opentdf/platform/service/pkg/auth"
 	"github.com/opentdf/platform/service/pkg/cache"
@@ -158,17 +159,61 @@ func buildRARHandler(svc *Service, cfg *Config, srp serviceregistry.Registration
 		srp.Logger.Error("failed to create rar signer; rar endpoint will be disabled", slog.Any("error", err))
 		return nil
 	}
+	// Mint a parallel CWT signer alongside the JWT one. Failure here only
+	// disables the CWT response path; the JWT-explicit path keeps working.
+	cwtSigner, err := NewEphemeralRARCWTSigner(cfg.RAR.Issuer, ttl)
+	if err != nil {
+		srp.Logger.Error("failed to create rar CWT signer; CWT responses will be disabled",
+			slog.Any("error", err))
+		cwtSigner = nil
+	}
 	srp.Logger.Info("rar token endpoint enabled",
 		slog.String("issuer", cfg.RAR.Issuer),
 		slog.String("token_ttl", ttl.String()),
 		slog.String("token_path", rarTokenPath),
 		slog.String("jwks_path", rarJWKSPath),
+		slog.String("cose_keys_path", rarCOSEKeysPath),
+		slog.Bool("cwt_responses_enabled", cwtSigner != nil),
 	)
 	endpoint := &RAREndpoint{
-		pdp:      svc,
-		signer:   signer,
-		verifier: srp.AccessTokenVerifier,
+		pdp:       svc,
+		signer:    signer,
+		cwtSigner: cwtSigner,
+		verifier:  srp.AccessTokenVerifier,
 	}
+
+	// Optional CWT subject-token verifier. Off by default; enabled when an
+	// operator configures rar.cwt_verifier.enabled=true. Failure to build
+	// the verifier disables CWT support but does NOT take the RAR endpoint
+	// down — JWT-family subject tokens continue to work.
+	if cfg.RAR.CWTVerifier.Enabled {
+		cacheTTL, err := time.ParseDuration(cfg.RAR.CWTVerifier.CacheTTL)
+		if err != nil {
+			srp.Logger.Error("invalid rar.cwt_verifier.cache_ttl, falling back to default",
+				slog.String("value", cfg.RAR.CWTVerifier.CacheTTL),
+				slog.Any("error", err))
+			cacheTTL = defaultCWTCacheTTL
+		}
+		cwtVerifier, err := authn.NewCWTVerifier(context.Background(), authn.CWTVerifierConfig{
+			COSEKeysURL: cfg.RAR.CWTVerifier.COSEKeysURL,
+			Issuer:      cfg.RAR.CWTVerifier.Issuer,
+			Audience:    cfg.RAR.CWTVerifier.Audience,
+			Algorithm:   cfg.RAR.CWTVerifier.Algorithm,
+			CacheTTL:    cacheTTL,
+		}, srp.Logger)
+		if err != nil {
+			srp.Logger.Error("failed to create CWT verifier; CWT subject tokens disabled",
+				slog.Any("error", err))
+		} else {
+			srp.Logger.Info("CWT subject-token verifier enabled",
+				slog.String("cose_keys_url", cfg.RAR.CWTVerifier.COSEKeysURL),
+				slog.String("issuer", cfg.RAR.CWTVerifier.Issuer),
+				slog.String("audience", cfg.RAR.CWTVerifier.Audience),
+			)
+			endpoint.cwtVerifier = cwtVerifier
+		}
+	}
+
 	return func(_ context.Context, mux *http.ServeMux) error {
 		endpoint.Mount(mux)
 		return nil

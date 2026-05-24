@@ -243,11 +243,14 @@ func newTestEndpoint(t *testing.T, clearance string) (*RAREndpoint, string) {
 	}
 	signer, err := NewEphemeralRARSigner("https://opentdf.local", time.Hour)
 	require.NoError(t, err)
+	cwtSigner, err := NewEphemeralRARCWTSigner("https://opentdf.local", time.Hour)
+	require.NoError(t, err)
 
 	endpoint := &RAREndpoint{
-		pdp:      svc,
-		signer:   signer,
-		verifier: &stubVerifier{expectedToken: "subject-token", subject: "user-1"},
+		pdp:       svc,
+		signer:    signer,
+		cwtSigner: cwtSigner,
+		verifier:  &stubVerifier{expectedToken: "subject-token", subject: "user-1"},
 	}
 	return endpoint, "subject-token"
 }
@@ -263,6 +266,7 @@ func TestRAREndpoint_MaterializesFullEntitlementsByDefault(t *testing.T) {
 	form.Set("grant_type", grantTypeTokenExchange)
 	form.Set("subject_token", subjectToken)
 	form.Set("subject_token_type", tokenTypeIDToken)
+	form.Set("requested_token_type", tokenTypeJWT)
 	form.Set("audience", "kas.example")
 	// Note: no authorization_details — we expect EVERYTHING.
 
@@ -399,6 +403,7 @@ func TestRAREndpoint_RejectsBadSubjectToken(t *testing.T) {
 	form.Set("grant_type", grantTypeTokenExchange)
 	form.Set("subject_token", "wrong-token")
 	form.Set("subject_token_type", tokenTypeIDToken)
+	form.Set("requested_token_type", tokenTypeJWT)
 
 	resp, err := http.Post(srv.URL+rarTokenPath, "application/x-www-form-urlencoded", strings.NewReader(form.Encode()))
 	require.NoError(t, err)
@@ -446,6 +451,11 @@ func baseForm(subjectToken string) url.Values {
 	form.Set("grant_type", grantTypeTokenExchange)
 	form.Set("subject_token", subjectToken)
 	form.Set("subject_token_type", tokenTypeIDToken)
+	// Existing tests in this file assert on the JSON envelope shape. The
+	// platform default is now CWT (raw CBOR body); opt back into JWT here
+	// so each helper test stays focused on its specific concern instead of
+	// re-asserting the format choice.
+	form.Set("requested_token_type", tokenTypeJWT)
 	return form
 }
 

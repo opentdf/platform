@@ -41,6 +41,22 @@ services:
   #   entitlement_policy_cache:
   #     enabled: false
   #     refresh_interval: 30s
+  #   rar:
+  #     enabled: false
+  #     issuer: opentdf-authorization
+  #     token_ttl: 1h
+  #     # CWT subject-token support (RFC 8392). Opt-in. When enabled the RAR
+  #     # endpoint accepts subject_token_type=urn:ietf:params:oauth:token-type:cwt
+  #     # and verifies COSE_Sign1 / ES256 signatures against the COSE Key Set
+  #     # published by the IdP that mints the CWTs (e.g. authnz-rs at
+  #     # /.well-known/cose-keys).
+  #     cwt_verifier:
+  #       enabled: false
+  #       cose_keys_url: https://authnz.example/.well-known/cose-keys
+  #       issuer: https://authnz.example
+  #       audience: opentdf-platform
+  #       algorithm: ES256
+  #       cache_ttl: 10m
 server:
   auth:
     enabled: true

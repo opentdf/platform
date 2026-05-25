@@ -17,8 +17,11 @@ sdk_config:
   entityresolution:
     endpoint: http://localhost:8181
     plaintext: true
-  client_id: opentdf
-  client_secret: secret
+  # Intentionally no client_id/client_secret: providing them triggers OIDC
+  # discovery against server.auth.issuer at startup (see start.go), which
+  # would force a Keycloak dependency even though server.auth.enabled is
+  # false. Outbound SDK calls in this mode (ERS over plaintext) need no
+  # bearer token, and inbound auth is disabled below.
 
 logger:
   level: info

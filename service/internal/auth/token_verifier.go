@@ -1,77 +1,81 @@
+// Package auth — inbound bearer-token verification.
+//
+// The platform accepts CWT bearer tokens (RFC 8392, COSE_Sign1, ES256) issued
+// by an IdP that publishes a COSE Key Set. The IdP advertises that key-set
+// URL in its OIDC Discovery document under the custom field
+// `arkavo_cose_keys_uri`; we re-use the same OIDC issuer/JWKS infrastructure
+// for everything else (issuer alignment, audience matching, well-known
+// registration) but route the actual signature verification through
+// CWTVerifier rather than jwx.
+//
+// JWT bearer tokens are no longer accepted on inbound paths — this was a
+// hard cutover (see ADRs / project memory). Outbound token *minting* by the
+// Go SDK is a separate path and is not yet on CWT.
 package auth
 
 import (
 	"context"
-	"errors"
-	"log/slog"
+	"fmt"
 	"time"
 
-	"github.com/lestrrat-go/jwx/v2/jwk"
-	"github.com/lestrrat-go/jwx/v2/jws"
 	"github.com/lestrrat-go/jwx/v2/jwt"
 
 	"github.com/opentdf/platform/service/logger"
 )
 
-var errNilTokenVerifier = errors.New("access token verifier is not configured")
-
-// AccessTokenVerifier validates raw access tokens.
+// AccessTokenVerifier validates raw access tokens. The implementation is a
+// CWT verifier today; the interface is preserved so call sites that hold
+// the verifier (e.g. service/authorization/v2/rar.go) don't need to know
+// which token format is in use.
 type AccessTokenVerifier interface {
 	VerifyAccessToken(ctx context.Context, tokenRaw string) (jwt.Token, error)
 }
 
-// TokenVerifier validates access tokens against the platform's configured IdP.
-type TokenVerifier struct {
-	cachedKeySet      jwk.Set
-	oidcConfiguration AuthNConfig
-	log               *logger.Logger
-}
-
-func newTokenVerifier(ctx context.Context, cfg AuthNConfig, log *logger.Logger) (*TokenVerifier, *OIDCConfiguration, error) {
+// newTokenVerifier discovers the IdP's OIDC config and the COSE Key Set URL
+// it advertises, then builds a CWTVerifier. The returned OIDCConfiguration
+// is handed back to NewAuthenticator so it can register the issuer + idp
+// metadata in the wellknown service exactly as before.
+//
+// If the IdP's self-reported issuer differs from the configured one (common
+// in dev where local hostnames diverge), the configured value is rewritten
+// to the discovered one so subsequent iss-claim matching succeeds.
+func newTokenVerifier(ctx context.Context, cfg AuthNConfig, log *logger.Logger) (*CWTVerifier, *OIDCConfiguration, AuthNConfig, error) {
 	if err := cfg.validateAuthNConfig(log); err != nil {
-		return nil, nil, err
+		return nil, nil, cfg, err
 	}
-
-	cache := jwk.NewCache(ctx)
 
 	oidcConfig, err := DiscoverOIDCConfiguration(ctx, cfg.Issuer, log)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, cfg, err
 	}
-
+	if oidcConfig.CoseKeysURI == "" {
+		return nil, nil, cfg, fmt.Errorf(
+			"idp %s does not advertise arkavo_cose_keys_uri in its discovery document; "+
+				"the platform requires CWT bearer tokens (see service/internal/auth/cwt_verifier.go)",
+			cfg.Issuer,
+		)
+	}
 	if oidcConfig.Issuer != cfg.Issuer {
 		cfg.Issuer = oidcConfig.Issuer
 	}
 
-	cacheInterval, err := time.ParseDuration(cfg.CacheRefresh)
+	cacheTTL := defaultCWTCacheTTL
+	if cfg.CacheRefresh != "" {
+		if d, perr := time.ParseDuration(cfg.CacheRefresh); perr == nil {
+			cacheTTL = d
+		}
+	}
+
+	v, err := NewCWTVerifier(ctx, CWTVerifierConfig{
+		COSEKeysURL: oidcConfig.CoseKeysURI,
+		Issuer:      cfg.Issuer,
+		Audience:    cfg.Audience,
+		CacheTTL:    cacheTTL,
+	}, log)
 	if err != nil {
-		log.ErrorContext(ctx,
-			"invalid cache_refresh_interval",
-			slog.String("cache_refresh_interval", cfg.CacheRefresh),
-			slog.Any("err", err),
-		)
-		cacheInterval = refreshInterval
+		return nil, nil, cfg, err
 	}
-
-	if err := cache.Register(oidcConfig.JwksURI, jwk.WithMinRefreshInterval(cacheInterval)); err != nil {
-		return nil, nil, err
-	}
-
-	if _, err := cache.Refresh(ctx, oidcConfig.JwksURI); err != nil {
-		return nil, nil, err
-	}
-
-	return &TokenVerifier{
-		cachedKeySet:      jwk.NewCachedSet(cache, oidcConfig.JwksURI),
-		oidcConfiguration: cfg,
-		log:               log,
-	}, oidcConfig, nil
-}
-
-// NewTokenVerifier creates a reusable verifier backed by the IdP JWKS endpoint.
-func NewTokenVerifier(ctx context.Context, cfg AuthNConfig, log *logger.Logger) (*TokenVerifier, error) {
-	verifier, _, err := newTokenVerifier(ctx, cfg, log)
-	return verifier, err
+	return v, oidcConfig, cfg, nil
 }
 
 // AccessTokenVerifier returns the authenticator's shared access-token verifier.
@@ -79,27 +83,5 @@ func (a *Authentication) AccessTokenVerifier() AccessTokenVerifier {
 	if a == nil || a.tokenVerifier == nil {
 		return nil
 	}
-
 	return a.tokenVerifier
-}
-
-// VerifyAccessToken validates the provided raw JWT and returns the parsed token on success.
-func (v *TokenVerifier) VerifyAccessToken(ctx context.Context, tokenRaw string) (jwt.Token, error) {
-	if v == nil {
-		return nil, errNilTokenVerifier
-	}
-
-	token, err := jwt.Parse([]byte(tokenRaw),
-		jwt.WithKeySet(v.cachedKeySet, jws.WithInferAlgorithmFromKey(true)),
-		jwt.WithValidate(true),
-		jwt.WithIssuer(v.oidcConfiguration.Issuer),
-		jwt.WithAudience(v.oidcConfiguration.Audience),
-		jwt.WithAcceptableSkew(v.oidcConfiguration.TokenSkew),
-	)
-	if err != nil {
-		v.log.WarnContext(ctx, "failed to validate auth token", slog.Any("err", err))
-		return nil, err
-	}
-
-	return token, nil
 }

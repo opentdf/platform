@@ -80,12 +80,16 @@ const (
 	ActionOther     = "other"
 )
 
-// Authentication holds a jwks cache and information about the openid configuration
+// Authentication holds the access-token verifier and the openid configuration.
 type Authentication struct {
 	enforceDPoP bool
-	// tokenVerifier validates access tokens against the configured IdP.
-	tokenVerifier *TokenVerifier
-	// openidConfigurations holds the openid configuration for the issuer
+	// tokenVerifier validates inbound bearer tokens against the configured
+	// IdP. Today this is always backed by a CWTVerifier (see
+	// token_verifier.go); held as an interface so the verifier strategy can
+	// evolve without touching the middleware.
+	tokenVerifier AccessTokenVerifier
+	// oidcConfiguration is the resolved AuthN config (issuer aligned to what
+	// the IdP self-reports during discovery, audience/policy as configured).
 	oidcConfiguration AuthNConfig
 	// Casbin enforcer
 	enforcer *Enforcer
@@ -107,7 +111,7 @@ func NewAuthenticator(ctx context.Context, cfg Config, logger *logger.Logger, we
 		logger:      logger,
 	}
 
-	tokenVerifier, oidcConfig, err := newTokenVerifier(ctx, cfg.AuthNConfig, a.logger)
+	tokenVerifier, oidcConfig, resolvedCfg, err := newTokenVerifier(ctx, cfg.AuthNConfig, a.logger)
 	if err != nil {
 		return nil, err
 	}
@@ -133,7 +137,7 @@ func NewAuthenticator(ctx context.Context, cfg Config, logger *logger.Logger, we
 	// Combine IPC reauthorization routes
 	a.ipcReauthRoutes = append(ipcReauthRoutes[:], cfg.IPCReauthRoutes...)
 
-	a.oidcConfiguration = tokenVerifier.oidcConfiguration
+	a.oidcConfiguration = resolvedCfg
 
 	// Try an register oidc issuer to wellknown service but don't return an error if it fails
 	if err := wellknownRegistration("platform_issuer", a.oidcConfiguration.Issuer); err != nil {

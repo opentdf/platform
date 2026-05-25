@@ -17,7 +17,8 @@ const (
 )
 
 // OIDCConfiguration holds the openid configuration for the issuer.
-// Currently only required fields are included (https://openid.net/specs/openid-connect-discovery-1_0.html#ProviderMetadata)
+// Currently only required fields are included (https://openid.net/specs/openid-connect-discovery-1_0.html#ProviderMetadata),
+// plus the Arkavo extension that advertises a COSE Key Set for CWT verifiers.
 type OIDCConfiguration struct {
 	Issuer                           string   `json:"issuer"`
 	AuthorizationEndpoint            string   `json:"authorization_endpoint"`
@@ -28,6 +29,12 @@ type OIDCConfiguration struct {
 	SubjectTypesSupported            []string `json:"subject_types_supported"`
 	IDTokenSigningAlgValuesSupported []string `json:"id_token_signing_alg_values_supported"`
 	RequireRequestURIRegistration    bool     `json:"require_request_uri_registration"`
+
+	// CoseKeysURI is the URL of the COSE Key Set used to verify CWT bearer
+	// tokens (RFC 8392 / RFC 9052). Not part of the OIDC Discovery spec —
+	// advertised by Arkavo-compatible IdPs (authnz-rs) under the custom
+	// "arkavo_cose_keys_uri" field. Empty when the IdP does not issue CWTs.
+	CoseKeysURI string `json:"arkavo_cose_keys_uri,omitempty"`
 }
 
 // DiscoverOPENIDConfiguration discovers the openid configuration for the issuer provided

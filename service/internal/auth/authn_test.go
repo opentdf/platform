@@ -3,15 +3,14 @@ package auth
 import (
 	"context"
 	"crypto"
+	"crypto/ecdsa"
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/sha256"
 	"crypto/tls"
 	"encoding/base64"
-	"encoding/json"
 	"errors"
 	"fmt"
-	"log/slog"
 	"net"
 	"net/http"
 	"net/http/httptest"
@@ -47,8 +46,11 @@ import (
 type AuthSuite struct {
 	suite.Suite
 	server *httptest.Server
-	key    jwk.Key
-	auth   *Authentication
+	// CWT bearer-token signing material. priv signs the CWTs the tests mint;
+	// kid is the COSE key id the server advertises in its key set.
+	priv *ecdsa.PrivateKey
+	kid  []byte
+	auth *Authentication
 }
 
 type FakeAccessTokenSource struct {
@@ -104,58 +106,41 @@ func (fake FakeAccessTokenSource) MakeToken(tokenMaker func(jwk.Key) ([]byte, er
 	return tokenMaker(fake.dpopKey)
 }
 
-func must(err error) {
-	if err != nil {
-		panic(err)
-	}
-}
-
 func (s *AuthSuite) SetupTest() {
-	privKey, err := rsa.GenerateKey(rand.Reader, 2048)
-	if err != nil {
-		slog.Error("failed to generate RSA private key", slog.String("error", err.Error()))
-		panic(err)
-	}
+	// Generate the EC P-256 signing key and a small COSE Key Set wrapping
+	// its public half. Helpers come from cwt_verifier_test.go (same package).
+	priv, kid := newP256(s.T())
+	s.priv = priv
+	s.kid = kid
+	keySetCBOR := coseKeySetFromPub(s.T(), &priv.PublicKey, kid)
 
-	pubKeyJWK, err := jwk.FromRaw(privKey.PublicKey)
-	if err != nil {
-		slog.Error("failed to create jwk.Key from RSA public key", slog.String("error", err.Error()))
-		panic(err)
-	}
-	must(pubKeyJWK.Set(jws.KeyIDKey, "test"))
-	must(pubKeyJWK.Set(jwk.AlgorithmKey, jwa.RS256))
-
-	// Create a new set with rsa public key
-	set := jwk.NewSet()
-	must(set.AddKey(pubKeyJWK))
-
-	key, err := jwk.FromRaw(privKey)
-	must(err)
-	must(key.Set(jws.KeyIDKey, "test"))
-
-	s.key = key
-
+	// Fake IdP — serves OIDC discovery (with the arkavo_cose_keys_uri
+	// extension so NewAuthenticator can find the key set) and the COSE Key
+	// Set itself. JWKS is still served (empty) so anything that consults the
+	// discovery doc and follows jwks_uri sees a well-formed response, even
+	// though the platform now verifies bearers as CWTs.
 	s.server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusOK)
-		if r.URL.Path == "/.well-known/openid-configuration" {
-			_, err := fmt.Fprintf(w, `{"issuer":"%s","jwks_uri": "%s/jwks"}`, s.server.URL, s.server.URL)
-			if err != nil {
-				panic(err)
-			}
-			return
-		}
-		if r.URL.Path == "/jwks" {
-			err := json.NewEncoder(w).Encode(set)
-			if err != nil {
-				panic(err)
-			}
+		switch r.URL.Path {
+		case "/.well-known/openid-configuration":
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = fmt.Fprintf(w,
+				`{"issuer":%q,"jwks_uri":%q,"arkavo_cose_keys_uri":%q}`,
+				s.server.URL, s.server.URL+"/jwks", s.server.URL+"/cose-keys")
+		case "/cose-keys":
+			w.Header().Set("Content-Type", "application/cose-key-set+cbor")
+			_, _ = w.Write(keySetCBOR)
+		case "/jwks":
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`{"keys":[]}`))
+		default:
+			http.NotFound(w, r)
 		}
 	}))
 
 	policyCfg := PolicyConfig{
 		ClientIDClaim: "cid",
 	}
-	err = defaults.Set(&policyCfg)
+	err := defaults.Set(&policyCfg)
 	s.Require().NoError(err)
 
 	auth, err := NewAuthenticator(
@@ -267,13 +252,14 @@ func (s *AuthSuite) Test_IPCUnaryServerInterceptor() {
 }
 
 func (s *AuthSuite) Test_ConnectUnaryServerInterceptor_ClientIDPropagated() {
-	tok := jwt.New()
-	s.Require().NoError(tok.Set(jwt.ExpirationKey, time.Now().Add(time.Hour)))
-	s.Require().NoError(tok.Set("iss", s.server.URL))
-	s.Require().NoError(tok.Set("aud", "test"))
-	// default client ID claim in policy config is 'azp'
-	s.Require().NoError(tok.Set("azp", "test-client-id"))
-	s.Require().NoError(tok.Set("realm_access", map[string][]string{"roles": {"opentdf-standard"}}))
+	// Default policy ClientIDClaim is "azp"; we set it as a custom CWT
+	// text-label claim so getClientIDFromToken can extract it after the
+	// CWT verifier hydrates a jwt.Token. realm_access.roles is included so
+	// any role provider that defaults to it has data to read.
+	bearer := s.mintCWT(map[string]any{
+		"azp":          "test-client-id",
+		"realm_access": map[string]any{"roles": []any{"opentdf-standard"}},
+	})
 
 	policyCfg := new(PolicyConfig)
 	err := defaults.Set(policyCfg)
@@ -288,10 +274,6 @@ func (s *AuthSuite) Test_ConnectUnaryServerInterceptor_ClientIDPropagated() {
 		AuthNConfig: authnConfig,
 	}
 	auth, err := NewAuthenticator(s.T().Context(), config, logger.CreateTestLogger(), func(_ string, _ any) error { return nil })
-	s.Require().NoError(err)
-
-	// Sign the token
-	signedTok, err := jwt.Sign(tok, jwt.WithKey(jwa.RS256, s.key))
 	s.Require().NoError(err)
 
 	// Create a minimal connect server setup to properly test the interceptor
@@ -314,26 +296,18 @@ func (s *AuthSuite) Test_ConnectUnaryServerInterceptor_ClientIDPropagated() {
 	client := kas.NewAccessServiceClient(conn)
 
 	// Make the request
-	_, err = client.Rewrap(metadata.AppendToOutgoingContext(s.T().Context(), "authorization", "Bearer "+string(signedTok)), &kas.RewrapRequest{})
+	_, err = client.Rewrap(metadata.AppendToOutgoingContext(s.T().Context(), "authorization", "Bearer "+bearer), &kas.RewrapRequest{})
 	s.Require().NoError(err)
 
 	// Assert that the client ID was properly extracted and set in the context
 	s.Equal("test-client-id", fakeServer.clientID)
 }
 
-func (s *AuthSuite) Test_CheckToken_When_JWT_Expired_Expect_Error() {
-	tok := jwt.New()
-	s.Require().NoError(tok.Set(jwt.ExpirationKey, time.Date(2009, 11, 17, 20, 34, 58, 651387237, time.UTC)))
-
-	signedTok, err := jwt.Sign(tok, jwt.WithKey(jwa.RS256, s.key))
-
-	s.NotNil(signedTok)
-	s.Require().NoError(err)
-
-	_, _, err = s.auth.checkToken(context.Background(), []string{"Bearer " + string(signedTok)}, receiverInfo{}, nil)
-	s.Require().Error(err)
-	s.Equal("\"exp\" not satisfied", err.Error())
-}
+// NOTE: Tests that asserted jwx error strings for expired / missing-iss /
+// invalid-iss / missing-aud / invalid-aud have been removed. Token-format
+// claim validation is now exclusively CWTVerifier's responsibility and is
+// covered by cwt_verifier_test.go (see TestCWTVerifier_*Claim* there). The
+// auth middleware just propagates whatever error the verifier returns.
 
 func (s *AuthSuite) Test_MuxHandler_When_Authorization_Header_Missing_Expect_Error() {
 	handler := s.auth.MuxHandler(http.HandlerFunc(func(_ http.ResponseWriter, _ *http.Request) {}))
@@ -373,76 +347,11 @@ func (s *AuthSuite) Test_CheckToken_When_Authorization_Header_Invalid_Expect_Err
 	s.Equal("not of type bearer or dpop", err.Error())
 }
 
-func (s *AuthSuite) Test_CheckToken_When_Missing_Issuer_Expect_Error() {
-	tok := jwt.New()
-	s.Require().NoError(tok.Set(jwt.ExpirationKey, time.Now().Add(time.Hour)))
-
-	signedTok, err := jwt.Sign(tok, jwt.WithKey(jwa.RS256, s.key))
-
-	s.NotNil(signedTok)
-	s.Require().NoError(err)
-
-	_, _, err = s.auth.checkToken(context.Background(), []string{"Bearer " + string(signedTok)}, receiverInfo{}, nil)
-	s.Require().Error(err)
-	s.Equal("\"iss\" not satisfied: claim \"iss\" does not exist", err.Error())
-}
-
-func (s *AuthSuite) Test_CheckToken_When_Invalid_Issuer_Value_Expect_Error() {
-	tok := jwt.New()
-	s.Require().NoError(tok.Set(jwt.ExpirationKey, time.Now().Add(time.Hour)))
-	s.Require().NoError(tok.Set("iss", "invalid"))
-
-	signedTok, err := jwt.Sign(tok, jwt.WithKey(jwa.RS256, s.key))
-
-	s.NotNil(signedTok)
-	s.Require().NoError(err)
-
-	_, _, err = s.auth.checkToken(context.Background(), []string{"Bearer " + string(signedTok)}, receiverInfo{}, nil)
-	s.Require().Error(err)
-	s.Contains(err.Error(), "\"iss\" not satisfied: values do not match")
-}
-
-func (s *AuthSuite) Test_CheckToken_When_Audience_Missing_Expect_Error() {
-	tok := jwt.New()
-	s.Require().NoError(tok.Set(jwt.ExpirationKey, time.Now().Add(time.Hour)))
-	s.Require().NoError(tok.Set("iss", s.server.URL))
-	signedTok, err := jwt.Sign(tok, jwt.WithKey(jwa.RS256, s.key))
-
-	s.NotNil(signedTok)
-	s.Require().NoError(err)
-
-	_, _, err = s.auth.checkToken(context.Background(), []string{"Bearer " + string(signedTok)}, receiverInfo{}, nil)
-	s.Require().Error(err)
-	s.Equal("claim \"aud\" not found", err.Error())
-}
-
-func (s *AuthSuite) Test_CheckToken_When_Audience_Invalid_Expect_Error() {
-	tok := jwt.New()
-	s.Require().NoError(tok.Set(jwt.ExpirationKey, time.Now().Add(time.Hour)))
-	s.Require().NoError(tok.Set("iss", s.server.URL))
-	s.Require().NoError(tok.Set("aud", "invalid"))
-	signedTok, err := jwt.Sign(tok, jwt.WithKey(jwa.RS256, s.key))
-
-	s.NotNil(signedTok)
-	s.Require().NoError(err)
-
-	_, _, err = s.auth.checkToken(context.Background(), []string{"Bearer " + string(signedTok)}, receiverInfo{}, nil)
-	s.Require().Error(err)
-	s.Equal("\"aud\" not satisfied", err.Error())
-}
-
 func (s *AuthSuite) Test_CheckToken_When_Valid_No_DPoP_Expect_Error() {
-	tok := jwt.New()
-	s.Require().NoError(tok.Set(jwt.ExpirationKey, time.Now().Add(time.Hour)))
-	s.Require().NoError(tok.Set("iss", s.server.URL))
-	s.Require().NoError(tok.Set("aud", "test"))
-	s.Require().NoError(tok.Set("client_id", "client1"))
-	signedTok, err := jwt.Sign(tok, jwt.WithKey(jwa.RS256, s.key))
-
-	s.NotNil(signedTok)
-	s.Require().NoError(err)
-
-	_, _, err = s.auth.checkToken(context.Background(), []string{"Bearer " + string(signedTok)}, receiverInfo{}, nil)
+	// Default suite config enforces DPoP. A bearer with no `cnf` claim
+	// should be rejected before any access decision is made.
+	bearer := s.mintCWT(map[string]any{"cid": "client1"})
+	_, _, err := s.auth.checkToken(context.Background(), []string{"Bearer " + bearer}, receiverInfo{}, nil)
 	s.Require().Error(err)
 	s.Require().Contains(err.Error(), "dpop")
 }
@@ -461,27 +370,29 @@ type dpopTestCase struct {
 }
 
 func (s *AuthSuite) TestInvalid_DPoP_Cases() {
+	// DPoP *proofs* remain JWTs per RFC 9449. The access token they're
+	// bound to is now a CWT. So we mint a CWT bearer with a `cnf.jkt`
+	// matching the DPoP proof's key thumbprint, and an RSA key for the
+	// DPoP proof itself.
 	dpopRaw, err := rsa.GenerateKey(rand.Reader, 2048)
 	s.Require().NoError(err)
 	dpopKey, err := jwk.FromRaw(dpopRaw)
 	s.Require().NoError(err)
 	s.Require().NoError(dpopKey.Set(jwk.AlgorithmKey, jwa.RS256))
 
-	tok := jwt.New()
-	s.Require().NoError(tok.Set(jwt.ExpirationKey, time.Now().Add(time.Hour)))
-	s.Require().NoError(tok.Set("iss", s.server.URL))
-	s.Require().NoError(tok.Set("aud", "test"))
-	s.Require().NoError(tok.Set("cid", "client2"))
 	dpopPublic, err := dpopKey.PublicKey()
 	s.Require().NoError(err)
 	thumbprint, err := dpopKey.Thumbprint(crypto.SHA256)
 	s.Require().NoError(err)
-	cnf := map[string]string{"jkt": base64.URLEncoding.WithPadding(base64.NoPadding).EncodeToString(thumbprint)}
-	s.Require().NoError(tok.Set("cnf", cnf))
-	signedTok, err := jwt.Sign(tok, jwt.WithKey(jwa.RS256, s.key))
+	jkt := base64.URLEncoding.WithPadding(base64.NoPadding).EncodeToString(thumbprint)
 
-	s.NotNil(signedTok)
-	s.Require().NoError(err)
+	signedTok := s.mintCWT(map[string]any{
+		"cid": "client2",
+		"cnf": map[string]any{"jkt": jkt},
+	})
+	signedTokWithNoCNF := s.mintCWT(map[string]any{
+		"cid": "client2",
+	})
 
 	otherKeyRaw, err := rsa.GenerateKey(rand.Reader, 2048)
 	s.Require().NoError(err)
@@ -491,30 +402,23 @@ func (s *AuthSuite) TestInvalid_DPoP_Cases() {
 	s.Require().NoError(err)
 	s.Require().NoError(otherKey.Set(jwk.AlgorithmKey, jwa.RS256))
 
-	tokenWithNoCNF := jwt.New()
-	s.Require().NoError(tokenWithNoCNF.Set(jwt.ExpirationKey, time.Now().Add(time.Hour)))
-	s.Require().NoError(tokenWithNoCNF.Set("iss", s.server.URL))
-	s.Require().NoError(tokenWithNoCNF.Set("aud", "test"))
-	s.Require().NoError(tokenWithNoCNF.Set("cid", "client2"))
-	signedTokWithNoCNF, err := jwt.Sign(tokenWithNoCNF, jwt.WithKey(jwa.RS256, s.key))
-	s.NotNil(signedTokWithNoCNF)
-	s.Require().NoError(err)
-
+	signedTokBytes := []byte(signedTok)
+	signedTokNoCNFBytes := []byte(signedTokWithNoCNF)
 	testCases := []dpopTestCase{
-		{dpopPublic, dpopKey, signedTok, jwa.RS256, "dpop+jwt", http.MethodPost, "/a/path", "", time.Now().Add(time.Hour * -100), "the DPoP JWT has expired"},
-		{dpopKey, dpopKey, signedTok, jwa.RS256, "dpop+jwt", http.MethodPost, "/a/path", "", time.Now(), "cannot use a private key for DPoP"},
-		{dpopPublic, dpopKey, signedTok, jwa.RS256, "a weird type", http.MethodPost, "/a/path", "", time.Now(), "invalid typ on DPoP JWT: a weird type"},
-		{dpopPublic, otherKey, signedTok, jwa.RS256, "dpop+jwt", http.MethodPost, "/a/path", "", time.Now(), "failed to verify signature on DPoP JWT"},
-		{dpopPublic, dpopKey, signedTok, jwa.RS256, "dpop+jwt", http.MethodPost, "/a/different/path", "", time.Now(), "incorrect `htu` claim in DPoP JWT"},
-		{dpopPublic, dpopKey, signedTok, jwa.RS256, "dpop+jwt", "POSTERS", "/a/path", "", time.Now(), "incorrect `htm` claim in DPoP JWT"},
-		{dpopPublic, dpopKey, signedTok, jwa.RS256, "dpop+jwt", http.MethodPost, "/a/path", "bad ath", time.Now(), "incorrect `ath` claim in DPoP JWT"},
-		{dpopPublic, dpopKey, signedTok, jwa.RS256, "dpop+jwt", http.MethodPost, "/a/path", "bad iat", time.Now().Add(2 * time.Hour), "\"iat\" not satisfied"},
+		{dpopPublic, dpopKey, signedTokBytes, jwa.RS256, "dpop+jwt", http.MethodPost, "/a/path", "", time.Now().Add(time.Hour * -100), "the DPoP JWT has expired"},
+		{dpopKey, dpopKey, signedTokBytes, jwa.RS256, "dpop+jwt", http.MethodPost, "/a/path", "", time.Now(), "cannot use a private key for DPoP"},
+		{dpopPublic, dpopKey, signedTokBytes, jwa.RS256, "a weird type", http.MethodPost, "/a/path", "", time.Now(), "invalid typ on DPoP JWT: a weird type"},
+		{dpopPublic, otherKey, signedTokBytes, jwa.RS256, "dpop+jwt", http.MethodPost, "/a/path", "", time.Now(), "failed to verify signature on DPoP JWT"},
+		{dpopPublic, dpopKey, signedTokBytes, jwa.RS256, "dpop+jwt", http.MethodPost, "/a/different/path", "", time.Now(), "incorrect `htu` claim in DPoP JWT"},
+		{dpopPublic, dpopKey, signedTokBytes, jwa.RS256, "dpop+jwt", "POSTERS", "/a/path", "", time.Now(), "incorrect `htm` claim in DPoP JWT"},
+		{dpopPublic, dpopKey, signedTokBytes, jwa.RS256, "dpop+jwt", http.MethodPost, "/a/path", "bad ath", time.Now(), "incorrect `ath` claim in DPoP JWT"},
+		{dpopPublic, dpopKey, signedTokBytes, jwa.RS256, "dpop+jwt", http.MethodPost, "/a/path", "bad iat", time.Now().Add(2 * time.Hour), "\"iat\" not satisfied"},
 		{
-			otherKeyPublic, dpopKey, signedTok, jwa.RS256, "dpop+jwt", http.MethodPost, "/a/path", "", time.Now(),
+			otherKeyPublic, dpopKey, signedTokBytes, jwa.RS256, "dpop+jwt", http.MethodPost, "/a/path", "", time.Now(),
 			"the `jkt` from the DPoP JWT didn't match the thumbprint from the access token",
 		},
 		{
-			dpopPublic, dpopKey, signedTokWithNoCNF, jwa.RS256, "dpop+jwt", http.MethodPost, "/a/path", "", time.Now(),
+			dpopPublic, dpopKey, signedTokNoCNFBytes, jwa.RS256, "dpop+jwt", http.MethodPost, "/a/path", "", time.Now(),
 			"missing `cnf` claim in access token",
 		},
 	}
@@ -539,24 +443,23 @@ func (s *AuthSuite) TestInvalid_DPoP_Cases() {
 }
 
 func (s *AuthSuite) TestDPoPEndToEnd_GRPC() {
+	// As in TestInvalid_DPoP_Cases: DPoP proof stays as a JWT, the access
+	// token is now a CWT carrying the matching jkt in its cnf claim.
 	dpopKeyRaw, err := rsa.GenerateKey(rand.Reader, 2048)
 	s.Require().NoError(err)
 	dpopKey, err := jwk.FromRaw(dpopKeyRaw)
 	s.Require().NoError(err)
 	s.Require().NoError(dpopKey.Set(jwk.AlgorithmKey, jwa.RS256))
 
-	tok := jwt.New()
-	s.Require().NoError(tok.Set(jwt.ExpirationKey, time.Now().Add(time.Hour)))
-	s.Require().NoError(tok.Set("iss", s.server.URL))
-	s.Require().NoError(tok.Set("aud", "test"))
-	s.Require().NoError(tok.Set("cid", "client-123"))
-	s.Require().NoError(tok.Set("realm_access", map[string][]string{"roles": {"opentdf-standard"}}))
 	thumbprint, err := dpopKey.Thumbprint(crypto.SHA256)
 	s.Require().NoError(err)
-	cnf := map[string]string{"jkt": base64.URLEncoding.WithPadding(base64.NoPadding).EncodeToString(thumbprint)}
-	s.Require().NoError(tok.Set("cnf", cnf))
-	signedTok, err := jwt.Sign(tok, jwt.WithKey(jwa.RS256, s.key))
-	s.Require().NoError(err)
+	jkt := base64.URLEncoding.WithPadding(base64.NoPadding).EncodeToString(thumbprint)
+
+	signedTok := s.mintCWT(map[string]any{
+		"cid":          "client-123",
+		"realm_access": map[string]any{"roles": []any{"opentdf-standard"}},
+		"cnf":          map[string]any{"jkt": jkt},
+	})
 
 	interceptor := connect.WithInterceptors(s.auth.ConnectUnaryServerInterceptor())
 
@@ -571,7 +474,7 @@ func (s *AuthSuite) TestDPoPEndToEnd_GRPC() {
 
 	addingInterceptor := sdkauth.NewTokenAddingInterceptorWithClient(&FakeTokenSource{
 		key:         dpopKey,
-		accessToken: string(signedTok),
+		accessToken: signedTok,
 	}, httputil.SafeHTTPClientWithTLSConfig(&tls.Config{
 		MinVersion: tls.VersionTLS12,
 	}))
@@ -664,25 +567,15 @@ func (s *AuthSuite) Test_Allowing_Auth_With_No_DPoP() {
 	}
 	config := Config{}
 	config.AuthNConfig = authnConfig
-	auth, err := NewAuthenticator(context.Background(), config, &logger.Logger{
-		Logger: slog.New(slog.Default().Handler()),
-	},
+	auth, err := NewAuthenticator(context.Background(), config, logger.CreateTestLogger(),
 		func(_ string, _ any) error { return nil },
 	)
-
 	s.Require().NoError(err)
 
-	tok := jwt.New()
-	s.Require().NoError(tok.Set(jwt.ExpirationKey, time.Now().Add(time.Hour)))
-	s.Require().NoError(tok.Set("iss", s.server.URL))
-	s.Require().NoError(tok.Set("aud", "test"))
-	s.Require().NoError(tok.Set("client_id", "client1"))
-	signedTok, err := jwt.Sign(tok, jwt.WithKey(jwa.RS256, s.key))
-
-	s.NotNil(signedTok)
-	s.Require().NoError(err)
-
-	_, ctx, err := auth.checkToken(context.Background(), []string{"Bearer " + string(signedTok)}, receiverInfo{}, nil)
+	// CWT without a `cnf` claim — enforceDPoP=false above means the
+	// middleware accepts it and proceeds with no DPoP key bound.
+	bearer := s.mintCWT(map[string]any{"cid": "client1"})
+	_, ctx, err := auth.checkToken(context.Background(), []string{"Bearer " + bearer}, receiverInfo{}, nil)
 	s.Require().NoError(err)
 	s.Require().Nil(ctxAuth.GetJWKFromContext(ctx, logger.CreateTestLogger()))
 }
@@ -850,4 +743,14 @@ func Test_GetClientIDFromToken(t *testing.T) {
 			}
 		})
 	}
+}
+
+// mintCWT signs a CWT access token for these tests, using the suite's
+// EC P-256 key and the kid that the fake IdP advertises in its COSE Key
+// Set. `custom` overlays text-label claims on top of the standard
+// iss/aud/sub/exp/iat claims (e.g. set "cid" for client-id propagation
+// tests, or "cnf" for DPoP).
+func (s *AuthSuite) mintCWT(custom map[string]any) string {
+	claims := standardClaims(s.server.URL, "test", "user-1", time.Hour)
+	return signCWT(s.T(), s.priv, s.kid, claims, custom)
 }

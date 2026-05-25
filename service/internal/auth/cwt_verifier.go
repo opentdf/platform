@@ -146,6 +146,16 @@ func NewCWTVerifier(ctx context.Context, cfg CWTVerifierConfig, log *logger.Logg
 	return v, nil
 }
 
+// VerifyAccessToken satisfies AccessTokenVerifier so *CWTVerifier can serve
+// as the inbound bearer-token verifier for the auth middleware. The
+// unsigned-JWT string returned by VerifyCWTSubjectToken is only useful at
+// the RAR-endpoint boundary (which bridges to the claims-mode ERS); for
+// bearer auth on every other request we only need the jwt.Token.
+func (v *CWTVerifier) VerifyAccessToken(ctx context.Context, tokenRaw string) (jwt.Token, error) {
+	tok, _, err := v.VerifyCWTSubjectToken(ctx, tokenRaw)
+	return tok, err
+}
+
 // VerifyCWTSubjectToken verifies the base64url-encoded CWT and returns the
 // verified claims as both a jwt.Token (for direct use) and an unsigned-JWT
 // string (for the claims-mode ERS).
@@ -165,9 +175,19 @@ func (v *CWTVerifier) VerifyCWTSubjectToken(ctx context.Context, subjectToken st
 		raw = raw[cwtCBORTagHeaderLen:]
 	}
 
+	// RFC 8392 §6 lets the inner message be either a tagged COSE_Sign1
+	// (tag 18) or an untagged COSE_Sign1 array. Go's veraison/go-cose
+	// splits these into two types — Sign1Message wants the tag, while
+	// UntaggedSign1Message wants the bare array. Try tagged first (matches
+	// our own test fixtures) and fall back to untagged (matches what
+	// coset's `sign1.to_vec()` emits, used by authnz-rs).
 	var msg cose.Sign1Message
 	if err := msg.UnmarshalCBOR(raw); err != nil {
-		return nil, "", fmt.Errorf("cwt: not a COSE_Sign1: %w", err)
+		var untagged cose.UntaggedSign1Message
+		if uErr := untagged.UnmarshalCBOR(raw); uErr != nil {
+			return nil, "", fmt.Errorf("cwt: not a COSE_Sign1 (tagged: %v; untagged: %w)", err, uErr)
+		}
+		msg = cose.Sign1Message(untagged)
 	}
 
 	keys, err := v.keys(ctx)

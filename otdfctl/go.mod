@@ -19,7 +19,7 @@ require (
 	github.com/jrschumacher/go-osprofiles v0.0.0-20251201220924-3d077c5481e5
 	github.com/opentdf/platform/lib/flattening v0.1.3
 	github.com/opentdf/platform/lib/identifier v0.4.0
-	github.com/opentdf/platform/lib/ocrypto v0.10.0
+	github.com/opentdf/platform/lib/ocrypto v0.11.0
 	github.com/opentdf/platform/protocol/go v0.31.0
 	github.com/opentdf/platform/sdk v0.17.0
 	github.com/spf13/cobra v1.10.2
@@ -49,6 +49,7 @@ require (
 	github.com/charmbracelet/x/exp/slice v0.0.0-20250327172914-2fdc97757edf // indirect
 	github.com/charmbracelet/x/exp/strings v0.0.0-20240722160745-212f7b056ed0 // indirect
 	github.com/charmbracelet/x/term v0.2.1 // indirect
+	github.com/cloudflare/circl v1.6.3 // indirect
 	github.com/danieljoos/wincred v1.2.2 // indirect
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
 	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.4.0 // indirect

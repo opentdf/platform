@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.12.0](https://github.com/opentdf/platform/compare/lib/ocrypto/v0.11.0...lib/ocrypto/v0.12.0) (2026-05-27)
+
+
+### Bug Fixes
+
+* **core:** Uses strict FIPS AES-GCM ([#3507](https://github.com/opentdf/platform/issues/3507)) ([a0bb218](https://github.com/opentdf/platform/commit/a0bb218762a178b4b925e401f90ee0e76ea865c5))
+* **deps:** bump the external group across 1 directory with 2 updates ([#3519](https://github.com/opentdf/platform/issues/3519)) ([0d0c57b](https://github.com/opentdf/platform/commit/0d0c57b2743a9ffae6e5cb7242520721c6864152))
+
 ## [0.11.0](https://github.com/opentdf/platform/compare/lib/ocrypto/v0.10.0...lib/ocrypto/v0.11.0) (2026-05-26)
 
 

@@ -33,7 +33,7 @@ require (
 	github.com/opentdf/platform/lib/fixtures v0.5.0
 	github.com/opentdf/platform/lib/flattening v0.1.3
 	github.com/opentdf/platform/lib/identifier v0.4.0
-	github.com/opentdf/platform/lib/ocrypto v0.10.0
+	github.com/opentdf/platform/lib/ocrypto v0.12.0
 	github.com/opentdf/platform/protocol/go v0.32.0
 	github.com/opentdf/platform/sdk v0.19.0
 	github.com/pressly/goose/v3 v3.24.3
@@ -48,7 +48,7 @@ require (
 	go.opentelemetry.io/otel/exporters/stdout/stdouttrace v1.42.0
 	go.opentelemetry.io/otel/sdk v1.43.0
 	go.opentelemetry.io/otel/trace v1.43.0
-	golang.org/x/net v0.52.0
+	golang.org/x/net v0.54.0
 	google.golang.org/grpc v1.81.0
 	google.golang.org/protobuf v1.36.11
 	gopkg.in/natefinch/lumberjack.v2 v2.2.1
@@ -57,6 +57,7 @@ require (
 )
 
 require (
+	github.com/cloudflare/circl v1.6.3 // indirect
 	github.com/docker/go-connections v0.6.0 // indirect
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.28.0 // indirect
 	github.com/moby/moby/api v1.54.1 // indirect
@@ -176,12 +177,12 @@ require (
 	go.opentelemetry.io/proto/otlp v1.10.0 // indirect
 	go.uber.org/mock v0.6.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
-	golang.org/x/crypto v0.49.0 // indirect
+	golang.org/x/crypto v0.52.0 // indirect
 	golang.org/x/exp v0.0.0-20250911091902-df9299821621 // indirect
 	golang.org/x/oauth2 v0.36.0 // indirect
 	golang.org/x/sync v0.20.0 // indirect
-	golang.org/x/sys v0.42.0 // indirect
-	golang.org/x/text v0.36.0
+	golang.org/x/sys v0.45.0 // indirect
+	golang.org/x/text v0.37.0
 	google.golang.org/genproto/googleapis/api v0.0.0-20260401024825-9d38bb4040a9 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20260401024825-9d38bb4040a9 // indirect
 	sigs.k8s.io/yaml v1.4.0 // indirect

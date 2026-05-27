@@ -46,6 +46,10 @@ func KeyTypeToPolicyAlgorithm(kt ocrypto.KeyType) (policy.Algorithm, error) {
 		return policy.Algorithm_ALGORITHM_HPQT_SECP256R1_MLKEM768, nil
 	case ocrypto.HybridSecp384r1MLKEM1024Key:
 		return policy.Algorithm_ALGORITHM_HPQT_SECP384R1_MLKEM1024, nil
+	case ocrypto.MLKEM768Key:
+		return policy.Algorithm_ALGORITHM_MLKEM_768, nil
+	case ocrypto.MLKEM1024Key:
+		return policy.Algorithm_ALGORITHM_MLKEM_1024, nil
 	default:
 		return policy.Algorithm_ALGORITHM_UNSPECIFIED, fmt.Errorf("unknown key type: %s", kt)
 	}
@@ -69,6 +73,10 @@ func PolicyAlgorithmToKeyType(alg policy.Algorithm) (ocrypto.KeyType, error) {
 		return ocrypto.HybridSecp256r1MLKEM768Key, nil
 	case policy.Algorithm_ALGORITHM_HPQT_SECP384R1_MLKEM1024:
 		return ocrypto.HybridSecp384r1MLKEM1024Key, nil
+	case policy.Algorithm_ALGORITHM_MLKEM_768:
+		return ocrypto.MLKEM768Key, nil
+	case policy.Algorithm_ALGORITHM_MLKEM_1024:
+		return ocrypto.MLKEM1024Key, nil
 	case policy.Algorithm_ALGORITHM_UNSPECIFIED:
 		fallthrough
 	default:

@@ -53,6 +53,14 @@ func ValidatePublicKeyPEM(pemBytes []byte, expected policy.Algorithm) error {
 		if enc.KeyType() != ocrypto.HybridSecp384r1MLKEM1024Key {
 			return errors.New("algorithm mismatch: expected hybrid NIST P-384 + ML-KEM-1024")
 		}
+	case policy.Algorithm_ALGORITHM_MLKEM_768:
+		if enc.KeyType() != ocrypto.MLKEM768Key {
+			return errors.New("algorithm mismatch: expected ML-KEM-768")
+		}
+	case policy.Algorithm_ALGORITHM_MLKEM_1024:
+		if enc.KeyType() != ocrypto.MLKEM1024Key {
+			return errors.New("algorithm mismatch: expected ML-KEM-1024")
+		}
 	case policy.Algorithm_ALGORITHM_UNSPECIFIED:
 		fallthrough
 	default:

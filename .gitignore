@@ -53,8 +53,9 @@ traces/
 
 .cache/*
 
-# Claude AI files
+# AI tooling files
 .claude/
+.pi/
 
 # otdfctl specific ignores
 # =========================

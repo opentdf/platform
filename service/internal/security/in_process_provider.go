@@ -27,6 +27,8 @@ var InProcessSupportedAlgorithms = []ocrypto.KeyType{
 	ocrypto.HybridXWingKey,
 	ocrypto.HybridSecp256r1MLKEM768Key,
 	ocrypto.HybridSecp384r1MLKEM1024Key,
+	ocrypto.MLKEM768Key,
+	ocrypto.MLKEM1024Key,
 }
 
 func convertPEMToJWK(_ string) (string, error) {
@@ -273,6 +275,12 @@ func (a *InProcessProvider) Decrypt(ctx context.Context, keyDetails trust.KeyDet
 			return nil, errors.New("ephemeral public key should not be provided for hybrid decryption")
 		}
 		return a.cryptoProvider.Decrypt(ctx, trust.KeyIdentifier(kid), ciphertext, nil)
+
+	case AlgorithmMLKEM768, AlgorithmMLKEM1024:
+		if len(ephemeralPublicKey) == 0 {
+			return nil, errors.New("ephemeral public key (ciphertext) is required for ML-KEM decryption")
+		}
+		return a.cryptoProvider.Decrypt(ctx, trust.KeyIdentifier(kid), ciphertext, ephemeralPublicKey)
 
 	default:
 		return nil, errors.New("unsupported key algorithm")

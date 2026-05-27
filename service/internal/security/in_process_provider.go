@@ -199,7 +199,7 @@ func (a *InProcessProvider) ListKeysWith(ctx context.Context, opts trust.ListKey
 	var keys []trust.KeyDetails
 
 	// Try to find keys for known algorithms
-	for _, alg := range []string{AlgorithmRSA2048, AlgorithmRSA4096, AlgorithmECP256R1, AlgorithmHPQTXWing, AlgorithmHPQTSecp256r1MLKEM768, AlgorithmHPQTSecp384r1MLKEM1024} {
+	for _, alg := range []string{AlgorithmRSA2048, AlgorithmRSA4096, AlgorithmECP256R1, AlgorithmHPQTXWing, AlgorithmHPQTSecp256r1MLKEM768, AlgorithmHPQTSecp384r1MLKEM1024, AlgorithmMLKEM768, AlgorithmMLKEM1024} {
 		if kids, err := a.cryptoProvider.ListKIDsByAlgorithm(alg); err == nil && len(kids) > 0 {
 			for _, kid := range kids {
 				if opts.LegacyOnly && !a.legacyKeys[kid] {
@@ -260,6 +260,12 @@ func (a *InProcessProvider) Decrypt(ctx context.Context, keyDetails trust.KeyDet
 			return nil, errors.New("ephemeral public key should not be provided for hybrid decryption")
 		}
 		return a.cryptoProvider.Decrypt(ctx, trust.KeyIdentifier(kid), ciphertext, nil)
+
+	case AlgorithmMLKEM768, AlgorithmMLKEM1024:
+		if len(ephemeralPublicKey) == 0 {
+			return nil, errors.New("ephemeral public key (ciphertext) is required for ML-KEM decryption")
+		}
+		return a.cryptoProvider.Decrypt(ctx, trust.KeyIdentifier(kid), ciphertext, ephemeralPublicKey)
 
 	default:
 		return nil, errors.New("unsupported key algorithm")

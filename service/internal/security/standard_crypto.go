@@ -79,6 +79,12 @@ type StandardHybridCrypto struct {
 	hybridPublicKeyPem  string
 }
 
+type StandardMLKEMCrypto struct {
+	KeyPairInfo
+	mlkemPrivateKeyPem string
+	mlkemPublicKeyPem  string
+}
+
 // List of keys by identifier
 type keylist map[string]any
 
@@ -173,6 +179,12 @@ func loadKey(k KeyPairInfo) (any, error) {
 			KeyPairInfo:         k,
 			hybridPrivateKeyPem: string(privatePEM),
 			hybridPublicKeyPem:  string(certPEM),
+		}, nil
+	case AlgorithmMLKEM768, AlgorithmMLKEM1024:
+		return StandardMLKEMCrypto{
+			KeyPairInfo:        k,
+			mlkemPrivateKeyPem: string(privatePEM),
+			mlkemPublicKeyPem:  string(certPEM),
 		}, nil
 	case AlgorithmRSA2048, AlgorithmRSA4096:
 		asymDecryption, err := ocrypto.NewAsymDecryption(string(privatePEM))
@@ -389,6 +401,21 @@ func (s StandardCrypto) HybridPublicKey(kid string) (string, error) {
 	}
 }
 
+func (s StandardCrypto) MLKEMPublicKey(kid string) (string, error) {
+	k, ok := s.keysByID[kid]
+	if !ok {
+		return "", fmt.Errorf("no mlkem key with id [%s]: %w", kid, ErrCertNotFound)
+	}
+	mlkem, ok := k.(StandardMLKEMCrypto)
+	if !ok {
+		return "", fmt.Errorf("key with id [%s] is not an ML-KEM key: %w", kid, ErrCertNotFound)
+	}
+	if mlkem.mlkemPublicKeyPem == "" {
+		return "", fmt.Errorf("no ML-KEM public key with id [%s]: %w", kid, ErrCertNotFound)
+	}
+	return mlkem.mlkemPublicKeyPem, nil
+}
+
 func (s StandardCrypto) RSADecrypt(_ crypto.Hash, kid string, _ string, ciphertext []byte) ([]byte, error) {
 	k, ok := s.keysByID[kid]
 	if !ok {
@@ -540,6 +567,21 @@ func (s *StandardCrypto) Decrypt(_ context.Context, keyID trust.KeyIdentifier, c
 			}
 		default:
 			return nil, fmt.Errorf("unsupported hybrid algorithm [%s]", key.Algorithm)
+		}
+
+	case StandardMLKEMCrypto:
+		if len(ephemeralPublicKey) == 0 {
+			return nil, errors.New("ephemeral public key (ciphertext) is required for ML-KEM decryption")
+		}
+
+		decryptor, err := ocrypto.FromPrivatePEM(key.mlkemPrivateKeyPem)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create ML-KEM decryptor from PEM: %w", err)
+		}
+
+		rawKey, err = decryptor.DecryptWithEphemeralKey(ciphertext, ephemeralPublicKey)
+		if err != nil {
+			return nil, fmt.Errorf("failed to decrypt with ML-KEM: %w", err)
 		}
 
 	default:

@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"encoding/asn1"
 	"encoding/pem"
+	"errors"
 	"fmt"
 	"io"
 
@@ -257,4 +258,11 @@ func decodeSizedPEMBlock(data []byte, blockType string, expectedSize int) ([]byt
 	}
 
 	return append([]byte(nil), block.Bytes...), nil
+}
+
+func (d *XWingDecryptor) DecryptWithEphemeralKey(data, ephemeral []byte) ([]byte, error) {
+	if len(ephemeral) > 0 {
+		return nil, errors.New("ephemeral key should not be provided for X-Wing decryption")
+	}
+	return d.Decrypt(data)
 }

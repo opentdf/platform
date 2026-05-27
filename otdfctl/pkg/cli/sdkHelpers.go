@@ -131,6 +131,10 @@ func KeyAlgToEnum(alg string) (policy.Algorithm, error) {
 		return policy.Algorithm_ALGORITHM_HPQT_SECP256R1_MLKEM768, nil
 	case "hpqt:secp384r1-mlkem1024":
 		return policy.Algorithm_ALGORITHM_HPQT_SECP384R1_MLKEM1024, nil
+	case "mlkem:768":
+		return policy.Algorithm_ALGORITHM_MLKEM_768, nil
+	case "mlkem:1024":
+		return policy.Algorithm_ALGORITHM_MLKEM_1024, nil
 	default:
 		return policy.Algorithm_ALGORITHM_UNSPECIFIED, errors.New("invalid algorithm")
 	}
@@ -154,6 +158,10 @@ func KeyEnumToAlg(enum policy.Algorithm) (string, error) {
 		return "hpqt:secp256r1-mlkem768", nil
 	case policy.Algorithm_ALGORITHM_HPQT_SECP384R1_MLKEM1024:
 		return "hpqt:secp384r1-mlkem1024", nil
+	case policy.Algorithm_ALGORITHM_MLKEM_768:
+		return "mlkem:768", nil
+	case policy.Algorithm_ALGORITHM_MLKEM_1024:
+		return "mlkem:1024", nil
 	default:
 		return "", errors.New("invalid enum algorithm")
 	}

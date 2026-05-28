@@ -26,6 +26,10 @@ var (
 // consumer. Consumers that have already registered the driver themselves are
 // handled gracefully via a sql.Drivers() pre-check.
 func ensureDriverRegistered(driver string) {
+	// Normalize to lowercase so "Postgres", "POSTGRES", and "postgres" all resolve
+	// to the same registered driver name. sql.Register is case-sensitive.
+	driver = strings.ToLower(strings.TrimSpace(driver))
+
 	driverRegMu.Lock()
 	defer driverRegMu.Unlock()
 
@@ -35,14 +39,15 @@ func ensureDriverRegistered(driver string) {
 
 	// Check whether the driver was already registered externally (e.g. via a
 	// blank import in the consumer binary) before attempting to register it.
+	// Use strings.EqualFold so the pre-check is also case-insensitive.
 	for _, d := range sql.Drivers() {
-		if d == driver {
+		if strings.EqualFold(d, driver) {
 			registeredDrivers[driver] = struct{}{}
 			return
 		}
 	}
 
-	switch strings.ToLower(driver) {
+	switch driver {
 	case "postgres":
 		sql.Register("postgres", stdlib.GetDefaultDriver())
 		registeredDrivers[driver] = struct{}{}

@@ -251,4 +251,7 @@ func TestInProcessProviderDetermineKeyTypeMLKEM(t *testing.T) {
 	details, err = provider.FindKeyByID(t.Context(), trust.KeyIdentifier(material.mlkem1024Kid))
 	require.NoError(t, err)
 	assert.Equal(t, ocrypto.KeyType(AlgorithmMLKEM1024), details.Algorithm())
+
+	_, err = provider.determineKeyType("missing")
+	require.Error(t, err)
 }

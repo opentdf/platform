@@ -90,6 +90,9 @@ func (k *KeyDetailsAdapter) ExportPublicKey(_ context.Context, format trust.KeyT
 		if xwingKey, err := k.cryptoProvider.XWingPublicKey(kid); err == nil {
 			return xwingKey, nil
 		}
+		if mlkemKey, err := k.cryptoProvider.MLKEMPublicKey(kid); err == nil {
+			return mlkemKey, nil
+		}
 		return k.cryptoProvider.ECPublicKey(kid)
 	default:
 		return "", ErrCertNotFound

@@ -357,5 +357,7 @@ teardown() {
 teardown_file() {
   if [ -f opentdf-test-backup.yaml.bak ]; then
     mv opentdf-test-backup.yaml.bak opentdf.yaml
+    sleep 4
+    wait_for_green
   fi
 }

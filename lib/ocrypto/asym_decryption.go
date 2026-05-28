@@ -32,11 +32,11 @@ type PrivateKeyDecryptor interface {
 	DecryptWithEphemeralKey(data, ephemeral []byte) ([]byte, error)
 }
 
-type MLKEMDecryptor768 struct {
+type MLKEMDecryptor768Legacy struct {
 	decap *mlkem.DecapsulationKey768
 }
 
-type MLKEMDecryptor1024 struct {
+type MLKEMDecryptor1024Legacy struct {
 	decap *mlkem.DecapsulationKey1024
 }
 
@@ -67,13 +67,13 @@ func FromPrivatePEMWithSalt(privateKeyInPem string, salt, info []byte) (PrivateK
 	if block.Type == "MLKEM DECAPSULATION KEY" {
 		decap768, err := mlkem.NewDecapsulationKey768(block.Bytes)
 		if err == nil {
-			return &MLKEMDecryptor768{decap: decap768}, nil
+			return &MLKEMDecryptor768Legacy{decap: decap768}, nil
 		}
 		decap1024, err1024 := mlkem.NewDecapsulationKey1024(block.Bytes)
 		if err1024 != nil {
 			return nil, fmt.Errorf("mlkem.NewDecapsulationKey1024 failed after mlkem.NewDecapsulationKey768 failed: %w / %w", err, err1024)
 		}
-		return &MLKEMDecryptor1024{decap: decap1024}, nil
+		return &MLKEMDecryptor1024Legacy{decap: decap1024}, nil
 	}
 
 	priv, err := x509.ParsePKCS8PrivateKey(block.Bytes)
@@ -246,15 +246,15 @@ func convCurve(c ecdh.Curve) elliptic.Curve {
 	}
 }
 
-func (d MLKEMDecryptor768) Decrypt(_ []byte) ([]byte, error) {
+func (d MLKEMDecryptor768Legacy) Decrypt(_ []byte) ([]byte, error) {
 	return nil, errors.New("ciphertext encapsulation is required for ML-KEM decryption")
 }
 
-func (d MLKEMDecryptor1024) Decrypt(_ []byte) ([]byte, error) {
+func (d MLKEMDecryptor1024Legacy) Decrypt(_ []byte) ([]byte, error) {
 	return nil, errors.New("ciphertext encapsulation is required for ML-KEM decryption")
 }
 
-func (d MLKEMDecryptor768) DecryptWithEphemeralKey(data, ephemeral []byte) ([]byte, error) {
+func (d MLKEMDecryptor768Legacy) DecryptWithEphemeralKey(data, ephemeral []byte) ([]byte, error) {
 	if d.decap == nil {
 		return nil, errors.New("mlkem decapsulation key is nil")
 	}
@@ -291,7 +291,7 @@ func (d MLKEMDecryptor768) DecryptWithEphemeralKey(data, ephemeral []byte) ([]by
 	return plaintext, nil
 }
 
-func (d MLKEMDecryptor1024) DecryptWithEphemeralKey(data, ephemeral []byte) ([]byte, error) {
+func (d MLKEMDecryptor1024Legacy) DecryptWithEphemeralKey(data, ephemeral []byte) ([]byte, error) {
 	if d.decap == nil {
 		return nil, errors.New("mlkem decapsulation key is nil")
 	}

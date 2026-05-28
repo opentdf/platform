@@ -159,6 +159,7 @@ wait_for_green() {
     fi
     sleep 4
   done
+  return 1
 }
 
 write_opentdf_config() {

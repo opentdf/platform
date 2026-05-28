@@ -214,7 +214,8 @@ func (a *InProcessProvider) ListKeysWith(ctx context.Context, opts trust.ListKey
 			}
 		} else if err != nil {
 			if a.logger != nil {
-				a.logger.WarnContext(ctx,
+				a.logger.WarnContext(
+					ctx,
 					"failed to list keys by algorithm",
 					slog.String("algorithm", alg),
 					slog.Any("error", err),
@@ -356,6 +357,8 @@ func (a *InProcessProvider) determineKeyType(kid string) (string, error) {
 	case StandardXWingCrypto:
 		return key.Algorithm, nil
 	case StandardHybridCrypto:
+		return key.Algorithm, nil
+	case StandardMLKEMCrypto:
 		return key.Algorithm, nil
 	}
 

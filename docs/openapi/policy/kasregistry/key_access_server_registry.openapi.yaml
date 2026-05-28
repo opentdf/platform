@@ -1746,7 +1746,7 @@ components:
             Filter keys by algorithm
             The key_algorithm must be one of the defined values.:
             ```
-            this in [0, 1, 2, 3, 4, 5, 6, 7, 8]
+            this in [0, 1, 2, 3, 4, 5, 6, 7, 8, 20, 21]
             ```
 
           $ref: '#/components/schemas/policy.Algorithm'

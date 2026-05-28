@@ -159,6 +159,7 @@ wait_for_green() {
     fi
     sleep 4
   done
+  echo "WARNING: service failed health check after sleep and polling" >&2
   return 1
 }
 

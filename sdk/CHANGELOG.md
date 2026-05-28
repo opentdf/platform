@@ -1,5 +1,22 @@
 # Changelog
 
+## [0.21.0](https://github.com/opentdf/platform/compare/sdk/v0.20.0...sdk/v0.21.0) (2026-05-28)
+
+
+### Features
+
+* **core:** add hybrid NIST EC + ML-KEM key wrapping support ([#3276](https://github.com/opentdf/platform/issues/3276)) ([1209acc](https://github.com/opentdf/platform/commit/1209acc2f8ae24af121f6a2892817c20ebb14d25))
+* **sdk:** add WithPolicyFrom re-wrap helper ([#3476](https://github.com/opentdf/platform/issues/3476)) ([baa1403](https://github.com/opentdf/platform/commit/baa1403cf5fb445623e84b00859c2c0cf8c0a20a))
+
+
+### Bug Fixes
+
+* **deps:** bump github.com/opentdf/platform/lib/ocrypto from 0.10.0 to 0.11.0 in /sdk ([#3522](https://github.com/opentdf/platform/issues/3522)) ([e147d12](https://github.com/opentdf/platform/commit/e147d12152076e348f5813148dd8093844c51c8a))
+* **deps:** bump github.com/opentdf/platform/lib/ocrypto from 0.11.0 to 0.12.0 in /sdk ([#3534](https://github.com/opentdf/platform/issues/3534)) ([e95fb70](https://github.com/opentdf/platform/commit/e95fb70342be3aeb87eca102479c962aa2d664e8))
+* **deps:** bump github.com/opentdf/platform/protocol/go from 0.30.0 to 0.31.0 in /sdk ([#3496](https://github.com/opentdf/platform/issues/3496)) ([1415e8e](https://github.com/opentdf/platform/commit/1415e8e7e9e7f8d76cef0ab65d0045822524b6a5))
+* **deps:** bump github.com/opentdf/platform/protocol/go from 0.31.0 to 0.32.0 in /sdk ([#3520](https://github.com/opentdf/platform/issues/3520)) ([0385ab4](https://github.com/opentdf/platform/commit/0385ab44ede2b20e9ca557c7033c62e23349944a))
+* **sdk:** DSPX-3464 Adds subject_token_type to RFC 8693 token exchanges ([#3465](https://github.com/opentdf/platform/issues/3465)) ([ed9b0fc](https://github.com/opentdf/platform/commit/ed9b0fca6ca9a733e2904c1905f7c31a9ebdb64d))
+
 ## [0.20.0](https://github.com/opentdf/platform/compare/sdk/v0.19.0...sdk/v0.20.0) (2026-05-11)
 
 

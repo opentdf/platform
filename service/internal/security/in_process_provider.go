@@ -280,10 +280,10 @@ func (a *InProcessProvider) Decrypt(ctx context.Context, keyDetails trust.KeyDet
 		return a.cryptoProvider.Decrypt(ctx, trust.KeyIdentifier(kid), ciphertext, nil)
 
 	case AlgorithmMLKEM768, AlgorithmMLKEM1024:
-		if len(ephemeralPublicKey) == 0 {
-			return nil, errors.New("ephemeral public key (ciphertext) is required for ML-KEM decryption")
+		if len(ephemeralPublicKey) > 0 {
+			return nil, errors.New("ephemeral public key should not be provided for ML-KEM decryption")
 		}
-		return a.cryptoProvider.Decrypt(ctx, trust.KeyIdentifier(kid), ciphertext, ephemeralPublicKey)
+		return a.cryptoProvider.Decrypt(ctx, trust.KeyIdentifier(kid), ciphertext, nil)
 
 	default:
 		return nil, errors.New("unsupported key algorithm")

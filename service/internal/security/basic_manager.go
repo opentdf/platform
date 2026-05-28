@@ -149,7 +149,10 @@ func (b *BasicManager) Decrypt(ctx context.Context, keyDetails trust.KeyDetails,
 		}
 		return protectedKey, nil
 	case ocrypto.MLKEM768Key, ocrypto.MLKEM1024Key:
-		plaintext, err := decrypter.DecryptWithEphemeralKey(ciphertext, ephemeralPublicKey)
+		if len(ephemeralPublicKey) > 0 {
+			return nil, errors.New("ephemeral public key should not be provided for ML-KEM decryption")
+		}
+		plaintext, err := decrypter.Decrypt(ciphertext)
 		if err != nil {
 			return nil, fmt.Errorf("failed to decrypt with ML-KEM: %w", err)
 		}

@@ -7,7 +7,6 @@ import (
 	"crypto/ecdh"
 	"crypto/ecdsa"
 	"crypto/elliptic"
-	"crypto/mlkem"
 	"crypto/rsa"
 	"crypto/sha256"
 	"crypto/x509"
@@ -27,17 +26,6 @@ type AsymDecryption struct {
 type PrivateKeyDecryptor interface {
 	// Decrypt decrypts ciphertext with private key.
 	Decrypt(data []byte) ([]byte, error)
-
-	// DecryptWithEphemeralKey decrypts ciphertext using additional sender material.
-	DecryptWithEphemeralKey(data, ephemeral []byte) ([]byte, error)
-}
-
-type MLKEMDecryptor768Legacy struct {
-	decap *mlkem.DecapsulationKey768
-}
-
-type MLKEMDecryptor1024Legacy struct {
-	decap *mlkem.DecapsulationKey1024
 }
 
 // FromPrivatePEM creates and returns a new AsymDecryption.
@@ -62,18 +50,10 @@ func FromPrivatePEMWithSalt(privateKeyInPem string, salt, info []byte) (PrivateK
 		return NewSaltedP256MLKEM768Decryptor(block.Bytes, salt, info)
 	case PEMBlockP384MLKEM1024PrivateKey:
 		return NewSaltedP384MLKEM1024Decryptor(block.Bytes, salt, info)
-	}
-
-	if block.Type == "MLKEM DECAPSULATION KEY" {
-		decap768, err := mlkem.NewDecapsulationKey768(block.Bytes)
-		if err == nil {
-			return &MLKEMDecryptor768Legacy{decap: decap768}, nil
-		}
-		decap1024, err1024 := mlkem.NewDecapsulationKey1024(block.Bytes)
-		if err1024 != nil {
-			return nil, fmt.Errorf("mlkem.NewDecapsulationKey1024 failed after mlkem.NewDecapsulationKey768 failed: %w / %w", err, err1024)
-		}
-		return &MLKEMDecryptor1024Legacy{decap: decap1024}, nil
+	case PEMBlockMLKEM768PrivateKey:
+		return NewSaltedMLKEM768Decryptor(block.Bytes, salt, info)
+	case PEMBlockMLKEM1024PrivateKey:
+		return NewSaltedMLKEM1024Decryptor(block.Bytes, salt, info)
 	}
 
 	priv, err := x509.ParsePKCS8PrivateKey(block.Bytes)
@@ -139,13 +119,6 @@ func (asymDecryption AsymDecryption) Decrypt(data []byte) ([]byte, error) {
 	}
 
 	return bytes, nil
-}
-
-func (asymDecryption AsymDecryption) DecryptWithEphemeralKey(data, ephemeral []byte) ([]byte, error) {
-	if len(ephemeral) > 0 {
-		return nil, errors.New("ephemeral key is not supported for RSA decryption")
-	}
-	return asymDecryption.Decrypt(data)
 }
 
 type ECDecryptor struct {
@@ -244,86 +217,4 @@ func convCurve(c ecdh.Curve) elliptic.Curve {
 	default:
 		return nil
 	}
-}
-
-func (d MLKEMDecryptor768Legacy) Decrypt(_ []byte) ([]byte, error) {
-	return nil, errors.New("ciphertext encapsulation is required for ML-KEM decryption")
-}
-
-func (d MLKEMDecryptor1024Legacy) Decrypt(_ []byte) ([]byte, error) {
-	return nil, errors.New("ciphertext encapsulation is required for ML-KEM decryption")
-}
-
-func (d MLKEMDecryptor768Legacy) DecryptWithEphemeralKey(data, ephemeral []byte) ([]byte, error) {
-	if d.decap == nil {
-		return nil, errors.New("mlkem decapsulation key is nil")
-	}
-	if len(ephemeral) == 0 {
-		return nil, errors.New("ciphertext encapsulation is required for ML-KEM decryption")
-	}
-
-	sharedSecret, err := d.decap.Decapsulate(ephemeral)
-	if err != nil {
-		return nil, fmt.Errorf("mlkem.Decapsulate failed: %w", err)
-	}
-
-	block, err := aes.NewCipher(sharedSecret)
-	if err != nil {
-		return nil, fmt.Errorf("aes.NewCipher failure: %w", err)
-	}
-
-	gcm, err := cipher.NewGCM(block)
-	if err != nil {
-		return nil, fmt.Errorf("cipher.NewGCM failure: %w", err)
-	}
-
-	nonceSize := gcm.NonceSize()
-	if len(data) < nonceSize {
-		return nil, errors.New("ciphertext too short")
-	}
-
-	nonce, ciphertext := data[:nonceSize], data[nonceSize:]
-	plaintext, err := gcm.Open(nil, nonce, ciphertext, nil)
-	if err != nil {
-		return nil, fmt.Errorf("gcm.Open failure: %w", err)
-	}
-
-	return plaintext, nil
-}
-
-func (d MLKEMDecryptor1024Legacy) DecryptWithEphemeralKey(data, ephemeral []byte) ([]byte, error) {
-	if d.decap == nil {
-		return nil, errors.New("mlkem decapsulation key is nil")
-	}
-	if len(ephemeral) == 0 {
-		return nil, errors.New("ciphertext encapsulation is required for ML-KEM decryption")
-	}
-
-	sharedSecret, err := d.decap.Decapsulate(ephemeral)
-	if err != nil {
-		return nil, fmt.Errorf("mlkem.Decapsulate failed: %w", err)
-	}
-
-	block, err := aes.NewCipher(sharedSecret)
-	if err != nil {
-		return nil, fmt.Errorf("aes.NewCipher failure: %w", err)
-	}
-
-	gcm, err := cipher.NewGCM(block)
-	if err != nil {
-		return nil, fmt.Errorf("cipher.NewGCM failure: %w", err)
-	}
-
-	nonceSize := gcm.NonceSize()
-	if len(data) < nonceSize {
-		return nil, errors.New("ciphertext too short")
-	}
-
-	nonce, ciphertext := data[:nonceSize], data[nonceSize:]
-	plaintext, err := gcm.Open(nil, nonce, ciphertext, nil)
-	if err != nil {
-		return nil, fmt.Errorf("gcm.Open failure: %w", err)
-	}
-
-	return plaintext, nil
 }

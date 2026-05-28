@@ -171,20 +171,6 @@ func TestMLKEMEncryptorImplementsInterface(t *testing.T) {
 	assert.Empty(t, metadata)
 }
 
-func TestMLKEMDecryptorImplementsInterface(t *testing.T) {
-	keyPair, err := NewMLKEMKeyPair()
-	require.NoError(t, err)
-
-	privateKeyBytes := keyPair.PrivateKey.Bytes()
-
-	decryptor, err := NewMLKEM768Decryptor(privateKeyBytes)
-	require.NoError(t, err)
-
-	_, err = decryptor.DecryptWithEphemeralKey([]byte("data"), []byte("ephemeral"))
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "ephemeral key should not be provided")
-}
-
 func TestMLKEM768Encapsulate(t *testing.T) {
 	keyPair, err := NewMLKEMKeyPair()
 	require.NoError(t, err)

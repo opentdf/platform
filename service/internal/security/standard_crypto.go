@@ -570,8 +570,8 @@ func (s *StandardCrypto) Decrypt(_ context.Context, keyID trust.KeyIdentifier, c
 		}
 
 	case StandardMLKEMCrypto:
-		if len(ephemeralPublicKey) == 0 {
-			return nil, errors.New("ephemeral public key (ciphertext) is required for ML-KEM decryption")
+		if len(ephemeralPublicKey) > 0 {
+			return nil, errors.New("ephemeral public key should not be provided for ML-KEM decryption")
 		}
 
 		decryptor, err := ocrypto.FromPrivatePEM(key.mlkemPrivateKeyPem)
@@ -579,7 +579,7 @@ func (s *StandardCrypto) Decrypt(_ context.Context, keyID trust.KeyIdentifier, c
 			return nil, fmt.Errorf("failed to create ML-KEM decryptor from PEM: %w", err)
 		}
 
-		rawKey, err = decryptor.DecryptWithEphemeralKey(ciphertext, ephemeralPublicKey)
+		rawKey, err = decryptor.Decrypt(ciphertext)
 		if err != nil {
 			return nil, fmt.Errorf("failed to decrypt with ML-KEM: %w", err)
 		}

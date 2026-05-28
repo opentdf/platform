@@ -5,7 +5,6 @@ import (
 	"crypto/sha256"
 	"encoding/asn1"
 	"encoding/pem"
-	"errors"
 	"fmt"
 	"io"
 
@@ -21,6 +20,11 @@ const (
 	MLKEM1024CiphertextSize = 1568 // mlkem1024 ciphertext
 
 	mlkemWrapKeySize = 32 // AES-256 key size for wrap key derivation
+
+	PEMBlockMLKEM768PublicKey   = "MLKEM768 PUBLIC KEY"
+	PEMBlockMLKEM768PrivateKey  = "MLKEM768 PRIVATE KEY"
+	PEMBlockMLKEM1024PublicKey  = "MLKEM1024 PUBLIC KEY"
+	PEMBlockMLKEM1024PrivateKey = "MLKEM1024 PRIVATE KEY"
 )
 
 type MLKEMWrappedKey struct {
@@ -112,13 +116,6 @@ func (d *MLKEMDecryptor768) Decrypt(data []byte) ([]byte, error) {
 	return mlkem768UnwrapDEK(d.privateKey, data, d.salt, d.info)
 }
 
-func (d *MLKEMDecryptor768) DecryptWithEphemeralKey(data, ephemeral []byte) ([]byte, error) {
-	if len(ephemeral) > 0 {
-		return nil, errors.New("ephemeral key should not be provided for ML-KEM-768 decryption")
-	}
-	return d.Decrypt(data)
-}
-
 func NewMLKEM1024Encryptor(publicKey, salt, info []byte) (*MLKEMEncryptor1024, error) {
 	if len(publicKey) != MLKEM1024PublicKeySize {
 		return nil, fmt.Errorf("invalid ML-KEM-1024 public key size: got %d want %d", len(publicKey), MLKEM1024PublicKeySize)
@@ -177,13 +174,6 @@ func NewSaltedMLKEM1024Decryptor(privateKey, salt, info []byte) (*MLKEMDecryptor
 
 func (d *MLKEMDecryptor1024) Decrypt(data []byte) ([]byte, error) {
 	return mlkem1024UnwrapDEK(d.privateKey, data, d.salt, d.info)
-}
-
-func (d *MLKEMDecryptor1024) DecryptWithEphemeralKey(data, ephemeral []byte) ([]byte, error) {
-	if len(ephemeral) > 0 {
-		return nil, errors.New("ephemeral key should not be provided for ML-KEM-1024 decryption")
-	}
-	return d.Decrypt(data)
 }
 
 func MLKEM768WrapDEK(publicKeyRaw, dek []byte) ([]byte, error) {

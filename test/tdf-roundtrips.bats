@@ -159,6 +159,8 @@ wait_for_green() {
     fi
     sleep 4
   done
+  echo "WARNING: service failed health check after sleep and polling" >&2
+  return 1
 }
 
 write_opentdf_config() {
@@ -357,5 +359,7 @@ teardown() {
 teardown_file() {
   if [ -f opentdf-test-backup.yaml.bak ]; then
     mv opentdf-test-backup.yaml.bak opentdf.yaml
+    sleep 4
+    wait_for_green
   fi
 }

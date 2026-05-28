@@ -74,7 +74,7 @@ func (e *MLKEMEncryptor768) Encrypt(data []byte) ([]byte, error) {
 
 func (e *MLKEMEncryptor768) PublicKeyInPemFormat() (string, error) {
 	pemBlock := &pem.Block{
-		Type:  "MLKEM ENCAPSULATOR",
+		Type:  PEMBlockMLKEM768PublicKey,
 		Bytes: e.publicKey,
 	}
 	return string(pem.EncodeToMemory(pemBlock)), nil
@@ -134,7 +134,7 @@ func (e *MLKEMEncryptor1024) Encrypt(data []byte) ([]byte, error) {
 
 func (e *MLKEMEncryptor1024) PublicKeyInPemFormat() (string, error) {
 	pemBlock := &pem.Block{
-		Type:  "MLKEM ENCAPSULATOR",
+		Type:  PEMBlockMLKEM1024PublicKey,
 		Bytes: e.publicKey,
 	}
 	return string(pem.EncodeToMemory(pemBlock)), nil

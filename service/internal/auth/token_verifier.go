@@ -3,7 +3,7 @@
 // The platform accepts CWT bearer tokens (RFC 8392, COSE_Sign1, ES256) issued
 // by an IdP that publishes a COSE Key Set. The IdP advertises that key-set
 // URL in its OIDC Discovery document under the custom field
-// `arkavo_cose_keys_uri`; we re-use the same OIDC issuer/JWKS infrastructure
+// `cose_keys_uri`; we re-use the same OIDC issuer/JWKS infrastructure
 // for everything else (issuer alignment, audience matching, well-known
 // registration) but route the actual signature verification through
 // CWTVerifier rather than jwx.
@@ -50,7 +50,7 @@ func newTokenVerifier(ctx context.Context, cfg AuthNConfig, log *logger.Logger) 
 	}
 	if oidcConfig.CoseKeysURI == "" {
 		return nil, nil, cfg, fmt.Errorf(
-			"idp %s does not advertise arkavo_cose_keys_uri in its discovery document; "+
+			"idp %s does not advertise cose_keys_uri in its discovery document; "+
 				"the platform requires CWT bearer tokens (see service/internal/auth/cwt_verifier.go)",
 			cfg.Issuer,
 		)

@@ -108,13 +108,13 @@ func mockKeycloakServer() *httptest.Server {
 			var resp string
 			switch req.URL.Path {
 			case "/.well-known/openid-configuration":
-				// arkavo_cose_keys_uri is required for NewCWTVerifier to
-				// construct successfully (an empty value short-circuits the
-				// constructor with an error). The URL itself doesn't need
-				// to resolve — the eager key-set fetch is best-effort and
-				// just logs a warning on failure (cwt_verifier.go:140-145) —
-				// which is fine for these config-error tests that don't
-				// actually verify any tokens.
+				// cose_keys_uri is required for NewCWTVerifier to construct
+				// successfully (an empty value short-circuits the constructor
+				// with an error). The URL itself doesn't need to resolve —
+				// the eager key-set fetch is best-effort and just logs a
+				// warning on failure (cwt_verifier.go:140-145) — which is
+				// fine for these config-error tests that don't actually
+				// verify any tokens.
 				resp = `{
 					"issuer":	"https://example.com",
 					"authorization_endpoint":	"https://example.com/oauth2/v1/authorize",
@@ -122,7 +122,7 @@ func mockKeycloakServer() *httptest.Server {
 					"userinfo_endpoint": "https://example.com/oauth2/v1/userinfo",
 					"registration_endpoint": "https://example.com/oauth2/v1/clients",
 					"jwks_uri": "` + discoveryURL + `/oauth2/v1/keys",
-					"arkavo_cose_keys_uri": "` + discoveryURL + `/cose-keys"
+					"cose_keys_uri": "` + discoveryURL + `/cose-keys"
 				}`
 			case "/oauth2/v1/keys":
 				resp = `{

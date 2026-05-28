@@ -114,17 +114,17 @@ func (s *AuthSuite) SetupTest() {
 	s.kid = kid
 	keySetCBOR := coseKeySetFromPub(s.T(), &priv.PublicKey, kid)
 
-	// Fake IdP — serves OIDC discovery (with the arkavo_cose_keys_uri
-	// extension so NewAuthenticator can find the key set) and the COSE Key
-	// Set itself. JWKS is still served (empty) so anything that consults the
-	// discovery doc and follows jwks_uri sees a well-formed response, even
-	// though the platform now verifies bearers as CWTs.
+	// Fake IdP — serves OIDC discovery (with the cose_keys_uri extension so
+	// NewAuthenticator can find the key set) and the COSE Key Set itself.
+	// JWKS is still served (empty) so anything that consults the discovery
+	// doc and follows jwks_uri sees a well-formed response, even though the
+	// platform now verifies bearers as CWTs.
 	s.server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case "/.well-known/openid-configuration":
 			w.Header().Set("Content-Type", "application/json")
 			_, _ = fmt.Fprintf(w,
-				`{"issuer":%q,"jwks_uri":%q,"arkavo_cose_keys_uri":%q}`,
+				`{"issuer":%q,"jwks_uri":%q,"cose_keys_uri":%q}`,
 				s.server.URL, s.server.URL+"/jwks", s.server.URL+"/cose-keys")
 		case "/cose-keys":
 			w.Header().Set("Content-Type", "application/cose-key-set+cbor")

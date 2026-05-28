@@ -18,7 +18,7 @@ const (
 
 // OIDCConfiguration holds the openid configuration for the issuer.
 // Currently only required fields are included (https://openid.net/specs/openid-connect-discovery-1_0.html#ProviderMetadata),
-// plus the Arkavo extension that advertises a COSE Key Set for CWT verifiers.
+// plus two CWT-related extension fields advertised by Arkavo-compatible IdPs.
 type OIDCConfiguration struct {
 	Issuer                           string   `json:"issuer"`
 	AuthorizationEndpoint            string   `json:"authorization_endpoint"`
@@ -28,13 +28,17 @@ type OIDCConfiguration struct {
 	ResponseTypesSupported           []string `json:"response_types_supported"`
 	SubjectTypesSupported            []string `json:"subject_types_supported"`
 	IDTokenSigningAlgValuesSupported []string `json:"id_token_signing_alg_values_supported"`
-	RequireRequestURIRegistration    bool     `json:"require_request_uri_registration"`
+
+	// AccessTokenFormat is the IANA media type of the issuer's access tokens.
+	// Arkavo IdPs set this to "application/cwt" to signal that bearer tokens
+	// are CWTs (RFC 8392) rather than JWTs. Extension field — not part of the
+	// OIDC Discovery spec.
+	AccessTokenFormat string `json:"access_token_format,omitempty"`
 
 	// CoseKeysURI is the URL of the COSE Key Set used to verify CWT bearer
-	// tokens (RFC 8392 / RFC 9052). Not part of the OIDC Discovery spec —
-	// advertised by Arkavo-compatible IdPs (authnz-rs) under the custom
-	// "arkavo_cose_keys_uri" field. Empty when the IdP does not issue CWTs.
-	CoseKeysURI string `json:"arkavo_cose_keys_uri,omitempty"`
+	// tokens (RFC 8392 / RFC 9052). Extension field — not part of the OIDC
+	// Discovery spec. Empty when the IdP does not issue CWTs.
+	CoseKeysURI string `json:"cose_keys_uri,omitempty"`
 }
 
 // DiscoverOPENIDConfiguration discovers the openid configuration for the issuer provided

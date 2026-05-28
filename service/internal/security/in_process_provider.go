@@ -372,6 +372,8 @@ func (a *InProcessProvider) determineKeyType(kid string) (string, error) {
 		return key.Algorithm, nil
 	case StandardHybridCrypto:
 		return key.Algorithm, nil
+	case StandardMLKEMCrypto:
+		return key.Algorithm, nil
 	}
 
 	return "", errors.New("could not determine key type")

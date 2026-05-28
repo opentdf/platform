@@ -229,3 +229,26 @@ func TestInProcessProviderDetermineKeyType(t *testing.T) {
 	_, err = provider.determineKeyType("missing")
 	require.Error(t, err)
 }
+
+func TestInProcessProviderDetermineKeyTypeMLKEM(t *testing.T) {
+	cryptoProvider, material := newStandardCryptoWithMLKEMForTest(t)
+	providerIface := NewSecurityProviderAdapter(cryptoProvider, nil, nil)
+	provider, ok := providerIface.(*InProcessProvider)
+	require.True(t, ok)
+
+	keyType, err := provider.determineKeyType(material.mlkem768Kid)
+	require.NoError(t, err)
+	assert.Equal(t, AlgorithmMLKEM768, keyType)
+
+	keyType, err = provider.determineKeyType(material.mlkem1024Kid)
+	require.NoError(t, err)
+	assert.Equal(t, AlgorithmMLKEM1024, keyType)
+
+	details, err := provider.FindKeyByID(t.Context(), trust.KeyIdentifier(material.mlkem768Kid))
+	require.NoError(t, err)
+	assert.Equal(t, ocrypto.KeyType(AlgorithmMLKEM768), details.Algorithm())
+
+	details, err = provider.FindKeyByID(t.Context(), trust.KeyIdentifier(material.mlkem1024Kid))
+	require.NoError(t, err)
+	assert.Equal(t, ocrypto.KeyType(AlgorithmMLKEM1024), details.Algorithm())
+}

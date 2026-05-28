@@ -6,7 +6,6 @@ import (
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/asn1"
-	"errors"
 	"fmt"
 	"io"
 
@@ -517,11 +516,4 @@ func deriveHybridNISTWrapKey(combinedSecret, salt, info []byte) ([]byte, error) 
 	}
 
 	return derivedKey, nil
-}
-
-func (d *HybridNISTDecryptor) DecryptWithEphemeralKey(data, ephemeral []byte) ([]byte, error) {
-	if len(ephemeral) > 0 {
-		return nil, errors.New("ephemeral key should not be provided for hybrid NIST decryption")
-	}
-	return d.Decrypt(data)
 }

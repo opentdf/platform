@@ -9,8 +9,9 @@ import (
 
 func Test_BuildConfig_ConnString(t *testing.T) {
 	tests := []struct {
-		config *Config
-		want   string
+		config            *Config
+		want              string
+		wantRuntimeParams map[string]string
 	}{
 		{
 			config: &Config{
@@ -63,6 +64,36 @@ func Test_BuildConfig_ConnString(t *testing.T) {
 			},
 			want: "postgres://myuser:mypassword@myhost:1234/mydb?sslmode=require",
 		},
+		// Statement timeout should not be added as a runtime parameter unless configured.
+		{
+			config: &Config{
+				Host:     "localhost",
+				Port:     5432,
+				Database: "opentdf",
+				User:     "postgres",
+				Password: "changeme",
+				SSLMode:  "prefer",
+			},
+			want: "postgres://postgres:changeme@localhost:5432/opentdf?sslmode=prefer",
+			wantRuntimeParams: map[string]string{
+				"statement_timeout": "",
+			},
+		},
+		{
+			config: &Config{
+				Host:             "localhost",
+				Port:             5432,
+				Database:         "opentdf",
+				User:             "postgres",
+				Password:         "changeme",
+				SSLMode:          "prefer",
+				StatementTimeout: "30s",
+			},
+			want: "postgres://postgres:changeme@localhost:5432/opentdf?sslmode=prefer",
+			wantRuntimeParams: map[string]string{
+				"statement_timeout": "30s",
+			},
+		},
 	}
 
 	for _, test := range tests {
@@ -71,5 +102,13 @@ func Test_BuildConfig_ConnString(t *testing.T) {
 		assert.Equal(t, test.want, cfg.ConnString())
 		// AfterConnect hook was defined when building
 		assert.NotNil(t, cfg.AfterConnect)
+
+		for key, value := range test.wantRuntimeParams {
+			if value == "" {
+				assert.NotContains(t, cfg.ConnConfig.RuntimeParams, key)
+				continue
+			}
+			assert.Equal(t, value, cfg.ConnConfig.RuntimeParams[key])
+		}
 	}
 }

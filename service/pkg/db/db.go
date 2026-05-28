@@ -89,15 +89,16 @@ type PoolConfig struct {
 }
 
 type Config struct {
-	Host           string     `mapstructure:"host" json:"host" default:"localhost"`
-	Port           int        `mapstructure:"port" json:"port" default:"5432"`
-	Database       string     `mapstructure:"database" json:"database" default:"opentdf"`
-	User           string     `mapstructure:"user" json:"user" default:"postgres"`
-	Password       string     `mapstructure:"password" json:"password" default:"changeme"`
-	SSLMode        string     `mapstructure:"sslmode" json:"sslmode" default:"prefer"`
-	Schema         string     `mapstructure:"schema" json:"schema" default:"opentdf"`
-	ConnectTimeout int        `mapstructure:"connect_timeout_seconds" json:"connect_timeout_seconds" default:"15"`
-	Pool           PoolConfig `mapstructure:"pool" json:"pool"`
+	Host             string     `mapstructure:"host" json:"host" default:"localhost"`
+	Port             int        `mapstructure:"port" json:"port" default:"5432"`
+	Database         string     `mapstructure:"database" json:"database" default:"opentdf"`
+	User             string     `mapstructure:"user" json:"user" default:"postgres"`
+	Password         string     `mapstructure:"password" json:"password" default:"changeme"`
+	SSLMode          string     `mapstructure:"sslmode" json:"sslmode" default:"prefer"`
+	Schema           string     `mapstructure:"schema" json:"schema" default:"opentdf"`
+	ConnectTimeout   int        `mapstructure:"connect_timeout_seconds" json:"connect_timeout_seconds" default:"15"`
+	StatementTimeout string     `mapstructure:"statement_timeout" json:"statement_timeout"`
+	Pool             PoolConfig `mapstructure:"pool" json:"pool"`
 
 	RunMigrations    bool      `mapstructure:"runMigrations" json:"runMigrations" default:"true"`
 	MigrationsFS     *embed.FS `mapstructure:"-" json:"-"`
@@ -114,6 +115,7 @@ func (c Config) LogValue() slog.Value {
 		slog.String("sslmode", c.SSLMode),
 		slog.String("schema", c.Schema),
 		slog.Int("connect_timeout_seconds", c.ConnectTimeout),
+		slog.String("statement_timeout", c.StatementTimeout),
 		slog.Group("pool",
 			slog.Int("max_connection_count", int(c.Pool.MaxConns)),
 			slog.Int("min_connection_count", int(c.Pool.MinConns)),
@@ -249,6 +251,10 @@ func (c Config) buildConfig() (*pgxpool.Config, error) {
 	parsed.MaxConnLifetime = time.Duration(c.Pool.MaxConnLifetime) * time.Second
 	parsed.MaxConnIdleTime = time.Duration(c.Pool.MaxConnIdleTime) * time.Second
 	parsed.HealthCheckPeriod = time.Duration(c.Pool.HealthCheckPeriod) * time.Second
+
+	if c.StatementTimeout != "" {
+		parsed.ConnConfig.RuntimeParams["statement_timeout"] = c.StatementTimeout
+	}
 
 	// Configure the search_path schema immediately on connection opening
 	parsed.AfterConnect = func(ctx context.Context, conn *pgx.Conn) error {

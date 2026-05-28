@@ -10,6 +10,7 @@ db:
 #   password: changeme
 #   sslmode: prefer
 #   connect_timeout_seconds: 15
+#   statement_timeout: 30s
 #   pool:
 #     max_connection_count: 4
 #     min_connection_count: 0

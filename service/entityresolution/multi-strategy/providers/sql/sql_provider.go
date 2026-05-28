@@ -66,6 +66,11 @@ type Provider struct {
 
 // NewProvider creates a new SQL provider
 func NewProvider(ctx context.Context, name string, config Config) (*Provider, error) {
+	// Normalize the driver name so "Postgres", "POSTGRES", and "postgres" all
+	// resolve correctly through ensureDriverRegistered and sql.Open, both of
+	// which use case-sensitive driver name matching.
+	config.Driver = strings.ToLower(strings.TrimSpace(config.Driver))
+
 	// Register the database/sql driver for this provider's configured driver name
 	// if it has not already been registered.
 	ensureDriverRegistered(config.Driver)

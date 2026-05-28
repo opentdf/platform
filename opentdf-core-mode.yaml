@@ -17,7 +17,7 @@ logger:
 #   port: 5432
 #   user: postgres
 #   password: changeme
-#   statement_timeout_seconds: 30
+#   statement_timeout: 30s
 server:
   auth:
     enabled: false

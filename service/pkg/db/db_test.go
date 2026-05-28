@@ -81,13 +81,13 @@ func Test_BuildConfig_ConnString(t *testing.T) {
 		},
 		{
 			config: &Config{
-				Host:                    "localhost",
-				Port:                    5432,
-				Database:                "opentdf",
-				User:                    "postgres",
-				Password:                "changeme",
-				SSLMode:                 "prefer",
-				StatementTimeoutSeconds: 30,
+				Host:             "localhost",
+				Port:             5432,
+				Database:         "opentdf",
+				User:             "postgres",
+				Password:         "changeme",
+				SSLMode:          "prefer",
+				StatementTimeout: "30s",
 			},
 			want: "postgres://postgres:changeme@localhost:5432/opentdf?sslmode=prefer",
 			wantRuntimeParams: map[string]string{

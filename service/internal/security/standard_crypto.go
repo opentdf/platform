@@ -83,6 +83,7 @@ type StandardMLKEMCrypto struct {
 	KeyPairInfo
 	mlkemPrivateKeyPem string
 	mlkemPublicKeyPem  string
+	decryptor          ocrypto.PrivateKeyDecryptor
 }
 
 // List of keys by identifier
@@ -126,7 +127,8 @@ func loadKeys(ks []KeyPairInfo) (*StandardCrypto, error) {
 	keysByAlg := make(map[string]keylist)
 	keysByID := make(keylist)
 	for _, k := range ks {
-		slog.Info("crypto cfg loading",
+		slog.Info(
+			"crypto cfg loading",
 			slog.Any("id", k.KID),
 			slog.Any("alg", k.Algorithm),
 		)
@@ -181,10 +183,15 @@ func loadKey(k KeyPairInfo) (any, error) {
 			hybridPublicKeyPem:  string(certPEM),
 		}, nil
 	case AlgorithmMLKEM768, AlgorithmMLKEM1024:
+		decryptor, err := ocrypto.FromPrivatePEM(string(privatePEM))
+		if err != nil {
+			return nil, fmt.Errorf("ocrypto.FromPrivatePEM (ML-KEM) failed: %w", err)
+		}
 		return StandardMLKEMCrypto{
 			KeyPairInfo:        k,
 			mlkemPrivateKeyPem: string(privatePEM),
 			mlkemPublicKeyPem:  string(certPEM),
+			decryptor:          decryptor,
 		}, nil
 	case AlgorithmRSA2048, AlgorithmRSA4096:
 		asymDecryption, err := ocrypto.NewAsymDecryption(string(privatePEM))
@@ -259,7 +266,8 @@ func loadDeprecatedKeys(rsaKeys map[string]StandardKeyInfo, ecKeys map[string]St
 		keysByID[id] = k
 	}
 	for id, kasInfo := range ecKeys {
-		slog.Info("cfg.ECKeys",
+		slog.Info(
+			"cfg.ECKeys",
 			slog.String("id", id),
 			slog.Any("kasInfo", kasInfo),
 		)
@@ -574,12 +582,7 @@ func (s *StandardCrypto) Decrypt(_ context.Context, keyID trust.KeyIdentifier, c
 			return nil, errors.New("ephemeral public key should not be provided for ML-KEM decryption")
 		}
 
-		decryptor, err := ocrypto.FromPrivatePEM(key.mlkemPrivateKeyPem)
-		if err != nil {
-			return nil, fmt.Errorf("failed to create ML-KEM decryptor from PEM: %w", err)
-		}
-
-		rawKey, err = decryptor.Decrypt(ciphertext)
+		rawKey, err = key.decryptor.Decrypt(ciphertext)
 		if err != nil {
 			return nil, fmt.Errorf("failed to decrypt with ML-KEM: %w", err)
 		}

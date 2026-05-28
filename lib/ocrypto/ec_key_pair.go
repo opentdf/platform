@@ -551,7 +551,7 @@ func (keyPair MLKEMKeyPair) PrivateKeyInPemFormat() (string, error) {
 
 	privateKeyPEM := pem.EncodeToMemory(
 		&pem.Block{
-			Type:  "MLKEM DECAPSULATION KEY",
+			Type:  PEMBlockMLKEM768PrivateKey,
 			Bytes: keyPair.PrivateKey.Bytes(),
 		},
 	)
@@ -565,7 +565,7 @@ func (keyPair MLKEMKeyPair) PublicKeyInPemFormat() (string, error) {
 
 	publicKeyPEM := pem.EncodeToMemory(
 		&pem.Block{
-			Type:  "MLKEM ENCAPSULATOR",
+			Type:  PEMBlockMLKEM768PublicKey,
 			Bytes: keyPair.PrivateKey.EncapsulationKey().Bytes(),
 		},
 	)
@@ -583,7 +583,7 @@ func (keyPair MLKEM1024KeyPair) PrivateKeyInPemFormat() (string, error) {
 
 	privateKeyPEM := pem.EncodeToMemory(
 		&pem.Block{
-			Type:  "MLKEM DECAPSULATION KEY",
+			Type:  PEMBlockMLKEM1024PrivateKey,
 			Bytes: keyPair.PrivateKey.Bytes(),
 		},
 	)
@@ -597,7 +597,7 @@ func (keyPair MLKEM1024KeyPair) PublicKeyInPemFormat() (string, error) {
 
 	publicKeyPEM := pem.EncodeToMemory(
 		&pem.Block{
-			Type:  "MLKEM ENCAPSULATOR",
+			Type:  PEMBlockMLKEM1024PublicKey,
 			Bytes: keyPair.PrivateKey.EncapsulationKey().Bytes(),
 		},
 	)

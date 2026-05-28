@@ -62,13 +62,13 @@ type ECEncryptor struct {
 	info []byte
 }
 
-type MLKEMEncryptor768 struct {
+type MLKEMEncryptor768Legacy struct {
 	pub          *mlkem.EncapsulationKey768
 	cipherText   []byte
 	sharedSecret []byte
 }
 
-type MLKEMEncryptor1024 struct {
+type MLKEMEncryptor1024Legacy struct {
 	pub          *mlkem.EncapsulationKey1024
 	cipherText   []byte
 	sharedSecret []byte
@@ -129,14 +129,14 @@ func newECIES(pub *ecdh.PublicKey, salt, info []byte) (ECEncryptor, error) {
 	return ECEncryptor{pub, ek, salt, info}, err
 }
 
-func newMLKEM768(pub *mlkem.EncapsulationKey768) *MLKEMEncryptor768 {
+func newMLKEM768(pub *mlkem.EncapsulationKey768) *MLKEMEncryptor768Legacy {
 	sharedSecret, cipherText := pub.Encapsulate()
-	return &MLKEMEncryptor768{pub: pub, cipherText: cipherText, sharedSecret: sharedSecret}
+	return &MLKEMEncryptor768Legacy{pub: pub, cipherText: cipherText, sharedSecret: sharedSecret}
 }
 
-func newMLKEM1024(pub *mlkem.EncapsulationKey1024) *MLKEMEncryptor1024 {
+func newMLKEM1024(pub *mlkem.EncapsulationKey1024) *MLKEMEncryptor1024Legacy {
 	sharedSecret, cipherText := pub.Encapsulate()
-	return &MLKEMEncryptor1024{pub: pub, cipherText: cipherText, sharedSecret: sharedSecret}
+	return &MLKEMEncryptor1024Legacy{pub: pub, cipherText: cipherText, sharedSecret: sharedSecret}
 }
 
 // NewAsymEncryption creates and returns a new AsymEncryption.
@@ -313,25 +313,25 @@ func (e ECEncryptor) PublicKeyInPemFormat() (string, error) {
 
 // MLKEMEncryptor768 methods
 
-func (e MLKEMEncryptor768) Type() SchemeType {
+func (e MLKEMEncryptor768Legacy) Type() SchemeType {
 	return MLKEM
 }
 
-func (e MLKEMEncryptor768) KeyType() KeyType {
+func (e MLKEMEncryptor768Legacy) KeyType() KeyType {
 	return MLKEM768Key
 }
 
-func (e MLKEMEncryptor768) EphemeralKey() []byte {
+func (e MLKEMEncryptor768Legacy) EphemeralKey() []byte {
 	return e.cipherText
 }
 
-func (e MLKEMEncryptor768) Metadata() (map[string]string, error) {
+func (e MLKEMEncryptor768Legacy) Metadata() (map[string]string, error) {
 	return map[string]string{
 		"ephemeralKey": string(e.cipherText),
 	}, nil
 }
 
-func (e MLKEMEncryptor768) Encrypt(data []byte) ([]byte, error) {
+func (e MLKEMEncryptor768Legacy) Encrypt(data []byte) ([]byte, error) {
 	block, err := aes.NewCipher(e.sharedSecret)
 	if err != nil {
 		return nil, fmt.Errorf("aes.NewCipher failed: %w", err)
@@ -350,31 +350,31 @@ func (e MLKEMEncryptor768) Encrypt(data []byte) ([]byte, error) {
 	return gcm.Seal(nonce, nonce, data, nil), nil
 }
 
-func (e MLKEMEncryptor768) PublicKeyInPemFormat() (string, error) {
+func (e MLKEMEncryptor768Legacy) PublicKeyInPemFormat() (string, error) {
 	return "", errors.New("public key PEM not available for ML-KEM encryptor")
 }
 
 // MLKEMEncryptor1024 methods
 
-func (e MLKEMEncryptor1024) Type() SchemeType {
+func (e MLKEMEncryptor1024Legacy) Type() SchemeType {
 	return MLKEM
 }
 
-func (e MLKEMEncryptor1024) KeyType() KeyType {
+func (e MLKEMEncryptor1024Legacy) KeyType() KeyType {
 	return MLKEM1024Key
 }
 
-func (e MLKEMEncryptor1024) EphemeralKey() []byte {
+func (e MLKEMEncryptor1024Legacy) EphemeralKey() []byte {
 	return e.cipherText
 }
 
-func (e MLKEMEncryptor1024) Metadata() (map[string]string, error) {
+func (e MLKEMEncryptor1024Legacy) Metadata() (map[string]string, error) {
 	return map[string]string{
 		"ephemeralKey": string(e.cipherText),
 	}, nil
 }
 
-func (e MLKEMEncryptor1024) Encrypt(data []byte) ([]byte, error) {
+func (e MLKEMEncryptor1024Legacy) Encrypt(data []byte) ([]byte, error) {
 	block, err := aes.NewCipher(e.sharedSecret)
 	if err != nil {
 		return nil, fmt.Errorf("aes.NewCipher failed: %w", err)
@@ -393,6 +393,6 @@ func (e MLKEMEncryptor1024) Encrypt(data []byte) ([]byte, error) {
 	return gcm.Seal(nonce, nonce, data, nil), nil
 }
 
-func (e MLKEMEncryptor1024) PublicKeyInPemFormat() (string, error) {
+func (e MLKEMEncryptor1024Legacy) PublicKeyInPemFormat() (string, error) {
 	return "", errors.New("public key PEM not available for ML-KEM encryptor")
 }

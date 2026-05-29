@@ -2,16 +2,13 @@ openapi: 3.1.0
 info:
   title: policy.attributes
 paths:
-  /policy.attributes.AttributesService/ListAttributes:
+  /policy.attributes.AttributesService/AssignKeyAccessServerToAttribute:
     post:
       tags:
         - policy.attributes.AttributesService
-      summary: ListAttributes
-      description: |-
-        --------------------------------------*
-         Attribute RPCs
-        ---------------------------------------
-      operationId: policy.attributes.AttributesService.ListAttributes
+      summary: AssignKeyAccessServerToAttribute
+      description: 'Deprecated: utilize AssignPublicKeyToAttribute'
+      operationId: policy.attributes.AttributesService.AssignKeyAccessServerToAttribute
       parameters:
         - name: Connect-Protocol-Version
           in: header
@@ -26,7 +23,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/policy.attributes.ListAttributesRequest'
+              $ref: '#/components/schemas/policy.attributes.AssignKeyAccessServerToAttributeRequest'
         required: true
       responses:
         default:
@@ -40,52 +37,15 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/policy.attributes.ListAttributesResponse'
-  /policy.attributes.AttributesService/ListAttributeValues:
-    post:
-      tags:
-        - policy.attributes.AttributesService
-      summary: ListAttributeValues
-      description: |-
-        Deprecated
-         Use GetAttribute
-      operationId: policy.attributes.AttributesService.ListAttributeValues
-      parameters:
-        - name: Connect-Protocol-Version
-          in: header
-          required: true
-          schema:
-            $ref: '#/components/schemas/connect-protocol-version'
-        - name: Connect-Timeout-Ms
-          in: header
-          schema:
-            $ref: '#/components/schemas/connect-timeout-header'
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/policy.attributes.ListAttributeValuesRequest'
-        required: true
-      responses:
-        default:
-          description: Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/connect.error'
-        "200":
-          description: Success
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/policy.attributes.ListAttributeValuesResponse'
+                $ref: '#/components/schemas/policy.attributes.AssignKeyAccessServerToAttributeResponse'
       deprecated: true
-  /policy.attributes.AttributesService/GetAttribute:
+  /policy.attributes.AttributesService/AssignKeyAccessServerToValue:
     post:
       tags:
         - policy.attributes.AttributesService
-      summary: GetAttribute
-      operationId: policy.attributes.AttributesService.GetAttribute
+      summary: AssignKeyAccessServerToValue
+      description: 'Deprecated: utilize AssignPublicKeyToValue'
+      operationId: policy.attributes.AttributesService.AssignKeyAccessServerToValue
       parameters:
         - name: Connect-Protocol-Version
           in: header
@@ -100,7 +60,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/policy.attributes.GetAttributeRequest'
+              $ref: '#/components/schemas/policy.attributes.AssignKeyAccessServerToValueRequest'
         required: true
       responses:
         default:
@@ -114,13 +74,14 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/policy.attributes.GetAttributeResponse'
-  /policy.attributes.AttributesService/GetAttributeValuesByFqns:
+                $ref: '#/components/schemas/policy.attributes.AssignKeyAccessServerToValueResponse'
+      deprecated: true
+  /policy.attributes.AttributesService/AssignPublicKeyToAttribute:
     post:
       tags:
         - policy.attributes.AttributesService
-      summary: GetAttributeValuesByFqns
-      operationId: policy.attributes.AttributesService.GetAttributeValuesByFqns
+      summary: AssignPublicKeyToAttribute
+      operationId: policy.attributes.AttributesService.AssignPublicKeyToAttribute
       parameters:
         - name: Connect-Protocol-Version
           in: header
@@ -135,7 +96,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/policy.attributes.GetAttributeValuesByFqnsRequest'
+              $ref: '#/components/schemas/policy.attributes.AssignPublicKeyToAttributeRequest'
         required: true
       responses:
         default:
@@ -149,7 +110,42 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/policy.attributes.GetAttributeValuesByFqnsResponse'
+                $ref: '#/components/schemas/policy.attributes.AssignPublicKeyToAttributeResponse'
+  /policy.attributes.AttributesService/AssignPublicKeyToValue:
+    post:
+      tags:
+        - policy.attributes.AttributesService
+      summary: AssignPublicKeyToValue
+      operationId: policy.attributes.AttributesService.AssignPublicKeyToValue
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/policy.attributes.AssignPublicKeyToValueRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/policy.attributes.AssignPublicKeyToValueResponse'
   /policy.attributes.AttributesService/CreateAttribute:
     post:
       tags:
@@ -185,12 +181,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/policy.attributes.CreateAttributeResponse'
-  /policy.attributes.AttributesService/UpdateAttribute:
+  /policy.attributes.AttributesService/CreateAttributeValue:
     post:
       tags:
         - policy.attributes.AttributesService
-      summary: UpdateAttribute
-      operationId: policy.attributes.AttributesService.UpdateAttribute
+      summary: CreateAttributeValue
+      operationId: policy.attributes.AttributesService.CreateAttributeValue
       parameters:
         - name: Connect-Protocol-Version
           in: header
@@ -205,7 +201,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/policy.attributes.UpdateAttributeRequest'
+              $ref: '#/components/schemas/policy.attributes.CreateAttributeValueRequest'
         required: true
       responses:
         default:
@@ -219,7 +215,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/policy.attributes.UpdateAttributeResponse'
+                $ref: '#/components/schemas/policy.attributes.CreateAttributeValueResponse'
   /policy.attributes.AttributesService/DeactivateAttribute:
     post:
       tags:
@@ -255,6 +251,76 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/policy.attributes.DeactivateAttributeResponse'
+  /policy.attributes.AttributesService/DeactivateAttributeValue:
+    post:
+      tags:
+        - policy.attributes.AttributesService
+      summary: DeactivateAttributeValue
+      operationId: policy.attributes.AttributesService.DeactivateAttributeValue
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/policy.attributes.DeactivateAttributeValueRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/policy.attributes.DeactivateAttributeValueResponse'
+  /policy.attributes.AttributesService/GetAttribute:
+    post:
+      tags:
+        - policy.attributes.AttributesService
+      summary: GetAttribute
+      operationId: policy.attributes.AttributesService.GetAttribute
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/policy.attributes.GetAttributeRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/policy.attributes.GetAttributeResponse'
   /policy.attributes.AttributesService/GetAttributeValue:
     post:
       tags:
@@ -294,12 +360,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/policy.attributes.GetAttributeValueResponse'
-  /policy.attributes.AttributesService/CreateAttributeValue:
+  /policy.attributes.AttributesService/GetAttributeValuesByFqns:
     post:
       tags:
         - policy.attributes.AttributesService
-      summary: CreateAttributeValue
-      operationId: policy.attributes.AttributesService.CreateAttributeValue
+      summary: GetAttributeValuesByFqns
+      operationId: policy.attributes.AttributesService.GetAttributeValuesByFqns
       parameters:
         - name: Connect-Protocol-Version
           in: header
@@ -314,7 +380,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/policy.attributes.CreateAttributeValueRequest'
+              $ref: '#/components/schemas/policy.attributes.GetAttributeValuesByFqnsRequest'
         required: true
       responses:
         default:
@@ -328,13 +394,16 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/policy.attributes.CreateAttributeValueResponse'
-  /policy.attributes.AttributesService/UpdateAttributeValue:
+                $ref: '#/components/schemas/policy.attributes.GetAttributeValuesByFqnsResponse'
+  /policy.attributes.AttributesService/ListAttributeValues:
     post:
       tags:
         - policy.attributes.AttributesService
-      summary: UpdateAttributeValue
-      operationId: policy.attributes.AttributesService.UpdateAttributeValue
+      summary: ListAttributeValues
+      description: |-
+        Deprecated
+         Use GetAttribute
+      operationId: policy.attributes.AttributesService.ListAttributeValues
       parameters:
         - name: Connect-Protocol-Version
           in: header
@@ -349,7 +418,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/policy.attributes.UpdateAttributeValueRequest'
+              $ref: '#/components/schemas/policy.attributes.ListAttributeValuesRequest'
         required: true
       responses:
         default:
@@ -363,79 +432,47 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/policy.attributes.UpdateAttributeValueResponse'
-  /policy.attributes.AttributesService/DeactivateAttributeValue:
-    post:
-      tags:
-        - policy.attributes.AttributesService
-      summary: DeactivateAttributeValue
-      operationId: policy.attributes.AttributesService.DeactivateAttributeValue
-      parameters:
-        - name: Connect-Protocol-Version
-          in: header
-          required: true
-          schema:
-            $ref: '#/components/schemas/connect-protocol-version'
-        - name: Connect-Timeout-Ms
-          in: header
-          schema:
-            $ref: '#/components/schemas/connect-timeout-header'
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/policy.attributes.DeactivateAttributeValueRequest'
-        required: true
-      responses:
-        default:
-          description: Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/connect.error'
-        "200":
-          description: Success
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/policy.attributes.DeactivateAttributeValueResponse'
-  /policy.attributes.AttributesService/AssignKeyAccessServerToAttribute:
-    post:
-      tags:
-        - policy.attributes.AttributesService
-      summary: AssignKeyAccessServerToAttribute
-      description: 'Deprecated: utilize AssignPublicKeyToAttribute'
-      operationId: policy.attributes.AttributesService.AssignKeyAccessServerToAttribute
-      parameters:
-        - name: Connect-Protocol-Version
-          in: header
-          required: true
-          schema:
-            $ref: '#/components/schemas/connect-protocol-version'
-        - name: Connect-Timeout-Ms
-          in: header
-          schema:
-            $ref: '#/components/schemas/connect-timeout-header'
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/policy.attributes.AssignKeyAccessServerToAttributeRequest'
-        required: true
-      responses:
-        default:
-          description: Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/connect.error'
-        "200":
-          description: Success
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/policy.attributes.AssignKeyAccessServerToAttributeResponse'
+                $ref: '#/components/schemas/policy.attributes.ListAttributeValuesResponse'
       deprecated: true
+  /policy.attributes.AttributesService/ListAttributes:
+    post:
+      tags:
+        - policy.attributes.AttributesService
+      summary: ListAttributes
+      description: |-
+        --------------------------------------*
+         Attribute RPCs
+        ---------------------------------------
+      operationId: policy.attributes.AttributesService.ListAttributes
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/policy.attributes.ListAttributesRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/policy.attributes.ListAttributesResponse'
   /policy.attributes.AttributesService/RemoveKeyAccessServerFromAttribute:
     post:
       tags:
@@ -472,43 +509,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/policy.attributes.RemoveKeyAccessServerFromAttributeResponse'
-      deprecated: true
-  /policy.attributes.AttributesService/AssignKeyAccessServerToValue:
-    post:
-      tags:
-        - policy.attributes.AttributesService
-      summary: AssignKeyAccessServerToValue
-      description: 'Deprecated: utilize AssignPublicKeyToValue'
-      operationId: policy.attributes.AttributesService.AssignKeyAccessServerToValue
-      parameters:
-        - name: Connect-Protocol-Version
-          in: header
-          required: true
-          schema:
-            $ref: '#/components/schemas/connect-protocol-version'
-        - name: Connect-Timeout-Ms
-          in: header
-          schema:
-            $ref: '#/components/schemas/connect-timeout-header'
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/policy.attributes.AssignKeyAccessServerToValueRequest'
-        required: true
-      responses:
-        default:
-          description: Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/connect.error'
-        "200":
-          description: Success
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/policy.attributes.AssignKeyAccessServerToValueResponse'
       deprecated: true
   /policy.attributes.AttributesService/RemoveKeyAccessServerFromValue:
     post:
@@ -547,41 +547,6 @@ paths:
               schema:
                 $ref: '#/components/schemas/policy.attributes.RemoveKeyAccessServerFromValueResponse'
       deprecated: true
-  /policy.attributes.AttributesService/AssignPublicKeyToAttribute:
-    post:
-      tags:
-        - policy.attributes.AttributesService
-      summary: AssignPublicKeyToAttribute
-      operationId: policy.attributes.AttributesService.AssignPublicKeyToAttribute
-      parameters:
-        - name: Connect-Protocol-Version
-          in: header
-          required: true
-          schema:
-            $ref: '#/components/schemas/connect-protocol-version'
-        - name: Connect-Timeout-Ms
-          in: header
-          schema:
-            $ref: '#/components/schemas/connect-timeout-header'
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/policy.attributes.AssignPublicKeyToAttributeRequest'
-        required: true
-      responses:
-        default:
-          description: Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/connect.error'
-        "200":
-          description: Success
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/policy.attributes.AssignPublicKeyToAttributeResponse'
   /policy.attributes.AttributesService/RemovePublicKeyFromAttribute:
     post:
       tags:
@@ -617,41 +582,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/policy.attributes.RemovePublicKeyFromAttributeResponse'
-  /policy.attributes.AttributesService/AssignPublicKeyToValue:
-    post:
-      tags:
-        - policy.attributes.AttributesService
-      summary: AssignPublicKeyToValue
-      operationId: policy.attributes.AttributesService.AssignPublicKeyToValue
-      parameters:
-        - name: Connect-Protocol-Version
-          in: header
-          required: true
-          schema:
-            $ref: '#/components/schemas/connect-protocol-version'
-        - name: Connect-Timeout-Ms
-          in: header
-          schema:
-            $ref: '#/components/schemas/connect-timeout-header'
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/policy.attributes.AssignPublicKeyToValueRequest'
-        required: true
-      responses:
-        default:
-          description: Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/connect.error'
-        "200":
-          description: Success
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/policy.attributes.AssignPublicKeyToValueResponse'
   /policy.attributes.AttributesService/RemovePublicKeyFromValue:
     post:
       tags:
@@ -687,6 +617,76 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/policy.attributes.RemovePublicKeyFromValueResponse'
+  /policy.attributes.AttributesService/UpdateAttribute:
+    post:
+      tags:
+        - policy.attributes.AttributesService
+      summary: UpdateAttribute
+      operationId: policy.attributes.AttributesService.UpdateAttribute
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/policy.attributes.UpdateAttributeRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/policy.attributes.UpdateAttributeResponse'
+  /policy.attributes.AttributesService/UpdateAttributeValue:
+    post:
+      tags:
+        - policy.attributes.AttributesService
+      summary: UpdateAttributeValue
+      operationId: policy.attributes.AttributesService.UpdateAttributeValue
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/policy.attributes.UpdateAttributeValueRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/policy.attributes.UpdateAttributeValueResponse'
 components:
   schemas:
     common.ActiveStateEnum:
@@ -698,103 +698,14 @@ components:
         - ACTIVE_STATE_ENUM_INACTIVE
         - ACTIVE_STATE_ENUM_ANY
       description: 'buflint ENUM_VALUE_PREFIX: to make sure that C++ scoping rules aren''t violated when users add new enum values to an enum in a given package'
-    common.MetadataUpdateEnum:
-      type: string
-      title: MetadataUpdateEnum
-      enum:
-        - METADATA_UPDATE_ENUM_UNSPECIFIED
-        - METADATA_UPDATE_ENUM_EXTEND
-        - METADATA_UPDATE_ENUM_REPLACE
-    policy.Action.StandardAction:
-      type: string
-      title: StandardAction
-      enum:
-        - STANDARD_ACTION_UNSPECIFIED
-        - STANDARD_ACTION_DECRYPT
-        - STANDARD_ACTION_TRANSMIT
-    policy.Algorithm:
-      type: string
-      title: Algorithm
-      enum:
-        - ALGORITHM_UNSPECIFIED
-        - ALGORITHM_RSA_2048
-        - ALGORITHM_RSA_4096
-        - ALGORITHM_EC_P256
-        - ALGORITHM_EC_P384
-        - ALGORITHM_EC_P521
-        - ALGORITHM_HPQT_XWING
-        - ALGORITHM_HPQT_SECP256R1_MLKEM768
-        - ALGORITHM_HPQT_SECP384R1_MLKEM1024
-      description: Supported key algorithms.
-    policy.AttributeRuleTypeEnum:
-      type: string
-      title: AttributeRuleTypeEnum
-      enum:
-        - ATTRIBUTE_RULE_TYPE_ENUM_UNSPECIFIED
-        - ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF
-        - ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF
-        - ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY
-    policy.ConditionBooleanTypeEnum:
-      type: string
-      title: ConditionBooleanTypeEnum
-      enum:
-        - CONDITION_BOOLEAN_TYPE_ENUM_UNSPECIFIED
-        - CONDITION_BOOLEAN_TYPE_ENUM_AND
-        - CONDITION_BOOLEAN_TYPE_ENUM_OR
-    policy.KasPublicKeyAlgEnum:
-      type: string
-      title: KasPublicKeyAlgEnum
-      enum:
-        - KAS_PUBLIC_KEY_ALG_ENUM_UNSPECIFIED
-        - KAS_PUBLIC_KEY_ALG_ENUM_RSA_2048
-        - KAS_PUBLIC_KEY_ALG_ENUM_RSA_4096
-        - KAS_PUBLIC_KEY_ALG_ENUM_EC_SECP256R1
-        - KAS_PUBLIC_KEY_ALG_ENUM_EC_SECP384R1
-        - KAS_PUBLIC_KEY_ALG_ENUM_EC_SECP521R1
-        - KAS_PUBLIC_KEY_ALG_ENUM_HPQT_XWING
-        - KAS_PUBLIC_KEY_ALG_ENUM_HPQT_SECP256R1_MLKEM768
-        - KAS_PUBLIC_KEY_ALG_ENUM_HPQT_SECP384R1_MLKEM1024
-    policy.SortDirection:
-      type: string
-      title: SortDirection
-      enum:
-        - SORT_DIRECTION_UNSPECIFIED
-        - SORT_DIRECTION_ASC
-        - SORT_DIRECTION_DESC
-      description: |-
-        Sorting direction shared across list APIs.
-         When the 'sort' field is omitted or the chosen sort 'field' is UNSPECIFIED,
-         the endpoint's request message defines the default ordering; see the
-         specific List* request docs.
-    policy.SourceType:
-      type: string
-      title: SourceType
-      enum:
-        - SOURCE_TYPE_UNSPECIFIED
-        - SOURCE_TYPE_INTERNAL
-        - SOURCE_TYPE_EXTERNAL
-      description: |-
-        Describes whether this kas is managed by the organization or if they imported
-         the kas information from an external party. These two modes are necessary in order
-         to encrypt a tdf dek with an external parties kas public key.
-    policy.SubjectMappingOperatorEnum:
-      type: string
-      title: SubjectMappingOperatorEnum
-      enum:
-        - SUBJECT_MAPPING_OPERATOR_ENUM_UNSPECIFIED
-        - SUBJECT_MAPPING_OPERATOR_ENUM_IN
-        - SUBJECT_MAPPING_OPERATOR_ENUM_NOT_IN
-        - SUBJECT_MAPPING_OPERATOR_ENUM_IN_CONTAINS
-    policy.attributes.SortAttributesType:
-      type: string
-      title: SortAttributesType
-      enum:
-        - SORT_ATTRIBUTES_TYPE_UNSPECIFIED
-        - SORT_ATTRIBUTES_TYPE_NAME
-        - SORT_ATTRIBUTES_TYPE_CREATED_AT
-        - SORT_ATTRIBUTES_TYPE_UPDATED_AT
     common.IdFqnIdentifier:
       type: object
+      allOf:
+        - oneOf:
+            - required:
+                - id
+            - required:
+                - fqn
       properties:
         id:
           type: string
@@ -809,6 +720,12 @@ components:
       additionalProperties: false
     common.IdNameIdentifier:
       type: object
+      allOf:
+        - oneOf:
+            - required:
+                - id
+            - required:
+                - name
       properties:
         id:
           type: string
@@ -819,12 +736,8 @@ components:
           title: name
           maxLength: 253
           minLength: 1
-          description: |+
-            Name must be an alphanumeric string, allowing hyphens and underscores but not as the first or last character. The stored name will be normalized to lower case.:
-            ```
-            this.matches('^[a-zA-Z0-9](?:[a-zA-Z0-9_-]*[a-zA-Z0-9])?$')
-            ```
-
+          description: |
+            name_format // Name must be an alphanumeric string, allowing hyphens and underscores but not as the first or last character. The stored name will be normalized to lower case.
       title: IdNameIdentifier
       additionalProperties: false
     common.Metadata:
@@ -882,6 +795,82 @@ components:
           title: value
       title: LabelsEntry
       additionalProperties: false
+    common.MetadataUpdateEnum:
+      type: string
+      title: MetadataUpdateEnum
+      enum:
+        - METADATA_UPDATE_ENUM_UNSPECIFIED
+        - METADATA_UPDATE_ENUM_EXTEND
+        - METADATA_UPDATE_ENUM_REPLACE
+    connect-protocol-version:
+      type: number
+      title: Connect-Protocol-Version
+      enum:
+        - 1
+      description: Define the version of the Connect protocol
+      const: 1
+    connect-timeout-header:
+      type: number
+      title: Connect-Timeout-Ms
+      description: Define the timeout, in ms
+    connect.error:
+      type: object
+      properties:
+        code:
+          type: string
+          examples:
+            - not_found
+          enum:
+            - canceled
+            - unknown
+            - invalid_argument
+            - deadline_exceeded
+            - not_found
+            - already_exists
+            - permission_denied
+            - resource_exhausted
+            - failed_precondition
+            - aborted
+            - out_of_range
+            - unimplemented
+            - internal
+            - unavailable
+            - data_loss
+            - unauthenticated
+          description: The status code, which should be an enum value of [google.rpc.Code][google.rpc.Code].
+        message:
+          type: string
+          description: A developer-facing error message, which should be in English. Any user-facing error message should be localized and sent in the [google.rpc.Status.details][google.rpc.Status.details] field, or localized by the client.
+        details:
+          type: array
+          items:
+            $ref: '#/components/schemas/connect.error_details.Any'
+          description: A list of messages that carry the error details. There is no limit on the number of messages.
+      title: Connect Error
+      additionalProperties: true
+      description: 'Error type returned by Connect: https://connectrpc.com/docs/go/errors/#http-representation'
+    connect.error_details.Any:
+      type: object
+      properties:
+        type:
+          type: string
+          description: 'A URL that acts as a globally unique identifier for the type of the serialized message. For example: `type.googleapis.com/google.rpc.ErrorInfo`. This is used to determine the schema of the data in the `value` field and is the discriminator for the `debug` field.'
+        value:
+          type: string
+          format: binary
+          description: The Protobuf message, serialized as bytes and base64-encoded. The specific message type is identified by the `type` field.
+        debug:
+          oneOf:
+            - type: object
+              title: Any
+              additionalProperties: true
+              description: Detailed error information.
+          discriminator:
+            propertyName: type
+          title: Debug
+          description: Deserialized error detail payload. The 'type' field indicates the schema. This field is for easier debugging and should not be relied upon for application logic.
+      additionalProperties: true
+      description: Contains an arbitrary serialized message along with a @type that describes the type of the serialized message, with an additional debug field for ConnectRPC error details.
     google.protobuf.BoolValue:
       type: boolean
       description: |-
@@ -894,8 +883,8 @@ components:
     google.protobuf.Timestamp:
       type: string
       examples:
-        - 1s
-        - 1.000340012s
+        - "2023-01-15T01:30:15.01Z"
+        - "2024-12-25T12:00:00Z"
       format: date-time
       description: |-
         A Timestamp represents a point in time independent of any time zone or local
@@ -989,41 +978,65 @@ components:
          ) to obtain a formatter capable of generating timestamps in this format.
     policy.Action:
       type: object
-      oneOf:
+      allOf:
         - properties:
-            custom:
+            id:
               type: string
+              title: id
+              description: Generated uuid in database
+            name:
+              type: string
+              title: name
+            namespace:
+              title: namespace
+              description: Namespace context for this action
+              $ref: '#/components/schemas/policy.Namespace'
+            metadata:
+              title: metadata
+              $ref: '#/components/schemas/common.Metadata'
+        - oneOf:
+            - type: object
+              properties:
+                custom:
+                  type: string
+                  title: custom
+                  description: Deprecated
               title: custom
-              description: Deprecated
-          title: custom
-          required:
-            - custom
-        - properties:
-            standard:
+              required:
+                - custom
+            - type: object
+              properties:
+                standard:
+                  title: standard
+                  description: Deprecated
+                  $ref: '#/components/schemas/policy.Action.StandardAction'
               title: standard
-              description: Deprecated
-              $ref: '#/components/schemas/policy.Action.StandardAction'
-          title: standard
-          required:
-            - standard
-      properties:
-        id:
-          type: string
-          title: id
-          description: Generated uuid in database
-        name:
-          type: string
-          title: name
-        namespace:
-          title: namespace
-          description: Namespace context for this action
-          $ref: '#/components/schemas/policy.Namespace'
-        metadata:
-          title: metadata
-          $ref: '#/components/schemas/common.Metadata'
+              required:
+                - standard
       title: Action
       additionalProperties: false
       description: An action an entity can take
+    policy.Action.StandardAction:
+      type: string
+      title: StandardAction
+      enum:
+        - STANDARD_ACTION_UNSPECIFIED
+        - STANDARD_ACTION_DECRYPT
+        - STANDARD_ACTION_TRANSMIT
+    policy.Algorithm:
+      type: string
+      title: Algorithm
+      enum:
+        - ALGORITHM_UNSPECIFIED
+        - ALGORITHM_RSA_2048
+        - ALGORITHM_RSA_4096
+        - ALGORITHM_EC_P256
+        - ALGORITHM_EC_P384
+        - ALGORITHM_EC_P521
+        - ALGORITHM_HPQT_XWING
+        - ALGORITHM_HPQT_SECP256R1_MLKEM768
+        - ALGORITHM_HPQT_SECP384R1_MLKEM1024
+      description: Supported key algorithms.
     policy.Attribute:
       type: object
       properties:
@@ -1080,6 +1093,14 @@ components:
       required:
         - rule
       additionalProperties: false
+    policy.AttributeRuleTypeEnum:
+      type: string
+      title: AttributeRuleTypeEnum
+      enum:
+        - ATTRIBUTE_RULE_TYPE_ENUM_UNSPECIFIED
+        - ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF
+        - ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF
+        - ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY
     policy.Condition:
       type: object
       properties:
@@ -1097,7 +1118,6 @@ components:
           type: array
           items:
             type: string
-            minItems: 1
           title: subject_external_values
           minItems: 1
           description: |-
@@ -1113,6 +1133,13 @@ components:
         *
         A Condition defines a rule of <the value at the flattened 'selector value'
         location> <operator> <subject external values>
+    policy.ConditionBooleanTypeEnum:
+      type: string
+      title: ConditionBooleanTypeEnum
+      enum:
+        - CONDITION_BOOLEAN_TYPE_ENUM_UNSPECIFIED
+        - CONDITION_BOOLEAN_TYPE_ENUM_AND
+        - CONDITION_BOOLEAN_TYPE_ENUM_OR
     policy.ConditionGroup:
       type: object
       properties:
@@ -1149,7 +1176,7 @@ components:
         alg:
           not:
             enum:
-              - 0
+              - KAS_PUBLIC_KEY_ALG_ENUM_UNSPECIFIED
           title: alg
           description: |-
             A known algorithm type with any additional parameters encoded.
@@ -1161,6 +1188,19 @@ components:
       description: |-
         Deprecated
          A KAS public key and some associated metadata for further identifcation
+    policy.KasPublicKeyAlgEnum:
+      type: string
+      title: KasPublicKeyAlgEnum
+      enum:
+        - KAS_PUBLIC_KEY_ALG_ENUM_UNSPECIFIED
+        - KAS_PUBLIC_KEY_ALG_ENUM_RSA_2048
+        - KAS_PUBLIC_KEY_ALG_ENUM_RSA_4096
+        - KAS_PUBLIC_KEY_ALG_ENUM_EC_SECP256R1
+        - KAS_PUBLIC_KEY_ALG_ENUM_EC_SECP384R1
+        - KAS_PUBLIC_KEY_ALG_ENUM_EC_SECP521R1
+        - KAS_PUBLIC_KEY_ALG_ENUM_HPQT_XWING
+        - KAS_PUBLIC_KEY_ALG_ENUM_HPQT_SECP256R1_MLKEM768
+        - KAS_PUBLIC_KEY_ALG_ENUM_HPQT_SECP384R1_MLKEM1024
     policy.KasPublicKeySet:
       type: object
       properties:
@@ -1183,13 +1223,9 @@ components:
         uri:
           type: string
           title: uri
-          description: |+
+          description: |
             Address of a KAS instance
-            URI must be a valid URL (e.g., 'https://demo.com/') followed by additional segments. Each segment must start and end with an alphanumeric character, can contain hyphens, alphanumeric characters, and slashes.:
-            ```
-            this.matches('^https?://[a-zA-Z0-9]([a-zA-Z0-9\\-]{0,61}[a-zA-Z0-9])?(\\.[a-zA-Z0-9]([a-zA-Z0-9\\-]{0,61}[a-zA-Z0-9])?)*(:[0-9]+)?(/.*)?$')
-            ```
-
+            uri_format // URI must be a valid URL (e.g., 'https://demo.com/') followed by additional segments. Each segment must start and end with an alphanumeric character, can contain hyphens, alphanumeric characters, and slashes.
         publicKey:
           title: public_key
           description: 'Deprecated: KAS can have multiple key pairs'
@@ -1387,7 +1423,8 @@ components:
     policy.PublicKey:
       type: object
       oneOf:
-        - properties:
+        - type: object
+          properties:
             cached:
               title: cached
               description: public key with additional information. Current preferred version
@@ -1395,17 +1432,14 @@ components:
           title: cached
           required:
             - cached
-        - properties:
+        - type: object
+          properties:
             remote:
               type: string
               title: remote
-              description: |+
+              description: |
                 kas public key url - optional since can also be retrieved via public key
-                URI must be a valid URL (e.g., 'https://demo.com/') followed by additional segments. Each segment must start and end with an alphanumeric character, can contain hyphens, alphanumeric characters, and slashes.:
-                ```
-                this.matches('^https://[a-zA-Z0-9]([a-zA-Z0-9\\-]{0,61}[a-zA-Z0-9])?(\\.[a-zA-Z0-9]([a-zA-Z0-9\\-]{0,61}[a-zA-Z0-9])?)*(/.*)?$')
-                ```
-
+                uri_format // URI must be a valid URL (e.g., 'https://demo.com/') followed by additional segments. Each segment must start and end with an alphanumeric character, can contain hyphens, alphanumeric characters, and slashes.
           title: remote
           required:
             - remote
@@ -1513,6 +1547,29 @@ components:
           title: pem
       title: SimpleKasPublicKey
       additionalProperties: false
+    policy.SortDirection:
+      type: string
+      title: SortDirection
+      enum:
+        - SORT_DIRECTION_UNSPECIFIED
+        - SORT_DIRECTION_ASC
+        - SORT_DIRECTION_DESC
+      description: |-
+        Sorting direction shared across list APIs.
+         When the 'sort' field is omitted or the chosen sort 'field' is UNSPECIFIED,
+         the endpoint's request message defines the default ordering; see the
+         specific List* request docs.
+    policy.SourceType:
+      type: string
+      title: SourceType
+      enum:
+        - SOURCE_TYPE_UNSPECIFIED
+        - SOURCE_TYPE_INTERNAL
+        - SOURCE_TYPE_EXTERNAL
+      description: |-
+        Describes whether this kas is managed by the organization or if they imported
+         the kas information from an external party. These two modes are necessary in order
+         to encrypt a tdf dek with an external parties kas public key.
     policy.SubjectConditionSet:
       type: object
       properties:
@@ -1578,6 +1635,14 @@ components:
       description: |-
         Subject Mapping: A Policy assigning Subject Set(s) to a permitted attribute
         value + action(s) combination
+    policy.SubjectMappingOperatorEnum:
+      type: string
+      title: SubjectMappingOperatorEnum
+      enum:
+        - SUBJECT_MAPPING_OPERATOR_ENUM_UNSPECIFIED
+        - SUBJECT_MAPPING_OPERATOR_ENUM_IN
+        - SUBJECT_MAPPING_OPERATOR_ENUM_NOT_IN
+        - SUBJECT_MAPPING_OPERATOR_ENUM_IN_CONTAINS
     policy.SubjectSet:
       type: object
       properties:
@@ -1801,13 +1866,9 @@ components:
           type: string
           title: name
           maxLength: 253
-          description: |+
+          description: |
             Required
-            Attribute name must be an alphanumeric string, allowing hyphens and underscores but not as the first or last character. The stored attribute name will be normalized to lower case.:
-            ```
-            this.matches('^[a-zA-Z0-9](?:[a-zA-Z0-9_-]*[a-zA-Z0-9])?$')
-            ```
-
+            attribute_name_format // Attribute name must be an alphanumeric string, allowing hyphens and underscores but not as the first or last character. The stored attribute name will be normalized to lower case.
         rule:
           title: rule
           description: Required
@@ -1818,7 +1879,6 @@ components:
             type: string
             maxLength: 253
             pattern: ^[a-zA-Z0-9](?:[a-zA-Z0-9_-]*[a-zA-Z0-9])?$
-            uniqueItems: true
           title: values
           uniqueItems: true
           description: |-
@@ -1864,13 +1924,9 @@ components:
           type: string
           title: value
           maxLength: 253
-          description: |+
+          description: |
             Required
-            Attribute value must be an alphanumeric string, allowing hyphens and underscores but not as the first or last character. The stored attribute value will be normalized to lower case.:
-            ```
-            this.matches('^[a-zA-Z0-9](?:[a-zA-Z0-9_-]*[a-zA-Z0-9])?$')
-            ```
-
+            attribute_value_format // Attribute value must be an alphanumeric string, allowing hyphens and underscores but not as the first or last character. The stored attribute value will be normalized to lower case.
         obligationTriggers:
           type: array
           items:
@@ -1935,45 +1991,40 @@ components:
       additionalProperties: false
     policy.attributes.GetAttributeRequest:
       type: object
-      oneOf:
+      allOf:
         - properties:
-            attributeId:
+            id:
               type: string
-              title: attribute_id
+              title: id
               format: uuid
-              description: 'option (buf.validate.oneof).required = true; // TODO: enable this when we remove the deprecated field'
-          title: attribute_id
-          required:
-            - attributeId
-        - properties:
-            fqn:
-              type: string
+              description: 'Deprecated: utilize identifier'
+              deprecated: true
+        - oneOf:
+            - type: object
+              properties:
+                attributeId:
+                  type: string
+                  title: attribute_id
+                  format: uuid
+                  description: 'option (buf.validate.oneof).required = true; // TODO: enable this when we remove the deprecated field'
+              title: attribute_id
+              required:
+                - attributeId
+            - type: object
+              properties:
+                fqn:
+                  type: string
+                  title: fqn
+                  minLength: 1
+                  format: uri
               title: fqn
-              minLength: 1
-              format: uri
-          title: fqn
-          required:
-            - fqn
-      properties:
-        id:
-          type: string
-          title: id
-          format: uuid
-          description: 'Deprecated: utilize identifier'
-          deprecated: true
+              required:
+                - fqn
       title: GetAttributeRequest
       additionalProperties: false
-      description: |+
-        Either use deprecated 'id' field or one of 'attribute_id' or 'fqn', but not both:
-        ```
-        !(has(this.id) && (has(this.attribute_id) || has(this.fqn)))
-        ```
-
-        Either id or one of attribute_id or fqn must be set:
-        ```
-        has(this.id) || has(this.attribute_id) || has(this.fqn)
-        ```
-
+      description: |
+        exclusive_fields // Either use deprecated 'id' field or one of 'attribute_id' or 'fqn', but not both
+        required_fields // Either id or one of attribute_id or fqn must be set
     policy.attributes.GetAttributeResponse:
       type: object
       properties:
@@ -1984,48 +2035,43 @@ components:
       additionalProperties: false
     policy.attributes.GetAttributeValueRequest:
       type: object
-      oneOf:
+      allOf:
         - properties:
-            fqn:
+            id:
               type: string
-              title: fqn
-              minLength: 1
-              format: uri
-          title: fqn
-          required:
-            - fqn
-        - properties:
-            valueId:
-              type: string
-              title: value_id
+              title: id
               format: uuid
-              description: 'option (buf.validate.oneof).required = true; // TODO: enable this when we remove the deprecated field'
-          title: value_id
-          required:
-            - valueId
-      properties:
-        id:
-          type: string
-          title: id
-          format: uuid
-          description: 'Deprecated: utilize identifier'
-          deprecated: true
+              description: 'Deprecated: utilize identifier'
+              deprecated: true
+        - oneOf:
+            - type: object
+              properties:
+                fqn:
+                  type: string
+                  title: fqn
+                  minLength: 1
+                  format: uri
+              title: fqn
+              required:
+                - fqn
+            - type: object
+              properties:
+                valueId:
+                  type: string
+                  title: value_id
+                  format: uuid
+                  description: 'option (buf.validate.oneof).required = true; // TODO: enable this when we remove the deprecated field'
+              title: value_id
+              required:
+                - valueId
       title: GetAttributeValueRequest
       additionalProperties: false
-      description: |+
+      description: |
         /
         / Value RPC messages
         /
-        Either use deprecated 'id' field or one of 'value_id' or 'fqn', but not both:
-        ```
-        !(has(this.id) && (has(this.value_id) || has(this.fqn)))
-        ```
-
-        Either id or one of value_id or fqn must be set:
-        ```
-        has(this.id) || has(this.value_id) || has(this.fqn)
-        ```
-
+        exclusive_fields // Either use deprecated 'id' field or one of 'value_id' or 'fqn', but not both
+        required_fields // Either id or one of value_id or fqn must be set
     policy.attributes.GetAttributeValueResponse:
       type: object
       properties:
@@ -2041,8 +2087,6 @@ components:
           type: array
           items:
             type: string
-            maxItems: 250
-            minItems: 1
           title: fqns
           maxItems: 250
           minItems: 1
@@ -2240,6 +2284,14 @@ components:
           $ref: '#/components/schemas/policy.attributes.ValueKey'
       title: RemovePublicKeyFromValueResponse
       additionalProperties: false
+    policy.attributes.SortAttributesType:
+      type: string
+      title: SortAttributesType
+      enum:
+        - SORT_ATTRIBUTES_TYPE_UNSPECIFIED
+        - SORT_ATTRIBUTES_TYPE_NAME
+        - SORT_ATTRIBUTES_TYPE_CREATED_AT
+        - SORT_ATTRIBUTES_TYPE_UPDATED_AT
     policy.attributes.UpdateAttributeRequest:
       type: object
       properties:
@@ -2325,63 +2377,6 @@ components:
           description: Required
       title: ValueKeyAccessServer
       additionalProperties: false
-    connect-protocol-version:
-      type: number
-      title: Connect-Protocol-Version
-      enum:
-        - 1
-      description: Define the version of the Connect protocol
-      const: 1
-    connect-timeout-header:
-      type: number
-      title: Connect-Timeout-Ms
-      description: Define the timeout, in ms
-    connect.error:
-      type: object
-      properties:
-        code:
-          type: string
-          examples:
-            - not_found
-          enum:
-            - canceled
-            - unknown
-            - invalid_argument
-            - deadline_exceeded
-            - not_found
-            - already_exists
-            - permission_denied
-            - resource_exhausted
-            - failed_precondition
-            - aborted
-            - out_of_range
-            - unimplemented
-            - internal
-            - unavailable
-            - data_loss
-            - unauthenticated
-          description: The status code, which should be an enum value of [google.rpc.Code][google.rpc.Code].
-        message:
-          type: string
-          description: A developer-facing error message, which should be in English. Any user-facing error message should be localized and sent in the [google.rpc.Status.details][google.rpc.Status.details] field, or localized by the client.
-        detail:
-          $ref: '#/components/schemas/google.protobuf.Any'
-      title: Connect Error
-      additionalProperties: true
-      description: 'Error type returned by Connect: https://connectrpc.com/docs/go/errors/#http-representation'
-    google.protobuf.Any:
-      type: object
-      properties:
-        type:
-          type: string
-        value:
-          type: string
-          format: binary
-        debug:
-          type: object
-          additionalProperties: true
-      additionalProperties: true
-      description: Contains an arbitrary serialized message along with a @type that describes the type of the serialized message.
 security: []
 tags:
   - name: policy.attributes.AttributesService

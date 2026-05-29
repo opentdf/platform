@@ -40,6 +40,41 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/policy.keymanagement.CreateProviderConfigResponse'
+  /policy.keymanagement.KeyManagementService/DeleteProviderConfig:
+    post:
+      tags:
+        - policy.keymanagement.KeyManagementService
+      summary: DeleteProviderConfig
+      operationId: policy.keymanagement.KeyManagementService.DeleteProviderConfig
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/policy.keymanagement.DeleteProviderConfigRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/policy.keymanagement.DeleteProviderConfigResponse'
   /policy.keymanagement.KeyManagementService/GetProviderConfig:
     post:
       tags:
@@ -145,50 +180,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/policy.keymanagement.UpdateProviderConfigResponse'
-  /policy.keymanagement.KeyManagementService/DeleteProviderConfig:
-    post:
-      tags:
-        - policy.keymanagement.KeyManagementService
-      summary: DeleteProviderConfig
-      operationId: policy.keymanagement.KeyManagementService.DeleteProviderConfig
-      parameters:
-        - name: Connect-Protocol-Version
-          in: header
-          required: true
-          schema:
-            $ref: '#/components/schemas/connect-protocol-version'
-        - name: Connect-Timeout-Ms
-          in: header
-          schema:
-            $ref: '#/components/schemas/connect-timeout-header'
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/policy.keymanagement.DeleteProviderConfigRequest'
-        required: true
-      responses:
-        default:
-          description: Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/connect.error'
-        "200":
-          description: Success
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/policy.keymanagement.DeleteProviderConfigResponse'
 components:
   schemas:
-    common.MetadataUpdateEnum:
-      type: string
-      title: MetadataUpdateEnum
-      enum:
-        - METADATA_UPDATE_ENUM_UNSPECIFIED
-        - METADATA_UPDATE_ENUM_EXTEND
-        - METADATA_UPDATE_ENUM_REPLACE
     common.Metadata:
       type: object
       properties:
@@ -244,11 +237,87 @@ components:
           title: value
       title: LabelsEntry
       additionalProperties: false
+    common.MetadataUpdateEnum:
+      type: string
+      title: MetadataUpdateEnum
+      enum:
+        - METADATA_UPDATE_ENUM_UNSPECIFIED
+        - METADATA_UPDATE_ENUM_EXTEND
+        - METADATA_UPDATE_ENUM_REPLACE
+    connect-protocol-version:
+      type: number
+      title: Connect-Protocol-Version
+      enum:
+        - 1
+      description: Define the version of the Connect protocol
+      const: 1
+    connect-timeout-header:
+      type: number
+      title: Connect-Timeout-Ms
+      description: Define the timeout, in ms
+    connect.error:
+      type: object
+      properties:
+        code:
+          type: string
+          examples:
+            - not_found
+          enum:
+            - canceled
+            - unknown
+            - invalid_argument
+            - deadline_exceeded
+            - not_found
+            - already_exists
+            - permission_denied
+            - resource_exhausted
+            - failed_precondition
+            - aborted
+            - out_of_range
+            - unimplemented
+            - internal
+            - unavailable
+            - data_loss
+            - unauthenticated
+          description: The status code, which should be an enum value of [google.rpc.Code][google.rpc.Code].
+        message:
+          type: string
+          description: A developer-facing error message, which should be in English. Any user-facing error message should be localized and sent in the [google.rpc.Status.details][google.rpc.Status.details] field, or localized by the client.
+        details:
+          type: array
+          items:
+            $ref: '#/components/schemas/connect.error_details.Any'
+          description: A list of messages that carry the error details. There is no limit on the number of messages.
+      title: Connect Error
+      additionalProperties: true
+      description: 'Error type returned by Connect: https://connectrpc.com/docs/go/errors/#http-representation'
+    connect.error_details.Any:
+      type: object
+      properties:
+        type:
+          type: string
+          description: 'A URL that acts as a globally unique identifier for the type of the serialized message. For example: `type.googleapis.com/google.rpc.ErrorInfo`. This is used to determine the schema of the data in the `value` field and is the discriminator for the `debug` field.'
+        value:
+          type: string
+          format: binary
+          description: The Protobuf message, serialized as bytes and base64-encoded. The specific message type is identified by the `type` field.
+        debug:
+          oneOf:
+            - type: object
+              title: Any
+              additionalProperties: true
+              description: Detailed error information.
+          discriminator:
+            propertyName: type
+          title: Debug
+          description: Deserialized error detail payload. The 'type' field indicates the schema. This field is for easier debugging and should not be relied upon for application logic.
+      additionalProperties: true
+      description: Contains an arbitrary serialized message along with a @type that describes the type of the serialized message, with an additional debug field for ConnectRPC error details.
     google.protobuf.Timestamp:
       type: string
       examples:
-        - 1s
-        - 1.000340012s
+        - "2023-01-15T01:30:15.01Z"
+        - "2024-12-25T12:00:00Z"
       format: date-time
       description: |-
         A Timestamp represents a point in time independent of any time zone or local
@@ -466,28 +535,31 @@ components:
       additionalProperties: false
     policy.keymanagement.GetProviderConfigRequest:
       type: object
-      oneOf:
+      allOf:
         - properties:
-            id:
+            manager:
               type: string
+              title: manager
+              description: Optional - filter by manager type when searching by name
+        - oneOf:
+            - type: object
+              properties:
+                id:
+                  type: string
+                  title: id
+                  format: uuid
               title: id
-              format: uuid
-          title: id
-          required:
-            - id
-        - properties:
-            name:
-              type: string
+              required:
+                - id
+            - type: object
+              properties:
+                name:
+                  type: string
+                  title: name
+                  minLength: 1
               title: name
-              minLength: 1
-          title: name
-          required:
-            - name
-      properties:
-        manager:
-          type: string
-          title: manager
-          description: Optional - filter by manager type when searching by name
+              required:
+                - name
       title: GetProviderConfigRequest
       additionalProperties: false
     policy.keymanagement.GetProviderConfigResponse:
@@ -560,63 +632,6 @@ components:
           $ref: '#/components/schemas/policy.KeyProviderConfig'
       title: UpdateProviderConfigResponse
       additionalProperties: false
-    connect-protocol-version:
-      type: number
-      title: Connect-Protocol-Version
-      enum:
-        - 1
-      description: Define the version of the Connect protocol
-      const: 1
-    connect-timeout-header:
-      type: number
-      title: Connect-Timeout-Ms
-      description: Define the timeout, in ms
-    connect.error:
-      type: object
-      properties:
-        code:
-          type: string
-          examples:
-            - not_found
-          enum:
-            - canceled
-            - unknown
-            - invalid_argument
-            - deadline_exceeded
-            - not_found
-            - already_exists
-            - permission_denied
-            - resource_exhausted
-            - failed_precondition
-            - aborted
-            - out_of_range
-            - unimplemented
-            - internal
-            - unavailable
-            - data_loss
-            - unauthenticated
-          description: The status code, which should be an enum value of [google.rpc.Code][google.rpc.Code].
-        message:
-          type: string
-          description: A developer-facing error message, which should be in English. Any user-facing error message should be localized and sent in the [google.rpc.Status.details][google.rpc.Status.details] field, or localized by the client.
-        detail:
-          $ref: '#/components/schemas/google.protobuf.Any'
-      title: Connect Error
-      additionalProperties: true
-      description: 'Error type returned by Connect: https://connectrpc.com/docs/go/errors/#http-representation'
-    google.protobuf.Any:
-      type: object
-      properties:
-        type:
-          type: string
-        value:
-          type: string
-          format: binary
-        debug:
-          type: object
-          additionalProperties: true
-      additionalProperties: true
-      description: Contains an arbitrary serialized message along with a @type that describes the type of the serialized message.
 security: []
 tags:
   - name: policy.keymanagement.KeyManagementService

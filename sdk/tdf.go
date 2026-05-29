@@ -44,6 +44,7 @@ const (
 	kWrapped               = "wrapped"
 	kECWrapped             = "ec-wrapped"
 	kHybridWrapped         = "hybrid-wrapped"
+	kMLKEMWrapped          = "mlkem-wrapped"
 	kKasProtocol           = "kas"
 	kSplitKeyType          = "split"
 	kGCMCipherAlgorithm    = "AES-256-GCM"
@@ -695,6 +696,13 @@ func createKeyAccess(kasInfo KASInfo, symKey []byte, policyBinding PolicyBinding
 		keyAccess.KeyType = kECWrapped
 		keyAccess.WrappedKey = wrappedKeyInfo.wrappedKey
 		keyAccess.EphemeralPublicKey = wrappedKeyInfo.publicKey
+	case ocrypto.IsMLKEMKeyType(ktype):
+		wrappedKey, err := generateWrapKeyWithMLKEM(kasInfo.Algorithm, kasInfo.PublicKey, symKey)
+		if err != nil {
+			return KeyAccess{}, err
+		}
+		keyAccess.KeyType = kMLKEMWrapped
+		keyAccess.WrappedKey = wrappedKey
 	default:
 		wrappedKey, err := generateWrapKeyWithRSA(kasInfo.PublicKey, symKey)
 		if err != nil {
@@ -775,6 +783,28 @@ func generateWrapKeyWithHybrid(algorithm, publicKeyPEM string, symKey []byte) (s
 	if err != nil {
 		return "", fmt.Errorf("generateWrapKeyWithHybrid: %w", err)
 	}
+	return string(ocrypto.Base64Encode(wrappedDER)), nil
+}
+
+func generateWrapKeyWithMLKEM(algorithm, publicKeyPEM string, symKey []byte) (string, error) {
+	ktype := ocrypto.KeyType(algorithm)
+
+	var wrappedDER []byte
+	var err error
+
+	switch ktype {
+	case ocrypto.MLKEM768Key:
+		wrappedDER, err = ocrypto.MLKEM768WrapDEK([]byte(publicKeyPEM), symKey)
+	case ocrypto.MLKEM1024Key:
+		wrappedDER, err = ocrypto.MLKEM1024WrapDEK([]byte(publicKeyPEM), symKey)
+	default:
+		return "", fmt.Errorf("unsupported ML-KEM key type: %s", algorithm)
+	}
+
+	if err != nil {
+		return "", fmt.Errorf("generateWrapKeyWithMLKEM: %w", err)
+	}
+
 	return string(ocrypto.Base64Encode(wrappedDER)), nil
 }
 
@@ -1247,7 +1277,7 @@ func createRewrapRequest(_ context.Context, r *Reader) (map[string]*kas.Unsigned
 			invalidPolicy = !ok
 			alg, ok = policyBinding["alg"].(string)
 			invalidPolicy = invalidPolicy || !ok
-		case (PolicyBinding):
+		case PolicyBinding:
 			hash = policyBinding.Hash
 			alg = policyBinding.Alg
 		default:

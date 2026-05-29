@@ -172,6 +172,10 @@ func wrapKeyWithPublicKey(symKey []byte, pubKeyInfo keysplit.KASPublicKey) (stri
 		// Handle EC key wrapping
 		return wrapKeyWithEC(ktype, pubKeyInfo.PEM, symKey)
 	}
+	if ocrypto.IsMLKEMKeyType(ktype) {
+		// Handle ML-KEM key wrapping
+		return wrapKeyWithMLKEM(ktype, pubKeyInfo.PEM, symKey)
+	}
 	// Handle RSA key wrapping
 	wrapped, err := wrapKeyWithRSA(pubKeyInfo.PEM, symKey)
 	return wrapped, "wrapped", "", err
@@ -255,4 +259,24 @@ func wrapKeyWithHybrid(ktype ocrypto.KeyType, kasPublicKeyPEM string, symKey []b
 		return "", "", "", fmt.Errorf("hybrid wrap failed: %w", err)
 	}
 	return string(ocrypto.Base64Encode(wrappedDER)), "hybrid-wrapped", "", nil
+}
+
+func wrapKeyWithMLKEM(ktype ocrypto.KeyType, kasPublicKeyPEM string, symKey []byte) (string, string, string, error) {
+	var wrappedDER []byte
+	var err error
+
+	switch ktype {
+	case ocrypto.MLKEM768Key:
+		wrappedDER, err = ocrypto.MLKEM768WrapDEK([]byte(kasPublicKeyPEM), symKey)
+	case ocrypto.MLKEM1024Key:
+		wrappedDER, err = ocrypto.MLKEM1024WrapDEK([]byte(kasPublicKeyPEM), symKey)
+	default:
+		return "", "", "", fmt.Errorf("unsupported ML-KEM key type: %s", ktype)
+	}
+
+	if err != nil {
+		return "", "", "", fmt.Errorf("mlkem wrap failed: %w", err)
+	}
+
+	return string(ocrypto.Base64Encode(wrappedDER)), "mlkem-wrapped", "", nil
 }

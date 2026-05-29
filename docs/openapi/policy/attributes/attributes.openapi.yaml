@@ -1495,7 +1495,6 @@ components:
         term:
           type: string
           title: term
-          maxLength: 253
       title: Search
       additionalProperties: false
     policy.SimpleKasKey:

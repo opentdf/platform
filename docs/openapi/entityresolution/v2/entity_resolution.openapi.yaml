@@ -98,10 +98,10 @@ components:
             attributeValues:
               title: attribute_values
               description: |+
-                a set of attribute value FQNs, such as those on a TDF, containing at least 1 value
-                if provided, resource.attribute_values must contain at least 1 valid FQN:
+                a set of attribute value FQNs, such as those on a TDF, between 1 and 20 in count
+                if provided, resource.attribute_values must be between 1 and 20 in count with all valid FQNs:
                 ```
-                this.fqns.size() > 0 && this.fqns.all(item, item.isUri())
+                this.fqns.size() > 0 && this.fqns.size() <= 20 && this.fqns.all(item, item.isUri())
                 ```
 
               $ref: '#/components/schemas/authorization.v2.Resource.AttributeValues'

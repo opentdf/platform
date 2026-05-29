@@ -1345,25 +1345,9 @@ components:
             Optional
             Optional field must be a valid UUID:
             ```
-            size(this) == 0 || this.matches('^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$')
+            size(this) == 0 || this.matches('[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}')
             ```
 
-        namespaceId:
-          type: string
-          title: namespace_id
-          format: uuid
-          description: |-
-            Optional
-             The namespace that owns this resource mapping. If a group_id is provided,
-             this must match the group's namespace (and may be omitted to inherit it).
-        namespaceFqn:
-          type: string
-          title: namespace_fqn
-          minLength: 1
-          format: uri
-          description: |-
-            Optional
-             Alternative to namespace_id; the FQN of the owning namespace.
         metadata:
           title: metadata
           description: Optional
@@ -1456,14 +1440,13 @@ components:
         namespaceId:
           type: string
           title: namespace_id
-          format: uuid
-          description: Optional
-        namespaceFqn:
-          type: string
-          title: namespace_fqn
-          minLength: 1
-          format: uri
-          description: Optional
+          description: |+
+            Optional
+            Optional field must be a valid UUID:
+            ```
+            size(this) == 0 || this.matches('[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}')
+            ```
+
         pagination:
           title: pagination
           description: Optional
@@ -1530,24 +1513,9 @@ components:
             Optional
             Optional field must be a valid UUID:
             ```
-            size(this) == 0 || this.matches('^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$')
+            size(this) == 0 || this.matches('[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}')
             ```
 
-        namespaceId:
-          type: string
-          title: namespace_id
-          format: uuid
-          description: |-
-            Optional
-             Filter the list to resource mappings owned by this namespace.
-        namespaceFqn:
-          type: string
-          title: namespace_fqn
-          minLength: 1
-          format: uri
-          description: |-
-            Optional
-             Filter the list to resource mappings owned by this namespace.
         pagination:
           title: pagination
           description: Optional
@@ -1591,14 +1559,13 @@ components:
         namespaceId:
           type: string
           title: namespace_id
-          format: uuid
-          description: Optional
-        namespaceFqn:
-          type: string
-          title: namespace_fqn
-          minLength: 1
-          format: uri
-          description: Optional
+          description: |+
+            Optional
+            Optional field must be a valid UUID:
+            ```
+            size(this) == 0 || this.matches('[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}')
+            ```
+
         name:
           type: string
           title: name
@@ -1642,7 +1609,7 @@ components:
             Optional
             Optional field must be a valid UUID:
             ```
-            size(this) == 0 || this.matches('^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$')
+            size(this) == 0 || this.matches('[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}')
             ```
 
         terms:
@@ -1660,25 +1627,9 @@ components:
             Optional
             Optional field must be a valid UUID:
             ```
-            size(this) == 0 || this.matches('^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$')
+            size(this) == 0 || this.matches('[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}')
             ```
 
-        namespaceId:
-          type: string
-          title: namespace_id
-          format: uuid
-          description: |-
-            Optional
-             The namespace that owns this resource mapping. If a group_id is set on the
-             mapping, this must match the group's namespace.
-        namespaceFqn:
-          type: string
-          title: namespace_fqn
-          minLength: 1
-          format: uri
-          description: |-
-            Optional
-             Alternative to namespace_id; the FQN of the owning namespace.
         metadata:
           title: metadata
           description: |-

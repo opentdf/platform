@@ -617,6 +617,29 @@ func (s *NamespacesSuite) Test_ListNamespaces_SearchByNameAndFqn_Succeeds() {
 	s.Equal(int32(1), byFqn.GetPagination().GetTotal())
 }
 
+func (s *NamespacesSuite) Test_ListNamespaces_SearchByNamePrefix_Succeeds() {
+	suffix := time.Now().UnixNano()
+	searchPrefix := fmt.Sprintf("dspx-search-%d-ab", suffix)
+	matched, err := s.db.PolicyClient.CreateNamespace(s.ctx, &namespaces.CreateNamespaceRequest{
+		Name: searchPrefix + "c.com",
+	})
+	s.Require().NoError(err)
+	other, err := s.db.PolicyClient.CreateNamespace(s.ctx, &namespaces.CreateNamespaceRequest{
+		Name: fmt.Sprintf("dspx-search-%d-other.com", suffix),
+	})
+	s.Require().NoError(err)
+	defer s.deleteSortTestNamespaces([]string{matched.GetId(), other.GetId()})
+
+	list, err := s.db.PolicyClient.ListNamespaces(s.ctx, &namespaces.ListNamespacesRequest{
+		State:  common.ActiveStateEnum_ACTIVE_STATE_ENUM_ANY,
+		Search: &policy.Search{Term: searchPrefix},
+	})
+	s.Require().NoError(err)
+	s.Require().Len(list.GetNamespaces(), 1)
+	s.Equal(matched.GetId(), list.GetNamespaces()[0].GetId())
+	s.Equal(int32(1), list.GetPagination().GetTotal())
+}
+
 func (s *NamespacesSuite) Test_ListNamespaces_SearchEscapesLikeWildcardLiterals_Succeeds() {
 	suffix := time.Now().UnixNano()
 	searchDomain := fmt.Sprintf("dspx-search-like-%d.com", suffix)

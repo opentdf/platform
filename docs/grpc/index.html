@@ -12522,7 +12522,7 @@ Provider Management</p></td>
         
       
         <h3 id="policy.namespaces.ListNamespacesRequest">ListNamespacesRequest</h3>
-        <p>Intentionally disabled: search terms are accepted as user input and safely</p><p>bound as sqlc parameters. LIKE wildcard characters are escaped in the DB</p><p>layer so they are treated as literals rather than expanding the query.</p><p>option (buf.validate.message).cel = {</p><p>id: "search_query_namespace_format"</p><p>expression: "!has(this.search) || this.search.term == '' || this.search.term.matches('^([hH][tT][tT][pP][sS]://)?([a-zA-Z0-9]([a-zA-Z0-9\\\\-]{0,61}[a-zA-Z0-9])?\\\\.)+[a-zA-Z]{2,}$')"</p><p>message: "Search query must be a valid namespace name or FQN."</p><p>};</p>
+        <p></p>
 
         
           <table class="field-table">

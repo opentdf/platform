@@ -228,7 +228,7 @@ func (keyPair ECKeyPair) PrivateKeyInPemFormat() (string, error) {
 
 	privateKeyPem := pem.EncodeToMemory(
 		&pem.Block{
-			Type:  "PRIVATE KEY",
+			Type:  pemBlockPrivateKey,
 			Bytes: privateKeyBytes,
 		},
 	)
@@ -248,7 +248,7 @@ func (keyPair ECKeyPair) PublicKeyInPemFormat() (string, error) {
 
 	publicKeyPem := pem.EncodeToMemory(
 		&pem.Block{
-			Type:  "PUBLIC KEY",
+			Type:  pemBlockPublicKey,
 			Bytes: publicKeyBytes,
 		},
 	)
@@ -468,7 +468,7 @@ func ECPrivateKeyInPemFormat(privateKey ecdsa.PrivateKey) (string, error) {
 
 	privateKeyPem := pem.EncodeToMemory(
 		&pem.Block{
-			Type:  "PRIVATE KEY",
+			Type:  pemBlockPrivateKey,
 			Bytes: privateKeyBytes,
 		},
 	)
@@ -484,7 +484,7 @@ func ECPublicKeyInPemFormat(publicKey ecdsa.PublicKey) (string, error) {
 
 	publicKeyPem := pem.EncodeToMemory(
 		&pem.Block{
-			Type:  "PUBLIC KEY",
+			Type:  pemBlockPublicKey,
 			Bytes: pkb,
 		},
 	)
@@ -549,13 +549,11 @@ func (keyPair MLKEMKeyPair) PrivateKeyInPemFormat() (string, error) {
 		return "", errors.New("failed to generate PEM formatted private key")
 	}
 
-	privateKeyPEM := pem.EncodeToMemory(
-		&pem.Block{
-			Type:  PEMBlockMLKEM768PrivateKey,
-			Bytes: keyPair.PrivateKey.Bytes(),
-		},
-	)
-	return string(privateKeyPEM), nil
+	der, err := marshalMLKEMPrivatePKCS8(oidMLKEM768, keyPair.PrivateKey.Bytes())
+	if err != nil {
+		return "", fmt.Errorf("marshal ML-KEM-768 PKCS#8 failed: %w", err)
+	}
+	return string(pem.EncodeToMemory(&pem.Block{Type: pemBlockPrivateKey, Bytes: der})), nil
 }
 
 func (keyPair MLKEMKeyPair) PublicKeyInPemFormat() (string, error) {
@@ -563,13 +561,11 @@ func (keyPair MLKEMKeyPair) PublicKeyInPemFormat() (string, error) {
 		return "", errors.New("failed to generate PEM formatted public key")
 	}
 
-	publicKeyPEM := pem.EncodeToMemory(
-		&pem.Block{
-			Type:  PEMBlockMLKEM768PublicKey,
-			Bytes: keyPair.PrivateKey.EncapsulationKey().Bytes(),
-		},
-	)
-	return string(publicKeyPEM), nil
+	der, err := marshalMLKEMPublicSPKI(oidMLKEM768, keyPair.PrivateKey.EncapsulationKey().Bytes())
+	if err != nil {
+		return "", fmt.Errorf("marshal ML-KEM-768 SPKI failed: %w", err)
+	}
+	return string(pem.EncodeToMemory(&pem.Block{Type: pemBlockPublicKey, Bytes: der})), nil
 }
 
 func (keyPair MLKEMKeyPair) GetKeyType() KeyType {
@@ -581,13 +577,11 @@ func (keyPair MLKEM1024KeyPair) PrivateKeyInPemFormat() (string, error) {
 		return "", errors.New("failed to generate PEM formatted private key")
 	}
 
-	privateKeyPEM := pem.EncodeToMemory(
-		&pem.Block{
-			Type:  PEMBlockMLKEM1024PrivateKey,
-			Bytes: keyPair.PrivateKey.Bytes(),
-		},
-	)
-	return string(privateKeyPEM), nil
+	der, err := marshalMLKEMPrivatePKCS8(oidMLKEM1024, keyPair.PrivateKey.Bytes())
+	if err != nil {
+		return "", fmt.Errorf("marshal ML-KEM-1024 PKCS#8 failed: %w", err)
+	}
+	return string(pem.EncodeToMemory(&pem.Block{Type: pemBlockPrivateKey, Bytes: der})), nil
 }
 
 func (keyPair MLKEM1024KeyPair) PublicKeyInPemFormat() (string, error) {
@@ -595,13 +589,11 @@ func (keyPair MLKEM1024KeyPair) PublicKeyInPemFormat() (string, error) {
 		return "", errors.New("failed to generate PEM formatted public key")
 	}
 
-	publicKeyPEM := pem.EncodeToMemory(
-		&pem.Block{
-			Type:  PEMBlockMLKEM1024PublicKey,
-			Bytes: keyPair.PrivateKey.EncapsulationKey().Bytes(),
-		},
-	)
-	return string(publicKeyPEM), nil
+	der, err := marshalMLKEMPublicSPKI(oidMLKEM1024, keyPair.PrivateKey.EncapsulationKey().Bytes())
+	if err != nil {
+		return "", fmt.Errorf("marshal ML-KEM-1024 SPKI failed: %w", err)
+	}
+	return string(pem.EncodeToMemory(&pem.Block{Type: pemBlockPublicKey, Bytes: der})), nil
 }
 
 func (keyPair MLKEM1024KeyPair) GetKeyType() KeyType {

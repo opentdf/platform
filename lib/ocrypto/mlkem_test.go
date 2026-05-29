@@ -2,6 +2,8 @@ package ocrypto
 
 import (
 	"encoding/asn1"
+	"encoding/pem"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -205,4 +207,72 @@ func TestMLKEM1024EncapsulateInvalidKeySize(t *testing.T) {
 	_, _, err := MLKEM1024Encapsulate([]byte("too-short"))
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "invalid ML-KEM-1024 public key size")
+}
+
+func TestMLKEM768PEMRoundTrip(t *testing.T) {
+	keyPair, err := NewMLKEMKeyPair()
+	require.NoError(t, err)
+
+	pubPEM, err := keyPair.PublicKeyInPemFormat()
+	require.NoError(t, err)
+	assert.True(t, strings.HasPrefix(pubPEM, "-----BEGIN PUBLIC KEY-----"))
+	pubBlock, _ := pem.Decode([]byte(pubPEM))
+	require.NotNil(t, pubBlock)
+	assert.Equal(t, "PUBLIC KEY", pubBlock.Type)
+
+	privPEM, err := keyPair.PrivateKeyInPemFormat()
+	require.NoError(t, err)
+	assert.True(t, strings.HasPrefix(privPEM, "-----BEGIN PRIVATE KEY-----"))
+	privBlock, _ := pem.Decode([]byte(privPEM))
+	require.NotNil(t, privBlock)
+	assert.Equal(t, "PRIVATE KEY", privBlock.Type)
+
+	enc, err := FromPublicPEM(pubPEM)
+	require.NoError(t, err)
+	assert.Equal(t, MLKEM, enc.Type())
+	assert.Equal(t, MLKEM768Key, enc.KeyType())
+
+	dek := []byte("ml-kem-768 round-trip data")
+	wrapped, err := enc.Encrypt(dek)
+	require.NoError(t, err)
+
+	dec, err := FromPrivatePEM(privPEM)
+	require.NoError(t, err)
+	plaintext, err := dec.Decrypt(wrapped)
+	require.NoError(t, err)
+	assert.Equal(t, dek, plaintext)
+}
+
+func TestMLKEM1024PEMRoundTrip(t *testing.T) {
+	keyPair, err := NewMLKEM1024KeyPair()
+	require.NoError(t, err)
+
+	pubPEM, err := keyPair.PublicKeyInPemFormat()
+	require.NoError(t, err)
+	assert.True(t, strings.HasPrefix(pubPEM, "-----BEGIN PUBLIC KEY-----"))
+	pubBlock, _ := pem.Decode([]byte(pubPEM))
+	require.NotNil(t, pubBlock)
+	assert.Equal(t, "PUBLIC KEY", pubBlock.Type)
+
+	privPEM, err := keyPair.PrivateKeyInPemFormat()
+	require.NoError(t, err)
+	assert.True(t, strings.HasPrefix(privPEM, "-----BEGIN PRIVATE KEY-----"))
+	privBlock, _ := pem.Decode([]byte(privPEM))
+	require.NotNil(t, privBlock)
+	assert.Equal(t, "PRIVATE KEY", privBlock.Type)
+
+	enc, err := FromPublicPEM(pubPEM)
+	require.NoError(t, err)
+	assert.Equal(t, MLKEM, enc.Type())
+	assert.Equal(t, MLKEM1024Key, enc.KeyType())
+
+	dek := []byte("ml-kem-1024 round-trip data")
+	wrapped, err := enc.Encrypt(dek)
+	require.NoError(t, err)
+
+	dec, err := FromPrivatePEM(privPEM)
+	require.NoError(t, err)
+	plaintext, err := dec.Decrypt(wrapped)
+	require.NoError(t, err)
+	assert.Equal(t, dek, plaintext)
 }

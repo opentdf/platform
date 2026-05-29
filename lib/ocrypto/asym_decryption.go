@@ -50,10 +50,15 @@ func FromPrivatePEMWithSalt(privateKeyInPem string, salt, info []byte) (PrivateK
 		return NewSaltedP256MLKEM768Decryptor(block.Bytes, salt, info)
 	case PEMBlockP384MLKEM1024PrivateKey:
 		return NewSaltedP384MLKEM1024Decryptor(block.Bytes, salt, info)
-	case PEMBlockMLKEM768PrivateKey:
-		return NewSaltedMLKEM768Decryptor(block.Bytes, salt, info)
-	case PEMBlockMLKEM1024PrivateKey:
-		return NewSaltedMLKEM1024Decryptor(block.Bytes, salt, info)
+	}
+
+	switch oid, seed, err := parseMLKEMPrivatePKCS8(block.Bytes); {
+	case err == nil && oid.Equal(oidMLKEM768):
+		return NewSaltedMLKEM768Decryptor(seed, salt, info)
+	case err == nil && oid.Equal(oidMLKEM1024):
+		return NewSaltedMLKEM1024Decryptor(seed, salt, info)
+	case err != nil && !errors.Is(err, errNotMLKEM):
+		return AsymDecryption{}, err
 	}
 
 	priv, err := x509.ParsePKCS8PrivateKey(block.Bytes)

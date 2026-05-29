@@ -62,6 +62,10 @@ enum SortDirection {
   SORT_DIRECTION_DESC = 2;
 }
 
+message Search {
+  string term = 1;
+}
+
 message PageRequest {
   // Optional
   // Set to configured default limit if not provided

@@ -259,6 +259,53 @@ func (x *AttributeValueSelector) GetWithAttribute() *AttributeValueSelector_Attr
 	return nil
 }
 
+type Search struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	Term string `protobuf:"bytes,1,opt,name=term,proto3" json:"term,omitempty"`
+}
+
+func (x *Search) Reset() {
+	*x = Search{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_policy_selectors_proto_msgTypes[3]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *Search) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Search) ProtoMessage() {}
+
+func (x *Search) ProtoReflect() protoreflect.Message {
+	mi := &file_policy_selectors_proto_msgTypes[3]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Search.ProtoReflect.Descriptor instead.
+func (*Search) Descriptor() ([]byte, []int) {
+	return file_policy_selectors_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *Search) GetTerm() string {
+	if x != nil {
+		return x.Term
+	}
+	return ""
+}
+
 type PageRequest struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
@@ -276,7 +323,7 @@ type PageRequest struct {
 func (x *PageRequest) Reset() {
 	*x = PageRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_policy_selectors_proto_msgTypes[3]
+		mi := &file_policy_selectors_proto_msgTypes[4]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -289,7 +336,7 @@ func (x *PageRequest) String() string {
 func (*PageRequest) ProtoMessage() {}
 
 func (x *PageRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_policy_selectors_proto_msgTypes[3]
+	mi := &file_policy_selectors_proto_msgTypes[4]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -302,7 +349,7 @@ func (x *PageRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PageRequest.ProtoReflect.Descriptor instead.
 func (*PageRequest) Descriptor() ([]byte, []int) {
-	return file_policy_selectors_proto_rawDescGZIP(), []int{3}
+	return file_policy_selectors_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *PageRequest) GetLimit() int32 {
@@ -336,7 +383,7 @@ type PageResponse struct {
 func (x *PageResponse) Reset() {
 	*x = PageResponse{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_policy_selectors_proto_msgTypes[4]
+		mi := &file_policy_selectors_proto_msgTypes[5]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -349,7 +396,7 @@ func (x *PageResponse) String() string {
 func (*PageResponse) ProtoMessage() {}
 
 func (x *PageResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_policy_selectors_proto_msgTypes[4]
+	mi := &file_policy_selectors_proto_msgTypes[5]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -362,7 +409,7 @@ func (x *PageResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PageResponse.ProtoReflect.Descriptor instead.
 func (*PageResponse) Descriptor() ([]byte, []int) {
-	return file_policy_selectors_proto_rawDescGZIP(), []int{4}
+	return file_policy_selectors_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *PageResponse) GetCurrentOffset() int32 {
@@ -399,7 +446,7 @@ type AttributeNamespaceSelector_AttributeSelector struct {
 func (x *AttributeNamespaceSelector_AttributeSelector) Reset() {
 	*x = AttributeNamespaceSelector_AttributeSelector{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_policy_selectors_proto_msgTypes[5]
+		mi := &file_policy_selectors_proto_msgTypes[6]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -412,7 +459,7 @@ func (x *AttributeNamespaceSelector_AttributeSelector) String() string {
 func (*AttributeNamespaceSelector_AttributeSelector) ProtoMessage() {}
 
 func (x *AttributeNamespaceSelector_AttributeSelector) ProtoReflect() protoreflect.Message {
-	mi := &file_policy_selectors_proto_msgTypes[5]
+	mi := &file_policy_selectors_proto_msgTypes[6]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -456,7 +503,7 @@ type AttributeNamespaceSelector_AttributeSelector_ValueSelector struct {
 func (x *AttributeNamespaceSelector_AttributeSelector_ValueSelector) Reset() {
 	*x = AttributeNamespaceSelector_AttributeSelector_ValueSelector{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_policy_selectors_proto_msgTypes[6]
+		mi := &file_policy_selectors_proto_msgTypes[7]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -469,7 +516,7 @@ func (x *AttributeNamespaceSelector_AttributeSelector_ValueSelector) String() st
 func (*AttributeNamespaceSelector_AttributeSelector_ValueSelector) ProtoMessage() {}
 
 func (x *AttributeNamespaceSelector_AttributeSelector_ValueSelector) ProtoReflect() protoreflect.Message {
-	mi := &file_policy_selectors_proto_msgTypes[6]
+	mi := &file_policy_selectors_proto_msgTypes[7]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -515,7 +562,7 @@ type AttributeDefinitionSelector_NamespaceSelector struct {
 func (x *AttributeDefinitionSelector_NamespaceSelector) Reset() {
 	*x = AttributeDefinitionSelector_NamespaceSelector{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_policy_selectors_proto_msgTypes[7]
+		mi := &file_policy_selectors_proto_msgTypes[8]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -528,7 +575,7 @@ func (x *AttributeDefinitionSelector_NamespaceSelector) String() string {
 func (*AttributeDefinitionSelector_NamespaceSelector) ProtoMessage() {}
 
 func (x *AttributeDefinitionSelector_NamespaceSelector) ProtoReflect() protoreflect.Message {
-	mi := &file_policy_selectors_proto_msgTypes[7]
+	mi := &file_policy_selectors_proto_msgTypes[8]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -558,7 +605,7 @@ type AttributeDefinitionSelector_ValueSelector struct {
 func (x *AttributeDefinitionSelector_ValueSelector) Reset() {
 	*x = AttributeDefinitionSelector_ValueSelector{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_policy_selectors_proto_msgTypes[8]
+		mi := &file_policy_selectors_proto_msgTypes[9]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -571,7 +618,7 @@ func (x *AttributeDefinitionSelector_ValueSelector) String() string {
 func (*AttributeDefinitionSelector_ValueSelector) ProtoMessage() {}
 
 func (x *AttributeDefinitionSelector_ValueSelector) ProtoReflect() protoreflect.Message {
-	mi := &file_policy_selectors_proto_msgTypes[8]
+	mi := &file_policy_selectors_proto_msgTypes[9]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -621,7 +668,7 @@ type AttributeValueSelector_AttributeSelector struct {
 func (x *AttributeValueSelector_AttributeSelector) Reset() {
 	*x = AttributeValueSelector_AttributeSelector{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_policy_selectors_proto_msgTypes[9]
+		mi := &file_policy_selectors_proto_msgTypes[10]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -634,7 +681,7 @@ func (x *AttributeValueSelector_AttributeSelector) String() string {
 func (*AttributeValueSelector_AttributeSelector) ProtoMessage() {}
 
 func (x *AttributeValueSelector_AttributeSelector) ProtoReflect() protoreflect.Message {
-	mi := &file_policy_selectors_proto_msgTypes[9]
+	mi := &file_policy_selectors_proto_msgTypes[10]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -673,7 +720,7 @@ type AttributeValueSelector_AttributeSelector_NamespaceSelector struct {
 func (x *AttributeValueSelector_AttributeSelector_NamespaceSelector) Reset() {
 	*x = AttributeValueSelector_AttributeSelector_NamespaceSelector{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_policy_selectors_proto_msgTypes[10]
+		mi := &file_policy_selectors_proto_msgTypes[11]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -686,7 +733,7 @@ func (x *AttributeValueSelector_AttributeSelector_NamespaceSelector) String() st
 func (*AttributeValueSelector_AttributeSelector_NamespaceSelector) ProtoMessage() {}
 
 func (x *AttributeValueSelector_AttributeSelector_NamespaceSelector) ProtoReflect() protoreflect.Message {
-	mi := &file_policy_selectors_proto_msgTypes[10]
+	mi := &file_policy_selectors_proto_msgTypes[11]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -792,33 +839,35 @@ var file_policy_selectors_proto_rawDesc = []byte{
 	0x63, 0x74, 0x6f, 0x72, 0x2e, 0x4e, 0x61, 0x6d, 0x65, 0x73, 0x70, 0x61, 0x63, 0x65, 0x53, 0x65,
 	0x6c, 0x65, 0x63, 0x74, 0x6f, 0x72, 0x52, 0x0d, 0x77, 0x69, 0x74, 0x68, 0x4e, 0x61, 0x6d, 0x65,
 	0x73, 0x70, 0x61, 0x63, 0x65, 0x1a, 0x13, 0x0a, 0x11, 0x4e, 0x61, 0x6d, 0x65, 0x73, 0x70, 0x61,
-	0x63, 0x65, 0x53, 0x65, 0x6c, 0x65, 0x63, 0x74, 0x6f, 0x72, 0x22, 0x3b, 0x0a, 0x0b, 0x50, 0x61,
-	0x67, 0x65, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x12, 0x14, 0x0a, 0x05, 0x6c, 0x69, 0x6d,
-	0x69, 0x74, 0x18, 0x01, 0x20, 0x01, 0x28, 0x05, 0x52, 0x05, 0x6c, 0x69, 0x6d, 0x69, 0x74, 0x12,
-	0x16, 0x0a, 0x06, 0x6f, 0x66, 0x66, 0x73, 0x65, 0x74, 0x18, 0x02, 0x20, 0x01, 0x28, 0x05, 0x52,
-	0x06, 0x6f, 0x66, 0x66, 0x73, 0x65, 0x74, 0x22, 0x6c, 0x0a, 0x0c, 0x50, 0x61, 0x67, 0x65, 0x52,
-	0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x25, 0x0a, 0x0e, 0x63, 0x75, 0x72, 0x72, 0x65,
-	0x6e, 0x74, 0x5f, 0x6f, 0x66, 0x66, 0x73, 0x65, 0x74, 0x18, 0x01, 0x20, 0x01, 0x28, 0x05, 0x52,
-	0x0d, 0x63, 0x75, 0x72, 0x72, 0x65, 0x6e, 0x74, 0x4f, 0x66, 0x66, 0x73, 0x65, 0x74, 0x12, 0x1f,
-	0x0a, 0x0b, 0x6e, 0x65, 0x78, 0x74, 0x5f, 0x6f, 0x66, 0x66, 0x73, 0x65, 0x74, 0x18, 0x02, 0x20,
-	0x01, 0x28, 0x05, 0x52, 0x0a, 0x6e, 0x65, 0x78, 0x74, 0x4f, 0x66, 0x66, 0x73, 0x65, 0x74, 0x12,
-	0x14, 0x0a, 0x05, 0x74, 0x6f, 0x74, 0x61, 0x6c, 0x18, 0x03, 0x20, 0x01, 0x28, 0x05, 0x52, 0x05,
-	0x74, 0x6f, 0x74, 0x61, 0x6c, 0x2a, 0x60, 0x0a, 0x0d, 0x53, 0x6f, 0x72, 0x74, 0x44, 0x69, 0x72,
-	0x65, 0x63, 0x74, 0x69, 0x6f, 0x6e, 0x12, 0x1e, 0x0a, 0x1a, 0x53, 0x4f, 0x52, 0x54, 0x5f, 0x44,
-	0x49, 0x52, 0x45, 0x43, 0x54, 0x49, 0x4f, 0x4e, 0x5f, 0x55, 0x4e, 0x53, 0x50, 0x45, 0x43, 0x49,
-	0x46, 0x49, 0x45, 0x44, 0x10, 0x00, 0x12, 0x16, 0x0a, 0x12, 0x53, 0x4f, 0x52, 0x54, 0x5f, 0x44,
-	0x49, 0x52, 0x45, 0x43, 0x54, 0x49, 0x4f, 0x4e, 0x5f, 0x41, 0x53, 0x43, 0x10, 0x01, 0x12, 0x17,
-	0x0a, 0x13, 0x53, 0x4f, 0x52, 0x54, 0x5f, 0x44, 0x49, 0x52, 0x45, 0x43, 0x54, 0x49, 0x4f, 0x4e,
-	0x5f, 0x44, 0x45, 0x53, 0x43, 0x10, 0x02, 0x42, 0x84, 0x01, 0x0a, 0x0a, 0x63, 0x6f, 0x6d, 0x2e,
-	0x70, 0x6f, 0x6c, 0x69, 0x63, 0x79, 0x42, 0x0e, 0x53, 0x65, 0x6c, 0x65, 0x63, 0x74, 0x6f, 0x72,
-	0x73, 0x50, 0x72, 0x6f, 0x74, 0x6f, 0x50, 0x01, 0x5a, 0x2e, 0x67, 0x69, 0x74, 0x68, 0x75, 0x62,
-	0x2e, 0x63, 0x6f, 0x6d, 0x2f, 0x6f, 0x70, 0x65, 0x6e, 0x74, 0x64, 0x66, 0x2f, 0x70, 0x6c, 0x61,
-	0x74, 0x66, 0x6f, 0x72, 0x6d, 0x2f, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x63, 0x6f, 0x6c, 0x2f, 0x67,
-	0x6f, 0x2f, 0x70, 0x6f, 0x6c, 0x69, 0x63, 0x79, 0xa2, 0x02, 0x03, 0x50, 0x58, 0x58, 0xaa, 0x02,
-	0x06, 0x50, 0x6f, 0x6c, 0x69, 0x63, 0x79, 0xca, 0x02, 0x06, 0x50, 0x6f, 0x6c, 0x69, 0x63, 0x79,
-	0xe2, 0x02, 0x12, 0x50, 0x6f, 0x6c, 0x69, 0x63, 0x79, 0x5c, 0x47, 0x50, 0x42, 0x4d, 0x65, 0x74,
-	0x61, 0x64, 0x61, 0x74, 0x61, 0xea, 0x02, 0x06, 0x50, 0x6f, 0x6c, 0x69, 0x63, 0x79, 0x62, 0x06,
-	0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
+	0x63, 0x65, 0x53, 0x65, 0x6c, 0x65, 0x63, 0x74, 0x6f, 0x72, 0x22, 0x1c, 0x0a, 0x06, 0x53, 0x65,
+	0x61, 0x72, 0x63, 0x68, 0x12, 0x12, 0x0a, 0x04, 0x74, 0x65, 0x72, 0x6d, 0x18, 0x01, 0x20, 0x01,
+	0x28, 0x09, 0x52, 0x04, 0x74, 0x65, 0x72, 0x6d, 0x22, 0x3b, 0x0a, 0x0b, 0x50, 0x61, 0x67, 0x65,
+	0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x12, 0x14, 0x0a, 0x05, 0x6c, 0x69, 0x6d, 0x69, 0x74,
+	0x18, 0x01, 0x20, 0x01, 0x28, 0x05, 0x52, 0x05, 0x6c, 0x69, 0x6d, 0x69, 0x74, 0x12, 0x16, 0x0a,
+	0x06, 0x6f, 0x66, 0x66, 0x73, 0x65, 0x74, 0x18, 0x02, 0x20, 0x01, 0x28, 0x05, 0x52, 0x06, 0x6f,
+	0x66, 0x66, 0x73, 0x65, 0x74, 0x22, 0x6c, 0x0a, 0x0c, 0x50, 0x61, 0x67, 0x65, 0x52, 0x65, 0x73,
+	0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x25, 0x0a, 0x0e, 0x63, 0x75, 0x72, 0x72, 0x65, 0x6e, 0x74,
+	0x5f, 0x6f, 0x66, 0x66, 0x73, 0x65, 0x74, 0x18, 0x01, 0x20, 0x01, 0x28, 0x05, 0x52, 0x0d, 0x63,
+	0x75, 0x72, 0x72, 0x65, 0x6e, 0x74, 0x4f, 0x66, 0x66, 0x73, 0x65, 0x74, 0x12, 0x1f, 0x0a, 0x0b,
+	0x6e, 0x65, 0x78, 0x74, 0x5f, 0x6f, 0x66, 0x66, 0x73, 0x65, 0x74, 0x18, 0x02, 0x20, 0x01, 0x28,
+	0x05, 0x52, 0x0a, 0x6e, 0x65, 0x78, 0x74, 0x4f, 0x66, 0x66, 0x73, 0x65, 0x74, 0x12, 0x14, 0x0a,
+	0x05, 0x74, 0x6f, 0x74, 0x61, 0x6c, 0x18, 0x03, 0x20, 0x01, 0x28, 0x05, 0x52, 0x05, 0x74, 0x6f,
+	0x74, 0x61, 0x6c, 0x2a, 0x60, 0x0a, 0x0d, 0x53, 0x6f, 0x72, 0x74, 0x44, 0x69, 0x72, 0x65, 0x63,
+	0x74, 0x69, 0x6f, 0x6e, 0x12, 0x1e, 0x0a, 0x1a, 0x53, 0x4f, 0x52, 0x54, 0x5f, 0x44, 0x49, 0x52,
+	0x45, 0x43, 0x54, 0x49, 0x4f, 0x4e, 0x5f, 0x55, 0x4e, 0x53, 0x50, 0x45, 0x43, 0x49, 0x46, 0x49,
+	0x45, 0x44, 0x10, 0x00, 0x12, 0x16, 0x0a, 0x12, 0x53, 0x4f, 0x52, 0x54, 0x5f, 0x44, 0x49, 0x52,
+	0x45, 0x43, 0x54, 0x49, 0x4f, 0x4e, 0x5f, 0x41, 0x53, 0x43, 0x10, 0x01, 0x12, 0x17, 0x0a, 0x13,
+	0x53, 0x4f, 0x52, 0x54, 0x5f, 0x44, 0x49, 0x52, 0x45, 0x43, 0x54, 0x49, 0x4f, 0x4e, 0x5f, 0x44,
+	0x45, 0x53, 0x43, 0x10, 0x02, 0x42, 0x84, 0x01, 0x0a, 0x0a, 0x63, 0x6f, 0x6d, 0x2e, 0x70, 0x6f,
+	0x6c, 0x69, 0x63, 0x79, 0x42, 0x0e, 0x53, 0x65, 0x6c, 0x65, 0x63, 0x74, 0x6f, 0x72, 0x73, 0x50,
+	0x72, 0x6f, 0x74, 0x6f, 0x50, 0x01, 0x5a, 0x2e, 0x67, 0x69, 0x74, 0x68, 0x75, 0x62, 0x2e, 0x63,
+	0x6f, 0x6d, 0x2f, 0x6f, 0x70, 0x65, 0x6e, 0x74, 0x64, 0x66, 0x2f, 0x70, 0x6c, 0x61, 0x74, 0x66,
+	0x6f, 0x72, 0x6d, 0x2f, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x63, 0x6f, 0x6c, 0x2f, 0x67, 0x6f, 0x2f,
+	0x70, 0x6f, 0x6c, 0x69, 0x63, 0x79, 0xa2, 0x02, 0x03, 0x50, 0x58, 0x58, 0xaa, 0x02, 0x06, 0x50,
+	0x6f, 0x6c, 0x69, 0x63, 0x79, 0xca, 0x02, 0x06, 0x50, 0x6f, 0x6c, 0x69, 0x63, 0x79, 0xe2, 0x02,
+	0x12, 0x50, 0x6f, 0x6c, 0x69, 0x63, 0x79, 0x5c, 0x47, 0x50, 0x42, 0x4d, 0x65, 0x74, 0x61, 0x64,
+	0x61, 0x74, 0x61, 0xea, 0x02, 0x06, 0x50, 0x6f, 0x6c, 0x69, 0x63, 0x79, 0x62, 0x06, 0x70, 0x72,
+	0x6f, 0x74, 0x6f, 0x33,
 }
 
 var (
@@ -834,28 +883,29 @@ func file_policy_selectors_proto_rawDescGZIP() []byte {
 }
 
 var file_policy_selectors_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_policy_selectors_proto_msgTypes = make([]protoimpl.MessageInfo, 11)
+var file_policy_selectors_proto_msgTypes = make([]protoimpl.MessageInfo, 12)
 var file_policy_selectors_proto_goTypes = []interface{}{
-	(SortDirection)(0),                                                 // 0: policy.SortDirection
-	(*AttributeNamespaceSelector)(nil),                                 // 1: policy.AttributeNamespaceSelector
-	(*AttributeDefinitionSelector)(nil),                                // 2: policy.AttributeDefinitionSelector
-	(*AttributeValueSelector)(nil),                                     // 3: policy.AttributeValueSelector
-	(*PageRequest)(nil),                                                // 4: policy.PageRequest
-	(*PageResponse)(nil),                                               // 5: policy.PageResponse
-	(*AttributeNamespaceSelector_AttributeSelector)(nil),               // 6: policy.AttributeNamespaceSelector.AttributeSelector
-	(*AttributeNamespaceSelector_AttributeSelector_ValueSelector)(nil), // 7: policy.AttributeNamespaceSelector.AttributeSelector.ValueSelector
-	(*AttributeDefinitionSelector_NamespaceSelector)(nil),              // 8: policy.AttributeDefinitionSelector.NamespaceSelector
-	(*AttributeDefinitionSelector_ValueSelector)(nil),                  // 9: policy.AttributeDefinitionSelector.ValueSelector
-	(*AttributeValueSelector_AttributeSelector)(nil),                   // 10: policy.AttributeValueSelector.AttributeSelector
-	(*AttributeValueSelector_AttributeSelector_NamespaceSelector)(nil), // 11: policy.AttributeValueSelector.AttributeSelector.NamespaceSelector
+	(SortDirection)(0),                                   // 0: policy.SortDirection
+	(*AttributeNamespaceSelector)(nil),                   // 1: policy.AttributeNamespaceSelector
+	(*AttributeDefinitionSelector)(nil),                  // 2: policy.AttributeDefinitionSelector
+	(*AttributeValueSelector)(nil),                       // 3: policy.AttributeValueSelector
+	(*Search)(nil),                                       // 4: policy.Search
+	(*PageRequest)(nil),                                  // 5: policy.PageRequest
+	(*PageResponse)(nil),                                 // 6: policy.PageResponse
+	(*AttributeNamespaceSelector_AttributeSelector)(nil), // 7: policy.AttributeNamespaceSelector.AttributeSelector
+	(*AttributeNamespaceSelector_AttributeSelector_ValueSelector)(nil), // 8: policy.AttributeNamespaceSelector.AttributeSelector.ValueSelector
+	(*AttributeDefinitionSelector_NamespaceSelector)(nil),              // 9: policy.AttributeDefinitionSelector.NamespaceSelector
+	(*AttributeDefinitionSelector_ValueSelector)(nil),                  // 10: policy.AttributeDefinitionSelector.ValueSelector
+	(*AttributeValueSelector_AttributeSelector)(nil),                   // 11: policy.AttributeValueSelector.AttributeSelector
+	(*AttributeValueSelector_AttributeSelector_NamespaceSelector)(nil), // 12: policy.AttributeValueSelector.AttributeSelector.NamespaceSelector
 }
 var file_policy_selectors_proto_depIdxs = []int32{
-	6,  // 0: policy.AttributeNamespaceSelector.with_attributes:type_name -> policy.AttributeNamespaceSelector.AttributeSelector
-	8,  // 1: policy.AttributeDefinitionSelector.with_namespace:type_name -> policy.AttributeDefinitionSelector.NamespaceSelector
-	9,  // 2: policy.AttributeDefinitionSelector.with_values:type_name -> policy.AttributeDefinitionSelector.ValueSelector
-	10, // 3: policy.AttributeValueSelector.with_attribute:type_name -> policy.AttributeValueSelector.AttributeSelector
-	7,  // 4: policy.AttributeNamespaceSelector.AttributeSelector.with_values:type_name -> policy.AttributeNamespaceSelector.AttributeSelector.ValueSelector
-	11, // 5: policy.AttributeValueSelector.AttributeSelector.with_namespace:type_name -> policy.AttributeValueSelector.AttributeSelector.NamespaceSelector
+	7,  // 0: policy.AttributeNamespaceSelector.with_attributes:type_name -> policy.AttributeNamespaceSelector.AttributeSelector
+	9,  // 1: policy.AttributeDefinitionSelector.with_namespace:type_name -> policy.AttributeDefinitionSelector.NamespaceSelector
+	10, // 2: policy.AttributeDefinitionSelector.with_values:type_name -> policy.AttributeDefinitionSelector.ValueSelector
+	11, // 3: policy.AttributeValueSelector.with_attribute:type_name -> policy.AttributeValueSelector.AttributeSelector
+	8,  // 4: policy.AttributeNamespaceSelector.AttributeSelector.with_values:type_name -> policy.AttributeNamespaceSelector.AttributeSelector.ValueSelector
+	12, // 5: policy.AttributeValueSelector.AttributeSelector.with_namespace:type_name -> policy.AttributeValueSelector.AttributeSelector.NamespaceSelector
 	6,  // [6:6] is the sub-list for method output_type
 	6,  // [6:6] is the sub-list for method input_type
 	6,  // [6:6] is the sub-list for extension type_name
@@ -906,7 +956,7 @@ func file_policy_selectors_proto_init() {
 			}
 		}
 		file_policy_selectors_proto_msgTypes[3].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*PageRequest); i {
+			switch v := v.(*Search); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -918,7 +968,7 @@ func file_policy_selectors_proto_init() {
 			}
 		}
 		file_policy_selectors_proto_msgTypes[4].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*PageResponse); i {
+			switch v := v.(*PageRequest); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -930,7 +980,7 @@ func file_policy_selectors_proto_init() {
 			}
 		}
 		file_policy_selectors_proto_msgTypes[5].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*AttributeNamespaceSelector_AttributeSelector); i {
+			switch v := v.(*PageResponse); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -942,7 +992,7 @@ func file_policy_selectors_proto_init() {
 			}
 		}
 		file_policy_selectors_proto_msgTypes[6].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*AttributeNamespaceSelector_AttributeSelector_ValueSelector); i {
+			switch v := v.(*AttributeNamespaceSelector_AttributeSelector); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -954,7 +1004,7 @@ func file_policy_selectors_proto_init() {
 			}
 		}
 		file_policy_selectors_proto_msgTypes[7].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*AttributeDefinitionSelector_NamespaceSelector); i {
+			switch v := v.(*AttributeNamespaceSelector_AttributeSelector_ValueSelector); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -966,7 +1016,7 @@ func file_policy_selectors_proto_init() {
 			}
 		}
 		file_policy_selectors_proto_msgTypes[8].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*AttributeDefinitionSelector_ValueSelector); i {
+			switch v := v.(*AttributeDefinitionSelector_NamespaceSelector); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -978,7 +1028,7 @@ func file_policy_selectors_proto_init() {
 			}
 		}
 		file_policy_selectors_proto_msgTypes[9].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*AttributeValueSelector_AttributeSelector); i {
+			switch v := v.(*AttributeDefinitionSelector_ValueSelector); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -990,6 +1040,18 @@ func file_policy_selectors_proto_init() {
 			}
 		}
 		file_policy_selectors_proto_msgTypes[10].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*AttributeValueSelector_AttributeSelector); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_policy_selectors_proto_msgTypes[11].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*AttributeValueSelector_AttributeSelector_NamespaceSelector); i {
 			case 0:
 				return &v.state
@@ -1008,7 +1070,7 @@ func file_policy_selectors_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: file_policy_selectors_proto_rawDesc,
 			NumEnums:      1,
-			NumMessages:   11,
+			NumMessages:   12,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

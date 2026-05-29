@@ -82,10 +82,15 @@ func FromPublicPEMWithSalt(publicKeyInPem string, salt, info []byte) (PublicKeyE
 		return NewP256MLKEM768Encryptor(block.Bytes, salt, info)
 	case PEMBlockP384MLKEM1024PublicKey:
 		return NewP384MLKEM1024Encryptor(block.Bytes, salt, info)
-	case PEMBlockMLKEM768PublicKey:
-		return NewMLKEM768Encryptor(block.Bytes, salt, info)
-	case PEMBlockMLKEM1024PublicKey:
-		return NewMLKEM1024Encryptor(block.Bytes, salt, info)
+	}
+
+	switch oid, key, err := parseMLKEMPublicSPKI(block.Bytes); {
+	case err == nil && oid.Equal(oidMLKEM768):
+		return NewMLKEM768Encryptor(key, salt, info)
+	case err == nil && oid.Equal(oidMLKEM1024):
+		return NewMLKEM1024Encryptor(key, salt, info)
+	case err != nil && !errors.Is(err, errNotMLKEM):
+		return nil, err
 	}
 
 	pub, err := getPublicPart(publicKeyInPem)
@@ -242,7 +247,7 @@ func publicKeyInPemFormat(pk any) (string, error) {
 
 	publicKeyPem := pem.EncodeToMemory(
 		&pem.Block{
-			Type:  "PUBLIC KEY",
+			Type:  pemBlockPublicKey,
 			Bytes: publicKeyBytes,
 		},
 	)

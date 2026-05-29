@@ -5,11 +5,23 @@ import (
 	"crypto/sha256"
 	"encoding/asn1"
 	"encoding/pem"
+	"errors"
 	"fmt"
 	"io"
 
 	"golang.org/x/crypto/hkdf"
 )
+
+// PEM block types defined by RFC 7468 for SPKI / PKCS#8 envelopes.
+const (
+	pemBlockPublicKey  = "PUBLIC KEY"
+	pemBlockPrivateKey = "PRIVATE KEY"
+)
+
+// errNotMLKEM is returned by the ML-KEM SPKI / PKCS#8 parsers when the supplied
+// DER blob is not an ML-KEM key, signalling the caller to fall through to
+// other algorithm parsers.
+var errNotMLKEM = errors.New("not an ML-KEM key")
 
 const (
 	MLKEM768PublicKeySize   = 1184 // mlkem768 encapsulation key
@@ -20,12 +32,106 @@ const (
 	MLKEM1024CiphertextSize = 1568 // mlkem1024 ciphertext
 
 	mlkemWrapKeySize = 32 // AES-256 key size for wrap key derivation
-
-	PEMBlockMLKEM768PublicKey   = "MLKEM768 PUBLIC KEY"
-	PEMBlockMLKEM768PrivateKey  = "MLKEM768 PRIVATE KEY"
-	PEMBlockMLKEM1024PublicKey  = "MLKEM1024 PUBLIC KEY"
-	PEMBlockMLKEM1024PrivateKey = "MLKEM1024 PRIVATE KEY"
 )
+
+// NIST-assigned OIDs for ML-KEM (FIPS 203).
+var (
+	oidMLKEM768  = asn1.ObjectIdentifier{2, 16, 840, 1, 101, 3, 4, 4, 2}
+	oidMLKEM1024 = asn1.ObjectIdentifier{2, 16, 840, 1, 101, 3, 4, 4, 3}
+)
+
+type mlkemAlgorithmIdentifier struct {
+	Algorithm asn1.ObjectIdentifier
+}
+
+type mlkemSPKI struct {
+	Algorithm mlkemAlgorithmIdentifier
+	PublicKey asn1.BitString
+}
+
+// mlkemPKCS8 mirrors RFC 5958 OneAsymmetricKey v1.
+type mlkemPKCS8 struct {
+	Version    int
+	Algorithm  mlkemAlgorithmIdentifier
+	PrivateKey []byte
+}
+
+const bitsPerByte = 8
+
+// marshalMLKEMPublicSPKI encodes a raw ML-KEM encapsulation key as RFC 5280 SubjectPublicKeyInfo.
+func marshalMLKEMPublicSPKI(oid asn1.ObjectIdentifier, rawKey []byte) ([]byte, error) {
+	return asn1.Marshal(mlkemSPKI{
+		Algorithm: mlkemAlgorithmIdentifier{Algorithm: oid},
+		PublicKey: asn1.BitString{Bytes: rawKey, BitLength: len(rawKey) * bitsPerByte},
+	})
+}
+
+// marshalMLKEMPrivatePKCS8 encodes the ML-KEM seed as RFC 5958 OneAsymmetricKey,
+// with the inner ML-KEM-PrivateKey CHOICE selected as [0] IMPLICIT OCTET STRING (seed).
+func marshalMLKEMPrivatePKCS8(oid asn1.ObjectIdentifier, seed []byte) ([]byte, error) {
+	inner, err := asn1.MarshalWithParams(seed, "tag:0,implicit")
+	if err != nil {
+		return nil, fmt.Errorf("asn1.MarshalWithParams seed failed: %w", err)
+	}
+	return asn1.Marshal(mlkemPKCS8{
+		Version:    0,
+		Algorithm:  mlkemAlgorithmIdentifier{Algorithm: oid},
+		PrivateKey: inner,
+	})
+}
+
+// parseMLKEMPublicSPKI returns the OID and raw encapsulation key bytes from an
+// SPKI DER blob if the algorithm is ML-KEM-768 or ML-KEM-1024. If the blob is
+// not ML-KEM the sentinel errNotMLKEM is returned so the caller can fall
+// through to other parsers.
+func parseMLKEMPublicSPKI(der []byte) (asn1.ObjectIdentifier, []byte, error) {
+	var s mlkemSPKI
+	rest, err := asn1.Unmarshal(der, &s)
+	if err != nil || len(rest) != 0 {
+		return nil, nil, errNotMLKEM
+	}
+	var oid asn1.ObjectIdentifier
+	switch {
+	case s.Algorithm.Algorithm.Equal(oidMLKEM768):
+		oid = oidMLKEM768
+	case s.Algorithm.Algorithm.Equal(oidMLKEM1024):
+		oid = oidMLKEM1024
+	default:
+		return nil, nil, errNotMLKEM
+	}
+	if s.PublicKey.BitLength%bitsPerByte != 0 {
+		return nil, nil, errors.New("ML-KEM SPKI bit string is not byte-aligned")
+	}
+	return oid, s.PublicKey.RightAlign(), nil
+}
+
+// parseMLKEMPrivatePKCS8 returns the OID and raw seed bytes from a PKCS#8 DER
+// blob if the algorithm is ML-KEM-768 or ML-KEM-1024. If the blob is not
+// ML-KEM the sentinel errNotMLKEM is returned so the caller can fall through
+// to other parsers.
+func parseMLKEMPrivatePKCS8(der []byte) (asn1.ObjectIdentifier, []byte, error) {
+	var p mlkemPKCS8
+	rest, err := asn1.Unmarshal(der, &p)
+	if err != nil || len(rest) != 0 {
+		return nil, nil, errNotMLKEM
+	}
+	var oid asn1.ObjectIdentifier
+	switch {
+	case p.Algorithm.Algorithm.Equal(oidMLKEM768):
+		oid = oidMLKEM768
+	case p.Algorithm.Algorithm.Equal(oidMLKEM1024):
+		oid = oidMLKEM1024
+	default:
+		return nil, nil, errNotMLKEM
+	}
+
+	var innerSeed []byte
+	innerRest, err := asn1.UnmarshalWithParams(p.PrivateKey, &innerSeed, "tag:0,implicit")
+	if err != nil || len(innerRest) != 0 {
+		return nil, nil, fmt.Errorf("ML-KEM PKCS#8 inner seed parse failed: %w", err)
+	}
+	return oid, innerSeed, nil
+}
 
 type MLKEMWrappedKey struct {
 	MLKEMCiphertext []byte `asn1:"tag:0"`
@@ -73,11 +179,11 @@ func (e *MLKEMEncryptor768) Encrypt(data []byte) ([]byte, error) {
 }
 
 func (e *MLKEMEncryptor768) PublicKeyInPemFormat() (string, error) {
-	pemBlock := &pem.Block{
-		Type:  PEMBlockMLKEM768PublicKey,
-		Bytes: e.publicKey,
+	der, err := marshalMLKEMPublicSPKI(oidMLKEM768, e.publicKey)
+	if err != nil {
+		return "", fmt.Errorf("marshal ML-KEM-768 SPKI failed: %w", err)
 	}
-	return string(pem.EncodeToMemory(pemBlock)), nil
+	return string(pem.EncodeToMemory(&pem.Block{Type: pemBlockPublicKey, Bytes: der})), nil
 }
 
 func (e *MLKEMEncryptor768) Type() SchemeType {
@@ -133,11 +239,11 @@ func (e *MLKEMEncryptor1024) Encrypt(data []byte) ([]byte, error) {
 }
 
 func (e *MLKEMEncryptor1024) PublicKeyInPemFormat() (string, error) {
-	pemBlock := &pem.Block{
-		Type:  PEMBlockMLKEM1024PublicKey,
-		Bytes: e.publicKey,
+	der, err := marshalMLKEMPublicSPKI(oidMLKEM1024, e.publicKey)
+	if err != nil {
+		return "", fmt.Errorf("marshal ML-KEM-1024 SPKI failed: %w", err)
 	}
-	return string(pem.EncodeToMemory(pemBlock)), nil
+	return string(pem.EncodeToMemory(&pem.Block{Type: pemBlockPublicKey, Bytes: der})), nil
 }
 
 func (e *MLKEMEncryptor1024) Type() SchemeType {

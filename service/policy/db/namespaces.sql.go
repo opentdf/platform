@@ -191,8 +191,8 @@ const listNamespaces = `-- name: listNamespaces :many
 
 WITH params AS (
     SELECT
-        COALESCE(NULLIF($4::text, ''), 'created_at') AS resolved_field,
-        COALESCE(NULLIF($5::text, ''), 'DESC') AS resolved_direction
+        COALESCE(NULLIF($5::text, ''), 'created_at') AS resolved_field,
+        COALESCE(NULLIF($6::text, ''), 'DESC') AS resolved_direction
 )
 SELECT
     COUNT(*) OVER() AS total,
@@ -204,7 +204,14 @@ SELECT
 FROM attribute_namespaces ns
 LEFT JOIN attribute_fqns fqns ON ns.id = fqns.namespace_id AND fqns.attribute_id IS NULL
 CROSS JOIN params p
-WHERE ($1::BOOLEAN IS NULL OR ns.active = $1::BOOLEAN)
+WHERE
+    ($1::BOOLEAN IS NULL OR ns.active = $1::BOOLEAN)
+    -- No search-specific optimization is added here. If needed, consider
+    -- a pg_trgm-backed GIN index on attribute_fqns.fqn.
+    AND (
+        $2::TEXT IS NULL
+        OR fqns.fqn LIKE $2::TEXT ESCAPE '\'
+    )
 ORDER BY
     CASE WHEN p.resolved_field = 'name' AND p.resolved_direction = 'ASC' THEN ns.name END ASC,
     CASE WHEN p.resolved_field = 'name' AND p.resolved_direction = 'DESC' THEN ns.name END DESC,
@@ -215,12 +222,13 @@ ORDER BY
     CASE WHEN p.resolved_field = 'updated_at' AND p.resolved_direction = 'ASC' THEN ns.updated_at END ASC,
     CASE WHEN p.resolved_field = 'updated_at' AND p.resolved_direction = 'DESC' THEN ns.updated_at END DESC,
     ns.id ASC
-LIMIT $3
-OFFSET $2
+LIMIT $4
+OFFSET $3
 `
 
 type listNamespacesParams struct {
 	Active        pgtype.Bool `json:"active"`
+	Search        pgtype.Text `json:"search"`
 	Offset        int32       `json:"offset_"`
 	Limit         int32       `json:"limit_"`
 	SortField     string      `json:"sort_field"`
@@ -242,8 +250,8 @@ type listNamespacesRow struct {
 //
 //	WITH params AS (
 //	    SELECT
-//	        COALESCE(NULLIF($4::text, ''), 'created_at') AS resolved_field,
-//	        COALESCE(NULLIF($5::text, ''), 'DESC') AS resolved_direction
+//	        COALESCE(NULLIF($5::text, ''), 'created_at') AS resolved_field,
+//	        COALESCE(NULLIF($6::text, ''), 'DESC') AS resolved_direction
 //	)
 //	SELECT
 //	    COUNT(*) OVER() AS total,
@@ -255,7 +263,14 @@ type listNamespacesRow struct {
 //	FROM attribute_namespaces ns
 //	LEFT JOIN attribute_fqns fqns ON ns.id = fqns.namespace_id AND fqns.attribute_id IS NULL
 //	CROSS JOIN params p
-//	WHERE ($1::BOOLEAN IS NULL OR ns.active = $1::BOOLEAN)
+//	WHERE
+//	    ($1::BOOLEAN IS NULL OR ns.active = $1::BOOLEAN)
+//	    -- No search-specific optimization is added here. If needed, consider
+//	    -- a pg_trgm-backed GIN index on attribute_fqns.fqn.
+//	    AND (
+//	        $2::TEXT IS NULL
+//	        OR fqns.fqn LIKE $2::TEXT ESCAPE '\'
+//	    )
 //	ORDER BY
 //	    CASE WHEN p.resolved_field = 'name' AND p.resolved_direction = 'ASC' THEN ns.name END ASC,
 //	    CASE WHEN p.resolved_field = 'name' AND p.resolved_direction = 'DESC' THEN ns.name END DESC,
@@ -266,11 +281,12 @@ type listNamespacesRow struct {
 //	    CASE WHEN p.resolved_field = 'updated_at' AND p.resolved_direction = 'ASC' THEN ns.updated_at END ASC,
 //	    CASE WHEN p.resolved_field = 'updated_at' AND p.resolved_direction = 'DESC' THEN ns.updated_at END DESC,
 //	    ns.id ASC
-//	LIMIT $3
-//	OFFSET $2
+//	LIMIT $4
+//	OFFSET $3
 func (q *Queries) listNamespaces(ctx context.Context, arg listNamespacesParams) ([]listNamespacesRow, error) {
 	rows, err := q.db.Query(ctx, listNamespaces,
 		arg.Active,
+		arg.Search,
 		arg.Offset,
 		arg.Limit,
 		arg.SortField,

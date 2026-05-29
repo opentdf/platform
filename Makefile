@@ -5,7 +5,7 @@
 
 MODS=protocol/go lib/ocrypto lib/fixtures lib/flattening lib/identifier sdk service examples otdfctl tests-bdd
 HAND_MODS=lib/ocrypto lib/fixtures lib/flattening lib/identifier sdk service examples otdfctl tests-bdd
-REQUIRED_BUF_VERSION=1.68.2
+REQUIRED_BUF_VERSION=1.70.0
 REQUIRED_SQLC_VERSION=1.31.0
 
 ROOT_DIR:=$(shell dirname $(realpath $(firstword $(MAKEFILE_LIST))))

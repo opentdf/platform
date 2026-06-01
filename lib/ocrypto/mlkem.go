@@ -1,6 +1,7 @@
 package ocrypto
 
 import (
+	"bytes"
 	"crypto/mlkem"
 	"crypto/sha256"
 	"encoding/asn1"
@@ -36,8 +37,8 @@ const (
 
 // NIST-assigned OIDs for ML-KEM (FIPS 203).
 var (
-	oidMLKEM768  = asn1.ObjectIdentifier{2, 16, 840, 1, 101, 3, 4, 4, 2}
-	oidMLKEM1024 = asn1.ObjectIdentifier{2, 16, 840, 1, 101, 3, 4, 4, 3}
+	OidMLKEM768  = asn1.ObjectIdentifier{2, 16, 840, 1, 101, 3, 4, 4, 2}
+	OidMLKEM1024 = asn1.ObjectIdentifier{2, 16, 840, 1, 101, 3, 4, 4, 3}
 )
 
 type mlkemAlgorithmIdentifier struct {
@@ -80,11 +81,11 @@ func marshalMLKEMPrivatePKCS8(oid asn1.ObjectIdentifier, seed []byte) ([]byte, e
 	})
 }
 
-// parseMLKEMPublicSPKI returns the OID and raw encapsulation key bytes from an
+// ParseMLKEMPublicSPKI returns the OID and raw encapsulation key bytes from an
 // SPKI DER blob if the algorithm is ML-KEM-768 or ML-KEM-1024. If the blob is
 // not ML-KEM the sentinel errNotMLKEM is returned so the caller can fall
 // through to other parsers.
-func parseMLKEMPublicSPKI(der []byte) (asn1.ObjectIdentifier, []byte, error) {
+func ParseMLKEMPublicSPKI(der []byte) (asn1.ObjectIdentifier, []byte, error) {
 	var s mlkemSPKI
 	rest, err := asn1.Unmarshal(der, &s)
 	if err != nil || len(rest) != 0 {
@@ -92,10 +93,10 @@ func parseMLKEMPublicSPKI(der []byte) (asn1.ObjectIdentifier, []byte, error) {
 	}
 	var oid asn1.ObjectIdentifier
 	switch {
-	case s.Algorithm.Algorithm.Equal(oidMLKEM768):
-		oid = oidMLKEM768
-	case s.Algorithm.Algorithm.Equal(oidMLKEM1024):
-		oid = oidMLKEM1024
+	case s.Algorithm.Algorithm.Equal(OidMLKEM768):
+		oid = OidMLKEM768
+	case s.Algorithm.Algorithm.Equal(OidMLKEM1024):
+		oid = OidMLKEM1024
 	default:
 		return nil, nil, errNotMLKEM
 	}
@@ -117,10 +118,10 @@ func parseMLKEMPrivatePKCS8(der []byte) (asn1.ObjectIdentifier, []byte, error) {
 	}
 	var oid asn1.ObjectIdentifier
 	switch {
-	case p.Algorithm.Algorithm.Equal(oidMLKEM768):
-		oid = oidMLKEM768
-	case p.Algorithm.Algorithm.Equal(oidMLKEM1024):
-		oid = oidMLKEM1024
+	case p.Algorithm.Algorithm.Equal(OidMLKEM768):
+		oid = OidMLKEM768
+	case p.Algorithm.Algorithm.Equal(OidMLKEM1024):
+		oid = OidMLKEM1024
 	default:
 		return nil, nil, errNotMLKEM
 	}
@@ -179,7 +180,7 @@ func (e *MLKEMEncryptor768) Encrypt(data []byte) ([]byte, error) {
 }
 
 func (e *MLKEMEncryptor768) PublicKeyInPemFormat() (string, error) {
-	der, err := marshalMLKEMPublicSPKI(oidMLKEM768, e.publicKey)
+	der, err := marshalMLKEMPublicSPKI(OidMLKEM768, e.publicKey)
 	if err != nil {
 		return "", fmt.Errorf("marshal ML-KEM-768 SPKI failed: %w", err)
 	}
@@ -239,7 +240,7 @@ func (e *MLKEMEncryptor1024) Encrypt(data []byte) ([]byte, error) {
 }
 
 func (e *MLKEMEncryptor1024) PublicKeyInPemFormat() (string, error) {
-	der, err := marshalMLKEMPublicSPKI(oidMLKEM1024, e.publicKey)
+	der, err := marshalMLKEMPublicSPKI(OidMLKEM1024, e.publicKey)
 	if err != nil {
 		return "", fmt.Errorf("marshal ML-KEM-1024 SPKI failed: %w", err)
 	}
@@ -282,16 +283,69 @@ func (d *MLKEMDecryptor1024) Decrypt(data []byte) ([]byte, error) {
 	return mlkem1024UnwrapDEK(d.privateKey, data, d.salt, d.info)
 }
 
-func MLKEM768WrapDEK(publicKeyRaw, dek []byte) ([]byte, error) {
-	return mlkem768WrapDEK(publicKeyRaw, dek, defaultTDFSalt(), nil)
+// normalizeMLKEMPublicKey detects the input format and returns raw key bytes.
+// Accepts: raw key (1184/1568 bytes), SPKI DER (1206/1590 bytes), or PEM-wrapped SPKI.
+func normalizeMLKEMPublicKey(input []byte, expectedRawSize int, expectedOID asn1.ObjectIdentifier) ([]byte, error) {
+	// Fast path: already raw?
+	if len(input) == expectedRawSize {
+		return input, nil
+	}
+
+	// Check for PEM format
+	if bytes.HasPrefix(input, []byte("-----BEGIN")) {
+		block, _ := pem.Decode(input)
+		if block == nil {
+			return nil, errors.New("failed to decode PEM block")
+		}
+		if block.Type != pemBlockPublicKey {
+			return nil, fmt.Errorf("expected %s PEM block, got %s", pemBlockPublicKey, block.Type)
+		}
+		// Continue with DER bytes
+		input = block.Bytes
+	}
+
+	// Try parsing as SPKI DER
+	oid, rawKey, err := ParseMLKEMPublicSPKI(input)
+	if err != nil {
+		if errors.Is(err, errNotMLKEM) {
+			return nil, errors.New("not an ML-KEM key in SPKI format")
+		}
+		return nil, fmt.Errorf("failed to parse SPKI: %w", err)
+	}
+
+	// Verify OID matches expected variant
+	if !oid.Equal(expectedOID) {
+		return nil, fmt.Errorf("OID mismatch: expected %v, got %v", expectedOID, oid)
+	}
+
+	// Verify extracted key is correct size
+	if len(rawKey) != expectedRawSize {
+		return nil, fmt.Errorf("extracted key has wrong size: got %d want %d", len(rawKey), expectedRawSize)
+	}
+
+	return rawKey, nil
+}
+
+func MLKEM768WrapDEK(publicKey, dek []byte) ([]byte, error) {
+	// Normalize input to raw key bytes (handles raw, SPKI DER, or PEM)
+	rawKey, err := normalizeMLKEMPublicKey(publicKey, MLKEM768PublicKeySize, OidMLKEM768)
+	if err != nil {
+		return nil, fmt.Errorf("invalid ML-KEM-768 public key: %w", err)
+	}
+	return mlkem768WrapDEK(rawKey, dek, defaultTDFSalt(), nil)
 }
 
 func MLKEM768UnwrapDEK(privateKeyRaw, wrappedDER []byte) ([]byte, error) {
 	return mlkem768UnwrapDEK(privateKeyRaw, wrappedDER, defaultTDFSalt(), nil)
 }
 
-func MLKEM1024WrapDEK(publicKeyRaw, dek []byte) ([]byte, error) {
-	return mlkem1024WrapDEK(publicKeyRaw, dek, defaultTDFSalt(), nil)
+func MLKEM1024WrapDEK(publicKey, dek []byte) ([]byte, error) {
+	// Normalize input to raw key bytes (handles raw, SPKI DER, or PEM)
+	rawKey, err := normalizeMLKEMPublicKey(publicKey, MLKEM1024PublicKeySize, OidMLKEM1024)
+	if err != nil {
+		return nil, fmt.Errorf("invalid ML-KEM-1024 public key: %w", err)
+	}
+	return mlkem1024WrapDEK(rawKey, dek, defaultTDFSalt(), nil)
 }
 
 func MLKEM1024UnwrapDEK(privateKeyRaw, wrappedDER []byte) ([]byte, error) {

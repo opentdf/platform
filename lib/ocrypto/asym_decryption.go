@@ -53,9 +53,9 @@ func FromPrivatePEMWithSalt(privateKeyInPem string, salt, info []byte) (PrivateK
 	}
 
 	switch oid, seed, err := parseMLKEMPrivatePKCS8(block.Bytes); {
-	case err == nil && oid.Equal(oidMLKEM768):
+	case err == nil && oid.Equal(OidMLKEM768):
 		return NewSaltedMLKEM768Decryptor(seed, salt, info)
-	case err == nil && oid.Equal(oidMLKEM1024):
+	case err == nil && oid.Equal(OidMLKEM1024):
 		return NewSaltedMLKEM1024Decryptor(seed, salt, info)
 	case err != nil && !errors.Is(err, errNotMLKEM):
 		return AsymDecryption{}, err

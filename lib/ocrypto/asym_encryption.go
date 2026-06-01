@@ -84,10 +84,10 @@ func FromPublicPEMWithSalt(publicKeyInPem string, salt, info []byte) (PublicKeyE
 		return NewP384MLKEM1024Encryptor(block.Bytes, salt, info)
 	}
 
-	switch oid, key, err := parseMLKEMPublicSPKI(block.Bytes); {
-	case err == nil && oid.Equal(oidMLKEM768):
+	switch oid, key, err := ParseMLKEMPublicSPKI(block.Bytes); {
+	case err == nil && oid.Equal(OidMLKEM768):
 		return NewMLKEM768Encryptor(key, salt, info)
-	case err == nil && oid.Equal(oidMLKEM1024):
+	case err == nil && oid.Equal(OidMLKEM1024):
 		return NewMLKEM1024Encryptor(key, salt, info)
 	case err != nil && !errors.Is(err, errNotMLKEM):
 		return nil, err

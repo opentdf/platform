@@ -558,7 +558,7 @@ func (keyPair MLKEMKeyPair) PrivateKeyInPemFormat() (string, error) {
 		return "", errors.New("failed to generate PEM formatted private key")
 	}
 
-	der, err := marshalMLKEMPrivatePKCS8(oidMLKEM768, keyPair.PrivateKey.Bytes())
+	der, err := marshalMLKEMPrivatePKCS8(OidMLKEM768, keyPair.PrivateKey.Bytes())
 	if err != nil {
 		return "", fmt.Errorf("marshal ML-KEM-768 PKCS#8 failed: %w", err)
 	}
@@ -570,7 +570,7 @@ func (keyPair MLKEMKeyPair) PublicKeyInPemFormat() (string, error) {
 		return "", errors.New("failed to generate PEM formatted public key")
 	}
 
-	der, err := marshalMLKEMPublicSPKI(oidMLKEM768, keyPair.PrivateKey.EncapsulationKey().Bytes())
+	der, err := marshalMLKEMPublicSPKI(OidMLKEM768, keyPair.PrivateKey.EncapsulationKey().Bytes())
 	if err != nil {
 		return "", fmt.Errorf("marshal ML-KEM-768 SPKI failed: %w", err)
 	}
@@ -586,7 +586,7 @@ func (keyPair MLKEM1024KeyPair) PrivateKeyInPemFormat() (string, error) {
 		return "", errors.New("failed to generate PEM formatted private key")
 	}
 
-	der, err := marshalMLKEMPrivatePKCS8(oidMLKEM1024, keyPair.PrivateKey.Bytes())
+	der, err := marshalMLKEMPrivatePKCS8(OidMLKEM1024, keyPair.PrivateKey.Bytes())
 	if err != nil {
 		return "", fmt.Errorf("marshal ML-KEM-1024 PKCS#8 failed: %w", err)
 	}
@@ -598,7 +598,7 @@ func (keyPair MLKEM1024KeyPair) PublicKeyInPemFormat() (string, error) {
 		return "", errors.New("failed to generate PEM formatted public key")
 	}
 
-	der, err := marshalMLKEMPublicSPKI(oidMLKEM1024, keyPair.PrivateKey.EncapsulationKey().Bytes())
+	der, err := marshalMLKEMPublicSPKI(OidMLKEM1024, keyPair.PrivateKey.EncapsulationKey().Bytes())
 	if err != nil {
 		return "", fmt.Errorf("marshal ML-KEM-1024 SPKI failed: %w", err)
 	}

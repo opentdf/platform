@@ -109,6 +109,13 @@ func hydrateRegisteredResourceValueFQNs(values []*policy.RegisteredResourceValue
 	}
 }
 
+func pgtypeRegisteredResourceSearchPattern(query string) pgtype.Text {
+	if query == "" {
+		return pgtype.Text{}
+	}
+	return pgtypeText("%" + escapeLikePattern(strings.ToLower(query)) + "%")
+}
+
 ///
 /// Registered Resources
 ///
@@ -230,10 +237,12 @@ func (c PolicyDBClient) ListRegisteredResources(ctx context.Context, r *register
 	}
 
 	sortField, sortDirection := GetRegisteredResourcesSortParams(r.GetSort())
+	search := pgtypeRegisteredResourceSearchPattern(r.GetSearch().GetTerm())
 
 	list, err := c.queries.listRegisteredResources(ctx, listRegisteredResourcesParams{
 		NamespaceID:   parsedID,
 		NamespaceFqn:  pgtypeText(r.GetNamespaceFqn()),
+		Search:        search,
 		Limit:         limit,
 		Offset:        offset,
 		SortField:     sortField,
@@ -441,7 +450,8 @@ func (c PolicyDBClient) GetRegisteredResourceValuesByFQNs(ctx context.Context, r
 			},
 		})
 		if err != nil {
-			c.logger.ErrorContext(ctx,
+			c.logger.ErrorContext(
+				ctx,
 				"registered resource value for FQN not found",
 				slog.String("fqn", fqn),
 				slog.Any("err", err),

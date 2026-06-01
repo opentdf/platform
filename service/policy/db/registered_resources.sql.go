@@ -644,8 +644,8 @@ func (q *Queries) listRegisteredResourceValues(ctx context.Context, arg listRegi
 const listRegisteredResources = `-- name: listRegisteredResources :many
 WITH params AS (
     SELECT
-        COALESCE(NULLIF($5::text, ''), 'created_at') AS resolved_field,
-        COALESCE(NULLIF($6::text, ''), 'DESC') AS resolved_direction
+        COALESCE(NULLIF($6::text, ''), 'created_at') AS resolved_field,
+        COALESCE(NULLIF($7::text, ''), 'DESC') AS resolved_direction
 ),
 counted AS (
     SELECT COUNT(r.id) AS total
@@ -654,7 +654,8 @@ counted AS (
     LEFT JOIN attribute_fqns ns_fqns ON ns_fqns.namespace_id = n.id AND ns_fqns.attribute_id IS NULL AND ns_fqns.value_id IS NULL
     WHERE
         ($1::uuid IS NULL OR r.namespace_id = $1::uuid) AND
-        ($2::text IS NULL OR ns_fqns.fqn = $2::text)
+        ($2::text IS NULL OR ns_fqns.fqn = $2::text) AND
+        ($3::text IS NULL OR LOWER(r.name) LIKE $3::text ESCAPE '\')
 )
 SELECT
     r.id,
@@ -714,7 +715,8 @@ LEFT JOIN LATERAL (
 ) action_attrs ON true  -- required syntax for LATERAL joins
 WHERE
     ($1::uuid IS NULL OR r.namespace_id = $1::uuid) AND
-    ($2::text IS NULL OR ns_fqns.fqn = $2::text)
+    ($2::text IS NULL OR ns_fqns.fqn = $2::text) AND
+    ($3::text IS NULL OR LOWER(r.name) LIKE $3::text ESCAPE '\')
 GROUP BY r.id, n.id, ns_fqns.fqn, counted.total, p.resolved_field, p.resolved_direction
 ORDER BY
     CASE WHEN p.resolved_field = 'name' AND p.resolved_direction = 'ASC' THEN r.name END ASC,
@@ -724,13 +726,14 @@ ORDER BY
     CASE WHEN p.resolved_field = 'updated_at' AND p.resolved_direction = 'ASC' THEN r.updated_at END ASC,
     CASE WHEN p.resolved_field = 'updated_at' AND p.resolved_direction = 'DESC' THEN r.updated_at END DESC,
     r.id ASC
-LIMIT $4
-OFFSET $3
+LIMIT $5
+OFFSET $4
 `
 
 type listRegisteredResourcesParams struct {
 	NamespaceID   pgtype.UUID `json:"namespace_id"`
 	NamespaceFqn  pgtype.Text `json:"namespace_fqn"`
+	Search        pgtype.Text `json:"search"`
 	Offset        int32       `json:"offset_"`
 	Limit         int32       `json:"limit_"`
 	SortField     string      `json:"sort_field"`
@@ -750,8 +753,8 @@ type listRegisteredResourcesRow struct {
 //
 //	WITH params AS (
 //	    SELECT
-//	        COALESCE(NULLIF($5::text, ''), 'created_at') AS resolved_field,
-//	        COALESCE(NULLIF($6::text, ''), 'DESC') AS resolved_direction
+//	        COALESCE(NULLIF($6::text, ''), 'created_at') AS resolved_field,
+//	        COALESCE(NULLIF($7::text, ''), 'DESC') AS resolved_direction
 //	),
 //	counted AS (
 //	    SELECT COUNT(r.id) AS total
@@ -760,7 +763,8 @@ type listRegisteredResourcesRow struct {
 //	    LEFT JOIN attribute_fqns ns_fqns ON ns_fqns.namespace_id = n.id AND ns_fqns.attribute_id IS NULL AND ns_fqns.value_id IS NULL
 //	    WHERE
 //	        ($1::uuid IS NULL OR r.namespace_id = $1::uuid) AND
-//	        ($2::text IS NULL OR ns_fqns.fqn = $2::text)
+//	        ($2::text IS NULL OR ns_fqns.fqn = $2::text) AND
+//	        ($3::text IS NULL OR LOWER(r.name) LIKE $3::text ESCAPE '\')
 //	)
 //	SELECT
 //	    r.id,
@@ -820,7 +824,8 @@ type listRegisteredResourcesRow struct {
 //	) action_attrs ON true  -- required syntax for LATERAL joins
 //	WHERE
 //	    ($1::uuid IS NULL OR r.namespace_id = $1::uuid) AND
-//	    ($2::text IS NULL OR ns_fqns.fqn = $2::text)
+//	    ($2::text IS NULL OR ns_fqns.fqn = $2::text) AND
+//	    ($3::text IS NULL OR LOWER(r.name) LIKE $3::text ESCAPE '\')
 //	GROUP BY r.id, n.id, ns_fqns.fqn, counted.total, p.resolved_field, p.resolved_direction
 //	ORDER BY
 //	    CASE WHEN p.resolved_field = 'name' AND p.resolved_direction = 'ASC' THEN r.name END ASC,
@@ -830,12 +835,13 @@ type listRegisteredResourcesRow struct {
 //	    CASE WHEN p.resolved_field = 'updated_at' AND p.resolved_direction = 'ASC' THEN r.updated_at END ASC,
 //	    CASE WHEN p.resolved_field = 'updated_at' AND p.resolved_direction = 'DESC' THEN r.updated_at END DESC,
 //	    r.id ASC
-//	LIMIT $4
-//	OFFSET $3
+//	LIMIT $5
+//	OFFSET $4
 func (q *Queries) listRegisteredResources(ctx context.Context, arg listRegisteredResourcesParams) ([]listRegisteredResourcesRow, error) {
 	rows, err := q.db.Query(ctx, listRegisteredResources,
 		arg.NamespaceID,
 		arg.NamespaceFqn,
+		arg.Search,
 		arg.Offset,
 		arg.Limit,
 		arg.SortField,

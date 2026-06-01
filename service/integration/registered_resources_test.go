@@ -1811,6 +1811,181 @@ func (s *RegisteredResourcesSuite) Test_ListRegisteredResources_FilterByNamespac
 	s.True(found, "created resource should be in the filtered list")
 }
 
+func (s *RegisteredResourcesSuite) Test_ListRegisteredResources_SearchByName_Succeeds() {
+	suffix := time.Now().UnixNano()
+	nsID := s.getNamespaceID("example.com")
+	alphaName := fmt.Sprintf("dspx-rr-search-alpha-%d", suffix)
+	betaName := fmt.Sprintf("dspx-rr-search-beta-%d", suffix)
+
+	alpha, err := s.db.PolicyClient.CreateRegisteredResource(s.ctx, &registeredresources.CreateRegisteredResourceRequest{
+		NamespaceId: nsID,
+		Name:        alphaName,
+	})
+	s.Require().NoError(err)
+	beta, err := s.db.PolicyClient.CreateRegisteredResource(s.ctx, &registeredresources.CreateRegisteredResourceRequest{
+		NamespaceId: nsID,
+		Name:        betaName,
+	})
+	s.Require().NoError(err)
+	defer s.deleteSortTestRegisteredResources([]string{alpha.GetId(), beta.GetId()})
+
+	list, err := s.db.PolicyClient.ListRegisteredResources(s.ctx, &registeredresources.ListRegisteredResourcesRequest{
+		Search: &policy.Search{Term: strings.ToUpper(alphaName)},
+	})
+	s.Require().NoError(err)
+	s.Require().Len(list.GetResources(), 1)
+	s.Equal(alpha.GetId(), list.GetResources()[0].GetId())
+	s.Equal(int32(1), list.GetPagination().GetTotal())
+}
+
+func (s *RegisteredResourcesSuite) Test_ListRegisteredResources_SearchEscapesLikeWildcardLiterals_Succeeds() {
+	suffix := time.Now().UnixNano()
+	nsID := s.getNamespaceID("example.com")
+	searchToken := fmt.Sprintf("dspx-rr-search-like-%d", suffix)
+
+	alpha, err := s.db.PolicyClient.CreateRegisteredResource(s.ctx, &registeredresources.CreateRegisteredResourceRequest{
+		NamespaceId: nsID,
+		Name:        "wildcarda-" + searchToken,
+	})
+	s.Require().NoError(err)
+	beta, err := s.db.PolicyClient.CreateRegisteredResource(s.ctx, &registeredresources.CreateRegisteredResourceRequest{
+		NamespaceId: nsID,
+		Name:        "wildcardb-" + searchToken,
+	})
+	s.Require().NoError(err)
+	defer s.deleteSortTestRegisteredResources([]string{alpha.GetId(), beta.GetId()})
+
+	for _, query := range []string{
+		"wildcard_-" + searchToken,
+		"wildcard%-" + searchToken,
+	} {
+		list, err := s.db.PolicyClient.ListRegisteredResources(s.ctx, &registeredresources.ListRegisteredResourcesRequest{
+			Search: &policy.Search{Term: query},
+		})
+		s.Require().NoError(err)
+		s.Empty(list.GetResources())
+		s.Equal(int32(0), list.GetPagination().GetTotal())
+	}
+}
+
+func (s *RegisteredResourcesSuite) Test_ListRegisteredResources_SearchCombinesWithNamespaceFilters_Succeeds() {
+	suffix := time.Now().UnixNano()
+	nsID1 := s.getNamespaceID("example.com")
+	nsID2 := s.getNamespaceID("example.net")
+	nsFQN2 := s.getNamespaceFQN("example.net")
+	name := fmt.Sprintf("dspx-rr-search-filter-%d", suffix)
+
+	inFirstNamespace, err := s.db.PolicyClient.CreateRegisteredResource(s.ctx, &registeredresources.CreateRegisteredResourceRequest{
+		NamespaceId: nsID1,
+		Name:        name,
+	})
+	s.Require().NoError(err)
+	inSecondNamespace, err := s.db.PolicyClient.CreateRegisteredResource(s.ctx, &registeredresources.CreateRegisteredResourceRequest{
+		NamespaceId: nsID2,
+		Name:        name,
+	})
+	s.Require().NoError(err)
+	defer s.deleteSortTestRegisteredResources([]string{inFirstNamespace.GetId(), inSecondNamespace.GetId()})
+
+	byNamespaceID, err := s.db.PolicyClient.ListRegisteredResources(s.ctx, &registeredresources.ListRegisteredResourcesRequest{
+		NamespaceId: nsID1,
+		Search:      &policy.Search{Term: name},
+	})
+	s.Require().NoError(err)
+	s.Require().Len(byNamespaceID.GetResources(), 1)
+	s.Equal(inFirstNamespace.GetId(), byNamespaceID.GetResources()[0].GetId())
+	s.Equal(int32(1), byNamespaceID.GetPagination().GetTotal())
+
+	byNamespaceFQN, err := s.db.PolicyClient.ListRegisteredResources(s.ctx, &registeredresources.ListRegisteredResourcesRequest{
+		NamespaceFqn: nsFQN2,
+		Search:       &policy.Search{Term: name},
+	})
+	s.Require().NoError(err)
+	s.Require().Len(byNamespaceFQN.GetResources(), 1)
+	s.Equal(inSecondNamespace.GetId(), byNamespaceFQN.GetResources()[0].GetId())
+	s.Equal(int32(1), byNamespaceFQN.GetPagination().GetTotal())
+}
+
+func (s *RegisteredResourcesSuite) Test_ListRegisteredResources_SearchEmptyAndWhitespace_Succeeds() {
+	suffix := time.Now().UnixNano()
+	created, err := s.db.PolicyClient.CreateRegisteredResource(s.ctx, &registeredresources.CreateRegisteredResourceRequest{
+		NamespaceId: s.getNamespaceID("example.com"),
+		Name:        fmt.Sprintf("dspx-rr-search-whitespace-%d", suffix),
+	})
+	s.Require().NoError(err)
+	defer s.deleteSortTestRegisteredResources([]string{created.GetId()})
+
+	noSearch, err := s.db.PolicyClient.ListRegisteredResources(s.ctx, &registeredresources.ListRegisteredResourcesRequest{})
+	s.Require().NoError(err)
+	emptySearch, err := s.db.PolicyClient.ListRegisteredResources(s.ctx, &registeredresources.ListRegisteredResourcesRequest{
+		Search: &policy.Search{Term: ""},
+	})
+	s.Require().NoError(err)
+	s.Equal(noSearch.GetPagination().GetTotal(), emptySearch.GetPagination().GetTotal())
+
+	whitespaceSearch, err := s.db.PolicyClient.ListRegisteredResources(s.ctx, &registeredresources.ListRegisteredResourcesRequest{
+		Search: &policy.Search{Term: " " + created.GetName()},
+	})
+	s.Require().NoError(err)
+	s.Empty(whitespaceSearch.GetResources())
+	s.Equal(int32(0), whitespaceSearch.GetPagination().GetTotal())
+}
+
+func (s *RegisteredResourcesSuite) Test_ListRegisteredResources_SearchPaginationAppliesAfterFiltering_Succeeds() {
+	suffix := time.Now().UnixNano()
+	searchToken := fmt.Sprintf("dspx-rr-search-page-%d", suffix)
+	names := []string{
+		"a-" + searchToken,
+		"b-" + searchToken,
+		"c-" + searchToken,
+		fmt.Sprintf("dspx-rr-search-page-other-%d", suffix),
+	}
+	ids := make([]string, len(names))
+	for i, name := range names {
+		created, err := s.db.PolicyClient.CreateRegisteredResource(s.ctx, &registeredresources.CreateRegisteredResourceRequest{
+			NamespaceId: s.getNamespaceID("example.com"),
+			Name:        name,
+		})
+		s.Require().NoError(err)
+		ids[i] = created.GetId()
+	}
+	defer s.deleteSortTestRegisteredResources(ids)
+
+	firstPage, err := s.db.PolicyClient.ListRegisteredResources(s.ctx, &registeredresources.ListRegisteredResourcesRequest{
+		Search:     &policy.Search{Term: searchToken},
+		Pagination: &policy.PageRequest{Limit: 2},
+		Sort: []*registeredresources.RegisteredResourcesSort{
+			{
+				Field:     registeredresources.SortRegisteredResourcesType_SORT_REGISTERED_RESOURCES_TYPE_NAME,
+				Direction: policy.SortDirection_SORT_DIRECTION_ASC,
+			},
+		},
+	})
+	s.Require().NoError(err)
+	s.Require().Len(firstPage.GetResources(), 2)
+	s.Equal(int32(3), firstPage.GetPagination().GetTotal())
+	s.Equal(int32(2), firstPage.GetPagination().GetNextOffset())
+	s.Equal(ids[0], firstPage.GetResources()[0].GetId())
+	s.Equal(ids[1], firstPage.GetResources()[1].GetId())
+
+	secondPage, err := s.db.PolicyClient.ListRegisteredResources(s.ctx, &registeredresources.ListRegisteredResourcesRequest{
+		Search:     &policy.Search{Term: searchToken},
+		Pagination: &policy.PageRequest{Limit: 2, Offset: 2},
+		Sort: []*registeredresources.RegisteredResourcesSort{
+			{
+				Field:     registeredresources.SortRegisteredResourcesType_SORT_REGISTERED_RESOURCES_TYPE_NAME,
+				Direction: policy.SortDirection_SORT_DIRECTION_ASC,
+			},
+		},
+	})
+	s.Require().NoError(err)
+	s.Require().Len(secondPage.GetResources(), 1)
+	s.Equal(int32(3), secondPage.GetPagination().GetTotal())
+	s.Equal(int32(2), secondPage.GetPagination().GetCurrentOffset())
+	s.Equal(int32(0), secondPage.GetPagination().GetNextOffset())
+	s.Equal(ids[2], secondPage.GetResources()[0].GetId())
+}
+
 func (s *RegisteredResourcesSuite) Test_GetRegisteredResourceValue_NamespacedFQN_Succeeds() {
 	nsID := s.getNamespaceID("example.com")
 	name := "test_get_rrv_ns_fqn"

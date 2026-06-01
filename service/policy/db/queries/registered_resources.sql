@@ -112,7 +112,8 @@ counted AS (
     LEFT JOIN attribute_fqns ns_fqns ON ns_fqns.namespace_id = n.id AND ns_fqns.attribute_id IS NULL AND ns_fqns.value_id IS NULL
     WHERE
         (sqlc.narg('namespace_id')::uuid IS NULL OR r.namespace_id = sqlc.narg('namespace_id')::uuid) AND
-        (sqlc.narg('namespace_fqn')::text IS NULL OR ns_fqns.fqn = sqlc.narg('namespace_fqn')::text)
+        (sqlc.narg('namespace_fqn')::text IS NULL OR ns_fqns.fqn = sqlc.narg('namespace_fqn')::text) AND
+        (sqlc.narg('search')::text IS NULL OR LOWER(r.name) LIKE sqlc.narg('search')::text ESCAPE '\')
 )
 SELECT
     r.id,
@@ -173,7 +174,8 @@ LEFT JOIN LATERAL (
 ) action_attrs ON true  -- required syntax for LATERAL joins
 WHERE
     (sqlc.narg('namespace_id')::uuid IS NULL OR r.namespace_id = sqlc.narg('namespace_id')::uuid) AND
-    (sqlc.narg('namespace_fqn')::text IS NULL OR ns_fqns.fqn = sqlc.narg('namespace_fqn')::text)
+    (sqlc.narg('namespace_fqn')::text IS NULL OR ns_fqns.fqn = sqlc.narg('namespace_fqn')::text) AND
+    (sqlc.narg('search')::text IS NULL OR LOWER(r.name) LIKE sqlc.narg('search')::text ESCAPE '\')
 GROUP BY r.id, n.id, ns_fqns.fqn, counted.total, p.resolved_field, p.resolved_direction
 ORDER BY
     CASE WHEN p.resolved_field = 'name' AND p.resolved_direction = 'ASC' THEN r.name END ASC,

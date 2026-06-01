@@ -407,6 +407,10 @@ LEFT JOIN
 WHERE
     (sqlc.narg('key_algorithm')::integer IS NULL OR kask.key_algorithm = sqlc.narg('key_algorithm')::integer)
     AND (sqlc.narg('legacy')::boolean IS NULL OR kask.legacy = sqlc.narg('legacy')::boolean)
+    AND (
+        sqlc.narg('search')::TEXT IS NULL
+        OR LOWER(kask.key_id) LIKE sqlc.narg('search')::TEXT ESCAPE '\'
+    )
 ORDER BY
     CASE WHEN p.resolved_field = 'key_id' AND p.resolved_direction = 'ASC' THEN kask.key_id END ASC,
     CASE WHEN p.resolved_field = 'key_id' AND p.resolved_direction = 'DESC' THEN kask.key_id END DESC,

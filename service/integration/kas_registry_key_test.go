@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 	"slices"
+	"strings"
 	"testing"
 	"time"
 
@@ -759,6 +760,156 @@ func (s *KasRegistryKeySuite) Test_ListKeys_Legacy_Success() {
 	s.False(foundLegacy)
 }
 
+func (s *KasRegistryKeySuite) Test_ListKeys_SearchByKeyID_Succeeds() {
+	searchToken := fmt.Sprintf("alpha-%x", time.Now().UnixNano())
+	kasID, keyIDsByName := s.createListKeysSearchTestKeys([]listKeysSearchKeySpec{
+		{name: "matched", keyID: "DSPX-2741-" + searchToken},
+		{name: "other", keyID: fmt.Sprintf("d2741-beta-%x", time.Now().UnixNano())},
+	})
+	defer s.cleanupKeys(listKeysSearchIDs(keyIDsByName), []string{kasID})
+
+	list, err := s.db.PolicyClient.ListKeys(s.ctx, &kasregistry.ListKeysRequest{
+		KasFilter: &kasregistry.ListKeysRequest_KasId{KasId: kasID},
+		Search:    &policy.Search{Term: strings.ToLower(searchToken)},
+	})
+	s.Require().NoError(err)
+	s.Require().Len(list.GetKasKeys(), 1)
+	s.Equal(keyIDsByName["matched"], list.GetKasKeys()[0].GetKey().GetId())
+	s.Equal(int32(1), list.GetPagination().GetTotal())
+}
+
+func (s *KasRegistryKeySuite) Test_ListKeys_SearchCombinesWithFilters_Succeeds() {
+	searchToken := fmt.Sprintf("combo-%x", time.Now().UnixNano())
+	legacy := true
+	kasID, keyIDsByName := s.createListKeysSearchTestKeys([]listKeysSearchKeySpec{
+		{
+			name:      "matched",
+			keyID:     searchToken + "-matched",
+			algorithm: policy.Algorithm_ALGORITHM_EC_P256,
+			legacy:    true,
+		},
+		{
+			name:      "nonlegacy",
+			keyID:     searchToken + "-nonlegacy",
+			algorithm: policy.Algorithm_ALGORITHM_EC_P256,
+		},
+		{
+			name:      "rsa",
+			keyID:     searchToken + "-rsa",
+			algorithm: policy.Algorithm_ALGORITHM_RSA_2048,
+		},
+	})
+	defer s.cleanupKeys(listKeysSearchIDs(keyIDsByName), []string{kasID})
+
+	list, err := s.db.PolicyClient.ListKeys(s.ctx, &kasregistry.ListKeysRequest{
+		KasFilter:    &kasregistry.ListKeysRequest_KasId{KasId: kasID},
+		Search:       &policy.Search{Term: searchToken},
+		Legacy:       &legacy,
+		KeyAlgorithm: policy.Algorithm_ALGORITHM_EC_P256,
+	})
+	s.Require().NoError(err)
+	s.Require().Len(list.GetKasKeys(), 1)
+	s.Equal(keyIDsByName["matched"], list.GetKasKeys()[0].GetKey().GetId())
+	s.Equal(int32(1), list.GetPagination().GetTotal())
+}
+
+func (s *KasRegistryKeySuite) Test_ListKeys_SearchEmptyQuery_Succeeds() {
+	kasID, keyIDsByName := s.createListKeysSearchTestKeys([]listKeysSearchKeySpec{
+		{name: "matched", keyID: fmt.Sprintf("dspx-2741-empty-%d", time.Now().UnixNano())},
+	})
+	defer s.cleanupKeys(listKeysSearchIDs(keyIDsByName), []string{kasID})
+
+	noSearch, err := s.db.PolicyClient.ListKeys(s.ctx, &kasregistry.ListKeysRequest{
+		KasFilter: &kasregistry.ListKeysRequest_KasId{KasId: kasID},
+	})
+	s.Require().NoError(err)
+	emptySearch, err := s.db.PolicyClient.ListKeys(s.ctx, &kasregistry.ListKeysRequest{
+		KasFilter: &kasregistry.ListKeysRequest_KasId{KasId: kasID},
+		Search:    &policy.Search{Term: ""},
+	})
+	s.Require().NoError(err)
+	s.Equal(noSearch.GetPagination().GetTotal(), emptySearch.GetPagination().GetTotal())
+	s.Len(emptySearch.GetKasKeys(), len(noSearch.GetKasKeys()))
+}
+
+func (s *KasRegistryKeySuite) Test_ListKeys_SearchDoesNotTrimWhitespace_Succeeds() {
+	keyID := fmt.Sprintf("dspx-2741-space-%d", time.Now().UnixNano())
+	kasID, keyIDsByName := s.createListKeysSearchTestKeys([]listKeysSearchKeySpec{
+		{name: "matched", keyID: keyID},
+	})
+	defer s.cleanupKeys(listKeysSearchIDs(keyIDsByName), []string{kasID})
+
+	list, err := s.db.PolicyClient.ListKeys(s.ctx, &kasregistry.ListKeysRequest{
+		KasFilter: &kasregistry.ListKeysRequest_KasId{KasId: kasID},
+		Search:    &policy.Search{Term: " " + keyID},
+	})
+	s.Require().NoError(err)
+	s.Empty(list.GetKasKeys())
+	s.Equal(int32(0), list.GetPagination().GetTotal())
+}
+
+func (s *KasRegistryKeySuite) Test_ListKeys_SearchEscapesLikeWildcardLiterals_Succeeds() {
+	searchToken := fmt.Sprintf("like-%x", time.Now().UnixNano())
+	kasID, keyIDsByName := s.createListKeysSearchTestKeys([]listKeysSearchKeySpec{
+		{name: "alpha", keyID: "wildcarda-" + searchToken},
+		{name: "beta", keyID: "wildcardb-" + searchToken},
+	})
+	defer s.cleanupKeys(listKeysSearchIDs(keyIDsByName), []string{kasID})
+
+	for _, query := range []string{
+		"wildcard_-" + searchToken,
+		"wildcard%-" + searchToken,
+	} {
+		list, err := s.db.PolicyClient.ListKeys(s.ctx, &kasregistry.ListKeysRequest{
+			KasFilter: &kasregistry.ListKeysRequest_KasId{KasId: kasID},
+			Search:    &policy.Search{Term: query},
+		})
+		s.Require().NoError(err)
+		s.Empty(list.GetKasKeys())
+		s.Equal(int32(0), list.GetPagination().GetTotal())
+	}
+}
+
+func (s *KasRegistryKeySuite) Test_ListKeys_SearchPaginationAppliesAfterFiltering_Succeeds() {
+	searchToken := fmt.Sprintf("page-%x", time.Now().UnixNano())
+	kasID, keyIDsByName := s.createListKeysSearchTestKeys([]listKeysSearchKeySpec{
+		{name: "first", keyID: "a-" + searchToken},
+		{name: "second", keyID: "b-" + searchToken},
+		{name: "third", keyID: "c-" + searchToken},
+		{name: "other", keyID: fmt.Sprintf("other-%x", time.Now().UnixNano())},
+	})
+	defer s.cleanupKeys(listKeysSearchIDs(keyIDsByName), []string{kasID})
+
+	firstPage, err := s.db.PolicyClient.ListKeys(s.ctx, &kasregistry.ListKeysRequest{
+		KasFilter:  &kasregistry.ListKeysRequest_KasId{KasId: kasID},
+		Search:     &policy.Search{Term: searchToken},
+		Pagination: &policy.PageRequest{Limit: 2},
+		Sort: []*kasregistry.KasKeysSort{
+			{Field: kasregistry.SortKasKeysType_SORT_KAS_KEYS_TYPE_KEY_ID, Direction: policy.SortDirection_SORT_DIRECTION_ASC},
+		},
+	})
+	s.Require().NoError(err)
+	s.Require().Len(firstPage.GetKasKeys(), 2)
+	s.Equal(int32(3), firstPage.GetPagination().GetTotal())
+	s.Equal(int32(2), firstPage.GetPagination().GetNextOffset())
+	s.Equal(keyIDsByName["first"], firstPage.GetKasKeys()[0].GetKey().GetId())
+	s.Equal(keyIDsByName["second"], firstPage.GetKasKeys()[1].GetKey().GetId())
+
+	secondPage, err := s.db.PolicyClient.ListKeys(s.ctx, &kasregistry.ListKeysRequest{
+		KasFilter:  &kasregistry.ListKeysRequest_KasId{KasId: kasID},
+		Search:     &policy.Search{Term: searchToken},
+		Pagination: &policy.PageRequest{Limit: 2, Offset: 2},
+		Sort: []*kasregistry.KasKeysSort{
+			{Field: kasregistry.SortKasKeysType_SORT_KAS_KEYS_TYPE_KEY_ID, Direction: policy.SortDirection_SORT_DIRECTION_ASC},
+		},
+	})
+	s.Require().NoError(err)
+	s.Require().Len(secondPage.GetKasKeys(), 1)
+	s.Equal(int32(3), secondPage.GetPagination().GetTotal())
+	s.Equal(int32(2), secondPage.GetPagination().GetCurrentOffset())
+	s.Equal(keyIDsByName["third"], secondPage.GetKasKeys()[0].GetKey().GetId())
+}
+
 func (s *KasRegistryKeySuite) Test_RotateKey_Multiple_Attributes_Values_Namespaces_Success() {
 	namespaceIDs := make([]string, 0)
 	keyIDs := make([]string, 0)
@@ -1369,7 +1520,8 @@ func (s *KasRegistryKeySuite) Test_SetBaseKey_CannotSetNonActiveKey_Fails() {
 	s.Require().Nil(baseKey)
 
 	// Update the key status to rotated
-	rotatedKeysResp, err := s.db.PolicyClient.RotateKey(s.ctx,
+	rotatedKeysResp, err := s.db.PolicyClient.RotateKey(
+		s.ctx,
 		key.GetKasKey(),
 		&kasregistry.RotateKeyRequest_NewKey{
 			KeyId:     "rotated_key_id",
@@ -2318,6 +2470,21 @@ func (s *KasRegistryKeySuite) cleanupKeys(keyIDs []string, keyAccessServerIDs []
 	}
 }
 
+type listKeysSearchKeySpec struct {
+	name      string
+	keyID     string
+	algorithm policy.Algorithm
+	legacy    bool
+}
+
+func listKeysSearchIDs(keyIDsByName map[string]string) []string {
+	keyIDs := make([]string, 0, len(keyIDsByName))
+	for _, id := range keyIDsByName {
+		keyIDs = append(keyIDs, id)
+	}
+	return keyIDs
+}
+
 func (s *KasRegistryKeySuite) getKasRegistryServerKeysFixtures() []fixtures.FixtureDataKasRegistryKey {
 	return []fixtures.FixtureDataKasRegistryKey{
 		s.f.GetKasRegistryServerKeys("kas_key_1"),
@@ -2755,4 +2922,42 @@ func (s *KasRegistryKeySuite) createSortTestKasKeys(prefixes []string) ([]string
 // deleteSortTestKasKeys cleans up kas keys and their parent KAS created by sort tests.
 func (s *KasRegistryKeySuite) deleteSortTestKasKeys(keyIDs []string, kasID string) {
 	s.cleanupKeys(keyIDs, []string{kasID})
+}
+
+func (s *KasRegistryKeySuite) createListKeysSearchTestKeys(specs []listKeysSearchKeySpec) (string, map[string]string) {
+	kasUUID := uuid.NewString()
+	kasReq := kasregistry.CreateKeyAccessServerRequest{
+		Name: "dspx-2741-search-kas-" + kasUUID,
+		Uri:  "https://dspx-2741-search-kas-" + kasUUID + ".opentdf.io",
+	}
+	kas, err := s.db.PolicyClient.CreateKeyAccessServer(s.ctx, &kasReq)
+	s.Require().NoError(err)
+	s.NotNil(kas)
+
+	keyIDsByName := make(map[string]string, len(specs))
+	for _, spec := range specs {
+		algorithm := spec.algorithm
+		if algorithm == policy.Algorithm_ALGORITHM_UNSPECIFIED {
+			algorithm = policy.Algorithm_ALGORITHM_RSA_2048
+		}
+
+		keyReq := kasregistry.CreateKeyRequest{
+			KasId:        kas.GetId(),
+			KeyId:        spec.keyID,
+			KeyAlgorithm: algorithm,
+			KeyMode:      policy.KeyMode_KEY_MODE_CONFIG_ROOT_KEY,
+			PublicKeyCtx: &policy.PublicKeyCtx{Pem: keyCtx},
+			PrivateKeyCtx: &policy.PrivateKeyCtx{
+				KeyId:      spec.keyID + "-private",
+				WrappedKey: keyCtx,
+			},
+			Legacy: spec.legacy,
+		}
+		keyResp, err := s.db.PolicyClient.CreateKey(s.ctx, &keyReq)
+		s.Require().NoError(err)
+		s.NotNil(keyResp)
+		keyIDsByName[spec.name] = keyResp.GetKasKey().GetKey().GetId()
+	}
+
+	return kas.GetId(), keyIDsByName
 }

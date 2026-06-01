@@ -101,7 +101,8 @@ type createSubjectMappingParams struct {
 //	)
 //	SELECT id FROM inserted_mapping
 func (q *Queries) createSubjectMapping(ctx context.Context, arg createSubjectMappingParams) (string, error) {
-	row := q.db.QueryRow(ctx, createSubjectMapping,
+	row := q.db.QueryRow(
+		ctx, createSubjectMapping,
 		arg.AttributeValueID,
 		arg.Metadata,
 		arg.SubjectConditionSetID,
@@ -356,8 +357,8 @@ const listSubjectConditionSets = `-- name: listSubjectConditionSets :many
 
 WITH params AS (
     SELECT
-        COALESCE(NULLIF($5::text, ''), 'created_at') AS resolved_field,
-        COALESCE(NULLIF($6::text, ''), 'DESC') AS resolved_direction
+        COALESCE(NULLIF($6::text, ''), 'created_at') AS resolved_field,
+        COALESCE(NULLIF($7::text, ''), 'DESC') AS resolved_direction
 )
 SELECT
     scs.id,
@@ -373,22 +374,58 @@ LEFT JOIN attribute_namespaces n ON n.id = scs.namespace_id
 LEFT JOIN attribute_fqns ns_fqns ON ns_fqns.namespace_id = n.id AND ns_fqns.attribute_id IS NULL AND ns_fqns.value_id IS NULL
 CROSS JOIN params p
 WHERE
-    ($1::uuid IS NULL AND $2::text IS NULL)
-    OR scs.namespace_id = $1::uuid
-    OR ns_fqns.fqn = $2::text
+    (
+        ($1::uuid IS NULL AND $2::text IS NULL)
+        OR scs.namespace_id = $1::uuid
+        OR ns_fqns.fqn = $2::text
+    )
+    AND (
+        $3::TEXT IS NULL
+        OR EXISTS (
+            SELECT 1
+            FROM JSONB_PATH_QUERY(scs.condition, '$.**.subjectExternalSelectorValue') AS selector_value(value)
+            WHERE LOWER(selector_value.value #>> '{}') LIKE $3::TEXT ESCAPE '\'
+        )
+        OR EXISTS (
+            SELECT 1
+            FROM JSONB_PATH_QUERY(scs.condition, '$.**.subject_external_selector_value') AS selector_value(value)
+            WHERE LOWER(selector_value.value #>> '{}') LIKE $3::TEXT ESCAPE '\'
+        )
+        OR EXISTS (
+            SELECT 1
+            FROM JSONB_PATH_QUERY(scs.condition, '$.**.subjectExternalSelectorValues[*]') AS selector_value(value)
+            WHERE LOWER(selector_value.value #>> '{}') LIKE $3::TEXT ESCAPE '\'
+        )
+        OR EXISTS (
+            SELECT 1
+            FROM JSONB_PATH_QUERY(scs.condition, '$.**.subject_external_selector_values[*]') AS selector_value(value)
+            WHERE LOWER(selector_value.value #>> '{}') LIKE $3::TEXT ESCAPE '\'
+        )
+        OR EXISTS (
+            SELECT 1
+            FROM JSONB_PATH_QUERY(scs.condition, '$.**.subjectExternalValues[*]') AS selector_value(value)
+            WHERE LOWER(selector_value.value #>> '{}') LIKE $3::TEXT ESCAPE '\'
+        )
+        OR EXISTS (
+            SELECT 1
+            FROM JSONB_PATH_QUERY(scs.condition, '$.**.subject_external_values[*]') AS selector_value(value)
+            WHERE LOWER(selector_value.value #>> '{}') LIKE $3::TEXT ESCAPE '\'
+        )
+    )
 ORDER BY
     CASE WHEN p.resolved_field = 'created_at' AND p.resolved_direction = 'ASC' THEN scs.created_at END ASC,
     CASE WHEN p.resolved_field = 'created_at' AND p.resolved_direction = 'DESC' THEN scs.created_at END DESC,
     CASE WHEN p.resolved_field = 'updated_at' AND p.resolved_direction = 'ASC' THEN scs.updated_at END ASC,
     CASE WHEN p.resolved_field = 'updated_at' AND p.resolved_direction = 'DESC' THEN scs.updated_at END DESC,
     scs.id ASC
-LIMIT $4
-OFFSET $3
+LIMIT $5
+OFFSET $4
 `
 
 type listSubjectConditionSetsParams struct {
 	NamespaceID   pgtype.UUID `json:"namespace_id"`
 	NamespaceFqn  pgtype.Text `json:"namespace_fqn"`
+	Search        pgtype.Text `json:"search"`
 	Offset        int32       `json:"offset_"`
 	Limit         int32       `json:"limit_"`
 	SortField     string      `json:"sort_field"`
@@ -409,8 +446,8 @@ type listSubjectConditionSetsRow struct {
 //
 //	WITH params AS (
 //	    SELECT
-//	        COALESCE(NULLIF($5::text, ''), 'created_at') AS resolved_field,
-//	        COALESCE(NULLIF($6::text, ''), 'DESC') AS resolved_direction
+//	        COALESCE(NULLIF($6::text, ''), 'created_at') AS resolved_field,
+//	        COALESCE(NULLIF($7::text, ''), 'DESC') AS resolved_direction
 //	)
 //	SELECT
 //	    scs.id,
@@ -426,21 +463,58 @@ type listSubjectConditionSetsRow struct {
 //	LEFT JOIN attribute_fqns ns_fqns ON ns_fqns.namespace_id = n.id AND ns_fqns.attribute_id IS NULL AND ns_fqns.value_id IS NULL
 //	CROSS JOIN params p
 //	WHERE
-//	    ($1::uuid IS NULL AND $2::text IS NULL)
-//	    OR scs.namespace_id = $1::uuid
-//	    OR ns_fqns.fqn = $2::text
+//	    (
+//	        ($1::uuid IS NULL AND $2::text IS NULL)
+//	        OR scs.namespace_id = $1::uuid
+//	        OR ns_fqns.fqn = $2::text
+//	    )
+//	    AND (
+//	        $3::TEXT IS NULL
+//	        OR EXISTS (
+//	            SELECT 1
+//	            FROM JSONB_PATH_QUERY(scs.condition, '$.**.subjectExternalSelectorValue') AS selector_value(value)
+//	            WHERE LOWER(selector_value.value #>> '{}') LIKE $3::TEXT ESCAPE '\'
+//	        )
+//	        OR EXISTS (
+//	            SELECT 1
+//	            FROM JSONB_PATH_QUERY(scs.condition, '$.**.subject_external_selector_value') AS selector_value(value)
+//	            WHERE LOWER(selector_value.value #>> '{}') LIKE $3::TEXT ESCAPE '\'
+//	        )
+//	        OR EXISTS (
+//	            SELECT 1
+//	            FROM JSONB_PATH_QUERY(scs.condition, '$.**.subjectExternalSelectorValues[*]') AS selector_value(value)
+//	            WHERE LOWER(selector_value.value #>> '{}') LIKE $3::TEXT ESCAPE '\'
+//	        )
+//	        OR EXISTS (
+//	            SELECT 1
+//	            FROM JSONB_PATH_QUERY(scs.condition, '$.**.subject_external_selector_values[*]') AS selector_value(value)
+//	            WHERE LOWER(selector_value.value #>> '{}') LIKE $3::TEXT ESCAPE '\'
+//	        )
+//	        OR EXISTS (
+//	            SELECT 1
+//	            FROM JSONB_PATH_QUERY(scs.condition, '$.**.subjectExternalValues[*]') AS selector_value(value)
+//	            WHERE LOWER(selector_value.value #>> '{}') LIKE $3::TEXT ESCAPE '\'
+//	        )
+//	        OR EXISTS (
+//	            SELECT 1
+//	            FROM JSONB_PATH_QUERY(scs.condition, '$.**.subject_external_values[*]') AS selector_value(value)
+//	            WHERE LOWER(selector_value.value #>> '{}') LIKE $3::TEXT ESCAPE '\'
+//	        )
+//	    )
 //	ORDER BY
 //	    CASE WHEN p.resolved_field = 'created_at' AND p.resolved_direction = 'ASC' THEN scs.created_at END ASC,
 //	    CASE WHEN p.resolved_field = 'created_at' AND p.resolved_direction = 'DESC' THEN scs.created_at END DESC,
 //	    CASE WHEN p.resolved_field = 'updated_at' AND p.resolved_direction = 'ASC' THEN scs.updated_at END ASC,
 //	    CASE WHEN p.resolved_field = 'updated_at' AND p.resolved_direction = 'DESC' THEN scs.updated_at END DESC,
 //	    scs.id ASC
-//	LIMIT $4
-//	OFFSET $3
+//	LIMIT $5
+//	OFFSET $4
 func (q *Queries) listSubjectConditionSets(ctx context.Context, arg listSubjectConditionSetsParams) ([]listSubjectConditionSetsRow, error) {
-	rows, err := q.db.Query(ctx, listSubjectConditionSets,
+	rows, err := q.db.Query(
+		ctx, listSubjectConditionSets,
 		arg.NamespaceID,
 		arg.NamespaceFqn,
+		arg.Search,
 		arg.Offset,
 		arg.Limit,
 		arg.SortField,
@@ -697,7 +771,8 @@ type listSubjectMappingsRow struct {
 //	LIMIT $4
 //	OFFSET $3
 func (q *Queries) listSubjectMappings(ctx context.Context, arg listSubjectMappingsParams) ([]listSubjectMappingsRow, error) {
-	rows, err := q.db.Query(ctx, listSubjectMappings,
+	rows, err := q.db.Query(
+		ctx, listSubjectMappings,
 		arg.NamespaceID,
 		arg.NamespaceFqn,
 		arg.Offset,
@@ -1005,7 +1080,8 @@ type updateSubjectMappingParams struct {
 //	SELECT cnt
 //	FROM update_count
 func (q *Queries) updateSubjectMapping(ctx context.Context, arg updateSubjectMappingParams) (int64, error) {
-	result, err := q.db.Exec(ctx, updateSubjectMapping,
+	result, err := q.db.Exec(
+		ctx, updateSubjectMapping,
 		arg.Metadata,
 		arg.SubjectConditionSetID,
 		arg.ID,

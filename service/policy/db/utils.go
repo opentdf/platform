@@ -175,6 +175,13 @@ func pgtypeSubstringSearchPattern(query string) pgtype.Text {
 	return pgtypeText("%" + escapeLikePattern(strings.ToLower(query)) + "%")
 }
 
+func pgtypeSubstringSearchPatternNoTrim(query string) pgtype.Text {
+	if query == "" {
+		return pgtype.Text{}
+	}
+	return pgtypeText("%" + escapeLikePattern(strings.ToLower(query)) + "%")
+}
+
 func escapeLikePattern(query string) string {
 	return strings.NewReplacer(
 		`\`, `\\`,
@@ -430,7 +437,8 @@ func UUIDToString(uuid pgtype.UUID) string {
 		return ""
 	}
 
-	return fmt.Sprintf("%08x-%04x-%04x-%04x-%012x",
+	return fmt.Sprintf(
+		"%08x-%04x-%04x-%04x-%012x",
 		uuid.Bytes[0:4],
 		uuid.Bytes[4:6],
 		uuid.Bytes[6:8],

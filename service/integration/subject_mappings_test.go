@@ -1482,6 +1482,93 @@ func (s *SubjectMappingsSuite) Test_ListSubjectConditionSets_NoNamespaceFilter_R
 	s.True(foundUnnamespaced)
 }
 
+func (s *SubjectMappingsSuite) Test_ListSubjectConditionSets_SearchBySelectorAndValues_Succeeds() {
+	suffix := time.Now().UnixNano()
+	searchToken := fmt.Sprintf("dspx-scs-search-%d", suffix)
+
+	selectorMatch := s.newSearchTestSubjectConditionSet("."+searchToken+".department", []string{"engineering"}, "")
+	valueMatch := s.newSearchTestSubjectConditionSet(fmt.Sprintf(".dspx_scs_other_%d", suffix), []string{"team-" + searchToken}, "")
+	multiConditionMatch := s.newSearchTestSubjectConditionSet("."+searchToken+".manager", []string{"group-" + searchToken}, "")
+	nonMatch := s.newSearchTestSubjectConditionSet(fmt.Sprintf(".dspx_scs_nomatch_%d", suffix), []string{"finance"}, "")
+	defer s.deleteSortTestSubjectConditionSets([]string{
+		selectorMatch.GetId(),
+		valueMatch.GetId(),
+		multiConditionMatch.GetId(),
+		nonMatch.GetId(),
+	})
+
+	listRsp, err := s.db.PolicyClient.ListSubjectConditionSets(s.ctx, &subjectmapping.ListSubjectConditionSetsRequest{
+		Search: &policy.Search{Term: strings.ToUpper(searchToken)},
+		Sort: []*subjectmapping.SubjectConditionSetsSort{
+			{Field: subjectmapping.SortSubjectConditionSetsType_SORT_SUBJECT_CONDITION_SETS_TYPE_CREATED_AT, Direction: policy.SortDirection_SORT_DIRECTION_ASC},
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(listRsp)
+
+	listedIDs := make([]string, 0, len(listRsp.GetSubjectConditionSets()))
+	for _, scs := range listRsp.GetSubjectConditionSets() {
+		listedIDs = append(listedIDs, scs.GetId())
+	}
+	s.ElementsMatch([]string{selectorMatch.GetId(), valueMatch.GetId(), multiConditionMatch.GetId()}, listedIDs)
+	s.NotContains(listedIDs, nonMatch.GetId())
+	s.Equal(int32(3), listRsp.GetPagination().GetTotal())
+
+	firstPage, err := s.db.PolicyClient.ListSubjectConditionSets(s.ctx, &subjectmapping.ListSubjectConditionSetsRequest{
+		Search:     &policy.Search{Term: searchToken},
+		Pagination: &policy.PageRequest{Limit: 2},
+		Sort: []*subjectmapping.SubjectConditionSetsSort{
+			{Field: subjectmapping.SortSubjectConditionSetsType_SORT_SUBJECT_CONDITION_SETS_TYPE_CREATED_AT, Direction: policy.SortDirection_SORT_DIRECTION_ASC},
+		},
+	})
+	s.Require().NoError(err)
+	s.Len(firstPage.GetSubjectConditionSets(), 2)
+	s.Equal(int32(3), firstPage.GetPagination().GetTotal())
+	s.Equal(int32(2), firstPage.GetPagination().GetNextOffset())
+}
+
+func (s *SubjectMappingsSuite) Test_ListSubjectConditionSets_SearchCombinesWithNamespace_Succeeds() {
+	comNsID := s.exampleComNsID()
+	netNsID := s.exampleNetNsID()
+	searchToken := fmt.Sprintf("dspx-scs-namespace-search-%d", time.Now().UnixNano())
+
+	comSCS := s.newSearchTestSubjectConditionSet("."+searchToken, []string{"com-value"}, comNsID)
+	netSCS := s.newSearchTestSubjectConditionSet("."+searchToken, []string{"net-value"}, netNsID)
+	unnamespacedSCS := s.newSearchTestSubjectConditionSet("."+searchToken, []string{"unnamespaced-value"}, "")
+	defer s.deleteSortTestSubjectConditionSets([]string{comSCS.GetId(), netSCS.GetId(), unnamespacedSCS.GetId()})
+
+	listRsp, err := s.db.PolicyClient.ListSubjectConditionSets(s.ctx, &subjectmapping.ListSubjectConditionSetsRequest{
+		NamespaceId: comNsID,
+		Search:      &policy.Search{Term: searchToken},
+	})
+	s.Require().NoError(err)
+	s.Require().Len(listRsp.GetSubjectConditionSets(), 1)
+	s.Equal(comSCS.GetId(), listRsp.GetSubjectConditionSets()[0].GetId())
+	s.Equal(comNsID, listRsp.GetSubjectConditionSets()[0].GetNamespace().GetId())
+	s.Equal(int32(1), listRsp.GetPagination().GetTotal())
+}
+
+func (s *SubjectMappingsSuite) Test_ListSubjectConditionSets_SearchEmptyAndWhitespace_Succeeds() {
+	searchToken := fmt.Sprintf("dspx-scs-notrim-%d", time.Now().UnixNano())
+	created := s.newSearchTestSubjectConditionSet("."+searchToken, []string{"notrim-value"}, "")
+	defer s.deleteSortTestSubjectConditionSets([]string{created.GetId()})
+
+	noSearch, err := s.db.PolicyClient.ListSubjectConditionSets(s.ctx, &subjectmapping.ListSubjectConditionSetsRequest{})
+	s.Require().NoError(err)
+	emptySearch, err := s.db.PolicyClient.ListSubjectConditionSets(s.ctx, &subjectmapping.ListSubjectConditionSetsRequest{
+		Search: &policy.Search{Term: ""},
+	})
+	s.Require().NoError(err)
+	s.Equal(noSearch.GetPagination().GetTotal(), emptySearch.GetPagination().GetTotal())
+
+	leadingSpaceSearch, err := s.db.PolicyClient.ListSubjectConditionSets(s.ctx, &subjectmapping.ListSubjectConditionSetsRequest{
+		Search: &policy.Search{Term: " " + searchToken},
+	})
+	s.Require().NoError(err)
+	s.Empty(leadingSpaceSearch.GetSubjectConditionSets())
+	s.Equal(int32(0), leadingSpaceSearch.GetPagination().GetTotal())
+}
+
 func (s *SubjectMappingsSuite) Test_ListSubjectConditionSets_SortByCreatedAt_ASC() {
 	ids := s.createSortTestSubjectConditionSets([]string{"sort-scs-created-asc-0", "sort-scs-created-asc-1", "sort-scs-created-asc-2"})
 	defer s.deleteSortTestSubjectConditionSets(ids)
@@ -2855,6 +2942,29 @@ func (s *SubjectMappingsSuite) newSCSInNamespace(nsID string) *policy.SubjectCon
 			},
 		},
 	}, nsID, "")
+	s.Require().NoError(err)
+	return scs
+}
+
+func (s *SubjectMappingsSuite) newSearchTestSubjectConditionSet(selector string, values []string, namespaceID string) *policy.SubjectConditionSet {
+	scs, err := s.db.PolicyClient.CreateSubjectConditionSet(s.ctx, &subjectmapping.SubjectConditionSetCreate{
+		SubjectSets: []*policy.SubjectSet{
+			{
+				ConditionGroups: []*policy.ConditionGroup{
+					{
+						BooleanOperator: policy.ConditionBooleanTypeEnum_CONDITION_BOOLEAN_TYPE_ENUM_AND,
+						Conditions: []*policy.Condition{
+							{
+								SubjectExternalSelectorValue: selector,
+								Operator:                     policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_IN,
+								SubjectExternalValues:        values,
+							},
+						},
+					},
+				},
+			},
+		},
+	}, namespaceID, "")
 	s.Require().NoError(err)
 	return scs
 }

@@ -22,9 +22,44 @@ LEFT JOIN attribute_namespaces n ON n.id = scs.namespace_id
 LEFT JOIN attribute_fqns ns_fqns ON ns_fqns.namespace_id = n.id AND ns_fqns.attribute_id IS NULL AND ns_fqns.value_id IS NULL
 CROSS JOIN params p
 WHERE
-    (sqlc.narg('namespace_id')::uuid IS NULL AND sqlc.narg('namespace_fqn')::text IS NULL)
-    OR scs.namespace_id = sqlc.narg('namespace_id')::uuid
-    OR ns_fqns.fqn = sqlc.narg('namespace_fqn')::text
+    (
+        (sqlc.narg('namespace_id')::uuid IS NULL AND sqlc.narg('namespace_fqn')::text IS NULL)
+        OR scs.namespace_id = sqlc.narg('namespace_id')::uuid
+        OR ns_fqns.fqn = sqlc.narg('namespace_fqn')::text
+    )
+    AND (
+        sqlc.narg('search')::TEXT IS NULL
+        OR EXISTS (
+            SELECT 1
+            FROM JSONB_PATH_QUERY(scs.condition, '$.**.subjectExternalSelectorValue') AS selector_value(value)
+            WHERE LOWER(selector_value.value #>> '{}') LIKE sqlc.narg('search')::TEXT ESCAPE '\'
+        )
+        OR EXISTS (
+            SELECT 1
+            FROM JSONB_PATH_QUERY(scs.condition, '$.**.subject_external_selector_value') AS selector_value(value)
+            WHERE LOWER(selector_value.value #>> '{}') LIKE sqlc.narg('search')::TEXT ESCAPE '\'
+        )
+        OR EXISTS (
+            SELECT 1
+            FROM JSONB_PATH_QUERY(scs.condition, '$.**.subjectExternalSelectorValues[*]') AS selector_value(value)
+            WHERE LOWER(selector_value.value #>> '{}') LIKE sqlc.narg('search')::TEXT ESCAPE '\'
+        )
+        OR EXISTS (
+            SELECT 1
+            FROM JSONB_PATH_QUERY(scs.condition, '$.**.subject_external_selector_values[*]') AS selector_value(value)
+            WHERE LOWER(selector_value.value #>> '{}') LIKE sqlc.narg('search')::TEXT ESCAPE '\'
+        )
+        OR EXISTS (
+            SELECT 1
+            FROM JSONB_PATH_QUERY(scs.condition, '$.**.subjectExternalValues[*]') AS selector_value(value)
+            WHERE LOWER(selector_value.value #>> '{}') LIKE sqlc.narg('search')::TEXT ESCAPE '\'
+        )
+        OR EXISTS (
+            SELECT 1
+            FROM JSONB_PATH_QUERY(scs.condition, '$.**.subject_external_values[*]') AS selector_value(value)
+            WHERE LOWER(selector_value.value #>> '{}') LIKE sqlc.narg('search')::TEXT ESCAPE '\'
+        )
+    )
 ORDER BY
     CASE WHEN p.resolved_field = 'created_at' AND p.resolved_direction = 'ASC' THEN scs.created_at END ASC,
     CASE WHEN p.resolved_field = 'created_at' AND p.resolved_direction = 'DESC' THEN scs.created_at END DESC,

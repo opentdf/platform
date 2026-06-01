@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -160,6 +161,26 @@ func GetRegisteredResourcesSortParams(sort []*registeredresources.RegisteredReso
 		return "", ""
 	}
 	return getRegisteredResourcesSortField(sort[0].GetField()), getSortDirection(sort[0].GetDirection())
+}
+
+func pgtypeSubstringSearchPattern(query string) pgtype.Text {
+	query = strings.TrimSpace(query)
+	if query == "" {
+		return pgtype.Text{}
+	}
+	// PostgreSQL docs: Chapter 9 "Functions and Operators", Section 9.7.1 "LIKE".
+	// In LIKE patterns, % and _ are wildcards; ESCAPE '\' makes them literals.
+	// The pattern is passed as a sqlc parameter; escaping here keeps LIKE
+	// wildcard characters from expanding the user-provided search term.
+	return pgtypeText("%" + escapeLikePattern(strings.ToLower(query)) + "%")
+}
+
+func escapeLikePattern(query string) string {
+	return strings.NewReplacer(
+		`\`, `\\`,
+		`%`, `\%`,
+		`_`, `\_`,
+	).Replace(query)
 }
 
 // Returns next page's offset if has not yet reached total, or else returns 0

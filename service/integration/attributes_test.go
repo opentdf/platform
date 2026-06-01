@@ -820,6 +820,232 @@ func (s *AttributesSuite) Test_ListAttributes_Offset_Succeeds() {
 	}
 }
 
+func (s *AttributesSuite) Test_ListAttributes_SearchByNameAndFqn_Succeeds() {
+	suffix := time.Now().UnixNano()
+	ns, err := s.db.PolicyClient.CreateNamespace(s.ctx, &namespaces.CreateNamespaceRequest{
+		Name: fmt.Sprintf("dspx-search-attrs-%d.com", suffix),
+	})
+	s.Require().NoError(err)
+	defer s.deleteTestAttributeNamespaces([]string{ns.GetId()})
+
+	alpha, err := s.db.PolicyClient.CreateAttribute(s.ctx, &attributes.CreateAttributeRequest{
+		Name:        fmt.Sprintf("dspx-search-alpha-%d", suffix),
+		NamespaceId: ns.GetId(),
+		Rule:        policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
+	})
+	s.Require().NoError(err)
+	beta, err := s.db.PolicyClient.CreateAttribute(s.ctx, &attributes.CreateAttributeRequest{
+		Name:        fmt.Sprintf("dspx-search-beta-%d", suffix),
+		NamespaceId: ns.GetId(),
+		Rule:        policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
+	})
+	s.Require().NoError(err)
+
+	byName, err := s.db.PolicyClient.ListAttributes(s.ctx, &attributes.ListAttributesRequest{
+		State:  common.ActiveStateEnum_ACTIVE_STATE_ENUM_ANY,
+		Search: &policy.Search{Term: strings.ToUpper(alpha.GetName())},
+	})
+	s.Require().NoError(err)
+	s.Require().Len(byName.GetAttributes(), 1)
+	s.Equal(alpha.GetId(), byName.GetAttributes()[0].GetId())
+	s.Equal(int32(1), byName.GetPagination().GetTotal())
+
+	byFqn, err := s.db.PolicyClient.ListAttributes(s.ctx, &attributes.ListAttributesRequest{
+		State:  common.ActiveStateEnum_ACTIVE_STATE_ENUM_ANY,
+		Search: &policy.Search{Term: strings.ToUpper(beta.GetFqn())},
+	})
+	s.Require().NoError(err)
+	s.Require().Len(byFqn.GetAttributes(), 1)
+	s.Equal(beta.GetId(), byFqn.GetAttributes()[0].GetId())
+	s.Equal(int32(1), byFqn.GetPagination().GetTotal())
+}
+
+func (s *AttributesSuite) Test_ListAttributes_SearchEscapesLikeWildcardLiterals_Succeeds() {
+	suffix := time.Now().UnixNano()
+	ns, err := s.db.PolicyClient.CreateNamespace(s.ctx, &namespaces.CreateNamespaceRequest{
+		Name: fmt.Sprintf("dspx-search-like-attrs-%d.com", suffix),
+	})
+	s.Require().NoError(err)
+	defer s.deleteTestAttributeNamespaces([]string{ns.GetId()})
+
+	_, err = s.db.PolicyClient.CreateAttribute(s.ctx, &attributes.CreateAttributeRequest{
+		Name:        fmt.Sprintf("wildcarda-%d", suffix),
+		NamespaceId: ns.GetId(),
+		Rule:        policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
+	})
+	s.Require().NoError(err)
+	_, err = s.db.PolicyClient.CreateAttribute(s.ctx, &attributes.CreateAttributeRequest{
+		Name:        fmt.Sprintf("wildcardb-%d", suffix),
+		NamespaceId: ns.GetId(),
+		Rule:        policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
+	})
+	s.Require().NoError(err)
+
+	for _, query := range []string{
+		fmt.Sprintf("wildcard_-%d", suffix),
+		fmt.Sprintf("wildcard%%-%d", suffix),
+	} {
+		list, err := s.db.PolicyClient.ListAttributes(s.ctx, &attributes.ListAttributesRequest{
+			State:     common.ActiveStateEnum_ACTIVE_STATE_ENUM_ANY,
+			Namespace: ns.GetId(),
+			Search:    &policy.Search{Term: query},
+		})
+		s.Require().NoError(err)
+		s.Empty(list.GetAttributes())
+		s.Equal(int32(0), list.GetPagination().GetTotal())
+	}
+}
+
+func (s *AttributesSuite) Test_ListAttributes_SearchCombinesWithStateAndNamespace_Succeeds() {
+	suffix := time.Now().UnixNano()
+	searchQuery := fmt.Sprintf("dspx-search-state-attrs-%d", suffix)
+	firstNS, err := s.db.PolicyClient.CreateNamespace(s.ctx, &namespaces.CreateNamespaceRequest{
+		Name: fmt.Sprintf("dspx-search-state-attrs-a-%d.com", suffix),
+	})
+	s.Require().NoError(err)
+	secondNS, err := s.db.PolicyClient.CreateNamespace(s.ctx, &namespaces.CreateNamespaceRequest{
+		Name: fmt.Sprintf("dspx-search-state-attrs-b-%d.com", suffix),
+	})
+	s.Require().NoError(err)
+	defer s.deleteTestAttributeNamespaces([]string{firstNS.GetId(), secondNS.GetId()})
+
+	active, err := s.db.PolicyClient.CreateAttribute(s.ctx, &attributes.CreateAttributeRequest{
+		Name:        "active-" + searchQuery,
+		NamespaceId: firstNS.GetId(),
+		Rule:        policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
+	})
+	s.Require().NoError(err)
+	inactive, err := s.db.PolicyClient.CreateAttribute(s.ctx, &attributes.CreateAttributeRequest{
+		Name:        "inactive-" + searchQuery,
+		NamespaceId: firstNS.GetId(),
+		Rule:        policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
+	})
+	s.Require().NoError(err)
+	_, err = s.db.PolicyClient.CreateAttribute(s.ctx, &attributes.CreateAttributeRequest{
+		Name:        "other-namespace-" + searchQuery,
+		NamespaceId: secondNS.GetId(),
+		Rule:        policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
+	})
+	s.Require().NoError(err)
+	_, err = s.db.PolicyClient.DeactivateAttribute(s.ctx, inactive.GetId())
+	s.Require().NoError(err)
+
+	activeList, err := s.db.PolicyClient.ListAttributes(s.ctx, &attributes.ListAttributesRequest{
+		State:     common.ActiveStateEnum_ACTIVE_STATE_ENUM_ACTIVE,
+		Namespace: firstNS.GetId(),
+		Search:    &policy.Search{Term: searchQuery},
+	})
+	s.Require().NoError(err)
+	s.Require().Len(activeList.GetAttributes(), 1)
+	s.Equal(active.GetId(), activeList.GetAttributes()[0].GetId())
+
+	inactiveList, err := s.db.PolicyClient.ListAttributes(s.ctx, &attributes.ListAttributesRequest{
+		State:     common.ActiveStateEnum_ACTIVE_STATE_ENUM_INACTIVE,
+		Namespace: firstNS.GetId(),
+		Search:    &policy.Search{Term: searchQuery},
+	})
+	s.Require().NoError(err)
+	s.Require().Len(inactiveList.GetAttributes(), 1)
+	s.Equal(inactive.GetId(), inactiveList.GetAttributes()[0].GetId())
+}
+
+func (s *AttributesSuite) Test_ListAttributes_SearchEmptyAndWhitespaceQuery_Succeeds() {
+	suffix := time.Now().UnixNano()
+	ns, err := s.db.PolicyClient.CreateNamespace(s.ctx, &namespaces.CreateNamespaceRequest{
+		Name: fmt.Sprintf("dspx-search-empty-attrs-%d.com", suffix),
+	})
+	s.Require().NoError(err)
+	defer s.deleteTestAttributeNamespaces([]string{ns.GetId()})
+
+	_, err = s.db.PolicyClient.CreateAttribute(s.ctx, &attributes.CreateAttributeRequest{
+		Name:        fmt.Sprintf("dspx-search-empty-attr-%d", suffix),
+		NamespaceId: ns.GetId(),
+		Rule:        policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
+	})
+	s.Require().NoError(err)
+
+	noSearch, err := s.db.PolicyClient.ListAttributes(s.ctx, &attributes.ListAttributesRequest{
+		State:     common.ActiveStateEnum_ACTIVE_STATE_ENUM_ANY,
+		Namespace: ns.GetId(),
+	})
+	s.Require().NoError(err)
+	emptySearch, err := s.db.PolicyClient.ListAttributes(s.ctx, &attributes.ListAttributesRequest{
+		State:     common.ActiveStateEnum_ACTIVE_STATE_ENUM_ANY,
+		Namespace: ns.GetId(),
+		Search:    &policy.Search{Term: ""},
+	})
+	s.Require().NoError(err)
+	s.Equal(noSearch.GetPagination().GetTotal(), emptySearch.GetPagination().GetTotal())
+
+	whitespaceSearch, err := s.db.PolicyClient.ListAttributes(s.ctx, &attributes.ListAttributesRequest{
+		State:     common.ActiveStateEnum_ACTIVE_STATE_ENUM_ANY,
+		Namespace: ns.GetId(),
+		Search:    &policy.Search{Term: " "},
+	})
+	s.Require().NoError(err)
+	s.Empty(whitespaceSearch.GetAttributes())
+	s.Equal(int32(0), whitespaceSearch.GetPagination().GetTotal())
+}
+
+func (s *AttributesSuite) Test_ListAttributes_SearchPaginationAppliesAfterFiltering_Succeeds() {
+	suffix := time.Now().UnixNano()
+	searchToken := fmt.Sprintf("dspx-search-page-attrs-%d", suffix)
+	ns, err := s.db.PolicyClient.CreateNamespace(s.ctx, &namespaces.CreateNamespaceRequest{
+		Name: fmt.Sprintf("dspx-page-attrs-ns-%d.com", suffix),
+	})
+	s.Require().NoError(err)
+	defer s.deleteTestAttributeNamespaces([]string{ns.GetId()})
+
+	names := []string{
+		"a-" + searchToken,
+		"b-" + searchToken,
+		"c-" + searchToken,
+		fmt.Sprintf("dspx-search-page-attrs-other-%d", suffix),
+	}
+	ids := make([]string, len(names))
+	for i, name := range names {
+		created, err := s.db.PolicyClient.CreateAttribute(s.ctx, &attributes.CreateAttributeRequest{
+			Name:        name,
+			NamespaceId: ns.GetId(),
+			Rule:        policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
+		})
+		s.Require().NoError(err)
+		ids[i] = created.GetId()
+	}
+
+	firstPage, err := s.db.PolicyClient.ListAttributes(s.ctx, &attributes.ListAttributesRequest{
+		State:      common.ActiveStateEnum_ACTIVE_STATE_ENUM_ANY,
+		Namespace:  ns.GetId(),
+		Search:     &policy.Search{Term: searchToken},
+		Pagination: &policy.PageRequest{Limit: 2},
+		Sort: []*attributes.AttributesSort{
+			{Field: attributes.SortAttributesType_SORT_ATTRIBUTES_TYPE_NAME, Direction: policy.SortDirection_SORT_DIRECTION_ASC},
+		},
+	})
+	s.Require().NoError(err)
+	s.Require().Len(firstPage.GetAttributes(), 2)
+	s.Equal(int32(3), firstPage.GetPagination().GetTotal())
+	s.Equal(int32(2), firstPage.GetPagination().GetNextOffset())
+	s.Equal(ids[0], firstPage.GetAttributes()[0].GetId())
+	s.Equal(ids[1], firstPage.GetAttributes()[1].GetId())
+
+	secondPage, err := s.db.PolicyClient.ListAttributes(s.ctx, &attributes.ListAttributesRequest{
+		State:      common.ActiveStateEnum_ACTIVE_STATE_ENUM_ANY,
+		Namespace:  ns.GetId(),
+		Search:     &policy.Search{Term: searchToken},
+		Pagination: &policy.PageRequest{Limit: 2, Offset: 2},
+		Sort: []*attributes.AttributesSort{
+			{Field: attributes.SortAttributesType_SORT_ATTRIBUTES_TYPE_NAME, Direction: policy.SortDirection_SORT_DIRECTION_ASC},
+		},
+	})
+	s.Require().NoError(err)
+	s.Require().Len(secondPage.GetAttributes(), 1)
+	s.Equal(int32(3), secondPage.GetPagination().GetTotal())
+	s.Equal(int32(2), secondPage.GetPagination().GetCurrentOffset())
+	s.Equal(int32(0), secondPage.GetPagination().GetNextOffset())
+	s.Equal(ids[2], secondPage.GetAttributes()[0].GetId())
+}
+
 func (s *AttributesSuite) Test_ListAttributes_FqnsIncluded() {
 	// create an attribute
 	attr := &attributes.CreateAttributeRequest{
@@ -1914,6 +2140,10 @@ func (s *AttributesSuite) createSortTestAttributes(nsID string, prefixes []strin
 // deleteSortTestAttributes deactivates attributes created by sort tests.
 func (s *AttributesSuite) deleteSortTestAttributes(ids []string) {
 	s.Require().NoError(forceDeleteRows(s.ctx, s.db, "attribute_definitions", ids))
+}
+
+func (s *AttributesSuite) deleteTestAttributeNamespaces(ids []string) {
+	s.Require().NoError(forceDeleteRows(s.ctx, s.db, "attribute_namespaces", ids))
 }
 
 func (s *AttributesSuite) getAttributeFixtures() map[string]fixtures.FixtureDataAttribute {

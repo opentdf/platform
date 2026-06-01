@@ -54,7 +54,8 @@ type createAttributeParams struct {
 //	VALUES ($1, $2, $3, $4, $5)
 //	RETURNING id
 func (q *Queries) createAttribute(ctx context.Context, arg createAttributeParams) (string, error) {
-	row := q.db.QueryRow(ctx, createAttribute,
+	row := q.db.QueryRow(
+		ctx, createAttribute,
 		arg.NamespaceID,
 		arg.Name,
 		arg.Rule,
@@ -760,8 +761,8 @@ const listAttributesDetail = `-- name: listAttributesDetail :many
 
 WITH params AS (
     SELECT
-        COALESCE(NULLIF($6::text, ''), 'created_at') AS resolved_field,
-        COALESCE(NULLIF($7::text, ''), 'DESC') AS resolved_direction
+        COALESCE(NULLIF($7::text, ''), 'created_at') AS resolved_field,
+        COALESCE(NULLIF($8::text, ''), 'DESC') AS resolved_direction
 )
 SELECT
     ad.id,
@@ -799,6 +800,13 @@ WHERE
     ($1::BOOLEAN IS NULL OR ad.active = $1) AND
     ($2::uuid IS NULL OR ad.namespace_id = $2::uuid) AND
     ($3::text IS NULL OR n.name = $3::text)
+    -- No search-specific optimization is added here. If needed, consider
+    -- a pg_trgm-backed GIN index on attribute_fqns.fqn.
+    AND (
+        $4::TEXT IS NULL
+        OR LOWER(ad.name) LIKE $4::TEXT ESCAPE '\'
+        OR LOWER(fqns.fqn) LIKE $4::TEXT ESCAPE '\'
+    )
 GROUP BY ad.id, n.name, fqns.fqn, p.resolved_field, p.resolved_direction
 ORDER BY
     CASE WHEN p.resolved_field = 'name' AND p.resolved_direction = 'ASC' THEN ad.name END ASC,
@@ -808,14 +816,15 @@ ORDER BY
     CASE WHEN p.resolved_field = 'updated_at' AND p.resolved_direction = 'ASC' THEN ad.updated_at END ASC,
     CASE WHEN p.resolved_field = 'updated_at' AND p.resolved_direction = 'DESC' THEN ad.updated_at END DESC,
     ad.id ASC
-LIMIT $5
-OFFSET $4
+LIMIT $6
+OFFSET $5
 `
 
 type listAttributesDetailParams struct {
 	Active        pgtype.Bool `json:"active"`
 	NamespaceID   pgtype.UUID `json:"namespace_id"`
 	NamespaceName pgtype.Text `json:"namespace_name"`
+	Search        pgtype.Text `json:"search"`
 	Offset        int32       `json:"offset_"`
 	Limit         int32       `json:"limit_"`
 	SortField     string      `json:"sort_field"`
@@ -842,8 +851,8 @@ type listAttributesDetailRow struct {
 //
 //	WITH params AS (
 //	    SELECT
-//	        COALESCE(NULLIF($6::text, ''), 'created_at') AS resolved_field,
-//	        COALESCE(NULLIF($7::text, ''), 'DESC') AS resolved_direction
+//	        COALESCE(NULLIF($7::text, ''), 'created_at') AS resolved_field,
+//	        COALESCE(NULLIF($8::text, ''), 'DESC') AS resolved_direction
 //	)
 //	SELECT
 //	    ad.id,
@@ -881,6 +890,13 @@ type listAttributesDetailRow struct {
 //	    ($1::BOOLEAN IS NULL OR ad.active = $1) AND
 //	    ($2::uuid IS NULL OR ad.namespace_id = $2::uuid) AND
 //	    ($3::text IS NULL OR n.name = $3::text)
+//	    -- No search-specific optimization is added here. If needed, consider
+//	    -- a pg_trgm-backed GIN index on attribute_fqns.fqn.
+//	    AND (
+//	        $4::TEXT IS NULL
+//	        OR LOWER(ad.name) LIKE $4::TEXT ESCAPE '\'
+//	        OR LOWER(fqns.fqn) LIKE $4::TEXT ESCAPE '\'
+//	    )
 //	GROUP BY ad.id, n.name, fqns.fqn, p.resolved_field, p.resolved_direction
 //	ORDER BY
 //	    CASE WHEN p.resolved_field = 'name' AND p.resolved_direction = 'ASC' THEN ad.name END ASC,
@@ -890,13 +906,15 @@ type listAttributesDetailRow struct {
 //	    CASE WHEN p.resolved_field = 'updated_at' AND p.resolved_direction = 'ASC' THEN ad.updated_at END ASC,
 //	    CASE WHEN p.resolved_field = 'updated_at' AND p.resolved_direction = 'DESC' THEN ad.updated_at END DESC,
 //	    ad.id ASC
-//	LIMIT $5
-//	OFFSET $4
+//	LIMIT $6
+//	OFFSET $5
 func (q *Queries) listAttributesDetail(ctx context.Context, arg listAttributesDetailParams) ([]listAttributesDetailRow, error) {
-	rows, err := q.db.Query(ctx, listAttributesDetail,
+	rows, err := q.db.Query(
+		ctx, listAttributesDetail,
 		arg.Active,
 		arg.NamespaceID,
 		arg.NamespaceName,
+		arg.Search,
 		arg.Offset,
 		arg.Limit,
 		arg.SortField,
@@ -1018,7 +1036,8 @@ type listAttributesSummaryRow struct {
 //	LIMIT $3
 //	OFFSET $2
 func (q *Queries) listAttributesSummary(ctx context.Context, arg listAttributesSummaryParams) ([]listAttributesSummaryRow, error) {
-	rows, err := q.db.Query(ctx, listAttributesSummary,
+	rows, err := q.db.Query(
+		ctx, listAttributesSummary,
 		arg.NamespaceID,
 		arg.Offset,
 		arg.Limit,
@@ -1169,7 +1188,8 @@ type updateAttributeParams struct {
 //	    allow_traversal = COALESCE($7, allow_traversal)
 //	WHERE id = $1
 func (q *Queries) updateAttribute(ctx context.Context, arg updateAttributeParams) (int64, error) {
-	result, err := q.db.Exec(ctx, updateAttribute,
+	result, err := q.db.Exec(
+		ctx, updateAttribute,
 		arg.ID,
 		arg.Name,
 		arg.Rule,

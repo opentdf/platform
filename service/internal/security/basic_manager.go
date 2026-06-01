@@ -38,6 +38,8 @@ var BasicManagerSupportedAlgorithms = []ocrypto.KeyType{
 	ocrypto.HybridXWingKey,
 	ocrypto.HybridSecp256r1MLKEM768Key,
 	ocrypto.HybridSecp384r1MLKEM1024Key,
+	ocrypto.MLKEM768Key,
+	ocrypto.MLKEM1024Key,
 }
 
 type BasicManager struct {

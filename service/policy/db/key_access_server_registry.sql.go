@@ -40,7 +40,8 @@ type createKeyParams struct {
 //	VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
 //	RETURNING id
 func (q *Queries) createKey(ctx context.Context, arg createKeyParams) (string, error) {
-	row := q.db.QueryRow(ctx, createKey,
+	row := q.db.QueryRow(
+		ctx, createKey,
 		arg.KeyAccessServerID,
 		arg.KeyAlgorithm,
 		arg.KeyID,
@@ -77,7 +78,8 @@ type createKeyAccessServerParams struct {
 //	VALUES ($1, $2, $3, $4, $5)
 //	RETURNING id
 func (q *Queries) createKeyAccessServer(ctx context.Context, arg createKeyAccessServerParams) (string, error) {
-	row := q.db.QueryRow(ctx, createKeyAccessServer,
+	row := q.db.QueryRow(
+		ctx, createKeyAccessServer,
 		arg.Uri,
 		arg.PublicKey,
 		arg.Name,
@@ -275,7 +277,8 @@ type getKeyRow struct {
 //	  AND ($4::text IS NULL OR kas.uri = $4::text)
 //	  AND ($5::text IS NULL OR kas.name = $5::text)
 func (q *Queries) getKey(ctx context.Context, arg getKeyParams) (getKeyRow, error) {
-	row := q.db.QueryRow(ctx, getKey,
+	row := q.db.QueryRow(
+		ctx, getKey,
 		arg.ID,
 		arg.KeyID,
 		arg.KasID,
@@ -600,7 +603,8 @@ type listKeyAccessServerGrantsRow struct {
 //	LIMIT $2
 //	OFFSET $1
 func (q *Queries) listKeyAccessServerGrants(ctx context.Context, arg listKeyAccessServerGrantsParams) ([]listKeyAccessServerGrantsRow, error) {
-	rows, err := q.db.Query(ctx, listKeyAccessServerGrants,
+	rows, err := q.db.Query(
+		ctx, listKeyAccessServerGrants,
 		arg.Offset,
 		arg.Limit,
 		arg.KasID,
@@ -641,9 +645,18 @@ WITH params AS (
         COALESCE(NULLIF($3::text, ''), 'created_at') AS resolved_field,
         COALESCE(NULLIF($4::text, ''), 'DESC') AS resolved_direction
 ),
+filtered AS (
+    SELECT kas.id, kas.uri, kas.public_key, kas.metadata, kas.created_at, kas.updated_at, kas.name, kas.source_type
+    FROM key_access_servers AS kas
+    WHERE (
+        $5::TEXT IS NULL
+        OR LOWER(kas.name) LIKE $5::TEXT ESCAPE '\'
+        OR LOWER(kas.uri) LIKE $5::TEXT ESCAPE '\'
+    )
+),
 counted AS (
     SELECT COUNT(kas.id) AS total
-    FROM key_access_servers AS kas
+    FROM filtered AS kas
 )
 SELECT kas.id,
     kas.uri,
@@ -653,7 +666,7 @@ SELECT kas.id,
     JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', kas.metadata -> 'labels', 'created_at', kas.created_at, 'updated_at', kas.updated_at)) AS metadata,
     kask_keys.keys,
     counted.total
-FROM key_access_servers AS kas
+FROM filtered AS kas
 CROSS JOIN counted
 CROSS JOIN params p
 LEFT JOIN (
@@ -689,10 +702,11 @@ OFFSET $1
 `
 
 type listKeyAccessServersParams struct {
-	Offset        int32  `json:"offset_"`
-	Limit         int32  `json:"limit_"`
-	SortField     string `json:"sort_field"`
-	SortDirection string `json:"sort_direction"`
+	Offset        int32       `json:"offset_"`
+	Limit         int32       `json:"limit_"`
+	SortField     string      `json:"sort_field"`
+	SortDirection string      `json:"sort_direction"`
+	Search        pgtype.Text `json:"search"`
 }
 
 type listKeyAccessServersRow struct {
@@ -713,9 +727,18 @@ type listKeyAccessServersRow struct {
 //	        COALESCE(NULLIF($3::text, ''), 'created_at') AS resolved_field,
 //	        COALESCE(NULLIF($4::text, ''), 'DESC') AS resolved_direction
 //	),
+//	filtered AS (
+//	    SELECT kas.id, kas.uri, kas.public_key, kas.metadata, kas.created_at, kas.updated_at, kas.name, kas.source_type
+//	    FROM key_access_servers AS kas
+//	    WHERE (
+//	        $5::TEXT IS NULL
+//	        OR LOWER(kas.name) LIKE $5::TEXT ESCAPE '\'
+//	        OR LOWER(kas.uri) LIKE $5::TEXT ESCAPE '\'
+//	    )
+//	),
 //	counted AS (
 //	    SELECT COUNT(kas.id) AS total
-//	    FROM key_access_servers AS kas
+//	    FROM filtered AS kas
 //	)
 //	SELECT kas.id,
 //	    kas.uri,
@@ -725,7 +748,7 @@ type listKeyAccessServersRow struct {
 //	    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', kas.metadata -> 'labels', 'created_at', kas.created_at, 'updated_at', kas.updated_at)) AS metadata,
 //	    kask_keys.keys,
 //	    counted.total
-//	FROM key_access_servers AS kas
+//	FROM filtered AS kas
 //	CROSS JOIN counted
 //	CROSS JOIN params p
 //	LEFT JOIN (
@@ -759,11 +782,13 @@ type listKeyAccessServersRow struct {
 //	LIMIT $2
 //	OFFSET $1
 func (q *Queries) listKeyAccessServers(ctx context.Context, arg listKeyAccessServersParams) ([]listKeyAccessServersRow, error) {
-	rows, err := q.db.Query(ctx, listKeyAccessServers,
+	rows, err := q.db.Query(
+		ctx, listKeyAccessServers,
 		arg.Offset,
 		arg.Limit,
 		arg.SortField,
 		arg.SortDirection,
+		arg.Search,
 	)
 	if err != nil {
 		return nil, err
@@ -1027,7 +1052,8 @@ type listKeyMappingsRow struct {
 //	LIMIT $2
 //	OFFSET $1
 func (q *Queries) listKeyMappings(ctx context.Context, arg listKeyMappingsParams) ([]listKeyMappingsRow, error) {
-	rows, err := q.db.Query(ctx, listKeyMappings,
+	rows, err := q.db.Query(
+		ctx, listKeyMappings,
 		arg.Offset,
 		arg.Limit,
 		arg.ID,
@@ -1210,7 +1236,8 @@ type listKeysRow struct {
 //	LIMIT $4
 //	OFFSET $3
 func (q *Queries) listKeys(ctx context.Context, arg listKeysParams) ([]listKeysRow, error) {
-	rows, err := q.db.Query(ctx, listKeys,
+	rows, err := q.db.Query(
+		ctx, listKeys,
 		arg.KeyAlgorithm,
 		arg.Legacy,
 		arg.Offset,
@@ -1333,7 +1360,8 @@ type updateKeyAccessServerParams struct {
 //	    source_type = COALESCE($6, source_type)
 //	WHERE id = $1
 func (q *Queries) updateKeyAccessServer(ctx context.Context, arg updateKeyAccessServerParams) (int64, error) {
-	result, err := q.db.Exec(ctx, updateKeyAccessServer,
+	result, err := q.db.Exec(
+		ctx, updateKeyAccessServer,
 		arg.ID,
 		arg.Uri,
 		arg.PublicKey,

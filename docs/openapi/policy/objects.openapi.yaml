@@ -24,6 +24,8 @@ components:
         - ALGORITHM_HPQT_XWING
         - ALGORITHM_HPQT_SECP256R1_MLKEM768
         - ALGORITHM_HPQT_SECP384R1_MLKEM1024
+        - ALGORITHM_MLKEM_768
+        - ALGORITHM_MLKEM_1024
       description: Supported key algorithms.
     policy.AttributeRuleTypeEnum:
       type: string
@@ -53,6 +55,8 @@ components:
         - KAS_PUBLIC_KEY_ALG_ENUM_HPQT_XWING
         - KAS_PUBLIC_KEY_ALG_ENUM_HPQT_SECP256R1_MLKEM768
         - KAS_PUBLIC_KEY_ALG_ENUM_HPQT_SECP384R1_MLKEM1024
+        - KAS_PUBLIC_KEY_ALG_ENUM_MLKEM_768
+        - KAS_PUBLIC_KEY_ALG_ENUM_MLKEM_1024
     policy.KeyMode:
       type: string
       title: KeyMode

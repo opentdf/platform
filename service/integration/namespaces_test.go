@@ -273,7 +273,7 @@ func (s *NamespacesSuite) Test_ListNamespaces_OrdersByCreatedAt_Succeeds() {
 
 func (s *NamespacesSuite) Test_ListNamespaces_SortByName_ASC() {
 	ids := s.createSortTestNamespaces([]string{"aaa-sort", "bbb-sort", "ccc-sort"})
-	defer s.deleteSortTestNamespaces(ids)
+	defer s.deleteTestNamespaces(ids)
 
 	listRsp, err := s.db.PolicyClient.ListNamespaces(s.ctx, &namespaces.ListNamespacesRequest{
 		State: common.ActiveStateEnum_ACTIVE_STATE_ENUM_ANY,
@@ -290,7 +290,7 @@ func (s *NamespacesSuite) Test_ListNamespaces_SortByName_ASC() {
 
 func (s *NamespacesSuite) Test_ListNamespaces_SortByName_DESC() {
 	ids := s.createSortTestNamespaces([]string{"aaa-sortdesc", "bbb-sortdesc", "ccc-sortdesc"})
-	defer s.deleteSortTestNamespaces(ids)
+	defer s.deleteTestNamespaces(ids)
 
 	listRsp, err := s.db.PolicyClient.ListNamespaces(s.ctx, &namespaces.ListNamespacesRequest{
 		State: common.ActiveStateEnum_ACTIVE_STATE_ENUM_ANY,
@@ -307,7 +307,7 @@ func (s *NamespacesSuite) Test_ListNamespaces_SortByName_DESC() {
 
 func (s *NamespacesSuite) Test_ListNamespaces_SortByCreatedAt_ASC() {
 	ids := s.createSortTestNamespaces([]string{"createdasc-ns-0", "createdasc-ns-1", "createdasc-ns-2"})
-	defer s.deleteSortTestNamespaces(ids)
+	defer s.deleteTestNamespaces(ids)
 
 	listRsp, err := s.db.PolicyClient.ListNamespaces(s.ctx, &namespaces.ListNamespacesRequest{
 		State: common.ActiveStateEnum_ACTIVE_STATE_ENUM_ANY,
@@ -324,7 +324,7 @@ func (s *NamespacesSuite) Test_ListNamespaces_SortByCreatedAt_ASC() {
 
 func (s *NamespacesSuite) Test_ListNamespaces_SortByCreatedAt_DESC() {
 	ids := s.createSortTestNamespaces([]string{"createddesc-ns-0", "createddesc-ns-1", "createddesc-ns-2"})
-	defer s.deleteSortTestNamespaces(ids)
+	defer s.deleteTestNamespaces(ids)
 
 	listRsp, err := s.db.PolicyClient.ListNamespaces(s.ctx, &namespaces.ListNamespacesRequest{
 		State: common.ActiveStateEnum_ACTIVE_STATE_ENUM_ANY,
@@ -341,7 +341,7 @@ func (s *NamespacesSuite) Test_ListNamespaces_SortByCreatedAt_DESC() {
 
 func (s *NamespacesSuite) Test_ListNamespaces_SortByFqn_ASC() {
 	ids := s.createSortTestNamespaces([]string{"aaa-fqnsort", "bbb-fqnsort", "ccc-fqnsort"})
-	defer s.deleteSortTestNamespaces(ids)
+	defer s.deleteTestNamespaces(ids)
 
 	listRsp, err := s.db.PolicyClient.ListNamespaces(s.ctx, &namespaces.ListNamespacesRequest{
 		State: common.ActiveStateEnum_ACTIVE_STATE_ENUM_ANY,
@@ -358,7 +358,7 @@ func (s *NamespacesSuite) Test_ListNamespaces_SortByFqn_ASC() {
 
 func (s *NamespacesSuite) Test_ListNamespaces_SortByFqn_DESC() {
 	ids := s.createSortTestNamespaces([]string{"aaa-fqnsortdesc", "bbb-fqnsortdesc", "ccc-fqnsortdesc"})
-	defer s.deleteSortTestNamespaces(ids)
+	defer s.deleteTestNamespaces(ids)
 
 	listRsp, err := s.db.PolicyClient.ListNamespaces(s.ctx, &namespaces.ListNamespacesRequest{
 		State: common.ActiveStateEnum_ACTIVE_STATE_ENUM_ANY,
@@ -375,7 +375,7 @@ func (s *NamespacesSuite) Test_ListNamespaces_SortByFqn_DESC() {
 
 func (s *NamespacesSuite) Test_ListNamespaces_SortByUpdatedAt_DESC() {
 	ids := s.createSortTestNamespaces([]string{"upd-sort-ns-0", "upd-sort-ns-1", "upd-sort-ns-2"})
-	defer s.deleteSortTestNamespaces(ids)
+	defer s.deleteTestNamespaces(ids)
 
 	// Update the first namespace so its updated_at is the most recent
 	time.Sleep(5 * time.Millisecond)
@@ -403,7 +403,7 @@ func (s *NamespacesSuite) Test_ListNamespaces_SortByUpdatedAt_DESC() {
 
 func (s *NamespacesSuite) Test_ListNamespaces_SortByUpdatedAt_ASC() {
 	ids := s.createSortTestNamespaces([]string{"upd-sort-asc-ns-0", "upd-sort-asc-ns-1", "upd-sort-asc-ns-2"})
-	defer s.deleteSortTestNamespaces(ids)
+	defer s.deleteTestNamespaces(ids)
 
 	// Update the last namespace so its updated_at is the most recent
 	time.Sleep(5 * time.Millisecond)
@@ -438,7 +438,7 @@ func (s *NamespacesSuite) Test_ListNamespaces_SortTieBreaker_CreatedAtWithIDFall
 		s.Require().NoError(err)
 		ids[i] = created.GetId()
 	}
-	defer s.deleteSortTestNamespaces(ids)
+	defer s.deleteTestNamespaces(ids)
 
 	s.Require().NoError(forceCreatedAtTie(s.ctx, s.db, "attribute_namespaces", ids))
 
@@ -458,7 +458,7 @@ func (s *NamespacesSuite) Test_ListNamespaces_SortTieBreaker_CreatedAtWithIDFall
 
 func (s *NamespacesSuite) Test_ListNamespaces_SortByUnspecifiedField_DefaultsToCreatedAt() {
 	ids := s.createSortTestNamespaces([]string{"unspecified-sort-ns-0", "unspecified-sort-ns-1", "unspecified-sort-ns-2"})
-	defer s.deleteSortTestNamespaces(ids)
+	defer s.deleteTestNamespaces(ids)
 
 	listRsp, err := s.db.PolicyClient.ListNamespaces(s.ctx, &namespaces.ListNamespacesRequest{
 		State: common.ActiveStateEnum_ACTIVE_STATE_ENUM_ANY,
@@ -475,7 +475,7 @@ func (s *NamespacesSuite) Test_ListNamespaces_SortByUnspecifiedField_DefaultsToC
 
 func (s *NamespacesSuite) Test_ListNamespaces_SortByUnspecifiedDirection_DefaultsToDESC() {
 	ids := s.createSortTestNamespaces([]string{"unspecified-dir-ns-0", "unspecified-dir-ns-1", "unspecified-dir-ns-2"})
-	defer s.deleteSortTestNamespaces(ids)
+	defer s.deleteTestNamespaces(ids)
 
 	listRsp, err := s.db.PolicyClient.ListNamespaces(s.ctx, &namespaces.ListNamespacesRequest{
 		State: common.ActiveStateEnum_ACTIVE_STATE_ENUM_ANY,
@@ -492,7 +492,7 @@ func (s *NamespacesSuite) Test_ListNamespaces_SortByUnspecifiedDirection_Default
 
 func (s *NamespacesSuite) Test_ListNamespaces_SortByBothUnspecified_DefaultsToCreatedAtDESC() {
 	ids := s.createSortTestNamespaces([]string{"both-unspecified-ns-0", "both-unspecified-ns-1", "both-unspecified-ns-2"})
-	defer s.deleteSortTestNamespaces(ids)
+	defer s.deleteTestNamespaces(ids)
 
 	listRsp, err := s.db.PolicyClient.ListNamespaces(s.ctx, &namespaces.ListNamespacesRequest{
 		State: common.ActiveStateEnum_ACTIVE_STATE_ENUM_ANY,
@@ -509,7 +509,7 @@ func (s *NamespacesSuite) Test_ListNamespaces_SortByBothUnspecified_DefaultsToCr
 
 func (s *NamespacesSuite) Test_ListNamespaces_SortOmitted() {
 	ids := s.createSortTestNamespaces([]string{"sort-omitted-ns-0", "sort-omitted-ns-1", "sort-omitted-ns-2"})
-	defer s.deleteSortTestNamespaces(ids)
+	defer s.deleteTestNamespaces(ids)
 
 	listRsp, err := s.db.PolicyClient.ListNamespaces(s.ctx, &namespaces.ListNamespacesRequest{
 		State: common.ActiveStateEnum_ACTIVE_STATE_ENUM_ANY,
@@ -596,7 +596,7 @@ func (s *NamespacesSuite) Test_ListNamespaces_SearchByNameAndFqn_Succeeds() {
 		Name: fmt.Sprintf("dspx-other-%d.com", suffix),
 	})
 	s.Require().NoError(err)
-	defer s.deleteSortTestNamespaces([]string{alpha.GetId(), beta.GetId(), other.GetId()})
+	defer s.deleteTestNamespaces([]string{alpha.GetId(), beta.GetId(), other.GetId()})
 
 	byName, err := s.db.PolicyClient.ListNamespaces(s.ctx, &namespaces.ListNamespacesRequest{
 		State:  common.ActiveStateEnum_ACTIVE_STATE_ENUM_ANY,
@@ -628,7 +628,7 @@ func (s *NamespacesSuite) Test_ListNamespaces_SearchByNamePrefix_Succeeds() {
 		Name: fmt.Sprintf("dspx-search-%d-other.com", suffix),
 	})
 	s.Require().NoError(err)
-	defer s.deleteSortTestNamespaces([]string{matched.GetId(), other.GetId()})
+	defer s.deleteTestNamespaces([]string{matched.GetId(), other.GetId()})
 
 	list, err := s.db.PolicyClient.ListNamespaces(s.ctx, &namespaces.ListNamespacesRequest{
 		State:  common.ActiveStateEnum_ACTIVE_STATE_ENUM_ANY,
@@ -651,7 +651,7 @@ func (s *NamespacesSuite) Test_ListNamespaces_SearchEscapesLikeWildcardLiterals_
 		Name: "wildcardb." + searchDomain,
 	})
 	s.Require().NoError(err)
-	defer s.deleteSortTestNamespaces([]string{alpha.GetId(), beta.GetId()})
+	defer s.deleteTestNamespaces([]string{alpha.GetId(), beta.GetId()})
 
 	for _, query := range []string{
 		"wildcard_." + searchDomain,
@@ -680,7 +680,7 @@ func (s *NamespacesSuite) Test_ListNamespaces_SearchCombinesWithState_Succeeds()
 	s.Require().NoError(err)
 	_, err = s.db.PolicyClient.DeactivateNamespace(s.ctx, inactive.GetId())
 	s.Require().NoError(err)
-	defer s.deleteSortTestNamespaces([]string{active.GetId(), inactive.GetId()})
+	defer s.deleteTestNamespaces([]string{active.GetId(), inactive.GetId()})
 
 	activeList, err := s.db.PolicyClient.ListNamespaces(s.ctx, &namespaces.ListNamespacesRequest{
 		State:  common.ActiveStateEnum_ACTIVE_STATE_ENUM_ACTIVE,
@@ -705,7 +705,7 @@ func (s *NamespacesSuite) Test_ListNamespaces_SearchEmptyQuery_Succeeds() {
 		Name: fmt.Sprintf("dspx-search-whitespace-%d.com", suffix),
 	})
 	s.Require().NoError(err)
-	defer s.deleteSortTestNamespaces([]string{created.GetId()})
+	defer s.deleteTestNamespaces([]string{created.GetId()})
 
 	noSearch, err := s.db.PolicyClient.ListNamespaces(s.ctx, &namespaces.ListNamespacesRequest{
 		State: common.ActiveStateEnum_ACTIVE_STATE_ENUM_ANY,
@@ -734,7 +734,7 @@ func (s *NamespacesSuite) Test_ListNamespaces_SearchPaginationAppliesAfterFilter
 		s.Require().NoError(err)
 		ids[i] = created.GetId()
 	}
-	defer s.deleteSortTestNamespaces(ids)
+	defer s.deleteTestNamespaces(ids)
 
 	firstPage, err := s.db.PolicyClient.ListNamespaces(s.ctx, &namespaces.ListNamespacesRequest{
 		State:      common.ActiveStateEnum_ACTIVE_STATE_ENUM_ANY,
@@ -1645,8 +1645,8 @@ func (s *NamespacesSuite) createSortTestNamespaces(prefixes []string) []string {
 	return ids
 }
 
-// deleteSortTestNamespaces deactivates namespaces created by sort tests.
-func (s *NamespacesSuite) deleteSortTestNamespaces(ids []string) {
+// deleteTestNamespaces removes namespaces created by list tests.
+func (s *NamespacesSuite) deleteTestNamespaces(ids []string) {
 	s.Require().NoError(forceDeleteRows(s.ctx, s.db, "attribute_namespaces", ids))
 }
 

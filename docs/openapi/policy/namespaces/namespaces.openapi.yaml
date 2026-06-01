@@ -2,152 +2,6 @@ openapi: 3.1.0
 info:
   title: policy.namespaces
 paths:
-  /policy.namespaces.NamespaceService/AssignKeyAccessServerToNamespace:
-    post:
-      tags:
-        - policy.namespaces.NamespaceService
-      summary: AssignKeyAccessServerToNamespace
-      description: 'Deprecated: utilize AssignPublicKeyToNamespace'
-      operationId: policy.namespaces.NamespaceService.AssignKeyAccessServerToNamespace
-      parameters:
-        - name: Connect-Protocol-Version
-          in: header
-          required: true
-          schema:
-            $ref: '#/components/schemas/connect-protocol-version'
-        - name: Connect-Timeout-Ms
-          in: header
-          schema:
-            $ref: '#/components/schemas/connect-timeout-header'
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/policy.namespaces.AssignKeyAccessServerToNamespaceRequest'
-        required: true
-      responses:
-        default:
-          description: Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/connect.error'
-        "200":
-          description: Success
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/policy.namespaces.AssignKeyAccessServerToNamespaceResponse'
-      deprecated: true
-  /policy.namespaces.NamespaceService/AssignPublicKeyToNamespace:
-    post:
-      tags:
-        - policy.namespaces.NamespaceService
-      summary: AssignPublicKeyToNamespace
-      description: |-
-        --------------------------------------*
-         Namespace <> Key RPCs
-        ---------------------------------------
-      operationId: policy.namespaces.NamespaceService.AssignPublicKeyToNamespace
-      parameters:
-        - name: Connect-Protocol-Version
-          in: header
-          required: true
-          schema:
-            $ref: '#/components/schemas/connect-protocol-version'
-        - name: Connect-Timeout-Ms
-          in: header
-          schema:
-            $ref: '#/components/schemas/connect-timeout-header'
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/policy.namespaces.AssignPublicKeyToNamespaceRequest'
-        required: true
-      responses:
-        default:
-          description: Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/connect.error'
-        "200":
-          description: Success
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/policy.namespaces.AssignPublicKeyToNamespaceResponse'
-  /policy.namespaces.NamespaceService/CreateNamespace:
-    post:
-      tags:
-        - policy.namespaces.NamespaceService
-      summary: CreateNamespace
-      operationId: policy.namespaces.NamespaceService.CreateNamespace
-      parameters:
-        - name: Connect-Protocol-Version
-          in: header
-          required: true
-          schema:
-            $ref: '#/components/schemas/connect-protocol-version'
-        - name: Connect-Timeout-Ms
-          in: header
-          schema:
-            $ref: '#/components/schemas/connect-timeout-header'
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/policy.namespaces.CreateNamespaceRequest'
-        required: true
-      responses:
-        default:
-          description: Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/connect.error'
-        "200":
-          description: Success
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/policy.namespaces.CreateNamespaceResponse'
-  /policy.namespaces.NamespaceService/DeactivateNamespace:
-    post:
-      tags:
-        - policy.namespaces.NamespaceService
-      summary: DeactivateNamespace
-      operationId: policy.namespaces.NamespaceService.DeactivateNamespace
-      parameters:
-        - name: Connect-Protocol-Version
-          in: header
-          required: true
-          schema:
-            $ref: '#/components/schemas/connect-protocol-version'
-        - name: Connect-Timeout-Ms
-          in: header
-          schema:
-            $ref: '#/components/schemas/connect-timeout-header'
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/policy.namespaces.DeactivateNamespaceRequest'
-        required: true
-      responses:
-        default:
-          description: Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/connect.error'
-        "200":
-          description: Success
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/policy.namespaces.DeactivateNamespaceResponse'
   /policy.namespaces.NamespaceService/GetNamespace:
     post:
       tags:
@@ -218,6 +72,148 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/policy.namespaces.ListNamespacesResponse'
+  /policy.namespaces.NamespaceService/CreateNamespace:
+    post:
+      tags:
+        - policy.namespaces.NamespaceService
+      summary: CreateNamespace
+      operationId: policy.namespaces.NamespaceService.CreateNamespace
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/policy.namespaces.CreateNamespaceRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/policy.namespaces.CreateNamespaceResponse'
+  /policy.namespaces.NamespaceService/UpdateNamespace:
+    post:
+      tags:
+        - policy.namespaces.NamespaceService
+      summary: UpdateNamespace
+      operationId: policy.namespaces.NamespaceService.UpdateNamespace
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/policy.namespaces.UpdateNamespaceRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/policy.namespaces.UpdateNamespaceResponse'
+  /policy.namespaces.NamespaceService/DeactivateNamespace:
+    post:
+      tags:
+        - policy.namespaces.NamespaceService
+      summary: DeactivateNamespace
+      operationId: policy.namespaces.NamespaceService.DeactivateNamespace
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/policy.namespaces.DeactivateNamespaceRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/policy.namespaces.DeactivateNamespaceResponse'
+  /policy.namespaces.NamespaceService/AssignKeyAccessServerToNamespace:
+    post:
+      tags:
+        - policy.namespaces.NamespaceService
+      summary: AssignKeyAccessServerToNamespace
+      description: 'Deprecated: utilize AssignPublicKeyToNamespace'
+      operationId: policy.namespaces.NamespaceService.AssignKeyAccessServerToNamespace
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/policy.namespaces.AssignKeyAccessServerToNamespaceRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/policy.namespaces.AssignKeyAccessServerToNamespaceResponse'
+      deprecated: true
   /policy.namespaces.NamespaceService/RemoveKeyAccessServerFromNamespace:
     post:
       tags:
@@ -255,6 +251,45 @@ paths:
               schema:
                 $ref: '#/components/schemas/policy.namespaces.RemoveKeyAccessServerFromNamespaceResponse'
       deprecated: true
+  /policy.namespaces.NamespaceService/AssignPublicKeyToNamespace:
+    post:
+      tags:
+        - policy.namespaces.NamespaceService
+      summary: AssignPublicKeyToNamespace
+      description: |-
+        --------------------------------------*
+         Namespace <> Key RPCs
+        ---------------------------------------
+      operationId: policy.namespaces.NamespaceService.AssignPublicKeyToNamespace
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/policy.namespaces.AssignPublicKeyToNamespaceRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/policy.namespaces.AssignPublicKeyToNamespaceResponse'
   /policy.namespaces.NamespaceService/RemovePublicKeyFromNamespace:
     post:
       tags:
@@ -290,41 +325,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/policy.namespaces.RemovePublicKeyFromNamespaceResponse'
-  /policy.namespaces.NamespaceService/UpdateNamespace:
-    post:
-      tags:
-        - policy.namespaces.NamespaceService
-      summary: UpdateNamespace
-      operationId: policy.namespaces.NamespaceService.UpdateNamespace
-      parameters:
-        - name: Connect-Protocol-Version
-          in: header
-          required: true
-          schema:
-            $ref: '#/components/schemas/connect-protocol-version'
-        - name: Connect-Timeout-Ms
-          in: header
-          schema:
-            $ref: '#/components/schemas/connect-timeout-header'
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/policy.namespaces.UpdateNamespaceRequest'
-        required: true
-      responses:
-        default:
-          description: Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/connect.error'
-        "200":
-          description: Success
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/policy.namespaces.UpdateNamespaceResponse'
 components:
   schemas:
     common.ActiveStateEnum:
@@ -336,6 +336,76 @@ components:
         - ACTIVE_STATE_ENUM_INACTIVE
         - ACTIVE_STATE_ENUM_ANY
       description: 'buflint ENUM_VALUE_PREFIX: to make sure that C++ scoping rules aren''t violated when users add new enum values to an enum in a given package'
+    common.MetadataUpdateEnum:
+      type: string
+      title: MetadataUpdateEnum
+      enum:
+        - METADATA_UPDATE_ENUM_UNSPECIFIED
+        - METADATA_UPDATE_ENUM_EXTEND
+        - METADATA_UPDATE_ENUM_REPLACE
+    policy.Algorithm:
+      type: string
+      title: Algorithm
+      enum:
+        - ALGORITHM_UNSPECIFIED
+        - ALGORITHM_RSA_2048
+        - ALGORITHM_RSA_4096
+        - ALGORITHM_EC_P256
+        - ALGORITHM_EC_P384
+        - ALGORITHM_EC_P521
+        - ALGORITHM_HPQT_XWING
+        - ALGORITHM_HPQT_SECP256R1_MLKEM768
+        - ALGORITHM_HPQT_SECP384R1_MLKEM1024
+        - ALGORITHM_MLKEM_768
+        - ALGORITHM_MLKEM_1024
+      description: Supported key algorithms.
+    policy.KasPublicKeyAlgEnum:
+      type: string
+      title: KasPublicKeyAlgEnum
+      enum:
+        - KAS_PUBLIC_KEY_ALG_ENUM_UNSPECIFIED
+        - KAS_PUBLIC_KEY_ALG_ENUM_RSA_2048
+        - KAS_PUBLIC_KEY_ALG_ENUM_RSA_4096
+        - KAS_PUBLIC_KEY_ALG_ENUM_EC_SECP256R1
+        - KAS_PUBLIC_KEY_ALG_ENUM_EC_SECP384R1
+        - KAS_PUBLIC_KEY_ALG_ENUM_EC_SECP521R1
+        - KAS_PUBLIC_KEY_ALG_ENUM_HPQT_XWING
+        - KAS_PUBLIC_KEY_ALG_ENUM_HPQT_SECP256R1_MLKEM768
+        - KAS_PUBLIC_KEY_ALG_ENUM_HPQT_SECP384R1_MLKEM1024
+        - KAS_PUBLIC_KEY_ALG_ENUM_MLKEM_768
+        - KAS_PUBLIC_KEY_ALG_ENUM_MLKEM_1024
+    policy.SortDirection:
+      type: string
+      title: SortDirection
+      enum:
+        - SORT_DIRECTION_UNSPECIFIED
+        - SORT_DIRECTION_ASC
+        - SORT_DIRECTION_DESC
+      description: |-
+        Sorting direction shared across list APIs.
+         When the 'sort' field is omitted or the chosen sort 'field' is UNSPECIFIED,
+         the endpoint's request message defines the default ordering; see the
+         specific List* request docs.
+    policy.SourceType:
+      type: string
+      title: SourceType
+      enum:
+        - SOURCE_TYPE_UNSPECIFIED
+        - SOURCE_TYPE_INTERNAL
+        - SOURCE_TYPE_EXTERNAL
+      description: |-
+        Describes whether this kas is managed by the organization or if they imported
+         the kas information from an external party. These two modes are necessary in order
+         to encrypt a tdf dek with an external parties kas public key.
+    policy.namespaces.SortNamespacesType:
+      type: string
+      title: SortNamespacesType
+      enum:
+        - SORT_NAMESPACES_TYPE_UNSPECIFIED
+        - SORT_NAMESPACES_TYPE_NAME
+        - SORT_NAMESPACES_TYPE_FQN
+        - SORT_NAMESPACES_TYPE_CREATED_AT
+        - SORT_NAMESPACES_TYPE_UPDATED_AT
     common.Metadata:
       type: object
       properties:
@@ -391,82 +461,6 @@ components:
           title: value
       title: LabelsEntry
       additionalProperties: false
-    common.MetadataUpdateEnum:
-      type: string
-      title: MetadataUpdateEnum
-      enum:
-        - METADATA_UPDATE_ENUM_UNSPECIFIED
-        - METADATA_UPDATE_ENUM_EXTEND
-        - METADATA_UPDATE_ENUM_REPLACE
-    connect-protocol-version:
-      type: number
-      title: Connect-Protocol-Version
-      enum:
-        - 1
-      description: Define the version of the Connect protocol
-      const: 1
-    connect-timeout-header:
-      type: number
-      title: Connect-Timeout-Ms
-      description: Define the timeout, in ms
-    connect.error:
-      type: object
-      properties:
-        code:
-          type: string
-          examples:
-            - not_found
-          enum:
-            - canceled
-            - unknown
-            - invalid_argument
-            - deadline_exceeded
-            - not_found
-            - already_exists
-            - permission_denied
-            - resource_exhausted
-            - failed_precondition
-            - aborted
-            - out_of_range
-            - unimplemented
-            - internal
-            - unavailable
-            - data_loss
-            - unauthenticated
-          description: The status code, which should be an enum value of [google.rpc.Code][google.rpc.Code].
-        message:
-          type: string
-          description: A developer-facing error message, which should be in English. Any user-facing error message should be localized and sent in the [google.rpc.Status.details][google.rpc.Status.details] field, or localized by the client.
-        details:
-          type: array
-          items:
-            $ref: '#/components/schemas/connect.error_details.Any'
-          description: A list of messages that carry the error details. There is no limit on the number of messages.
-      title: Connect Error
-      additionalProperties: true
-      description: 'Error type returned by Connect: https://connectrpc.com/docs/go/errors/#http-representation'
-    connect.error_details.Any:
-      type: object
-      properties:
-        type:
-          type: string
-          description: 'A URL that acts as a globally unique identifier for the type of the serialized message. For example: `type.googleapis.com/google.rpc.ErrorInfo`. This is used to determine the schema of the data in the `value` field and is the discriminator for the `debug` field.'
-        value:
-          type: string
-          format: binary
-          description: The Protobuf message, serialized as bytes and base64-encoded. The specific message type is identified by the `type` field.
-        debug:
-          oneOf:
-            - type: object
-              title: Any
-              additionalProperties: true
-              description: Detailed error information.
-          discriminator:
-            propertyName: type
-          title: Debug
-          description: Deserialized error detail payload. The 'type' field indicates the schema. This field is for easier debugging and should not be relied upon for application logic.
-      additionalProperties: true
-      description: Contains an arbitrary serialized message along with a @type that describes the type of the serialized message, with an additional debug field for ConnectRPC error details.
     google.protobuf.BoolValue:
       type: boolean
       description: |-
@@ -479,8 +473,8 @@ components:
     google.protobuf.Timestamp:
       type: string
       examples:
-        - "2023-01-15T01:30:15.01Z"
-        - "2024-12-25T12:00:00Z"
+        - 1s
+        - 1.000340012s
       format: date-time
       description: |-
         A Timestamp represents a point in time independent of any time zone or local
@@ -572,20 +566,6 @@ components:
          the Joda Time's [`ISODateTimeFormat.dateTime()`](
          http://joda-time.sourceforge.net/apidocs/org/joda/time/format/ISODateTimeFormat.html#dateTime()
          ) to obtain a formatter capable of generating timestamps in this format.
-    policy.Algorithm:
-      type: string
-      title: Algorithm
-      enum:
-        - ALGORITHM_UNSPECIFIED
-        - ALGORITHM_RSA_2048
-        - ALGORITHM_RSA_4096
-        - ALGORITHM_EC_P256
-        - ALGORITHM_EC_P384
-        - ALGORITHM_EC_P521
-        - ALGORITHM_HPQT_XWING
-        - ALGORITHM_HPQT_SECP256R1_MLKEM768
-        - ALGORITHM_HPQT_SECP384R1_MLKEM1024
-      description: Supported key algorithms.
     policy.KasPublicKey:
       type: object
       properties:
@@ -604,7 +584,7 @@ components:
         alg:
           not:
             enum:
-              - KAS_PUBLIC_KEY_ALG_ENUM_UNSPECIFIED
+              - 0
           title: alg
           description: |-
             A known algorithm type with any additional parameters encoded.
@@ -616,19 +596,6 @@ components:
       description: |-
         Deprecated
          A KAS public key and some associated metadata for further identifcation
-    policy.KasPublicKeyAlgEnum:
-      type: string
-      title: KasPublicKeyAlgEnum
-      enum:
-        - KAS_PUBLIC_KEY_ALG_ENUM_UNSPECIFIED
-        - KAS_PUBLIC_KEY_ALG_ENUM_RSA_2048
-        - KAS_PUBLIC_KEY_ALG_ENUM_RSA_4096
-        - KAS_PUBLIC_KEY_ALG_ENUM_EC_SECP256R1
-        - KAS_PUBLIC_KEY_ALG_ENUM_EC_SECP384R1
-        - KAS_PUBLIC_KEY_ALG_ENUM_EC_SECP521R1
-        - KAS_PUBLIC_KEY_ALG_ENUM_HPQT_XWING
-        - KAS_PUBLIC_KEY_ALG_ENUM_HPQT_SECP256R1_MLKEM768
-        - KAS_PUBLIC_KEY_ALG_ENUM_HPQT_SECP384R1_MLKEM1024
     policy.KasPublicKeySet:
       type: object
       properties:
@@ -651,9 +618,13 @@ components:
         uri:
           type: string
           title: uri
-          description: |
+          description: |+
             Address of a KAS instance
-            uri_format // URI must be a valid URL (e.g., 'https://demo.com/') followed by additional segments. Each segment must start and end with an alphanumeric character, can contain hyphens, alphanumeric characters, and slashes.
+            URI must be a valid URL (e.g., 'https://demo.com/') followed by additional segments. Each segment must start and end with an alphanumeric character, can contain hyphens, alphanumeric characters, and slashes.:
+            ```
+            this.matches('^https?://[a-zA-Z0-9]([a-zA-Z0-9\\-]{0,61}[a-zA-Z0-9])?(\\.[a-zA-Z0-9]([a-zA-Z0-9\\-]{0,61}[a-zA-Z0-9])?)*(:[0-9]+)?(/.*)?$')
+            ```
+
         publicKey:
           title: public_key
           description: 'Deprecated: KAS can have multiple key pairs'
@@ -763,8 +734,7 @@ components:
     policy.PublicKey:
       type: object
       oneOf:
-        - type: object
-          properties:
+        - properties:
             cached:
               title: cached
               description: public key with additional information. Current preferred version
@@ -772,14 +742,17 @@ components:
           title: cached
           required:
             - cached
-        - type: object
-          properties:
+        - properties:
             remote:
               type: string
               title: remote
-              description: |
+              description: |+
                 kas public key url - optional since can also be retrieved via public key
-                uri_format // URI must be a valid URL (e.g., 'https://demo.com/') followed by additional segments. Each segment must start and end with an alphanumeric character, can contain hyphens, alphanumeric characters, and slashes.
+                URI must be a valid URL (e.g., 'https://demo.com/') followed by additional segments. Each segment must start and end with an alphanumeric character, can contain hyphens, alphanumeric characters, and slashes.:
+                ```
+                this.matches('^https://[a-zA-Z0-9]([a-zA-Z0-9\\-]{0,61}[a-zA-Z0-9])?(\\.[a-zA-Z0-9]([a-zA-Z0-9\\-]{0,61}[a-zA-Z0-9])?)*(/.*)?$')
+                ```
+
           title: remote
           required:
             - remote
@@ -817,29 +790,6 @@ components:
           title: pem
       title: SimpleKasPublicKey
       additionalProperties: false
-    policy.SortDirection:
-      type: string
-      title: SortDirection
-      enum:
-        - SORT_DIRECTION_UNSPECIFIED
-        - SORT_DIRECTION_ASC
-        - SORT_DIRECTION_DESC
-      description: |-
-        Sorting direction shared across list APIs.
-         When the 'sort' field is omitted or the chosen sort 'field' is UNSPECIFIED,
-         the endpoint's request message defines the default ordering; see the
-         specific List* request docs.
-    policy.SourceType:
-      type: string
-      title: SourceType
-      enum:
-        - SOURCE_TYPE_UNSPECIFIED
-        - SOURCE_TYPE_INTERNAL
-        - SOURCE_TYPE_EXTERNAL
-      description: |-
-        Describes whether this kas is managed by the organization or if they imported
-         the kas information from an external party. These two modes are necessary in order
-         to encrypt a tdf dek with an external parties kas public key.
     policy.namespaces.AssignKeyAccessServerToNamespaceRequest:
       type: object
       properties:
@@ -883,9 +833,13 @@ components:
           type: string
           title: name
           maxLength: 253
-          description: |
+          description: |+
             Required
-            namespace_format // Namespace must be a valid hostname. It should include at least one dot, with each segment (label) starting and ending with an alphanumeric character. Each label must be 1 to 63 characters long, allowing hyphens but not as the first or last character. The top-level domain (the last segment after the final dot) must consist of at least two alphabetic characters. The stored namespace will be normalized to lower case.
+            Namespace must be a valid hostname. It should include at least one dot, with each segment (label) starting and ending with an alphanumeric character. Each label must be 1 to 63 characters long, allowing hyphens but not as the first or last character. The top-level domain (the last segment after the final dot) must consist of at least two alphabetic characters. The stored namespace will be normalized to lower case.:
+            ```
+            this.matches('^([a-zA-Z0-9]([a-zA-Z0-9\\-]{0,61}[a-zA-Z0-9])?\\.)+[a-zA-Z]{2,}$')
+            ```
+
         metadata:
           title: metadata
           description: Optional
@@ -918,40 +872,45 @@ components:
       additionalProperties: false
     policy.namespaces.GetNamespaceRequest:
       type: object
-      allOf:
+      oneOf:
         - properties:
-            id:
+            fqn:
               type: string
-              title: id
-              format: uuid
-              description: Deprecated
-              deprecated: true
-        - oneOf:
-            - type: object
-              properties:
-                fqn:
-                  type: string
-                  title: fqn
-                  minLength: 1
-                  format: uri
               title: fqn
-              required:
-                - fqn
-            - type: object
-              properties:
-                namespaceId:
-                  type: string
-                  title: namespace_id
-                  format: uuid
-                  description: 'option (buf.validate.oneof).required = true; // TODO: enable this when we remove the deprecated field'
+              minLength: 1
+              format: uri
+          title: fqn
+          required:
+            - fqn
+        - properties:
+            namespaceId:
+              type: string
               title: namespace_id
-              required:
-                - namespaceId
+              format: uuid
+              description: 'option (buf.validate.oneof).required = true; // TODO: enable this when we remove the deprecated field'
+          title: namespace_id
+          required:
+            - namespaceId
+      properties:
+        id:
+          type: string
+          title: id
+          format: uuid
+          description: Deprecated
+          deprecated: true
       title: GetNamespaceRequest
       additionalProperties: false
-      description: |
-        exclusive_fields // Either use deprecated 'id' field or one of 'namespace_id' or 'fqn', but not both
-        required_fields // Either id or one of namespace_id or fqn must be set
+      description: |+
+        Either use deprecated 'id' field or one of 'namespace_id' or 'fqn', but not both:
+        ```
+        !(has(this.id) && (has(this.namespace_id) || has(this.fqn)))
+        ```
+
+        Either id or one of namespace_id or fqn must be set:
+        ```
+        has(this.id) || has(this.namespace_id) || has(this.fqn)
+        ```
+
     policy.namespaces.GetNamespaceResponse:
       type: object
       properties:
@@ -1080,15 +1039,6 @@ components:
           $ref: '#/components/schemas/policy.namespaces.NamespaceKey'
       title: RemovePublicKeyFromNamespaceResponse
       additionalProperties: false
-    policy.namespaces.SortNamespacesType:
-      type: string
-      title: SortNamespacesType
-      enum:
-        - SORT_NAMESPACES_TYPE_UNSPECIFIED
-        - SORT_NAMESPACES_TYPE_NAME
-        - SORT_NAMESPACES_TYPE_FQN
-        - SORT_NAMESPACES_TYPE_CREATED_AT
-        - SORT_NAMESPACES_TYPE_UPDATED_AT
     policy.namespaces.UpdateNamespaceRequest:
       type: object
       properties:
@@ -1114,6 +1064,63 @@ components:
           $ref: '#/components/schemas/policy.Namespace'
       title: UpdateNamespaceResponse
       additionalProperties: false
+    connect-protocol-version:
+      type: number
+      title: Connect-Protocol-Version
+      enum:
+        - 1
+      description: Define the version of the Connect protocol
+      const: 1
+    connect-timeout-header:
+      type: number
+      title: Connect-Timeout-Ms
+      description: Define the timeout, in ms
+    connect.error:
+      type: object
+      properties:
+        code:
+          type: string
+          examples:
+            - not_found
+          enum:
+            - canceled
+            - unknown
+            - invalid_argument
+            - deadline_exceeded
+            - not_found
+            - already_exists
+            - permission_denied
+            - resource_exhausted
+            - failed_precondition
+            - aborted
+            - out_of_range
+            - unimplemented
+            - internal
+            - unavailable
+            - data_loss
+            - unauthenticated
+          description: The status code, which should be an enum value of [google.rpc.Code][google.rpc.Code].
+        message:
+          type: string
+          description: A developer-facing error message, which should be in English. Any user-facing error message should be localized and sent in the [google.rpc.Status.details][google.rpc.Status.details] field, or localized by the client.
+        detail:
+          $ref: '#/components/schemas/google.protobuf.Any'
+      title: Connect Error
+      additionalProperties: true
+      description: 'Error type returned by Connect: https://connectrpc.com/docs/go/errors/#http-representation'
+    google.protobuf.Any:
+      type: object
+      properties:
+        type:
+          type: string
+        value:
+          type: string
+          format: binary
+        debug:
+          type: object
+          additionalProperties: true
+      additionalProperties: true
+      description: Contains an arbitrary serialized message along with a @type that describes the type of the serialized message.
 security: []
 tags:
   - name: policy.namespaces.NamespaceService

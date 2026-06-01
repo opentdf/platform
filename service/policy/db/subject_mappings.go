@@ -361,10 +361,12 @@ func (c PolicyDBClient) ListSubjectMappings(ctx context.Context, r *subjectmappi
 	}
 
 	sortField, sortDirection := GetSubjectMappingsSortParams(r.GetSort())
+	search := pgtypeSubjectMappingSearchPattern(r.GetSearch().GetTerm())
 
 	list, err := c.queries.listSubjectMappings(ctx, listSubjectMappingsParams{
 		NamespaceID:   pgtypeUUID(r.GetNamespaceId()),
 		NamespaceFqn:  pgtypeText(r.GetNamespaceFqn()),
+		Search:        search,
 		Limit:         limit,
 		Offset:        offset,
 		SortField:     sortField,
@@ -438,6 +440,13 @@ func (c PolicyDBClient) ListSubjectMappings(ctx context.Context, r *subjectmappi
 			NextOffset:    nextOffset,
 		},
 	}, nil
+}
+
+func pgtypeSubjectMappingSearchPattern(query string) pgtype.Text {
+	if query == "" {
+		return pgtype.Text{}
+	}
+	return pgtypeText("%" + escapeLikePattern(strings.ToLower(query)) + "%")
 }
 
 // Mutates provided fields and returns the updated subject mapping

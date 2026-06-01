@@ -137,7 +137,14 @@ counted AS (
     LEFT JOIN attribute_fqns fqns ON fqns.namespace_id = n.id AND fqns.attribute_id IS NULL AND fqns.value_id IS NULL
     WHERE
         (sqlc.narg('namespace_id')::uuid IS NULL OR od.namespace_id = sqlc.narg('namespace_id')::uuid) AND
-        (sqlc.narg('namespace_fqn')::text IS NULL OR fqns.fqn = sqlc.narg('namespace_fqn')::text)
+        (sqlc.narg('namespace_fqn')::text IS NULL OR fqns.fqn = sqlc.narg('namespace_fqn')::text) AND
+        -- No search-specific optimization is added here. If needed, consider
+        -- a pg_trgm-backed GIN index on obligation name/FQN expressions.
+        (
+            sqlc.narg('search')::text IS NULL
+            OR LOWER(od.name) LIKE sqlc.narg('search')::text ESCAPE '\'
+            OR LOWER(fqns.fqn || '/obl/' || od.name) LIKE sqlc.narg('search')::text ESCAPE '\'
+        )
 ),
 obligation_triggers_agg AS (
     SELECT
@@ -205,7 +212,14 @@ LEFT JOIN obligation_values_standard ov on od.id = ov.obligation_definition_id
 LEFT JOIN obligation_triggers_agg ota on ov.id = ota.obligation_value_id
 WHERE
     (sqlc.narg('namespace_id')::uuid IS NULL OR od.namespace_id = sqlc.narg('namespace_id')::uuid) AND
-    (sqlc.narg('namespace_fqn')::text IS NULL OR fqns.fqn = sqlc.narg('namespace_fqn')::text)
+    (sqlc.narg('namespace_fqn')::text IS NULL OR fqns.fqn = sqlc.narg('namespace_fqn')::text) AND
+    -- No search-specific optimization is added here. If needed, consider
+    -- a pg_trgm-backed GIN index on obligation name/FQN expressions.
+    (
+        sqlc.narg('search')::text IS NULL
+        OR LOWER(od.name) LIKE sqlc.narg('search')::text ESCAPE '\'
+        OR LOWER(fqns.fqn || '/obl/' || od.name) LIKE sqlc.narg('search')::text ESCAPE '\'
+    )
 GROUP BY od.id, n.id, fqns.fqn, counted.total, p.resolved_field, p.resolved_direction
 ORDER BY
     CASE WHEN p.resolved_field = 'name' AND p.resolved_direction = 'ASC' THEN od.name END ASC,

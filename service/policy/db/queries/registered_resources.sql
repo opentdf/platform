@@ -104,16 +104,6 @@ WITH params AS (
     SELECT
         COALESCE(NULLIF(@sort_field::text, ''), 'created_at') AS resolved_field,
         COALESCE(NULLIF(@sort_direction::text, ''), 'DESC') AS resolved_direction
-),
-counted AS (
-    SELECT COUNT(r.id) AS total
-    FROM registered_resources r
-    LEFT JOIN attribute_namespaces n ON r.namespace_id = n.id
-    LEFT JOIN attribute_fqns ns_fqns ON ns_fqns.namespace_id = n.id AND ns_fqns.attribute_id IS NULL AND ns_fqns.value_id IS NULL
-    WHERE
-        (sqlc.narg('namespace_id')::uuid IS NULL OR r.namespace_id = sqlc.narg('namespace_id')::uuid) AND
-        (sqlc.narg('namespace_fqn')::text IS NULL OR ns_fqns.fqn = sqlc.narg('namespace_fqn')::text) AND
-        (sqlc.narg('search')::text IS NULL OR LOWER(r.name) LIKE sqlc.narg('search')::text ESCAPE '\')
 )
 SELECT
     r.id,
@@ -134,11 +124,10 @@ SELECT
             'action_attribute_values', action_attrs.values
         )
     ) FILTER (WHERE v.id IS NOT NULL) as values,
-    counted.total
+    COUNT(*) OVER() AS total
 FROM registered_resources r
 LEFT JOIN attribute_namespaces n ON r.namespace_id = n.id
 LEFT JOIN attribute_fqns ns_fqns ON ns_fqns.namespace_id = n.id AND ns_fqns.attribute_id IS NULL AND ns_fqns.value_id IS NULL
-CROSS JOIN counted
 CROSS JOIN params p
 LEFT JOIN registered_resource_values v ON v.registered_resource_id = r.id
 -- Build a JSON array of action/attribute pairs for each resource value
@@ -175,8 +164,8 @@ LEFT JOIN LATERAL (
 WHERE
     (sqlc.narg('namespace_id')::uuid IS NULL OR r.namespace_id = sqlc.narg('namespace_id')::uuid) AND
     (sqlc.narg('namespace_fqn')::text IS NULL OR ns_fqns.fqn = sqlc.narg('namespace_fqn')::text) AND
-    (sqlc.narg('search')::text IS NULL OR LOWER(r.name) LIKE sqlc.narg('search')::text ESCAPE '\')
-GROUP BY r.id, n.id, ns_fqns.fqn, counted.total, p.resolved_field, p.resolved_direction
+    (sqlc.narg('search')::text IS NULL OR r.name LIKE sqlc.narg('search')::text ESCAPE '\')
+GROUP BY r.id, n.id, ns_fqns.fqn, p.resolved_field, p.resolved_direction
 ORDER BY
     CASE WHEN p.resolved_field = 'name' AND p.resolved_direction = 'ASC' THEN r.name END ASC,
     CASE WHEN p.resolved_field = 'name' AND p.resolved_direction = 'DESC' THEN r.name END DESC,

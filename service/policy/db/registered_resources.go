@@ -109,13 +109,6 @@ func hydrateRegisteredResourceValueFQNs(values []*policy.RegisteredResourceValue
 	}
 }
 
-func pgtypeRegisteredResourceSearchPattern(query string) pgtype.Text {
-	if query == "" {
-		return pgtype.Text{}
-	}
-	return pgtypeText("%" + escapeLikePattern(strings.ToLower(query)) + "%")
-}
-
 ///
 /// Registered Resources
 ///
@@ -237,7 +230,7 @@ func (c PolicyDBClient) ListRegisteredResources(ctx context.Context, r *register
 	}
 
 	sortField, sortDirection := GetRegisteredResourcesSortParams(r.GetSort())
-	search := pgtypeRegisteredResourceSearchPattern(r.GetSearch().GetTerm())
+	search := pgtypeSubstringSearchPattern(r.GetSearch().GetTerm())
 
 	list, err := c.queries.listRegisteredResources(ctx, listRegisteredResourcesParams{
 		NamespaceID:   parsedID,

@@ -646,16 +646,6 @@ WITH params AS (
     SELECT
         COALESCE(NULLIF($6::text, ''), 'created_at') AS resolved_field,
         COALESCE(NULLIF($7::text, ''), 'DESC') AS resolved_direction
-),
-counted AS (
-    SELECT COUNT(r.id) AS total
-    FROM registered_resources r
-    LEFT JOIN attribute_namespaces n ON r.namespace_id = n.id
-    LEFT JOIN attribute_fqns ns_fqns ON ns_fqns.namespace_id = n.id AND ns_fqns.attribute_id IS NULL AND ns_fqns.value_id IS NULL
-    WHERE
-        ($1::uuid IS NULL OR r.namespace_id = $1::uuid) AND
-        ($2::text IS NULL OR ns_fqns.fqn = $2::text) AND
-        ($3::text IS NULL OR LOWER(r.name) LIKE $3::text ESCAPE '\')
 )
 SELECT
     r.id,
@@ -676,11 +666,10 @@ SELECT
             'action_attribute_values', action_attrs.values
         )
     ) FILTER (WHERE v.id IS NOT NULL) as values,
-    counted.total
+    COUNT(*) OVER() AS total
 FROM registered_resources r
 LEFT JOIN attribute_namespaces n ON r.namespace_id = n.id
 LEFT JOIN attribute_fqns ns_fqns ON ns_fqns.namespace_id = n.id AND ns_fqns.attribute_id IS NULL AND ns_fqns.value_id IS NULL
-CROSS JOIN counted
 CROSS JOIN params p
 LEFT JOIN registered_resource_values v ON v.registered_resource_id = r.id
 LEFT JOIN LATERAL (
@@ -716,8 +705,8 @@ LEFT JOIN LATERAL (
 WHERE
     ($1::uuid IS NULL OR r.namespace_id = $1::uuid) AND
     ($2::text IS NULL OR ns_fqns.fqn = $2::text) AND
-    ($3::text IS NULL OR LOWER(r.name) LIKE $3::text ESCAPE '\')
-GROUP BY r.id, n.id, ns_fqns.fqn, counted.total, p.resolved_field, p.resolved_direction
+    ($3::text IS NULL OR r.name LIKE $3::text ESCAPE '\')
+GROUP BY r.id, n.id, ns_fqns.fqn, p.resolved_field, p.resolved_direction
 ORDER BY
     CASE WHEN p.resolved_field = 'name' AND p.resolved_direction = 'ASC' THEN r.name END ASC,
     CASE WHEN p.resolved_field = 'name' AND p.resolved_direction = 'DESC' THEN r.name END DESC,
@@ -755,16 +744,6 @@ type listRegisteredResourcesRow struct {
 //	    SELECT
 //	        COALESCE(NULLIF($6::text, ''), 'created_at') AS resolved_field,
 //	        COALESCE(NULLIF($7::text, ''), 'DESC') AS resolved_direction
-//	),
-//	counted AS (
-//	    SELECT COUNT(r.id) AS total
-//	    FROM registered_resources r
-//	    LEFT JOIN attribute_namespaces n ON r.namespace_id = n.id
-//	    LEFT JOIN attribute_fqns ns_fqns ON ns_fqns.namespace_id = n.id AND ns_fqns.attribute_id IS NULL AND ns_fqns.value_id IS NULL
-//	    WHERE
-//	        ($1::uuid IS NULL OR r.namespace_id = $1::uuid) AND
-//	        ($2::text IS NULL OR ns_fqns.fqn = $2::text) AND
-//	        ($3::text IS NULL OR LOWER(r.name) LIKE $3::text ESCAPE '\')
 //	)
 //	SELECT
 //	    r.id,
@@ -785,11 +764,10 @@ type listRegisteredResourcesRow struct {
 //	            'action_attribute_values', action_attrs.values
 //	        )
 //	    ) FILTER (WHERE v.id IS NOT NULL) as values,
-//	    counted.total
+//	    COUNT(*) OVER() AS total
 //	FROM registered_resources r
 //	LEFT JOIN attribute_namespaces n ON r.namespace_id = n.id
 //	LEFT JOIN attribute_fqns ns_fqns ON ns_fqns.namespace_id = n.id AND ns_fqns.attribute_id IS NULL AND ns_fqns.value_id IS NULL
-//	CROSS JOIN counted
 //	CROSS JOIN params p
 //	LEFT JOIN registered_resource_values v ON v.registered_resource_id = r.id
 //	LEFT JOIN LATERAL (
@@ -825,8 +803,8 @@ type listRegisteredResourcesRow struct {
 //	WHERE
 //	    ($1::uuid IS NULL OR r.namespace_id = $1::uuid) AND
 //	    ($2::text IS NULL OR ns_fqns.fqn = $2::text) AND
-//	    ($3::text IS NULL OR LOWER(r.name) LIKE $3::text ESCAPE '\')
-//	GROUP BY r.id, n.id, ns_fqns.fqn, counted.total, p.resolved_field, p.resolved_direction
+//	    ($3::text IS NULL OR r.name LIKE $3::text ESCAPE '\')
+//	GROUP BY r.id, n.id, ns_fqns.fqn, p.resolved_field, p.resolved_direction
 //	ORDER BY
 //	    CASE WHEN p.resolved_field = 'name' AND p.resolved_direction = 'ASC' THEN r.name END ASC,
 //	    CASE WHEN p.resolved_field = 'name' AND p.resolved_direction = 'DESC' THEN r.name END DESC,

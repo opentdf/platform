@@ -553,6 +553,28 @@ func (s *ObligationsSuite) Test_ListObligations_SearchByNameAndFqn_Succeeds() {
 	s.Equal(int32(1), page.GetTotal())
 }
 
+func (s *ObligationsSuite) Test_ListObligations_SearchEscapesLikeWildcardLiterals_Succeeds() {
+	namespaceID, _, _ := s.getNamespaceData(nsExampleCom)
+	suffix := time.Now().UnixNano()
+
+	alpha := s.createObligation(namespaceID, fmt.Sprintf("wildcarda-%d", suffix), nil)
+	beta := s.createObligation(namespaceID, fmt.Sprintf("wildcardb-%d", suffix), nil)
+	defer s.deleteObligations([]string{alpha.GetId(), beta.GetId()})
+
+	for _, query := range []string{
+		fmt.Sprintf("wildcard_-%d", suffix),
+		fmt.Sprintf("wildcard%%-%d", suffix),
+	} {
+		list, page, err := s.db.PolicyClient.ListObligations(s.ctx, &obligations.ListObligationsRequest{
+			NamespaceId: namespaceID,
+			Search:      &policy.Search{Term: query},
+		})
+		s.Require().NoError(err)
+		s.Empty(list)
+		s.Equal(int32(0), page.GetTotal())
+	}
+}
+
 func (s *ObligationsSuite) Test_ListObligations_SearchCombinesWithNamespaceFilters_Succeeds() {
 	comID, comFQN, _ := s.getNamespaceData(nsExampleCom)
 	netID, netFQN, _ := s.getNamespaceData(nsExampleNet)

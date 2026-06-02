@@ -44,6 +44,12 @@ WHERE
     (sqlc.narg('active')::BOOLEAN IS NULL OR ad.active = sqlc.narg('active')) AND
     (sqlc.narg('namespace_id')::uuid IS NULL OR ad.namespace_id = sqlc.narg('namespace_id')::uuid) AND
     (sqlc.narg('namespace_name')::text IS NULL OR n.name = sqlc.narg('namespace_name')::text)
+    -- No search-specific optimization is added here. If needed, consider
+    -- a pg_trgm-backed GIN index on attribute_fqns.fqn.
+    AND (
+        sqlc.narg('search')::TEXT IS NULL
+        OR fqns.fqn LIKE sqlc.narg('search')::TEXT ESCAPE '\'
+    )
 GROUP BY ad.id, n.name, fqns.fqn, p.resolved_field, p.resolved_direction
 ORDER BY
     CASE WHEN p.resolved_field = 'name' AND p.resolved_direction = 'ASC' THEN ad.name END ASC,

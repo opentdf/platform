@@ -43,10 +43,12 @@ func (c PolicyDBClient) ListKeyAccessServers(ctx context.Context, r *kasregistry
 	}
 
 	sortField, sortDirection := GetKeyAccessServersSortParams(r.GetSort())
+	search := pgtypeSubstringSearchPattern(r.GetSearch().GetTerm())
 
 	list, err := c.queries.listKeyAccessServers(ctx, listKeyAccessServersParams{
 		Offset:        offset,
 		Limit:         limit,
+		Search:        search,
 		SortField:     sortField,
 		SortDirection: sortDirection,
 	})

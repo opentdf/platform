@@ -40,8 +40,7 @@ type createKeyParams struct {
 //	VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
 //	RETURNING id
 func (q *Queries) createKey(ctx context.Context, arg createKeyParams) (string, error) {
-	row := q.db.QueryRow(
-		ctx, createKey,
+	row := q.db.QueryRow(ctx, createKey,
 		arg.KeyAccessServerID,
 		arg.KeyAlgorithm,
 		arg.KeyID,
@@ -78,8 +77,7 @@ type createKeyAccessServerParams struct {
 //	VALUES ($1, $2, $3, $4, $5)
 //	RETURNING id
 func (q *Queries) createKeyAccessServer(ctx context.Context, arg createKeyAccessServerParams) (string, error) {
-	row := q.db.QueryRow(
-		ctx, createKeyAccessServer,
+	row := q.db.QueryRow(ctx, createKeyAccessServer,
 		arg.Uri,
 		arg.PublicKey,
 		arg.Name,
@@ -277,8 +275,7 @@ type getKeyRow struct {
 //	  AND ($4::text IS NULL OR kas.uri = $4::text)
 //	  AND ($5::text IS NULL OR kas.name = $5::text)
 func (q *Queries) getKey(ctx context.Context, arg getKeyParams) (getKeyRow, error) {
-	row := q.db.QueryRow(
-		ctx, getKey,
+	row := q.db.QueryRow(ctx, getKey,
 		arg.ID,
 		arg.KeyID,
 		arg.KasID,
@@ -603,8 +600,7 @@ type listKeyAccessServerGrantsRow struct {
 //	LIMIT $2
 //	OFFSET $1
 func (q *Queries) listKeyAccessServerGrants(ctx context.Context, arg listKeyAccessServerGrantsParams) ([]listKeyAccessServerGrantsRow, error) {
-	rows, err := q.db.Query(
-		ctx, listKeyAccessServerGrants,
+	rows, err := q.db.Query(ctx, listKeyAccessServerGrants,
 		arg.Offset,
 		arg.Limit,
 		arg.KasID,
@@ -650,8 +646,8 @@ filtered AS (
     FROM key_access_servers AS kas
     WHERE (
         $5::TEXT IS NULL
-        OR LOWER(kas.name) LIKE $5::TEXT ESCAPE '\'
-        OR LOWER(kas.uri) LIKE $5::TEXT ESCAPE '\'
+        OR kas.name LIKE $5::TEXT ESCAPE '\'
+        OR kas.uri ILIKE $5::TEXT ESCAPE '\' -- Use slower case-insensitive matching, URIs can be registered with variable casing.
     )
 ),
 counted AS (
@@ -732,8 +728,8 @@ type listKeyAccessServersRow struct {
 //	    FROM key_access_servers AS kas
 //	    WHERE (
 //	        $5::TEXT IS NULL
-//	        OR LOWER(kas.name) LIKE $5::TEXT ESCAPE '\'
-//	        OR LOWER(kas.uri) LIKE $5::TEXT ESCAPE '\'
+//	        OR kas.name LIKE $5::TEXT ESCAPE '\'
+//	        OR kas.uri ILIKE $5::TEXT ESCAPE '\' -- Use slower case-insensitive matching, URIs can be registered with variable casing.
 //	    )
 //	),
 //	counted AS (
@@ -782,8 +778,7 @@ type listKeyAccessServersRow struct {
 //	LIMIT $2
 //	OFFSET $1
 func (q *Queries) listKeyAccessServers(ctx context.Context, arg listKeyAccessServersParams) ([]listKeyAccessServersRow, error) {
-	rows, err := q.db.Query(
-		ctx, listKeyAccessServers,
+	rows, err := q.db.Query(ctx, listKeyAccessServers,
 		arg.Offset,
 		arg.Limit,
 		arg.SortField,
@@ -1052,8 +1047,7 @@ type listKeyMappingsRow struct {
 //	LIMIT $2
 //	OFFSET $1
 func (q *Queries) listKeyMappings(ctx context.Context, arg listKeyMappingsParams) ([]listKeyMappingsRow, error) {
-	rows, err := q.db.Query(
-		ctx, listKeyMappings,
+	rows, err := q.db.Query(ctx, listKeyMappings,
 		arg.Offset,
 		arg.Limit,
 		arg.ID,
@@ -1236,8 +1230,7 @@ type listKeysRow struct {
 //	LIMIT $4
 //	OFFSET $3
 func (q *Queries) listKeys(ctx context.Context, arg listKeysParams) ([]listKeysRow, error) {
-	rows, err := q.db.Query(
-		ctx, listKeys,
+	rows, err := q.db.Query(ctx, listKeys,
 		arg.KeyAlgorithm,
 		arg.Legacy,
 		arg.Offset,
@@ -1360,8 +1353,7 @@ type updateKeyAccessServerParams struct {
 //	    source_type = COALESCE($6, source_type)
 //	WHERE id = $1
 func (q *Queries) updateKeyAccessServer(ctx context.Context, arg updateKeyAccessServerParams) (int64, error) {
-	result, err := q.db.Exec(
-		ctx, updateKeyAccessServer,
+	result, err := q.db.Exec(ctx, updateKeyAccessServer,
 		arg.ID,
 		arg.Uri,
 		arg.PublicKey,

@@ -78,8 +78,8 @@ filtered AS (
     FROM key_access_servers AS kas
     WHERE (
         sqlc.narg('search')::TEXT IS NULL
-        OR LOWER(kas.name) LIKE sqlc.narg('search')::TEXT ESCAPE '\'
-        OR LOWER(kas.uri) LIKE sqlc.narg('search')::TEXT ESCAPE '\'
+        OR kas.name LIKE sqlc.narg('search')::TEXT ESCAPE '\'
+        OR kas.uri ILIKE sqlc.narg('search')::TEXT ESCAPE '\' -- Use slower case-insensitive matching, URIs can be registered with variable casing.
     )
 ),
 counted AS (

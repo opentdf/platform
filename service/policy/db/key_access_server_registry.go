@@ -43,7 +43,7 @@ func (c PolicyDBClient) ListKeyAccessServers(ctx context.Context, r *kasregistry
 	}
 
 	sortField, sortDirection := GetKeyAccessServersSortParams(r.GetSort())
-	search := pgtypeKASSubstringSearchPattern(r.GetSearch().GetTerm())
+	search := pgtypeSubstringSearchPattern(r.GetSearch().GetTerm())
 
 	list, err := c.queries.listKeyAccessServers(ctx, listKeyAccessServersParams{
 		Offset:        offset,
@@ -105,13 +105,6 @@ func (c PolicyDBClient) ListKeyAccessServers(ctx context.Context, r *kasregistry
 			NextOffset:    nextOffset,
 		},
 	}, nil
-}
-
-func pgtypeKASSubstringSearchPattern(query string) pgtype.Text {
-	if query == "" {
-		return pgtype.Text{}
-	}
-	return pgtypeText("%" + escapeLikePattern(strings.ToLower(query)) + "%")
 }
 
 func (c PolicyDBClient) GetKeyAccessServer(ctx context.Context, identifier any) (*policy.KeyAccessServer, error) {

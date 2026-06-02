@@ -610,13 +610,21 @@ func (s *ObligationsSuite) Test_ListObligations_SearchEmptyAndWhitespace_Succeed
 	s.Require().NoError(err)
 	s.Equal(noSearchPage.GetTotal(), emptySearchPage.GetTotal())
 
-	whitespaceSearch, whitespaceSearchPage, err := s.db.PolicyClient.ListObligations(s.ctx, &obligations.ListObligationsRequest{
+	_, whitespaceSearchPage, err := s.db.PolicyClient.ListObligations(s.ctx, &obligations.ListObligationsRequest{
+		NamespaceId: namespaceID,
+		Search:      &policy.Search{Term: " "},
+	})
+	s.Require().NoError(err)
+	s.Equal(whitespaceSearchPage.GetTotal(), emptySearchPage.GetTotal())
+
+	trimAdditional, trimAdditionalPage, err := s.db.PolicyClient.ListObligations(s.ctx, &obligations.ListObligationsRequest{
 		NamespaceId: namespaceID,
 		Search:      &policy.Search{Term: " " + name + " "},
 	})
 	s.Require().NoError(err)
-	s.Empty(whitespaceSearch)
-	s.Equal(int32(0), whitespaceSearchPage.GetTotal())
+	s.Require().Len(trimAdditional, 1)
+	s.Equal(trimAdditional[0].GetId(), created.GetId())
+	s.Equal(int32(1), trimAdditionalPage.GetTotal())
 }
 
 func (s *ObligationsSuite) Test_ListObligations_SearchPaginationAppliesAfterFiltering_Succeeds() {

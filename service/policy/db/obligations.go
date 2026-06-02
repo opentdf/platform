@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/opentdf/platform/lib/identifier"
 	"github.com/opentdf/platform/protocol/go/common"
 	"github.com/opentdf/platform/protocol/go/policy"
@@ -228,11 +227,7 @@ func (c PolicyDBClient) ListObligations(ctx context.Context, r *obligations.List
 	idIsValid := parsedID.Valid
 
 	sortField, sortDirection := GetObligationsSortParams(r.GetSort())
-	searchTerm := r.GetSearch().GetTerm()
-	search := pgtype.Text{}
-	if searchTerm != "" {
-		search = pgtypeText("%" + escapeLikePattern(strings.ToLower(searchTerm)) + "%")
-	}
+	searchTerm := pgtypeSubstringSearchPattern(r.GetSearch().GetTerm())
 
 	if useID && !idIsValid {
 		return nil, nil, db.ErrUUIDInvalid
@@ -248,7 +243,7 @@ func (c PolicyDBClient) ListObligations(ctx context.Context, r *obligations.List
 	rows, err := c.queries.listObligations(ctx, listObligationsParams{
 		NamespaceID:   parsedID,
 		NamespaceFqn:  pgtypeText(r.GetNamespaceFqn()),
-		Search:        search,
+		Search:        searchTerm,
 		Limit:         limit,
 		Offset:        offset,
 		SortField:     sortField,

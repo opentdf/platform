@@ -1678,22 +1678,6 @@ WITH params AS (
         COALESCE(NULLIF($6::text, ''), 'created_at') AS resolved_field,
         COALESCE(NULLIF($7::text, ''), 'DESC') AS resolved_direction
 ),
-counted AS (
-    SELECT COUNT(od.id) AS total
-    FROM obligation_definitions od
-    LEFT JOIN attribute_namespaces n ON od.namespace_id = n.id
-    LEFT JOIN attribute_fqns fqns ON fqns.namespace_id = n.id AND fqns.attribute_id IS NULL AND fqns.value_id IS NULL
-    WHERE
-        ($1::uuid IS NULL OR od.namespace_id = $1::uuid) AND
-        ($2::text IS NULL OR fqns.fqn = $2::text) AND
-        -- No search-specific optimization is added here. If needed, consider
-        -- a pg_trgm-backed GIN index on obligation name/FQN expressions.
-        (
-            $3::text IS NULL
-            OR LOWER(od.name) LIKE $3::text ESCAPE '\'
-            OR LOWER(fqns.fqn || '/obl/' || od.name) LIKE $3::text ESCAPE '\'
-        )
-),
 obligation_triggers_agg AS (
     SELECT
         ot.obligation_value_id,
@@ -1750,11 +1734,10 @@ SELECT
             'triggers', COALESCE(ota.triggers, '[]'::JSON)
         )
     ) FILTER (WHERE ov.id IS NOT NULL) as values,
-    counted.total
+    COUNT(*) OVER () AS total
 FROM obligation_definitions od
 JOIN attribute_namespaces n on od.namespace_id = n.id
 LEFT JOIN attribute_fqns fqns ON fqns.namespace_id = n.id AND fqns.attribute_id IS NULL AND fqns.value_id IS NULL
-CROSS JOIN counted
 CROSS JOIN params p
 LEFT JOIN obligation_values_standard ov on od.id = ov.obligation_definition_id
 LEFT JOIN obligation_triggers_agg ota on ov.id = ota.obligation_value_id
@@ -1765,10 +1748,9 @@ WHERE
     -- a pg_trgm-backed GIN index on obligation name/FQN expressions.
     (
         $3::text IS NULL
-        OR LOWER(od.name) LIKE $3::text ESCAPE '\'
-        OR LOWER(fqns.fqn || '/obl/' || od.name) LIKE $3::text ESCAPE '\'
+        OR CONCAT_WS('/', fqns.fqn, 'obl', od.name) LIKE $3::text ESCAPE '\'
     )
-GROUP BY od.id, n.id, fqns.fqn, counted.total, p.resolved_field, p.resolved_direction
+GROUP BY od.id, n.id, fqns.fqn, p.resolved_field, p.resolved_direction
 ORDER BY
     CASE WHEN p.resolved_field = 'name' AND p.resolved_direction = 'ASC' THEN od.name END ASC,
     CASE WHEN p.resolved_field = 'name' AND p.resolved_direction = 'DESC' THEN od.name END DESC,
@@ -1808,22 +1790,6 @@ type listObligationsRow struct {
 //	    SELECT
 //	        COALESCE(NULLIF($6::text, ''), 'created_at') AS resolved_field,
 //	        COALESCE(NULLIF($7::text, ''), 'DESC') AS resolved_direction
-//	),
-//	counted AS (
-//	    SELECT COUNT(od.id) AS total
-//	    FROM obligation_definitions od
-//	    LEFT JOIN attribute_namespaces n ON od.namespace_id = n.id
-//	    LEFT JOIN attribute_fqns fqns ON fqns.namespace_id = n.id AND fqns.attribute_id IS NULL AND fqns.value_id IS NULL
-//	    WHERE
-//	        ($1::uuid IS NULL OR od.namespace_id = $1::uuid) AND
-//	        ($2::text IS NULL OR fqns.fqn = $2::text) AND
-//	        -- No search-specific optimization is added here. If needed, consider
-//	        -- a pg_trgm-backed GIN index on obligation name/FQN expressions.
-//	        (
-//	            $3::text IS NULL
-//	            OR LOWER(od.name) LIKE $3::text ESCAPE '\'
-//	            OR LOWER(fqns.fqn || '/obl/' || od.name) LIKE $3::text ESCAPE '\'
-//	        )
 //	),
 //	obligation_triggers_agg AS (
 //	    SELECT
@@ -1881,11 +1847,10 @@ type listObligationsRow struct {
 //	            'triggers', COALESCE(ota.triggers, '[]'::JSON)
 //	        )
 //	    ) FILTER (WHERE ov.id IS NOT NULL) as values,
-//	    counted.total
+//	    COUNT(*) OVER () AS total
 //	FROM obligation_definitions od
 //	JOIN attribute_namespaces n on od.namespace_id = n.id
 //	LEFT JOIN attribute_fqns fqns ON fqns.namespace_id = n.id AND fqns.attribute_id IS NULL AND fqns.value_id IS NULL
-//	CROSS JOIN counted
 //	CROSS JOIN params p
 //	LEFT JOIN obligation_values_standard ov on od.id = ov.obligation_definition_id
 //	LEFT JOIN obligation_triggers_agg ota on ov.id = ota.obligation_value_id
@@ -1896,10 +1861,9 @@ type listObligationsRow struct {
 //	    -- a pg_trgm-backed GIN index on obligation name/FQN expressions.
 //	    (
 //	        $3::text IS NULL
-//	        OR LOWER(od.name) LIKE $3::text ESCAPE '\'
-//	        OR LOWER(fqns.fqn || '/obl/' || od.name) LIKE $3::text ESCAPE '\'
+//	        OR CONCAT_WS('/', fqns.fqn, 'obl', od.name) LIKE $3::text ESCAPE '\'
 //	    )
-//	GROUP BY od.id, n.id, fqns.fqn, counted.total, p.resolved_field, p.resolved_direction
+//	GROUP BY od.id, n.id, fqns.fqn, p.resolved_field, p.resolved_direction
 //	ORDER BY
 //	    CASE WHEN p.resolved_field = 'name' AND p.resolved_direction = 'ASC' THEN od.name END ASC,
 //	    CASE WHEN p.resolved_field = 'name' AND p.resolved_direction = 'DESC' THEN od.name END DESC,

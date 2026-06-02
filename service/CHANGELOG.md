@@ -1,5 +1,26 @@
 # Changelog
 
+## [0.16.0](https://github.com/opentdf/platform/compare/service/v0.15.0...service/v0.16.0) (2026-06-01)
+
+
+### Features
+
+* **core:** add hybrid NIST EC + ML-KEM key wrapping support ([#3276](https://github.com/opentdf/platform/issues/3276)) ([1209acc](https://github.com/opentdf/platform/commit/1209acc2f8ae24af121f6a2892817c20ebb14d25))
+* **policy:** Add FQN to RegisteredResourceValues ([#3446](https://github.com/opentdf/platform/issues/3446)) ([3199583](https://github.com/opentdf/platform/commit/3199583c4a6454ac7eabe1260a142e5c5ff067ad))
+* **policy:** Add resource mapping group FQNs ([#3447](https://github.com/opentdf/platform/issues/3447)) ([6a0b3c6](https://github.com/opentdf/platform/commit/6a0b3c63795cf79b4d87d561464101c7cd2cf351))
+
+
+### Bug Fixes
+
+* **core:** remove deprecated grpc-gateway ([#3479](https://github.com/opentdf/platform/issues/3479)) ([a4230a2](https://github.com/opentdf/platform/commit/a4230a215db71ff369d49216f0f9f61fdb6c042e))
+* **deps:** bump github.com/opentdf/platform/lib/ocrypto from 0.10.0 to 0.12.0 in /service ([#3524](https://github.com/opentdf/platform/issues/3524)) ([9836404](https://github.com/opentdf/platform/commit/9836404c6732a1e7eab20ed182ff0d8eb5820462))
+* **deps:** bump github.com/opentdf/platform/protocol/go from 0.30.0 to 0.31.0 in /service ([#3497](https://github.com/opentdf/platform/issues/3497)) ([a29f108](https://github.com/opentdf/platform/commit/a29f10878bafaa78cf8ec8a68b1b84ab2c298721))
+* **deps:** bump github.com/opentdf/platform/protocol/go from 0.31.0 to 0.32.0 in /service ([#3523](https://github.com/opentdf/platform/issues/3523)) ([5f316f0](https://github.com/opentdf/platform/commit/5f316f0c149097383a6c96ab902e44d7ee209cd1))
+* **deps:** bump github.com/opentdf/platform/sdk from 0.19.0 to 0.20.0 in /service ([#3467](https://github.com/opentdf/platform/issues/3467)) ([7045d6e](https://github.com/opentdf/platform/commit/7045d6ed2d5ec9e9748111afecd52cb2f02ca5a0))
+* **deps:** bump github.com/opentdf/platform/sdk from 0.20.0 to 0.21.0 in /service ([#3548](https://github.com/opentdf/platform/issues/3548)) ([09fff7f](https://github.com/opentdf/platform/commit/09fff7f4c016f510841989dd86fbe32388b77d7e))
+* **deps:** bump module protocol/go to v0.30.0 throughout ([#3459](https://github.com/opentdf/platform/issues/3459)) ([8eaa502](https://github.com/opentdf/platform/commit/8eaa502b0f949ddbe18a5a1dac0931b92eec2351))
+* **policy:** include action_attribute_values in GetRegisteredResource response ([#3472](https://github.com/opentdf/platform/issues/3472)) ([29eff55](https://github.com/opentdf/platform/commit/29eff55c5470e948088d768274a03da06e092a6e))
+
 ## [0.15.0](https://github.com/opentdf/platform/compare/service/v0.14.0...service/v0.15.0) (2026-05-06)
 
 

@@ -147,7 +147,7 @@ func (c PolicyDBClient) ListAttributes(ctx context.Context, r *attributes.ListAt
 	}
 
 	sortField, sortDirection := GetAttributesSortParams(r.GetSort())
-	search := pgtypeAttributeSearchPattern(r.GetSearch().GetTerm())
+	search := pgtypeSubstringSearchPattern(r.GetSearch().GetTerm())
 
 	list, err := c.queries.listAttributesDetail(ctx, listAttributesDetailParams{
 		Active:        active,
@@ -198,13 +198,6 @@ func (c PolicyDBClient) ListAttributes(ctx context.Context, r *attributes.ListAt
 			NextOffset:    nextOffset,
 		},
 	}, nil
-}
-
-func pgtypeAttributeSearchPattern(query string) pgtype.Text {
-	if query == "" {
-		return pgtype.Text{}
-	}
-	return pgtypeText("%" + escapeLikePattern(strings.ToLower(query)) + "%")
 }
 
 func (c PolicyDBClient) GetAttribute(ctx context.Context, identifier any) (*policy.Attribute, error) {

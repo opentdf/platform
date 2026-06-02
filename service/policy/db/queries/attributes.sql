@@ -48,8 +48,7 @@ WHERE
     -- a pg_trgm-backed GIN index on attribute_fqns.fqn.
     AND (
         sqlc.narg('search')::TEXT IS NULL
-        OR LOWER(ad.name) LIKE sqlc.narg('search')::TEXT ESCAPE '\'
-        OR LOWER(fqns.fqn) LIKE sqlc.narg('search')::TEXT ESCAPE '\'
+        OR fqns.fqn LIKE sqlc.narg('search')::TEXT ESCAPE '\'
     )
 GROUP BY ad.id, n.name, fqns.fqn, p.resolved_field, p.resolved_direction
 ORDER BY

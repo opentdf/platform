@@ -820,7 +820,7 @@ func (s *AttributesSuite) Test_ListAttributes_Offset_Succeeds() {
 	}
 }
 
-func (s *AttributesSuite) Test_ListAttributes_SearchByNameAndFqn_Succeeds() {
+func (s *AttributesSuite) Test_ListAttributes_SearchByFqn_Succeeds() {
 	suffix := time.Now().UnixNano()
 	ns, err := s.db.PolicyClient.CreateNamespace(s.ctx, &namespaces.CreateNamespaceRequest{
 		Name: fmt.Sprintf("dspx-search-attrs-%d.com", suffix),
@@ -841,14 +841,14 @@ func (s *AttributesSuite) Test_ListAttributes_SearchByNameAndFqn_Succeeds() {
 	})
 	s.Require().NoError(err)
 
-	byName, err := s.db.PolicyClient.ListAttributes(s.ctx, &attributes.ListAttributesRequest{
+	byNameSubstring, err := s.db.PolicyClient.ListAttributes(s.ctx, &attributes.ListAttributesRequest{
 		State:  common.ActiveStateEnum_ACTIVE_STATE_ENUM_ANY,
 		Search: &policy.Search{Term: strings.ToUpper(alpha.GetName())},
 	})
 	s.Require().NoError(err)
-	s.Require().Len(byName.GetAttributes(), 1)
-	s.Equal(alpha.GetId(), byName.GetAttributes()[0].GetId())
-	s.Equal(int32(1), byName.GetPagination().GetTotal())
+	s.Require().Len(byNameSubstring.GetAttributes(), 1)
+	s.Equal(alpha.GetId(), byNameSubstring.GetAttributes()[0].GetId())
+	s.Equal(int32(1), byNameSubstring.GetPagination().GetTotal())
 
 	byFqn, err := s.db.PolicyClient.ListAttributes(s.ctx, &attributes.ListAttributesRequest{
 		State:  common.ActiveStateEnum_ACTIVE_STATE_ENUM_ANY,
@@ -983,8 +983,7 @@ func (s *AttributesSuite) Test_ListAttributes_SearchEmptyAndWhitespaceQuery_Succ
 		Search:    &policy.Search{Term: " "},
 	})
 	s.Require().NoError(err)
-	s.Empty(whitespaceSearch.GetAttributes())
-	s.Equal(int32(0), whitespaceSearch.GetPagination().GetTotal())
+	s.Equal(noSearch.GetPagination().GetTotal(), whitespaceSearch.GetPagination().GetTotal())
 }
 
 func (s *AttributesSuite) Test_ListAttributes_SearchPaginationAppliesAfterFiltering_Succeeds() {
@@ -2143,7 +2142,13 @@ func (s *AttributesSuite) deleteSortTestAttributes(ids []string) {
 }
 
 func (s *AttributesSuite) deleteTestAttributeNamespaces(ids []string) {
-	s.Require().NoError(forceDeleteRows(s.ctx, s.db, "attribute_namespaces", ids))
+	for _, id := range ids {
+		ns, err := s.db.PolicyClient.GetNamespace(s.ctx, &namespaces.GetNamespaceRequest_NamespaceId{NamespaceId: id})
+		s.Require().NoError(err)
+
+		_, err = s.db.PolicyClient.UnsafeDeleteNamespace(s.ctx, ns, ns.GetFqn())
+		s.Require().NoError(err)
+	}
 }
 
 func (s *AttributesSuite) getAttributeFixtures() map[string]fixtures.FixtureDataAttribute {

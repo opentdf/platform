@@ -101,8 +101,7 @@ type createSubjectMappingParams struct {
 //	)
 //	SELECT id FROM inserted_mapping
 func (q *Queries) createSubjectMapping(ctx context.Context, arg createSubjectMappingParams) (string, error) {
-	row := q.db.QueryRow(
-		ctx, createSubjectMapping,
+	row := q.db.QueryRow(ctx, createSubjectMapping,
 		arg.AttributeValueID,
 		arg.Metadata,
 		arg.SubjectConditionSetID,
@@ -383,33 +382,8 @@ WHERE
         $3::TEXT IS NULL
         OR EXISTS (
             SELECT 1
-            FROM JSONB_PATH_QUERY(scs.condition, '$.**.subjectExternalSelectorValue') AS selector_value(value)
-            WHERE LOWER(selector_value.value #>> '{}') LIKE $3::TEXT ESCAPE '\'
-        )
-        OR EXISTS (
-            SELECT 1
-            FROM JSONB_PATH_QUERY(scs.condition, '$.**.subject_external_selector_value') AS selector_value(value)
-            WHERE LOWER(selector_value.value #>> '{}') LIKE $3::TEXT ESCAPE '\'
-        )
-        OR EXISTS (
-            SELECT 1
-            FROM JSONB_PATH_QUERY(scs.condition, '$.**.subjectExternalSelectorValues[*]') AS selector_value(value)
-            WHERE LOWER(selector_value.value #>> '{}') LIKE $3::TEXT ESCAPE '\'
-        )
-        OR EXISTS (
-            SELECT 1
-            FROM JSONB_PATH_QUERY(scs.condition, '$.**.subject_external_selector_values[*]') AS selector_value(value)
-            WHERE LOWER(selector_value.value #>> '{}') LIKE $3::TEXT ESCAPE '\'
-        )
-        OR EXISTS (
-            SELECT 1
-            FROM JSONB_PATH_QUERY(scs.condition, '$.**.subjectExternalValues[*]') AS selector_value(value)
-            WHERE LOWER(selector_value.value #>> '{}') LIKE $3::TEXT ESCAPE '\'
-        )
-        OR EXISTS (
-            SELECT 1
-            FROM JSONB_PATH_QUERY(scs.condition, '$.**.subject_external_values[*]') AS selector_value(value)
-            WHERE LOWER(selector_value.value #>> '{}') LIKE $3::TEXT ESCAPE '\'
+            FROM JSONB_EACH_TEXT(COALESCE(scs.metadata -> 'labels', '{}'::JSONB)) AS label(key, value)
+            WHERE label.value ILIKE $3::TEXT ESCAPE '\'
         )
     )
 ORDER BY
@@ -472,33 +446,8 @@ type listSubjectConditionSetsRow struct {
 //	        $3::TEXT IS NULL
 //	        OR EXISTS (
 //	            SELECT 1
-//	            FROM JSONB_PATH_QUERY(scs.condition, '$.**.subjectExternalSelectorValue') AS selector_value(value)
-//	            WHERE LOWER(selector_value.value #>> '{}') LIKE $3::TEXT ESCAPE '\'
-//	        )
-//	        OR EXISTS (
-//	            SELECT 1
-//	            FROM JSONB_PATH_QUERY(scs.condition, '$.**.subject_external_selector_value') AS selector_value(value)
-//	            WHERE LOWER(selector_value.value #>> '{}') LIKE $3::TEXT ESCAPE '\'
-//	        )
-//	        OR EXISTS (
-//	            SELECT 1
-//	            FROM JSONB_PATH_QUERY(scs.condition, '$.**.subjectExternalSelectorValues[*]') AS selector_value(value)
-//	            WHERE LOWER(selector_value.value #>> '{}') LIKE $3::TEXT ESCAPE '\'
-//	        )
-//	        OR EXISTS (
-//	            SELECT 1
-//	            FROM JSONB_PATH_QUERY(scs.condition, '$.**.subject_external_selector_values[*]') AS selector_value(value)
-//	            WHERE LOWER(selector_value.value #>> '{}') LIKE $3::TEXT ESCAPE '\'
-//	        )
-//	        OR EXISTS (
-//	            SELECT 1
-//	            FROM JSONB_PATH_QUERY(scs.condition, '$.**.subjectExternalValues[*]') AS selector_value(value)
-//	            WHERE LOWER(selector_value.value #>> '{}') LIKE $3::TEXT ESCAPE '\'
-//	        )
-//	        OR EXISTS (
-//	            SELECT 1
-//	            FROM JSONB_PATH_QUERY(scs.condition, '$.**.subject_external_values[*]') AS selector_value(value)
-//	            WHERE LOWER(selector_value.value #>> '{}') LIKE $3::TEXT ESCAPE '\'
+//	            FROM JSONB_EACH_TEXT(COALESCE(scs.metadata -> 'labels', '{}'::JSONB)) AS label(key, value)
+//	            WHERE label.value ILIKE $3::TEXT ESCAPE '\'
 //	        )
 //	    )
 //	ORDER BY
@@ -510,8 +459,7 @@ type listSubjectConditionSetsRow struct {
 //	LIMIT $5
 //	OFFSET $4
 func (q *Queries) listSubjectConditionSets(ctx context.Context, arg listSubjectConditionSetsParams) ([]listSubjectConditionSetsRow, error) {
-	rows, err := q.db.Query(
-		ctx, listSubjectConditionSets,
+	rows, err := q.db.Query(ctx, listSubjectConditionSets,
 		arg.NamespaceID,
 		arg.NamespaceFqn,
 		arg.Search,
@@ -771,8 +719,7 @@ type listSubjectMappingsRow struct {
 //	LIMIT $4
 //	OFFSET $3
 func (q *Queries) listSubjectMappings(ctx context.Context, arg listSubjectMappingsParams) ([]listSubjectMappingsRow, error) {
-	rows, err := q.db.Query(
-		ctx, listSubjectMappings,
+	rows, err := q.db.Query(ctx, listSubjectMappings,
 		arg.NamespaceID,
 		arg.NamespaceFqn,
 		arg.Offset,
@@ -1080,8 +1027,7 @@ type updateSubjectMappingParams struct {
 //	SELECT cnt
 //	FROM update_count
 func (q *Queries) updateSubjectMapping(ctx context.Context, arg updateSubjectMappingParams) (int64, error) {
-	result, err := q.db.Exec(
-		ctx, updateSubjectMapping,
+	result, err := q.db.Exec(ctx, updateSubjectMapping,
 		arg.Metadata,
 		arg.SubjectConditionSetID,
 		arg.ID,

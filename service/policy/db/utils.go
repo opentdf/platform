@@ -175,13 +175,6 @@ func pgtypeSubstringSearchPattern(query string) pgtype.Text {
 	return pgtypeText("%" + escapeLikePattern(strings.ToLower(query)) + "%")
 }
 
-func pgtypeSubstringSearchPatternNoTrim(query string) pgtype.Text {
-	if query == "" {
-		return pgtype.Text{}
-	}
-	return pgtypeText("%" + escapeLikePattern(strings.ToLower(query)) + "%")
-}
-
 func escapeLikePattern(query string) string {
 	return strings.NewReplacer(
 		`\`, `\\`,

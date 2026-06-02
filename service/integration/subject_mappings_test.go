@@ -1482,19 +1482,23 @@ func (s *SubjectMappingsSuite) Test_ListSubjectConditionSets_NoNamespaceFilter_R
 	s.True(foundUnnamespaced)
 }
 
-func (s *SubjectMappingsSuite) Test_ListSubjectConditionSets_SearchBySelectorAndValues_Succeeds() {
+func (s *SubjectMappingsSuite) Test_ListSubjectConditionSets_SearchByMetadataLabelValues_PaginationSort_Succeeds() {
 	suffix := time.Now().UnixNano()
 	searchToken := fmt.Sprintf("dspx-scs-search-%d", suffix)
 
-	selectorMatch := s.newSearchTestSubjectConditionSet("."+searchToken+".department", []string{"engineering"}, "")
-	valueMatch := s.newSearchTestSubjectConditionSet(fmt.Sprintf(".dspx_scs_other_%d", suffix), []string{"team-" + searchToken}, "")
-	multiConditionMatch := s.newSearchTestSubjectConditionSet("."+searchToken+".manager", []string{"group-" + searchToken}, "")
-	nonMatch := s.newSearchTestSubjectConditionSet(fmt.Sprintf(".dspx_scs_nomatch_%d", suffix), []string{"finance"}, "")
-	defer s.deleteSortTestSubjectConditionSets([]string{
-		selectorMatch.GetId(),
-		valueMatch.GetId(),
-		multiConditionMatch.GetId(),
-		nonMatch.GetId(),
+	multiLabel := map[string]string{
+		"name":    "another",
+		"display": searchToken,
+	}
+	labelValueMatch := s.newSearchTestSubjectConditionSet(fmt.Sprintf(".dspx_scs_selector_%d", suffix), []string{"engineering"}, multiLabel, "")
+	anotherLabelValueMatch := s.newSearchTestSubjectConditionSet(fmt.Sprintf(".dspx_scs_other_%d", suffix), []string{"finance"}, map[string]string{"owner": "group-" + searchToken}, "")
+	labelKeyOnlyNonMatch := s.newSearchTestSubjectConditionSet(fmt.Sprintf(".dspx_scs_key_only_%d", suffix), []string{"legal"}, map[string]string{searchToken: "not-a-matching-value"}, "")
+	conditionOnlyNonMatch := s.newSearchTestSubjectConditionSet("."+searchToken+".department", []string{"value-" + searchToken}, map[string]string{"team": "finance"}, "")
+	defer s.deleteTestSCSs([]string{
+		labelValueMatch.GetId(),
+		anotherLabelValueMatch.GetId(),
+		labelKeyOnlyNonMatch.GetId(),
+		conditionOnlyNonMatch.GetId(),
 	})
 
 	listRsp, err := s.db.PolicyClient.ListSubjectConditionSets(s.ctx, &subjectmapping.ListSubjectConditionSetsRequest{
@@ -1504,27 +1508,55 @@ func (s *SubjectMappingsSuite) Test_ListSubjectConditionSets_SearchBySelectorAnd
 		},
 	})
 	s.Require().NoError(err)
-	s.NotNil(listRsp)
-
-	listedIDs := make([]string, 0, len(listRsp.GetSubjectConditionSets()))
-	for _, scs := range listRsp.GetSubjectConditionSets() {
-		listedIDs = append(listedIDs, scs.GetId())
-	}
-	s.ElementsMatch([]string{selectorMatch.GetId(), valueMatch.GetId(), multiConditionMatch.GetId()}, listedIDs)
-	s.NotContains(listedIDs, nonMatch.GetId())
-	s.Equal(int32(3), listRsp.GetPagination().GetTotal())
+	s.Require().NotNil(listRsp)
+	s.Require().Len(listRsp.GetSubjectConditionSets(), 2)
+	s.Equal(labelValueMatch.GetId(), listRsp.GetSubjectConditionSets()[0].GetId())
+	s.Equal(anotherLabelValueMatch.GetId(), listRsp.GetSubjectConditionSets()[1].GetId())
+	s.Equal(int32(2), listRsp.GetPagination().GetTotal())
 
 	firstPage, err := s.db.PolicyClient.ListSubjectConditionSets(s.ctx, &subjectmapping.ListSubjectConditionSetsRequest{
 		Search:     &policy.Search{Term: searchToken},
-		Pagination: &policy.PageRequest{Limit: 2},
+		Pagination: &policy.PageRequest{Limit: 1},
 		Sort: []*subjectmapping.SubjectConditionSetsSort{
 			{Field: subjectmapping.SortSubjectConditionSetsType_SORT_SUBJECT_CONDITION_SETS_TYPE_CREATED_AT, Direction: policy.SortDirection_SORT_DIRECTION_ASC},
 		},
 	})
 	s.Require().NoError(err)
-	s.Len(firstPage.GetSubjectConditionSets(), 2)
-	s.Equal(int32(3), firstPage.GetPagination().GetTotal())
-	s.Equal(int32(2), firstPage.GetPagination().GetNextOffset())
+	s.Len(firstPage.GetSubjectConditionSets(), 1)
+	s.Equal(labelValueMatch.GetId(), firstPage.GetSubjectConditionSets()[0].GetId())
+	s.Equal(int32(2), firstPage.GetPagination().GetTotal())
+	s.Equal(int32(1), firstPage.GetPagination().GetNextOffset())
+}
+
+func (s *SubjectMappingsSuite) Test_ListSubjectConditionSets_SearchEscapesLikeWildcardLiterals_Succeeds() {
+	suffix := time.Now().UnixNano()
+	conditionSetIDs := []string{
+		s.newSearchTestSubjectConditionSet(
+			fmt.Sprintf(".dspx_scs_like_a_%d", suffix),
+			[]string{"engineering"},
+			map[string]string{"team": fmt.Sprintf("wildcarda-%d", suffix)},
+			"",
+		).GetId(),
+		s.newSearchTestSubjectConditionSet(
+			fmt.Sprintf(".dspx_scs_like_b_%d", suffix),
+			[]string{"finance"},
+			map[string]string{"team": fmt.Sprintf("wildcardb-%d", suffix)},
+			"",
+		).GetId(),
+	}
+	defer s.deleteTestSCSs(conditionSetIDs)
+
+	for _, query := range []string{
+		fmt.Sprintf("wildcard_-%d", suffix),
+		fmt.Sprintf("wildcard%%-%d", suffix),
+	} {
+		listRsp, err := s.db.PolicyClient.ListSubjectConditionSets(s.ctx, &subjectmapping.ListSubjectConditionSetsRequest{
+			Search: &policy.Search{Term: query},
+		})
+		s.Require().NoError(err)
+		s.Empty(listRsp.GetSubjectConditionSets())
+		s.Equal(int32(0), listRsp.GetPagination().GetTotal())
+	}
 }
 
 func (s *SubjectMappingsSuite) Test_ListSubjectConditionSets_SearchCombinesWithNamespace_Succeeds() {
@@ -1532,14 +1564,14 @@ func (s *SubjectMappingsSuite) Test_ListSubjectConditionSets_SearchCombinesWithN
 	netNsID := s.exampleNetNsID()
 	searchToken := fmt.Sprintf("dspx-scs-namespace-search-%d", time.Now().UnixNano())
 
-	comSCS := s.newSearchTestSubjectConditionSet("."+searchToken, []string{"com-value"}, comNsID)
-	netSCS := s.newSearchTestSubjectConditionSet("."+searchToken, []string{"net-value"}, netNsID)
-	unnamespacedSCS := s.newSearchTestSubjectConditionSet("."+searchToken, []string{"unnamespaced-value"}, "")
-	defer s.deleteSortTestSubjectConditionSets([]string{comSCS.GetId(), netSCS.GetId(), unnamespacedSCS.GetId()})
+	comSCS := s.newSearchTestSubjectConditionSet(fmt.Sprintf(".dspx_scs_com_%d", time.Now().UnixNano()), []string{"com-value"}, map[string]string{"team": "com-" + searchToken}, comNsID)
+	netSCS := s.newSearchTestSubjectConditionSet(fmt.Sprintf(".dspx_scs_net_%d", time.Now().UnixNano()), []string{"net-value"}, map[string]string{"team": "net-" + searchToken}, netNsID)
+	unnamespacedSCS := s.newSearchTestSubjectConditionSet(fmt.Sprintf(".dspx_scs_global_%d", time.Now().UnixNano()), []string{"unnamespaced-value"}, map[string]string{"team": "global-" + searchToken}, "")
+	defer s.deleteTestSCSs([]string{comSCS.GetId(), netSCS.GetId(), unnamespacedSCS.GetId()})
 
 	listRsp, err := s.db.PolicyClient.ListSubjectConditionSets(s.ctx, &subjectmapping.ListSubjectConditionSetsRequest{
 		NamespaceId: comNsID,
-		Search:      &policy.Search{Term: searchToken},
+		Search:      &policy.Search{Term: "com-" + searchToken},
 	})
 	s.Require().NoError(err)
 	s.Require().Len(listRsp.GetSubjectConditionSets(), 1)
@@ -1549,9 +1581,9 @@ func (s *SubjectMappingsSuite) Test_ListSubjectConditionSets_SearchCombinesWithN
 }
 
 func (s *SubjectMappingsSuite) Test_ListSubjectConditionSets_SearchEmptyAndWhitespace_Succeeds() {
-	searchToken := fmt.Sprintf("dspx-scs-notrim-%d", time.Now().UnixNano())
-	created := s.newSearchTestSubjectConditionSet("."+searchToken, []string{"notrim-value"}, "")
-	defer s.deleteSortTestSubjectConditionSets([]string{created.GetId()})
+	searchToken := fmt.Sprintf("dspx-scs-trim-%d", time.Now().UnixNano())
+	created := s.newSearchTestSubjectConditionSet(fmt.Sprintf(".dspx_scs_trim_%d", time.Now().UnixNano()), []string{"trim-value"}, map[string]string{"team": searchToken}, "")
+	defer s.deleteTestSCSs([]string{created.GetId()})
 
 	noSearch, err := s.db.PolicyClient.ListSubjectConditionSets(s.ctx, &subjectmapping.ListSubjectConditionSetsRequest{})
 	s.Require().NoError(err)
@@ -1565,13 +1597,14 @@ func (s *SubjectMappingsSuite) Test_ListSubjectConditionSets_SearchEmptyAndWhite
 		Search: &policy.Search{Term: " " + searchToken},
 	})
 	s.Require().NoError(err)
-	s.Empty(leadingSpaceSearch.GetSubjectConditionSets())
-	s.Equal(int32(0), leadingSpaceSearch.GetPagination().GetTotal())
+	s.Require().Len(leadingSpaceSearch.GetSubjectConditionSets(), 1)
+	s.Equal(created.GetId(), leadingSpaceSearch.GetSubjectConditionSets()[0].GetId())
+	s.Equal(int32(1), leadingSpaceSearch.GetPagination().GetTotal())
 }
 
 func (s *SubjectMappingsSuite) Test_ListSubjectConditionSets_SortByCreatedAt_ASC() {
 	ids := s.createSortTestSubjectConditionSets([]string{"sort-scs-created-asc-0", "sort-scs-created-asc-1", "sort-scs-created-asc-2"})
-	defer s.deleteSortTestSubjectConditionSets(ids)
+	defer s.deleteTestSCSs(ids)
 
 	listRsp, err := s.db.PolicyClient.ListSubjectConditionSets(s.ctx, &subjectmapping.ListSubjectConditionSetsRequest{
 		Sort: []*subjectmapping.SubjectConditionSetsSort{
@@ -1587,7 +1620,7 @@ func (s *SubjectMappingsSuite) Test_ListSubjectConditionSets_SortByCreatedAt_ASC
 
 func (s *SubjectMappingsSuite) Test_ListSubjectConditionSets_SortByCreatedAt_DESC() {
 	ids := s.createSortTestSubjectConditionSets([]string{"sort-scs-created-desc-0", "sort-scs-created-desc-1", "sort-scs-created-desc-2"})
-	defer s.deleteSortTestSubjectConditionSets(ids)
+	defer s.deleteTestSCSs(ids)
 
 	listRsp, err := s.db.PolicyClient.ListSubjectConditionSets(s.ctx, &subjectmapping.ListSubjectConditionSetsRequest{
 		Sort: []*subjectmapping.SubjectConditionSetsSort{
@@ -1603,7 +1636,7 @@ func (s *SubjectMappingsSuite) Test_ListSubjectConditionSets_SortByCreatedAt_DES
 
 func (s *SubjectMappingsSuite) Test_ListSubjectConditionSets_SortByUpdatedAt_DESC() {
 	ids := s.createSortTestSubjectConditionSets([]string{"sort-scs-updated-desc-0", "sort-scs-updated-desc-1", "sort-scs-updated-desc-2"})
-	defer s.deleteSortTestSubjectConditionSets(ids)
+	defer s.deleteTestSCSs(ids)
 
 	// Update the first SCS so its updated_at is the most recent
 	time.Sleep(5 * time.Millisecond)
@@ -1630,7 +1663,7 @@ func (s *SubjectMappingsSuite) Test_ListSubjectConditionSets_SortByUpdatedAt_DES
 
 func (s *SubjectMappingsSuite) Test_ListSubjectConditionSets_SortByUpdatedAt_ASC() {
 	ids := s.createSortTestSubjectConditionSets([]string{"sort-scs-updated-asc-0", "sort-scs-updated-asc-1", "sort-scs-updated-asc-2"})
-	defer s.deleteSortTestSubjectConditionSets(ids)
+	defer s.deleteTestSCSs(ids)
 
 	// Update the last SCS so its updated_at is the most recent
 	time.Sleep(5 * time.Millisecond)
@@ -1681,7 +1714,7 @@ func (s *SubjectMappingsSuite) Test_ListSubjectConditionSets_SortTieBreaker_Crea
 		s.Require().NoError(err)
 		ids[i] = created.GetId()
 	}
-	defer s.deleteSortTestSubjectConditionSets(ids)
+	defer s.deleteTestSCSs(ids)
 
 	s.Require().NoError(forceCreatedAtTie(s.ctx, s.db, "subject_condition_set", ids))
 
@@ -1700,7 +1733,7 @@ func (s *SubjectMappingsSuite) Test_ListSubjectConditionSets_SortTieBreaker_Crea
 
 func (s *SubjectMappingsSuite) Test_ListSubjectConditionSets_SortByUnspecifiedField_DefaultsToCreatedAt() {
 	ids := s.createSortTestSubjectConditionSets([]string{"unspecified-field-scs-0", "unspecified-field-scs-1", "unspecified-field-scs-2"})
-	defer s.deleteSortTestSubjectConditionSets(ids)
+	defer s.deleteTestSCSs(ids)
 
 	listRsp, err := s.db.PolicyClient.ListSubjectConditionSets(s.ctx, &subjectmapping.ListSubjectConditionSetsRequest{
 		Sort: []*subjectmapping.SubjectConditionSetsSort{
@@ -1716,7 +1749,7 @@ func (s *SubjectMappingsSuite) Test_ListSubjectConditionSets_SortByUnspecifiedFi
 
 func (s *SubjectMappingsSuite) Test_ListSubjectConditionSets_SortByUnspecifiedDirection_DefaultsToDESC() {
 	ids := s.createSortTestSubjectConditionSets([]string{"unspecified-dir-scs-0", "unspecified-dir-scs-1", "unspecified-dir-scs-2"})
-	defer s.deleteSortTestSubjectConditionSets(ids)
+	defer s.deleteTestSCSs(ids)
 
 	listRsp, err := s.db.PolicyClient.ListSubjectConditionSets(s.ctx, &subjectmapping.ListSubjectConditionSetsRequest{
 		Sort: []*subjectmapping.SubjectConditionSetsSort{
@@ -1732,7 +1765,7 @@ func (s *SubjectMappingsSuite) Test_ListSubjectConditionSets_SortByUnspecifiedDi
 
 func (s *SubjectMappingsSuite) Test_ListSubjectConditionSets_SortByBothUnspecified_DefaultsToCreatedAtDESC() {
 	ids := s.createSortTestSubjectConditionSets([]string{"both-unspecified-scs-0", "both-unspecified-scs-1", "both-unspecified-scs-2"})
-	defer s.deleteSortTestSubjectConditionSets(ids)
+	defer s.deleteTestSCSs(ids)
 
 	listRsp, err := s.db.PolicyClient.ListSubjectConditionSets(s.ctx, &subjectmapping.ListSubjectConditionSetsRequest{
 		Sort: []*subjectmapping.SubjectConditionSetsSort{
@@ -1748,7 +1781,7 @@ func (s *SubjectMappingsSuite) Test_ListSubjectConditionSets_SortByBothUnspecifi
 
 func (s *SubjectMappingsSuite) Test_ListSubjectConditionSets_SortOmitted() {
 	ids := s.createSortTestSubjectConditionSets([]string{"sort-omitted-scs-0", "sort-omitted-scs-1", "sort-omitted-scs-2"})
-	defer s.deleteSortTestSubjectConditionSets(ids)
+	defer s.deleteTestSCSs(ids)
 
 	listRsp, err := s.db.PolicyClient.ListSubjectConditionSets(s.ctx, &subjectmapping.ListSubjectConditionSetsRequest{})
 	s.Require().NoError(err)
@@ -2946,7 +2979,7 @@ func (s *SubjectMappingsSuite) newSCSInNamespace(nsID string) *policy.SubjectCon
 	return scs
 }
 
-func (s *SubjectMappingsSuite) newSearchTestSubjectConditionSet(selector string, values []string, namespaceID string) *policy.SubjectConditionSet {
+func (s *SubjectMappingsSuite) newSearchTestSubjectConditionSet(selector string, values []string, labels map[string]string, namespaceID string) *policy.SubjectConditionSet {
 	scs, err := s.db.PolicyClient.CreateSubjectConditionSet(s.ctx, &subjectmapping.SubjectConditionSetCreate{
 		SubjectSets: []*policy.SubjectSet{
 			{
@@ -2963,6 +2996,9 @@ func (s *SubjectMappingsSuite) newSearchTestSubjectConditionSet(selector string,
 					},
 				},
 			},
+		},
+		Metadata: &common.MetadataMutable{
+			Labels: labels,
 		},
 	}, namespaceID, "")
 	s.Require().NoError(err)
@@ -3047,8 +3083,8 @@ func (s *SubjectMappingsSuite) deleteSortTestSubjectMappings(ids []string) {
 	}
 }
 
-// deleteSortTestSubjectConditionSets cleans up subject condition sets created by sort tests.
-func (s *SubjectMappingsSuite) deleteSortTestSubjectConditionSets(ids []string) {
+// deleteTestSCSs cleans up subject condition sets created by sort tests.
+func (s *SubjectMappingsSuite) deleteTestSCSs(ids []string) {
 	for _, id := range ids {
 		_, err := s.db.PolicyClient.DeleteSubjectConditionSet(s.ctx, id)
 		s.Require().NoError(err)

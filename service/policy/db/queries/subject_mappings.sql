@@ -31,33 +31,8 @@ WHERE
         sqlc.narg('search')::TEXT IS NULL
         OR EXISTS (
             SELECT 1
-            FROM JSONB_PATH_QUERY(scs.condition, '$.**.subjectExternalSelectorValue') AS selector_value(value)
-            WHERE LOWER(selector_value.value #>> '{}') LIKE sqlc.narg('search')::TEXT ESCAPE '\'
-        )
-        OR EXISTS (
-            SELECT 1
-            FROM JSONB_PATH_QUERY(scs.condition, '$.**.subject_external_selector_value') AS selector_value(value)
-            WHERE LOWER(selector_value.value #>> '{}') LIKE sqlc.narg('search')::TEXT ESCAPE '\'
-        )
-        OR EXISTS (
-            SELECT 1
-            FROM JSONB_PATH_QUERY(scs.condition, '$.**.subjectExternalSelectorValues[*]') AS selector_value(value)
-            WHERE LOWER(selector_value.value #>> '{}') LIKE sqlc.narg('search')::TEXT ESCAPE '\'
-        )
-        OR EXISTS (
-            SELECT 1
-            FROM JSONB_PATH_QUERY(scs.condition, '$.**.subject_external_selector_values[*]') AS selector_value(value)
-            WHERE LOWER(selector_value.value #>> '{}') LIKE sqlc.narg('search')::TEXT ESCAPE '\'
-        )
-        OR EXISTS (
-            SELECT 1
-            FROM JSONB_PATH_QUERY(scs.condition, '$.**.subjectExternalValues[*]') AS selector_value(value)
-            WHERE LOWER(selector_value.value #>> '{}') LIKE sqlc.narg('search')::TEXT ESCAPE '\'
-        )
-        OR EXISTS (
-            SELECT 1
-            FROM JSONB_PATH_QUERY(scs.condition, '$.**.subject_external_values[*]') AS selector_value(value)
-            WHERE LOWER(selector_value.value #>> '{}') LIKE sqlc.narg('search')::TEXT ESCAPE '\'
+            FROM JSONB_EACH_TEXT(COALESCE(scs.metadata -> 'labels', '{}'::JSONB)) AS label(key, value)
+            WHERE label.value ILIKE sqlc.narg('search')::TEXT ESCAPE '\'
         )
     )
 ORDER BY

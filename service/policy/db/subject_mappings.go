@@ -124,7 +124,7 @@ func (c PolicyDBClient) ListSubjectConditionSets(ctx context.Context, r *subject
 	}
 
 	sortField, sortDirection := GetSubjectConditionSetsSortParams(r.GetSort())
-	search := pgtypeSubstringSearchPatternNoTrim(r.GetSearch().GetTerm())
+	search := pgtypeSubstringSearchPattern(r.GetSearch().GetTerm())
 
 	list, err := c.queries.listSubjectConditionSets(ctx, listSubjectConditionSetsParams{
 		NamespaceID:   pgtypeUUID(r.GetNamespaceId()),

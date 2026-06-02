@@ -641,9 +641,18 @@ WITH params AS (
         COALESCE(NULLIF($3::text, ''), 'created_at') AS resolved_field,
         COALESCE(NULLIF($4::text, ''), 'DESC') AS resolved_direction
 ),
+filtered AS (
+    SELECT kas.id, kas.uri, kas.public_key, kas.metadata, kas.created_at, kas.updated_at, kas.name, kas.source_type
+    FROM key_access_servers AS kas
+    WHERE (
+        $5::TEXT IS NULL
+        OR kas.name LIKE $5::TEXT ESCAPE '\'
+        OR kas.uri ILIKE $5::TEXT ESCAPE '\' -- Use slower case-insensitive matching, URIs can be registered with variable casing.
+    )
+),
 counted AS (
     SELECT COUNT(kas.id) AS total
-    FROM key_access_servers AS kas
+    FROM filtered AS kas
 )
 SELECT kas.id,
     kas.uri,
@@ -653,7 +662,7 @@ SELECT kas.id,
     JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', kas.metadata -> 'labels', 'created_at', kas.created_at, 'updated_at', kas.updated_at)) AS metadata,
     kask_keys.keys,
     counted.total
-FROM key_access_servers AS kas
+FROM filtered AS kas
 CROSS JOIN counted
 CROSS JOIN params p
 LEFT JOIN (
@@ -689,10 +698,11 @@ OFFSET $1
 `
 
 type listKeyAccessServersParams struct {
-	Offset        int32  `json:"offset_"`
-	Limit         int32  `json:"limit_"`
-	SortField     string `json:"sort_field"`
-	SortDirection string `json:"sort_direction"`
+	Offset        int32       `json:"offset_"`
+	Limit         int32       `json:"limit_"`
+	SortField     string      `json:"sort_field"`
+	SortDirection string      `json:"sort_direction"`
+	Search        pgtype.Text `json:"search"`
 }
 
 type listKeyAccessServersRow struct {
@@ -713,9 +723,18 @@ type listKeyAccessServersRow struct {
 //	        COALESCE(NULLIF($3::text, ''), 'created_at') AS resolved_field,
 //	        COALESCE(NULLIF($4::text, ''), 'DESC') AS resolved_direction
 //	),
+//	filtered AS (
+//	    SELECT kas.id, kas.uri, kas.public_key, kas.metadata, kas.created_at, kas.updated_at, kas.name, kas.source_type
+//	    FROM key_access_servers AS kas
+//	    WHERE (
+//	        $5::TEXT IS NULL
+//	        OR kas.name LIKE $5::TEXT ESCAPE '\'
+//	        OR kas.uri ILIKE $5::TEXT ESCAPE '\' -- Use slower case-insensitive matching, URIs can be registered with variable casing.
+//	    )
+//	),
 //	counted AS (
 //	    SELECT COUNT(kas.id) AS total
-//	    FROM key_access_servers AS kas
+//	    FROM filtered AS kas
 //	)
 //	SELECT kas.id,
 //	    kas.uri,
@@ -725,7 +744,7 @@ type listKeyAccessServersRow struct {
 //	    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', kas.metadata -> 'labels', 'created_at', kas.created_at, 'updated_at', kas.updated_at)) AS metadata,
 //	    kask_keys.keys,
 //	    counted.total
-//	FROM key_access_servers AS kas
+//	FROM filtered AS kas
 //	CROSS JOIN counted
 //	CROSS JOIN params p
 //	LEFT JOIN (
@@ -764,6 +783,7 @@ func (q *Queries) listKeyAccessServers(ctx context.Context, arg listKeyAccessSer
 		arg.Limit,
 		arg.SortField,
 		arg.SortDirection,
+		arg.Search,
 	)
 	if err != nil {
 		return nil, err

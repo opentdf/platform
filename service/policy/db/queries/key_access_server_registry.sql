@@ -73,9 +73,18 @@ WITH params AS (
         COALESCE(NULLIF(@sort_field::text, ''), 'created_at') AS resolved_field,
         COALESCE(NULLIF(@sort_direction::text, ''), 'DESC') AS resolved_direction
 ),
+filtered AS (
+    SELECT kas.*
+    FROM key_access_servers AS kas
+    WHERE (
+        sqlc.narg('search')::TEXT IS NULL
+        OR kas.name LIKE sqlc.narg('search')::TEXT ESCAPE '\'
+        OR kas.uri ILIKE sqlc.narg('search')::TEXT ESCAPE '\' -- Use slower case-insensitive matching, URIs can be registered with variable casing.
+    )
+),
 counted AS (
     SELECT COUNT(kas.id) AS total
-    FROM key_access_servers AS kas
+    FROM filtered AS kas
 )
 SELECT kas.id,
     kas.uri,
@@ -85,7 +94,7 @@ SELECT kas.id,
     JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', kas.metadata -> 'labels', 'created_at', kas.created_at, 'updated_at', kas.updated_at)) AS metadata,
     kask_keys.keys,
     counted.total
-FROM key_access_servers AS kas
+FROM filtered AS kas
 CROSS JOIN counted
 CROSS JOIN params p
 LEFT JOIN (

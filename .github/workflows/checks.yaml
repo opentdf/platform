@@ -114,7 +114,7 @@ jobs:
         if: matrix.directory == 'service'
         uses: sqlc-dev/setup-sqlc@bac53b7fb28c039a6c7f5736fd1e89744021bdd6 # v5.0.0
         with:
-          sqlc-version: '1.31.0'
+          sqlc-version: '1.31.1'
       - name: verify sqlc generate
         if: matrix.directory == 'service'
         run: make policy-sql-gen

@@ -361,10 +361,12 @@ func (c PolicyDBClient) ListSubjectMappings(ctx context.Context, r *subjectmappi
 	}
 
 	sortField, sortDirection := GetSubjectMappingsSortParams(r.GetSort())
+	search := pgtypeSubstringSearchPattern(r.GetSearch().GetTerm())
 
 	list, err := c.queries.listSubjectMappings(ctx, listSubjectMappingsParams{
 		NamespaceID:   pgtypeUUID(r.GetNamespaceId()),
 		NamespaceFqn:  pgtypeText(r.GetNamespaceFqn()),
+		Search:        search,
 		Limit:         limit,
 		Offset:        offset,
 		SortField:     sortField,

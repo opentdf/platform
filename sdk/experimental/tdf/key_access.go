@@ -265,7 +265,7 @@ func wrapKeyWithMLKEM(ktype ocrypto.KeyType, kasPublicKeyPEM string, symKey []by
 	var wrappedDER []byte
 	var err error
 
-	switch ktype {
+	switch ktype { //nolint:exhaustive // only handle mlkem types
 	case ocrypto.MLKEM768Key:
 		wrappedDER, err = ocrypto.MLKEM768WrapDEK([]byte(kasPublicKeyPEM), symKey)
 	case ocrypto.MLKEM1024Key:

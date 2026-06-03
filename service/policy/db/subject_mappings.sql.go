@@ -101,8 +101,7 @@ type createSubjectMappingParams struct {
 //	)
 //	SELECT id FROM inserted_mapping
 func (q *Queries) createSubjectMapping(ctx context.Context, arg createSubjectMappingParams) (string, error) {
-	row := q.db.QueryRow(
-		ctx, createSubjectMapping,
+	row := q.db.QueryRow(ctx, createSubjectMapping,
 		arg.AttributeValueID,
 		arg.Metadata,
 		arg.SubjectConditionSetID,
@@ -460,8 +459,7 @@ type listSubjectConditionSetsRow struct {
 //	LIMIT $5
 //	OFFSET $4
 func (q *Queries) listSubjectConditionSets(ctx context.Context, arg listSubjectConditionSetsParams) ([]listSubjectConditionSetsRow, error) {
-	rows, err := q.db.Query(
-		ctx, listSubjectConditionSets,
+	rows, err := q.db.Query(ctx, listSubjectConditionSets,
 		arg.NamespaceID,
 		arg.NamespaceFqn,
 		arg.Search,
@@ -530,7 +528,6 @@ subject_actions AS (
     FROM subject_mappings sm
     LEFT JOIN attribute_values av ON sm.attribute_value_id = av.id
     LEFT JOIN attribute_fqns fqns ON av.id = fqns.value_id
-    LEFT JOIN subject_condition_set scs ON scs.id = sm.subject_condition_set_id
     LEFT JOIN attribute_namespaces sm_ns ON sm_ns.id = sm.namespace_id
     LEFT JOIN attribute_fqns sm_ns_fqns ON sm_ns_fqns.namespace_id = sm_ns.id AND sm_ns_fqns.attribute_id IS NULL AND sm_ns_fqns.value_id IS NULL
     WHERE
@@ -539,41 +536,17 @@ subject_actions AS (
             OR sm.namespace_id = $5::uuid
             OR sm_ns_fqns.fqn = $6::text
         )
-        AND (
-            $7::TEXT IS NULL
-            OR LOWER(fqns.fqn) LIKE $7::TEXT ESCAPE '\'
-            OR EXISTS (
-                SELECT 1
-                FROM subject_mapping_actions search_sma
-                JOIN actions search_a ON search_a.id = search_sma.action_id
-                WHERE search_sma.subject_mapping_id = sm.id
-                    AND LOWER(search_a.name) LIKE $7::TEXT ESCAPE '\'
+        AND CASE
+            WHEN $7::TEXT IS NULL THEN TRUE
+            ELSE (
+                fqns.fqn ILIKE $7::TEXT ESCAPE '\'
+                OR EXISTS (
+                    SELECT 1
+                    FROM JSONB_EACH_TEXT(COALESCE(sm.metadata -> 'labels', '{}'::JSONB)) AS label(key, value)
+                    WHERE label.value ILIKE $7::TEXT ESCAPE '\'
+                )
             )
-            OR EXISTS (
-                SELECT 1
-                FROM JSONB_ARRAY_ELEMENTS(COALESCE(scs.condition, '[]'::JSONB)) AS ss(subject_set)
-                CROSS JOIN LATERAL JSONB_ARRAY_ELEMENTS(
-                    COALESCE(ss.subject_set->'conditionGroups', ss.subject_set->'condition_groups', '[]'::JSONB)
-                ) AS cg(condition_group)
-                CROSS JOIN LATERAL JSONB_ARRAY_ELEMENTS(COALESCE(cg.condition_group->'conditions', '[]'::JSONB)) AS con(condition)
-                WHERE
-                    LOWER(con.condition->>'subjectExternalSelectorValue') LIKE $7::TEXT ESCAPE '\'
-                    OR LOWER(con.condition->>'subject_external_selector_value') LIKE $7::TEXT ESCAPE '\'
-                    OR EXISTS (
-                        SELECT 1
-                        FROM JSONB_ARRAY_ELEMENTS_TEXT(
-                            COALESCE(
-                                con.condition->'subjectExternalValues',
-                                con.condition->'subject_external_values',
-                                con.condition->'subjectExternalSelectorValues',
-                                con.condition->'subject_external_selector_values',
-                                '[]'::JSONB
-                            )
-                        ) AS external_value(value)
-                        WHERE LOWER(external_value.value) LIKE $7::TEXT ESCAPE '\'
-                    )
-            )
-        )
+        END
 ), counted AS (
     SELECT COUNT(id) AS total
     FROM filtered_subject_mappings
@@ -696,7 +669,6 @@ type listSubjectMappingsRow struct {
 //	    FROM subject_mappings sm
 //	    LEFT JOIN attribute_values av ON sm.attribute_value_id = av.id
 //	    LEFT JOIN attribute_fqns fqns ON av.id = fqns.value_id
-//	    LEFT JOIN subject_condition_set scs ON scs.id = sm.subject_condition_set_id
 //	    LEFT JOIN attribute_namespaces sm_ns ON sm_ns.id = sm.namespace_id
 //	    LEFT JOIN attribute_fqns sm_ns_fqns ON sm_ns_fqns.namespace_id = sm_ns.id AND sm_ns_fqns.attribute_id IS NULL AND sm_ns_fqns.value_id IS NULL
 //	    WHERE
@@ -705,41 +677,17 @@ type listSubjectMappingsRow struct {
 //	            OR sm.namespace_id = $5::uuid
 //	            OR sm_ns_fqns.fqn = $6::text
 //	        )
-//	        AND (
-//	            $7::TEXT IS NULL
-//	            OR LOWER(fqns.fqn) LIKE $7::TEXT ESCAPE '\'
-//	            OR EXISTS (
-//	                SELECT 1
-//	                FROM subject_mapping_actions search_sma
-//	                JOIN actions search_a ON search_a.id = search_sma.action_id
-//	                WHERE search_sma.subject_mapping_id = sm.id
-//	                    AND LOWER(search_a.name) LIKE $7::TEXT ESCAPE '\'
+//	        AND CASE
+//	            WHEN $7::TEXT IS NULL THEN TRUE
+//	            ELSE (
+//	                fqns.fqn ILIKE $7::TEXT ESCAPE '\'
+//	                OR EXISTS (
+//	                    SELECT 1
+//	                    FROM JSONB_EACH_TEXT(COALESCE(sm.metadata -> 'labels', '{}'::JSONB)) AS label(key, value)
+//	                    WHERE label.value ILIKE $7::TEXT ESCAPE '\'
+//	                )
 //	            )
-//	            OR EXISTS (
-//	                SELECT 1
-//	                FROM JSONB_ARRAY_ELEMENTS(COALESCE(scs.condition, '[]'::JSONB)) AS ss(subject_set)
-//	                CROSS JOIN LATERAL JSONB_ARRAY_ELEMENTS(
-//	                    COALESCE(ss.subject_set->'conditionGroups', ss.subject_set->'condition_groups', '[]'::JSONB)
-//	                ) AS cg(condition_group)
-//	                CROSS JOIN LATERAL JSONB_ARRAY_ELEMENTS(COALESCE(cg.condition_group->'conditions', '[]'::JSONB)) AS con(condition)
-//	                WHERE
-//	                    LOWER(con.condition->>'subjectExternalSelectorValue') LIKE $7::TEXT ESCAPE '\'
-//	                    OR LOWER(con.condition->>'subject_external_selector_value') LIKE $7::TEXT ESCAPE '\'
-//	                    OR EXISTS (
-//	                        SELECT 1
-//	                        FROM JSONB_ARRAY_ELEMENTS_TEXT(
-//	                            COALESCE(
-//	                                con.condition->'subjectExternalValues',
-//	                                con.condition->'subject_external_values',
-//	                                con.condition->'subjectExternalSelectorValues',
-//	                                con.condition->'subject_external_selector_values',
-//	                                '[]'::JSONB
-//	                            )
-//	                        ) AS external_value(value)
-//	                        WHERE LOWER(external_value.value) LIKE $7::TEXT ESCAPE '\'
-//	                    )
-//	            )
-//	        )
+//	        END
 //	), counted AS (
 //	    SELECT COUNT(id) AS total
 //	    FROM filtered_subject_mappings
@@ -802,8 +750,7 @@ type listSubjectMappingsRow struct {
 //	LIMIT $2
 //	OFFSET $1
 func (q *Queries) listSubjectMappings(ctx context.Context, arg listSubjectMappingsParams) ([]listSubjectMappingsRow, error) {
-	rows, err := q.db.Query(
-		ctx, listSubjectMappings,
+	rows, err := q.db.Query(ctx, listSubjectMappings,
 		arg.Offset,
 		arg.Limit,
 		arg.SortField,
@@ -1112,8 +1059,7 @@ type updateSubjectMappingParams struct {
 //	SELECT cnt
 //	FROM update_count
 func (q *Queries) updateSubjectMapping(ctx context.Context, arg updateSubjectMappingParams) (int64, error) {
-	result, err := q.db.Exec(
-		ctx, updateSubjectMapping,
+	result, err := q.db.Exec(ctx, updateSubjectMapping,
 		arg.Metadata,
 		arg.SubjectConditionSetID,
 		arg.ID,

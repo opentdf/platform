@@ -1041,25 +1041,30 @@ func (s *SubjectMappingsSuite) Test_ListSubjectMappings_NoNamespaceFilter_Return
 	s.True(foundUnnamespaced)
 }
 
-func (s *SubjectMappingsSuite) Test_ListSubjectMappings_SearchByFields_Succeeds() {
+func (s *SubjectMappingsSuite) Test_ListSubjectMappings_SearchByAttributeValueFQNAndLabels_Succeeds() {
 	suffix := time.Now().UnixNano()
 	ns, values := s.createSearchSubjectMappingNamespace(suffix, []string{
 		fmt.Sprintf("fqn-only-%d", suffix),
-		fmt.Sprintf("action-holder-%d", suffix),
-		fmt.Sprintf("selector-holder-%d", suffix),
-		fmt.Sprintf("external-holder-%d", suffix),
+		fmt.Sprintf("label-holder-%d", suffix),
+		fmt.Sprintf("label-key-holder-%d", suffix),
+		fmt.Sprintf("condition-holder-%d", suffix),
 		fmt.Sprintf("wildcarda-%d", suffix),
+		fmt.Sprintf("unmatched-%d", suffix),
 	})
 	defer s.deleteSearchSubjectMappingNamespace(ns)
 
-	fqnSM := s.createSearchSubjectMapping(ns.GetId(), values[0].GetId(), ".fqn-holder", []string{"fqn-holder@example.com"}, "read")
 	actionToken := fmt.Sprintf("action-only-%d", suffix)
-	actionSM := s.createSearchSubjectMapping(ns.GetId(), values[1].GetId(), ".action-holder", []string{"action-holder@example.com"}, actionToken)
+	labelToken := fmt.Sprintf("label-only-%d", suffix)
+	labelKeyToken := fmt.Sprintf("label-key-only-%d", suffix)
 	selectorToken := fmt.Sprintf(".selector-only-%d", suffix)
-	selectorSM := s.createSearchSubjectMapping(ns.GetId(), values[2].GetId(), selectorToken, []string{"selector-holder@example.com"}, "read")
 	externalToken := fmt.Sprintf("external-only-%d@example.com", suffix)
-	externalSM := s.createSearchSubjectMapping(ns.GetId(), values[3].GetId(), ".external-holder", []string{externalToken}, "read")
-	s.createSearchSubjectMapping(ns.GetId(), values[4].GetId(), ".wildcard-holder", []string{fmt.Sprintf("wildcarda-%d@example.com", suffix)}, "read")
+
+	fqnSM := s.createSearchSubjectMapping(ns.GetId(), values[0].GetId(), ".fqn-holder", []string{"fqn-holder@example.com"}, "read", nil)
+	labelSM := s.createSearchSubjectMapping(ns.GetId(), values[1].GetId(), ".label-holder", []string{"label-holder@example.com"}, actionToken, map[string]string{"search-label": labelToken})
+	s.createSearchSubjectMapping(ns.GetId(), values[2].GetId(), ".label-key-holder", []string{"label-key-holder@example.com"}, "read", map[string]string{labelKeyToken: "not-searchable-by-key"})
+	s.createSearchSubjectMapping(ns.GetId(), values[3].GetId(), selectorToken, []string{externalToken}, "read", nil)
+	s.createSearchSubjectMapping(ns.GetId(), values[4].GetId(), ".wildcard-holder", []string{fmt.Sprintf("wildcarda-%d@example.com", suffix)}, "read", map[string]string{"wildcard": fmt.Sprintf("wildcarda-%d", suffix)})
+	s.createSearchSubjectMapping(ns.GetId(), values[5].GetId(), ".unmatched", []string{"unmatched@example.com"}, "read", map[string]string{"unused": fmt.Sprintf("unused-%d", suffix)})
 
 	tests := []struct {
 		name string
@@ -1067,9 +1072,7 @@ func (s *SubjectMappingsSuite) Test_ListSubjectMappings_SearchByFields_Succeeds(
 		id   string
 	}{
 		{name: "attribute value fqn", term: strings.ToUpper(values[0].GetFqn()), id: fqnSM.GetId()},
-		{name: "action name", term: strings.ToUpper(actionToken), id: actionSM.GetId()},
-		{name: "subject external selector value", term: strings.ToUpper(selectorToken), id: selectorSM.GetId()},
-		{name: "subject external values", term: strings.ToUpper(externalToken), id: externalSM.GetId()},
+		{name: "metadata label value", term: strings.ToUpper(labelToken), id: labelSM.GetId()},
 	}
 
 	for _, tc := range tests {
@@ -1085,6 +1088,21 @@ func (s *SubjectMappingsSuite) Test_ListSubjectMappings_SearchByFields_Succeeds(
 		})
 	}
 
+	for _, term := range []string{
+		actionToken,
+		labelKeyToken,
+		selectorToken,
+		externalToken,
+	} {
+		list, err := s.db.PolicyClient.ListSubjectMappings(s.ctx, &subjectmapping.ListSubjectMappingsRequest{
+			NamespaceId: ns.GetId(),
+			Search:      &policy.Search{Term: term},
+		})
+		s.Require().NoError(err)
+		s.Empty(list.GetSubjectMappings())
+		s.Equal(int32(0), list.GetPagination().GetTotal())
+	}
+
 	wildcardSearch, err := s.db.PolicyClient.ListSubjectMappings(s.ctx, &subjectmapping.ListSubjectMappingsRequest{
 		NamespaceId: ns.GetId(),
 		Search:      &policy.Search{Term: fmt.Sprintf("wildcard_-%d", suffix)},
@@ -1095,11 +1113,12 @@ func (s *SubjectMappingsSuite) Test_ListSubjectMappings_SearchByFields_Succeeds(
 
 	spacePaddedSearch, err := s.db.PolicyClient.ListSubjectMappings(s.ctx, &subjectmapping.ListSubjectMappingsRequest{
 		NamespaceId: ns.GetId(),
-		Search:      &policy.Search{Term: " " + actionToken + " "},
+		Search:      &policy.Search{Term: " " + labelToken + " "},
 	})
 	s.Require().NoError(err)
-	s.Empty(spacePaddedSearch.GetSubjectMappings())
-	s.Equal(int32(0), spacePaddedSearch.GetPagination().GetTotal())
+	s.Require().Len(spacePaddedSearch.GetSubjectMappings(), 1)
+	s.Equal(labelSM.GetId(), spacePaddedSearch.GetSubjectMappings()[0].GetId())
+	s.Equal(int32(1), spacePaddedSearch.GetPagination().GetTotal())
 }
 
 func (s *SubjectMappingsSuite) Test_ListSubjectMappings_SearchCombinesWithNamespace_Succeeds() {
@@ -1111,8 +1130,8 @@ func (s *SubjectMappingsSuite) Test_ListSubjectMappings_SearchCombinesWithNamesp
 	secondNS, secondValues := s.createSearchSubjectMappingNamespace(suffix+1, []string{fmt.Sprintf("second-%d", suffix)})
 	defer s.deleteSearchSubjectMappingNamespace(secondNS)
 
-	firstSM := s.createSearchSubjectMapping(firstNS.GetId(), firstValues[0].GetId(), ".first", []string{"first@example.com"}, searchToken)
-	secondSM := s.createSearchSubjectMapping(secondNS.GetId(), secondValues[0].GetId(), ".second", []string{"second@example.com"}, searchToken)
+	firstSM := s.createSearchSubjectMapping(firstNS.GetId(), firstValues[0].GetId(), ".first", []string{"first@example.com"}, "read", map[string]string{"search": searchToken})
+	secondSM := s.createSearchSubjectMapping(secondNS.GetId(), secondValues[0].GetId(), ".second", []string{"second@example.com"}, "read", map[string]string{"search": searchToken})
 
 	byFirstNS, err := s.db.PolicyClient.ListSubjectMappings(s.ctx, &subjectmapping.ListSubjectMappingsRequest{
 		NamespaceId: firstNS.GetId(),
@@ -1137,7 +1156,7 @@ func (s *SubjectMappingsSuite) Test_ListSubjectMappings_SearchEmptyQuery_Succeed
 	suffix := time.Now().UnixNano()
 	ns, values := s.createSearchSubjectMappingNamespace(suffix, []string{fmt.Sprintf("empty-search-%d", suffix)})
 	defer s.deleteSearchSubjectMappingNamespace(ns)
-	s.createSearchSubjectMapping(ns.GetId(), values[0].GetId(), ".empty-search", []string{"empty-search@example.com"}, "read")
+	s.createSearchSubjectMapping(ns.GetId(), values[0].GetId(), ".empty-search", []string{"empty-search@example.com"}, "read", nil)
 
 	noSearch, err := s.db.PolicyClient.ListSubjectMappings(s.ctx, &subjectmapping.ListSubjectMappingsRequest{
 		NamespaceId: ns.GetId(),
@@ -1168,9 +1187,9 @@ func (s *SubjectMappingsSuite) Test_ListSubjectMappings_SearchPaginationAppliesA
 		if i > 0 {
 			time.Sleep(5 * time.Millisecond)
 		}
-		ids[i] = s.createSearchSubjectMapping(ns.GetId(), values[i].GetId(), fmt.Sprintf(".page-%d", i), []string{fmt.Sprintf("page-%d@example.com", i)}, searchToken).GetId()
+		ids[i] = s.createSearchSubjectMapping(ns.GetId(), values[i].GetId(), fmt.Sprintf(".page-%d", i), []string{fmt.Sprintf("page-%d@example.com", i)}, "read", map[string]string{"search": searchToken}).GetId()
 	}
-	s.createSearchSubjectMapping(ns.GetId(), values[3].GetId(), ".page-other", []string{"page-other@example.com"}, "read")
+	s.createSearchSubjectMapping(ns.GetId(), values[3].GetId(), ".page-other", []string{"page-other@example.com"}, "read", map[string]string{"other": fmt.Sprintf("other-%d", suffix)})
 
 	firstPage, err := s.db.PolicyClient.ListSubjectMappings(s.ctx, &subjectmapping.ListSubjectMappingsRequest{
 		NamespaceId: ns.GetId(),
@@ -3271,11 +3290,13 @@ func (s *SubjectMappingsSuite) createSearchSubjectMapping(
 	selector string,
 	externalValues []string,
 	actionName string,
+	labels map[string]string,
 ) *policy.SubjectMapping {
 	created, err := s.db.PolicyClient.CreateSubjectMapping(s.ctx, &subjectmapping.CreateSubjectMappingRequest{
 		NamespaceId:      namespaceID,
 		AttributeValueId: attributeValueID,
 		Actions:          []*policy.Action{{Name: actionName}},
+		Metadata:         &common.MetadataMutable{Labels: labels},
 		NewSubjectConditionSet: &subjectmapping.SubjectConditionSetCreate{
 			SubjectSets: []*policy.SubjectSet{
 				{

@@ -611,10 +611,7 @@ func (c PolicyDBClient) ListKeys(ctx context.Context, r *kasregistry.ListKeysReq
 	}
 
 	sortField, sortDirection := GetKasKeysSortParams(r.GetSort())
-	search := pgtype.Text{}
-	if term := r.GetSearch().GetTerm(); term != "" {
-		search = pgtypeText("%" + escapeLikePattern(strings.ToLower(term)) + "%")
-	}
+	search := pgtypeSubstringSearchPattern(r.GetSearch().GetTerm())
 
 	params := listKeysParams{
 		Legacy:        legacy,

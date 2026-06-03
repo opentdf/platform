@@ -1130,7 +1130,7 @@ WHERE
     AND ($2::boolean IS NULL OR kask.legacy = $2::boolean)
     AND (
         $3::TEXT IS NULL
-        OR LOWER(kask.key_id) LIKE $3::TEXT ESCAPE '\'
+        OR kask.key_id ILIKE $3::TEXT ESCAPE '\'
     )
 ORDER BY
     CASE WHEN p.resolved_field = 'key_id' AND p.resolved_direction = 'ASC' THEN kask.key_id END ASC,
@@ -1226,7 +1226,7 @@ type listKeysRow struct {
 //	    AND ($2::boolean IS NULL OR kask.legacy = $2::boolean)
 //	    AND (
 //	        $3::TEXT IS NULL
-//	        OR LOWER(kask.key_id) LIKE $3::TEXT ESCAPE '\'
+//	        OR kask.key_id ILIKE $3::TEXT ESCAPE '\'
 //	    )
 //	ORDER BY
 //	    CASE WHEN p.resolved_field = 'key_id' AND p.resolved_direction = 'ASC' THEN kask.key_id END ASC,
@@ -1239,8 +1239,7 @@ type listKeysRow struct {
 //	LIMIT $5
 //	OFFSET $4
 func (q *Queries) listKeys(ctx context.Context, arg listKeysParams) ([]listKeysRow, error) {
-	rows, err := q.db.Query(
-		ctx, listKeys,
+	rows, err := q.db.Query(ctx, listKeys,
 		arg.KeyAlgorithm,
 		arg.Legacy,
 		arg.Search,

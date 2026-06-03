@@ -378,14 +378,14 @@ WHERE
         OR scs.namespace_id = $1::uuid
         OR ns_fqns.fqn = $2::text
     )
-    AND (
-        $3::TEXT IS NULL
-        OR EXISTS (
+    AND CASE
+        WHEN $3::TEXT IS NULL THEN TRUE
+        ELSE EXISTS (
             SELECT 1
             FROM JSONB_EACH_TEXT(COALESCE(scs.metadata -> 'labels', '{}'::JSONB)) AS label(key, value)
             WHERE label.value ILIKE $3::TEXT ESCAPE '\'
         )
-    )
+    END
 ORDER BY
     CASE WHEN p.resolved_field = 'created_at' AND p.resolved_direction = 'ASC' THEN scs.created_at END ASC,
     CASE WHEN p.resolved_field = 'created_at' AND p.resolved_direction = 'DESC' THEN scs.created_at END DESC,
@@ -442,14 +442,14 @@ type listSubjectConditionSetsRow struct {
 //	        OR scs.namespace_id = $1::uuid
 //	        OR ns_fqns.fqn = $2::text
 //	    )
-//	    AND (
-//	        $3::TEXT IS NULL
-//	        OR EXISTS (
+//	    AND CASE
+//	        WHEN $3::TEXT IS NULL THEN TRUE
+//	        ELSE EXISTS (
 //	            SELECT 1
 //	            FROM JSONB_EACH_TEXT(COALESCE(scs.metadata -> 'labels', '{}'::JSONB)) AS label(key, value)
 //	            WHERE label.value ILIKE $3::TEXT ESCAPE '\'
 //	        )
-//	    )
+//	    END
 //	ORDER BY
 //	    CASE WHEN p.resolved_field = 'created_at' AND p.resolved_direction = 'ASC' THEN scs.created_at END ASC,
 //	    CASE WHEN p.resolved_field = 'created_at' AND p.resolved_direction = 'DESC' THEN scs.created_at END DESC,

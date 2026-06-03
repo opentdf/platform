@@ -611,10 +611,12 @@ func (c PolicyDBClient) ListKeys(ctx context.Context, r *kasregistry.ListKeysReq
 	}
 
 	sortField, sortDirection := GetKasKeysSortParams(r.GetSort())
+	search := pgtypeSubstringSearchPattern(r.GetSearch().GetTerm())
 
 	params := listKeysParams{
 		Legacy:        legacy,
 		KeyAlgorithm:  algo,
+		Search:        search,
 		KasID:         kasID,
 		KasUri:        kasURI,
 		KasName:       kasName,

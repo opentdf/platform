@@ -1084,17 +1084,17 @@ func (q *Queries) listKeyMappings(ctx context.Context, arg listKeyMappingsParams
 const listKeys = `-- name: listKeys :many
 WITH params AS (
     SELECT
-        COALESCE(NULLIF($5::text, ''), 'created_at') AS resolved_field,
-        COALESCE(NULLIF($6::text, ''), 'DESC') AS resolved_direction
+        COALESCE(NULLIF($6::text, ''), 'created_at') AS resolved_field,
+        COALESCE(NULLIF($7::text, ''), 'DESC') AS resolved_direction
 ),
 listed AS (
     SELECT
         kas.id AS kas_id,
         kas.uri AS kas_uri
     FROM key_access_servers AS kas
-    WHERE ($7::uuid IS NULL OR kas.id = $7::uuid)
-            AND ($8::text IS NULL OR kas.name = $8::text)
-            AND ($9::text IS NULL OR kas.uri = $9::text)
+    WHERE ($8::uuid IS NULL OR kas.id = $8::uuid)
+            AND ($9::text IS NULL OR kas.name = $9::text)
+            AND ($10::text IS NULL OR kas.uri = $10::text)
 )
 SELECT 
   COUNT(*) OVER () AS total,
@@ -1128,6 +1128,10 @@ LEFT JOIN
 WHERE
     ($1::integer IS NULL OR kask.key_algorithm = $1::integer)
     AND ($2::boolean IS NULL OR kask.legacy = $2::boolean)
+    AND (
+        $3::TEXT IS NULL
+        OR kask.key_id ILIKE $3::TEXT ESCAPE '\'
+    )
 ORDER BY
     CASE WHEN p.resolved_field = 'key_id' AND p.resolved_direction = 'ASC' THEN kask.key_id END ASC,
     CASE WHEN p.resolved_field = 'key_id' AND p.resolved_direction = 'DESC' THEN kask.key_id END DESC,
@@ -1136,13 +1140,14 @@ ORDER BY
     CASE WHEN p.resolved_field = 'updated_at' AND p.resolved_direction = 'ASC' THEN kask.updated_at END ASC,
     CASE WHEN p.resolved_field = 'updated_at' AND p.resolved_direction = 'DESC' THEN kask.updated_at END DESC,
     kask.id ASC
-LIMIT $4
-OFFSET $3
+LIMIT $5
+OFFSET $4
 `
 
 type listKeysParams struct {
 	KeyAlgorithm  pgtype.Int4 `json:"key_algorithm"`
 	Legacy        pgtype.Bool `json:"legacy"`
+	Search        pgtype.Text `json:"search"`
 	Offset        int32       `json:"offset_"`
 	Limit         int32       `json:"limit_"`
 	SortField     string      `json:"sort_field"`
@@ -1175,17 +1180,17 @@ type listKeysRow struct {
 //
 //	WITH params AS (
 //	    SELECT
-//	        COALESCE(NULLIF($5::text, ''), 'created_at') AS resolved_field,
-//	        COALESCE(NULLIF($6::text, ''), 'DESC') AS resolved_direction
+//	        COALESCE(NULLIF($6::text, ''), 'created_at') AS resolved_field,
+//	        COALESCE(NULLIF($7::text, ''), 'DESC') AS resolved_direction
 //	),
 //	listed AS (
 //	    SELECT
 //	        kas.id AS kas_id,
 //	        kas.uri AS kas_uri
 //	    FROM key_access_servers AS kas
-//	    WHERE ($7::uuid IS NULL OR kas.id = $7::uuid)
-//	            AND ($8::text IS NULL OR kas.name = $8::text)
-//	            AND ($9::text IS NULL OR kas.uri = $9::text)
+//	    WHERE ($8::uuid IS NULL OR kas.id = $8::uuid)
+//	            AND ($9::text IS NULL OR kas.name = $9::text)
+//	            AND ($10::text IS NULL OR kas.uri = $10::text)
 //	)
 //	SELECT
 //	  COUNT(*) OVER () AS total,
@@ -1219,6 +1224,10 @@ type listKeysRow struct {
 //	WHERE
 //	    ($1::integer IS NULL OR kask.key_algorithm = $1::integer)
 //	    AND ($2::boolean IS NULL OR kask.legacy = $2::boolean)
+//	    AND (
+//	        $3::TEXT IS NULL
+//	        OR kask.key_id ILIKE $3::TEXT ESCAPE '\'
+//	    )
 //	ORDER BY
 //	    CASE WHEN p.resolved_field = 'key_id' AND p.resolved_direction = 'ASC' THEN kask.key_id END ASC,
 //	    CASE WHEN p.resolved_field = 'key_id' AND p.resolved_direction = 'DESC' THEN kask.key_id END DESC,
@@ -1227,12 +1236,13 @@ type listKeysRow struct {
 //	    CASE WHEN p.resolved_field = 'updated_at' AND p.resolved_direction = 'ASC' THEN kask.updated_at END ASC,
 //	    CASE WHEN p.resolved_field = 'updated_at' AND p.resolved_direction = 'DESC' THEN kask.updated_at END DESC,
 //	    kask.id ASC
-//	LIMIT $4
-//	OFFSET $3
+//	LIMIT $5
+//	OFFSET $4
 func (q *Queries) listKeys(ctx context.Context, arg listKeysParams) ([]listKeysRow, error) {
 	rows, err := q.db.Query(ctx, listKeys,
 		arg.KeyAlgorithm,
 		arg.Legacy,
+		arg.Search,
 		arg.Offset,
 		arg.Limit,
 		arg.SortField,

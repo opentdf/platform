@@ -139,148 +139,163 @@ type MLKEMWrappedKey struct {
 	EncryptedDEK    []byte `asn1:"tag:1"`
 }
 
-type MLKEMEncryptor768 struct {
+type mlkemParams struct {
+	oid              asn1.ObjectIdentifier
+	publicKeySize    int
+	privateKeySize   int
+	ciphertextSize   int
+	keyType          KeyType
+	displayName      string
+	encapsulate      func(publicKey []byte) ([]byte, []byte, error)
+	newDecapsulation func(privateKey []byte) (mlkemDecapsulationKey, error)
+}
+
+type mlkemDecapsulationKey interface {
+	Decapsulate(ciphertext []byte) ([]byte, error)
+}
+
+var mlkem768Params = mlkemParams{
+	oid:            OidMLKEM768,
+	publicKeySize:  MLKEM768PublicKeySize,
+	privateKeySize: MLKEM768PrivateKeySize,
+	ciphertextSize: MLKEM768CiphertextSize,
+	keyType:        MLKEM768Key,
+	displayName:    "ML-KEM-768",
+	encapsulate: func(publicKey []byte) ([]byte, []byte, error) {
+		ek, err := mlkem.NewEncapsulationKey768(publicKey)
+		if err != nil {
+			return nil, nil, fmt.Errorf("mlkem.NewEncapsulationKey768 failed: %w", err)
+		}
+		sharedSecret, ciphertext := ek.Encapsulate()
+		return sharedSecret, ciphertext, nil
+	},
+	newDecapsulation: func(privateKey []byte) (mlkemDecapsulationKey, error) {
+		dk, err := mlkem.NewDecapsulationKey768(privateKey)
+		if err != nil {
+			return nil, fmt.Errorf("mlkem.NewDecapsulationKey768 failed: %w", err)
+		}
+		return dk, nil
+	},
+}
+
+var mlkem1024Params = mlkemParams{
+	oid:            OidMLKEM1024,
+	publicKeySize:  MLKEM1024PublicKeySize,
+	privateKeySize: MLKEM1024PrivateKeySize,
+	ciphertextSize: MLKEM1024CiphertextSize,
+	keyType:        MLKEM1024Key,
+	displayName:    "ML-KEM-1024",
+	encapsulate: func(publicKey []byte) ([]byte, []byte, error) {
+		ek, err := mlkem.NewEncapsulationKey1024(publicKey)
+		if err != nil {
+			return nil, nil, fmt.Errorf("mlkem.NewEncapsulationKey1024 failed: %w", err)
+		}
+		sharedSecret, ciphertext := ek.Encapsulate()
+		return sharedSecret, ciphertext, nil
+	},
+	newDecapsulation: func(privateKey []byte) (mlkemDecapsulationKey, error) {
+		dk, err := mlkem.NewDecapsulationKey1024(privateKey)
+		if err != nil {
+			return nil, fmt.Errorf("mlkem.NewDecapsulationKey1024 failed: %w", err)
+		}
+		return dk, nil
+	},
+}
+
+type MLKEMEncryptor struct {
 	publicKey []byte
 	salt      []byte
 	info      []byte
+	params    *mlkemParams
 }
 
-type MLKEMDecryptor768 struct {
+type MLKEMDecryptor struct {
 	privateKey []byte
 	salt       []byte
 	info       []byte
+	params     *mlkemParams
 }
 
-type MLKEMEncryptor1024 struct {
-	publicKey []byte
-	salt      []byte
-	info      []byte
+func NewMLKEM768Encryptor(publicKey, salt, info []byte) (*MLKEMEncryptor, error) {
+	return newMLKEMEncryptor(&mlkem768Params, publicKey, salt, info)
 }
 
-type MLKEMDecryptor1024 struct {
-	privateKey []byte
-	salt       []byte
-	info       []byte
+func NewMLKEM1024Encryptor(publicKey, salt, info []byte) (*MLKEMEncryptor, error) {
+	return newMLKEMEncryptor(&mlkem1024Params, publicKey, salt, info)
 }
 
-func NewMLKEM768Encryptor(publicKey, salt, info []byte) (*MLKEMEncryptor768, error) {
-	if len(publicKey) != MLKEM768PublicKeySize {
-		return nil, fmt.Errorf("invalid ML-KEM-768 public key size: got %d want %d", len(publicKey), MLKEM768PublicKeySize)
+func newMLKEMEncryptor(params *mlkemParams, publicKey, salt, info []byte) (*MLKEMEncryptor, error) {
+	if len(publicKey) != params.publicKeySize {
+		return nil, fmt.Errorf("invalid %s public key size: got %d want %d", params.displayName, len(publicKey), params.publicKeySize)
 	}
 
-	return &MLKEMEncryptor768{
+	return &MLKEMEncryptor{
 		publicKey: append([]byte(nil), publicKey...),
 		salt:      cloneOrNil(salt),
 		info:      cloneOrNil(info),
+		params:    params,
 	}, nil
 }
 
-func (e *MLKEMEncryptor768) Encrypt(data []byte) ([]byte, error) {
-	return mlkem768WrapDEK(e.publicKey, data, e.salt, e.info)
+func (e *MLKEMEncryptor) Encrypt(data []byte) ([]byte, error) {
+	return mlkemWrapDEK(e.params, e.publicKey, data, e.salt, e.info)
 }
 
-func (e *MLKEMEncryptor768) PublicKeyInPemFormat() (string, error) {
-	der, err := marshalMLKEMPublicSPKI(OidMLKEM768, e.publicKey)
+func (e *MLKEMEncryptor) PublicKeyInPemFormat() (string, error) {
+	der, err := marshalMLKEMPublicSPKI(e.params.oid, e.publicKey)
 	if err != nil {
-		return "", fmt.Errorf("marshal ML-KEM-768 SPKI failed: %w", err)
+		return "", fmt.Errorf("marshal %s SPKI failed: %w", e.params.displayName, err)
 	}
 	return string(pem.EncodeToMemory(&pem.Block{Type: pemBlockPublicKey, Bytes: der})), nil
 }
 
-func (e *MLKEMEncryptor768) Type() SchemeType {
+func (e *MLKEMEncryptor) Type() SchemeType {
 	return MLKEM
 }
 
-func (e *MLKEMEncryptor768) KeyType() KeyType {
-	return MLKEM768Key
+func (e *MLKEMEncryptor) KeyType() KeyType {
+	return e.params.keyType
 }
 
-func (e *MLKEMEncryptor768) EphemeralKey() []byte {
+func (e *MLKEMEncryptor) EphemeralKey() []byte {
 	return nil
 }
 
-func (e *MLKEMEncryptor768) Metadata() (map[string]string, error) {
+func (e *MLKEMEncryptor) Metadata() (map[string]string, error) {
 	return make(map[string]string), nil
 }
 
-func NewMLKEM768Decryptor(privateKey []byte) (*MLKEMDecryptor768, error) {
+func NewMLKEM768Decryptor(privateKey []byte) (*MLKEMDecryptor, error) {
 	return NewSaltedMLKEM768Decryptor(privateKey, defaultTDFSalt(), nil)
 }
 
-func NewSaltedMLKEM768Decryptor(privateKey, salt, info []byte) (*MLKEMDecryptor768, error) {
-	if len(privateKey) != MLKEM768PrivateKeySize {
-		return nil, fmt.Errorf("invalid ML-KEM-768 private key size: got %d want %d", len(privateKey), MLKEM768PrivateKeySize)
-	}
-
-	return &MLKEMDecryptor768{
-		privateKey: append([]byte(nil), privateKey...),
-		salt:       cloneOrNil(salt),
-		info:       cloneOrNil(info),
-	}, nil
+func NewSaltedMLKEM768Decryptor(privateKey, salt, info []byte) (*MLKEMDecryptor, error) {
+	return newMLKEMDecryptor(&mlkem768Params, privateKey, salt, info)
 }
 
-func (d *MLKEMDecryptor768) Decrypt(data []byte) ([]byte, error) {
-	return mlkem768UnwrapDEK(d.privateKey, data, d.salt, d.info)
-}
-
-func NewMLKEM1024Encryptor(publicKey, salt, info []byte) (*MLKEMEncryptor1024, error) {
-	if len(publicKey) != MLKEM1024PublicKeySize {
-		return nil, fmt.Errorf("invalid ML-KEM-1024 public key size: got %d want %d", len(publicKey), MLKEM1024PublicKeySize)
-	}
-
-	return &MLKEMEncryptor1024{
-		publicKey: append([]byte(nil), publicKey...),
-		salt:      cloneOrNil(salt),
-		info:      cloneOrNil(info),
-	}, nil
-}
-
-func (e *MLKEMEncryptor1024) Encrypt(data []byte) ([]byte, error) {
-	return mlkem1024WrapDEK(e.publicKey, data, e.salt, e.info)
-}
-
-func (e *MLKEMEncryptor1024) PublicKeyInPemFormat() (string, error) {
-	der, err := marshalMLKEMPublicSPKI(OidMLKEM1024, e.publicKey)
-	if err != nil {
-		return "", fmt.Errorf("marshal ML-KEM-1024 SPKI failed: %w", err)
-	}
-	return string(pem.EncodeToMemory(&pem.Block{Type: pemBlockPublicKey, Bytes: der})), nil
-}
-
-func (e *MLKEMEncryptor1024) Type() SchemeType {
-	return MLKEM
-}
-
-func (e *MLKEMEncryptor1024) KeyType() KeyType {
-	return MLKEM1024Key
-}
-
-func (e *MLKEMEncryptor1024) EphemeralKey() []byte {
-	return nil
-}
-
-func (e *MLKEMEncryptor1024) Metadata() (map[string]string, error) {
-	return make(map[string]string), nil
-}
-
-func NewMLKEM1024Decryptor(privateKey []byte) (*MLKEMDecryptor1024, error) {
+func NewMLKEM1024Decryptor(privateKey []byte) (*MLKEMDecryptor, error) {
 	return NewSaltedMLKEM1024Decryptor(privateKey, defaultTDFSalt(), nil)
 }
 
-func NewSaltedMLKEM1024Decryptor(privateKey, salt, info []byte) (*MLKEMDecryptor1024, error) {
-	if len(privateKey) != MLKEM1024PrivateKeySize {
-		return nil, fmt.Errorf("invalid ML-KEM-1024 private key size: got %d want %d", len(privateKey), MLKEM1024PrivateKeySize)
+func NewSaltedMLKEM1024Decryptor(privateKey, salt, info []byte) (*MLKEMDecryptor, error) {
+	return newMLKEMDecryptor(&mlkem1024Params, privateKey, salt, info)
+}
+
+func newMLKEMDecryptor(params *mlkemParams, privateKey, salt, info []byte) (*MLKEMDecryptor, error) {
+	if len(privateKey) != params.privateKeySize {
+		return nil, fmt.Errorf("invalid %s private key size: got %d want %d", params.displayName, len(privateKey), params.privateKeySize)
 	}
 
-	return &MLKEMDecryptor1024{
+	return &MLKEMDecryptor{
 		privateKey: append([]byte(nil), privateKey...),
 		salt:       cloneOrNil(salt),
 		info:       cloneOrNil(info),
+		params:     params,
 	}, nil
 }
 
-func (d *MLKEMDecryptor1024) Decrypt(data []byte) ([]byte, error) {
-	return mlkem1024UnwrapDEK(d.privateKey, data, d.salt, d.info)
+func (d *MLKEMDecryptor) Decrypt(data []byte) ([]byte, error) {
+	return mlkemUnwrapDEK(d.params, d.privateKey, data, d.salt, d.info)
 }
 
 // normalizeMLKEMPublicKey detects the input format and returns raw key bytes.
@@ -328,66 +343,52 @@ func normalizeMLKEMPublicKey(input []byte, expectedRawSize int, expectedOID asn1
 
 func MLKEM768WrapDEK(publicKey, dek []byte) ([]byte, error) {
 	// Normalize input to raw key bytes (handles raw, SPKI DER, or PEM)
-	rawKey, err := normalizeMLKEMPublicKey(publicKey, MLKEM768PublicKeySize, OidMLKEM768)
+	rawKey, err := normalizeMLKEMPublicKey(publicKey, mlkem768Params.publicKeySize, mlkem768Params.oid)
 	if err != nil {
 		return nil, fmt.Errorf("invalid ML-KEM-768 public key: %w", err)
 	}
-	return mlkem768WrapDEK(rawKey, dek, defaultTDFSalt(), nil)
+	return mlkemWrapDEK(&mlkem768Params, rawKey, dek, defaultTDFSalt(), nil)
 }
 
 func MLKEM768UnwrapDEK(privateKeyRaw, wrappedDER []byte) ([]byte, error) {
-	return mlkem768UnwrapDEK(privateKeyRaw, wrappedDER, defaultTDFSalt(), nil)
+	return mlkemUnwrapDEK(&mlkem768Params, privateKeyRaw, wrappedDER, defaultTDFSalt(), nil)
 }
 
 func MLKEM1024WrapDEK(publicKey, dek []byte) ([]byte, error) {
 	// Normalize input to raw key bytes (handles raw, SPKI DER, or PEM)
-	rawKey, err := normalizeMLKEMPublicKey(publicKey, MLKEM1024PublicKeySize, OidMLKEM1024)
+	rawKey, err := normalizeMLKEMPublicKey(publicKey, mlkem1024Params.publicKeySize, mlkem1024Params.oid)
 	if err != nil {
 		return nil, fmt.Errorf("invalid ML-KEM-1024 public key: %w", err)
 	}
-	return mlkem1024WrapDEK(rawKey, dek, defaultTDFSalt(), nil)
+	return mlkemWrapDEK(&mlkem1024Params, rawKey, dek, defaultTDFSalt(), nil)
 }
 
 func MLKEM1024UnwrapDEK(privateKeyRaw, wrappedDER []byte) ([]byte, error) {
-	return mlkem1024UnwrapDEK(privateKeyRaw, wrappedDER, defaultTDFSalt(), nil)
+	return mlkemUnwrapDEK(&mlkem1024Params, privateKeyRaw, wrappedDER, defaultTDFSalt(), nil)
 }
 
 // MLKEM768Encapsulate performs ML-KEM-768 encapsulation, returning the shared
 // secret and ciphertext without applying KDF or encryption.
 func MLKEM768Encapsulate(publicKeyRaw []byte) ([]byte, []byte, error) {
-	if len(publicKeyRaw) != MLKEM768PublicKeySize {
-		return nil, nil, fmt.Errorf("invalid ML-KEM-768 public key size: got %d want %d", len(publicKeyRaw), MLKEM768PublicKeySize)
-	}
-
-	ek, err := mlkem.NewEncapsulationKey768(publicKeyRaw)
-	if err != nil {
-		return nil, nil, fmt.Errorf("mlkem.NewEncapsulationKey768 failed: %w", err)
-	}
-
-	sharedSecret, ciphertext := ek.Encapsulate()
-
-	return sharedSecret, ciphertext, nil
+	return mlkemEncapsulate(&mlkem768Params, publicKeyRaw)
 }
 
 // MLKEM1024Encapsulate performs ML-KEM-1024 encapsulation, returning the shared
 // secret and ciphertext without applying KDF or encryption.
 func MLKEM1024Encapsulate(publicKeyRaw []byte) ([]byte, []byte, error) {
-	if len(publicKeyRaw) != MLKEM1024PublicKeySize {
-		return nil, nil, fmt.Errorf("invalid ML-KEM-1024 public key size: got %d want %d", len(publicKeyRaw), MLKEM1024PublicKeySize)
-	}
-
-	ek, err := mlkem.NewEncapsulationKey1024(publicKeyRaw)
-	if err != nil {
-		return nil, nil, fmt.Errorf("mlkem.NewEncapsulationKey1024 failed: %w", err)
-	}
-
-	sharedSecret, ciphertext := ek.Encapsulate()
-
-	return sharedSecret, ciphertext, nil
+	return mlkemEncapsulate(&mlkem1024Params, publicKeyRaw)
 }
 
-func mlkem768WrapDEK(publicKeyRaw, dek, salt, info []byte) ([]byte, error) {
-	sharedSecret, ciphertext, err := MLKEM768Encapsulate(publicKeyRaw)
+func mlkemEncapsulate(params *mlkemParams, publicKeyRaw []byte) ([]byte, []byte, error) {
+	if len(publicKeyRaw) != params.publicKeySize {
+		return nil, nil, fmt.Errorf("invalid %s public key size: got %d want %d", params.displayName, len(publicKeyRaw), params.publicKeySize)
+	}
+
+	return params.encapsulate(publicKeyRaw)
+}
+
+func mlkemWrapDEK(params *mlkemParams, publicKeyRaw, dek, salt, info []byte) ([]byte, error) {
+	sharedSecret, ciphertext, err := mlkemEncapsulate(params, publicKeyRaw)
 	if err != nil {
 		return nil, err
 	}
@@ -418,9 +419,9 @@ func mlkem768WrapDEK(publicKeyRaw, dek, salt, info []byte) ([]byte, error) {
 	return wrappedDER, nil
 }
 
-func mlkem768UnwrapDEK(privateKeyRaw, wrappedDER, salt, info []byte) ([]byte, error) {
-	if len(privateKeyRaw) != MLKEM768PrivateKeySize {
-		return nil, fmt.Errorf("invalid ML-KEM-768 private key size: got %d want %d", len(privateKeyRaw), MLKEM768PrivateKeySize)
+func mlkemUnwrapDEK(params *mlkemParams, privateKeyRaw, wrappedDER, salt, info []byte) ([]byte, error) {
+	if len(privateKeyRaw) != params.privateKeySize {
+		return nil, fmt.Errorf("invalid %s private key size: got %d want %d", params.displayName, len(privateKeyRaw), params.privateKeySize)
 	}
 
 	var wrappedKey MLKEMWrappedKey
@@ -431,95 +432,18 @@ func mlkem768UnwrapDEK(privateKeyRaw, wrappedDER, salt, info []byte) ([]byte, er
 	if len(rest) != 0 {
 		return nil, fmt.Errorf("asn1.Unmarshal left %d trailing bytes", len(rest))
 	}
-	if len(wrappedKey.MLKEMCiphertext) != MLKEM768CiphertextSize {
-		return nil, fmt.Errorf("invalid ML-KEM-768 ciphertext size: got %d want %d", len(wrappedKey.MLKEMCiphertext), MLKEM768CiphertextSize)
+	if len(wrappedKey.MLKEMCiphertext) != params.ciphertextSize {
+		return nil, fmt.Errorf("invalid %s ciphertext size: got %d want %d", params.displayName, len(wrappedKey.MLKEMCiphertext), params.ciphertextSize)
 	}
 
-	dk, err := mlkem.NewDecapsulationKey768(privateKeyRaw)
+	dk, err := params.newDecapsulation(privateKeyRaw)
 	if err != nil {
-		return nil, fmt.Errorf("mlkem.NewDecapsulationKey768 failed: %w", err)
+		return nil, err
 	}
 
 	sharedSecret, err := dk.Decapsulate(wrappedKey.MLKEMCiphertext)
 	if err != nil {
-		return nil, fmt.Errorf("mlkem768 decapsulate failed: %w", err)
-	}
-
-	wrapKey, err := deriveMLKEMWrapKey(sharedSecret, salt, info)
-	if err != nil {
-		return nil, err
-	}
-
-	gcm, err := NewAESGcm(wrapKey)
-	if err != nil {
-		return nil, fmt.Errorf("NewAESGcm failed: %w", err)
-	}
-
-	plaintext, err := gcm.Decrypt(wrappedKey.EncryptedDEK)
-	if err != nil {
-		return nil, fmt.Errorf("AES-GCM decrypt failed: %w", err)
-	}
-
-	return plaintext, nil
-}
-
-func mlkem1024WrapDEK(publicKeyRaw, dek, salt, info []byte) ([]byte, error) {
-	sharedSecret, ciphertext, err := MLKEM1024Encapsulate(publicKeyRaw)
-	if err != nil {
-		return nil, err
-	}
-
-	wrapKey, err := deriveMLKEMWrapKey(sharedSecret, salt, info)
-	if err != nil {
-		return nil, err
-	}
-
-	gcm, err := NewAESGcm(wrapKey)
-	if err != nil {
-		return nil, fmt.Errorf("NewAESGcm failed: %w", err)
-	}
-
-	encryptedDEK, err := gcm.Encrypt(dek)
-	if err != nil {
-		return nil, fmt.Errorf("AES-GCM encrypt failed: %w", err)
-	}
-
-	wrappedDER, err := asn1.Marshal(MLKEMWrappedKey{
-		MLKEMCiphertext: ciphertext,
-		EncryptedDEK:    encryptedDEK,
-	})
-	if err != nil {
-		return nil, fmt.Errorf("asn1.Marshal failed: %w", err)
-	}
-
-	return wrappedDER, nil
-}
-
-func mlkem1024UnwrapDEK(privateKeyRaw, wrappedDER, salt, info []byte) ([]byte, error) {
-	if len(privateKeyRaw) != MLKEM1024PrivateKeySize {
-		return nil, fmt.Errorf("invalid ML-KEM-1024 private key size: got %d want %d", len(privateKeyRaw), MLKEM1024PrivateKeySize)
-	}
-
-	var wrappedKey MLKEMWrappedKey
-	rest, err := asn1.Unmarshal(wrappedDER, &wrappedKey)
-	if err != nil {
-		return nil, fmt.Errorf("asn1.Unmarshal failed: %w", err)
-	}
-	if len(rest) != 0 {
-		return nil, fmt.Errorf("asn1.Unmarshal left %d trailing bytes", len(rest))
-	}
-	if len(wrappedKey.MLKEMCiphertext) != MLKEM1024CiphertextSize {
-		return nil, fmt.Errorf("invalid ML-KEM-1024 ciphertext size: got %d want %d", len(wrappedKey.MLKEMCiphertext), MLKEM1024CiphertextSize)
-	}
-
-	dk, err := mlkem.NewDecapsulationKey1024(privateKeyRaw)
-	if err != nil {
-		return nil, fmt.Errorf("mlkem.NewDecapsulationKey1024 failed: %w", err)
-	}
-
-	sharedSecret, err := dk.Decapsulate(wrappedKey.MLKEMCiphertext)
-	if err != nil {
-		return nil, fmt.Errorf("mlkem1024 decapsulate failed: %w", err)
+		return nil, fmt.Errorf("%s decapsulate failed: %w", params.displayName, err)
 	}
 
 	wrapKey, err := deriveMLKEMWrapKey(sharedSecret, salt, info)

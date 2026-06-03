@@ -26,6 +26,8 @@ type StandardConfig struct {
 	ECKeys map[string]StandardKeyInfo `mapstructure:"ec,omitempty" json:"ec,omitempty"`
 }
 
+const pemBlockPublicKey = "PUBLIC KEY"
+
 func (sc StandardConfig) IsEmpty() bool {
 	return len(sc.Keys) == 0 && len(sc.ECKeys) == 0 && len(sc.RSAKeys) == 0
 }
@@ -71,12 +73,14 @@ type StandardXWingCrypto struct {
 	KeyPairInfo
 	xwingPrivateKeyPem string
 	xwingPublicKeyPem  string
+	decryptor          ocrypto.PrivateKeyDecryptor
 }
 
 type StandardHybridCrypto struct {
 	KeyPairInfo
 	hybridPrivateKeyPem string
 	hybridPublicKeyPem  string
+	decryptor           ocrypto.PrivateKeyDecryptor
 }
 
 type StandardMLKEMCrypto struct {
@@ -171,16 +175,26 @@ func loadKey(k KeyPairInfo) (any, error) {
 			ecCertificatePEM: string(certPEM),
 		}, nil
 	case AlgorithmHPQTXWing:
+		decryptor, err := ocrypto.FromPrivatePEM(string(privatePEM))
+		if err != nil {
+			return nil, fmt.Errorf("ocrypto.FromPrivatePEM (X-Wing) failed: %w", err)
+		}
 		return StandardXWingCrypto{
 			KeyPairInfo:        k,
 			xwingPrivateKeyPem: string(privatePEM),
 			xwingPublicKeyPem:  string(certPEM),
+			decryptor:          decryptor,
 		}, nil
 	case AlgorithmHPQTSecp256r1MLKEM768, AlgorithmHPQTSecp384r1MLKEM1024:
+		decryptor, err := ocrypto.FromPrivatePEM(string(privatePEM))
+		if err != nil {
+			return nil, fmt.Errorf("ocrypto.FromPrivatePEM (hybrid) failed: %w", err)
+		}
 		return StandardHybridCrypto{
 			KeyPairInfo:         k,
 			hybridPrivateKeyPem: string(privatePEM),
 			hybridPublicKeyPem:  string(certPEM),
+			decryptor:           decryptor,
 		}, nil
 	case AlgorithmMLKEM768, AlgorithmMLKEM1024:
 		decryptor, err := ocrypto.FromPrivatePEM(string(privatePEM))
@@ -269,7 +283,7 @@ func loadDeprecatedKeys(rsaKeys map[string]StandardKeyInfo, ecKeys map[string]St
 		slog.Info(
 			"cfg.ECKeys",
 			slog.String("id", id),
-			slog.Any("kasInfo", kasInfo),
+			slog.Any("kas_info", kasInfo),
 		)
 		// private and public EC KAS key
 		privatePemData, err := os.ReadFile(kasInfo.PrivateKeyPath)
@@ -363,7 +377,7 @@ func (s StandardCrypto) ECPublicKey(kid string) (string, error) {
 	}
 
 	pemBlock := &pem.Block{
-		Type:  "PUBLIC KEY",
+		Type:  pemBlockPublicKey,
 		Bytes: derBytes,
 	}
 	pemBytes := pem.EncodeToMemory(pemBlock)
@@ -536,55 +550,32 @@ func (s *StandardCrypto) Decrypt(_ context.Context, keyID trust.KeyIdentifier, c
 
 	case StandardXWingCrypto:
 		if len(ephemeralPublicKey) > 0 {
-			return nil, errors.New("ephemeral public key should not be provided for X-Wing decryption")
-		}
-
-		privateKey, err := ocrypto.XWingPrivateKeyFromPem([]byte(key.xwingPrivateKeyPem))
-		if err != nil {
-			return nil, fmt.Errorf("failed to parse X-Wing private key: %w", err)
-		}
-
-		rawKey, err = ocrypto.XWingUnwrapDEK(privateKey, ciphertext)
-		if err != nil {
-			return nil, fmt.Errorf("failed to decrypt with X-Wing: %w", err)
-		}
-
-	case StandardHybridCrypto:
-		if len(ephemeralPublicKey) > 0 {
-			return nil, errors.New("ephemeral public key should not be provided for hybrid decryption")
-		}
-
-		switch key.Algorithm {
-		case AlgorithmHPQTSecp256r1MLKEM768:
-			privateKey, err := ocrypto.P256MLKEM768PrivateKeyFromPem([]byte(key.hybridPrivateKeyPem))
-			if err != nil {
-				return nil, fmt.Errorf("failed to parse P256-MLKEM768 private key: %w", err)
-			}
-			rawKey, err = ocrypto.P256MLKEM768UnwrapDEK(privateKey, ciphertext)
-			if err != nil {
-				return nil, fmt.Errorf("failed to decrypt with P256-MLKEM768: %w", err)
-			}
-		case AlgorithmHPQTSecp384r1MLKEM1024:
-			privateKey, err := ocrypto.P384MLKEM1024PrivateKeyFromPem([]byte(key.hybridPrivateKeyPem))
-			if err != nil {
-				return nil, fmt.Errorf("failed to parse P384-MLKEM1024 private key: %w", err)
-			}
-			rawKey, err = ocrypto.P384MLKEM1024UnwrapDEK(privateKey, ciphertext)
-			if err != nil {
-				return nil, fmt.Errorf("failed to decrypt with P384-MLKEM1024: %w", err)
-			}
-		default:
-			return nil, fmt.Errorf("unsupported hybrid algorithm [%s]", key.Algorithm)
-		}
-
-	case StandardMLKEMCrypto:
-		if len(ephemeralPublicKey) > 0 {
-			return nil, errors.New("ephemeral public key should not be provided for ML-KEM decryption")
+			return nil, errors.New("ephemeral public key should not be provided for non-EC decryption")
 		}
 
 		rawKey, err = key.decryptor.Decrypt(ciphertext)
 		if err != nil {
-			return nil, fmt.Errorf("failed to decrypt with ML-KEM: %w", err)
+			return nil, fmt.Errorf("failed to decrypt with %s: %w", key.Algorithm, err)
+		}
+
+	case StandardHybridCrypto:
+		if len(ephemeralPublicKey) > 0 {
+			return nil, errors.New("ephemeral public key should not be provided for non-EC decryption")
+		}
+
+		rawKey, err = key.decryptor.Decrypt(ciphertext)
+		if err != nil {
+			return nil, fmt.Errorf("failed to decrypt with %s: %w", key.Algorithm, err)
+		}
+
+	case StandardMLKEMCrypto:
+		if len(ephemeralPublicKey) > 0 {
+			return nil, errors.New("ephemeral public key should not be provided for non-EC decryption")
+		}
+
+		rawKey, err = key.decryptor.Decrypt(ciphertext)
+		if err != nil {
+			return nil, fmt.Errorf("failed to decrypt with %s: %w", key.Algorithm, err)
 		}
 
 	default:

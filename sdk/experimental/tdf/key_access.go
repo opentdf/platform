@@ -162,121 +162,29 @@ func wrapKeyWithPublicKey(symKey []byte, pubKeyInfo keysplit.KASPublicKey) (stri
 		return "", "", "", fmt.Errorf("public key PEM is empty for KAS %s", pubKeyInfo.URL)
 	}
 
-	// Determine key type based on algorithm
-	ktype := ocrypto.KeyType(pubKeyInfo.Algorithm)
-
-	if ocrypto.IsHybridKeyType(ktype) {
-		return wrapKeyWithHybrid(ktype, pubKeyInfo.PEM, symKey)
-	}
-	if ocrypto.IsECKeyType(ktype) {
-		// Handle EC key wrapping
-		return wrapKeyWithEC(ktype, pubKeyInfo.PEM, symKey)
-	}
-	if ocrypto.IsMLKEMKeyType(ktype) {
-		// Handle ML-KEM key wrapping
-		return wrapKeyWithMLKEM(ktype, pubKeyInfo.PEM, symKey)
-	}
-	// Handle RSA key wrapping
-	wrapped, err := wrapKeyWithRSA(pubKeyInfo.PEM, symKey)
-	return wrapped, "wrapped", "", err
-}
-
-// wrapKeyWithEC encrypts a key using EC public key with ECIES
-func wrapKeyWithEC(keyType ocrypto.KeyType, kasPublicKeyPEM string, symKey []byte) (string, string, string, error) {
-	// Convert key type to ECC mode
-	mode, err := ocrypto.ECKeyTypeToMode(keyType)
+	encryptor, err := ocrypto.FromPublicPEMWithSalt(pubKeyInfo.PEM, tdfSalt(), nil)
 	if err != nil {
-		return "", "", "", fmt.Errorf("failed to convert key type to ECC mode: %w", err)
+		return "", "", "", fmt.Errorf("failed to create encryptor: %w", err)
 	}
 
-	// Generate ephemeral key pair
-	ecKeyPair, err := ocrypto.NewECKeyPair(mode)
+	wrapped, err := encryptor.Encrypt(symKey)
 	if err != nil {
-		return "", "", "", fmt.Errorf("failed to create EC key pair: %w", err)
+		return "", "", "", fmt.Errorf("failed to wrap key: %w", err)
 	}
 
-	// Get ephemeral public key in PEM format
-	ephemeralPubKey, err := ecKeyPair.PublicKeyInPemFormat()
-	if err != nil {
-		return "", "", "", fmt.Errorf("failed to get ephemeral public key: %w", err)
+	keyType := string(encryptor.Type())
+	ephemeralPublicKey := ""
+	if encryptor.Type() == ocrypto.EC {
+		keyType = "eccWrapped"
+		ecEncryptor, ok := encryptor.(ocrypto.ECEncryptor)
+		if !ok {
+			return "", "", "", fmt.Errorf("unexpected EC encryptor type: %T", encryptor)
+		}
+		ephemeralPublicKey, err = ecEncryptor.PublicKeyInPemFormat()
+		if err != nil {
+			return "", "", "", fmt.Errorf("failed to serialize ephemeral public key: %w", err)
+		}
 	}
 
-	// Get ephemeral private key
-	ephemeralPrivKey, err := ecKeyPair.PrivateKeyInPemFormat()
-	if err != nil {
-		return "", "", "", fmt.Errorf("failed to get ephemeral private key: %w", err)
-	}
-
-	// Compute ECDH shared secret
-	ecdhKey, err := ocrypto.ComputeECDHKey([]byte(ephemeralPrivKey), []byte(kasPublicKeyPEM))
-	if err != nil {
-		return "", "", "", fmt.Errorf("failed to compute ECDH key: %w", err)
-	}
-
-	// Derive wrapping key using HKDF
-	salt := tdfSalt()
-	wrapKey, err := ocrypto.CalculateHKDF(salt, ecdhKey)
-	if err != nil {
-		return "", "", "", fmt.Errorf("failed to derive wrap key: %w", err)
-	}
-
-	// Ensure we have the right length for wrapping, trim if needed, or error if too short
-	if len(wrapKey) > len(symKey) {
-		wrapKey = wrapKey[:len(symKey)]
-	} else if len(wrapKey) < len(symKey) {
-		return "", "", "", fmt.Errorf("wrap key too short: got %d, expected at least %d",
-			len(wrapKey), len(symKey))
-	}
-
-	wrapped := make([]byte, len(symKey))
-	for i := range symKey {
-		wrapped[i] = symKey[i] ^ wrapKey[i]
-	}
-
-	return string(ocrypto.Base64Encode(wrapped)), "eccWrapped", ephemeralPubKey, nil
-}
-
-// wrapKeyWithRSA encrypts a key using RSA public key with OAEP padding
-func wrapKeyWithRSA(kasPublicKeyPEM string, symKey []byte) (string, error) {
-	// Create RSA encryptor from PEM
-	encryptor, err := ocrypto.FromPublicPEM(kasPublicKeyPEM)
-	if err != nil {
-		return "", fmt.Errorf("failed to create RSA encryptor: %w", err)
-	}
-
-	// Encrypt with OAEP padding
-	encryptedKey, err := encryptor.Encrypt(symKey)
-	if err != nil {
-		return "", fmt.Errorf("failed to RSA encrypt key: %w", err)
-	}
-
-	return string(ocrypto.Base64Encode(encryptedKey)), nil
-}
-
-func wrapKeyWithHybrid(ktype ocrypto.KeyType, kasPublicKeyPEM string, symKey []byte) (string, string, string, error) {
-	wrappedDER, err := ocrypto.HybridWrapDEK(ktype, kasPublicKeyPEM, symKey)
-	if err != nil {
-		return "", "", "", fmt.Errorf("hybrid wrap failed: %w", err)
-	}
-	return string(ocrypto.Base64Encode(wrappedDER)), "hybrid-wrapped", "", nil
-}
-
-func wrapKeyWithMLKEM(ktype ocrypto.KeyType, kasPublicKeyPEM string, symKey []byte) (string, string, string, error) {
-	var wrappedDER []byte
-	var err error
-
-	switch ktype { //nolint:exhaustive // only handle mlkem types
-	case ocrypto.MLKEM768Key:
-		wrappedDER, err = ocrypto.MLKEM768WrapDEK([]byte(kasPublicKeyPEM), symKey)
-	case ocrypto.MLKEM1024Key:
-		wrappedDER, err = ocrypto.MLKEM1024WrapDEK([]byte(kasPublicKeyPEM), symKey)
-	default:
-		return "", "", "", fmt.Errorf("unsupported ML-KEM key type: %s", ktype)
-	}
-
-	if err != nil {
-		return "", "", "", fmt.Errorf("mlkem wrap failed: %w", err)
-	}
-
-	return string(ocrypto.Base64Encode(wrappedDER)), "mlkem-wrapped", "", nil
+	return string(ocrypto.Base64Encode(wrapped)), keyType, ephemeralPublicKey, nil
 }

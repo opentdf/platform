@@ -2738,7 +2738,7 @@ func (s *TDFSuite) testDecryptWithReader(sdk *SDK, tdfFile, decryptedTdfFileName
 	resultBuf := bytes.Repeat([]byte{char}, int(bufSize))
 
 	// read last 5 bytes
-	n, err := r.ReadAt(buf, test.fileSize-(bufSize))
+	n, err := r.ReadAt(buf, test.fileSize-bufSize)
 	if err != nil {
 		s.Require().ErrorIs(err, io.EOF)
 	}
@@ -2858,7 +2858,8 @@ func (s *TDFSuite) startBackend() {
 
 	ats := getTokenSource(s.T())
 
-	sdk, err := New(sdkPlatformURL,
+	sdk, err := New(
+		sdkPlatformURL,
 		WithClientCredentials("test", "test", nil),
 		withCustomAccessTokenSource(&ats),
 		WithTokenEndpoint("http://localhost:65432/auth/token"),
@@ -2894,7 +2895,8 @@ func (f *FakeAttributes) GetAttributeValuesByFqns(_ context.Context, in *connect
 	for _, fqn := range in.Msg.GetFqns() {
 		av, err := NewAttributeValueFQN(fqn)
 		if err != nil {
-			slog.Error("invalid fqn",
+			slog.Error(
+				"invalid fqn",
 				slog.String("fqn", fqn),
 				slog.Any("error", err),
 			)
@@ -3082,7 +3084,7 @@ func (f *FakeKas) getRewrapResponse(rewrapRequest string, fulfillableObligations
 				entityWrappedKey, err = asymEncrypt.Encrypt(symmetricKey)
 				f.s.Require().NoError(err, "ocrypto.AsymEncryption.encrypt failed")
 
-			case "hybrid-wrapped":
+			case "hybrid-wrapped", "mlkem-wrapped", "wrapped":
 				kasPrivateKey := strings.ReplaceAll(f.privateKey, "\n\t", "\n")
 				if kao.GetKid() != "" && kao.GetKid() != f.KID {
 					lk, ok := f.legakeys[kaoReq.GetKeyAccessObject().GetKid()]
@@ -3090,26 +3092,10 @@ func (f *FakeKas) getRewrapResponse(rewrapRequest string, fulfillableObligations
 					kasPrivateKey = strings.ReplaceAll(lk.private, "\n\t", "\n")
 				}
 
-				var symmetricKey []byte
-				switch ocrypto.KeyType(f.Algorithm) { //nolint:exhaustive // only handle hybrid types
-				case ocrypto.HybridSecp256r1MLKEM768Key:
-					privateKey, err := ocrypto.P256MLKEM768PrivateKeyFromPem([]byte(kasPrivateKey))
-					f.s.Require().NoError(err, "failed to extract P256+ML-KEM-768 private key from PEM")
-					symmetricKey, err = ocrypto.P256MLKEM768UnwrapDEK(privateKey, wrappedKey)
-					f.s.Require().NoError(err, "failed to unwrap P256+ML-KEM-768 wrapped key")
-				case ocrypto.HybridSecp384r1MLKEM1024Key:
-					privateKey, err := ocrypto.P384MLKEM1024PrivateKeyFromPem([]byte(kasPrivateKey))
-					f.s.Require().NoError(err, "failed to extract P384+ML-KEM-1024 private key from PEM")
-					symmetricKey, err = ocrypto.P384MLKEM1024UnwrapDEK(privateKey, wrappedKey)
-					f.s.Require().NoError(err, "failed to unwrap P384+ML-KEM-1024 wrapped key")
-				case ocrypto.HybridXWingKey:
-					privateKey, err := ocrypto.XWingPrivateKeyFromPem([]byte(kasPrivateKey))
-					f.s.Require().NoError(err, "failed to extract X-Wing private key from PEM")
-					symmetricKey, err = ocrypto.XWingUnwrapDEK(privateKey, wrappedKey)
-					f.s.Require().NoError(err, "failed to unwrap X-Wing wrapped key")
-				default:
-					f.s.Require().Failf("unsupported hybrid algorithm", "algorithm: %s", f.Algorithm)
-				}
+				asymDecrypt, err := ocrypto.FromPrivatePEMWithSalt(kasPrivateKey, tdfSalt(), nil)
+				f.s.Require().NoError(err, "ocrypto.FromPrivatePEMWithSalt failed")
+				symmetricKey, err := asymDecrypt.Decrypt(wrappedKey)
+				f.s.Require().NoError(err, "ocrypto.decrypt failed for key type %s", kaoReq.GetKeyAccessObject().GetKeyType())
 
 				asymEncrypt, err := ocrypto.FromPublicPEMWithSalt(bodyData.GetClientPublicKey(), tdfSalt(), nil)
 				f.s.Require().NoError(err, "ocrypto.FromPublicPEMWithSalt failed")
@@ -3118,24 +3104,6 @@ func (f *FakeKas) getRewrapResponse(rewrapRequest string, fulfillableObligations
 					f.s.Require().NoError(err, "unable to serialize ephemeral key")
 					resp.SessionPublicKey = sessionKey
 				}
-				entityWrappedKey, err = asymEncrypt.Encrypt(symmetricKey)
-				f.s.Require().NoError(err, "ocrypto.encrypt failed")
-
-			case "wrapped":
-				kasPrivateKey := strings.ReplaceAll(f.privateKey, "\n\t", "\n")
-				if kao.GetKid() != "" && kao.GetKid() != f.KID {
-					// old kid
-					lk, ok := f.legakeys[kaoReq.GetKeyAccessObject().GetKid()]
-					f.s.Require().True(ok, "unable to find key [%s]", kao.GetKid())
-					kasPrivateKey = strings.ReplaceAll(lk.private, "\n\t", "\n")
-				}
-
-				asymDecrypt, err := ocrypto.NewAsymDecryption(kasPrivateKey)
-				f.s.Require().NoError(err, "ocrypto.NewAsymDecryption failed")
-				symmetricKey, err := asymDecrypt.Decrypt(wrappedKey)
-				f.s.Require().NoError(err, "ocrypto.Decrypt failed for kao:[%s # %s (%s)] kas:[%s # %s (%s)]", kao.GetKasUrl(), kao.GetKid(), kao.GetSplitId(), f.URL, f.KID, f.Algorithm)
-				asymEncrypt, err := ocrypto.FromPublicPEM(bodyData.GetClientPublicKey())
-				f.s.Require().NoError(err, "ocrypto.FromPublicPEM failed")
 				entityWrappedKey, err = asymEncrypt.Encrypt(symmetricKey)
 				f.s.Require().NoError(err, "ocrypto.encrypt failed")
 

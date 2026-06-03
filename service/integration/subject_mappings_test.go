@@ -1052,7 +1052,9 @@ func (s *SubjectMappingsSuite) Test_ListSubjectMappings_SearchByAttributeValueFQ
 		fmt.Sprintf("condition-holder-%d", suffix),
 		fmt.Sprintf("unmatched-%d", suffix),
 	})
-	defer s.deleteSearchSubjectMappingNamespace(ns)
+	s.T().Cleanup(func() {
+		s.deleteSearchSubjectMappingNamespace(ns)
+	})
 
 	actionToken := fmt.Sprintf("action-only-%d", suffix)
 	labelToken := fmt.Sprintf("label-only-%d", suffix)
@@ -1096,6 +1098,9 @@ func (s *SubjectMappingsSuite) Test_ListSubjectMappings_SearchByAttributeValueFQ
 		})
 	}
 
+	// ListSubjectMappings search is intentionally limited to attribute value FQNs
+	// and metadata label values; action names, label keys, and subject condition
+	// selectors/external values should not affect filtered results.
 	for _, term := range []string{
 		actionToken,
 		labelKeyToken,
@@ -1117,7 +1122,9 @@ func (s *SubjectMappingsSuite) Test_ListSubjectMappings_SearchTrimsWhitespace_Su
 	labelToken := fmt.Sprintf("trimmed-label-%d", suffix)
 
 	ns, values := s.createSearchSubjectMappingNamespace(suffix, []string{fmt.Sprintf("trimmed-%d", suffix)})
-	defer s.deleteSearchSubjectMappingNamespace(ns)
+	s.T().Cleanup(func() {
+		s.deleteSearchSubjectMappingNamespace(ns)
+	})
 
 	sm := s.createSearchSubjectMapping(ns.GetId(), values[0].GetId(), ".trimmed", []string{"trimmed@example.com"}, "read", map[string]string{"search-label": labelToken})
 
@@ -1138,7 +1145,9 @@ func (s *SubjectMappingsSuite) Test_ListSubjectMappings_SearchEscapesLikeWildcar
 		fmt.Sprintf("wildcarda-%d", suffix),
 		fmt.Sprintf("wildcardb-%d", suffix),
 	})
-	defer s.deleteSearchSubjectMappingNamespace(ns)
+	s.T().Cleanup(func() {
+		s.deleteSearchSubjectMappingNamespace(ns)
+	})
 
 	s.createSearchSubjectMapping(ns.GetId(), values[0].GetId(), ".wildcard-a", []string{"wildcard-a@example.com"}, "read", map[string]string{"wildcard": fmt.Sprintf("wildcarda-%d", suffix)})
 	s.createSearchSubjectMapping(ns.GetId(), values[1].GetId(), ".wildcard-b", []string{"wildcard-b@example.com"}, "read", map[string]string{"wildcard": fmt.Sprintf("wildcardb-%d", suffix)})
@@ -1162,9 +1171,13 @@ func (s *SubjectMappingsSuite) Test_ListSubjectMappings_SearchCombinesWithNamesp
 	searchToken := fmt.Sprintf("namespace-and-search-%d", suffix)
 
 	firstNS, firstValues := s.createSearchSubjectMappingNamespace(suffix, []string{fmt.Sprintf("first-%d", suffix)})
-	defer s.deleteSearchSubjectMappingNamespace(firstNS)
+	s.T().Cleanup(func() {
+		s.deleteSearchSubjectMappingNamespace(firstNS)
+	})
 	secondNS, secondValues := s.createSearchSubjectMappingNamespace(suffix+1, []string{fmt.Sprintf("second-%d", suffix)})
-	defer s.deleteSearchSubjectMappingNamespace(secondNS)
+	s.T().Cleanup(func() {
+		s.deleteSearchSubjectMappingNamespace(secondNS)
+	})
 
 	firstSM := s.createSearchSubjectMapping(firstNS.GetId(), firstValues[0].GetId(), ".first", []string{"first@example.com"}, "read", map[string]string{"search": searchToken})
 	secondSM := s.createSearchSubjectMapping(secondNS.GetId(), secondValues[0].GetId(), ".second", []string{"second@example.com"}, "read", map[string]string{"search": searchToken})
@@ -1191,7 +1204,9 @@ func (s *SubjectMappingsSuite) Test_ListSubjectMappings_SearchCombinesWithNamesp
 func (s *SubjectMappingsSuite) Test_ListSubjectMappings_SearchEmptyQuery_Succeeds() {
 	suffix := time.Now().UnixNano()
 	ns, values := s.createSearchSubjectMappingNamespace(suffix, []string{fmt.Sprintf("empty-search-%d", suffix)})
-	defer s.deleteSearchSubjectMappingNamespace(ns)
+	s.T().Cleanup(func() {
+		s.deleteSearchSubjectMappingNamespace(ns)
+	})
 	s.createSearchSubjectMapping(ns.GetId(), values[0].GetId(), ".empty-search", []string{"empty-search@example.com"}, "read", nil)
 
 	noSearch, err := s.db.PolicyClient.ListSubjectMappings(s.ctx, &subjectmapping.ListSubjectMappingsRequest{
@@ -1216,7 +1231,9 @@ func (s *SubjectMappingsSuite) Test_ListSubjectMappings_SearchPaginationAppliesA
 		fmt.Sprintf("page-c-%d", suffix),
 		fmt.Sprintf("page-other-%d", suffix),
 	})
-	defer s.deleteSearchSubjectMappingNamespace(ns)
+	s.T().Cleanup(func() {
+		s.deleteSearchSubjectMappingNamespace(ns)
+	})
 
 	ids := make([]string, 3)
 	for i := range ids {

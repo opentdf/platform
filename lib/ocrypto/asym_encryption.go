@@ -74,13 +74,14 @@ func FromPublicPEMWithSalt(publicKeyInPem string, salt, info []byte) (PublicKeyE
 	if block == nil {
 		return nil, errors.New("failed to parse PEM formatted public key")
 	}
-	switch block.Type {
-	case PEMBlockXWingPublicKey:
-		return NewXWingEncryptor(block.Bytes, salt, info)
-	case PEMBlockP256MLKEM768PublicKey:
-		return NewP256MLKEM768Encryptor(block.Bytes, salt, info)
-	case PEMBlockP384MLKEM1024PublicKey:
-		return NewP384MLKEM1024Encryptor(block.Bytes, salt, info)
+
+	// Hybrid PQ/T public keys are SPKI-wrapped under one of our known OIDs.
+	// Peek at the AlgorithmIdentifier and route hybrids to their constructors;
+	// everything else (RSA, EC, CERTIFICATE) falls through to the x509 path.
+	if block.Type == pemBlockPublicKey {
+		if enc, matched, err := hybridEncryptorFromSPKI(block.Bytes, salt, info); matched {
+			return enc, err
+		}
 	}
 
 	pub, err := getPublicPart(publicKeyInPem)
@@ -281,4 +282,31 @@ func (e ECEncryptor) Encrypt(data []byte) ([]byte, error) {
 // PublicKeyInPemFormat Returns public key in pem format.
 func (e ECEncryptor) PublicKeyInPemFormat() (string, error) {
 	return publicKeyInPemFormat(e.ek.Public())
+}
+
+// hybridEncryptorFromSPKI tries to decode `der` as a hybrid PQ/T
+// SubjectPublicKeyInfo. The second return value reports whether the OID
+// matched a known hybrid scheme — when false, the caller should fall back to
+// the standard x509 SPKI path. Salt/info are honoured only for X-Wing (the
+// NIST composite-KEM hybrids derive their wrap key without them).
+func hybridEncryptorFromSPKI(der, salt, info []byte) (PublicKeyEncryptor, bool, error) {
+	oid, raw, err := parseHybridSPKI(der)
+	if err != nil {
+		// Not a hybrid SPKI envelope. Signal "not handled" so the caller can
+		// fall back to the standard x509 SPKI path for RSA/EC keys.
+		return nil, false, nil //nolint:nilerr // intentional fall-through
+	}
+	switch {
+	case oid.Equal(oidXWing):
+		enc, err := NewXWingEncryptor(raw, salt, info)
+		return enc, true, err
+	case oid.Equal(oidCompositeMLKEM768P256):
+		enc, err := NewP256MLKEM768Encryptor(raw)
+		return enc, true, err
+	case oid.Equal(oidCompositeMLKEM1024P384):
+		enc, err := NewP384MLKEM1024Encryptor(raw)
+		return enc, true, err
+	default:
+		return nil, false, nil
+	}
 }

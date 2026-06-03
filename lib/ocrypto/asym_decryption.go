@@ -43,13 +43,14 @@ func FromPrivatePEMWithSalt(privateKeyInPem string, salt, info []byte) (PrivateK
 	if block == nil {
 		return AsymDecryption{}, errors.New("failed to parse PEM formatted private key")
 	}
-	switch block.Type {
-	case PEMBlockXWingPrivateKey:
-		return NewSaltedXWingDecryptor(block.Bytes, salt, info)
-	case PEMBlockP256MLKEM768PrivateKey:
-		return NewSaltedP256MLKEM768Decryptor(block.Bytes, salt, info)
-	case PEMBlockP384MLKEM1024PrivateKey:
-		return NewSaltedP384MLKEM1024Decryptor(block.Bytes, salt, info)
+
+	// Hybrid PQ/T private keys are PKCS#8-wrapped under one of our known OIDs.
+	// Peek at the AlgorithmIdentifier and route hybrids to their constructors;
+	// everything else (RSA, EC, EC PRIVATE KEY) falls through to x509.
+	if block.Type == pemBlockPrivateKey {
+		if dec, matched, err := hybridDecryptorFromPKCS8(block.Bytes, salt, info); matched {
+			return dec, err
+		}
 	}
 
 	priv, err := x509.ParsePKCS8PrivateKey(block.Bytes)
@@ -200,6 +201,31 @@ func (e ECDecryptor) DecryptWithEphemeralKey(data, ephemeral []byte) ([]byte, er
 	}
 
 	return plaintext, nil
+}
+
+// hybridDecryptorFromPKCS8 mirrors hybridEncryptorFromSPKI for PKCS#8 private
+// keys. Salt/info are honoured only for X-Wing; the NIST composite-KEM hybrids
+// have no salt/info inputs.
+func hybridDecryptorFromPKCS8(der, salt, info []byte) (PrivateKeyDecryptor, bool, error) {
+	oid, raw, err := parseHybridPKCS8(der)
+	if err != nil {
+		// Not a hybrid PKCS#8 envelope. Signal "not handled" so the caller can
+		// fall back to the standard x509 PKCS#8 path for RSA/EC keys.
+		return nil, false, nil //nolint:nilerr // intentional fall-through
+	}
+	switch {
+	case oid.Equal(oidXWing):
+		dec, err := NewSaltedXWingDecryptor(raw, salt, info)
+		return dec, true, err
+	case oid.Equal(oidCompositeMLKEM768P256):
+		dec, err := NewP256MLKEM768Decryptor(raw)
+		return dec, true, err
+	case oid.Equal(oidCompositeMLKEM1024P384):
+		dec, err := NewP384MLKEM1024Decryptor(raw)
+		return dec, true, err
+	default:
+		return nil, false, nil
+	}
 }
 
 func convCurve(c ecdh.Curve) elliptic.Curve {

@@ -18,11 +18,10 @@ const (
 	XWingPublicKeySize  = xwing.PublicKeySize
 	XWingPrivateKeySize = xwing.PrivateKeySize
 	XWingCiphertextSize = xwing.CiphertextSize
-
-	PEMBlockXWingPublicKey  = "XWING PUBLIC KEY"
-	PEMBlockXWingPrivateKey = "XWING PRIVATE KEY"
 )
 
+// XWingWrappedKey is the ASN.1 envelope stored in wrapped_key. draft-10 defines
+// only the KEM; this DEK wrapping envelope is local to OpenTDF and unchanged.
 type XWingWrappedKey struct {
 	XWingCiphertext []byte `asn1:"tag:0"`
 	EncryptedDEK    []byte `asn1:"tag:1"`
@@ -63,23 +62,23 @@ func NewXWingKeyPair() (XWingKeyPair, error) {
 }
 
 func (k XWingKeyPair) PublicKeyInPemFormat() (string, error) {
-	return rawToPEM(PEMBlockXWingPublicKey, k.publicKey, XWingPublicKeySize)
+	der, err := marshalHybridSPKI(oidXWing, k.publicKey)
+	if err != nil {
+		return "", err
+	}
+	return string(pem.EncodeToMemory(&pem.Block{Type: pemBlockPublicKey, Bytes: der})), nil
 }
 
 func (k XWingKeyPair) PrivateKeyInPemFormat() (string, error) {
-	return rawToPEM(PEMBlockXWingPrivateKey, k.privateKey, XWingPrivateKeySize)
+	der, err := marshalHybridPKCS8(oidXWing, k.privateKey)
+	if err != nil {
+		return "", err
+	}
+	return string(pem.EncodeToMemory(&pem.Block{Type: pemBlockPrivateKey, Bytes: der})), nil
 }
 
 func (k XWingKeyPair) GetKeyType() KeyType {
 	return HybridXWingKey
-}
-
-func XWingPubKeyFromPem(data []byte) ([]byte, error) {
-	return decodeSizedPEMBlock(data, PEMBlockXWingPublicKey, XWingPublicKeySize)
-}
-
-func XWingPrivateKeyFromPem(data []byte) ([]byte, error) {
-	return decodeSizedPEMBlock(data, PEMBlockXWingPrivateKey, XWingPrivateKeySize)
 }
 
 func NewXWingEncryptor(publicKey, salt, info []byte) (*XWingEncryptor, error) {
@@ -99,7 +98,11 @@ func (e *XWingEncryptor) Encrypt(data []byte) ([]byte, error) {
 }
 
 func (e *XWingEncryptor) PublicKeyInPemFormat() (string, error) {
-	return rawToPEM(PEMBlockXWingPublicKey, e.publicKey, XWingPublicKeySize)
+	der, err := marshalHybridSPKI(oidXWing, e.publicKey)
+	if err != nil {
+		return "", err
+	}
+	return string(pem.EncodeToMemory(&pem.Block{Type: pemBlockPublicKey, Bytes: der})), nil
 }
 
 func (e *XWingEncryptor) Type() SchemeType {
@@ -242,19 +245,4 @@ func deriveXWingWrapKey(sharedSecret, salt, info []byte) ([]byte, error) {
 	}
 
 	return derivedKey, nil
-}
-
-func decodeSizedPEMBlock(data []byte, blockType string, expectedSize int) ([]byte, error) {
-	block, _ := pem.Decode(data)
-	if block == nil {
-		return nil, fmt.Errorf("failed to parse PEM formatted %s", blockType)
-	}
-	if block.Type != blockType {
-		return nil, fmt.Errorf("unexpected PEM block type: got %s want %s", block.Type, blockType)
-	}
-	if len(block.Bytes) != expectedSize {
-		return nil, fmt.Errorf("invalid %s size: got %d want %d", blockType, len(block.Bytes), expectedSize)
-	}
-
-	return append([]byte(nil), block.Bytes...), nil
 }

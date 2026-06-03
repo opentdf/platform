@@ -202,7 +202,8 @@ func testInitialAttributesOnWriter(t *testing.T) {
 	}
 	initKAS := &policy.SimpleKasKey{KasUri: testKAS1, PublicKey: &policy.SimpleKasPublicKey{Algorithm: policy.Algorithm_ALGORITHM_RSA_2048, Kid: "kid1", Pem: mockRSAPublicKey1}}
 
-	writer, err := NewWriter(ctx,
+	writer, err := NewWriter(
+		ctx,
 		WithInitialAttributes(initAttrs),
 		WithDefaultKASForWriter(initKAS),
 	)
@@ -230,7 +231,8 @@ func testInitialAttributesOnWriter(t *testing.T) {
 	assert.True(t, found, "policy should include initial attribute")
 
 	// Overrides at Finalize should take precedence
-	writer2, err := NewWriter(ctx,
+	writer2, err := NewWriter(
+		ctx,
 		WithInitialAttributes(initAttrs),
 		WithDefaultKASForWriter(initKAS),
 	)
@@ -487,7 +489,8 @@ func testManifestGeneration(t *testing.T) {
 	customMimeType := "application/json"
 	encryptedMetadata := "Custom metadata content"
 
-	finalizeResult, err := writer.Finalize(ctx,
+	finalizeResult, err := writer.Finalize(
+		ctx,
 		WithAttributeValues(attributes),
 		WithPayloadMimeType(customMimeType),
 		WithEncryptedMetadata(encryptedMetadata),
@@ -525,7 +528,7 @@ func testManifestGeneration(t *testing.T) {
 
 	// Verify policy content
 	policyBytes, err := ocrypto.Base64Decode([]byte(encInfo.Policy))
-	require.NoError(t, (err))
+	require.NoError(t, err)
 	// Policy bytes are now raw JSON, not base64 encoded
 	var policy Policy
 	err = json.Unmarshal(policyBytes, &policy)
@@ -564,7 +567,8 @@ func testAssertionsAndMetadata(t *testing.T) {
 	attributes := []*policy.Value{
 		createTestAttribute("https://example.com/attr/Sensitivity/value/Restricted", testKAS1, "kid1"),
 	}
-	finalizeResult, err := writer.Finalize(ctx,
+	finalizeResult, err := writer.Finalize(
+		ctx,
 		WithAttributeValues(attributes),
 		WithEncryptedMetadata("Sensitive metadata content"),
 		WithAssertions(testAssertion),
@@ -899,28 +903,11 @@ func hybridUnwrapForTest(t *testing.T, ktype ocrypto.KeyType, privatePEM, wrappe
 	wrappedDER, err := ocrypto.Base64Decode([]byte(wrappedKeyB64))
 	require.NoError(t, err, "Base64Decode wrapped key")
 
-	switch ktype { //nolint:exhaustive // only handle hybrid types
-	case ocrypto.HybridXWingKey:
-		raw, err := ocrypto.XWingPrivateKeyFromPem([]byte(privatePEM))
-		require.NoError(t, err)
-		dek, err := ocrypto.XWingUnwrapDEK(raw, wrappedDER)
-		require.NoError(t, err, "XWingUnwrapDEK")
-		assert.NotEmpty(t, dek, "X-Wing recovered DEK")
-	case ocrypto.HybridSecp256r1MLKEM768Key:
-		raw, err := ocrypto.P256MLKEM768PrivateKeyFromPem([]byte(privatePEM))
-		require.NoError(t, err)
-		dek, err := ocrypto.P256MLKEM768UnwrapDEK(raw, wrappedDER)
-		require.NoError(t, err, "P256MLKEM768UnwrapDEK")
-		assert.NotEmpty(t, dek, "P-256+ML-KEM-768 recovered DEK")
-	case ocrypto.HybridSecp384r1MLKEM1024Key:
-		raw, err := ocrypto.P384MLKEM1024PrivateKeyFromPem([]byte(privatePEM))
-		require.NoError(t, err)
-		dek, err := ocrypto.P384MLKEM1024UnwrapDEK(raw, wrappedDER)
-		require.NoError(t, err, "P384MLKEM1024UnwrapDEK")
-		assert.NotEmpty(t, dek, "P-384+ML-KEM-1024 recovered DEK")
-	default:
-		t.Fatalf("unsupported hybrid key type for round-trip: %s", ktype)
-	}
+	dec, err := ocrypto.FromPrivatePEM(privatePEM)
+	require.NoError(t, err, "FromPrivatePEM")
+	dek, err := dec.Decrypt(wrappedDER)
+	require.NoError(t, err, "hybrid Decrypt")
+	assert.NotEmpty(t, dek, "%s recovered DEK", ktype)
 }
 
 func testHybridXWingFlow(t *testing.T) {

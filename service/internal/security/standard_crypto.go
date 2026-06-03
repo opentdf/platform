@@ -120,7 +120,8 @@ func loadKeys(ks []KeyPairInfo) (*StandardCrypto, error) {
 	keysByAlg := make(map[string]keylist)
 	keysByID := make(keylist)
 	for _, k := range ks {
-		slog.Info("crypto cfg loading",
+		slog.Info(
+			"crypto cfg loading",
 			slog.Any("id", k.KID),
 			slog.Any("alg", k.Algorithm),
 		)
@@ -247,7 +248,8 @@ func loadDeprecatedKeys(rsaKeys map[string]StandardKeyInfo, ecKeys map[string]St
 		keysByID[id] = k
 	}
 	for id, kasInfo := range ecKeys {
-		slog.Info("cfg.ECKeys",
+		slog.Info(
+			"cfg.ECKeys",
 			slog.String("id", id),
 			slog.Any("kasInfo", kasInfo),
 		)
@@ -504,12 +506,11 @@ func (s *StandardCrypto) Decrypt(_ context.Context, keyID trust.KeyIdentifier, c
 			return nil, errors.New("ephemeral public key should not be provided for X-Wing decryption")
 		}
 
-		privateKey, err := ocrypto.XWingPrivateKeyFromPem([]byte(key.xwingPrivateKeyPem))
+		dec, err := ocrypto.FromPrivatePEM(key.xwingPrivateKeyPem)
 		if err != nil {
 			return nil, fmt.Errorf("failed to parse X-Wing private key: %w", err)
 		}
-
-		rawKey, err = ocrypto.XWingUnwrapDEK(privateKey, ciphertext)
+		rawKey, err = dec.Decrypt(ciphertext)
 		if err != nil {
 			return nil, fmt.Errorf("failed to decrypt with X-Wing: %w", err)
 		}
@@ -519,27 +520,13 @@ func (s *StandardCrypto) Decrypt(_ context.Context, keyID trust.KeyIdentifier, c
 			return nil, errors.New("ephemeral public key should not be provided for hybrid decryption")
 		}
 
-		switch key.Algorithm {
-		case AlgorithmHPQTSecp256r1MLKEM768:
-			privateKey, err := ocrypto.P256MLKEM768PrivateKeyFromPem([]byte(key.hybridPrivateKeyPem))
-			if err != nil {
-				return nil, fmt.Errorf("failed to parse P256-MLKEM768 private key: %w", err)
-			}
-			rawKey, err = ocrypto.P256MLKEM768UnwrapDEK(privateKey, ciphertext)
-			if err != nil {
-				return nil, fmt.Errorf("failed to decrypt with P256-MLKEM768: %w", err)
-			}
-		case AlgorithmHPQTSecp384r1MLKEM1024:
-			privateKey, err := ocrypto.P384MLKEM1024PrivateKeyFromPem([]byte(key.hybridPrivateKeyPem))
-			if err != nil {
-				return nil, fmt.Errorf("failed to parse P384-MLKEM1024 private key: %w", err)
-			}
-			rawKey, err = ocrypto.P384MLKEM1024UnwrapDEK(privateKey, ciphertext)
-			if err != nil {
-				return nil, fmt.Errorf("failed to decrypt with P384-MLKEM1024: %w", err)
-			}
-		default:
-			return nil, fmt.Errorf("unsupported hybrid algorithm [%s]", key.Algorithm)
+		dec, err := ocrypto.FromPrivatePEM(key.hybridPrivateKeyPem)
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse hybrid private key: %w", err)
+		}
+		rawKey, err = dec.Decrypt(ciphertext)
+		if err != nil {
+			return nil, fmt.Errorf("failed to decrypt with hybrid [%s]: %w", key.Algorithm, err)
 		}
 
 	default:

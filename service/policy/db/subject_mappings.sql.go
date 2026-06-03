@@ -356,8 +356,8 @@ const listSubjectConditionSets = `-- name: listSubjectConditionSets :many
 
 WITH params AS (
     SELECT
-        COALESCE(NULLIF($5::text, ''), 'created_at') AS resolved_field,
-        COALESCE(NULLIF($6::text, ''), 'DESC') AS resolved_direction
+        COALESCE(NULLIF($6::text, ''), 'created_at') AS resolved_field,
+        COALESCE(NULLIF($7::text, ''), 'DESC') AS resolved_direction
 )
 SELECT
     scs.id,
@@ -373,22 +373,33 @@ LEFT JOIN attribute_namespaces n ON n.id = scs.namespace_id
 LEFT JOIN attribute_fqns ns_fqns ON ns_fqns.namespace_id = n.id AND ns_fqns.attribute_id IS NULL AND ns_fqns.value_id IS NULL
 CROSS JOIN params p
 WHERE
-    ($1::uuid IS NULL AND $2::text IS NULL)
-    OR scs.namespace_id = $1::uuid
-    OR ns_fqns.fqn = $2::text
+    (
+        ($1::uuid IS NULL AND $2::text IS NULL)
+        OR scs.namespace_id = $1::uuid
+        OR ns_fqns.fqn = $2::text
+    )
+    AND CASE
+        WHEN $3::TEXT IS NULL THEN TRUE
+        ELSE EXISTS (
+            SELECT 1
+            FROM JSONB_EACH_TEXT(COALESCE(scs.metadata -> 'labels', '{}'::JSONB)) AS label(key, value)
+            WHERE label.value ILIKE $3::TEXT ESCAPE '\'
+        )
+    END
 ORDER BY
     CASE WHEN p.resolved_field = 'created_at' AND p.resolved_direction = 'ASC' THEN scs.created_at END ASC,
     CASE WHEN p.resolved_field = 'created_at' AND p.resolved_direction = 'DESC' THEN scs.created_at END DESC,
     CASE WHEN p.resolved_field = 'updated_at' AND p.resolved_direction = 'ASC' THEN scs.updated_at END ASC,
     CASE WHEN p.resolved_field = 'updated_at' AND p.resolved_direction = 'DESC' THEN scs.updated_at END DESC,
     scs.id ASC
-LIMIT $4
-OFFSET $3
+LIMIT $5
+OFFSET $4
 `
 
 type listSubjectConditionSetsParams struct {
 	NamespaceID   pgtype.UUID `json:"namespace_id"`
 	NamespaceFqn  pgtype.Text `json:"namespace_fqn"`
+	Search        pgtype.Text `json:"search"`
 	Offset        int32       `json:"offset_"`
 	Limit         int32       `json:"limit_"`
 	SortField     string      `json:"sort_field"`
@@ -409,8 +420,8 @@ type listSubjectConditionSetsRow struct {
 //
 //	WITH params AS (
 //	    SELECT
-//	        COALESCE(NULLIF($5::text, ''), 'created_at') AS resolved_field,
-//	        COALESCE(NULLIF($6::text, ''), 'DESC') AS resolved_direction
+//	        COALESCE(NULLIF($6::text, ''), 'created_at') AS resolved_field,
+//	        COALESCE(NULLIF($7::text, ''), 'DESC') AS resolved_direction
 //	)
 //	SELECT
 //	    scs.id,
@@ -426,21 +437,32 @@ type listSubjectConditionSetsRow struct {
 //	LEFT JOIN attribute_fqns ns_fqns ON ns_fqns.namespace_id = n.id AND ns_fqns.attribute_id IS NULL AND ns_fqns.value_id IS NULL
 //	CROSS JOIN params p
 //	WHERE
-//	    ($1::uuid IS NULL AND $2::text IS NULL)
-//	    OR scs.namespace_id = $1::uuid
-//	    OR ns_fqns.fqn = $2::text
+//	    (
+//	        ($1::uuid IS NULL AND $2::text IS NULL)
+//	        OR scs.namespace_id = $1::uuid
+//	        OR ns_fqns.fqn = $2::text
+//	    )
+//	    AND CASE
+//	        WHEN $3::TEXT IS NULL THEN TRUE
+//	        ELSE EXISTS (
+//	            SELECT 1
+//	            FROM JSONB_EACH_TEXT(COALESCE(scs.metadata -> 'labels', '{}'::JSONB)) AS label(key, value)
+//	            WHERE label.value ILIKE $3::TEXT ESCAPE '\'
+//	        )
+//	    END
 //	ORDER BY
 //	    CASE WHEN p.resolved_field = 'created_at' AND p.resolved_direction = 'ASC' THEN scs.created_at END ASC,
 //	    CASE WHEN p.resolved_field = 'created_at' AND p.resolved_direction = 'DESC' THEN scs.created_at END DESC,
 //	    CASE WHEN p.resolved_field = 'updated_at' AND p.resolved_direction = 'ASC' THEN scs.updated_at END ASC,
 //	    CASE WHEN p.resolved_field = 'updated_at' AND p.resolved_direction = 'DESC' THEN scs.updated_at END DESC,
 //	    scs.id ASC
-//	LIMIT $4
-//	OFFSET $3
+//	LIMIT $5
+//	OFFSET $4
 func (q *Queries) listSubjectConditionSets(ctx context.Context, arg listSubjectConditionSetsParams) ([]listSubjectConditionSetsRow, error) {
 	rows, err := q.db.Query(ctx, listSubjectConditionSets,
 		arg.NamespaceID,
 		arg.NamespaceFqn,
+		arg.Search,
 		arg.Offset,
 		arg.Limit,
 		arg.SortField,

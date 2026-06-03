@@ -22,9 +22,19 @@ LEFT JOIN attribute_namespaces n ON n.id = scs.namespace_id
 LEFT JOIN attribute_fqns ns_fqns ON ns_fqns.namespace_id = n.id AND ns_fqns.attribute_id IS NULL AND ns_fqns.value_id IS NULL
 CROSS JOIN params p
 WHERE
-    (sqlc.narg('namespace_id')::uuid IS NULL AND sqlc.narg('namespace_fqn')::text IS NULL)
-    OR scs.namespace_id = sqlc.narg('namespace_id')::uuid
-    OR ns_fqns.fqn = sqlc.narg('namespace_fqn')::text
+    (
+        (sqlc.narg('namespace_id')::uuid IS NULL AND sqlc.narg('namespace_fqn')::text IS NULL)
+        OR scs.namespace_id = sqlc.narg('namespace_id')::uuid
+        OR ns_fqns.fqn = sqlc.narg('namespace_fqn')::text
+    )
+    AND CASE
+        WHEN sqlc.narg('search')::TEXT IS NULL THEN TRUE
+        ELSE EXISTS (
+            SELECT 1
+            FROM JSONB_EACH_TEXT(COALESCE(scs.metadata -> 'labels', '{}'::JSONB)) AS label(key, value)
+            WHERE label.value ILIKE sqlc.narg('search')::TEXT ESCAPE '\'
+        )
+    END
 ORDER BY
     CASE WHEN p.resolved_field = 'created_at' AND p.resolved_direction = 'ASC' THEN scs.created_at END ASC,
     CASE WHEN p.resolved_field = 'created_at' AND p.resolved_direction = 'DESC' THEN scs.created_at END DESC,

@@ -430,7 +430,8 @@ func UUIDToString(uuid pgtype.UUID) string {
 		return ""
 	}
 
-	return fmt.Sprintf("%08x-%04x-%04x-%04x-%012x",
+	return fmt.Sprintf(
+		"%08x-%04x-%04x-%04x-%012x",
 		uuid.Bytes[0:4],
 		uuid.Bytes[4:6],
 		uuid.Bytes[6:8],

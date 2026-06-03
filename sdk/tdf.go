@@ -677,12 +677,12 @@ func createKeyAccess(kasInfo KASInfo, symKey []byte, policyBinding PolicyBinding
 
 	ktype := ocrypto.KeyType(kasInfo.Algorithm)
 	switch {
-	case ocrypto.IsHybridKeyType(ktype):
-		wrappedKey, err := generateWrapKeyWithHybrid(kasInfo.Algorithm, kasInfo.PublicKey, symKey)
+	case ocrypto.IsKEMKeyType(ktype):
+		wrappedKey, scheme, err := generateWrapKeyWithKEM(ktype, kasInfo.PublicKey, symKey)
 		if err != nil {
 			return KeyAccess{}, err
 		}
-		keyAccess.KeyType = kHybridWrapped
+		keyAccess.KeyType = scheme
 		keyAccess.WrappedKey = wrappedKey
 	case ocrypto.IsECKeyType(ktype):
 		mode, err := ocrypto.ECKeyTypeToMode(ktype)
@@ -696,13 +696,6 @@ func createKeyAccess(kasInfo KASInfo, symKey []byte, policyBinding PolicyBinding
 		keyAccess.KeyType = kECWrapped
 		keyAccess.WrappedKey = wrappedKeyInfo.wrappedKey
 		keyAccess.EphemeralPublicKey = wrappedKeyInfo.publicKey
-	case ocrypto.IsMLKEMKeyType(ktype):
-		wrappedKey, err := generateWrapKeyWithMLKEM(kasInfo.Algorithm, kasInfo.PublicKey, symKey)
-		if err != nil {
-			return KeyAccess{}, err
-		}
-		keyAccess.KeyType = kMLKEMWrapped
-		keyAccess.WrappedKey = wrappedKey
 	default:
 		wrappedKey, err := generateWrapKeyWithRSA(kasInfo.PublicKey, symKey)
 		if err != nil {
@@ -778,34 +771,19 @@ func generateWrapKeyWithRSA(publicKey string, symKey []byte) (string, error) {
 	return string(ocrypto.Base64Encode(wrappedKey)), nil
 }
 
-func generateWrapKeyWithHybrid(algorithm, publicKeyPEM string, symKey []byte) (string, error) {
-	wrappedDER, err := ocrypto.HybridWrapDEK(ocrypto.KeyType(algorithm), publicKeyPEM, symKey)
+// generateWrapKeyWithKEM wraps a DEK with any KEM scheme — pure ML-KEM or
+// hybrid (X-Wing, NIST PQ/T). Returns the base64-encoded envelope and the
+// wire scheme name (`hybrid-wrapped` or `mlkem-wrapped`) for the manifest.
+func generateWrapKeyWithKEM(ktype ocrypto.KeyType, publicKeyPEM string, symKey []byte) (string, string, error) {
+	wrappedDER, err := ocrypto.WrapDEK(ktype, publicKeyPEM, symKey)
 	if err != nil {
-		return "", fmt.Errorf("generateWrapKeyWithHybrid: %w", err)
+		return "", "", fmt.Errorf("generateWrapKeyWithKEM: %w", err)
 	}
-	return string(ocrypto.Base64Encode(wrappedDER)), nil
-}
-
-func generateWrapKeyWithMLKEM(algorithm, publicKeyPEM string, symKey []byte) (string, error) {
-	ktype := ocrypto.KeyType(algorithm)
-
-	var wrappedDER []byte
-	var err error
-
-	switch ktype { //nolint:exhaustive // only handle mlkem types
-	case ocrypto.MLKEM768Key:
-		wrappedDER, err = ocrypto.MLKEM768WrapDEK([]byte(publicKeyPEM), symKey)
-	case ocrypto.MLKEM1024Key:
-		wrappedDER, err = ocrypto.MLKEM1024WrapDEK([]byte(publicKeyPEM), symKey)
-	default:
-		return "", fmt.Errorf("unsupported ML-KEM key type: %s", algorithm)
+	scheme := kHybridWrapped
+	if ocrypto.IsMLKEMKeyType(ktype) {
+		scheme = kMLKEMWrapped
 	}
-
-	if err != nil {
-		return "", fmt.Errorf("generateWrapKeyWithMLKEM: %w", err)
-	}
-
-	return string(ocrypto.Base64Encode(wrappedDER)), nil
+	return string(ocrypto.Base64Encode(wrappedDER)), scheme, nil
 }
 
 // create policy object

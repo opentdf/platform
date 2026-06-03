@@ -198,7 +198,7 @@ func BenchmarkWrapDEK(b *testing.B) {
 			if err != nil {
 				b.Fatal(err)
 			}
-			ss, ct, err := XWingEncapsulate(pubKey)
+			ss, ct, err := xwingKEM{}.encapsulate(pubKey)
 			if err != nil {
 				b.Fatal(err)
 			}
@@ -214,9 +214,9 @@ func BenchmarkWrapDEK(b *testing.B) {
 			if err != nil {
 				b.Fatal(err)
 			}
-			sinkBytes, errSink = asn1.Marshal(HybridNISTWrappedKey{
-				HybridCiphertext: ct,
-				EncryptedDEK:     encDEK,
+			sinkBytes, errSink = asn1.Marshal(kemEnvelope{
+				KEMCiphertext: ct,
+				EncryptedDEK:  encDEK,
 			})
 		}
 		b.ReportMetric(float64(len(sinkBytes)), "wrapped-bytes")
@@ -229,7 +229,7 @@ func BenchmarkWrapDEK(b *testing.B) {
 			if err != nil {
 				b.Fatal(err)
 			}
-			ss, ct, err := P256MLKEM768Encapsulate(pubKey)
+			ss, ct, err := nistHybridKEM{params: &p256mlkem768Params}.encapsulate(pubKey)
 			if err != nil {
 				b.Fatal(err)
 			}
@@ -245,9 +245,9 @@ func BenchmarkWrapDEK(b *testing.B) {
 			if err != nil {
 				b.Fatal(err)
 			}
-			sinkBytes, errSink = asn1.Marshal(HybridNISTWrappedKey{
-				HybridCiphertext: ct,
-				EncryptedDEK:     encDEK,
+			sinkBytes, errSink = asn1.Marshal(kemEnvelope{
+				KEMCiphertext: ct,
+				EncryptedDEK:  encDEK,
 			})
 		}
 		b.ReportMetric(float64(len(sinkBytes)), "wrapped-bytes")
@@ -260,7 +260,7 @@ func BenchmarkWrapDEK(b *testing.B) {
 			if err != nil {
 				b.Fatal(err)
 			}
-			ss, ct, err := P384MLKEM1024Encapsulate(pubKey)
+			ss, ct, err := nistHybridKEM{params: &p384mlkem1024Params}.encapsulate(pubKey)
 			if err != nil {
 				b.Fatal(err)
 			}
@@ -276,9 +276,9 @@ func BenchmarkWrapDEK(b *testing.B) {
 			if err != nil {
 				b.Fatal(err)
 			}
-			sinkBytes, errSink = asn1.Marshal(HybridNISTWrappedKey{
-				HybridCiphertext: ct,
-				EncryptedDEK:     encDEK,
+			sinkBytes, errSink = asn1.Marshal(kemEnvelope{
+				KEMCiphertext: ct,
+				EncryptedDEK:  encDEK,
 			})
 		}
 		b.ReportMetric(float64(len(sinkBytes)), "wrapped-bytes")
@@ -536,12 +536,16 @@ func BenchmarkUnwrapDEK(b *testing.B) {
 }
 
 func BenchmarkHybridSubOps(b *testing.B) {
+	xwingAdapter := xwingKEM{}
+	p256Adapter := nistHybridKEM{params: &p256mlkem768Params}
+	p384Adapter := nistHybridKEM{params: &p384mlkem1024Params}
+
 	// Setup X-Wing
 	xwingKP, err := NewXWingKeyPair()
 	if err != nil {
 		b.Fatal(err)
 	}
-	xwingSS, xwingCt, err := XWingEncapsulate(xwingKP.publicKey)
+	xwingSS, xwingCt, err := xwingAdapter.encapsulate(xwingKP.publicKey)
 	if err != nil {
 		b.Fatal(err)
 	}
@@ -551,7 +555,7 @@ func BenchmarkHybridSubOps(b *testing.B) {
 	if err != nil {
 		b.Fatal(err)
 	}
-	p256SS, p256Ct, err := P256MLKEM768Encapsulate(p256KP.publicKey)
+	p256SS, p256Ct, err := p256Adapter.encapsulate(p256KP.publicKey)
 	if err != nil {
 		b.Fatal(err)
 	}
@@ -561,7 +565,7 @@ func BenchmarkHybridSubOps(b *testing.B) {
 	if err != nil {
 		b.Fatal(err)
 	}
-	p384SS, p384Ct, err := P384MLKEM1024Encapsulate(p384KP.publicKey)
+	p384SS, p384Ct, err := p384Adapter.encapsulate(p384KP.publicKey)
 	if err != nil {
 		b.Fatal(err)
 	}
@@ -569,19 +573,19 @@ func BenchmarkHybridSubOps(b *testing.B) {
 	salt := defaultTDFSalt()
 
 	// Pre-derive a wrap key for AES-GCM benchmarks
-	wrapKey, err := deriveXWingWrapKey(xwingSS, salt, nil)
+	wrapKey, err := deriveKEMWrapKey(xwingSS, salt, nil)
 	if err != nil {
 		b.Fatal(err)
 	}
 
 	b.Run("XWing/Encapsulate", func(b *testing.B) {
 		for b.Loop() {
-			sinkBytes, sinkBytes, errSink = XWingEncapsulate(xwingKP.publicKey)
+			sinkBytes, sinkBytes, errSink = xwingAdapter.encapsulate(xwingKP.publicKey)
 		}
 	})
 	b.Run("XWing/HKDF", func(b *testing.B) {
 		for b.Loop() {
-			sinkBytes, errSink = deriveXWingWrapKey(xwingSS, salt, nil)
+			sinkBytes, errSink = deriveKEMWrapKey(xwingSS, salt, nil)
 		}
 	})
 	b.Run("XWing/AES-GCM-Encrypt", func(b *testing.B) {
@@ -594,25 +598,25 @@ func BenchmarkHybridSubOps(b *testing.B) {
 		}
 	})
 	b.Run("XWing/ASN1-Marshal", func(b *testing.B) {
-		wrapped := XWingWrappedKey{XWingCiphertext: xwingCt, EncryptedDEK: testDEK}
+		wrapped := kemEnvelope{KEMCiphertext: xwingCt, EncryptedDEK: testDEK}
 		for b.Loop() {
 			sinkBytes, errSink = asn1.Marshal(wrapped)
 		}
 	})
 
 	// P256+MLKEM768 sub-ops
-	p256WrapKey, err := deriveHybridNISTWrapKey(p256SS, salt, nil)
+	p256WrapKey, err := deriveKEMWrapKey(p256SS, salt, nil)
 	if err != nil {
 		b.Fatal(err)
 	}
 	b.Run("P256_MLKEM768/Encapsulate", func(b *testing.B) {
 		for b.Loop() {
-			sinkBytes, sinkBytes, errSink = P256MLKEM768Encapsulate(p256KP.publicKey)
+			sinkBytes, sinkBytes, errSink = p256Adapter.encapsulate(p256KP.publicKey)
 		}
 	})
 	b.Run("P256_MLKEM768/HKDF", func(b *testing.B) {
 		for b.Loop() {
-			sinkBytes, errSink = deriveHybridNISTWrapKey(p256SS, salt, nil)
+			sinkBytes, errSink = deriveKEMWrapKey(p256SS, salt, nil)
 		}
 	})
 	b.Run("P256_MLKEM768/AES-GCM-Encrypt", func(b *testing.B) {
@@ -625,25 +629,25 @@ func BenchmarkHybridSubOps(b *testing.B) {
 		}
 	})
 	b.Run("P256_MLKEM768/ASN1-Marshal", func(b *testing.B) {
-		wrapped := HybridNISTWrappedKey{HybridCiphertext: p256Ct, EncryptedDEK: testDEK}
+		wrapped := kemEnvelope{KEMCiphertext: p256Ct, EncryptedDEK: testDEK}
 		for b.Loop() {
 			sinkBytes, errSink = asn1.Marshal(wrapped)
 		}
 	})
 
 	// P384+MLKEM1024 sub-ops
-	p384WrapKey, err := deriveHybridNISTWrapKey(p384SS, salt, nil)
+	p384WrapKey, err := deriveKEMWrapKey(p384SS, salt, nil)
 	if err != nil {
 		b.Fatal(err)
 	}
 	b.Run("P384_MLKEM1024/Encapsulate", func(b *testing.B) {
 		for b.Loop() {
-			sinkBytes, sinkBytes, errSink = P384MLKEM1024Encapsulate(p384KP.publicKey)
+			sinkBytes, sinkBytes, errSink = p384Adapter.encapsulate(p384KP.publicKey)
 		}
 	})
 	b.Run("P384_MLKEM1024/HKDF", func(b *testing.B) {
 		for b.Loop() {
-			sinkBytes, errSink = deriveHybridNISTWrapKey(p384SS, salt, nil)
+			sinkBytes, errSink = deriveKEMWrapKey(p384SS, salt, nil)
 		}
 	})
 	b.Run("P384_MLKEM1024/AES-GCM-Encrypt", func(b *testing.B) {
@@ -656,7 +660,7 @@ func BenchmarkHybridSubOps(b *testing.B) {
 		}
 	})
 	b.Run("P384_MLKEM1024/ASN1-Marshal", func(b *testing.B) {
-		wrapped := HybridNISTWrappedKey{HybridCiphertext: p384Ct, EncryptedDEK: testDEK}
+		wrapped := kemEnvelope{KEMCiphertext: p384Ct, EncryptedDEK: testDEK}
 		for b.Loop() {
 			sinkBytes, errSink = asn1.Marshal(wrapped)
 		}

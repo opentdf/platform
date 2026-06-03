@@ -45,19 +45,19 @@ func FromPrivatePEMWithSalt(privateKeyInPem string, salt, info []byte) (PrivateK
 	}
 	switch block.Type {
 	case PEMBlockXWingPrivateKey:
-		return NewSaltedXWingDecryptor(block.Bytes, salt, info)
+		return newKEMDecryptor(xwingKEM{}, block.Bytes, salt, info)
 	case PEMBlockP256MLKEM768PrivateKey:
-		return NewSaltedP256MLKEM768Decryptor(block.Bytes, salt, info)
+		return newKEMDecryptor(nistHybridKEM{params: &p256mlkem768Params}, block.Bytes, salt, info)
 	case PEMBlockP384MLKEM1024PrivateKey:
-		return NewSaltedP384MLKEM1024Decryptor(block.Bytes, salt, info)
+		return newKEMDecryptor(nistHybridKEM{params: &p384mlkem1024Params}, block.Bytes, salt, info)
 	}
 
-	switch oid, seed, err := parseMLKEMPrivatePKCS8(block.Bytes); {
-	case err == nil && oid.Equal(OidMLKEM768):
-		return NewSaltedMLKEM768Decryptor(seed, salt, info)
-	case err == nil && oid.Equal(OidMLKEM1024):
-		return NewSaltedMLKEM1024Decryptor(seed, salt, info)
-	case err != nil && !errors.Is(err, errNotMLKEM):
+	switch oid, seed, err := parseKEMPrivatePKCS8(block.Bytes); {
+	case err == nil:
+		if k, ok := kemByOID(oid); ok {
+			return newKEMDecryptor(k, seed, salt, info)
+		}
+	case !errors.Is(err, errNotKEM):
 		return AsymDecryption{}, err
 	}
 

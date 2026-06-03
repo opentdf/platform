@@ -77,19 +77,19 @@ func FromPublicPEMWithSalt(publicKeyInPem string, salt, info []byte) (PublicKeyE
 	}
 	switch block.Type {
 	case PEMBlockXWingPublicKey:
-		return NewXWingEncryptor(block.Bytes, salt, info)
+		return newKEMEncryptor(xwingKEM{}, block.Bytes, salt, info)
 	case PEMBlockP256MLKEM768PublicKey:
-		return NewP256MLKEM768Encryptor(block.Bytes, salt, info)
+		return newKEMEncryptor(nistHybridKEM{params: &p256mlkem768Params}, block.Bytes, salt, info)
 	case PEMBlockP384MLKEM1024PublicKey:
-		return NewP384MLKEM1024Encryptor(block.Bytes, salt, info)
+		return newKEMEncryptor(nistHybridKEM{params: &p384mlkem1024Params}, block.Bytes, salt, info)
 	}
 
-	switch oid, key, err := ParseMLKEMPublicSPKI(block.Bytes); {
-	case err == nil && oid.Equal(OidMLKEM768):
-		return NewMLKEM768Encryptor(key, salt, info)
-	case err == nil && oid.Equal(OidMLKEM1024):
-		return NewMLKEM1024Encryptor(key, salt, info)
-	case err != nil && !errors.Is(err, errNotMLKEM):
+	switch oid, key, err := ParseKEMPublicSPKI(block.Bytes); {
+	case err == nil:
+		if k, ok := kemByOID(oid); ok {
+			return newKEMEncryptor(k, key, salt, info)
+		}
+	case !errors.Is(err, errNotKEM):
 		return nil, err
 	}
 

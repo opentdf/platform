@@ -76,16 +76,16 @@ func TestMLKEM1024WrapUnwrapWrongKeyFails(t *testing.T) {
 	assert.Contains(t, err.Error(), "AES-GCM decrypt failed")
 }
 
-func TestMLKEMWrappedKeyASN1RoundTrip(t *testing.T) {
-	original := MLKEMWrappedKey{
-		MLKEMCiphertext: []byte("ciphertext"),
-		EncryptedDEK:    []byte("encrypted-dek"),
+func TestKEMEnvelopeASN1RoundTrip(t *testing.T) {
+	original := kemEnvelope{
+		KEMCiphertext: []byte("ciphertext"),
+		EncryptedDEK:  []byte("encrypted-dek"),
 	}
 
 	der, err := asn1.Marshal(original)
 	require.NoError(t, err)
 
-	var decoded MLKEMWrappedKey
+	var decoded kemEnvelope
 	rest, err := asn1.Unmarshal(der, &decoded)
 	require.NoError(t, err)
 	assert.Empty(t, rest)
@@ -98,9 +98,9 @@ func TestMLKEM768CiphertextSizeValidation(t *testing.T) {
 
 	privateKeyBytes := keyPair.PrivateKey.Bytes()
 
-	invalidWrapped := MLKEMWrappedKey{
-		MLKEMCiphertext: []byte("too-short"),
-		EncryptedDEK:    []byte("encrypted-dek"),
+	invalidWrapped := kemEnvelope{
+		KEMCiphertext: []byte("too-short"),
+		EncryptedDEK:  []byte("encrypted-dek"),
 	}
 
 	der, err := asn1.Marshal(invalidWrapped)
@@ -108,7 +108,7 @@ func TestMLKEM768CiphertextSizeValidation(t *testing.T) {
 
 	_, err = MLKEM768UnwrapDEK(privateKeyBytes, der)
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "invalid ML-KEM-768 ciphertext size")
+	assert.Contains(t, err.Error(), "ciphertext size")
 }
 
 func TestMLKEM1024CiphertextSizeValidation(t *testing.T) {
@@ -117,9 +117,9 @@ func TestMLKEM1024CiphertextSizeValidation(t *testing.T) {
 
 	privateKeyBytes := keyPair.PrivateKey.Bytes()
 
-	invalidWrapped := MLKEMWrappedKey{
-		MLKEMCiphertext: []byte("too-short"),
-		EncryptedDEK:    []byte("encrypted-dek"),
+	invalidWrapped := kemEnvelope{
+		KEMCiphertext: []byte("too-short"),
+		EncryptedDEK:  []byte("encrypted-dek"),
 	}
 
 	der, err := asn1.Marshal(invalidWrapped)
@@ -127,7 +127,7 @@ func TestMLKEM1024CiphertextSizeValidation(t *testing.T) {
 
 	_, err = MLKEM1024UnwrapDEK(privateKeyBytes, der)
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "invalid ML-KEM-1024 ciphertext size")
+	assert.Contains(t, err.Error(), "ciphertext size")
 }
 
 func TestMLKEMCustomSaltInfo(t *testing.T) {
@@ -140,10 +140,10 @@ func TestMLKEMCustomSaltInfo(t *testing.T) {
 	customSalt := []byte("custom-salt-value")
 	customInfo := []byte("custom-info-value")
 
-	encryptor, err := NewMLKEM768Encryptor(publicKeyBytes, customSalt, customInfo)
+	encryptor, err := newKEMEncryptor(mlkemKEM{variant: mlkem768}, publicKeyBytes, customSalt, customInfo)
 	require.NoError(t, err)
 
-	decryptor, err := NewSaltedMLKEM768Decryptor(privateKeyBytes, customSalt, customInfo)
+	decryptor, err := newKEMDecryptor(mlkemKEM{variant: mlkem768}, privateKeyBytes, customSalt, customInfo)
 	require.NoError(t, err)
 
 	dek := []byte("test-dek-value-123456")
@@ -161,7 +161,7 @@ func TestMLKEMEncryptorImplementsInterface(t *testing.T) {
 
 	publicKeyBytes := keyPair.PrivateKey.EncapsulationKey().Bytes()
 
-	encryptor, err := NewMLKEM768Encryptor(publicKeyBytes, nil, nil)
+	encryptor, err := newKEMEncryptor(mlkemKEM{variant: mlkem768}, publicKeyBytes, nil, nil)
 	require.NoError(t, err)
 
 	assert.Equal(t, MLKEM, encryptor.Type())
@@ -179,7 +179,7 @@ func TestMLKEM768Encapsulate(t *testing.T) {
 
 	publicKeyBytes := keyPair.PrivateKey.EncapsulationKey().Bytes()
 
-	sharedSecret, ciphertext, err := MLKEM768Encapsulate(publicKeyBytes)
+	sharedSecret, ciphertext, err := mlkemKEM{variant: mlkem768}.encapsulate(publicKeyBytes)
 	require.NoError(t, err)
 	assert.Len(t, sharedSecret, 32)
 	assert.Len(t, ciphertext, MLKEM768CiphertextSize)
@@ -191,22 +191,22 @@ func TestMLKEM1024Encapsulate(t *testing.T) {
 
 	publicKeyBytes := keyPair.PrivateKey.EncapsulationKey().Bytes()
 
-	sharedSecret, ciphertext, err := MLKEM1024Encapsulate(publicKeyBytes)
+	sharedSecret, ciphertext, err := mlkemKEM{variant: mlkem1024}.encapsulate(publicKeyBytes)
 	require.NoError(t, err)
 	assert.Len(t, sharedSecret, 32)
 	assert.Len(t, ciphertext, MLKEM1024CiphertextSize)
 }
 
 func TestMLKEM768EncapsulateInvalidKeySize(t *testing.T) {
-	_, _, err := MLKEM768Encapsulate([]byte("too-short"))
+	_, _, err := mlkemKEM{variant: mlkem768}.encapsulate([]byte("too-short"))
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "invalid ML-KEM-768 public key size")
+	assert.Contains(t, err.Error(), "public key size")
 }
 
 func TestMLKEM1024EncapsulateInvalidKeySize(t *testing.T) {
-	_, _, err := MLKEM1024Encapsulate([]byte("too-short"))
+	_, _, err := mlkemKEM{variant: mlkem1024}.encapsulate([]byte("too-short"))
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "invalid ML-KEM-1024 public key size")
+	assert.Contains(t, err.Error(), "public key size")
 }
 
 func TestMLKEM768PEMRoundTrip(t *testing.T) {

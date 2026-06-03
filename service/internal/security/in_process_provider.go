@@ -98,14 +98,8 @@ func (k *KeyDetailsAdapter) ExportPublicKey(_ context.Context, format trust.KeyT
 		if rsaKey, err := k.cryptoProvider.RSAPublicKey(kid); err == nil {
 			return rsaKey, nil
 		}
-		if hybridKey, err := k.cryptoProvider.HybridPublicKey(kid); err == nil {
-			return hybridKey, nil
-		}
-		if xwingKey, err := k.cryptoProvider.XWingPublicKey(kid); err == nil {
-			return xwingKey, nil
-		}
-		if mlkemKey, err := k.cryptoProvider.MLKEMPublicKey(kid); err == nil {
-			return mlkemKey, nil
+		if kemKey, err := k.cryptoProvider.KEMPublicKey(kid); err == nil {
+			return kemKey, nil
 		}
 		return k.cryptoProvider.ECPublicKey(kid)
 	default:
@@ -371,11 +365,7 @@ func (a *InProcessProvider) determineKeyType(kid string) (string, error) {
 		return key.Algorithm, nil
 	case StandardECCrypto:
 		return key.Algorithm, nil
-	case StandardXWingCrypto:
-		return key.Algorithm, nil
-	case StandardHybridCrypto:
-		return key.Algorithm, nil
-	case StandardMLKEMCrypto:
+	case StandardKEMCrypto:
 		return key.Algorithm, nil
 	}
 

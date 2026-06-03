@@ -60,16 +60,16 @@ func TestXWingWrapUnwrapWrongKeyFails(t *testing.T) {
 	assert.Contains(t, err.Error(), "AES-GCM decrypt failed")
 }
 
-func TestXWingWrappedKeyASN1RoundTrip(t *testing.T) {
-	original := XWingWrappedKey{
-		XWingCiphertext: []byte("ciphertext"),
-		EncryptedDEK:    []byte("encrypted-dek"),
+func TestXWingEnvelopeASN1RoundTrip(t *testing.T) {
+	original := kemEnvelope{
+		KEMCiphertext: []byte("ciphertext"),
+		EncryptedDEK:  []byte("encrypted-dek"),
 	}
 
 	der, err := asn1.Marshal(original)
 	require.NoError(t, err)
 
-	var decoded XWingWrappedKey
+	var decoded kemEnvelope
 	rest, err := asn1.Unmarshal(der, &decoded)
 	require.NoError(t, err)
 	assert.Empty(t, rest)
@@ -91,23 +91,18 @@ func TestXWingPEMDispatch(t *testing.T) {
 	decryptor, err := FromPrivatePEMWithSalt(privatePEM, []byte("salt"), []byte("info"))
 	require.NoError(t, err)
 
-	xwingEncryptor, ok := encryptor.(*XWingEncryptor)
-	require.True(t, ok)
-	assert.Equal(t, Hybrid, xwingEncryptor.Type())
-	assert.Equal(t, HybridXWingKey, xwingEncryptor.KeyType())
-	assert.Nil(t, xwingEncryptor.EphemeralKey())
+	assert.Equal(t, Hybrid, encryptor.Type())
+	assert.Equal(t, HybridXWingKey, encryptor.KeyType())
+	assert.Nil(t, encryptor.EphemeralKey())
 
-	metadata, err := xwingEncryptor.Metadata()
+	metadata, err := encryptor.Metadata()
 	require.NoError(t, err)
 	assert.Empty(t, metadata)
 
-	xwingDecryptor, ok := decryptor.(*XWingDecryptor)
-	require.True(t, ok)
-
-	wrapped, err := xwingEncryptor.Encrypt([]byte("dispatch-dek"))
+	wrapped, err := encryptor.Encrypt([]byte("dispatch-dek"))
 	require.NoError(t, err)
 
-	plaintext, err := xwingDecryptor.Decrypt(wrapped)
+	plaintext, err := decryptor.Decrypt(wrapped)
 	require.NoError(t, err)
 	assert.Equal(t, []byte("dispatch-dek"), plaintext)
 }
@@ -116,14 +111,14 @@ func TestXWingEncapsulate(t *testing.T) {
 	keyPair, err := NewXWingKeyPair()
 	require.NoError(t, err)
 
-	sharedSecret, ciphertext, err := XWingEncapsulate(keyPair.publicKey)
+	sharedSecret, ciphertext, err := xwingKEM{}.encapsulate(keyPair.publicKey)
 	require.NoError(t, err)
 	assert.Len(t, sharedSecret, 32)
 	assert.Len(t, ciphertext, XWingCiphertextSize)
 }
 
 func TestXWingEncapsulateInvalidKeySize(t *testing.T) {
-	_, _, err := XWingEncapsulate([]byte("too-short"))
+	_, _, err := xwingKEM{}.encapsulate([]byte("too-short"))
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "invalid X-Wing public key size")
+	assert.Contains(t, err.Error(), "X-Wing public key size")
 }

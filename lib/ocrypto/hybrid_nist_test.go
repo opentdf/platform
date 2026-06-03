@@ -115,16 +115,16 @@ func TestP384MLKEM1024WrapUnwrapWrongKeyFails(t *testing.T) {
 	assert.ErrorContains(t, err, "AES-GCM decrypt failed")
 }
 
-func TestHybridNISTWrappedKeyASN1RoundTrip(t *testing.T) {
-	original := HybridNISTWrappedKey{
-		HybridCiphertext: []byte("hybrid-ciphertext-data"),
-		EncryptedDEK:     []byte("encrypted-dek-data"),
+func TestHybridNISTEnvelopeASN1RoundTrip(t *testing.T) {
+	original := kemEnvelope{
+		KEMCiphertext: []byte("hybrid-ciphertext-data"),
+		EncryptedDEK:  []byte("encrypted-dek-data"),
 	}
 
 	der, err := asn1.Marshal(original)
 	require.NoError(t, err)
 
-	var decoded HybridNISTWrappedKey
+	var decoded kemEnvelope
 	rest, err := asn1.Unmarshal(der, &decoded)
 	require.NoError(t, err)
 	assert.Empty(t, rest)
@@ -146,23 +146,18 @@ func TestP256MLKEM768PEMDispatch(t *testing.T) {
 	decryptor, err := FromPrivatePEMWithSalt(privatePEM, []byte("salt"), []byte("info"))
 	require.NoError(t, err)
 
-	nistEncryptor, ok := encryptor.(*HybridNISTEncryptor)
-	require.True(t, ok)
-	assert.Equal(t, Hybrid, nistEncryptor.Type())
-	assert.Equal(t, HybridSecp256r1MLKEM768Key, nistEncryptor.KeyType())
-	assert.Nil(t, nistEncryptor.EphemeralKey())
+	assert.Equal(t, Hybrid, encryptor.Type())
+	assert.Equal(t, HybridSecp256r1MLKEM768Key, encryptor.KeyType())
+	assert.Nil(t, encryptor.EphemeralKey())
 
-	metadata, err := nistEncryptor.Metadata()
+	metadata, err := encryptor.Metadata()
 	require.NoError(t, err)
 	assert.Empty(t, metadata)
 
-	nistDecryptor, ok := decryptor.(*HybridNISTDecryptor)
-	require.True(t, ok)
-
-	wrapped, err := nistEncryptor.Encrypt([]byte("dispatch-dek"))
+	wrapped, err := encryptor.Encrypt([]byte("dispatch-dek"))
 	require.NoError(t, err)
 
-	plaintext, err := nistDecryptor.Decrypt(wrapped)
+	plaintext, err := decryptor.Decrypt(wrapped)
 	require.NoError(t, err)
 	assert.Equal(t, []byte("dispatch-dek"), plaintext)
 }
@@ -182,19 +177,14 @@ func TestP384MLKEM1024PEMDispatch(t *testing.T) {
 	decryptor, err := FromPrivatePEMWithSalt(privatePEM, []byte("salt"), []byte("info"))
 	require.NoError(t, err)
 
-	nistEncryptor, ok := encryptor.(*HybridNISTEncryptor)
-	require.True(t, ok)
-	assert.Equal(t, Hybrid, nistEncryptor.Type())
-	assert.Equal(t, HybridSecp384r1MLKEM1024Key, nistEncryptor.KeyType())
-	assert.Nil(t, nistEncryptor.EphemeralKey())
+	assert.Equal(t, Hybrid, encryptor.Type())
+	assert.Equal(t, HybridSecp384r1MLKEM1024Key, encryptor.KeyType())
+	assert.Nil(t, encryptor.EphemeralKey())
 
-	nistDecryptor, ok := decryptor.(*HybridNISTDecryptor)
-	require.True(t, ok)
-
-	wrapped, err := nistEncryptor.Encrypt([]byte("dispatch-dek-384"))
+	wrapped, err := encryptor.Encrypt([]byte("dispatch-dek-384"))
 	require.NoError(t, err)
 
-	plaintext, err := nistDecryptor.Decrypt(wrapped)
+	plaintext, err := decryptor.Decrypt(wrapped)
 	require.NoError(t, err)
 	assert.Equal(t, []byte("dispatch-dek-384"), plaintext)
 }
@@ -209,7 +199,7 @@ func TestP256MLKEM768Encapsulate(t *testing.T) {
 	pubKeyRaw, err := P256MLKEM768PubKeyFromPem([]byte(pubKey))
 	require.NoError(t, err)
 
-	combinedSecret, hybridCt, err := P256MLKEM768Encapsulate(pubKeyRaw)
+	combinedSecret, hybridCt, err := nistHybridKEM{params: &p256mlkem768Params}.encapsulate(pubKeyRaw)
 	require.NoError(t, err)
 	assert.NotEmpty(t, combinedSecret)
 	assert.Len(t, hybridCt, P256MLKEM768CiphertextSize)
@@ -225,7 +215,7 @@ func TestP384MLKEM1024Encapsulate(t *testing.T) {
 	pubKeyRaw, err := P384MLKEM1024PubKeyFromPem([]byte(pubKey))
 	require.NoError(t, err)
 
-	combinedSecret, hybridCt, err := P384MLKEM1024Encapsulate(pubKeyRaw)
+	combinedSecret, hybridCt, err := nistHybridKEM{params: &p384mlkem1024Params}.encapsulate(pubKeyRaw)
 	require.NoError(t, err)
 	assert.NotEmpty(t, combinedSecret)
 	assert.Len(t, hybridCt, P384MLKEM1024CiphertextSize)

@@ -4,12 +4,7 @@ import (
 	"crypto/ecdh"
 	"crypto/mlkem"
 	"crypto/rand"
-	"crypto/sha256"
-	"encoding/asn1"
 	"fmt"
-	"io"
-
-	"golang.org/x/crypto/hkdf"
 )
 
 const (
@@ -52,15 +47,6 @@ const (
 	PEMBlockP384MLKEM1024PrivateKey = "SECP384R1 MLKEM1024 PRIVATE KEY"
 )
 
-// AES-256 key size used for wrap key derivation.
-const hybridNISTWrapKeySize = 32
-
-// HybridNISTWrappedKey is the ASN.1 envelope stored in wrapped_key.
-type HybridNISTWrappedKey struct {
-	HybridCiphertext []byte `asn1:"tag:0"`
-	EncryptedDEK     []byte `asn1:"tag:1"`
-}
-
 // hybridNISTParams captures the curve-specific parameters for a NIST hybrid scheme.
 type hybridNISTParams struct {
 	curve         ecdh.Curve
@@ -102,22 +88,6 @@ var p384mlkem1024Params = hybridNISTParams{
 type HybridNISTKeyPair struct {
 	publicKey  []byte
 	privateKey []byte
-	params     *hybridNISTParams
-}
-
-// HybridNISTEncryptor implements PublicKeyEncryptor for NIST hybrid schemes.
-type HybridNISTEncryptor struct {
-	publicKey []byte
-	salt      []byte
-	info      []byte
-	params    *hybridNISTParams
-}
-
-// HybridNISTDecryptor implements PrivateKeyDecryptor for NIST hybrid schemes.
-type HybridNISTDecryptor struct {
-	privateKey []byte
-	salt       []byte
-	info       []byte
 	params     *hybridNISTParams
 }
 
@@ -221,299 +191,34 @@ func P384MLKEM1024PrivateKeyFromPem(data []byte) ([]byte, error) {
 	return decodeSizedPEMBlock(data, PEMBlockP384MLKEM1024PrivateKey, P384MLKEM1024PrivateKeySize)
 }
 
-func NewP256MLKEM768Encryptor(publicKey, salt, info []byte) (*HybridNISTEncryptor, error) {
-	return newHybridNISTEncryptor(&p256mlkem768Params, publicKey, salt, info)
-}
-
-func NewP384MLKEM1024Encryptor(publicKey, salt, info []byte) (*HybridNISTEncryptor, error) {
-	return newHybridNISTEncryptor(&p384mlkem1024Params, publicKey, salt, info)
-}
-
-func newHybridNISTEncryptor(p *hybridNISTParams, publicKey, salt, info []byte) (*HybridNISTEncryptor, error) {
-	expectedSize := p.ecPubSize + p.mlkemPubSize
-	if len(publicKey) != expectedSize {
-		return nil, fmt.Errorf("invalid %s public key size: got %d want %d", p.keyType, len(publicKey), expectedSize)
-	}
-	return &HybridNISTEncryptor{
-		publicKey: append([]byte(nil), publicKey...),
-		salt:      cloneOrNil(salt),
-		info:      cloneOrNil(info),
-		params:    p,
-	}, nil
-}
-
-func (e *HybridNISTEncryptor) Encrypt(data []byte) ([]byte, error) {
-	return hybridNISTWrapDEK(e.params, e.publicKey, data, e.salt, e.info)
-}
-
-func (e *HybridNISTEncryptor) PublicKeyInPemFormat() (string, error) {
-	return rawToPEM(e.params.pubPEMBlock, e.publicKey, e.params.ecPubSize+e.params.mlkemPubSize)
-}
-
-func (e *HybridNISTEncryptor) Type() SchemeType     { return Hybrid }
-func (e *HybridNISTEncryptor) KeyType() KeyType     { return e.params.keyType }
-func (e *HybridNISTEncryptor) EphemeralKey() []byte { return nil }
-
-func (e *HybridNISTEncryptor) Metadata() (map[string]string, error) {
-	return make(map[string]string), nil
-}
-
-func NewP256MLKEM768Decryptor(privateKey []byte) (*HybridNISTDecryptor, error) {
-	return NewSaltedP256MLKEM768Decryptor(privateKey, defaultTDFSalt(), nil)
-}
-
-func NewSaltedP256MLKEM768Decryptor(privateKey, salt, info []byte) (*HybridNISTDecryptor, error) {
-	return newHybridNISTDecryptor(&p256mlkem768Params, privateKey, salt, info)
-}
-
-func NewP384MLKEM1024Decryptor(privateKey []byte) (*HybridNISTDecryptor, error) {
-	return NewSaltedP384MLKEM1024Decryptor(privateKey, defaultTDFSalt(), nil)
-}
-
-func NewSaltedP384MLKEM1024Decryptor(privateKey, salt, info []byte) (*HybridNISTDecryptor, error) {
-	return newHybridNISTDecryptor(&p384mlkem1024Params, privateKey, salt, info)
-}
-
-func newHybridNISTDecryptor(p *hybridNISTParams, privateKey, salt, info []byte) (*HybridNISTDecryptor, error) {
-	expectedSize := p.ecPrivSize + p.mlkemPrivSize
-	if len(privateKey) != expectedSize {
-		return nil, fmt.Errorf("invalid %s private key size: got %d want %d", p.keyType, len(privateKey), expectedSize)
-	}
-	return &HybridNISTDecryptor{
-		privateKey: append([]byte(nil), privateKey...),
-		salt:       cloneOrNil(salt),
-		info:       cloneOrNil(info),
-		params:     p,
-	}, nil
-}
-
-func (d *HybridNISTDecryptor) Decrypt(data []byte) ([]byte, error) {
-	return hybridNISTUnwrapDEK(d.params, d.privateKey, data, d.salt, d.info)
-}
-
-func P256MLKEM768WrapDEK(publicKeyRaw, dek []byte) ([]byte, error) {
-	return hybridNISTWrapDEK(&p256mlkem768Params, publicKeyRaw, dek, defaultTDFSalt(), nil)
-}
-
-func P256MLKEM768UnwrapDEK(privateKeyRaw, wrappedDER []byte) ([]byte, error) {
-	return hybridNISTUnwrapDEK(&p256mlkem768Params, privateKeyRaw, wrappedDER, defaultTDFSalt(), nil)
-}
-
-func P384MLKEM1024WrapDEK(publicKeyRaw, dek []byte) ([]byte, error) {
-	return hybridNISTWrapDEK(&p384mlkem1024Params, publicKeyRaw, dek, defaultTDFSalt(), nil)
-}
-
-func P384MLKEM1024UnwrapDEK(privateKeyRaw, wrappedDER []byte) ([]byte, error) {
-	return hybridNISTUnwrapDEK(&p384mlkem1024Params, privateKeyRaw, wrappedDER, defaultTDFSalt(), nil)
-}
-
-// hybridNISTEncapsulate performs hybrid encapsulation:
-//  1. Generates an ephemeral EC key and computes ECDH shared secret
-//  2. Encapsulates ML-KEM to produce a post-quantum shared secret
-//  3. Combines both secrets (ECDH || ML-KEM)
-//  4. Builds hybrid ciphertext (ephemeral EC point || ML-KEM ciphertext)
+// P256MLKEM768WrapDEK wraps a DEK using the P-256 + ML-KEM-768 hybrid scheme.
 //
-// Returns (combinedSecret, hybridCiphertext) without applying KDF or encryption.
-func hybridNISTEncapsulate(p *hybridNISTParams, publicKeyRaw []byte) ([]byte, []byte, error) {
-	expectedPubSize := p.ecPubSize + p.mlkemPubSize
-	if len(publicKeyRaw) != expectedPubSize {
-		return nil, nil, fmt.Errorf("invalid %s public key size: got %d want %d", p.keyType, len(publicKeyRaw), expectedPubSize)
-	}
-
-	ecPubBytes := publicKeyRaw[:p.ecPubSize]
-	mlkemPubBytes := publicKeyRaw[p.ecPubSize:]
-
-	// ECDH: generate ephemeral key, compute shared secret
-	ecPub, err := p.curve.NewPublicKey(ecPubBytes)
-	if err != nil {
-		return nil, nil, fmt.Errorf("invalid EC public key: %w", err)
-	}
-	ephemeral, err := p.curve.GenerateKey(rand.Reader)
-	if err != nil {
-		return nil, nil, fmt.Errorf("ECDH ephemeral key generation failed: %w", err)
-	}
-	ecdhSecret, err := ephemeral.ECDH(ecPub)
-	if err != nil {
-		return nil, nil, fmt.Errorf("ECDH failed: %w", err)
-	}
-	ephemeralPub := ephemeral.PublicKey().Bytes()
-
-	// ML-KEM: encapsulate
-	var mlkemSecret, mlkemCt []byte
-	switch p.keyType { //nolint:exhaustive // only NIST hybrid types
-	case HybridSecp256r1MLKEM768Key:
-		ek, ekErr := mlkem.NewEncapsulationKey768(mlkemPubBytes)
-		if ekErr != nil {
-			return nil, nil, fmt.Errorf("mlkem768 encapsulation key: %w", ekErr)
-		}
-		mlkemSecret, mlkemCt = ek.Encapsulate()
-	case HybridSecp384r1MLKEM1024Key:
-		ek, ekErr := mlkem.NewEncapsulationKey1024(mlkemPubBytes)
-		if ekErr != nil {
-			return nil, nil, fmt.Errorf("mlkem1024 encapsulation key: %w", ekErr)
-		}
-		mlkemSecret, mlkemCt = ek.Encapsulate()
-	default:
-		return nil, nil, fmt.Errorf("unsupported ML-KEM key type: %s", p.keyType)
-	}
-
-	// Combine secrets: ECDH || ML-KEM
-	combinedSecret := make([]byte, 0, len(ecdhSecret)+len(mlkemSecret))
-	combinedSecret = append(combinedSecret, ecdhSecret...)
-	combinedSecret = append(combinedSecret, mlkemSecret...)
-
-	// Build hybrid ciphertext: ephemeral EC point || ML-KEM ciphertext
-	hybridCt := make([]byte, 0, len(ephemeralPub)+len(mlkemCt))
-	hybridCt = append(hybridCt, ephemeralPub...)
-	hybridCt = append(hybridCt, mlkemCt...)
-
-	return combinedSecret, hybridCt, nil
+// Deprecated: Use WrapDEK with HybridSecp256r1MLKEM768Key, or construct via
+// FromPublicPEM.
+func P256MLKEM768WrapDEK(publicKeyRaw, dek []byte) ([]byte, error) {
+	return wrapDEKWithKEM(nistHybridKEM{params: &p256mlkem768Params}, publicKeyRaw, dek, defaultTDFSalt(), nil)
 }
 
-// P256MLKEM768Encapsulate performs P-256 ECDH + ML-KEM-768 hybrid encapsulation.
-func P256MLKEM768Encapsulate(publicKeyRaw []byte) ([]byte, []byte, error) {
-	return hybridNISTEncapsulate(&p256mlkem768Params, publicKeyRaw)
+// P256MLKEM768UnwrapDEK unwraps an envelope produced by P256MLKEM768WrapDEK
+// using the supplied raw P-256 + ML-KEM-768 private key. This is the binary-
+// bytes counterpart to FromPrivatePEM; callers that already hold raw key
+// material can use it directly without re-encoding to PEM.
+func P256MLKEM768UnwrapDEK(privateKeyRaw, wrappedDER []byte) ([]byte, error) {
+	return unwrapDEKWithKEM(nistHybridKEM{params: &p256mlkem768Params}, privateKeyRaw, wrappedDER, defaultTDFSalt(), nil)
 }
 
-// P384MLKEM1024Encapsulate performs P-384 ECDH + ML-KEM-1024 hybrid encapsulation.
-func P384MLKEM1024Encapsulate(publicKeyRaw []byte) ([]byte, []byte, error) {
-	return hybridNISTEncapsulate(&p384mlkem1024Params, publicKeyRaw)
+// P384MLKEM1024WrapDEK wraps a DEK using the P-384 + ML-KEM-1024 hybrid scheme.
+//
+// Deprecated: Use WrapDEK with HybridSecp384r1MLKEM1024Key, or construct via
+// FromPublicPEM.
+func P384MLKEM1024WrapDEK(publicKeyRaw, dek []byte) ([]byte, error) {
+	return wrapDEKWithKEM(nistHybridKEM{params: &p384mlkem1024Params}, publicKeyRaw, dek, defaultTDFSalt(), nil)
 }
 
-func hybridNISTWrapDEK(p *hybridNISTParams, publicKeyRaw, dek, salt, info []byte) ([]byte, error) {
-	combinedSecret, hybridCt, err := hybridNISTEncapsulate(p, publicKeyRaw)
-	if err != nil {
-		return nil, err
-	}
-
-	// Derive AES-256 wrap key via HKDF
-	wrapKey, err := deriveHybridNISTWrapKey(combinedSecret, salt, info)
-	if err != nil {
-		return nil, err
-	}
-
-	// AES-GCM encrypt DEK
-	gcm, err := NewAESGcm(wrapKey)
-	if err != nil {
-		return nil, fmt.Errorf("NewAESGcm failed: %w", err)
-	}
-	encryptedDEK, err := gcm.Encrypt(dek)
-	if err != nil {
-		return nil, fmt.Errorf("AES-GCM encrypt failed: %w", err)
-	}
-
-	wrappedDER, err := asn1.Marshal(HybridNISTWrappedKey{
-		HybridCiphertext: hybridCt,
-		EncryptedDEK:     encryptedDEK,
-	})
-	if err != nil {
-		return nil, fmt.Errorf("asn1.Marshal failed: %w", err)
-	}
-
-	return wrappedDER, nil
-}
-
-func hybridNISTUnwrapDEK(p *hybridNISTParams, privateKeyRaw, wrappedDER, salt, info []byte) ([]byte, error) {
-	expectedPrivSize := p.ecPrivSize + p.mlkemPrivSize
-	if len(privateKeyRaw) != expectedPrivSize {
-		return nil, fmt.Errorf("invalid %s private key size: got %d want %d", p.keyType, len(privateKeyRaw), expectedPrivSize)
-	}
-
-	var wrapped HybridNISTWrappedKey
-	rest, err := asn1.Unmarshal(wrappedDER, &wrapped)
-	if err != nil {
-		return nil, fmt.Errorf("asn1.Unmarshal failed: %w", err)
-	}
-	if len(rest) != 0 {
-		return nil, fmt.Errorf("asn1.Unmarshal left %d trailing bytes", len(rest))
-	}
-
-	expectedCtSize := p.ecPubSize + p.mlkemCtSize
-	if len(wrapped.HybridCiphertext) != expectedCtSize {
-		return nil, fmt.Errorf("invalid %s ciphertext size: got %d want %d",
-			p.keyType, len(wrapped.HybridCiphertext), expectedCtSize)
-	}
-
-	// Split hybrid ciphertext
-	ephemeralPubBytes := wrapped.HybridCiphertext[:p.ecPubSize]
-	mlkemCtBytes := wrapped.HybridCiphertext[p.ecPubSize:]
-
-	// Split private key
-	ecPrivBytes := privateKeyRaw[:p.ecPrivSize]
-	mlkemPrivBytes := privateKeyRaw[p.ecPrivSize:]
-
-	// ECDH: reconstruct shared secret
-	ecPriv, err := p.curve.NewPrivateKey(ecPrivBytes)
-	if err != nil {
-		return nil, fmt.Errorf("invalid EC private key: %w", err)
-	}
-	ephemeralPub, err := p.curve.NewPublicKey(ephemeralPubBytes)
-	if err != nil {
-		return nil, fmt.Errorf("invalid ephemeral EC public key: %w", err)
-	}
-	ecdhSecret, err := ecPriv.ECDH(ephemeralPub)
-	if err != nil {
-		return nil, fmt.Errorf("ECDH failed: %w", err)
-	}
-
-	// ML-KEM: decapsulate. Implicit rejection (FIPS 203 §6.3) means a wrong-key
-	// ciphertext yields a pseudorandom shared secret without an error here;
-	// authentication is enforced by the AES-GCM decrypt below.
-	var mlkemSecret []byte
-	switch p.keyType { //nolint:exhaustive // only NIST hybrid types
-	case HybridSecp256r1MLKEM768Key:
-		dk, dkErr := mlkem.NewDecapsulationKey768(mlkemPrivBytes)
-		if dkErr != nil {
-			return nil, fmt.Errorf("mlkem768 decapsulation key: %w", dkErr)
-		}
-		mlkemSecret, err = dk.Decapsulate(mlkemCtBytes)
-	case HybridSecp384r1MLKEM1024Key:
-		dk, dkErr := mlkem.NewDecapsulationKey1024(mlkemPrivBytes)
-		if dkErr != nil {
-			return nil, fmt.Errorf("mlkem1024 decapsulation key: %w", dkErr)
-		}
-		mlkemSecret, err = dk.Decapsulate(mlkemCtBytes)
-	default:
-		return nil, fmt.Errorf("unsupported ML-KEM key type: %s", p.keyType)
-	}
-	if err != nil {
-		return nil, fmt.Errorf("ML-KEM decapsulate failed: %w", err)
-	}
-
-	// Combine secrets: ECDH || ML-KEM
-	combinedSecret := make([]byte, 0, len(ecdhSecret)+len(mlkemSecret))
-	combinedSecret = append(combinedSecret, ecdhSecret...)
-	combinedSecret = append(combinedSecret, mlkemSecret...)
-
-	// Derive AES-256 wrap key via HKDF
-	wrapKey, err := deriveHybridNISTWrapKey(combinedSecret, salt, info)
-	if err != nil {
-		return nil, err
-	}
-
-	// AES-GCM decrypt DEK
-	gcm, err := NewAESGcm(wrapKey)
-	if err != nil {
-		return nil, fmt.Errorf("NewAESGcm failed: %w", err)
-	}
-	plaintext, err := gcm.Decrypt(wrapped.EncryptedDEK)
-	if err != nil {
-		return nil, fmt.Errorf("AES-GCM decrypt failed: %w", err)
-	}
-
-	return plaintext, nil
-}
-
-func deriveHybridNISTWrapKey(combinedSecret, salt, info []byte) ([]byte, error) {
-	if len(salt) == 0 {
-		salt = defaultTDFSalt()
-	}
-
-	hkdfObj := hkdf.New(sha256.New, combinedSecret, salt, info)
-	derivedKey := make([]byte, hybridNISTWrapKeySize)
-	if _, err := io.ReadFull(hkdfObj, derivedKey); err != nil {
-		return nil, fmt.Errorf("hkdf failure: %w", err)
-	}
-
-	return derivedKey, nil
+// P384MLKEM1024UnwrapDEK unwraps an envelope produced by P384MLKEM1024WrapDEK
+// using the supplied raw P-384 + ML-KEM-1024 private key. This is the binary-
+// bytes counterpart to FromPrivatePEM; callers that already hold raw key
+// material can use it directly without re-encoding to PEM.
+func P384MLKEM1024UnwrapDEK(privateKeyRaw, wrappedDER []byte) ([]byte, error) {
+	return unwrapDEKWithKEM(nistHybridKEM{params: &p384mlkem1024Params}, privateKeyRaw, wrappedDER, defaultTDFSalt(), nil)
 }

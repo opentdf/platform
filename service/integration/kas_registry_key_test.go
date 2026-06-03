@@ -209,14 +209,14 @@ func (s *KasRegistryKeySuite) Test_CreateKasKey_Legacy_MultipleOnSameKas_Fail() 
 	s.NotNil(resp)
 	s.True(resp.GetKasKey().GetKey().GetLegacy())
 
-	defer func() {
+	s.T().Cleanup(func() {
 		_, err := s.db.PolicyClient.UnsafeDeleteKey(s.ctx, resp.GetKasKey(), &unsafe.UnsafeDeleteKasKeyRequest{
 			Id:     resp.GetKasKey().GetKey().GetId(),
 			KasUri: resp.GetKasKey().GetKasUri(),
 			Kid:    resp.GetKasKey().GetKey().GetKeyId(),
 		})
 		s.Require().NoError(err)
-	}()
+	})
 
 	req2 := kasregistry.CreateKeyRequest{
 		KasId:        s.kasKeys[0].KeyAccessServerID,
@@ -254,14 +254,14 @@ func (s *KasRegistryKeySuite) Test_CreateKasKey_Legacy_MultipleOnDifferentKas_Su
 	s.NotNil(resp)
 	s.True(resp.GetKasKey().GetKey().GetLegacy())
 
-	defer func() {
+	s.T().Cleanup(func() {
 		_, err := s.db.PolicyClient.UnsafeDeleteKey(s.ctx, resp.GetKasKey(), &unsafe.UnsafeDeleteKasKeyRequest{
 			Id:     resp.GetKasKey().GetKey().GetId(),
 			KasUri: resp.GetKasKey().GetKasUri(),
 			Kid:    resp.GetKasKey().GetKey().GetKeyId(),
 		})
 		s.Require().NoError(err)
-	}()
+	})
 
 	// Create a new KAS server
 	kasReq := kasregistry.CreateKeyAccessServerRequest{
@@ -275,9 +275,9 @@ func (s *KasRegistryKeySuite) Test_CreateKasKey_Legacy_MultipleOnDifferentKas_Su
 	kasIDs := []string{kas.GetId()}
 	keyIDs := []string{}
 
-	defer func() {
+	s.T().Cleanup(func() {
 		s.cleanupKeys(keyIDs, kasIDs)
-	}()
+	})
 
 	req2 := kasregistry.CreateKeyRequest{
 		KasId:        kas.GetId(),
@@ -489,9 +489,9 @@ func (s *KasRegistryKeySuite) Test_ListKeys_OrdersByCreatedAt_Succeeds() {
 
 	keyIDs := make([]string, 0, 3)
 	kasIDs := []string{kas.GetId()}
-	defer func() {
+	s.T().Cleanup(func() {
 		s.cleanupKeys(keyIDs, kasIDs)
-	}()
+	})
 
 	createKey := func() string {
 		keyReq := kasregistry.CreateKeyRequest{
@@ -657,9 +657,9 @@ func (s *KasRegistryKeySuite) Test_ListKeys_Legacy_Success() {
 	kasIDs := make([]string, 0)
 	keyIDs := make([]string, 0)
 
-	defer func() {
+	s.T().Cleanup(func() {
 		s.cleanupKeys(keyIDs, kasIDs)
-	}()
+	})
 
 	kas, err := s.db.PolicyClient.CreateKeyAccessServer(s.ctx, &kasregistry.CreateKeyAccessServerRequest{
 		Uri:  "https://legacy-kas.opentdf.io",
@@ -765,7 +765,9 @@ func (s *KasRegistryKeySuite) Test_ListKeys_SearchByKeyID_Succeeds() {
 	matchedKID := "SEARCH-KEY-" + searchToken
 	otherKID := fmt.Sprintf("other-beta-%x", time.Now().UnixNano())
 	kasID, keyIDsByKID := s.createListKeysSearchTestKeys([]string{matchedKID, otherKID})
-	defer s.cleanupKeys(listKeysSearchIDs(keyIDsByKID), []string{kasID})
+	s.T().Cleanup(func() {
+		s.cleanupKeys(listKeysSearchIDs(keyIDsByKID), []string{kasID})
+	})
 
 	list, err := s.db.PolicyClient.ListKeys(s.ctx, &kasregistry.ListKeysRequest{
 		KasFilter: &kasregistry.ListKeysRequest_KasId{KasId: kasID},
@@ -783,8 +785,12 @@ func (s *KasRegistryKeySuite) Test_ListKeys_SearchCombinesWithFilters_Succeeds()
 	otherKID := searchToken + "-other-kas"
 	kasID, keyIDsByKID := s.createListKeysSearchTestKeys([]string{matchedKID})
 	otherKasID, otherKeyIDsByKID := s.createListKeysSearchTestKeys([]string{otherKID})
-	defer s.cleanupKeys(listKeysSearchIDs(keyIDsByKID), []string{kasID})
-	defer s.cleanupKeys(listKeysSearchIDs(otherKeyIDsByKID), []string{otherKasID})
+	s.T().Cleanup(func() {
+		s.cleanupKeys(listKeysSearchIDs(keyIDsByKID), []string{kasID})
+	})
+	s.T().Cleanup(func() {
+		s.cleanupKeys(listKeysSearchIDs(otherKeyIDsByKID), []string{otherKasID})
+	})
 
 	list, err := s.db.PolicyClient.ListKeys(s.ctx, &kasregistry.ListKeysRequest{
 		KasFilter: &kasregistry.ListKeysRequest_KasId{KasId: kasID},
@@ -800,7 +806,9 @@ func (s *KasRegistryKeySuite) Test_ListKeys_SearchEmptyQuery_Succeeds() {
 	kasID, keyIDsByKID := s.createListKeysSearchTestKeys([]string{
 		fmt.Sprintf("search-empty-%d", time.Now().UnixNano()),
 	})
-	defer s.cleanupKeys(listKeysSearchIDs(keyIDsByKID), []string{kasID})
+	s.T().Cleanup(func() {
+		s.cleanupKeys(listKeysSearchIDs(keyIDsByKID), []string{kasID})
+	})
 
 	noSearch, err := s.db.PolicyClient.ListKeys(s.ctx, &kasregistry.ListKeysRequest{
 		KasFilter: &kasregistry.ListKeysRequest_KasId{KasId: kasID},
@@ -819,11 +827,28 @@ func (s *KasRegistryKeySuite) Test_ListKeys_SearchEmptyQuery_Succeeds() {
 func (s *KasRegistryKeySuite) Test_ListKeys_SearchTrimsWhitespace_Succeeds() {
 	keyID := fmt.Sprintf("search-space-%d", time.Now().UnixNano())
 	kasID, keyIDsByKID := s.createListKeysSearchTestKeys([]string{keyID})
-	defer s.cleanupKeys(listKeysSearchIDs(keyIDsByKID), []string{kasID})
+	s.T().Cleanup(func() {
+		s.cleanupKeys(listKeysSearchIDs(keyIDsByKID), []string{kasID})
+	})
+
+	for _, query := range []string{
+		" " + keyID,
+		keyID + " ",
+		" " + keyID + " ",
+	} {
+		list, err := s.db.PolicyClient.ListKeys(s.ctx, &kasregistry.ListKeysRequest{
+			KasFilter: &kasregistry.ListKeysRequest_KasId{KasId: kasID},
+			Search:    &policy.Search{Term: query},
+		})
+		s.Require().NoError(err)
+		s.Require().Len(list.GetKasKeys(), 1)
+		s.Equal(keyIDsByKID[keyID], list.GetKasKeys()[0].GetKey().GetId())
+		s.Equal(int32(1), list.GetPagination().GetTotal())
+	}
 
 	list, err := s.db.PolicyClient.ListKeys(s.ctx, &kasregistry.ListKeysRequest{
 		KasFilter: &kasregistry.ListKeysRequest_KasId{KasId: kasID},
-		Search:    &policy.Search{Term: " " + keyID},
+		Search:    &policy.Search{Term: " "},
 	})
 	s.Require().NoError(err)
 	s.Require().Len(list.GetKasKeys(), 1)
@@ -837,7 +862,9 @@ func (s *KasRegistryKeySuite) Test_ListKeys_SearchEscapesLikeWildcardLiterals_Su
 		"wildcarda-" + searchToken,
 		"wildcardb-" + searchToken,
 	})
-	defer s.cleanupKeys(listKeysSearchIDs(keyIDsByKID), []string{kasID})
+	s.T().Cleanup(func() {
+		s.cleanupKeys(listKeysSearchIDs(keyIDsByKID), []string{kasID})
+	})
 
 	for _, query := range []string{
 		"wildcard_-" + searchToken,
@@ -860,7 +887,9 @@ func (s *KasRegistryKeySuite) Test_ListKeys_SearchPaginationAppliesAfterFilterin
 	thirdKID := "c-" + searchToken
 	otherKID := fmt.Sprintf("other-%x", time.Now().UnixNano())
 	kasID, keyIDsByKID := s.createListKeysSearchTestKeys([]string{firstKID, secondKID, thirdKID, otherKID})
-	defer s.cleanupKeys(listKeysSearchIDs(keyIDsByKID), []string{kasID})
+	s.T().Cleanup(func() {
+		s.cleanupKeys(listKeysSearchIDs(keyIDsByKID), []string{kasID})
+	})
 
 	firstPage, err := s.db.PolicyClient.ListKeys(s.ctx, &kasregistry.ListKeysRequest{
 		KasFilter:  &kasregistry.ListKeysRequest_KasId{KasId: kasID},
@@ -898,10 +927,10 @@ func (s *KasRegistryKeySuite) Test_RotateKey_Multiple_Attributes_Values_Namespac
 	keyIDs := make([]string, 0)
 	kasIDs := make([]string, 0)
 
-	defer func() {
+	s.T().Cleanup(func() {
 		s.cleanupNamespacesAndAttrsByIDs(namespaceIDs)
 		s.cleanupKeys(keyIDs, kasIDs)
-	}()
+	})
 
 	// Create a new KAS server
 	kasReq := kasregistry.CreateKeyAccessServerRequest{
@@ -1019,10 +1048,10 @@ func (s *KasRegistryKeySuite) Test_RotateKey_Two_Attribute_Two_Namespace_0_Attri
 	keyIDs := make([]string, 0)
 	kasIDs := make([]string, 0)
 
-	defer func() {
+	s.T().Cleanup(func() {
 		s.cleanupNamespacesAndAttrsByIDs(namespaceIDs)
 		s.cleanupKeys(keyIDs, kasIDs)
-	}()
+	})
 
 	// Create a new KAS server
 	kasReq := kasregistry.CreateKeyAccessServerRequest{
@@ -1144,9 +1173,9 @@ func (s *KasRegistryKeySuite) Test_RotateKey_Two_Attribute_Two_Namespace_0_Attri
 func (s *KasRegistryKeySuite) Test_RotateKey_NoAttributeKeyMapping_Success() {
 	keyIDs := make([]string, 0)
 	kasIDs := make([]string, 0)
-	defer func() {
+	s.T().Cleanup(func() {
 		s.cleanupKeys(keyIDs, kasIDs)
-	}()
+	})
 
 	kasReq := kasregistry.CreateKeyAccessServerRequest{
 		Name: "test_rotate_key_kas",
@@ -1209,9 +1238,9 @@ func (s *KasRegistryKeySuite) Test_RotateKey_NoAttributeKeyMapping_Success() {
 func (s *KasRegistryKeySuite) Test_RotateKey_NoBaseKeyRotated_Success() {
 	keyIDs := make([]string, 0)
 	kasIDs := make([]string, 0)
-	defer func() {
+	s.T().Cleanup(func() {
 		s.cleanupKeys(keyIDs, kasIDs)
-	}()
+	})
 
 	kasReq := kasregistry.CreateKeyAccessServerRequest{
 		Name: "test_rotate_key_kas",
@@ -1261,9 +1290,9 @@ func (s *KasRegistryKeySuite) Test_RotateKey_NoBaseKeyRotated_Success() {
 func (s *KasRegistryKeySuite) Test_RotateKey_BaseKeyRotated_Success() {
 	keyIDs := make([]string, 0)
 	kasIDs := make([]string, 0)
-	defer func() {
+	s.T().Cleanup(func() {
 		s.cleanupKeys(keyIDs, kasIDs)
-	}()
+	})
 
 	kasReq := kasregistry.CreateKeyAccessServerRequest{
 		Name: "test_rotate_key_kas",
@@ -1309,9 +1338,9 @@ func (s *KasRegistryKeySuite) Test_RotateKey_BaseKeyRotated_Success() {
 func (s *KasRegistryKeySuite) Test_SetBaseKey_KasKeyNotFound_Fails() {
 	keyIDs := make([]string, 0)
 	kasIDs := make([]string, 0)
-	defer func() {
+	s.T().Cleanup(func() {
 		s.cleanupKeys(keyIDs, kasIDs)
-	}()
+	})
 
 	// Create a new KAS server
 	kasReq := kasregistry.CreateKeyAccessServerRequest{
@@ -1360,9 +1389,9 @@ func (s *KasRegistryKeySuite) Test_SetBaseKey_KasKeyNotFound_Fails() {
 func (s *KasRegistryKeySuite) Test_SetBaseKey_Insert_Success() {
 	keyIDs := make([]string, 0)
 	kasIDs := make([]string, 0)
-	defer func() {
+	s.T().Cleanup(func() {
 		s.cleanupKeys(keyIDs, kasIDs)
-	}()
+	})
 
 	// Create a new KAS server
 	kasReq := kasregistry.CreateKeyAccessServerRequest{
@@ -1417,9 +1446,9 @@ func (s *KasRegistryKeySuite) Test_SetBaseKey_Insert_Success() {
 func (s *KasRegistryKeySuite) Test_SetBaseKey_CannotSetPublicKeyOnlyKey_Fails() {
 	keyIDs := make([]string, 0)
 	kasIDs := make([]string, 0)
-	defer func() {
+	s.T().Cleanup(func() {
 		s.cleanupKeys(keyIDs, kasIDs)
-	}()
+	})
 
 	// Create a new KAS server
 	kasReq := kasregistry.CreateKeyAccessServerRequest{
@@ -1464,9 +1493,9 @@ func (s *KasRegistryKeySuite) Test_SetBaseKey_CannotSetPublicKeyOnlyKey_Fails() 
 func (s *KasRegistryKeySuite) Test_SetBaseKey_CannotSetNonActiveKey_Fails() {
 	keyIDs := make([]string, 0)
 	kasIDs := make([]string, 0)
-	defer func() {
+	s.T().Cleanup(func() {
 		s.cleanupKeys(keyIDs, kasIDs)
-	}()
+	})
 
 	// Create a new KAS server
 	kasReq := kasregistry.CreateKeyAccessServerRequest{
@@ -1536,9 +1565,9 @@ func (s *KasRegistryKeySuite) Test_SetBaseKey_CannotSetNonActiveKey_Fails() {
 func (s *KasRegistryKeySuite) Test_RotateKey_MetadataUnchanged_Success() {
 	keyIDs := make([]string, 0)
 	kasIDs := make([]string, 0)
-	defer func() {
+	s.T().Cleanup(func() {
 		s.cleanupKeys(keyIDs, kasIDs)
-	}()
+	})
 
 	kasReq := kasregistry.CreateKeyAccessServerRequest{
 		Name: "test_rotate_key_kas",
@@ -1612,14 +1641,14 @@ func (s *KasRegistryKeySuite) Test_ListKeyMappings_OrdersByCreatedAt_Succeeds() 
 	kasKeys := make([]*policy.KasKey, 0, 2)
 	kasIDs := make([]string, 0, 2)
 	namespaces := make([]*policy.Namespace, 0, 1)
-	defer func() {
+	s.T().Cleanup(func() {
 		keyIDs := make([]string, 0, len(kasKeys))
 		for _, key := range kasKeys {
 			keyIDs = append(keyIDs, key.GetKey().GetId())
 		}
 		s.cleanupKeys(keyIDs, kasIDs)
 		s.cleanupNamespacesAndAttrs(namespaces)
-	}()
+	})
 
 	kasKey1 := s.createKeyAndKas()
 	kasKeys = append(kasKeys, kasKey1)
@@ -1667,14 +1696,14 @@ func (s *KasRegistryKeySuite) Test_ListKeyMappings_ByID_OneAttrValue_Success() {
 	namespaces := make([]*policy.Namespace, 0)
 	attributeDefs := make([]*policy.Attribute, 0)
 	attrValues := make([]*policy.Value, 0)
-	defer func() {
+	s.T().Cleanup(func() {
 		keyIDs := make([]string, 0)
 		for _, key := range kasKeys {
 			keyIDs = append(keyIDs, key.GetKey().GetId())
 		}
 		s.cleanupKeys(keyIDs, kasIDs)
 		s.cleanupNamespacesAndAttrs(namespaces)
-	}()
+	})
 	kasKey := s.createKeyAndKas()
 	kasKeys = append(kasKeys, kasKey)
 	kasIDs = append(kasIDs, kasKey.GetKasId())
@@ -1733,14 +1762,14 @@ func (s *KasRegistryKeySuite) Test_ListKeyMappings_By_Key_Success() {
 	namespaces := make([]*policy.Namespace, 0)
 	attributeDefs := make([]*policy.Attribute, 0)
 	attrValues := make([]*policy.Value, 0)
-	defer func() {
+	s.T().Cleanup(func() {
 		keyIDs := make([]string, 0)
 		for _, key := range kasKeys {
 			keyIDs = append(keyIDs, key.GetKey().GetId())
 		}
 		s.cleanupKeys(keyIDs, kasIDs)
 		s.cleanupNamespacesAndAttrs(namespaces)
-	}()
+	})
 	kasKey := s.createKeyAndKas()
 	kasKeys = append(kasKeys, kasKey)
 	kasIDs = append(kasIDs, kasKey.GetKasId())
@@ -1832,14 +1861,14 @@ func (s *KasRegistryKeySuite) Test_ListKeyMappings_SameKeyId_DifferentKas_Succes
 	namespaces := make([]*policy.Namespace, 0)
 	attributeDefs := make([]*policy.Attribute, 0)
 	attrValues := make([]*policy.Value, 0)
-	defer func() {
+	s.T().Cleanup(func() {
 		keyIDs := make([]string, 0)
 		for _, key := range kasKeys {
 			keyIDs = append(keyIDs, key.GetKey().GetId())
 		}
 		s.cleanupKeys(keyIDs, kasIDs)
 		s.cleanupNamespacesAndAttrs(namespaces)
-	}()
+	})
 
 	kasKey := s.createKeyAndKas()
 	s.NotNil(kasKey)
@@ -1903,13 +1932,13 @@ func (s *KasRegistryKeySuite) Test_ListKeyMappings_SameKeyId_DifferentKas_Succes
 func (s *KasRegistryKeySuite) Test_ListKeyMappings_By_Key_Success_EmptyMappings() {
 	kasKeys := make([]*policy.KasKey, 0)
 	kasIDs := make([]string, 0)
-	defer func() {
+	s.T().Cleanup(func() {
 		keyIDs := make([]string, 0)
 		for _, key := range kasKeys {
 			keyIDs = append(keyIDs, key.GetKey().GetId())
 		}
 		s.cleanupKeys(keyIDs, kasIDs)
-	}()
+	})
 	kasKey := s.createKeyAndKas()
 	kasKeys = append(kasKeys, kasKey)
 	kasIDs = append(kasIDs, kasKey.GetKasId())
@@ -1935,14 +1964,14 @@ func (s *KasRegistryKeySuite) Test_ListKeyMappings_Multiple_Keys_Pagination_Succ
 	namespaces := make([]*policy.Namespace, 0)
 	attributeDefs := make([]*policy.Attribute, 0)
 	attrValues := make([]*policy.Value, 0)
-	defer func() {
+	s.T().Cleanup(func() {
 		keyIDs := make([]string, 0)
 		for _, key := range kasKeys {
 			keyIDs = append(keyIDs, key.GetKey().GetId())
 		}
 		s.cleanupKeys(keyIDs, kasIDs)
 		s.cleanupNamespacesAndAttrs(namespaces)
-	}()
+	})
 	for i := range 2 {
 		kasKey := s.createKeyAndKas()
 		kasKeys = append(kasKeys, kasKey)
@@ -2006,14 +2035,14 @@ func (s *KasRegistryKeySuite) Test_ListKeyMappings_Multiple_Mixed_Mappings() {
 	namespaces := make([]*policy.Namespace, 0)
 	attributeDefs := make([]*policy.Attribute, 0)
 	attrValues := make([]*policy.Value, 0)
-	defer func() {
+	s.T().Cleanup(func() {
 		keyIDs := make([]string, 0)
 		for _, key := range kasKeys {
 			keyIDs = append(keyIDs, key.GetKey().GetId())
 		}
 		s.cleanupKeys(keyIDs, kasIDs)
 		s.cleanupNamespacesAndAttrs(namespaces)
-	}()
+	})
 
 	for range 3 {
 		kasKey := s.createKeyAndKas()
@@ -2068,7 +2097,7 @@ func (s *KasRegistryKeySuite) Test_DeleteKey_WrongKasUriOrKid_Fail() {
 	s.Require().NoError(err)
 	s.NotNil(resp)
 
-	defer func() {
+	s.T().Cleanup(func() {
 		r := unsafe.UnsafeDeleteKasKeyRequest{
 			Id:     resp.GetKasKey().GetKey().GetId(),
 			KasUri: resp.GetKasKey().GetKasUri(),
@@ -2076,7 +2105,7 @@ func (s *KasRegistryKeySuite) Test_DeleteKey_WrongKasUriOrKid_Fail() {
 		}
 		_, err := s.db.PolicyClient.UnsafeDeleteKey(s.ctx, resp.GetKasKey(), &r)
 		s.Require().NoError(err)
-	}()
+	})
 
 	// Attempt to delete with incorrect Kid
 	deleteResp, err := s.db.PolicyClient.UnsafeDeleteKey(s.ctx, resp.GetKasKey(), &unsafe.UnsafeDeleteKasKeyRequest{Id: resp.GetKasKey().GetKey().GetId(), KasUri: resp.GetKasKey().GetKasUri(), Kid: "wrong-KID"})
@@ -2192,6 +2221,263 @@ func (s *KasRegistryKeySuite) Test_ListKeyMappings_AllParameterCombinations() {
 	})
 	s.Require().NoError(err, "Should successfully query with KAS ID and key ID")
 	s.NotNil(mappingsByKeyID)
+}
+
+func (s *KasRegistryKeySuite) Test_ListKeys_SortByKeyId_ASC() {
+	ids, kasID := s.createSortTestKasKeys([]string{"aaa-kksort", "bbb-kksort", "ccc-kksort"})
+	s.T().Cleanup(func() {
+		s.deleteSortTestKasKeys(ids, kasID)
+	})
+
+	list, err := s.db.PolicyClient.ListKeys(s.ctx, &kasregistry.ListKeysRequest{
+		KasFilter: &kasregistry.ListKeysRequest_KasId{KasId: kasID},
+		Sort: []*kasregistry.KasKeysSort{
+			{Field: kasregistry.SortKasKeysType_SORT_KAS_KEYS_TYPE_KEY_ID, Direction: policy.SortDirection_SORT_DIRECTION_ASC},
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(list)
+
+	// aaa < bbb < ccc in ASC order
+	assertIDsInOrder(s.T(), list.GetKasKeys(), func(k *policy.KasKey) string { return k.GetKey().GetId() }, ids[0], ids[1], ids[2])
+}
+
+func (s *KasRegistryKeySuite) Test_ListKeys_SortByKeyId_DESC() {
+	ids, kasID := s.createSortTestKasKeys([]string{"aaa-kksortdesc", "bbb-kksortdesc", "ccc-kksortdesc"})
+	s.T().Cleanup(func() {
+		s.deleteSortTestKasKeys(ids, kasID)
+	})
+
+	list, err := s.db.PolicyClient.ListKeys(s.ctx, &kasregistry.ListKeysRequest{
+		KasFilter: &kasregistry.ListKeysRequest_KasId{KasId: kasID},
+		Sort: []*kasregistry.KasKeysSort{
+			{Field: kasregistry.SortKasKeysType_SORT_KAS_KEYS_TYPE_KEY_ID, Direction: policy.SortDirection_SORT_DIRECTION_DESC},
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(list)
+
+	// ccc > bbb > aaa in DESC order
+	assertIDsInOrder(s.T(), list.GetKasKeys(), func(k *policy.KasKey) string { return k.GetKey().GetId() }, ids[2], ids[1], ids[0])
+}
+
+func (s *KasRegistryKeySuite) Test_ListKeys_SortByCreatedAt_ASC() {
+	ids, kasID := s.createSortTestKasKeys([]string{"createdasc-kk-0", "createdasc-kk-1", "createdasc-kk-2"})
+	s.T().Cleanup(func() {
+		s.deleteSortTestKasKeys(ids, kasID)
+	})
+
+	list, err := s.db.PolicyClient.ListKeys(s.ctx, &kasregistry.ListKeysRequest{
+		KasFilter: &kasregistry.ListKeysRequest_KasId{KasId: kasID},
+		Sort: []*kasregistry.KasKeysSort{
+			{Field: kasregistry.SortKasKeysType_SORT_KAS_KEYS_TYPE_CREATED_AT, Direction: policy.SortDirection_SORT_DIRECTION_ASC},
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(list)
+
+	// oldest first in ASC order
+	assertIDsInOrder(s.T(), list.GetKasKeys(), func(k *policy.KasKey) string { return k.GetKey().GetId() }, ids[0], ids[1], ids[2])
+}
+
+func (s *KasRegistryKeySuite) Test_ListKeys_SortByCreatedAt_DESC() {
+	ids, kasID := s.createSortTestKasKeys([]string{"createddesc-kk-0", "createddesc-kk-1", "createddesc-kk-2"})
+	s.T().Cleanup(func() {
+		s.deleteSortTestKasKeys(ids, kasID)
+	})
+
+	list, err := s.db.PolicyClient.ListKeys(s.ctx, &kasregistry.ListKeysRequest{
+		KasFilter: &kasregistry.ListKeysRequest_KasId{KasId: kasID},
+		Sort: []*kasregistry.KasKeysSort{
+			{Field: kasregistry.SortKasKeysType_SORT_KAS_KEYS_TYPE_CREATED_AT, Direction: policy.SortDirection_SORT_DIRECTION_DESC},
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(list)
+
+	// newest first in DESC order
+	assertIDsInOrder(s.T(), list.GetKasKeys(), func(k *policy.KasKey) string { return k.GetKey().GetId() }, ids[2], ids[1], ids[0])
+}
+
+func (s *KasRegistryKeySuite) Test_ListKeys_SortByUpdatedAt_DESC() {
+	ids, kasID := s.createSortTestKasKeys([]string{"upd-sort-kk-0", "upd-sort-kk-1", "upd-sort-kk-2"})
+	s.T().Cleanup(func() {
+		s.deleteSortTestKasKeys(ids, kasID)
+	})
+
+	// Update the first key so its updated_at is the most recent
+	time.Sleep(5 * time.Millisecond)
+	_, err := s.db.PolicyClient.UpdateKey(s.ctx, &kasregistry.UpdateKeyRequest{
+		Id: ids[0],
+		Metadata: &common.MetadataMutable{
+			Labels: map[string]string{"updated": "true"},
+		},
+		MetadataUpdateBehavior: common.MetadataUpdateEnum_METADATA_UPDATE_ENUM_REPLACE,
+	})
+	s.Require().NoError(err)
+
+	list, err := s.db.PolicyClient.ListKeys(s.ctx, &kasregistry.ListKeysRequest{
+		KasFilter: &kasregistry.ListKeysRequest_KasId{KasId: kasID},
+		Sort: []*kasregistry.KasKeysSort{
+			{Field: kasregistry.SortKasKeysType_SORT_KAS_KEYS_TYPE_UPDATED_AT, Direction: policy.SortDirection_SORT_DIRECTION_DESC},
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(list)
+
+	// The updated key (ids[0]) should appear before the others
+	assertIDsInOrder(s.T(), list.GetKasKeys(), func(k *policy.KasKey) string { return k.GetKey().GetId() }, ids[0], ids[2], ids[1])
+}
+
+func (s *KasRegistryKeySuite) Test_ListKeys_SortByUpdatedAt_ASC() {
+	ids, kasID := s.createSortTestKasKeys([]string{"updasc-kk-0", "updasc-kk-1", "updasc-kk-2"})
+	s.T().Cleanup(func() {
+		s.deleteSortTestKasKeys(ids, kasID)
+	})
+
+	// Update the last key so its updated_at is the most recent
+	time.Sleep(5 * time.Millisecond)
+	_, err := s.db.PolicyClient.UpdateKey(s.ctx, &kasregistry.UpdateKeyRequest{
+		Id: ids[2],
+		Metadata: &common.MetadataMutable{
+			Labels: map[string]string{"updated": "true"},
+		},
+		MetadataUpdateBehavior: common.MetadataUpdateEnum_METADATA_UPDATE_ENUM_REPLACE,
+	})
+	s.Require().NoError(err)
+
+	list, err := s.db.PolicyClient.ListKeys(s.ctx, &kasregistry.ListKeysRequest{
+		KasFilter: &kasregistry.ListKeysRequest_KasId{KasId: kasID},
+		Sort: []*kasregistry.KasKeysSort{
+			{Field: kasregistry.SortKasKeysType_SORT_KAS_KEYS_TYPE_UPDATED_AT, Direction: policy.SortDirection_SORT_DIRECTION_ASC},
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(list)
+
+	// The updated key (ids[2]) should appear last in ASC order
+	assertIDsInOrder(s.T(), list.GetKasKeys(), func(k *policy.KasKey) string { return k.GetKey().GetId() }, ids[0], ids[1], ids[2])
+}
+
+func (s *KasRegistryKeySuite) Test_ListKeys_SortTieBreaker_CreatedAtWithIDFallback() {
+	kasReq := kasregistry.CreateKeyAccessServerRequest{
+		Name: "tiebreaker-kk-kas-" + uuid.NewString(),
+		Uri:  "https://tiebreaker-kk-kas-" + uuid.NewString() + ".opentdf.io",
+	}
+	kas, err := s.db.PolicyClient.CreateKeyAccessServer(s.ctx, &kasReq)
+	s.Require().NoError(err)
+
+	suffix := time.Now().UnixNano()
+	ids := make([]string, 3)
+	for i := range 3 {
+		keyReq := kasregistry.CreateKeyRequest{
+			KasId:        kas.GetId(),
+			KeyId:        fmt.Sprintf("tiebreaker-kk-%d-%d", i, suffix),
+			KeyAlgorithm: policy.Algorithm_ALGORITHM_RSA_2048,
+			KeyMode:      policy.KeyMode_KEY_MODE_CONFIG_ROOT_KEY,
+			PublicKeyCtx: &policy.PublicKeyCtx{Pem: keyCtx},
+			PrivateKeyCtx: &policy.PrivateKeyCtx{
+				KeyId:      fmt.Sprintf("tiebreaker-kk-priv-%d-%d", i, suffix),
+				WrappedKey: keyCtx,
+			},
+		}
+		resp, err := s.db.PolicyClient.CreateKey(s.ctx, &keyReq)
+		s.Require().NoError(err)
+		ids[i] = resp.GetKasKey().GetKey().GetId()
+	}
+	s.T().Cleanup(func() {
+		s.deleteSortTestKasKeys(ids, kas.GetId())
+	})
+
+	s.Require().NoError(forceCreatedAtTie(s.ctx, s.db, "key_access_server_keys", ids))
+
+	sorted := slices.Sorted(slices.Values(ids))
+
+	listRsp, err := s.db.PolicyClient.ListKeys(s.ctx, &kasregistry.ListKeysRequest{
+		KasFilter: &kasregistry.ListKeysRequest_KasId{
+			KasId: kas.GetId(),
+		},
+		Sort: []*kasregistry.KasKeysSort{
+			{Field: kasregistry.SortKasKeysType_SORT_KAS_KEYS_TYPE_CREATED_AT, Direction: policy.SortDirection_SORT_DIRECTION_ASC},
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(listRsp)
+
+	assertIDsInOrder(s.T(), listRsp.GetKasKeys(), func(k *policy.KasKey) string { return k.GetKey().GetId() }, sorted[0], sorted[1], sorted[2])
+}
+
+func (s *KasRegistryKeySuite) Test_ListKeys_SortByUnspecifiedField_DefaultsToCreatedAt() {
+	ids, kasID := s.createSortTestKasKeys([]string{"unsf-kk-0", "unsf-kk-1", "unsf-kk-2"})
+	s.T().Cleanup(func() {
+		s.deleteSortTestKasKeys(ids, kasID)
+	})
+
+	list, err := s.db.PolicyClient.ListKeys(s.ctx, &kasregistry.ListKeysRequest{
+		KasFilter: &kasregistry.ListKeysRequest_KasId{KasId: kasID},
+		Sort: []*kasregistry.KasKeysSort{
+			{Field: kasregistry.SortKasKeysType_SORT_KAS_KEYS_TYPE_UNSPECIFIED, Direction: policy.SortDirection_SORT_DIRECTION_ASC},
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(list)
+
+	// Field defaults to created_at, explicit ASC is preserved
+	assertIDsInOrder(s.T(), list.GetKasKeys(), func(k *policy.KasKey) string { return k.GetKey().GetId() }, ids[0], ids[1], ids[2])
+}
+
+func (s *KasRegistryKeySuite) Test_ListKeys_SortByUnspecifiedDirection_DefaultsToDESC() {
+	ids, kasID := s.createSortTestKasKeys([]string{"unsd-kk-0", "unsd-kk-1", "unsd-kk-2"})
+	s.T().Cleanup(func() {
+		s.deleteSortTestKasKeys(ids, kasID)
+	})
+
+	list, err := s.db.PolicyClient.ListKeys(s.ctx, &kasregistry.ListKeysRequest{
+		KasFilter: &kasregistry.ListKeysRequest_KasId{KasId: kasID},
+		Sort: []*kasregistry.KasKeysSort{
+			{Field: kasregistry.SortKasKeysType_SORT_KAS_KEYS_TYPE_CREATED_AT, Direction: policy.SortDirection_SORT_DIRECTION_UNSPECIFIED},
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(list)
+
+	// Direction defaults to DESC, explicit created_at field is preserved
+	assertIDsInOrder(s.T(), list.GetKasKeys(), func(k *policy.KasKey) string { return k.GetKey().GetId() }, ids[2], ids[1], ids[0])
+}
+
+func (s *KasRegistryKeySuite) Test_ListKeys_SortByBothUnspecified_DefaultsToCreatedAtDESC() {
+	ids, kasID := s.createSortTestKasKeys([]string{"unsb-kk-0", "unsb-kk-1", "unsb-kk-2"})
+	s.T().Cleanup(func() {
+		s.deleteSortTestKasKeys(ids, kasID)
+	})
+
+	list, err := s.db.PolicyClient.ListKeys(s.ctx, &kasregistry.ListKeysRequest{
+		KasFilter: &kasregistry.ListKeysRequest_KasId{KasId: kasID},
+		Sort: []*kasregistry.KasKeysSort{
+			{Field: kasregistry.SortKasKeysType_SORT_KAS_KEYS_TYPE_UNSPECIFIED, Direction: policy.SortDirection_SORT_DIRECTION_UNSPECIFIED},
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(list)
+
+	// Both default: created_at DESC
+	assertIDsInOrder(s.T(), list.GetKasKeys(), func(k *policy.KasKey) string { return k.GetKey().GetId() }, ids[2], ids[1], ids[0])
+}
+
+func (s *KasRegistryKeySuite) Test_ListKeys_SortOmitted() {
+	ids, kasID := s.createSortTestKasKeys([]string{"omit-kk-0", "omit-kk-1", "omit-kk-2"})
+	s.T().Cleanup(func() {
+		s.deleteSortTestKasKeys(ids, kasID)
+	})
+
+	list, err := s.db.PolicyClient.ListKeys(s.ctx, &kasregistry.ListKeysRequest{
+		KasFilter: &kasregistry.ListKeysRequest_KasId{KasId: kasID},
+	})
+	s.Require().NoError(err)
+	s.NotNil(list)
+
+	// No sort provided: created_at DESC
+	assertIDsInOrder(s.T(), list.GetKasKeys(), func(k *policy.KasKey) string { return k.GetKey().GetId() }, ids[2], ids[1], ids[0])
 }
 
 func (s *KasRegistryKeySuite) validateKeyMapping(mapping *kasregistry.KeyMapping, expectedKey *policy.KasKey, expectedNamespace []*policy.Namespace, expectedAttrDef []*policy.Attribute, expectedValue []*policy.Value) {
@@ -2615,241 +2901,6 @@ func (s *KasRegistryKeySuite) createKeyAndKas() *policy.KasKey {
 	s.NotNil(keyResp)
 
 	return keyResp.GetKasKey()
-}
-
-func (s *KasRegistryKeySuite) Test_ListKeys_SortByKeyId_ASC() {
-	ids, kasID := s.createSortTestKasKeys([]string{"aaa-kksort", "bbb-kksort", "ccc-kksort"})
-	defer s.deleteSortTestKasKeys(ids, kasID)
-
-	list, err := s.db.PolicyClient.ListKeys(s.ctx, &kasregistry.ListKeysRequest{
-		KasFilter: &kasregistry.ListKeysRequest_KasId{KasId: kasID},
-		Sort: []*kasregistry.KasKeysSort{
-			{Field: kasregistry.SortKasKeysType_SORT_KAS_KEYS_TYPE_KEY_ID, Direction: policy.SortDirection_SORT_DIRECTION_ASC},
-		},
-	})
-	s.Require().NoError(err)
-	s.NotNil(list)
-
-	// aaa < bbb < ccc in ASC order
-	assertIDsInOrder(s.T(), list.GetKasKeys(), func(k *policy.KasKey) string { return k.GetKey().GetId() }, ids[0], ids[1], ids[2])
-}
-
-func (s *KasRegistryKeySuite) Test_ListKeys_SortByKeyId_DESC() {
-	ids, kasID := s.createSortTestKasKeys([]string{"aaa-kksortdesc", "bbb-kksortdesc", "ccc-kksortdesc"})
-	defer s.deleteSortTestKasKeys(ids, kasID)
-
-	list, err := s.db.PolicyClient.ListKeys(s.ctx, &kasregistry.ListKeysRequest{
-		KasFilter: &kasregistry.ListKeysRequest_KasId{KasId: kasID},
-		Sort: []*kasregistry.KasKeysSort{
-			{Field: kasregistry.SortKasKeysType_SORT_KAS_KEYS_TYPE_KEY_ID, Direction: policy.SortDirection_SORT_DIRECTION_DESC},
-		},
-	})
-	s.Require().NoError(err)
-	s.NotNil(list)
-
-	// ccc > bbb > aaa in DESC order
-	assertIDsInOrder(s.T(), list.GetKasKeys(), func(k *policy.KasKey) string { return k.GetKey().GetId() }, ids[2], ids[1], ids[0])
-}
-
-func (s *KasRegistryKeySuite) Test_ListKeys_SortByCreatedAt_ASC() {
-	ids, kasID := s.createSortTestKasKeys([]string{"createdasc-kk-0", "createdasc-kk-1", "createdasc-kk-2"})
-	defer s.deleteSortTestKasKeys(ids, kasID)
-
-	list, err := s.db.PolicyClient.ListKeys(s.ctx, &kasregistry.ListKeysRequest{
-		KasFilter: &kasregistry.ListKeysRequest_KasId{KasId: kasID},
-		Sort: []*kasregistry.KasKeysSort{
-			{Field: kasregistry.SortKasKeysType_SORT_KAS_KEYS_TYPE_CREATED_AT, Direction: policy.SortDirection_SORT_DIRECTION_ASC},
-		},
-	})
-	s.Require().NoError(err)
-	s.NotNil(list)
-
-	// oldest first in ASC order
-	assertIDsInOrder(s.T(), list.GetKasKeys(), func(k *policy.KasKey) string { return k.GetKey().GetId() }, ids[0], ids[1], ids[2])
-}
-
-func (s *KasRegistryKeySuite) Test_ListKeys_SortByCreatedAt_DESC() {
-	ids, kasID := s.createSortTestKasKeys([]string{"createddesc-kk-0", "createddesc-kk-1", "createddesc-kk-2"})
-	defer s.deleteSortTestKasKeys(ids, kasID)
-
-	list, err := s.db.PolicyClient.ListKeys(s.ctx, &kasregistry.ListKeysRequest{
-		KasFilter: &kasregistry.ListKeysRequest_KasId{KasId: kasID},
-		Sort: []*kasregistry.KasKeysSort{
-			{Field: kasregistry.SortKasKeysType_SORT_KAS_KEYS_TYPE_CREATED_AT, Direction: policy.SortDirection_SORT_DIRECTION_DESC},
-		},
-	})
-	s.Require().NoError(err)
-	s.NotNil(list)
-
-	// newest first in DESC order
-	assertIDsInOrder(s.T(), list.GetKasKeys(), func(k *policy.KasKey) string { return k.GetKey().GetId() }, ids[2], ids[1], ids[0])
-}
-
-func (s *KasRegistryKeySuite) Test_ListKeys_SortByUpdatedAt_DESC() {
-	ids, kasID := s.createSortTestKasKeys([]string{"upd-sort-kk-0", "upd-sort-kk-1", "upd-sort-kk-2"})
-	defer s.deleteSortTestKasKeys(ids, kasID)
-
-	// Update the first key so its updated_at is the most recent
-	time.Sleep(5 * time.Millisecond)
-	_, err := s.db.PolicyClient.UpdateKey(s.ctx, &kasregistry.UpdateKeyRequest{
-		Id: ids[0],
-		Metadata: &common.MetadataMutable{
-			Labels: map[string]string{"updated": "true"},
-		},
-		MetadataUpdateBehavior: common.MetadataUpdateEnum_METADATA_UPDATE_ENUM_REPLACE,
-	})
-	s.Require().NoError(err)
-
-	list, err := s.db.PolicyClient.ListKeys(s.ctx, &kasregistry.ListKeysRequest{
-		KasFilter: &kasregistry.ListKeysRequest_KasId{KasId: kasID},
-		Sort: []*kasregistry.KasKeysSort{
-			{Field: kasregistry.SortKasKeysType_SORT_KAS_KEYS_TYPE_UPDATED_AT, Direction: policy.SortDirection_SORT_DIRECTION_DESC},
-		},
-	})
-	s.Require().NoError(err)
-	s.NotNil(list)
-
-	// The updated key (ids[0]) should appear before the others
-	assertIDsInOrder(s.T(), list.GetKasKeys(), func(k *policy.KasKey) string { return k.GetKey().GetId() }, ids[0], ids[2], ids[1])
-}
-
-func (s *KasRegistryKeySuite) Test_ListKeys_SortByUpdatedAt_ASC() {
-	ids, kasID := s.createSortTestKasKeys([]string{"updasc-kk-0", "updasc-kk-1", "updasc-kk-2"})
-	defer s.deleteSortTestKasKeys(ids, kasID)
-
-	// Update the last key so its updated_at is the most recent
-	time.Sleep(5 * time.Millisecond)
-	_, err := s.db.PolicyClient.UpdateKey(s.ctx, &kasregistry.UpdateKeyRequest{
-		Id: ids[2],
-		Metadata: &common.MetadataMutable{
-			Labels: map[string]string{"updated": "true"},
-		},
-		MetadataUpdateBehavior: common.MetadataUpdateEnum_METADATA_UPDATE_ENUM_REPLACE,
-	})
-	s.Require().NoError(err)
-
-	list, err := s.db.PolicyClient.ListKeys(s.ctx, &kasregistry.ListKeysRequest{
-		KasFilter: &kasregistry.ListKeysRequest_KasId{KasId: kasID},
-		Sort: []*kasregistry.KasKeysSort{
-			{Field: kasregistry.SortKasKeysType_SORT_KAS_KEYS_TYPE_UPDATED_AT, Direction: policy.SortDirection_SORT_DIRECTION_ASC},
-		},
-	})
-	s.Require().NoError(err)
-	s.NotNil(list)
-
-	// The updated key (ids[2]) should appear last in ASC order
-	assertIDsInOrder(s.T(), list.GetKasKeys(), func(k *policy.KasKey) string { return k.GetKey().GetId() }, ids[0], ids[1], ids[2])
-}
-
-func (s *KasRegistryKeySuite) Test_ListKeys_SortTieBreaker_CreatedAtWithIDFallback() {
-	kasReq := kasregistry.CreateKeyAccessServerRequest{
-		Name: "tiebreaker-kk-kas-" + uuid.NewString(),
-		Uri:  "https://tiebreaker-kk-kas-" + uuid.NewString() + ".opentdf.io",
-	}
-	kas, err := s.db.PolicyClient.CreateKeyAccessServer(s.ctx, &kasReq)
-	s.Require().NoError(err)
-
-	suffix := time.Now().UnixNano()
-	ids := make([]string, 3)
-	for i := range 3 {
-		keyReq := kasregistry.CreateKeyRequest{
-			KasId:        kas.GetId(),
-			KeyId:        fmt.Sprintf("tiebreaker-kk-%d-%d", i, suffix),
-			KeyAlgorithm: policy.Algorithm_ALGORITHM_RSA_2048,
-			KeyMode:      policy.KeyMode_KEY_MODE_CONFIG_ROOT_KEY,
-			PublicKeyCtx: &policy.PublicKeyCtx{Pem: keyCtx},
-			PrivateKeyCtx: &policy.PrivateKeyCtx{
-				KeyId:      fmt.Sprintf("tiebreaker-kk-priv-%d-%d", i, suffix),
-				WrappedKey: keyCtx,
-			},
-		}
-		resp, err := s.db.PolicyClient.CreateKey(s.ctx, &keyReq)
-		s.Require().NoError(err)
-		ids[i] = resp.GetKasKey().GetKey().GetId()
-	}
-	defer s.deleteSortTestKasKeys(ids, kas.GetId())
-
-	s.Require().NoError(forceCreatedAtTie(s.ctx, s.db, "key_access_server_keys", ids))
-
-	sorted := slices.Sorted(slices.Values(ids))
-
-	listRsp, err := s.db.PolicyClient.ListKeys(s.ctx, &kasregistry.ListKeysRequest{
-		KasFilter: &kasregistry.ListKeysRequest_KasId{
-			KasId: kas.GetId(),
-		},
-		Sort: []*kasregistry.KasKeysSort{
-			{Field: kasregistry.SortKasKeysType_SORT_KAS_KEYS_TYPE_CREATED_AT, Direction: policy.SortDirection_SORT_DIRECTION_ASC},
-		},
-	})
-	s.Require().NoError(err)
-	s.NotNil(listRsp)
-
-	assertIDsInOrder(s.T(), listRsp.GetKasKeys(), func(k *policy.KasKey) string { return k.GetKey().GetId() }, sorted[0], sorted[1], sorted[2])
-}
-
-func (s *KasRegistryKeySuite) Test_ListKeys_SortByUnspecifiedField_DefaultsToCreatedAt() {
-	ids, kasID := s.createSortTestKasKeys([]string{"unsf-kk-0", "unsf-kk-1", "unsf-kk-2"})
-	defer s.deleteSortTestKasKeys(ids, kasID)
-
-	list, err := s.db.PolicyClient.ListKeys(s.ctx, &kasregistry.ListKeysRequest{
-		KasFilter: &kasregistry.ListKeysRequest_KasId{KasId: kasID},
-		Sort: []*kasregistry.KasKeysSort{
-			{Field: kasregistry.SortKasKeysType_SORT_KAS_KEYS_TYPE_UNSPECIFIED, Direction: policy.SortDirection_SORT_DIRECTION_ASC},
-		},
-	})
-	s.Require().NoError(err)
-	s.NotNil(list)
-
-	// Field defaults to created_at, explicit ASC is preserved
-	assertIDsInOrder(s.T(), list.GetKasKeys(), func(k *policy.KasKey) string { return k.GetKey().GetId() }, ids[0], ids[1], ids[2])
-}
-
-func (s *KasRegistryKeySuite) Test_ListKeys_SortByUnspecifiedDirection_DefaultsToDESC() {
-	ids, kasID := s.createSortTestKasKeys([]string{"unsd-kk-0", "unsd-kk-1", "unsd-kk-2"})
-	defer s.deleteSortTestKasKeys(ids, kasID)
-
-	list, err := s.db.PolicyClient.ListKeys(s.ctx, &kasregistry.ListKeysRequest{
-		KasFilter: &kasregistry.ListKeysRequest_KasId{KasId: kasID},
-		Sort: []*kasregistry.KasKeysSort{
-			{Field: kasregistry.SortKasKeysType_SORT_KAS_KEYS_TYPE_CREATED_AT, Direction: policy.SortDirection_SORT_DIRECTION_UNSPECIFIED},
-		},
-	})
-	s.Require().NoError(err)
-	s.NotNil(list)
-
-	// Direction defaults to DESC, explicit created_at field is preserved
-	assertIDsInOrder(s.T(), list.GetKasKeys(), func(k *policy.KasKey) string { return k.GetKey().GetId() }, ids[2], ids[1], ids[0])
-}
-
-func (s *KasRegistryKeySuite) Test_ListKeys_SortByBothUnspecified_DefaultsToCreatedAtDESC() {
-	ids, kasID := s.createSortTestKasKeys([]string{"unsb-kk-0", "unsb-kk-1", "unsb-kk-2"})
-	defer s.deleteSortTestKasKeys(ids, kasID)
-
-	list, err := s.db.PolicyClient.ListKeys(s.ctx, &kasregistry.ListKeysRequest{
-		KasFilter: &kasregistry.ListKeysRequest_KasId{KasId: kasID},
-		Sort: []*kasregistry.KasKeysSort{
-			{Field: kasregistry.SortKasKeysType_SORT_KAS_KEYS_TYPE_UNSPECIFIED, Direction: policy.SortDirection_SORT_DIRECTION_UNSPECIFIED},
-		},
-	})
-	s.Require().NoError(err)
-	s.NotNil(list)
-
-	// Both default: created_at DESC
-	assertIDsInOrder(s.T(), list.GetKasKeys(), func(k *policy.KasKey) string { return k.GetKey().GetId() }, ids[2], ids[1], ids[0])
-}
-
-func (s *KasRegistryKeySuite) Test_ListKeys_SortOmitted() {
-	ids, kasID := s.createSortTestKasKeys([]string{"omit-kk-0", "omit-kk-1", "omit-kk-2"})
-	defer s.deleteSortTestKasKeys(ids, kasID)
-
-	list, err := s.db.PolicyClient.ListKeys(s.ctx, &kasregistry.ListKeysRequest{
-		KasFilter: &kasregistry.ListKeysRequest_KasId{KasId: kasID},
-	})
-	s.Require().NoError(err)
-	s.NotNil(list)
-
-	// No sort provided: created_at DESC
-	assertIDsInOrder(s.T(), list.GetKasKeys(), func(k *policy.KasKey) string { return k.GetKey().GetId() }, ids[2], ids[1], ids[0])
 }
 
 // Sort test helpers

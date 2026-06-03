@@ -771,7 +771,7 @@ func (s *KasRegistryKeySuite) Test_ListKeys_SearchByKeyID_Succeeds() {
 
 	list, err := s.db.PolicyClient.ListKeys(s.ctx, &kasregistry.ListKeysRequest{
 		KasFilter: &kasregistry.ListKeysRequest_KasId{KasId: kasID},
-		Search:    &policy.Search{Term: strings.ToLower(searchToken)},
+		Search:    &policy.Search{Term: strings.ToUpper(searchToken)},
 	})
 	s.Require().NoError(err)
 	s.Require().Len(list.GetKasKeys(), 1)
@@ -2542,7 +2542,7 @@ func (s *KasRegistryKeySuite) setupKeysForRotate(kasID string) map[string]*polic
 	}
 	keyToRotate, err := s.db.PolicyClient.CreateKey(s.ctx, &keyReq)
 	s.Require().NoError(err)
-	s.NotNil(rotateKey)
+	s.NotNil(keyToRotate)
 
 	keyReq2 := kasregistry.CreateKeyRequest{
 		KasId:        kasID,

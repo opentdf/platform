@@ -496,8 +496,8 @@ const listSubjectMappings = `-- name: listSubjectMappings :many
 
 WITH params AS (
     SELECT
-        COALESCE(NULLIF($5::text, ''), 'created_at') AS resolved_field,
-        COALESCE(NULLIF($6::text, ''), 'DESC') AS resolved_direction
+        COALESCE(NULLIF($3::text, ''), 'created_at') AS resolved_field,
+        COALESCE(NULLIF($4::text, ''), 'DESC') AS resolved_direction
 ),
 subject_actions AS (
     SELECT
@@ -523,15 +523,33 @@ subject_actions AS (
     LEFT JOIN attribute_namespaces ans ON ans.id = a.namespace_id
     LEFT JOIN attribute_fqns ans_fqns ON ans_fqns.namespace_id = ans.id AND ans_fqns.attribute_id IS NULL AND ans_fqns.value_id IS NULL
     GROUP BY sma.subject_mapping_id
-), counted AS (
-    SELECT COUNT(sm.id) AS total
+), filtered_subject_mappings AS (
+    SELECT DISTINCT sm.id
     FROM subject_mappings sm
+    LEFT JOIN attribute_values av ON sm.attribute_value_id = av.id
+    LEFT JOIN attribute_fqns fqns ON av.id = fqns.value_id
     LEFT JOIN attribute_namespaces sm_ns ON sm_ns.id = sm.namespace_id
     LEFT JOIN attribute_fqns sm_ns_fqns ON sm_ns_fqns.namespace_id = sm_ns.id AND sm_ns_fqns.attribute_id IS NULL AND sm_ns_fqns.value_id IS NULL
     WHERE
-        ($1::uuid IS NULL AND $2::text IS NULL)
-        OR sm.namespace_id = $1::uuid
-        OR sm_ns_fqns.fqn = $2::text
+        (
+            ($5::uuid IS NULL AND $6::text IS NULL)
+            OR sm.namespace_id = $5::uuid
+            OR sm_ns_fqns.fqn = $6::text
+        )
+        AND CASE
+            WHEN $7::TEXT IS NULL THEN TRUE
+            ELSE (
+                fqns.fqn LIKE $7::TEXT ESCAPE '\'
+                OR EXISTS (
+                    SELECT 1
+                    FROM JSONB_EACH_TEXT(COALESCE(sm.metadata -> 'labels', '{}'::JSONB)) AS label(key, value)
+                    WHERE label.value ILIKE $7::TEXT ESCAPE '\'
+                )
+            )
+        END
+), counted AS (
+    SELECT COUNT(id) AS total
+    FROM filtered_subject_mappings
 )
 SELECT
     sm.id,
@@ -559,6 +577,7 @@ SELECT
     END AS namespace,
     counted.total
 FROM subject_mappings sm
+JOIN filtered_subject_mappings fsm ON fsm.id = sm.id
 CROSS JOIN counted
 CROSS JOIN params p
 LEFT JOIN subject_actions sa ON sm.id = sa.subject_mapping_id
@@ -569,10 +588,6 @@ LEFT JOIN attribute_namespaces scs_ns ON scs_ns.id = scs.namespace_id
 LEFT JOIN attribute_fqns scs_ns_fqns ON scs_ns_fqns.namespace_id = scs_ns.id AND scs_ns_fqns.attribute_id IS NULL AND scs_ns_fqns.value_id IS NULL
 LEFT JOIN attribute_namespaces sm_ns ON sm_ns.id = sm.namespace_id
 LEFT JOIN attribute_fqns sm_ns_fqns ON sm_ns_fqns.namespace_id = sm_ns.id AND sm_ns_fqns.attribute_id IS NULL AND sm_ns_fqns.value_id IS NULL
-WHERE
-    ($1::uuid IS NULL AND $2::text IS NULL)
-    OR sm.namespace_id = $1::uuid
-    OR sm_ns_fqns.fqn = $2::text
 GROUP BY
     sm.id,
     sa.standard_actions,
@@ -591,17 +606,18 @@ ORDER BY
     CASE WHEN p.resolved_field = 'updated_at' AND p.resolved_direction = 'ASC' THEN sm.updated_at END ASC,
     CASE WHEN p.resolved_field = 'updated_at' AND p.resolved_direction = 'DESC' THEN sm.updated_at END DESC,
     sm.id ASC
-LIMIT $4
-OFFSET $3
+LIMIT $2
+OFFSET $1
 `
 
 type listSubjectMappingsParams struct {
-	NamespaceID   pgtype.UUID `json:"namespace_id"`
-	NamespaceFqn  pgtype.Text `json:"namespace_fqn"`
 	Offset        int32       `json:"offset_"`
 	Limit         int32       `json:"limit_"`
 	SortField     string      `json:"sort_field"`
 	SortDirection string      `json:"sort_direction"`
+	NamespaceID   pgtype.UUID `json:"namespace_id"`
+	NamespaceFqn  pgtype.Text `json:"namespace_fqn"`
+	Search        pgtype.Text `json:"search"`
 }
 
 type listSubjectMappingsRow struct {
@@ -621,8 +637,8 @@ type listSubjectMappingsRow struct {
 //
 //	WITH params AS (
 //	    SELECT
-//	        COALESCE(NULLIF($5::text, ''), 'created_at') AS resolved_field,
-//	        COALESCE(NULLIF($6::text, ''), 'DESC') AS resolved_direction
+//	        COALESCE(NULLIF($3::text, ''), 'created_at') AS resolved_field,
+//	        COALESCE(NULLIF($4::text, ''), 'DESC') AS resolved_direction
 //	),
 //	subject_actions AS (
 //	    SELECT
@@ -648,15 +664,33 @@ type listSubjectMappingsRow struct {
 //	    LEFT JOIN attribute_namespaces ans ON ans.id = a.namespace_id
 //	    LEFT JOIN attribute_fqns ans_fqns ON ans_fqns.namespace_id = ans.id AND ans_fqns.attribute_id IS NULL AND ans_fqns.value_id IS NULL
 //	    GROUP BY sma.subject_mapping_id
-//	), counted AS (
-//	    SELECT COUNT(sm.id) AS total
+//	), filtered_subject_mappings AS (
+//	    SELECT DISTINCT sm.id
 //	    FROM subject_mappings sm
+//	    LEFT JOIN attribute_values av ON sm.attribute_value_id = av.id
+//	    LEFT JOIN attribute_fqns fqns ON av.id = fqns.value_id
 //	    LEFT JOIN attribute_namespaces sm_ns ON sm_ns.id = sm.namespace_id
 //	    LEFT JOIN attribute_fqns sm_ns_fqns ON sm_ns_fqns.namespace_id = sm_ns.id AND sm_ns_fqns.attribute_id IS NULL AND sm_ns_fqns.value_id IS NULL
 //	    WHERE
-//	        ($1::uuid IS NULL AND $2::text IS NULL)
-//	        OR sm.namespace_id = $1::uuid
-//	        OR sm_ns_fqns.fqn = $2::text
+//	        (
+//	            ($5::uuid IS NULL AND $6::text IS NULL)
+//	            OR sm.namespace_id = $5::uuid
+//	            OR sm_ns_fqns.fqn = $6::text
+//	        )
+//	        AND CASE
+//	            WHEN $7::TEXT IS NULL THEN TRUE
+//	            ELSE (
+//	                fqns.fqn LIKE $7::TEXT ESCAPE '\'
+//	                OR EXISTS (
+//	                    SELECT 1
+//	                    FROM JSONB_EACH_TEXT(COALESCE(sm.metadata -> 'labels', '{}'::JSONB)) AS label(key, value)
+//	                    WHERE label.value ILIKE $7::TEXT ESCAPE '\'
+//	                )
+//	            )
+//	        END
+//	), counted AS (
+//	    SELECT COUNT(id) AS total
+//	    FROM filtered_subject_mappings
 //	)
 //	SELECT
 //	    sm.id,
@@ -684,6 +718,7 @@ type listSubjectMappingsRow struct {
 //	    END AS namespace,
 //	    counted.total
 //	FROM subject_mappings sm
+//	JOIN filtered_subject_mappings fsm ON fsm.id = sm.id
 //	CROSS JOIN counted
 //	CROSS JOIN params p
 //	LEFT JOIN subject_actions sa ON sm.id = sa.subject_mapping_id
@@ -694,10 +729,6 @@ type listSubjectMappingsRow struct {
 //	LEFT JOIN attribute_fqns scs_ns_fqns ON scs_ns_fqns.namespace_id = scs_ns.id AND scs_ns_fqns.attribute_id IS NULL AND scs_ns_fqns.value_id IS NULL
 //	LEFT JOIN attribute_namespaces sm_ns ON sm_ns.id = sm.namespace_id
 //	LEFT JOIN attribute_fqns sm_ns_fqns ON sm_ns_fqns.namespace_id = sm_ns.id AND sm_ns_fqns.attribute_id IS NULL AND sm_ns_fqns.value_id IS NULL
-//	WHERE
-//	    ($1::uuid IS NULL AND $2::text IS NULL)
-//	    OR sm.namespace_id = $1::uuid
-//	    OR sm_ns_fqns.fqn = $2::text
 //	GROUP BY
 //	    sm.id,
 //	    sa.standard_actions,
@@ -716,16 +747,17 @@ type listSubjectMappingsRow struct {
 //	    CASE WHEN p.resolved_field = 'updated_at' AND p.resolved_direction = 'ASC' THEN sm.updated_at END ASC,
 //	    CASE WHEN p.resolved_field = 'updated_at' AND p.resolved_direction = 'DESC' THEN sm.updated_at END DESC,
 //	    sm.id ASC
-//	LIMIT $4
-//	OFFSET $3
+//	LIMIT $2
+//	OFFSET $1
 func (q *Queries) listSubjectMappings(ctx context.Context, arg listSubjectMappingsParams) ([]listSubjectMappingsRow, error) {
 	rows, err := q.db.Query(ctx, listSubjectMappings,
-		arg.NamespaceID,
-		arg.NamespaceFqn,
 		arg.Offset,
 		arg.Limit,
 		arg.SortField,
 		arg.SortDirection,
+		arg.NamespaceID,
+		arg.NamespaceFqn,
+		arg.Search,
 	)
 	if err != nil {
 		return nil, err

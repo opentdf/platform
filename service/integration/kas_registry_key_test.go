@@ -811,7 +811,7 @@ func (s *KasRegistryKeySuite) Test_ListKeys_SearchEmptyQuery_Succeeds() {
 		Search:    &policy.Search{Term: ""},
 	})
 	s.Require().NoError(err)
-	s.GreaterOrEqual(len(noSearch.GetKasKeys()), 1)
+	s.Require().Len(noSearch.GetKasKeys(), 1)
 	s.Equal(noSearch.GetPagination().GetTotal(), emptySearch.GetPagination().GetTotal())
 	s.Len(emptySearch.GetKasKeys(), len(noSearch.GetKasKeys()))
 }

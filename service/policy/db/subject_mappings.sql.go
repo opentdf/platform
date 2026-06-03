@@ -539,7 +539,7 @@ subject_actions AS (
         AND CASE
             WHEN $7::TEXT IS NULL THEN TRUE
             ELSE (
-                fqns.fqn ILIKE $7::TEXT ESCAPE '\'
+                fqns.fqn LIKE $7::TEXT ESCAPE '\'
                 OR EXISTS (
                     SELECT 1
                     FROM JSONB_EACH_TEXT(COALESCE(sm.metadata -> 'labels', '{}'::JSONB)) AS label(key, value)
@@ -680,7 +680,7 @@ type listSubjectMappingsRow struct {
 //	        AND CASE
 //	            WHEN $7::TEXT IS NULL THEN TRUE
 //	            ELSE (
-//	                fqns.fqn ILIKE $7::TEXT ESCAPE '\'
+//	                fqns.fqn LIKE $7::TEXT ESCAPE '\'
 //	                OR EXISTS (
 //	                    SELECT 1
 //	                    FROM JSONB_EACH_TEXT(COALESCE(sm.metadata -> 'labels', '{}'::JSONB)) AS label(key, value)

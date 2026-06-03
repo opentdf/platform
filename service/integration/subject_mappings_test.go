@@ -1043,12 +1043,13 @@ func (s *SubjectMappingsSuite) Test_ListSubjectMappings_NoNamespaceFilter_Return
 
 func (s *SubjectMappingsSuite) Test_ListSubjectMappings_SearchByAttributeValueFQNAndLabels_Succeeds() {
 	suffix := time.Now().UnixNano()
+	attrName := fmt.Sprintf("list-sm-search-attr-%d", suffix)
+	valueToken := fmt.Sprintf("fqn-only-%d", suffix)
 	ns, values := s.createSearchSubjectMappingNamespace(suffix, []string{
-		fmt.Sprintf("fqn-only-%d", suffix),
+		valueToken,
 		fmt.Sprintf("label-holder-%d", suffix),
 		fmt.Sprintf("label-key-holder-%d", suffix),
 		fmt.Sprintf("condition-holder-%d", suffix),
-		fmt.Sprintf("wildcarda-%d", suffix),
 		fmt.Sprintf("unmatched-%d", suffix),
 	})
 	defer s.deleteSearchSubjectMappingNamespace(ns)
@@ -1060,19 +1061,23 @@ func (s *SubjectMappingsSuite) Test_ListSubjectMappings_SearchByAttributeValueFQ
 	externalToken := fmt.Sprintf("external-only-%d@example.com", suffix)
 
 	fqnSM := s.createSearchSubjectMapping(ns.GetId(), values[0].GetId(), ".fqn-holder", []string{"fqn-holder@example.com"}, "read", nil)
-	labelSM := s.createSearchSubjectMapping(ns.GetId(), values[1].GetId(), ".label-holder", []string{"label-holder@example.com"}, actionToken, map[string]string{"search-label": labelToken})
-	s.createSearchSubjectMapping(ns.GetId(), values[2].GetId(), ".label-key-holder", []string{"label-key-holder@example.com"}, "read", map[string]string{labelKeyToken: "not-searchable-by-key"})
-	s.createSearchSubjectMapping(ns.GetId(), values[3].GetId(), selectorToken, []string{externalToken}, "read", nil)
-	s.createSearchSubjectMapping(ns.GetId(), values[4].GetId(), ".wildcard-holder", []string{fmt.Sprintf("wildcarda-%d@example.com", suffix)}, "read", map[string]string{"wildcard": fmt.Sprintf("wildcarda-%d", suffix)})
-	s.createSearchSubjectMapping(ns.GetId(), values[5].GetId(), ".unmatched", []string{"unmatched@example.com"}, "read", map[string]string{"unused": fmt.Sprintf("unused-%d", suffix)})
+	labelSM := s.createSearchSubjectMapping(ns.GetId(), values[1].GetId(), ".label-holder", []string{"label-holder@example.com"}, actionToken, map[string]string{
+		"search-label": labelToken,
+		"other-label":  fmt.Sprintf("other-label-%d", suffix),
+	})
+	labelKeySM := s.createSearchSubjectMapping(ns.GetId(), values[2].GetId(), ".label-key-holder", []string{"label-key-holder@example.com"}, "read", map[string]string{labelKeyToken: "not-searchable-by-key"})
+	conditionSM := s.createSearchSubjectMapping(ns.GetId(), values[3].GetId(), selectorToken, []string{externalToken}, "read", nil)
+	unmatchedSM := s.createSearchSubjectMapping(ns.GetId(), values[4].GetId(), ".unmatched", []string{"unmatched@example.com"}, "read", map[string]string{"unused": fmt.Sprintf("unused-%d", suffix)})
 
 	tests := []struct {
 		name string
 		term string
-		id   string
+		ids  []string
 	}{
-		{name: "attribute value fqn", term: strings.ToUpper(values[0].GetFqn()), id: fqnSM.GetId()},
-		{name: "metadata label value", term: strings.ToUpper(labelToken), id: labelSM.GetId()},
+		{name: "attribute value fqn", term: strings.ToUpper(values[0].GetFqn()), ids: []string{fqnSM.GetId()}},
+		{name: "attribute name in fqn", term: attrName, ids: []string{fqnSM.GetId(), labelSM.GetId(), labelKeySM.GetId(), conditionSM.GetId(), unmatchedSM.GetId()}},
+		{name: "attribute value in fqn", term: valueToken, ids: []string{fqnSM.GetId()}},
+		{name: "metadata label value among multiple labels", term: strings.ToUpper(labelToken), ids: []string{labelSM.GetId()}},
 	}
 
 	for _, tc := range tests {
@@ -1082,9 +1087,12 @@ func (s *SubjectMappingsSuite) Test_ListSubjectMappings_SearchByAttributeValueFQ
 				Search:      &policy.Search{Term: tc.term},
 			})
 			s.Require().NoError(err)
-			s.Require().Len(list.GetSubjectMappings(), 1)
-			s.Equal(tc.id, list.GetSubjectMappings()[0].GetId())
-			s.Equal(int32(1), list.GetPagination().GetTotal())
+			gotIDs := make([]string, 0, len(list.GetSubjectMappings()))
+			for _, sm := range list.GetSubjectMappings() {
+				gotIDs = append(gotIDs, sm.GetId())
+			}
+			s.ElementsMatch(tc.ids, gotIDs)
+			s.Equal(int32(len(tc.ids)), list.GetPagination().GetTotal())
 		})
 	}
 
@@ -1102,23 +1110,51 @@ func (s *SubjectMappingsSuite) Test_ListSubjectMappings_SearchByAttributeValueFQ
 		s.Empty(list.GetSubjectMappings())
 		s.Equal(int32(0), list.GetPagination().GetTotal())
 	}
+}
 
-	wildcardSearch, err := s.db.PolicyClient.ListSubjectMappings(s.ctx, &subjectmapping.ListSubjectMappingsRequest{
-		NamespaceId: ns.GetId(),
-		Search:      &policy.Search{Term: fmt.Sprintf("wildcard_-%d", suffix)},
-	})
-	s.Require().NoError(err)
-	s.Empty(wildcardSearch.GetSubjectMappings())
-	s.Equal(int32(0), wildcardSearch.GetPagination().GetTotal())
+func (s *SubjectMappingsSuite) Test_ListSubjectMappings_SearchTrimsWhitespace_Succeeds() {
+	suffix := time.Now().UnixNano()
+	labelToken := fmt.Sprintf("trimmed-label-%d", suffix)
 
-	spacePaddedSearch, err := s.db.PolicyClient.ListSubjectMappings(s.ctx, &subjectmapping.ListSubjectMappingsRequest{
+	ns, values := s.createSearchSubjectMappingNamespace(suffix, []string{fmt.Sprintf("trimmed-%d", suffix)})
+	defer s.deleteSearchSubjectMappingNamespace(ns)
+
+	sm := s.createSearchSubjectMapping(ns.GetId(), values[0].GetId(), ".trimmed", []string{"trimmed@example.com"}, "read", map[string]string{"search-label": labelToken})
+
+	list, err := s.db.PolicyClient.ListSubjectMappings(s.ctx, &subjectmapping.ListSubjectMappingsRequest{
 		NamespaceId: ns.GetId(),
 		Search:      &policy.Search{Term: " " + labelToken + " "},
 	})
 	s.Require().NoError(err)
-	s.Require().Len(spacePaddedSearch.GetSubjectMappings(), 1)
-	s.Equal(labelSM.GetId(), spacePaddedSearch.GetSubjectMappings()[0].GetId())
-	s.Equal(int32(1), spacePaddedSearch.GetPagination().GetTotal())
+	s.Require().Len(list.GetSubjectMappings(), 1)
+	s.Equal(sm.GetId(), list.GetSubjectMappings()[0].GetId())
+	s.Equal(int32(1), list.GetPagination().GetTotal())
+}
+
+func (s *SubjectMappingsSuite) Test_ListSubjectMappings_SearchEscapesLikeWildcardLiterals_Succeeds() {
+	suffix := time.Now().UnixNano()
+
+	ns, values := s.createSearchSubjectMappingNamespace(suffix, []string{
+		fmt.Sprintf("wildcarda-%d", suffix),
+		fmt.Sprintf("wildcardb-%d", suffix),
+	})
+	defer s.deleteSearchSubjectMappingNamespace(ns)
+
+	s.createSearchSubjectMapping(ns.GetId(), values[0].GetId(), ".wildcard-a", []string{"wildcard-a@example.com"}, "read", map[string]string{"wildcard": fmt.Sprintf("wildcarda-%d", suffix)})
+	s.createSearchSubjectMapping(ns.GetId(), values[1].GetId(), ".wildcard-b", []string{"wildcard-b@example.com"}, "read", map[string]string{"wildcard": fmt.Sprintf("wildcardb-%d", suffix)})
+
+	for _, term := range []string{
+		fmt.Sprintf("wildcard_-%d", suffix),
+		fmt.Sprintf("wildcard%%-%d", suffix),
+	} {
+		list, err := s.db.PolicyClient.ListSubjectMappings(s.ctx, &subjectmapping.ListSubjectMappingsRequest{
+			NamespaceId: ns.GetId(),
+			Search:      &policy.Search{Term: term},
+		})
+		s.Require().NoError(err)
+		s.Empty(list.GetSubjectMappings())
+		s.Equal(int32(0), list.GetPagination().GetTotal())
+	}
 }
 
 func (s *SubjectMappingsSuite) Test_ListSubjectMappings_SearchCombinesWithNamespace_Succeeds() {
@@ -1184,9 +1220,6 @@ func (s *SubjectMappingsSuite) Test_ListSubjectMappings_SearchPaginationAppliesA
 
 	ids := make([]string, 3)
 	for i := range ids {
-		if i > 0 {
-			time.Sleep(5 * time.Millisecond)
-		}
 		ids[i] = s.createSearchSubjectMapping(ns.GetId(), values[i].GetId(), fmt.Sprintf(".page-%d", i), []string{fmt.Sprintf("page-%d@example.com", i)}, "read", map[string]string{"search": searchToken}).GetId()
 	}
 	s.createSearchSubjectMapping(ns.GetId(), values[3].GetId(), ".page-other", []string{"page-other@example.com"}, "read", map[string]string{"other": fmt.Sprintf("other-%d", suffix)})

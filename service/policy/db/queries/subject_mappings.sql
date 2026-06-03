@@ -132,7 +132,7 @@ subject_actions AS (
         AND CASE
             WHEN sqlc.narg('search')::TEXT IS NULL THEN TRUE
             ELSE (
-                fqns.fqn ILIKE sqlc.narg('search')::TEXT ESCAPE '\'
+                fqns.fqn LIKE sqlc.narg('search')::TEXT ESCAPE '\'
                 OR EXISTS (
                     SELECT 1
                     FROM JSONB_EACH_TEXT(COALESCE(sm.metadata -> 'labels', '{}'::JSONB)) AS label(key, value)

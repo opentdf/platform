@@ -29,6 +29,7 @@ func OnConfigUpdate(p *access.Provider) serviceregistry.OnConfigUpdateHook {
 
 		p.ApplyConfig(kasCfg, p.SecurityConfig())
 		p.Logger.TraceContext(ctx, "kas config reloaded")
+		logSupportedMechanisms(ctx, p.Logger, p.KeyDelegator, &kasCfg)
 
 		return nil
 	}
@@ -114,6 +115,7 @@ func NewRegistration() *serviceregistry.Service[kasconnect.AccessServiceHandler]
 				p.Tracer = srp.Tracer
 
 				srp.Logger.Debug("kas config", slog.Any("config", kasCfg))
+				logSupportedMechanisms(context.Background(), srp.Logger, p.KeyDelegator, &kasCfg)
 
 				if err := srp.RegisterReadinessCheck("kas", p.IsReady); err != nil {
 					srp.Logger.Error("failed to register kas readiness check", slog.String("error", err.Error()))
@@ -178,6 +180,39 @@ func determineKASURL(srp serviceregistry.RegistrationParams, kasCfg access.KASCo
 	}
 
 	return kasURL, nil
+}
+
+// logSupportedMechanisms emits a single INFO entry listing the cryptographic
+// mechanisms this KAS instance is configured to serve. The mechanism set is
+// sourced from the trust KeyManagers (what they could serve if a key were
+// provisioned) and filtered by the same preview-feature gates rewrap.go
+// enforces, so the log only advertises algorithms rewrap would actually accept.
+func logSupportedMechanisms(ctx context.Context, l *logger.Logger, kd *trust.DelegatingKeyService, kasCfg *access.KASConfig) {
+	if l == nil || kd == nil || kasCfg == nil {
+		return
+	}
+	mechanisms := filterMechanismsByPreview(kd.SupportedAlgorithms(ctx), kasCfg)
+	l.InfoContext(ctx, "kas initialized", slog.Any("mechanisms", mechanisms))
+}
+
+// filterMechanismsByPreview drops algorithms whose corresponding rewrap path is
+// disabled. Keep aligned with the gating in service/kas/access/rewrap.go for
+// "ec-wrapped" and "hybrid-wrapped" key access objects.
+func filterMechanismsByPreview(algs []string, kasCfg *access.KASConfig) []string {
+	ecEnabled := kasCfg.ECTDFEnabled || kasCfg.Preview.ECTDFEnabled
+	hybridEnabled := kasCfg.HybridTDFEnabled || kasCfg.Preview.HybridTDFEnabled
+
+	out := make([]string, 0, len(algs))
+	for _, a := range algs {
+		switch {
+		case strings.HasPrefix(a, "ec:") && !ecEnabled:
+			continue
+		case strings.HasPrefix(a, "hpqt:") && !hybridEnabled:
+			continue
+		}
+		out = append(out, a)
+	}
+	return out
 }
 
 func initSecurityProviderAdapter(cryptoProvider *security.StandardCrypto, kasCfg access.KASConfig, l *logger.Logger) trust.KeyService {

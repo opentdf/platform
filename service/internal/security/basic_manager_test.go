@@ -622,3 +622,25 @@ func TestBasicManager_GenerateECSessionKey(t *testing.T) {
 		require.Error(t, err)
 	})
 }
+
+func TestBasicManager_SupportedAlgorithms(t *testing.T) {
+	log := logger.CreateTestLogger()
+	bm, err := NewBasicManager(log, nil, "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f")
+	require.NoError(t, err)
+
+	algs := bm.SupportedAlgorithms()
+	assert.ElementsMatch(t, []string{
+		AlgorithmRSA2048,
+		AlgorithmRSA4096,
+		AlgorithmECP256R1,
+		AlgorithmECP384R1,
+		AlgorithmECP521R1,
+		AlgorithmHPQTXWing,
+		AlgorithmHPQTSecp256r1MLKEM768,
+		AlgorithmHPQTSecp384r1MLKEM1024,
+	}, algs)
+
+	// Modifying the returned slice must not mutate the manager's internal list.
+	algs[0] = "tampered"
+	assert.NotEqual(t, "tampered", bm.SupportedAlgorithms()[0], "returned slice must be a copy")
+}

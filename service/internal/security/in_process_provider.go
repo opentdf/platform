@@ -17,6 +17,18 @@ import (
 
 const inProcessSystemName = "opentdf.io/in-process"
 
+// inProcessSupportedAlgorithms is the canonical set of algorithms the
+// InProcessProvider knows how to serve when a corresponding key is loaded.
+// Keep in sync with the switch in Decrypt.
+var inProcessSupportedAlgorithms = []string{
+	AlgorithmRSA2048,
+	AlgorithmRSA4096,
+	AlgorithmECP256R1,
+	AlgorithmHPQTXWing,
+	AlgorithmHPQTSecp256r1MLKEM768,
+	AlgorithmHPQTSecp384r1MLKEM1024,
+}
+
 func convertPEMToJWK(_ string) (string, error) {
 	// Implement the conversion logic here or use an external library if available.
 	// For now, return a placeholder error to indicate the function is not implemented.
@@ -136,6 +148,14 @@ func (a *InProcessProvider) Name() string {
 	return inProcessSystemName
 }
 
+// SupportedAlgorithms returns the algorithms the in-process provider can serve
+// when a corresponding key has been provisioned. Implements trust.AlgorithmAdvertiser.
+func (a *InProcessProvider) SupportedAlgorithms() []string {
+	out := make([]string, len(inProcessSupportedAlgorithms))
+	copy(out, inProcessSupportedAlgorithms)
+	return out
+}
+
 // WithLogger sets the logger for the adapter
 func (a *InProcessProvider) WithLogger(logger *slog.Logger) *InProcessProvider {
 	a.logger = logger
@@ -199,7 +219,7 @@ func (a *InProcessProvider) ListKeysWith(ctx context.Context, opts trust.ListKey
 	var keys []trust.KeyDetails
 
 	// Try to find keys for known algorithms
-	for _, alg := range []string{AlgorithmRSA2048, AlgorithmRSA4096, AlgorithmECP256R1, AlgorithmHPQTXWing, AlgorithmHPQTSecp256r1MLKEM768, AlgorithmHPQTSecp384r1MLKEM1024} {
+	for _, alg := range inProcessSupportedAlgorithms {
 		if kids, err := a.cryptoProvider.ListKIDsByAlgorithm(alg); err == nil && len(kids) > 0 {
 			for _, kid := range kids {
 				if opts.LegacyOnly && !a.legacyKeys[kid] {
@@ -214,7 +234,8 @@ func (a *InProcessProvider) ListKeysWith(ctx context.Context, opts trust.ListKey
 			}
 		} else if err != nil {
 			if a.logger != nil {
-				a.logger.WarnContext(ctx,
+				a.logger.WarnContext(
+					ctx,
 					"failed to list keys by algorithm",
 					slog.String("algorithm", alg),
 					slog.Any("error", err),

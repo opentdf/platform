@@ -3,7 +3,9 @@ package trust
 import (
 	"context"
 	"crypto/elliptic"
+	"errors"
 	"log/slog"
+	"slices"
 	"testing"
 
 	"github.com/opentdf/platform/lib/ocrypto"
@@ -320,4 +322,128 @@ func (suite *DelegatingKeyServiceTestSuite) TestGenerateECSessionKey() {
 
 func TestDelegatingKeyServiceTestSuite(t *testing.T) {
 	suite.Run(t, new(DelegatingKeyServiceTestSuite))
+}
+
+// advertisingManager is a minimal KeyManager + AlgorithmAdvertiser used by
+// TestSupportedAlgorithms. A real mock is overkill; we only need Name + Close
+// satisfied and a deterministic algorithm list.
+type advertisingManager struct {
+	name string
+	algs []string
+}
+
+func (m *advertisingManager) Name() string { return m.name }
+func (m *advertisingManager) Decrypt(_ context.Context, _ KeyDetails, _, _ []byte) (ProtectedKey, error) {
+	return nil, nil //nolint:nilnil // unused in this test
+}
+
+func (m *advertisingManager) DeriveKey(_ context.Context, _ KeyDetails, _ []byte, _ elliptic.Curve) (ProtectedKey, error) {
+	return nil, nil //nolint:nilnil // unused in this test
+}
+
+func (m *advertisingManager) GenerateECSessionKey(_ context.Context, _ string) (Encapsulator, error) {
+	return nil, nil //nolint:nilnil // unused in this test
+}
+func (m *advertisingManager) Close()                        {}
+func (m *advertisingManager) SupportedAlgorithms() []string { return m.algs }
+
+// nonAdvertisingManager is the same as MockKeyManager but with a stable Name
+// and no AlgorithmAdvertiser. Used to verify it contributes nothing to the
+// supported set.
+type nonAdvertisingManager struct{ name string }
+
+func (m *nonAdvertisingManager) Name() string { return m.name }
+func (m *nonAdvertisingManager) Decrypt(_ context.Context, _ KeyDetails, _, _ []byte) (ProtectedKey, error) {
+	return nil, nil //nolint:nilnil // unused in this test
+}
+
+func (m *nonAdvertisingManager) DeriveKey(_ context.Context, _ KeyDetails, _ []byte, _ elliptic.Curve) (ProtectedKey, error) {
+	return nil, nil //nolint:nilnil // unused in this test
+}
+
+func (m *nonAdvertisingManager) GenerateECSessionKey(_ context.Context, _ string) (Encapsulator, error) {
+	return nil, nil //nolint:nilnil // unused in this test
+}
+func (m *nonAdvertisingManager) Close() {}
+
+func TestDelegatingKeyService_SupportedAlgorithms(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name     string
+		register func(d *DelegatingKeyService)
+		want     []string
+	}{
+		{
+			name:     "no factories returns empty",
+			register: func(_ *DelegatingKeyService) {},
+			want:     []string{},
+		},
+		{
+			name: "single advertiser",
+			register: func(d *DelegatingKeyService) {
+				m := &advertisingManager{name: "a", algs: []string{"rsa:2048", "ec:secp256r1"}}
+				d.RegisterKeyManagerCtx("a", func(_ context.Context, _ *KeyManagerFactoryOptions) (KeyManager, error) {
+					return m, nil
+				})
+			},
+			want: []string{"ec:secp256r1", "rsa:2048"},
+		},
+		{
+			name: "two advertisers, deduped and sorted",
+			register: func(d *DelegatingKeyService) {
+				a := &advertisingManager{name: "a", algs: []string{"rsa:2048", "hpqt:xwing"}}
+				b := &advertisingManager{name: "b", algs: []string{"rsa:2048", "ec:secp256r1"}}
+				d.RegisterKeyManagerCtx("a", func(_ context.Context, _ *KeyManagerFactoryOptions) (KeyManager, error) {
+					return a, nil
+				})
+				d.RegisterKeyManagerCtx("b", func(_ context.Context, _ *KeyManagerFactoryOptions) (KeyManager, error) {
+					return b, nil
+				})
+			},
+			want: []string{"ec:secp256r1", "hpqt:xwing", "rsa:2048"},
+		},
+		{
+			name: "non-advertising manager contributes nothing",
+			register: func(d *DelegatingKeyService) {
+				a := &advertisingManager{name: "a", algs: []string{"rsa:2048"}}
+				b := &nonAdvertisingManager{name: "b"}
+				d.RegisterKeyManagerCtx("a", func(_ context.Context, _ *KeyManagerFactoryOptions) (KeyManager, error) {
+					return a, nil
+				})
+				d.RegisterKeyManagerCtx("b", func(_ context.Context, _ *KeyManagerFactoryOptions) (KeyManager, error) {
+					return b, nil
+				})
+			},
+			want: []string{"rsa:2048"},
+		},
+		{
+			name: "failing factory is skipped, others still contribute",
+			register: func(d *DelegatingKeyService) {
+				a := &advertisingManager{name: "a", algs: []string{"rsa:2048"}}
+				d.RegisterKeyManagerCtx("a", func(_ context.Context, _ *KeyManagerFactoryOptions) (KeyManager, error) {
+					return a, nil
+				})
+				d.RegisterKeyManagerCtx("broken", func(_ context.Context, _ *KeyManagerFactoryOptions) (KeyManager, error) {
+					return nil, errors.New("boom")
+				})
+			},
+			want: []string{"rsa:2048"},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			d := NewDelegatingKeyService(&MockKeyIndex{}, logger.CreateTestLogger(), nil)
+			tc.register(d)
+			got := d.SupportedAlgorithms(context.Background())
+			if got == nil {
+				got = []string{}
+			}
+			if !slices.Equal(got, tc.want) {
+				t.Fatalf("SupportedAlgorithms = %v, want %v", got, tc.want)
+			}
+		})
+	}
 }

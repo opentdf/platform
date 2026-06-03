@@ -107,6 +107,42 @@ func (d *DelegatingKeyService) ListKeysWith(ctx context.Context, opts ListKeyOpt
 	return d.index.ListKeysWith(ctx, opts)
 }
 
+// SupportedAlgorithms returns the deduplicated, sorted union of algorithm
+// identifiers advertised by every registered key-manager factory. A factory
+// whose manager does not implement AlgorithmAdvertiser contributes nothing.
+// A factory that fails to instantiate is logged at WARN and skipped — listing
+// capabilities never blocks startup.
+func (d *DelegatingKeyService) SupportedAlgorithms(ctx context.Context) []string {
+	d.mutex.Lock()
+	names := slices.Collect(maps.Keys(d.managerFactories))
+	d.mutex.Unlock()
+
+	seen := make(map[string]struct{})
+	for _, name := range names {
+		mgr, err := d.getKeyManager(ctx, &policy.KeyProviderConfig{Manager: name})
+		if err != nil {
+			d.l.WarnContext(
+				ctx,
+				"could not load key manager for capability listing",
+				slog.String("manager", name),
+				slog.Any("error", err),
+			)
+			continue
+		}
+		adv, ok := mgr.(AlgorithmAdvertiser)
+		if !ok {
+			continue
+		}
+		for _, alg := range adv.SupportedAlgorithms() {
+			seen[alg] = struct{}{}
+		}
+	}
+
+	out := slices.Collect(maps.Keys(seen))
+	slices.Sort(out)
+	return out
+}
+
 // Implementing KeyManager methods
 func (d *DelegatingKeyService) Name() string {
 	return "DelegatingKeyService"
@@ -247,7 +283,8 @@ func (d *DelegatingKeyService) getKeyManager(ctx context.Context, cfg *policy.Ke
 	// Factory for 'name' not found.
 	// If 'name' was the defaultMode, _defKM will error if its factory is also missing.
 	// If 'name' was not the defaultMode, we fall back to the default manager.
-	d.l.Debug("key manager factory not found for name, attempting to use/load default",
+	d.l.Debug(
+		"key manager factory not found for name, attempting to use/load default",
 		slog.Any("key_managers", allManagers),
 		slog.Any("requested_name", designation),
 	)

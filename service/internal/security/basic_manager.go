@@ -26,6 +26,20 @@ const (
 	ristrettoCacheTTL    = 30
 )
 
+// basicManagerSupportedAlgorithms is the canonical set of algorithms the
+// BasicManager knows how to serve when a key has been provisioned. Keep in
+// sync with the switch in Decrypt.
+var basicManagerSupportedAlgorithms = []string{
+	AlgorithmRSA2048,
+	AlgorithmRSA4096,
+	AlgorithmECP256R1,
+	AlgorithmECP384R1,
+	AlgorithmECP521R1,
+	AlgorithmHPQTXWing,
+	AlgorithmHPQTSecp256r1MLKEM768,
+	AlgorithmHPQTSecp384r1MLKEM1024,
+}
+
 type BasicManager struct {
 	l       *logger.Logger
 	rootKey []byte
@@ -47,6 +61,14 @@ func NewBasicManager(logger *logger.Logger, c *cache.Cache, rootKey string) (*Ba
 
 func (b *BasicManager) Name() string {
 	return BasicManagerName
+}
+
+// SupportedAlgorithms returns the algorithms BasicManager can wrap/unwrap when
+// a corresponding key has been provisioned. Implements trust.AlgorithmAdvertiser.
+func (b *BasicManager) SupportedAlgorithms() []string {
+	out := make([]string, len(basicManagerSupportedAlgorithms))
+	copy(out, basicManagerSupportedAlgorithms)
+	return out
 }
 
 func (b *BasicManager) Decrypt(ctx context.Context, keyDetails trust.KeyDetails, ciphertext []byte, ephemeralPublicKey []byte) (ocrypto.ProtectedKey, error) {
@@ -234,7 +256,8 @@ func (b *BasicManager) unwrap(ctx context.Context, kid string, wrappedKey string
 			if privKeyBytes, ok := privKey.([]byte); ok {
 				return privKeyBytes, nil
 			}
-			b.l.ErrorContext(ctx,
+			b.l.ErrorContext(
+				ctx,
 				"private key in cache is not of type []byte",
 				slog.String("kid", kid),
 				slog.Any("type", fmt.Sprintf("%T", privKey)),
@@ -270,7 +293,8 @@ func (b *BasicManager) unwrap(ctx context.Context, kid string, wrappedKey string
 
 	if cacheEnabled {
 		if err := b.cache.Set(ctx, kid, privKey, nil); err != nil {
-			b.l.ErrorContext(ctx,
+			b.l.ErrorContext(
+				ctx,
 				"failed to cache private key",
 				slog.String("kid", kid),
 				slog.Any("error", err),

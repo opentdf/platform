@@ -229,3 +229,22 @@ func TestInProcessProviderDetermineKeyType(t *testing.T) {
 	_, err = provider.determineKeyType("missing")
 	require.Error(t, err)
 }
+
+func TestInProcessProvider_SupportedAlgorithms(t *testing.T) {
+	a, ok := NewSecurityProviderAdapter(nil, nil, nil).(*InProcessProvider)
+	require.True(t, ok, "NewSecurityProviderAdapter must return *InProcessProvider")
+
+	algs := a.SupportedAlgorithms()
+	assert.ElementsMatch(t, []string{
+		AlgorithmRSA2048,
+		AlgorithmRSA4096,
+		AlgorithmECP256R1,
+		AlgorithmHPQTXWing,
+		AlgorithmHPQTSecp256r1MLKEM768,
+		AlgorithmHPQTSecp384r1MLKEM1024,
+	}, algs)
+
+	// Modifying the returned slice must not mutate the provider's internal list.
+	algs[0] = "tampered"
+	assert.NotEqual(t, "tampered", a.SupportedAlgorithms()[0], "returned slice must be a copy")
+}

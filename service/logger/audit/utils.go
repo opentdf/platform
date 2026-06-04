@@ -37,9 +37,8 @@ func (e EventObject) LogValue() slog.Value {
 		slog.Any("clientInfo", e.ClientInfo),
 		slog.Any("original", e.Original),
 		slog.Any("updated", e.Updated),
-		slog.String("requestId", e.RequestID.String()),
-		slog.String("timestamp", e.Timestamp),
-	)
+		slog.String("requestID", e.RequestID.String()),
+		slog.String("timestamp", e.Timestamp))
 }
 
 // event.object
@@ -55,8 +54,7 @@ func (e auditEventObject) LogValue() slog.Value {
 		slog.String("type", e.Type.String()),
 		slog.String("id", e.ID),
 		slog.String("name", e.Name),
-		slog.Any("attributes", e.Attributes),
-	)
+		slog.Any("attributes", e.Attributes))
 }
 
 // event.object.attributes
@@ -70,8 +68,7 @@ func (e eventObjectAttributes) LogValue() slog.Value {
 	return slog.GroupValue(
 		slog.Any("assertions", e.Assertions),
 		slog.Any("attrs", e.Attrs),
-		slog.Any("permissions", e.Permissions),
-	)
+		slog.Any("permissions", e.Permissions))
 }
 
 // event.action
@@ -83,8 +80,7 @@ type eventAction struct {
 func (e eventAction) LogValue() slog.Value {
 	return slog.GroupValue(
 		slog.String("type", e.Type.String()),
-		slog.String("result", e.Result.String()),
-	)
+		slog.String("result", e.Result.String()))
 }
 
 // event.actor
@@ -96,8 +92,7 @@ type auditEventActor struct {
 func (e auditEventActor) LogValue() slog.Value {
 	return slog.GroupValue(
 		slog.String("id", e.ID),
-		slog.Any("attributes", e.Attributes),
-	)
+		slog.Any("attributes", e.Attributes))
 }
 
 // event.clientInfo
@@ -111,8 +106,7 @@ func (e eventClientInfo) LogValue() slog.Value {
 	return slog.GroupValue(
 		slog.String("userAgent", e.UserAgent),
 		slog.String("platform", e.Platform),
-		slog.String("requestIp", e.RequestIP), // [sic]
-	)
+		slog.String("requestIP", e.RequestIP))
 }
 
 type ContextData struct {
@@ -127,8 +121,7 @@ func (c ContextData) LogValue() slog.Value {
 		slog.String("requestID", c.RequestID.String()),
 		slog.String("userAgent", c.UserAgent),
 		slog.String("requestIP", c.RequestIP),
-		slog.String("actorID", c.ActorID),
-	)
+		slog.String("actorID", c.ActorID))
 }
 
 // GetAuditDataFromContext gets relevant audit data from the context object

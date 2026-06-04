@@ -244,7 +244,7 @@ func (s *Service) CreateObligationValue(ctx context.Context, req *connect.Reques
 	})
 	if err != nil {
 		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
-		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextCreationFailed, slog.String("obligationValue", req.Msg.String()))
+		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextCreationFailed, slog.String("obligation value", req.Msg.String()))
 	}
 
 	return connect.NewResponse(rsp), nil
@@ -311,7 +311,7 @@ func (s *Service) UpdateObligationValue(ctx context.Context, req *connect.Reques
 	})
 	if err != nil {
 		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
-		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextUpdateFailed, slog.String("obligationValue", req.Msg.String()))
+		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextUpdateFailed, slog.String("obligation value", req.Msg.String()))
 	}
 	return connect.NewResponse(rsp), nil
 }
@@ -330,7 +330,7 @@ func (s *Service) DeleteObligationValue(ctx context.Context, req *connect.Reques
 	deleted, err := s.dbClient.DeleteObligationValue(ctx, req.Msg)
 	if err != nil {
 		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
-		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextDeletionFailed, slog.String("obligationValue", req.Msg.String()))
+		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextDeletionFailed, slog.String("obligation value", req.Msg.String()))
 	}
 
 	s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
@@ -378,9 +378,8 @@ func (s *Service) AddObligationTrigger(ctx context.Context, req *connect.Request
 		attrVal = attrValIdentifier.GetFqn()
 	}
 
-	s.logger.DebugContext(
-		ctx, "adding obligation trigger",
-		slog.String("obligationValue", oblVal),
+	s.logger.DebugContext(ctx, "adding obligation trigger",
+		slog.String("obligation_value", oblVal),
 		slog.String("action", act),
 		slog.String("attribute_value", attrVal),
 	)
@@ -400,7 +399,7 @@ func (s *Service) AddObligationTrigger(ctx context.Context, req *connect.Request
 	})
 	if err != nil {
 		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
-		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextCreationFailed, slog.String("obligationTrigger", req.Msg.String()))
+		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextCreationFailed, slog.String("obligation trigger", req.Msg.String()))
 	}
 
 	return connect.NewResponse(rsp), nil
@@ -420,7 +419,7 @@ func (s *Service) RemoveObligationTrigger(ctx context.Context, req *connect.Requ
 	deleted, err := s.dbClient.DeleteObligationTrigger(ctx, req.Msg)
 	if err != nil {
 		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
-		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextDeletionFailed, slog.String("obligationTrigger", req.Msg.String()))
+		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextDeletionFailed, slog.String("obligation trigger", req.Msg.String()))
 	}
 
 	s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)

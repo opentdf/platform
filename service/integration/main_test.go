@@ -86,8 +86,7 @@ func TestMain(m *testing.M) {
 			WaitingFor: wait.ForSQL("5432/tcp", "pgx", func(host string, port string) string {
 				// port is Port.String() which includes protocol (e.g. "5432/tcp"); strip it
 				portNum, _, _ := strings.Cut(port, "/")
-				return fmt.Sprintf(
-					"postgres://%s:%s@%s/%s?sslmode=disable",
+				return fmt.Sprintf("postgres://%s:%s@%s/%s?sslmode=disable",
 					conf.DB.User,
 					conf.DB.Password,
 					net.JoinHostPort(host, portNum),
@@ -98,6 +97,7 @@ func TestMain(m *testing.M) {
 		Started: true,
 	}
 
+	//nolint:sloglint // emoji
 	slog.Info("📀 starting postgres container")
 	postgres, err := tc.GenericContainer(context.Background(), req)
 	if err != nil {
@@ -125,6 +125,7 @@ func TestMain(m *testing.M) {
 
 	conf.DB.Port = int(port.Num())
 
+	//nolint:sloglint // emoji
 	slog.Info("🏠 loading fixtures")
 	fixtures.LoadFixtureData("../internal/fixtures/policy_fixtures.yaml")
 

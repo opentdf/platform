@@ -318,8 +318,7 @@ func (s ResourceMappingService) UpdateResourceMapping(ctx context.Context,
 	})
 	if err != nil {
 		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
-		return nil, db.StatusifyError(
-			ctx, s.logger, err, db.ErrTextUpdateFailed,
+		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextUpdateFailed,
 			slog.String("id", req.Msg.GetId()),
 			slog.String("resourceMapping", req.Msg.String()),
 		)

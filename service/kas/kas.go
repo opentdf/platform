@@ -29,7 +29,7 @@ func OnConfigUpdate(p *access.Provider) serviceregistry.OnConfigUpdateHook {
 		}
 
 		p.ApplyConfig(kasCfg, p.SecurityConfig())
-		p.Logger.TraceContext(ctx, "kas config reloaded")
+		p.Logger.TraceContext(ctx, "kas config reloaded", slog.Any("config", kasCfg))
 		logSupportedMechanisms(ctx, p.Logger, p.KeyDelegator, &kasCfg)
 
 		return nil
@@ -115,7 +115,7 @@ func NewRegistration() *serviceregistry.Service[kasconnect.AccessServiceHandler]
 				p.ApplyConfig(kasCfg, srp.Security)
 				p.Tracer = srp.Tracer
 
-				srp.Logger.Debug("kas config", slog.Any("config", kasCfg))
+				srp.Logger.Debug("kas config loaded", slog.Any("config", kasCfg))
 				logSupportedMechanisms(context.Background(), srp.Logger, p.KeyDelegator, &kasCfg)
 
 				if err := srp.RegisterReadinessCheck("kas", p.IsReady); err != nil {
@@ -193,7 +193,7 @@ func logSupportedMechanisms(ctx context.Context, l *logger.Logger, kd *trust.Del
 		return
 	}
 	mechanisms := filterMechanismsByPreview(kd.SupportedAlgorithms(ctx), kasCfg)
-	l.InfoContext(ctx, "kas initialized", slog.Any("mechanisms", mechanisms))
+	l.InfoContext(ctx, "kas trust mechanisms initialized", slog.Any("mechanisms", mechanisms))
 }
 
 // filterMechanismsByPreview drops algorithms whose corresponding rewrap path is

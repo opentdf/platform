@@ -192,12 +192,12 @@ func TestLogSupportedMechanisms_EmitsInfoLine(t *testing.T) {
 			for _, line := range lines {
 				var record map[string]any
 				require.NoError(t, json.Unmarshal([]byte(line), &record))
-				if msg, _ := record["msg"].(string); msg == "kas initialized" {
+				if msg, _ := record["msg"].(string); msg == "kas trust mechanisms initialized" {
 					found = record
 					break
 				}
 			}
-			require.NotNil(t, found, "expected log record with msg=kas initialized")
+			require.NotNil(t, found, "expected log record with msg=kas trust mechanisms initialized")
 			require.Equal(t, "INFO", found["level"])
 
 			rawMechs, ok := found["mechanisms"].([]any)

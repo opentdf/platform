@@ -629,7 +629,7 @@ func TestBasicManager_SupportedAlgorithms_ReturnsCopy(t *testing.T) {
 	require.NoError(t, err)
 
 	algs := bm.SupportedAlgorithms()
-	require.Positive(t, len(algs), "expected at least one supported algorithm")
+	require.NotEmpty(t, algs, "expected at least one supported algorithm")
 	algs[0] = "tampered"
 	assert.NotEqual(t, "tampered", bm.SupportedAlgorithms()[0], "returned slice must be a copy")
 }

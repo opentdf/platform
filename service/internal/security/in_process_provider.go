@@ -154,9 +154,7 @@ func (a *InProcessProvider) Name() string {
 // when a corresponding key has been provisioned. Implements trust.AlgorithmAdvertiser.
 func (a *InProcessProvider) SupportedAlgorithms() []ocrypto.KeyType {
 	out := make([]ocrypto.KeyType, len(inProcessSupportedAlgorithms))
-	for i, alg := range inProcessSupportedAlgorithms {
-		out[i] = ocrypto.KeyType(alg)
-	}
+	copy(out, inProcessSupportedAlgorithms)
 	return out
 }
 

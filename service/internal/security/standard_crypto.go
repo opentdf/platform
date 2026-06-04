@@ -251,7 +251,7 @@ func loadDeprecatedKeys(rsaKeys map[string]StandardKeyInfo, ecKeys map[string]St
 		slog.Info(
 			"cfg.ECKeys",
 			slog.String("id", id),
-			slog.Any("kas_info", kasInfo),
+			slog.Any("kasInfo", kasInfo),
 		)
 		// private and public EC KAS key
 		privatePemData, err := os.ReadFile(kasInfo.PrivateKeyPath)

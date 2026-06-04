@@ -110,7 +110,7 @@ func (s SubjectMappingService) CreateSubjectMapping(ctx context.Context,
 		return nil
 	})
 	if err != nil {
-		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextCreationFailed, slog.String("subject_mapping", req.Msg.String()))
+		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextCreationFailed, slog.String("subjectMapping", req.Msg.String()))
 	}
 	return connect.NewResponse(rsp), nil
 }
@@ -217,11 +217,11 @@ func (s SubjectMappingService) MatchSubjectMappings(ctx context.Context,
 	req *connect.Request[sm.MatchSubjectMappingsRequest],
 ) (*connect.Response[sm.MatchSubjectMappingsResponse], error) {
 	rsp := &sm.MatchSubjectMappingsResponse{}
-	s.logger.DebugContext(ctx, "matching subject mappings", slog.Any("subject_properties", req.Msg.GetSubjectProperties()))
+	s.logger.DebugContext(ctx, "matching subject mappings", slog.Any("subjectProperties", req.Msg.GetSubjectProperties()))
 
 	smList, err := s.dbClient.GetMatchedSubjectMappings(ctx, req.Msg.GetSubjectProperties())
 	if err != nil {
-		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextGetRetrievalFailed, slog.Any("subject_properties", req.Msg.GetSubjectProperties()))
+		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextGetRetrievalFailed, slog.Any("subjectProperties", req.Msg.GetSubjectProperties()))
 	}
 
 	rsp.SubjectMappings = smList
@@ -264,7 +264,7 @@ func (s SubjectMappingService) CreateSubjectConditionSet(ctx context.Context,
 	req *connect.Request[sm.CreateSubjectConditionSetRequest],
 ) (*connect.Response[sm.CreateSubjectConditionSetResponse], error) {
 	rsp := &sm.CreateSubjectConditionSetResponse{}
-	s.logger.DebugContext(ctx, "creating subject condition set", slog.Any("subject_condition_set", req.Msg))
+	s.logger.DebugContext(ctx, "creating subject condition set", slog.Any("subjectConditionSet", req.Msg))
 	if s.config.NamespacedPolicy && req.Msg.GetNamespaceId() == "" && req.Msg.GetNamespaceFqn() == "" {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("either namespace_id or namespace_fqn must be provided"))
 	}
@@ -279,7 +279,7 @@ func (s SubjectMappingService) CreateSubjectConditionSet(ctx context.Context,
 		cs, err := txClient.CreateSubjectConditionSet(ctx, req.Msg.GetSubjectConditionSet(), req.Msg.GetNamespaceId(), req.Msg.GetNamespaceFqn())
 		if err != nil {
 			s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
-			return db.StatusifyError(ctx, s.logger, err, db.ErrTextCreationFailed, slog.String("subject_condition_set", req.Msg.String()))
+			return db.StatusifyError(ctx, s.logger, err, db.ErrTextCreationFailed, slog.String("subjectConditionSet", req.Msg.String()))
 		}
 
 		conditionSet = cs
@@ -302,7 +302,7 @@ func (s SubjectMappingService) UpdateSubjectConditionSet(ctx context.Context,
 	req *connect.Request[sm.UpdateSubjectConditionSetRequest],
 ) (*connect.Response[sm.UpdateSubjectConditionSetResponse], error) {
 	rsp := &sm.UpdateSubjectConditionSetResponse{}
-	s.logger.DebugContext(ctx, "updating subject condition set", slog.Any("subject_condition_set", req.Msg))
+	s.logger.DebugContext(ctx, "updating subject condition set", slog.Any("subjectConditionSet", req.Msg))
 
 	subjectConditionSetID := req.Msg.GetId()
 	auditParams := audit.PolicyEventParams{
@@ -322,7 +322,7 @@ func (s SubjectMappingService) UpdateSubjectConditionSet(ctx context.Context,
 		upd, err := txClient.UpdateSubjectConditionSet(ctx, req.Msg)
 		if err != nil {
 			s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
-			return db.StatusifyError(ctx, s.logger, err, db.ErrTextUpdateFailed, slog.String("id", req.Msg.GetId()), slog.String("subject_condition_set_fields", req.Msg.String()))
+			return db.StatusifyError(ctx, s.logger, err, db.ErrTextUpdateFailed, slog.String("id", req.Msg.GetId()), slog.String("subjectConditionSetFields", req.Msg.String()))
 		}
 
 		original = orig

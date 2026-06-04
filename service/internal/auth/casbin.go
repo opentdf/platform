@@ -102,10 +102,10 @@ func NewCasbinEnforcer(c CasbinConfig, logger *logger.Logger) (*Enforcer, error)
 	logger.Debug(
 		"creating casbin enforcer",
 		slog.Any("config", c),
-		slog.Bool("is_default_model", isDefaultModel),
-		slog.Bool("is_builtin_policy", isDefaultPolicy),
-		slog.Bool("is_policy_extended", isPolicyExtended),
-		slog.Bool("is_default_adapter", isDefaultAdapter),
+		slog.Bool("isDefaultModel", isDefaultModel),
+		slog.Bool("isBuiltinPolicy", isDefaultPolicy),
+		slog.Bool("isPolicyExtended", isPolicyExtended),
+		slog.Bool("isDefaultAdapter", isDefaultAdapter),
 	)
 
 	m, err := casbinModel.NewModelFromString(c.Model)

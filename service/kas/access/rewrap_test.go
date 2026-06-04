@@ -73,7 +73,7 @@ func (f *fakeKeyIndex) String() string {
 
 func (f *fakeKeyIndex) LogValue() slog.Value {
 	return slog.GroupValue(
-		slog.String("indexer", f.String()),
+		slog.String("Indexer", f.String()),
 	)
 }
 

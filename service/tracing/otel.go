@@ -308,10 +308,10 @@ func createFileExporter(cfg *FileConfig) (sdktrace.SpanExporter, io.Closer, erro
 	logger.Info(
 		"configuring file trace exporter",
 		slog.String("path", cfg.Path),
-		slog.Bool("pretty_print", cfg.PrettyPrint),
-		slog.Int("max_size_mb", maxSize),
-		slog.Int("max_backups", maxBackups),
-		slog.Int("max_age_days", maxAge),
+		slog.Bool("prettyPrint", cfg.PrettyPrint),
+		slog.Int("maxSizeMB", maxSize),
+		slog.Int("maxBackups", maxBackups),
+		slog.Int("maxAgeDays", maxAge),
 		slog.Bool("compress", cfg.Compress),
 	)
 

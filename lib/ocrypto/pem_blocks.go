@@ -4,6 +4,7 @@ package ocrypto
 // P-384+ML-KEM-1024) key serialization; routing happens by the AlgorithmIdentifier
 // OID inside the SPKI/PKCS#8 envelope, not by the PEM block type.
 const (
-	pemBlockPublicKey  = "PUBLIC KEY"
-	pemBlockPrivateKey = "PRIVATE KEY"
+	pemBlockPublicKey   = "PUBLIC KEY"
+	pemBlockPrivateKey  = "PRIVATE KEY"
+	pemBlockCertificate = "CERTIFICATE"
 )

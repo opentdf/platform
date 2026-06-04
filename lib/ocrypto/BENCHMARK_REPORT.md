@@ -23,7 +23,6 @@ cd lib/ocrypto && go test -bench=. -benchmem -count=1 -timeout=5m
 cd lib/ocrypto && go test -bench=BenchmarkKeyGeneration -benchmem
 cd lib/ocrypto && go test -bench=BenchmarkWrapDEK -benchmem
 cd lib/ocrypto && go test -bench=BenchmarkUnwrapDEK -benchmem
-cd lib/ocrypto && go test -bench=BenchmarkHybridSubOps -benchmem
 
 # Wrapped key size comparison table
 cd lib/ocrypto && go test -v -run TestWrappedKeySizeComparison
@@ -93,39 +92,12 @@ These benchmarks follow the KAS unwrap paths:
 
 ## Analysis: Where Time Is Spent
 
-The `BenchmarkHybridSubOps` benchmarks break down hybrid wrap operations into their constituent parts:
-
-### X-Wing Sub-Operations
-
-| Operation | Time | % of Wrap |
-|-----------|-----:|----------:|
-| Encapsulate (X25519 + ML-KEM-768) | 71.6 us | 92.5% |
-| HKDF key derivation | 0.49 us | 0.6% |
-| AES-GCM encrypt (32B DEK) | 0.37 us | 0.5% |
-| ASN.1 marshal | 0.52 us | 0.7% |
-| PEM parsing + overhead | ~4.4 us | 5.7% |
-
-### P256+ML-KEM-768 Sub-Operations
-
-| Operation | Time | % of Wrap |
-|-----------|-----:|----------:|
-| Encapsulate (ECDH P-256 + ML-KEM-768) | 70.0 us | 93.1% |
-| HKDF key derivation | 0.51 us | 0.7% |
-| AES-GCM encrypt (32B DEK) | 0.37 us | 0.5% |
-| ASN.1 marshal | 0.51 us | 0.7% |
-| PEM parsing + overhead | ~3.8 us | 5.1% |
-
-### P384+ML-KEM-1024 Sub-Operations
-
-| Operation | Time | % of Wrap |
-|-----------|-----:|----------:|
-| Encapsulate (ECDH P-384 + ML-KEM-1024) | 359.9 us | 97.3% |
-| HKDF key derivation | 0.51 us | 0.1% |
-| AES-GCM encrypt (32B DEK) | 0.37 us | 0.1% |
-| ASN.1 marshal | 0.54 us | 0.1% |
-| PEM parsing + overhead | ~8.6 us | 2.3% |
-
-**Conclusion:** KEM encapsulation dominates all hybrid schemes at 93-97% of total time. HKDF, AES-GCM, and ASN.1 marshaling are all sub-microsecond and negligible. The P-384 elliptic curve ECDH is ~5x slower than P-256, which is why P384+ML-KEM-1024 is significantly slower than P256+ML-KEM-768.
+KEM encapsulation dominates all hybrid schemes (~93-97% of total wrap time);
+HKDF, AES-GCM, and ASN.1 marshaling are all sub-microsecond. The P-384
+elliptic curve ECDH is ~5x slower than P-256, which is why P384+ML-KEM-1024
+is significantly slower than P256+ML-KEM-768. Per-sub-op figures were
+captured under a one-off benchmark that has since been removed; re-introduce
+with `pprof` if a more granular breakdown is needed.
 
 ## Manifest Size Impact
 

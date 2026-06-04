@@ -510,6 +510,9 @@ func (s *StandardCrypto) Decrypt(_ context.Context, keyID trust.KeyIdentifier, c
 		if err != nil {
 			return nil, fmt.Errorf("failed to parse X-Wing private key: %w", err)
 		}
+		if err := assertDecryptorAlgorithm(dec, key.Algorithm, kid); err != nil {
+			return nil, err
+		}
 		rawKey, err = dec.Decrypt(ciphertext)
 		if err != nil {
 			return nil, fmt.Errorf("failed to decrypt with X-Wing: %w", err)
@@ -524,6 +527,9 @@ func (s *StandardCrypto) Decrypt(_ context.Context, keyID trust.KeyIdentifier, c
 		if err != nil {
 			return nil, fmt.Errorf("failed to parse hybrid private key: %w", err)
 		}
+		if err := assertDecryptorAlgorithm(dec, key.Algorithm, kid); err != nil {
+			return nil, err
+		}
 		rawKey, err = dec.Decrypt(ciphertext)
 		if err != nil {
 			return nil, fmt.Errorf("failed to decrypt with hybrid [%s]: %w", key.Algorithm, err)
@@ -534,4 +540,17 @@ func (s *StandardCrypto) Decrypt(_ context.Context, keyID trust.KeyIdentifier, c
 	}
 
 	return ocrypto.NewAESProtectedKey(rawKey)
+}
+
+// assertDecryptorAlgorithm cross-checks an OID-routed decryptor (from
+// ocrypto.FromPrivatePEM) against the algorithm the key record claims. Hybrid
+// decryptors expose a KeyType() method; if the routed decryptor lacks that
+// method or reports a different scheme, the stored PEM does not match its
+// metadata and we must refuse to decrypt under the asserted algorithm.
+func assertDecryptorAlgorithm(dec ocrypto.PrivateKeyDecryptor, expected, kid string) error {
+	kt, ok := dec.(interface{ KeyType() ocrypto.KeyType })
+	if !ok || string(kt.KeyType()) != expected {
+		return fmt.Errorf("hybrid key %s algorithm mismatch: PEM dispatched away from %s", kid, expected)
+	}
+	return nil
 }

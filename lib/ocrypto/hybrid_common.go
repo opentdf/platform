@@ -22,7 +22,7 @@ func HybridWrapDEK(ktype KeyType, kasPublicKeyPEM string, dek []byte) ([]byte, e
 
 // defaultTDFSalt returns the salt used for HKDF derivation in the X-Wing
 // hybrid wrapping scheme. The NIST composite-KEM hybrids derive their wrap
-// key without salt per draft-ietf-lamps-pq-composite-kem-14 §4.3.
+// key without salt per draft-ietf-lamps-pq-composite-kem-14 §3.4 (combiner).
 func defaultTDFSalt() []byte {
 	digest := sha256.New()
 	digest.Write([]byte("TDF"))

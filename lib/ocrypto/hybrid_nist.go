@@ -31,7 +31,8 @@ const (
 	P384MLKEM1024MLKEMPubKeySize = 1568
 	P384MLKEM1024MLKEMCtSize     = 1568
 
-	// Raw public-key and ciphertext sizes after draft-14 ordering (mlkem || ec).
+	// Concatenated sizes: public key (draft-14 §4.1) and ciphertext (§4.3),
+	// both laid out as `mlkem || ec`.
 	P256MLKEM768PublicKeySize   = P256MLKEM768MLKEMPubKeySize + P256MLKEM768ECPublicKeySize   // 1249
 	P256MLKEM768CiphertextSize  = P256MLKEM768MLKEMCtSize + P256MLKEM768ECPublicKeySize       // 1153
 	P384MLKEM1024PublicKeySize  = P384MLKEM1024MLKEMPubKeySize + P384MLKEM1024ECPublicKeySize // 1665
@@ -54,11 +55,15 @@ type hybridNISTParams struct {
 	ecPubSize    int            // uncompressed point length
 	mlkemPubSize int
 	mlkemCtSize  int
-	label        string                // ASCII domain-separator per draft-14 §4.3
-	oid          asn1.ObjectIdentifier // AlgorithmIdentifier OID
+	label        string                // ASCII domain-separator per draft-14 §6
+	oid          asn1.ObjectIdentifier // AlgorithmIdentifier OID (draft-14 §6)
 	keyType      KeyType
 }
 
+// p256mlkem768Params and p384mlkem1024Params MUST stay structurally identical
+// (same field set, same field order). If you add a field, add it to BOTH; if
+// a third NIST composite-KEM hybrid lands, prefer consolidating these into a
+// `map[asn1.ObjectIdentifier]hybridNISTParams` at that point.
 var p256mlkem768Params = hybridNISTParams{
 	curve:        ecdh.P256(),
 	namedCurve:   elliptic.P256(),
@@ -256,6 +261,17 @@ func newHybridNISTDecryptor(p *hybridNISTParams, privateKey []byte) (*HybridNIST
 	if len(privateKey) <= mlkemSeedSize {
 		return nil, fmt.Errorf("invalid %s private key: shorter than ML-KEM seed + ECPrivateKey", p.keyType)
 	}
+	// Parse the EC DER tail up front so a malformed key surfaces at
+	// construction time — mirrors newHybridNISTEncryptor's exact-size check
+	// on the public-key side. The parsed key itself is discarded; Decrypt
+	// re-parses (cheap relative to ML-KEM decapsulation) for code simplicity.
+	ecPriv, err := x509.ParseECPrivateKey(privateKey[mlkemSeedSize:])
+	if err != nil {
+		return nil, fmt.Errorf("invalid %s private key: parse ECPrivateKey: %w", p.keyType, err)
+	}
+	if ecPriv.Curve != p.namedCurve {
+		return nil, fmt.Errorf("invalid %s private key: EC curve mismatch", p.keyType)
+	}
 	return &HybridNISTDecryptor{
 		privateKey: append([]byte(nil), privateKey...),
 		params:     p,
@@ -264,6 +280,12 @@ func newHybridNISTDecryptor(p *hybridNISTParams, privateKey []byte) (*HybridNIST
 
 func (d *HybridNISTDecryptor) Decrypt(data []byte) ([]byte, error) {
 	return hybridNISTUnwrapDEK(d.params, d.privateKey, data)
+}
+
+// KeyType identifies the hybrid scheme so KAS-layer callers can cross-check
+// the OID-routed decryptor against an asserted algorithm before trusting it.
+func (d *HybridNISTDecryptor) KeyType() KeyType {
+	return d.params.keyType
 }
 
 func P256MLKEM768WrapDEK(publicKeyRaw, dek []byte) ([]byte, error) {
@@ -283,13 +305,32 @@ func P384MLKEM1024UnwrapDEK(privateKeyRaw, wrappedDER []byte) ([]byte, error) {
 }
 
 // hybridNISTCombiner returns the 32-byte SHA3-256 digest defined in
-// draft-ietf-lamps-pq-composite-kem-14 §4.3:
+// draft-ietf-lamps-pq-composite-kem-14 §3.4:
 //
 //	SS = SHA3-256(mlkemSS || tradSS || tradCT || tradPK || Label)
 //
 // The 32-byte output is used directly as the AES-256 wrap key for our DEK
 // envelope (no additional KDF step, per the draft).
+//
+// Input lengths are invariants of the call sites (hybridNISTWrapDEK /
+// hybridNISTUnwrapDEK). A mismatch here means a programming bug, not bad
+// user input — panicking is preferable to silently producing a
+// wrong-but-valid-looking wrap key.
 func hybridNISTCombiner(p *hybridNISTParams, mlkemSS, tradSS, tradCT, tradPK []byte) []byte {
+	const sec1UncompressedHalves = 2 // SEC1 uncompressed point = 0x04 || x || y (two equal halves)
+	expectedTradSS := (p.ecPubSize - 1) / sec1UncompressedHalves
+	if len(mlkemSS) != mlkem.SharedKeySize {
+		panic(fmt.Sprintf("hybridNISTCombiner: mlkemSS length %d, want %d", len(mlkemSS), mlkem.SharedKeySize))
+	}
+	if len(tradSS) != expectedTradSS {
+		panic(fmt.Sprintf("hybridNISTCombiner[%s]: tradSS length %d, want %d", p.keyType, len(tradSS), expectedTradSS))
+	}
+	if len(tradCT) != p.ecPubSize {
+		panic(fmt.Sprintf("hybridNISTCombiner[%s]: tradCT length %d, want %d", p.keyType, len(tradCT), p.ecPubSize))
+	}
+	if len(tradPK) != p.ecPubSize {
+		panic(fmt.Sprintf("hybridNISTCombiner[%s]: tradPK length %d, want %d", p.keyType, len(tradPK), p.ecPubSize))
+	}
 	h := sha3.New256()
 	// hash.Hash.Write never returns an error (documented in the stdlib).
 	_, _ = h.Write(mlkemSS)

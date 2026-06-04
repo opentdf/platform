@@ -20,8 +20,21 @@ const (
 	XWingCiphertextSize = xwing.CiphertextSize
 )
 
-// XWingWrappedKey is the ASN.1 envelope stored in wrapped_key. draft-10 defines
-// only the KEM; this DEK wrapping envelope is local to OpenTDF and unchanged.
+// X-Wing wire-format note:
+//
+// The KEM primitive comes from github.com/cloudflare/circl/kem/xwing, which
+// currently implements draft-connolly-cfrg-xwing-kem-05. The SPKI/PKCS#8
+// envelope and AlgorithmIdentifier OID (id-XWing, draft-10 §5.8) follow
+// draft-10. The two drafts differ in the internal labeling/KDF chain of the
+// KEM itself, so wrapped keys produced here are NOT wire-compatible with a
+// pure draft-10 implementation.
+//
+// TODO(DSPX-TBD): swap the primitive to a draft-10 implementation once one
+// is available in Go (tracking: upgrade cloudflare/circl xwing to draft-10).
+
+// XWingWrappedKey is the ASN.1 envelope stored in wrapped_key. The X-Wing
+// drafts define only the KEM; this DEK wrapping envelope is local to OpenTDF
+// and unchanged across draft revisions.
 type XWingWrappedKey struct {
 	XWingCiphertext []byte `asn1:"tag:0"`
 	EncryptedDEK    []byte `asn1:"tag:1"`
@@ -139,6 +152,12 @@ func NewSaltedXWingDecryptor(privateKey, salt, info []byte) (*XWingDecryptor, er
 
 func (d *XWingDecryptor) Decrypt(data []byte) ([]byte, error) {
 	return xwingUnwrapDEK(d.privateKey, data, d.salt, d.info)
+}
+
+// KeyType identifies the hybrid scheme so KAS-layer callers can cross-check
+// the OID-routed decryptor against an asserted algorithm before trusting it.
+func (d *XWingDecryptor) KeyType() KeyType {
+	return HybridXWingKey
 }
 
 func XWingWrapDEK(publicKeyRaw, dek []byte) ([]byte, error) {

@@ -23,6 +23,11 @@ type subjectPublicKeyInfo struct {
 
 // oneAsymmetricKey is the RFC 5958 PKCS#8 structure. Only v1 (Version = 0) with
 // no attributes or publicKey is used here.
+//
+// We intentionally do NOT add the optional `Attributes [0] IMPLICIT ...` /
+// `PublicKey [1] IMPLICIT ...` fields. PKCS#8 v2 inputs that carry them will
+// leave trailing bytes after `asn1.Unmarshal`, which parseHybridPKCS8 rejects;
+// the hybrid drafts use the bare v1 envelope.
 type oneAsymmetricKey struct {
 	Version    int
 	Algorithm  pkixAlgorithmIdentifier
@@ -61,6 +66,9 @@ func parseHybridSPKI(der []byte) (asn1.ObjectIdentifier, []byte, error) {
 	if spki.SubjectPublicKey.BitLength != len(spki.SubjectPublicKey.Bytes)*bitsPerByte {
 		return nil, nil, errors.New("parse SPKI: unexpected unused bits in BIT STRING")
 	}
+	if len(spki.Algorithm.Parameters.FullBytes) != 0 {
+		return nil, nil, errors.New("parse SPKI: AlgorithmIdentifier parameters must be absent for hybrid schemes")
+	}
 	return spki.Algorithm.Algorithm, spki.SubjectPublicKey.Bytes, nil
 }
 
@@ -93,6 +101,9 @@ func parseHybridPKCS8(der []byte) (asn1.ObjectIdentifier, []byte, error) {
 	}
 	if pkcs8.Version != 0 {
 		return nil, nil, fmt.Errorf("parse PKCS#8: unsupported version %d", pkcs8.Version)
+	}
+	if len(pkcs8.Algorithm.Parameters.FullBytes) != 0 {
+		return nil, nil, errors.New("parse PKCS#8: AlgorithmIdentifier parameters must be absent for hybrid schemes")
 	}
 	return pkcs8.Algorithm.Algorithm, pkcs8.PrivateKey, nil
 }

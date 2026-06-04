@@ -115,6 +115,13 @@ func (b *BasicManager) Decrypt(ctx context.Context, keyDetails trust.KeyDetails,
 		if len(ephemeralPublicKey) > 0 {
 			return nil, errors.New("ephemeral public key should not be provided for hybrid decryption")
 		}
+		// FromPrivatePEM routes by the OID inside the PKCS#8 envelope. Cross-
+		// check the routed decryptor against the algorithm the key record
+		// claims; a mismatch means the stored PEM does not match its metadata.
+		kt, ok := decrypter.(interface{ KeyType() ocrypto.KeyType })
+		if !ok || kt.KeyType() != keyDetails.Algorithm() {
+			return nil, fmt.Errorf("hybrid key %s algorithm mismatch: PEM dispatched away from %s", keyDetails.ID(), keyDetails.Algorithm())
+		}
 		plaintext, err := decrypter.Decrypt(ciphertext)
 		if err != nil {
 			return nil, fmt.Errorf("failed to decrypt with hybrid [%s]: %w", keyDetails.Algorithm(), err)

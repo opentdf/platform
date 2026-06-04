@@ -52,6 +52,12 @@ func FromPrivatePEMWithSalt(privateKeyInPem string, salt, info []byte) (PrivateK
 			return dec, err
 		}
 	}
+	// Reject CERTIFICATE blocks containing a hybrid SPKI: certificates are not
+	// supported as a private-key transport, but operators sometimes paste them
+	// here by mistake. Symmetric with the public-key path.
+	if block.Type == pemBlockCertificate && containsHybridOID(block.Bytes) {
+		return AsymDecryption{}, errors.New("certificate-wrapped hybrid keys are not supported; provide a bare PKCS#8 PRIVATE KEY")
+	}
 
 	priv, err := x509.ParsePKCS8PrivateKey(block.Bytes)
 	switch {
@@ -204,14 +210,16 @@ func (e ECDecryptor) DecryptWithEphemeralKey(data, ephemeral []byte) ([]byte, er
 }
 
 // hybridDecryptorFromPKCS8 mirrors hybridEncryptorFromSPKI for PKCS#8 private
-// keys. Salt/info are honoured only for X-Wing; the NIST composite-KEM hybrids
-// have no salt/info inputs.
+// keys. The `matched` return reports whether the dispatcher owns the result:
+// when true, the caller MUST return whatever this function returns. When
+// false, the caller falls through to the legacy RSA/EC PKCS#8 / PKCS#1 path.
+// Salt/info are honoured only for X-Wing.
 func hybridDecryptorFromPKCS8(der, salt, info []byte) (PrivateKeyDecryptor, bool, error) {
-	oid, raw, err := parseHybridPKCS8(der)
-	if err != nil {
-		// Not a hybrid PKCS#8 envelope. Signal "not handled" so the caller can
-		// fall back to the standard x509 PKCS#8 path for RSA/EC keys.
-		return nil, false, nil //nolint:nilerr // intentional fall-through
+	oid, raw, parseErr := parseHybridPKCS8(der)
+	if parseErr != nil {
+		// Structurally not a PKCS#8 envelope (e.g. PKCS#1 RSA or EC PRIVATE
+		// KEY). Fall through to the legacy decoder.
+		return nil, false, nil //nolint:nilerr // intentional fall-through on non-envelope input
 	}
 	switch {
 	case oid.Equal(oidXWing):
@@ -223,9 +231,14 @@ func hybridDecryptorFromPKCS8(der, salt, info []byte) (PrivateKeyDecryptor, bool
 	case oid.Equal(oidCompositeMLKEM1024P384):
 		dec, err := NewP384MLKEM1024Decryptor(raw)
 		return dec, true, err
-	default:
+	}
+	// Valid PKCS#8 envelope with a non-hybrid OID. If the stdlib recognises it,
+	// fall through. Otherwise surface a precise "unknown OID" error so the
+	// caller doesn't end up reporting a confusing PKCS#1/EC-Private-Key error.
+	if _, x509Err := x509.ParsePKCS8PrivateKey(der); x509Err == nil {
 		return nil, false, nil
 	}
+	return nil, true, fmt.Errorf("unsupported private-key algorithm OID %s: not a known hybrid scheme and not recognised by crypto/x509", oid)
 }
 
 func convCurve(c ecdh.Curve) elliptic.Curve {

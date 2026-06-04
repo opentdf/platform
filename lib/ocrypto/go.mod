@@ -2,8 +2,6 @@ module github.com/opentdf/platform/lib/ocrypto
 
 go 1.25.0
 
-toolchain go1.25.9
-
 require (
 	github.com/cloudflare/circl v1.6.3
 	github.com/stretchr/testify v1.11.1

@@ -12,8 +12,8 @@ import (
 )
 
 const createResourceMapping = `-- name: createResourceMapping :one
-INSERT INTO resource_mappings (attribute_value_id, terms, metadata, group_id)
-VALUES ($1, $2, $3, $4)
+INSERT INTO resource_mappings (attribute_value_id, terms, metadata, group_id, namespace_id)
+VALUES ($1, $2, $3, $4, $5)
 RETURNING id
 `
 
@@ -22,12 +22,13 @@ type createResourceMappingParams struct {
 	Terms            []string    `json:"terms"`
 	Metadata         []byte      `json:"metadata"`
 	GroupID          pgtype.UUID `json:"group_id"`
+	NamespaceID      pgtype.UUID `json:"namespace_id"`
 }
 
 // createResourceMapping
 //
-//	INSERT INTO resource_mappings (attribute_value_id, terms, metadata, group_id)
-//	VALUES ($1, $2, $3, $4)
+//	INSERT INTO resource_mappings (attribute_value_id, terms, metadata, group_id, namespace_id)
+//	VALUES ($1, $2, $3, $4, $5)
 //	RETURNING id
 func (q *Queries) createResourceMapping(ctx context.Context, arg createResourceMappingParams) (string, error) {
 	row := q.db.QueryRow(ctx, createResourceMapping,
@@ -35,6 +36,7 @@ func (q *Queries) createResourceMapping(ctx context.Context, arg createResourceM
 		arg.Terms,
 		arg.Metadata,
 		arg.GroupID,
+		arg.NamespaceID,
 	)
 	var id string
 	err := row.Scan(&id)
@@ -109,14 +111,24 @@ SELECT
                 'namespace_id', rmg.namespace_id,
                 'fqn', CONCAT('https://', rmg_ns.name, '/resm/', rmg.name)::TEXT
             )
-    END)::JSON AS group
-FROM resource_mappings m 
+    END)::JSON AS group,
+    (CASE
+        WHEN m.namespace_id IS NULL THEN NULL
+        ELSE JSON_BUILD_OBJECT(
+                'id', rm_ns.id,
+                'name', rm_ns.name,
+                'fqn', rm_ns_fqn.fqn
+            )
+    END)::JSON AS namespace
+FROM resource_mappings m
 LEFT JOIN attribute_values av on m.attribute_value_id = av.id
 LEFT JOIN attribute_fqns fqns on av.id = fqns.value_id
 LEFT JOIN resource_mapping_groups rmg ON m.group_id = rmg.id
 LEFT JOIN attribute_namespaces rmg_ns ON rmg.namespace_id = rmg_ns.id
+LEFT JOIN attribute_namespaces rm_ns ON m.namespace_id = rm_ns.id
+LEFT JOIN attribute_fqns rm_ns_fqn ON rm_ns_fqn.namespace_id = rm_ns.id AND rm_ns_fqn.attribute_id IS NULL AND rm_ns_fqn.value_id IS NULL
 WHERE m.id = $1
-GROUP BY av.id, m.id, fqns.fqn, rmg.id, rmg.name, rmg.namespace_id, rmg_ns.name
+GROUP BY av.id, m.id, fqns.fqn, rmg.id, rmg.name, rmg.namespace_id, rmg_ns.name, rm_ns.id, rm_ns_fqn.fqn
 `
 
 type getResourceMappingRow struct {
@@ -125,6 +137,7 @@ type getResourceMappingRow struct {
 	Terms          []string `json:"terms"`
 	Metadata       []byte   `json:"metadata"`
 	Group          []byte   `json:"group"`
+	Namespace      []byte   `json:"namespace"`
 }
 
 // getResourceMapping
@@ -142,14 +155,24 @@ type getResourceMappingRow struct {
 //	                'namespace_id', rmg.namespace_id,
 //	                'fqn', CONCAT('https://', rmg_ns.name, '/resm/', rmg.name)::TEXT
 //	            )
-//	    END)::JSON AS group
+//	    END)::JSON AS group,
+//	    (CASE
+//	        WHEN m.namespace_id IS NULL THEN NULL
+//	        ELSE JSON_BUILD_OBJECT(
+//	                'id', rm_ns.id,
+//	                'name', rm_ns.name,
+//	                'fqn', rm_ns_fqn.fqn
+//	            )
+//	    END)::JSON AS namespace
 //	FROM resource_mappings m
 //	LEFT JOIN attribute_values av on m.attribute_value_id = av.id
 //	LEFT JOIN attribute_fqns fqns on av.id = fqns.value_id
 //	LEFT JOIN resource_mapping_groups rmg ON m.group_id = rmg.id
 //	LEFT JOIN attribute_namespaces rmg_ns ON rmg.namespace_id = rmg_ns.id
+//	LEFT JOIN attribute_namespaces rm_ns ON m.namespace_id = rm_ns.id
+//	LEFT JOIN attribute_fqns rm_ns_fqn ON rm_ns_fqn.namespace_id = rm_ns.id AND rm_ns_fqn.attribute_id IS NULL AND rm_ns_fqn.value_id IS NULL
 //	WHERE m.id = $1
-//	GROUP BY av.id, m.id, fqns.fqn, rmg.id, rmg.name, rmg.namespace_id, rmg_ns.name
+//	GROUP BY av.id, m.id, fqns.fqn, rmg.id, rmg.name, rmg.namespace_id, rmg_ns.name, rm_ns.id, rm_ns_fqn.fqn
 func (q *Queries) getResourceMapping(ctx context.Context, id string) (getResourceMappingRow, error) {
 	row := q.db.QueryRow(ctx, getResourceMapping, id)
 	var i getResourceMappingRow
@@ -159,6 +182,7 @@ func (q *Queries) getResourceMapping(ctx context.Context, id string) (getResourc
 		&i.Terms,
 		&i.Metadata,
 		&i.Group,
+		&i.Namespace,
 	)
 	return i, err
 }
@@ -215,16 +239,19 @@ SELECT rmg.id,
     COUNT(*) OVER() AS total
 FROM resource_mapping_groups rmg
 JOIN attribute_namespaces ns ON rmg.namespace_id = ns.id
-WHERE ($1::uuid IS NULL OR rmg.namespace_id = $1::uuid) 
+LEFT JOIN attribute_fqns ns_fqn ON ns_fqn.namespace_id = ns.id AND ns_fqn.attribute_id IS NULL AND ns_fqn.value_id IS NULL
+WHERE ($1::uuid IS NULL OR rmg.namespace_id = $1::uuid)
+  AND ($2::text IS NULL OR ns_fqn.fqn = $2::text)
 ORDER BY rmg.created_at DESC
-LIMIT $3 
-OFFSET $2
+LIMIT $4
+OFFSET $3
 `
 
 type listResourceMappingGroupsParams struct {
-	NamespaceID pgtype.UUID `json:"namespace_id"`
-	Offset      int32       `json:"offset_"`
-	Limit       int32       `json:"limit_"`
+	NamespaceID  pgtype.UUID `json:"namespace_id"`
+	NamespaceFqn pgtype.Text `json:"namespace_fqn"`
+	Offset       int32       `json:"offset_"`
+	Limit        int32       `json:"limit_"`
 }
 
 type listResourceMappingGroupsRow struct {
@@ -248,12 +275,19 @@ type listResourceMappingGroupsRow struct {
 //	    COUNT(*) OVER() AS total
 //	FROM resource_mapping_groups rmg
 //	JOIN attribute_namespaces ns ON rmg.namespace_id = ns.id
+//	LEFT JOIN attribute_fqns ns_fqn ON ns_fqn.namespace_id = ns.id AND ns_fqn.attribute_id IS NULL AND ns_fqn.value_id IS NULL
 //	WHERE ($1::uuid IS NULL OR rmg.namespace_id = $1::uuid)
+//	  AND ($2::text IS NULL OR ns_fqn.fqn = $2::text)
 //	ORDER BY rmg.created_at DESC
-//	LIMIT $3
-//	OFFSET $2
+//	LIMIT $4
+//	OFFSET $3
 func (q *Queries) listResourceMappingGroups(ctx context.Context, arg listResourceMappingGroupsParams) ([]listResourceMappingGroupsRow, error) {
-	rows, err := q.db.Query(ctx, listResourceMappingGroups, arg.NamespaceID, arg.Offset, arg.Limit)
+	rows, err := q.db.Query(ctx, listResourceMappingGroups,
+		arg.NamespaceID,
+		arg.NamespaceFqn,
+		arg.Offset,
+		arg.Limit,
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -295,23 +329,37 @@ SELECT
                 'fqn', CONCAT('https://', rmg_ns.name, '/resm/', rmg.name)::TEXT
             )
     END)::JSON AS group,
+    (CASE
+        WHEN m.namespace_id IS NULL THEN NULL
+        ELSE JSON_BUILD_OBJECT(
+                'id', rm_ns.id,
+                'name', rm_ns.name,
+                'fqn', rm_ns_fqn.fqn
+            )
+    END)::JSON AS namespace,
     COUNT(*) OVER() AS total
 FROM resource_mappings m
 LEFT JOIN attribute_values av on m.attribute_value_id = av.id
 LEFT JOIN attribute_fqns fqns on av.id = fqns.value_id
 LEFT JOIN resource_mapping_groups rmg ON m.group_id = rmg.id
 LEFT JOIN attribute_namespaces rmg_ns ON rmg.namespace_id = rmg_ns.id
+LEFT JOIN attribute_namespaces rm_ns ON m.namespace_id = rm_ns.id
+LEFT JOIN attribute_fqns rm_ns_fqn ON rm_ns_fqn.namespace_id = rm_ns.id AND rm_ns_fqn.attribute_id IS NULL AND rm_ns_fqn.value_id IS NULL
 WHERE ($1::uuid IS NULL OR m.group_id = $1::uuid)
-GROUP BY av.id, m.id, fqns.fqn, rmg.id, rmg.name, rmg.namespace_id, rmg_ns.name
+  AND ($2::uuid IS NULL OR m.namespace_id = $2::uuid)
+  AND ($3::text IS NULL OR rm_ns_fqn.fqn = $3::text)
+GROUP BY av.id, m.id, fqns.fqn, rmg.id, rmg.name, rmg.namespace_id, rmg_ns.name, rm_ns.id, rm_ns_fqn.fqn
 ORDER BY m.created_at DESC
-LIMIT $3 
-OFFSET $2
+LIMIT $5
+OFFSET $4
 `
 
 type listResourceMappingsParams struct {
-	GroupID pgtype.UUID `json:"group_id"`
-	Offset  int32       `json:"offset_"`
-	Limit   int32       `json:"limit_"`
+	GroupID      pgtype.UUID `json:"group_id"`
+	NamespaceID  pgtype.UUID `json:"namespace_id"`
+	NamespaceFqn pgtype.Text `json:"namespace_fqn"`
+	Offset       int32       `json:"offset_"`
+	Limit        int32       `json:"limit_"`
 }
 
 type listResourceMappingsRow struct {
@@ -320,6 +368,7 @@ type listResourceMappingsRow struct {
 	Terms          []string `json:"terms"`
 	Metadata       []byte   `json:"metadata"`
 	Group          []byte   `json:"group"`
+	Namespace      []byte   `json:"namespace"`
 	Total          int64    `json:"total"`
 }
 
@@ -341,19 +390,37 @@ type listResourceMappingsRow struct {
 //	                'fqn', CONCAT('https://', rmg_ns.name, '/resm/', rmg.name)::TEXT
 //	            )
 //	    END)::JSON AS group,
+//	    (CASE
+//	        WHEN m.namespace_id IS NULL THEN NULL
+//	        ELSE JSON_BUILD_OBJECT(
+//	                'id', rm_ns.id,
+//	                'name', rm_ns.name,
+//	                'fqn', rm_ns_fqn.fqn
+//	            )
+//	    END)::JSON AS namespace,
 //	    COUNT(*) OVER() AS total
 //	FROM resource_mappings m
 //	LEFT JOIN attribute_values av on m.attribute_value_id = av.id
 //	LEFT JOIN attribute_fqns fqns on av.id = fqns.value_id
 //	LEFT JOIN resource_mapping_groups rmg ON m.group_id = rmg.id
 //	LEFT JOIN attribute_namespaces rmg_ns ON rmg.namespace_id = rmg_ns.id
+//	LEFT JOIN attribute_namespaces rm_ns ON m.namespace_id = rm_ns.id
+//	LEFT JOIN attribute_fqns rm_ns_fqn ON rm_ns_fqn.namespace_id = rm_ns.id AND rm_ns_fqn.attribute_id IS NULL AND rm_ns_fqn.value_id IS NULL
 //	WHERE ($1::uuid IS NULL OR m.group_id = $1::uuid)
-//	GROUP BY av.id, m.id, fqns.fqn, rmg.id, rmg.name, rmg.namespace_id, rmg_ns.name
+//	  AND ($2::uuid IS NULL OR m.namespace_id = $2::uuid)
+//	  AND ($3::text IS NULL OR rm_ns_fqn.fqn = $3::text)
+//	GROUP BY av.id, m.id, fqns.fqn, rmg.id, rmg.name, rmg.namespace_id, rmg_ns.name, rm_ns.id, rm_ns_fqn.fqn
 //	ORDER BY m.created_at DESC
-//	LIMIT $3
-//	OFFSET $2
+//	LIMIT $5
+//	OFFSET $4
 func (q *Queries) listResourceMappings(ctx context.Context, arg listResourceMappingsParams) ([]listResourceMappingsRow, error) {
-	rows, err := q.db.Query(ctx, listResourceMappings, arg.GroupID, arg.Offset, arg.Limit)
+	rows, err := q.db.Query(ctx, listResourceMappings,
+		arg.GroupID,
+		arg.NamespaceID,
+		arg.NamespaceFqn,
+		arg.Offset,
+		arg.Limit,
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -367,6 +434,7 @@ func (q *Queries) listResourceMappings(ctx context.Context, arg listResourceMapp
 			&i.Terms,
 			&i.Metadata,
 			&i.Group,
+			&i.Namespace,
 			&i.Total,
 		); err != nil {
 			return nil, err
@@ -403,11 +471,21 @@ SELECT
     JSON_BUILD_OBJECT('id', av.id, 'value', av.value, 'fqn', fqns.fqn) as attribute_value,
     m.terms,
     JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', m.metadata -> 'labels', 'created_at', m.created_at, 'updated_at', m.updated_at)) as metadata,
-    g.group
+    g.group,
+    (CASE
+        WHEN m.namespace_id IS NULL THEN NULL
+        ELSE JSON_BUILD_OBJECT(
+                'id', rm_ns.id,
+                'name', rm_ns.name,
+                'fqn', rm_ns_fqn.fqn
+            )
+    END)::JSON AS namespace
 FROM resource_mappings m
 JOIN groups_cte g ON m.group_id = g.id
 JOIN attribute_values av on m.attribute_value_id = av.id
 JOIN attribute_fqns fqns on av.id = fqns.value_id
+LEFT JOIN attribute_namespaces rm_ns ON m.namespace_id = rm_ns.id
+LEFT JOIN attribute_fqns rm_ns_fqn ON rm_ns_fqn.namespace_id = rm_ns.id AND rm_ns_fqn.attribute_id IS NULL AND rm_ns_fqn.value_id IS NULL
 ORDER BY m.created_at DESC
 `
 
@@ -422,6 +500,7 @@ type listResourceMappingsByFullyQualifiedGroupRow struct {
 	Terms          []string `json:"terms"`
 	Metadata       []byte   `json:"metadata"`
 	Group          []byte   `json:"group"`
+	Namespace      []byte   `json:"namespace"`
 }
 
 // CTE to cache the group JSON build since it will be the same for all mappings of the group
@@ -449,11 +528,21 @@ type listResourceMappingsByFullyQualifiedGroupRow struct {
 //	    JSON_BUILD_OBJECT('id', av.id, 'value', av.value, 'fqn', fqns.fqn) as attribute_value,
 //	    m.terms,
 //	    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', m.metadata -> 'labels', 'created_at', m.created_at, 'updated_at', m.updated_at)) as metadata,
-//	    g.group
+//	    g.group,
+//	    (CASE
+//	        WHEN m.namespace_id IS NULL THEN NULL
+//	        ELSE JSON_BUILD_OBJECT(
+//	                'id', rm_ns.id,
+//	                'name', rm_ns.name,
+//	                'fqn', rm_ns_fqn.fqn
+//	            )
+//	    END)::JSON AS namespace
 //	FROM resource_mappings m
 //	JOIN groups_cte g ON m.group_id = g.id
 //	JOIN attribute_values av on m.attribute_value_id = av.id
 //	JOIN attribute_fqns fqns on av.id = fqns.value_id
+//	LEFT JOIN attribute_namespaces rm_ns ON m.namespace_id = rm_ns.id
+//	LEFT JOIN attribute_fqns rm_ns_fqn ON rm_ns_fqn.namespace_id = rm_ns.id AND rm_ns_fqn.attribute_id IS NULL AND rm_ns_fqn.value_id IS NULL
 //	ORDER BY m.created_at DESC
 func (q *Queries) listResourceMappingsByFullyQualifiedGroup(ctx context.Context, arg listResourceMappingsByFullyQualifiedGroupParams) ([]listResourceMappingsByFullyQualifiedGroupRow, error) {
 	rows, err := q.db.Query(ctx, listResourceMappingsByFullyQualifiedGroup, arg.NamespaceName, arg.GroupName)
@@ -470,6 +559,7 @@ func (q *Queries) listResourceMappingsByFullyQualifiedGroup(ctx context.Context,
 			&i.Terms,
 			&i.Metadata,
 			&i.Group,
+			&i.Namespace,
 		); err != nil {
 			return nil, err
 		}
@@ -487,7 +577,8 @@ SET
     attribute_value_id = COALESCE($2, attribute_value_id),
     terms = COALESCE($3, terms),
     metadata = COALESCE($4, metadata),
-    group_id = COALESCE($5, group_id)
+    group_id = COALESCE($5, group_id),
+    namespace_id = COALESCE($6, namespace_id)
 WHERE id = $1
 `
 
@@ -497,6 +588,7 @@ type updateResourceMappingParams struct {
 	Terms            []string    `json:"terms"`
 	Metadata         []byte      `json:"metadata"`
 	GroupID          pgtype.UUID `json:"group_id"`
+	NamespaceID      pgtype.UUID `json:"namespace_id"`
 }
 
 // updateResourceMapping
@@ -506,7 +598,8 @@ type updateResourceMappingParams struct {
 //	    attribute_value_id = COALESCE($2, attribute_value_id),
 //	    terms = COALESCE($3, terms),
 //	    metadata = COALESCE($4, metadata),
-//	    group_id = COALESCE($5, group_id)
+//	    group_id = COALESCE($5, group_id),
+//	    namespace_id = COALESCE($6, namespace_id)
 //	WHERE id = $1
 func (q *Queries) updateResourceMapping(ctx context.Context, arg updateResourceMappingParams) (int64, error) {
 	result, err := q.db.Exec(ctx, updateResourceMapping,
@@ -515,6 +608,7 @@ func (q *Queries) updateResourceMapping(ctx context.Context, arg updateResourceM
 		arg.Terms,
 		arg.Metadata,
 		arg.GroupID,
+		arg.NamespaceID,
 	)
 	if err != nil {
 		return 0, err

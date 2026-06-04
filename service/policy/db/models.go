@@ -397,6 +397,8 @@ type ResourceMapping struct {
 	UpdatedAt pgtype.Timestamptz `json:"updated_at"`
 	// Foreign key to the parent group of the resource mapping (optional, a resource mapping may not be in a group)
 	GroupID pgtype.UUID `json:"group_id"`
+	// Optional owning namespace of the resource mapping. If the mapping belongs to a group, it matches the group namespace. The mapped attribute value may belong to a different namespace.
+	NamespaceID pgtype.UUID `json:"namespace_id"`
 }
 
 // Table to store the groups of resource mappings by unique namespace and group name combinations

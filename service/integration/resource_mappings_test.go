@@ -639,21 +639,153 @@ func (s *ResourceMappingsSuite) Test_CreateResourceMappingWithUnknownGroupIdFail
 	s.Nil(createdMapping)
 }
 
-func (s *ResourceMappingsSuite) Test_CreateResourceMappingGroupNsDiffFromAttrNsFails() {
-	metadata := &common.MetadataMutable{}
+func (s *ResourceMappingsSuite) Test_CreateResourceMapping_GroupNsDiffFromAttrNs_Succeeds() {
+	// A resource mapping may cross namespaces to the attribute value it maps: the
+	// mapping is owned by its group's namespace, while the mapped attribute value
+	// can belong to a different namespace.
+	ns, group, cleanup := s.createIsolatedNamespaceAndGroup("rm-cross-ns")
+	defer cleanup()
 
 	attrValue := s.f.GetAttributeValueKey("example.com/attr/attr1/value/value1")
-	rmGroup := s.getResourceMappingGroupFixtures()[2] // scenario.com_ns_group_1
-	mapping := &resourcemapping.CreateResourceMappingRequest{
+	createdMapping, err := s.db.PolicyClient.CreateResourceMapping(s.ctx, &resourcemapping.CreateResourceMappingRequest{
 		AttributeValueId: attrValue.ID,
-		Metadata:         metadata,
-		Terms:            []string{},
-		GroupId:          rmGroup.ID,
-	}
-	createdMapping, err := s.db.PolicyClient.CreateResourceMapping(s.ctx, mapping)
+		Metadata:         &common.MetadataMutable{},
+		Terms:            []string{"cross-ns-term"},
+		GroupId:          group.GetId(),
+	})
+	s.Require().NoError(err)
+	s.Require().NotNil(createdMapping)
+	s.Equal(group.GetId(), createdMapping.GetGroup().GetId())
+	// The mapping is owned by the group's namespace, not the attribute value's namespace.
+	s.Equal(ns.GetId(), createdMapping.GetGroup().GetNamespaceId())
+	s.Equal(ns.GetId(), createdMapping.GetNamespace().GetId())
+}
+
+func (s *ResourceMappingsSuite) Test_CreateResourceMapping_WithNamespaceId_Succeeds() {
+	ns, cleanup := s.createIsolatedNamespace("rm-ns-id")
+	defer cleanup()
+	attrValue := s.f.GetAttributeValueKey("example.com/attr/attr1/value/value1")
+
+	createdMapping, err := s.db.PolicyClient.CreateResourceMapping(s.ctx, &resourcemapping.CreateResourceMappingRequest{
+		AttributeValueId: attrValue.ID,
+		Terms:            []string{"ns-id-term"},
+		NamespaceId:      ns.GetId(),
+	})
+	s.Require().NoError(err)
+	s.Require().NotNil(createdMapping)
+	s.Nil(createdMapping.GetGroup())
+	s.Equal(ns.GetId(), createdMapping.GetNamespace().GetId())
+}
+
+func (s *ResourceMappingsSuite) Test_CreateResourceMapping_WithNamespaceFqn_Succeeds() {
+	ns, cleanup := s.createIsolatedNamespace("rm-ns-fqn")
+	defer cleanup()
+	attrValue := s.f.GetAttributeValueKey("example.com/attr/attr1/value/value1")
+
+	createdMapping, err := s.db.PolicyClient.CreateResourceMapping(s.ctx, &resourcemapping.CreateResourceMappingRequest{
+		AttributeValueId: attrValue.ID,
+		Terms:            []string{"ns-fqn-term"},
+		NamespaceFqn:     ns.GetFqn(),
+	})
+	s.Require().NoError(err)
+	s.Require().NotNil(createdMapping)
+	s.Equal(ns.GetId(), createdMapping.GetNamespace().GetId())
+	s.Equal(ns.GetFqn(), createdMapping.GetNamespace().GetFqn())
+}
+
+func (s *ResourceMappingsSuite) Test_CreateResourceMapping_WithGroupAndMatchingNamespaceId_Succeeds() {
+	ns, group, cleanup := s.createIsolatedNamespaceAndGroup("rm-group-match")
+	defer cleanup()
+	attrValue := s.f.GetAttributeValueKey("example.com/attr/attr1/value/value1")
+
+	createdMapping, err := s.db.PolicyClient.CreateResourceMapping(s.ctx, &resourcemapping.CreateResourceMappingRequest{
+		AttributeValueId: attrValue.ID,
+		Terms:            []string{"group-ns-match-term"},
+		GroupId:          group.GetId(),
+		NamespaceId:      ns.GetId(),
+	})
+	s.Require().NoError(err)
+	s.Require().NotNil(createdMapping)
+	s.Equal(ns.GetId(), createdMapping.GetNamespace().GetId())
+}
+
+func (s *ResourceMappingsSuite) Test_CreateResourceMapping_WithGroupAndMismatchedNamespaceId_Fails() {
+	_, group, cleanup := s.createIsolatedNamespaceAndGroup("rm-group-mismatch")
+	defer cleanup()
+	attrValue := s.f.GetAttributeValueKey("example.com/attr/attr1/value/value1")
+	otherNs := s.getExampleDotComNamespace()
+
+	createdMapping, err := s.db.PolicyClient.CreateResourceMapping(s.ctx, &resourcemapping.CreateResourceMappingRequest{
+		AttributeValueId: attrValue.ID,
+		Terms:            []string{"group-ns-mismatch-term"},
+		GroupId:          group.GetId(),
+		NamespaceId:      otherNs.ID,
+	})
 	s.Require().Error(err)
 	s.Require().ErrorIs(err, db.ErrNamespaceMismatch)
 	s.Nil(createdMapping)
+}
+
+func (s *ResourceMappingsSuite) Test_ListResourceMappings_FilterByNamespaceId_Succeeds() {
+	ns, cleanup := s.createIsolatedNamespace("rm-list-ns-id")
+	defer cleanup()
+	attrValue := s.f.GetAttributeValueKey("example.com/attr/attr1/value/value1")
+
+	created, err := s.db.PolicyClient.CreateResourceMapping(s.ctx, &resourcemapping.CreateResourceMappingRequest{
+		AttributeValueId: attrValue.ID,
+		Terms:            []string{"list-ns-id-term"},
+		NamespaceId:      ns.GetId(),
+	})
+	s.Require().NoError(err)
+
+	listRsp, err := s.db.PolicyClient.ListResourceMappings(s.ctx, &resourcemapping.ListResourceMappingsRequest{
+		NamespaceId: ns.GetId(),
+	})
+	s.Require().NoError(err)
+	s.Require().NotNil(listRsp)
+
+	s.Len(listRsp.GetResourceMappings(), 1, "isolated namespace should own exactly one mapping")
+	s.Equal(created.GetId(), listRsp.GetResourceMappings()[0].GetId())
+	s.Equal(ns.GetId(), listRsp.GetResourceMappings()[0].GetNamespace().GetId())
+}
+
+func (s *ResourceMappingsSuite) Test_ListResourceMappings_FilterByNamespaceFqn_Succeeds() {
+	ns, cleanup := s.createIsolatedNamespace("rm-list-ns-fqn")
+	defer cleanup()
+	attrValue := s.f.GetAttributeValueKey("example.com/attr/attr1/value/value1")
+
+	created, err := s.db.PolicyClient.CreateResourceMapping(s.ctx, &resourcemapping.CreateResourceMappingRequest{
+		AttributeValueId: attrValue.ID,
+		Terms:            []string{"list-ns-fqn-term"},
+		NamespaceFqn:     ns.GetFqn(),
+	})
+	s.Require().NoError(err)
+
+	listRsp, err := s.db.PolicyClient.ListResourceMappings(s.ctx, &resourcemapping.ListResourceMappingsRequest{
+		NamespaceFqn: ns.GetFqn(),
+	})
+	s.Require().NoError(err)
+	s.Require().NotNil(listRsp)
+
+	s.Len(listRsp.GetResourceMappings(), 1, "isolated namespace should own exactly one mapping")
+	s.Equal(created.GetId(), listRsp.GetResourceMappings()[0].GetId())
+	s.Equal(ns.GetFqn(), listRsp.GetResourceMappings()[0].GetNamespace().GetFqn())
+}
+
+func (s *ResourceMappingsSuite) Test_ListResourceMappingGroups_WithNamespaceFqn_Succeeds() {
+	ns, group, cleanup := s.createIsolatedNamespaceAndGroup("rmg-list-ns-fqn")
+	defer cleanup()
+
+	listRsp, err := s.db.PolicyClient.ListResourceMappingGroups(s.ctx, &resourcemapping.ListResourceMappingGroupsRequest{
+		NamespaceFqn: ns.GetFqn(),
+	})
+	s.Require().NoError(err)
+	s.Require().NotNil(listRsp)
+
+	list := listRsp.GetResourceMappingGroups()
+	s.Len(list, 1, "isolated namespace should own exactly one group")
+	s.Equal(group.GetId(), list[0].GetId())
+	s.Equal(ns.GetId(), list[0].GetNamespaceId())
 }
 
 func (s *ResourceMappingsSuite) Test_ListResourceMappings_NoPagination_Succeeds() {
@@ -1421,27 +1553,30 @@ func (s *ResourceMappingsSuite) Test_UpdateResourceMappingWithUnknownGroupIdFail
 	s.Nil(updated)
 }
 
-func (s *ResourceMappingsSuite) Test_UpdateResourceMappingWithGroupNsDiffFromAttrNsFails() {
+func (s *ResourceMappingsSuite) Test_UpdateResourceMapping_GroupNsDiffFromAttrNs_Succeeds() {
+	// Moving a mapping into a group whose namespace differs from the mapped
+	// attribute value's namespace is allowed; the mapping adopts the group's
+	// owning namespace.
+	ns, group, cleanup := s.createIsolatedNamespaceAndGroup("rm-update-cross-ns")
+	defer cleanup()
+
 	attrValue := s.f.GetAttributeValueKey("example.com/attr/attr2/value/value2")
-	mapping := &resourcemapping.CreateResourceMappingRequest{
+	createdMapping, err := s.db.PolicyClient.CreateResourceMapping(s.ctx, &resourcemapping.CreateResourceMappingRequest{
 		AttributeValueId: attrValue.ID,
 		Terms:            []string{"asdf qwerty"},
-	}
-	createdMapping, err := s.db.PolicyClient.CreateResourceMapping(s.ctx, mapping)
+	})
 	s.Require().NoError(err)
 	s.NotNil(createdMapping)
 
-	rmGroup := s.getResourceMappingGroupFixtures()[2] // scenario.com_ns_group_1
-	// update the created with new metadata, terms and unknown group ID
-	updatedMapping := &resourcemapping.UpdateResourceMappingRequest{
+	updated, err := s.db.PolicyClient.UpdateResourceMapping(s.ctx, createdMapping.GetId(), &resourcemapping.UpdateResourceMappingRequest{
 		AttributeValueId: createdMapping.GetAttributeValue().GetId(),
 		Terms:            []string{"asdf updated term1"},
-		GroupId:          rmGroup.ID,
-	}
-	updated, err := s.db.PolicyClient.UpdateResourceMapping(s.ctx, createdMapping.GetId(), updatedMapping)
-	s.Require().Error(err)
-	s.Require().ErrorIs(err, db.ErrNamespaceMismatch)
-	s.Nil(updated)
+		GroupId:          group.GetId(),
+	})
+	s.Require().NoError(err)
+	s.Require().NotNil(updated)
+	s.Equal(group.GetId(), updated.GetGroup().GetId())
+	s.Equal(ns.GetId(), updated.GetNamespace().GetId())
 }
 
 func (s *ResourceMappingsSuite) Test_DeleteResourceMapping() {
@@ -1478,6 +1613,36 @@ func (s *ResourceMappingsSuite) getExampleDotComNamespace() *fixtures.FixtureDat
 func (s *ResourceMappingsSuite) getScenarioDotComNamespace() *fixtures.FixtureDataNamespace {
 	namespace := s.f.GetNamespaceKey("scenario.com")
 	return &namespace
+}
+
+// createIsolatedNamespace creates a fresh namespace for a single test so that
+// owning resource mappings/groups do not pollute the shared fixtures. The
+// returned cleanup deletes the namespace (cascading to anything owned by it).
+func (s *ResourceMappingsSuite) createIsolatedNamespace(label string) (*policy.Namespace, func()) {
+	suffix := time.Now().UnixNano()
+	ns, err := s.db.PolicyClient.CreateNamespace(s.ctx, &namespaces.CreateNamespaceRequest{
+		Name: fmt.Sprintf("%s-%d.com", label, suffix),
+	})
+	s.Require().NoError(err)
+	s.Require().NotNil(ns)
+	return ns, func() {
+		_, err := s.db.PolicyClient.UnsafeDeleteNamespace(s.ctx, ns, ns.GetFqn())
+		s.Require().NoError(err)
+	}
+}
+
+// createIsolatedNamespaceAndGroup creates a fresh namespace and a resource
+// mapping group within it for a single test. The returned cleanup deletes the
+// namespace (cascading to the group and any owned mappings).
+func (s *ResourceMappingsSuite) createIsolatedNamespaceAndGroup(label string) (*policy.Namespace, *policy.ResourceMappingGroup, func()) {
+	ns, cleanup := s.createIsolatedNamespace(label)
+	group, err := s.db.PolicyClient.CreateResourceMappingGroup(s.ctx, &resourcemapping.CreateResourceMappingGroupRequest{
+		Name:        label + "-group",
+		NamespaceId: ns.GetId(),
+	})
+	s.Require().NoError(err)
+	s.Require().NotNil(group)
+	return ns, group, cleanup
 }
 
 func (s *ResourceMappingsSuite) getResourceMappingGroupFixtures() []fixtures.FixtureDataResourceMappingGroup {

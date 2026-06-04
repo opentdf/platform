@@ -67,8 +67,10 @@ func policyListResourceMappingGroups(cmd *cobra.Command, args []string) {
 
 	limit := c.Flags.GetRequiredInt32("limit")
 	offset := c.Flags.GetRequiredInt32("offset")
+	nsID := c.Flags.GetOptionalID("namespace-id")
+	nsFqn := c.Flags.GetOptionalString("namespace-fqn")
 
-	resp, err := h.ListResourceMappingGroups(cmd.Context(), limit, offset)
+	resp, err := h.ListResourceMappingGroups(cmd.Context(), nsID, nsFqn, limit, offset)
 	if err != nil {
 		cli.ExitWithError("Failed to list resource mapping groups", err)
 	}
@@ -179,6 +181,16 @@ func initResourceMappingGroupsCommands() {
 
 	listDoc := man.Docs.GetCommand("policy/resource-mapping-groups/list",
 		man.WithRun(policyListResourceMappingGroups),
+	)
+	listDoc.Flags().String(
+		listDoc.GetDocFlag("namespace-id").Name,
+		listDoc.GetDocFlag("namespace-id").Default,
+		listDoc.GetDocFlag("namespace-id").Description,
+	)
+	listDoc.Flags().String(
+		listDoc.GetDocFlag("namespace-fqn").Name,
+		listDoc.GetDocFlag("namespace-fqn").Default,
+		listDoc.GetDocFlag("namespace-fqn").Description,
 	)
 	injectListPaginationFlags(listDoc)
 

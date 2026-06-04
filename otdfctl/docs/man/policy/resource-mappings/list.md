@@ -5,6 +5,12 @@ command:
   aliases:
     - l
   flags:
+    - name: namespace-id
+      description: Filter the list to resource mappings owned by this namespace ID.
+      default: ''
+    - name: namespace-fqn
+      description: Filter the list to resource mappings owned by this namespace FQN.
+      default: ''
     - name: limit
       shorthand: l
       description: Limit retrieved count

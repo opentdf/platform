@@ -24,12 +24,14 @@ func createResourceMapping(cmd *cobra.Command, args []string) {
 
 	attrID := c.Flags.GetRequiredID("attribute-value-id")
 	grpID := c.Flags.GetOptionalID("group-id")
+	nsID := c.Flags.GetOptionalID("namespace-id")
+	nsFqn := c.Flags.GetOptionalString("namespace-fqn")
 	terms = c.Flags.GetStringSlice("terms", terms, cli.FlagsStringSliceOptions{
 		Min: 1,
 	})
 	metadataLabels = c.Flags.GetStringSlice("label", metadataLabels, cli.FlagsStringSliceOptions{Min: 0})
 
-	resourceMapping, err := h.CreateResourceMapping(attrID, terms, grpID, getMetadataMutable(metadataLabels))
+	resourceMapping, err := h.CreateResourceMapping(attrID, terms, grpID, nsID, nsFqn, getMetadataMutable(metadataLabels))
 	if err != nil {
 		cli.ExitWithError("Failed to create resource mapping", err)
 	}
@@ -40,6 +42,8 @@ func createResourceMapping(cmd *cobra.Command, args []string) {
 		{"Terms", strings.Join(resourceMapping.GetTerms(), ", ")},
 		{"Group Id", resourceMapping.GetGroup().GetId()},
 		{"Group Name", resourceMapping.GetGroup().GetName()},
+		{"Namespace Id", resourceMapping.GetNamespace().GetId()},
+		{"Namespace", resourceMapping.GetNamespace().GetFqn()},
 	}
 	if mdRows := getMetadataRows(resourceMapping.GetMetadata()); mdRows != nil {
 		rows = append(rows, mdRows...)
@@ -66,6 +70,8 @@ func getResourceMapping(cmd *cobra.Command, args []string) {
 		{"Terms", strings.Join(resourceMapping.GetTerms(), ", ")},
 		{"Group Id", resourceMapping.GetGroup().GetId()},
 		{"Group Name", resourceMapping.GetGroup().GetName()},
+		{"Namespace Id", resourceMapping.GetNamespace().GetId()},
+		{"Namespace", resourceMapping.GetNamespace().GetFqn()},
 	}
 	if mdRows := getMetadataRows(resourceMapping.GetMetadata()); mdRows != nil {
 		rows = append(rows, mdRows...)
@@ -81,8 +87,10 @@ func listResourceMappings(cmd *cobra.Command, args []string) {
 
 	limit := c.Flags.GetRequiredInt32("limit")
 	offset := c.Flags.GetRequiredInt32("offset")
+	nsID := c.Flags.GetOptionalID("namespace-id")
+	nsFqn := c.Flags.GetOptionalString("namespace-fqn")
 
-	resp, err := h.ListResourceMappings(cmd.Context(), limit, offset)
+	resp, err := h.ListResourceMappings(cmd.Context(), nsID, nsFqn, limit, offset)
 	if err != nil {
 		cli.ExitWithError("Failed to list resource mappings", err)
 	}
@@ -94,6 +102,7 @@ func listResourceMappings(cmd *cobra.Command, args []string) {
 		table.NewFlexColumn("terms", "Terms", cli.FlexColumnWidthFour),
 		table.NewFlexColumn("group_id", "Group Id", cli.FlexColumnWidthFive),
 		table.NewFlexColumn("group_name", "Group Name", cli.FlexColumnWidthTwo),
+		table.NewFlexColumn("namespace", "Namespace", cli.FlexColumnWidthTwo),
 		table.NewFlexColumn("labels", "Labels", cli.FlexColumnWidthOne),
 		table.NewFlexColumn("created_at", "Created At", cli.FlexColumnWidthOne),
 		table.NewFlexColumn("updated_at", "Updated At", cli.FlexColumnWidthOne),
@@ -107,6 +116,7 @@ func listResourceMappings(cmd *cobra.Command, args []string) {
 			"attr_value":    resourceMapping.GetAttributeValue().GetValue(),
 			"group_id":      resourceMapping.GetGroup().GetId(),
 			"group_name":    resourceMapping.GetGroup().GetName(),
+			"namespace":     resourceMapping.GetNamespace().GetFqn(),
 			"terms":         strings.Join(resourceMapping.GetTerms(), ", "),
 			"labels":        metadata["Labels"],
 			"created_at":    metadata["Created At"],
@@ -126,10 +136,12 @@ func updateResourceMapping(cmd *cobra.Command, args []string) {
 	id := c.Flags.GetRequiredID("id")
 	attrValueID := c.Flags.GetOptionalID("attribute-value-id")
 	grpID := c.Flags.GetOptionalID("group-id")
+	nsID := c.Flags.GetOptionalID("namespace-id")
+	nsFqn := c.Flags.GetOptionalString("namespace-fqn")
 	terms = c.Flags.GetStringSlice("terms", terms, cli.FlagsStringSliceOptions{})
 	metadataLabels = c.Flags.GetStringSlice("label", metadataLabels, cli.FlagsStringSliceOptions{Min: 0})
 
-	resourceMapping, err := h.UpdateResourceMapping(id, attrValueID, grpID, terms, getMetadataMutable(metadataLabels), getMetadataUpdateBehavior())
+	resourceMapping, err := h.UpdateResourceMapping(id, attrValueID, grpID, nsID, nsFqn, terms, getMetadataMutable(metadataLabels), getMetadataUpdateBehavior())
 	if err != nil {
 		cli.ExitWithError(fmt.Sprintf("Failed to update resource mapping (%s)", id), err)
 	}
@@ -140,6 +152,8 @@ func updateResourceMapping(cmd *cobra.Command, args []string) {
 		{"Terms", strings.Join(resourceMapping.GetTerms(), ", ")},
 		{"Group Id", resourceMapping.GetGroup().GetId()},
 		{"Group Name", resourceMapping.GetGroup().GetName()},
+		{"Namespace Id", resourceMapping.GetNamespace().GetId()},
+		{"Namespace", resourceMapping.GetNamespace().GetFqn()},
 	}
 	if mdRows := getMetadataRows(resourceMapping.GetMetadata()); mdRows != nil {
 		rows = append(rows, mdRows...)
@@ -174,6 +188,8 @@ func deleteResourceMapping(cmd *cobra.Command, args []string) {
 		{"Terms", strings.Join(resourceMapping.GetTerms(), ", ")},
 		{"Group Id", resourceMapping.GetGroup().GetId()},
 		{"Group Name", resourceMapping.GetGroup().GetName()},
+		{"Namespace Id", resourceMapping.GetNamespace().GetId()},
+		{"Namespace", resourceMapping.GetNamespace().GetFqn()},
 	}
 	t := cli.NewTabular(rows...)
 	common.HandleSuccess(cmd, resourceMapping.GetId(), t, resourceMapping)
@@ -199,6 +215,16 @@ func initResourceMappingsCommands() {
 		createDoc.GetDocFlag("group-id").Default,
 		createDoc.GetDocFlag("group-id").Description,
 	)
+	createDoc.Flags().String(
+		createDoc.GetDocFlag("namespace-id").Name,
+		createDoc.GetDocFlag("namespace-id").Default,
+		createDoc.GetDocFlag("namespace-id").Description,
+	)
+	createDoc.Flags().String(
+		createDoc.GetDocFlag("namespace-fqn").Name,
+		createDoc.GetDocFlag("namespace-fqn").Default,
+		createDoc.GetDocFlag("namespace-fqn").Description,
+	)
 	injectLabelFlags(&createDoc.Command, false)
 
 	getDoc := man.Docs.GetCommand("policy/resource-mappings/get",
@@ -212,6 +238,16 @@ func initResourceMappingsCommands() {
 
 	listDoc := man.Docs.GetCommand("policy/resource-mappings/list",
 		man.WithRun(listResourceMappings),
+	)
+	listDoc.Flags().String(
+		listDoc.GetDocFlag("namespace-id").Name,
+		listDoc.GetDocFlag("namespace-id").Default,
+		listDoc.GetDocFlag("namespace-id").Description,
+	)
+	listDoc.Flags().String(
+		listDoc.GetDocFlag("namespace-fqn").Name,
+		listDoc.GetDocFlag("namespace-fqn").Default,
+		listDoc.GetDocFlag("namespace-fqn").Description,
 	)
 	injectListPaginationFlags(listDoc)
 
@@ -238,6 +274,16 @@ func initResourceMappingsCommands() {
 		updateDoc.GetDocFlag("group-id").Name,
 		updateDoc.GetDocFlag("group-id").Default,
 		updateDoc.GetDocFlag("group-id").Description,
+	)
+	updateDoc.Flags().String(
+		updateDoc.GetDocFlag("namespace-id").Name,
+		updateDoc.GetDocFlag("namespace-id").Default,
+		updateDoc.GetDocFlag("namespace-id").Description,
+	)
+	updateDoc.Flags().String(
+		updateDoc.GetDocFlag("namespace-fqn").Name,
+		updateDoc.GetDocFlag("namespace-fqn").Default,
+		updateDoc.GetDocFlag("namespace-fqn").Description,
 	)
 	injectLabelFlags(&updateDoc.Command, true)
 

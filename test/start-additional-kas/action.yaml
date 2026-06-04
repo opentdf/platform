@@ -16,6 +16,10 @@ inputs:
     default: "false"
     description: 'Whether to enable ECC wrapping for TDFs'
     required: false
+  pqc-enabled:
+    default: "false"
+    description: 'Whether to enable post-quantum and hybrid PQ/T wrapping for TDFs'
+    required: false
   key-management:
     default: "false"
     description: 'Whether or not key_management is enabled for this KAS'
@@ -95,6 +99,7 @@ runs:
         KAS_NAME: ${{ inputs.kas-name }}
         KAS_PORT: ${{ inputs.kas-port }}
         EC_TDF_ENABLED: ${{ inputs.ec-tdf-enabled }}
+        PQC_ENABLED: ${{ inputs.pqc-enabled }}
         KEY_MANAGEMENT: ${{ inputs.key-management }}
         ROOT_KEY: ${{ inputs.root-key }}
         LOG_LEVEL: ${{ inputs.log-level }}
@@ -105,6 +110,7 @@ runs:
             (.server.port = env(KAS_PORT))
             | (.mode = ["kas"])
             | (.services.kas.preview.ec_tdf_enabled = env(EC_TDF_ENABLED))
+            | (.services.kas.preview.hybrid_tdf_enabled = env(PQC_ENABLED))
             | (.services.kas.preview.key_management = env(KEY_MANAGEMENT))
             | (.services.kas.registered_kas_uri = "http://localhost:" + env(KAS_PORT))
             | del(.services.kas.root_key)

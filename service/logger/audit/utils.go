@@ -33,11 +33,11 @@ func (e EventObject) LogValue() slog.Value {
 		slog.Any("object", e.Object),
 		slog.Any("action", e.Action),
 		slog.Any("actor", e.Actor),
-		slog.Any("event_meta_data", e.EventMetaData),
-		slog.Any("client_info", e.ClientInfo),
+		slog.Any("eventMetaData", e.EventMetaData),
+		slog.Any("clientInfo", e.ClientInfo),
 		slog.Any("original", e.Original),
 		slog.Any("updated", e.Updated),
-		slog.String("request_id", e.RequestID.String()),
+		slog.String("requestId", e.RequestID.String()),
 		slog.String("timestamp", e.Timestamp),
 	)
 }
@@ -109,9 +109,9 @@ type eventClientInfo struct {
 
 func (e eventClientInfo) LogValue() slog.Value {
 	return slog.GroupValue(
-		slog.String("user_agent", e.UserAgent),
+		slog.String("userAgent", e.UserAgent),
 		slog.String("platform", e.Platform),
-		slog.String("request_ip", e.RequestIP),
+		slog.String("requestIp", e.RequestIP), // [sic]
 	)
 }
 
@@ -124,10 +124,10 @@ type ContextData struct {
 
 func (c ContextData) LogValue() slog.Value {
 	return slog.GroupValue(
-		slog.String("request_id", c.RequestID.String()),
-		slog.String("user_agent", c.UserAgent),
-		slog.String("request_ip", c.RequestIP),
-		slog.String("actor_id", c.ActorID),
+		slog.String("requestID", c.RequestID.String()),
+		slog.String("userAgent", c.UserAgent),
+		slog.String("requestIP", c.RequestIP),
+		slog.String("actorID", c.ActorID),
 	)
 }
 

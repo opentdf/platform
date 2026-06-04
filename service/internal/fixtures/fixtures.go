@@ -425,6 +425,7 @@ func (f *Fixtures) GetRegisteredResourceValueKey(key string) FixtureDataRegister
 	return rv
 }
 
+//nolint:sloglint // preserve emoji usage
 func (f *Fixtures) Provision(ctx context.Context) {
 	slog.Info("📦 running migrations in schema", slog.String("schema", f.db.Schema))
 	_, err := f.db.Client.RunMigrations(ctx, policy.Migrations)

@@ -102,26 +102,26 @@ func TestFilterMechanismsByPreview(t *testing.T) {
 	}
 }
 
-// fakeAdvertisingManager is a trust.KeyManager + trust.AlgorithmAdvertiser for tests.
-type fakeAdvertisingManager struct {
+// fakeKeyManager is a minimal trust.KeyManager used to satisfy registration.
+// SupportedAlgorithms now reads from registered metadata, not from the manager,
+// so this type doesn't need to declare any algorithms itself.
+type fakeKeyManager struct {
 	name string
-	algs []ocrypto.KeyType
 }
 
-func (m *fakeAdvertisingManager) Name() string { return m.name }
-func (m *fakeAdvertisingManager) Decrypt(_ context.Context, _ trust.KeyDetails, _, _ []byte) (ocrypto.ProtectedKey, error) {
+func (m *fakeKeyManager) Name() string { return m.name }
+func (m *fakeKeyManager) Decrypt(_ context.Context, _ trust.KeyDetails, _, _ []byte) (ocrypto.ProtectedKey, error) {
 	return nil, nil //nolint:nilnil // unused in this test
 }
 
-func (m *fakeAdvertisingManager) DeriveKey(_ context.Context, _ trust.KeyDetails, _ []byte, _ elliptic.Curve) (ocrypto.ProtectedKey, error) {
+func (m *fakeKeyManager) DeriveKey(_ context.Context, _ trust.KeyDetails, _ []byte, _ elliptic.Curve) (ocrypto.ProtectedKey, error) {
 	return nil, nil //nolint:nilnil // unused in this test
 }
 
-func (m *fakeAdvertisingManager) GenerateECSessionKey(_ context.Context, _ string) (ocrypto.Encapsulator, error) {
+func (m *fakeKeyManager) GenerateECSessionKey(_ context.Context, _ string) (ocrypto.Encapsulator, error) {
 	return nil, nil //nolint:nilnil // unused in this test
 }
-func (m *fakeAdvertisingManager) Close()                                 {}
-func (m *fakeAdvertisingManager) SupportedAlgorithms() []ocrypto.KeyType { return m.algs }
+func (m *fakeKeyManager) Close() {}
 
 // stubKeyIndex satisfies trust.KeyIndex without any backing storage.
 type stubKeyIndex struct{}
@@ -154,12 +154,9 @@ func TestLogSupportedMechanisms_EmitsInfoLine(t *testing.T) {
 	l, buf := newBufferLogger()
 
 	kd := trust.NewDelegatingKeyService(stubKeyIndex{}, l, nil)
-	kd.RegisterKeyManagerCtx("fake", func(_ context.Context, _ *trust.KeyManagerFactoryOptions) (trust.KeyManager, error) {
-		return &fakeAdvertisingManager{
-			name: "fake",
-			algs: []ocrypto.KeyType{"rsa:2048", "ec:secp256r1", "hpqt:xwing"},
-		}, nil
-	})
+	kd.RegisterKeyManagerCtxWithAlgorithms("fake", func(_ context.Context, _ *trust.KeyManagerFactoryOptions) (trust.KeyManager, error) {
+		return &fakeKeyManager{name: "fake"}, nil
+	}, []ocrypto.KeyType{"rsa:2048", "ec:secp256r1", "hpqt:xwing"})
 	kd.SetDefaultMode("fake", "", nil)
 
 	tests := []struct {
@@ -225,8 +222,5 @@ func TestLogSupportedMechanisms_NilSafe(t *testing.T) {
 	assert.Empty(t, buf.String(), "no log output expected when args are nil")
 }
 
-// Compile-time check: fakeAdvertisingManager must satisfy both interfaces.
-var (
-	_ trust.KeyManager          = (*fakeAdvertisingManager)(nil)
-	_ trust.AlgorithmAdvertiser = (*fakeAdvertisingManager)(nil)
-)
+// Compile-time check: fakeKeyManager satisfies trust.KeyManager.
+var _ trust.KeyManager = (*fakeKeyManager)(nil)

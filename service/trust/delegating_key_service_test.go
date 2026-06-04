@@ -3,15 +3,16 @@ package trust
 import (
 	"context"
 	"crypto/elliptic"
-	"errors"
 	"log/slog"
-	"slices"
+	"sync/atomic"
 	"testing"
 
 	"github.com/opentdf/platform/lib/ocrypto"
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/service/logger"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -324,109 +325,50 @@ func TestDelegatingKeyServiceTestSuite(t *testing.T) {
 	suite.Run(t, new(DelegatingKeyServiceTestSuite))
 }
 
-// advertisingManager is a minimal KeyManager + AlgorithmAdvertiser used by
-// TestSupportedAlgorithms. A real mock is overkill; we only need Name + Close
-// satisfied and a deterministic algorithm list.
-type advertisingManager struct {
-	name string
-	algs []ocrypto.KeyType
+// failIfInvokedFactory returns a factory that fails the test if the
+// DelegatingKeyService ever constructs a manager from it. SupportedAlgorithms
+// must answer from registered metadata alone, never by invoking factories.
+func failIfInvokedFactory(t *testing.T) KeyManagerFactoryCtx {
+	t.Helper()
+	return func(_ context.Context, _ *KeyManagerFactoryOptions) (KeyManager, error) {
+		t.Fatalf("factory must not be invoked by SupportedAlgorithms")
+		return nil, nil
+	}
 }
-
-func (m *advertisingManager) Name() string { return m.name }
-func (m *advertisingManager) Decrypt(_ context.Context, _ KeyDetails, _, _ []byte) (ProtectedKey, error) {
-	return nil, nil //nolint:nilnil // unused in this test
-}
-
-func (m *advertisingManager) DeriveKey(_ context.Context, _ KeyDetails, _ []byte, _ elliptic.Curve) (ProtectedKey, error) {
-	return nil, nil //nolint:nilnil // unused in this test
-}
-
-func (m *advertisingManager) GenerateECSessionKey(_ context.Context, _ string) (Encapsulator, error) {
-	return nil, nil //nolint:nilnil // unused in this test
-}
-func (m *advertisingManager) Close()                                 {}
-func (m *advertisingManager) SupportedAlgorithms() []ocrypto.KeyType { return m.algs }
-
-// nonAdvertisingManager is the same as MockKeyManager but with a stable Name
-// and no AlgorithmAdvertiser. Used to verify it contributes nothing to the
-// supported set.
-type nonAdvertisingManager struct{ name string }
-
-func (m *nonAdvertisingManager) Name() string { return m.name }
-func (m *nonAdvertisingManager) Decrypt(_ context.Context, _ KeyDetails, _, _ []byte) (ProtectedKey, error) {
-	return nil, nil //nolint:nilnil // unused in this test
-}
-
-func (m *nonAdvertisingManager) DeriveKey(_ context.Context, _ KeyDetails, _ []byte, _ elliptic.Curve) (ProtectedKey, error) {
-	return nil, nil //nolint:nilnil // unused in this test
-}
-
-func (m *nonAdvertisingManager) GenerateECSessionKey(_ context.Context, _ string) (Encapsulator, error) {
-	return nil, nil //nolint:nilnil // unused in this test
-}
-func (m *nonAdvertisingManager) Close() {}
 
 func TestDelegatingKeyService_SupportedAlgorithms(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
 		name     string
-		register func(d *DelegatingKeyService)
+		register func(t *testing.T, d *DelegatingKeyService)
 		want     []ocrypto.KeyType
 	}{
 		{
-			name:     "no factories returns empty",
-			register: func(_ *DelegatingKeyService) {},
+			name:     "no registrations returns empty",
+			register: func(_ *testing.T, _ *DelegatingKeyService) {},
 			want:     []ocrypto.KeyType{},
 		},
 		{
-			name: "single advertiser",
-			register: func(d *DelegatingKeyService) {
-				m := &advertisingManager{name: "a", algs: []ocrypto.KeyType{"rsa:2048", "ec:secp256r1"}}
-				d.RegisterKeyManagerCtx("a", func(_ context.Context, _ *KeyManagerFactoryOptions) (KeyManager, error) {
-					return m, nil
-				})
+			name: "single registration",
+			register: func(t *testing.T, d *DelegatingKeyService) {
+				d.RegisterKeyManagerCtxWithAlgorithms("a", failIfInvokedFactory(t), []ocrypto.KeyType{"rsa:2048", "ec:secp256r1"})
 			},
 			want: []ocrypto.KeyType{"ec:secp256r1", "rsa:2048"},
 		},
 		{
-			name: "two advertisers, deduped and sorted",
-			register: func(d *DelegatingKeyService) {
-				a := &advertisingManager{name: "a", algs: []ocrypto.KeyType{"rsa:2048", "hpqt:xwing"}}
-				b := &advertisingManager{name: "b", algs: []ocrypto.KeyType{"rsa:2048", "ec:secp256r1"}}
-				d.RegisterKeyManagerCtx("a", func(_ context.Context, _ *KeyManagerFactoryOptions) (KeyManager, error) {
-					return a, nil
-				})
-				d.RegisterKeyManagerCtx("b", func(_ context.Context, _ *KeyManagerFactoryOptions) (KeyManager, error) {
-					return b, nil
-				})
+			name: "two registrations, deduped and sorted",
+			register: func(t *testing.T, d *DelegatingKeyService) {
+				d.RegisterKeyManagerCtxWithAlgorithms("a", failIfInvokedFactory(t), []ocrypto.KeyType{"rsa:2048", "hpqt:xwing"})
+				d.RegisterKeyManagerCtxWithAlgorithms("b", failIfInvokedFactory(t), []ocrypto.KeyType{"rsa:2048", "ec:secp256r1"})
 			},
 			want: []ocrypto.KeyType{"ec:secp256r1", "hpqt:xwing", "rsa:2048"},
 		},
 		{
-			name: "non-advertising manager contributes nothing",
-			register: func(d *DelegatingKeyService) {
-				a := &advertisingManager{name: "a", algs: []ocrypto.KeyType{"rsa:2048"}}
-				b := &nonAdvertisingManager{name: "b"}
-				d.RegisterKeyManagerCtx("a", func(_ context.Context, _ *KeyManagerFactoryOptions) (KeyManager, error) {
-					return a, nil
-				})
-				d.RegisterKeyManagerCtx("b", func(_ context.Context, _ *KeyManagerFactoryOptions) (KeyManager, error) {
-					return b, nil
-				})
-			},
-			want: []ocrypto.KeyType{"rsa:2048"},
-		},
-		{
-			name: "failing factory is skipped, others still contribute",
-			register: func(d *DelegatingKeyService) {
-				a := &advertisingManager{name: "a", algs: []ocrypto.KeyType{"rsa:2048"}}
-				d.RegisterKeyManagerCtx("a", func(_ context.Context, _ *KeyManagerFactoryOptions) (KeyManager, error) {
-					return a, nil
-				})
-				d.RegisterKeyManagerCtx("broken", func(_ context.Context, _ *KeyManagerFactoryOptions) (KeyManager, error) {
-					return nil, errors.New("boom")
-				})
+			name: "registration without algorithms contributes nothing",
+			register: func(t *testing.T, d *DelegatingKeyService) {
+				d.RegisterKeyManagerCtxWithAlgorithms("a", failIfInvokedFactory(t), []ocrypto.KeyType{"rsa:2048"})
+				d.RegisterKeyManagerCtx("b", failIfInvokedFactory(t))
 			},
 			want: []ocrypto.KeyType{"rsa:2048"},
 		},
@@ -436,14 +378,52 @@ func TestDelegatingKeyService_SupportedAlgorithms(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 			d := NewDelegatingKeyService(&MockKeyIndex{}, logger.CreateTestLogger(), nil)
-			tc.register(d)
+			tc.register(t, d)
 			got := d.SupportedAlgorithms(context.Background())
 			if got == nil {
 				got = []ocrypto.KeyType{}
 			}
-			if !slices.Equal(got, tc.want) {
-				t.Fatalf("SupportedAlgorithms = %v, want %v", got, tc.want)
-			}
+			assert.Equal(t, tc.want, got)
+			// Probing must never instantiate a manager — the cache stays empty.
+			assert.Empty(t, d.managers, "SupportedAlgorithms must not populate the manager cache")
 		})
 	}
+}
+
+// TestDelegatingKeyService_SupportedAlgorithms_DoesNotInvokeFactories asserts
+// the contract directly with a counter (in case the failIfInvokedFactory
+// fast-path is ever bypassed via t.Run nesting).
+func TestDelegatingKeyService_SupportedAlgorithms_DoesNotInvokeFactories(t *testing.T) {
+	t.Parallel()
+
+	var invocations atomic.Int32
+	counting := func(_ context.Context, _ *KeyManagerFactoryOptions) (KeyManager, error) {
+		invocations.Add(1)
+		return &MockKeyManager{}, nil
+	}
+
+	d := NewDelegatingKeyService(&MockKeyIndex{}, logger.CreateTestLogger(), nil)
+	d.RegisterKeyManagerCtxWithAlgorithms("a", counting, []ocrypto.KeyType{"rsa:2048"})
+	d.RegisterKeyManagerCtxWithAlgorithms("b", counting, []ocrypto.KeyType{"ec:secp256r1"})
+
+	_ = d.SupportedAlgorithms(context.Background())
+
+	assert.Zero(t, invocations.Load(), "SupportedAlgorithms must not invoke any registered factory")
+	assert.Empty(t, d.managers, "SupportedAlgorithms must not populate the manager cache")
+}
+
+// TestDelegatingKeyService_RegisterKeyManagerCtxWithAlgorithms_CopiesSlice
+// guards against callers retaining/mutating the slice they pass at registration.
+func TestDelegatingKeyService_RegisterKeyManagerCtxWithAlgorithms_CopiesSlice(t *testing.T) {
+	t.Parallel()
+
+	d := NewDelegatingKeyService(&MockKeyIndex{}, logger.CreateTestLogger(), nil)
+	algs := []ocrypto.KeyType{"rsa:2048", "ec:secp256r1"}
+	d.RegisterKeyManagerCtxWithAlgorithms("a", failIfInvokedFactory(t), algs)
+
+	algs[0] = "tampered"
+
+	got := d.SupportedAlgorithms(context.Background())
+	want := []ocrypto.KeyType{"ec:secp256r1", "rsa:2048"}
+	require.Equal(t, want, got, "registration must copy the algorithm slice")
 }

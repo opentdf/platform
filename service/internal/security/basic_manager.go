@@ -26,10 +26,10 @@ const (
 	ristrettoCacheTTL    = 30
 )
 
-// basicManagerSupportedAlgorithms is the canonical set of algorithms the
+// BasicManagerSupportedAlgorithms is the canonical set of algorithms the
 // BasicManager knows how to serve when a key has been provisioned. Keep in
 // sync with the switch in Decrypt.
-var basicManagerSupportedAlgorithms = []ocrypto.KeyType{
+var BasicManagerSupportedAlgorithms = []ocrypto.KeyType{
 	ocrypto.RSA2048Key,
 	ocrypto.RSA4096Key,
 	ocrypto.EC256Key,
@@ -61,14 +61,6 @@ func NewBasicManager(logger *logger.Logger, c *cache.Cache, rootKey string) (*Ba
 
 func (b *BasicManager) Name() string {
 	return BasicManagerName
-}
-
-// SupportedAlgorithms returns the algorithms BasicManager can wrap/unwrap when
-// a corresponding key has been provisioned. Implements trust.AlgorithmAdvertiser.
-func (b *BasicManager) SupportedAlgorithms() []ocrypto.KeyType {
-	out := make([]ocrypto.KeyType, len(basicManagerSupportedAlgorithms))
-	copy(out, basicManagerSupportedAlgorithms)
-	return out
 }
 
 func (b *BasicManager) Decrypt(ctx context.Context, keyDetails trust.KeyDetails, ciphertext []byte, ephemeralPublicKey []byte) (ocrypto.ProtectedKey, error) {

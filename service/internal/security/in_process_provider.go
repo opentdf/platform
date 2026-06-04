@@ -17,10 +17,10 @@ import (
 
 const inProcessSystemName = "opentdf.io/in-process"
 
-// inProcessSupportedAlgorithms is the canonical set of algorithms the
+// InProcessSupportedAlgorithms is the canonical set of algorithms the
 // InProcessProvider knows how to serve when a corresponding key is loaded.
 // Keep in sync with the switch in Decrypt.
-var inProcessSupportedAlgorithms = []ocrypto.KeyType{
+var InProcessSupportedAlgorithms = []ocrypto.KeyType{
 	ocrypto.RSA2048Key,
 	ocrypto.RSA4096Key,
 	ocrypto.EC256Key,
@@ -150,14 +150,6 @@ func (a *InProcessProvider) Name() string {
 	return inProcessSystemName
 }
 
-// SupportedAlgorithms returns the algorithms the in-process provider can serve
-// when a corresponding key has been provisioned. Implements trust.AlgorithmAdvertiser.
-func (a *InProcessProvider) SupportedAlgorithms() []ocrypto.KeyType {
-	out := make([]ocrypto.KeyType, len(inProcessSupportedAlgorithms))
-	copy(out, inProcessSupportedAlgorithms)
-	return out
-}
-
 // WithLogger sets the logger for the adapter
 func (a *InProcessProvider) WithLogger(logger *slog.Logger) *InProcessProvider {
 	a.logger = logger
@@ -221,7 +213,7 @@ func (a *InProcessProvider) ListKeysWith(ctx context.Context, opts trust.ListKey
 	var keys []trust.KeyDetails
 
 	// Try to find keys for known algorithms
-	for _, alg := range inProcessSupportedAlgorithms {
+	for _, alg := range InProcessSupportedAlgorithms {
 		if kids, err := a.cryptoProvider.ListKIDsByAlgorithm(string(alg)); err == nil && len(kids) > 0 {
 			for _, kid := range kids {
 				if opts.LegacyOnly && !a.legacyKeys[kid] {
@@ -229,7 +221,7 @@ func (a *InProcessProvider) ListKeysWith(ctx context.Context, opts trust.ListKey
 				}
 				keys = append(keys, &KeyDetailsAdapter{
 					id:             trust.KeyIdentifier(kid),
-					algorithm:      ocrypto.KeyType(alg),
+					algorithm:      alg,
 					cryptoProvider: a.cryptoProvider,
 					legacy:         a.legacyKeys[kid],
 				})

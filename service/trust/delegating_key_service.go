@@ -43,13 +43,22 @@ type KeyManagerFactory func(opts *KeyManagerFactoryOptions) (KeyManager, error)
 // KeyManagerFactoryCtx defines the signature for functions that can create KeyManager instances.
 type KeyManagerFactoryCtx func(ctx context.Context, opts *KeyManagerFactoryOptions) (KeyManager, error)
 
+// registeredFactory bundles a KeyManager factory with the static set of
+// algorithms the manager declares it can serve. The algorithm list is the
+// source of truth for SupportedAlgorithms; the factory is invoked lazily on
+// the request path only.
+type registeredFactory struct {
+	factory             KeyManagerFactoryCtx
+	supportedAlgorithms []ocrypto.KeyType
+}
+
 // DelegatingKeyService is a key service that multiplexes between key managers based on the key's mode.
 type DelegatingKeyService struct {
 	// Lookup key manager by mode for a given key identifier
 	index KeyIndex
 
 	// Lazily create key managers based on their manager
-	managerFactories map[string]KeyManagerFactoryCtx
+	managerFactories map[string]registeredFactory
 
 	// Cache of key managers to avoid creating them multiple times
 	managers map[keyManagerDesignation]loadedManager
@@ -70,17 +79,30 @@ type DelegatingKeyService struct {
 func NewDelegatingKeyService(index KeyIndex, l *logger.Logger, c *cache.Cache) *DelegatingKeyService {
 	return &DelegatingKeyService{
 		index:            index,
-		managerFactories: make(map[string]KeyManagerFactoryCtx),
+		managerFactories: make(map[string]registeredFactory),
 		managers:         make(map[keyManagerDesignation]loadedManager),
 		l:                l,
 		c:                c,
 	}
 }
 
+// RegisterKeyManagerCtx registers a key manager factory without advertising any
+// algorithms. Use RegisterKeyManagerCtxWithAlgorithms when the manager should
+// contribute to capability listings.
 func (d *DelegatingKeyService) RegisterKeyManagerCtx(name string, factory KeyManagerFactoryCtx) {
+	d.RegisterKeyManagerCtxWithAlgorithms(name, factory, nil)
+}
+
+// RegisterKeyManagerCtxWithAlgorithms registers a key manager factory and the
+// static set of algorithms the manager can serve. The algorithm list is copied
+// defensively so the caller may reuse or mutate its slice afterward.
+func (d *DelegatingKeyService) RegisterKeyManagerCtxWithAlgorithms(name string, factory KeyManagerFactoryCtx, algs []ocrypto.KeyType) {
 	d.mutex.Lock()
 	defer d.mutex.Unlock()
-	d.managerFactories[name] = factory
+	d.managerFactories[name] = registeredFactory{
+		factory:             factory,
+		supportedAlgorithms: slices.Clone(algs),
+	}
 }
 
 func (d *DelegatingKeyService) SetDefaultMode(manager, name string, cfg []byte) {
@@ -108,32 +130,21 @@ func (d *DelegatingKeyService) ListKeysWith(ctx context.Context, opts ListKeyOpt
 }
 
 // SupportedAlgorithms returns the deduplicated, sorted union of algorithm
-// identifiers advertised by every registered key-manager factory. A factory
-// whose manager does not implement AlgorithmAdvertiser contributes nothing.
-// A factory that fails to instantiate is logged at WARN and skipped — listing
-// capabilities never blocks startup.
-func (d *DelegatingKeyService) SupportedAlgorithms(ctx context.Context) []ocrypto.KeyType {
+// identifiers declared by each registered key-manager factory. Registrations
+// that did not declare any algorithms contribute nothing. Factories are not
+// invoked — capability listing reads only the static metadata captured at
+// registration, so it never constructs a manager.
+func (d *DelegatingKeyService) SupportedAlgorithms(_ context.Context) []ocrypto.KeyType {
 	d.mutex.Lock()
-	names := slices.Collect(maps.Keys(d.managerFactories))
+	algSets := make([][]ocrypto.KeyType, 0, len(d.managerFactories))
+	for _, reg := range d.managerFactories {
+		algSets = append(algSets, reg.supportedAlgorithms)
+	}
 	d.mutex.Unlock()
 
 	seen := make(map[ocrypto.KeyType]struct{})
-	for _, name := range names {
-		mgr, err := d.getKeyManager(ctx, &policy.KeyProviderConfig{Manager: name})
-		if err != nil {
-			d.l.WarnContext(
-				ctx,
-				"could not load key manager for capability listing",
-				slog.String("manager", name),
-				slog.Any("error", err),
-			)
-			continue
-		}
-		adv, ok := mgr.(AlgorithmAdvertiser)
-		if !ok {
-			continue
-		}
-		for _, alg := range adv.SupportedAlgorithms() {
+	for _, algs := range algSets {
+		for _, alg := range algs {
 			seen[alg] = struct{}{}
 		}
 	}
@@ -255,7 +266,7 @@ func (d *DelegatingKeyService) getKeyManager(ctx context.Context, cfg *policy.Ke
 		d.mutex.Unlock()
 		return manager.KeyManager, nil
 	}
-	factory, factoryExists := d.managerFactories[designation.Manager]
+	reg, factoryExists := d.managerFactories[designation.Manager]
 	allManagers := slices.Collect(maps.Keys(d.managerFactories))
 	d.mutex.Unlock()
 
@@ -265,7 +276,7 @@ func (d *DelegatingKeyService) getKeyManager(ctx context.Context, cfg *policy.Ke
 			Cache:  d.c,
 			Config: cfg,
 		}
-		managerFromFactory, err := factory(ctx, options)
+		managerFromFactory, err := reg.factory(ctx, options)
 		if err != nil {
 			return nil, fmt.Errorf("factory for key manager '%s' failed: %w", designation, err)
 		}

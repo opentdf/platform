@@ -77,18 +77,18 @@ func NewRegistration() *serviceregistry.Service[kasconnect.AccessServiceHandler]
 					// Configure new delegation service
 					p.KeyDelegator = trust.NewDelegatingKeyService(NewPlatformKeyIndexer(srp.SDK, kasURL.String(), srp.Logger), srp.Logger, cacheClient)
 					for _, manager := range srp.KeyManagerCtxFactories {
-						p.KeyDelegator.RegisterKeyManagerCtx(manager.Name, manager.Factory)
+						p.KeyDelegator.RegisterKeyManagerCtxWithAlgorithms(manager.Name, manager.Factory, manager.SupportedAlgorithms)
 						kmgrs = append(kmgrs, manager.Name)
 					}
 
 					// Register Basic Key Manager
-					p.KeyDelegator.RegisterKeyManagerCtx(security.BasicManagerName, func(_ context.Context, opts *trust.KeyManagerFactoryOptions) (trust.KeyManager, error) {
+					p.KeyDelegator.RegisterKeyManagerCtxWithAlgorithms(security.BasicManagerName, func(_ context.Context, opts *trust.KeyManagerFactoryOptions) (trust.KeyManager, error) {
 						bm, err := security.NewBasicManager(opts.Logger, opts.Cache, kasCfg.RootKey)
 						if err != nil {
 							return nil, err
 						}
 						return bm, nil
-					})
+					}, security.BasicManagerSupportedAlgorithms)
 					kmgrs = append(kmgrs, security.BasicManagerName)
 					// Explicitly set the default manager for session key generation.
 					// This should be configurable, e.g., defaulting to BasicManager or an HSM if available.
@@ -101,9 +101,9 @@ func NewRegistration() *serviceregistry.Service[kasconnect.AccessServiceHandler]
 					inProcessService := initSecurityProviderAdapter(p.CryptoProvider, kasCfg, srp.Logger) //nolint:staticcheck // Legacy field retained during migration.
 
 					p.KeyDelegator = trust.NewDelegatingKeyService(inProcessService, srp.Logger, nil)
-					p.KeyDelegator.RegisterKeyManagerCtx(inProcessService.Name(), func(_ context.Context, _ *trust.KeyManagerFactoryOptions) (trust.KeyManager, error) {
+					p.KeyDelegator.RegisterKeyManagerCtxWithAlgorithms(inProcessService.Name(), func(_ context.Context, _ *trust.KeyManagerFactoryOptions) (trust.KeyManager, error) {
 						return inProcessService, nil
-					})
+					}, security.InProcessSupportedAlgorithms)
 					// Set default for non-key-management mode
 					p.KeyDelegator.SetDefaultMode(inProcessService.Name(), "", nil)
 					kmgrs = append(kmgrs, inProcessService.Name())

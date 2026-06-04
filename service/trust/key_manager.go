@@ -44,14 +44,6 @@ type KeyService interface {
 	KeyManager
 }
 
-// AlgorithmAdvertiser is an optional capability implemented by KeyManagers to
-// report which algorithm can serve when a key has been provisioned.
-// The returned list reflects what the manager is capable of,
-// independent of whether any matching key is currently loaded.
-type AlgorithmAdvertiser interface {
-	SupportedAlgorithms() []ocrypto.KeyType
-}
-
 // NamedKeyManagerFactory pairs a KeyManagerFactory with its intended registration name.
 // Use NamedKeyManagerCtxFactory instead.
 type NamedKeyManagerFactory struct {
@@ -59,8 +51,12 @@ type NamedKeyManagerFactory struct {
 	Factory KeyManagerFactory
 }
 
-// NamedKeyManagerCtxFactory pairs a KeyManagerFactoryCtx with its intended registration name.
+// NamedKeyManagerCtxFactory pairs a KeyManagerFactoryCtx with its intended
+// registration name and the static set of algorithms the manager can serve
+// when a corresponding key is provisioned. SupportedAlgorithms is optional;
+// when empty, the manager contributes nothing to capability listings.
 type NamedKeyManagerCtxFactory struct {
-	Name    string
-	Factory KeyManagerFactoryCtx
+	Name                string
+	Factory             KeyManagerFactoryCtx
+	SupportedAlgorithms []ocrypto.KeyType
 }

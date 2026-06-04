@@ -622,14 +622,3 @@ func TestBasicManager_GenerateECSessionKey(t *testing.T) {
 		require.Error(t, err)
 	})
 }
-
-func TestBasicManager_SupportedAlgorithms_ReturnsCopy(t *testing.T) {
-	log := logger.CreateTestLogger()
-	bm, err := NewBasicManager(log, nil, "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f")
-	require.NoError(t, err)
-
-	algs := bm.SupportedAlgorithms()
-	require.NotEmpty(t, algs, "expected at least one supported algorithm")
-	algs[0] = "tampered"
-	assert.NotEqual(t, "tampered", bm.SupportedAlgorithms()[0], "returned slice must be a copy")
-}

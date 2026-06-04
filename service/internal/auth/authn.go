@@ -252,8 +252,7 @@ func (a Authentication) MuxHandler(handler http.Handler) http.Handler {
 				log.WarnContext(
 					ctx,
 					"permission denied",
-					slog.String("azp", accessTok.Subject()),
-					slog.Any("error", err),
+					permissionDeniedLogAttrs(accessTok, err)...,
 				)
 				http.Error(w, "permission denied", http.StatusForbidden)
 				return
@@ -345,8 +344,7 @@ func (a Authentication) ConnectUnaryServerInterceptor() connect.UnaryInterceptor
 					log.WarnContext(
 						ctxWithJWK,
 						"permission denied",
-						slog.String("azp", token.Subject()),
-						slog.Any("error", err),
+						permissionDeniedLogAttrs(token, err)...,
 					)
 					return nil, connect.NewError(connect.CodePermissionDenied, errors.New("permission denied"))
 				}
@@ -360,6 +358,24 @@ func (a Authentication) ConnectUnaryServerInterceptor() connect.UnaryInterceptor
 		})
 	}
 	return connect.UnaryInterceptorFunc(interceptor)
+}
+
+func permissionDeniedLogAttrs(token jwt.Token, err error) []any {
+	attrs := []any{slog.String("azp", token.Subject())}
+
+	var permissionErr *permissionDeniedError
+	if errors.As(err, &permissionErr) {
+		attrs = append(attrs, slog.Group("casbin_authz",
+			slog.String("configured_groups_claim", permissionErr.ConfiguredGroupsClaim),
+			slog.Any("subject_groups", permissionErr.SubjectGroups),
+		))
+	}
+
+	if err != nil {
+		attrs = append(attrs, slog.Any("error", err))
+	}
+
+	return attrs
 }
 
 // IPCMetadataClientInterceptor transfers gRPC outgoing metadata to Connect request headers for IPC calls

@@ -215,6 +215,57 @@ func TestNormalizeUrl(t *testing.T) {
 	}
 }
 
+func TestPermissionDeniedLogAttrs(t *testing.T) {
+	tok := jwt.New()
+	require.NoError(t, tok.Set(jwt.SubjectKey, "client-subject"))
+
+	attrs := permissionDeniedLogAttrs(tok, &permissionDeniedError{
+		ConfiguredGroupsClaim: "custom.groups",
+		SubjectGroups:         []string{"opentdf-standard"},
+	})
+
+	require.Len(t, attrs, 3)
+	assert.Equal(t, slog.String("azp", "client-subject"), attrs[0])
+
+	casbinAuthzAttr, ok := attrs[1].(slog.Attr)
+	require.True(t, ok)
+	assert.Equal(t, "casbin_authz", casbinAuthzAttr.Key)
+
+	casbinAuthzAttrs := casbinAuthzAttr.Value.Group()
+	require.Len(t, casbinAuthzAttrs, 2)
+	assert.Equal(t, slog.String("configured_groups_claim", "custom.groups"), casbinAuthzAttrs[0])
+	assert.Equal(t, "subject_groups", casbinAuthzAttrs[1].Key)
+	assert.Equal(t, []string{"opentdf-standard"}, casbinAuthzAttrs[1].Value.Any())
+
+	errorAttr, ok := attrs[2].(slog.Attr)
+	require.True(t, ok)
+	assert.Equal(t, "error", errorAttr.Key)
+	loggedErr, ok := errorAttr.Value.Any().(error)
+	require.True(t, ok)
+	if !errors.Is(loggedErr, ErrPermissionDenied) {
+		t.Fatalf("expected error to wrap %v", ErrPermissionDenied)
+	}
+}
+
+func TestPermissionDeniedLogAttrsWithoutSubjectInfo(t *testing.T) {
+	tok := jwt.New()
+	require.NoError(t, tok.Set(jwt.SubjectKey, "client-subject"))
+
+	attrs := permissionDeniedLogAttrs(tok, ErrPermissionDenied)
+
+	require.Len(t, attrs, 2)
+	assert.Equal(t, slog.String("azp", "client-subject"), attrs[0])
+
+	errorAttr, ok := attrs[1].(slog.Attr)
+	require.True(t, ok)
+	assert.Equal(t, "error", errorAttr.Key)
+	loggedErr, ok := errorAttr.Value.Any().(error)
+	require.True(t, ok)
+	if !errors.Is(loggedErr, ErrPermissionDenied) {
+		t.Fatalf("expected error to wrap %v", ErrPermissionDenied)
+	}
+}
+
 func (s *AuthSuite) Test_IPCUnaryServerInterceptor() {
 	// Mock the checkToken method to return a valid token and context
 	mockToken := jwt.New()

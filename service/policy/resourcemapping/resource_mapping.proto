@@ -23,6 +23,13 @@ message ListResourceMappingGroupsRequest {
     }];
 
   // Optional
+  string namespace_fqn = 2 [(buf.validate.field).cel = {
+      id: "optional_uri_format",
+      message: "Optional field must be a valid URI",
+      expression: "size(this) == 0 || this.isUri()"
+    }];
+
+  // Optional
   policy.PageRequest pagination = 10;
 }
 
@@ -116,6 +123,22 @@ message ListResourceMappingsRequest {
   }];
 
   // Optional
+  // Filter the list to resource mappings owned by this namespace.
+  string namespace_id = 2 [(buf.validate.field).cel = {
+     id: "optional_uuid_format",
+      message: "Optional field must be a valid UUID",
+      expression: "size(this) == 0 || this.matches('[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}')"
+  }];
+
+  // Optional
+  // Filter the list to resource mappings owned by this namespace.
+  string namespace_fqn = 3 [(buf.validate.field).cel = {
+      id: "optional_uri_format",
+      message: "Optional field must be a valid URI",
+      expression: "size(this) == 0 || this.isUri()"
+    }];
+
+  // Optional
   policy.PageRequest pagination = 10;
 }
 
@@ -183,6 +206,23 @@ message CreateResourceMappingRequest {
   }];
 
   // Optional
+  // The namespace that owns this resource mapping. If a group_id is provided,
+  // this must match the group's namespace (and may be omitted to inherit it).
+  string namespace_id = 4 [(buf.validate.field).cel = {
+     id: "optional_uuid_format",
+      message: "Optional field must be a valid UUID",
+      expression: "size(this) == 0 || this.matches('[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}')"
+  }];
+
+  // Optional
+  // Alternative to namespace_id; the FQN of the owning namespace.
+  string namespace_fqn = 5 [(buf.validate.field).cel = {
+      id: "optional_uri_format",
+      message: "Optional field must be a valid URI",
+      expression: "size(this) == 0 || this.isUri()"
+    }];
+
+  // Optional
   common.MetadataMutable metadata = 100;
 }
 message CreateResourceMappingResponse {
@@ -213,6 +253,23 @@ message UpdateResourceMappingRequest {
       message: "Optional field must be a valid UUID",
       expression: "size(this) == 0 || this.matches('[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}')"
   }];
+
+  // Optional
+  // The namespace that owns this resource mapping. If a group_id is set on the
+  // mapping, this must match the group's namespace.
+  string namespace_id = 7 [(buf.validate.field).cel = {
+     id: "optional_uuid_format",
+      message: "Optional field must be a valid UUID",
+      expression: "size(this) == 0 || this.matches('[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}')"
+  }];
+
+  // Optional
+  // Alternative to namespace_id; the FQN of the owning namespace.
+  string namespace_fqn = 8 [(buf.validate.field).cel = {
+      id: "optional_uri_format",
+      message: "Optional field must be a valid URI",
+      expression: "size(this) == 0 || this.isUri()"
+    }];
 
   // Optional
   // Common Metadata

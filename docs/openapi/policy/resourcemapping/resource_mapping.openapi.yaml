@@ -1126,6 +1126,13 @@ components:
         group:
           title: group
           $ref: '#/components/schemas/policy.ResourceMappingGroup'
+        namespace:
+          title: namespace
+          description: |-
+            The namespace that optionally owns this resource mapping. When the mapping
+             belongs to a group, this matches the group's namespace. The mapped
+             attribute value may belong to a different namespace.
+          $ref: '#/components/schemas/policy.Namespace'
       title: ResourceMapping
       required:
         - attributeValue
@@ -1396,6 +1403,21 @@ components:
           description: |
             Optional
             optional_uuid_format // Optional field must be a valid UUID
+        namespaceId:
+          type: string
+          title: namespace_id
+          description: |
+            Optional
+             The namespace that owns this resource mapping. If a group_id is provided,
+             this must match the group's namespace (and may be omitted to inherit it).
+            optional_uuid_format // Optional field must be a valid UUID
+        namespaceFqn:
+          type: string
+          title: namespace_fqn
+          description: |
+            Optional
+             Alternative to namespace_id; the FQN of the owning namespace.
+            optional_uri_format // Optional field must be a valid URI
         metadata:
           title: metadata
           description: Optional
@@ -1491,6 +1513,12 @@ components:
           description: |
             Optional
             optional_uuid_format // Optional field must be a valid UUID
+        namespaceFqn:
+          type: string
+          title: namespace_fqn
+          description: |
+            Optional
+            optional_uri_format // Optional field must be a valid URI
         pagination:
           title: pagination
           description: Optional
@@ -1555,6 +1583,20 @@ components:
           description: |
             Optional
             optional_uuid_format // Optional field must be a valid UUID
+        namespaceId:
+          type: string
+          title: namespace_id
+          description: |
+            Optional
+             Filter the list to resource mappings owned by this namespace.
+            optional_uuid_format // Optional field must be a valid UUID
+        namespaceFqn:
+          type: string
+          title: namespace_fqn
+          description: |
+            Optional
+             Filter the list to resource mappings owned by this namespace.
+            optional_uri_format // Optional field must be a valid URI
         pagination:
           title: pagination
           description: Optional
@@ -1652,6 +1694,21 @@ components:
           description: |
             Optional
             optional_uuid_format // Optional field must be a valid UUID
+        namespaceId:
+          type: string
+          title: namespace_id
+          description: |
+            Optional
+             The namespace that owns this resource mapping. If a group_id is set on the
+             mapping, this must match the group's namespace.
+            optional_uuid_format // Optional field must be a valid UUID
+        namespaceFqn:
+          type: string
+          title: namespace_fqn
+          description: |
+            Optional
+             Alternative to namespace_id; the FQN of the owning namespace.
+            optional_uri_format // Optional field must be a valid URI
         metadata:
           title: metadata
           description: |-

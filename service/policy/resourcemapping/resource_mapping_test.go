@@ -10,7 +10,9 @@ import (
 
 const (
 	validUUID              = "390e0058-7ae8-48f6-821c-9db07c831276"
+	validNamespaceFqn      = "https://example.com"
 	errMessageOptionalUUID = "optional_uuid_format"
+	errMessageOptionalURI  = "optional_uri_format"
 	errMessageMinItems     = "min_items"
 )
 
@@ -142,6 +144,90 @@ func Test_ListResourceMappingsRequest_Succeeds(t *testing.T) {
 	req.GroupId = "invalid-id"
 	err = v.Validate(req)
 	require.Error(t, err, "group_id is not a valid UUID")
+	require.Contains(t, err.Error(), errMessageOptionalUUID)
+}
+
+func Test_ListResourceMappingsRequest_NamespaceFilters(t *testing.T) {
+	v := getValidator()
+
+	req := &resourcemapping.ListResourceMappingsRequest{
+		NamespaceId:  validUUID,
+		NamespaceFqn: validNamespaceFqn,
+	}
+	require.NoError(t, v.Validate(req), "valid namespace_id and namespace_fqn")
+
+	req = &resourcemapping.ListResourceMappingsRequest{NamespaceId: "invalid-id"}
+	err := v.Validate(req)
+	require.Error(t, err, "namespace_id is not a valid UUID")
+	require.Contains(t, err.Error(), errMessageOptionalUUID)
+
+	req = &resourcemapping.ListResourceMappingsRequest{NamespaceFqn: "not a uri"}
+	err = v.Validate(req)
+	require.Error(t, err, "namespace_fqn is not a valid URI")
+	require.Contains(t, err.Error(), errMessageOptionalURI)
+}
+
+func Test_ListResourceMappingGroupsRequest_NamespaceFilters(t *testing.T) {
+	v := getValidator()
+
+	req := &resourcemapping.ListResourceMappingGroupsRequest{
+		NamespaceId:  validUUID,
+		NamespaceFqn: validNamespaceFqn,
+	}
+	require.NoError(t, v.Validate(req), "valid namespace_id and namespace_fqn")
+
+	req = &resourcemapping.ListResourceMappingGroupsRequest{NamespaceFqn: "not a uri"}
+	err := v.Validate(req)
+	require.Error(t, err, "namespace_fqn is not a valid URI")
+	require.Contains(t, err.Error(), errMessageOptionalURI)
+}
+
+func Test_CreateResourceMappingRequest_NamespaceFields(t *testing.T) {
+	v := getValidator()
+
+	req := &resourcemapping.CreateResourceMappingRequest{
+		AttributeValueId: validUUID,
+		Terms:            []string{"term1"},
+		NamespaceId:      validUUID,
+		NamespaceFqn:     validNamespaceFqn,
+	}
+	require.NoError(t, v.Validate(req), "valid namespace_id and namespace_fqn")
+
+	req = &resourcemapping.CreateResourceMappingRequest{
+		AttributeValueId: validUUID,
+		Terms:            []string{"term1"},
+		NamespaceId:      "bad-id",
+	}
+	err := v.Validate(req)
+	require.Error(t, err, "namespace_id is not a valid UUID")
+	require.Contains(t, err.Error(), errMessageOptionalUUID)
+
+	req = &resourcemapping.CreateResourceMappingRequest{
+		AttributeValueId: validUUID,
+		Terms:            []string{"term1"},
+		NamespaceFqn:     "not a uri",
+	}
+	err = v.Validate(req)
+	require.Error(t, err, "namespace_fqn is not a valid URI")
+	require.Contains(t, err.Error(), errMessageOptionalURI)
+}
+
+func Test_UpdateResourceMappingRequest_NamespaceFields(t *testing.T) {
+	v := getValidator()
+
+	req := &resourcemapping.UpdateResourceMappingRequest{
+		Id:           validUUID,
+		NamespaceId:  validUUID,
+		NamespaceFqn: validNamespaceFqn,
+	}
+	require.NoError(t, v.Validate(req), "valid namespace_id and namespace_fqn")
+
+	req = &resourcemapping.UpdateResourceMappingRequest{
+		Id:          validUUID,
+		NamespaceId: "bad-id",
+	}
+	err := v.Validate(req)
+	require.Error(t, err, "namespace_id is not a valid UUID")
 	require.Contains(t, err.Error(), errMessageOptionalUUID)
 }
 

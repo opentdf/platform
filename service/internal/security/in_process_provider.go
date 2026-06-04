@@ -17,6 +17,18 @@ import (
 
 const inProcessSystemName = "opentdf.io/in-process"
 
+// InProcessSupportedAlgorithms is the canonical set of algorithms the
+// InProcessProvider knows how to serve when a corresponding key is loaded.
+// Keep in sync with the switch in Decrypt.
+var InProcessSupportedAlgorithms = []ocrypto.KeyType{
+	ocrypto.RSA2048Key,
+	ocrypto.RSA4096Key,
+	ocrypto.EC256Key,
+	ocrypto.HybridXWingKey,
+	ocrypto.HybridSecp256r1MLKEM768Key,
+	ocrypto.HybridSecp384r1MLKEM1024Key,
+}
+
 func convertPEMToJWK(_ string) (string, error) {
 	// Implement the conversion logic here or use an external library if available.
 	// For now, return a placeholder error to indicate the function is not implemented.
@@ -199,24 +211,25 @@ func (a *InProcessProvider) ListKeysWith(ctx context.Context, opts trust.ListKey
 	var keys []trust.KeyDetails
 
 	// Try to find keys for known algorithms
-	for _, alg := range []string{AlgorithmRSA2048, AlgorithmRSA4096, AlgorithmECP256R1, AlgorithmHPQTXWing, AlgorithmHPQTSecp256r1MLKEM768, AlgorithmHPQTSecp384r1MLKEM1024} {
-		if kids, err := a.cryptoProvider.ListKIDsByAlgorithm(alg); err == nil && len(kids) > 0 {
+	for _, alg := range InProcessSupportedAlgorithms {
+		if kids, err := a.cryptoProvider.ListKIDsByAlgorithm(string(alg)); err == nil && len(kids) > 0 {
 			for _, kid := range kids {
 				if opts.LegacyOnly && !a.legacyKeys[kid] {
 					continue // Skip non-legacy keys if LegacyOnly is true
 				}
 				keys = append(keys, &KeyDetailsAdapter{
 					id:             trust.KeyIdentifier(kid),
-					algorithm:      ocrypto.KeyType(alg),
+					algorithm:      alg,
 					cryptoProvider: a.cryptoProvider,
 					legacy:         a.legacyKeys[kid],
 				})
 			}
 		} else if err != nil {
 			if a.logger != nil {
-				a.logger.WarnContext(ctx,
+				a.logger.WarnContext(
+					ctx,
 					"failed to list keys by algorithm",
-					slog.String("algorithm", alg),
+					slog.Any("algorithm", alg),
 					slog.Any("error", err),
 				)
 			}

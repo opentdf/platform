@@ -23,17 +23,14 @@ var (
 	ErrPermissionDenied = errors.New("permission denied")
 )
 
-type permissionDeniedError struct {
+type EnforcementResult struct {
+	Allowed     bool
+	CasbinAuthz CasbinAuthzLog
+}
+
+type CasbinAuthzLog struct {
 	ConfiguredGroupsClaim string
 	SubjectGroups         []string
-}
-
-func (e *permissionDeniedError) Error() string {
-	return ErrPermissionDenied.Error()
-}
-
-func (e *permissionDeniedError) Unwrap() error {
-	return ErrPermissionDenied
 }
 
 //go:embed casbin_policy.csv
@@ -148,12 +145,18 @@ func NewCasbinEnforcer(c CasbinConfig, logger *logger.Logger) (*Enforcer, error)
 
 // casbinEnforce is a helper function to enforce the policy with casbin
 // TODO implement a common type so this can be used for both http and grpc
-func (e *Enforcer) Enforce(ctx context.Context, token jwt.Token, req authz.RoleRequest) (bool, error) {
+func (e *Enforcer) Enforce(ctx context.Context, token jwt.Token, req authz.RoleRequest) (EnforcementResult, error) {
 	// extract the role claim from the token
 	s, subjectGroups, err := e.buildSubjectFromToken(ctx, token, req)
+	result := EnforcementResult{
+		CasbinAuthz: CasbinAuthzLog{
+			ConfiguredGroupsClaim: e.Config.GroupsClaim,
+			SubjectGroups:         subjectGroups,
+		},
+	}
 	if err != nil {
 		e.logger.Warn("role provider error", slog.Any("error", err))
-		return false, ErrPermissionDenied
+		return result, ErrPermissionDenied
 	}
 	s = append(s, rolePrefix+defaultRole)
 
@@ -175,7 +178,8 @@ func (e *Enforcer) Enforce(ctx context.Context, token jwt.Token, req authz.RoleR
 				slog.String("action", action),
 				slog.String("resource", resource),
 			)
-			return true, nil
+			result.Allowed = true
+			return result, nil
 		}
 	}
 	e.logger.Debug("permission denied by policy",
@@ -183,10 +187,7 @@ func (e *Enforcer) Enforce(ctx context.Context, token jwt.Token, req authz.RoleR
 		slog.String("action", action),
 		slog.String("resource", resource),
 	)
-	return false, &permissionDeniedError{
-		ConfiguredGroupsClaim: e.Config.GroupsClaim,
-		SubjectGroups:         subjectGroups,
-	}
+	return result, ErrPermissionDenied
 }
 
 func (e *Enforcer) buildSubjectFromToken(ctx context.Context, t jwt.Token, req authz.RoleRequest) (casbinSubject, []string, error) {

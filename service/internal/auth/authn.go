@@ -247,23 +247,23 @@ func (a Authentication) MuxHandler(handler http.Handler) http.Handler {
 			Resource: r.URL.Path,
 			Action:   action,
 		}
-		if allow, err := a.enforcer.Enforce(ctx, accessTok, roleReq); err != nil {
+		if result, err := a.enforcer.Enforce(ctx, accessTok, roleReq); err != nil {
 			if errors.Is(err, ErrPermissionDenied) {
 				log.WarnContext(
 					ctx,
 					"permission denied",
-					permissionDeniedLogAttrs(accessTok, err)...,
+					permissionDeniedLogAttrs(accessTok, result.CasbinAuthz, err)...,
 				)
 				http.Error(w, "permission denied", http.StatusForbidden)
 				return
 			}
 			http.Error(w, "internal server error", http.StatusInternalServerError)
 			return
-		} else if !allow {
+		} else if !result.Allowed {
 			log.WarnContext(
 				ctx,
 				"permission denied",
-				slog.String("azp", accessTok.Subject()),
+				permissionDeniedLogAttrs(accessTok, result.CasbinAuthz, nil)...,
 			)
 			http.Error(w, "permission denied", http.StatusForbidden)
 			return
@@ -339,18 +339,18 @@ func (a Authentication) ConnectUnaryServerInterceptor() connect.UnaryInterceptor
 				Resource: resource,
 				Action:   action,
 			}
-			if allowed, err := a.enforcer.Enforce(ctxWithJWK, token, roleReq); err != nil {
+			if result, err := a.enforcer.Enforce(ctxWithJWK, token, roleReq); err != nil {
 				if errors.Is(err, ErrPermissionDenied) {
 					log.WarnContext(
 						ctxWithJWK,
 						"permission denied",
-						permissionDeniedLogAttrs(token, err)...,
+						permissionDeniedLogAttrs(token, result.CasbinAuthz, err)...,
 					)
 					return nil, connect.NewError(connect.CodePermissionDenied, errors.New("permission denied"))
 				}
 				return nil, err
-			} else if !allowed {
-				log.WarnContext(ctxWithJWK, "permission denied", slog.String("azp", token.Subject()))
+			} else if !result.Allowed {
+				log.WarnContext(ctxWithJWK, "permission denied", permissionDeniedLogAttrs(token, result.CasbinAuthz, nil)...)
 				return nil, connect.NewError(connect.CodePermissionDenied, errors.New("permission denied"))
 			}
 
@@ -360,14 +360,13 @@ func (a Authentication) ConnectUnaryServerInterceptor() connect.UnaryInterceptor
 	return connect.UnaryInterceptorFunc(interceptor)
 }
 
-func permissionDeniedLogAttrs(token jwt.Token, err error) []any {
+func permissionDeniedLogAttrs(token jwt.Token, casbinAuthz CasbinAuthzLog, err error) []any {
 	attrs := []any{slog.String("azp", token.Subject())}
 
-	var permissionErr *permissionDeniedError
-	if errors.As(err, &permissionErr) {
+	if casbinAuthz.ConfiguredGroupsClaim != "" || casbinAuthz.SubjectGroups != nil {
 		attrs = append(attrs, slog.Group("casbin_authz",
-			slog.String("configured_groups_claim", permissionErr.ConfiguredGroupsClaim),
-			slog.Any("subject_groups", permissionErr.SubjectGroups),
+			slog.String("configured_groups_claim", casbinAuthz.ConfiguredGroupsClaim),
+			slog.Any("subject_groups", casbinAuthz.SubjectGroups),
 		))
 	}
 

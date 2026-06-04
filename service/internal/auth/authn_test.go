@@ -219,10 +219,10 @@ func TestPermissionDeniedLogAttrs(t *testing.T) {
 	tok := jwt.New()
 	require.NoError(t, tok.Set(jwt.SubjectKey, "client-subject"))
 
-	attrs := permissionDeniedLogAttrs(tok, &permissionDeniedError{
+	attrs := permissionDeniedLogAttrs(tok, CasbinAuthzLog{
 		ConfiguredGroupsClaim: "custom.groups",
 		SubjectGroups:         []string{"opentdf-standard"},
-	})
+	}, ErrPermissionDenied)
 
 	require.Len(t, attrs, 3)
 	assert.Equal(t, slog.String("azp", "client-subject"), attrs[0])
@@ -251,7 +251,7 @@ func TestPermissionDeniedLogAttrsWithoutSubjectInfo(t *testing.T) {
 	tok := jwt.New()
 	require.NoError(t, tok.Set(jwt.SubjectKey, "client-subject"))
 
-	attrs := permissionDeniedLogAttrs(tok, ErrPermissionDenied)
+	attrs := permissionDeniedLogAttrs(tok, CasbinAuthzLog{}, ErrPermissionDenied)
 
 	require.Len(t, attrs, 2)
 	assert.Equal(t, slog.String("azp", "client-subject"), attrs[0])

@@ -538,7 +538,7 @@ func (s *AuthnCasbinSuite) Test_Override_Of_Groups_Claim() {
 }
 
 func (s *AuthnCasbinSuite) enforce(enforcer *Enforcer, tok jwt.Token, resource, action string) (bool, error) {
-	return enforcer.Enforce(
+	result, err := enforcer.Enforce(
 		context.Background(),
 		tok,
 		authz.RoleRequest{
@@ -546,6 +546,7 @@ func (s *AuthnCasbinSuite) enforce(enforcer *Enforcer, tok jwt.Token, resource, 
 			Action:   action,
 		},
 	)
+	return result.Allowed, err
 }
 
 func (s *AuthnCasbinSuite) buildTokenRoles(admin bool, standard bool, roleMaps []string) []interface{} {

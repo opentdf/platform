@@ -115,7 +115,13 @@ func NewRegistration() *serviceregistry.Service[kasconnect.AccessServiceHandler]
 				p.ApplyConfig(kasCfg, srp.Security)
 				p.Tracer = srp.Tracer
 
-				srp.Logger.Debug("kas config loaded", slog.Any("config", kasCfg))
+				srp.Logger.Debug(
+					"kas config loaded",
+					slog.Bool("ec_tdf_enabled", kasCfg.ECTDFEnabled),
+					slog.Bool("hybrid_tdf_enabled", kasCfg.HybridTDFEnabled),
+					slog.Any("preview", kasCfg.Preview),
+					slog.String("registered_kas_uri", kasCfg.RegisteredKASURI),
+				)
 				logSupportedMechanisms(context.Background(), srp.Logger, p.KeyDelegator, &kasCfg)
 
 				if err := srp.RegisterReadinessCheck("kas", p.IsReady); err != nil {

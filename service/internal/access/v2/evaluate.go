@@ -412,13 +412,16 @@ func hierarchyRule(
 			// Check if the required action is entitled
 			for _, entitledAction := range entitledActions {
 				if isRequestedActionMatch(ctx, l, action, requiredNamespaceFQN, entitledAction, namespacedPolicy) {
-					l.DebugContext(ctx, "hierarchy rule satisfied",
-						slog.Group("entitled_by_value",
-							slog.String("FQN", entitlementFQN),
+					l.DebugContext(
+						ctx, "hierarchy rule satisfied",
+						slog.Group(
+							"entitled_by_value",
+							slog.String("fqn", entitlementFQN),
 							slog.Int("index", idx),
 						),
-						slog.Group("resource_highest_hierarchy_value",
-							slog.String("FQN", attrValues[lowestValueFQNIndex].GetFqn()),
+						slog.Group(
+							"resource_highest_hierarchy_value",
+							slog.String("fqn", attrValues[lowestValueFQNIndex].GetFqn()),
 							slog.Int("index", lowestValueFQNIndex),
 						),
 					)
@@ -486,7 +489,8 @@ func isRequestedActionMatch(ctx context.Context, l *logger.Logger, requestedActi
 		if entitledNamespace == nil {
 			// the entitled action is missing a namespace while the request action has one,
 			// so this is a mismatch and we should not consider this a match
-			l.TraceContext(ctx, "action match request namespace mismatch",
+			l.TraceContext(
+				ctx, "action match request namespace mismatch",
 				slog.String("requested_action_namespace_id", requestNamespace.GetId()),
 			)
 			return false
@@ -494,7 +498,8 @@ func isRequestedActionMatch(ctx context.Context, l *logger.Logger, requestedActi
 		if requestNamespace.GetId() != "" && entitledNamespace.GetId() != requestNamespace.GetId() {
 			// the requested action namespace has an id and it does not match the entitled action namespace id,
 			// so this is a mismatch and we should not consider this a match
-			l.TraceContext(ctx, "action match request namespace mismatch",
+			l.TraceContext(
+				ctx, "action match request namespace mismatch",
 				slog.String("requested_action_namespace_id", requestNamespace.GetId()),
 				slog.String("candidate_namespace_id", entitledNamespace.GetId()),
 			)
@@ -503,7 +508,8 @@ func isRequestedActionMatch(ctx context.Context, l *logger.Logger, requestedActi
 		if requestNamespace.GetId() == "" && requestNamespace.GetFqn() != "" && !strings.EqualFold(entitledNamespace.GetFqn(), requestNamespace.GetFqn()) {
 			// the requested action namespace has an FQN and it does not match the entitled action namespace FQN,
 			// so this is a mismatch and we should not consider this a match
-			l.TraceContext(ctx, "action match request namespace mismatch",
+			l.TraceContext(
+				ctx, "action match request namespace mismatch",
 				slog.String("requested_action_namespace_fqn", requestNamespace.GetFqn()),
 				slog.String("candidate_namespace_fqn", entitledNamespace.GetFqn()),
 			)
@@ -527,14 +533,16 @@ func isRequestedActionMatch(ctx context.Context, l *logger.Logger, requestedActi
 	entitledNamespace := entitledAction.GetNamespace()
 	if entitledNamespace == nil || entitledNamespace.GetId() == "" {
 		// the entitled action is missing a namespace while strict namespaced policy mode requires it
-		l.TraceContext(ctx, "action match strict namespace mismatch",
+		l.TraceContext(
+			ctx, "action match strict namespace mismatch",
 			slog.String("required_namespace", requiredNamespaceFQN),
 		)
 		return false
 	}
 	if entitledNamespace.GetFqn() != requiredNamespaceFQN {
 		// the entitled action namespace FQN does not match the required namespace FQN from the resource context
-		l.TraceContext(ctx, "action match strict namespace mismatch",
+		l.TraceContext(
+			ctx, "action match strict namespace mismatch",
 			slog.String("required_namespace", requiredNamespaceFQN),
 			slog.String("candidate_namespace", entitledNamespace.GetFqn()),
 		)

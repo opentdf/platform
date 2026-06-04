@@ -99,12 +99,13 @@ func NewCasbinEnforcer(c CasbinConfig, logger *logger.Logger) (*Enforcer, error)
 		c.Adapter = stringadapter.NewAdapter(c.Csv)
 	}
 
-	logger.Debug("creating casbin enforcer",
+	logger.Debug(
+		"creating casbin enforcer",
 		slog.Any("config", c),
-		slog.Bool("isDefaultModel", isDefaultModel),
-		slog.Bool("isBuiltinPolicy", isDefaultPolicy),
-		slog.Bool("isPolicyExtended", isPolicyExtended),
-		slog.Bool("isDefaultAdapter", isDefaultAdapter),
+		slog.Bool("is_default_model", isDefaultModel),
+		slog.Bool("is_builtin_policy", isDefaultPolicy),
+		slog.Bool("is_policy_extended", isPolicyExtended),
+		slog.Bool("is_default_adapter", isDefaultAdapter),
 	)
 
 	m, err := casbinModel.NewModelFromString(c.Model)
@@ -149,7 +150,8 @@ func (e *Enforcer) Enforce(ctx context.Context, token jwt.Token, req authz.RoleR
 	for _, info := range s {
 		allowed, err := e.Enforcer.Enforce(info, resource, action)
 		if err != nil {
-			e.logger.Error("enforce by role error",
+			e.logger.Error(
+				"enforce by role error",
 				slog.String("subject_info", info),
 				slog.String("action", action),
 				slog.String("resource", resource),
@@ -157,7 +159,8 @@ func (e *Enforcer) Enforce(ctx context.Context, token jwt.Token, req authz.RoleR
 			)
 		}
 		if allowed {
-			e.logger.Debug("allowed by policy",
+			e.logger.Debug(
+				"allowed by policy",
 				slog.String("subject_info", info),
 				slog.String("action", action),
 				slog.String("resource", resource),
@@ -165,7 +168,8 @@ func (e *Enforcer) Enforce(ctx context.Context, token jwt.Token, req authz.RoleR
 			return true, nil
 		}
 	}
-	e.logger.Debug("permission denied by policy",
+	e.logger.Debug(
+		"permission denied by policy",
 		slog.Any("subject_info", s),
 		slog.String("action", action),
 		slog.String("resource", resource),
@@ -187,7 +191,8 @@ func (e *Enforcer) buildSubjectFromToken(ctx context.Context, t jwt.Token, req a
 		sub, ok := claim.(string)
 		subject = sub
 		if !ok {
-			e.logger.Warn("username claim not of type string",
+			e.logger.Warn(
+				"username claim not of type string",
 				slog.String("claim", e.Config.UserNameClaim),
 				slog.Any("claims", claim),
 			)

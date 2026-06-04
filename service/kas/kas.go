@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/go-viper/mapstructure/v2"
+	"github.com/opentdf/platform/lib/ocrypto"
 	kaspb "github.com/opentdf/platform/protocol/go/kas"
 	"github.com/opentdf/platform/protocol/go/kas/kasconnect"
 	"github.com/opentdf/platform/service/internal/security"
@@ -198,16 +199,16 @@ func logSupportedMechanisms(ctx context.Context, l *logger.Logger, kd *trust.Del
 // filterMechanismsByPreview drops algorithms whose corresponding rewrap path is
 // disabled. Keep aligned with the gating in service/kas/access/rewrap.go for
 // "ec-wrapped" and "hybrid-wrapped" key access objects.
-func filterMechanismsByPreview(algs []string, kasCfg *access.KASConfig) []string {
+func filterMechanismsByPreview(algs []ocrypto.KeyType, kasCfg *access.KASConfig) []ocrypto.KeyType {
 	ecEnabled := kasCfg.ECTDFEnabled || kasCfg.Preview.ECTDFEnabled
 	hybridEnabled := kasCfg.HybridTDFEnabled || kasCfg.Preview.HybridTDFEnabled
 
-	out := make([]string, 0, len(algs))
+	out := make([]ocrypto.KeyType, 0, len(algs))
 	for _, a := range algs {
 		switch {
-		case strings.HasPrefix(a, "ec:") && !ecEnabled:
+		case !ecEnabled && ocrypto.IsECKeyType(a):
 			continue
-		case strings.HasPrefix(a, "hpqt:") && !hybridEnabled:
+		case !hybridEnabled && ocrypto.IsHybridKeyType(a):
 			continue
 		}
 		out = append(out, a)

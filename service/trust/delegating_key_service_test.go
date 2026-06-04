@@ -63,7 +63,7 @@ func (m *MockKeyIndex) String() string {
 
 func (m *MockKeyIndex) LogValue() slog.Value {
 	return slog.GroupValue(
-		slog.String("Indexer", m.String()),
+		slog.String("indexer", m.String()),
 	)
 }
 
@@ -329,7 +329,7 @@ func TestDelegatingKeyServiceTestSuite(t *testing.T) {
 // satisfied and a deterministic algorithm list.
 type advertisingManager struct {
 	name string
-	algs []string
+	algs []ocrypto.KeyType
 }
 
 func (m *advertisingManager) Name() string { return m.name }
@@ -344,8 +344,8 @@ func (m *advertisingManager) DeriveKey(_ context.Context, _ KeyDetails, _ []byte
 func (m *advertisingManager) GenerateECSessionKey(_ context.Context, _ string) (Encapsulator, error) {
 	return nil, nil //nolint:nilnil // unused in this test
 }
-func (m *advertisingManager) Close()                        {}
-func (m *advertisingManager) SupportedAlgorithms() []string { return m.algs }
+func (m *advertisingManager) Close()                                 {}
+func (m *advertisingManager) SupportedAlgorithms() []ocrypto.KeyType { return m.algs }
 
 // nonAdvertisingManager is the same as MockKeyManager but with a stable Name
 // and no AlgorithmAdvertiser. Used to verify it contributes nothing to the
@@ -372,28 +372,28 @@ func TestDelegatingKeyService_SupportedAlgorithms(t *testing.T) {
 	tests := []struct {
 		name     string
 		register func(d *DelegatingKeyService)
-		want     []string
+		want     []ocrypto.KeyType
 	}{
 		{
 			name:     "no factories returns empty",
 			register: func(_ *DelegatingKeyService) {},
-			want:     []string{},
+			want:     []ocrypto.KeyType{},
 		},
 		{
 			name: "single advertiser",
 			register: func(d *DelegatingKeyService) {
-				m := &advertisingManager{name: "a", algs: []string{"rsa:2048", "ec:secp256r1"}}
+				m := &advertisingManager{name: "a", algs: []ocrypto.KeyType{"rsa:2048", "ec:secp256r1"}}
 				d.RegisterKeyManagerCtx("a", func(_ context.Context, _ *KeyManagerFactoryOptions) (KeyManager, error) {
 					return m, nil
 				})
 			},
-			want: []string{"ec:secp256r1", "rsa:2048"},
+			want: []ocrypto.KeyType{"ec:secp256r1", "rsa:2048"},
 		},
 		{
 			name: "two advertisers, deduped and sorted",
 			register: func(d *DelegatingKeyService) {
-				a := &advertisingManager{name: "a", algs: []string{"rsa:2048", "hpqt:xwing"}}
-				b := &advertisingManager{name: "b", algs: []string{"rsa:2048", "ec:secp256r1"}}
+				a := &advertisingManager{name: "a", algs: []ocrypto.KeyType{"rsa:2048", "hpqt:xwing"}}
+				b := &advertisingManager{name: "b", algs: []ocrypto.KeyType{"rsa:2048", "ec:secp256r1"}}
 				d.RegisterKeyManagerCtx("a", func(_ context.Context, _ *KeyManagerFactoryOptions) (KeyManager, error) {
 					return a, nil
 				})
@@ -401,12 +401,12 @@ func TestDelegatingKeyService_SupportedAlgorithms(t *testing.T) {
 					return b, nil
 				})
 			},
-			want: []string{"ec:secp256r1", "hpqt:xwing", "rsa:2048"},
+			want: []ocrypto.KeyType{"ec:secp256r1", "hpqt:xwing", "rsa:2048"},
 		},
 		{
 			name: "non-advertising manager contributes nothing",
 			register: func(d *DelegatingKeyService) {
-				a := &advertisingManager{name: "a", algs: []string{"rsa:2048"}}
+				a := &advertisingManager{name: "a", algs: []ocrypto.KeyType{"rsa:2048"}}
 				b := &nonAdvertisingManager{name: "b"}
 				d.RegisterKeyManagerCtx("a", func(_ context.Context, _ *KeyManagerFactoryOptions) (KeyManager, error) {
 					return a, nil
@@ -415,12 +415,12 @@ func TestDelegatingKeyService_SupportedAlgorithms(t *testing.T) {
 					return b, nil
 				})
 			},
-			want: []string{"rsa:2048"},
+			want: []ocrypto.KeyType{"rsa:2048"},
 		},
 		{
 			name: "failing factory is skipped, others still contribute",
 			register: func(d *DelegatingKeyService) {
-				a := &advertisingManager{name: "a", algs: []string{"rsa:2048"}}
+				a := &advertisingManager{name: "a", algs: []ocrypto.KeyType{"rsa:2048"}}
 				d.RegisterKeyManagerCtx("a", func(_ context.Context, _ *KeyManagerFactoryOptions) (KeyManager, error) {
 					return a, nil
 				})
@@ -428,7 +428,7 @@ func TestDelegatingKeyService_SupportedAlgorithms(t *testing.T) {
 					return nil, errors.New("boom")
 				})
 			},
-			want: []string{"rsa:2048"},
+			want: []ocrypto.KeyType{"rsa:2048"},
 		},
 	}
 
@@ -439,7 +439,7 @@ func TestDelegatingKeyService_SupportedAlgorithms(t *testing.T) {
 			tc.register(d)
 			got := d.SupportedAlgorithms(context.Background())
 			if got == nil {
-				got = []string{}
+				got = []ocrypto.KeyType{}
 			}
 			if !slices.Equal(got, tc.want) {
 				t.Fatalf("SupportedAlgorithms = %v, want %v", got, tc.want)

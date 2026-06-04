@@ -242,7 +242,8 @@ type FixtureData struct {
 func LoadFixtureData(file string) {
 	c, err := os.ReadFile(file)
 	if err != nil {
-		slog.Error("could not read",
+		slog.Error(
+			"could not read",
 			slog.String("fixture_file_name", fixtureFilename),
 			slog.Any("error", err),
 		)
@@ -250,7 +251,8 @@ func LoadFixtureData(file string) {
 	}
 
 	if err := yaml.Unmarshal(c, &fixtureData); err != nil {
-		slog.Error("could not unmarshal",
+		slog.Error(
+			"could not unmarshal",
 			slog.String("fixture_file_name", fixtureFilename),
 			slog.Any("error", err),
 		)
@@ -423,7 +425,6 @@ func (f *Fixtures) GetRegisteredResourceValueKey(key string) FixtureDataRegister
 	return rv
 }
 
-//nolint:sloglint // preserve emoji usage
 func (f *Fixtures) Provision(ctx context.Context) {
 	slog.Info("📦 running migrations in schema", slog.String("schema", f.db.Schema))
 	_, err := f.db.Client.RunMigrations(ctx, policy.Migrations)
@@ -468,7 +469,8 @@ func (f *Fixtures) Provision(ctx context.Context) {
 	slog.Info("📦 provisioning keys for kas registry")
 	kasKeys := f.provisionKasRegistryKeys(ctx)
 
-	slog.Info("📦 provisioned fixtures data",
+	slog.Info(
+		"📦 provisioned fixtures data",
 		slog.Int64("namespaces", n),
 		slog.Int64("attributes", a),
 		slog.Int64("attribute_values", aV),
@@ -492,7 +494,6 @@ func (f *Fixtures) Provision(ctx context.Context) {
 	slog.Info("📚 successfully indexed FQNs")
 }
 
-//nolint:sloglint // preserve emoji usage
 func (f *Fixtures) TearDown(ctx context.Context) {
 	slog.Info("🗑  dropping schema", slog.String("schema", f.db.Schema))
 	if err := f.db.DropSchema(ctx); err != nil {
@@ -504,7 +505,8 @@ func (f *Fixtures) TearDown(ctx context.Context) {
 func (f *Fixtures) provisionNamespace(ctx context.Context) int64 {
 	values := make([][]any, 0, len(fixtureData.Namespaces.Data))
 	for _, d := range fixtureData.Namespaces.Data {
-		values = append(values,
+		values = append(
+			values,
 			[]any{
 				d.ID,
 				d.Name,
@@ -542,7 +544,6 @@ func (f *Fixtures) provisionAttributeValues(ctx context.Context) int64 {
 	return f.provision(ctx, fixtureData.AttributeValues.Metadata.TableName, fixtureData.AttributeValues.Metadata.Columns, values)
 }
 
-//nolint:sloglint // preserve emoji usage
 func (f *Fixtures) provisionSubjectConditionSet(ctx context.Context) int64 {
 	values := make([][]any, 0, len(fixtureData.SubjectConditionSet.Data))
 	for _, d := range fixtureData.SubjectConditionSet.Data {
@@ -593,7 +594,8 @@ func (f *Fixtures) provisionSubjectMappingActionsRelations(ctx context.Context) 
 		} else {
 			actionID = f.GetCustomActionKey(d.ActionName).ID
 		}
-		values = append(values,
+		values = append(
+			values,
 			[]any{
 				d.SubjectMappingID,
 				actionID,
@@ -628,7 +630,6 @@ func (f *Fixtures) provisionResourceMappings(ctx context.Context) int64 {
 	return f.provision(ctx, fixtureData.ResourceMappings.Metadata.TableName, fixtureData.ResourceMappings.Metadata.Columns, values)
 }
 
-//nolint:sloglint // preserve emoji usage
 func (f *Fixtures) provisionKasRegistry(ctx context.Context) int64 {
 	values := make([][]any, 0, len(fixtureData.KasRegistries.Data))
 	for _, d := range fixtureData.KasRegistries.Data {
@@ -670,7 +671,6 @@ func (f *Fixtures) provisionAttributeValueKeyAccessServer(ctx context.Context) i
 	return f.provision(ctx, "attribute_value_key_access_grants", []string{"attribute_value_id", "key_access_server_id"}, values)
 }
 
-//nolint:sloglint // preserve emoji usage
 func (f *Fixtures) provisionProviderConfigs(ctx context.Context) int64 {
 	values := make([][]any, 0, len(fixtureData.ProviderConfigs.Data))
 	for _, d := range fixtureData.ProviderConfigs.Data {
@@ -690,7 +690,6 @@ func (f *Fixtures) provisionProviderConfigs(ctx context.Context) int64 {
 	return f.provision(ctx, fixtureData.ProviderConfigs.Metadata.TableName, fixtureData.ProviderConfigs.Metadata.Columns, values)
 }
 
-//nolint:sloglint // preserve emoji usage
 func (f *Fixtures) provisionKasRegistryKeys(ctx context.Context) int64 {
 	values := make([][]any, 0, len(fixtureData.KasRegistryKeys.Data))
 	for _, d := range fixtureData.KasRegistryKeys.Data {

@@ -211,7 +211,8 @@ func createOTLPExporter(ctx context.Context, cfg *OTLPConfig) (sdktrace.SpanExpo
 	if protocol == "" {
 		protocol = "grpc" // Default to gRPC
 	}
-	logger.InfoContext(ctx,
+	logger.InfoContext(
+		ctx,
 		"configuring OTLP exporter",
 		slog.String("protocol", protocol),
 		slog.String("endpoint", cfg.Endpoint),
@@ -238,7 +239,8 @@ func createOTLPExporter(ctx context.Context, cfg *OTLPConfig) (sdktrace.SpanExpo
 			httpOpts = append(httpOpts, otlptracehttp.WithInsecure())
 		} // Else: Uses default secure credentials (HTTPS)
 		if len(cfg.Headers) > 0 {
-			logger.InfoContext(ctx,
+			logger.InfoContext(
+				ctx,
 				"adding OTLP headers",
 				slog.Int("count", len(cfg.Headers)),
 			)
@@ -303,12 +305,13 @@ func createFileExporter(cfg *FileConfig) (sdktrace.SpanExporter, io.Closer, erro
 		return nil, nil, fmt.Errorf("failed create stdouttrace exporter for file: %w", err)
 	}
 
-	logger.Info("configuring file trace exporter",
+	logger.Info(
+		"configuring file trace exporter",
 		slog.String("path", cfg.Path),
-		slog.Bool("prettyPrint", cfg.PrettyPrint),
-		slog.Int("maxSizeMB", maxSize),
-		slog.Int("maxBackups", maxBackups),
-		slog.Int("maxAgeDays", maxAge),
+		slog.Bool("pretty_print", cfg.PrettyPrint),
+		slog.Int("max_size_mb", maxSize),
+		slog.Int("max_backups", maxBackups),
+		slog.Int("max_age_days", maxAge),
 		slog.Bool("compress", cfg.Compress),
 	)
 

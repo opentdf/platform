@@ -114,15 +114,16 @@ func (c Config) LogValue() slog.Value {
 		slog.String("sslmode", c.SSLMode),
 		slog.String("schema", c.Schema),
 		slog.Int("connect_timeout_seconds", c.ConnectTimeout),
-		slog.Group("pool",
+		slog.Group(
+			"pool",
 			slog.Int("max_connection_count", int(c.Pool.MaxConns)),
 			slog.Int("min_connection_count", int(c.Pool.MinConns)),
 			slog.Int("max_connection_lifetime_seconds", c.Pool.MaxConnLifetime),
 			slog.Int("max_connection_idle_seconds", c.Pool.MaxConnIdleTime),
 			slog.Int("health_check_period_seconds", c.Pool.HealthCheckPeriod),
 		),
-		slog.Bool("runMigrations", c.RunMigrations),
-		slog.Bool("verifyConnection", c.VerifyConnection),
+		slog.Bool("run_migrations", c.RunMigrations),
+		slog.Bool("verify_connection", c.VerifyConnection),
 	)
 }
 
@@ -224,7 +225,8 @@ func (c *Client) Close() {
 }
 
 func (c Config) buildConfig() (*pgxpool.Config, error) {
-	u := fmt.Sprintf("postgres://%s:%s@%s/%s?sslmode=%s",
+	u := fmt.Sprintf(
+		"postgres://%s:%s@%s/%s?sslmode=%s",
 		c.User,
 		url.QueryEscape(c.Password),
 		net.JoinHostPort(c.Host, strconv.Itoa(c.Port)),
@@ -254,7 +256,8 @@ func (c Config) buildConfig() (*pgxpool.Config, error) {
 	parsed.AfterConnect = func(ctx context.Context, conn *pgx.Conn) error {
 		_, err := conn.Exec(ctx, "SET search_path TO "+pgx.Identifier{c.Schema}.Sanitize())
 		if err != nil {
-			slog.Error("failed to set database client search_path",
+			slog.Error(
+				"failed to set database client search_path",
 				slog.String("schema", c.Schema),
 				slog.Any("error", err),
 			)

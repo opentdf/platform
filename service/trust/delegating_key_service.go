@@ -112,12 +112,12 @@ func (d *DelegatingKeyService) ListKeysWith(ctx context.Context, opts ListKeyOpt
 // whose manager does not implement AlgorithmAdvertiser contributes nothing.
 // A factory that fails to instantiate is logged at WARN and skipped — listing
 // capabilities never blocks startup.
-func (d *DelegatingKeyService) SupportedAlgorithms(ctx context.Context) []string {
+func (d *DelegatingKeyService) SupportedAlgorithms(ctx context.Context) []ocrypto.KeyType {
 	d.mutex.Lock()
 	names := slices.Collect(maps.Keys(d.managerFactories))
 	d.mutex.Unlock()
 
-	seen := make(map[string]struct{})
+	seen := make(map[ocrypto.KeyType]struct{})
 	for _, name := range names {
 		mgr, err := d.getKeyManager(ctx, &policy.KeyProviderConfig{Manager: name})
 		if err != nil {

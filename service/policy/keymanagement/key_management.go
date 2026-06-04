@@ -141,7 +141,7 @@ func (ksvc Service) CreateProviderConfig(ctx context.Context, req *connect.Reque
 		return nil
 	})
 	if err != nil {
-		return nil, db.StatusifyError(ctx, ksvc.logger, err, db.ErrTextCreationFailed, slog.String("keyManagementService", req.Msg.GetName()))
+		return nil, db.StatusifyError(ctx, ksvc.logger, err, db.ErrTextCreationFailed, slog.String("key_management_service", req.Msg.GetName()))
 	}
 
 	return connect.NewResponse(rsp), nil
@@ -161,7 +161,7 @@ func (ksvc Service) GetProviderConfig(ctx context.Context, req *connect.Request[
 
 	pc, err := ksvc.dbClient.GetProviderConfig(ctx, req.Msg.GetIdentifier())
 	if err != nil {
-		return nil, db.StatusifyError(ctx, ksvc.logger, err, db.ErrTextGetRetrievalFailed, slog.String("keyManagementService", req.Msg.String()))
+		return nil, db.StatusifyError(ctx, ksvc.logger, err, db.ErrTextGetRetrievalFailed, slog.String("key_management_service", req.Msg.String()))
 	}
 
 	rsp.ProviderConfig = pc
@@ -173,7 +173,7 @@ func (ksvc Service) ListProviderConfigs(ctx context.Context, req *connect.Reques
 
 	resp, err := ksvc.dbClient.ListProviderConfigs(ctx, req.Msg.GetPagination())
 	if err != nil {
-		return nil, db.StatusifyError(ctx, ksvc.logger, err, db.ErrTextGetRetrievalFailed, slog.String("keyManagementService", req.Msg.String()))
+		return nil, db.StatusifyError(ctx, ksvc.logger, err, db.ErrTextGetRetrievalFailed, slog.String("key_management_service", req.Msg.String()))
 	}
 
 	return connect.NewResponse(resp), nil
@@ -232,7 +232,7 @@ func (ksvc Service) UpdateProviderConfig(ctx context.Context, req *connect.Reque
 		return nil
 	})
 	if err != nil {
-		return nil, db.StatusifyError(ctx, ksvc.logger, err, db.ErrTextUpdateFailed, slog.String("keyManagementService", req.Msg.GetId()))
+		return nil, db.StatusifyError(ctx, ksvc.logger, err, db.ErrTextUpdateFailed, slog.String("key_management_service", req.Msg.GetId()))
 	}
 
 	return connect.NewResponse(rsp), nil
@@ -251,7 +251,7 @@ func (ksvc Service) DeleteProviderConfig(ctx context.Context, req *connect.Reque
 	pc, err := ksvc.dbClient.DeleteProviderConfig(ctx, req.Msg.GetId())
 	if err != nil {
 		ksvc.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
-		return nil, db.StatusifyError(ctx, ksvc.logger, err, db.ErrTextDeletionFailed, slog.String("keyManagementService", req.Msg.GetId()))
+		return nil, db.StatusifyError(ctx, ksvc.logger, err, db.ErrTextDeletionFailed, slog.String("key_management_service", req.Msg.GetId()))
 	}
 
 	auditParams.ObjectID = pc.GetId()

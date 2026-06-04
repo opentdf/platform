@@ -44,13 +44,12 @@ type KeyService interface {
 	KeyManager
 }
 
-// AlgorithmAdvertiser is an optional capability implemented by KeyManagers that
-// can report which algorithm identifiers (e.g. "rsa:2048", "hpqt:xwing") they
-// can serve when a key has been provisioned. The returned list reflects what
-// the manager is capable of, independent of whether any matching key is
-// currently loaded.
+// AlgorithmAdvertiser is an optional capability implemented by KeyManagers to
+// report which algorithm can serve when a key has been provisioned.
+// The returned list reflects what the manager is capable of,
+// independent of whether any matching key is currently loaded.
 type AlgorithmAdvertiser interface {
-	SupportedAlgorithms() []string
+	SupportedAlgorithms() []ocrypto.KeyType
 }
 
 // NamedKeyManagerFactory pairs a KeyManagerFactory with its intended registration name.

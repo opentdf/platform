@@ -20,13 +20,15 @@ const inProcessSystemName = "opentdf.io/in-process"
 // inProcessSupportedAlgorithms is the canonical set of algorithms the
 // InProcessProvider knows how to serve when a corresponding key is loaded.
 // Keep in sync with the switch in Decrypt.
-var inProcessSupportedAlgorithms = []string{
-	AlgorithmRSA2048,
-	AlgorithmRSA4096,
-	AlgorithmECP256R1,
-	AlgorithmHPQTXWing,
-	AlgorithmHPQTSecp256r1MLKEM768,
-	AlgorithmHPQTSecp384r1MLKEM1024,
+var inProcessSupportedAlgorithms = []ocrypto.KeyType{
+	ocrypto.RSA2048Key,
+	ocrypto.RSA4096Key,
+	ocrypto.EC256Key,
+	ocrypto.EC384Key,
+	ocrypto.EC521Key,
+	ocrypto.HybridXWingKey,
+	ocrypto.HybridSecp256r1MLKEM768Key,
+	ocrypto.HybridSecp384r1MLKEM1024Key,
 }
 
 func convertPEMToJWK(_ string) (string, error) {
@@ -150,9 +152,11 @@ func (a *InProcessProvider) Name() string {
 
 // SupportedAlgorithms returns the algorithms the in-process provider can serve
 // when a corresponding key has been provisioned. Implements trust.AlgorithmAdvertiser.
-func (a *InProcessProvider) SupportedAlgorithms() []string {
-	out := make([]string, len(inProcessSupportedAlgorithms))
-	copy(out, inProcessSupportedAlgorithms)
+func (a *InProcessProvider) SupportedAlgorithms() []ocrypto.KeyType {
+	out := make([]ocrypto.KeyType, len(inProcessSupportedAlgorithms))
+	for i, alg := range inProcessSupportedAlgorithms {
+		out[i] = ocrypto.KeyType(alg)
+	}
 	return out
 }
 
@@ -220,7 +224,7 @@ func (a *InProcessProvider) ListKeysWith(ctx context.Context, opts trust.ListKey
 
 	// Try to find keys for known algorithms
 	for _, alg := range inProcessSupportedAlgorithms {
-		if kids, err := a.cryptoProvider.ListKIDsByAlgorithm(alg); err == nil && len(kids) > 0 {
+		if kids, err := a.cryptoProvider.ListKIDsByAlgorithm(string(alg)); err == nil && len(kids) > 0 {
 			for _, kid := range kids {
 				if opts.LegacyOnly && !a.legacyKeys[kid] {
 					continue // Skip non-legacy keys if LegacyOnly is true
@@ -237,7 +241,7 @@ func (a *InProcessProvider) ListKeysWith(ctx context.Context, opts trust.ListKey
 				a.logger.WarnContext(
 					ctx,
 					"failed to list keys by algorithm",
-					slog.String("algorithm", alg),
+					slog.Any("algorithm", alg),
 					slog.Any("error", err),
 				)
 			}

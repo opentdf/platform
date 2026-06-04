@@ -29,15 +29,15 @@ const (
 // basicManagerSupportedAlgorithms is the canonical set of algorithms the
 // BasicManager knows how to serve when a key has been provisioned. Keep in
 // sync with the switch in Decrypt.
-var basicManagerSupportedAlgorithms = []string{
-	AlgorithmRSA2048,
-	AlgorithmRSA4096,
-	AlgorithmECP256R1,
-	AlgorithmECP384R1,
-	AlgorithmECP521R1,
-	AlgorithmHPQTXWing,
-	AlgorithmHPQTSecp256r1MLKEM768,
-	AlgorithmHPQTSecp384r1MLKEM1024,
+var basicManagerSupportedAlgorithms = []ocrypto.KeyType{
+	ocrypto.RSA2048Key,
+	ocrypto.RSA4096Key,
+	ocrypto.EC256Key,
+	ocrypto.EC384Key,
+	ocrypto.EC521Key,
+	ocrypto.HybridXWingKey,
+	ocrypto.HybridSecp256r1MLKEM768Key,
+	ocrypto.HybridSecp384r1MLKEM1024Key,
 }
 
 type BasicManager struct {
@@ -65,8 +65,8 @@ func (b *BasicManager) Name() string {
 
 // SupportedAlgorithms returns the algorithms BasicManager can wrap/unwrap when
 // a corresponding key has been provisioned. Implements trust.AlgorithmAdvertiser.
-func (b *BasicManager) SupportedAlgorithms() []string {
-	out := make([]string, len(basicManagerSupportedAlgorithms))
+func (b *BasicManager) SupportedAlgorithms() []ocrypto.KeyType {
+	out := make([]ocrypto.KeyType, len(basicManagerSupportedAlgorithms))
 	copy(out, basicManagerSupportedAlgorithms)
 	return out
 }

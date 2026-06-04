@@ -33,12 +33,13 @@ func (e EventObject) LogValue() slog.Value {
 		slog.Any("object", e.Object),
 		slog.Any("action", e.Action),
 		slog.Any("actor", e.Actor),
-		slog.Any("eventMetaData", e.EventMetaData),
-		slog.Any("clientInfo", e.ClientInfo),
+		slog.Any("event_meta_data", e.EventMetaData),
+		slog.Any("client_info", e.ClientInfo),
 		slog.Any("original", e.Original),
 		slog.Any("updated", e.Updated),
-		slog.String("requestID", e.RequestID.String()),
-		slog.String("timestamp", e.Timestamp))
+		slog.String("request_id", e.RequestID.String()),
+		slog.String("timestamp", e.Timestamp),
+	)
 }
 
 // event.object
@@ -54,7 +55,8 @@ func (e auditEventObject) LogValue() slog.Value {
 		slog.String("type", e.Type.String()),
 		slog.String("id", e.ID),
 		slog.String("name", e.Name),
-		slog.Any("attributes", e.Attributes))
+		slog.Any("attributes", e.Attributes),
+	)
 }
 
 // event.object.attributes
@@ -68,7 +70,8 @@ func (e eventObjectAttributes) LogValue() slog.Value {
 	return slog.GroupValue(
 		slog.Any("assertions", e.Assertions),
 		slog.Any("attrs", e.Attrs),
-		slog.Any("permissions", e.Permissions))
+		slog.Any("permissions", e.Permissions),
+	)
 }
 
 // event.action
@@ -80,7 +83,8 @@ type eventAction struct {
 func (e eventAction) LogValue() slog.Value {
 	return slog.GroupValue(
 		slog.String("type", e.Type.String()),
-		slog.String("result", e.Result.String()))
+		slog.String("result", e.Result.String()),
+	)
 }
 
 // event.actor
@@ -92,7 +96,8 @@ type auditEventActor struct {
 func (e auditEventActor) LogValue() slog.Value {
 	return slog.GroupValue(
 		slog.String("id", e.ID),
-		slog.Any("attributes", e.Attributes))
+		slog.Any("attributes", e.Attributes),
+	)
 }
 
 // event.clientInfo
@@ -104,9 +109,10 @@ type eventClientInfo struct {
 
 func (e eventClientInfo) LogValue() slog.Value {
 	return slog.GroupValue(
-		slog.String("userAgent", e.UserAgent),
+		slog.String("user_agent", e.UserAgent),
 		slog.String("platform", e.Platform),
-		slog.String("requestIP", e.RequestIP))
+		slog.String("request_ip", e.RequestIP),
+	)
 }
 
 type ContextData struct {
@@ -118,10 +124,11 @@ type ContextData struct {
 
 func (c ContextData) LogValue() slog.Value {
 	return slog.GroupValue(
-		slog.String("requestID", c.RequestID.String()),
-		slog.String("userAgent", c.UserAgent),
-		slog.String("requestIP", c.RequestIP),
-		slog.String("actorID", c.ActorID))
+		slog.String("request_id", c.RequestID.String()),
+		slog.String("user_agent", c.UserAgent),
+		slog.String("request_ip", c.RequestIP),
+		slog.String("actor_id", c.ActorID),
+	)
 }
 
 // GetAuditDataFromContext gets relevant audit data from the context object

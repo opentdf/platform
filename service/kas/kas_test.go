@@ -20,7 +20,7 @@ import (
 )
 
 func TestFilterMechanismsByPreview(t *testing.T) {
-	allAlgs := []string{
+	allAlgs := []ocrypto.KeyType{
 		"rsa:2048",
 		"rsa:4096",
 		"ec:secp256r1",
@@ -31,39 +31,39 @@ func TestFilterMechanismsByPreview(t *testing.T) {
 
 	tests := []struct {
 		name string
-		algs []string
+		algs []ocrypto.KeyType
 		cfg  *access.KASConfig
-		want []string
+		want []ocrypto.KeyType
 	}{
 		{
 			name: "both flags off drops ec and hpqt",
 			algs: allAlgs,
 			cfg:  &access.KASConfig{},
-			want: []string{"rsa:2048", "rsa:4096"},
+			want: []ocrypto.KeyType{"rsa:2048", "rsa:4096"},
 		},
 		{
 			name: "top-level ec flag on keeps ec only",
 			algs: allAlgs,
 			cfg:  &access.KASConfig{ECTDFEnabled: true},
-			want: []string{"rsa:2048", "rsa:4096", "ec:secp256r1", "ec:secp384r1"},
+			want: []ocrypto.KeyType{"rsa:2048", "rsa:4096", "ec:secp256r1", "ec:secp384r1"},
 		},
 		{
 			name: "preview ec flag on keeps ec only",
 			algs: allAlgs,
 			cfg:  &access.KASConfig{Preview: access.Preview{ECTDFEnabled: true}},
-			want: []string{"rsa:2048", "rsa:4096", "ec:secp256r1", "ec:secp384r1"},
+			want: []ocrypto.KeyType{"rsa:2048", "rsa:4096", "ec:secp256r1", "ec:secp384r1"},
 		},
 		{
 			name: "top-level hybrid flag on keeps hpqt only",
 			algs: allAlgs,
 			cfg:  &access.KASConfig{HybridTDFEnabled: true},
-			want: []string{"rsa:2048", "rsa:4096", "hpqt:xwing", "hpqt:secp256r1-mlkem768"},
+			want: []ocrypto.KeyType{"rsa:2048", "rsa:4096", "hpqt:xwing", "hpqt:secp256r1-mlkem768"},
 		},
 		{
 			name: "preview hybrid flag on keeps hpqt only",
 			algs: allAlgs,
 			cfg:  &access.KASConfig{Preview: access.Preview{HybridTDFEnabled: true}},
-			want: []string{"rsa:2048", "rsa:4096", "hpqt:xwing", "hpqt:secp256r1-mlkem768"},
+			want: []ocrypto.KeyType{"rsa:2048", "rsa:4096", "hpqt:xwing", "hpqt:secp256r1-mlkem768"},
 		},
 		{
 			name: "both flags on keeps everything",
@@ -82,15 +82,15 @@ func TestFilterMechanismsByPreview(t *testing.T) {
 		},
 		{
 			name: "empty input returns empty",
-			algs: []string{},
+			algs: []ocrypto.KeyType{},
 			cfg:  &access.KASConfig{ECTDFEnabled: true, HybridTDFEnabled: true},
-			want: []string{},
+			want: []ocrypto.KeyType{},
 		},
 		{
 			name: "rsa always passes through with no flags",
-			algs: []string{"rsa:2048"},
+			algs: []ocrypto.KeyType{"rsa:2048"},
 			cfg:  &access.KASConfig{},
-			want: []string{"rsa:2048"},
+			want: []ocrypto.KeyType{"rsa:2048"},
 		},
 	}
 
@@ -105,7 +105,7 @@ func TestFilterMechanismsByPreview(t *testing.T) {
 // fakeAdvertisingManager is a trust.KeyManager + trust.AlgorithmAdvertiser for tests.
 type fakeAdvertisingManager struct {
 	name string
-	algs []string
+	algs []ocrypto.KeyType
 }
 
 func (m *fakeAdvertisingManager) Name() string { return m.name }
@@ -120,8 +120,8 @@ func (m *fakeAdvertisingManager) DeriveKey(_ context.Context, _ trust.KeyDetails
 func (m *fakeAdvertisingManager) GenerateECSessionKey(_ context.Context, _ string) (ocrypto.Encapsulator, error) {
 	return nil, nil //nolint:nilnil // unused in this test
 }
-func (m *fakeAdvertisingManager) Close()                        {}
-func (m *fakeAdvertisingManager) SupportedAlgorithms() []string { return m.algs }
+func (m *fakeAdvertisingManager) Close()                                 {}
+func (m *fakeAdvertisingManager) SupportedAlgorithms() []ocrypto.KeyType { return m.algs }
 
 // stubKeyIndex satisfies trust.KeyIndex without any backing storage.
 type stubKeyIndex struct{}
@@ -157,7 +157,7 @@ func TestLogSupportedMechanisms_EmitsInfoLine(t *testing.T) {
 	kd.RegisterKeyManagerCtx("fake", func(_ context.Context, _ *trust.KeyManagerFactoryOptions) (trust.KeyManager, error) {
 		return &fakeAdvertisingManager{
 			name: "fake",
-			algs: []string{"rsa:2048", "ec:secp256r1", "hpqt:xwing"},
+			algs: []ocrypto.KeyType{"rsa:2048", "ec:secp256r1", "hpqt:xwing"},
 		}, nil
 	})
 	kd.SetDefaultMode("fake", "", nil)

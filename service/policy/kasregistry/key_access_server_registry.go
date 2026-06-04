@@ -10,6 +10,7 @@ import (
 	"github.com/opentdf/platform/protocol/go/policy"
 	kasr "github.com/opentdf/platform/protocol/go/policy/kasregistry"
 	"github.com/opentdf/platform/protocol/go/policy/kasregistry/kasregistryconnect"
+	"github.com/opentdf/platform/service/internal/auth/authz"
 	"github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/logger/audit"
 	"github.com/opentdf/platform/service/pkg/config"
@@ -28,6 +29,12 @@ var (
 	ErrInvalidRSAKeySize      = errors.New("invalid rsa key size")
 	ErrInvalidECKeyCurve      = errors.New("invalid ec key curve")
 	ErrUnsupportedCurve       = errors.New("unsupported curve")
+)
+
+const (
+	authzDimKASID   = "kas_id"
+	authzDimKASName = "kas_name"
+	authzDimKASURI  = "kas_uri"
 )
 
 type KeyAccessServerRegistry struct {
@@ -80,16 +87,270 @@ func NewRegistration(ns string, dbRegister serviceregistry.DBRegister) *servicer
 				}
 
 				kasrSvc.config = cfg
+				kasrSvc.registerAuthzResolvers(srp.AuthzResolverRegistry)
 				return kasrSvc, nil
 			},
 		},
 	}
 }
 
+func (s *KeyAccessServerRegistry) registerAuthzResolvers(registry *authz.ScopedResolverRegistry) {
+	if registry == nil {
+		return
+	}
+
+	registry.MustRegister("GetKeyAccessServer", s.getKeyAccessServerAuthzResolver)
+	registry.MustRegister("CreateKey", s.createKeyAuthzResolver)
+	registry.MustRegister("GetKey", s.getKeyAuthzResolver)
+	registry.MustRegister("ListKeys", s.listKeysAuthzResolver)
+	registry.MustRegister("UpdateKey", s.updateKeyAuthzResolver)
+	registry.MustRegister("RotateKey", s.rotateKeyAuthzResolver)
+	registry.MustRegister("SetBaseKey", s.setBaseKeyAuthzResolver)
+	registry.MustRegister("ListKeyMappings", s.listKeyMappingsAuthzResolver)
+}
+
 // Close gracefully shuts down the service, closing the database client.
 func (s *KeyAccessServerRegistry) Close() {
 	s.logger.Info("gracefully shutting down key access server registry service")
 	s.dbClient.Close()
+}
+
+func (s KeyAccessServerRegistry) getKeyAccessServerAuthzResolver(ctx context.Context, req connect.AnyRequest) (authz.ResolverContext, error) {
+	resolverCtx := authz.NewResolverContext()
+	msg, ok := req.Any().(*kasr.GetKeyAccessServerRequest)
+	if !ok {
+		return resolverCtx, fmt.Errorf("unexpected request type: %T", req.Any())
+	}
+
+	res := resolverCtx.NewResource()
+	if msg.GetId() != "" { //nolint:staticcheck // Id can still be used until removed
+		if err := s.addResolvedKASDimensions(ctx, res, msg.GetId()); err != nil { //nolint:staticcheck // Id can still be used until removed
+			return resolverCtx, err
+		}
+		return resolverCtx, nil
+	}
+
+	if err := s.addResolvedKASDimensions(ctx, res, msg.GetIdentifier()); err != nil {
+		return resolverCtx, err
+	}
+
+	return resolverCtx, nil
+}
+
+func (s KeyAccessServerRegistry) createKeyAuthzResolver(ctx context.Context, req connect.AnyRequest) (authz.ResolverContext, error) {
+	resolverCtx := authz.NewResolverContext()
+	msg, ok := req.Any().(*kasr.CreateKeyRequest)
+	if !ok {
+		return resolverCtx, fmt.Errorf("unexpected request type: %T", req.Any())
+	}
+
+	res := resolverCtx.NewResource()
+	if err := s.addResolvedKASDimensions(ctx, res, &kasr.GetKeyAccessServerRequest_KasId{KasId: msg.GetKasId()}); err != nil {
+		return resolverCtx, err
+	}
+
+	return resolverCtx, nil
+}
+
+func (s KeyAccessServerRegistry) getKeyAuthzResolver(ctx context.Context, req connect.AnyRequest) (authz.ResolverContext, error) {
+	resolverCtx := authz.NewResolverContext()
+	msg, ok := req.Any().(*kasr.GetKeyRequest)
+	if !ok {
+		return resolverCtx, fmt.Errorf("unexpected request type: %T", req.Any())
+	}
+
+	res := resolverCtx.NewResource()
+	if err := s.addKeyRequestDimensions(ctx, res, msg.GetIdentifier()); err != nil {
+		return resolverCtx, err
+	}
+
+	return resolverCtx, nil
+}
+
+func (s KeyAccessServerRegistry) listKeysAuthzResolver(ctx context.Context, req connect.AnyRequest) (authz.ResolverContext, error) {
+	resolverCtx := authz.NewResolverContext()
+	msg, ok := req.Any().(*kasr.ListKeysRequest)
+	if !ok {
+		return resolverCtx, fmt.Errorf("unexpected request type: %T", req.Any())
+	}
+
+	res := resolverCtx.NewResource()
+	if err := s.addListKeysFilterDimensions(ctx, res, msg.GetKasFilter()); err != nil {
+		return resolverCtx, err
+	}
+
+	return resolverCtx, nil
+}
+
+func (s KeyAccessServerRegistry) updateKeyAuthzResolver(ctx context.Context, req connect.AnyRequest) (authz.ResolverContext, error) {
+	resolverCtx := authz.NewResolverContext()
+	msg, ok := req.Any().(*kasr.UpdateKeyRequest)
+	if !ok {
+		return resolverCtx, fmt.Errorf("unexpected request type: %T", req.Any())
+	}
+
+	res := resolverCtx.NewResource()
+	if err := s.addKeyDimensionsByID(ctx, res, msg.GetId()); err != nil {
+		return resolverCtx, err
+	}
+
+	return resolverCtx, nil
+}
+
+func (s KeyAccessServerRegistry) rotateKeyAuthzResolver(ctx context.Context, req connect.AnyRequest) (authz.ResolverContext, error) {
+	resolverCtx := authz.NewResolverContext()
+	msg, ok := req.Any().(*kasr.RotateKeyRequest)
+	if !ok {
+		return resolverCtx, fmt.Errorf("unexpected request type: %T", req.Any())
+	}
+
+	res := resolverCtx.NewResource()
+	switch active := msg.GetActiveKey().(type) {
+	case *kasr.RotateKeyRequest_Id:
+		if err := s.addKeyDimensionsByID(ctx, res, active.Id); err != nil {
+			return resolverCtx, err
+		}
+	case *kasr.RotateKeyRequest_Key:
+		if err := s.addKASKeyIdentifierDimensions(ctx, res, active.Key); err != nil {
+			return resolverCtx, err
+		}
+	default:
+		return resolverCtx, errors.New("no active key identifier provided")
+	}
+
+	return resolverCtx, nil
+}
+
+func (s KeyAccessServerRegistry) setBaseKeyAuthzResolver(ctx context.Context, req connect.AnyRequest) (authz.ResolverContext, error) {
+	resolverCtx := authz.NewResolverContext()
+	msg, ok := req.Any().(*kasr.SetBaseKeyRequest)
+	if !ok {
+		return resolverCtx, fmt.Errorf("unexpected request type: %T", req.Any())
+	}
+
+	res := resolverCtx.NewResource()
+	switch active := msg.GetActiveKey().(type) {
+	case *kasr.SetBaseKeyRequest_Id:
+		if err := s.addKeyDimensionsByID(ctx, res, active.Id); err != nil {
+			return resolverCtx, err
+		}
+	case *kasr.SetBaseKeyRequest_Key:
+		if err := s.addKASKeyIdentifierDimensions(ctx, res, active.Key); err != nil {
+			return resolverCtx, err
+		}
+	default:
+		return resolverCtx, errors.New("no active key identifier provided")
+	}
+
+	return resolverCtx, nil
+}
+
+func (s KeyAccessServerRegistry) listKeyMappingsAuthzResolver(ctx context.Context, req connect.AnyRequest) (authz.ResolverContext, error) {
+	resolverCtx := authz.NewResolverContext()
+	msg, ok := req.Any().(*kasr.ListKeyMappingsRequest)
+	if !ok {
+		return resolverCtx, fmt.Errorf("unexpected request type: %T", req.Any())
+	}
+
+	res := resolverCtx.NewResource()
+	switch identifier := msg.GetIdentifier().(type) {
+	case *kasr.ListKeyMappingsRequest_Id:
+		if err := s.addKeyDimensionsByID(ctx, res, identifier.Id); err != nil {
+			return resolverCtx, err
+		}
+	case *kasr.ListKeyMappingsRequest_Key:
+		if err := s.addKASKeyIdentifierDimensions(ctx, res, identifier.Key); err != nil {
+			return resolverCtx, err
+		}
+	case nil:
+		// No dimensions means only wildcard-dimension policy can list all mappings.
+	default:
+		return resolverCtx, fmt.Errorf("unexpected key mapping identifier type: %T", identifier)
+	}
+
+	return resolverCtx, nil
+}
+
+func (s KeyAccessServerRegistry) addKeyRequestDimensions(ctx context.Context, res *authz.ResolverResource, identifier any) error {
+	switch keyIdentifier := identifier.(type) {
+	case *kasr.GetKeyRequest_Id:
+		return s.addKeyDimensionsByID(ctx, res, keyIdentifier.Id)
+	case *kasr.GetKeyRequest_Key:
+		return s.addKASKeyIdentifierDimensions(ctx, res, keyIdentifier.Key)
+	default:
+		return fmt.Errorf("unexpected key identifier type: %T", identifier)
+	}
+}
+
+func (s KeyAccessServerRegistry) addKeyDimensionsByID(ctx context.Context, res *authz.ResolverResource, id string) error {
+	key, err := s.dbClient.GetKey(ctx, &kasr.GetKeyRequest_Id{Id: id})
+	if err != nil {
+		return fmt.Errorf("failed to resolve key for authz: %w", err)
+	}
+	addKASKeyDimensions(res, key)
+	return nil
+}
+
+func (s KeyAccessServerRegistry) addKASKeyIdentifierDimensions(ctx context.Context, res *authz.ResolverResource, identifier *kasr.KasKeyIdentifier) error {
+	if identifier == nil {
+		return errors.New("key identifier is required")
+	}
+
+	switch kasIdentifier := identifier.GetIdentifier().(type) {
+	case *kasr.KasKeyIdentifier_KasId:
+		return s.addResolvedKASDimensions(ctx, res, &kasr.GetKeyAccessServerRequest_KasId{KasId: kasIdentifier.KasId})
+	case *kasr.KasKeyIdentifier_Name:
+		return s.addResolvedKASDimensions(ctx, res, &kasr.GetKeyAccessServerRequest_Name{Name: kasIdentifier.Name})
+	case *kasr.KasKeyIdentifier_Uri:
+		return s.addResolvedKASDimensions(ctx, res, &kasr.GetKeyAccessServerRequest_Uri{Uri: kasIdentifier.Uri})
+	default:
+		return fmt.Errorf("unexpected KAS identifier type: %T", kasIdentifier)
+	}
+}
+
+func (s KeyAccessServerRegistry) addListKeysFilterDimensions(ctx context.Context, res *authz.ResolverResource, filter any) error {
+	switch kasFilter := filter.(type) {
+	case *kasr.ListKeysRequest_KasId:
+		return s.addResolvedKASDimensions(ctx, res, &kasr.GetKeyAccessServerRequest_KasId{KasId: kasFilter.KasId})
+	case *kasr.ListKeysRequest_KasName:
+		return s.addResolvedKASDimensions(ctx, res, &kasr.GetKeyAccessServerRequest_Name{Name: kasFilter.KasName})
+	case *kasr.ListKeysRequest_KasUri:
+		return s.addResolvedKASDimensions(ctx, res, &kasr.GetKeyAccessServerRequest_Uri{Uri: kasFilter.KasUri})
+	case nil:
+		// No dimensions means only wildcard-dimension policy can list all keys.
+		return nil
+	default:
+		return fmt.Errorf("unexpected KAS filter type: %T", kasFilter)
+	}
+}
+
+func (s KeyAccessServerRegistry) addResolvedKASDimensions(ctx context.Context, res *authz.ResolverResource, identifier any) error {
+	kas, err := s.dbClient.GetKeyAccessServer(ctx, identifier)
+	if err != nil {
+		return fmt.Errorf("failed to resolve KAS for authz: %w", err)
+	}
+
+	addKASDimensions(res, kas.GetId(), kas.GetName(), kas.GetUri())
+	return nil
+}
+
+func addKASKeyDimensions(res *authz.ResolverResource, key *policy.KasKey) {
+	if key == nil {
+		return
+	}
+	addKASDimensions(res, key.GetKasId(), "", key.GetKasUri())
+}
+
+func addKASDimensions(res *authz.ResolverResource, id, name, uri string) {
+	if id != "" {
+		res.AddDimension(authzDimKASID, id)
+	}
+	if name != "" {
+		res.AddDimension(authzDimKASName, name)
+	}
+	if uri != "" {
+		res.AddDimension(authzDimKASURI, uri)
+	}
 }
 
 func (s KeyAccessServerRegistry) CreateKeyAccessServer(ctx context.Context,

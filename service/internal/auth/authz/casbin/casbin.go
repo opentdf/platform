@@ -360,6 +360,13 @@ func (a *Authorizer) extractSubjects(req *authz.Request) []string {
 		if username := a.extractUsernameFromToken(req.Token); username != "" {
 			subjects = append(subjects, username)
 		}
+
+		// Treat the configured OAuth client ID claim as a first-class subject.
+		// This allows policy to authorize service clients directly, e.g.
+		// p, kas-a, /policy.kasregistry.KeyAccessServerRegistryService/ListKeys, kas_uri=http://kas-a, allow
+		if clientID := a.extractClientIDFromToken(req.Token); clientID != "" {
+			subjects = append(subjects, clientID)
+		}
 	}
 
 	// Extract roles from userInfo
@@ -373,6 +380,33 @@ func (a *Authorizer) extractSubjects(req *authz.Request) []string {
 	}
 
 	return subjects
+}
+
+// extractClientIDFromToken extracts and validates the configured OAuth client ID claim.
+func (a *Authorizer) extractClientIDFromToken(token jwt.Token) string {
+	if token == nil || a.baseConfig.ClientIDClaim == "" {
+		return ""
+	}
+
+	claim, found := token.Get(a.baseConfig.ClientIDClaim)
+	if !found {
+		return ""
+	}
+
+	clientID, ok := claim.(string)
+	if !ok || clientID == "" {
+		return ""
+	}
+
+	if strings.HasPrefix(clientID, rolePrefix) {
+		a.logger.Warn("ignoring client ID subject with reserved role prefix",
+			slog.String("claim", a.baseConfig.ClientIDClaim),
+			slog.String("prefix", rolePrefix),
+		)
+		return ""
+	}
+
+	return clientID
 }
 
 // extractUsernameFromToken extracts and validates username subject from token.

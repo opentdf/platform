@@ -862,6 +862,99 @@ func (s *CasbinAuthorizerSuite) TestAuthorizeV1_PathHandlingHeuristic() {
 	s.Equal("/http/path", receivedResources[1], "HTTP path should keep leading slash")
 }
 
+func (s *CasbinAuthorizerSuite) TestAuthorizeV2_ClientIDSubjectKASKeyScope() {
+	cfg := authz.Config{
+		Version: "v2",
+		PolicyConfig: authz.PolicyConfig{
+			ClientIDClaim: "azp",
+			Csv: `p, kas-a, /policy.kasregistry.KeyAccessServerRegistryService/ListKeys, kas_uri=http://localhost:9081, allow
+p, kas-a, /policy.kasregistry.KeyAccessServerRegistryService/GetKey, kas_uri=http://localhost:9081, allow
+p, kas-b, /policy.kasregistry.KeyAccessServerRegistryService/ListKeys, kas_uri=http://localhost:9082, allow
+p, kas-b, /policy.kasregistry.KeyAccessServerRegistryService/GetKey, kas_uri=http://localhost:9082, allow`,
+		},
+		Logger: s.logger,
+	}
+
+	authorizer, err := NewAuthorizer(cfg)
+	s.Require().NoError(err)
+
+	kasAToken := createTestToken(s.T(), map[string]interface{}{"azp": "kas-a"})
+	kasBToken := createTestToken(s.T(), map[string]interface{}{"azp": "kas-b"})
+
+	kasAKeysReq := &authz.Request{
+		Token: kasAToken,
+		RPC:   "/policy.kasregistry.KeyAccessServerRegistryService/ListKeys",
+		ResourceContext: &authz.ResolverContext{
+			Resources: []*authz.ResolverResource{
+				{"kas_uri": "http://localhost:9081"},
+			},
+		},
+	}
+	decision, err := authorizer.Authorize(context.Background(), kasAKeysReq)
+	s.Require().NoError(err)
+	s.True(decision.Allowed, "kas-a should list kas-a keys")
+	s.Equal("kas-a", decision.MatchedPolicy)
+
+	kasBKeysReq := &authz.Request{
+		Token: kasAToken,
+		RPC:   "/policy.kasregistry.KeyAccessServerRegistryService/ListKeys",
+		ResourceContext: &authz.ResolverContext{
+			Resources: []*authz.ResolverResource{
+				{"kas_uri": "http://localhost:9082"},
+			},
+		},
+	}
+	decision, err = authorizer.Authorize(context.Background(), kasBKeysReq)
+	s.Require().NoError(err)
+	s.False(decision.Allowed, "kas-a should not list kas-b keys")
+
+	unscopedListReq := &authz.Request{
+		Token: kasAToken,
+		RPC:   "/policy.kasregistry.KeyAccessServerRegistryService/ListKeys",
+	}
+	decision, err = authorizer.Authorize(context.Background(), unscopedListReq)
+	s.Require().NoError(err)
+	s.False(decision.Allowed, "kas-a should not perform an unscoped key list")
+
+	kasBGetReq := &authz.Request{
+		Token: kasBToken,
+		RPC:   "/policy.kasregistry.KeyAccessServerRegistryService/GetKey",
+		ResourceContext: &authz.ResolverContext{
+			Resources: []*authz.ResolverResource{
+				{"kas_uri": "http://localhost:9082"},
+			},
+		},
+	}
+	decision, err = authorizer.Authorize(context.Background(), kasBGetReq)
+	s.Require().NoError(err)
+	s.True(decision.Allowed, "kas-b should get kas-b keys")
+	s.Equal("kas-b", decision.MatchedPolicy)
+}
+
+func (s *CasbinAuthorizerSuite) TestAuthorizeV2_ClientIDSubjectWithReservedRolePrefixIsIgnored() {
+	cfg := authz.Config{
+		Version: "v2",
+		PolicyConfig: authz.PolicyConfig{
+			ClientIDClaim: "azp",
+			Csv:           `p, role:admin, /policy.kasregistry.KeyAccessServerRegistryService/ListKeys, *, allow`,
+		},
+		Logger: s.logger,
+	}
+
+	authorizer, err := NewAuthorizer(cfg)
+	s.Require().NoError(err)
+
+	token := createTestToken(s.T(), map[string]interface{}{"azp": "role:admin"})
+	req := &authz.Request{
+		Token: token,
+		RPC:   "/policy.kasregistry.KeyAccessServerRegistryService/ListKeys",
+	}
+
+	decision, err := authorizer.Authorize(context.Background(), req)
+	s.Require().NoError(err)
+	s.False(decision.Allowed, "client ID with reserved role prefix must not match role subjects")
+}
+
 // Helper function to create test JWT tokens
 func createTestToken(t *testing.T, claims map[string]interface{}) jwt.Token {
 	t.Helper()

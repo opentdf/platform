@@ -8,10 +8,14 @@ chose a definition-level dynamic entitlement model (its Option 3) but **explicit
 implementation spike** the question of *how* to model it. This document records what that spike
 ([DSPX-2754](https://virtru.atlassian.net/browse/DSPX-2754)) found.
 
-The spike code lives in [`service/internal/access/v2/dynamicentitlement`](../../internal/access/v2/dynamicentitlement)
-and is **not wired into any live decision path**. It is a throwaway proof-of-concept whose purpose is to
-make the options below comparable on real behavior. No protos, database, sqlc, service handlers, or PDP
-code were changed, because the source ADR states primitive names and schema are still subject to change.
+The original spike prototyped all three options as a throwaway package to make them comparable on real
+behavior. The recommendation below (a new primitive carrying a new operator) is now implemented as
+production code: the `DefinitionValueEntitlementMapping` primitive
+([`service/policy/objects.proto`](../objects.proto)), its dedicated service
+([`service/policy/definitionvalueentitlement`](../definitionvalueentitlement)), DB layer, and the
+decision-time evaluator
+([`service/internal/subjectmappingbuiltin/definition_value_entitlement_builtin.go`](../../internal/subjectmappingbuiltin/definition_value_entitlement_builtin.go))
+wired into the PDP. The findings below record why that shape was chosen over the alternatives.
 
 ## Context
 

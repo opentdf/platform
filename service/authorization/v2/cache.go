@@ -14,10 +14,11 @@ import (
 )
 
 const (
-	attributesCacheKey          = "attributes_cache_key"
-	subjectMappingsCacheKey     = "subject_mappings_cache_key"
-	registeredResourcesCacheKey = "registered_resources_cache_key"
-	obligationsCacheKey         = "obligations_cache_key"
+	attributesCacheKey                         = "attributes_cache_key"
+	subjectMappingsCacheKey                    = "subject_mappings_cache_key"
+	definitionValueEntitlementMappingsCacheKey = "definition_value_entitlement_mappings_cache_key"
+	registeredResourcesCacheKey                = "registered_resources_cache_key"
+	obligationsCacheKey                        = "obligations_cache_key"
 )
 
 var (
@@ -60,10 +61,11 @@ type EntitlementPolicyCache struct {
 // The EntitlementPolicy struct holds all the cached entitlement policy, as generics allow one
 // data type per service cache instance.
 type EntitlementPolicy struct {
-	Attributes          []*policy.Attribute
-	SubjectMappings     []*policy.SubjectMapping
-	RegisteredResources []*policy.RegisteredResource
-	Obligations         []*policy.Obligation
+	Attributes                         []*policy.Attribute
+	SubjectMappings                    []*policy.SubjectMapping
+	DefinitionValueEntitlementMappings []*policy.DefinitionValueEntitlementMapping
+	RegisteredResources                []*policy.RegisteredResource
+	Obligations                        []*policy.Obligation
 }
 
 // NewEntitlementPolicyCache holds a platform-provided cache client and manages a periodic refresh of
@@ -178,6 +180,10 @@ func (c *EntitlementPolicyCache) Refresh(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
+	definitionValueEntitlementMappings, err := c.retriever.ListAllDefinitionValueEntitlementMappings(ctx)
+	if err != nil {
+		return err
+	}
 	registeredResources, err := c.retriever.ListAllRegisteredResources(ctx)
 	if err != nil {
 		return err
@@ -195,6 +201,12 @@ func (c *EntitlementPolicyCache) Refresh(ctx context.Context) error {
 	}
 
 	err = c.cacheClient.Set(ctx, subjectMappingsCacheKey, subjectMappings, authzCacheTags)
+	if err != nil {
+		c.isCacheFilled = false
+		return errors.Join(ErrFailedToSet, err)
+	}
+
+	err = c.cacheClient.Set(ctx, definitionValueEntitlementMappingsCacheKey, definitionValueEntitlementMappings, authzCacheTags)
 	if err != nil {
 		c.isCacheFilled = false
 		return errors.Join(ErrFailedToSet, err)
@@ -268,6 +280,28 @@ func (c *EntitlementPolicyCache) ListAllSubjectMappings(ctx context.Context) ([]
 		return nil, fmt.Errorf("%w: %T", ErrCachedTypeNotExpected, subjectMappings)
 	}
 	return subjectMappings, nil
+}
+
+// ListAllDefinitionValueEntitlementMappings returns the cached dynamic value entitlement mappings, or none on a cache miss
+func (c *EntitlementPolicyCache) ListAllDefinitionValueEntitlementMappings(ctx context.Context) ([]*policy.DefinitionValueEntitlementMapping, error) {
+	var (
+		mappings []*policy.DefinitionValueEntitlementMapping
+		ok       bool
+	)
+
+	cached, err := c.cacheClient.Get(ctx, definitionValueEntitlementMappingsCacheKey)
+	if err != nil {
+		if errors.Is(err, cache.ErrCacheMiss) {
+			return mappings, nil
+		}
+		return nil, fmt.Errorf("%w, definition value entitlement mappings: %w", ErrFailedToGet, err)
+	}
+
+	mappings, ok = cached.([]*policy.DefinitionValueEntitlementMapping)
+	if !ok {
+		return nil, fmt.Errorf("%w: %T", ErrCachedTypeNotExpected, mappings)
+	}
+	return mappings, nil
 }
 
 // ListAllRegisteredResources returns the cached registered resources, or none in the event of a cache miss

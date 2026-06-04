@@ -13,14 +13,16 @@ import (
 	"github.com/opentdf/platform/protocol/go/policy"
 	attrs "github.com/opentdf/platform/protocol/go/policy/attributes"
 	"github.com/opentdf/platform/service/internal/access/v2/obligations"
+	"github.com/opentdf/platform/service/internal/subjectmappingbuiltin"
 	"github.com/opentdf/platform/service/logger"
 )
 
 var (
-	ErrInvalidSubjectMapping          = errors.New("access: invalid subject mapping")
-	ErrInvalidAttributeDefinition     = errors.New("access: invalid attribute definition")
-	ErrInvalidRegisteredResource      = errors.New("access: invalid registered resource")
-	ErrInvalidRegisteredResourceValue = errors.New("access: invalid registered resource value")
+	ErrInvalidSubjectMapping                    = errors.New("access: invalid subject mapping")
+	ErrInvalidAttributeDefinition               = errors.New("access: invalid attribute definition")
+	ErrInvalidRegisteredResource                = errors.New("access: invalid registered resource")
+	ErrInvalidRegisteredResourceValue           = errors.New("access: invalid registered resource value")
+	ErrInvalidDefinitionValueEntitlementMapping = errors.New("access: invalid definition value entitlement mapping")
 )
 
 // getDefinition parses the value FQN and uses it to retrieve the definition from the provided definitions map
@@ -197,6 +199,8 @@ func getResourceDecisionableAttributes(
 	entitleableAttributesByValueFQN map[string]*attrs.GetAttributeValuesByFqnsResponse_AttributeAndValue,
 	// this is needed to support direct entitlement ad-hoc attribute values
 	entitleableAttributesByDefinitionFQN map[string]*policy.Attribute,
+	// definitions carrying a dynamic value entitlement mapping also support synthetic values
+	dynamicMappingsByDefinitionFQN subjectmappingbuiltin.DefinitionValueEntitlementMappingsByDefinitionFQN,
 	// action *policy.Action,
 	resources []*authz.Resource,
 	allowDirectEntitlements bool,
@@ -251,23 +255,31 @@ func getResourceDecisionableAttributes(
 		attributeAndValue, ok := entitleableAttributesByValueFQN[attrValueFQN]
 
 		if !ok {
-			// if the attribute value FQN is not found, then check if direct entitlements with synthetic values are enabled (experimental)
-			if !allowDirectEntitlements {
-				// if disabled, add to not found list and skip to next attribute value FQN
-				notFoundFQNs = append(notFoundFQNs, attrValueFQN)
-				continue
-			}
-
-			// now process direct entitlement that only exists at attribute definition level
-			logger.DebugContext(ctx, "processing direct entitlement for resource decisionable attribute value", slog.String("attribute_value_fqn", attrValueFQN))
-
-			// try to find the definition by extracting partial FQN from direct entitlement synthetic value FQN
+			// The value FQN is not a concrete policy value. A synthetic value is created
+			// when either direct entitlements are enabled (experimental) OR the parent
+			// definition carries a dynamic value entitlement mapping (DSPX-2754), since
+			// dynamic mappings entitle values that are not pre-provisioned in policy.
 			parentDefinition, err := getDefinition(attrValueFQN, entitleableAttributesByDefinitionFQN)
-			if err != nil {
-				// if definition not found, add to not found list and skip to next attribute value FQN
+			hasDynamicMapping := false
+			if err == nil {
+				_, hasDynamicMapping = dynamicMappingsByDefinitionFQN[parentDefinition.GetFqn()]
+			}
+
+			if !allowDirectEntitlements && !hasDynamicMapping {
+				// neither path enabled for this value: add to not found list and skip
 				notFoundFQNs = append(notFoundFQNs, attrValueFQN)
 				continue
 			}
+			if err != nil {
+				// definition not found: add to not found list and skip
+				notFoundFQNs = append(notFoundFQNs, attrValueFQN)
+				continue
+			}
+
+			logger.DebugContext(ctx, "processing synthetic value for resource decisionable attribute value",
+				slog.String("attribute_value_fqn", attrValueFQN),
+				slog.Bool("has_dynamic_mapping", hasDynamicMapping),
+			)
 
 			// Extract the value part from the FQN
 			// FQN format: https://<namespace>/attr/<name>/value/<value>

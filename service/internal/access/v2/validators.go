@@ -127,6 +127,40 @@ func validateAttribute(attribute *policy.Attribute) error {
 	return nil
 }
 
+// validateDefinitionValueEntitlementMapping validates a dynamic value entitlement mapping
+// is usable for an entitlement decision.
+//
+// mapping:
+//
+//   - must not be nil
+//   - must reference an attribute definition with a non-empty FQN
+//   - the definition must not be HIERARCHY (ordered static values are incompatible)
+//   - must have a value resolver with a selector and a specified operator
+//   - must have at least one action
+func validateDefinitionValueEntitlementMapping(mapping *policy.DefinitionValueEntitlementMapping) error {
+	if mapping == nil {
+		return fmt.Errorf("definition value entitlement mapping is nil: %w", ErrInvalidDefinitionValueEntitlementMapping)
+	}
+	def := mapping.GetAttributeDefinition()
+	if def == nil || def.GetFqn() == "" {
+		return fmt.Errorf("mapping's attribute definition is missing: %w", ErrInvalidDefinitionValueEntitlementMapping)
+	}
+	if def.GetRule() == policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY {
+		return fmt.Errorf("HIERARCHY definitions are not supported for dynamic value entitlement: %w", ErrInvalidDefinitionValueEntitlementMapping)
+	}
+	resolver := mapping.GetValueResolver()
+	if resolver == nil || resolver.GetSubjectExternalSelectorValue() == "" {
+		return fmt.Errorf("mapping's value resolver selector is empty: %w", ErrInvalidDefinitionValueEntitlementMapping)
+	}
+	if resolver.GetOperator() == policy.DynamicValueOperatorEnum_DYNAMIC_VALUE_OPERATOR_ENUM_UNSPECIFIED {
+		return fmt.Errorf("mapping's value resolver operator is unspecified: %w", ErrInvalidDefinitionValueEntitlementMapping)
+	}
+	if len(mapping.GetActions()) == 0 {
+		return fmt.Errorf("mapping's actions are empty: %w", ErrInvalidDefinitionValueEntitlementMapping)
+	}
+	return nil
+}
+
 // validateRegisteredResource validates the registered resource is valid for an entitlement decision
 //
 // registered resource:

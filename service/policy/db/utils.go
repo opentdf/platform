@@ -10,6 +10,7 @@ import (
 	"github.com/opentdf/platform/protocol/go/common"
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/attributes"
+	"github.com/opentdf/platform/protocol/go/policy/definitionvalueentitlement"
 	"github.com/opentdf/platform/protocol/go/policy/kasregistry"
 	"github.com/opentdf/platform/protocol/go/policy/namespaces"
 	"github.com/opentdf/platform/protocol/go/policy/obligations"
@@ -402,6 +403,26 @@ func GetSubjectMappingsSortParams(sort []*subjectmapping.SubjectMappingsSort) (s
 		return "", ""
 	}
 	return getSubjectMappingsSortField(sort[0].GetField()), getSortDirection(sort[0].GetDirection())
+}
+
+func getDefinitionValueEntitlementMappingsSortField(field definitionvalueentitlement.SortDefinitionValueEntitlementMappingsType) string {
+	switch field {
+	case definitionvalueentitlement.SortDefinitionValueEntitlementMappingsType_SORT_DEFINITION_VALUE_ENTITLEMENT_MAPPINGS_TYPE_CREATED_AT:
+		return sortFieldCreatedAt
+	case definitionvalueentitlement.SortDefinitionValueEntitlementMappingsType_SORT_DEFINITION_VALUE_ENTITLEMENT_MAPPINGS_TYPE_UPDATED_AT:
+		return sortFieldUpdatedAt
+	case definitionvalueentitlement.SortDefinitionValueEntitlementMappingsType_SORT_DEFINITION_VALUE_ENTITLEMENT_MAPPINGS_TYPE_UNSPECIFIED:
+		fallthrough
+	default:
+		return ""
+	}
+}
+
+func GetDefinitionValueEntitlementMappingsSortParams(sort []*definitionvalueentitlement.DefinitionValueEntitlementMappingsSort) (string, string) {
+	if len(sort) == 0 {
+		return "", ""
+	}
+	return getDefinitionValueEntitlementMappingsSortField(sort[0].GetField()), getSortDirection(sort[0].GetDirection())
 }
 
 func UUIDToString(uuid pgtype.UUID) string {

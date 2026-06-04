@@ -1,13 +1,13 @@
 openapi: 3.1.0
 info:
-  title: policy.obligations
+  title: policy.definitionvalueentitlement
 paths:
-  /policy.obligations.Service/ListObligations:
+  /policy.definitionvalueentitlement.DefinitionValueEntitlementMappingService/ListDefinitionValueEntitlementMappings:
     post:
       tags:
-        - policy.obligations.Service
-      summary: ListObligations
-      operationId: policy.obligations.Service.ListObligations
+        - policy.definitionvalueentitlement.DefinitionValueEntitlementMappingService
+      summary: ListDefinitionValueEntitlementMappings
+      operationId: policy.definitionvalueentitlement.DefinitionValueEntitlementMappingService.ListDefinitionValueEntitlementMappings
       parameters:
         - name: Connect-Protocol-Version
           in: header
@@ -22,7 +22,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/policy.obligations.ListObligationsRequest'
+              $ref: '#/components/schemas/policy.definitionvalueentitlement.ListDefinitionValueEntitlementMappingsRequest'
         required: true
       responses:
         default:
@@ -36,13 +36,13 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/policy.obligations.ListObligationsResponse'
-  /policy.obligations.Service/GetObligation:
+                $ref: '#/components/schemas/policy.definitionvalueentitlement.ListDefinitionValueEntitlementMappingsResponse'
+  /policy.definitionvalueentitlement.DefinitionValueEntitlementMappingService/GetDefinitionValueEntitlementMapping:
     post:
       tags:
-        - policy.obligations.Service
-      summary: GetObligation
-      operationId: policy.obligations.Service.GetObligation
+        - policy.definitionvalueentitlement.DefinitionValueEntitlementMappingService
+      summary: GetDefinitionValueEntitlementMapping
+      operationId: policy.definitionvalueentitlement.DefinitionValueEntitlementMappingService.GetDefinitionValueEntitlementMapping
       parameters:
         - name: Connect-Protocol-Version
           in: header
@@ -57,7 +57,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/policy.obligations.GetObligationRequest'
+              $ref: '#/components/schemas/policy.definitionvalueentitlement.GetDefinitionValueEntitlementMappingRequest'
         required: true
       responses:
         default:
@@ -71,13 +71,13 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/policy.obligations.GetObligationResponse'
-  /policy.obligations.Service/GetObligationsByFQNs:
+                $ref: '#/components/schemas/policy.definitionvalueentitlement.GetDefinitionValueEntitlementMappingResponse'
+  /policy.definitionvalueentitlement.DefinitionValueEntitlementMappingService/CreateDefinitionValueEntitlementMapping:
     post:
       tags:
-        - policy.obligations.Service
-      summary: GetObligationsByFQNs
-      operationId: policy.obligations.Service.GetObligationsByFQNs
+        - policy.definitionvalueentitlement.DefinitionValueEntitlementMappingService
+      summary: CreateDefinitionValueEntitlementMapping
+      operationId: policy.definitionvalueentitlement.DefinitionValueEntitlementMappingService.CreateDefinitionValueEntitlementMapping
       parameters:
         - name: Connect-Protocol-Version
           in: header
@@ -92,7 +92,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/policy.obligations.GetObligationsByFQNsRequest'
+              $ref: '#/components/schemas/policy.definitionvalueentitlement.CreateDefinitionValueEntitlementMappingRequest'
         required: true
       responses:
         default:
@@ -106,13 +106,13 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/policy.obligations.GetObligationsByFQNsResponse'
-  /policy.obligations.Service/CreateObligation:
+                $ref: '#/components/schemas/policy.definitionvalueentitlement.CreateDefinitionValueEntitlementMappingResponse'
+  /policy.definitionvalueentitlement.DefinitionValueEntitlementMappingService/UpdateDefinitionValueEntitlementMapping:
     post:
       tags:
-        - policy.obligations.Service
-      summary: CreateObligation
-      operationId: policy.obligations.Service.CreateObligation
+        - policy.definitionvalueentitlement.DefinitionValueEntitlementMappingService
+      summary: UpdateDefinitionValueEntitlementMapping
+      operationId: policy.definitionvalueentitlement.DefinitionValueEntitlementMappingService.UpdateDefinitionValueEntitlementMapping
       parameters:
         - name: Connect-Protocol-Version
           in: header
@@ -127,7 +127,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/policy.obligations.CreateObligationRequest'
+              $ref: '#/components/schemas/policy.definitionvalueentitlement.UpdateDefinitionValueEntitlementMappingRequest'
         required: true
       responses:
         default:
@@ -141,13 +141,13 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/policy.obligations.CreateObligationResponse'
-  /policy.obligations.Service/UpdateObligation:
+                $ref: '#/components/schemas/policy.definitionvalueentitlement.UpdateDefinitionValueEntitlementMappingResponse'
+  /policy.definitionvalueentitlement.DefinitionValueEntitlementMappingService/DeleteDefinitionValueEntitlementMapping:
     post:
       tags:
-        - policy.obligations.Service
-      summary: UpdateObligation
-      operationId: policy.obligations.Service.UpdateObligation
+        - policy.definitionvalueentitlement.DefinitionValueEntitlementMappingService
+      summary: DeleteDefinitionValueEntitlementMapping
+      operationId: policy.definitionvalueentitlement.DefinitionValueEntitlementMappingService.DeleteDefinitionValueEntitlementMapping
       parameters:
         - name: Connect-Protocol-Version
           in: header
@@ -162,7 +162,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/policy.obligations.UpdateObligationRequest'
+              $ref: '#/components/schemas/policy.definitionvalueentitlement.DeleteDefinitionValueEntitlementMappingRequest'
         required: true
       responses:
         default:
@@ -176,357 +176,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/policy.obligations.UpdateObligationResponse'
-  /policy.obligations.Service/DeleteObligation:
-    post:
-      tags:
-        - policy.obligations.Service
-      summary: DeleteObligation
-      operationId: policy.obligations.Service.DeleteObligation
-      parameters:
-        - name: Connect-Protocol-Version
-          in: header
-          required: true
-          schema:
-            $ref: '#/components/schemas/connect-protocol-version'
-        - name: Connect-Timeout-Ms
-          in: header
-          schema:
-            $ref: '#/components/schemas/connect-timeout-header'
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/policy.obligations.DeleteObligationRequest'
-        required: true
-      responses:
-        default:
-          description: Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/connect.error'
-        "200":
-          description: Success
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/policy.obligations.DeleteObligationResponse'
-  /policy.obligations.Service/GetObligationValue:
-    post:
-      tags:
-        - policy.obligations.Service
-      summary: GetObligationValue
-      operationId: policy.obligations.Service.GetObligationValue
-      parameters:
-        - name: Connect-Protocol-Version
-          in: header
-          required: true
-          schema:
-            $ref: '#/components/schemas/connect-protocol-version'
-        - name: Connect-Timeout-Ms
-          in: header
-          schema:
-            $ref: '#/components/schemas/connect-timeout-header'
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/policy.obligations.GetObligationValueRequest'
-        required: true
-      responses:
-        default:
-          description: Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/connect.error'
-        "200":
-          description: Success
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/policy.obligations.GetObligationValueResponse'
-  /policy.obligations.Service/GetObligationValuesByFQNs:
-    post:
-      tags:
-        - policy.obligations.Service
-      summary: GetObligationValuesByFQNs
-      operationId: policy.obligations.Service.GetObligationValuesByFQNs
-      parameters:
-        - name: Connect-Protocol-Version
-          in: header
-          required: true
-          schema:
-            $ref: '#/components/schemas/connect-protocol-version'
-        - name: Connect-Timeout-Ms
-          in: header
-          schema:
-            $ref: '#/components/schemas/connect-timeout-header'
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/policy.obligations.GetObligationValuesByFQNsRequest'
-        required: true
-      responses:
-        default:
-          description: Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/connect.error'
-        "200":
-          description: Success
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/policy.obligations.GetObligationValuesByFQNsResponse'
-  /policy.obligations.Service/CreateObligationValue:
-    post:
-      tags:
-        - policy.obligations.Service
-      summary: CreateObligationValue
-      operationId: policy.obligations.Service.CreateObligationValue
-      parameters:
-        - name: Connect-Protocol-Version
-          in: header
-          required: true
-          schema:
-            $ref: '#/components/schemas/connect-protocol-version'
-        - name: Connect-Timeout-Ms
-          in: header
-          schema:
-            $ref: '#/components/schemas/connect-timeout-header'
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/policy.obligations.CreateObligationValueRequest'
-        required: true
-      responses:
-        default:
-          description: Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/connect.error'
-        "200":
-          description: Success
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/policy.obligations.CreateObligationValueResponse'
-  /policy.obligations.Service/UpdateObligationValue:
-    post:
-      tags:
-        - policy.obligations.Service
-      summary: UpdateObligationValue
-      operationId: policy.obligations.Service.UpdateObligationValue
-      parameters:
-        - name: Connect-Protocol-Version
-          in: header
-          required: true
-          schema:
-            $ref: '#/components/schemas/connect-protocol-version'
-        - name: Connect-Timeout-Ms
-          in: header
-          schema:
-            $ref: '#/components/schemas/connect-timeout-header'
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/policy.obligations.UpdateObligationValueRequest'
-        required: true
-      responses:
-        default:
-          description: Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/connect.error'
-        "200":
-          description: Success
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/policy.obligations.UpdateObligationValueResponse'
-  /policy.obligations.Service/DeleteObligationValue:
-    post:
-      tags:
-        - policy.obligations.Service
-      summary: DeleteObligationValue
-      operationId: policy.obligations.Service.DeleteObligationValue
-      parameters:
-        - name: Connect-Protocol-Version
-          in: header
-          required: true
-          schema:
-            $ref: '#/components/schemas/connect-protocol-version'
-        - name: Connect-Timeout-Ms
-          in: header
-          schema:
-            $ref: '#/components/schemas/connect-timeout-header'
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/policy.obligations.DeleteObligationValueRequest'
-        required: true
-      responses:
-        default:
-          description: Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/connect.error'
-        "200":
-          description: Success
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/policy.obligations.DeleteObligationValueResponse'
-  /policy.obligations.Service/GetObligationTrigger:
-    post:
-      tags:
-        - policy.obligations.Service
-      summary: GetObligationTrigger
-      operationId: policy.obligations.Service.GetObligationTrigger
-      parameters:
-        - name: Connect-Protocol-Version
-          in: header
-          required: true
-          schema:
-            $ref: '#/components/schemas/connect-protocol-version'
-        - name: Connect-Timeout-Ms
-          in: header
-          schema:
-            $ref: '#/components/schemas/connect-timeout-header'
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/policy.obligations.GetObligationTriggerRequest'
-        required: true
-      responses:
-        default:
-          description: Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/connect.error'
-        "200":
-          description: Success
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/policy.obligations.GetObligationTriggerResponse'
-  /policy.obligations.Service/AddObligationTrigger:
-    post:
-      tags:
-        - policy.obligations.Service
-      summary: AddObligationTrigger
-      operationId: policy.obligations.Service.AddObligationTrigger
-      parameters:
-        - name: Connect-Protocol-Version
-          in: header
-          required: true
-          schema:
-            $ref: '#/components/schemas/connect-protocol-version'
-        - name: Connect-Timeout-Ms
-          in: header
-          schema:
-            $ref: '#/components/schemas/connect-timeout-header'
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/policy.obligations.AddObligationTriggerRequest'
-        required: true
-      responses:
-        default:
-          description: Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/connect.error'
-        "200":
-          description: Success
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/policy.obligations.AddObligationTriggerResponse'
-  /policy.obligations.Service/RemoveObligationTrigger:
-    post:
-      tags:
-        - policy.obligations.Service
-      summary: RemoveObligationTrigger
-      operationId: policy.obligations.Service.RemoveObligationTrigger
-      parameters:
-        - name: Connect-Protocol-Version
-          in: header
-          required: true
-          schema:
-            $ref: '#/components/schemas/connect-protocol-version'
-        - name: Connect-Timeout-Ms
-          in: header
-          schema:
-            $ref: '#/components/schemas/connect-timeout-header'
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/policy.obligations.RemoveObligationTriggerRequest'
-        required: true
-      responses:
-        default:
-          description: Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/connect.error'
-        "200":
-          description: Success
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/policy.obligations.RemoveObligationTriggerResponse'
-  /policy.obligations.Service/ListObligationTriggers:
-    post:
-      tags:
-        - policy.obligations.Service
-      summary: ListObligationTriggers
-      operationId: policy.obligations.Service.ListObligationTriggers
-      parameters:
-        - name: Connect-Protocol-Version
-          in: header
-          required: true
-          schema:
-            $ref: '#/components/schemas/connect-protocol-version'
-        - name: Connect-Timeout-Ms
-          in: header
-          schema:
-            $ref: '#/components/schemas/connect-timeout-header'
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/policy.obligations.ListObligationTriggersRequest'
-        required: true
-      responses:
-        default:
-          description: Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/connect.error'
-        "200":
-          description: Success
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/policy.obligations.ListObligationTriggersResponse'
+                $ref: '#/components/schemas/policy.definitionvalueentitlement.DeleteDefinitionValueEntitlementMappingResponse'
 components:
   schemas:
     common.MetadataUpdateEnum:
@@ -572,6 +222,19 @@ components:
         - CONDITION_BOOLEAN_TYPE_ENUM_UNSPECIFIED
         - CONDITION_BOOLEAN_TYPE_ENUM_AND
         - CONDITION_BOOLEAN_TYPE_ENUM_OR
+    policy.DynamicValueOperatorEnum:
+      type: string
+      title: DynamicValueOperatorEnum
+      enum:
+        - DYNAMIC_VALUE_OPERATOR_ENUM_UNSPECIFIED
+        - DYNAMIC_VALUE_OPERATOR_ENUM_RESOURCE_VALUE_IN
+        - DYNAMIC_VALUE_OPERATOR_ENUM_RESOURCE_VALUE_IN_CONTAINS
+      description: |-
+        Operators for dynamic, definition-level value entitlement. Unlike
+         SubjectMappingOperatorEnum, whose right-hand operand is a static list authored into
+         policy, a DynamicValueOperatorEnum's right-hand operand is the requested resource's
+         attribute value segment, supplied at decision time. Each value is the inversion of its
+         static SubjectMappingOperatorEnum counterpart.
     policy.KasPublicKeyAlgEnum:
       type: string
       title: KasPublicKeyAlgEnum
@@ -616,49 +279,13 @@ components:
         - SUBJECT_MAPPING_OPERATOR_ENUM_IN
         - SUBJECT_MAPPING_OPERATOR_ENUM_NOT_IN
         - SUBJECT_MAPPING_OPERATOR_ENUM_IN_CONTAINS
-    policy.obligations.SortObligationsType:
+    policy.definitionvalueentitlement.SortDefinitionValueEntitlementMappingsType:
       type: string
-      title: SortObligationsType
+      title: SortDefinitionValueEntitlementMappingsType
       enum:
-        - SORT_OBLIGATIONS_TYPE_UNSPECIFIED
-        - SORT_OBLIGATIONS_TYPE_NAME
-        - SORT_OBLIGATIONS_TYPE_FQN
-        - SORT_OBLIGATIONS_TYPE_CREATED_AT
-        - SORT_OBLIGATIONS_TYPE_UPDATED_AT
-    common.IdFqnIdentifier:
-      type: object
-      properties:
-        id:
-          type: string
-          title: id
-          format: uuid
-        fqn:
-          type: string
-          title: fqn
-          minLength: 1
-          format: uri
-      title: IdFqnIdentifier
-      additionalProperties: false
-    common.IdNameIdentifier:
-      type: object
-      properties:
-        id:
-          type: string
-          title: id
-          format: uuid
-        name:
-          type: string
-          title: name
-          maxLength: 253
-          minLength: 1
-          description: |+
-            Name must be an alphanumeric string, allowing hyphens and underscores but not as the first or last character. The stored name will be normalized to lower case.:
-            ```
-            this.matches('^[a-zA-Z0-9](?:[a-zA-Z0-9_-]*[a-zA-Z0-9])?$')
-            ```
-
-      title: IdNameIdentifier
-      additionalProperties: false
+        - SORT_DEFINITION_VALUE_ENTITLEMENT_MAPPINGS_TYPE_UNSPECIFIED
+        - SORT_DEFINITION_VALUE_ENTITLEMENT_MAPPINGS_TYPE_CREATED_AT
+        - SORT_DEFINITION_VALUE_ENTITLEMENT_MAPPINGS_TYPE_UPDATED_AT
     common.Metadata:
       type: object
       properties:
@@ -963,6 +590,70 @@ components:
         - booleanOperator
       additionalProperties: false
       description: A collection of Conditions evaluated by the boolean_operator provided
+    policy.DefinitionValueEntitlementMapping:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+        attributeDefinition:
+          title: attribute_definition
+          description: the Attribute Definition whose values are entitled dynamically
+          $ref: '#/components/schemas/policy.Attribute'
+        valueResolver:
+          title: value_resolver
+          description: the dynamic resolver matched against the requested resource value segment
+          $ref: '#/components/schemas/policy.DefinitionValueResolver'
+        subjectConditionSet:
+          title: subject_condition_set
+          description: |-
+            optional static pre-gate on the entity, evaluated with normal SubjectConditionSet
+             semantics (no dynamic overload). When present, both the gate and the resolver must
+             pass for entitlement.
+          $ref: '#/components/schemas/policy.SubjectConditionSet'
+        actions:
+          type: array
+          items:
+            $ref: '#/components/schemas/policy.Action'
+          title: actions
+          description: the actions permitted by subjects in this mapping
+        namespace:
+          title: namespace
+          description: the namespace containing this mapping
+          $ref: '#/components/schemas/policy.Namespace'
+        metadata:
+          title: metadata
+          $ref: '#/components/schemas/common.Metadata'
+      title: DefinitionValueEntitlementMapping
+      additionalProperties: false
+      description: |-
+        Definition Value Entitlement Mapping: a Policy assigning permitted action(s) to
+        dynamically-requested values under an Attribute Definition. It raises entitlement
+        authority from a concrete Attribute Value to the Attribute Definition: at decision time
+        the value_resolver compares the requested resource value segment against the entity
+        representation, avoiding pre-provisioning a value + subject mapping per discrete value.
+    policy.DefinitionValueResolver:
+      type: object
+      properties:
+        subjectExternalSelectorValue:
+          type: string
+          title: subject_external_selector_value
+          description: |-
+            a selector for a field value on a flattened Entity Representation (such as from
+             idP/LDAP), e.g. ".patientAssignments[]"
+        operator:
+          title: operator
+          description: the dynamic operator comparing the selector result to the resource value segment
+          $ref: '#/components/schemas/policy.DynamicValueOperatorEnum'
+      title: DefinitionValueResolver
+      required:
+        - subjectExternalSelectorValue
+        - operator
+      additionalProperties: false
+      description: |-
+        Definition Value Resolver: the dynamic half of a DefinitionValueEntitlementMapping. It
+        resolves a selector against the entity representation and compares the result to the
+        requested resource value segment using a DynamicValueOperatorEnum.
     policy.KasPublicKey:
       type: object
       properties:
@@ -1476,216 +1167,95 @@ components:
           $ref: '#/components/schemas/common.Metadata'
       title: Value
       additionalProperties: false
-    policy.obligations.AddObligationTriggerRequest:
+    policy.definitionvalueentitlement.CreateDefinitionValueEntitlementMappingRequest:
       type: object
       properties:
-        obligationValue:
-          title: obligation_value
-          description: Required
-          $ref: '#/components/schemas/common.IdFqnIdentifier'
-        action:
-          title: action
-          description: Required
-          $ref: '#/components/schemas/common.IdNameIdentifier'
-        attributeValue:
-          title: attribute_value
-          description: Required
-          $ref: '#/components/schemas/common.IdFqnIdentifier'
-        context:
-          title: context
-          description: |-
-            Optional
-             The request context for this obligation value policy decisioning.
-          $ref: '#/components/schemas/policy.RequestContext'
-        metadata:
-          title: metadata
-          description: |-
-            Optional
-             Common metadata
-          $ref: '#/components/schemas/common.MetadataMutable'
-      title: AddObligationTriggerRequest
-      required:
-        - obligationValue
-        - action
-        - attributeValue
-      additionalProperties: false
-      description: |-
-        Obligation Triggers are owned by the namespace that owns the action and attribute value, which must
-         be the same. In this way, a trigger can intentionally cross namespace boundaries: associating
-         obligation values of a different namespace than the one that owns the action being taken or the attribute value.
-    policy.obligations.AddObligationTriggerResponse:
-      type: object
-      properties:
-        trigger:
-          title: trigger
-          $ref: '#/components/schemas/policy.ObligationTrigger'
-      title: AddObligationTriggerResponse
-      additionalProperties: false
-    policy.obligations.CreateObligationRequest:
-      type: object
-      properties:
-        namespaceId:
+        attributeDefinitionId:
           type: string
-          title: namespace_id
-          format: uuid
-        namespaceFqn:
-          type: string
-          title: namespace_fqn
-          minLength: 1
-          format: uri
-        name:
-          type: string
-          title: name
-          maxLength: 253
+          title: attribute_definition_id
           description: |+
-            Obligation name must be an alphanumeric string, allowing hyphens and underscores but not as the first or last character. The stored name will be normalized to lower case.:
+            Optional field must be a valid UUID:
             ```
-            this.matches('^[a-zA-Z0-9](?:[a-zA-Z0-9_-]*[a-zA-Z0-9])?$')
+            size(this) == 0 || this.matches('[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}')
             ```
 
-        values:
+        attributeDefinitionFqn:
+          type: string
+          title: attribute_definition_fqn
+          format: uri
+        valueResolver:
+          title: value_resolver
+          description: 'Required: the dynamic resolver comparing entity selector result to the resource value segment'
+          $ref: '#/components/schemas/policy.DefinitionValueResolver'
+        actions:
           type: array
           items:
-            type: string
-            maxLength: 253
-            pattern: ^[a-zA-Z0-9](?:[a-zA-Z0-9_-]*[a-zA-Z0-9])?$
-            uniqueItems: true
-          title: values
-          uniqueItems: true
-          description: Optional
-        metadata:
-          title: metadata
-          description: |-
-            Optional
-             Common metadata
-          $ref: '#/components/schemas/common.MetadataMutable'
-      title: CreateObligationRequest
-      required:
-        - name
-      additionalProperties: false
-    policy.obligations.CreateObligationResponse:
-      type: object
-      properties:
-        obligation:
-          title: obligation
-          $ref: '#/components/schemas/policy.Obligation'
-      title: CreateObligationResponse
-      additionalProperties: false
-    policy.obligations.CreateObligationValueRequest:
-      type: object
-      properties:
-        obligationId:
-          type: string
-          title: obligation_id
-          format: uuid
-        obligationFqn:
-          type: string
-          title: obligation_fqn
-          minLength: 1
-          format: uri
-        value:
-          type: string
-          title: value
-          maxLength: 253
+            $ref: '#/components/schemas/policy.Action'
+          title: actions
+          minItems: 1
           description: |+
-            Obligation value must be an alphanumeric string, allowing hyphens and underscores but not as the first or last character. The stored value will be normalized to lower case.:
+            Required: actions permitted on a matched value
+            Action name or ID must not be empty if provided:
             ```
-            this.matches('^[a-zA-Z0-9](?:[a-zA-Z0-9_-]*[a-zA-Z0-9])?$')
+            this.all(item, item.name != '' || item.id != '')
             ```
 
-        triggers:
-          type: array
-          items:
-            $ref: '#/components/schemas/policy.obligations.ValueTriggerRequest'
-          title: triggers
-          description: |-
-            Optional
-             Combination of action and attribute_value that will trigger this obligation value policy decisioning.
+        existingSubjectConditionSetId:
+          type: string
+          title: existing_subject_condition_set_id
+          description: |+
+            Optional static pre-gate. Reuse an existing SubjectConditionSet (prioritized) ...
+            Optional field must be a valid UUID:
+            ```
+            size(this) == 0 || this.matches('[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}')
+            ```
+
+        newSubjectConditionSet:
+          title: new_subject_condition_set
+          description: '... or create a new one (ignored if existing_subject_condition_set_id is provided)'
+          $ref: '#/components/schemas/policy.subjectmapping.SubjectConditionSetCreate'
+        namespaceId:
+          type: string
+          title: namespace_id
+          description: |+
+            Optional: namespace ID or FQN for the mapping
+            Optional field must be a valid UUID:
+            ```
+            size(this) == 0 || this.matches('[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}')
+            ```
+
+        namespaceFqn:
+          type: string
+          title: namespace_fqn
+          format: uri
         metadata:
           title: metadata
-          description: |-
-            Optional
-             Common metadata
+          description: Optional
           $ref: '#/components/schemas/common.MetadataMutable'
-      title: CreateObligationValueRequest
+      title: CreateDefinitionValueEntitlementMappingRequest
       required:
-        - value
+        - valueResolver
       additionalProperties: false
-    policy.obligations.CreateObligationValueResponse:
+    policy.definitionvalueentitlement.CreateDefinitionValueEntitlementMappingResponse:
       type: object
       properties:
-        value:
-          title: value
-          $ref: '#/components/schemas/policy.ObligationValue'
-      title: CreateObligationValueResponse
+        definitionValueEntitlementMapping:
+          title: definition_value_entitlement_mapping
+          $ref: '#/components/schemas/policy.DefinitionValueEntitlementMapping'
+      title: CreateDefinitionValueEntitlementMappingResponse
       additionalProperties: false
-    policy.obligations.DeleteObligationRequest:
+    policy.definitionvalueentitlement.DefinitionValueEntitlementMappingsSort:
       type: object
       properties:
-        id:
-          type: string
-          title: id
-          format: uuid
-        fqn:
-          type: string
-          title: fqn
-          minLength: 1
-          format: uri
-      title: DeleteObligationRequest
+        field:
+          title: field
+          $ref: '#/components/schemas/policy.definitionvalueentitlement.SortDefinitionValueEntitlementMappingsType'
+        direction:
+          title: direction
+          $ref: '#/components/schemas/policy.SortDirection'
+      title: DefinitionValueEntitlementMappingsSort
       additionalProperties: false
-    policy.obligations.DeleteObligationResponse:
-      type: object
-      properties:
-        obligation:
-          title: obligation
-          $ref: '#/components/schemas/policy.Obligation'
-      title: DeleteObligationResponse
-      additionalProperties: false
-    policy.obligations.DeleteObligationValueRequest:
-      type: object
-      properties:
-        id:
-          type: string
-          title: id
-          format: uuid
-        fqn:
-          type: string
-          title: fqn
-          minLength: 1
-          format: uri
-      title: DeleteObligationValueRequest
-      additionalProperties: false
-    policy.obligations.DeleteObligationValueResponse:
-      type: object
-      properties:
-        value:
-          title: value
-          $ref: '#/components/schemas/policy.ObligationValue'
-      title: DeleteObligationValueResponse
-      additionalProperties: false
-    policy.obligations.GetObligationRequest:
-      type: object
-      properties:
-        id:
-          type: string
-          title: id
-          format: uuid
-        fqn:
-          type: string
-          title: fqn
-          minLength: 1
-          format: uri
-      title: GetObligationRequest
-      additionalProperties: false
-    policy.obligations.GetObligationResponse:
-      type: object
-      properties:
-        obligation:
-          title: obligation
-          $ref: '#/components/schemas/policy.Obligation'
-      title: GetObligationResponse
-      additionalProperties: false
-    policy.obligations.GetObligationTriggerRequest:
+    policy.definitionvalueentitlement.DeleteDefinitionValueEntitlementMappingRequest:
       type: object
       properties:
         id:
@@ -1693,163 +1263,58 @@ components:
           title: id
           format: uuid
           description: Required
-      title: GetObligationTriggerRequest
+      title: DeleteDefinitionValueEntitlementMappingRequest
       additionalProperties: false
-      description: Triggers
-    policy.obligations.GetObligationTriggerResponse:
+    policy.definitionvalueentitlement.DeleteDefinitionValueEntitlementMappingResponse:
       type: object
       properties:
-        trigger:
-          title: trigger
-          $ref: '#/components/schemas/policy.ObligationTrigger'
-      title: GetObligationTriggerResponse
+        definitionValueEntitlementMapping:
+          title: definition_value_entitlement_mapping
+          description: Only ID of the deleted mapping provided
+          $ref: '#/components/schemas/policy.DefinitionValueEntitlementMapping'
+      title: DeleteDefinitionValueEntitlementMappingResponse
       additionalProperties: false
-    policy.obligations.GetObligationValueRequest:
+    policy.definitionvalueentitlement.GetDefinitionValueEntitlementMappingRequest:
       type: object
       properties:
         id:
           type: string
           title: id
           format: uuid
-        fqn:
-          type: string
-          title: fqn
-          minLength: 1
-          format: uri
-      title: GetObligationValueRequest
+          description: Required
+      title: GetDefinitionValueEntitlementMappingRequest
       additionalProperties: false
-      description: Values
-    policy.obligations.GetObligationValueResponse:
+    policy.definitionvalueentitlement.GetDefinitionValueEntitlementMappingResponse:
       type: object
       properties:
-        value:
-          title: value
-          $ref: '#/components/schemas/policy.ObligationValue'
-      title: GetObligationValueResponse
+        definitionValueEntitlementMapping:
+          title: definition_value_entitlement_mapping
+          $ref: '#/components/schemas/policy.DefinitionValueEntitlementMapping'
+      title: GetDefinitionValueEntitlementMappingResponse
       additionalProperties: false
-    policy.obligations.GetObligationValuesByFQNsRequest:
-      type: object
-      properties:
-        fqns:
-          type: array
-          items:
-            type: string
-            minLength: 1
-            format: uri
-            maxItems: 250
-            minItems: 1
-            uniqueItems: true
-          title: fqns
-          maxItems: 250
-          minItems: 1
-          uniqueItems: true
-      title: GetObligationValuesByFQNsRequest
-      additionalProperties: false
-    policy.obligations.GetObligationValuesByFQNsResponse:
-      type: object
-      properties:
-        fqnValueMap:
-          type: object
-          title: fqn_value_map
-          additionalProperties:
-            title: value
-            $ref: '#/components/schemas/policy.ObligationValue'
-      title: GetObligationValuesByFQNsResponse
-      additionalProperties: false
-    policy.obligations.GetObligationValuesByFQNsResponse.FqnValueMapEntry:
-      type: object
-      properties:
-        key:
-          type: string
-          title: key
-        value:
-          title: value
-          $ref: '#/components/schemas/policy.ObligationValue'
-      title: FqnValueMapEntry
-      additionalProperties: false
-    policy.obligations.GetObligationsByFQNsRequest:
-      type: object
-      properties:
-        fqns:
-          type: array
-          items:
-            type: string
-            minLength: 1
-            format: uri
-            maxItems: 250
-            minItems: 1
-            uniqueItems: true
-          title: fqns
-          maxItems: 250
-          minItems: 1
-          uniqueItems: true
-      title: GetObligationsByFQNsRequest
-      additionalProperties: false
-    policy.obligations.GetObligationsByFQNsResponse:
-      type: object
-      properties:
-        fqnObligationMap:
-          type: object
-          title: fqn_obligation_map
-          additionalProperties:
-            title: value
-            $ref: '#/components/schemas/policy.Obligation'
-      title: GetObligationsByFQNsResponse
-      additionalProperties: false
-    policy.obligations.GetObligationsByFQNsResponse.FqnObligationMapEntry:
-      type: object
-      properties:
-        key:
-          type: string
-          title: key
-        value:
-          title: value
-          $ref: '#/components/schemas/policy.Obligation'
-      title: FqnObligationMapEntry
-      additionalProperties: false
-    policy.obligations.ListObligationTriggersRequest:
+    policy.definitionvalueentitlement.ListDefinitionValueEntitlementMappingsRequest:
       type: object
       properties:
         namespaceId:
           type: string
           title: namespace_id
-          format: uuid
-        namespaceFqn:
+          description: |+
+            Optional
+             Namespace ID or FQN, or Attribute Definition ID or FQN to filter by
+            Optional field must be a valid UUID:
+            ```
+            size(this) == 0 || this.matches('[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}')
+            ```
+
+        attributeDefinitionId:
           type: string
-          title: namespace_fqn
-          minLength: 1
-          format: uri
-        pagination:
-          title: pagination
-          description: Optional
-          $ref: '#/components/schemas/policy.PageRequest'
-      title: ListObligationTriggersRequest
-      additionalProperties: false
-    policy.obligations.ListObligationTriggersResponse:
-      type: object
-      properties:
-        triggers:
-          type: array
-          items:
-            $ref: '#/components/schemas/policy.ObligationTrigger'
-          title: triggers
-        pagination:
-          title: pagination
-          $ref: '#/components/schemas/policy.PageResponse'
-      title: ListObligationTriggersResponse
-      additionalProperties: false
-    policy.obligations.ListObligationsRequest:
-      type: object
-      properties:
-        namespaceId:
-          type: string
-          title: namespace_id
-          format: uuid
-        namespaceFqn:
-          type: string
-          title: namespace_fqn
-          minLength: 1
-          format: uri
+          title: attribute_definition_id
+          description: |+
+            Optional field must be a valid UUID:
+            ```
+            size(this) == 0 || this.matches('[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}')
+            ```
+
         pagination:
           title: pagination
           description: Optional
@@ -1857,42 +1322,26 @@ components:
         sort:
           type: array
           items:
-            $ref: '#/components/schemas/policy.obligations.ObligationsSort'
+            $ref: '#/components/schemas/policy.definitionvalueentitlement.DefinitionValueEntitlementMappingsSort'
           title: sort
           maxItems: 1
-          description: |-
-            Optional - CONSTRAINT: max 1 item
-             Sort defaults:
-               - direction UNSPECIFIED defaults to DESC for the specified field
-               - field UNSPECIFIED defaults to created_at with the specified direction
-               - both UNSPECIFIED or sort omitted defaults to created_at DESC
-      title: ListObligationsRequest
+          description: 'Optional - CONSTRAINT: max 1 item'
+      title: ListDefinitionValueEntitlementMappingsRequest
       additionalProperties: false
-    policy.obligations.ListObligationsResponse:
+    policy.definitionvalueentitlement.ListDefinitionValueEntitlementMappingsResponse:
       type: object
       properties:
-        obligations:
+        definitionValueEntitlementMappings:
           type: array
           items:
-            $ref: '#/components/schemas/policy.Obligation'
-          title: obligations
+            $ref: '#/components/schemas/policy.DefinitionValueEntitlementMapping'
+          title: definition_value_entitlement_mappings
         pagination:
           title: pagination
           $ref: '#/components/schemas/policy.PageResponse'
-      title: ListObligationsResponse
+      title: ListDefinitionValueEntitlementMappingsResponse
       additionalProperties: false
-    policy.obligations.ObligationsSort:
-      type: object
-      properties:
-        field:
-          title: field
-          $ref: '#/components/schemas/policy.obligations.SortObligationsType'
-        direction:
-          title: direction
-          $ref: '#/components/schemas/policy.SortDirection'
-      title: ObligationsSort
-      additionalProperties: false
-    policy.obligations.RemoveObligationTriggerRequest:
+    policy.definitionvalueentitlement.UpdateDefinitionValueEntitlementMappingRequest:
       type: object
       properties:
         id:
@@ -1900,116 +1349,66 @@ components:
           title: id
           format: uuid
           description: Required
-      title: RemoveObligationTriggerRequest
-      additionalProperties: false
-    policy.obligations.RemoveObligationTriggerResponse:
-      type: object
-      properties:
-        trigger:
-          title: trigger
-          $ref: '#/components/schemas/policy.ObligationTrigger'
-      title: RemoveObligationTriggerResponse
-      additionalProperties: false
-    policy.obligations.UpdateObligationRequest:
-      type: object
-      properties:
-        id:
+        valueResolver:
+          title: value_resolver
+          description: 'Optional: replace the dynamic resolver'
+          $ref: '#/components/schemas/policy.DefinitionValueResolver'
+        subjectConditionSetId:
           type: string
-          title: id
-          format: uuid
-          description: Required
-        name:
-          type: string
-          title: name
-          maxLength: 253
+          title: subject_condition_set_id
           description: |+
-            Optional
-            Obligation name must be an alphanumeric string, allowing hyphens and underscores but not as the first or last character. The stored name will be normalized to lower case.:
+            Optional: replace the static pre-gate SubjectConditionSet by id
+            Optional field must be a valid UUID:
             ```
-            size(this) > 0 ? this.matches('^[a-zA-Z0-9](?:[a-zA-Z0-9_-]*[a-zA-Z0-9])?$') : true
+            size(this) == 0 || this.matches('[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}')
+            ```
+
+        actions:
+          type: array
+          items:
+            $ref: '#/components/schemas/policy.Action'
+          title: actions
+          description: |+
+            Optional: replace the entire list of actions
+            Action name or ID must not be empty if provided:
+            ```
+            this.size() == 0 || this.all(item, item.name != '' || item.id != '')
             ```
 
         metadata:
           title: metadata
+          description: Common metadata
           $ref: '#/components/schemas/common.MetadataMutable'
         metadataUpdateBehavior:
           title: metadata_update_behavior
           $ref: '#/components/schemas/common.MetadataUpdateEnum'
-      title: UpdateObligationRequest
+      title: UpdateDefinitionValueEntitlementMappingRequest
       additionalProperties: false
-    policy.obligations.UpdateObligationResponse:
+    policy.definitionvalueentitlement.UpdateDefinitionValueEntitlementMappingResponse:
       type: object
       properties:
-        obligation:
-          title: obligation
-          $ref: '#/components/schemas/policy.Obligation'
-      title: UpdateObligationResponse
+        definitionValueEntitlementMapping:
+          title: definition_value_entitlement_mapping
+          $ref: '#/components/schemas/policy.DefinitionValueEntitlementMapping'
+      title: UpdateDefinitionValueEntitlementMappingResponse
       additionalProperties: false
-    policy.obligations.UpdateObligationValueRequest:
+    policy.subjectmapping.SubjectConditionSetCreate:
       type: object
       properties:
-        id:
-          type: string
-          title: id
-          format: uuid
-          description: Required
-        value:
-          type: string
-          title: value
-          maxLength: 253
-          description: |+
-            Optional
-            Obligation value must be an alphanumeric string, allowing hyphens and underscores but not as the first or last character. The stored value will be normalized to lower case.:
-            ```
-            size(this) > 0 ? this.matches('^[a-zA-Z0-9](?:[a-zA-Z0-9_-]*[a-zA-Z0-9])?$') : true
-            ```
-
-        triggers:
+        subjectSets:
           type: array
           items:
-            $ref: '#/components/schemas/policy.obligations.ValueTriggerRequest'
-          title: triggers
-          description: |-
-            Optional
-             Obligation Triggers provided here will replace all existing records in the database.
+            $ref: '#/components/schemas/policy.SubjectSet'
+          title: subject_sets
+          minItems: 1
+          description: Required
         metadata:
           title: metadata
           description: |-
             Optional
              Common metadata
           $ref: '#/components/schemas/common.MetadataMutable'
-        metadataUpdateBehavior:
-          title: metadata_update_behavior
-          $ref: '#/components/schemas/common.MetadataUpdateEnum'
-      title: UpdateObligationValueRequest
-      additionalProperties: false
-    policy.obligations.UpdateObligationValueResponse:
-      type: object
-      properties:
-        value:
-          title: value
-          $ref: '#/components/schemas/policy.ObligationValue'
-      title: UpdateObligationValueResponse
-      additionalProperties: false
-    policy.obligations.ValueTriggerRequest:
-      type: object
-      properties:
-        action:
-          title: action
-          description: Required. The ID of the action that will trigger this obligation value policy decisioning.
-          $ref: '#/components/schemas/common.IdNameIdentifier'
-        attributeValue:
-          title: attribute_value
-          description: Required. The attribute value ID that will trigger this obligation value policy decisioning.
-          $ref: '#/components/schemas/common.IdFqnIdentifier'
-        context:
-          title: context
-          description: Optional. The request context for this obligation value policy decisioning.
-          $ref: '#/components/schemas/policy.RequestContext'
-      title: ValueTriggerRequest
-      required:
-        - action
-        - attributeValue
+      title: SubjectConditionSetCreate
       additionalProperties: false
     connect-protocol-version:
       type: number
@@ -2070,8 +1469,4 @@ components:
       description: Contains an arbitrary serialized message along with a @type that describes the type of the serialized message.
 security: []
 tags:
-  - name: policy.obligations.Service
-    description: |-
-      /
-      / Obligation Service
-      /
+  - name: policy.definitionvalueentitlement.DefinitionValueEntitlementMappingService

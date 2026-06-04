@@ -109,6 +109,65 @@ paths:
                 $ref: '#/components/schemas/authorization.GetEntitlementsResponse'
 components:
   schemas:
+    authorization.DecisionResponse.Decision:
+      type: string
+      title: Decision
+      enum:
+        - DECISION_UNSPECIFIED
+        - DECISION_DENY
+        - DECISION_PERMIT
+    authorization.Entity.Category:
+      type: string
+      title: Category
+      enum:
+        - CATEGORY_UNSPECIFIED
+        - CATEGORY_SUBJECT
+        - CATEGORY_ENVIRONMENT
+    policy.Action.StandardAction:
+      type: string
+      title: StandardAction
+      enum:
+        - STANDARD_ACTION_UNSPECIFIED
+        - STANDARD_ACTION_DECRYPT
+        - STANDARD_ACTION_TRANSMIT
+    policy.Algorithm:
+      type: string
+      title: Algorithm
+      enum:
+        - ALGORITHM_UNSPECIFIED
+        - ALGORITHM_RSA_2048
+        - ALGORITHM_RSA_4096
+        - ALGORITHM_EC_P256
+        - ALGORITHM_EC_P384
+        - ALGORITHM_EC_P521
+        - ALGORITHM_HPQT_XWING
+        - ALGORITHM_HPQT_SECP256R1_MLKEM768
+        - ALGORITHM_HPQT_SECP384R1_MLKEM1024
+      description: Supported key algorithms.
+    policy.KasPublicKeyAlgEnum:
+      type: string
+      title: KasPublicKeyAlgEnum
+      enum:
+        - KAS_PUBLIC_KEY_ALG_ENUM_UNSPECIFIED
+        - KAS_PUBLIC_KEY_ALG_ENUM_RSA_2048
+        - KAS_PUBLIC_KEY_ALG_ENUM_RSA_4096
+        - KAS_PUBLIC_KEY_ALG_ENUM_EC_SECP256R1
+        - KAS_PUBLIC_KEY_ALG_ENUM_EC_SECP384R1
+        - KAS_PUBLIC_KEY_ALG_ENUM_EC_SECP521R1
+        - KAS_PUBLIC_KEY_ALG_ENUM_HPQT_XWING
+        - KAS_PUBLIC_KEY_ALG_ENUM_HPQT_SECP256R1_MLKEM768
+        - KAS_PUBLIC_KEY_ALG_ENUM_HPQT_SECP384R1_MLKEM1024
+    policy.SourceType:
+      type: string
+      title: SourceType
+      enum:
+        - SOURCE_TYPE_UNSPECIFIED
+        - SOURCE_TYPE_INTERNAL
+        - SOURCE_TYPE_EXTERNAL
+      description: |-
+        Describes whether this kas is managed by the organization or if they imported
+         the kas information from an external party. These two modes are necessary in order
+         to encrypt a tdf dek with an external parties kas public key.
     authorization.DecisionRequest:
       type: object
       properties:
@@ -133,6 +192,7 @@ components:
         Example Request Get Decisions to answer the question -  Do Bob (represented by entity chain ec1)
         and Alice (represented by entity chain ec2) have TRANSMIT authorization for
         2 resources; resource1 (attr-set-1) defined by attributes foo:bar  resource2 (attr-set-2) defined by attribute foo:bar, color:red ?
+
         {
         "actions": [
         {
@@ -204,11 +264,13 @@ components:
         Example response for a Decision Request -  Do Bob (represented by entity chain ec1)
         and Alice (represented by entity chain ec2) have TRANSMIT authorization for
         2 resources; resource1 (attr-set-1) defined by attributes foo:bar  resource2 (attr-set-2) defined by attribute foo:bar, color:red ?
+
         Results:
         - bob has permitted authorization to transmit for a resource defined by attr-set-1 attributes and has a watermark obligation
         - bob has denied authorization to transmit a for a resource defined by attr-set-2 attributes
         - alice has permitted authorization to transmit for a resource defined by attr-set-1 attributes
         - alice has denied authorization to transmit a for a resource defined by attr-set-2 attributes
+
         {
         "entityChainId":  "ec1",
         "resourceAttributesId":  "attr-set-1",
@@ -232,92 +294,70 @@ components:
         "resourceAttributesId":  "attr-set-2",
         "decision":  "DECISION_DENY"
         }
-    authorization.DecisionResponse.Decision:
-      type: string
-      title: Decision
-      enum:
-        - DECISION_UNSPECIFIED
-        - DECISION_DENY
-        - DECISION_PERMIT
     authorization.Entity:
       type: object
-      allOf:
+      oneOf:
         - properties:
-            id:
-              type: string
-              title: id
-              description: ephemeral id for tracking between request and response
-            category:
-              title: category
-              $ref: '#/components/schemas/authorization.Entity.Category'
-        - oneOf:
-            - type: object
-              properties:
-                claims:
-                  title: claims
-                  $ref: '#/components/schemas/google.protobuf.Any'
+            claims:
               title: claims
-              required:
-                - claims
-            - type: object
-              properties:
-                clientId:
-                  type: string
-                  title: client_id
+              $ref: '#/components/schemas/google.protobuf.Any'
+          title: claims
+          required:
+            - claims
+        - properties:
+            clientId:
+              type: string
               title: client_id
-              required:
-                - clientId
-            - type: object
-              properties:
-                custom:
-                  title: custom
-                  $ref: '#/components/schemas/authorization.EntityCustom'
+          title: client_id
+          required:
+            - clientId
+        - properties:
+            custom:
               title: custom
-              required:
-                - custom
-            - type: object
-              properties:
-                emailAddress:
-                  type: string
-                  title: email_address
-                  description: one of the entity options must be set
+              $ref: '#/components/schemas/authorization.EntityCustom'
+          title: custom
+          required:
+            - custom
+        - properties:
+            emailAddress:
+              type: string
               title: email_address
-              required:
-                - emailAddress
-            - type: object
-              properties:
-                remoteClaimsUrl:
-                  type: string
-                  title: remote_claims_url
+              description: one of the entity options must be set
+          title: email_address
+          required:
+            - emailAddress
+        - properties:
+            remoteClaimsUrl:
+              type: string
               title: remote_claims_url
-              required:
-                - remoteClaimsUrl
-            - type: object
-              properties:
-                userName:
-                  type: string
-                  title: user_name
+          title: remote_claims_url
+          required:
+            - remoteClaimsUrl
+        - properties:
+            userName:
+              type: string
               title: user_name
-              required:
-                - userName
-            - type: object
-              properties:
-                uuid:
-                  type: string
-                  title: uuid
+          title: user_name
+          required:
+            - userName
+        - properties:
+            uuid:
+              type: string
               title: uuid
-              required:
-                - uuid
+          title: uuid
+          required:
+            - uuid
+      properties:
+        id:
+          type: string
+          title: id
+          description: ephemeral id for tracking between request and response
+        category:
+          title: category
+          $ref: '#/components/schemas/authorization.Entity.Category'
       title: Entity
       additionalProperties: false
       description: PE (Person Entity) or NPE (Non-Person Entity)
-    authorization.Entity.Category:
-      type: string
-      title: Category
-      enum:
-        - CATEGORY_UNSPECIFIED
-        - CATEGORY_SUBJECT
-        - CATEGORY_ENVIRONMENT
     authorization.EntityChain:
       type: object
       properties:
@@ -405,22 +445,22 @@ components:
           title: entities
           description: list of requested entities
         scope:
-          oneOf:
-            - $ref: '#/components/schemas/authorization.ResourceAttribute'
-            - type: "null"
           title: scope
           description: optional attribute fqn as a scope
+          nullable: true
+          $ref: '#/components/schemas/authorization.ResourceAttribute'
         withComprehensiveHierarchy:
-          type:
-            - boolean
-            - "null"
+          type: boolean
           title: with_comprehensive_hierarchy
           description: optional parameter to return a full list of entitlements - returns lower hierarchy attributes
+          nullable: true
       title: GetEntitlementsRequest
       additionalProperties: false
       description: |-
         Request to get entitlements for one or more entities for an optional attribute scope
+
         Example: Get entitlements for bob and alice (both represented using an email address
+
         {
         "entities": [
         {
@@ -451,6 +491,7 @@ components:
       additionalProperties: false
       description: |-
         Example Response for a request of : Get entitlements for bob and alice (both represented using an email address
+
         {
         "entitlements":  [
         {
@@ -522,6 +563,7 @@ components:
         Example Request Get Decisions by Token to answer the question -  Do Bob and client1 (represented by token tok1)
         and Alice and client2 (represented by token tok2) have TRANSMIT authorization for
         2 resources; resource1 (attr-set-1) defined by attributes foo:bar  resource2 (attr-set-2) defined by attribute foo:bar, color:red ?
+
         {
         "actions": [
         {
@@ -584,75 +626,6 @@ components:
           title: value
       title: LabelsEntry
       additionalProperties: false
-    connect-protocol-version:
-      type: number
-      title: Connect-Protocol-Version
-      enum:
-        - 1
-      description: Define the version of the Connect protocol
-      const: 1
-    connect-timeout-header:
-      type: number
-      title: Connect-Timeout-Ms
-      description: Define the timeout, in ms
-    connect.error:
-      type: object
-      properties:
-        code:
-          type: string
-          examples:
-            - not_found
-          enum:
-            - canceled
-            - unknown
-            - invalid_argument
-            - deadline_exceeded
-            - not_found
-            - already_exists
-            - permission_denied
-            - resource_exhausted
-            - failed_precondition
-            - aborted
-            - out_of_range
-            - unimplemented
-            - internal
-            - unavailable
-            - data_loss
-            - unauthenticated
-          description: The status code, which should be an enum value of [google.rpc.Code][google.rpc.Code].
-        message:
-          type: string
-          description: A developer-facing error message, which should be in English. Any user-facing error message should be localized and sent in the [google.rpc.Status.details][google.rpc.Status.details] field, or localized by the client.
-        details:
-          type: array
-          items:
-            $ref: '#/components/schemas/connect.error_details.Any'
-          description: A list of messages that carry the error details. There is no limit on the number of messages.
-      title: Connect Error
-      additionalProperties: true
-      description: 'Error type returned by Connect: https://connectrpc.com/docs/go/errors/#http-representation'
-    connect.error_details.Any:
-      type: object
-      properties:
-        type:
-          type: string
-          description: 'A URL that acts as a globally unique identifier for the type of the serialized message. For example: `type.googleapis.com/google.rpc.ErrorInfo`. This is used to determine the schema of the data in the `value` field and is the discriminator for the `debug` field.'
-        value:
-          type: string
-          format: binary
-          description: The Protobuf message, serialized as bytes and base64-encoded. The specific message type is identified by the `type` field.
-        debug:
-          oneOf:
-            - type: object
-              title: Any
-              additionalProperties: true
-              description: Detailed error information.
-          discriminator:
-            propertyName: type
-          title: Debug
-          description: Deserialized error detail payload. The 'type' field indicates the schema. This field is for easier debugging and should not be relied upon for application logic.
-      additionalProperties: true
-      description: Contains an arbitrary serialized message along with a @type that describes the type of the serialized message, with an additional debug field for ConnectRPC error details.
     google.protobuf.Any:
       type: object
       properties:
@@ -661,6 +634,9 @@ components:
         value:
           type: string
           format: binary
+        debug:
+          type: object
+          additionalProperties: true
       additionalProperties: true
       description: Contains an arbitrary serialized message along with a @type that describes the type of the serialized message.
     google.protobuf.BoolValue:
@@ -675,8 +651,8 @@ components:
     google.protobuf.Timestamp:
       type: string
       examples:
-        - "2023-01-15T01:30:15.01Z"
-        - "2024-12-25T12:00:00Z"
+        - 1s
+        - 1.000340012s
       format: date-time
       description: |-
         A Timestamp represents a point in time independent of any time zone or local
@@ -770,65 +746,41 @@ components:
          ) to obtain a formatter capable of generating timestamps in this format.
     policy.Action:
       type: object
-      allOf:
+      oneOf:
         - properties:
-            id:
+            custom:
               type: string
-              title: id
-              description: Generated uuid in database
-            name:
-              type: string
-              title: name
-            namespace:
-              title: namespace
-              description: Namespace context for this action
-              $ref: '#/components/schemas/policy.Namespace'
-            metadata:
-              title: metadata
-              $ref: '#/components/schemas/common.Metadata'
-        - oneOf:
-            - type: object
-              properties:
-                custom:
-                  type: string
-                  title: custom
-                  description: Deprecated
               title: custom
-              required:
-                - custom
-            - type: object
-              properties:
-                standard:
-                  title: standard
-                  description: Deprecated
-                  $ref: '#/components/schemas/policy.Action.StandardAction'
+              description: Deprecated
+          title: custom
+          required:
+            - custom
+        - properties:
+            standard:
               title: standard
-              required:
-                - standard
+              description: Deprecated
+              $ref: '#/components/schemas/policy.Action.StandardAction'
+          title: standard
+          required:
+            - standard
+      properties:
+        id:
+          type: string
+          title: id
+          description: Generated uuid in database
+        name:
+          type: string
+          title: name
+        namespace:
+          title: namespace
+          description: Namespace context for this action
+          $ref: '#/components/schemas/policy.Namespace'
+        metadata:
+          title: metadata
+          $ref: '#/components/schemas/common.Metadata'
       title: Action
       additionalProperties: false
       description: An action an entity can take
-    policy.Action.StandardAction:
-      type: string
-      title: StandardAction
-      enum:
-        - STANDARD_ACTION_UNSPECIFIED
-        - STANDARD_ACTION_DECRYPT
-        - STANDARD_ACTION_TRANSMIT
-    policy.Algorithm:
-      type: string
-      title: Algorithm
-      enum:
-        - ALGORITHM_UNSPECIFIED
-        - ALGORITHM_RSA_2048
-        - ALGORITHM_RSA_4096
-        - ALGORITHM_EC_P256
-        - ALGORITHM_EC_P384
-        - ALGORITHM_EC_P521
-        - ALGORITHM_HPQT_XWING
-        - ALGORITHM_HPQT_SECP256R1_MLKEM768
-        - ALGORITHM_HPQT_SECP384R1_MLKEM1024
-      description: Supported key algorithms.
     policy.KasPublicKey:
       type: object
       properties:
@@ -847,7 +799,7 @@ components:
         alg:
           not:
             enum:
-              - KAS_PUBLIC_KEY_ALG_ENUM_UNSPECIFIED
+              - 0
           title: alg
           description: |-
             A known algorithm type with any additional parameters encoded.
@@ -859,19 +811,6 @@ components:
       description: |-
         Deprecated
          A KAS public key and some associated metadata for further identifcation
-    policy.KasPublicKeyAlgEnum:
-      type: string
-      title: KasPublicKeyAlgEnum
-      enum:
-        - KAS_PUBLIC_KEY_ALG_ENUM_UNSPECIFIED
-        - KAS_PUBLIC_KEY_ALG_ENUM_RSA_2048
-        - KAS_PUBLIC_KEY_ALG_ENUM_RSA_4096
-        - KAS_PUBLIC_KEY_ALG_ENUM_EC_SECP256R1
-        - KAS_PUBLIC_KEY_ALG_ENUM_EC_SECP384R1
-        - KAS_PUBLIC_KEY_ALG_ENUM_EC_SECP521R1
-        - KAS_PUBLIC_KEY_ALG_ENUM_HPQT_XWING
-        - KAS_PUBLIC_KEY_ALG_ENUM_HPQT_SECP256R1_MLKEM768
-        - KAS_PUBLIC_KEY_ALG_ENUM_HPQT_SECP384R1_MLKEM1024
     policy.KasPublicKeySet:
       type: object
       properties:
@@ -894,9 +833,13 @@ components:
         uri:
           type: string
           title: uri
-          description: |
+          description: |+
             Address of a KAS instance
-            uri_format // URI must be a valid URL (e.g., 'https://demo.com/') followed by additional segments. Each segment must start and end with an alphanumeric character, can contain hyphens, alphanumeric characters, and slashes.
+            URI must be a valid URL (e.g., 'https://demo.com/') followed by additional segments. Each segment must start and end with an alphanumeric character, can contain hyphens, alphanumeric characters, and slashes.:
+            ```
+            this.matches('^https?://[a-zA-Z0-9]([a-zA-Z0-9\\-]{0,61}[a-zA-Z0-9])?(\\.[a-zA-Z0-9]([a-zA-Z0-9\\-]{0,61}[a-zA-Z0-9])?)*(:[0-9]+)?(/.*)?$')
+            ```
+
         publicKey:
           title: public_key
           description: 'Deprecated: KAS can have multiple key pairs'
@@ -964,8 +907,7 @@ components:
     policy.PublicKey:
       type: object
       oneOf:
-        - type: object
-          properties:
+        - properties:
             cached:
               title: cached
               description: public key with additional information. Current preferred version
@@ -973,14 +915,17 @@ components:
           title: cached
           required:
             - cached
-        - type: object
-          properties:
+        - properties:
             remote:
               type: string
               title: remote
-              description: |
+              description: |+
                 kas public key url - optional since can also be retrieved via public key
-                uri_format // URI must be a valid URL (e.g., 'https://demo.com/') followed by additional segments. Each segment must start and end with an alphanumeric character, can contain hyphens, alphanumeric characters, and slashes.
+                URI must be a valid URL (e.g., 'https://demo.com/') followed by additional segments. Each segment must start and end with an alphanumeric character, can contain hyphens, alphanumeric characters, and slashes.:
+                ```
+                this.matches('^https://[a-zA-Z0-9]([a-zA-Z0-9\\-]{0,61}[a-zA-Z0-9])?(\\.[a-zA-Z0-9]([a-zA-Z0-9\\-]{0,61}[a-zA-Z0-9])?)*(/.*)?$')
+                ```
+
           title: remote
           required:
             - remote
@@ -1018,17 +963,50 @@ components:
           title: pem
       title: SimpleKasPublicKey
       additionalProperties: false
-    policy.SourceType:
-      type: string
-      title: SourceType
+    connect-protocol-version:
+      type: number
+      title: Connect-Protocol-Version
       enum:
-        - SOURCE_TYPE_UNSPECIFIED
-        - SOURCE_TYPE_INTERNAL
-        - SOURCE_TYPE_EXTERNAL
-      description: |-
-        Describes whether this kas is managed by the organization or if they imported
-         the kas information from an external party. These two modes are necessary in order
-         to encrypt a tdf dek with an external parties kas public key.
+        - 1
+      description: Define the version of the Connect protocol
+      const: 1
+    connect-timeout-header:
+      type: number
+      title: Connect-Timeout-Ms
+      description: Define the timeout, in ms
+    connect.error:
+      type: object
+      properties:
+        code:
+          type: string
+          examples:
+            - not_found
+          enum:
+            - canceled
+            - unknown
+            - invalid_argument
+            - deadline_exceeded
+            - not_found
+            - already_exists
+            - permission_denied
+            - resource_exhausted
+            - failed_precondition
+            - aborted
+            - out_of_range
+            - unimplemented
+            - internal
+            - unavailable
+            - data_loss
+            - unauthenticated
+          description: The status code, which should be an enum value of [google.rpc.Code][google.rpc.Code].
+        message:
+          type: string
+          description: A developer-facing error message, which should be in English. Any user-facing error message should be localized and sent in the [google.rpc.Status.details][google.rpc.Status.details] field, or localized by the client.
+        detail:
+          $ref: '#/components/schemas/google.protobuf.Any'
+      title: Connect Error
+      additionalProperties: true
+      description: 'Error type returned by Connect: https://connectrpc.com/docs/go/errors/#http-representation'
 security: []
 tags:
   - name: authorization.AuthorizationService

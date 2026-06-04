@@ -7,6 +7,7 @@ import (
 	"github.com/opentdf/platform/protocol/go/common"
 	"github.com/opentdf/platform/protocol/go/policy"
 	attrs "github.com/opentdf/platform/protocol/go/policy/attributes"
+	"github.com/opentdf/platform/protocol/go/policy/definitionvalueentitlement"
 	"github.com/opentdf/platform/protocol/go/policy/obligations"
 	"github.com/opentdf/platform/protocol/go/policy/registeredresources"
 	"github.com/opentdf/platform/protocol/go/policy/subjectmapping"
@@ -17,6 +18,7 @@ import (
 type EntitlementPolicyStore interface {
 	ListAllAttributes(ctx context.Context) ([]*policy.Attribute, error)
 	ListAllSubjectMappings(ctx context.Context) ([]*policy.SubjectMapping, error)
+	ListAllDefinitionValueEntitlementMappings(ctx context.Context) ([]*policy.DefinitionValueEntitlementMapping, error)
 	ListAllRegisteredResources(ctx context.Context) ([]*policy.RegisteredResource, error)
 	ListAllObligations(ctx context.Context) ([]*policy.Obligation, error)
 	IsEnabled() bool
@@ -24,10 +26,11 @@ type EntitlementPolicyStore interface {
 }
 
 var (
-	ErrFailedToFetchAttributes          = errors.New("failed to fetch attributes from policy service")
-	ErrFailedToFetchSubjectMappings     = errors.New("failed to fetch subject mappings from policy service")
-	ErrFailedToFetchRegisteredResources = errors.New("failed to fetch registered resources from policy service")
-	ErrFailedToFetchObligations         = errors.New("failed to fetch obligations from policy service")
+	ErrFailedToFetchAttributes                         = errors.New("failed to fetch attributes from policy service")
+	ErrFailedToFetchSubjectMappings                    = errors.New("failed to fetch subject mappings from policy service")
+	ErrFailedToFetchDefinitionValueEntitlementMappings = errors.New("failed to fetch definition value entitlement mappings from policy service")
+	ErrFailedToFetchRegisteredResources                = errors.New("failed to fetch registered resources from policy service")
+	ErrFailedToFetchObligations                        = errors.New("failed to fetch obligations from policy service")
 )
 
 // EntitlementPolicyRetriever satisfies the EntitlementPolicyStore interface and fetches fresh
@@ -101,6 +104,32 @@ func (p *EntitlementPolicyRetriever) ListAllSubjectMappings(ctx context.Context)
 		}
 	}
 	return smList, nil
+}
+
+func (p *EntitlementPolicyRetriever) ListAllDefinitionValueEntitlementMappings(ctx context.Context) ([]*policy.DefinitionValueEntitlementMapping, error) {
+	// If quantity exceeds maximum list pagination, all are needed to determine entitlements
+	var nextOffset int32
+	mappingsList := make([]*policy.DefinitionValueEntitlementMapping, 0)
+
+	for {
+		listed, err := p.SDK.DefinitionValueEntitlementMapping.ListDefinitionValueEntitlementMappings(ctx, &definitionvalueentitlement.ListDefinitionValueEntitlementMappingsRequest{
+			// defer to service default for limit pagination
+			Pagination: &policy.PageRequest{
+				Offset: nextOffset,
+			},
+		})
+		if err != nil {
+			return nil, errors.Join(ErrFailedToFetchDefinitionValueEntitlementMappings, err)
+		}
+
+		nextOffset = listed.GetPagination().GetNextOffset()
+		mappingsList = append(mappingsList, listed.GetDefinitionValueEntitlementMappings()...)
+
+		if nextOffset <= 0 {
+			break
+		}
+	}
+	return mappingsList, nil
 }
 
 func (p *EntitlementPolicyRetriever) ListAllRegisteredResources(ctx context.Context) ([]*policy.RegisteredResource, error) {

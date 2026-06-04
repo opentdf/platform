@@ -264,6 +264,13 @@ func (c PolicyDBClient) DeleteAllUnmappedSubjectConditionSets(ctx context.Contex
 // If a new subject condition set is provided, it will be created. The existing subject condition set id takes precedence.
 func (c PolicyDBClient) CreateSubjectMapping(ctx context.Context, s *subjectmapping.CreateSubjectMappingRequest) (*policy.SubjectMapping, error) {
 	attributeValueID := s.GetAttributeValueId()
+
+	// Enforce no-coexistence: a value-level subject mapping cannot be created on a
+	// definition that already has a dynamic value entitlement mapping (DSPX-2754 / ADR 0005).
+	if err := c.ensureNoDefinitionValueEntitlementMappingCoexistence(ctx, attributeValueID); err != nil {
+		return nil, err
+	}
+
 	resolvedNamespaceID, err := c.resolveNamespace(ctx, s.GetNamespaceId(), s.GetNamespaceFqn())
 	if err != nil {
 		return nil, err

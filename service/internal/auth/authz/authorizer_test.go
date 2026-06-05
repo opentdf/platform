@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/lestrrat-go/jwx/v2/jwt"
+	platformauthz "github.com/opentdf/platform/service/pkg/authz"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -192,8 +193,8 @@ type mockV1Enforcer struct {
 	subjects      []string
 }
 
-func (m *mockV1Enforcer) Enforce(_ jwt.Token, _ []byte, _, _ string) bool {
-	return m.enforceResult
+func (m *mockV1Enforcer) Enforce(_ context.Context, _ jwt.Token, _ platformauthz.RoleRequest) (bool, map[string]any, error) {
+	return m.enforceResult, nil, nil
 }
 
 func (m *mockV1Enforcer) BuildSubjectFromTokenAndUserInfo(_ jwt.Token, _ []byte) []string {

@@ -169,7 +169,7 @@ func NewAuthenticator(ctx context.Context, cfg Config, logger *logger.Logger, we
 		Logger: logger,
 		// Pass the v1 enforcer to break circular dependency
 		// The casbin authorizer will use this for v1 mode
-		Options: []authz.Option{authz.WithV1Enforcer(v1EnforcerAdapter{enforcer: a.enforcer})},
+		Options: []authz.Option{authz.WithV1Enforcer(a.enforcer)},
 	}
 	logger.Info(
 		"initializing authorizer",
@@ -302,23 +302,23 @@ func (a Authentication) MuxHandler(handler http.Handler) http.Handler {
 			Resource: r.URL.Path,
 			Action:   action,
 		}
-		if result, err := a.enforcer.Enforce(ctx, accessTok, roleReq); err != nil {
+		if allowed, metadata, err := a.enforcer.Enforce(ctx, accessTok, roleReq); err != nil {
 			if errors.Is(err, ErrPermissionDenied) {
 				log.WarnContext(
 					ctx,
 					"permission denied",
-					permissionDeniedLogAttrs(accessTok, result.CasbinAuthz, err)...,
+					permissionDeniedLogAttrs(accessTok, metadata, err)...,
 				)
 				http.Error(w, "permission denied", http.StatusForbidden)
 				return
 			}
 			http.Error(w, "internal server error", http.StatusInternalServerError)
 			return
-		} else if !result.Allowed {
+		} else if !allowed {
 			log.WarnContext(
 				ctx,
 				"permission denied",
-				permissionDeniedLogAttrs(accessTok, result.CasbinAuthz, nil)...,
+				permissionDeniedLogAttrs(accessTok, metadata, nil)...,
 			)
 			http.Error(w, "permission denied", http.StatusForbidden)
 			return
@@ -423,14 +423,16 @@ func (a Authentication) ConnectUnaryServerInterceptor() connect.UnaryInterceptor
 	return connect.UnaryInterceptorFunc(interceptor)
 }
 
-func permissionDeniedLogAttrs(token jwt.Token, casbinAuthz CasbinAuthzLog, err error) []any {
+func permissionDeniedLogAttrs(token jwt.Token, casbinAuthz map[string]any, err error) []any {
 	attrs := []any{slog.String("azp", token.Subject())}
 
-	if casbinAuthz.ConfiguredGroupsClaim != "" || casbinAuthz.SubjectGroups != nil {
+	configuredGroupsClaim, _ := casbinAuthz[casbinAuthzConfiguredGroupsClaimKey].(string)
+	subjectGroups, hasSubjectGroups := casbinAuthz[casbinAuthzSubjectGroupsKey]
+	if configuredGroupsClaim != "" || hasSubjectGroups {
 		attrs = append(attrs, slog.Group(
 			"casbin_authz",
-			slog.String("configured_groups_claim", casbinAuthz.ConfiguredGroupsClaim),
-			slog.Any("subject_groups", casbinAuthz.SubjectGroups),
+			slog.String("configured_groups_claim", configuredGroupsClaim),
+			slog.Any("subject_groups", subjectGroups),
 		))
 	}
 

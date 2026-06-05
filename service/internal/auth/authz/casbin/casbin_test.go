@@ -7,6 +7,7 @@ import (
 	"github.com/lestrrat-go/jwx/v2/jwt"
 	"github.com/opentdf/platform/service/internal/auth/authz"
 	"github.com/opentdf/platform/service/logger"
+	platformauthz "github.com/opentdf/platform/service/pkg/authz"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
@@ -14,15 +15,15 @@ import (
 
 // mockV1Enforcer implements authz.V1Enforcer for testing
 type mockV1Enforcer struct {
-	enforceFunc func(token jwt.Token, userInfo []byte, resource, action string) bool
+	enforceFunc func(ctx context.Context, token jwt.Token, req platformauthz.RoleRequest) (bool, map[string]any, error)
 	extractFunc func(token jwt.Token, userInfo []byte) []string
 }
 
-func (m *mockV1Enforcer) Enforce(token jwt.Token, userInfo []byte, resource, action string) bool {
+func (m *mockV1Enforcer) Enforce(ctx context.Context, token jwt.Token, req platformauthz.RoleRequest) (bool, map[string]any, error) {
 	if m.enforceFunc != nil {
-		return m.enforceFunc(token, userInfo, resource, action)
+		return m.enforceFunc(ctx, token, req)
 	}
-	return false
+	return false, nil, nil
 }
 
 func (m *mockV1Enforcer) BuildSubjectFromTokenAndUserInfo(token jwt.Token, userInfo []byte) []string {
@@ -679,11 +680,10 @@ func (s *CasbinAuthorizerSuite) TestAuthorizeV1_GRPCPathStripsLeadingSlash() {
 	// Create a mock enforcer that validates the resource path
 	var receivedResource string
 	mockEnforcer := &mockV1Enforcer{
-		enforceFunc: func(_ jwt.Token, _ []byte, resource, action string) bool {
-			receivedResource = resource
-			_ = action // unused in this test
+		enforceFunc: func(_ context.Context, _ jwt.Token, req platformauthz.RoleRequest) (bool, map[string]any, error) {
+			receivedResource = req.Resource
 			// Allow if resource matches expected stripped path
-			return resource == "kas.AccessService/Rewrap"
+			return req.Resource == "kas.AccessService/Rewrap", nil, nil
 		},
 	}
 
@@ -724,11 +724,10 @@ func (s *CasbinAuthorizerSuite) TestAuthorizeV1_HTTPPathKeepsLeadingSlash() {
 	// v1 policy: HTTP paths KEEP their leading slash
 	var receivedResource string
 	mockEnforcer := &mockV1Enforcer{
-		enforceFunc: func(_ jwt.Token, _ []byte, resource, action string) bool {
-			receivedResource = resource
-			_ = action // unused in this test
+		enforceFunc: func(_ context.Context, _ jwt.Token, req platformauthz.RoleRequest) (bool, map[string]any, error) {
+			receivedResource = req.Resource
 			// Allow if resource matches expected path with leading slash
-			return resource == "/kas/v2/rewrap"
+			return req.Resource == "/kas/v2/rewrap", nil, nil
 		},
 	}
 
@@ -768,11 +767,10 @@ func (s *CasbinAuthorizerSuite) TestAuthorizeV1_PolicyServiceGRPCPath() {
 	// Test policy.* wildcard matching with gRPC path
 	var receivedResource string
 	mockEnforcer := &mockV1Enforcer{
-		enforceFunc: func(_ jwt.Token, _ []byte, resource, action string) bool {
-			receivedResource = resource
-			_ = action // unused in this test
+		enforceFunc: func(_ context.Context, _ jwt.Token, req platformauthz.RoleRequest) (bool, map[string]any, error) {
+			receivedResource = req.Resource
 			// Allow if resource starts with policy. (gRPC style, no leading slash)
-			return len(resource) > 7 && resource[:7] == "policy."
+			return len(req.Resource) > 7 && req.Resource[:7] == "policy.", nil, nil
 		},
 	}
 
@@ -812,10 +810,9 @@ func (s *CasbinAuthorizerSuite) TestAuthorizeV1_PathHandlingHeuristic() {
 	// Test the specific heuristic: paths with "." are gRPC, others are HTTP
 	var receivedResources []string
 	mockEnforcer := &mockV1Enforcer{
-		enforceFunc: func(_ jwt.Token, _ []byte, resource, action string) bool {
-			_ = action // unused in this test
-			receivedResources = append(receivedResources, resource)
-			return true
+		enforceFunc: func(_ context.Context, _ jwt.Token, req platformauthz.RoleRequest) (bool, map[string]any, error) {
+			receivedResources = append(receivedResources, req.Resource)
+			return true, nil, nil
 		},
 	}
 

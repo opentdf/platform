@@ -176,8 +176,13 @@ func Test_ListResourceMappingGroupsRequest_NamespaceFilters(t *testing.T) {
 	}
 	require.NoError(t, v.Validate(req), "valid namespace_id and namespace_fqn")
 
-	req = &resourcemapping.ListResourceMappingGroupsRequest{NamespaceFqn: "not a uri"}
+	req = &resourcemapping.ListResourceMappingGroupsRequest{NamespaceId: "invalid-id"}
 	err := v.Validate(req)
+	require.Error(t, err, "namespace_id is not a valid UUID")
+	require.Contains(t, err.Error(), errMessageOptionalUUID)
+
+	req = &resourcemapping.ListResourceMappingGroupsRequest{NamespaceFqn: "not a uri"}
+	err = v.Validate(req)
 	require.Error(t, err, "namespace_fqn is not a valid URI")
 	require.Contains(t, err.Error(), errMessageOptionalURI)
 }
@@ -238,6 +243,14 @@ func Test_UpdateResourceMappingRequest_NamespaceFields(t *testing.T) {
 	err := v.Validate(req)
 	require.Error(t, err, "namespace_id is not a valid UUID")
 	require.Contains(t, err.Error(), errMessageOptionalUUID)
+
+	req = &resourcemapping.UpdateResourceMappingRequest{
+		Id:           validUUID,
+		NamespaceFqn: "not a uri",
+	}
+	err = v.Validate(req)
+	require.Error(t, err, "namespace_fqn is not a valid URI")
+	require.Contains(t, err.Error(), errMessageOptionalURI)
 }
 
 func Test_CreateResourceMappingRequest_Succeeds(t *testing.T) {

@@ -52,6 +52,7 @@ type CasbinV1Config struct {
 	Model string
 
 	// RoleMap maps external IdP roles to internal platform roles.
+	//
 	// Deprecated: Use Casbin grouping statements instead.
 	RoleMap map[string]string
 
@@ -86,6 +87,7 @@ type CasbinV2Config struct {
 	Model string
 
 	// RoleMap maps external IdP roles to internal platform roles.
+	//
 	// Deprecated: Use Casbin grouping statements instead.
 	RoleMap map[string]string
 

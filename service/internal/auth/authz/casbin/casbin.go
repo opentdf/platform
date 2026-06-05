@@ -18,6 +18,7 @@ import (
 	"github.com/lestrrat-go/jwx/v2/jwt"
 	"github.com/opentdf/platform/service/internal/auth/authz"
 	"github.com/opentdf/platform/service/logger"
+	platformauthz "github.com/opentdf/platform/service/pkg/authz"
 	"github.com/opentdf/platform/service/pkg/util"
 )
 
@@ -106,7 +107,8 @@ func newCasbinV1Authorizer(cfg authz.CasbinV1Config, log *logger.Logger) (*Autho
 		v1Enforcer: cfg.Enforcer,
 	}
 
-	log.Info("casbin authorizer initialized",
+	log.Info(
+		"casbin authorizer initialized",
 		slog.String("version", authorizer.version),
 		slog.Bool("supportsResourceAuth", authorizer.SupportsResourceAuthorization()),
 	)
@@ -136,7 +138,8 @@ func newCasbinV2Authorizer(cfg authz.CasbinV2Config, log *logger.Logger) (*Autho
 		groupClaimSelectors: groupClaimSelectors,
 	}
 
-	log.Info("casbin authorizer initialized",
+	log.Info(
+		"casbin authorizer initialized",
 		slog.String("version", authorizer.version),
 		slog.Bool("supportsResourceAuth", authorizer.SupportsResourceAuthorization()),
 	)
@@ -240,7 +243,7 @@ func (a *Authorizer) SupportsResourceAuthorization() bool {
 // (e.g., "kas.AccessService"), while HTTP paths do not (e.g., "/kas/v2/rewrap").
 //
 // This preserves full backwards compatibility with the existing v1 policy format.
-func (a *Authorizer) authorizeV1(_ context.Context, req *authz.Request) (*authz.Decision, error) {
+func (a *Authorizer) authorizeV1(ctx context.Context, req *authz.Request) (*authz.Decision, error) {
 	resource := req.RPC
 	if strings.Contains(req.RPC, ".") {
 		// gRPC-style path (contains '.'): strip leading slash for v1 policy compatibility
@@ -250,7 +253,20 @@ func (a *Authorizer) authorizeV1(_ context.Context, req *authz.Request) (*authz.
 	// HTTP paths (no '.') keep their leading slash
 	// Example: /kas/v2/rewrap -> /kas/v2/rewrap
 
-	allowed := a.v1Enforcer.Enforce(req.Token, req.UserInfo, resource, req.Action)
+	allowed, _, err := a.v1Enforcer.Enforce(ctx, req.Token, platformauthz.RoleRequest{
+		Resource: resource,
+		Action:   req.Action,
+	})
+	if err != nil {
+		if !allowed {
+			return &authz.Decision{
+				Allowed: false,
+				Reason:  fmt.Sprintf("v1: denied %s %s", req.Action, resource),
+				Mode:    authz.ModeV1,
+			}, nil
+		}
+		return nil, fmt.Errorf("v1 authorization system error: %w", err)
+	}
 
 	return &authz.Decision{
 		Allowed: allowed,
@@ -274,7 +290,8 @@ func (a *Authorizer) authorizeV2(_ context.Context, req *authz.Request) (*authz.
 		return nil, fmt.Errorf("v2 authorization invalid resource dimensions: %w", err)
 	}
 
-	a.logger.Debug("v2 authorization check",
+	a.logger.Debug(
+		"v2 authorization check",
 		slog.Any("subjects", subjects),
 		slog.String("rpc", req.RPC),
 		slog.String("dims", dims),
@@ -291,7 +308,8 @@ func (a *Authorizer) authorizeV2(_ context.Context, req *authz.Request) (*authz.
 	for _, subject := range subjects {
 		allowed, err := a.v2Enforcer.Enforce(subject, req.RPC, dims)
 		if err != nil {
-			a.logger.Error("v2 enforcement error",
+			a.logger.Error(
+				"v2 enforcement error",
 				slog.String("subject", subject),
 				slog.String("rpc", req.RPC),
 				slog.String("dims", dims),
@@ -304,7 +322,8 @@ func (a *Authorizer) authorizeV2(_ context.Context, req *authz.Request) (*authz.
 		anyCheckedSuccessfully = true
 
 		if allowed {
-			a.logger.Debug("v2 authorization allowed",
+			a.logger.Debug(
+				"v2 authorization allowed",
 				slog.String("subject", subject),
 				slog.String("rpc", req.RPC),
 				slog.String("dims", dims),
@@ -324,7 +343,8 @@ func (a *Authorizer) authorizeV2(_ context.Context, req *authz.Request) (*authz.
 		return nil, fmt.Errorf("v2 authorization system error: %w", lastErr)
 	}
 
-	a.logger.Debug("v2 authorization denied",
+	a.logger.Debug(
+		"v2 authorization denied",
 		slog.Any("subjects", subjects),
 		slog.String("rpc", req.RPC),
 		slog.String("dims", dims),
@@ -339,7 +359,7 @@ func (a *Authorizer) authorizeV2(_ context.Context, req *authz.Request) (*authz.
 
 // extractSubjects extracts roles/username from JWT token and userInfo.
 func (a *Authorizer) extractSubjects(req *authz.Request) []string {
-	if a.v1Enforcer != nil {
+	if a.v1Enforcer != nil { // ? What's the point of this
 		// Reuse v1 subject extraction logic
 		return a.v1Enforcer.BuildSubjectFromTokenAndUserInfo(req.Token, req.UserInfo)
 	}
@@ -392,7 +412,8 @@ func (a *Authorizer) extractUsernameFromToken(token jwt.Token) string {
 	}
 
 	if strings.HasPrefix(username, rolePrefix) {
-		a.logger.Warn("ignoring username subject with reserved role prefix",
+		a.logger.Warn(
+			"ignoring username subject with reserved role prefix",
 			slog.String("claim", a.baseConfig.UserNameClaim),
 			slog.String("prefix", rolePrefix),
 		)

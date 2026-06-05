@@ -34,7 +34,8 @@ type PolicyConfig struct {
 	// Casbin model configuration (for custom models)
 	Model string
 
-	// RoleMap maps IdP roles to internal platform roles
+	// RoleMap maps IdP roles to internal platform roles.
+	//
 	// Deprecated: Use Casbin grouping statements g, <user/group>, <role>
 	RoleMap map[string]string
 

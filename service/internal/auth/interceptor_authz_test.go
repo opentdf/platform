@@ -639,7 +639,7 @@ func (s *InterceptorAuthzSuite) createV1Authorizer(policyCfg PolicyConfig) authz
 		Version:      "v1",
 		PolicyConfig: authzPolicyCfg,
 		Logger:       s.logger,
-		Options:      []authz.Option{authz.WithV1Enforcer(v1EnforcerAdapter{enforcer: enforcer})},
+		Options:      []authz.Option{authz.WithV1Enforcer(enforcer)},
 	}
 
 	authorizer, err := authz.New(authzCfg)

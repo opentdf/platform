@@ -219,9 +219,9 @@ func TestPermissionDeniedLogAttrs(t *testing.T) {
 	tok := jwt.New()
 	require.NoError(t, tok.Set(jwt.SubjectKey, "client-subject"))
 
-	attrs := permissionDeniedLogAttrs(tok, CasbinAuthzLog{
-		ConfiguredGroupsClaim: "custom.groups",
-		SubjectGroups:         []string{"opentdf-standard"},
+	attrs := permissionDeniedLogAttrs(tok, map[string]any{
+		casbinAuthzConfiguredGroupsClaimKey: "custom.groups",
+		casbinAuthzSubjectGroupsKey:         []string{"opentdf-standard"},
 	}, ErrPermissionDenied)
 
 	require.Len(t, attrs, 3)
@@ -251,7 +251,7 @@ func TestPermissionDeniedLogAttrsWithoutSubjectInfo(t *testing.T) {
 	tok := jwt.New()
 	require.NoError(t, tok.Set(jwt.SubjectKey, "client-subject"))
 
-	attrs := permissionDeniedLogAttrs(tok, CasbinAuthzLog{}, ErrPermissionDenied)
+	attrs := permissionDeniedLogAttrs(tok, nil, ErrPermissionDenied)
 
 	require.Len(t, attrs, 2)
 	assert.Equal(t, slog.String("azp", "client-subject"), attrs[0])
@@ -715,9 +715,10 @@ func (s *AuthSuite) Test_Allowing_Auth_With_No_DPoP() {
 	}
 	config := Config{}
 	config.AuthNConfig = authnConfig
-	auth, err := NewAuthenticator(context.Background(), config, &logger.Logger{
-		Logger: slog.New(slog.Default().Handler()),
-	},
+	auth, err := NewAuthenticator(
+		context.Background(), config, &logger.Logger{
+			Logger: slog.New(slog.Default().Handler()),
+		},
 		func(_ string, _ any) error { return nil },
 	)
 

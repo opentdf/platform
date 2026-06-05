@@ -8,6 +8,7 @@ import (
 	"sync"
 
 	"github.com/lestrrat-go/jwx/v2/jwt"
+	platformauthz "github.com/opentdf/platform/service/pkg/authz"
 )
 
 // Mode indicates which authorization strategy was used for a decision.
@@ -127,8 +128,8 @@ type optionConfig struct {
 // This allows the casbin authorizer to delegate v1 authorization
 // to the existing enforcer without circular dependencies.
 type V1Enforcer interface {
-	// Enforce checks if the given token and userInfo are allowed to perform the action on the resource.
-	Enforce(token jwt.Token, userInfo []byte, resource, action string) bool
+	// Enforce checks if the given token is allowed to perform the requested action.
+	Enforce(ctx context.Context, token jwt.Token, req platformauthz.RoleRequest) (bool, map[string]any, error)
 
 	// BuildSubjectFromTokenAndUserInfo extracts subjects (roles/username) from token and userInfo.
 	BuildSubjectFromTokenAndUserInfo(token jwt.Token, userInfo []byte) []string

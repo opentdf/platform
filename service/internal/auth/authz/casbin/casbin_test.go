@@ -192,7 +192,7 @@ func (s *CasbinAuthorizerSuite) TestAuthorizeV2_DefaultPolicyIncludesDefaultRole
 		Action: "write",
 	}
 
-	decision, err := authorizer.Authorize(context.Background(), req)
+	decision, err := authorizer.Authorize(s.T().Context(), req)
 	s.Require().NoError(err)
 	s.Require().NotNil(decision)
 	s.True(decision.Allowed, "default v2 policy should map opentdf-admin to role:admin")

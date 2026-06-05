@@ -13,10 +13,12 @@
 # Admin Role - Full Access
 # ============================================================================
 p, role:admin, *, *, allow
+g, role:opentdf-admin, role:admin
 
 # ============================================================================
 # Standard Role - Authenticated Users
 # ============================================================================
+g, role:opentdf-standard, role:standard
 
 # Discovery and health endpoints
 p, role:standard, /wellknownconfiguration.WellKnownService/*, *, allow

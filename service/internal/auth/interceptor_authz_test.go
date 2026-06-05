@@ -5,12 +5,15 @@ import (
 	"strings"
 	"testing"
 
+	"connectrpc.com/connect"
 	"github.com/creasty/defaults"
 	"github.com/lestrrat-go/jwx/v2/jwt"
+	"github.com/opentdf/platform/protocol/go/policy/attributes"
 	"github.com/opentdf/platform/service/internal/auth/authz"
 	_ "github.com/opentdf/platform/service/internal/auth/authz/casbin" // Register casbin authorizer
 	"github.com/opentdf/platform/service/logger"
 	"github.com/stretchr/testify/suite"
+	"google.golang.org/grpc"
 )
 
 // InterceptorAuthzSuite tests the authorization flow through the interceptor
@@ -456,6 +459,47 @@ p, role:finance-admin, /policy.attributes.AttributesService/*, namespace=finance
 	s.True(decision.Allowed, "finance-admin should be allowed with namespace=finance dimension")
 }
 
+func (s *InterceptorAuthzSuite) TestAuthorizeV2_InvokesRegisteredResolver() {
+	csvPolicy := "p, role:hr-admin, /policy.attributes.AttributesService/*, namespace=hr, allow"
+	registry := authz.NewResolverRegistry()
+	scopedRegistry := registry.ScopedForService(&grpc.ServiceDesc{
+		ServiceName: "policy.attributes.AttributesService",
+		Methods: []grpc.MethodDesc{
+			{MethodName: "UpdateAttribute"},
+		},
+	})
+
+	resolverCalled := false
+	scopedRegistry.MustRegister("UpdateAttribute", func(_ context.Context, _ connect.AnyRequest) (authz.ResolverContext, error) {
+		resolverCalled = true
+		resolverCtx := authz.NewResolverContext()
+		res := resolverCtx.NewResource()
+		res.AddDimension("namespace", "hr")
+		resolverCtx.SetResolvedData("attribute", "resolved")
+		return resolverCtx, nil
+	})
+
+	authn := &Authentication{
+		logger:                s.logger,
+		authorizer:            s.createV2Authorizer(csvPolicy),
+		authzResolverRegistry: registry,
+	}
+
+	req := &authzTestRequest{
+		Request:   connect.NewRequest(&attributes.GetAttributeRequest{}),
+		procedure: "/policy.attributes.AttributesService/UpdateAttribute",
+	}
+
+	result := authn.authorize(s.T().Context(), s.logger, s.newTokenWithRoles("hr-admin"), req, ActionWrite)
+
+	s.Require().NoError(result.err)
+	s.Require().NotNil(result.decision)
+	s.True(result.decision.Allowed)
+	s.True(resolverCalled, "registered resolver should be invoked")
+	s.Require().NotNil(result.resourceContext)
+	s.Equal("resolved", result.resourceContext.GetResolvedData("attribute"))
+}
+
 func (s *InterceptorAuthzSuite) TestV2_EmptyToken() {
 	csvPolicy := "p, role:admin, *, *, allow"
 	authorizer := s.createV2Authorizer(csvPolicy)
@@ -473,6 +517,15 @@ func (s *InterceptorAuthzSuite) TestV2_EmptyToken() {
 	s.Require().NotNil(decision)
 	// Should be denied because no matching role (defaults to unknown)
 	s.False(decision.Allowed, "empty token should be denied")
+}
+
+type authzTestRequest struct {
+	*connect.Request[attributes.GetAttributeRequest]
+	procedure string
+}
+
+func (r *authzTestRequest) Spec() connect.Spec {
+	return connect.Spec{Procedure: r.procedure}
 }
 
 // =============================================================================

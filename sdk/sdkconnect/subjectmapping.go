@@ -29,6 +29,11 @@ type SubjectMappingServiceClient interface {
 	UpdateSubjectConditionSet(ctx context.Context, req *subjectmapping.UpdateSubjectConditionSetRequest) (*subjectmapping.UpdateSubjectConditionSetResponse, error)
 	DeleteSubjectConditionSet(ctx context.Context, req *subjectmapping.DeleteSubjectConditionSetRequest) (*subjectmapping.DeleteSubjectConditionSetResponse, error)
 	DeleteAllUnmappedSubjectConditionSets(ctx context.Context, req *subjectmapping.DeleteAllUnmappedSubjectConditionSetsRequest) (*subjectmapping.DeleteAllUnmappedSubjectConditionSetsResponse, error)
+	ListDefinitionValueEntitlementMappings(ctx context.Context, req *subjectmapping.ListDefinitionValueEntitlementMappingsRequest) (*subjectmapping.ListDefinitionValueEntitlementMappingsResponse, error)
+	GetDefinitionValueEntitlementMapping(ctx context.Context, req *subjectmapping.GetDefinitionValueEntitlementMappingRequest) (*subjectmapping.GetDefinitionValueEntitlementMappingResponse, error)
+	CreateDefinitionValueEntitlementMapping(ctx context.Context, req *subjectmapping.CreateDefinitionValueEntitlementMappingRequest) (*subjectmapping.CreateDefinitionValueEntitlementMappingResponse, error)
+	UpdateDefinitionValueEntitlementMapping(ctx context.Context, req *subjectmapping.UpdateDefinitionValueEntitlementMappingRequest) (*subjectmapping.UpdateDefinitionValueEntitlementMappingResponse, error)
+	DeleteDefinitionValueEntitlementMapping(ctx context.Context, req *subjectmapping.DeleteDefinitionValueEntitlementMappingRequest) (*subjectmapping.DeleteDefinitionValueEntitlementMappingResponse, error)
 }
 
 func (w *SubjectMappingServiceClientConnectWrapper) MatchSubjectMappings(ctx context.Context, req *subjectmapping.MatchSubjectMappingsRequest) (*subjectmapping.MatchSubjectMappingsResponse, error) {
@@ -133,6 +138,51 @@ func (w *SubjectMappingServiceClientConnectWrapper) DeleteSubjectConditionSet(ct
 func (w *SubjectMappingServiceClientConnectWrapper) DeleteAllUnmappedSubjectConditionSets(ctx context.Context, req *subjectmapping.DeleteAllUnmappedSubjectConditionSetsRequest) (*subjectmapping.DeleteAllUnmappedSubjectConditionSetsResponse, error) {
 	// Wrap Connect RPC client request
 	res, err := w.SubjectMappingServiceClient.DeleteAllUnmappedSubjectConditionSets(ctx, connect.NewRequest(req))
+	if res == nil {
+		return nil, err
+	}
+	return res.Msg, err
+}
+
+func (w *SubjectMappingServiceClientConnectWrapper) ListDefinitionValueEntitlementMappings(ctx context.Context, req *subjectmapping.ListDefinitionValueEntitlementMappingsRequest) (*subjectmapping.ListDefinitionValueEntitlementMappingsResponse, error) {
+	// Wrap Connect RPC client request
+	res, err := w.SubjectMappingServiceClient.ListDefinitionValueEntitlementMappings(ctx, connect.NewRequest(req))
+	if res == nil {
+		return nil, err
+	}
+	return res.Msg, err
+}
+
+func (w *SubjectMappingServiceClientConnectWrapper) GetDefinitionValueEntitlementMapping(ctx context.Context, req *subjectmapping.GetDefinitionValueEntitlementMappingRequest) (*subjectmapping.GetDefinitionValueEntitlementMappingResponse, error) {
+	// Wrap Connect RPC client request
+	res, err := w.SubjectMappingServiceClient.GetDefinitionValueEntitlementMapping(ctx, connect.NewRequest(req))
+	if res == nil {
+		return nil, err
+	}
+	return res.Msg, err
+}
+
+func (w *SubjectMappingServiceClientConnectWrapper) CreateDefinitionValueEntitlementMapping(ctx context.Context, req *subjectmapping.CreateDefinitionValueEntitlementMappingRequest) (*subjectmapping.CreateDefinitionValueEntitlementMappingResponse, error) {
+	// Wrap Connect RPC client request
+	res, err := w.SubjectMappingServiceClient.CreateDefinitionValueEntitlementMapping(ctx, connect.NewRequest(req))
+	if res == nil {
+		return nil, err
+	}
+	return res.Msg, err
+}
+
+func (w *SubjectMappingServiceClientConnectWrapper) UpdateDefinitionValueEntitlementMapping(ctx context.Context, req *subjectmapping.UpdateDefinitionValueEntitlementMappingRequest) (*subjectmapping.UpdateDefinitionValueEntitlementMappingResponse, error) {
+	// Wrap Connect RPC client request
+	res, err := w.SubjectMappingServiceClient.UpdateDefinitionValueEntitlementMapping(ctx, connect.NewRequest(req))
+	if res == nil {
+		return nil, err
+	}
+	return res.Msg, err
+}
+
+func (w *SubjectMappingServiceClientConnectWrapper) DeleteDefinitionValueEntitlementMapping(ctx context.Context, req *subjectmapping.DeleteDefinitionValueEntitlementMappingRequest) (*subjectmapping.DeleteDefinitionValueEntitlementMappingResponse, error) {
+	// Wrap Connect RPC client request
+	res, err := w.SubjectMappingServiceClient.DeleteDefinitionValueEntitlementMapping(ctx, connect.NewRequest(req))
 	if res == nil {
 		return nil, err
 	}

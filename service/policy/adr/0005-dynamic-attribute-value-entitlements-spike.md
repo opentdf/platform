@@ -11,8 +11,8 @@ implementation spike** the question of *how* to model it. This document records 
 The original spike prototyped all three options as a throwaway package to make them comparable on real
 behavior. The recommendation below (a new primitive carrying a new operator) is now implemented as
 production code: the `DefinitionValueEntitlementMapping` primitive
-([`service/policy/objects.proto`](../objects.proto)), its dedicated service
-([`service/policy/definitionvalueentitlement`](../definitionvalueentitlement)), DB layer, and the
+([`service/policy/objects.proto`](../objects.proto)), its CRUD RPCs on the existing
+[`SubjectMappingService`](../subjectmapping), DB layer, and the
 decision-time evaluator
 ([`service/internal/subjectmappingbuiltin/definition_value_entitlement_builtin.go`](../../internal/subjectmappingbuiltin/definition_value_entitlement_builtin.go))
 wired into the PDP. The findings below record why that shape was chosen over the alternatives.

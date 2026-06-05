@@ -7,7 +7,6 @@ import (
 	"github.com/opentdf/platform/protocol/go/common"
 	"github.com/opentdf/platform/protocol/go/policy"
 	attrs "github.com/opentdf/platform/protocol/go/policy/attributes"
-	"github.com/opentdf/platform/protocol/go/policy/definitionvalueentitlement"
 	"github.com/opentdf/platform/protocol/go/policy/obligations"
 	"github.com/opentdf/platform/protocol/go/policy/registeredresources"
 	"github.com/opentdf/platform/protocol/go/policy/subjectmapping"
@@ -112,7 +111,7 @@ func (p *EntitlementPolicyRetriever) ListAllDefinitionValueEntitlementMappings(c
 	mappingsList := make([]*policy.DefinitionValueEntitlementMapping, 0)
 
 	for {
-		listed, err := p.SDK.DefinitionValueEntitlementMapping.ListDefinitionValueEntitlementMappings(ctx, &definitionvalueentitlement.ListDefinitionValueEntitlementMappingsRequest{
+		listed, err := p.SDK.SubjectMapping.ListDefinitionValueEntitlementMappings(ctx, &subjectmapping.ListDefinitionValueEntitlementMappingsRequest{
 			// defer to service default for limit pagination
 			Pagination: &policy.PageRequest{
 				Offset: nextOffset,

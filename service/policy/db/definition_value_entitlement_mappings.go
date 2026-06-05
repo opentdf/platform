@@ -10,7 +10,7 @@ import (
 	"github.com/opentdf/platform/protocol/go/common"
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/attributes"
-	"github.com/opentdf/platform/protocol/go/policy/definitionvalueentitlement"
+	"github.com/opentdf/platform/protocol/go/policy/subjectmapping"
 	"github.com/opentdf/platform/service/pkg/db"
 )
 
@@ -25,7 +25,7 @@ type definitionValueEntitlementMappingRow struct {
 	namespace                    interface{}
 }
 
-func (c PolicyDBClient) CreateDefinitionValueEntitlementMapping(ctx context.Context, r *definitionvalueentitlement.CreateDefinitionValueEntitlementMappingRequest) (*policy.DefinitionValueEntitlementMapping, error) {
+func (c PolicyDBClient) CreateDefinitionValueEntitlementMapping(ctx context.Context, r *subjectmapping.CreateDefinitionValueEntitlementMappingRequest) (*policy.DefinitionValueEntitlementMapping, error) {
 	resolver := r.GetValueResolver()
 	if resolver.GetOperator() == policy.DynamicValueOperatorEnum_DYNAMIC_VALUE_OPERATOR_ENUM_UNSPECIFIED {
 		return nil, errors.Join(db.ErrEnumValueInvalid, errors.New("value_resolver.operator must be specified"))
@@ -107,7 +107,7 @@ func (c PolicyDBClient) GetDefinitionValueEntitlementMapping(ctx context.Context
 	})
 }
 
-func (c PolicyDBClient) ListDefinitionValueEntitlementMappings(ctx context.Context, r *definitionvalueentitlement.ListDefinitionValueEntitlementMappingsRequest) (*definitionvalueentitlement.ListDefinitionValueEntitlementMappingsResponse, error) {
+func (c PolicyDBClient) ListDefinitionValueEntitlementMappings(ctx context.Context, r *subjectmapping.ListDefinitionValueEntitlementMappingsRequest) (*subjectmapping.ListDefinitionValueEntitlementMappingsResponse, error) {
 	limit, offset := c.getRequestedLimitOffset(r.GetPagination())
 
 	maxLimit := c.listCfg.limitMax
@@ -156,7 +156,7 @@ func (c PolicyDBClient) ListDefinitionValueEntitlementMappings(ctx context.Conte
 		nextOffset = getNextOffset(offset, limit, total)
 	}
 
-	return &definitionvalueentitlement.ListDefinitionValueEntitlementMappingsResponse{
+	return &subjectmapping.ListDefinitionValueEntitlementMappingsResponse{
 		DefinitionValueEntitlementMappings: mappings,
 		Pagination: &policy.PageResponse{
 			CurrentOffset: offset,
@@ -166,7 +166,7 @@ func (c PolicyDBClient) ListDefinitionValueEntitlementMappings(ctx context.Conte
 	}, nil
 }
 
-func (c PolicyDBClient) UpdateDefinitionValueEntitlementMapping(ctx context.Context, r *definitionvalueentitlement.UpdateDefinitionValueEntitlementMappingRequest) (*policy.DefinitionValueEntitlementMapping, error) {
+func (c PolicyDBClient) UpdateDefinitionValueEntitlementMapping(ctx context.Context, r *subjectmapping.UpdateDefinitionValueEntitlementMappingRequest) (*policy.DefinitionValueEntitlementMapping, error) {
 	id := r.GetId()
 	before, err := c.GetDefinitionValueEntitlementMapping(ctx, id)
 	if err != nil {
@@ -340,7 +340,7 @@ func (c PolicyDBClient) ensureNoDefinitionValueEntitlementMappingCoexistence(ctx
 
 func (c PolicyDBClient) resolveDefinitionValueEntitlementMappingSubjectConditionSet(
 	ctx context.Context,
-	r *definitionvalueentitlement.CreateDefinitionValueEntitlementMappingRequest,
+	r *subjectmapping.CreateDefinitionValueEntitlementMappingRequest,
 	namespaceID string,
 ) (*policy.SubjectConditionSet, error) {
 	switch {

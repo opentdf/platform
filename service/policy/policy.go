@@ -7,7 +7,6 @@ import (
 	"github.com/opentdf/platform/service/policy/actions"
 	"github.com/opentdf/platform/service/policy/attributes"
 	"github.com/opentdf/platform/service/policy/db/migrations"
-	"github.com/opentdf/platform/service/policy/definitionvalueentitlement"
 	"github.com/opentdf/platform/service/policy/kasregistry"
 	"github.com/opentdf/platform/service/policy/keymanagement"
 	"github.com/opentdf/platform/service/policy/namespaces"
@@ -37,7 +36,6 @@ func NewRegistrations() []serviceregistry.IService {
 		namespaces.NewRegistration(namespace, dbRegister),
 		resourcemapping.NewRegistration(namespace, dbRegister),
 		subjectmapping.NewRegistration(namespace, dbRegister),
-		definitionvalueentitlement.NewRegistration(namespace, dbRegister),
 		kasregistry.NewRegistration(namespace, dbRegister),
 		unsafe.NewRegistration(namespace, dbRegister),
 		actions.NewRegistration(namespace, dbRegister),

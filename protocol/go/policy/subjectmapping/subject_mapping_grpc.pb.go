@@ -19,18 +19,23 @@ import (
 const _ = grpc.SupportPackageIsVersion7
 
 const (
-	SubjectMappingService_MatchSubjectMappings_FullMethodName                  = "/policy.subjectmapping.SubjectMappingService/MatchSubjectMappings"
-	SubjectMappingService_ListSubjectMappings_FullMethodName                   = "/policy.subjectmapping.SubjectMappingService/ListSubjectMappings"
-	SubjectMappingService_GetSubjectMapping_FullMethodName                     = "/policy.subjectmapping.SubjectMappingService/GetSubjectMapping"
-	SubjectMappingService_CreateSubjectMapping_FullMethodName                  = "/policy.subjectmapping.SubjectMappingService/CreateSubjectMapping"
-	SubjectMappingService_UpdateSubjectMapping_FullMethodName                  = "/policy.subjectmapping.SubjectMappingService/UpdateSubjectMapping"
-	SubjectMappingService_DeleteSubjectMapping_FullMethodName                  = "/policy.subjectmapping.SubjectMappingService/DeleteSubjectMapping"
-	SubjectMappingService_ListSubjectConditionSets_FullMethodName              = "/policy.subjectmapping.SubjectMappingService/ListSubjectConditionSets"
-	SubjectMappingService_GetSubjectConditionSet_FullMethodName                = "/policy.subjectmapping.SubjectMappingService/GetSubjectConditionSet"
-	SubjectMappingService_CreateSubjectConditionSet_FullMethodName             = "/policy.subjectmapping.SubjectMappingService/CreateSubjectConditionSet"
-	SubjectMappingService_UpdateSubjectConditionSet_FullMethodName             = "/policy.subjectmapping.SubjectMappingService/UpdateSubjectConditionSet"
-	SubjectMappingService_DeleteSubjectConditionSet_FullMethodName             = "/policy.subjectmapping.SubjectMappingService/DeleteSubjectConditionSet"
-	SubjectMappingService_DeleteAllUnmappedSubjectConditionSets_FullMethodName = "/policy.subjectmapping.SubjectMappingService/DeleteAllUnmappedSubjectConditionSets"
+	SubjectMappingService_MatchSubjectMappings_FullMethodName                    = "/policy.subjectmapping.SubjectMappingService/MatchSubjectMappings"
+	SubjectMappingService_ListSubjectMappings_FullMethodName                     = "/policy.subjectmapping.SubjectMappingService/ListSubjectMappings"
+	SubjectMappingService_GetSubjectMapping_FullMethodName                       = "/policy.subjectmapping.SubjectMappingService/GetSubjectMapping"
+	SubjectMappingService_CreateSubjectMapping_FullMethodName                    = "/policy.subjectmapping.SubjectMappingService/CreateSubjectMapping"
+	SubjectMappingService_UpdateSubjectMapping_FullMethodName                    = "/policy.subjectmapping.SubjectMappingService/UpdateSubjectMapping"
+	SubjectMappingService_DeleteSubjectMapping_FullMethodName                    = "/policy.subjectmapping.SubjectMappingService/DeleteSubjectMapping"
+	SubjectMappingService_ListSubjectConditionSets_FullMethodName                = "/policy.subjectmapping.SubjectMappingService/ListSubjectConditionSets"
+	SubjectMappingService_GetSubjectConditionSet_FullMethodName                  = "/policy.subjectmapping.SubjectMappingService/GetSubjectConditionSet"
+	SubjectMappingService_CreateSubjectConditionSet_FullMethodName               = "/policy.subjectmapping.SubjectMappingService/CreateSubjectConditionSet"
+	SubjectMappingService_UpdateSubjectConditionSet_FullMethodName               = "/policy.subjectmapping.SubjectMappingService/UpdateSubjectConditionSet"
+	SubjectMappingService_DeleteSubjectConditionSet_FullMethodName               = "/policy.subjectmapping.SubjectMappingService/DeleteSubjectConditionSet"
+	SubjectMappingService_DeleteAllUnmappedSubjectConditionSets_FullMethodName   = "/policy.subjectmapping.SubjectMappingService/DeleteAllUnmappedSubjectConditionSets"
+	SubjectMappingService_ListDefinitionValueEntitlementMappings_FullMethodName  = "/policy.subjectmapping.SubjectMappingService/ListDefinitionValueEntitlementMappings"
+	SubjectMappingService_GetDefinitionValueEntitlementMapping_FullMethodName    = "/policy.subjectmapping.SubjectMappingService/GetDefinitionValueEntitlementMapping"
+	SubjectMappingService_CreateDefinitionValueEntitlementMapping_FullMethodName = "/policy.subjectmapping.SubjectMappingService/CreateDefinitionValueEntitlementMapping"
+	SubjectMappingService_UpdateDefinitionValueEntitlementMapping_FullMethodName = "/policy.subjectmapping.SubjectMappingService/UpdateDefinitionValueEntitlementMapping"
+	SubjectMappingService_DeleteDefinitionValueEntitlementMapping_FullMethodName = "/policy.subjectmapping.SubjectMappingService/DeleteDefinitionValueEntitlementMapping"
 )
 
 // SubjectMappingServiceClient is the client API for SubjectMappingService service.
@@ -50,6 +55,11 @@ type SubjectMappingServiceClient interface {
 	UpdateSubjectConditionSet(ctx context.Context, in *UpdateSubjectConditionSetRequest, opts ...grpc.CallOption) (*UpdateSubjectConditionSetResponse, error)
 	DeleteSubjectConditionSet(ctx context.Context, in *DeleteSubjectConditionSetRequest, opts ...grpc.CallOption) (*DeleteSubjectConditionSetResponse, error)
 	DeleteAllUnmappedSubjectConditionSets(ctx context.Context, in *DeleteAllUnmappedSubjectConditionSetsRequest, opts ...grpc.CallOption) (*DeleteAllUnmappedSubjectConditionSetsResponse, error)
+	ListDefinitionValueEntitlementMappings(ctx context.Context, in *ListDefinitionValueEntitlementMappingsRequest, opts ...grpc.CallOption) (*ListDefinitionValueEntitlementMappingsResponse, error)
+	GetDefinitionValueEntitlementMapping(ctx context.Context, in *GetDefinitionValueEntitlementMappingRequest, opts ...grpc.CallOption) (*GetDefinitionValueEntitlementMappingResponse, error)
+	CreateDefinitionValueEntitlementMapping(ctx context.Context, in *CreateDefinitionValueEntitlementMappingRequest, opts ...grpc.CallOption) (*CreateDefinitionValueEntitlementMappingResponse, error)
+	UpdateDefinitionValueEntitlementMapping(ctx context.Context, in *UpdateDefinitionValueEntitlementMappingRequest, opts ...grpc.CallOption) (*UpdateDefinitionValueEntitlementMappingResponse, error)
+	DeleteDefinitionValueEntitlementMapping(ctx context.Context, in *DeleteDefinitionValueEntitlementMappingRequest, opts ...grpc.CallOption) (*DeleteDefinitionValueEntitlementMappingResponse, error)
 }
 
 type subjectMappingServiceClient struct {
@@ -168,6 +178,51 @@ func (c *subjectMappingServiceClient) DeleteAllUnmappedSubjectConditionSets(ctx 
 	return out, nil
 }
 
+func (c *subjectMappingServiceClient) ListDefinitionValueEntitlementMappings(ctx context.Context, in *ListDefinitionValueEntitlementMappingsRequest, opts ...grpc.CallOption) (*ListDefinitionValueEntitlementMappingsResponse, error) {
+	out := new(ListDefinitionValueEntitlementMappingsResponse)
+	err := c.cc.Invoke(ctx, SubjectMappingService_ListDefinitionValueEntitlementMappings_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *subjectMappingServiceClient) GetDefinitionValueEntitlementMapping(ctx context.Context, in *GetDefinitionValueEntitlementMappingRequest, opts ...grpc.CallOption) (*GetDefinitionValueEntitlementMappingResponse, error) {
+	out := new(GetDefinitionValueEntitlementMappingResponse)
+	err := c.cc.Invoke(ctx, SubjectMappingService_GetDefinitionValueEntitlementMapping_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *subjectMappingServiceClient) CreateDefinitionValueEntitlementMapping(ctx context.Context, in *CreateDefinitionValueEntitlementMappingRequest, opts ...grpc.CallOption) (*CreateDefinitionValueEntitlementMappingResponse, error) {
+	out := new(CreateDefinitionValueEntitlementMappingResponse)
+	err := c.cc.Invoke(ctx, SubjectMappingService_CreateDefinitionValueEntitlementMapping_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *subjectMappingServiceClient) UpdateDefinitionValueEntitlementMapping(ctx context.Context, in *UpdateDefinitionValueEntitlementMappingRequest, opts ...grpc.CallOption) (*UpdateDefinitionValueEntitlementMappingResponse, error) {
+	out := new(UpdateDefinitionValueEntitlementMappingResponse)
+	err := c.cc.Invoke(ctx, SubjectMappingService_UpdateDefinitionValueEntitlementMapping_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *subjectMappingServiceClient) DeleteDefinitionValueEntitlementMapping(ctx context.Context, in *DeleteDefinitionValueEntitlementMappingRequest, opts ...grpc.CallOption) (*DeleteDefinitionValueEntitlementMappingResponse, error) {
+	out := new(DeleteDefinitionValueEntitlementMappingResponse)
+	err := c.cc.Invoke(ctx, SubjectMappingService_DeleteDefinitionValueEntitlementMapping_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // SubjectMappingServiceServer is the server API for SubjectMappingService service.
 // All implementations must embed UnimplementedSubjectMappingServiceServer
 // for forward compatibility
@@ -185,6 +240,11 @@ type SubjectMappingServiceServer interface {
 	UpdateSubjectConditionSet(context.Context, *UpdateSubjectConditionSetRequest) (*UpdateSubjectConditionSetResponse, error)
 	DeleteSubjectConditionSet(context.Context, *DeleteSubjectConditionSetRequest) (*DeleteSubjectConditionSetResponse, error)
 	DeleteAllUnmappedSubjectConditionSets(context.Context, *DeleteAllUnmappedSubjectConditionSetsRequest) (*DeleteAllUnmappedSubjectConditionSetsResponse, error)
+	ListDefinitionValueEntitlementMappings(context.Context, *ListDefinitionValueEntitlementMappingsRequest) (*ListDefinitionValueEntitlementMappingsResponse, error)
+	GetDefinitionValueEntitlementMapping(context.Context, *GetDefinitionValueEntitlementMappingRequest) (*GetDefinitionValueEntitlementMappingResponse, error)
+	CreateDefinitionValueEntitlementMapping(context.Context, *CreateDefinitionValueEntitlementMappingRequest) (*CreateDefinitionValueEntitlementMappingResponse, error)
+	UpdateDefinitionValueEntitlementMapping(context.Context, *UpdateDefinitionValueEntitlementMappingRequest) (*UpdateDefinitionValueEntitlementMappingResponse, error)
+	DeleteDefinitionValueEntitlementMapping(context.Context, *DeleteDefinitionValueEntitlementMappingRequest) (*DeleteDefinitionValueEntitlementMappingResponse, error)
 	mustEmbedUnimplementedSubjectMappingServiceServer()
 }
 
@@ -227,6 +287,21 @@ func (UnimplementedSubjectMappingServiceServer) DeleteSubjectConditionSet(contex
 }
 func (UnimplementedSubjectMappingServiceServer) DeleteAllUnmappedSubjectConditionSets(context.Context, *DeleteAllUnmappedSubjectConditionSetsRequest) (*DeleteAllUnmappedSubjectConditionSetsResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method DeleteAllUnmappedSubjectConditionSets not implemented")
+}
+func (UnimplementedSubjectMappingServiceServer) ListDefinitionValueEntitlementMappings(context.Context, *ListDefinitionValueEntitlementMappingsRequest) (*ListDefinitionValueEntitlementMappingsResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ListDefinitionValueEntitlementMappings not implemented")
+}
+func (UnimplementedSubjectMappingServiceServer) GetDefinitionValueEntitlementMapping(context.Context, *GetDefinitionValueEntitlementMappingRequest) (*GetDefinitionValueEntitlementMappingResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetDefinitionValueEntitlementMapping not implemented")
+}
+func (UnimplementedSubjectMappingServiceServer) CreateDefinitionValueEntitlementMapping(context.Context, *CreateDefinitionValueEntitlementMappingRequest) (*CreateDefinitionValueEntitlementMappingResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method CreateDefinitionValueEntitlementMapping not implemented")
+}
+func (UnimplementedSubjectMappingServiceServer) UpdateDefinitionValueEntitlementMapping(context.Context, *UpdateDefinitionValueEntitlementMappingRequest) (*UpdateDefinitionValueEntitlementMappingResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method UpdateDefinitionValueEntitlementMapping not implemented")
+}
+func (UnimplementedSubjectMappingServiceServer) DeleteDefinitionValueEntitlementMapping(context.Context, *DeleteDefinitionValueEntitlementMappingRequest) (*DeleteDefinitionValueEntitlementMappingResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method DeleteDefinitionValueEntitlementMapping not implemented")
 }
 func (UnimplementedSubjectMappingServiceServer) mustEmbedUnimplementedSubjectMappingServiceServer() {}
 
@@ -457,6 +532,96 @@ func _SubjectMappingService_DeleteAllUnmappedSubjectConditionSets_Handler(srv in
 	return interceptor(ctx, in, info, handler)
 }
 
+func _SubjectMappingService_ListDefinitionValueEntitlementMappings_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListDefinitionValueEntitlementMappingsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(SubjectMappingServiceServer).ListDefinitionValueEntitlementMappings(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: SubjectMappingService_ListDefinitionValueEntitlementMappings_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(SubjectMappingServiceServer).ListDefinitionValueEntitlementMappings(ctx, req.(*ListDefinitionValueEntitlementMappingsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _SubjectMappingService_GetDefinitionValueEntitlementMapping_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetDefinitionValueEntitlementMappingRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(SubjectMappingServiceServer).GetDefinitionValueEntitlementMapping(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: SubjectMappingService_GetDefinitionValueEntitlementMapping_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(SubjectMappingServiceServer).GetDefinitionValueEntitlementMapping(ctx, req.(*GetDefinitionValueEntitlementMappingRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _SubjectMappingService_CreateDefinitionValueEntitlementMapping_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CreateDefinitionValueEntitlementMappingRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(SubjectMappingServiceServer).CreateDefinitionValueEntitlementMapping(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: SubjectMappingService_CreateDefinitionValueEntitlementMapping_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(SubjectMappingServiceServer).CreateDefinitionValueEntitlementMapping(ctx, req.(*CreateDefinitionValueEntitlementMappingRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _SubjectMappingService_UpdateDefinitionValueEntitlementMapping_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UpdateDefinitionValueEntitlementMappingRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(SubjectMappingServiceServer).UpdateDefinitionValueEntitlementMapping(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: SubjectMappingService_UpdateDefinitionValueEntitlementMapping_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(SubjectMappingServiceServer).UpdateDefinitionValueEntitlementMapping(ctx, req.(*UpdateDefinitionValueEntitlementMappingRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _SubjectMappingService_DeleteDefinitionValueEntitlementMapping_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DeleteDefinitionValueEntitlementMappingRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(SubjectMappingServiceServer).DeleteDefinitionValueEntitlementMapping(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: SubjectMappingService_DeleteDefinitionValueEntitlementMapping_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(SubjectMappingServiceServer).DeleteDefinitionValueEntitlementMapping(ctx, req.(*DeleteDefinitionValueEntitlementMappingRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // SubjectMappingService_ServiceDesc is the grpc.ServiceDesc for SubjectMappingService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -511,6 +676,26 @@ var SubjectMappingService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "DeleteAllUnmappedSubjectConditionSets",
 			Handler:    _SubjectMappingService_DeleteAllUnmappedSubjectConditionSets_Handler,
+		},
+		{
+			MethodName: "ListDefinitionValueEntitlementMappings",
+			Handler:    _SubjectMappingService_ListDefinitionValueEntitlementMappings_Handler,
+		},
+		{
+			MethodName: "GetDefinitionValueEntitlementMapping",
+			Handler:    _SubjectMappingService_GetDefinitionValueEntitlementMapping_Handler,
+		},
+		{
+			MethodName: "CreateDefinitionValueEntitlementMapping",
+			Handler:    _SubjectMappingService_CreateDefinitionValueEntitlementMapping_Handler,
+		},
+		{
+			MethodName: "UpdateDefinitionValueEntitlementMapping",
+			Handler:    _SubjectMappingService_UpdateDefinitionValueEntitlementMapping_Handler,
+		},
+		{
+			MethodName: "DeleteDefinitionValueEntitlementMapping",
+			Handler:    _SubjectMappingService_DeleteDefinitionValueEntitlementMapping_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

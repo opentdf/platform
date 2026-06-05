@@ -2,6 +2,461 @@ openapi: 3.1.0
 info:
   title: policy.subjectmapping
 paths:
+  /policy.subjectmapping.SubjectMappingService/CreateDefinitionValueEntitlementMapping:
+    post:
+      tags:
+        - policy.subjectmapping.SubjectMappingService
+      summary: CreateDefinitionValueEntitlementMapping
+      operationId: policy.subjectmapping.SubjectMappingService.CreateDefinitionValueEntitlementMapping
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/policy.subjectmapping.CreateDefinitionValueEntitlementMappingRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/policy.subjectmapping.CreateDefinitionValueEntitlementMappingResponse'
+  /policy.subjectmapping.SubjectMappingService/CreateSubjectConditionSet:
+    post:
+      tags:
+        - policy.subjectmapping.SubjectMappingService
+      summary: CreateSubjectConditionSet
+      operationId: policy.subjectmapping.SubjectMappingService.CreateSubjectConditionSet
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/policy.subjectmapping.CreateSubjectConditionSetRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/policy.subjectmapping.CreateSubjectConditionSetResponse'
+  /policy.subjectmapping.SubjectMappingService/CreateSubjectMapping:
+    post:
+      tags:
+        - policy.subjectmapping.SubjectMappingService
+      summary: CreateSubjectMapping
+      operationId: policy.subjectmapping.SubjectMappingService.CreateSubjectMapping
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/policy.subjectmapping.CreateSubjectMappingRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/policy.subjectmapping.CreateSubjectMappingResponse'
+  /policy.subjectmapping.SubjectMappingService/DeleteAllUnmappedSubjectConditionSets:
+    post:
+      tags:
+        - policy.subjectmapping.SubjectMappingService
+      summary: DeleteAllUnmappedSubjectConditionSets
+      operationId: policy.subjectmapping.SubjectMappingService.DeleteAllUnmappedSubjectConditionSets
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/policy.subjectmapping.DeleteAllUnmappedSubjectConditionSetsRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/policy.subjectmapping.DeleteAllUnmappedSubjectConditionSetsResponse'
+  /policy.subjectmapping.SubjectMappingService/DeleteDefinitionValueEntitlementMapping:
+    post:
+      tags:
+        - policy.subjectmapping.SubjectMappingService
+      summary: DeleteDefinitionValueEntitlementMapping
+      operationId: policy.subjectmapping.SubjectMappingService.DeleteDefinitionValueEntitlementMapping
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/policy.subjectmapping.DeleteDefinitionValueEntitlementMappingRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/policy.subjectmapping.DeleteDefinitionValueEntitlementMappingResponse'
+  /policy.subjectmapping.SubjectMappingService/DeleteSubjectConditionSet:
+    post:
+      tags:
+        - policy.subjectmapping.SubjectMappingService
+      summary: DeleteSubjectConditionSet
+      operationId: policy.subjectmapping.SubjectMappingService.DeleteSubjectConditionSet
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/policy.subjectmapping.DeleteSubjectConditionSetRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/policy.subjectmapping.DeleteSubjectConditionSetResponse'
+  /policy.subjectmapping.SubjectMappingService/DeleteSubjectMapping:
+    post:
+      tags:
+        - policy.subjectmapping.SubjectMappingService
+      summary: DeleteSubjectMapping
+      operationId: policy.subjectmapping.SubjectMappingService.DeleteSubjectMapping
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/policy.subjectmapping.DeleteSubjectMappingRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/policy.subjectmapping.DeleteSubjectMappingResponse'
+  /policy.subjectmapping.SubjectMappingService/GetDefinitionValueEntitlementMapping:
+    post:
+      tags:
+        - policy.subjectmapping.SubjectMappingService
+      summary: GetDefinitionValueEntitlementMapping
+      operationId: policy.subjectmapping.SubjectMappingService.GetDefinitionValueEntitlementMapping
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/policy.subjectmapping.GetDefinitionValueEntitlementMappingRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/policy.subjectmapping.GetDefinitionValueEntitlementMappingResponse'
+  /policy.subjectmapping.SubjectMappingService/GetSubjectConditionSet:
+    post:
+      tags:
+        - policy.subjectmapping.SubjectMappingService
+      summary: GetSubjectConditionSet
+      operationId: policy.subjectmapping.SubjectMappingService.GetSubjectConditionSet
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/policy.subjectmapping.GetSubjectConditionSetRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/policy.subjectmapping.GetSubjectConditionSetResponse'
+  /policy.subjectmapping.SubjectMappingService/GetSubjectMapping:
+    post:
+      tags:
+        - policy.subjectmapping.SubjectMappingService
+      summary: GetSubjectMapping
+      operationId: policy.subjectmapping.SubjectMappingService.GetSubjectMapping
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/policy.subjectmapping.GetSubjectMappingRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/policy.subjectmapping.GetSubjectMappingResponse'
+  /policy.subjectmapping.SubjectMappingService/ListDefinitionValueEntitlementMappings:
+    post:
+      tags:
+        - policy.subjectmapping.SubjectMappingService
+      summary: ListDefinitionValueEntitlementMappings
+      operationId: policy.subjectmapping.SubjectMappingService.ListDefinitionValueEntitlementMappings
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/policy.subjectmapping.ListDefinitionValueEntitlementMappingsRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/policy.subjectmapping.ListDefinitionValueEntitlementMappingsResponse'
+  /policy.subjectmapping.SubjectMappingService/ListSubjectConditionSets:
+    post:
+      tags:
+        - policy.subjectmapping.SubjectMappingService
+      summary: ListSubjectConditionSets
+      operationId: policy.subjectmapping.SubjectMappingService.ListSubjectConditionSets
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/policy.subjectmapping.ListSubjectConditionSetsRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/policy.subjectmapping.ListSubjectConditionSetsResponse'
+  /policy.subjectmapping.SubjectMappingService/ListSubjectMappings:
+    post:
+      tags:
+        - policy.subjectmapping.SubjectMappingService
+      summary: ListSubjectMappings
+      operationId: policy.subjectmapping.SubjectMappingService.ListSubjectMappings
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/policy.subjectmapping.ListSubjectMappingsRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/policy.subjectmapping.ListSubjectMappingsResponse'
   /policy.subjectmapping.SubjectMappingService/MatchSubjectMappings:
     post:
       tags:
@@ -38,12 +493,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/policy.subjectmapping.MatchSubjectMappingsResponse'
-  /policy.subjectmapping.SubjectMappingService/ListSubjectMappings:
+  /policy.subjectmapping.SubjectMappingService/UpdateDefinitionValueEntitlementMapping:
     post:
       tags:
         - policy.subjectmapping.SubjectMappingService
-      summary: ListSubjectMappings
-      operationId: policy.subjectmapping.SubjectMappingService.ListSubjectMappings
+      summary: UpdateDefinitionValueEntitlementMapping
+      operationId: policy.subjectmapping.SubjectMappingService.UpdateDefinitionValueEntitlementMapping
       parameters:
         - name: Connect-Protocol-Version
           in: header
@@ -58,7 +513,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/policy.subjectmapping.ListSubjectMappingsRequest'
+              $ref: '#/components/schemas/policy.subjectmapping.UpdateDefinitionValueEntitlementMappingRequest'
         required: true
       responses:
         default:
@@ -72,252 +527,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/policy.subjectmapping.ListSubjectMappingsResponse'
-  /policy.subjectmapping.SubjectMappingService/GetSubjectMapping:
-    post:
-      tags:
-        - policy.subjectmapping.SubjectMappingService
-      summary: GetSubjectMapping
-      operationId: policy.subjectmapping.SubjectMappingService.GetSubjectMapping
-      parameters:
-        - name: Connect-Protocol-Version
-          in: header
-          required: true
-          schema:
-            $ref: '#/components/schemas/connect-protocol-version'
-        - name: Connect-Timeout-Ms
-          in: header
-          schema:
-            $ref: '#/components/schemas/connect-timeout-header'
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/policy.subjectmapping.GetSubjectMappingRequest'
-        required: true
-      responses:
-        default:
-          description: Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/connect.error'
-        "200":
-          description: Success
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/policy.subjectmapping.GetSubjectMappingResponse'
-  /policy.subjectmapping.SubjectMappingService/CreateSubjectMapping:
-    post:
-      tags:
-        - policy.subjectmapping.SubjectMappingService
-      summary: CreateSubjectMapping
-      operationId: policy.subjectmapping.SubjectMappingService.CreateSubjectMapping
-      parameters:
-        - name: Connect-Protocol-Version
-          in: header
-          required: true
-          schema:
-            $ref: '#/components/schemas/connect-protocol-version'
-        - name: Connect-Timeout-Ms
-          in: header
-          schema:
-            $ref: '#/components/schemas/connect-timeout-header'
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/policy.subjectmapping.CreateSubjectMappingRequest'
-        required: true
-      responses:
-        default:
-          description: Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/connect.error'
-        "200":
-          description: Success
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/policy.subjectmapping.CreateSubjectMappingResponse'
-  /policy.subjectmapping.SubjectMappingService/UpdateSubjectMapping:
-    post:
-      tags:
-        - policy.subjectmapping.SubjectMappingService
-      summary: UpdateSubjectMapping
-      operationId: policy.subjectmapping.SubjectMappingService.UpdateSubjectMapping
-      parameters:
-        - name: Connect-Protocol-Version
-          in: header
-          required: true
-          schema:
-            $ref: '#/components/schemas/connect-protocol-version'
-        - name: Connect-Timeout-Ms
-          in: header
-          schema:
-            $ref: '#/components/schemas/connect-timeout-header'
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/policy.subjectmapping.UpdateSubjectMappingRequest'
-        required: true
-      responses:
-        default:
-          description: Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/connect.error'
-        "200":
-          description: Success
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/policy.subjectmapping.UpdateSubjectMappingResponse'
-  /policy.subjectmapping.SubjectMappingService/DeleteSubjectMapping:
-    post:
-      tags:
-        - policy.subjectmapping.SubjectMappingService
-      summary: DeleteSubjectMapping
-      operationId: policy.subjectmapping.SubjectMappingService.DeleteSubjectMapping
-      parameters:
-        - name: Connect-Protocol-Version
-          in: header
-          required: true
-          schema:
-            $ref: '#/components/schemas/connect-protocol-version'
-        - name: Connect-Timeout-Ms
-          in: header
-          schema:
-            $ref: '#/components/schemas/connect-timeout-header'
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/policy.subjectmapping.DeleteSubjectMappingRequest'
-        required: true
-      responses:
-        default:
-          description: Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/connect.error'
-        "200":
-          description: Success
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/policy.subjectmapping.DeleteSubjectMappingResponse'
-  /policy.subjectmapping.SubjectMappingService/ListSubjectConditionSets:
-    post:
-      tags:
-        - policy.subjectmapping.SubjectMappingService
-      summary: ListSubjectConditionSets
-      operationId: policy.subjectmapping.SubjectMappingService.ListSubjectConditionSets
-      parameters:
-        - name: Connect-Protocol-Version
-          in: header
-          required: true
-          schema:
-            $ref: '#/components/schemas/connect-protocol-version'
-        - name: Connect-Timeout-Ms
-          in: header
-          schema:
-            $ref: '#/components/schemas/connect-timeout-header'
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/policy.subjectmapping.ListSubjectConditionSetsRequest'
-        required: true
-      responses:
-        default:
-          description: Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/connect.error'
-        "200":
-          description: Success
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/policy.subjectmapping.ListSubjectConditionSetsResponse'
-  /policy.subjectmapping.SubjectMappingService/GetSubjectConditionSet:
-    post:
-      tags:
-        - policy.subjectmapping.SubjectMappingService
-      summary: GetSubjectConditionSet
-      operationId: policy.subjectmapping.SubjectMappingService.GetSubjectConditionSet
-      parameters:
-        - name: Connect-Protocol-Version
-          in: header
-          required: true
-          schema:
-            $ref: '#/components/schemas/connect-protocol-version'
-        - name: Connect-Timeout-Ms
-          in: header
-          schema:
-            $ref: '#/components/schemas/connect-timeout-header'
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/policy.subjectmapping.GetSubjectConditionSetRequest'
-        required: true
-      responses:
-        default:
-          description: Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/connect.error'
-        "200":
-          description: Success
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/policy.subjectmapping.GetSubjectConditionSetResponse'
-  /policy.subjectmapping.SubjectMappingService/CreateSubjectConditionSet:
-    post:
-      tags:
-        - policy.subjectmapping.SubjectMappingService
-      summary: CreateSubjectConditionSet
-      operationId: policy.subjectmapping.SubjectMappingService.CreateSubjectConditionSet
-      parameters:
-        - name: Connect-Protocol-Version
-          in: header
-          required: true
-          schema:
-            $ref: '#/components/schemas/connect-protocol-version'
-        - name: Connect-Timeout-Ms
-          in: header
-          schema:
-            $ref: '#/components/schemas/connect-timeout-header'
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/policy.subjectmapping.CreateSubjectConditionSetRequest'
-        required: true
-      responses:
-        default:
-          description: Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/connect.error'
-        "200":
-          description: Success
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/policy.subjectmapping.CreateSubjectConditionSetResponse'
+                $ref: '#/components/schemas/policy.subjectmapping.UpdateDefinitionValueEntitlementMappingResponse'
   /policy.subjectmapping.SubjectMappingService/UpdateSubjectConditionSet:
     post:
       tags:
@@ -353,12 +563,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/policy.subjectmapping.UpdateSubjectConditionSetResponse'
-  /policy.subjectmapping.SubjectMappingService/DeleteSubjectConditionSet:
+  /policy.subjectmapping.SubjectMappingService/UpdateSubjectMapping:
     post:
       tags:
         - policy.subjectmapping.SubjectMappingService
-      summary: DeleteSubjectConditionSet
-      operationId: policy.subjectmapping.SubjectMappingService.DeleteSubjectConditionSet
+      summary: UpdateSubjectMapping
+      operationId: policy.subjectmapping.SubjectMappingService.UpdateSubjectMapping
       parameters:
         - name: Connect-Protocol-Version
           in: header
@@ -373,7 +583,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/policy.subjectmapping.DeleteSubjectConditionSetRequest'
+              $ref: '#/components/schemas/policy.subjectmapping.UpdateSubjectMappingRequest'
         required: true
       responses:
         default:
@@ -387,145 +597,9 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/policy.subjectmapping.DeleteSubjectConditionSetResponse'
-  /policy.subjectmapping.SubjectMappingService/DeleteAllUnmappedSubjectConditionSets:
-    post:
-      tags:
-        - policy.subjectmapping.SubjectMappingService
-      summary: DeleteAllUnmappedSubjectConditionSets
-      operationId: policy.subjectmapping.SubjectMappingService.DeleteAllUnmappedSubjectConditionSets
-      parameters:
-        - name: Connect-Protocol-Version
-          in: header
-          required: true
-          schema:
-            $ref: '#/components/schemas/connect-protocol-version'
-        - name: Connect-Timeout-Ms
-          in: header
-          schema:
-            $ref: '#/components/schemas/connect-timeout-header'
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/policy.subjectmapping.DeleteAllUnmappedSubjectConditionSetsRequest'
-        required: true
-      responses:
-        default:
-          description: Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/connect.error'
-        "200":
-          description: Success
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/policy.subjectmapping.DeleteAllUnmappedSubjectConditionSetsResponse'
+                $ref: '#/components/schemas/policy.subjectmapping.UpdateSubjectMappingResponse'
 components:
   schemas:
-    common.MetadataUpdateEnum:
-      type: string
-      title: MetadataUpdateEnum
-      enum:
-        - METADATA_UPDATE_ENUM_UNSPECIFIED
-        - METADATA_UPDATE_ENUM_EXTEND
-        - METADATA_UPDATE_ENUM_REPLACE
-    policy.Action.StandardAction:
-      type: string
-      title: StandardAction
-      enum:
-        - STANDARD_ACTION_UNSPECIFIED
-        - STANDARD_ACTION_DECRYPT
-        - STANDARD_ACTION_TRANSMIT
-    policy.Algorithm:
-      type: string
-      title: Algorithm
-      enum:
-        - ALGORITHM_UNSPECIFIED
-        - ALGORITHM_RSA_2048
-        - ALGORITHM_RSA_4096
-        - ALGORITHM_EC_P256
-        - ALGORITHM_EC_P384
-        - ALGORITHM_EC_P521
-        - ALGORITHM_HPQT_XWING
-        - ALGORITHM_HPQT_SECP256R1_MLKEM768
-        - ALGORITHM_HPQT_SECP384R1_MLKEM1024
-      description: Supported key algorithms.
-    policy.AttributeRuleTypeEnum:
-      type: string
-      title: AttributeRuleTypeEnum
-      enum:
-        - ATTRIBUTE_RULE_TYPE_ENUM_UNSPECIFIED
-        - ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF
-        - ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF
-        - ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY
-    policy.ConditionBooleanTypeEnum:
-      type: string
-      title: ConditionBooleanTypeEnum
-      enum:
-        - CONDITION_BOOLEAN_TYPE_ENUM_UNSPECIFIED
-        - CONDITION_BOOLEAN_TYPE_ENUM_AND
-        - CONDITION_BOOLEAN_TYPE_ENUM_OR
-    policy.KasPublicKeyAlgEnum:
-      type: string
-      title: KasPublicKeyAlgEnum
-      enum:
-        - KAS_PUBLIC_KEY_ALG_ENUM_UNSPECIFIED
-        - KAS_PUBLIC_KEY_ALG_ENUM_RSA_2048
-        - KAS_PUBLIC_KEY_ALG_ENUM_RSA_4096
-        - KAS_PUBLIC_KEY_ALG_ENUM_EC_SECP256R1
-        - KAS_PUBLIC_KEY_ALG_ENUM_EC_SECP384R1
-        - KAS_PUBLIC_KEY_ALG_ENUM_EC_SECP521R1
-        - KAS_PUBLIC_KEY_ALG_ENUM_HPQT_XWING
-        - KAS_PUBLIC_KEY_ALG_ENUM_HPQT_SECP256R1_MLKEM768
-        - KAS_PUBLIC_KEY_ALG_ENUM_HPQT_SECP384R1_MLKEM1024
-    policy.SortDirection:
-      type: string
-      title: SortDirection
-      enum:
-        - SORT_DIRECTION_UNSPECIFIED
-        - SORT_DIRECTION_ASC
-        - SORT_DIRECTION_DESC
-      description: |-
-        Sorting direction shared across list APIs.
-         When the 'sort' field is omitted or the chosen sort 'field' is UNSPECIFIED,
-         the endpoint's request message defines the default ordering; see the
-         specific List* request docs.
-    policy.SourceType:
-      type: string
-      title: SourceType
-      enum:
-        - SOURCE_TYPE_UNSPECIFIED
-        - SOURCE_TYPE_INTERNAL
-        - SOURCE_TYPE_EXTERNAL
-      description: |-
-        Describes whether this kas is managed by the organization or if they imported
-         the kas information from an external party. These two modes are necessary in order
-         to encrypt a tdf dek with an external parties kas public key.
-    policy.SubjectMappingOperatorEnum:
-      type: string
-      title: SubjectMappingOperatorEnum
-      enum:
-        - SUBJECT_MAPPING_OPERATOR_ENUM_UNSPECIFIED
-        - SUBJECT_MAPPING_OPERATOR_ENUM_IN
-        - SUBJECT_MAPPING_OPERATOR_ENUM_NOT_IN
-        - SUBJECT_MAPPING_OPERATOR_ENUM_IN_CONTAINS
-    policy.subjectmapping.SortSubjectConditionSetsType:
-      type: string
-      title: SortSubjectConditionSetsType
-      enum:
-        - SORT_SUBJECT_CONDITION_SETS_TYPE_UNSPECIFIED
-        - SORT_SUBJECT_CONDITION_SETS_TYPE_CREATED_AT
-        - SORT_SUBJECT_CONDITION_SETS_TYPE_UPDATED_AT
-    policy.subjectmapping.SortSubjectMappingsType:
-      type: string
-      title: SortSubjectMappingsType
-      enum:
-        - SORT_SUBJECT_MAPPINGS_TYPE_UNSPECIFIED
-        - SORT_SUBJECT_MAPPINGS_TYPE_CREATED_AT
-        - SORT_SUBJECT_MAPPINGS_TYPE_UPDATED_AT
     common.Metadata:
       type: object
       properties:
@@ -581,6 +655,82 @@ components:
           title: value
       title: LabelsEntry
       additionalProperties: false
+    common.MetadataUpdateEnum:
+      type: string
+      title: MetadataUpdateEnum
+      enum:
+        - METADATA_UPDATE_ENUM_UNSPECIFIED
+        - METADATA_UPDATE_ENUM_EXTEND
+        - METADATA_UPDATE_ENUM_REPLACE
+    connect-protocol-version:
+      type: number
+      title: Connect-Protocol-Version
+      enum:
+        - 1
+      description: Define the version of the Connect protocol
+      const: 1
+    connect-timeout-header:
+      type: number
+      title: Connect-Timeout-Ms
+      description: Define the timeout, in ms
+    connect.error:
+      type: object
+      properties:
+        code:
+          type: string
+          examples:
+            - not_found
+          enum:
+            - canceled
+            - unknown
+            - invalid_argument
+            - deadline_exceeded
+            - not_found
+            - already_exists
+            - permission_denied
+            - resource_exhausted
+            - failed_precondition
+            - aborted
+            - out_of_range
+            - unimplemented
+            - internal
+            - unavailable
+            - data_loss
+            - unauthenticated
+          description: The status code, which should be an enum value of [google.rpc.Code][google.rpc.Code].
+        message:
+          type: string
+          description: A developer-facing error message, which should be in English. Any user-facing error message should be localized and sent in the [google.rpc.Status.details][google.rpc.Status.details] field, or localized by the client.
+        details:
+          type: array
+          items:
+            $ref: '#/components/schemas/connect.error_details.Any'
+          description: A list of messages that carry the error details. There is no limit on the number of messages.
+      title: Connect Error
+      additionalProperties: true
+      description: 'Error type returned by Connect: https://connectrpc.com/docs/go/errors/#http-representation'
+    connect.error_details.Any:
+      type: object
+      properties:
+        type:
+          type: string
+          description: 'A URL that acts as a globally unique identifier for the type of the serialized message. For example: `type.googleapis.com/google.rpc.ErrorInfo`. This is used to determine the schema of the data in the `value` field and is the discriminator for the `debug` field.'
+        value:
+          type: string
+          format: binary
+          description: The Protobuf message, serialized as bytes and base64-encoded. The specific message type is identified by the `type` field.
+        debug:
+          oneOf:
+            - type: object
+              title: Any
+              additionalProperties: true
+              description: Detailed error information.
+          discriminator:
+            propertyName: type
+          title: Debug
+          description: Deserialized error detail payload. The 'type' field indicates the schema. This field is for easier debugging and should not be relied upon for application logic.
+      additionalProperties: true
+      description: Contains an arbitrary serialized message along with a @type that describes the type of the serialized message, with an additional debug field for ConnectRPC error details.
     google.protobuf.BoolValue:
       type: boolean
       description: |-
@@ -593,8 +743,8 @@ components:
     google.protobuf.Timestamp:
       type: string
       examples:
-        - 1s
-        - 1.000340012s
+        - "2023-01-15T01:30:15.01Z"
+        - "2024-12-25T12:00:00Z"
       format: date-time
       description: |-
         A Timestamp represents a point in time independent of any time zone or local
@@ -688,41 +838,65 @@ components:
          ) to obtain a formatter capable of generating timestamps in this format.
     policy.Action:
       type: object
-      oneOf:
+      allOf:
         - properties:
-            custom:
+            id:
               type: string
+              title: id
+              description: Generated uuid in database
+            name:
+              type: string
+              title: name
+            namespace:
+              title: namespace
+              description: Namespace context for this action
+              $ref: '#/components/schemas/policy.Namespace'
+            metadata:
+              title: metadata
+              $ref: '#/components/schemas/common.Metadata'
+        - oneOf:
+            - type: object
+              properties:
+                custom:
+                  type: string
+                  title: custom
+                  description: Deprecated
               title: custom
-              description: Deprecated
-          title: custom
-          required:
-            - custom
-        - properties:
-            standard:
+              required:
+                - custom
+            - type: object
+              properties:
+                standard:
+                  title: standard
+                  description: Deprecated
+                  $ref: '#/components/schemas/policy.Action.StandardAction'
               title: standard
-              description: Deprecated
-              $ref: '#/components/schemas/policy.Action.StandardAction'
-          title: standard
-          required:
-            - standard
-      properties:
-        id:
-          type: string
-          title: id
-          description: Generated uuid in database
-        name:
-          type: string
-          title: name
-        namespace:
-          title: namespace
-          description: Namespace context for this action
-          $ref: '#/components/schemas/policy.Namespace'
-        metadata:
-          title: metadata
-          $ref: '#/components/schemas/common.Metadata'
+              required:
+                - standard
       title: Action
       additionalProperties: false
       description: An action an entity can take
+    policy.Action.StandardAction:
+      type: string
+      title: StandardAction
+      enum:
+        - STANDARD_ACTION_UNSPECIFIED
+        - STANDARD_ACTION_DECRYPT
+        - STANDARD_ACTION_TRANSMIT
+    policy.Algorithm:
+      type: string
+      title: Algorithm
+      enum:
+        - ALGORITHM_UNSPECIFIED
+        - ALGORITHM_RSA_2048
+        - ALGORITHM_RSA_4096
+        - ALGORITHM_EC_P256
+        - ALGORITHM_EC_P384
+        - ALGORITHM_EC_P521
+        - ALGORITHM_HPQT_XWING
+        - ALGORITHM_HPQT_SECP256R1_MLKEM768
+        - ALGORITHM_HPQT_SECP384R1_MLKEM1024
+      description: Supported key algorithms.
     policy.Attribute:
       type: object
       properties:
@@ -779,6 +953,14 @@ components:
       required:
         - rule
       additionalProperties: false
+    policy.AttributeRuleTypeEnum:
+      type: string
+      title: AttributeRuleTypeEnum
+      enum:
+        - ATTRIBUTE_RULE_TYPE_ENUM_UNSPECIFIED
+        - ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF
+        - ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF
+        - ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY
     policy.Condition:
       type: object
       properties:
@@ -796,7 +978,6 @@ components:
           type: array
           items:
             type: string
-            minItems: 1
           title: subject_external_values
           minItems: 1
           description: |-
@@ -812,6 +993,13 @@ components:
         *
         A Condition defines a rule of <the value at the flattened 'selector value'
         location> <operator> <subject external values>
+    policy.ConditionBooleanTypeEnum:
+      type: string
+      title: ConditionBooleanTypeEnum
+      enum:
+        - CONDITION_BOOLEAN_TYPE_ENUM_UNSPECIFIED
+        - CONDITION_BOOLEAN_TYPE_ENUM_AND
+        - CONDITION_BOOLEAN_TYPE_ENUM_OR
     policy.ConditionGroup:
       type: object
       properties:
@@ -830,6 +1018,83 @@ components:
         - booleanOperator
       additionalProperties: false
       description: A collection of Conditions evaluated by the boolean_operator provided
+    policy.DefinitionValueEntitlementMapping:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+        attributeDefinition:
+          title: attribute_definition
+          description: the Attribute Definition whose values are entitled dynamically
+          $ref: '#/components/schemas/policy.Attribute'
+        valueResolver:
+          title: value_resolver
+          description: the dynamic resolver matched against the requested resource value segment
+          $ref: '#/components/schemas/policy.DefinitionValueResolver'
+        subjectConditionSet:
+          title: subject_condition_set
+          description: |-
+            optional static pre-gate on the entity, evaluated with normal SubjectConditionSet
+             semantics (no dynamic overload). When present, both the gate and the resolver must
+             pass for entitlement.
+          $ref: '#/components/schemas/policy.SubjectConditionSet'
+        actions:
+          type: array
+          items:
+            $ref: '#/components/schemas/policy.Action'
+          title: actions
+          description: the actions permitted by subjects in this mapping
+        namespace:
+          title: namespace
+          description: the namespace containing this mapping
+          $ref: '#/components/schemas/policy.Namespace'
+        metadata:
+          title: metadata
+          $ref: '#/components/schemas/common.Metadata'
+      title: DefinitionValueEntitlementMapping
+      additionalProperties: false
+      description: |-
+        Definition Value Entitlement Mapping: a Policy assigning permitted action(s) to
+        dynamically-requested values under an Attribute Definition. It raises entitlement
+        authority from a concrete Attribute Value to the Attribute Definition: at decision time
+        the value_resolver compares the requested resource value segment against the entity
+        representation, avoiding pre-provisioning a value + subject mapping per discrete value.
+    policy.DefinitionValueResolver:
+      type: object
+      properties:
+        subjectExternalSelectorValue:
+          type: string
+          title: subject_external_selector_value
+          description: |-
+            a selector for a field value on a flattened Entity Representation (such as from
+             idP/LDAP), e.g. ".patientAssignments[]"
+        operator:
+          title: operator
+          description: the dynamic operator comparing the selector result to the resource value segment
+          $ref: '#/components/schemas/policy.DynamicValueOperatorEnum'
+      title: DefinitionValueResolver
+      required:
+        - subjectExternalSelectorValue
+        - operator
+      additionalProperties: false
+      description: |-
+        Definition Value Resolver: the dynamic half of a DefinitionValueEntitlementMapping. It
+        resolves a selector against the entity representation and compares the result to the
+        requested resource value segment using a DynamicValueOperatorEnum.
+    policy.DynamicValueOperatorEnum:
+      type: string
+      title: DynamicValueOperatorEnum
+      enum:
+        - DYNAMIC_VALUE_OPERATOR_ENUM_UNSPECIFIED
+        - DYNAMIC_VALUE_OPERATOR_ENUM_RESOURCE_VALUE_IN
+        - DYNAMIC_VALUE_OPERATOR_ENUM_RESOURCE_VALUE_IN_CONTAINS
+      description: |-
+        Operators for dynamic, definition-level value entitlement. Unlike
+         SubjectMappingOperatorEnum, whose right-hand operand is a static list authored into
+         policy, a DynamicValueOperatorEnum's right-hand operand is the requested resource's
+         attribute value segment, supplied at decision time. Each value is the inversion of its
+         static SubjectMappingOperatorEnum counterpart.
     policy.KasPublicKey:
       type: object
       properties:
@@ -848,7 +1113,7 @@ components:
         alg:
           not:
             enum:
-              - 0
+              - KAS_PUBLIC_KEY_ALG_ENUM_UNSPECIFIED
           title: alg
           description: |-
             A known algorithm type with any additional parameters encoded.
@@ -860,6 +1125,19 @@ components:
       description: |-
         Deprecated
          A KAS public key and some associated metadata for further identifcation
+    policy.KasPublicKeyAlgEnum:
+      type: string
+      title: KasPublicKeyAlgEnum
+      enum:
+        - KAS_PUBLIC_KEY_ALG_ENUM_UNSPECIFIED
+        - KAS_PUBLIC_KEY_ALG_ENUM_RSA_2048
+        - KAS_PUBLIC_KEY_ALG_ENUM_RSA_4096
+        - KAS_PUBLIC_KEY_ALG_ENUM_EC_SECP256R1
+        - KAS_PUBLIC_KEY_ALG_ENUM_EC_SECP384R1
+        - KAS_PUBLIC_KEY_ALG_ENUM_EC_SECP521R1
+        - KAS_PUBLIC_KEY_ALG_ENUM_HPQT_XWING
+        - KAS_PUBLIC_KEY_ALG_ENUM_HPQT_SECP256R1_MLKEM768
+        - KAS_PUBLIC_KEY_ALG_ENUM_HPQT_SECP384R1_MLKEM1024
     policy.KasPublicKeySet:
       type: object
       properties:
@@ -882,13 +1160,9 @@ components:
         uri:
           type: string
           title: uri
-          description: |+
+          description: |
             Address of a KAS instance
-            URI must be a valid URL (e.g., 'https://demo.com/') followed by additional segments. Each segment must start and end with an alphanumeric character, can contain hyphens, alphanumeric characters, and slashes.:
-            ```
-            this.matches('^https?://[a-zA-Z0-9]([a-zA-Z0-9\\-]{0,61}[a-zA-Z0-9])?(\\.[a-zA-Z0-9]([a-zA-Z0-9\\-]{0,61}[a-zA-Z0-9])?)*(:[0-9]+)?(/.*)?$')
-            ```
-
+            uri_format // URI must be a valid URL (e.g., 'https://demo.com/') followed by additional segments. Each segment must start and end with an alphanumeric character, can contain hyphens, alphanumeric characters, and slashes.
         publicKey:
           title: public_key
           description: 'Deprecated: KAS can have multiple key pairs'
@@ -1086,7 +1360,8 @@ components:
     policy.PublicKey:
       type: object
       oneOf:
-        - properties:
+        - type: object
+          properties:
             cached:
               title: cached
               description: public key with additional information. Current preferred version
@@ -1094,17 +1369,14 @@ components:
           title: cached
           required:
             - cached
-        - properties:
+        - type: object
+          properties:
             remote:
               type: string
               title: remote
-              description: |+
+              description: |
                 kas public key url - optional since can also be retrieved via public key
-                URI must be a valid URL (e.g., 'https://demo.com/') followed by additional segments. Each segment must start and end with an alphanumeric character, can contain hyphens, alphanumeric characters, and slashes.:
-                ```
-                this.matches('^https://[a-zA-Z0-9]([a-zA-Z0-9\\-]{0,61}[a-zA-Z0-9])?(\\.[a-zA-Z0-9]([a-zA-Z0-9\\-]{0,61}[a-zA-Z0-9])?)*(/.*)?$')
-                ```
-
+                uri_format // URI must be a valid URL (e.g., 'https://demo.com/') followed by additional segments. Each segment must start and end with an alphanumeric character, can contain hyphens, alphanumeric characters, and slashes.
           title: remote
           required:
             - remote
@@ -1212,6 +1484,29 @@ components:
           title: pem
       title: SimpleKasPublicKey
       additionalProperties: false
+    policy.SortDirection:
+      type: string
+      title: SortDirection
+      enum:
+        - SORT_DIRECTION_UNSPECIFIED
+        - SORT_DIRECTION_ASC
+        - SORT_DIRECTION_DESC
+      description: |-
+        Sorting direction shared across list APIs.
+         When the 'sort' field is omitted or the chosen sort 'field' is UNSPECIFIED,
+         the endpoint's request message defines the default ordering; see the
+         specific List* request docs.
+    policy.SourceType:
+      type: string
+      title: SourceType
+      enum:
+        - SOURCE_TYPE_UNSPECIFIED
+        - SOURCE_TYPE_INTERNAL
+        - SOURCE_TYPE_EXTERNAL
+      description: |-
+        Describes whether this kas is managed by the organization or if they imported
+         the kas information from an external party. These two modes are necessary in order
+         to encrypt a tdf dek with an external parties kas public key.
     policy.SubjectConditionSet:
       type: object
       properties:
@@ -1277,6 +1572,14 @@ components:
       description: |-
         Subject Mapping: A Policy assigning Subject Set(s) to a permitted attribute
         value + action(s) combination
+    policy.SubjectMappingOperatorEnum:
+      type: string
+      title: SubjectMappingOperatorEnum
+      enum:
+        - SUBJECT_MAPPING_OPERATOR_ENUM_UNSPECIFIED
+        - SUBJECT_MAPPING_OPERATOR_ENUM_IN
+        - SUBJECT_MAPPING_OPERATOR_ENUM_NOT_IN
+        - SUBJECT_MAPPING_OPERATOR_ENUM_IN_CONTAINS
     policy.SubjectProperty:
       type: object
       properties:
@@ -1368,6 +1671,73 @@ components:
           $ref: '#/components/schemas/common.Metadata'
       title: Value
       additionalProperties: false
+    policy.subjectmapping.CreateDefinitionValueEntitlementMappingRequest:
+      type: object
+      allOf:
+        - oneOf:
+            - required:
+                - attributeDefinitionId
+            - required:
+                - attributeDefinitionFqn
+      properties:
+        attributeDefinitionId:
+          type: string
+          title: attribute_definition_id
+          description: |
+            optional_uuid_format // Optional field must be a valid UUID
+        attributeDefinitionFqn:
+          type: string
+          title: attribute_definition_fqn
+          format: uri
+        valueResolver:
+          title: value_resolver
+          description: 'Required: the dynamic resolver comparing entity selector result to the resource value segment'
+          $ref: '#/components/schemas/policy.DefinitionValueResolver'
+        actions:
+          type: array
+          items:
+            $ref: '#/components/schemas/policy.Action'
+          title: actions
+          minItems: 1
+          description: |
+            Required: actions permitted on a matched value
+            action_name_or_id_not_empty // Action name or ID must not be empty if provided
+        existingSubjectConditionSetId:
+          type: string
+          title: existing_subject_condition_set_id
+          description: |
+            Optional static pre-gate. Reuse an existing SubjectConditionSet (prioritized) ...
+            optional_uuid_format // Optional field must be a valid UUID
+        newSubjectConditionSet:
+          title: new_subject_condition_set
+          description: '... or create a new one (ignored if existing_subject_condition_set_id is provided)'
+          $ref: '#/components/schemas/policy.subjectmapping.SubjectConditionSetCreate'
+        namespaceId:
+          type: string
+          title: namespace_id
+          description: |
+            Optional: namespace ID or FQN for the mapping
+            optional_uuid_format // Optional field must be a valid UUID
+        namespaceFqn:
+          type: string
+          title: namespace_fqn
+          format: uri
+        metadata:
+          title: metadata
+          description: Optional
+          $ref: '#/components/schemas/common.MetadataMutable'
+      title: CreateDefinitionValueEntitlementMappingRequest
+      required:
+        - valueResolver
+      additionalProperties: false
+    policy.subjectmapping.CreateDefinitionValueEntitlementMappingResponse:
+      type: object
+      properties:
+        definitionValueEntitlementMapping:
+          title: definition_value_entitlement_mapping
+          $ref: '#/components/schemas/policy.DefinitionValueEntitlementMapping'
+      title: CreateDefinitionValueEntitlementMappingResponse
+      additionalProperties: false
     policy.subjectmapping.CreateSubjectConditionSetRequest:
       type: object
       properties:
@@ -1411,25 +1781,17 @@ components:
             $ref: '#/components/schemas/policy.Action'
           title: actions
           minItems: 1
-          description: |+
+          description: |
             Required
              The actions permitted by subjects in this mapping
-            Action name or ID must not be empty if provided:
-            ```
-            this.all(item, item.name != '' || item.id != '')
-            ```
-
+            action_name_or_id_not_empty // Action name or ID must not be empty if provided
         existingSubjectConditionSetId:
           type: string
           title: existing_subject_condition_set_id
-          description: |+
+          description: |
             Either of the following:
              Reuse existing SubjectConditionSet (NOTE: prioritized over new_subject_condition_set)
-            Optional field must be a valid UUID:
-            ```
-            size(this) == 0 || this.matches('[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}')
-            ```
-
+            optional_uuid_format // Optional field must be a valid UUID
         newSubjectConditionSet:
           title: new_subject_condition_set
           description: 'Create new SubjectConditionSet (NOTE: ignored if existing_subject_condition_set_id is provided)'
@@ -1460,6 +1822,17 @@ components:
           $ref: '#/components/schemas/policy.SubjectMapping'
       title: CreateSubjectMappingResponse
       additionalProperties: false
+    policy.subjectmapping.DefinitionValueEntitlementMappingsSort:
+      type: object
+      properties:
+        field:
+          title: field
+          $ref: '#/components/schemas/policy.subjectmapping.SortDefinitionValueEntitlementMappingsType'
+        direction:
+          title: direction
+          $ref: '#/components/schemas/policy.SortDirection'
+      title: DefinitionValueEntitlementMappingsSort
+      additionalProperties: false
     policy.subjectmapping.DeleteAllUnmappedSubjectConditionSetsRequest:
       type: object
       title: DeleteAllUnmappedSubjectConditionSetsRequest
@@ -1475,6 +1848,25 @@ components:
           title: subject_condition_sets
           description: Only IDs of any deleted Subject Condition Set provided
       title: DeleteAllUnmappedSubjectConditionSetsResponse
+      additionalProperties: false
+    policy.subjectmapping.DeleteDefinitionValueEntitlementMappingRequest:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+          format: uuid
+          description: Required
+      title: DeleteDefinitionValueEntitlementMappingRequest
+      additionalProperties: false
+    policy.subjectmapping.DeleteDefinitionValueEntitlementMappingResponse:
+      type: object
+      properties:
+        definitionValueEntitlementMapping:
+          title: definition_value_entitlement_mapping
+          description: Only ID of the deleted mapping provided
+          $ref: '#/components/schemas/policy.DefinitionValueEntitlementMapping'
+      title: DeleteDefinitionValueEntitlementMappingResponse
       additionalProperties: false
     policy.subjectmapping.DeleteSubjectConditionSetRequest:
       type: object
@@ -1513,6 +1905,24 @@ components:
           description: Only ID of the updated Subject Mapping provided
           $ref: '#/components/schemas/policy.SubjectMapping'
       title: DeleteSubjectMappingResponse
+      additionalProperties: false
+    policy.subjectmapping.GetDefinitionValueEntitlementMappingRequest:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+          format: uuid
+          description: Required
+      title: GetDefinitionValueEntitlementMappingRequest
+      additionalProperties: false
+    policy.subjectmapping.GetDefinitionValueEntitlementMappingResponse:
+      type: object
+      properties:
+        definitionValueEntitlementMapping:
+          title: definition_value_entitlement_mapping
+          $ref: '#/components/schemas/policy.DefinitionValueEntitlementMapping'
+      title: GetDefinitionValueEntitlementMappingResponse
       additionalProperties: false
     policy.subjectmapping.GetSubjectConditionSetRequest:
       type: object
@@ -1555,6 +1965,47 @@ components:
           title: subject_mapping
           $ref: '#/components/schemas/policy.SubjectMapping'
       title: GetSubjectMappingResponse
+      additionalProperties: false
+    policy.subjectmapping.ListDefinitionValueEntitlementMappingsRequest:
+      type: object
+      properties:
+        namespaceId:
+          type: string
+          title: namespace_id
+          description: |
+            Optional
+             Namespace ID, or Attribute Definition ID to filter by
+            optional_uuid_format // Optional field must be a valid UUID
+        attributeDefinitionId:
+          type: string
+          title: attribute_definition_id
+          description: |
+            optional_uuid_format // Optional field must be a valid UUID
+        pagination:
+          title: pagination
+          description: Optional
+          $ref: '#/components/schemas/policy.PageRequest'
+        sort:
+          type: array
+          items:
+            $ref: '#/components/schemas/policy.subjectmapping.DefinitionValueEntitlementMappingsSort'
+          title: sort
+          maxItems: 1
+          description: 'Optional - CONSTRAINT: max 1 item'
+      title: ListDefinitionValueEntitlementMappingsRequest
+      additionalProperties: false
+    policy.subjectmapping.ListDefinitionValueEntitlementMappingsResponse:
+      type: object
+      properties:
+        definitionValueEntitlementMappings:
+          type: array
+          items:
+            $ref: '#/components/schemas/policy.DefinitionValueEntitlementMapping'
+          title: definition_value_entitlement_mappings
+        pagination:
+          title: pagination
+          $ref: '#/components/schemas/policy.PageResponse'
+      title: ListDefinitionValueEntitlementMappingsResponse
       additionalProperties: false
     policy.subjectmapping.ListSubjectConditionSetsRequest:
       type: object
@@ -1666,6 +2117,27 @@ components:
           title: subject_mappings
       title: MatchSubjectMappingsResponse
       additionalProperties: false
+    policy.subjectmapping.SortDefinitionValueEntitlementMappingsType:
+      type: string
+      title: SortDefinitionValueEntitlementMappingsType
+      enum:
+        - SORT_DEFINITION_VALUE_ENTITLEMENT_MAPPINGS_TYPE_UNSPECIFIED
+        - SORT_DEFINITION_VALUE_ENTITLEMENT_MAPPINGS_TYPE_CREATED_AT
+        - SORT_DEFINITION_VALUE_ENTITLEMENT_MAPPINGS_TYPE_UPDATED_AT
+    policy.subjectmapping.SortSubjectConditionSetsType:
+      type: string
+      title: SortSubjectConditionSetsType
+      enum:
+        - SORT_SUBJECT_CONDITION_SETS_TYPE_UNSPECIFIED
+        - SORT_SUBJECT_CONDITION_SETS_TYPE_CREATED_AT
+        - SORT_SUBJECT_CONDITION_SETS_TYPE_UPDATED_AT
+    policy.subjectmapping.SortSubjectMappingsType:
+      type: string
+      title: SortSubjectMappingsType
+      enum:
+        - SORT_SUBJECT_MAPPINGS_TYPE_UNSPECIFIED
+        - SORT_SUBJECT_MAPPINGS_TYPE_CREATED_AT
+        - SORT_SUBJECT_MAPPINGS_TYPE_UPDATED_AT
     policy.subjectmapping.SubjectConditionSetCreate:
       type: object
       properties:
@@ -1705,6 +2177,49 @@ components:
           title: direction
           $ref: '#/components/schemas/policy.SortDirection'
       title: SubjectMappingsSort
+      additionalProperties: false
+    policy.subjectmapping.UpdateDefinitionValueEntitlementMappingRequest:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+          format: uuid
+          description: Required
+        valueResolver:
+          title: value_resolver
+          description: 'Optional: replace the dynamic resolver'
+          $ref: '#/components/schemas/policy.DefinitionValueResolver'
+        subjectConditionSetId:
+          type: string
+          title: subject_condition_set_id
+          description: |
+            Optional: replace the static pre-gate SubjectConditionSet by id
+            optional_uuid_format // Optional field must be a valid UUID
+        actions:
+          type: array
+          items:
+            $ref: '#/components/schemas/policy.Action'
+          title: actions
+          description: |
+            Optional: replace the entire list of actions
+            action_name_or_id_not_empty // Action name or ID must not be empty if provided
+        metadata:
+          title: metadata
+          description: Common metadata
+          $ref: '#/components/schemas/common.MetadataMutable'
+        metadataUpdateBehavior:
+          title: metadata_update_behavior
+          $ref: '#/components/schemas/common.MetadataUpdateEnum'
+      title: UpdateDefinitionValueEntitlementMappingRequest
+      additionalProperties: false
+    policy.subjectmapping.UpdateDefinitionValueEntitlementMappingResponse:
+      type: object
+      properties:
+        definitionValueEntitlementMapping:
+          title: definition_value_entitlement_mapping
+          $ref: '#/components/schemas/policy.DefinitionValueEntitlementMapping'
+      title: UpdateDefinitionValueEntitlementMappingResponse
       additionalProperties: false
     policy.subjectmapping.UpdateSubjectConditionSetRequest:
       type: object
@@ -1751,27 +2266,19 @@ components:
         subjectConditionSetId:
           type: string
           title: subject_condition_set_id
-          description: |+
+          description: |
             Optional
              Replaces the existing SubjectConditionSet id with a new one
-            Optional field must be a valid UUID:
-            ```
-            size(this) == 0 || this.matches('[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}')
-            ```
-
+            optional_uuid_format // Optional field must be a valid UUID
         actions:
           type: array
           items:
             $ref: '#/components/schemas/policy.Action'
           title: actions
-          description: |+
+          description: |
             Optional
              Replaces entire list of actions permitted by subjects
-            Action name or ID must not be empty if provided:
-            ```
-            this.size() == 0 || this.all(item, item.name != '' || item.id != '')
-            ```
-
+            action_name_or_id_not_empty // Action name or ID must not be empty if provided
         metadata:
           title: metadata
           description: Common metadata
@@ -1790,63 +2297,6 @@ components:
           $ref: '#/components/schemas/policy.SubjectMapping'
       title: UpdateSubjectMappingResponse
       additionalProperties: false
-    connect-protocol-version:
-      type: number
-      title: Connect-Protocol-Version
-      enum:
-        - 1
-      description: Define the version of the Connect protocol
-      const: 1
-    connect-timeout-header:
-      type: number
-      title: Connect-Timeout-Ms
-      description: Define the timeout, in ms
-    connect.error:
-      type: object
-      properties:
-        code:
-          type: string
-          examples:
-            - not_found
-          enum:
-            - canceled
-            - unknown
-            - invalid_argument
-            - deadline_exceeded
-            - not_found
-            - already_exists
-            - permission_denied
-            - resource_exhausted
-            - failed_precondition
-            - aborted
-            - out_of_range
-            - unimplemented
-            - internal
-            - unavailable
-            - data_loss
-            - unauthenticated
-          description: The status code, which should be an enum value of [google.rpc.Code][google.rpc.Code].
-        message:
-          type: string
-          description: A developer-facing error message, which should be in English. Any user-facing error message should be localized and sent in the [google.rpc.Status.details][google.rpc.Status.details] field, or localized by the client.
-        detail:
-          $ref: '#/components/schemas/google.protobuf.Any'
-      title: Connect Error
-      additionalProperties: true
-      description: 'Error type returned by Connect: https://connectrpc.com/docs/go/errors/#http-representation'
-    google.protobuf.Any:
-      type: object
-      properties:
-        type:
-          type: string
-        value:
-          type: string
-          format: binary
-        debug:
-          type: object
-          additionalProperties: true
-      additionalProperties: true
-      description: Contains an arbitrary serialized message along with a @type that describes the type of the serialized message.
 security: []
 tags:
   - name: policy.subjectmapping.SubjectMappingService

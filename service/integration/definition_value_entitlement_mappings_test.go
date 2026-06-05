@@ -7,7 +7,6 @@ import (
 
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/attributes"
-	"github.com/opentdf/platform/protocol/go/policy/definitionvalueentitlement"
 	"github.com/opentdf/platform/protocol/go/policy/subjectmapping"
 	"github.com/opentdf/platform/protocol/go/policy/unsafe"
 	"github.com/opentdf/platform/service/internal/fixtures"
@@ -48,7 +47,7 @@ func TestDefinitionValueEntitlementMappingsSuite(t *testing.T) {
 func (s *DefinitionValueEntitlementMappingsSuite) TestCreateAndGet() {
 	attr := s.createDefinition("dvem_create_ok", policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF)
 
-	created, err := s.db.PolicyClient.CreateDefinitionValueEntitlementMapping(s.ctx, &definitionvalueentitlement.CreateDefinitionValueEntitlementMappingRequest{
+	created, err := s.db.PolicyClient.CreateDefinitionValueEntitlementMapping(s.ctx, &subjectmapping.CreateDefinitionValueEntitlementMappingRequest{
 		AttributeDefinitionId: attr.GetId(),
 		ValueResolver:         s.resolver(".patientAssignments[]", policy.DynamicValueOperatorEnum_DYNAMIC_VALUE_OPERATOR_ENUM_RESOURCE_VALUE_IN),
 		Actions:               []*policy.Action{s.readAction()},
@@ -68,7 +67,7 @@ func (s *DefinitionValueEntitlementMappingsSuite) TestCreateAndGet() {
 func (s *DefinitionValueEntitlementMappingsSuite) TestCreateWithStaticGate() {
 	attr := s.createDefinition("dvem_create_gate", policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF)
 
-	created, err := s.db.PolicyClient.CreateDefinitionValueEntitlementMapping(s.ctx, &definitionvalueentitlement.CreateDefinitionValueEntitlementMappingRequest{
+	created, err := s.db.PolicyClient.CreateDefinitionValueEntitlementMapping(s.ctx, &subjectmapping.CreateDefinitionValueEntitlementMappingRequest{
 		AttributeDefinitionId:  attr.GetId(),
 		ValueResolver:          s.resolver(".patientAssignments[]", policy.DynamicValueOperatorEnum_DYNAMIC_VALUE_OPERATOR_ENUM_RESOURCE_VALUE_IN),
 		Actions:                []*policy.Action{s.readAction()},
@@ -85,7 +84,7 @@ func (s *DefinitionValueEntitlementMappingsSuite) TestCreateWithStaticGate() {
 func (s *DefinitionValueEntitlementMappingsSuite) TestRejectsHierarchyDefinition() {
 	attr := s.createDefinition("dvem_hierarchy", policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY)
 
-	_, err := s.db.PolicyClient.CreateDefinitionValueEntitlementMapping(s.ctx, &definitionvalueentitlement.CreateDefinitionValueEntitlementMappingRequest{
+	_, err := s.db.PolicyClient.CreateDefinitionValueEntitlementMapping(s.ctx, &subjectmapping.CreateDefinitionValueEntitlementMappingRequest{
 		AttributeDefinitionId: attr.GetId(),
 		ValueResolver:         s.resolver(".x[]", policy.DynamicValueOperatorEnum_DYNAMIC_VALUE_OPERATOR_ENUM_RESOURCE_VALUE_IN),
 		Actions:               []*policy.Action{s.readAction()},
@@ -106,7 +105,7 @@ func (s *DefinitionValueEntitlementMappingsSuite) TestNoCoexistence_SubjectMappi
 	s.Require().NoError(err)
 
 	// definition now has a value-level subject mapping; a dynamic mapping must be rejected
-	_, err = s.db.PolicyClient.CreateDefinitionValueEntitlementMapping(s.ctx, &definitionvalueentitlement.CreateDefinitionValueEntitlementMappingRequest{
+	_, err = s.db.PolicyClient.CreateDefinitionValueEntitlementMapping(s.ctx, &subjectmapping.CreateDefinitionValueEntitlementMappingRequest{
 		AttributeDefinitionId: attr.GetId(),
 		ValueResolver:         s.resolver(".x[]", policy.DynamicValueOperatorEnum_DYNAMIC_VALUE_OPERATOR_ENUM_RESOURCE_VALUE_IN),
 		Actions:               []*policy.Action{s.readAction()},
@@ -117,7 +116,7 @@ func (s *DefinitionValueEntitlementMappingsSuite) TestNoCoexistence_SubjectMappi
 func (s *DefinitionValueEntitlementMappingsSuite) TestNoCoexistence_DynamicThenSubjectMapping() {
 	attr := s.createDefinition("dvem_coexist_rev", policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF)
 
-	_, err := s.db.PolicyClient.CreateDefinitionValueEntitlementMapping(s.ctx, &definitionvalueentitlement.CreateDefinitionValueEntitlementMappingRequest{
+	_, err := s.db.PolicyClient.CreateDefinitionValueEntitlementMapping(s.ctx, &subjectmapping.CreateDefinitionValueEntitlementMappingRequest{
 		AttributeDefinitionId: attr.GetId(),
 		ValueResolver:         s.resolver(".x[]", policy.DynamicValueOperatorEnum_DYNAMIC_VALUE_OPERATOR_ENUM_RESOURCE_VALUE_IN),
 		Actions:               []*policy.Action{s.readAction()},
@@ -139,7 +138,7 @@ func (s *DefinitionValueEntitlementMappingsSuite) TestNoCoexistence_DynamicThenS
 func (s *DefinitionValueEntitlementMappingsSuite) TestRejectsRuleChangeToHierarchy() {
 	attr := s.createDefinition("dvem_rule_guard", policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF)
 
-	_, err := s.db.PolicyClient.CreateDefinitionValueEntitlementMapping(s.ctx, &definitionvalueentitlement.CreateDefinitionValueEntitlementMappingRequest{
+	_, err := s.db.PolicyClient.CreateDefinitionValueEntitlementMapping(s.ctx, &subjectmapping.CreateDefinitionValueEntitlementMappingRequest{
 		AttributeDefinitionId: attr.GetId(),
 		ValueResolver:         s.resolver(".x[]", policy.DynamicValueOperatorEnum_DYNAMIC_VALUE_OPERATOR_ENUM_RESOURCE_VALUE_IN),
 		Actions:               []*policy.Action{s.readAction()},
@@ -156,14 +155,14 @@ func (s *DefinitionValueEntitlementMappingsSuite) TestRejectsRuleChangeToHierarc
 func (s *DefinitionValueEntitlementMappingsSuite) TestUpdateAndDelete() {
 	attr := s.createDefinition("dvem_update_delete", policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF)
 
-	created, err := s.db.PolicyClient.CreateDefinitionValueEntitlementMapping(s.ctx, &definitionvalueentitlement.CreateDefinitionValueEntitlementMappingRequest{
+	created, err := s.db.PolicyClient.CreateDefinitionValueEntitlementMapping(s.ctx, &subjectmapping.CreateDefinitionValueEntitlementMappingRequest{
 		AttributeDefinitionId: attr.GetId(),
 		ValueResolver:         s.resolver(".patientAssignments[]", policy.DynamicValueOperatorEnum_DYNAMIC_VALUE_OPERATOR_ENUM_RESOURCE_VALUE_IN),
 		Actions:               []*policy.Action{s.readAction()},
 	})
 	s.Require().NoError(err)
 
-	updated, err := s.db.PolicyClient.UpdateDefinitionValueEntitlementMapping(s.ctx, &definitionvalueentitlement.UpdateDefinitionValueEntitlementMappingRequest{
+	updated, err := s.db.PolicyClient.UpdateDefinitionValueEntitlementMapping(s.ctx, &subjectmapping.UpdateDefinitionValueEntitlementMappingRequest{
 		Id:            created.GetId(),
 		ValueResolver: s.resolver(".accounts[]", policy.DynamicValueOperatorEnum_DYNAMIC_VALUE_OPERATOR_ENUM_RESOURCE_VALUE_IN_CONTAINS),
 	})
@@ -180,14 +179,14 @@ func (s *DefinitionValueEntitlementMappingsSuite) TestUpdateAndDelete() {
 
 func (s *DefinitionValueEntitlementMappingsSuite) TestListByDefinition() {
 	attr := s.createDefinition("dvem_list", policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF)
-	_, err := s.db.PolicyClient.CreateDefinitionValueEntitlementMapping(s.ctx, &definitionvalueentitlement.CreateDefinitionValueEntitlementMappingRequest{
+	_, err := s.db.PolicyClient.CreateDefinitionValueEntitlementMapping(s.ctx, &subjectmapping.CreateDefinitionValueEntitlementMappingRequest{
 		AttributeDefinitionId: attr.GetId(),
 		ValueResolver:         s.resolver(".patientAssignments[]", policy.DynamicValueOperatorEnum_DYNAMIC_VALUE_OPERATOR_ENUM_RESOURCE_VALUE_IN),
 		Actions:               []*policy.Action{s.readAction()},
 	})
 	s.Require().NoError(err)
 
-	resp, err := s.db.PolicyClient.ListDefinitionValueEntitlementMappings(s.ctx, &definitionvalueentitlement.ListDefinitionValueEntitlementMappingsRequest{
+	resp, err := s.db.PolicyClient.ListDefinitionValueEntitlementMappings(s.ctx, &subjectmapping.ListDefinitionValueEntitlementMappingsRequest{
 		AttributeDefinitionId: attr.GetId(),
 	})
 	s.Require().NoError(err)

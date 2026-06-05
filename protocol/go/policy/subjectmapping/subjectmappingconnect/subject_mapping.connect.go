@@ -69,6 +69,21 @@ const (
 	// SubjectMappingServiceDeleteAllUnmappedSubjectConditionSetsProcedure is the fully-qualified name
 	// of the SubjectMappingService's DeleteAllUnmappedSubjectConditionSets RPC.
 	SubjectMappingServiceDeleteAllUnmappedSubjectConditionSetsProcedure = "/policy.subjectmapping.SubjectMappingService/DeleteAllUnmappedSubjectConditionSets"
+	// SubjectMappingServiceListDefinitionValueEntitlementMappingsProcedure is the fully-qualified name
+	// of the SubjectMappingService's ListDefinitionValueEntitlementMappings RPC.
+	SubjectMappingServiceListDefinitionValueEntitlementMappingsProcedure = "/policy.subjectmapping.SubjectMappingService/ListDefinitionValueEntitlementMappings"
+	// SubjectMappingServiceGetDefinitionValueEntitlementMappingProcedure is the fully-qualified name of
+	// the SubjectMappingService's GetDefinitionValueEntitlementMapping RPC.
+	SubjectMappingServiceGetDefinitionValueEntitlementMappingProcedure = "/policy.subjectmapping.SubjectMappingService/GetDefinitionValueEntitlementMapping"
+	// SubjectMappingServiceCreateDefinitionValueEntitlementMappingProcedure is the fully-qualified name
+	// of the SubjectMappingService's CreateDefinitionValueEntitlementMapping RPC.
+	SubjectMappingServiceCreateDefinitionValueEntitlementMappingProcedure = "/policy.subjectmapping.SubjectMappingService/CreateDefinitionValueEntitlementMapping"
+	// SubjectMappingServiceUpdateDefinitionValueEntitlementMappingProcedure is the fully-qualified name
+	// of the SubjectMappingService's UpdateDefinitionValueEntitlementMapping RPC.
+	SubjectMappingServiceUpdateDefinitionValueEntitlementMappingProcedure = "/policy.subjectmapping.SubjectMappingService/UpdateDefinitionValueEntitlementMapping"
+	// SubjectMappingServiceDeleteDefinitionValueEntitlementMappingProcedure is the fully-qualified name
+	// of the SubjectMappingService's DeleteDefinitionValueEntitlementMapping RPC.
+	SubjectMappingServiceDeleteDefinitionValueEntitlementMappingProcedure = "/policy.subjectmapping.SubjectMappingService/DeleteDefinitionValueEntitlementMapping"
 )
 
 // SubjectMappingServiceClient is a client for the policy.subjectmapping.SubjectMappingService
@@ -87,6 +102,11 @@ type SubjectMappingServiceClient interface {
 	UpdateSubjectConditionSet(context.Context, *connect.Request[subjectmapping.UpdateSubjectConditionSetRequest]) (*connect.Response[subjectmapping.UpdateSubjectConditionSetResponse], error)
 	DeleteSubjectConditionSet(context.Context, *connect.Request[subjectmapping.DeleteSubjectConditionSetRequest]) (*connect.Response[subjectmapping.DeleteSubjectConditionSetResponse], error)
 	DeleteAllUnmappedSubjectConditionSets(context.Context, *connect.Request[subjectmapping.DeleteAllUnmappedSubjectConditionSetsRequest]) (*connect.Response[subjectmapping.DeleteAllUnmappedSubjectConditionSetsResponse], error)
+	ListDefinitionValueEntitlementMappings(context.Context, *connect.Request[subjectmapping.ListDefinitionValueEntitlementMappingsRequest]) (*connect.Response[subjectmapping.ListDefinitionValueEntitlementMappingsResponse], error)
+	GetDefinitionValueEntitlementMapping(context.Context, *connect.Request[subjectmapping.GetDefinitionValueEntitlementMappingRequest]) (*connect.Response[subjectmapping.GetDefinitionValueEntitlementMappingResponse], error)
+	CreateDefinitionValueEntitlementMapping(context.Context, *connect.Request[subjectmapping.CreateDefinitionValueEntitlementMappingRequest]) (*connect.Response[subjectmapping.CreateDefinitionValueEntitlementMappingResponse], error)
+	UpdateDefinitionValueEntitlementMapping(context.Context, *connect.Request[subjectmapping.UpdateDefinitionValueEntitlementMappingRequest]) (*connect.Response[subjectmapping.UpdateDefinitionValueEntitlementMappingResponse], error)
+	DeleteDefinitionValueEntitlementMapping(context.Context, *connect.Request[subjectmapping.DeleteDefinitionValueEntitlementMappingRequest]) (*connect.Response[subjectmapping.DeleteDefinitionValueEntitlementMappingResponse], error)
 }
 
 // NewSubjectMappingServiceClient constructs a client for the
@@ -177,23 +197,60 @@ func NewSubjectMappingServiceClient(httpClient connect.HTTPClient, baseURL strin
 			connect.WithSchema(subjectMappingServiceMethods.ByName("DeleteAllUnmappedSubjectConditionSets")),
 			connect.WithClientOptions(opts...),
 		),
+		listDefinitionValueEntitlementMappings: connect.NewClient[subjectmapping.ListDefinitionValueEntitlementMappingsRequest, subjectmapping.ListDefinitionValueEntitlementMappingsResponse](
+			httpClient,
+			baseURL+SubjectMappingServiceListDefinitionValueEntitlementMappingsProcedure,
+			connect.WithSchema(subjectMappingServiceMethods.ByName("ListDefinitionValueEntitlementMappings")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+			connect.WithClientOptions(opts...),
+		),
+		getDefinitionValueEntitlementMapping: connect.NewClient[subjectmapping.GetDefinitionValueEntitlementMappingRequest, subjectmapping.GetDefinitionValueEntitlementMappingResponse](
+			httpClient,
+			baseURL+SubjectMappingServiceGetDefinitionValueEntitlementMappingProcedure,
+			connect.WithSchema(subjectMappingServiceMethods.ByName("GetDefinitionValueEntitlementMapping")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+			connect.WithClientOptions(opts...),
+		),
+		createDefinitionValueEntitlementMapping: connect.NewClient[subjectmapping.CreateDefinitionValueEntitlementMappingRequest, subjectmapping.CreateDefinitionValueEntitlementMappingResponse](
+			httpClient,
+			baseURL+SubjectMappingServiceCreateDefinitionValueEntitlementMappingProcedure,
+			connect.WithSchema(subjectMappingServiceMethods.ByName("CreateDefinitionValueEntitlementMapping")),
+			connect.WithClientOptions(opts...),
+		),
+		updateDefinitionValueEntitlementMapping: connect.NewClient[subjectmapping.UpdateDefinitionValueEntitlementMappingRequest, subjectmapping.UpdateDefinitionValueEntitlementMappingResponse](
+			httpClient,
+			baseURL+SubjectMappingServiceUpdateDefinitionValueEntitlementMappingProcedure,
+			connect.WithSchema(subjectMappingServiceMethods.ByName("UpdateDefinitionValueEntitlementMapping")),
+			connect.WithClientOptions(opts...),
+		),
+		deleteDefinitionValueEntitlementMapping: connect.NewClient[subjectmapping.DeleteDefinitionValueEntitlementMappingRequest, subjectmapping.DeleteDefinitionValueEntitlementMappingResponse](
+			httpClient,
+			baseURL+SubjectMappingServiceDeleteDefinitionValueEntitlementMappingProcedure,
+			connect.WithSchema(subjectMappingServiceMethods.ByName("DeleteDefinitionValueEntitlementMapping")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
 // subjectMappingServiceClient implements SubjectMappingServiceClient.
 type subjectMappingServiceClient struct {
-	matchSubjectMappings                  *connect.Client[subjectmapping.MatchSubjectMappingsRequest, subjectmapping.MatchSubjectMappingsResponse]
-	listSubjectMappings                   *connect.Client[subjectmapping.ListSubjectMappingsRequest, subjectmapping.ListSubjectMappingsResponse]
-	getSubjectMapping                     *connect.Client[subjectmapping.GetSubjectMappingRequest, subjectmapping.GetSubjectMappingResponse]
-	createSubjectMapping                  *connect.Client[subjectmapping.CreateSubjectMappingRequest, subjectmapping.CreateSubjectMappingResponse]
-	updateSubjectMapping                  *connect.Client[subjectmapping.UpdateSubjectMappingRequest, subjectmapping.UpdateSubjectMappingResponse]
-	deleteSubjectMapping                  *connect.Client[subjectmapping.DeleteSubjectMappingRequest, subjectmapping.DeleteSubjectMappingResponse]
-	listSubjectConditionSets              *connect.Client[subjectmapping.ListSubjectConditionSetsRequest, subjectmapping.ListSubjectConditionSetsResponse]
-	getSubjectConditionSet                *connect.Client[subjectmapping.GetSubjectConditionSetRequest, subjectmapping.GetSubjectConditionSetResponse]
-	createSubjectConditionSet             *connect.Client[subjectmapping.CreateSubjectConditionSetRequest, subjectmapping.CreateSubjectConditionSetResponse]
-	updateSubjectConditionSet             *connect.Client[subjectmapping.UpdateSubjectConditionSetRequest, subjectmapping.UpdateSubjectConditionSetResponse]
-	deleteSubjectConditionSet             *connect.Client[subjectmapping.DeleteSubjectConditionSetRequest, subjectmapping.DeleteSubjectConditionSetResponse]
-	deleteAllUnmappedSubjectConditionSets *connect.Client[subjectmapping.DeleteAllUnmappedSubjectConditionSetsRequest, subjectmapping.DeleteAllUnmappedSubjectConditionSetsResponse]
+	matchSubjectMappings                    *connect.Client[subjectmapping.MatchSubjectMappingsRequest, subjectmapping.MatchSubjectMappingsResponse]
+	listSubjectMappings                     *connect.Client[subjectmapping.ListSubjectMappingsRequest, subjectmapping.ListSubjectMappingsResponse]
+	getSubjectMapping                       *connect.Client[subjectmapping.GetSubjectMappingRequest, subjectmapping.GetSubjectMappingResponse]
+	createSubjectMapping                    *connect.Client[subjectmapping.CreateSubjectMappingRequest, subjectmapping.CreateSubjectMappingResponse]
+	updateSubjectMapping                    *connect.Client[subjectmapping.UpdateSubjectMappingRequest, subjectmapping.UpdateSubjectMappingResponse]
+	deleteSubjectMapping                    *connect.Client[subjectmapping.DeleteSubjectMappingRequest, subjectmapping.DeleteSubjectMappingResponse]
+	listSubjectConditionSets                *connect.Client[subjectmapping.ListSubjectConditionSetsRequest, subjectmapping.ListSubjectConditionSetsResponse]
+	getSubjectConditionSet                  *connect.Client[subjectmapping.GetSubjectConditionSetRequest, subjectmapping.GetSubjectConditionSetResponse]
+	createSubjectConditionSet               *connect.Client[subjectmapping.CreateSubjectConditionSetRequest, subjectmapping.CreateSubjectConditionSetResponse]
+	updateSubjectConditionSet               *connect.Client[subjectmapping.UpdateSubjectConditionSetRequest, subjectmapping.UpdateSubjectConditionSetResponse]
+	deleteSubjectConditionSet               *connect.Client[subjectmapping.DeleteSubjectConditionSetRequest, subjectmapping.DeleteSubjectConditionSetResponse]
+	deleteAllUnmappedSubjectConditionSets   *connect.Client[subjectmapping.DeleteAllUnmappedSubjectConditionSetsRequest, subjectmapping.DeleteAllUnmappedSubjectConditionSetsResponse]
+	listDefinitionValueEntitlementMappings  *connect.Client[subjectmapping.ListDefinitionValueEntitlementMappingsRequest, subjectmapping.ListDefinitionValueEntitlementMappingsResponse]
+	getDefinitionValueEntitlementMapping    *connect.Client[subjectmapping.GetDefinitionValueEntitlementMappingRequest, subjectmapping.GetDefinitionValueEntitlementMappingResponse]
+	createDefinitionValueEntitlementMapping *connect.Client[subjectmapping.CreateDefinitionValueEntitlementMappingRequest, subjectmapping.CreateDefinitionValueEntitlementMappingResponse]
+	updateDefinitionValueEntitlementMapping *connect.Client[subjectmapping.UpdateDefinitionValueEntitlementMappingRequest, subjectmapping.UpdateDefinitionValueEntitlementMappingResponse]
+	deleteDefinitionValueEntitlementMapping *connect.Client[subjectmapping.DeleteDefinitionValueEntitlementMappingRequest, subjectmapping.DeleteDefinitionValueEntitlementMappingResponse]
 }
 
 // MatchSubjectMappings calls policy.subjectmapping.SubjectMappingService.MatchSubjectMappings.
@@ -261,6 +318,36 @@ func (c *subjectMappingServiceClient) DeleteAllUnmappedSubjectConditionSets(ctx 
 	return c.deleteAllUnmappedSubjectConditionSets.CallUnary(ctx, req)
 }
 
+// ListDefinitionValueEntitlementMappings calls
+// policy.subjectmapping.SubjectMappingService.ListDefinitionValueEntitlementMappings.
+func (c *subjectMappingServiceClient) ListDefinitionValueEntitlementMappings(ctx context.Context, req *connect.Request[subjectmapping.ListDefinitionValueEntitlementMappingsRequest]) (*connect.Response[subjectmapping.ListDefinitionValueEntitlementMappingsResponse], error) {
+	return c.listDefinitionValueEntitlementMappings.CallUnary(ctx, req)
+}
+
+// GetDefinitionValueEntitlementMapping calls
+// policy.subjectmapping.SubjectMappingService.GetDefinitionValueEntitlementMapping.
+func (c *subjectMappingServiceClient) GetDefinitionValueEntitlementMapping(ctx context.Context, req *connect.Request[subjectmapping.GetDefinitionValueEntitlementMappingRequest]) (*connect.Response[subjectmapping.GetDefinitionValueEntitlementMappingResponse], error) {
+	return c.getDefinitionValueEntitlementMapping.CallUnary(ctx, req)
+}
+
+// CreateDefinitionValueEntitlementMapping calls
+// policy.subjectmapping.SubjectMappingService.CreateDefinitionValueEntitlementMapping.
+func (c *subjectMappingServiceClient) CreateDefinitionValueEntitlementMapping(ctx context.Context, req *connect.Request[subjectmapping.CreateDefinitionValueEntitlementMappingRequest]) (*connect.Response[subjectmapping.CreateDefinitionValueEntitlementMappingResponse], error) {
+	return c.createDefinitionValueEntitlementMapping.CallUnary(ctx, req)
+}
+
+// UpdateDefinitionValueEntitlementMapping calls
+// policy.subjectmapping.SubjectMappingService.UpdateDefinitionValueEntitlementMapping.
+func (c *subjectMappingServiceClient) UpdateDefinitionValueEntitlementMapping(ctx context.Context, req *connect.Request[subjectmapping.UpdateDefinitionValueEntitlementMappingRequest]) (*connect.Response[subjectmapping.UpdateDefinitionValueEntitlementMappingResponse], error) {
+	return c.updateDefinitionValueEntitlementMapping.CallUnary(ctx, req)
+}
+
+// DeleteDefinitionValueEntitlementMapping calls
+// policy.subjectmapping.SubjectMappingService.DeleteDefinitionValueEntitlementMapping.
+func (c *subjectMappingServiceClient) DeleteDefinitionValueEntitlementMapping(ctx context.Context, req *connect.Request[subjectmapping.DeleteDefinitionValueEntitlementMappingRequest]) (*connect.Response[subjectmapping.DeleteDefinitionValueEntitlementMappingResponse], error) {
+	return c.deleteDefinitionValueEntitlementMapping.CallUnary(ctx, req)
+}
+
 // SubjectMappingServiceHandler is an implementation of the
 // policy.subjectmapping.SubjectMappingService service.
 type SubjectMappingServiceHandler interface {
@@ -277,6 +364,11 @@ type SubjectMappingServiceHandler interface {
 	UpdateSubjectConditionSet(context.Context, *connect.Request[subjectmapping.UpdateSubjectConditionSetRequest]) (*connect.Response[subjectmapping.UpdateSubjectConditionSetResponse], error)
 	DeleteSubjectConditionSet(context.Context, *connect.Request[subjectmapping.DeleteSubjectConditionSetRequest]) (*connect.Response[subjectmapping.DeleteSubjectConditionSetResponse], error)
 	DeleteAllUnmappedSubjectConditionSets(context.Context, *connect.Request[subjectmapping.DeleteAllUnmappedSubjectConditionSetsRequest]) (*connect.Response[subjectmapping.DeleteAllUnmappedSubjectConditionSetsResponse], error)
+	ListDefinitionValueEntitlementMappings(context.Context, *connect.Request[subjectmapping.ListDefinitionValueEntitlementMappingsRequest]) (*connect.Response[subjectmapping.ListDefinitionValueEntitlementMappingsResponse], error)
+	GetDefinitionValueEntitlementMapping(context.Context, *connect.Request[subjectmapping.GetDefinitionValueEntitlementMappingRequest]) (*connect.Response[subjectmapping.GetDefinitionValueEntitlementMappingResponse], error)
+	CreateDefinitionValueEntitlementMapping(context.Context, *connect.Request[subjectmapping.CreateDefinitionValueEntitlementMappingRequest]) (*connect.Response[subjectmapping.CreateDefinitionValueEntitlementMappingResponse], error)
+	UpdateDefinitionValueEntitlementMapping(context.Context, *connect.Request[subjectmapping.UpdateDefinitionValueEntitlementMappingRequest]) (*connect.Response[subjectmapping.UpdateDefinitionValueEntitlementMappingResponse], error)
+	DeleteDefinitionValueEntitlementMapping(context.Context, *connect.Request[subjectmapping.DeleteDefinitionValueEntitlementMappingRequest]) (*connect.Response[subjectmapping.DeleteDefinitionValueEntitlementMappingResponse], error)
 }
 
 // NewSubjectMappingServiceHandler builds an HTTP handler from the service implementation. It
@@ -362,6 +454,38 @@ func NewSubjectMappingServiceHandler(svc SubjectMappingServiceHandler, opts ...c
 		connect.WithSchema(subjectMappingServiceMethods.ByName("DeleteAllUnmappedSubjectConditionSets")),
 		connect.WithHandlerOptions(opts...),
 	)
+	subjectMappingServiceListDefinitionValueEntitlementMappingsHandler := connect.NewUnaryHandler(
+		SubjectMappingServiceListDefinitionValueEntitlementMappingsProcedure,
+		svc.ListDefinitionValueEntitlementMappings,
+		connect.WithSchema(subjectMappingServiceMethods.ByName("ListDefinitionValueEntitlementMappings")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+		connect.WithHandlerOptions(opts...),
+	)
+	subjectMappingServiceGetDefinitionValueEntitlementMappingHandler := connect.NewUnaryHandler(
+		SubjectMappingServiceGetDefinitionValueEntitlementMappingProcedure,
+		svc.GetDefinitionValueEntitlementMapping,
+		connect.WithSchema(subjectMappingServiceMethods.ByName("GetDefinitionValueEntitlementMapping")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+		connect.WithHandlerOptions(opts...),
+	)
+	subjectMappingServiceCreateDefinitionValueEntitlementMappingHandler := connect.NewUnaryHandler(
+		SubjectMappingServiceCreateDefinitionValueEntitlementMappingProcedure,
+		svc.CreateDefinitionValueEntitlementMapping,
+		connect.WithSchema(subjectMappingServiceMethods.ByName("CreateDefinitionValueEntitlementMapping")),
+		connect.WithHandlerOptions(opts...),
+	)
+	subjectMappingServiceUpdateDefinitionValueEntitlementMappingHandler := connect.NewUnaryHandler(
+		SubjectMappingServiceUpdateDefinitionValueEntitlementMappingProcedure,
+		svc.UpdateDefinitionValueEntitlementMapping,
+		connect.WithSchema(subjectMappingServiceMethods.ByName("UpdateDefinitionValueEntitlementMapping")),
+		connect.WithHandlerOptions(opts...),
+	)
+	subjectMappingServiceDeleteDefinitionValueEntitlementMappingHandler := connect.NewUnaryHandler(
+		SubjectMappingServiceDeleteDefinitionValueEntitlementMappingProcedure,
+		svc.DeleteDefinitionValueEntitlementMapping,
+		connect.WithSchema(subjectMappingServiceMethods.ByName("DeleteDefinitionValueEntitlementMapping")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/policy.subjectmapping.SubjectMappingService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case SubjectMappingServiceMatchSubjectMappingsProcedure:
@@ -388,6 +512,16 @@ func NewSubjectMappingServiceHandler(svc SubjectMappingServiceHandler, opts ...c
 			subjectMappingServiceDeleteSubjectConditionSetHandler.ServeHTTP(w, r)
 		case SubjectMappingServiceDeleteAllUnmappedSubjectConditionSetsProcedure:
 			subjectMappingServiceDeleteAllUnmappedSubjectConditionSetsHandler.ServeHTTP(w, r)
+		case SubjectMappingServiceListDefinitionValueEntitlementMappingsProcedure:
+			subjectMappingServiceListDefinitionValueEntitlementMappingsHandler.ServeHTTP(w, r)
+		case SubjectMappingServiceGetDefinitionValueEntitlementMappingProcedure:
+			subjectMappingServiceGetDefinitionValueEntitlementMappingHandler.ServeHTTP(w, r)
+		case SubjectMappingServiceCreateDefinitionValueEntitlementMappingProcedure:
+			subjectMappingServiceCreateDefinitionValueEntitlementMappingHandler.ServeHTTP(w, r)
+		case SubjectMappingServiceUpdateDefinitionValueEntitlementMappingProcedure:
+			subjectMappingServiceUpdateDefinitionValueEntitlementMappingHandler.ServeHTTP(w, r)
+		case SubjectMappingServiceDeleteDefinitionValueEntitlementMappingProcedure:
+			subjectMappingServiceDeleteDefinitionValueEntitlementMappingHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -443,4 +577,24 @@ func (UnimplementedSubjectMappingServiceHandler) DeleteSubjectConditionSet(conte
 
 func (UnimplementedSubjectMappingServiceHandler) DeleteAllUnmappedSubjectConditionSets(context.Context, *connect.Request[subjectmapping.DeleteAllUnmappedSubjectConditionSetsRequest]) (*connect.Response[subjectmapping.DeleteAllUnmappedSubjectConditionSetsResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("policy.subjectmapping.SubjectMappingService.DeleteAllUnmappedSubjectConditionSets is not implemented"))
+}
+
+func (UnimplementedSubjectMappingServiceHandler) ListDefinitionValueEntitlementMappings(context.Context, *connect.Request[subjectmapping.ListDefinitionValueEntitlementMappingsRequest]) (*connect.Response[subjectmapping.ListDefinitionValueEntitlementMappingsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("policy.subjectmapping.SubjectMappingService.ListDefinitionValueEntitlementMappings is not implemented"))
+}
+
+func (UnimplementedSubjectMappingServiceHandler) GetDefinitionValueEntitlementMapping(context.Context, *connect.Request[subjectmapping.GetDefinitionValueEntitlementMappingRequest]) (*connect.Response[subjectmapping.GetDefinitionValueEntitlementMappingResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("policy.subjectmapping.SubjectMappingService.GetDefinitionValueEntitlementMapping is not implemented"))
+}
+
+func (UnimplementedSubjectMappingServiceHandler) CreateDefinitionValueEntitlementMapping(context.Context, *connect.Request[subjectmapping.CreateDefinitionValueEntitlementMappingRequest]) (*connect.Response[subjectmapping.CreateDefinitionValueEntitlementMappingResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("policy.subjectmapping.SubjectMappingService.CreateDefinitionValueEntitlementMapping is not implemented"))
+}
+
+func (UnimplementedSubjectMappingServiceHandler) UpdateDefinitionValueEntitlementMapping(context.Context, *connect.Request[subjectmapping.UpdateDefinitionValueEntitlementMappingRequest]) (*connect.Response[subjectmapping.UpdateDefinitionValueEntitlementMappingResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("policy.subjectmapping.SubjectMappingService.UpdateDefinitionValueEntitlementMapping is not implemented"))
+}
+
+func (UnimplementedSubjectMappingServiceHandler) DeleteDefinitionValueEntitlementMapping(context.Context, *connect.Request[subjectmapping.DeleteDefinitionValueEntitlementMappingRequest]) (*connect.Response[subjectmapping.DeleteDefinitionValueEntitlementMappingResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("policy.subjectmapping.SubjectMappingService.DeleteDefinitionValueEntitlementMapping is not implemented"))
 }

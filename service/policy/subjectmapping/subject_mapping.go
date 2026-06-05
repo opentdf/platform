@@ -397,3 +397,123 @@ func (s SubjectMappingService) DeleteAllUnmappedSubjectConditionSets(ctx context
 	rsp.SubjectConditionSets = deleted
 	return connect.NewResponse(rsp), nil
 }
+
+/* -----------------------------------------------------------------
+ * --------- Definition Value Entitlement Mappings (DSPX-2754) ------
+ * ----------------------------------------------------------------*/
+
+func (s SubjectMappingService) CreateDefinitionValueEntitlementMapping(ctx context.Context,
+	req *connect.Request[sm.CreateDefinitionValueEntitlementMappingRequest],
+) (*connect.Response[sm.CreateDefinitionValueEntitlementMappingResponse], error) {
+	rsp := &sm.CreateDefinitionValueEntitlementMappingResponse{}
+	s.logger.DebugContext(ctx, "creating definition value entitlement mapping")
+	if s.config.NamespacedPolicy && req.Msg.GetNamespaceId() == "" && req.Msg.GetNamespaceFqn() == "" {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("either namespace_id or namespace_fqn must be provided"))
+	}
+
+	auditParams := audit.PolicyEventParams{
+		ActionType: audit.ActionTypeCreate,
+		ObjectType: audit.ObjectTypeDefinitionValueEntitlementMapping,
+	}
+
+	// Creation may involve action or SubjectConditionSet creation, so use a transaction.
+	err := s.dbClient.RunInTx(ctx, func(txClient *policydb.PolicyDBClient) error {
+		mapping, err := txClient.CreateDefinitionValueEntitlementMapping(ctx, req.Msg)
+		if err != nil {
+			s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
+			return err
+		}
+
+		auditParams.ObjectID = mapping.GetId()
+		auditParams.Original = mapping
+		s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
+
+		rsp.DefinitionValueEntitlementMapping = mapping
+		return nil
+	})
+	if err != nil {
+		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextCreationFailed, slog.String("definitionValueEntitlementMapping", req.Msg.String()))
+	}
+	return connect.NewResponse(rsp), nil
+}
+
+func (s SubjectMappingService) ListDefinitionValueEntitlementMappings(ctx context.Context,
+	req *connect.Request[sm.ListDefinitionValueEntitlementMappingsRequest],
+) (*connect.Response[sm.ListDefinitionValueEntitlementMappingsResponse], error) {
+	s.logger.DebugContext(ctx, "listing definition value entitlement mappings")
+
+	rsp, err := s.dbClient.ListDefinitionValueEntitlementMappings(ctx, req.Msg)
+	if err != nil {
+		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextListRetrievalFailed)
+	}
+	return connect.NewResponse(rsp), nil
+}
+
+func (s SubjectMappingService) GetDefinitionValueEntitlementMapping(ctx context.Context,
+	req *connect.Request[sm.GetDefinitionValueEntitlementMappingRequest],
+) (*connect.Response[sm.GetDefinitionValueEntitlementMappingResponse], error) {
+	s.logger.DebugContext(ctx, "getting definition value entitlement mapping", slog.String("id", req.Msg.GetId()))
+
+	mapping, err := s.dbClient.GetDefinitionValueEntitlementMapping(ctx, req.Msg.GetId())
+	if err != nil {
+		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextGetRetrievalFailed, slog.String("id", req.Msg.GetId()))
+	}
+	return connect.NewResponse(&sm.GetDefinitionValueEntitlementMappingResponse{DefinitionValueEntitlementMapping: mapping}), nil
+}
+
+func (s SubjectMappingService) UpdateDefinitionValueEntitlementMapping(ctx context.Context,
+	req *connect.Request[sm.UpdateDefinitionValueEntitlementMappingRequest],
+) (*connect.Response[sm.UpdateDefinitionValueEntitlementMappingResponse], error) {
+	rsp := &sm.UpdateDefinitionValueEntitlementMappingResponse{}
+	id := req.Msg.GetId()
+	s.logger.DebugContext(ctx, "updating definition value entitlement mapping", slog.String("id", id))
+
+	auditParams := audit.PolicyEventParams{
+		ActionType: audit.ActionTypeUpdate,
+		ObjectType: audit.ObjectTypeDefinitionValueEntitlementMapping,
+		ObjectID:   id,
+	}
+
+	original, err := s.dbClient.GetDefinitionValueEntitlementMapping(ctx, id)
+	if err != nil {
+		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
+		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextGetRetrievalFailed, slog.String("id", id))
+	}
+
+	updated, err := s.dbClient.UpdateDefinitionValueEntitlementMapping(ctx, req.Msg)
+	if err != nil {
+		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
+		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextUpdateFailed, slog.String("id", id), slog.String("definitionValueEntitlementMapping", req.Msg.String()))
+	}
+
+	auditParams.Original = original
+	auditParams.Updated = updated
+	s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
+
+	rsp.DefinitionValueEntitlementMapping = updated
+	return connect.NewResponse(rsp), nil
+}
+
+func (s SubjectMappingService) DeleteDefinitionValueEntitlementMapping(ctx context.Context,
+	req *connect.Request[sm.DeleteDefinitionValueEntitlementMappingRequest],
+) (*connect.Response[sm.DeleteDefinitionValueEntitlementMappingResponse], error) {
+	rsp := &sm.DeleteDefinitionValueEntitlementMappingResponse{}
+	id := req.Msg.GetId()
+	s.logger.DebugContext(ctx, "deleting definition value entitlement mapping", slog.String("id", id))
+
+	auditParams := audit.PolicyEventParams{
+		ActionType: audit.ActionTypeDelete,
+		ObjectType: audit.ObjectTypeDefinitionValueEntitlementMapping,
+		ObjectID:   id,
+	}
+
+	deleted, err := s.dbClient.DeleteDefinitionValueEntitlementMapping(ctx, id)
+	if err != nil {
+		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
+		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextDeletionFailed, slog.String("id", id))
+	}
+
+	s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
+	rsp.DefinitionValueEntitlementMapping = deleted
+	return connect.NewResponse(rsp), nil
+}

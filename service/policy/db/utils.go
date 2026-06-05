@@ -10,7 +10,6 @@ import (
 	"github.com/opentdf/platform/protocol/go/common"
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/attributes"
-	"github.com/opentdf/platform/protocol/go/policy/definitionvalueentitlement"
 	"github.com/opentdf/platform/protocol/go/policy/kasregistry"
 	"github.com/opentdf/platform/protocol/go/policy/namespaces"
 	"github.com/opentdf/platform/protocol/go/policy/obligations"
@@ -405,20 +404,20 @@ func GetSubjectMappingsSortParams(sort []*subjectmapping.SubjectMappingsSort) (s
 	return getSubjectMappingsSortField(sort[0].GetField()), getSortDirection(sort[0].GetDirection())
 }
 
-func getDefinitionValueEntitlementMappingsSortField(field definitionvalueentitlement.SortDefinitionValueEntitlementMappingsType) string {
+func getDefinitionValueEntitlementMappingsSortField(field subjectmapping.SortDefinitionValueEntitlementMappingsType) string {
 	switch field {
-	case definitionvalueentitlement.SortDefinitionValueEntitlementMappingsType_SORT_DEFINITION_VALUE_ENTITLEMENT_MAPPINGS_TYPE_CREATED_AT:
+	case subjectmapping.SortDefinitionValueEntitlementMappingsType_SORT_DEFINITION_VALUE_ENTITLEMENT_MAPPINGS_TYPE_CREATED_AT:
 		return sortFieldCreatedAt
-	case definitionvalueentitlement.SortDefinitionValueEntitlementMappingsType_SORT_DEFINITION_VALUE_ENTITLEMENT_MAPPINGS_TYPE_UPDATED_AT:
+	case subjectmapping.SortDefinitionValueEntitlementMappingsType_SORT_DEFINITION_VALUE_ENTITLEMENT_MAPPINGS_TYPE_UPDATED_AT:
 		return sortFieldUpdatedAt
-	case definitionvalueentitlement.SortDefinitionValueEntitlementMappingsType_SORT_DEFINITION_VALUE_ENTITLEMENT_MAPPINGS_TYPE_UNSPECIFIED:
+	case subjectmapping.SortDefinitionValueEntitlementMappingsType_SORT_DEFINITION_VALUE_ENTITLEMENT_MAPPINGS_TYPE_UNSPECIFIED:
 		fallthrough
 	default:
 		return ""
 	}
 }
 
-func GetDefinitionValueEntitlementMappingsSortParams(sort []*definitionvalueentitlement.DefinitionValueEntitlementMappingsSort) (string, string) {
+func GetDefinitionValueEntitlementMappingsSortParams(sort []*subjectmapping.DefinitionValueEntitlementMappingsSort) (string, string) {
 	if len(sort) == 0 {
 		return "", ""
 	}

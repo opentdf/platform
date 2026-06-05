@@ -164,12 +164,26 @@ func loadKey(k KeyPairInfo) (any, error) {
 			ecCertificatePEM: string(certPEM),
 		}, nil
 	case AlgorithmHPQTXWing:
+		dec, err := ocrypto.FromPrivatePEM(string(privatePEM))
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse X-Wing private key: %w", err)
+		}
+		if err := assertDecryptorAlgorithm(dec, k.Algorithm, k.KID); err != nil {
+			return nil, err
+		}
 		return StandardXWingCrypto{
 			KeyPairInfo:        k,
 			xwingPrivateKeyPem: string(privatePEM),
 			xwingPublicKeyPem:  string(certPEM),
 		}, nil
 	case AlgorithmHPQTSecp256r1MLKEM768, AlgorithmHPQTSecp384r1MLKEM1024:
+		dec, err := ocrypto.FromPrivatePEM(string(privatePEM))
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse hybrid private key: %w", err)
+		}
+		if err := assertDecryptorAlgorithm(dec, k.Algorithm, k.KID); err != nil {
+			return nil, err
+		}
 		return StandardHybridCrypto{
 			KeyPairInfo:         k,
 			hybridPrivateKeyPem: string(privatePEM),

@@ -141,6 +141,25 @@ func TestStandardCryptoLoadErrors(t *testing.T) {
 		_, err := NewStandardCrypto(cfg)
 		require.Error(t, err)
 	})
+
+	t.Run("rejects mislabeled hybrid key on load", func(t *testing.T) {
+		keyPair, err := ocrypto.NewP256MLKEM768KeyPair()
+		require.NoError(t, err)
+		privatePEM, err := keyPair.PrivateKeyInPemFormat()
+		require.NoError(t, err)
+		hybridPath := writeTempFile(t, dir, "hybrid-private.pem", privatePEM)
+
+		cfg := StandardConfig{
+			Keys: []KeyPairInfo{{
+				Algorithm: AlgorithmHPQTSecp384r1MLKEM1024,
+				KID:       "mislabeled-hybrid",
+				Private:   hybridPath,
+			}},
+		}
+		_, err = NewStandardCrypto(cfg)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "algorithm mismatch")
+	})
 }
 
 func TestStandardCryptoDeprecatedKeys(t *testing.T) {

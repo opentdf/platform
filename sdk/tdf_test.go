@@ -3102,6 +3102,9 @@ func (f *FakeKas) getRewrapResponse(rewrapRequest string, fulfillableObligations
 
 				dec, err := ocrypto.FromPrivatePEM(kasPrivateKey)
 				f.s.Require().NoError(err, "failed to parse hybrid private key PEM")
+				kt, ok := dec.(interface{ KeyType() ocrypto.KeyType })
+				f.s.Require().True(ok, "hybrid private key decryptor must expose KeyType")
+				f.s.Equal(f.Algorithm, string(kt.KeyType()), "hybrid private key algorithm mismatch")
 				symmetricKey, err := dec.Decrypt(wrappedKey)
 				f.s.Require().NoError(err, "failed to unwrap hybrid wrapped key")
 

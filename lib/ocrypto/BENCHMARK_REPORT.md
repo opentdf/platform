@@ -8,7 +8,7 @@
 > - **Wrap** follows `sdk/tdf.go` (`generateWrapKeyWithRSA`, `generateWrapKeyWithEC`, `generateWrapKeyWithHybrid`)
 > - **Unwrap** follows `service/internal/security/standard_crypto.go:Decrypt()`
 >
-> This includes PEM parsing, ephemeral keygen, ECDH, HKDF, AES-GCM, and ASN.1 marshaling — not simplified library-level `WrapDEK()` / `UnwrapDEK()` calls.
+> This includes PEM parsing, ephemeral keygen, ECDH, scheme-specific secret combining, AES-GCM, and ASN.1 marshaling — not simplified library-level `WrapDEK()` / `UnwrapDEK()` calls.
 
 ## How to Run
 
@@ -48,7 +48,7 @@ cd lib/ocrypto && go test -v -run TestWrappedKeySizeComparison
 These benchmarks follow the exact TDF wrapping paths:
 - **RSA:** `FromPublicPEM` -> `Encrypt` (OAEP)
 - **EC:** `NewECKeyPair` -> `ComputeECDHKey` -> `CalculateHKDF` -> `AES-GCM Encrypt`
-- **Hybrid:** `PubKeyFromPem` -> `Encapsulate` -> `CalculateHKDF` -> `AES-GCM Encrypt` -> `ASN.1 Marshal`
+- **Hybrid:** `PubKeyFromPem` -> `Encapsulate` -> scheme-specific combiner/KDF -> `AES-GCM Encrypt` -> `ASN.1 Marshal`
 
 | Scheme | Time | Wrapped Size | B/op | allocs/op | vs EC P-256 |
 |--------|-----:|-------------:|-----:|----------:|-------------|
@@ -93,11 +93,13 @@ These benchmarks follow the KAS unwrap paths:
 ## Analysis: Where Time Is Spent
 
 KEM encapsulation dominates all hybrid schemes (~93-97% of total wrap time);
-HKDF, AES-GCM, and ASN.1 marshaling are all sub-microsecond. The P-384
-elliptic curve ECDH is ~5x slower than P-256, which is why P384+ML-KEM-1024
-is significantly slower than P256+ML-KEM-768. Per-sub-op figures were
-captured under a one-off benchmark that has since been removed; re-introduce
-with `pprof` if a more granular breakdown is needed.
+post-encapsulation combining, AES-GCM, and ASN.1 marshaling are all
+sub-microsecond. X-Wing still includes its HKDF-based TDF wrap path, while the
+NIST composites use the draft-14 SHA3-256 combiner instead of HKDF. The P-384
+elliptic curve ECDH is ~5x slower than P-256, which is why P384+ML-KEM-1024 is
+significantly slower than P256+ML-KEM-768. Per-sub-op figures were captured
+under a one-off benchmark that has since been removed; re-introduce with
+`pprof` if a more granular breakdown is needed.
 
 ## Manifest Size Impact
 

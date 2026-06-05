@@ -248,7 +248,7 @@ runs:
       working-directory: otdf-test-platform
     - name: Enable PQ (mlkem, xwing, and hybrid) wrapping for TDFs
       shell: bash
-      if: ${{ inputs.pqc-enabled }}
+      if: ${{ inputs.pqc-enabled == 'true' }}
       run: |
         yq e '.services.kas.hybrid_tdf_enabled = true' -i opentdf.yaml
       working-directory: otdf-test-platform

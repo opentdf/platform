@@ -34,12 +34,12 @@ cd lib/ocrypto && go test -v -run TestWrappedKeySizeComparison
 
 | Scheme | Time | B/op | allocs/op | vs EC P-256 |
 |--------|-----:|-----:|----------:|-------------|
-| RSA-2048 | 47.7 ms | 652 KB | 5,929 | ~6,400x slower |
-| EC P-256 | 7.4 us | 984 B | 16 | baseline |
-| EC P-384 | 71.3 us | 1.2 KB | 19 | ~9.6x slower |
-| X-Wing | 43.8 us | 9.8 KB | 9 | ~5.9x slower |
-| P256+ML-KEM-768 | 34.8 us | 11.4 KB | 13 | ~4.7x slower |
-| P384+ML-KEM-1024 | 113.8 us | 17.9 KB | 16 | ~15x slower |
+| RSA-2048         |  31.3 ms |  652 KB | 4,399 | 4,770x slower |
+| EC P-256         |   6.6 µs |  984 B  |    16 |    baseline   |
+| EC P-384         |  61.2 µs |  1.2 KB |    19 |   9.5x slower |
+| X-Wing           |  39.1 µs |  9.8 KB |     9 |   6.0x slower |
+| P256+ML-KEM-768  |  40.1 µs | 11.4 KB |    68 |   6.1x slower |
+| P384+ML-KEM-1024 | 173.8 µs | 17.9 KB |    80 |  26.5x slower |
 
 **Takeaway:** RSA-2048 key generation is orders of magnitude slower than everything else (~48ms). All hybrid schemes generate keys in under 115us. EC P-256 is fastest at ~7us; EC P-384 keygen is ~10x slower than P-256 due to the larger field size.
 
@@ -52,14 +52,12 @@ These benchmarks follow the exact TDF wrapping paths:
 
 | Scheme | Time | Wrapped Size | B/op | allocs/op | vs EC P-256 |
 |--------|-----:|-------------:|-----:|----------:|-------------|
-| RSA-2048 | 25.5 us | 256 B | 4.1 KB | 33 | 0.5x (faster) |
-| EC P-256 | 54.5 us | 60 B | 12.0 KB | 158 | baseline |
-| EC P-384 | 449.3 us | 60 B | 14.3 KB | 189 | ~8.2x slower |
-| X-Wing | 77.4 us | 1,190 B | 16.4 KB | 42 | ~1.4x slower |
-| P256+ML-KEM-768 | 75.2 us | 1,223 B | 18.7 KB | 59 | ~1.4x slower |
-| P384+ML-KEM-1024 | 369.9 us | 1,735 B | 27.0 KB | 68 | ~6.8x slower |
-
-**Takeaway:** P256+ML-KEM-768 wrapping (~75us) is only ~1.4x slower than EC P-256 (~55us) — the ephemeral EC keygen + ECDH in the EC path narrows the gap significantly. RSA wrap is fastest since it's just OAEP padding. The two P-384-based schemes are the slowest (EC P-384 ~449us, P384+ML-KEM-1024 ~370us) — the P-384 ECDH operation alone dominates EC P-384's wrap cost since each call re-generates an ephemeral key.
+| RSA-2048         |  22.2 µs |  4.3 KB |  36 | 0.5x faster |
+| EC P-256         |  49.1 µs | 12.8 KB | 177 |   baseline  |
+| EC P-384         | 396.4 µs | 15.1 KB | 211 | 8.1x slower |
+| X-Wing           |  69.2 µs | 16.7 KB |  46 | 1.4x slower |
+| P256+ML-KEM-768  |  59.9 µs | 17.9 KB |  47 | 1.2x slower |
+| P384+ML-KEM-1024 | 308.5 µs | 26.0 KB |  56 | 6.3x slower |
 
 ### Unwrap DEK
 
@@ -70,25 +68,14 @@ These benchmarks follow the KAS unwrap paths:
 
 | Scheme | Time | B/op | allocs/op | vs EC P-256 |
 |--------|-----:|-----:|----------:|-------------|
-| RSA-2048 | 737.3 us | 560 B | 8 | ~26x slower |
-| EC P-256 | 28.4 us | 4.1 KB | 40 | baseline |
-| EC P-384 | 230.5 us | 4.6 KB | 55 | ~8.1x slower |
-| X-Wing | 90.4 us | 12.4 KB | 37 | ~3.2x slower |
-| P256+ML-KEM-768 | 96.3 us | 13.8 KB | 51 | ~3.4x slower |
-| P384+ML-KEM-1024 | 400.2 us | 20.1 KB | 60 | ~14x slower |
+| RSA-2048         | 606.0 µs |  0.6 KB |   8 | 24.6x slower |
+| EC P-256         |  24.6 µs |  3.9 KB |  39 |    baseline  |
+| EC P-384         | 202.0 µs |  4.3 KB |  51 |  8.2x slower |
+| X-Wing           |  79.9 µs | 12.8 KB |  43 |  3.2x slower |
+| P256+ML-KEM-768  |  91.4 µs | 16.0 KB |  97 |  3.7x slower |
+| P384+ML-KEM-1024 | 463.0 µs | 23.0 KB | 121 | 18.8x slower |
 
-**Takeaway:** RSA unwrap is the slowest operation in the entire suite (~737us) due to private key exponentiation. P256+ML-KEM-768 unwraps in ~96us — fast enough for real-time use. EC P-384 unwrap (~231us) is ~8x slower than P-256 because of the more expensive curve operations. Hybrid unwraps include PEM parsing overhead that could be optimized by caching parsed keys (as EC already does).
-
-### Wrap + Unwrap Round-Trip Summary
-
-| Scheme | Wrap + Unwrap | Quantum Safe? |
-|--------|-------------:|:-------------:|
-| RSA-2048 | 763 us | No |
-| EC P-256 | 83 us | No |
-| EC P-384 | 680 us | No |
-| X-Wing | 168 us | Yes |
-| P256+ML-KEM-768 | 172 us | Yes |
-| P384+ML-KEM-1024 | 770 us | Yes |
+**Takeaway:** RSA unwrap is the slowest operation in the entire suite due to private key exponentiation. P256+ML-KEM-768 unwraps are fast enough for real-time use. EC P-384 unwrap is much slower than P-256 because of the more expensive curve operations. Hybrid unwraps include PEM parsing overhead that could be optimized by caching parsed keys (as EC already does).
 
 ## Analysis: Where Time Is Spent
 

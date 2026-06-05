@@ -175,12 +175,49 @@ runs:
       run: |
         yq e '.services.kas.hybrid_tdf_enabled = true' -i opentdf.yaml
       working-directory: otdf-test-platform
-    - name: Validate logging inputs
+    - name: Validate inputs
       shell: bash
       env:
+        PLATFORM_REF: ${{ inputs.platform-ref }}
+        EXTRA_KEYS: ${{ inputs.extra-keys }}
+        EC_TDF_ENABLED: ${{ inputs.ec-tdf-enabled }}
+        PQC_ENABLED: ${{ inputs.pqc-enabled }}
         LOG_LEVEL: ${{ inputs.log-level }}
         LOG_TYPE: ${{ inputs.log-type }}
+        PROVISION_POLICY_FIXTURES: ${{ inputs.provision-policy-fixtures }}
       run: |
+        # Validate platform-ref (safe characters only — prevents path/command injection)
+        if [[ ! "${PLATFORM_REF}" =~ ^[a-zA-Z0-9._/-]+$ ]]; then
+          echo "Error: platform-ref must contain only alphanumeric characters, dots, underscores, hyphens, and forward slashes."
+          exit 1
+        fi
+
+        # Validate extra-keys (must be a valid JSON array)
+        if ! jq -e 'type == "array"' <<< "${EXTRA_KEYS}" > /dev/null 2>&1; then
+          echo "Error: extra-keys must be a valid JSON array."
+          exit 1
+        fi
+
+        # Validate ec-tdf-enabled (must be true or false)
+        case "${EC_TDF_ENABLED}" in
+          true|false)
+            ;;
+          *)
+            echo "Error: ec-tdf-enabled must be 'true' or 'false'."
+            exit 1
+            ;;
+        esac
+
+        # Validate pqc-enabled (must be true or false)
+        case "${PQC_ENABLED}" in
+          true|false)
+            ;;
+          *)
+            echo "Error: pqc-enabled must be 'true' or 'false'."
+            exit 1
+            ;;
+        esac
+
         # Validate log-level (only allowed values)
         case "${LOG_LEVEL}" in
           audit|debug|info|warn|error)
@@ -197,6 +234,16 @@ runs:
             ;;
           *)
             echo "Error: log-type must be one of: text, json."
+            exit 1
+            ;;
+        esac
+
+        # Validate provision-policy-fixtures (must be true or false)
+        case "${PROVISION_POLICY_FIXTURES}" in
+          true|false)
+            ;;
+          *)
+            echo "Error: provision-policy-fixtures must be 'true' or 'false'."
             exit 1
             ;;
         esac

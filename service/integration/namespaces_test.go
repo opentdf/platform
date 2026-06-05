@@ -4,11 +4,14 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"slices"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/opentdf/platform/protocol/go/common"
 	"github.com/opentdf/platform/protocol/go/policy"
+	"github.com/opentdf/platform/protocol/go/policy/actions"
 	"github.com/opentdf/platform/protocol/go/policy/attributes"
 	"github.com/opentdf/platform/protocol/go/policy/kasregistry"
 	"github.com/opentdf/platform/protocol/go/policy/namespaces"
@@ -81,6 +84,50 @@ func (s *NamespacesSuite) Test_CreateNamespace_NormalizeCasing() {
 	s.Require().NoError(err)
 	s.NotNil(got)
 	s.Equal(strings.ToLower(name), got.GetName(), createdNamespace.GetName())
+}
+
+func (s *NamespacesSuite) Test_CreateNamespace_SeedsStandardActions() {
+	createdNamespace, err := s.db.PolicyClient.CreateNamespace(s.ctx, &namespaces.CreateNamespaceRequest{
+		Name: fmt.Sprintf("seed-actions-%d.com", time.Now().UnixNano()),
+	})
+	s.Require().NoError(err)
+	s.NotNil(createdNamespace)
+
+	listed, err := s.db.PolicyClient.ListActions(s.ctx, &actions.ListActionsRequest{NamespaceId: createdNamespace.GetId()})
+	s.Require().NoError(err)
+	s.NotNil(listed)
+
+	scopedNames := make([]string, 0, 4)
+	for _, action := range listed.GetActionsStandard() {
+		if action.GetNamespace().GetId() == createdNamespace.GetId() {
+			scopedNames = append(scopedNames, action.GetName())
+		}
+	}
+
+	s.ElementsMatch([]string{"create", "read", "update", "delete"}, scopedNames)
+}
+
+func (s *NamespacesSuite) Test_CreateNamespace_WithoutPublicKeys_DoesNotReturnKeys() {
+	name := fmt.Sprintf("no-namespace-children-%d.com", time.Now().UnixNano())
+	createdNamespace, err := s.db.PolicyClient.CreateNamespace(s.ctx, &namespaces.CreateNamespaceRequest{Name: name})
+	s.Require().NoError(err)
+	s.Require().NotNil(createdNamespace)
+	defer func() {
+		_, err := s.db.PolicyClient.UnsafeDeleteNamespace(s.ctx, createdNamespace, createdNamespace.GetFqn())
+		s.Require().NoError(err)
+	}()
+
+	s.Empty(createdNamespace.GetKasKeys())
+
+	gotByID, err := s.db.PolicyClient.GetNamespace(s.ctx, createdNamespace.GetId())
+	s.Require().NoError(err)
+	s.Require().NotNil(gotByID)
+	s.Empty(gotByID.GetKasKeys())
+
+	gotByFQN, err := s.db.PolicyClient.GetNamespace(s.ctx, &namespaces.GetNamespaceRequest_Fqn{Fqn: createdNamespace.GetName()})
+	s.Require().NoError(err)
+	s.Require().NotNil(gotByFQN)
+	s.Empty(gotByFQN.GetKasKeys())
 }
 
 func (s *NamespacesSuite) Test_GetNamespace() {
@@ -197,6 +244,281 @@ func (s *NamespacesSuite) Test_ListNamespaces_NoPagination_Succeeds() {
 		}
 		s.True(found)
 	}
+}
+
+func (s *NamespacesSuite) Test_ListNamespaces_OrdersByCreatedAt_Succeeds() {
+	suffix := time.Now().UnixNano()
+	create := func(i int) string {
+		name := fmt.Sprintf("order-test-ns-%d-%d.com", i, suffix)
+		created, err := s.db.PolicyClient.CreateNamespace(s.ctx, &namespaces.CreateNamespaceRequest{Name: name})
+		s.Require().NoError(err)
+		s.Require().NotNil(created)
+		return created.GetId()
+	}
+
+	firstID := create(1)
+	time.Sleep(5 * time.Millisecond)
+	secondID := create(2)
+	time.Sleep(5 * time.Millisecond)
+	thirdID := create(3)
+
+	listNamespacesRsp, err := s.db.PolicyClient.ListNamespaces(s.ctx, &namespaces.ListNamespacesRequest{
+		State: common.ActiveStateEnum_ACTIVE_STATE_ENUM_ANY,
+	})
+	s.Require().NoError(err)
+	s.NotNil(listNamespacesRsp)
+
+	assertIDsInOrder(s.T(), listNamespacesRsp.GetNamespaces(), func(ns *policy.Namespace) string { return ns.GetId() }, thirdID, secondID, firstID)
+}
+
+func (s *NamespacesSuite) Test_ListNamespaces_SortByName_ASC() {
+	ids := s.createSortTestNamespaces([]string{"aaa-sort", "bbb-sort", "ccc-sort"})
+	defer s.deleteSortTestNamespaces(ids)
+
+	listRsp, err := s.db.PolicyClient.ListNamespaces(s.ctx, &namespaces.ListNamespacesRequest{
+		State: common.ActiveStateEnum_ACTIVE_STATE_ENUM_ANY,
+		Sort: []*namespaces.NamespacesSort{
+			{Field: namespaces.SortNamespacesType_SORT_NAMESPACES_TYPE_NAME, Direction: policy.SortDirection_SORT_DIRECTION_ASC},
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(listRsp)
+
+	// aaa < bbb < ccc in ASC order
+	assertIDsInOrder(s.T(), listRsp.GetNamespaces(), func(ns *policy.Namespace) string { return ns.GetId() }, ids[0], ids[1], ids[2])
+}
+
+func (s *NamespacesSuite) Test_ListNamespaces_SortByName_DESC() {
+	ids := s.createSortTestNamespaces([]string{"aaa-sortdesc", "bbb-sortdesc", "ccc-sortdesc"})
+	defer s.deleteSortTestNamespaces(ids)
+
+	listRsp, err := s.db.PolicyClient.ListNamespaces(s.ctx, &namespaces.ListNamespacesRequest{
+		State: common.ActiveStateEnum_ACTIVE_STATE_ENUM_ANY,
+		Sort: []*namespaces.NamespacesSort{
+			{Field: namespaces.SortNamespacesType_SORT_NAMESPACES_TYPE_NAME, Direction: policy.SortDirection_SORT_DIRECTION_DESC},
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(listRsp)
+
+	// ccc > bbb > aaa in DESC order
+	assertIDsInOrder(s.T(), listRsp.GetNamespaces(), func(ns *policy.Namespace) string { return ns.GetId() }, ids[2], ids[1], ids[0])
+}
+
+func (s *NamespacesSuite) Test_ListNamespaces_SortByCreatedAt_ASC() {
+	ids := s.createSortTestNamespaces([]string{"createdasc-ns-0", "createdasc-ns-1", "createdasc-ns-2"})
+	defer s.deleteSortTestNamespaces(ids)
+
+	listRsp, err := s.db.PolicyClient.ListNamespaces(s.ctx, &namespaces.ListNamespacesRequest{
+		State: common.ActiveStateEnum_ACTIVE_STATE_ENUM_ANY,
+		Sort: []*namespaces.NamespacesSort{
+			{Field: namespaces.SortNamespacesType_SORT_NAMESPACES_TYPE_CREATED_AT, Direction: policy.SortDirection_SORT_DIRECTION_ASC},
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(listRsp)
+
+	// oldest first in ASC order
+	assertIDsInOrder(s.T(), listRsp.GetNamespaces(), func(ns *policy.Namespace) string { return ns.GetId() }, ids[0], ids[1], ids[2])
+}
+
+func (s *NamespacesSuite) Test_ListNamespaces_SortByCreatedAt_DESC() {
+	ids := s.createSortTestNamespaces([]string{"createddesc-ns-0", "createddesc-ns-1", "createddesc-ns-2"})
+	defer s.deleteSortTestNamespaces(ids)
+
+	listRsp, err := s.db.PolicyClient.ListNamespaces(s.ctx, &namespaces.ListNamespacesRequest{
+		State: common.ActiveStateEnum_ACTIVE_STATE_ENUM_ANY,
+		Sort: []*namespaces.NamespacesSort{
+			{Field: namespaces.SortNamespacesType_SORT_NAMESPACES_TYPE_CREATED_AT, Direction: policy.SortDirection_SORT_DIRECTION_DESC},
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(listRsp)
+
+	// newest first in DESC order
+	assertIDsInOrder(s.T(), listRsp.GetNamespaces(), func(ns *policy.Namespace) string { return ns.GetId() }, ids[2], ids[1], ids[0])
+}
+
+func (s *NamespacesSuite) Test_ListNamespaces_SortByFqn_ASC() {
+	ids := s.createSortTestNamespaces([]string{"aaa-fqnsort", "bbb-fqnsort", "ccc-fqnsort"})
+	defer s.deleteSortTestNamespaces(ids)
+
+	listRsp, err := s.db.PolicyClient.ListNamespaces(s.ctx, &namespaces.ListNamespacesRequest{
+		State: common.ActiveStateEnum_ACTIVE_STATE_ENUM_ANY,
+		Sort: []*namespaces.NamespacesSort{
+			{Field: namespaces.SortNamespacesType_SORT_NAMESPACES_TYPE_FQN, Direction: policy.SortDirection_SORT_DIRECTION_ASC},
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(listRsp)
+
+	// fqn is https://<name>, so aaa < bbb < ccc in ASC order
+	assertIDsInOrder(s.T(), listRsp.GetNamespaces(), func(ns *policy.Namespace) string { return ns.GetId() }, ids[0], ids[1], ids[2])
+}
+
+func (s *NamespacesSuite) Test_ListNamespaces_SortByFqn_DESC() {
+	ids := s.createSortTestNamespaces([]string{"aaa-fqnsortdesc", "bbb-fqnsortdesc", "ccc-fqnsortdesc"})
+	defer s.deleteSortTestNamespaces(ids)
+
+	listRsp, err := s.db.PolicyClient.ListNamespaces(s.ctx, &namespaces.ListNamespacesRequest{
+		State: common.ActiveStateEnum_ACTIVE_STATE_ENUM_ANY,
+		Sort: []*namespaces.NamespacesSort{
+			{Field: namespaces.SortNamespacesType_SORT_NAMESPACES_TYPE_FQN, Direction: policy.SortDirection_SORT_DIRECTION_DESC},
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(listRsp)
+
+	// fqn is https://<name>, so ccc > bbb > aaa in DESC order
+	assertIDsInOrder(s.T(), listRsp.GetNamespaces(), func(ns *policy.Namespace) string { return ns.GetId() }, ids[2], ids[1], ids[0])
+}
+
+func (s *NamespacesSuite) Test_ListNamespaces_SortByUpdatedAt_DESC() {
+	ids := s.createSortTestNamespaces([]string{"upd-sort-ns-0", "upd-sort-ns-1", "upd-sort-ns-2"})
+	defer s.deleteSortTestNamespaces(ids)
+
+	// Update the first namespace so its updated_at is the most recent
+	time.Sleep(5 * time.Millisecond)
+	_, err := s.db.PolicyClient.UpdateNamespace(s.ctx, ids[0], &namespaces.UpdateNamespaceRequest{
+		Id: ids[0],
+		Metadata: &common.MetadataMutable{
+			Labels: map[string]string{"updated": "true"},
+		},
+		MetadataUpdateBehavior: common.MetadataUpdateEnum_METADATA_UPDATE_ENUM_REPLACE,
+	})
+	s.Require().NoError(err)
+
+	listRsp, err := s.db.PolicyClient.ListNamespaces(s.ctx, &namespaces.ListNamespacesRequest{
+		State: common.ActiveStateEnum_ACTIVE_STATE_ENUM_ANY,
+		Sort: []*namespaces.NamespacesSort{
+			{Field: namespaces.SortNamespacesType_SORT_NAMESPACES_TYPE_UPDATED_AT, Direction: policy.SortDirection_SORT_DIRECTION_DESC},
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(listRsp)
+
+	// The updated namespace (ids[0]) should appear before the others
+	assertIDsInOrder(s.T(), listRsp.GetNamespaces(), func(ns *policy.Namespace) string { return ns.GetId() }, ids[0], ids[2], ids[1])
+}
+
+func (s *NamespacesSuite) Test_ListNamespaces_SortByUpdatedAt_ASC() {
+	ids := s.createSortTestNamespaces([]string{"upd-sort-asc-ns-0", "upd-sort-asc-ns-1", "upd-sort-asc-ns-2"})
+	defer s.deleteSortTestNamespaces(ids)
+
+	// Update the last namespace so its updated_at is the most recent
+	time.Sleep(5 * time.Millisecond)
+	_, err := s.db.PolicyClient.UpdateNamespace(s.ctx, ids[2], &namespaces.UpdateNamespaceRequest{
+		Id: ids[2],
+		Metadata: &common.MetadataMutable{
+			Labels: map[string]string{"updated": "true"},
+		},
+		MetadataUpdateBehavior: common.MetadataUpdateEnum_METADATA_UPDATE_ENUM_REPLACE,
+	})
+	s.Require().NoError(err)
+
+	listRsp, err := s.db.PolicyClient.ListNamespaces(s.ctx, &namespaces.ListNamespacesRequest{
+		State: common.ActiveStateEnum_ACTIVE_STATE_ENUM_ANY,
+		Sort: []*namespaces.NamespacesSort{
+			{Field: namespaces.SortNamespacesType_SORT_NAMESPACES_TYPE_UPDATED_AT, Direction: policy.SortDirection_SORT_DIRECTION_ASC},
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(listRsp)
+
+	// The updated namespace (ids[2]) should appear last in ASC order
+	assertIDsInOrder(s.T(), listRsp.GetNamespaces(), func(ns *policy.Namespace) string { return ns.GetId() }, ids[0], ids[1], ids[2])
+}
+
+func (s *NamespacesSuite) Test_ListNamespaces_SortTieBreaker_CreatedAtWithIDFallback() {
+	suffix := time.Now().UnixNano()
+	ids := make([]string, 3)
+	for i := range 3 {
+		name := fmt.Sprintf("tiebreaker-ns-%d-%d.com", i, suffix)
+		created, err := s.db.PolicyClient.CreateNamespace(s.ctx, &namespaces.CreateNamespaceRequest{Name: name})
+		s.Require().NoError(err)
+		ids[i] = created.GetId()
+	}
+	defer s.deleteSortTestNamespaces(ids)
+
+	s.Require().NoError(forceCreatedAtTie(s.ctx, s.db, "attribute_namespaces", ids))
+
+	sorted := slices.Sorted(slices.Values(ids))
+
+	listRsp, err := s.db.PolicyClient.ListNamespaces(s.ctx, &namespaces.ListNamespacesRequest{
+		State: common.ActiveStateEnum_ACTIVE_STATE_ENUM_ANY,
+		Sort: []*namespaces.NamespacesSort{
+			{Field: namespaces.SortNamespacesType_SORT_NAMESPACES_TYPE_CREATED_AT, Direction: policy.SortDirection_SORT_DIRECTION_ASC},
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(listRsp)
+
+	assertIDsInOrder(s.T(), listRsp.GetNamespaces(), func(ns *policy.Namespace) string { return ns.GetId() }, sorted[0], sorted[1], sorted[2])
+}
+
+func (s *NamespacesSuite) Test_ListNamespaces_SortByUnspecifiedField_DefaultsToCreatedAt() {
+	ids := s.createSortTestNamespaces([]string{"unspecified-sort-ns-0", "unspecified-sort-ns-1", "unspecified-sort-ns-2"})
+	defer s.deleteSortTestNamespaces(ids)
+
+	listRsp, err := s.db.PolicyClient.ListNamespaces(s.ctx, &namespaces.ListNamespacesRequest{
+		State: common.ActiveStateEnum_ACTIVE_STATE_ENUM_ANY,
+		Sort: []*namespaces.NamespacesSort{
+			{Field: namespaces.SortNamespacesType_SORT_NAMESPACES_TYPE_UNSPECIFIED, Direction: policy.SortDirection_SORT_DIRECTION_ASC},
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(listRsp)
+
+	// Field defaults to created_at, explicit ASC is preserved
+	assertIDsInOrder(s.T(), listRsp.GetNamespaces(), func(ns *policy.Namespace) string { return ns.GetId() }, ids[0], ids[1], ids[2])
+}
+
+func (s *NamespacesSuite) Test_ListNamespaces_SortByUnspecifiedDirection_DefaultsToDESC() {
+	ids := s.createSortTestNamespaces([]string{"unspecified-dir-ns-0", "unspecified-dir-ns-1", "unspecified-dir-ns-2"})
+	defer s.deleteSortTestNamespaces(ids)
+
+	listRsp, err := s.db.PolicyClient.ListNamespaces(s.ctx, &namespaces.ListNamespacesRequest{
+		State: common.ActiveStateEnum_ACTIVE_STATE_ENUM_ANY,
+		Sort: []*namespaces.NamespacesSort{
+			{Field: namespaces.SortNamespacesType_SORT_NAMESPACES_TYPE_CREATED_AT, Direction: policy.SortDirection_SORT_DIRECTION_UNSPECIFIED},
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(listRsp)
+
+	// Direction defaults to DESC, explicit created_at field is preserved
+	assertIDsInOrder(s.T(), listRsp.GetNamespaces(), func(ns *policy.Namespace) string { return ns.GetId() }, ids[2], ids[1], ids[0])
+}
+
+func (s *NamespacesSuite) Test_ListNamespaces_SortByBothUnspecified_DefaultsToCreatedAtDESC() {
+	ids := s.createSortTestNamespaces([]string{"both-unspecified-ns-0", "both-unspecified-ns-1", "both-unspecified-ns-2"})
+	defer s.deleteSortTestNamespaces(ids)
+
+	listRsp, err := s.db.PolicyClient.ListNamespaces(s.ctx, &namespaces.ListNamespacesRequest{
+		State: common.ActiveStateEnum_ACTIVE_STATE_ENUM_ANY,
+		Sort: []*namespaces.NamespacesSort{
+			{Field: namespaces.SortNamespacesType_SORT_NAMESPACES_TYPE_UNSPECIFIED, Direction: policy.SortDirection_SORT_DIRECTION_UNSPECIFIED},
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(listRsp)
+
+	// Both default: created_at DESC
+	assertIDsInOrder(s.T(), listRsp.GetNamespaces(), func(ns *policy.Namespace) string { return ns.GetId() }, ids[2], ids[1], ids[0])
+}
+
+func (s *NamespacesSuite) Test_ListNamespaces_SortOmitted() {
+	ids := s.createSortTestNamespaces([]string{"sort-omitted-ns-0", "sort-omitted-ns-1", "sort-omitted-ns-2"})
+	defer s.deleteSortTestNamespaces(ids)
+
+	listRsp, err := s.db.PolicyClient.ListNamespaces(s.ctx, &namespaces.ListNamespacesRequest{
+		State: common.ActiveStateEnum_ACTIVE_STATE_ENUM_ANY,
+	})
+	s.Require().NoError(err)
+	s.NotNil(listRsp)
+
+	// No sort provided: created_at DESC
+	assertIDsInOrder(s.T(), listRsp.GetNamespaces(), func(ns *policy.Namespace) string { return ns.GetId() }, ids[2], ids[1], ids[0])
 }
 
 func (s *NamespacesSuite) Test_ListNamespaces_Limit_Succeeds() {
@@ -432,16 +754,22 @@ func (s *NamespacesSuite) Test_DeactivateNamespace_Cascades_List() {
 	}
 
 	listValues := func(state common.ActiveStateEnum) bool {
-		listedValsRsp, err := s.db.PolicyClient.ListAttributeValues(s.ctx, &attributes.ListAttributeValuesRequest{
-			AttributeId: deactivatedAttrID,
-			State:       state,
-		})
+		gotAttr, err := s.db.PolicyClient.GetAttribute(s.ctx, deactivatedAttrID)
 		s.Require().NoError(err)
-		s.NotNil(listedValsRsp)
-		listed := listedValsRsp.GetValues()
-		for _, v := range listed {
-			if deactivatedAttrValueID == v.GetId() {
+		s.NotNil(gotAttr)
+		for _, v := range gotAttr.GetValues() {
+			if deactivatedAttrValueID != v.GetId() {
+				continue
+			}
+			switch state {
+			case common.ActiveStateEnum_ACTIVE_STATE_ENUM_ACTIVE:
+				return v.GetActive().GetValue()
+			case common.ActiveStateEnum_ACTIVE_STATE_ENUM_INACTIVE:
+				return !v.GetActive().GetValue()
+			case common.ActiveStateEnum_ACTIVE_STATE_ENUM_ANY:
 				return true
+			case common.ActiveStateEnum_ACTIVE_STATE_ENUM_UNSPECIFIED:
+				return v.GetActive().GetValue()
 			}
 		}
 		return false
@@ -1114,6 +1442,27 @@ func (s *NamespacesSuite) Test_GetNamespace_ByIdAndName_ReturnSameResult() {
 		// Verify both return the same namespace
 		s.True(proto.Equal(nsByID, nsByName))
 	}
+}
+
+// createSortTestNamespaces creates namespaces with the given prefixes, adding 5ms gaps
+// between creations for distinct timestamps. Returns the namespace IDs in creation order.
+func (s *NamespacesSuite) createSortTestNamespaces(prefixes []string) []string {
+	ids := make([]string, len(prefixes))
+	for i, prefix := range prefixes {
+		if i > 0 {
+			time.Sleep(5 * time.Millisecond)
+		}
+		name := fmt.Sprintf("%s-%d.com", prefix, time.Now().UnixNano())
+		created, err := s.db.PolicyClient.CreateNamespace(s.ctx, &namespaces.CreateNamespaceRequest{Name: name})
+		s.Require().NoError(err)
+		ids[i] = created.GetId()
+	}
+	return ids
+}
+
+// deleteSortTestNamespaces deactivates namespaces created by sort tests.
+func (s *NamespacesSuite) deleteSortTestNamespaces(ids []string) {
+	s.Require().NoError(forceDeleteRows(s.ctx, s.db, "attribute_namespaces", ids))
 }
 
 func (s *NamespacesSuite) getActiveNamespaceFixtures() []fixtures.FixtureDataNamespace {

@@ -46,10 +46,11 @@ func createAttrValueFQN(namespace, name, value string) string {
 }
 
 // Helper function to create registered resource value FQNs
-func createRegisteredResourceValueFQN(name, value string) string {
+func createRegisteredResourceValueFQN(ns, name, value string) string {
 	resourceValue := &identifier.FullyQualifiedRegisteredResourceValue{
-		Name:  name,
-		Value: value,
+		Namespace: ns,
+		Name:      name,
+		Value:     value,
 	}
 	return resourceValue.FQN()
 }
@@ -92,20 +93,20 @@ var (
 	testPlatformHybridFQN = createAttrValueFQN(testSecondaryNamespace, "platform", "hybrid")
 
 	// Registered resource value FQNs
-	testNetworkPrivateFQN = createRegisteredResourceValueFQN("network", "private")
-	testNetworkPublicFQN  = createRegisteredResourceValueFQN("network", "public")
+	testNetworkPrivateFQN = createRegisteredResourceValueFQN("", "network", "private")
+	testNetworkPublicFQN  = createRegisteredResourceValueFQN("", "network", "public")
 )
 
 // registered resource value FQNs using identifier package
 var (
 	// Classification values
-	testClassSecretRegResFQN       = createRegisteredResourceValueFQN("classification", "secret")
-	testClassConfidentialRegResFQN = createRegisteredResourceValueFQN("classification", "confidential")
+	testClassSecretRegResFQN       = createRegisteredResourceValueFQN("", "classification", "secret")
+	testClassConfidentialRegResFQN = createRegisteredResourceValueFQN("", "classification", "confidential")
 
 	// Department values
-	testDeptEngineeringRegResFQN = createRegisteredResourceValueFQN("department", "engineering")
-	testDeptFinanceRegResFQN     = createRegisteredResourceValueFQN("department", "finance")
-	testProjectAlphaRegResFQN    = createRegisteredResourceValueFQN("project", "alpha")
+	testDeptEngineeringRegResFQN = createRegisteredResourceValueFQN("", "department", "engineering")
+	testDeptFinanceRegResFQN     = createRegisteredResourceValueFQN("", "department", "finance")
+	testProjectAlphaRegResFQN    = createRegisteredResourceValueFQN("", "project", "alpha")
 )
 
 // Registered resource value FQNs using identifier package
@@ -283,6 +284,7 @@ func (s *PDPTestSuite) SetupTest() {
 		[]*policy.Action{testActionRead},
 		".properties.clearance",
 		[]string{"ts"},
+		nil,
 	)
 
 	s.fixtures.secretMapping = createSimpleSubjectMapping(
@@ -291,6 +293,7 @@ func (s *PDPTestSuite) SetupTest() {
 		[]*policy.Action{testActionRead, testActionUpdate},
 		".properties.clearance",
 		[]string{"secret"},
+		nil,
 	)
 
 	s.fixtures.confidentialMapping = createSimpleSubjectMapping(
@@ -299,6 +302,7 @@ func (s *PDPTestSuite) SetupTest() {
 		[]*policy.Action{testActionRead},
 		".properties.clearance",
 		[]string{"confidential"},
+		nil,
 	)
 
 	s.fixtures.publicMapping = createSimpleSubjectMapping(
@@ -307,6 +311,7 @@ func (s *PDPTestSuite) SetupTest() {
 		[]*policy.Action{testActionRead},
 		".properties.clearance",
 		[]string{"public"},
+		nil,
 	)
 
 	s.fixtures.engineeringMapping = createSimpleSubjectMapping(
@@ -315,6 +320,7 @@ func (s *PDPTestSuite) SetupTest() {
 		[]*policy.Action{testActionRead, testActionCreate},
 		".properties.department",
 		[]string{"engineering"},
+		nil,
 	)
 
 	s.fixtures.financeMapping = createSimpleSubjectMapping(
@@ -323,6 +329,7 @@ func (s *PDPTestSuite) SetupTest() {
 		[]*policy.Action{testActionRead, testActionUpdate},
 		".properties.department",
 		[]string{"finance"},
+		nil,
 	)
 
 	s.fixtures.rndMapping = createSimpleSubjectMapping(
@@ -331,6 +338,7 @@ func (s *PDPTestSuite) SetupTest() {
 		[]*policy.Action{testActionRead, testActionUpdate},
 		".properties.department",
 		[]string{"rnd"},
+		nil,
 	)
 
 	s.fixtures.usaMapping = createSimpleSubjectMapping(
@@ -339,6 +347,7 @@ func (s *PDPTestSuite) SetupTest() {
 		[]*policy.Action{testActionRead},
 		".properties.country[]",
 		[]string{"us"},
+		nil,
 	)
 
 	s.fixtures.ukMapping = createSimpleSubjectMapping(
@@ -347,6 +356,7 @@ func (s *PDPTestSuite) SetupTest() {
 		[]*policy.Action{testActionRead, testActionDelete},
 		".properties.country[]",
 		[]string{"uk"},
+		nil,
 	)
 
 	s.fixtures.projectAlphaMapping = createSimpleSubjectMapping(
@@ -355,6 +365,7 @@ func (s *PDPTestSuite) SetupTest() {
 		[]*policy.Action{testActionRead, testActionCreate},
 		".properties.project",
 		[]string{"alpha"},
+		nil,
 	)
 
 	s.fixtures.platformCloudMapping = createSimpleSubjectMapping(
@@ -363,6 +374,7 @@ func (s *PDPTestSuite) SetupTest() {
 		[]*policy.Action{testActionRead, testActionDelete},
 		".properties.platform",
 		[]string{"cloud"},
+		nil,
 	)
 
 	// Initialize registered resources
@@ -797,12 +809,12 @@ func (s *PDPTestSuite) SetupTest() {
 	s.fixtures.regResValMultiActionMultiAttrVal = regResValMultiActionMultiAttrVal
 	s.fixtures.regResValComprehensiveHierarchyActionAttrVal = regResValComprehensiveHierarchyActionAttrVal
 
-	regResValNoActionAttrValFQN = createRegisteredResourceValueFQN(regRes.GetName(), regResValNoActionAttrVal.GetValue())
-	regResValSingleActionAttrValFQN = createRegisteredResourceValueFQN(regRes.GetName(), regResValSingleActionAttrVal.GetValue())
-	regResValDuplicateActionAttrValFQN = createRegisteredResourceValueFQN(regRes.GetName(), regResValDuplicateActionAttrVal.GetValue())
-	regResValMultiActionSingleAttrValFQN = createRegisteredResourceValueFQN(regRes.GetName(), regResValMultiActionSingleAttrVal.GetValue())
-	regResValMultiActionMultiAttrValFQN = createRegisteredResourceValueFQN(regRes.GetName(), regResValMultiActionMultiAttrVal.GetValue())
-	regResValComprehensiveHierarchyActionAttrValFQN = createRegisteredResourceValueFQN(regRes.GetName(), regResValComprehensiveHierarchyActionAttrVal.GetValue())
+	regResValNoActionAttrValFQN = createRegisteredResourceValueFQN("", regRes.GetName(), regResValNoActionAttrVal.GetValue())
+	regResValSingleActionAttrValFQN = createRegisteredResourceValueFQN("", regRes.GetName(), regResValSingleActionAttrVal.GetValue())
+	regResValDuplicateActionAttrValFQN = createRegisteredResourceValueFQN("", regRes.GetName(), regResValDuplicateActionAttrVal.GetValue())
+	regResValMultiActionSingleAttrValFQN = createRegisteredResourceValueFQN("", regRes.GetName(), regResValMultiActionSingleAttrVal.GetValue())
+	regResValMultiActionMultiAttrValFQN = createRegisteredResourceValueFQN("", regRes.GetName(), regResValMultiActionMultiAttrVal.GetValue())
+	regResValComprehensiveHierarchyActionAttrValFQN = createRegisteredResourceValueFQN("", regRes.GetName(), regResValComprehensiveHierarchyActionAttrVal.GetValue())
 }
 
 // TestPDPSuite runs the test suite
@@ -858,7 +870,7 @@ func (s *PDPTestSuite) TestNewPolicyDecisionPoint() {
 	for _, tc := range tests {
 		s.Run(tc.name, func() {
 			pdp, err := NewPolicyDecisionPoint(
-				s.T().Context(), s.logger, tc.attributes, tc.subjectMappings, tc.registeredResources, allowDirectEntitlements)
+				s.T().Context(), s.logger, tc.attributes, tc.subjectMappings, tc.registeredResources, allowDirectEntitlements, false)
 
 			if tc.expectError {
 				s.Require().Error(err)
@@ -866,6 +878,110 @@ func (s *PDPTestSuite) TestNewPolicyDecisionPoint() {
 			} else {
 				s.Require().NoError(err)
 				s.NotNil(pdp)
+			}
+		})
+	}
+}
+
+func (s *PDPTestSuite) TestNewPolicyDecisionPoint_AllowsAttributeDefinitionsWithoutValues() {
+	f := s.fixtures
+	emptyAttrFQN := createAttrFQN(testSecondaryNamespace, "empty")
+	emptyAttr := &policy.Attribute{
+		Fqn:  emptyAttrFQN,
+		Rule: policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF,
+	}
+
+	pdp, err := NewPolicyDecisionPoint(
+		s.T().Context(),
+		s.logger,
+		[]*policy.Attribute{f.classificationAttr, emptyAttr},
+		[]*policy.SubjectMapping{f.secretMapping},
+		nil,
+		allowDirectEntitlements,
+		false,
+	)
+
+	s.Require().NoError(err)
+	s.Require().NotNil(pdp)
+
+	s.Require().Contains(pdp.allAttributesByDefinitionFQN, emptyAttrFQN)
+	s.Require().NotContains(pdp.allEntitleableAttributesByValueFQN, emptyAttrFQN)
+}
+
+func (s *PDPTestSuite) TestNewPolicyDecisionPoint_IndexesRegisteredResourceValuesByNamespacedAndLegacyFQN() {
+	tests := []struct {
+		name             string
+		namespaceName    string
+		namespaceFQN     string
+		expectedNS       string
+		namespacedPolicy bool
+		expectLegacyFQN  bool
+	}{
+		{
+			name:             "uses namespace name when present (legacy indexed when not strict)",
+			namespaceName:    "ns-one.example.com",
+			namespaceFQN:     "https://ns-one.example.com",
+			expectedNS:       "ns-one.example.com",
+			namespacedPolicy: false,
+			expectLegacyFQN:  true,
+		},
+		{
+			name:             "falls back to namespace fqn when name absent (legacy indexed when not strict)",
+			namespaceFQN:     "https://ns-two.example.com",
+			expectedNS:       "ns-two.example.com",
+			namespacedPolicy: false,
+			expectLegacyFQN:  true,
+		},
+		{
+			name:             "strict mode skips legacy FQN",
+			namespaceName:    "ns-one.example.com",
+			namespaceFQN:     "https://ns-one.example.com",
+			expectedNS:       "ns-one.example.com",
+			namespacedPolicy: true,
+			expectLegacyFQN:  false,
+		},
+	}
+
+	for _, tc := range tests {
+		s.Run(tc.name, func() {
+			regResVal := &policy.RegisteredResourceValue{Value: "prod-config"}
+			regRes := &policy.RegisteredResource{
+				Name: "app-config",
+				Namespace: &policy.Namespace{
+					Name: tc.namespaceName,
+					Fqn:  tc.namespaceFQN,
+				},
+				Values: []*policy.RegisteredResourceValue{regResVal},
+			}
+
+			pdp, err := NewPolicyDecisionPoint(
+				s.T().Context(),
+				s.logger,
+				[]*policy.Attribute{},
+				[]*policy.SubjectMapping{},
+				[]*policy.RegisteredResource{regRes},
+				allowDirectEntitlements,
+				tc.namespacedPolicy,
+			)
+			s.Require().NoError(err)
+
+			namespacedFQN := (&identifier.FullyQualifiedRegisteredResourceValue{
+				Namespace: tc.expectedNS,
+				Name:      regRes.GetName(),
+				Value:     regResVal.GetValue(),
+			}).FQN()
+			legacyFQN := (&identifier.FullyQualifiedRegisteredResourceValue{
+				Name:  regRes.GetName(),
+				Value: regResVal.GetValue(),
+			}).FQN()
+
+			s.Require().Contains(pdp.allRegisteredResourceValuesByFQN, namespacedFQN)
+			s.Same(regResVal, pdp.allRegisteredResourceValuesByFQN[namespacedFQN])
+			if tc.expectLegacyFQN {
+				s.Require().Contains(pdp.allRegisteredResourceValuesByFQN, legacyFQN)
+				s.Same(regResVal, pdp.allRegisteredResourceValuesByFQN[legacyFQN])
+			} else {
+				s.Require().NotContains(pdp.allRegisteredResourceValuesByFQN, legacyFQN)
 			}
 		})
 	}
@@ -883,6 +999,7 @@ func (s *PDPTestSuite) Test_GetDecision_MultipleResources() {
 		[]*policy.SubjectMapping{f.secretMapping, f.topSecretMapping, f.confidentialMapping, f.publicMapping, f.rndMapping, f.engineeringMapping, f.financeMapping},
 		[]*policy.RegisteredResource{f.classificationRegRes, f.deptRegRes},
 		allowDirectEntitlements,
+		false,
 	)
 	s.Require().NoError(err)
 	s.Require().NotNil(pdp)
@@ -1071,8 +1188,8 @@ func (s *PDPTestSuite) Test_GetDecision_MultipleResources() {
 			"department": "rnd",
 		})
 
-		rndDeptRegResFQN := createRegisteredResourceValueFQN(f.deptRegRes.GetName(), f.deptRegRes.GetValues()[0].GetValue())
-		topsecretClassRegResFQN := createRegisteredResourceValueFQN(f.classificationRegRes.GetName(), f.classificationRegRes.GetValues()[0].GetValue())
+		rndDeptRegResFQN := createRegisteredResourceValueFQN("", f.deptRegRes.GetName(), f.deptRegRes.GetValues()[0].GetValue())
+		topsecretClassRegResFQN := createRegisteredResourceValueFQN("", f.classificationRegRes.GetName(), f.classificationRegRes.GetValues()[0].GetValue())
 
 		resources := []*authz.Resource{
 			{
@@ -1118,8 +1235,8 @@ func (s *PDPTestSuite) Test_GetDecision_MultipleResources() {
 			"department": "rnd",
 		})
 
-		rndDeptRegResFQN := createRegisteredResourceValueFQN(f.deptRegRes.GetName(), f.deptRegRes.GetValues()[0].GetValue())
-		topsecretClassRegResFQN := createRegisteredResourceValueFQN(f.classificationRegRes.GetName(), f.classificationRegRes.GetValues()[0].GetValue())
+		rndDeptRegResFQN := createRegisteredResourceValueFQN("", f.deptRegRes.GetName(), f.deptRegRes.GetValues()[0].GetValue())
+		topsecretClassRegResFQN := createRegisteredResourceValueFQN("", f.classificationRegRes.GetName(), f.classificationRegRes.GetValues()[0].GetValue())
 
 		// Upper case both registered resource value FQNs for assurance FQNs will be case-normalized
 		resources := []*authz.Resource{
@@ -1166,8 +1283,8 @@ func (s *PDPTestSuite) Test_GetDecision_MultipleResources() {
 			"department": "finance",      // Not rnd
 		})
 
-		rndDeptRegResFQN := createRegisteredResourceValueFQN(f.deptRegRes.GetName(), f.deptRegRes.GetValues()[0].GetValue())
-		topsecretClassRegResFQN := createRegisteredResourceValueFQN(f.classificationRegRes.GetName(), f.classificationRegRes.GetValues()[0].GetValue())
+		rndDeptRegResFQN := createRegisteredResourceValueFQN("", f.deptRegRes.GetName(), f.deptRegRes.GetValues()[0].GetValue())
+		topsecretClassRegResFQN := createRegisteredResourceValueFQN("", f.classificationRegRes.GetName(), f.classificationRegRes.GetValues()[0].GetValue())
 
 		resources := []*authz.Resource{
 			{
@@ -1213,8 +1330,8 @@ func (s *PDPTestSuite) Test_GetDecision_MultipleResources() {
 			"department": "rnd", // subject mapping permits read/update
 		})
 
-		rndDeptRegResFQN := createRegisteredResourceValueFQN(f.deptRegRes.GetName(), f.deptRegRes.GetValues()[0].GetValue())
-		topsecretClassRegResFQN := createRegisteredResourceValueFQN(f.classificationRegRes.GetName(), f.classificationRegRes.GetValues()[0].GetValue())
+		rndDeptRegResFQN := createRegisteredResourceValueFQN("", f.deptRegRes.GetName(), f.deptRegRes.GetValues()[0].GetValue())
+		topsecretClassRegResFQN := createRegisteredResourceValueFQN("", f.classificationRegRes.GetName(), f.classificationRegRes.GetValues()[0].GetValue())
 
 		resources := []*authz.Resource{
 			{
@@ -1259,8 +1376,8 @@ func (s *PDPTestSuite) Test_GetDecision_MultipleResources() {
 			"department": "rnd", // subject mapping permits read/update
 		})
 
-		rndDeptRegResFQN := createRegisteredResourceValueFQN(f.deptRegRes.GetName(), f.deptRegRes.GetValues()[0].GetValue())
-		topsecretClassRegResFQN := createRegisteredResourceValueFQN(f.classificationRegRes.GetName(), f.classificationRegRes.GetValues()[0].GetValue())
+		rndDeptRegResFQN := createRegisteredResourceValueFQN("", f.deptRegRes.GetName(), f.deptRegRes.GetValues()[0].GetValue())
+		topsecretClassRegResFQN := createRegisteredResourceValueFQN("", f.classificationRegRes.GetName(), f.classificationRegRes.GetValues()[0].GetValue())
 
 		resources := []*authz.Resource{
 			{
@@ -1307,8 +1424,8 @@ func (s *PDPTestSuite) Test_GetDecision_MultipleResources() {
 			"department": "rnd",
 		})
 
-		rndDeptRegResFQN := createRegisteredResourceValueFQN(f.deptRegRes.GetName(), f.deptRegRes.GetValues()[0].GetValue())
-		topsecretClassRegResFQN := createRegisteredResourceValueFQN(f.classificationRegRes.GetName(), f.classificationRegRes.GetValues()[0].GetValue())
+		rndDeptRegResFQN := createRegisteredResourceValueFQN("", f.deptRegRes.GetName(), f.deptRegRes.GetValues()[0].GetValue())
+		topsecretClassRegResFQN := createRegisteredResourceValueFQN("", f.classificationRegRes.GetName(), f.classificationRegRes.GetValues()[0].GetValue())
 
 		resources := []*authz.Resource{
 			{
@@ -1363,6 +1480,7 @@ func (s *PDPTestSuite) Test_GetDecision_ReturnsDecisionRelatedEntitlements() {
 		[]*policy.SubjectMapping{f.topSecretMapping, f.engineeringMapping},
 		[]*policy.RegisteredResource{},
 		allowDirectEntitlements,
+		false,
 	)
 	s.Require().NoError(err)
 	s.Require().NotNil(pdp)
@@ -1425,6 +1543,7 @@ func (s *PDPTestSuite) Test_GetDecision_PartialActionEntitlement() {
 		[]*policy.Action{testActionRead, testActionPrint},
 		".properties.clearance",
 		[]string{"confidential"},
+		nil,
 	)
 
 	readConfidentialRegRes := &policy.RegisteredResource{
@@ -1455,6 +1574,7 @@ func (s *PDPTestSuite) Test_GetDecision_PartialActionEntitlement() {
 		},
 		".properties.clearance",
 		[]string{"public"},
+		nil,
 	)
 
 	// Create a view mapping for Project Alpha with view being a parent action of read and list
@@ -1464,6 +1584,7 @@ func (s *PDPTestSuite) Test_GetDecision_PartialActionEntitlement() {
 		[]*policy.Action{testActionView, actionCreate, actionRead},
 		".properties.project",
 		[]string{"alpha"},
+		nil,
 	)
 
 	// Create a PDP with relevant attributes and mappings
@@ -1480,6 +1601,7 @@ func (s *PDPTestSuite) Test_GetDecision_PartialActionEntitlement() {
 			readConfidentialRegRes, f.countryRegRes,
 		},
 		allowDirectEntitlements,
+		false,
 	)
 	s.Require().NoError(err)
 	s.Require().NotNil(pdp)
@@ -1599,6 +1721,7 @@ func (s *PDPTestSuite) Test_GetDecision_PartialActionEntitlement() {
 			[]*policy.Action{testActionRead}, // Only read is allowed
 			".properties.clearance",
 			[]string{"restricted"},
+			nil,
 		)
 		restrictedRegRes := &policy.RegisteredResource{
 			Name: "confidential-restricted",
@@ -1625,6 +1748,7 @@ func (s *PDPTestSuite) Test_GetDecision_PartialActionEntitlement() {
 			[]*policy.SubjectMapping{allActionsPublicMapping, restrictedMapping},
 			[]*policy.RegisteredResource{f.classificationRegRes, restrictedRegRes},
 			allowDirectEntitlements,
+			false,
 		)
 		s.Require().NoError(err)
 		s.Require().NotNil(classificationPDP)
@@ -1661,7 +1785,7 @@ func (s *PDPTestSuite) Test_GetDecision_PartialActionEntitlement() {
 			"clearance": "confidential",
 		})
 
-		readConfidentialRegResFQN := createRegisteredResourceValueFQN(readConfidentialRegRes.GetName(), readConfidentialRegRes.GetValues()[0].GetValue())
+		readConfidentialRegResFQN := createRegisteredResourceValueFQN("", readConfidentialRegRes.GetName(), readConfidentialRegRes.GetValues()[0].GetValue())
 
 		resources := []*authz.Resource{
 			{
@@ -1696,7 +1820,7 @@ func (s *PDPTestSuite) Test_GetDecision_PartialActionEntitlement() {
 			"country": []any{"uk"},
 		})
 
-		readCountryUKRegResFQN := createRegisteredResourceValueFQN(f.countryRegRes.GetName(), f.countryRegRes.GetValues()[1].GetValue())
+		readCountryUKRegResFQN := createRegisteredResourceValueFQN("", f.countryRegRes.GetName(), f.countryRegRes.GetValues()[1].GetValue())
 
 		resources := []*authz.Resource{
 			{
@@ -1743,6 +1867,7 @@ func (s *PDPTestSuite) Test_GetDecision_CombinedAttributeRules_SingleResource() 
 		},
 		[]*policy.RegisteredResource{},
 		allowDirectEntitlements,
+		false,
 	)
 	s.Require().NoError(err)
 	s.Require().NotNil(pdp)
@@ -2065,6 +2190,7 @@ func (s *PDPTestSuite) Test_GetDecision_AcrossNamespaces() {
 		[]*policy.Action{testActionRead, testActionUpdate},
 		".properties.project",
 		[]string{"beta"},
+		nil,
 	)
 
 	gammaMapping := createSimpleSubjectMapping(
@@ -2073,6 +2199,7 @@ func (s *PDPTestSuite) Test_GetDecision_AcrossNamespaces() {
 		[]*policy.Action{testActionRead, testActionCreate, testActionDelete},
 		".properties.project",
 		[]string{"gamma"},
+		nil,
 	)
 
 	onPremMapping := createSimpleSubjectMapping(
@@ -2081,6 +2208,7 @@ func (s *PDPTestSuite) Test_GetDecision_AcrossNamespaces() {
 		[]*policy.Action{testActionRead, testActionUpdate},
 		".properties.platform",
 		[]string{"onprem"},
+		nil,
 	)
 
 	hybridMapping := createSimpleSubjectMapping(
@@ -2089,6 +2217,7 @@ func (s *PDPTestSuite) Test_GetDecision_AcrossNamespaces() {
 		[]*policy.Action{testActionRead, testActionCreate, testActionUpdate, testActionDelete},
 		".properties.platform",
 		[]string{"hybrid"},
+		nil,
 	)
 
 	// Create a PDP with attributes and mappings from all namespaces
@@ -2104,6 +2233,7 @@ func (s *PDPTestSuite) Test_GetDecision_AcrossNamespaces() {
 		},
 		[]*policy.RegisteredResource{},
 		allowDirectEntitlements,
+		false,
 	)
 	s.Require().NoError(err)
 	s.Require().NotNil(pdp)
@@ -2384,6 +2514,336 @@ func (s *PDPTestSuite) Test_GetDecision_AcrossNamespaces() {
 	})
 }
 
+// Legacy behavior regression: without strict namespaced-policy enforcement,
+// action matching remains name-based and cross-namespace action names still match.
+func (s *PDPTestSuite) Test_GetDecision_LegacyBehavior_AllowsCrossNamespaceActionNameMatch() {
+	f := s.fixtures
+
+	baseNS := &policy.Namespace{Id: "11111111-1111-1111-1111-111111111111", Fqn: "https://" + testBaseNamespace}
+	secondaryNS := &policy.Namespace{Id: "22222222-2222-2222-2222-222222222222", Fqn: "https://" + testSecondaryNamespace}
+
+	f.classificationAttr.Namespace = baseNS
+	f.projectAttr.Namespace = secondaryNS
+
+	secretMapping := createSimpleSubjectMapping(
+		testClassSecretFQN,
+		"secret",
+		[]*policy.Action{{Name: actions.ActionNameRead, Namespace: baseNS}},
+		".properties.clearance",
+		[]string{"secret"},
+		baseNS,
+	)
+
+	projectAlphaWrongNamespace := createSimpleSubjectMapping(
+		testProjectAlphaFQN,
+		"alpha",
+		[]*policy.Action{{Name: actions.ActionNameRead, Namespace: baseNS}},
+		".properties.project",
+		[]string{"alpha"},
+		secondaryNS,
+	)
+
+	pdp, err := NewPolicyDecisionPoint(
+		s.T().Context(),
+		s.logger,
+		[]*policy.Attribute{f.classificationAttr, f.projectAttr},
+		[]*policy.SubjectMapping{secretMapping, projectAlphaWrongNamespace},
+		[]*policy.RegisteredResource{},
+		allowDirectEntitlements,
+		false,
+	)
+	s.Require().NoError(err)
+	s.Require().NotNil(pdp)
+
+	entity := s.createEntityWithProps("legacy-cross-ns-action-match", map[string]interface{}{
+		"clearance": "secret",
+		"project":   "alpha",
+	})
+
+	resource := createAttributeValueResource("mixed-namespaces-legacy", testClassSecretFQN, testProjectAlphaFQN)
+
+	decision, _, err := pdp.GetDecision(s.T().Context(), entity, testActionRead, []*authz.Resource{resource})
+	s.Require().NoError(err)
+	s.Require().NotNil(decision)
+
+	s.True(decision.AllPermitted, "legacy behavior should remain name-based until strict namespaced-policy mode is enabled")
+}
+
+// Desired strict-mode behavior (NamespacedPolicy=true):
+// if the same action name is only entitled in a different namespace than the evaluated value,
+// decisioning must fail closed.
+func (s *PDPTestSuite) Test_GetDecision_StrictMode_DeniesCrossNamespaceActionMatch() {
+	f := s.fixtures
+
+	baseNS := &policy.Namespace{Id: "11111111-1111-1111-1111-111111111111", Fqn: "https://" + testBaseNamespace}
+	secondaryNS := &policy.Namespace{Id: "22222222-2222-2222-2222-222222222222", Fqn: "https://" + testSecondaryNamespace}
+
+	f.classificationAttr.Namespace = baseNS
+	f.projectAttr.Namespace = secondaryNS
+
+	secretMapping := createSimpleSubjectMapping(
+		testClassSecretFQN,
+		"secret",
+		[]*policy.Action{{Name: actions.ActionNameRead, Namespace: baseNS}},
+		".properties.clearance",
+		[]string{"secret"},
+		baseNS,
+	)
+
+	projectAlphaWrongNamespace := createSimpleSubjectMapping(
+		testProjectAlphaFQN,
+		"alpha",
+		[]*policy.Action{{Name: actions.ActionNameRead, Namespace: baseNS}},
+		".properties.project",
+		[]string{"alpha"},
+		secondaryNS,
+	)
+
+	pdp, err := NewPolicyDecisionPoint(
+		s.T().Context(),
+		s.logger,
+		[]*policy.Attribute{f.classificationAttr, f.projectAttr},
+		[]*policy.SubjectMapping{secretMapping, projectAlphaWrongNamespace},
+		[]*policy.RegisteredResource{},
+		allowDirectEntitlements,
+		true,
+	)
+	s.Require().NoError(err)
+	s.Require().NotNil(pdp)
+
+	entity := s.createEntityWithProps("cross-ns-action-mismatch", map[string]interface{}{
+		"clearance": "secret",
+		"project":   "alpha",
+	})
+
+	resource := createAttributeValueResource("mixed-namespaces", testClassSecretFQN, testProjectAlphaFQN)
+
+	decision, _, err := pdp.GetDecision(s.T().Context(), entity, testActionRead, []*authz.Resource{resource})
+	s.Require().NoError(err)
+	s.Require().NotNil(decision)
+
+	s.False(decision.AllPermitted, "desired strict namespaced behavior: action should not match across namespaces")
+}
+
+func (s *PDPTestSuite) Test_GetDecision_StrictMode_SkipsUnnamespacedSubjectMappings() {
+	f := s.fixtures
+
+	baseNS := &policy.Namespace{Id: "11111111-1111-1111-1111-111111111111", Fqn: "https://" + testBaseNamespace}
+	f.classificationAttr.Namespace = baseNS
+
+	unnamespacedMapping := createSimpleSubjectMapping(
+		testClassSecretFQN,
+		"secret",
+		[]*policy.Action{{Name: actions.ActionNameRead, Namespace: baseNS}},
+		".properties.clearance",
+		[]string{"secret"},
+		nil,
+	)
+
+	pdp, err := NewPolicyDecisionPoint(
+		s.T().Context(),
+		s.logger,
+		[]*policy.Attribute{f.classificationAttr},
+		[]*policy.SubjectMapping{unnamespacedMapping},
+		[]*policy.RegisteredResource{},
+		allowDirectEntitlements,
+		true,
+	)
+	s.Require().NoError(err)
+	s.Require().NotNil(pdp)
+
+	entity := s.createEntityWithProps("strict-skip-unnamespaced-sm", map[string]interface{}{
+		"clearance": "secret",
+	})
+
+	resource := createAttributeValueResource("strict-skip-unnamespaced-sm-resource", testClassSecretFQN)
+
+	decision, _, err := pdp.GetDecision(s.T().Context(), entity, testActionRead, []*authz.Resource{resource})
+	s.Require().NoError(err)
+	s.Require().NotNil(decision)
+	s.False(decision.AllPermitted, "strict namespaced-policy mode should skip unnamespaced subject mappings")
+}
+
+func (s *PDPTestSuite) Test_GetDecision_LegacyBehavior_UsesUnnamespacedSubjectMappings() {
+	f := s.fixtures
+
+	baseNS := &policy.Namespace{Id: "11111111-1111-1111-1111-111111111111", Fqn: "https://" + testBaseNamespace}
+	f.classificationAttr.Namespace = baseNS
+
+	unnamespacedMapping := createSimpleSubjectMapping(
+		testClassSecretFQN,
+		"secret",
+		[]*policy.Action{{Name: actions.ActionNameRead, Namespace: baseNS}},
+		".properties.clearance",
+		[]string{"secret"},
+		nil,
+	)
+
+	pdp, err := NewPolicyDecisionPoint(
+		s.T().Context(),
+		s.logger,
+		[]*policy.Attribute{f.classificationAttr},
+		[]*policy.SubjectMapping{unnamespacedMapping},
+		[]*policy.RegisteredResource{},
+		allowDirectEntitlements,
+		false,
+	)
+	s.Require().NoError(err)
+	s.Require().NotNil(pdp)
+
+	entity := s.createEntityWithProps("legacy-uses-unnamespaced-sm", map[string]interface{}{
+		"clearance": "secret",
+	})
+
+	resource := createAttributeValueResource("legacy-uses-unnamespaced-sm-resource", testClassSecretFQN)
+
+	decision, _, err := pdp.GetDecision(s.T().Context(), entity, testActionRead, []*authz.Resource{resource})
+	s.Require().NoError(err)
+	s.Require().NotNil(decision)
+	s.True(decision.AllPermitted, "legacy mode should continue evaluating unnamespaced subject mappings")
+}
+
+func (s *PDPTestSuite) Test_GetDecision_StrictMode_UsesOnlyNamespacedSubjectMappings() {
+	f := s.fixtures
+
+	baseNS := &policy.Namespace{Id: "11111111-1111-1111-1111-111111111111", Fqn: "https://" + testBaseNamespace}
+	f.classificationAttr.Namespace = baseNS
+
+	unnamespacedMapping := createSimpleSubjectMapping(
+		testClassSecretFQN,
+		"secret",
+		[]*policy.Action{{Name: actions.ActionNameRead, Namespace: baseNS}},
+		".properties.clearance",
+		[]string{"secret"},
+		nil,
+	)
+
+	namespacedMapping := createSimpleSubjectMapping(
+		testClassSecretFQN,
+		"secret",
+		[]*policy.Action{{Name: actions.ActionNameCreate, Namespace: baseNS}},
+		".properties.clearance",
+		[]string{"secret"},
+		baseNS,
+	)
+
+	pdp, err := NewPolicyDecisionPoint(
+		s.T().Context(),
+		s.logger,
+		[]*policy.Attribute{f.classificationAttr},
+		[]*policy.SubjectMapping{unnamespacedMapping, namespacedMapping},
+		[]*policy.RegisteredResource{},
+		allowDirectEntitlements,
+		true,
+	)
+	s.Require().NoError(err)
+	s.Require().NotNil(pdp)
+
+	entity := s.createEntityWithProps("strict-namespaced-only-sm", map[string]interface{}{
+		"clearance": "secret",
+	})
+
+	resource := createAttributeValueResource("strict-namespaced-only-sm-resource", testClassSecretFQN)
+
+	readDecision, _, err := pdp.GetDecision(s.T().Context(), entity, testActionRead, []*authz.Resource{resource})
+	s.Require().NoError(err)
+	s.Require().NotNil(readDecision)
+	s.False(readDecision.AllPermitted, "strict mode should ignore unnamespaced read mapping")
+
+	createDecision, _, err := pdp.GetDecision(s.T().Context(), entity, testActionCreate, []*authz.Resource{resource})
+	s.Require().NoError(err)
+	s.Require().NotNil(createDecision)
+	s.True(createDecision.AllPermitted, "strict mode should keep namespaced mappings")
+}
+
+func (s *PDPTestSuite) Test_GetDecision_StrictMode_RequestActionIdentityMatrix() {
+	f := s.fixtures
+
+	namespaceA := &policy.Namespace{Id: "11111111-1111-1111-1111-111111111111", Fqn: "https://" + testBaseNamespace}
+	namespaceB := &policy.Namespace{Id: "22222222-2222-2222-2222-222222222222", Fqn: "https://" + testSecondaryNamespace}
+
+	f.classificationAttr.Namespace = namespaceA
+
+	const (
+		idNamespaceARead = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"
+		idNamespaceBRead = "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"
+	)
+
+	mapping := createSimpleSubjectMapping(
+		testClassSecretFQN,
+		"secret",
+		[]*policy.Action{
+			{Id: idNamespaceARead, Name: actions.ActionNameRead, Namespace: namespaceA},
+		},
+		".properties.clearance",
+		[]string{"secret"},
+		namespaceA,
+	)
+
+	pdp, err := NewPolicyDecisionPoint(
+		s.T().Context(),
+		s.logger,
+		[]*policy.Attribute{f.classificationAttr},
+		[]*policy.SubjectMapping{mapping},
+		[]*policy.RegisteredResource{},
+		allowDirectEntitlements,
+		true,
+	)
+	s.Require().NoError(err)
+	s.Require().NotNil(pdp)
+
+	entity := s.createEntityWithProps("strict-action-identity-matrix", map[string]interface{}{
+		"clearance": "secret",
+	})
+	resource := createAttributeValueResource("strict-action-identity-matrix-resource", testClassSecretFQN)
+
+	tests := []struct {
+		name      string
+		action    *policy.Action
+		permitted bool
+	}{
+		{
+			name:      "id match in required namespace permits",
+			action:    &policy.Action{Id: idNamespaceARead, Name: actions.ActionNameRead},
+			permitted: true,
+		},
+		{
+			name:      "non-existent action id denies",
+			action:    &policy.Action{Id: idNamespaceBRead, Name: actions.ActionNameRead},
+			permitted: false,
+		},
+		{
+			name:      "id match plus wrong request namespace denies",
+			action:    &policy.Action{Id: idNamespaceARead, Name: actions.ActionNameRead, Namespace: namespaceB},
+			permitted: false,
+		},
+		{
+			name:      "name plus matching namespace permits",
+			action:    &policy.Action{Name: actions.ActionNameRead, Namespace: namespaceA},
+			permitted: true,
+		},
+		{
+			name:      "name plus wrong namespace denies",
+			action:    &policy.Action{Name: actions.ActionNameRead, Namespace: namespaceB},
+			permitted: false,
+		},
+		{
+			name:      "name only resolves contextually and permits",
+			action:    &policy.Action{Name: actions.ActionNameRead},
+			permitted: true,
+		},
+	}
+
+	for _, tt := range tests {
+		s.Run(tt.name, func() {
+			decision, _, decisionErr := pdp.GetDecision(s.T().Context(), entity, tt.action, []*authz.Resource{resource})
+			s.Require().NoError(decisionErr)
+			s.Require().NotNil(decision)
+			s.Equal(tt.permitted, decision.AllPermitted)
+		})
+	}
+}
+
 func (s *PDPTestSuite) Test_GetDecisionRegisteredResource_MultipleResources() {
 	f := s.fixtures
 
@@ -2458,12 +2918,13 @@ func (s *PDPTestSuite) Test_GetDecisionRegisteredResource_MultipleResources() {
 		[]*policy.SubjectMapping{f.secretMapping, f.topSecretMapping, f.confidentialMapping, f.publicMapping, f.engineeringMapping, f.financeMapping},
 		[]*policy.RegisteredResource{f.networkRegRes, regResS3BucketEntity},
 		allowDirectEntitlements,
+		false,
 	)
 	s.Require().NoError(err)
 	s.Require().NotNil(pdp)
 
 	s.Run("Multiple resources and entitled actions/attributes - full access", func() {
-		entityRegResFQN := createRegisteredResourceValueFQN(regResS3BucketEntity.GetName(), "ts-engineering")
+		entityRegResFQN := createRegisteredResourceValueFQN("", regResS3BucketEntity.GetName(), "ts-engineering")
 		resources := createResourcePerFqn(testClassSecretFQN, testDeptEngineeringFQN, testNetworkPrivateFQN, testNetworkPublicFQN)
 
 		decision, _, err := pdp.GetDecisionRegisteredResource(s.T().Context(), entityRegResFQN, testActionRead, resources)
@@ -2488,7 +2949,7 @@ func (s *PDPTestSuite) Test_GetDecisionRegisteredResource_MultipleResources() {
 	})
 
 	s.Run("Multiple resources and entitled actions/attributes of varied casing - full access", func() {
-		entityRegResFQN := createRegisteredResourceValueFQN(regResS3BucketEntity.GetName(), "ts-engineering")
+		entityRegResFQN := createRegisteredResourceValueFQN("", regResS3BucketEntity.GetName(), "ts-engineering")
 		secretFQN := strings.ToUpper(testClassSecretFQN)
 		networkPrivateFQN := strings.ToUpper(testNetworkPrivateFQN)
 
@@ -2516,7 +2977,7 @@ func (s *PDPTestSuite) Test_GetDecisionRegisteredResource_MultipleResources() {
 	})
 
 	s.Run("Multiple resources and unentitled attributes - full denial", func() {
-		entityRegResFQN := createRegisteredResourceValueFQN(regResS3BucketEntity.GetName(), "confidential-finance")
+		entityRegResFQN := createRegisteredResourceValueFQN("", regResS3BucketEntity.GetName(), "confidential-finance")
 
 		resources := createResourcePerFqn(testClassSecretFQN, testDeptEngineeringFQN, testNetworkPrivateFQN, testNetworkPublicFQN)
 
@@ -2547,7 +3008,7 @@ func (s *PDPTestSuite) Test_GetDecisionRegisteredResource_MultipleResources() {
 	})
 
 	s.Run("Multiple resources and unentitled actions - full denial", func() {
-		entityRegResFQN := createRegisteredResourceValueFQN(regResS3BucketEntity.GetName(), "ts-engineering")
+		entityRegResFQN := createRegisteredResourceValueFQN("", regResS3BucketEntity.GetName(), "ts-engineering")
 
 		resources := createResourcePerFqn(testDeptEngineeringFQN, testClassSecretFQN, testNetworkPrivateFQN, testNetworkPublicFQN)
 
@@ -2569,7 +3030,7 @@ func (s *PDPTestSuite) Test_GetDecisionRegisteredResource_MultipleResources() {
 	})
 
 	s.Run("Multiple resources - partial access", func() {
-		entityRegResFQN := createRegisteredResourceValueFQN(regResS3BucketEntity.GetName(), "secret-engineering")
+		entityRegResFQN := createRegisteredResourceValueFQN("", regResS3BucketEntity.GetName(), "secret-engineering")
 
 		resources := createResourcePerFqn(testClassSecretFQN, testDeptFinanceFQN, testNetworkPrivateFQN, testNetworkPublicFQN)
 
@@ -2632,6 +3093,7 @@ func (s *PDPTestSuite) Test_GetEntitlements() {
 		},
 		[]*policy.RegisteredResource{},
 		allowDirectEntitlements,
+		false,
 	)
 	s.Require().NoError(err)
 	s.Require().NotNil(pdp)
@@ -2888,6 +3350,7 @@ func (s *PDPTestSuite) Test_GetEntitlements_AdvancedHierarchy() {
 		[]*policy.Action{testActionRead},
 		".properties.levels[]",
 		[]string{"top"},
+		nil,
 	)
 	upperMiddleMapping := createSimpleSubjectMapping(
 		upperMiddleValueFQN,
@@ -2895,6 +3358,7 @@ func (s *PDPTestSuite) Test_GetEntitlements_AdvancedHierarchy() {
 		[]*policy.Action{testActionCreate},
 		".properties.levels[]",
 		[]string{"upper-middle"},
+		nil,
 	)
 	middleMapping := createSimpleSubjectMapping(
 		middleValueFQN,
@@ -2902,6 +3366,7 @@ func (s *PDPTestSuite) Test_GetEntitlements_AdvancedHierarchy() {
 		[]*policy.Action{testActionUpdate, {Name: actionNameTransmit}},
 		".properties.levels[]",
 		[]string{"middle"},
+		nil,
 	)
 	lowerMiddleMapping := createSimpleSubjectMapping(
 		lowerMiddleValueFQN,
@@ -2909,6 +3374,7 @@ func (s *PDPTestSuite) Test_GetEntitlements_AdvancedHierarchy() {
 		[]*policy.Action{testActionDelete},
 		".properties.levels[]",
 		[]string{"lower-middle"},
+		nil,
 	)
 	bottomMapping := createSimpleSubjectMapping(
 		bottomValueFQN,
@@ -2916,6 +3382,7 @@ func (s *PDPTestSuite) Test_GetEntitlements_AdvancedHierarchy() {
 		[]*policy.Action{{Name: customActionGather}},
 		".properties.levels[]",
 		[]string{"bottom"},
+		nil,
 	)
 
 	// Create a PDP with the hierarchy attribute and mappings
@@ -2932,6 +3399,7 @@ func (s *PDPTestSuite) Test_GetEntitlements_AdvancedHierarchy() {
 		},
 		[]*policy.RegisteredResource{},
 		allowDirectEntitlements,
+		false,
 	)
 	s.Require().NoError(err)
 	s.Require().NotNil(pdp)
@@ -3011,6 +3479,7 @@ func (s *PDPTestSuite) Test_GetEntitlementsRegisteredResource() {
 		[]*policy.SubjectMapping{},
 		[]*policy.RegisteredResource{f.regRes},
 		allowDirectEntitlements,
+		false,
 	)
 	s.Require().NoError(err)
 	s.Require().NotNil(pdp)
@@ -3028,7 +3497,7 @@ func (s *PDPTestSuite) Test_GetEntitlementsRegisteredResource() {
 	})
 
 	s.Run("Valid but non-existent registered resource value FQN", func() {
-		validButNonexistentFQN := createRegisteredResourceValueFQN("test-res-not-exist", "test-value-not-exist")
+		validButNonexistentFQN := createRegisteredResourceValueFQN("", "test-res-not-exist", "test-value-not-exist")
 		entitlements, err := pdp.GetEntitlementsRegisteredResource(
 			s.T().Context(),
 			validButNonexistentFQN,
@@ -3249,8 +3718,8 @@ func createSimpleSubjectConditionSet(selector string, values []string) *policy.S
 }
 
 // createSimpleSubjectMapping creates a complete subject mapping with a simple condition
-func createSimpleSubjectMapping(attrValueFQN string, attrValue string, actions []*policy.Action, selector string, values []string) *policy.SubjectMapping {
-	return &policy.SubjectMapping{
+func createSimpleSubjectMapping(attrValueFQN string, attrValue string, actions []*policy.Action, selector string, values []string, namespace *policy.Namespace) *policy.SubjectMapping {
+	mapping := &policy.SubjectMapping{
 		AttributeValue: &policy.Value{
 			Fqn:   attrValueFQN,
 			Value: attrValue,
@@ -3258,6 +3727,11 @@ func createSimpleSubjectMapping(attrValueFQN string, attrValue string, actions [
 		SubjectConditionSet: createSimpleSubjectConditionSet(selector, values),
 		Actions:             actions,
 	}
+	if namespace != nil {
+		mapping.Namespace = namespace
+		mapping.SubjectConditionSet.Namespace = namespace
+	}
+	return mapping
 }
 
 // Helper function to test decision results
@@ -3287,6 +3761,7 @@ func (s *PDPTestSuite) Test_GetDecision_NonExistentAttributeFQN() {
 		[]*policy.SubjectMapping{f.secretMapping, f.topSecretMapping},
 		[]*policy.RegisteredResource{},
 		allowDirectEntitlements,
+		false,
 	)
 	s.Require().NoError(err)
 	s.Require().NotNil(pdp)
@@ -3390,6 +3865,7 @@ func (s *PDPTestSuite) Test_GetDecision_PartialFQNsInResource() {
 		[]*policy.SubjectMapping{f.secretMapping, f.topSecretMapping, f.confidentialMapping},
 		[]*policy.RegisteredResource{},
 		allowDirectEntitlements,
+		false,
 	)
 	s.Require().NoError(err)
 	s.Require().NotNil(pdp)
@@ -3438,6 +3914,7 @@ func (s *PDPTestSuite) Test_GetDecisionRegisteredResource_NonExistentFQN() {
 		[]*policy.SubjectMapping{f.secretMapping},
 		[]*policy.RegisteredResource{f.classificationRegRes}, // Only classification registered resource
 		allowDirectEntitlements,
+		false,
 	)
 	s.Require().NoError(err)
 	s.Require().NotNil(pdp)
@@ -3447,7 +3924,7 @@ func (s *PDPTestSuite) Test_GetDecisionRegisteredResource_NonExistentFQN() {
 			"clearance": "secret",
 		})
 
-		nonExistentRegResFQN := createRegisteredResourceValueFQN("special-system", "classified")
+		nonExistentRegResFQN := createRegisteredResourceValueFQN("", "special-system", "classified")
 		resources := []*authz.Resource{
 			{
 				Resource: &authz.Resource_RegisteredResourceValueFqn{
@@ -3476,7 +3953,7 @@ func (s *PDPTestSuite) Test_GetDecisionRegisteredResource_NonExistentFQN() {
 			"clearance": "secret",
 		})
 
-		nonExistentRegResFQN := createRegisteredResourceValueFQN("secret-system", "classified")
+		nonExistentRegResFQN := createRegisteredResourceValueFQN("", "secret-system", "classified")
 		resources := []*authz.Resource{
 			{
 				Resource: &authz.Resource_RegisteredResourceValueFqn{
@@ -3523,6 +4000,7 @@ func (s *PDPTestSuite) Test_GetDecision_NoPolicies() {
 		[]*policy.SubjectMapping{},
 		[]*policy.RegisteredResource{},
 		allowDirectEntitlements,
+		false,
 	)
 	s.Require().NoError(err)
 	s.Require().NotNil(pdp)
@@ -3606,6 +4084,7 @@ func (s *PDPTestSuite) Test_GetDecision_DirectEntitlements() {
 		[]*policy.SubjectMapping{},
 		[]*policy.RegisteredResource{},
 		true, // Allow direct entitlements
+		false,
 	)
 	s.Require().NoError(err)
 	s.Require().NotNil(pdp)
@@ -3698,6 +4177,73 @@ func (s *PDPTestSuite) Test_GetDecision_DirectEntitlements() {
 			// not entitled to FQN
 			attr2ValueFQN: false,
 		})
+	})
+}
+
+func (s *PDPTestSuite) Test_GetDecision_DirectEntitlements_StrictNamespacedPolicy() {
+	ctx := s.T().Context()
+
+	namespace1 := &policy.Namespace{Id: "11111111-1111-1111-1111-111111111111", Fqn: "https://demo.com"}
+	namespace2 := &policy.Namespace{Id: "22222222-2222-2222-2222-222222222222", Fqn: "https://demo-two.com"}
+
+	attr1 := &policy.Attribute{
+		Fqn:       "https://demo.com/attr/adhoc",
+		Rule:      policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
+		Namespace: namespace1,
+		Values: []*policy.Value{
+			{Fqn: "https://demo.com/attr/adhoc/value/direct_entitlement_1", Value: "direct_entitlement_1"},
+		},
+	}
+	attr2 := &policy.Attribute{
+		Fqn:       "https://demo-two.com/attr/adhoc_2",
+		Rule:      policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
+		Namespace: namespace2,
+		Values: []*policy.Value{
+			{Fqn: "https://demo-two.com/attr/adhoc_2/value/direct_entitlement_2", Value: "direct_entitlement_2"},
+		},
+	}
+
+	attr1ValueFQN := attr1.GetValues()[0].GetFqn()
+	attr2ValueFQN := attr2.GetValues()[0].GetFqn()
+
+	pdp, err := NewPolicyDecisionPoint(
+		ctx,
+		s.logger,
+		[]*policy.Attribute{attr1, attr2},
+		[]*policy.SubjectMapping{},
+		[]*policy.RegisteredResource{},
+		true,
+		true,
+	)
+	s.Require().NoError(err)
+
+	entityRep := &entityresolutionV2.EntityRepresentation{
+		DirectEntitlements: []*entityresolutionV2.DirectEntitlement{
+			{AttributeValueFqn: attr1ValueFQN, Actions: []string{actions.ActionNameCreate}},
+			{AttributeValueFqn: attr2ValueFQN, Actions: []string{actions.ActionNameCreate}},
+		},
+	}
+
+	s.Run("permits when direct entitlement action resolves to required namespace", func() {
+		decision, _, decisionErr := pdp.GetDecision(ctx, entityRep, testActionCreate, []*authz.Resource{
+			createAttributeValueResource(attr1ValueFQN, attr1ValueFQN),
+			createAttributeValueResource(attr2ValueFQN, attr2ValueFQN),
+		})
+		s.Require().NoError(decisionErr)
+		s.Require().NotNil(decision)
+		s.True(decision.AllPermitted)
+	})
+
+	s.Run("denies when explicit request namespace mismatches", func() {
+		decision, _, decisionErr := pdp.GetDecision(ctx, entityRep, &policy.Action{
+			Name:      actions.ActionNameCreate,
+			Namespace: namespace1,
+		}, []*authz.Resource{
+			createAttributeValueResource(attr2ValueFQN, attr2ValueFQN),
+		})
+		s.Require().NoError(decisionErr)
+		s.Require().NotNil(decision)
+		s.False(decision.AllPermitted)
 	})
 }
 

@@ -1,6 +1,8 @@
 package auth
 
 import (
+	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"strings"
@@ -10,15 +12,26 @@ import (
 	stringadapter "github.com/casbin/casbin/v2/persist/string-adapter"
 	"github.com/lestrrat-go/jwx/v2/jwt"
 	"github.com/opentdf/platform/service/logger"
-	"github.com/opentdf/platform/service/pkg/util"
+	"github.com/opentdf/platform/service/pkg/authz"
 
 	_ "embed"
 )
 
 var (
-	rolePrefix  = "role:"
-	defaultRole = "unknown"
+	rolePrefix          = "role:"
+	defaultRole         = "unknown"
+	ErrPermissionDenied = errors.New("permission denied")
 )
+
+type EnforcementResult struct {
+	Allowed     bool
+	CasbinAuthz CasbinAuthzLog
+}
+
+type CasbinAuthzLog struct {
+	ConfiguredGroupsClaim string
+	SubjectGroups         []string
+}
 
 //go:embed casbin_policy.csv
 var builtinPolicy string
@@ -35,12 +48,14 @@ type Enforcer struct {
 
 	isDefaultPolicy bool
 	isDefaultModel  bool
+	roleProvider    authz.RoleProvider
 }
 
 type casbinSubject []string
 
 type CasbinConfig struct {
 	PolicyConfig
+	RoleProvider authz.RoleProvider
 }
 
 // NewCasbinEnforcer creates a new casbin enforcer
@@ -95,7 +110,8 @@ func NewCasbinEnforcer(c CasbinConfig, logger *logger.Logger) (*Enforcer, error)
 		c.Adapter = stringadapter.NewAdapter(c.Csv)
 	}
 
-	logger.Debug("creating casbin enforcer",
+	logger.Debug(
+		"creating casbin enforcer",
 		slog.Any("config", c),
 		slog.Bool("isDefaultModel", isDefaultModel),
 		slog.Bool("isBuiltinPolicy", isDefaultPolicy),
@@ -113,6 +129,11 @@ func NewCasbinEnforcer(c CasbinConfig, logger *logger.Logger) (*Enforcer, error)
 		return nil, fmt.Errorf("failed to create casbin enforcer: %w", err)
 	}
 
+	roleProvider := c.RoleProvider
+	if roleProvider == nil {
+		roleProvider = newJWTClaimsRoleProvider(c.GroupsClaim, logger)
+	}
+
 	return &Enforcer{
 		Enforcer:        e,
 		Config:          c,
@@ -120,21 +141,34 @@ func NewCasbinEnforcer(c CasbinConfig, logger *logger.Logger) (*Enforcer, error)
 		isDefaultPolicy: isDefaultPolicy,
 		isDefaultModel:  isDefaultModel,
 		logger:          logger,
+		roleProvider:    roleProvider,
 	}, nil
 }
 
-// Enforce checks if the token is allowed to perform the action on the resource.
-// The userInfo parameter is accepted for interface compatibility but not used in v1.
-// This method implements authz.V1Enforcer interface.
-func (e *Enforcer) Enforce(token jwt.Token, _ []byte, resource, action string) bool {
+// casbinEnforce is a helper function to enforce the policy with casbin
+// TODO implement a common type so this can be used for both http and grpc
+func (e *Enforcer) Enforce(ctx context.Context, token jwt.Token, req authz.RoleRequest) (EnforcementResult, error) {
 	// extract the role claim from the token
-	s := e.buildSubjectFromToken(token)
+	s, subjectGroups, err := e.buildSubjectFromToken(ctx, token, req)
+	result := EnforcementResult{
+		CasbinAuthz: CasbinAuthzLog{
+			ConfiguredGroupsClaim: e.Config.GroupsClaim,
+			SubjectGroups:         subjectGroups,
+		},
+	}
+	if err != nil {
+		e.logger.Warn("role provider error", slog.Any("error", err))
+		return result, ErrPermissionDenied
+	}
 	s = append(s, rolePrefix+defaultRole)
 
+	resource := req.Resource
+	action := req.Action
 	for _, info := range s {
 		allowed, err := e.Enforcer.Enforce(info, resource, action)
 		if err != nil {
-			e.logger.Error("enforce by role error",
+			e.logger.Error(
+				"enforce by role error",
 				slog.String("subject_info", info),
 				slog.String("action", action),
 				slog.String("resource", resource),
@@ -142,42 +176,41 @@ func (e *Enforcer) Enforce(token jwt.Token, _ []byte, resource, action string) b
 			)
 		}
 		if allowed {
-			e.logger.Debug("allowed by policy",
+			e.logger.Debug(
+				"allowed by policy",
 				slog.String("subject_info", info),
 				slog.String("action", action),
 				slog.String("resource", resource),
 			)
-			return true
+			result.Allowed = true
+			return result, nil
 		}
 	}
-	e.logger.Debug("permission denied by policy",
+	e.logger.Debug(
+		"permission denied by policy",
 		slog.Any("subject_info", s),
 		slog.String("action", action),
 		slog.String("resource", resource),
 	)
-	return false
+	return result, ErrPermissionDenied
 }
 
-// BuildSubjectFromTokenAndUserInfo builds the subject info from the token.
-// The userInfo parameter is accepted for interface compatibility but not used in v1.
-// This method implements authz.V1Enforcer interface.
-func (e *Enforcer) BuildSubjectFromTokenAndUserInfo(token jwt.Token, _ []byte) []string {
-	return e.buildSubjectFromToken(token)
-}
-
-// buildSubjectFromToken extracts subject information from a JWT token
-func (e *Enforcer) buildSubjectFromToken(t jwt.Token) casbinSubject {
+func (e *Enforcer) buildSubjectFromToken(ctx context.Context, t jwt.Token, req authz.RoleRequest) (casbinSubject, []string, error) {
 	var subject string
 	info := casbinSubject{}
 
 	e.logger.Debug("building subject from token")
-	roles := e.extractRolesFromToken(t)
+	roles, err := e.roleProvider.Roles(ctx, t, req)
+	if err != nil {
+		return nil, nil, err
+	}
 
 	if claim, found := t.Get(e.Config.UserNameClaim); found {
 		sub, ok := claim.(string)
 		subject = sub
 		if !ok {
-			e.logger.Warn("username claim not of type string",
+			e.logger.Warn(
+				"username claim not of type string",
 				slog.String("claim", e.Config.UserNameClaim),
 				slog.Any("claims", claim),
 			)
@@ -186,65 +219,26 @@ func (e *Enforcer) buildSubjectFromToken(t jwt.Token) casbinSubject {
 	}
 	info = append(info, roles...)
 	info = append(info, subject)
-	return info
+	return info, append([]string(nil), roles...), nil
 }
 
-// extractRolesFromToken extracts roles from a jwt.Token based on the configured claim path
-func (e *Enforcer) extractRolesFromToken(t jwt.Token) []string {
-	e.logger.Debug("extracting roles from token")
-	roles := []string{}
+type v1EnforcerAdapter struct {
+	enforcer *Enforcer
+}
 
-	roleClaim := e.Config.GroupsClaim
+func (a v1EnforcerAdapter) Enforce(token jwt.Token, userInfo []byte, resource, action string) bool {
+	result, err := a.enforcer.Enforce(context.Background(), token, authz.RoleRequest{
+		Resource: resource,
+		Action:   action,
+	})
+	return err == nil && result.Allowed
+}
 
-	selectors := strings.Split(roleClaim, ".")
-	claim, exists := t.Get(selectors[0])
-	if !exists {
-		e.logger.Warn("claim not found",
-			slog.String("claim", roleClaim),
-		)
+func (a v1EnforcerAdapter) BuildSubjectFromTokenAndUserInfo(token jwt.Token, userInfo []byte) []string {
+	subjects, _, err := a.enforcer.buildSubjectFromToken(context.Background(), token, authz.RoleRequest{})
+	if err != nil {
+		a.enforcer.logger.Warn("failed to extract subjects", slog.Any("error", err))
 		return nil
 	}
-	e.logger.Debug("root claim found",
-		slog.String("claim", roleClaim),
-		slog.Any("claims", claim),
-	)
-	// use dotnotation if the claim is nested
-	if len(selectors) > 1 {
-		claimMap, ok := claim.(map[string]interface{})
-		if !ok {
-			e.logger.Warn("claim is not of type map[string]interface{}",
-				slog.String("claim", roleClaim),
-				slog.Any("claims", claim),
-			)
-			return nil
-		}
-		claim = util.Dotnotation(claimMap, strings.Join(selectors[1:], "."))
-		if claim == nil {
-			e.logger.Warn("claim not found",
-				slog.String("claim", roleClaim),
-				slog.Any("claims", claim),
-			)
-			return nil
-		}
-	}
-
-	// check the type of the role claim
-	switch v := claim.(type) {
-	case string:
-		roles = append(roles, v)
-	case []interface{}:
-		for _, rr := range v {
-			if r, ok := rr.(string); ok {
-				roles = append(roles, r)
-			}
-		}
-	default:
-		e.logger.Warn("could not get claim type",
-			slog.String("selector", roleClaim),
-			slog.Any("claims", claim),
-		)
-		return nil
-	}
-
-	return roles
+	return subjects
 }

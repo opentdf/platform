@@ -2,7 +2,9 @@ package integration
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
+	"slices"
 	"strconv"
 	"testing"
 	"time"
@@ -10,6 +12,7 @@ import (
 	"github.com/opentdf/platform/lib/identifier"
 	"github.com/opentdf/platform/protocol/go/common"
 	"github.com/opentdf/platform/protocol/go/policy"
+	"github.com/opentdf/platform/protocol/go/policy/actions"
 	"github.com/opentdf/platform/protocol/go/policy/obligations"
 	"github.com/opentdf/platform/service/internal/fixtures"
 	"github.com/opentdf/platform/service/pkg/db"
@@ -100,6 +103,44 @@ func (s *ObligationsSuite) Test_CreateObligation_Succeeds() {
 	obl = s.createObligationByFQN(namespaceFQN, oblName, nil)
 	s.assertObligationBasics(obl, oblName, namespaceID, namespace.Name, namespaceFQN)
 	s.deleteObligations([]string{obl.GetId()})
+}
+
+func (s *ObligationsSuite) Test_CreateObligation_WithoutValues_DoesNotReturnValues() {
+	namespaceID, namespaceFQN, namespace := s.getNamespaceData(nsExampleCom)
+	name := fmt.Sprintf("%s-no-values-%d", oblName, time.Now().UnixNano())
+
+	createdObl := s.createObligation(namespaceID, name, nil)
+	defer s.deleteObligations([]string{createdObl.GetId()})
+
+	s.assertObligationBasics(createdObl, name, namespaceID, namespace.Name, namespaceFQN)
+	s.Empty(createdObl.GetValues())
+
+	gotObl, err := s.db.PolicyClient.GetObligation(s.ctx, &obligations.GetObligationRequest{
+		Id: createdObl.GetId(),
+	})
+	s.Require().NoError(err)
+	s.Require().NotNil(gotObl)
+	s.assertObligationBasics(gotObl, name, namespaceID, namespace.Name, namespaceFQN)
+	s.Empty(gotObl.GetValues())
+
+	oblList, _, err := s.db.PolicyClient.ListObligations(s.ctx, &obligations.ListObligationsRequest{
+		NamespaceId: namespaceID,
+	})
+	s.Require().NoError(err)
+	s.Require().NotNil(oblList)
+
+	found := false
+	for _, obl := range oblList {
+		if obl.GetId() != createdObl.GetId() {
+			continue
+		}
+
+		found = true
+		s.assertObligationBasics(obl, name, namespaceID, namespace.Name, namespaceFQN)
+		s.Empty(obl.GetValues())
+		break
+	}
+	s.True(found)
 }
 
 func (s *ObligationsSuite) Test_CreateObligation_Fails() {
@@ -457,6 +498,32 @@ func (s *ObligationsSuite) Test_ListObligations_Succeeds() {
 
 	// Cleanup: Delete all created obligations
 	s.deleteObligations(createdOblIDs)
+}
+
+func (s *ObligationsSuite) Test_ListObligations_OrdersByCreatedAt_Succeeds() {
+	namespaceID, _, _ := s.getNamespaceData(nsExampleCom)
+	suffix := time.Now().UnixNano()
+
+	create := func(i int) *policy.Obligation {
+		name := fmt.Sprintf("order-test-obl-%d-%d", i, suffix)
+		return s.createObligation(namespaceID, name, nil)
+	}
+
+	first := create(1)
+	time.Sleep(5 * time.Millisecond)
+	second := create(2)
+	time.Sleep(5 * time.Millisecond)
+	third := create(3)
+
+	defer s.deleteObligations([]string{first.GetId(), second.GetId(), third.GetId()})
+
+	oblList, _, err := s.db.PolicyClient.ListObligations(s.ctx, &obligations.ListObligationsRequest{
+		NamespaceId: namespaceID,
+	})
+	s.Require().NoError(err)
+	s.NotNil(oblList)
+
+	assertIDsInOrder(s.T(), oblList, func(obl *policy.Obligation) string { return obl.GetId() }, third.GetId(), second.GetId(), first.GetId())
 }
 
 func (s *ObligationsSuite) Test_ListObligations_Fails() {
@@ -1462,10 +1529,15 @@ func (s *ObligationsSuite) Test_UpdateObligationValue_WithTriggers_Succeeds() {
 	})
 	s.Require().NoError(err)
 	s.NotNil(updatedOblValue)
+	readAction, err := s.db.PolicyClient.GetAction(s.ctx, &actions.GetActionRequest{
+		Identifier:  &actions.GetActionRequest_Name{Name: "read"},
+		NamespaceId: triggerSetup.namespace.ID,
+	})
+	s.Require().NoError(err)
 	s.assertObligationValueBasics(updatedOblValue, oblValPrefix+"test-1-updated", triggerSetup.namespace.ID, triggerSetup.namespace.Name, httpsPrefix+triggerSetup.namespace.Name)
 	s.assertTriggers(updatedOblValue, []*TriggerAssertion{
 		{
-			expectedAction:            triggerSetup.action,
+			expectedAction:            readAction,
 			expectedObligation:        triggerSetup.createdObl,
 			expectedAttributeValue:    triggerSetup.attributeValues[1],
 			expectedAttributeValueFQN: "https://example.com/attr/attr1/value/value2",
@@ -1590,6 +1662,328 @@ func (s *ObligationsSuite) Test_DeleteObligationValue_Fails() {
 	s.deleteObligations([]string{createdObl.GetId()})
 }
 
+// Test_ListObligations_EmptyNamespaceId_ReturnsAll validates that empty string parameters
+// are properly treated as NULL
+func (s *ObligationsSuite) Test_ListObligations_EmptyNamespaceId_ReturnsAll() {
+	// Create obligations in different namespaces
+	namespaceID1, _, _ := s.getNamespaceData(nsExampleCom)
+	namespaceID2, _, _ := s.getNamespaceData(nsExampleNet)
+
+	obl1 := s.createObligation(namespaceID1, oblName+"-empty-test-1", nil)
+	obl2 := s.createObligation(namespaceID2, oblName+"-empty-test-2", nil)
+
+	defer s.deleteObligations([]string{obl1.GetId(), obl2.GetId()})
+
+	// List with empty namespace_id should return all obligations
+	allObligations, _, err := s.db.PolicyClient.ListObligations(s.ctx, &obligations.ListObligationsRequest{
+		NamespaceId: "", // Empty string should be treated as NULL
+	})
+	s.Require().NoError(err)
+	s.NotNil(allObligations)
+	s.GreaterOrEqual(len(allObligations), 2, "Should return at least our two test obligations")
+
+	// Verify our test obligations are in the results
+	found1, found2 := false, false
+	for _, obl := range allObligations {
+		if obl.GetId() == obl1.GetId() {
+			found1 = true
+		}
+		if obl.GetId() == obl2.GetId() {
+			found2 = true
+		}
+	}
+	s.True(found1, "Should find obligation from namespace 1")
+	s.True(found2, "Should find obligation from namespace 2")
+}
+
+// Test_GetObligation_ByIdAndFqn_ReturnSameResult validates that getObligation works correctly
+// with both ID and FQN lookups
+func (s *ObligationsSuite) Test_GetObligation_ByIdAndFqn_ReturnSameResult() {
+	namespaceID, namespaceFQN, _ := s.getNamespaceData(nsExampleCom)
+	createdObl := s.createObligation(namespaceID, oblName+"-dual-lookup-test", oblVals)
+
+	defer s.deleteObligations([]string{createdObl.GetId()})
+
+	// Get by ID
+	oblByID, err := s.db.PolicyClient.GetObligation(s.ctx, &obligations.GetObligationRequest{
+		Id: createdObl.GetId(),
+	})
+	s.Require().NoError(err)
+	s.NotNil(oblByID)
+
+	// Get by FQN
+	oblByFQN, err := s.db.PolicyClient.GetObligation(s.ctx, &obligations.GetObligationRequest{
+		Fqn: namespaceFQN + "/obl/" + oblName + "-dual-lookup-test",
+	})
+	s.Require().NoError(err)
+	s.NotNil(oblByFQN)
+
+	// Verify both return the same obligation
+	s.True(proto.Equal(oblByID, oblByFQN))
+}
+
+// Sort by Name
+
+func (s *ObligationsSuite) Test_ListObligations_SortByName_ASC() {
+	ids := s.createSortTestObligations([]string{"aaa-sort", "bbb-sort", "ccc-sort"})
+	defer s.deleteObligations(ids)
+
+	listRsp, _, err := s.db.PolicyClient.ListObligations(s.ctx, &obligations.ListObligationsRequest{
+		Sort: []*obligations.ObligationsSort{
+			{Field: obligations.SortObligationsType_SORT_OBLIGATIONS_TYPE_NAME, Direction: policy.SortDirection_SORT_DIRECTION_ASC},
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(listRsp)
+
+	// aaa < bbb < ccc in ASC order
+	assertIDsInOrder(s.T(), listRsp, func(o *policy.Obligation) string { return o.GetId() }, ids[0], ids[1], ids[2])
+}
+
+func (s *ObligationsSuite) Test_ListObligations_SortByName_DESC() {
+	ids := s.createSortTestObligations([]string{"aaa-sortdesc", "bbb-sortdesc", "ccc-sortdesc"})
+	defer s.deleteObligations(ids)
+
+	listRsp, _, err := s.db.PolicyClient.ListObligations(s.ctx, &obligations.ListObligationsRequest{
+		Sort: []*obligations.ObligationsSort{
+			{Field: obligations.SortObligationsType_SORT_OBLIGATIONS_TYPE_NAME, Direction: policy.SortDirection_SORT_DIRECTION_DESC},
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(listRsp)
+
+	// ccc > bbb > aaa in DESC order
+	assertIDsInOrder(s.T(), listRsp, func(o *policy.Obligation) string { return o.GetId() }, ids[2], ids[1], ids[0])
+}
+
+// Sort by FQN
+
+func (s *ObligationsSuite) Test_ListObligations_SortByFqn_ASC() {
+	// Create obligations across two namespaces to prove FQN sort uses the full
+	// constructed FQN (namespace_fqn/obl/name), not just the name.
+	// "example.com" < "example.net" lexicographically, so even zzz in example.com
+	// sorts before aaa in example.net. Within example.com, name breaks the tie.
+	comID, _, _ := s.getNamespaceData(nsExampleCom)
+	netID, _, _ := s.getNamespaceData(nsExampleNet)
+	suffix := fmt.Sprintf("fqnasc-%d", time.Now().UnixNano())
+
+	oblComAAA := s.createObligation(comID, "aaa-"+suffix, nil)
+	oblComZZZ := s.createObligation(comID, "zzz-"+suffix, nil)
+	oblNetAAA := s.createObligation(netID, "aaa-"+suffix, nil)
+	defer s.deleteObligations([]string{oblComAAA.GetId(), oblComZZZ.GetId(), oblNetAAA.GetId()})
+
+	listRsp, _, err := s.db.PolicyClient.ListObligations(s.ctx, &obligations.ListObligationsRequest{
+		Sort: []*obligations.ObligationsSort{
+			{Field: obligations.SortObligationsType_SORT_OBLIGATIONS_TYPE_FQN, Direction: policy.SortDirection_SORT_DIRECTION_ASC},
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(listRsp)
+
+	// example.com/obl/aaa < example.com/obl/zzz < example.net/obl/aaa
+	assertIDsInOrder(s.T(), listRsp, func(o *policy.Obligation) string { return o.GetId() }, oblComAAA.GetId(), oblComZZZ.GetId(), oblNetAAA.GetId())
+}
+
+func (s *ObligationsSuite) Test_ListObligations_SortByFqn_DESC() {
+	comID, _, _ := s.getNamespaceData(nsExampleCom)
+	netID, _, _ := s.getNamespaceData(nsExampleNet)
+	suffix := fmt.Sprintf("fqndesc-%d", time.Now().UnixNano())
+
+	oblComAAA := s.createObligation(comID, "aaa-"+suffix, nil)
+	oblComZZZ := s.createObligation(comID, "zzz-"+suffix, nil)
+	oblNetAAA := s.createObligation(netID, "aaa-"+suffix, nil)
+	defer s.deleteObligations([]string{oblComAAA.GetId(), oblComZZZ.GetId(), oblNetAAA.GetId()})
+
+	listRsp, _, err := s.db.PolicyClient.ListObligations(s.ctx, &obligations.ListObligationsRequest{
+		Sort: []*obligations.ObligationsSort{
+			{Field: obligations.SortObligationsType_SORT_OBLIGATIONS_TYPE_FQN, Direction: policy.SortDirection_SORT_DIRECTION_DESC},
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(listRsp)
+
+	// example.net/obl/aaa > example.com/obl/zzz > example.com/obl/aaa
+	assertIDsInOrder(s.T(), listRsp, func(o *policy.Obligation) string { return o.GetId() }, oblNetAAA.GetId(), oblComZZZ.GetId(), oblComAAA.GetId())
+}
+
+// Sort by CreatedAt
+
+func (s *ObligationsSuite) Test_ListObligations_SortByCreatedAt_ASC() {
+	ids := s.createSortTestObligations([]string{"createdasc-obl-0", "createdasc-obl-1", "createdasc-obl-2"})
+	defer s.deleteObligations(ids)
+
+	listRsp, _, err := s.db.PolicyClient.ListObligations(s.ctx, &obligations.ListObligationsRequest{
+		Sort: []*obligations.ObligationsSort{
+			{Field: obligations.SortObligationsType_SORT_OBLIGATIONS_TYPE_CREATED_AT, Direction: policy.SortDirection_SORT_DIRECTION_ASC},
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(listRsp)
+
+	// oldest first in ASC order
+	assertIDsInOrder(s.T(), listRsp, func(o *policy.Obligation) string { return o.GetId() }, ids[0], ids[1], ids[2])
+}
+
+func (s *ObligationsSuite) Test_ListObligations_SortByCreatedAt_DESC() {
+	ids := s.createSortTestObligations([]string{"createddesc-obl-0", "createddesc-obl-1", "createddesc-obl-2"})
+	defer s.deleteObligations(ids)
+
+	listRsp, _, err := s.db.PolicyClient.ListObligations(s.ctx, &obligations.ListObligationsRequest{
+		Sort: []*obligations.ObligationsSort{
+			{Field: obligations.SortObligationsType_SORT_OBLIGATIONS_TYPE_CREATED_AT, Direction: policy.SortDirection_SORT_DIRECTION_DESC},
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(listRsp)
+
+	// newest first in DESC order
+	assertIDsInOrder(s.T(), listRsp, func(o *policy.Obligation) string { return o.GetId() }, ids[2], ids[1], ids[0])
+}
+
+// Sort by UpdatedAt
+
+func (s *ObligationsSuite) Test_ListObligations_SortByUpdatedAt_DESC() {
+	ids := s.createSortTestObligations([]string{"upd-sort-obl-0", "upd-sort-obl-1", "upd-sort-obl-2"})
+	defer s.deleteObligations(ids)
+
+	// Update the first obligation so its updated_at is the most recent
+	time.Sleep(5 * time.Millisecond)
+	_, err := s.db.PolicyClient.UpdateObligation(s.ctx, &obligations.UpdateObligationRequest{
+		Id: ids[0],
+		Metadata: &common.MetadataMutable{
+			Labels: map[string]string{"updated": "true"},
+		},
+		MetadataUpdateBehavior: common.MetadataUpdateEnum_METADATA_UPDATE_ENUM_REPLACE,
+	})
+	s.Require().NoError(err)
+
+	listRsp, _, err := s.db.PolicyClient.ListObligations(s.ctx, &obligations.ListObligationsRequest{
+		Sort: []*obligations.ObligationsSort{
+			{Field: obligations.SortObligationsType_SORT_OBLIGATIONS_TYPE_UPDATED_AT, Direction: policy.SortDirection_SORT_DIRECTION_DESC},
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(listRsp)
+
+	// The updated obligation (ids[0]) should appear before the others
+	assertIDsInOrder(s.T(), listRsp, func(o *policy.Obligation) string { return o.GetId() }, ids[0], ids[2], ids[1])
+}
+
+func (s *ObligationsSuite) Test_ListObligations_SortByUpdatedAt_ASC() {
+	ids := s.createSortTestObligations([]string{"upd-sort-asc-obl-0", "upd-sort-asc-obl-1", "upd-sort-asc-obl-2"})
+	defer s.deleteObligations(ids)
+
+	// Update the last obligation so its updated_at is the most recent
+	time.Sleep(5 * time.Millisecond)
+	_, err := s.db.PolicyClient.UpdateObligation(s.ctx, &obligations.UpdateObligationRequest{
+		Id: ids[2],
+		Metadata: &common.MetadataMutable{
+			Labels: map[string]string{"updated": "true"},
+		},
+		MetadataUpdateBehavior: common.MetadataUpdateEnum_METADATA_UPDATE_ENUM_REPLACE,
+	})
+	s.Require().NoError(err)
+
+	listRsp, _, err := s.db.PolicyClient.ListObligations(s.ctx, &obligations.ListObligationsRequest{
+		Sort: []*obligations.ObligationsSort{
+			{Field: obligations.SortObligationsType_SORT_OBLIGATIONS_TYPE_UPDATED_AT, Direction: policy.SortDirection_SORT_DIRECTION_ASC},
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(listRsp)
+
+	// The updated obligation (ids[2]) should appear last in ASC order
+	assertIDsInOrder(s.T(), listRsp, func(o *policy.Obligation) string { return o.GetId() }, ids[0], ids[1], ids[2])
+}
+
+// Sort by Unspecified (fallback to default)
+
+func (s *ObligationsSuite) Test_ListObligations_SortTieBreaker_CreatedAtWithIDFallback() {
+	namespaceID, _, _ := s.getNamespaceData(nsExampleCom)
+	suffix := time.Now().UnixNano()
+	ids := make([]string, 3)
+	for i := range 3 {
+		name := fmt.Sprintf("tiebreaker-obl-%d-%d", i, suffix)
+		obl := s.createObligation(namespaceID, name, nil)
+		ids[i] = obl.GetId()
+	}
+	defer s.deleteObligations(ids)
+
+	s.Require().NoError(forceCreatedAtTie(s.ctx, s.db, "obligation_definitions", ids))
+
+	sorted := slices.Sorted(slices.Values(ids))
+
+	listRsp, _, err := s.db.PolicyClient.ListObligations(s.ctx, &obligations.ListObligationsRequest{
+		Sort: []*obligations.ObligationsSort{
+			{Field: obligations.SortObligationsType_SORT_OBLIGATIONS_TYPE_CREATED_AT, Direction: policy.SortDirection_SORT_DIRECTION_ASC},
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(listRsp)
+
+	assertIDsInOrder(s.T(), listRsp, func(o *policy.Obligation) string { return o.GetId() }, sorted[0], sorted[1], sorted[2])
+}
+
+func (s *ObligationsSuite) Test_ListObligations_SortByUnspecifiedField_DefaultsToCreatedAt() {
+	ids := s.createSortTestObligations([]string{"unspecified-field-obl-0", "unspecified-field-obl-1", "unspecified-field-obl-2"})
+	defer s.deleteObligations(ids)
+
+	listRsp, _, err := s.db.PolicyClient.ListObligations(s.ctx, &obligations.ListObligationsRequest{
+		Sort: []*obligations.ObligationsSort{
+			{Field: obligations.SortObligationsType_SORT_OBLIGATIONS_TYPE_UNSPECIFIED, Direction: policy.SortDirection_SORT_DIRECTION_ASC},
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(listRsp)
+
+	// Field defaults to created_at, explicit ASC is preserved
+	assertIDsInOrder(s.T(), listRsp, func(o *policy.Obligation) string { return o.GetId() }, ids[0], ids[1], ids[2])
+}
+
+func (s *ObligationsSuite) Test_ListObligations_SortByUnspecifiedDirection_DefaultsToDESC() {
+	ids := s.createSortTestObligations([]string{"unspecified-dir-obl-0", "unspecified-dir-obl-1", "unspecified-dir-obl-2"})
+	defer s.deleteObligations(ids)
+
+	listRsp, _, err := s.db.PolicyClient.ListObligations(s.ctx, &obligations.ListObligationsRequest{
+		Sort: []*obligations.ObligationsSort{
+			{Field: obligations.SortObligationsType_SORT_OBLIGATIONS_TYPE_CREATED_AT, Direction: policy.SortDirection_SORT_DIRECTION_UNSPECIFIED},
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(listRsp)
+
+	// Direction defaults to DESC, explicit created_at field is preserved
+	assertIDsInOrder(s.T(), listRsp, func(o *policy.Obligation) string { return o.GetId() }, ids[2], ids[1], ids[0])
+}
+
+func (s *ObligationsSuite) Test_ListObligations_SortByBothUnspecified_DefaultsToCreatedAtDESC() {
+	ids := s.createSortTestObligations([]string{"both-unspecified-obl-0", "both-unspecified-obl-1", "both-unspecified-obl-2"})
+	defer s.deleteObligations(ids)
+
+	listRsp, _, err := s.db.PolicyClient.ListObligations(s.ctx, &obligations.ListObligationsRequest{
+		Sort: []*obligations.ObligationsSort{
+			{Field: obligations.SortObligationsType_SORT_OBLIGATIONS_TYPE_UNSPECIFIED, Direction: policy.SortDirection_SORT_DIRECTION_UNSPECIFIED},
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(listRsp)
+
+	// Both default: created_at DESC
+	assertIDsInOrder(s.T(), listRsp, func(o *policy.Obligation) string { return o.GetId() }, ids[2], ids[1], ids[0])
+}
+
+func (s *ObligationsSuite) Test_ListObligations_SortOmitted() {
+	ids := s.createSortTestObligations([]string{"sort-omitted-obl-0", "sort-omitted-obl-1", "sort-omitted-obl-2"})
+	defer s.deleteObligations(ids)
+
+	listRsp, _, err := s.db.PolicyClient.ListObligations(s.ctx, &obligations.ListObligationsRequest{})
+	s.Require().NoError(err)
+	s.NotNil(listRsp)
+
+	// No sort provided: created_at DESC
+	assertIDsInOrder(s.T(), listRsp, func(o *policy.Obligation) string { return o.GetId() }, ids[2], ids[1], ids[0])
+}
+
 // Helper functions for common operations
 
 func (s *ObligationsSuite) getNamespaceData(nsName string) (string, string, fixtures.FixtureDataNamespace) {
@@ -1641,7 +2035,11 @@ func (s *ObligationsSuite) assertObligationValueBasics(oblValue *policy.Obligati
 func (s *ObligationsSuite) setupTriggerTests() *TriggerSetup {
 	namespaceID, _, namespace := s.getNamespaceData(nsExampleCom)
 	createdObl := s.createObligation(namespaceID, oblName, nil)
-	triggerAction := s.f.GetStandardAction("read")
+	triggerAction, err := s.db.PolicyClient.CreateAction(s.ctx, &actions.CreateActionRequest{
+		Name:        fmt.Sprintf("trigger-action-%d", time.Now().UnixNano()),
+		NamespaceId: namespaceID,
+	})
+	s.Require().NoError(err)
 	triggerAttributeValue := s.f.GetAttributeValueKey("example.com/attr/attr1/value/value1")
 	triggerAttributeValue2 := s.f.GetAttributeValueKey("example.com/attr/attr1/value/value2")
 
@@ -1726,7 +2124,14 @@ func (s *ObligationsSuite) createObligationValueWithTriggers(obligationID string
 		triggers = customTriggers
 	} else {
 		// Default triggers for backward compatibility
-		triggerAction := s.f.GetStandardAction("read")
+		obl, err := s.db.PolicyClient.GetObligation(s.ctx, &obligations.GetObligationRequest{Id: obligationID})
+		s.Require().NoError(err)
+
+		triggerAction, err := s.db.PolicyClient.CreateAction(s.ctx, &actions.CreateActionRequest{
+			Name:        fmt.Sprintf("trigger-action-%d", time.Now().UnixNano()),
+			NamespaceId: obl.GetNamespace().GetId(),
+		})
+		s.Require().NoError(err)
 		triggerAttributeValue := s.f.GetAttributeValueKey("example.com/attr/attr1/value/value1")
 		triggerAttributeValue2 := s.f.GetAttributeValueKey("example.com/attr/attr1/value/value2")
 
@@ -1824,62 +2229,20 @@ func (s *ObligationsSuite) assertObligationValuesSpecificTriggers(obl *policy.Ob
 	}
 }
 
-// Test_ListObligations_EmptyNamespaceId_ReturnsAll validates that empty string parameters
-// are properly treated as NULL
-func (s *ObligationsSuite) Test_ListObligations_EmptyNamespaceId_ReturnsAll() {
-	// Create obligations in different namespaces
-	namespaceID1, _, _ := s.getNamespaceData(nsExampleCom)
-	namespaceID2, _, _ := s.getNamespaceData(nsExampleNet)
+// Sort test helpers
 
-	obl1 := s.createObligation(namespaceID1, oblName+"-empty-test-1", nil)
-	obl2 := s.createObligation(namespaceID2, oblName+"-empty-test-2", nil)
-
-	defer s.deleteObligations([]string{obl1.GetId(), obl2.GetId()})
-
-	// List with empty namespace_id should return all obligations
-	allObligations, _, err := s.db.PolicyClient.ListObligations(s.ctx, &obligations.ListObligationsRequest{
-		NamespaceId: "", // Empty string should be treated as NULL
-	})
-	s.Require().NoError(err)
-	s.NotNil(allObligations)
-	s.GreaterOrEqual(len(allObligations), 2, "Should return at least our two test obligations")
-
-	// Verify our test obligations are in the results
-	found1, found2 := false, false
-	for _, obl := range allObligations {
-		if obl.GetId() == obl1.GetId() {
-			found1 = true
+// createSortTestObligations creates obligations with the given prefixes, adding 5ms gaps
+// between creations for distinct timestamps. Returns the obligation IDs in creation order.
+func (s *ObligationsSuite) createSortTestObligations(prefixes []string) []string {
+	namespaceID, _, _ := s.getNamespaceData(nsExampleCom)
+	ids := make([]string, len(prefixes))
+	for i, prefix := range prefixes {
+		if i > 0 {
+			time.Sleep(5 * time.Millisecond)
 		}
-		if obl.GetId() == obl2.GetId() {
-			found2 = true
-		}
+		name := fmt.Sprintf("%s-%d", prefix, time.Now().UnixNano())
+		obl := s.createObligation(namespaceID, name, nil)
+		ids[i] = obl.GetId()
 	}
-	s.True(found1, "Should find obligation from namespace 1")
-	s.True(found2, "Should find obligation from namespace 2")
-}
-
-// Test_GetObligation_ByIdAndFqn_ReturnSameResult validates that getObligation works correctly
-// with both ID and FQN lookups
-func (s *ObligationsSuite) Test_GetObligation_ByIdAndFqn_ReturnSameResult() {
-	namespaceID, namespaceFQN, _ := s.getNamespaceData(nsExampleCom)
-	createdObl := s.createObligation(namespaceID, oblName+"-dual-lookup-test", oblVals)
-
-	defer s.deleteObligations([]string{createdObl.GetId()})
-
-	// Get by ID
-	oblByID, err := s.db.PolicyClient.GetObligation(s.ctx, &obligations.GetObligationRequest{
-		Id: createdObl.GetId(),
-	})
-	s.Require().NoError(err)
-	s.NotNil(oblByID)
-
-	// Get by FQN
-	oblByFQN, err := s.db.PolicyClient.GetObligation(s.ctx, &obligations.GetObligationRequest{
-		Fqn: namespaceFQN + "/obl/" + oblName + "-dual-lookup-test",
-	})
-	s.Require().NoError(err)
-	s.NotNil(oblByFQN)
-
-	// Verify both return the same obligation
-	s.True(proto.Equal(oblByID, oblByFQN))
+	return ids
 }

@@ -3,10 +3,16 @@
 ----------------------------------------------------------------
 
 -- name: listAttributesDetail :many
+WITH params AS (
+    SELECT
+        COALESCE(NULLIF(@sort_field::text, ''), 'created_at') AS resolved_field,
+        COALESCE(NULLIF(@sort_direction::text, ''), 'DESC') AS resolved_direction
+)
 SELECT
     ad.id,
     ad.name as attribute_name,
     ad.rule,
+    ad.allow_traversal,
     JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', ad.metadata -> 'labels', 'created_at', ad.created_at, 'updated_at', ad.updated_at)) AS metadata,
     ad.namespace_id,
     ad.active,
@@ -18,7 +24,7 @@ SELECT
             'active', avt.active,
             'fqn', CONCAT(fqns.fqn, '/value/', avt.value)
         ) ORDER BY ARRAY_POSITION(ad.values_order, avt.id)
-    ) AS values,
+    ) FILTER (WHERE avt.id IS NOT NULL) AS values,
     fqns.fqn,
     COUNT(*) OVER() AS total
 FROM attribute_definitions ad
@@ -33,19 +39,34 @@ LEFT JOIN (
   GROUP BY av.id
 ) avt ON avt.attribute_definition_id = ad.id
 LEFT JOIN attribute_fqns fqns ON fqns.attribute_id = ad.id AND fqns.value_id IS NULL
+CROSS JOIN params p
 WHERE
     (sqlc.narg('active')::BOOLEAN IS NULL OR ad.active = sqlc.narg('active')) AND
-    (sqlc.narg('namespace_id')::uuid IS NULL OR ad.namespace_id = sqlc.narg('namespace_id')::uuid) AND 
-    (sqlc.narg('namespace_name')::text IS NULL OR n.name = sqlc.narg('namespace_name')::text) 
-GROUP BY ad.id, n.name, fqns.fqn
-LIMIT @limit_ 
-OFFSET @offset_; 
+    (sqlc.narg('namespace_id')::uuid IS NULL OR ad.namespace_id = sqlc.narg('namespace_id')::uuid) AND
+    (sqlc.narg('namespace_name')::text IS NULL OR n.name = sqlc.narg('namespace_name')::text)
+GROUP BY ad.id, n.name, fqns.fqn, p.resolved_field, p.resolved_direction
+ORDER BY
+    CASE WHEN p.resolved_field = 'name' AND p.resolved_direction = 'ASC' THEN ad.name END ASC,
+    CASE WHEN p.resolved_field = 'name' AND p.resolved_direction = 'DESC' THEN ad.name END DESC,
+    CASE WHEN p.resolved_field = 'created_at' AND p.resolved_direction = 'ASC' THEN ad.created_at END ASC,
+    CASE WHEN p.resolved_field = 'created_at' AND p.resolved_direction = 'DESC' THEN ad.created_at END DESC,
+    CASE WHEN p.resolved_field = 'updated_at' AND p.resolved_direction = 'ASC' THEN ad.updated_at END ASC,
+    CASE WHEN p.resolved_field = 'updated_at' AND p.resolved_direction = 'DESC' THEN ad.updated_at END DESC,
+    ad.id ASC
+LIMIT @limit_
+OFFSET @offset_;
 
 -- name: listAttributesSummary :many
+WITH params AS (
+    SELECT
+        COALESCE(NULLIF(@sort_field::text, ''), 'created_at') AS resolved_field,
+        COALESCE(NULLIF(@sort_direction::text, ''), 'DESC') AS resolved_direction
+)
 SELECT
     ad.id,
     ad.name as attribute_name,
     ad.rule,
+    ad.allow_traversal,
     JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', ad.metadata -> 'labels', 'created_at', ad.created_at, 'updated_at', ad.updated_at)) AS metadata,
     ad.namespace_id,
     ad.active,
@@ -53,10 +74,19 @@ SELECT
     COUNT(*) OVER() AS total
 FROM attribute_definitions ad
 LEFT JOIN attribute_namespaces n ON n.id = ad.namespace_id
+CROSS JOIN params p
 WHERE ad.namespace_id = $1
-GROUP BY ad.id, n.name
-LIMIT @limit_ 
-OFFSET @offset_; 
+GROUP BY ad.id, n.name, p.resolved_field, p.resolved_direction
+ORDER BY
+    CASE WHEN p.resolved_field = 'name' AND p.resolved_direction = 'ASC' THEN ad.name END ASC,
+    CASE WHEN p.resolved_field = 'name' AND p.resolved_direction = 'DESC' THEN ad.name END DESC,
+    CASE WHEN p.resolved_field = 'created_at' AND p.resolved_direction = 'ASC' THEN ad.created_at END ASC,
+    CASE WHEN p.resolved_field = 'created_at' AND p.resolved_direction = 'DESC' THEN ad.created_at END DESC,
+    CASE WHEN p.resolved_field = 'updated_at' AND p.resolved_direction = 'ASC' THEN ad.updated_at END ASC,
+    CASE WHEN p.resolved_field = 'updated_at' AND p.resolved_direction = 'DESC' THEN ad.updated_at END DESC,
+    ad.id ASC
+LIMIT @limit_
+OFFSET @offset_;
 
 -- name: listAttributesByDefOrValueFqns :many
 -- get the attribute definition for the provided value or definition fqn
@@ -66,8 +96,10 @@ WITH target_definition AS (
         ad.namespace_id,
         ad.name,
         ad.rule,
+        ad.allow_traversal,
         ad.active,
         ad.values_order,
+        ad.created_at,
         JSONB_AGG(
 	        DISTINCT JSONB_BUILD_OBJECT(
 	            'id', kas.id,
@@ -102,7 +134,7 @@ WITH target_definition AS (
     ) defk ON ad.id = defk.definition_id
     WHERE fqns.fqn = ANY(@fqns::TEXT[]) 
         AND ad.active = TRUE
-    GROUP BY ad.id, defk.keys
+    GROUP BY ad.id, ad.created_at, defk.keys
 ),
 namespaces AS (
 	SELECT
@@ -263,13 +295,14 @@ values AS (
         INNER JOIN key_access_servers kas ON kask.key_access_server_id = kas.id
         GROUP BY k.value_id
     ) value_keys ON av.id = value_keys.value_id                        
-	WHERE av.active = TRUE
+	WHERE (av.active = TRUE OR sqlc.arg('include_inactive_values')::BOOLEAN = TRUE)
 	GROUP BY av.attribute_definition_id
 )
 SELECT
 	td.id,
 	td.name,
     td.rule,
+    td.allow_traversal,
 	td.active,
 	n.namespace,
 	fqns.fqn,
@@ -280,13 +313,15 @@ FROM target_definition td
 INNER JOIN attribute_fqns fqns ON td.id = fqns.attribute_id
 INNER JOIN namespaces n ON td.namespace_id = n.id
 LEFT JOIN values ON td.id = values.attribute_definition_id
-WHERE fqns.value_id IS NULL;
+WHERE fqns.value_id IS NULL
+ORDER BY td.created_at DESC;
 
 -- name: getAttribute :one
 SELECT
     ad.id,
     ad.name as attribute_name,
     ad.rule,
+    ad.allow_traversal,
     JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', ad.metadata -> 'labels', 'created_at', ad.created_at, 'updated_at', ad.updated_at)) AS metadata,
     ad.namespace_id,
     ad.active,
@@ -298,7 +333,7 @@ SELECT
             'active', avt.active,
             'fqn', CONCAT(fqns.fqn, '/value/', avt.value)
         ) ORDER BY ARRAY_POSITION(ad.values_order, avt.id)
-    ) AS values,
+    ) FILTER (WHERE avt.id IS NOT NULL) AS values,
     JSONB_AGG(
         DISTINCT JSONB_BUILD_OBJECT(
             'id', kas.id,
@@ -347,8 +382,8 @@ WHERE (sqlc.narg('id')::uuid IS NULL OR ad.id = sqlc.narg('id')::uuid)
 GROUP BY ad.id, n.name, fqns.fqn, defk.keys;
 
 -- name: createAttribute :one
-INSERT INTO attribute_definitions (namespace_id, name, rule, metadata)
-VALUES (@namespace_id, @name, @rule, @metadata) 
+INSERT INTO attribute_definitions (namespace_id, name, rule, metadata, allow_traversal)
+VALUES (@namespace_id, @name, @rule, @metadata, @allow_traversal) 
 RETURNING id;
 
 -- updateAttribute: Unsafe and Safe Updates both
@@ -359,7 +394,8 @@ SET
     rule = COALESCE(sqlc.narg('rule'), rule),
     values_order = COALESCE(sqlc.narg('values_order'), values_order),
     metadata = COALESCE(sqlc.narg('metadata'), metadata),
-    active = COALESCE(sqlc.narg('active'), active)
+    active = COALESCE(sqlc.narg('active'), active),
+    allow_traversal = COALESCE(sqlc.narg('allow_traversal'), allow_traversal)
 WHERE id = $1;
 
 -- name: deleteAttribute :execrows

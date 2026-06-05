@@ -4,7 +4,7 @@ package policy.attributes;
 
 import "buf/validate/validate.proto";
 import "common/common.proto";
-import "google/api/annotations.proto";
+import "google/protobuf/wrappers.proto";
 import "policy/objects.proto";
 import "policy/selectors.proto";
 
@@ -62,6 +62,18 @@ message ValueKey {
    Attribute Service Definitions
 */
 
+enum SortAttributesType {
+  SORT_ATTRIBUTES_TYPE_UNSPECIFIED = 0;
+  SORT_ATTRIBUTES_TYPE_NAME = 1;
+  SORT_ATTRIBUTES_TYPE_CREATED_AT = 2;
+  SORT_ATTRIBUTES_TYPE_UPDATED_AT = 3;
+}
+
+message AttributesSort {
+  SortAttributesType field = 1 [(buf.validate.field).enum.defined_only = true];
+  policy.SortDirection direction = 2 [(buf.validate.field).enum.defined_only = true];
+}
+
 message ListAttributesRequest {
   // Optional
   // ACTIVE by default when not specified
@@ -72,6 +84,12 @@ message ListAttributesRequest {
 
   // Optional
   policy.PageRequest pagination = 10;
+  // Optional - CONSTRAINT: max 1 item
+  // Sort defaults:
+  //   - direction UNSPECIFIED defaults to DESC for the specified field
+  //   - field UNSPECIFIED defaults to created_at with the specified direction
+  //   - both UNSPECIFIED or sort omitted defaults to created_at DESC
+  repeated AttributesSort sort = 11 [(buf.validate.field).repeated.max_items = 1];
 }
 message ListAttributesResponse {
   repeated policy.Attribute attributes = 1;
@@ -144,6 +162,14 @@ message CreateAttributeRequest {
       }
     }
   }];
+
+  // Optional
+  // Setting allow_traversal=true allows TDF creation to be front-loaded, meaning a customer
+  // can create encrypted content with an attribute definitions key mapping before
+  // creating the attribute values needed to decrypt.
+  // Content will be able to be encrypted with missing attribute values,
+  // but will not be able to be decrypted until such attribute values exist.
+  google.protobuf.BoolValue allow_traversal = 5;
 
   // Optional
   common.MetadataMutable metadata = 100;
@@ -225,6 +251,17 @@ message ListAttributeValuesResponse {
   policy.PageResponse pagination = 10;
 }
 
+message AttributeValueObligationTriggerRequest {
+  // Required. Existing obligation value to associate with the newly created attribute value.
+  common.IdFqnIdentifier obligation_value = 1 [(buf.validate.field).required = true];
+  // Required. Action that, together with the newly created attribute value, triggers the obligation value.
+  common.IdNameIdentifier action = 2 [(buf.validate.field).required = true];
+  // Optional. Request context for the obligation trigger.
+  policy.RequestContext context = 11;
+  // Optional. Common metadata for the obligation trigger.
+  common.MetadataMutable metadata = 100;
+}
+
 message CreateAttributeValueRequest {
   // Required
   string attribute_id = 1 [(buf.validate.field).string.uuid = true];
@@ -242,6 +279,10 @@ message CreateAttributeValueRequest {
   // deprecated members on values
   reserved "members";
   reserved 3;
+
+  // Optional
+  // Existing obligation values to trigger for the newly created attribute value.
+  repeated AttributeValueObligationTriggerRequest obligation_triggers = 11;
 
   // Optional
   // Common metadata
@@ -403,7 +444,10 @@ service AttributesService {
   rpc ListAttributes(ListAttributesRequest) returns (ListAttributesResponse) {
     option idempotency_level = NO_SIDE_EFFECTS;
   }
+  // Deprecated
+  // Use GetAttribute
   rpc ListAttributeValues(ListAttributeValuesRequest) returns (ListAttributeValuesResponse) {
+    option deprecated = true;
     option idempotency_level = NO_SIDE_EFFECTS;
   }
 
@@ -411,7 +455,6 @@ service AttributesService {
     option idempotency_level = NO_SIDE_EFFECTS;
   }
   rpc GetAttributeValuesByFqns(GetAttributeValuesByFqnsRequest) returns (GetAttributeValuesByFqnsResponse) {
-    option (google.api.http) = {get: "/attributes/*/fqn"};
     option idempotency_level = NO_SIDE_EFFECTS;
   }
 

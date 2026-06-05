@@ -86,6 +86,23 @@ go install github.com/sudorandom/protoc-gen-connect-openapi@latest
 
 Make sure your Go bin directory (usually `$HOME/go/bin`) is in your `PATH`.
 
+## Cross-Platform Integration Testing (xtests)
+
+The [opentdf/tests](https://github.com/opentdf/tests) repo contains cross-SDK compatibility tests that validate platform changes against Go, Java, and JavaScript SDKs. Xtests run automatically on every platform PR via the `platform-xtest` CI job.
+
+### Running xtests against a platform feature branch
+
+To manually trigger xtests against your platform changes before merging:
+
+1. Go to the **Actions** tab in [opentdf/tests](https://github.com/opentdf/tests/actions)
+2. Find the **xtest** workflow
+3. Click the **"Run workflow"** dropdown on the right
+4. Set **"Use workflow from"** to the xtest branch to run (`main`, or a companion xtest branch if you have test changes)
+5. Set **"platform ref branch"** to the HEAD commit SHA of your platform feature branch
+6. Click **Run workflow**
+
+This is especially useful when your platform changes affect SDK error handling, KAS behavior, or the rewrap flow — areas where cross-SDK compatibility matters.
+
 ## Advice for Code Contributors
 
 * Make sure to run our linters with `make lint`

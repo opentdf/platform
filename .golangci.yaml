@@ -186,9 +186,31 @@ linters:
       - linters:
           - goimport
         text: http://www.apache.org/licenses/LICENSE-2.0
+      # otdfctl: defer refactoring-level lint fixes to follow-up
+      - path: otdfctl/
+        linters:
+          - contextcheck
+        text: should pass the context parameter
+      - path: otdfctl/
+        linters:
+          - revive
+        text: unused-parameter
+      - path: otdfctl/
+        linters:
+          - revive
+        text: unexported-return
+      - path: otdfctl/
+        linters:
+          - revive
+        text: var-naming
+      - path: otdfctl/
+        linters:
+          - nolintlint
+        text: "exhaustive"
     paths:
       - .*\.pb\.go
       - .*\.pb\.gw.go
+      - otdfctl/tui/  # excluded during migration, matching original otdfctl lint config
       - third_party$
       - builtin$
       - examples$
@@ -204,6 +226,7 @@ formatters:
     paths:
       - .*\.pb\.go
       - .*\.pb\.gw.go
+      - otdfctl/tui/
       - third_party$
       - builtin$
       - examples$

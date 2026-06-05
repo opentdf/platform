@@ -2,9 +2,12 @@ package integration
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
+	"slices"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/opentdf/platform/protocol/go/common"
 	"github.com/opentdf/platform/protocol/go/policy"
@@ -62,6 +65,40 @@ func (s *KasRegistrySuite) Test_ListKeyAccessServers_NoPagination_Succeeds() {
 		}
 		s.True(found)
 	}
+}
+
+func (s *KasRegistrySuite) Test_ListKeyAccessServers_OrdersByCreatedAt_Succeeds() {
+	suffix := time.Now().UnixNano()
+	create := func(i int) string {
+		uri := fmt.Sprintf("https://order-test-kas-%d-%d.example.com", i, suffix)
+		name := fmt.Sprintf("order-test-kas-%d-%d", i, suffix)
+		created, err := s.db.PolicyClient.CreateKeyAccessServer(s.ctx, &kasregistry.CreateKeyAccessServerRequest{
+			Uri: uri,
+			PublicKey: &policy.PublicKey{
+				PublicKey: &policy.PublicKey_Remote{
+					Remote: fmt.Sprintf("https://order-test-key-%d-%d.example.com/key", i, suffix),
+				},
+			},
+			Metadata: &common.MetadataMutable{
+				Labels: map[string]string{"name": name},
+			},
+		})
+		s.Require().NoError(err)
+		s.Require().NotNil(created)
+		return created.GetId()
+	}
+
+	firstID := create(1)
+	time.Sleep(5 * time.Millisecond)
+	secondID := create(2)
+	time.Sleep(5 * time.Millisecond)
+	thirdID := create(3)
+
+	listRsp, err := s.db.PolicyClient.ListKeyAccessServers(s.ctx, &kasregistry.ListKeyAccessServersRequest{})
+	s.Require().NoError(err)
+	s.NotNil(listRsp)
+
+	assertIDsInOrder(s.T(), listRsp.GetKeyAccessServers(), func(kas *policy.KeyAccessServer) string { return kas.GetId() }, thirdID, secondID, firstID)
 }
 
 func (s *KasRegistrySuite) Test_ListKeyAccessServers_Limit_Succeeds() {
@@ -816,6 +853,260 @@ func (s *KasRegistrySuite) Test_DeleteKeyAccessServer_WithInvalidId_Fails() {
 	s.Require().ErrorIs(err, db.ErrUUIDInvalid)
 }
 
+// Test_GetKeyAccessServer_ByIdNameUri_ReturnSameResult validates that getKeyAccessServer works correctly
+// with ID, name, and URI lookups
+func (s *KasRegistrySuite) Test_GetKeyAccessServer_ByIdNameUri_ReturnSameResult() {
+	remoteFixture := s.f.GetKasRegistryKey("key_access_server_1")
+
+	// Get by ID
+	kasByID, err := s.db.PolicyClient.GetKeyAccessServer(s.ctx, remoteFixture.ID)
+	s.Require().NoError(err, "Failed to get KAS by ID")
+	s.Require().NotNil(kasByID)
+
+	// Get by Name
+	kasByName, err := s.db.PolicyClient.GetKeyAccessServer(s.ctx, &kasregistry.GetKeyAccessServerRequest_Name{Name: remoteFixture.Name})
+	s.Require().NoError(err, "Failed to get KAS by Name")
+	s.Require().NotNil(kasByName)
+
+	// Get by URI
+	kasByURI, err := s.db.PolicyClient.GetKeyAccessServer(s.ctx, &kasregistry.GetKeyAccessServerRequest_Uri{Uri: remoteFixture.URI})
+	s.Require().NoError(err, "Failed to get KAS by URI")
+	s.Require().NotNil(kasByURI)
+
+	// Verify all three return the same KAS
+	s.True(proto.Equal(kasByID, kasByName))
+	s.True(proto.Equal(kasByID, kasByURI))
+}
+
+func (s *KasRegistrySuite) Test_ListKeyAccessServers_SortByCreatedAt_ASC() {
+	ids := s.createSortTestKeyAccessServers([]string{"sort-kas-created-asc-0", "sort-kas-created-asc-1", "sort-kas-created-asc-2"})
+	defer s.deleteSortTestKeyAccessServers(ids)
+
+	listRsp, err := s.db.PolicyClient.ListKeyAccessServers(s.ctx, &kasregistry.ListKeyAccessServersRequest{
+		Sort: []*kasregistry.KeyAccessServersSort{
+			{Field: kasregistry.SortKeyAccessServersType_SORT_KEY_ACCESS_SERVERS_TYPE_CREATED_AT, Direction: policy.SortDirection_SORT_DIRECTION_ASC},
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(listRsp)
+
+	assertIDsInOrder(s.T(), listRsp.GetKeyAccessServers(), func(kas *policy.KeyAccessServer) string { return kas.GetId() }, ids[0], ids[1], ids[2])
+}
+
+func (s *KasRegistrySuite) Test_ListKeyAccessServers_SortByCreatedAt_DESC() {
+	ids := s.createSortTestKeyAccessServers([]string{"sort-kas-created-desc-0", "sort-kas-created-desc-1", "sort-kas-created-desc-2"})
+	defer s.deleteSortTestKeyAccessServers(ids)
+
+	listRsp, err := s.db.PolicyClient.ListKeyAccessServers(s.ctx, &kasregistry.ListKeyAccessServersRequest{
+		Sort: []*kasregistry.KeyAccessServersSort{
+			{Field: kasregistry.SortKeyAccessServersType_SORT_KEY_ACCESS_SERVERS_TYPE_CREATED_AT, Direction: policy.SortDirection_SORT_DIRECTION_DESC},
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(listRsp)
+
+	assertIDsInOrder(s.T(), listRsp.GetKeyAccessServers(), func(kas *policy.KeyAccessServer) string { return kas.GetId() }, ids[2], ids[1], ids[0])
+}
+
+func (s *KasRegistrySuite) Test_ListKeyAccessServers_SortByUpdatedAt_DESC() {
+	ids := s.createSortTestKeyAccessServers([]string{"sort-kas-updated-desc-0", "sort-kas-updated-desc-1", "sort-kas-updated-desc-2"})
+	defer s.deleteSortTestKeyAccessServers(ids)
+
+	time.Sleep(5 * time.Millisecond)
+	_, err := s.db.PolicyClient.UpdateKeyAccessServer(s.ctx, ids[0], &kasregistry.UpdateKeyAccessServerRequest{
+		Id: ids[0],
+		Metadata: &common.MetadataMutable{
+			Labels: map[string]string{"updated": "true"},
+		},
+		MetadataUpdateBehavior: common.MetadataUpdateEnum_METADATA_UPDATE_ENUM_REPLACE,
+	})
+	s.Require().NoError(err)
+
+	listRsp, err := s.db.PolicyClient.ListKeyAccessServers(s.ctx, &kasregistry.ListKeyAccessServersRequest{
+		Sort: []*kasregistry.KeyAccessServersSort{
+			{Field: kasregistry.SortKeyAccessServersType_SORT_KEY_ACCESS_SERVERS_TYPE_UPDATED_AT, Direction: policy.SortDirection_SORT_DIRECTION_DESC},
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(listRsp)
+
+	assertIDsInOrder(s.T(), listRsp.GetKeyAccessServers(), func(kas *policy.KeyAccessServer) string { return kas.GetId() }, ids[0], ids[2], ids[1])
+}
+
+func (s *KasRegistrySuite) Test_ListKeyAccessServers_SortByUpdatedAt_ASC() {
+	ids := s.createSortTestKeyAccessServers([]string{"sort-kas-updated-asc-0", "sort-kas-updated-asc-1", "sort-kas-updated-asc-2"})
+	defer s.deleteSortTestKeyAccessServers(ids)
+
+	time.Sleep(5 * time.Millisecond)
+	_, err := s.db.PolicyClient.UpdateKeyAccessServer(s.ctx, ids[2], &kasregistry.UpdateKeyAccessServerRequest{
+		Id: ids[2],
+		Metadata: &common.MetadataMutable{
+			Labels: map[string]string{"updated": "true"},
+		},
+		MetadataUpdateBehavior: common.MetadataUpdateEnum_METADATA_UPDATE_ENUM_REPLACE,
+	})
+	s.Require().NoError(err)
+
+	listRsp, err := s.db.PolicyClient.ListKeyAccessServers(s.ctx, &kasregistry.ListKeyAccessServersRequest{
+		Sort: []*kasregistry.KeyAccessServersSort{
+			{Field: kasregistry.SortKeyAccessServersType_SORT_KEY_ACCESS_SERVERS_TYPE_UPDATED_AT, Direction: policy.SortDirection_SORT_DIRECTION_ASC},
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(listRsp)
+
+	assertIDsInOrder(s.T(), listRsp.GetKeyAccessServers(), func(kas *policy.KeyAccessServer) string { return kas.GetId() }, ids[0], ids[1], ids[2])
+}
+
+func (s *KasRegistrySuite) Test_ListKeyAccessServers_SortByName_ASC() {
+	ids := s.createSortTestKeyAccessServers([]string{"aaa-kas-sort", "bbb-kas-sort", "ccc-kas-sort"})
+	defer s.deleteSortTestKeyAccessServers(ids)
+
+	listRsp, err := s.db.PolicyClient.ListKeyAccessServers(s.ctx, &kasregistry.ListKeyAccessServersRequest{
+		Sort: []*kasregistry.KeyAccessServersSort{
+			{Field: kasregistry.SortKeyAccessServersType_SORT_KEY_ACCESS_SERVERS_TYPE_NAME, Direction: policy.SortDirection_SORT_DIRECTION_ASC},
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(listRsp)
+
+	assertIDsInOrder(s.T(), listRsp.GetKeyAccessServers(), func(kas *policy.KeyAccessServer) string { return kas.GetId() }, ids[0], ids[1], ids[2])
+}
+
+func (s *KasRegistrySuite) Test_ListKeyAccessServers_SortByName_DESC() {
+	ids := s.createSortTestKeyAccessServers([]string{"aaa-kas-sortdesc", "bbb-kas-sortdesc", "ccc-kas-sortdesc"})
+	defer s.deleteSortTestKeyAccessServers(ids)
+
+	listRsp, err := s.db.PolicyClient.ListKeyAccessServers(s.ctx, &kasregistry.ListKeyAccessServersRequest{
+		Sort: []*kasregistry.KeyAccessServersSort{
+			{Field: kasregistry.SortKeyAccessServersType_SORT_KEY_ACCESS_SERVERS_TYPE_NAME, Direction: policy.SortDirection_SORT_DIRECTION_DESC},
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(listRsp)
+
+	assertIDsInOrder(s.T(), listRsp.GetKeyAccessServers(), func(kas *policy.KeyAccessServer) string { return kas.GetId() }, ids[2], ids[1], ids[0])
+}
+
+func (s *KasRegistrySuite) Test_ListKeyAccessServers_SortByUri_ASC() {
+	ids := s.createSortTestKeyAccessServers([]string{"aaa-kas-uri", "bbb-kas-uri", "ccc-kas-uri"})
+	defer s.deleteSortTestKeyAccessServers(ids)
+
+	listRsp, err := s.db.PolicyClient.ListKeyAccessServers(s.ctx, &kasregistry.ListKeyAccessServersRequest{
+		Sort: []*kasregistry.KeyAccessServersSort{
+			{Field: kasregistry.SortKeyAccessServersType_SORT_KEY_ACCESS_SERVERS_TYPE_URI, Direction: policy.SortDirection_SORT_DIRECTION_ASC},
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(listRsp)
+
+	assertIDsInOrder(s.T(), listRsp.GetKeyAccessServers(), func(kas *policy.KeyAccessServer) string { return kas.GetId() }, ids[0], ids[1], ids[2])
+}
+
+func (s *KasRegistrySuite) Test_ListKeyAccessServers_SortByUri_DESC() {
+	ids := s.createSortTestKeyAccessServers([]string{"aaa-kas-uridesc", "bbb-kas-uridesc", "ccc-kas-uridesc"})
+	defer s.deleteSortTestKeyAccessServers(ids)
+
+	listRsp, err := s.db.PolicyClient.ListKeyAccessServers(s.ctx, &kasregistry.ListKeyAccessServersRequest{
+		Sort: []*kasregistry.KeyAccessServersSort{
+			{Field: kasregistry.SortKeyAccessServersType_SORT_KEY_ACCESS_SERVERS_TYPE_URI, Direction: policy.SortDirection_SORT_DIRECTION_DESC},
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(listRsp)
+
+	assertIDsInOrder(s.T(), listRsp.GetKeyAccessServers(), func(kas *policy.KeyAccessServer) string { return kas.GetId() }, ids[2], ids[1], ids[0])
+}
+
+func (s *KasRegistrySuite) Test_ListKeyAccessServers_SortTieBreaker_CreatedAtWithIDFallback() {
+	suffix := time.Now().UnixNano()
+	ids := make([]string, 3)
+	for i := range 3 {
+		name := fmt.Sprintf("tiebreaker-kas-%d-%d", i, suffix)
+		created, err := s.db.PolicyClient.CreateKeyAccessServer(s.ctx, &kasregistry.CreateKeyAccessServerRequest{
+			Uri:  fmt.Sprintf("https://%s.example.com", name),
+			Name: name,
+		})
+		s.Require().NoError(err)
+		ids[i] = created.GetId()
+	}
+	defer s.deleteSortTestKeyAccessServers(ids)
+
+	s.Require().NoError(forceCreatedAtTie(s.ctx, s.db, "key_access_servers", ids))
+
+	sorted := slices.Sorted(slices.Values(ids))
+
+	listRsp, err := s.db.PolicyClient.ListKeyAccessServers(s.ctx, &kasregistry.ListKeyAccessServersRequest{
+		Sort: []*kasregistry.KeyAccessServersSort{
+			{Field: kasregistry.SortKeyAccessServersType_SORT_KEY_ACCESS_SERVERS_TYPE_CREATED_AT, Direction: policy.SortDirection_SORT_DIRECTION_ASC},
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(listRsp)
+
+	assertIDsInOrder(s.T(), listRsp.GetKeyAccessServers(), func(kas *policy.KeyAccessServer) string { return kas.GetId() }, sorted[0], sorted[1], sorted[2])
+}
+
+func (s *KasRegistrySuite) Test_ListKeyAccessServers_SortByUnspecifiedField_DefaultsToCreatedAt() {
+	ids := s.createSortTestKeyAccessServers([]string{"unspecified-field-kas-0", "unspecified-field-kas-1", "unspecified-field-kas-2"})
+	defer s.deleteSortTestKeyAccessServers(ids)
+
+	listRsp, err := s.db.PolicyClient.ListKeyAccessServers(s.ctx, &kasregistry.ListKeyAccessServersRequest{
+		Sort: []*kasregistry.KeyAccessServersSort{
+			{Field: kasregistry.SortKeyAccessServersType_SORT_KEY_ACCESS_SERVERS_TYPE_UNSPECIFIED, Direction: policy.SortDirection_SORT_DIRECTION_ASC},
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(listRsp)
+
+	// Field defaults to created_at, explicit ASC is preserved
+	assertIDsInOrder(s.T(), listRsp.GetKeyAccessServers(), func(kas *policy.KeyAccessServer) string { return kas.GetId() }, ids[0], ids[1], ids[2])
+}
+
+func (s *KasRegistrySuite) Test_ListKeyAccessServers_SortByUnspecifiedDirection_DefaultsToDESC() {
+	ids := s.createSortTestKeyAccessServers([]string{"unspecified-dir-kas-0", "unspecified-dir-kas-1", "unspecified-dir-kas-2"})
+	defer s.deleteSortTestKeyAccessServers(ids)
+
+	listRsp, err := s.db.PolicyClient.ListKeyAccessServers(s.ctx, &kasregistry.ListKeyAccessServersRequest{
+		Sort: []*kasregistry.KeyAccessServersSort{
+			{Field: kasregistry.SortKeyAccessServersType_SORT_KEY_ACCESS_SERVERS_TYPE_CREATED_AT, Direction: policy.SortDirection_SORT_DIRECTION_UNSPECIFIED},
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(listRsp)
+
+	// Direction defaults to DESC, explicit created_at field is preserved
+	assertIDsInOrder(s.T(), listRsp.GetKeyAccessServers(), func(kas *policy.KeyAccessServer) string { return kas.GetId() }, ids[2], ids[1], ids[0])
+}
+
+func (s *KasRegistrySuite) Test_ListKeyAccessServers_SortByBothUnspecified_DefaultsToCreatedAtDESC() {
+	ids := s.createSortTestKeyAccessServers([]string{"both-unspecified-kas-0", "both-unspecified-kas-1", "both-unspecified-kas-2"})
+	defer s.deleteSortTestKeyAccessServers(ids)
+
+	listRsp, err := s.db.PolicyClient.ListKeyAccessServers(s.ctx, &kasregistry.ListKeyAccessServersRequest{
+		Sort: []*kasregistry.KeyAccessServersSort{
+			{Field: kasregistry.SortKeyAccessServersType_SORT_KEY_ACCESS_SERVERS_TYPE_UNSPECIFIED, Direction: policy.SortDirection_SORT_DIRECTION_UNSPECIFIED},
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(listRsp)
+
+	// Both default: created_at DESC
+	assertIDsInOrder(s.T(), listRsp.GetKeyAccessServers(), func(kas *policy.KeyAccessServer) string { return kas.GetId() }, ids[2], ids[1], ids[0])
+}
+
+func (s *KasRegistrySuite) Test_ListKeyAccessServers_SortOmitted() {
+	ids := s.createSortTestKeyAccessServers([]string{"sort-omitted-kas-0", "sort-omitted-kas-1", "sort-omitted-kas-2"})
+	defer s.deleteSortTestKeyAccessServers(ids)
+
+	listRsp, err := s.db.PolicyClient.ListKeyAccessServers(s.ctx, &kasregistry.ListKeyAccessServersRequest{})
+	s.Require().NoError(err)
+	s.NotNil(listRsp)
+
+	// No sort provided: created_at DESC
+	assertIDsInOrder(s.T(), listRsp.GetKeyAccessServers(), func(kas *policy.KeyAccessServer) string { return kas.GetId() }, ids[2], ids[1], ids[0])
+}
+
 func (s *KasRegistrySuite) getKasRegistryFixtures() []fixtures.FixtureDataKasRegistry {
 	return []fixtures.FixtureDataKasRegistry{
 		s.f.GetKasRegistryKey("key_access_server_1"),
@@ -862,29 +1153,31 @@ func (s *KasRegistrySuite) validateKasRegistryKeys(kasr *policy.KeyAccessServer)
 	s.Len(expectedKasKeys, matchingKeysCount)
 }
 
-// Test_GetKeyAccessServer_ByIdNameUri_ReturnSameResult validates that getKeyAccessServer works correctly
-// with ID, name, and URI lookups
-func (s *KasRegistrySuite) Test_GetKeyAccessServer_ByIdNameUri_ReturnSameResult() {
-	remoteFixture := s.f.GetKasRegistryKey("key_access_server_1")
+// createSortTestKeyAccessServers creates KAS entries with the given prefixes, adding 5ms gaps
+// between creations for distinct timestamps. Returns the KAS IDs in creation order.
+func (s *KasRegistrySuite) createSortTestKeyAccessServers(prefixes []string) []string {
+	ids := make([]string, len(prefixes))
+	for i, prefix := range prefixes {
+		if i > 0 {
+			time.Sleep(5 * time.Millisecond)
+		}
+		suffix := fmt.Sprintf("%s-%d", prefix, time.Now().UnixNano())
+		created, err := s.db.PolicyClient.CreateKeyAccessServer(s.ctx, &kasregistry.CreateKeyAccessServerRequest{
+			Uri:  fmt.Sprintf("https://%s.example.com", suffix),
+			Name: suffix,
+		})
+		s.Require().NoError(err)
+		ids[i] = created.GetId()
+	}
+	return ids
+}
 
-	// Get by ID
-	kasByID, err := s.db.PolicyClient.GetKeyAccessServer(s.ctx, remoteFixture.ID)
-	s.Require().NoError(err, "Failed to get KAS by ID")
-	s.Require().NotNil(kasByID)
-
-	// Get by Name
-	kasByName, err := s.db.PolicyClient.GetKeyAccessServer(s.ctx, &kasregistry.GetKeyAccessServerRequest_Name{Name: remoteFixture.Name})
-	s.Require().NoError(err, "Failed to get KAS by Name")
-	s.Require().NotNil(kasByName)
-
-	// Get by URI
-	kasByURI, err := s.db.PolicyClient.GetKeyAccessServer(s.ctx, &kasregistry.GetKeyAccessServerRequest_Uri{Uri: remoteFixture.URI})
-	s.Require().NoError(err, "Failed to get KAS by URI")
-	s.Require().NotNil(kasByURI)
-
-	// Verify all three return the same KAS
-	s.True(proto.Equal(kasByID, kasByName))
-	s.True(proto.Equal(kasByID, kasByURI))
+// deleteSortTestKeyAccessServers cleans up KAS entries created by sort tests.
+func (s *KasRegistrySuite) deleteSortTestKeyAccessServers(ids []string) {
+	for _, id := range ids {
+		_, err := s.db.PolicyClient.DeleteKeyAccessServer(s.ctx, id)
+		s.Require().NoError(err)
+	}
 }
 
 func TestKasRegistrySuite(t *testing.T) {

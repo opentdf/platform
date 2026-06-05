@@ -2,10 +2,15 @@ package sdk_test
 
 import (
 	"bytes"
+	"context"
 	"encoding/base64"
+	"net/http"
+	"net/http/httptest"
 	"reflect"
 	"testing"
+	"time"
 
+	"connectrpc.com/grpchealth"
 	"github.com/opentdf/platform/protocol/go/policy/attributes/attributesconnect"
 	"github.com/opentdf/platform/protocol/go/policy/kasregistry/kasregistryconnect"
 	"github.com/opentdf/platform/protocol/go/policy/resourcemapping/resourcemappingconnect"
@@ -112,37 +117,6 @@ func Test_ShouldCreateNewSDK_NoCredentials(t *testing.T) {
 	assert.NotNil(t, s)
 }
 
-func TestNew_ShouldValidateGoodNanoTdf(t *testing.T) {
-	goodNanoTdfStr := "TDFMABJsb2NhbGhvc3Q6ODA4MC9rYXOAAQIA2qvjMRfg7b27lT2kf9SwHRkDIg8ZXtfRoiIvdMUHq/gL5AUMfmv4Di8sKCyLkmUm/WITVj5hDeV/z4JmQ0JL7ZxqSmgZoK6TAHvkKhUly4zMEWMRXH8IktKhFKy1+fD+3qwDopqWAO5Nm2nYQqi75atEFckstulpNKg3N+Ul22OHr/ZuR127oPObBDYNRfktBdzoZbEQcPlr8q1B57q6y5SPZFjEzL9weK+uS5bUJWkF3nsHASo2bZw7IPhTZxoFVmCDjwvj6MbxNa7zG6aClHJ162zKxLLnD9TtIHuZ59R7LgiSieipXeExj+ky9OgIw5DfwyUuxsQLtKpMIAFPmLY9Hy2naUJxke0MT1EUBgastCq+YtFGslV9LJo/A8FtrRqludwtM0O+Z9FlAkZ1oNL7M7uOkLrh7eRrv+C1AAAX6FaBQoOtqnmyu6Jp+VzkxDddEeLRUyI="
-	goodDecodedData, err := base64.StdEncoding.DecodeString(goodNanoTdfStr)
-	in := bytes.NewReader(goodDecodedData)
-
-	require.NoError(t, err)
-	// Decode the base64 string
-	isValid, err := sdk.IsValidNanoTdf(in)
-	require.NoError(t, err)
-
-	assert.True(t, isValid)
-
-	// Try again to see if the reader has been reset
-	isValid, err = sdk.IsValidNanoTdf(in)
-	require.NoError(t, err)
-
-	assert.True(t, isValid)
-}
-
-func TestNew_ShouldNotValidateBadNanoTdf(t *testing.T) {
-	badNanoTdfStr := "TDFMABfg7b27lT2kf9SwHRkDIg8ZXtfRoiIvdMUHq/gL5AUMfmv4Di8sKCyLkmUm/WITVj5hDeV/z4JmQ0JL7ZxqSmgZoK6TAHvkKhUly4zMEWMRXH8IktKhFKy1+fD+3qwDopqWAO5Nm2nYQqi75atEFckstulpNKg3N+Ul22OHr/ZuR127oPObBDYNRfktBdzoZbEQcPlr8q1B57q6y5SPZFjEzL9weK+uS5bUJWkF3nsHASo2bZw7IPhTZxoFVmCDjwvj6MbxNa7zG6aClHJ162zKxLLnD9TtIHuZ59R7LgiSieipXeExj+ky9OgIw5DfwyUuxsQLtKpMIAFPmLY9Hy2naUJxke0MT1EUBgastCq+YtFGslV9LJo/A8FtrRqludwtM0O+Z9FlAkZ1oNL7M7uOkLrh7eRrv+C1AAAX6FaBQoOtqnmyu6Jp+VzkxDddEeLRUyI="
-	badDecodedData, err := base64.StdEncoding.DecodeString(badNanoTdfStr)
-	in := bytes.NewReader(badDecodedData)
-
-	require.NoError(t, err)
-	// Decode the base64 string
-	isValid, _ := sdk.IsValidNanoTdf(in)
-	// Error is ok here, as it acts as a sort of reason for the nanotdf not being valid
-	assert.False(t, isValid)
-}
-
 func TestNew_ShouldValidateStandardTdf(t *testing.T) {
 	goodStandardTdf := "UEsDBC0ACAAAAJ2TFTEAAAAAAAAAAAAAAAAJAAAAMC5wYXlsb2Fktu4m+vdwl0mtjhY3U5e7TG2o1s8ifK+RAhFNjRjGTLJ7V3w5UEsHCGiY7skkAAAAJAAAAFBLAwQtAAgAAACdkxUxAAAAAAAAAAAAAAAADwAAADAubWFuaWZlc3QuanNvbnsiZW5jcnlwdGlvbkluZm9ybWF0aW9uIjp7InR5cGUiOiJzcGxpdCIsInBvbGljeSI6ImV5SjFkV2xrSWpvaU1HTTFORGsyWlRZdE5EYzRaaTB4TVdWbUxXSXlOakV0WWpJMVl6UmhORE14TjJFM0lpd2lZbTlrZVNJNmV5SmtZWFJoUVhSMGNtbGlkWFJsY3lJNlczc2lZWFIwY21saWRYUmxJam9pYUhSMGNITTZMeTlsZUdGdGNHeGxMbU52YlM5aGRIUnlMMkYwZEhJeEwzWmhiSFZsTDNaaGJIVmxNU0lzSW1ScGMzQnNZWGxPWVcxbElqb2lJaXdpYVhORVpXWmhkV3gwSWpwbVlXeHpaU3dpY0hWaVMyVjVJam9pSWl3aWEyRnpWVkpNSWpvaUluMWRMQ0prYVhOelpXMGlPbHRkZlgwPSIsImtleUFjY2VzcyI6W3sidHlwZSI6IndyYXBwZWQiLCJ1cmwiOiJodHRwOi8vbG9jYWxob3N0OjgwODAiLCJwcm90b2NvbCI6ImthcyIsIndyYXBwZWRLZXkiOiJ0VVMvUE9TaVBtOGV6OGhyL2dMVGN6Y1lOT0trcUNEclZiQTBWdHZna29QbHB0M1BDZVpTdDNndnlQNVZKZXBNMmNqdVBhUWJJUGlyMjlWdVJ2T1RXZmQzRUh1KzgyVCtFNEVZbEpBM25VbDdGQTRMUGZhUEtXWk1zTExHUkJJVUxZT0VhMWJma1MvUm9Xb0EwK283WlFFVkNhYmdJN2JFRDJKV2Q2aG1yam1iUnM2d0lwOVFXNUs4Q3dJWjZVZjlGMXEwRDViTmlrbGxHaCtiaVJsV1NucEwxbHBPaFdva1gxdUJsU0VRSDNvM2JtVXFTNVVaUjRmYUxuTW5xOGR0bS8wYnJjTjUwaFNiK0xTTlZkd2daTEszTTRHTmxEeGdzcDkxY0VuYjZoZktLemdSY0VCS0tMQTF1b3BXNHdCRG9BamFuWWplQlZVT3ZBZEI5ek45T3c9PSIsInBvbGljeUJpbmRpbmciOnsiYWxnIjoiSFMyNTYiLCJoYXNoIjoiWmpBek1HWXlZekl4WlRCbU16Tm1NamhoTWpGalpqSTJaRE5oWlRrMk5ERTNaREJoWlRrM05ESTJNREExTnpVMU1UVTFNV0ZpTTJSak9EUTFabU0yWWc9PSJ9LCJraWQiOiJyMSJ9XSwibWV0aG9kIjp7ImFsZ29yaXRobSI6IkFFUy0yNTYtR0NNIiwiaXYiOiIiLCJpc1N0cmVhbWFibGUiOnRydWV9LCJpbnRlZ3JpdHlJbmZvcm1hdGlvbiI6eyJyb290U2lnbmF0dXJlIjp7ImFsZyI6IkhTMjU2Iiwic2lnIjoiWkdWaFltRmtNRGhsTURCbU1UVm1ZekJtTVdFME0ySmhOamhrTmpBMVpUazFNVGRtWmpoa1pETmtNekk0Tldaa01XUXhOVFZsWXpjME1EVXhPRE13Tmc9PSJ9LCJzZWdtZW50SGFzaEFsZyI6IkdNQUMiLCJzZWdtZW50U2l6ZURlZmF1bHQiOjIwOTcxNTIsImVuY3J5cHRlZFNlZ21lbnRTaXplRGVmYXVsdCI6MjA5NzE4MCwic2VnbWVudHMiOlt7Imhhc2giOiJNakkzWTJGbU9URXdNakV4TkdRNFpERTRZelkwWTJJeU4ySTFOemRqTXprPSIsInNlZ21lbnRTaXplIjo4LCJlbmNyeXB0ZWRTZWdtZW50U2l6ZSI6MzZ9XX19LCJwYXlsb2FkIjp7InR5cGUiOiJyZWZlcmVuY2UiLCJ1cmwiOiIwLnBheWxvYWQiLCJwcm90b2NvbCI6InppcCIsIm1pbWVUeXBlIjoiYXBwbGljYXRpb24vb2N0ZXQtc3RyZWFtIiwiaXNFbmNyeXB0ZWQiOnRydWV9fVBLBwgwpFOlrwUAAK8FAABQSwECLQAtAAgAAACdkxUxaJjuySQAAAAkAAAACQAAAAAAAAAAAAAAAAAAAAAAMC5wYXlsb2FkUEsBAi0ALQAIAAAAnZMVMTCkU6WvBQAArwUAAA8AAAAAAAAAAAAAAAAAWwAAADAubWFuaWZlc3QuanNvblBLBQYAAAAAAgACAHQAAABHBgAAAAA="
 	goodDecodedData, err := base64.StdEncoding.DecodeString(goodStandardTdf)
@@ -170,7 +144,7 @@ func TestNew_ShouldNotValidateBadStandardTdf(t *testing.T) {
 	require.NoError(t, err)
 	// Decode the base64 string
 	isValid, err := sdk.IsValidTdf(in)
-	// Error is ok here, as it acts as a sort of reason for the nanotdf not being valid
+	// Error is ok here; it documents why the input is invalid.
 	assert.False(t, isValid)
 	require.Error(t, err)
 }
@@ -184,7 +158,7 @@ func TestIsInvalid_MissingRequiredManifestPayloadField(t *testing.T) {
 	require.NoError(t, err)
 	// Decode the base64 string
 	isValid, err := sdk.IsValidTdf(in)
-	// Error is ok here, as it acts as a sort of reason for the nanotdf not being valid
+	// Error is ok here; it documents why the input is invalid.
 	assert.False(t, isValid)
 	require.ErrorIs(t, err, sdk.ErrInvalidPerSchema)
 }
@@ -316,17 +290,6 @@ func TestIsPlatformEndpointMalformed(t *testing.T) {
 	}
 }
 
-func Test_GetType_NanoTDF(t *testing.T) {
-	nano := "TDFMABJsb2NhbGhvc3Q6ODA4MC9rYXOAAQIA2qvjMRfg7b27lT2kf9SwHRkDIg8ZXtfRoiIvdMUHq/gL5AUMfmv4Di8sKCyLkmUm/WITVj5hDeV/z4JmQ0JL7ZxqSmgZoK6TAHvkKhUly4zMEWMRXH8IktKhFKy1+fD+3qwDopqWAO5Nm2nYQqi75atEFckstulpNKg3N+Ul22OHr/ZuR127oPObBDYNRfktBdzoZbEQcPlr8q1B57q6y5SPZFjEzL9weK+uS5bUJWkF3nsHASo2bZw7IPhTZxoFVmCDjwvj6MbxNa7zG6aClHJ162zKxLLnD9TtIHuZ59R7LgiSieipXeExj+ky9OgIw5DfwyUuxsQLtKpMIAFPmLY9Hy2naUJxke0MT1EUBgastCq+YtFGslV9LJo/A8FtrRqludwtM0O+Z9FlAkZ1oNL7M7uOkLrh7eRrv+C1AAAX6FaBQoOtqnmyu6Jp+VzkxDddEeLRUyI="
-	nanoDecoded, err := base64.StdEncoding.DecodeString(nano)
-	require.NoError(t, err)
-
-	in := bytes.NewReader(nanoDecoded)
-	tdfType := sdk.GetTdfType(in)
-
-	assert.Equal(t, sdk.Nano, tdfType)
-}
-
 func Test_GetType_TDF(t *testing.T) {
 	tdf := "UEsDBC0ACAAAAJ2TFTEAAAAAAAAAAAAAAAAJAAAAMC5wYXlsb2Fktu4m+vdwl0mtjhY3U5e7TG2o1s8ifK+RAhFNjRjGTLJ7V3w5UEsHCGiY7skkAAAAJAAAAFBLAwQtAAgAAACdkxUxAAAAAAAAAAAAAAAADwAAADAubWFuaWZlc3QuanNvbnsiZW5jcnlwdGlvbkluZm9ybWF0aW9uIjp7InR5cGUiOiJzcGxpdCIsInBvbGljeSI6ImV5SjFkV2xrSWpvaU1HTTFORGsyWlRZdE5EYzRaaTB4TVdWbUxXSXlOakV0WWpJMVl6UmhORE14TjJFM0lpd2lZbTlrZVNJNmV5SmtZWFJoUVhSMGNtbGlkWFJsY3lJNlczc2lZWFIwY21saWRYUmxJam9pYUhSMGNITTZMeTlsZUdGdGNHeGxMbU52YlM5aGRIUnlMMkYwZEhJeEwzWmhiSFZsTDNaaGJIVmxNU0lzSW1ScGMzQnNZWGxPWVcxbElqb2lJaXdpYVhORVpXWmhkV3gwSWpwbVlXeHpaU3dpY0hWaVMyVjVJam9pSWl3aWEyRnpWVkpNSWpvaUluMWRMQ0prYVhOelpXMGlPbHRkZlgwPSIsImtleUFjY2VzcyI6W3sidHlwZSI6IndyYXBwZWQiLCJ1cmwiOiJodHRwOi8vbG9jYWxob3N0OjgwODAiLCJwcm90b2NvbCI6ImthcyIsIndyYXBwZWRLZXkiOiJ0VVMvUE9TaVBtOGV6OGhyL2dMVGN6Y1lOT0trcUNEclZiQTBWdHZna29QbHB0M1BDZVpTdDNndnlQNVZKZXBNMmNqdVBhUWJJUGlyMjlWdVJ2T1RXZmQzRUh1KzgyVCtFNEVZbEpBM25VbDdGQTRMUGZhUEtXWk1zTExHUkJJVUxZT0VhMWJma1MvUm9Xb0EwK283WlFFVkNhYmdJN2JFRDJKV2Q2aG1yam1iUnM2d0lwOVFXNUs4Q3dJWjZVZjlGMXEwRDViTmlrbGxHaCtiaVJsV1NucEwxbHBPaFdva1gxdUJsU0VRSDNvM2JtVXFTNVVaUjRmYUxuTW5xOGR0bS8wYnJjTjUwaFNiK0xTTlZkd2daTEszTTRHTmxEeGdzcDkxY0VuYjZoZktLemdSY0VCS0tMQTF1b3BXNHdCRG9BamFuWWplQlZVT3ZBZEI5ek45T3c9PSIsInBvbGljeUJpbmRpbmciOnsiYWxnIjoiSFMyNTYiLCJoYXNoIjoiWmpBek1HWXlZekl4WlRCbU16Tm1NamhoTWpGalpqSTJaRE5oWlRrMk5ERTNaREJoWlRrM05ESTJNREExTnpVMU1UVTFNV0ZpTTJSak9EUTFabU0yWWc9PSJ9LCJraWQiOiJyMSJ9XSwibWV0aG9kIjp7ImFsZ29yaXRobSI6IkFFUy0yNTYtR0NNIiwiaXYiOiIiLCJpc1N0cmVhbWFibGUiOnRydWV9LCJpbnRlZ3JpdHlJbmZvcm1hdGlvbiI6eyJyb290U2lnbmF0dXJlIjp7ImFsZyI6IkhTMjU2Iiwic2lnIjoiWkdWaFltRmtNRGhsTURCbU1UVm1ZekJtTVdFME0ySmhOamhrTmpBMVpUazFNVGRtWmpoa1pETmtNekk0Tldaa01XUXhOVFZsWXpjME1EVXhPRE13Tmc9PSJ9LCJzZWdtZW50SGFzaEFsZyI6IkdNQUMiLCJzZWdtZW50U2l6ZURlZmF1bHQiOjIwOTcxNTIsImVuY3J5cHRlZFNlZ21lbnRTaXplRGVmYXVsdCI6MjA5NzE4MCwic2VnbWVudHMiOlt7Imhhc2giOiJNakkzWTJGbU9URXdNakV4TkdRNFpERTRZelkwWTJJeU4ySTFOemRqTXprPSIsInNlZ21lbnRTaXplIjo4LCJlbmNyeXB0ZWRTZWdtZW50U2l6ZSI6MzZ9XX19LCJwYXlsb2FkIjp7InR5cGUiOiJyZWZlcmVuY2UiLCJ1cmwiOiIwLnBheWxvYWQiLCJwcm90b2NvbCI6InppcCIsIm1pbWVUeXBlIjoiYXBwbGljYXRpb24vb2N0ZXQtc3RyZWFtIiwiaXNFbmNyeXB0ZWQiOnRydWV9fVBLBwgwpFOlrwUAAK8FAABQSwECLQAtAAgAAACdkxUxaJjuySQAAAAkAAAACQAAAAAAAAAAAAAAAAAAAAAAMC5wYXlsb2FkUEsBAi0ALQAIAAAAnZMVMTCkU6WvBQAArwUAAA8AAAAAAAAAAAAAAAAAWwAAADAubWFuaWZlc3QuanNvblBLBQYAAAAAAgACAHQAAABHBgAAAAA="
 	tdfDecoded, err := base64.StdEncoding.DecodeString(tdf)
@@ -354,4 +317,199 @@ func Test_GetType_Invalid2Bytes(t *testing.T) {
 	tdfType := sdk.GetTdfType(in)
 
 	assert.Equal(t, sdk.Invalid, tdfType)
+}
+
+func TestErrHealthCheckUnsupported_Distinct(t *testing.T) {
+	assert.NotEqual(t, sdk.ErrHealthCheckUnsupported, sdk.ErrPlatformUnreachable)
+	assert.Equal(t, "health check not supported in IPC mode", sdk.ErrHealthCheckUnsupported.Error())
+}
+
+// newHealthTestServer starts an httptest.Server serving grpc.health.v1.Health with the
+// configured status for the empty service name (the SDK's reachability probe).
+func newHealthTestServer(t *testing.T, status grpchealth.Status) *httptest.Server {
+	t.Helper()
+	checker := grpchealth.NewStaticChecker()
+	checker.SetStatus("", status)
+	mux := http.NewServeMux()
+	path, handler := grpchealth.NewHandler(checker)
+	mux.Handle(path, handler)
+	return httptest.NewServer(mux)
+}
+
+func TestSDK_IsHealthy_IPCMode_ReturnsErrHealthCheckUnsupported(t *testing.T) {
+	// IPC mode requires a coreConn; provide a dummy one to satisfy sdk.New.
+	dummyConn := &sdk.ConnectRPCConnection{
+		Endpoint: "http://localhost:0",
+		Client:   http.DefaultClient,
+	}
+	s, err := sdk.New("",
+		sdk.WithIPC(),
+		sdk.WithCustomCoreConnection(dummyConn),
+		sdk.WithPlatformConfiguration(sdk.PlatformConfiguration{
+			"idp": map[string]interface{}{
+				"issuer":                 "https://example.org",
+				"authorization_endpoint": "https://example.org/auth",
+				"token_endpoint":         "https://example.org/token",
+			},
+		}),
+	)
+	require.NoError(t, err)
+	require.NotNil(t, s)
+
+	healthy, err := s.IsHealthy(context.Background())
+	assert.False(t, healthy)
+	require.ErrorIs(t, err, sdk.ErrHealthCheckUnsupported)
+}
+
+func TestSDK_IsHealthy_Unreachable_ReturnsErrPlatformUnreachable(t *testing.T) {
+	s, err := sdk.New(badPlatformEndpoint,
+		sdk.WithPlatformConfiguration(sdk.PlatformConfiguration{
+			"idp": map[string]interface{}{
+				"issuer":                 "https://example.org",
+				"authorization_endpoint": "https://example.org/auth",
+				"token_endpoint":         "https://example.org/token",
+			},
+		}),
+	)
+	require.NoError(t, err)
+	require.NotNil(t, s)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	start := time.Now()
+	healthy, err := s.IsHealthy(ctx)
+	elapsed := time.Since(start)
+
+	assert.False(t, healthy)
+	require.ErrorIs(t, err, sdk.ErrPlatformUnreachable)
+	assert.Less(t, elapsed, 2*time.Second, "health check should return promptly against a closed port, not wait for the ctx deadline")
+}
+
+func TestSDK_IsHealthy_ContextCanceled_ReturnsQuickly(t *testing.T) {
+	s, err := sdk.New(badPlatformEndpoint,
+		sdk.WithPlatformConfiguration(sdk.PlatformConfiguration{
+			"idp": map[string]interface{}{
+				"issuer":                 "https://example.org",
+				"authorization_endpoint": "https://example.org/auth",
+				"token_endpoint":         "https://example.org/token",
+			},
+		}),
+	)
+	require.NoError(t, err)
+	require.NotNil(t, s)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel() // canceled before the call
+
+	start := time.Now()
+	healthy, err := s.IsHealthy(ctx)
+	elapsed := time.Since(start)
+
+	assert.False(t, healthy)
+	require.Error(t, err)
+	require.ErrorIs(t, err, sdk.ErrPlatformUnreachable)
+	require.ErrorIs(t, err, context.Canceled)
+	assert.Less(t, elapsed, 500*time.Millisecond, "pre-canceled ctx should short-circuit")
+}
+
+func TestSDK_IsHealthy_Serving(t *testing.T) {
+	ts := newHealthTestServer(t, grpchealth.StatusServing)
+	defer ts.Close()
+
+	s, err := sdk.New(ts.URL,
+		sdk.WithPlatformConfiguration(sdk.PlatformConfiguration{
+			"idp": map[string]interface{}{
+				"issuer":                 "https://example.org",
+				"authorization_endpoint": "https://example.org/auth",
+				"token_endpoint":         "https://example.org/token",
+			},
+		}),
+	)
+	require.NoError(t, err)
+	require.NotNil(t, s)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+
+	healthy, err := s.IsHealthy(ctx)
+	require.NoError(t, err)
+	assert.True(t, healthy)
+}
+
+func TestSDK_IsHealthy_NotServing(t *testing.T) {
+	ts := newHealthTestServer(t, grpchealth.StatusNotServing)
+	defer ts.Close()
+
+	s, err := sdk.New(ts.URL,
+		sdk.WithPlatformConfiguration(sdk.PlatformConfiguration{
+			"idp": map[string]interface{}{
+				"issuer":                 "https://example.org",
+				"authorization_endpoint": "https://example.org/auth",
+				"token_endpoint":         "https://example.org/token",
+			},
+		}),
+	)
+	require.NoError(t, err)
+	require.NotNil(t, s)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+
+	healthy, err := s.IsHealthy(ctx)
+	require.NoError(t, err)
+	assert.False(t, healthy)
+}
+
+// TestSDK_IsHealthy_Unknown locks the contract that an UNKNOWN status from a reachable
+// platform returns (false, nil) — distinct from transport errors which wrap ErrPlatformUnreachable.
+func TestSDK_IsHealthy_Unknown(t *testing.T) {
+	ts := newHealthTestServer(t, grpchealth.StatusUnknown)
+	defer ts.Close()
+
+	s, err := sdk.New(ts.URL,
+		sdk.WithPlatformConfiguration(sdk.PlatformConfiguration{
+			"idp": map[string]interface{}{
+				"issuer":                 "https://example.org",
+				"authorization_endpoint": "https://example.org/auth",
+				"token_endpoint":         "https://example.org/token",
+			},
+		}),
+	)
+	require.NoError(t, err)
+	require.NotNil(t, s)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+
+	healthy, err := s.IsHealthy(ctx)
+	require.NoError(t, err)
+	assert.False(t, healthy)
+}
+
+// TestSDK_IsHealthy_TrailingSlashEndpoint verifies that a platform endpoint
+// with a trailing slash does not produce a double-slash in the request URL,
+// which strict HTTP routers can reject.
+func TestSDK_IsHealthy_TrailingSlashEndpoint(t *testing.T) {
+	ts := newHealthTestServer(t, grpchealth.StatusServing)
+	defer ts.Close()
+
+	s, err := sdk.New(ts.URL+"/",
+		sdk.WithPlatformConfiguration(sdk.PlatformConfiguration{
+			"idp": map[string]interface{}{
+				"issuer":                 "https://example.org",
+				"authorization_endpoint": "https://example.org/auth",
+				"token_endpoint":         "https://example.org/token",
+			},
+		}),
+	)
+	require.NoError(t, err)
+	require.NotNil(t, s)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+
+	healthy, err := s.IsHealthy(ctx)
+	require.NoError(t, err)
+	assert.True(t, healthy)
 }

@@ -30,6 +30,7 @@ const (
 	Service_CreateObligationValue_FullMethodName     = "/policy.obligations.Service/CreateObligationValue"
 	Service_UpdateObligationValue_FullMethodName     = "/policy.obligations.Service/UpdateObligationValue"
 	Service_DeleteObligationValue_FullMethodName     = "/policy.obligations.Service/DeleteObligationValue"
+	Service_GetObligationTrigger_FullMethodName      = "/policy.obligations.Service/GetObligationTrigger"
 	Service_AddObligationTrigger_FullMethodName      = "/policy.obligations.Service/AddObligationTrigger"
 	Service_RemoveObligationTrigger_FullMethodName   = "/policy.obligations.Service/RemoveObligationTrigger"
 	Service_ListObligationTriggers_FullMethodName    = "/policy.obligations.Service/ListObligationTriggers"
@@ -50,6 +51,7 @@ type ServiceClient interface {
 	CreateObligationValue(ctx context.Context, in *CreateObligationValueRequest, opts ...grpc.CallOption) (*CreateObligationValueResponse, error)
 	UpdateObligationValue(ctx context.Context, in *UpdateObligationValueRequest, opts ...grpc.CallOption) (*UpdateObligationValueResponse, error)
 	DeleteObligationValue(ctx context.Context, in *DeleteObligationValueRequest, opts ...grpc.CallOption) (*DeleteObligationValueResponse, error)
+	GetObligationTrigger(ctx context.Context, in *GetObligationTriggerRequest, opts ...grpc.CallOption) (*GetObligationTriggerResponse, error)
 	AddObligationTrigger(ctx context.Context, in *AddObligationTriggerRequest, opts ...grpc.CallOption) (*AddObligationTriggerResponse, error)
 	RemoveObligationTrigger(ctx context.Context, in *RemoveObligationTriggerRequest, opts ...grpc.CallOption) (*RemoveObligationTriggerResponse, error)
 	ListObligationTriggers(ctx context.Context, in *ListObligationTriggersRequest, opts ...grpc.CallOption) (*ListObligationTriggersResponse, error)
@@ -162,6 +164,15 @@ func (c *serviceClient) DeleteObligationValue(ctx context.Context, in *DeleteObl
 	return out, nil
 }
 
+func (c *serviceClient) GetObligationTrigger(ctx context.Context, in *GetObligationTriggerRequest, opts ...grpc.CallOption) (*GetObligationTriggerResponse, error) {
+	out := new(GetObligationTriggerResponse)
+	err := c.cc.Invoke(ctx, Service_GetObligationTrigger_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *serviceClient) AddObligationTrigger(ctx context.Context, in *AddObligationTriggerRequest, opts ...grpc.CallOption) (*AddObligationTriggerResponse, error) {
 	out := new(AddObligationTriggerResponse)
 	err := c.cc.Invoke(ctx, Service_AddObligationTrigger_FullMethodName, in, out, opts...)
@@ -204,6 +215,7 @@ type ServiceServer interface {
 	CreateObligationValue(context.Context, *CreateObligationValueRequest) (*CreateObligationValueResponse, error)
 	UpdateObligationValue(context.Context, *UpdateObligationValueRequest) (*UpdateObligationValueResponse, error)
 	DeleteObligationValue(context.Context, *DeleteObligationValueRequest) (*DeleteObligationValueResponse, error)
+	GetObligationTrigger(context.Context, *GetObligationTriggerRequest) (*GetObligationTriggerResponse, error)
 	AddObligationTrigger(context.Context, *AddObligationTriggerRequest) (*AddObligationTriggerResponse, error)
 	RemoveObligationTrigger(context.Context, *RemoveObligationTriggerRequest) (*RemoveObligationTriggerResponse, error)
 	ListObligationTriggers(context.Context, *ListObligationTriggersRequest) (*ListObligationTriggersResponse, error)
@@ -246,6 +258,9 @@ func (UnimplementedServiceServer) UpdateObligationValue(context.Context, *Update
 }
 func (UnimplementedServiceServer) DeleteObligationValue(context.Context, *DeleteObligationValueRequest) (*DeleteObligationValueResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method DeleteObligationValue not implemented")
+}
+func (UnimplementedServiceServer) GetObligationTrigger(context.Context, *GetObligationTriggerRequest) (*GetObligationTriggerResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetObligationTrigger not implemented")
 }
 func (UnimplementedServiceServer) AddObligationTrigger(context.Context, *AddObligationTriggerRequest) (*AddObligationTriggerResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method AddObligationTrigger not implemented")
@@ -467,6 +482,24 @@ func _Service_DeleteObligationValue_Handler(srv interface{}, ctx context.Context
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Service_GetObligationTrigger_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetObligationTriggerRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ServiceServer).GetObligationTrigger(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Service_GetObligationTrigger_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ServiceServer).GetObligationTrigger(ctx, req.(*GetObligationTriggerRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _Service_AddObligationTrigger_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(AddObligationTriggerRequest)
 	if err := dec(in); err != nil {
@@ -571,6 +604,10 @@ var Service_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "DeleteObligationValue",
 			Handler:    _Service_DeleteObligationValue_Handler,
+		},
+		{
+			MethodName: "GetObligationTrigger",
+			Handler:    _Service_GetObligationTrigger_Handler,
 		},
 		{
 			MethodName: "AddObligationTrigger",

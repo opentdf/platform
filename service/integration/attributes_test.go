@@ -7,6 +7,7 @@ import (
 	"slices"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/opentdf/platform/protocol/go/common"
 	"github.com/opentdf/platform/protocol/go/policy"
@@ -19,6 +20,7 @@ import (
 	policydb "github.com/opentdf/platform/service/policy/db"
 	"github.com/stretchr/testify/suite"
 	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
 type AttributesSuite struct {
@@ -64,6 +66,42 @@ func (s *AttributesSuite) Test_CreateAttribute_NoMetadataSucceeds() {
 	s.NotNil(createdAttr)
 }
 
+func (s *AttributesSuite) Test_CreateAttribute_WithoutValues_DoesNotReturnEmptyValue() {
+	attr := &attributes.CreateAttributeRequest{
+		Name:        "test__create_attribute_without_values",
+		NamespaceId: fixtureNamespaceID,
+		Rule:        policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY,
+	}
+
+	createdAttr, err := s.db.PolicyClient.CreateAttribute(s.ctx, attr)
+	s.Require().NoError(err)
+	s.Require().NotNil(createdAttr)
+	s.Empty(createdAttr.GetValues())
+
+	gotAttr, err := s.db.PolicyClient.GetAttribute(s.ctx, createdAttr.GetId())
+	s.Require().NoError(err)
+	s.Require().NotNil(gotAttr)
+	s.Empty(gotAttr.GetValues())
+
+	listRsp, err := s.db.PolicyClient.ListAttributes(s.ctx, &attributes.ListAttributesRequest{
+		Namespace: fixtureNamespaceID,
+		State:     common.ActiveStateEnum_ACTIVE_STATE_ENUM_ANY,
+	})
+	s.Require().NoError(err)
+	s.Require().NotNil(listRsp)
+
+	for _, listedAttr := range listRsp.GetAttributes() {
+		if listedAttr.GetId() != createdAttr.GetId() {
+			continue
+		}
+
+		s.Empty(listedAttr.GetValues())
+		return
+	}
+
+	s.Failf("created attribute not found in list response", "attribute_id=%s", createdAttr.GetId())
+}
+
 func (s *AttributesSuite) Test_CreateAttribute_NormalizeName() {
 	name := "NaMe_12_ShOuLdBe-NoRmAlIzEd"
 	attr := &attributes.CreateAttributeRequest{
@@ -98,6 +136,26 @@ func (s *AttributesSuite) Test_CreateAttribute_WithValueSucceeds() {
 	s.Equal(values, createdVals)
 	s.Require().NoError(err)
 	s.NotNil(createdAttr)
+}
+
+func (s *AttributesSuite) Test_CreateAttribute_WithAllowTraversal_Succeeds() {
+	attr := &attributes.CreateAttributeRequest{
+		Name:           "test__create_attribute_allow_traversal",
+		NamespaceId:    fixtureNamespaceID,
+		Rule:           policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY,
+		AllowTraversal: &wrapperspb.BoolValue{Value: true},
+	}
+	createdAttr, err := s.db.PolicyClient.CreateAttribute(s.ctx, attr)
+	s.Require().NoError(err)
+	s.NotNil(createdAttr)
+	s.Require().NotNil(createdAttr.GetAllowTraversal())
+	s.True(createdAttr.GetAllowTraversal().GetValue())
+
+	got, err := s.db.PolicyClient.GetAttribute(s.ctx, createdAttr.GetId())
+	s.Require().NoError(err)
+	s.NotNil(got)
+	s.Require().NotNil(got.GetAllowTraversal())
+	s.True(got.GetAllowTraversal().GetValue())
 }
 
 func (s *AttributesSuite) Test_CreateAttribute_WithMetadataSucceeds() {
@@ -272,6 +330,32 @@ func (s *AttributesSuite) Test_GetAttribute_OrderOfValuesIsPreserved() {
 	s.Equal(values[3], gotVals[2].GetValue())
 }
 
+func (s *AttributesSuite) Test_GetAttributesByValueFqns_IncludesAllowTraversal() {
+	attr := &attributes.CreateAttributeRequest{
+		Name:           "test__get_attributes_by_value_fqns_allow_traversal",
+		NamespaceId:    fixtureNamespaceID,
+		Rule:           policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY,
+		AllowTraversal: &wrapperspb.BoolValue{Value: true},
+		Values:         []string{"allow_traversal_value"},
+	}
+	createdAttr, err := s.db.PolicyClient.CreateAttribute(s.ctx, attr)
+	s.Require().NoError(err)
+	s.NotNil(createdAttr)
+
+	valueFqn := fmt.Sprintf("https://%s/attr/%s/value/%s", createdAttr.GetNamespace().GetName(), createdAttr.GetName(), createdAttr.GetValues()[0].GetValue())
+	resp, err := s.db.PolicyClient.GetAttributesByValueFqns(s.ctx, &attributes.GetAttributeValuesByFqnsRequest{
+		Fqns: []string{valueFqn},
+	})
+	s.Require().NoError(err)
+	s.NotNil(resp)
+	s.Contains(resp, valueFqn)
+
+	gotAttr := resp[valueFqn].GetAttribute()
+	s.Require().NotNil(gotAttr)
+	s.Require().NotNil(gotAttr.GetAllowTraversal())
+	s.True(gotAttr.GetAllowTraversal().GetValue())
+}
+
 func (s *AttributesSuite) Test_GetAttribute() {
 	fixtures := s.getAttributeFixtures()
 
@@ -390,6 +474,271 @@ func (s *AttributesSuite) Test_ListAttributes_NoPagination_Succeeds() {
 	}
 }
 
+func (s *AttributesSuite) Test_ListAttributes_OrdersByCreatedAt_Succeeds() {
+	suffix := time.Now().UnixNano()
+	nsName := fmt.Sprintf("order-test-attrs-%d.com", suffix)
+	ns, err := s.db.PolicyClient.CreateNamespace(s.ctx, &namespaces.CreateNamespaceRequest{Name: nsName})
+	s.Require().NoError(err)
+	s.Require().NotNil(ns)
+
+	create := func(i int) string {
+		name := fmt.Sprintf("order-test-attr-%d-%d", i, suffix)
+		created, err := s.db.PolicyClient.CreateAttribute(s.ctx, &attributes.CreateAttributeRequest{
+			Name:        name,
+			NamespaceId: ns.GetId(),
+			Rule:        policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
+		})
+		s.Require().NoError(err)
+		s.Require().NotNil(created)
+		return created.GetId()
+	}
+
+	firstID := create(1)
+	time.Sleep(5 * time.Millisecond)
+	secondID := create(2)
+	time.Sleep(5 * time.Millisecond)
+	thirdID := create(3)
+
+	listRsp, err := s.db.PolicyClient.ListAttributes(s.ctx, &attributes.ListAttributesRequest{
+		Namespace: ns.GetId(),
+	})
+	s.Require().NoError(err)
+	s.NotNil(listRsp)
+
+	assertIDsInOrder(s.T(), listRsp.GetAttributes(), func(attr *policy.Attribute) string { return attr.GetId() }, thirdID, secondID, firstID)
+}
+
+func (s *AttributesSuite) Test_ListAttributes_SortByName_ASC() {
+	nsID := s.createSortTestNamespace("sort-name-asc")
+	ids := s.createSortTestAttributes(nsID, []string{"aaa-sort", "bbb-sort", "ccc-sort"})
+	defer s.deleteSortTestAttributes(ids)
+
+	listRsp, err := s.db.PolicyClient.ListAttributes(s.ctx, &attributes.ListAttributesRequest{
+		Namespace: nsID,
+		Sort: []*attributes.AttributesSort{
+			{Field: attributes.SortAttributesType_SORT_ATTRIBUTES_TYPE_NAME, Direction: policy.SortDirection_SORT_DIRECTION_ASC},
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(listRsp)
+
+	// aaa < bbb < ccc in ASC order
+	assertIDsInOrder(s.T(), listRsp.GetAttributes(), func(attr *policy.Attribute) string { return attr.GetId() }, ids[0], ids[1], ids[2])
+}
+
+func (s *AttributesSuite) Test_ListAttributes_SortByName_DESC() {
+	nsID := s.createSortTestNamespace("sort-name-desc")
+	ids := s.createSortTestAttributes(nsID, []string{"aaa-sortdesc", "bbb-sortdesc", "ccc-sortdesc"})
+	defer s.deleteSortTestAttributes(ids)
+
+	listRsp, err := s.db.PolicyClient.ListAttributes(s.ctx, &attributes.ListAttributesRequest{
+		Namespace: nsID,
+		Sort: []*attributes.AttributesSort{
+			{Field: attributes.SortAttributesType_SORT_ATTRIBUTES_TYPE_NAME, Direction: policy.SortDirection_SORT_DIRECTION_DESC},
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(listRsp)
+
+	// ccc > bbb > aaa in DESC order
+	assertIDsInOrder(s.T(), listRsp.GetAttributes(), func(attr *policy.Attribute) string { return attr.GetId() }, ids[2], ids[1], ids[0])
+}
+
+func (s *AttributesSuite) Test_ListAttributes_SortByCreatedAt_ASC() {
+	nsID := s.createSortTestNamespace("sort-created-asc")
+	ids := s.createSortTestAttributes(nsID, []string{"createdasc-attr-0", "createdasc-attr-1", "createdasc-attr-2"})
+	defer s.deleteSortTestAttributes(ids)
+
+	listRsp, err := s.db.PolicyClient.ListAttributes(s.ctx, &attributes.ListAttributesRequest{
+		Namespace: nsID,
+		Sort: []*attributes.AttributesSort{
+			{Field: attributes.SortAttributesType_SORT_ATTRIBUTES_TYPE_CREATED_AT, Direction: policy.SortDirection_SORT_DIRECTION_ASC},
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(listRsp)
+
+	// oldest first in ASC order
+	assertIDsInOrder(s.T(), listRsp.GetAttributes(), func(attr *policy.Attribute) string { return attr.GetId() }, ids[0], ids[1], ids[2])
+}
+
+func (s *AttributesSuite) Test_ListAttributes_SortByCreatedAt_DESC() {
+	nsID := s.createSortTestNamespace("sort-created-desc")
+	ids := s.createSortTestAttributes(nsID, []string{"createddesc-attr-0", "createddesc-attr-1", "createddesc-attr-2"})
+	defer s.deleteSortTestAttributes(ids)
+
+	listRsp, err := s.db.PolicyClient.ListAttributes(s.ctx, &attributes.ListAttributesRequest{
+		Namespace: nsID,
+		Sort: []*attributes.AttributesSort{
+			{Field: attributes.SortAttributesType_SORT_ATTRIBUTES_TYPE_CREATED_AT, Direction: policy.SortDirection_SORT_DIRECTION_DESC},
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(listRsp)
+
+	// newest first in DESC order
+	assertIDsInOrder(s.T(), listRsp.GetAttributes(), func(attr *policy.Attribute) string { return attr.GetId() }, ids[2], ids[1], ids[0])
+}
+
+func (s *AttributesSuite) Test_ListAttributes_SortByUpdatedAt_DESC() {
+	nsID := s.createSortTestNamespace("sort-updated-desc")
+	ids := s.createSortTestAttributes(nsID, []string{"upd-sort-attr-0", "upd-sort-attr-1", "upd-sort-attr-2"})
+	defer s.deleteSortTestAttributes(ids)
+
+	// Update the first attribute so its updated_at is the most recent
+	time.Sleep(5 * time.Millisecond)
+	_, err := s.db.PolicyClient.UpdateAttribute(s.ctx, ids[0], &attributes.UpdateAttributeRequest{
+		Id: ids[0],
+		Metadata: &common.MetadataMutable{
+			Labels: map[string]string{"updated": "true"},
+		},
+		MetadataUpdateBehavior: common.MetadataUpdateEnum_METADATA_UPDATE_ENUM_REPLACE,
+	})
+	s.Require().NoError(err)
+
+	listRsp, err := s.db.PolicyClient.ListAttributes(s.ctx, &attributes.ListAttributesRequest{
+		Namespace: nsID,
+		Sort: []*attributes.AttributesSort{
+			{Field: attributes.SortAttributesType_SORT_ATTRIBUTES_TYPE_UPDATED_AT, Direction: policy.SortDirection_SORT_DIRECTION_DESC},
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(listRsp)
+
+	// The updated attribute (ids[0]) should appear before the others
+	assertIDsInOrder(s.T(), listRsp.GetAttributes(), func(attr *policy.Attribute) string { return attr.GetId() }, ids[0], ids[2], ids[1])
+}
+
+func (s *AttributesSuite) Test_ListAttributes_SortByUpdatedAt_ASC() {
+	nsID := s.createSortTestNamespace("sort-updated-asc")
+	ids := s.createSortTestAttributes(nsID, []string{"upd-sort-asc-attr-0", "upd-sort-asc-attr-1", "upd-sort-asc-attr-2"})
+	defer s.deleteSortTestAttributes(ids)
+
+	// Update the last attribute so its updated_at is the most recent
+	time.Sleep(5 * time.Millisecond)
+	_, err := s.db.PolicyClient.UpdateAttribute(s.ctx, ids[2], &attributes.UpdateAttributeRequest{
+		Id: ids[2],
+		Metadata: &common.MetadataMutable{
+			Labels: map[string]string{"updated": "true"},
+		},
+		MetadataUpdateBehavior: common.MetadataUpdateEnum_METADATA_UPDATE_ENUM_REPLACE,
+	})
+	s.Require().NoError(err)
+
+	listRsp, err := s.db.PolicyClient.ListAttributes(s.ctx, &attributes.ListAttributesRequest{
+		Namespace: nsID,
+		Sort: []*attributes.AttributesSort{
+			{Field: attributes.SortAttributesType_SORT_ATTRIBUTES_TYPE_UPDATED_AT, Direction: policy.SortDirection_SORT_DIRECTION_ASC},
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(listRsp)
+
+	// The updated attribute (ids[2]) should appear last in ASC order
+	assertIDsInOrder(s.T(), listRsp.GetAttributes(), func(attr *policy.Attribute) string { return attr.GetId() }, ids[0], ids[1], ids[2])
+}
+
+func (s *AttributesSuite) Test_ListAttributes_SortTieBreaker_CreatedAtWithIDFallback() {
+	nsID := s.createSortTestNamespace("sort-tiebreaker")
+	suffix := time.Now().UnixNano()
+	ids := make([]string, 3)
+	for i := range 3 {
+		name := fmt.Sprintf("tiebreaker-attr-%d-%d", i, suffix)
+		created, err := s.db.PolicyClient.CreateAttribute(s.ctx, &attributes.CreateAttributeRequest{
+			Name:        name,
+			NamespaceId: nsID,
+			Rule:        policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
+		})
+		s.Require().NoError(err)
+		ids[i] = created.GetId()
+	}
+	defer s.deleteSortTestAttributes(ids)
+
+	s.Require().NoError(forceCreatedAtTie(s.ctx, s.db, "attribute_definitions", ids))
+
+	sorted := slices.Sorted(slices.Values(ids))
+
+	listRsp, err := s.db.PolicyClient.ListAttributes(s.ctx, &attributes.ListAttributesRequest{
+		Namespace: nsID,
+		Sort: []*attributes.AttributesSort{
+			{Field: attributes.SortAttributesType_SORT_ATTRIBUTES_TYPE_CREATED_AT, Direction: policy.SortDirection_SORT_DIRECTION_ASC},
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(listRsp)
+
+	assertIDsInOrder(s.T(), listRsp.GetAttributes(), func(attr *policy.Attribute) string { return attr.GetId() }, sorted[0], sorted[1], sorted[2])
+}
+
+func (s *AttributesSuite) Test_ListAttributes_SortByUnspecifiedField_DefaultsToCreatedAt() {
+	nsID := s.createSortTestNamespace("sort-unspecified-field")
+	ids := s.createSortTestAttributes(nsID, []string{"unspecified-field-attr-0", "unspecified-field-attr-1", "unspecified-field-attr-2"})
+	defer s.deleteSortTestAttributes(ids)
+
+	listRsp, err := s.db.PolicyClient.ListAttributes(s.ctx, &attributes.ListAttributesRequest{
+		Namespace: nsID,
+		Sort: []*attributes.AttributesSort{
+			{Field: attributes.SortAttributesType_SORT_ATTRIBUTES_TYPE_UNSPECIFIED, Direction: policy.SortDirection_SORT_DIRECTION_ASC},
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(listRsp)
+
+	// Field defaults to created_at, explicit ASC is preserved
+	assertIDsInOrder(s.T(), listRsp.GetAttributes(), func(attr *policy.Attribute) string { return attr.GetId() }, ids[0], ids[1], ids[2])
+}
+
+func (s *AttributesSuite) Test_ListAttributes_SortByUnspecifiedDirection_DefaultsToDESC() {
+	nsID := s.createSortTestNamespace("sort-unspecified-dir")
+	ids := s.createSortTestAttributes(nsID, []string{"unspecified-dir-attr-0", "unspecified-dir-attr-1", "unspecified-dir-attr-2"})
+	defer s.deleteSortTestAttributes(ids)
+
+	listRsp, err := s.db.PolicyClient.ListAttributes(s.ctx, &attributes.ListAttributesRequest{
+		Namespace: nsID,
+		Sort: []*attributes.AttributesSort{
+			{Field: attributes.SortAttributesType_SORT_ATTRIBUTES_TYPE_CREATED_AT, Direction: policy.SortDirection_SORT_DIRECTION_UNSPECIFIED},
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(listRsp)
+
+	// Direction defaults to DESC, explicit created_at field is preserved
+	assertIDsInOrder(s.T(), listRsp.GetAttributes(), func(attr *policy.Attribute) string { return attr.GetId() }, ids[2], ids[1], ids[0])
+}
+
+func (s *AttributesSuite) Test_ListAttributes_SortByBothUnspecified_DefaultsToCreatedAtDESC() {
+	nsID := s.createSortTestNamespace("sort-both-unspecified")
+	ids := s.createSortTestAttributes(nsID, []string{"both-unspecified-attr-0", "both-unspecified-attr-1", "both-unspecified-attr-2"})
+	defer s.deleteSortTestAttributes(ids)
+
+	listRsp, err := s.db.PolicyClient.ListAttributes(s.ctx, &attributes.ListAttributesRequest{
+		Namespace: nsID,
+		Sort: []*attributes.AttributesSort{
+			{Field: attributes.SortAttributesType_SORT_ATTRIBUTES_TYPE_UNSPECIFIED, Direction: policy.SortDirection_SORT_DIRECTION_UNSPECIFIED},
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(listRsp)
+
+	// Both default: created_at DESC
+	assertIDsInOrder(s.T(), listRsp.GetAttributes(), func(attr *policy.Attribute) string { return attr.GetId() }, ids[2], ids[1], ids[0])
+}
+
+func (s *AttributesSuite) Test_ListAttributes_SortOmitted() {
+	nsID := s.createSortTestNamespace("sort-omitted")
+	ids := s.createSortTestAttributes(nsID, []string{"omitted-sort-attr-0", "omitted-sort-attr-1", "omitted-sort-attr-2"})
+	defer s.deleteSortTestAttributes(ids)
+
+	listRsp, err := s.db.PolicyClient.ListAttributes(s.ctx, &attributes.ListAttributesRequest{
+		Namespace: nsID,
+	})
+	s.Require().NoError(err)
+	s.NotNil(listRsp)
+
+	// No sort provided: created_at DESC
+	assertIDsInOrder(s.T(), listRsp.GetAttributes(), func(attr *policy.Attribute) string { return attr.GetId() }, ids[2], ids[1], ids[0])
+}
+
 func (s *AttributesSuite) Test_ListAttributes_Limit_Succeeds() {
 	var limit int32 = 2
 	listRsp, err := s.db.PolicyClient.ListAttributes(s.ctx, &attributes.ListAttributesRequest{
@@ -506,6 +855,47 @@ func (s *AttributesSuite) Test_ListAttributes_FqnsIncluded() {
 			s.Equal(fmt.Sprintf("https://%s/attr/%s/value/%s", a.GetNamespace().GetName(), a.GetName(), v.GetValue()), v.GetFqn())
 		}
 	}
+}
+
+func (s *AttributesSuite) Test_ListAttributes_IncludesAllowTraversal() {
+	attrTrue := &attributes.CreateAttributeRequest{
+		Name:           "test__list_attributes_allow_traversal_true",
+		NamespaceId:    fixtureNamespaceID,
+		Rule:           policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY,
+		AllowTraversal: &wrapperspb.BoolValue{Value: true},
+	}
+	attrFalse := &attributes.CreateAttributeRequest{
+		Name:        "test__list_attributes_allow_traversal_false",
+		NamespaceId: fixtureNamespaceID,
+		Rule:        policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
+	}
+	createdTrue, err := s.db.PolicyClient.CreateAttribute(s.ctx, attrTrue)
+	s.Require().NoError(err)
+	createdFalse, err := s.db.PolicyClient.CreateAttribute(s.ctx, attrFalse)
+	s.Require().NoError(err)
+
+	listRsp, err := s.db.PolicyClient.ListAttributes(s.ctx, &attributes.ListAttributesRequest{
+		Namespace: fixtureNamespaceID,
+	})
+	s.Require().NoError(err)
+	s.NotNil(listRsp)
+
+	var foundTrue, foundFalse *policy.Attribute
+	for _, attr := range listRsp.GetAttributes() {
+		switch attr.GetId() {
+		case createdTrue.GetId():
+			foundTrue = attr
+		case createdFalse.GetId():
+			foundFalse = attr
+		}
+	}
+
+	s.Require().NotNil(foundTrue)
+	s.Require().NotNil(foundFalse)
+	s.Require().NotNil(foundTrue.GetAllowTraversal())
+	s.True(foundTrue.GetAllowTraversal().GetValue())
+	s.Require().NotNil(foundFalse.GetAllowTraversal())
+	s.False(foundFalse.GetAllowTraversal().GetValue())
 }
 
 func (s *AttributesSuite) Test_ListAttributes_ByNamespaceIdOrName() {
@@ -806,6 +1196,34 @@ func (s *AttributesSuite) Test_UnsafeUpdateAttribute_WithRule() {
 	s.Require().NoError(err)
 	s.NotNil(updated)
 	s.Equal(policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF, updated.GetRule())
+}
+
+func (s *AttributesSuite) Test_UnsafeUpdateAttribute_WithAllowTraversal() {
+	attr := &attributes.CreateAttributeRequest{
+		Name:        "test__unsafe_update_attribute_allow_traversal",
+		NamespaceId: fixtureNamespaceID,
+		Rule:        policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY,
+	}
+	created, err := s.db.PolicyClient.CreateAttribute(s.ctx, attr)
+	s.Require().NoError(err)
+	s.NotNil(created)
+	s.Require().NotNil(created.GetAllowTraversal())
+	s.False(created.GetAllowTraversal().GetValue())
+
+	updated, err := s.db.PolicyClient.UnsafeUpdateAttribute(s.ctx, &unsafe.UnsafeUpdateAttributeRequest{
+		Id:             created.GetId(),
+		AllowTraversal: &wrapperspb.BoolValue{Value: true},
+	})
+	s.Require().NoError(err)
+	s.NotNil(updated)
+	s.Require().NotNil(updated.GetAllowTraversal())
+	s.True(updated.GetAllowTraversal().GetValue())
+
+	got, err := s.db.PolicyClient.GetAttribute(s.ctx, created.GetId())
+	s.Require().NoError(err)
+	s.NotNil(got)
+	s.Require().NotNil(got.GetAllowTraversal())
+	s.True(got.GetAllowTraversal().GetValue())
 }
 
 func (s *AttributesSuite) Test_UnsafeUpdateAttribute_WithNewName() {
@@ -1114,16 +1532,22 @@ func (s *AttributesSuite) Test_DeactivateAttribute_Cascades_List() {
 	}
 
 	listValues := func(state common.ActiveStateEnum) bool {
-		valsListRsp, err := s.db.PolicyClient.ListAttributeValues(s.ctx, &attributes.ListAttributeValuesRequest{
-			AttributeId: deactivatedAttrID,
-			State:       state,
-		})
+		gotAttr, err := s.db.PolicyClient.GetAttribute(s.ctx, deactivatedAttrID)
 		s.Require().NoError(err)
-		s.NotNil(valsListRsp)
-		listed := valsListRsp.GetValues()
-		for _, v := range listed {
-			if deactivatedAttrValueID == v.GetId() {
+		s.NotNil(gotAttr)
+		for _, v := range gotAttr.GetValues() {
+			if deactivatedAttrValueID != v.GetId() {
+				continue
+			}
+			switch state {
+			case common.ActiveStateEnum_ACTIVE_STATE_ENUM_ACTIVE:
+				return v.GetActive().GetValue()
+			case common.ActiveStateEnum_ACTIVE_STATE_ENUM_INACTIVE:
+				return !v.GetActive().GetValue()
+			case common.ActiveStateEnum_ACTIVE_STATE_ENUM_ANY:
 				return true
+			case common.ActiveStateEnum_ACTIVE_STATE_ENUM_UNSPECIFIED:
+				return v.GetActive().GetValue()
 			}
 		}
 		return false
@@ -1436,19 +1860,6 @@ func (s *AttributesSuite) Test_RemovePublicKeyFromAttribute_Not_Found_Fails() {
 	s.NotNil(resp)
 }
 
-func (s *AttributesSuite) getAttributeFixtures() map[string]fixtures.FixtureDataAttribute {
-	return map[string]fixtures.FixtureDataAttribute{
-		"example.com/attr/attr1": s.f.GetAttributeKey("example.com/attr/attr1"),
-		"example.com/attr/attr2": s.f.GetAttributeKey("example.com/attr/attr2"),
-		"example.net/attr/attr1": s.f.GetAttributeKey("example.net/attr/attr1"),
-		"example.net/attr/attr2": s.f.GetAttributeKey("example.net/attr/attr2"),
-		"example.net/attr/attr3": s.f.GetAttributeKey("example.net/attr/attr3"),
-		"example.org/attr/attr1": s.f.GetAttributeKey("example.org/attr/attr1"),
-		"example.org/attr/attr2": s.f.GetAttributeKey("example.org/attr/attr2"),
-		"example.org/attr/attr3": s.f.GetAttributeKey("example.org/attr/attr3"),
-	}
-}
-
 // - Test that a Get/List attribute returns the Asymmetric Keys with the provider configs / add a key with no provider config
 
 // Test_GetAttribute_ByIdAndFqn_ReturnSameResult validates that getAttribute works correctly
@@ -1469,6 +1880,52 @@ func (s *AttributesSuite) Test_GetAttribute_ByIdAndFqn_ReturnSameResult() {
 
 		// Verify both return the same attribute
 		s.True(proto.Equal(attrByID, attrByFQN))
+	}
+}
+
+// createSortTestNamespace creates an isolated namespace for sort testing.
+func (s *AttributesSuite) createSortTestNamespace(label string) string {
+	nsName := fmt.Sprintf("%s-%d.com", label, time.Now().UnixNano())
+	ns, err := s.db.PolicyClient.CreateNamespace(s.ctx, &namespaces.CreateNamespaceRequest{Name: nsName})
+	s.Require().NoError(err)
+	return ns.GetId()
+}
+
+// createSortTestAttributes creates attributes in the given namespace with the given prefixes,
+// adding 5ms gaps between creations for distinct timestamps. Returns the attribute IDs in creation order.
+func (s *AttributesSuite) createSortTestAttributes(nsID string, prefixes []string) []string {
+	ids := make([]string, len(prefixes))
+	for i, prefix := range prefixes {
+		if i > 0 {
+			time.Sleep(5 * time.Millisecond)
+		}
+		name := fmt.Sprintf("%s-%d", prefix, time.Now().UnixNano())
+		created, err := s.db.PolicyClient.CreateAttribute(s.ctx, &attributes.CreateAttributeRequest{
+			Name:        name,
+			NamespaceId: nsID,
+			Rule:        policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
+		})
+		s.Require().NoError(err)
+		ids[i] = created.GetId()
+	}
+	return ids
+}
+
+// deleteSortTestAttributes deactivates attributes created by sort tests.
+func (s *AttributesSuite) deleteSortTestAttributes(ids []string) {
+	s.Require().NoError(forceDeleteRows(s.ctx, s.db, "attribute_definitions", ids))
+}
+
+func (s *AttributesSuite) getAttributeFixtures() map[string]fixtures.FixtureDataAttribute {
+	return map[string]fixtures.FixtureDataAttribute{
+		"example.com/attr/attr1": s.f.GetAttributeKey("example.com/attr/attr1"),
+		"example.com/attr/attr2": s.f.GetAttributeKey("example.com/attr/attr2"),
+		"example.net/attr/attr1": s.f.GetAttributeKey("example.net/attr/attr1"),
+		"example.net/attr/attr2": s.f.GetAttributeKey("example.net/attr/attr2"),
+		"example.net/attr/attr3": s.f.GetAttributeKey("example.net/attr/attr3"),
+		"example.org/attr/attr1": s.f.GetAttributeKey("example.org/attr/attr1"),
+		"example.org/attr/attr2": s.f.GetAttributeKey("example.org/attr/attr2"),
+		"example.org/attr/attr3": s.f.GetAttributeKey("example.org/attr/attr3"),
 	}
 }
 

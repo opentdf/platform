@@ -49,16 +49,6 @@ const (
 	ActionServiceDeleteActionProcedure = "/policy.actions.ActionService/DeleteAction"
 )
 
-// These variables are the protoreflect.Descriptor objects for the RPCs defined in this package.
-var (
-	actionServiceServiceDescriptor            = actions.File_policy_actions_actions_proto.Services().ByName("ActionService")
-	actionServiceGetActionMethodDescriptor    = actionServiceServiceDescriptor.Methods().ByName("GetAction")
-	actionServiceListActionsMethodDescriptor  = actionServiceServiceDescriptor.Methods().ByName("ListActions")
-	actionServiceCreateActionMethodDescriptor = actionServiceServiceDescriptor.Methods().ByName("CreateAction")
-	actionServiceUpdateActionMethodDescriptor = actionServiceServiceDescriptor.Methods().ByName("UpdateAction")
-	actionServiceDeleteActionMethodDescriptor = actionServiceServiceDescriptor.Methods().ByName("DeleteAction")
-)
-
 // ActionServiceClient is a client for the policy.actions.ActionService service.
 type ActionServiceClient interface {
 	GetAction(context.Context, *connect.Request[actions.GetActionRequest]) (*connect.Response[actions.GetActionResponse], error)
@@ -77,35 +67,36 @@ type ActionServiceClient interface {
 // http://api.acme.com or https://acme.com/grpc).
 func NewActionServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.ClientOption) ActionServiceClient {
 	baseURL = strings.TrimRight(baseURL, "/")
+	actionServiceMethods := actions.File_policy_actions_actions_proto.Services().ByName("ActionService").Methods()
 	return &actionServiceClient{
 		getAction: connect.NewClient[actions.GetActionRequest, actions.GetActionResponse](
 			httpClient,
 			baseURL+ActionServiceGetActionProcedure,
-			connect.WithSchema(actionServiceGetActionMethodDescriptor),
+			connect.WithSchema(actionServiceMethods.ByName("GetAction")),
 			connect.WithClientOptions(opts...),
 		),
 		listActions: connect.NewClient[actions.ListActionsRequest, actions.ListActionsResponse](
 			httpClient,
 			baseURL+ActionServiceListActionsProcedure,
-			connect.WithSchema(actionServiceListActionsMethodDescriptor),
+			connect.WithSchema(actionServiceMethods.ByName("ListActions")),
 			connect.WithClientOptions(opts...),
 		),
 		createAction: connect.NewClient[actions.CreateActionRequest, actions.CreateActionResponse](
 			httpClient,
 			baseURL+ActionServiceCreateActionProcedure,
-			connect.WithSchema(actionServiceCreateActionMethodDescriptor),
+			connect.WithSchema(actionServiceMethods.ByName("CreateAction")),
 			connect.WithClientOptions(opts...),
 		),
 		updateAction: connect.NewClient[actions.UpdateActionRequest, actions.UpdateActionResponse](
 			httpClient,
 			baseURL+ActionServiceUpdateActionProcedure,
-			connect.WithSchema(actionServiceUpdateActionMethodDescriptor),
+			connect.WithSchema(actionServiceMethods.ByName("UpdateAction")),
 			connect.WithClientOptions(opts...),
 		),
 		deleteAction: connect.NewClient[actions.DeleteActionRequest, actions.DeleteActionResponse](
 			httpClient,
 			baseURL+ActionServiceDeleteActionProcedure,
-			connect.WithSchema(actionServiceDeleteActionMethodDescriptor),
+			connect.WithSchema(actionServiceMethods.ByName("DeleteAction")),
 			connect.WithClientOptions(opts...),
 		),
 	}
@@ -160,34 +151,35 @@ type ActionServiceHandler interface {
 // By default, handlers support the Connect, gRPC, and gRPC-Web protocols with the binary Protobuf
 // and JSON codecs. They also support gzip compression.
 func NewActionServiceHandler(svc ActionServiceHandler, opts ...connect.HandlerOption) (string, http.Handler) {
+	actionServiceMethods := actions.File_policy_actions_actions_proto.Services().ByName("ActionService").Methods()
 	actionServiceGetActionHandler := connect.NewUnaryHandler(
 		ActionServiceGetActionProcedure,
 		svc.GetAction,
-		connect.WithSchema(actionServiceGetActionMethodDescriptor),
+		connect.WithSchema(actionServiceMethods.ByName("GetAction")),
 		connect.WithHandlerOptions(opts...),
 	)
 	actionServiceListActionsHandler := connect.NewUnaryHandler(
 		ActionServiceListActionsProcedure,
 		svc.ListActions,
-		connect.WithSchema(actionServiceListActionsMethodDescriptor),
+		connect.WithSchema(actionServiceMethods.ByName("ListActions")),
 		connect.WithHandlerOptions(opts...),
 	)
 	actionServiceCreateActionHandler := connect.NewUnaryHandler(
 		ActionServiceCreateActionProcedure,
 		svc.CreateAction,
-		connect.WithSchema(actionServiceCreateActionMethodDescriptor),
+		connect.WithSchema(actionServiceMethods.ByName("CreateAction")),
 		connect.WithHandlerOptions(opts...),
 	)
 	actionServiceUpdateActionHandler := connect.NewUnaryHandler(
 		ActionServiceUpdateActionProcedure,
 		svc.UpdateAction,
-		connect.WithSchema(actionServiceUpdateActionMethodDescriptor),
+		connect.WithSchema(actionServiceMethods.ByName("UpdateAction")),
 		connect.WithHandlerOptions(opts...),
 	)
 	actionServiceDeleteActionHandler := connect.NewUnaryHandler(
 		ActionServiceDeleteActionProcedure,
 		svc.DeleteAction,
-		connect.WithSchema(actionServiceDeleteActionMethodDescriptor),
+		connect.WithSchema(actionServiceMethods.ByName("DeleteAction")),
 		connect.WithHandlerOptions(opts...),
 	)
 	return "/policy.actions.ActionService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

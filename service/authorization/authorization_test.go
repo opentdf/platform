@@ -9,7 +9,8 @@ import (
 	"go.opentelemetry.io/otel/trace/noop"
 
 	"connectrpc.com/connect"
-	"github.com/open-policy-agent/opa/rego"
+	"github.com/open-policy-agent/opa/v1/ast"
+	"github.com/open-policy-agent/opa/v1/rego"
 	"github.com/opentdf/platform/protocol/go/authorization"
 	"github.com/opentdf/platform/protocol/go/entityresolution"
 	"github.com/opentdf/platform/protocol/go/policy"
@@ -23,6 +24,7 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/structpb"
+	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
 func TestGetComprehensiveHierarchy(t *testing.T) {
@@ -146,6 +148,7 @@ func Test_GetDecisionsAllOf_Pass(t *testing.T) {
 	}
 
 	testrego := rego.New(
+		rego.SetRegoVersion(ast.RegoV0),
 		rego.Query("data.example.p"),
 		rego.Module("example.rego",
 			`package example
@@ -245,6 +248,7 @@ func Test_GetDecisionsAllOf_Pass(t *testing.T) {
 		},
 	}
 	testrego = rego.New(
+		rego.SetRegoVersion(ast.RegoV0),
 		rego.Query("data.example.p"),
 		rego.Module("example.rego",
 			`package example
@@ -335,6 +339,7 @@ func Test_GetDecisions_AllOf_Fail(t *testing.T) {
 	}
 
 	testrego := rego.New(
+		rego.SetRegoVersion(ast.RegoV0),
 		rego.Query("data.example.p"),
 		rego.Module("example.rego",
 			`package example
@@ -413,6 +418,7 @@ func Test_GetDecisionsAllOfWithEnvironmental_Pass(t *testing.T) {
 	}
 
 	testrego := rego.New(
+		rego.SetRegoVersion(ast.RegoV0),
 		rego.Query("data.example.p"),
 		rego.Module("example.rego",
 			`package example
@@ -511,6 +517,7 @@ func Test_GetDecisionsAllOfWithEnvironmental_Fail(t *testing.T) {
 	}
 
 	testrego := rego.New(
+		rego.SetRegoVersion(ast.RegoV0),
 		rego.Query("data.example.p"),
 		rego.Module("example.rego",
 			`package example
@@ -610,6 +617,7 @@ func Test_GetEntitlementsSimple(t *testing.T) {
 	}
 
 	rego := rego.New(
+		rego.SetRegoVersion(ast.RegoV0),
 		rego.Query("data.example.p"),
 		rego.Module("example.rego",
 			`package example
@@ -684,6 +692,7 @@ func Test_GetEntitlementsFqnCasing(t *testing.T) {
 	}
 
 	rego := rego.New(
+		rego.SetRegoVersion(ast.RegoV0),
 		rego.Query("data.example.p"),
 		rego.Module("example.rego",
 			`package example
@@ -763,6 +772,7 @@ func Test_GetEntitlements_HandlesPagination(t *testing.T) {
 	}
 
 	rego := rego.New(
+		rego.SetRegoVersion(ast.RegoV0),
 		rego.Query("data.example.p"),
 		rego.Module("example.rego",
 			`package example
@@ -856,6 +866,7 @@ func Test_GetEntitlementsWithComprehensiveHierarchy(t *testing.T) {
 	}
 
 	rego := rego.New(
+		rego.SetRegoVersion(ast.RegoV0),
 		rego.Query("data.example.p"),
 		rego.Module("example.rego",
 			`package example
@@ -1097,6 +1108,7 @@ func Test_GetDecisions_RA_FQN_Edge_Cases(t *testing.T) {
 	}
 
 	testrego := rego.New(
+		rego.SetRegoVersion(ast.RegoV0),
 		rego.Query("data.example.p"),
 		rego.Module("example.rego",
 			`package example
@@ -1191,7 +1203,50 @@ func Test_GetDecisions_RA_FQN_Edge_Cases(t *testing.T) {
 	assert.Len(t, resp.Msg.GetDecisionResponses(), 1)
 	assert.Equal(t, authorization.DecisionResponse_DECISION_DENY, resp.Msg.GetDecisionResponses()[0].GetDecision())
 
-	////////// TEST3: No FQNs in Resource Attribute /////////
+	////////// TEST4: FQN present but value missing //////////
+
+	// getAttributesByFQN with allow_travesal=true. Will return an attribute definition but no attribute value (bc it doesn't exist)
+	getAttributesByValueFqnsResponse = attr.GetAttributeValuesByFqnsResponse{FqnAttributeValues: map[string]*attr.GetAttributeValuesByFqnsResponse_AttributeAndValue{
+		"https://example.com/attr/foo/value/doesntexist_allow_traversal": {
+			Attribute: &policy.Attribute{
+				AllowTraversal: wrapperspb.Bool(true),
+			},
+			Value: nil,
+		},
+	}}
+	errGetAttributesByValueFqns = nil
+
+	// set the request
+	req = connect.Request[authorization.GetDecisionsRequest]{
+		Msg: &authorization.GetDecisionsRequest{
+			DecisionRequests: []*authorization.DecisionRequest{
+				{
+					Actions: []*policy.Action{},
+					EntityChains: []*authorization.EntityChain{
+						{
+							Id: "ec1",
+							Entities: []*authorization.Entity{
+								{Id: "e1", EntityType: &authorization.Entity_UserName{UserName: "bob.smith"}, Category: authorization.Entity_CATEGORY_SUBJECT},
+							},
+						},
+					},
+					ResourceAttributes: []*authorization.ResourceAttribute{
+						{AttributeValueFqns: []string{"https://example.com/attr/foo/value/doesntexist_allow_traversal"}},
+					},
+				},
+			},
+		},
+	}
+
+	resp, err = as.GetDecisions(ctx, &req)
+
+	require.NoError(t, err)
+	assert.NotNil(t, resp)
+
+	assert.Len(t, resp.Msg.GetDecisionResponses(), 1)
+	assert.Equal(t, authorization.DecisionResponse_DECISION_DENY, resp.Msg.GetDecisionResponses()[0].GetDecision())
+
+	////////// TEST5: No FQNs in Resource Attribute /////////
 
 	// should not hit get attributes by value fqns
 	getAttributesByValueFqnsResponse = attr.GetAttributeValuesByFqnsResponse{}
@@ -1272,6 +1327,7 @@ func Test_GetDecisionsAllOf_Pass_EC_RA_Length_Mismatch(t *testing.T) {
 
 	/////// TEST1: Three entity chains, one resource attribute ///////
 	testrego := rego.New(
+		rego.SetRegoVersion(ast.RegoV0),
 		rego.Query("data.example.p"),
 		rego.Module("example.rego",
 			`package example
@@ -1394,6 +1450,7 @@ func Test_GetDecisionsAllOf_Pass_EC_RA_Length_Mismatch(t *testing.T) {
 	}
 
 	testrego = rego.New(
+		rego.SetRegoVersion(ast.RegoV0),
 		rego.Query("data.example.p"),
 		rego.Module("example.rego",
 			`package example
@@ -1463,6 +1520,7 @@ func Test_GetDecisionsAllOf_Pass_EC_RA_Length_Mismatch(t *testing.T) {
 		},
 	}
 	testrego = rego.New(
+		rego.SetRegoVersion(ast.RegoV0),
 		rego.Query("data.example.p"),
 		rego.Module("example.rego",
 			`package example
@@ -1586,6 +1644,7 @@ func Test_GetDecisions_Empty_EC_RA(t *testing.T) {
 	}
 
 	testrego := rego.New(
+		rego.SetRegoVersion(ast.RegoV0),
 		rego.Query("data.example.p"),
 		rego.Module("example.rego",
 			`package example

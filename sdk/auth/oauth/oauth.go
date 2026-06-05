@@ -3,6 +3,7 @@ package oauth
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -23,6 +24,8 @@ const (
 	tokenExpirationBuffer = 10 * time.Second
 )
 
+const defaultSubjectTokenType = "urn:ietf:params:oauth:token-type:access_token" //nolint:gosec // OAuth token type URN, not a credential
+
 type CertExchangeInfo struct {
 	HTTPClient *http.Client
 	Audience   []string
@@ -35,7 +38,10 @@ type ClientCredentials struct {
 
 type TokenExchangeInfo struct {
 	SubjectToken string
-	Audience     []string
+	// SubjectTokenType declares the type of SubjectToken per RFC 8693 §2.1.
+	// Defaults to urn:ietf:params:oauth:token-type:access_token when empty.
+	SubjectTokenType string
+	Audience         []string
 }
 
 type Token struct {
@@ -71,7 +77,6 @@ func getAccessTokenRequest(tokenEndpoint, dpopNonce string, scopes []string, cli
 
 	formData := url.Values{}
 	formData.Set("grant_type", "client_credentials")
-	formData.Set("client_id", clientCredentials.ClientID)
 	if len(scopes) > 0 {
 		formData.Set("scope", strings.Join(scopes, " "))
 	}
@@ -95,6 +100,7 @@ func setClientAuth(cc ClientCredentials, formData *url.Values, req *http.Request
 		if err != nil {
 			return fmt.Errorf("error building signed auth token to authenticate with IDP: %w", err)
 		}
+		formData.Set("client_id", cc.ClientID)
 		formData.Set("client_assertion_type", "urn:ietf:params:oauth:client-assertion-type:jwt-bearer")
 		formData.Set("client_assertion", string(signedToken))
 	default:
@@ -279,10 +285,18 @@ func DoTokenExchange(ctx context.Context, client *http.Client, tokenEndpoint str
 }
 
 func getTokenExchangeRequest(ctx context.Context, tokenEndpoint, dpopNonce string, scopes []string, clientCredentials ClientCredentials, tokenExchange TokenExchangeInfo, privateJWK *jwk.Key) (*http.Request, error) {
+	if tokenExchange.SubjectToken == "" {
+		return nil, errors.New("subject_token is required for token exchange")
+	}
+	subjectTokenType := tokenExchange.SubjectTokenType
+	if subjectTokenType == "" {
+		subjectTokenType = defaultSubjectTokenType
+	}
 	data := url.Values{
 		"grant_type":           {"urn:ietf:params:oauth:grant-type:token-exchange"},
 		"subject_token":        {tokenExchange.SubjectToken},
-		"requested_token_type": {"urn:ietf:params:oauth:token-type:access_token"},
+		"subject_token_type":   {subjectTokenType},
+		"requested_token_type": {defaultSubjectTokenType},
 	}
 
 	for _, a := range tokenExchange.Audience {
@@ -290,11 +304,10 @@ func getTokenExchangeRequest(ctx context.Context, tokenEndpoint, dpopNonce strin
 	}
 
 	if len(scopes) > 0 {
-		data.Set("scopes", strings.Join(scopes, " "))
+		data.Set("scope", strings.Join(scopes, " "))
 	}
 
-	body := strings.NewReader(data.Encode())
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, tokenEndpoint, body)
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, tokenEndpoint, nil)
 	if err != nil {
 		return nil, fmt.Errorf("error getting HTTP request: %w", err)
 	}
@@ -309,6 +322,8 @@ func getTokenExchangeRequest(ctx context.Context, tokenEndpoint, dpopNonce strin
 	if err != nil {
 		return nil, err
 	}
+
+	req.Body = io.NopCloser(strings.NewReader(data.Encode()))
 
 	return req, nil
 }
@@ -333,14 +348,13 @@ func DoCertExchange(ctx context.Context, tokenEndpoint string, exchangeInfo Cert
 }
 
 func getCertExchangeRequest(ctx context.Context, tokenEndpoint string, clientCredentials ClientCredentials, exchangeInfo CertExchangeInfo, key jwk.Key) (*http.Request, error) {
-	data := url.Values{"grant_type": {"password"}, "client_id": {clientCredentials.ClientID}, "username": {""}, "password": {""}}
+	data := url.Values{"grant_type": {"password"}, "username": {""}, "password": {""}}
 
 	for _, a := range exchangeInfo.Audience {
 		data.Add("audience", a)
 	}
 
-	body := strings.NewReader(data.Encode())
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, tokenEndpoint, body)
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, tokenEndpoint, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -355,6 +369,8 @@ func getCertExchangeRequest(ctx context.Context, tokenEndpoint string, clientCre
 	if err = setClientAuth(clientCredentials, &data, req, tokenEndpoint); err != nil {
 		return nil, err
 	}
+
+	req.Body = io.NopCloser(strings.NewReader(data.Encode()))
 
 	return req, nil
 }

@@ -4,6 +4,8 @@ import (
 	"context"
 	"crypto"
 	"crypto/elliptic"
+	"crypto/x509"
+	"encoding/pem"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -14,6 +16,18 @@ import (
 )
 
 const inProcessSystemName = "opentdf.io/in-process"
+
+// InProcessSupportedAlgorithms is the canonical set of algorithms the
+// InProcessProvider knows how to serve when a corresponding key is loaded.
+// Keep in sync with the switch in Decrypt.
+var InProcessSupportedAlgorithms = []ocrypto.KeyType{
+	ocrypto.RSA2048Key,
+	ocrypto.RSA4096Key,
+	ocrypto.EC256Key,
+	ocrypto.HybridXWingKey,
+	ocrypto.HybridSecp256r1MLKEM768Key,
+	ocrypto.HybridSecp384r1MLKEM1024Key,
+}
 
 func convertPEMToJWK(_ string) (string, error) {
 	// Implement the conversion logic here or use an external library if available.
@@ -63,7 +77,7 @@ func (k *KeyDetailsAdapter) ExportPublicKey(_ context.Context, format trust.KeyT
 	switch format {
 	case trust.KeyTypeJWK:
 		// For JWK format (currently only supported for RSA)
-		if k.algorithm == AlgorithmRSA2048 {
+		if k.algorithm == AlgorithmRSA2048 || k.algorithm == AlgorithmRSA4096 {
 			return k.cryptoProvider.RSAPublicKeyAsJSON(kid)
 		}
 		// For EC keys, we return the public key in PEM format
@@ -81,6 +95,12 @@ func (k *KeyDetailsAdapter) ExportPublicKey(_ context.Context, format trust.KeyT
 		// Try to get the key as an RSA key first
 		if rsaKey, err := k.cryptoProvider.RSAPublicKey(kid); err == nil {
 			return rsaKey, nil
+		}
+		if hybridKey, err := k.cryptoProvider.HybridPublicKey(kid); err == nil {
+			return hybridKey, nil
+		}
+		if xwingKey, err := k.cryptoProvider.XWingPublicKey(kid); err == nil {
+			return xwingKey, nil
 		}
 		return k.cryptoProvider.ECPublicKey(kid)
 	default:
@@ -168,31 +188,17 @@ func (a *InProcessProvider) FindKeyByAlgorithm(_ context.Context, algorithm stri
 
 // FindKeyByID finds a key by ID
 func (a *InProcessProvider) FindKeyByID(_ context.Context, id trust.KeyIdentifier) (trust.KeyDetails, error) {
-	// Try to determine the algorithm by checking if the key works with known algorithms
-	for _, alg := range []string{AlgorithmECP256R1, AlgorithmRSA2048} {
-		// This is a hack since the original provider doesn't have a way to check if a key exists
-		switch alg {
-		case AlgorithmECP256R1:
-			if _, err := a.cryptoProvider.ECPublicKey(string(id)); err == nil {
-				return &KeyDetailsAdapter{
-					id:             id,
-					algorithm:      ocrypto.KeyType(alg),
-					legacy:         a.legacyKeys[string(id)],
-					cryptoProvider: a.cryptoProvider,
-				}, nil
-			}
-		case AlgorithmRSA2048:
-			if _, err := a.cryptoProvider.RSAPublicKey(string(id)); err == nil {
-				return &KeyDetailsAdapter{
-					id:             id,
-					algorithm:      ocrypto.KeyType(alg),
-					legacy:         a.legacyKeys[string(id)],
-					cryptoProvider: a.cryptoProvider,
-				}, nil
-			}
-		}
+	keyType, err := a.determineKeyType(string(id))
+	if err != nil {
+		return nil, ErrCertNotFound
 	}
-	return nil, ErrCertNotFound
+
+	return &KeyDetailsAdapter{
+		id:             id,
+		algorithm:      ocrypto.KeyType(keyType),
+		legacy:         a.legacyKeys[string(id)],
+		cryptoProvider: a.cryptoProvider,
+	}, nil
 }
 
 // ListKeys lists all available keys
@@ -205,24 +211,25 @@ func (a *InProcessProvider) ListKeysWith(ctx context.Context, opts trust.ListKey
 	var keys []trust.KeyDetails
 
 	// Try to find keys for known algorithms
-	for _, alg := range []string{AlgorithmRSA2048, AlgorithmECP256R1} {
-		if kids, err := a.cryptoProvider.ListKIDsByAlgorithm(alg); err == nil && len(kids) > 0 {
+	for _, alg := range InProcessSupportedAlgorithms {
+		if kids, err := a.cryptoProvider.ListKIDsByAlgorithm(string(alg)); err == nil && len(kids) > 0 {
 			for _, kid := range kids {
 				if opts.LegacyOnly && !a.legacyKeys[kid] {
 					continue // Skip non-legacy keys if LegacyOnly is true
 				}
 				keys = append(keys, &KeyDetailsAdapter{
 					id:             trust.KeyIdentifier(kid),
-					algorithm:      ocrypto.KeyType(alg),
+					algorithm:      alg,
 					cryptoProvider: a.cryptoProvider,
 					legacy:         a.legacyKeys[kid],
 				})
 			}
 		} else if err != nil {
 			if a.logger != nil {
-				a.logger.WarnContext(ctx,
+				a.logger.WarnContext(
+					ctx,
 					"failed to list keys by algorithm",
-					slog.String("algorithm", alg),
+					slog.Any("algorithm", alg),
 					slog.Any("error", err),
 				)
 			}
@@ -240,7 +247,7 @@ func (a *InProcessProvider) Decrypt(ctx context.Context, keyDetails trust.KeyDet
 	var err error
 
 	// Try to determine the key type
-	keyType, err := a.determineKeyType(ctx, kid)
+	keyType, err := a.determineKeyType(kid)
 	if err != nil {
 		return nil, err
 	}
@@ -248,6 +255,8 @@ func (a *InProcessProvider) Decrypt(ctx context.Context, keyDetails trust.KeyDet
 	var rawKey []byte
 	switch keyType {
 	case AlgorithmRSA2048:
+		fallthrough
+	case AlgorithmRSA4096:
 		if len(ephemeralPublicKey) > 0 {
 			return nil, errors.New("ephemeral public key should not be provided for RSA decryption")
 		}
@@ -258,6 +267,12 @@ func (a *InProcessProvider) Decrypt(ctx context.Context, keyDetails trust.KeyDet
 			return nil, errors.New("ephemeral public key is required for EC decryption")
 		}
 		protectedKey, err = a.cryptoProvider.ECDecrypt(ctx, kid, ephemeralPublicKey, ciphertext)
+
+	case AlgorithmHPQTXWing, AlgorithmHPQTSecp256r1MLKEM768, AlgorithmHPQTSecp384r1MLKEM1024:
+		if len(ephemeralPublicKey) > 0 {
+			return nil, errors.New("ephemeral public key should not be provided for hybrid decryption")
+		}
+		return a.cryptoProvider.Decrypt(ctx, trust.KeyIdentifier(kid), ciphertext, nil)
 
 	default:
 		return nil, errors.New("unsupported key algorithm")
@@ -277,22 +292,51 @@ func (a *InProcessProvider) Decrypt(ctx context.Context, keyDetails trust.KeyDet
 	return protectedKey, nil
 }
 
-// DeriveKey generates a symmetric key for NanoTDF
+// DeriveKey computes an ECDH shared secret and derives an AES key via HKDF.
 func (a *InProcessProvider) DeriveKey(_ context.Context, keyDetails trust.KeyDetails, ephemeralPublicKeyBytes []byte, curve elliptic.Curve) (ocrypto.ProtectedKey, error) {
-	k, err := a.cryptoProvider.GenerateNanoTDFSymmetricKey(string(keyDetails.ID()), ephemeralPublicKeyBytes, curve)
+	kid := string(keyDetails.ID())
+	k, ok := a.cryptoProvider.keysByID[kid]
+	if !ok {
+		return nil, ErrKeyPairInfoNotFound
+	}
+	ec, ok := k.(StandardECCrypto)
+	if !ok {
+		return nil, ErrKeyPairInfoMalformed
+	}
+
+	ephemeralECDSAPublicKey, err := ocrypto.UncompressECPubKey(curve, ephemeralPublicKeyBytes)
 	if err != nil {
 		return nil, err
 	}
-	protectedKey, err := ocrypto.NewAESProtectedKey(k)
+
+	derBytes, err := x509.MarshalPKIXPublicKey(ephemeralECDSAPublicKey)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal ECDSA public key: %w", err)
+	}
+	ephemeralECDSAPublicKeyPEM := pem.EncodeToMemory(&pem.Block{
+		Type:  "PUBLIC KEY",
+		Bytes: derBytes,
+	})
+
+	symmetricKey, err := ocrypto.ComputeECDHKey([]byte(ec.ecPrivateKeyPem), ephemeralECDSAPublicKeyPEM)
+	if err != nil {
+		return nil, fmt.Errorf("ocrypto.ComputeECDHKey failed: %w", err)
+	}
+
+	key, err := ocrypto.CalculateHKDF(TDFSalt(), symmetricKey)
+	if err != nil {
+		return nil, fmt.Errorf("ocrypto.CalculateHKDF failed:%w", err)
+	}
+	protectedKey, err := ocrypto.NewAESProtectedKey(key)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create protected key: %w", err)
 	}
 	return protectedKey, nil
 }
 
-// GenerateECSessionKey generates a session key for NanoTDF
-func (a *InProcessProvider) GenerateECSessionKey(_ context.Context, ephemeralPublicKey string) (trust.Encapsulator, error) {
-	pke, err := ocrypto.FromPublicPEMWithSalt(ephemeralPublicKey, NanoVersionSalt(), nil)
+// GenerateECSessionKey generates a session key for ECDH-based response encryption.
+func (a *InProcessProvider) GenerateECSessionKey(_ context.Context, ephemeralPublicKey string) (ocrypto.Encapsulator, error) {
+	pke, err := ocrypto.FromPublicPEMWithSalt(ephemeralPublicKey, TDFSalt(), nil)
 	if err != nil {
 		return nil, fmt.Errorf("session key generation failed to create public key encryptor: %w", err)
 	}
@@ -304,17 +348,22 @@ func (a *InProcessProvider) Close() {
 	a.cryptoProvider.Close()
 }
 
-// determineKeyType tries to determine the algorithm of a key based on its ID
-// This is a helper method for the Decrypt method
-func (a *InProcessProvider) determineKeyType(_ context.Context, kid string) (string, error) {
-	// First try RSA
-	if _, err := a.cryptoProvider.RSAPublicKey(kid); err == nil {
-		return AlgorithmRSA2048, nil
+// determineKeyType returns the configured algorithm for a loaded key.
+func (a *InProcessProvider) determineKeyType(kid string) (string, error) {
+	key, ok := a.cryptoProvider.keysByID[kid]
+	if !ok {
+		return "", errors.New("could not determine key type")
 	}
 
-	// Then try EC
-	if _, err := a.cryptoProvider.ECPublicKey(kid); err == nil {
-		return AlgorithmECP256R1, nil
+	switch key := key.(type) {
+	case StandardRSACrypto:
+		return key.Algorithm, nil
+	case StandardECCrypto:
+		return key.Algorithm, nil
+	case StandardXWingCrypto:
+		return key.Algorithm, nil
+	case StandardHybridCrypto:
+		return key.Algorithm, nil
 	}
 
 	return "", errors.New("could not determine key type")

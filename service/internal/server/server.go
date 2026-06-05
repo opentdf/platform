@@ -18,7 +18,6 @@ import (
 	"connectrpc.com/grpcreflect"
 	"connectrpc.com/validate"
 	"github.com/go-chi/cors"
-	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/opentdf/platform/sdk"
 	sdkAudit "github.com/opentdf/platform/sdk/audit"
 	"github.com/opentdf/platform/service/internal/auth"
@@ -26,14 +25,11 @@ import (
 	"github.com/opentdf/platform/service/internal/server/memhttp"
 	"github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/logger/audit"
-	ctxAuth "github.com/opentdf/platform/service/pkg/auth"
 	"github.com/opentdf/platform/service/pkg/cache"
 	"github.com/opentdf/platform/service/tracing"
 	"golang.org/x/net/http2"
 	"golang.org/x/net/http2/h2c"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
-	"google.golang.org/grpc/metadata"
 )
 
 const (
@@ -60,6 +56,10 @@ type Config struct {
 	TLS                     TLSConfig                                `mapstructure:"tls" json:"tls"`
 	CORS                    CORSConfig                               `mapstructure:"cors" json:"cors"`
 	WellKnownConfigRegister func(namespace string, config any) error `mapstructure:"-" json:"-"`
+
+	// Programmatic interceptors injected at startup (not loaded from config)
+	ExtraConnectInterceptors []connect.Interceptor `mapstructure:"-" json:"-"`
+	ExtraIPCInterceptors     []connect.Interceptor `mapstructure:"-" json:"-"`
 	// Port to listen on
 	Port           int    `mapstructure:"port" json:"port" default:"8080"`
 	Host           string `mapstructure:"host,omitempty" json:"host"`
@@ -74,18 +74,18 @@ type Config struct {
 
 func (c Config) LogValue() slog.Value {
 	group := []slog.Attr{
-		slog.Any("auth", c.Auth),
+		slog.Any("auth_config", c.Auth),
 		slog.Any("grpc", c.GRPC),
 		slog.Any("tls", c.TLS),
 		slog.Any("cors", c.CORS),
 		slog.Int("port", c.Port),
 		slog.String("host", c.Host),
-		slog.Bool("enablePprof", c.EnablePprof),
+		slog.Bool("enable_pprof", c.EnablePprof),
 	}
 
 	// CryptoProvider is deprecated in favor of the trust package.
 	if !c.CryptoProvider.IsEmpty() {
-		group = append(group, slog.Any("cryptoProvider", c.CryptoProvider))
+		group = append(group, slog.Any("crypto_provider", c.CryptoProvider))
 	}
 
 	return slog.GroupValue(group...)
@@ -222,7 +222,7 @@ type ConnectRPC struct {
 
 type OpenTDFServer struct {
 	AuthN               *auth.Authentication
-	GRPCGatewayMux      *runtime.ServeMux
+	HTTPMux             *http.ServeMux
 	HTTPServer          *http.Server
 	ConnectRPCInProcess *inProcessServer
 	ConnectRPC          *ConnectRPC
@@ -274,54 +274,37 @@ func NewOpenTDFServer(config Config, logger *logger.Logger, cacheManager *cache.
 		logger.Warn("disabling authentication. this is deprecated and will be removed. if you are using an IdP without DPoP set `enforceDPoP = false`")
 	}
 
-	connectRPCIpc, err := newConnectRPCIPC(config, authN, logger)
+	var ipcAuthInt connect.Interceptor
+	var connectAuthInt connect.Interceptor
+	if config.Auth.Enabled && authN != nil {
+		ipcAuthInt = authN.IPCUnaryServerInterceptor()
+		connectAuthInt = authN.ConnectUnaryServerInterceptor()
+	}
+
+	connectRPCIpc, err := newConnectRPC(config, ipcAuthInt, config.ExtraIPCInterceptors, logger)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create connect rpc ipc server: %w", err)
 	}
 
-	connectRPC, err := newConnectRPC(config, authN, logger)
+	connectRPC, err := newConnectRPC(config, connectAuthInt, config.ExtraConnectInterceptors, logger)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create connect rpc server: %w", err)
 	}
 
-	// GRPC Gateway Mux
-	grpcGatewayMux := runtime.NewServeMux(
-		runtime.WithIncomingHeaderMatcher(
-			func(key string) (string, bool) {
-				if k, ok := runtime.DefaultHeaderMatcher(key); ok {
-					return k, true
-				}
-				if textproto.CanonicalMIMEHeaderKey(key) == "Dpop" {
-					return "Dpop", true
-				}
-				return "", false
-			},
-		),
-		runtime.WithMetadata(func(ctx context.Context, _ *http.Request) metadata.MD {
-			md := make(map[string]string)
-			if method, ok := runtime.RPCMethod(ctx); ok {
-				md["method"] = method // /grpc.gateway.examples.internal.proto.examplepb.LoginService/Login
-			}
-			if pattern, ok := runtime.HTTPPathPattern(ctx); ok {
-				md["pattern"] = pattern // /v1/example/login
-			}
-			md["Authorization"] = "Bearer " + ctxAuth.GetRawAccessTokenFromContext(ctx, nil)
-			return metadata.New(md)
-		}),
-	)
+	httpMux := http.NewServeMux()
 
 	// Create http server
-	httpServer, err := newHTTPServer(config, connectRPC.Mux, grpcGatewayMux, authN, logger)
+	httpServer, err := newHTTPServer(config, connectRPC.Mux, httpMux, authN, logger)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create http server: %w", err)
 	}
 
 	o := OpenTDFServer{
-		AuthN:          authN,
-		GRPCGatewayMux: grpcGatewayMux,
-		HTTPServer:     httpServer,
-		CacheManager:   cacheManager,
-		ConnectRPC:     connectRPC,
+		AuthN:        authN,
+		HTTPMux:      httpMux,
+		HTTPServer:   httpServer,
+		CacheManager: cacheManager,
+		ConnectRPC:   connectRPC,
 		ConnectRPCInProcess: &inProcessServer{
 			logger:             logger.With("ipc_server", "true"),
 			srv:                memhttp.New(connectRPCIpc.Mux),
@@ -345,56 +328,22 @@ func NewOpenTDFServer(config Config, logger *logger.Logger, cacheManager *cache.
 	return &o, nil
 }
 
-// Custom response writer to add deprecation header
-type grpcGatewayResponseWriter struct {
-	w           http.ResponseWriter
-	code        int
-	wroteHeader bool
-}
-
-func (rw *grpcGatewayResponseWriter) Header() http.Header {
-	return rw.w.Header()
-}
-
-func (rw *grpcGatewayResponseWriter) WriteHeader(statusCode int) {
-	gRPCGatewayDeprecationDate := fmt.Sprintf("@%d", time.Date(2025, time.March, 25, 0, 0, 0, 0, time.UTC).Unix())
-	if !rw.wroteHeader {
-		rw.w.Header().Set("Deprecation", gRPCGatewayDeprecationDate)
-		rw.wroteHeader = true
-		rw.w.WriteHeader(statusCode)
-	}
-	rw.code = statusCode
-}
-
-func (rw *grpcGatewayResponseWriter) Write(data []byte) (int, error) {
-	// Ensure headers are written before any data
-	if !rw.wroteHeader {
-		rw.WriteHeader(http.StatusOK)
-	}
-	return rw.w.Write(data)
-}
-
-// newHTTPServer creates a new http server with the given handler and grpc server
-func newHTTPServer(c Config, connectRPC http.Handler, originalGrpcGateway http.Handler, a *auth.Authentication, l *logger.Logger) (*http.Server, error) {
+// newHTTPServer creates a new http server with the given Connect RPC and extra HTTP handlers.
+func newHTTPServer(c Config, connectRPC http.Handler, extraHTTP http.Handler, a *auth.Authentication, l *logger.Logger) (*http.Server, error) {
 	var (
 		err error
 		tc  *tls.Config
 	)
 
-	// Adds deprecation header to any grpcGateway responses.
-	var grpcGateway http.Handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		grpcRW := &grpcGatewayResponseWriter{w: w, code: http.StatusOK}
-		originalGrpcGateway.ServeHTTP(grpcRW, r)
-	})
+	httpHandler := extraHTTP
 
-	// Add authN interceptor to extra handlers
+	// Add authN interceptor to extra handlers.
 	if c.Auth.Enabled {
-		grpcGateway = a.MuxHandler(grpcGateway)
+		httpHandler = a.MuxHandler(httpHandler)
 	} else {
 		l.Error("disabling authentication. this is deprecated and will be removed. if you are using an IdP without DPoP set `enforceDPoP = false`")
 	}
 
-	// Note: The grpc-gateway handlers are getting chained together in reverse. So the last handler is the first to be called.
 	// CORS
 	if c.CORS.Enabled {
 		// Compute effective values by merging base and additional lists
@@ -432,12 +381,12 @@ func newHTTPServer(c Config, connectRPC http.Handler, originalGrpcGateway http.H
 
 		// Apply CORS to connectRPC and extra handlers
 		connectRPC = corsHandler.Handler(connectRPC)
-		grpcGateway = corsHandler.Handler(grpcGateway)
+		httpHandler = corsHandler.Handler(httpHandler)
 	}
 
 	// Enable pprof
 	if c.EnablePprof {
-		grpcGateway = pprofHandler(grpcGateway)
+		httpHandler = pprofHandler(httpHandler)
 		// Need to extend write timeout to collect pprof data.
 		if c.HTTPServerConfig.WriteTimeout < 30*time.Second {
 			c.HTTPServerConfig.WriteTimeout = 30 * time.Second //nolint:mnd // easier to read that we are overriding the default
@@ -446,13 +395,13 @@ func newHTTPServer(c Config, connectRPC http.Handler, originalGrpcGateway http.H
 
 	var handler http.Handler
 	if !c.TLS.Enabled {
-		handler = h2c.NewHandler(routeConnectRPCRequests(connectRPC, grpcGateway), &http2.Server{})
+		handler = h2c.NewHandler(routeConnectRPCRequests(connectRPC, httpHandler), &http2.Server{})
 	} else {
 		tc, err = loadTLSConfig(c.TLS)
 		if err != nil {
 			return nil, fmt.Errorf("failed to load tls config: %w", err)
 		}
-		handler = routeConnectRPCRequests(connectRPC, grpcGateway)
+		handler = routeConnectRPCRequests(connectRPC, httpHandler)
 	}
 
 	if c.HTTPServerConfig.ReadTimeout == 0 {
@@ -509,45 +458,34 @@ func pprofHandler(h http.Handler) http.Handler {
 	})
 }
 
-func newConnectRPCIPC(c Config, a *auth.Authentication, logger *logger.Logger) (*ConnectRPC, error) {
+func newConnectRPC(c Config, authInt connect.Interceptor, ints []connect.Interceptor, logger *logger.Logger) (*ConnectRPC, error) {
 	interceptors := make([]connect.HandlerOption, 0)
 
+	// OTel tracing and metrics for incoming Connect requests, before all other interceptors
+	serverTraceInt, err := tracing.ConnectServerTraceInterceptor()
+	if err != nil {
+		return nil, fmt.Errorf("failed to create server trace interceptor: %w", err)
+	}
+	interceptors = append(interceptors, connect.WithInterceptors(serverTraceInt))
+
 	if c.Auth.Enabled {
-		interceptors = append(interceptors, connect.WithInterceptors(a.IPCUnaryServerInterceptor()))
+		if authInt == nil {
+			return nil, errors.New("authentication enabled but no interceptor provided")
+		}
+		interceptors = append(interceptors, connect.WithInterceptors(authInt))
 	} else {
 		logger.Error("disabling authentication. this is deprecated and will be removed. if you are using an IdP without DPoP you can set `enforceDpop = false`")
 	}
 
 	// Add protovalidate interceptor
-	vaidationInterceptor, err := validate.NewInterceptor()
-	if err != nil {
-		return nil, fmt.Errorf("failed to create validation interceptor: %w", err)
+	validationInterceptor := validate.NewInterceptor()
+
+	interceptors = append(interceptors, connect.WithInterceptors(validationInterceptor, audit.ContextServerInterceptor(logger.Logger)))
+
+	// Add any additional interceptors provided programmatically AFTER the default ones, so they have access needed context
+	if len(ints) > 0 {
+		interceptors = append(interceptors, connect.WithInterceptors(ints...))
 	}
-
-	interceptors = append(interceptors, connect.WithInterceptors(vaidationInterceptor, audit.ContextServerInterceptor(logger.Logger)))
-
-	return &ConnectRPC{
-		Interceptors: interceptors,
-		Mux:          http.NewServeMux(),
-	}, nil
-}
-
-func newConnectRPC(c Config, a *auth.Authentication, logger *logger.Logger) (*ConnectRPC, error) {
-	interceptors := make([]connect.HandlerOption, 0)
-
-	if c.Auth.Enabled {
-		interceptors = append(interceptors, connect.WithInterceptors(a.ConnectUnaryServerInterceptor()))
-	} else {
-		logger.Error("disabling authentication. this is deprecated and will be removed. if you are using an IdP without DPoP you can set `enforceDpop = false`")
-	}
-
-	// Add protovalidate interceptor
-	vaidationInterceptor, err := validate.NewInterceptor()
-	if err != nil {
-		return nil, fmt.Errorf("failed to create validation interceptor: %w", err)
-	}
-
-	interceptors = append(interceptors, connect.WithInterceptors(vaidationInterceptor, audit.ContextServerInterceptor(logger.Logger)))
 
 	return &ConnectRPC{
 		Interceptors: interceptors,
@@ -604,6 +542,13 @@ func (s OpenTDFServer) Stop() {
 func (s inProcessServer) Conn() *sdk.ConnectRPCConnection {
 	var clientInterceptors []connect.Interceptor
 
+	// OTel tracing and metrics for outbound IPC Connect RPCs
+	if clientTraceInt, err := tracing.ConnectClientTraceInterceptor(); err != nil {
+		s.logger.Error("failed to create IPC client trace interceptor", slog.String("error", err.Error()))
+	} else {
+		clientInterceptors = append(clientInterceptors, clientTraceInt)
+	}
+
 	// Add audit interceptor
 	clientInterceptors = append(clientInterceptors, sdkAudit.MetadataAddingConnectInterceptor())
 
@@ -620,32 +565,6 @@ func (s inProcessServer) Conn() *sdk.ConnectRPCConnection {
 		},
 	}
 	return &conn
-}
-
-func (s inProcessServer) GrpcConn() *grpc.ClientConn {
-	var clientInterceptors []grpc.UnaryClientInterceptor
-
-	// Add audit interceptor
-	clientInterceptors = append(clientInterceptors, sdkAudit.MetadataAddingClientInterceptor)
-
-	defaultOptions := []grpc.DialOption{
-		grpc.WithDefaultCallOptions(
-			grpc.MaxCallRecvMsgSize(s.maxCallRecvMsgSize),
-			grpc.MaxCallSendMsgSize(s.maxCallSendMsgSize),
-		),
-		grpc.WithContextDialer(func(ctx context.Context, _ string) (net.Conn, error) {
-			conn, err := s.srv.Listener.DialContext(ctx, "tcp", "http://localhost:8080")
-			if err != nil {
-				return nil, fmt.Errorf("failed to dial in process grpc server: %w", err)
-			}
-			return conn, nil
-		}),
-		grpc.WithTransportCredentials(insecure.NewCredentials()),
-		grpc.WithChainUnaryInterceptor(clientInterceptors...),
-	}
-
-	conn, _ := grpc.NewClient("passthrough:///", defaultOptions...)
-	return conn
 }
 
 func (s *inProcessServer) WithContextDialer() grpc.DialOption {

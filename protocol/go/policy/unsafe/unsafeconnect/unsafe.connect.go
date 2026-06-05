@@ -65,21 +65,6 @@ const (
 	UnsafeServiceUnsafeDeleteKasKeyProcedure = "/policy.unsafe.UnsafeService/UnsafeDeleteKasKey"
 )
 
-// These variables are the protoreflect.Descriptor objects for the RPCs defined in this package.
-var (
-	unsafeServiceServiceDescriptor                              = unsafe.File_policy_unsafe_unsafe_proto.Services().ByName("UnsafeService")
-	unsafeServiceUnsafeUpdateNamespaceMethodDescriptor          = unsafeServiceServiceDescriptor.Methods().ByName("UnsafeUpdateNamespace")
-	unsafeServiceUnsafeReactivateNamespaceMethodDescriptor      = unsafeServiceServiceDescriptor.Methods().ByName("UnsafeReactivateNamespace")
-	unsafeServiceUnsafeDeleteNamespaceMethodDescriptor          = unsafeServiceServiceDescriptor.Methods().ByName("UnsafeDeleteNamespace")
-	unsafeServiceUnsafeUpdateAttributeMethodDescriptor          = unsafeServiceServiceDescriptor.Methods().ByName("UnsafeUpdateAttribute")
-	unsafeServiceUnsafeReactivateAttributeMethodDescriptor      = unsafeServiceServiceDescriptor.Methods().ByName("UnsafeReactivateAttribute")
-	unsafeServiceUnsafeDeleteAttributeMethodDescriptor          = unsafeServiceServiceDescriptor.Methods().ByName("UnsafeDeleteAttribute")
-	unsafeServiceUnsafeUpdateAttributeValueMethodDescriptor     = unsafeServiceServiceDescriptor.Methods().ByName("UnsafeUpdateAttributeValue")
-	unsafeServiceUnsafeReactivateAttributeValueMethodDescriptor = unsafeServiceServiceDescriptor.Methods().ByName("UnsafeReactivateAttributeValue")
-	unsafeServiceUnsafeDeleteAttributeValueMethodDescriptor     = unsafeServiceServiceDescriptor.Methods().ByName("UnsafeDeleteAttributeValue")
-	unsafeServiceUnsafeDeleteKasKeyMethodDescriptor             = unsafeServiceServiceDescriptor.Methods().ByName("UnsafeDeleteKasKey")
-)
-
 // UnsafeServiceClient is a client for the policy.unsafe.UnsafeService service.
 type UnsafeServiceClient interface {
 	// --------------------------------------*
@@ -115,65 +100,66 @@ type UnsafeServiceClient interface {
 // http://api.acme.com or https://acme.com/grpc).
 func NewUnsafeServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.ClientOption) UnsafeServiceClient {
 	baseURL = strings.TrimRight(baseURL, "/")
+	unsafeServiceMethods := unsafe.File_policy_unsafe_unsafe_proto.Services().ByName("UnsafeService").Methods()
 	return &unsafeServiceClient{
 		unsafeUpdateNamespace: connect.NewClient[unsafe.UnsafeUpdateNamespaceRequest, unsafe.UnsafeUpdateNamespaceResponse](
 			httpClient,
 			baseURL+UnsafeServiceUnsafeUpdateNamespaceProcedure,
-			connect.WithSchema(unsafeServiceUnsafeUpdateNamespaceMethodDescriptor),
+			connect.WithSchema(unsafeServiceMethods.ByName("UnsafeUpdateNamespace")),
 			connect.WithClientOptions(opts...),
 		),
 		unsafeReactivateNamespace: connect.NewClient[unsafe.UnsafeReactivateNamespaceRequest, unsafe.UnsafeReactivateNamespaceResponse](
 			httpClient,
 			baseURL+UnsafeServiceUnsafeReactivateNamespaceProcedure,
-			connect.WithSchema(unsafeServiceUnsafeReactivateNamespaceMethodDescriptor),
+			connect.WithSchema(unsafeServiceMethods.ByName("UnsafeReactivateNamespace")),
 			connect.WithClientOptions(opts...),
 		),
 		unsafeDeleteNamespace: connect.NewClient[unsafe.UnsafeDeleteNamespaceRequest, unsafe.UnsafeDeleteNamespaceResponse](
 			httpClient,
 			baseURL+UnsafeServiceUnsafeDeleteNamespaceProcedure,
-			connect.WithSchema(unsafeServiceUnsafeDeleteNamespaceMethodDescriptor),
+			connect.WithSchema(unsafeServiceMethods.ByName("UnsafeDeleteNamespace")),
 			connect.WithClientOptions(opts...),
 		),
 		unsafeUpdateAttribute: connect.NewClient[unsafe.UnsafeUpdateAttributeRequest, unsafe.UnsafeUpdateAttributeResponse](
 			httpClient,
 			baseURL+UnsafeServiceUnsafeUpdateAttributeProcedure,
-			connect.WithSchema(unsafeServiceUnsafeUpdateAttributeMethodDescriptor),
+			connect.WithSchema(unsafeServiceMethods.ByName("UnsafeUpdateAttribute")),
 			connect.WithClientOptions(opts...),
 		),
 		unsafeReactivateAttribute: connect.NewClient[unsafe.UnsafeReactivateAttributeRequest, unsafe.UnsafeReactivateAttributeResponse](
 			httpClient,
 			baseURL+UnsafeServiceUnsafeReactivateAttributeProcedure,
-			connect.WithSchema(unsafeServiceUnsafeReactivateAttributeMethodDescriptor),
+			connect.WithSchema(unsafeServiceMethods.ByName("UnsafeReactivateAttribute")),
 			connect.WithClientOptions(opts...),
 		),
 		unsafeDeleteAttribute: connect.NewClient[unsafe.UnsafeDeleteAttributeRequest, unsafe.UnsafeDeleteAttributeResponse](
 			httpClient,
 			baseURL+UnsafeServiceUnsafeDeleteAttributeProcedure,
-			connect.WithSchema(unsafeServiceUnsafeDeleteAttributeMethodDescriptor),
+			connect.WithSchema(unsafeServiceMethods.ByName("UnsafeDeleteAttribute")),
 			connect.WithClientOptions(opts...),
 		),
 		unsafeUpdateAttributeValue: connect.NewClient[unsafe.UnsafeUpdateAttributeValueRequest, unsafe.UnsafeUpdateAttributeValueResponse](
 			httpClient,
 			baseURL+UnsafeServiceUnsafeUpdateAttributeValueProcedure,
-			connect.WithSchema(unsafeServiceUnsafeUpdateAttributeValueMethodDescriptor),
+			connect.WithSchema(unsafeServiceMethods.ByName("UnsafeUpdateAttributeValue")),
 			connect.WithClientOptions(opts...),
 		),
 		unsafeReactivateAttributeValue: connect.NewClient[unsafe.UnsafeReactivateAttributeValueRequest, unsafe.UnsafeReactivateAttributeValueResponse](
 			httpClient,
 			baseURL+UnsafeServiceUnsafeReactivateAttributeValueProcedure,
-			connect.WithSchema(unsafeServiceUnsafeReactivateAttributeValueMethodDescriptor),
+			connect.WithSchema(unsafeServiceMethods.ByName("UnsafeReactivateAttributeValue")),
 			connect.WithClientOptions(opts...),
 		),
 		unsafeDeleteAttributeValue: connect.NewClient[unsafe.UnsafeDeleteAttributeValueRequest, unsafe.UnsafeDeleteAttributeValueResponse](
 			httpClient,
 			baseURL+UnsafeServiceUnsafeDeleteAttributeValueProcedure,
-			connect.WithSchema(unsafeServiceUnsafeDeleteAttributeValueMethodDescriptor),
+			connect.WithSchema(unsafeServiceMethods.ByName("UnsafeDeleteAttributeValue")),
 			connect.WithClientOptions(opts...),
 		),
 		unsafeDeleteKasKey: connect.NewClient[unsafe.UnsafeDeleteKasKeyRequest, unsafe.UnsafeDeleteKasKeyResponse](
 			httpClient,
 			baseURL+UnsafeServiceUnsafeDeleteKasKeyProcedure,
-			connect.WithSchema(unsafeServiceUnsafeDeleteKasKeyMethodDescriptor),
+			connect.WithSchema(unsafeServiceMethods.ByName("UnsafeDeleteKasKey")),
 			connect.WithClientOptions(opts...),
 		),
 	}
@@ -275,64 +261,65 @@ type UnsafeServiceHandler interface {
 // By default, handlers support the Connect, gRPC, and gRPC-Web protocols with the binary Protobuf
 // and JSON codecs. They also support gzip compression.
 func NewUnsafeServiceHandler(svc UnsafeServiceHandler, opts ...connect.HandlerOption) (string, http.Handler) {
+	unsafeServiceMethods := unsafe.File_policy_unsafe_unsafe_proto.Services().ByName("UnsafeService").Methods()
 	unsafeServiceUnsafeUpdateNamespaceHandler := connect.NewUnaryHandler(
 		UnsafeServiceUnsafeUpdateNamespaceProcedure,
 		svc.UnsafeUpdateNamespace,
-		connect.WithSchema(unsafeServiceUnsafeUpdateNamespaceMethodDescriptor),
+		connect.WithSchema(unsafeServiceMethods.ByName("UnsafeUpdateNamespace")),
 		connect.WithHandlerOptions(opts...),
 	)
 	unsafeServiceUnsafeReactivateNamespaceHandler := connect.NewUnaryHandler(
 		UnsafeServiceUnsafeReactivateNamespaceProcedure,
 		svc.UnsafeReactivateNamespace,
-		connect.WithSchema(unsafeServiceUnsafeReactivateNamespaceMethodDescriptor),
+		connect.WithSchema(unsafeServiceMethods.ByName("UnsafeReactivateNamespace")),
 		connect.WithHandlerOptions(opts...),
 	)
 	unsafeServiceUnsafeDeleteNamespaceHandler := connect.NewUnaryHandler(
 		UnsafeServiceUnsafeDeleteNamespaceProcedure,
 		svc.UnsafeDeleteNamespace,
-		connect.WithSchema(unsafeServiceUnsafeDeleteNamespaceMethodDescriptor),
+		connect.WithSchema(unsafeServiceMethods.ByName("UnsafeDeleteNamespace")),
 		connect.WithHandlerOptions(opts...),
 	)
 	unsafeServiceUnsafeUpdateAttributeHandler := connect.NewUnaryHandler(
 		UnsafeServiceUnsafeUpdateAttributeProcedure,
 		svc.UnsafeUpdateAttribute,
-		connect.WithSchema(unsafeServiceUnsafeUpdateAttributeMethodDescriptor),
+		connect.WithSchema(unsafeServiceMethods.ByName("UnsafeUpdateAttribute")),
 		connect.WithHandlerOptions(opts...),
 	)
 	unsafeServiceUnsafeReactivateAttributeHandler := connect.NewUnaryHandler(
 		UnsafeServiceUnsafeReactivateAttributeProcedure,
 		svc.UnsafeReactivateAttribute,
-		connect.WithSchema(unsafeServiceUnsafeReactivateAttributeMethodDescriptor),
+		connect.WithSchema(unsafeServiceMethods.ByName("UnsafeReactivateAttribute")),
 		connect.WithHandlerOptions(opts...),
 	)
 	unsafeServiceUnsafeDeleteAttributeHandler := connect.NewUnaryHandler(
 		UnsafeServiceUnsafeDeleteAttributeProcedure,
 		svc.UnsafeDeleteAttribute,
-		connect.WithSchema(unsafeServiceUnsafeDeleteAttributeMethodDescriptor),
+		connect.WithSchema(unsafeServiceMethods.ByName("UnsafeDeleteAttribute")),
 		connect.WithHandlerOptions(opts...),
 	)
 	unsafeServiceUnsafeUpdateAttributeValueHandler := connect.NewUnaryHandler(
 		UnsafeServiceUnsafeUpdateAttributeValueProcedure,
 		svc.UnsafeUpdateAttributeValue,
-		connect.WithSchema(unsafeServiceUnsafeUpdateAttributeValueMethodDescriptor),
+		connect.WithSchema(unsafeServiceMethods.ByName("UnsafeUpdateAttributeValue")),
 		connect.WithHandlerOptions(opts...),
 	)
 	unsafeServiceUnsafeReactivateAttributeValueHandler := connect.NewUnaryHandler(
 		UnsafeServiceUnsafeReactivateAttributeValueProcedure,
 		svc.UnsafeReactivateAttributeValue,
-		connect.WithSchema(unsafeServiceUnsafeReactivateAttributeValueMethodDescriptor),
+		connect.WithSchema(unsafeServiceMethods.ByName("UnsafeReactivateAttributeValue")),
 		connect.WithHandlerOptions(opts...),
 	)
 	unsafeServiceUnsafeDeleteAttributeValueHandler := connect.NewUnaryHandler(
 		UnsafeServiceUnsafeDeleteAttributeValueProcedure,
 		svc.UnsafeDeleteAttributeValue,
-		connect.WithSchema(unsafeServiceUnsafeDeleteAttributeValueMethodDescriptor),
+		connect.WithSchema(unsafeServiceMethods.ByName("UnsafeDeleteAttributeValue")),
 		connect.WithHandlerOptions(opts...),
 	)
 	unsafeServiceUnsafeDeleteKasKeyHandler := connect.NewUnaryHandler(
 		UnsafeServiceUnsafeDeleteKasKeyProcedure,
 		svc.UnsafeDeleteKasKey,
-		connect.WithSchema(unsafeServiceUnsafeDeleteKasKeyMethodDescriptor),
+		connect.WithSchema(unsafeServiceMethods.ByName("UnsafeDeleteKasKey")),
 		connect.WithHandlerOptions(opts...),
 	)
 	return "/policy.unsafe.UnsafeService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

@@ -43,14 +43,6 @@ const (
 	AccessServiceRewrapProcedure = "/kas.AccessService/Rewrap"
 )
 
-// These variables are the protoreflect.Descriptor objects for the RPCs defined in this package.
-var (
-	accessServiceServiceDescriptor               = kas.File_kas_kas_proto.Services().ByName("AccessService")
-	accessServicePublicKeyMethodDescriptor       = accessServiceServiceDescriptor.Methods().ByName("PublicKey")
-	accessServiceLegacyPublicKeyMethodDescriptor = accessServiceServiceDescriptor.Methods().ByName("LegacyPublicKey")
-	accessServiceRewrapMethodDescriptor          = accessServiceServiceDescriptor.Methods().ByName("Rewrap")
-)
-
 // AccessServiceClient is a client for the kas.AccessService service.
 type AccessServiceClient interface {
 	PublicKey(context.Context, *connect.Request[kas.PublicKeyRequest]) (*connect.Response[kas.PublicKeyResponse], error)
@@ -74,25 +66,26 @@ type AccessServiceClient interface {
 // http://api.acme.com or https://acme.com/grpc).
 func NewAccessServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.ClientOption) AccessServiceClient {
 	baseURL = strings.TrimRight(baseURL, "/")
+	accessServiceMethods := kas.File_kas_kas_proto.Services().ByName("AccessService").Methods()
 	return &accessServiceClient{
 		publicKey: connect.NewClient[kas.PublicKeyRequest, kas.PublicKeyResponse](
 			httpClient,
 			baseURL+AccessServicePublicKeyProcedure,
-			connect.WithSchema(accessServicePublicKeyMethodDescriptor),
+			connect.WithSchema(accessServiceMethods.ByName("PublicKey")),
 			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
 		legacyPublicKey: connect.NewClient[kas.LegacyPublicKeyRequest, wrapperspb.StringValue](
 			httpClient,
 			baseURL+AccessServiceLegacyPublicKeyProcedure,
-			connect.WithSchema(accessServiceLegacyPublicKeyMethodDescriptor),
+			connect.WithSchema(accessServiceMethods.ByName("LegacyPublicKey")),
 			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
 		rewrap: connect.NewClient[kas.RewrapRequest, kas.RewrapResponse](
 			httpClient,
 			baseURL+AccessServiceRewrapProcedure,
-			connect.WithSchema(accessServiceRewrapMethodDescriptor),
+			connect.WithSchema(accessServiceMethods.ByName("Rewrap")),
 			connect.WithClientOptions(opts...),
 		),
 	}
@@ -142,24 +135,25 @@ type AccessServiceHandler interface {
 // By default, handlers support the Connect, gRPC, and gRPC-Web protocols with the binary Protobuf
 // and JSON codecs. They also support gzip compression.
 func NewAccessServiceHandler(svc AccessServiceHandler, opts ...connect.HandlerOption) (string, http.Handler) {
+	accessServiceMethods := kas.File_kas_kas_proto.Services().ByName("AccessService").Methods()
 	accessServicePublicKeyHandler := connect.NewUnaryHandler(
 		AccessServicePublicKeyProcedure,
 		svc.PublicKey,
-		connect.WithSchema(accessServicePublicKeyMethodDescriptor),
+		connect.WithSchema(accessServiceMethods.ByName("PublicKey")),
 		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
 	accessServiceLegacyPublicKeyHandler := connect.NewUnaryHandler(
 		AccessServiceLegacyPublicKeyProcedure,
 		svc.LegacyPublicKey,
-		connect.WithSchema(accessServiceLegacyPublicKeyMethodDescriptor),
+		connect.WithSchema(accessServiceMethods.ByName("LegacyPublicKey")),
 		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
 	accessServiceRewrapHandler := connect.NewUnaryHandler(
 		AccessServiceRewrapProcedure,
 		svc.Rewrap,
-		connect.WithSchema(accessServiceRewrapMethodDescriptor),
+		connect.WithSchema(accessServiceMethods.ByName("Rewrap")),
 		connect.WithHandlerOptions(opts...),
 	)
 	return "/kas.AccessService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

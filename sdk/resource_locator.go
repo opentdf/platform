@@ -10,7 +10,7 @@ import (
 )
 
 // ============================================================================================================
-// Support for serializing/deserializing URLS for nano usage
+// Support for serializing/deserializing URLs in the compact/binary encoding
 //
 // If an URL is specified as "https://some.site.com/endpoint"
 // the storage format for this is to strip off the leading "https://" prefix and encode as 0 (or 1 for http)
@@ -264,11 +264,6 @@ func (rl ResourceLocator) writeResourceLocator(writer io.Writer) error {
 	}
 
 	return nil
-}
-
-// getLength - return the serialized length (in bytes) of this object
-func (rl ResourceLocator) getLength() uint16 {
-	return uint16(1 /* protocol byte */ + 1 /* length byte */ + len(rl.body) + len(rl.identifier))
 }
 
 // setURLWithIdentifier - Store a fully qualified protocol+body string and an identifier into a ResourceLocator.

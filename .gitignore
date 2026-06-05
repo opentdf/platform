@@ -31,6 +31,7 @@ opentdf.yaml
 tmp-gen/
 /examples/examples
 /**/kas-*.pem
+!/service/pkg/server/testdata/kas-*.pem
 /opentdf
 /sdkjava/target
 /serviceapp
@@ -50,3 +51,44 @@ traces/
 
 # Cucumber / BDD log files
 *.log
+
+.cache/*
+
+# Claude AI files
+.claude/
+
+# otdfctl specific ignores
+# =========================
+otdfctl/bin/.DS_Store
+otdfctl/.DS_Store
+otdfctl/target/
+otdfctl/.vscode/launch.json
+otdfctl/otdfctl.yaml
+
+# Ignore the binaries
+otdfctl/otdfctl
+otdfctl/otdfctl.*
+otdfctl/otdfctl_testbuild
+otdfctl/otdfctl_testbuild.*
+
+# Test artifacts
+otdfctl/creds.json
+otdfctl/**/creds.json
+
+# TestRail-related files
+otdfctl/testrail.config.json
+otdfctl/testname-to-testrail-id.json
+otdfctl/mapping-report.txt
+otdfctl/bats-results.tap
+
+# Hugo
+otdfctl/public/
+otdfctl/.hugo_build.lock
+otdfctl/output/
+
+# Ignore any TDF files created by the CLI
+otdfctl/*.tdf
+
+# Ignore go.cache
+otdfctl/.gocache
+# =========================

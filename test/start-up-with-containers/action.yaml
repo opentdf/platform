@@ -23,6 +23,10 @@ inputs:
     default: "text"
     description: 'Log format type (text, json)'
     required: false
+  provision-policy-fixtures:
+    default: "true"
+    description: 'Whether to provision fixture policy data after bootstrapping the platform'
+    required: false
 
 outputs:
   platform-working-dir:
@@ -53,7 +57,7 @@ runs:
       id: setup-go
       uses: actions/setup-go@0aaccfd150d50ccaeb58ebd88d36e91967a5f35b # v5.4.0
       with:
-        go-version-file: 'otdf-test-platform/service/go.mod'
+        go-version-file: 'otdf-test-platform/go.work'
         check-latest: false
         cache-dependency-path: |
           otdf-test-platform/service/go.sum
@@ -111,12 +115,12 @@ runs:
         set -e
         allowed_algorithms=(ec:secp256r1 rsa:2048)
         if echo $PLATFORM_VERSION | awk -F. '{ if ($1 > 0 || ($1 == 0 && $2 > 7) || ($1 == 0 && $2 == 7 && $3 >= 1)) exit 0; else exit 1; }'; then
-          # For versions 0.7.1 and later, we allow rsa:4096 ec:secp384r1 ec:secp521r1 
-          allowed_algorithms+=(rsa:4096 ec:secp384r1 ec:secp521r1)
+          # For versions 0.7.1 and later, we allow rsa:4096 ec:secp384r1 ec:secp521r1
+          allowed_algorithms+=(rsa:4096 ec:secp384r1 ec:secp521r1 hpqt:xwing hpqt:secp256r1-mlkem768 hpqt:secp384r1-mlkem1024)
         fi
         keyring='[{"kid":"ec1","alg":"ec:secp256r1"},{"kid":"r1","alg":"rsa:2048"}]'
         keys='[{"kid":"e1","alg":"ec:secp256r1","private":"kas-ec-private.pem","cert":"kas-ec-cert.pem"},{"kid":"ec1","alg":"ec:secp256r1","private":"kas-ec-private.pem","cert":"kas-ec-cert.pem"},{"kid":"r1","alg":"rsa:2048","private":"kas-private.pem","cert":"kas-cert.pem"}]'
-        while IFS= read -r -d $'\0' key_json <&3; do
+        while IFS= read -r key_json; do
           printf 'processing %s\n' "${key_json}"
           alg="$(jq -r '.alg' <<< "${key_json}")"
           if [[ ! " ${allowed_algorithms[*]} " =~ " ${alg} " ]]; then
@@ -146,7 +150,7 @@ runs:
           keyring_obj="$(jq '{kid, alg}' <<< "${key_json}")"
           keyring="$(jq '. + [$keyring_obj]' --argjson keyring_obj "${keyring_obj}" <<< "${keyring}")"
 
-        done 3< <(jq -c --raw-output0 '.[]' <<< "${EXTRA_KEYS}")
+        done < <(jq -c '.[]' <<< "${EXTRA_KEYS}")
 
         printf 'adding the following keys:\n  [%s]\n[%s]  \n' "${keys}" "${keyring}"
 
@@ -211,6 +215,7 @@ runs:
       run: go run ./service provision keycloak
       working-directory: otdf-test-platform
     - name: Provision test fixture policy
+      if: ${{ inputs.provision-policy-fixtures == 'true' }}
       shell: bash
       run: go run ./service provision fixtures
       working-directory: otdf-test-platform

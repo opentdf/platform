@@ -13,7 +13,8 @@ import (
 	"github.com/creasty/defaults"
 	"github.com/go-playground/validator/v10"
 	"github.com/go-viper/mapstructure/v2"
-	"github.com/open-policy-agent/opa/rego"
+	"github.com/open-policy-agent/opa/v1/ast"
+	"github.com/open-policy-agent/opa/v1/rego"
 	"github.com/opentdf/platform/protocol/go/authorization"
 	"github.com/opentdf/platform/protocol/go/authorization/authorizationconnect"
 	"github.com/opentdf/platform/protocol/go/common"
@@ -32,8 +33,6 @@ import (
 	"github.com/opentdf/platform/service/pkg/config"
 	"github.com/opentdf/platform/service/pkg/db"
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
-	"go.opentelemetry.io/otel"
-	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/trace"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -85,11 +84,10 @@ func NewRegistration() *serviceregistry.Service[authorizationconnect.Authorizati
 
 	return &serviceregistry.Service[authorizationconnect.AuthorizationServiceHandler]{
 		ServiceOptions: serviceregistry.ServiceOptions[authorizationconnect.AuthorizationServiceHandler]{
-			Namespace:       "authorization",
-			ServiceDesc:     &authorization.AuthorizationService_ServiceDesc,
-			ConnectRPCFunc:  authorizationconnect.NewAuthorizationServiceHandler,
-			GRPCGatewayFunc: authorization.RegisterAuthorizationServiceHandler,
-			OnConfigUpdate:  onUpdateConfig,
+			Namespace:      "authorization",
+			ServiceDesc:    &authorization.AuthorizationService_ServiceDesc,
+			ConnectRPCFunc: authorizationconnect.NewAuthorizationServiceHandler,
+			OnConfigUpdate: onUpdateConfig,
 			RegisterFunc: func(srp serviceregistry.RegistrationParams) (authorizationconnect.AuthorizationServiceHandler, serviceregistry.HandlerServer) {
 				authZCfg := new(Config)
 
@@ -153,10 +151,6 @@ func (as AuthorizationService) IsReady(ctx context.Context) error {
 }
 
 func (as *AuthorizationService) GetDecisionsByToken(ctx context.Context, req *connect.Request[authorization.GetDecisionsByTokenRequest]) (*connect.Response[authorization.GetDecisionsByTokenResponse], error) {
-	// Extract trace context from the incoming request
-	propagator := otel.GetTextMapPropagator()
-	ctx = propagator.Extract(ctx, propagation.HeaderCarrier(req.Header()))
-
 	ctx, span := as.Start(ctx, "GetDecisionsByToken")
 	defer span.End()
 
@@ -502,6 +496,7 @@ func (as *AuthorizationService) loadRegoAndBuiltins(cfg *Config) error {
 	as.eval, err = rego.New(
 		rego.Query(cfg.Rego.Query),
 		rego.Module("entitlements.rego", string(entitlementRego)),
+		rego.SetRegoVersion(ast.RegoV0),
 		rego.StrictBuiltinErrors(true),
 	).PrepareForEval(context.Background())
 	if err != nil {
@@ -735,7 +730,21 @@ func retrieveAttributeDefinitions(ctx context.Context, attrFqns []string, sdk *o
 	if err != nil {
 		return nil, err
 	}
-	return resp.GetFqnAttributeValues(), nil
+	// If `allow_traversal` is true for an attribute definition
+	// it will return an attribute definition for a missing
+	// value. Where before you would receive a 404 error.
+	// Since v1 does not expect direct entitlements
+	// and expects a value, we fail if there is no
+	// value.
+	fqnAttrVals := resp.GetFqnAttributeValues()
+	for _, fqn := range attrFqns {
+		normalized := strings.ToLower(fqn)
+		attributeAndValue, ok := fqnAttrVals[normalized]
+		if !ok || attributeAndValue == nil || attributeAndValue.GetValue() == nil {
+			return nil, status.Error(codes.NotFound, db.ErrTextNotFound)
+		}
+	}
+	return fqnAttrVals, nil
 }
 
 func getComprehensiveHierarchy(attributesMap map[string]*policy.Attribute, avf *attr.GetAttributeValuesByFqnsResponse, entitlement string, as *AuthorizationService, entitlements []string) []string {

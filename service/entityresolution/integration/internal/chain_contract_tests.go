@@ -182,9 +182,7 @@ func (suite *ChainContractTestSuite) executeChainRequest(t *testing.T, implement
 		return nil, err
 	}
 
-	if suite.handleConnectionErrors(t, err) {
-		return nil, err
-	}
+	suite.handleConnectionErrors(t, err)
 
 	require.NoError(t, err, "Unexpected error: %v", err)
 	require.NotNil(t, resp, "Response should not be nil")
@@ -193,18 +191,18 @@ func (suite *ChainContractTestSuite) executeChainRequest(t *testing.T, implement
 }
 
 // handleConnectionErrors checks for connection-related errors and skips tests if service unavailable
-func (suite *ChainContractTestSuite) handleConnectionErrors(t *testing.T, err error) bool {
+func (suite *ChainContractTestSuite) handleConnectionErrors(t *testing.T, err error) {
 	if err == nil {
-		return false
+		return
 	}
 
 	var connectErr *connect.Error
 	if !errors.As(err, &connectErr) {
-		return false
+		return
 	}
 
 	if connectErr.Code() != connect.CodeInternal {
-		return false
+		return
 	}
 
 	errorMsg := connectErr.Message()
@@ -212,10 +210,8 @@ func (suite *ChainContractTestSuite) handleConnectionErrors(t *testing.T, err er
 		strings.Contains(errorMsg, "could not get token") ||
 		strings.Contains(errorMsg, "failed to login") {
 		t.Skipf("Service unavailable (likely connection issue): %v", errorMsg)
-		return true
+		return
 	}
-
-	return false
 }
 
 // validateSingleChain validates a single entity chain according to the validation rule

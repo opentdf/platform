@@ -377,10 +377,8 @@ func (a *ClaimsTestAdapter) createTestJWT(clientID, username, email string, addi
 	_ = token.Set("email", email)
 
 	// Additional custom claims
-	if additionalClaims != nil {
-		for key, value := range additionalClaims {
-			_ = token.Set(key, value)
-		}
+	for key, value := range additionalClaims {
+		_ = token.Set(key, value)
 	}
 
 	// Create JWK key
@@ -417,10 +415,8 @@ func (a *ClaimsTestAdapter) createUnsignedTestJWT(clientID, username, email stri
 	}
 
 	// Add additional claims
-	if additionalClaims != nil {
-		for key, value := range additionalClaims {
-			claims[key] = value
-		}
+	for key, value := range additionalClaims {
+		claims[key] = value
 	}
 
 	// Create header and payload

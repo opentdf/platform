@@ -22,6 +22,7 @@ const (
 	invalidName           = "invalid name"
 	invalidFQN            = "invalid-fqn"
 	errMessageUUID        = "string.uuid"
+	errMessageUUIDEmpty   = "string.uuid_empty"
 	errMessageURI         = "string.uri"
 	errMessageMinItems    = "repeated.min_items"
 	errMessageUnique      = "repeated.unique"
@@ -746,6 +747,52 @@ func Test_AddObligationTrigger_Request(t *testing.T) {
 	}
 }
 
+func Test_GetObligationTrigger_Request(t *testing.T) {
+	validUUID := uuid.NewString()
+	testCases := []struct {
+		name         string
+		req          *obligations.GetObligationTriggerRequest
+		expectError  bool
+		errorMessage string
+	}{
+		{
+			name: "valid",
+			req: &obligations.GetObligationTriggerRequest{
+				Id: validUUID,
+			},
+			expectError: false,
+		},
+		{
+			name: "invalid id",
+			req: &obligations.GetObligationTriggerRequest{
+				Id: invalidUUID,
+			},
+			expectError:  true,
+			errorMessage: errMessageUUID,
+		},
+		{
+			name:         "missing id",
+			req:          &obligations.GetObligationTriggerRequest{},
+			expectError:  true,
+			errorMessage: errMessageUUIDEmpty,
+		},
+	}
+
+	v := getValidator()
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			err := v.Validate(tc.req)
+			if tc.expectError {
+				require.Error(t, err)
+				require.Contains(t, err.Error(), tc.errorMessage)
+			} else {
+				require.NoError(t, err)
+			}
+		})
+	}
+}
+
 func Test_RemoveObligationTrigger_Request(t *testing.T) {
 	validUUID := uuid.NewString()
 	testCases := []struct {
@@ -1245,4 +1292,40 @@ func Test_ListObligationTriggers_Request(t *testing.T) {
 			}
 		})
 	}
+}
+
+func Test_ListObligationsRequest_Sort(t *testing.T) {
+	v := getValidator()
+
+	// no sort (valid)
+	req := &obligations.ListObligationsRequest{}
+	require.NoError(t, v.Validate(req))
+
+	// one sorted item (valid)
+	req = &obligations.ListObligationsRequest{
+		Sort: []*obligations.ObligationsSort{
+			{
+				Field:     obligations.SortObligationsType_SORT_OBLIGATIONS_TYPE_CREATED_AT,
+				Direction: policy.SortDirection_SORT_DIRECTION_ASC,
+			},
+		},
+	}
+	require.NoError(t, v.Validate(req))
+
+	// two items sorted (invalid, exceeds max_items = 1)
+	req = &obligations.ListObligationsRequest{
+		Sort: []*obligations.ObligationsSort{
+			{
+				Field:     obligations.SortObligationsType_SORT_OBLIGATIONS_TYPE_CREATED_AT,
+				Direction: policy.SortDirection_SORT_DIRECTION_ASC,
+			},
+			{
+				Field:     obligations.SortObligationsType_SORT_OBLIGATIONS_TYPE_NAME,
+				Direction: policy.SortDirection_SORT_DIRECTION_DESC,
+			},
+		},
+	}
+	err := v.Validate(req)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "sort")
 }

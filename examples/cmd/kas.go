@@ -30,7 +30,7 @@ func init() {
 			return updateKas(cmd)
 		},
 	}
-	// Note we currently only store one pk at a time. must be fixed for nano tests
+	// Note we currently only store one pk at a time.
 	update.Flags().StringVarP(&algorithm, "algorithm", "", "", "algorithm used with the public key")
 	update.Flags().StringVarP(&kas, "kas", "k", "", "kas uri")
 	update.Flags().StringVarP(&key, "public-key", "", "", "public key value, e.g. $(<my-key.pem)")

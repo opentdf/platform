@@ -28,7 +28,7 @@ type KeyManager interface {
 	// Returns an UnwrappedKeyData interface for further operations
 	Decrypt(ctx context.Context, key KeyDetails, ciphertext []byte, ephemeralPublicKey []byte) (ProtectedKey, error)
 
-	// DeriveKey computes an agreed upon secret key, which NanoTDF may directly as the DEK or a key split
+	// DeriveKey computes an agreed upon secret key derived from an ECDH exchange.
 	DeriveKey(ctx context.Context, key KeyDetails, ephemeralPublicKeyBytes []byte, curve elliptic.Curve) (ProtectedKey, error)
 
 	// GenerateECSessionKey generates a private session key, for use with a client-provided ephemeral public key
@@ -51,8 +51,12 @@ type NamedKeyManagerFactory struct {
 	Factory KeyManagerFactory
 }
 
-// NamedKeyManagerCtxFactory pairs a KeyManagerFactoryCtx with its intended registration name.
+// NamedKeyManagerCtxFactory pairs a KeyManagerFactoryCtx with its intended
+// registration name and the static set of algorithms the manager can serve
+// when a corresponding key is provisioned. SupportedAlgorithms is optional;
+// when empty, the manager contributes nothing to capability listings.
 type NamedKeyManagerCtxFactory struct {
-	Name    string
-	Factory KeyManagerFactoryCtx
+	Name                string
+	Factory             KeyManagerFactoryCtx
+	SupportedAlgorithms []ocrypto.KeyType
 }

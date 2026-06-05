@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/go-viper/mapstructure/v2"
+	"github.com/opentdf/platform/lib/ocrypto"
 	kaspb "github.com/opentdf/platform/protocol/go/kas"
 	"github.com/opentdf/platform/protocol/go/kas/kasconnect"
 	"github.com/opentdf/platform/service/internal/security"
@@ -21,14 +22,15 @@ import (
 )
 
 func OnConfigUpdate(p *access.Provider) serviceregistry.OnConfigUpdateHook {
-	return func(_ context.Context, cfg config.ServiceConfig) error {
+	return func(ctx context.Context, cfg config.ServiceConfig) error {
 		var kasCfg access.KASConfig
 		if err := mapstructure.Decode(cfg, &kasCfg); err != nil {
 			return fmt.Errorf("invalid kas cfg [%v] %w", cfg, err)
 		}
 
 		p.ApplyConfig(kasCfg, p.SecurityConfig())
-		p.Logger.Info("kas config reloaded")
+		p.Logger.TraceContext(ctx, "kas config reloaded", slog.Any("config", kasCfg))
+		logSupportedMechanisms(ctx, p.Logger, p.KeyDelegator, &kasCfg)
 
 		return nil
 	}
@@ -39,11 +41,10 @@ func NewRegistration() *serviceregistry.Service[kasconnect.AccessServiceHandler]
 	onConfigUpdate := OnConfigUpdate(p)
 	return &serviceregistry.Service[kasconnect.AccessServiceHandler]{
 		ServiceOptions: serviceregistry.ServiceOptions[kasconnect.AccessServiceHandler]{
-			Namespace:       "kas",
-			ServiceDesc:     &kaspb.AccessService_ServiceDesc,
-			ConnectRPCFunc:  kasconnect.NewAccessServiceHandler,
-			GRPCGatewayFunc: kaspb.RegisterAccessServiceHandler,
-			OnConfigUpdate:  onConfigUpdate,
+			Namespace:      "kas",
+			ServiceDesc:    &kaspb.AccessService_ServiceDesc,
+			ConnectRPCFunc: kasconnect.NewAccessServiceHandler,
+			OnConfigUpdate: onConfigUpdate,
 			RegisterFunc: func(srp serviceregistry.RegistrationParams) (kasconnect.AccessServiceHandler, serviceregistry.HandlerServer) {
 				var kasCfg access.KASConfig
 				if err := mapstructure.Decode(srp.Config, &kasCfg); err != nil {
@@ -76,18 +77,18 @@ func NewRegistration() *serviceregistry.Service[kasconnect.AccessServiceHandler]
 					// Configure new delegation service
 					p.KeyDelegator = trust.NewDelegatingKeyService(NewPlatformKeyIndexer(srp.SDK, kasURL.String(), srp.Logger), srp.Logger, cacheClient)
 					for _, manager := range srp.KeyManagerCtxFactories {
-						p.KeyDelegator.RegisterKeyManagerCtx(manager.Name, manager.Factory)
+						p.KeyDelegator.RegisterKeyManagerCtxWithAlgorithms(manager.Name, manager.Factory, manager.SupportedAlgorithms)
 						kmgrs = append(kmgrs, manager.Name)
 					}
 
 					// Register Basic Key Manager
-					p.KeyDelegator.RegisterKeyManagerCtx(security.BasicManagerName, func(_ context.Context, opts *trust.KeyManagerFactoryOptions) (trust.KeyManager, error) {
+					p.KeyDelegator.RegisterKeyManagerCtxWithAlgorithms(security.BasicManagerName, func(_ context.Context, opts *trust.KeyManagerFactoryOptions) (trust.KeyManager, error) {
 						bm, err := security.NewBasicManager(opts.Logger, opts.Cache, kasCfg.RootKey)
 						if err != nil {
 							return nil, err
 						}
 						return bm, nil
-					})
+					}, security.BasicManagerSupportedAlgorithms)
 					kmgrs = append(kmgrs, security.BasicManagerName)
 					// Explicitly set the default manager for session key generation.
 					// This should be configurable, e.g., defaulting to BasicManager or an HSM if available.
@@ -95,14 +96,14 @@ func NewRegistration() *serviceregistry.Service[kasconnect.AccessServiceHandler]
 				} else {
 					// Set up both the legacy CryptoProvider and the new SecurityProvider
 					kasCfg.UpgradeMapToKeyring(srp.OTDF.CryptoProvider)
-					p.CryptoProvider = srp.OTDF.CryptoProvider
+					p.CryptoProvider = srp.OTDF.CryptoProvider //nolint:staticcheck // Legacy field retained during migration.
 
-					inProcessService := initSecurityProviderAdapter(p.CryptoProvider, kasCfg, srp.Logger)
+					inProcessService := initSecurityProviderAdapter(p.CryptoProvider, kasCfg, srp.Logger) //nolint:staticcheck // Legacy field retained during migration.
 
 					p.KeyDelegator = trust.NewDelegatingKeyService(inProcessService, srp.Logger, nil)
-					p.KeyDelegator.RegisterKeyManagerCtx(inProcessService.Name(), func(_ context.Context, _ *trust.KeyManagerFactoryOptions) (trust.KeyManager, error) {
+					p.KeyDelegator.RegisterKeyManagerCtxWithAlgorithms(inProcessService.Name(), func(_ context.Context, _ *trust.KeyManagerFactoryOptions) (trust.KeyManager, error) {
 						return inProcessService, nil
-					})
+					}, security.InProcessSupportedAlgorithms)
 					// Set default for non-key-management mode
 					p.KeyDelegator.SetDefaultMode(inProcessService.Name(), "", nil)
 					kmgrs = append(kmgrs, inProcessService.Name())
@@ -114,7 +115,8 @@ func NewRegistration() *serviceregistry.Service[kasconnect.AccessServiceHandler]
 				p.ApplyConfig(kasCfg, srp.Security)
 				p.Tracer = srp.Tracer
 
-				srp.Logger.Debug("kas config", slog.Any("config", kasCfg))
+				srp.Logger.Debug("kas config loaded", slog.Any("config", kasCfg))
+				logSupportedMechanisms(context.Background(), srp.Logger, p.KeyDelegator, &kasCfg)
 
 				if err := srp.RegisterReadinessCheck("kas", p.IsReady); err != nil {
 					srp.Logger.Error("failed to register kas readiness check", slog.String("error", err.Error()))
@@ -181,6 +183,39 @@ func determineKASURL(srp serviceregistry.RegistrationParams, kasCfg access.KASCo
 	return kasURL, nil
 }
 
+// logSupportedMechanisms emits a single INFO entry listing the cryptographic
+// mechanisms this KAS instance is configured to serve. The mechanism set is
+// sourced from the trust KeyManagers (what they could serve if a key were
+// provisioned) and filtered by the same preview-feature gates rewrap.go
+// enforces, so the log only advertises algorithms rewrap would actually accept.
+func logSupportedMechanisms(ctx context.Context, l *logger.Logger, kd *trust.DelegatingKeyService, kasCfg *access.KASConfig) {
+	if l == nil || kd == nil || kasCfg == nil {
+		return
+	}
+	mechanisms := filterMechanismsByPreview(kd.SupportedAlgorithms(ctx), kasCfg)
+	l.InfoContext(ctx, "kas trust mechanisms initialized", slog.Any("mechanisms", mechanisms))
+}
+
+// filterMechanismsByPreview drops algorithms whose corresponding rewrap path is
+// disabled. Keep aligned with the gating in service/kas/access/rewrap.go for
+// "ec-wrapped" and "hybrid-wrapped" key access objects.
+func filterMechanismsByPreview(algs []ocrypto.KeyType, kasCfg *access.KASConfig) []ocrypto.KeyType {
+	ecEnabled := kasCfg.ECTDFEnabled || kasCfg.Preview.ECTDFEnabled
+	hybridEnabled := kasCfg.HybridTDFEnabled || kasCfg.Preview.HybridTDFEnabled
+
+	out := make([]ocrypto.KeyType, 0, len(algs))
+	for _, a := range algs {
+		switch {
+		case !ecEnabled && ocrypto.IsECKeyType(a):
+			continue
+		case !hybridEnabled && ocrypto.IsHybridKeyType(a):
+			continue
+		}
+		out = append(out, a)
+	}
+	return out
+}
+
 func initSecurityProviderAdapter(cryptoProvider *security.StandardCrypto, kasCfg access.KASConfig, l *logger.Logger) trust.KeyService {
 	var defaults []string
 	var legacies []string
@@ -192,7 +227,7 @@ func initSecurityProviderAdapter(cryptoProvider *security.StandardCrypto, kasCfg
 		}
 	}
 	if len(defaults) == 0 && len(legacies) == 0 {
-		for _, alg := range []string{security.AlgorithmECP256R1, security.AlgorithmRSA2048} {
+		for _, alg := range []string{security.AlgorithmECP256R1, security.AlgorithmRSA2048, security.AlgorithmHPQTXWing} {
 			kid := cryptoProvider.FindKID(alg)
 			if kid != "" {
 				defaults = append(defaults, kid)

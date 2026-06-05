@@ -1,0 +1,87 @@
+package handlers
+
+import (
+	"context"
+
+	"github.com/opentdf/platform/protocol/go/common"
+	"github.com/opentdf/platform/protocol/go/policy"
+	"github.com/opentdf/platform/protocol/go/policy/subjectmapping"
+)
+
+func (h Handler) GetSubjectConditionSet(ctx context.Context, id string) (*policy.SubjectConditionSet, error) {
+	resp, err := h.sdk.SubjectMapping.GetSubjectConditionSet(ctx, &subjectmapping.GetSubjectConditionSetRequest{
+		Id: id,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return resp.GetSubjectConditionSet(), nil
+}
+
+func (h Handler) ListSubjectConditionSets(ctx context.Context, limit, offset int32, namespace string, sort SortOption) (*subjectmapping.ListSubjectConditionSetsResponse, error) {
+	req := &subjectmapping.ListSubjectConditionSetsRequest{
+		Pagination: &policy.PageRequest{
+			Limit:  limit,
+			Offset: offset,
+		},
+	}
+	req.NamespaceId, req.NamespaceFqn = getNamespaceIDAndFQN(namespace)
+	if !sort.IsZero() {
+		allowedFields := map[string]subjectmapping.SortSubjectConditionSetsType{
+			"created_at": subjectmapping.SortSubjectConditionSetsType_SORT_SUBJECT_CONDITION_SETS_TYPE_CREATED_AT,
+			"updated_at": subjectmapping.SortSubjectConditionSetsType_SORT_SUBJECT_CONDITION_SETS_TYPE_UPDATED_AT,
+		}
+		field, err := sortField("subject condition sets", sort, allowedFields)
+		if err != nil {
+			return nil, err
+		}
+		req.Sort = []*subjectmapping.SubjectConditionSetsSort{{Field: field, Direction: sort.Direction}}
+	}
+	return h.sdk.SubjectMapping.ListSubjectConditionSets(ctx, req)
+}
+
+// Creates and returns the created subject condition set
+func (h Handler) CreateSubjectConditionSet(ctx context.Context, ss []*policy.SubjectSet, metadata *common.MetadataMutable, namespace string) (*policy.SubjectConditionSet, error) {
+	req := &subjectmapping.CreateSubjectConditionSetRequest{
+		SubjectConditionSet: &subjectmapping.SubjectConditionSetCreate{
+			SubjectSets: ss,
+			Metadata:    metadata,
+		},
+	}
+	req.NamespaceId, req.NamespaceFqn = getNamespaceIDAndFQN(namespace)
+	resp, err := h.sdk.SubjectMapping.CreateSubjectConditionSet(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+	return h.GetSubjectConditionSet(ctx, resp.GetSubjectConditionSet().GetId())
+}
+
+// Updates and returns the updated subject condition set
+func (h Handler) UpdateSubjectConditionSet(ctx context.Context, id string, ss []*policy.SubjectSet, metadata *common.MetadataMutable, behavior common.MetadataUpdateEnum) (*policy.SubjectConditionSet, error) {
+	_, err := h.sdk.SubjectMapping.UpdateSubjectConditionSet(ctx, &subjectmapping.UpdateSubjectConditionSetRequest{
+		Id:                     id,
+		SubjectSets:            ss,
+		Metadata:               metadata,
+		MetadataUpdateBehavior: behavior,
+	})
+	if err != nil {
+		return nil, err
+	}
+	return h.GetSubjectConditionSet(ctx, id)
+}
+
+func (h Handler) DeleteSubjectConditionSet(ctx context.Context, id string) error {
+	_, err := h.sdk.SubjectMapping.DeleteSubjectConditionSet(ctx, &subjectmapping.DeleteSubjectConditionSetRequest{
+		Id: id,
+	})
+	return err
+}
+
+func (h Handler) PruneSubjectConditionSets(ctx context.Context) ([]*policy.SubjectConditionSet, error) {
+	rsp, err := h.sdk.SubjectMapping.DeleteAllUnmappedSubjectConditionSets(ctx, &subjectmapping.DeleteAllUnmappedSubjectConditionSetsRequest{})
+	if err != nil {
+		return nil, err
+	}
+	return rsp.GetSubjectConditionSets(), nil
+}

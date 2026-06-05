@@ -7,7 +7,6 @@ import (
 	"log/slog"
 	"time"
 
-	"github.com/docker/go-connections/nat"
 	tc "github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
 )
@@ -84,12 +83,12 @@ func (cm *ContainerManager) GetMappedPort(ctx context.Context, containerPort str
 		return 0, errors.New("container not started")
 	}
 
-	mappedPort, err := cm.Container.MappedPort(ctx, nat.Port(containerPort))
+	mappedPort, err := cm.Container.MappedPort(ctx, containerPort)
 	if err != nil {
 		return 0, fmt.Errorf("failed to get mapped port for %s: %w", containerPort, err)
 	}
 
-	return mappedPort.Int(), nil
+	return int(mappedPort.Num()), nil
 }
 
 // GetHost returns the container host (typically localhost)

@@ -75,20 +75,20 @@ func (*myAttributesClient) DeactivateAttributeValue(_ context.Context, _ *attr.D
 	return &attr.DeactivateAttributeValueResponse{}, nil
 }
 
-func (*myAttributesClient) AssignKeyAccessServerToAttribute(_ context.Context, _ *attr.AssignKeyAccessServerToAttributeRequest) (*attr.AssignKeyAccessServerToAttributeResponse, error) {
-	return &attr.AssignKeyAccessServerToAttributeResponse{}, nil
+func (*myAttributesClient) AssignKeyAccessServerToAttribute(_ context.Context, _ *attr.AssignKeyAccessServerToAttributeRequest) (*attr.AssignKeyAccessServerToAttributeResponse, error) { //nolint:staticcheck // Compatibility stub for deprecated RPC.
+	return &attr.AssignKeyAccessServerToAttributeResponse{}, nil //nolint:staticcheck // Deprecated response kept for compatibility tests.
 }
 
-func (*myAttributesClient) RemoveKeyAccessServerFromAttribute(_ context.Context, _ *attr.RemoveKeyAccessServerFromAttributeRequest) (*attr.RemoveKeyAccessServerFromAttributeResponse, error) {
-	return &attr.RemoveKeyAccessServerFromAttributeResponse{}, nil
+func (*myAttributesClient) RemoveKeyAccessServerFromAttribute(_ context.Context, _ *attr.RemoveKeyAccessServerFromAttributeRequest) (*attr.RemoveKeyAccessServerFromAttributeResponse, error) { //nolint:staticcheck // Compatibility stub for deprecated RPC.
+	return &attr.RemoveKeyAccessServerFromAttributeResponse{}, nil //nolint:staticcheck // Deprecated response kept for compatibility tests.
 }
 
-func (*myAttributesClient) AssignKeyAccessServerToValue(_ context.Context, _ *attr.AssignKeyAccessServerToValueRequest) (*attr.AssignKeyAccessServerToValueResponse, error) {
-	return &attr.AssignKeyAccessServerToValueResponse{}, nil
+func (*myAttributesClient) AssignKeyAccessServerToValue(_ context.Context, _ *attr.AssignKeyAccessServerToValueRequest) (*attr.AssignKeyAccessServerToValueResponse, error) { //nolint:staticcheck // Compatibility stub for deprecated RPC.
+	return &attr.AssignKeyAccessServerToValueResponse{}, nil //nolint:staticcheck // Deprecated response kept for compatibility tests.
 }
 
-func (*myAttributesClient) RemoveKeyAccessServerFromValue(_ context.Context, _ *attr.RemoveKeyAccessServerFromValueRequest) (*attr.RemoveKeyAccessServerFromValueResponse, error) {
-	return &attr.RemoveKeyAccessServerFromValueResponse{}, nil
+func (*myAttributesClient) RemoveKeyAccessServerFromValue(_ context.Context, _ *attr.RemoveKeyAccessServerFromValueRequest) (*attr.RemoveKeyAccessServerFromValueResponse, error) { //nolint:staticcheck // Compatibility stub for deprecated RPC.
+	return &attr.RemoveKeyAccessServerFromValueResponse{}, nil //nolint:staticcheck // Deprecated response kept for compatibility tests.
 }
 
 func (*myAttributesClient) AssignPublicKeyToAttribute(_ context.Context, _ *attr.AssignPublicKeyToAttributeRequest) (*attr.AssignPublicKeyToAttributeResponse, error) {
@@ -301,20 +301,20 @@ func (*paginatedMockAttributesClient) DeactivateAttributeValue(_ context.Context
 	return &attr.DeactivateAttributeValueResponse{}, nil
 }
 
-func (*paginatedMockAttributesClient) AssignKeyAccessServerToAttribute(_ context.Context, _ *attr.AssignKeyAccessServerToAttributeRequest) (*attr.AssignKeyAccessServerToAttributeResponse, error) {
-	return &attr.AssignKeyAccessServerToAttributeResponse{}, nil
+func (*paginatedMockAttributesClient) AssignKeyAccessServerToAttribute(_ context.Context, _ *attr.AssignKeyAccessServerToAttributeRequest) (*attr.AssignKeyAccessServerToAttributeResponse, error) { //nolint:staticcheck // Compatibility stub for deprecated RPC.
+	return &attr.AssignKeyAccessServerToAttributeResponse{}, nil //nolint:staticcheck // Deprecated response kept for compatibility tests.
 }
 
-func (*paginatedMockAttributesClient) RemoveKeyAccessServerFromAttribute(_ context.Context, _ *attr.RemoveKeyAccessServerFromAttributeRequest) (*attr.RemoveKeyAccessServerFromAttributeResponse, error) {
-	return &attr.RemoveKeyAccessServerFromAttributeResponse{}, nil
+func (*paginatedMockAttributesClient) RemoveKeyAccessServerFromAttribute(_ context.Context, _ *attr.RemoveKeyAccessServerFromAttributeRequest) (*attr.RemoveKeyAccessServerFromAttributeResponse, error) { //nolint:staticcheck // Compatibility stub for deprecated RPC.
+	return &attr.RemoveKeyAccessServerFromAttributeResponse{}, nil //nolint:staticcheck // Deprecated response kept for compatibility tests.
 }
 
-func (*paginatedMockAttributesClient) AssignKeyAccessServerToValue(_ context.Context, _ *attr.AssignKeyAccessServerToValueRequest) (*attr.AssignKeyAccessServerToValueResponse, error) {
-	return &attr.AssignKeyAccessServerToValueResponse{}, nil
+func (*paginatedMockAttributesClient) AssignKeyAccessServerToValue(_ context.Context, _ *attr.AssignKeyAccessServerToValueRequest) (*attr.AssignKeyAccessServerToValueResponse, error) { //nolint:staticcheck // Compatibility stub for deprecated RPC.
+	return &attr.AssignKeyAccessServerToValueResponse{}, nil //nolint:staticcheck // Deprecated response kept for compatibility tests.
 }
 
-func (*paginatedMockAttributesClient) RemoveKeyAccessServerFromValue(_ context.Context, _ *attr.RemoveKeyAccessServerFromValueRequest) (*attr.RemoveKeyAccessServerFromValueResponse, error) {
-	return &attr.RemoveKeyAccessServerFromValueResponse{}, nil
+func (*paginatedMockAttributesClient) RemoveKeyAccessServerFromValue(_ context.Context, _ *attr.RemoveKeyAccessServerFromValueRequest) (*attr.RemoveKeyAccessServerFromValueResponse, error) { //nolint:staticcheck // Compatibility stub for deprecated RPC.
+	return &attr.RemoveKeyAccessServerFromValueResponse{}, nil //nolint:staticcheck // Deprecated response kept for compatibility tests.
 }
 
 func (*paginatedMockAttributesClient) AssignPublicKeyToAttribute(_ context.Context, _ *attr.AssignPublicKeyToAttributeRequest) (*attr.AssignPublicKeyToAttributeResponse, error) {

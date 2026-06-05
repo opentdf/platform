@@ -65,7 +65,7 @@ https://github.com/opentdf/platform/blob/main/service/go.mod#L3
 You can now access platform services at http://localhost:8080/ , and Keycloak at http://localhost:8888/auth/ .
 
 ##  Next steps
-* Try out our CLI (`otdfctl`): https://github.com/opentdf/otdfctl
+* Try out our CLI (`otdfctl`): https://github.com/opentdf/platform/otdfctl
    ```sh
    otdfctl auth client-credentials --host http://localhost:8080 --client-id opentdf --client-secret secret
    ```

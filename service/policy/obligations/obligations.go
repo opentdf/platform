@@ -339,6 +339,19 @@ func (s *Service) DeleteObligationValue(ctx context.Context, req *connect.Reques
 	return connect.NewResponse(rsp), nil
 }
 
+func (s *Service) GetObligationTrigger(ctx context.Context, req *connect.Request[obligations.GetObligationTriggerRequest]) (*connect.Response[obligations.GetObligationTriggerResponse], error) {
+	id := req.Msg.GetId()
+	s.logger.DebugContext(ctx, "getting obligation trigger", slog.String("id", id))
+
+	trigger, err := s.dbClient.GetObligationTrigger(ctx, req.Msg)
+	if err != nil {
+		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextGetRetrievalFailed, slog.String("id", id))
+	}
+
+	rsp := &obligations.GetObligationTriggerResponse{Trigger: trigger}
+	return connect.NewResponse(rsp), nil
+}
+
 func (s *Service) AddObligationTrigger(ctx context.Context, req *connect.Request[obligations.AddObligationTriggerRequest]) (*connect.Response[obligations.AddObligationTriggerResponse], error) {
 	rsp := &obligations.AddObligationTriggerResponse{}
 

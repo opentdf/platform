@@ -39,7 +39,7 @@ func (m *MockKeyAccessServerRegistryClient) DeleteKeyAccessServer(context.Contex
 	return nil, errors.New("not implemented")
 }
 
-func (m *MockKeyAccessServerRegistryClient) ListKeyAccessServerGrants(context.Context, *kasregistry.ListKeyAccessServerGrantsRequest) (*kasregistry.ListKeyAccessServerGrantsResponse, error) {
+func (m *MockKeyAccessServerRegistryClient) ListKeyAccessServerGrants(context.Context, *kasregistry.ListKeyAccessServerGrantsRequest) (*kasregistry.ListKeyAccessServerGrantsResponse, error) { //nolint:staticcheck // Compatibility test for deprecated RPC.
 	return nil, errors.New("not implemented")
 }
 

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"net/url"
 
 	"github.com/opentdf/platform/service/logger"
 )
@@ -32,8 +33,11 @@ type OIDCConfiguration struct {
 // DiscoverOPENIDConfiguration discovers the openid configuration for the issuer provided
 func DiscoverOIDCConfiguration(ctx context.Context, issuer string, logger *logger.Logger) (*OIDCConfiguration, error) {
 	logger.DebugContext(ctx, "discovering openid configuration", slog.String("issuer", issuer))
-	url := fmt.Sprintf("%s%s", issuer, DiscoveryPath)
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	discoveryURL, err := url.JoinPath(issuer, DiscoveryPath)
+	if err != nil {
+		return nil, fmt.Errorf("invalid issuer URL %q: %w", issuer, err)
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, discoveryURL, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -44,7 +48,7 @@ func DiscoverOIDCConfiguration(ctx context.Context, issuer string, logger *logge
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("failed to discover idp at %s: %s", url, resp.Status)
+		return nil, fmt.Errorf("failed to discover idp at %s: %s", discoveryURL, resp.Status)
 	}
 	defer resp.Body.Close()
 

@@ -16,6 +16,7 @@ import (
 	"encoding/pem"
 	"errors"
 	"fmt"
+	"hash/crc32"
 	"io"
 	"log/slog"
 	"net/http"
@@ -42,7 +43,7 @@ import (
 	"github.com/opentdf/platform/protocol/go/policy/kasregistry/kasregistryconnect"
 	wellknownpb "github.com/opentdf/platform/protocol/go/wellknownconfiguration"
 	wellknownconnect "github.com/opentdf/platform/protocol/go/wellknownconfiguration/wellknownconfigurationconnect"
-	"github.com/opentdf/platform/sdk/internal/archive"
+	"github.com/opentdf/platform/sdk/internal/zipstream"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/resolver"
 	"google.golang.org/grpc/status"
@@ -258,6 +259,120 @@ A1UdIwQYMBaAFLg9mMeD25ZGvmjSYaunIPoeekzlMA8GA1UdEwEB/wQFMAMBAf8w
 CgYIKoZIzj0EAwIDSAAwRQIhALYXC70t37RlmIkRDlUTehiVEHpSQXz04wQ9Ivw+
 4h4hAiBNR3rD3KieiJaiJrCfM6TPJL7TIch7pAhMHdG6IPJMoQ==
 -----END CERTIFICATE-----`
+
+	mockHybridXWingPublicKey = `-----BEGIN XWING PUBLIC KEY-----
+4pKOW2Z+TqohuAO7Z8m1J9Ik5jbLOZgpfKKTdEXD4mqLgXa8D5RNaYhtkfJn4js6
+MWO35ZJqlfVuCoBnruillfoEY2VD6OVB7AQqBJyzhLeAFsOYgwLIF9UBXixSo6ym
+eAA6GhYvzViUx/oQSHCI6JWhKhINXqar7usmFlxC/da4rolS9AGAkpx3S8F1VRyN
+tBahkbcLDptIqzRgOJWaXuYdtRqiuqahJyEWLjal/FQa0+dTA5oWn4IWUZRGvVut
+T/AFXMHMPdY7JmmmhNJAJTqcblHJ+FJ1YTBi0bEQE7F4XlqpdRxwISJSAGCZN6WD
+eTVF9CmpM0iJbnlN5cvAcwCFGamL5II0wwEhftMDIoCb+IiR8NQcQfJnFus9DvhR
+k5k7HVtjoumWWksL+tOudUtmYaOnV4CwyAunc8W+vsQ6edoCQWy8peRMvVcoaDUE
+tVuACiiwIWADLbsmGyiBR6x4/ashJLs46XsB4pmB1BfIf4yis+B5VvLCnZIsMvKH
+jLl81PMH4AsIytN0H/GOkJI/y1iGZsJkCZN15WJ2tAuwyMqz0yooh1lZIedgTheE
+lBKYx1YlFvmSCZBfLnKOIWFHpqkQ8OTGXWgBfvhwyhEui3ZhJbhmgBQrYAeN8ZcP
+s2isMmmzKVRcMzVFXaynv+UIiWVAH5BeXUbL0BVIkJulgXJptEyXs6JPGbEu1/ug
+uvaWx6xWQ3NiR+BOA5eIigwjoQEtyYRczlg0kUcivca+/TiE3yh2gkU2xhLNFXdL
+mHw1jNIbD5O5UPoGEdJ2XRLLVZJhhdmSWpN51FoW/OA6tJaMedtaNwjKD9wjJYEM
+izoy9cSNuWZNKMlNdNc9aPfIcQoD2xKKKZR7iHdVNpRQEYiWFrxqT8aY3JN8UjEy
+hdqeS7VAbQc28Ts7kxNa2xRmBQaOn3pb/eO+5LV/Y0Y4E7U7TXt3eBwbo5luf6Sg
+dnBjypqJAmUzpEl6MrOs7Hh7RxByyKDIgYiNAaNUnwOI7USjxlN5sKhpj+iKvCYF
+oCmRBMQ8w+p2s3GiXtB/whh1gwtIzTGkBpyaJrpjrFm67Bp88aUG3GJ5QKy/YPct
+tVKRPcNRhlsrOsEwB0qE/+Qj2gcPDAydGIp3hxiJxFgun1RQp/BkiEJW22xN2Vim
+n+tyUcRRvQCEoSU0+NXHddQvkzwHJVpdvsgRfgxHIlpTGXBReaQnRGZl2zEDVZGb
+vva6ubOu8XhMJAs1n9M41aVlP4bDmwmNv/oTKwi2kSdObkZv2INLucxtiJZ3BhbC
+NMiEXVU9DdS/USqZFpcQHqYB63hAMdmRsaM1wVW7HbRumglJY+A/hqgaV2wGtjNR
+5qNHS4FTT7euxsOs0PIxE3sOgDmseTd0UditGXd3O5xx7LkBe4GdNTuXq+rMgiZf
+P0i2ugDCV4McS4zKfpamYPQKqBufsiNkbMSVu+Mb7kQcgZZBY8gTnEyEY2k9oiJ5
+v6dH/oNa5ohGvHJjEcm4/3y3C7er0OKKM8JLkuIuUYsP7yqPY0V8LPjKI/wS0wxS
+yv8kgAJe+QrgMAOzPsw5fAeK5Lrz+OhSRsF/hRJnlAgbv/UAHZQR7ueSrL6Tj8tY
+Ubd0E5EZlOEecFd/41z5QA==
+-----END XWING PUBLIC KEY-----`
+
+	// X-Wing private key is a 32-byte seed; the full X25519 + ML-KEM-768
+	// components are derived from it at runtime by circl.
+	mockHybridXWingPrivateKey = `-----BEGIN XWING PRIVATE KEY-----
+7uCvk28wGoVrwW5nU2huW28UXWa5tZMom6Zds8uohrA=
+-----END XWING PRIVATE KEY-----`
+
+	mockHybridP256MLKEM768PublicKey = `-----BEGIN SECP256R1 MLKEM768 PUBLIC KEY-----
+BGtgB2txkSmwez5qXBEmetZijnkCuYWdhPvcPoAHr5Aiv1Zk895ARtcgbO1KIye8
+52Wnc48CY2baUfSHptVKmfsnRbmsDEdZoTWyaaaAmieMws9Z9yZuwVNB2sx7AQES
+d7ozp2t+nAftGc0WhUYxXDaup0usxA0QkpR7VqDa/ATqek+XlQm3TJ4pzMMIPK9H
+FY6iUJchpAZ7+nQesKpDErrzQxeoGbCOOIqxAyaHNVgbxAxVIj8c23iwdMZKwMPC
+LDb22Do61X7vFV0WCTTeVRJJ6lXVA6TkyVpXmb2A4gpUtSTGssINSSxxrA/wklA8
+gpqb4lurdYylQxBwArs0wnzhmThm2T/gOW89Mw6XnLbNqosqlcESwjfKXCKt63ZB
+ZDVR2Wlc2RxWu0jysaoqUkYIZREceoFjSUWwagI0o8TVeAiVUBJD0AgtNcouJjad
+pJvB6MYQlpe2F2sr1gvOlZph1IBkgpO8dRlKZ1yEgzUchG1tummcs3/lq2ois8fl
+ZABkxVs9fMkO5G3vOgzucYjQe698sLTzaRygiKHnVS5GsWhBOq6eWVfOiwt+Klvv
+KI6AfBQ2UFXsrBqXW8sjApWQ1xZVICtSBsksBhuf8GDh3AlNYxAJw0AAO6vgc7is
+SRVZKCOsCKby+LxlFiEabGYbES07iHBvqx5ZCGHl+RB5SqJzWV/nPIrHrBmNiFvq
+EYTnnLJ1hyqa7ABjGCeisoU6Js3yw1L6QMwtZS4sjMQdSWCoVqIeBimFtbFacVKR
+OhR2YUVesQ8hgp21CjtJRMF8917OCbc1xrMj4by5tr5Aq0LjRlL+EcIcNgkjJrz9
+sXrXK2GvxZcf/FknshQ4pme+AJIvp771I3SLVEvdhbf35aRJCIQ3xQ5Y6Ijxa5Ag
+wls8WMkAwQw3IBjNeYVcYn6GiTOet7yAoU+Z9Jx06SK/kqQ7HMJDChkJtLJLNJH/
+a7HrRZlZ4TA92kLP+R/ym6Kle8rN1iNiUXLxmKUR51vuNKnPVh4AGKQb0MYQurjo
+YWcVg6I6MYV2XFIJAiqTBdC8kWUyZFYrw5M4E3RM+0M/slEWyQAf1L26FQodUKce
+dqpo94trsCjTpbRQ+aTSNZdAHMwxkrR02TzUmoWTl0TUE8nS6yxTwUcd9wy+5KnX
+mzHD42I6eyTgnAhLiZOOEpBXBX6VM4Zq1z6GO25id7kju2kgEREFnFVf7G3JWrZz
+yXJ1SBLVlina4kmexJTTAyzi9IQqcAewm6nsc7byBpBenBA6aAjYZMQYtaSK+IRE
+6norOKeJ0w+ZpAPdC43Mw7GBhD4eI3FQcJOce2L9yXgPYQCEaEJvDJLmJKo26iq5
+WmYEQwe1abKouruKNyaON2TEWLQBSqujca8MFKBOsXisvApkdm+fK3CLVjgSCAM4
+7LfBDFSHA7wj+KC2oXqUgwinBSgYkkJ6Vahny6GadZdpZAmYQCNLhgDDMAOcVxUx
+aSQeIECzocR08QslRXNV542FlXlVx2b/ZC5yaFwAUYOACbyYq1azeTOIWyFoKGKa
+uRpK+2jglo7wB7kU5LcIB8ZTFwLjGDZsEKdbmgzV+yVDqxXU1llgvKfhFmOfSALF
+S39eOBaIhT1WOWpxinZRaagtmi8UQ0uE0uGhIV7fe+lLGuLxYKa/KYQe7wL6j0sL
+wQ==
+-----END SECP256R1 MLKEM768 PUBLIC KEY-----`
+
+	mockHybridP256MLKEM768PrivateKey = `-----BEGIN SECP256R1 MLKEM768 PRIVATE KEY-----
+j60Fn/LBoCGnWihNB3Q6lXJaO4EkMCrEnOT3/z0zZ6Kdr+6m7ww3N6lLMP+Rb2O1
+3gjrOyiNXWbaTwl1mI2vi03PoW2bJbE1+wJuiT/2njjrBRyIxLqRD/4zbiscmhOp
+-----END SECP256R1 MLKEM768 PRIVATE KEY-----`
+
+	mockHybridP384MLKEM1024PublicKey = `-----BEGIN SECP384R1 MLKEM1024 PUBLIC KEY-----
+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
+-----END SECP384R1 MLKEM1024 PUBLIC KEY-----`
+
+	mockHybridP384MLKEM1024PrivateKey = `-----BEGIN SECP384R1 MLKEM1024 PRIVATE KEY-----
+0Tu+86kOEFj2BP8fRnWqaPq6d+E1Ufhl7/OJqmg1zLoYgPtEW4QBfLgxUM8Q0nUj
+bh9BKtvBsaDd3GXyKpjIM0zXv8mzSf+bZQQ9zfaaSMJ3RsPoPhViUXLYnvbDrKfM
+cql24SfEHKvj8gifFuV/eg==
+-----END SECP384R1 MLKEM1024 PRIVATE KEY-----`
 )
 
 type TestReadAt struct {
@@ -348,6 +463,7 @@ func (s *TDFSuite) Test_SimpleTDF() {
 		tdfOptions     []TDFOption
 		tdfReadOptions []TDFReaderOption
 		useHex         bool
+		expectedSize   int64 // override default expectedTdfSize if non-zero
 	}
 
 	metaData := []byte(`{"displayName" : "openTDF go sdk"}`)
@@ -427,6 +543,54 @@ func (s *TDFSuite) Test_SimpleTDF() {
 			},
 			useHex: true,
 		},
+		{
+			name: "metadata-hybrid-p256-mlkem768",
+			tdfOptions: []TDFOption{
+				WithKasInformation(KASInfo{
+					URL:       s.kasTestURLLookup["https://f.kas/"],
+					PublicKey: "",
+				}),
+				WithMetaData(string(metaData)),
+				WithDataAttributes(attributes...),
+				WithWrappingKeyAlg(ocrypto.HybridSecp256r1MLKEM768Key),
+			},
+			tdfReadOptions: []TDFReaderOption{
+				WithKasAllowlist([]string{s.kasTestURLLookup["https://f.kas/"]}),
+			},
+			expectedSize: 3364,
+		},
+		{
+			name: "metadata-hybrid-p384-mlkem1024",
+			tdfOptions: []TDFOption{
+				WithKasInformation(KASInfo{
+					URL:       s.kasTestURLLookup["https://g.kas/"],
+					PublicKey: "",
+				}),
+				WithMetaData(string(metaData)),
+				WithDataAttributes(attributes...),
+				WithWrappingKeyAlg(ocrypto.HybridSecp384r1MLKEM1024Key),
+			},
+			tdfReadOptions: []TDFReaderOption{
+				WithKasAllowlist([]string{s.kasTestURLLookup["https://g.kas/"]}),
+			},
+			expectedSize: 4048,
+		},
+		{
+			name: "metadata-hybrid-xwing",
+			tdfOptions: []TDFOption{
+				WithKasInformation(KASInfo{
+					URL:       s.kasTestURLLookup["https://h.kas/"],
+					PublicKey: "",
+				}),
+				WithMetaData(string(metaData)),
+				WithDataAttributes(attributes...),
+				WithWrappingKeyAlg(ocrypto.HybridXWingKey),
+			},
+			tdfReadOptions: []TDFReaderOption{
+				WithKasAllowlist([]string{s.kasTestURLLookup["https://h.kas/"]}),
+			},
+			expectedSize: 3320,
+		},
 	}
 
 	for _, config := range testConfigs {
@@ -447,11 +611,14 @@ func (s *TDFSuite) Test_SimpleTDF() {
 				tdfObj, err := s.sdk.CreateTDF(fileWriter, bufReader, config.tdfOptions...)
 
 				s.Require().NoError(err)
+				expected := expectedTdfSize
 				if config.useHex {
-					s.InDelta(float64(expectedTdfSizeWithHex), float64(tdfObj.size), 36.0)
-				} else {
-					s.InDelta(float64(expectedTdfSize), float64(tdfObj.size), 36.0)
+					expected = expectedTdfSizeWithHex
 				}
+				if config.expectedSize != 0 {
+					expected = config.expectedSize
+				}
+				s.InDelta(float64(expected), float64(tdfObj.size), 64.0)
 
 				// test meta data and build meta data
 				readSeeker, err := os.Open(tdfFilename)
@@ -2376,7 +2543,7 @@ func (s *TDFSuite) Test_Autoconfigure() {
 				_ = os.Remove(plaintTextFileName)
 				_ = os.Remove(tdfFileName)
 			}()
-			s.sdk.kasKeyCache.store(KASInfo{})
+			s.sdk.store(KASInfo{})
 
 			// test encrypt
 			tdo := s.testEncrypt(s.sdk, []TDFOption{WithKasInformation(kasInfoList...)}, plaintTextFileName, tdfFileName, test)
@@ -2431,6 +2598,59 @@ func rotateKey(k *FakeKas, kid, private, public string) func() {
 		k.KID = old.KID
 		k.KASInfo.PublicKey = old.KASInfo.PublicKey
 	}
+}
+
+func (s *TDFSuite) Test_LargeManifest_WithMaxManifest() {
+	const maxManifestSize = 1024 * 1024 // 1MB
+
+	// Helper to create a large manifest JSON string
+	createLargeManifest := func(size int) []byte {
+		manifest := map[string]interface{}{
+			"payload": map[string]interface{}{
+				"data": string(bytes.Repeat([]byte{'a'}, size)),
+			},
+			"tdf_spec_version": TDFSpecVersion,
+		}
+		b, err := json.Marshal(manifest)
+		s.Require().NoError(err)
+		return b
+	}
+
+	// Helper to create a TDF file in memory for testing
+	createTestTDF := func(manifest []byte, payload []byte) *bytes.Reader {
+		tdfBuffer := new(bytes.Buffer)
+		writer := zipstream.NewSegmentTDFWriter(1, zipstream.WithZip64Mode(zipstream.Zip64Auto))
+
+		segmentHeader, err := writer.WriteSegment(context.Background(), 0, uint64(len(payload)), crc32.ChecksumIEEE(payload))
+		s.Require().NoError(err)
+		if len(segmentHeader) > 0 {
+			_, err = tdfBuffer.Write(segmentHeader)
+			s.Require().NoError(err)
+		}
+		_, err = tdfBuffer.Write(payload)
+		s.Require().NoError(err)
+
+		finalBytes, err := writer.Finalize(context.Background(), manifest)
+		s.Require().NoError(err)
+		_, err = tdfBuffer.Write(finalBytes)
+		s.Require().NoError(err)
+		s.Require().NoError(writer.Close())
+
+		return bytes.NewReader(tdfBuffer.Bytes())
+	}
+
+	// Case 1: Manifest just below the limit
+	manifestBelow := createLargeManifest(maxManifestSize - 100)
+	tdfBelow := createTestTDF(manifestBelow, []byte("payload"))
+	_, err := s.sdk.LoadTDF(tdfBelow, WithMaxManifestSize(maxManifestSize))
+	s.Require().NoError(err, "Manifest below max size should load successfully")
+
+	// Case 2: Manifest just above the limit
+	manifestAbove := createLargeManifest(maxManifestSize + 100)
+	tdfAbove := createTestTDF(manifestAbove, []byte("payload"))
+	_, err = s.sdk.LoadTDF(tdfAbove, WithMaxManifestSize(maxManifestSize))
+	s.Require().Error(err, "Manifest above max size should fail to load")
+	s.Require().ErrorContains(err, "size too large")
 }
 
 // create tdf
@@ -2576,23 +2796,26 @@ func (s *TDFSuite) startBackend() {
 	fa := &FakeAttributes{s: s}
 
 	kasesToMake := []struct {
-		url, private, public, kid string
+		url, private, public, kid, algorithm string
 	}{
-		{"http://localhost:65432/", mockRSAPrivateKey1, mockRSAPublicKey1, defaultKID},
-		{"http://[::1]:65432/", mockRSAPrivateKey1, mockRSAPublicKey1, defaultKID},
-		{"https://a.kas/", mockRSAPrivateKey1, mockRSAPublicKey1, defaultKID},
-		{"https://b.kas/", mockRSAPrivateKey2, mockRSAPublicKey2, defaultKID},
-		{"https://c.kas/", mockRSAPrivateKey3, mockRSAPublicKey3, defaultKID},
-		{"https://d.kas/", mockECPrivateKey1, mockECPublicKey1, "e1"},
-		{"https://e.kas/", mockECPrivateKey2, mockECPublicKey2, defaultKID},
-		{kasAu, mockRSAPrivateKey1, mockRSAPublicKey1, defaultKID},
-		{kasCa, mockRSAPrivateKey2, mockRSAPublicKey2, defaultKID},
-		{kasUk, mockRSAPrivateKey2, mockRSAPublicKey2, defaultKID},
-		{kasNz, mockRSAPrivateKey3, mockRSAPublicKey3, defaultKID},
-		{kasUs, mockRSAPrivateKey1, mockRSAPublicKey1, defaultKID},
-		{baseKeyURL, mockRSAPrivateKey1, mockRSAPublicKey1, baseKeyKID},
-		{evenMoreSpecificKas, mockRSAPrivateKey3, mockRSAPublicKey3, "r3"},
-		{obligationKas, mockRSAPrivateKey3, mockRSAPublicKey3, "r3"},
+		{"http://localhost:65432/", mockRSAPrivateKey1, mockRSAPublicKey1, defaultKID, "rsa:2048"},
+		{"http://[::1]:65432/", mockRSAPrivateKey1, mockRSAPublicKey1, defaultKID, "rsa:2048"},
+		{"https://a.kas/", mockRSAPrivateKey1, mockRSAPublicKey1, defaultKID, "rsa:2048"},
+		{"https://b.kas/", mockRSAPrivateKey2, mockRSAPublicKey2, defaultKID, "rsa:2048"},
+		{"https://c.kas/", mockRSAPrivateKey3, mockRSAPublicKey3, defaultKID, "rsa:2048"},
+		{"https://d.kas/", mockECPrivateKey1, mockECPublicKey1, "e1", string(ocrypto.EC256Key)},
+		{"https://e.kas/", mockECPrivateKey2, mockECPublicKey2, defaultKID, string(ocrypto.EC256Key)},
+		{kasAu, mockRSAPrivateKey1, mockRSAPublicKey1, defaultKID, "rsa:2048"},
+		{kasCa, mockRSAPrivateKey2, mockRSAPublicKey2, defaultKID, "rsa:2048"},
+		{kasUk, mockRSAPrivateKey2, mockRSAPublicKey2, defaultKID, "rsa:2048"},
+		{kasNz, mockRSAPrivateKey3, mockRSAPublicKey3, defaultKID, "rsa:2048"},
+		{kasUs, mockRSAPrivateKey1, mockRSAPublicKey1, defaultKID, "rsa:2048"},
+		{baseKeyURL, mockRSAPrivateKey1, mockRSAPublicKey1, baseKeyKID, "rsa:2048"},
+		{evenMoreSpecificKas, mockRSAPrivateKey3, mockRSAPublicKey3, "r3", "rsa:2048"},
+		{obligationKas, mockRSAPrivateKey3, mockRSAPublicKey3, "r3", "rsa:2048"},
+		{"https://f.kas/", mockHybridP256MLKEM768PrivateKey, mockHybridP256MLKEM768PublicKey, "h1", string(ocrypto.HybridSecp256r1MLKEM768Key)},
+		{"https://g.kas/", mockHybridP384MLKEM1024PrivateKey, mockHybridP384MLKEM1024PublicKey, "h2", string(ocrypto.HybridSecp384r1MLKEM1024Key)},
+		{"https://h.kas/", mockHybridXWingPrivateKey, mockHybridXWingPublicKey, "h3", string(ocrypto.HybridXWingKey)},
 	}
 	fkar := &FakeKASRegistry{kases: kasesToMake, s: s}
 
@@ -2607,7 +2830,7 @@ func (s *TDFSuite) startBackend() {
 
 		s.kases[i] = FakeKas{
 			s: s, privateKey: ki.private, KASInfo: KASInfo{
-				URL: ki.url, PublicKey: ki.public, KID: ki.kid, Algorithm: "rsa:2048",
+				URL: ki.url, PublicKey: ki.public, KID: ki.kid, Algorithm: ki.algorithm,
 			},
 			legakeys:                  map[string]keyInfo{},
 			attrToRequiredObligations: obligationMap,
@@ -2696,7 +2919,7 @@ type FakeKASRegistry struct {
 	kasregistryconnect.UnimplementedKeyAccessServerRegistryServiceHandler
 	s     *TDFSuite
 	kases []struct {
-		url, private, public, kid string
+		url, private, public, kid, algorithm string
 	}
 }
 
@@ -2859,6 +3082,45 @@ func (f *FakeKas) getRewrapResponse(rewrapRequest string, fulfillableObligations
 				entityWrappedKey, err = asymEncrypt.Encrypt(symmetricKey)
 				f.s.Require().NoError(err, "ocrypto.AsymEncryption.encrypt failed")
 
+			case "hybrid-wrapped":
+				kasPrivateKey := strings.ReplaceAll(f.privateKey, "\n\t", "\n")
+				if kao.GetKid() != "" && kao.GetKid() != f.KID {
+					lk, ok := f.legakeys[kaoReq.GetKeyAccessObject().GetKid()]
+					f.s.Require().True(ok, "unable to find key [%s]", kao.GetKid())
+					kasPrivateKey = strings.ReplaceAll(lk.private, "\n\t", "\n")
+				}
+
+				var symmetricKey []byte
+				switch ocrypto.KeyType(f.Algorithm) { //nolint:exhaustive // only handle hybrid types
+				case ocrypto.HybridSecp256r1MLKEM768Key:
+					privateKey, err := ocrypto.P256MLKEM768PrivateKeyFromPem([]byte(kasPrivateKey))
+					f.s.Require().NoError(err, "failed to extract P256+ML-KEM-768 private key from PEM")
+					symmetricKey, err = ocrypto.P256MLKEM768UnwrapDEK(privateKey, wrappedKey)
+					f.s.Require().NoError(err, "failed to unwrap P256+ML-KEM-768 wrapped key")
+				case ocrypto.HybridSecp384r1MLKEM1024Key:
+					privateKey, err := ocrypto.P384MLKEM1024PrivateKeyFromPem([]byte(kasPrivateKey))
+					f.s.Require().NoError(err, "failed to extract P384+ML-KEM-1024 private key from PEM")
+					symmetricKey, err = ocrypto.P384MLKEM1024UnwrapDEK(privateKey, wrappedKey)
+					f.s.Require().NoError(err, "failed to unwrap P384+ML-KEM-1024 wrapped key")
+				case ocrypto.HybridXWingKey:
+					privateKey, err := ocrypto.XWingPrivateKeyFromPem([]byte(kasPrivateKey))
+					f.s.Require().NoError(err, "failed to extract X-Wing private key from PEM")
+					symmetricKey, err = ocrypto.XWingUnwrapDEK(privateKey, wrappedKey)
+					f.s.Require().NoError(err, "failed to unwrap X-Wing wrapped key")
+				default:
+					f.s.Require().Failf("unsupported hybrid algorithm", "algorithm: %s", f.Algorithm)
+				}
+
+				asymEncrypt, err := ocrypto.FromPublicPEMWithSalt(bodyData.GetClientPublicKey(), tdfSalt(), nil)
+				f.s.Require().NoError(err, "ocrypto.FromPublicPEMWithSalt failed")
+				if e, found := asymEncrypt.(ocrypto.ECEncryptor); found {
+					sessionKey, err := e.PublicKeyInPemFormat()
+					f.s.Require().NoError(err, "unable to serialize ephemeral key")
+					resp.SessionPublicKey = sessionKey
+				}
+				entityWrappedKey, err = asymEncrypt.Encrypt(symmetricKey)
+				f.s.Require().NoError(err, "ocrypto.encrypt failed")
+
 			case "wrapped":
 				kasPrivateKey := strings.ReplaceAll(f.privateKey, "\n\t", "\n")
 				if kao.GetKid() != "" && kao.GetKid() != f.KID {
@@ -2872,8 +3134,8 @@ func (f *FakeKas) getRewrapResponse(rewrapRequest string, fulfillableObligations
 				f.s.Require().NoError(err, "ocrypto.NewAsymDecryption failed")
 				symmetricKey, err := asymDecrypt.Decrypt(wrappedKey)
 				f.s.Require().NoError(err, "ocrypto.Decrypt failed for kao:[%s # %s (%s)] kas:[%s # %s (%s)]", kao.GetKasUrl(), kao.GetKid(), kao.GetSplitId(), f.URL, f.KID, f.Algorithm)
-				asymEncrypt, err := ocrypto.NewAsymEncryption(bodyData.GetClientPublicKey())
-				f.s.Require().NoError(err, "ocrypto.NewAsymEncryption failed")
+				asymEncrypt, err := ocrypto.FromPublicPEM(bodyData.GetClientPublicKey())
+				f.s.Require().NoError(err, "ocrypto.FromPublicPEM failed")
 				entityWrappedKey, err = asymEncrypt.Encrypt(symmetricKey)
 				f.s.Require().NoError(err, "ocrypto.encrypt failed")
 
@@ -3081,17 +3343,62 @@ func TestIsLessThanSemver(t *testing.T) {
 func TestGetKasErrorToReturn(t *testing.T) {
 	defaultError := errors.New("default KAS error")
 
-	t.Run("InvalidArgument error returns ErrRewrapBadRequest", func(t *testing.T) {
-		inputError := errors.New("rpc error: code = InvalidArgument desc = invalid request")
+	t.Run("generic InvalidArgument (bad request) is potential tamper", func(t *testing.T) {
+		inputError := errors.New("rpc error: code = InvalidArgument desc = bad request")
 		result := getKasErrorToReturn(inputError, defaultError)
 		require.ErrorIs(t, result, ErrRewrapBadRequest)
+		require.ErrorIs(t, result, ErrTampered, "generic bad request may be policy binding tamper")
+		require.NotErrorIs(t, result, ErrKASRequestError)
 		require.ErrorIs(t, result, defaultError)
+	})
+
+	t.Run("specific InvalidArgument is misconfiguration", func(t *testing.T) {
+		for _, msg := range []string{
+			"unsupported key type",
+			"key access object is nil",
+			"ec-wrapped not enabled",
+			"wrapped key is empty",
+			"invalid ephemeral public key",
+			"unsupported EC key size",
+			"invalid ephemeral public key PEM",
+			"ephemeral key is not EC",
+			"invalid EC public key",
+			"no legacy key IDs found",
+			"failed to get additional rewrap context",
+		} {
+			t.Run(msg, func(t *testing.T) {
+				inputError := errors.New("rpc error: code = InvalidArgument desc = " + msg)
+				result := getKasErrorToReturn(inputError, defaultError)
+				require.ErrorIs(t, result, ErrKASRequestError)
+				require.NotErrorIs(t, result, ErrTampered, "specific KAS 400 must not match ErrTampered")
+				require.ErrorIs(t, result, defaultError)
+			})
+		}
+	})
+
+	t.Run("message containing bad request as substring is still tamper", func(t *testing.T) {
+		// "desc = bad request body" contains "desc = bad request" as a substring,
+		// so it should be classified as potential tamper (conservative approach).
+		inputError := errors.New("rpc error: code = InvalidArgument desc = bad request body")
+		result := getKasErrorToReturn(inputError, defaultError)
+		require.ErrorIs(t, result, ErrRewrapBadRequest)
+		require.ErrorIs(t, result, ErrTampered, "substring match should err on side of tamper")
+	})
+
+	t.Run("middleware injecting bad request without desc prefix is not tamper", func(t *testing.T) {
+		// A message like "bad request: unsupported key type" without the "desc = "
+		// prefix should NOT trigger tamper classification.
+		inputError := errors.New("rpc error: code = InvalidArgument bad request: unsupported key type")
+		result := getKasErrorToReturn(inputError, defaultError)
+		require.ErrorIs(t, result, ErrKASRequestError)
+		require.NotErrorIs(t, result, ErrTampered, "unanchored bad request should not match")
 	})
 
 	t.Run("PermissionDenied error returns ErrRewrapForbidden", func(t *testing.T) {
 		inputError := errors.New("rpc error: code = PermissionDenied desc = access denied")
 		result := getKasErrorToReturn(inputError, defaultError)
 		require.ErrorIs(t, result, ErrRewrapForbidden)
+		require.NotErrorIs(t, result, ErrKASRequestError, "403 is authorization, not misconfiguration")
 		require.ErrorIs(t, result, defaultError)
 	})
 
@@ -3100,55 +3407,4 @@ func TestGetKasErrorToReturn(t *testing.T) {
 		result := getKasErrorToReturn(inputError, defaultError)
 		require.Equal(t, defaultError, result)
 	})
-}
-
-func (s *TDFSuite) Test_LargeManifest_WithMaxManifest() {
-	const maxManifestSize = 1024 * 1024 // 1MB
-
-	// Helper to create a large manifest JSON string
-	createLargeManifest := func(size int) []byte {
-		manifest := map[string]interface{}{
-			"payload": map[string]interface{}{
-				"data": string(bytes.Repeat([]byte{'a'}, size)),
-			},
-			"tdf_spec_version": TDFSpecVersion,
-		}
-		b, err := json.Marshal(manifest)
-		s.Require().NoError(err)
-		return b
-	}
-
-	// Helper to create a TDF file in memory for testing
-	createTestTDF := func(manifest []byte, payload []byte) *bytes.Reader {
-		tdfBuffer := new(bytes.Buffer)
-		tdfWriter := archive.NewTDFWriter(tdfBuffer)
-
-		// Add payload
-		err := tdfWriter.SetPayloadSize(int64(len(payload)))
-		s.Require().NoError(err)
-		err = tdfWriter.AppendPayload(payload)
-		s.Require().NoError(err)
-
-		// Add manifest
-		err = tdfWriter.AppendManifest(string(manifest))
-		s.Require().NoError(err)
-
-		_, err = tdfWriter.Finish()
-		s.Require().NoError(err)
-
-		return bytes.NewReader(tdfBuffer.Bytes())
-	}
-
-	// Case 1: Manifest just below the limit
-	manifestBelow := createLargeManifest(maxManifestSize - 100)
-	tdfBelow := createTestTDF(manifestBelow, []byte("payload"))
-	_, err := s.sdk.LoadTDF(tdfBelow, WithMaxManifestSize(maxManifestSize))
-	s.Require().NoError(err, "Manifest below max size should load successfully")
-
-	// Case 2: Manifest just above the limit
-	manifestAbove := createLargeManifest(maxManifestSize + 100)
-	tdfAbove := createTestTDF(manifestAbove, []byte("payload"))
-	_, err = s.sdk.LoadTDF(tdfAbove, WithMaxManifestSize(maxManifestSize))
-	s.Require().Error(err, "Manifest above max size should fail to load")
-	s.Require().ErrorContains(err, "size too large")
 }

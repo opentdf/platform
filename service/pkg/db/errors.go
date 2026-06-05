@@ -20,6 +20,7 @@ var (
 	ErrForeignKeyViolation        = errors.New("ErrForeignKeyViolation: value is referenced by another table")
 	ErrRestrictViolation          = errors.New("ErrRestrictViolation: value cannot be deleted due to restriction")
 	ErrNotFound                   = errors.New("ErrNotFound: value not found")
+	ErrAttributeValueInactive     = errors.New("ErrAttributeValueInactive: attribute value inactive")
 	ErrEnumValueInvalid           = errors.New("ErrEnumValueInvalid: not a valid enum value")
 	ErrUUIDInvalid                = errors.New("ErrUUIDInvalid: value not a valid UUID")
 	ErrMissingValue               = errors.New("ErrMissingValue: value must be included")
@@ -32,6 +33,7 @@ var (
 	ErrCannotUpdateToUnspecified  = errors.New("ErrCannotUpdateToUnspecified: cannot update to unspecified value")
 	ErrKeyRotationFailed          = errors.New("ErrTextKeyRotationFailed: key rotation failed")
 	ErrExpectedBase64EncodedValue = errors.New("ErrExpectedBase64EncodedValue: expected base64 encoded value")
+	ErrUnencryptedPrivateKey      = errors.New("ErrUnencryptedPrivateKey: unencrypted private key not allowed")
 	ErrMarshalValueFailed         = errors.New("ErrMashalValueFailed: failed to marshal value")
 	ErrUnmarshalValueFailed       = errors.New("ErrUnmarshalValueFailed: failed to unmarshal value")
 	ErrNamespaceMismatch          = errors.New("ErrNamespaceMismatch: namespace mismatch")
@@ -40,7 +42,6 @@ var (
 	ErrInvalidOblTriParam         = errors.New("ErrInvalidOblTriParam: either the obligation value, attribute value, or action provided was not found")
 	ErrCheckViolation             = errors.New("ErrCheckViolation: check constraint violation")
 	ErrFqnMismatch                = errors.New("ErrFqnMismatch: FQN mismatch")
-	ErrInvalidCertificate         = errors.New("ErrInvalidCertificate: invalid certificate")
 )
 
 // Get helpful error message for PostgreSQL violation
@@ -128,6 +129,7 @@ const (
 	ErrorTextUpdateToUnspecified        = "cannot update to unspecified value"
 	ErrTextKeyRotationFailed            = "key rotation failed"
 	ErrorTextExpectedBase64EncodedValue = "expected base64 encoded value"
+	ErrorTextUnencryptedPrivateKey      = "unencrypted private key not allowed"
 	ErrorTextMarshalFailed              = "failed to marshal value"
 	ErrorTextUnmarsalFailed             = "failed to unmarshal value"
 	ErrorTextNamespaceMismatch          = "namespace mismatch"
@@ -135,7 +137,7 @@ const (
 	ErrorTextKIDMismatch                = "key id mismatch"
 	ErrorTextInvalidOblTrigParam        = "either the obligation value, attribute value, or action provided is invalid"
 	ErrorTextFqnMismatch                = "fqn mismatch"
-	ErrorTextInvalidCertificate         = "invalid certificate"
+	ErrorTextInactiveAttributeValue     = "inactive attribute value"
 )
 
 func StatusifyError(ctx context.Context, l *logger.Logger, err error, fallbackErr string, logs ...any) error {
@@ -188,6 +190,10 @@ func StatusifyError(ctx context.Context, l *logger.Logger, err error, fallbackEr
 		l.ErrorContext(ctx, ErrorTextExpectedBase64EncodedValue, logs...)
 		return connect.NewError(connect.CodeInvalidArgument, errors.New(ErrorTextExpectedBase64EncodedValue))
 	}
+	if errors.Is(err, ErrUnencryptedPrivateKey) {
+		l.ErrorContext(ctx, ErrorTextUnencryptedPrivateKey, logs...)
+		return connect.NewError(connect.CodeInvalidArgument, errors.New(ErrorTextUnencryptedPrivateKey))
+	}
 	if errors.Is(err, ErrMarshalValueFailed) {
 		l.ErrorContext(ctx, ErrorTextMarshalFailed, logs...)
 		return connect.NewError(connect.CodeInvalidArgument, errors.New(ErrorTextMarshalFailed))
@@ -208,9 +214,13 @@ func StatusifyError(ctx context.Context, l *logger.Logger, err error, fallbackEr
 		l.ErrorContext(ctx, ErrorTextFqnMismatch, logs...)
 		return connect.NewError(connect.CodeInvalidArgument, errors.New(ErrorTextFqnMismatch))
 	}
-	if errors.Is(err, ErrInvalidCertificate) {
-		l.ErrorContext(ctx, ErrorTextInvalidCertificate, logs...)
-		return connect.NewError(connect.CodeInvalidArgument, errors.New(ErrorTextInvalidCertificate))
+	if errors.Is(err, ErrAttributeValueInactive) {
+		l.ErrorContext(ctx, ErrorTextInactiveAttributeValue, logs...)
+		return connect.NewError(connect.CodeInvalidArgument, errors.New(ErrorTextInactiveAttributeValue))
+	}
+	if errors.Is(err, ErrNamespaceMismatch) {
+		l.ErrorContext(ctx, ErrorTextNamespaceMismatch, logs...)
+		return connect.NewError(connect.CodeInvalidArgument, errors.New(ErrorTextNamespaceMismatch))
 	}
 
 	l.ErrorContext(ctx, "request error", append(logs, slog.Any("error", err))...)

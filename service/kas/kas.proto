@@ -2,21 +2,8 @@ syntax = "proto3";
 
 package kas;
 
-import "google/api/annotations.proto";
 import "google/protobuf/struct.proto";
 import "google/protobuf/wrappers.proto";
-import "protoc-gen-openapiv2/options/annotations.proto";
-
-option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_swagger) = {
-  info: {
-    title: "OpenTDF Key Access Service";
-    version: "1.5.0";
-    license: {
-      name: "BSD 3-Clause Clear";
-      url: "https://github.com/opentdf/backend/blob/master/LICENSE";
-    };
-  };
-};
 
 message InfoRequest {
   // Intentionally empty. May include features later.
@@ -68,7 +55,7 @@ message KeyAccess {
   
   // Type of key wrapping used for the data encryption key
   // Required: Always
-  // Values: 'wrapped' (RSA-wrapped for ZTDF), 'ec-wrapped' (experimental ECDH-wrapped)
+  // Values: 'wrapped' (RSA-wrapped for ZTDF), 'ec-wrapped' (experimental ECDH-wrapped), 'hybrid-wrapped' (experimental X-Wing-wrapped)
   string key_type = 4 [json_name = "type"];
   
   // URL of the Key Access Server that can unwrap this key
@@ -94,15 +81,14 @@ message KeyAccess {
   // This is the core cryptographic material needed for TDF decryption
   bytes wrapped_key = 8;
   
-  // Complete NanoTDF header containing all metadata and policy information
-  // Required: NanoTDF only
-  // ZTDF: Omitted (policy and metadata are separate)
+  // Complete header containing all metadata and policy information (for formats that embed it)
+  // Optional: Not used by ZTDF (policy and metadata are separate)
   // Contains magic bytes, version, algorithm, policy, and ephemeral key information
   bytes header = 9;
   
   // Ephemeral public key for ECDH key derivation (ec-wrapped type only)
   // Required: When key_type="ec-wrapped" (experimental ECDH-based ZTDF)
-  // Omitted: When key_type="wrapped" (RSA-based ZTDF)
+  // Omitted: When key_type="wrapped" or key_type="hybrid-wrapped"
   // Should be a PEM-encoded PKCS#8 (ASN.1) formatted public key
   // Used to derive the symmetric key for unwrapping the DEK
   string ephemeral_public_key = 10;
@@ -142,8 +128,7 @@ message UnsignedRewrapRequest {
   message WithPolicyRequest {
     // List of Key Access Objects associated with this policy
     // Required: Always (at least one)
-    // NanoTDF: Exactly one KAO per policy
-    // ZTDF: One or more KAOs per policy
+    // Some formats require exactly one KAO per policy
     repeated WithKeyAccessObject key_access_objects = 1;
     
     // Policy information for this group of KAOs
@@ -152,7 +137,7 @@ message UnsignedRewrapRequest {
     
     // Cryptographic algorithm identifier for the TDF type
     // Optional: Defaults to rsa:2048 if omitted
-    // Values: "ec:secp256r1" (NanoTDF), "rsa:2048" (ZTDF), "" (defaults to rsa:2048)
+    // Values: "ec:secp256r1" (EC-based), "rsa:2048" (RSA-based), "" (defaults to rsa:2048)
     // Example: "ec:secp256r1"
     string algorithm = 3;
   }
@@ -183,9 +168,9 @@ message UnsignedRewrapRequest {
   string algorithm = 5 [deprecated = true];
 }
 message PublicKeyRequest {
-  string algorithm = 1 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "algorithm type rsa:<keysize> or ec:<curvename>"}];
-  string fmt = 2 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "response format"}];
-  string v = 3 [(grpc.gateway.protoc_gen_openapiv2.options.openapiv2_field) = {description: "request version"}];
+  string algorithm = 1;
+  string fmt = 2;
+  string v = 3;
 }
 
 message PublicKeyResponse {
@@ -259,8 +244,8 @@ message RewrapResponse {
   bytes entity_wrapped_key = 2 [deprecated = true];
   
   // KAS's ephemeral session public key in PEM format
-  // Required: For EC-based operations (NanoTDF and ZTDF with key_type="ec-wrapped")
-  // Optional: Empty for RSA-based ZTDF (key_type="wrapped")
+  // Required: For EC-based operations (key_type="ec-wrapped")
+  // Optional: Empty for RSA-based or X-Wing-based ZTDF (key_type="wrapped" or key_type="hybrid-wrapped")
   // Used by client to perform ECDH key agreement and decrypt the kas_wrapped_key values
   string session_public_key = 3;
   
@@ -277,11 +262,6 @@ message RewrapResponse {
 // Get app info from the root path
 service AccessService {
   rpc PublicKey(PublicKeyRequest) returns (PublicKeyResponse) {
-    option (google.api.http) = {get: "/kas/v2/kas_public_key"};
-
-    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      responses: {key: "200"}
-    };
     option idempotency_level = NO_SIDE_EFFECTS;
   }
 
@@ -291,23 +271,9 @@ service AccessService {
   //
   // buf:lint:ignore RPC_RESPONSE_STANDARD_NAME
   rpc LegacyPublicKey(LegacyPublicKeyRequest) returns (google.protobuf.StringValue) {
-    option (google.api.http) = {get: "/kas/kas_public_key"};
-
-    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      responses: {key: "200"}
-    };
     option idempotency_level = NO_SIDE_EFFECTS;
     option deprecated = true;
   }
 
-  rpc Rewrap(RewrapRequest) returns (RewrapResponse) {
-    option (google.api.http) = {
-      post: "/kas/v2/rewrap"
-      body: "*";
-    };
-
-    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      responses: {key: "200"}
-    };
-  }
+  rpc Rewrap(RewrapRequest) returns (RewrapResponse) {}
 }

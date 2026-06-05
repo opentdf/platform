@@ -163,7 +163,6 @@ func mockAttributeFor(fqn AttributeNameFQN) *policy.Attribute {
 	case MP.key:
 		g := make([]*policy.KeyAccessServer, 1)
 		g[0] = mockGrant(specifiedKas, "r1")
-		g[0].PublicKey = createPublicKey("r1", mockRSAPublicKey1, policy.KasPublicKeyAlgEnum_KAS_PUBLIC_KEY_ALG_ENUM_RSA_2048)
 		return &policy.Attribute{
 			Id:        "MP",
 			Namespace: &nsOne,
@@ -366,22 +365,6 @@ func mockSimpleKasKey(kas, kid string) *policy.SimpleKasKey {
 			Algorithm: alg,
 			Kid:       kid,
 			Pem:       pem,
-		},
-	}
-}
-
-func createPublicKey(kid, pem string, algorithm policy.KasPublicKeyAlgEnum) *policy.PublicKey {
-	return &policy.PublicKey{
-		PublicKey: &policy.PublicKey_Cached{
-			Cached: &policy.KasPublicKeySet{
-				Keys: []*policy.KasPublicKey{
-					{
-						Kid: kid,
-						Alg: algorithm,
-						Pem: pem,
-					},
-				},
-			},
 		},
 	}
 }

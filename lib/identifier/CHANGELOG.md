@@ -1,5 +1,29 @@
 # Changelog
 
+## [0.4.0](https://github.com/opentdf/platform/compare/lib/identifier/v0.3.0...lib/identifier/v0.4.0) (2026-04-21)
+
+
+### Bug Fixes
+
+* **deps:** bump the external group across 3 directories with 2 updates ([#3153](https://github.com/opentdf/platform/issues/3153)) ([c832d89](https://github.com/opentdf/platform/commit/c832d89f0a61abbdf0969184437e172789466f5c))
+
+## [0.3.0](https://github.com/opentdf/platform/compare/lib/identifier/v0.2.0...lib/identifier/v0.3.0) (2026-03-13)
+
+
+### ⚠ BREAKING CHANGES
+
+* **policy:** namespace Registered Resources ([#3111](https://github.com/opentdf/platform/issues/3111))
+
+### Features
+
+* **policy:** namespace Registered Resources ([#3111](https://github.com/opentdf/platform/issues/3111)) ([6db1883](https://github.com/opentdf/platform/commit/6db188380d3c44f578b6170f123cb9cb1597f4d8))
+
+
+### Bug Fixes
+
+* **ci:** Upgrade toolchain version to 1.25.8 ([#3116](https://github.com/opentdf/platform/issues/3116)) ([e1b7882](https://github.com/opentdf/platform/commit/e1b78822c0380a106e6eec05af78dc1fc9e5701f))
+* Go 1.25 ([#3053](https://github.com/opentdf/platform/issues/3053)) ([65eb7c3](https://github.com/opentdf/platform/commit/65eb7c3d5fe1892de1e4fabb9b3b7894742c3f02))
+
 ## [0.2.0](https://github.com/opentdf/platform/compare/lib/identifier/v0.1.0...lib/identifier/v0.2.0) (2025-09-26)
 
 

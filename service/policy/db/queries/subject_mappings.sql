@@ -1,33 +1,60 @@
----------------------------------------------------------------- 
+----------------------------------------------------------------
 -- SUBJECT CONDITION SETS
 ----------------------------------------------------------------
 
 -- name: listSubjectConditionSets :many
-WITH counted AS (
-    SELECT COUNT(scs.id) AS total
-    FROM subject_condition_set scs
+WITH params AS (
+    SELECT
+        COALESCE(NULLIF(@sort_field::text, ''), 'created_at') AS resolved_field,
+        COALESCE(NULLIF(@sort_direction::text, ''), 'DESC') AS resolved_direction
 )
 SELECT
     scs.id,
     scs.condition,
     JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', scs.metadata -> 'labels', 'created_at', scs.created_at, 'updated_at', scs.updated_at)) as metadata,
-    counted.total
+    CASE
+        WHEN scs.namespace_id IS NULL THEN NULL
+        ELSE JSON_BUILD_OBJECT('id', n.id, 'name', n.name, 'fqn', ns_fqns.fqn)
+    END AS namespace,
+    COUNT(*) OVER() as total
 FROM subject_condition_set scs
-CROSS JOIN counted
-LIMIT @limit_ 
-OFFSET @offset_; 
+LEFT JOIN attribute_namespaces n ON n.id = scs.namespace_id
+LEFT JOIN attribute_fqns ns_fqns ON ns_fqns.namespace_id = n.id AND ns_fqns.attribute_id IS NULL AND ns_fqns.value_id IS NULL
+CROSS JOIN params p
+WHERE
+    (sqlc.narg('namespace_id')::uuid IS NULL AND sqlc.narg('namespace_fqn')::text IS NULL)
+    OR scs.namespace_id = sqlc.narg('namespace_id')::uuid
+    OR ns_fqns.fqn = sqlc.narg('namespace_fqn')::text
+ORDER BY
+    CASE WHEN p.resolved_field = 'created_at' AND p.resolved_direction = 'ASC' THEN scs.created_at END ASC,
+    CASE WHEN p.resolved_field = 'created_at' AND p.resolved_direction = 'DESC' THEN scs.created_at END DESC,
+    CASE WHEN p.resolved_field = 'updated_at' AND p.resolved_direction = 'ASC' THEN scs.updated_at END ASC,
+    CASE WHEN p.resolved_field = 'updated_at' AND p.resolved_direction = 'DESC' THEN scs.updated_at END DESC,
+    scs.id ASC
+LIMIT @limit_
+OFFSET @offset_;
 
 -- name: getSubjectConditionSet :one
 SELECT
-    id,
-    condition,
-    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', metadata -> 'labels', 'created_at', created_at, 'updated_at', updated_at)) as metadata
-FROM subject_condition_set
-WHERE id = $1;
+    scs.id,
+    scs.condition,
+    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', scs.metadata -> 'labels', 'created_at', scs.created_at, 'updated_at', scs.updated_at)) as metadata,
+    CASE
+        WHEN scs.namespace_id IS NULL THEN NULL
+        ELSE JSON_BUILD_OBJECT('id', n.id, 'name', n.name, 'fqn', ns_fqns.fqn)
+    END AS namespace
+FROM subject_condition_set scs
+LEFT JOIN attribute_namespaces n ON n.id = scs.namespace_id
+LEFT JOIN attribute_fqns ns_fqns ON ns_fqns.namespace_id = n.id AND ns_fqns.attribute_id IS NULL AND ns_fqns.value_id IS NULL
+WHERE scs.id = $1;
 
 -- name: createSubjectConditionSet :one
-INSERT INTO subject_condition_set (condition, metadata)
-VALUES ($1, $2)
+INSERT INTO subject_condition_set (condition, metadata, namespace_id)
+VALUES (
+    @condition,
+    @metadata,
+    sqlc.narg('namespace_id')::uuid
+)
 RETURNING id;
 
 -- name: updateSubjectConditionSet :execrows
@@ -45,28 +72,49 @@ DELETE FROM subject_condition_set
 WHERE id NOT IN (SELECT DISTINCT sm.subject_condition_set_id FROM subject_mappings sm)
 RETURNING id;
 
----------------------------------------------------------------- 
+----------------------------------------------------------------
 -- SUBJECT MAPPINGS
 ----------------------------------------------------------------
 
 -- name: listSubjectMappings :many
-WITH subject_actions AS (
+WITH params AS (
+    SELECT
+        COALESCE(NULLIF(@sort_field::text, ''), 'created_at') AS resolved_field,
+        COALESCE(NULLIF(@sort_direction::text, ''), 'DESC') AS resolved_direction
+),
+subject_actions AS (
     SELECT
         sma.subject_mapping_id,
         COALESCE(
-            JSONB_AGG(JSONB_BUILD_OBJECT('id', a.id, 'name', a.name)) FILTER (WHERE a.is_standard = TRUE),
+            JSONB_AGG(JSONB_BUILD_OBJECT('id', a.id, 'name', a.name,
+                'namespace', CASE WHEN a.namespace_id IS NULL THEN NULL
+                    ELSE JSONB_BUILD_OBJECT('id', ans.id, 'name', ans.name, 'fqn', ans_fqns.fqn)
+                END
+            )) FILTER (WHERE a.is_standard = TRUE),
             '[]'::JSONB
         ) AS standard_actions,
         COALESCE(
-            JSONB_AGG(JSONB_BUILD_OBJECT('id', a.id, 'name', a.name)) FILTER (WHERE a.is_standard = FALSE),
+            JSONB_AGG(JSONB_BUILD_OBJECT('id', a.id, 'name', a.name,
+                'namespace', CASE WHEN a.namespace_id IS NULL THEN NULL
+                    ELSE JSONB_BUILD_OBJECT('id', ans.id, 'name', ans.name, 'fqn', ans_fqns.fqn)
+                END
+            )) FILTER (WHERE a.is_standard = FALSE),
             '[]'::JSONB
         ) AS custom_actions
     FROM subject_mapping_actions sma
     JOIN actions a ON sma.action_id = a.id
+    LEFT JOIN attribute_namespaces ans ON ans.id = a.namespace_id
+    LEFT JOIN attribute_fqns ans_fqns ON ans_fqns.namespace_id = ans.id AND ans_fqns.attribute_id IS NULL AND ans_fqns.value_id IS NULL
     GROUP BY sma.subject_mapping_id
 ), counted AS (
     SELECT COUNT(sm.id) AS total
     FROM subject_mappings sm
+    LEFT JOIN attribute_namespaces sm_ns ON sm_ns.id = sm.namespace_id
+    LEFT JOIN attribute_fqns sm_ns_fqns ON sm_ns_fqns.namespace_id = sm_ns.id AND sm_ns_fqns.attribute_id IS NULL AND sm_ns_fqns.value_id IS NULL
+    WHERE
+        (sqlc.narg('namespace_id')::uuid IS NULL AND sqlc.narg('namespace_fqn')::text IS NULL)
+        OR sm.namespace_id = sqlc.narg('namespace_id')::uuid
+        OR sm_ns_fqns.fqn = sqlc.narg('namespace_fqn')::text
 )
 SELECT
     sm.id,
@@ -76,7 +124,11 @@ SELECT
     JSON_BUILD_OBJECT(
         'id', scs.id,
         'metadata', JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', scs.metadata->'labels', 'created_at', scs.created_at, 'updated_at', scs.updated_at)),
-        'subject_sets', scs.condition
+        'subject_sets', scs.condition,
+        'namespace', CASE
+            WHEN scs.namespace_id IS NULL THEN NULL
+            ELSE JSON_BUILD_OBJECT('id', scs_ns.id, 'name', scs_ns.name, 'fqn', scs_ns_fqns.fqn)
+        END
     ) AS subject_condition_set,
     JSON_BUILD_OBJECT(
         'id', av.id,
@@ -84,22 +136,44 @@ SELECT
         'active', av.active,
         'fqn', fqns.fqn
     ) AS attribute_value,
+    CASE
+        WHEN sm.namespace_id IS NULL THEN NULL
+        ELSE JSON_BUILD_OBJECT('id', sm_ns.id, 'name', sm_ns.name, 'fqn', sm_ns_fqns.fqn)
+    END AS namespace,
     counted.total
 FROM subject_mappings sm
 CROSS JOIN counted
+CROSS JOIN params p
 LEFT JOIN subject_actions sa ON sm.id = sa.subject_mapping_id
 LEFT JOIN attribute_values av ON sm.attribute_value_id = av.id
 LEFT JOIN attribute_fqns fqns ON av.id = fqns.value_id
 LEFT JOIN subject_condition_set scs ON scs.id = sm.subject_condition_set_id
+LEFT JOIN attribute_namespaces scs_ns ON scs_ns.id = scs.namespace_id
+LEFT JOIN attribute_fqns scs_ns_fqns ON scs_ns_fqns.namespace_id = scs_ns.id AND scs_ns_fqns.attribute_id IS NULL AND scs_ns_fqns.value_id IS NULL
+LEFT JOIN attribute_namespaces sm_ns ON sm_ns.id = sm.namespace_id
+LEFT JOIN attribute_fqns sm_ns_fqns ON sm_ns_fqns.namespace_id = sm_ns.id AND sm_ns_fqns.attribute_id IS NULL AND sm_ns_fqns.value_id IS NULL
+WHERE
+    (sqlc.narg('namespace_id')::uuid IS NULL AND sqlc.narg('namespace_fqn')::text IS NULL)
+    OR sm.namespace_id = sqlc.narg('namespace_id')::uuid
+    OR sm_ns_fqns.fqn = sqlc.narg('namespace_fqn')::text
 GROUP BY
     sm.id,
     sa.standard_actions,
     sa.custom_actions,
-    sm.metadata, sm.created_at, sm.updated_at, -- for metadata object
-    scs.id, scs.metadata, scs.created_at, scs.updated_at, scs.condition, -- for subject_condition_set object
-    av.id, av.value, av.active, -- for attribute_value object
+    sm.metadata, sm.created_at, sm.updated_at,
+    scs.id, scs.metadata, scs.created_at, scs.updated_at, scs.condition, scs.namespace_id,
+    scs_ns.id, scs_ns.name, scs_ns_fqns.fqn,
+    sm_ns.id, sm_ns.name, sm_ns_fqns.fqn,
+    av.id, av.value, av.active,
     fqns.fqn,
-    counted.total
+    counted.total,
+    p.resolved_field, p.resolved_direction
+ORDER BY
+    CASE WHEN p.resolved_field = 'created_at' AND p.resolved_direction = 'ASC' THEN sm.created_at END ASC,
+    CASE WHEN p.resolved_field = 'created_at' AND p.resolved_direction = 'DESC' THEN sm.created_at END DESC,
+    CASE WHEN p.resolved_field = 'updated_at' AND p.resolved_direction = 'ASC' THEN sm.updated_at END ASC,
+    CASE WHEN p.resolved_field = 'updated_at' AND p.resolved_direction = 'DESC' THEN sm.updated_at END DESC,
+    sm.id ASC
 LIMIT @limit_
 OFFSET @offset_;
 
@@ -107,44 +181,78 @@ OFFSET @offset_;
 SELECT
     sm.id,
     (
-        SELECT JSONB_AGG(JSONB_BUILD_OBJECT('id', a.id, 'name', a.name))
+        SELECT JSONB_AGG(JSONB_BUILD_OBJECT('id', a.id, 'name', a.name,
+            'namespace', CASE WHEN a.namespace_id IS NULL THEN NULL
+                ELSE JSONB_BUILD_OBJECT('id', ans.id, 'name', ans.name, 'fqn', ans_fqns.fqn)
+            END
+        ))
         FROM actions a
         JOIN subject_mapping_actions sma ON sma.action_id = a.id
+        LEFT JOIN attribute_namespaces ans ON ans.id = a.namespace_id
+        LEFT JOIN attribute_fqns ans_fqns ON ans_fqns.namespace_id = ans.id AND ans_fqns.attribute_id IS NULL AND ans_fqns.value_id IS NULL
         WHERE sma.subject_mapping_id = sm.id AND a.is_standard = TRUE
     ) AS standard_actions,
     (
-        SELECT JSONB_AGG(JSONB_BUILD_OBJECT('id', a.id, 'name', a.name))
+        SELECT JSONB_AGG(JSONB_BUILD_OBJECT('id', a.id, 'name', a.name,
+            'namespace', CASE WHEN a.namespace_id IS NULL THEN NULL
+                ELSE JSONB_BUILD_OBJECT('id', ans.id, 'name', ans.name, 'fqn', ans_fqns.fqn)
+            END
+        ))
         FROM actions a
         JOIN subject_mapping_actions sma ON sma.action_id = a.id
+        LEFT JOIN attribute_namespaces ans ON ans.id = a.namespace_id
+        LEFT JOIN attribute_fqns ans_fqns ON ans_fqns.namespace_id = ans.id AND ans_fqns.attribute_id IS NULL AND ans_fqns.value_id IS NULL
         WHERE sma.subject_mapping_id = sm.id AND a.is_standard = FALSE
     ) AS custom_actions,
     JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', sm.metadata -> 'labels', 'created_at', sm.created_at, 'updated_at', sm.updated_at)) AS metadata,
     JSON_BUILD_OBJECT(
         'id', scs.id,
         'metadata', JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', scs.metadata -> 'labels', 'created_at', scs.created_at, 'updated_at', scs.updated_at)),
-        'subject_sets', scs.condition
+        'subject_sets', scs.condition,
+        'namespace', CASE
+            WHEN scs.namespace_id IS NULL THEN NULL
+            ELSE JSON_BUILD_OBJECT('id', scs_ns.id, 'name', scs_ns.name, 'fqn', scs_ns_fqns.fqn)
+        END
     ) AS subject_condition_set,
-    JSON_BUILD_OBJECT('id', av.id,'value', av.value,'active', av.active) AS attribute_value
+    JSON_BUILD_OBJECT('id', av.id,'value', av.value,'active', av.active) AS attribute_value,
+    CASE
+        WHEN sm.namespace_id IS NULL THEN NULL
+        ELSE JSON_BUILD_OBJECT('id', sm_ns.id, 'name', sm_ns.name, 'fqn', sm_ns_fqns.fqn)
+    END AS namespace
 FROM subject_mappings sm
 LEFT JOIN attribute_values av ON sm.attribute_value_id = av.id
 LEFT JOIN subject_condition_set scs ON scs.id = sm.subject_condition_set_id
+LEFT JOIN attribute_namespaces scs_ns ON scs_ns.id = scs.namespace_id
+LEFT JOIN attribute_fqns scs_ns_fqns ON scs_ns_fqns.namespace_id = scs_ns.id AND scs_ns_fqns.attribute_id IS NULL AND scs_ns_fqns.value_id IS NULL
+LEFT JOIN attribute_namespaces sm_ns ON sm_ns.id = sm.namespace_id
+LEFT JOIN attribute_fqns sm_ns_fqns ON sm_ns_fqns.namespace_id = sm_ns.id AND sm_ns_fqns.attribute_id IS NULL AND sm_ns_fqns.value_id IS NULL
 WHERE sm.id = $1
-GROUP BY av.id, sm.id, scs.id;
+GROUP BY av.id, sm.id, scs.id, scs.namespace_id, scs_ns.id, scs_ns.name, scs_ns_fqns.fqn, sm_ns.id, sm_ns.name, sm_ns_fqns.fqn;
 
 -- name: matchSubjectMappings :many
 WITH subject_actions AS (
     SELECT
         sma.subject_mapping_id,
         COALESCE(
-            JSONB_AGG(JSONB_BUILD_OBJECT('id', a.id, 'name', a.name)) FILTER (WHERE a.is_standard = TRUE),
+            JSONB_AGG(JSONB_BUILD_OBJECT('id', a.id, 'name', a.name,
+                'namespace', CASE WHEN a.namespace_id IS NULL THEN NULL
+                    ELSE JSONB_BUILD_OBJECT('id', ans.id, 'name', ans.name, 'fqn', ans_fqns.fqn)
+                END
+            )) FILTER (WHERE a.is_standard = TRUE),
             '[]'::JSONB
         ) AS standard_actions,
         COALESCE(
-            JSONB_AGG(JSONB_BUILD_OBJECT('id', a.id, 'name', a.name)) FILTER (WHERE a.is_standard = FALSE),
+            JSONB_AGG(JSONB_BUILD_OBJECT('id', a.id, 'name', a.name,
+                'namespace', CASE WHEN a.namespace_id IS NULL THEN NULL
+                    ELSE JSONB_BUILD_OBJECT('id', ans.id, 'name', ans.name, 'fqn', ans_fqns.fqn)
+                END
+            )) FILTER (WHERE a.is_standard = FALSE),
             '[]'::JSONB
         ) AS custom_actions
     FROM subject_mapping_actions sma
     JOIN actions a ON sma.action_id = a.id
+    LEFT JOIN attribute_namespaces ans ON ans.id = a.namespace_id
+    LEFT JOIN attribute_fqns ans_fqns ON ans_fqns.namespace_id = ans.id AND ans_fqns.attribute_id IS NULL AND ans_fqns.value_id IS NULL
     GROUP BY sma.subject_mapping_id
 )
 SELECT
@@ -185,14 +293,20 @@ WITH inserted_mapping AS (
     INSERT INTO subject_mappings (
         attribute_value_id,
         metadata,
-        subject_condition_set_id
+        subject_condition_set_id,
+        namespace_id
     )
-    VALUES ($1, $2, $3)
+    VALUES (
+        @attribute_value_id,
+        @metadata,
+        @subject_condition_set_id,
+        sqlc.narg('namespace_id')::uuid
+    )
     RETURNING id
 ),
 inserted_actions AS (
     INSERT INTO subject_mapping_actions (subject_mapping_id, action_id)
-    SELECT 
+    SELECT
         (SELECT id FROM inserted_mapping),
         unnest(sqlc.arg('action_ids')::uuid[])
 )

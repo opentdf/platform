@@ -34,7 +34,7 @@ func TestLDAPMapper_ExtractParameters(t *testing.T) {
 			expectError: false,
 		},
 		{
-			name: "LDAP filter escaping",
+			name: "LDAP values remain raw until filter construction",
 			jwtClaims: types.JWTClaims{
 				"username": "test(user)*",
 			},
@@ -42,7 +42,7 @@ func TestLDAPMapper_ExtractParameters(t *testing.T) {
 				{JWTClaim: "username", Parameter: "username", Required: true},
 			},
 			expectedParams: map[string]interface{}{
-				"username": "test\\28user\\29\\2a", // Should be escaped
+				"username": "test(user)*",
 			},
 			expectError: false,
 		},

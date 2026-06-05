@@ -68,22 +68,6 @@ const (
 	ResourceMappingServiceDeleteResourceMappingProcedure = "/policy.resourcemapping.ResourceMappingService/DeleteResourceMapping"
 )
 
-// These variables are the protoreflect.Descriptor objects for the RPCs defined in this package.
-var (
-	resourceMappingServiceServiceDescriptor                               = resourcemapping.File_policy_resourcemapping_resource_mapping_proto.Services().ByName("ResourceMappingService")
-	resourceMappingServiceListResourceMappingGroupsMethodDescriptor       = resourceMappingServiceServiceDescriptor.Methods().ByName("ListResourceMappingGroups")
-	resourceMappingServiceGetResourceMappingGroupMethodDescriptor         = resourceMappingServiceServiceDescriptor.Methods().ByName("GetResourceMappingGroup")
-	resourceMappingServiceCreateResourceMappingGroupMethodDescriptor      = resourceMappingServiceServiceDescriptor.Methods().ByName("CreateResourceMappingGroup")
-	resourceMappingServiceUpdateResourceMappingGroupMethodDescriptor      = resourceMappingServiceServiceDescriptor.Methods().ByName("UpdateResourceMappingGroup")
-	resourceMappingServiceDeleteResourceMappingGroupMethodDescriptor      = resourceMappingServiceServiceDescriptor.Methods().ByName("DeleteResourceMappingGroup")
-	resourceMappingServiceListResourceMappingsMethodDescriptor            = resourceMappingServiceServiceDescriptor.Methods().ByName("ListResourceMappings")
-	resourceMappingServiceListResourceMappingsByGroupFqnsMethodDescriptor = resourceMappingServiceServiceDescriptor.Methods().ByName("ListResourceMappingsByGroupFqns")
-	resourceMappingServiceGetResourceMappingMethodDescriptor              = resourceMappingServiceServiceDescriptor.Methods().ByName("GetResourceMapping")
-	resourceMappingServiceCreateResourceMappingMethodDescriptor           = resourceMappingServiceServiceDescriptor.Methods().ByName("CreateResourceMapping")
-	resourceMappingServiceUpdateResourceMappingMethodDescriptor           = resourceMappingServiceServiceDescriptor.Methods().ByName("UpdateResourceMapping")
-	resourceMappingServiceDeleteResourceMappingMethodDescriptor           = resourceMappingServiceServiceDescriptor.Methods().ByName("DeleteResourceMapping")
-)
-
 // ResourceMappingServiceClient is a client for the policy.resourcemapping.ResourceMappingService
 // service.
 type ResourceMappingServiceClient interface {
@@ -110,76 +94,77 @@ type ResourceMappingServiceClient interface {
 // http://api.acme.com or https://acme.com/grpc).
 func NewResourceMappingServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.ClientOption) ResourceMappingServiceClient {
 	baseURL = strings.TrimRight(baseURL, "/")
+	resourceMappingServiceMethods := resourcemapping.File_policy_resourcemapping_resource_mapping_proto.Services().ByName("ResourceMappingService").Methods()
 	return &resourceMappingServiceClient{
 		listResourceMappingGroups: connect.NewClient[resourcemapping.ListResourceMappingGroupsRequest, resourcemapping.ListResourceMappingGroupsResponse](
 			httpClient,
 			baseURL+ResourceMappingServiceListResourceMappingGroupsProcedure,
-			connect.WithSchema(resourceMappingServiceListResourceMappingGroupsMethodDescriptor),
+			connect.WithSchema(resourceMappingServiceMethods.ByName("ListResourceMappingGroups")),
 			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
 		getResourceMappingGroup: connect.NewClient[resourcemapping.GetResourceMappingGroupRequest, resourcemapping.GetResourceMappingGroupResponse](
 			httpClient,
 			baseURL+ResourceMappingServiceGetResourceMappingGroupProcedure,
-			connect.WithSchema(resourceMappingServiceGetResourceMappingGroupMethodDescriptor),
+			connect.WithSchema(resourceMappingServiceMethods.ByName("GetResourceMappingGroup")),
 			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
 		createResourceMappingGroup: connect.NewClient[resourcemapping.CreateResourceMappingGroupRequest, resourcemapping.CreateResourceMappingGroupResponse](
 			httpClient,
 			baseURL+ResourceMappingServiceCreateResourceMappingGroupProcedure,
-			connect.WithSchema(resourceMappingServiceCreateResourceMappingGroupMethodDescriptor),
+			connect.WithSchema(resourceMappingServiceMethods.ByName("CreateResourceMappingGroup")),
 			connect.WithClientOptions(opts...),
 		),
 		updateResourceMappingGroup: connect.NewClient[resourcemapping.UpdateResourceMappingGroupRequest, resourcemapping.UpdateResourceMappingGroupResponse](
 			httpClient,
 			baseURL+ResourceMappingServiceUpdateResourceMappingGroupProcedure,
-			connect.WithSchema(resourceMappingServiceUpdateResourceMappingGroupMethodDescriptor),
+			connect.WithSchema(resourceMappingServiceMethods.ByName("UpdateResourceMappingGroup")),
 			connect.WithClientOptions(opts...),
 		),
 		deleteResourceMappingGroup: connect.NewClient[resourcemapping.DeleteResourceMappingGroupRequest, resourcemapping.DeleteResourceMappingGroupResponse](
 			httpClient,
 			baseURL+ResourceMappingServiceDeleteResourceMappingGroupProcedure,
-			connect.WithSchema(resourceMappingServiceDeleteResourceMappingGroupMethodDescriptor),
+			connect.WithSchema(resourceMappingServiceMethods.ByName("DeleteResourceMappingGroup")),
 			connect.WithClientOptions(opts...),
 		),
 		listResourceMappings: connect.NewClient[resourcemapping.ListResourceMappingsRequest, resourcemapping.ListResourceMappingsResponse](
 			httpClient,
 			baseURL+ResourceMappingServiceListResourceMappingsProcedure,
-			connect.WithSchema(resourceMappingServiceListResourceMappingsMethodDescriptor),
+			connect.WithSchema(resourceMappingServiceMethods.ByName("ListResourceMappings")),
 			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
 		listResourceMappingsByGroupFqns: connect.NewClient[resourcemapping.ListResourceMappingsByGroupFqnsRequest, resourcemapping.ListResourceMappingsByGroupFqnsResponse](
 			httpClient,
 			baseURL+ResourceMappingServiceListResourceMappingsByGroupFqnsProcedure,
-			connect.WithSchema(resourceMappingServiceListResourceMappingsByGroupFqnsMethodDescriptor),
+			connect.WithSchema(resourceMappingServiceMethods.ByName("ListResourceMappingsByGroupFqns")),
 			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
 		getResourceMapping: connect.NewClient[resourcemapping.GetResourceMappingRequest, resourcemapping.GetResourceMappingResponse](
 			httpClient,
 			baseURL+ResourceMappingServiceGetResourceMappingProcedure,
-			connect.WithSchema(resourceMappingServiceGetResourceMappingMethodDescriptor),
+			connect.WithSchema(resourceMappingServiceMethods.ByName("GetResourceMapping")),
 			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
 		createResourceMapping: connect.NewClient[resourcemapping.CreateResourceMappingRequest, resourcemapping.CreateResourceMappingResponse](
 			httpClient,
 			baseURL+ResourceMappingServiceCreateResourceMappingProcedure,
-			connect.WithSchema(resourceMappingServiceCreateResourceMappingMethodDescriptor),
+			connect.WithSchema(resourceMappingServiceMethods.ByName("CreateResourceMapping")),
 			connect.WithClientOptions(opts...),
 		),
 		updateResourceMapping: connect.NewClient[resourcemapping.UpdateResourceMappingRequest, resourcemapping.UpdateResourceMappingResponse](
 			httpClient,
 			baseURL+ResourceMappingServiceUpdateResourceMappingProcedure,
-			connect.WithSchema(resourceMappingServiceUpdateResourceMappingMethodDescriptor),
+			connect.WithSchema(resourceMappingServiceMethods.ByName("UpdateResourceMapping")),
 			connect.WithClientOptions(opts...),
 		),
 		deleteResourceMapping: connect.NewClient[resourcemapping.DeleteResourceMappingRequest, resourcemapping.DeleteResourceMappingResponse](
 			httpClient,
 			baseURL+ResourceMappingServiceDeleteResourceMappingProcedure,
-			connect.WithSchema(resourceMappingServiceDeleteResourceMappingMethodDescriptor),
+			connect.WithSchema(resourceMappingServiceMethods.ByName("DeleteResourceMapping")),
 			connect.WithClientOptions(opts...),
 		),
 	}
@@ -283,75 +268,76 @@ type ResourceMappingServiceHandler interface {
 // By default, handlers support the Connect, gRPC, and gRPC-Web protocols with the binary Protobuf
 // and JSON codecs. They also support gzip compression.
 func NewResourceMappingServiceHandler(svc ResourceMappingServiceHandler, opts ...connect.HandlerOption) (string, http.Handler) {
+	resourceMappingServiceMethods := resourcemapping.File_policy_resourcemapping_resource_mapping_proto.Services().ByName("ResourceMappingService").Methods()
 	resourceMappingServiceListResourceMappingGroupsHandler := connect.NewUnaryHandler(
 		ResourceMappingServiceListResourceMappingGroupsProcedure,
 		svc.ListResourceMappingGroups,
-		connect.WithSchema(resourceMappingServiceListResourceMappingGroupsMethodDescriptor),
+		connect.WithSchema(resourceMappingServiceMethods.ByName("ListResourceMappingGroups")),
 		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
 	resourceMappingServiceGetResourceMappingGroupHandler := connect.NewUnaryHandler(
 		ResourceMappingServiceGetResourceMappingGroupProcedure,
 		svc.GetResourceMappingGroup,
-		connect.WithSchema(resourceMappingServiceGetResourceMappingGroupMethodDescriptor),
+		connect.WithSchema(resourceMappingServiceMethods.ByName("GetResourceMappingGroup")),
 		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
 	resourceMappingServiceCreateResourceMappingGroupHandler := connect.NewUnaryHandler(
 		ResourceMappingServiceCreateResourceMappingGroupProcedure,
 		svc.CreateResourceMappingGroup,
-		connect.WithSchema(resourceMappingServiceCreateResourceMappingGroupMethodDescriptor),
+		connect.WithSchema(resourceMappingServiceMethods.ByName("CreateResourceMappingGroup")),
 		connect.WithHandlerOptions(opts...),
 	)
 	resourceMappingServiceUpdateResourceMappingGroupHandler := connect.NewUnaryHandler(
 		ResourceMappingServiceUpdateResourceMappingGroupProcedure,
 		svc.UpdateResourceMappingGroup,
-		connect.WithSchema(resourceMappingServiceUpdateResourceMappingGroupMethodDescriptor),
+		connect.WithSchema(resourceMappingServiceMethods.ByName("UpdateResourceMappingGroup")),
 		connect.WithHandlerOptions(opts...),
 	)
 	resourceMappingServiceDeleteResourceMappingGroupHandler := connect.NewUnaryHandler(
 		ResourceMappingServiceDeleteResourceMappingGroupProcedure,
 		svc.DeleteResourceMappingGroup,
-		connect.WithSchema(resourceMappingServiceDeleteResourceMappingGroupMethodDescriptor),
+		connect.WithSchema(resourceMappingServiceMethods.ByName("DeleteResourceMappingGroup")),
 		connect.WithHandlerOptions(opts...),
 	)
 	resourceMappingServiceListResourceMappingsHandler := connect.NewUnaryHandler(
 		ResourceMappingServiceListResourceMappingsProcedure,
 		svc.ListResourceMappings,
-		connect.WithSchema(resourceMappingServiceListResourceMappingsMethodDescriptor),
+		connect.WithSchema(resourceMappingServiceMethods.ByName("ListResourceMappings")),
 		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
 	resourceMappingServiceListResourceMappingsByGroupFqnsHandler := connect.NewUnaryHandler(
 		ResourceMappingServiceListResourceMappingsByGroupFqnsProcedure,
 		svc.ListResourceMappingsByGroupFqns,
-		connect.WithSchema(resourceMappingServiceListResourceMappingsByGroupFqnsMethodDescriptor),
+		connect.WithSchema(resourceMappingServiceMethods.ByName("ListResourceMappingsByGroupFqns")),
 		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
 	resourceMappingServiceGetResourceMappingHandler := connect.NewUnaryHandler(
 		ResourceMappingServiceGetResourceMappingProcedure,
 		svc.GetResourceMapping,
-		connect.WithSchema(resourceMappingServiceGetResourceMappingMethodDescriptor),
+		connect.WithSchema(resourceMappingServiceMethods.ByName("GetResourceMapping")),
 		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
 	resourceMappingServiceCreateResourceMappingHandler := connect.NewUnaryHandler(
 		ResourceMappingServiceCreateResourceMappingProcedure,
 		svc.CreateResourceMapping,
-		connect.WithSchema(resourceMappingServiceCreateResourceMappingMethodDescriptor),
+		connect.WithSchema(resourceMappingServiceMethods.ByName("CreateResourceMapping")),
 		connect.WithHandlerOptions(opts...),
 	)
 	resourceMappingServiceUpdateResourceMappingHandler := connect.NewUnaryHandler(
 		ResourceMappingServiceUpdateResourceMappingProcedure,
 		svc.UpdateResourceMapping,
-		connect.WithSchema(resourceMappingServiceUpdateResourceMappingMethodDescriptor),
+		connect.WithSchema(resourceMappingServiceMethods.ByName("UpdateResourceMapping")),
 		connect.WithHandlerOptions(opts...),
 	)
 	resourceMappingServiceDeleteResourceMappingHandler := connect.NewUnaryHandler(
 		ResourceMappingServiceDeleteResourceMappingProcedure,
 		svc.DeleteResourceMapping,
-		connect.WithSchema(resourceMappingServiceDeleteResourceMappingMethodDescriptor),
+		connect.WithSchema(resourceMappingServiceMethods.ByName("DeleteResourceMapping")),
 		connect.WithHandlerOptions(opts...),
 	)
 	return "/policy.resourcemapping.ResourceMappingService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

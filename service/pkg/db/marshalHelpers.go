@@ -8,6 +8,7 @@ import (
 	"github.com/opentdf/platform/protocol/go/common"
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/kasregistry"
+	"github.com/opentdf/platform/sdk"
 	"google.golang.org/protobuf/encoding/protojson"
 )
 
@@ -146,22 +147,11 @@ func KasKeysProtoJSON(keysJSON []byte) ([]*policy.KasKey, error) {
 }
 
 func FormatAlg(alg policy.Algorithm) (string, error) {
-	switch alg {
-	case policy.Algorithm_ALGORITHM_RSA_2048:
-		return "rsa:2048", nil
-	case policy.Algorithm_ALGORITHM_RSA_4096:
-		return "rsa:4096", nil
-	case policy.Algorithm_ALGORITHM_EC_P256:
-		return "ec:secp256r1", nil
-	case policy.Algorithm_ALGORITHM_EC_P384:
-		return "ec:secp384r1", nil
-	case policy.Algorithm_ALGORITHM_EC_P521:
-		return "ec:secp512r1", nil
-	case policy.Algorithm_ALGORITHM_UNSPECIFIED:
-		fallthrough
-	default:
+	kt, err := sdk.PolicyAlgorithmToKeyType(alg)
+	if err != nil {
 		return "", fmt.Errorf("unsupported algorithm: %s", alg)
 	}
+	return string(kt), nil
 }
 
 func SimpleKasKeysProtoJSON(keysJSON []byte) ([]*policy.SimpleKasKey, error) {
@@ -193,35 +183,4 @@ func UnmarshalSimpleKasKey(keysJSON []byte) (*policy.SimpleKasKey, error) {
 		}
 	}
 	return key, nil
-}
-
-func CertificatesProtoJSON(certsJSON []byte) ([]*policy.Certificate, error) {
-	var (
-		certs []*policy.Certificate
-		raw   []json.RawMessage
-	)
-	if err := json.Unmarshal(certsJSON, &raw); err != nil {
-		return nil, err
-	}
-	for _, r := range raw {
-		c, err := UnmarshalCertificate([]byte(r))
-		if err != nil {
-			return nil, fmt.Errorf("failed to unmarshal certificate: %w", err)
-		}
-		if c != nil {
-			certs = append(certs, c)
-		}
-	}
-	return certs, nil
-}
-
-func UnmarshalCertificate(certJSON []byte) (*policy.Certificate, error) {
-	var cert *policy.Certificate
-	if certJSON != nil {
-		cert = &policy.Certificate{}
-		if err := protojson.Unmarshal(certJSON, cert); err != nil {
-			return nil, err
-		}
-	}
-	return cert, nil
 }

@@ -2,6 +2,7 @@ package subjectmapping
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 
@@ -83,6 +84,9 @@ func (s SubjectMappingService) CreateSubjectMapping(ctx context.Context,
 ) (*connect.Response[sm.CreateSubjectMappingResponse], error) {
 	rsp := &sm.CreateSubjectMappingResponse{}
 	s.logger.DebugContext(ctx, "creating subject mapping")
+	if s.config.NamespacedPolicy && req.Msg.GetNamespaceId() == "" && req.Msg.GetNamespaceFqn() == "" {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("either namespace_id or namespace_fqn must be provided"))
+	}
 
 	auditParams := audit.PolicyEventParams{
 		ActionType: audit.ActionTypeCreate,
@@ -261,6 +265,9 @@ func (s SubjectMappingService) CreateSubjectConditionSet(ctx context.Context,
 ) (*connect.Response[sm.CreateSubjectConditionSetResponse], error) {
 	rsp := &sm.CreateSubjectConditionSetResponse{}
 	s.logger.DebugContext(ctx, "creating subject condition set", slog.Any("subject_condition_set", req.Msg))
+	if s.config.NamespacedPolicy && req.Msg.GetNamespaceId() == "" && req.Msg.GetNamespaceFqn() == "" {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("either namespace_id or namespace_fqn must be provided"))
+	}
 
 	auditParams := audit.PolicyEventParams{
 		ActionType: audit.ActionTypeCreate,
@@ -269,7 +276,7 @@ func (s SubjectMappingService) CreateSubjectConditionSet(ctx context.Context,
 
 	var conditionSet *policy.SubjectConditionSet
 	err := s.dbClient.RunInTx(ctx, func(txClient *policydb.PolicyDBClient) error {
-		cs, err := txClient.CreateSubjectConditionSet(ctx, req.Msg.GetSubjectConditionSet())
+		cs, err := txClient.CreateSubjectConditionSet(ctx, req.Msg.GetSubjectConditionSet(), req.Msg.GetNamespaceId(), req.Msg.GetNamespaceFqn())
 		if err != nil {
 			s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
 			return db.StatusifyError(ctx, s.logger, err, db.ErrTextCreationFailed, slog.String("subjectConditionSet", req.Msg.String()))

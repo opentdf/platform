@@ -12,6 +12,20 @@ import "buf/validate/validate.proto";
 ///
 
 // Definitions
+
+enum SortObligationsType {
+    SORT_OBLIGATIONS_TYPE_UNSPECIFIED = 0;
+    SORT_OBLIGATIONS_TYPE_NAME = 1;
+    SORT_OBLIGATIONS_TYPE_FQN = 2;
+    SORT_OBLIGATIONS_TYPE_CREATED_AT = 3;
+    SORT_OBLIGATIONS_TYPE_UPDATED_AT = 4;
+}
+
+message ObligationsSort {
+    SortObligationsType field = 1 [(buf.validate.field).enum.defined_only = true];
+    policy.SortDirection direction = 2 [(buf.validate.field).enum.defined_only = true];
+}
+
 message GetObligationRequest {
     option (buf.validate.message).oneof = { fields: ["id", "fqn"], required: true };
     string id = 1 [(buf.validate.field).string.uuid = true];
@@ -150,6 +164,13 @@ message ListObligationsRequest {
 
     // Optional
     policy.PageRequest pagination = 10;
+
+    // Optional - CONSTRAINT: max 1 item
+    // Sort defaults:
+    //   - direction UNSPECIFIED defaults to DESC for the specified field
+    //   - field UNSPECIFIED defaults to created_at with the specified direction
+    //   - both UNSPECIFIED or sort omitted defaults to created_at DESC
+    repeated ObligationsSort sort = 11 [(buf.validate.field).repeated.max_items = 1];
 }
 
 message ListObligationsResponse {
@@ -272,6 +293,18 @@ message DeleteObligationValueResponse {
 }
 
 // Triggers
+message GetObligationTriggerRequest {
+    // Required
+    string id = 1 [(buf.validate.field).string.uuid = true];
+}
+
+message GetObligationTriggerResponse {
+    policy.ObligationTrigger trigger = 1;
+}
+
+// Obligation Triggers are owned by the namespace that owns the action and attribute value, which must
+// be the same. In this way, a trigger can intentionally cross namespace boundaries: associating
+// obligation values of a different namespace than the one that owns the action being taken or the attribute value.
 message AddObligationTriggerRequest {
     // Required
     common.IdFqnIdentifier obligation_value = 1 [(buf.validate.field).required = true];
@@ -393,6 +426,10 @@ service Service {
    /*--------------------------------------*
     * Trigger RPCs
     *--------------------------------------*/
+
+    rpc GetObligationTrigger(GetObligationTriggerRequest) returns (GetObligationTriggerResponse) {
+        option idempotency_level = NO_SIDE_EFFECTS;
+    }
     
     rpc AddObligationTrigger(AddObligationTriggerRequest) returns (AddObligationTriggerResponse) {}
 

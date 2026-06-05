@@ -222,11 +222,11 @@ func (ns NamespacesService) DeactivateNamespace(ctx context.Context, req *connec
 	return connect.NewResponse(rsp), nil
 }
 
-func (ns NamespacesService) AssignKeyAccessServerToNamespace(_ context.Context, _ *connect.Request[namespaces.AssignKeyAccessServerToNamespaceRequest]) (*connect.Response[namespaces.AssignKeyAccessServerToNamespaceResponse], error) {
+func (ns NamespacesService) AssignKeyAccessServerToNamespace(_ context.Context, _ *connect.Request[namespaces.AssignKeyAccessServerToNamespaceRequest]) (*connect.Response[namespaces.AssignKeyAccessServerToNamespaceResponse], error) { //nolint:staticcheck // Compatibility stub for deprecated RPC.
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("this compatibility stub will be removed entirely in the following release"))
 }
 
-func (ns NamespacesService) RemoveKeyAccessServerFromNamespace(ctx context.Context, req *connect.Request[namespaces.RemoveKeyAccessServerFromNamespaceRequest]) (*connect.Response[namespaces.RemoveKeyAccessServerFromNamespaceResponse], error) {
+func (ns NamespacesService) RemoveKeyAccessServerFromNamespace(ctx context.Context, req *connect.Request[namespaces.RemoveKeyAccessServerFromNamespaceRequest]) (*connect.Response[namespaces.RemoveKeyAccessServerFromNamespaceResponse], error) { //nolint:staticcheck // Compatibility path for deprecated RPC.
 	rsp := &namespaces.RemoveKeyAccessServerFromNamespaceResponse{}
 
 	grant := req.Msg.GetNamespaceKeyAccessServer()
@@ -286,84 +286,6 @@ func (ns NamespacesService) RemovePublicKeyFromNamespace(ctx context.Context, r 
 		return nil, db.StatusifyError(ctx, ns.logger, err, db.ErrTextDeletionFailed, slog.String("namespaceKey", key.String()))
 	}
 	ns.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
-
-	return connect.NewResponse(rsp), nil
-}
-
-func (ns NamespacesService) AssignCertificateToNamespace(ctx context.Context, r *connect.Request[namespaces.AssignCertificateToNamespaceRequest]) (*connect.Response[namespaces.AssignCertificateToNamespaceResponse], error) {
-	rsp := &namespaces.AssignCertificateToNamespaceResponse{}
-
-	namespaceIdentifier := r.Msg.GetNamespace()
-	pem := r.Msg.GetPem()
-	metadata := r.Msg.GetMetadata()
-
-	// Get string representation for audit log (either ID or FQN)
-	auditObjectID := namespaceIdentifier.GetId()
-	if auditObjectID == "" {
-		auditObjectID = namespaceIdentifier.GetFqn()
-	}
-
-	auditParams := audit.PolicyEventParams{
-		ActionType: audit.ActionTypeCreate,
-		ObjectType: audit.ObjectTypeNamespaceCertificate,
-		ObjectID:   auditObjectID,
-	}
-
-	// Create the certificate metadata
-	metadataJSON, _, err := db.MarshalCreateMetadata(metadata)
-	if err != nil {
-		ns.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
-		return nil, db.StatusifyError(ctx, ns.logger, err, "Failed to marshal metadata")
-	}
-
-	// Create and assign certificate in a transaction
-	// This ensures that if assignment fails, certificate creation is rolled back
-	certID, err := ns.dbClient.CreateAndAssignCertificateToNamespace(ctx, namespaceIdentifier, pem, metadataJSON)
-	if err != nil {
-		ns.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
-		return nil, db.StatusifyError(ctx, ns.logger, err, "Failed to create and assign certificate")
-	}
-
-	ns.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
-
-	rsp.NamespaceCertificate = &namespaces.NamespaceCertificate{
-		Namespace:     namespaceIdentifier,
-		CertificateId: certID,
-	}
-	rsp.Certificate = &policy.Certificate{
-		Id:  certID,
-		Pem: pem,
-	}
-
-	return connect.NewResponse(rsp), nil
-}
-
-func (ns NamespacesService) RemoveCertificateFromNamespace(ctx context.Context, r *connect.Request[namespaces.RemoveCertificateFromNamespaceRequest]) (*connect.Response[namespaces.RemoveCertificateFromNamespaceResponse], error) {
-	rsp := &namespaces.RemoveCertificateFromNamespaceResponse{}
-
-	cert := r.Msg.GetNamespaceCertificate()
-	namespaceIdentifier := cert.GetNamespace()
-
-	// Get string representation for audit log (either ID or FQN)
-	auditNamespaceID := namespaceIdentifier.GetId()
-	if auditNamespaceID == "" {
-		auditNamespaceID = namespaceIdentifier.GetFqn()
-	}
-
-	auditParams := audit.PolicyEventParams{
-		ActionType: audit.ActionTypeDelete,
-		ObjectType: audit.ObjectTypeNamespaceCertificate,
-		ObjectID:   fmt.Sprintf("%s:%s", auditNamespaceID, cert.GetCertificateId()),
-	}
-
-	err := ns.dbClient.RemoveCertificateFromNamespace(ctx, namespaceIdentifier, cert.GetCertificateId())
-	if err != nil {
-		ns.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
-		return nil, db.StatusifyError(ctx, ns.logger, err, "Failed to remove certificate from namespace")
-	}
-	ns.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
-
-	rsp.NamespaceCertificate = cert
 
 	return connect.NewResponse(rsp), nil
 }

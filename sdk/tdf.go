@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"hash/crc32"
 	"io"
 	"log/slog"
 	"net/http"
@@ -23,7 +24,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/opentdf/platform/lib/ocrypto"
 	"github.com/opentdf/platform/sdk/auth"
-	"github.com/opentdf/platform/sdk/internal/archive"
+	"github.com/opentdf/platform/sdk/internal/zipstream"
 	"github.com/opentdf/platform/sdk/sdkconnect"
 	"google.golang.org/grpc/codes"
 )
@@ -32,6 +33,7 @@ const (
 	keyAccessSchemaVersion = "1.0"
 	maxFileSizeSupported   = 68719476736 // 64gb
 	defaultMimeType        = "application/octet-stream"
+	zip64MagicVal          = int64(^uint32(0))
 	tdfAsZip               = "zip"
 	gcmIvSize              = 12
 	aesBlockSize           = 16
@@ -41,6 +43,7 @@ const (
 	kKeySize               = 32
 	kWrapped               = "wrapped"
 	kECWrapped             = "ec-wrapped"
+	kHybridWrapped         = "hybrid-wrapped"
 	kKasProtocol           = "kas"
 	kSplitKeyType          = "split"
 	kGCMCipherAlgorithm    = "AES-256-GCM"
@@ -58,7 +61,7 @@ type Reader struct {
 	connectOptions      []connect.ClientOption
 	manifest            Manifest
 	unencryptedMetadata []byte
-	tdfReader           archive.TDFReader
+	tdfReader           zipstream.TDFReader
 	cursor              int64
 	aesGcm              ocrypto.AesGcm
 	payloadSize         int64
@@ -77,6 +80,17 @@ type TDFObject struct {
 	size       int64
 	aesGcm     ocrypto.AesGcm
 	payloadKey [kKeySize]byte
+}
+
+type countingWriter struct {
+	writer  io.Writer
+	written int64
+}
+
+func (cw *countingWriter) Write(p []byte) (int, error) {
+	n, err := cw.writer.Write(p)
+	cw.written += int64(n)
+	return n, err
 }
 
 type tdf3DecryptHandler struct {
@@ -197,16 +211,29 @@ func (s SDK) CreateTDFContext(ctx context.Context, writer io.Writer, reader io.R
 
 	encryptedSegmentSize := segmentSize + gcmIvSize + aesBlockSize
 	payloadSize := inputSize + (totalSegments * (gcmIvSize + aesBlockSize))
-	tdfWriter := archive.NewTDFWriter(writer)
 
-	err = tdfWriter.SetPayloadSize(payloadSize)
-	if err != nil {
-		return nil, fmt.Errorf("archive.SetPayloadSize failed: %w", err)
+	zipMode := zipstream.Zip64Auto
+	if payloadSize >= zip64MagicVal {
+		zipMode = zipstream.Zip64Always
 	}
 
+	expectedSegments := int(totalSegments)
+	if expectedSegments < 1 {
+		expectedSegments = 1
+	}
+
+	archiveWriter := zipstream.NewSegmentTDFWriter(
+		expectedSegments,
+		zipstream.WithZip64Mode(zipMode),
+		zipstream.WithMaxSegments(expectedSegments),
+	)
+
+	outputWriter := &countingWriter{writer: writer}
+
 	var readPos int64
-	var aggregateHash string
+	var aggregateHashBuilder strings.Builder
 	readBuf := bytes.NewBuffer(make([]byte, 0, tdfConfig.defaultSegmentSize))
+	segmentIndex := 0
 	for totalSegments != 0 { // adjust read size
 		readSize := segmentSize
 		if (inputSize - readPos) < segmentSize {
@@ -227,7 +254,20 @@ func (s SDK) CreateTDFContext(ctx context.Context, writer io.Writer, reader io.R
 			return nil, fmt.Errorf("io.ReadSeeker.Read failed: %w", err)
 		}
 
-		err = tdfWriter.AppendPayload(cipherData)
+		crc := crc32.ChecksumIEEE(cipherData)
+		headerBytes, err := archiveWriter.WriteSegment(ctx, segmentIndex, uint64(len(cipherData)), crc)
+		if err != nil {
+			return nil, fmt.Errorf("zipstream.WriteSegment failed: %w", err)
+		}
+
+		if len(headerBytes) > 0 {
+			_, err = outputWriter.Write(headerBytes)
+			if err != nil {
+				return nil, fmt.Errorf("io.writer.Write failed: %w", err)
+			}
+		}
+
+		_, err = outputWriter.Write(cipherData)
 		if err != nil {
 			return nil, fmt.Errorf("io.writer.Write failed: %w", err)
 		}
@@ -238,7 +278,7 @@ func (s SDK) CreateTDFContext(ctx context.Context, writer io.Writer, reader io.R
 			return nil, fmt.Errorf("splitKey.GetSignaturefailed: %w", err)
 		}
 
-		aggregateHash += segmentSig
+		aggregateHashBuilder.WriteString(segmentSig)
 		segmentInfo := Segment{
 			Hash:          string(ocrypto.Base64Encode([]byte(segmentSig))),
 			Size:          readSize,
@@ -249,9 +289,10 @@ func (s SDK) CreateTDFContext(ctx context.Context, writer io.Writer, reader io.R
 
 		totalSegments--
 		readPos += readSize
+		segmentIndex++
 	}
 
-	rootSignature, err := calculateSignature([]byte(aggregateHash), tdfObject.payloadKey[:],
+	rootSignature, err := calculateSignature([]byte(aggregateHashBuilder.String()), tdfObject.payloadKey[:],
 		tdfConfig.integrityAlgorithm, tdfConfig.useHex)
 	if err != nil {
 		return nil, fmt.Errorf("splitKey.GetSignaturefailed: %w", err)
@@ -285,7 +326,7 @@ func (s SDK) CreateTDFContext(ctx context.Context, writer io.Writer, reader io.R
 	tdfObject.manifest.MimeType = mimeType
 	tdfObject.manifest.Protocol = tdfAsZip
 	tdfObject.manifest.Type = tdfZipReference
-	tdfObject.manifest.URL = archive.TDFPayloadFileName
+	tdfObject.manifest.URL = zipstream.TDFPayloadFileName
 	tdfObject.manifest.IsEncrypted = true
 
 	var signedAssertion []Assertion
@@ -319,7 +360,7 @@ func (s SDK) CreateTDFContext(ctx context.Context, writer io.Writer, reader io.R
 		}
 
 		var completeHashBuilder strings.Builder
-		completeHashBuilder.WriteString(aggregateHash)
+		completeHashBuilder.WriteString(aggregateHashBuilder.String())
 		if tdfConfig.useHex {
 			completeHashBuilder.Write(hashOfAssertionAsHex)
 		} else {
@@ -352,15 +393,21 @@ func (s SDK) CreateTDFContext(ctx context.Context, writer io.Writer, reader io.R
 		return nil, fmt.Errorf("json.Marshal failed:%w", err)
 	}
 
-	err = tdfWriter.AppendManifest(string(manifestAsStr))
+	finalBytes, err := archiveWriter.Finalize(ctx, manifestAsStr)
 	if err != nil {
-		return nil, fmt.Errorf("TDFWriter.AppendManifest failed:%w", err)
+		return nil, fmt.Errorf("zipstream.Finalize failed: %w", err)
 	}
 
-	tdfObject.size, err = tdfWriter.Finish()
+	_, err = outputWriter.Write(finalBytes)
 	if err != nil {
-		return nil, fmt.Errorf("TDFWriter.Finish failed:%w", err)
+		return nil, fmt.Errorf("io.writer.Write failed: %w", err)
 	}
+
+	if err := archiveWriter.Close(); err != nil {
+		return nil, fmt.Errorf("zipstream.Close failed: %w", err)
+	}
+
+	tdfObject.size = outputWriter.written
 
 	return tdfObject, nil
 }
@@ -393,7 +440,7 @@ func (tdfConfig *TDFConfig) initKAOTemplate(ctx context.Context, s SDK) error {
 			tdfConfig.splitPlan, err = g.plan(make([]string, 0), uuidSplitIDGenerator)
 		case noKeysFound:
 			var baseKey *policy.SimpleKasKey
-			baseKey, err = getBaseKeyFromWellKnown(ctx, s)
+			baseKey, err = s.GetBaseKey(ctx)
 			if err == nil {
 				err = populateKasInfoFromBaseKey(baseKey, tdfConfig)
 			} else {
@@ -628,7 +675,15 @@ func createKeyAccess(kasInfo KASInfo, symKey []byte, policyBinding PolicyBinding
 	}
 
 	ktype := ocrypto.KeyType(kasInfo.Algorithm)
-	if ocrypto.IsECKeyType(ktype) {
+	switch {
+	case ocrypto.IsHybridKeyType(ktype):
+		wrappedKey, err := generateWrapKeyWithHybrid(kasInfo.Algorithm, kasInfo.PublicKey, symKey)
+		if err != nil {
+			return KeyAccess{}, err
+		}
+		keyAccess.KeyType = kHybridWrapped
+		keyAccess.WrappedKey = wrappedKey
+	case ocrypto.IsECKeyType(ktype):
 		mode, err := ocrypto.ECKeyTypeToMode(ktype)
 		if err != nil {
 			return KeyAccess{}, err
@@ -640,7 +695,7 @@ func createKeyAccess(kasInfo KASInfo, symKey []byte, policyBinding PolicyBinding
 		keyAccess.KeyType = kECWrapped
 		keyAccess.WrappedKey = wrappedKeyInfo.wrappedKey
 		keyAccess.EphemeralPublicKey = wrappedKeyInfo.publicKey
-	} else {
+	default:
 		wrappedKey, err := generateWrapKeyWithRSA(kasInfo.PublicKey, symKey)
 		if err != nil {
 			return KeyAccess{}, err
@@ -702,9 +757,9 @@ func generateWrapKeyWithEC(mode ocrypto.ECCMode, kasPublicKey string, symKey []b
 }
 
 func generateWrapKeyWithRSA(publicKey string, symKey []byte) (string, error) {
-	asymEncrypt, err := ocrypto.NewAsymEncryption(publicKey)
+	asymEncrypt, err := ocrypto.FromPublicPEM(publicKey)
 	if err != nil {
-		return "", fmt.Errorf("generateWrapKeyWithRSA: ocrypto.NewAsymEncryption failed:%w", err)
+		return "", fmt.Errorf("generateWrapKeyWithRSA: ocrypto.FromPublicPEM failed:%w", err)
 	}
 
 	wrappedKey, err := asymEncrypt.Encrypt(symKey)
@@ -713,6 +768,14 @@ func generateWrapKeyWithRSA(publicKey string, symKey []byte) (string, error) {
 	}
 
 	return string(ocrypto.Base64Encode(wrappedKey)), nil
+}
+
+func generateWrapKeyWithHybrid(algorithm, publicKeyPEM string, symKey []byte) (string, error) {
+	wrappedDER, err := ocrypto.HybridWrapDEK(ocrypto.KeyType(algorithm), publicKeyPEM, symKey)
+	if err != nil {
+		return "", fmt.Errorf("generateWrapKeyWithHybrid: %w", err)
+	}
+	return string(ocrypto.Base64Encode(wrappedDER)), nil
 }
 
 // create policy object
@@ -756,6 +819,37 @@ func allowListFromKASRegistry(ctx context.Context, logger *slog.Logger, kasRegis
 	return kasAllowlist, nil
 }
 
+// WithPolicyFrom returns a [TDFOption] that binds the source TDF's policy
+// (its attribute value FQNs) to the new TDF being created.
+//
+// Use this in re-wrap pipelines to preserve the source policy without
+// having to know about the manifest's base64 + JSON encoding:
+//
+//	if ok, _ := sdk.IsValidTdf(file); !ok {
+//	    // pass through unchanged
+//	}
+//	reader, err := s.LoadTDF(file)
+//	if err != nil {
+//	    return err
+//	}
+//	_, err = s.CreateTDF(out, transformed, sdk.WithPolicyFrom(reader))
+//
+// [Reader.Init] is not required: [Reader.DataAttributes] reads the policy
+// from the manifest, which [SDK.LoadTDF] has already populated. Calling
+// Init would trigger an unnecessary KAS rewrap.
+func WithPolicyFrom(r *Reader) TDFOption {
+	return func(c *TDFConfig) error {
+		if r == nil {
+			return errors.New("WithPolicyFrom: nil Reader")
+		}
+		attrs, err := r.DataAttributes()
+		if err != nil {
+			return fmt.Errorf("WithPolicyFrom: extracting source attributes: %w", err)
+		}
+		return WithDataAttributes(attrs...)(c)
+	}
+}
+
 // LoadTDF loads the tdf and prepare for reading the payload from TDF
 func (s SDK) LoadTDF(reader io.ReadSeeker, opts ...TDFReaderOption) (*Reader, error) {
 	if s.kasSessionKey != nil {
@@ -768,9 +862,9 @@ func (s SDK) LoadTDF(reader io.ReadSeeker, opts ...TDFReaderOption) (*Reader, er
 	}
 
 	// create tdf reader
-	tdfReader, err := archive.NewTDFReader(reader, archive.WithTDFManifestMaxSize(config.maxManifestSize))
+	tdfReader, err := zipstream.NewTDFReader(reader, zipstream.WithTDFManifestMaxSize(config.maxManifestSize))
 	if err != nil {
-		return nil, fmt.Errorf("archive.NewTDFReader failed: %w", err)
+		return nil, fmt.Errorf("zipstream.NewTDFReader failed: %w", err)
 	}
 	useGlobalFulfillableObligations := len(config.fulfillableObligationFQNs) == 0 && len(s.fulfillableObligationFQNs) > 0
 	if useGlobalFulfillableObligations {
@@ -1473,15 +1567,6 @@ func isLessThanSemver(version, target string) (bool, error) {
 	return v1.LessThan(v2), nil
 }
 
-func getBaseKeyFromWellKnown(ctx context.Context, s SDK) (*policy.SimpleKasKey, error) {
-	key, err := getBaseKey(ctx, s)
-	if err != nil {
-		return nil, err
-	}
-
-	return key, nil
-}
-
 func populateKasInfoFromBaseKey(key *policy.SimpleKasKey, tdfConfig *TDFConfig) error {
 	if key == nil {
 		return errors.New("populateKasInfoFromBaseKey failed: key is nil")
@@ -1531,11 +1616,26 @@ func createKaoTemplateFromKasInfo(kasInfoArr []KASInfo) []kaoTpl {
 	return kaoTemplate
 }
 
+// getKasErrorToReturn classifies KAS rewrap errors. KAS intentionally uses a
+// generic "bad request" for policy binding and DEK failures to avoid leaking
+// information about secret key material. Descriptive messages indicate
+// client/configuration issues that are safe to surface as non-tamper errors.
 func getKasErrorToReturn(err error, defaultError error) error {
 	errToReturn := defaultError
-	if strings.Contains(err.Error(), codes.InvalidArgument.String()) {
-		errToReturn = errors.Join(ErrRewrapBadRequest, errToReturn)
-	} else if strings.Contains(err.Error(), codes.PermissionDenied.String()) {
+	errStr := err.Error()
+
+	switch {
+	case strings.Contains(errStr, codes.InvalidArgument.String()):
+		// Per-KAO errors are serialized as plain strings through the proto
+		// response, so we match on a substring anchored to the gRPC status
+		// description. Generic "bad request" = potential tamper; anything
+		// else = client/configuration error.
+		if strings.Contains(errStr, kasGenericBadRequest) {
+			errToReturn = errors.Join(ErrRewrapBadRequest, errToReturn)
+		} else {
+			errToReturn = errors.Join(ErrKASRequestError, errToReturn)
+		}
+	case strings.Contains(errStr, codes.PermissionDenied.String()):
 		errToReturn = errors.Join(ErrRewrapForbidden, errToReturn)
 	}
 

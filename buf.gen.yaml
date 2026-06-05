@@ -4,24 +4,17 @@ managed:
   disable:
     - file_option: go_package
       module: buf.build/bufbuild/protovalidate
-    - file_option: go_package
-      module: buf.build/googleapis/googleapis
-    - file_option: go_package
-      module: buf.build/grpc-ecosystem/grpc-gateway
   override:
     - file_option: go_package_prefix
       value: github.com/opentdf/platform/protocol/go
 plugins:
-  - remote: buf.build/grpc-ecosystem/gateway:v2.19.1
-    out: protocol/go
-    opt: paths=source_relative
   - remote: buf.build/protocolbuffers/go:v1.33.0
     out: protocol/go
     opt: paths=source_relative
   - remote: buf.build/grpc/go:v1.3.0
     out: protocol/go
     opt: paths=source_relative
-  - remote: buf.build/connectrpc/go:v1.17.0
+  - remote: buf.build/connectrpc/go:v1.19.1
     out: protocol/go
     opt:
       - paths=source_relative

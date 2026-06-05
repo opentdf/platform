@@ -26,8 +26,6 @@ type NamespaceServiceClient interface {
 	RemoveKeyAccessServerFromNamespace(ctx context.Context, req *namespaces.RemoveKeyAccessServerFromNamespaceRequest) (*namespaces.RemoveKeyAccessServerFromNamespaceResponse, error)
 	AssignPublicKeyToNamespace(ctx context.Context, req *namespaces.AssignPublicKeyToNamespaceRequest) (*namespaces.AssignPublicKeyToNamespaceResponse, error)
 	RemovePublicKeyFromNamespace(ctx context.Context, req *namespaces.RemovePublicKeyFromNamespaceRequest) (*namespaces.RemovePublicKeyFromNamespaceResponse, error)
-	AssignCertificateToNamespace(ctx context.Context, req *namespaces.AssignCertificateToNamespaceRequest) (*namespaces.AssignCertificateToNamespaceResponse, error)
-	RemoveCertificateFromNamespace(ctx context.Context, req *namespaces.RemoveCertificateFromNamespaceRequest) (*namespaces.RemoveCertificateFromNamespaceResponse, error)
 }
 
 func (w *NamespaceServiceClientConnectWrapper) GetNamespace(ctx context.Context, req *namespaces.GetNamespaceRequest) (*namespaces.GetNamespaceResponse, error) {
@@ -105,24 +103,6 @@ func (w *NamespaceServiceClientConnectWrapper) AssignPublicKeyToNamespace(ctx co
 func (w *NamespaceServiceClientConnectWrapper) RemovePublicKeyFromNamespace(ctx context.Context, req *namespaces.RemovePublicKeyFromNamespaceRequest) (*namespaces.RemovePublicKeyFromNamespaceResponse, error) {
 	// Wrap Connect RPC client request
 	res, err := w.NamespaceServiceClient.RemovePublicKeyFromNamespace(ctx, connect.NewRequest(req))
-	if res == nil {
-		return nil, err
-	}
-	return res.Msg, err
-}
-
-func (w *NamespaceServiceClientConnectWrapper) AssignCertificateToNamespace(ctx context.Context, req *namespaces.AssignCertificateToNamespaceRequest) (*namespaces.AssignCertificateToNamespaceResponse, error) {
-	// Wrap Connect RPC client request
-	res, err := w.NamespaceServiceClient.AssignCertificateToNamespace(ctx, connect.NewRequest(req))
-	if res == nil {
-		return nil, err
-	}
-	return res.Msg, err
-}
-
-func (w *NamespaceServiceClientConnectWrapper) RemoveCertificateFromNamespace(ctx context.Context, req *namespaces.RemoveCertificateFromNamespaceRequest) (*namespaces.RemoveCertificateFromNamespaceResponse, error) {
-	// Wrap Connect RPC client request
-	res, err := w.NamespaceServiceClient.RemoveCertificateFromNamespace(ctx, connect.NewRequest(req))
 	if res == nil {
 		return nil, err
 	}

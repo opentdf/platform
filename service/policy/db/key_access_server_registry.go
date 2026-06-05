@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/opentdf/platform/lib/ocrypto"
 	"github.com/opentdf/platform/protocol/go/common"
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/attributes"
@@ -41,9 +42,13 @@ func (c PolicyDBClient) ListKeyAccessServers(ctx context.Context, r *kasregistry
 		return nil, db.ErrListLimitTooLarge
 	}
 
+	sortField, sortDirection := GetKeyAccessServersSortParams(r.GetSort())
+
 	list, err := c.queries.listKeyAccessServers(ctx, listKeyAccessServersParams{
-		Offset: offset,
-		Limit:  limit,
+		Offset:        offset,
+		Limit:         limit,
+		SortField:     sortField,
+		SortDirection: sortDirection,
 	})
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
@@ -75,7 +80,7 @@ func (c PolicyDBClient) ListKeyAccessServers(ctx context.Context, r *kasregistry
 
 		keyAccessServer.Id = kas.ID
 		keyAccessServer.Uri = kas.Uri
-		keyAccessServer.PublicKey = publicKey
+		keyAccessServer.PublicKey = publicKey //nolint:staticcheck // Legacy single-key field maintained for compatibility.
 		keyAccessServer.Name = kas.KasName.String
 		keyAccessServer.Metadata = metadata
 		keyAccessServer.KasKeys = keys
@@ -293,7 +298,7 @@ func (c PolicyDBClient) DeleteKeyAccessServer(ctx context.Context, id string) (*
 	}, nil
 }
 
-func (c PolicyDBClient) ListKeyAccessServerGrants(ctx context.Context, r *kasregistry.ListKeyAccessServerGrantsRequest) (*kasregistry.ListKeyAccessServerGrantsResponse, error) {
+func (c PolicyDBClient) ListKeyAccessServerGrants(ctx context.Context, r *kasregistry.ListKeyAccessServerGrantsRequest) (*kasregistry.ListKeyAccessServerGrantsResponse, error) { //nolint:staticcheck // Compatibility path for deprecated RPC.
 	limit, offset := c.getRequestedLimitOffset(r.GetPagination())
 	maxLimit := c.listCfg.limitMax
 	if maxLimit > 0 && limit > maxLimit {
@@ -349,7 +354,7 @@ func (c PolicyDBClient) ListKeyAccessServerGrants(ctx context.Context, r *kasreg
 		total = int32(listRows[0].Total)
 		nextOffset = getNextOffset(offset, limit, total)
 	}
-	return &kasregistry.ListKeyAccessServerGrantsResponse{
+	return &kasregistry.ListKeyAccessServerGrantsResponse{ //nolint:staticcheck // Compatibility path for deprecated RPC.
 		Grants: grants,
 		Pagination: &policy.PageResponse{
 			CurrentOffset: params.Offset,
@@ -373,8 +378,15 @@ func (c PolicyDBClient) CreateKey(ctx context.Context, r *kasregistry.CreateKeyR
 	if !isValidBase64(r.GetPublicKeyCtx().GetPem()) {
 		return nil, errors.Join(errors.New("public key ctx"), db.ErrExpectedBase64EncodedValue)
 	}
-	if (mode == int32(policy.KeyMode_KEY_MODE_CONFIG_ROOT_KEY) || mode == int32(policy.KeyMode_KEY_MODE_PROVIDER_ROOT_KEY)) && !isValidBase64(r.GetPrivateKeyCtx().GetWrappedKey()) {
-		return nil, errors.Join(errors.New("private key ctx"), db.ErrExpectedBase64EncodedValue)
+	if mode == int32(policy.KeyMode_KEY_MODE_CONFIG_ROOT_KEY) || mode == int32(policy.KeyMode_KEY_MODE_PROVIDER_ROOT_KEY) {
+		wrappedKey := r.GetPrivateKeyCtx().GetWrappedKey()
+		decodedKey, err := base64.StdEncoding.DecodeString(wrappedKey)
+		if err != nil {
+			return nil, errors.Join(errors.New("private key ctx"), db.ErrExpectedBase64EncodedValue)
+		}
+		if ocrypto.IsPEMOrDERPrivateKey(decodedKey) {
+			return nil, errors.Join(errors.New("private key ctx"), db.ErrUnencryptedPrivateKey)
+		}
 	}
 
 	// Marshal private key and public key context
@@ -545,9 +557,47 @@ func (c PolicyDBClient) ListKeys(ctx context.Context, r *kasregistry.ListKeysReq
 		return nil, db.ErrListLimitTooLarge
 	}
 
-	kasID := pgtypeUUID(r.GetKasId())
-	kasURI := pgtypeText(r.GetKasUri())
-	kasName := pgtypeText(strings.ToLower(r.GetKasName()))
+	var (
+		kasID   pgtype.UUID
+		kasURI  pgtype.Text
+		kasName pgtype.Text
+	)
+	hasKasFilter := false
+
+	switch f := r.GetKasFilter().(type) {
+	case *kasregistry.ListKeysRequest_KasId:
+		hasKasFilter = true
+		kasID = pgtypeUUID(f.KasId)
+		if !kasID.Valid {
+			return nil, db.ErrUUIDInvalid
+		}
+	case *kasregistry.ListKeysRequest_KasUri:
+		hasKasFilter = true
+		kasURI = pgtypeText(f.KasUri)
+		if !kasURI.Valid {
+			return nil, db.ErrSelectIdentifierInvalid
+		}
+	case *kasregistry.ListKeysRequest_KasName:
+		hasKasFilter = true
+		kasName = pgtypeText(strings.ToLower(f.KasName))
+		if !kasName.Valid {
+			return nil, db.ErrSelectIdentifierInvalid
+		}
+	}
+
+	if hasKasFilter {
+		exists, err := c.queries.keyAccessServerExists(ctx, keyAccessServerExistsParams{
+			KasID:   kasID,
+			KasName: kasName,
+			KasUri:  kasURI,
+		})
+		if err != nil {
+			return nil, db.WrapIfKnownInvalidQueryErr(err)
+		}
+		if !exists {
+			return nil, db.ErrNotFound
+		}
+	}
 	algo := pgtypeInt4(int32(r.GetKeyAlgorithm()), r.GetKeyAlgorithm() != policy.Algorithm_ALGORITHM_UNSPECIFIED)
 
 	var legacy pgtype.Bool
@@ -558,14 +608,18 @@ func (c PolicyDBClient) ListKeys(ctx context.Context, r *kasregistry.ListKeysReq
 		legacy = pgtypeBool(r.GetLegacy())
 	}
 
+	sortField, sortDirection := GetKasKeysSortParams(r.GetSort())
+
 	params := listKeysParams{
-		Legacy:       legacy,
-		KeyAlgorithm: algo,
-		KasID:        kasID,
-		KasUri:       kasURI,
-		KasName:      kasName,
-		Offset:       offset,
-		Limit:        limit,
+		Legacy:        legacy,
+		KeyAlgorithm:  algo,
+		KasID:         kasID,
+		KasUri:        kasURI,
+		KasName:       kasName,
+		Offset:        offset,
+		Limit:         limit,
+		SortField:     sortField,
+		SortDirection: sortDirection,
 	}
 
 	listRows, err := c.queries.listKeys(ctx, params)

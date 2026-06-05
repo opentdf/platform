@@ -2,10 +2,12 @@ package registeredresources
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 
 	"connectrpc.com/connect"
+	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/registeredresources"
 	"github.com/opentdf/platform/protocol/go/policy/registeredresources/registeredresourcesconnect"
 	"github.com/opentdf/platform/service/logger"
@@ -93,6 +95,12 @@ func (s *RegisteredResourcesService) CreateRegisteredResource(ctx context.Contex
 	}
 
 	s.logger.DebugContext(ctx, "creating registered resource", slog.String("name", req.Msg.GetName()))
+
+	// --- BEGIN namespace enforcement (remove when enforce_namespace flag is phased out) ---
+	if s.config.NamespacedPolicy && req.Msg.GetNamespaceId() == "" && req.Msg.GetNamespaceFqn() == "" {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("namespace is required: provide either namespace_id or namespace_fqn"))
+	}
+	// --- END namespace enforcement ---
 
 	err := s.dbClient.RunInTx(ctx, func(txClient *policydb.PolicyDBClient) error {
 		resource, err := txClient.CreateRegisteredResource(ctx, req.Msg)
@@ -340,7 +348,12 @@ func (s *RegisteredResourcesService) DeleteRegisteredResourceValue(ctx context.C
 
 	s.logger.DebugContext(ctx, "deleting registered resource value", slog.String("id", valueID))
 
-	deleted, err := s.dbClient.DeleteRegisteredResourceValue(ctx, valueID)
+	var deleted *policy.RegisteredResourceValue
+	err := s.dbClient.RunInTx(ctx, func(txClient *policydb.PolicyDBClient) error {
+		var err error
+		deleted, err = txClient.DeleteRegisteredResourceValue(ctx, valueID)
+		return err
+	})
 	if err != nil {
 		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
 		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextDeletionFailed, slog.String("registered resource value", req.Msg.String()))

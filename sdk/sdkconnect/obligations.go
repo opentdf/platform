@@ -28,6 +28,7 @@ type ObligationsServiceClient interface {
 	CreateObligationValue(ctx context.Context, req *obligations.CreateObligationValueRequest) (*obligations.CreateObligationValueResponse, error)
 	UpdateObligationValue(ctx context.Context, req *obligations.UpdateObligationValueRequest) (*obligations.UpdateObligationValueResponse, error)
 	DeleteObligationValue(ctx context.Context, req *obligations.DeleteObligationValueRequest) (*obligations.DeleteObligationValueResponse, error)
+	GetObligationTrigger(ctx context.Context, req *obligations.GetObligationTriggerRequest) (*obligations.GetObligationTriggerResponse, error)
 	AddObligationTrigger(ctx context.Context, req *obligations.AddObligationTriggerRequest) (*obligations.AddObligationTriggerResponse, error)
 	RemoveObligationTrigger(ctx context.Context, req *obligations.RemoveObligationTriggerRequest) (*obligations.RemoveObligationTriggerResponse, error)
 	ListObligationTriggers(ctx context.Context, req *obligations.ListObligationTriggersRequest) (*obligations.ListObligationTriggersResponse, error)
@@ -126,6 +127,15 @@ func (w *ObligationsServiceClientConnectWrapper) UpdateObligationValue(ctx conte
 func (w *ObligationsServiceClientConnectWrapper) DeleteObligationValue(ctx context.Context, req *obligations.DeleteObligationValueRequest) (*obligations.DeleteObligationValueResponse, error) {
 	// Wrap Connect RPC client request
 	res, err := w.ServiceClient.DeleteObligationValue(ctx, connect.NewRequest(req))
+	if res == nil {
+		return nil, err
+	}
+	return res.Msg, err
+}
+
+func (w *ObligationsServiceClientConnectWrapper) GetObligationTrigger(ctx context.Context, req *obligations.GetObligationTriggerRequest) (*obligations.GetObligationTriggerResponse, error) {
+	// Wrap Connect RPC client request
+	res, err := w.ServiceClient.GetObligationTrigger(ctx, connect.NewRequest(req))
 	if res == nil {
 		return nil, err
 	}

@@ -1,5 +1,46 @@
 # Changelog
 
+## [0.12.0](https://github.com/opentdf/platform/compare/lib/ocrypto/v0.11.0...lib/ocrypto/v0.12.0) (2026-05-27)
+
+
+### Bug Fixes
+
+* **core:** Uses strict FIPS AES-GCM ([#3507](https://github.com/opentdf/platform/issues/3507)) ([a0bb218](https://github.com/opentdf/platform/commit/a0bb218762a178b4b925e401f90ee0e76ea865c5))
+* **deps:** bump the external group across 1 directory with 2 updates ([#3519](https://github.com/opentdf/platform/issues/3519)) ([0d0c57b](https://github.com/opentdf/platform/commit/0d0c57b2743a9ffae6e5cb7242520721c6864152))
+
+## [0.11.0](https://github.com/opentdf/platform/compare/lib/ocrypto/v0.10.0...lib/ocrypto/v0.11.0) (2026-05-26)
+
+
+### Features
+
+* **core:** add hybrid NIST EC + ML-KEM key wrapping support ([#3276](https://github.com/opentdf/platform/issues/3276)) ([1209acc](https://github.com/opentdf/platform/commit/1209acc2f8ae24af121f6a2892817c20ebb14d25))
+
+
+### Bug Fixes
+
+* **ci:** Upgrade toolchain version to 1.25.8 ([#3116](https://github.com/opentdf/platform/issues/3116)) ([e1b7882](https://github.com/opentdf/platform/commit/e1b78822c0380a106e6eec05af78dc1fc9e5701f))
+* **deps:** bump the external group across 3 directories with 2 updates ([#3153](https://github.com/opentdf/platform/issues/3153)) ([c832d89](https://github.com/opentdf/platform/commit/c832d89f0a61abbdf0969184437e172789466f5c))
+
+## [0.10.0](https://github.com/opentdf/platform/compare/lib/ocrypto/v0.9.0...lib/ocrypto/v0.10.0) (2026-02-13)
+
+
+### Bug Fixes
+
+* Go 1.25 ([#3053](https://github.com/opentdf/platform/issues/3053)) ([65eb7c3](https://github.com/opentdf/platform/commit/65eb7c3d5fe1892de1e4fabb9b3b7894742c3f02))
+* **kas:** dont hardcode P-256 curve ([#3073](https://github.com/opentdf/platform/issues/3073)) ([826d857](https://github.com/opentdf/platform/commit/826d857cf11a1e83108e45773d794c334c2b2e09))
+* **policy:** reject unencrypted private keys for modes 1/2 ([#3072](https://github.com/opentdf/platform/issues/3072)) ([e2dc6d8](https://github.com/opentdf/platform/commit/e2dc6d8d1e1d35ce6a241bce2a23fa2d128511fa))
+
+## [0.9.0](https://github.com/opentdf/platform/compare/lib/ocrypto/v0.8.0...lib/ocrypto/v0.9.0) (2026-01-26)
+
+
+### ⚠ BREAKING CHANGES
+
+* remove nanotdf support ([#3013](https://github.com/opentdf/platform/issues/3013))
+
+### Bug Fixes
+
+* remove nanotdf support ([#3013](https://github.com/opentdf/platform/issues/3013)) ([90ff7ce](https://github.com/opentdf/platform/commit/90ff7ce50754a1f37ba1cc530507c1f6e15930a0))
+
 ## [0.8.0](https://github.com/opentdf/platform/compare/lib/ocrypto/v0.7.0...lib/ocrypto/v0.8.0) (2025-12-19)
 
 

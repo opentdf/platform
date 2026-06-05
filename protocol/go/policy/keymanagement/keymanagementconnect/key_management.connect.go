@@ -50,16 +50,6 @@ const (
 	KeyManagementServiceDeleteProviderConfigProcedure = "/policy.keymanagement.KeyManagementService/DeleteProviderConfig"
 )
 
-// These variables are the protoreflect.Descriptor objects for the RPCs defined in this package.
-var (
-	keyManagementServiceServiceDescriptor                    = keymanagement.File_policy_keymanagement_key_management_proto.Services().ByName("KeyManagementService")
-	keyManagementServiceCreateProviderConfigMethodDescriptor = keyManagementServiceServiceDescriptor.Methods().ByName("CreateProviderConfig")
-	keyManagementServiceGetProviderConfigMethodDescriptor    = keyManagementServiceServiceDescriptor.Methods().ByName("GetProviderConfig")
-	keyManagementServiceListProviderConfigsMethodDescriptor  = keyManagementServiceServiceDescriptor.Methods().ByName("ListProviderConfigs")
-	keyManagementServiceUpdateProviderConfigMethodDescriptor = keyManagementServiceServiceDescriptor.Methods().ByName("UpdateProviderConfig")
-	keyManagementServiceDeleteProviderConfigMethodDescriptor = keyManagementServiceServiceDescriptor.Methods().ByName("DeleteProviderConfig")
-)
-
 // KeyManagementServiceClient is a client for the policy.keymanagement.KeyManagementService service.
 type KeyManagementServiceClient interface {
 	// Key Management
@@ -80,35 +70,36 @@ type KeyManagementServiceClient interface {
 // http://api.acme.com or https://acme.com/grpc).
 func NewKeyManagementServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.ClientOption) KeyManagementServiceClient {
 	baseURL = strings.TrimRight(baseURL, "/")
+	keyManagementServiceMethods := keymanagement.File_policy_keymanagement_key_management_proto.Services().ByName("KeyManagementService").Methods()
 	return &keyManagementServiceClient{
 		createProviderConfig: connect.NewClient[keymanagement.CreateProviderConfigRequest, keymanagement.CreateProviderConfigResponse](
 			httpClient,
 			baseURL+KeyManagementServiceCreateProviderConfigProcedure,
-			connect.WithSchema(keyManagementServiceCreateProviderConfigMethodDescriptor),
+			connect.WithSchema(keyManagementServiceMethods.ByName("CreateProviderConfig")),
 			connect.WithClientOptions(opts...),
 		),
 		getProviderConfig: connect.NewClient[keymanagement.GetProviderConfigRequest, keymanagement.GetProviderConfigResponse](
 			httpClient,
 			baseURL+KeyManagementServiceGetProviderConfigProcedure,
-			connect.WithSchema(keyManagementServiceGetProviderConfigMethodDescriptor),
+			connect.WithSchema(keyManagementServiceMethods.ByName("GetProviderConfig")),
 			connect.WithClientOptions(opts...),
 		),
 		listProviderConfigs: connect.NewClient[keymanagement.ListProviderConfigsRequest, keymanagement.ListProviderConfigsResponse](
 			httpClient,
 			baseURL+KeyManagementServiceListProviderConfigsProcedure,
-			connect.WithSchema(keyManagementServiceListProviderConfigsMethodDescriptor),
+			connect.WithSchema(keyManagementServiceMethods.ByName("ListProviderConfigs")),
 			connect.WithClientOptions(opts...),
 		),
 		updateProviderConfig: connect.NewClient[keymanagement.UpdateProviderConfigRequest, keymanagement.UpdateProviderConfigResponse](
 			httpClient,
 			baseURL+KeyManagementServiceUpdateProviderConfigProcedure,
-			connect.WithSchema(keyManagementServiceUpdateProviderConfigMethodDescriptor),
+			connect.WithSchema(keyManagementServiceMethods.ByName("UpdateProviderConfig")),
 			connect.WithClientOptions(opts...),
 		),
 		deleteProviderConfig: connect.NewClient[keymanagement.DeleteProviderConfigRequest, keymanagement.DeleteProviderConfigResponse](
 			httpClient,
 			baseURL+KeyManagementServiceDeleteProviderConfigProcedure,
-			connect.WithSchema(keyManagementServiceDeleteProviderConfigMethodDescriptor),
+			connect.WithSchema(keyManagementServiceMethods.ByName("DeleteProviderConfig")),
 			connect.WithClientOptions(opts...),
 		),
 	}
@@ -166,34 +157,35 @@ type KeyManagementServiceHandler interface {
 // By default, handlers support the Connect, gRPC, and gRPC-Web protocols with the binary Protobuf
 // and JSON codecs. They also support gzip compression.
 func NewKeyManagementServiceHandler(svc KeyManagementServiceHandler, opts ...connect.HandlerOption) (string, http.Handler) {
+	keyManagementServiceMethods := keymanagement.File_policy_keymanagement_key_management_proto.Services().ByName("KeyManagementService").Methods()
 	keyManagementServiceCreateProviderConfigHandler := connect.NewUnaryHandler(
 		KeyManagementServiceCreateProviderConfigProcedure,
 		svc.CreateProviderConfig,
-		connect.WithSchema(keyManagementServiceCreateProviderConfigMethodDescriptor),
+		connect.WithSchema(keyManagementServiceMethods.ByName("CreateProviderConfig")),
 		connect.WithHandlerOptions(opts...),
 	)
 	keyManagementServiceGetProviderConfigHandler := connect.NewUnaryHandler(
 		KeyManagementServiceGetProviderConfigProcedure,
 		svc.GetProviderConfig,
-		connect.WithSchema(keyManagementServiceGetProviderConfigMethodDescriptor),
+		connect.WithSchema(keyManagementServiceMethods.ByName("GetProviderConfig")),
 		connect.WithHandlerOptions(opts...),
 	)
 	keyManagementServiceListProviderConfigsHandler := connect.NewUnaryHandler(
 		KeyManagementServiceListProviderConfigsProcedure,
 		svc.ListProviderConfigs,
-		connect.WithSchema(keyManagementServiceListProviderConfigsMethodDescriptor),
+		connect.WithSchema(keyManagementServiceMethods.ByName("ListProviderConfigs")),
 		connect.WithHandlerOptions(opts...),
 	)
 	keyManagementServiceUpdateProviderConfigHandler := connect.NewUnaryHandler(
 		KeyManagementServiceUpdateProviderConfigProcedure,
 		svc.UpdateProviderConfig,
-		connect.WithSchema(keyManagementServiceUpdateProviderConfigMethodDescriptor),
+		connect.WithSchema(keyManagementServiceMethods.ByName("UpdateProviderConfig")),
 		connect.WithHandlerOptions(opts...),
 	)
 	keyManagementServiceDeleteProviderConfigHandler := connect.NewUnaryHandler(
 		KeyManagementServiceDeleteProviderConfigProcedure,
 		svc.DeleteProviderConfig,
-		connect.WithSchema(keyManagementServiceDeleteProviderConfigMethodDescriptor),
+		connect.WithSchema(keyManagementServiceMethods.ByName("DeleteProviderConfig")),
 		connect.WithHandlerOptions(opts...),
 	)
 	return "/policy.keymanagement.KeyManagementService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

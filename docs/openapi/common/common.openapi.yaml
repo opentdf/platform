@@ -13,15 +13,14 @@ components:
         - ACTIVE_STATE_ENUM_INACTIVE
         - ACTIVE_STATE_ENUM_ANY
       description: 'buflint ENUM_VALUE_PREFIX: to make sure that C++ scoping rules aren''t violated when users add new enum values to an enum in a given package'
-    common.MetadataUpdateEnum:
-      type: string
-      title: MetadataUpdateEnum
-      enum:
-        - METADATA_UPDATE_ENUM_UNSPECIFIED
-        - METADATA_UPDATE_ENUM_EXTEND
-        - METADATA_UPDATE_ENUM_REPLACE
     common.IdFqnIdentifier:
       type: object
+      allOf:
+        - oneOf:
+            - required:
+                - id
+            - required:
+                - fqn
       properties:
         id:
           type: string
@@ -36,6 +35,12 @@ components:
       additionalProperties: false
     common.IdNameIdentifier:
       type: object
+      allOf:
+        - oneOf:
+            - required:
+                - id
+            - required:
+                - name
       properties:
         id:
           type: string
@@ -46,12 +51,8 @@ components:
           title: name
           maxLength: 253
           minLength: 1
-          description: |+
-            Name must be an alphanumeric string, allowing hyphens and underscores but not as the first or last character. The stored name will be normalized to lower case.:
-            ```
-            this.matches('^[a-zA-Z0-9](?:[a-zA-Z0-9_-]*[a-zA-Z0-9])?$')
-            ```
-
+          description: |
+            name_format // Name must be an alphanumeric string, allowing hyphens and underscores but not as the first or last character. The stored name will be normalized to lower case.
       title: IdNameIdentifier
       additionalProperties: false
     common.Metadata:
@@ -109,11 +110,18 @@ components:
           title: value
       title: LabelsEntry
       additionalProperties: false
+    common.MetadataUpdateEnum:
+      type: string
+      title: MetadataUpdateEnum
+      enum:
+        - METADATA_UPDATE_ENUM_UNSPECIFIED
+        - METADATA_UPDATE_ENUM_EXTEND
+        - METADATA_UPDATE_ENUM_REPLACE
     google.protobuf.Timestamp:
       type: string
       examples:
-        - 1s
-        - 1.000340012s
+        - "2023-01-15T01:30:15.01Z"
+        - "2024-12-25T12:00:00Z"
       format: date-time
       description: |-
         A Timestamp represents a point in time independent of any time zone or local

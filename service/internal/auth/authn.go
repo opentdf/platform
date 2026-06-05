@@ -11,7 +11,6 @@ import (
 	"log/slog"
 	"net/http"
 	"net/url"
-	"regexp"
 	"slices"
 	"strings"
 	"time"
@@ -28,7 +27,7 @@ import (
 	"github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/logger/audit"
 	ctxAuth "github.com/opentdf/platform/service/pkg/auth"
-	"github.com/opentdf/platform/service/pkg/util"
+	platformauthz "github.com/opentdf/platform/service/pkg/authz"
 	"google.golang.org/grpc/metadata"
 )
 
@@ -41,9 +40,6 @@ var (
 		// KAS Public Key Endpoints
 		"/kas.AccessService/PublicKey",
 		"/kas.AccessService/LegacyPublicKey",
-		"/kas.AccessService/Info",
-		"/kas/kas_public_key",
-		"/kas/v2/kas_public_key",
 		// HealthZ
 		"/healthz",
 		"/grpc.health.v1.Health/Check",
@@ -80,6 +76,7 @@ var (
 
 const (
 	refreshInterval = 15 * time.Minute
+	dpopJWTType     = "dpop+jwt"
 	ActionRead      = "read"
 	ActionWrite     = "write"
 	ActionDelete    = "delete"
@@ -90,8 +87,8 @@ const (
 // Authentication holds a jwks cache and information about the openid configuration
 type Authentication struct {
 	enforceDPoP bool
-	// keySet holds a cached key set
-	cachedKeySet jwk.Set
+	// tokenVerifier validates access tokens against the configured IdP.
+	tokenVerifier *TokenVerifier
 	// openidConfigurations holds the openid configuration for the issuer
 	oidcConfiguration AuthNConfig
 	// Casbin enforcer for v1 authorization (implements authz.V1Enforcer)
@@ -134,44 +131,19 @@ func NewAuthenticator(ctx context.Context, cfg Config, logger *logger.Logger, we
 		opt(a)
 	}
 
-	// validate the configuration
-	if err := cfg.validateAuthNConfig(a.logger); err != nil {
-		return nil, err
-	}
-
-	cache := jwk.NewCache(ctx)
-
-	// Build new cache
-	// Discover OIDC Configuration
-	oidcConfig, err := DiscoverOIDCConfiguration(ctx, cfg.Issuer, a.logger)
+	tokenVerifier, oidcConfig, err := newTokenVerifier(ctx, cfg.AuthNConfig, a.logger)
 	if err != nil {
 		return nil, err
 	}
+	a.tokenVerifier = tokenVerifier
 
-	// If the issuer is different from the one in the configuration, update the configuration
-	// This could happen if we are hitting an internal endpoint. Example we might point to https://keycloak.opentdf.svc/realms/opentdf
-	// but the external facing issuer is https://keycloak.opentdf.local/realms/opentdf
-	if oidcConfig.Issuer != cfg.Issuer {
-		cfg.Issuer = oidcConfig.Issuer
-	}
-
-	cacheInterval, err := time.ParseDuration(cfg.CacheRefresh)
+	roleProvider, err := resolveRoleProvider(ctx, cfg, logger)
 	if err != nil {
-		logger.ErrorContext(ctx,
-			"invalid cache_refresh_interval",
-			slog.String("cache_refresh_interval", cfg.CacheRefresh),
-			slog.Any("err", err),
-		)
-		cacheInterval = refreshInterval
-	}
-
-	// Register the jwks_uri with the cache
-	if err := cache.Register(oidcConfig.JwksURI, jwk.WithMinRefreshInterval(cacheInterval)); err != nil {
 		return nil, err
 	}
-
 	casbinConfig := CasbinConfig{
 		PolicyConfig: cfg.Policy,
+		RoleProvider: roleProvider,
 	}
 	logger.Info("initializing casbin enforcer")
 	if a.enforcer, err = NewCasbinEnforcer(casbinConfig, a.logger); err != nil {
@@ -197,24 +169,16 @@ func NewAuthenticator(ctx context.Context, cfg Config, logger *logger.Logger, we
 		Logger: logger,
 		// Pass the v1 enforcer to break circular dependency
 		// The casbin authorizer will use this for v1 mode
-		Options: []authz.Option{authz.WithV1Enforcer(a.enforcer)},
+		Options: []authz.Option{authz.WithV1Enforcer(v1EnforcerAdapter{enforcer: a.enforcer})},
 	}
-	logger.Info("initializing authorizer",
+	logger.Info(
+		"initializing authorizer",
 		slog.String("engine", authzCfg.Engine),
 		slog.String("version", authzCfg.Version),
 	)
 	if a.authorizer, err = authz.New(authzCfg); err != nil {
 		return nil, fmt.Errorf("failed to initialize authorizer: %w", err)
 	}
-
-	// Need to refresh the cache to verify jwks is available
-	_, err = cache.Refresh(ctx, oidcConfig.JwksURI)
-	if err != nil {
-		return nil, err
-	}
-
-	// Set the cache
-	a.cachedKeySet = jwk.NewCachedSet(cache, oidcConfig.JwksURI)
 
 	// Combine public routes
 	a.publicRoutes = append(a.publicRoutes, cfg.PublicRoutes...)
@@ -223,10 +187,10 @@ func NewAuthenticator(ctx context.Context, cfg Config, logger *logger.Logger, we
 	// Combine IPC reauthorization routes
 	a.ipcReauthRoutes = append(ipcReauthRoutes[:], cfg.IPCReauthRoutes...)
 
-	a.oidcConfiguration = cfg.AuthNConfig
+	a.oidcConfiguration = tokenVerifier.oidcConfiguration
 
 	// Try an register oidc issuer to wellknown service but don't return an error if it fails
-	if err := wellknownRegistration("platform_issuer", cfg.Issuer); err != nil {
+	if err := wellknownRegistration("platform_issuer", a.oidcConfiguration.Issuer); err != nil {
 		logger.Warn("failed to register platform issuer", slog.Any("error", err))
 	}
 
@@ -297,7 +261,8 @@ func (a Authentication) MuxHandler(handler http.Handler) http.Handler {
 			m: []string{r.Method},
 		}, dp)
 		if err != nil {
-			log.WarnContext(ctx,
+			log.WarnContext(
+				ctx,
 				"unauthenticated",
 				slog.Any("error", err),
 				slog.Any("dpop", dp),
@@ -332,37 +297,28 @@ func (a Authentication) MuxHandler(handler http.Handler) http.Handler {
 		default:
 			action = ActionUnsafe
 		}
-
-		// Defensive check: authorizer must be initialized
-		if a.authorizer == nil {
-			log.ErrorContext(ctx, "authorizer not initialized")
-			http.Error(w, "authorization system not configured", http.StatusInternalServerError)
+		roleReq := platformauthz.RoleRequest{
+			Issuer:   a.oidcConfiguration.Issuer,
+			Resource: r.URL.Path,
+			Action:   action,
+		}
+		if result, err := a.enforcer.Enforce(ctx, accessTok, roleReq); err != nil {
+			if errors.Is(err, ErrPermissionDenied) {
+				log.WarnContext(
+					ctx,
+					"permission denied",
+					permissionDeniedLogAttrs(accessTok, result.CasbinAuthz, err)...,
+				)
+				http.Error(w, "permission denied", http.StatusForbidden)
+				return
+			}
+			http.Error(w, "internal server error", http.StatusInternalServerError)
 			return
-		}
-
-		// Build authorization request
-		// Note: HTTP handler uses path-based authorization (no dimension resolution)
-		// as it's primarily for legacy gRPC-Gateway support
-		authzReq := &authz.Request{
-			Token:  accessTok,
-			RPC:    r.URL.Path,
-			Action: action,
-		}
-
-		decision, authzErr := a.authorizer.Authorize(ctx, authzReq)
-		if authzErr != nil {
-			log.ErrorContext(ctx, "authorization error", slog.Any("error", authzErr))
-			http.Error(w, "authorization system error", http.StatusInternalServerError)
-			return
-		}
-
-		if !decision.Allowed {
+		} else if !result.Allowed {
 			log.WarnContext(
 				ctx,
 				"permission denied",
-				slog.String("azp", accessTok.Subject()),
-				slog.String("mode", string(decision.Mode)),
-				slog.String("reason", decision.Reason),
+				permissionDeniedLogAttrs(accessTok, result.CasbinAuthz, nil)...,
 			)
 			http.Error(w, "permission denied", http.StatusForbidden)
 			return
@@ -391,8 +347,6 @@ func (a Authentication) ConnectUnaryServerInterceptor() connect.UnaryInterceptor
 				u: []string{req.Spec().Procedure},
 				m: []string{http.MethodPost},
 			}
-
-			ri.u = append(ri.u, a.lookupGatewayPaths(ctx, req.Spec().Procedure, req.Header())...)
 
 			// Interceptor Logic
 			// Allow health checks and other public routes to pass through
@@ -441,7 +395,8 @@ func (a Authentication) ConnectUnaryServerInterceptor() connect.UnaryInterceptor
 
 			decision := result.decision
 			if !decision.Allowed {
-				log.WarnContext(ctxWithJWK, "permission denied",
+				log.WarnContext(
+					ctxWithJWK, "permission denied",
 					slog.String("azp", token.Subject()),
 					slog.String("mode", string(decision.Mode)),
 					slog.String("reason", decision.Reason),
@@ -449,7 +404,8 @@ func (a Authentication) ConnectUnaryServerInterceptor() connect.UnaryInterceptor
 				return nil, connect.NewError(connect.CodePermissionDenied, errors.New("permission denied"))
 			}
 
-			log.DebugContext(ctxWithJWK, "authorization granted",
+			log.DebugContext(
+				ctxWithJWK, "authorization granted",
 				slog.String("mode", string(decision.Mode)),
 				slog.String("reason", decision.Reason),
 			)
@@ -465,6 +421,24 @@ func (a Authentication) ConnectUnaryServerInterceptor() connect.UnaryInterceptor
 		})
 	}
 	return connect.UnaryInterceptorFunc(interceptor)
+}
+
+func permissionDeniedLogAttrs(token jwt.Token, casbinAuthz CasbinAuthzLog, err error) []any {
+	attrs := []any{slog.String("azp", token.Subject())}
+
+	if casbinAuthz.ConfiguredGroupsClaim != "" || casbinAuthz.SubjectGroups != nil {
+		attrs = append(attrs, slog.Group(
+			"casbin_authz",
+			slog.String("configured_groups_claim", casbinAuthz.ConfiguredGroupsClaim),
+			slog.Any("subject_groups", casbinAuthz.SubjectGroups),
+		))
+	}
+
+	if err != nil {
+		attrs = append(attrs, slog.Any("error", err))
+	}
+
+	return attrs
 }
 
 // IPCMetadataClientInterceptor transfers gRPC outgoing metadata to Connect request headers for IPC calls
@@ -562,7 +536,8 @@ func (a *Authentication) resolveResourceContext(
 
 	resolvedCtx, err := resolver(ctx, req)
 	if err != nil {
-		log.WarnContext(ctx, "authz resolver failed",
+		log.WarnContext(
+			ctx, "authz resolver failed",
 			slog.String("procedure", req.Spec().Procedure),
 			slog.Any("error", err),
 		)
@@ -614,7 +589,8 @@ func (a *Authentication) authorize(
 	// Perform authorization check
 	decision, authzErr := a.authorizer.Authorize(ctx, authzReq)
 	if authzErr != nil {
-		log.ErrorContext(ctx, "authorization error",
+		log.ErrorContext(
+			ctx, "authorization error",
 			slog.Any("error", authzErr),
 			slog.String("procedure", req.Spec().Procedure),
 		)
@@ -665,16 +641,12 @@ func (a *Authentication) checkToken(ctx context.Context, authHeader []string, dp
 		return nil, nil, errors.New("not of type bearer or dpop")
 	}
 
-	// Now we verify the token signature
-	accessToken, err := jwt.Parse([]byte(tokenRaw),
-		jwt.WithKeySet(a.cachedKeySet),
-		jwt.WithValidate(true),
-		jwt.WithIssuer(a.oidcConfiguration.Issuer),
-		jwt.WithAudience(a.oidcConfiguration.Audience),
-		jwt.WithAcceptableSkew(a.oidcConfiguration.TokenSkew),
-	)
+	if a.tokenVerifier == nil {
+		return nil, nil, errors.New("access token verifier is not configured")
+	}
+
+	accessToken, err := a.tokenVerifier.VerifyAccessToken(ctx, tokenRaw)
 	if err != nil {
-		a.logger.Warn("failed to validate auth token", slog.Any("err", err))
 		return nil, nil, err
 	}
 
@@ -737,7 +709,7 @@ func (a Authentication) validateDPoP(accessToken jwt.Token, acessTokenRaw string
 	}
 	sig := dpop.Signatures()[0]
 	protectedHeaders := sig.ProtectedHeaders()
-	if protectedHeaders.Type() != "dpop+jwt" {
+	if protectedHeaders.Type() != dpopJWTType {
 		return nil, fmt.Errorf("invalid typ on DPoP JWT: %v", protectedHeaders.Type())
 	}
 
@@ -828,92 +800,22 @@ func (a Authentication) isPublicRoute(path string) func(string) bool {
 	return func(route string) bool {
 		matched, err := doublestar.Match(route, path)
 		if err != nil {
-			a.logger.Warn("error matching route",
+			a.logger.Warn(
+				"error matching route",
 				slog.String("route", route),
 				slog.String("path", path),
 				slog.Any("error", err),
 			)
 			return false
 		}
-		a.logger.Trace("matching route",
+		a.logger.Trace(
+			"matching route",
 			slog.String("route", route),
 			slog.String("path", path),
 			slog.Bool("matched", matched),
 		)
 		return matched
 	}
-}
-
-func (a Authentication) lookupOrigins(header http.Header) []string {
-	result := make([]string, 0)
-	for _, m := range []string{"Grpcgateway-Origin", "Grpcgateway-Referer", "Origin"} {
-		origins := header.Values(m)
-		if len(origins) == 0 {
-			continue
-		}
-		for _, o := range origins {
-			if strings.HasSuffix(o, ":443") {
-				o = "https://" + strings.TrimPrefix(strings.TrimSuffix(o, ":443"), "https://")
-			} else {
-				o = strings.TrimSuffix(o, ":80")
-			}
-			result = append(result, o)
-		}
-	}
-	return result
-}
-
-var goodPaths = regexp.MustCompile(`^[\w/-]{1,128}$`)
-
-func (a Authentication) lookupGatewayPaths(ctx context.Context, procedure string, header http.Header) []string {
-	origins := a.lookupOrigins(header)
-	if len(origins) == 0 {
-		return nil
-	}
-
-	var paths []string
-	switch procedure {
-	case "/kas.AccessService/Rewrap":
-		paths = append(paths, "/kas/v2/rewrap")
-	default:
-		patterns := header["Pattern"]
-		if len(patterns) == 0 {
-			a.logger.InfoContext(ctx,
-				"underspecified grpc gateway path; no pattern header",
-				slog.Any("origin", origins),
-				slog.String("procedure", procedure),
-			)
-			paths = allowedPublicEndpoints[:]
-		} else {
-			a.logger.InfoContext(ctx,
-				"underspecified grpc gateway path; patterns found",
-				slog.Any("origin", origins),
-				slog.String("procedure", procedure),
-				slog.Any("patterns", patterns),
-			)
-		}
-		for _, pattern := range patterns {
-			if matched := goodPaths.MatchString(pattern); matched {
-				paths = append(paths, pattern)
-			}
-		}
-		if len(paths) != len(patterns) {
-			a.logger.WarnContext(ctx,
-				"invalid grpc gateway path; ignoring one or more invalid patterns",
-				slog.Any("origin", origins),
-				slog.String("procedure", procedure),
-				slog.Any("patterns", patterns),
-			)
-		}
-	}
-
-	u := make([]string, 0, len(origins)*len(paths))
-	for _, o := range origins {
-		for _, p := range paths {
-			u = append(u, normalizeURL(o, &url.URL{Path: p}))
-		}
-	}
-	return u
 }
 
 func (a Authentication) ipcReauthCheck(ctx context.Context, path string, header http.Header) (context.Context, error) {
@@ -926,12 +828,9 @@ func (a Authentication) ipcReauthCheck(ctx context.Context, path string, header 
 				return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("missing authorization header"))
 			}
 
-			u := []string{path}
-			u = append(u, a.lookupGatewayPaths(ctx, path, header)...)
-
 			// Validate the token and create a JWT token
 			token, ctxWithJWK, err := a.checkToken(ctx, authHeader, receiverInfo{
-				u: u,
+				u: []string{path},
 				m: []string{http.MethodPost},
 			}, header["Dpop"])
 			if err != nil {
@@ -959,7 +858,7 @@ func (a *Authentication) getClientIDFromToken(ctx context.Context, tok jwt.Token
 	if err != nil {
 		return "", fmt.Errorf("failed to parse token as a map and find claim at [%s]: %w", clientIDClaim, err)
 	}
-	found := util.Dotnotation(claimsMap, clientIDClaim)
+	found := dotNotation(claimsMap, clientIDClaim)
 	if found == nil {
 		return "", fmt.Errorf("%w at [%s]", ErrClientIDClaimNotFound, clientIDClaim)
 	}

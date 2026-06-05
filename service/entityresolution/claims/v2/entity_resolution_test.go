@@ -113,4 +113,8 @@ func Test_JWTToEntityChainClaims(t *testing.T) {
 	claimsMap := unpackedStruct.AsMap()
 
 	assert.Equal(t, "helloworld", claimsMap["name"])
+	// Standard registered claims like "sub" must be included for subject mapping selectors
+	assert.Equal(t, "1234567890", claimsMap["sub"])
+	// Time-based claims (iat, exp, nbf) are excluded — structpb cannot serialize time.Time
+	assert.NotContains(t, claimsMap, "iat")
 }

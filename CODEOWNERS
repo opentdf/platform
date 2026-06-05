@@ -41,6 +41,10 @@
 /sdk/     @opentdf/go-sdk @opentdf/architecture
 /sdk/go.* @opentdf/go-sdk @opentdf/architecture @opentdf/security
 
+## CLI
+
+/otdfctl/ @opentdf/cli
+
 ## High Security Area
 
 CODEOWNERS     @opentdf/architecture @opentdf/security

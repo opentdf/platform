@@ -7,7 +7,9 @@ version: 2
 updates:
   # Dependabot for CI
   - package-ecosystem: github-actions
-    directory: /
+    directories:
+      - "/"
+      - "/otdfctl/e2e"
     schedule:
       interval: monthly
     commit-message:
@@ -15,8 +17,12 @@ updates:
 
   # Dependabot for internal deps
   # Add explicit entry as any go.mods need internal dep checks
+
+  # examples + BDD tests grouped together
   - package-ecosystem: gomod
-    directory: "/examples"
+    directories:
+      - "/examples"
+      - "/tests-bdd"
     commit-message:
       prefix: "fix(deps)"
     groups:
@@ -25,6 +31,23 @@ updates:
           - "github.com/opentdf/*"
     schedule:
       interval: daily
+
+  # lib/* modules grouped together
+  - package-ecosystem: gomod
+    directories:
+      - "/lib/fixtures"
+      - "/lib/flattening"
+      - "/lib/identifier"
+      - "/lib/ocrypto"
+    commit-message:
+      prefix: "fix(deps)"
+    groups:
+      external:
+        exclude-patterns:
+          - "github.com/opentdf/*"
+    schedule:
+      interval: daily
+
   - package-ecosystem: gomod
     directory: "/sdk"
     commit-message:
@@ -35,8 +58,31 @@ updates:
           - "github.com/opentdf/*"
     schedule:
       interval: daily
+
   - package-ecosystem: gomod
     directory: "/service"
+    commit-message:
+      prefix: "fix(deps)"
+    groups:
+      external:
+        exclude-patterns:
+          - "github.com/opentdf/*"
+    schedule:
+      interval: daily
+
+  - package-ecosystem: gomod
+    directory: "/otdfctl"
+    commit-message:
+      prefix: "fix(deps)"
+    groups:
+      external:
+        exclude-patterns:
+          - "github.com/opentdf/*"
+    schedule:
+      interval: daily
+
+  - package-ecosystem: gomod
+    directory: "/protocol/go"
     commit-message:
       prefix: "fix(deps)"
     groups:

@@ -20,6 +20,9 @@ type Config struct {
 
 	// enable entity direct entitlements that do not require subject mappings
 	AllowDirectEntitlements bool `mapstructure:"allow_direct_entitlements" json:"allow_direct_entitlements" default:"false"`
+
+	// enforce strict namespaced entitlement evaluation behavior in access decisioning
+	EnforceNamespacedEntitlements bool `mapstructure:"enforce_namespaced_entitlements" json:"enforce_namespaced_entitlements" default:"false"`
 }
 
 // Validate tests for a sensible configuration
@@ -56,5 +59,7 @@ func (c *Config) LogValue() slog.Value {
 				slog.String("refresh_interval", c.Cache.RefreshInterval),
 			),
 		),
+		slog.Bool("allow_direct_entitlements", c.AllowDirectEntitlements),
+		slog.Bool("enforce_namespaced_entitlements", c.EnforceNamespacedEntitlements),
 	)
 }

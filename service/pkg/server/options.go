@@ -3,7 +3,9 @@ package server
 import (
 	"context"
 
+	"connectrpc.com/connect"
 	"github.com/casbin/casbin/v2/persist"
+	"github.com/opentdf/platform/service/pkg/authz"
 	"github.com/opentdf/platform/service/pkg/config"
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
 	"github.com/opentdf/platform/service/trust"
@@ -24,7 +26,13 @@ type StartConfig struct {
 	configLoaders         []config.Loader
 	configLoaderOrder     []string
 
+	extraConnectInterceptors []connect.Interceptor
+	extraIPCInterceptors     []connect.Interceptor
+
 	trustKeyManagerCtxs []trust.NamedKeyManagerCtxFactory
+
+	authzRoleProvider          authz.RoleProvider
+	authzRoleProviderFactories map[string]authz.RoleProviderFactory
 
 	// CORS additive configuration - appended to YAML/env config values
 	additionalCORSHeaders        []string
@@ -127,6 +135,25 @@ func WithCasbinAdapter(adapter persist.Adapter) StartOptions {
 	}
 }
 
+// WithAuthZRoleProvider option sets a role provider directly.
+func WithAuthZRoleProvider(provider authz.RoleProvider) StartOptions {
+	return func(c StartConfig) StartConfig {
+		c.authzRoleProvider = provider
+		return c
+	}
+}
+
+// WithAuthZRoleProviderFactory option registers a named role provider factory.
+func WithAuthZRoleProviderFactory(name string, factory authz.RoleProviderFactory) StartOptions {
+	return func(c StartConfig) StartConfig {
+		if c.authzRoleProviderFactories == nil {
+			c.authzRoleProviderFactories = make(map[string]authz.RoleProviderFactory)
+		}
+		c.authzRoleProviderFactories[name] = factory
+		return c
+	}
+}
+
 // WithAdditionalConfigLoader option adds an additional configuration loader to the server.
 func WithAdditionalConfigLoader(loader config.Loader) StartOptions {
 	return func(c StartConfig) StartConfig {
@@ -139,6 +166,22 @@ func WithAdditionalConfigLoader(loader config.Loader) StartOptions {
 func WithConfigLoaderOrder(loaderOrder []string) StartOptions {
 	return func(c StartConfig) StartConfig {
 		c.configLoaderOrder = loaderOrder
+		return c
+	}
+}
+
+// WithConnectInterceptors appends additional Connect interceptors (server-side) applied to all RPCs.
+func WithConnectInterceptors(interceptors ...connect.Interceptor) StartOptions {
+	return func(c StartConfig) StartConfig {
+		c.extraConnectInterceptors = append(c.extraConnectInterceptors, interceptors...)
+		return c
+	}
+}
+
+// WithIPCInterceptors appends additional Connect interceptors for in-process IPC server.
+func WithIPCInterceptors(interceptors ...connect.Interceptor) StartOptions {
+	return func(c StartConfig) StartConfig {
+		c.extraIPCInterceptors = append(c.extraIPCInterceptors, interceptors...)
 		return c
 	}
 }

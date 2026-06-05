@@ -2,24 +2,6 @@
 -- ATTRIBUTE VALUES
 ----------------------------------------------------------------
 
--- name: listAttributeValues :many
-SELECT
-    COUNT(*) OVER() AS total,
-    av.id,
-    av.value,
-    av.active,
-    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', av.metadata -> 'labels', 'created_at', av.created_at, 'updated_at', av.updated_at)) as metadata,
-    av.attribute_definition_id,
-    fqns.fqn
-FROM attribute_values av
-LEFT JOIN attribute_fqns fqns ON av.id = fqns.value_id
-WHERE (
-    (sqlc.narg('active')::BOOLEAN IS NULL OR av.active = sqlc.narg('active')) AND
-    (sqlc.narg('attribute_definition_id')::uuid IS NULL OR av.attribute_definition_id = sqlc.narg('attribute_definition_id')::uuid) 
-)
-LIMIT @limit_ 
-OFFSET @offset_; 
-
 -- name: getAttributeValue :one
 WITH obligation_triggers_agg AS (
     SELECT
@@ -34,6 +16,11 @@ WITH obligation_triggers_agg AS (
                 'attribute_value', JSONB_BUILD_OBJECT(
                     'id', av.id,
                     'fqn', av_fqns.fqn
+                ),
+                'namespace', JSONB_BUILD_OBJECT(
+                    'id', trigger_ns.id,
+                    'name', trigger_ns.name,
+                    'fqn', CONCAT('https://', trigger_ns.name)
                 ),
                 'context', CASE
                     WHEN ot.client_id IS NOT NULL THEN JSONB_BUILD_ARRAY(
@@ -50,6 +37,8 @@ WITH obligation_triggers_agg AS (
     FROM obligation_triggers ot
     JOIN actions a ON ot.action_id = a.id
     JOIN attribute_values av ON ot.attribute_value_id = av.id
+    JOIN attribute_definitions ad ON av.attribute_definition_id = ad.id
+    JOIN attribute_namespaces trigger_ns ON ad.namespace_id = trigger_ns.id
     LEFT JOIN attribute_fqns av_fqns ON av.id = av_fqns.value_id
     GROUP BY ot.obligation_value_id
 ),
@@ -175,3 +164,9 @@ UPDATE attribute_value_public_key_map
 SET key_access_server_key_id = sqlc.arg('new_key_id')::uuid
 WHERE (key_access_server_key_id = sqlc.arg('old_key_id')::uuid)
 RETURNING value_id;
+
+-- name: getAttributeValueNamespaceIDs :many
+SELECT av.id AS attribute_value_id, ad.namespace_id
+FROM attribute_values av
+JOIN attribute_definitions ad ON av.attribute_definition_id = ad.id
+WHERE av.id = ANY(sqlc.arg('ids')::uuid[]);

@@ -306,20 +306,20 @@ DROP TRIGGER IF EXISTS trigger_update_was_mapped_namespace ON attribute_namespac
 
 DROP TRIGGER IF EXISTS trigger_update_was_mapped_definition ON attribute_definition_public_key_map;
 
-DROP TRIGGER IF EXISTS trigger_update_was_mapped_value ON attribute_value_key_map;
+DROP TRIGGER IF EXISTS trigger_update_was_mapped_value ON attribute_value_public_key_map;
 
-DROP TRIGGER IF EXISTS maintain_active_key;
+DROP TRIGGER IF EXISTS maintain_active_key ON public_keys;
 
 DROP FUNCTION IF EXISTS update_active_key;
 
-DROP FUNCTION IF EXISTS update_was_mapped ();
+DROP FUNCTION IF EXISTS update_was_mapped;
 
-DROP TABLE public_keys;
+DROP TABLE IF EXISTS attribute_namespace_public_key_map;
 
-DROP TABLE attribute_namespace_public_key_map;
+DROP TABLE IF EXISTS attribute_definition_public_key_map;
 
-DROP TABLE attribute_definition_public_key_map;
+DROP TABLE IF EXISTS attribute_value_public_key_map;
 
-DROP TABLE attribute_value_public_key_map;
+DROP TABLE IF EXISTS public_keys;
 
 -- +goose StatementEnd

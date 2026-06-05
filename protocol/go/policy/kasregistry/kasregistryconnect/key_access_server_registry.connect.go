@@ -78,25 +78,6 @@ const (
 	KeyAccessServerRegistryServiceListKeyMappingsProcedure = "/policy.kasregistry.KeyAccessServerRegistryService/ListKeyMappings"
 )
 
-// These variables are the protoreflect.Descriptor objects for the RPCs defined in this package.
-var (
-	keyAccessServerRegistryServiceServiceDescriptor                         = kasregistry.File_policy_kasregistry_key_access_server_registry_proto.Services().ByName("KeyAccessServerRegistryService")
-	keyAccessServerRegistryServiceListKeyAccessServersMethodDescriptor      = keyAccessServerRegistryServiceServiceDescriptor.Methods().ByName("ListKeyAccessServers")
-	keyAccessServerRegistryServiceGetKeyAccessServerMethodDescriptor        = keyAccessServerRegistryServiceServiceDescriptor.Methods().ByName("GetKeyAccessServer")
-	keyAccessServerRegistryServiceCreateKeyAccessServerMethodDescriptor     = keyAccessServerRegistryServiceServiceDescriptor.Methods().ByName("CreateKeyAccessServer")
-	keyAccessServerRegistryServiceUpdateKeyAccessServerMethodDescriptor     = keyAccessServerRegistryServiceServiceDescriptor.Methods().ByName("UpdateKeyAccessServer")
-	keyAccessServerRegistryServiceDeleteKeyAccessServerMethodDescriptor     = keyAccessServerRegistryServiceServiceDescriptor.Methods().ByName("DeleteKeyAccessServer")
-	keyAccessServerRegistryServiceListKeyAccessServerGrantsMethodDescriptor = keyAccessServerRegistryServiceServiceDescriptor.Methods().ByName("ListKeyAccessServerGrants")
-	keyAccessServerRegistryServiceCreateKeyMethodDescriptor                 = keyAccessServerRegistryServiceServiceDescriptor.Methods().ByName("CreateKey")
-	keyAccessServerRegistryServiceGetKeyMethodDescriptor                    = keyAccessServerRegistryServiceServiceDescriptor.Methods().ByName("GetKey")
-	keyAccessServerRegistryServiceListKeysMethodDescriptor                  = keyAccessServerRegistryServiceServiceDescriptor.Methods().ByName("ListKeys")
-	keyAccessServerRegistryServiceUpdateKeyMethodDescriptor                 = keyAccessServerRegistryServiceServiceDescriptor.Methods().ByName("UpdateKey")
-	keyAccessServerRegistryServiceRotateKeyMethodDescriptor                 = keyAccessServerRegistryServiceServiceDescriptor.Methods().ByName("RotateKey")
-	keyAccessServerRegistryServiceSetBaseKeyMethodDescriptor                = keyAccessServerRegistryServiceServiceDescriptor.Methods().ByName("SetBaseKey")
-	keyAccessServerRegistryServiceGetBaseKeyMethodDescriptor                = keyAccessServerRegistryServiceServiceDescriptor.Methods().ByName("GetBaseKey")
-	keyAccessServerRegistryServiceListKeyMappingsMethodDescriptor           = keyAccessServerRegistryServiceServiceDescriptor.Methods().ByName("ListKeyMappings")
-)
-
 // KeyAccessServerRegistryServiceClient is a client for the
 // policy.kasregistry.KeyAccessServerRegistryService service.
 type KeyAccessServerRegistryServiceClient interface {
@@ -138,92 +119,93 @@ type KeyAccessServerRegistryServiceClient interface {
 // http://api.acme.com or https://acme.com/grpc).
 func NewKeyAccessServerRegistryServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.ClientOption) KeyAccessServerRegistryServiceClient {
 	baseURL = strings.TrimRight(baseURL, "/")
+	keyAccessServerRegistryServiceMethods := kasregistry.File_policy_kasregistry_key_access_server_registry_proto.Services().ByName("KeyAccessServerRegistryService").Methods()
 	return &keyAccessServerRegistryServiceClient{
 		listKeyAccessServers: connect.NewClient[kasregistry.ListKeyAccessServersRequest, kasregistry.ListKeyAccessServersResponse](
 			httpClient,
 			baseURL+KeyAccessServerRegistryServiceListKeyAccessServersProcedure,
-			connect.WithSchema(keyAccessServerRegistryServiceListKeyAccessServersMethodDescriptor),
+			connect.WithSchema(keyAccessServerRegistryServiceMethods.ByName("ListKeyAccessServers")),
 			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
 		getKeyAccessServer: connect.NewClient[kasregistry.GetKeyAccessServerRequest, kasregistry.GetKeyAccessServerResponse](
 			httpClient,
 			baseURL+KeyAccessServerRegistryServiceGetKeyAccessServerProcedure,
-			connect.WithSchema(keyAccessServerRegistryServiceGetKeyAccessServerMethodDescriptor),
+			connect.WithSchema(keyAccessServerRegistryServiceMethods.ByName("GetKeyAccessServer")),
 			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
 		createKeyAccessServer: connect.NewClient[kasregistry.CreateKeyAccessServerRequest, kasregistry.CreateKeyAccessServerResponse](
 			httpClient,
 			baseURL+KeyAccessServerRegistryServiceCreateKeyAccessServerProcedure,
-			connect.WithSchema(keyAccessServerRegistryServiceCreateKeyAccessServerMethodDescriptor),
+			connect.WithSchema(keyAccessServerRegistryServiceMethods.ByName("CreateKeyAccessServer")),
 			connect.WithClientOptions(opts...),
 		),
 		updateKeyAccessServer: connect.NewClient[kasregistry.UpdateKeyAccessServerRequest, kasregistry.UpdateKeyAccessServerResponse](
 			httpClient,
 			baseURL+KeyAccessServerRegistryServiceUpdateKeyAccessServerProcedure,
-			connect.WithSchema(keyAccessServerRegistryServiceUpdateKeyAccessServerMethodDescriptor),
+			connect.WithSchema(keyAccessServerRegistryServiceMethods.ByName("UpdateKeyAccessServer")),
 			connect.WithClientOptions(opts...),
 		),
 		deleteKeyAccessServer: connect.NewClient[kasregistry.DeleteKeyAccessServerRequest, kasregistry.DeleteKeyAccessServerResponse](
 			httpClient,
 			baseURL+KeyAccessServerRegistryServiceDeleteKeyAccessServerProcedure,
-			connect.WithSchema(keyAccessServerRegistryServiceDeleteKeyAccessServerMethodDescriptor),
+			connect.WithSchema(keyAccessServerRegistryServiceMethods.ByName("DeleteKeyAccessServer")),
 			connect.WithClientOptions(opts...),
 		),
 		listKeyAccessServerGrants: connect.NewClient[kasregistry.ListKeyAccessServerGrantsRequest, kasregistry.ListKeyAccessServerGrantsResponse](
 			httpClient,
 			baseURL+KeyAccessServerRegistryServiceListKeyAccessServerGrantsProcedure,
-			connect.WithSchema(keyAccessServerRegistryServiceListKeyAccessServerGrantsMethodDescriptor),
+			connect.WithSchema(keyAccessServerRegistryServiceMethods.ByName("ListKeyAccessServerGrants")),
 			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
 		createKey: connect.NewClient[kasregistry.CreateKeyRequest, kasregistry.CreateKeyResponse](
 			httpClient,
 			baseURL+KeyAccessServerRegistryServiceCreateKeyProcedure,
-			connect.WithSchema(keyAccessServerRegistryServiceCreateKeyMethodDescriptor),
+			connect.WithSchema(keyAccessServerRegistryServiceMethods.ByName("CreateKey")),
 			connect.WithClientOptions(opts...),
 		),
 		getKey: connect.NewClient[kasregistry.GetKeyRequest, kasregistry.GetKeyResponse](
 			httpClient,
 			baseURL+KeyAccessServerRegistryServiceGetKeyProcedure,
-			connect.WithSchema(keyAccessServerRegistryServiceGetKeyMethodDescriptor),
+			connect.WithSchema(keyAccessServerRegistryServiceMethods.ByName("GetKey")),
 			connect.WithClientOptions(opts...),
 		),
 		listKeys: connect.NewClient[kasregistry.ListKeysRequest, kasregistry.ListKeysResponse](
 			httpClient,
 			baseURL+KeyAccessServerRegistryServiceListKeysProcedure,
-			connect.WithSchema(keyAccessServerRegistryServiceListKeysMethodDescriptor),
+			connect.WithSchema(keyAccessServerRegistryServiceMethods.ByName("ListKeys")),
 			connect.WithClientOptions(opts...),
 		),
 		updateKey: connect.NewClient[kasregistry.UpdateKeyRequest, kasregistry.UpdateKeyResponse](
 			httpClient,
 			baseURL+KeyAccessServerRegistryServiceUpdateKeyProcedure,
-			connect.WithSchema(keyAccessServerRegistryServiceUpdateKeyMethodDescriptor),
+			connect.WithSchema(keyAccessServerRegistryServiceMethods.ByName("UpdateKey")),
 			connect.WithClientOptions(opts...),
 		),
 		rotateKey: connect.NewClient[kasregistry.RotateKeyRequest, kasregistry.RotateKeyResponse](
 			httpClient,
 			baseURL+KeyAccessServerRegistryServiceRotateKeyProcedure,
-			connect.WithSchema(keyAccessServerRegistryServiceRotateKeyMethodDescriptor),
+			connect.WithSchema(keyAccessServerRegistryServiceMethods.ByName("RotateKey")),
 			connect.WithClientOptions(opts...),
 		),
 		setBaseKey: connect.NewClient[kasregistry.SetBaseKeyRequest, kasregistry.SetBaseKeyResponse](
 			httpClient,
 			baseURL+KeyAccessServerRegistryServiceSetBaseKeyProcedure,
-			connect.WithSchema(keyAccessServerRegistryServiceSetBaseKeyMethodDescriptor),
+			connect.WithSchema(keyAccessServerRegistryServiceMethods.ByName("SetBaseKey")),
 			connect.WithClientOptions(opts...),
 		),
 		getBaseKey: connect.NewClient[kasregistry.GetBaseKeyRequest, kasregistry.GetBaseKeyResponse](
 			httpClient,
 			baseURL+KeyAccessServerRegistryServiceGetBaseKeyProcedure,
-			connect.WithSchema(keyAccessServerRegistryServiceGetBaseKeyMethodDescriptor),
+			connect.WithSchema(keyAccessServerRegistryServiceMethods.ByName("GetBaseKey")),
 			connect.WithClientOptions(opts...),
 		),
 		listKeyMappings: connect.NewClient[kasregistry.ListKeyMappingsRequest, kasregistry.ListKeyMappingsResponse](
 			httpClient,
 			baseURL+KeyAccessServerRegistryServiceListKeyMappingsProcedure,
-			connect.WithSchema(keyAccessServerRegistryServiceListKeyMappingsMethodDescriptor),
+			connect.WithSchema(keyAccessServerRegistryServiceMethods.ByName("ListKeyMappings")),
 			connect.WithClientOptions(opts...),
 		),
 	}
@@ -361,91 +343,92 @@ type KeyAccessServerRegistryServiceHandler interface {
 // By default, handlers support the Connect, gRPC, and gRPC-Web protocols with the binary Protobuf
 // and JSON codecs. They also support gzip compression.
 func NewKeyAccessServerRegistryServiceHandler(svc KeyAccessServerRegistryServiceHandler, opts ...connect.HandlerOption) (string, http.Handler) {
+	keyAccessServerRegistryServiceMethods := kasregistry.File_policy_kasregistry_key_access_server_registry_proto.Services().ByName("KeyAccessServerRegistryService").Methods()
 	keyAccessServerRegistryServiceListKeyAccessServersHandler := connect.NewUnaryHandler(
 		KeyAccessServerRegistryServiceListKeyAccessServersProcedure,
 		svc.ListKeyAccessServers,
-		connect.WithSchema(keyAccessServerRegistryServiceListKeyAccessServersMethodDescriptor),
+		connect.WithSchema(keyAccessServerRegistryServiceMethods.ByName("ListKeyAccessServers")),
 		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
 	keyAccessServerRegistryServiceGetKeyAccessServerHandler := connect.NewUnaryHandler(
 		KeyAccessServerRegistryServiceGetKeyAccessServerProcedure,
 		svc.GetKeyAccessServer,
-		connect.WithSchema(keyAccessServerRegistryServiceGetKeyAccessServerMethodDescriptor),
+		connect.WithSchema(keyAccessServerRegistryServiceMethods.ByName("GetKeyAccessServer")),
 		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
 	keyAccessServerRegistryServiceCreateKeyAccessServerHandler := connect.NewUnaryHandler(
 		KeyAccessServerRegistryServiceCreateKeyAccessServerProcedure,
 		svc.CreateKeyAccessServer,
-		connect.WithSchema(keyAccessServerRegistryServiceCreateKeyAccessServerMethodDescriptor),
+		connect.WithSchema(keyAccessServerRegistryServiceMethods.ByName("CreateKeyAccessServer")),
 		connect.WithHandlerOptions(opts...),
 	)
 	keyAccessServerRegistryServiceUpdateKeyAccessServerHandler := connect.NewUnaryHandler(
 		KeyAccessServerRegistryServiceUpdateKeyAccessServerProcedure,
 		svc.UpdateKeyAccessServer,
-		connect.WithSchema(keyAccessServerRegistryServiceUpdateKeyAccessServerMethodDescriptor),
+		connect.WithSchema(keyAccessServerRegistryServiceMethods.ByName("UpdateKeyAccessServer")),
 		connect.WithHandlerOptions(opts...),
 	)
 	keyAccessServerRegistryServiceDeleteKeyAccessServerHandler := connect.NewUnaryHandler(
 		KeyAccessServerRegistryServiceDeleteKeyAccessServerProcedure,
 		svc.DeleteKeyAccessServer,
-		connect.WithSchema(keyAccessServerRegistryServiceDeleteKeyAccessServerMethodDescriptor),
+		connect.WithSchema(keyAccessServerRegistryServiceMethods.ByName("DeleteKeyAccessServer")),
 		connect.WithHandlerOptions(opts...),
 	)
 	keyAccessServerRegistryServiceListKeyAccessServerGrantsHandler := connect.NewUnaryHandler(
 		KeyAccessServerRegistryServiceListKeyAccessServerGrantsProcedure,
 		svc.ListKeyAccessServerGrants,
-		connect.WithSchema(keyAccessServerRegistryServiceListKeyAccessServerGrantsMethodDescriptor),
+		connect.WithSchema(keyAccessServerRegistryServiceMethods.ByName("ListKeyAccessServerGrants")),
 		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
 	keyAccessServerRegistryServiceCreateKeyHandler := connect.NewUnaryHandler(
 		KeyAccessServerRegistryServiceCreateKeyProcedure,
 		svc.CreateKey,
-		connect.WithSchema(keyAccessServerRegistryServiceCreateKeyMethodDescriptor),
+		connect.WithSchema(keyAccessServerRegistryServiceMethods.ByName("CreateKey")),
 		connect.WithHandlerOptions(opts...),
 	)
 	keyAccessServerRegistryServiceGetKeyHandler := connect.NewUnaryHandler(
 		KeyAccessServerRegistryServiceGetKeyProcedure,
 		svc.GetKey,
-		connect.WithSchema(keyAccessServerRegistryServiceGetKeyMethodDescriptor),
+		connect.WithSchema(keyAccessServerRegistryServiceMethods.ByName("GetKey")),
 		connect.WithHandlerOptions(opts...),
 	)
 	keyAccessServerRegistryServiceListKeysHandler := connect.NewUnaryHandler(
 		KeyAccessServerRegistryServiceListKeysProcedure,
 		svc.ListKeys,
-		connect.WithSchema(keyAccessServerRegistryServiceListKeysMethodDescriptor),
+		connect.WithSchema(keyAccessServerRegistryServiceMethods.ByName("ListKeys")),
 		connect.WithHandlerOptions(opts...),
 	)
 	keyAccessServerRegistryServiceUpdateKeyHandler := connect.NewUnaryHandler(
 		KeyAccessServerRegistryServiceUpdateKeyProcedure,
 		svc.UpdateKey,
-		connect.WithSchema(keyAccessServerRegistryServiceUpdateKeyMethodDescriptor),
+		connect.WithSchema(keyAccessServerRegistryServiceMethods.ByName("UpdateKey")),
 		connect.WithHandlerOptions(opts...),
 	)
 	keyAccessServerRegistryServiceRotateKeyHandler := connect.NewUnaryHandler(
 		KeyAccessServerRegistryServiceRotateKeyProcedure,
 		svc.RotateKey,
-		connect.WithSchema(keyAccessServerRegistryServiceRotateKeyMethodDescriptor),
+		connect.WithSchema(keyAccessServerRegistryServiceMethods.ByName("RotateKey")),
 		connect.WithHandlerOptions(opts...),
 	)
 	keyAccessServerRegistryServiceSetBaseKeyHandler := connect.NewUnaryHandler(
 		KeyAccessServerRegistryServiceSetBaseKeyProcedure,
 		svc.SetBaseKey,
-		connect.WithSchema(keyAccessServerRegistryServiceSetBaseKeyMethodDescriptor),
+		connect.WithSchema(keyAccessServerRegistryServiceMethods.ByName("SetBaseKey")),
 		connect.WithHandlerOptions(opts...),
 	)
 	keyAccessServerRegistryServiceGetBaseKeyHandler := connect.NewUnaryHandler(
 		KeyAccessServerRegistryServiceGetBaseKeyProcedure,
 		svc.GetBaseKey,
-		connect.WithSchema(keyAccessServerRegistryServiceGetBaseKeyMethodDescriptor),
+		connect.WithSchema(keyAccessServerRegistryServiceMethods.ByName("GetBaseKey")),
 		connect.WithHandlerOptions(opts...),
 	)
 	keyAccessServerRegistryServiceListKeyMappingsHandler := connect.NewUnaryHandler(
 		KeyAccessServerRegistryServiceListKeyMappingsProcedure,
 		svc.ListKeyMappings,
-		connect.WithSchema(keyAccessServerRegistryServiceListKeyMappingsMethodDescriptor),
+		connect.WithSchema(keyAccessServerRegistryServiceMethods.ByName("ListKeyMappings")),
 		connect.WithHandlerOptions(opts...),
 	)
 	return "/policy.kasregistry.KeyAccessServerRegistryService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

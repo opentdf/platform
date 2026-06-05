@@ -1423,7 +1423,7 @@ func Test_SetDefault_Keys(t *testing.T) {
 			errorMessage: errMessageRequired,
 		},
 		{
-			name: "Valid Request (nano)",
+			name: "Valid Request (ec)",
 			req: &kasregistry.SetBaseKeyRequest{
 				ActiveKey: &kasregistry.SetBaseKeyRequest_Id{
 					Id: validUUID,
@@ -1432,7 +1432,7 @@ func Test_SetDefault_Keys(t *testing.T) {
 			expectError: false,
 		},
 		{
-			name: "Valid Request (ztdf)",
+			name: "Valid Request (rsa)",
 			req: &kasregistry.SetBaseKeyRequest{
 				ActiveKey: &kasregistry.SetBaseKeyRequest_Id{
 					Id: validUUID,

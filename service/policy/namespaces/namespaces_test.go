@@ -5,6 +5,7 @@ import (
 
 	"buf.build/go/protovalidate"
 	"github.com/opentdf/platform/protocol/go/common"
+	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/namespaces"
 	"github.com/stretchr/testify/require"
 )
@@ -339,6 +340,42 @@ func Test_AssignPublicKeyToNamespace(t *testing.T) {
 	}
 }
 
+func Test_ListNamespacesRequest_Sort(t *testing.T) {
+	v := getValidator()
+
+	// no sort — valid
+	req := &namespaces.ListNamespacesRequest{}
+	require.NoError(t, v.Validate(req))
+
+	// one sort item — valid
+	req = &namespaces.ListNamespacesRequest{
+		Sort: []*namespaces.NamespacesSort{
+			{
+				Field:     namespaces.SortNamespacesType_SORT_NAMESPACES_TYPE_CREATED_AT,
+				Direction: policy.SortDirection_SORT_DIRECTION_ASC,
+			},
+		},
+	}
+	require.NoError(t, v.Validate(req))
+
+	// two sort items — exceeds max_items = 1
+	req = &namespaces.ListNamespacesRequest{
+		Sort: []*namespaces.NamespacesSort{
+			{
+				Field:     namespaces.SortNamespacesType_SORT_NAMESPACES_TYPE_CREATED_AT,
+				Direction: policy.SortDirection_SORT_DIRECTION_ASC,
+			},
+			{
+				Field:     namespaces.SortNamespacesType_SORT_NAMESPACES_TYPE_NAME,
+				Direction: policy.SortDirection_SORT_DIRECTION_DESC,
+			},
+		},
+	}
+	err := v.Validate(req)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "sort")
+}
+
 func Test_RemovePublicKeyFromNamespace(t *testing.T) {
 	testCases := []struct {
 		name         string
@@ -378,193 +415,6 @@ func Test_RemovePublicKeyFromNamespace(t *testing.T) {
 				NamespaceKey: &namespaces.NamespaceKey{
 					NamespaceId: validUUID,
 					KeyId:       validUUID,
-				},
-			},
-			expectError: false,
-		},
-	}
-
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
-			err := getValidator().Validate(tc.req)
-			if tc.expectError {
-				require.Error(t, err, "Expected error for test case: %s", tc.name)
-				if tc.errorMessage != "" {
-					require.Contains(t, err.Error(), tc.errorMessage, "Expected error message to contain '%s' for test case: %s", tc.errorMessage, tc.name)
-				}
-			} else {
-				require.NoError(t, err, "Expected no error for test case: %s", tc.name)
-			}
-		})
-	}
-}
-
-func Test_AssignCertificateToNamespace(t *testing.T) {
-	const (
-		// Valid PEM certificate
-		validPem = `-----BEGIN CERTIFICATE-----
-MIICjTCCAhSgAwIBAgIIdebfy8FoW6gwCgYIKoZIzj0EAwIwfDELMAkGA1UEBhMC
-VVMxCzAJBgNVBAgMAkNBMRYwFAYDVQQHDA1TYW4gRnJhbmNpc2NvMRkwFwYDVQQK
-DBBvcGVudGRmLm9yZyBJbmMxDTALBgNVBAsMBFRlc3QxHjAcBgNVBAMMFW9wZW50
-ZGYub3JnIFRlc3QgQ0EwHhcNMjMwMTA0MTcwMDAwWhcNMzMwMTA0MTcwMDAwWjB8
-MQswCQYDVQQGEwJVUzELMAkGA1UECAwCQ0ExFjAUBgNVBAcMDVNhbiBGcmFuY2lz
-Y28xGTAXBgNVBAoMEG9wZW50ZGYub3JnIEluYzENMAsGA1UECwwEVGVzdDEeMBwG
-A1UEAwwVb3BlbnRkZi5vcmcgVGVzdCBDQTBZMBMGByqGSM49AgEGCCqGSM49AwEH
-A0IABJxnFtjHhP+oVPXm/hj/mZzzsKfKlF0vCL0eMR0K+Pp4OqEWVe0KN6FZPDGz
-7zKcrmqU5TXnNJ9YI9U6d0hJDyCjUzBRMB0GA1UdDgQWBBQVFzPXe9XHOD+UGpnL
-8N6m7w7fYDAfBgNVHSMEGDAWgBQVFzPXe9XHOD+UGpnL8N6m7w7fYDAPBgNVHRMB
-Af8EBTADAQH/MAoGCCqGSM49BAMCA0cAMEQCIFBEa8VPY9xJfMPNDGR8g7mFPHvx
-NKCNUZk8ooLjkVsVAiBZONcH5dDCr+fRGUnXjqWN0v+ZCVEoQr8vMrZBPf3KOQ==
------END CERTIFICATE-----`
-	)
-
-	testCases := []struct {
-		name         string
-		req          *namespaces.AssignCertificateToNamespaceRequest
-		expectError  bool
-		errorMessage string
-	}{
-		{
-			name:         "Invalid - Empty Request",
-			req:          &namespaces.AssignCertificateToNamespaceRequest{},
-			expectError:  true,
-			errorMessage: "namespace",
-		},
-		{
-			name: "Invalid - Missing pem",
-			req: &namespaces.AssignCertificateToNamespaceRequest{
-				Namespace: &common.IdFqnIdentifier{Id: validUUID},
-			},
-			expectError:  true,
-			errorMessage: "pem",
-		},
-		{
-			name: "Invalid - Missing namespace ID",
-			req: &namespaces.AssignCertificateToNamespaceRequest{
-				Pem: validPem,
-			},
-			expectError:  true,
-			errorMessage: "namespace",
-		},
-		{
-			name: "Invalid - Bad namespace UUID",
-			req: &namespaces.AssignCertificateToNamespaceRequest{
-				Namespace: &common.IdFqnIdentifier{Id: "not-a-uuid"},
-				Pem:       validPem,
-			},
-			expectError:  true,
-			errorMessage: errMessageUUID,
-		},
-		{
-			name: "Valid - All fields present",
-			req: &namespaces.AssignCertificateToNamespaceRequest{
-				Namespace: &common.IdFqnIdentifier{Id: validUUID},
-				Pem:       validPem,
-			},
-			expectError: false,
-		},
-		{
-			name: "Valid - With metadata",
-			req: &namespaces.AssignCertificateToNamespaceRequest{
-				Namespace: &common.IdFqnIdentifier{Id: validUUID},
-				Pem:       validPem,
-				Metadata: &common.MetadataMutable{
-					Labels: map[string]string{"source": "test"},
-				},
-			},
-			expectError: false,
-		},
-	}
-
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
-			err := getValidator().Validate(tc.req)
-			if tc.expectError {
-				require.Error(t, err, "Expected error for test case: %s", tc.name)
-				if tc.errorMessage != "" {
-					require.Contains(t, err.Error(), tc.errorMessage, "Expected error message to contain '%s' for test case: %s", tc.errorMessage, tc.name)
-				}
-			} else {
-				require.NoError(t, err, "Expected no error for test case: %s", tc.name)
-			}
-		})
-	}
-}
-
-func Test_RemoveCertificateFromNamespace(t *testing.T) {
-	const (
-		errMessageNamespaceCert = "namespace_certificate"
-		errMessageCertID        = "certificate_id"
-	)
-
-	testCases := []struct {
-		name         string
-		req          *namespaces.RemoveCertificateFromNamespaceRequest
-		expectError  bool
-		errorMessage string
-	}{
-		{
-			name:         "Invalid - Empty Request",
-			req:          &namespaces.RemoveCertificateFromNamespaceRequest{},
-			expectError:  true,
-			errorMessage: errMessageNamespaceCert,
-		},
-		{
-			name: "Invalid - Empty NamespaceCertificate",
-			req: &namespaces.RemoveCertificateFromNamespaceRequest{
-				NamespaceCertificate: &namespaces.NamespaceCertificate{},
-			},
-			expectError:  true,
-			errorMessage: "namespace",
-		},
-		{
-			name: "Invalid - Missing certificate ID",
-			req: &namespaces.RemoveCertificateFromNamespaceRequest{
-				NamespaceCertificate: &namespaces.NamespaceCertificate{
-					Namespace: &common.IdFqnIdentifier{Id: validUUID},
-				},
-			},
-			expectError:  true,
-			errorMessage: errMessageCertID,
-		},
-		{
-			name: "Invalid - Missing namespace ID",
-			req: &namespaces.RemoveCertificateFromNamespaceRequest{
-				NamespaceCertificate: &namespaces.NamespaceCertificate{
-					CertificateId: validUUID,
-				},
-			},
-			expectError:  true,
-			errorMessage: "namespace",
-		},
-		{
-			name: "Invalid - Bad namespace UUID",
-			req: &namespaces.RemoveCertificateFromNamespaceRequest{
-				NamespaceCertificate: &namespaces.NamespaceCertificate{
-					Namespace:     &common.IdFqnIdentifier{Id: "not-a-uuid"},
-					CertificateId: validUUID,
-				},
-			},
-			expectError:  true,
-			errorMessage: errMessageUUID,
-		},
-		{
-			name: "Invalid - Bad certificate UUID",
-			req: &namespaces.RemoveCertificateFromNamespaceRequest{
-				NamespaceCertificate: &namespaces.NamespaceCertificate{
-					Namespace:     &common.IdFqnIdentifier{Id: validUUID},
-					CertificateId: "not-a-uuid",
-				},
-			},
-			expectError:  true,
-			errorMessage: errMessageUUID,
-		},
-		{
-			name: "Valid - All fields present",
-			req: &namespaces.RemoveCertificateFromNamespaceRequest{
-				NamespaceCertificate: &namespaces.NamespaceCertificate{
-					Namespace:     &common.IdFqnIdentifier{Id: validUUID},
-					CertificateId: validUUID,
 				},
 			},
 			expectError: false,

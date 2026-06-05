@@ -46,7 +46,7 @@ func Start(f ...StartOptions) error {
 
 	ctx := context.Background()
 
-	slog.Debug("loading configuration from environment")
+	slog.Log(ctx, logger.LevelTrace, "loading configuration from environment")
 	loaderOrder := []string{
 		config.LoaderNameLegacy,
 		config.LoaderNameDefaultSettings,
@@ -125,7 +125,7 @@ func Start(f ...StartOptions) error {
 	}
 	defer shutdown()
 
-	logger.Debug("config loaded", slog.Any("config", cfg.LogValue()))
+	logger.Trace("config loaded", slog.Any("config", cfg.LogValue()))
 
 	// Configure cache manager
 	logger.Info("creating cache manager")
@@ -152,6 +152,10 @@ func Start(f ...StartOptions) error {
 		cfg.Server.Auth.IPCReauthRoutes = startConfig.IPCReauthRoutes
 	}
 
+	// Programmatic Connect/IPC interceptors (not config-driven)
+	cfg.Server.ExtraConnectInterceptors = append(cfg.Server.ExtraConnectInterceptors, startConfig.extraConnectInterceptors...)
+	cfg.Server.ExtraIPCInterceptors = append(cfg.Server.ExtraIPCInterceptors, startConfig.extraIPCInterceptors...)
+
 	// Set Default Policy
 	if startConfig.builtinPolicyOverride != "" {
 		cfg.Server.Auth.Policy.Builtin = startConfig.builtinPolicyOverride
@@ -160,6 +164,14 @@ func Start(f ...StartOptions) error {
 	// Set Casbin Adapter
 	if startConfig.casbinAdapter != nil {
 		cfg.Server.Auth.Policy.Adapter = startConfig.casbinAdapter
+	}
+
+	// Set AuthZ role provider overrides
+	if startConfig.authzRoleProvider != nil {
+		cfg.Server.Auth.RoleProvider = startConfig.authzRoleProvider
+	}
+	if startConfig.authzRoleProviderFactories != nil {
+		cfg.Server.Auth.RoleProviderFactories = startConfig.authzRoleProviderFactories
 	}
 
 	// Apply additional CORS configuration from programmatic options
@@ -256,7 +268,7 @@ func Start(f ...StartOptions) error {
 		}
 
 		// provide token endpoint -- sdk cannot discover it since well-known service isnt running yet
-		sdkOptions = append(sdkOptions, sdk.WithTokenEndpoint(oidcconfig.TokenEndpoint))
+		sdkOptions = append(sdkOptions, sdk.WithTokenEndpoint(oidcconfig.TokenEndpoint)) //nolint:staticcheck // Backward-compatible explicit token endpoint option.
 	}
 
 	// Configure SDK based on mode
@@ -276,7 +288,7 @@ func Start(f ...StartOptions) error {
 	authzResolverRegistry := authz.NewResolverRegistry()
 
 	logger.Info("starting services")
-	gatewayCleanup, err := startServices(ctx, startServicesParams{
+	err = startServices(ctx, startServicesParams{
 		cfg:                    cfg,
 		otdf:                   otdf,
 		client:                 client,
@@ -290,10 +302,25 @@ func Start(f ...StartOptions) error {
 		logger.Error("issue starting services", slog.String("error", err.Error()))
 		return fmt.Errorf("issue starting services: %w", err)
 	}
-	defer gatewayCleanup()
 
 	// Start watching the configuration for changes with registered config change service hooks
-	if err := cfg.Watch(ctx); err != nil {
+	var watchInfo []config.NamespaceInfo
+	for _, nsInfo := range svcRegistry.GetNamespaces() {
+		var services []config.ServiceInfo
+		for _, svc := range nsInfo.Namespace.Services {
+			services = append(services, config.ServiceInfo{
+				Namespace: svc.GetNamespace(),
+				Name:      svc.GetServiceDesc().ServiceName,
+			})
+		}
+		watchInfo = append(watchInfo, config.NamespaceInfo{
+			Name:     nsInfo.Name,
+			Enabled:  nsInfo.Namespace.IsEnabled(cfg.Mode),
+			Services: services,
+		})
+	}
+
+	if err := cfg.WatchWithNamespaces(ctx, watchInfo); err != nil {
 		return fmt.Errorf("failed to watch configuration: %w", err)
 	}
 	defer cfg.Close(ctx)
@@ -365,6 +392,13 @@ func setupERSConnection(cfg *config.Config, oidcconfig *auth.OIDCConfiguration, 
 	}
 
 	ersConnectRPCConn := &sdk.ConnectRPCConnection{}
+
+	// OTel tracing and metrics for outbound ERS Connect RPCs (outermost interceptor)
+	if ersTraceInt, err := tracing.ConnectClientTraceInterceptor(); err != nil {
+		logger.Error("failed to create ERS trace interceptor", slog.String("error", err.Error()))
+	} else {
+		ersConnectRPCConn.Options = append(ersConnectRPCConn.Options, connect.WithInterceptors(ersTraceInt))
+	}
 
 	// Configure TLS
 	tlsConfig := configureTLSForERS(cfg, ersConnectRPCConn)

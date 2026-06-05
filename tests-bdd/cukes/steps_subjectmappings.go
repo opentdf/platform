@@ -29,6 +29,14 @@ func (s *SubjectMappingsStepDefinitions) iSendARequestToCreateSubjectMapping(ctx
 				cellIndexMap[ci] = c.Value
 			} else {
 				switch cellIndexMap[ci] {
+				case "namespace_id":
+					nsID, ok := scenarioContext.GetObject(strings.TrimSpace(c.Value)).(string)
+					if !ok {
+						return ctx, fmt.Errorf("unable to get namespace id for %s", c.Value)
+					}
+					subjectMappingRequest.NamespaceId = nsID
+				case "namespace_fqn":
+					subjectMappingRequest.NamespaceFqn = strings.TrimSpace(c.Value)
 				case "attribute_value":
 					av, err := scenarioContext.GetAttributeValue(ctx, strings.TrimSpace(c.Value))
 					if err != nil {
@@ -72,6 +80,14 @@ func (s *SubjectMappingsStepDefinitions) iSendARequestToCreateSubjectMapping(ctx
 }
 
 func (s *SubjectMappingsStepDefinitions) iSendARequestToCreateSubjectConditionSet(ctx context.Context, referenceID string, subjectSetIDs string) (context.Context, error) {
+	return s.createSubjectConditionSet(ctx, referenceID, subjectSetIDs, "")
+}
+
+func (s *SubjectMappingsStepDefinitions) iSendARequestToCreateSubjectConditionSetInNamespace(ctx context.Context, referenceID string, namespaceRef string, subjectSetIDs string) (context.Context, error) {
+	return s.createSubjectConditionSet(ctx, referenceID, subjectSetIDs, namespaceRef)
+}
+
+func (s *SubjectMappingsStepDefinitions) createSubjectConditionSet(ctx context.Context, referenceID string, subjectSetIDs string, namespaceRef string) (context.Context, error) {
 	scenarioContext := GetPlatformScenarioContext(ctx)
 	scenarioContext.ClearError()
 	subjectSets := []*policy.SubjectSet{}
@@ -82,11 +98,21 @@ func (s *SubjectMappingsStepDefinitions) iSendARequestToCreateSubjectConditionSe
 		}
 		subjectSets = append(subjectSets, ss)
 	}
-	resp, respErr := scenarioContext.SDK.SubjectMapping.CreateSubjectConditionSet(ctx, &subjectmapping.CreateSubjectConditionSetRequest{
+	req := &subjectmapping.CreateSubjectConditionSetRequest{
 		SubjectConditionSet: &subjectmapping.SubjectConditionSetCreate{
 			SubjectSets: subjectSets,
 		},
-	})
+	}
+
+	if namespaceRef != "" {
+		nsID, ok := scenarioContext.GetObject(strings.TrimSpace(namespaceRef)).(string)
+		if !ok {
+			return ctx, fmt.Errorf("unable to get namespace id for %s", namespaceRef)
+		}
+		req.NamespaceId = nsID
+	}
+
+	resp, respErr := scenarioContext.SDK.SubjectMapping.CreateSubjectConditionSet(ctx, req)
 	if resp != nil {
 		scenarioContext.RecordObject(referenceID, resp.GetSubjectConditionSet())
 	}
@@ -163,5 +189,6 @@ func RegisterSubjectMappingsStepsDefinitions(ctx *godog.ScenarioContext) {
 	ctx.Step(`a condition group referenced as "([^"]*)" with an "([^"]*)" operator with conditions:$`, subjectMappingStepDefinitions.aConditionGroup)
 	ctx.Step(`^a subject set referenced as "([^"]*)" containing the condition groups "([^"]*)"$`, subjectMappingStepDefinitions.aSubjectSet)
 	ctx.Step(`^I send a request to create a subject condition set referenced as "([^"]*)" containing subject sets "([^"]*)"$`, subjectMappingStepDefinitions.iSendARequestToCreateSubjectConditionSet)
+	ctx.Step(`^I send a request to create a subject condition set referenced as "([^"]*)" in namespace "([^"]*)" containing subject sets "([^"]*)"$`, subjectMappingStepDefinitions.iSendARequestToCreateSubjectConditionSetInNamespace)
 	ctx.Step(`^I send a request to create a subject mapping with:$`, subjectMappingStepDefinitions.iSendARequestToCreateSubjectMapping)
 }

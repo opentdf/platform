@@ -1,4 +1,4 @@
-//nolint:forbidigo,nestif // We use Println here extensively because we are printing markdown.
+//nolint:forbidigo // We use fmt.Printf here extensively because we are printing markdown.
 package cmd
 
 import (
@@ -15,13 +15,6 @@ import (
 	"github.com/spf13/cobra"
 )
 
-type TDFFormat string
-
-const (
-	TDF3    TDFFormat = "tdf3"
-	NanoTDF TDFFormat = "nanotdf"
-)
-
 func gfmCellEscape(s string) string {
 	// Escape pipe characters for GitHub Flavored Markdown tables
 	pipes := strings.ReplaceAll(s, "|", "\\|")
@@ -29,26 +22,7 @@ func gfmCellEscape(s string) string {
 	return brs
 }
 
-func (f *TDFFormat) String() string {
-	return string(*f)
-}
-
-func (f *TDFFormat) Set(value string) error {
-	switch value {
-	case "tdf3", "nanotdf":
-		*f = TDFFormat(value)
-		return nil
-	default:
-		return errors.New("invalid TDF format")
-	}
-}
-
-func (f *TDFFormat) Type() string {
-	return "TDFFormat"
-}
-
 type BenchmarkConfig struct {
-	TDFFormat          TDFFormat
 	ConcurrentRequests int
 	RequestCount       int
 	RequestsPerSecond  int
@@ -69,7 +43,6 @@ func init() {
 	benchmarkCmd.Flags().IntVar(&config.RequestCount, "count", 100, "Total number of requests")                //nolint: mnd // This is output to the help with explanation
 	benchmarkCmd.Flags().IntVar(&config.RequestsPerSecond, "rps", 50, "Requests per second limit")             //nolint: mnd // This is output to the help with explanation
 	benchmarkCmd.Flags().IntVar(&config.TimeoutSeconds, "timeout", 30, "Timeout in seconds")                   //nolint: mnd // This is output to the help with explanation
-	benchmarkCmd.Flags().Var(&config.TDFFormat, "tdf", "TDF format (tdf3 or nanotdf)")
 	ExamplesCmd.AddCommand(benchmarkCmd)
 }
 
@@ -96,67 +69,35 @@ func runBenchmark(cmd *cobra.Command, _ []string) error {
 	}()
 
 	dataAttributes := []string{"https://example.com/attr/attr1/value/value1"}
-	if config.TDFFormat == NanoTDF {
-		nanoTDFConfig, err := client.NewNanoTDFConfig()
-		if err != nil {
-			return err
-		}
-		err = nanoTDFConfig.SetAttributes(dataAttributes)
-		if err != nil {
-			return err
-		}
-		nanoTDFConfig.EnableECDSAPolicyBinding()
-		if insecurePlaintextConn || strings.HasPrefix(platformEndpoint, "http://") {
-			err = nanoTDFConfig.SetKasURL(fmt.Sprintf("http://%s/kas", "localhost:8080"))
-		} else {
-			err = nanoTDFConfig.SetKasURL(fmt.Sprintf("https://%s/kas", "localhost:8080"))
-		}
-		if err != nil {
-			return err
-		}
-
-		_, err = client.CreateNanoTDF(out, in, *nanoTDFConfig)
-		if err != nil {
-			return err
-		}
-
-		// if outputName != "-" {
-		// 	err = cat(cmd, outputName)
-		// 	if err != nil {
-		// 		return err
-		// 	}
-		// }
-	} else {
-		opts := []sdk.TDFOption{sdk.WithDataAttributes(dataAttributes...), sdk.WithAutoconfigure(false)}
-		if insecurePlaintextConn || strings.HasPrefix(platformEndpoint, "http://") {
-			opts = append(opts, sdk.WithKasInformation(
-				sdk.KASInfo{
-					URL:       "http://localhost:8080",
-					PublicKey: "",
-				}),
-			)
-		} else {
-			opts = append(opts, sdk.WithKasInformation(
-				sdk.KASInfo{
-					URL:       "https://localhost:8080",
-					PublicKey: "",
-				}),
-			)
-		}
-		tdf, err := client.CreateTDF(
-			out, in,
-			opts...,
+	opts := []sdk.TDFOption{sdk.WithDataAttributes(dataAttributes...), sdk.WithAutoconfigure(false)}
+	if insecurePlaintextConn || strings.HasPrefix(platformEndpoint, "http://") {
+		opts = append(opts, sdk.WithKasInformation(
+			sdk.KASInfo{
+				URL:       "http://localhost:8080",
+				PublicKey: "",
+			}),
 		)
-		if err != nil {
-			return err
-		}
-
-		manifestJSON, err := json.MarshalIndent(tdf.Manifest(), "", "  ")
-		if err != nil {
-			return err
-		}
-		cmd.Println(string(manifestJSON))
+	} else {
+		opts = append(opts, sdk.WithKasInformation(
+			sdk.KASInfo{
+				URL:       "https://localhost:8080",
+				PublicKey: "",
+			}),
+		)
 	}
+	tdf, err := client.CreateTDF(
+		out, in,
+		opts...,
+	)
+	if err != nil {
+		return err
+	}
+
+	manifestJSON, err := json.MarshalIndent(tdf.Manifest(), "", "  ")
+	if err != nil {
+		return err
+	}
+	cmd.Println(string(manifestJSON))
 
 	var wg sync.WaitGroup
 	// Queries (requests) channel
@@ -178,24 +119,16 @@ func runBenchmark(cmd *cobra.Command, _ []string) error {
 		}
 		defer file.Close()
 
-		if config.TDFFormat == NanoTDF {
-			_, err = client.ReadNanoTDF(io.Discard, file)
-			if err != nil {
-				e <- fmt.Errorf("ReadNanoTDF error: %w", err)
-				return
-			}
-		} else {
-			tdfreader, err := client.LoadTDF(file)
-			if err != nil {
-				e <- fmt.Errorf("LoadTDF error: %w", err)
-				return
-			}
+		tdfreader, err := client.LoadTDF(file)
+		if err != nil {
+			e <- fmt.Errorf("LoadTDF error: %w", err)
+			return
+		}
 
-			_, err = io.Copy(io.Discard, tdfreader)
-			if err != nil && !errors.Is(err, io.EOF) {
-				e <- fmt.Errorf("read error: %w", err)
-				return
-			}
+		_, err = io.Copy(io.Discard, tdfreader)
+		if err != nil && !errors.Is(err, io.EOF) {
+			e <- fmt.Errorf("read error: %w", err)
+			return
 		}
 
 		a <- time.Since(start)
@@ -238,11 +171,7 @@ func runBenchmark(cmd *cobra.Command, _ []string) error {
 	}
 	throughput := float64(successCount) / totalTime.Seconds()
 
-	format := config.TDFFormat
-	if format == "" {
-		format = TDF3
-	}
-	fmt.Printf("## %s Benchmark Results:\n", strings.ToUpper(format.String()))
+	fmt.Printf("## %s Benchmark Results:\n", strings.ToUpper("tdf3"))
 	fmt.Printf("| Metric                | Value                     |\n")
 	fmt.Printf("|-----------------------|---------------------------|\n")
 	fmt.Printf("| Total Requests        | %d                        |\n", config.RequestCount)

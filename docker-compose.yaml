@@ -4,6 +4,7 @@ networks:
 services:
   keycloak:
     volumes:
+    - keycloak_data:/opt/keycloak/data
     - ${KEYS_DIR:-./keys}/localhost.crt:/etc/x509/tls/localhost.crt
     - ${KEYS_DIR:-./keys}/localhost.key:/etc/x509/tls/localhost.key
     - ${KEYS_DIR:-./keys}/ca.jks:/truststore/truststore.jks
@@ -19,12 +20,6 @@ services:
     environment:
       KC_PROXY: edge
       KC_HTTP_RELATIVE_PATH: /auth
-      KC_DB_VENDOR: postgres
-      KC_DB_URL_HOST: keycloakdb
-      KC_DB_URL_PORT: 5432
-      KC_DB_URL_DATABASE: keycloak
-      KC_DB_USERNAME: keycloak
-      KC_DB_PASSWORD: changeme
       KC_HOSTNAME_STRICT: "false"
       KC_HOSTNAME_STRICT_BACKCHANNEL: "false"
       KC_HOSTNAME_STRICT_HTTPS: "false"
@@ -205,6 +200,7 @@ services:
         condition: service_healthy
 
 volumes:
+  keycloak_data:
   ers_postgres_data:
     name: ers_test_postgres_data
   ers_ldap_data:

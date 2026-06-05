@@ -1,0 +1,100 @@
+# docs-drift configuration for opentdf/platform.
+#
+# This file is consumed by the docs-drift skill
+# (https://github.com/virtru-corp/agent-skills/tree/main/skills/developers/docs-drift)
+# when a contributor runs `/docs-drift` after editing SDK code. The skill scans
+# for new/changed exported Go symbols and proto RPCs, drafts MDX stubs for
+# opentdf/docs, and prepares a PR.
+#
+# Most of the values below mirror the skill's built-in OpenTDF defaults — they're
+# committed as a documentation artifact so the contract is discoverable in this
+# repo. The `mappings:` section below them adds repo-specific routing the skill
+# wouldn't otherwise know about.
+
+docs:
+  repo: ../docs                # Sibling clone of opentdf/docs
+  root: docs/sdks              # Docs root within opentdf/docs
+
+version:
+  tag_prefix: "sdk/"           # SDK is independently versioned (sdk/v0.X.Y)
+
+scan:
+  go_paths:                    # Where the scanner looks for Go source
+    - sdk/                     #   the public SDK package
+    - protocol/go/internal/    #   source-file codegen helpers (PR #3232 pattern)
+  proto_paths:                 # Where the scanner looks for .proto files
+    - service/
+  exclude_paths:               # Substring match — these are generated or test-only
+    - sdk/sdkconnect/          #   auto-generated Connect-RPC wrappers
+    - sdk/gen/                 #   generated proto code (legacy path)
+    - sdk/internal/            #   Go internal package
+
+# Mappings route new symbols to the right MDX file when the name-only sniff
+# can't find an existing reference. Keys are glob patterns matched against
+# the fully-qualified symbol name; values are doc paths (relative to the
+# docs repo root) with an optional #section anchor for the heading to
+# append under.
+#
+# First-match-wins, ordered by insertion. Put the most specific patterns
+# first; the catch-all patterns last.
+mappings:
+
+  # ── EntityIdentifier constructor helpers (PR #3232 pattern) ──────────────
+  # Live in protocol/go/internal/authorization/v2/ and get codegen-copied
+  # into protocol/go/authorization/v2/*.gen.go. They're documented in
+  # authorization.mdx under the ## EntityIdentifier section.
+  "ForToken":              docs/sdks/authorization.mdx#entityidentifier
+  "ForClientID":           docs/sdks/authorization.mdx#entityidentifier
+  "ForEmail":              docs/sdks/authorization.mdx#entityidentifier
+  "ForUserName":           docs/sdks/authorization.mdx#entityidentifier
+  "ForRegisteredResource": docs/sdks/authorization.mdx#entityidentifier
+  "WithRequestToken":      docs/sdks/authorization.mdx#entityidentifier
+
+  # ── SDK discovery / attribute checks ─────────────────────────────────────
+  # Methods on the SDK struct that read platform state without writing.
+  # All land in discovery.mdx alongside ListAttributes / AttributeExists / etc.
+  "SDK.List*":             docs/sdks/discovery.mdx
+  "SDK.Attribute*":        docs/sdks/discovery.mdx
+  "SDK.Validate*":         docs/sdks/discovery.mdx
+  "SDK.GetEntityAttributes": docs/sdks/discovery.mdx
+
+  # ── TDF mechanics and re-wrap helpers ────────────────────────────────────
+  # Package-level functions for TDF inspection and option building.
+  # CreateTDF, LoadTDF, and IsValidTdf already live in tdf.mdx; new
+  # adjacent helpers (e.g., WithPolicyFrom from DSPX-2603) belong there too.
+  "IsTDF":                 docs/sdks/tdf.mdx
+  "IsValidTdf":            docs/sdks/tdf.mdx
+  "WithPolicyFrom":        docs/sdks/tdf.mdx
+  "BulkDecrypt":           docs/sdks/tdf.mdx
+
+  # ── Platform-client setup options ────────────────────────────────────────
+  # The "Initializing the SDK client" section of platform-client.mdx is
+  # where setup-time options like WithPlatformEndpoint live. Newly-added
+  # With*-style construction options default here unless overridden above.
+  "With*":                 docs/sdks/platform-client.mdx#initializing-the-sdk-client
+
+  # ── Policy enum aliases (PR #3408 pattern) ───────────────────────────────
+  # Constants like policy.OperatorIn / policy.BooleanAnd added in
+  # protocol/go/internal/policy/enums.go. Documented under the enum tables
+  # in policy.mdx.
+  "Operator*":             docs/sdks/policy.mdx
+  "Boolean*":              docs/sdks/policy.mdx
+  "Rule*":                 docs/sdks/policy.mdx
+  "State*":                docs/sdks/policy.mdx
+
+  # ── Proto service RPCs ───────────────────────────────────────────────────
+  # Per-service mapping. Each service's RPCs map to its dedicated MDX.
+  "AuthorizationService.*":             docs/sdks/authorization.mdx
+  "AttributesService.*":                docs/sdks/policy.mdx
+  "ActionsService.*":                   docs/sdks/policy.mdx
+  "NamespaceService.*":                 docs/sdks/policy.mdx
+  "SubjectMappingService.*":            docs/sdks/policy.mdx
+  "ResourceMappingService.*":           docs/sdks/policy.mdx
+  "RegisteredResourcesService.*":       docs/sdks/policy.mdx
+  "ObligationsService.*":               docs/sdks/obligations.mdx
+  "KeyAccessServerRegistryService.*":   docs/sdks/policy.mdx
+  "KeyManagementService.*":             docs/sdks/policy.mdx
+  "UnsafeService.*":                    docs/sdks/policy.mdx
+  "EntityResolutionService.*":          docs/sdks/authorization.mdx
+  "AccessService.*":                    docs/sdks/tdf.mdx
+  "WellKnownService.*":                 docs/sdks/platform-client.mdx

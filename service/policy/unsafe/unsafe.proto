@@ -4,6 +4,7 @@ package policy.unsafe;
 
 import "buf/validate/validate.proto";
 
+import "google/protobuf/wrappers.proto";
 import "policy/objects.proto";
 
 // Namespaces Unsafe RPCs
@@ -79,6 +80,12 @@ message UnsafeUpdateAttributeRequest {
   // WARNING!!
   // Updating the rule of an Attribute will retroactively alter access to existing TDFs of the Attribute name.
   AttributeRuleTypeEnum rule = 3 [(buf.validate.field).enum.defined_only = true];
+  // Optional
+  // WARNING!!
+  // Updating allow_traversal allows TDF creation to be front-loaded, meaning a customer
+  // can create encrypted content with an attribute definitions key mapping before
+  // creating the attribute values needed to decrypt.
+  google.protobuf.BoolValue allow_traversal = 5;
   // Optional
   // WARNING!!
   // Unsafe reordering requires the full list of values in the new order they should be stored. Updating the order of values in a HIERARCHY-rule Attribute Definition

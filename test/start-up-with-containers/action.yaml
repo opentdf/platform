@@ -15,10 +15,6 @@ inputs:
     default: "false"
     description: 'Whether to enable ECC wrapping for TDFs'
     required: false
-  pqc-enabled:
-    default: "false"
-    description: 'Whether to enable post-quantum and hybrid PQ/T wrapping for TDFs'
-    required: false
   log-level:
     default: "debug"
     description: 'Log level for the platform (audit, debug, info, warn, error)'
@@ -245,12 +241,6 @@ runs:
       if: ${{ inputs.ec-tdf-enabled == 'true' }}
       run: |
         yq e '.services.kas.ec_tdf_enabled = true' -i opentdf.yaml
-      working-directory: otdf-test-platform
-    - name: Enable PQ (mlkem, xwing, and hybrid) wrapping for TDFs
-      shell: bash
-      if: ${{ inputs.pqc-enabled == 'true' }}
-      run: |
-        yq e '.services.kas.hybrid_tdf_enabled = true' -i opentdf.yaml
       working-directory: otdf-test-platform
     - name: Enable PQ (mlkem, xwing, and hybrid) wrapping for TDFs
       shell: bash

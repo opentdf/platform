@@ -461,11 +461,11 @@ func (c PolicyDBClient) UnsafeUpdateAttribute(ctx context.Context, r *unsafe.Uns
 		}
 	}
 
-	// Guard the reverse of validateDefinitionValueEntitlementMappingAttribute: a definition
+	// Guard the reverse of validateDynamicValueMappingAttribute: a definition
 	// with a dynamic value entitlement mapping cannot be changed to HIERARCHY, which requires
 	// statically ordered values incompatible with pass-through dynamic values (DSPX-2754).
 	if rule == policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY && before.GetRule() != policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY {
-		dynamicCount, err := c.queries.countDefinitionValueEntitlementMappingsByDefinitionID(ctx, id)
+		dynamicCount, err := c.queries.countDynamicValueMappingsByDefinitionID(ctx, id)
 		if err != nil {
 			return nil, db.WrapIfKnownInvalidQueryErr(err)
 		}

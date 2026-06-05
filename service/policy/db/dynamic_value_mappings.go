@@ -10,11 +10,11 @@ import (
 	"github.com/opentdf/platform/protocol/go/common"
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/attributes"
-	"github.com/opentdf/platform/protocol/go/policy/subjectmapping"
+	"github.com/opentdf/platform/protocol/go/policy/dynamicvaluemapping"
 	"github.com/opentdf/platform/service/pkg/db"
 )
 
-type definitionValueEntitlementMappingRow struct {
+type dynamicValueMappingRow struct {
 	id                           string
 	attributeDefinitionID        string
 	subjectExternalSelectorValue string
@@ -25,17 +25,17 @@ type definitionValueEntitlementMappingRow struct {
 	namespace                    interface{}
 }
 
-func (c PolicyDBClient) CreateDefinitionValueEntitlementMapping(ctx context.Context, r *subjectmapping.CreateDefinitionValueEntitlementMappingRequest) (*policy.DefinitionValueEntitlementMapping, error) {
+func (c PolicyDBClient) CreateDynamicValueMapping(ctx context.Context, r *dynamicvaluemapping.CreateDynamicValueMappingRequest) (*policy.DynamicValueMapping, error) {
 	resolver := r.GetValueResolver()
 	if resolver.GetOperator() == policy.DynamicValueOperatorEnum_DYNAMIC_VALUE_OPERATOR_ENUM_UNSPECIFIED {
 		return nil, errors.Join(db.ErrEnumValueInvalid, errors.New("value_resolver.operator must be specified"))
 	}
 
-	attr, err := c.resolveDefinitionValueEntitlementMappingAttribute(ctx, r.GetAttributeDefinitionId(), r.GetAttributeDefinitionFqn())
+	attr, err := c.resolveDynamicValueMappingAttribute(ctx, r.GetAttributeDefinitionId(), r.GetAttributeDefinitionFqn())
 	if err != nil {
 		return nil, err
 	}
-	if err := validateDefinitionValueEntitlementMappingAttribute(attr); err != nil {
+	if err := validateDynamicValueMappingAttribute(attr); err != nil {
 		return nil, err
 	}
 
@@ -56,12 +56,12 @@ func (c PolicyDBClient) CreateDefinitionValueEntitlementMapping(ctx context.Cont
 		return nil, err
 	}
 
-	scs, err := c.resolveDefinitionValueEntitlementMappingSubjectConditionSet(ctx, r, resolvedNamespaceID)
+	scs, err := c.resolveDynamicValueMappingSubjectConditionSet(ctx, r, resolvedNamespaceID)
 	if err != nil {
 		return nil, err
 	}
 
-	if err := c.validateDefinitionValueEntitlementMappingNamespaceConsistency(ctx, resolvedNamespaceID, attr, actionIDs, scs); err != nil {
+	if err := c.validateDynamicValueMappingNamespaceConsistency(ctx, resolvedNamespaceID, attr, actionIDs, scs); err != nil {
 		return nil, err
 	}
 
@@ -70,7 +70,7 @@ func (c PolicyDBClient) CreateDefinitionValueEntitlementMapping(ctx context.Cont
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
 
-	createdID, err := c.queries.createDefinitionValueEntitlementMapping(ctx, createDefinitionValueEntitlementMappingParams{
+	createdID, err := c.queries.createDynamicValueMapping(ctx, createDynamicValueMappingParams{
 		AttributeDefinitionID:        attr.GetId(),
 		SubjectExternalSelectorValue: resolver.GetSubjectExternalSelectorValue(),
 		Operator:                     int16(resolver.GetOperator()),
@@ -83,11 +83,11 @@ func (c PolicyDBClient) CreateDefinitionValueEntitlementMapping(ctx context.Cont
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
 
-	return c.GetDefinitionValueEntitlementMapping(ctx, createdID)
+	return c.GetDynamicValueMapping(ctx, createdID)
 }
 
-func (c PolicyDBClient) GetDefinitionValueEntitlementMapping(ctx context.Context, id string) (*policy.DefinitionValueEntitlementMapping, error) {
-	row, err := c.queries.getDefinitionValueEntitlementMapping(ctx, id)
+func (c PolicyDBClient) GetDynamicValueMapping(ctx context.Context, id string) (*policy.DynamicValueMapping, error) {
+	row, err := c.queries.getDynamicValueMapping(ctx, id)
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
@@ -95,7 +95,7 @@ func (c PolicyDBClient) GetDefinitionValueEntitlementMapping(ctx context.Context
 		return nil, db.ErrNotFound
 	}
 
-	return c.hydrateDefinitionValueEntitlementMapping(ctx, definitionValueEntitlementMappingRow{
+	return c.hydrateDynamicValueMapping(ctx, dynamicValueMappingRow{
 		id:                           row.ID,
 		attributeDefinitionID:        row.AttributeDefinitionID,
 		subjectExternalSelectorValue: row.SubjectExternalSelectorValue,
@@ -107,7 +107,7 @@ func (c PolicyDBClient) GetDefinitionValueEntitlementMapping(ctx context.Context
 	})
 }
 
-func (c PolicyDBClient) ListDefinitionValueEntitlementMappings(ctx context.Context, r *subjectmapping.ListDefinitionValueEntitlementMappingsRequest) (*subjectmapping.ListDefinitionValueEntitlementMappingsResponse, error) {
+func (c PolicyDBClient) ListDynamicValueMappings(ctx context.Context, r *dynamicvaluemapping.ListDynamicValueMappingsRequest) (*dynamicvaluemapping.ListDynamicValueMappingsResponse, error) {
 	limit, offset := c.getRequestedLimitOffset(r.GetPagination())
 
 	maxLimit := c.listCfg.limitMax
@@ -115,9 +115,9 @@ func (c PolicyDBClient) ListDefinitionValueEntitlementMappings(ctx context.Conte
 		return nil, db.ErrListLimitTooLarge
 	}
 
-	sortField, sortDirection := GetDefinitionValueEntitlementMappingsSortParams(r.GetSort())
+	sortField, sortDirection := GetDynamicValueMappingsSortParams(r.GetSort())
 
-	rows, err := c.queries.listDefinitionValueEntitlementMappings(ctx, listDefinitionValueEntitlementMappingsParams{
+	rows, err := c.queries.listDynamicValueMappings(ctx, listDynamicValueMappingsParams{
 		NamespaceID:           pgtypeUUID(r.GetNamespaceId()),
 		AttributeDefinitionID: pgtypeUUID(r.GetAttributeDefinitionId()),
 		Limit:                 limit,
@@ -129,9 +129,9 @@ func (c PolicyDBClient) ListDefinitionValueEntitlementMappings(ctx context.Conte
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
 
-	mappings := make([]*policy.DefinitionValueEntitlementMapping, len(rows))
+	mappings := make([]*policy.DynamicValueMapping, len(rows))
 	for i, row := range rows {
-		mapping, err := c.hydrateDefinitionValueEntitlementMapping(ctx, definitionValueEntitlementMappingRow{
+		mapping, err := c.hydrateDynamicValueMapping(ctx, dynamicValueMappingRow{
 			id:                           row.ID,
 			attributeDefinitionID:        row.AttributeDefinitionID,
 			subjectExternalSelectorValue: row.SubjectExternalSelectorValue,
@@ -156,8 +156,8 @@ func (c PolicyDBClient) ListDefinitionValueEntitlementMappings(ctx context.Conte
 		nextOffset = getNextOffset(offset, limit, total)
 	}
 
-	return &subjectmapping.ListDefinitionValueEntitlementMappingsResponse{
-		DefinitionValueEntitlementMappings: mappings,
+	return &dynamicvaluemapping.ListDynamicValueMappingsResponse{
+		DynamicValueMappings: mappings,
 		Pagination: &policy.PageResponse{
 			CurrentOffset: offset,
 			Total:         total,
@@ -166,9 +166,9 @@ func (c PolicyDBClient) ListDefinitionValueEntitlementMappings(ctx context.Conte
 	}, nil
 }
 
-func (c PolicyDBClient) UpdateDefinitionValueEntitlementMapping(ctx context.Context, r *subjectmapping.UpdateDefinitionValueEntitlementMappingRequest) (*policy.DefinitionValueEntitlementMapping, error) {
+func (c PolicyDBClient) UpdateDynamicValueMapping(ctx context.Context, r *dynamicvaluemapping.UpdateDynamicValueMappingRequest) (*policy.DynamicValueMapping, error) {
 	id := r.GetId()
-	before, err := c.GetDefinitionValueEntitlementMapping(ctx, id)
+	before, err := c.GetDynamicValueMapping(ctx, id)
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
@@ -180,7 +180,7 @@ func (c PolicyDBClient) UpdateDefinitionValueEntitlementMapping(ctx context.Cont
 		return nil, err
 	}
 
-	updateParams := updateDefinitionValueEntitlementMappingParams{
+	updateParams := updateDynamicValueMappingParams{
 		ID:                    id,
 		Metadata:              metadataJSON,
 		SubjectConditionSetID: pgtypeUUID(r.GetSubjectConditionSetId()),
@@ -203,7 +203,7 @@ func (c PolicyDBClient) UpdateDefinitionValueEntitlementMapping(ctx context.Cont
 		updateParams.ActionIds = actionIDs
 	}
 
-	count, err := c.queries.updateDefinitionValueEntitlementMapping(ctx, updateParams)
+	count, err := c.queries.updateDynamicValueMapping(ctx, updateParams)
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
@@ -211,11 +211,11 @@ func (c PolicyDBClient) UpdateDefinitionValueEntitlementMapping(ctx context.Cont
 		return nil, db.ErrNotFound
 	}
 
-	return c.GetDefinitionValueEntitlementMapping(ctx, id)
+	return c.GetDynamicValueMapping(ctx, id)
 }
 
-func (c PolicyDBClient) DeleteDefinitionValueEntitlementMapping(ctx context.Context, id string) (*policy.DefinitionValueEntitlementMapping, error) {
-	count, err := c.queries.deleteDefinitionValueEntitlementMapping(ctx, id)
+func (c PolicyDBClient) DeleteDynamicValueMapping(ctx context.Context, id string) (*policy.DynamicValueMapping, error) {
+	count, err := c.queries.deleteDynamicValueMapping(ctx, id)
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
@@ -223,10 +223,10 @@ func (c PolicyDBClient) DeleteDefinitionValueEntitlementMapping(ctx context.Cont
 		return nil, db.ErrNotFound
 	}
 
-	return &policy.DefinitionValueEntitlementMapping{Id: id}, nil
+	return &policy.DynamicValueMapping{Id: id}, nil
 }
 
-func (c PolicyDBClient) hydrateDefinitionValueEntitlementMapping(ctx context.Context, row definitionValueEntitlementMappingRow) (*policy.DefinitionValueEntitlementMapping, error) {
+func (c PolicyDBClient) hydrateDynamicValueMapping(ctx context.Context, row dynamicValueMappingRow) (*policy.DynamicValueMapping, error) {
 	metadata := &common.Metadata{}
 	if err := unmarshalMetadata(row.metadata, metadata); err != nil {
 		return nil, err
@@ -234,7 +234,7 @@ func (c PolicyDBClient) hydrateDefinitionValueEntitlementMapping(ctx context.Con
 
 	actionsBytes, err := json.Marshal(row.actions)
 	if err != nil {
-		return nil, fmt.Errorf("failed to marshal definition value entitlement mapping actions from interface{}: %w", err)
+		return nil, fmt.Errorf("failed to marshal dynamic value mapping actions from interface{}: %w", err)
 	}
 	actions := []*policy.Action{}
 	if err := unmarshalActionsProto(actionsBytes, &actions); err != nil {
@@ -251,10 +251,10 @@ func (c PolicyDBClient) hydrateDefinitionValueEntitlementMapping(ctx context.Con
 		return nil, err
 	}
 
-	mapping := &policy.DefinitionValueEntitlementMapping{
+	mapping := &policy.DynamicValueMapping{
 		Id:                  row.id,
 		AttributeDefinition: attr,
-		ValueResolver: &policy.DefinitionValueResolver{
+		ValueResolver: &policy.DynamicValueResolver{
 			SubjectExternalSelectorValue: row.subjectExternalSelectorValue,
 			Operator:                     policy.DynamicValueOperatorEnum(row.operator),
 		},
@@ -275,7 +275,7 @@ func (c PolicyDBClient) hydrateDefinitionValueEntitlementMapping(ctx context.Con
 	return mapping, nil
 }
 
-func (c PolicyDBClient) resolveDefinitionValueEntitlementMappingAttribute(ctx context.Context, id, fqn string) (*policy.Attribute, error) {
+func (c PolicyDBClient) resolveDynamicValueMappingAttribute(ctx context.Context, id, fqn string) (*policy.Attribute, error) {
 	switch {
 	case id != "":
 		return c.GetAttribute(ctx, id)
@@ -288,17 +288,17 @@ func (c PolicyDBClient) resolveDefinitionValueEntitlementMappingAttribute(ctx co
 	}
 }
 
-func validateDefinitionValueEntitlementMappingAttribute(attr *policy.Attribute) error {
+func validateDynamicValueMappingAttribute(attr *policy.Attribute) error {
 	switch attr.GetRule() {
 	case policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF,
 		policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF:
 		return nil
 	case policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY:
-		return errors.Join(db.ErrEnumValueInvalid, errors.New("definition value entitlement mappings do not support HIERARCHY attributes"))
+		return errors.Join(db.ErrEnumValueInvalid, errors.New("dynamic value mappings do not support HIERARCHY attributes"))
 	case policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_UNSPECIFIED:
 		fallthrough
 	default:
-		return errors.Join(db.ErrEnumValueInvalid, errors.New("definition value entitlement mappings require ALL_OF or ANY_OF attributes"))
+		return errors.Join(db.ErrEnumValueInvalid, errors.New("dynamic value mappings require ALL_OF or ANY_OF attributes"))
 	}
 }
 
@@ -311,15 +311,15 @@ func (c PolicyDBClient) ensureNoValueSubjectMappingCoexistence(ctx context.Conte
 	}
 	if count > 0 {
 		return errors.Join(db.ErrRestrictViolation,
-			fmt.Errorf("attribute definition [%s] already has value-level subject mappings; it cannot also have a definition value entitlement mapping", definitionID))
+			fmt.Errorf("attribute definition [%s] already has value-level subject mappings; it cannot also have a dynamic value mapping", definitionID))
 	}
 	return nil
 }
 
-// ensureNoDefinitionValueEntitlementMappingCoexistence rejects creation of a value-level
+// ensureNoDynamicValueMappingCoexistence rejects creation of a value-level
 // subject mapping when the value's parent definition already has a dynamic value
 // entitlement mapping.
-func (c PolicyDBClient) ensureNoDefinitionValueEntitlementMappingCoexistence(ctx context.Context, attributeValueID string) error {
+func (c PolicyDBClient) ensureNoDynamicValueMappingCoexistence(ctx context.Context, attributeValueID string) error {
 	if attributeValueID == "" {
 		return nil
 	}
@@ -327,20 +327,20 @@ func (c PolicyDBClient) ensureNoDefinitionValueEntitlementMappingCoexistence(ctx
 	if err != nil {
 		return db.WrapIfKnownInvalidQueryErr(err)
 	}
-	count, err := c.queries.countDefinitionValueEntitlementMappingsByDefinitionID(ctx, definitionID)
+	count, err := c.queries.countDynamicValueMappingsByDefinitionID(ctx, definitionID)
 	if err != nil {
 		return db.WrapIfKnownInvalidQueryErr(err)
 	}
 	if count > 0 {
 		return errors.Join(db.ErrRestrictViolation,
-			fmt.Errorf("attribute definition [%s] has a definition value entitlement mapping; it cannot also have value-level subject mappings", definitionID))
+			fmt.Errorf("attribute definition [%s] has a dynamic value mapping; it cannot also have value-level subject mappings", definitionID))
 	}
 	return nil
 }
 
-func (c PolicyDBClient) resolveDefinitionValueEntitlementMappingSubjectConditionSet(
+func (c PolicyDBClient) resolveDynamicValueMappingSubjectConditionSet(
 	ctx context.Context,
-	r *subjectmapping.CreateDefinitionValueEntitlementMappingRequest,
+	r *dynamicvaluemapping.CreateDynamicValueMappingRequest,
 	namespaceID string,
 ) (*policy.SubjectConditionSet, error) {
 	switch {
@@ -362,7 +362,7 @@ func (c PolicyDBClient) resolveDefinitionValueEntitlementMappingSubjectCondition
 	}
 }
 
-func (c PolicyDBClient) validateDefinitionValueEntitlementMappingNamespaceConsistency(
+func (c PolicyDBClient) validateDynamicValueMappingNamespaceConsistency(
 	ctx context.Context,
 	targetNsID string,
 	attr *policy.Attribute,
@@ -371,7 +371,7 @@ func (c PolicyDBClient) validateDefinitionValueEntitlementMappingNamespaceConsis
 ) error {
 	if targetNsID != "" && attr.GetNamespace().GetId() != targetNsID {
 		return errors.Join(db.ErrNamespaceMismatch,
-			fmt.Errorf("attribute definition namespace [%s] does not match the specified definition value entitlement mapping namespace [%s]", attr.GetNamespace().GetId(), targetNsID))
+			fmt.Errorf("attribute definition namespace [%s] does not match the specified dynamic value mapping namespace [%s]", attr.GetNamespace().GetId(), targetNsID))
 	}
 
 	if len(actionIDs) > 0 {
@@ -383,14 +383,14 @@ func (c PolicyDBClient) validateDefinitionValueEntitlementMappingNamespaceConsis
 			actionNsID := UUIDToString(a.NamespaceID)
 			if actionNsID != targetNsID {
 				return errors.Join(db.ErrNamespaceMismatch,
-					fmt.Errorf("action [%s] namespace [%s] does not match the specified definition value entitlement mapping namespace [%s]", a.ID, actionNsID, targetNsID))
+					fmt.Errorf("action [%s] namespace [%s] does not match the specified dynamic value mapping namespace [%s]", a.ID, actionNsID, targetNsID))
 			}
 		}
 	}
 
 	if scs != nil && scs.GetNamespace().GetId() != targetNsID {
 		return errors.Join(db.ErrNamespaceMismatch,
-			fmt.Errorf("subject condition set [%s] namespace [%s] does not match the specified definition value entitlement mapping namespace [%s]", scs.GetId(), scs.GetNamespace().GetId(), targetNsID))
+			fmt.Errorf("subject condition set [%s] namespace [%s] does not match the specified dynamic value mapping namespace [%s]", scs.GetId(), scs.GetNamespace().GetId(), targetNsID))
 	}
 
 	return nil

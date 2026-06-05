@@ -47,10 +47,10 @@ func dvemDecisionable(defFQN, valueFQN, segment string) map[string]*attributes.G
 	}
 }
 
-func dvemMapping(defFQN, selector string, op policy.DynamicValueOperatorEnum, scs *policy.SubjectConditionSet, actionNames ...string) *policy.DefinitionValueEntitlementMapping {
-	return &policy.DefinitionValueEntitlementMapping{
+func dvemMapping(defFQN, selector string, op policy.DynamicValueOperatorEnum, scs *policy.SubjectConditionSet, actionNames ...string) *policy.DynamicValueMapping {
+	return &policy.DynamicValueMapping{
 		AttributeDefinition: &policy.Attribute{Fqn: defFQN},
-		ValueResolver: &policy.DefinitionValueResolver{
+		ValueResolver: &policy.DynamicValueResolver{
 			SubjectExternalSelectorValue: selector,
 			Operator:                     op,
 		},
@@ -59,9 +59,9 @@ func dvemMapping(defFQN, selector string, op policy.DynamicValueOperatorEnum, sc
 	}
 }
 
-// TestEvaluateDefinitionValueEntitlementMappings_MRNExample replays the ADR#266 worked
+// TestEvaluateDynamicValueMappings_MRNExample replays the ADR#266 worked
 // example (patient / provider / nurse) against the production evaluator.
-func TestEvaluateDefinitionValueEntitlementMappings_MRNExample(t *testing.T) {
+func TestEvaluateDynamicValueMappings_MRNExample(t *testing.T) {
 	const def = "https://hospital.co/attr/mrn"
 	const valueFQN = "https://hospital.co/attr/mrn/value/mrn-123"
 
@@ -81,9 +81,9 @@ func TestEvaluateDefinitionValueEntitlementMappings_MRNExample(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			mapping := dvemMapping(def, tc.selector, policy.DynamicValueOperatorEnum_DYNAMIC_VALUE_OPERATOR_ENUM_RESOURCE_VALUE_IN, nil, tc.acts...)
-			byDef := DefinitionValueEntitlementMappingsByDefinitionFQN{def: {mapping}}
+			byDef := DynamicValueMappingsByDefinitionFQN{def: {mapping}}
 
-			got, err := EvaluateDefinitionValueEntitlementMappingsWithActions(byDef, dvemDecisionable(def, valueFQN, "mrn-123"), dvemEntityRep(t, tc.props), slog.Default())
+			got, err := EvaluateDynamicValueMappingsWithActions(byDef, dvemDecisionable(def, valueFQN, "mrn-123"), dvemEntityRep(t, tc.props), slog.Default())
 			require.NoError(t, err)
 			if tc.wantMatch {
 				assert.ElementsMatch(t, tc.acts, dvemActionNames(got[valueFQN]))
@@ -94,34 +94,34 @@ func TestEvaluateDefinitionValueEntitlementMappings_MRNExample(t *testing.T) {
 	}
 }
 
-// TestEvaluateDefinitionValueEntitlementMappings_Canonicalization covers the external
+// TestEvaluateDynamicValueMappings_Canonicalization covers the external
 // system case-mismatch concern: the IdP reports MRN-123, policy stores mrn-123.
-func TestEvaluateDefinitionValueEntitlementMappings_Canonicalization(t *testing.T) {
+func TestEvaluateDynamicValueMappings_Canonicalization(t *testing.T) {
 	const def = "https://hospital.co/attr/mrn"
 	const valueFQN = "https://hospital.co/attr/mrn/value/mrn-123"
 	mapping := dvemMapping(def, ".medicalRecordNumber", policy.DynamicValueOperatorEnum_DYNAMIC_VALUE_OPERATOR_ENUM_RESOURCE_VALUE_IN, nil, "read")
-	byDef := DefinitionValueEntitlementMappingsByDefinitionFQN{def: {mapping}}
+	byDef := DynamicValueMappingsByDefinitionFQN{def: {mapping}}
 
-	got, err := EvaluateDefinitionValueEntitlementMappingsWithActions(byDef, dvemDecisionable(def, valueFQN, "mrn-123"), dvemEntityRep(t, map[string]interface{}{"medicalRecordNumber": "MRN-123"}), slog.Default())
+	got, err := EvaluateDynamicValueMappingsWithActions(byDef, dvemDecisionable(def, valueFQN, "mrn-123"), dvemEntityRep(t, map[string]interface{}{"medicalRecordNumber": "MRN-123"}), slog.Default())
 	require.NoError(t, err)
 	assert.Equal(t, []string{"read"}, dvemActionNames(got[valueFQN]))
 }
 
-// TestEvaluateDefinitionValueEntitlementMappings_InContains covers the substring operator.
-func TestEvaluateDefinitionValueEntitlementMappings_InContains(t *testing.T) {
+// TestEvaluateDynamicValueMappings_InContains covers the substring operator.
+func TestEvaluateDynamicValueMappings_InContains(t *testing.T) {
 	const def = "https://acme.co/attr/group"
 	const valueFQN = "https://acme.co/attr/group/value/team"
 	mapping := dvemMapping(def, ".groups[]", policy.DynamicValueOperatorEnum_DYNAMIC_VALUE_OPERATOR_ENUM_RESOURCE_VALUE_IN_CONTAINS, nil, "read")
-	byDef := DefinitionValueEntitlementMappingsByDefinitionFQN{def: {mapping}}
+	byDef := DynamicValueMappingsByDefinitionFQN{def: {mapping}}
 
-	got, err := EvaluateDefinitionValueEntitlementMappingsWithActions(byDef, dvemDecisionable(def, valueFQN, "team"), dvemEntityRep(t, map[string]interface{}{"groups": []interface{}{"prefix-team-suffix"}}), slog.Default())
+	got, err := EvaluateDynamicValueMappingsWithActions(byDef, dvemDecisionable(def, valueFQN, "team"), dvemEntityRep(t, map[string]interface{}{"groups": []interface{}{"prefix-team-suffix"}}), slog.Default())
 	require.NoError(t, err)
 	assert.Equal(t, []string{"read"}, dvemActionNames(got[valueFQN]))
 }
 
-// TestEvaluateDefinitionValueEntitlementMappings_StaticGate covers the optional static
+// TestEvaluateDynamicValueMappings_StaticGate covers the optional static
 // SubjectConditionSet pre-gate combined with the dynamic resolver.
-func TestEvaluateDefinitionValueEntitlementMappings_StaticGate(t *testing.T) {
+func TestEvaluateDynamicValueMappings_StaticGate(t *testing.T) {
 	const def = "https://hospital.co/attr/mrn"
 	const valueFQN = "https://hospital.co/attr/mrn/value/mrn-123"
 
@@ -138,10 +138,10 @@ func TestEvaluateDefinitionValueEntitlementMappings_StaticGate(t *testing.T) {
 		}},
 	}
 	mapping := dvemMapping(def, ".patientAssignments[]", policy.DynamicValueOperatorEnum_DYNAMIC_VALUE_OPERATOR_ENUM_RESOURCE_VALUE_IN, scs, "read")
-	byDef := DefinitionValueEntitlementMappingsByDefinitionFQN{def: {mapping}}
+	byDef := DynamicValueMappingsByDefinitionFQN{def: {mapping}}
 
 	// cardiology provider assigned to mrn-123 -> gate + resolver pass
-	got, err := EvaluateDefinitionValueEntitlementMappingsWithActions(byDef, dvemDecisionable(def, valueFQN, "mrn-123"), dvemEntityRep(t, map[string]interface{}{
+	got, err := EvaluateDynamicValueMappingsWithActions(byDef, dvemDecisionable(def, valueFQN, "mrn-123"), dvemEntityRep(t, map[string]interface{}{
 		"department":         "cardiology",
 		"patientAssignments": []interface{}{"mrn-123"},
 	}), slog.Default())
@@ -149,7 +149,7 @@ func TestEvaluateDefinitionValueEntitlementMappings_StaticGate(t *testing.T) {
 	assert.Equal(t, []string{"read"}, dvemActionNames(got[valueFQN]))
 
 	// wrong department -> static gate fails -> no entitlement
-	got, err = EvaluateDefinitionValueEntitlementMappingsWithActions(byDef, dvemDecisionable(def, valueFQN, "mrn-123"), dvemEntityRep(t, map[string]interface{}{
+	got, err = EvaluateDynamicValueMappingsWithActions(byDef, dvemDecisionable(def, valueFQN, "mrn-123"), dvemEntityRep(t, map[string]interface{}{
 		"department":         "oncology",
 		"patientAssignments": []interface{}{"mrn-123"},
 	}), slog.Default())
@@ -157,23 +157,23 @@ func TestEvaluateDefinitionValueEntitlementMappings_StaticGate(t *testing.T) {
 	assert.Empty(t, got[valueFQN])
 }
 
-// TestEvaluateDefinitionValueEntitlementMappings_CrossDefinitionNoLeak verifies a mapping
+// TestEvaluateDynamicValueMappings_CrossDefinitionNoLeak verifies a mapping
 // only applies to its own definition: the same value segment under a different definition
 // is not entitled.
-func TestEvaluateDefinitionValueEntitlementMappings_CrossDefinitionNoLeak(t *testing.T) {
+func TestEvaluateDynamicValueMappings_CrossDefinitionNoLeak(t *testing.T) {
 	const defA = "https://a.co/attr/x"
 	const defB = "https://b.co/attr/y"
 	mapping := dvemMapping(defA, ".assignments[]", policy.DynamicValueOperatorEnum_DYNAMIC_VALUE_OPERATOR_ENUM_RESOURCE_VALUE_IN, nil, "read")
-	byDef := DefinitionValueEntitlementMappingsByDefinitionFQN{defA: {mapping}}
+	byDef := DynamicValueMappingsByDefinitionFQN{defA: {mapping}}
 	entity := dvemEntityRep(t, map[string]interface{}{"assignments": []interface{}{"shared-1"}})
 
 	// under definition A -> entitled
-	gotA, err := EvaluateDefinitionValueEntitlementMappingsWithActions(byDef, dvemDecisionable(defA, defA+"/value/shared-1", "shared-1"), entity, slog.Default())
+	gotA, err := EvaluateDynamicValueMappingsWithActions(byDef, dvemDecisionable(defA, defA+"/value/shared-1", "shared-1"), entity, slog.Default())
 	require.NoError(t, err)
 	assert.Equal(t, []string{"read"}, dvemActionNames(gotA[defA+"/value/shared-1"]))
 
 	// same segment under definition B -> not entitled
-	gotB, err := EvaluateDefinitionValueEntitlementMappingsWithActions(byDef, dvemDecisionable(defB, defB+"/value/shared-1", "shared-1"), entity, slog.Default())
+	gotB, err := EvaluateDynamicValueMappingsWithActions(byDef, dvemDecisionable(defB, defB+"/value/shared-1", "shared-1"), entity, slog.Default())
 	require.NoError(t, err)
 	assert.Empty(t, gotB[defB+"/value/shared-1"])
 }

@@ -235,7 +235,7 @@ type BaseKey struct {
 }
 
 // Definition-scoped dynamic value entitlement mappings (DSPX-2754)
-type DefinitionValueEntitlementMapping struct {
+type DynamicValueMapping struct {
 	ID                    string `json:"id"`
 	AttributeDefinitionID string `json:"attribute_definition_id"`
 	// Selector resolved against the entity representation, compared to the requested resource value segment
@@ -249,9 +249,9 @@ type DefinitionValueEntitlementMapping struct {
 	UpdatedAt             pgtype.Timestamptz `json:"updated_at"`
 }
 
-type DefinitionValueEntitlementMappingAction struct {
-	DefinitionValueEntitlementMappingID string `json:"definition_value_entitlement_mapping_id"`
-	ActionID                            string `json:"action_id"`
+type DynamicValueMappingAction struct {
+	DynamicValueMappingID string `json:"dynamic_value_mapping_id"`
+	ActionID              string `json:"action_id"`
 }
 
 // Table to store the known registrations of key access servers (KASs)

@@ -10,6 +10,7 @@ import (
 	"github.com/opentdf/platform/protocol/go/common"
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/attributes"
+	"github.com/opentdf/platform/protocol/go/policy/dynamicvaluemapping"
 	"github.com/opentdf/platform/protocol/go/policy/kasregistry"
 	"github.com/opentdf/platform/protocol/go/policy/namespaces"
 	"github.com/opentdf/platform/protocol/go/policy/obligations"
@@ -404,24 +405,24 @@ func GetSubjectMappingsSortParams(sort []*subjectmapping.SubjectMappingsSort) (s
 	return getSubjectMappingsSortField(sort[0].GetField()), getSortDirection(sort[0].GetDirection())
 }
 
-func getDefinitionValueEntitlementMappingsSortField(field subjectmapping.SortDefinitionValueEntitlementMappingsType) string {
+func getDynamicValueMappingsSortField(field dynamicvaluemapping.SortDynamicValueMappingsType) string {
 	switch field {
-	case subjectmapping.SortDefinitionValueEntitlementMappingsType_SORT_DEFINITION_VALUE_ENTITLEMENT_MAPPINGS_TYPE_CREATED_AT:
+	case dynamicvaluemapping.SortDynamicValueMappingsType_SORT_DYNAMIC_VALUE_MAPPINGS_TYPE_CREATED_AT:
 		return sortFieldCreatedAt
-	case subjectmapping.SortDefinitionValueEntitlementMappingsType_SORT_DEFINITION_VALUE_ENTITLEMENT_MAPPINGS_TYPE_UPDATED_AT:
+	case dynamicvaluemapping.SortDynamicValueMappingsType_SORT_DYNAMIC_VALUE_MAPPINGS_TYPE_UPDATED_AT:
 		return sortFieldUpdatedAt
-	case subjectmapping.SortDefinitionValueEntitlementMappingsType_SORT_DEFINITION_VALUE_ENTITLEMENT_MAPPINGS_TYPE_UNSPECIFIED:
+	case dynamicvaluemapping.SortDynamicValueMappingsType_SORT_DYNAMIC_VALUE_MAPPINGS_TYPE_UNSPECIFIED:
 		fallthrough
 	default:
 		return ""
 	}
 }
 
-func GetDefinitionValueEntitlementMappingsSortParams(sort []*subjectmapping.DefinitionValueEntitlementMappingsSort) (string, string) {
+func GetDynamicValueMappingsSortParams(sort []*dynamicvaluemapping.DynamicValueMappingsSort) (string, string) {
 	if len(sort) == 0 {
 		return "", ""
 	}
-	return getDefinitionValueEntitlementMappingsSortField(sort[0].GetField()), getSortDirection(sort[0].GetDirection())
+	return getDynamicValueMappingsSortField(sort[0].GetField()), getSortDirection(sort[0].GetDirection())
 }
 
 func UUIDToString(uuid pgtype.UUID) string {

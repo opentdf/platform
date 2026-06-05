@@ -82,23 +82,24 @@ func setPackageLogger(logger *slog.Logger) {
 type SDK struct {
 	config
 	*kasKeyCache
-	conn                              *ConnectRPCConnection
-	tokenSource                       auth.AccessTokenSource
-	Actions                           sdkconnect.ActionServiceClient
-	Attributes                        sdkconnect.AttributesServiceClient
-	Authorization                     sdkconnect.AuthorizationServiceClient
-	AuthorizationV2                   sdkconnect.AuthorizationServiceClientV2
-	EntityResoution                   sdkconnect.EntityResolutionServiceClient
-	EntityResolutionV2                sdkconnect.EntityResolutionServiceClientV2
-	KeyAccessServerRegistry           sdkconnect.KeyAccessServerRegistryServiceClient
-	Namespaces                        sdkconnect.NamespaceServiceClient
-	Obligations                       sdkconnect.ObligationsServiceClient
-	RegisteredResources               sdkconnect.RegisteredResourcesServiceClient
-	ResourceMapping                   sdkconnect.ResourceMappingServiceClient
-	SubjectMapping                    sdkconnect.SubjectMappingServiceClient
-	Unsafe                            sdkconnect.UnsafeServiceClient
-	KeyManagement                     sdkconnect.KeyManagementServiceClient
-	wellknownConfiguration            sdkconnect.WellKnownServiceClient
+	conn                    *ConnectRPCConnection
+	tokenSource             auth.AccessTokenSource
+	Actions                 sdkconnect.ActionServiceClient
+	Attributes              sdkconnect.AttributesServiceClient
+	Authorization           sdkconnect.AuthorizationServiceClient
+	AuthorizationV2         sdkconnect.AuthorizationServiceClientV2
+	EntityResoution         sdkconnect.EntityResolutionServiceClient
+	EntityResolutionV2      sdkconnect.EntityResolutionServiceClientV2
+	KeyAccessServerRegistry sdkconnect.KeyAccessServerRegistryServiceClient
+	Namespaces              sdkconnect.NamespaceServiceClient
+	Obligations             sdkconnect.ObligationsServiceClient
+	RegisteredResources     sdkconnect.RegisteredResourcesServiceClient
+	ResourceMapping         sdkconnect.ResourceMappingServiceClient
+	SubjectMapping          sdkconnect.SubjectMappingServiceClient
+	DynamicValueMapping     sdkconnect.DynamicValueMappingServiceClient
+	Unsafe                  sdkconnect.UnsafeServiceClient
+	KeyManagement           sdkconnect.KeyManagementServiceClient
+	wellknownConfiguration  sdkconnect.WellKnownServiceClient
 }
 
 func New(platformEndpoint string, opts ...Option) (*SDK, error) {
@@ -218,25 +219,26 @@ func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 	}
 
 	return &SDK{
-		config:                            *cfg,
-		kasKeyCache:                       newKasKeyCache(),
-		conn:                              &ConnectRPCConnection{Client: platformConn.Client, Endpoint: platformConn.Endpoint, Options: platformConn.Options},
-		tokenSource:                       accessTokenSource,
-		Actions:                           sdkconnect.NewActionServiceClientConnectWrapper(platformConn.Client, platformConn.Endpoint, platformConn.Options...),
-		Attributes:                        sdkconnect.NewAttributesServiceClientConnectWrapper(platformConn.Client, platformConn.Endpoint, platformConn.Options...),
-		Namespaces:                        sdkconnect.NewNamespaceServiceClientConnectWrapper(platformConn.Client, platformConn.Endpoint, platformConn.Options...),
-		Obligations:                       sdkconnect.NewObligationsServiceClientConnectWrapper(platformConn.Client, platformConn.Endpoint, platformConn.Options...),
-		RegisteredResources:               sdkconnect.NewRegisteredResourcesServiceClientConnectWrapper(platformConn.Client, platformConn.Endpoint, platformConn.Options...),
-		ResourceMapping:                   sdkconnect.NewResourceMappingServiceClientConnectWrapper(platformConn.Client, platformConn.Endpoint, platformConn.Options...),
-		SubjectMapping:                    sdkconnect.NewSubjectMappingServiceClientConnectWrapper(platformConn.Client, platformConn.Endpoint, platformConn.Options...),
-		Unsafe:                            sdkconnect.NewUnsafeServiceClientConnectWrapper(platformConn.Client, platformConn.Endpoint, platformConn.Options...),
-		KeyAccessServerRegistry:           sdkconnect.NewKeyAccessServerRegistryServiceClientConnectWrapper(platformConn.Client, platformConn.Endpoint, platformConn.Options...),
-		Authorization:                     sdkconnect.NewAuthorizationServiceClientConnectWrapper(platformConn.Client, platformConn.Endpoint, platformConn.Options...),
-		AuthorizationV2:                   sdkconnect.NewAuthorizationServiceClientV2ConnectWrapper(platformConn.Client, platformConn.Endpoint, platformConn.Options...),
-		EntityResoution:                   sdkconnect.NewEntityResolutionServiceClientConnectWrapper(ersConn.Client, ersConn.Endpoint, ersConn.Options...),
-		EntityResolutionV2:                sdkconnect.NewEntityResolutionServiceClientV2ConnectWrapper(ersConn.Client, ersConn.Endpoint, ersConn.Options...),
-		KeyManagement:                     sdkconnect.NewKeyManagementServiceClientConnectWrapper(platformConn.Client, platformConn.Endpoint, platformConn.Options...),
-		wellknownConfiguration:            sdkconnect.NewWellKnownServiceClientConnectWrapper(platformConn.Client, platformConn.Endpoint, platformConn.Options...),
+		config:                  *cfg,
+		kasKeyCache:             newKasKeyCache(),
+		conn:                    &ConnectRPCConnection{Client: platformConn.Client, Endpoint: platformConn.Endpoint, Options: platformConn.Options},
+		tokenSource:             accessTokenSource,
+		Actions:                 sdkconnect.NewActionServiceClientConnectWrapper(platformConn.Client, platformConn.Endpoint, platformConn.Options...),
+		Attributes:              sdkconnect.NewAttributesServiceClientConnectWrapper(platformConn.Client, platformConn.Endpoint, platformConn.Options...),
+		Namespaces:              sdkconnect.NewNamespaceServiceClientConnectWrapper(platformConn.Client, platformConn.Endpoint, platformConn.Options...),
+		Obligations:             sdkconnect.NewObligationsServiceClientConnectWrapper(platformConn.Client, platformConn.Endpoint, platformConn.Options...),
+		RegisteredResources:     sdkconnect.NewRegisteredResourcesServiceClientConnectWrapper(platformConn.Client, platformConn.Endpoint, platformConn.Options...),
+		ResourceMapping:         sdkconnect.NewResourceMappingServiceClientConnectWrapper(platformConn.Client, platformConn.Endpoint, platformConn.Options...),
+		SubjectMapping:          sdkconnect.NewSubjectMappingServiceClientConnectWrapper(platformConn.Client, platformConn.Endpoint, platformConn.Options...),
+		DynamicValueMapping:     sdkconnect.NewDynamicValueMappingServiceClientConnectWrapper(platformConn.Client, platformConn.Endpoint, platformConn.Options...),
+		Unsafe:                  sdkconnect.NewUnsafeServiceClientConnectWrapper(platformConn.Client, platformConn.Endpoint, platformConn.Options...),
+		KeyAccessServerRegistry: sdkconnect.NewKeyAccessServerRegistryServiceClientConnectWrapper(platformConn.Client, platformConn.Endpoint, platformConn.Options...),
+		Authorization:           sdkconnect.NewAuthorizationServiceClientConnectWrapper(platformConn.Client, platformConn.Endpoint, platformConn.Options...),
+		AuthorizationV2:         sdkconnect.NewAuthorizationServiceClientV2ConnectWrapper(platformConn.Client, platformConn.Endpoint, platformConn.Options...),
+		EntityResoution:         sdkconnect.NewEntityResolutionServiceClientConnectWrapper(ersConn.Client, ersConn.Endpoint, ersConn.Options...),
+		EntityResolutionV2:      sdkconnect.NewEntityResolutionServiceClientV2ConnectWrapper(ersConn.Client, ersConn.Endpoint, ersConn.Options...),
+		KeyManagement:           sdkconnect.NewKeyManagementServiceClientConnectWrapper(platformConn.Client, platformConn.Endpoint, platformConn.Options...),
+		wellknownConfiguration:  sdkconnect.NewWellKnownServiceClientConnectWrapper(platformConn.Client, platformConn.Endpoint, platformConn.Options...),
 	}, nil
 }
 

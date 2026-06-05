@@ -5,11 +5,11 @@ import (
 	"github.com/opentdf/platform/protocol/go/policy"
 )
 
-// Test_GetDecision_DefinitionValueEntitlementMapping_MultiValue exercises the full
+// Test_GetDecision_DynamicValueMapping_MultiValue exercises the full
 // GetDecision path for dynamic, definition-level value entitlement (DSPX-2754), focused on
 // the multi-value rule semantics: a single resource carries two dynamic values under one
 // definition while the entity is entitled to only one. ANY_OF should permit, ALL_OF deny.
-func (s *PDPTestSuite) Test_GetDecision_DefinitionValueEntitlementMapping_MultiValue() {
+func (s *PDPTestSuite) Test_GetDecision_DynamicValueMapping_MultiValue() {
 	const ns = "hospital.co"
 	defFQN := createAttrFQN(ns, "mrn")
 	v123 := createAttrValueFQN(ns, "mrn", "mrn-123")
@@ -23,21 +23,21 @@ func (s *PDPTestSuite) Test_GetDecision_DefinitionValueEntitlementMapping_MultiV
 			Rule:      rule,
 			Namespace: namespace,
 		}
-		mapping := &policy.DefinitionValueEntitlementMapping{
+		mapping := &policy.DynamicValueMapping{
 			AttributeDefinition: attr,
-			ValueResolver: &policy.DefinitionValueResolver{
+			ValueResolver: &policy.DynamicValueResolver{
 				SubjectExternalSelectorValue: ".properties.patientAssignments[]",
 				Operator:                     policy.DynamicValueOperatorEnum_DYNAMIC_VALUE_OPERATOR_ENUM_RESOURCE_VALUE_IN,
 			},
 			Actions:   []*policy.Action{testActionRead},
 			Namespace: namespace,
 		}
-		pdp, err := NewPolicyDecisionPointWithDefinitionValueEntitlementMappings(
+		pdp, err := NewPolicyDecisionPointWithDynamicValueMappings(
 			s.T().Context(),
 			s.logger,
 			[]*policy.Attribute{attr},
 			[]*policy.SubjectMapping{},
-			[]*policy.DefinitionValueEntitlementMapping{mapping},
+			[]*policy.DynamicValueMapping{mapping},
 			nil,
 			false, // allowDirectEntitlements: dynamic mappings synthesize values on their own
 			false, // namespacedPolicy

@@ -32,7 +32,7 @@ const (
 	ObjectTypeKasAttributeDefinitionKeyAssignment
 	ObjectTypeKasAttributeValueKeyAssignment
 	ObjectTypeKasAttributeNamespaceKeyAssignment
-	ObjectTypeDefinitionValueEntitlementMapping
+	ObjectTypeDynamicValueMapping
 )
 
 func (ot ObjectType) String() string {
@@ -62,7 +62,7 @@ func (ot ObjectType) String() string {
 		"kas_attribute_definition_key_assignment",
 		"kas_attribute_value_key_assignment",
 		"kas_attribute_namespace_key_assignment",
-		"definition_value_entitlement_mapping",
+		"dynamic_value_mapping",
 	}[ot]
 }
 

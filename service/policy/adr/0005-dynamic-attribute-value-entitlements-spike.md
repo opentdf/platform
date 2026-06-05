@@ -10,12 +10,18 @@ implementation spike** the question of *how* to model it. This document records 
 
 The original spike prototyped all three options as a throwaway package to make them comparable on real
 behavior. The recommendation below (a new primitive carrying a new operator) is now implemented as
-production code: the `DefinitionValueEntitlementMapping` primitive
-([`service/policy/objects.proto`](../objects.proto)), its CRUD RPCs on the existing
-[`SubjectMappingService`](../subjectmapping), DB layer, and the
-decision-time evaluator
-([`service/internal/subjectmappingbuiltin/definition_value_entitlement_builtin.go`](../../internal/subjectmappingbuiltin/definition_value_entitlement_builtin.go))
+production code: the `DynamicValueMapping` primitive
+([`service/policy/objects.proto`](../objects.proto)), its dedicated
+[`DynamicValueMappingService`](../dynamicvaluemapping), DB layer, and the decision-time evaluator
+([`service/internal/subjectmappingbuiltin/dynamic_value_mapping_builtin.go`](../../internal/subjectmappingbuiltin/dynamic_value_mapping_builtin.go))
 wired into the PDP. The findings below record why that shape was chosen over the alternatives.
+
+> [!NOTE]
+> The upstream ADR ([virtru-corp/adr#266](https://github.com/virtru-corp/adr/pull/266)) named this
+> primitive `DefinitionValueEntitlementMapping` but explicitly noted that primitive names are subject to
+> change during implementation. It is implemented here as `DynamicValueMapping`, which is shorter, omits
+> the redundant "Entitlement" (consistent with `SubjectMapping`/`ResourceMapping`), and avoids overloading
+> the authorization-runtime term "entitlement".
 
 ## Context
 
@@ -23,7 +29,7 @@ How should condition-set authority be moved up from the `AttributeValue` to the 
 Four shapes were on the table (from the ADR discussion threads): reuse Subject Mappings, add a new
 primitive, add a new attribute rule, or add a new operator.
 
-## Recommendation: a new primitive (`DefinitionValueEntitlementMapping`) carrying a new operator
+## Recommendation: a new primitive (`DynamicValueMapping`) carrying a new operator
 
 The spike recommends a **new first-class primitive** scoped to an `AttributeDefinition`, holding a
 `selector`, a **new dynamic operator**, and `actions`. The four "options" are not mutually exclusive: the

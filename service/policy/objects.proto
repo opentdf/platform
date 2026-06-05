@@ -220,11 +220,11 @@ message SubjectMapping {
 }
 
 /*
-   Definition Value Resolver: the dynamic half of a DefinitionValueEntitlementMapping. It
+   Definition Value Resolver: the dynamic half of a DynamicValueMapping. It
    resolves a selector against the entity representation and compares the result to the
    requested resource value segment using a DynamicValueOperatorEnum.
 */
-message DefinitionValueResolver {
+message DynamicValueResolver {
   // a selector for a field value on a flattened Entity Representation (such as from
   // idP/LDAP), e.g. ".patientAssignments[]"
   string subject_external_selector_value = 1 [(buf.validate.field).required = true];
@@ -237,20 +237,20 @@ message DefinitionValueResolver {
 }
 
 /*
-   Definition Value Entitlement Mapping: a Policy assigning permitted action(s) to
+   Dynamic Value Mapping: a Policy assigning permitted action(s) to
    dynamically-requested values under an Attribute Definition. It raises entitlement
    authority from a concrete Attribute Value to the Attribute Definition: at decision time
    the value_resolver compares the requested resource value segment against the entity
    representation, avoiding pre-provisioning a value + subject mapping per discrete value.
 */
-message DefinitionValueEntitlementMapping {
+message DynamicValueMapping {
   string id = 1;
 
   // the Attribute Definition whose values are entitled dynamically
   Attribute attribute_definition = 2;
 
   // the dynamic resolver matched against the requested resource value segment
-  DefinitionValueResolver value_resolver = 3;
+  DynamicValueResolver value_resolver = 3;
 
   // optional static pre-gate on the entity, evaluated with normal SubjectConditionSet
   // semantics (no dynamic overload). When present, both the gate and the resolver must

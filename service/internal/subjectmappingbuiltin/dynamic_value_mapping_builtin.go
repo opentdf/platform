@@ -13,11 +13,11 @@ import (
 	"github.com/opentdf/platform/protocol/go/policy/attributes"
 )
 
-// DefinitionValueEntitlementMappingsByDefinitionFQN indexes dynamic mappings by their
+// DynamicValueMappingsByDefinitionFQN indexes dynamic mappings by their
 // parent attribute definition FQN for O(1) lookup during decisioning.
-type DefinitionValueEntitlementMappingsByDefinitionFQN map[string][]*policy.DefinitionValueEntitlementMapping
+type DynamicValueMappingsByDefinitionFQN map[string][]*policy.DynamicValueMapping
 
-// EvaluateDefinitionValueEntitlementMappingsWithActions resolves the dynamic, definition
+// EvaluateDynamicValueMappingsWithActions resolves the dynamic, definition
 // level entitlement mappings for the resources under evaluation. For each decisionable
 // attribute value it finds the mappings on the value's parent definition, runs the
 // optional static SubjectConditionSet gate, then compares the requested resource value
@@ -26,8 +26,8 @@ type DefinitionValueEntitlementMappingsByDefinitionFQN map[string][]*policy.Defi
 //
 // The output shape matches EvaluateSubjectMappingsWithActions so the PDP can merge the
 // two results uniformly before rule evaluation.
-func EvaluateDefinitionValueEntitlementMappingsWithActions(
-	mappingsByDefinitionFQN DefinitionValueEntitlementMappingsByDefinitionFQN,
+func EvaluateDynamicValueMappingsWithActions(
+	mappingsByDefinitionFQN DynamicValueMappingsByDefinitionFQN,
 	decisionableAttributes map[string]*attributes.GetAttributeValuesByFqnsResponse_AttributeAndValue,
 	entityRepresentation *entityresolutionV2.EntityRepresentation,
 	l *slog.Logger,
@@ -57,7 +57,7 @@ func EvaluateDefinitionValueEntitlementMappingsWithActions(
 
 			// mappings on the same definition are OR-ed together
 			for _, mapping := range mappings {
-				matched, err := evaluateDefinitionValueEntitlementMapping(mapping, flattenedEntity, segment)
+				matched, err := evaluateDynamicValueMapping(mapping, flattenedEntity, segment)
 				if err != nil {
 					return nil, err
 				}
@@ -78,10 +78,10 @@ func EvaluateDefinitionValueEntitlementMappingsWithActions(
 	return entitlementsSet, nil
 }
 
-// evaluateDefinitionValueEntitlementMapping returns true when the optional static gate
+// evaluateDynamicValueMapping returns true when the optional static gate
 // passes (if present) AND the dynamic resolver matches the resource value segment.
-func evaluateDefinitionValueEntitlementMapping(
-	mapping *policy.DefinitionValueEntitlementMapping,
+func evaluateDynamicValueMapping(
+	mapping *policy.DynamicValueMapping,
 	entity flattening.Flattened,
 	segment string,
 ) (bool, error) {
@@ -102,7 +102,7 @@ func evaluateDefinitionValueEntitlementMapping(
 // evaluateValueResolver compares the resource value segment against the entity values
 // resolved by the selector, applying the dynamic operator. Both sides are canonicalized
 // (lowercased + trimmed) so external systems that disagree with policy on case still match.
-func evaluateValueResolver(resolver *policy.DefinitionValueResolver, entity flattening.Flattened, segment string) (bool, error) {
+func evaluateValueResolver(resolver *policy.DynamicValueResolver, entity flattening.Flattened, segment string) (bool, error) {
 	selector := resolver.GetSubjectExternalSelectorValue()
 	entityValues := flattening.GetFromFlattened(entity, selector)
 	target := canonicalizeValueSegment(segment)

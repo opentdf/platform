@@ -2,7 +2,7 @@
 -- DEFINITION VALUE ENTITLEMENT MAPPINGS
 ----------------------------------------------------------------
 
--- name: listDefinitionValueEntitlementMappings :many
+-- name: listDynamicValueMappings :many
 WITH params AS (
     SELECT
         COALESCE(NULLIF(@sort_field::text, ''), 'created_at') AS resolved_field,
@@ -11,7 +11,7 @@ WITH params AS (
 mapping_actions AS (
     SELECT
         dvm.action_id,
-        dvm.definition_value_entitlement_mapping_id,
+        dvm.dynamic_value_mapping_id,
         JSONB_BUILD_OBJECT(
             'id', a.id,
             'name', a.name,
@@ -19,21 +19,21 @@ mapping_actions AS (
                 ELSE JSONB_BUILD_OBJECT('id', ans.id, 'name', ans.name, 'fqn', ans_fqns.fqn)
             END
         ) AS action
-    FROM definition_value_entitlement_mapping_actions dvm
+    FROM dynamic_value_mapping_actions dvm
     JOIN actions a ON dvm.action_id = a.id
     LEFT JOIN attribute_namespaces ans ON ans.id = a.namespace_id
     LEFT JOIN attribute_fqns ans_fqns ON ans_fqns.namespace_id = ans.id AND ans_fqns.attribute_id IS NULL AND ans_fqns.value_id IS NULL
 ),
 definition_actions AS (
     SELECT
-        definition_value_entitlement_mapping_id,
+        dynamic_value_mapping_id,
         COALESCE(JSONB_AGG(action), '[]'::JSONB) AS actions
     FROM mapping_actions
-    GROUP BY definition_value_entitlement_mapping_id
+    GROUP BY dynamic_value_mapping_id
 ),
 counted AS (
     SELECT COUNT(dvem.id) AS total
-    FROM definition_value_entitlement_mappings dvem
+    FROM dynamic_value_mappings dvem
     LEFT JOIN attribute_namespaces m_ns ON m_ns.id = dvem.namespace_id
     LEFT JOIN attribute_fqns m_ns_fqns ON m_ns_fqns.namespace_id = m_ns.id AND m_ns_fqns.attribute_id IS NULL AND m_ns_fqns.value_id IS NULL
     WHERE
@@ -54,10 +54,10 @@ SELECT
         ELSE JSON_BUILD_OBJECT('id', m_ns.id, 'name', m_ns.name, 'fqn', m_ns_fqns.fqn)
     END AS namespace,
     counted.total
-FROM definition_value_entitlement_mappings dvem
+FROM dynamic_value_mappings dvem
 CROSS JOIN counted
 CROSS JOIN params p
-LEFT JOIN definition_actions da ON dvem.id = da.definition_value_entitlement_mapping_id
+LEFT JOIN definition_actions da ON dvem.id = da.dynamic_value_mapping_id
 LEFT JOIN attribute_namespaces m_ns ON m_ns.id = dvem.namespace_id
 LEFT JOIN attribute_fqns m_ns_fqns ON m_ns_fqns.namespace_id = m_ns.id AND m_ns_fqns.attribute_id IS NULL AND m_ns_fqns.value_id IS NULL
 WHERE
@@ -80,11 +80,11 @@ ORDER BY
 LIMIT @limit_
 OFFSET @offset_;
 
--- name: getDefinitionValueEntitlementMapping :one
+-- name: getDynamicValueMapping :one
 WITH mapping_actions AS (
     SELECT
         dvm.action_id,
-        dvm.definition_value_entitlement_mapping_id,
+        dvm.dynamic_value_mapping_id,
         JSONB_BUILD_OBJECT(
             'id', a.id,
             'name', a.name,
@@ -92,18 +92,18 @@ WITH mapping_actions AS (
                 ELSE JSONB_BUILD_OBJECT('id', ans.id, 'name', ans.name, 'fqn', ans_fqns.fqn)
             END
         ) AS action
-    FROM definition_value_entitlement_mapping_actions dvm
+    FROM dynamic_value_mapping_actions dvm
     JOIN actions a ON dvm.action_id = a.id
     LEFT JOIN attribute_namespaces ans ON ans.id = a.namespace_id
     LEFT JOIN attribute_fqns ans_fqns ON ans_fqns.namespace_id = ans.id AND ans_fqns.attribute_id IS NULL AND ans_fqns.value_id IS NULL
-    WHERE dvm.definition_value_entitlement_mapping_id = @id
+    WHERE dvm.dynamic_value_mapping_id = @id
 ),
 definition_actions AS (
     SELECT
-        definition_value_entitlement_mapping_id,
+        dynamic_value_mapping_id,
         COALESCE(JSONB_AGG(action), '[]'::JSONB) AS actions
     FROM mapping_actions
-    GROUP BY definition_value_entitlement_mapping_id
+    GROUP BY dynamic_value_mapping_id
 )
 SELECT
     dvem.id,
@@ -117,15 +117,15 @@ SELECT
         WHEN dvem.namespace_id IS NULL THEN NULL
         ELSE JSON_BUILD_OBJECT('id', m_ns.id, 'name', m_ns.name, 'fqn', m_ns_fqns.fqn)
     END AS namespace
-FROM definition_value_entitlement_mappings dvem
-LEFT JOIN definition_actions da ON dvem.id = da.definition_value_entitlement_mapping_id
+FROM dynamic_value_mappings dvem
+LEFT JOIN definition_actions da ON dvem.id = da.dynamic_value_mapping_id
 LEFT JOIN attribute_namespaces m_ns ON m_ns.id = dvem.namespace_id
 LEFT JOIN attribute_fqns m_ns_fqns ON m_ns_fqns.namespace_id = m_ns.id AND m_ns_fqns.attribute_id IS NULL AND m_ns_fqns.value_id IS NULL
 WHERE dvem.id = @id;
 
--- name: createDefinitionValueEntitlementMapping :one
+-- name: createDynamicValueMapping :one
 WITH inserted_mapping AS (
-    INSERT INTO definition_value_entitlement_mappings (
+    INSERT INTO dynamic_value_mappings (
         attribute_definition_id,
         subject_external_selector_value,
         operator,
@@ -144,17 +144,17 @@ WITH inserted_mapping AS (
     RETURNING id
 ),
 inserted_actions AS (
-    INSERT INTO definition_value_entitlement_mapping_actions (definition_value_entitlement_mapping_id, action_id)
+    INSERT INTO dynamic_value_mapping_actions (dynamic_value_mapping_id, action_id)
     SELECT
         (SELECT id FROM inserted_mapping),
         unnest(sqlc.arg('action_ids')::uuid[])
 )
 SELECT id FROM inserted_mapping;
 
--- name: updateDefinitionValueEntitlementMapping :execrows
+-- name: updateDynamicValueMapping :execrows
 WITH
     mapping_update AS (
-        UPDATE definition_value_entitlement_mappings
+        UPDATE dynamic_value_mappings
         SET
             metadata = COALESCE(sqlc.narg('metadata')::JSONB, metadata),
             subject_external_selector_value = COALESCE(sqlc.narg('subject_external_selector_value')::TEXT, subject_external_selector_value),
@@ -164,14 +164,14 @@ WITH
         RETURNING id
     ),
     action_delete AS (
-        DELETE FROM definition_value_entitlement_mapping_actions
+        DELETE FROM dynamic_value_mapping_actions
         WHERE
-            definition_value_entitlement_mapping_id = sqlc.arg('id')
+            dynamic_value_mapping_id = sqlc.arg('id')
             AND sqlc.narg('action_ids')::UUID[] IS NOT NULL
             AND action_id NOT IN (SELECT unnest(sqlc.narg('action_ids')::UUID[]))
     ),
     action_insert AS (
-        INSERT INTO definition_value_entitlement_mapping_actions (definition_value_entitlement_mapping_id, action_id)
+        INSERT INTO dynamic_value_mapping_actions (dynamic_value_mapping_id, action_id)
         SELECT
             sqlc.arg('id'),
             a
@@ -180,8 +180,8 @@ WITH
             sqlc.narg('action_ids')::UUID[] IS NOT NULL
             AND NOT EXISTS (
                 SELECT 1
-                FROM definition_value_entitlement_mapping_actions
-                WHERE definition_value_entitlement_mapping_id = sqlc.arg('id') AND action_id = a
+                FROM dynamic_value_mapping_actions
+                WHERE dynamic_value_mapping_id = sqlc.arg('id') AND action_id = a
             )
     ),
     update_count AS (
@@ -191,8 +191,8 @@ WITH
 SELECT cnt
 FROM update_count;
 
--- name: deleteDefinitionValueEntitlementMapping :execrows
-DELETE FROM definition_value_entitlement_mappings WHERE id = $1;
+-- name: deleteDynamicValueMapping :execrows
+DELETE FROM dynamic_value_mappings WHERE id = $1;
 
 -- name: countValueSubjectMappingsByDefinitionID :one
 -- Counts value-level subject mappings whose attribute value belongs to the given
@@ -202,11 +202,11 @@ FROM subject_mappings sm
 JOIN attribute_values av ON sm.attribute_value_id = av.id
 WHERE av.attribute_definition_id = $1;
 
--- name: countDefinitionValueEntitlementMappingsByDefinitionID :one
+-- name: countDynamicValueMappingsByDefinitionID :one
 -- Counts dynamic value entitlement mappings on the given definition. Used to enforce
 -- no-coexistence from the subject-mapping create path.
 SELECT COUNT(id)
-FROM definition_value_entitlement_mappings
+FROM dynamic_value_mappings
 WHERE attribute_definition_id = $1;
 
 -- name: getAttributeDefinitionIDByValueID :one

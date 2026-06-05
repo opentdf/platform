@@ -18,11 +18,11 @@ import (
 )
 
 var (
-	ErrInvalidSubjectMapping                    = errors.New("access: invalid subject mapping")
-	ErrInvalidAttributeDefinition               = errors.New("access: invalid attribute definition")
-	ErrInvalidRegisteredResource                = errors.New("access: invalid registered resource")
-	ErrInvalidRegisteredResourceValue           = errors.New("access: invalid registered resource value")
-	ErrInvalidDefinitionValueEntitlementMapping = errors.New("access: invalid definition value entitlement mapping")
+	ErrInvalidSubjectMapping          = errors.New("access: invalid subject mapping")
+	ErrInvalidAttributeDefinition     = errors.New("access: invalid attribute definition")
+	ErrInvalidRegisteredResource      = errors.New("access: invalid registered resource")
+	ErrInvalidRegisteredResourceValue = errors.New("access: invalid registered resource value")
+	ErrInvalidDynamicValueMapping     = errors.New("access: invalid dynamic value mapping")
 )
 
 // getDefinition parses the value FQN and uses it to retrieve the definition from the provided definitions map
@@ -200,7 +200,7 @@ func getResourceDecisionableAttributes(
 	// this is needed to support direct entitlement ad-hoc attribute values
 	entitleableAttributesByDefinitionFQN map[string]*policy.Attribute,
 	// definitions carrying a dynamic value entitlement mapping also support synthetic values
-	dynamicMappingsByDefinitionFQN subjectmappingbuiltin.DefinitionValueEntitlementMappingsByDefinitionFQN,
+	dynamicMappingsByDefinitionFQN subjectmappingbuiltin.DynamicValueMappingsByDefinitionFQN,
 	// action *policy.Action,
 	resources []*authz.Resource,
 	allowDirectEntitlements bool,

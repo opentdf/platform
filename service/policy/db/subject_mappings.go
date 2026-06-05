@@ -267,7 +267,7 @@ func (c PolicyDBClient) CreateSubjectMapping(ctx context.Context, s *subjectmapp
 
 	// Enforce no-coexistence: a value-level subject mapping cannot be created on a
 	// definition that already has a dynamic value entitlement mapping (DSPX-2754 / ADR 0005).
-	if err := c.ensureNoDefinitionValueEntitlementMappingCoexistence(ctx, attributeValueID); err != nil {
+	if err := c.ensureNoDynamicValueMappingCoexistence(ctx, attributeValueID); err != nil {
 		return nil, err
 	}
 

@@ -21,6 +21,7 @@ import (
 	"github.com/opentdf/platform/sdk"
 	sdkAudit "github.com/opentdf/platform/sdk/audit"
 	"github.com/opentdf/platform/service/internal/auth"
+	"github.com/opentdf/platform/service/internal/auth/authz"
 	"github.com/opentdf/platform/service/internal/security"
 	"github.com/opentdf/platform/service/internal/server/memhttp"
 	"github.com/opentdf/platform/service/logger"
@@ -42,6 +43,18 @@ type Error string
 
 func (e Error) Error() string {
 	return string(e)
+}
+
+type openTDFServerOptions struct {
+	authzResolverRegistry *authz.ResolverRegistry
+}
+
+type OpenTDFServerOption func(*openTDFServerOptions)
+
+func WithAuthzResolverRegistry(registry *authz.ResolverRegistry) OpenTDFServerOption {
+	return func(options *openTDFServerOptions) {
+		options.authzResolverRegistry = registry
+	}
 }
 
 // Configurations for the server
@@ -251,20 +264,29 @@ type inProcessServer struct {
 	*ConnectRPC
 }
 
-func NewOpenTDFServer(config Config, logger *logger.Logger, cacheManager *cache.Manager) (*OpenTDFServer, error) {
+func NewOpenTDFServer(config Config, logger *logger.Logger, cacheManager *cache.Manager, opts ...OpenTDFServerOption) (*OpenTDFServer, error) {
 	var (
 		authN *auth.Authentication
 		err   error
 	)
+	options := openTDFServerOptions{}
+	for _, opt := range opts {
+		opt(&options)
+	}
 
 	// Add authN interceptor
 	// TODO Remove this conditional once we move to the hardening phase (https://github.com/opentdf/platform/issues/381)
 	if config.Auth.Enabled {
+		authOpts := []auth.AuthenticatorOption{}
+		if options.authzResolverRegistry != nil {
+			authOpts = append(authOpts, auth.WithAuthzResolverRegistry(options.authzResolverRegistry))
+		}
 		authN, err = auth.NewAuthenticator(
 			context.Background(),
 			config.Auth,
 			logger,
 			config.WellKnownConfigRegister,
+			authOpts...,
 		)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create authentication interceptor: %w", err)

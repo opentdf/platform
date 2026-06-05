@@ -169,7 +169,7 @@ func (c PolicyDBClient) ListDefinitionValueEntitlementMappings(ctx context.Conte
 func (c PolicyDBClient) UpdateDefinitionValueEntitlementMapping(ctx context.Context, r *definitionvalueentitlement.UpdateDefinitionValueEntitlementMappingRequest) (*policy.DefinitionValueEntitlementMapping, error) {
 	id := r.GetId()
 	before, err := c.GetDefinitionValueEntitlementMapping(ctx, id)
-	if err != nil || before == nil {
+	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
 

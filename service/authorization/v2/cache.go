@@ -299,7 +299,7 @@ func (c *EntitlementPolicyCache) ListAllDefinitionValueEntitlementMappings(ctx c
 
 	mappings, ok = cached.([]*policy.DefinitionValueEntitlementMapping)
 	if !ok {
-		return nil, fmt.Errorf("%w: %T", ErrCachedTypeNotExpected, mappings)
+		return nil, fmt.Errorf("%w: %T", ErrCachedTypeNotExpected, cached)
 	}
 	return mappings, nil
 }

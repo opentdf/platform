@@ -33,7 +33,7 @@ func EvaluateDefinitionValueEntitlementMappingsWithActions(
 	l *slog.Logger,
 ) (AttributeValueFQNsToActions, error) {
 	entitlementsSet := make(AttributeValueFQNsToActions)
-	if len(mappingsByDefinitionFQN) == 0 {
+	if len(mappingsByDefinitionFQN) == 0 || entityRepresentation == nil {
 		return entitlementsSet, nil
 	}
 
@@ -110,6 +110,9 @@ func evaluateValueResolver(resolver *policy.DefinitionValueResolver, entity flat
 	switch resolver.GetOperator() {
 	case policy.DynamicValueOperatorEnum_DYNAMIC_VALUE_OPERATOR_ENUM_RESOURCE_VALUE_IN:
 		for _, ev := range entityValues {
+			if ev == nil {
+				continue
+			}
 			if canonicalizeValueSegment(fmt.Sprintf("%v", ev)) == target {
 				return true, nil
 			}
@@ -117,6 +120,9 @@ func evaluateValueResolver(resolver *policy.DefinitionValueResolver, entity flat
 		return false, nil
 	case policy.DynamicValueOperatorEnum_DYNAMIC_VALUE_OPERATOR_ENUM_RESOURCE_VALUE_IN_CONTAINS:
 		for _, ev := range entityValues {
+			if ev == nil {
+				continue
+			}
 			if strings.Contains(canonicalizeValueSegment(fmt.Sprintf("%v", ev)), target) {
 				return true, nil
 			}

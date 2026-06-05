@@ -41,15 +41,14 @@ CREATE INDEX idx_definition_value_entitlement_mappings_scs_id
   ON definition_value_entitlement_mappings(subject_condition_set_id);
 CREATE INDEX idx_definition_value_entitlement_mappings_namespace_id
   ON definition_value_entitlement_mappings(namespace_id);
-CREATE INDEX idx_definition_value_entitlement_mapping_actions_mapping_action
-  ON definition_value_entitlement_mapping_actions(definition_value_entitlement_mapping_id, action_id);
+-- No separate index on definition_value_entitlement_mapping_actions: its composite
+-- PRIMARY KEY (definition_value_entitlement_mapping_id, action_id) already covers lookups.
 
 -- +goose StatementEnd
 
 -- +goose Down
 -- +goose StatementBegin
 
-DROP INDEX IF EXISTS idx_definition_value_entitlement_mapping_actions_mapping_action;
 DROP INDEX IF EXISTS idx_definition_value_entitlement_mappings_namespace_id;
 DROP INDEX IF EXISTS idx_definition_value_entitlement_mappings_scs_id;
 DROP INDEX IF EXISTS idx_definition_value_entitlement_mappings_definition_id;

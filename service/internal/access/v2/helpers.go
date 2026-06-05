@@ -260,18 +260,15 @@ func getResourceDecisionableAttributes(
 			// definition carries a dynamic value entitlement mapping (DSPX-2754), since
 			// dynamic mappings entitle values that are not pre-provisioned in policy.
 			parentDefinition, err := getDefinition(attrValueFQN, entitleableAttributesByDefinitionFQN)
-			hasDynamicMapping := false
-			if err == nil {
-				_, hasDynamicMapping = dynamicMappingsByDefinitionFQN[parentDefinition.GetFqn()]
-			}
-
-			if !allowDirectEntitlements && !hasDynamicMapping {
-				// neither path enabled for this value: add to not found list and skip
+			if err != nil {
+				// definition not found: add to not found list and skip
 				notFoundFQNs = append(notFoundFQNs, attrValueFQN)
 				continue
 			}
-			if err != nil {
-				// definition not found: add to not found list and skip
+
+			_, hasDynamicMapping := dynamicMappingsByDefinitionFQN[parentDefinition.GetFqn()]
+			if !allowDirectEntitlements && !hasDynamicMapping {
+				// neither path enabled for this value: add to not found list and skip
 				notFoundFQNs = append(notFoundFQNs, attrValueFQN)
 				continue
 			}

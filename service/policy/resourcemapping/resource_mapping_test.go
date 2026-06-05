@@ -205,6 +205,15 @@ func Test_CreateResourceMappingRequest_NamespaceFields(t *testing.T) {
 	req = &resourcemapping.CreateResourceMappingRequest{
 		AttributeValueId: validUUID,
 		Terms:            []string{"term1"},
+		NamespaceId:      "prefix-" + validUUID + "-suffix",
+	}
+	err = v.Validate(req)
+	require.Error(t, err, "namespace_id with extra prefix/suffix must be rejected by the anchored regex")
+	require.Contains(t, err.Error(), errMessageOptionalUUID)
+
+	req = &resourcemapping.CreateResourceMappingRequest{
+		AttributeValueId: validUUID,
+		Terms:            []string{"term1"},
 		NamespaceFqn:     "not a uri",
 	}
 	err = v.Validate(req)

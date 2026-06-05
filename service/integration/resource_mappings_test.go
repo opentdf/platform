@@ -788,6 +788,44 @@ func (s *ResourceMappingsSuite) Test_ListResourceMappingGroups_WithNamespaceFqn_
 	s.Equal(ns.GetId(), list[0].GetNamespaceId())
 }
 
+func (s *ResourceMappingsSuite) Test_BackfillResourceMappingNamespace_FromGroup() {
+	// Exercises the migration-time backfill logic: a grouped mapping whose
+	// namespace_id was never set (legacy data) is backfilled from its group.
+	ns, group, cleanup := s.createIsolatedNamespaceAndGroup("rm-backfill")
+	defer cleanup()
+	attrValue := s.f.GetAttributeValueKey("example.com/attr/attr1/value/value1")
+
+	created, err := s.db.PolicyClient.CreateResourceMapping(s.ctx, &resourcemapping.CreateResourceMappingRequest{
+		AttributeValueId: attrValue.ID,
+		Terms:            []string{"backfill-term"},
+		GroupId:          group.GetId(),
+	})
+	s.Require().NoError(err)
+	s.Require().Equal(ns.GetId(), created.GetNamespace().GetId())
+
+	rmTable := s.db.TableName("resource_mappings")
+	rmgTable := s.db.TableName("resource_mapping_groups")
+
+	// Simulate legacy data created before namespace_id existed.
+	_, err = s.db.Client.Pgx.Exec(s.ctx, "UPDATE "+rmTable+" SET namespace_id = NULL WHERE id = $1", created.GetId())
+	s.Require().NoError(err)
+
+	cleared, err := s.db.PolicyClient.GetResourceMapping(s.ctx, created.GetId())
+	s.Require().NoError(err)
+	s.Nil(cleared.GetNamespace(), "namespace should be cleared to simulate legacy data")
+
+	// Run the same backfill the migration performs, scoped to this mapping so the
+	// test does not mutate shared fixture rows (and their updated_at triggers).
+	_, err = s.db.Client.Pgx.Exec(s.ctx,
+		"UPDATE "+rmTable+" m SET namespace_id = g.namespace_id FROM "+rmgTable+" g WHERE m.group_id = g.id AND m.namespace_id IS NULL AND m.id = $1",
+		created.GetId())
+	s.Require().NoError(err)
+
+	backfilled, err := s.db.PolicyClient.GetResourceMapping(s.ctx, created.GetId())
+	s.Require().NoError(err)
+	s.Equal(ns.GetId(), backfilled.GetNamespace().GetId(), "grouped mapping should be backfilled with the group's namespace")
+}
+
 func (s *ResourceMappingsSuite) Test_ListResourceMappings_NoPagination_Succeeds() {
 	testMappings := make(map[string]fixtures.FixtureDataResourceMapping)
 	for _, testMapping := range s.getResourceMappingFixtures() {

@@ -180,6 +180,21 @@ enum ConditionBooleanTypeEnum {
   CONDITION_BOOLEAN_TYPE_ENUM_OR = 2;
 }
 
+// Operators for dynamic, definition-level value entitlement. Unlike
+// SubjectMappingOperatorEnum, whose right-hand operand is a static list authored into
+// policy, a DynamicValueOperatorEnum's right-hand operand is the requested resource's
+// attribute value segment, supplied at decision time. Each value is the inversion of its
+// static SubjectMappingOperatorEnum counterpart.
+enum DynamicValueOperatorEnum {
+  DYNAMIC_VALUE_OPERATOR_ENUM_UNSPECIFIED = 0;
+  // true when the requested resource value segment equals one of the values resolved by
+  // the selector against the entity representation (inversion of IN)
+  DYNAMIC_VALUE_OPERATOR_ENUM_RESOURCE_VALUE_IN = 1;
+  // true when one of the selector-resolved entity values contains the requested resource
+  // value segment as a substring (inversion of IN_CONTAINS)
+  DYNAMIC_VALUE_OPERATOR_ENUM_RESOURCE_VALUE_IN_CONTAINS = 2;
+}
+
 /*
    Subject Mapping: A Policy assigning Subject Set(s) to a permitted attribute
    value + action(s) combination
@@ -200,6 +215,53 @@ message SubjectMapping {
   // possible this is empty. If so that means
   // the Subject Mapping has not been migrated to a namespace.
   Namespace namespace = 5;
+
+  common.Metadata metadata = 100;
+}
+
+/*
+   Definition Value Resolver: the dynamic half of a DynamicValueMapping. It
+   resolves a selector against the entity representation and compares the result to the
+   requested resource value segment using a DynamicValueOperatorEnum.
+*/
+message DynamicValueResolver {
+  // a selector for a field value on a flattened Entity Representation (such as from
+  // idP/LDAP), e.g. ".patientAssignments[]"
+  string subject_external_selector_value = 1 [(buf.validate.field).required = true];
+
+  // the dynamic operator comparing the selector result to the resource value segment
+  DynamicValueOperatorEnum operator = 2 [
+    (buf.validate.field).enum.defined_only = true,
+    (buf.validate.field).required = true
+  ];
+}
+
+/*
+   Dynamic Value Mapping: a Policy assigning permitted action(s) to
+   dynamically-requested values under an Attribute Definition. It raises entitlement
+   authority from a concrete Attribute Value to the Attribute Definition: at decision time
+   the value_resolver compares the requested resource value segment against the entity
+   representation, avoiding pre-provisioning a value + subject mapping per discrete value.
+*/
+message DynamicValueMapping {
+  string id = 1;
+
+  // the Attribute Definition whose values are entitled dynamically
+  Attribute attribute_definition = 2;
+
+  // the dynamic resolver matched against the requested resource value segment
+  DynamicValueResolver value_resolver = 3;
+
+  // optional static pre-gate on the entity, evaluated with normal SubjectConditionSet
+  // semantics (no dynamic overload). When present, both the gate and the resolver must
+  // pass for entitlement.
+  SubjectConditionSet subject_condition_set = 4;
+
+  // the actions permitted by subjects in this mapping
+  repeated Action actions = 5;
+
+  // the namespace containing this mapping
+  Namespace namespace = 6;
 
   common.Metadata metadata = 100;
 }

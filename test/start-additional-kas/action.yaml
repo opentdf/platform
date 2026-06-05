@@ -148,7 +148,7 @@ runs:
           yq e '
             (.server.port = env(KAS_PORT))
             | (.mode = ["kas"])
-            | (.services.kas.preview.ec_tdf_enabled = env(EC_TDF_ENABLED))
+            | (.services.kas.preview.ec_tdf_enabled = (env(EC_TDF_ENABLED) == "true"))
             | (.services.kas.preview.hybrid_tdf_enabled = (env(PQC_ENABLED) == "true"))
             | (if env(PQC_ENABLED) == "true" then
                 (.services.kas.keyring += [{"kid":"x1","alg":"hpqt:xwing"},{"kid":"h1","alg":"hpqt:secp256r1-mlkem768"},{"kid":"h2","alg":"hpqt:secp384r1-mlkem1024"}])

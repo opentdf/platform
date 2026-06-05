@@ -189,6 +189,11 @@ func Start(f ...StartOptions) error {
 		cfg.Server.CORS.AdditionalExposedHeaders = append(cfg.Server.CORS.AdditionalExposedHeaders, startConfig.additionalCORSExposedHeaders...)
 	}
 
+	// Create the global authz resolver registry before the server/authenticator.
+	// Services receive scoped views of this same registry during startup.
+	authzResolverRegistry := authz.NewResolverRegistry()
+	cfg.Server.AuthzResolverRegistry = authzResolverRegistry
+
 	// Create new server for grpc & http. Also will support in process grpc potentially too
 	logger.Debug("initializing opentdf server")
 	cfg.Server.WellKnownConfigRegister = wellknown.RegisterConfiguration
@@ -282,10 +287,6 @@ func Start(f ...StartOptions) error {
 	}
 
 	defer client.Close()
-
-	// Create the global authz resolver registry
-	// Services will receive scoped registries that can only register resolvers for their own methods
-	authzResolverRegistry := authz.NewResolverRegistry()
 
 	logger.Info("starting services")
 	err = startServices(ctx, startServicesParams{

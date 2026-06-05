@@ -169,6 +169,35 @@ func (s *CasbinAuthorizerSuite) TestAuthorizeV2_AdminWildcard() {
 	s.Equal(authz.ModeV2, decision.Mode)
 }
 
+func (s *CasbinAuthorizerSuite) TestAuthorizeV2_DefaultPolicyIncludesDefaultRoleGroupings() {
+	cfg := authz.Config{
+		Version: "v2",
+		PolicyConfig: authz.PolicyConfig{
+			GroupsClaim: "realm_access.roles",
+		},
+		Logger: s.logger,
+	}
+
+	authorizer, err := NewAuthorizer(cfg)
+	s.Require().NoError(err)
+
+	token := createTestToken(s.T(), map[string]interface{}{
+		"realm_access": map[string]interface{}{
+			"roles": []interface{}{"opentdf-admin"},
+		},
+	})
+	req := &authz.Request{
+		Token:  token,
+		RPC:    "/policy.attributes.AttributesService/UpdateAttribute",
+		Action: "write",
+	}
+
+	decision, err := authorizer.Authorize(s.T().Context(), req)
+	s.Require().NoError(err)
+	s.Require().NotNil(decision)
+	s.True(decision.Allowed, "default v2 policy should map opentdf-admin to role:admin")
+}
+
 func (s *CasbinAuthorizerSuite) TestAuthorizeV2_NamespaceScopedAccess() {
 	// Policy: hr-admin can only access HR namespace
 	cfg := authz.Config{

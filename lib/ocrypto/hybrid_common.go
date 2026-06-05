@@ -10,9 +10,16 @@ import (
 // and produces the ASN.1-encoded wrapped DEK envelope used in
 // `hybrid-wrapped` manifests.
 func HybridWrapDEK(ktype KeyType, kasPublicKeyPEM string, dek []byte) ([]byte, error) {
+	if !IsHybridKeyType(ktype) {
+		return nil, fmt.Errorf("unsupported hybrid key type: %s", ktype)
+	}
+
 	enc, err := FromPublicPEM(kasPublicKeyPEM)
 	if err != nil {
 		return nil, fmt.Errorf("hybrid public key: %w", err)
+	}
+	if enc.Type() != Hybrid {
+		return nil, fmt.Errorf("public key is not a hybrid scheme: %s", enc.KeyType())
 	}
 	if enc.KeyType() != ktype {
 		return nil, fmt.Errorf("hybrid key type mismatch: PEM is %s, requested %s", enc.KeyType(), ktype)

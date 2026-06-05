@@ -2,6 +2,7 @@ package ocrypto
 
 import (
 	"crypto/ecdh"
+	"crypto/x509"
 	"encoding/asn1"
 	"encoding/hex"
 	"encoding/pem"
@@ -102,6 +103,102 @@ func TestP384MLKEM1024PublicKeyConcatOrder(t *testing.T) {
 	assert.Equal(t, byte(0x04), ecPoint[0], "EC half must be uncompressed SEC1 (0x04 tag)")
 	_, err = ecdh.P384().NewPublicKey(ecPoint)
 	assert.NoError(t, err, "trailing bytes must parse as a P-384 ECDH public key")
+}
+
+func TestHybridNISTPrivateKeyAndCiphertextConcatOrder(t *testing.T) {
+	tests := []struct {
+		name           string
+		newKeyPair     func(t *testing.T) HybridNISTKeyPair
+		params         *hybridNISTParams
+		privateSize    int
+		ciphertextSize int
+	}{
+		{
+			name:           "P256_MLKEM768",
+			newKeyPair:     mustNewP256MLKEM768KeyPair,
+			params:         &p256mlkem768Params,
+			privateSize:    P256MLKEM768MLKEMSeedSize,
+			ciphertextSize: P256MLKEM768MLKEMCtSize,
+		},
+		{
+			name:           "P384_MLKEM1024",
+			newKeyPair:     mustNewP384MLKEM1024KeyPair,
+			params:         &p384mlkem1024Params,
+			privateSize:    P384MLKEM1024MLKEMSeedSize,
+			ciphertextSize: P384MLKEM1024MLKEMCtSize,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			keyPair := tt.newKeyPair(t)
+			assertHybridNISTPrivateKeyLayout(t, keyPair, tt.params, tt.privateSize)
+			assertHybridNISTWrappedCiphertextLayout(t, keyPair, tt.params, tt.ciphertextSize)
+		})
+	}
+}
+
+func mustNewP256MLKEM768KeyPair(t *testing.T) HybridNISTKeyPair {
+	t.Helper()
+	keyPair, err := NewP256MLKEM768KeyPair()
+	require.NoError(t, err)
+	return keyPair
+}
+
+func mustNewP384MLKEM1024KeyPair(t *testing.T) HybridNISTKeyPair {
+	t.Helper()
+	keyPair, err := NewP384MLKEM1024KeyPair()
+	require.NoError(t, err)
+	return keyPair
+}
+
+func assertHybridNISTPrivateKeyLayout(t *testing.T, keyPair HybridNISTKeyPair, params *hybridNISTParams, mlkemSeedSize int) {
+	t.Helper()
+
+	privPEM, err := keyPair.PrivateKeyInPemFormat()
+	require.NoError(t, err)
+	block, _ := pem.Decode([]byte(privPEM))
+	require.NotNil(t, block)
+
+	oid, raw, err := parseHybridPKCS8(block.Bytes)
+	require.NoError(t, err)
+	require.True(t, oid.Equal(params.oid))
+	require.Greater(t, len(raw), mlkemSeedSize)
+	require.Len(t, raw[:mlkemSeedSize], mlkemSeedSize)
+
+	ecPrivDER := raw[mlkemSeedSize:]
+	ecPriv, err := x509.ParseECPrivateKey(ecPrivDER)
+	require.NoError(t, err, "tail must parse as ECPrivateKey DER")
+	require.Same(t, params.namedCurve, ecPriv.Curve)
+	ecdhPriv, err := ecPriv.ECDH()
+	require.NoError(t, err)
+	require.Len(t, ecdhPriv.PublicKey().Bytes(), params.ecPubSize)
+}
+
+func assertHybridNISTWrappedCiphertextLayout(t *testing.T, keyPair HybridNISTKeyPair, params *hybridNISTParams, mlkemCiphertextSize int) {
+	t.Helper()
+
+	enc, err := NewP256MLKEM768Encryptor(keyPair.publicKey)
+	if params.keyType == HybridSecp384r1MLKEM1024Key {
+		enc, err = NewP384MLKEM1024Encryptor(keyPair.publicKey)
+	}
+	require.NoError(t, err)
+
+	wrappedDER, err := enc.Encrypt([]byte("layout-test-dek"))
+	require.NoError(t, err)
+
+	var wrapped HybridNISTWrappedKey
+	rest, err := asn1.Unmarshal(wrappedDER, &wrapped)
+	require.NoError(t, err)
+	require.Empty(t, rest)
+	require.Len(t, wrapped.HybridCiphertext, mlkemCiphertextSize+params.ecPubSize)
+	require.Len(t, wrapped.HybridCiphertext[:mlkemCiphertextSize], mlkemCiphertextSize)
+
+	ephemeralECPub := wrapped.HybridCiphertext[mlkemCiphertextSize:]
+	require.Len(t, ephemeralECPub, params.ecPubSize)
+	require.Equal(t, byte(0x04), ephemeralECPub[0], "ephemeral EC point must be uncompressed SEC1")
+	_, err = params.curve.NewPublicKey(ephemeralECPub)
+	require.NoError(t, err, "tail must parse as ephemeral EC public key")
 }
 
 // TestHybridCrossSchemeDispatchRejection verifies that across all six

@@ -896,9 +896,8 @@ func createTestAttributeWithAlgorithm(t *testing.T, fqn, kasURL, kid string, alg
 
 // hybridUnwrapForTest base64-decodes the wrappedKey from a manifest KAO and
 // unwraps it with the matching hybrid private key, asserting the recovered DEK
-// is non-empty. This proves the writer's `hybrid-wrapped` output is consumable
-// by the corresponding ocrypto unwrap path.
-func hybridUnwrapForTest(t *testing.T, ktype ocrypto.KeyType, privatePEM, wrappedKeyB64 string) {
+// exactly matches the writer DEK.
+func hybridUnwrapForTest(t *testing.T, ktype ocrypto.KeyType, privatePEM, wrappedKeyB64 string, expectedDEK []byte) {
 	t.Helper()
 	wrappedDER, err := ocrypto.Base64Decode([]byte(wrappedKeyB64))
 	require.NoError(t, err, "Base64Decode wrapped key")
@@ -907,7 +906,7 @@ func hybridUnwrapForTest(t *testing.T, ktype ocrypto.KeyType, privatePEM, wrappe
 	require.NoError(t, err, "FromPrivatePEM")
 	dek, err := dec.Decrypt(wrappedDER)
 	require.NoError(t, err, "hybrid Decrypt")
-	assert.NotEmpty(t, dek, "%s recovered DEK", ktype)
+	assert.Equal(t, expectedDEK, dek, "%s recovered DEK", ktype)
 }
 
 func testHybridXWingFlow(t *testing.T) {
@@ -922,6 +921,7 @@ func testHybridXWingFlow(t *testing.T) {
 
 	writer, err := NewWriter(ctx)
 	require.NoError(t, err)
+	expectedDEK := append([]byte(nil), writer.dek...)
 
 	_, err = writer.WriteSegment(ctx, 0, []byte("hybrid xwing test data"))
 	require.NoError(t, err)
@@ -943,7 +943,7 @@ func testHybridXWingFlow(t *testing.T) {
 	assert.NotEmpty(t, keyAccess.WrappedKey)
 
 	validateManifestSchema(t, result.Manifest)
-	hybridUnwrapForTest(t, ocrypto.HybridXWingKey, privPEM, keyAccess.WrappedKey)
+	hybridUnwrapForTest(t, ocrypto.HybridXWingKey, privPEM, keyAccess.WrappedKey, expectedDEK)
 }
 
 func testHybridP256MLKEM768Flow(t *testing.T) {
@@ -958,6 +958,7 @@ func testHybridP256MLKEM768Flow(t *testing.T) {
 
 	writer, err := NewWriter(ctx)
 	require.NoError(t, err)
+	expectedDEK := append([]byte(nil), writer.dek...)
 
 	_, err = writer.WriteSegment(ctx, 0, []byte("hybrid p256 mlkem768 test data"))
 	require.NoError(t, err)
@@ -979,7 +980,7 @@ func testHybridP256MLKEM768Flow(t *testing.T) {
 	assert.NotEmpty(t, keyAccess.WrappedKey)
 
 	validateManifestSchema(t, result.Manifest)
-	hybridUnwrapForTest(t, ocrypto.HybridSecp256r1MLKEM768Key, privPEM, keyAccess.WrappedKey)
+	hybridUnwrapForTest(t, ocrypto.HybridSecp256r1MLKEM768Key, privPEM, keyAccess.WrappedKey, expectedDEK)
 }
 
 func testHybridP384MLKEM1024Flow(t *testing.T) {
@@ -994,6 +995,7 @@ func testHybridP384MLKEM1024Flow(t *testing.T) {
 
 	writer, err := NewWriter(ctx)
 	require.NoError(t, err)
+	expectedDEK := append([]byte(nil), writer.dek...)
 
 	_, err = writer.WriteSegment(ctx, 0, []byte("hybrid p384 mlkem1024 test data"))
 	require.NoError(t, err)
@@ -1015,7 +1017,7 @@ func testHybridP384MLKEM1024Flow(t *testing.T) {
 	assert.NotEmpty(t, keyAccess.WrappedKey)
 
 	validateManifestSchema(t, result.Manifest)
-	hybridUnwrapForTest(t, ocrypto.HybridSecp384r1MLKEM1024Key, privPEM, keyAccess.WrappedKey)
+	hybridUnwrapForTest(t, ocrypto.HybridSecp384r1MLKEM1024Key, privPEM, keyAccess.WrappedKey, expectedDEK)
 }
 
 // validateManifestSchema validates a TDF manifest against the JSON schema

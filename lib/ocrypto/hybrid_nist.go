@@ -24,10 +24,12 @@ const mlkemSeedSize = 64
 // Sizes for the elementary halves of the two NIST composite-KEM hybrids.
 const (
 	P256MLKEM768ECPublicKeySize = 65 // uncompressed P-256 point (RFC 5480)
+	P256MLKEM768MLKEMSeedSize   = mlkemSeedSize
 	P256MLKEM768MLKEMPubKeySize = 1184
 	P256MLKEM768MLKEMCtSize     = 1088
 
 	P384MLKEM1024ECPublicKeySize = 97 // uncompressed P-384 point (RFC 5480)
+	P384MLKEM1024MLKEMSeedSize   = mlkemSeedSize
 	P384MLKEM1024MLKEMPubKeySize = 1568
 	P384MLKEM1024MLKEMCtSize     = 1568
 

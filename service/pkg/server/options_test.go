@@ -6,6 +6,7 @@ import (
 
 	"connectrpc.com/connect"
 	"github.com/lestrrat-go/jwx/v2/jwt"
+	"github.com/opentdf/platform/service/logger/audit"
 	"github.com/opentdf/platform/service/pkg/authz"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -164,4 +165,75 @@ func TestWithAuthZRoleProviderFactory(t *testing.T) {
 
 	require.NotNil(t, cfg.authzRoleProviderFactories)
 	require.Contains(t, cfg.authzRoleProviderFactories, "mock")
+}
+
+const testAuditTypeBase = 1000
+
+func TestWithAdditionalAuditTypeRegistrations(t *testing.T) {
+	var cfg StartConfig
+
+	objectTypesOne := make(map[audit.ObjectType]string)
+	objectTypesOne[audit.ObjectType(testAuditTypeBase)] = "custom_object_1"
+
+	actionTypes := make(map[audit.ActionType]string)
+	actionTypes[audit.ActionType(testAuditTypeBase+1)] = "custom_action_1"
+
+	cfg = WithAdditionalAuditTypeRegistrations(audit.TypeRegistrations{
+		ObjectTypes: objectTypesOne,
+		ActionTypes: actionTypes,
+	})(cfg)
+
+	objectTypesTwo := make(map[audit.ObjectType]string)
+	objectTypesTwo[audit.ObjectType(testAuditTypeBase+2)] = "custom_object_2"
+
+	actionResults := make(map[audit.ActionResult]string)
+	actionResults[audit.ActionResult(testAuditTypeBase+3)] = "custom_result_1"
+
+	cfg = WithAdditionalAuditTypeRegistrations(audit.TypeRegistrations{
+		ObjectTypes:   objectTypesTwo,
+		ActionResults: actionResults,
+	})(cfg)
+
+	require.Len(t, cfg.auditTypeRegistrations.ObjectTypes, 2)
+	require.Len(t, cfg.auditTypeRegistrations.ActionTypes, 1)
+	require.Len(t, cfg.auditTypeRegistrations.ActionResults, 1)
+	require.Empty(t, cfg.auditTypeRegistrationConflicts)
+	require.Len(t, objectTypesOne, 1)
+	require.Len(t, objectTypesTwo, 1)
+	require.Len(t, actionTypes, 1)
+	require.Len(t, actionResults, 1)
+	assert.Equal(t, "custom_object_1", cfg.auditTypeRegistrations.ObjectTypes[audit.ObjectType(testAuditTypeBase)])
+	assert.Equal(t, "custom_object_2", cfg.auditTypeRegistrations.ObjectTypes[audit.ObjectType(testAuditTypeBase+2)])
+	assert.Equal(t, "custom_action_1", cfg.auditTypeRegistrations.ActionTypes[audit.ActionType(testAuditTypeBase+1)])
+	assert.Equal(t, "custom_result_1", cfg.auditTypeRegistrations.ActionResults[audit.ActionResult(testAuditTypeBase+3)])
+	assert.Equal(t, "custom_object_1", objectTypesOne[audit.ObjectType(testAuditTypeBase)])
+	assert.Equal(t, "custom_object_2", objectTypesTwo[audit.ObjectType(testAuditTypeBase+2)])
+	assert.Equal(t, "custom_action_1", actionTypes[audit.ActionType(testAuditTypeBase+1)])
+	assert.Equal(t, "custom_result_1", actionResults[audit.ActionResult(testAuditTypeBase+3)])
+}
+
+func TestWithAdditionalAuditTypeRegistrationsDetectsConflicts(t *testing.T) {
+	var cfg StartConfig
+
+	firstObjectTypes := make(map[audit.ObjectType]string)
+	firstObjectTypes[audit.ObjectType(testAuditTypeBase)] = "custom_object_1"
+
+	cfg = WithAdditionalAuditTypeRegistrations(audit.TypeRegistrations{
+		ObjectTypes: firstObjectTypes,
+	})(cfg)
+
+	secondObjectTypes := make(map[audit.ObjectType]string)
+	secondObjectTypes[audit.ObjectType(testAuditTypeBase)] = "custom_object_conflict"
+
+	cfg = WithAdditionalAuditTypeRegistrations(audit.TypeRegistrations{
+		ObjectTypes: secondObjectTypes,
+	})(cfg)
+
+	require.Len(t, cfg.auditTypeRegistrationConflicts, 1)
+	conflict := cfg.auditTypeRegistrationConflicts[0]
+	assert.Equal(t, "object_type", conflict.Category)
+	assert.Equal(t, testAuditTypeBase, conflict.Key)
+	assert.Equal(t, "custom_object_1", conflict.ExistingName)
+	assert.Equal(t, "custom_object_conflict", conflict.NewName)
+	assert.Equal(t, "custom_object_1", cfg.auditTypeRegistrations.ObjectTypes[audit.ObjectType(testAuditTypeBase)])
 }

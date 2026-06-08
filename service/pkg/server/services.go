@@ -165,7 +165,7 @@ func startServices(ctx context.Context, params startServicesParams) error {
 		if err == nil {
 			svcLogger, err = buildNamespaceLogger(svcLogger, cfg, ns, extractedLogLevel)
 			if err != nil {
-				return func() {}, err
+				return err
 			}
 		}
 

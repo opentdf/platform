@@ -91,8 +91,12 @@ func (c PolicyDBClient) GetResourceMappingGroup(ctx context.Context, id string) 
 }
 
 func (c PolicyDBClient) CreateResourceMappingGroup(ctx context.Context, r *resourcemapping.CreateResourceMappingGroupRequest) (*policy.ResourceMappingGroup, error) {
-	namespaceID := r.GetNamespaceId()
 	name := strings.ToLower(r.GetName())
+
+	namespaceID, err := c.resolveNamespaceID(ctx, r.GetNamespaceId(), r.GetNamespaceFqn())
+	if err != nil {
+		return nil, err
+	}
 
 	metadataJSON, _, err := db.MarshalCreateMetadata(r.GetMetadata())
 	if err != nil {
@@ -112,8 +116,12 @@ func (c PolicyDBClient) CreateResourceMappingGroup(ctx context.Context, r *resou
 }
 
 func (c PolicyDBClient) UpdateResourceMappingGroup(ctx context.Context, id string, r *resourcemapping.UpdateResourceMappingGroupRequest) (*policy.ResourceMappingGroup, error) {
-	namespaceID := r.GetNamespaceId()
 	name := strings.ToLower(r.GetName())
+
+	namespaceID, err := c.resolveNamespaceID(ctx, r.GetNamespaceId(), r.GetNamespaceFqn())
+	if err != nil {
+		return nil, err
+	}
 
 	metadataJSON, _, err := db.MarshalUpdateMetadata(r.GetMetadata(), r.GetMetadataUpdateBehavior(), func() (*common.Metadata, error) {
 		rmGroup, err := c.GetResourceMappingGroup(ctx, id)
@@ -375,19 +383,31 @@ func (c PolicyDBClient) GetResourceMapping(ctx context.Context, id string) (*pol
 // independent and intentionally not constrained here, allowing mappings to cross
 // namespaces to the attribute values they map. Returns an empty string when the
 // mapping has no owning namespace (legacy/global).
-func (c PolicyDBClient) resolveResourceMappingNamespaceID(ctx context.Context, namespaceID, namespaceFqn, groupID string) (string, error) {
-	// Resolve any explicitly provided namespace to its UUID.
+// resolveNamespaceID resolves an optional namespace reference provided as either
+// a UUID or an FQN to its namespace UUID. Returns an empty string when neither
+// is provided.
+func (c PolicyDBClient) resolveNamespaceID(ctx context.Context, namespaceID, namespaceFqn string) (string, error) {
 	switch {
 	case namespaceID != "":
 		if !pgtypeUUID(namespaceID).Valid {
 			return "", db.ErrUUIDInvalid
 		}
+		return namespaceID, nil
 	case namespaceFqn != "":
 		ns, err := c.GetNamespace(ctx, &namespaces.GetNamespaceRequest_Fqn{Fqn: namespaceFqn})
 		if err != nil {
 			return "", err
 		}
-		namespaceID = ns.GetId()
+		return ns.GetId(), nil
+	}
+	return "", nil
+}
+
+func (c PolicyDBClient) resolveResourceMappingNamespaceID(ctx context.Context, namespaceID, namespaceFqn, groupID string) (string, error) {
+	// Resolve any explicitly provided namespace to its UUID.
+	namespaceID, err := c.resolveNamespaceID(ctx, namespaceID, namespaceFqn)
+	if err != nil {
+		return "", err
 	}
 
 	// If the mapping belongs to a group, it must live in the group's namespace.

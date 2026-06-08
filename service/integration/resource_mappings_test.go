@@ -661,6 +661,40 @@ func (s *ResourceMappingsSuite) Test_CreateResourceMapping_GroupNsDiffFromAttrNs
 	s.Equal(ns.GetId(), createdMapping.GetNamespace().GetId())
 }
 
+func (s *ResourceMappingsSuite) Test_CreateResourceMappingGroup_WithNamespaceFqn_Succeeds() {
+	ns, cleanup := s.createIsolatedNamespace("rmg-create-fqn")
+	defer cleanup()
+
+	group, err := s.db.PolicyClient.CreateResourceMappingGroup(s.ctx, &resourcemapping.CreateResourceMappingGroupRequest{
+		NamespaceFqn: ns.GetFqn(),
+		Name:         "rmg-by-fqn",
+	})
+	s.Require().NoError(err)
+	s.Require().NotNil(group)
+	s.Equal(ns.GetId(), group.GetNamespaceId())
+}
+
+func (s *ResourceMappingsSuite) Test_UpdateResourceMappingGroup_WithNamespaceFqn_Succeeds() {
+	ns1, cleanup1 := s.createIsolatedNamespace("rmg-update-fqn-1")
+	defer cleanup1()
+	ns2, cleanup2 := s.createIsolatedNamespace("rmg-update-fqn-2")
+	defer cleanup2()
+
+	group, err := s.db.PolicyClient.CreateResourceMappingGroup(s.ctx, &resourcemapping.CreateResourceMappingGroupRequest{
+		NamespaceId: ns1.GetId(),
+		Name:        "rmg-update-by-fqn",
+	})
+	s.Require().NoError(err)
+	s.Require().Equal(ns1.GetId(), group.GetNamespaceId())
+
+	updated, err := s.db.PolicyClient.UpdateResourceMappingGroup(s.ctx, group.GetId(), &resourcemapping.UpdateResourceMappingGroupRequest{
+		NamespaceFqn: ns2.GetFqn(),
+	})
+	s.Require().NoError(err)
+	s.Require().NotNil(updated)
+	s.Equal(ns2.GetId(), updated.GetNamespaceId())
+}
+
 func (s *ResourceMappingsSuite) Test_CreateResourceMapping_WithNamespaceId_Succeeds() {
 	ns, cleanup := s.createIsolatedNamespace("rm-ns-id")
 	defer cleanup()

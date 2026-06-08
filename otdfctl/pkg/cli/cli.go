@@ -11,7 +11,7 @@ type Cli struct {
 	args []string
 
 	// Helpers
-	Flags   *flags
+	Flags   *Flags
 	printer *Printer
 }
 

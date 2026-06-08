@@ -1347,13 +1347,13 @@ components:
           type: string
           title: namespace_id
           description: |
-            Optional
-             Namespace ID, or Attribute Definition ID to filter by
+            Optional: Namespace ID to filter by
             optional_uuid_format // Optional field must be a valid UUID
         attributeDefinitionId:
           type: string
           title: attribute_definition_id
           description: |
+            Optional: Attribute Definition ID to filter by
             optional_uuid_format // Optional field must be a valid UUID
         pagination:
           title: pagination

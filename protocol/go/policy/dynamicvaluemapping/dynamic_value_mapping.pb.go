@@ -228,9 +228,9 @@ type ListDynamicValueMappingsRequest struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	// Optional
-	// Namespace ID, or Attribute Definition ID to filter by
-	NamespaceId           string `protobuf:"bytes,1,opt,name=namespace_id,json=namespaceId,proto3" json:"namespace_id,omitempty"`
+	// Optional: Namespace ID to filter by
+	NamespaceId string `protobuf:"bytes,1,opt,name=namespace_id,json=namespaceId,proto3" json:"namespace_id,omitempty"`
+	// Optional: Attribute Definition ID to filter by
 	AttributeDefinitionId string `protobuf:"bytes,2,opt,name=attribute_definition_id,json=attributeDefinitionId,proto3" json:"attribute_definition_id,omitempty"`
 	// Optional
 	Pagination *policy.PageRequest `protobuf:"bytes,10,opt,name=pagination,proto3" json:"pagination,omitempty"`

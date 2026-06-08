@@ -3,9 +3,8 @@ syntax = "proto3";
 package entityresolution;
 
 import "authorization/authorization.proto";
-import "google/protobuf/struct.proto";
 import "google/protobuf/any.proto";
-import "google/api/annotations.proto";
+import "google/protobuf/struct.proto";
 
 /*
    Example: Get idp attributes for bob and alice (both represented using an email address
@@ -108,17 +107,7 @@ message CreateEntityChainFromJwtResponse {
 
 service EntityResolutionService {
   // Deprecated: use v2 ResolveEntities instead
-  rpc ResolveEntities(ResolveEntitiesRequest) returns (ResolveEntitiesResponse) {
-    option (google.api.http) = {
-        post: "/entityresolution/resolve"
-        body: "*";
-    };
-  }
+  rpc ResolveEntities(ResolveEntitiesRequest) returns (ResolveEntitiesResponse) {}
   // Deprecated: use v2 CreateEntityChainsFromTokens instead
-  rpc CreateEntityChainFromJwt(CreateEntityChainFromJwtRequest) returns (CreateEntityChainFromJwtResponse) {
-    option (google.api.http) = {
-        post: "/entityresolution/entitychain"
-        body: "*";
-    };
-  }
+  rpc CreateEntityChainFromJwt(CreateEntityChainFromJwtRequest) returns (CreateEntityChainFromJwtResponse) {}
 }

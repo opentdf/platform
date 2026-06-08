@@ -3,7 +3,9 @@ package cmd
 import (
 	"errors"
 	"fmt"
+	"os"
 	"runtime"
+	"strconv"
 	"strings"
 
 	osprofiles "github.com/jrschumacher/go-osprofiles"
@@ -25,6 +27,25 @@ const (
 		" delete the specific profile from either the filesystem or keyring and run the migration again." +
 		" If that still doesn't work, you can remove all profiles from the filesystem via the `delete-all` command."
 )
+
+type profileListOutput struct {
+	Store    string           `json:"store"`
+	Profiles []profileSummary `json:"profiles"`
+}
+
+type profileSummary struct {
+	Name      string `json:"name"`
+	IsDefault bool   `json:"is_default"`
+}
+
+type profileGetOutput struct {
+	Profile      string `json:"profile"`
+	Endpoint     string `json:"endpoint"`
+	IsDefault    bool   `json:"is_default"`
+	OutputFormat string `json:"output_format"`
+	AuthType     string `json:"auth_type,omitempty"`
+	ClientID     string `json:"client_id,omitempty"`
+}
 
 func newProfilerFromCLI(c *cli.Cli) *osprofiles.Profiler {
 	driverType := getDriverTypeFromUser(c)
@@ -104,15 +125,24 @@ var profileListCmd = &cobra.Command{
 		var sb strings.Builder
 		fmt.Fprintf(&sb, "Listing profiles from %s\n", driverType)
 
+		out := profileListOutput{
+			Store:    string(driverType),
+			Profiles: []profileSummary{},
+		}
 		for _, p := range osprofiles.ListProfiles(profiler) {
-			if p == defaultProfile {
+			isDefault := p == defaultProfile
+			out.Profiles = append(out.Profiles, profileSummary{
+				Name:      p,
+				IsDefault: isDefault,
+			})
+			if isDefault {
 				fmt.Fprintf(&sb, "* %s\n", p)
 				continue
 			}
 			fmt.Fprintf(&sb, "  %s\n", p)
 		}
 
-		c.ExitWithMessage(sb.String(), cli.ExitCodeSuccess)
+		c.ExitWith(sb.String(), out, cli.ExitCodeSuccess, os.Stdout)
 	},
 }
 
@@ -130,27 +160,35 @@ var profileGetCmd = &cobra.Command{
 			cli.ExitWithError("Error loading profile store for profile "+profileName, err)
 		}
 
-		isDefault := "false"
-		if profileStore.IsDefault() {
-			isDefault = "true"
-		}
+		isDefault := profileStore.IsDefault()
 
 		var auth string
+		authType := ""
+		clientID := ""
 		ac := profileStore.GetAuthCredentials()
 		if ac.AuthType == profiles.AuthTypeClientCredentials {
 			maskedSecret := "********"
 			auth = "client-credentials (" + ac.ClientID + ", " + maskedSecret + ")"
+			authType = ac.AuthType
+			clientID = ac.ClientID
 		}
 
 		t := cli.NewTabular(
 			[]string{"Profile", profileStore.Name()},
 			[]string{"Endpoint", profileStore.GetEndpoint()},
-			[]string{"Is default", isDefault},
+			[]string{"Is default", strconv.FormatBool(isDefault)},
 			[]string{"Output format", profileStore.GetOutputFormat()},
 			[]string{"Auth type", auth},
 		)
 
-		c.ExitWithMessage(t.View(), cli.ExitCodeSuccess)
+		c.ExitWith(t.View(), profileGetOutput{
+			Profile:      profileStore.Name(),
+			Endpoint:     profileStore.GetEndpoint(),
+			IsDefault:    isDefault,
+			OutputFormat: profileStore.GetOutputFormat(),
+			AuthType:     authType,
+			ClientID:     clientID,
+		}, cli.ExitCodeSuccess, os.Stdout)
 	},
 }
 

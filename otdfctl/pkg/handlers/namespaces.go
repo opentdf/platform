@@ -38,14 +38,28 @@ func (h Handler) GetNamespace(ctx context.Context, identifier string) (*policy.N
 	return resp.GetNamespace(), nil
 }
 
-func (h Handler) ListNamespaces(ctx context.Context, state common.ActiveStateEnum, limit, offset int32) (*namespaces.ListNamespacesResponse, error) {
-	return h.sdk.Namespaces.ListNamespaces(ctx, &namespaces.ListNamespacesRequest{
+func (h Handler) ListNamespaces(ctx context.Context, state common.ActiveStateEnum, limit, offset int32, sort SortOption) (*namespaces.ListNamespacesResponse, error) {
+	req := &namespaces.ListNamespacesRequest{
 		State: state,
 		Pagination: &policy.PageRequest{
 			Limit:  limit,
 			Offset: offset,
 		},
-	})
+	}
+	if !sort.IsZero() {
+		allowedFields := map[string]namespaces.SortNamespacesType{
+			"name":       namespaces.SortNamespacesType_SORT_NAMESPACES_TYPE_NAME,
+			"fqn":        namespaces.SortNamespacesType_SORT_NAMESPACES_TYPE_FQN,
+			"created_at": namespaces.SortNamespacesType_SORT_NAMESPACES_TYPE_CREATED_AT,
+			"updated_at": namespaces.SortNamespacesType_SORT_NAMESPACES_TYPE_UPDATED_AT,
+		}
+		field, err := sortField("namespaces", sort, allowedFields)
+		if err != nil {
+			return nil, err
+		}
+		req.Sort = []*namespaces.NamespacesSort{{Field: field, Direction: sort.Direction}}
+	}
+	return h.sdk.Namespaces.ListNamespaces(ctx, req)
 }
 
 // Creates and returns the created n

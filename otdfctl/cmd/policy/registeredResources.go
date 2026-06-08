@@ -103,8 +103,9 @@ func policyListRegisteredResources(cmd *cobra.Command, args []string) {
 	namespace := c.Flags.GetOptionalString("namespace")
 	limit := c.Flags.GetRequiredInt32("limit")
 	offset := c.Flags.GetRequiredInt32("offset")
+	sort := getSortOption(c)
 
-	resp, err := h.ListRegisteredResources(cmd.Context(), limit, offset, namespace)
+	resp, err := h.ListRegisteredResources(cmd.Context(), limit, offset, namespace, sort)
 	if err != nil {
 		cli.ExitWithError("Failed to list registered resources", err)
 	}
@@ -492,6 +493,7 @@ func initRegisteredResourcesCommands() {
 		listDoc.GetDocFlag("namespace").Description,
 	)
 	injectListPaginationFlags(listDoc)
+	injectListSortFlags(listDoc)
 
 	createDoc := man.Docs.GetCommand("policy/registered-resources/create",
 		man.WithRun(policyCreateRegisteredResource),

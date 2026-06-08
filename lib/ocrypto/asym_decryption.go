@@ -43,6 +43,14 @@ func FromPrivatePEMWithSalt(privateKeyInPem string, salt, info []byte) (PrivateK
 	if block == nil {
 		return AsymDecryption{}, errors.New("failed to parse PEM formatted private key")
 	}
+	switch block.Type {
+	case PEMBlockXWingPrivateKey:
+		return NewSaltedXWingDecryptor(block.Bytes, salt, info)
+	case PEMBlockP256MLKEM768PrivateKey:
+		return NewSaltedP256MLKEM768Decryptor(block.Bytes, salt, info)
+	case PEMBlockP384MLKEM1024PrivateKey:
+		return NewSaltedP384MLKEM1024Decryptor(block.Bytes, salt, info)
+	}
 
 	priv, err := x509.ParsePKCS8PrivateKey(block.Bytes)
 	switch {
@@ -171,24 +179,22 @@ func (e ECDecryptor) DecryptWithEphemeralKey(data, ephemeral []byte) ([]byte, er
 		return nil, fmt.Errorf("hkdf failure: %w", err)
 	}
 
-	// Encrypt data with derived key using aes-gcm
+	if len(data) < GcmStandardNonceSize+aes.BlockSize {
+		return nil, errors.New("ciphertext too short")
+	}
+
+	// Decrypt data with derived key using AES-GCM.
 	block, err := aes.NewCipher(derivedKey)
 	if err != nil {
 		return nil, fmt.Errorf("aes.NewCipher failure: %w", err)
 	}
 
-	gcm, err := cipher.NewGCM(block)
+	gcm, err := cipher.NewGCMWithRandomNonce(block)
 	if err != nil {
-		return nil, fmt.Errorf("cipher.NewGCM failure: %w", err)
+		return nil, fmt.Errorf("cipher.NewGCMWithRandomNonce failure: %w", err)
 	}
 
-	nonceSize := gcm.NonceSize()
-	if len(data) < nonceSize {
-		return nil, errors.New("ciphertext too short")
-	}
-
-	nonce, ciphertext := data[:nonceSize], data[nonceSize:]
-	plaintext, err := gcm.Open(nil, nonce, ciphertext, nil)
+	plaintext, err := gcm.Open(nil, nil, data, nil)
 	if err != nil {
 		return nil, fmt.Errorf("gcm.Open failure: %w", err)
 	}

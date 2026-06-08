@@ -4,7 +4,6 @@ package policy.kasregistry;
 
 import "buf/validate/validate.proto";
 import "common/common.proto";
-import "google/api/annotations.proto";
 import "policy/objects.proto";
 import "policy/selectors.proto";
 
@@ -52,16 +51,18 @@ enum SortKeyAccessServersType {
 }
 
 message KeyAccessServersSort {
-  SortKeyAccessServersType field = 1;
-  policy.SortDirection direction = 2;
+  SortKeyAccessServersType field = 1 [(buf.validate.field).enum.defined_only = true];
+  policy.SortDirection direction = 2 [(buf.validate.field).enum.defined_only = true];
 }
 
 message ListKeyAccessServersRequest {
   // Optional
   policy.PageRequest pagination = 10;
   // Optional - CONSTRAINT: max 1 item
-  // Default ordering when omitted or when the first entry's field is UNSPECIFIED:
-  // created_at DESC, then id ASC (tie-breaker).
+  // Sort defaults:
+  //   - direction UNSPECIFIED defaults to DESC for the specified field
+  //   - field UNSPECIFIED defaults to created_at with the specified direction
+  //   - both UNSPECIFIED or sort omitted defaults to created_at DESC
   repeated KeyAccessServersSort sort = 11 [(buf.validate.field).repeated.max_items = 1];
 }
 message ListKeyAccessServersResponse {
@@ -78,8 +79,8 @@ enum SortKasKeysType {
 }
 
 message KasKeysSort {
-  SortKasKeysType field = 1;
-  policy.SortDirection direction = 2;
+  SortKasKeysType field = 1 [(buf.validate.field).enum.defined_only = true];
+  policy.SortDirection direction = 2 [(buf.validate.field).enum.defined_only = true];
 }
 
 // TODO: optional validation below should be through a custom validator, which
@@ -432,7 +433,7 @@ message CreateKeyRequest {
   Algorithm key_algorithm = 3 [(buf.validate.field).cel = {
     id: "key_algorithm_defined"
     message: "The key_algorithm must be one of the defined values."
-    expression: "this in [1, 2, 3, 4, 5]" // Allow ALGORITHM_RSA_2048, ALGORITHM_RSA_4096, ALGORITHM_EC_P256, ALGORITHM_EC_P384, ALGORITHM_EC_P521
+    expression: "this in [1, 2, 3, 4, 5, 6, 7, 8]" // Allow ALGORITHM_RSA_2048, ALGORITHM_RSA_4096, ALGORITHM_EC_P256, ALGORITHM_EC_P384, ALGORITHM_EC_P521, ALGORITHM_HPQT_XWING, ALGORITHM_HPQT_SECP256R1_MLKEM768, ALGORITHM_HPQT_SECP384R1_MLKEM1024
   }]; // The algorithm to be used for the key
   // Required
   KeyMode key_mode = 4 [(buf.validate.field).cel = {
@@ -476,7 +477,7 @@ message ListKeysRequest {
   Algorithm key_algorithm = 1 [(buf.validate.field).cel = {
     id: "key_algorithm_defined"
     message: "The key_algorithm must be one of the defined values."
-    expression: "this in [0, 1, 2, 3, 4, 5]" // Allow unspecified and object.Algorithm values for currently supported RSA bit sizes and EC curve types
+    expression: "this in [0, 1, 2, 3, 4, 5, 6, 7, 8]" // Allow unspecified and all supported algorithm values
   }]; // Filter keys by algorithm
 
   oneof kas_filter {
@@ -495,8 +496,10 @@ message ListKeysRequest {
   policy.PageRequest pagination = 10; // Pagination request for the list of keys
 
   // Optional - CONSTRAINT: max 1 item
-  // Default ordering when omitted or when the first entry's field is UNSPECIFIED:
-  // created_at DESC.
+  // Sort defaults:
+  //   - direction UNSPECIFIED defaults to DESC for the specified field
+  //   - field UNSPECIFIED defaults to created_at with the specified direction
+  //   - both UNSPECIFIED or sort omitted defaults to created_at DESC
   repeated KasKeysSort sort = 11 [(buf.validate.field).repeated.max_items = 1];
 }
 
@@ -584,7 +587,7 @@ message RotateKeyRequest {
     Algorithm algorithm = 2 [(buf.validate.field).cel = {
       id: "key_algorithm_defined"
       message: "The key_algorithm must be one of the defined values."
-      expression: "this in [1, 2, 3, 4, 5]" // Allow ALGORITHM_RSA_2048, ALGORITHM_RSA_4096, ALGORITHM_EC_P256, ALGORITHM_EC_P384, ALGORITHM_EC_P521
+      expression: "this in [1, 2, 3, 4, 5, 6, 7, 8]" // Allow ALGORITHM_RSA_2048, ALGORITHM_RSA_4096, ALGORITHM_EC_P256, ALGORITHM_EC_P384, ALGORITHM_EC_P521, ALGORITHM_HPQT_XWING, ALGORITHM_HPQT_SECP256R1_MLKEM768, ALGORITHM_HPQT_SECP384R1_MLKEM1024
     }];
     // Required
     KeyMode key_mode = 3 [
@@ -687,7 +690,6 @@ message ListKeyMappingsResponse {
 
 service KeyAccessServerRegistryService {
   rpc ListKeyAccessServers(ListKeyAccessServersRequest) returns (ListKeyAccessServersResponse) {
-    option (google.api.http) = {get: "/key-access-servers"};
     option idempotency_level = NO_SIDE_EFFECTS;
   }
 

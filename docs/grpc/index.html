@@ -909,6 +909,10 @@
                 </li>
               
                 <li>
+                  <a href="#policy.attributes.AttributeValueObligationTriggerRequest"><span class="badge">M</span>AttributeValueObligationTriggerRequest</a>
+                </li>
+              
+                <li>
                   <a href="#policy.attributes.AttributesSort"><span class="badge">M</span>AttributesSort</a>
                 </li>
               
@@ -3156,6 +3160,13 @@ enable federation </p></td>
                 </tr>
               
                 <tr>
+                  <td>namespace</td>
+                  <td><a href="#policy.Namespace">Namespace</a></td>
+                  <td></td>
+                  <td><p>The source namespace for this trigger, derived from the attribute value and action. </p></td>
+                </tr>
+              
+                <tr>
                   <td>metadata</td>
                   <td><a href="#common.Metadata">common.Metadata</a></td>
                   <td></td>
@@ -3435,6 +3446,13 @@ Base64 encoded public key in PEM format </p></td>
                 </tr>
               
                 <tr>
+                  <td>fqn</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
                   <td>metadata</td>
                   <td><a href="#common.Metadata">common.Metadata</a></td>
                   <td></td>
@@ -3599,6 +3617,13 @@ Base64 encoded public key in PEM format </p></td>
                   <td></td>
                   <td><p>the common name for the group of resource mappings, which must be unique
 per namespace </p></td>
+                </tr>
+              
+                <tr>
+                  <td>fqn</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>the fully qualified name of the resource mapping group </p></td>
                 </tr>
               
                 <tr>
@@ -4091,6 +4116,24 @@ Migrate to &#39;create&#39; action name</p></td>
                 <td><p></p></td>
               </tr>
             
+              <tr>
+                <td>ALGORITHM_HPQT_XWING</td>
+                <td>6</td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
+                <td>ALGORITHM_HPQT_SECP256R1_MLKEM768</td>
+                <td>7</td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
+                <td>ALGORITHM_HPQT_SECP384R1_MLKEM1024</td>
+                <td>8</td>
+                <td><p></p></td>
+              </tr>
+            
           </tbody>
         </table>
       
@@ -4199,6 +4242,24 @@ Migrate to &#39;create&#39; action name</p></td>
               <tr>
                 <td>KAS_PUBLIC_KEY_ALG_ENUM_EC_SECP521R1</td>
                 <td>7</td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
+                <td>KAS_PUBLIC_KEY_ALG_ENUM_HPQT_XWING</td>
+                <td>10</td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
+                <td>KAS_PUBLIC_KEY_ALG_ENUM_HPQT_SECP256R1_MLKEM768</td>
+                <td>11</td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
+                <td>KAS_PUBLIC_KEY_ALG_ENUM_HPQT_SECP384R1_MLKEM1024</td>
+                <td>12</td>
                 <td><p></p></td>
               </tr>
             
@@ -4970,54 +5031,6 @@ string</p></td>
           </tbody>
         </table>
 
-        
-          
-          
-          <h4>Methods with HTTP bindings</h4>
-          <table>
-            <thead>
-              <tr>
-                <td>Method Name</td>
-                <td>Method</td>
-                <td>Pattern</td>
-                <td>Body</td>
-              </tr>
-            </thead>
-            <tbody>
-            
-              
-              
-              <tr>
-                <td>GetDecisions</td>
-                <td>POST</td>
-                <td>/v1/authorization</td>
-                <td>*</td>
-              </tr>
-              
-            
-              
-              
-              <tr>
-                <td>GetDecisionsByToken</td>
-                <td>POST</td>
-                <td>/v1/token/authorization</td>
-                <td></td>
-              </tr>
-              
-            
-              
-              
-              <tr>
-                <td>GetEntitlements</td>
-                <td>POST</td>
-                <td>/v1/entitlements</td>
-                <td>*</td>
-              </tr>
-              
-            
-            </tbody>
-          </table>
-          
         
     
       
@@ -5962,44 +5975,6 @@ i.e. https://&lt;namespace&gt;/obl/&lt;definition name&gt;/value/&lt;value&gt; <
         </table>
 
         
-          
-          
-          <h4>Methods with HTTP bindings</h4>
-          <table>
-            <thead>
-              <tr>
-                <td>Method Name</td>
-                <td>Method</td>
-                <td>Pattern</td>
-                <td>Body</td>
-              </tr>
-            </thead>
-            <tbody>
-            
-              
-              
-              <tr>
-                <td>ResolveEntities</td>
-                <td>POST</td>
-                <td>/entityresolution/resolve</td>
-                <td>*</td>
-              </tr>
-              
-            
-              
-              
-              <tr>
-                <td>CreateEntityChainFromJwt</td>
-                <td>POST</td>
-                <td>/entityresolution/entitychain</td>
-                <td>*</td>
-              </tr>
-              
-            
-            </tbody>
-          </table>
-          
-        
     
       
       <div class="file-heading">
@@ -6340,7 +6315,7 @@ Example: &#34;kas&#34; </p></td>
                   <td></td>
                   <td><p>Type of key wrapping used for the data encryption key
 Required: Always
-Values: &#39;wrapped&#39; (RSA-wrapped for ZTDF), &#39;ec-wrapped&#39; (experimental ECDH-wrapped) </p></td>
+Values: &#39;wrapped&#39; (RSA-wrapped for ZTDF), &#39;ec-wrapped&#39; (experimental ECDH-wrapped), &#39;hybrid-wrapped&#39; (experimental X-Wing-wrapped) </p></td>
                 </tr>
               
                 <tr>
@@ -6397,7 +6372,7 @@ Contains magic bytes, version, algorithm, policy, and ephemeral key information 
                   <td></td>
                   <td><p>Ephemeral public key for ECDH key derivation (ec-wrapped type only)
 Required: When key_type=&#34;ec-wrapped&#34; (experimental ECDH-based ZTDF)
-Omitted: When key_type=&#34;wrapped&#34; (RSA-based ZTDF)
+Omitted: When key_type=&#34;wrapped&#34; or key_type=&#34;hybrid-wrapped&#34;
 Should be a PEM-encoded PKCS#8 (ASN.1) formatted public key
 Used to derive the symmetric key for unwrapping the DEK </p></td>
                 </tr>
@@ -6725,7 +6700,7 @@ Modern responses use kas_wrapped_key in KeyAccessRewrapResult </p></td>
                   <td></td>
                   <td><p>KAS&#39;s ephemeral session public key in PEM format
 Required: For EC-based operations (key_type=&#34;ec-wrapped&#34;)
-Optional: Empty for RSA-based ZTDF (key_type=&#34;wrapped&#34;)
+Optional: Empty for RSA-based or X-Wing-based ZTDF (key_type=&#34;wrapped&#34; or key_type=&#34;hybrid-wrapped&#34;)
 Used by client to perform ECDH key agreement and decrypt the kas_wrapped_key values </p></td>
                 </tr>
               
@@ -7081,54 +7056,6 @@ buf:lint:ignore RPC_RESPONSE_STANDARD_NAME</p></td>
                 <td>LegacyPublicKey</td>
                 <td><p>true</p></td>
               </tr>
-            
-            </tbody>
-          </table>
-          
-        
-          
-          
-          <h4>Methods with HTTP bindings</h4>
-          <table>
-            <thead>
-              <tr>
-                <td>Method Name</td>
-                <td>Method</td>
-                <td>Pattern</td>
-                <td>Body</td>
-              </tr>
-            </thead>
-            <tbody>
-            
-              
-              
-              <tr>
-                <td>PublicKey</td>
-                <td>GET</td>
-                <td>/kas/v2/kas_public_key</td>
-                <td></td>
-              </tr>
-              
-            
-              
-              
-              <tr>
-                <td>LegacyPublicKey</td>
-                <td>GET</td>
-                <td>/kas/kas_public_key</td>
-                <td></td>
-              </tr>
-              
-            
-              
-              
-              <tr>
-                <td>Rewrap</td>
-                <td>POST</td>
-                <td>/kas/v2/rewrap</td>
-                <td>*</td>
-              </tr>
-              
             
             </tbody>
           </table>
@@ -7503,7 +7430,7 @@ Empty when none remain after current page </p></td>
 
       
         <h3 id="policy.SortDirection">SortDirection</h3>
-        <p>Sorting direction shared across list APIs.</p><p>Notes:</p><p>- When a sort field is provided, UNSPECIFIED is treated as ASC.</p><p>- When the 'sort' field is omitted or the chosen sort 'field' is UNSPECIFIED,</p><p>the endpoint's request message defines the default ordering; see the</p><p>specific List* request docs.</p>
+        <p>Sorting direction shared across list APIs.</p><p>When the 'sort' field is omitted or the chosen sort 'field' is UNSPECIFIED,</p><p>the endpoint's request message defines the default ordering; see the</p><p>specific List* request docs.</p>
         <table class="enum-table">
           <thead>
             <tr><td>Name</td><td>Number</td><td>Description</td></tr>
@@ -7513,9 +7440,7 @@ Empty when none remain after current page </p></td>
               <tr>
                 <td>SORT_DIRECTION_UNSPECIFIED</td>
                 <td>0</td>
-                <td><p>Treated as ASC when a sort field is provided.
-
-defaults to ASC</p></td>
+                <td><p></p></td>
               </tr>
             
               <tr>
@@ -8203,6 +8128,51 @@ Custom actions only: replaces the existing action name </p></td>
 
         
       
+        <h3 id="policy.attributes.AttributeValueObligationTriggerRequest">AttributeValueObligationTriggerRequest</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>obligation_value</td>
+                  <td><a href="#common.IdFqnIdentifier">common.IdFqnIdentifier</a></td>
+                  <td></td>
+                  <td><p>Required. Existing obligation value to associate with the newly created attribute value. </p></td>
+                </tr>
+              
+                <tr>
+                  <td>action</td>
+                  <td><a href="#common.IdNameIdentifier">common.IdNameIdentifier</a></td>
+                  <td></td>
+                  <td><p>Required. Action that, together with the newly created attribute value, triggers the obligation value. </p></td>
+                </tr>
+              
+                <tr>
+                  <td>context</td>
+                  <td><a href="#policy.RequestContext">policy.RequestContext</a></td>
+                  <td></td>
+                  <td><p>Optional. Request context for the obligation trigger. </p></td>
+                </tr>
+              
+                <tr>
+                  <td>metadata</td>
+                  <td><a href="#common.MetadataMutable">common.MetadataMutable</a></td>
+                  <td></td>
+                  <td><p>Optional. Common metadata for the obligation trigger. </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
         <h3 id="policy.attributes.AttributesSort">AttributesSort</h3>
         <p></p>
 
@@ -8346,6 +8316,14 @@ but will not be able to be decrypted until such attribute values exist. </p></td
                   <td><a href="#string">string</a></td>
                   <td></td>
                   <td><p>Required </p></td>
+                </tr>
+              
+                <tr>
+                  <td>obligation_triggers</td>
+                  <td><a href="#policy.attributes.AttributeValueObligationTriggerRequest">AttributeValueObligationTriggerRequest</a></td>
+                  <td>repeated</td>
+                  <td><p>Optional
+Existing obligation values to trigger for the newly created attribute value. </p></td>
                 </tr>
               
                 <tr>
@@ -8867,7 +8845,11 @@ Namespace ID or name </p></td>
                   <td>sort</td>
                   <td><a href="#policy.attributes.AttributesSort">AttributesSort</a></td>
                   <td>repeated</td>
-                  <td><p>Optional - CONSTRAINT: max 1 item </p></td>
+                  <td><p>Optional - CONSTRAINT: max 1 item
+Sort defaults:
+  - direction UNSPECIFIED defaults to DESC for the specified field
+  - field UNSPECIFIED defaults to created_at with the specified direction
+  - both UNSPECIFIED or sort omitted defaults to created_at DESC </p></td>
                 </tr>
               
             </tbody>
@@ -9514,34 +9496,6 @@ Value RPCs
                 <td>RemoveKeyAccessServerFromValue</td>
                 <td><p>true</p></td>
               </tr>
-            
-            </tbody>
-          </table>
-          
-        
-          
-          
-          <h4>Methods with HTTP bindings</h4>
-          <table>
-            <thead>
-              <tr>
-                <td>Method Name</td>
-                <td>Method</td>
-                <td>Pattern</td>
-                <td>Body</td>
-              </tr>
-            </thead>
-            <tbody>
-            
-              
-              
-              <tr>
-                <td>GetAttributeValuesByFqns</td>
-                <td>GET</td>
-                <td>/attributes/*/fqn</td>
-                <td></td>
-              </tr>
-              
             
             </tbody>
           </table>
@@ -10618,8 +10572,10 @@ objects are returned. </p></td>
                   <td><a href="#policy.kasregistry.KeyAccessServersSort">KeyAccessServersSort</a></td>
                   <td>repeated</td>
                   <td><p>Optional - CONSTRAINT: max 1 item
-Default ordering when omitted or when the first entry&#39;s field is UNSPECIFIED:
-created_at DESC, then id ASC (tie-breaker). </p></td>
+Sort defaults:
+  - direction UNSPECIFIED defaults to DESC for the specified field
+  - field UNSPECIFIED defaults to created_at with the specified direction
+  - both UNSPECIFIED or sort omitted defaults to created_at DESC </p></td>
                 </tr>
               
             </tbody>
@@ -10790,8 +10746,10 @@ Pagination request for the list of keys </p></td>
                   <td><a href="#policy.kasregistry.KasKeysSort">KasKeysSort</a></td>
                   <td>repeated</td>
                   <td><p>Optional - CONSTRAINT: max 1 item
-Default ordering when omitted or when the first entry&#39;s field is UNSPECIFIED:
-created_at DESC. </p></td>
+Sort defaults:
+  - direction UNSPECIFIED defaults to DESC for the specified field
+  - field UNSPECIFIED defaults to created_at with the specified direction
+  - both UNSPECIFIED or sort omitted defaults to created_at DESC </p></td>
                 </tr>
               
             </tbody>
@@ -11829,34 +11787,6 @@ Request to create a new key in the Key Access Service.</p></td>
         
           
           
-          <h4>Methods with HTTP bindings</h4>
-          <table>
-            <thead>
-              <tr>
-                <td>Method Name</td>
-                <td>Method</td>
-                <td>Pattern</td>
-                <td>Body</td>
-              </tr>
-            </thead>
-            <tbody>
-            
-              
-              
-              <tr>
-                <td>ListKeyAccessServers</td>
-                <td>GET</td>
-                <td>/key-access-servers</td>
-                <td></td>
-              </tr>
-              
-            
-            </tbody>
-          </table>
-          
-        
-          
-          
           <h4>Methods with idempotency_level option</h4>
           <table>
             <thead>
@@ -12571,7 +12501,11 @@ ACTIVE by default when not specified </p></td>
                   <td>sort</td>
                   <td><a href="#policy.namespaces.NamespacesSort">NamespacesSort</a></td>
                   <td>repeated</td>
-                  <td><p>Optional </p></td>
+                  <td><p>Optional - CONSTRAINT: max 1 item
+Sort defaults:
+  - direction UNSPECIFIED defaults to DESC for the specified field
+  - field UNSPECIFIED defaults to created_at with the specified direction
+  - both UNSPECIFIED or sort omitted defaults to created_at DESC </p></td>
                 </tr>
               
             </tbody>
@@ -13048,7 +12982,7 @@ Namespace &lt;&gt; Key RPCs
 
       
         <h3 id="policy.obligations.AddObligationTriggerRequest">AddObligationTriggerRequest</h3>
-        <p></p>
+        <p>Obligation Triggers are owned by the namespace that owns the action and attribute value, which must</p><p>be the same. In this way, a trigger can intentionally cross namespace boundaries: associating</p><p>obligation values of a different namespace than the one that owns the action being taken or the attribute value.</p>
 
         
           <table class="field-table">
@@ -13811,8 +13745,10 @@ Common metadata </p></td>
                   <td><a href="#policy.obligations.ObligationsSort">ObligationsSort</a></td>
                   <td>repeated</td>
                   <td><p>Optional - CONSTRAINT: max 1 item
-Default ordering when omitted or when the first entry&#39;s field is UNSPECIFIED:
-created_at DESC, then id ASC (tie-breaker). </p></td>
+Sort defaults:
+  - direction UNSPECIFIED defaults to DESC for the specified field
+  - field UNSPECIFIED defaults to created_at with the specified direction
+  - both UNSPECIFIED or sort omitted defaults to created_at DESC </p></td>
                 </tr>
               
             </tbody>
@@ -14933,8 +14869,10 @@ Common metadata </p></td>
                   <td><a href="#policy.registeredresources.RegisteredResourcesSort">RegisteredResourcesSort</a></td>
                   <td>repeated</td>
                   <td><p>Optional - CONSTRAINT: max 1 item
-Default ordering when omitted or when the first entry&#39;s field is UNSPECIFIED:
-created_at DESC. </p></td>
+Sort defaults:
+  - direction UNSPECIFIED defaults to DESC for the specified field
+  - field UNSPECIFIED defaults to created_at with the specified direction
+  - both UNSPECIFIED or sort omitted defaults to created_at DESC </p></td>
                 </tr>
               
             </tbody>
@@ -16576,8 +16514,10 @@ Namespace ID or FQN for the subject mapping </p></td>
                   <td><a href="#policy.subjectmapping.SubjectConditionSetsSort">SubjectConditionSetsSort</a></td>
                   <td>repeated</td>
                   <td><p>Optional - CONSTRAINT: max 1 item
-Default ordering when omitted or when the first entry&#39;s field is UNSPECIFIED:
-created_at DESC, then id ASC (tie-breaker). </p></td>
+Sort defaults:
+  - direction UNSPECIFIED defaults to DESC for the specified field
+  - field UNSPECIFIED defaults to created_at with the specified direction
+  - both UNSPECIFIED or sort omitted defaults to created_at DESC </p></td>
                 </tr>
               
             </tbody>
@@ -16653,7 +16593,11 @@ created_at DESC, then id ASC (tie-breaker). </p></td>
                   <td>sort</td>
                   <td><a href="#policy.subjectmapping.SubjectMappingsSort">SubjectMappingsSort</a></td>
                   <td>repeated</td>
-                  <td><p>Optional - CONSTRAINT: max 1 item </p></td>
+                  <td><p>Optional - CONSTRAINT: max 1 item
+Sort defaults:
+  - direction UNSPECIFIED defaults to DESC for the specified field
+  - field UNSPECIFIED defaults to created_at with the specified direction
+  - both UNSPECIFIED or sort omitted defaults to created_at DESC </p></td>
                 </tr>
               
             </tbody>
@@ -17980,34 +17924,6 @@ Kas Key RPCs
           </tbody>
         </table>
 
-        
-          
-          
-          <h4>Methods with HTTP bindings</h4>
-          <table>
-            <thead>
-              <tr>
-                <td>Method Name</td>
-                <td>Method</td>
-                <td>Pattern</td>
-                <td>Body</td>
-              </tr>
-            </thead>
-            <tbody>
-            
-              
-              
-              <tr>
-                <td>GetWellKnownConfiguration</td>
-                <td>GET</td>
-                <td>/.well-known/opentdf-configuration</td>
-                <td></td>
-              </tr>
-              
-            
-            </tbody>
-          </table>
-          
         
           
           

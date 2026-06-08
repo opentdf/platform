@@ -3,6 +3,11 @@
 ----------------------------------------------------------------
 
 -- name: listAttributesDetail :many
+WITH params AS (
+    SELECT
+        COALESCE(NULLIF(@sort_field::text, ''), 'created_at') AS resolved_field,
+        COALESCE(NULLIF(@sort_direction::text, ''), 'DESC') AS resolved_direction
+)
 SELECT
     ad.id,
     ad.name as attribute_name,
@@ -34,24 +39,29 @@ LEFT JOIN (
   GROUP BY av.id
 ) avt ON avt.attribute_definition_id = ad.id
 LEFT JOIN attribute_fqns fqns ON fqns.attribute_id = ad.id AND fqns.value_id IS NULL
+CROSS JOIN params p
 WHERE
     (sqlc.narg('active')::BOOLEAN IS NULL OR ad.active = sqlc.narg('active')) AND
-    (sqlc.narg('namespace_id')::uuid IS NULL OR ad.namespace_id = sqlc.narg('namespace_id')::uuid) AND 
-    (sqlc.narg('namespace_name')::text IS NULL OR n.name = sqlc.narg('namespace_name')::text) 
-GROUP BY ad.id, n.name, fqns.fqn
+    (sqlc.narg('namespace_id')::uuid IS NULL OR ad.namespace_id = sqlc.narg('namespace_id')::uuid) AND
+    (sqlc.narg('namespace_name')::text IS NULL OR n.name = sqlc.narg('namespace_name')::text)
+GROUP BY ad.id, n.name, fqns.fqn, p.resolved_field, p.resolved_direction
 ORDER BY
-    CASE WHEN @sort_field::text = 'name' AND @sort_direction::text = 'ASC' THEN ad.name END ASC,
-    CASE WHEN @sort_field::text = 'name' AND @sort_direction::text = 'DESC' THEN ad.name END DESC,
-    CASE WHEN @sort_field::text = 'created_at' AND @sort_direction::text = 'ASC' THEN ad.created_at END ASC,
-    CASE WHEN @sort_field::text = 'created_at' AND @sort_direction::text = 'DESC' THEN ad.created_at END DESC,
-    CASE WHEN @sort_field::text = 'updated_at' AND @sort_direction::text = 'ASC' THEN ad.updated_at END ASC,
-    CASE WHEN @sort_field::text = 'updated_at' AND @sort_direction::text = 'DESC' THEN ad.updated_at END DESC,
-    ad.created_at DESC,
+    CASE WHEN p.resolved_field = 'name' AND p.resolved_direction = 'ASC' THEN ad.name END ASC,
+    CASE WHEN p.resolved_field = 'name' AND p.resolved_direction = 'DESC' THEN ad.name END DESC,
+    CASE WHEN p.resolved_field = 'created_at' AND p.resolved_direction = 'ASC' THEN ad.created_at END ASC,
+    CASE WHEN p.resolved_field = 'created_at' AND p.resolved_direction = 'DESC' THEN ad.created_at END DESC,
+    CASE WHEN p.resolved_field = 'updated_at' AND p.resolved_direction = 'ASC' THEN ad.updated_at END ASC,
+    CASE WHEN p.resolved_field = 'updated_at' AND p.resolved_direction = 'DESC' THEN ad.updated_at END DESC,
     ad.id ASC
 LIMIT @limit_
 OFFSET @offset_;
 
 -- name: listAttributesSummary :many
+WITH params AS (
+    SELECT
+        COALESCE(NULLIF(@sort_field::text, ''), 'created_at') AS resolved_field,
+        COALESCE(NULLIF(@sort_direction::text, ''), 'DESC') AS resolved_direction
+)
 SELECT
     ad.id,
     ad.name as attribute_name,
@@ -64,16 +74,16 @@ SELECT
     COUNT(*) OVER() AS total
 FROM attribute_definitions ad
 LEFT JOIN attribute_namespaces n ON n.id = ad.namespace_id
+CROSS JOIN params p
 WHERE ad.namespace_id = $1
-GROUP BY ad.id, n.name
+GROUP BY ad.id, n.name, p.resolved_field, p.resolved_direction
 ORDER BY
-    CASE WHEN @sort_field::text = 'name' AND @sort_direction::text = 'ASC' THEN ad.name END ASC,
-    CASE WHEN @sort_field::text = 'name' AND @sort_direction::text = 'DESC' THEN ad.name END DESC,
-    CASE WHEN @sort_field::text = 'created_at' AND @sort_direction::text = 'ASC' THEN ad.created_at END ASC,
-    CASE WHEN @sort_field::text = 'created_at' AND @sort_direction::text = 'DESC' THEN ad.created_at END DESC,
-    CASE WHEN @sort_field::text = 'updated_at' AND @sort_direction::text = 'ASC' THEN ad.updated_at END ASC,
-    CASE WHEN @sort_field::text = 'updated_at' AND @sort_direction::text = 'DESC' THEN ad.updated_at END DESC,
-    ad.created_at DESC,
+    CASE WHEN p.resolved_field = 'name' AND p.resolved_direction = 'ASC' THEN ad.name END ASC,
+    CASE WHEN p.resolved_field = 'name' AND p.resolved_direction = 'DESC' THEN ad.name END DESC,
+    CASE WHEN p.resolved_field = 'created_at' AND p.resolved_direction = 'ASC' THEN ad.created_at END ASC,
+    CASE WHEN p.resolved_field = 'created_at' AND p.resolved_direction = 'DESC' THEN ad.created_at END DESC,
+    CASE WHEN p.resolved_field = 'updated_at' AND p.resolved_direction = 'ASC' THEN ad.updated_at END ASC,
+    CASE WHEN p.resolved_field = 'updated_at' AND p.resolved_direction = 'DESC' THEN ad.updated_at END DESC,
     ad.id ASC
 LIMIT @limit_
 OFFSET @offset_;

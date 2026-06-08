@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/opentdf/platform/otdfctl/pkg/handlers"
 	"github.com/opentdf/platform/protocol/go/common"
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/actions"
@@ -415,18 +416,18 @@ func (h *pagedRetrieveTestHandler) ListActions(_ context.Context, limit, offset 
 	return &actions.ListActionsResponse{Pagination: emptyPageResponse()}, nil
 }
 
-func (h *pagedRetrieveTestHandler) ListSubjectConditionSets(_ context.Context, limit, offset int32, namespace string) (*subjectmapping.ListSubjectConditionSetsResponse, error) {
+func (h *pagedRetrieveTestHandler) ListSubjectConditionSets(_ context.Context, limit, offset int32, namespace string, sort handlers.SortOption) (*subjectmapping.ListSubjectConditionSetsResponse, error) {
 	return &subjectmapping.ListSubjectConditionSetsResponse{Pagination: emptyPageResponse()}, nil
 }
 
-func (h *pagedRetrieveTestHandler) ListSubjectMappings(_ context.Context, limit, offset int32, namespace string) (*subjectmapping.ListSubjectMappingsResponse, error) {
+func (h *pagedRetrieveTestHandler) ListSubjectMappings(_ context.Context, limit, offset int32, namespace string, sort handlers.SortOption) (*subjectmapping.ListSubjectMappingsResponse, error) {
 	if resp, ok := h.subjectMappingPages[offset]; ok {
 		return resp, nil
 	}
 	return &subjectmapping.ListSubjectMappingsResponse{Pagination: emptyPageResponse()}, nil
 }
 
-func (h *pagedRetrieveTestHandler) ListRegisteredResources(_ context.Context, limit, offset int32, namespace string) (*registeredresources.ListRegisteredResourcesResponse, error) {
+func (h *pagedRetrieveTestHandler) ListRegisteredResources(_ context.Context, limit, offset int32, namespace string, sort handlers.SortOption) (*registeredresources.ListRegisteredResourcesResponse, error) {
 	if resp, ok := h.registeredResourcePages[offset]; ok {
 		return resp, nil
 	}
@@ -463,7 +464,7 @@ func (h *pagedRetrieveTestHandler) ListObligationTriggers(_ context.Context, nam
 	return &obligations.ListObligationTriggersResponse{Pagination: emptyPageResponse()}, nil
 }
 
-func (h *pagedRetrieveTestHandler) ListNamespaces(_ context.Context, state common.ActiveStateEnum, limit, offset int32) (*namespaces.ListNamespacesResponse, error) {
+func (h *pagedRetrieveTestHandler) ListNamespaces(_ context.Context, state common.ActiveStateEnum, limit, offset int32, sort handlers.SortOption) (*namespaces.ListNamespacesResponse, error) {
 	return &namespaces.ListNamespacesResponse{Pagination: emptyPageResponse()}, nil
 }
 

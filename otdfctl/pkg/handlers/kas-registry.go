@@ -42,13 +42,27 @@ func (h Handler) GetKasRegistryEntry(ctx context.Context, identifer KasIdentifie
 	return resp.GetKeyAccessServer(), nil
 }
 
-func (h Handler) ListKasRegistryEntries(ctx context.Context, limit, offset int32) (*kasregistry.ListKeyAccessServersResponse, error) {
-	return h.sdk.KeyAccessServerRegistry.ListKeyAccessServers(ctx, &kasregistry.ListKeyAccessServersRequest{
+func (h Handler) ListKasRegistryEntries(ctx context.Context, limit, offset int32, sort SortOption) (*kasregistry.ListKeyAccessServersResponse, error) {
+	req := &kasregistry.ListKeyAccessServersRequest{
 		Pagination: &policy.PageRequest{
 			Limit:  limit,
 			Offset: offset,
 		},
-	})
+	}
+	if !sort.IsZero() {
+		allowedFields := map[string]kasregistry.SortKeyAccessServersType{
+			"name":       kasregistry.SortKeyAccessServersType_SORT_KEY_ACCESS_SERVERS_TYPE_NAME,
+			"uri":        kasregistry.SortKeyAccessServersType_SORT_KEY_ACCESS_SERVERS_TYPE_URI,
+			"created_at": kasregistry.SortKeyAccessServersType_SORT_KEY_ACCESS_SERVERS_TYPE_CREATED_AT,
+			"updated_at": kasregistry.SortKeyAccessServersType_SORT_KEY_ACCESS_SERVERS_TYPE_UPDATED_AT,
+		}
+		field, err := sortField("KAS registry entries", sort, allowedFields)
+		if err != nil {
+			return nil, err
+		}
+		req.Sort = []*kasregistry.KeyAccessServersSort{{Field: field, Direction: sort.Direction}}
+	}
+	return h.sdk.KeyAccessServerRegistry.ListKeyAccessServers(ctx, req)
 }
 
 // Creates the KAS registry and then returns the KAS

@@ -1043,6 +1043,254 @@ func (s *AttributeValuesSuite) Test_GetAttributeValue_With_Two_Obligations_Succe
 	s.assertObligations([]*policy.Obligation{obl1, obl2}, retrievedValue.GetObligations())
 }
 
+func (s *AttributeValuesSuite) Test_CreateAttributeValue_WithObligationTriggers_Succeeds() {
+	ns, err := s.db.PolicyClient.CreateNamespace(s.ctx, &namespaces.CreateNamespaceRequest{
+		Name: "test-inline-obligation-triggers.com",
+	})
+	s.Require().NoError(err)
+	s.NotNil(ns)
+	s.namespaces = append(s.namespaces, ns)
+
+	attrDef, err := s.db.PolicyClient.CreateAttribute(s.ctx, &attributes.CreateAttributeRequest{
+		Name:        "test-inline-obligation-triggers-attr",
+		NamespaceId: ns.GetId(),
+		Rule:        policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
+	})
+	s.Require().NoError(err)
+	s.NotNil(attrDef)
+
+	obl1, err := s.db.PolicyClient.CreateObligation(s.ctx, &obligations.CreateObligationRequest{
+		NamespaceId: ns.GetId(),
+		Name:        "test_inline_obligation_1",
+	})
+	s.Require().NoError(err)
+	s.obligations = append(s.obligations, obl1)
+
+	obl2, err := s.db.PolicyClient.CreateObligation(s.ctx, &obligations.CreateObligationRequest{
+		NamespaceId: ns.GetId(),
+		Name:        "test_inline_obligation_2",
+	})
+	s.Require().NoError(err)
+	s.obligations = append(s.obligations, obl2)
+
+	obl1Val1, err := s.db.PolicyClient.CreateObligationValue(s.ctx, &obligations.CreateObligationValueRequest{
+		ObligationId: obl1.GetId(),
+		Value:        "inline_obligation_value_1",
+	})
+	s.Require().NoError(err)
+
+	obl1Val2, err := s.db.PolicyClient.CreateObligationValue(s.ctx, &obligations.CreateObligationValueRequest{
+		ObligationId: obl1.GetId(),
+		Value:        "inline_obligation_value_2",
+	})
+	s.Require().NoError(err)
+
+	obl2Val1, err := s.db.PolicyClient.CreateObligationValue(s.ctx, &obligations.CreateObligationValueRequest{
+		ObligationId: obl2.GetId(),
+		Value:        "inline_obligation_value_3",
+	})
+	s.Require().NoError(err)
+
+	readAction := s.getActionByNameInNamespace("read", ns.GetId())
+	updateAction := s.getActionByNameInNamespace("update", ns.GetId())
+
+	createdValue, err := s.db.PolicyClient.CreateAttributeValue(s.ctx, attrDef.GetId(), &attributes.CreateAttributeValueRequest{
+		Value: "test_value_with_inline_triggers",
+		ObligationTriggers: []*attributes.AttributeValueObligationTriggerRequest{
+			{
+				ObligationValue: &common.IdFqnIdentifier{Id: obl1Val1.GetId()},
+				Action:          &common.IdNameIdentifier{Id: readAction.GetId()},
+				Metadata: &common.MetadataMutable{
+					Labels: map[string]string{"source": "inline-trigger-1"},
+				},
+				Context: &policy.RequestContext{
+					Pep: &policy.PolicyEnforcementPoint{
+						ClientId: "test-client-1",
+					},
+				},
+			},
+			{
+				ObligationValue: &common.IdFqnIdentifier{Fqn: obl1Val2.GetFqn()},
+				Action:          &common.IdNameIdentifier{Name: updateAction.GetName()},
+				Context: &policy.RequestContext{
+					Pep: &policy.PolicyEnforcementPoint{
+						ClientId: "test-client-2",
+					},
+				},
+			},
+			{
+				ObligationValue: &common.IdFqnIdentifier{Id: obl2Val1.GetId()},
+				Action:          &common.IdNameIdentifier{Name: readAction.GetName()},
+			},
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(createdValue)
+	s.Require().Len(createdValue.GetObligations(), 2)
+
+	retrievedValue, err := s.db.PolicyClient.GetAttributeValue(s.ctx, createdValue.GetId())
+	s.Require().NoError(err)
+	s.NotNil(retrievedValue)
+	s.Require().Len(retrievedValue.GetObligations(), 2)
+
+	obligationsByID := make(map[string]*policy.Obligation)
+	for _, obligation := range retrievedValue.GetObligations() {
+		obligationsByID[obligation.GetId()] = obligation
+	}
+
+	retrievedObl1, found := obligationsByID[obl1.GetId()]
+	s.Require().True(found)
+	s.Require().Len(retrievedObl1.GetValues(), 2)
+
+	retrievedObl1Values := make(map[string]*policy.ObligationValue)
+	for _, value := range retrievedObl1.GetValues() {
+		retrievedObl1Values[value.GetId()] = value
+	}
+
+	s.assertObligationValueHasSingleTrigger(retrievedObl1Values[obl1Val1.GetId()], obl1Val1, readAction, createdValue, "test-client-1")
+	s.assertObligationValueHasSingleTrigger(retrievedObl1Values[obl1Val2.GetId()], obl1Val2, updateAction, createdValue, "test-client-2")
+
+	triggerWithMetadata, err := s.db.PolicyClient.GetObligationTrigger(s.ctx, &obligations.GetObligationTriggerRequest{
+		Id: retrievedObl1Values[obl1Val1.GetId()].GetTriggers()[0].GetId(),
+	})
+	s.Require().NoError(err)
+	s.Require().NotNil(triggerWithMetadata.GetMetadata())
+	s.Equal("inline-trigger-1", triggerWithMetadata.GetMetadata().GetLabels()["source"])
+
+	retrievedObl2, found := obligationsByID[obl2.GetId()]
+	s.Require().True(found)
+	s.Require().Len(retrievedObl2.GetValues(), 1)
+	s.assertObligationValueHasSingleTrigger(retrievedObl2.GetValues()[0], obl2Val1, readAction, createdValue, "")
+}
+
+func (s *AttributeValuesSuite) Test_CreateAttributeValue_WithObligationTriggers_CrossNamespaceObligationValue_Succeeds() {
+	sourceNamespace, err := s.db.PolicyClient.CreateNamespace(s.ctx, &namespaces.CreateNamespaceRequest{
+		Name: "test-inline-cross-namespace-trigger-source.com",
+	})
+	s.Require().NoError(err)
+	s.NotNil(sourceNamespace)
+	s.namespaces = append(s.namespaces, sourceNamespace)
+
+	attrDef, err := s.db.PolicyClient.CreateAttribute(s.ctx, &attributes.CreateAttributeRequest{
+		Name:        "test-inline-cross-namespace-trigger-attr",
+		NamespaceId: sourceNamespace.GetId(),
+		Rule:        policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
+	})
+	s.Require().NoError(err)
+	s.NotNil(attrDef)
+
+	targetNamespace, err := s.db.PolicyClient.CreateNamespace(s.ctx, &namespaces.CreateNamespaceRequest{
+		Name: "test-inline-cross-namespace-trigger-target.com",
+	})
+	s.Require().NoError(err)
+	s.NotNil(targetNamespace)
+	s.namespaces = append(s.namespaces, targetNamespace)
+
+	targetObligation, err := s.db.PolicyClient.CreateObligation(s.ctx, &obligations.CreateObligationRequest{
+		NamespaceId: targetNamespace.GetId(),
+		Name:        "test_inline_cross_namespace_obligation",
+	})
+	s.Require().NoError(err)
+	s.obligations = append(s.obligations, targetObligation)
+
+	targetObligationValue, err := s.db.PolicyClient.CreateObligationValue(s.ctx, &obligations.CreateObligationValueRequest{
+		ObligationId: targetObligation.GetId(),
+		Value:        "inline_cross_namespace_obligation_value",
+	})
+	s.Require().NoError(err)
+
+	customAction, err := s.db.PolicyClient.CreateAction(s.ctx, &actions.CreateActionRequest{
+		Name:        "inline-cross-namespace-trigger-action",
+		NamespaceId: sourceNamespace.GetId(),
+	})
+	s.Require().NoError(err)
+
+	createdValue, err := s.db.PolicyClient.CreateAttributeValue(s.ctx, attrDef.GetId(), &attributes.CreateAttributeValueRequest{
+		Value: "test_value_with_cross_namespace_inline_trigger",
+		ObligationTriggers: []*attributes.AttributeValueObligationTriggerRequest{
+			{
+				ObligationValue: &common.IdFqnIdentifier{Fqn: targetObligationValue.GetFqn()},
+				Action:          &common.IdNameIdentifier{Name: customAction.GetName()},
+				Context: &policy.RequestContext{
+					Pep: &policy.PolicyEnforcementPoint{
+						ClientId: "cross-namespace-inline-client",
+					},
+				},
+			},
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(createdValue)
+	s.Require().Len(createdValue.GetObligations(), 1)
+
+	retrievedValue, err := s.db.PolicyClient.GetAttributeValue(s.ctx, createdValue.GetId())
+	s.Require().NoError(err)
+	s.NotNil(retrievedValue)
+	s.Require().Len(retrievedValue.GetObligations(), 1)
+
+	retrievedObligation := retrievedValue.GetObligations()[0]
+	s.Equal(targetObligation.GetId(), retrievedObligation.GetId())
+	s.Equal(targetObligation.GetName(), retrievedObligation.GetName())
+	s.Require().NotNil(retrievedObligation.GetNamespace())
+	s.Equal(targetNamespace.GetFqn(), retrievedObligation.GetNamespace().GetFqn())
+	s.Require().Len(retrievedObligation.GetValues(), 1)
+
+	s.assertObligationValueHasSingleTrigger(
+		retrievedObligation.GetValues()[0],
+		targetObligationValue,
+		customAction,
+		createdValue,
+		"cross-namespace-inline-client",
+	)
+}
+
+func (s *AttributeValuesSuite) Test_CreateAttributeValue_WithObligationTriggers_ObligationValueFQNNotFound_Fails() {
+	ns, err := s.db.PolicyClient.CreateNamespace(s.ctx, &namespaces.CreateNamespaceRequest{
+		Name: "test-inline-obligation-trigger-missing-obligation-fqn.com",
+	})
+	s.Require().NoError(err)
+	s.NotNil(ns)
+	s.namespaces = append(s.namespaces, ns)
+
+	attrDef, err := s.db.PolicyClient.CreateAttribute(s.ctx, &attributes.CreateAttributeRequest{
+		Name:        "test-inline-obligation-trigger-missing-obligation-fqn-attr",
+		NamespaceId: ns.GetId(),
+		Rule:        policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
+	})
+	s.Require().NoError(err)
+	s.NotNil(attrDef)
+
+	obl, err := s.db.PolicyClient.CreateObligation(s.ctx, &obligations.CreateObligationRequest{
+		NamespaceId: ns.GetId(),
+		Name:        "test_inline_missing_obligation_fqn",
+	})
+	s.Require().NoError(err)
+	s.obligations = append(s.obligations, obl)
+
+	_, err = s.db.PolicyClient.CreateObligationValue(s.ctx, &obligations.CreateObligationValueRequest{
+		ObligationId: obl.GetId(),
+		Value:        "test_inline_missing_obligation_fqn_value",
+	})
+	s.Require().NoError(err)
+
+	readAction := s.getActionByNameInNamespace("read", ns.GetId())
+
+	createdValue, err := s.db.PolicyClient.CreateAttributeValue(s.ctx, attrDef.GetId(), &attributes.CreateAttributeValueRequest{
+		Value: "test_value_missing_obligation_fqn",
+		ObligationTriggers: []*attributes.AttributeValueObligationTriggerRequest{
+			{
+				ObligationValue: &common.IdFqnIdentifier{
+					Fqn: ns.GetFqn() + "/obl/" + obl.GetName() + "/value/missing_obligation_value",
+				},
+				Action: &common.IdNameIdentifier{Id: readAction.GetId()},
+			},
+		},
+	})
+	s.Require().Error(err)
+	s.Nil(createdValue)
+	s.Require().ErrorIs(err, db.ErrNotFound)
+}
+
 func TestAttributeValuesSuite(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping attribute values integration tests")
@@ -1057,6 +1305,55 @@ func (s *AttributeValuesSuite) getActionByNameInNamespace(name string, namespace
 	})
 	s.Require().NoError(err)
 	return action
+}
+
+func (s *AttributeValuesSuite) assertObligationValueHasSingleTrigger(
+	actualObligationValue *policy.ObligationValue,
+	expectedObligationValue *policy.ObligationValue,
+	expectedAction *policy.Action,
+	expectedAttributeValue *policy.Value,
+	expectedClientID string,
+) {
+	s.Require().NotNil(actualObligationValue)
+	s.Equal(expectedObligationValue.GetId(), actualObligationValue.GetId())
+	s.Equal(expectedObligationValue.GetValue(), actualObligationValue.GetValue())
+	s.Equal(expectedObligationValue.GetFqn(), actualObligationValue.GetFqn())
+	s.Require().Len(actualObligationValue.GetTriggers(), 1)
+
+	trigger := actualObligationValue.GetTriggers()[0]
+	s.Require().NotEmpty(trigger.GetId())
+
+	if trigger.GetObligationValue() != nil {
+		s.Equal(expectedObligationValue.GetId(), trigger.GetObligationValue().GetId())
+		s.Equal(expectedObligationValue.GetValue(), trigger.GetObligationValue().GetValue())
+		s.Equal(expectedObligationValue.GetFqn(), trigger.GetObligationValue().GetFqn())
+		s.Require().NotNil(trigger.GetObligationValue().GetObligation())
+		s.Equal(expectedObligationValue.GetObligation().GetId(), trigger.GetObligationValue().GetObligation().GetId())
+		s.Equal(expectedObligationValue.GetObligation().GetName(), trigger.GetObligationValue().GetObligation().GetName())
+		s.Equal(expectedObligationValue.GetObligation().GetNamespace().GetFqn(), trigger.GetObligationValue().GetObligation().GetNamespace().GetFqn())
+	}
+
+	s.Require().NotNil(trigger.GetAction())
+	s.Equal(expectedAction.GetId(), trigger.GetAction().GetId())
+	s.Equal(expectedAction.GetName(), trigger.GetAction().GetName())
+	s.Require().NotNil(trigger.GetNamespace())
+	s.NotEmpty(trigger.GetNamespace().GetId())
+	s.Equal(strings.Split(expectedAttributeValue.GetFqn(), "/attr/")[0], trigger.GetNamespace().GetFqn())
+
+	s.Require().NotNil(trigger.GetAttributeValue())
+	s.Equal(expectedAttributeValue.GetId(), trigger.GetAttributeValue().GetId())
+	s.Equal(expectedAttributeValue.GetFqn(), trigger.GetAttributeValue().GetFqn())
+	if trigger.GetAttributeValue().GetValue() != "" {
+		s.Equal(expectedAttributeValue.GetValue(), trigger.GetAttributeValue().GetValue())
+	}
+
+	if expectedClientID == "" {
+		s.Empty(trigger.GetContext())
+		return
+	}
+
+	s.Require().Len(trigger.GetContext(), 1)
+	s.Equal(expectedClientID, trigger.GetContext()[0].GetPep().GetClientId())
 }
 
 func (s *AttributeValuesSuite) assertObligations(expected, actual []*policy.Obligation) {

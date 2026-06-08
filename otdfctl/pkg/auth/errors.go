@@ -10,4 +10,6 @@ var (
 	ErrUnauthenticated            = errors.New("not logged in")
 	ErrParsingAccessToken         = errors.New("failed to parse access token")
 	ErrProfileCredentialsNotFound = errors.New("profile missing credentials")
+	ErrNoRefreshToken             = errors.New("no refresh token available")
+	ErrRefreshFailed              = errors.New("token refresh failed")
 )

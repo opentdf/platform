@@ -3,6 +3,11 @@
 ----------------------------------------------------------------
 
 -- name: listNamespaces :many
+WITH params AS (
+    SELECT
+        COALESCE(NULLIF(@sort_field::text, ''), 'created_at') AS resolved_field,
+        COALESCE(NULLIF(@sort_direction::text, ''), 'DESC') AS resolved_direction
+)
 SELECT
     COUNT(*) OVER() AS total,
     ns.id,
@@ -12,17 +17,18 @@ SELECT
     fqns.fqn
 FROM attribute_namespaces ns
 LEFT JOIN attribute_fqns fqns ON ns.id = fqns.namespace_id AND fqns.attribute_id IS NULL
+CROSS JOIN params p
 WHERE (sqlc.narg('active')::BOOLEAN IS NULL OR ns.active = sqlc.narg('active')::BOOLEAN)
 ORDER BY
-    CASE WHEN @sort_field::text = 'name' AND @sort_direction::text = 'ASC' THEN ns.name END ASC,
-    CASE WHEN @sort_field::text = 'name' AND @sort_direction::text = 'DESC' THEN ns.name END DESC,
-    CASE WHEN @sort_field::text = 'fqn' AND @sort_direction::text = 'ASC' THEN fqns.fqn END ASC,
-    CASE WHEN @sort_field::text = 'fqn' AND @sort_direction::text = 'DESC' THEN fqns.fqn END DESC,
-    CASE WHEN @sort_field::text = 'created_at' AND @sort_direction::text = 'ASC' THEN ns.created_at END ASC,
-    CASE WHEN @sort_field::text = 'created_at' AND @sort_direction::text = 'DESC' THEN ns.created_at END DESC,
-    CASE WHEN @sort_field::text = 'updated_at' AND @sort_direction::text = 'ASC' THEN ns.updated_at END ASC,
-    CASE WHEN @sort_field::text = 'updated_at' AND @sort_direction::text = 'DESC' THEN ns.updated_at END DESC,
-    ns.created_at DESC
+    CASE WHEN p.resolved_field = 'name' AND p.resolved_direction = 'ASC' THEN ns.name END ASC,
+    CASE WHEN p.resolved_field = 'name' AND p.resolved_direction = 'DESC' THEN ns.name END DESC,
+    CASE WHEN p.resolved_field = 'fqn' AND p.resolved_direction = 'ASC' THEN fqns.fqn END ASC,
+    CASE WHEN p.resolved_field = 'fqn' AND p.resolved_direction = 'DESC' THEN fqns.fqn END DESC,
+    CASE WHEN p.resolved_field = 'created_at' AND p.resolved_direction = 'ASC' THEN ns.created_at END ASC,
+    CASE WHEN p.resolved_field = 'created_at' AND p.resolved_direction = 'DESC' THEN ns.created_at END DESC,
+    CASE WHEN p.resolved_field = 'updated_at' AND p.resolved_direction = 'ASC' THEN ns.updated_at END ASC,
+    CASE WHEN p.resolved_field = 'updated_at' AND p.resolved_direction = 'DESC' THEN ns.updated_at END DESC,
+    ns.id ASC
 LIMIT @limit_
 OFFSET @offset_;
 

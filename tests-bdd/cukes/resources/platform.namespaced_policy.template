@@ -1,25 +1,13 @@
-authEndpoint: &authEndpoint http://{{ .hostname }}:{{.kcPort }}/auth
-issuerEndpoint: &issuerEndpoint http://{{ .hostname }}:{{.kcPort }}/auth/realms/{{.authRealm}}
-tokenEndpoint: &tokenEndpoint http://{{ .hostname }}:{{.kcPort }}/auth/realms/{{.authRealm}}/protocol/openid-connect/token
-entityResolutionServiceUrl: &entityResolutionServiceUrl https://{{ .hostname }}:{{.platformPort }}/entityresolution/resolve
-platformEndpoint: &platformEndpoint https://{{.hostname }}:{{.platformPort }}
-authRealm: &authRealm {{.authRealm}}
-mode: all
+# This template is platform.template plus the single authorization override
+# `enforce_namespaced_entitlements: true`. Keep in sync with platform.template;
+# the diff between the two files should be only the authorization block below.
 logger:
   level: debug
   type: text
-  output: stdout
-server:
-  port: {{.platformPort}}
-  auth:
-    enabled: true
-    enforceDPoP: false
-    audience: *platformEndpoint
-    issuer: *issuerEndpoint
-    policy:
-      extension: |
-        g, opentdf-admin, role:admin
-        g, opentdf-standard, role:standard
+  output: stderr
+# BDD-specific: scenarios run a full in-process platform and need their own
+# schema-isolated database per scenario.
+mode: all
 db:
   host: {{ .pgHost }}
   port: {{ .pgPort }}
@@ -31,27 +19,168 @@ services:
   authorization:
     enforce_namespaced_entitlements: true
   kas:
+    registered_kas_uri: http://{{ .hostname }}:{{ .platformPort }} # Should match what you have registered for *this* KAS in the policy db.
+    preview:
+      ec_tdf_enabled: false
+      key_management: false
+    root_key: a8c4824daafcfa38ed0d13002e92b08720e6c4fcee67d52e954c1a6e045907d1 # For local development testing only
     keyring:
       - kid: e1
         alg: ec:secp256r1
+      - kid: e1
+        alg: ec:secp256r1
+        legacy: true
       - kid: r1
         alg: rsa:2048
+      - kid: r1
+        alg: rsa:2048
+        legacy: true
   entityresolution:
-    url: *authEndpoint
-    clientid: 'tdf-entity-resolution'
-    clientsecret: 'secret'
-    realm: *authRealm
+    log_level: info
+    url: http://{{ .hostname }}:{{ .kcPort }}/auth
+    clientid: "tdf-entity-resolution"
+    clientsecret: "secret"
+    realm: "{{ .authRealm }}"
     legacykeycloak: true
     inferid:
       from:
         email: true
         username: true
-  shared:
-    clientId: otdf-shared
-    clientSecret: secret
-    authClientId: otdf-shared-auth
-    serviceHostName: shared
-    platformEndpoint: *platformEndpoint
-    platformAuthEndpoint: *authEndpoint
-    platformAuthRealm: *authRealm
-    tokenEndpoint: *tokenEndpoint
+    # cache_expiration: 30s # disabled unless present and > 0
+  # policy is enabled by default in mode 'all'
+  # policy:
+  #   enabled: true
+  #   list_request_limit_default: 1000
+  #   list_request_limit_max: 2500
+  # authorization:
+  #   entitlement_policy_cache:
+  #     enabled: false
+  #     refresh_interval: 30s
+server:
+  public_hostname: {{ .hostname }}
+  tls:
+    enabled: false
+    cert: ./keys/platform.crt
+    key: ./keys/platform-key.pem
+  auth:
+    enabled: true
+    enforceDPoP: false
+    audience: "http://{{ .hostname }}:{{ .platformPort }}"
+    issuer: http://{{ .hostname }}:{{ .kcPort }}/auth/realms/{{ .authRealm }}
+    policy:
+      ## Dot notation is used to access nested claims (i.e. realm_access.roles)
+      # Claim that represents the user (i.e. email)
+      username_claim: # preferred_username
+      # That claim to access groups (i.e. realm_access.roles)
+      groups_claim: # realm_access.roles
+      # Claim the represents the idP client ID
+      client_id_claim: # azp
+      # Optional external role provider (name is resolved via StartOptions)
+      # roles_provider:
+      #   name: external
+      #   config: {} # provider-specific (any object)
+      ## Extends the builtin policy
+      extension: |
+        g, opentdf-admin, role:admin
+        g, opentdf-standard, role:standard
+      ## Custom policy that overrides builtin policy (see examples https://github.com/casbin/casbin/tree/master/examples)
+      csv: #|
+      #  p, role:admin, *, *, allow
+      ## Custom model (see https://casbin.org/docs/syntax-for-models/)
+      model: #|
+      #  [request_definition]
+      #  r = sub, res, act, obj
+      #
+      #  [policy_definition]
+      #  p = sub, res, act, obj, eft
+      #
+      #  [role_definition]
+      #  g = _, _
+      #
+      #  [policy_effect]
+      #  e = some(where (p.eft == allow)) && !some(where (p.eft == deny))
+      #
+      #  [matchers]
+      #  m = g(r.sub, p.sub) && globOrRegexMatch(r.res, p.res) && globOrRegexMatch(r.act, p.act) && globOrRegexMatch(r.obj, p.obj)
+  trace:
+    enabled: false
+    provider:
+      name: file # file | otlp
+      file:
+        path: "./traces/traces.log"
+        prettyPrint: true # Optional, default is compact JSON
+        maxSize: 50 # Optional, default 20MB
+        maxBackups: 5 # Optional, default 10
+        maxAge: 14 # Optional, default 30 days
+        compress: true # Optional, default false
+      # otlp:
+      # protocol: grpc # Optional, defaults to grpc
+      # endpoint: "localhost:4317"
+      # insecure: true # Set to false if Jaeger requires TLS
+      # headers: {} # Add if authentication is needed
+      # HTTP
+      #        protocol: "http/protobuf"
+      #        endpoint: "http://localhost:4318" # Default OTLP HTTP port
+      #        insecure: true # If collector is just HTTP, not HTTPS
+      # headers: {} # Add if authentication is needed
+  cors:
+    enabled: true
+    # "*" to allow any origin or a specific domain like "https://yourdomain.com"
+    allowedorigins:
+      - "*"
+    # List of methods. Examples: "GET,POST,PUT"
+    allowedmethods:
+      - GET
+      - POST
+      - PATCH
+      - PUT
+      - DELETE
+      - OPTIONS
+    # List of headers that are allowed in a request
+    allowedheaders:
+      - Accept
+      - Accept-Encoding
+      - Authorization
+      - Connect-Protocol-Version
+      - Content-Length
+      - Content-Type
+      - Dpop
+      - X-CSRF-Token
+      - X-Requested-With
+      - X-Rewrap-Additional-Context
+    # List of response headers that browsers are allowed to access
+    exposedheaders:
+      - Link
+    # Sets whether credentials are included in the CORS request
+    allowcredentials: true
+    # Sets the maximum age (in seconds) of a specific CORS preflight request
+    maxage: 3600
+    # Additive fields - append to base lists without replacing defaults
+    # Use these to add custom values without having to copy all defaults
+    # additionalmethods: []
+    # additionalheaders:
+    #   - X-Custom-Header
+    # additionalexposedheaders: []
+  grpc:
+    reflectionEnabled: true # Default is false
+  # http:
+  #   # HTTP server configuration
+  #   # Negative values indicate no timeout, default will be used if the timeout is set to 0
+  #   readTimeout: 15s
+  #   writeTimeout: 15s
+  #   readHeaderTimeout: 10s
+  #   idleTimeout: 20s
+  #   maxHeaderBytes: 1048576 # 1 MB
+  cryptoProvider:
+    type: standard
+    standard:
+      keys:
+        - kid: r1
+          alg: rsa:2048
+          private: {{ .platformKeysDir }}/kas-private.pem
+          cert: {{ .platformKeysDir }}/kas-cert.pem
+        - kid: e1
+          alg: ec:secp256r1
+          private: {{ .platformKeysDir }}/kas-ec-private.pem
+          cert: {{ .platformKeysDir }}/kas-ec-cert.pem
+  port: {{ .platformPort }}

@@ -15,7 +15,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
+	"github.com/opentdf/platform/lib/ocrypto"
 	"github.com/opentdf/platform/service/internal/auth"
 	"github.com/opentdf/platform/service/internal/server"
 	"github.com/opentdf/platform/service/logger"
@@ -135,17 +135,13 @@ func mockKeycloakServer() *httptest.Server {
 }
 
 func mockOpenTDFServer() (*server.OpenTDFServer, error) {
-	discoveryEndpoint := mockKeycloakServer()
 	// Create new opentdf server
 	return server.NewOpenTDFServer(server.Config{
 		WellKnownConfigRegister: func(_ string, _ any) error {
 			return nil
 		},
 		Auth: auth.Config{
-			AuthNConfig: auth.AuthNConfig{
-				Issuer:   discoveryEndpoint.URL,
-				Audience: "test",
-			},
+			Enabled:      false,
 			PublicRoutes: []string{"/testpath/*"},
 		},
 		Port: 43481,
@@ -228,12 +224,31 @@ func TestStartTestSuite(t *testing.T) {
 }
 
 func (s *StartTestSuite) SetupSuite() {
-	// Create dummy KAS key files in testdata
+	// Generate fresh KAS key material for every run so nothing is committed
+	// alongside the source tree. all-no-config.yaml expects all of these paths
+	// to resolve, including the hybrid PQ key pairs added in PR #3276.
 	keyFiles := map[string]string{
 		"kas-private.pem":    dummyRsaPrivate,
 		"kas-cert.pem":       dummyRsaPublic, // Using public key as cert for dummy purposes
 		"kas-ec-private.pem": dummyEcPrivate,
 		"kas-ec-cert.pem":    dummyEcCert,
+	}
+
+	hybridPairs := []struct {
+		name    string
+		newPair func() (priv, pub string, err error)
+		priv    string
+		pub     string
+	}{
+		{"X-Wing", testXWingPair, "kas-xwing-private.pem", "kas-xwing-public.pem"},
+		{"P-256+ML-KEM-768", testP256MLKEM768Pair, "kas-p256mlkem768-private.pem", "kas-p256mlkem768-public.pem"},
+		{"P-384+ML-KEM-1024", testP384MLKEM1024Pair, "kas-p384mlkem1024-private.pem", "kas-p384mlkem1024-public.pem"},
+	}
+	for _, p := range hybridPairs {
+		priv, pub, err := p.newPair()
+		s.Require().NoErrorf(err, "Failed to generate %s key pair", p.name)
+		keyFiles[p.priv] = priv
+		keyFiles[p.pub] = pub
 	}
 
 	for filename, content := range keyFiles {
@@ -250,7 +265,7 @@ func (s *StartTestSuite) TearDownSuite() {
 	s.Require().NoError(err, "Failed to read testdata directory")
 
 	for _, entry := range entries {
-		if !entry.IsDir() {
+		if entry.IsDir() {
 			continue
 		}
 		if entry.Name() == ignoreFile {
@@ -259,6 +274,47 @@ func (s *StartTestSuite) TearDownSuite() {
 		err = os.Remove("testdata/" + entry.Name())
 		s.Require().NoError(err, "Failed to remove testdata file: %s", entry.Name())
 	}
+}
+
+func testXWingPair() (string, string, error) {
+	kp, err := ocrypto.NewXWingKeyPair()
+	if err != nil {
+		return "", "", err
+	}
+	return testHybridPEMs(kp)
+}
+
+func testP256MLKEM768Pair() (string, string, error) {
+	kp, err := ocrypto.NewP256MLKEM768KeyPair()
+	if err != nil {
+		return "", "", err
+	}
+	return testHybridPEMs(kp)
+}
+
+func testP384MLKEM1024Pair() (string, string, error) {
+	kp, err := ocrypto.NewP384MLKEM1024KeyPair()
+	if err != nil {
+		return "", "", err
+	}
+	return testHybridPEMs(kp)
+}
+
+type pemKeyPair interface {
+	PrivateKeyInPemFormat() (string, error)
+	PublicKeyInPemFormat() (string, error)
+}
+
+func testHybridPEMs(kp pemKeyPair) (string, string, error) {
+	priv, err := kp.PrivateKeyInPemFormat()
+	if err != nil {
+		return "", "", err
+	}
+	pub, err := kp.PublicKeyInPemFormat()
+	if err != nil {
+		return "", "", err
+	}
+	return priv, pub, nil
 }
 
 func (s *StartTestSuite) Test_Start_When_Extra_Service_Registered() {
@@ -278,7 +334,7 @@ func (s *StartTestSuite) Test_Start_When_Extra_Service_Registered() {
 			name:         "And_Mode_Core",
 			mode:         []string{"core"},
 			status:       http.StatusNotFound,
-			responseBody: "{\"code\":5,\"message\":\"Not Found\",\"details\":[]}",
+			responseBody: "404 page not found\n",
 		},
 		{
 			name:         "And_Mode_Core_Plus_Test",
@@ -296,7 +352,7 @@ func (s *StartTestSuite) Test_Start_When_Extra_Service_Registered() {
 			name:         "And_Mode_Kas",
 			mode:         []string{"kas"},
 			status:       http.StatusNotFound,
-			responseBody: "{\"code\":5,\"message\":\"Not Found\",\"details\":[]}",
+			responseBody: "404 page not found\n",
 		},
 		{
 			name:         "And_Mode_Kas_Plus_Test",
@@ -308,7 +364,7 @@ func (s *StartTestSuite) Test_Start_When_Extra_Service_Registered() {
 			name:         "And_Mode_EntityResolution",
 			mode:         []string{"entityresolution"},
 			status:       http.StatusNotFound,
-			responseBody: "{\"code\":5,\"message\":\"Not Found\",\"details\":[]}",
+			responseBody: "404 page not found\n",
 		},
 		{
 			name:         "And_Mode_EntityResolution_Plus_Test",
@@ -320,7 +376,7 @@ func (s *StartTestSuite) Test_Start_When_Extra_Service_Registered() {
 			name:         "And_Mode_Unknown",
 			mode:         []string{"unknown"},
 			status:       http.StatusNotFound,
-			responseBody: "{\"code\":5,\"message\":\"Not Found\",\"details\":[]}",
+			responseBody: "404 page not found\n",
 		},
 		{
 			name:         "And_Mode_Unknown_Plus_Test",
@@ -343,8 +399,11 @@ func (s *StartTestSuite) Test_Start_When_Extra_Service_Registered() {
 			ts := TestService{}
 			registerTestService, _ := mockTestServiceRegistry(mockTestServiceOptions{
 				serviceObject: ts,
-				serviceHandler: func(_ context.Context, mux *runtime.ServeMux) error {
-					return mux.HandlePath(http.MethodGet, "/healthz", ts.TestHandler)
+				serviceHandler: func(_ context.Context, mux *http.ServeMux) error {
+					mux.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) {
+						ts.TestHandler(w, r, nil)
+					})
+					return nil
 				},
 			})
 
@@ -353,7 +412,7 @@ func (s *StartTestSuite) Test_Start_When_Extra_Service_Registered() {
 			require.NoError(t, err)
 
 			// Start services with test service
-			cleanup, err := startServices(context.Background(), startServicesParams{
+			err = startServices(context.Background(), startServicesParams{
 				cfg: &config.Config{
 					Mode: tc.mode,
 					Services: map[string]config.ServiceConfig{
@@ -368,7 +427,6 @@ func (s *StartTestSuite) Test_Start_When_Extra_Service_Registered() {
 				cacheManager:           &cache.Manager{},
 			})
 			require.NoError(t, err)
-			defer cleanup()
 
 			require.NoError(t, s.Start())
 			defer s.Stop()

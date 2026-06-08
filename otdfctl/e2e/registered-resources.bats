@@ -191,6 +191,51 @@ teardown_file() {
   run_otdfctl_reg_res delete --id $reg_res2_id --force
 }
 
+@test "List registered resources supports sort and order flags" {
+  sort_prefix="sort_rr_${BATS_TEST_NUMBER}_$RANDOM"
+  run_otdfctl_reg_res create --name "${sort_prefix}_alpha" --namespace "$NS_ID" --json
+  rr_a_id=$(echo "$output" | jq -r '.id')
+  run_otdfctl_reg_res create --name "${sort_prefix}_bravo" --namespace "$NS_ID" --json
+  rr_b_id=$(echo "$output" | jq -r '.id')
+  run_otdfctl_reg_res create --name "${sort_prefix}_charlie" --namespace "$NS_ID" --json
+  rr_c_id=$(echo "$output" | jq -r '.id')
+
+  run_otdfctl_reg_res list --namespace "$NS_ID" --sort name --order asc --limit 500 --json
+  assert_success
+  assert_equal "$(echo "$output" | jq -r --arg prefix "$sort_prefix" '[.resources[] | select(.name | startswith($prefix)) | .id] | join(",")')" "$rr_a_id,$rr_b_id,$rr_c_id"
+
+  run_otdfctl_reg_res list --namespace "$NS_ID" --sort name --order desc --limit 500 --json
+  assert_success
+  assert_equal "$(echo "$output" | jq -r --arg prefix "$sort_prefix" '[.resources[] | select(.name | startswith($prefix)) | .id] | join(",")')" "$rr_c_id,$rr_b_id,$rr_a_id"
+
+  run_otdfctl_reg_res list --namespace "$NS_ID" --sort created_at --order asc --limit 500 --json
+  assert_success
+  assert_equal "$(echo "$output" | jq -r --arg a "$rr_a_id" --arg b "$rr_b_id" --arg c "$rr_c_id" '[.resources[] | select(.id == $a or .id == $b or .id == $c) | .id] | join(",")')" "$rr_a_id,$rr_b_id,$rr_c_id"
+
+  run_otdfctl_reg_res update --id "$rr_a_id" --label sort=a --json
+  assert_success
+  run_otdfctl_reg_res update --id "$rr_b_id" --label sort=b --json
+  assert_success
+  run_otdfctl_reg_res update --id "$rr_c_id" --label sort=c --json
+  assert_success
+
+  run_otdfctl_reg_res list --namespace "$NS_ID" --sort updated_at --order asc --limit 500 --json
+  assert_success
+  assert_equal "$(echo "$output" | jq -r --arg a "$rr_a_id" --arg b "$rr_b_id" --arg c "$rr_c_id" '[.resources[] | select(.id == $a or .id == $b or .id == $c) | .id] | join(",")')" "$rr_a_id,$rr_b_id,$rr_c_id"
+
+  run_otdfctl_reg_res list --namespace "$NS_ID" --sort name --limit 500 --json
+  assert_success
+  assert_equal "$(echo "$output" | jq -r --arg prefix "$sort_prefix" '[.resources[] | select(.name | startswith($prefix)) | .id] | join(",")')" "$rr_c_id,$rr_b_id,$rr_a_id"
+
+  run_otdfctl_reg_res list --namespace "$NS_ID" --order asc --limit 500 --json
+  assert_success
+  assert_equal "$(echo "$output" | jq -r --arg a "$rr_a_id" --arg b "$rr_b_id" --arg c "$rr_c_id" '[.resources[] | select(.id == $a or .id == $b or .id == $c) | .id] | join(",")')" "$rr_a_id,$rr_b_id,$rr_c_id"
+
+  run_otdfctl_reg_res delete --id "$rr_a_id" --force
+  run_otdfctl_reg_res delete --id "$rr_b_id" --force
+  run_otdfctl_reg_res delete --id "$rr_c_id" --force
+}
+
 @test "Update registered resource" {
   # setup a resource to update
   run_otdfctl_reg_res create --name test_update_rr --namespace "$NS_ID"
@@ -276,6 +321,24 @@ teardown_file() {
   run_otdfctl_reg_res_values delete --id $created_id_with_action_attr_vals --force
 }
 
+@test "Create a registered resource value includes FQN in JSON output" {
+  value="test_create_rr_val_fqn"
+  expected_fqn="https://$NS_NAME/reg_res/$RR_NAME/value/$value"
+
+  run_otdfctl_reg_res_values create --resource "$RR_ID" --value "$value" --json
+    assert_success
+    created_id=$(echo "$output" | jq -r '.id')
+    assert_equal "$(echo "$output" | jq -r '.value')" "$value"
+    assert_equal "$(echo "$output" | jq -r '.fqn')" "$expected_fqn"
+
+  run_otdfctl_reg_res_values get --id "$created_id" --json
+    assert_success
+    assert_equal "$(echo "$output" | jq -r '.id')" "$created_id"
+    assert_equal "$(echo "$output" | jq -r '.fqn')" "$expected_fqn"
+
+  run_otdfctl_reg_res_values delete --id "$created_id" --force
+}
+
 @test "Create a registered resource value - Bad" {
   # bad resource value names
   run_otdfctl_reg_res_values create --resource "$RR_ID" --value ends_underscored_
@@ -326,16 +389,18 @@ teardown_file() {
     assert_success
     [ "$(echo "$output" | jq -r '.id')" = "$created_id" ]
     [ "$(echo "$output" | jq -r '.value')" = "test_get_rr_val" ]
+    [ "$(echo "$output" | jq -r '.fqn')" = "https://$NS_NAME/reg_res/$RR_NAME/value/test_get_rr_val" ]
     [ "$(echo "$output" | jq -r '.action_attribute_values[0].action.id')" = "$READ_ACTION_ID" ]
     [ "$(echo "$output" | jq -r '.action_attribute_values[0].action.name')" = "$READ_ACTION_NAME" ]
     [ "$(echo "$output" | jq -r '.action_attribute_values[0].attribute_value.id')" = "$ATTR_VAL_1_ID" ]
     [ "$(echo "$output" | jq -r '.action_attribute_values[0].attribute_value.fqn')" = "$ATTR_VAL_1_FQN" ]
 
   # get by fqn
-  run_otdfctl_reg_res_values get --fqn "https://reg_res/$RR_NAME/value/test_get_rr_val" --json
+  run_otdfctl_reg_res_values get --fqn "https://$NS_NAME/reg_res/$RR_NAME/value/test_get_rr_val" --json
     assert_success
     [ "$(echo "$output" | jq -r '.id')" = "$created_id" ]
     [ "$(echo "$output" | jq -r '.value')" = "test_get_rr_val" ]
+    [ "$(echo "$output" | jq -r '.fqn')" = "https://$NS_NAME/reg_res/$RR_NAME/value/test_get_rr_val" ]
     [ "$(echo "$output" | jq -r '.action_attribute_values[0].action.id')" = "$READ_ACTION_ID" ]
     [ "$(echo "$output" | jq -r '.action_attribute_values[0].action.name')" = "$READ_ACTION_NAME" ]
     [ "$(echo "$output" | jq -r '.action_attribute_values[0].attribute_value.id')" = "$ATTR_VAL_1_ID" ]

@@ -56,7 +56,7 @@ jobs:
           persist-credentials: false
       - uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5 # v5.5.0
         with:
-          go-version-file: ${{ matrix.directory }}/go.mod
+          go-version-file: go.work
           check-latest: false
           cache-dependency-path: |
             examples/go.sum
@@ -84,7 +84,8 @@ jobs:
         continue-on-error: true
         uses: golang/govulncheck-action@b625fbe08f3bccbe446d94fbf87fcc875a4f50ee # v1.0.4
         with:
-          go-version-input: "1.25.9"
+          go-version-input: ""
+          go-version-file: go.work
           work-dir: ${{ matrix.directory }}
       - if: steps.govulncheck.outcome == 'failure'
         run: echo "$MODULE_DIR" > "/tmp/govulncheck-failure-${JOB_INDEX}.txt"
@@ -110,11 +111,14 @@ jobs:
         working-directory: ${{ matrix.directory }}
       - if: matrix.directory == 'service'
         run: go test ./service/integration -race -failfast
+      - name: setup sqlc
+        if: matrix.directory == 'service'
+        uses: sqlc-dev/setup-sqlc@bac53b7fb28c039a6c7f5736fd1e89744021bdd6 # v5.0.0
+        with:
+          sqlc-version: '1.31.0'
       - name: verify sqlc generate
         if: matrix.directory == 'service'
-        run: |
-          go install github.com/sqlc-dev/sqlc/cmd/sqlc@v1.30.0
-          make policy-sql-gen
+        run: make policy-sql-gen
       - name: check go fmt and go mod tidy
         run: |-
           go mod tidy
@@ -192,7 +196,7 @@ jobs:
           persist-credentials: false
       - uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5 # v5.5.0
         with:
-          go-version-file: "service/go.mod"
+          go-version-file: go.work
           check-latest: false
           cache-dependency-path: |
             service/go.sum
@@ -271,7 +275,7 @@ jobs:
           persist-credentials: false
       - uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5 # v5.5.0
         with:
-          go-version-file: "service/go.mod"
+          go-version-file: go.work
           check-latest: false
           cache-dependency-path: |
             service/go.sum
@@ -520,7 +524,7 @@ jobs:
           persist-credentials: false
       - uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5 # v5.5.0
         with:
-          go-version-file: ./tests-bdd/go.mod
+          go-version-file: go.work
           cache: false
 
       - name: Build local platform-cukes image for testing
@@ -595,7 +599,7 @@ jobs:
       - uses: bufbuild/buf-setup-action@a47c93e0b1648d5651a065437926377d060baa99 # v1.50.0
         with:
           github_token: ${{ github.token }}
-          version: "1.56.0"
+          version: "1.70.0"
       - uses: bufbuild/buf-lint-action@06f9dd823d873146471cfaaf108a993fe00e5325 # v1.1.1
         with:
           input: service
@@ -605,7 +609,7 @@ jobs:
           against: "https://github.com/opentdf/platform.git#branch=${{ github.event.pull_request.base.ref || github.base_ref || 'main' }},subdir=service"
       - uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5 # v5.5.0
         with:
-          go-version-file: "service/go.mod"
+          go-version-file: go.work
           check-latest: false
           cache-dependency-path: |
             service/go.sum
@@ -614,7 +618,7 @@ jobs:
             examples/go.sum
       - run: cd service && go get github.com/pseudomuto/protoc-gen-doc/cmd/protoc-gen-doc
       - run: cd service && go install github.com/pseudomuto/protoc-gen-doc/cmd/protoc-gen-doc
-      - run: cd service && go install github.com/sudorandom/protoc-gen-connect-openapi@v0.18.0
+      - run: cd service && go install github.com/sudorandom/protoc-gen-connect-openapi@v0.25.6
       - run: cd service && go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.8.0
       - run: make proto-generate
       - name: generate connect wrappers
@@ -663,7 +667,7 @@ jobs:
           persist-credentials: false
       - uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5 # v5.5.0
         with:
-          go-version-file: "service/go.mod"
+          go-version-file: go.work
           check-latest: false
           cache: false
       - name: check service licenses

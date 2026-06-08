@@ -21,6 +21,7 @@ const (
 	obligationTriggerResponseKey = "obligationTriggerResponse"
 	multiDecisionResponseKey     = "multiDecisionResponse"
 	valuesKey                    = "values"
+	nameKey                      = "name"
 )
 
 // Step: I send a request to create an obligation with table
@@ -49,7 +50,7 @@ func (s *ObligationsStepDefinitions) iSendARequestToCreateAnObligationWith(ctx c
 					return ctx, fmt.Errorf("%s %s not found", namespaceIDKey, c.Value)
 				}
 				req.NamespaceId = nsID
-			case "name":
+			case nameKey:
 				obligationName = strings.TrimSpace(c.Value)
 				req.Name = obligationName
 			case valuesKey:

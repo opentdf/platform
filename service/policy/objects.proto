@@ -297,6 +297,9 @@ message ResourceMappingGroup {
   // per namespace
   string name = 3 [(buf.validate.field).required = true];
 
+  // the fully qualified name of the resource mapping group
+  string fqn = 4;
+
   // Common metadata
   common.Metadata metadata = 100;
 }
@@ -388,6 +391,9 @@ enum KasPublicKeyAlgEnum {
   KAS_PUBLIC_KEY_ALG_ENUM_EC_SECP256R1 = 5;
   KAS_PUBLIC_KEY_ALG_ENUM_EC_SECP384R1 = 6;
   KAS_PUBLIC_KEY_ALG_ENUM_EC_SECP521R1 = 7;
+  KAS_PUBLIC_KEY_ALG_ENUM_HPQT_XWING = 10;
+  KAS_PUBLIC_KEY_ALG_ENUM_HPQT_SECP256R1_MLKEM768 = 11;
+  KAS_PUBLIC_KEY_ALG_ENUM_HPQT_SECP384R1_MLKEM1024 = 12;
 }
 
 // Deprecated
@@ -478,6 +484,8 @@ message RegisteredResourceValue {
 
   repeated ActionAttributeValue action_attribute_values = 4;
 
+  string fqn = 5;
+
   // Common metadata
   common.Metadata metadata = 100;
 }
@@ -532,6 +540,9 @@ message ObligationTrigger {
 
   repeated RequestContext context = 5;
 
+  // The source namespace for this trigger, derived from the attribute value and action.
+  Namespace namespace = 11;
+
   common.Metadata metadata = 100;
 }
 
@@ -553,6 +564,9 @@ enum Algorithm {
   ALGORITHM_EC_P256 = 3;
   ALGORITHM_EC_P384 = 4;
   ALGORITHM_EC_P521 = 5;
+  ALGORITHM_HPQT_XWING = 6;
+  ALGORITHM_HPQT_SECP256R1_MLKEM768 = 7;
+  ALGORITHM_HPQT_SECP384R1_MLKEM1024 = 8;
 }
 
 // The status of the key

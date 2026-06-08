@@ -12,7 +12,6 @@ import (
 	"net/http"
 	"net/url"
 	"path"
-	"regexp"
 	"slices"
 	"strings"
 	"time"
@@ -41,8 +40,6 @@ var (
 		// KAS Public Key Endpoints
 		"/kas.AccessService/PublicKey",
 		"/kas.AccessService/LegacyPublicKey",
-		"/kas/kas_public_key",
-		"/kas/v2/kas_public_key",
 		// HealthZ
 		"/healthz",
 		"/grpc.health.v1.Health/Check",
@@ -75,6 +72,7 @@ var (
 
 const (
 	refreshInterval = 15 * time.Minute
+	dpopJWTType     = "dpop+jwt"
 	ActionRead      = "read"
 	ActionWrite     = "write"
 	ActionDelete    = "delete"
@@ -85,8 +83,8 @@ const (
 // Authentication holds a jwks cache and information about the openid configuration
 type Authentication struct {
 	enforceDPoP bool
-	// keySet holds a cached key set
-	cachedKeySet jwk.Set
+	// tokenVerifier validates access tokens against the configured IdP.
+	tokenVerifier *TokenVerifier
 	// openidConfigurations holds the openid configuration for the issuer
 	oidcConfiguration AuthNConfig
 	// Casbin enforcer
@@ -109,41 +107,11 @@ func NewAuthenticator(ctx context.Context, cfg Config, logger *logger.Logger, we
 		logger:      logger,
 	}
 
-	// validate the configuration
-	if err := cfg.validateAuthNConfig(a.logger); err != nil {
-		return nil, err
-	}
-
-	cache := jwk.NewCache(ctx)
-
-	// Build new cache
-	// Discover OIDC Configuration
-	oidcConfig, err := DiscoverOIDCConfiguration(ctx, cfg.Issuer, a.logger)
+	tokenVerifier, oidcConfig, err := newTokenVerifier(ctx, cfg.AuthNConfig, a.logger)
 	if err != nil {
 		return nil, err
 	}
-
-	// If the issuer is different from the one in the configuration, update the configuration
-	// This could happen if we are hitting an internal endpoint. Example we might point to https://keycloak.opentdf.svc/realms/opentdf
-	// but the external facing issuer is https://keycloak.opentdf.local/realms/opentdf
-	if oidcConfig.Issuer != cfg.Issuer {
-		cfg.Issuer = oidcConfig.Issuer
-	}
-
-	cacheInterval, err := time.ParseDuration(cfg.CacheRefresh)
-	if err != nil {
-		logger.ErrorContext(ctx,
-			"invalid cache_refresh_interval",
-			slog.String("cache_refresh_interval", cfg.CacheRefresh),
-			slog.Any("err", err),
-		)
-		cacheInterval = refreshInterval
-	}
-
-	// Register the jwks_uri with the cache
-	if err := cache.Register(oidcConfig.JwksURI, jwk.WithMinRefreshInterval(cacheInterval)); err != nil {
-		return nil, err
-	}
+	a.tokenVerifier = tokenVerifier
 
 	roleProvider, err := resolveRoleProvider(ctx, cfg, logger)
 	if err != nil {
@@ -158,15 +126,6 @@ func NewAuthenticator(ctx context.Context, cfg Config, logger *logger.Logger, we
 		return nil, fmt.Errorf("failed to initialize casbin enforcer: %w", err)
 	}
 
-	// Need to refresh the cache to verify jwks is available
-	_, err = cache.Refresh(ctx, oidcConfig.JwksURI)
-	if err != nil {
-		return nil, err
-	}
-
-	// Set the cache
-	a.cachedKeySet = jwk.NewCachedSet(cache, oidcConfig.JwksURI)
-
 	// Combine public routes
 	a.publicRoutes = append(a.publicRoutes, cfg.PublicRoutes...)
 	a.publicRoutes = append(a.publicRoutes, allowedPublicEndpoints[:]...)
@@ -174,10 +133,10 @@ func NewAuthenticator(ctx context.Context, cfg Config, logger *logger.Logger, we
 	// Combine IPC reauthorization routes
 	a.ipcReauthRoutes = append(ipcReauthRoutes[:], cfg.IPCReauthRoutes...)
 
-	a.oidcConfiguration = cfg.AuthNConfig
+	a.oidcConfiguration = tokenVerifier.oidcConfiguration
 
 	// Try an register oidc issuer to wellknown service but don't return an error if it fails
-	if err := wellknownRegistration("platform_issuer", cfg.Issuer); err != nil {
+	if err := wellknownRegistration("platform_issuer", a.oidcConfiguration.Issuer); err != nil {
 		logger.Warn("failed to register platform issuer", slog.Any("error", err))
 	}
 
@@ -288,24 +247,23 @@ func (a Authentication) MuxHandler(handler http.Handler) http.Handler {
 			Resource: r.URL.Path,
 			Action:   action,
 		}
-		if allow, err := a.enforcer.Enforce(ctx, accessTok, roleReq); err != nil {
+		if result, err := a.enforcer.Enforce(ctx, accessTok, roleReq); err != nil {
 			if errors.Is(err, ErrPermissionDenied) {
 				log.WarnContext(
 					ctx,
 					"permission denied",
-					slog.String("azp", accessTok.Subject()),
-					slog.Any("error", err),
+					permissionDeniedLogAttrs(accessTok, result.CasbinAuthz, err)...,
 				)
 				http.Error(w, "permission denied", http.StatusForbidden)
 				return
 			}
 			http.Error(w, "internal server error", http.StatusInternalServerError)
 			return
-		} else if !allow {
+		} else if !result.Allowed {
 			log.WarnContext(
 				ctx,
 				"permission denied",
-				slog.String("azp", accessTok.Subject()),
+				permissionDeniedLogAttrs(accessTok, result.CasbinAuthz, nil)...,
 			)
 			http.Error(w, "permission denied", http.StatusForbidden)
 			return
@@ -334,8 +292,6 @@ func (a Authentication) ConnectUnaryServerInterceptor() connect.UnaryInterceptor
 				u: []string{req.Spec().Procedure},
 				m: []string{http.MethodPost},
 			}
-
-			ri.u = append(ri.u, a.lookupGatewayPaths(ctx, req.Spec().Procedure, req.Header())...)
 
 			// Interceptor Logic
 			// Allow health checks and other public routes to pass through
@@ -383,19 +339,18 @@ func (a Authentication) ConnectUnaryServerInterceptor() connect.UnaryInterceptor
 				Resource: resource,
 				Action:   action,
 			}
-			if allowed, err := a.enforcer.Enforce(ctxWithJWK, token, roleReq); err != nil {
+			if result, err := a.enforcer.Enforce(ctxWithJWK, token, roleReq); err != nil {
 				if errors.Is(err, ErrPermissionDenied) {
 					log.WarnContext(
 						ctxWithJWK,
 						"permission denied",
-						slog.String("azp", token.Subject()),
-						slog.Any("error", err),
+						permissionDeniedLogAttrs(token, result.CasbinAuthz, err)...,
 					)
 					return nil, connect.NewError(connect.CodePermissionDenied, errors.New("permission denied"))
 				}
 				return nil, err
-			} else if !allowed {
-				log.WarnContext(ctxWithJWK, "permission denied", slog.String("azp", token.Subject()))
+			} else if !result.Allowed {
+				log.WarnContext(ctxWithJWK, "permission denied", permissionDeniedLogAttrs(token, result.CasbinAuthz, nil)...)
 				return nil, connect.NewError(connect.CodePermissionDenied, errors.New("permission denied"))
 			}
 
@@ -403,6 +358,23 @@ func (a Authentication) ConnectUnaryServerInterceptor() connect.UnaryInterceptor
 		})
 	}
 	return connect.UnaryInterceptorFunc(interceptor)
+}
+
+func permissionDeniedLogAttrs(token jwt.Token, casbinAuthz CasbinAuthzLog, err error) []any {
+	attrs := []any{slog.String("azp", token.Subject())}
+
+	if casbinAuthz.ConfiguredGroupsClaim != "" || casbinAuthz.SubjectGroups != nil {
+		attrs = append(attrs, slog.Group("casbin_authz",
+			slog.String("configured_groups_claim", casbinAuthz.ConfiguredGroupsClaim),
+			slog.Any("subject_groups", casbinAuthz.SubjectGroups),
+		))
+	}
+
+	if err != nil {
+		attrs = append(attrs, slog.Any("error", err))
+	}
+
+	return attrs
 }
 
 // IPCMetadataClientInterceptor transfers gRPC outgoing metadata to Connect request headers for IPC calls
@@ -554,16 +526,12 @@ func (a *Authentication) checkToken(ctx context.Context, authHeader []string, dp
 		return nil, nil, errors.New("not of type bearer or dpop")
 	}
 
-	// Now we verify the token signature
-	accessToken, err := jwt.Parse([]byte(tokenRaw),
-		jwt.WithKeySet(a.cachedKeySet),
-		jwt.WithValidate(true),
-		jwt.WithIssuer(a.oidcConfiguration.Issuer),
-		jwt.WithAudience(a.oidcConfiguration.Audience),
-		jwt.WithAcceptableSkew(a.oidcConfiguration.TokenSkew),
-	)
+	if a.tokenVerifier == nil {
+		return nil, nil, errors.New("access token verifier is not configured")
+	}
+
+	accessToken, err := a.tokenVerifier.VerifyAccessToken(ctx, tokenRaw)
 	if err != nil {
-		a.logger.Warn("failed to validate auth token", slog.Any("err", err))
 		return nil, nil, err
 	}
 
@@ -626,7 +594,7 @@ func (a Authentication) validateDPoP(accessToken jwt.Token, acessTokenRaw string
 	}
 	sig := dpop.Signatures()[0]
 	protectedHeaders := sig.ProtectedHeaders()
-	if protectedHeaders.Type() != "dpop+jwt" {
+	if protectedHeaders.Type() != dpopJWTType {
 		return nil, fmt.Errorf("invalid typ on DPoP JWT: %v", protectedHeaders.Type())
 	}
 
@@ -733,78 +701,6 @@ func (a Authentication) isPublicRoute(path string) func(string) bool {
 	}
 }
 
-func (a Authentication) lookupOrigins(header http.Header) []string {
-	result := make([]string, 0)
-	for _, m := range []string{"Grpcgateway-Origin", "Grpcgateway-Referer", "Origin"} {
-		origins := header.Values(m)
-		if len(origins) == 0 {
-			continue
-		}
-		for _, o := range origins {
-			if strings.HasSuffix(o, ":443") {
-				o = "https://" + strings.TrimPrefix(strings.TrimSuffix(o, ":443"), "https://")
-			} else {
-				o = strings.TrimSuffix(o, ":80")
-			}
-			result = append(result, o)
-		}
-	}
-	return result
-}
-
-var goodPaths = regexp.MustCompile(`^[\w/-]{1,128}$`)
-
-func (a Authentication) lookupGatewayPaths(ctx context.Context, procedure string, header http.Header) []string {
-	origins := a.lookupOrigins(header)
-	if len(origins) == 0 {
-		return nil
-	}
-
-	var paths []string
-	switch procedure {
-	case "/kas.AccessService/Rewrap":
-		paths = append(paths, "/kas/v2/rewrap")
-	default:
-		patterns := header["Pattern"]
-		if len(patterns) == 0 {
-			a.logger.InfoContext(ctx,
-				"underspecified grpc gateway path; no pattern header",
-				slog.Any("origin", origins),
-				slog.String("procedure", procedure),
-			)
-			paths = allowedPublicEndpoints[:]
-		} else {
-			a.logger.InfoContext(ctx,
-				"underspecified grpc gateway path; patterns found",
-				slog.Any("origin", origins),
-				slog.String("procedure", procedure),
-				slog.Any("patterns", patterns),
-			)
-		}
-		for _, pattern := range patterns {
-			if matched := goodPaths.MatchString(pattern); matched {
-				paths = append(paths, pattern)
-			}
-		}
-		if len(paths) != len(patterns) {
-			a.logger.WarnContext(ctx,
-				"invalid grpc gateway path; ignoring one or more invalid patterns",
-				slog.Any("origin", origins),
-				slog.String("procedure", procedure),
-				slog.Any("patterns", patterns),
-			)
-		}
-	}
-
-	u := make([]string, 0, len(origins)*len(paths))
-	for _, o := range origins {
-		for _, p := range paths {
-			u = append(u, normalizeURL(o, &url.URL{Path: p}))
-		}
-	}
-	return u
-}
-
 func (a Authentication) ipcReauthCheck(ctx context.Context, path string, header http.Header) (context.Context, error) {
 	for _, route := range a.ipcReauthRoutes {
 		reqPath := path
@@ -815,12 +711,9 @@ func (a Authentication) ipcReauthCheck(ctx context.Context, path string, header 
 				return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("missing authorization header"))
 			}
 
-			u := []string{path}
-			u = append(u, a.lookupGatewayPaths(ctx, path, header)...)
-
 			// Validate the token and create a JWT token
 			token, ctxWithJWK, err := a.checkToken(ctx, authHeader, receiverInfo{
-				u: u,
+				u: []string{path},
 				m: []string{http.MethodPost},
 			}, header["Dpop"])
 			if err != nil {

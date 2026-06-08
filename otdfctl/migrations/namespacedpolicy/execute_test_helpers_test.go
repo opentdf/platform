@@ -33,25 +33,38 @@ func wantError(is error, format string, args ...any) *expectedError {
 }
 
 type mockExecutorHandler struct {
-	created                         map[string]map[string]*createdActionCall
-	results                         map[string]map[string]*policy.Action // ! Should be renamed to actionResults
-	errs                            map[string]map[string]error
-	createdSubjectConditions        map[string]map[string]*createdSubjectConditionSetCall
-	subjectConditionSetResult       map[string]map[string]*policy.SubjectConditionSet
-	subjectConditionSetErrs         map[string]map[string]error
-	createdSubjectMappings          map[string]map[string]*createdSubjectMappingCall
-	subjectMappingResults           map[string]map[string]*policy.SubjectMapping
-	subjectMappingErrs              map[string]map[string]error
-	createdObligationTriggers       map[string]map[string]*createdObligationTriggerCall
-	obligationTriggerResult         map[string]map[string]*policy.ObligationTrigger
-	obligationTriggerErrs           map[string]map[string]error
-	createdRegisteredResources      map[string]map[string]*createdRegisteredResourceCall
-	registeredResourceResult        map[string]map[string]*policy.RegisteredResource
-	registeredResourcesByID         map[string]*policy.RegisteredResource
-	registeredResourceErrs          map[string]map[string]error
-	createdRegisteredResourceValues map[string]map[string]*createdRegisteredResourceValueCall
-	registeredResourceValueResult   map[string]map[string]*policy.RegisteredResourceValue
-	registeredResourceValueErrs     map[string]map[string]error
+	created                           map[string]map[string]*createdActionCall
+	results                           map[string]map[string]*policy.Action // ! Should be renamed to actionResults
+	errs                              map[string]map[string]error
+	createdSubjectConditions          map[string]map[string]*createdSubjectConditionSetCall
+	subjectConditionSetResult         map[string]map[string]*policy.SubjectConditionSet
+	subjectConditionSetErrs           map[string]map[string]error
+	createdSubjectMappings            map[string]map[string]*createdSubjectMappingCall
+	subjectMappingResults             map[string]map[string]*policy.SubjectMapping
+	subjectMappingErrs                map[string]map[string]error
+	createdObligationTriggers         map[string]map[string]*createdObligationTriggerCall
+	obligationTriggerResult           map[string]map[string]*policy.ObligationTrigger
+	obligationTriggerErrs             map[string]map[string]error
+	createdRegisteredResources        map[string]map[string]*createdRegisteredResourceCall
+	registeredResourceResult          map[string]map[string]*policy.RegisteredResource
+	registeredResourcesByID           map[string]*policy.RegisteredResource
+	registeredResourceErrs            map[string]map[string]error
+	createdRegisteredResourceValues   map[string]map[string]*createdRegisteredResourceValueCall
+	registeredResourceValueResult     map[string]map[string]*policy.RegisteredResourceValue
+	registeredResourceValueErrs       map[string]map[string]error
+	deleteCalls                       []string
+	deletedActions                    []string
+	deleteActionErrs                  map[string]error
+	deletedSubjectConditionSets       []string
+	deleteSubjectConditionSetErrs     map[string]error
+	deletedSubjectMappings            []string
+	deleteSubjectMappingErrs          map[string]error
+	deletedRegisteredResources        []string
+	deleteRegisteredResourceErrs      map[string]error
+	deletedRegisteredResourceValues   []string
+	deleteRegisteredResourceValueErrs map[string]error
+	deletedObligationTriggers         []string
+	deleteObligationTriggerErrs       map[string]error
 }
 
 type createdActionCall struct {
@@ -295,4 +308,62 @@ func (m *mockExecutorHandler) CreateRegisteredResourceValue(_ context.Context, r
 	}
 
 	return nil, errMissingMockRegisteredResourceValue
+}
+
+func (m *mockExecutorHandler) DeleteAction(_ context.Context, id string) error {
+	m.deleteCalls = append(m.deleteCalls, "action:"+id)
+	m.deletedActions = append(m.deletedActions, id)
+	if m.deleteActionErrs == nil {
+		return nil
+	}
+	return m.deleteActionErrs[id]
+}
+
+func (m *mockExecutorHandler) DeleteSubjectConditionSet(_ context.Context, id string) error {
+	m.deleteCalls = append(m.deleteCalls, "subject-condition-set:"+id)
+	m.deletedSubjectConditionSets = append(m.deletedSubjectConditionSets, id)
+	if m.deleteSubjectConditionSetErrs == nil {
+		return nil
+	}
+	return m.deleteSubjectConditionSetErrs[id]
+}
+
+func (m *mockExecutorHandler) DeleteSubjectMapping(_ context.Context, id string) (*policy.SubjectMapping, error) {
+	m.deleteCalls = append(m.deleteCalls, "subject-mapping:"+id)
+	m.deletedSubjectMappings = append(m.deletedSubjectMappings, id)
+	if m.deleteSubjectMappingErrs != nil {
+		if err := m.deleteSubjectMappingErrs[id]; err != nil {
+			return nil, err
+		}
+	}
+	return &policy.SubjectMapping{Id: id}, nil
+}
+
+func (m *mockExecutorHandler) DeleteRegisteredResource(_ context.Context, id string) error {
+	m.deleteCalls = append(m.deleteCalls, "registered-resource:"+id)
+	m.deletedRegisteredResources = append(m.deletedRegisteredResources, id)
+	if m.deleteRegisteredResourceErrs == nil {
+		return nil
+	}
+	return m.deleteRegisteredResourceErrs[id]
+}
+
+func (m *mockExecutorHandler) DeleteRegisteredResourceValue(_ context.Context, id string) error {
+	m.deleteCalls = append(m.deleteCalls, "registered-resource-value:"+id)
+	m.deletedRegisteredResourceValues = append(m.deletedRegisteredResourceValues, id)
+	if m.deleteRegisteredResourceValueErrs == nil {
+		return nil
+	}
+	return m.deleteRegisteredResourceValueErrs[id]
+}
+
+func (m *mockExecutorHandler) DeleteObligationTrigger(_ context.Context, id string) (*policy.ObligationTrigger, error) {
+	m.deleteCalls = append(m.deleteCalls, "obligation-trigger:"+id)
+	m.deletedObligationTriggers = append(m.deletedObligationTriggers, id)
+	if m.deleteObligationTriggerErrs != nil {
+		if err := m.deleteObligationTriggerErrs[id]; err != nil {
+			return nil, err
+		}
+	}
+	return &policy.ObligationTrigger{Id: id}, nil
 }

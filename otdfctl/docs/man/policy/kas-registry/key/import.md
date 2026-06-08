@@ -20,9 +20,11 @@ command:
       required: true
     - name: wrapping-key
       shorthand: w
+      sensitive: true
       description: The symmetric key material (AES cipher, hex encoded) used to wrap the imported private key.
       required: true
     - name: private-key-pem
+      sensitive: true
       description: The base64 encoded private key PEM to import
       required: true
     - name: public-key-pem
@@ -77,3 +79,6 @@ otdfctl policy kas-registry key import --key-id "imported-key" --algorithm "rsa:
     | `ec:secp256r1` |
     | `ec:secp384r1` |
     | `ec:secp521r1` |
+    | `hpqt:xwing` |
+    | `hpqt:secp256r1-mlkem768` |
+    | `hpqt:secp384r1-mlkem1024` |

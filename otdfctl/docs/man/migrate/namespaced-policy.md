@@ -22,7 +22,7 @@ Commit mode can partially apply changes before an error occurs. When that happen
 
 The parent `migrate` command provides the shared `--commit` and `--interactive` flags.
 
-`namespaced-policy` is intended to be non-destructive. Commit should create namespaced copies and record migration metadata, but it should not delete legacy objects. Cleanup belongs to `migrate prune`.
+`namespaced-policy` is intended to be non-destructive. Commit should create namespaced copies and record migration metadata, but it should not delete legacy objects. Cleanup belongs to `migrate prune namespaced-policy`.
 
 All target namespaces must already exist before the command runs. Planning should fail before any writes if a required namespace is missing.
 

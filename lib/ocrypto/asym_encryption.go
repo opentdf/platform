@@ -23,8 +23,9 @@ import (
 type SchemeType string
 
 const (
-	RSA SchemeType = "wrapped"
-	EC  SchemeType = "ec-wrapped"
+	RSA    SchemeType = "wrapped"
+	EC     SchemeType = "ec-wrapped"
+	Hybrid SchemeType = "hybrid-wrapped"
 )
 
 type PublicKeyEncryptor interface {
@@ -69,6 +70,19 @@ func FromPublicPEM(publicKeyInPem string) (PublicKeyEncryptor, error) {
 }
 
 func FromPublicPEMWithSalt(publicKeyInPem string, salt, info []byte) (PublicKeyEncryptor, error) {
+	block, _ := pem.Decode([]byte(publicKeyInPem))
+	if block == nil {
+		return nil, errors.New("failed to parse PEM formatted public key")
+	}
+	switch block.Type {
+	case PEMBlockXWingPublicKey:
+		return NewXWingEncryptor(block.Bytes, salt, info)
+	case PEMBlockP256MLKEM768PublicKey:
+		return NewP256MLKEM768Encryptor(block.Bytes, salt, info)
+	case PEMBlockP384MLKEM1024PublicKey:
+		return NewP384MLKEM1024Encryptor(block.Bytes, salt, info)
+	}
+
 	pub, err := getPublicPart(publicKeyInPem)
 	if err != nil {
 		return nil, err
@@ -255,17 +269,12 @@ func (e ECEncryptor) Encrypt(data []byte) ([]byte, error) {
 		return nil, fmt.Errorf("aes.NewCipher failed: %w", err)
 	}
 
-	gcm, err := cipher.NewGCM(block)
+	gcm, err := cipher.NewGCMWithRandomNonce(block)
 	if err != nil {
-		return nil, fmt.Errorf("cipher.NewGCM failed: %w", err)
+		return nil, fmt.Errorf("cipher.NewGCMWithRandomNonce failed: %w", err)
 	}
 
-	nonce := make([]byte, gcm.NonceSize())
-	if _, err := io.ReadFull(rand.Reader, nonce); err != nil {
-		return nil, fmt.Errorf("nonce generation failed: %w", err)
-	}
-
-	ciphertext := gcm.Seal(nonce, nonce, data, nil)
+	ciphertext := gcm.Seal(nil, nil, data, nil)
 	return ciphertext, nil
 }
 

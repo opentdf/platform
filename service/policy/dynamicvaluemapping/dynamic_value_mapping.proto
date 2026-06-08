@@ -37,14 +37,21 @@ message DynamicValueMappingsSort {
 }
 
 message ListDynamicValueMappingsRequest {
-  // Optional: Namespace ID to filter by
-  string namespace_id = 1 [(buf.validate.field).cel = {
-    id: "optional_uuid_format"
-    message: "Optional field must be a valid UUID"
-    expression: "size(this) == 0 || this.matches('[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}')"
-  }];
+  // Optional: Namespace ID or FQN to filter by
+  option (buf.validate.message).oneof = {
+    fields: ["namespace_id", "namespace_fqn"]
+    required: false
+  };
+  string namespace_id = 1 [(buf.validate.field).string.uuid = true];
+  string namespace_fqn = 2 [
+    (buf.validate.field).string = {
+      min_len: 1
+      uri: true
+    }
+  ];
+
   // Optional: Attribute Definition ID to filter by
-  string attribute_definition_id = 2 [(buf.validate.field).cel = {
+  string attribute_definition_id = 3 [(buf.validate.field).cel = {
     id: "optional_uuid_format"
     message: "Optional field must be a valid UUID"
     expression: "size(this) == 0 || this.matches('[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}')"

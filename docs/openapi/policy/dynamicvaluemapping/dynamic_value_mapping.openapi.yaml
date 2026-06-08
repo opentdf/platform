@@ -1346,9 +1346,12 @@ components:
         namespaceId:
           type: string
           title: namespace_id
-          description: |
-            Optional: Namespace ID to filter by
-            optional_uuid_format // Optional field must be a valid UUID
+          format: uuid
+        namespaceFqn:
+          type: string
+          title: namespace_fqn
+          minLength: 1
+          format: uri
         attributeDefinitionId:
           type: string
           title: attribute_definition_id

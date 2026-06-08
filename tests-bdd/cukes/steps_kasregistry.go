@@ -2,6 +2,7 @@ package cukes
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -10,7 +11,10 @@ import (
 	"github.com/opentdf/platform/protocol/go/policy/kasregistry"
 )
 
-const bddKasPublicKeyCtx = `YS1wZW0K`
+const (
+	bddKasPublicKeyCtx    = `YS1wZW0K`
+	expectedKASKeyColumns = 2
+)
 
 type KasRegistryStepDefinitions struct{}
 
@@ -22,8 +26,8 @@ func (s *KasRegistryStepDefinitions) iCreateKASKeys(ctx context.Context, tbl *go
 		if i == 0 {
 			continue
 		}
-		if len(row.Cells) < 2 {
-			return ctx, fmt.Errorf("expected kas_uri and key_id columns")
+		if len(row.Cells) < expectedKASKeyColumns {
+			return ctx, errors.New("expected kas_uri and key_id columns")
 		}
 
 		kasURI := normalizeKASURI(row.Cells[0].Value)

@@ -16,6 +16,7 @@ import (
 	"sync"
 
 	"connectrpc.com/connect"
+	"github.com/lestrrat-go/jwx/v2/jwk"
 	"github.com/opentdf/platform/lib/ocrypto"
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/wellknownconfiguration"
@@ -200,8 +201,19 @@ func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	// Wrap HTTP client with DPoP transport for resource requests
+	httpClient := cfg.httpClient
+	if accessTokenSource != nil && cfg.dpopKey != nil {
+		dpopKey, err := getDPoPJWK(cfg.dpopKey)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create DPoP JWK: %w", err)
+		}
+		httpClient = auth.NewDPoPHTTPClient(cfg.httpClient, dpopKey, accessTokenSource, cfg.tokenEndpoint)
+	}
+
 	if accessTokenSource != nil {
-		interceptor := auth.NewTokenAddingInterceptorWithClient(accessTokenSource, cfg.httpClient)
+		interceptor := auth.NewTokenAddingInterceptorWithClient(accessTokenSource, httpClient)
 		uci = append(uci, interceptor.AddCredentialsConnect())
 	}
 
@@ -209,7 +221,7 @@ func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 	if cfg.coreConn != nil {
 		platformConn = cfg.coreConn
 	} else {
-		platformConn = &ConnectRPCConnection{Endpoint: platformEndpoint, Client: cfg.httpClient, Options: append(cfg.extraClientOptions, connect.WithInterceptors(uci...))}
+		platformConn = &ConnectRPCConnection{Endpoint: platformEndpoint, Client: httpClient, Options: append(cfg.extraClientOptions, connect.WithInterceptors(uci...))}
 	}
 
 	if cfg.entityResolutionConn != nil {
@@ -248,6 +260,24 @@ func IsPlatformEndpointMalformed(e string) bool {
 		return true
 	}
 	return false
+}
+
+func getDPoPJWK(dpopKey *ocrypto.RsaKeyPair) (jwk.Key, error) {
+	dpopPrivateKeyPEM, err := dpopKey.PrivateKeyInPemFormat()
+	if err != nil {
+		return nil, fmt.Errorf("error getting dpop private key: %w", err)
+	}
+
+	key, err := jwk.ParseKey([]byte(dpopPrivateKeyPEM), jwk.WithPEM(true))
+	if err != nil {
+		return nil, fmt.Errorf("error creating JWK: %w", err)
+	}
+
+	if err := key.Set(jwk.AlgorithmKey, "RS256"); err != nil {
+		return nil, fmt.Errorf("error setting key algorithm: %w", err)
+	}
+
+	return key, nil
 }
 
 func buildIDPTokenSource(c *config) (auth.AccessTokenSource, error) {

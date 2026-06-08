@@ -19,7 +19,7 @@ func getKeyAccessRegistry(cmd *cobra.Command, args []string) {
 	h := common.NewHandler(c)
 	defer h.Close()
 
-	id := c.FlagHelper.GetRequiredID("id")
+	id := c.Flags.GetRequiredID("id")
 
 	kas, err := h.GetKasRegistryEntry(cmd.Context(), handlers.KasIdentifier{
 		ID: id,

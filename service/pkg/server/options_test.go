@@ -5,8 +5,10 @@ import (
 	"testing"
 
 	"connectrpc.com/connect"
+	"github.com/go-viper/mapstructure/v2"
 	"github.com/lestrrat-go/jwx/v2/jwt"
 	"github.com/opentdf/platform/service/pkg/authz"
+	"github.com/opentdf/platform/service/pkg/config"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -74,8 +76,11 @@ func TestWithConnectInterceptors(t *testing.T) {
 }
 
 func TestWithExternalInterceptorFactories(t *testing.T) {
-	factory := func(InterceptorParams) (connect.Interceptor, error) {
-		return noopInterceptor(), nil
+	factory := InterceptorFactory{
+		Name: "test",
+		Factory: func(InterceptorParams) (connect.Interceptor, error) {
+			return noopInterceptor(), nil
+		},
 	}
 
 	tests := []struct {
@@ -128,6 +133,55 @@ func TestWithExternalInterceptorFactories(t *testing.T) {
 			assert.Nil(t, cfg.extraIPCInterceptors)
 		})
 	}
+}
+
+func TestExternalInterceptorFactoryReceivesNamedConfig(t *testing.T) {
+	type auditConfig struct {
+		Enabled bool     `mapstructure:"enabled"`
+		Headers []string `mapstructure:"headers"`
+	}
+
+	factory := InterceptorFactory{
+		Name: "audit_enrichment",
+		Factory: func(params InterceptorParams) (connect.Interceptor, error) {
+			var cfg auditConfig
+			if err := mapstructure.Decode(params.Config, &cfg); err != nil {
+				return nil, err
+			}
+
+			require.Equal(t, auditConfig{
+				Enabled: true,
+				Headers: []string{
+					"x-request-id",
+					"x-forwarded-for",
+				},
+			}, cfg)
+
+			return noopInterceptor(), nil
+		},
+	}
+
+	params := newInterceptorParams(factory, &config.Config{
+		Interceptors: config.InterceptorsMap{
+			"audit_enrichment": {
+				"enabled": true,
+				"headers": []string{
+					"x-request-id",
+					"x-forwarded-for",
+				},
+			},
+		},
+	}, nil, nil)
+
+	interceptor, err := factory.Factory(params)
+	require.NoError(t, err)
+	require.NotNil(t, interceptor)
+}
+
+func TestValidateExternalInterceptorFactoryRequiresName(t *testing.T) {
+	err := validateExternalInterceptorFactory(InterceptorFactory{})
+
+	require.ErrorIs(t, err, ErrExternalInterceptorFactoryNameRequired)
 }
 
 func TestWithIPCInterceptors(t *testing.T) {

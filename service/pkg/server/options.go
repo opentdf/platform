@@ -18,9 +18,13 @@ type StartOptions func(StartConfig) StartConfig
 type InterceptorParams struct {
 	SDK    *sdk.SDK
 	Logger *logger.Logger
+	Config config.InterceptorConfig
 }
 
-type InterceptorFactory func(InterceptorParams) (connect.Interceptor, error)
+type InterceptorFactory struct {
+	Name    string
+	Factory func(InterceptorParams) (connect.Interceptor, error)
+}
 
 type StartConfig struct {
 	ConfigKey             string
@@ -188,7 +192,7 @@ func WithConnectInterceptors(interceptors ...connect.Interceptor) StartOptions {
 	}
 }
 
-// WithExternalInterceptorFactories appends factories for external
+// WithExternalInterceptorFactories appends named factories for external
 // Connect interceptors that need access to startup-created clients, such as the
 // IPC SDK connection. Factories are evaluated after the SDK is created and
 // before externally reachable service handlers are registered.

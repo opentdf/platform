@@ -150,10 +150,10 @@ runs:
             | (.mode = ["kas"])
             | (.services.kas.preview.ec_tdf_enabled = (env(EC_TDF_ENABLED) == "true"))
             | (.services.kas.preview.hybrid_tdf_enabled = (env(PQC_ENABLED) == "true"))
-            | (if env(PQC_ENABLED) == "true" then
-                (.services.kas.keyring += [{"kid":"x1","alg":"hpqt:xwing"},{"kid":"h1","alg":"hpqt:secp256r1-mlkem768"},{"kid":"h2","alg":"hpqt:secp384r1-mlkem1024"}])
-                | (.server.cryptoProvider.standard.keys += [{"kid":"x1","alg":"hpqt:xwing","private":"kas-xwing-private.pem","cert":"kas-xwing-public.pem"},{"kid":"h1","alg":"hpqt:secp256r1-mlkem768","private":"kas-p256mlkem768-private.pem","cert":"kas-p256mlkem768-public.pem"},{"kid":"h2","alg":"hpqt:secp384r1-mlkem1024","private":"kas-p384mlkem1024-private.pem","cert":"kas-p384mlkem1024-public.pem"}])
-              else . end)
+            | with(select(env(PQC_ENABLED) == "true");
+                .services.kas.keyring += [{"kid":"x1","alg":"hpqt:xwing"},{"kid":"h1","alg":"hpqt:secp256r1-mlkem768"},{"kid":"h2","alg":"hpqt:secp384r1-mlkem1024"}]
+                | .server.cryptoProvider.standard.keys += [{"kid":"x1","alg":"hpqt:xwing","private":"kas-xwing-private.pem","cert":"kas-xwing-public.pem"},{"kid":"h1","alg":"hpqt:secp256r1-mlkem768","private":"kas-p256mlkem768-private.pem","cert":"kas-p256mlkem768-public.pem"},{"kid":"h2","alg":"hpqt:secp384r1-mlkem1024","private":"kas-p384mlkem1024-private.pem","cert":"kas-p384mlkem1024-public.pem"}]
+              )
             | (.services.kas.preview.key_management = (env(KEY_MANAGEMENT) == "true"))
             | (.services.kas.registered_kas_uri = "http://localhost:" + env(KAS_PORT))
             | del(.services.kas.root_key)

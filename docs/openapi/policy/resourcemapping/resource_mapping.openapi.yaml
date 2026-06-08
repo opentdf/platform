@@ -1355,12 +1355,22 @@ components:
       additionalProperties: false
     policy.resourcemapping.CreateResourceMappingGroupRequest:
       type: object
+      allOf:
+        - oneOf:
+            - required:
+                - namespaceId
+            - required:
+                - namespaceFqn
       properties:
         namespaceId:
           type: string
           title: namespace_id
           format: uuid
-          description: Required
+        namespaceFqn:
+          type: string
+          title: namespace_fqn
+          minLength: 1
+          format: uri
         name:
           type: string
           title: name
@@ -1406,18 +1416,19 @@ components:
         namespaceId:
           type: string
           title: namespace_id
-          description: |
+          format: uuid
+          description: |-
             Optional
              The namespace that owns this resource mapping. If a group_id is provided,
              this must match the group's namespace (and may be omitted to inherit it).
-            optional_uuid_format // Optional field must be a valid UUID
         namespaceFqn:
           type: string
           title: namespace_fqn
-          description: |
+          minLength: 1
+          format: uri
+          description: |-
             Optional
              Alternative to namespace_id; the FQN of the owning namespace.
-            optional_uri_format // Optional field must be a valid URI
         metadata:
           title: metadata
           description: Optional
@@ -1510,15 +1521,14 @@ components:
         namespaceId:
           type: string
           title: namespace_id
-          description: |
-            Optional
-            optional_uuid_format // Optional field must be a valid UUID
+          format: uuid
+          description: Optional
         namespaceFqn:
           type: string
           title: namespace_fqn
-          description: |
-            Optional
-            optional_uri_format // Optional field must be a valid URI
+          minLength: 1
+          format: uri
+          description: Optional
         pagination:
           title: pagination
           description: Optional
@@ -1586,17 +1596,18 @@ components:
         namespaceId:
           type: string
           title: namespace_id
-          description: |
+          format: uuid
+          description: |-
             Optional
              Filter the list to resource mappings owned by this namespace.
-            optional_uuid_format // Optional field must be a valid UUID
         namespaceFqn:
           type: string
           title: namespace_fqn
-          description: |
+          minLength: 1
+          format: uri
+          description: |-
             Optional
              Filter the list to resource mappings owned by this namespace.
-            optional_uri_format // Optional field must be a valid URI
         pagination:
           title: pagination
           description: Optional
@@ -1640,9 +1651,14 @@ components:
         namespaceId:
           type: string
           title: namespace_id
-          description: |
-            Optional
-            optional_uuid_format // Optional field must be a valid UUID
+          format: uuid
+          description: Optional
+        namespaceFqn:
+          type: string
+          title: namespace_fqn
+          minLength: 1
+          format: uri
+          description: Optional
         name:
           type: string
           title: name
@@ -1697,18 +1713,19 @@ components:
         namespaceId:
           type: string
           title: namespace_id
-          description: |
+          format: uuid
+          description: |-
             Optional
              The namespace that owns this resource mapping. If a group_id is set on the
              mapping, this must match the group's namespace.
-            optional_uuid_format // Optional field must be a valid UUID
         namespaceFqn:
           type: string
           title: namespace_fqn
-          description: |
+          minLength: 1
+          format: uri
+          description: |-
             Optional
              Alternative to namespace_id; the FQN of the owning namespace.
-            optional_uri_format // Optional field must be a valid URI
         metadata:
           title: metadata
           description: |-

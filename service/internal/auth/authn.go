@@ -3,8 +3,10 @@ package auth
 import (
 	"context"
 	"crypto"
+	"crypto/rand"
 	"crypto/sha256"
 	"encoding/base64"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -14,6 +16,7 @@ import (
 	"path"
 	"slices"
 	"strings"
+	"sync"
 	"time"
 
 	"connectrpc.com/connect"
@@ -73,6 +76,7 @@ var (
 const (
 	refreshInterval = 15 * time.Minute
 	dpopJWTType     = "dpop+jwt"
+	dpopNonceBytes  = 16
 	ActionRead      = "read"
 	ActionWrite     = "write"
 	ActionDelete    = "delete"
@@ -95,16 +99,78 @@ type Authentication struct {
 	ipcReauthRoutes []string
 	// Custom Logger
 	logger *logger.Logger
+	// DPoP nonce management
+	dpopNonceManager *dpopNonceManager
 
 	// Used for testing
 	_testCheckTokenFunc func(ctx context.Context, authHeader []string, dpopInfo receiverInfo, dpopHeader []string) (jwt.Token, context.Context, error)
 }
 
+// dpopNonceManager manages server-issued DPoP nonces per RFC 9449 §8
+type dpopNonceManager struct {
+	mu            sync.RWMutex
+	currentNonce  string
+	previousNonce string
+	expiration    time.Duration
+	lastRotation  time.Time
+	requireNonce  bool
+}
+
+func newDPoPNonceManager(requireNonce bool, expiration time.Duration) *dpopNonceManager {
+	nm := &dpopNonceManager{
+		requireNonce: requireNonce,
+		expiration:   expiration,
+	}
+	if requireNonce {
+		nm.rotate()
+	}
+	return nm
+}
+
+func (nm *dpopNonceManager) rotate() {
+	nm.mu.Lock()
+	defer nm.mu.Unlock()
+
+	nm.previousNonce = nm.currentNonce
+	nonce := make([]byte, dpopNonceBytes)
+	if _, err := rand.Read(nonce); err != nil {
+		panic(fmt.Sprintf("failed to generate nonce: %v", err))
+	}
+	nm.currentNonce = hex.EncodeToString(nonce)
+	nm.lastRotation = time.Now()
+}
+
+func (nm *dpopNonceManager) getCurrentNonce() string {
+	nm.mu.RLock()
+	defer nm.mu.RUnlock()
+
+	// Rotate if expired
+	if time.Since(nm.lastRotation) > nm.expiration {
+		nm.mu.RUnlock()
+		nm.rotate()
+		nm.mu.RLock()
+	}
+
+	return nm.currentNonce
+}
+
+func (nm *dpopNonceManager) validateNonce(nonce string) bool {
+	if !nm.requireNonce {
+		return true
+	}
+
+	nm.mu.RLock()
+	defer nm.mu.RUnlock()
+
+	return nonce == nm.currentNonce || nonce == nm.previousNonce
+}
+
 // Creates new authN which is used to verify tokens for a set of given issuers
 func NewAuthenticator(ctx context.Context, cfg Config, logger *logger.Logger, wellknownRegistration func(namespace string, config any) error) (*Authentication, error) {
 	a := &Authentication{
-		enforceDPoP: cfg.EnforceDPoP,
-		logger:      logger,
+		enforceDPoP:      cfg.EnforceDPoP,
+		logger:           logger,
+		dpopNonceManager: newDPoPNonceManager(cfg.DPoP.RequireNonce, cfg.DPoP.NonceExpiration),
 	}
 
 	tokenVerifier, oidcConfig, err := newTokenVerifier(ctx, cfg.AuthNConfig, a.logger)
@@ -156,6 +222,11 @@ func NewAuthenticator(ctx context.Context, cfg Config, logger *logger.Logger, we
 		logger.Warn("failed to register platform idp information", slog.Any("error", err))
 	}
 
+	// Register DPoP support feature
+	if err := wellknownRegistration("supports_dpop", true); err != nil {
+		logger.Warn("failed to register dpop support", slog.Any("error", err))
+	}
+
 	return a, nil
 }
 
@@ -164,6 +235,15 @@ type receiverInfo struct {
 	u []string
 	// Allowed HTTP methods of the request
 	m []string
+}
+
+// DPoPNonceError indicates a missing or invalid nonce
+type DPoPNonceError struct {
+	Message string
+}
+
+func (e *DPoPNonceError) Error() string {
+	return e.Message
 }
 
 func normalizeURL(o string, u *url.URL) string {
@@ -209,6 +289,15 @@ func (a Authentication) MuxHandler(handler http.Handler) http.Handler {
 			m: []string{r.Method},
 		}, dp)
 		if err != nil {
+			// Check if this is a nonce error requiring a challenge
+			var nonceErr *DPoPNonceError
+			if errors.As(err, &nonceErr) {
+				nonce := a.dpopNonceManager.getCurrentNonce()
+				w.Header().Set("DPoP-Nonce", nonce)
+				w.Header().Set("WWW-Authenticate", `DPoP error="use_dpop_nonce"`)
+				http.Error(w, "unauthenticated", http.StatusUnauthorized)
+				return
+			}
 			log.WarnContext(ctx,
 				"unauthenticated",
 				slog.Any("error", err),
@@ -216,6 +305,11 @@ func (a Authentication) MuxHandler(handler http.Handler) http.Handler {
 			)
 			http.Error(w, "unauthenticated", http.StatusUnauthorized)
 			return
+		}
+
+		// Always send fresh nonce in successful responses when nonces are enabled
+		if a.dpopNonceManager.requireNonce {
+			w.Header().Set("DPoP-Nonce", a.dpopNonceManager.getCurrentNonce())
 		}
 
 		clientID, err := a.getClientIDFromToken(ctx, accessTok)
@@ -320,7 +414,21 @@ func (a Authentication) ConnectAuthNInterceptor() connect.UnaryInterceptorFunc {
 				req.Header()["Dpop"],
 			)
 			if err != nil {
+				// Check if this is a nonce error requiring a challenge
+				var nonceErr *DPoPNonceError
+				if errors.As(err, &nonceErr) {
+					nonce := a.dpopNonceManager.getCurrentNonce()
+					connectErr := connect.NewError(connect.CodeUnauthenticated, errors.New("unauthenticated"))
+					connectErr.Meta().Set("DPoP-Nonce", nonce)
+					connectErr.Meta().Set("WWW-Authenticate", `DPoP error="use_dpop_nonce"`)
+					return nil, connectErr
+				}
 				return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("unauthenticated"))
+			}
+
+			// Always send fresh nonce in successful responses when nonces are enabled
+			if a.dpopNonceManager.requireNonce {
+				ctxWithJWK = metadata.AppendToOutgoingContext(ctxWithJWK, "DPoP-Nonce", a.dpopNonceManager.getCurrentNonce())
 			}
 
 			clientID, err := a.getClientIDFromToken(ctxWithJWK, token)
@@ -583,7 +691,7 @@ func (a Authentication) validateDPoP(accessToken jwt.Token, acessTokenRaw string
 		return nil, errors.New("missing `cnf` claim in access token")
 	}
 
-	cnfDict, ok := cnf.(map[string]interface{})
+	cnfDict, ok := cnf.(map[string]any)
 	if !ok {
 		return nil, errors.New("got `cnf` in an invalid format")
 	}
@@ -691,6 +799,22 @@ func (a Authentication) validateDPoP(accessToken jwt.Token, acessTokenRaw string
 	if ath != base64.URLEncoding.WithPadding(base64.NoPadding).EncodeToString(h.Sum(nil)) {
 		return nil, errors.New("incorrect `ath` claim in DPoP JWT")
 	}
+
+	// Validate nonce if required
+	if a.dpopNonceManager.requireNonce {
+		nonceI, hasNonce := dpopToken.Get("nonce")
+		if !hasNonce {
+			return nil, &DPoPNonceError{Message: "missing `nonce` claim in DPoP JWT"}
+		}
+		nonce, nonceOk := nonceI.(string)
+		if !nonceOk {
+			return nil, &DPoPNonceError{Message: "`nonce` claim invalid format in DPoP JWT"}
+		}
+		if !a.dpopNonceManager.validateNonce(nonce) {
+			return nil, &DPoPNonceError{Message: "invalid or expired `nonce` claim in DPoP JWT"}
+		}
+	}
+
 	return dpopKey, nil
 }
 

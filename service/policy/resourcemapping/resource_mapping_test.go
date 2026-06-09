@@ -539,11 +539,12 @@ func Test_UpdateResourceMappingRequest_Fails(t *testing.T) {
 	}
 
 	for _, test := range bad {
-		req := &resourcemapping.CreateResourceMappingRequest{
+		req := &resourcemapping.UpdateResourceMappingRequest{
+			Id:               test.id,
 			AttributeValueId: test.valueID,
 			Terms:            test.terms,
 			GroupId:          test.groupID,
-		}
+
 		err := v.Validate(req)
 		require.Error(t, err, test.scenario)
 	}

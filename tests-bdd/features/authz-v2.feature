@@ -9,10 +9,8 @@ Feature: Authz v2 default policy authorization
 
   Rule: KAS registry key access
 
-    # TODO: Register authz resolvers for /policy.kasregistry.KeyAccessServerRegistryService/GetKey
-    # and /policy.kasregistry.KeyAccessServerRegistryService/ListKeys that resolve kas_uri.
-    # The kas-a/kas-b cases are expected to fail until those RPCs authorize with
-    # kas_uri=https://kas-a.example.com or kas_uri=https://kas-b.example.com instead of dims=*.
+    # KAS GetKey resolves kas_uri for v2 authz. Granular ListKeys authorization is
+    # intentionally deferred, so URI-scoped KAS roles are denied ListKeys.
     Scenario: opentdf-admin can read KAS keys by default
       Given I use the platform as "opentdf-admin"
       And I create KAS keys:
@@ -44,7 +42,7 @@ Feature: Authz v2 default policy authorization
       When I send a request to get KAS key "kas-a-kid"
       Then the response should be successful
       When I send a request to list KAS keys for URI "https://kas-a.example.com"
-      Then the response should be successful
+      Then the response should be permission denied
       When I send a request to get KAS key "kas-b-kid"
       Then the response should be permission denied
       When I send a request to list KAS keys for URI "https://kas-b.example.com"
@@ -53,7 +51,7 @@ Feature: Authz v2 default policy authorization
       When I send a request to get KAS key "kas-b-kid"
       Then the response should be successful
       When I send a request to list KAS keys for URI "https://kas-b.example.com"
-      Then the response should be successful
+      Then the response should be permission denied
       When I send a request to get KAS key "kas-a-kid"
       Then the response should be permission denied
       When I send a request to list KAS keys for URI "https://kas-a.example.com"

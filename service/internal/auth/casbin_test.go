@@ -526,9 +526,9 @@ func (s *AuthnCasbinSuite) Test_Enforce_Uses_Roles_From_Context() {
 	s.Require().NoError(err)
 	s.Equal(1, provider.count)
 
-	allowed, err := enforcer.Enforce(ctx, tok, req)
+	result, err := enforcer.Enforce(ctx, tok, req)
 	s.Require().NoError(err)
-	s.True(allowed)
+	s.True(result.Allowed)
 	s.Equal(1, provider.count)
 }
 

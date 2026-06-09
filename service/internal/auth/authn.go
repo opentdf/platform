@@ -251,7 +251,7 @@ func (a Authentication) MuxHandler(handler http.Handler) http.Handler {
 		}
 		ctx, err = a.enforcer.ContextWithClaims(ctx, accessTok, roleReq)
 		if err != nil {
-			log.WarnContext(ctx, "role provider error", slog.Any("error", err))
+			log.WarnContext(r.Context(), "role provider error", slog.Any("error", err)) //nolint:contextcheck // request context is already derived with public route state above.
 			http.Error(w, "permission denied", http.StatusForbidden)
 			return
 		}

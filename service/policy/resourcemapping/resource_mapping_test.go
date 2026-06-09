@@ -295,6 +295,10 @@ func Test_CreateResourceMappingGroupRequest_NamespaceFields(t *testing.T) {
 	require.Error(t, err, "namespace_id and namespace_fqn are mutually exclusive")
 	require.Contains(t, err.Error(), errMessageOneof)
 
+	err = v.Validate(&resourcemapping.CreateResourceMappingGroupRequest{NamespaceId: "bad-id", Name: "group1"})
+	require.Error(t, err, "namespace_id is not a valid UUID")
+	require.Contains(t, err.Error(), errMessageUUID)
+
 	err = v.Validate(&resourcemapping.CreateResourceMappingGroupRequest{NamespaceFqn: "not a uri", Name: "group1"})
 	require.Error(t, err, "namespace_fqn is not a valid URI")
 	require.Contains(t, err.Error(), errMessageURI)
@@ -310,6 +314,14 @@ func Test_UpdateResourceMappingGroupRequest_NamespaceFields(t *testing.T) {
 	err := v.Validate(&resourcemapping.UpdateResourceMappingGroupRequest{Id: validUUID, NamespaceId: validUUID, NamespaceFqn: validNamespaceFqn})
 	require.Error(t, err, "namespace_id and namespace_fqn are mutually exclusive")
 	require.Contains(t, err.Error(), errMessageOneof)
+
+	err = v.Validate(&resourcemapping.UpdateResourceMappingGroupRequest{Id: validUUID, NamespaceId: "bad-id"})
+	require.Error(t, err, "namespace_id is not a valid UUID")
+	require.Contains(t, err.Error(), errMessageUUID)
+
+	err = v.Validate(&resourcemapping.UpdateResourceMappingGroupRequest{Id: validUUID, NamespaceFqn: "not a uri"})
+	require.Error(t, err, "namespace_fqn is not a valid URI")
+	require.Contains(t, err.Error(), errMessageURI)
 }
 
 func Test_CreateResourceMappingRequest_Succeeds(t *testing.T) {

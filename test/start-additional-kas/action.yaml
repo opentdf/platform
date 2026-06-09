@@ -145,6 +145,13 @@ runs:
         LOG_TYPE: ${{ inputs.log-type }}
       with:
         run: |
+          # If PQC is requested but key files were not generated, the platform
+          # version likely does not support PQC key types. Disable PQC to avoid
+          # referencing missing key files in the config.
+          if [ "${PQC_ENABLED}" == "true" ] && [ ! -f kas-xwing-private.pem ]; then
+            echo "::warning::PQC enabled but key files not found (platform version may not support PQC). Disabling PQC key configuration for KAS ${KAS_NAME}."
+            export PQC_ENABLED="false"
+          fi
           yq e '
             (.server.port = env(KAS_PORT))
             | (.mode = ["kas"])

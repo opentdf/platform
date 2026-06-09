@@ -6,7 +6,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestContextWithRoles(t *testing.T) {
+func TestContextWithClaims(t *testing.T) {
 	roles := []string{"role:admin", "role:standard"}
 	ctx := ContextWithClaims(t.Context(), RequestClaims{
 		Subject:  "user@example.com",

@@ -29,14 +29,6 @@ func ClaimsFromContext(ctx context.Context) (RequestClaims, bool) {
 	return claims, true
 }
 
-// ContextWithRoles returns a child context carrying the request roles resolved
-// by the authorization role provider.
-func ContextWithRoles(ctx context.Context, roles []string) context.Context {
-	claims, _ := ClaimsFromContext(ctx)
-	claims.Roles = roles
-	return ContextWithClaims(ctx, claims)
-}
-
 // ContextWithClientID returns a child context carrying the request client ID
 // resolved from configured authentication claims.
 func ContextWithClientID(ctx context.Context, clientID string) context.Context {

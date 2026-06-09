@@ -217,20 +217,18 @@ func (e *Enforcer) buildSubjectFromToken(ctx context.Context, t jwt.Token, req a
 
 func (e *Enforcer) claimsForRequest(ctx context.Context, t jwt.Token, req authz.RoleRequest) (authz.RequestClaims, error) {
 	if claims, ok := authz.ClaimsFromContext(ctx); ok {
-		return claims, nil
+		if claims.Subject != "" || len(claims.Roles) > 0 {
+			return claims, nil
+		}
 	}
 
 	roles, err := e.roleProvider.Roles(ctx, t, req)
 	if err != nil {
 		return authz.RequestClaims{}, err
 	}
-	claims := authz.RequestClaims{
-		Subject: e.subjectFromToken(t),
-		Roles:   roles,
-	}
-	if existingClaims, ok := authz.ClaimsFromContext(ctx); ok {
-		claims.ClientID = existingClaims.ClientID
-	}
+	claims, _ := authz.ClaimsFromContext(ctx)
+	claims.Subject = e.subjectFromToken(t)
+	claims.Roles = roles
 	return claims, nil
 }
 

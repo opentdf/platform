@@ -532,6 +532,32 @@ func (s *AuthnCasbinSuite) Test_Enforce_Uses_Roles_From_Context() {
 	s.Equal(1, provider.count)
 }
 
+func (s *AuthnCasbinSuite) Test_Enforce_Resolves_Roles_When_Context_Has_Only_ClientID() {
+	policyCfg := PolicyConfig{}
+	err := defaults.Set(&policyCfg)
+	s.Require().NoError(err)
+
+	policyCfg.Extension = strings.Join([]string{
+		"p, role:admin, policy.attributes.*, read, allow",
+	}, "\n")
+
+	provider := &countingProvider{roles: []string{"role:admin"}}
+	enforcer, err := NewCasbinEnforcer(CasbinConfig{
+		PolicyConfig: policyCfg,
+		RoleProvider: provider,
+	}, logger.CreateTestLogger())
+	s.Require().NoError(err)
+
+	req := authz.RoleRequest{Resource: "policy.attributes.List", Action: "read"}
+	tok := jwt.New()
+	ctx := authz.ContextWithClientID(context.Background(), "client-123")
+
+	result, err := enforcer.Enforce(ctx, tok, req)
+	s.Require().NoError(err)
+	s.True(result.Allowed)
+	s.Equal(1, provider.count)
+}
+
 func (s *AuthnCasbinSuite) Test_Override_Of_Username_Claim() {
 	policyCfg := PolicyConfig{}
 	err := defaults.Set(&policyCfg)

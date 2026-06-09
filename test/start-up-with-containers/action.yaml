@@ -195,8 +195,9 @@ runs:
           allowed_algorithms+=(rsa:4096 ec:secp384r1 ec:secp521r1)
         fi
         # Only allow PQC algorithms if the platform generated PQC key files
-        if [ -f kas-xwing-private.pem ]; then
-          allowed_algorithms+=(hpqt:xwing hpqt:secp256r1-mlkem768 hpqt:secp384r1-mlkem1024)
+        if [[ ! -f kas-xwing-private.pem ]]; then
+          printf "PQC key files not found; skipping PQC configuration (platform may not support PQC key types)\n" 1>&2
+          exit 0
         fi
         keyring='[{"kid":"ec1","alg":"ec:secp256r1"},{"kid":"r1","alg":"rsa:2048"}]'
         keys='[{"kid":"e1","alg":"ec:secp256r1","private":"kas-ec-private.pem","cert":"kas-ec-cert.pem"},{"kid":"ec1","alg":"ec:secp256r1","private":"kas-ec-private.pem","cert":"kas-ec-cert.pem"},{"kid":"r1","alg":"rsa:2048","private":"kas-private.pem","cert":"kas-cert.pem"}]'
@@ -250,7 +251,7 @@ runs:
       if: ${{ inputs.pqc-enabled == 'true' }}
       run: |
         if [ ! -f kas-xwing-private.pem ]; then
-          echo "::warning::PQC key files not found; skipping PQC configuration (platform may not support PQC key types)"
+          echo "PQC key files not found; skipping PQC configuration (platform may not support PQC key types)" 1>&2
           exit 0
         fi
         yq e '

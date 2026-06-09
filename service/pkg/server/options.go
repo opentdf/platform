@@ -21,6 +21,8 @@ type InterceptorParams struct {
 	Config config.InterceptorConfig
 }
 
+// InterceptorFactory creates a named external Connect interceptor. Returning a
+// nil interceptor skips registration for that factory.
 type InterceptorFactory struct {
 	Name    string
 	Factory func(InterceptorParams) (connect.Interceptor, error)

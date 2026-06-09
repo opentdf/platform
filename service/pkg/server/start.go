@@ -37,7 +37,10 @@ const devModeMessage = `
 `
 const dpopKeySize = 2048
 
-var ErrExternalInterceptorFactoryNameRequired = errors.New("external connect interceptor factory name is required")
+var (
+	ErrExternalInterceptorFactoryNameRequired = errors.New("external connect interceptor factory name is required")
+	ErrExternalInterceptorFactoryFuncRequired = errors.New("external connect interceptor factory func is required")
+)
 
 func Start(f ...StartOptions) error {
 	startConfig := StartConfig{}
@@ -284,18 +287,16 @@ func Start(f ...StartOptions) error {
 
 	defer client.Close()
 
-	if len(startConfig.externalInterceptorFactories) > 0 {
-		for _, factory := range startConfig.externalInterceptorFactories {
-			if err := validateExternalInterceptorFactory(factory); err != nil {
-				return err
-			}
-			interceptor, err := factory.Factory(newInterceptorParams(factory, cfg, client, logger))
-			if err != nil {
-				return fmt.Errorf("failed to create external connect interceptor %q: %w", factory.Name, err)
-			}
-			if interceptor != nil {
-				otdf.ConnectRPC.Interceptors = append(otdf.ConnectRPC.Interceptors, connect.WithInterceptors(interceptor))
-			}
+	for _, factory := range startConfig.externalInterceptorFactories {
+		if err := validateExternalInterceptorFactory(factory); err != nil {
+			return err
+		}
+		interceptor, err := factory.Factory(newInterceptorParams(factory, cfg, client, logger))
+		if err != nil {
+			return fmt.Errorf("failed to create external connect interceptor %q: %w", factory.Name, err)
+		}
+		if interceptor != nil {
+			otdf.ConnectRPC.Interceptors = append(otdf.ConnectRPC.Interceptors, connect.WithInterceptors(interceptor))
 		}
 	}
 
@@ -352,6 +353,9 @@ func Start(f ...StartOptions) error {
 func validateExternalInterceptorFactory(factory InterceptorFactory) error {
 	if factory.Name == "" {
 		return ErrExternalInterceptorFactoryNameRequired
+	}
+	if factory.Factory == nil {
+		return ErrExternalInterceptorFactoryFuncRequired
 	}
 	return nil
 }

@@ -184,6 +184,12 @@ func TestValidateExternalInterceptorFactoryRequiresName(t *testing.T) {
 	require.ErrorIs(t, err, ErrExternalInterceptorFactoryNameRequired)
 }
 
+func TestValidateExternalInterceptorFactoryRequiresFactoryFunc(t *testing.T) {
+	err := validateExternalInterceptorFactory(InterceptorFactory{Name: "test"})
+
+	require.ErrorIs(t, err, ErrExternalInterceptorFactoryFuncRequired)
+}
+
 func TestWithIPCInterceptors(t *testing.T) {
 	tests := []struct {
 		name      string

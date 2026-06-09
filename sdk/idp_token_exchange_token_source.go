@@ -51,3 +51,23 @@ func (i *IDPTokenExchangeTokenSource) AccessToken(ctx context.Context, client *h
 func (i *IDPTokenExchangeTokenSource) MakeToken(keyMaker func(jwk.Key) ([]byte, error)) ([]byte, error) {
 	return i.IDPAccessTokenSource.MakeToken(keyMaker)
 }
+
+// newIDPTokenExchangeTokenSourceFromJWK creates an IDPTokenExchangeTokenSource using a pre-built JWK key.
+func newIDPTokenExchangeTokenSourceFromJWK(
+	logger *slog.Logger,
+	exchangeInfo oauth.TokenExchangeInfo,
+	credentials oauth.ClientCredentials,
+	idpTokenEndpoint string,
+	scopes []string,
+	key jwk.Key,
+) (*IDPTokenExchangeTokenSource, error) {
+	idpSource, err := newIDPAccessTokenSourceFromJWK(credentials, idpTokenEndpoint, scopes, key)
+	if err != nil {
+		return nil, err
+	}
+	return &IDPTokenExchangeTokenSource{
+		logger:               logger,
+		IDPAccessTokenSource: *idpSource,
+		TokenExchangeInfo:    exchangeInfo,
+	}, nil
+}

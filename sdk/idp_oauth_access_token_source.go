@@ -58,3 +58,12 @@ func (t *OAuthAccessTokenSource) AccessToken(_ context.Context, _ *http.Client) 
 func (t *OAuthAccessTokenSource) MakeToken(tokenMaker func(jwk.Key) ([]byte, error)) ([]byte, error) {
 	return tokenMaker(t.dpopKey)
 }
+
+// newOAuthAccessTokenSourceFromJWK creates an OAuthAccessTokenSource using a pre-built JWK key.
+func newOAuthAccessTokenSourceFromJWK(source oauth2.TokenSource, scopes []string, key jwk.Key) *OAuthAccessTokenSource {
+	return &OAuthAccessTokenSource{
+		source:  source,
+		scopes:  scopes,
+		dpopKey: key,
+	}
+}

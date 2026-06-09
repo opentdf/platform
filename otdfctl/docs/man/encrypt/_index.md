@@ -37,6 +37,16 @@ command:
     - name: with-assertions
       description: >
         EXPERIMENTAL: JSON string or path to a JSON file of assertions to bind metadata to the TDF. See examples for more information. WARNING: Providing keys in a JSON string is strongly discouraged. If including sensitive keys, instead provide a path to a JSON file containing that information.
+    - name: dpop
+      description: >
+        Enable DPoP (RFC 9449) sender-constrained tokens. Use bare --dpop for ES256 (default), or
+        --dpop=<alg> for a specific algorithm. Allowed algorithms: ES256, ES384, ES512, RS256, RS384, RS512.
+        An ephemeral key is generated per session. Combines with --dpop-key to override inferred algorithm.
+    - name: dpop-key
+      description: >
+        Path to a PEM-encoded private key for DPoP. Enables DPoP without requiring --dpop.
+        Algorithm is inferred from the key type (EC → ES256/384/512, RSA → RS256).
+        Use --dpop=<alg> to override the inferred algorithm.
 ---
 
 Build a Trusted Data Format (TDF) with encrypted content from a specified file or input from stdin utilizing OpenTDF platform.

@@ -202,14 +202,22 @@ func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 		return nil, err
 	}
 
-	// Wrap HTTP client with DPoP transport for resource requests
+	// Wrap HTTP client with DPoP transport for resource requests.
+	// cfg.dpopJWK is populated by resolveDPoPKey (called inside buildIDPTokenSource).
 	httpClient := cfg.httpClient
-	if accessTokenSource != nil && cfg.dpopKey != nil {
-		dpopKey, err := getDPoPJWK(cfg.dpopKey)
-		if err != nil {
-			return nil, fmt.Errorf("failed to create DPoP JWK: %w", err)
+	if accessTokenSource != nil {
+		var dpopKey jwk.Key
+		if cfg.dpopJWK != nil {
+			dpopKey = cfg.dpopJWK
+		} else if cfg.dpopKey != nil {
+			dpopKey, err = getDPoPJWK(cfg.dpopKey)
+			if err != nil {
+				return nil, fmt.Errorf("failed to create DPoP JWK: %w", err)
+			}
 		}
-		httpClient = auth.NewDPoPHTTPClient(cfg.httpClient, dpopKey, accessTokenSource, cfg.tokenEndpoint)
+		if dpopKey != nil {
+			httpClient = auth.NewDPoPHTTPClient(cfg.httpClient, dpopKey, accessTokenSource, cfg.tokenEndpoint)
+		}
 	}
 
 	if accessTokenSource != nil {
@@ -294,6 +302,19 @@ func buildIDPTokenSource(c *config) (auth.AccessTokenSource, error) {
 		return nil, errors.New("cannot do both token exchange and certificate exchange")
 	}
 
+	// Use a user-supplied custom DPoP key (JWK) when present; otherwise fall back to the
+	// auto-generated RSA key pair (existing behaviour). resolveDPoPKey caches the result
+	// in c.dpopJWK, so the transport setup in sdk.New() reuses the same key.
+	customKey, err := resolveDPoPKey(c)
+	if err != nil {
+		return nil, fmt.Errorf("failed to resolve DPoP key: %w", err)
+	}
+
+	if customKey != nil {
+		return buildIDPTokenSourceFromJWK(c, customKey)
+	}
+
+	// RSA auto-generation path (no custom DPoP key configured).
 	if c.dpopKey == nil {
 		rsaKeyPair, err := ocrypto.NewRSAKeyPair(dpopKeySize)
 		if err != nil {
@@ -303,7 +324,6 @@ func buildIDPTokenSource(c *config) (auth.AccessTokenSource, error) {
 	}
 
 	var ts auth.AccessTokenSource
-	var err error
 
 	switch {
 	case c.oauthAccessTokenSource != nil:
@@ -329,6 +349,19 @@ func buildIDPTokenSource(c *config) (auth.AccessTokenSource, error) {
 	}
 
 	return ts, err
+}
+
+func buildIDPTokenSourceFromJWK(c *config, key jwk.Key) (auth.AccessTokenSource, error) {
+	switch {
+	case c.oauthAccessTokenSource != nil:
+		return newOAuthAccessTokenSourceFromJWK(c.oauthAccessTokenSource, c.scopes, key), nil
+	case c.certExchange != nil:
+		return newCertExchangeTokenSourceFromJWK(c.logger, *c.certExchange, *c.clientCredentials, c.tokenEndpoint, key)
+	case c.tokenExchange != nil:
+		return newIDPTokenExchangeTokenSourceFromJWK(c.logger, *c.tokenExchange, *c.clientCredentials, c.tokenEndpoint, c.scopes, key)
+	default:
+		return newIDPAccessTokenSourceFromJWK(*c.clientCredentials, c.tokenEndpoint, c.scopes, key)
+	}
 }
 
 func (s SDK) Close() error {

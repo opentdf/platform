@@ -15,6 +15,7 @@ import (
 	"net/url"
 	"path"
 	"slices"
+	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -225,6 +226,20 @@ func NewAuthenticator(ctx context.Context, cfg Config, logger *logger.Logger, we
 	// Register DPoP support feature
 	if err := wellknownRegistration("supports_dpop", true); err != nil {
 		logger.Warn("failed to register dpop support", slog.Any("error", err))
+	}
+
+	// Register supported DPoP JWT signing algorithms (RFC 9449 §5.1 dpop_signing_alg_values_supported)
+	supportedAlgs := make([]string, 0, len(allowedSignatureAlgorithms))
+	for alg := range allowedSignatureAlgorithms {
+		supportedAlgs = append(supportedAlgs, alg.String())
+	}
+	sort.Strings(supportedAlgs)
+	if err := wellknownRegistration("dpop_supported_alg_values", supportedAlgs); err != nil {
+		logger.Warn("failed to register dpop supported alg values", slog.Any("error", err))
+	}
+
+	if err := wellknownRegistration("dpop_nonce_required", cfg.DPoP.RequireNonce); err != nil {
+		logger.Warn("failed to register dpop nonce required", slog.Any("error", err))
 	}
 
 	return a, nil

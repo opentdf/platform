@@ -30,10 +30,10 @@ func (p *jwtClaimsRoleProvider) Roles(_ context.Context, token jwt.Token, _ auth
 		return nil, nil
 	}
 
-	return rolesFromConfiguredClaim(token, p.groupsClaim), nil
+	return rolesFromConfiguredClaim(token, p.groupsClaim, p.logger), nil
 }
 
-func rolesFromConfiguredClaim(token jwt.Token, groupsClaim string) []string {
+func rolesFromConfiguredClaim(token jwt.Token, groupsClaim string, log *logger.Logger) []string {
 	if token == nil || groupsClaim == "" {
 		return nil
 	}
@@ -41,16 +41,32 @@ func rolesFromConfiguredClaim(token jwt.Token, groupsClaim string) []string {
 	selectors := strings.Split(groupsClaim, ".")
 	claim, exists := token.Get(selectors[0])
 	if !exists {
+		log.Warn("claim not found",
+			slog.String("claim", groupsClaim),
+			slog.Any("claims", claim),
+		)
 		return nil
 	}
+	log.Debug("root claim found",
+		slog.String("claim", groupsClaim),
+		slog.Any("claims", claim),
+	)
 
 	if len(selectors) > 1 {
 		claimMap, ok := claim.(map[string]any)
 		if !ok {
+			log.Warn("claim is not of type map[string]interface{}",
+				slog.String("claim", groupsClaim),
+				slog.Any("claims", claim),
+			)
 			return nil
 		}
 		claim = dotNotation(claimMap, strings.Join(selectors[1:], "."))
 		if claim == nil {
+			log.Warn("claim not found",
+				slog.String("claim", groupsClaim),
+				slog.Any("claims", claim),
+			)
 			return nil
 		}
 	}
@@ -65,9 +81,11 @@ func rolesFromConfiguredClaim(token jwt.Token, groupsClaim string) []string {
 				roles = append(roles, r)
 			}
 		}
-	case []string:
-		roles = append(roles, v...)
 	default:
+		log.Warn("could not get claim type",
+			slog.String("selector", groupsClaim),
+			slog.Any("claims", claim),
+		)
 		return nil
 	}
 

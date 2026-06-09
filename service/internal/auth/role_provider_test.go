@@ -80,14 +80,6 @@ func TestRolesFromConfiguredClaim(t *testing.T) {
 			want: []string{"role:admin", "role:standard"},
 		},
 		{
-			name:        "string array claim",
-			groupsClaim: "roles",
-			claims: map[string]any{
-				"roles": []string{"role:admin", "role:standard"},
-			},
-			want: []string{"role:admin", "role:standard"},
-		},
-		{
 			name:        "dotted nested claim",
 			groupsClaim: "realm_access.roles",
 			claims: map[string]any{
@@ -125,7 +117,7 @@ func TestRolesFromConfiguredClaim(t *testing.T) {
 				require.NoError(t, token.Set(k, v))
 			}
 
-			require.Equal(t, tt.want, rolesFromConfiguredClaim(token, tt.groupsClaim))
+			require.Equal(t, tt.want, rolesFromConfiguredClaim(token, tt.groupsClaim, logger.CreateTestLogger()))
 		})
 	}
 }

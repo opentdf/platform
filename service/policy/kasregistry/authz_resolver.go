@@ -39,7 +39,7 @@ func (s KeyAccessServerRegistry) getKeyAuthzResolver(ctx context.Context, req co
 		return resolverCtx, fmt.Errorf("%w: %T", errUnexpectedGetKeyAuthzRequestType, req.Any())
 	}
 
-	kasURI, err := s.resolveGetKeyKasURI(ctx, msg, &resolverCtx)
+	kasURI, err := resolveGetKeyKasURI(ctx, msg, &resolverCtx, s.dbClient)
 	if err != nil {
 		return resolverCtx, err
 	}
@@ -51,10 +51,6 @@ func (s KeyAccessServerRegistry) getKeyAuthzResolver(ctx context.Context, req co
 	res.AddDimension(authzDimensionKasURI, kasURI)
 
 	return resolverCtx, nil
-}
-
-func (s KeyAccessServerRegistry) resolveGetKeyKasURI(ctx context.Context, msg *kasr.GetKeyRequest, resolverCtx *authz.ResolverContext) (string, error) {
-	return resolveGetKeyKasURI(ctx, msg, resolverCtx, s.dbClient)
 }
 
 func resolveGetKeyKasURI(ctx context.Context, msg *kasr.GetKeyRequest, resolverCtx *authz.ResolverContext, dbClient getKeyAuthzDBClient) (string, error) {

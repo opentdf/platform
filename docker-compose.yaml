@@ -30,7 +30,7 @@ services:
       KEYCLOAK_ADMIN: admin
       KEYCLOAK_ADMIN_PASSWORD: changeme
       #KC_HOSTNAME_URL: http://localhost:8888/auth
-      KC_FEATURES: "preview,token-exchange"
+      KC_FEATURES: "preview,token-exchange,admin-fine-grained-authz:v1"
       KC_HEALTH_ENABLED: "true"
       KC_HTTPS_KEY_STORE_PASSWORD: "password"
       KC_HTTPS_KEY_STORE_FILE: "/truststore/truststore.jks"

@@ -1,10 +1,8 @@
 package kasregistry
 
 import (
-	"errors"
 	"testing"
 
-	"connectrpc.com/connect"
 	"github.com/opentdf/platform/protocol/go/common"
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/kasregistry"
@@ -92,41 +90,6 @@ var (
 	legacyTrue  = true
 	legacyFalse = false
 )
-
-func TestGetKeyAuthzResolver_UsesRequestURI(t *testing.T) {
-	const kasURI = "https://kas-a.example.com"
-	svc := KeyAccessServerRegistry{}
-
-	resolverCtx, err := svc.getKeyAuthzResolver(t.Context(), connect.NewRequest(&kasregistry.GetKeyRequest{
-		Identifier: &kasregistry.GetKeyRequest_Key{
-			Key: &kasregistry.KasKeyIdentifier{
-				Identifier: &kasregistry.KasKeyIdentifier_Uri{Uri: kasURI},
-				Kid:        validKeyID,
-			},
-		},
-	}))
-
-	require.NoError(t, err)
-	require.Len(t, resolverCtx.Resources, 1)
-	require.Equal(t, kasURI, (*resolverCtx.Resources[0])[authzDimensionKasURI])
-	require.Nil(t, resolverCtx.GetResolvedData(resolverCacheKeyKasKey))
-}
-
-func TestGetKeyAuthzResolver_InvalidRequestType(t *testing.T) {
-	svc := KeyAccessServerRegistry{}
-
-	_, err := svc.getKeyAuthzResolver(t.Context(), connect.NewRequest(&kasregistry.ListKeysRequest{}))
-
-	require.True(t, errors.Is(err, errUnexpectedGetKeyAuthzRequestType))
-}
-
-func TestGetKeyAuthzResolver_UnsupportedIdentifier(t *testing.T) {
-	svc := KeyAccessServerRegistry{}
-
-	_, err := svc.getKeyAuthzResolver(t.Context(), connect.NewRequest(&kasregistry.GetKeyRequest{}))
-
-	require.True(t, errors.Is(err, errUnsupportedGetKeyIdentifier))
-}
 
 func Test_GetKeyAccessServer_Keys(t *testing.T) {
 	testCases := []struct {

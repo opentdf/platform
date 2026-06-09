@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"connectrpc.com/connect"
+	"github.com/opentdf/platform/protocol/go/policy"
 	kasr "github.com/opentdf/platform/protocol/go/policy/kasregistry"
 	"github.com/opentdf/platform/service/internal/auth/authz"
 )
@@ -23,7 +24,12 @@ var (
 	errKeyIDRequired                    = errors.New("key id is required")
 	errUnsupportedGetKeyIdentifier      = errors.New("unsupported GetKey identifier")
 	errResolveKasKeyForAuthz            = errors.New("failed to resolve KAS key for authz")
+	errResolvedKasKeyNil                = errors.New("resolved KAS key is nil")
 )
+
+type getKeyAuthzDBClient interface {
+	GetKey(context.Context, any) (*policy.KasKey, error)
+}
 
 func (s KeyAccessServerRegistry) getKeyAuthzResolver(ctx context.Context, req connect.AnyRequest) (authz.ResolverContext, error) {
 	resolverCtx := authz.NewResolverContext()
@@ -48,6 +54,10 @@ func (s KeyAccessServerRegistry) getKeyAuthzResolver(ctx context.Context, req co
 }
 
 func (s KeyAccessServerRegistry) resolveGetKeyKasURI(ctx context.Context, msg *kasr.GetKeyRequest, resolverCtx *authz.ResolverContext) (string, error) {
+	return resolveGetKeyKasURI(ctx, msg, resolverCtx, s.dbClient)
+}
+
+func resolveGetKeyKasURI(ctx context.Context, msg *kasr.GetKeyRequest, resolverCtx *authz.ResolverContext, dbClient getKeyAuthzDBClient) (string, error) {
 	switch identifier := msg.GetIdentifier().(type) {
 	case *kasr.GetKeyRequest_Key:
 		keyIdentifier := identifier.Key
@@ -65,9 +75,12 @@ func (s KeyAccessServerRegistry) resolveGetKeyKasURI(ctx context.Context, msg *k
 		return "", errUnsupportedGetKeyIdentifier
 	}
 
-	key, err := s.dbClient.GetKey(ctx, msg.GetIdentifier())
+	key, err := dbClient.GetKey(ctx, msg.GetIdentifier())
 	if err != nil {
 		return "", fmt.Errorf("%w: %w", errResolveKasKeyForAuthz, err)
+	}
+	if key == nil {
+		return "", fmt.Errorf("%w: %w", errResolveKasKeyForAuthz, errResolvedKasKeyNil)
 	}
 
 	resolverCtx.SetResolvedData(resolverCacheKeyKasKey, key)

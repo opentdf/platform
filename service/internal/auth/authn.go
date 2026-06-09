@@ -229,11 +229,17 @@ func NewAuthenticator(ctx context.Context, cfg Config, logger *logger.Logger, we
 	}
 
 	// Register supported DPoP JWT signing algorithms (RFC 9449 §5.1 dpop_signing_alg_values_supported)
-	supportedAlgs := make([]string, 0, len(allowedSignatureAlgorithms))
+	// structpb.NewStruct rejects []string — convert to []any so each element goes through
+	// structpb.NewValue's accepted-type list.
+	supportedAlgsStr := make([]string, 0, len(allowedSignatureAlgorithms))
 	for alg := range allowedSignatureAlgorithms {
-		supportedAlgs = append(supportedAlgs, alg.String())
+		supportedAlgsStr = append(supportedAlgsStr, alg.String())
 	}
-	sort.Strings(supportedAlgs)
+	sort.Strings(supportedAlgsStr)
+	supportedAlgs := make([]any, len(supportedAlgsStr))
+	for i, s := range supportedAlgsStr {
+		supportedAlgs[i] = s
+	}
 	if err := wellknownRegistration("dpop_supported_alg_values", supportedAlgs); err != nil {
 		logger.Warn("failed to register dpop supported alg values", slog.Any("error", err))
 	}

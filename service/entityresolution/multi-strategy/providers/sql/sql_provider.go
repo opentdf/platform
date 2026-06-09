@@ -47,9 +47,8 @@ func ensureDriverRegistered(driver string) {
 		}
 	}
 
-	switch driver {
-	case "postgres":
-		sql.Register("postgres", stdlib.GetDefaultDriver())
+	if driver == defaultPostgreSQLDriver {
+		sql.Register(defaultPostgreSQLDriver, stdlib.GetDefaultDriver())
 		registeredDrivers[driver] = struct{}{}
 	}
 	// mysql and sqlite require imports not present in this module's dependencies.
@@ -305,7 +304,7 @@ func (p *Provider) Close() error {
 // buildConnectionString creates a connection string based on the driver
 func (p *Provider) buildConnectionString() (string, error) {
 	switch strings.ToLower(p.config.Driver) {
-	case "postgres":
+	case defaultPostgreSQLDriver:
 		return fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=%s",
 			p.config.Host, p.config.Port, p.config.Username, p.config.Password,
 			p.config.Database, p.config.SSLMode), nil

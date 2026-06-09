@@ -6,6 +6,7 @@ import (
 
 const (
 	// Default SQL configuration values
+	defaultPostgreSQLDriver   = "postgres"
 	defaultPostgreSQLPort     = 5432
 	defaultMaxOpenConnections = 25
 	defaultMaxIdleConnections = 5
@@ -45,7 +46,7 @@ type Config struct {
 // DefaultConfig returns a default SQL configuration
 func DefaultConfig() Config {
 	return Config{
-		Driver:             "postgres",
+		Driver:             defaultPostgreSQLDriver,
 		Port:               defaultPostgreSQLPort,
 		SSLMode:            "require",
 		MaxOpenConnections: defaultMaxOpenConnections,

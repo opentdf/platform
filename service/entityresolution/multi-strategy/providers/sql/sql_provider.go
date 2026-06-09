@@ -39,9 +39,10 @@ func ensureDriverRegistered(driver string) {
 
 	// Check whether the driver was already registered externally (e.g. via a
 	// blank import in the consumer binary) before attempting to register it.
-	// Use strings.EqualFold so the pre-check is also case-insensitive.
+	// database/sql driver names are case-sensitive, so only an exact canonical
+	// match can satisfy sql.Open after the config driver is normalized.
 	for _, d := range sql.Drivers() {
-		if strings.EqualFold(d, driver) {
+		if d == driver {
 			registeredDrivers[driver] = struct{}{}
 			return
 		}

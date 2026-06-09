@@ -37,10 +37,8 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/metadata"
-	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
@@ -57,14 +55,17 @@ type FakeAccessTokenSource struct {
 }
 
 type FakeAccessServiceServer struct {
-	clientID    string
-	accessToken []string
-	dpopKey     jwk.Key
+	clientID       string
+	accessToken    []string
+	dpopKey        jwk.Key
+	publicRoute    bool
+	publicRouteSet bool
 	kas.UnimplementedAccessServiceServer
 }
 
-func (f *FakeAccessServiceServer) PublicKey(_ context.Context, _ *connect.Request[kas.PublicKeyRequest]) (*connect.Response[kas.PublicKeyResponse], error) {
-	return &connect.Response[kas.PublicKeyResponse]{Msg: &kas.PublicKeyResponse{}}, status.Error(codes.Unauthenticated, "no public key for you")
+func (f *FakeAccessServiceServer) PublicKey(ctx context.Context, _ *connect.Request[kas.PublicKeyRequest]) (*connect.Response[kas.PublicKeyResponse], error) {
+	f.publicRoute, f.publicRouteSet = ctxAuth.PublicRouteFromContext(ctx)
+	return &connect.Response[kas.PublicKeyResponse]{Msg: &kas.PublicKeyResponse{}}, nil
 }
 
 func (f *FakeAccessServiceServer) LegacyPublicKey(_ context.Context, _ *connect.Request[kas.LegacyPublicKeyRequest]) (*connect.Response[wrapperspb.StringValue], error) {
@@ -317,7 +318,7 @@ func (s *AuthSuite) Test_IPCUnaryServerInterceptor() {
 	s.Contains(err.Error(), "unauthenticated")
 }
 
-func (s *AuthSuite) Test_ConnectTokenClaimsAndCasbinInterceptors_ClientIDPropagated() {
+func (s *AuthSuite) Test_ConnectAuthNAndAuthZInterceptors_ClientIDPropagated() {
 	tok := jwt.New()
 	s.Require().NoError(tok.Set(jwt.ExpirationKey, time.Now().Add(time.Hour)))
 	s.Require().NoError(tok.Set("iss", s.server.URL))
@@ -348,8 +349,8 @@ func (s *AuthSuite) Test_ConnectTokenClaimsAndCasbinInterceptors_ClientIDPropaga
 	// Create a minimal connect server setup to properly test the interceptor
 	// This is necessary because connect requests need proper procedure routing
 	interceptor := connect.WithInterceptors(
-		auth.ConnectTokenClaimsInterceptor(),
-		auth.ConnectCasbinEnforcementInterceptor(),
+		auth.ConnectAuthNInterceptor(),
+		auth.ConnectAuthZInterceptor(),
 	)
 
 	fakeServer := &FakeAccessServiceServer{}
@@ -375,6 +376,46 @@ func (s *AuthSuite) Test_ConnectTokenClaimsAndCasbinInterceptors_ClientIDPropaga
 	s.Equal("test-client-id", fakeServer.clientID)
 }
 
+func (s *AuthSuite) Test_ConnectAuthNInterceptor_SetsPublicRouteContextForChainedMiddleware() {
+	var (
+		middlewarePublicRoute    bool
+		middlewarePublicRouteSet bool
+	)
+	publicRouteInspector := connect.UnaryInterceptorFunc(func(next connect.UnaryFunc) connect.UnaryFunc {
+		return func(ctx context.Context, req connect.AnyRequest) (connect.AnyResponse, error) {
+			middlewarePublicRoute, middlewarePublicRouteSet = ctxAuth.PublicRouteFromContext(ctx)
+			return next(ctx, req)
+		}
+	})
+
+	interceptor := connect.WithInterceptors(
+		s.auth.ConnectAuthNInterceptor(),
+		publicRouteInspector,
+		s.auth.ConnectAuthZInterceptor(),
+	)
+
+	fakeServer := &FakeAccessServiceServer{}
+	mux := http.NewServeMux()
+	path, handler := kasconnect.NewAccessServiceHandler(fakeServer, interceptor)
+	mux.Handle(path, handler)
+
+	server := memhttp.New(mux)
+	defer server.Close()
+
+	conn, _ := grpc.NewClient("passthrough://bufconn", grpc.WithContextDialer(func(ctx context.Context, _ string) (net.Conn, error) {
+		return server.Listener.DialContext(ctx, "tcp", "http://localhost:8080")
+	}), grpc.WithTransportCredentials(insecure.NewCredentials()))
+
+	client := kas.NewAccessServiceClient(conn)
+	_, err := client.PublicKey(s.T().Context(), &kas.PublicKeyRequest{})
+	s.Require().NoError(err)
+
+	s.True(middlewarePublicRouteSet)
+	s.True(middlewarePublicRoute)
+	s.True(fakeServer.publicRouteSet)
+	s.True(fakeServer.publicRoute)
+}
+
 func (s *AuthSuite) Test_CheckToken_When_JWT_Expired_Expect_Error() {
 	tok := jwt.New()
 	s.Require().NoError(tok.Set(jwt.ExpirationKey, time.Date(2009, 11, 17, 20, 34, 58, 651387237, time.UTC)))
@@ -397,9 +438,9 @@ func (s *AuthSuite) Test_MuxHandler_When_Authorization_Header_Missing_Expect_Err
 	s.Equal("missing authorization header\n", rec.Body.String())
 }
 
-func (s *AuthSuite) Test_TokenClaimsInterceptor_When_Authorization_Header_Missing_Expect_Error() {
+func (s *AuthSuite) Test_ConnectAuthNInterceptor_When_Authorization_Header_Missing_Expect_Error() {
 	// Create the interceptor
-	interceptor := s.auth.ConnectTokenClaimsInterceptor()
+	interceptor := s.auth.ConnectAuthNInterceptor()
 
 	// Create a dummy next handler
 	next := func(_ context.Context, _ connect.AnyRequest) (connect.AnyResponse, error) {
@@ -613,8 +654,8 @@ func (s *AuthSuite) TestDPoPEndToEnd_GRPC() {
 	s.Require().NoError(err)
 
 	interceptor := connect.WithInterceptors(
-		s.auth.ConnectTokenClaimsInterceptor(),
-		s.auth.ConnectCasbinEnforcementInterceptor(),
+		s.auth.ConnectAuthNInterceptor(),
+		s.auth.ConnectAuthZInterceptor(),
 	)
 
 	fakeServer := &FakeAccessServiceServer{}

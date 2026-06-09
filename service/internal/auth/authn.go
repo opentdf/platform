@@ -179,7 +179,9 @@ func normalizeURL(o string, u *url.URL) string {
 // verifyTokenHandler is a http handler that verifies the token
 func (a Authentication) MuxHandler(handler http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if slices.ContainsFunc(a.publicRoutes, a.isPublicRoute(r.URL.Path)) { //nolint:contextcheck // There is no way to pass a context here
+		publicRoute := slices.ContainsFunc(a.publicRoutes, a.isPublicRoute(r.URL.Path)) //nolint:contextcheck // There is no way to pass a context here
+		r = r.WithContext(ctxAuth.ContextWithPublicRoute(r.Context(), publicRoute))
+		if publicRoute {
 			handler.ServeHTTP(w, r)
 			return
 		}
@@ -280,16 +282,17 @@ func (a Authentication) MuxHandler(handler http.Handler) http.Handler {
 	})
 }
 
-// ConnectTokenClaimsInterceptor verifies the token in the metadata and enriches
-// the request context with configured token claims needed by later middleware.
-func (a Authentication) ConnectTokenClaimsInterceptor() connect.UnaryInterceptorFunc {
+// ConnectAuthNInterceptor authenticates Connect requests and enriches the
+// request context with configured token claims needed by later middleware.
+func (a Authentication) ConnectAuthNInterceptor() connect.UnaryInterceptorFunc {
 	interceptor := func(next connect.UnaryFunc) connect.UnaryFunc {
 		return connect.UnaryFunc(func(
 			ctx context.Context,
 			req connect.AnyRequest,
 		) (connect.AnyResponse, error) {
-			// Allow health checks and other public routes to pass through.
-			if slices.ContainsFunc(a.publicRoutes, a.isPublicRoute(req.Spec().Procedure)) { //nolint:contextcheck // There is no way to pass a context here
+			publicRoute := slices.ContainsFunc(a.publicRoutes, a.isPublicRoute(req.Spec().Procedure)) //nolint:contextcheck // There is no way to pass a context here
+			ctx = ctxAuth.ContextWithPublicRoute(ctx, publicRoute)
+			if publicRoute {
 				return next(ctx, req)
 			}
 
@@ -357,15 +360,15 @@ func (a Authentication) ConnectTokenClaimsInterceptor() connect.UnaryInterceptor
 	return connect.UnaryInterceptorFunc(interceptor)
 }
 
-// ConnectCasbinEnforcementInterceptor enforces the request against Casbin using
-// token and configured claims already stored in the request context.
-func (a Authentication) ConnectCasbinEnforcementInterceptor() connect.UnaryInterceptorFunc {
+// ConnectAuthZInterceptor authorizes Connect requests using token and
+// configured claims already stored in the request context.
+func (a Authentication) ConnectAuthZInterceptor() connect.UnaryInterceptorFunc {
 	interceptor := func(next connect.UnaryFunc) connect.UnaryFunc {
 		return connect.UnaryFunc(func(
 			ctx context.Context,
 			req connect.AnyRequest,
 		) (connect.AnyResponse, error) {
-			if slices.ContainsFunc(a.publicRoutes, a.isPublicRoute(req.Spec().Procedure)) { //nolint:contextcheck // There is no way to pass a context here
+			if publicRoute, ok := ctxAuth.PublicRouteFromContext(ctx); ok && publicRoute {
 				return next(ctx, req)
 			}
 

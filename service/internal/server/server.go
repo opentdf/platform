@@ -279,8 +279,8 @@ func NewOpenTDFServer(config Config, logger *logger.Logger, cacheManager *cache.
 	if config.Auth.Enabled && authN != nil {
 		ipcAuthInts = []connect.Interceptor{authN.IPCUnaryServerInterceptor()}
 		connectAuthInts = []connect.Interceptor{
-			authN.ConnectTokenClaimsInterceptor(),
-			authN.ConnectCasbinEnforcementInterceptor(),
+			authN.ConnectAuthNInterceptor(),
+			authN.ConnectAuthZInterceptor(),
 		}
 	}
 

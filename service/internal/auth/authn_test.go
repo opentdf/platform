@@ -383,6 +383,97 @@ func (s *AuthSuite) Test_ConnectAuthNAndAuthZInterceptors_ClientIDPropagated() {
 	s.Equal("test-client-id", fakeServer.authzClientID)
 }
 
+func (s *AuthSuite) Test_MuxHandler_RoleProviderErrorReturnsInternalServerError() {
+	tok := jwt.New()
+	s.Require().NoError(tok.Set(jwt.ExpirationKey, time.Now().Add(time.Hour)))
+	s.Require().NoError(tok.Set("iss", s.server.URL))
+	s.Require().NoError(tok.Set("aud", "test"))
+	s.Require().NoError(tok.Set("cid", "client-123"))
+	signedTok, err := jwt.Sign(tok, jwt.WithKey(jwa.RS256, s.key))
+	s.Require().NoError(err)
+
+	policyCfg := PolicyConfig{ClientIDClaim: "cid"}
+	s.Require().NoError(defaults.Set(&policyCfg))
+	auth, err := NewAuthenticator(s.T().Context(), Config{
+		AuthNConfig: AuthNConfig{
+			EnforceDPoP: false,
+			Issuer:      s.server.URL,
+			Audience:    "test",
+			Policy:      policyCfg,
+		},
+		RoleProvider: staticProvider{err: errors.New("role provider unavailable")},
+	}, logger.CreateTestLogger(), func(_ string, _ any) error { return nil })
+	s.Require().NoError(err)
+
+	called := false
+	handler := auth.MuxHandler(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
+		called = true
+	}))
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodPost, "/policy.attributes.List", nil)
+	req.Header.Set("Authorization", "Bearer "+string(signedTok))
+
+	handler.ServeHTTP(rec, req)
+
+	s.Equal(http.StatusInternalServerError, rec.Code)
+	s.False(called)
+}
+
+func (s *AuthSuite) Test_ConnectAuthNInterceptor_RoleProviderErrorReturnsInternal() {
+	tok := jwt.New()
+	s.Require().NoError(tok.Set(jwt.ExpirationKey, time.Now().Add(time.Hour)))
+	s.Require().NoError(tok.Set("iss", s.server.URL))
+	s.Require().NoError(tok.Set("aud", "test"))
+	s.Require().NoError(tok.Set("azp", "client-123"))
+	signedTok, err := jwt.Sign(tok, jwt.WithKey(jwa.RS256, s.key))
+	s.Require().NoError(err)
+
+	policyCfg := new(PolicyConfig)
+	s.Require().NoError(defaults.Set(policyCfg))
+	auth, err := NewAuthenticator(s.T().Context(), Config{
+		AuthNConfig: AuthNConfig{
+			Issuer:   s.server.URL,
+			Audience: "test",
+			Policy:   *policyCfg,
+		},
+		RoleProvider: staticProvider{err: errors.New("role provider unavailable")},
+	}, logger.CreateTestLogger(), func(_ string, _ any) error { return nil })
+	s.Require().NoError(err)
+
+	interceptor := auth.ConnectAuthNInterceptor()
+	called := false
+	next := func(_ context.Context, _ connect.AnyRequest) (connect.AnyResponse, error) {
+		called = true
+		return connect.NewResponse(&kas.RewrapResponse{}), nil
+	}
+	req := &authnTestRequest{
+		Request:   connect.NewRequest(&kas.RewrapRequest{}),
+		procedure: "/kas.AccessService/Rewrap",
+	}
+	req.Header().Set("Authorization", "Bearer "+string(signedTok))
+	_, err = interceptor(next)(s.T().Context(), req)
+	s.Require().Error(err)
+	s.Equal(connect.CodeInternal, connect.CodeOf(err))
+	s.False(called)
+}
+
+type authnTestRequest struct {
+	*connect.Request[kas.RewrapRequest]
+	procedure string
+}
+
+func (r *authnTestRequest) Spec() connect.Spec {
+	return connect.Spec{Procedure: r.procedure}
+}
+
+func (r *authnTestRequest) Peer() connect.Peer {
+	return connect.Peer{}
+}
+
+func (r *authnTestRequest) Any() any {
+	return r.Msg
+}
+
 func (s *AuthSuite) Test_ConnectAuthNInterceptor_SetsPublicRouteContextForChainedMiddleware() {
 	var (
 		middlewarePublicRoute    bool

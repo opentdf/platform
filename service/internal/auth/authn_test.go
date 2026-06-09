@@ -33,6 +33,7 @@ import (
 	"github.com/opentdf/platform/service/internal/server/memhttp"
 	"github.com/opentdf/platform/service/logger"
 	ctxAuth "github.com/opentdf/platform/service/pkg/auth"
+	"github.com/opentdf/platform/service/pkg/authz"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
@@ -56,6 +57,7 @@ type FakeAccessTokenSource struct {
 
 type FakeAccessServiceServer struct {
 	clientID       string
+	authzClientID  string
 	accessToken    []string
 	dpopKey        jwk.Key
 	publicRoute    bool
@@ -77,6 +79,7 @@ func (f *FakeAccessServiceServer) Rewrap(ctx context.Context, req *connect.Reque
 	f.dpopKey = ctxAuth.GetJWKFromContext(ctx, logger.CreateTestLogger())
 	inbound := true
 	f.clientID, _ = ctxAuth.GetClientIDFromContext(ctx, inbound)
+	f.authzClientID, _ = authz.ClientIDFromContext(ctx)
 
 	return &connect.Response[kas.RewrapResponse]{Msg: &kas.RewrapResponse{}}, nil
 }
@@ -298,6 +301,9 @@ func (s *AuthSuite) Test_IPCUnaryServerInterceptor() {
 	clientID, err := ctxAuth.GetClientIDFromContext(nextCtx, inbound)
 	s.Require().NoError(err)
 	s.Equal("mockClientID", clientID)
+	authzClientID, ok := authz.ClientIDFromContext(nextCtx)
+	s.Require().True(ok)
+	s.Equal("mockClientID", authzClientID)
 
 	// Test with a route not requiring reauthorization
 	nextCtx, err = s.auth.ipcReauthCheck(context.Background(), "/kas.AccessService/PublicKey", nil)
@@ -374,6 +380,7 @@ func (s *AuthSuite) Test_ConnectAuthNAndAuthZInterceptors_ClientIDPropagated() {
 
 	// Assert that the client ID was properly extracted and set in the context
 	s.Equal("test-client-id", fakeServer.clientID)
+	s.Equal("test-client-id", fakeServer.authzClientID)
 }
 
 func (s *AuthSuite) Test_ConnectAuthNInterceptor_SetsPublicRouteContextForChainedMiddleware() {
@@ -703,6 +710,7 @@ func (s *AuthSuite) TestDPoPEndToEnd_GRPC() {
 
 	// interceptor propagated clientID from the token at the configured claim
 	s.Equal("client-123", fakeServer.clientID)
+	s.Equal("client-123", fakeServer.authzClientID)
 
 	s.NotNil(fakeServer.dpopKey)
 	dpopJWKFromRequest, ok := fakeServer.dpopKey.(jwk.RSAPublicKey)

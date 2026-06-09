@@ -6,8 +6,9 @@ type rolesContextKey struct{}
 
 // RequestClaims contains configured authorization claims resolved for a request.
 type RequestClaims struct {
-	Subject string
-	Roles   []string
+	Subject  string
+	Roles    []string
+	ClientID string
 }
 
 // ContextWithClaims returns a child context carrying configured authorization
@@ -36,6 +37,14 @@ func ContextWithRoles(ctx context.Context, roles []string) context.Context {
 	return ContextWithClaims(ctx, claims)
 }
 
+// ContextWithClientID returns a child context carrying the request client ID
+// resolved from configured authentication claims.
+func ContextWithClientID(ctx context.Context, clientID string) context.Context {
+	claims, _ := ClaimsFromContext(ctx)
+	claims.ClientID = clientID
+	return ContextWithClaims(ctx, claims)
+}
+
 // RolesFromContext returns the request roles resolved by the authorization
 // role provider, if present.
 func RolesFromContext(ctx context.Context) ([]string, bool) {
@@ -54,4 +63,14 @@ func SubjectFromContext(ctx context.Context) (string, bool) {
 		return "", false
 	}
 	return claims.Subject, true
+}
+
+// ClientIDFromContext returns the configured client ID claim resolved for the
+// request, if present.
+func ClientIDFromContext(ctx context.Context) (string, bool) {
+	claims, ok := ClaimsFromContext(ctx)
+	if !ok {
+		return "", false
+	}
+	return claims.ClientID, true
 }

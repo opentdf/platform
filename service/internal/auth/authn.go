@@ -230,6 +230,7 @@ func (a Authentication) MuxHandler(handler http.Handler) http.Handler {
 				With("client_id", clientID).
 				With("configured_client_id_claim_name", a.oidcConfiguration.Policy.ClientIDClaim)
 			ctx = ctxAuth.EnrichIncomingContextMetadataWithAuthn(ctx, log, clientID)
+			ctx = authz.ContextWithClientID(ctx, clientID)
 		}
 
 		// Check if the token is allowed to access the resource
@@ -335,6 +336,7 @@ func (a Authentication) ConnectAuthNInterceptor() connect.UnaryInterceptorFunc {
 					With("client_id", clientID).
 					With("configured_client_id_claim_name", a.oidcConfiguration.Policy.ClientIDClaim)
 				ctxWithJWK = ctxAuth.EnrichIncomingContextMetadataWithAuthn(ctxWithJWK, log, clientID)
+				ctxWithJWK = authz.ContextWithClientID(ctxWithJWK, clientID)
 			}
 
 			roleReq := authz.RoleRequest{
@@ -720,7 +722,8 @@ func (a Authentication) ipcReauthCheck(ctx context.Context, path string, header 
 			if err != nil {
 				return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("unauthenticated"))
 			}
-			return ctxAuth.EnrichIncomingContextMetadataWithAuthn(ctxWithJWK, a.logger, clientID), nil
+			ctxWithJWK = ctxAuth.EnrichIncomingContextMetadataWithAuthn(ctxWithJWK, a.logger, clientID)
+			return authz.ContextWithClientID(ctxWithJWK, clientID), nil
 		}
 	}
 	return ctx, nil

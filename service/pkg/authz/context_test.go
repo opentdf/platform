@@ -9,8 +9,9 @@ import (
 func TestContextWithRoles(t *testing.T) {
 	roles := []string{"role:admin", "role:standard"}
 	ctx := ContextWithClaims(t.Context(), RequestClaims{
-		Subject: "user@example.com",
-		Roles:   roles,
+		Subject:  "user@example.com",
+		Roles:    roles,
+		ClientID: "client-123",
 	})
 
 	roles[0] = "mutated"
@@ -19,6 +20,7 @@ func TestContextWithRoles(t *testing.T) {
 	require.True(t, ok)
 	require.Equal(t, "user@example.com", claims.Subject)
 	require.Equal(t, []string{"role:admin", "role:standard"}, claims.Roles)
+	require.Equal(t, "client-123", claims.ClientID)
 
 	claims.Roles[0] = "mutated"
 
@@ -33,6 +35,10 @@ func TestContextWithRoles(t *testing.T) {
 	subject, ok := SubjectFromContext(ctx)
 	require.True(t, ok)
 	require.Equal(t, "user@example.com", subject)
+
+	clientID, ok := ClientIDFromContext(ctx)
+	require.True(t, ok)
+	require.Equal(t, "client-123", clientID)
 
 	got[0] = "mutated"
 
@@ -49,4 +55,23 @@ func TestRolesFromContextMissing(t *testing.T) {
 	subject, ok := SubjectFromContext(t.Context())
 	require.False(t, ok)
 	require.Empty(t, subject)
+
+	clientID, ok := ClientIDFromContext(t.Context())
+	require.False(t, ok)
+	require.Empty(t, clientID)
+}
+
+func TestContextWithClientIDPreservesExistingClaims(t *testing.T) {
+	ctx := ContextWithClaims(t.Context(), RequestClaims{
+		Subject: "user@example.com",
+		Roles:   []string{"role:admin"},
+	})
+
+	ctx = ContextWithClientID(ctx, "client-123")
+
+	claims, ok := ClaimsFromContext(ctx)
+	require.True(t, ok)
+	require.Equal(t, "user@example.com", claims.Subject)
+	require.Equal(t, []string{"role:admin"}, claims.Roles)
+	require.Equal(t, "client-123", claims.ClientID)
 }

@@ -195,10 +195,10 @@ func (e *Enforcer) ContextWithClaims(ctx context.Context, t jwt.Token, req authz
 	if err != nil {
 		return ctx, err
 	}
-	return authz.ContextWithClaims(ctx, authz.RequestClaims{
-		Subject: e.subjectFromToken(t),
-		Roles:   roles,
-	}), nil
+	claims, _ := authz.ClaimsFromContext(ctx)
+	claims.Subject = e.subjectFromToken(t)
+	claims.Roles = roles
+	return authz.ContextWithClaims(ctx, claims), nil
 }
 
 func (e *Enforcer) buildSubjectFromToken(ctx context.Context, t jwt.Token, req authz.RoleRequest) (casbinSubject, []string, error) {
@@ -224,10 +224,14 @@ func (e *Enforcer) claimsForRequest(ctx context.Context, t jwt.Token, req authz.
 	if err != nil {
 		return authz.RequestClaims{}, err
 	}
-	return authz.RequestClaims{
+	claims := authz.RequestClaims{
 		Subject: e.subjectFromToken(t),
 		Roles:   roles,
-	}, nil
+	}
+	if existingClaims, ok := authz.ClaimsFromContext(ctx); ok {
+		claims.ClientID = existingClaims.ClientID
+	}
+	return claims, nil
 }
 
 func (e *Enforcer) subjectFromToken(t jwt.Token) string {

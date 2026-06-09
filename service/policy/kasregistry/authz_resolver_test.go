@@ -2,7 +2,6 @@ package kasregistry
 
 import (
 	"context"
-	"errors"
 	"testing"
 
 	"connectrpc.com/connect"
@@ -69,7 +68,7 @@ func TestGetKeyAuthzResolver_InvalidRequestType(t *testing.T) {
 
 	_, err := svc.getKeyAuthzResolver(t.Context(), connect.NewRequest(&kasregistry.ListKeysRequest{}))
 
-	require.True(t, errors.Is(err, errUnexpectedGetKeyAuthzRequestType))
+	require.ErrorIs(t, err, errUnexpectedGetKeyAuthzRequestType)
 }
 
 func TestGetKeyAuthzResolver_UnsupportedIdentifier(t *testing.T) {
@@ -77,5 +76,5 @@ func TestGetKeyAuthzResolver_UnsupportedIdentifier(t *testing.T) {
 
 	_, err := svc.getKeyAuthzResolver(t.Context(), connect.NewRequest(&kasregistry.GetKeyRequest{}))
 
-	require.True(t, errors.Is(err, errUnsupportedGetKeyIdentifier))
+	require.ErrorIs(t, err, errUnsupportedGetKeyIdentifier)
 }

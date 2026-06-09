@@ -60,3 +60,21 @@ func (c *CertExchangeTokenSource) AccessToken(ctx context.Context, _ *http.Clien
 func (c *CertExchangeTokenSource) MakeToken(tokenMaker func(jwk.Key) ([]byte, error)) ([]byte, error) {
 	return tokenMaker(c.key)
 }
+
+// newCertExchangeTokenSourceFromJWK creates a CertExchangeTokenSource using a pre-built JWK key.
+func newCertExchangeTokenSourceFromJWK(
+	logger *slog.Logger,
+	info oauth.CertExchangeInfo,
+	credentials oauth.ClientCredentials,
+	idpTokenEndpoint string,
+	key jwk.Key,
+) (auth.AccessTokenSource, error) {
+	return &CertExchangeTokenSource{
+		logger:      logger,
+		info:        info,
+		IdpEndpoint: idpTokenEndpoint,
+		credentials: credentials,
+		tokenMutex:  &sync.Mutex{},
+		key:         key,
+	}, nil
+}

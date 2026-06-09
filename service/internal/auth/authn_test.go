@@ -462,6 +462,24 @@ func (s *AuthSuite) Test_ConnectAuthNInterceptor_When_Authorization_Header_Missi
 	s.Require().ErrorAs(err, &connectErr)
 }
 
+func (s *AuthSuite) Test_ConnectAuthNInterceptor_RequiresHeaderWithExistingContextToken() {
+	interceptor := s.auth.ConnectAuthNInterceptor()
+
+	next := func(_ context.Context, _ connect.AnyRequest) (connect.AnyResponse, error) {
+		return connect.NewResponse[string](nil), nil
+	}
+
+	req := connect.NewRequest[string](nil)
+	ctx := ctxAuth.ContextWithAuthNInfo(context.Background(), nil, jwt.New(), "raw-token")
+
+	_, err := interceptor(next)(ctx, req)
+
+	s.Require().Error(err)
+
+	connectErr := connect.NewError(connect.CodeUnauthenticated, errors.New("missing authorization header"))
+	s.Require().ErrorAs(err, &connectErr)
+}
+
 func (s *AuthSuite) Test_CheckToken_When_Authorization_Header_Invalid_Expect_Error() {
 	_, _, err := s.auth.checkToken(context.Background(), []string{"BPOP "}, receiverInfo{}, nil)
 	s.Require().Error(err)

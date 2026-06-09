@@ -303,26 +303,19 @@ func (a Authentication) ConnectAuthNInterceptor() connect.UnaryInterceptorFunc {
 				m: []string{http.MethodPost},
 			}
 
-			var token jwt.Token
-			ctxWithJWK := ctx
-			if existingToken := ctxAuth.GetAccessTokenFromContext(ctx, a.logger); existingToken != nil {
-				token = existingToken
-			} else {
-				header := req.Header()["Authorization"]
-				if len(header) < 1 {
-					return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("missing authorization header"))
-				}
+			header := req.Header()["Authorization"]
+			if len(header) < 1 {
+				return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("missing authorization header"))
+			}
 
-				var err error
-				token, ctxWithJWK, err = a.checkToken(
-					ctx,
-					header,
-					ri,
-					req.Header()["Dpop"],
-				)
-				if err != nil {
-					return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("unauthenticated"))
-				}
+			token, ctxWithJWK, err := a.checkToken(
+				ctx,
+				header,
+				ri,
+				req.Header()["Dpop"],
+			)
+			if err != nil {
+				return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("unauthenticated"))
 			}
 
 			// parse the rpc method

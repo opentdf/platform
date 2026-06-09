@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"strings"
 
 	"github.com/lestrrat-go/jwx/v2/jwt"
 	"github.com/opentdf/platform/service/logger"
@@ -29,7 +30,48 @@ func (p *jwtClaimsRoleProvider) Roles(_ context.Context, token jwt.Token, _ auth
 		return nil, nil
 	}
 
-	return authz.RolesFromTokenClaim(token, p.groupsClaim), nil
+	return rolesFromConfiguredClaim(token, p.groupsClaim), nil
+}
+
+func rolesFromConfiguredClaim(token jwt.Token, groupsClaim string) []string {
+	if token == nil || groupsClaim == "" {
+		return nil
+	}
+
+	selectors := strings.Split(groupsClaim, ".")
+	claim, exists := token.Get(selectors[0])
+	if !exists {
+		return nil
+	}
+
+	if len(selectors) > 1 {
+		claimMap, ok := claim.(map[string]any)
+		if !ok {
+			return nil
+		}
+		claim = dotNotation(claimMap, strings.Join(selectors[1:], "."))
+		if claim == nil {
+			return nil
+		}
+	}
+
+	roles := []string{}
+	switch v := claim.(type) {
+	case string:
+		roles = append(roles, v)
+	case []any:
+		for _, rr := range v {
+			if r, ok := rr.(string); ok {
+				roles = append(roles, r)
+			}
+		}
+	case []string:
+		roles = append(roles, v...)
+	default:
+		return nil
+	}
+
+	return roles
 }
 
 func resolveRoleProvider(ctx context.Context, cfg Config, logger *logger.Logger) (authz.RoleProvider, error) {

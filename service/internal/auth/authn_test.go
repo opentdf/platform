@@ -317,7 +317,7 @@ func (s *AuthSuite) Test_IPCUnaryServerInterceptor() {
 	s.Contains(err.Error(), "unauthenticated")
 }
 
-func (s *AuthSuite) Test_ConnectUnaryServerInterceptor_ClientIDPropagated() {
+func (s *AuthSuite) Test_ConnectTokenClaimsAndCasbinInterceptors_ClientIDPropagated() {
 	tok := jwt.New()
 	s.Require().NoError(tok.Set(jwt.ExpirationKey, time.Now().Add(time.Hour)))
 	s.Require().NoError(tok.Set("iss", s.server.URL))
@@ -347,7 +347,10 @@ func (s *AuthSuite) Test_ConnectUnaryServerInterceptor_ClientIDPropagated() {
 
 	// Create a minimal connect server setup to properly test the interceptor
 	// This is necessary because connect requests need proper procedure routing
-	interceptor := connect.WithInterceptors(auth.ConnectUnaryServerInterceptor())
+	interceptor := connect.WithInterceptors(
+		auth.ConnectTokenClaimsInterceptor(),
+		auth.ConnectCasbinEnforcementInterceptor(),
+	)
 
 	fakeServer := &FakeAccessServiceServer{}
 	mux := http.NewServeMux()
@@ -394,9 +397,9 @@ func (s *AuthSuite) Test_MuxHandler_When_Authorization_Header_Missing_Expect_Err
 	s.Equal("missing authorization header\n", rec.Body.String())
 }
 
-func (s *AuthSuite) Test_UnaryServerInterceptor_When_Authorization_Header_Missing_Expect_Error() {
+func (s *AuthSuite) Test_TokenClaimsInterceptor_When_Authorization_Header_Missing_Expect_Error() {
 	// Create the interceptor
-	interceptor := s.auth.ConnectUnaryServerInterceptor()
+	interceptor := s.auth.ConnectTokenClaimsInterceptor()
 
 	// Create a dummy next handler
 	next := func(_ context.Context, _ connect.AnyRequest) (connect.AnyResponse, error) {
@@ -609,7 +612,10 @@ func (s *AuthSuite) TestDPoPEndToEnd_GRPC() {
 	signedTok, err := jwt.Sign(tok, jwt.WithKey(jwa.RS256, s.key))
 	s.Require().NoError(err)
 
-	interceptor := connect.WithInterceptors(s.auth.ConnectUnaryServerInterceptor())
+	interceptor := connect.WithInterceptors(
+		s.auth.ConnectTokenClaimsInterceptor(),
+		s.auth.ConnectCasbinEnforcementInterceptor(),
+	)
 
 	fakeServer := &FakeAccessServiceServer{}
 

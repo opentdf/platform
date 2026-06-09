@@ -247,6 +247,12 @@ func (a Authentication) MuxHandler(handler http.Handler) http.Handler {
 			Resource: r.URL.Path,
 			Action:   action,
 		}
+		ctx, err = a.enforcer.ContextWithClaims(ctx, accessTok, roleReq)
+		if err != nil {
+			log.WarnContext(ctx, "role provider error", slog.Any("error", err))
+			http.Error(w, "permission denied", http.StatusForbidden)
+			return
+		}
 		if result, err := a.enforcer.Enforce(ctx, accessTok, roleReq); err != nil {
 			if errors.Is(err, ErrPermissionDenied) {
 				log.WarnContext(
@@ -274,15 +280,16 @@ func (a Authentication) MuxHandler(handler http.Handler) http.Handler {
 	})
 }
 
-// UnaryServerInterceptor is a grpc interceptor that verifies the token in the metadata
-func (a Authentication) ConnectUnaryServerInterceptor() connect.UnaryInterceptorFunc {
+// ConnectTokenClaimsInterceptor verifies the token in the metadata and enriches
+// the request context with configured token claims needed by later middleware.
+func (a Authentication) ConnectTokenClaimsInterceptor() connect.UnaryInterceptorFunc {
 	interceptor := func(next connect.UnaryFunc) connect.UnaryFunc {
 		return connect.UnaryFunc(func(
 			ctx context.Context,
 			req connect.AnyRequest,
 		) (connect.AnyResponse, error) {
-			// if the token is already in the context, skip the interceptor
-			if ctxAuth.GetAccessTokenFromContext(ctx, a.logger) != nil {
+			// Allow health checks and other public routes to pass through.
+			if slices.ContainsFunc(a.publicRoutes, a.isPublicRoute(req.Spec().Procedure)) { //nolint:contextcheck // There is no way to pass a context here
 				return next(ctx, req)
 			}
 
@@ -293,31 +300,32 @@ func (a Authentication) ConnectUnaryServerInterceptor() connect.UnaryInterceptor
 				m: []string{http.MethodPost},
 			}
 
-			// Interceptor Logic
-			// Allow health checks and other public routes to pass through
-			if slices.ContainsFunc(a.publicRoutes, a.isPublicRoute(req.Spec().Procedure)) { //nolint:contextcheck // There is no way to pass a context here
-				return next(ctx, req)
-			}
+			var token jwt.Token
+			ctxWithJWK := ctx
+			if existingToken := ctxAuth.GetAccessTokenFromContext(ctx, a.logger); existingToken != nil {
+				token = existingToken
+			} else {
+				header := req.Header()["Authorization"]
+				if len(header) < 1 {
+					return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("missing authorization header"))
+				}
 
-			header := req.Header()["Authorization"]
-			if len(header) < 1 {
-				return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("missing authorization header"))
+				var err error
+				token, ctxWithJWK, err = a.checkToken(
+					ctx,
+					header,
+					ri,
+					req.Header()["Dpop"],
+				)
+				if err != nil {
+					return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("unauthenticated"))
+				}
 			}
 
 			// parse the rpc method
 			p := strings.Split(req.Spec().Procedure, "/")
 			resource := path.Join(p[1], p[2])
 			action := getAction(p[2])
-
-			token, ctxWithJWK, err := a.checkToken(
-				ctx,
-				header,
-				ri,
-				req.Header()["Dpop"],
-			)
-			if err != nil {
-				return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("unauthenticated"))
-			}
 
 			clientID, err := a.getClientIDFromToken(ctxWithJWK, token)
 			if err != nil {
@@ -333,16 +341,53 @@ func (a Authentication) ConnectUnaryServerInterceptor() connect.UnaryInterceptor
 				ctxWithJWK = ctxAuth.EnrichIncomingContextMetadataWithAuthn(ctxWithJWK, log, clientID)
 			}
 
-			// Check if the token is allowed to access the resource
 			roleReq := authz.RoleRequest{
 				Issuer:   a.oidcConfiguration.Issuer,
 				Resource: resource,
 				Action:   action,
 			}
-			if result, err := a.enforcer.Enforce(ctxWithJWK, token, roleReq); err != nil {
+			ctxWithJWK, err = a.enforcer.ContextWithClaims(ctxWithJWK, token, roleReq)
+			if err != nil {
+				log.WarnContext(ctxWithJWK, "role provider error", slog.Any("error", err))
+				return nil, connect.NewError(connect.CodePermissionDenied, errors.New("permission denied"))
+			}
+			return next(ctxWithJWK, req)
+		})
+	}
+	return connect.UnaryInterceptorFunc(interceptor)
+}
+
+// ConnectCasbinEnforcementInterceptor enforces the request against Casbin using
+// token and configured claims already stored in the request context.
+func (a Authentication) ConnectCasbinEnforcementInterceptor() connect.UnaryInterceptorFunc {
+	interceptor := func(next connect.UnaryFunc) connect.UnaryFunc {
+		return connect.UnaryFunc(func(
+			ctx context.Context,
+			req connect.AnyRequest,
+		) (connect.AnyResponse, error) {
+			if slices.ContainsFunc(a.publicRoutes, a.isPublicRoute(req.Spec().Procedure)) { //nolint:contextcheck // There is no way to pass a context here
+				return next(ctx, req)
+			}
+
+			token := ctxAuth.GetAccessTokenFromContext(ctx, a.logger)
+			if token == nil {
+				return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("missing access token in context"))
+			}
+
+			p := strings.Split(req.Spec().Procedure, "/")
+			resource := path.Join(p[1], p[2])
+			action := getAction(p[2])
+			roleReq := authz.RoleRequest{
+				Issuer:   a.oidcConfiguration.Issuer,
+				Resource: resource,
+				Action:   action,
+			}
+
+			log := a.logger
+			if result, err := a.enforcer.Enforce(ctx, token, roleReq); err != nil {
 				if errors.Is(err, ErrPermissionDenied) {
 					log.WarnContext(
-						ctxWithJWK,
+						ctx,
 						"permission denied",
 						permissionDeniedLogAttrs(token, result.CasbinAuthz, err)...,
 					)
@@ -350,11 +395,11 @@ func (a Authentication) ConnectUnaryServerInterceptor() connect.UnaryInterceptor
 				}
 				return nil, err
 			} else if !result.Allowed {
-				log.WarnContext(ctxWithJWK, "permission denied", permissionDeniedLogAttrs(token, result.CasbinAuthz, nil)...)
+				log.WarnContext(ctx, "permission denied", permissionDeniedLogAttrs(token, result.CasbinAuthz, nil)...)
 				return nil, connect.NewError(connect.CodePermissionDenied, errors.New("permission denied"))
 			}
 
-			return next(ctxWithJWK, req)
+			return next(ctx, req)
 		})
 	}
 	return connect.UnaryInterceptorFunc(interceptor)

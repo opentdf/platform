@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.32.0](https://github.com/opentdf/platform/compare/protocol/go/v0.31.0...protocol/go/v0.32.0) (2026-05-21)
+
+
+### Features
+
+* **core:** add hybrid NIST EC + ML-KEM key wrapping support ([#3276](https://github.com/opentdf/platform/issues/3276)) ([1209acc](https://github.com/opentdf/platform/commit/1209acc2f8ae24af121f6a2892817c20ebb14d25))
+
+## [0.31.0](https://github.com/opentdf/platform/compare/protocol/go/v0.30.0...protocol/go/v0.31.0) (2026-05-19)
+
+
+### Bug Fixes
+
+* **core:** remove deprecated grpc-gateway ([#3479](https://github.com/opentdf/platform/issues/3479)) ([a4230a2](https://github.com/opentdf/platform/commit/a4230a215db71ff369d49216f0f9f61fdb6c042e))
+
 ## [0.30.0](https://github.com/opentdf/platform/compare/protocol/go/v0.29.0...protocol/go/v0.30.0) (2026-05-11)
 
 

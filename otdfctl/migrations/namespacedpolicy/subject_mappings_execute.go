@@ -7,7 +7,7 @@ import (
 	"github.com/opentdf/platform/protocol/go/policy"
 )
 
-func (e *Executor) executeSubjectMappings(ctx context.Context, plans []*SubjectMappingPlan) error {
+func (e *MigrationExecutor) executeSubjectMappings(ctx context.Context, plans []*SubjectMappingPlan) error {
 	if len(plans) == 0 {
 		return nil
 	}
@@ -29,7 +29,7 @@ func (e *Executor) executeSubjectMappings(ctx context.Context, plans []*SubjectM
 	return nil
 }
 
-func (e *Executor) executeSubjectMappingTarget(ctx context.Context, mappingPlan *SubjectMappingPlan, target *SubjectMappingTargetPlan) error {
+func (e *MigrationExecutor) executeSubjectMappingTarget(ctx context.Context, mappingPlan *SubjectMappingPlan, target *SubjectMappingTargetPlan) error {
 	//nolint:exhaustive // Subject mapping execution only handles create and already-migrated explicitly; all other statuses are unsupported.
 	switch target.Status {
 	case TargetStatusAlreadyMigrated:
@@ -48,7 +48,7 @@ func (e *Executor) executeSubjectMappingTarget(ctx context.Context, mappingPlan 
 	}
 }
 
-func (e *Executor) createSubjectMappingTarget(ctx context.Context, mappingPlan *SubjectMappingPlan, target *SubjectMappingTargetPlan) error {
+func (e *MigrationExecutor) createSubjectMappingTarget(ctx context.Context, mappingPlan *SubjectMappingPlan, target *SubjectMappingTargetPlan) error {
 	namespace := namespaceIdentifier(target.Namespace)
 	if namespace == "" {
 		return fmt.Errorf("%w: subject mapping %q", ErrTargetNamespaceRequired, mappingPlan.Source.GetId())
@@ -78,27 +78,23 @@ func (e *Executor) createSubjectMappingTarget(ctx context.Context, mappingPlan *
 		metadataForCreate(
 			mappingPlan.Source.GetId(),
 			metadataLabels(mappingPlan.Source.GetMetadata()),
-			e.runID,
 		),
 		namespace,
 	)
 	if err != nil {
 		target.Execution = &ExecutionResult{
-			RunID:   e.runID,
 			Failure: err.Error(),
 		}
 		return fmt.Errorf("create subject mapping %q in namespace %q: %w", mappingPlan.Source.GetId(), namespaceLabel(target.Namespace), err)
 	}
 	if created.GetId() == "" {
 		target.Execution = &ExecutionResult{
-			RunID:   e.runID,
 			Failure: ErrMissingCreatedTargetID.Error(),
 		}
 		return fmt.Errorf("%w: subject mapping %q target %q", ErrMissingCreatedTargetID, mappingPlan.Source.GetId(), namespaceLabel(target.Namespace))
 	}
 
 	target.Execution = &ExecutionResult{
-		RunID:           e.runID,
 		Applied:         true,
 		CreatedTargetID: created.GetId(),
 	}
@@ -106,7 +102,7 @@ func (e *Executor) createSubjectMappingTarget(ctx context.Context, mappingPlan *
 	return nil
 }
 
-func (e *Executor) resolveSubjectMappingActions(mappingPlan *SubjectMappingPlan, target *SubjectMappingTargetPlan) ([]*policy.Action, error) {
+func (e *MigrationExecutor) resolveSubjectMappingActions(mappingPlan *SubjectMappingPlan, target *SubjectMappingTargetPlan) ([]*policy.Action, error) {
 	actions := make([]*policy.Action, 0, len(target.ActionSourceIDs))
 	for _, sourceID := range target.ActionSourceIDs {
 		if sourceID == "" {
@@ -124,7 +120,7 @@ func (e *Executor) resolveSubjectMappingActions(mappingPlan *SubjectMappingPlan,
 	return actions, nil
 }
 
-func (e *Executor) resolveSubjectMappingSubjectConditionSet(mappingPlan *SubjectMappingPlan, target *SubjectMappingTargetPlan) (string, error) {
+func (e *MigrationExecutor) resolveSubjectMappingSubjectConditionSet(mappingPlan *SubjectMappingPlan, target *SubjectMappingTargetPlan) (string, error) {
 	if target.SubjectConditionSetSourceID == "" {
 		return "", fmt.Errorf("%w: subject mapping %q target %q", ErrMissingSubjectConditionSetTarget, mappingPlan.Source.GetId(), namespaceLabel(target.Namespace))
 	}

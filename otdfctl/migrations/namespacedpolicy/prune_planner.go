@@ -28,8 +28,8 @@ var (
 // Each prune item is classified as delete, blocked, or unresolved and carries
 // the migrated target context that justified that decision.
 type PrunePlanner struct {
-	planner *Planner
-	scopes  scopeSet
+	planner *MigrationPlanner
+	scope   Scope
 }
 
 type prunePlannerConfig struct {
@@ -82,14 +82,14 @@ func NewPrunePlanner(handler PolicyClient, scopeCSV string, opts ...PruneOption)
 		config.pageSize = defaultPlannerPageSize
 	}
 
-	planner, err := NewPlanner(handler, scopeCSV, WithPageSize(config.pageSize))
+	planner, err := NewMigrationPlanner(handler, scopeCSV, WithPageSize(config.pageSize))
 	if err != nil {
 		return nil, err
 	}
 
 	return &PrunePlanner{
 		planner: planner,
-		scopes:  normalizedScopes,
+		scope:   normalizedScopes.ordered()[0],
 	}, nil
 }
 
@@ -110,25 +110,27 @@ func (p *PrunePlanner) Plan(ctx context.Context) (*PrunePlan, error) {
 	if p == nil || p.planner == nil {
 		return nil, ErrNilPlannerHandler
 	}
-	if len(p.scopes) == 0 {
+	if p.scope == "" {
 		return nil, ErrEmptyPlannerScope
 	}
-	if p.scopes.has(ScopeActions) {
+	switch p.scope {
+	case ScopeActions:
 		return p.planActions(ctx)
-	}
-	if p.scopes.has(ScopeSubjectConditionSets) {
+	case ScopeSubjectConditionSets:
 		return p.planSubjectConditionSets(ctx)
-	}
+	case ScopeSubjectMappings, ScopeRegisteredResources, ScopeObligationTriggers:
+		resolved, err := p.planner.resolve(ctx)
+		if err != nil {
+			return nil, err
+		}
+		if resolved == nil {
+			return nil, ErrNilResolvedTargets
+		}
 
-	resolved, err := p.planner.resolve(ctx)
-	if err != nil {
-		return nil, err
+		return buildPrunePlanFromResolved(p.scope, resolved)
+	default:
+		return nil, fmt.Errorf("%w: %s", ErrInvalidScope, p.scope)
 	}
-	if resolved == nil {
-		return nil, ErrNilResolvedTargets
-	}
-
-	return buildPrunePlanFromResolved(p.scopes, resolved)
 }
 
 func (p *PrunePlanner) planActions(ctx context.Context) (*PrunePlan, error) {
@@ -139,7 +141,7 @@ func (p *PrunePlanner) planActions(ctx context.Context) (*PrunePlan, error) {
 	sourceActions = customLegacyActions(sourceActions)
 
 	plan := &PrunePlan{
-		Scopes:  p.scopes.ordered(),
+		Scope:   p.scope,
 		Actions: make([]*PruneActionPlan, 0, len(sourceActions)),
 	}
 	if len(sourceActions) == 0 {
@@ -190,7 +192,7 @@ func (p *PrunePlanner) planSubjectConditionSets(ctx context.Context) (*PrunePlan
 	}
 
 	plan := &PrunePlan{
-		Scopes:               p.scopes.ordered(),
+		Scope:                p.scope,
 		SubjectConditionSets: make([]*PruneSubjectConditionSetPlan, 0, len(sourceSCS)),
 	}
 	if len(sourceSCS) == 0 {
@@ -320,46 +322,46 @@ func (p *PrunePlanner) usedLegacySubjectConditionSetsByID(ctx context.Context, s
 	return used, nil
 }
 
-func buildPrunePlanFromResolved(scopes scopeSet, resolved *ResolvedTargets) (*PrunePlan, error) {
+func buildPrunePlanFromResolved(scope Scope, resolved *ResolvedTargets) (*PrunePlan, error) {
 	if resolved == nil {
 		return &PrunePlan{}, nil
 	}
 
-	builder := newPrunePlanBuilder(scopes, resolved)
+	builder := newPrunePlanBuilder(scope, resolved)
 	return builder.build()
 }
 
 type prunePlanBuilder struct {
-	scopes   scopeSet
+	scope    Scope
 	resolved *ResolvedTargets
 }
 
-func newPrunePlanBuilder(scopes scopeSet, resolved *ResolvedTargets) *prunePlanBuilder {
+func newPrunePlanBuilder(scope Scope, resolved *ResolvedTargets) *prunePlanBuilder {
 	return &prunePlanBuilder{
-		scopes:   scopes,
+		scope:    scope,
 		resolved: resolved,
 	}
 }
 
 func (b *prunePlanBuilder) build() (*PrunePlan, error) {
 	plan := &PrunePlan{
-		Scopes: b.scopes.ordered(),
+		Scope: b.scope,
 	}
-	if b.scopes.has(ScopeSubjectMappings) {
+	if b.scope == ScopeSubjectMappings {
 		subjectMappings, err := b.subjectMappings()
 		if err != nil {
 			return nil, err
 		}
 		plan.SubjectMappings = subjectMappings
 	}
-	if b.scopes.has(ScopeRegisteredResources) {
+	if b.scope == ScopeRegisteredResources {
 		registeredResources, err := b.registeredResources()
 		if err != nil {
 			return nil, err
 		}
 		plan.RegisteredResources = registeredResources
 	}
-	if b.scopes.has(ScopeObligationTriggers) {
+	if b.scope == ScopeObligationTriggers {
 		obligationTriggers, err := b.obligationTriggers()
 		if err != nil {
 			return nil, err

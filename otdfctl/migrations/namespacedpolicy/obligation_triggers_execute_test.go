@@ -19,15 +19,14 @@ func TestExecuteObligationTriggers(t *testing.T) {
 
 	tests := []struct {
 		name    string
-		plan    *Plan
+		plan    *MigrationPlan
 		handler *mockExecutorHandler
-		runID   string
 		wantErr *expectedError
-		assert  func(t *testing.T, err error, executor *Executor, handler *mockExecutorHandler, plan *Plan)
+		assert  func(t *testing.T, err error, executor *MigrationExecutor, handler *mockExecutorHandler, plan *MigrationPlan)
 	}{
 		{
 			name: "handles created and already migrated obligation trigger targets",
-			plan: &Plan{
+			plan: &MigrationPlan{
 				Scopes: []Scope{ScopeActions, ScopeObligationTriggers},
 				Actions: []*ActionPlan{
 					{
@@ -100,8 +99,7 @@ func TestExecuteObligationTriggers(t *testing.T) {
 					},
 				},
 			},
-			runID: "run-789",
-			assert: func(t *testing.T, err error, _ *Executor, handler *mockExecutorHandler, plan *Plan) {
+			assert: func(t *testing.T, err error, _ *MigrationExecutor, handler *mockExecutorHandler, plan *MigrationPlan) {
 				t.Helper()
 
 				require.NoError(t, err)
@@ -117,14 +115,12 @@ func TestExecuteObligationTriggers(t *testing.T) {
 					"owner":                    "policy-team",
 					"env":                      "dev",
 					migrationLabelMigratedFrom: "trigger-1",
-					migrationLabelRun:          "run-789",
 				}, createdCall.Metadata.GetLabels())
 
 				createdTarget := plan.ObligationTriggers[0].Target
 				require.NotNil(t, createdTarget.Execution)
 				assert.True(t, createdTarget.Execution.Applied)
 				assert.Equal(t, "created-trigger-1", createdTarget.Execution.CreatedTargetID)
-				assert.Equal(t, "run-789", createdTarget.Execution.RunID)
 				assert.Equal(t, "created-trigger-1", createdTarget.TargetID())
 
 				migratedTarget := plan.ObligationTriggers[1].Target
@@ -134,7 +130,7 @@ func TestExecuteObligationTriggers(t *testing.T) {
 		},
 		{
 			name: "skips skipped obligation trigger targets",
-			plan: &Plan{
+			plan: &MigrationPlan{
 				Scopes: []Scope{ScopeObligationTriggers},
 				ObligationTriggers: []*ObligationTriggerPlan{
 					{
@@ -148,7 +144,7 @@ func TestExecuteObligationTriggers(t *testing.T) {
 				},
 			},
 			handler: &mockExecutorHandler{},
-			assert: func(t *testing.T, err error, _ *Executor, handler *mockExecutorHandler, plan *Plan) {
+			assert: func(t *testing.T, err error, _ *MigrationExecutor, handler *mockExecutorHandler, plan *MigrationPlan) {
 				t.Helper()
 
 				require.NoError(t, err)
@@ -158,7 +154,7 @@ func TestExecuteObligationTriggers(t *testing.T) {
 		},
 		{
 			name: "ignores unresolved target status",
-			plan: &Plan{
+			plan: &MigrationPlan{
 				Scopes: []Scope{ScopeObligationTriggers},
 				ObligationTriggers: []*ObligationTriggerPlan{
 					{
@@ -172,7 +168,7 @@ func TestExecuteObligationTriggers(t *testing.T) {
 				},
 			},
 			handler: &mockExecutorHandler{},
-			assert: func(t *testing.T, err error, _ *Executor, handler *mockExecutorHandler, _ *Plan) {
+			assert: func(t *testing.T, err error, _ *MigrationExecutor, handler *mockExecutorHandler, _ *MigrationPlan) {
 				t.Helper()
 
 				require.NoError(t, err)
@@ -181,7 +177,7 @@ func TestExecuteObligationTriggers(t *testing.T) {
 		},
 		{
 			name: "returns error when migrated action target is unavailable",
-			plan: &Plan{
+			plan: &MigrationPlan{
 				Scopes: []Scope{ScopeObligationTriggers},
 				ObligationTriggers: []*ObligationTriggerPlan{
 					{
@@ -201,7 +197,7 @@ func TestExecuteObligationTriggers(t *testing.T) {
 			},
 			handler: &mockExecutorHandler{},
 			wantErr: wantError(ErrMissingMigratedTarget, `obligation trigger %q action %q target %q`, "trigger-1", "action-1", namespace1.GetFqn()),
-			assert: func(t *testing.T, err error, _ *Executor, handler *mockExecutorHandler, plan *Plan) {
+			assert: func(t *testing.T, err error, _ *MigrationExecutor, handler *mockExecutorHandler, plan *MigrationPlan) {
 				t.Helper()
 
 				require.Error(t, err)
@@ -211,7 +207,7 @@ func TestExecuteObligationTriggers(t *testing.T) {
 		},
 		{
 			name: "returns error for missing already migrated trigger id",
-			plan: &Plan{
+			plan: &MigrationPlan{
 				Scopes: []Scope{ScopeObligationTriggers},
 				ObligationTriggers: []*ObligationTriggerPlan{
 					{
@@ -225,7 +221,7 @@ func TestExecuteObligationTriggers(t *testing.T) {
 			},
 			handler: &mockExecutorHandler{},
 			wantErr: wantError(ErrMissingMigratedTarget, `obligation trigger %q target %q`, "trigger-1", namespace1.GetFqn()),
-			assert: func(t *testing.T, err error, _ *Executor, handler *mockExecutorHandler, _ *Plan) {
+			assert: func(t *testing.T, err error, _ *MigrationExecutor, handler *mockExecutorHandler, _ *MigrationPlan) {
 				t.Helper()
 
 				require.Error(t, err)
@@ -234,7 +230,7 @@ func TestExecuteObligationTriggers(t *testing.T) {
 		},
 		{
 			name: "returns error for missing created target id",
-			plan: &Plan{
+			plan: &MigrationPlan{
 				Scopes: []Scope{ScopeActions, ScopeObligationTriggers},
 				Actions: []*ActionPlan{
 					{
@@ -276,7 +272,7 @@ func TestExecuteObligationTriggers(t *testing.T) {
 				},
 			},
 			wantErr: wantError(ErrMissingCreatedTargetID, `obligation trigger %q target %q`, "trigger-1", namespace1.GetFqn()),
-			assert: func(t *testing.T, err error, _ *Executor, handler *mockExecutorHandler, plan *Plan) {
+			assert: func(t *testing.T, err error, _ *MigrationExecutor, handler *mockExecutorHandler, plan *MigrationPlan) {
 				t.Helper()
 
 				require.Error(t, err)
@@ -287,7 +283,7 @@ func TestExecuteObligationTriggers(t *testing.T) {
 		},
 		{
 			name: "records create failure from handler",
-			plan: &Plan{
+			plan: &MigrationPlan{
 				Scopes: []Scope{ScopeActions, ScopeObligationTriggers},
 				Actions: []*ActionPlan{
 					{
@@ -332,7 +328,7 @@ func TestExecuteObligationTriggers(t *testing.T) {
 				is:      errBoom,
 				message: `create obligation trigger "trigger-1" in namespace "https://example.com": boom`,
 			},
-			assert: func(t *testing.T, err error, _ *Executor, handler *mockExecutorHandler, plan *Plan) {
+			assert: func(t *testing.T, err error, _ *MigrationExecutor, handler *mockExecutorHandler, plan *MigrationPlan) {
 				t.Helper()
 
 				require.Error(t, err)
@@ -343,7 +339,7 @@ func TestExecuteObligationTriggers(t *testing.T) {
 		},
 		{
 			name: "returns error for unsupported target status",
-			plan: &Plan{
+			plan: &MigrationPlan{
 				Scopes: []Scope{ScopeObligationTriggers},
 				ObligationTriggers: []*ObligationTriggerPlan{
 					{
@@ -363,7 +359,7 @@ func TestExecuteObligationTriggers(t *testing.T) {
 				namespace1.GetFqn(),
 				TargetStatus("bogus"),
 			),
-			assert: func(t *testing.T, err error, _ *Executor, handler *mockExecutorHandler, _ *Plan) {
+			assert: func(t *testing.T, err error, _ *MigrationExecutor, handler *mockExecutorHandler, _ *MigrationPlan) {
 				t.Helper()
 
 				require.Error(t, err)
@@ -377,13 +373,10 @@ func TestExecuteObligationTriggers(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			executor, err := NewExecutor(tt.handler)
+			executor, err := NewMigrationExecutor(tt.handler)
 			require.NoError(t, err)
-			if tt.runID != "" {
-				executor.runID = tt.runID
-			}
 
-			err = executor.Execute(t.Context(), tt.plan)
+			err = executor.ExecuteMigration(t.Context(), tt.plan)
 			switch {
 			case tt.wantErr != nil:
 				require.Error(t, err)

@@ -2,49 +2,28 @@ openapi: 3.1.0
 info:
   title: policy.kasregistry
 paths:
-  /key-access-servers:
-    get:
+  /policy.kasregistry.KeyAccessServerRegistryService/ListKeyAccessServers:
+    post:
       tags:
         - policy.kasregistry.KeyAccessServerRegistryService
       summary: ListKeyAccessServers
       operationId: policy.kasregistry.KeyAccessServerRegistryService.ListKeyAccessServers
       parameters:
-        - name: pagination.limit
-          in: query
-          description: |-
-            Optional
-             Set to configured default limit if not provided
-             Maximum limit set in platform config and enforced by services
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
           schema:
-            type: integer
-            title: limit
-            format: int32
-            description: |-
-              Optional
-               Set to configured default limit if not provided
-               Maximum limit set in platform config and enforced by services
-        - name: pagination.offset
-          in: query
-          description: |-
-            Optional
-             Defaulted if not provided
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
           schema:
-            type: integer
-            title: offset
-            format: int32
-            description: |-
-              Optional
-               Defaulted if not provided
-        - name: sort.field
-          in: query
-          schema:
-            title: field
-            $ref: '#/components/schemas/policy.kasregistry.SortKeyAccessServersType'
-        - name: sort.direction
-          in: query
-          schema:
-            title: direction
-            $ref: '#/components/schemas/policy.SortDirection'
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/policy.kasregistry.ListKeyAccessServersRequest'
+        required: true
       responses:
         default:
           description: Error
@@ -544,6 +523,9 @@ components:
         - ALGORITHM_EC_P256
         - ALGORITHM_EC_P384
         - ALGORITHM_EC_P521
+        - ALGORITHM_HPQT_XWING
+        - ALGORITHM_HPQT_SECP256R1_MLKEM768
+        - ALGORITHM_HPQT_SECP384R1_MLKEM1024
       description: Supported key algorithms.
     policy.KasPublicKeyAlgEnum:
       type: string
@@ -555,6 +537,9 @@ components:
         - KAS_PUBLIC_KEY_ALG_ENUM_EC_SECP256R1
         - KAS_PUBLIC_KEY_ALG_ENUM_EC_SECP384R1
         - KAS_PUBLIC_KEY_ALG_ENUM_EC_SECP521R1
+        - KAS_PUBLIC_KEY_ALG_ENUM_HPQT_XWING
+        - KAS_PUBLIC_KEY_ALG_ENUM_HPQT_SECP256R1_MLKEM768
+        - KAS_PUBLIC_KEY_ALG_ENUM_HPQT_SECP384R1_MLKEM1024
     policy.KeyMode:
       type: string
       title: KeyMode
@@ -1186,7 +1171,7 @@ components:
             Required The algorithm to be used for the key
             The key_algorithm must be one of the defined values.:
             ```
-            this in [1, 2, 3, 4, 5]
+            this in [1, 2, 3, 4, 5, 6, 7, 8]
             ```
 
           $ref: '#/components/schemas/policy.Algorithm'
@@ -1743,7 +1728,7 @@ components:
             Filter keys by algorithm
             The key_algorithm must be one of the defined values.:
             ```
-            this in [0, 1, 2, 3, 4, 5]
+            this in [0, 1, 2, 3, 4, 5, 6, 7, 8]
             ```
 
           $ref: '#/components/schemas/policy.Algorithm'
@@ -2017,7 +2002,7 @@ components:
             Required
             The key_algorithm must be one of the defined values.:
             ```
-            this in [1, 2, 3, 4, 5]
+            this in [1, 2, 3, 4, 5, 6, 7, 8]
             ```
 
           $ref: '#/components/schemas/policy.Algorithm'

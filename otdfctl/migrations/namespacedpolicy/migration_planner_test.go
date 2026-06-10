@@ -69,7 +69,7 @@ func TestPlannerPlanMarksActionAlreadyMigratedWithoutMetadata(t *testing.T) {
 		},
 	}
 
-	planner, err := NewPlanner(handler, "actions")
+	planner, err := NewMigrationPlanner(handler, "actions")
 	require.NoError(t, err)
 
 	plan, err := planner.Plan(t.Context())
@@ -199,7 +199,7 @@ func TestPlannerPlanDoesNotLeakSupportSubjectMappingsIntoActionScope(t *testing.
 		},
 	}
 
-	planner, err := NewPlanner(handler, "subject-condition-sets,registered-resources")
+	planner, err := NewMigrationPlanner(handler, "subject-condition-sets,registered-resources")
 	require.NoError(t, err)
 
 	plan, err := planner.Plan(t.Context())
@@ -361,7 +361,7 @@ func TestPlannerRetrieveUsesRequestedScopeBoundaries(t *testing.T) {
 				},
 			}
 
-			planner, err := NewPlanner(handler, tt.scopeCSV)
+			planner, err := NewMigrationPlanner(handler, tt.scopeCSV)
 			require.NoError(t, err)
 
 			retrieved, err := planner.retrieve(t.Context())
@@ -488,7 +488,7 @@ func TestPlannerPlanAllScopesBuildsAllPlanSections(t *testing.T) {
 		},
 	}
 
-	planner, err := NewPlanner(handler, "actions,subject-condition-sets,subject-mappings,registered-resources,obligation-triggers")
+	planner, err := NewMigrationPlanner(handler, "actions,subject-condition-sets,subject-mappings,registered-resources,obligation-triggers")
 	require.NoError(t, err)
 
 	plan, err := planner.Plan(t.Context())
@@ -638,7 +638,7 @@ func TestPlannerPlanCarriesMultiActionMappingsAndMultiBindingRegisteredResources
 		},
 	}
 
-	planner, err := NewPlanner(handler, "subject-mappings,registered-resources")
+	planner, err := NewMigrationPlanner(handler, "subject-mappings,registered-resources")
 	require.NoError(t, err)
 
 	plan, err := planner.Plan(t.Context())
@@ -738,7 +738,7 @@ func TestPlannerPlanInvokesInteractiveReviewerWhenConfigured(t *testing.T) {
 		},
 	}
 
-	planner, err := NewPlanner(handler, "actions", WithInteractiveReviewer(reviewer))
+	planner, err := NewMigrationPlanner(handler, "actions", WithInteractiveReviewer(reviewer))
 	require.NoError(t, err)
 
 	plan, err := planner.Plan(t.Context())
@@ -797,7 +797,7 @@ func TestPlannerPlanPropagatesInteractiveReviewerError(t *testing.T) {
 		},
 	}
 
-	planner, err := NewPlanner(handler, "actions", WithInteractiveReviewer(reviewer))
+	planner, err := NewMigrationPlanner(handler, "actions", WithInteractiveReviewer(reviewer))
 	require.NoError(t, err)
 
 	_, err = planner.Plan(t.Context())
@@ -858,7 +858,7 @@ func TestPlannerPlanInteractiveReviewerLeavesCurrentUnresolvedPlanShapeUntouched
 		},
 	}
 
-	planner, err := NewPlanner(handler, "registered-resources", WithInteractiveReviewer(reviewer))
+	planner, err := NewMigrationPlanner(handler, "registered-resources", WithInteractiveReviewer(reviewer))
 	require.NoError(t, err)
 
 	plan, err := planner.Plan(t.Context())
@@ -931,7 +931,7 @@ func TestPlannerPlanHuhInteractiveReviewerResolvesRegisteredResourceConflict(t *
 		},
 	}
 
-	planner, err := NewPlanner(handler, "registered-resources", WithInteractiveReviewer(NewHuhInteractiveReviewer(handler, prompter)))
+	planner, err := NewMigrationPlanner(handler, "registered-resources", WithInteractiveReviewer(NewHuhInteractiveReviewer(handler, prompter)))
 	require.NoError(t, err)
 
 	plan, err := planner.Plan(t.Context())

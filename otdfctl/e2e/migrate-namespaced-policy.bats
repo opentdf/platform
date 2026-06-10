@@ -632,7 +632,6 @@ assert_subject_mapping_created_in_namespace() {
   assert_equal "$(echo "$created_mapping_json" | jq -r '.subject_condition_set.id')" "$expected_scs_target_id"
   assert_metadata_labels_preserved "$source_mapping_json" "$created_mapping_json"
   assert_equal "$(echo "$created_mapping_json" | jq -r '.metadata.labels.migrated_from')" "$source_mapping_id"
-  assert_not_equal "$(echo "$created_mapping_json" | jq -r '.metadata.labels.migration_run // empty')" ""
 }
 
 assert_subject_mapping_already_migrated_in_namespace() {
@@ -748,7 +747,7 @@ assert_metadata_labels_preserved() {
   assert_not_equal "$source_labels" "{}"
 
   local target_labels
-  target_labels=$(echo "$target_json" | jq -c '(.metadata.labels // {}) | del(.migrated_from, .migration_run)')
+  target_labels=$(echo "$target_json" | jq -c '(.metadata.labels // {}) | del(.migrated_from)')
 
   assert_equal "$target_labels" "$source_labels"
 }
@@ -971,7 +970,6 @@ assert_custom_action_created_in_namespace() {
   assert_equal "$(echo "$created_action_json" | jq -r '.namespace.id')" "$namespace_id"
   assert_metadata_labels_preserved "$source_action_json" "$created_action_json"
   assert_equal "$(echo "$created_action_json" | jq -r '.metadata.labels.migrated_from')" "$source_action_id"
-  assert_not_equal "$(echo "$created_action_json" | jq -r '.metadata.labels.migration_run // empty')" ""
 }
 
 assert_legacy_custom_action_still_exists() {
@@ -1018,7 +1016,6 @@ assert_scs_created_in_namespace() {
   assert_equal "$(subject_sets_signature "$created_scs_json")" "$(subject_sets_signature "$source_scs_json")"
   assert_metadata_labels_preserved "$source_scs_json" "$created_scs_json"
   assert_equal "$(echo "$created_scs_json" | jq -r '.metadata.labels.migrated_from')" "$source_scs_id"
-  assert_not_equal "$(echo "$created_scs_json" | jq -r '.metadata.labels.migration_run // empty')" ""
 }
 
 assert_registered_resource_created_in_namespace() {
@@ -1064,7 +1061,6 @@ assert_registered_resource_created_in_namespace() {
   assert_equal "$(echo "$created_resource_json" | jq -r '.namespace.id')" "$namespace_id"
   assert_metadata_labels_preserved "$source_resource_json" "$created_resource_json"
   assert_equal "$(echo "$created_resource_json" | jq -r '.metadata.labels.migrated_from')" "$source_resource_id"
-  assert_not_equal "$(echo "$created_resource_json" | jq -r '.metadata.labels.migration_run // empty')" ""
 
   local source_resource_value_json
   run_otdfctl_registered_resource_values get --id "$source_value_id" --json
@@ -1085,7 +1081,6 @@ assert_registered_resource_created_in_namespace() {
   assert_equal "$(echo "$created_resource_value_json" | jq -r '.action_attribute_values[0].attribute_value.id')" "$attribute_value_id"
   assert_metadata_labels_preserved "$source_resource_value_json" "$created_resource_value_json"
   assert_equal "$(echo "$created_resource_value_json" | jq -r '.metadata.labels.migrated_from')" "$source_value_id"
-  assert_not_equal "$(echo "$created_resource_value_json" | jq -r '.metadata.labels.migration_run // empty')" ""
 }
 
 assert_registered_resource_already_migrated_in_namespace() {
@@ -1251,7 +1246,6 @@ assert_obligation_trigger_created_in_namespace() {
   assert_equal "$(echo "$created_trigger_json" | jq -r '.context[0].pep.client_id')" "$client_id"
   assert_metadata_labels_preserved "$source_trigger_json" "$created_trigger_json"
   assert_equal "$(echo "$created_trigger_json" | jq -r '.metadata.labels.migrated_from')" "$source_trigger_id"
-  assert_not_equal "$(echo "$created_trigger_json" | jq -r '.metadata.labels.migration_run // empty')" ""
 }
 
 assert_obligation_trigger_already_migrated_in_namespace() {
@@ -2122,7 +2116,7 @@ teardown_file() {
   local ns_a_state_after
 
   create_global_action action_id "$action_name" --label "test_case=prune-empty-scope" --label "fixture=${TEST_PREFIX}-source"
-  create_namespaced_action action_target_id "$NS_A_ID" "$action_name" --label "test_case=prune-empty-scope" --label "fixture=${TEST_PREFIX}-target" --label "migrated_from=$action_id" --label "migration_run=${TEST_PREFIX}-manual"
+  create_namespaced_action action_target_id "$NS_A_ID" "$action_name" --label "test_case=prune-empty-scope" --label "fixture=${TEST_PREFIX}-target" --label "migrated_from=$action_id"
 
   ns_a_state_before=$(namespace_state_json "$NS_A_ID")
 
@@ -2148,7 +2142,7 @@ teardown_file() {
   local ns_a_state_after
 
   create_global_action action_id "$action_name" --label "test_case=prune-invalid-scope" --label "fixture=${TEST_PREFIX}-source"
-  create_namespaced_action action_target_id "$NS_A_ID" "$action_name" --label "test_case=prune-invalid-scope" --label "fixture=${TEST_PREFIX}-target" --label "migrated_from=$action_id" --label "migration_run=${TEST_PREFIX}-manual"
+  create_namespaced_action action_target_id "$NS_A_ID" "$action_name" --label "test_case=prune-invalid-scope" --label "fixture=${TEST_PREFIX}-target" --label "migrated_from=$action_id"
 
   ns_a_state_before=$(namespace_state_json "$NS_A_ID")
 
@@ -2174,7 +2168,7 @@ teardown_file() {
   local ns_a_state_after
 
   create_global_action action_id "$action_name" --label "test_case=prune-multiple-scopes" --label "fixture=${TEST_PREFIX}-source"
-  create_namespaced_action action_target_id "$NS_A_ID" "$action_name" --label "test_case=prune-multiple-scopes" --label "fixture=${TEST_PREFIX}-target" --label "migrated_from=$action_id" --label "migration_run=${TEST_PREFIX}-manual"
+  create_namespaced_action action_target_id "$NS_A_ID" "$action_name" --label "test_case=prune-multiple-scopes" --label "fixture=${TEST_PREFIX}-target" --label "migrated_from=$action_id"
 
   ns_a_state_before=$(namespace_state_json "$NS_A_ID")
 
@@ -2230,8 +2224,8 @@ teardown_file() {
   create_global_action used_by_trigger_id "$used_by_trigger_name" --label "test_case=prune-actions" --label "fixture=${TEST_PREFIX}-used-by-trigger-source"
   create_global_action not_migrated_id "$not_migrated_name" --label "test_case=prune-actions" --label "fixture=${TEST_PREFIX}-not-migrated-source"
 
-  create_namespaced_action delete_a_target_id "$NS_A_ID" "$delete_a_name" --label "test_case=prune-actions" --label "fixture=${TEST_PREFIX}-delete-a-target" --label "migrated_from=$delete_a_id" --label "migration_run=${TEST_PREFIX}-manual"
-  create_namespaced_action delete_b_target_id "$NS_A_ID" "$delete_b_name" --label "test_case=prune-actions" --label "fixture=${TEST_PREFIX}-delete-b-target" --label "migrated_from=$delete_b_id" --label "migration_run=${TEST_PREFIX}-manual"
+  create_namespaced_action delete_a_target_id "$NS_A_ID" "$delete_a_name" --label "test_case=prune-actions" --label "fixture=${TEST_PREFIX}-delete-a-target" --label "migrated_from=$delete_a_id"
+  create_namespaced_action delete_b_target_id "$NS_A_ID" "$delete_b_name" --label "test_case=prune-actions" --label "fixture=${TEST_PREFIX}-delete-b-target" --label "migrated_from=$delete_b_id"
 
   create_global_scs shared_scs_id "$shared_scs" --label "test_case=prune-actions" --label "fixture=${TEST_PREFIX}-shared-scs"
   create_legacy_subject_mapping mapping_id "$ATTR_A_VAL_1_ID" "$used_by_mapping_id" "$shared_scs_id" --label "test_case=prune-actions" --label "fixture=${TEST_PREFIX}-mapping-reference"
@@ -2310,9 +2304,9 @@ teardown_file() {
   create_global_scs not_migrated_id "$not_migrated_sets" --label "test_case=prune-scs" --label "fixture=${TEST_PREFIX}-not-migrated-source"
   create_global_scs unlabeled_id "$unlabeled_target_sets" --label "test_case=prune-scs" --label "fixture=${TEST_PREFIX}-unlabeled-target-source"
 
-  create_namespaced_scs delete_a_target_id "$NS_A_ID" "$delete_a_sets" --label "test_case=prune-scs" --label "fixture=${TEST_PREFIX}-delete-a-target" --label "migrated_from=$delete_a_id" --label "migration_run=${TEST_PREFIX}-manual"
-  create_namespaced_scs delete_b_target_id "$NS_A_ID" "$delete_b_sets" --label "test_case=prune-scs" --label "fixture=${TEST_PREFIX}-delete-b-target" --label "migrated_from=$delete_b_id" --label "migration_run=${TEST_PREFIX}-manual"
-  create_namespaced_scs used_target_id "$NS_A_ID" "$used_sets" --label "test_case=prune-scs" --label "fixture=${TEST_PREFIX}-used-target" --label "migrated_from=$used_id" --label "migration_run=${TEST_PREFIX}-manual"
+  create_namespaced_scs delete_a_target_id "$NS_A_ID" "$delete_a_sets" --label "test_case=prune-scs" --label "fixture=${TEST_PREFIX}-delete-a-target" --label "migrated_from=$delete_a_id"
+  create_namespaced_scs delete_b_target_id "$NS_A_ID" "$delete_b_sets" --label "test_case=prune-scs" --label "fixture=${TEST_PREFIX}-delete-b-target" --label "migrated_from=$delete_b_id"
+  create_namespaced_scs used_target_id "$NS_A_ID" "$used_sets" --label "test_case=prune-scs" --label "fixture=${TEST_PREFIX}-used-target" --label "migrated_from=$used_id"
   create_namespaced_scs unlabeled_target_id "$NS_A_ID" "$unlabeled_target_sets" --label "test_case=prune-scs" --label "fixture=${TEST_PREFIX}-unlabeled-target"
 
   create_global_action action_id "${TEST_PREFIX}-prune-scs-action" --label "test_case=prune-scs" --label "fixture=${TEST_PREFIX}-action-reference"
@@ -2421,8 +2415,8 @@ teardown_file() {
   create_global_action unlabeled_global_action_id "$unlabeled_global_action_name" --label "test_case=prune-subject-mappings" --label "fixture=${TEST_PREFIX}-unlabeled-target-action"
   create_global_scs unlabeled_global_scs_id "$unlabeled_global_sets" --label "test_case=prune-subject-mappings" --label "fixture=${TEST_PREFIX}-unlabeled-target-scs"
   create_legacy_subject_mapping unlabeled_global_mapping_id "$ATTR_A_VAL_2_ID" "$unlabeled_global_action_id" "$unlabeled_global_scs_id" --label "test_case=prune-subject-mappings" --label "fixture=${TEST_PREFIX}-unlabeled-target-mapping"
-  create_namespaced_action unlabeled_action_target_id "$NS_A_ID" "$unlabeled_global_action_name" --label "test_case=prune-subject-mappings" --label "fixture=${TEST_PREFIX}-unlabeled-target-action-target" --label "migrated_from=$unlabeled_global_action_id" --label "migration_run=${TEST_PREFIX}-manual"
-  create_namespaced_scs unlabeled_scs_target_id "$NS_A_ID" "$unlabeled_global_sets" --label "test_case=prune-subject-mappings" --label "fixture=${TEST_PREFIX}-unlabeled-target-scs-target" --label "migrated_from=$unlabeled_global_scs_id" --label "migration_run=${TEST_PREFIX}-manual"
+  create_namespaced_action unlabeled_action_target_id "$NS_A_ID" "$unlabeled_global_action_name" --label "test_case=prune-subject-mappings" --label "fixture=${TEST_PREFIX}-unlabeled-target-action-target" --label "migrated_from=$unlabeled_global_action_id"
+  create_namespaced_scs unlabeled_scs_target_id "$NS_A_ID" "$unlabeled_global_sets" --label "test_case=prune-subject-mappings" --label "fixture=${TEST_PREFIX}-unlabeled-target-scs-target" --label "migrated_from=$unlabeled_global_scs_id"
   create_namespaced_subject_mapping unlabeled_mapping_target_id "$NS_A_ID" "$ATTR_A_VAL_2_ID" "$unlabeled_action_target_id" "$unlabeled_scs_target_id" --label "test_case=prune-subject-mappings" --label "fixture=${TEST_PREFIX}-unlabeled-target-mapping-target"
 
   ns_a_state_before=$(namespace_state_json "$NS_A_ID")
@@ -2548,7 +2542,7 @@ teardown_file() {
   create_global_action unlabeled_global_action_id "$unlabeled_global_action_name" --label "test_case=prune-registered-resources" --label "fixture=${TEST_PREFIX}-unlabeled-target-action"
   create_global_registered_resource unlabeled_global_rr_id "${TEST_PREFIX}-prune-rr-unlabeled-target" --label "test_case=prune-registered-resources" --label "fixture=${TEST_PREFIX}-unlabeled-target-rr"
   create_registered_resource_value unlabeled_global_value_id "$unlabeled_global_rr_id" "${TEST_PREFIX}-unlabeled-target-value" --action-attribute-value "$unlabeled_global_action_id;$ATTR_A_VAL_2_ID" --label "test_case=prune-registered-resources" --label "fixture=${TEST_PREFIX}-unlabeled-target-value"
-  create_namespaced_action unlabeled_action_target_id "$NS_A_ID" "$unlabeled_global_action_name" --label "test_case=prune-registered-resources" --label "fixture=${TEST_PREFIX}-unlabeled-target-action-target" --label "migrated_from=$unlabeled_global_action_id" --label "migration_run=${TEST_PREFIX}-manual"
+  create_namespaced_action unlabeled_action_target_id "$NS_A_ID" "$unlabeled_global_action_name" --label "test_case=prune-registered-resources" --label "fixture=${TEST_PREFIX}-unlabeled-target-action-target" --label "migrated_from=$unlabeled_global_action_id"
   create_namespaced_registered_resource unlabeled_rr_target_id "$NS_A_ID" "${TEST_PREFIX}-prune-rr-unlabeled-target" --label "test_case=prune-registered-resources" --label "fixture=${TEST_PREFIX}-unlabeled-target-rr-target"
   create_registered_resource_value unlabeled_value_target_id "$unlabeled_rr_target_id" "${TEST_PREFIX}-unlabeled-target-value" --action-attribute-value "$unlabeled_action_target_id;$ATTR_A_VAL_2_ID" --label "test_case=prune-registered-resources" --label "fixture=${TEST_PREFIX}-unlabeled-target-value-target"
 
@@ -2556,8 +2550,8 @@ teardown_file() {
   create_global_registered_resource multi_namespace_rr_id "${TEST_PREFIX}-prune-rr-multi-namespace" --label "test_case=prune-registered-resources" --label "fixture=${TEST_PREFIX}-multi-namespace-rr"
   create_registered_resource_value multi_namespace_value_a_id "$multi_namespace_rr_id" "${TEST_PREFIX}-multi-namespace-a" --action-attribute-value "$GLOBAL_READ_ID;$ATTR_A_VAL_1_ID" --label "test_case=prune-registered-resources" --label "fixture=${TEST_PREFIX}-multi-namespace-value-a"
   create_registered_resource_value multi_namespace_value_b_id "$multi_namespace_rr_id" "${TEST_PREFIX}-multi-namespace-b" --action-attribute-value "$GLOBAL_READ_ID;$ATTR_B_VAL_1_ID" --label "test_case=prune-registered-resources" --label "fixture=${TEST_PREFIX}-multi-namespace-value-b"
-  create_namespaced_registered_resource multi_namespace_rr_target_id "$NS_A_ID" "${TEST_PREFIX}-prune-rr-multi-namespace" --label "test_case=prune-registered-resources" --label "fixture=${TEST_PREFIX}-multi-namespace-rr-target" --label "migrated_from=$multi_namespace_rr_id" --label "migration_run=${TEST_PREFIX}-manual"
-  create_registered_resource_value multi_namespace_value_target_id "$multi_namespace_rr_target_id" "${TEST_PREFIX}-multi-namespace-a" --action-attribute-value "$ns_a_read_action_id;$ATTR_A_VAL_1_ID" --label "test_case=prune-registered-resources" --label "fixture=${TEST_PREFIX}-multi-namespace-value-target" --label "migrated_from=$multi_namespace_value_a_id" --label "migration_run=${TEST_PREFIX}-manual"
+  create_namespaced_registered_resource multi_namespace_rr_target_id "$NS_A_ID" "${TEST_PREFIX}-prune-rr-multi-namespace" --label "test_case=prune-registered-resources" --label "fixture=${TEST_PREFIX}-multi-namespace-rr-target" --label "migrated_from=$multi_namespace_rr_id"
+  create_registered_resource_value multi_namespace_value_target_id "$multi_namespace_rr_target_id" "${TEST_PREFIX}-multi-namespace-a" --action-attribute-value "$ns_a_read_action_id;$ATTR_A_VAL_1_ID" --label "test_case=prune-registered-resources" --label "fixture=${TEST_PREFIX}-multi-namespace-value-target" --label "migrated_from=$multi_namespace_value_a_id"
 
   ns_a_state_before=$(namespace_state_json "$NS_A_ID")
 
@@ -2659,7 +2653,7 @@ teardown_file() {
   create_namespaced_obligation unlabeled_source_obligation_id "$NS_A_ID" "${TEST_PREFIX}-prune-trigger-unlabeled-target" --label "test_case=prune-obligation-triggers" --label "fixture=${TEST_PREFIX}-unlabeled-target-obligation"
   create_obligation_value unlabeled_source_value_id "$unlabeled_source_obligation_id" "${TEST_PREFIX}-unlabeled-target-value" --label "test_case=prune-obligation-triggers" --label "fixture=${TEST_PREFIX}-unlabeled-target-value"
   create_legacy_obligation_trigger unlabeled_source_trigger_id "$ATTR_A_VAL_2_ID" "$unlabeled_global_action_id" "$unlabeled_source_value_id" --client-id "${TEST_PREFIX}-unlabeled-target-client" --label "test_case=prune-obligation-triggers" --label "fixture=${TEST_PREFIX}-unlabeled-target-trigger"
-  create_namespaced_action unlabeled_action_target_id "$NS_A_ID" "$unlabeled_global_action_name" --label "test_case=prune-obligation-triggers" --label "fixture=${TEST_PREFIX}-unlabeled-target-action-target" --label "migrated_from=$unlabeled_global_action_id" --label "migration_run=${TEST_PREFIX}-manual"
+  create_namespaced_action unlabeled_action_target_id "$NS_A_ID" "$unlabeled_global_action_name" --label "test_case=prune-obligation-triggers" --label "fixture=${TEST_PREFIX}-unlabeled-target-action-target" --label "migrated_from=$unlabeled_global_action_id"
   run_otdfctl_obligation_triggers create --attribute-value "$ATTR_A_VAL_2_ID" --action "$unlabeled_action_target_id" --obligation-value "$unlabeled_source_value_id" --client-id "${TEST_PREFIX}-unlabeled-target-client" --label "test_case=prune-obligation-triggers" --label "fixture=${TEST_PREFIX}-unlabeled-target-trigger-target" --json
   unlabeled_trigger_target_id=$(echo "$output" | jq -r '.id // empty')
   assert_not_equal "$unlabeled_trigger_target_id" ""

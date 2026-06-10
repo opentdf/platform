@@ -3,9 +3,9 @@
 
 .PHONY: all buf-check build clean connect-wrapper-generate docker-build fix fmt go-lint license lint otdfctl/otdfctl policy-sql-gen proto-generate proto-helper-generate proto-lint sdk/sdk sqlc-check test tidy toolcheck
 
-MODS=protocol/go lib/ocrypto lib/fixtures lib/flattening lib/identifier sdk service examples otdfctl
-HAND_MODS=lib/ocrypto lib/fixtures lib/flattening lib/identifier sdk service examples otdfctl
-REQUIRED_BUF_VERSION=1.68.2
+MODS=protocol/go lib/ocrypto lib/fixtures lib/flattening lib/identifier sdk service examples otdfctl tests-bdd
+HAND_MODS=lib/ocrypto lib/fixtures lib/flattening lib/identifier sdk service examples otdfctl tests-bdd
+REQUIRED_BUF_VERSION=1.70.0
 REQUIRED_SQLC_VERSION=1.31.0
 
 ROOT_DIR:=$(shell dirname $(realpath $(firstword $(MAKEFILE_LIST))))
@@ -92,10 +92,6 @@ proto-generate: toolcheck
 	buf generate service
 	buf generate service --template buf.gen.grpc.docs.yaml
 	buf generate service --template buf.gen.openapi.docs.yaml
-
-	buf generate buf.build/grpc-ecosystem/grpc-gateway -o tmp-gen
-	buf generate buf.build/grpc-ecosystem/grpc-gateway -o tmp-gen --template buf.gen.grpc.docs.yaml
-	buf generate buf.build/grpc-ecosystem/grpc-gateway -o tmp-gen --template buf.gen.openapi.docs.yaml
 
 	cd protocol/codegen && go run .
 	go run ./sdk/codegen

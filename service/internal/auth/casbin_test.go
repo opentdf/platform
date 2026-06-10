@@ -126,18 +126,6 @@ func (s *AuthnCasbinSuite) Test_Enforcement() {
 		{
 			allowed:  true,
 			roles:    admin,
-			resource: "/attributes/do/something",
-			action:   "read",
-		},
-		{
-			allowed:  true,
-			roles:    admin,
-			resource: "/attributes/do/something",
-			action:   "write",
-		},
-		{
-			allowed:  true,
-			roles:    admin,
 			resource: "non-existent",
 			action:   "read",
 		},
@@ -156,28 +144,10 @@ func (s *AuthnCasbinSuite) Test_Enforcement() {
 			action:   "write",
 		},
 		{
-			allowed:  true,
-			roles:    standard,
-			resource: "/attributes",
-			action:   "read",
-		},
-		{
-			allowed:  false,
-			roles:    standard,
-			resource: "/attributes",
-			action:   "write",
-		},
-		{
 			allowed:  false,
 			roles:    standard,
 			resource: "non-existent",
 			action:   "read",
-		},
-		{
-			allowed:  true,
-			roles:    standard,
-			resource: "/kas/v2/rewrap",
-			action:   "write",
 		},
 		{
 			allowed:  true,
@@ -203,18 +173,6 @@ func (s *AuthnCasbinSuite) Test_Enforcement() {
 			allowed:  false,
 			roles:    unknown,
 			resource: "policy.attributes.DoSomething",
-			action:   "write",
-		},
-		{
-			allowed:  false,
-			roles:    unknown,
-			resource: "/attributes",
-			action:   "read",
-		},
-		{
-			allowed:  false,
-			roles:    unknown,
-			resource: "/attributes",
 			action:   "write",
 		},
 		{
@@ -580,7 +538,7 @@ func (s *AuthnCasbinSuite) Test_Override_Of_Groups_Claim() {
 }
 
 func (s *AuthnCasbinSuite) enforce(enforcer *Enforcer, tok jwt.Token, resource, action string) (bool, error) {
-	return enforcer.Enforce(
+	result, err := enforcer.Enforce(
 		context.Background(),
 		tok,
 		authz.RoleRequest{
@@ -588,6 +546,7 @@ func (s *AuthnCasbinSuite) enforce(enforcer *Enforcer, tok jwt.Token, resource, 
 			Action:   action,
 		},
 	)
+	return result.Allowed, err
 }
 
 func (s *AuthnCasbinSuite) buildTokenRoles(admin bool, standard bool, roleMaps []string) []interface{} {

@@ -115,30 +115,28 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/policy.attributes.GetAttributeResponse'
-  /attributes/*/fqn:
-    get:
+  /policy.attributes.AttributesService/GetAttributeValuesByFqns:
+    post:
       tags:
         - policy.attributes.AttributesService
       summary: GetAttributeValuesByFqns
       operationId: policy.attributes.AttributesService.GetAttributeValuesByFqns
       parameters:
-        - name: fqns
-          in: query
-          description: |-
-            Required
-             Fully Qualified Names of attribute values (i.e. https://<namespace>/attr/<attribute_name>/value/<value_name>), normalized to lower case.
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
           schema:
-            type: array
-            items:
-              type: string
-              maxItems: 250
-              minItems: 1
-            title: fqns
-            maxItems: 250
-            minItems: 1
-            description: |-
-              Required
-               Fully Qualified Names of attribute values (i.e. https://<namespace>/attr/<attribute_name>/value/<value_name>), normalized to lower case.
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/policy.attributes.GetAttributeValuesByFqnsRequest'
+        required: true
       responses:
         default:
           description: Error
@@ -724,6 +722,9 @@ components:
         - ALGORITHM_EC_P256
         - ALGORITHM_EC_P384
         - ALGORITHM_EC_P521
+        - ALGORITHM_HPQT_XWING
+        - ALGORITHM_HPQT_SECP256R1_MLKEM768
+        - ALGORITHM_HPQT_SECP384R1_MLKEM1024
       description: Supported key algorithms.
     policy.AttributeRuleTypeEnum:
       type: string
@@ -750,6 +751,9 @@ components:
         - KAS_PUBLIC_KEY_ALG_ENUM_EC_SECP256R1
         - KAS_PUBLIC_KEY_ALG_ENUM_EC_SECP384R1
         - KAS_PUBLIC_KEY_ALG_ENUM_EC_SECP521R1
+        - KAS_PUBLIC_KEY_ALG_ENUM_HPQT_XWING
+        - KAS_PUBLIC_KEY_ALG_ENUM_HPQT_SECP256R1_MLKEM768
+        - KAS_PUBLIC_KEY_ALG_ENUM_HPQT_SECP384R1_MLKEM1024
     policy.SortDirection:
       type: string
       title: SortDirection

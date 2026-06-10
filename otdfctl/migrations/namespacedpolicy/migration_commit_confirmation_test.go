@@ -59,7 +59,7 @@ func TestConfirmNamespacedPolicyPruneBackupMapsAbortToBackupError(t *testing.T) 
 	assert.Equal(t, []string{pruneBackupConfirmDetail, backupAbortDetail}, prompter.lastConfirmPrompt.Description)
 }
 
-func TestReviewNamespacedPolicyInteractiveCommitSkipsDependentsOfSkippedAction(t *testing.T) {
+func TestConfirmMigrationPlanSkipsDependentsOfSkippedAction(t *testing.T) {
 	t.Parallel()
 
 	namespace := &policy.Namespace{
@@ -67,7 +67,7 @@ func TestReviewNamespacedPolicyInteractiveCommitSkipsDependentsOfSkippedAction(t
 		Fqn: "https://example.com",
 	}
 	attributeValue := testAttributeValue("https://example.com/attr/classification/value/secret", namespace)
-	plan := &Plan{
+	plan := &MigrationPlan{
 		Scopes: []Scope{
 			ScopeActions,
 			ScopeSubjectConditionSets,
@@ -156,7 +156,7 @@ func TestReviewNamespacedPolicyInteractiveCommitSkipsDependentsOfSkippedAction(t
 		},
 	}
 
-	err := ReviewNamespacedPolicyInteractiveCommit(t.Context(), plan, prompter)
+	err := ConfirmMigrationPlan(t.Context(), plan, prompter)
 	require.NoError(t, err)
 
 	require.Equal(t, 2, prompter.selectCalls)
@@ -188,7 +188,7 @@ func TestReviewNamespacedPolicyInteractiveCommitSkipsDependentsOfSkippedAction(t
 	assert.Nil(t, triggerTarget.Execution)
 }
 
-func TestReviewNamespacedPolicyInteractiveCommitSkipsMappingsDependentOnSkippedSCS(t *testing.T) {
+func TestConfirmMigrationPlanSkipsMappingsDependentOnSkippedSCS(t *testing.T) {
 	t.Parallel()
 
 	namespace := &policy.Namespace{
@@ -196,7 +196,7 @@ func TestReviewNamespacedPolicyInteractiveCommitSkipsMappingsDependentOnSkippedS
 		Fqn: "https://example.com",
 	}
 	attributeValue := testAttributeValue("https://example.com/attr/classification/value/secret", namespace)
-	plan := &Plan{
+	plan := &MigrationPlan{
 		Scopes: []Scope{
 			ScopeActions,
 			ScopeSubjectConditionSets,
@@ -247,7 +247,7 @@ func TestReviewNamespacedPolicyInteractiveCommitSkipsMappingsDependentOnSkippedS
 		},
 	}
 
-	err := ReviewNamespacedPolicyInteractiveCommit(t.Context(), plan, prompter)
+	err := ConfirmMigrationPlan(t.Context(), plan, prompter)
 	require.NoError(t, err)
 
 	require.Equal(t, 2, prompter.selectCalls)
@@ -268,7 +268,7 @@ func TestReviewNamespacedPolicyInteractiveCommitSkipsMappingsDependentOnSkippedS
 	assert.Nil(t, mappingTarget.Execution)
 }
 
-func TestReviewNamespacedPolicyInteractiveCommitPropagatesAbort(t *testing.T) {
+func TestConfirmMigrationPlanPropagatesAbort(t *testing.T) {
 	t.Parallel()
 
 	// The user aborts on the first action prompt. The reviewer must (a) return
@@ -280,7 +280,7 @@ func TestReviewNamespacedPolicyInteractiveCommitPropagatesAbort(t *testing.T) {
 		Fqn: "https://example.com",
 	}
 	attributeValue := testAttributeValue("https://example.com/attr/classification/value/secret", namespace)
-	plan := &Plan{
+	plan := &MigrationPlan{
 		Scopes: []Scope{
 			ScopeActions,
 			ScopeSubjectConditionSets,
@@ -328,7 +328,7 @@ func TestReviewNamespacedPolicyInteractiveCommitPropagatesAbort(t *testing.T) {
 		selectValues: []string{namespacedPolicyCommitAbort},
 	}
 
-	err := ReviewNamespacedPolicyInteractiveCommit(t.Context(), plan, prompter)
+	err := ConfirmMigrationPlan(t.Context(), plan, prompter)
 	require.ErrorIs(t, err, ErrInteractiveReviewAborted)
 
 	// Only the first prompt should have fired; abort must halt the walkthrough.

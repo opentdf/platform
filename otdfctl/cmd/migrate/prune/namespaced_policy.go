@@ -13,7 +13,6 @@ import (
 func pruneNamespacedPolicyCmd() *cobra.Command {
 	doc := man.Docs.GetCommand("migrate/prune/namespaced-policy", man.WithRun(pruneNamespacedPolicy))
 	doc.Args = cobra.NoArgs
-	doc.Hidden = true
 	doc.Flags().StringP(
 		doc.GetDocFlag("scope").Name,
 		doc.GetDocFlag("scope").Shorthand,
@@ -79,7 +78,7 @@ func executeNamespacedPolicyPruneCommit(cmd *cobra.Command, h namespacedpolicy.E
 		}
 	}
 
-	executor, err := namespacedpolicy.NewExecutor(h)
+	executor, err := namespacedpolicy.NewPruneExecutor(h)
 	if err != nil {
 		cli.ExitWithError("could not create namespaced-policy prune executor", err)
 	}

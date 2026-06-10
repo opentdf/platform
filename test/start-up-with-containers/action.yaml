@@ -15,6 +15,10 @@ inputs:
     default: "false"
     description: 'Whether to enable ECC wrapping for TDFs'
     required: false
+  pqc-enabled:
+    default: "false"
+    description: 'Whether to enable post-quantum and hybrid PQ/T wrapping for TDFs'
+    required: false
   log-level:
     default: "debug"
     description: 'Log level for the platform (audit, debug, info, warn, error)'
@@ -39,6 +43,78 @@ outputs:
 runs:
   using: 'composite'
   steps:
+    - name: Validate inputs
+      shell: bash
+      env:
+        PLATFORM_REF: ${{ inputs.platform-ref }}
+        EXTRA_KEYS: ${{ inputs.extra-keys }}
+        EC_TDF_ENABLED: ${{ inputs.ec-tdf-enabled }}
+        PQC_ENABLED: ${{ inputs.pqc-enabled }}
+        LOG_LEVEL: ${{ inputs.log-level }}
+        LOG_TYPE: ${{ inputs.log-type }}
+        PROVISION_POLICY_FIXTURES: ${{ inputs.provision-policy-fixtures }}
+      run: |
+        # Validate platform-ref (must contain only safe characters for a git ref)
+        if [[ ! "${PLATFORM_REF}" =~ ^[a-zA-Z0-9._/-]+$ ]]; then
+          echo "Error: platform-ref must contain only alphanumeric characters, dots, underscores, hyphens, and forward slashes."
+          exit 1
+        fi
+
+        # Validate extra-keys (must be a valid JSON array)
+        if ! jq -e 'type == "array"' <<< "${EXTRA_KEYS}" > /dev/null 2>&1; then
+          echo "Error: extra-keys must be a valid JSON array."
+          exit 1
+        fi
+
+        # Validate ec-tdf-enabled (must be true or false)
+        case "${EC_TDF_ENABLED}" in
+          true|false)
+            ;;
+          *)
+            echo "Error: ec-tdf-enabled must be 'true' or 'false'."
+            exit 1
+            ;;
+        esac
+
+        # Validate pqc-enabled (must be true or false)
+        case "${PQC_ENABLED}" in
+          true|false)
+            ;;
+          *)
+            echo "Error: pqc-enabled must be 'true' or 'false'."
+            exit 1
+            ;;
+        esac
+
+        # Validate log-level (only allowed values)
+        case "${LOG_LEVEL}" in
+          audit|debug|info|warn|error)
+            ;;
+          *)
+            echo "Error: log-level must be one of: audit, debug, info, warn, error."
+            exit 1
+            ;;
+        esac
+
+        # Validate log-type (only allowed values)
+        case "${LOG_TYPE}" in
+          text|json)
+            ;;
+          *)
+            echo "Error: log-type must be one of: text, json."
+            exit 1
+            ;;
+        esac
+
+        # Validate provision-policy-fixtures (must be true or false)
+        case "${PROVISION_POLICY_FIXTURES}" in
+          true|false)
+            ;;
+          *)
+            echo "Error: provision-policy-fixtures must be 'true' or 'false'."
+            exit 1
+            ;;
+        esac
     - name: Check out platform
       uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
       with:
@@ -50,14 +126,14 @@ runs:
     - name: Download latest init-temp-keys.sh, docker-compose.yaml, and watch.sh
       shell: bash
       run: |
-        curl https://raw.githubusercontent.com/opentdf/platform/refs/tags/watch-sh-fix/.github/scripts/init-temp-keys.sh > otdf-test-platform/.github/scripts/init-temp-keys.sh
-        curl https://raw.githubusercontent.com/opentdf/platform/refs/tags/watch-sh-fix/docker-compose.yaml > otdf-test-platform/docker-compose.yaml
-        curl https://raw.githubusercontent.com/opentdf/platform/refs/tags/watch-sh-fix/.github/scripts/watch.sh > otdf-test-platform/.github/scripts/watch.sh
+        curl -sSfL https://raw.githubusercontent.com/opentdf/platform/refs/tags/pqc-enabled/.github/scripts/init-temp-keys.sh > otdf-test-platform/.github/scripts/init-temp-keys.sh
+        curl -sSfL https://raw.githubusercontent.com/opentdf/platform/refs/tags/pqc-enabled/docker-compose.yaml > otdf-test-platform/docker-compose.yaml
+        curl -sSfL https://raw.githubusercontent.com/opentdf/platform/refs/tags/pqc-enabled/.github/scripts/watch.sh > otdf-test-platform/.github/scripts/watch.sh
     - name: Set up go (platform's go version)
       id: setup-go
       uses: actions/setup-go@0aaccfd150d50ccaeb58ebd88d36e91967a5f35b # v5.4.0
       with:
-        go-version-file: 'otdf-test-platform/service/go.mod'
+        go-version-file: 'otdf-test-platform/go.work'
         check-latest: false
         cache-dependency-path: |
           otdf-test-platform/service/go.sum
@@ -115,8 +191,13 @@ runs:
         set -e
         allowed_algorithms=(ec:secp256r1 rsa:2048)
         if echo $PLATFORM_VERSION | awk -F. '{ if ($1 > 0 || ($1 == 0 && $2 > 7) || ($1 == 0 && $2 == 7 && $3 >= 1)) exit 0; else exit 1; }'; then
-          # For versions 0.7.1 and later, we allow rsa:4096 ec:secp384r1 ec:secp521r1 
+          # For versions 0.7.1 and later, we allow rsa:4096 ec:secp384r1 ec:secp521r1
           allowed_algorithms+=(rsa:4096 ec:secp384r1 ec:secp521r1)
+        fi
+        # Only allow PQC algorithms if the platform generated PQC key files
+        if [[ ! -f kas-xwing-private.pem ]]; then
+          printf "PQC key files not found; skipping PQC configuration (platform may not support PQC key types)\n" 1>&2
+          exit 0
         fi
         keyring='[{"kid":"ec1","alg":"ec:secp256r1"},{"kid":"r1","alg":"rsa:2048"}]'
         keys='[{"kid":"e1","alg":"ec:secp256r1","private":"kas-ec-private.pem","cert":"kas-ec-cert.pem"},{"kid":"ec1","alg":"ec:secp256r1","private":"kas-ec-private.pem","cert":"kas-ec-cert.pem"},{"kid":"r1","alg":"rsa:2048","private":"kas-private.pem","cert":"kas-cert.pem"}]'
@@ -161,35 +242,24 @@ runs:
       working-directory: otdf-test-platform
     - name: Enable ECC wrapping for TDFs
       shell: bash
-      if: ${{ inputs.ec-tdf-enabled }}
+      if: ${{ inputs.ec-tdf-enabled == 'true' }}
       run: |
         yq e '.services.kas.ec_tdf_enabled = true' -i opentdf.yaml
       working-directory: otdf-test-platform
-    - name: Validate logging inputs
+    - name: Enable PQ (mlkem, xwing, and hybrid) wrapping for TDFs
       shell: bash
-      env:
-        LOG_LEVEL: ${{ inputs.log-level }}
-        LOG_TYPE: ${{ inputs.log-type }}
+      if: ${{ inputs.pqc-enabled == 'true' }}
       run: |
-        # Validate log-level (only allowed values)
-        case "${LOG_LEVEL}" in
-          audit|debug|info|warn|error)
-            ;;
-          *)
-            echo "Error: log-level must be one of: audit, debug, info, warn, error."
-            exit 1
-            ;;
-        esac
-
-        # Validate log-type (only allowed values)
-        case "${LOG_TYPE}" in
-          text|json)
-            ;;
-          *)
-            echo "Error: log-type must be one of: text, json."
-            exit 1
-            ;;
-        esac
+        if [ ! -f kas-xwing-private.pem ]; then
+          echo "PQC key files not found; skipping PQC configuration (platform may not support PQC key types)" 1>&2
+          exit 0
+        fi
+        yq e '
+          (.services.kas.preview.hybrid_tdf_enabled = true)
+          | (.services.kas.keyring += [{"kid":"x1","alg":"hpqt:xwing"},{"kid":"h1","alg":"hpqt:secp256r1-mlkem768"},{"kid":"h2","alg":"hpqt:secp384r1-mlkem1024"}])
+          | (.server.cryptoProvider.standard.keys += [{"kid":"x1","alg":"hpqt:xwing","private":"kas-xwing-private.pem","cert":"kas-xwing-public.pem"},{"kid":"h1","alg":"hpqt:secp256r1-mlkem768","private":"kas-p256mlkem768-private.pem","cert":"kas-p256mlkem768-public.pem"},{"kid":"h2","alg":"hpqt:secp384r1-mlkem1024","private":"kas-p384mlkem1024-private.pem","cert":"kas-p384mlkem1024-public.pem"}])
+        ' -i opentdf.yaml
+      working-directory: otdf-test-platform
     - name: Configure logging
       shell: bash
       env:

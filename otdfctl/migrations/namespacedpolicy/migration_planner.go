@@ -28,14 +28,14 @@ type PolicyClient interface {
 	ListNamespaces(ctx context.Context, state common.ActiveStateEnum, limit, offset int32, sort handlers.SortOption) (*namespaces.ListNamespacesResponse, error)
 }
 
-type Planner struct {
+type MigrationPlanner struct {
 	retriever       *Retriever
 	requestedScopes scopeSet
 	expandedScopes  scopeSet
 	reviewer        InteractiveReviewer
 }
 
-type Option func(*Planner)
+type Option func(*MigrationPlanner)
 
 type Retrieved struct {
 	Scopes     []Scope
@@ -59,7 +59,7 @@ type ExistingTargets struct {
 	ObligationTriggers   map[string][]*policy.ObligationTrigger
 }
 
-func NewPlanner(handler PolicyClient, scopeCSV string, opts ...Option) (*Planner, error) {
+func NewMigrationPlanner(handler PolicyClient, scopeCSV string, opts ...Option) (*MigrationPlanner, error) {
 	if handler == nil {
 		return nil, ErrNilPlannerHandler
 	}
@@ -74,7 +74,7 @@ func NewPlanner(handler PolicyClient, scopeCSV string, opts ...Option) (*Planner
 		return nil, err
 	}
 
-	planner := &Planner{
+	planner := &MigrationPlanner{
 		retriever:       newRetriever(handler, defaultPlannerPageSize),
 		requestedScopes: normalizedScopes,
 		expandedScopes:  expandScopes(normalizedScopes),
@@ -90,18 +90,18 @@ func NewPlanner(handler PolicyClient, scopeCSV string, opts ...Option) (*Planner
 }
 
 func WithPageSize(pageSize int32) Option {
-	return func(planner *Planner) {
+	return func(planner *MigrationPlanner) {
 		planner.retriever.pageSize = pageSize
 	}
 }
 
 func WithInteractiveReviewer(reviewer InteractiveReviewer) Option {
-	return func(planner *Planner) {
+	return func(planner *MigrationPlanner) {
 		planner.reviewer = reviewer
 	}
 }
 
-func (p *Planner) Plan(ctx context.Context) (*Plan, error) {
+func (p *MigrationPlanner) Plan(ctx context.Context) (*MigrationPlan, error) {
 	resolved, err := p.resolve(ctx)
 	if err != nil {
 		return nil, err
@@ -110,7 +110,7 @@ func (p *Planner) Plan(ctx context.Context) (*Plan, error) {
 	return finalizePlan(resolved)
 }
 
-func (p *Planner) resolve(ctx context.Context) (*ResolvedTargets, error) {
+func (p *MigrationPlanner) resolve(ctx context.Context) (*ResolvedTargets, error) {
 	retrieved, err := p.retrieve(ctx)
 	if err != nil {
 		return nil, err
@@ -147,7 +147,7 @@ func (p *Planner) resolve(ctx context.Context) (*ResolvedTargets, error) {
 
 // Retrieve the candidate policy constructs for items within scope or dependent
 // on that scope.
-func (p *Planner) retrieve(ctx context.Context) (*Retrieved, error) {
+func (p *MigrationPlanner) retrieve(ctx context.Context) (*Retrieved, error) {
 	if p == nil || p.retriever == nil || p.retriever.handler == nil {
 		return nil, ErrNilPlannerHandler
 	}

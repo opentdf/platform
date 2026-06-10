@@ -26,6 +26,20 @@ const (
 	ristrettoCacheTTL    = 30
 )
 
+// BasicManagerSupportedAlgorithms is the canonical set of algorithms the
+// BasicManager knows how to serve when a key has been provisioned. Keep in
+// sync with the switch in Decrypt.
+var BasicManagerSupportedAlgorithms = []ocrypto.KeyType{
+	ocrypto.RSA2048Key,
+	ocrypto.RSA4096Key,
+	ocrypto.EC256Key,
+	ocrypto.EC384Key,
+	ocrypto.EC521Key,
+	ocrypto.HybridXWingKey,
+	ocrypto.HybridSecp256r1MLKEM768Key,
+	ocrypto.HybridSecp384r1MLKEM1024Key,
+}
+
 type BasicManager struct {
 	l       *logger.Logger
 	rootKey []byte
@@ -91,6 +105,57 @@ func (b *BasicManager) Decrypt(ctx context.Context, keyDetails trust.KeyDetails,
 		plaintext, err := ecDecryptor.DecryptWithEphemeralKey(ciphertext, ephemeralPublicKey)
 		if err != nil {
 			return nil, fmt.Errorf("failed to decrypt with ephemeral key: %w", err)
+		}
+		protectedKey, err := ocrypto.NewAESProtectedKey(plaintext)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create protected key: %w", err)
+		}
+		return protectedKey, nil
+	case ocrypto.HybridXWingKey:
+		if len(ephemeralPublicKey) > 0 {
+			return nil, errors.New("ephemeral public key should not be provided for X-Wing decryption")
+		}
+		xwingPrivKey, err := ocrypto.XWingPrivateKeyFromPem(privKey)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create X-Wing private key from PEM: %w", err)
+		}
+		plaintext, err := ocrypto.XWingUnwrapDEK(xwingPrivKey, ciphertext)
+		if err != nil {
+			return nil, fmt.Errorf("failed to decrypt with X-Wing: %w", err)
+		}
+		protectedKey, err := ocrypto.NewAESProtectedKey(plaintext)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create protected key: %w", err)
+		}
+		return protectedKey, nil
+	case ocrypto.HybridSecp256r1MLKEM768Key:
+		if len(ephemeralPublicKey) > 0 {
+			return nil, errors.New("ephemeral public key should not be provided for hybrid decryption")
+		}
+		privKeyBytes, err := ocrypto.P256MLKEM768PrivateKeyFromPem(privKey)
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse P256-MLKEM768 private key from PEM: %w", err)
+		}
+		plaintext, err := ocrypto.P256MLKEM768UnwrapDEK(privKeyBytes, ciphertext)
+		if err != nil {
+			return nil, fmt.Errorf("failed to decrypt with P256-MLKEM768: %w", err)
+		}
+		protectedKey, err := ocrypto.NewAESProtectedKey(plaintext)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create protected key: %w", err)
+		}
+		return protectedKey, nil
+	case ocrypto.HybridSecp384r1MLKEM1024Key:
+		if len(ephemeralPublicKey) > 0 {
+			return nil, errors.New("ephemeral public key should not be provided for hybrid decryption")
+		}
+		privKeyBytes, err := ocrypto.P384MLKEM1024PrivateKeyFromPem(privKey)
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse P384-MLKEM1024 private key from PEM: %w", err)
+		}
+		plaintext, err := ocrypto.P384MLKEM1024UnwrapDEK(privKeyBytes, ciphertext)
+		if err != nil {
+			return nil, fmt.Errorf("failed to decrypt with P384-MLKEM1024: %w", err)
 		}
 		protectedKey, err := ocrypto.NewAESProtectedKey(plaintext)
 		if err != nil {
@@ -183,7 +248,8 @@ func (b *BasicManager) unwrap(ctx context.Context, kid string, wrappedKey string
 			if privKeyBytes, ok := privKey.([]byte); ok {
 				return privKeyBytes, nil
 			}
-			b.l.ErrorContext(ctx,
+			b.l.ErrorContext(
+				ctx,
 				"private key in cache is not of type []byte",
 				slog.String("kid", kid),
 				slog.Any("type", fmt.Sprintf("%T", privKey)),
@@ -219,7 +285,8 @@ func (b *BasicManager) unwrap(ctx context.Context, kid string, wrappedKey string
 
 	if cacheEnabled {
 		if err := b.cache.Set(ctx, kid, privKey, nil); err != nil {
-			b.l.ErrorContext(ctx,
+			b.l.ErrorContext(
+				ctx,
 				"failed to cache private key",
 				slog.String("kid", kid),
 				slog.Any("error", err),

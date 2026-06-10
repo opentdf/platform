@@ -544,7 +544,7 @@ func (s SDK) prepareManifest(ctx context.Context, t *TDFObject, tdfConfig TDFCon
 		symKeys = append(symKeys, symKey)
 
 		// policy binding
-		policyBinding := createPolicyBinding(symKey, base64PolicyObject)
+		policyBinding := createPolicyBinding(symKey, base64PolicyObject, tdfConfig.useHex)
 
 		// encrypted metadata
 		// add meta data
@@ -608,11 +608,19 @@ func manifestSegmentIntegrityAlg(alg string) SegmentIntegrityAlg {
 
 // createPolicyBinding produces an HMAC-SHA256 binding value keyed on the
 // symmetric key, over the base64-encoded policy object.
-func createPolicyBinding(symKey []byte, base64PolicyObject []byte) PolicyBinding {
-	policyBindingHash := hex.EncodeToString(ocrypto.CalculateSHA256Hmac(symKey, base64PolicyObject))
+//
+// Spec (>= 4.3.0) requires Base64(HMAC); pre-4.3.0 TDFs used Base64(hex(HMAC)).
+// useHex tracks the same threshold as segment/root signatures via WithTargetMode,
+// so the binding stays consistent with the rest of the manifest's integrity values.
+func createPolicyBinding(symKey []byte, base64PolicyObject []byte, useHex bool) PolicyBinding {
+	hmacBytes := ocrypto.CalculateSHA256Hmac(symKey, base64PolicyObject)
+	hash := hmacBytes
+	if useHex {
+		hash = []byte(hex.EncodeToString(hmacBytes))
+	}
 	return PolicyBinding{
 		Alg:  hmacIntegrityAlgorithm,
-		Hash: string(ocrypto.Base64Encode([]byte(policyBindingHash))),
+		Hash: string(ocrypto.Base64Encode(hash)),
 	}
 }
 

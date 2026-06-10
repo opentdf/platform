@@ -748,7 +748,7 @@ func TestChunkedECKeyAccess(t *testing.T) {
 		Splits: []Split{{Data: dek, KASURLs: []string{kasURL}}},
 	}
 
-	kaos, err := buildChunkedKeyAccessObjects(splits, dek, []byte(`{"uuid":"test"}`), "")
+	kaos, err := buildChunkedKeyAccessObjects(splits, dek, []byte(`{"uuid":"test"}`), "", false)
 	require.NoError(t, err)
 	require.Len(t, kaos, 1)
 
@@ -815,7 +815,7 @@ func TestChunkedKeyAccessRejectsShareWithNoKAS(t *testing.T) {
 		},
 	}
 
-	_, err = buildChunkedKeyAccessObjects(splits, dek, []byte(`{"uuid":"test"}`), "")
+	_, err = buildChunkedKeyAccessObjects(splits, dek, []byte(`{"uuid":"test"}`), "", false)
 	require.Error(t, err, "a share with no KAS to unwrap it makes the DEK unrecoverable")
 	assert.Contains(t, err.Error(), "orphaned", "the error must name the split that cannot be recovered")
 }

@@ -532,6 +532,7 @@ func (s *TDFSuite) Test_SimpleTDF() {
 				WithSessionKeyType(ocrypto.EC256Key),
 				WithKasAllowlist([]string{s.kasTestURLLookup["https://d.kas/"]}),
 			},
+			expectedSize: 1970,
 		},
 		{
 			name: "target-mode-0",
@@ -665,6 +666,24 @@ func (s *TDFSuite) Test_SimpleTDF() {
 				} else {
 					s.Require().Error(err1)
 					s.Require().Error(err2)
+				}
+
+				// check that the policy binding matches the same hex/raw scheme as the
+				// other signatures. Spec >= 4.3.0 emits Base64(HMAC); pre-4.3.0 emits
+				// Base64(hex(HMAC)).
+				s.Require().NotEmpty(r.Manifest().KeyAccessObjs)
+				pb, ok := r.Manifest().KeyAccessObjs[0].PolicyBinding.(map[string]any)
+				s.Require().True(ok, "expected PolicyBinding to deserialize as map")
+				pbHash, ok := pb["hash"].(string)
+				s.Require().True(ok, "expected PolicyBinding.hash to be a string")
+				decodedPB, err := ocrypto.Base64Decode([]byte(pbHash))
+				s.Require().NoError(err)
+				if config.useHex {
+					s.Len(decodedPB, hex.EncodedLen(sha256.Size), "legacy policy binding should be hex-encoded HMAC")
+					_, err = hex.DecodeString(string(decodedPB))
+					s.Require().NoError(err)
+				} else {
+					s.Len(decodedPB, sha256.Size, "spec-compliant policy binding should be raw HMAC bytes")
 				}
 
 				// check version is present if usehex is false
@@ -935,7 +954,7 @@ func (s *TDFSuite) Test_TDFWithAssertion() {
 			},
 			verifiers:                    nil,
 			disableAssertionVerification: false,
-			expectedSize:                 2689,
+			expectedSize:                 2656,
 		},
 		{
 			assertions: []AssertionConfig{
@@ -998,7 +1017,7 @@ func (s *TDFSuite) Test_TDFWithAssertion() {
 				DefaultKey: defaultKey,
 			},
 			disableAssertionVerification: false,
-			expectedSize:                 2689,
+			expectedSize:                 2656,
 		},
 		{
 			assertions: []AssertionConfig{
@@ -1047,7 +1066,7 @@ func (s *TDFSuite) Test_TDFWithAssertion() {
 				},
 			},
 			disableAssertionVerification: false,
-			expectedSize:                 2988,
+			expectedSize:                 2955,
 		},
 		{
 			assertions: []AssertionConfig{
@@ -1087,7 +1106,7 @@ func (s *TDFSuite) Test_TDFWithAssertion() {
 				},
 			},
 			disableAssertionVerification: false,
-			expectedSize:                 2689,
+			expectedSize:                 2656,
 		},
 		{
 			assertions: []AssertionConfig{
@@ -1104,7 +1123,7 @@ func (s *TDFSuite) Test_TDFWithAssertion() {
 				},
 			},
 			disableAssertionVerification: true,
-			expectedSize:                 2180,
+			expectedSize:                 2147,
 		},
 	} {
 		expectedTdfSize := test.expectedSize
@@ -1341,7 +1360,7 @@ func (s *TDFSuite) Test_TDFWithAssertionNegativeTests() {
 					SigningKey: defaultKey,
 				},
 			},
-			expectedSize: 2689,
+			expectedSize: 2656,
 		},
 		{
 			assertions: []AssertionConfig{
@@ -1389,7 +1408,7 @@ func (s *TDFSuite) Test_TDFWithAssertionNegativeTests() {
 					},
 				},
 			},
-			expectedSize: 2988,
+			expectedSize: 2955,
 		},
 		{
 			assertions: []AssertionConfig{
@@ -1423,7 +1442,7 @@ func (s *TDFSuite) Test_TDFWithAssertionNegativeTests() {
 			verifiers: &AssertionVerificationKeys{
 				DefaultKey: defaultKey,
 			},
-			expectedSize: 2689,
+			expectedSize: 2656,
 		},
 	} {
 		expectedTdfSize := test.expectedSize
@@ -2003,7 +2022,7 @@ func (s *TDFSuite) Test_KeySplit_SameKas_SameAlgorithm() {
 		{
 			n:           "multiple-keys-same-kas-same-algorithm",
 			fileSize:    5,
-			tdfFileSize: 2581,
+			tdfFileSize: 2445,
 			checksum:    "ed968e840d10d2d313a870bc131a4e2c311d7ad09bdf32b3418147221f51a6e2",
 		},
 	} {
@@ -2082,7 +2101,7 @@ func (s *TDFSuite) Test_KeySplits() {
 		{
 			n:           "shared",
 			fileSize:    5,
-			tdfFileSize: 2759,
+			tdfFileSize: 2635,
 			checksum:    "ed968e840d10d2d313a870bc131a4e2c311d7ad09bdf32b3418147221f51a6e2",
 			splitPlan: []keySplitStep{
 				{KAS: s.kasTestURLLookup["https://a.kas/"], SplitID: "a"},
@@ -2093,7 +2112,7 @@ func (s *TDFSuite) Test_KeySplits() {
 		{
 			n:           "split",
 			fileSize:    5,
-			tdfFileSize: 2759,
+			tdfFileSize: 2635,
 			checksum:    "ed968e840d10d2d313a870bc131a4e2c311d7ad09bdf32b3418147221f51a6e2",
 			splitPlan: []keySplitStep{
 				{KAS: s.kasTestURLLookup["https://a.kas/"], SplitID: "a"},
@@ -2104,7 +2123,7 @@ func (s *TDFSuite) Test_KeySplits() {
 		{
 			n:           "mixture",
 			fileSize:    5,
-			tdfFileSize: 3351,
+			tdfFileSize: 3191,
 			checksum:    "ed968e840d10d2d313a870bc131a4e2c311d7ad09bdf32b3418147221f51a6e2",
 			splitPlan: []keySplitStep{
 				{KAS: s.kasTestURLLookup["https://a.kas/"], SplitID: "a"},

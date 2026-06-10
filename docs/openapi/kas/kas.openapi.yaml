@@ -2,46 +2,6 @@ openapi: 3.1.0
 info:
   title: kas
 paths:
-  /kas.AccessService/LegacyPublicKey:
-    post:
-      tags:
-        - kas.AccessService
-      summary: Endpoint intended for gRPC Gateway's REST endpoint to provide v1 compatibility with older TDF clients
-      description: |-
-        This endpoint is not recommended for use in new applications, prefer the v2 endpoint ('PublicKey') instead.
-
-         buf:lint:ignore RPC_RESPONSE_STANDARD_NAME
-      operationId: kas.AccessService.LegacyPublicKey
-      parameters:
-        - name: Connect-Protocol-Version
-          in: header
-          required: true
-          schema:
-            $ref: '#/components/schemas/connect-protocol-version'
-        - name: Connect-Timeout-Ms
-          in: header
-          schema:
-            $ref: '#/components/schemas/connect-timeout-header'
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/kas.LegacyPublicKeyRequest'
-        required: true
-      responses:
-        default:
-          description: Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/connect.error'
-        "200":
-          description: Success
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/google.protobuf.StringValue'
-      deprecated: true
   /kas.AccessService/PublicKey:
     post:
       tags:
@@ -77,6 +37,48 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/kas.PublicKeyResponse'
+  /kas.AccessService/LegacyPublicKey:
+    post:
+      tags:
+        - kas.AccessService
+      summary: LegacyPublicKey
+      description: |-
+        Endpoint intended for gRPC Gateway's REST endpoint to provide v1 compatibility with older TDF clients
+
+         This endpoint is not recommended for use in new applications, prefer the v2 endpoint ('PublicKey') instead.
+
+         buf:lint:ignore RPC_RESPONSE_STANDARD_NAME
+      operationId: kas.AccessService.LegacyPublicKey
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/kas.LegacyPublicKeyRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/google.protobuf.StringValue'
+      deprecated: true
   /kas.AccessService/Rewrap:
     post:
       tags:
@@ -114,75 +116,16 @@ paths:
                 $ref: '#/components/schemas/kas.RewrapResponse'
 components:
   schemas:
-    connect-protocol-version:
-      type: number
-      title: Connect-Protocol-Version
+    google.protobuf.NullValue:
+      type: string
+      title: NullValue
       enum:
-        - 1
-      description: Define the version of the Connect protocol
-      const: 1
-    connect-timeout-header:
-      type: number
-      title: Connect-Timeout-Ms
-      description: Define the timeout, in ms
-    connect.error:
-      type: object
-      properties:
-        code:
-          type: string
-          examples:
-            - not_found
-          enum:
-            - canceled
-            - unknown
-            - invalid_argument
-            - deadline_exceeded
-            - not_found
-            - already_exists
-            - permission_denied
-            - resource_exhausted
-            - failed_precondition
-            - aborted
-            - out_of_range
-            - unimplemented
-            - internal
-            - unavailable
-            - data_loss
-            - unauthenticated
-          description: The status code, which should be an enum value of [google.rpc.Code][google.rpc.Code].
-        message:
-          type: string
-          description: A developer-facing error message, which should be in English. Any user-facing error message should be localized and sent in the [google.rpc.Status.details][google.rpc.Status.details] field, or localized by the client.
-        details:
-          type: array
-          items:
-            $ref: '#/components/schemas/connect.error_details.Any'
-          description: A list of messages that carry the error details. There is no limit on the number of messages.
-      title: Connect Error
-      additionalProperties: true
-      description: 'Error type returned by Connect: https://connectrpc.com/docs/go/errors/#http-representation'
-    connect.error_details.Any:
-      type: object
-      properties:
-        type:
-          type: string
-          description: 'A URL that acts as a globally unique identifier for the type of the serialized message. For example: `type.googleapis.com/google.rpc.ErrorInfo`. This is used to determine the schema of the data in the `value` field and is the discriminator for the `debug` field.'
-        value:
-          type: string
-          format: binary
-          description: The Protobuf message, serialized as bytes and base64-encoded. The specific message type is identified by the `type` field.
-        debug:
-          oneOf:
-            - type: object
-              title: Any
-              additionalProperties: true
-              description: Detailed error information.
-          discriminator:
-            propertyName: type
-          title: Debug
-          description: Deserialized error detail payload. The 'type' field indicates the schema. This field is for easier debugging and should not be relied upon for application logic.
-      additionalProperties: true
-      description: Contains an arbitrary serialized message along with a @type that describes the type of the serialized message, with an additional debug field for ConnectRPC error details.
+        - NULL_VALUE
+      description: |-
+        `NullValue` is a singleton enumeration to represent the null value for the
+         `Value` type union.
+
+         The JSON representation for `NullValue` is JSON `null`.
     google.protobuf.ListValue:
       type: object
       properties:
@@ -198,16 +141,6 @@ components:
         `ListValue` is a wrapper around a repeated field of values.
 
          The JSON representation for `ListValue` is JSON array.
-    google.protobuf.NullValue:
-      type: string
-      title: NullValue
-      enum:
-        - NULL_VALUE
-      description: |-
-        `NullValue` is a singleton enumeration to represent the null value for the
-         `Value` type union.
-
-         The JSON representation for `NullValue` is JSON `null`.
     google.protobuf.StringValue:
       type: string
       description: |-
@@ -357,57 +290,54 @@ components:
       description: Key Access Object containing cryptographic material and metadata for TDF decryption
     kas.KeyAccessRewrapResult:
       type: object
-      allOf:
+      oneOf:
         - properties:
-            metadata:
-              type: object
-              title: metadata
-              additionalProperties:
-                title: value
-                $ref: '#/components/schemas/google.protobuf.Value'
-              description: |-
-                Metadata associated with this KAO result (e.g., required obligations)
-                 Optional: May contain obligation requirements or other policy metadata
-                 Common keys: "X-Required-Obligations" with array of obligation FQNs
-            keyAccessObjectId:
+            error:
               type: string
-              title: key_access_object_id
-              description: |-
-                Identifier matching the key_access_object_id from the request
-                 Required: Always matches the ID from UnsignedRewrapRequest_WithKeyAccessObject
-            status:
-              type: string
-              title: status
-              description: |-
-                Status of the rewrap operation for this KAO
-                 Required: Always
-                 Values: "permit" (success), "fail" (failure)
-        - oneOf:
-            - type: object
-              properties:
-                error:
-                  type: string
-                  title: error
-                  description: |-
-                    Error message when rewrap failed
-                     Present when status="fail"
-                     Human-readable description of the failure reason
               title: error
-              required:
-                - error
-            - type: object
-              properties:
-                kasWrappedKey:
-                  type: string
-                  title: kas_wrapped_key
-                  format: byte
-                  description: |-
-                    Successfully rewrapped key encrypted with the session key
-                     Present when status="permit"
-                     Contains the DEK encrypted with the ephemeral session key
+              description: |-
+                Error message when rewrap failed
+                 Present when status="fail"
+                 Human-readable description of the failure reason
+          title: error
+          required:
+            - error
+        - properties:
+            kasWrappedKey:
+              type: string
               title: kas_wrapped_key
-              required:
-                - kasWrappedKey
+              format: byte
+              description: |-
+                Successfully rewrapped key encrypted with the session key
+                 Present when status="permit"
+                 Contains the DEK encrypted with the ephemeral session key
+          title: kas_wrapped_key
+          required:
+            - kasWrappedKey
+      properties:
+        metadata:
+          type: object
+          title: metadata
+          additionalProperties:
+            title: value
+            $ref: '#/components/schemas/google.protobuf.Value'
+          description: |-
+            Metadata associated with this KAO result (e.g., required obligations)
+             Optional: May contain obligation requirements or other policy metadata
+             Common keys: "X-Required-Obligations" with array of obligation FQNs
+        keyAccessObjectId:
+          type: string
+          title: key_access_object_id
+          description: |-
+            Identifier matching the key_access_object_id from the request
+             Required: Always matches the ID from UnsignedRewrapRequest_WithKeyAccessObject
+        status:
+          type: string
+          title: status
+          description: |-
+            Status of the rewrap operation for this KAO
+             Required: Always
+             Values: "permit" (success), "fail" (failure)
       title: KeyAccessRewrapResult
       additionalProperties: false
       description: Result of a key access object rewrap operation
@@ -689,6 +619,63 @@ components:
       title: WithPolicyRequest
       additionalProperties: false
       description: Request grouping policy with associated key access objects
+    connect-protocol-version:
+      type: number
+      title: Connect-Protocol-Version
+      enum:
+        - 1
+      description: Define the version of the Connect protocol
+      const: 1
+    connect-timeout-header:
+      type: number
+      title: Connect-Timeout-Ms
+      description: Define the timeout, in ms
+    connect.error:
+      type: object
+      properties:
+        code:
+          type: string
+          examples:
+            - not_found
+          enum:
+            - canceled
+            - unknown
+            - invalid_argument
+            - deadline_exceeded
+            - not_found
+            - already_exists
+            - permission_denied
+            - resource_exhausted
+            - failed_precondition
+            - aborted
+            - out_of_range
+            - unimplemented
+            - internal
+            - unavailable
+            - data_loss
+            - unauthenticated
+          description: The status code, which should be an enum value of [google.rpc.Code][google.rpc.Code].
+        message:
+          type: string
+          description: A developer-facing error message, which should be in English. Any user-facing error message should be localized and sent in the [google.rpc.Status.details][google.rpc.Status.details] field, or localized by the client.
+        detail:
+          $ref: '#/components/schemas/google.protobuf.Any'
+      title: Connect Error
+      additionalProperties: true
+      description: 'Error type returned by Connect: https://connectrpc.com/docs/go/errors/#http-representation'
+    google.protobuf.Any:
+      type: object
+      properties:
+        type:
+          type: string
+        value:
+          type: string
+          format: binary
+        debug:
+          type: object
+          additionalProperties: true
+      additionalProperties: true
+      description: Contains an arbitrary serialized message along with a @type that describes the type of the serialized message.
 security: []
 tags:
   - name: kas.AccessService

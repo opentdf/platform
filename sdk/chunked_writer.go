@@ -403,9 +403,10 @@ type chunkedWriterConfig struct {
 	// keyAccess is set.
 	splitter KeySplitter
 
-	// useHex hex-encodes segment, root, and assertion signatures
-	// before base64, producing the doubly-encoded form that readers
-	// older than 4.3.0 require. Set by WithChunkedTargetMode.
+	// useHex hex-encodes segment, root, and assertion signatures and
+	// the policy binding before base64, producing the doubly-encoded
+	// form that readers older than 4.3.0 require. Set by
+	// WithChunkedTargetMode.
 	useHex bool
 }
 
@@ -605,7 +606,7 @@ func newChunkedWriter(cfg chunkedWriterConfig) (*chunkedWriter, error) {
 	}
 	keyAccess := cfg.keyAccess
 	if keyAccess == nil {
-		keyAccess = splitterKeyAccess{splitter: cfg.splitter}
+		keyAccess = splitterKeyAccess{splitter: cfg.splitter, useHex: cfg.useHex}
 	}
 	maxEncryptions := cfg.maxEncryptions
 	if maxEncryptions == 0 {

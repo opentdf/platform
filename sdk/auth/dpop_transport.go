@@ -36,24 +36,24 @@ type DPoPTransport struct {
 	// and do not include the ath claim.
 	TokenEndpoint string
 
-	nonceMu sync.RWMutex
-	// nonceCache stores server-issued nonces by origin (scheme://host:port)
-	nonceCache map[string]string
+	nonceMu           sync.RWMutex
+	nonceCache        map[string]string
+	cachedTokenURL    *url.URL
+	cachedTokenURLStr string
 }
 
 // RoundTrip implements http.RoundTripper, adding DPoP proofs to requests.
 func (t *DPoPTransport) RoundTrip(req *http.Request) (*http.Response, error) {
-	if t.Base == nil {
-		t.Base = http.DefaultTransport
+	base := t.Base
+	if base == nil {
+		base = http.DefaultTransport
 	}
 
+	t.nonceMu.Lock()
 	if t.nonceCache == nil {
-		t.nonceMu.Lock()
-		if t.nonceCache == nil {
-			t.nonceCache = make(map[string]string)
-		}
-		t.nonceMu.Unlock()
+		t.nonceCache = make(map[string]string)
 	}
+	t.nonceMu.Unlock()
 
 	// Clone request to avoid modifying the original
 	req2 := cloneRequest(req)
@@ -66,12 +66,12 @@ func (t *DPoPTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	nonce := t.getCachedNonce(origin)
 
 	// Generate and add DPoP proof
-	if err := t.addDPoPProof(req2, nonce, isTokenRequest); err != nil {
+	if err := t.addDPoPProof(req2, base, nonce, isTokenRequest); err != nil {
 		return nil, fmt.Errorf("failed to add DPoP proof: %w", err)
 	}
 
 	// Make the request
-	resp, err := t.Base.RoundTrip(req2)
+	resp, err := base.RoundTrip(req2)
 	if err != nil {
 		return resp, err
 	}
@@ -94,13 +94,22 @@ func (t *DPoPTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 			// Clone the original request again for retry
 			req3 := cloneRequest(req)
 
+			// Reset body using GetBody if available
+			if req.GetBody != nil {
+				body, err := req.GetBody()
+				if err != nil {
+					return nil, fmt.Errorf("failed to reset request body for retry: %w", err)
+				}
+				req3.Body = body
+			}
+
 			// Regenerate proof with nonce
-			if err := t.addDPoPProof(req3, newNonce, isTokenRequest); err != nil {
+			if err := t.addDPoPProof(req3, base, newNonce, isTokenRequest); err != nil {
 				return nil, fmt.Errorf("failed to add DPoP proof with nonce: %w", err)
 			}
 
 			// Retry the request
-			return t.Base.RoundTrip(req3)
+			return base.RoundTrip(req3)
 		}
 	}
 
@@ -115,7 +124,7 @@ func (t *DPoPTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 }
 
 // addDPoPProof generates and adds DPoP proof to the request headers.
-func (t *DPoPTransport) addDPoPProof(req *http.Request, nonce string, isTokenRequest bool) error {
+func (t *DPoPTransport) addDPoPProof(req *http.Request, base http.RoundTripper, nonce string, isTokenRequest bool) error {
 	// Normalize the htu (RFC 9449 HTTP URI Normalization)
 	htu := normalizeURI(req.URL)
 
@@ -134,7 +143,8 @@ func (t *DPoPTransport) addDPoPProof(req *http.Request, nonce string, isTokenReq
 	// For resource requests (not token endpoint), add ath claim
 	var accessToken string
 	if !isTokenRequest && t.TokenSource != nil {
-		at, err := t.TokenSource.AccessToken(req.Context(), nil)
+		client := &http.Client{Transport: base}
+		at, err := t.TokenSource.AccessToken(req.Context(), client)
 		if err != nil {
 			return fmt.Errorf("failed to get access token: %w", err)
 		}
@@ -193,13 +203,35 @@ func (t *DPoPTransport) isTokenEndpointRequest(u *url.URL) bool {
 	if t.TokenEndpoint == "" {
 		return false
 	}
-	tokenURL, err := url.Parse(t.TokenEndpoint)
-	if err != nil {
+
+	t.nonceMu.RLock()
+	cachedURL := t.cachedTokenURL
+	cachedStr := t.cachedTokenURLStr
+	t.nonceMu.RUnlock()
+
+	if cachedStr != t.TokenEndpoint {
+		t.nonceMu.Lock()
+		if t.cachedTokenURLStr != t.TokenEndpoint {
+			parsed, err := url.Parse(t.TokenEndpoint)
+			if err == nil {
+				t.cachedTokenURL = parsed
+				t.cachedTokenURLStr = t.TokenEndpoint
+			} else {
+				t.cachedTokenURL = nil
+				t.cachedTokenURLStr = ""
+			}
+		}
+		cachedURL = t.cachedTokenURL
+		t.nonceMu.Unlock()
+	}
+
+	if cachedURL == nil {
 		return false
 	}
-	return u.Scheme == tokenURL.Scheme &&
-		u.Host == tokenURL.Host &&
-		u.Path == tokenURL.Path
+
+	return u.Scheme == cachedURL.Scheme &&
+		u.Host == cachedURL.Host &&
+		u.Path == cachedURL.Path
 }
 
 // normalizeURI normalizes the URI per RFC 9449 HTTP URI Normalization:
@@ -219,9 +251,9 @@ func normalizeURI(u *url.URL) string {
 	return fmt.Sprintf("%s://%s%s", scheme, host, u.Path)
 }
 
-// getOrigin returns the origin (scheme://host:port) from a URL.
+// getOrigin returns the origin (scheme://host:port) from a URL, normalized to lowercase.
 func getOrigin(u *url.URL) string {
-	return fmt.Sprintf("%s://%s", u.Scheme, u.Host)
+	return strings.ToLower(fmt.Sprintf("%s://%s", u.Scheme, u.Host))
 }
 
 // getCachedNonce retrieves the cached nonce for an origin.

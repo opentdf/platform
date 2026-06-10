@@ -7,28 +7,28 @@ import (
 )
 
 func TestContextWithClaims(t *testing.T) {
-	roles := []string{"role:admin", "role:standard"}
+	groups := []string{"role:admin", "role:standard"}
 	ctx := ContextWithClaims(t.Context(), RequestClaims{
 		Subject:  "user@example.com",
-		Roles:    roles,
+		Groups:   groups,
 		ClientID: "client-123",
 	})
 
-	roles[0] = "mutated"
+	groups[0] = "mutated"
 
 	claims, ok := ClaimsFromContext(ctx)
 	require.True(t, ok)
 	require.Equal(t, "user@example.com", claims.Subject)
-	require.Equal(t, []string{"role:admin", "role:standard"}, claims.Roles)
+	require.Equal(t, []string{"role:admin", "role:standard"}, claims.Groups)
 	require.Equal(t, "client-123", claims.ClientID)
 
-	claims.Roles[0] = "mutated"
+	claims.Groups[0] = "mutated"
 
 	claims, ok = ClaimsFromContext(ctx)
 	require.True(t, ok)
-	require.Equal(t, []string{"role:admin", "role:standard"}, claims.Roles)
+	require.Equal(t, []string{"role:admin", "role:standard"}, claims.Groups)
 
-	got, ok := RolesFromContext(ctx)
+	got, ok := GroupsFromContext(ctx)
 	require.True(t, ok)
 	require.Equal(t, []string{"role:admin", "role:standard"}, got)
 
@@ -42,13 +42,13 @@ func TestContextWithClaims(t *testing.T) {
 
 	got[0] = "mutated"
 
-	got, ok = RolesFromContext(ctx)
+	got, ok = GroupsFromContext(ctx)
 	require.True(t, ok)
 	require.Equal(t, []string{"role:admin", "role:standard"}, got)
 }
 
-func TestRolesFromContextMissing(t *testing.T) {
-	got, ok := RolesFromContext(t.Context())
+func TestGroupsFromContextMissing(t *testing.T) {
+	got, ok := GroupsFromContext(t.Context())
 	require.False(t, ok)
 	require.Nil(t, got)
 
@@ -64,7 +64,7 @@ func TestRolesFromContextMissing(t *testing.T) {
 func TestContextWithClientIDPreservesExistingClaims(t *testing.T) {
 	ctx := ContextWithClaims(t.Context(), RequestClaims{
 		Subject: "user@example.com",
-		Roles:   []string{"role:admin"},
+		Groups:  []string{"role:admin"},
 	})
 
 	ctx = ContextWithClientID(ctx, "client-123")
@@ -72,6 +72,6 @@ func TestContextWithClientIDPreservesExistingClaims(t *testing.T) {
 	claims, ok := ClaimsFromContext(ctx)
 	require.True(t, ok)
 	require.Equal(t, "user@example.com", claims.Subject)
-	require.Equal(t, []string{"role:admin"}, claims.Roles)
+	require.Equal(t, []string{"role:admin"}, claims.Groups)
 	require.Equal(t, "client-123", claims.ClientID)
 }

@@ -197,7 +197,7 @@ func (e *Enforcer) ContextWithClaims(ctx context.Context, t jwt.Token, req authz
 	}
 	claims, _ := authz.ClaimsFromContext(ctx)
 	claims.Subject = e.subjectFromToken(t)
-	claims.Roles = roles
+	claims.Groups = roles
 	return authz.ContextWithClaims(ctx, claims), nil
 }
 
@@ -210,14 +210,14 @@ func (e *Enforcer) buildSubjectFromToken(ctx context.Context, t jwt.Token, req a
 		return nil, nil, err
 	}
 
-	info = append(info, claims.Roles...)
+	info = append(info, claims.Groups...)
 	info = append(info, claims.Subject)
-	return info, append([]string(nil), claims.Roles...), nil
+	return info, append([]string(nil), claims.Groups...), nil
 }
 
 func (e *Enforcer) claimsForRequest(ctx context.Context, t jwt.Token, req authz.RoleRequest) (authz.RequestClaims, error) {
 	if claims, ok := authz.ClaimsFromContext(ctx); ok {
-		if claims.Subject != "" || len(claims.Roles) > 0 {
+		if claims.Subject != "" || len(claims.Groups) > 0 {
 			return claims, nil
 		}
 	}
@@ -228,7 +228,7 @@ func (e *Enforcer) claimsForRequest(ctx context.Context, t jwt.Token, req authz.
 	}
 	claims, _ := authz.ClaimsFromContext(ctx)
 	claims.Subject = e.subjectFromToken(t)
-	claims.Roles = roles
+	claims.Groups = roles
 	return claims, nil
 }
 

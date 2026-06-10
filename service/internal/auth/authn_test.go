@@ -568,7 +568,7 @@ func (s *AuthSuite) Test_ConnectAuthNInterceptor_RequiresHeaderWithExistingConte
 	}
 
 	req := connect.NewRequest[string](nil)
-	ctx := ctxAuth.ContextWithAuthNInfo(context.Background(), nil, jwt.New(), "raw-token")
+	ctx := ctxAuth.ContextWithAuthNInfo(s.T().Context(), nil, jwt.New(), "raw-token")
 
 	_, err := interceptor(next)(ctx, req)
 

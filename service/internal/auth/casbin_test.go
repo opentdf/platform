@@ -522,7 +522,7 @@ func (s *AuthnCasbinSuite) Test_Enforce_Uses_Roles_From_Context() {
 
 	req := authz.RoleRequest{Resource: "policy.attributes.List", Action: "read"}
 	tok := jwt.New()
-	ctx, err := enforcer.ContextWithClaims(context.Background(), tok, req)
+	ctx, err := enforcer.ContextWithClaims(s.T().Context(), tok, req)
 	s.Require().NoError(err)
 	s.Equal(1, provider.count)
 
@@ -550,7 +550,7 @@ func (s *AuthnCasbinSuite) Test_Enforce_Resolves_Roles_When_Context_Has_Only_Cli
 
 	req := authz.RoleRequest{Resource: "policy.attributes.List", Action: "read"}
 	tok := jwt.New()
-	ctx := authz.ContextWithClientID(context.Background(), "client-123")
+	ctx := authz.ContextWithClientID(s.T().Context(), "client-123")
 
 	result, err := enforcer.Enforce(ctx, tok, req)
 	s.Require().NoError(err)

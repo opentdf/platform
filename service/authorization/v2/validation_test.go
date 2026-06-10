@@ -66,6 +66,11 @@ func Test_validateGetDecisionMultiResourceRequest_DefaultRequestLimits(t *testin
 		expectedErr string
 	}{
 		{
+			name:        "entity chain entities",
+			request:     newDecisionMultiResourceRequestWithEntityChainCount(11),
+			expectedErr: "entity_identifier.entity_chain.entities exceeds maximum count: got 11, max 10",
+		},
+		{
 			name:        "resources",
 			request:     newDecisionMultiResourceRequestWithResourceCount(1001),
 			expectedErr: "resources exceeds maximum count: got 1001, max 1000",
@@ -126,6 +131,7 @@ func Test_validateGetEntitlementsRequest_ExactlyAtDefaultLimitPasses(t *testing.
 func Test_validateGetDecisionMultiResourceRequest_ExactlyAtDefaultLimitPasses(t *testing.T) {
 	service := newValidationTestService(t, nil)
 
+	require.NoError(t, service.validateGetDecisionMultiResourceRequest(newDecisionMultiResourceRequestWithEntityChainCount(10), ""))
 	require.NoError(t, service.validateGetDecisionMultiResourceRequest(newDecisionMultiResourceRequestWithResourceCount(1000), ""))
 	require.NoError(t, service.validateGetDecisionMultiResourceRequest(newDecisionMultiResourceRequestWithObligationCount(50), ""))
 }
@@ -279,6 +285,27 @@ func newDecisionRequestWithObligationCount(count int) *authzV2.GetDecisionReques
 			},
 		},
 		FulfillableObligationFqns: newObligationFQNs(count),
+	}
+}
+
+func newDecisionMultiResourceRequestWithEntityChainCount(count int) *authzV2.GetDecisionMultiResourceRequest {
+	return &authzV2.GetDecisionMultiResourceRequest{
+		EntityIdentifier: &authzV2.EntityIdentifier{
+			Identifier: &authzV2.EntityIdentifier_EntityChain{
+				EntityChain: &entity.EntityChain{
+					EphemeralId: "entity-chain",
+					Entities:    newEntities(count),
+				},
+			},
+		},
+		Action: sampleActionCreate,
+		Resources: []*authzV2.Resource{
+			{
+				Resource: &authzV2.Resource_RegisteredResourceValueFqn{
+					RegisteredResourceValueFqn: sampleRegisteredResourceFQN,
+				},
+			},
+		},
 	}
 }
 

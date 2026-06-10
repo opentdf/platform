@@ -435,7 +435,7 @@ func Test_EntityIdentifier_ProtoValidationAllowsManyChainedEntities(t *testing.T
 		Category:    entity.Entity_CATEGORY_SUBJECT,
 	})
 	err = v.Validate(entityIdentifier)
-	require.NoError(t, err, "validation should allow more than 10 entities in chain so the service can enforce configured limits")
+	require.NoError(t, err)
 }
 
 func Test_Resource_ProtoValidationAllowsManyAttributeValues(t *testing.T) {

@@ -1126,6 +1126,13 @@ components:
         group:
           title: group
           $ref: '#/components/schemas/policy.ResourceMappingGroup'
+        namespace:
+          title: namespace
+          description: |-
+            The namespace that optionally owns this resource mapping. When the mapping
+             belongs to a group, this matches the group's namespace. The mapped
+             attribute value may belong to a different namespace.
+          $ref: '#/components/schemas/policy.Namespace'
       title: ResourceMapping
       required:
         - attributeValue
@@ -1348,12 +1355,22 @@ components:
       additionalProperties: false
     policy.resourcemapping.CreateResourceMappingGroupRequest:
       type: object
+      allOf:
+        - oneOf:
+            - required:
+                - namespaceId
+            - required:
+                - namespaceFqn
       properties:
         namespaceId:
           type: string
           title: namespace_id
           format: uuid
-          description: Required
+        namespaceFqn:
+          type: string
+          title: namespace_fqn
+          minLength: 1
+          format: uri
         name:
           type: string
           title: name
@@ -1396,6 +1413,22 @@ components:
           description: |
             Optional
             optional_uuid_format // Optional field must be a valid UUID
+        namespaceId:
+          type: string
+          title: namespace_id
+          format: uuid
+          description: |-
+            Optional
+             The namespace that owns this resource mapping. If a group_id is provided,
+             this must match the group's namespace (and may be omitted to inherit it).
+        namespaceFqn:
+          type: string
+          title: namespace_fqn
+          minLength: 1
+          format: uri
+          description: |-
+            Optional
+             Alternative to namespace_id; the FQN of the owning namespace.
         metadata:
           title: metadata
           description: Optional
@@ -1488,9 +1521,14 @@ components:
         namespaceId:
           type: string
           title: namespace_id
-          description: |
-            Optional
-            optional_uuid_format // Optional field must be a valid UUID
+          format: uuid
+          description: Optional
+        namespaceFqn:
+          type: string
+          title: namespace_fqn
+          minLength: 1
+          format: uri
+          description: Optional
         pagination:
           title: pagination
           description: Optional
@@ -1555,6 +1593,21 @@ components:
           description: |
             Optional
             optional_uuid_format // Optional field must be a valid UUID
+        namespaceId:
+          type: string
+          title: namespace_id
+          format: uuid
+          description: |-
+            Optional
+             Filter the list to resource mappings owned by this namespace.
+        namespaceFqn:
+          type: string
+          title: namespace_fqn
+          minLength: 1
+          format: uri
+          description: |-
+            Optional
+             Filter the list to resource mappings owned by this namespace.
         pagination:
           title: pagination
           description: Optional
@@ -1598,9 +1651,14 @@ components:
         namespaceId:
           type: string
           title: namespace_id
-          description: |
-            Optional
-            optional_uuid_format // Optional field must be a valid UUID
+          format: uuid
+          description: Optional
+        namespaceFqn:
+          type: string
+          title: namespace_fqn
+          minLength: 1
+          format: uri
+          description: Optional
         name:
           type: string
           title: name
@@ -1652,6 +1710,22 @@ components:
           description: |
             Optional
             optional_uuid_format // Optional field must be a valid UUID
+        namespaceId:
+          type: string
+          title: namespace_id
+          format: uuid
+          description: |-
+            Optional
+             The namespace that owns this resource mapping. If a group_id is set on the
+             mapping, this must match the group's namespace.
+        namespaceFqn:
+          type: string
+          title: namespace_fqn
+          minLength: 1
+          format: uri
+          description: |-
+            Optional
+             Alternative to namespace_id; the FQN of the owning namespace.
         metadata:
           title: metadata
           description: |-

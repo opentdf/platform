@@ -39,6 +39,13 @@ type DPoPConfig struct {
 	NonceExpiration time.Duration `mapstructure:"nonce_expiration" json:"nonce_expiration" default:"5m"`
 }
 
+func (c DPoPConfig) Validate() error {
+	if c.RequireNonce && c.NonceExpiration <= 0 {
+		return errors.New("auth.dpop.nonce_expiration must be positive when require_nonce is true")
+	}
+	return nil
+}
+
 type PolicyConfig struct {
 	Builtin string `mapstructure:"-" json:"-"`
 	// Username claim to use for user information
@@ -78,6 +85,10 @@ func (c AuthNConfig) validateAuthNConfig(logger *logger.Logger) error {
 
 	if !c.EnforceDPoP {
 		logger.Warn("config Auth.EnforceDPoP is false. DPoP will not be enforced.")
+	}
+
+	if err := c.DPoP.Validate(); err != nil {
+		return err
 	}
 
 	return nil

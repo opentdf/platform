@@ -1431,3 +1431,42 @@ func TestVerifyRewrapRequests(t *testing.T) {
 		})
 	}
 }
+
+func TestDecodePolicyBinding(t *testing.T) {
+	rawHMAC := bytes.Repeat([]byte{0xab}, 32)
+
+	tests := []struct {
+		name    string
+		input   string
+		want    []byte
+		wantErr bool
+	}{
+		{
+			name:  "spec-compliant raw HMAC (Base64(HMAC))",
+			input: base64.StdEncoding.EncodeToString(rawHMAC),
+			want:  rawHMAC,
+		},
+		{
+			name:  "legacy hex-encoded HMAC (Base64(hex(HMAC)))",
+			input: base64.StdEncoding.EncodeToString([]byte(hex.EncodeToString(rawHMAC))),
+			want:  rawHMAC,
+		},
+		{
+			name:    "invalid base64",
+			input:   "not!valid!base64",
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := decodePolicyBinding(tt.input)
+			if tt.wantErr {
+				require.Error(t, err)
+				return
+			}
+			require.NoError(t, err)
+			assert.Equal(t, tt.want, got)
+		})
+	}
+}

@@ -1,17 +1,23 @@
 package auth
 
 import (
+	"context"
 	"crypto"
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/sha256"
 	"encoding/base64"
+	"errors"
+	"net/http"
 	"testing"
 	"time"
 
 	"github.com/lestrrat-go/jwx/v2/jwa"
 	"github.com/lestrrat-go/jwx/v2/jwk"
+	"github.com/lestrrat-go/jwx/v2/jws"
 	"github.com/lestrrat-go/jwx/v2/jwt"
+	sdkauth "github.com/opentdf/platform/sdk/auth"
+	"github.com/opentdf/platform/service/logger"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -28,7 +34,6 @@ func TestDPoPNonceManager(t *testing.T) {
 		nm := newDPoPNonceManager(true, 100*time.Millisecond)
 		nonce1 := nm.getCurrentNonce()
 
-		// Wait for rotation
 		time.Sleep(150 * time.Millisecond)
 
 		nonce2 := nm.getCurrentNonce()
@@ -39,219 +44,260 @@ func TestDPoPNonceManager(t *testing.T) {
 		nm := newDPoPNonceManager(true, 5*time.Minute)
 		currentNonce := nm.getCurrentNonce()
 
-		// Current nonce should validate
 		assert.True(t, nm.validateNonce(currentNonce))
 
-		// Rotate to create a previous nonce
+		// Rotate to create a previous nonce; both current and previous must be accepted
+		// to tolerate in-flight requests that received the old nonce just before rotation.
 		nm.rotate()
 		newNonce := nm.getCurrentNonce()
 
-		// Both current and previous should validate
 		assert.True(t, nm.validateNonce(newNonce), "current nonce should validate")
 		assert.True(t, nm.validateNonce(currentNonce), "previous nonce should validate")
 
-		// Rotate again
+		// After a second rotation the original nonce is evicted.
 		nm.rotate()
-
-		// Original nonce should no longer validate (outside 2-window)
 		assert.False(t, nm.validateNonce(currentNonce), "nonce older than previous should not validate")
 	})
 
 	t.Run("disabled nonces", func(t *testing.T) {
 		nm := newDPoPNonceManager(false, 5*time.Minute)
-
-		// Any nonce should validate when nonces are disabled
 		assert.True(t, nm.validateNonce("any-random-nonce"))
 		assert.True(t, nm.validateNonce(""))
 	})
 }
 
-func TestDPoPProofValidation(t *testing.T) {
-	// Generate test RSA key
-	privKey, err := rsa.GenerateKey(rand.Reader, 2048)
-	require.NoError(t, err)
-
-	dpopJWK, err := jwk.FromRaw(privKey)
-	require.NoError(t, err)
-	require.NoError(t, dpopJWK.Set("use", "sig"))
-	require.NoError(t, dpopJWK.Set("alg", jwa.RS256.String()))
-
-	pubKey, err := dpopJWK.PublicKey()
-	require.NoError(t, err)
-
-	// Compute JWK thumbprint for cnf.jkt
-	thumbprint, err := pubKey.Thumbprint(crypto.SHA256)
-	require.NoError(t, err)
-	jkt := base64.URLEncoding.WithPadding(base64.NoPadding).EncodeToString(thumbprint)
-
-	t.Run("valid signature", func(t *testing.T) {
-		// This validates that our existing validateDPoP properly verifies signatures
-		// The actual validation is already well-tested in authn_test.go
-		assert.NotEmpty(t, jkt)
-	})
-
-	t.Run("htm validation", func(t *testing.T) {
-		testCases := []struct {
-			name        string
-			htm         string
-			expectedHtm string
-			shouldPass  bool
-		}{
-			{"POST matches", "POST", "POST", true},
-			{"GET matches", "GET", "GET", true},
-			{"case sensitive mismatch", "post", "POST", false},
-			{"different method", "DELETE", "POST", false},
-		}
-
-		for _, tc := range testCases {
-			t.Run(tc.name, func(t *testing.T) {
-				// The existing code validates htm in validateDPoP
-				// This test documents the expected behavior
-				if tc.shouldPass {
-					assert.Equal(t, tc.expectedHtm, tc.htm)
-				} else {
-					assert.NotEqual(t, tc.expectedHtm, tc.htm)
-				}
-			})
-		}
-	})
-
-	t.Run("htu validation", func(t *testing.T) {
-		testCases := []struct {
-			name        string
-			htu         string
-			expectedHtu string
-			shouldPass  bool
-		}{
-			{"exact match", "https://example.com/api/rewrap", "https://example.com/api/rewrap", true},
-			{"case sensitive mismatch", "https://Example.com/api/rewrap", "https://example.com/api/rewrap", false},
-			{"path mismatch", "https://example.com/api/other", "https://example.com/api/rewrap", false},
-		}
-
-		for _, tc := range testCases {
-			t.Run(tc.name, func(t *testing.T) {
-				// The existing code validates htu in validateDPoP
-				if tc.shouldPass {
-					assert.Equal(t, tc.expectedHtu, tc.htu)
-				} else {
-					assert.NotEqual(t, tc.expectedHtu, tc.htu)
-				}
-			})
-		}
-	})
-
-	t.Run("ath validation", func(t *testing.T) {
-		accessToken := "test-access-token"
-		h := sha256.New()
-		h.Write([]byte(accessToken))
-		validAth := base64.URLEncoding.WithPadding(base64.NoPadding).EncodeToString(h.Sum(nil))
-
-		testCases := []struct {
-			name       string
-			ath        string
-			shouldPass bool
-		}{
-			{"valid ath", validAth, true},
-			{"invalid ath", "invalid-hash", false},
-			{"empty ath", "", false},
-		}
-
-		for _, tc := range testCases {
-			t.Run(tc.name, func(t *testing.T) {
-				if tc.shouldPass {
-					assert.Equal(t, validAth, tc.ath)
-				} else {
-					assert.NotEqual(t, validAth, tc.ath)
-				}
-			})
-		}
-	})
-
-	t.Run("jkt validation", func(t *testing.T) {
-		// Valid JKT already computed above
-		testCases := []struct {
-			name       string
-			jkt        string
-			shouldPass bool
-		}{
-			{"valid jkt", jkt, true},
-			{"invalid jkt", "invalid-thumbprint", false},
-			{"empty jkt", "", false},
-		}
-
-		for _, tc := range testCases {
-			t.Run(tc.name, func(t *testing.T) {
-				if tc.shouldPass {
-					assert.Equal(t, jkt, tc.jkt)
-				} else {
-					assert.NotEqual(t, jkt, tc.jkt)
-				}
-			})
-		}
-	})
-
-	t.Run("algorithm restrictions", func(t *testing.T) {
-		testCases := []struct {
-			name    string
-			alg     jwa.SignatureAlgorithm
-			allowed bool
-		}{
-			{"RS256 allowed", jwa.RS256, true},
-			{"RS384 allowed", jwa.RS384, true},
-			{"RS512 allowed", jwa.RS512, true},
-			{"ES256 allowed", jwa.ES256, true},
-			{"ES384 allowed", jwa.ES384, true},
-			{"ES512 allowed", jwa.ES512, true},
-			{"PS256 allowed", jwa.PS256, true},
-			{"PS384 allowed", jwa.PS384, true},
-			{"PS512 allowed", jwa.PS512, true},
-			{"HS256 not allowed", jwa.HS256, false},
-			{"none not allowed", jwa.NoSignature, false},
-		}
-
-		for _, tc := range testCases {
-			t.Run(tc.name, func(t *testing.T) {
-				_, exists := allowedSignatureAlgorithms[tc.alg]
-				assert.Equal(t, tc.allowed, exists)
-			})
-		}
-	})
-}
-
 func TestDPoPNonceError(t *testing.T) {
-	t.Run("error type", func(t *testing.T) {
+	t.Run("nonce error message", func(t *testing.T) {
 		err := &DPoPNonceError{Message: "test error"}
 		assert.Equal(t, "test error", err.Error())
 	})
 
-	t.Run("error detection", func(t *testing.T) {
+	t.Run("nonce error detection via errors.As", func(t *testing.T) {
 		var err error = &DPoPNonceError{Message: "test"}
 		var nonceErr *DPoPNonceError
 		require.ErrorAs(t, err, &nonceErr)
 		assert.Equal(t, "test", nonceErr.Message)
 	})
+
+	t.Run("malformed error message", func(t *testing.T) {
+		err := &DPoPNonceMalformedError{Message: "bad nonce"}
+		assert.Equal(t, "bad nonce", err.Error())
+	})
+
+	t.Run("malformed error detection via errors.As", func(t *testing.T) {
+		var err error = &DPoPNonceMalformedError{Message: "bad nonce"}
+		var malformedErr *DPoPNonceMalformedError
+		require.ErrorAs(t, err, &malformedErr)
+	})
+
+	t.Run("malformed error does not match DPoPNonceError", func(t *testing.T) {
+		// Critical: DPoPNonceMalformedError must NOT match DPoPNonceError so handlers
+		// treat it as a hard rejection rather than issuing a nonce challenge.
+		var err error = &DPoPNonceMalformedError{Message: "bad nonce"}
+		var nonceErr *DPoPNonceError
+		assert.False(t, errors.As(err, &nonceErr))
+	})
 }
 
-func TestDPoPTokenExpiration(t *testing.T) {
-	t.Run("expired token", func(t *testing.T) {
-		// Create an expired DPoP token
-		issuedAt := time.Now().Add(-2 * time.Hour)
-		tok, err := jwt.NewBuilder().
-			IssuedAt(issuedAt).
-			Build()
-		require.NoError(t, err)
+func TestDPoPAlgorithmRestrictions(t *testing.T) {
+	testCases := []struct {
+		alg     jwa.SignatureAlgorithm
+		allowed bool
+	}{
+		{jwa.RS256, true},
+		{jwa.RS384, true},
+		{jwa.RS512, true},
+		{jwa.ES256, true},
+		{jwa.ES384, true},
+		{jwa.ES512, true},
+		{jwa.PS256, true},
+		{jwa.PS384, true},
+		{jwa.PS512, true},
+		{jwa.HS256, false},
+		{jwa.NoSignature, false},
+	}
 
-		assert.True(t, tok.IssuedAt().Before(time.Now().Add(-1*time.Hour)))
-	})
+	for _, tc := range testCases {
+		t.Run(tc.alg.String(), func(t *testing.T) {
+			_, exists := allowedSignatureAlgorithms[tc.alg]
+			assert.Equal(t, tc.allowed, exists)
+		})
+	}
+}
 
-	t.Run("valid token within skew", func(t *testing.T) {
-		// Create a token just issued
-		issuedAt := time.Now()
-		tok, err := jwt.NewBuilder().
-			IssuedAt(issuedAt).
-			Build()
-		require.NoError(t, err)
+// newAuthWithNonce creates an Authentication using the suite's OIDC server with RequireNonce=true.
+func (s *AuthSuite) newAuthWithNonce(expiration time.Duration) *Authentication {
+	auth, err := NewAuthenticator(
+		context.Background(),
+		Config{
+			AuthNConfig: AuthNConfig{
+				EnforceDPoP: true,
+				Issuer:      s.server.URL,
+				Audience:    "test",
+				DPoPSkew:    time.Hour,
+				TokenSkew:   time.Minute,
+				DPoP: DPoPConfig{
+					RequireNonce:    true,
+					NonceExpiration: expiration,
+				},
+			},
+		},
+		logger.CreateTestLogger(),
+		func(_ string, _ any) error { return nil },
+	)
+	s.Require().NoError(err)
+	return auth
+}
 
-		assert.False(t, tok.IssuedAt().Before(time.Now().Add(-1*time.Hour)))
-	})
+// makeDPoPBoundAccessToken creates an access token with cnf.jkt bound to dpopKey,
+// signed by the suite's OIDC key.
+func (s *AuthSuite) makeDPoPBoundAccessToken(dpopKey jwk.Key) []byte {
+	thumbprint, err := dpopKey.Thumbprint(crypto.SHA256)
+	s.Require().NoError(err)
+	jkt := base64.URLEncoding.WithPadding(base64.NoPadding).EncodeToString(thumbprint)
+
+	tok := jwt.New()
+	s.Require().NoError(tok.Set(jwt.ExpirationKey, time.Now().Add(time.Hour)))
+	s.Require().NoError(tok.Set("iss", s.server.URL))
+	s.Require().NoError(tok.Set("aud", "test"))
+	s.Require().NoError(tok.Set("cid", "client-nonce-test"))
+	s.Require().NoError(tok.Set("cnf", map[string]string{"jkt": jkt}))
+
+	signedTok, err := jwt.Sign(tok, jwt.WithKey(jwa.RS256, s.key))
+	s.Require().NoError(err)
+	return signedTok
+}
+
+// makeDPoPProof builds a signed DPoP proof. nonceVal may be nil (omit nonce), a string,
+// or any other type (to produce a malformed nonce claim for testing).
+func makeDPoPProof(t *testing.T, tc dpopTestCase, nonceVal any) string {
+	t.Helper()
+	jtiBytes := make([]byte, sdkauth.JTILength)
+	_, err := rand.Read(jtiBytes)
+	require.NoError(t, err)
+
+	headers := jws.NewHeaders()
+	require.NoError(t, headers.Set(jws.JWKKey, tc.key))
+	require.NoError(t, headers.Set(jws.TypeKey, tc.typ))
+	require.NoError(t, headers.Set(jws.AlgorithmKey, tc.alg))
+
+	h := sha256.New()
+	h.Write(tc.accessToken)
+	ath := base64.URLEncoding.WithPadding(base64.NoPadding).EncodeToString(h.Sum(nil))
+
+	b := jwt.NewBuilder().
+		Claim("htu", tc.htu).
+		Claim("htm", tc.htm).
+		Claim("ath", ath).
+		Claim("jti", base64.StdEncoding.EncodeToString(jtiBytes)).
+		IssuedAt(time.Now())
+
+	if nonceVal != nil {
+		b = b.Claim("nonce", nonceVal)
+	}
+
+	dpopTok, err := b.Build()
+	require.NoError(t, err)
+
+	signedToken, err := jwt.Sign(dpopTok, jwt.WithKey(tc.actualSigningKey.Algorithm(), tc.actualSigningKey, jws.WithProtectedHeaders(headers)))
+	require.NoError(t, err)
+	return string(signedToken)
+}
+
+func (s *AuthSuite) newDPoPKeyAndAccessToken() (jwk.Key, jwk.Key, []byte) {
+	dpopKeyRaw, err := rsa.GenerateKey(rand.Reader, 2048)
+	s.Require().NoError(err)
+	dpopKey, err := jwk.FromRaw(dpopKeyRaw)
+	s.Require().NoError(err)
+	s.Require().NoError(dpopKey.Set(jwk.AlgorithmKey, jwa.RS256))
+	dpopPublic, err := dpopKey.PublicKey()
+	s.Require().NoError(err)
+	signedTok := s.makeDPoPBoundAccessToken(dpopKey)
+	return dpopKey, dpopPublic, signedTok
+}
+
+func (s *AuthSuite) TestDPoP_MissingNonce_Returns_DPoPNonceError() {
+	auth := s.newAuthWithNonce(5 * time.Minute)
+	dpopKey, dpopPublic, signedTok := s.newDPoPKeyAndAccessToken()
+
+	dpopToken := makeDPoPProof(s.T(), dpopTestCase{
+		key: dpopPublic, actualSigningKey: dpopKey, accessToken: signedTok,
+		alg: jwa.RS256, typ: dpopJWTType, htm: http.MethodPost, htu: "/a/path",
+	}, nil) // no nonce claim
+
+	_, _, err := auth.checkToken(
+		context.Background(),
+		[]string{"DPoP " + string(signedTok)},
+		receiverInfo{u: []string{"/a/path"}, m: []string{http.MethodPost}},
+		[]string{dpopToken},
+	)
+
+	var nonceErr *DPoPNonceError
+	s.Require().ErrorAs(err, &nonceErr, "missing nonce must return DPoPNonceError so handlers issue a challenge")
+}
+
+func (s *AuthSuite) TestDPoP_ValidNonce_Succeeds() {
+	auth := s.newAuthWithNonce(5 * time.Minute)
+	dpopKey, dpopPublic, signedTok := s.newDPoPKeyAndAccessToken()
+
+	nonce := auth.dpopNonceManager.getCurrentNonce()
+
+	dpopToken := makeDPoPProof(s.T(), dpopTestCase{
+		key: dpopPublic, actualSigningKey: dpopKey, accessToken: signedTok,
+		alg: jwa.RS256, typ: dpopJWTType, htm: http.MethodPost, htu: "/a/path",
+	}, nonce)
+
+	_, _, err := auth.checkToken(
+		context.Background(),
+		[]string{"DPoP " + string(signedTok)},
+		receiverInfo{u: []string{"/a/path"}, m: []string{http.MethodPost}},
+		[]string{dpopToken},
+	)
+
+	s.Require().NoError(err, "correct nonce should pass validation")
+}
+
+func (s *AuthSuite) TestDPoP_MalformedNonce_Returns_DPoPNonceMalformedError() {
+	auth := s.newAuthWithNonce(5 * time.Minute)
+	dpopKey, dpopPublic, signedTok := s.newDPoPKeyAndAccessToken()
+
+	// Integer nonce triggers the type-assertion failure in validateDPoP.
+	dpopToken := makeDPoPProof(s.T(), dpopTestCase{
+		key: dpopPublic, actualSigningKey: dpopKey, accessToken: signedTok,
+		alg: jwa.RS256, typ: dpopJWTType, htm: http.MethodPost, htu: "/a/path",
+	}, 42)
+
+	_, _, err := auth.checkToken(
+		context.Background(),
+		[]string{"DPoP " + string(signedTok)},
+		receiverInfo{u: []string{"/a/path"}, m: []string{http.MethodPost}},
+		[]string{dpopToken},
+	)
+
+	var malformedErr *DPoPNonceMalformedError
+	s.Require().ErrorAs(err, &malformedErr, "non-string nonce must return DPoPNonceMalformedError, not a retryable DPoPNonceError")
+
+	// Confirm it does NOT match DPoPNonceError, so handlers hard-reject rather than issue a challenge.
+	var nonceErr *DPoPNonceError
+	s.Require().False(errors.As(err, &nonceErr))
+}
+
+func (s *AuthSuite) TestDPoP_WrongNonce_Returns_DPoPNonceError() {
+	auth := s.newAuthWithNonce(5 * time.Minute)
+	dpopKey, dpopPublic, signedTok := s.newDPoPKeyAndAccessToken()
+
+	dpopToken := makeDPoPProof(s.T(), dpopTestCase{
+		key: dpopPublic, actualSigningKey: dpopKey, accessToken: signedTok,
+		alg: jwa.RS256, typ: dpopJWTType, htm: http.MethodPost, htu: "/a/path",
+	}, "not-the-right-nonce")
+
+	_, _, err := auth.checkToken(
+		context.Background(),
+		[]string{"DPoP " + string(signedTok)},
+		receiverInfo{u: []string{"/a/path"}, m: []string{http.MethodPost}},
+		[]string{dpopToken},
+	)
+
+	var nonceErr *DPoPNonceError
+	s.Require().ErrorAs(err, &nonceErr, "wrong nonce must return DPoPNonceError so handlers issue a fresh challenge")
 }

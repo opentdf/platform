@@ -250,7 +250,7 @@ func NewAuthenticator(ctx context.Context, cfg Config, logger *logger.Logger, we
 	for i, s := range supportedAlgsStr {
 		supportedAlgs[i] = s
 	}
-	if err := wellknownRegistration("dpop_supported_alg_values", supportedAlgs); err != nil {
+	if err := wellknownRegistration("dpop_signing_alg_values_supported", supportedAlgs); err != nil {
 		logger.Warn("failed to register dpop supported alg values", slog.Any("error", err))
 	}
 
@@ -268,12 +268,22 @@ type receiverInfo struct {
 	m []string
 }
 
-// DPoPNonceError indicates a missing or invalid nonce
+// DPoPNonceError indicates a missing or expired nonce that the client should retry with a fresh one.
 type DPoPNonceError struct {
 	Message string
 }
 
 func (e *DPoPNonceError) Error() string {
+	return e.Message
+}
+
+// DPoPNonceMalformedError indicates the nonce claim was present but had an invalid type or format.
+// Unlike DPoPNonceError, this is not retryable — the client sent a malformed proof.
+type DPoPNonceMalformedError struct {
+	Message string
+}
+
+func (e *DPoPNonceMalformedError) Error() string {
 	return e.Message
 }
 
@@ -464,6 +474,10 @@ func (a Authentication) ConnectAuthNInterceptor() connect.UnaryInterceptorFunc {
 				next = func(ctx context.Context, req connect.AnyRequest) (connect.AnyResponse, error) {
 					res, err := originalNext(ctx, req)
 					if err != nil {
+						var connectErr *connect.Error
+						if errors.As(err, &connectErr) {
+							connectErr.Meta().Set("DPoP-Nonce", a.dpopNonceManager.getCurrentNonce())
+						}
 						return nil, err
 					}
 					res.Header().Set("DPoP-Nonce", a.dpopNonceManager.getCurrentNonce())
@@ -713,7 +727,12 @@ func (a *Authentication) checkToken(ctx context.Context, authHeader []string, dp
 	}
 	dpopKey, err := a.validateDPoP(accessToken, tokenRaw, dpopInfo, dpopHeader)
 	if err != nil {
-		a.logger.Warn("failed to validate dpop", slog.Any("err", err))
+		var nonceErr *DPoPNonceError
+		if errors.As(err, &nonceErr) {
+			a.logger.DebugContext(ctx, "dpop nonce challenge issued", slog.String("reason", nonceErr.Message))
+		} else {
+			a.logger.Warn("failed to validate dpop", slog.Any("err", err))
+		}
 		return nil, nil, err
 	}
 	ctx = ctxAuth.ContextWithAuthNInfo(ctx, dpopKey, accessToken, tokenRaw)
@@ -848,7 +867,7 @@ func (a Authentication) validateDPoP(accessToken jwt.Token, acessTokenRaw string
 		}
 		nonce, nonceOk := nonceI.(string)
 		if !nonceOk {
-			return nil, &DPoPNonceError{Message: "`nonce` claim invalid format in DPoP JWT"}
+			return nil, &DPoPNonceMalformedError{Message: "`nonce` claim invalid format in DPoP JWT"}
 		}
 		if !a.dpopNonceManager.validateNonce(nonce) {
 			return nil, &DPoPNonceError{Message: "invalid or expired `nonce` claim in DPoP JWT"}

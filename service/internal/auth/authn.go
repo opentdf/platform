@@ -143,13 +143,23 @@ func (nm *dpopNonceManager) rotate() {
 
 func (nm *dpopNonceManager) getCurrentNonce() string {
 	nm.mu.RLock()
-	defer nm.mu.RUnlock()
+	if time.Since(nm.lastRotation) <= nm.expiration {
+		defer nm.mu.RUnlock()
+		return nm.currentNonce
+	}
+	nm.mu.RUnlock()
 
-	// Rotate if expired
+	nm.mu.Lock()
+	defer nm.mu.Unlock()
+	// Double-check after acquiring the write lock to prevent concurrent double-rotation.
 	if time.Since(nm.lastRotation) > nm.expiration {
-		nm.mu.RUnlock()
-		nm.rotate()
-		nm.mu.RLock()
+		nm.previousNonce = nm.currentNonce
+		nonce := make([]byte, dpopNonceBytes)
+		if _, err := rand.Read(nonce); err != nil {
+			panic(fmt.Sprintf("failed to generate nonce: %v", err))
+		}
+		nm.currentNonce = hex.EncodeToString(nonce)
+		nm.lastRotation = time.Now()
 	}
 
 	return nm.currentNonce
@@ -443,9 +453,18 @@ func (a Authentication) ConnectUnaryServerInterceptor() connect.UnaryInterceptor
 				return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("unauthenticated"))
 			}
 
-			// Always send fresh nonce in successful responses when nonces are enabled
+			// Always send fresh nonce in successful responses when nonces are enabled.
+			// Wrap next so the DPoP-Nonce header is set on the response, not the outgoing client context.
 			if a.dpopNonceManager.requireNonce {
-				ctxWithJWK = metadata.AppendToOutgoingContext(ctxWithJWK, "DPoP-Nonce", a.dpopNonceManager.getCurrentNonce())
+				originalNext := next
+				next = func(ctx context.Context, req connect.AnyRequest) (connect.AnyResponse, error) {
+					res, err := originalNext(ctx, req)
+					if err != nil {
+						return nil, err
+					}
+					res.Header().Set("DPoP-Nonce", a.dpopNonceManager.getCurrentNonce())
+					return res, nil
+				}
 			}
 
 			clientID, err := a.getClientIDFromToken(ctxWithJWK, token)

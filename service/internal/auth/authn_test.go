@@ -947,6 +947,48 @@ func (s *AuthSuite) Test_GetAction() {
 	}
 }
 
+func (s *AuthSuite) Test_RoleRequestForConnectProcedure() {
+	cases := []struct {
+		name      string
+		procedure string
+		want      authz.RoleRequest
+		wantErr   bool
+	}{
+		{
+			name:      "read method",
+			procedure: "/policy.attributes.AttributesService/ListAttributes",
+			want: authz.RoleRequest{
+				Issuer:   "issuer",
+				Resource: "policy.attributes.AttributesService/ListAttributes",
+				Action:   ActionRead,
+			},
+		},
+		{
+			name:      "missing method",
+			procedure: "/kas.AccessService",
+			wantErr:   true,
+		},
+		{
+			name:      "empty service",
+			procedure: "/",
+			wantErr:   true,
+		},
+	}
+
+	for _, c := range cases {
+		s.Run(c.name, func() {
+			got, err := roleRequestForConnectProcedure("issuer", c.procedure)
+			if c.wantErr {
+				s.Require().Error(err)
+				return
+			}
+
+			s.Require().NoError(err)
+			s.Equal(c.want, got)
+		})
+	}
+}
+
 func Test_GetClientIDFromToken(t *testing.T) {
 	tests := []struct {
 		name             string

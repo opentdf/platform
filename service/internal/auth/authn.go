@@ -323,11 +323,6 @@ func (a Authentication) ConnectAuthNInterceptor() connect.UnaryInterceptorFunc {
 				return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("unauthenticated"))
 			}
 
-			// parse the rpc method
-			p := strings.Split(req.Spec().Procedure, "/")
-			resource := path.Join(p[1], p[2])
-			action := getAction(p[2])
-
 			clientID, err := a.getClientIDFromToken(ctxWithJWK, token)
 			if err != nil {
 				log.WarnContext(
@@ -343,10 +338,9 @@ func (a Authentication) ConnectAuthNInterceptor() connect.UnaryInterceptorFunc {
 				ctxWithJWK = authz.ContextWithClientID(ctxWithJWK, clientID)
 			}
 
-			roleReq := authz.RoleRequest{
-				Issuer:   a.oidcConfiguration.Issuer,
-				Resource: resource,
-				Action:   action,
+			roleReq, err := roleRequestForConnectProcedure(a.oidcConfiguration.Issuer, req.Spec().Procedure)
+			if err != nil {
+				return nil, connect.NewError(connect.CodeInvalidArgument, err)
 			}
 			ctxWithJWK, err = a.enforcer.ContextWithClaims(ctxWithJWK, token, roleReq)
 			if err != nil {
@@ -379,13 +373,9 @@ func (a Authentication) ConnectAuthZInterceptor() connect.UnaryInterceptorFunc {
 				return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("missing access token in context"))
 			}
 
-			p := strings.Split(req.Spec().Procedure, "/")
-			resource := path.Join(p[1], p[2])
-			action := getAction(p[2])
-			roleReq := authz.RoleRequest{
-				Issuer:   a.oidcConfiguration.Issuer,
-				Resource: resource,
-				Action:   action,
+			roleReq, err := roleRequestForConnectProcedure(a.oidcConfiguration.Issuer, req.Spec().Procedure)
+			if err != nil {
+				return nil, connect.NewError(connect.CodeInvalidArgument, err)
 			}
 
 			log := a.logger
@@ -425,6 +415,20 @@ func permissionDeniedLogAttrs(token jwt.Token, casbinAuthz CasbinAuthzLog, err e
 	}
 
 	return attrs
+}
+
+func roleRequestForConnectProcedure(issuer, procedure string) (authz.RoleRequest, error) {
+	parts := strings.Split(procedure, "/")
+	if len(parts) < 3 || parts[1] == "" || parts[2] == "" {
+		return authz.RoleRequest{}, fmt.Errorf("invalid connect procedure %q", procedure)
+	}
+
+	method := parts[2]
+	return authz.RoleRequest{
+		Issuer:   issuer,
+		Resource: path.Join(parts[1], method),
+		Action:   getAction(method),
+	}, nil
 }
 
 // IPCMetadataClientInterceptor transfers gRPC outgoing metadata to Connect request headers for IPC calls

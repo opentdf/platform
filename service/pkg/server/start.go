@@ -37,6 +37,11 @@ const devModeMessage = `
 `
 const dpopKeySize = 2048
 
+var (
+	ErrExternalInterceptorFactoryNameRequired = errors.New("external connect interceptor factory name is required")
+	ErrExternalInterceptorFactoryFuncRequired = errors.New("external connect interceptor factory func is required")
+)
+
 func Start(f ...StartOptions) error {
 	startConfig := StartConfig{}
 	for _, fn := range f {
@@ -282,6 +287,19 @@ func Start(f ...StartOptions) error {
 
 	defer client.Close()
 
+	for _, factory := range startConfig.externalInterceptorFactories {
+		if err := validateExternalInterceptorFactory(factory); err != nil {
+			return err
+		}
+		interceptor, err := factory.Factory(newInterceptorParams(factory, cfg, client, logger))
+		if err != nil {
+			return fmt.Errorf("failed to create external connect interceptor %q: %w", factory.Name, err)
+		}
+		if interceptor != nil {
+			otdf.ConnectRPC.Interceptors = append(otdf.ConnectRPC.Interceptors, connect.WithInterceptors(interceptor))
+		}
+	}
+
 	logger.Info("starting services")
 	err = startServices(ctx, startServicesParams{
 		cfg:                    cfg,
@@ -330,6 +348,24 @@ func Start(f ...StartOptions) error {
 	}
 
 	return nil
+}
+
+func validateExternalInterceptorFactory(factory InterceptorFactory) error {
+	if factory.Name == "" {
+		return ErrExternalInterceptorFactoryNameRequired
+	}
+	if factory.Factory == nil {
+		return ErrExternalInterceptorFactoryFuncRequired
+	}
+	return nil
+}
+
+func newInterceptorParams(factory InterceptorFactory, cfg *config.Config, client *sdk.SDK, logger *logger.Logger) InterceptorParams {
+	return InterceptorParams{
+		SDK:    client,
+		Logger: logger,
+		Config: cfg.Interceptors[factory.Name],
+	}
 }
 
 // waitForShutdownSignal blocks until a SIGINT or SIGTERM is received.

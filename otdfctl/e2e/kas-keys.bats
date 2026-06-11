@@ -435,6 +435,23 @@ format_kas_name_as_uri() {
   assert_not_equal "$(echo "$output" | jq -r .key.metadata.updated_at)" "null"
 }
 
+@test "kas-keys: get key by UUID-form user key-id and kasId" {
+  KEY_ID_GET_USER_UUID=$(uuidgen)
+  run_otdfctl_key create --kas "${KAS_REGISTRY_ID}" --key-id "${KEY_ID_GET_USER_UUID}" --algorithm "rsa:2048" --mode "public_key" --public-key-pem "${PEM_B64}" --json
+  assert_success
+  local created_key_system_id_for_get=$(echo "$output" | jq -r .key.id)
+
+  run_otdfctl_key get --key "${KEY_ID_GET_USER_UUID}" --kas "${KAS_REGISTRY_ID}" --json
+  assert_success
+  assert_equal "$(echo "$output" | jq -r .kas_id)" "${KAS_REGISTRY_ID}"
+  assert_equal "$(echo "$output" | jq -r .key.id)" "${created_key_system_id_for_get}"
+  assert_equal "$(echo "$output" | jq -r .key.key_id)" "${KEY_ID_GET_USER_UUID}"
+  assert_equal "$(echo "$output" | jq -r .key.key_algorithm)" "1" # rsa:2048
+  assert_equal "$(echo "$output" | jq -r .key.key_mode)" "4"      # public_key
+  assert_equal "$(echo "$output" | jq -r .key.key_status)" "1"    # active
+  assert_equal "$(echo "$output" | jq -r .key.public_key_ctx.pem)" "${PEM_B64}"
+}
+
 @test "kas-keys: get key by user key-id and kasName" {
   KEY_ID_GET_USER_kas=$(generate_key_id)
   run_otdfctl_key create --kas "kas-registry-for-keys-test" --key-id "${KEY_ID_GET_USER_kas}" --algorithm "rsa:2048" --mode "public_key" --public-key-pem "${PEM_B64}"  --json

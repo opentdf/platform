@@ -312,7 +312,8 @@ func policyImportKasKey(cmd *cobra.Command, args []string) {
 		resolvedKasID = kasEntry.GetId()
 	}
 
-	importedKey, err := h.CreateKasKey(c.Context(),
+	importedKey, err := h.CreateKasKey(
+		c.Context(),
 		resolvedKasID,
 		keyIdentifier,
 		alg,
@@ -348,11 +349,13 @@ func policyGetKasKey(cmd *cobra.Command, args []string) {
 	var identifier *kasregistry.KasKeyIdentifier
 	var err error
 
-	if utils.ClassifyString(id) != utils.StringTypeUUID {
+	kasIdentifier := c.Flags.GetOptionalString("kas")
+	if kasIdentifier != "" || utils.ClassifyString(id) != utils.StringTypeUUID {
 		identifier, err = getKasKeyIdentifier(c)
 		if err != nil {
 			cli.ExitWithError("Invalid key identifier", err)
 		}
+		id = ""
 	}
 	kasKey, err := h.GetKasKey(c.Context(), id, identifier)
 	if err != nil {
@@ -379,7 +382,8 @@ func policyUpdateKasKey(cmd *cobra.Command, args []string) {
 		c.Context(),
 		id,
 		getMetadataMutable(metadataLabels),
-		getMetadataUpdateBehavior())
+		getMetadataUpdateBehavior(),
+	)
 	if err != nil {
 		cli.ExitWithError("Failed to update kas key", err)
 	}
@@ -826,7 +830,8 @@ func getLegacyFlag(c *cli.Cli) (*bool, error) {
 
 func initKASKeysCommands() {
 	// Create Kas Key
-	createDoc := man.Docs.GetCommand("policy/kas-registry/key/create",
+	createDoc := man.Docs.GetCommand(
+		"policy/kas-registry/key/create",
 		man.WithRun(policyCreateKasKey),
 	)
 	createDoc.Flags().StringP(
@@ -887,7 +892,8 @@ func initKASKeysCommands() {
 	createDoc.MarkSensitiveFlags()
 
 	// Get Kas Key
-	getDoc := man.Docs.GetCommand("policy/kas-registry/key/get",
+	getDoc := man.Docs.GetCommand(
+		"policy/kas-registry/key/get",
 		man.WithRun(policyGetKasKey),
 	)
 	getDoc.Flags().StringP(
@@ -903,7 +909,8 @@ func initKASKeysCommands() {
 		getDoc.GetDocFlag("kas").Description,
 	)
 	// Update Kas Key
-	updateDoc := man.Docs.GetCommand("policy/kas-registry/key/update",
+	updateDoc := man.Docs.GetCommand(
+		"policy/kas-registry/key/update",
 		man.WithRun(policyUpdateKasKey),
 	)
 	updateDoc.Flags().StringP(
@@ -915,7 +922,8 @@ func initKASKeysCommands() {
 	injectLabelFlags(&updateDoc.Command, true)
 
 	// List Kas Keys
-	listDoc := man.Docs.GetCommand("policy/kas-registry/key/list",
+	listDoc := man.Docs.GetCommand(
+		"policy/kas-registry/key/list",
 		man.WithRun(policyListKasKeys),
 	)
 	listDoc.Flags().StringP(
@@ -940,7 +948,8 @@ func initKASKeysCommands() {
 	injectListSortFlags(listDoc)
 
 	// Rotate Kas Key
-	rotateDoc := man.Docs.GetCommand("policy/kas-registry/key/rotate",
+	rotateDoc := man.Docs.GetCommand(
+		"policy/kas-registry/key/rotate",
 		man.WithRun(policyRotateKasKey),
 	)
 	rotateDoc.Flags().StringP(
@@ -1007,7 +1016,8 @@ func initKASKeysCommands() {
 	rotateDoc.MarkSensitiveFlags()
 
 	// Import Kas Key
-	importDoc := man.Docs.GetCommand("policy/kas-registry/key/import",
+	importDoc := man.Docs.GetCommand(
+		"policy/kas-registry/key/import",
 		man.WithRun(policyImportKasKey),
 	)
 	importDoc.Flags().StringP(
@@ -1061,7 +1071,8 @@ func initKASKeysCommands() {
 	injectLabelFlags(&importDoc.Command, false)
 	importDoc.MarkSensitiveFlags()
 
-	mappingsDoc := man.Docs.GetCommand("policy/kas-registry/key/list-mappings",
+	mappingsDoc := man.Docs.GetCommand(
+		"policy/kas-registry/key/list-mappings",
 		man.WithRun(policyListKeyMappings),
 	)
 	mappingsDoc.Flags().StringP(
@@ -1095,7 +1106,8 @@ func initKASKeysCommands() {
 		unsafeCmd.GetDocFlag("force").Description,
 	)
 
-	unsafeDeleteDoc := man.Docs.GetCommand("policy/kas-registry/key/unsafe/delete",
+	unsafeDeleteDoc := man.Docs.GetCommand(
+		"policy/kas-registry/key/unsafe/delete",
 		man.WithRun(policyUnsafeDeleteKasKey),
 	)
 	unsafeDeleteDoc.Flags().StringP(

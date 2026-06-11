@@ -403,6 +403,39 @@ func (s *CasbinAuthorizerSuite) TestAuthorizeV2_UsernameWithRolePrefixIsIgnored(
 	s.False(decision.Allowed, "username with reserved role prefix must not match role subjects")
 }
 
+func (s *CasbinAuthorizerSuite) TestAuthorizeV2_ClientIDPolicy() {
+	cfg := authz.Config{
+		Version: "v2",
+		PolicyConfig: authz.PolicyConfig{
+			ClientIDClaim: "client_id",
+			Csv:           `p, client:test-client, /policy.attributes.AttributesService/Get*, *, allow`,
+		},
+		Logger: s.logger,
+	}
+
+	authorizer, err := NewAuthorizer(cfg)
+	s.Require().NoError(err)
+
+	token := createTestToken(s.T(), map[string]interface{}{
+		"client_id": "test-client",
+	})
+
+	req := &authz.Request{
+		Token: token,
+		RPC:   "/policy.attributes.AttributesService/GetAttribute",
+	}
+
+	decision, err := authorizer.Authorize(s.T().Context(), req)
+	s.Require().NoError(err)
+	s.True(decision.Allowed, "client policy should allow matching client ID")
+	s.Equal("client:test-client", decision.MatchedPolicy)
+
+	req.RPC = "/policy.attributes.AttributesService/CreateAttribute"
+	decision, err = authorizer.Authorize(s.T().Context(), req)
+	s.Require().NoError(err)
+	s.False(decision.Allowed, "client policy should deny unmatched RPC")
+}
+
 func (s *CasbinAuthorizerSuite) TestAuthorizeV2_KASRESTfulPathsAllowed() {
 	// v2 uses leading slashes for ALL paths (both gRPC and HTTP)
 	// This test ensures KAS RESTful paths work in v2 authorization

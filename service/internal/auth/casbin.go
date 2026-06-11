@@ -19,6 +19,7 @@ import (
 
 var (
 	rolePrefix          = "role:"
+	clientPrefix        = "client:"
 	defaultRole         = "unknown"
 	ErrPermissionDenied = errors.New("permission denied")
 )
@@ -218,7 +219,26 @@ func (e *Enforcer) buildSubjectFromToken(ctx context.Context, t jwt.Token, req a
 			subject = ""
 		}
 	}
+	if clientID := clientIDFromToken(ctx, t, e.Config.ClientIDClaim); clientID != "" {
+		info = append(info, clientPrefix+clientID)
+	}
 	info = append(info, roles...)
 	info = append(info, subject)
 	return info, append([]string(nil), roles...), nil
+}
+
+func clientIDFromToken(ctx context.Context, t jwt.Token, claimName string) string {
+	if t == nil || claimName == "" {
+		return ""
+	}
+	claims, err := t.AsMap(ctx)
+	if err != nil {
+		return ""
+	}
+	found := dotNotation(claims, claimName)
+	clientID, ok := found.(string)
+	if !ok || clientID == "" {
+		return ""
+	}
+	return clientID
 }

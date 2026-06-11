@@ -31,6 +31,8 @@ var builtinPolicyV2 string
 const (
 	// rolePrefix is the prefix for role subjects in casbin policies.
 	rolePrefix = "role:"
+	// clientPrefix is the prefix for client subjects in casbin policies.
+	clientPrefix = "client:"
 	// disallowedDimensionKeyChars are separators used in dimension serialization.
 	disallowedDimensionKeyChars = "=&"
 	// defaultRole is the role assigned when no roles are found.
@@ -276,8 +278,8 @@ func (a *Authorizer) authorizeV1(ctx context.Context, req *authz.Request) (*auth
 }
 
 // authorizeV2 performs RPC+dimensions authorization.
-func (a *Authorizer) authorizeV2(_ context.Context, req *authz.Request) (*authz.Decision, error) {
-	subjects := a.extractSubjects(req)
+func (a *Authorizer) authorizeV2(ctx context.Context, req *authz.Request) (*authz.Decision, error) {
+	subjects := a.extractSubjects(ctx, req)
 
 	// If no subjects found, use default role
 	if len(subjects) == 0 {
@@ -358,7 +360,7 @@ func (a *Authorizer) authorizeV2(_ context.Context, req *authz.Request) (*authz.
 }
 
 // extractSubjects extracts roles/username from JWT token and userInfo.
-func (a *Authorizer) extractSubjects(req *authz.Request) []string {
+func (a *Authorizer) extractSubjects(ctx context.Context, req *authz.Request) []string {
 	if a.v1Enforcer != nil { // ? What's the point of this
 		// Reuse v1 subject extraction logic
 		return a.v1Enforcer.BuildSubjectFromTokenAndUserInfo(req.Token, req.UserInfo)
@@ -380,6 +382,9 @@ func (a *Authorizer) extractSubjects(req *authz.Request) []string {
 		if username := a.extractUsernameFromToken(req.Token); username != "" {
 			subjects = append(subjects, username)
 		}
+		if clientID := a.extractClientIDFromToken(ctx, req.Token); clientID != "" {
+			subjects = append(subjects, clientPrefix+clientID)
+		}
 	}
 
 	// Extract roles from userInfo
@@ -393,6 +398,25 @@ func (a *Authorizer) extractSubjects(req *authz.Request) []string {
 	}
 
 	return subjects
+}
+
+// extractClientIDFromToken extracts the client ID subject from the configured token claim.
+func (a *Authorizer) extractClientIDFromToken(ctx context.Context, token jwt.Token) string {
+	if token == nil || a.baseConfig.ClientIDClaim == "" {
+		return ""
+	}
+
+	claimMap, err := token.AsMap(ctx)
+	if err != nil {
+		return ""
+	}
+	found := util.Dotnotation(claimMap, a.baseConfig.ClientIDClaim)
+	clientID, ok := found.(string)
+	if !ok || clientID == "" {
+		return ""
+	}
+
+	return clientID
 }
 
 // extractUsernameFromToken extracts and validates username subject from token.

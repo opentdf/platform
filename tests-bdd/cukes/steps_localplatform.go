@@ -296,6 +296,33 @@ func (s *LocalPlatformStepDefinitions) aDefaultLocalPlatform(ctx context.Context
 	})
 }
 
+func (s *LocalPlatformStepDefinitions) iUseThePlatformAs(ctx context.Context, role string) (context.Context, error) {
+	scenarioContext := GetPlatformScenarioContext(ctx)
+	clientIDByRole := map[string]string{
+		"opentdf-admin":    "opentdf",
+		"opentdf-standard": "opentdf-sdk",
+		"custom-non-admin": "opentdf-custom",
+		"kas-a":            "kas-a",
+		"kas-b":            "kas-b",
+	}
+
+	clientID, ok := clientIDByRole[role]
+	if !ok {
+		return ctx, fmt.Errorf("unknown platform role %q", role)
+	}
+
+	platformSDK, err := otdf.New(
+		scenarioContext.ScenarioOptions.PlatformEndpoint,
+		otdf.WithInsecureSkipVerifyConn(),
+		otdf.WithClientCredentials(clientID, "secret", nil),
+	)
+	if err != nil {
+		return ctx, err
+	}
+	scenarioContext.SDK = platformSDK
+	return ctx, nil
+}
+
 func (s *LocalPlatformStepDefinitions) aLocalPlatformWithTemplates(ctx context.Context, platformTemplate string, kcTemplate string) (context.Context, error) {
 	kcTemplateBytes, err := os.ReadFile(kcTemplate)
 	if err != nil {
@@ -548,6 +575,7 @@ func RegisterLocalPlatformStepDefinitions(ctx *godog.ScenarioContext, x *Platfor
 	}
 	ctx.Step(`^an empty local platform$`, platformStepDefinitions.aEmptyLocalPlatform)
 	ctx.Step(`^a default local platform$`, platformStepDefinitions.aDefaultLocalPlatform)
+	ctx.Step(`^I use the platform as "([^"]*)"$`, platformStepDefinitions.iUseThePlatformAs)
 	ctx.Step(`^a user exists with username "([^"]*)" and email "([^"]*)" and the following attributes:$`, platformStepDefinitions.aUser)
 	ctx.Step(`^a local platform with platform template "([^"]*)" and keycloak template "([^"]*)"$`, platformStepDefinitions.aLocalPlatformWithTemplates)
 }

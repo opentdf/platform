@@ -1,5 +1,25 @@
 # Changelog
 
+## [0.17.0](https://github.com/opentdf/platform/compare/service/v0.16.0...service/v0.17.0) (2026-06-11)
+
+
+### ⚠ BREAKING CHANGES
+
+* **policy:** DSPX-2998 add namespace fields to resource mapping protos ([#3565](https://github.com/opentdf/platform/issues/3565))
+
+### Features
+
+* **authz:** make v2 request limits configurable ([#3508](https://github.com/opentdf/platform/issues/3508)) ([9d16f80](https://github.com/opentdf/platform/commit/9d16f8062e6164748a6a27c497272209b743339f))
+* **authz:** split connect token claims and enforcement ([#3592](https://github.com/opentdf/platform/issues/3592)) ([2e82aa0](https://github.com/opentdf/platform/commit/2e82aa077515204f7538c9264b40586df69b4baa))
+* **kas:** emit INFO log of supported mechanisms at startup (DSPX-3456) ([#3564](https://github.com/opentdf/platform/issues/3564)) ([c2b4816](https://github.com/opentdf/platform/commit/c2b48167a45c37870ebd8e37c3cbb3d83174336c))
+* **policy:** DSPX-2998 add namespace fields to resource mapping protos ([#3565](https://github.com/opentdf/platform/issues/3565)) ([e4a04ed](https://github.com/opentdf/platform/commit/e4a04ed6ee04a346a00a49d3c1f381295f9e9443))
+
+
+### Bug Fixes
+
+* **authz:** log casbin subject groups on denial ([#3572](https://github.com/opentdf/platform/issues/3572)) ([0de01df](https://github.com/opentdf/platform/commit/0de01df00caad86d2cb8a4fb9204a0e665ba7163))
+* **ci:** Prefer go.work for toolchain info ([#3285](https://github.com/opentdf/platform/issues/3285)) ([3c05b22](https://github.com/opentdf/platform/commit/3c05b22ecac41380c7d8d80e9d487bb3001cd25d))
+
 ## [0.16.0](https://github.com/opentdf/platform/compare/service/v0.15.0...service/v0.16.0) (2026-06-01)
 
 

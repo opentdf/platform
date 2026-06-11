@@ -92,18 +92,6 @@ func NewRegistration(ns string, dbRegister serviceregistry.DBRegister) *servicer
 				}
 				as.cache = resolverCache
 
-				// Register authz resolvers per-method
-				// Each resolver extracts authorization dimensions from the request, performing DB lookups as needed.
-				// The resolver is called by the auth interceptor before the handler.
-				if srp.AuthzResolverRegistry != nil {
-					srp.AuthzResolverRegistry.MustRegister("CreateAttribute", as.createAttributeAuthzResolver)
-					srp.AuthzResolverRegistry.MustRegister("GetAttribute", as.getAttributeAuthzResolver)
-					srp.AuthzResolverRegistry.MustRegister("GetAttributeValuesByFqns", as.getAttributeValuesByFqnsAuthzResolver)
-					srp.AuthzResolverRegistry.MustRegister("ListAttributes", as.listAttributesAuthzResolver)
-					srp.AuthzResolverRegistry.MustRegister("UpdateAttribute", as.updateAttributeAuthzResolver)
-					srp.AuthzResolverRegistry.MustRegister("DeactivateAttribute", as.deactivateAttributeAuthzResolver)
-				}
-
 				return as, nil
 			},
 		},

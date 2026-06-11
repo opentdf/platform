@@ -546,6 +546,32 @@ func (s *AuthnCasbinSuite) Test_Username_Policy() {
 	s.False(allowed)
 }
 
+func (s *AuthnCasbinSuite) Test_ClientID_Policy() {
+	policyCfg := PolicyConfig{}
+	err := defaults.Set(&policyCfg)
+	s.Require().NoError(err)
+
+	policyCfg.ClientIDClaim = "client_id"
+	policyCfg.Extension = strings.Join([]string{
+		"p, client:test-client, new.service.*, read, allow",
+	}, "\n")
+
+	enforcer, err := NewCasbinEnforcer(CasbinConfig{PolicyConfig: policyCfg}, logger.CreateTestLogger())
+	s.Require().NoError(err)
+
+	tok := jwt.New()
+	err = tok.Set("client_id", "test-client")
+	s.Require().NoError(err)
+
+	allowed, err := s.enforce(enforcer, tok, "new.service.DoSomething", "read")
+	s.Require().NoError(err)
+	s.True(allowed)
+
+	allowed, err = s.enforce(enforcer, tok, "policy.attributes.List", "read")
+	s.Require().Error(err)
+	s.False(allowed)
+}
+
 type staticProvider struct {
 	roles []string
 	err   error

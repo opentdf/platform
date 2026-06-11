@@ -1,6 +1,6 @@
 # Static Subject Mappings vs Dynamic Value Mappings at NG SAP Scale
 
-A reproducible benchmark for [DSPX-3498](https://virtru.atlassian.net/browse/DSPX-2754),
+A reproducible benchmark for [DSPX-3498](https://virtru.atlassian.net/browse/DSPX-3498),
 comparing the cost of entitling high-cardinality attribute values two ways:
 
 - **Static Subject Mappings** (before): one `SubjectMapping` per `(user, value)` pair, so the
@@ -16,7 +16,7 @@ The driver is the **NG SAP** reference scenario. Its known scale parameters:
 - **~5,000 Compartment Values.** Need-to-know (NTK) compartments, a flattened tree.
 - **Millions of Subject Mappings.** The cross-product of users with access to one or more of the
   5,000 compartments, "potentially in the millions".
-- **Tooling Already Breaks at This Scale.** The ConfigMap for resource condition sets exceeds the
+- **Tooling Limits.** The ConfigMap for resource condition sets exceeds the
   1 MiB Kubernetes limit, and attribute-value insertion exceeds the DB transaction limit and needs
   workaround scripting.
 
@@ -35,23 +35,23 @@ The scenario poses three questions this benchmark speaks to directly:
 The two paths differ in their complexity in the number of subject mappings, **N**. Reading the
 implemented decision path makes the asymmetry concrete:
 
-- **Static is O(N).** `NewPolicyDecisionPoint` validates and retains every one of the N subject
+- **Static: O(N).** `NewPolicyDecisionPoint` validates and retains every one of the N subject
   mappings when it builds the in-memory policy
   ([`service/internal/access/v2/pdp.go`](../../../service/internal/access/v2/pdp.go), the loop at
   lines 147-187). At decision time
   [`EvaluateSubjectMappingsWithActions`](../../../service/internal/subjectmappingbuiltin/subject_mapping_builtin_actions.go)
   evaluates every subject mapping attached to the requested value with no short-circuit, so a single
   decision does work proportional to the number of mappings on that value (~ N / 5,000).
-- **Dynamic is O(1) in N.** A dynamic definition carries no statically provisioned values, so
+- **Dynamic: O(1) in N.** A dynamic definition carries no statically provisioned values, so
   construction retains only the few `DynamicValueMapping`s
   ([`pdp.go`](../../../service/internal/access/v2/pdp.go) lines 189-224). The value is synthesized
   from the resource FQN at decision time and
   [`EvaluateDynamicValueMappingsWithActions`](../../../service/internal/subjectmappingbuiltin/dynamic_value_mapping_builtin.go)
   tests membership of the resource segment in the entity's selector-resolved set, so decision cost
-  depends on the entity's cleared-set size, not on N.
+  depends on the entity's cleared-set size and stays constant as N grows.
 
-The expectation, then: static construction time and memory grow linearly with N while dynamic stays
-flat, and static per-decision cost grows with N while dynamic stays flat.
+The expectation: static construction time and memory grow linearly with N while dynamic stays flat,
+and static per-decision cost grows with N while dynamic stays flat.
 
 ## Methods
 
@@ -84,14 +84,12 @@ mappings) and each mode (static, dynamic) it builds the corpus and records:
 
 ### Scope and Caveats
 
-- **This Is the In-Memory Decision Path.** It measures the PDP's footprint and evaluation cost. It
-  does not measure the Postgres fetch and deserialize of millions of rows that precede PDP
-  construction or cache refresh. That fetch is additional O(N) work for the static path on every load
-  and refresh, and the dynamic path avoids it entirely (a handful of rows), so the real-world gap is
-  wider than the numbers below.
-- **Decision Latencies Are Microsecond-Scale Here.** Both paths sit far below the scenario's
-  candidate SLAs in isolation. The point of the latency curve is the trend with N, not the absolute
-  value on this host.
+- **In-Memory Decision Path.** It measures the PDP's footprint and evaluation cost. It does not
+  measure the Postgres fetch and deserialize of millions of rows that precede PDP construction or
+  cache refresh. That fetch is additional work for the static path on every load and refresh, and is
+  not measured here.
+- **Microsecond-Scale Latencies.** Both paths sit far below the scenario's candidate SLAs in
+  isolation. The latency curve shows the trend with N. Absolute values depend on the host.
 
 ### Reproduction
 
@@ -101,8 +99,8 @@ extra packages.
 ```bash
 git clone https://github.com/opentdf/platform.git
 cd platform
-git checkout <branch-with-DSPX-2754-and-this-directory>
-bash docs/performance/dspx-2754-dynamic-value-mappings/run.sh
+git checkout <branch-with-DSPX-3498-and-this-directory>
+bash docs/performance/DSPX-3498-dynamic-value-mappings/run.sh
 ```
 
 `run.sh` runs the Go harness (writing `results.csv`) then renders the SVG charts. To run the pieces
@@ -112,14 +110,14 @@ by hand:
 # 1. Benchmark (writes results.csv). The harness file is gated by //go:build dvmbench,
 #    so it never runs in normal `go test ./...` or CI.
 cd service
-DVM_BENCH_OUT=../docs/performance/dspx-2754-dynamic-value-mappings/results.csv \
+DVM_BENCH_OUT=../docs/performance/DSPX-3498-dynamic-value-mappings/results.csv \
   go test -tags dvmbench -run TestDVMScaleBenchmark -timeout 60m -v ./internal/access/v2/
 
 # 2. Charts (pure stdlib, no matplotlib).
 cd ..
-python3 docs/performance/dspx-2754-dynamic-value-mappings/plot.py \
-  docs/performance/dspx-2754-dynamic-value-mappings/results.csv \
-  docs/performance/dspx-2754-dynamic-value-mappings/charts
+python3 docs/performance/DSPX-3498-dynamic-value-mappings/plot.py \
+  docs/performance/DSPX-3498-dynamic-value-mappings/results.csv \
+  docs/performance/DSPX-3498-dynamic-value-mappings/charts
 ```
 
 To fit a smaller host, cap the largest scale point: `DVM_BENCH_MAX_N=1000000 bash .../run.sh`.
@@ -135,7 +133,7 @@ The committed `results.csv` and `charts/*.svg` were produced on this host:
 
 ## Results
 
-### Retained Heap (the headline)
+### Retained Heap
 
 ![Retained policy heap vs subject-mapping count](charts/heap_memory.svg)
 
@@ -151,8 +149,8 @@ The committed `results.csv` and `charts/*.svg` were produced on this host:
 
 The static footprint grows linearly at roughly 855 bytes per subject mapping, reaching **4.3 GB at
 5 million mappings**. The dynamic footprint is below measurement resolution (one mapping) at every
-scale. This is the decisive result: holding NG SAP policy in memory is a multi-gigabyte problem for
-the static model and a non-problem for the dynamic one.
+scale. Holding NG SAP policy in memory costs several gigabytes for the static model and a negligible
+amount for the dynamic model.
 
 ### Construction Time
 
@@ -184,35 +182,31 @@ skips.
 | 5,000,000 | 73.4 | 38.1 | 92.4 | 192.3 |
 
 Static decision latency grows with N because each decision evaluates every subject mapping on the
-requested value (~ N / 5,000). Dynamic latency is flat at roughly 35 µs, dominated by flattening the
-analyst's 50-compartment entity once per call. The two cross between 2 and 5 million mappings:
-below that the static decision is cheaper (few mappings per value, and a one-field entity flattens
-fast), above it the dynamic decision wins and keeps winning as N climbs, with a flatter tail. Both
-paths stay in the tens of microseconds here, well inside any SLA in the scenario, because this is the
+requested value (~ N / 5,000). Dynamic latency stays near 35 µs across all N. The two means cross
+between 2 and 5 million mappings: below that the static decision is faster because each value carries
+few mappings, above it the static cost keeps climbing while the dynamic cost holds flat. Both paths
+stay in the tens of microseconds here, well inside the scenario's candidate SLAs, because this is the
 in-memory evaluation only.
 
 ## Conclusion
 
-The hypothesis holds. The boost shows up where it matters most for NG SAP:
+The hypothesis holds. The measured differences map onto the three NG SAP questions:
 
-1. **Seeding.** The static corpus costs 4.3 GB of resident memory and hundreds of milliseconds
-  to index in memory at 5 million mappings, on top of an O(N) database load this benchmark does not
-  even measure. The dynamic corpus is a handful of rows, so seeding and loading collapse to a
-  non-issue. This is the same scaling wall the scenario already reports hitting (1 MiB ConfigMap
-  limit, DB transaction limit).
-2. **Decision Latency.** In memory both paths are microsecond-scale and meet any candidate
-  SLA. The static path trends upward with N and overtakes dynamic past a few million mappings; the
-  dynamic path is flat and predictable. The larger Epic 2 risk, the database query against millions
-  of rows, is outside this in-memory measurement, and the dynamic model removes that query because
-  there is no large table to scan.
-3. **Concurrency.** Throughput at scale is governed by memory pressure and per-decision cost.
-  Cutting the resident footprint from gigabytes to near zero relieves GC pressure, makes the policy
-  cache trivially fit, and eases read-replica and caching strategies. A flat per-decision cost means
-  no throughput cliff as the corpus grows. We did not run a dedicated concurrency sweep; these are
-  the determinants it would turn on.
+1. **Seeding.** The static corpus costs 4.3 GB of resident memory and hundreds of milliseconds to
+  index in memory at 5 million mappings, on top of a database load this benchmark does not measure.
+  The dynamic corpus is a handful of rows, so its seeding and load stay small. This is the same
+  scaling wall the scenario already reports hitting (1 MiB ConfigMap limit, DB transaction limit).
+2. **Decision Latency.** In memory both paths are microsecond-scale across the measured range. The
+  static mean grows with N and overtakes the dynamic mean between 2 and 5 million mappings; the
+  dynamic mean holds flat. The larger risk for decision latency, the database query against millions
+  of rows, is outside this in-memory measurement. The dynamic model stores few rows, so there is no
+  large table to scan.
+3. **Concurrency.** We did not run a concurrency sweep. The measured inputs such a test would build
+  on are the resident footprint (gigabytes for static, negligible for dynamic) and the per-decision
+  cost (growing with N for static, flat for dynamic).
 
-In short, the dynamic value mapping turns an O(N) memory-and-load problem into an O(1) one and keeps
-decision latency flat and predictable, which is exactly what an NG SAP scale corpus needs.
+The dynamic value mapping keeps memory and load constant in N and the decision-latency mean flat
+across the measured range.
 
 ## Files
 

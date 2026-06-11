@@ -55,14 +55,12 @@ server:
       version: v2
       username_claim:
       groups_claim: realm_access.roles
-      client_id_claim:
+      client_id_claim: client_id
       csv:
       extension: |
         # KAS key read access for BDD-specific service-account roles.
-        g, role:kas-a, role:kas-a
-        g, role:kas-b, role:kas-b
-        p, role:kas-a, /policy.kasregistry.KeyAccessServerRegistryService/GetKey, kas_uri=https://kas-a.example.com, allow
-        p, role:kas-b, /policy.kasregistry.KeyAccessServerRegistryService/GetKey, kas_uri=https://kas-b.example.com, allow
+        p, client:kas-a, /policy.kasregistry.KeyAccessServerRegistryService/GetKey, kas_uri=https://kas-a.example.com, allow
+        p, client:kas-b, /policy.kasregistry.KeyAccessServerRegistryService/GetKey, kas_uri=https://kas-b.example.com, allow
       model:
   trace:
     enabled: false

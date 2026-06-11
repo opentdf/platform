@@ -1,7 +1,7 @@
 # Casbin Policy v2 - RPC + Dimensions Authorization
 #
 # Format: p, subject, rpc, dimensions, effect
-#   - subject: role:rolename or username
+#   - subject: role:rolename, client:client-id, or username
 #   - rpc: gRPC method path or HTTP path (supports * wildcard)
 #   - dimensions: namespace=value&attribute=value (supports * wildcard)
 #   - effect: allow or deny

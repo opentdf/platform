@@ -18,6 +18,7 @@ import (
 	"sort"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"connectrpc.com/connect"
@@ -108,13 +109,17 @@ type Authentication struct {
 }
 
 // dpopNonceManager manages server-issued DPoP nonces per RFC 9449 §8
-type dpopNonceManager struct {
-	mu            sync.RWMutex
+type nonceState struct {
 	currentNonce  string
 	previousNonce string
-	expiration    time.Duration
-	lastRotation  time.Time
-	requireNonce  bool
+	rotatedAt     time.Time
+}
+
+type dpopNonceManager struct {
+	state        atomic.Pointer[nonceState]
+	mu           sync.Mutex // serializes rotation only
+	expiration   time.Duration
+	requireNonce bool
 }
 
 func newDPoPNonceManager(requireNonce bool, expiration time.Duration) *dpopNonceManager {
@@ -122,58 +127,54 @@ func newDPoPNonceManager(requireNonce bool, expiration time.Duration) *dpopNonce
 		requireNonce: requireNonce,
 		expiration:   expiration,
 	}
+	nm.state.Store(&nonceState{})
 	if requireNonce {
 		nm.rotate()
 	}
 	return nm
 }
 
-func (nm *dpopNonceManager) rotate() {
-	nm.mu.Lock()
-	defer nm.mu.Unlock()
-
-	nm.previousNonce = nm.currentNonce
+func (nm *dpopNonceManager) storeRotated(s *nonceState) {
 	nonce := make([]byte, dpopNonceBytes)
 	if _, err := rand.Read(nonce); err != nil {
 		panic(fmt.Sprintf("failed to generate nonce: %v", err))
 	}
-	nm.currentNonce = hex.EncodeToString(nonce)
-	nm.lastRotation = time.Now()
+	nm.state.Store(&nonceState{
+		previousNonce: s.currentNonce,
+		currentNonce:  hex.EncodeToString(nonce),
+		rotatedAt:     time.Now(),
+	})
+}
+
+func (nm *dpopNonceManager) rotate() {
+	nm.mu.Lock()
+	defer nm.mu.Unlock()
+	nm.storeRotated(nm.state.Load())
 }
 
 func (nm *dpopNonceManager) getCurrentNonce() string {
-	nm.mu.RLock()
-	if time.Since(nm.lastRotation) <= nm.expiration {
-		defer nm.mu.RUnlock()
-		return nm.currentNonce
+	s := nm.state.Load()
+	if time.Since(s.rotatedAt) <= nm.expiration {
+		return s.currentNonce
 	}
-	nm.mu.RUnlock()
 
 	nm.mu.Lock()
 	defer nm.mu.Unlock()
-	// Double-check after acquiring the write lock to prevent concurrent double-rotation.
-	if time.Since(nm.lastRotation) > nm.expiration {
-		nm.previousNonce = nm.currentNonce
-		nonce := make([]byte, dpopNonceBytes)
-		if _, err := rand.Read(nonce); err != nil {
-			panic(fmt.Sprintf("failed to generate nonce: %v", err))
-		}
-		nm.currentNonce = hex.EncodeToString(nonce)
-		nm.lastRotation = time.Now()
+	// Double-check after acquiring the lock to prevent concurrent double-rotation.
+	s = nm.state.Load()
+	if time.Since(s.rotatedAt) > nm.expiration {
+		nm.storeRotated(s)
+		s = nm.state.Load()
 	}
-
-	return nm.currentNonce
+	return s.currentNonce
 }
 
 func (nm *dpopNonceManager) validateNonce(nonce string) bool {
 	if !nm.requireNonce {
 		return true
 	}
-
-	nm.mu.RLock()
-	defer nm.mu.RUnlock()
-
-	return nonce == nm.currentNonce || nonce == nm.previousNonce
+	s := nm.state.Load()
+	return nonce != "" && (nonce == s.currentNonce || nonce == s.previousNonce)
 }
 
 // Creates new authN which is used to verify tokens for a set of given issuers

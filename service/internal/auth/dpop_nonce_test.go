@@ -59,6 +59,11 @@ func TestDPoPNonceManager(t *testing.T) {
 		assert.False(t, nm.validateNonce(currentNonce), "nonce older than previous should not validate")
 	})
 
+	t.Run("empty nonce rejected when required", func(t *testing.T) {
+		nm := newDPoPNonceManager(true, 5*time.Minute)
+		assert.False(t, nm.validateNonce(""), "empty nonce must not match initial empty previousNonce")
+	})
+
 	t.Run("disabled nonces", func(t *testing.T) {
 		nm := newDPoPNonceManager(false, 5*time.Minute)
 		assert.True(t, nm.validateNonce("any-random-nonce"))

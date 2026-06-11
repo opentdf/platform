@@ -467,14 +467,19 @@ func (a *Authentication) checkToken(ctx context.Context, authHeader []string, dp
 		return a._testCheckTokenFunc(ctx, authHeader, dpopInfo, dpopHeader)
 	}
 
-	var tokenRaw string
+	var (
+		tokenRaw   string
+		authScheme string
+	)
 
 	// If we don't get a DPoP/Bearer token type, we can't proceed
 	switch {
 	case strings.HasPrefix(authHeader[0], "DPoP "):
 		tokenRaw = strings.TrimPrefix(authHeader[0], "DPoP ")
+		authScheme = "DPoP"
 	case strings.HasPrefix(authHeader[0], "Bearer "):
 		tokenRaw = strings.TrimPrefix(authHeader[0], "Bearer ")
+		authScheme = "Bearer"
 	default:
 		a.logger.WarnContext(ctx, "failed to validate authentication header: not of type bearer or dpop", slog.String("header", authHeader[0]))
 		return nil, nil, errors.New("not of type bearer or dpop")
@@ -498,6 +503,12 @@ func (a *Authentication) checkToken(ctx context.Context, authHeader []string, dp
 	}
 
 	_, tokenHasCNF := accessToken.Get("cnf")
+	if tokenHasCNF && authScheme == "Bearer" {
+		// RFC 9449 §7.1: DPoP-bound access tokens MUST be presented under the "DPoP"
+		// Authorization scheme. Warn for now to surface non-compliant SDKs; will be
+		// promoted to a hard reject in a future release once all SDKs are compliant.
+		a.logger.WarnContext(ctx, "DPoP-bound access token presented under Bearer Authorization scheme; per RFC 9449 §7.1 the DPoP scheme is required")
+	}
 	if !tokenHasCNF && !a.enforceDPoP {
 		// this condition is not quite tight because it's possible that the `cnf` claim may
 		// come from token introspection

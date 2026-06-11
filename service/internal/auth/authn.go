@@ -179,7 +179,9 @@ func normalizeURL(o string, u *url.URL) string {
 // verifyTokenHandler is a http handler that verifies the token
 func (a Authentication) MuxHandler(handler http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if slices.ContainsFunc(a.publicRoutes, a.isPublicRoute(r.URL.Path)) { //nolint:contextcheck // There is no way to pass a context here
+		publicRoute := slices.ContainsFunc(a.publicRoutes, a.isPublicRoute(r.URL.Path)) //nolint:contextcheck // There is no way to pass a context here
+		r = r.WithContext(ctxAuth.ContextWithPublicRoute(r.Context(), publicRoute))
+		if publicRoute {
 			handler.ServeHTTP(w, r)
 			return
 		}
@@ -228,6 +230,7 @@ func (a Authentication) MuxHandler(handler http.Handler) http.Handler {
 				With("client_id", clientID).
 				With("configured_client_id_claim_name", a.oidcConfiguration.Policy.ClientIDClaim)
 			ctx = ctxAuth.EnrichIncomingContextMetadataWithAuthn(ctx, log, clientID)
+			ctx = authz.ContextWithClientID(ctx, clientID)
 		}
 
 		// Check if the token is allowed to access the resource
@@ -246,6 +249,16 @@ func (a Authentication) MuxHandler(handler http.Handler) http.Handler {
 			Issuer:   a.oidcConfiguration.Issuer,
 			Resource: r.URL.Path,
 			Action:   action,
+		}
+		ctx, err = a.enforcer.ContextWithClaims(ctx, accessTok, roleReq)
+		if err != nil {
+			log.WarnContext(r.Context(), "role provider error", slog.Any("error", err)) //nolint:contextcheck // request context is already derived with public route state above.
+			if errors.Is(err, ErrPermissionDenied) {
+				http.Error(w, "permission denied", http.StatusForbidden)
+				return
+			}
+			http.Error(w, "internal server error", http.StatusInternalServerError)
+			return
 		}
 		if result, err := a.enforcer.Enforce(ctx, accessTok, roleReq); err != nil {
 			if errors.Is(err, ErrPermissionDenied) {
@@ -274,15 +287,17 @@ func (a Authentication) MuxHandler(handler http.Handler) http.Handler {
 	})
 }
 
-// UnaryServerInterceptor is a grpc interceptor that verifies the token in the metadata
-func (a Authentication) ConnectUnaryServerInterceptor() connect.UnaryInterceptorFunc {
+// ConnectAuthNInterceptor authenticates Connect requests and enriches the
+// request context with configured token claims needed by later middleware.
+func (a Authentication) ConnectAuthNInterceptor() connect.UnaryInterceptorFunc {
 	interceptor := func(next connect.UnaryFunc) connect.UnaryFunc {
 		return connect.UnaryFunc(func(
 			ctx context.Context,
 			req connect.AnyRequest,
 		) (connect.AnyResponse, error) {
-			// if the token is already in the context, skip the interceptor
-			if ctxAuth.GetAccessTokenFromContext(ctx, a.logger) != nil {
+			publicRoute := slices.ContainsFunc(a.publicRoutes, a.isPublicRoute(req.Spec().Procedure)) //nolint:contextcheck // There is no way to pass a context here
+			ctx = ctxAuth.ContextWithPublicRoute(ctx, publicRoute)
+			if publicRoute {
 				return next(ctx, req)
 			}
 
@@ -293,21 +308,10 @@ func (a Authentication) ConnectUnaryServerInterceptor() connect.UnaryInterceptor
 				m: []string{http.MethodPost},
 			}
 
-			// Interceptor Logic
-			// Allow health checks and other public routes to pass through
-			if slices.ContainsFunc(a.publicRoutes, a.isPublicRoute(req.Spec().Procedure)) { //nolint:contextcheck // There is no way to pass a context here
-				return next(ctx, req)
-			}
-
 			header := req.Header()["Authorization"]
 			if len(header) < 1 {
 				return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("missing authorization header"))
 			}
-
-			// parse the rpc method
-			p := strings.Split(req.Spec().Procedure, "/")
-			resource := path.Join(p[1], p[2])
-			action := getAction(p[2])
 
 			token, ctxWithJWK, err := a.checkToken(
 				ctx,
@@ -331,18 +335,54 @@ func (a Authentication) ConnectUnaryServerInterceptor() connect.UnaryInterceptor
 					With("client_id", clientID).
 					With("configured_client_id_claim_name", a.oidcConfiguration.Policy.ClientIDClaim)
 				ctxWithJWK = ctxAuth.EnrichIncomingContextMetadataWithAuthn(ctxWithJWK, log, clientID)
+				ctxWithJWK = authz.ContextWithClientID(ctxWithJWK, clientID)
 			}
 
-			// Check if the token is allowed to access the resource
-			roleReq := authz.RoleRequest{
-				Issuer:   a.oidcConfiguration.Issuer,
-				Resource: resource,
-				Action:   action,
+			roleReq, err := roleRequestForConnectProcedure(a.oidcConfiguration.Issuer, req.Spec().Procedure)
+			if err != nil {
+				return nil, connect.NewError(connect.CodeInvalidArgument, err)
 			}
-			if result, err := a.enforcer.Enforce(ctxWithJWK, token, roleReq); err != nil {
+			ctxWithJWK, err = a.enforcer.ContextWithClaims(ctxWithJWK, token, roleReq)
+			if err != nil {
+				log.WarnContext(ctxWithJWK, "role provider error", slog.Any("error", err))
+				if errors.Is(err, ErrPermissionDenied) {
+					return nil, connect.NewError(connect.CodePermissionDenied, errors.New("permission denied"))
+				}
+				return nil, connect.NewError(connect.CodeInternal, errors.New("role provider error"))
+			}
+			return next(ctxWithJWK, req)
+		})
+	}
+	return connect.UnaryInterceptorFunc(interceptor)
+}
+
+// ConnectAuthZInterceptor authorizes Connect requests using token and
+// configured claims already stored in the request context.
+func (a Authentication) ConnectAuthZInterceptor() connect.UnaryInterceptorFunc {
+	interceptor := func(next connect.UnaryFunc) connect.UnaryFunc {
+		return connect.UnaryFunc(func(
+			ctx context.Context,
+			req connect.AnyRequest,
+		) (connect.AnyResponse, error) {
+			if publicRoute, ok := ctxAuth.PublicRouteFromContext(ctx); ok && publicRoute {
+				return next(ctx, req)
+			}
+
+			token := ctxAuth.GetAccessTokenFromContext(ctx, a.logger)
+			if token == nil {
+				return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("missing access token in context"))
+			}
+
+			roleReq, err := roleRequestForConnectProcedure(a.oidcConfiguration.Issuer, req.Spec().Procedure)
+			if err != nil {
+				return nil, connect.NewError(connect.CodeInvalidArgument, err)
+			}
+
+			log := a.logger
+			if result, err := a.enforcer.Enforce(ctx, token, roleReq); err != nil {
 				if errors.Is(err, ErrPermissionDenied) {
 					log.WarnContext(
-						ctxWithJWK,
+						ctx,
 						"permission denied",
 						permissionDeniedLogAttrs(token, result.CasbinAuthz, err)...,
 					)
@@ -350,11 +390,11 @@ func (a Authentication) ConnectUnaryServerInterceptor() connect.UnaryInterceptor
 				}
 				return nil, err
 			} else if !result.Allowed {
-				log.WarnContext(ctxWithJWK, "permission denied", permissionDeniedLogAttrs(token, result.CasbinAuthz, nil)...)
+				log.WarnContext(ctx, "permission denied", permissionDeniedLogAttrs(token, result.CasbinAuthz, nil)...)
 				return nil, connect.NewError(connect.CodePermissionDenied, errors.New("permission denied"))
 			}
 
-			return next(ctxWithJWK, req)
+			return next(ctx, req)
 		})
 	}
 	return connect.UnaryInterceptorFunc(interceptor)
@@ -375,6 +415,20 @@ func permissionDeniedLogAttrs(token jwt.Token, casbinAuthz CasbinAuthzLog, err e
 	}
 
 	return attrs
+}
+
+func roleRequestForConnectProcedure(issuer, procedure string) (authz.RoleRequest, error) {
+	parts := strings.Split(procedure, "/")
+	if len(parts) < 3 || parts[1] == "" || parts[2] == "" {
+		return authz.RoleRequest{}, fmt.Errorf("invalid connect procedure %q", procedure)
+	}
+
+	method := parts[2]
+	return authz.RoleRequest{
+		Issuer:   issuer,
+		Resource: path.Join(parts[1], method),
+		Action:   getAction(method),
+	}, nil
 }
 
 // IPCMetadataClientInterceptor transfers gRPC outgoing metadata to Connect request headers for IPC calls
@@ -679,7 +733,8 @@ func (a Authentication) ipcReauthCheck(ctx context.Context, path string, header 
 			if err != nil {
 				return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("unauthenticated"))
 			}
-			return ctxAuth.EnrichIncomingContextMetadataWithAuthn(ctxWithJWK, a.logger, clientID), nil
+			ctxWithJWK = ctxAuth.EnrichIncomingContextMetadataWithAuthn(ctxWithJWK, a.logger, clientID)
+			return authz.ContextWithClientID(ctxWithJWK, clientID), nil
 		}
 	}
 	return ctx, nil

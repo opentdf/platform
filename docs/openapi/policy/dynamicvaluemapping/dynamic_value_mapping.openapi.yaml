@@ -1237,11 +1237,11 @@ components:
         attributeDefinitionId:
           type: string
           title: attribute_definition_id
-          description: |
-            optional_uuid_format // Optional field must be a valid UUID
+          format: uuid
         attributeDefinitionFqn:
           type: string
           title: attribute_definition_fqn
+          minLength: 1
           format: uri
         valueResolver:
           title: value_resolver
@@ -1269,12 +1269,12 @@ components:
         namespaceId:
           type: string
           title: namespace_id
-          description: |
-            Optional: namespace ID or FQN for the mapping
-            optional_uuid_format // Optional field must be a valid UUID
+          format: uuid
+          description: 'Optional: namespace ID or FQN for the mapping'
         namespaceFqn:
           type: string
           title: namespace_fqn
+          minLength: 1
           format: uri
         metadata:
           title: metadata
@@ -1346,14 +1346,17 @@ components:
         namespaceId:
           type: string
           title: namespace_id
-          description: |
-            Optional
-             Namespace ID, or Attribute Definition ID to filter by
-            optional_uuid_format // Optional field must be a valid UUID
+          format: uuid
+        namespaceFqn:
+          type: string
+          title: namespace_fqn
+          minLength: 1
+          format: uri
         attributeDefinitionId:
           type: string
           title: attribute_definition_id
           description: |
+            Optional: Attribute Definition ID to filter by
             optional_uuid_format // Optional field must be a valid UUID
         pagination:
           title: pagination

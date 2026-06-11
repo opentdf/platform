@@ -63,6 +63,11 @@ func NewRegistration(ns string, dbRegister serviceregistry.DBRegister) *servicer
 				rrService.logger = logger
 				rrService.dbClient = policydb.NewClient(srp.DBClient, logger, int32(cfg.ListRequestLimitMax), int32(cfg.ListRequestLimitDefault))
 				rrService.config = cfg
+
+				if srp.AuthzResolverRegistry != nil {
+					rrService.registerAuthzResolvers(srp.AuthzResolverRegistry)
+				}
+
 				return rrService, nil
 			},
 		},

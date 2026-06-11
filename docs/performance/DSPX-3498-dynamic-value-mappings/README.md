@@ -1,11 +1,11 @@
 # Static Subject Mappings vs Dynamic Value Mappings at NG SAP Scale
 
-A reproducible benchmark for [DSPX-2754](https://virtru.atlassian.net/browse/DSPX-2754),
+A reproducible benchmark for [DSPX-3498](https://virtru.atlassian.net/browse/DSPX-2754),
 comparing the cost of entitling high-cardinality attribute values two ways:
 
-- **Static subject mappings** (today): one `SubjectMapping` per `(user, value)` pair, so the
+- **Static Subject Mappings** (before): one `SubjectMapping` per `(user, value)` pair, so the
   corpus grows to the cross-product of users and the values they are cleared for.
-- **Dynamic value mappings** (this work): one definition-level `DynamicValueMapping` resolves the
+- **Dynamic Value Mappings** (after): one definition-level `DynamicValueMapping` resolves the
   same entitlements at decision time, so the corpus stays at a handful of mappings regardless of how
   many values or users exist.
 
@@ -22,12 +22,12 @@ The driver is the **NG SAP** reference scenario. Its known scale parameters:
 
 The scenario poses three questions this benchmark speaks to directly:
 
-1. **Epic 1, Initial Policy Seeding.** Can a corpus at this scale be loaded at all, in bounded time
+1. **Seeding.** Can a corpus at this scale be loaded at all, in bounded time
    and memory?
-2. **Epic 2, Single-User Access Decision at Scale.** What is the decision latency once the corpus is
+2. **Decision Latency.** What is the decision latency once the corpus is
    loaded, against a subject-mapping set with millions of entries? Is it under a usable SLA
    (the scenario floats < 100 ms and < 500 ms)?
-3. **Epic 3, Concurrent Access at Operational Throughput.** Does the design hold up under concurrent
+3. **Concurrency.** Does the design hold up under concurrent
    read load without a performance cliff as the corpus grows?
 
 ## Hypothesis
@@ -55,7 +55,7 @@ flat, and static per-decision cost grows with N while dynamic stays flat.
 
 ## Methods
 
-### What Is Measured
+### Measurements
 
 A pure in-memory benchmark of the Policy Decision Point. For each scale point N (total subject
 mappings) and each mode (static, dynamic) it builds the corpus and records:
@@ -93,7 +93,7 @@ mappings) and each mode (static, dynamic) it builds the corpus and records:
   candidate SLAs in isolation. The point of the latency curve is the trend with N, not the absolute
   value on this host.
 
-### Reproduce It
+### Reproduction
 
 Prerequisites: a Go toolchain matching `service/go.mod`, and `python3`. No database, no network, no
 extra packages.
@@ -195,17 +195,17 @@ in-memory evaluation only.
 
 The hypothesis holds. The boost shows up where it matters most for NG SAP:
 
-- **Epic 1, Seeding.** The static corpus costs 4.3 GB of resident memory and hundreds of milliseconds
+1. **Seeding.** The static corpus costs 4.3 GB of resident memory and hundreds of milliseconds
   to index in memory at 5 million mappings, on top of an O(N) database load this benchmark does not
   even measure. The dynamic corpus is a handful of rows, so seeding and loading collapse to a
   non-issue. This is the same scaling wall the scenario already reports hitting (1 MiB ConfigMap
   limit, DB transaction limit).
-- **Epic 2, Decision Latency.** In memory both paths are microsecond-scale and meet any candidate
+2. **Decision Latency.** In memory both paths are microsecond-scale and meet any candidate
   SLA. The static path trends upward with N and overtakes dynamic past a few million mappings; the
   dynamic path is flat and predictable. The larger Epic 2 risk, the database query against millions
   of rows, is outside this in-memory measurement, and the dynamic model removes that query because
   there is no large table to scan.
-- **Epic 3, Concurrency.** Throughput at scale is governed by memory pressure and per-decision cost.
+3. **Concurrency.** Throughput at scale is governed by memory pressure and per-decision cost.
   Cutting the resident footprint from gigabytes to near zero relieves GC pressure, makes the policy
   cache trivially fit, and eases read-replica and caching strategies. A flat per-decision cost means
   no throughput cliff as the corpus grows. We did not run a dedicated concurrency sweep; these are

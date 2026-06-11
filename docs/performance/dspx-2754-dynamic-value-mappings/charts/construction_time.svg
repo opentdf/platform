@@ -1,0 +1,53 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="760" height="460" viewBox="0 0 760 460" font-family="Helvetica,Arial,sans-serif">
+<rect width="760" height="460" fill="white"/>
+<text x="380" y="28" text-anchor="middle" font-size="17" font-weight="bold" fill="#222222">PDP Construction Time vs Subject-Mapping Count</text>
+<line x1="90" y1="396.0" x2="610" y2="396.0" stroke="#d9d9d9" stroke-width="1"/>
+<text x="80" y="400.0" text-anchor="end" font-size="12" fill="#222222">0.001</text>
+<line x1="90" y1="339.3" x2="610" y2="339.3" stroke="#d9d9d9" stroke-width="1"/>
+<text x="80" y="343.3" text-anchor="end" font-size="12" fill="#222222">0.01</text>
+<line x1="90" y1="282.7" x2="610" y2="282.7" stroke="#d9d9d9" stroke-width="1"/>
+<text x="80" y="286.7" text-anchor="end" font-size="12" fill="#222222">0.1</text>
+<line x1="90" y1="226.0" x2="610" y2="226.0" stroke="#d9d9d9" stroke-width="1"/>
+<text x="80" y="230.0" text-anchor="end" font-size="12" fill="#222222">1</text>
+<line x1="90" y1="169.3" x2="610" y2="169.3" stroke="#d9d9d9" stroke-width="1"/>
+<text x="80" y="173.3" text-anchor="end" font-size="12" fill="#222222">10</text>
+<line x1="90" y1="112.7" x2="610" y2="112.7" stroke="#d9d9d9" stroke-width="1"/>
+<text x="80" y="116.7" text-anchor="end" font-size="12" fill="#222222">100</text>
+<line x1="90" y1="56.0" x2="610" y2="56.0" stroke="#d9d9d9" stroke-width="1"/>
+<text x="80" y="60.0" text-anchor="end" font-size="12" fill="#222222">1,000</text>
+<line x1="90.0" y1="56" x2="90.0" y2="396" stroke="#d9d9d9" stroke-width="1"/>
+<text x="90.0" y="416.0" text-anchor="middle" font-size="12" fill="#222222">1,000</text>
+<line x1="220.0" y1="56" x2="220.0" y2="396" stroke="#d9d9d9" stroke-width="1"/>
+<text x="220.0" y="416.0" text-anchor="middle" font-size="12" fill="#222222">10,000</text>
+<line x1="350.0" y1="56" x2="350.0" y2="396" stroke="#d9d9d9" stroke-width="1"/>
+<text x="350.0" y="416.0" text-anchor="middle" font-size="12" fill="#222222">100,000</text>
+<line x1="480.0" y1="56" x2="480.0" y2="396" stroke="#d9d9d9" stroke-width="1"/>
+<text x="480.0" y="416.0" text-anchor="middle" font-size="12" fill="#222222">1e6</text>
+<line x1="610.0" y1="56" x2="610.0" y2="396" stroke="#d9d9d9" stroke-width="1"/>
+<text x="610.0" y="416.0" text-anchor="middle" font-size="12" fill="#222222">1e7</text>
+<rect x="90" y="56" width="520" height="340" fill="none" stroke="#333333" stroke-width="1.5"/>
+<text x="350" y="442" text-anchor="middle" font-size="13" fill="#222222">Total subject mappings (N, log scale)</text>
+<text x="22" y="226" text-anchor="middle" font-size="13" fill="#222222" transform="rotate(-90 22 226)">Construction time (ms)</text>
+<polyline points="180.9,228.5 259.1,222.3 350.0,182.7 440.9,143.6 480.0,129.5 519.1,108.2 570.9,80.2" fill="none" stroke="#c1121f" stroke-width="2.5"/>
+<circle cx="180.9" cy="228.5" r="3.5" fill="#c1121f"/>
+<circle cx="259.1" cy="222.3" r="3.5" fill="#c1121f"/>
+<circle cx="350.0" cy="182.7" r="3.5" fill="#c1121f"/>
+<circle cx="440.9" cy="143.6" r="3.5" fill="#c1121f"/>
+<circle cx="480.0" cy="129.5" r="3.5" fill="#c1121f"/>
+<circle cx="519.1" cy="108.2" r="3.5" fill="#c1121f"/>
+<circle cx="570.9" cy="80.2" r="3.5" fill="#c1121f"/>
+<line x1="624" y1="62" x2="646" y2="62" stroke="#c1121f" stroke-width="2.5"/>
+<circle cx="635" cy="62" r="3.5" fill="#c1121f"/>
+<text x="652" y="66" font-size="12" fill="#222222">Static subject mappings</text>
+<polyline points="180.9,396.0 259.1,396.0 350.0,396.0 440.9,396.0 480.0,396.0 519.1,396.0 570.9,378.9" fill="none" stroke="#0353a4" stroke-width="2.5"/>
+<circle cx="180.9" cy="396.0" r="3.5" fill="#0353a4"/>
+<circle cx="259.1" cy="396.0" r="3.5" fill="#0353a4"/>
+<circle cx="350.0" cy="396.0" r="3.5" fill="#0353a4"/>
+<circle cx="440.9" cy="396.0" r="3.5" fill="#0353a4"/>
+<circle cx="480.0" cy="396.0" r="3.5" fill="#0353a4"/>
+<circle cx="519.1" cy="396.0" r="3.5" fill="#0353a4"/>
+<circle cx="570.9" cy="378.9" r="3.5" fill="#0353a4"/>
+<line x1="624" y1="84" x2="646" y2="84" stroke="#0353a4" stroke-width="2.5"/>
+<circle cx="635" cy="84" r="3.5" fill="#0353a4"/>
+<text x="652" y="88" font-size="12" fill="#222222">Dynamic value mapping</text>
+</svg>

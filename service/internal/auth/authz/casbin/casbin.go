@@ -46,6 +46,12 @@ const (
 	kvPairParts = 2
 )
 
+var dimensionValueEscaper = strings.NewReplacer(
+	"%", "%25",
+	"&", "%26",
+	"*", "%2A",
+)
+
 func init() {
 	// Register the Casbin authorizer factory
 	authz.RegisterFactory("casbin", NewAuthorizer)
@@ -556,14 +562,25 @@ func serializeDimensions(ctx *authz.ResolverContext) (string, error) {
 	}
 	sort.Strings(keys)
 
-	// Build canonical string, URL-encoding values to prevent injection via
-	// special characters like '&' and '=' that are used as separators.
+	// Build canonical string, percent-encoding only the characters that conflict
+	// with dimension parsing. '%' must be escaped first because it introduces an
+	// escape sequence, and '&' must be escaped because it separates key-value
+	// pairs. '*' is escaped because raw '*' is the policy wildcard. '=' can remain
+	// readable because pair parsing splits on the first '='.
 	parts := make([]string, 0, len(keys))
 	for _, k := range keys {
-		parts = append(parts, fmt.Sprintf("%s=%s", k, url.QueryEscape(allDims[k])))
+		parts = append(parts, fmt.Sprintf("%s=%s", k, escapeDimensionValue(allDims[k])))
 	}
 
 	return strings.Join(parts, "&"), nil
+}
+
+func escapeDimensionValue(value string) string {
+	return dimensionValueEscaper.Replace(value)
+}
+
+func unescapeDimensionValue(value string) (string, error) {
+	return url.PathUnescape(value)
 }
 
 // isValidDimensionKey reports whether a dimension key can be safely serialized.
@@ -640,7 +657,7 @@ func dimensionMatch(reqDims, policyDims string) bool {
 		}
 		policyWildcard := policyVal == "*"
 		if !policyWildcard {
-			unescapedVal, err := url.QueryUnescape(policyVal)
+			unescapedVal, err := unescapeDimensionValue(policyVal)
 			if err != nil {
 				return false
 			}
@@ -681,7 +698,7 @@ func parseDimensions(dims string) (map[string]string, bool) {
 		if !isValidDimensionKey(kv[0]) {
 			return nil, false
 		}
-		unescapedVal, err := url.QueryUnescape(kv[1])
+		unescapedVal, err := unescapeDimensionValue(kv[1])
 		if err != nil {
 			return nil, false
 		}

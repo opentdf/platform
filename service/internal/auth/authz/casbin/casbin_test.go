@@ -2,7 +2,6 @@ package casbin
 
 import (
 	"context"
-	"net/url"
 	"testing"
 
 	"github.com/lestrrat-go/jwx/v2/jwt"
@@ -680,27 +679,45 @@ func TestSerializeDimensions_InjectionPrevention(t *testing.T) {
 					{"kas_uri": "https://kas.example.com?foo=bar&second_dim=injected"},
 				},
 			},
-			// The '&' and '=' in the value must be percent-encoded so parseDimensions
+			// The '&' in the value must be percent-encoded so parseDimensions
 			// sees only one key-value pair, not two.
-			expected: "kas_uri=https%3A%2F%2Fkas.example.com%3Ffoo%3Dbar%26second_dim%3Dinjected",
+			expected: "kas_uri=https://kas.example.com?foo=bar%26second_dim=injected",
 		},
 		{
-			name: "value with equals sign is safely encoded",
+			name: "value with equals sign is unchanged",
 			ctx: &authz.ResolverContext{
 				Resources: []*authz.ResolverResource{
 					{"kas_uri": "https://kas.example.com?key=value"},
 				},
 			},
-			expected: "kas_uri=https%3A%2F%2Fkas.example.com%3Fkey%3Dvalue",
+			expected: "kas_uri=https://kas.example.com?key=value",
 		},
 		{
-			name: "plain URI with colon and slashes is encoded",
+			name: "plain URI with colon and slashes is unchanged",
 			ctx: &authz.ResolverContext{
 				Resources: []*authz.ResolverResource{
 					{"kas_uri": "https://kas.example.com"},
 				},
 			},
-			expected: "kas_uri=https%3A%2F%2Fkas.example.com",
+			expected: "kas_uri=https://kas.example.com",
+		},
+		{
+			name: "value with percent sign is safely encoded",
+			ctx: &authz.ResolverContext{
+				Resources: []*authz.ResolverResource{
+					{"label": "done%complete"},
+				},
+			},
+			expected: "label=done%25complete",
+		},
+		{
+			name: "wildcard token value is safely encoded",
+			ctx: &authz.ResolverContext{
+				Resources: []*authz.ResolverResource{
+					{"label": "*"},
+				},
+			},
+			expected: "label=%2A",
 		},
 		{
 			name: "plain value without special chars is unchanged",
@@ -740,6 +757,22 @@ func TestParseDimensions_RoundTrip(t *testing.T) {
 		{
 			name:  "full URI with query string round-trips correctly",
 			input: map[string]string{"kas_uri": "https://kas.example.com?foo=bar&baz=qux"},
+		},
+		{
+			name:  "value with literal plus round-trips correctly",
+			input: map[string]string{"kas_uri": "https://kas.example.com/path+plus?token=a+b"},
+		},
+		{
+			name:  "value with space round-trips correctly",
+			input: map[string]string{"display_name": "first last"},
+		},
+		{
+			name:  "value with percent round-trips correctly",
+			input: map[string]string{"label": "done%complete"},
+		},
+		{
+			name:  "wildcard token value round-trips correctly",
+			input: map[string]string{"label": "*"},
 		},
 		{
 			name:  "plain value round-trips correctly",
@@ -787,7 +820,13 @@ func TestDimensionMatch_WithURIValues(t *testing.T) {
 		{
 			name:       "serialized URI with query string matches escaped policy URI",
 			input:      map[string]string{"kas_uri": "https://kas.example.com?foo=bar&baz=qux"},
-			policyDims: "kas_uri=" + url.QueryEscape("https://kas.example.com?foo=bar&baz=qux"),
+			policyDims: "kas_uri=" + escapeDimensionValue("https://kas.example.com?foo=bar&baz=qux"),
+			expected:   true,
+		},
+		{
+			name:       "serialized URI with literal plus matches escaped policy URI",
+			input:      map[string]string{"kas_uri": "https://kas.example.com/path+plus?token=a+b"},
+			policyDims: "kas_uri=" + escapeDimensionValue("https://kas.example.com/path+plus?token=a+b"),
 			expected:   true,
 		},
 		{
@@ -800,8 +839,20 @@ func TestDimensionMatch_WithURIValues(t *testing.T) {
 		{
 			name:       "escaped literal star policy value does not act as wildcard",
 			input:      map[string]string{"kas_uri": "https://kas.example.com"},
-			policyDims: "kas_uri=" + url.QueryEscape("*"),
+			policyDims: "kas_uri=" + escapeDimensionValue("*"),
 			expected:   false,
+		},
+		{
+			name:       "serialized literal star matches escaped policy value",
+			input:      map[string]string{"label": "*"},
+			policyDims: "label=" + escapeDimensionValue("*"),
+			expected:   true,
+		},
+		{
+			name:       "serialized literal star matches raw wildcard policy value",
+			input:      map[string]string{"label": "*"},
+			policyDims: "label=*",
+			expected:   true,
 		},
 		{
 			name:       "injected extra dimension does not satisfy a different policy key",

@@ -5,10 +5,10 @@
 # Prerequisites: a Go toolchain (matching service/go.mod) and python3. No network,
 # no database, no extra packages. From a fresh clone:
 #
-#   bash docs/performance/dspx-2754-dynamic-value-mappings/run.sh
+#   bash docs/performance/DSPX-3498-dynamic-value-mappings/run.sh
 #
 # Optional: cap the largest scale point to fit a smaller host, e.g.
-#   DVM_BENCH_MAX_N=1000000 bash docs/performance/dspx-2754-dynamic-value-mappings/run.sh
+#   DVM_BENCH_MAX_N=1000000 bash docs/performance/DSPX-3498-dynamic-value-mappings/run.sh
 #
 set -euo pipefail
 
@@ -31,4 +31,4 @@ python3 "${HERE}/plot.py" "${RESULTS}" "${CHARTS_DIR}"
 
 echo "==> Done."
 echo "    Data:   ${RESULTS}"
-echo "    Charts: ${CHARTS_DIR}/{construction_time,heap_memory,decision_latency}.svg"
+echo "    Charts: ${CHARTS_DIR}/in_memory.svg"

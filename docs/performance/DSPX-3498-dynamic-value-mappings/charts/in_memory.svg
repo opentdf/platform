@@ -1,0 +1,134 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1154" height="444" viewBox="0 0 1154 444" font-family="Helvetica,Arial,sans-serif">
+<rect width="1154" height="444" fill="white"/>
+<text x="577" y="26" text-anchor="middle" font-size="18" font-weight="bold" fill="#222222">In-Memory PDP: Static Subject Mappings vs Dynamic Value Mapping</text>
+<line x1="377" y1="52" x2="401" y2="52" stroke="#c1121f" stroke-width="2.5"/>
+<circle cx="389" cy="52" r="3.2" fill="#c1121f"/>
+<text x="409" y="56" font-size="13" fill="#222222">Static subject mappings</text>
+<line x1="577" y1="52" x2="601" y2="52" stroke="#0353a4" stroke-width="2.5"/>
+<circle cx="589" cy="52" r="3.2" fill="#0353a4"/>
+<text x="609" y="56" font-size="13" fill="#222222">Dynamic value mapping</text>
+<text x="220" y="74" text-anchor="middle" font-size="14" font-weight="bold" fill="#222222">Construction time</text>
+<line x1="70.0" y1="386.0" x2="370.0" y2="386.0" stroke="#d9d9d9" stroke-width="1"/>
+<text x="62.0" y="390.0" text-anchor="end" font-size="11" fill="#222222">0.001</text>
+<line x1="70.0" y1="336.0" x2="370.0" y2="336.0" stroke="#d9d9d9" stroke-width="1"/>
+<text x="62.0" y="340.0" text-anchor="end" font-size="11" fill="#222222">0.01</text>
+<line x1="70.0" y1="286.0" x2="370.0" y2="286.0" stroke="#d9d9d9" stroke-width="1"/>
+<text x="62.0" y="290.0" text-anchor="end" font-size="11" fill="#222222">0.1</text>
+<line x1="70.0" y1="236.0" x2="370.0" y2="236.0" stroke="#d9d9d9" stroke-width="1"/>
+<text x="62.0" y="240.0" text-anchor="end" font-size="11" fill="#222222">1</text>
+<line x1="70.0" y1="186.0" x2="370.0" y2="186.0" stroke="#d9d9d9" stroke-width="1"/>
+<text x="62.0" y="190.0" text-anchor="end" font-size="11" fill="#222222">10</text>
+<line x1="70.0" y1="136.0" x2="370.0" y2="136.0" stroke="#d9d9d9" stroke-width="1"/>
+<text x="62.0" y="140.0" text-anchor="end" font-size="11" fill="#222222">100</text>
+<line x1="70.0" y1="86.0" x2="370.0" y2="86.0" stroke="#d9d9d9" stroke-width="1"/>
+<text x="62.0" y="90.0" text-anchor="end" font-size="11" fill="#222222">1,000</text>
+<line x1="70.0" y1="86.0" x2="70.0" y2="386.0" stroke="#d9d9d9" stroke-width="1"/>
+<text x="70.0" y="404.0" text-anchor="middle" font-size="11" fill="#222222">1,000</text>
+<line x1="145.0" y1="86.0" x2="145.0" y2="386.0" stroke="#d9d9d9" stroke-width="1"/>
+<text x="145.0" y="404.0" text-anchor="middle" font-size="11" fill="#222222">10,000</text>
+<line x1="220.0" y1="86.0" x2="220.0" y2="386.0" stroke="#d9d9d9" stroke-width="1"/>
+<text x="220.0" y="404.0" text-anchor="middle" font-size="11" fill="#222222">100,000</text>
+<line x1="295.0" y1="86.0" x2="295.0" y2="386.0" stroke="#d9d9d9" stroke-width="1"/>
+<text x="295.0" y="404.0" text-anchor="middle" font-size="11" fill="#222222">1e6</text>
+<line x1="370.0" y1="86.0" x2="370.0" y2="386.0" stroke="#d9d9d9" stroke-width="1"/>
+<text x="370.0" y="404.0" text-anchor="middle" font-size="11" fill="#222222">1e7</text>
+<rect x="70.0" y="86.0" width="300" height="300" fill="none" stroke="#333333" stroke-width="1.5"/>
+<text x="20" y="236" text-anchor="middle" font-size="12" fill="#222222" transform="rotate(-90 20 236)">Construction time (ms)</text>
+<polyline points="122.4,238.2 167.6,232.7 220.0,197.8 272.4,163.3 295.0,150.9 317.6,132.0 347.4,107.3" fill="none" stroke="#c1121f" stroke-width="2.5"/>
+<circle cx="122.4" cy="238.2" r="3.2" fill="#c1121f"/>
+<circle cx="167.6" cy="232.7" r="3.2" fill="#c1121f"/>
+<circle cx="220.0" cy="197.8" r="3.2" fill="#c1121f"/>
+<circle cx="272.4" cy="163.3" r="3.2" fill="#c1121f"/>
+<circle cx="295.0" cy="150.9" r="3.2" fill="#c1121f"/>
+<circle cx="317.6" cy="132.0" r="3.2" fill="#c1121f"/>
+<circle cx="347.4" cy="107.3" r="3.2" fill="#c1121f"/>
+<polyline points="122.4,386.0 167.6,386.0 220.0,386.0 272.4,386.0 295.0,386.0 317.6,386.0 347.4,370.9" fill="none" stroke="#0353a4" stroke-width="2.5"/>
+<circle cx="122.4" cy="386.0" r="3.2" fill="#0353a4"/>
+<circle cx="167.6" cy="386.0" r="3.2" fill="#0353a4"/>
+<circle cx="220.0" cy="386.0" r="3.2" fill="#0353a4"/>
+<circle cx="272.4" cy="386.0" r="3.2" fill="#0353a4"/>
+<circle cx="295.0" cy="386.0" r="3.2" fill="#0353a4"/>
+<circle cx="317.6" cy="386.0" r="3.2" fill="#0353a4"/>
+<circle cx="347.4" cy="370.9" r="3.2" fill="#0353a4"/>
+<text x="598" y="74" text-anchor="middle" font-size="14" font-weight="bold" fill="#222222">Retained heap</text>
+<line x1="448.0" y1="386.0" x2="748.0" y2="386.0" stroke="#d9d9d9" stroke-width="1"/>
+<text x="440.0" y="390.0" text-anchor="end" font-size="11" fill="#222222">0.001</text>
+<line x1="448.0" y1="343.1" x2="748.0" y2="343.1" stroke="#d9d9d9" stroke-width="1"/>
+<text x="440.0" y="347.1" text-anchor="end" font-size="11" fill="#222222">0.01</text>
+<line x1="448.0" y1="300.3" x2="748.0" y2="300.3" stroke="#d9d9d9" stroke-width="1"/>
+<text x="440.0" y="304.3" text-anchor="end" font-size="11" fill="#222222">0.1</text>
+<line x1="448.0" y1="257.4" x2="748.0" y2="257.4" stroke="#d9d9d9" stroke-width="1"/>
+<text x="440.0" y="261.4" text-anchor="end" font-size="11" fill="#222222">1</text>
+<line x1="448.0" y1="214.6" x2="748.0" y2="214.6" stroke="#d9d9d9" stroke-width="1"/>
+<text x="440.0" y="218.6" text-anchor="end" font-size="11" fill="#222222">10</text>
+<line x1="448.0" y1="171.7" x2="748.0" y2="171.7" stroke="#d9d9d9" stroke-width="1"/>
+<text x="440.0" y="175.7" text-anchor="end" font-size="11" fill="#222222">100</text>
+<line x1="448.0" y1="128.9" x2="748.0" y2="128.9" stroke="#d9d9d9" stroke-width="1"/>
+<text x="440.0" y="132.9" text-anchor="end" font-size="11" fill="#222222">1,000</text>
+<line x1="448.0" y1="86.0" x2="748.0" y2="86.0" stroke="#d9d9d9" stroke-width="1"/>
+<text x="440.0" y="90.0" text-anchor="end" font-size="11" fill="#222222">10,000</text>
+<line x1="448.0" y1="86.0" x2="448.0" y2="386.0" stroke="#d9d9d9" stroke-width="1"/>
+<text x="448.0" y="404.0" text-anchor="middle" font-size="11" fill="#222222">1,000</text>
+<line x1="523.0" y1="86.0" x2="523.0" y2="386.0" stroke="#d9d9d9" stroke-width="1"/>
+<text x="523.0" y="404.0" text-anchor="middle" font-size="11" fill="#222222">10,000</text>
+<line x1="598.0" y1="86.0" x2="598.0" y2="386.0" stroke="#d9d9d9" stroke-width="1"/>
+<text x="598.0" y="404.0" text-anchor="middle" font-size="11" fill="#222222">100,000</text>
+<line x1="673.0" y1="86.0" x2="673.0" y2="386.0" stroke="#d9d9d9" stroke-width="1"/>
+<text x="673.0" y="404.0" text-anchor="middle" font-size="11" fill="#222222">1e6</text>
+<line x1="748.0" y1="86.0" x2="748.0" y2="386.0" stroke="#d9d9d9" stroke-width="1"/>
+<text x="748.0" y="404.0" text-anchor="middle" font-size="11" fill="#222222">1e7</text>
+<rect x="448.0" y="86.0" width="300" height="300" fill="none" stroke="#333333" stroke-width="1.5"/>
+<text x="398" y="236" text-anchor="middle" font-size="12" fill="#222222" transform="rotate(-90 398 236)">Retained heap (MB)</text>
+<polyline points="500.4,223.2 545.6,202.9 598.0,174.2 650.4,144.6 673.0,131.7 695.6,118.8 725.4,101.8" fill="none" stroke="#c1121f" stroke-width="2.5"/>
+<circle cx="500.4" cy="223.2" r="3.2" fill="#c1121f"/>
+<circle cx="545.6" cy="202.9" r="3.2" fill="#c1121f"/>
+<circle cx="598.0" cy="174.2" r="3.2" fill="#c1121f"/>
+<circle cx="650.4" cy="144.6" r="3.2" fill="#c1121f"/>
+<circle cx="673.0" cy="131.7" r="3.2" fill="#c1121f"/>
+<circle cx="695.6" cy="118.8" r="3.2" fill="#c1121f"/>
+<circle cx="725.4" cy="101.8" r="3.2" fill="#c1121f"/>
+<polyline points="500.4,386.0 545.6,386.0 598.0,386.0 650.4,386.0 673.0,386.0 695.6,386.0 725.4,386.0" fill="none" stroke="#0353a4" stroke-width="2.5"/>
+<circle cx="500.4" cy="386.0" r="3.2" fill="#0353a4"/>
+<circle cx="545.6" cy="386.0" r="3.2" fill="#0353a4"/>
+<circle cx="598.0" cy="386.0" r="3.2" fill="#0353a4"/>
+<circle cx="650.4" cy="386.0" r="3.2" fill="#0353a4"/>
+<circle cx="673.0" cy="386.0" r="3.2" fill="#0353a4"/>
+<circle cx="695.6" cy="386.0" r="3.2" fill="#0353a4"/>
+<circle cx="725.4" cy="386.0" r="3.2" fill="#0353a4"/>
+<text x="976" y="74" text-anchor="middle" font-size="14" font-weight="bold" fill="#222222">Decision latency (mean)</text>
+<line x1="826.0" y1="386.0" x2="1126.0" y2="386.0" stroke="#d9d9d9" stroke-width="1"/>
+<text x="818.0" y="390.0" text-anchor="end" font-size="11" fill="#222222">1</text>
+<line x1="826.0" y1="236.0" x2="1126.0" y2="236.0" stroke="#d9d9d9" stroke-width="1"/>
+<text x="818.0" y="240.0" text-anchor="end" font-size="11" fill="#222222">10</text>
+<line x1="826.0" y1="86.0" x2="1126.0" y2="86.0" stroke="#d9d9d9" stroke-width="1"/>
+<text x="818.0" y="90.0" text-anchor="end" font-size="11" fill="#222222">100</text>
+<line x1="826.0" y1="86.0" x2="826.0" y2="386.0" stroke="#d9d9d9" stroke-width="1"/>
+<text x="826.0" y="404.0" text-anchor="middle" font-size="11" fill="#222222">1,000</text>
+<line x1="901.0" y1="86.0" x2="901.0" y2="386.0" stroke="#d9d9d9" stroke-width="1"/>
+<text x="901.0" y="404.0" text-anchor="middle" font-size="11" fill="#222222">10,000</text>
+<line x1="976.0" y1="86.0" x2="976.0" y2="386.0" stroke="#d9d9d9" stroke-width="1"/>
+<text x="976.0" y="404.0" text-anchor="middle" font-size="11" fill="#222222">100,000</text>
+<line x1="1051.0" y1="86.0" x2="1051.0" y2="386.0" stroke="#d9d9d9" stroke-width="1"/>
+<text x="1051.0" y="404.0" text-anchor="middle" font-size="11" fill="#222222">1e6</text>
+<line x1="1126.0" y1="86.0" x2="1126.0" y2="386.0" stroke="#d9d9d9" stroke-width="1"/>
+<text x="1126.0" y="404.0" text-anchor="middle" font-size="11" fill="#222222">1e7</text>
+<rect x="826.0" y="86.0" width="300" height="300" fill="none" stroke="#333333" stroke-width="1.5"/>
+<text x="776" y="236" text-anchor="middle" font-size="12" fill="#222222" transform="rotate(-90 776 236)">Mean decision latency (us)</text>
+<polyline points="878.4,281.9 923.6,315.2 976.0,305.0 1028.4,269.6 1051.0,230.5 1073.6,182.8 1103.4,106.2" fill="none" stroke="#c1121f" stroke-width="2.5"/>
+<circle cx="878.4" cy="281.9" r="3.2" fill="#c1121f"/>
+<circle cx="923.6" cy="315.2" r="3.2" fill="#c1121f"/>
+<circle cx="976.0" cy="305.0" r="3.2" fill="#c1121f"/>
+<circle cx="1028.4" cy="269.6" r="3.2" fill="#c1121f"/>
+<circle cx="1051.0" cy="230.5" r="3.2" fill="#c1121f"/>
+<circle cx="1073.6" cy="182.8" r="3.2" fill="#c1121f"/>
+<circle cx="1103.4" cy="106.2" r="3.2" fill="#c1121f"/>
+<polyline points="878.4,152.0 923.6,154.9 976.0,156.4 1028.4,156.1 1051.0,153.7 1073.6,153.9 1103.4,148.9" fill="none" stroke="#0353a4" stroke-width="2.5"/>
+<circle cx="878.4" cy="152.0" r="3.2" fill="#0353a4"/>
+<circle cx="923.6" cy="154.9" r="3.2" fill="#0353a4"/>
+<circle cx="976.0" cy="156.4" r="3.2" fill="#0353a4"/>
+<circle cx="1028.4" cy="156.1" r="3.2" fill="#0353a4"/>
+<circle cx="1051.0" cy="153.7" r="3.2" fill="#0353a4"/>
+<circle cx="1073.6" cy="153.9" r="3.2" fill="#0353a4"/>
+<circle cx="1103.4" cy="148.9" r="3.2" fill="#0353a4"/>
+<text x="577" y="428" text-anchor="middle" font-size="13" fill="#222222">Total subject mappings (N, log scale)</text>
+</svg>

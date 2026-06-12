@@ -296,6 +296,10 @@ services:
   service_a:
     value1: abc
     value2: def
+interceptors:
+  interceptor_a:
+    value1: ghi
+    value2: jkl
 server:
   port: 9999
 `
@@ -336,6 +340,10 @@ server:
 	assert.Len(t, config.Services, 1)
 	assert.Equal(t, "abc", config.Services["service_a"]["value1"])
 	assert.Equal(t, "def", config.Services["service_a"]["value2"])
+	// interceptors
+	assert.Len(t, config.Interceptors, 1)
+	assert.Equal(t, "ghi", config.Interceptors["interceptor_a"]["value1"])
+	assert.Equal(t, "jkl", config.Interceptors["interceptor_a"]["value2"])
 }
 
 // TestLoad_Precedence is a matrix test that verifies the loading order

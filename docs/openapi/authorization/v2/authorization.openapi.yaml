@@ -37,41 +37,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/authorization.v2.GetDecisionResponse'
-  /authorization.v2.AuthorizationService/GetDecisionBulk:
-    post:
-      tags:
-        - authorization.v2.AuthorizationService
-      summary: GetDecisionBulk
-      operationId: authorization.v2.AuthorizationService.GetDecisionBulk
-      parameters:
-        - name: Connect-Protocol-Version
-          in: header
-          required: true
-          schema:
-            $ref: '#/components/schemas/connect-protocol-version'
-        - name: Connect-Timeout-Ms
-          in: header
-          schema:
-            $ref: '#/components/schemas/connect-timeout-header'
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/authorization.v2.GetDecisionBulkRequest'
-        required: true
-      responses:
-        default:
-          description: Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/connect.error'
-        "200":
-          description: Success
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/authorization.v2.GetDecisionBulkResponse'
   /authorization.v2.AuthorizationService/GetDecisionMultiResource:
     post:
       tags:
@@ -107,6 +72,41 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/authorization.v2.GetDecisionMultiResourceResponse'
+  /authorization.v2.AuthorizationService/GetDecisionBulk:
+    post:
+      tags:
+        - authorization.v2.AuthorizationService
+      summary: GetDecisionBulk
+      operationId: authorization.v2.AuthorizationService.GetDecisionBulk
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/authorization.v2.GetDecisionBulkRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/authorization.v2.GetDecisionBulkResponse'
   /authorization.v2.AuthorizationService/GetEntitlements:
     post:
       tags:
@@ -151,6 +151,58 @@ components:
         - DECISION_UNSPECIFIED
         - DECISION_DENY
         - DECISION_PERMIT
+    entity.Entity.Category:
+      type: string
+      title: Category
+      enum:
+        - CATEGORY_UNSPECIFIED
+        - CATEGORY_SUBJECT
+        - CATEGORY_ENVIRONMENT
+    policy.Action.StandardAction:
+      type: string
+      title: StandardAction
+      enum:
+        - STANDARD_ACTION_UNSPECIFIED
+        - STANDARD_ACTION_DECRYPT
+        - STANDARD_ACTION_TRANSMIT
+    policy.Algorithm:
+      type: string
+      title: Algorithm
+      enum:
+        - ALGORITHM_UNSPECIFIED
+        - ALGORITHM_RSA_2048
+        - ALGORITHM_RSA_4096
+        - ALGORITHM_EC_P256
+        - ALGORITHM_EC_P384
+        - ALGORITHM_EC_P521
+        - ALGORITHM_HPQT_XWING
+        - ALGORITHM_HPQT_SECP256R1_MLKEM768
+        - ALGORITHM_HPQT_SECP384R1_MLKEM1024
+      description: Supported key algorithms.
+    policy.KasPublicKeyAlgEnum:
+      type: string
+      title: KasPublicKeyAlgEnum
+      enum:
+        - KAS_PUBLIC_KEY_ALG_ENUM_UNSPECIFIED
+        - KAS_PUBLIC_KEY_ALG_ENUM_RSA_2048
+        - KAS_PUBLIC_KEY_ALG_ENUM_RSA_4096
+        - KAS_PUBLIC_KEY_ALG_ENUM_EC_SECP256R1
+        - KAS_PUBLIC_KEY_ALG_ENUM_EC_SECP384R1
+        - KAS_PUBLIC_KEY_ALG_ENUM_EC_SECP521R1
+        - KAS_PUBLIC_KEY_ALG_ENUM_HPQT_XWING
+        - KAS_PUBLIC_KEY_ALG_ENUM_HPQT_SECP256R1_MLKEM768
+        - KAS_PUBLIC_KEY_ALG_ENUM_HPQT_SECP384R1_MLKEM1024
+    policy.SourceType:
+      type: string
+      title: SourceType
+      enum:
+        - SOURCE_TYPE_UNSPECIFIED
+        - SOURCE_TYPE_INTERNAL
+        - SOURCE_TYPE_EXTERNAL
+      description: |-
+        Describes whether this kas is managed by the organization or if they imported
+         the kas information from an external party. These two modes are necessary in order
+         to encrypt a tdf dek with an external parties kas public key.
     authorization.v2.EntityEntitlements:
       type: object
       properties:
@@ -191,19 +243,21 @@ components:
     authorization.v2.EntityIdentifier:
       type: object
       oneOf:
-        - type: object
-          properties:
+        - properties:
             entityChain:
               title: entity_chain
-              description: |
-                chain of one or more entities and at most 10
-                entity_chain_required // entities must be provided and between 1 and 10 in count
+              description: |+
+                chain of one or more entities
+                entities must be provided and contain at least 1 entity:
+                ```
+                has(this.entities) && this.entities.size() > 0
+                ```
+
               $ref: '#/components/schemas/entity.EntityChain'
           title: entity_chain
           required:
             - entityChain
-        - type: object
-          properties:
+        - properties:
             registeredResourceValueFqn:
               type: string
               title: registered_resource_value_fqn
@@ -215,24 +269,30 @@ components:
           title: registered_resource_value_fqn
           required:
             - registeredResourceValueFqn
-        - type: object
-          properties:
+        - properties:
             token:
               title: token
-              description: |
+              description: |+
                 access token (JWT), which is used to create an entity chain (comprising one or more entities)
-                token_required // token must be provided
+                token must be provided:
+                ```
+                has(this.jwt) && this.jwt.size() > 0
+                ```
+
               $ref: '#/components/schemas/entity.Token'
           title: token
           required:
             - token
-        - type: object
-          properties:
+        - properties:
             withRequestToken:
               title: with_request_token
-              description: |
+              description: |+
                 derive the entity from the request's authorization access token JWT, rather than passing in the body
-                with_request_token_must_be_true // with_request_token must be true when set
+                with_request_token must be true when set:
+                ```
+                this == true
+                ```
+
               $ref: '#/components/schemas/google.protobuf.BoolValue'
           title: with_request_token
           required:
@@ -251,7 +311,6 @@ components:
           items:
             $ref: '#/components/schemas/authorization.v2.GetDecisionMultiResourceRequest'
           title: decision_requests
-          maxItems: 200
           minItems: 1
       title: GetDecisionBulkRequest
       additionalProperties: false
@@ -286,25 +345,32 @@ components:
           items:
             $ref: '#/components/schemas/authorization.v2.Resource'
           title: resources
-          maxItems: 1000
           minItems: 1
         fulfillableObligationFqns:
           type: array
           items:
             type: string
-            description: |
-              obligation_value_fqns_valid // if provided, fulfillable_obligation_fqns must be between 1 and 50 in count with all valid FQNs
+            description: |+
+              if provided, fulfillable_obligation_fqns must contain only valid FQNs:
+              ```
+              this.size() == 0 || this.all(item, item.isUri())
+              ```
+
           title: fulfillable_obligation_fqns
-          description: |
+          description: |+
             obligations (fully qualified values) the requester is capable of fulfilling
              i.e. https://<namespace>/obl/<definition name>/value/<value>
-            obligation_value_fqns_valid // if provided, fulfillable_obligation_fqns must be between 1 and 50 in count with all valid FQNs
+            if provided, fulfillable_obligation_fqns must contain only valid FQNs:
+            ```
+            this.size() == 0 || this.all(item, item.isUri())
+            ```
+
       title: GetDecisionMultiResourceRequest
       required:
         - entityIdentifier
         - action
       additionalProperties: false
-      description: |
+      description: |+
         Can the identified entity/entities access?
          1. one entity reference (actor)
          2. one action
@@ -312,8 +378,12 @@ components:
 
          If entitled, checks obligation policy: fulfillable obligations must satisfy all triggered.
 
-         Note: this is a more performant bulk request for multiple resource decisions, up to 1000 per request
-        get_decision_multi_request.action_name_required // action.name must be provided
+         Note: this is a more performant bulk request for multiple resource decisions
+        action.name must be provided:
+        ```
+        has(this.action.name)
+        ```
+
     authorization.v2.GetDecisionMultiResourceResponse:
       type: object
       properties:
@@ -347,27 +417,39 @@ components:
           type: array
           items:
             type: string
-            description: |
-              obligation_value_fqns_valid // if provided, fulfillable_obligation_fqns must be between 1 and 50 in count with all valid FQNs
+            description: |+
+              if provided, fulfillable_obligation_fqns must contain only valid FQNs:
+              ```
+              this.size() == 0 || this.all(item, item.isUri())
+              ```
+
           title: fulfillable_obligation_fqns
-          description: |
+          description: |+
             obligations (fully qualified values) the requester is capable of fulfilling
              i.e. https://<namespace>/obl/<definition name>/value/<value>
-            obligation_value_fqns_valid // if provided, fulfillable_obligation_fqns must be between 1 and 50 in count with all valid FQNs
+            if provided, fulfillable_obligation_fqns must contain only valid FQNs:
+            ```
+            this.size() == 0 || this.all(item, item.isUri())
+            ```
+
       title: GetDecisionRequest
       required:
         - entityIdentifier
         - action
         - resource
       additionalProperties: false
-      description: |
+      description: |+
         Can the identified entity/entities access?
          1. one entity reference (actor)
          2. one action
          3. one resource
 
          If entitled, checks obligation policy: fulfillable obligations must satisfy all triggered.
-        get_decision_request.action_name_required // action.name must be provided
+        action.name must be provided:
+        ```
+        has(this.action.name)
+        ```
+
     authorization.v2.GetDecisionResponse:
       type: object
       properties:
@@ -385,13 +467,12 @@ components:
           description: an entity must be identified for entitlement decisioning
           $ref: '#/components/schemas/authorization.v2.EntityIdentifier'
         withComprehensiveHierarchy:
-          type:
-            - boolean
-            - "null"
+          type: boolean
           title: with_comprehensive_hierarchy
           description: |-
             optional parameter to return all entitled values for attribute definitions with hierarchy rules, propagating
              down the hierarchical values instead of returning solely the value that is directly entitled
+          nullable: true
       title: GetEntitlementsRequest
       required:
         - entityIdentifier
@@ -413,35 +494,36 @@ components:
       additionalProperties: false
     authorization.v2.Resource:
       type: object
-      allOf:
+      oneOf:
         - properties:
-            ephemeralId:
-              type: string
-              title: ephemeral_id
-              description: ephemeral id for tracking between request and response
-        - oneOf:
-            - type: object
-              properties:
-                attributeValues:
-                  title: attribute_values
-                  description: |
-                    a set of attribute value FQNs, such as those on a TDF, between 1 and 20 in count
-                    attribute_values_required // if provided, resource.attribute_values must be between 1 and 20 in count with all valid FQNs
-                  $ref: '#/components/schemas/authorization.v2.Resource.AttributeValues'
+            attributeValues:
               title: attribute_values
-              required:
-                - attributeValues
-            - type: object
-              properties:
-                registeredResourceValueFqn:
-                  type: string
-                  title: registered_resource_value_fqn
-                  minLength: 1
-                  format: uri
-                  description: fully qualified name of the registered resource value stored in platform policy
+              description: |+
+                a set of attribute value FQNs, such as those on a TDF, containing at least 1 value
+                if provided, resource.attribute_values must contain at least 1 valid FQN:
+                ```
+                this.fqns.size() > 0 && this.fqns.all(item, item.isUri())
+                ```
+
+              $ref: '#/components/schemas/authorization.v2.Resource.AttributeValues'
+          title: attribute_values
+          required:
+            - attributeValues
+        - properties:
+            registeredResourceValueFqn:
+              type: string
               title: registered_resource_value_fqn
-              required:
-                - registeredResourceValueFqn
+              minLength: 1
+              format: uri
+              description: fully qualified name of the registered resource value stored in platform policy
+          title: registered_resource_value_fqn
+          required:
+            - registeredResourceValueFqn
+      properties:
+        ephemeralId:
+          type: string
+          title: ephemeral_id
+          description: ephemeral id for tracking between request and response
       title: Resource
       additionalProperties: false
       description: Either a set of attribute values (such as those on a TDF) or a registered resource value
@@ -508,130 +590,49 @@ components:
           title: value
       title: LabelsEntry
       additionalProperties: false
-    connect-protocol-version:
-      type: number
-      title: Connect-Protocol-Version
-      enum:
-        - 1
-      description: Define the version of the Connect protocol
-      const: 1
-    connect-timeout-header:
-      type: number
-      title: Connect-Timeout-Ms
-      description: Define the timeout, in ms
-    connect.error:
-      type: object
-      properties:
-        code:
-          type: string
-          examples:
-            - not_found
-          enum:
-            - canceled
-            - unknown
-            - invalid_argument
-            - deadline_exceeded
-            - not_found
-            - already_exists
-            - permission_denied
-            - resource_exhausted
-            - failed_precondition
-            - aborted
-            - out_of_range
-            - unimplemented
-            - internal
-            - unavailable
-            - data_loss
-            - unauthenticated
-          description: The status code, which should be an enum value of [google.rpc.Code][google.rpc.Code].
-        message:
-          type: string
-          description: A developer-facing error message, which should be in English. Any user-facing error message should be localized and sent in the [google.rpc.Status.details][google.rpc.Status.details] field, or localized by the client.
-        details:
-          type: array
-          items:
-            $ref: '#/components/schemas/connect.error_details.Any'
-          description: A list of messages that carry the error details. There is no limit on the number of messages.
-      title: Connect Error
-      additionalProperties: true
-      description: 'Error type returned by Connect: https://connectrpc.com/docs/go/errors/#http-representation'
-    connect.error_details.Any:
-      type: object
-      properties:
-        type:
-          type: string
-          description: 'A URL that acts as a globally unique identifier for the type of the serialized message. For example: `type.googleapis.com/google.rpc.ErrorInfo`. This is used to determine the schema of the data in the `value` field and is the discriminator for the `debug` field.'
-        value:
-          type: string
-          format: binary
-          description: The Protobuf message, serialized as bytes and base64-encoded. The specific message type is identified by the `type` field.
-        debug:
-          oneOf:
-            - type: object
-              title: Any
-              additionalProperties: true
-              description: Detailed error information.
-          discriminator:
-            propertyName: type
-          title: Debug
-          description: Deserialized error detail payload. The 'type' field indicates the schema. This field is for easier debugging and should not be relied upon for application logic.
-      additionalProperties: true
-      description: Contains an arbitrary serialized message along with a @type that describes the type of the serialized message, with an additional debug field for ConnectRPC error details.
     entity.Entity:
       type: object
-      allOf:
+      oneOf:
         - properties:
-            ephemeralId:
-              type: string
-              title: ephemeral_id
-              description: ephemeral id for tracking between request and response
-            category:
-              title: category
-              $ref: '#/components/schemas/entity.Entity.Category'
-        - oneOf:
-            - type: object
-              properties:
-                claims:
-                  title: claims
-                  description: used by ERS claims mode
-                  $ref: '#/components/schemas/google.protobuf.Any'
+            claims:
               title: claims
-              required:
-                - claims
-            - type: object
-              properties:
-                clientId:
-                  type: string
-                  title: client_id
+              description: used by ERS claims mode
+              $ref: '#/components/schemas/google.protobuf.Any'
+          title: claims
+          required:
+            - claims
+        - properties:
+            clientId:
+              type: string
               title: client_id
-              required:
-                - clientId
-            - type: object
-              properties:
-                emailAddress:
-                  type: string
-                  title: email_address
+          title: client_id
+          required:
+            - clientId
+        - properties:
+            emailAddress:
+              type: string
               title: email_address
-              required:
-                - emailAddress
-            - type: object
-              properties:
-                userName:
-                  type: string
-                  title: user_name
+          title: email_address
+          required:
+            - emailAddress
+        - properties:
+            userName:
+              type: string
               title: user_name
-              required:
-                - userName
+          title: user_name
+          required:
+            - userName
+      properties:
+        ephemeralId:
+          type: string
+          title: ephemeral_id
+          description: ephemeral id for tracking between request and response
+        category:
+          title: category
+          $ref: '#/components/schemas/entity.Entity.Category'
       title: Entity
       additionalProperties: false
       description: PE (Person Entity) or NPE (Non-Person Entity)
-    entity.Entity.Category:
-      type: string
-      title: Category
-      enum:
-        - CATEGORY_UNSPECIFIED
-        - CATEGORY_SUBJECT
-        - CATEGORY_ENVIRONMENT
     entity.EntityChain:
       type: object
       properties:
@@ -670,6 +671,9 @@ components:
         value:
           type: string
           format: binary
+        debug:
+          type: object
+          additionalProperties: true
       additionalProperties: true
       description: Contains an arbitrary serialized message along with a @type that describes the type of the serialized message.
     google.protobuf.BoolValue:
@@ -684,8 +688,8 @@ components:
     google.protobuf.Timestamp:
       type: string
       examples:
-        - "2023-01-15T01:30:15.01Z"
-        - "2024-12-25T12:00:00Z"
+        - 1s
+        - 1.000340012s
       format: date-time
       description: |-
         A Timestamp represents a point in time independent of any time zone or local
@@ -779,65 +783,41 @@ components:
          ) to obtain a formatter capable of generating timestamps in this format.
     policy.Action:
       type: object
-      allOf:
+      oneOf:
         - properties:
-            id:
+            custom:
               type: string
-              title: id
-              description: Generated uuid in database
-            name:
-              type: string
-              title: name
-            namespace:
-              title: namespace
-              description: Namespace context for this action
-              $ref: '#/components/schemas/policy.Namespace'
-            metadata:
-              title: metadata
-              $ref: '#/components/schemas/common.Metadata'
-        - oneOf:
-            - type: object
-              properties:
-                custom:
-                  type: string
-                  title: custom
-                  description: Deprecated
               title: custom
-              required:
-                - custom
-            - type: object
-              properties:
-                standard:
-                  title: standard
-                  description: Deprecated
-                  $ref: '#/components/schemas/policy.Action.StandardAction'
+              description: Deprecated
+          title: custom
+          required:
+            - custom
+        - properties:
+            standard:
               title: standard
-              required:
-                - standard
+              description: Deprecated
+              $ref: '#/components/schemas/policy.Action.StandardAction'
+          title: standard
+          required:
+            - standard
+      properties:
+        id:
+          type: string
+          title: id
+          description: Generated uuid in database
+        name:
+          type: string
+          title: name
+        namespace:
+          title: namespace
+          description: Namespace context for this action
+          $ref: '#/components/schemas/policy.Namespace'
+        metadata:
+          title: metadata
+          $ref: '#/components/schemas/common.Metadata'
       title: Action
       additionalProperties: false
       description: An action an entity can take
-    policy.Action.StandardAction:
-      type: string
-      title: StandardAction
-      enum:
-        - STANDARD_ACTION_UNSPECIFIED
-        - STANDARD_ACTION_DECRYPT
-        - STANDARD_ACTION_TRANSMIT
-    policy.Algorithm:
-      type: string
-      title: Algorithm
-      enum:
-        - ALGORITHM_UNSPECIFIED
-        - ALGORITHM_RSA_2048
-        - ALGORITHM_RSA_4096
-        - ALGORITHM_EC_P256
-        - ALGORITHM_EC_P384
-        - ALGORITHM_EC_P521
-        - ALGORITHM_HPQT_XWING
-        - ALGORITHM_HPQT_SECP256R1_MLKEM768
-        - ALGORITHM_HPQT_SECP384R1_MLKEM1024
-      description: Supported key algorithms.
     policy.KasPublicKey:
       type: object
       properties:
@@ -856,7 +836,7 @@ components:
         alg:
           not:
             enum:
-              - KAS_PUBLIC_KEY_ALG_ENUM_UNSPECIFIED
+              - 0
           title: alg
           description: |-
             A known algorithm type with any additional parameters encoded.
@@ -868,19 +848,6 @@ components:
       description: |-
         Deprecated
          A KAS public key and some associated metadata for further identifcation
-    policy.KasPublicKeyAlgEnum:
-      type: string
-      title: KasPublicKeyAlgEnum
-      enum:
-        - KAS_PUBLIC_KEY_ALG_ENUM_UNSPECIFIED
-        - KAS_PUBLIC_KEY_ALG_ENUM_RSA_2048
-        - KAS_PUBLIC_KEY_ALG_ENUM_RSA_4096
-        - KAS_PUBLIC_KEY_ALG_ENUM_EC_SECP256R1
-        - KAS_PUBLIC_KEY_ALG_ENUM_EC_SECP384R1
-        - KAS_PUBLIC_KEY_ALG_ENUM_EC_SECP521R1
-        - KAS_PUBLIC_KEY_ALG_ENUM_HPQT_XWING
-        - KAS_PUBLIC_KEY_ALG_ENUM_HPQT_SECP256R1_MLKEM768
-        - KAS_PUBLIC_KEY_ALG_ENUM_HPQT_SECP384R1_MLKEM1024
     policy.KasPublicKeySet:
       type: object
       properties:
@@ -903,9 +870,13 @@ components:
         uri:
           type: string
           title: uri
-          description: |
+          description: |+
             Address of a KAS instance
-            uri_format // URI must be a valid URL (e.g., 'https://demo.com/') followed by additional segments. Each segment must start and end with an alphanumeric character, can contain hyphens, alphanumeric characters, and slashes.
+            URI must be a valid URL (e.g., 'https://demo.com/') followed by additional segments. Each segment must start and end with an alphanumeric character, can contain hyphens, alphanumeric characters, and slashes.:
+            ```
+            this.matches('^https?://[a-zA-Z0-9]([a-zA-Z0-9\\-]{0,61}[a-zA-Z0-9])?(\\.[a-zA-Z0-9]([a-zA-Z0-9\\-]{0,61}[a-zA-Z0-9])?)*(:[0-9]+)?(/.*)?$')
+            ```
+
         publicKey:
           title: public_key
           description: 'Deprecated: KAS can have multiple key pairs'
@@ -973,8 +944,7 @@ components:
     policy.PublicKey:
       type: object
       oneOf:
-        - type: object
-          properties:
+        - properties:
             cached:
               title: cached
               description: public key with additional information. Current preferred version
@@ -982,14 +952,17 @@ components:
           title: cached
           required:
             - cached
-        - type: object
-          properties:
+        - properties:
             remote:
               type: string
               title: remote
-              description: |
+              description: |+
                 kas public key url - optional since can also be retrieved via public key
-                uri_format // URI must be a valid URL (e.g., 'https://demo.com/') followed by additional segments. Each segment must start and end with an alphanumeric character, can contain hyphens, alphanumeric characters, and slashes.
+                URI must be a valid URL (e.g., 'https://demo.com/') followed by additional segments. Each segment must start and end with an alphanumeric character, can contain hyphens, alphanumeric characters, and slashes.:
+                ```
+                this.matches('^https://[a-zA-Z0-9]([a-zA-Z0-9\\-]{0,61}[a-zA-Z0-9])?(\\.[a-zA-Z0-9]([a-zA-Z0-9\\-]{0,61}[a-zA-Z0-9])?)*(/.*)?$')
+                ```
+
           title: remote
           required:
             - remote
@@ -1027,17 +1000,50 @@ components:
           title: pem
       title: SimpleKasPublicKey
       additionalProperties: false
-    policy.SourceType:
-      type: string
-      title: SourceType
+    connect-protocol-version:
+      type: number
+      title: Connect-Protocol-Version
       enum:
-        - SOURCE_TYPE_UNSPECIFIED
-        - SOURCE_TYPE_INTERNAL
-        - SOURCE_TYPE_EXTERNAL
-      description: |-
-        Describes whether this kas is managed by the organization or if they imported
-         the kas information from an external party. These two modes are necessary in order
-         to encrypt a tdf dek with an external parties kas public key.
+        - 1
+      description: Define the version of the Connect protocol
+      const: 1
+    connect-timeout-header:
+      type: number
+      title: Connect-Timeout-Ms
+      description: Define the timeout, in ms
+    connect.error:
+      type: object
+      properties:
+        code:
+          type: string
+          examples:
+            - not_found
+          enum:
+            - canceled
+            - unknown
+            - invalid_argument
+            - deadline_exceeded
+            - not_found
+            - already_exists
+            - permission_denied
+            - resource_exhausted
+            - failed_precondition
+            - aborted
+            - out_of_range
+            - unimplemented
+            - internal
+            - unavailable
+            - data_loss
+            - unauthenticated
+          description: The status code, which should be an enum value of [google.rpc.Code][google.rpc.Code].
+        message:
+          type: string
+          description: A developer-facing error message, which should be in English. Any user-facing error message should be localized and sent in the [google.rpc.Status.details][google.rpc.Status.details] field, or localized by the client.
+        detail:
+          $ref: '#/components/schemas/google.protobuf.Any'
+      title: Connect Error
+      additionalProperties: true
+      description: 'Error type returned by Connect: https://connectrpc.com/docs/go/errors/#http-representation'
 security: []
 tags:
   - name: authorization.v2.AuthorizationService

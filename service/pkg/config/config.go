@@ -26,6 +26,12 @@ type ServicesMap map[string]ServiceConfig
 // Config structure holding a single service.
 type ServiceConfig map[string]any
 
+// InterceptorsMap holds freeform configuration for named interceptors.
+type InterceptorsMap map[string]InterceptorConfig
+
+// InterceptorConfig holds freeform configuration for a single named interceptor.
+type InterceptorConfig map[string]any
+
 func (cfg ServiceConfig) String() string {
 	// Create a shallow copy so we don't mutate the original map.
 	redacted := make(map[string]any, len(cfg))
@@ -92,6 +98,9 @@ type Config struct {
 
 	// Services represents the configuration settings for the services.
 	Services ServicesMap `mapstructure:"services" json:"services"`
+
+	// Interceptors represents configuration settings for named interceptors.
+	Interceptors InterceptorsMap `mapstructure:"interceptors" json:"interceptors"`
 
 	// onConfigChangeHooks is a list of functions to call when the configuration changes.
 	onConfigChangeHooks []ChangeHook

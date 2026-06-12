@@ -33,14 +33,13 @@ import (
 	"github.com/opentdf/platform/service/internal/server/memhttp"
 	"github.com/opentdf/platform/service/logger"
 	ctxAuth "github.com/opentdf/platform/service/pkg/auth"
+	"github.com/opentdf/platform/service/pkg/authz"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/metadata"
-	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
@@ -57,14 +56,18 @@ type FakeAccessTokenSource struct {
 }
 
 type FakeAccessServiceServer struct {
-	clientID    string
-	accessToken []string
-	dpopKey     jwk.Key
+	clientID       string
+	authzClientID  string
+	accessToken    []string
+	dpopKey        jwk.Key
+	publicRoute    bool
+	publicRouteSet bool
 	kas.UnimplementedAccessServiceServer
 }
 
-func (f *FakeAccessServiceServer) PublicKey(_ context.Context, _ *connect.Request[kas.PublicKeyRequest]) (*connect.Response[kas.PublicKeyResponse], error) {
-	return &connect.Response[kas.PublicKeyResponse]{Msg: &kas.PublicKeyResponse{}}, status.Error(codes.Unauthenticated, "no public key for you")
+func (f *FakeAccessServiceServer) PublicKey(ctx context.Context, _ *connect.Request[kas.PublicKeyRequest]) (*connect.Response[kas.PublicKeyResponse], error) {
+	f.publicRoute, f.publicRouteSet = ctxAuth.PublicRouteFromContext(ctx)
+	return &connect.Response[kas.PublicKeyResponse]{Msg: &kas.PublicKeyResponse{}}, nil
 }
 
 func (f *FakeAccessServiceServer) LegacyPublicKey(_ context.Context, _ *connect.Request[kas.LegacyPublicKeyRequest]) (*connect.Response[wrapperspb.StringValue], error) {
@@ -76,6 +79,7 @@ func (f *FakeAccessServiceServer) Rewrap(ctx context.Context, req *connect.Reque
 	f.dpopKey = ctxAuth.GetJWKFromContext(ctx, logger.CreateTestLogger())
 	inbound := true
 	f.clientID, _ = ctxAuth.GetClientIDFromContext(ctx, inbound)
+	f.authzClientID, _ = authz.ClientIDFromContext(ctx)
 
 	return &connect.Response[kas.RewrapResponse]{Msg: &kas.RewrapResponse{}}, nil
 }
@@ -297,6 +301,9 @@ func (s *AuthSuite) Test_IPCUnaryServerInterceptor() {
 	clientID, err := ctxAuth.GetClientIDFromContext(nextCtx, inbound)
 	s.Require().NoError(err)
 	s.Equal("mockClientID", clientID)
+	authzClientID, ok := authz.ClientIDFromContext(nextCtx)
+	s.Require().True(ok)
+	s.Equal("mockClientID", authzClientID)
 
 	// Test with a route not requiring reauthorization
 	nextCtx, err = s.auth.ipcReauthCheck(context.Background(), "/kas.AccessService/PublicKey", nil)
@@ -317,7 +324,7 @@ func (s *AuthSuite) Test_IPCUnaryServerInterceptor() {
 	s.Contains(err.Error(), "unauthenticated")
 }
 
-func (s *AuthSuite) Test_ConnectUnaryServerInterceptor_ClientIDPropagated() {
+func (s *AuthSuite) Test_ConnectAuthNAndAuthZInterceptors_ClientIDPropagated() {
 	tok := jwt.New()
 	s.Require().NoError(tok.Set(jwt.ExpirationKey, time.Now().Add(time.Hour)))
 	s.Require().NoError(tok.Set("iss", s.server.URL))
@@ -347,7 +354,10 @@ func (s *AuthSuite) Test_ConnectUnaryServerInterceptor_ClientIDPropagated() {
 
 	// Create a minimal connect server setup to properly test the interceptor
 	// This is necessary because connect requests need proper procedure routing
-	interceptor := connect.WithInterceptors(auth.ConnectUnaryServerInterceptor())
+	interceptor := connect.WithInterceptors(
+		auth.ConnectAuthNInterceptor(),
+		auth.ConnectAuthZInterceptor(),
+	)
 
 	fakeServer := &FakeAccessServiceServer{}
 	mux := http.NewServeMux()
@@ -370,6 +380,138 @@ func (s *AuthSuite) Test_ConnectUnaryServerInterceptor_ClientIDPropagated() {
 
 	// Assert that the client ID was properly extracted and set in the context
 	s.Equal("test-client-id", fakeServer.clientID)
+	s.Equal("test-client-id", fakeServer.authzClientID)
+}
+
+func (s *AuthSuite) Test_MuxHandler_RoleProviderErrorReturnsInternalServerError() {
+	tok := jwt.New()
+	s.Require().NoError(tok.Set(jwt.ExpirationKey, time.Now().Add(time.Hour)))
+	s.Require().NoError(tok.Set("iss", s.server.URL))
+	s.Require().NoError(tok.Set("aud", "test"))
+	s.Require().NoError(tok.Set("cid", "client-123"))
+	signedTok, err := jwt.Sign(tok, jwt.WithKey(jwa.RS256, s.key))
+	s.Require().NoError(err)
+
+	policyCfg := PolicyConfig{ClientIDClaim: "cid"}
+	s.Require().NoError(defaults.Set(&policyCfg))
+	auth, err := NewAuthenticator(s.T().Context(), Config{
+		AuthNConfig: AuthNConfig{
+			EnforceDPoP: false,
+			Issuer:      s.server.URL,
+			Audience:    "test",
+			Policy:      policyCfg,
+		},
+		RoleProvider: staticProvider{err: errors.New("role provider unavailable")},
+	}, logger.CreateTestLogger(), func(_ string, _ any) error { return nil })
+	s.Require().NoError(err)
+
+	called := false
+	handler := auth.MuxHandler(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
+		called = true
+	}))
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodPost, "/policy.attributes.List", nil)
+	req.Header.Set("Authorization", "Bearer "+string(signedTok))
+
+	handler.ServeHTTP(rec, req)
+
+	s.Equal(http.StatusInternalServerError, rec.Code)
+	s.False(called)
+}
+
+func (s *AuthSuite) Test_ConnectAuthNInterceptor_RoleProviderErrorReturnsInternal() {
+	tok := jwt.New()
+	s.Require().NoError(tok.Set(jwt.ExpirationKey, time.Now().Add(time.Hour)))
+	s.Require().NoError(tok.Set("iss", s.server.URL))
+	s.Require().NoError(tok.Set("aud", "test"))
+	s.Require().NoError(tok.Set("azp", "client-123"))
+	signedTok, err := jwt.Sign(tok, jwt.WithKey(jwa.RS256, s.key))
+	s.Require().NoError(err)
+
+	policyCfg := new(PolicyConfig)
+	s.Require().NoError(defaults.Set(policyCfg))
+	auth, err := NewAuthenticator(s.T().Context(), Config{
+		AuthNConfig: AuthNConfig{
+			Issuer:   s.server.URL,
+			Audience: "test",
+			Policy:   *policyCfg,
+		},
+		RoleProvider: staticProvider{err: errors.New("role provider unavailable")},
+	}, logger.CreateTestLogger(), func(_ string, _ any) error { return nil })
+	s.Require().NoError(err)
+
+	interceptor := auth.ConnectAuthNInterceptor()
+	called := false
+	next := func(_ context.Context, _ connect.AnyRequest) (connect.AnyResponse, error) {
+		called = true
+		return connect.NewResponse(&kas.RewrapResponse{}), nil
+	}
+	req := &authnTestRequest{
+		Request:   connect.NewRequest(&kas.RewrapRequest{}),
+		procedure: "/kas.AccessService/Rewrap",
+	}
+	req.Header().Set("Authorization", "Bearer "+string(signedTok))
+	_, err = interceptor(next)(s.T().Context(), req)
+	s.Require().Error(err)
+	s.Equal(connect.CodeInternal, connect.CodeOf(err))
+	s.False(called)
+}
+
+type authnTestRequest struct {
+	*connect.Request[kas.RewrapRequest]
+	procedure string
+}
+
+func (r *authnTestRequest) Spec() connect.Spec {
+	return connect.Spec{Procedure: r.procedure}
+}
+
+func (r *authnTestRequest) Peer() connect.Peer {
+	return connect.Peer{}
+}
+
+func (r *authnTestRequest) Any() any {
+	return r.Msg
+}
+
+func (s *AuthSuite) Test_ConnectAuthNInterceptor_SetsPublicRouteContextForChainedMiddleware() {
+	var (
+		middlewarePublicRoute    bool
+		middlewarePublicRouteSet bool
+	)
+	publicRouteInspector := connect.UnaryInterceptorFunc(func(next connect.UnaryFunc) connect.UnaryFunc {
+		return func(ctx context.Context, req connect.AnyRequest) (connect.AnyResponse, error) {
+			middlewarePublicRoute, middlewarePublicRouteSet = ctxAuth.PublicRouteFromContext(ctx)
+			return next(ctx, req)
+		}
+	})
+
+	interceptor := connect.WithInterceptors(
+		s.auth.ConnectAuthNInterceptor(),
+		publicRouteInspector,
+		s.auth.ConnectAuthZInterceptor(),
+	)
+
+	fakeServer := &FakeAccessServiceServer{}
+	mux := http.NewServeMux()
+	path, handler := kasconnect.NewAccessServiceHandler(fakeServer, interceptor)
+	mux.Handle(path, handler)
+
+	server := memhttp.New(mux)
+	defer server.Close()
+
+	conn, _ := grpc.NewClient("passthrough://bufconn", grpc.WithContextDialer(func(ctx context.Context, _ string) (net.Conn, error) {
+		return server.Listener.DialContext(ctx, "tcp", "http://localhost:8080")
+	}), grpc.WithTransportCredentials(insecure.NewCredentials()))
+
+	client := kas.NewAccessServiceClient(conn)
+	_, err := client.PublicKey(s.T().Context(), &kas.PublicKeyRequest{})
+	s.Require().NoError(err)
+
+	s.True(middlewarePublicRouteSet)
+	s.True(middlewarePublicRoute)
+	s.True(fakeServer.publicRouteSet)
+	s.True(fakeServer.publicRoute)
 }
 
 func (s *AuthSuite) Test_CheckToken_When_JWT_Expired_Expect_Error() {
@@ -394,9 +536,9 @@ func (s *AuthSuite) Test_MuxHandler_When_Authorization_Header_Missing_Expect_Err
 	s.Equal("missing authorization header\n", rec.Body.String())
 }
 
-func (s *AuthSuite) Test_UnaryServerInterceptor_When_Authorization_Header_Missing_Expect_Error() {
+func (s *AuthSuite) Test_ConnectAuthNInterceptor_When_Authorization_Header_Missing_Expect_Error() {
 	// Create the interceptor
-	interceptor := s.auth.ConnectUnaryServerInterceptor()
+	interceptor := s.auth.ConnectAuthNInterceptor()
 
 	// Create a dummy next handler
 	next := func(_ context.Context, _ connect.AnyRequest) (connect.AnyResponse, error) {
@@ -415,6 +557,24 @@ func (s *AuthSuite) Test_UnaryServerInterceptor_When_Authorization_Header_Missin
 
 	connectErr := connect.NewError(connect.CodeUnauthenticated, errors.New("missing authorization header"))
 
+	s.Require().ErrorAs(err, &connectErr)
+}
+
+func (s *AuthSuite) Test_ConnectAuthNInterceptor_RequiresHeaderWithExistingContextToken() {
+	interceptor := s.auth.ConnectAuthNInterceptor()
+
+	next := func(_ context.Context, _ connect.AnyRequest) (connect.AnyResponse, error) {
+		return connect.NewResponse[string](nil), nil
+	}
+
+	req := connect.NewRequest[string](nil)
+	ctx := ctxAuth.ContextWithAuthNInfo(s.T().Context(), nil, jwt.New(), "raw-token")
+
+	_, err := interceptor(next)(ctx, req)
+
+	s.Require().Error(err)
+
+	connectErr := connect.NewError(connect.CodeUnauthenticated, errors.New("missing authorization header"))
 	s.Require().ErrorAs(err, &connectErr)
 }
 
@@ -609,7 +769,10 @@ func (s *AuthSuite) TestDPoPEndToEnd_GRPC() {
 	signedTok, err := jwt.Sign(tok, jwt.WithKey(jwa.RS256, s.key))
 	s.Require().NoError(err)
 
-	interceptor := connect.WithInterceptors(s.auth.ConnectUnaryServerInterceptor())
+	interceptor := connect.WithInterceptors(
+		s.auth.ConnectAuthNInterceptor(),
+		s.auth.ConnectAuthZInterceptor(),
+	)
 
 	fakeServer := &FakeAccessServiceServer{}
 
@@ -638,6 +801,7 @@ func (s *AuthSuite) TestDPoPEndToEnd_GRPC() {
 
 	// interceptor propagated clientID from the token at the configured claim
 	s.Equal("client-123", fakeServer.clientID)
+	s.Equal("client-123", fakeServer.authzClientID)
 
 	s.NotNil(fakeServer.dpopKey)
 	dpopJWKFromRequest, ok := fakeServer.dpopKey.(jwk.RSAPublicKey)
@@ -780,6 +944,48 @@ func (s *AuthSuite) Test_GetAction() {
 	}
 	for _, c := range cases {
 		s.Equal(c.expected, getAction(c.method))
+	}
+}
+
+func (s *AuthSuite) Test_RoleRequestForConnectProcedure() {
+	cases := []struct {
+		name      string
+		procedure string
+		want      authz.RoleRequest
+		wantErr   bool
+	}{
+		{
+			name:      "read method",
+			procedure: "/policy.attributes.AttributesService/ListAttributes",
+			want: authz.RoleRequest{
+				Issuer:   "issuer",
+				Resource: "policy.attributes.AttributesService/ListAttributes",
+				Action:   ActionRead,
+			},
+		},
+		{
+			name:      "missing method",
+			procedure: "/kas.AccessService",
+			wantErr:   true,
+		},
+		{
+			name:      "empty service",
+			procedure: "/",
+			wantErr:   true,
+		},
+	}
+
+	for _, c := range cases {
+		s.Run(c.name, func() {
+			got, err := roleRequestForConnectProcedure("issuer", c.procedure)
+			if c.wantErr {
+				s.Require().Error(err)
+				return
+			}
+
+			s.Require().NoError(err)
+			s.Equal(c.want, got)
+		})
 	}
 }
 

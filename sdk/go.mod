@@ -3,7 +3,7 @@ module github.com/opentdf/platform/sdk
 go 1.25.0
 
 require (
-	connectrpc.com/connect v1.19.2
+	connectrpc.com/connect v1.20.0
 	connectrpc.com/grpchealth v1.4.0
 	github.com/Masterminds/semver/v3 v3.5.0
 	github.com/google/uuid v1.6.0

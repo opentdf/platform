@@ -92,6 +92,18 @@ func TestGetAccessTokenFromContextDoesNotFallbackToMetadata(t *testing.T) {
 	assert.Nil(t, retrievedJWT)
 }
 
+func TestContextWithPublicRoute(t *testing.T) {
+	ctx := ContextWithPublicRoute(t.Context(), true)
+
+	publicRoute, ok := PublicRouteFromContext(ctx)
+	require.True(t, ok)
+	require.True(t, publicRoute)
+
+	publicRoute, ok = PublicRouteFromContext(t.Context())
+	require.False(t, ok)
+	require.False(t, publicRoute)
+}
+
 func TestGetContextDetailsInvalidType(t *testing.T) {
 	// Create a context with an invalid type
 	ctx := context.WithValue(t.Context(), authnContextKey, "invalidType")

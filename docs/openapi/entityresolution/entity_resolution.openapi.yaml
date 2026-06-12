@@ -2,42 +2,6 @@ openapi: 3.1.0
 info:
   title: entityresolution
 paths:
-  /entityresolution.EntityResolutionService/CreateEntityChainFromJwt:
-    post:
-      tags:
-        - entityresolution.EntityResolutionService
-      summary: CreateEntityChainFromJwt
-      description: 'Deprecated: use v2 CreateEntityChainsFromTokens instead'
-      operationId: entityresolution.EntityResolutionService.CreateEntityChainFromJwt
-      parameters:
-        - name: Connect-Protocol-Version
-          in: header
-          required: true
-          schema:
-            $ref: '#/components/schemas/connect-protocol-version'
-        - name: Connect-Timeout-Ms
-          in: header
-          schema:
-            $ref: '#/components/schemas/connect-timeout-header'
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/entityresolution.CreateEntityChainFromJwtRequest'
-        required: true
-      responses:
-        default:
-          description: Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/connect.error'
-        "200":
-          description: Success
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/entityresolution.CreateEntityChainFromJwtResponse'
   /entityresolution.EntityResolutionService/ResolveEntities:
     post:
       tags:
@@ -74,80 +38,44 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/entityresolution.ResolveEntitiesResponse'
+  /entityresolution.EntityResolutionService/CreateEntityChainFromJwt:
+    post:
+      tags:
+        - entityresolution.EntityResolutionService
+      summary: CreateEntityChainFromJwt
+      description: 'Deprecated: use v2 CreateEntityChainsFromTokens instead'
+      operationId: entityresolution.EntityResolutionService.CreateEntityChainFromJwt
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/entityresolution.CreateEntityChainFromJwtRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/entityresolution.CreateEntityChainFromJwtResponse'
 components:
   schemas:
-    authorization.Entity:
-      type: object
-      allOf:
-        - properties:
-            id:
-              type: string
-              title: id
-              description: ephemeral id for tracking between request and response
-            category:
-              title: category
-              $ref: '#/components/schemas/authorization.Entity.Category'
-        - oneOf:
-            - type: object
-              properties:
-                claims:
-                  title: claims
-                  $ref: '#/components/schemas/google.protobuf.Any'
-              title: claims
-              required:
-                - claims
-            - type: object
-              properties:
-                clientId:
-                  type: string
-                  title: client_id
-              title: client_id
-              required:
-                - clientId
-            - type: object
-              properties:
-                custom:
-                  title: custom
-                  $ref: '#/components/schemas/authorization.EntityCustom'
-              title: custom
-              required:
-                - custom
-            - type: object
-              properties:
-                emailAddress:
-                  type: string
-                  title: email_address
-                  description: one of the entity options must be set
-              title: email_address
-              required:
-                - emailAddress
-            - type: object
-              properties:
-                remoteClaimsUrl:
-                  type: string
-                  title: remote_claims_url
-              title: remote_claims_url
-              required:
-                - remoteClaimsUrl
-            - type: object
-              properties:
-                userName:
-                  type: string
-                  title: user_name
-              title: user_name
-              required:
-                - userName
-            - type: object
-              properties:
-                uuid:
-                  type: string
-                  title: uuid
-              title: uuid
-              required:
-                - uuid
-      title: Entity
-      additionalProperties: false
-      description: PE (Person Entity) or NPE (Non-Person Entity)
     authorization.Entity.Category:
       type: string
       title: Category
@@ -155,6 +83,80 @@ components:
         - CATEGORY_UNSPECIFIED
         - CATEGORY_SUBJECT
         - CATEGORY_ENVIRONMENT
+    google.protobuf.NullValue:
+      type: string
+      title: NullValue
+      enum:
+        - NULL_VALUE
+      description: |-
+        `NullValue` is a singleton enumeration to represent the null value for the
+         `Value` type union.
+
+         The JSON representation for `NullValue` is JSON `null`.
+    authorization.Entity:
+      type: object
+      oneOf:
+        - properties:
+            claims:
+              title: claims
+              $ref: '#/components/schemas/google.protobuf.Any'
+          title: claims
+          required:
+            - claims
+        - properties:
+            clientId:
+              type: string
+              title: client_id
+          title: client_id
+          required:
+            - clientId
+        - properties:
+            custom:
+              title: custom
+              $ref: '#/components/schemas/authorization.EntityCustom'
+          title: custom
+          required:
+            - custom
+        - properties:
+            emailAddress:
+              type: string
+              title: email_address
+              description: one of the entity options must be set
+          title: email_address
+          required:
+            - emailAddress
+        - properties:
+            remoteClaimsUrl:
+              type: string
+              title: remote_claims_url
+          title: remote_claims_url
+          required:
+            - remoteClaimsUrl
+        - properties:
+            userName:
+              type: string
+              title: user_name
+          title: user_name
+          required:
+            - userName
+        - properties:
+            uuid:
+              type: string
+              title: uuid
+          title: uuid
+          required:
+            - uuid
+      properties:
+        id:
+          type: string
+          title: id
+          description: ephemeral id for tracking between request and response
+        category:
+          title: category
+          $ref: '#/components/schemas/authorization.Entity.Category'
+      title: Entity
+      additionalProperties: false
+      description: PE (Person Entity) or NPE (Non-Person Entity)
     authorization.EntityChain:
       type: object
       properties:
@@ -192,75 +194,6 @@ components:
           description: the token
       title: Token
       additionalProperties: false
-    connect-protocol-version:
-      type: number
-      title: Connect-Protocol-Version
-      enum:
-        - 1
-      description: Define the version of the Connect protocol
-      const: 1
-    connect-timeout-header:
-      type: number
-      title: Connect-Timeout-Ms
-      description: Define the timeout, in ms
-    connect.error:
-      type: object
-      properties:
-        code:
-          type: string
-          examples:
-            - not_found
-          enum:
-            - canceled
-            - unknown
-            - invalid_argument
-            - deadline_exceeded
-            - not_found
-            - already_exists
-            - permission_denied
-            - resource_exhausted
-            - failed_precondition
-            - aborted
-            - out_of_range
-            - unimplemented
-            - internal
-            - unavailable
-            - data_loss
-            - unauthenticated
-          description: The status code, which should be an enum value of [google.rpc.Code][google.rpc.Code].
-        message:
-          type: string
-          description: A developer-facing error message, which should be in English. Any user-facing error message should be localized and sent in the [google.rpc.Status.details][google.rpc.Status.details] field, or localized by the client.
-        details:
-          type: array
-          items:
-            $ref: '#/components/schemas/connect.error_details.Any'
-          description: A list of messages that carry the error details. There is no limit on the number of messages.
-      title: Connect Error
-      additionalProperties: true
-      description: 'Error type returned by Connect: https://connectrpc.com/docs/go/errors/#http-representation'
-    connect.error_details.Any:
-      type: object
-      properties:
-        type:
-          type: string
-          description: 'A URL that acts as a globally unique identifier for the type of the serialized message. For example: `type.googleapis.com/google.rpc.ErrorInfo`. This is used to determine the schema of the data in the `value` field and is the discriminator for the `debug` field.'
-        value:
-          type: string
-          format: binary
-          description: The Protobuf message, serialized as bytes and base64-encoded. The specific message type is identified by the `type` field.
-        debug:
-          oneOf:
-            - type: object
-              title: Any
-              additionalProperties: true
-              description: Detailed error information.
-          discriminator:
-            propertyName: type
-          title: Debug
-          description: Deserialized error detail payload. The 'type' field indicates the schema. This field is for easier debugging and should not be relied upon for application logic.
-      additionalProperties: true
-      description: Contains an arbitrary serialized message along with a @type that describes the type of the serialized message, with an additional debug field for ConnectRPC error details.
     entityresolution.CreateEntityChainFromJwtRequest:
       type: object
       properties:
@@ -402,6 +335,9 @@ components:
         value:
           type: string
           format: binary
+        debug:
+          type: object
+          additionalProperties: true
       additionalProperties: true
       description: Contains an arbitrary serialized message along with a @type that describes the type of the serialized message.
     google.protobuf.ListValue:
@@ -419,16 +355,6 @@ components:
         `ListValue` is a wrapper around a repeated field of values.
 
          The JSON representation for `ListValue` is JSON array.
-    google.protobuf.NullValue:
-      type: string
-      title: NullValue
-      enum:
-        - NULL_VALUE
-      description: |-
-        `NullValue` is a singleton enumeration to represent the null value for the
-         `Value` type union.
-
-         The JSON representation for `NullValue` is JSON `null`.
     google.protobuf.Struct:
       type: object
       additionalProperties:
@@ -469,6 +395,50 @@ components:
          variants. Absence of any variant indicates an error.
 
          The JSON representation for `Value` is JSON value.
+    connect-protocol-version:
+      type: number
+      title: Connect-Protocol-Version
+      enum:
+        - 1
+      description: Define the version of the Connect protocol
+      const: 1
+    connect-timeout-header:
+      type: number
+      title: Connect-Timeout-Ms
+      description: Define the timeout, in ms
+    connect.error:
+      type: object
+      properties:
+        code:
+          type: string
+          examples:
+            - not_found
+          enum:
+            - canceled
+            - unknown
+            - invalid_argument
+            - deadline_exceeded
+            - not_found
+            - already_exists
+            - permission_denied
+            - resource_exhausted
+            - failed_precondition
+            - aborted
+            - out_of_range
+            - unimplemented
+            - internal
+            - unavailable
+            - data_loss
+            - unauthenticated
+          description: The status code, which should be an enum value of [google.rpc.Code][google.rpc.Code].
+        message:
+          type: string
+          description: A developer-facing error message, which should be in English. Any user-facing error message should be localized and sent in the [google.rpc.Status.details][google.rpc.Status.details] field, or localized by the client.
+        detail:
+          $ref: '#/components/schemas/google.protobuf.Any'
+      title: Connect Error
+      additionalProperties: true
+      description: 'Error type returned by Connect: https://connectrpc.com/docs/go/errors/#http-representation'
 security: []
 tags:
   - name: entityresolution.EntityResolutionService

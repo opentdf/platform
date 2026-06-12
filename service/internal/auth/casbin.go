@@ -190,28 +190,59 @@ func (e *Enforcer) Enforce(ctx context.Context, token jwt.Token, req authz.RoleR
 	return result, ErrPermissionDenied
 }
 
+func (e *Enforcer) ContextWithClaims(ctx context.Context, t jwt.Token, req authz.RoleRequest) (context.Context, error) {
+	roles, err := e.roleProvider.Roles(ctx, t, req)
+	if err != nil {
+		return ctx, err
+	}
+	claims, _ := authz.ClaimsFromContext(ctx)
+	claims.Subject = e.subjectFromToken(t)
+	claims.Groups = roles
+	return authz.ContextWithClaims(ctx, claims), nil
+}
+
 func (e *Enforcer) buildSubjectFromToken(ctx context.Context, t jwt.Token, req authz.RoleRequest) (casbinSubject, []string, error) {
-	var subject string
 	info := casbinSubject{}
 
 	e.logger.Debug("building subject from token")
-	roles, err := e.roleProvider.Roles(ctx, t, req)
+	claims, err := e.claimsForRequest(ctx, t, req)
 	if err != nil {
 		return nil, nil, err
 	}
 
+	info = append(info, claims.Groups...)
+	info = append(info, claims.Subject)
+	return info, append([]string(nil), claims.Groups...), nil
+}
+
+func (e *Enforcer) claimsForRequest(ctx context.Context, t jwt.Token, req authz.RoleRequest) (authz.RequestClaims, error) {
+	if claims, ok := authz.ClaimsFromContext(ctx); ok {
+		if claims.Subject != "" || len(claims.Groups) > 0 {
+			return claims, nil
+		}
+	}
+
+	roles, err := e.roleProvider.Roles(ctx, t, req)
+	if err != nil {
+		return authz.RequestClaims{}, err
+	}
+	claims, _ := authz.ClaimsFromContext(ctx)
+	claims.Subject = e.subjectFromToken(t)
+	claims.Groups = roles
+	return claims, nil
+}
+
+func (e *Enforcer) subjectFromToken(t jwt.Token) string {
 	if claim, found := t.Get(e.Config.UserNameClaim); found {
 		sub, ok := claim.(string)
-		subject = sub
 		if !ok {
 			e.logger.Warn("username claim not of type string",
 				slog.String("claim", e.Config.UserNameClaim),
 				slog.Any("claims", claim),
 			)
-			subject = ""
+			return ""
 		}
+		return sub
 	}
-	info = append(info, roles...)
-	info = append(info, subject)
-	return info, append([]string(nil), roles...), nil
+	return ""
 }

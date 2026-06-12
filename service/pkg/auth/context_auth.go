@@ -11,6 +11,7 @@ import (
 
 var (
 	authnContextKey     = authContextKey{}
+	publicRouteKey      = publicRouteContextKey{}
 	ErrNoMetadataFound  = errors.New("no metadata found within context")
 	ErrMissingClientID  = errors.New("missing authn idP clientID")
 	ErrConflictClientID = errors.New("context metadata mistakenly has more than one authn idP clientID")
@@ -22,6 +23,8 @@ const (
 )
 
 type authContextKey struct{}
+
+type publicRouteContextKey struct{}
 
 type authContext struct {
 	key         jwk.Key
@@ -81,6 +84,19 @@ func GetRawAccessTokenFromContext(ctx context.Context, l optionalErrorLogger) st
 		}
 	}
 	return ""
+}
+
+// ContextWithPublicRoute returns a child context carrying whether the request
+// matched a configured public route.
+func ContextWithPublicRoute(ctx context.Context, publicRoute bool) context.Context {
+	return context.WithValue(ctx, publicRouteKey, publicRoute)
+}
+
+// PublicRouteFromContext returns whether the request matched a configured
+// public route, if that state has been set by auth middleware.
+func PublicRouteFromContext(ctx context.Context) (bool, bool) {
+	publicRoute, ok := ctx.Value(publicRouteKey).(bool)
+	return publicRoute, ok
 }
 
 // EnrichIncomingContextMetadataWithAuthn adds the access token and client ID to incoming context metadata

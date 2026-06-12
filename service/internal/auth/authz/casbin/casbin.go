@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"net/url"
 	"sort"
 	"strings"
 
@@ -43,6 +44,12 @@ const (
 	dimensionMatchArgCount = 2
 	// kvPairParts is the expected number of parts when splitting key=value pairs.
 	kvPairParts = 2
+)
+
+var dimensionValueEscaper = strings.NewReplacer(
+	"%", "%25",
+	"&", "%26",
+	"*", "%2A",
 )
 
 func init() {
@@ -555,13 +562,25 @@ func serializeDimensions(ctx *authz.ResolverContext) (string, error) {
 	}
 	sort.Strings(keys)
 
-	// Build canonical string
+	// Build canonical string, percent-encoding only the characters that conflict
+	// with dimension parsing. '%' must be escaped first because it introduces an
+	// escape sequence, and '&' must be escaped because it separates key-value
+	// pairs. '*' is escaped because raw '*' is the policy wildcard. '=' can remain
+	// readable because pair parsing splits on the first '='.
 	parts := make([]string, 0, len(keys))
 	for _, k := range keys {
-		parts = append(parts, fmt.Sprintf("%s=%s", k, allDims[k]))
+		parts = append(parts, fmt.Sprintf("%s=%s", k, escapeDimensionValue(allDims[k])))
 	}
 
 	return strings.Join(parts, "&"), nil
+}
+
+func escapeDimensionValue(value string) string {
+	return dimensionValueEscaper.Replace(value)
+}
+
+func unescapeDimensionValue(value string) (string, error) {
+	return url.PathUnescape(value)
 }
 
 // isValidDimensionKey reports whether a dimension key can be safely serialized.
@@ -636,6 +655,14 @@ func dimensionMatch(reqDims, policyDims string) bool {
 		if !isValidDimensionKey(key) {
 			return false
 		}
+		policyWildcard := policyVal == "*"
+		if !policyWildcard {
+			unescapedVal, err := unescapeDimensionValue(policyVal)
+			if err != nil {
+				return false
+			}
+			policyVal = unescapedVal
+		}
 
 		reqVal, exists := reqMap[key]
 		if !exists {
@@ -644,7 +671,7 @@ func dimensionMatch(reqDims, policyDims string) bool {
 		}
 
 		// Wildcard matches any value
-		if policyVal != "*" && policyVal != reqVal {
+		if !policyWildcard && policyVal != reqVal {
 			return false
 		}
 	}
@@ -671,7 +698,11 @@ func parseDimensions(dims string) (map[string]string, bool) {
 		if !isValidDimensionKey(kv[0]) {
 			return nil, false
 		}
-		result[kv[0]] = kv[1]
+		unescapedVal, err := unescapeDimensionValue(kv[1])
+		if err != nil {
+			return nil, false
+		}
+		result[kv[0]] = unescapedVal
 	}
 	return result, true
 }

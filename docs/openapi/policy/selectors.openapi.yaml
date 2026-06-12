@@ -164,4 +164,13 @@ components:
           description: Total count of entire list
       title: PageResponse
       additionalProperties: false
+    policy.Search:
+      type: object
+      properties:
+        term:
+          type: string
+          title: term
+          maxLength: 253
+      title: Search
+      additionalProperties: false
 security: []

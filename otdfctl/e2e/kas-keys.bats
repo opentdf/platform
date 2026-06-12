@@ -966,6 +966,31 @@ format_kas_name_as_uri() {
   assert_equal "$(echo "$output" | jq -r .rotated_resources.rotated_out_key.key.key_status)" "2" # rotated (old key should be marked as rotated)
 }
 
+@test "kas-keys: rotate key by UUID-form user key-id and kasId" {
+  # Create a key with a user-defined key ID that is formatted as a UUID.
+  OLD_KEY_ID=$(uuidgen)
+  run_otdfctl_key create --kas "${KAS_REGISTRY_ID}" --key-id "${OLD_KEY_ID}" --algorithm "rsa:2048" --mode "public_key" --public-key-pem "${PEM_B64}" --json
+  assert_success
+  OLD_KEY_SYSTEM_ID=$(echo "$output" | jq -r .key.id)
+
+  # Rotate by user-defined key ID with KAS filter. The UUID-form key ID should not be treated as the system ID.
+  NEW_KEY_ID=$(generate_key_id)
+  run_otdfctl_key rotate --key "${OLD_KEY_ID}" --kas "${KAS_REGISTRY_ID}" --key-id "${NEW_KEY_ID}" --algorithm "rsa:2048" --mode "public_key" --public-key-pem "${PEM_B64}" --json
+  assert_success
+
+  NEW_KEY_SYSTEM_ID=$(echo "$output" | jq -r .kas_key.key.id)
+  assert_not_equal "${OLD_KEY_SYSTEM_ID}" "${NEW_KEY_SYSTEM_ID}"
+  assert_equal "$(echo "$output" | jq -r .kas_key.kas_id)" "${KAS_REGISTRY_ID}"
+  assert_equal "$(echo "$output" | jq -r .kas_key.key.key_id)" "${NEW_KEY_ID}"
+  assert_equal "$(echo "$output" | jq -r .kas_key.key.key_algorithm)" "1" # rsa:2048
+  assert_equal "$(echo "$output" | jq -r .kas_key.key.key_mode)" "4"      # public_key
+  assert_equal "$(echo "$output" | jq -r .kas_key.key.key_status)" "1"    # active
+  assert_equal "$(echo "$output" | jq -r .kas_key.key.public_key_ctx.pem)" "${PEM_B64}"
+  assert_equal "$(echo "$output" | jq -r .rotated_resources.rotated_out_key.key.id)" "${OLD_KEY_SYSTEM_ID}"
+  assert_equal "$(echo "$output" | jq -r .rotated_resources.rotated_out_key.key.key_id)" "${OLD_KEY_ID}"
+  assert_equal "$(echo "$output" | jq -r .rotated_resources.rotated_out_key.key.key_status)" "2" # rotated
+}
+
 @test "kas-keys: rotate key (missing key)" {
   run_otdfctl_key rotate --key-id "new-key-id" --algorithm "rsa:2048" --mode "public_key" --public-key-pem "${PEM_B64}"
   assert_failure

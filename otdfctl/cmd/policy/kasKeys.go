@@ -595,11 +595,13 @@ func policyRotateKasKey(cmd *cobra.Command, args []string) {
 	}
 
 	var identifier *kasregistry.KasKeyIdentifier
-	if utils.ClassifyString(oldKey) != utils.StringTypeUUID {
+	kasIdentifier := c.Flags.GetOptionalString("kas")
+	if kasIdentifier != "" || utils.ClassifyString(oldKey) != utils.StringTypeUUID {
 		identifier, err = getKasKeyIdentifier(c)
 		if err != nil {
 			cli.ExitWithError("Invalid key identifier", err)
 		}
+		oldKey = ""
 	}
 
 	// Call the rotate key function

@@ -2,6 +2,7 @@ package casbin
 
 import (
 	"context"
+	"net/url"
 	"testing"
 
 	"github.com/lestrrat-go/jwx/v2/jwt"
@@ -784,11 +785,23 @@ func TestDimensionMatch_WithURIValues(t *testing.T) {
 			expected:   true,
 		},
 		{
+			name:       "serialized URI with query string matches escaped policy URI",
+			input:      map[string]string{"kas_uri": "https://kas.example.com?foo=bar&baz=qux"},
+			policyDims: "kas_uri=" + url.QueryEscape("https://kas.example.com?foo=bar&baz=qux"),
+			expected:   true,
+		},
+		{
 			name:       "URI value with query string does not match policy for base URI only",
 			input:      map[string]string{"kas_uri": "https://kas.example.com?foo=bar"},
 			policyDims: "kas_uri=https://kas.example.com",
 			// The query string makes the URIs different; policy requires exact match.
 			expected: false,
+		},
+		{
+			name:       "escaped literal star policy value does not act as wildcard",
+			input:      map[string]string{"kas_uri": "https://kas.example.com"},
+			policyDims: "kas_uri=" + url.QueryEscape("*"),
+			expected:   false,
 		},
 		{
 			name:       "injected extra dimension does not satisfy a different policy key",

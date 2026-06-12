@@ -638,6 +638,14 @@ func dimensionMatch(reqDims, policyDims string) bool {
 		if !isValidDimensionKey(key) {
 			return false
 		}
+		policyWildcard := policyVal == "*"
+		if !policyWildcard {
+			unescapedVal, err := url.QueryUnescape(policyVal)
+			if err != nil {
+				return false
+			}
+			policyVal = unescapedVal
+		}
 
 		reqVal, exists := reqMap[key]
 		if !exists {
@@ -646,7 +654,7 @@ func dimensionMatch(reqDims, policyDims string) bool {
 		}
 
 		// Wildcard matches any value
-		if policyVal != "*" && policyVal != reqVal {
+		if !policyWildcard && policyVal != reqVal {
 			return false
 		}
 	}

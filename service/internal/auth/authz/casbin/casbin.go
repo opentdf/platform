@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"net/url"
 	"sort"
 	"strings"
 
@@ -555,10 +556,11 @@ func serializeDimensions(ctx *authz.ResolverContext) (string, error) {
 	}
 	sort.Strings(keys)
 
-	// Build canonical string
+	// Build canonical string, URL-encoding values to prevent injection via
+	// special characters like '&' and '=' that are used as separators.
 	parts := make([]string, 0, len(keys))
 	for _, k := range keys {
-		parts = append(parts, fmt.Sprintf("%s=%s", k, allDims[k]))
+		parts = append(parts, fmt.Sprintf("%s=%s", k, url.QueryEscape(allDims[k])))
 	}
 
 	return strings.Join(parts, "&"), nil
@@ -671,7 +673,11 @@ func parseDimensions(dims string) (map[string]string, bool) {
 		if !isValidDimensionKey(kv[0]) {
 			return nil, false
 		}
-		result[kv[0]] = kv[1]
+		unescapedVal, err := url.QueryUnescape(kv[1])
+		if err != nil {
+			return nil, false
+		}
+		result[kv[0]] = unescapedVal
 	}
 	return result, true
 }

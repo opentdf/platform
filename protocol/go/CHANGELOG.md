@@ -1,5 +1,24 @@
 # Changelog
 
+## [0.33.0](https://github.com/opentdf/platform/compare/protocol/go/v0.32.0...protocol/go/v0.33.0) (2026-06-12)
+
+
+### ⚠ BREAKING CHANGES
+
+* **policy:** DSPX-2998 add namespace fields to resource mapping protos ([#3565](https://github.com/opentdf/platform/issues/3565))
+
+### Features
+
+* **authz:** make v2 request limits configurable ([#3508](https://github.com/opentdf/platform/issues/3508)) ([9d16f80](https://github.com/opentdf/platform/commit/9d16f8062e6164748a6a27c497272209b743339f))
+* **core:** Add search term information to protos. ([#3547](https://github.com/opentdf/platform/issues/3547)) ([40f35df](https://github.com/opentdf/platform/commit/40f35df8b9ed6299498f03821475f88526d9a5eb))
+* **policy:** DSPX-2998 add namespace fields to resource mapping protos ([#3565](https://github.com/opentdf/platform/issues/3565)) ([e4a04ed](https://github.com/opentdf/platform/commit/e4a04ed6ee04a346a00a49d3c1f381295f9e9443))
+
+
+### Bug Fixes
+
+* **ci:** Prefer go.work for toolchain info ([#3285](https://github.com/opentdf/platform/issues/3285)) ([3c05b22](https://github.com/opentdf/platform/commit/3c05b22ecac41380c7d8d80e9d487bb3001cd25d))
+* **deps:** bump the external group across 1 directory with 4 updates ([#3494](https://github.com/opentdf/platform/issues/3494)) ([5b87b2b](https://github.com/opentdf/platform/commit/5b87b2b2fc1c1f4d9f5003fc8ca3b446d3398884))
+
 ## [0.32.0](https://github.com/opentdf/platform/compare/protocol/go/v0.31.0...protocol/go/v0.32.0) (2026-05-21)
 
 

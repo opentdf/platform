@@ -1321,6 +1321,15 @@ components:
       description: |-
         Resource Mapping Groups are namespaced collections of Resource Mappings
         associated under a common group name.
+    policy.Search:
+      type: object
+      properties:
+        term:
+          type: string
+          title: term
+          maxLength: 253
+      title: Search
+      additionalProperties: false
     policy.SimpleKasKey:
       type: object
       properties:
@@ -1830,6 +1839,10 @@ components:
           title: pagination
           description: Optional
           $ref: '#/components/schemas/policy.PageRequest'
+        search:
+          title: search
+          description: Optional
+          $ref: '#/components/schemas/policy.Search'
       title: ListObligationTriggersRequest
       additionalProperties: false
     policy.obligations.ListObligationTriggersResponse:
@@ -1873,6 +1886,10 @@ components:
                - direction UNSPECIFIED defaults to DESC for the specified field
                - field UNSPECIFIED defaults to created_at with the specified direction
                - both UNSPECIFIED or sort omitted defaults to created_at DESC
+        search:
+          title: search
+          description: Optional
+          $ref: '#/components/schemas/policy.Search'
       title: ListObligationsRequest
       additionalProperties: false
     policy.obligations.ListObligationsResponse:

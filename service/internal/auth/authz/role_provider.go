@@ -60,26 +60,8 @@ func (p *JWTClaimsRoleProvider) Roles(_ context.Context, token jwt.Token, _ plat
 	}
 
 	if len(selectors) > 1 {
-		claimMap, ok := claim.(map[string]interface{})
-		if !ok {
-			if p.logger != nil {
-				p.logger.Warn(
-					"claim is not of type map[string]interface{}",
-					slog.String("claim", p.groupsClaim),
-					slog.Any("claims", claim),
-				)
-			}
-			return nil, nil
-		}
-		claim = util.Dotnotation(claimMap, strings.Join(selectors[1:], "."))
+		claim = p.nestedClaim(claim, selectors[1:])
 		if claim == nil {
-			if p.logger != nil {
-				p.logger.Warn(
-					"claim not found",
-					slog.String("claim", p.groupsClaim),
-					slog.Any("claims", claim),
-				)
-			}
 			return nil, nil
 		}
 	}
@@ -108,4 +90,28 @@ func (p *JWTClaimsRoleProvider) Roles(_ context.Context, token jwt.Token, _ plat
 	}
 
 	return roles, nil
+}
+
+func (p *JWTClaimsRoleProvider) nestedClaim(claim any, selectors []string) any {
+	claimMap, ok := claim.(map[string]interface{})
+	if !ok {
+		if p.logger != nil {
+			p.logger.Warn(
+				"claim is not of type map[string]interface{}",
+				slog.String("claim", p.groupsClaim),
+				slog.Any("claims", claim),
+			)
+		}
+		return nil
+	}
+
+	nested := util.Dotnotation(claimMap, strings.Join(selectors, "."))
+	if nested == nil && p.logger != nil {
+		p.logger.Warn(
+			"claim not found",
+			slog.String("claim", p.groupsClaim),
+			slog.Any("claims", nested),
+		)
+	}
+	return nested
 }

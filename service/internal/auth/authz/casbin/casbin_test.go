@@ -537,8 +537,8 @@ func (s *CasbinAuthorizerSuite) TestAuthorizeV2_ReturnsSubjectExtractionError() 
 	})
 	s.Require().Error(err)
 	s.Nil(decision)
-	s.ErrorIs(err, roleProviderErr)
-	s.Contains(err.Error(), "v2 authorization subject extraction error")
+	s.Require().ErrorIs(err, roleProviderErr)
+	s.Require().Contains(err.Error(), "v2 authorization subject extraction error")
 }
 
 func (s *CasbinAuthorizerSuite) TestAuthorizeV2_KASRESTfulPathsAllowed() {

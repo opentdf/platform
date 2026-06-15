@@ -37,8 +37,8 @@ const (
 
 // NIST-assigned OIDs for ML-KEM (FIPS 203).
 var (
-	OidMLKEM768  = asn1.ObjectIdentifier{2, 16, 840, 1, 101, 3, 4, 4, 2}
-	OidMLKEM1024 = asn1.ObjectIdentifier{2, 16, 840, 1, 101, 3, 4, 4, 3}
+	OIDMLKEM768  = asn1.ObjectIdentifier{2, 16, 840, 1, 101, 3, 4, 4, 2}
+	OIDMLKEM1024 = asn1.ObjectIdentifier{2, 16, 840, 1, 101, 3, 4, 4, 3}
 )
 
 type mlkemAlgorithmIdentifier struct {
@@ -93,10 +93,10 @@ func ParseMLKEMPublicSPKI(der []byte) (asn1.ObjectIdentifier, []byte, error) {
 	}
 	var oid asn1.ObjectIdentifier
 	switch {
-	case s.Algorithm.Algorithm.Equal(OidMLKEM768):
-		oid = OidMLKEM768
-	case s.Algorithm.Algorithm.Equal(OidMLKEM1024):
-		oid = OidMLKEM1024
+	case s.Algorithm.Algorithm.Equal(OIDMLKEM768):
+		oid = OIDMLKEM768
+	case s.Algorithm.Algorithm.Equal(OIDMLKEM1024):
+		oid = OIDMLKEM1024
 	default:
 		return nil, nil, errNotMLKEM
 	}
@@ -118,10 +118,10 @@ func parseMLKEMPrivatePKCS8(der []byte) (asn1.ObjectIdentifier, []byte, error) {
 	}
 	var oid asn1.ObjectIdentifier
 	switch {
-	case p.Algorithm.Algorithm.Equal(OidMLKEM768):
-		oid = OidMLKEM768
-	case p.Algorithm.Algorithm.Equal(OidMLKEM1024):
-		oid = OidMLKEM1024
+	case p.Algorithm.Algorithm.Equal(OIDMLKEM768):
+		oid = OIDMLKEM768
+	case p.Algorithm.Algorithm.Equal(OIDMLKEM1024):
+		oid = OIDMLKEM1024
 	default:
 		return nil, nil, errNotMLKEM
 	}
@@ -155,7 +155,7 @@ type mlkemDecapsulationKey interface {
 }
 
 var mlkem768Params = mlkemParams{
-	oid:            OidMLKEM768,
+	oid:            OIDMLKEM768,
 	publicKeySize:  MLKEM768PublicKeySize,
 	privateKeySize: MLKEM768PrivateKeySize,
 	ciphertextSize: MLKEM768CiphertextSize,
@@ -179,7 +179,7 @@ var mlkem768Params = mlkemParams{
 }
 
 var mlkem1024Params = mlkemParams{
-	oid:            OidMLKEM1024,
+	oid:            OIDMLKEM1024,
 	publicKeySize:  MLKEM1024PublicKeySize,
 	privateKeySize: MLKEM1024PrivateKeySize,
 	ciphertextSize: MLKEM1024CiphertextSize,

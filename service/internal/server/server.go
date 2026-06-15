@@ -279,19 +279,22 @@ func NewOpenTDFServer(config Config, logger *logger.Logger, cacheManager *cache.
 		logger.Warn("disabling authentication. this is deprecated and will be removed. if you are using an IdP without DPoP set `enforceDPoP = false`")
 	}
 
-	var ipcAuthInt connect.Interceptor
-	var connectAuthInt connect.Interceptor
+	var ipcAuthInts []connect.Interceptor
+	var connectAuthInts []connect.Interceptor
 	if config.Auth.Enabled && authN != nil {
-		ipcAuthInt = authN.IPCUnaryServerInterceptor()
-		connectAuthInt = authN.ConnectUnaryServerInterceptor()
+		ipcAuthInts = []connect.Interceptor{authN.IPCUnaryServerInterceptor()}
+		connectAuthInts = []connect.Interceptor{
+			authN.ConnectAuthNInterceptor(),
+			authN.ConnectAuthZInterceptor(),
+		}
 	}
 
-	connectRPCIpc, err := newConnectRPC(config, ipcAuthInt, config.ExtraIPCInterceptors, logger)
+	connectRPCIpc, err := newConnectRPC(config, ipcAuthInts, config.ExtraIPCInterceptors, logger)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create connect rpc ipc server: %w", err)
 	}
 
-	connectRPC, err := newConnectRPC(config, connectAuthInt, config.ExtraConnectInterceptors, logger)
+	connectRPC, err := newConnectRPC(config, connectAuthInts, config.ExtraConnectInterceptors, logger)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create connect rpc server: %w", err)
 	}
@@ -464,7 +467,7 @@ func pprofHandler(h http.Handler) http.Handler {
 	})
 }
 
-func newConnectRPC(c Config, authInt connect.Interceptor, ints []connect.Interceptor, logger *logger.Logger) (*ConnectRPC, error) {
+func newConnectRPC(c Config, authInts []connect.Interceptor, ints []connect.Interceptor, logger *logger.Logger) (*ConnectRPC, error) {
 	interceptors := make([]connect.HandlerOption, 0)
 
 	// OTel tracing and metrics for incoming Connect requests, before all other interceptors
@@ -475,10 +478,10 @@ func newConnectRPC(c Config, authInt connect.Interceptor, ints []connect.Interce
 	interceptors = append(interceptors, connect.WithInterceptors(serverTraceInt))
 
 	if c.Auth.Enabled {
-		if authInt == nil {
-			return nil, errors.New("authentication enabled but no interceptor provided")
+		if len(authInts) == 0 {
+			return nil, errors.New("authentication enabled but no interceptors provided")
 		}
-		interceptors = append(interceptors, connect.WithInterceptors(authInt))
+		interceptors = append(interceptors, connect.WithInterceptors(authInts...))
 	} else {
 		logger.Error("disabling authentication. this is deprecated and will be removed. if you are using an IdP without DPoP you can set `enforceDpop = false`")
 	}

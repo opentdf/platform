@@ -543,7 +543,7 @@ func TestNewConnectRPC(t *testing.T) {
 	tests := []struct {
 		name            string
 		authEnabled     bool
-		authInt         connect.Interceptor
+		authInts        []connect.Interceptor
 		extraInts       []connect.Interceptor
 		wantErr         bool
 		wantIntLen      int
@@ -552,23 +552,22 @@ func TestNewConnectRPC(t *testing.T) {
 		{
 			name:            "auth enabled with extras",
 			authEnabled:     true,
-			authInt:         noopInterceptor(),
+			authInts:        []connect.Interceptor{noopInterceptor(), noopInterceptor()},
 			extraInts:       []connect.Interceptor{noopInterceptor(), noopInterceptor()},
 			wantIntLen:      4,
-			wantDescription: "1 trace + 1 auth + 1 extras + 1 validation/audit",
+			wantDescription: "1 trace + 1 auth group + 1 validation/audit + 1 extras",
 		},
 		{
 			name:            "auth enabled no extras",
 			authEnabled:     true,
-			authInt:         noopInterceptor(),
+			authInts:        []connect.Interceptor{noopInterceptor(), noopInterceptor()},
 			extraInts:       nil,
 			wantIntLen:      3,
-			wantDescription: "1 trace + 1 auth + 1 validation/audit",
+			wantDescription: "1 trace + 1 auth group + 1 validation/audit",
 		},
 		{
 			name:            "auth disabled no extras",
 			authEnabled:     false,
-			authInt:         nil,
 			extraInts:       nil,
 			wantIntLen:      2,
 			wantDescription: "1 trace + 1 validation/audit only",
@@ -576,22 +575,19 @@ func TestNewConnectRPC(t *testing.T) {
 		{
 			name:            "auth disabled with extras",
 			authEnabled:     false,
-			authInt:         nil,
 			extraInts:       []connect.Interceptor{noopInterceptor()},
 			wantIntLen:      3,
 			wantDescription: "1 trace + 1 extras + 1 validation/audit",
 		},
 		{
-			name:        "auth enabled but nil authInt returns error",
+			name:        "auth enabled but no auth interceptors returns error",
 			authEnabled: true,
-			authInt:     nil,
 			extraInts:   nil,
 			wantErr:     true,
 		},
 		{
-			name:        "auth enabled nil authInt with extras returns error",
+			name:        "auth enabled with extras but no auth interceptors returns error",
 			authEnabled: true,
-			authInt:     nil,
 			extraInts:   []connect.Interceptor{noopInterceptor()},
 			wantErr:     true,
 		},
@@ -603,7 +599,7 @@ func TestNewConnectRPC(t *testing.T) {
 				Auth: auth.Config{Enabled: tt.authEnabled},
 			}
 
-			result, err := newConnectRPC(cfg, tt.authInt, tt.extraInts, testLogger)
+			result, err := newConnectRPC(cfg, tt.authInts, tt.extraInts, testLogger)
 			if tt.wantErr {
 				require.Error(t, err)
 				assert.Nil(t, result)
@@ -634,16 +630,16 @@ func TestNewConnectRPC_InterceptorOrdering(t *testing.T) {
 	tests := []struct {
 		name        string
 		authEnabled bool
-		authInt     connect.Interceptor
+		authInts    []connect.Interceptor
 		extras      []connect.Interceptor
 		wantOrder   []string
 	}{
 		{
-			name:        "extras run after auth interceptor",
+			name:        "extras run after auth interceptors",
 			authEnabled: true,
-			authInt:     makeInterceptor("auth"),
+			authInts:    []connect.Interceptor{makeInterceptor("auth1"), makeInterceptor("auth2")},
 			extras:      []connect.Interceptor{makeInterceptor("extra1"), makeInterceptor("extra2")},
-			wantOrder:   []string{"auth", "extra1", "extra2"},
+			wantOrder:   []string{"auth1", "auth2", "extra1", "extra2"},
 		},
 		{
 			name:        "extras run after defaults without auth",
@@ -654,9 +650,9 @@ func TestNewConnectRPC_InterceptorOrdering(t *testing.T) {
 		{
 			name:        "single extra runs after auth",
 			authEnabled: true,
-			authInt:     makeInterceptor("auth"),
+			authInts:    []connect.Interceptor{makeInterceptor("auth1"), makeInterceptor("auth2")},
 			extras:      []connect.Interceptor{makeInterceptor("extra1")},
-			wantOrder:   []string{"auth", "extra1"},
+			wantOrder:   []string{"auth1", "auth2", "extra1"},
 		},
 	}
 
@@ -665,7 +661,7 @@ func TestNewConnectRPC_InterceptorOrdering(t *testing.T) {
 			callOrder = nil
 
 			cfg := Config{Auth: auth.Config{Enabled: tt.authEnabled}}
-			result, err := newConnectRPC(cfg, tt.authInt, tt.extras, testLogger)
+			result, err := newConnectRPC(cfg, tt.authInts, tt.extras, testLogger)
 			require.NoError(t, err)
 
 			// Register a minimal unary handler to exercise the interceptor chain

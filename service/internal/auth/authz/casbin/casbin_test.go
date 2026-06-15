@@ -38,6 +38,16 @@ func (p staticRoleProvider) Roles(_ context.Context, _ jwt.Token, _ platformauth
 	return p.roles, nil
 }
 
+type recordingRoleProvider struct {
+	roles []string
+	req   platformauthz.RoleRequest
+}
+
+func (p *recordingRoleProvider) Roles(_ context.Context, _ jwt.Token, req platformauthz.RoleRequest) ([]string, error) {
+	p.req = req
+	return p.roles, nil
+}
+
 type CasbinAuthorizerSuite struct {
 	suite.Suite
 	logger *logger.Logger
@@ -473,6 +483,7 @@ p, alice, /policy.attributes.AttributesService/Get*, *, allow`,
 		s.T().Context(),
 		token,
 		platformauthz.RoleRequest{},
+		true,
 	)
 	s.Require().NoError(err)
 	s.Equal([]string{"client:test-client", "role:admin", "alice"}, subjects)
@@ -514,6 +525,34 @@ func (s *CasbinAuthorizerSuite) TestAuthorizeV2_UsesConfiguredRoleProvider() {
 	s.Require().NoError(err)
 	s.True(decision.Allowed)
 	s.Equal("role:external-admin", decision.MatchedPolicy)
+}
+
+func (s *CasbinAuthorizerSuite) TestAuthorizeV2_PassesRoleRequestToRoleProvider() {
+	roleProvider := &recordingRoleProvider{roles: []string{"external-admin"}}
+	cfg := authz.Config{
+		Version: "v2",
+		PolicyConfig: authz.PolicyConfig{
+			Issuer: "https://issuer.example",
+			Csv:    "p, role:external-admin, /policy.attributes.AttributesService/Get*, *, allow",
+		},
+		Logger:  s.logger,
+		Options: []authz.Option{authz.WithRoleProvider(roleProvider)},
+	}
+
+	authorizer, err := NewAuthorizer(cfg)
+	s.Require().NoError(err)
+
+	_, err = authorizer.Authorize(s.T().Context(), &authz.Request{
+		Token:  jwt.New(),
+		RPC:    "/policy.attributes.AttributesService/GetAttribute",
+		Action: "read",
+	})
+	s.Require().NoError(err)
+	s.Equal(platformauthz.RoleRequest{
+		Issuer:   "https://issuer.example",
+		Resource: "/policy.attributes.AttributesService/GetAttribute",
+		Action:   "read",
+	}, roleProvider.req)
 }
 
 func (s *CasbinAuthorizerSuite) TestAuthorizeV2_ReturnsSubjectExtractionError() {
@@ -1065,9 +1104,11 @@ func (s *CasbinAuthorizerSuite) TestAuthorizeV1_GRPCPathStripsLeadingSlash() {
 	// v1 policy: gRPC paths have NO leading slash
 	// Create a mock enforcer that validates the resource path
 	var receivedResource string
+	var receivedIssuer string
 	mockEnforcer := &mockV1Enforcer{
 		enforceFunc: func(_ context.Context, _ jwt.Token, req platformauthz.RoleRequest) (bool, map[string]any, error) {
 			receivedResource = req.Resource
+			receivedIssuer = req.Issuer
 			// Allow if resource matches expected stripped path
 			return req.Resource == "kas.AccessService/Rewrap", nil, nil
 		},
@@ -1076,6 +1117,7 @@ func (s *CasbinAuthorizerSuite) TestAuthorizeV1_GRPCPathStripsLeadingSlash() {
 	cfg := authz.Config{
 		Version: "v1",
 		PolicyConfig: authz.PolicyConfig{
+			Issuer:      "https://issuer.example",
 			GroupsClaim: "realm_access.roles",
 		},
 		Logger:  s.logger,
@@ -1104,6 +1146,7 @@ func (s *CasbinAuthorizerSuite) TestAuthorizeV1_GRPCPathStripsLeadingSlash() {
 	s.True(decision.Allowed, "gRPC path should be allowed after stripping leading slash")
 	s.Equal(authz.ModeV1, decision.Mode)
 	s.Equal("kas.AccessService/Rewrap", receivedResource, "resource should have leading slash stripped")
+	s.Equal("https://issuer.example", receivedIssuer)
 }
 
 func (s *CasbinAuthorizerSuite) TestAuthorizeV1_HTTPPathKeepsLeadingSlash() {

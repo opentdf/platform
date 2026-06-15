@@ -56,6 +56,9 @@ type Authorizer struct {
 	// version indicates which model is active ("v1" or "v2")
 	version string
 
+	// issuer is the configured token issuer for role provider requests.
+	issuer string
+
 	// v1Enforcer handles legacy path-based authorization
 	// Used when version == "v1"
 	v1Enforcer authz.V1Enforcer
@@ -99,6 +102,7 @@ func newCasbinV1Authorizer(cfg authz.CasbinV1Config, log *logger.Logger) (*Autho
 
 	authorizer := &Authorizer{
 		version:    "v1",
+		issuer:     cfg.Issuer,
 		logger:     log,
 		v1Enforcer: cfg.Enforcer,
 	}
@@ -126,13 +130,13 @@ func newCasbinV2Authorizer(cfg authz.CasbinV2Config, log *logger.Logger) (*Autho
 
 	authorizer := &Authorizer{
 		version:    "v2",
+		issuer:     cfg.Issuer,
 		logger:     log,
 		v2Enforcer: enforcer,
 		subjectExtractor: authz.SubjectExtractor{
 			UserNameClaim: cfg.UserNameClaim,
 			ClientIDClaim: cfg.ClientIDClaim,
 			RoleProvider:  roleProvider,
-			UsePrefix:     true,
 			Logger:        log,
 		},
 	}
@@ -253,6 +257,7 @@ func (a *Authorizer) authorizeV1(ctx context.Context, req *authz.Request) (*auth
 	// Example: /kas/v2/rewrap -> /kas/v2/rewrap
 
 	allowed, _, err := a.v1Enforcer.Enforce(ctx, req.Token, platformauthz.RoleRequest{
+		Issuer:   a.issuer,
 		Resource: resource,
 		Action:   req.Action,
 	})
@@ -276,7 +281,12 @@ func (a *Authorizer) authorizeV1(ctx context.Context, req *authz.Request) (*auth
 
 // authorizeV2 performs RPC+dimensions authorization.
 func (a *Authorizer) authorizeV2(ctx context.Context, req *authz.Request) (*authz.Decision, error) {
-	subjects, _, err := a.subjectExtractor.BuildSubjectFromToken(ctx, req.Token, platformauthz.RoleRequest{})
+	roleReq := platformauthz.RoleRequest{
+		Issuer:   a.issuer,
+		Resource: req.RPC,
+		Action:   req.Action,
+	}
+	subjects, _, err := a.subjectExtractor.BuildSubjectFromToken(ctx, req.Token, roleReq, true)
 	if err != nil {
 		return nil, fmt.Errorf("v2 authorization subject extraction error: %w", err)
 	}

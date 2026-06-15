@@ -28,11 +28,10 @@ type SubjectExtractor struct {
 	UserNameClaim string
 	ClientIDClaim string
 	RoleProvider  platformauthz.RoleProvider
-	UsePrefix     bool
 	Logger        *logger.Logger
 }
 
-func (e SubjectExtractor) BuildSubjectFromToken(ctx context.Context, token jwt.Token, req platformauthz.RoleRequest) ([]string, []string, error) {
+func (e SubjectExtractor) BuildSubjectFromToken(ctx context.Context, token jwt.Token, req platformauthz.RoleRequest, usePrefix bool) ([]string, []string, error) {
 	subjects := []string{}
 
 	if e.Logger != nil {
@@ -43,10 +42,10 @@ func (e SubjectExtractor) BuildSubjectFromToken(ctx context.Context, token jwt.T
 	if err != nil {
 		return nil, nil, err
 	}
-	roles := e.normalizeRoles(claims.Groups)
+	roles := normalizeRoles(claims.Groups, usePrefix)
 
 	if clientID := claims.ClientID; clientID != "" {
-		subjects = append(subjects, e.subjectWithPrefix(clientID, SubjectClientPrefix))
+		subjects = append(subjects, subjectWithPrefix(clientID, SubjectClientPrefix, usePrefix))
 	}
 	subjects = append(subjects, roles...)
 	if claims.Subject != "" {
@@ -110,8 +109,8 @@ func (e SubjectExtractor) ClientIDFromToken(ctx context.Context, token jwt.Token
 	return clientID, nil
 }
 
-func (e SubjectExtractor) normalizeRoles(roles []string) []string {
-	if !e.UsePrefix {
+func normalizeRoles(roles []string, usePrefix bool) []string {
+	if !usePrefix {
 		return roles
 	}
 	prefixed := make([]string, 0, len(roles))
@@ -119,13 +118,13 @@ func (e SubjectExtractor) normalizeRoles(roles []string) []string {
 		if role == "" {
 			continue
 		}
-		prefixed = append(prefixed, e.subjectWithPrefix(role, SubjectRolePrefix))
+		prefixed = append(prefixed, subjectWithPrefix(role, SubjectRolePrefix, usePrefix))
 	}
 	return prefixed
 }
 
-func (e SubjectExtractor) subjectWithPrefix(subject, prefix string) string {
-	if !e.UsePrefix || strings.HasPrefix(subject, prefix) {
+func subjectWithPrefix(subject, prefix string, usePrefix bool) string {
+	if !usePrefix || strings.HasPrefix(subject, prefix) {
 		return subject
 	}
 	return prefix + subject

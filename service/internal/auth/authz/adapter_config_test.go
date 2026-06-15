@@ -14,11 +14,13 @@ func TestEngineTypeConstants(t *testing.T) {
 
 func TestBaseAdapterConfig(t *testing.T) {
 	cfg := BaseAdapterConfig{
+		Issuer:        "https://issuer.example",
 		UserNameClaim: "preferred_username",
 		GroupsClaim:   "realm_access.roles",
 		ClientIDClaim: "azp",
 	}
 
+	assert.Equal(t, "https://issuer.example", cfg.Issuer)
 	assert.Equal(t, "preferred_username", cfg.UserNameClaim)
 	assert.Equal(t, "realm_access.roles", cfg.GroupsClaim)
 	assert.Equal(t, "azp", cfg.ClientIDClaim)
@@ -30,6 +32,7 @@ func TestAdapterConfigFromExternal_CasbinV1(t *testing.T) {
 		Engine:  "casbin",
 		Version: "v1",
 		PolicyConfig: PolicyConfig{
+			Issuer:        "https://issuer.example",
 			UserNameClaim: "sub",
 			GroupsClaim:   "roles",
 			ClientIDClaim: "client_id",
@@ -44,6 +47,7 @@ func TestAdapterConfigFromExternal_CasbinV1(t *testing.T) {
 
 	v1Config, ok := result.(CasbinV1Config)
 	assert.True(t, ok, "Expected CasbinV1Config")
+	assert.Equal(t, "https://issuer.example", v1Config.Issuer)
 	assert.Equal(t, "sub", v1Config.UserNameClaim)
 	assert.Equal(t, "roles", v1Config.GroupsClaim)
 	assert.Equal(t, "client_id", v1Config.ClientIDClaim)
@@ -60,6 +64,7 @@ func TestAdapterConfigFromExternal_CasbinV2(t *testing.T) {
 		Engine:  "casbin",
 		Version: "v2",
 		PolicyConfig: PolicyConfig{
+			Issuer:        "https://issuer.example",
 			UserNameClaim: "sub",
 			GroupsClaim:   "roles",
 			ClientIDClaim: "client_id",
@@ -74,6 +79,7 @@ func TestAdapterConfigFromExternal_CasbinV2(t *testing.T) {
 
 	v2Config, ok := result.(CasbinV2Config)
 	assert.True(t, ok, "Expected CasbinV2Config")
+	assert.Equal(t, "https://issuer.example", v2Config.Issuer)
 	assert.Equal(t, "sub", v2Config.UserNameClaim)
 	assert.Equal(t, "roles", v2Config.GroupsClaim)
 	assert.Equal(t, "client_id", v2Config.ClientIDClaim)

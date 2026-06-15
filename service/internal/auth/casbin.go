@@ -189,7 +189,7 @@ func (e *Enforcer) Enforce(ctx context.Context, token jwt.Token, req authz.RoleR
 }
 
 func (e *Enforcer) buildSubjectFromToken(ctx context.Context, t jwt.Token, req authz.RoleRequest) (casbinSubject, []string, error) {
-	subjects, roles, err := e.subjectExtractor().BuildSubjectFromToken(ctx, t, req)
+	subjects, roles, err := e.subjectExtractor().BuildSubjectFromToken(ctx, t, req, false)
 	if err != nil {
 		return nil, nil, err
 	}

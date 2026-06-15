@@ -2,6 +2,7 @@ package casbin
 
 import (
 	"context"
+	"errors"
 	"testing"
 
 	"github.com/lestrrat-go/jwx/v2/jwt"
@@ -27,9 +28,13 @@ func (m *mockV1Enforcer) Enforce(ctx context.Context, token jwt.Token, req platf
 
 type staticRoleProvider struct {
 	roles []string
+	err   error
 }
 
 func (p staticRoleProvider) Roles(_ context.Context, _ jwt.Token, _ platformauthz.RoleRequest) ([]string, error) {
+	if p.err != nil {
+		return nil, p.err
+	}
 	return p.roles, nil
 }
 
@@ -465,7 +470,7 @@ p, alice, /policy.attributes.AttributesService/Get*, *, allow`,
 	})
 
 	subjects, roles, err := casbinAuthorizer.subjectExtractor.BuildSubjectFromToken(
-		context.Background(),
+		s.T().Context(),
 		token,
 		platformauthz.RoleRequest{},
 	)
@@ -473,7 +478,7 @@ p, alice, /policy.attributes.AttributesService/Get*, *, allow`,
 	s.Equal([]string{"client:test-client", "role:admin", "alice"}, subjects)
 	s.Equal([]string{"role:admin"}, roles)
 
-	decision, err := authorizer.Authorize(context.Background(), &authz.Request{
+	decision, err := authorizer.Authorize(s.T().Context(), &authz.Request{
 		Token: token,
 		RPC:   "/policy.attributes.AttributesService/GetAttribute",
 	})
@@ -502,13 +507,38 @@ func (s *CasbinAuthorizerSuite) TestAuthorizeV2_UsesConfiguredRoleProvider() {
 		},
 	})
 
-	decision, err := authorizer.Authorize(context.Background(), &authz.Request{
+	decision, err := authorizer.Authorize(s.T().Context(), &authz.Request{
 		Token: token,
 		RPC:   "/policy.attributes.AttributesService/GetAttribute",
 	})
 	s.Require().NoError(err)
 	s.True(decision.Allowed)
 	s.Equal("role:external-admin", decision.MatchedPolicy)
+}
+
+func (s *CasbinAuthorizerSuite) TestAuthorizeV2_ReturnsSubjectExtractionError() {
+	roleProviderErr := errors.New("role provider unavailable")
+	cfg := authz.Config{
+		Version: "v2",
+		PolicyConfig: authz.PolicyConfig{
+			GroupsClaim: "realm_access.roles",
+			Csv:         "p, role:external-admin, /policy.attributes.AttributesService/Get*, *, allow",
+		},
+		Logger:  s.logger,
+		Options: []authz.Option{authz.WithRoleProvider(staticRoleProvider{err: roleProviderErr})},
+	}
+
+	authorizer, err := NewAuthorizer(cfg)
+	s.Require().NoError(err)
+
+	decision, err := authorizer.Authorize(s.T().Context(), &authz.Request{
+		Token: jwt.New(),
+		RPC:   "/policy.attributes.AttributesService/GetAttribute",
+	})
+	s.Require().Error(err)
+	s.Nil(decision)
+	s.ErrorIs(err, roleProviderErr)
+	s.Contains(err.Error(), "v2 authorization subject extraction error")
 }
 
 func (s *CasbinAuthorizerSuite) TestAuthorizeV2_KASRESTfulPathsAllowed() {

@@ -31,7 +31,7 @@ func TestSubjectExtractorGroupsClaimSupportsStringSlices(t *testing.T) {
 		RoleProvider:  NewJWTClaimsRoleProvider("realm_access.roles", nil),
 	}
 
-	subjects, roles, err := extractor.BuildSubjectFromToken(context.Background(), token, platformauthz.RoleRequest{})
+	subjects, roles, err := extractor.BuildSubjectFromToken(t.Context(), token, platformauthz.RoleRequest{})
 	require.NoError(t, err)
 	require.Equal(t, []string{"test-client", "opentdf-admin", "opentdf-standard", "alice"}, subjects)
 	require.Equal(t, []string{"opentdf-admin", "opentdf-standard"}, roles)
@@ -49,7 +49,7 @@ func TestSubjectExtractorCanPrefixSubjects(t *testing.T) {
 		UsePrefix:     true,
 	}
 
-	subjects, roles, err := extractor.BuildSubjectFromToken(context.Background(), token, platformauthz.RoleRequest{})
+	subjects, roles, err := extractor.BuildSubjectFromToken(t.Context(), token, platformauthz.RoleRequest{})
 	require.NoError(t, err)
 	require.Equal(t, []string{"client:test-client", "role:admin", "alice"}, subjects)
 	require.Equal(t, []string{"role:admin"}, roles)
@@ -64,7 +64,7 @@ func TestSubjectExtractorDoesNotAppendEmptyUsername(t *testing.T) {
 		RoleProvider:  staticRoleProvider{roles: []string{"role:admin"}},
 	}
 
-	subjects, roles, err := extractor.BuildSubjectFromToken(context.Background(), token, platformauthz.RoleRequest{})
+	subjects, roles, err := extractor.BuildSubjectFromToken(t.Context(), token, platformauthz.RoleRequest{})
 	require.NoError(t, err)
 	require.Equal(t, []string{"role:admin"}, subjects)
 	require.Equal(t, []string{"role:admin"}, roles)
@@ -79,7 +79,7 @@ func TestSubjectExtractorIgnoresUsernameWithReservedRolePrefix(t *testing.T) {
 		RoleProvider:  staticRoleProvider{roles: []string{"role:admin"}},
 	}
 
-	subjects, roles, err := extractor.BuildSubjectFromToken(context.Background(), token, platformauthz.RoleRequest{})
+	subjects, roles, err := extractor.BuildSubjectFromToken(t.Context(), token, platformauthz.RoleRequest{})
 	require.NoError(t, err)
 	require.Equal(t, []string{"role:admin"}, subjects)
 	require.Equal(t, []string{"role:admin"}, roles)

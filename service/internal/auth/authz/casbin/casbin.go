@@ -278,12 +278,7 @@ func (a *Authorizer) authorizeV1(ctx context.Context, req *authz.Request) (*auth
 func (a *Authorizer) authorizeV2(ctx context.Context, req *authz.Request) (*authz.Decision, error) {
 	subjects, _, err := a.subjectExtractor.BuildSubjectFromToken(ctx, req.Token, platformauthz.RoleRequest{})
 	if err != nil {
-		a.logger.Warn("role provider error", slog.Any("error", err))
-		return &authz.Decision{
-			Allowed: false,
-			Reason:  "v2: denied due to role provider error",
-			Mode:    authz.ModeV2,
-		}, nil
+		return nil, fmt.Errorf("v2 authorization subject extraction error: %w", err)
 	}
 
 	// If no subjects found, use default role

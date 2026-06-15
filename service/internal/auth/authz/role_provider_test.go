@@ -1,7 +1,6 @@
 package authz
 
 import (
-	"context"
 	"testing"
 
 	"github.com/lestrrat-go/jwx/v2/jwt"
@@ -16,7 +15,7 @@ func TestJWTClaimsRoleProviderSupportsStringSlices(t *testing.T) {
 		"roles": []string{"opentdf-admin"},
 	}))
 
-	roles, err := provider.Roles(context.Background(), token, platformauthz.RoleRequest{})
+	roles, err := provider.Roles(t.Context(), token, platformauthz.RoleRequest{})
 	require.NoError(t, err)
 	require.Equal(t, []string{"opentdf-admin"}, roles)
 }

@@ -271,7 +271,7 @@ func TestPermissionDeniedLogAttrsWithoutSubjectInfo(t *testing.T) {
 func TestResolveRoleProviderDefault(t *testing.T) {
 	logger := logger.CreateTestLogger()
 	cfg := Config{}
-	provider, err := resolveRoleProvider(context.Background(), cfg, logger)
+	provider, err := resolveRoleProvider(t.Context(), cfg, logger)
 	require.NoError(t, err)
 	require.NotNil(t, provider)
 	require.IsType(t, &internalauthz.JWTClaimsRoleProvider{}, provider)
@@ -293,7 +293,7 @@ func TestResolveRoleProviderNamed(t *testing.T) {
 			},
 		},
 	}
-	provider, err := resolveRoleProvider(context.Background(), cfg, logger)
+	provider, err := resolveRoleProvider(t.Context(), cfg, logger)
 	require.NoError(t, err)
 	require.NotNil(t, provider)
 }
@@ -309,7 +309,7 @@ func TestResolveRoleProviderMissingName(t *testing.T) {
 			},
 		},
 	}
-	provider, err := resolveRoleProvider(context.Background(), cfg, logger)
+	provider, err := resolveRoleProvider(t.Context(), cfg, logger)
 	require.Error(t, err)
 	require.Nil(t, provider)
 }

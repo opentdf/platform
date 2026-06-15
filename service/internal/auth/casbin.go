@@ -11,6 +11,7 @@ import (
 	casbinModel "github.com/casbin/casbin/v2/model"
 	stringadapter "github.com/casbin/casbin/v2/persist/string-adapter"
 	"github.com/lestrrat-go/jwx/v2/jwt"
+	internalauthz "github.com/opentdf/platform/service/internal/auth/authz"
 	"github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/pkg/authz"
 
@@ -23,15 +24,10 @@ var (
 	ErrPermissionDenied = errors.New("permission denied")
 )
 
-type EnforcementResult struct {
-	Allowed     bool
-	CasbinAuthz CasbinAuthzLog
-}
-
-type CasbinAuthzLog struct {
-	ConfiguredGroupsClaim string
-	SubjectGroups         []string
-}
+const (
+	casbinAuthzConfiguredGroupsClaimKey = "configured_groups_claim"
+	casbinAuthzSubjectGroupsKey         = "subject_groups"
+)
 
 //go:embed casbin_policy.csv
 var builtinPolicy string
@@ -39,6 +35,7 @@ var builtinPolicy string
 //go:embed casbin_model.conf
 var defaultModel string
 
+// Enforcer is the Casbin enforcer with platform-specific configuration
 type Enforcer struct {
 	*casbin.Enforcer
 	Config CasbinConfig
@@ -57,7 +54,7 @@ type CasbinConfig struct {
 	RoleProvider authz.RoleProvider
 }
 
-// newCasbinEnforcer creates a new casbin enforcer
+// NewCasbinEnforcer creates a new casbin enforcer
 func NewCasbinEnforcer(c CasbinConfig, logger *logger.Logger) (*Enforcer, error) {
 	// Set Casbin config defaults if not provided
 	isDefaultModel := false
@@ -109,7 +106,8 @@ func NewCasbinEnforcer(c CasbinConfig, logger *logger.Logger) (*Enforcer, error)
 		c.Adapter = stringadapter.NewAdapter(c.Csv)
 	}
 
-	logger.Debug("creating casbin enforcer",
+	logger.Debug(
+		"creating casbin enforcer",
 		slog.Any("config", c),
 		slog.Bool("isDefaultModel", isDefaultModel),
 		slog.Bool("isBuiltinPolicy", isDefaultPolicy),
@@ -129,7 +127,7 @@ func NewCasbinEnforcer(c CasbinConfig, logger *logger.Logger) (*Enforcer, error)
 
 	roleProvider := c.RoleProvider
 	if roleProvider == nil {
-		roleProvider = newJWTClaimsRoleProvider(c.GroupsClaim, logger)
+		roleProvider = internalauthz.NewJWTClaimsRoleProvider(c.GroupsClaim, logger)
 	}
 
 	return &Enforcer{
@@ -145,18 +143,16 @@ func NewCasbinEnforcer(c CasbinConfig, logger *logger.Logger) (*Enforcer, error)
 
 // casbinEnforce is a helper function to enforce the policy with casbin
 // TODO implement a common type so this can be used for both http and grpc
-func (e *Enforcer) Enforce(ctx context.Context, token jwt.Token, req authz.RoleRequest) (EnforcementResult, error) {
+func (e *Enforcer) Enforce(ctx context.Context, token jwt.Token, req authz.RoleRequest) (bool, map[string]any, error) {
 	// extract the role claim from the token
 	s, subjectGroups, err := e.buildSubjectFromToken(ctx, token, req)
-	result := EnforcementResult{
-		CasbinAuthz: CasbinAuthzLog{
-			ConfiguredGroupsClaim: e.Config.GroupsClaim,
-			SubjectGroups:         subjectGroups,
-		},
+	metadata := map[string]any{
+		casbinAuthzConfiguredGroupsClaimKey: e.Config.GroupsClaim,
+		casbinAuthzSubjectGroupsKey:         subjectGroups,
 	}
 	if err != nil {
 		e.logger.Warn("role provider error", slog.Any("error", err))
-		return result, ErrPermissionDenied
+		return false, metadata, ErrPermissionDenied
 	}
 	s = append(s, rolePrefix+defaultRole)
 
@@ -165,84 +161,46 @@ func (e *Enforcer) Enforce(ctx context.Context, token jwt.Token, req authz.RoleR
 	for _, info := range s {
 		allowed, err := e.Enforcer.Enforce(info, resource, action)
 		if err != nil {
-			e.logger.Error("enforce by role error",
+			e.logger.Error(
+				"enforce by role error",
 				slog.String("subject_info", info),
 				slog.String("action", action),
 				slog.String("resource", resource),
-				slog.Any("error", err),
+				slog.String("error", err.Error()),
 			)
 		}
 		if allowed {
-			e.logger.Debug("allowed by policy",
+			e.logger.Debug(
+				"allowed by policy",
 				slog.String("subject_info", info),
 				slog.String("action", action),
 				slog.String("resource", resource),
 			)
-			result.Allowed = true
-			return result, nil
+			return true, metadata, nil
 		}
 	}
-	e.logger.Debug("permission denied by policy",
+	e.logger.Debug(
+		"permission denied by policy",
 		slog.Any("subject_info", s),
 		slog.String("action", action),
 		slog.String("resource", resource),
 	)
-	return result, ErrPermissionDenied
-}
-
-func (e *Enforcer) ContextWithClaims(ctx context.Context, t jwt.Token, req authz.RoleRequest) (context.Context, error) {
-	roles, err := e.roleProvider.Roles(ctx, t, req)
-	if err != nil {
-		return ctx, err
-	}
-	claims, _ := authz.ClaimsFromContext(ctx)
-	claims.Subject = e.subjectFromToken(t)
-	claims.Groups = roles
-	return authz.ContextWithClaims(ctx, claims), nil
+	return false, metadata, ErrPermissionDenied
 }
 
 func (e *Enforcer) buildSubjectFromToken(ctx context.Context, t jwt.Token, req authz.RoleRequest) (casbinSubject, []string, error) {
-	info := casbinSubject{}
-
-	e.logger.Debug("building subject from token")
-	claims, err := e.claimsForRequest(ctx, t, req)
+	subjects, roles, err := e.subjectExtractor().BuildSubjectFromToken(ctx, t, req)
 	if err != nil {
 		return nil, nil, err
 	}
-
-	info = append(info, claims.Groups...)
-	info = append(info, claims.Subject)
-	return info, append([]string(nil), claims.Groups...), nil
+	return casbinSubject(subjects), roles, nil
 }
 
-func (e *Enforcer) claimsForRequest(ctx context.Context, t jwt.Token, req authz.RoleRequest) (authz.RequestClaims, error) {
-	if claims, ok := authz.ClaimsFromContext(ctx); ok {
-		if claims.Subject != "" || len(claims.Groups) > 0 {
-			return claims, nil
-		}
+func (e *Enforcer) subjectExtractor() internalauthz.SubjectExtractor {
+	return internalauthz.SubjectExtractor{
+		UserNameClaim: e.Config.UserNameClaim,
+		ClientIDClaim: e.Config.ClientIDClaim,
+		RoleProvider:  e.roleProvider,
+		Logger:        e.logger,
 	}
-
-	roles, err := e.roleProvider.Roles(ctx, t, req)
-	if err != nil {
-		return authz.RequestClaims{}, err
-	}
-	claims, _ := authz.ClaimsFromContext(ctx)
-	claims.Subject = e.subjectFromToken(t)
-	claims.Groups = roles
-	return claims, nil
-}
-
-func (e *Enforcer) subjectFromToken(t jwt.Token) string {
-	if claim, found := t.Get(e.Config.UserNameClaim); found {
-		sub, ok := claim.(string)
-		if !ok {
-			e.logger.Warn("username claim not of type string",
-				slog.String("claim", e.Config.UserNameClaim),
-				slog.Any("claims", claim),
-			)
-			return ""
-		}
-		return sub
-	}
-	return ""
 }

@@ -31,7 +31,7 @@ func TestMLKEM768WrapDEKFormats(t *testing.T) {
 	require.NoError(t, err, "Should accept SPKI DER")
 
 	// Test 3: PEM-wrapped SPKI (~1686 bytes)
-	pemBytes := pem.EncodeToMemory(&pem.Block{Type: "PUBLIC KEY", Bytes: spkiDER})
+	pemBytes := pem.EncodeToMemory(&pem.Block{Type: pemBlockPublicKey, Bytes: spkiDER})
 	require.Greater(t, len(pemBytes), len(spkiDER), "PEM should be larger than DER")
 
 	wrappedFromPEM, err := MLKEM768WrapDEK(pemBytes, dek)
@@ -76,7 +76,7 @@ func TestMLKEM1024WrapDEKFormats(t *testing.T) {
 	require.NoError(t, err, "Should accept SPKI DER")
 
 	// Test 3: PEM-wrapped SPKI (~2206 bytes)
-	pemBytes := pem.EncodeToMemory(&pem.Block{Type: "PUBLIC KEY", Bytes: spkiDER})
+	pemBytes := pem.EncodeToMemory(&pem.Block{Type: pemBlockPublicKey, Bytes: spkiDER})
 	require.Greater(t, len(pemBytes), len(spkiDER), "PEM should be larger than DER")
 
 	wrappedFromPEM, err := MLKEM1024WrapDEK(pemBytes, dek)

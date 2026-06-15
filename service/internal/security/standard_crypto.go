@@ -26,6 +26,8 @@ type StandardConfig struct {
 	ECKeys map[string]StandardKeyInfo `mapstructure:"ec,omitempty" json:"ec,omitempty"`
 }
 
+const pemBlockPublicKey = "PUBLIC KEY"
+
 func (sc StandardConfig) IsEmpty() bool {
 	return len(sc.Keys) == 0 && len(sc.ECKeys) == 0 && len(sc.RSAKeys) == 0
 }
@@ -375,7 +377,7 @@ func (s StandardCrypto) ECPublicKey(kid string) (string, error) {
 	}
 
 	pemBlock := &pem.Block{
-		Type:  "PUBLIC KEY",
+		Type:  pemBlockPublicKey,
 		Bytes: derBytes,
 	}
 	pemBytes := pem.EncodeToMemory(pemBlock)

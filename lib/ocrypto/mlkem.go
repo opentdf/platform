@@ -13,12 +13,6 @@ import (
 	"golang.org/x/crypto/hkdf"
 )
 
-// PEM block types defined by RFC 7468 for SPKI / PKCS#8 envelopes.
-const (
-	pemBlockPublicKey  = "PUBLIC KEY"
-	pemBlockPrivateKey = "PRIVATE KEY"
-)
-
 // errNotMLKEM is returned by the ML-KEM SPKI / PKCS#8 parsers when the supplied
 // DER blob is not an ML-KEM key, signalling the caller to fall through to
 // other algorithm parsers.
@@ -246,7 +240,7 @@ func (e *MLKEMEncryptor) PublicKeyInPemFormat() (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("marshal %s SPKI failed: %w", e.params.displayName, err)
 	}
-	return string(pem.EncodeToMemory(&pem.Block{Type: pemBlockPublicKey, Bytes: der})), nil
+	return string(pem.EncodeToMemory(&pem.Block{Type: "PUBLIC KEY", Bytes: der})), nil
 }
 
 func (e *MLKEMEncryptor) Type() SchemeType {
@@ -312,8 +306,8 @@ func normalizeMLKEMPublicKey(input []byte, expectedRawSize int, expectedOID asn1
 		if block == nil {
 			return nil, errors.New("failed to decode PEM block")
 		}
-		if block.Type != pemBlockPublicKey {
-			return nil, fmt.Errorf("expected %s PEM block, got %s", pemBlockPublicKey, block.Type)
+		if block.Type != "PUBLIC KEY" {
+			return nil, fmt.Errorf("expected %s PEM block, got %s", "PUBLIC KEY", block.Type)
 		}
 		// Continue with DER bytes
 		input = block.Bytes

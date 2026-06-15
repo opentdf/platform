@@ -325,7 +325,7 @@ func (a *InProcessProvider) DeriveKey(_ context.Context, keyDetails trust.KeyDet
 		return nil, fmt.Errorf("failed to marshal ECDSA public key: %w", err)
 	}
 	ephemeralECDSAPublicKeyPEM := pem.EncodeToMemory(&pem.Block{
-		Type:  pemBlockPublicKey,
+		Type:  "PUBLIC KEY",
 		Bytes: derBytes,
 	})
 

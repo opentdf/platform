@@ -247,7 +247,7 @@ func publicKeyInPemFormat(pk any) (string, error) {
 
 	publicKeyPem := pem.EncodeToMemory(
 		&pem.Block{
-			Type:  pemBlockPublicKey,
+			Type:  "PUBLIC KEY",
 			Bytes: publicKeyBytes,
 		},
 	)

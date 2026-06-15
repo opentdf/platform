@@ -41,7 +41,7 @@ func (keyPair RsaKeyPair) PrivateKeyInPemFormat() (string, error) {
 
 	privateKeyPem := pem.EncodeToMemory(
 		&pem.Block{
-			Type:  pemBlockPrivateKey,
+			Type:  "PRIVATE KEY",
 			Bytes: privateKeyBytes,
 		},
 	)
@@ -61,7 +61,7 @@ func (keyPair RsaKeyPair) PublicKeyInPemFormat() (string, error) {
 
 	publicKeyPem := pem.EncodeToMemory(
 		&pem.Block{
-			Type:  pemBlockPublicKey,
+			Type:  "PUBLIC KEY",
 			Bytes: publicKeyBytes,
 		},
 	)

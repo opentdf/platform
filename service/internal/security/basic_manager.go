@@ -144,7 +144,7 @@ func (b *BasicManager) DeriveKey(ctx context.Context, keyDetails trust.KeyDetail
 		return nil, fmt.Errorf("failed to marshal ECDSA public key: %w", err)
 	}
 	pemBlock := &pem.Block{
-		Type:  pemBlockPublicKey,
+		Type:  "PUBLIC KEY",
 		Bytes: derBytes,
 	}
 	ephemeralECDSAPublicKeyPEM := pem.EncodeToMemory(pemBlock)

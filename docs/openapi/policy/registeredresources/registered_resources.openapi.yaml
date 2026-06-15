@@ -1220,6 +1220,7 @@ components:
           type: string
           title: term
           maxLength: 253
+          minLength: 1
       title: Search
       additionalProperties: false
     policy.SimpleKasKey:

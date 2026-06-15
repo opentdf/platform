@@ -30,6 +30,7 @@ import (
 	"github.com/opentdf/platform/protocol/go/kas/kasconnect"
 	sdkauth "github.com/opentdf/platform/sdk/auth"
 	"github.com/opentdf/platform/sdk/httputil"
+	internalauthz "github.com/opentdf/platform/service/internal/auth/authz"
 	"github.com/opentdf/platform/service/internal/server/memhttp"
 	"github.com/opentdf/platform/service/logger"
 	ctxAuth "github.com/opentdf/platform/service/pkg/auth"
@@ -223,9 +224,9 @@ func TestPermissionDeniedLogAttrs(t *testing.T) {
 	tok := jwt.New()
 	require.NoError(t, tok.Set(jwt.SubjectKey, "client-subject"))
 
-	attrs := permissionDeniedLogAttrs(tok, CasbinAuthzLog{
-		ConfiguredGroupsClaim: "custom.groups",
-		SubjectGroups:         []string{"opentdf-standard"},
+	attrs := permissionDeniedLogAttrs(tok, map[string]any{
+		casbinAuthzConfiguredGroupsClaimKey: "custom.groups",
+		casbinAuthzSubjectGroupsKey:         []string{"opentdf-standard"},
 	}, ErrPermissionDenied)
 
 	require.Len(t, attrs, 3)
@@ -255,7 +256,7 @@ func TestPermissionDeniedLogAttrsWithoutSubjectInfo(t *testing.T) {
 	tok := jwt.New()
 	require.NoError(t, tok.Set(jwt.SubjectKey, "client-subject"))
 
-	attrs := permissionDeniedLogAttrs(tok, CasbinAuthzLog{}, ErrPermissionDenied)
+	attrs := permissionDeniedLogAttrs(tok, nil, ErrPermissionDenied)
 
 	require.Len(t, attrs, 2)
 	assert.Equal(t, slog.String("azp", "client-subject"), attrs[0])
@@ -268,6 +269,52 @@ func TestPermissionDeniedLogAttrsWithoutSubjectInfo(t *testing.T) {
 	if !errors.Is(loggedErr, ErrPermissionDenied) {
 		t.Fatalf("expected error to wrap %v", ErrPermissionDenied)
 	}
+}
+
+func TestResolveRoleProviderDefault(t *testing.T) {
+	logger := logger.CreateTestLogger()
+	cfg := Config{}
+	provider, err := resolveRoleProvider(t.Context(), cfg, logger)
+	require.NoError(t, err)
+	require.NotNil(t, provider)
+	require.IsType(t, &internalauthz.JWTClaimsRoleProvider{}, provider)
+}
+
+func TestResolveRoleProviderNamed(t *testing.T) {
+	logger := logger.CreateTestLogger()
+	cfg := Config{
+		AuthNConfig: AuthNConfig{
+			Policy: PolicyConfig{
+				RolesProvider: RolesProviderConfig{
+					Name: "mock",
+				},
+			},
+		},
+		RoleProviderFactories: map[string]authz.RoleProviderFactory{
+			"mock": func(_ context.Context, _ authz.ProviderConfig) (authz.RoleProvider, error) {
+				return staticProvider{roles: []string{"role:admin"}}, nil
+			},
+		},
+	}
+	provider, err := resolveRoleProvider(t.Context(), cfg, logger)
+	require.NoError(t, err)
+	require.NotNil(t, provider)
+}
+
+func TestResolveRoleProviderMissingName(t *testing.T) {
+	logger := logger.CreateTestLogger()
+	cfg := Config{
+		AuthNConfig: AuthNConfig{
+			Policy: PolicyConfig{
+				RolesProvider: RolesProviderConfig{
+					Name: "missing",
+				},
+			},
+		},
+	}
+	provider, err := resolveRoleProvider(t.Context(), cfg, logger)
+	require.Error(t, err)
+	require.Nil(t, provider)
 }
 
 func (s *AuthSuite) Test_IPCUnaryServerInterceptor() {
@@ -879,9 +926,10 @@ func (s *AuthSuite) Test_Allowing_Auth_With_No_DPoP() {
 	}
 	config := Config{}
 	config.AuthNConfig = authnConfig
-	auth, err := NewAuthenticator(context.Background(), config, &logger.Logger{
-		Logger: slog.New(slog.Default().Handler()),
-	},
+	auth, err := NewAuthenticator(
+		context.Background(), config, &logger.Logger{
+			Logger: slog.New(slog.Default().Handler()),
+		},
 		func(_ string, _ any) error { return nil },
 	)
 
@@ -1034,7 +1082,7 @@ func Test_GetClientIDFromToken(t *testing.T) {
 			claims:           map[string]interface{}{"cid": "test"},
 			clientIDClaim:    "", // empty claim name
 			expectedClientID: "",
-			expectedErr:      ErrClientIDClaimNotConfigured,
+			expectedErr:      internalauthz.ErrClientIDClaimNotConfigured,
 			expectError:      true,
 		},
 		{
@@ -1044,7 +1092,7 @@ func Test_GetClientIDFromToken(t *testing.T) {
 			},
 			clientIDClaim:    "cid",
 			expectedClientID: "",
-			expectedErr:      ErrClientIDClaimNotFound,
+			expectedErr:      internalauthz.ErrClientIDClaimNotFound,
 			expectError:      true,
 		},
 		{
@@ -1054,7 +1102,7 @@ func Test_GetClientIDFromToken(t *testing.T) {
 			},
 			clientIDClaim:    "cid",
 			expectedClientID: "",
-			expectedErr:      ErrClientIDClaimNotString,
+			expectedErr:      internalauthz.ErrClientIDClaimNotString,
 			expectError:      true,
 		},
 		{
@@ -1064,7 +1112,7 @@ func Test_GetClientIDFromToken(t *testing.T) {
 			},
 			clientIDClaim:    "cid",
 			expectedClientID: "",
-			expectedErr:      ErrClientIDClaimNotString,
+			expectedErr:      internalauthz.ErrClientIDClaimNotString,
 			expectError:      true,
 		},
 		{
@@ -1074,7 +1122,7 @@ func Test_GetClientIDFromToken(t *testing.T) {
 			},
 			clientIDClaim:    "cid",
 			expectedClientID: "",
-			expectedErr:      ErrClientIDClaimNotString,
+			expectedErr:      internalauthz.ErrClientIDClaimNotString,
 			expectError:      true,
 		},
 	}
@@ -1095,7 +1143,7 @@ func Test_GetClientIDFromToken(t *testing.T) {
 				require.NoError(t, err)
 			}
 
-			clientID, err := auth.getClientIDFromToken(t.Context(), tok)
+			clientID, err := auth.subjectExtractor().ClientIDFromToken(t.Context(), tok)
 
 			assert.Equal(t, tt.expectedClientID, clientID)
 

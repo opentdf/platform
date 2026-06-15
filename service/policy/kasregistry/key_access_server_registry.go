@@ -10,6 +10,7 @@ import (
 	"github.com/opentdf/platform/protocol/go/policy"
 	kasr "github.com/opentdf/platform/protocol/go/policy/kasregistry"
 	"github.com/opentdf/platform/protocol/go/policy/kasregistry/kasregistryconnect"
+	"github.com/opentdf/platform/service/internal/auth/authz"
 	"github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/logger/audit"
 	"github.com/opentdf/platform/service/pkg/config"
@@ -76,6 +77,10 @@ func NewRegistration(ns string, dbRegister serviceregistry.DBRegister) *servicer
 				if err = kasrSvc.dbClient.SetBaseKeyOnWellKnownConfig(context.TODO()); err != nil {
 					logger.Error("error setting well-known config", slog.String("error", err.Error()))
 					panic(err)
+				}
+
+				if srp.AuthzResolverRegistry != nil {
+					srp.AuthzResolverRegistry.MustRegister("GetKey", kasrSvc.getKeyAuthzResolver)
 				}
 
 				kasrSvc.config = cfg
@@ -337,10 +342,14 @@ func (s KeyAccessServerRegistry) GetKey(ctx context.Context, r *connect.Request[
 		ObjectType: audit.ObjectTypeKasRegistryKeys,
 	}
 
-	key, err := s.dbClient.GetKey(ctx, r.Msg.GetIdentifier())
-	if err != nil {
-		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
-		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextGetRetrievalFailed, slog.String("key_access_server_keys", r.Msg.String()))
+	key, ok := authz.GetResolvedDataFromContext(ctx, resolverCacheKeyKasKey).(*policy.KasKey)
+	if !ok || key == nil {
+		var err error
+		key, err = s.dbClient.GetKey(ctx, r.Msg.GetIdentifier())
+		if err != nil {
+			s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
+			return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextGetRetrievalFailed, slog.String("key_access_server_keys", r.Msg.String()))
+		}
 	}
 
 	auditParams.ObjectID = key.GetKey().GetKeyId()

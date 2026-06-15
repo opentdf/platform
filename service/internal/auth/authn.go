@@ -23,12 +23,13 @@ import (
 	"github.com/lestrrat-go/jwx/v2/jws"
 	"github.com/lestrrat-go/jwx/v2/jwt"
 
+	internalauthz "github.com/opentdf/platform/service/internal/auth/authz"
+	_ "github.com/opentdf/platform/service/internal/auth/authz/casbin" // Register casbin authorizer
 	"github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/logger/audit"
-	"google.golang.org/grpc/metadata"
-
 	ctxAuth "github.com/opentdf/platform/service/pkg/auth"
 	"github.com/opentdf/platform/service/pkg/authz"
+	"google.golang.org/grpc/metadata"
 )
 
 var (
@@ -61,13 +62,12 @@ var (
 		jwa.PS512: true,
 	}
 
-	// Exported error variables for client ID processing
-	ErrClientIDClaimNotConfigured = errors.New("no client ID claim configured")
-	ErrClientIDClaimNotFound      = errors.New("client ID claim not found")
-	ErrClientIDClaimNotString     = errors.New("client ID claim is not a string")
-
 	canonicalIPCHeaderClientID    = http.CanonicalHeaderKey("x-ipc-auth-client-id")
 	canonicalIPCHeaderAccessToken = http.CanonicalHeaderKey("x-ipc-access-token")
+
+	// errNoResourceContext indicates no resolver is registered or resource authorization is not supported.
+	// This is not an error condition - it means resource-level authorization is not applicable.
+	errNoResourceContext = errors.New("no resource context")
 )
 
 const (
@@ -87,8 +87,14 @@ type Authentication struct {
 	tokenVerifier *TokenVerifier
 	// openidConfigurations holds the openid configuration for the issuer
 	oidcConfiguration AuthNConfig
-	// Casbin enforcer
+	// Casbin enforcer for v1 authorization (implements authz.V1Enforcer)
 	enforcer *Enforcer
+	// authorizer is the pluggable authorization engine (v1, v2, etc.)
+	authorizer internalauthz.Authorizer
+	// authzResolverRegistry holds per-method resolvers for extracting authorization dimensions
+	authzResolverRegistry *internalauthz.ResolverRegistry
+	// roleProvider extracts configured authorization subjects from request tokens.
+	roleProvider authz.RoleProvider
 	// Public Routes HTTP & gRPC
 	publicRoutes []string
 	// IPC Reauthorization Routes
@@ -100,11 +106,27 @@ type Authentication struct {
 	_testCheckTokenFunc func(ctx context.Context, authHeader []string, dpopInfo receiverInfo, dpopHeader []string) (jwt.Token, context.Context, error)
 }
 
+// AuthenticatorOption is a functional option for configuring Authentication.
+type AuthenticatorOption func(*Authentication)
+
+// WithAuthzResolverRegistry sets the authorization resolver registry.
+// When set, the interceptors will call resolvers to extract authorization dimensions.
+func WithAuthzResolverRegistry(registry *internalauthz.ResolverRegistry) AuthenticatorOption {
+	return func(a *Authentication) {
+		a.authzResolverRegistry = registry
+	}
+}
+
 // Creates new authN which is used to verify tokens for a set of given issuers
-func NewAuthenticator(ctx context.Context, cfg Config, logger *logger.Logger, wellknownRegistration func(namespace string, config any) error) (*Authentication, error) {
+func NewAuthenticator(ctx context.Context, cfg Config, logger *logger.Logger, wellknownRegistration func(namespace string, config any) error, opts ...AuthenticatorOption) (*Authentication, error) {
 	a := &Authentication{
 		enforceDPoP: cfg.EnforceDPoP,
 		logger:      logger,
+	}
+
+	// Apply options
+	for _, opt := range opts {
+		opt(a)
 	}
 
 	tokenVerifier, oidcConfig, err := newTokenVerifier(ctx, cfg.AuthNConfig, a.logger)
@@ -117,6 +139,7 @@ func NewAuthenticator(ctx context.Context, cfg Config, logger *logger.Logger, we
 	if err != nil {
 		return nil, err
 	}
+	a.roleProvider = roleProvider
 	casbinConfig := CasbinConfig{
 		PolicyConfig: cfg.Policy,
 		RoleProvider: roleProvider,
@@ -124,6 +147,36 @@ func NewAuthenticator(ctx context.Context, cfg Config, logger *logger.Logger, we
 	logger.Info("initializing casbin enforcer")
 	if a.enforcer, err = NewCasbinEnforcer(casbinConfig, a.logger); err != nil {
 		return nil, fmt.Errorf("failed to initialize casbin enforcer: %w", err)
+	}
+
+	// Initialize the pluggable authorizer based on engine and version
+	authzCfg := internalauthz.Config{
+		Engine:  cfg.Policy.Engine,
+		Version: cfg.Policy.Version,
+		PolicyConfig: internalauthz.PolicyConfig{
+			Engine:        cfg.Policy.Engine,
+			Version:       cfg.Policy.Version,
+			UserNameClaim: cfg.Policy.UserNameClaim,
+			GroupsClaim:   cfg.Policy.GroupsClaim,
+			ClientIDClaim: cfg.Policy.ClientIDClaim,
+			Csv:           cfg.Policy.Csv,
+			Extension:     cfg.Policy.Extension,
+			Model:         cfg.Policy.Model,
+			RoleMap:       cfg.Policy.RoleMap,
+			Adapter:       cfg.Policy.Adapter,
+		},
+		Logger: logger,
+		// Pass the v1 enforcer to break circular dependency
+		// The casbin authorizer will use this for v1 mode
+		Options: []internalauthz.Option{internalauthz.WithV1Enforcer(a.enforcer), internalauthz.WithRoleProvider(roleProvider)},
+	}
+	logger.Info(
+		"initializing authorizer",
+		slog.String("engine", authzCfg.Engine),
+		slog.String("version", authzCfg.Version),
+	)
+	if a.authorizer, err = internalauthz.New(authzCfg); err != nil {
+		return nil, fmt.Errorf("failed to initialize authorizer: %w", err)
 	}
 
 	// Combine public routes
@@ -157,6 +210,39 @@ func NewAuthenticator(ctx context.Context, cfg Config, logger *logger.Logger, we
 	}
 
 	return a, nil
+}
+
+func resolveRoleProvider(ctx context.Context, cfg Config, logger *logger.Logger) (authz.RoleProvider, error) {
+	if cfg.Policy.RolesProvider.Name != "" {
+		if cfg.RoleProvider != nil && cfg.RoleProviderFactories != nil {
+			logger.Warn(
+				"role provider configured in start options is ignored because roles_provider is set",
+				slog.String("roles_provider", cfg.Policy.RolesProvider.Name),
+			)
+		}
+		if cfg.RoleProviderFactories == nil {
+			return nil, fmt.Errorf("no role provider factories are registered, cannot create provider %q", cfg.Policy.RolesProvider.Name)
+		}
+		factory, ok := cfg.RoleProviderFactories[cfg.Policy.RolesProvider.Name]
+		if !ok {
+			return nil, fmt.Errorf("role provider factory not registered: %s", cfg.Policy.RolesProvider.Name)
+		}
+		providerCfg := authz.ProviderConfig{
+			Config:        cfg.Policy.RolesProvider.Config,
+			UsernameClaim: cfg.Policy.UserNameClaim,
+			GroupsClaim:   cfg.Policy.GroupsClaim,
+			ClientIDClaim: cfg.Policy.ClientIDClaim,
+		}
+		provider, err := factory(ctx, providerCfg)
+		if err != nil {
+			return nil, fmt.Errorf("role provider factory failed: %w", err)
+		}
+		return provider, nil
+	}
+	if cfg.RoleProvider != nil {
+		return cfg.RoleProvider, nil
+	}
+	return internalauthz.NewJWTClaimsRoleProvider(cfg.Policy.GroupsClaim, logger), nil
 }
 
 type receiverInfo struct {
@@ -209,7 +295,8 @@ func (a Authentication) MuxHandler(handler http.Handler) http.Handler {
 			m: []string{r.Method},
 		}, dp)
 		if err != nil {
-			log.WarnContext(ctx,
+			log.WarnContext( //nolint:contextcheck // r.Context was enriched with public route state.
+				r.Context(),
 				"unauthenticated",
 				slog.Any("error", err),
 				slog.Any("dpop", dp),
@@ -218,10 +305,10 @@ func (a Authentication) MuxHandler(handler http.Handler) http.Handler {
 			return
 		}
 
-		clientID, err := a.getClientIDFromToken(ctx, accessTok)
+		clientID, err := a.subjectExtractor().ClientIDFromToken(r.Context(), accessTok) //nolint:contextcheck // r.Context includes public route state.
 		if err != nil {
-			log.WarnContext(
-				ctx,
+			log.WarnContext( //nolint:contextcheck // r.Context was enriched with public route state.
+				r.Context(),
 				"could not determine client ID from token",
 				slog.Any("err", err),
 			)
@@ -250,7 +337,7 @@ func (a Authentication) MuxHandler(handler http.Handler) http.Handler {
 			Resource: r.URL.Path,
 			Action:   action,
 		}
-		ctx, err = a.enforcer.ContextWithClaims(ctx, accessTok, roleReq)
+		ctx, err = a.subjectExtractor().ContextWithClaims(ctx, accessTok, roleReq)
 		if err != nil {
 			log.WarnContext(r.Context(), "role provider error", slog.Any("error", err)) //nolint:contextcheck // request context is already derived with public route state above.
 			if errors.Is(err, ErrPermissionDenied) {
@@ -260,29 +347,29 @@ func (a Authentication) MuxHandler(handler http.Handler) http.Handler {
 			http.Error(w, "internal server error", http.StatusInternalServerError)
 			return
 		}
-		if result, err := a.enforcer.Enforce(ctx, accessTok, roleReq); err != nil {
+		if allowed, metadata, err := a.enforcer.Enforce(ctx, accessTok, roleReq); err != nil { //nolint:contextcheck // checkToken derives ctx from r.Context.
 			if errors.Is(err, ErrPermissionDenied) {
-				log.WarnContext(
+				log.WarnContext( //nolint:contextcheck // checkToken derives ctx from r.Context.
 					ctx,
 					"permission denied",
-					permissionDeniedLogAttrs(accessTok, result.CasbinAuthz, err)...,
+					permissionDeniedLogAttrs(accessTok, metadata, err)...,
 				)
 				http.Error(w, "permission denied", http.StatusForbidden)
 				return
 			}
 			http.Error(w, "internal server error", http.StatusInternalServerError)
 			return
-		} else if !result.Allowed {
-			log.WarnContext(
+		} else if !allowed {
+			log.WarnContext( //nolint:contextcheck // checkToken derives ctx from r.Context.
 				ctx,
 				"permission denied",
-				permissionDeniedLogAttrs(accessTok, result.CasbinAuthz, nil)...,
+				permissionDeniedLogAttrs(accessTok, metadata, nil)...,
 			)
 			http.Error(w, "permission denied", http.StatusForbidden)
 			return
 		}
 
-		r = r.WithContext(ctx)
+		r = r.WithContext(ctx) //nolint:contextcheck // checkToken derives ctx from r.Context.
 		handler.ServeHTTP(w, r)
 	})
 }
@@ -323,7 +410,7 @@ func (a Authentication) ConnectAuthNInterceptor() connect.UnaryInterceptorFunc {
 				return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("unauthenticated"))
 			}
 
-			clientID, err := a.getClientIDFromToken(ctxWithJWK, token)
+			clientID, err := a.subjectExtractor().ClientIDFromToken(ctxWithJWK, token)
 			if err != nil {
 				log.WarnContext(
 					ctxWithJWK,
@@ -342,7 +429,7 @@ func (a Authentication) ConnectAuthNInterceptor() connect.UnaryInterceptorFunc {
 			if err != nil {
 				return nil, connect.NewError(connect.CodeInvalidArgument, err)
 			}
-			ctxWithJWK, err = a.enforcer.ContextWithClaims(ctxWithJWK, token, roleReq)
+			ctxWithJWK, err = a.subjectExtractor().ContextWithClaims(ctxWithJWK, token, roleReq)
 			if err != nil {
 				log.WarnContext(ctxWithJWK, "role provider error", slog.Any("error", err))
 				if errors.Is(err, ErrPermissionDenied) {
@@ -379,34 +466,49 @@ func (a Authentication) ConnectAuthZInterceptor() connect.UnaryInterceptorFunc {
 			}
 
 			log := a.logger
-			if result, err := a.enforcer.Enforce(ctx, token, roleReq); err != nil {
-				if errors.Is(err, ErrPermissionDenied) {
-					log.WarnContext(
-						ctx,
-						"permission denied",
-						permissionDeniedLogAttrs(token, result.CasbinAuthz, err)...,
-					)
-					return nil, connect.NewError(connect.CodePermissionDenied, errors.New("permission denied"))
-				}
-				return nil, err
-			} else if !result.Allowed {
-				log.WarnContext(ctx, "permission denied", permissionDeniedLogAttrs(token, result.CasbinAuthz, nil)...)
+			result := a.authorize(ctx, log, token, req, roleReq.Action)
+			if result.err != nil {
+				return nil, connect.NewError(result.errCode, result.err)
+			}
+
+			decision := result.decision
+			if !decision.Allowed {
+				log.WarnContext(
+					ctx, "permission denied",
+					slog.String("azp", token.Subject()),
+					slog.String("mode", string(decision.Mode)),
+					slog.String("reason", decision.Reason),
+				)
 				return nil, connect.NewError(connect.CodePermissionDenied, errors.New("permission denied"))
 			}
 
-			return next(ctx, req)
+			log.DebugContext(
+				ctx, "authorization granted",
+				slog.String("mode", string(decision.Mode)),
+				slog.String("reason", decision.Reason),
+			)
+
+			handlerCtx := ctx
+			if result.resourceContext != nil {
+				handlerCtx = internalauthz.ContextWithResolverContext(handlerCtx, result.resourceContext)
+			}
+
+			return next(handlerCtx, req)
 		})
 	}
 	return connect.UnaryInterceptorFunc(interceptor)
 }
 
-func permissionDeniedLogAttrs(token jwt.Token, casbinAuthz CasbinAuthzLog, err error) []any {
+func permissionDeniedLogAttrs(token jwt.Token, casbinAuthz map[string]any, err error) []any {
 	attrs := []any{slog.String("azp", token.Subject())}
 
-	if casbinAuthz.ConfiguredGroupsClaim != "" || casbinAuthz.SubjectGroups != nil {
-		attrs = append(attrs, slog.Group("casbin_authz",
-			slog.String("configured_groups_claim", casbinAuthz.ConfiguredGroupsClaim),
-			slog.Any("subject_groups", casbinAuthz.SubjectGroups),
+	configuredGroupsClaim, _ := casbinAuthz[casbinAuthzConfiguredGroupsClaimKey].(string)
+	subjectGroups, hasSubjectGroups := casbinAuthz[casbinAuthzSubjectGroupsKey]
+	if configuredGroupsClaim != "" || hasSubjectGroups {
+		attrs = append(attrs, slog.Group(
+			"casbin_authz",
+			slog.String("configured_groups_claim", configuredGroupsClaim),
+			slog.Any("subject_groups", subjectGroups),
 		))
 	}
 
@@ -502,6 +604,112 @@ func (a Authentication) IPCUnaryServerInterceptor() connect.UnaryInterceptorFunc
 		})
 	}
 	return connect.UnaryInterceptorFunc(interceptor)
+}
+
+func (a Authentication) subjectExtractor() internalauthz.SubjectExtractor {
+	return internalauthz.SubjectExtractor{
+		UserNameClaim: a.oidcConfiguration.Policy.UserNameClaim,
+		ClientIDClaim: a.oidcConfiguration.Policy.ClientIDClaim,
+		RoleProvider:  a.roleProvider,
+		Logger:        a.logger,
+	}
+}
+
+// authzResult holds the result of an authorization check
+type authzResult struct {
+	decision        *internalauthz.Decision
+	resourceContext *internalauthz.ResolverContext // Cached resolver data for handler reuse
+	err             error
+	errCode         connect.Code
+}
+
+// resolveResourceContext attempts to resolve authorization dimensions using a registered resolver.
+// Returns errNoResourceContext if no resolver is registered or if resolvers are not supported.
+func (a *Authentication) resolveResourceContext(
+	ctx context.Context,
+	log *logger.Logger,
+	req connect.AnyRequest,
+) (*internalauthz.ResolverContext, error) {
+	// Skip if resolver registry not available or authorizer doesn't support resource authorization
+	if a.authzResolverRegistry == nil || a.authorizer == nil || !a.authorizer.SupportsResourceAuthorization() {
+		return nil, errNoResourceContext
+	}
+
+	resolver, ok := a.authzResolverRegistry.Get(req.Spec().Procedure)
+	if !ok {
+		return nil, errNoResourceContext
+	}
+
+	resolvedCtx, err := resolver(ctx, req)
+	if err != nil {
+		log.WarnContext(
+			ctx, "authz resolver failed",
+			slog.String("procedure", req.Spec().Procedure),
+			slog.Any("error", err),
+		)
+		return nil, err
+	}
+
+	return &resolvedCtx, nil
+}
+
+// authorize performs the full authorization check for a request.
+// It builds the authorization request, resolves resource context if applicable,
+// and returns the authorization decision.
+func (a *Authentication) authorize(
+	ctx context.Context,
+	log *logger.Logger,
+	token jwt.Token,
+	req connect.AnyRequest,
+	action string,
+) authzResult {
+	// Defensive check: authorizer must be initialized
+	if a.authorizer == nil {
+		log.ErrorContext(ctx, "authorizer not initialized")
+		return authzResult{
+			err:     errors.New("authorization system not configured"),
+			errCode: connect.CodeInternal,
+		}
+	}
+
+	// Build authorization request
+	authzReq := &internalauthz.Request{
+		Token:  token,
+		RPC:    req.Spec().Procedure,
+		Action: action,
+	}
+
+	// Try to resolve resource context for fine-grained authorization
+	resourceCtx, resolveErr := a.resolveResourceContext(ctx, log, req)
+	if resolveErr != nil && !errors.Is(resolveErr, errNoResourceContext) {
+		return authzResult{
+			err:     errors.New("authorization context resolution failed"),
+			errCode: connect.CodePermissionDenied,
+		}
+	}
+	// Only set resource context if we actually resolved one (not errNoResourceContext)
+	if resolveErr == nil {
+		authzReq.ResourceContext = resourceCtx
+	}
+
+	// Perform authorization check
+	decision, authzErr := a.authorizer.Authorize(ctx, authzReq)
+	if authzErr != nil {
+		log.ErrorContext(
+			ctx, "authorization error",
+			slog.Any("error", authzErr),
+			slog.String("procedure", req.Spec().Procedure),
+		)
+		return authzResult{
+			err:     errors.New("authorization system error"),
+			errCode: connect.CodeInternal,
+		}
+	}
+
+	return authzResult{
+		decision:        decision,
+		resourceContext: resourceCtx, // Pass resolved data to handler for cache reuse
+	}
 }
 
 // getAction returns the action based on the rpc name
@@ -698,14 +906,16 @@ func (a Authentication) isPublicRoute(path string) func(string) bool {
 	return func(route string) bool {
 		matched, err := doublestar.Match(route, path)
 		if err != nil {
-			a.logger.Warn("error matching route",
+			a.logger.Warn(
+				"error matching route",
 				slog.String("route", route),
 				slog.String("path", path),
 				slog.Any("error", err),
 			)
 			return false
 		}
-		a.logger.Trace("matching route",
+		a.logger.Trace(
+			"matching route",
 			slog.String("route", route),
 			slog.String("path", path),
 			slog.Bool("matched", matched),
@@ -734,7 +944,7 @@ func (a Authentication) ipcReauthCheck(ctx context.Context, path string, header 
 			}
 
 			// Return the next context with the token
-			clientID, err := a.getClientIDFromToken(ctxWithJWK, token)
+			clientID, err := a.subjectExtractor().ClientIDFromToken(ctxWithJWK, token)
 			if err != nil {
 				return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("unauthenticated"))
 			}
@@ -743,25 +953,4 @@ func (a Authentication) ipcReauthCheck(ctx context.Context, path string, header 
 		}
 	}
 	return ctx, nil
-}
-
-// getClientIDFromToken returns the client ID from the token if found (dot notation)
-func (a *Authentication) getClientIDFromToken(ctx context.Context, tok jwt.Token) (string, error) {
-	clientIDClaim := a.oidcConfiguration.Policy.ClientIDClaim
-	if clientIDClaim == "" {
-		return "", ErrClientIDClaimNotConfigured
-	}
-	claimsMap, err := tok.AsMap(ctx)
-	if err != nil {
-		return "", fmt.Errorf("failed to parse token as a map and find claim at [%s]: %w", clientIDClaim, err)
-	}
-	found := dotNotation(claimsMap, clientIDClaim)
-	if found == nil {
-		return "", fmt.Errorf("%w at [%s]", ErrClientIDClaimNotFound, clientIDClaim)
-	}
-	clientID, isString := found.(string)
-	if !isString {
-		return "", fmt.Errorf("%w at [%s]", ErrClientIDClaimNotString, clientIDClaim)
-	}
-	return clientID, nil
 }

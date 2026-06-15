@@ -1,5 +1,5 @@
-buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go v1.36.9-20250912141014-52f32327d4b0.1 h1:DQLS/rRxLHuugVzjJU5AvOwD57pdFl9he/0O7e5P294=
-buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go v1.36.9-20250912141014-52f32327d4b0.1/go.mod h1:aY3zbkNan5F+cGm9lITDP6oxJIwu0dn9KjJuJjWaHkg=
+buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go v1.36.11-20260415201107-50325440f8f2.1 h1:s6hzCXtND/ICdGPTMGk7C+/BFlr2Jg5GyH0NKf4XGXg=
+buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go v1.36.11-20260415201107-50325440f8f2.1/go.mod h1:tvtbpgaVXZX4g6Pn+AnzFycuRK3MOz5HJfEGeEllXYM=
 buf.build/go/protovalidate v1.0.0 h1:IAG1etULddAy93fiBsFVhpj7es5zL53AfB/79CVGtyY=
 buf.build/go/protovalidate v1.0.0/go.mod h1:KQmEUrcQuC99hAw+juzOEAmILScQiKBP1Oc36vvCLW8=
 cel.dev/expr v0.25.1 h1:1KrZg61W6TWSxuNZ37Xy49ps13NUovb66QLprthtwi4=
@@ -273,8 +273,8 @@ github.com/opentdf/platform/lib/identifier v0.4.0 h1:gJf4FqHxqpMdMdMwhI9QmvfHEfM
 github.com/opentdf/platform/lib/identifier v0.4.0/go.mod h1:+gONr5mVf1YlLorZUeRefxiudYfC6JeQN7EwrKMk4g8=
 github.com/opentdf/platform/lib/ocrypto v0.12.0 h1:N449KWy7VdMO0JwfsrG0kM6Uy8VrEnVvBciwzRHwnlg=
 github.com/opentdf/platform/lib/ocrypto v0.12.0/go.mod h1:51UTmAWO6C8ghuMXiktpn63N+fLUQxY6zo8D65Ly0wQ=
-github.com/opentdf/platform/protocol/go v0.32.0 h1:XdH/MscjqpESzmfNHSlC3/b84KDRJWrKSoRjbTTfKh4=
-github.com/opentdf/platform/protocol/go v0.32.0/go.mod h1:GCiAAv0I8tkQDA2j9FuWzmK78OtIZSl+eAxAf2WHG+4=
+github.com/opentdf/platform/protocol/go v0.33.1 h1:nLg5D++Oo1hlgPD6nR+AchnfpkZeOQFGzJMz2MmJM4U=
+github.com/opentdf/platform/protocol/go v0.33.1/go.mod h1:6A0vQJ5D4ZTLReWAp8Y/7jTFzlYCmL/IfMJWDHZS6M0=
 github.com/opentdf/platform/sdk v0.21.0 h1:Q+oz/SU4L+ssqeIxkFISFnS4x2GAT03jI1LcLn4eO8k=
 github.com/opentdf/platform/sdk v0.21.0/go.mod h1:1LcAnUbgVwJkX+T8hj24bcAQm91pYEbL2EiOdV+fLJ4=
 github.com/opentracing/opentracing-go v1.2.0 h1:uEJPy/1a5RIPAJ0Ov+OIO8OxWu77jEv+1B0VhjKrZUs=
@@ -457,8 +457,8 @@ google.golang.org/genproto/googleapis/api v0.0.0-20260401024825-9d38bb4040a9 h1:
 google.golang.org/genproto/googleapis/api v0.0.0-20260401024825-9d38bb4040a9/go.mod h1:7QBABkRtR8z+TEnmXTqIqwJLlzrZKVfAUm7tY3yGv0M=
 google.golang.org/genproto/googleapis/rpc v0.0.0-20260401024825-9d38bb4040a9 h1:m8qni9SQFH0tJc1X0vmnpw/0t+AImlSvp30sEupozUg=
 google.golang.org/genproto/googleapis/rpc v0.0.0-20260401024825-9d38bb4040a9/go.mod h1:4Hqkh8ycfw05ld/3BWL7rJOSfebL2Q+DVDeRgYgxUU8=
-google.golang.org/grpc v1.81.0 h1:W3G9N3KQf3BU+YuCtGKJk0CmxQNbAISICD/9AORxLIw=
-google.golang.org/grpc v1.81.0/go.mod h1:xGH9GfzOyMTGIOXBJmXt+BX/V0kcdQbdcuwQ/zNw42I=
+google.golang.org/grpc v1.81.1 h1:VnnIIZ88UzOOKLukQi+ImGz8O1Wdp8nAGGnvOfEIWQQ=
+google.golang.org/grpc v1.81.1/go.mod h1:xGH9GfzOyMTGIOXBJmXt+BX/V0kcdQbdcuwQ/zNw42I=
 google.golang.org/protobuf v1.36.11 h1:fV6ZwhNocDyBLK0dj+fg8ektcVegBBuEolpbTQyBNVE=
 google.golang.org/protobuf v1.36.11/go.mod h1:HTf+CrKn2C3g5S8VImy6tdcUvCska2kB7j23XfzDpco=
 gopkg.in/check.v1 v0.0.0-20161208181325-20d25e280405/go.mod h1:Co6ibVJAznAaIkqp8huTwlJQCZ016jof/cbN4VW5Yz0=

@@ -15,6 +15,10 @@ inputs:
     default: "false"
     description: 'Whether to enable ECC wrapping for TDFs'
     required: false
+  pqc-enabled:
+    default: "false"
+    description: 'Whether to enable post-quantum and hybrid PQ/T wrapping for TDFs'
+    required: false
   log-level:
     default: "debug"
     description: 'Log level for the platform (audit, debug, info, warn, error)'

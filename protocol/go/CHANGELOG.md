@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.33.1](https://github.com/opentdf/platform/compare/protocol/go/v0.33.0...protocol/go/v0.33.1) (2026-06-15)
+
+
+### ⚠ BREAKING CHANGES
+
+* **core:** Add min_len to search term. [backport to release/protocol/go/v0.33] ([#3605](https://github.com/opentdf/platform/issues/3605))
+
+### Bug Fixes
+
+* **core:** Add min_len to search term. [backport to release/protocol/go/v0.33] ([#3605](https://github.com/opentdf/platform/issues/3605)) ([e156242](https://github.com/opentdf/platform/commit/e156242f4e7efac7f7469169b93f997ae17e12d4))
+
 ## [0.33.0](https://github.com/opentdf/platform/compare/protocol/go/v0.32.0...protocol/go/v0.33.0) (2026-06-12)
 
 

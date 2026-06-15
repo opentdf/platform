@@ -62,11 +62,6 @@ var (
 		jwa.PS512: true,
 	}
 
-	// Exported error variables for client ID processing
-	ErrClientIDClaimNotConfigured = internalauthz.ErrClientIDClaimNotConfigured
-	ErrClientIDClaimNotFound      = internalauthz.ErrClientIDClaimNotFound
-	ErrClientIDClaimNotString     = internalauthz.ErrClientIDClaimNotString
-
 	canonicalIPCHeaderClientID    = http.CanonicalHeaderKey("x-ipc-auth-client-id")
 	canonicalIPCHeaderAccessToken = http.CanonicalHeaderKey("x-ipc-access-token")
 
@@ -300,7 +295,8 @@ func (a Authentication) MuxHandler(handler http.Handler) http.Handler {
 			m: []string{r.Method},
 		}, dp)
 		if err != nil {
-			log.Warn(
+			log.WarnContext( //nolint:contextcheck // r.Context was enriched with public route state.
+				r.Context(),
 				"unauthenticated",
 				slog.Any("error", err),
 				slog.Any("dpop", dp),
@@ -311,7 +307,8 @@ func (a Authentication) MuxHandler(handler http.Handler) http.Handler {
 
 		clientID, err := a.subjectExtractor().ClientIDFromToken(r.Context(), accessTok) //nolint:contextcheck // r.Context includes public route state.
 		if err != nil {
-			log.Warn(
+			log.WarnContext( //nolint:contextcheck // r.Context was enriched with public route state.
+				r.Context(),
 				"could not determine client ID from token",
 				slog.Any("err", err),
 			)
@@ -352,7 +349,8 @@ func (a Authentication) MuxHandler(handler http.Handler) http.Handler {
 		}
 		if allowed, metadata, err := a.enforcer.Enforce(ctx, accessTok, roleReq); err != nil { //nolint:contextcheck // checkToken derives ctx from r.Context.
 			if errors.Is(err, ErrPermissionDenied) {
-				log.Warn(
+				log.WarnContext( //nolint:contextcheck // checkToken derives ctx from r.Context.
+					ctx,
 					"permission denied",
 					permissionDeniedLogAttrs(accessTok, metadata, err)...,
 				)
@@ -362,7 +360,8 @@ func (a Authentication) MuxHandler(handler http.Handler) http.Handler {
 			http.Error(w, "internal server error", http.StatusInternalServerError)
 			return
 		} else if !allowed {
-			log.Warn(
+			log.WarnContext( //nolint:contextcheck // checkToken derives ctx from r.Context.
+				ctx,
 				"permission denied",
 				permissionDeniedLogAttrs(accessTok, metadata, nil)...,
 			)

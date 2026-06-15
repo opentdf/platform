@@ -1082,7 +1082,7 @@ func Test_GetClientIDFromToken(t *testing.T) {
 			claims:           map[string]interface{}{"cid": "test"},
 			clientIDClaim:    "", // empty claim name
 			expectedClientID: "",
-			expectedErr:      ErrClientIDClaimNotConfigured,
+			expectedErr:      internalauthz.ErrClientIDClaimNotConfigured,
 			expectError:      true,
 		},
 		{
@@ -1092,7 +1092,7 @@ func Test_GetClientIDFromToken(t *testing.T) {
 			},
 			clientIDClaim:    "cid",
 			expectedClientID: "",
-			expectedErr:      ErrClientIDClaimNotFound,
+			expectedErr:      internalauthz.ErrClientIDClaimNotFound,
 			expectError:      true,
 		},
 		{
@@ -1102,7 +1102,7 @@ func Test_GetClientIDFromToken(t *testing.T) {
 			},
 			clientIDClaim:    "cid",
 			expectedClientID: "",
-			expectedErr:      ErrClientIDClaimNotString,
+			expectedErr:      internalauthz.ErrClientIDClaimNotString,
 			expectError:      true,
 		},
 		{
@@ -1112,7 +1112,7 @@ func Test_GetClientIDFromToken(t *testing.T) {
 			},
 			clientIDClaim:    "cid",
 			expectedClientID: "",
-			expectedErr:      ErrClientIDClaimNotString,
+			expectedErr:      internalauthz.ErrClientIDClaimNotString,
 			expectError:      true,
 		},
 		{
@@ -1122,7 +1122,7 @@ func Test_GetClientIDFromToken(t *testing.T) {
 			},
 			clientIDClaim:    "cid",
 			expectedClientID: "",
-			expectedErr:      ErrClientIDClaimNotString,
+			expectedErr:      internalauthz.ErrClientIDClaimNotString,
 			expectError:      true,
 		},
 	}

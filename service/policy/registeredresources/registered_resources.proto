@@ -126,6 +126,8 @@ message ListRegisteredResourcesRequest {
   //   - both UNSPECIFIED or sort omitted defaults to created_at DESC
   repeated RegisteredResourcesSort sort = 11 [(buf.validate.field).repeated.max_items = 1];
 
+  // Optional
+  policy.Search search = 12;
 }
 message ListRegisteredResourcesResponse {
   repeated policy.RegisteredResource resources = 1;
@@ -289,9 +291,6 @@ message ListRegisteredResourceValuesRequest {
   
   // Optional
   policy.PageRequest pagination = 10;
-
-  // Optional
-  policy.Search search = 11;
 }
 message ListRegisteredResourceValuesResponse {
   repeated policy.RegisteredResourceValue values = 1;

@@ -1698,10 +1698,6 @@ components:
           title: pagination
           description: Optional
           $ref: '#/components/schemas/policy.PageRequest'
-        search:
-          title: search
-          description: Optional
-          $ref: '#/components/schemas/policy.Search'
       title: ListRegisteredResourceValuesRequest
       additionalProperties: false
     policy.registeredresources.ListRegisteredResourceValuesResponse:
@@ -1745,6 +1741,10 @@ components:
                - direction UNSPECIFIED defaults to DESC for the specified field
                - field UNSPECIFIED defaults to created_at with the specified direction
                - both UNSPECIFIED or sort omitted defaults to created_at DESC
+        search:
+          title: search
+          description: Optional
+          $ref: '#/components/schemas/policy.Search'
       title: ListRegisteredResourcesRequest
       additionalProperties: false
     policy.registeredresources.ListRegisteredResourcesResponse:

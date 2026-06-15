@@ -904,6 +904,14 @@ func hybridUnwrapForTest(t *testing.T, ktype ocrypto.KeyType, privatePEM, wrappe
 
 	dec, err := ocrypto.FromPrivatePEM(privatePEM)
 	require.NoError(t, err, "FromPrivatePEM")
+
+	type keyTyper interface {
+		KeyType() ocrypto.KeyType
+	}
+	kt, ok := dec.(keyTyper)
+	require.True(t, ok, "decryptor for %s must implement KeyType()", ktype)
+	assert.Equal(t, ktype, kt.KeyType(), "private PEM key type should match expected ktype")
+
 	dek, err := dec.Decrypt(wrappedDER)
 	require.NoError(t, err, "hybrid Decrypt")
 	assert.Equal(t, expectedDEK, dek, "%s recovered DEK", ktype)

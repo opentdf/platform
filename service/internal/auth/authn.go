@@ -11,6 +11,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/url"
+	"path"
 	"slices"
 	"strings"
 	"time"
@@ -22,12 +23,12 @@ import (
 	"github.com/lestrrat-go/jwx/v2/jws"
 	"github.com/lestrrat-go/jwx/v2/jwt"
 
-	"github.com/opentdf/platform/service/internal/auth/authz"
+	internalauthz "github.com/opentdf/platform/service/internal/auth/authz"
 	_ "github.com/opentdf/platform/service/internal/auth/authz/casbin" // Register casbin authorizer
 	"github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/logger/audit"
 	ctxAuth "github.com/opentdf/platform/service/pkg/auth"
-	platformauthz "github.com/opentdf/platform/service/pkg/authz"
+	"github.com/opentdf/platform/service/pkg/authz"
 	"google.golang.org/grpc/metadata"
 )
 
@@ -62,9 +63,9 @@ var (
 	}
 
 	// Exported error variables for client ID processing
-	ErrClientIDClaimNotConfigured = errors.New("no client ID claim configured")
-	ErrClientIDClaimNotFound      = errors.New("client ID claim not found")
-	ErrClientIDClaimNotString     = errors.New("client ID claim is not a string")
+	ErrClientIDClaimNotConfigured = internalauthz.ErrClientIDClaimNotConfigured
+	ErrClientIDClaimNotFound      = internalauthz.ErrClientIDClaimNotFound
+	ErrClientIDClaimNotString     = internalauthz.ErrClientIDClaimNotString
 
 	canonicalIPCHeaderClientID    = http.CanonicalHeaderKey("x-ipc-auth-client-id")
 	canonicalIPCHeaderAccessToken = http.CanonicalHeaderKey("x-ipc-access-token")
@@ -94,9 +95,11 @@ type Authentication struct {
 	// Casbin enforcer for v1 authorization (implements authz.V1Enforcer)
 	enforcer *Enforcer
 	// authorizer is the pluggable authorization engine (v1, v2, etc.)
-	authorizer authz.Authorizer
+	authorizer internalauthz.Authorizer
 	// authzResolverRegistry holds per-method resolvers for extracting authorization dimensions
-	authzResolverRegistry *authz.ResolverRegistry
+	authzResolverRegistry *internalauthz.ResolverRegistry
+	// roleProvider extracts configured authorization subjects from request tokens.
+	roleProvider authz.RoleProvider
 	// Public Routes HTTP & gRPC
 	publicRoutes []string
 	// IPC Reauthorization Routes
@@ -113,7 +116,7 @@ type AuthenticatorOption func(*Authentication)
 
 // WithAuthzResolverRegistry sets the authorization resolver registry.
 // When set, the interceptors will call resolvers to extract authorization dimensions.
-func WithAuthzResolverRegistry(registry *authz.ResolverRegistry) AuthenticatorOption {
+func WithAuthzResolverRegistry(registry *internalauthz.ResolverRegistry) AuthenticatorOption {
 	return func(a *Authentication) {
 		a.authzResolverRegistry = registry
 	}
@@ -141,6 +144,7 @@ func NewAuthenticator(ctx context.Context, cfg Config, logger *logger.Logger, we
 	if err != nil {
 		return nil, err
 	}
+	a.roleProvider = roleProvider
 	casbinConfig := CasbinConfig{
 		PolicyConfig: cfg.Policy,
 		RoleProvider: roleProvider,
@@ -151,10 +155,10 @@ func NewAuthenticator(ctx context.Context, cfg Config, logger *logger.Logger, we
 	}
 
 	// Initialize the pluggable authorizer based on engine and version
-	authzCfg := authz.Config{
+	authzCfg := internalauthz.Config{
 		Engine:  cfg.Policy.Engine,
 		Version: cfg.Policy.Version,
-		PolicyConfig: authz.PolicyConfig{
+		PolicyConfig: internalauthz.PolicyConfig{
 			Engine:        cfg.Policy.Engine,
 			Version:       cfg.Policy.Version,
 			UserNameClaim: cfg.Policy.UserNameClaim,
@@ -169,14 +173,14 @@ func NewAuthenticator(ctx context.Context, cfg Config, logger *logger.Logger, we
 		Logger: logger,
 		// Pass the v1 enforcer to break circular dependency
 		// The casbin authorizer will use this for v1 mode
-		Options: []authz.Option{authz.WithV1Enforcer(a.enforcer), authz.WithRoleProvider(roleProvider)},
+		Options: []internalauthz.Option{internalauthz.WithV1Enforcer(a.enforcer), internalauthz.WithRoleProvider(roleProvider)},
 	}
 	logger.Info(
 		"initializing authorizer",
 		slog.String("engine", authzCfg.Engine),
 		slog.String("version", authzCfg.Version),
 	)
-	if a.authorizer, err = authz.New(authzCfg); err != nil {
+	if a.authorizer, err = internalauthz.New(authzCfg); err != nil {
 		return nil, fmt.Errorf("failed to initialize authorizer: %w", err)
 	}
 
@@ -213,7 +217,7 @@ func NewAuthenticator(ctx context.Context, cfg Config, logger *logger.Logger, we
 	return a, nil
 }
 
-func resolveRoleProvider(ctx context.Context, cfg Config, logger *logger.Logger) (platformauthz.RoleProvider, error) {
+func resolveRoleProvider(ctx context.Context, cfg Config, logger *logger.Logger) (authz.RoleProvider, error) {
 	if cfg.Policy.RolesProvider.Name != "" {
 		if cfg.RoleProvider != nil && cfg.RoleProviderFactories != nil {
 			logger.Warn(
@@ -228,7 +232,7 @@ func resolveRoleProvider(ctx context.Context, cfg Config, logger *logger.Logger)
 		if !ok {
 			return nil, fmt.Errorf("role provider factory not registered: %s", cfg.Policy.RolesProvider.Name)
 		}
-		providerCfg := platformauthz.ProviderConfig{
+		providerCfg := authz.ProviderConfig{
 			Config:        cfg.Policy.RolesProvider.Config,
 			UsernameClaim: cfg.Policy.UserNameClaim,
 			GroupsClaim:   cfg.Policy.GroupsClaim,
@@ -243,7 +247,7 @@ func resolveRoleProvider(ctx context.Context, cfg Config, logger *logger.Logger)
 	if cfg.RoleProvider != nil {
 		return cfg.RoleProvider, nil
 	}
-	return authz.NewJWTClaimsRoleProvider(cfg.Policy.GroupsClaim, logger), nil
+	return internalauthz.NewJWTClaimsRoleProvider(cfg.Policy.GroupsClaim, logger), nil
 }
 
 type receiverInfo struct {
@@ -266,7 +270,9 @@ func normalizeURL(o string, u *url.URL) string {
 // verifyTokenHandler is a http handler that verifies the token
 func (a Authentication) MuxHandler(handler http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if slices.ContainsFunc(a.publicRoutes, a.isPublicRoute(r.URL.Path)) { //nolint:contextcheck // There is no way to pass a context here
+		publicRoute := slices.ContainsFunc(a.publicRoutes, a.isPublicRoute(r.URL.Path)) //nolint:contextcheck // There is no way to pass a context here
+		r = r.WithContext(ctxAuth.ContextWithPublicRoute(r.Context(), publicRoute))
+		if publicRoute {
 			handler.ServeHTTP(w, r)
 			return
 		}
@@ -294,8 +300,7 @@ func (a Authentication) MuxHandler(handler http.Handler) http.Handler {
 			m: []string{r.Method},
 		}, dp)
 		if err != nil {
-			log.WarnContext(
-				ctx,
+			log.Warn(
 				"unauthenticated",
 				slog.Any("error", err),
 				slog.Any("dpop", dp),
@@ -304,10 +309,9 @@ func (a Authentication) MuxHandler(handler http.Handler) http.Handler {
 			return
 		}
 
-		clientID, err := a.getClientIDFromToken(ctx, accessTok)
+		clientID, err := a.subjectExtractor().ClientIDFromToken(r.Context(), accessTok) //nolint:contextcheck // r.Context includes public route state.
 		if err != nil {
-			log.WarnContext(
-				ctx,
+			log.Warn(
 				"could not determine client ID from token",
 				slog.Any("err", err),
 			)
@@ -316,6 +320,7 @@ func (a Authentication) MuxHandler(handler http.Handler) http.Handler {
 				With("client_id", clientID).
 				With("configured_client_id_claim_name", a.oidcConfiguration.Policy.ClientIDClaim)
 			ctx = ctxAuth.EnrichIncomingContextMetadataWithAuthn(ctx, log, clientID)
+			ctx = authz.ContextWithClientID(ctx, clientID)
 		}
 
 		// Check if the token is allowed to access the resource
@@ -330,15 +335,24 @@ func (a Authentication) MuxHandler(handler http.Handler) http.Handler {
 		default:
 			action = ActionUnsafe
 		}
-		roleReq := platformauthz.RoleRequest{
+		roleReq := authz.RoleRequest{
 			Issuer:   a.oidcConfiguration.Issuer,
 			Resource: r.URL.Path,
 			Action:   action,
 		}
-		if allowed, metadata, err := a.enforcer.Enforce(ctx, accessTok, roleReq); err != nil {
+		ctx, err = a.subjectExtractor().ContextWithClaims(ctx, accessTok, roleReq)
+		if err != nil {
+			log.WarnContext(r.Context(), "role provider error", slog.Any("error", err)) //nolint:contextcheck // request context is already derived with public route state above.
 			if errors.Is(err, ErrPermissionDenied) {
-				log.WarnContext(
-					ctx,
+				http.Error(w, "permission denied", http.StatusForbidden)
+				return
+			}
+			http.Error(w, "internal server error", http.StatusInternalServerError)
+			return
+		}
+		if allowed, metadata, err := a.enforcer.Enforce(ctx, accessTok, roleReq); err != nil { //nolint:contextcheck // checkToken derives ctx from r.Context.
+			if errors.Is(err, ErrPermissionDenied) {
+				log.Warn(
 					"permission denied",
 					permissionDeniedLogAttrs(accessTok, metadata, err)...,
 				)
@@ -348,8 +362,7 @@ func (a Authentication) MuxHandler(handler http.Handler) http.Handler {
 			http.Error(w, "internal server error", http.StatusInternalServerError)
 			return
 		} else if !allowed {
-			log.WarnContext(
-				ctx,
+			log.Warn(
 				"permission denied",
 				permissionDeniedLogAttrs(accessTok, metadata, nil)...,
 			)
@@ -357,20 +370,22 @@ func (a Authentication) MuxHandler(handler http.Handler) http.Handler {
 			return
 		}
 
-		r = r.WithContext(ctx)
+		r = r.WithContext(ctx) //nolint:contextcheck // checkToken derives ctx from r.Context.
 		handler.ServeHTTP(w, r)
 	})
 }
 
-// UnaryServerInterceptor is a grpc interceptor that verifies the token in the metadata
-func (a Authentication) ConnectUnaryServerInterceptor() connect.UnaryInterceptorFunc {
+// ConnectAuthNInterceptor authenticates Connect requests and enriches the
+// request context with configured token claims needed by later middleware.
+func (a Authentication) ConnectAuthNInterceptor() connect.UnaryInterceptorFunc {
 	interceptor := func(next connect.UnaryFunc) connect.UnaryFunc {
 		return connect.UnaryFunc(func(
 			ctx context.Context,
 			req connect.AnyRequest,
 		) (connect.AnyResponse, error) {
-			// if the token is already in the context, skip the interceptor
-			if ctxAuth.GetAccessTokenFromContext(ctx, a.logger) != nil {
+			publicRoute := slices.ContainsFunc(a.publicRoutes, a.isPublicRoute(req.Spec().Procedure)) //nolint:contextcheck // There is no way to pass a context here
+			ctx = ctxAuth.ContextWithPublicRoute(ctx, publicRoute)
+			if publicRoute {
 				return next(ctx, req)
 			}
 
@@ -381,20 +396,10 @@ func (a Authentication) ConnectUnaryServerInterceptor() connect.UnaryInterceptor
 				m: []string{http.MethodPost},
 			}
 
-			// Interceptor Logic
-			// Allow health checks and other public routes to pass through
-			if slices.ContainsFunc(a.publicRoutes, a.isPublicRoute(req.Spec().Procedure)) { //nolint:contextcheck // There is no way to pass a context here
-				return next(ctx, req)
-			}
-
 			header := req.Header()["Authorization"]
 			if len(header) < 1 {
 				return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("missing authorization header"))
 			}
-
-			// parse the rpc method to extract action
-			p := strings.Split(req.Spec().Procedure, "/")
-			action := getAction(p[2])
 
 			token, ctxWithJWK, err := a.checkToken(
 				ctx,
@@ -406,7 +411,7 @@ func (a Authentication) ConnectUnaryServerInterceptor() connect.UnaryInterceptor
 				return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("unauthenticated"))
 			}
 
-			clientID, err := a.getClientIDFromToken(ctxWithJWK, token)
+			clientID, err := a.subjectExtractor().ClientIDFromToken(ctxWithJWK, token)
 			if err != nil {
 				log.WarnContext(
 					ctxWithJWK,
@@ -418,10 +423,51 @@ func (a Authentication) ConnectUnaryServerInterceptor() connect.UnaryInterceptor
 					With("client_id", clientID).
 					With("configured_client_id_claim_name", a.oidcConfiguration.Policy.ClientIDClaim)
 				ctxWithJWK = ctxAuth.EnrichIncomingContextMetadataWithAuthn(ctxWithJWK, log, clientID)
+				ctxWithJWK = authz.ContextWithClientID(ctxWithJWK, clientID)
 			}
 
-			// Perform authorization check
-			result := a.authorize(ctxWithJWK, log, token, req, action)
+			roleReq, err := roleRequestForConnectProcedure(a.oidcConfiguration.Issuer, req.Spec().Procedure)
+			if err != nil {
+				return nil, connect.NewError(connect.CodeInvalidArgument, err)
+			}
+			ctxWithJWK, err = a.subjectExtractor().ContextWithClaims(ctxWithJWK, token, roleReq)
+			if err != nil {
+				log.WarnContext(ctxWithJWK, "role provider error", slog.Any("error", err))
+				if errors.Is(err, ErrPermissionDenied) {
+					return nil, connect.NewError(connect.CodePermissionDenied, errors.New("permission denied"))
+				}
+				return nil, connect.NewError(connect.CodeInternal, errors.New("role provider error"))
+			}
+			return next(ctxWithJWK, req)
+		})
+	}
+	return connect.UnaryInterceptorFunc(interceptor)
+}
+
+// ConnectAuthZInterceptor authorizes Connect requests using token and
+// configured claims already stored in the request context.
+func (a Authentication) ConnectAuthZInterceptor() connect.UnaryInterceptorFunc {
+	interceptor := func(next connect.UnaryFunc) connect.UnaryFunc {
+		return connect.UnaryFunc(func(
+			ctx context.Context,
+			req connect.AnyRequest,
+		) (connect.AnyResponse, error) {
+			if publicRoute, ok := ctxAuth.PublicRouteFromContext(ctx); ok && publicRoute {
+				return next(ctx, req)
+			}
+
+			token := ctxAuth.GetAccessTokenFromContext(ctx, a.logger)
+			if token == nil {
+				return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("missing access token in context"))
+			}
+
+			roleReq, err := roleRequestForConnectProcedure(a.oidcConfiguration.Issuer, req.Spec().Procedure)
+			if err != nil {
+				return nil, connect.NewError(connect.CodeInvalidArgument, err)
+			}
+
+			log := a.logger
+			result := a.authorize(ctx, log, token, req, roleReq.Action)
 			if result.err != nil {
 				return nil, connect.NewError(result.errCode, result.err)
 			}
@@ -429,7 +475,7 @@ func (a Authentication) ConnectUnaryServerInterceptor() connect.UnaryInterceptor
 			decision := result.decision
 			if !decision.Allowed {
 				log.WarnContext(
-					ctxWithJWK, "permission denied",
+					ctx, "permission denied",
 					slog.String("azp", token.Subject()),
 					slog.String("mode", string(decision.Mode)),
 					slog.String("reason", decision.Reason),
@@ -438,16 +484,14 @@ func (a Authentication) ConnectUnaryServerInterceptor() connect.UnaryInterceptor
 			}
 
 			log.DebugContext(
-				ctxWithJWK, "authorization granted",
+				ctx, "authorization granted",
 				slog.String("mode", string(decision.Mode)),
 				slog.String("reason", decision.Reason),
 			)
 
-			// Inject ResolverContext into handler context for cache reuse
-			// (avoids duplicate DB queries when resolver already fetched the data)
-			handlerCtx := ctxWithJWK
+			handlerCtx := ctx
 			if result.resourceContext != nil {
-				handlerCtx = authz.ContextWithResolverContext(handlerCtx, result.resourceContext)
+				handlerCtx = internalauthz.ContextWithResolverContext(handlerCtx, result.resourceContext)
 			}
 
 			return next(handlerCtx, req)
@@ -474,6 +518,20 @@ func permissionDeniedLogAttrs(token jwt.Token, casbinAuthz map[string]any, err e
 	}
 
 	return attrs
+}
+
+func roleRequestForConnectProcedure(issuer, procedure string) (authz.RoleRequest, error) {
+	parts := strings.Split(procedure, "/")
+	if len(parts) < 3 || parts[1] == "" || parts[2] == "" {
+		return authz.RoleRequest{}, fmt.Errorf("invalid connect procedure %q", procedure)
+	}
+
+	method := parts[2]
+	return authz.RoleRequest{
+		Issuer:   issuer,
+		Resource: path.Join(parts[1], method),
+		Action:   getAction(method),
+	}, nil
 }
 
 // IPCMetadataClientInterceptor transfers gRPC outgoing metadata to Connect request headers for IPC calls
@@ -544,10 +602,19 @@ func (a Authentication) IPCUnaryServerInterceptor() connect.UnaryInterceptorFunc
 	return connect.UnaryInterceptorFunc(interceptor)
 }
 
+func (a Authentication) subjectExtractor() internalauthz.SubjectExtractor {
+	return internalauthz.SubjectExtractor{
+		UserNameClaim: a.oidcConfiguration.Policy.UserNameClaim,
+		ClientIDClaim: a.oidcConfiguration.Policy.ClientIDClaim,
+		RoleProvider:  a.roleProvider,
+		Logger:        a.logger,
+	}
+}
+
 // authzResult holds the result of an authorization check
 type authzResult struct {
-	decision        *authz.Decision
-	resourceContext *authz.ResolverContext // Cached resolver data for handler reuse
+	decision        *internalauthz.Decision
+	resourceContext *internalauthz.ResolverContext // Cached resolver data for handler reuse
 	err             error
 	errCode         connect.Code
 }
@@ -558,7 +625,7 @@ func (a *Authentication) resolveResourceContext(
 	ctx context.Context,
 	log *logger.Logger,
 	req connect.AnyRequest,
-) (*authz.ResolverContext, error) {
+) (*internalauthz.ResolverContext, error) {
 	// Skip if resolver registry not available or authorizer doesn't support resource authorization
 	if a.authzResolverRegistry == nil || a.authorizer == nil || !a.authorizer.SupportsResourceAuthorization() {
 		return nil, errNoResourceContext
@@ -602,7 +669,7 @@ func (a *Authentication) authorize(
 	}
 
 	// Build authorization request
-	authzReq := &authz.Request{
+	authzReq := &internalauthz.Request{
 		Token:  token,
 		RPC:    req.Spec().Procedure,
 		Action: action,
@@ -873,33 +940,13 @@ func (a Authentication) ipcReauthCheck(ctx context.Context, path string, header 
 			}
 
 			// Return the next context with the token
-			clientID, err := a.getClientIDFromToken(ctxWithJWK, token)
+			clientID, err := a.subjectExtractor().ClientIDFromToken(ctxWithJWK, token)
 			if err != nil {
 				return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("unauthenticated"))
 			}
-			return ctxAuth.EnrichIncomingContextMetadataWithAuthn(ctxWithJWK, a.logger, clientID), nil
+			ctxWithJWK = ctxAuth.EnrichIncomingContextMetadataWithAuthn(ctxWithJWK, a.logger, clientID)
+			return authz.ContextWithClientID(ctxWithJWK, clientID), nil
 		}
 	}
 	return ctx, nil
-}
-
-// getClientIDFromToken returns the client ID from the token if found (dot notation)
-func (a *Authentication) getClientIDFromToken(ctx context.Context, tok jwt.Token) (string, error) {
-	clientIDClaim := a.oidcConfiguration.Policy.ClientIDClaim
-	if clientIDClaim == "" {
-		return "", ErrClientIDClaimNotConfigured
-	}
-	claimsMap, err := tok.AsMap(ctx)
-	if err != nil {
-		return "", fmt.Errorf("failed to parse token as a map and find claim at [%s]: %w", clientIDClaim, err)
-	}
-	found := dotNotation(claimsMap, clientIDClaim)
-	if found == nil {
-		return "", fmt.Errorf("%w at [%s]", ErrClientIDClaimNotFound, clientIDClaim)
-	}
-	clientID, isString := found.(string)
-	if !isString {
-		return "", fmt.Errorf("%w at [%s]", ErrClientIDClaimNotString, clientIDClaim)
-	}
-	return clientID, nil
 }

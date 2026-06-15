@@ -35,4 +35,3 @@ p,  role:standard,      authorization.v2.AuthorizationService/GetDecisionBulk, r
 ## gRPC routes
 ## for ERS, right now we don't care about requester role, just that a valid jwt is provided when the OPA engine calls (enforced in the ERS itself, not casbin)
 p,	role:unknown,     kas.AccessService/Rewrap, 			                                  *,	  allow
-p,	role:unknown,		  /kas/v2/rewrap,													  *,		allow

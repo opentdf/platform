@@ -72,7 +72,8 @@ func NewRegistration() *serviceregistry.Service[authzV2Connect.AuthorizationServ
 				}
 
 				if err := authZCfg.Validate(); err != nil {
-					l.Error("invalid authorization service config",
+					l.Error(
+						"invalid authorization service config",
 						slog.Any("config", authZCfg.LogValue()),
 						slog.Any("error", err),
 					)
@@ -139,6 +140,10 @@ func (as *Service) GetEntitlements(ctx context.Context, req *connect.Request[aut
 	ctx, span := as.Start(ctx, "GetEntitlements")
 	defer span.End()
 
+	if err := as.validateGetEntitlementsRequest(req.Msg); err != nil {
+		return nil, err
+	}
+
 	entityIdentifier := req.Msg.GetEntityIdentifier()
 	withComprehensiveHierarchy := req.Msg.GetWithComprehensiveHierarchy()
 
@@ -165,6 +170,10 @@ func (as *Service) GetDecision(ctx context.Context, req *connect.Request[authzV2
 
 	ctx, span := as.Start(ctx, "GetDecision")
 	defer span.End()
+
+	if err := as.validateGetDecisionRequest(req.Msg); err != nil {
+		return nil, err
+	}
 
 	pdp, err := access.NewJustInTimePDP(ctx, as.logger, as.sdk, as.cache, as.config.AllowDirectEntitlements, as.config.EnforceNamespacedEntitlements)
 	if err != nil {
@@ -211,6 +220,10 @@ func (as *Service) GetDecisionMultiResource(ctx context.Context, req *connect.Re
 
 	ctx, span := as.Start(ctx, "GetDecisionMultiResource")
 	defer span.End()
+
+	if err := as.validateGetDecisionMultiResourceRequest(req.Msg, ""); err != nil {
+		return nil, err
+	}
 
 	pdp, err := access.NewJustInTimePDP(ctx, as.logger, as.sdk, as.cache, as.config.AllowDirectEntitlements, as.config.EnforceNamespacedEntitlements)
 	if err != nil {
@@ -260,6 +273,10 @@ func (as *Service) GetDecisionBulk(ctx context.Context, req *connect.Request[aut
 
 	ctx, span := as.Start(ctx, "GetDecisionBulk")
 	defer span.End()
+
+	if err := as.validateGetDecisionBulkRequest(req.Msg); err != nil {
+		return nil, err
+	}
 
 	pdp, err := access.NewJustInTimePDP(ctx, as.logger, as.sdk, as.cache, as.config.AllowDirectEntitlements, as.config.EnforceNamespacedEntitlements)
 	if err != nil {

@@ -550,8 +550,7 @@ func (s *CasbinAuthorizerSuite) TestAuthorizeV2_KASRESTfulPathsAllowed() {
 			GroupsClaim: "realm_access.roles",
 			Csv: `p, role:standard, /kas.AccessService/*, *, allow
 p, role:standard, /kas/v2/rewrap, *, allow
-p, role:unknown, /kas.AccessService/Rewrap, *, allow
-p, role:unknown, /kas/v2/rewrap, *, allow`,
+p, role:unknown, /kas.AccessService/Rewrap, *, allow`,
 		},
 		Logger: s.logger,
 	}
@@ -587,7 +586,7 @@ p, role:unknown, /kas/v2/rewrap, *, allow`,
 		// gRPC paths - unknown role
 		{"unknown gRPC rewrap", unknownToken, "/kas.AccessService/Rewrap", "read", true},
 		// HTTP paths - unknown role
-		{"unknown HTTP rewrap", unknownToken, "/kas/v2/rewrap", "write", true},
+		{"unknown HTTP rewrap", unknownToken, "/kas/v2/rewrap", "write", false},
 	}
 
 	for _, tc := range tests {

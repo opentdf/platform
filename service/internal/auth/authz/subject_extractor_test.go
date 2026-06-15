@@ -55,6 +55,71 @@ func TestSubjectExtractorCanPrefixSubjects(t *testing.T) {
 	require.Equal(t, []string{"role:admin"}, roles)
 }
 
+func TestSubjectExtractorClientIDFromToken(t *testing.T) {
+	tests := []struct {
+		name        string
+		claims      map[string]any
+		claim       string
+		want        string
+		wantErr     error
+		expectError bool
+	}{
+		{
+			name:   "top level client id claim",
+			claims: map[string]any{"azp": "client-123"},
+			claim:  "azp",
+			want:   "client-123",
+		},
+		{
+			name: "nested client id claim",
+			claims: map[string]any{
+				"client": map[string]any{"id": "nested-client"},
+			},
+			claim: "client.id",
+			want:  "nested-client",
+		},
+		{
+			name:        "claim not configured",
+			claims:      map[string]any{"azp": "client-123"},
+			wantErr:     ErrClientIDClaimNotConfigured,
+			expectError: true,
+		},
+		{
+			name:        "claim missing",
+			claims:      map[string]any{"sub": "alice"},
+			claim:       "azp",
+			wantErr:     ErrClientIDClaimNotFound,
+			expectError: true,
+		},
+		{
+			name:        "claim not string",
+			claims:      map[string]any{"azp": []string{"client-123"}},
+			claim:       "azp",
+			wantErr:     ErrClientIDClaimNotString,
+			expectError: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			token := jwt.New()
+			for k, v := range tt.claims {
+				require.NoError(t, token.Set(k, v))
+			}
+
+			extractor := SubjectExtractor{ClientIDClaim: tt.claim}
+			got, err := extractor.ClientIDFromToken(t.Context(), token)
+
+			require.Equal(t, tt.want, got)
+			if tt.expectError {
+				require.ErrorIs(t, err, tt.wantErr)
+				return
+			}
+			require.NoError(t, err)
+		})
+	}
+}
+
 func TestSubjectExtractorDoesNotAppendEmptyUsername(t *testing.T) {
 	token := jwt.New()
 	require.NoError(t, token.Set("preferred_username", ""))

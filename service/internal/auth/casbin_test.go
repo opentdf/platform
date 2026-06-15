@@ -581,6 +581,16 @@ func (p staticProvider) Roles(_ context.Context, _ jwt.Token, _ authz.RoleReques
 	return p.roles, p.err
 }
 
+type countingProvider struct {
+	roles []string
+	count int
+}
+
+func (p *countingProvider) Roles(_ context.Context, _ jwt.Token, _ authz.RoleRequest) ([]string, error) {
+	p.count++
+	return p.roles, nil
+}
+
 func (s *AuthnCasbinSuite) Test_ExternalRoleProvider() {
 	policyCfg := PolicyConfig{}
 	err := defaults.Set(&policyCfg)
@@ -600,6 +610,60 @@ func (s *AuthnCasbinSuite) Test_ExternalRoleProvider() {
 	allowed, err := s.enforce(enforcer, tok, "policy.attributes.List", "read")
 	s.Require().NoError(err)
 	s.True(allowed)
+}
+
+func (s *AuthnCasbinSuite) Test_Enforce_Uses_Roles_From_Context() {
+	policyCfg := PolicyConfig{}
+	err := defaults.Set(&policyCfg)
+	s.Require().NoError(err)
+
+	policyCfg.Extension = strings.Join([]string{
+		"p, role:admin, policy.attributes.*, read, allow",
+	}, "\n")
+
+	provider := &countingProvider{roles: []string{"role:admin"}}
+	enforcer, err := NewCasbinEnforcer(CasbinConfig{
+		PolicyConfig: policyCfg,
+		RoleProvider: provider,
+	}, logger.CreateTestLogger())
+	s.Require().NoError(err)
+
+	req := authz.RoleRequest{Resource: "policy.attributes.List", Action: "read"}
+	tok := jwt.New()
+	ctx, err := enforcer.subjectExtractor().ContextWithClaims(s.T().Context(), tok, req)
+	s.Require().NoError(err)
+	s.Equal(1, provider.count)
+
+	allowed, _, err := enforcer.Enforce(ctx, tok, req)
+	s.Require().NoError(err)
+	s.True(allowed)
+	s.Equal(1, provider.count)
+}
+
+func (s *AuthnCasbinSuite) Test_Enforce_Resolves_Roles_When_Context_Has_Only_ClientID() {
+	policyCfg := PolicyConfig{}
+	err := defaults.Set(&policyCfg)
+	s.Require().NoError(err)
+
+	policyCfg.Extension = strings.Join([]string{
+		"p, role:admin, policy.attributes.*, read, allow",
+	}, "\n")
+
+	provider := &countingProvider{roles: []string{"role:admin"}}
+	enforcer, err := NewCasbinEnforcer(CasbinConfig{
+		PolicyConfig: policyCfg,
+		RoleProvider: provider,
+	}, logger.CreateTestLogger())
+	s.Require().NoError(err)
+
+	req := authz.RoleRequest{Resource: "policy.attributes.List", Action: "read"}
+	tok := jwt.New()
+	ctx := authz.ContextWithClientID(s.T().Context(), "client-123")
+
+	allowed, _, err := enforcer.Enforce(ctx, tok, req)
+	s.Require().NoError(err)
+	s.True(allowed)
+	s.Equal(1, provider.count)
 }
 
 func (s *AuthnCasbinSuite) Test_Override_Of_Username_Claim() {

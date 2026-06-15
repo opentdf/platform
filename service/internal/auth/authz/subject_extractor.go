@@ -2,6 +2,8 @@ package authz
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"log/slog"
 	"strings"
 
@@ -14,6 +16,12 @@ import (
 const (
 	SubjectRolePrefix   = "role:"
 	SubjectClientPrefix = "client:"
+)
+
+var (
+	ErrClientIDClaimNotConfigured = errors.New("no client ID claim configured")
+	ErrClientIDClaimNotFound      = errors.New("client ID claim not found")
+	ErrClientIDClaimNotString     = errors.New("client ID claim is not a string")
 )
 
 type SubjectExtractor struct {
@@ -31,25 +39,75 @@ func (e SubjectExtractor) BuildSubjectFromToken(ctx context.Context, token jwt.T
 		e.Logger.Debug("building subject from token")
 	}
 
+	claims, err := e.ClaimsForRequest(ctx, token, req)
+	if err != nil {
+		return nil, nil, err
+	}
+	roles := e.normalizeRoles(claims.Groups)
+
+	if clientID := claims.ClientID; clientID != "" {
+		subjects = append(subjects, e.subjectWithPrefix(clientID, SubjectClientPrefix))
+	}
+	subjects = append(subjects, roles...)
+	if claims.Subject != "" {
+		subjects = append(subjects, claims.Subject)
+	}
+
+	return subjects, append([]string(nil), roles...), nil
+}
+
+func (e SubjectExtractor) ContextWithClaims(ctx context.Context, token jwt.Token, req platformauthz.RoleRequest) (context.Context, error) {
+	claims, err := e.ClaimsForRequest(ctx, token, req)
+	if err != nil {
+		return ctx, err
+	}
+	return platformauthz.ContextWithClaims(ctx, claims), nil
+}
+
+func (e SubjectExtractor) ClaimsForRequest(ctx context.Context, token jwt.Token, req platformauthz.RoleRequest) (platformauthz.RequestClaims, error) {
+	if claims, ok := platformauthz.ClaimsFromContext(ctx); ok {
+		if claims.Subject != "" || len(claims.Groups) > 0 {
+			return claims, nil
+		}
+	}
+
 	var roles []string
 	if e.RoleProvider != nil {
 		var err error
 		roles, err = e.RoleProvider.Roles(ctx, token, req)
 		if err != nil {
-			return nil, nil, err
+			return platformauthz.RequestClaims{}, err
 		}
 	}
-	roles = e.normalizeRoles(roles)
-
-	if clientID := e.clientIDFromToken(ctx, token); clientID != "" {
-		subjects = append(subjects, e.subjectWithPrefix(clientID, SubjectClientPrefix))
+	claims, _ := platformauthz.ClaimsFromContext(ctx)
+	claims.Subject = e.usernameFromToken(token)
+	claims.Groups = roles
+	if claims.ClientID == "" {
+		clientID, err := e.ClientIDFromToken(ctx, token)
+		if err == nil {
+			claims.ClientID = clientID
+		}
 	}
-	subjects = append(subjects, roles...)
-	if username := e.usernameFromToken(token); username != "" {
-		subjects = append(subjects, username)
-	}
+	return claims, nil
+}
 
-	return subjects, append([]string(nil), roles...), nil
+func (e SubjectExtractor) ClientIDFromToken(ctx context.Context, token jwt.Token) (string, error) {
+	if e.ClientIDClaim == "" {
+		return "", ErrClientIDClaimNotConfigured
+	}
+	claims, err := token.AsMap(ctx)
+	if err != nil {
+		return "", fmt.Errorf("failed to parse token as a map and find claim at [%s]: %w", e.ClientIDClaim, err)
+	}
+	found := util.Dotnotation(claims, e.ClientIDClaim)
+	if found == nil {
+		return "", fmt.Errorf("%w at [%s]", ErrClientIDClaimNotFound, e.ClientIDClaim)
+	}
+	clientID, ok := found.(string)
+	if !ok {
+		return "", fmt.Errorf("%w at [%s]", ErrClientIDClaimNotString, e.ClientIDClaim)
+	}
+	return clientID, nil
 }
 
 func (e SubjectExtractor) normalizeRoles(roles []string) []string {
@@ -109,20 +167,4 @@ func (e SubjectExtractor) usernameFromToken(token jwt.Token) string {
 	}
 
 	return username
-}
-
-func (e SubjectExtractor) clientIDFromToken(ctx context.Context, token jwt.Token) string {
-	if token == nil || e.ClientIDClaim == "" {
-		return ""
-	}
-	claims, err := token.AsMap(ctx)
-	if err != nil {
-		return ""
-	}
-	found := util.Dotnotation(claims, e.ClientIDClaim)
-	clientID, ok := found.(string)
-	if !ok || clientID == "" {
-		return ""
-	}
-	return clientID
 }

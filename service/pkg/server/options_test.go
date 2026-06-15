@@ -5,8 +5,10 @@ import (
 	"testing"
 
 	"connectrpc.com/connect"
+	"github.com/go-viper/mapstructure/v2"
 	"github.com/lestrrat-go/jwx/v2/jwt"
 	"github.com/opentdf/platform/service/pkg/authz"
+	"github.com/opentdf/platform/service/pkg/config"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -73,6 +75,121 @@ func TestWithConnectInterceptors(t *testing.T) {
 	}
 }
 
+func TestWithExternalInterceptorFactories(t *testing.T) {
+	factory := InterceptorFactory{
+		Name: "test",
+		Factory: func(InterceptorParams) (connect.Interceptor, error) {
+			return noopInterceptor(), nil
+		},
+	}
+
+	tests := []struct {
+		name      string
+		apply     func(*StartConfig)
+		wantCount int
+	}{
+		{
+			name: "single factory is appended",
+			apply: func(c *StartConfig) {
+				*c = WithExternalInterceptorFactories(factory)(*c)
+			},
+			wantCount: 1,
+		},
+		{
+			name: "multiple factories are appended in order",
+			apply: func(c *StartConfig) {
+				*c = WithExternalInterceptorFactories(factory, factory, factory)(*c)
+			},
+			wantCount: 3,
+		},
+		{
+			name: "calling twice accumulates factories",
+			apply: func(c *StartConfig) {
+				*c = WithExternalInterceptorFactories(factory)(*c)
+				*c = WithExternalInterceptorFactories(factory, factory)(*c)
+			},
+			wantCount: 3,
+		},
+		{
+			name: "empty call leaves slice nil",
+			apply: func(c *StartConfig) {
+				*c = WithExternalInterceptorFactories()(*c)
+			},
+			wantCount: 0,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var cfg StartConfig
+			tt.apply(&cfg)
+
+			if tt.wantCount == 0 {
+				assert.Nil(t, cfg.externalInterceptorFactories)
+			} else {
+				require.Len(t, cfg.externalInterceptorFactories, tt.wantCount)
+			}
+			assert.Nil(t, cfg.extraConnectInterceptors)
+			assert.Nil(t, cfg.extraIPCInterceptors)
+		})
+	}
+}
+
+func TestExternalInterceptorFactoryReceivesNamedConfig(t *testing.T) {
+	type auditConfig struct {
+		Enabled bool     `mapstructure:"enabled"`
+		Headers []string `mapstructure:"headers"`
+	}
+
+	factory := InterceptorFactory{
+		Name: "audit_enrichment",
+		Factory: func(params InterceptorParams) (connect.Interceptor, error) {
+			var cfg auditConfig
+			if err := mapstructure.Decode(params.Config, &cfg); err != nil {
+				return nil, err
+			}
+
+			require.Equal(t, auditConfig{
+				Enabled: true,
+				Headers: []string{
+					"x-request-id",
+					"x-forwarded-for",
+				},
+			}, cfg)
+
+			return noopInterceptor(), nil
+		},
+	}
+
+	params := newInterceptorParams(factory, &config.Config{
+		Interceptors: config.InterceptorsMap{
+			"audit_enrichment": {
+				"enabled": true,
+				"headers": []string{
+					"x-request-id",
+					"x-forwarded-for",
+				},
+			},
+		},
+	}, nil, nil)
+
+	interceptor, err := factory.Factory(params)
+	require.NoError(t, err)
+	require.NotNil(t, interceptor)
+}
+
+func TestValidateExternalInterceptorFactoryRequiresName(t *testing.T) {
+	err := validateExternalInterceptorFactory(InterceptorFactory{})
+
+	require.ErrorIs(t, err, ErrExternalInterceptorFactoryNameRequired)
+}
+
+func TestValidateExternalInterceptorFactoryRequiresFactoryFunc(t *testing.T) {
+	err := validateExternalInterceptorFactory(InterceptorFactory{Name: "test"})
+
+	require.ErrorIs(t, err, ErrExternalInterceptorFactoryFuncRequired)
+}
+
 func TestWithIPCInterceptors(t *testing.T) {
 	tests := []struct {
 		name      string
@@ -135,7 +252,8 @@ func TestWithConnectAndIPCInterceptorsTogether(t *testing.T) {
 	require.Len(t, cfg.extraIPCInterceptors, 1, "expected 1 IPC interceptor")
 
 	// Verify slices are independent (not sharing backing array)
-	assert.NotSame(t,
+	assert.NotSame(
+		t,
 		&cfg.extraConnectInterceptors[0],
 		&cfg.extraIPCInterceptors[0],
 		"connect and IPC interceptor slices must be independent",

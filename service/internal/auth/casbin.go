@@ -189,15 +189,18 @@ func (e *Enforcer) Enforce(ctx context.Context, token jwt.Token, req authz.RoleR
 }
 
 func (e *Enforcer) buildSubjectFromToken(ctx context.Context, t jwt.Token, req authz.RoleRequest) (casbinSubject, []string, error) {
-	extractor := internalauthz.SubjectExtractor{
+	subjects, roles, err := e.subjectExtractor().BuildSubjectFromToken(ctx, t, req)
+	if err != nil {
+		return nil, nil, err
+	}
+	return casbinSubject(subjects), roles, nil
+}
+
+func (e *Enforcer) subjectExtractor() internalauthz.SubjectExtractor {
+	return internalauthz.SubjectExtractor{
 		UserNameClaim: e.Config.UserNameClaim,
 		ClientIDClaim: e.Config.ClientIDClaim,
 		RoleProvider:  e.roleProvider,
 		Logger:        e.logger,
 	}
-	subjects, roles, err := extractor.BuildSubjectFromToken(ctx, t, req)
-	if err != nil {
-		return nil, nil, err
-	}
-	return casbinSubject(subjects), roles, nil
 }

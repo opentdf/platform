@@ -2,6 +2,8 @@ syntax = "proto3";
 
 package policy;
 
+import "buf/validate/validate.proto";
+
 // Deprecated: never utilized
 message AttributeNamespaceSelector {
   // Deprecated
@@ -60,6 +62,10 @@ enum SortDirection {
   SORT_DIRECTION_UNSPECIFIED = 0;
   SORT_DIRECTION_ASC = 1;
   SORT_DIRECTION_DESC = 2;
+}
+
+message Search {
+  string term = 1 [(buf.validate.field).string.max_len = 253];
 }
 
 message PageRequest {

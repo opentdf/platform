@@ -51,4 +51,3 @@ p, role:standard, /entityresolution.v2.EntityResolutionService/*, *, allow
 # ============================================================================
 # KAS rewrap is allowed for unknown roles (authentication enforced by KAS itself)
 p, role:unknown, /kas.AccessService/Rewrap, *, allow
-p, role:unknown, /kas/v2/rewrap, *, allow

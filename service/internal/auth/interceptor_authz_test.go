@@ -165,15 +165,14 @@ func (s *InterceptorAuthzSuite) TestV1_UnknownRolePublicRoutes() {
 	authorizer := s.createV1Authorizer(policyCfg)
 	token := s.newTokenWithRoles("unknown-role")
 
-	// The default v1 policy explicitly allows unknown roles to access certain
-	// public routes, primarily for ERS (Entity Resolution Service) functionality.
-	// This tests that behavior is maintained.
+	// The default v1 policy explicitly allows unknown roles to access the gRPC
+	// rewrap route, primarily for ERS (Entity Resolution Service) functionality.
+	// The v2 policy covers the HTTP rewrap route separately.
 	tests := []struct {
 		name string
 		rpc  string
 	}{
 		{"kas rewrap gRPC", "/kas.AccessService/Rewrap"},
-		{"kas rewrap HTTP", "/kas/v2/rewrap"},
 	}
 
 	for _, tc := range tests {

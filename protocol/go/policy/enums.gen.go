@@ -21,6 +21,30 @@ const (
 	OperatorInContains = SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_IN_CONTAINS
 )
 
+// Shorthand constants for ConditionComparisonOperatorEnum.
+//
+// Example:
+//
+//	condition := &Condition{
+//	    SubjectExternalSelectorValue: ".email",
+//	    Comparison:                   ComparisonEndsWith,
+//	    Quantifier:                   QuantifierAny,
+//	    SubjectExternalValues:        []string{"@example.com"},
+//	}
+const (
+	ComparisonEquals     = ConditionComparisonOperatorEnum_CONDITION_COMPARISON_OPERATOR_ENUM_EQUALS
+	ComparisonContains   = ConditionComparisonOperatorEnum_CONDITION_COMPARISON_OPERATOR_ENUM_CONTAINS
+	ComparisonStartsWith = ConditionComparisonOperatorEnum_CONDITION_COMPARISON_OPERATOR_ENUM_STARTS_WITH
+	ComparisonEndsWith   = ConditionComparisonOperatorEnum_CONDITION_COMPARISON_OPERATOR_ENUM_ENDS_WITH
+)
+
+// Shorthand constants for ConditionQuantifierEnum.
+const (
+	QuantifierAny  = ConditionQuantifierEnum_CONDITION_QUANTIFIER_ENUM_ANY
+	QuantifierAll  = ConditionQuantifierEnum_CONDITION_QUANTIFIER_ENUM_ALL
+	QuantifierNone = ConditionQuantifierEnum_CONDITION_QUANTIFIER_ENUM_NONE
+)
+
 // Shorthand constants for ConditionBooleanTypeEnum.
 //
 // Example:

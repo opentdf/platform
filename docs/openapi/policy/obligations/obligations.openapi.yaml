@@ -1840,10 +1840,6 @@ components:
           title: pagination
           description: Optional
           $ref: '#/components/schemas/policy.PageRequest'
-        search:
-          title: search
-          description: Optional
-          $ref: '#/components/schemas/policy.Search'
       title: ListObligationTriggersRequest
       additionalProperties: false
     policy.obligations.ListObligationTriggersResponse:

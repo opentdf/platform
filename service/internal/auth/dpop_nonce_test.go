@@ -7,7 +7,6 @@ import (
 	"crypto/rsa"
 	"crypto/sha256"
 	"encoding/base64"
-	"errors"
 	"net/http"
 	"testing"
 	"time"
@@ -100,7 +99,7 @@ func TestDPoPNonceError(t *testing.T) {
 		// treat it as a hard rejection rather than issuing a nonce challenge.
 		var err error = &DPoPNonceMalformedError{Message: "bad nonce"}
 		var nonceErr *DPoPNonceError
-		assert.False(t, errors.As(err, &nonceErr))
+		assert.NotErrorAs(t, err, &nonceErr)
 	})
 }
 
@@ -131,7 +130,7 @@ func TestDPoPAlgorithmRestrictions(t *testing.T) {
 }
 
 // newAuthWithNonce creates an Authentication using the suite's OIDC server with RequireNonce=true.
-func (s *AuthSuite) newAuthWithNonce(expiration time.Duration) *Authentication {
+func (s *AuthSuite) newAuthWithNonce() *Authentication {
 	auth, err := NewAuthenticator(
 		context.Background(),
 		Config{
@@ -143,7 +142,7 @@ func (s *AuthSuite) newAuthWithNonce(expiration time.Duration) *Authentication {
 				TokenSkew:   time.Minute,
 				DPoP: DPoPConfig{
 					RequireNonce:    true,
-					NonceExpiration: expiration,
+					NonceExpiration: 5 * time.Minute,
 				},
 			},
 		},
@@ -222,7 +221,7 @@ func (s *AuthSuite) newDPoPKeyAndAccessToken() (jwk.Key, jwk.Key, []byte) {
 }
 
 func (s *AuthSuite) TestDPoP_MissingNonce_Returns_DPoPNonceError() {
-	auth := s.newAuthWithNonce(5 * time.Minute)
+	auth := s.newAuthWithNonce()
 	dpopKey, dpopPublic, signedTok := s.newDPoPKeyAndAccessToken()
 
 	dpopToken := makeDPoPProof(s.T(), dpopTestCase{
@@ -242,7 +241,7 @@ func (s *AuthSuite) TestDPoP_MissingNonce_Returns_DPoPNonceError() {
 }
 
 func (s *AuthSuite) TestDPoP_ValidNonce_Succeeds() {
-	auth := s.newAuthWithNonce(5 * time.Minute)
+	auth := s.newAuthWithNonce()
 	dpopKey, dpopPublic, signedTok := s.newDPoPKeyAndAccessToken()
 
 	nonce := auth.dpopNonceManager.getCurrentNonce()
@@ -263,7 +262,7 @@ func (s *AuthSuite) TestDPoP_ValidNonce_Succeeds() {
 }
 
 func (s *AuthSuite) TestDPoP_MalformedNonce_Returns_DPoPNonceMalformedError() {
-	auth := s.newAuthWithNonce(5 * time.Minute)
+	auth := s.newAuthWithNonce()
 	dpopKey, dpopPublic, signedTok := s.newDPoPKeyAndAccessToken()
 
 	// Integer nonce triggers the type-assertion failure in validateDPoP.
@@ -284,11 +283,11 @@ func (s *AuthSuite) TestDPoP_MalformedNonce_Returns_DPoPNonceMalformedError() {
 
 	// Confirm it does NOT match DPoPNonceError, so handlers hard-reject rather than issue a challenge.
 	var nonceErr *DPoPNonceError
-	s.Require().False(errors.As(err, &nonceErr))
+	s.Require().NotErrorAs(err, &nonceErr)
 }
 
 func (s *AuthSuite) TestDPoP_WrongNonce_Returns_DPoPNonceError() {
-	auth := s.newAuthWithNonce(5 * time.Minute)
+	auth := s.newAuthWithNonce()
 	dpopKey, dpopPublic, signedTok := s.newDPoPKeyAndAccessToken()
 
 	dpopToken := makeDPoPProof(s.T(), dpopTestCase{

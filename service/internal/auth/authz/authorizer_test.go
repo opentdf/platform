@@ -190,16 +190,8 @@ func (m *mockAuthorizer) SupportsResourceAuthorization() bool {
 // mockV1Enforcer implements V1Enforcer for testing
 type mockV1Enforcer struct {
 	enforceResult bool
-	subjects      []string
 }
 
 func (m *mockV1Enforcer) Enforce(_ context.Context, _ jwt.Token, _ platformauthz.RoleRequest) (bool, map[string]any, error) {
 	return m.enforceResult, nil, nil
-}
-
-func (m *mockV1Enforcer) BuildSubjectFromTokenAndUserInfo(_ jwt.Token, _ []byte) []string {
-	if m.subjects != nil {
-		return m.subjects
-	}
-	return []string{"role:test"}
 }

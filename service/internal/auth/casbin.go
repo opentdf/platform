@@ -11,6 +11,7 @@ import (
 	casbinModel "github.com/casbin/casbin/v2/model"
 	stringadapter "github.com/casbin/casbin/v2/persist/string-adapter"
 	"github.com/lestrrat-go/jwx/v2/jwt"
+	internalauthz "github.com/opentdf/platform/service/internal/auth/authz"
 	"github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/pkg/authz"
 
@@ -19,7 +20,6 @@ import (
 
 var (
 	rolePrefix          = "role:"
-	clientPrefix        = "client:"
 	defaultRole         = "unknown"
 	ErrPermissionDenied = errors.New("permission denied")
 )
@@ -127,7 +127,7 @@ func NewCasbinEnforcer(c CasbinConfig, logger *logger.Logger) (*Enforcer, error)
 
 	roleProvider := c.RoleProvider
 	if roleProvider == nil {
-		roleProvider = newJWTClaimsRoleProvider(c.GroupsClaim, logger)
+		roleProvider = internalauthz.NewJWTClaimsRoleProvider(c.GroupsClaim, logger)
 	}
 
 	return &Enforcer{
@@ -188,57 +188,16 @@ func (e *Enforcer) Enforce(ctx context.Context, token jwt.Token, req authz.RoleR
 	return false, metadata, ErrPermissionDenied
 }
 
-func (e *Enforcer) BuildSubjectFromTokenAndUserInfo(token jwt.Token, _ []byte) []string {
-	subjects, _, err := e.buildSubjectFromToken(context.Background(), token, authz.RoleRequest{})
-	if err != nil {
-		e.logger.Warn("failed to extract subjects", slog.Any("error", err))
-		return nil
-	}
-	return subjects
-}
-
 func (e *Enforcer) buildSubjectFromToken(ctx context.Context, t jwt.Token, req authz.RoleRequest) (casbinSubject, []string, error) {
-	var subject string
-	info := casbinSubject{}
-
-	e.logger.Debug("building subject from token")
-	roles, err := e.roleProvider.Roles(ctx, t, req)
+	extractor := internalauthz.SubjectExtractor{
+		UserNameClaim: e.Config.UserNameClaim,
+		ClientIDClaim: e.Config.ClientIDClaim,
+		RoleProvider:  e.roleProvider,
+		Logger:        e.logger,
+	}
+	subjects, roles, err := extractor.BuildSubjectFromToken(ctx, t, req)
 	if err != nil {
 		return nil, nil, err
 	}
-
-	if claim, found := t.Get(e.Config.UserNameClaim); found {
-		sub, ok := claim.(string)
-		subject = sub
-		if !ok {
-			e.logger.Warn(
-				"username claim not of type string",
-				slog.String("claim", e.Config.UserNameClaim),
-				slog.Any("claims", claim),
-			)
-			subject = ""
-		}
-	}
-	if clientID := clientIDFromToken(ctx, t, e.Config.ClientIDClaim); clientID != "" {
-		info = append(info, clientPrefix+clientID)
-	}
-	info = append(info, roles...)
-	info = append(info, subject)
-	return info, append([]string(nil), roles...), nil
-}
-
-func clientIDFromToken(ctx context.Context, t jwt.Token, claimName string) string {
-	if t == nil || claimName == "" {
-		return ""
-	}
-	claims, err := t.AsMap(ctx)
-	if err != nil {
-		return ""
-	}
-	found := dotNotation(claims, claimName)
-	clientID, ok := found.(string)
-	if !ok || clientID == "" {
-		return ""
-	}
-	return clientID
+	return casbinSubject(subjects), roles, nil
 }

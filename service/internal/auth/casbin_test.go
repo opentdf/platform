@@ -553,7 +553,7 @@ func (s *AuthnCasbinSuite) Test_ClientID_Policy() {
 
 	policyCfg.ClientIDClaim = "client_id"
 	policyCfg.Extension = strings.Join([]string{
-		"p, client:test-client, new.service.*, read, allow",
+		"p, test-client, new.service.*, read, allow",
 	}, "\n")
 
 	enforcer, err := NewCasbinEnforcer(CasbinConfig{PolicyConfig: policyCfg}, logger.CreateTestLogger())

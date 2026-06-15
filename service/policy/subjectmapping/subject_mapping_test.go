@@ -19,6 +19,7 @@ func getValidator() protovalidate.Validator {
 
 const (
 	errMessageUUID         = "string.uuid"
+	errMessageMinLen       = "string.min_len"
 	errLessThanMinItems    = "repeated.min_items"
 	errMessageOptionalUUID = "optional_uuid_format"
 	errMessageOneof        = "message.oneof"
@@ -533,6 +534,21 @@ func Test_ListSubjectMappingsRequest_Sort(t *testing.T) {
 	err := v.Validate(req)
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "sort")
+}
+
+func Test_ListSubjectMappingsRequest_Search(t *testing.T) {
+	v := getValidator()
+
+	require.NoError(t, v.Validate(&subjectmapping.ListSubjectMappingsRequest{
+		Search: &policy.Search{Term: "subject"},
+	}))
+	require.NoError(t, v.Validate(&subjectmapping.ListSubjectMappingsRequest{}))
+
+	err := v.Validate(&subjectmapping.ListSubjectMappingsRequest{
+		Search: &policy.Search{},
+	})
+	require.Error(t, err)
+	require.Contains(t, err.Error(), errMessageMinLen)
 }
 
 func Test_UpdateSubjectMappingRequest_Succeeds(t *testing.T) {

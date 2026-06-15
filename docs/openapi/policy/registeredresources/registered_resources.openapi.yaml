@@ -1220,6 +1220,7 @@ components:
           type: string
           title: term
           maxLength: 253
+          minLength: 1
       title: Search
       additionalProperties: false
     policy.SimpleKasKey:
@@ -1697,10 +1698,6 @@ components:
           title: pagination
           description: Optional
           $ref: '#/components/schemas/policy.PageRequest'
-        search:
-          title: search
-          description: Optional
-          $ref: '#/components/schemas/policy.Search'
       title: ListRegisteredResourceValuesRequest
       additionalProperties: false
     policy.registeredresources.ListRegisteredResourceValuesResponse:

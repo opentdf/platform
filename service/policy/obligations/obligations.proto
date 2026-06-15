@@ -352,8 +352,6 @@ message ListObligationTriggersRequest {
     // Optional
     policy.PageRequest pagination = 10;
 
-    // Optional
-    policy.Search search = 11;
 }
 
 message ListObligationTriggersResponse {

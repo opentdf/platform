@@ -25,8 +25,7 @@ const (
 // This is the contract between the interceptor and any authorization engine.
 type Request struct {
 	// Subject information extracted from JWT
-	Token    jwt.Token
-	UserInfo []byte // Optional userInfo from IdP
+	Token jwt.Token
 
 	// RPC method path (e.g., "/policy.attributes.AttributesService/UpdateAttribute")
 	// Used as the primary resource identifier in v2 model.
@@ -122,6 +121,9 @@ type optionConfig struct {
 	// When provided, the casbin authorizer will delegate v1 auth to this enforcer
 	// instead of creating its own.
 	V1Enforcer V1Enforcer
+
+	// RoleProvider extracts role/group subjects for authorization.
+	RoleProvider platformauthz.RoleProvider
 }
 
 // V1Enforcer is the interface for the legacy v1 casbin enforcer.
@@ -130,9 +132,6 @@ type optionConfig struct {
 type V1Enforcer interface {
 	// Enforce checks if the given token is allowed to perform the requested action.
 	Enforce(ctx context.Context, token jwt.Token, req platformauthz.RoleRequest) (bool, map[string]any, error)
-
-	// BuildSubjectFromTokenAndUserInfo extracts subjects (roles/username) from token and userInfo.
-	BuildSubjectFromTokenAndUserInfo(token jwt.Token, userInfo []byte) []string
 }
 
 // WithV1Enforcer sets the v1 enforcer for backwards compatibility.
@@ -141,6 +140,13 @@ type V1Enforcer interface {
 func WithV1Enforcer(enforcer V1Enforcer) Option {
 	return func(cfg *optionConfig) {
 		cfg.V1Enforcer = enforcer
+	}
+}
+
+// WithRoleProvider sets the role provider used for subject extraction.
+func WithRoleProvider(provider platformauthz.RoleProvider) Option {
+	return func(cfg *optionConfig) {
+		cfg.RoleProvider = provider
 	}
 }
 

@@ -30,9 +30,11 @@ import (
 	"github.com/opentdf/platform/protocol/go/kas/kasconnect"
 	sdkauth "github.com/opentdf/platform/sdk/auth"
 	"github.com/opentdf/platform/sdk/httputil"
+	internalauthz "github.com/opentdf/platform/service/internal/auth/authz"
 	"github.com/opentdf/platform/service/internal/server/memhttp"
 	"github.com/opentdf/platform/service/logger"
 	ctxAuth "github.com/opentdf/platform/service/pkg/auth"
+	platformauthz "github.com/opentdf/platform/service/pkg/authz"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
@@ -264,6 +266,52 @@ func TestPermissionDeniedLogAttrsWithoutSubjectInfo(t *testing.T) {
 	if !errors.Is(loggedErr, ErrPermissionDenied) {
 		t.Fatalf("expected error to wrap %v", ErrPermissionDenied)
 	}
+}
+
+func TestResolveRoleProviderDefault(t *testing.T) {
+	logger := logger.CreateTestLogger()
+	cfg := Config{}
+	provider, err := resolveRoleProvider(t.Context(), cfg, logger)
+	require.NoError(t, err)
+	require.NotNil(t, provider)
+	require.IsType(t, &internalauthz.JWTClaimsRoleProvider{}, provider)
+}
+
+func TestResolveRoleProviderNamed(t *testing.T) {
+	logger := logger.CreateTestLogger()
+	cfg := Config{
+		AuthNConfig: AuthNConfig{
+			Policy: PolicyConfig{
+				RolesProvider: RolesProviderConfig{
+					Name: "mock",
+				},
+			},
+		},
+		RoleProviderFactories: map[string]platformauthz.RoleProviderFactory{
+			"mock": func(_ context.Context, _ platformauthz.ProviderConfig) (platformauthz.RoleProvider, error) {
+				return staticProvider{roles: []string{"role:admin"}}, nil
+			},
+		},
+	}
+	provider, err := resolveRoleProvider(t.Context(), cfg, logger)
+	require.NoError(t, err)
+	require.NotNil(t, provider)
+}
+
+func TestResolveRoleProviderMissingName(t *testing.T) {
+	logger := logger.CreateTestLogger()
+	cfg := Config{
+		AuthNConfig: AuthNConfig{
+			Policy: PolicyConfig{
+				RolesProvider: RolesProviderConfig{
+					Name: "missing",
+				},
+			},
+		},
+	}
+	provider, err := resolveRoleProvider(t.Context(), cfg, logger)
+	require.Error(t, err)
+	require.Nil(t, provider)
 }
 
 func (s *AuthSuite) Test_IPCUnaryServerInterceptor() {

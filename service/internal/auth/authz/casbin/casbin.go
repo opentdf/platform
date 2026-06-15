@@ -4,7 +4,6 @@ package casbin
 import (
 	"context"
 	_ "embed"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -16,11 +15,9 @@ import (
 	casbinModel "github.com/casbin/casbin/v2/model"
 	"github.com/casbin/casbin/v2/persist"
 	stringadapter "github.com/casbin/casbin/v2/persist/string-adapter"
-	"github.com/lestrrat-go/jwx/v2/jwt"
 	"github.com/opentdf/platform/service/internal/auth/authz"
 	"github.com/opentdf/platform/service/logger"
 	platformauthz "github.com/opentdf/platform/service/pkg/authz"
-	"github.com/opentdf/platform/service/pkg/util"
 )
 
 //go:embed model.conf
@@ -32,14 +29,10 @@ var builtinPolicyV2 string
 const (
 	// rolePrefix is the prefix for role subjects in casbin policies.
 	rolePrefix = "role:"
-	// clientPrefix is the prefix for client subjects in casbin policies.
-	clientPrefix = "client:"
 	// disallowedDimensionKeyChars are separators used in dimension serialization.
 	disallowedDimensionKeyChars = "=&"
 	// defaultRole is the role assigned when no roles are found.
 	defaultRole = "unknown"
-	// defaultSubjectsCapacity is the default capacity for subjects/roles slices.
-	defaultSubjectsCapacity = 4
 	// dimensionMatchArgCount is the expected argument count for dimensionMatch function.
 	dimensionMatchArgCount = 2
 	// kvPairParts is the expected number of parts when splitting key=value pairs.
@@ -73,12 +66,7 @@ type Authorizer struct {
 
 	logger *logger.Logger
 
-	// baseConfig holds common configuration extracted from adapter config
-	baseConfig authz.BaseAdapterConfig
-
-	// groupClaimSelectors are precomputed selectors for extracting roles from JWT claims
-	// Used in v2-only mode when v1Enforcer is nil
-	groupClaimSelectors [][]string
+	subjectExtractor authz.SubjectExtractor
 }
 
 // NewAuthorizer creates a new Casbin Authorizer based on configuration.
@@ -112,7 +100,6 @@ func newCasbinV1Authorizer(cfg authz.CasbinV1Config, log *logger.Logger) (*Autho
 	authorizer := &Authorizer{
 		version:    "v1",
 		logger:     log,
-		baseConfig: cfg.BaseAdapterConfig,
 		v1Enforcer: cfg.Enforcer,
 	}
 
@@ -132,19 +119,22 @@ func newCasbinV2Authorizer(cfg authz.CasbinV2Config, log *logger.Logger) (*Autho
 		return nil, fmt.Errorf("failed to create v2 casbin enforcer: %w", err)
 	}
 
-	// Precompute group claim selector for v2 role extraction
-	// GroupsClaim is a dot-notation path like "realm_access.roles"
-	var groupClaimSelectors [][]string
-	if cfg.GroupsClaim != "" {
-		groupClaimSelectors = [][]string{strings.Split(cfg.GroupsClaim, ".")}
+	roleProvider := cfg.RoleProvider
+	if roleProvider == nil {
+		roleProvider = authz.NewJWTClaimsRoleProvider(cfg.GroupsClaim, log)
 	}
 
 	authorizer := &Authorizer{
-		version:             "v2",
-		logger:              log,
-		baseConfig:          cfg.BaseAdapterConfig,
-		v2Enforcer:          enforcer,
-		groupClaimSelectors: groupClaimSelectors,
+		version:    "v2",
+		logger:     log,
+		v2Enforcer: enforcer,
+		subjectExtractor: authz.SubjectExtractor{
+			UserNameClaim: cfg.UserNameClaim,
+			ClientIDClaim: cfg.ClientIDClaim,
+			RoleProvider:  roleProvider,
+			UsePrefix:     true,
+			Logger:        log,
+		},
 	}
 
 	log.Info(
@@ -286,7 +276,10 @@ func (a *Authorizer) authorizeV1(ctx context.Context, req *authz.Request) (*auth
 
 // authorizeV2 performs RPC+dimensions authorization.
 func (a *Authorizer) authorizeV2(ctx context.Context, req *authz.Request) (*authz.Decision, error) {
-	subjects := a.extractSubjects(ctx, req)
+	subjects, _, err := a.subjectExtractor.BuildSubjectFromToken(ctx, req.Token, platformauthz.RoleRequest{})
+	if err != nil {
+		return nil, fmt.Errorf("v2 authorization subject extraction error: %w", err)
+	}
 
 	// If no subjects found, use default role
 	if len(subjects) == 0 {
@@ -364,166 +357,6 @@ func (a *Authorizer) authorizeV2(ctx context.Context, req *authz.Request) (*auth
 		Reason:  fmt.Sprintf("v2: denied %s with dims=%s", req.RPC, dims),
 		Mode:    authz.ModeV2,
 	}, nil
-}
-
-// extractSubjects extracts roles/username from JWT token and userInfo.
-func (a *Authorizer) extractSubjects(ctx context.Context, req *authz.Request) []string {
-	if a.v1Enforcer != nil { // ? What's the point of this
-		// Reuse v1 subject extraction logic
-		return a.v1Enforcer.BuildSubjectFromTokenAndUserInfo(req.Token, req.UserInfo)
-	}
-
-	// For v2-only mode, implement subject extraction
-	subjects := make([]string, 0, defaultSubjectsCapacity)
-
-	// Extract roles from token claims
-	if req.Token != nil {
-		roles := a.extractRolesFromToken(req.Token)
-		for _, role := range roles {
-			if role != "" {
-				subjects = append(subjects, rolePrefix+role)
-			}
-		}
-
-		// Extract username claim
-		if username := a.extractUsernameFromToken(req.Token); username != "" {
-			subjects = append(subjects, username)
-		}
-		if clientID := a.extractClientIDFromToken(ctx, req.Token); clientID != "" {
-			subjects = append(subjects, clientPrefix+clientID)
-		}
-	}
-
-	// Extract roles from userInfo
-	if req.UserInfo != nil {
-		roles := a.extractRolesFromUserInfo(req.UserInfo)
-		for _, role := range roles {
-			if role != "" {
-				subjects = append(subjects, rolePrefix+role)
-			}
-		}
-	}
-
-	return subjects
-}
-
-// extractClientIDFromToken extracts the client ID subject from the configured token claim.
-func (a *Authorizer) extractClientIDFromToken(ctx context.Context, token jwt.Token) string {
-	if token == nil || a.baseConfig.ClientIDClaim == "" {
-		return ""
-	}
-
-	claimMap, err := token.AsMap(ctx)
-	if err != nil {
-		return ""
-	}
-	found := util.Dotnotation(claimMap, a.baseConfig.ClientIDClaim)
-	clientID, ok := found.(string)
-	if !ok || clientID == "" {
-		return ""
-	}
-
-	return clientID
-}
-
-// extractUsernameFromToken extracts and validates username subject from token.
-func (a *Authorizer) extractUsernameFromToken(token jwt.Token) string {
-	if token == nil || a.baseConfig.UserNameClaim == "" {
-		return ""
-	}
-
-	claim, found := token.Get(a.baseConfig.UserNameClaim)
-	if !found {
-		return ""
-	}
-
-	username, ok := claim.(string)
-	if !ok || username == "" {
-		return ""
-	}
-
-	if strings.HasPrefix(username, rolePrefix) {
-		a.logger.Warn(
-			"ignoring username subject with reserved role prefix",
-			slog.String("claim", a.baseConfig.UserNameClaim),
-			slog.String("prefix", rolePrefix),
-		)
-		return ""
-	}
-
-	return username
-}
-
-// extractRolesFromToken extracts roles from a jwt.Token based on the configured claim path.
-func (a *Authorizer) extractRolesFromToken(token jwt.Token) []string {
-	roles := make([]string, 0, defaultSubjectsCapacity)
-	for _, selectors := range a.groupClaimSelectors {
-		if len(selectors) == 0 {
-			continue
-		}
-		claim, exists := token.Get(selectors[0])
-		if !exists {
-			continue
-		}
-		if len(selectors) > 1 {
-			claimMap, ok := claim.(map[string]any)
-			if !ok {
-				continue
-			}
-			claim = util.Dotnotation(claimMap, strings.Join(selectors[1:], "."))
-			if claim == nil {
-				continue
-			}
-		}
-		// Extract roles from the claim value
-		switch v := claim.(type) {
-		case string:
-			roles = append(roles, v)
-		case []any:
-			for _, rr := range v {
-				if r, ok := rr.(string); ok {
-					roles = append(roles, r)
-				}
-			}
-		case []string:
-			roles = append(roles, v...)
-		}
-	}
-	return roles
-}
-
-// extractRolesFromUserInfo extracts roles from a userInfo JSON ([]byte) based on the configured claim path.
-func (a *Authorizer) extractRolesFromUserInfo(userInfo []byte) []string {
-	roles := make([]string, 0, defaultSubjectsCapacity)
-	if len(userInfo) == 0 {
-		return roles
-	}
-	var userInfoMap map[string]any
-	if err := json.Unmarshal(userInfo, &userInfoMap); err != nil {
-		return roles
-	}
-	for _, selectors := range a.groupClaimSelectors {
-		if len(selectors) == 0 {
-			continue
-		}
-		claim := util.Dotnotation(userInfoMap, strings.Join(selectors, "."))
-		if claim == nil {
-			continue
-		}
-		switch v := claim.(type) {
-		case string:
-			roles = append(roles, v)
-		case []any:
-			for _, rr := range v {
-				if r, ok := rr.(string); ok {
-					roles = append(roles, r)
-				}
-			}
-		case []string:
-			roles = append(roles, v...)
-		}
-	}
-	return roles
 }
 
 // serializeDimensions converts ResolverContext to canonical dimension string.

@@ -1,6 +1,9 @@
 package authz
 
-import "github.com/casbin/casbin/v2/persist"
+import (
+	"github.com/casbin/casbin/v2/persist"
+	platformauthz "github.com/opentdf/platform/service/pkg/authz"
+)
 
 // EngineType identifies the authorization engine implementation.
 type EngineType string
@@ -29,6 +32,9 @@ type BaseAdapterConfig struct {
 
 	// Logger for authorization decisions (type: *logger.Logger)
 	Logger any
+
+	// RoleProvider extracts role/group subjects.
+	RoleProvider platformauthz.RoleProvider
 }
 
 // CasbinV1Config configures the legacy path-based Casbin authorizer.
@@ -143,6 +149,7 @@ func AdapterConfigFromExternal(cfg Config) any {
 	}
 
 	opts := applyOptions(cfg.Options...)
+	base.RoleProvider = opts.RoleProvider
 
 	// Default engine to casbin for backwards compatibility
 	engine := cfg.Engine

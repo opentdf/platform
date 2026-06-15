@@ -169,7 +169,7 @@ func NewAuthenticator(ctx context.Context, cfg Config, logger *logger.Logger, we
 		Logger: logger,
 		// Pass the v1 enforcer to break circular dependency
 		// The casbin authorizer will use this for v1 mode
-		Options: []authz.Option{authz.WithV1Enforcer(a.enforcer)},
+		Options: []authz.Option{authz.WithV1Enforcer(a.enforcer), authz.WithRoleProvider(roleProvider)},
 	}
 	logger.Info(
 		"initializing authorizer",
@@ -211,6 +211,39 @@ func NewAuthenticator(ctx context.Context, cfg Config, logger *logger.Logger, we
 	}
 
 	return a, nil
+}
+
+func resolveRoleProvider(ctx context.Context, cfg Config, logger *logger.Logger) (platformauthz.RoleProvider, error) {
+	if cfg.Policy.RolesProvider.Name != "" {
+		if cfg.RoleProvider != nil && cfg.RoleProviderFactories != nil {
+			logger.Warn(
+				"role provider configured in start options is ignored because roles_provider is set",
+				slog.String("roles_provider", cfg.Policy.RolesProvider.Name),
+			)
+		}
+		if cfg.RoleProviderFactories == nil {
+			return nil, fmt.Errorf("no role provider factories are registered, cannot create provider %q", cfg.Policy.RolesProvider.Name)
+		}
+		factory, ok := cfg.RoleProviderFactories[cfg.Policy.RolesProvider.Name]
+		if !ok {
+			return nil, fmt.Errorf("role provider factory not registered: %s", cfg.Policy.RolesProvider.Name)
+		}
+		providerCfg := platformauthz.ProviderConfig{
+			Config:        cfg.Policy.RolesProvider.Config,
+			UsernameClaim: cfg.Policy.UserNameClaim,
+			GroupsClaim:   cfg.Policy.GroupsClaim,
+			ClientIDClaim: cfg.Policy.ClientIDClaim,
+		}
+		provider, err := factory(ctx, providerCfg)
+		if err != nil {
+			return nil, fmt.Errorf("role provider factory failed: %w", err)
+		}
+		return provider, nil
+	}
+	if cfg.RoleProvider != nil {
+		return cfg.RoleProvider, nil
+	}
+	return authz.NewJWTClaimsRoleProvider(cfg.Policy.GroupsClaim, logger), nil
 }
 
 type receiverInfo struct {

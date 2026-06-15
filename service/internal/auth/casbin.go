@@ -23,6 +23,16 @@ var (
 	ErrPermissionDenied = errors.New("permission denied")
 )
 
+type EnforcementResult struct {
+	Allowed     bool
+	CasbinAuthz CasbinAuthzLog
+}
+
+type CasbinAuthzLog struct {
+	ConfiguredGroupsClaim string
+	SubjectGroups         []string
+}
+
 //go:embed casbin_policy.csv
 var builtinPolicy string
 
@@ -135,12 +145,18 @@ func NewCasbinEnforcer(c CasbinConfig, logger *logger.Logger) (*Enforcer, error)
 
 // casbinEnforce is a helper function to enforce the policy with casbin
 // TODO implement a common type so this can be used for both http and grpc
-func (e *Enforcer) Enforce(ctx context.Context, token jwt.Token, req authz.RoleRequest) (bool, error) {
+func (e *Enforcer) Enforce(ctx context.Context, token jwt.Token, req authz.RoleRequest) (EnforcementResult, error) {
 	// extract the role claim from the token
-	s, err := e.buildSubjectFromToken(ctx, token, req)
+	s, subjectGroups, err := e.buildSubjectFromToken(ctx, token, req)
+	result := EnforcementResult{
+		CasbinAuthz: CasbinAuthzLog{
+			ConfiguredGroupsClaim: e.Config.GroupsClaim,
+			SubjectGroups:         subjectGroups,
+		},
+	}
 	if err != nil {
 		e.logger.Warn("role provider error", slog.Any("error", err))
-		return false, ErrPermissionDenied
+		return result, ErrPermissionDenied
 	}
 	s = append(s, rolePrefix+defaultRole)
 
@@ -162,7 +178,8 @@ func (e *Enforcer) Enforce(ctx context.Context, token jwt.Token, req authz.RoleR
 				slog.String("action", action),
 				slog.String("resource", resource),
 			)
-			return true, nil
+			result.Allowed = true
+			return result, nil
 		}
 	}
 	e.logger.Debug("permission denied by policy",
@@ -170,31 +187,62 @@ func (e *Enforcer) Enforce(ctx context.Context, token jwt.Token, req authz.RoleR
 		slog.String("action", action),
 		slog.String("resource", resource),
 	)
-	return false, ErrPermissionDenied
+	return result, ErrPermissionDenied
 }
 
-func (e *Enforcer) buildSubjectFromToken(ctx context.Context, t jwt.Token, req authz.RoleRequest) (casbinSubject, error) {
-	var subject string
+func (e *Enforcer) ContextWithClaims(ctx context.Context, t jwt.Token, req authz.RoleRequest) (context.Context, error) {
+	roles, err := e.roleProvider.Roles(ctx, t, req)
+	if err != nil {
+		return ctx, err
+	}
+	claims, _ := authz.ClaimsFromContext(ctx)
+	claims.Subject = e.subjectFromToken(t)
+	claims.Groups = roles
+	return authz.ContextWithClaims(ctx, claims), nil
+}
+
+func (e *Enforcer) buildSubjectFromToken(ctx context.Context, t jwt.Token, req authz.RoleRequest) (casbinSubject, []string, error) {
 	info := casbinSubject{}
 
 	e.logger.Debug("building subject from token")
-	roles, err := e.roleProvider.Roles(ctx, t, req)
+	claims, err := e.claimsForRequest(ctx, t, req)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
+	info = append(info, claims.Groups...)
+	info = append(info, claims.Subject)
+	return info, append([]string(nil), claims.Groups...), nil
+}
+
+func (e *Enforcer) claimsForRequest(ctx context.Context, t jwt.Token, req authz.RoleRequest) (authz.RequestClaims, error) {
+	if claims, ok := authz.ClaimsFromContext(ctx); ok {
+		if claims.Subject != "" || len(claims.Groups) > 0 {
+			return claims, nil
+		}
+	}
+
+	roles, err := e.roleProvider.Roles(ctx, t, req)
+	if err != nil {
+		return authz.RequestClaims{}, err
+	}
+	claims, _ := authz.ClaimsFromContext(ctx)
+	claims.Subject = e.subjectFromToken(t)
+	claims.Groups = roles
+	return claims, nil
+}
+
+func (e *Enforcer) subjectFromToken(t jwt.Token) string {
 	if claim, found := t.Get(e.Config.UserNameClaim); found {
 		sub, ok := claim.(string)
-		subject = sub
 		if !ok {
 			e.logger.Warn("username claim not of type string",
 				slog.String("claim", e.Config.UserNameClaim),
 				slog.Any("claims", claim),
 			)
-			subject = ""
+			return ""
 		}
+		return sub
 	}
-	info = append(info, roles...)
-	info = append(info, subject)
-	return info, nil
+	return ""
 }

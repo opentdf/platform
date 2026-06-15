@@ -1146,6 +1146,13 @@ components:
         group:
           title: group
           $ref: '#/components/schemas/policy.ResourceMappingGroup'
+        namespace:
+          title: namespace
+          description: |-
+            The namespace that optionally owns this resource mapping. When the mapping
+             belongs to a group, this matches the group's namespace. The mapped
+             attribute value may belong to a different namespace.
+          $ref: '#/components/schemas/policy.Namespace'
       title: ResourceMapping
       required:
         - attributeValue
@@ -1185,6 +1192,16 @@ components:
       description: |-
         Resource Mapping Groups are namespaced collections of Resource Mappings
         associated under a common group name.
+    policy.Search:
+      type: object
+      properties:
+        term:
+          type: string
+          title: term
+          maxLength: 253
+          minLength: 1
+      title: Search
+      additionalProperties: false
     policy.SimpleKasKey:
       type: object
       properties:
@@ -1588,6 +1605,10 @@ components:
                - direction UNSPECIFIED defaults to DESC for the specified field
                - field UNSPECIFIED defaults to created_at with the specified direction
                - both UNSPECIFIED or sort omitted defaults to created_at DESC
+        search:
+          title: search
+          description: Optional
+          $ref: '#/components/schemas/policy.Search'
       title: ListSubjectConditionSetsRequest
       additionalProperties: false
     policy.subjectmapping.ListSubjectConditionSetsResponse:
@@ -1631,6 +1652,10 @@ components:
                - direction UNSPECIFIED defaults to DESC for the specified field
                - field UNSPECIFIED defaults to created_at with the specified direction
                - both UNSPECIFIED or sort omitted defaults to created_at DESC
+        search:
+          title: search
+          description: Optional
+          $ref: '#/components/schemas/policy.Search'
       title: ListSubjectMappingsRequest
       additionalProperties: false
     policy.subjectmapping.ListSubjectMappingsResponse:

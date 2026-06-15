@@ -30,36 +30,44 @@ func (p *jwtClaimsRoleProvider) Roles(_ context.Context, token jwt.Token, _ auth
 		return nil, nil
 	}
 
-	selectors := strings.Split(p.groupsClaim, ".")
+	return rolesFromConfiguredClaim(token, p.groupsClaim, p.logger), nil
+}
+
+func rolesFromConfiguredClaim(token jwt.Token, groupsClaim string, log *logger.Logger) []string {
+	if token == nil || groupsClaim == "" {
+		return nil
+	}
+
+	selectors := strings.Split(groupsClaim, ".")
 	claim, exists := token.Get(selectors[0])
 	if !exists {
-		p.logger.Warn("claim not found",
-			slog.String("claim", p.groupsClaim),
+		log.Warn("claim not found",
+			slog.String("claim", groupsClaim),
 			slog.Any("claims", claim),
 		)
-		return nil, nil
+		return nil
 	}
-	p.logger.Debug("root claim found",
-		slog.String("claim", p.groupsClaim),
+	log.Debug("root claim found",
+		slog.String("claim", groupsClaim),
 		slog.Any("claims", claim),
 	)
 
 	if len(selectors) > 1 {
-		claimMap, ok := claim.(map[string]interface{})
+		claimMap, ok := claim.(map[string]any)
 		if !ok {
-			p.logger.Warn("claim is not of type map[string]interface{}",
-				slog.String("claim", p.groupsClaim),
+			log.Warn("claim is not of type map[string]interface{}",
+				slog.String("claim", groupsClaim),
 				slog.Any("claims", claim),
 			)
-			return nil, nil
+			return nil
 		}
 		claim = dotNotation(claimMap, strings.Join(selectors[1:], "."))
 		if claim == nil {
-			p.logger.Warn("claim not found",
-				slog.String("claim", p.groupsClaim),
+			log.Warn("claim not found",
+				slog.String("claim", groupsClaim),
 				slog.Any("claims", claim),
 			)
-			return nil, nil
+			return nil
 		}
 	}
 
@@ -67,21 +75,21 @@ func (p *jwtClaimsRoleProvider) Roles(_ context.Context, token jwt.Token, _ auth
 	switch v := claim.(type) {
 	case string:
 		roles = append(roles, v)
-	case []interface{}:
+	case []any:
 		for _, rr := range v {
 			if r, ok := rr.(string); ok {
 				roles = append(roles, r)
 			}
 		}
 	default:
-		p.logger.Warn("could not get claim type",
-			slog.String("selector", p.groupsClaim),
+		log.Warn("could not get claim type",
+			slog.String("selector", groupsClaim),
 			slog.Any("claims", claim),
 		)
-		return nil, nil
+		return nil
 	}
 
-	return roles, nil
+	return roles
 }
 
 func resolveRoleProvider(ctx context.Context, cfg Config, logger *logger.Logger) (authz.RoleProvider, error) {

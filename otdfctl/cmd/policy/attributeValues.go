@@ -22,9 +22,9 @@ func createAttributeValue(cmd *cobra.Command, args []string) {
 	defer h.Close()
 
 	ctx := cmd.Context()
-	attrID := c.FlagHelper.GetRequiredID("attribute-id")
-	value := c.FlagHelper.GetRequiredString("value")
-	metadataLabels = c.FlagHelper.GetStringSlice("label", metadataLabels, cli.FlagsStringSliceOptions{Min: 0})
+	attrID := c.Flags.GetRequiredID("attribute-id")
+	value := c.Flags.GetRequiredString("value")
+	metadataLabels = c.Flags.GetStringSlice("label", metadataLabels, cli.FlagsStringSliceOptions{Min: 0})
 
 	attr, err := h.GetAttribute(ctx, attrID)
 	if err != nil {
@@ -44,7 +44,7 @@ func getAttributeValue(cmd *cobra.Command, args []string) {
 	h := common.NewHandler(c)
 	defer h.Close()
 
-	id := c.FlagHelper.GetRequiredID("id")
+	id := c.Flags.GetRequiredID("id")
 
 	v, err := h.GetAttributeValue(cmd.Context(), id)
 	if err != nil {
@@ -105,7 +105,7 @@ func listAttributeValue(cmd *cobra.Command, args []string) {
 	h := common.NewHandler(c)
 	defer h.Close()
 
-	attrID := c.FlagHelper.GetRequiredID("attribute-id")
+	attrID := c.Flags.GetRequiredID("attribute-id")
 	state := cli.GetState(cmd)
 	limit := c.Flags.GetRequiredInt32("limit")
 	offset := c.Flags.GetRequiredInt32("offset")

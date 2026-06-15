@@ -26,6 +26,20 @@ const (
 	ristrettoCacheTTL    = 30
 )
 
+// BasicManagerSupportedAlgorithms is the canonical set of algorithms the
+// BasicManager knows how to serve when a key has been provisioned. Keep in
+// sync with the switch in Decrypt.
+var BasicManagerSupportedAlgorithms = []ocrypto.KeyType{
+	ocrypto.RSA2048Key,
+	ocrypto.RSA4096Key,
+	ocrypto.EC256Key,
+	ocrypto.EC384Key,
+	ocrypto.EC521Key,
+	ocrypto.HybridXWingKey,
+	ocrypto.HybridSecp256r1MLKEM768Key,
+	ocrypto.HybridSecp384r1MLKEM1024Key,
+}
+
 type BasicManager struct {
 	l       *logger.Logger
 	rootKey []byte

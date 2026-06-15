@@ -2,11 +2,9 @@ module github.com/opentdf/platform/service
 
 go 1.25.0
 
-toolchain go1.25.9
-
 require (
 	buf.build/go/protovalidate v1.0.0
-	connectrpc.com/connect v1.19.2
+	connectrpc.com/connect v1.20.0
 	connectrpc.com/grpchealth v1.4.0
 	connectrpc.com/grpcreflect v1.3.0
 	connectrpc.com/otelconnect v0.9.0

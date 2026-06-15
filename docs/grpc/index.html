@@ -798,6 +798,10 @@
                   <a href="#policy.PageResponse"><span class="badge">M</span>PageResponse</a>
                 </li>
               
+                <li>
+                  <a href="#policy.Search"><span class="badge">M</span>Search</a>
+                </li>
+              
               
                 <li>
                   <a href="#policy.SortDirection"><span class="badge">E</span>SortDirection</a>
@@ -3580,6 +3584,15 @@ Base64 encoded public key in PEM format </p></td>
                   <td><p> </p></td>
                 </tr>
               
+                <tr>
+                  <td>namespace</td>
+                  <td><a href="#policy.Namespace">Namespace</a></td>
+                  <td></td>
+                  <td><p>The namespace that optionally owns this resource mapping. When the mapping
+belongs to a group, this matches the group&#39;s namespace. The mapped
+attribute value may belong to a different namespace. </p></td>
+                </tr>
+              
             </tbody>
           </table>
 
@@ -5328,7 +5341,7 @@ string</p></td>
                   <td>entity_chain</td>
                   <td><a href="#entity.EntityChain">entity.EntityChain</a></td>
                   <td></td>
-                  <td><p>chain of one or more entities and at most 10 </p></td>
+                  <td><p>chain of one or more entities </p></td>
                 </tr>
               
                 <tr>
@@ -5409,7 +5422,7 @@ this case the resource acts as and represents a single entity for authorization/
         
       
         <h3 id="authorization.v2.GetDecisionMultiResourceRequest">GetDecisionMultiResourceRequest</h3>
-        <p>Can the identified entity/entities access?</p><p>1. one entity reference (actor)</p><p>2. one action</p><p>3. multiple resources</p><p>If entitled, checks obligation policy: fulfillable obligations must satisfy all triggered.</p><p>Note: this is a more performant bulk request for multiple resource decisions, up to 1000 per request</p>
+        <p>Can the identified entity/entities access?</p><p>1. one entity reference (actor)</p><p>2. one action</p><p>3. multiple resources</p><p>If entitled, checks obligation policy: fulfillable obligations must satisfy all triggered.</p><p>Note: this is a more performant bulk request for multiple resource decisions</p>
 
         
           <table class="field-table">
@@ -5632,7 +5645,7 @@ down the hierarchical values instead of returning solely the value that is direc
                   <td>attribute_values</td>
                   <td><a href="#authorization.v2.Resource.AttributeValues">Resource.AttributeValues</a></td>
                   <td></td>
-                  <td><p>a set of attribute value FQNs, such as those on a TDF, between 1 and 20 in count </p></td>
+                  <td><p>a set of attribute value FQNs, such as those on a TDF, containing at least 1 value </p></td>
                 </tr>
               
                 <tr>
@@ -7451,6 +7464,30 @@ Empty when none remain after current page </p></td>
 
         
       
+        <h3 id="policy.Search">Search</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>term</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
 
       
         <h3 id="policy.SortDirection">SortDirection</h3>
@@ -8874,6 +8911,13 @@ Sort defaults:
   - direction UNSPECIFIED defaults to DESC for the specified field
   - field UNSPECIFIED defaults to created_at with the specified direction
   - both UNSPECIFIED or sort omitted defaults to created_at DESC </p></td>
+                </tr>
+              
+                <tr>
+                  <td>search</td>
+                  <td><a href="#policy.Search">policy.Search</a></td>
+                  <td></td>
+                  <td><p>Optional </p></td>
                 </tr>
               
             </tbody>
@@ -10602,6 +10646,13 @@ Sort defaults:
   - both UNSPECIFIED or sort omitted defaults to created_at DESC </p></td>
                 </tr>
               
+                <tr>
+                  <td>search</td>
+                  <td><a href="#policy.Search">policy.Search</a></td>
+                  <td></td>
+                  <td><p>Optional </p></td>
+                </tr>
+              
             </tbody>
           </table>
 
@@ -10774,6 +10825,13 @@ Sort defaults:
   - direction UNSPECIFIED defaults to DESC for the specified field
   - field UNSPECIFIED defaults to created_at with the specified direction
   - both UNSPECIFIED or sort omitted defaults to created_at DESC </p></td>
+                </tr>
+              
+                <tr>
+                  <td>search</td>
+                  <td><a href="#policy.Search">policy.Search</a></td>
+                  <td></td>
+                  <td><p>Optional </p></td>
                 </tr>
               
             </tbody>
@@ -12532,6 +12590,13 @@ Sort defaults:
   - both UNSPECIFIED or sort omitted defaults to created_at DESC </p></td>
                 </tr>
               
+                <tr>
+                  <td>search</td>
+                  <td><a href="#policy.Search">policy.Search</a></td>
+                  <td></td>
+                  <td><p>Optional </p></td>
+                </tr>
+              
             </tbody>
           </table>
 
@@ -13775,6 +13840,13 @@ Sort defaults:
   - both UNSPECIFIED or sort omitted defaults to created_at DESC </p></td>
                 </tr>
               
+                <tr>
+                  <td>search</td>
+                  <td><a href="#policy.Search">policy.Search</a></td>
+                  <td></td>
+                  <td><p>Optional </p></td>
+                </tr>
+              
             </tbody>
           </table>
 
@@ -14899,6 +14971,13 @@ Sort defaults:
   - both UNSPECIFIED or sort omitted defaults to created_at DESC </p></td>
                 </tr>
               
+                <tr>
+                  <td>search</td>
+                  <td><a href="#policy.Search">policy.Search</a></td>
+                  <td></td>
+                  <td><p>Optional </p></td>
+                </tr>
+              
             </tbody>
           </table>
 
@@ -15268,7 +15347,14 @@ Common metadata </p></td>
                   <td>namespace_id</td>
                   <td><a href="#string">string</a></td>
                   <td></td>
-                  <td><p>Required </p></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>namespace_fqn</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
                 </tr>
               
                 <tr>
@@ -15345,6 +15431,23 @@ Common metadata </p></td>
                   <td><a href="#string">string</a></td>
                   <td></td>
                   <td><p>Optional </p></td>
+                </tr>
+              
+                <tr>
+                  <td>namespace_id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>Optional
+The namespace that owns this resource mapping. If a group_id is provided,
+this must match the group&#39;s namespace (and may be omitted to inherit it). </p></td>
+                </tr>
+              
+                <tr>
+                  <td>namespace_fqn</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>Optional
+Alternative to namespace_id; the FQN of the owning namespace. </p></td>
                 </tr>
               
                 <tr>
@@ -15595,6 +15698,13 @@ Common metadata </p></td>
                 </tr>
               
                 <tr>
+                  <td>namespace_fqn</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>Optional </p></td>
+                </tr>
+              
+                <tr>
                   <td>pagination</td>
                   <td><a href="#policy.PageRequest">policy.PageRequest</a></td>
                   <td></td>
@@ -15737,6 +15847,22 @@ Structure of the RM Group FQN is &#39;https://&lt;namespace&gt;/resm/&lt;group n
                 </tr>
               
                 <tr>
+                  <td>namespace_id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>Optional
+Filter the list to resource mappings owned by this namespace. </p></td>
+                </tr>
+              
+                <tr>
+                  <td>namespace_fqn</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>Optional
+Filter the list to resource mappings owned by this namespace. </p></td>
+                </tr>
+              
+                <tr>
                   <td>pagination</td>
                   <td><a href="#policy.PageRequest">policy.PageRequest</a></td>
                   <td></td>
@@ -15837,6 +15963,13 @@ Structure of the RM Group FQN is &#39;https://&lt;namespace&gt;/resm/&lt;group n
                 </tr>
               
                 <tr>
+                  <td>namespace_fqn</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>Optional </p></td>
+                </tr>
+              
+                <tr>
                   <td>name</td>
                   <td><a href="#string">string</a></td>
                   <td></td>
@@ -15924,6 +16057,23 @@ Structure of the RM Group FQN is &#39;https://&lt;namespace&gt;/resm/&lt;group n
                   <td><a href="#string">string</a></td>
                   <td></td>
                   <td><p>Optional </p></td>
+                </tr>
+              
+                <tr>
+                  <td>namespace_id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>Optional
+The namespace that owns this resource mapping. If a group_id is set on the
+mapping, this must match the group&#39;s namespace. </p></td>
+                </tr>
+              
+                <tr>
+                  <td>namespace_fqn</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>Optional
+Alternative to namespace_id; the FQN of the owning namespace. </p></td>
                 </tr>
               
                 <tr>
@@ -16544,6 +16694,13 @@ Sort defaults:
   - both UNSPECIFIED or sort omitted defaults to created_at DESC </p></td>
                 </tr>
               
+                <tr>
+                  <td>search</td>
+                  <td><a href="#policy.Search">policy.Search</a></td>
+                  <td></td>
+                  <td><p>Optional </p></td>
+                </tr>
+              
             </tbody>
           </table>
 
@@ -16622,6 +16779,13 @@ Sort defaults:
   - direction UNSPECIFIED defaults to DESC for the specified field
   - field UNSPECIFIED defaults to created_at with the specified direction
   - both UNSPECIFIED or sort omitted defaults to created_at DESC </p></td>
+                </tr>
+              
+                <tr>
+                  <td>search</td>
+                  <td><a href="#policy.Search">policy.Search</a></td>
+                  <td></td>
+                  <td><p>Optional </p></td>
                 </tr>
               
             </tbody>

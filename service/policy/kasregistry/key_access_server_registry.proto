@@ -64,6 +64,9 @@ message ListKeyAccessServersRequest {
   //   - field UNSPECIFIED defaults to created_at with the specified direction
   //   - both UNSPECIFIED or sort omitted defaults to created_at DESC
   repeated KeyAccessServersSort sort = 11 [(buf.validate.field).repeated.max_items = 1];
+
+  // Optional
+  policy.Search search = 12;
 }
 message ListKeyAccessServersResponse {
   repeated KeyAccessServer key_access_servers = 1;
@@ -501,6 +504,9 @@ message ListKeysRequest {
   //   - field UNSPECIFIED defaults to created_at with the specified direction
   //   - both UNSPECIFIED or sort omitted defaults to created_at DESC
   repeated KasKeysSort sort = 11 [(buf.validate.field).repeated.max_items = 1];
+
+  // Optional
+  policy.Search search = 12;
 }
 
 // Response to a ListKeysRequest, containing the list of asymmetric keys and pagination information

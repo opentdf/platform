@@ -98,14 +98,14 @@ func TestDPoPTransport_AddsProofToRequests(t *testing.T) {
 		htu, ok := token.Get("htu")
 		if !ok {
 			t.Error("htu claim missing")
-		} else if htuStr, ok := htu.(string); !ok {
+		} else if htuStr, isStr := htu.(string); !isStr {
 			t.Errorf("htu claim not a string: %v", htu)
 		} else if htuStr == "" {
 			t.Error("htu claim is empty")
 		}
 
 		// Check ath claim (access token hash)
-		if ath, ok := token.Get("ath"); !ok {
+		if ath, athOK := token.Get("ath"); !athOK {
 			t.Error("ath claim missing")
 		} else {
 			expectedHash := sha256.Sum256([]byte("test-access-token"))
@@ -116,7 +116,7 @@ func TestDPoPTransport_AddsProofToRequests(t *testing.T) {
 		}
 
 		// Check jti claim
-		if jti, ok := token.Get("jti"); !ok || jti == "" {
+		if jti, jtiOK := token.Get("jti"); !jtiOK || jti == "" {
 			t.Error("jti claim missing or empty")
 		}
 
@@ -269,7 +269,10 @@ func TestDPoPTransport_URINormalization(t *testing.T) {
 				}
 
 				// The htu should have normalized the URL
-				htuStr := htu.(string)
+				htuStr, isStr := htu.(string)
+				if !isStr {
+					t.Fatalf("htu claim is not a string: %T", htu)
+				}
 				if !strings.Contains(htuStr, "/path") {
 					t.Errorf("htu = %s, want to contain normalized path", htuStr)
 				}

@@ -207,13 +207,9 @@ func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 	httpClient := cfg.httpClient
 	if accessTokenSource != nil {
 		var dpopKey jwk.Key
-		if cfg.dpopJWK != nil {
-			dpopKey = cfg.dpopJWK
-		} else if cfg.dpopKey != nil {
-			dpopKey, err = getDPoPJWK(cfg.dpopKey)
-			if err != nil {
-				return nil, fmt.Errorf("failed to create DPoP JWK: %w", err)
-			}
+		dpopKey, err = pickDPoPKey(cfg)
+		if err != nil {
+			return nil, err
 		}
 		if dpopKey != nil {
 			httpClient = auth.NewDPoPHTTPClient(cfg.httpClient, dpopKey, accessTokenSource, cfg.tokenEndpoint)
@@ -286,6 +282,20 @@ func getDPoPJWK(dpopKey *ocrypto.RsaKeyPair) (jwk.Key, error) {
 	}
 
 	return key, nil
+}
+
+func pickDPoPKey(cfg *config) (jwk.Key, error) {
+	if cfg.dpopJWK != nil {
+		return cfg.dpopJWK, nil
+	}
+	if cfg.dpopKey != nil {
+		key, err := getDPoPJWK(cfg.dpopKey)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create DPoP JWK: %w", err)
+		}
+		return key, nil
+	}
+	return nil, nil //nolint:nilnil // nil key means DPoP not configured; caller checks for nil
 }
 
 func buildIDPTokenSource(c *config) (auth.AccessTokenSource, error) {

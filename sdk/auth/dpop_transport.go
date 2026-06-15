@@ -78,38 +78,12 @@ func (t *DPoPTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 
 	// Handle DPoP-Nonce challenge (RFC 9449 §8)
 	if resp.StatusCode == http.StatusUnauthorized {
-		if newNonce := resp.Header.Get("DPoP-Nonce"); newNonce != "" {
-			// Check if this was a retry with a nonce already
-			if nonce != "" {
-				// Already tried with a nonce, don't retry again
-				return resp, nil
-			}
-
-			// Cache the new nonce
-			t.setCachedNonce(origin, newNonce)
-
-			// Close the failed response body
-			resp.Body.Close()
-
-			// Clone the original request again for retry
-			req3 := cloneRequest(req)
-
-			// Reset body using GetBody if available
-			if req.GetBody != nil {
-				body, err := req.GetBody()
-				if err != nil {
-					return nil, fmt.Errorf("failed to reset request body for retry: %w", err)
-				}
-				req3.Body = body
-			}
-
-			// Regenerate proof with nonce
-			if err := t.addDPoPProof(req3, base, newNonce, isTokenRequest); err != nil {
-				return nil, fmt.Errorf("failed to add DPoP proof with nonce: %w", err)
-			}
-
-			// Retry the request
-			return base.RoundTrip(req3)
+		retryResp, retried, err := t.retryWithNonce(req, base, resp, origin, nonce, isTokenRequest)
+		if err != nil {
+			return nil, err
+		}
+		if retried {
+			return retryResp, nil
 		}
 	}
 
@@ -121,6 +95,38 @@ func (t *DPoPTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	}
 
 	return resp, nil
+}
+
+// retryWithNonce handles a DPoP-Nonce server challenge. It returns the retried
+// response and true when a retry was performed, or the original response and
+// false when no retry was needed (missing nonce header or nonce already used).
+func (t *DPoPTransport) retryWithNonce(
+	req *http.Request, base http.RoundTripper,
+	resp *http.Response, origin, nonce string, isTokenRequest bool,
+) (*http.Response, bool, error) {
+	newNonce := resp.Header.Get("DPoP-Nonce")
+	if newNonce == "" || nonce != "" {
+		return resp, false, nil
+	}
+
+	t.setCachedNonce(origin, newNonce)
+	resp.Body.Close()
+
+	req3 := cloneRequest(req)
+	if req.GetBody != nil {
+		body, err := req.GetBody()
+		if err != nil {
+			return nil, false, fmt.Errorf("failed to reset request body for retry: %w", err)
+		}
+		req3.Body = body
+	}
+
+	if err := t.addDPoPProof(req3, base, newNonce, isTokenRequest); err != nil {
+		return nil, false, fmt.Errorf("failed to add DPoP proof with nonce: %w", err)
+	}
+
+	retryResp, err := base.RoundTrip(req3)
+	return retryResp, true, err
 }
 
 // addDPoPProof generates and adds DPoP proof to the request headers.

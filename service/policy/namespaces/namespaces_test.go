@@ -379,11 +379,16 @@ func Test_ListNamespacesRequest_Sort(t *testing.T) {
 func Test_ListNamespacesRequest_Search(t *testing.T) {
 	v := getValidator()
 
-	req := &namespaces.ListNamespacesRequest{
+	require.NoError(t, v.Validate(&namespaces.ListNamespacesRequest{
 		Search: &policy.Search{Term: "namespace"},
-	}
-	require.NoError(t, v.Validate(req))
+	}))
 	require.NoError(t, v.Validate(&namespaces.ListNamespacesRequest{}))
+
+	err := v.Validate(&namespaces.ListNamespacesRequest{
+		Search: &policy.Search{},
+	})
+	require.Error(t, err)
+	require.Contains(t, err.Error(), errMessageMinLen)
 }
 
 func Test_RemovePublicKeyFromNamespace(t *testing.T) {

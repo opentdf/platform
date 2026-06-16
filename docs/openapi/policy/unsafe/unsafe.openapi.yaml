@@ -789,9 +789,11 @@ components:
           description: how matches are aggregated across subject_external_values
           $ref: '#/components/schemas/policy.ConditionQuantifierEnum'
         caseInsensitive:
-          type: boolean
           title: case_insensitive
-          description: when true, comparison is case-insensitive (default false = case-sensitive)
+          description: |-
+            when set true, comparison is case-insensitive; unset is treated as case-sensitive. Modeled as
+             BoolValue so an explicit false is distinguishable from unset, leaving room to change the default.
+          $ref: '#/components/schemas/google.protobuf.BoolValue'
       title: Condition
       required:
         - subjectExternalSelectorValue

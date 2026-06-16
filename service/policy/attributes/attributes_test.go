@@ -1051,3 +1051,18 @@ func Test_ListAttributesRequest_Sort(t *testing.T) {
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "sort")
 }
+
+func Test_ListAttributesRequest_Search(t *testing.T) {
+	v := getValidator()
+
+	require.NoError(t, v.Validate(&attributes.ListAttributesRequest{
+		Search: &policy.Search{Term: "attribute"},
+	}))
+	require.NoError(t, v.Validate(&attributes.ListAttributesRequest{}))
+
+	err := v.Validate(&attributes.ListAttributesRequest{
+		Search: &policy.Search{},
+	})
+	require.Error(t, err)
+	require.Contains(t, err.Error(), errMessageMinLen)
+}

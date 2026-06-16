@@ -149,7 +149,7 @@ func (e *Enforcer) enforce(ctx context.Context, token jwt.Token, req platformaut
 	result := EnforcementResult{GroupsClaim: e.Config.GroupsClaim}
 	if err != nil {
 		e.logger.Warn("role provider error", slog.Any("error", err))
-		return result, internalauthz.ErrPermissionDenied
+		return result, err
 	}
 	s = append(s, rolePrefix+defaultRole)
 
@@ -165,6 +165,7 @@ func (e *Enforcer) enforce(ctx context.Context, token jwt.Token, req platformaut
 				slog.String("resource", resource),
 				slog.String("error", err.Error()),
 			)
+			return result, err
 		}
 		if allowed {
 			e.logger.Debug(
@@ -183,7 +184,7 @@ func (e *Enforcer) enforce(ctx context.Context, token jwt.Token, req platformaut
 		slog.String("action", action),
 		slog.String("resource", resource),
 	)
-	return result, internalauthz.ErrPermissionDenied
+	return result, nil
 }
 
 func (e *Enforcer) buildSubjectFromToken(ctx context.Context, t jwt.Token, req platformauthz.RoleRequest) (casbinSubject, []string, error) {

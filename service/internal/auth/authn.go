@@ -326,10 +326,6 @@ func (a Authentication) MuxHandler(handler http.Handler) http.Handler {
 		ctx, err = a.subjectExtractor.ContextWithClaims(ctx, accessTok, roleReq)
 		if err != nil {
 			log.WarnContext(r.Context(), "role provider error", slog.Any("error", err)) //nolint:contextcheck // request context is already derived with public route state above.
-			if errors.Is(err, internalauthz.ErrPermissionDenied) {
-				http.Error(w, "permission denied", http.StatusForbidden)
-				return
-			}
 			http.Error(w, "internal server error", http.StatusInternalServerError)
 			return
 		}
@@ -424,9 +420,6 @@ func (a Authentication) ConnectAuthNInterceptor() connect.UnaryInterceptorFunc {
 			ctxWithJWK, err = a.subjectExtractor.ContextWithClaims(ctxWithJWK, token, roleReq)
 			if err != nil {
 				log.WarnContext(ctxWithJWK, "role provider error", slog.Any("error", err))
-				if errors.Is(err, internalauthz.ErrPermissionDenied) {
-					return nil, connect.NewError(connect.CodePermissionDenied, errors.New("permission denied"))
-				}
 				return nil, connect.NewError(connect.CodeInternal, errors.New("role provider error"))
 			}
 			return next(ctxWithJWK, req)

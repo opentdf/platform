@@ -96,22 +96,17 @@ func (a *Authorizer) authorize(ctx context.Context, req *authz.Request) (*authz.
 		Action:   req.Action,
 	})
 	if err != nil {
-		if !result.Allowed {
-			return &authz.Decision{
-				Allowed: false,
-				Reason:  fmt.Sprintf("v1: denied %s %s", req.Action, resource),
-				Mode:    authz.ModeV1,
-				Metadata: authz.DecisionMetadata{
-					GroupsClaim: result.GroupsClaim,
-				},
-			}, nil
-		}
 		return nil, fmt.Errorf("v1 authorization system error: %w", err)
+	}
+
+	reason := fmt.Sprintf("v1: %s %s", req.Action, resource)
+	if !result.Allowed {
+		reason = fmt.Sprintf("v1: denied %s %s", req.Action, resource)
 	}
 
 	return &authz.Decision{
 		Allowed: result.Allowed,
-		Reason:  fmt.Sprintf("v1: %s %s", req.Action, resource),
+		Reason:  reason,
 		Mode:    authz.ModeV1,
 		Metadata: authz.DecisionMetadata{
 			GroupsClaim: result.GroupsClaim,

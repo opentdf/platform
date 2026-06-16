@@ -2,6 +2,7 @@ package v1
 
 import (
 	"context"
+	"errors"
 	"strings"
 	"testing"
 
@@ -40,7 +41,7 @@ func (s *AuthorizerSuite) TestAuthorizeGRPCPathStripsLeadingSlash() {
 		},
 	})
 
-	decision, err := authorizer.Authorize(context.Background(), &authz.Request{
+	decision, err := authorizer.Authorize(s.T().Context(), &authz.Request{
 		Token:  token,
 		RPC:    "/kas.AccessService/Rewrap",
 		Action: "read",
@@ -65,7 +66,7 @@ func (s *AuthorizerSuite) TestAuthorizeHTTPPathKeepsLeadingSlash() {
 		},
 	})
 
-	decision, err := authorizer.Authorize(context.Background(), &authz.Request{
+	decision, err := authorizer.Authorize(s.T().Context(), &authz.Request{
 		Token:  token,
 		RPC:    "/kas/v2/rewrap",
 		Action: "write",
@@ -90,7 +91,7 @@ func (s *AuthorizerSuite) TestAuthorizePolicyServiceGRPCPath() {
 		},
 	})
 
-	decision, err := authorizer.Authorize(context.Background(), &authz.Request{
+	decision, err := authorizer.Authorize(s.T().Context(), &authz.Request{
 		Token:  token,
 		RPC:    "/policy.attributes.AttributesService/GetAttribute",
 		Action: "read",
@@ -133,6 +134,71 @@ func (s *AuthorizerSuite) TestAuthorizePathHandlingHeuristic() {
 	})
 	s.Require().NoError(err)
 	s.True(decision.Allowed, "HTTP path should be allowed")
+}
+
+func (s *AuthorizerSuite) TestAuthorizeDeniedResultReturnsDeniedDecision() {
+	authorizer, err := NewAuthorizer(authz.CasbinV1Config{
+		PolicyConfig: authz.PolicyConfig{
+			Issuer:      "https://issuer.example",
+			GroupsClaim: "realm_access.roles",
+			Csv:         "p, role:standard, policy.attributes.AttributesService/GetAttribute, write, allow",
+		},
+		RoleProvider: staticProvider{roles: []string{"role:standard"}},
+	}, s.logger)
+	s.Require().NoError(err)
+
+	decision, err := authorizer.Authorize(context.Background(), &authz.Request{
+		Token:  jwt.New(),
+		RPC:    "/policy.attributes.AttributesService/GetAttribute",
+		Action: "read",
+	})
+	s.Require().NoError(err)
+	s.Require().NotNil(decision)
+	s.False(decision.Allowed)
+	s.Equal(authz.ModeV1, decision.Mode)
+	s.Equal("v1: denied read policy.attributes.AttributesService/GetAttribute", decision.Reason)
+	s.Equal("realm_access.roles", decision.Metadata.GroupsClaim)
+}
+
+func (s *AuthorizerSuite) TestAuthorizeAllowedResultReturnsAllowedDecision() {
+	authorizer, err := NewAuthorizer(authz.CasbinV1Config{
+		PolicyConfig: authz.PolicyConfig{
+			GroupsClaim: "custom.roles",
+			Csv:         "p, role:standard, /kas/v2/rewrap, write, allow",
+		},
+		RoleProvider: staticProvider{roles: []string{"role:standard"}},
+	}, s.logger)
+	s.Require().NoError(err)
+
+	decision, err := authorizer.Authorize(context.Background(), &authz.Request{
+		Token:  jwt.New(),
+		RPC:    "/kas/v2/rewrap",
+		Action: "write",
+	})
+	s.Require().NoError(err)
+	s.Require().NotNil(decision)
+	s.True(decision.Allowed)
+	s.Equal("v1: write /kas/v2/rewrap", decision.Reason)
+	s.Equal("custom.roles", decision.Metadata.GroupsClaim)
+}
+
+func (s *AuthorizerSuite) TestAuthorizeEnforcementErrorReturnsSystemError() {
+	authorizer, err := NewAuthorizer(authz.CasbinV1Config{
+		PolicyConfig: authz.PolicyConfig{
+			GroupsClaim: "realm_access.roles",
+			Csv:         "p, role:standard, /kas/v2/rewrap, write, allow",
+		},
+		RoleProvider: staticProvider{err: errors.New("role provider failed")},
+	}, s.logger)
+	s.Require().NoError(err)
+
+	decision, err := authorizer.Authorize(context.Background(), &authz.Request{
+		Token:  jwt.New(),
+		RPC:    "/kas/v2/rewrap",
+		Action: "write",
+	})
+	s.Require().ErrorContains(err, "v1 authorization system error")
+	s.Nil(decision)
 }
 
 func createAuthorizerTestToken(t *testing.T, claims map[string]interface{}) jwt.Token {

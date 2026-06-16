@@ -207,7 +207,7 @@ func (s *AuthnCasbinSuite) Test_Enforcement() {
 		tok := s.newTokWithDefaultClaim(test.roles[0], test.roles[1], "", "")
 		allowed, err := s.enforce(enforcer, tok, test.resource, test.action)
 		if !test.allowed {
-			s.Require().Error(err, name)
+			s.Require().NoError(err, name)
 			s.False(allowed, name)
 		} else {
 			s.Require().NoError(err, name)
@@ -225,7 +225,7 @@ func (s *AuthnCasbinSuite) Test_Enforcement() {
 		_, tok = s.newTokenWithCustomClaim(test.roles[0], test.roles[1])
 		allowed, err = s.enforce(enforcer, tok, test.resource, test.action)
 		if !test.allowed {
-			s.Require().Error(err, name)
+			s.Require().NoError(err, name)
 			s.False(allowed, name)
 		} else {
 			s.Require().NoError(err, name)
@@ -248,7 +248,7 @@ func (s *AuthnCasbinSuite) Test_Enforcement() {
 		_, tok = s.newTokenWithCustomRoleMap(test.roles[0], test.roles[1])
 		allowed, err = s.enforce(enforcer, tok, test.resource, test.action)
 		if !test.allowed {
-			s.Require().Error(err, name)
+			s.Require().NoError(err, name)
 			s.False(allowed, name)
 		} else {
 			s.Require().NoError(err, name)
@@ -275,7 +275,7 @@ func (s *AuthnCasbinSuite) Test_Enforcement() {
 		_, tok = s.newTokenWithClientID()
 		allowed, err = s.enforce(enforcer, tok, test.resource, test.action)
 		if !test.allowed {
-			s.Require().Error(err, name)
+			s.Require().NoError(err, name)
 			s.False(allowed, name)
 		} else {
 			s.Require().NoError(err, name)
@@ -312,7 +312,7 @@ func (s *AuthnCasbinSuite) Test_ExtendDefaultPolicies() {
 	s.Require().NoError(err)
 	s.True(allowed)
 	allowed, err = s.enforce(enforcer, tok, "new.service.DoSomething", "write")
-	s.Require().Error(err)
+	s.Require().NoError(err)
 	s.False(allowed)
 }
 
@@ -383,7 +383,7 @@ func (s *AuthnCasbinSuite) Test_ExtendDefaultPolicies_MalformedErrors() {
 				s.Require().NoError(err)
 				s.True(allowed)
 			} else {
-				s.Require().Error(err)
+				s.Require().NoError(err)
 				s.False(allowed)
 			}
 		})
@@ -520,7 +520,7 @@ func (s *AuthnCasbinSuite) Test_SetBuiltinPolicy() {
 				s.Require().NoError(err, tc.name)
 				s.True(allowed, tc.name)
 			} else {
-				s.Require().Error(err, tc.name)
+				s.Require().NoError(err, tc.name)
 				s.False(allowed, tc.name)
 			}
 		})
@@ -545,7 +545,7 @@ func (s *AuthnCasbinSuite) Test_Username_Policy() {
 	s.True(allowed)
 
 	allowed, err = s.enforce(enforcer, tok, "policy.attributes.List", "read")
-	s.Require().Error(err)
+	s.Require().NoError(err)
 	s.False(allowed)
 }
 
@@ -571,7 +571,7 @@ func (s *AuthnCasbinSuite) Test_ClientID_Policy() {
 	s.True(allowed)
 
 	allowed, err = s.enforce(enforcer, tok, "policy.attributes.List", "read")
-	s.Require().Error(err)
+	s.Require().NoError(err)
 	s.False(allowed)
 }
 
@@ -746,7 +746,7 @@ func (s *AuthnCasbinSuite) Test_Override_Of_Username_Claim() {
 				s.Require().NoError(err, tc.name)
 				s.True(allowed, tc.name)
 			} else {
-				s.Require().Error(err, tc.name)
+				s.Require().NoError(err, tc.name)
 				s.False(allowed, tc.name)
 			}
 		})
@@ -765,7 +765,7 @@ func (s *AuthnCasbinSuite) Test_Override_Of_Groups_Claim() {
 
 	tok := s.newTokWithDefaultClaim(false, true, "", "groups")
 	allowed, err := s.enforce(enforcer, tok, "new.service.DoSomething", "read")
-	s.Require().Error(err)
+	s.Require().NoError(err)
 	s.False(allowed)
 
 	allowed, err = s.enforce(enforcer, tok, "policy.attributes.List", "read")

@@ -88,7 +88,8 @@ const (
 
 // Authentication holds a jwks cache and information about the openid configuration
 type Authentication struct {
-	enforceDPoP bool
+	enforceDPoP   bool
+	strictDPoPHTU bool
 	// tokenVerifier validates access tokens against the configured IdP.
 	tokenVerifier *TokenVerifier
 	// openidConfigurations holds the openid configuration for the issuer
@@ -181,6 +182,7 @@ func (nm *dpopNonceManager) validateNonce(nonce string) bool {
 func NewAuthenticator(ctx context.Context, cfg Config, logger *logger.Logger, wellknownRegistration func(namespace string, config any) error) (*Authentication, error) {
 	a := &Authentication{
 		enforceDPoP:      cfg.EnforceDPoP,
+		strictDPoPHTU:    cfg.DPoP.StrictHTU,
 		logger:           logger,
 		dpopNonceManager: newDPoPNonceManager(cfg.DPoP.RequireNonce, cfg.DPoP.NonceExpiration),
 	}
@@ -296,6 +298,40 @@ func normalizeURL(o string, u *url.URL) string {
 	}
 	ou.Path = u.Path
 	return ou.String()
+}
+
+// matchHTU reports whether the htu claim from a DPoP JWT is acceptable.
+//
+// In strict mode the origin (scheme+host) must be present; a path-only htu is
+// rejected outright. When the origin is present it must match the origin of at
+// least one URI in acceptable (both http and https are tried).
+//
+// In loose mode a path-only htu (no scheme, no host) is accepted when its path
+// matches the path component of any URI in acceptable. When the origin is
+// present the same origin+path matching applies as in strict mode.
+func matchHTU(received string, acceptable []string, strict bool) bool {
+	u, err := url.Parse(received)
+	if err != nil {
+		return false
+	}
+	if u.Scheme == "" && u.Host == "" {
+		// Path-only htu.
+		if strict {
+			return false
+		}
+		for _, a := range acceptable {
+			au, err := url.Parse(a)
+			if err != nil {
+				continue
+			}
+			if au.Path == u.Path {
+				return true
+			}
+		}
+		return false
+	}
+	// Full URL: must match one of the acceptable URIs exactly.
+	return slices.Contains(acceptable, received)
 }
 
 // verifyTokenHandler is a http handler that verifies the token
@@ -861,7 +897,7 @@ func (a Authentication) validateDPoP(accessToken jwt.Token, acessTokenRaw string
 		return nil, errors.New("`htu` claim invalid format in DPoP JWT")
 	}
 
-	if !slices.Contains(dpopInfo.u, htu) {
+	if !matchHTU(htu, dpopInfo.u, a.strictDPoPHTU) {
 		return nil, fmt.Errorf("incorrect `htu` claim in DPoP JWT; received [%v], but should match [%v]", htu, dpopInfo.u)
 	}
 

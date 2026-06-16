@@ -37,6 +37,10 @@ type AuthNConfig struct { //nolint:revive // AuthNConfig is a valid name
 type DPoPConfig struct {
 	RequireNonce    bool          `mapstructure:"require_nonce" json:"require_nonce" default:"false"`
 	NonceExpiration time.Duration `mapstructure:"nonce_expiration" json:"nonce_expiration" default:"5m"`
+	// StrictHTU requires the htu claim in DPoP JWTs to include the origin
+	// (scheme + host). When false (default), a path-only htu is accepted as
+	// long as the path matches, easing SDK skew during rollout.
+	StrictHTU bool `mapstructure:"strict_htu" json:"strict_htu" default:"false"`
 }
 
 func (c DPoPConfig) Validate() error {

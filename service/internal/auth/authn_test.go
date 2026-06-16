@@ -749,6 +749,49 @@ func (s *AuthSuite) TestInvalid_DPoP_Cases() {
 	}
 }
 
+func TestMatchHTU(t *testing.T) {
+	full := []string{
+		"http://localhost:8080/svc/Method",
+		"https://localhost:8080/svc/Method",
+	}
+	pathOnly := []string{"/svc/Method"}
+
+	tests := []struct {
+		name       string
+		received   string
+		acceptable []string
+		strict     bool
+		want       bool
+	}{
+		// Loose mode: path-only htu accepted when path matches
+		{"loose/path-only match", "/svc/Method", full, false, true},
+		{"loose/path-only match against path-only acceptable", "/svc/Method", pathOnly, false, true},
+		{"loose/path-only mismatch", "/svc/Other", full, false, false},
+		// Loose mode: full URL accepted when it matches exactly
+		{"loose/full http match", "http://localhost:8080/svc/Method", full, false, true},
+		{"loose/full https match", "https://localhost:8080/svc/Method", full, false, true},
+		{"loose/full wrong path", "http://localhost:8080/svc/Other", full, false, false},
+		{"loose/full wrong host", "http://other:8080/svc/Method", full, false, false},
+		// Strict mode: path-only htu always rejected
+		{"strict/path-only rejected", "/svc/Method", full, true, false},
+		{"strict/path-only rejected against path-only acceptable", "/svc/Method", pathOnly, true, false},
+		// Strict mode: full URL accepted when it matches exactly
+		{"strict/full http match", "http://localhost:8080/svc/Method", full, true, true},
+		{"strict/full https match", "https://localhost:8080/svc/Method", full, true, true},
+		{"strict/full wrong path", "http://localhost:8080/svc/Other", full, true, false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := matchHTU(tt.received, tt.acceptable, tt.strict)
+			if got != tt.want {
+				t.Errorf("matchHTU(%q, %v, strict=%v) = %v, want %v",
+					tt.received, tt.acceptable, tt.strict, got, tt.want)
+			}
+		})
+	}
+}
+
 func (s *AuthSuite) TestDPoPEndToEnd_GRPC() {
 	dpopKeyRaw, err := rsa.GenerateKey(rand.Reader, 2048)
 	s.Require().NoError(err)

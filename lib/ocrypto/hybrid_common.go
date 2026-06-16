@@ -12,8 +12,11 @@ import (
 // every KEM family — pure ML-KEM, X-Wing, and the NIST EC + ML-KEM hybrids —
 // so SDK call sites do not need to repeat the algorithm switch.
 //
-// The HKDF salt is the default TDF salt; callers that need a non-default salt
-// should construct an encryptor via FromPublicPEMWithSalt instead.
+// For hybrid PQ/T schemes the HKDF salt is the default TDF salt; callers that
+// need a non-default salt should construct an encryptor via
+// FromPublicPEMWithSalt instead. Pure ML-KEM ignores salt/info and uses the
+// 32-byte Decaps shared secret directly as the AES-GCM wrap key — see
+// adr/decisions/2026-06-16-mlkem-direct-key-wrap.md.
 func WrapDEK(ktype KeyType, kasPublicKeyPEM string, dek []byte) ([]byte, error) {
 	if !IsKEMKeyType(ktype) {
 		return nil, fmt.Errorf("unsupported KEM key type: %s", ktype)

@@ -170,7 +170,8 @@ func normalizeMLKEMPublicKey(input []byte, expectedRawSize int, expectedOID asn1
 
 // MLKEM768WrapDEK encapsulates against an ML-KEM-768 public key (raw, SPKI
 // DER, or PEM) and returns the ASN.1 DER envelope carrying the KEM ciphertext
-// and AES-GCM-wrapped DEK.
+// and AES-GCM-wrapped DEK. The ML-KEM Decaps shared secret is used directly
+// as the AES-256 wrap key (no HKDF); see adr/decisions/2026-06-16-mlkem-direct-key-wrap.md.
 //
 // Deprecated: Use WrapDEK with MLKEM768Key, or construct via FromPublicPEM.
 func MLKEM768WrapDEK(publicKey, dek []byte) ([]byte, error) {
@@ -178,7 +179,7 @@ func MLKEM768WrapDEK(publicKey, dek []byte) ([]byte, error) {
 	if err != nil {
 		return nil, fmt.Errorf("invalid ML-KEM-768 public key: %w", err)
 	}
-	return wrapDEKWithKEM(mlkemKEM{variant: mlkem768}, rawKey, dek, defaultTDFSalt(), nil)
+	return wrapDEKWithKEM(mlkemKEM{variant: mlkem768}, rawKey, dek, nil, nil)
 }
 
 // MLKEM768UnwrapDEK decapsulates the envelope produced by MLKEM768WrapDEK
@@ -186,12 +187,13 @@ func MLKEM768WrapDEK(publicKey, dek []byte) ([]byte, error) {
 // to FromPrivatePEM; callers that already hold a raw seed can use it directly
 // without re-encoding to PKCS#8 PEM.
 func MLKEM768UnwrapDEK(privateKeyRaw, wrappedDER []byte) ([]byte, error) {
-	return unwrapDEKWithKEM(mlkemKEM{variant: mlkem768}, privateKeyRaw, wrappedDER, defaultTDFSalt(), nil)
+	return unwrapDEKWithKEM(mlkemKEM{variant: mlkem768}, privateKeyRaw, wrappedDER, nil, nil)
 }
 
 // MLKEM1024WrapDEK encapsulates against an ML-KEM-1024 public key (raw, SPKI
 // DER, or PEM) and returns the ASN.1 DER envelope carrying the KEM ciphertext
-// and AES-GCM-wrapped DEK.
+// and AES-GCM-wrapped DEK. The ML-KEM Decaps shared secret is used directly
+// as the AES-256 wrap key (no HKDF); see adr/decisions/2026-06-16-mlkem-direct-key-wrap.md.
 //
 // Deprecated: Use WrapDEK with MLKEM1024Key, or construct via FromPublicPEM.
 func MLKEM1024WrapDEK(publicKey, dek []byte) ([]byte, error) {
@@ -199,7 +201,7 @@ func MLKEM1024WrapDEK(publicKey, dek []byte) ([]byte, error) {
 	if err != nil {
 		return nil, fmt.Errorf("invalid ML-KEM-1024 public key: %w", err)
 	}
-	return wrapDEKWithKEM(mlkemKEM{variant: mlkem1024}, rawKey, dek, defaultTDFSalt(), nil)
+	return wrapDEKWithKEM(mlkemKEM{variant: mlkem1024}, rawKey, dek, nil, nil)
 }
 
 // MLKEM1024UnwrapDEK decapsulates the envelope produced by MLKEM1024WrapDEK
@@ -207,5 +209,5 @@ func MLKEM1024WrapDEK(publicKey, dek []byte) ([]byte, error) {
 // to FromPrivatePEM; callers that already hold a raw seed can use it directly
 // without re-encoding to PKCS#8 PEM.
 func MLKEM1024UnwrapDEK(privateKeyRaw, wrappedDER []byte) ([]byte, error) {
-	return unwrapDEKWithKEM(mlkemKEM{variant: mlkem1024}, privateKeyRaw, wrappedDER, defaultTDFSalt(), nil)
+	return unwrapDEKWithKEM(mlkemKEM{variant: mlkem1024}, privateKeyRaw, wrappedDER, nil, nil)
 }

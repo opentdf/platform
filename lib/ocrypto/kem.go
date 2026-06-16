@@ -15,8 +15,9 @@ import (
 
 // kem is the post-quantum KEM contract implemented by ML-KEM, X-Wing, and the
 // NIST hybrid PQ/T schemes. Unifying behind this single interface collapses the
-// `hybrid-wrapped` and `mlkem-wrapped` wrap/unwrap paths into one envelope, one
-// HKDF derivation, and one AES-GCM encryption call site.
+// `hybrid-wrapped` and `mlkem-wrapped` wrap/unwrap paths into one envelope and
+// one AES-GCM call site; per-scheme key-derivation policy is selected by
+// wrapKey below.
 type kem interface {
 	keyType() KeyType
 	scheme() SchemeType
@@ -30,6 +31,18 @@ type kem interface {
 	// X-Wing and the NIST hybrid keys onto standard SPKI PEM blocks this
 	// per-adapter hook collapses to a single shared helper.
 	publicKeyPEM(pub []byte) (string, error)
+	// wrapKey returns the AES-256 key used to seal the DEK from the
+	// shared secret produced by encapsulate / decapsulate.
+	//
+	// ML-KEM returns the 32-byte Decaps output verbatim (no KDF) so that an
+	// HSM-backed KAS holding the shared secret as a CKK_AES, non-extractable
+	// object can perform AES-GCM directly. See FIPS 203 §6.3 / §7.3 and
+	// adr/decisions/2026-06-16-mlkem-direct-key-wrap.md.
+	//
+	// Hybrid PQ/T schemes (X-Wing, NIST EC + ML-KEM) concatenate two
+	// shared-secret halves and still require HKDF-SHA256 over (salt, info)
+	// for proper combiner hygiene.
+	wrapKey(sharedSecret, salt, info []byte) ([]byte, error)
 }
 
 // kemEnvelope is the ASN.1 wire format for every KEM-wrapped DEK across
@@ -193,6 +206,23 @@ func (m mlkemKEM) publicKeyPEM(pub []byte) (string, error) {
 	return string(pem.EncodeToMemory(&pem.Block{Type: pemBlockPublicKey, Bytes: der})), nil
 }
 
+// wrapKey returns the ML-KEM Decaps output directly as the AES-256 wrap key.
+//
+// FIPS 203 §6.3 / §7.3 specify that ML-KEM Decaps emits a uniformly random
+// 32-byte shared secret K that is suitable for direct use as a symmetric key,
+// and ML-KEM produces a fresh K per encapsulation by construction. salt and
+// info are ignored on purpose so that HSM-backed KAS providers that can only
+// materialize the shared secret as a non-extractable CKK_AES object (e.g.
+// Thales Luna T-Series 7.15.1 in strict-FIPS mode, which rejects HMAC over
+// the Decaps output with CKR_ATTRIBUTE_TYPE_INVALID) can still complete
+// AES-GCM unwrap without an HKDF step.
+func (mlkemKEM) wrapKey(sharedSecret, _ /*salt*/, _ /*info*/ []byte) ([]byte, error) {
+	if len(sharedSecret) != kemWrapKeySize {
+		return nil, fmt.Errorf("invalid ML-KEM shared secret size: got %d want %d", len(sharedSecret), kemWrapKeySize)
+	}
+	return append([]byte(nil), sharedSecret...), nil
+}
+
 // --- xwingKEM adapter -------------------------------------------------------
 
 type xwingKEM struct{}
@@ -223,6 +253,12 @@ func (xwingKEM) decapsulate(priv, ct []byte) ([]byte, error) {
 
 func (xwingKEM) publicKeyPEM(pub []byte) (string, error) {
 	return rawToPEM(PEMBlockXWingPublicKey, pub, XWingPublicKeySize)
+}
+
+// wrapKey derives a 32-byte AES key from the X-Wing shared secret via
+// HKDF-SHA256 over (salt, info).
+func (xwingKEM) wrapKey(sharedSecret, salt, info []byte) ([]byte, error) {
+	return hkdfWrapKey(sharedSecret, salt, info)
 }
 
 // --- nistHybridKEM adapter --------------------------------------------------
@@ -327,18 +363,27 @@ func (h nistHybridKEM) publicKeyPEM(pub []byte) (string, error) {
 	return rawToPEM(h.params.pubPEMBlock, pub, h.pubSize())
 }
 
+// wrapKey derives a 32-byte AES key from the concatenated EC+ML-KEM shared
+// secret via HKDF-SHA256 over (salt, info). The KDF here is load-bearing: it
+// is the combiner that binds the two halves of the hybrid into a single
+// uniformly-random wrap key.
+func (nistHybridKEM) wrapKey(sharedSecret, salt, info []byte) ([]byte, error) {
+	return hkdfWrapKey(sharedSecret, salt, info)
+}
+
 // --- wrap / unwrap ----------------------------------------------------------
 
-// wrapDEKWithKEM encapsulates against pub, derives an AES-256 wrap key via
-// HKDF-SHA256 over (sharedSecret, salt, info), and emits the kemEnvelope ASN.1
-// DER blob carrying (KEM ciphertext, AES-GCM-encrypted DEK).
+// wrapDEKWithKEM encapsulates against pub, asks the scheme adapter for an
+// AES-256 wrap key (HKDF for hybrid PQ/T, direct shared-secret for pure
+// ML-KEM), and emits the kemEnvelope ASN.1 DER blob carrying (KEM
+// ciphertext, AES-GCM-encrypted DEK).
 func wrapDEKWithKEM(k kem, pub, dek, salt, info []byte) ([]byte, error) {
 	sharedSecret, ciphertext, err := k.encapsulate(pub)
 	if err != nil {
 		return nil, err
 	}
 
-	wrapKey, err := deriveKEMWrapKey(sharedSecret, salt, info)
+	wrapKey, err := k.wrapKey(sharedSecret, salt, info)
 	if err != nil {
 		return nil, err
 	}
@@ -365,8 +410,8 @@ func wrapDEKWithKEM(k kem, pub, dek, salt, info []byte) ([]byte, error) {
 }
 
 // unwrapDEKWithKEM parses the kemEnvelope DER blob, decapsulates with priv to
-// recover the shared secret, derives the same AES-256 wrap key, and AES-GCM
-// decrypts the DEK.
+// recover the shared secret, asks the scheme adapter for the matching AES-256
+// wrap key, and AES-GCM decrypts the DEK.
 func unwrapDEKWithKEM(k kem, priv, der, salt, info []byte) ([]byte, error) {
 	var env kemEnvelope
 	rest, err := asn1.Unmarshal(der, &env)
@@ -385,7 +430,7 @@ func unwrapDEKWithKEM(k kem, priv, der, salt, info []byte) ([]byte, error) {
 		return nil, err
 	}
 
-	wrapKey, err := deriveKEMWrapKey(sharedSecret, salt, info)
+	wrapKey, err := k.wrapKey(sharedSecret, salt, info)
 	if err != nil {
 		return nil, err
 	}
@@ -403,7 +448,10 @@ func unwrapDEKWithKEM(k kem, priv, der, salt, info []byte) ([]byte, error) {
 	return plaintext, nil
 }
 
-func deriveKEMWrapKey(sharedSecret, salt, info []byte) ([]byte, error) {
+// hkdfWrapKey derives the AES-256 wrap key used by the hybrid PQ/T KEM
+// schemes (X-Wing, NIST EC + ML-KEM). Pure ML-KEM uses the shared secret
+// directly and does not call this helper.
+func hkdfWrapKey(sharedSecret, salt, info []byte) ([]byte, error) {
 	if len(salt) == 0 {
 		salt = defaultTDFSalt()
 	}

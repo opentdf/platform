@@ -573,7 +573,7 @@ func BenchmarkHybridSubOps(b *testing.B) {
 	salt := defaultTDFSalt()
 
 	// Pre-derive a wrap key for AES-GCM benchmarks
-	wrapKey, err := deriveKEMWrapKey(xwingSS, salt, nil)
+	wrapKey, err := hkdfWrapKey(xwingSS, salt, nil)
 	if err != nil {
 		b.Fatal(err)
 	}
@@ -585,7 +585,7 @@ func BenchmarkHybridSubOps(b *testing.B) {
 	})
 	b.Run("XWing/HKDF", func(b *testing.B) {
 		for b.Loop() {
-			sinkBytes, errSink = deriveKEMWrapKey(xwingSS, salt, nil)
+			sinkBytes, errSink = hkdfWrapKey(xwingSS, salt, nil)
 		}
 	})
 	b.Run("XWing/AES-GCM-Encrypt", func(b *testing.B) {
@@ -605,7 +605,7 @@ func BenchmarkHybridSubOps(b *testing.B) {
 	})
 
 	// P256+MLKEM768 sub-ops
-	p256WrapKey, err := deriveKEMWrapKey(p256SS, salt, nil)
+	p256WrapKey, err := hkdfWrapKey(p256SS, salt, nil)
 	if err != nil {
 		b.Fatal(err)
 	}
@@ -616,7 +616,7 @@ func BenchmarkHybridSubOps(b *testing.B) {
 	})
 	b.Run("P256_MLKEM768/HKDF", func(b *testing.B) {
 		for b.Loop() {
-			sinkBytes, errSink = deriveKEMWrapKey(p256SS, salt, nil)
+			sinkBytes, errSink = hkdfWrapKey(p256SS, salt, nil)
 		}
 	})
 	b.Run("P256_MLKEM768/AES-GCM-Encrypt", func(b *testing.B) {
@@ -636,7 +636,7 @@ func BenchmarkHybridSubOps(b *testing.B) {
 	})
 
 	// P384+MLKEM1024 sub-ops
-	p384WrapKey, err := deriveKEMWrapKey(p384SS, salt, nil)
+	p384WrapKey, err := hkdfWrapKey(p384SS, salt, nil)
 	if err != nil {
 		b.Fatal(err)
 	}
@@ -647,7 +647,7 @@ func BenchmarkHybridSubOps(b *testing.B) {
 	})
 	b.Run("P384_MLKEM1024/HKDF", func(b *testing.B) {
 		for b.Loop() {
-			sinkBytes, errSink = deriveKEMWrapKey(p384SS, salt, nil)
+			sinkBytes, errSink = hkdfWrapKey(p384SS, salt, nil)
 		}
 	})
 	b.Run("P384_MLKEM1024/AES-GCM-Encrypt", func(b *testing.B) {

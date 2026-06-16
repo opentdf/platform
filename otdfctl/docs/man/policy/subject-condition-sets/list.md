@@ -15,6 +15,8 @@ command:
     - name: offset
       shorthand: o
       description: Offset (page) quantity from start of the list
+    - name: search
+      description: Search term to filter results
     - name: sort
       description: Sort list results by field
     - name: order
@@ -22,6 +24,14 @@ command:
 ---
 
 For more information about subject condition sets, see the `subject-condition-sets` subcommand.
+
+## Search Fields
+
+The `--search` term is trimmed and matched as a substring against these values:
+
+| Value | Description |
+| --- | --- |
+| Metadata label values | Values under subject condition set metadata `labels` |
 
 ## Sort Options
 
@@ -55,6 +65,12 @@ otdfctl policy subject-condition-sets list --order asc
 otdfctl policy subject-condition-sets list
 
 otdfctl policy subject-condition-sets list --namespace https://example.com
+```
+
+Search subject condition sets by metadata label value:
+
+```shell
+otdfctl policy subject-condition-sets list --search engineering
 ```
 
 Sort subject condition sets by creation time ascending:

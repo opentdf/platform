@@ -42,12 +42,15 @@ func (h Handler) GetKasRegistryEntry(ctx context.Context, identifer KasIdentifie
 	return resp.GetKeyAccessServer(), nil
 }
 
-func (h Handler) ListKasRegistryEntries(ctx context.Context, limit, offset int32, sort SortOption) (*kasregistry.ListKeyAccessServersResponse, error) {
+func (h Handler) ListKasRegistryEntries(ctx context.Context, limit, offset int32, search string, sort SortOption) (*kasregistry.ListKeyAccessServersResponse, error) {
 	req := &kasregistry.ListKeyAccessServersRequest{
 		Pagination: &policy.PageRequest{
 			Limit:  limit,
 			Offset: offset,
 		},
+	}
+	if search != "" {
+		req.Search = &policy.Search{Term: search}
 	}
 	if !sort.IsZero() {
 		allowedFields := map[string]kasregistry.SortKeyAccessServersType{

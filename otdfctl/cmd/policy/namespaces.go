@@ -45,9 +45,10 @@ func listAttributeNamespaces(cmd *cobra.Command, args []string) {
 	state := cli.GetState(cmd)
 	limit := c.Flags.GetRequiredInt32("limit")
 	offset := c.Flags.GetRequiredInt32("offset")
+	search := c.Flags.GetOptionalString("search")
 	sort := getSortOption(c)
 
-	resp, err := h.ListNamespaces(cmd.Context(), state, limit, offset, sort)
+	resp, err := h.ListNamespaces(cmd.Context(), state, limit, offset, search, sort)
 	if err != nil {
 		cli.ExitWithError("Failed to list namespaces", err)
 	}
@@ -62,7 +63,8 @@ func listAttributeNamespaces(cmd *cobra.Command, args []string) {
 	rows := []table.Row{}
 	for _, ns := range resp.GetNamespaces() {
 		metadata := cli.ConstructMetadata(ns.GetMetadata())
-		rows = append(rows,
+		rows = append(
+			rows,
 			table.NewRow(table.RowData{
 				"id":         ns.GetId(),
 				"name":       ns.GetName(),
@@ -320,7 +322,8 @@ func policyRemoveKeyFromNamespace(cmd *cobra.Command, args []string) {
 func initNamespacesCommands() {
 	nsDoc := man.Docs.GetCommand("policy/namespaces")
 
-	getDoc := man.Docs.GetCommand("policy/namespaces/get",
+	getDoc := man.Docs.GetCommand(
+		"policy/namespaces/get",
 		man.WithRun(getAttributeNamespace),
 	)
 	getDoc.Flags().StringP(
@@ -330,7 +333,8 @@ func initNamespacesCommands() {
 		getDoc.GetDocFlag("id").Description,
 	)
 
-	listDoc := man.Docs.GetCommand("policy/namespaces/list",
+	listDoc := man.Docs.GetCommand(
+		"policy/namespaces/list",
 		man.WithRun(listAttributeNamespaces),
 	)
 	listDoc.Flags().StringP(
@@ -340,9 +344,11 @@ func initNamespacesCommands() {
 		listDoc.GetDocFlag("state").Description,
 	)
 	injectListPaginationFlags(listDoc)
+	injectListSearchFlag(listDoc)
 	injectListSortFlags(listDoc)
 
-	createDoc := man.Docs.GetCommand("policy/namespaces/create",
+	createDoc := man.Docs.GetCommand(
+		"policy/namespaces/create",
 		man.WithRun(createAttributeNamespace),
 	)
 	createDoc.Flags().StringP(
@@ -353,7 +359,8 @@ func initNamespacesCommands() {
 	)
 	injectLabelFlags(&createDoc.Command, false)
 
-	updateDoc := man.Docs.GetCommand("policy/namespaces/update",
+	updateDoc := man.Docs.GetCommand(
+		"policy/namespaces/update",
 		man.WithRun(updateAttributeNamespace),
 	)
 	updateDoc.Flags().StringP(
@@ -364,7 +371,8 @@ func initNamespacesCommands() {
 	)
 	injectLabelFlags(&updateDoc.Command, true)
 
-	deactivateDoc := man.Docs.GetCommand("policy/namespaces/deactivate",
+	deactivateDoc := man.Docs.GetCommand(
+		"policy/namespaces/deactivate",
 		man.WithRun(deactivateAttributeNamespace),
 	)
 	deactivateDoc.Flags().StringP(
@@ -388,7 +396,8 @@ func initNamespacesCommands() {
 		unsafeDoc.GetDocFlag("force").Description,
 	)
 
-	deleteDoc := man.Docs.GetCommand("policy/namespaces/unsafe/delete",
+	deleteDoc := man.Docs.GetCommand(
+		"policy/namespaces/unsafe/delete",
 		man.WithRun(unsafeDeleteAttributeNamespace),
 	)
 	deleteDoc.Flags().StringP(
@@ -398,7 +407,8 @@ func initNamespacesCommands() {
 		deleteDoc.GetDocFlag("id").Description,
 	)
 
-	reactivateDoc := man.Docs.GetCommand("policy/namespaces/unsafe/reactivate",
+	reactivateDoc := man.Docs.GetCommand(
+		"policy/namespaces/unsafe/reactivate",
 		man.WithRun(unsafeReactivateAttributeNamespace),
 	)
 	reactivateDoc.Flags().StringP(
@@ -408,7 +418,8 @@ func initNamespacesCommands() {
 		reactivateDoc.GetDocFlag("id").Description,
 	)
 
-	unsafeUpdateDoc := man.Docs.GetCommand("policy/namespaces/unsafe/update",
+	unsafeUpdateDoc := man.Docs.GetCommand(
+		"policy/namespaces/unsafe/update",
 		man.WithRun(unsafeUpdateAttributeNamespace),
 	)
 	unsafeUpdateDoc.Flags().StringP(
@@ -427,7 +438,8 @@ func initNamespacesCommands() {
 	// key
 	keyDoc := man.Docs.GetCommand("policy/namespaces/key")
 
-	assignDoc := man.Docs.GetCommand("policy/namespaces/key/assign",
+	assignDoc := man.Docs.GetCommand(
+		"policy/namespaces/key/assign",
 		man.WithRun(policyAssignKeyToNamespace),
 	)
 	assignDoc.Flags().StringP(
@@ -443,7 +455,8 @@ func initNamespacesCommands() {
 		assignDoc.GetDocFlag("key-id").Description,
 	)
 
-	removeDoc := man.Docs.GetCommand("policy/namespaces/key/remove",
+	removeDoc := man.Docs.GetCommand(
+		"policy/namespaces/key/remove",
 		man.WithRun(policyRemoveKeyFromNamespace),
 	)
 	removeDoc.Flags().StringP(

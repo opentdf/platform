@@ -14,6 +14,8 @@ command:
     - name: offset
       shorthand: o
       description: Offset (page) quantity from start of the list
+    - name: search
+      description: Search term to filter results
     - name: sort
       description: Sort list results by field
     - name: order
@@ -21,6 +23,15 @@ command:
 ---
 
 For more information about subject mappings, see the `subject-mappings` subcommand.
+
+## Search Fields
+
+The `--search` term is trimmed and matched as a substring against these values:
+
+| Value | Description |
+| --- | --- |
+| Attribute value FQN | Fully qualified mapped attribute value, such as `https://example.com/attr/classification/value/public` |
+| Metadata label values | Values under subject mapping metadata `labels` |
 
 ## Sort Options
 
@@ -54,6 +65,12 @@ otdfctl policy subject-mappings list --order asc
 otdfctl policy subject-mappings list
 
 otdfctl policy subject-mappings list --namespace "https://example.com"
+```
+
+Search subject mappings by mapped attribute value FQN or metadata label value:
+
+```shell
+otdfctl policy subject-mappings list --search public
 ```
 
 Sort subject mappings by creation time ascending:

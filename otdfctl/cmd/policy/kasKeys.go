@@ -423,6 +423,7 @@ func policyListKasKeys(cmd *cobra.Command, args []string) {
 	if err != nil {
 		cli.ExitWithError("Invalid legacy flag", err)
 	}
+	search := c.Flags.GetOptionalString("search")
 	sort := getSortOption(c)
 
 	kasLookup, err := resolveKasIdentifier(kasIdentifier)
@@ -431,7 +432,7 @@ func policyListKasKeys(cmd *cobra.Command, args []string) {
 	}
 
 	// Get the list of keys.
-	resp, err := h.ListKasKeys(c.Context(), limit, offset, alg, kasLookup, legacy, sort)
+	resp, err := h.ListKasKeys(c.Context(), limit, offset, alg, kasLookup, legacy, search, sort)
 	if err != nil {
 		cli.ExitWithError("Failed to list kas keys", err)
 	}
@@ -947,6 +948,7 @@ func initKASKeysCommands() {
 		listDoc.GetDocFlag("legacy").Description,
 	)
 	injectListPaginationFlags(listDoc)
+	injectListSearchFlag(listDoc)
 	injectListSortFlags(listDoc)
 
 	// Rotate Kas Key

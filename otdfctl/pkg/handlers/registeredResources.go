@@ -52,7 +52,7 @@ func (h Handler) GetRegisteredResource(ctx context.Context, id, name, namespace 
 	return resp.GetResource(), nil
 }
 
-func (h Handler) ListRegisteredResources(ctx context.Context, limit, offset int32, namespace string, sort SortOption) (*registeredresources.ListRegisteredResourcesResponse, error) {
+func (h Handler) ListRegisteredResources(ctx context.Context, limit, offset int32, namespace string, search string, sort SortOption) (*registeredresources.ListRegisteredResourcesResponse, error) {
 	req := &registeredresources.ListRegisteredResourcesRequest{
 		Pagination: &policy.PageRequest{
 			Limit:  limit,
@@ -61,6 +61,9 @@ func (h Handler) ListRegisteredResources(ctx context.Context, limit, offset int3
 	}
 	if namespace != "" {
 		req.NamespaceId, req.NamespaceFqn = getNamespaceIDAndFQN(namespace)
+	}
+	if search != "" {
+		req.Search = &policy.Search{Term: search}
 	}
 	if !sort.IsZero() {
 		allowedFields := map[string]registeredresources.SortRegisteredResourcesType{

@@ -39,9 +39,11 @@ func HybridWrapDEK(ktype KeyType, kasPublicKeyPEM string, dek []byte) ([]byte, e
 	return WrapDEK(ktype, kasPublicKeyPEM, dek)
 }
 
-// defaultTDFSalt returns the salt used for HKDF derivation in all TDF KEM key
-// wrapping schemes (pure ML-KEM, X-Wing, and NIST EC + ML-KEM). Defined here
-// rather than in a per-scheme file so any change applies uniformly.
+// defaultTDFSalt returns the salt used for HKDF derivation in the hybrid
+// PQ/T KEM wrapping schemes (X-Wing and NIST EC + ML-KEM) and in ECIES.
+// Pure ML-KEM uses the Decaps shared secret directly as the AES-GCM wrap
+// key (see adr/decisions/2026-06-16-mlkem-direct-key-wrap.md) and does
+// not call this helper.
 func defaultTDFSalt() []byte {
 	digest := sha256.New()
 	digest.Write([]byte("TDF"))

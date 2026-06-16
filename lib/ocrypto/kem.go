@@ -54,7 +54,9 @@ type kemEnvelope struct {
 	EncryptedDEK  []byte `asn1:"tag:1"`
 }
 
-// kemWrapKeySize is the AES-256 wrap key length derived via HKDF.
+// kemWrapKeySize is the AES-256 wrap key length. Pure ML-KEM uses the
+// 32-byte Decaps output directly; hybrid PQ/T schemes derive it via
+// HKDF-SHA256 over the combined shared secret.
 const kemWrapKeySize = 32
 
 // kemRegistry maps the SPKI/PKCS#8 OID published for a KEM scheme to a

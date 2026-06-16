@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.22.0](https://github.com/opentdf/platform/compare/sdk/v0.21.0...sdk/v0.22.0) (2026-06-15)
+
+
+### Bug Fixes
+
+* **ci:** Prefer go.work for toolchain info ([#3285](https://github.com/opentdf/platform/issues/3285)) ([3c05b22](https://github.com/opentdf/platform/commit/3c05b22ecac41380c7d8d80e9d487bb3001cd25d))
+* **deps:** bump github.com/opentdf/platform/protocol/go from 0.32.0 to 0.33.1 in /sdk ([#3609](https://github.com/opentdf/platform/issues/3609)) ([d5cfc8d](https://github.com/opentdf/platform/commit/d5cfc8d7e3978c0935f22b789945da6369e26846))
+
 ## [0.21.0](https://github.com/opentdf/platform/compare/sdk/v0.20.0...sdk/v0.21.0) (2026-05-28)
 
 

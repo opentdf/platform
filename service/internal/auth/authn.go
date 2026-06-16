@@ -439,8 +439,13 @@ func (a Authentication) ConnectAuthNInterceptor() connect.UnaryInterceptorFunc {
 
 			log := a.logger
 
+			procedure := req.Spec().Procedure
+			host := req.Header().Get("Host")
 			ri := receiverInfo{
-				u: []string{req.Spec().Procedure},
+				u: []string{
+					"http://" + host + procedure,
+					"https://" + host + procedure,
+				},
 				m: []string{http.MethodPost},
 			}
 
@@ -920,8 +925,12 @@ func (a Authentication) ipcReauthCheck(ctx context.Context, path string, header 
 			}
 
 			// Validate the token and create a JWT token
+			ipcHost := header.Get("Host")
 			token, ctxWithJWK, err := a.checkToken(ctx, authHeader, receiverInfo{
-				u: []string{path},
+				u: []string{
+					"http://" + ipcHost + path,
+					"https://" + ipcHost + path,
+				},
 				m: []string{http.MethodPost},
 			}, header["Dpop"])
 			if err != nil {

@@ -699,7 +699,9 @@ format_kas_name_as_uri() {
   assert_equal "$(echo "$output" | jq -r --arg id "$other_id" '[.kas_keys[] | select(.key.id == $id)] | length')" "0"
 
   run_otdfctl_key unsafe delete --id "$match_id" --kas-uri "$KAS_URI" --key-id "$match_kid" --force
+  assert_success
   run_otdfctl_key unsafe delete --id "$other_id" --kas-uri "$KAS_URI" --key-id "$other_kid" --force
+  assert_success
 }
 
 @test "kas-keys: list keys (pagination with limit and offset)" {

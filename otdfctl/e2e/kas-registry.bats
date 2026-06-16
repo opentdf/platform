@@ -214,7 +214,6 @@ teardown() {
 }
 
 @test "list registered KASes supports search flag" {
-    export CREATED=""
     search_prefix="search-kas-$BATS_TEST_NUMBER-$RANDOM"
     match=$(./otdfctl $HOST $WITH_CREDS policy kas-registry create --name "$search_prefix-match" --uri "https://$search_prefix-match.example.com" --json)
     other=$(./otdfctl $HOST $WITH_CREDS policy kas-registry create --name "$search_prefix-other" --uri "https://$search_prefix-other.example.com" --json)

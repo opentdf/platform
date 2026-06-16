@@ -38,6 +38,16 @@ func (p staticRoleProvider) Roles(_ context.Context, _ jwt.Token, _ platformauth
 	return p.roles, nil
 }
 
+type recordingRoleProvider struct {
+	roles []string
+	req   platformauthz.RoleRequest
+}
+
+func (p *recordingRoleProvider) Roles(_ context.Context, _ jwt.Token, req platformauthz.RoleRequest) ([]string, error) {
+	p.req = req
+	return p.roles, nil
+}
+
 type CasbinAuthorizerSuite struct {
 	suite.Suite
 	logger *logger.Logger
@@ -86,6 +96,29 @@ func (s *CasbinAuthorizerSuite) TestNewCasbinAuthorizer_V2() {
 
 	s.Equal("v2", authorizer.Version())
 	s.True(authorizer.SupportsResourceAuthorization())
+}
+
+func (s *CasbinAuthorizerSuite) TestAuthorizeRequiresRequestAndToken() {
+	cfg := authz.Config{
+		Version: "v2",
+		PolicyConfig: authz.PolicyConfig{
+			Csv: "p, role:admin, *, *, allow",
+		},
+		Logger: s.logger,
+	}
+
+	authorizer, err := NewAuthorizer(cfg)
+	s.Require().NoError(err)
+
+	decision, err := authorizer.Authorize(s.T().Context(), nil)
+	s.Require().Error(err)
+	s.Nil(decision)
+	s.Contains(err.Error(), "authorization request is required")
+
+	decision, err = authorizer.Authorize(s.T().Context(), &authz.Request{})
+	s.Require().Error(err)
+	s.Nil(decision)
+	s.Contains(err.Error(), "authorization token is required")
 }
 
 func (s *CasbinAuthorizerSuite) TestNewCasbinAuthorizer_UnknownVersionFallsBackToV1() {
@@ -381,6 +414,35 @@ func (s *CasbinAuthorizerSuite) TestAuthorizeV2_NoDimensions() {
 	s.True(decision.Allowed, "should be allowed with nil resource context when policy has wildcard")
 }
 
+func (s *CasbinAuthorizerSuite) TestAuthorizeV2_NoDimensionsDeniedWhenPolicyRequiresDimension() {
+	cfg := authz.Config{
+		Version: "v2",
+		PolicyConfig: authz.PolicyConfig{
+			GroupsClaim: "realm_access.roles",
+			Csv:         `p, role:standard, /policy.attributes.AttributesService/Get*, namespace=finance, allow`,
+		},
+		Logger: s.logger,
+	}
+
+	authorizer, err := NewAuthorizer(cfg)
+	s.Require().NoError(err)
+
+	token := createTestToken(s.T(), map[string]interface{}{
+		"realm_access": map[string]interface{}{
+			"roles": []interface{}{"standard"},
+		},
+	})
+
+	decision, err := authorizer.Authorize(context.Background(), &authz.Request{
+		Token:           token,
+		RPC:             "/policy.attributes.AttributesService/GetAttribute",
+		Action:          "read",
+		ResourceContext: nil,
+	})
+	s.Require().NoError(err)
+	s.False(decision.Allowed, "should deny nil resource context when policy requires dimensions")
+}
+
 func (s *CasbinAuthorizerSuite) TestAuthorizeV2_UsernameWithRolePrefixIsIgnored() {
 	cfg := authz.Config{
 		Version: "v2",
@@ -473,6 +535,7 @@ p, alice, /policy.attributes.AttributesService/Get*, *, allow`,
 		s.T().Context(),
 		token,
 		platformauthz.RoleRequest{},
+		true,
 	)
 	s.Require().NoError(err)
 	s.Equal([]string{"client:test-client", "role:admin", "alice"}, subjects)
@@ -514,6 +577,34 @@ func (s *CasbinAuthorizerSuite) TestAuthorizeV2_UsesConfiguredRoleProvider() {
 	s.Require().NoError(err)
 	s.True(decision.Allowed)
 	s.Equal("role:external-admin", decision.MatchedPolicy)
+}
+
+func (s *CasbinAuthorizerSuite) TestAuthorizeV2_PassesRoleRequestToRoleProvider() {
+	roleProvider := &recordingRoleProvider{roles: []string{"external-admin"}}
+	cfg := authz.Config{
+		Version: "v2",
+		PolicyConfig: authz.PolicyConfig{
+			Issuer: "https://issuer.example",
+			Csv:    "p, role:external-admin, /policy.attributes.AttributesService/Get*, *, allow",
+		},
+		Logger:  s.logger,
+		Options: []authz.Option{authz.WithRoleProvider(roleProvider)},
+	}
+
+	authorizer, err := NewAuthorizer(cfg)
+	s.Require().NoError(err)
+
+	_, err = authorizer.Authorize(s.T().Context(), &authz.Request{
+		Token:  jwt.New(),
+		RPC:    "/policy.attributes.AttributesService/GetAttribute",
+		Action: "read",
+	})
+	s.Require().NoError(err)
+	s.Equal(platformauthz.RoleRequest{
+		Issuer:   "https://issuer.example",
+		Resource: "/policy.attributes.AttributesService/GetAttribute",
+		Action:   "read",
+	}, roleProvider.req)
 }
 
 func (s *CasbinAuthorizerSuite) TestAuthorizeV2_ReturnsSubjectExtractionError() {
@@ -1065,9 +1156,11 @@ func (s *CasbinAuthorizerSuite) TestAuthorizeV1_GRPCPathStripsLeadingSlash() {
 	// v1 policy: gRPC paths have NO leading slash
 	// Create a mock enforcer that validates the resource path
 	var receivedResource string
+	var receivedIssuer string
 	mockEnforcer := &mockV1Enforcer{
 		enforceFunc: func(_ context.Context, _ jwt.Token, req platformauthz.RoleRequest) (bool, map[string]any, error) {
 			receivedResource = req.Resource
+			receivedIssuer = req.Issuer
 			// Allow if resource matches expected stripped path
 			return req.Resource == "kas.AccessService/Rewrap", nil, nil
 		},
@@ -1076,6 +1169,7 @@ func (s *CasbinAuthorizerSuite) TestAuthorizeV1_GRPCPathStripsLeadingSlash() {
 	cfg := authz.Config{
 		Version: "v1",
 		PolicyConfig: authz.PolicyConfig{
+			Issuer:      "https://issuer.example",
 			GroupsClaim: "realm_access.roles",
 		},
 		Logger:  s.logger,
@@ -1104,6 +1198,7 @@ func (s *CasbinAuthorizerSuite) TestAuthorizeV1_GRPCPathStripsLeadingSlash() {
 	s.True(decision.Allowed, "gRPC path should be allowed after stripping leading slash")
 	s.Equal(authz.ModeV1, decision.Mode)
 	s.Equal("kas.AccessService/Rewrap", receivedResource, "resource should have leading slash stripped")
+	s.Equal("https://issuer.example", receivedIssuer)
 }
 
 func (s *CasbinAuthorizerSuite) TestAuthorizeV1_HTTPPathKeepsLeadingSlash() {

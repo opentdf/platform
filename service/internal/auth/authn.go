@@ -93,8 +93,8 @@ type Authentication struct {
 	authorizer internalauthz.Authorizer
 	// authzResolverRegistry holds per-method resolvers for extracting authorization dimensions
 	authzResolverRegistry *internalauthz.ResolverRegistry
-	// roleProvider extracts configured authorization subjects from request tokens.
-	roleProvider authz.RoleProvider
+	// subjectExtractor extracts configured authorization subjects from request tokens.
+	subjectExtractor internalauthz.SubjectExtractor
 	// Public Routes HTTP & gRPC
 	publicRoutes []string
 	// IPC Reauthorization Routes
@@ -139,7 +139,12 @@ func NewAuthenticator(ctx context.Context, cfg Config, logger *logger.Logger, we
 	if err != nil {
 		return nil, err
 	}
-	a.roleProvider = roleProvider
+	a.subjectExtractor = internalauthz.SubjectExtractor{
+		UserNameClaim: cfg.Policy.UserNameClaim,
+		ClientIDClaim: cfg.Policy.ClientIDClaim,
+		RoleProvider:  roleProvider,
+		Logger:        logger,
+	}
 	casbinConfig := CasbinConfig{
 		PolicyConfig: cfg.Policy,
 		RoleProvider: roleProvider,
@@ -154,6 +159,7 @@ func NewAuthenticator(ctx context.Context, cfg Config, logger *logger.Logger, we
 		Engine:  cfg.Policy.Engine,
 		Version: cfg.Policy.Version,
 		PolicyConfig: internalauthz.PolicyConfig{
+			Issuer:        cfg.Issuer,
 			Engine:        cfg.Policy.Engine,
 			Version:       cfg.Policy.Version,
 			UserNameClaim: cfg.Policy.UserNameClaim,
@@ -305,7 +311,7 @@ func (a Authentication) MuxHandler(handler http.Handler) http.Handler {
 			return
 		}
 
-		clientID, err := a.subjectExtractor().ClientIDFromToken(r.Context(), accessTok) //nolint:contextcheck // r.Context includes public route state.
+		clientID, err := a.subjectExtractor.ClientIDFromToken(r.Context(), accessTok) //nolint:contextcheck // r.Context includes public route state.
 		if err != nil {
 			log.WarnContext( //nolint:contextcheck // r.Context was enriched with public route state.
 				r.Context(),
@@ -337,7 +343,7 @@ func (a Authentication) MuxHandler(handler http.Handler) http.Handler {
 			Resource: r.URL.Path,
 			Action:   action,
 		}
-		ctx, err = a.subjectExtractor().ContextWithClaims(ctx, accessTok, roleReq)
+		ctx, err = a.subjectExtractor.ContextWithClaims(ctx, accessTok, roleReq)
 		if err != nil {
 			log.WarnContext(r.Context(), "role provider error", slog.Any("error", err)) //nolint:contextcheck // request context is already derived with public route state above.
 			if errors.Is(err, ErrPermissionDenied) {
@@ -347,23 +353,31 @@ func (a Authentication) MuxHandler(handler http.Handler) http.Handler {
 			http.Error(w, "internal server error", http.StatusInternalServerError)
 			return
 		}
-		if allowed, metadata, err := a.enforcer.Enforce(ctx, accessTok, roleReq); err != nil { //nolint:contextcheck // checkToken derives ctx from r.Context.
-			if errors.Is(err, ErrPermissionDenied) {
-				log.WarnContext( //nolint:contextcheck // checkToken derives ctx from r.Context.
-					ctx,
-					"permission denied",
-					permissionDeniedLogAttrs(accessTok, metadata, err)...,
-				)
-				http.Error(w, "permission denied", http.StatusForbidden)
-				return
-			}
+		if a.authorizer == nil {
+			log.ErrorContext(ctx, "authorizer not initialized") //nolint:contextcheck // checkToken derives ctx from r.Context.
 			http.Error(w, "internal server error", http.StatusInternalServerError)
 			return
-		} else if !allowed {
+		}
+		// Extra HTTP handlers do not use Connect resolvers, so v2 authorizers receive no
+		// resource dimensions here. Dimension-scoped v2 policy therefore fails closed
+		// unless the policy explicitly allows wildcard dimensions for this path.
+		decision, err := a.authorizer.Authorize(ctx, &internalauthz.Request{ //nolint:contextcheck // checkToken derives ctx from r.Context.
+			Token:  accessTok,
+			RPC:    r.URL.Path,
+			Action: roleReq.Action,
+		})
+		if err != nil {
+			log.ErrorContext(ctx, "authorization error", slog.Any("error", err)) //nolint:contextcheck // checkToken derives ctx from r.Context.
+			http.Error(w, "internal server error", http.StatusInternalServerError)
+			return
+		}
+		if !decision.Allowed {
 			log.WarnContext( //nolint:contextcheck // checkToken derives ctx from r.Context.
 				ctx,
 				"permission denied",
-				permissionDeniedLogAttrs(accessTok, metadata, nil)...,
+				slog.String("azp", accessTok.Subject()),
+				slog.String("mode", string(decision.Mode)),
+				slog.String("reason", decision.Reason),
 			)
 			http.Error(w, "permission denied", http.StatusForbidden)
 			return
@@ -410,7 +424,7 @@ func (a Authentication) ConnectAuthNInterceptor() connect.UnaryInterceptorFunc {
 				return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("unauthenticated"))
 			}
 
-			clientID, err := a.subjectExtractor().ClientIDFromToken(ctxWithJWK, token)
+			clientID, err := a.subjectExtractor.ClientIDFromToken(ctxWithJWK, token)
 			if err != nil {
 				log.WarnContext(
 					ctxWithJWK,
@@ -429,7 +443,7 @@ func (a Authentication) ConnectAuthNInterceptor() connect.UnaryInterceptorFunc {
 			if err != nil {
 				return nil, connect.NewError(connect.CodeInvalidArgument, err)
 			}
-			ctxWithJWK, err = a.subjectExtractor().ContextWithClaims(ctxWithJWK, token, roleReq)
+			ctxWithJWK, err = a.subjectExtractor.ContextWithClaims(ctxWithJWK, token, roleReq)
 			if err != nil {
 				log.WarnContext(ctxWithJWK, "role provider error", slog.Any("error", err))
 				if errors.Is(err, ErrPermissionDenied) {
@@ -604,15 +618,6 @@ func (a Authentication) IPCUnaryServerInterceptor() connect.UnaryInterceptorFunc
 		})
 	}
 	return connect.UnaryInterceptorFunc(interceptor)
-}
-
-func (a Authentication) subjectExtractor() internalauthz.SubjectExtractor {
-	return internalauthz.SubjectExtractor{
-		UserNameClaim: a.oidcConfiguration.Policy.UserNameClaim,
-		ClientIDClaim: a.oidcConfiguration.Policy.ClientIDClaim,
-		RoleProvider:  a.roleProvider,
-		Logger:        a.logger,
-	}
 }
 
 // authzResult holds the result of an authorization check
@@ -944,7 +949,7 @@ func (a Authentication) ipcReauthCheck(ctx context.Context, path string, header 
 			}
 
 			// Return the next context with the token
-			clientID, err := a.subjectExtractor().ClientIDFromToken(ctxWithJWK, token)
+			clientID, err := a.subjectExtractor.ClientIDFromToken(ctxWithJWK, token)
 			if err != nil {
 				return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("unauthenticated"))
 			}

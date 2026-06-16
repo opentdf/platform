@@ -20,6 +20,9 @@ const (
 // BaseAdapterConfig contains configuration common to all authorization adapters.
 // This provides a consistent interface for subject extraction across engines.
 type BaseAdapterConfig struct {
+	// Issuer is the configured token issuer for role provider requests.
+	Issuer string
+
 	// UserNameClaim is the JWT claim containing the username.
 	UserNameClaim string
 
@@ -142,6 +145,7 @@ type OPAConfig struct {
 //   - "opa": Returns OPAConfig (future)
 func AdapterConfigFromExternal(cfg Config) any {
 	base := BaseAdapterConfig{
+		Issuer:        cfg.Issuer,
 		UserNameClaim: cfg.UserNameClaim,
 		GroupsClaim:   cfg.GroupsClaim,
 		ClientIDClaim: cfg.ClientIDClaim,

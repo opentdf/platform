@@ -56,6 +56,28 @@ type FakeAccessTokenSource struct {
 	accessToken string
 }
 
+type recordingAuthorizer struct {
+	req      *internalauthz.Request
+	decision *internalauthz.Decision
+	err      error
+}
+
+func (a *recordingAuthorizer) Authorize(_ context.Context, req *internalauthz.Request) (*internalauthz.Decision, error) {
+	a.req = req
+	if a.decision != nil || a.err != nil {
+		return a.decision, a.err
+	}
+	return &internalauthz.Decision{Allowed: true, Mode: internalauthz.ModeV1}, nil
+}
+
+func (a *recordingAuthorizer) Version() string {
+	return "test"
+}
+
+func (a *recordingAuthorizer) SupportsResourceAuthorization() bool {
+	return false
+}
+
 type FakeAccessServiceServer struct {
 	clientID       string
 	authzClientID  string
@@ -463,6 +485,128 @@ func (s *AuthSuite) Test_MuxHandler_RoleProviderErrorReturnsInternalServerError(
 	handler.ServeHTTP(rec, req)
 
 	s.Equal(http.StatusInternalServerError, rec.Code)
+	s.False(called)
+}
+
+func (s *AuthSuite) Test_MuxHandler_UsesAuthorizer() {
+	tok := jwt.New()
+	s.Require().NoError(tok.Set(jwt.ExpirationKey, time.Now().Add(time.Hour)))
+	s.Require().NoError(tok.Set("iss", s.server.URL))
+	s.Require().NoError(tok.Set("aud", "test"))
+	s.Require().NoError(tok.Set("cid", "client-123"))
+	signedTok, err := jwt.Sign(tok, jwt.WithKey(jwa.RS256, s.key))
+	s.Require().NoError(err)
+
+	policyCfg := PolicyConfig{ClientIDClaim: "cid"}
+	s.Require().NoError(defaults.Set(&policyCfg))
+	auth, err := NewAuthenticator(s.T().Context(), Config{
+		AuthNConfig: AuthNConfig{
+			EnforceDPoP: false,
+			Issuer:      s.server.URL,
+			Audience:    "test",
+			Policy:      policyCfg,
+		},
+	}, logger.CreateTestLogger(), func(_ string, _ any) error { return nil })
+	s.Require().NoError(err)
+
+	authorizer := &recordingAuthorizer{}
+	auth.authorizer = authorizer
+
+	called := false
+	handler := auth.MuxHandler(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		called = true
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodDelete, "/attributes/example/value", nil)
+	req.Header.Set("Authorization", "Bearer "+string(signedTok))
+
+	handler.ServeHTTP(rec, req)
+
+	s.Equal(http.StatusNoContent, rec.Code)
+	s.True(called)
+	s.Require().NotNil(authorizer.req)
+	s.Equal("/attributes/example/value", authorizer.req.RPC)
+	s.Equal(ActionDelete, authorizer.req.Action)
+	s.NotNil(authorizer.req.Token)
+}
+
+func (s *AuthSuite) Test_MuxHandler_NilAuthorizerReturnsInternalServerError() {
+	tok := jwt.New()
+	s.Require().NoError(tok.Set(jwt.ExpirationKey, time.Now().Add(time.Hour)))
+	s.Require().NoError(tok.Set("iss", s.server.URL))
+	s.Require().NoError(tok.Set("aud", "test"))
+	s.Require().NoError(tok.Set("cid", "client-123"))
+	signedTok, err := jwt.Sign(tok, jwt.WithKey(jwa.RS256, s.key))
+	s.Require().NoError(err)
+
+	policyCfg := PolicyConfig{ClientIDClaim: "cid"}
+	s.Require().NoError(defaults.Set(&policyCfg))
+	auth, err := NewAuthenticator(s.T().Context(), Config{
+		AuthNConfig: AuthNConfig{
+			EnforceDPoP: false,
+			Issuer:      s.server.URL,
+			Audience:    "test",
+			Policy:      policyCfg,
+		},
+	}, logger.CreateTestLogger(), func(_ string, _ any) error { return nil })
+	s.Require().NoError(err)
+	auth.authorizer = nil
+
+	called := false
+	handler := auth.MuxHandler(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
+		called = true
+	}))
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/attributes/example/value", nil)
+	req.Header.Set("Authorization", "Bearer "+string(signedTok))
+
+	handler.ServeHTTP(rec, req)
+
+	s.Equal(http.StatusInternalServerError, rec.Code)
+	s.False(called)
+}
+
+func (s *AuthSuite) Test_MuxHandler_V2WithoutResourceContextFailsClosedForDimensionPolicy() {
+	tok := jwt.New()
+	s.Require().NoError(tok.Set(jwt.ExpirationKey, time.Now().Add(time.Hour)))
+	s.Require().NoError(tok.Set("iss", s.server.URL))
+	s.Require().NoError(tok.Set("aud", "test"))
+	s.Require().NoError(tok.Set("cid", "client-123"))
+	s.Require().NoError(tok.Set("realm_access", map[string]any{
+		"roles": []string{"standard"},
+	}))
+	signedTok, err := jwt.Sign(tok, jwt.WithKey(jwa.RS256, s.key))
+	s.Require().NoError(err)
+
+	policyCfg := PolicyConfig{
+		Version:       "v2",
+		ClientIDClaim: "cid",
+		GroupsClaim:   "realm_access.roles",
+		Csv:           `p, role:standard, /attributes/example/value, namespace=finance, allow`,
+	}
+	s.Require().NoError(defaults.Set(&policyCfg))
+	auth, err := NewAuthenticator(s.T().Context(), Config{
+		AuthNConfig: AuthNConfig{
+			EnforceDPoP: false,
+			Issuer:      s.server.URL,
+			Audience:    "test",
+			Policy:      policyCfg,
+		},
+	}, logger.CreateTestLogger(), func(_ string, _ any) error { return nil })
+	s.Require().NoError(err)
+
+	called := false
+	handler := auth.MuxHandler(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
+		called = true
+	}))
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/attributes/example/value", nil)
+	req.Header.Set("Authorization", "Bearer "+string(signedTok))
+
+	handler.ServeHTTP(rec, req)
+
+	s.Equal(http.StatusForbidden, rec.Code)
 	s.False(called)
 }
 
@@ -1130,10 +1274,8 @@ func Test_GetClientIDFromToken(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			auth := &Authentication{
-				oidcConfiguration: AuthNConfig{
-					Policy: PolicyConfig{
-						ClientIDClaim: tt.clientIDClaim,
-					},
+				subjectExtractor: internalauthz.SubjectExtractor{
+					ClientIDClaim: tt.clientIDClaim,
 				},
 			}
 
@@ -1143,7 +1285,7 @@ func Test_GetClientIDFromToken(t *testing.T) {
 				require.NoError(t, err)
 			}
 
-			clientID, err := auth.subjectExtractor().ClientIDFromToken(t.Context(), tok)
+			clientID, err := auth.subjectExtractor.ClientIDFromToken(t.Context(), tok)
 
 			assert.Equal(t, tt.expectedClientID, clientID)
 

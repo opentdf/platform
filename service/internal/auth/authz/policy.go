@@ -50,6 +50,7 @@ type PolicyConfig struct {
 	Adapter any `mapstructure:"-" json:"-"`
 }
 
+// RolesProviderConfig contains role-provider selection and provider-specific settings.
 type RolesProviderConfig struct {
 	Name   string         `mapstructure:"name" json:"name"`
 	Config map[string]any `mapstructure:"config" json:"config"`

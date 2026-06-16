@@ -52,8 +52,8 @@ func (s *CasbinAuthorizerSuite) SetupTest() {
 
 func (s *CasbinAuthorizerSuite) TestNewCasbinAuthorizer_V2() {
 	cfg := authz.Config{
-		Version: "v2",
 		PolicyConfig: authz.PolicyConfig{
+			Version:     "v2",
 			GroupsClaim: "realm_access.roles",
 		},
 		Logger: s.logger,
@@ -67,11 +67,17 @@ func (s *CasbinAuthorizerSuite) TestNewCasbinAuthorizer_V2() {
 	s.True(authorizer.SupportsResourceAuthorization())
 }
 
+func (s *CasbinAuthorizerSuite) TestNewAuthorizerRequiresLogger() {
+	authorizer, err := NewAuthorizer(authz.CasbinV2Config{}, nil)
+	s.Require().ErrorIs(err, errLoggerRequired)
+	s.Nil(authorizer)
+}
+
 func (s *CasbinAuthorizerSuite) TestAuthorizeRequiresRequestAndToken() {
 	cfg := authz.Config{
-		Version: "v2",
 		PolicyConfig: authz.PolicyConfig{
-			Csv: "p, role:admin, *, *, allow",
+			Version: "v2",
+			Csv:     "p, role:admin, *, *, allow",
 		},
 		Logger: s.logger,
 	}
@@ -93,8 +99,8 @@ func (s *CasbinAuthorizerSuite) TestAuthorizeRequiresRequestAndToken() {
 func (s *CasbinAuthorizerSuite) TestAuthorizeV2_AdminWildcard() {
 	// Policy: admin can do anything
 	cfg := authz.Config{
-		Version: "v2",
 		PolicyConfig: authz.PolicyConfig{
+			Version:     "v2",
 			GroupsClaim: "realm_access.roles",
 			Csv:         "p, role:admin, *, *, allow",
 		},
@@ -130,8 +136,8 @@ func (s *CasbinAuthorizerSuite) TestAuthorizeV2_AdminWildcard() {
 
 func (s *CasbinAuthorizerSuite) TestAuthorizeV2_DefaultPolicyIncludesDefaultRoleGroupings() {
 	cfg := authz.Config{
-		Version: "v2",
 		PolicyConfig: authz.PolicyConfig{
+			Version:     "v2",
 			GroupsClaim: "realm_access.roles",
 		},
 		Logger: s.logger,
@@ -160,8 +166,8 @@ func (s *CasbinAuthorizerSuite) TestAuthorizeV2_DefaultPolicyIncludesDefaultRole
 func (s *CasbinAuthorizerSuite) TestAuthorizeV2_NamespaceScopedAccess() {
 	// Policy: hr-admin can only access HR namespace
 	cfg := authz.Config{
-		Version: "v2",
 		PolicyConfig: authz.PolicyConfig{
+			Version:     "v2",
 			GroupsClaim: "realm_access.roles",
 			Csv: `p, role:hr-admin, /policy.attributes.AttributesService/*, namespace=hr, allow
 p, role:finance-admin, /policy.attributes.AttributesService/*, namespace=finance, allow`,
@@ -215,8 +221,8 @@ p, role:finance-admin, /policy.attributes.AttributesService/*, namespace=finance
 func (s *CasbinAuthorizerSuite) TestAuthorizeV2_MultipleDimensions() {
 	// Policy: requires both namespace and attribute dimensions
 	cfg := authz.Config{
-		Version: "v2",
 		PolicyConfig: authz.PolicyConfig{
+			Version:     "v2",
 			GroupsClaim: "realm_access.roles",
 			Csv:         `p, role:classification-owner, /policy.attributes.AttributesService/Update*, namespace=hr&attribute=classification, allow`,
 		},
@@ -268,8 +274,8 @@ func (s *CasbinAuthorizerSuite) TestAuthorizeV2_MultipleDimensions() {
 func (s *CasbinAuthorizerSuite) TestAuthorizeV2_WildcardDimension() {
 	// Policy: wildcard for attribute dimension
 	cfg := authz.Config{
-		Version: "v2",
 		PolicyConfig: authz.PolicyConfig{
+			Version:     "v2",
 			GroupsClaim: "realm_access.roles",
 			Csv:         `p, role:hr-viewer, /policy.attributes.AttributesService/Get*, namespace=hr&attribute=*, allow`,
 		},
@@ -305,8 +311,8 @@ func (s *CasbinAuthorizerSuite) TestAuthorizeV2_WildcardDimension() {
 func (s *CasbinAuthorizerSuite) TestAuthorizeV2_NoDimensions() {
 	// Policy with wildcard dimensions
 	cfg := authz.Config{
-		Version: "v2",
 		PolicyConfig: authz.PolicyConfig{
+			Version:     "v2",
 			GroupsClaim: "realm_access.roles",
 			Csv:         `p, role:standard, /policy.attributes.AttributesService/Get*, *, allow`,
 		},
@@ -337,8 +343,8 @@ func (s *CasbinAuthorizerSuite) TestAuthorizeV2_NoDimensions() {
 
 func (s *CasbinAuthorizerSuite) TestAuthorizeV2_NoDimensionsDeniedWhenPolicyRequiresDimension() {
 	cfg := authz.Config{
-		Version: "v2",
 		PolicyConfig: authz.PolicyConfig{
+			Version:     "v2",
 			GroupsClaim: "realm_access.roles",
 			Csv:         `p, role:standard, /policy.attributes.AttributesService/Get*, namespace=finance, allow`,
 		},
@@ -366,8 +372,8 @@ func (s *CasbinAuthorizerSuite) TestAuthorizeV2_NoDimensionsDeniedWhenPolicyRequ
 
 func (s *CasbinAuthorizerSuite) TestAuthorizeV2_UsernameWithRolePrefixIsIgnored() {
 	cfg := authz.Config{
-		Version: "v2",
 		PolicyConfig: authz.PolicyConfig{
+			Version:       "v2",
 			UserNameClaim: "preferred_username",
 			Csv:           `p, role:admin, /policy.attributes.AttributesService/Get*, *, allow`,
 		},
@@ -393,8 +399,8 @@ func (s *CasbinAuthorizerSuite) TestAuthorizeV2_UsernameWithRolePrefixIsIgnored(
 
 func (s *CasbinAuthorizerSuite) TestAuthorizeV2_ClientIDPolicy() {
 	cfg := authz.Config{
-		Version: "v2",
 		PolicyConfig: authz.PolicyConfig{
+			Version:       "v2",
 			ClientIDClaim: "client_id",
 			Csv:           `p, client:test-client, /policy.attributes.AttributesService/Get*, *, allow`,
 		},
@@ -426,8 +432,8 @@ func (s *CasbinAuthorizerSuite) TestAuthorizeV2_ClientIDPolicy() {
 
 func (s *CasbinAuthorizerSuite) TestAuthorizeV2_UsesSharedSubjectExtractorOrdering() {
 	cfg := authz.Config{
-		Version: "v2",
 		PolicyConfig: authz.PolicyConfig{
+			Version:       "v2",
 			GroupsClaim:   "realm_access.roles",
 			UserNameClaim: "preferred_username",
 			ClientIDClaim: "azp",
@@ -474,8 +480,8 @@ p, alice, /policy.attributes.AttributesService/Get*, *, allow`,
 
 func (s *CasbinAuthorizerSuite) TestAuthorizeV2_UsesConfiguredRoleProvider() {
 	cfg := authz.Config{
-		Version: "v2",
 		PolicyConfig: authz.PolicyConfig{
+			Version:     "v2",
 			GroupsClaim: "realm_access.roles",
 			Csv:         "p, role:external-admin, /policy.attributes.AttributesService/Get*, *, allow",
 		},
@@ -504,10 +510,10 @@ func (s *CasbinAuthorizerSuite) TestAuthorizeV2_UsesConfiguredRoleProvider() {
 func (s *CasbinAuthorizerSuite) TestAuthorizeV2_PassesRoleRequestToRoleProvider() {
 	roleProvider := &recordingRoleProvider{roles: []string{"external-admin"}}
 	cfg := authz.Config{
-		Version: "v2",
 		PolicyConfig: authz.PolicyConfig{
-			Issuer: "https://issuer.example",
-			Csv:    "p, role:external-admin, /policy.attributes.AttributesService/Get*, *, allow",
+			Version: "v2",
+			Issuer:  "https://issuer.example",
+			Csv:     "p, role:external-admin, /policy.attributes.AttributesService/Get*, *, allow",
 		},
 		Logger:  s.logger,
 		Options: []authz.Option{authz.WithRoleProvider(roleProvider)},
@@ -532,8 +538,8 @@ func (s *CasbinAuthorizerSuite) TestAuthorizeV2_PassesRoleRequestToRoleProvider(
 func (s *CasbinAuthorizerSuite) TestAuthorizeV2_ReturnsSubjectExtractionError() {
 	roleProviderErr := errors.New("role provider unavailable")
 	cfg := authz.Config{
-		Version: "v2",
 		PolicyConfig: authz.PolicyConfig{
+			Version:     "v2",
 			GroupsClaim: "realm_access.roles",
 			Csv:         "p, role:external-admin, /policy.attributes.AttributesService/Get*, *, allow",
 		},
@@ -558,8 +564,8 @@ func (s *CasbinAuthorizerSuite) TestAuthorizeV2_KASRESTfulPathsAllowed() {
 	// v2 uses leading slashes for ALL paths (both gRPC and HTTP)
 	// This test ensures KAS RESTful paths work in v2 authorization
 	cfg := authz.Config{
-		Version: "v2",
 		PolicyConfig: authz.PolicyConfig{
+			Version:     "v2",
 			GroupsClaim: "realm_access.roles",
 			Csv: `p, role:standard, /kas.AccessService/*, *, allow
 p, role:standard, /kas/v2/rewrap, *, allow

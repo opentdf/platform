@@ -6,12 +6,7 @@ import (
 
 	internalauthz "github.com/opentdf/platform/service/internal/auth/authz"
 	"github.com/opentdf/platform/service/logger"
-	"github.com/opentdf/platform/service/pkg/authz"
-)
-
-type (
-	PolicyConfig        = internalauthz.PolicyConfig
-	RolesProviderConfig = internalauthz.RolesProviderConfig
+	platformauthz "github.com/opentdf/platform/service/pkg/authz"
 )
 
 // AuthConfig pulls AuthN and AuthZ together
@@ -23,19 +18,19 @@ type Config struct {
 	AuthNConfig     `mapstructure:",squash"`
 
 	// Programmatic role provider overrides (not loaded from config)
-	RoleProvider          authz.RoleProvider                   `mapstructure:"-" json:"-"`
-	RoleProviderFactories map[string]authz.RoleProviderFactory `mapstructure:"-" json:"-"`
+	RoleProvider          platformauthz.RoleProvider                   `mapstructure:"-" json:"-"`
+	RoleProviderFactories map[string]platformauthz.RoleProviderFactory `mapstructure:"-" json:"-"`
 }
 
 // AuthNConfig is the configuration need for the platform to validate tokens
 type AuthNConfig struct { //nolint:revive // AuthNConfig is a valid name
-	EnforceDPoP  bool          `mapstructure:"enforceDPoP" json:"enforceDPoP" default:"false"`
-	Issuer       string        `mapstructure:"issuer" json:"issuer"`
-	Audience     string        `mapstructure:"audience" json:"audience"`
-	Policy       PolicyConfig  `mapstructure:"policy" json:"policy"`
-	CacheRefresh string        `mapstructure:"cache_refresh_interval" json:"cache_refresh_interval"`
-	DPoPSkew     time.Duration `mapstructure:"dpopskew" json:"dpopskew" default:"1h"`
-	TokenSkew    time.Duration `mapstructure:"skew" json:"skew" default:"1m"`
+	EnforceDPoP  bool                       `mapstructure:"enforceDPoP" json:"enforceDPoP" default:"false"`
+	Issuer       string                     `mapstructure:"issuer" json:"issuer"`
+	Audience     string                     `mapstructure:"audience" json:"audience"`
+	Policy       internalauthz.PolicyConfig `mapstructure:"policy" json:"policy"`
+	CacheRefresh string                     `mapstructure:"cache_refresh_interval" json:"cache_refresh_interval"`
+	DPoPSkew     time.Duration              `mapstructure:"dpopskew" json:"dpopskew" default:"1h"`
+	TokenSkew    time.Duration              `mapstructure:"skew" json:"skew" default:"1m"`
 }
 
 func (c AuthNConfig) validateAuthNConfig(logger *logger.Logger) error {

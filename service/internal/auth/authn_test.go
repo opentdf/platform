@@ -191,7 +191,7 @@ func (s *AuthSuite) SetupTest() {
 		}
 	}))
 
-	policyCfg := PolicyConfig{
+	policyCfg := internalauthz.PolicyConfig{
 		ClientIDClaim: "cid",
 	}
 	err = defaults.Set(&policyCfg)
@@ -325,8 +325,8 @@ func TestResolveRoleProviderNamed(t *testing.T) {
 	logger := logger.CreateTestLogger()
 	cfg := Config{
 		AuthNConfig: AuthNConfig{
-			Policy: PolicyConfig{
-				RolesProvider: RolesProviderConfig{
+			Policy: internalauthz.PolicyConfig{
+				RolesProvider: internalauthz.RolesProviderConfig{
 					Name: "mock",
 				},
 			},
@@ -346,8 +346,8 @@ func TestResolveRoleProviderMissingName(t *testing.T) {
 	logger := logger.CreateTestLogger()
 	cfg := Config{
 		AuthNConfig: AuthNConfig{
-			Policy: PolicyConfig{
-				RolesProvider: RolesProviderConfig{
+			Policy: internalauthz.PolicyConfig{
+				RolesProvider: internalauthz.RolesProviderConfig{
 					Name: "missing",
 				},
 			},
@@ -421,7 +421,7 @@ func (s *AuthSuite) Test_ConnectAuthNAndAuthZInterceptors_ClientIDPropagated() {
 	s.Require().NoError(tok.Set("azp", "test-client-id"))
 	s.Require().NoError(tok.Set("realm_access", map[string][]string{"roles": {"opentdf-standard"}}))
 
-	policyCfg := new(PolicyConfig)
+	policyCfg := new(internalauthz.PolicyConfig)
 	err := defaults.Set(policyCfg)
 	s.Require().NoError(err)
 
@@ -480,7 +480,7 @@ func (s *AuthSuite) Test_MuxHandler_RoleProviderErrorReturnsInternalServerError(
 	signedTok, err := jwt.Sign(tok, jwt.WithKey(jwa.RS256, s.key))
 	s.Require().NoError(err)
 
-	policyCfg := PolicyConfig{ClientIDClaim: "cid"}
+	policyCfg := internalauthz.PolicyConfig{ClientIDClaim: "cid"}
 	s.Require().NoError(defaults.Set(&policyCfg))
 	auth, err := NewAuthenticator(s.T().Context(), Config{
 		AuthNConfig: AuthNConfig{
@@ -516,7 +516,7 @@ func (s *AuthSuite) Test_MuxHandler_UsesAuthorizer() {
 	signedTok, err := jwt.Sign(tok, jwt.WithKey(jwa.RS256, s.key))
 	s.Require().NoError(err)
 
-	policyCfg := PolicyConfig{ClientIDClaim: "cid"}
+	policyCfg := internalauthz.PolicyConfig{ClientIDClaim: "cid"}
 	s.Require().NoError(defaults.Set(&policyCfg))
 	auth, err := NewAuthenticator(s.T().Context(), Config{
 		AuthNConfig: AuthNConfig{
@@ -559,7 +559,7 @@ func (s *AuthSuite) Test_MuxHandler_NilAuthorizerReturnsInternalServerError() {
 	signedTok, err := jwt.Sign(tok, jwt.WithKey(jwa.RS256, s.key))
 	s.Require().NoError(err)
 
-	policyCfg := PolicyConfig{ClientIDClaim: "cid"}
+	policyCfg := internalauthz.PolicyConfig{ClientIDClaim: "cid"}
 	s.Require().NoError(defaults.Set(&policyCfg))
 	auth, err := NewAuthenticator(s.T().Context(), Config{
 		AuthNConfig: AuthNConfig{
@@ -598,7 +598,7 @@ func (s *AuthSuite) Test_MuxHandler_V2WithoutResourceContextFailsClosedForDimens
 	signedTok, err := jwt.Sign(tok, jwt.WithKey(jwa.RS256, s.key))
 	s.Require().NoError(err)
 
-	policyCfg := PolicyConfig{
+	policyCfg := internalauthz.PolicyConfig{
 		Version:       "v2",
 		ClientIDClaim: "cid",
 		GroupsClaim:   "realm_access.roles",
@@ -638,7 +638,7 @@ func (s *AuthSuite) Test_ConnectAuthNInterceptor_RoleProviderErrorReturnsInterna
 	signedTok, err := jwt.Sign(tok, jwt.WithKey(jwa.RS256, s.key))
 	s.Require().NoError(err)
 
-	policyCfg := new(PolicyConfig)
+	policyCfg := new(internalauthz.PolicyConfig)
 	s.Require().NoError(defaults.Set(policyCfg))
 	auth, err := NewAuthenticator(s.T().Context(), Config{
 		AuthNConfig: AuthNConfig{

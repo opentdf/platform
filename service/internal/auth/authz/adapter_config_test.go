@@ -14,9 +14,9 @@ func TestEngineTypeConstants(t *testing.T) {
 
 func TestAdapterConfigFromExternal_CasbinV1(t *testing.T) {
 	cfg := Config{
-		Engine:  "casbin",
-		Version: "v1",
 		PolicyConfig: PolicyConfig{
+			Engine:        "casbin",
+			Version:       "v1",
 			Issuer:        "https://issuer.example",
 			UserNameClaim: "sub",
 			GroupsClaim:   "roles",
@@ -45,9 +45,9 @@ func TestAdapterConfigFromExternal_CasbinV1(t *testing.T) {
 
 func TestAdapterConfigFromExternal_CasbinV2(t *testing.T) {
 	cfg := Config{
-		Engine:  "casbin",
-		Version: "v2",
 		PolicyConfig: PolicyConfig{
+			Engine:        "casbin",
+			Version:       "v2",
 			Issuer:        "https://issuer.example",
 			UserNameClaim: "sub",
 			GroupsClaim:   "roles",
@@ -77,8 +77,10 @@ func TestAdapterConfigFromExternal_CasbinV2(t *testing.T) {
 func TestAdapterConfigFromExternal_DefaultEngine(t *testing.T) {
 	// Empty engine should default to casbin
 	cfg := Config{
-		Engine:  "",
-		Version: "v1",
+		PolicyConfig: PolicyConfig{
+			Engine:  "",
+			Version: "v1",
+		},
 	}
 
 	result := AdapterConfigFromExternal(cfg)
@@ -90,8 +92,10 @@ func TestAdapterConfigFromExternal_DefaultEngine(t *testing.T) {
 func TestAdapterConfigFromExternal_DefaultVersion(t *testing.T) {
 	// Empty version should default to v1
 	cfg := Config{
-		Engine:  "casbin",
-		Version: "",
+		PolicyConfig: PolicyConfig{
+			Engine:  "casbin",
+			Version: "",
+		},
 	}
 
 	result := AdapterConfigFromExternal(cfg)
@@ -103,8 +107,10 @@ func TestAdapterConfigFromExternal_DefaultVersion(t *testing.T) {
 func TestAdapterConfigFromExternal_UnknownEngine(t *testing.T) {
 	// Unknown engine should fall back to casbin v1
 	cfg := Config{
-		Engine:  "unknown-engine",
-		Version: "v1",
+		PolicyConfig: PolicyConfig{
+			Engine:  "unknown-engine",
+			Version: "v1",
+		},
 	}
 
 	result := AdapterConfigFromExternal(cfg)
@@ -117,9 +123,9 @@ func TestAdapterConfigFromExternal_WithAdapter(t *testing.T) {
 	mockAdpt := &mockAdapter{}
 
 	cfg := Config{
-		Engine:  "casbin",
-		Version: "v2",
 		PolicyConfig: PolicyConfig{
+			Engine:  "casbin",
+			Version: "v2",
 			Adapter: mockAdpt,
 		},
 	}

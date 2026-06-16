@@ -45,6 +45,8 @@ var dimensionValueEscaper = strings.NewReplacer(
 	"*", "%2A",
 )
 
+var errLoggerRequired = errors.New("logger is required for v2 casbin authorizer")
+
 // Authorizer implements v2 authz.Authorizer using Casbin.
 type Authorizer struct {
 	// issuer is the configured token issuer for role provider requests.
@@ -62,6 +64,10 @@ type Authorizer struct {
 
 // NewAuthorizer creates a v2 (RPC+dimensions) Casbin authorizer.
 func NewAuthorizer(cfg authz.CasbinV2Config, log *logger.Logger) (*Authorizer, error) {
+	if log == nil {
+		return nil, errLoggerRequired
+	}
+
 	enforcer, err := createV2EnforcerFromConfig(cfg, log)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create v2 casbin enforcer: %w", err)

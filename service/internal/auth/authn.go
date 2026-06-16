@@ -150,16 +150,14 @@ func NewAuthenticator(ctx context.Context, cfg Config, logger *logger.Logger, we
 
 	// Initialize the pluggable authorizer based on engine and version
 	authzCfg := internalauthz.Config{
-		Engine:       cfg.Policy.Engine,
-		Version:      cfg.Policy.Version,
 		PolicyConfig: policyCfg,
 		Logger:       logger,
 		Options:      []internalauthz.Option{internalauthz.WithRoleProvider(roleProvider)},
 	}
 	logger.Info(
 		"initializing authorizer",
-		slog.String("engine", authzCfg.Engine),
-		slog.String("version", authzCfg.Version),
+		slog.String("engine", policyCfg.Engine),
+		slog.String("version", policyCfg.Version),
 	)
 	if a.authorizer, err = internalauthz.New(authzCfg); err != nil {
 		return nil, fmt.Errorf("failed to initialize authorizer: %w", err)

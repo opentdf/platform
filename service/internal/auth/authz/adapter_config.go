@@ -104,14 +104,14 @@ func AdapterConfigFromExternal(cfg Config) any {
 	opts := applyOptions(cfg.Options...)
 
 	// Default engine to casbin for backwards compatibility
-	engine := cfg.Engine
+	engine := policyCfg.Engine
 	if engine == "" {
 		engine = string(EngineCasbin)
 	}
 
 	switch engine {
 	case string(EngineCasbin):
-		return casbinConfigFromExternal(cfg, policyCfg, opts.RoleProvider)
+		return casbinConfigFromExternal(policyCfg, opts.RoleProvider)
 	// Future engines:
 	// case string(EngineCedar):
 	//     return cedarConfigFromExternal(cfg, base)
@@ -119,13 +119,13 @@ func AdapterConfigFromExternal(cfg Config) any {
 	//     return opaConfigFromExternal(cfg, base)
 	default:
 		// Unknown engine defaults to casbin v1 for backwards compatibility
-		return casbinConfigFromExternal(cfg, policyCfg, opts.RoleProvider)
+		return casbinConfigFromExternal(policyCfg, opts.RoleProvider)
 	}
 }
 
 // casbinConfigFromExternal creates the appropriate Casbin config based on version.
-func casbinConfigFromExternal(cfg Config, policyCfg PolicyConfig, roleProvider platformauthz.RoleProvider) any {
-	switch cfg.Version {
+func casbinConfigFromExternal(policyCfg PolicyConfig, roleProvider platformauthz.RoleProvider) any {
+	switch policyCfg.Version {
 	case "v2":
 		return CasbinV2Config{
 			PolicyConfig: policyCfg,

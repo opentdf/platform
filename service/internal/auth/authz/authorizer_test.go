@@ -71,7 +71,7 @@ func TestRegisterAndGetFactory(t *testing.T) {
 	require.NotNil(t, factory)
 
 	// Test that the factory works
-	auth, err := factory(Config{Version: "v1"})
+	auth, err := factory(Config{PolicyConfig: PolicyConfig{Version: "v1"}})
 	require.NoError(t, err)
 	assert.Equal(t, "v1", auth.Version())
 }
@@ -101,8 +101,10 @@ func TestRegisterFactory_Panic_OnDuplicate(t *testing.T) {
 
 func TestNew_UnregisteredEngine(t *testing.T) {
 	cfg := Config{
-		Engine:  "unregistered-engine",
-		Version: "v1",
+		PolicyConfig: PolicyConfig{
+			Engine:  "unregistered-engine",
+			Version: "v1",
+		},
 	}
 
 	auth, err := New(cfg)
@@ -125,15 +127,16 @@ func TestNew_DefaultValues(t *testing.T) {
 
 	// Call New with minimal config (but specify engine so we use our test factory)
 	cfg := Config{
-		Engine: testFactoryName,
+		PolicyConfig: PolicyConfig{
+			Engine: testFactoryName,
+		},
 	}
 
 	auth, err := New(cfg)
 	require.NoError(t, err)
 	require.NotNil(t, auth)
 
-	// Verify defaults were applied
-	assert.Equal(t, "v1", receivedCfg.Version, "Version should default to v1")
+	assert.Equal(t, testFactoryName, receivedCfg.Engine)
 }
 
 func TestApplyOptions_Empty(t *testing.T) {

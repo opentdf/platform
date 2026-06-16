@@ -112,14 +112,6 @@ type Factory func(cfg Config) (Authorizer, error)
 
 // Config provides configuration for authorization engine initialization.
 type Config struct {
-	// Engine specifies which authorization engine to use ("casbin", "cedar", "opa").
-	// Defaults to "casbin" if empty.
-	Engine string
-
-	// Version specifies which authorization model to use ("v1", "v2", etc.)
-	// This is engine-specific. For Casbin: "v1" (path-based) or "v2" (RPC+dimensions).
-	Version string
-
 	// Policy configuration (claims, CSV, adapter, etc.)
 	PolicyConfig
 
@@ -184,7 +176,7 @@ func GetFactory(name string) (Factory, bool) {
 const DefaultEngine = "casbin"
 
 // New creates an Authorizer based on configuration.
-// The engine is selected based on cfg.Engine:
+// The engine is selected based on cfg.PolicyConfig.Engine:
 //   - "casbin" (default): Casbin policy engine
 //   - "cedar": AWS Cedar policy engine (future)
 //   - "opa": Open Policy Agent engine (future)
@@ -197,11 +189,6 @@ func New(cfg Config) (Authorizer, error) {
 	engine := cfg.Engine
 	if engine == "" {
 		engine = DefaultEngine
-	}
-
-	// Default version to v1 for backwards compatibility
-	if cfg.Version == "" {
-		cfg.Version = "v1"
 	}
 
 	factory, exists := GetFactory(engine)

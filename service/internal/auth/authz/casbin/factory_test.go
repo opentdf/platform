@@ -37,8 +37,8 @@ func TestNewAuthorizerDispatchesVersions(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			authorizer, err := NewAuthorizer(authz.Config{
-				Version: tc.version,
 				PolicyConfig: authz.PolicyConfig{
+					Version:     tc.version,
 					GroupsClaim: "realm_access.roles",
 				},
 				Logger: log,
@@ -50,10 +50,25 @@ func TestNewAuthorizerDispatchesVersions(t *testing.T) {
 	}
 }
 
+func TestAuthzNewUsesRegisteredFactoryAndPolicyVersion(t *testing.T) {
+	log := logger.CreateTestLogger()
+
+	authorizer, err := authz.New(authz.Config{
+		PolicyConfig: authz.PolicyConfig{
+			Version:     "v2",
+			GroupsClaim: "realm_access.roles",
+		},
+		Logger: log,
+	})
+	require.NoError(t, err)
+	require.NotNil(t, authorizer)
+	assert.Equal(t, "v2", authorizer.Version())
+}
+
 func TestNewAuthorizerRequiresLogger(t *testing.T) {
 	authorizer, err := NewAuthorizer(authz.Config{
-		Version: "v1",
 		PolicyConfig: authz.PolicyConfig{
+			Version:     "v1",
 			GroupsClaim: "realm_access.roles",
 		},
 	})

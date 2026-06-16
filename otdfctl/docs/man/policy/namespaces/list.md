@@ -15,6 +15,8 @@ command:
     - name: offset
       shorthand: o
       description: Offset (page) quantity from start of the list
+    - name: search
+      description: Search term to filter results
     - name: sort
       description: Sort list results by field
     - name: order
@@ -22,6 +24,14 @@ command:
 ---
 
 For more general information, see the `namespaces` subcommand.
+
+## Search Fields
+
+The `--search` term is trimmed and matched as a substring against these values:
+
+| Value | Description |
+| --- | --- |
+| Namespace FQN | Fully qualified namespace name, such as `https://example.com` |
 
 ## Sort Options
 
@@ -55,6 +65,12 @@ otdfctl policy namespaces list --order asc
 
 ```shell
 otdfctl policy namespaces list
+```
+
+Search namespaces by FQN:
+
+```shell
+otdfctl policy namespaces list --search example.com
 ```
 
 Sort namespaces by name ascending:

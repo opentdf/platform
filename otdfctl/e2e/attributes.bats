@@ -188,6 +188,20 @@ teardown_file() {
   run_otdfctl_attr unsafe delete --force --id "$attr_c_id"
 }
 
+@test "List attribute definitions supports search flag" {
+  search_prefix="search_attr_${BATS_TEST_NUMBER}_$RANDOM"
+  match_id=$(./otdfctl $HOST $WITH_CREDS policy attributes create --namespace "$NS_ID" --name "${search_prefix}_match" --rule ANY_OF --json | jq -r '.id')
+  other_id=$(./otdfctl $HOST $WITH_CREDS policy attributes create --namespace "$NS_ID" --name "${search_prefix}_other" --rule ANY_OF --json | jq -r '.id')
+
+  run_otdfctl_attr list --search "${search_prefix}_match" --limit 500 --json
+  assert_success
+  assert_equal "$(echo "$output" | jq -r --arg id "$match_id" '[.attributes[] | select(.id == $id)] | length')" "1"
+  assert_equal "$(echo "$output" | jq -r --arg id "$other_id" '[.attributes[] | select(.id == $id)] | length')" "0"
+
+  run_otdfctl_attr unsafe delete --force --id "$match_id"
+  run_otdfctl_attr unsafe delete --force --id "$other_id"
+}
+
 @test "List - comprehensive pagination tests" {
   # create 10 random attributes so we have confidence there are >= 10 attribute definitions
   for i in {1..10}; do
@@ -278,7 +292,7 @@ teardown_file() {
   # ensure non-JSON output reflects reordered values immediately
   run_otdfctl_attr unsafe update --id "$CREATED_ID" --values-order "$VAL1_ID" --values-order "$VAL2_ID" --force
   assert_success
-  assert_line --regexp "Value IDs\\s+│\\[$VAL1_ID, $VAL2_ID\\]"
+  assert_line --regexp "Value IDs[[:space:]]+│\\[$VAL1_ID, $VAL2_ID\\]"
 
   run_otdfctl_attr unsafe update --id "$CREATED_ID" --allow-traversal --json --force
   assert_success

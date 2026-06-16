@@ -94,6 +94,11 @@ func injectListSortFlags(listDoc *man.Doc) {
 	listDoc.Flags().String(orderFlag.Name, orderFlag.Default, orderFlag.Description)
 }
 
+func injectListSearchFlag(listDoc *man.Doc) {
+	searchFlag := listDoc.GetDocFlag("search")
+	listDoc.Flags().String(searchFlag.Name, searchFlag.Default, searchFlag.Description)
+}
+
 func getSortOption(c *cli.Cli) handlers.SortOption {
 	sort, err := handlers.NewSortOption(c.Flags.GetOptionalString("sort"), c.Flags.GetOptionalString("order"))
 	if err != nil {

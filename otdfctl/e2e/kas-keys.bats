@@ -681,6 +681,27 @@ format_kas_name_as_uri() {
   assert_equal "$(echo "$output" | jq -r --arg a "$key_a_id" --arg b "$key_b_id" --arg c "$key_c_id" '[.kas_keys[] | select(.key.id == $a or .key.id == $b or .key.id == $c) | .key.id] | join(",")')" "$key_a_id,$key_b_id,$key_c_id"
 }
 
+@test "kas-keys: list keys supports search flag" {
+  search_prefix="search-key-${BATS_TEST_NUMBER}-${RANDOM}"
+  match_kid="${search_prefix}-match"
+  other_kid="${search_prefix}-other"
+
+  run_otdfctl_key create --kas "${KAS_REGISTRY_ID}" --key-id "$match_kid" --algorithm "rsa:2048" --mode "public_key" --public-key-pem "${PEM_B64_RSA}" --json
+  assert_success
+  match_id=$(echo "$output" | jq -r .key.id)
+  run_otdfctl_key create --kas "${KAS_REGISTRY_ID}" --key-id "$other_kid" --algorithm "rsa:2048" --mode "public_key" --public-key-pem "${PEM_B64_RSA}" --json
+  assert_success
+  other_id=$(echo "$output" | jq -r .key.id)
+
+  run_otdfctl_key list --kas "${KAS_REGISTRY_ID}" --search "$match_kid" --json
+  assert_success
+  assert_equal "$(echo "$output" | jq -r --arg id "$match_id" '[.kas_keys[] | select(.key.id == $id)] | length')" "1"
+  assert_equal "$(echo "$output" | jq -r --arg id "$other_id" '[.kas_keys[] | select(.key.id == $id)] | length')" "0"
+
+  run_otdfctl_key unsafe delete --id "$match_id" --kas-uri "$KAS_URI" --key-id "$match_kid" --force
+  run_otdfctl_key unsafe delete --id "$other_id" --kas-uri "$KAS_URI" --key-id "$other_kid" --force
+}
+
 @test "kas-keys: list keys (pagination with limit and offset)" {
   KAS_NAME_LIST=$(generate_kas_name)
   KAS_URI_LIST=$(format_kas_name_as_uri "${KAS_NAME_LIST}")

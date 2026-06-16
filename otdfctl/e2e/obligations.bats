@@ -476,6 +476,22 @@ teardown_file() {
   run_otdfctl_obl delete --id "$obl_c_id" --force
 }
 
+@test "List obligations supports search flag" {
+  search_prefix="search_obl_${BATS_TEST_NUMBER}_$RANDOM"
+  run_otdfctl_obl create --name "${search_prefix}_match" --namespace "$NS_ID" --json
+  match_id="$(echo "$output" | jq -r '.id')"
+  run_otdfctl_obl create --name "${search_prefix}_other" --namespace "$NS_ID" --json
+  other_id="$(echo "$output" | jq -r '.id')"
+
+  run_otdfctl_obl list --namespace "$NS_ID" --search "${search_prefix}_match" --json
+  assert_success
+  assert_equal "$(echo "$output" | jq -r --arg id "$match_id" '[.obligations[] | select(.id == $id)] | length')" "1"
+  assert_equal "$(echo "$output" | jq -r --arg id "$other_id" '[.obligations[] | select(.id == $id)] | length')" "0"
+
+  run_otdfctl_obl delete --id "$match_id" --force
+  run_otdfctl_obl delete --id "$other_id" --force
+}
+
 @test "Update obligation" {
   # setup an obligation to update
   run_otdfctl_obl create --name test_update_obl --namespace "$NS_ID" --json

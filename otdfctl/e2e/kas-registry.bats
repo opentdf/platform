@@ -212,3 +212,20 @@ teardown() {
     run_otdfctl_kasr delete --id "$kas_b_id" --force
     run_otdfctl_kasr delete --id "$kas_c_id" --force
 }
+
+@test "list registered KASes supports search flag" {
+    export CREATED=""
+    search_prefix="search-kas-$BATS_TEST_NUMBER-$RANDOM"
+    match=$(./otdfctl $HOST $WITH_CREDS policy kas-registry create --name "$search_prefix-match" --uri "https://$search_prefix-match.example.com" --json)
+    other=$(./otdfctl $HOST $WITH_CREDS policy kas-registry create --name "$search_prefix-other" --uri "https://$search_prefix-other.example.com" --json)
+    match_id=$(echo "$match" | jq -r '.id')
+    other_id=$(echo "$other" | jq -r '.id')
+
+    run_otdfctl_kasr list --search "$search_prefix-match" --json
+    assert_success
+    assert_equal "$(echo "$output" | jq -r --arg id "$match_id" '[.key_access_servers[] | select(.id == $id)] | length')" "1"
+    assert_equal "$(echo "$output" | jq -r --arg id "$other_id" '[.key_access_servers[] | select(.id == $id)] | length')" "0"
+
+    run_otdfctl_kasr delete --id "$match_id" --force
+    run_otdfctl_kasr delete --id "$other_id" --force
+}

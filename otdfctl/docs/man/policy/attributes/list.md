@@ -19,6 +19,8 @@ command:
     - name: offset
       shorthand: o
       description: Offset (page) quantity from start of the list
+    - name: search
+      description: Search term to filter results
     - name: sort
       description: Sort list results by field
     - name: order
@@ -28,6 +30,14 @@ command:
 By default, the list will only provide `active` attributes if unspecified, but the filter can be controlled with the `--state` flag.
 
 For more general information about attributes, see the `attributes` subcommand.
+
+## Search Fields
+
+The `--search` term is trimmed and matched as a substring against these values:
+
+| Value | Description |
+| --- | --- |
+| Attribute FQN | Fully qualified attribute definition name, such as `https://example.com/attr/classification` |
 
 ## Sort Options
 
@@ -60,6 +70,12 @@ otdfctl policy attributes list --order asc
 
 ```shell
 otdfctl policy attributes list
+```
+
+Search attributes by FQN:
+
+```shell
+otdfctl policy attributes list --search classification
 ```
 
 Sort attributes by name ascending:

@@ -211,6 +211,23 @@ teardown_file() {
     run_otdfctl_sm delete --id "$sm_c_id" --force
 }
 
+@test "List subject mappings supports search flag" {
+    search_token="search-sm-${BATS_TEST_NUMBER}-${RANDOM}"
+    search_attr=$(./otdfctl $HOST $WITH_CREDS policy attributes create --namespace "$NS_ID" --name "$search_token" --rule ANY_OF -v "match" -v "other" --json)
+    search_val_match_id=$(echo "$search_attr" | jq -r '.values[0].id')
+    search_val_other_id=$(echo "$search_attr" | jq -r '.values[1].id')
+    match_id=$(./otdfctl $HOST $WITH_CREDS policy sm create --namespace "$NS_ID" -a "$search_val_match_id" --action "$ACTION_READ_NAME" --subject-condition-set-new "$SCS_1" --label "search=$search_token-match" --json | jq -r '.id')
+    other_id=$(./otdfctl $HOST $WITH_CREDS policy sm create --namespace "$NS_ID" -a "$search_val_other_id" --action "$ACTION_READ_NAME" --subject-condition-set-new "$SCS_1" --label "search=$search_token-other" --json | jq -r '.id')
+
+    run_otdfctl_sm list --namespace "$NS_ID" --search "$search_token-match" --json
+    assert_success
+    assert_equal "$(echo "$output" | jq -r --arg id "$match_id" '[.subject_mappings[] | select(.id == $id)] | length')" "1"
+    assert_equal "$(echo "$output" | jq -r --arg id "$other_id" '[.subject_mappings[] | select(.id == $id)] | length')" "0"
+
+    run_otdfctl_sm delete --id "$match_id" --force
+    run_otdfctl_sm delete --id "$other_id" --force
+}
+
 @test "Create subject mapping with namespace ID" {
     run ./otdfctl $HOST $WITH_CREDS policy subject-mappings create -a "$SM_VAL2_ID" --action "$ACTION_READ_NAME" --subject-condition-set-new "$SCS_2" --namespace "$NS_ID" --json
     assert_success

@@ -976,7 +976,7 @@ func (h *plannerTestHandler) ListActions(_ context.Context, limit, offset int32,
 	return &actions.ListActionsResponse{Pagination: emptyPageResponse()}, nil
 }
 
-func (h *plannerTestHandler) ListSubjectConditionSets(_ context.Context, limit, offset int32, namespace string, sort handlers.SortOption) (*subjectmapping.ListSubjectConditionSetsResponse, error) {
+func (h *plannerTestHandler) ListSubjectConditionSets(_ context.Context, limit, offset int32, namespace string, search string, sort handlers.SortOption) (*subjectmapping.ListSubjectConditionSetsResponse, error) {
 	h.subjectConditionSetCalls = append(h.subjectConditionSetCalls, namespace)
 	if resp, ok := h.subjectConditionSetsByNamespace[namespace]; ok {
 		return resp, nil
@@ -984,7 +984,7 @@ func (h *plannerTestHandler) ListSubjectConditionSets(_ context.Context, limit, 
 	return &subjectmapping.ListSubjectConditionSetsResponse{Pagination: emptyPageResponse()}, nil
 }
 
-func (h *plannerTestHandler) ListSubjectMappings(_ context.Context, limit, offset int32, namespace string, sort handlers.SortOption) (*subjectmapping.ListSubjectMappingsResponse, error) {
+func (h *plannerTestHandler) ListSubjectMappings(_ context.Context, limit, offset int32, namespace string, search string, sort handlers.SortOption) (*subjectmapping.ListSubjectMappingsResponse, error) {
 	h.subjectMappingCalls = append(h.subjectMappingCalls, namespace)
 	if resp, ok := h.subjectMappingsByNamespace[namespace]; ok {
 		return resp, nil
@@ -992,7 +992,7 @@ func (h *plannerTestHandler) ListSubjectMappings(_ context.Context, limit, offse
 	return &subjectmapping.ListSubjectMappingsResponse{Pagination: emptyPageResponse()}, nil
 }
 
-func (h *plannerTestHandler) ListRegisteredResources(_ context.Context, limit, offset int32, namespace string, sort handlers.SortOption) (*registeredresources.ListRegisteredResourcesResponse, error) {
+func (h *plannerTestHandler) ListRegisteredResources(_ context.Context, limit, offset int32, namespace string, search string, sort handlers.SortOption) (*registeredresources.ListRegisteredResourcesResponse, error) {
 	h.registeredResourceCalls = append(h.registeredResourceCalls, namespace)
 	if resp, ok := h.registeredResourcesByNamespace[namespace]; ok {
 		return resp, nil
@@ -1029,7 +1029,7 @@ func (h *plannerTestHandler) ListObligationTriggers(_ context.Context, namespace
 	return &obligations.ListObligationTriggersResponse{Pagination: emptyPageResponse()}, nil
 }
 
-func (h *plannerTestHandler) ListNamespaces(_ context.Context, state common.ActiveStateEnum, limit, offset int32, sort handlers.SortOption) (*namespaces.ListNamespacesResponse, error) {
+func (h *plannerTestHandler) ListNamespaces(_ context.Context, state common.ActiveStateEnum, limit, offset int32, search string, sort handlers.SortOption) (*namespaces.ListNamespacesResponse, error) {
 	if h.namespacesResponse != nil {
 		return h.namespacesResponse, nil
 	}

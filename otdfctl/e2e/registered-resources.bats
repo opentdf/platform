@@ -236,6 +236,20 @@ teardown_file() {
   run_otdfctl_reg_res delete --id "$rr_c_id" --force
 }
 
+@test "List registered resources supports search flag" {
+  search_prefix="search_rr_${BATS_TEST_NUMBER}_$RANDOM"
+  match_id=$(./otdfctl $HOST $WITH_CREDS policy registered-resources create --name "${search_prefix}_match" --namespace "$NS_ID" --json | jq -r '.id')
+  other_id=$(./otdfctl $HOST $WITH_CREDS policy registered-resources create --name "${search_prefix}_other" --namespace "$NS_ID" --json | jq -r '.id')
+
+  run_otdfctl_reg_res list --namespace "$NS_ID" --search "${search_prefix}_match" --json
+  assert_success
+  assert_equal "$(echo "$output" | jq -r --arg id "$match_id" '[.resources[] | select(.id == $id)] | length')" "1"
+  assert_equal "$(echo "$output" | jq -r --arg id "$other_id" '[.resources[] | select(.id == $id)] | length')" "0"
+
+  run_otdfctl_reg_res delete --id "$match_id" --force
+  run_otdfctl_reg_res delete --id "$other_id" --force
+}
+
 @test "Update registered resource" {
   # setup a resource to update
   run_otdfctl_reg_res create --name test_update_rr --namespace "$NS_ID"

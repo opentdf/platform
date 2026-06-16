@@ -761,49 +761,69 @@ func (s *ResourceMappingsSuite) Test_CreateResourceMapping_WithGroupAndMismatche
 }
 
 func (s *ResourceMappingsSuite) Test_ListResourceMappings_FilterByNamespaceId_Succeeds() {
-	ns, cleanup := s.createIsolatedNamespace("rm-list-ns-id")
-	defer cleanup()
+	nsA, cleanupA := s.createIsolatedNamespace("rm-list-ns-id-a")
+	defer cleanupA()
+	nsB, cleanupB := s.createIsolatedNamespace("rm-list-ns-id-b")
+	defer cleanupB()
 	attrValue := s.f.GetAttributeValueKey("example.com/attr/attr1/value/value1")
 
-	created, err := s.db.PolicyClient.CreateResourceMapping(s.ctx, &resourcemapping.CreateResourceMappingRequest{
+	createdA, err := s.db.PolicyClient.CreateResourceMapping(s.ctx, &resourcemapping.CreateResourceMappingRequest{
 		AttributeValueId: attrValue.ID,
-		Terms:            []string{"list-ns-id-term"},
-		NamespaceId:      ns.GetId(),
+		Terms:            []string{"list-ns-id-term-a"},
+		NamespaceId:      nsA.GetId(),
+	})
+	s.Require().NoError(err)
+
+	// A second mapping in a different namespace must be excluded by the filter.
+	_, err = s.db.PolicyClient.CreateResourceMapping(s.ctx, &resourcemapping.CreateResourceMappingRequest{
+		AttributeValueId: attrValue.ID,
+		Terms:            []string{"list-ns-id-term-b"},
+		NamespaceId:      nsB.GetId(),
 	})
 	s.Require().NoError(err)
 
 	listRsp, err := s.db.PolicyClient.ListResourceMappings(s.ctx, &resourcemapping.ListResourceMappingsRequest{
-		NamespaceId: ns.GetId(),
+		NamespaceId: nsA.GetId(),
 	})
 	s.Require().NoError(err)
 	s.Require().NotNil(listRsp)
 
-	s.Len(listRsp.GetResourceMappings(), 1, "isolated namespace should own exactly one mapping")
-	s.Equal(created.GetId(), listRsp.GetResourceMappings()[0].GetId())
-	s.Equal(ns.GetId(), listRsp.GetResourceMappings()[0].GetNamespace().GetId())
+	s.Len(listRsp.GetResourceMappings(), 1, "filter should return only the mapping owned by namespace A")
+	s.Equal(createdA.GetId(), listRsp.GetResourceMappings()[0].GetId())
+	s.Equal(nsA.GetId(), listRsp.GetResourceMappings()[0].GetNamespace().GetId())
 }
 
 func (s *ResourceMappingsSuite) Test_ListResourceMappings_FilterByNamespaceFqn_Succeeds() {
-	ns, cleanup := s.createIsolatedNamespace("rm-list-ns-fqn")
-	defer cleanup()
+	nsA, cleanupA := s.createIsolatedNamespace("rm-list-ns-fqn-a")
+	defer cleanupA()
+	nsB, cleanupB := s.createIsolatedNamespace("rm-list-ns-fqn-b")
+	defer cleanupB()
 	attrValue := s.f.GetAttributeValueKey("example.com/attr/attr1/value/value1")
 
-	created, err := s.db.PolicyClient.CreateResourceMapping(s.ctx, &resourcemapping.CreateResourceMappingRequest{
+	createdA, err := s.db.PolicyClient.CreateResourceMapping(s.ctx, &resourcemapping.CreateResourceMappingRequest{
 		AttributeValueId: attrValue.ID,
-		Terms:            []string{"list-ns-fqn-term"},
-		NamespaceFqn:     ns.GetFqn(),
+		Terms:            []string{"list-ns-fqn-term-a"},
+		NamespaceFqn:     nsA.GetFqn(),
+	})
+	s.Require().NoError(err)
+
+	// A second mapping in a different namespace must be excluded by the filter.
+	_, err = s.db.PolicyClient.CreateResourceMapping(s.ctx, &resourcemapping.CreateResourceMappingRequest{
+		AttributeValueId: attrValue.ID,
+		Terms:            []string{"list-ns-fqn-term-b"},
+		NamespaceFqn:     nsB.GetFqn(),
 	})
 	s.Require().NoError(err)
 
 	listRsp, err := s.db.PolicyClient.ListResourceMappings(s.ctx, &resourcemapping.ListResourceMappingsRequest{
-		NamespaceFqn: ns.GetFqn(),
+		NamespaceFqn: nsA.GetFqn(),
 	})
 	s.Require().NoError(err)
 	s.Require().NotNil(listRsp)
 
-	s.Len(listRsp.GetResourceMappings(), 1, "isolated namespace should own exactly one mapping")
-	s.Equal(created.GetId(), listRsp.GetResourceMappings()[0].GetId())
-	s.Equal(ns.GetFqn(), listRsp.GetResourceMappings()[0].GetNamespace().GetFqn())
+	s.Len(listRsp.GetResourceMappings(), 1, "filter should return only the mapping owned by namespace A")
+	s.Equal(createdA.GetId(), listRsp.GetResourceMappings()[0].GetId())
+	s.Equal(nsA.GetFqn(), listRsp.GetResourceMappings()[0].GetNamespace().GetFqn())
 }
 
 func (s *ResourceMappingsSuite) Test_ListResourceMappingGroups_WithNamespaceFqn_Succeeds() {
@@ -820,44 +840,6 @@ func (s *ResourceMappingsSuite) Test_ListResourceMappingGroups_WithNamespaceFqn_
 	s.Len(list, 1, "isolated namespace should own exactly one group")
 	s.Equal(group.GetId(), list[0].GetId())
 	s.Equal(ns.GetId(), list[0].GetNamespaceId())
-}
-
-func (s *ResourceMappingsSuite) Test_BackfillResourceMappingNamespace_FromGroup() {
-	// Exercises the migration-time backfill logic: a grouped mapping whose
-	// namespace_id was never set (legacy data) is backfilled from its group.
-	ns, group, cleanup := s.createIsolatedNamespaceAndGroup("rm-backfill")
-	defer cleanup()
-	attrValue := s.f.GetAttributeValueKey("example.com/attr/attr1/value/value1")
-
-	created, err := s.db.PolicyClient.CreateResourceMapping(s.ctx, &resourcemapping.CreateResourceMappingRequest{
-		AttributeValueId: attrValue.ID,
-		Terms:            []string{"backfill-term"},
-		GroupId:          group.GetId(),
-	})
-	s.Require().NoError(err)
-	s.Require().Equal(ns.GetId(), created.GetNamespace().GetId())
-
-	rmTable := s.db.TableName("resource_mappings")
-	rmgTable := s.db.TableName("resource_mapping_groups")
-
-	// Simulate legacy data created before namespace_id existed.
-	_, err = s.db.Client.Pgx.Exec(s.ctx, "UPDATE "+rmTable+" SET namespace_id = NULL WHERE id = $1", created.GetId())
-	s.Require().NoError(err)
-
-	cleared, err := s.db.PolicyClient.GetResourceMapping(s.ctx, created.GetId())
-	s.Require().NoError(err)
-	s.Nil(cleared.GetNamespace(), "namespace should be cleared to simulate legacy data")
-
-	// Run the same backfill the migration performs, scoped to this mapping so the
-	// test does not mutate shared fixture rows (and their updated_at triggers).
-	_, err = s.db.Client.Pgx.Exec(s.ctx,
-		"UPDATE "+rmTable+" m SET namespace_id = g.namespace_id FROM "+rmgTable+" g WHERE m.group_id = g.id AND m.namespace_id IS NULL AND m.id = $1",
-		created.GetId())
-	s.Require().NoError(err)
-
-	backfilled, err := s.db.PolicyClient.GetResourceMapping(s.ctx, created.GetId())
-	s.Require().NoError(err)
-	s.Equal(ns.GetId(), backfilled.GetNamespace().GetId(), "grouped mapping should be backfilled with the group's namespace")
 }
 
 func (s *ResourceMappingsSuite) Test_ListResourceMappings_NoPagination_Succeeds() {

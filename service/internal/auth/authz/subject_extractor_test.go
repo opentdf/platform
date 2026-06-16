@@ -54,6 +54,20 @@ func TestSubjectExtractorCanPrefixSubjects(t *testing.T) {
 	require.Equal(t, []string{"role:admin"}, roles)
 }
 
+func TestSubjectExtractorRequiresTokenWhenClaimsAreNotCached(t *testing.T) {
+	extractor := SubjectExtractor{
+		UserNameClaim: "preferred_username",
+		ClientIDClaim: "azp",
+		RoleProvider:  staticRoleProvider{roles: []string{"admin"}},
+	}
+
+	subjects, roles, err := extractor.BuildSubjectFromToken(t.Context(), nil, platformauthz.RoleRequest{}, true)
+
+	require.ErrorIs(t, err, ErrTokenRequired)
+	require.Nil(t, subjects)
+	require.Nil(t, roles)
+}
+
 func TestSubjectExtractorClientIDFromToken(t *testing.T) {
 	tests := []struct {
 		name        string

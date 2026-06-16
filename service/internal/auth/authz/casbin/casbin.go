@@ -214,6 +214,13 @@ func buildV2PolicyFromConfig(cfg authz.CasbinV2Config) string {
 
 // Authorize implements authz.Authorizer.Authorize.
 func (a *Authorizer) Authorize(ctx context.Context, req *authz.Request) (*authz.Decision, error) {
+	if req == nil {
+		return nil, errors.New("authorization request is required")
+	}
+	if req.Token == nil {
+		return nil, errors.New("authorization token is required")
+	}
+
 	switch a.version {
 	case "v1":
 		return a.authorizeV1(ctx, req)

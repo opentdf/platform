@@ -98,6 +98,29 @@ func (s *CasbinAuthorizerSuite) TestNewCasbinAuthorizer_V2() {
 	s.True(authorizer.SupportsResourceAuthorization())
 }
 
+func (s *CasbinAuthorizerSuite) TestAuthorizeRequiresRequestAndToken() {
+	cfg := authz.Config{
+		Version: "v2",
+		PolicyConfig: authz.PolicyConfig{
+			Csv: "p, role:admin, *, *, allow",
+		},
+		Logger: s.logger,
+	}
+
+	authorizer, err := NewAuthorizer(cfg)
+	s.Require().NoError(err)
+
+	decision, err := authorizer.Authorize(s.T().Context(), nil)
+	s.Require().Error(err)
+	s.Nil(decision)
+	s.Contains(err.Error(), "authorization request is required")
+
+	decision, err = authorizer.Authorize(s.T().Context(), &authz.Request{})
+	s.Require().Error(err)
+	s.Nil(decision)
+	s.Contains(err.Error(), "authorization token is required")
+}
+
 func (s *CasbinAuthorizerSuite) TestNewCasbinAuthorizer_UnknownVersionFallsBackToV1() {
 	// Unknown versions default to v1, which requires a v1 enforcer.
 	// This maintains backwards compatibility while providing a clear error.
@@ -389,6 +412,35 @@ func (s *CasbinAuthorizerSuite) TestAuthorizeV2_NoDimensions() {
 	decision, err := authorizer.Authorize(context.Background(), req)
 	s.Require().NoError(err)
 	s.True(decision.Allowed, "should be allowed with nil resource context when policy has wildcard")
+}
+
+func (s *CasbinAuthorizerSuite) TestAuthorizeV2_NoDimensionsDeniedWhenPolicyRequiresDimension() {
+	cfg := authz.Config{
+		Version: "v2",
+		PolicyConfig: authz.PolicyConfig{
+			GroupsClaim: "realm_access.roles",
+			Csv:         `p, role:standard, /policy.attributes.AttributesService/Get*, namespace=finance, allow`,
+		},
+		Logger: s.logger,
+	}
+
+	authorizer, err := NewAuthorizer(cfg)
+	s.Require().NoError(err)
+
+	token := createTestToken(s.T(), map[string]interface{}{
+		"realm_access": map[string]interface{}{
+			"roles": []interface{}{"standard"},
+		},
+	})
+
+	decision, err := authorizer.Authorize(context.Background(), &authz.Request{
+		Token:           token,
+		RPC:             "/policy.attributes.AttributesService/GetAttribute",
+		Action:          "read",
+		ResourceContext: nil,
+	})
+	s.Require().NoError(err)
+	s.False(decision.Allowed, "should deny nil resource context when policy requires dimensions")
 }
 
 func (s *CasbinAuthorizerSuite) TestAuthorizeV2_UsernameWithRolePrefixIsIgnored() {

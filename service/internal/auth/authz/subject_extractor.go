@@ -22,6 +22,7 @@ var (
 	ErrClientIDClaimNotConfigured = errors.New("no client ID claim configured")
 	ErrClientIDClaimNotFound      = errors.New("client ID claim not found")
 	ErrClientIDClaimNotString     = errors.New("client ID claim is not a string")
+	ErrTokenRequired              = errors.New("token is required")
 )
 
 type SubjectExtractor struct {
@@ -68,6 +69,9 @@ func (e SubjectExtractor) ClaimsForRequest(ctx context.Context, token jwt.Token,
 		if claims.Subject != "" || len(claims.Groups) > 0 {
 			return claims, nil
 		}
+	}
+	if token == nil {
+		return platformauthz.RequestClaims{}, ErrTokenRequired
 	}
 
 	var roles []string

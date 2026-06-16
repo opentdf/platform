@@ -353,6 +353,14 @@ func (a Authentication) MuxHandler(handler http.Handler) http.Handler {
 			http.Error(w, "internal server error", http.StatusInternalServerError)
 			return
 		}
+		if a.authorizer == nil {
+			log.ErrorContext(ctx, "authorizer not initialized") //nolint:contextcheck // checkToken derives ctx from r.Context.
+			http.Error(w, "internal server error", http.StatusInternalServerError)
+			return
+		}
+		// Extra HTTP handlers do not use Connect resolvers, so v2 authorizers receive no
+		// resource dimensions here. Dimension-scoped v2 policy therefore fails closed
+		// unless the policy explicitly allows wildcard dimensions for this path.
 		decision, err := a.authorizer.Authorize(ctx, &internalauthz.Request{ //nolint:contextcheck // checkToken derives ctx from r.Context.
 			Token:  accessTok,
 			RPC:    r.URL.Path,

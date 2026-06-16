@@ -1,9 +1,11 @@
 package auth
 
 import (
+	"bytes"
 	"crypto/sha256"
 	"encoding/base64"
 	"fmt"
+	"io"
 	"net/http"
 	"net/url"
 	"strings"
@@ -58,6 +60,14 @@ func (t *DPoPTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	// Clone request to avoid modifying the original
 	req2 := cloneRequest(req)
 
+	// Buffer the body and install GetBody on the clone so a DPoP-Nonce retry
+	// can replay it. ConnectRPC/gRPC clients set Body and ContentLength but
+	// not GetBody, so without this the retry path would send an empty body
+	// against a non-zero ContentLength and net/http would abort the request.
+	if err := bufferRequestBody(req2); err != nil {
+		return nil, err
+	}
+
 	// Determine if this is a token endpoint request
 	isTokenRequest := t.isTokenEndpointRequest(req2.URL)
 
@@ -78,7 +88,7 @@ func (t *DPoPTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 
 	// Handle DPoP-Nonce challenge (RFC 9449 §8)
 	if resp.StatusCode == http.StatusUnauthorized {
-		retryResp, retried, err := t.retryWithNonce(req, base, resp, origin, nonce, isTokenRequest)
+		retryResp, retried, err := t.retryWithNonce(req2, base, resp, origin, nonce, isTokenRequest)
 		if err != nil {
 			return nil, err
 		}
@@ -282,6 +292,28 @@ func cloneRequest(req *http.Request) *http.Request {
 	// Clone headers to avoid modifying the original
 	req2.Header = req.Header.Clone()
 	return req2
+}
+
+// bufferRequestBody reads req.Body into memory and replaces both Body and
+// GetBody on req so the DPoP nonce retry path can replay the body. No-op when
+// the body is empty or GetBody is already set.
+func bufferRequestBody(req *http.Request) error {
+	if req.Body == nil || req.Body == http.NoBody || req.GetBody != nil {
+		return nil
+	}
+	data, readErr := io.ReadAll(req.Body)
+	closeErr := req.Body.Close()
+	if readErr != nil {
+		return fmt.Errorf("buffering DPoP request body: %w", readErr)
+	}
+	if closeErr != nil {
+		return fmt.Errorf("closing DPoP request body: %w", closeErr)
+	}
+	req.Body = io.NopCloser(bytes.NewReader(data))
+	req.GetBody = func() (io.ReadCloser, error) {
+		return io.NopCloser(bytes.NewReader(data)), nil
+	}
+	return nil
 }
 
 // NewDPoPHTTPClient creates a new HTTP client with DPoP transport wrapping.

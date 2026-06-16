@@ -1,11 +1,13 @@
 package auth
 
 import (
+	"bytes"
 	"context"
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/sha256"
 	"encoding/base64"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -216,6 +218,73 @@ func TestDPoPTransport_NonceRetry(t *testing.T) {
 		t.Errorf("expected 2 calls (initial + retry), got %d", callCount)
 	}
 
+	if resp.StatusCode != http.StatusOK {
+		t.Errorf("final status = %d, want %d", resp.StatusCode, http.StatusOK)
+	}
+}
+
+// TestDPoPTransport_NonceRetryReplaysBodyWithoutGetBody reproduces the failure
+// path that ConnectRPC/gRPC clients hit: they set req.Body and ContentLength
+// but never set req.GetBody. The first round trip consumes the body; without
+// buffering, the nonce retry sends ContentLength=N with an empty body and the
+// HTTP/1.x transport aborts with "ContentLength=N with Body length 0".
+func TestDPoPTransport_NonceRetryReplaysBodyWithoutGetBody(t *testing.T) {
+	key := generateTestKey(t)
+	ts := &mockTokenSource{token: "test-token"}
+
+	const expectedBody = `{"foo":"bar"}`
+	nonce := "test-nonce-12345"
+	var receivedBodies []string
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		body, err := io.ReadAll(r.Body)
+		if err != nil {
+			t.Errorf("call %d: read body: %v", len(receivedBodies)+1, err)
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		receivedBodies = append(receivedBodies, string(body))
+
+		if len(receivedBodies) == 1 {
+			w.Header().Set("DPoP-Nonce", nonce)
+			w.WriteHeader(http.StatusUnauthorized)
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer server.Close()
+
+	transport := &DPoPTransport{
+		Base:        http.DefaultTransport,
+		DPoPKey:     key,
+		TokenSource: ts,
+	}
+
+	client := &http.Client{Transport: transport}
+
+	req, err := http.NewRequest(http.MethodPost, server.URL, nil)
+	if err != nil {
+		t.Fatalf("create request: %v", err)
+	}
+	bodyBytes := []byte(expectedBody)
+	req.Body = io.NopCloser(bytes.NewReader(bodyBytes))
+	req.ContentLength = int64(len(bodyBytes))
+	// GetBody intentionally NOT set — mirrors ConnectRPC/gRPC generated clients.
+
+	resp, err := client.Do(req)
+	if err != nil {
+		t.Fatalf("request failed: %v", err)
+	}
+	defer resp.Body.Close()
+
+	if len(receivedBodies) != 2 {
+		t.Fatalf("expected 2 calls (initial + retry), got %d", len(receivedBodies))
+	}
+	for i, got := range receivedBodies {
+		if got != expectedBody {
+			t.Errorf("call %d body = %q, want %q", i+1, got, expectedBody)
+		}
+	}
 	if resp.StatusCode != http.StatusOK {
 		t.Errorf("final status = %d, want %d", resp.StatusCode, http.StatusOK)
 	}

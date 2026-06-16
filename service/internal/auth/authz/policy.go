@@ -4,6 +4,9 @@ package authz
 // This mirrors auth.PolicyConfig to avoid circular imports while maintaining
 // the same field structure for consistent configuration.
 type PolicyConfig struct {
+	// Issuer is the configured token issuer for role provider requests.
+	Issuer string
+
 	// Engine specifies the authorization engine to use.
 	// - "casbin" (default): Casbin policy engine
 	// - "cedar": AWS Cedar policy engine (future)

@@ -71,13 +71,14 @@ var (
 )
 
 const (
-	refreshInterval = 15 * time.Minute
-	dpopJWTType     = "dpop+jwt"
-	ActionRead      = "read"
-	ActionWrite     = "write"
-	ActionDelete    = "delete"
-	ActionUnsafe    = "unsafe"
-	ActionOther     = "other"
+	refreshInterval                     = 15 * time.Minute
+	dpopJWTType                         = "dpop+jwt"
+	casbinAuthzConfiguredGroupsClaimKey = "configured_groups_claim"
+	ActionRead                          = "read"
+	ActionWrite                         = "write"
+	ActionDelete                        = "delete"
+	ActionUnsafe                        = "unsafe"
+	ActionOther                         = "other"
 )
 
 // Authentication holds a jwks cache and information about the openid configuration
@@ -87,8 +88,6 @@ type Authentication struct {
 	tokenVerifier *TokenVerifier
 	// openidConfigurations holds the openid configuration for the issuer
 	oidcConfiguration AuthNConfig
-	// Casbin enforcer for v1 authorization (implements authz.V1Enforcer)
-	enforcer *Enforcer
 	// authorizer is the pluggable authorization engine (v1, v2, etc.)
 	authorizer internalauthz.Authorizer
 	// authzResolverRegistry holds per-method resolvers for extracting authorization dimensions
@@ -145,36 +144,17 @@ func NewAuthenticator(ctx context.Context, cfg Config, logger *logger.Logger, we
 		RoleProvider:  roleProvider,
 		Logger:        logger,
 	}
-	casbinConfig := CasbinConfig{
-		PolicyConfig: cfg.Policy,
-		RoleProvider: roleProvider,
-	}
-	logger.Info("initializing casbin enforcer")
-	if a.enforcer, err = NewCasbinEnforcer(casbinConfig, a.logger); err != nil {
-		return nil, fmt.Errorf("failed to initialize casbin enforcer: %w", err)
-	}
+
+	policyCfg := cfg.Policy
+	policyCfg.Issuer = cfg.Issuer
 
 	// Initialize the pluggable authorizer based on engine and version
 	authzCfg := internalauthz.Config{
-		Engine:  cfg.Policy.Engine,
-		Version: cfg.Policy.Version,
-		PolicyConfig: internalauthz.PolicyConfig{
-			Issuer:        cfg.Issuer,
-			Engine:        cfg.Policy.Engine,
-			Version:       cfg.Policy.Version,
-			UserNameClaim: cfg.Policy.UserNameClaim,
-			GroupsClaim:   cfg.Policy.GroupsClaim,
-			ClientIDClaim: cfg.Policy.ClientIDClaim,
-			Csv:           cfg.Policy.Csv,
-			Extension:     cfg.Policy.Extension,
-			Model:         cfg.Policy.Model,
-			RoleMap:       cfg.Policy.RoleMap,
-			Adapter:       cfg.Policy.Adapter,
-		},
-		Logger: logger,
-		// Pass the v1 enforcer to break circular dependency
-		// The casbin authorizer will use this for v1 mode
-		Options: []internalauthz.Option{internalauthz.WithV1Enforcer(a.enforcer), internalauthz.WithRoleProvider(roleProvider)},
+		Engine:       cfg.Policy.Engine,
+		Version:      cfg.Policy.Version,
+		PolicyConfig: policyCfg,
+		Logger:       logger,
+		Options:      []internalauthz.Option{internalauthz.WithRoleProvider(roleProvider)},
 	}
 	logger.Info(
 		"initializing authorizer",
@@ -346,7 +326,7 @@ func (a Authentication) MuxHandler(handler http.Handler) http.Handler {
 		ctx, err = a.subjectExtractor.ContextWithClaims(ctx, accessTok, roleReq)
 		if err != nil {
 			log.WarnContext(r.Context(), "role provider error", slog.Any("error", err)) //nolint:contextcheck // request context is already derived with public route state above.
-			if errors.Is(err, ErrPermissionDenied) {
+			if errors.Is(err, internalauthz.ErrPermissionDenied) {
 				http.Error(w, "permission denied", http.StatusForbidden)
 				return
 			}
@@ -375,9 +355,7 @@ func (a Authentication) MuxHandler(handler http.Handler) http.Handler {
 			log.WarnContext( //nolint:contextcheck // checkToken derives ctx from r.Context.
 				ctx,
 				"permission denied",
-				slog.String("azp", accessTok.Subject()),
-				slog.String("mode", string(decision.Mode)),
-				slog.String("reason", decision.Reason),
+				permissionDeniedDecisionLogAttrs(accessTok, decision, nil)...,
 			)
 			http.Error(w, "permission denied", http.StatusForbidden)
 			return
@@ -446,7 +424,7 @@ func (a Authentication) ConnectAuthNInterceptor() connect.UnaryInterceptorFunc {
 			ctxWithJWK, err = a.subjectExtractor.ContextWithClaims(ctxWithJWK, token, roleReq)
 			if err != nil {
 				log.WarnContext(ctxWithJWK, "role provider error", slog.Any("error", err))
-				if errors.Is(err, ErrPermissionDenied) {
+				if errors.Is(err, internalauthz.ErrPermissionDenied) {
 					return nil, connect.NewError(connect.CodePermissionDenied, errors.New("permission denied"))
 				}
 				return nil, connect.NewError(connect.CodeInternal, errors.New("role provider error"))
@@ -489,9 +467,7 @@ func (a Authentication) ConnectAuthZInterceptor() connect.UnaryInterceptorFunc {
 			if !decision.Allowed {
 				log.WarnContext(
 					ctx, "permission denied",
-					slog.String("azp", token.Subject()),
-					slog.String("mode", string(decision.Mode)),
-					slog.String("reason", decision.Reason),
+					permissionDeniedDecisionLogAttrs(token, decision, nil)...,
 				)
 				return nil, connect.NewError(connect.CodePermissionDenied, errors.New("permission denied"))
 			}
@@ -513,17 +489,22 @@ func (a Authentication) ConnectAuthZInterceptor() connect.UnaryInterceptorFunc {
 	return connect.UnaryInterceptorFunc(interceptor)
 }
 
-func permissionDeniedLogAttrs(token jwt.Token, casbinAuthz map[string]any, err error) []any {
+func permissionDeniedDecisionLogAttrs(token jwt.Token, decision *internalauthz.Decision, err error) []any {
 	attrs := []any{slog.String("azp", token.Subject())}
 
-	configuredGroupsClaim, _ := casbinAuthz[casbinAuthzConfiguredGroupsClaimKey].(string)
-	subjectGroups, hasSubjectGroups := casbinAuthz[casbinAuthzSubjectGroupsKey]
-	if configuredGroupsClaim != "" || hasSubjectGroups {
+	if decision != nil && decision.Metadata.GroupsClaim != "" {
 		attrs = append(attrs, slog.Group(
 			"casbin_authz",
-			slog.String("configured_groups_claim", configuredGroupsClaim),
-			slog.Any("subject_groups", subjectGroups),
+			slog.String(casbinAuthzConfiguredGroupsClaimKey, decision.Metadata.GroupsClaim),
 		))
+	}
+
+	if decision != nil {
+		attrs = append(
+			attrs,
+			slog.String("mode", string(decision.Mode)),
+			slog.String("reason", decision.Reason),
+		)
 	}
 
 	if err != nil {

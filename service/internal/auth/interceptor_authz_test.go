@@ -198,6 +198,7 @@ func (s *InterceptorAuthzSuite) TestV1_CustomRoleMapping() {
 	s.Require().NoError(err)
 
 	// Map external roles to internal roles
+	//nolint:staticcheck // Exercise deprecated RoleMap compatibility.
 	policyCfg.RoleMap = map[string]string{
 		"admin":    "external-admin",
 		"standard": "external-standard",
@@ -670,10 +671,6 @@ func (s *InterceptorAuthzSuite) newTokenWithRoles(roles ...string) jwt.Token {
 
 // createV1Authorizer creates a v1 Casbin authorizer using the same path as the interceptor
 func (s *InterceptorAuthzSuite) createV1Authorizer(policyCfg PolicyConfig) authz.Authorizer {
-	// Create the v1 Casbin enforcer (same as authn.go)
-	enforcer, err := NewCasbinEnforcer(CasbinConfig{PolicyConfig: policyCfg}, s.logger)
-	s.Require().NoError(err)
-
 	// Create authz config matching authn.go initialization
 	authzPolicyCfg := authz.PolicyConfig{
 		Engine:        policyCfg.Engine,
@@ -684,14 +681,14 @@ func (s *InterceptorAuthzSuite) createV1Authorizer(policyCfg PolicyConfig) authz
 		Csv:           policyCfg.Csv,
 		Extension:     policyCfg.Extension,
 		Model:         policyCfg.Model,
-		RoleMap:       policyCfg.RoleMap,
+		//nolint:staticcheck // Exercise deprecated RoleMap compatibility.
+		RoleMap: policyCfg.RoleMap,
 	}
 	authzCfg := authz.Config{
 		Engine:       "casbin",
 		Version:      "v1",
 		PolicyConfig: authzPolicyCfg,
 		Logger:       s.logger,
-		Options:      []authz.Option{authz.WithV1Enforcer(enforcer)},
 	}
 
 	authorizer, err := authz.New(authzCfg)

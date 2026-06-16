@@ -1,8 +1,9 @@
-package casbin
+package v2
 
 import (
 	"context"
 	"errors"
+	"fmt"
 	"testing"
 
 	"github.com/lestrrat-go/jwx/v2/jwt"
@@ -13,18 +14,6 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
-
-// mockV1Enforcer implements authz.V1Enforcer for testing
-type mockV1Enforcer struct {
-	enforceFunc func(ctx context.Context, token jwt.Token, req platformauthz.RoleRequest) (bool, map[string]any, error)
-}
-
-func (m *mockV1Enforcer) Enforce(ctx context.Context, token jwt.Token, req platformauthz.RoleRequest) (bool, map[string]any, error) {
-	if m.enforceFunc != nil {
-		return m.enforceFunc(ctx, token, req)
-	}
-	return false, nil, nil
-}
 
 type staticRoleProvider struct {
 	roles []string
@@ -61,26 +50,6 @@ func (s *CasbinAuthorizerSuite) SetupTest() {
 	s.logger = logger.CreateTestLogger()
 }
 
-func (s *CasbinAuthorizerSuite) TestNewCasbinAuthorizer_V1() {
-	mockEnforcer := &mockV1Enforcer{}
-
-	cfg := authz.Config{
-		Version: "v1",
-		PolicyConfig: authz.PolicyConfig{
-			GroupsClaim: "realm_access.roles",
-		},
-		Logger:  s.logger,
-		Options: []authz.Option{authz.WithV1Enforcer(mockEnforcer)},
-	}
-
-	authorizer, err := NewAuthorizer(cfg)
-	s.Require().NoError(err)
-	s.Require().NotNil(authorizer)
-
-	s.Equal("v1", authorizer.Version())
-	s.False(authorizer.SupportsResourceAuthorization())
-}
-
 func (s *CasbinAuthorizerSuite) TestNewCasbinAuthorizer_V2() {
 	cfg := authz.Config{
 		Version: "v2",
@@ -90,7 +59,7 @@ func (s *CasbinAuthorizerSuite) TestNewCasbinAuthorizer_V2() {
 		Logger: s.logger,
 	}
 
-	authorizer, err := NewAuthorizer(cfg)
+	authorizer, err := s.newAuthorizer(cfg)
 	s.Require().NoError(err)
 	s.Require().NotNil(authorizer)
 
@@ -107,7 +76,7 @@ func (s *CasbinAuthorizerSuite) TestAuthorizeRequiresRequestAndToken() {
 		Logger: s.logger,
 	}
 
-	authorizer, err := NewAuthorizer(cfg)
+	authorizer, err := s.newAuthorizer(cfg)
 	s.Require().NoError(err)
 
 	decision, err := authorizer.Authorize(s.T().Context(), nil)
@@ -121,54 +90,6 @@ func (s *CasbinAuthorizerSuite) TestAuthorizeRequiresRequestAndToken() {
 	s.Contains(err.Error(), "authorization token is required")
 }
 
-func (s *CasbinAuthorizerSuite) TestNewCasbinAuthorizer_UnknownVersionFallsBackToV1() {
-	// Unknown versions default to v1, which requires a v1 enforcer.
-	// This maintains backwards compatibility while providing a clear error.
-	cfg := authz.Config{
-		Version: "v99",
-		PolicyConfig: authz.PolicyConfig{
-			GroupsClaim: "realm_access.roles",
-		},
-		Logger: s.logger,
-	}
-
-	authorizer, err := NewAuthorizer(cfg)
-	s.Require().Error(err)
-	s.Nil(authorizer)
-	s.Contains(err.Error(), "v1 enforcer is required")
-}
-
-func (s *CasbinAuthorizerSuite) TestNewCasbinAuthorizer_NilLogger() {
-	cfg := authz.Config{
-		Version: "v1",
-		PolicyConfig: authz.PolicyConfig{
-			GroupsClaim: "realm_access.roles",
-		},
-		Logger: nil,
-	}
-
-	authorizer, err := NewAuthorizer(cfg)
-	s.Require().Error(err)
-	s.Nil(authorizer)
-	s.Contains(err.Error(), "logger is required")
-}
-
-func (s *CasbinAuthorizerSuite) TestNewCasbinAuthorizer_V1_NoEnforcerError() {
-	cfg := authz.Config{
-		Version: "v1",
-		PolicyConfig: authz.PolicyConfig{
-			GroupsClaim: "realm_access.roles",
-		},
-		Logger: s.logger,
-		// No V1Enforcer option provided
-	}
-
-	authorizer, err := NewAuthorizer(cfg)
-	s.Require().Error(err)
-	s.Nil(authorizer)
-	s.Contains(err.Error(), "v1 enforcer is required")
-}
-
 func (s *CasbinAuthorizerSuite) TestAuthorizeV2_AdminWildcard() {
 	// Policy: admin can do anything
 	cfg := authz.Config{
@@ -180,7 +101,7 @@ func (s *CasbinAuthorizerSuite) TestAuthorizeV2_AdminWildcard() {
 		Logger: s.logger,
 	}
 
-	authorizer, err := NewAuthorizer(cfg)
+	authorizer, err := s.newAuthorizer(cfg)
 	s.Require().NoError(err)
 
 	// Create token with admin role
@@ -216,7 +137,7 @@ func (s *CasbinAuthorizerSuite) TestAuthorizeV2_DefaultPolicyIncludesDefaultRole
 		Logger: s.logger,
 	}
 
-	authorizer, err := NewAuthorizer(cfg)
+	authorizer, err := s.newAuthorizer(cfg)
 	s.Require().NoError(err)
 
 	token := createTestToken(s.T(), map[string]interface{}{
@@ -248,7 +169,7 @@ p, role:finance-admin, /policy.attributes.AttributesService/*, namespace=finance
 		Logger: s.logger,
 	}
 
-	authorizer, err := NewAuthorizer(cfg)
+	authorizer, err := s.newAuthorizer(cfg)
 	s.Require().NoError(err)
 
 	// Create token with hr-admin role
@@ -302,7 +223,7 @@ func (s *CasbinAuthorizerSuite) TestAuthorizeV2_MultipleDimensions() {
 		Logger: s.logger,
 	}
 
-	authorizer, err := NewAuthorizer(cfg)
+	authorizer, err := s.newAuthorizer(cfg)
 	s.Require().NoError(err)
 
 	token := createTestToken(s.T(), map[string]interface{}{
@@ -355,7 +276,7 @@ func (s *CasbinAuthorizerSuite) TestAuthorizeV2_WildcardDimension() {
 		Logger: s.logger,
 	}
 
-	authorizer, err := NewAuthorizer(cfg)
+	authorizer, err := s.newAuthorizer(cfg)
 	s.Require().NoError(err)
 
 	token := createTestToken(s.T(), map[string]interface{}{
@@ -392,7 +313,7 @@ func (s *CasbinAuthorizerSuite) TestAuthorizeV2_NoDimensions() {
 		Logger: s.logger,
 	}
 
-	authorizer, err := NewAuthorizer(cfg)
+	authorizer, err := s.newAuthorizer(cfg)
 	s.Require().NoError(err)
 
 	token := createTestToken(s.T(), map[string]interface{}{
@@ -424,7 +345,7 @@ func (s *CasbinAuthorizerSuite) TestAuthorizeV2_NoDimensionsDeniedWhenPolicyRequ
 		Logger: s.logger,
 	}
 
-	authorizer, err := NewAuthorizer(cfg)
+	authorizer, err := s.newAuthorizer(cfg)
 	s.Require().NoError(err)
 
 	token := createTestToken(s.T(), map[string]interface{}{
@@ -453,7 +374,7 @@ func (s *CasbinAuthorizerSuite) TestAuthorizeV2_UsernameWithRolePrefixIsIgnored(
 		Logger: s.logger,
 	}
 
-	authorizer, err := NewAuthorizer(cfg)
+	authorizer, err := s.newAuthorizer(cfg)
 	s.Require().NoError(err)
 
 	token := createTestToken(s.T(), map[string]interface{}{
@@ -480,7 +401,7 @@ func (s *CasbinAuthorizerSuite) TestAuthorizeV2_ClientIDPolicy() {
 		Logger: s.logger,
 	}
 
-	authorizer, err := NewAuthorizer(cfg)
+	authorizer, err := s.newAuthorizer(cfg)
 	s.Require().NoError(err)
 
 	token := createTestToken(s.T(), map[string]interface{}{
@@ -517,7 +438,7 @@ p, alice, /policy.attributes.AttributesService/Get*, *, allow`,
 		Logger: s.logger,
 	}
 
-	authorizer, err := NewAuthorizer(cfg)
+	authorizer, err := s.newAuthorizer(cfg)
 	s.Require().NoError(err)
 
 	casbinAuthorizer, ok := authorizer.(*Authorizer)
@@ -531,7 +452,8 @@ p, alice, /policy.attributes.AttributesService/Get*, *, allow`,
 		},
 	})
 
-	subjects, roles, err := casbinAuthorizer.subjectExtractor.BuildSubjectFromToken(
+	subjectExtractor := casbinAuthorizer.subjectExtractor
+	subjects, roles, err := subjectExtractor.BuildSubjectFromToken(
 		s.T().Context(),
 		token,
 		platformauthz.RoleRequest{},
@@ -561,7 +483,7 @@ func (s *CasbinAuthorizerSuite) TestAuthorizeV2_UsesConfiguredRoleProvider() {
 		Options: []authz.Option{authz.WithRoleProvider(staticRoleProvider{roles: []string{"external-admin"}})},
 	}
 
-	authorizer, err := NewAuthorizer(cfg)
+	authorizer, err := s.newAuthorizer(cfg)
 	s.Require().NoError(err)
 
 	token := createTestToken(s.T(), map[string]interface{}{
@@ -591,7 +513,7 @@ func (s *CasbinAuthorizerSuite) TestAuthorizeV2_PassesRoleRequestToRoleProvider(
 		Options: []authz.Option{authz.WithRoleProvider(roleProvider)},
 	}
 
-	authorizer, err := NewAuthorizer(cfg)
+	authorizer, err := s.newAuthorizer(cfg)
 	s.Require().NoError(err)
 
 	_, err = authorizer.Authorize(s.T().Context(), &authz.Request{
@@ -619,7 +541,7 @@ func (s *CasbinAuthorizerSuite) TestAuthorizeV2_ReturnsSubjectExtractionError() 
 		Options: []authz.Option{authz.WithRoleProvider(staticRoleProvider{err: roleProviderErr})},
 	}
 
-	authorizer, err := NewAuthorizer(cfg)
+	authorizer, err := s.newAuthorizer(cfg)
 	s.Require().NoError(err)
 
 	decision, err := authorizer.Authorize(s.T().Context(), &authz.Request{
@@ -646,7 +568,7 @@ p, role:unknown, /kas.AccessService/Rewrap, *, allow`,
 		Logger: s.logger,
 	}
 
-	authorizer, err := NewAuthorizer(cfg)
+	authorizer, err := s.newAuthorizer(cfg)
 	s.Require().NoError(err)
 
 	standardToken := createTestToken(s.T(), map[string]interface{}{
@@ -694,6 +616,15 @@ p, role:unknown, /kas.AccessService/Rewrap, *, allow`,
 			s.Equal(authz.ModeV2, decision.Mode)
 		})
 	}
+}
+
+func (s *CasbinAuthorizerSuite) newAuthorizer(cfg authz.Config) (authz.Authorizer, error) {
+	adapterCfg := authz.AdapterConfigFromExternal(cfg)
+	v2Cfg, ok := adapterCfg.(authz.CasbinV2Config)
+	if !ok {
+		return nil, fmt.Errorf("expected v2 config, got %T", adapterCfg)
+	}
+	return NewAuthorizer(v2Cfg, s.logger)
 }
 
 // Test dimension matching logic
@@ -1081,266 +1012,6 @@ func TestDimensionMatch_WithURIValues(t *testing.T) {
 }
 
 // Test NewAuthorizer factory function via authz.New
-func TestNewAuthorizer(t *testing.T) {
-	log := logger.CreateTestLogger()
-	mockEnforcer := &mockV1Enforcer{}
-
-	tests := []struct {
-		name          string
-		version       string
-		expectVersion string
-		expectError   bool
-		withEnforcer  bool
-	}{
-		{
-			name:          "empty version defaults to v1",
-			version:       "",
-			expectVersion: "v1",
-			expectError:   false,
-			withEnforcer:  true,
-		},
-		{
-			name:          "explicit v1",
-			version:       "v1",
-			expectVersion: "v1",
-			expectError:   false,
-			withEnforcer:  true,
-		},
-		{
-			name:          "explicit v2",
-			version:       "v2",
-			expectVersion: "v2",
-			expectError:   false,
-			withEnforcer:  false,
-		},
-	}
-
-	for _, tc := range tests {
-		t.Run(tc.name, func(t *testing.T) {
-			cfg := authz.Config{
-				Version: tc.version,
-				PolicyConfig: authz.PolicyConfig{
-					GroupsClaim: "realm_access.roles",
-				},
-				Logger: log,
-			}
-			if tc.withEnforcer {
-				cfg.Options = []authz.Option{authz.WithV1Enforcer(mockEnforcer)}
-			}
-
-			authorizer, err := authz.New(cfg)
-			if tc.expectError {
-				require.Error(t, err)
-				return
-			}
-
-			require.NoError(t, err)
-			require.NotNil(t, authorizer)
-			assert.Equal(t, tc.expectVersion, authorizer.Version())
-		})
-	}
-}
-
-// =============================================================================
-// V1 Path Handling Tests - Ensuring backwards compatibility
-// =============================================================================
-// The v1 policy file uses two different path formats:
-// - gRPC paths WITHOUT leading slash: kas.AccessService/Rewrap
-// - HTTP paths WITH leading slash: /kas/v2/rewrap
-//
-// The authorizeV1 function must handle paths from ConnectRPC (which always
-// have leading slashes) and translate them correctly for v1 policy matching.
-// =============================================================================
-
-func (s *CasbinAuthorizerSuite) TestAuthorizeV1_GRPCPathStripsLeadingSlash() {
-	// v1 policy: gRPC paths have NO leading slash
-	// Create a mock enforcer that validates the resource path
-	var receivedResource string
-	var receivedIssuer string
-	mockEnforcer := &mockV1Enforcer{
-		enforceFunc: func(_ context.Context, _ jwt.Token, req platformauthz.RoleRequest) (bool, map[string]any, error) {
-			receivedResource = req.Resource
-			receivedIssuer = req.Issuer
-			// Allow if resource matches expected stripped path
-			return req.Resource == "kas.AccessService/Rewrap", nil, nil
-		},
-	}
-
-	cfg := authz.Config{
-		Version: "v1",
-		PolicyConfig: authz.PolicyConfig{
-			Issuer:      "https://issuer.example",
-			GroupsClaim: "realm_access.roles",
-		},
-		Logger:  s.logger,
-		Options: []authz.Option{authz.WithV1Enforcer(mockEnforcer)},
-	}
-
-	authorizer, err := NewAuthorizer(cfg)
-	s.Require().NoError(err)
-
-	token := createTestToken(s.T(), map[string]interface{}{
-		"realm_access": map[string]interface{}{
-			"roles": []interface{}{"standard"},
-		},
-	})
-
-	// ConnectRPC passes paths WITH leading slash, even for gRPC
-	// The authorizer must strip it to match v1 policy
-	req := &authz.Request{
-		Token:  token,
-		RPC:    "/kas.AccessService/Rewrap", // ConnectRPC format
-		Action: "read",
-	}
-
-	decision, err := authorizer.Authorize(context.Background(), req)
-	s.Require().NoError(err)
-	s.True(decision.Allowed, "gRPC path should be allowed after stripping leading slash")
-	s.Equal(authz.ModeV1, decision.Mode)
-	s.Equal("kas.AccessService/Rewrap", receivedResource, "resource should have leading slash stripped")
-	s.Equal("https://issuer.example", receivedIssuer)
-}
-
-func (s *CasbinAuthorizerSuite) TestAuthorizeV1_HTTPPathKeepsLeadingSlash() {
-	// v1 policy: HTTP paths KEEP their leading slash
-	var receivedResource string
-	mockEnforcer := &mockV1Enforcer{
-		enforceFunc: func(_ context.Context, _ jwt.Token, req platformauthz.RoleRequest) (bool, map[string]any, error) {
-			receivedResource = req.Resource
-			// Allow if resource matches expected path with leading slash
-			return req.Resource == "/kas/v2/rewrap", nil, nil
-		},
-	}
-
-	cfg := authz.Config{
-		Version: "v1",
-		PolicyConfig: authz.PolicyConfig{
-			GroupsClaim: "realm_access.roles",
-		},
-		Logger:  s.logger,
-		Options: []authz.Option{authz.WithV1Enforcer(mockEnforcer)},
-	}
-
-	authorizer, err := NewAuthorizer(cfg)
-	s.Require().NoError(err)
-
-	testToken := createTestToken(s.T(), map[string]interface{}{
-		"realm_access": map[string]interface{}{
-			"roles": []interface{}{"standard"},
-		},
-	})
-
-	// HTTP paths should keep their leading slash for v1 policy matching
-	req := &authz.Request{
-		Token:  testToken,
-		RPC:    "/kas/v2/rewrap",
-		Action: "write",
-	}
-
-	decision, err := authorizer.Authorize(context.Background(), req)
-	s.Require().NoError(err)
-	s.True(decision.Allowed, "HTTP path should be allowed with leading slash intact")
-	s.Equal(authz.ModeV1, decision.Mode)
-	s.Equal("/kas/v2/rewrap", receivedResource, "HTTP path should keep leading slash")
-}
-
-func (s *CasbinAuthorizerSuite) TestAuthorizeV1_PolicyServiceGRPCPath() {
-	// Test policy.* wildcard matching with gRPC path
-	var receivedResource string
-	mockEnforcer := &mockV1Enforcer{
-		enforceFunc: func(_ context.Context, _ jwt.Token, req platformauthz.RoleRequest) (bool, map[string]any, error) {
-			receivedResource = req.Resource
-			// Allow if resource starts with policy. (gRPC style, no leading slash)
-			return len(req.Resource) > 7 && req.Resource[:7] == "policy.", nil, nil
-		},
-	}
-
-	cfg := authz.Config{
-		Version: "v1",
-		PolicyConfig: authz.PolicyConfig{
-			GroupsClaim: "realm_access.roles",
-		},
-		Logger:  s.logger,
-		Options: []authz.Option{authz.WithV1Enforcer(mockEnforcer)},
-	}
-
-	authorizer, err := NewAuthorizer(cfg)
-	s.Require().NoError(err)
-
-	token := createTestToken(s.T(), map[string]interface{}{
-		"realm_access": map[string]interface{}{
-			"roles": []interface{}{"standard"},
-		},
-	})
-
-	// gRPC path from ConnectRPC
-	req := &authz.Request{
-		Token:  token,
-		RPC:    "/policy.attributes.AttributesService/GetAttribute",
-		Action: "read",
-	}
-
-	decision, err := authorizer.Authorize(context.Background(), req)
-	s.Require().NoError(err)
-	s.True(decision.Allowed, "policy.* wildcard should match gRPC path after stripping leading slash")
-	s.Equal(authz.ModeV1, decision.Mode)
-	s.Equal("policy.attributes.AttributesService/GetAttribute", receivedResource)
-}
-
-func (s *CasbinAuthorizerSuite) TestAuthorizeV1_PathHandlingHeuristic() {
-	// Test the specific heuristic: paths with "." are gRPC, others are HTTP
-	var receivedResources []string
-	mockEnforcer := &mockV1Enforcer{
-		enforceFunc: func(_ context.Context, _ jwt.Token, req platformauthz.RoleRequest) (bool, map[string]any, error) {
-			receivedResources = append(receivedResources, req.Resource)
-			return true, nil, nil
-		},
-	}
-
-	cfg := authz.Config{
-		Version: "v1",
-		PolicyConfig: authz.PolicyConfig{
-			GroupsClaim: "realm_access.roles",
-		},
-		Logger:  s.logger,
-		Options: []authz.Option{authz.WithV1Enforcer(mockEnforcer)},
-	}
-
-	authorizer, err := NewAuthorizer(cfg)
-	s.Require().NoError(err)
-
-	token := createTestToken(s.T(), map[string]interface{}{
-		"realm_access": map[string]interface{}{
-			"roles": []interface{}{"test"},
-		},
-	})
-
-	// gRPC path (contains ".") - leading slash should be stripped
-	grpcReq := &authz.Request{
-		Token:  token,
-		RPC:    "/some.Service/Method",
-		Action: "read",
-	}
-
-	decision, err := authorizer.Authorize(context.Background(), grpcReq)
-	s.Require().NoError(err)
-	s.True(decision.Allowed, "gRPC path should be allowed")
-	s.Equal("some.Service/Method", receivedResources[0], "gRPC path should have leading slash stripped")
-
-	// HTTP path (no ".") - leading slash should be kept
-	httpReq := &authz.Request{
-		Token:  token,
-		RPC:    "/http/path",
-		Action: "read",
-	}
-
-	decision, err = authorizer.Authorize(context.Background(), httpReq)
-	s.Require().NoError(err)
-	s.True(decision.Allowed, "HTTP path should be allowed")
-	s.Equal("/http/path", receivedResources[1], "HTTP path should keep leading slash")
-}
-
-// Helper function to create test JWT tokens
 func createTestToken(t *testing.T, claims map[string]interface{}) jwt.Token {
 	t.Helper()
 

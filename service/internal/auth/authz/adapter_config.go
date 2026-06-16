@@ -17,29 +17,6 @@ const (
 	// EngineOPA EngineType = "opa"
 )
 
-// BaseAdapterConfig contains configuration common to all authorization adapters.
-// This provides a consistent interface for subject extraction across engines.
-type BaseAdapterConfig struct {
-	// Issuer is the configured token issuer for role provider requests.
-	Issuer string
-
-	// UserNameClaim is the JWT claim containing the username.
-	UserNameClaim string
-
-	// GroupsClaim is the JWT claim containing roles/groups (dot notation supported).
-	// Example: "realm_access.roles" for Keycloak.
-	GroupsClaim string
-
-	// ClientIDClaim is the JWT claim containing the client ID.
-	ClientIDClaim string
-
-	// Logger for authorization decisions (type: *logger.Logger)
-	Logger any
-
-	// RoleProvider extracts role/group subjects.
-	RoleProvider platformauthz.RoleProvider
-}
-
 // CasbinV1Config configures the legacy path-based Casbin authorizer.
 // This model uses (subject, resource, action) tuples for authorization.
 //
@@ -48,30 +25,14 @@ type BaseAdapterConfig struct {
 //	p, role:admin, *, *, allow
 //	p, role:standard, /attributes*, read, allow
 type CasbinV1Config struct {
-	BaseAdapterConfig
+	PolicyConfig
 
-	// Csv is the policy CSV content (overrides builtin if set).
-	Csv string
-
-	// Extension appends additional rules to the policy.
-	Extension string
-
-	// Model is the Casbin model configuration.
-	// If empty, uses the default RBAC model.
-	Model string
-
-	// RoleMap maps external IdP roles to internal platform roles.
-	//
-	// Deprecated: Use Casbin grouping statements instead.
-	RoleMap map[string]string
+	// RoleProvider extracts role/group subjects.
+	RoleProvider platformauthz.RoleProvider
 
 	// Adapter is a custom policy adapter (e.g., SQL).
 	// If nil, uses string adapter with Csv content.
 	Adapter persist.Adapter
-
-	// Enforcer is an existing v1 enforcer to delegate to.
-	// If provided, other policy fields are ignored.
-	Enforcer V1Enforcer
 }
 
 // CasbinV2Config configures the RPC + dimensions Casbin authorizer.
@@ -83,22 +44,10 @@ type CasbinV1Config struct {
 //	p, role:standard, /policy.attributes.AttributesService/*, read, allow
 //	p, role:ns-admin, /policy.attributes.AttributesService/*, *, ns:my-namespace, allow
 type CasbinV2Config struct {
-	BaseAdapterConfig
+	PolicyConfig
 
-	// Csv is the policy CSV content (overrides builtin if set).
-	Csv string
-
-	// Extension appends additional rules to the policy.
-	Extension string
-
-	// Model is the Casbin model configuration.
-	// If empty, uses the v2 model with dimension support.
-	Model string
-
-	// RoleMap maps external IdP roles to internal platform roles.
-	//
-	// Deprecated: Use Casbin grouping statements instead.
-	RoleMap map[string]string
+	// RoleProvider extracts role/group subjects.
+	RoleProvider platformauthz.RoleProvider
 
 	// Adapter is a custom policy adapter (e.g., SQL).
 	// If nil, uses string adapter with Csv content.
@@ -108,7 +57,10 @@ type CasbinV2Config struct {
 // CedarConfig configures the AWS Cedar authorization engine (future).
 // Cedar provides a policy language with strong typing and formal verification.
 type CedarConfig struct {
-	BaseAdapterConfig
+	PolicyConfig
+
+	// RoleProvider extracts role/group subjects.
+	RoleProvider platformauthz.RoleProvider
 
 	// SchemaPath is the path to the Cedar schema file.
 	SchemaPath string
@@ -123,7 +75,10 @@ type CedarConfig struct {
 // OPAConfig configures the Open Policy Agent authorization engine (future).
 // OPA provides a general-purpose policy engine with Rego query language.
 type OPAConfig struct {
-	BaseAdapterConfig
+	PolicyConfig
+
+	// RoleProvider extracts role/group subjects.
+	RoleProvider platformauthz.RoleProvider
 
 	// BundlePath is the path to the OPA bundle.
 	BundlePath string
@@ -144,16 +99,9 @@ type OPAConfig struct {
 //   - "cedar": Returns CedarConfig (future)
 //   - "opa": Returns OPAConfig (future)
 func AdapterConfigFromExternal(cfg Config) any {
-	base := BaseAdapterConfig{
-		Issuer:        cfg.Issuer,
-		UserNameClaim: cfg.UserNameClaim,
-		GroupsClaim:   cfg.GroupsClaim,
-		ClientIDClaim: cfg.ClientIDClaim,
-		Logger:        cfg.Logger,
-	}
+	policyCfg := cfg.PolicyConfig
 
 	opts := applyOptions(cfg.Options...)
-	base.RoleProvider = opts.RoleProvider
 
 	// Default engine to casbin for backwards compatibility
 	engine := cfg.Engine
@@ -163,7 +111,7 @@ func AdapterConfigFromExternal(cfg Config) any {
 
 	switch engine {
 	case string(EngineCasbin):
-		return casbinConfigFromExternal(cfg, base, opts)
+		return casbinConfigFromExternal(cfg, policyCfg, opts.RoleProvider)
 	// Future engines:
 	// case string(EngineCedar):
 	//     return cedarConfigFromExternal(cfg, base)
@@ -171,31 +119,24 @@ func AdapterConfigFromExternal(cfg Config) any {
 	//     return opaConfigFromExternal(cfg, base)
 	default:
 		// Unknown engine defaults to casbin v1 for backwards compatibility
-		return casbinConfigFromExternal(cfg, base, opts)
+		return casbinConfigFromExternal(cfg, policyCfg, opts.RoleProvider)
 	}
 }
 
 // casbinConfigFromExternal creates the appropriate Casbin config based on version.
-func casbinConfigFromExternal(cfg Config, base BaseAdapterConfig, opts *optionConfig) any {
+func casbinConfigFromExternal(cfg Config, policyCfg PolicyConfig, roleProvider platformauthz.RoleProvider) any {
 	switch cfg.Version {
 	case "v2":
 		return CasbinV2Config{
-			BaseAdapterConfig: base,
-			Csv:               cfg.Csv,
-			Extension:         cfg.Extension,
-			Model:             cfg.Model,
-			RoleMap:           cfg.RoleMap,
-			Adapter:           adapterFromAny(cfg.Adapter),
+			PolicyConfig: policyCfg,
+			RoleProvider: roleProvider,
+			Adapter:      adapterFromAny(policyCfg.Adapter),
 		}
 	default: // v1 or empty
 		return CasbinV1Config{
-			BaseAdapterConfig: base,
-			Csv:               cfg.Csv,
-			Extension:         cfg.Extension,
-			Model:             cfg.Model,
-			RoleMap:           cfg.RoleMap,
-			Adapter:           adapterFromAny(cfg.Adapter),
-			Enforcer:          opts.V1Enforcer,
+			PolicyConfig: policyCfg,
+			RoleProvider: roleProvider,
+			Adapter:      adapterFromAny(policyCfg.Adapter),
 		}
 	}
 }

@@ -1,5 +1,5 @@
-// Package casbin provides a Casbin-based authorization implementation.
-package casbin
+// Package v2 provides the resource/dimension-based Casbin authorization implementation.
+package v2
 
 import (
 	"context"
@@ -45,79 +45,23 @@ var dimensionValueEscaper = strings.NewReplacer(
 	"*", "%2A",
 )
 
-func init() {
-	// Register the Casbin authorizer factory
-	authz.RegisterFactory("casbin", NewAuthorizer)
-}
-
-// Authorizer implements authz.Authorizer using Casbin.
-// It supports both v1 (path-based) and v2 (RPC+dimensions) authorization models.
+// Authorizer implements v2 authz.Authorizer using Casbin.
 type Authorizer struct {
-	// version indicates which model is active ("v1" or "v2")
-	version string
-
 	// issuer is the configured token issuer for role provider requests.
 	issuer string
 
-	// v1Enforcer handles legacy path-based authorization
-	// Used when version == "v1"
-	v1Enforcer authz.V1Enforcer
+	// groupsClaim is the configured claim used for group extraction.
+	groupsClaim string
 
-	// v2Enforcer handles RPC+dimensions authorization
-	// Used when version == "v2"
-	v2Enforcer *casbin.Enforcer
+	enforcer *casbin.Enforcer
 
 	logger *logger.Logger
 
 	subjectExtractor authz.SubjectExtractor
 }
 
-// NewAuthorizer creates a new Casbin Authorizer based on configuration.
-// It maps the external Config to the appropriate internal adapter config
-// (CasbinV1Config or CasbinV2Config) for cleaner separation of concerns.
-func NewAuthorizer(cfg authz.Config) (authz.Authorizer, error) {
-	log, ok := cfg.Logger.(*logger.Logger)
-	if !ok || log == nil {
-		return nil, errors.New("logger is required for CasbinAuthorizer")
-	}
-
-	// Map external config to internal adapter config
-	adapterCfg := authz.AdapterConfigFromExternal(cfg)
-
-	switch typedCfg := adapterCfg.(type) {
-	case authz.CasbinV1Config:
-		return newCasbinV1Authorizer(typedCfg, log)
-	case authz.CasbinV2Config:
-		return newCasbinV2Authorizer(typedCfg, log)
-	default:
-		return nil, fmt.Errorf("unsupported adapter config type: %T", adapterCfg)
-	}
-}
-
-// newCasbinV1Authorizer creates a v1 (path-based) Casbin authorizer.
-func newCasbinV1Authorizer(cfg authz.CasbinV1Config, log *logger.Logger) (*Authorizer, error) {
-	if cfg.Enforcer == nil {
-		return nil, errors.New("v1 enforcer is required for v1 authorization mode (use authz.WithV1Enforcer)")
-	}
-
-	authorizer := &Authorizer{
-		version:    "v1",
-		issuer:     cfg.Issuer,
-		logger:     log,
-		v1Enforcer: cfg.Enforcer,
-	}
-
-	log.Info(
-		"casbin authorizer initialized",
-		slog.String("version", authorizer.version),
-		slog.Bool("supportsResourceAuth", authorizer.SupportsResourceAuthorization()),
-	)
-
-	return authorizer, nil
-}
-
-// newCasbinV2Authorizer creates a v2 (RPC+dimensions) Casbin authorizer.
-func newCasbinV2Authorizer(cfg authz.CasbinV2Config, log *logger.Logger) (*Authorizer, error) {
+// NewAuthorizer creates a v2 (RPC+dimensions) Casbin authorizer.
+func NewAuthorizer(cfg authz.CasbinV2Config, log *logger.Logger) (*Authorizer, error) {
 	enforcer, err := createV2EnforcerFromConfig(cfg, log)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create v2 casbin enforcer: %w", err)
@@ -129,10 +73,10 @@ func newCasbinV2Authorizer(cfg authz.CasbinV2Config, log *logger.Logger) (*Autho
 	}
 
 	authorizer := &Authorizer{
-		version:    "v2",
-		issuer:     cfg.Issuer,
-		logger:     log,
-		v2Enforcer: enforcer,
+		issuer:      cfg.Issuer,
+		groupsClaim: cfg.GroupsClaim,
+		logger:      log,
+		enforcer:    enforcer,
 		subjectExtractor: authz.SubjectExtractor{
 			UserNameClaim: cfg.UserNameClaim,
 			ClientIDClaim: cfg.ClientIDClaim,
@@ -143,7 +87,7 @@ func newCasbinV2Authorizer(cfg authz.CasbinV2Config, log *logger.Logger) (*Autho
 
 	log.Info(
 		"casbin authorizer initialized",
-		slog.String("version", authorizer.version),
+		slog.String("version", authorizer.Version()),
 		slog.Bool("supportsResourceAuth", authorizer.SupportsResourceAuthorization()),
 	)
 
@@ -221,73 +165,21 @@ func (a *Authorizer) Authorize(ctx context.Context, req *authz.Request) (*authz.
 		return nil, errors.New("authorization token is required")
 	}
 
-	switch a.version {
-	case "v1":
-		return a.authorizeV1(ctx, req)
-	case "v2":
-		return a.authorizeV2(ctx, req)
-	default:
-		return nil, fmt.Errorf("unsupported authorization version: %s", a.version)
-	}
+	return a.authorize(ctx, req)
 }
 
 // Version implements authz.Authorizer.Version.
 func (a *Authorizer) Version() string {
-	return a.version
+	return string(authz.ModeV2)
 }
 
 // SupportsResourceAuthorization implements authz.Authorizer.SupportsResourceAuthorization.
 func (a *Authorizer) SupportsResourceAuthorization() bool {
-	return a.version == "v2"
+	return true
 }
 
-// authorizeV1 performs legacy path-based authorization.
-//
-// Path handling heuristic for v1 policy compatibility:
-// The v1 Casbin policy file (casbin_policy.csv) uses two different path formats:
-//   - gRPC paths WITHOUT leading slash: kas.AccessService/Rewrap, policy.*, authorization.AuthorizationService/GetDecisions
-//   - HTTP paths WITH leading slash: /kas/v2/rewrap, /attributes*, /namespaces*
-//
-// ConnectRPC always provides paths with a leading slash (e.g., /kas.AccessService/Rewrap).
-// We distinguish gRPC from HTTP paths using a simple heuristic: gRPC service names contain "."
-// (e.g., "kas.AccessService"), while HTTP paths do not (e.g., "/kas/v2/rewrap").
-//
-// This preserves full backwards compatibility with the existing v1 policy format.
-func (a *Authorizer) authorizeV1(ctx context.Context, req *authz.Request) (*authz.Decision, error) {
-	resource := req.RPC
-	if strings.Contains(req.RPC, ".") {
-		// gRPC-style path (contains '.'): strip leading slash for v1 policy compatibility
-		// Example: /kas.AccessService/Rewrap -> kas.AccessService/Rewrap
-		resource = strings.TrimPrefix(req.RPC, "/")
-	}
-	// HTTP paths (no '.') keep their leading slash
-	// Example: /kas/v2/rewrap -> /kas/v2/rewrap
-
-	allowed, _, err := a.v1Enforcer.Enforce(ctx, req.Token, platformauthz.RoleRequest{
-		Issuer:   a.issuer,
-		Resource: resource,
-		Action:   req.Action,
-	})
-	if err != nil {
-		if !allowed {
-			return &authz.Decision{
-				Allowed: false,
-				Reason:  fmt.Sprintf("v1: denied %s %s", req.Action, resource),
-				Mode:    authz.ModeV1,
-			}, nil
-		}
-		return nil, fmt.Errorf("v1 authorization system error: %w", err)
-	}
-
-	return &authz.Decision{
-		Allowed: allowed,
-		Reason:  fmt.Sprintf("v1: %s %s", req.Action, resource),
-		Mode:    authz.ModeV1,
-	}, nil
-}
-
-// authorizeV2 performs RPC+dimensions authorization.
-func (a *Authorizer) authorizeV2(ctx context.Context, req *authz.Request) (*authz.Decision, error) {
+// authorize performs RPC+dimensions authorization.
+func (a *Authorizer) authorize(ctx context.Context, req *authz.Request) (*authz.Decision, error) {
 	roleReq := platformauthz.RoleRequest{
 		Issuer:   a.issuer,
 		Resource: req.RPC,
@@ -325,7 +217,7 @@ func (a *Authorizer) authorizeV2(ctx context.Context, req *authz.Request) (*auth
 	)
 
 	for _, subject := range subjects {
-		allowed, err := a.v2Enforcer.Enforce(subject, req.RPC, dims)
+		allowed, err := a.enforcer.Enforce(subject, req.RPC, dims)
 		if err != nil {
 			a.logger.Error(
 				"v2 enforcement error",
@@ -352,6 +244,9 @@ func (a *Authorizer) authorizeV2(ctx context.Context, req *authz.Request) (*auth
 				Reason:        fmt.Sprintf("v2: %s on %s with dims=%s", subject, req.RPC, dims),
 				Mode:          authz.ModeV2,
 				MatchedPolicy: subject,
+				Metadata: authz.DecisionMetadata{
+					GroupsClaim: a.groupsClaim,
+				},
 			}, nil
 		}
 	}
@@ -373,6 +268,9 @@ func (a *Authorizer) authorizeV2(ctx context.Context, req *authz.Request) (*auth
 		Allowed: false,
 		Reason:  fmt.Sprintf("v2: denied %s with dims=%s", req.RPC, dims),
 		Mode:    authz.ModeV2,
+		Metadata: authz.DecisionMetadata{
+			GroupsClaim: a.groupsClaim,
+		},
 	}, nil
 }
 

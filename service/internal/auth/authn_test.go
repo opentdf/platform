@@ -51,6 +51,18 @@ type AuthSuite struct {
 	auth   *Authentication
 }
 
+type staticProvider struct {
+	roles []string
+	err   error
+}
+
+func (p staticProvider) Roles(_ context.Context, _ jwt.Token, _ authz.RoleRequest) ([]string, error) {
+	if p.err != nil {
+		return nil, p.err
+	}
+	return p.roles, nil
+}
+
 type FakeAccessTokenSource struct {
 	dpopKey     jwk.Key
 	accessToken string
@@ -242,16 +254,20 @@ func TestNormalizeUrl(t *testing.T) {
 	}
 }
 
-func TestPermissionDeniedLogAttrs(t *testing.T) {
+func TestPermissionDeniedDecisionLogAttrs(t *testing.T) {
 	tok := jwt.New()
 	require.NoError(t, tok.Set(jwt.SubjectKey, "client-subject"))
 
-	attrs := permissionDeniedLogAttrs(tok, map[string]any{
-		casbinAuthzConfiguredGroupsClaimKey: "custom.groups",
-		casbinAuthzSubjectGroupsKey:         []string{"opentdf-standard"},
-	}, ErrPermissionDenied)
+	decision := &internalauthz.Decision{
+		Reason: "v2: denied policy.attributes.AttributesService/GetAttribute",
+		Mode:   internalauthz.ModeV2,
+		Metadata: internalauthz.DecisionMetadata{
+			GroupsClaim: "custom.groups",
+		},
+	}
+	attrs := permissionDeniedDecisionLogAttrs(tok, decision, internalauthz.ErrPermissionDenied)
 
-	require.Len(t, attrs, 3)
+	require.Len(t, attrs, 5)
 	assert.Equal(t, slog.String("azp", "client-subject"), attrs[0])
 
 	casbinAuthzAttr, ok := attrs[1].(slog.Attr)
@@ -259,26 +275,27 @@ func TestPermissionDeniedLogAttrs(t *testing.T) {
 	assert.Equal(t, "casbin_authz", casbinAuthzAttr.Key)
 
 	casbinAuthzAttrs := casbinAuthzAttr.Value.Group()
-	require.Len(t, casbinAuthzAttrs, 2)
+	require.Len(t, casbinAuthzAttrs, 1)
 	assert.Equal(t, slog.String("configured_groups_claim", "custom.groups"), casbinAuthzAttrs[0])
-	assert.Equal(t, "subject_groups", casbinAuthzAttrs[1].Key)
-	assert.Equal(t, []string{"opentdf-standard"}, casbinAuthzAttrs[1].Value.Any())
 
-	errorAttr, ok := attrs[2].(slog.Attr)
+	assert.Equal(t, slog.String("mode", "v2"), attrs[2])
+	assert.Equal(t, slog.String("reason", "v2: denied policy.attributes.AttributesService/GetAttribute"), attrs[3])
+
+	errorAttr, ok := attrs[4].(slog.Attr)
 	require.True(t, ok)
 	assert.Equal(t, "error", errorAttr.Key)
 	loggedErr, ok := errorAttr.Value.Any().(error)
 	require.True(t, ok)
-	if !errors.Is(loggedErr, ErrPermissionDenied) {
-		t.Fatalf("expected error to wrap %v", ErrPermissionDenied)
+	if !errors.Is(loggedErr, internalauthz.ErrPermissionDenied) {
+		t.Fatalf("expected error to wrap %v", internalauthz.ErrPermissionDenied)
 	}
 }
 
-func TestPermissionDeniedLogAttrsWithoutSubjectInfo(t *testing.T) {
+func TestPermissionDeniedDecisionLogAttrsWithoutDecision(t *testing.T) {
 	tok := jwt.New()
 	require.NoError(t, tok.Set(jwt.SubjectKey, "client-subject"))
 
-	attrs := permissionDeniedLogAttrs(tok, nil, ErrPermissionDenied)
+	attrs := permissionDeniedDecisionLogAttrs(tok, nil, internalauthz.ErrPermissionDenied)
 
 	require.Len(t, attrs, 2)
 	assert.Equal(t, slog.String("azp", "client-subject"), attrs[0])
@@ -288,8 +305,8 @@ func TestPermissionDeniedLogAttrsWithoutSubjectInfo(t *testing.T) {
 	assert.Equal(t, "error", errorAttr.Key)
 	loggedErr, ok := errorAttr.Value.Any().(error)
 	require.True(t, ok)
-	if !errors.Is(loggedErr, ErrPermissionDenied) {
-		t.Fatalf("expected error to wrap %v", ErrPermissionDenied)
+	if !errors.Is(loggedErr, internalauthz.ErrPermissionDenied) {
+		t.Fatalf("expected error to wrap %v", internalauthz.ErrPermissionDenied)
 	}
 }
 

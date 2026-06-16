@@ -184,7 +184,9 @@ teardown_file() {
   assert_equal "$(echo "$output" | jq -r --arg id "$other_id" '[.namespaces[] | select(.id == $id)] | length')" "0"
 
   run_otdfctl_nsd unsafe delete --id "$match_id" --force
+  assert_success
   run_otdfctl_nsd unsafe delete --id "$other_id" --force
+  assert_success
 }
 
 @test "Update namespace - Safe" {

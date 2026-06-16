@@ -199,7 +199,9 @@ teardown_file() {
   assert_equal "$(echo "$output" | jq -r --arg id "$other_id" '[.attributes[] | select(.id == $id)] | length')" "0"
 
   run_otdfctl_attr unsafe delete --force --id "$match_id"
+  assert_success
   run_otdfctl_attr unsafe delete --force --id "$other_id"
+  assert_success
 }
 
 @test "List - comprehensive pagination tests" {

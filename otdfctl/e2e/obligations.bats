@@ -489,7 +489,9 @@ teardown_file() {
   assert_equal "$(echo "$output" | jq -r --arg id "$other_id" '[.obligations[] | select(.id == $id)] | length')" "0"
 
   run_otdfctl_obl delete --id "$match_id" --force
+  assert_success
   run_otdfctl_obl delete --id "$other_id" --force
+  assert_success
 }
 
 @test "Update obligation" {

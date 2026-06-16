@@ -225,7 +225,9 @@ teardown_file() {
     assert_equal "$(echo "$output" | jq -r --arg id "$other_id" '[.subject_mappings[] | select(.id == $id)] | length')" "0"
 
     run_otdfctl_sm delete --id "$match_id" --force
+    assert_success
     run_otdfctl_sm delete --id "$other_id" --force
+    assert_success
 }
 
 @test "Create subject mapping with namespace ID" {

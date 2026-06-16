@@ -227,5 +227,7 @@ teardown() {
     assert_equal "$(echo "$output" | jq -r --arg id "$other_id" '[.key_access_servers[] | select(.id == $id)] | length')" "0"
 
     run_otdfctl_kasr delete --id "$match_id" --force
+    assert_success
     run_otdfctl_kasr delete --id "$other_id" --force
+    assert_success
 }

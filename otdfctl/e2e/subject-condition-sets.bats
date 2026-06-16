@@ -186,7 +186,9 @@ teardown_file() {
   assert_equal "$(echo "$output" | jq -r --arg id "$other_id" '[.subject_condition_sets[] | select(.id == $id)] | length')" "0"
 
   run_delete_scs "$match_id"
+  assert_success
   run_delete_scs "$other_id"
+  assert_success
 }
 
 @test "Create a SCS with namespace id" {

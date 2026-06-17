@@ -1523,6 +1523,94 @@ func (s *AttributesSuite) Test_UnsafeUpdateAttribute_WithNewName() {
 	s.Contains(val.GetFqn(), updated.GetName())
 }
 
+func (s *AttributesSuite) Test_GetKeyMappingsByFqns() {
+	created, err := s.db.PolicyClient.CreateAttribute(s.ctx, &attributes.CreateAttributeRequest{
+		Name:        "test__get_key_mappings_by_fqns",
+		NamespaceId: fixtureNamespaceID,
+		Rule:        policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF,
+		Values:      []string{"alpha", "beta"},
+	})
+	s.Require().NoError(err)
+	s.NotNil(created)
+
+	got, err := s.db.PolicyClient.GetAttribute(s.ctx, created.GetId())
+	s.Require().NoError(err)
+	s.Require().Len(got.GetValues(), 2)
+
+	fqnAlpha := got.GetValues()[0].GetFqn()
+	fqnBeta := got.GetValues()[1].GetFqn()
+
+	// Without any assigned keys, the rule is returned and keys are empty.
+	mappings, err := s.db.PolicyClient.GetKeyMappingsByFqns(s.ctx, &attributes.GetKeyMappingsByFqnsRequest{
+		Fqns: []string{fqnAlpha, fqnBeta},
+	})
+	s.Require().NoError(err)
+	s.Len(mappings, 2)
+	for _, fqn := range []string{fqnAlpha, fqnBeta} {
+		m, ok := mappings[fqn]
+		s.Require().True(ok)
+		s.Equal(fqn, m.GetFqn())
+		s.Equal(policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF, m.GetRule())
+		s.Empty(m.GetKeys())
+	}
+
+	// A definition-level key is inherited by values that have no key of their own.
+	kasKeyFixture := s.f.GetKasRegistryServerKeys("kas_key_1")
+	kasKey, err := s.db.PolicyClient.GetKey(s.ctx, &kasregistry.GetKeyRequest_Id{Id: kasKeyFixture.ID})
+	s.Require().NoError(err)
+	_, err = s.db.PolicyClient.AssignPublicKeyToAttribute(s.ctx, &attributes.AttributeKey{
+		AttributeId: created.GetId(),
+		KeyId:       kasKey.GetKey().GetId(),
+	})
+	s.Require().NoError(err)
+
+	mappings, err = s.db.PolicyClient.GetKeyMappingsByFqns(s.ctx, &attributes.GetKeyMappingsByFqnsRequest{
+		Fqns: []string{fqnAlpha},
+	})
+	s.Require().NoError(err)
+	s.Require().Len(mappings, 1)
+	s.Require().Len(mappings[fqnAlpha].GetKeys(), 1)
+	validateSimpleKasKey(&s.Suite, kasKey, mappings[fqnAlpha].GetKeys()[0])
+}
+
+func (s *AttributesSuite) Test_GetEntitleableAttributesByFqns() {
+	value1 := s.f.GetAttributeValueKey("example.com/attr/attr1/value/value1")
+	value2 := s.f.GetAttributeValueKey("example.com/attr/attr1/value/value2")
+	fqn1 := "https://example.com/attr/attr1/value/value1"
+	fqn2 := "https://example.com/attr/attr1/value/value2"
+
+	resp, err := s.db.PolicyClient.GetEntitleableAttributesByFqns(s.ctx, &attributes.GetEntitleableAttributesByFqnsRequest{
+		Fqns: []string{fqn1, fqn2},
+	})
+	s.Require().NoError(err)
+	s.Len(resp, 2)
+
+	e1 := resp[fqn1]
+	s.Require().NotNil(e1)
+	s.Equal(fqn1, e1.GetFqn())
+	s.Equal("https://example.com/attr/attr1", e1.GetAttributeFqn())
+	s.Equal(value1.ID, e1.GetValueId())
+	s.NotEqual(policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_UNSPECIFIED, e1.GetRule())
+	s.Contains(e1.GetDefinitionValueFqns(), fqn1)
+	s.Contains(e1.GetDefinitionValueFqns(), fqn2)
+	// value1 has multiple value-level subject mappings in the fixtures; every
+	// returned mapping must belong to value1 (verifies grouping by FQN).
+	s.GreaterOrEqual(len(e1.GetSubjectMappings()), 3)
+	for _, sm := range e1.GetSubjectMappings() {
+		s.Equal(fqn1, sm.GetAttributeValue().GetFqn())
+		s.NotEmpty(sm.GetId())
+		s.NotNil(sm.GetSubjectConditionSet())
+	}
+
+	e2 := resp[fqn2]
+	s.Require().NotNil(e2)
+	s.Equal(value2.ID, e2.GetValueId())
+	s.GreaterOrEqual(len(e2.GetSubjectMappings()), 1)
+	for _, sm := range e2.GetSubjectMappings() {
+		s.Equal(fqn2, sm.GetAttributeValue().GetFqn())
+	}
+}
+
 func (s *AttributesSuite) Test_UnsafeUpdateAttribute_NormalizesCasing() {
 	created, err := s.db.PolicyClient.CreateAttribute(s.ctx, &attributes.CreateAttributeRequest{
 		Name:        "BANANA_PUDDING",

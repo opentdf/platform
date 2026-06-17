@@ -341,6 +341,73 @@ message GetAttributeValuesByFqnsResponse {
 }
 
 /*
+   Key Mappings By FQNs (client-side key split path)
+
+   Narrow read API for the client-side encrypt flow. Given attribute value FQNs,
+   returns only the information needed to build key splits: the governing
+   attribute rule and the effective KAS keys resolved server-side. It does not
+   return subject mappings, resource mappings, obligations, sibling values, or
+   metadata. Prefer this over GetAttributeValuesByFqns when building splits.
+*/
+message GetKeyMappingsByFqnsRequest {
+  // Required
+  // Fully Qualified Names of attribute values (i.e. https://<namespace>/attr/<attribute_name>/value/<value_name>), normalized to lower case.
+  repeated string fqns = 1 [(buf.validate.field).repeated = {
+    min_items: 1
+    max_items: 250
+  }];
+}
+message GetKeyMappingsByFqnsResponse {
+  message AttributeKeyMapping {
+    // the attribute value FQN this mapping is for
+    string fqn = 1;
+    // the attribute rule, which governs how splits combine (any_of / all_of / hierarchy)
+    AttributeRuleTypeEnum rule = 2;
+    // effective KAS keys resolved for this value (value > definition > namespace
+    // precedence, key mappings preferred over legacy grants); may be empty
+    repeated policy.SimpleKasKey keys = 3;
+  }
+  // map of FQNs to their key mapping information, for O(1) lookup
+  map<string, AttributeKeyMapping> fqn_key_mappings = 1;
+}
+
+/*
+   Entitleable Attributes By FQNs (server-side decisioning path)
+
+   Narrow read API for Auth Service / Access PDP entitlement resolution. Given
+   attribute value FQNs, returns the attribute rule, the value identity, the
+   ordered definition value FQNs (for hierarchy rule logic), and the subject
+   mappings needed to resolve entitlements. It does not return KAS keys, grants,
+   resource mappings, obligations, or metadata.
+*/
+message GetEntitleableAttributesByFqnsRequest {
+  // Required
+  // Fully Qualified Names of attribute values (i.e. https://<namespace>/attr/<attribute_name>/value/<value_name>), normalized to lower case.
+  repeated string fqns = 1 [(buf.validate.field).repeated = {
+    min_items: 1
+    max_items: 250
+  }];
+}
+message GetEntitleableAttributesByFqnsResponse {
+  message EntitleableAttribute {
+    // the attribute value FQN this entry is for
+    string fqn = 1;
+    // the parent attribute definition FQN
+    string attribute_fqn = 2;
+    // the attribute rule, which drives rule logic during decisioning
+    AttributeRuleTypeEnum rule = 3;
+    // identity of the attribute value
+    string value_id = 4;
+    // the definition's value FQNs in order, used for hierarchy rule expansion
+    repeated string definition_value_fqns = 5;
+    // subject mappings used to resolve entitlements for this value
+    repeated policy.SubjectMapping subject_mappings = 6;
+  }
+  // map of FQNs to their entitleable attribute information, for O(1) lookup
+  map<string, EntitleableAttribute> fqn_entitleable_attributes = 1;
+}
+
+/*
    Assign Key Access Server (KAS Grant) to Attribute and Value
 */
 
@@ -458,6 +525,17 @@ service AttributesService {
     option idempotency_level = NO_SIDE_EFFECTS;
   }
   rpc GetAttributeValuesByFqns(GetAttributeValuesByFqnsRequest) returns (GetAttributeValuesByFqnsResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  // Returns only key-mapping information (rule and effective KAS keys) for the
+  // requested attribute value FQNs, for client-side key split construction.
+  rpc GetKeyMappingsByFqns(GetKeyMappingsByFqnsRequest) returns (GetKeyMappingsByFqnsResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  // Returns only entitlement-relevant information (rule, value identity, ordered
+  // definition values, and subject mappings) for the requested attribute value
+  // FQNs, for server-side decisioning / entitlement resolution.
+  rpc GetEntitleableAttributesByFqns(GetEntitleableAttributesByFqnsRequest) returns (GetEntitleableAttributesByFqnsResponse) {
     option idempotency_level = NO_SIDE_EFFECTS;
   }
 

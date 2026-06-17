@@ -172,6 +172,40 @@ func (s *AttributesService) GetAttributeValuesByFqns(ctx context.Context,
 	return connect.NewResponse(rsp), nil
 }
 
+func (s *AttributesService) GetKeyMappingsByFqns(ctx context.Context,
+	req *connect.Request[attributes.GetKeyMappingsByFqnsRequest],
+) (*connect.Response[attributes.GetKeyMappingsByFqnsResponse], error) {
+	ctx, span := s.Start(ctx, "GetKeyMappingsByFqns")
+	defer span.End()
+
+	rsp := &attributes.GetKeyMappingsByFqnsResponse{}
+
+	mappings, err := s.dbClient.GetKeyMappingsByFqns(ctx, req.Msg)
+	if err != nil {
+		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextGetRetrievalFailed, slog.String("fqns", fmt.Sprintf("%v", req.Msg.GetFqns())))
+	}
+	rsp.FqnKeyMappings = mappings
+
+	return connect.NewResponse(rsp), nil
+}
+
+func (s *AttributesService) GetEntitleableAttributesByFqns(ctx context.Context,
+	req *connect.Request[attributes.GetEntitleableAttributesByFqnsRequest],
+) (*connect.Response[attributes.GetEntitleableAttributesByFqnsResponse], error) {
+	ctx, span := s.Start(ctx, "GetEntitleableAttributesByFqns")
+	defer span.End()
+
+	rsp := &attributes.GetEntitleableAttributesByFqnsResponse{}
+
+	entitleable, err := s.dbClient.GetEntitleableAttributesByFqns(ctx, req.Msg)
+	if err != nil {
+		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextGetRetrievalFailed, slog.String("fqns", fmt.Sprintf("%v", req.Msg.GetFqns())))
+	}
+	rsp.FqnEntitleableAttributes = entitleable
+
+	return connect.NewResponse(rsp), nil
+}
+
 func (s *AttributesService) UpdateAttribute(ctx context.Context,
 	req *connect.Request[attributes.UpdateAttributeRequest],
 ) (*connect.Response[attributes.UpdateAttributeResponse], error) {

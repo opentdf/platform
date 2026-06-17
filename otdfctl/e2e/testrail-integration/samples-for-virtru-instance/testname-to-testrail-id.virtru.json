@@ -165,7 +165,7 @@
     "update registered KAS with invalid name - fails": "C797136",
     "list registered KASes": "C793439",
     "list registered KASes supports sort and order flags": "C10667294",
-    "list registered KASes supports search flag ": "C10667295"
+    "list registered KASes supports search flag": "C10667295"
   },
   "Base Key": {
     "base-key: get (initially no base key should be set for a new KAS)": "C874514",

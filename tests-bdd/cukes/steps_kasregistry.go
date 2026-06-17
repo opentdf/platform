@@ -91,6 +91,21 @@ func (s *KasRegistryStepDefinitions) iGetKASKey(ctx context.Context, keyID strin
 	return ctx, nil
 }
 
+func (s *KasRegistryStepDefinitions) iGetKASKeyByStoredID(ctx context.Context, keyID string) (context.Context, error) {
+	scenarioContext := GetPlatformScenarioContext(ctx)
+	storedID, ok := scenarioContext.GetObject(keyID).(string)
+	if !ok {
+		return ctx, fmt.Errorf("unable to extract stored KAS key ID for %q", keyID)
+	}
+
+	scenarioContext.ClearError()
+	_, err := scenarioContext.SDK.KeyAccessServerRegistry.GetKey(ctx, &kasregistry.GetKeyRequest{
+		Identifier: &kasregistry.GetKeyRequest_Id{Id: storedID},
+	})
+	scenarioContext.SetError(err)
+	return ctx, nil
+}
+
 func (s *KasRegistryStepDefinitions) iListKASKeysForURI(ctx context.Context, kasURI string) (context.Context, error) {
 	scenarioContext := GetPlatformScenarioContext(ctx)
 	scenarioContext.ClearError()
@@ -112,5 +127,6 @@ func RegisterKasRegistryStepDefinitions(ctx *godog.ScenarioContext) {
 	stepDefinitions := KasRegistryStepDefinitions{}
 	ctx.Step(`^I create KAS keys:$`, stepDefinitions.iCreateKASKeys)
 	ctx.Step(`^I send a request to get KAS key "([^"]*)"$`, stepDefinitions.iGetKASKey)
+	ctx.Step(`^I send a request to get KAS key "([^"]*)" by stored ID$`, stepDefinitions.iGetKASKeyByStoredID)
 	ctx.Step(`^I send a request to list KAS keys for URI "([^"]*)"$`, stepDefinitions.iListKASKeysForURI)
 }

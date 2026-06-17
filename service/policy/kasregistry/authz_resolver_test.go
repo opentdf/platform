@@ -2,6 +2,7 @@ package kasregistry
 
 import (
 	"context"
+	"errors"
 	"testing"
 
 	"connectrpc.com/connect"
@@ -61,6 +62,67 @@ func TestGetKeyAuthzResolver_UsesPolicyDBClientAndCachesResolvedKey(t *testing.T
 	require.Equal(t, kasURI, resolvedURI)
 	require.Same(t, identifier, dbClient.identifier)
 	require.Same(t, key, resolverCtx.GetResolvedData(resolverCacheKeyKasKey))
+}
+
+func TestGetKeyAuthzResolver_UsesPolicyDBClientForIDRequest(t *testing.T) {
+	kasURI := "https://kas-a.example.com"
+	key := &policy.KasKey{
+		KasUri: kasURI,
+		Key: &policy.AsymmetricKey{
+			KeyId: validKeyID,
+		},
+	}
+	dbClient := &fakeGetKeyAuthzDBClient{key: key}
+	identifier := &kasregistry.GetKeyRequest_Id{Id: validUUID}
+	resolverCtx := authz.NewResolverContext()
+
+	resolvedURI, err := resolveGetKeyKasURI(t.Context(), &kasregistry.GetKeyRequest{
+		Identifier: identifier,
+	}, &resolverCtx, dbClient)
+
+	require.NoError(t, err)
+	require.Equal(t, kasURI, resolvedURI)
+	require.Same(t, identifier, dbClient.identifier)
+	require.Same(t, key, resolverCtx.GetResolvedData(resolverCacheKeyKasKey))
+}
+
+func TestGetKeyAuthzResolver_UsesPolicyDBClientForKeyIdentifierWithoutURI(t *testing.T) {
+	kasURI := "https://kas-a.example.com"
+	key := &policy.KasKey{
+		KasUri: kasURI,
+		Key: &policy.AsymmetricKey{
+			KeyId: validKeyID,
+		},
+	}
+	dbClient := &fakeGetKeyAuthzDBClient{key: key}
+	identifier := &kasregistry.GetKeyRequest_Key{
+		Key: &kasregistry.KasKeyIdentifier{
+			Identifier: &kasregistry.KasKeyIdentifier_KasId{KasId: validUUID},
+			Kid:        validKeyID,
+		},
+	}
+	resolverCtx := authz.NewResolverContext()
+
+	resolvedURI, err := resolveGetKeyKasURI(t.Context(), &kasregistry.GetKeyRequest{
+		Identifier: identifier,
+	}, &resolverCtx, dbClient)
+
+	require.NoError(t, err)
+	require.Equal(t, kasURI, resolvedURI)
+	require.Same(t, identifier, dbClient.identifier)
+	require.Same(t, key, resolverCtx.GetResolvedData(resolverCacheKeyKasKey))
+}
+
+func TestGetKeyAuthzResolver_DBLookupErrorFailsResolution(t *testing.T) {
+	dbErr := errors.New("db unavailable")
+	resolverCtx := authz.NewResolverContext()
+
+	_, err := resolveGetKeyKasURI(t.Context(), &kasregistry.GetKeyRequest{
+		Identifier: &kasregistry.GetKeyRequest_Id{Id: validUUID},
+	}, &resolverCtx, &fakeGetKeyAuthzDBClient{err: dbErr})
+
+	require.ErrorIs(t, err, errResolveKasKeyForAuthz)
+	require.ErrorIs(t, err, dbErr)
 }
 
 func TestGetKeyAuthzResolver_InvalidRequestType(t *testing.T) {

@@ -12,26 +12,11 @@ func TestEngineTypeConstants(t *testing.T) {
 	assert.Equal(t, EngineCasbin, EngineType("casbin"))
 }
 
-func TestBaseAdapterConfig(t *testing.T) {
-	cfg := BaseAdapterConfig{
-		Issuer:        "https://issuer.example",
-		UserNameClaim: "preferred_username",
-		GroupsClaim:   "realm_access.roles",
-		ClientIDClaim: "azp",
-	}
-
-	assert.Equal(t, "https://issuer.example", cfg.Issuer)
-	assert.Equal(t, "preferred_username", cfg.UserNameClaim)
-	assert.Equal(t, "realm_access.roles", cfg.GroupsClaim)
-	assert.Equal(t, "azp", cfg.ClientIDClaim)
-	assert.Nil(t, cfg.Logger)
-}
-
 func TestAdapterConfigFromExternal_CasbinV1(t *testing.T) {
 	cfg := Config{
-		Engine:  "casbin",
-		Version: "v1",
 		PolicyConfig: PolicyConfig{
+			Engine:        "casbin",
+			Version:       "v1",
 			Issuer:        "https://issuer.example",
 			UserNameClaim: "sub",
 			GroupsClaim:   "roles",
@@ -56,14 +41,13 @@ func TestAdapterConfigFromExternal_CasbinV1(t *testing.T) {
 	assert.Equal(t, "custom-model", v1Config.Model)
 	assert.Equal(t, map[string]string{"ext-admin": "admin"}, v1Config.RoleMap)
 	assert.Nil(t, v1Config.Adapter)
-	assert.Nil(t, v1Config.Enforcer)
 }
 
 func TestAdapterConfigFromExternal_CasbinV2(t *testing.T) {
 	cfg := Config{
-		Engine:  "casbin",
-		Version: "v2",
 		PolicyConfig: PolicyConfig{
+			Engine:        "casbin",
+			Version:       "v2",
 			Issuer:        "https://issuer.example",
 			UserNameClaim: "sub",
 			GroupsClaim:   "roles",
@@ -93,8 +77,10 @@ func TestAdapterConfigFromExternal_CasbinV2(t *testing.T) {
 func TestAdapterConfigFromExternal_DefaultEngine(t *testing.T) {
 	// Empty engine should default to casbin
 	cfg := Config{
-		Engine:  "",
-		Version: "v1",
+		PolicyConfig: PolicyConfig{
+			Engine:  "",
+			Version: "v1",
+		},
 	}
 
 	result := AdapterConfigFromExternal(cfg)
@@ -106,8 +92,10 @@ func TestAdapterConfigFromExternal_DefaultEngine(t *testing.T) {
 func TestAdapterConfigFromExternal_DefaultVersion(t *testing.T) {
 	// Empty version should default to v1
 	cfg := Config{
-		Engine:  "casbin",
-		Version: "",
+		PolicyConfig: PolicyConfig{
+			Engine:  "casbin",
+			Version: "",
+		},
 	}
 
 	result := AdapterConfigFromExternal(cfg)
@@ -119,8 +107,10 @@ func TestAdapterConfigFromExternal_DefaultVersion(t *testing.T) {
 func TestAdapterConfigFromExternal_UnknownEngine(t *testing.T) {
 	// Unknown engine should fall back to casbin v1
 	cfg := Config{
-		Engine:  "unknown-engine",
-		Version: "v1",
+		PolicyConfig: PolicyConfig{
+			Engine:  "unknown-engine",
+			Version: "v1",
+		},
 	}
 
 	result := AdapterConfigFromExternal(cfg)
@@ -129,29 +119,13 @@ func TestAdapterConfigFromExternal_UnknownEngine(t *testing.T) {
 	assert.True(t, ok, "Expected CasbinV1Config for unknown engine")
 }
 
-func TestAdapterConfigFromExternal_WithV1Enforcer(t *testing.T) {
-	mockEnforcer := &mockV1Enforcer{}
-
-	cfg := Config{
-		Engine:  "casbin",
-		Version: "v1",
-		Options: []Option{WithV1Enforcer(mockEnforcer)},
-	}
-
-	result := AdapterConfigFromExternal(cfg)
-
-	v1Config, ok := result.(CasbinV1Config)
-	assert.True(t, ok)
-	assert.Equal(t, mockEnforcer, v1Config.Enforcer)
-}
-
 func TestAdapterConfigFromExternal_WithAdapter(t *testing.T) {
 	mockAdpt := &mockAdapter{}
 
 	cfg := Config{
-		Engine:  "casbin",
-		Version: "v2",
 		PolicyConfig: PolicyConfig{
+			Engine:  "casbin",
+			Version: "v2",
 			Adapter: mockAdpt,
 		},
 	}
@@ -181,10 +155,10 @@ func TestAdapterFromAny_InvalidType(t *testing.T) {
 
 func TestCasbinV1Config_Struct(t *testing.T) {
 	cfg := CasbinV1Config{
-		BaseAdapterConfig: BaseAdapterConfig{
+		PolicyConfig: PolicyConfig{
 			UserNameClaim: "sub",
+			Csv:           "p, role:admin, *, *, allow",
 		},
-		Csv: "p, role:admin, *, *, allow",
 	}
 
 	// Verify all fields are accessible and have expected values
@@ -194,15 +168,14 @@ func TestCasbinV1Config_Struct(t *testing.T) {
 	assert.Empty(t, cfg.Model)
 	assert.Nil(t, cfg.RoleMap)
 	assert.Nil(t, cfg.Adapter)
-	assert.Nil(t, cfg.Enforcer)
 }
 
 func TestCasbinV2Config_Struct(t *testing.T) {
 	cfg := CasbinV2Config{
-		BaseAdapterConfig: BaseAdapterConfig{
+		PolicyConfig: PolicyConfig{
 			UserNameClaim: "sub",
+			Csv:           "p, role:admin, *, *, allow",
 		},
-		Csv: "p, role:admin, *, *, allow",
 	}
 
 	// Verify all fields are accessible and have expected values

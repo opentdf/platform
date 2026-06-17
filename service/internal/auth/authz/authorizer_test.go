@@ -4,8 +4,6 @@ import (
 	"context"
 	"testing"
 
-	"github.com/lestrrat-go/jwx/v2/jwt"
-	platformauthz "github.com/opentdf/platform/service/pkg/authz"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -73,7 +71,7 @@ func TestRegisterAndGetFactory(t *testing.T) {
 	require.NotNil(t, factory)
 
 	// Test that the factory works
-	auth, err := factory(Config{Version: "v1"})
+	auth, err := factory(Config{PolicyConfig: PolicyConfig{Version: "v1"}})
 	require.NoError(t, err)
 	assert.Equal(t, "v1", auth.Version())
 }
@@ -103,8 +101,10 @@ func TestRegisterFactory_Panic_OnDuplicate(t *testing.T) {
 
 func TestNew_UnregisteredEngine(t *testing.T) {
 	cfg := Config{
-		Engine:  "unregistered-engine",
-		Version: "v1",
+		PolicyConfig: PolicyConfig{
+			Engine:  "unregistered-engine",
+			Version: "v1",
+		},
 	}
 
 	auth, err := New(cfg)
@@ -127,39 +127,21 @@ func TestNew_DefaultValues(t *testing.T) {
 
 	// Call New with minimal config (but specify engine so we use our test factory)
 	cfg := Config{
-		Engine: testFactoryName,
+		PolicyConfig: PolicyConfig{
+			Engine: testFactoryName,
+		},
 	}
 
 	auth, err := New(cfg)
 	require.NoError(t, err)
 	require.NotNil(t, auth)
 
-	// Verify defaults were applied
-	assert.Equal(t, "v1", receivedCfg.Version, "Version should default to v1")
-}
-
-func TestWithV1Enforcer(t *testing.T) {
-	mockEnforcer := &mockV1Enforcer{}
-
-	opt := WithV1Enforcer(mockEnforcer)
-	cfg := applyOptions(opt)
-
-	assert.Equal(t, mockEnforcer, cfg.V1Enforcer)
+	assert.Equal(t, testFactoryName, receivedCfg.Engine)
 }
 
 func TestApplyOptions_Empty(t *testing.T) {
 	cfg := applyOptions()
-	assert.Nil(t, cfg.V1Enforcer)
-}
-
-func TestApplyOptions_Multiple(t *testing.T) {
-	mockEnforcer := &mockV1Enforcer{}
-
-	cfg := applyOptions(
-		WithV1Enforcer(mockEnforcer),
-	)
-
-	assert.Equal(t, mockEnforcer, cfg.V1Enforcer)
+	assert.Nil(t, cfg.RoleProvider)
 }
 
 // mockAuthorizer implements Authorizer for testing
@@ -185,13 +167,4 @@ func (m *mockAuthorizer) Version() string {
 
 func (m *mockAuthorizer) SupportsResourceAuthorization() bool {
 	return m.supportsResourceAuth
-}
-
-// mockV1Enforcer implements V1Enforcer for testing
-type mockV1Enforcer struct {
-	enforceResult bool
-}
-
-func (m *mockV1Enforcer) Enforce(_ context.Context, _ jwt.Token, _ platformauthz.RoleRequest) (bool, map[string]any, error) {
-	return m.enforceResult, nil, nil
 }

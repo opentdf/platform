@@ -54,6 +54,24 @@ type Decision struct {
 
 	// MatchedPolicy optionally contains the policy rule that matched (for debugging).
 	MatchedPolicy string
+
+	// Metadata contains supplemental information for audit logging.
+	Metadata DecisionMetadata
+}
+
+// DecisionMetadata contains supplemental authorization decision metadata.
+type DecisionMetadata struct {
+	// GroupsClaim is the configured JWT claim used to extract authorization groups.
+	GroupsClaim string
+}
+
+// EnforcementResult represents the v1 authorization enforcement result.
+type EnforcementResult struct {
+	// Allowed indicates whether the request is permitted.
+	Allowed bool
+
+	// GroupsClaim is the configured JWT claim used to extract authorization groups.
+	GroupsClaim string
 }
 
 // Authorizer is the interface for pluggable authorization engines.
@@ -94,14 +112,6 @@ type Factory func(cfg Config) (Authorizer, error)
 
 // Config provides configuration for authorization engine initialization.
 type Config struct {
-	// Engine specifies which authorization engine to use ("casbin", "cedar", "opa").
-	// Defaults to "casbin" if empty.
-	Engine string
-
-	// Version specifies which authorization model to use ("v1", "v2", etc.)
-	// This is engine-specific. For Casbin: "v1" (path-based) or "v2" (RPC+dimensions).
-	Version string
-
 	// Policy configuration (claims, CSV, adapter, etc.)
 	PolicyConfig
 
@@ -117,30 +127,8 @@ type Option func(*optionConfig)
 
 // optionConfig holds optional configuration for authorizers.
 type optionConfig struct {
-	// V1Enforcer is the legacy casbin enforcer for v1 authorization.
-	// When provided, the casbin authorizer will delegate v1 auth to this enforcer
-	// instead of creating its own.
-	V1Enforcer V1Enforcer
-
 	// RoleProvider extracts role/group subjects for authorization.
 	RoleProvider platformauthz.RoleProvider
-}
-
-// V1Enforcer is the interface for the legacy v1 casbin enforcer.
-// This allows the casbin authorizer to delegate v1 authorization
-// to the existing enforcer without circular dependencies.
-type V1Enforcer interface {
-	// Enforce checks if the given token is allowed to perform the requested action.
-	Enforce(ctx context.Context, token jwt.Token, req platformauthz.RoleRequest) (bool, map[string]any, error)
-}
-
-// WithV1Enforcer sets the v1 enforcer for backwards compatibility.
-// This option is used when initializing a casbin authorizer that needs
-// to support both v1 and v2 authorization modes.
-func WithV1Enforcer(enforcer V1Enforcer) Option {
-	return func(cfg *optionConfig) {
-		cfg.V1Enforcer = enforcer
-	}
 }
 
 // WithRoleProvider sets the role provider used for subject extraction.
@@ -188,7 +176,7 @@ func GetFactory(name string) (Factory, bool) {
 const DefaultEngine = "casbin"
 
 // New creates an Authorizer based on configuration.
-// The engine is selected based on cfg.Engine:
+// The engine is selected based on cfg.PolicyConfig.Engine:
 //   - "casbin" (default): Casbin policy engine
 //   - "cedar": AWS Cedar policy engine (future)
 //   - "opa": Open Policy Agent engine (future)
@@ -201,11 +189,6 @@ func New(cfg Config) (Authorizer, error) {
 	engine := cfg.Engine
 	if engine == "" {
 		engine = DefaultEngine
-	}
-
-	// Default version to v1 for backwards compatibility
-	if cfg.Version == "" {
-		cfg.Version = "v1"
 	}
 
 	factory, exists := GetFactory(engine)

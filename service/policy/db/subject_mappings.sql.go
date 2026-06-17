@@ -381,8 +381,8 @@ WITH subject_actions AS (
 SELECT
     sm.id,
     fqns.fqn AS value_fqn,
-    sa.standard_actions,
-    sa.custom_actions,
+    sa.standard_actions::jsonb AS standard_actions,
+    sa.custom_actions::jsonb AS custom_actions,
     JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', sm.metadata -> 'labels', 'created_at', sm.created_at, 'updated_at', sm.updated_at)) AS metadata,
     JSON_BUILD_OBJECT(
         'id', scs.id,
@@ -410,13 +410,13 @@ WHERE fqns.fqn = ANY($1::TEXT[])
 `
 
 type getSubjectMappingsByValueFqnsRow struct {
-	ID                  string      `json:"id"`
-	ValueFqn            string      `json:"value_fqn"`
-	StandardActions     interface{} `json:"standard_actions"`
-	CustomActions       interface{} `json:"custom_actions"`
-	Metadata            []byte      `json:"metadata"`
-	SubjectConditionSet []byte      `json:"subject_condition_set"`
-	AttributeValue      []byte      `json:"attribute_value"`
+	ID                  string `json:"id"`
+	ValueFqn            string `json:"value_fqn"`
+	StandardActions     []byte `json:"standard_actions"`
+	CustomActions       []byte `json:"custom_actions"`
+	Metadata            []byte `json:"metadata"`
+	SubjectConditionSet []byte `json:"subject_condition_set"`
+	AttributeValue      []byte `json:"attribute_value"`
 }
 
 // Returns value-level subject mappings for the provided attribute value FQNs,
@@ -452,8 +452,8 @@ type getSubjectMappingsByValueFqnsRow struct {
 //	SELECT
 //	    sm.id,
 //	    fqns.fqn AS value_fqn,
-//	    sa.standard_actions,
-//	    sa.custom_actions,
+//	    sa.standard_actions::jsonb AS standard_actions,
+//	    sa.custom_actions::jsonb AS custom_actions,
 //	    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', sm.metadata -> 'labels', 'created_at', sm.created_at, 'updated_at', sm.updated_at)) AS metadata,
 //	    JSON_BUILD_OBJECT(
 //	        'id', scs.id,

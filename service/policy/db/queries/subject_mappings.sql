@@ -235,8 +235,8 @@ WITH subject_actions AS (
 SELECT
     sm.id,
     fqns.fqn AS value_fqn,
-    sa.standard_actions,
-    sa.custom_actions,
+    sa.standard_actions::jsonb AS standard_actions,
+    sa.custom_actions::jsonb AS custom_actions,
     JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', sm.metadata -> 'labels', 'created_at', sm.created_at, 'updated_at', sm.updated_at)) AS metadata,
     JSON_BUILD_OBJECT(
         'id', scs.id,

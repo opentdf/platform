@@ -2,7 +2,6 @@ package db
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"log/slog"
 	"strings"
@@ -305,16 +304,10 @@ func hydrateSubjectMappingForEntitlement(row getSubjectMappingsByValueFqnsRow) (
 		return nil, err
 	}
 
-	stdActionsBytes, err := json.Marshal(row.StandardActions)
-	if err != nil {
-		return nil, fmt.Errorf("failed to marshal standard actions: %w", err)
-	}
-	customActionsBytes, err := json.Marshal(row.CustomActions)
-	if err != nil {
-		return nil, fmt.Errorf("failed to marshal custom actions: %w", err)
-	}
+	// standard_actions / custom_actions are selected as ::jsonb, so sqlc yields raw
+	// []byte that unmarshalAllActionsProto consumes directly (no json.Marshal round-trip).
 	actions := []*policy.Action{}
-	if err := unmarshalAllActionsProto(stdActionsBytes, customActionsBytes, &actions); err != nil {
+	if err := unmarshalAllActionsProto(row.StandardActions, row.CustomActions, &actions); err != nil {
 		return nil, err
 	}
 

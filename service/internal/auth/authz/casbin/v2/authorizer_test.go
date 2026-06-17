@@ -324,6 +324,46 @@ func (s *CasbinAuthorizerSuite) TestAuthorizeV2_MultipleResourcesAllOf() {
 	s.False(decision.Allowed, "one denied resource should deny the aggregate request")
 }
 
+func (s *CasbinAuthorizerSuite) TestAuthorizeV2_MultipleResourcesCollectsUniqueMatchedSubjects() {
+	cfg := authz.Config{
+		PolicyConfig: authz.PolicyConfig{
+			Version:     "v2",
+			GroupsClaim: "realm_access.roles",
+			Csv: `p, role:hr-admin, /policy.attributes.AttributesService/Update*, namespace=hr, allow
+p, role:finance-admin, /policy.attributes.AttributesService/Update*, namespace=finance, allow`,
+		},
+		Logger: s.logger,
+	}
+
+	authorizer, err := s.newAuthorizer(cfg)
+	s.Require().NoError(err)
+
+	token := createTestToken(s.T(), map[string]interface{}{
+		"realm_access": map[string]interface{}{
+			"roles": []interface{}{"hr-admin", "finance-admin"},
+		},
+	})
+
+	decision, err := authorizer.Authorize(s.T().Context(), &authz.Request{
+		Token:  token,
+		RPC:    "/policy.attributes.AttributesService/UpdateAttribute",
+		Action: "write",
+		ResourceContext: &authz.ResolverContext{
+			Resources: []*authz.ResolverResource{
+				{"namespace": "hr", "attribute": "classification"},
+				{"namespace": "finance", "attribute": "payroll"},
+				{"namespace": "hr", "attribute": "department"},
+			},
+		},
+	})
+
+	s.Require().NoError(err)
+	s.Require().NotNil(decision)
+	s.True(decision.Allowed)
+	s.Equal("role:hr-admin, role:finance-admin", decision.MatchedPolicy)
+	s.Equal("v2: role:hr-admin, role:finance-admin on /policy.attributes.AttributesService/UpdateAttribute", decision.Reason)
+}
+
 func (s *CasbinAuthorizerSuite) TestAuthorizeV2_MultipleResourcesSkipsNilAndEmpty() {
 	cfg := authz.Config{
 		PolicyConfig: authz.PolicyConfig{

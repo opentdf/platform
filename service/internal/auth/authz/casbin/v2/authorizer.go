@@ -213,7 +213,10 @@ func (a *Authorizer) authorize(ctx context.Context, req *authz.Request) (*authz.
 		slog.Any("resource_dims", resourceDims),
 	)
 
-	var matchedSubject string
+	var (
+		matchedSubjects []string
+		seenSubjects    = make(map[string]struct{}, len(subjects))
+	)
 	// Casbin BatchEnforce/BulkEnforce could be investigated for efficiency if
 	// resource or subject counts grow.
 	for _, dims := range resourceDims {
@@ -231,10 +234,14 @@ func (a *Authorizer) authorize(ctx context.Context, req *authz.Request) (*authz.
 				},
 			}, nil
 		}
-		if matchedSubject == "" {
-			matchedSubject = allowedSubject
+		if allowedSubject != "" {
+			if _, seen := seenSubjects[allowedSubject]; !seen {
+				seenSubjects[allowedSubject] = struct{}{}
+				matchedSubjects = append(matchedSubjects, allowedSubject)
+			}
 		}
 	}
+	matchedSubject := strings.Join(matchedSubjects, ", ")
 
 	return &authz.Decision{
 		Allowed:       true,

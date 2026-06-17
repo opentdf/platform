@@ -319,6 +319,7 @@ func serializeDimensions(ctx *authz.ResolverContext) ([]string, error) {
 		if err != nil {
 			return nil, err
 		}
+		// Revisit deduplicating equivalent serialized resource dimensions when productionizing List RPCs/requests.
 		dims = append(dims, serialized)
 	}
 

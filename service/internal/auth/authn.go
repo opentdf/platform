@@ -482,7 +482,7 @@ func (a Authentication) ConnectAuthNInterceptor() connect.UnaryInterceptorFunc {
 					"http://" + host + procedure,
 					"https://" + host + procedure,
 				},
-				m: []string{http.MethodPost},
+				m: []string{req.HTTPMethod()},
 			}
 
 			header := req.Header()["Authorization"]

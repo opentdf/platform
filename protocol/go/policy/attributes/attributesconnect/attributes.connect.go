@@ -45,6 +45,9 @@ const (
 	// AttributesServiceGetAttributeValuesByFqnsProcedure is the fully-qualified name of the
 	// AttributesService's GetAttributeValuesByFqns RPC.
 	AttributesServiceGetAttributeValuesByFqnsProcedure = "/policy.attributes.AttributesService/GetAttributeValuesByFqns"
+	// AttributesServiceGetKeyMappingsByFqnsProcedure is the fully-qualified name of the
+	// AttributesService's GetKeyMappingsByFqns RPC.
+	AttributesServiceGetKeyMappingsByFqnsProcedure = "/policy.attributes.AttributesService/GetKeyMappingsByFqns"
 	// AttributesServiceCreateAttributeProcedure is the fully-qualified name of the AttributesService's
 	// CreateAttribute RPC.
 	AttributesServiceCreateAttributeProcedure = "/policy.attributes.AttributesService/CreateAttribute"
@@ -105,6 +108,9 @@ type AttributesServiceClient interface {
 	ListAttributeValues(context.Context, *connect.Request[attributes.ListAttributeValuesRequest]) (*connect.Response[attributes.ListAttributeValuesResponse], error)
 	GetAttribute(context.Context, *connect.Request[attributes.GetAttributeRequest]) (*connect.Response[attributes.GetAttributeResponse], error)
 	GetAttributeValuesByFqns(context.Context, *connect.Request[attributes.GetAttributeValuesByFqnsRequest]) (*connect.Response[attributes.GetAttributeValuesByFqnsResponse], error)
+	// Returns only key-mapping information (rule and effective KAS keys) for the
+	// requested attribute value FQNs, for client-side key split construction.
+	GetKeyMappingsByFqns(context.Context, *connect.Request[attributes.GetKeyMappingsByFqnsRequest]) (*connect.Response[attributes.GetKeyMappingsByFqnsResponse], error)
 	CreateAttribute(context.Context, *connect.Request[attributes.CreateAttributeRequest]) (*connect.Response[attributes.CreateAttributeResponse], error)
 	UpdateAttribute(context.Context, *connect.Request[attributes.UpdateAttributeRequest]) (*connect.Response[attributes.UpdateAttributeResponse], error)
 	DeactivateAttribute(context.Context, *connect.Request[attributes.DeactivateAttributeRequest]) (*connect.Response[attributes.DeactivateAttributeResponse], error)
@@ -173,6 +179,13 @@ func NewAttributesServiceClient(httpClient connect.HTTPClient, baseURL string, o
 			httpClient,
 			baseURL+AttributesServiceGetAttributeValuesByFqnsProcedure,
 			connect.WithSchema(attributesServiceMethods.ByName("GetAttributeValuesByFqns")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+			connect.WithClientOptions(opts...),
+		),
+		getKeyMappingsByFqns: connect.NewClient[attributes.GetKeyMappingsByFqnsRequest, attributes.GetKeyMappingsByFqnsResponse](
+			httpClient,
+			baseURL+AttributesServiceGetKeyMappingsByFqnsProcedure,
+			connect.WithSchema(attributesServiceMethods.ByName("GetKeyMappingsByFqns")),
 			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
@@ -276,6 +289,7 @@ type attributesServiceClient struct {
 	listAttributeValues                *connect.Client[attributes.ListAttributeValuesRequest, attributes.ListAttributeValuesResponse]
 	getAttribute                       *connect.Client[attributes.GetAttributeRequest, attributes.GetAttributeResponse]
 	getAttributeValuesByFqns           *connect.Client[attributes.GetAttributeValuesByFqnsRequest, attributes.GetAttributeValuesByFqnsResponse]
+	getKeyMappingsByFqns               *connect.Client[attributes.GetKeyMappingsByFqnsRequest, attributes.GetKeyMappingsByFqnsResponse]
 	createAttribute                    *connect.Client[attributes.CreateAttributeRequest, attributes.CreateAttributeResponse]
 	updateAttribute                    *connect.Client[attributes.UpdateAttributeRequest, attributes.UpdateAttributeResponse]
 	deactivateAttribute                *connect.Client[attributes.DeactivateAttributeRequest, attributes.DeactivateAttributeResponse]
@@ -313,6 +327,11 @@ func (c *attributesServiceClient) GetAttribute(ctx context.Context, req *connect
 // GetAttributeValuesByFqns calls policy.attributes.AttributesService.GetAttributeValuesByFqns.
 func (c *attributesServiceClient) GetAttributeValuesByFqns(ctx context.Context, req *connect.Request[attributes.GetAttributeValuesByFqnsRequest]) (*connect.Response[attributes.GetAttributeValuesByFqnsResponse], error) {
 	return c.getAttributeValuesByFqns.CallUnary(ctx, req)
+}
+
+// GetKeyMappingsByFqns calls policy.attributes.AttributesService.GetKeyMappingsByFqns.
+func (c *attributesServiceClient) GetKeyMappingsByFqns(ctx context.Context, req *connect.Request[attributes.GetKeyMappingsByFqnsRequest]) (*connect.Response[attributes.GetKeyMappingsByFqnsResponse], error) {
+	return c.getKeyMappingsByFqns.CallUnary(ctx, req)
 }
 
 // CreateAttribute calls policy.attributes.AttributesService.CreateAttribute.
@@ -416,6 +435,9 @@ type AttributesServiceHandler interface {
 	ListAttributeValues(context.Context, *connect.Request[attributes.ListAttributeValuesRequest]) (*connect.Response[attributes.ListAttributeValuesResponse], error)
 	GetAttribute(context.Context, *connect.Request[attributes.GetAttributeRequest]) (*connect.Response[attributes.GetAttributeResponse], error)
 	GetAttributeValuesByFqns(context.Context, *connect.Request[attributes.GetAttributeValuesByFqnsRequest]) (*connect.Response[attributes.GetAttributeValuesByFqnsResponse], error)
+	// Returns only key-mapping information (rule and effective KAS keys) for the
+	// requested attribute value FQNs, for client-side key split construction.
+	GetKeyMappingsByFqns(context.Context, *connect.Request[attributes.GetKeyMappingsByFqnsRequest]) (*connect.Response[attributes.GetKeyMappingsByFqnsResponse], error)
 	CreateAttribute(context.Context, *connect.Request[attributes.CreateAttributeRequest]) (*connect.Response[attributes.CreateAttributeResponse], error)
 	UpdateAttribute(context.Context, *connect.Request[attributes.UpdateAttributeRequest]) (*connect.Response[attributes.UpdateAttributeResponse], error)
 	DeactivateAttribute(context.Context, *connect.Request[attributes.DeactivateAttributeRequest]) (*connect.Response[attributes.DeactivateAttributeResponse], error)
@@ -480,6 +502,13 @@ func NewAttributesServiceHandler(svc AttributesServiceHandler, opts ...connect.H
 		AttributesServiceGetAttributeValuesByFqnsProcedure,
 		svc.GetAttributeValuesByFqns,
 		connect.WithSchema(attributesServiceMethods.ByName("GetAttributeValuesByFqns")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+		connect.WithHandlerOptions(opts...),
+	)
+	attributesServiceGetKeyMappingsByFqnsHandler := connect.NewUnaryHandler(
+		AttributesServiceGetKeyMappingsByFqnsProcedure,
+		svc.GetKeyMappingsByFqns,
+		connect.WithSchema(attributesServiceMethods.ByName("GetKeyMappingsByFqns")),
 		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
@@ -584,6 +613,8 @@ func NewAttributesServiceHandler(svc AttributesServiceHandler, opts ...connect.H
 			attributesServiceGetAttributeHandler.ServeHTTP(w, r)
 		case AttributesServiceGetAttributeValuesByFqnsProcedure:
 			attributesServiceGetAttributeValuesByFqnsHandler.ServeHTTP(w, r)
+		case AttributesServiceGetKeyMappingsByFqnsProcedure:
+			attributesServiceGetKeyMappingsByFqnsHandler.ServeHTTP(w, r)
 		case AttributesServiceCreateAttributeProcedure:
 			attributesServiceCreateAttributeHandler.ServeHTTP(w, r)
 		case AttributesServiceUpdateAttributeProcedure:
@@ -637,6 +668,10 @@ func (UnimplementedAttributesServiceHandler) GetAttribute(context.Context, *conn
 
 func (UnimplementedAttributesServiceHandler) GetAttributeValuesByFqns(context.Context, *connect.Request[attributes.GetAttributeValuesByFqnsRequest]) (*connect.Response[attributes.GetAttributeValuesByFqnsResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("policy.attributes.AttributesService.GetAttributeValuesByFqns is not implemented"))
+}
+
+func (UnimplementedAttributesServiceHandler) GetKeyMappingsByFqns(context.Context, *connect.Request[attributes.GetKeyMappingsByFqnsRequest]) (*connect.Response[attributes.GetKeyMappingsByFqnsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("policy.attributes.AttributesService.GetKeyMappingsByFqns is not implemented"))
 }
 
 func (UnimplementedAttributesServiceHandler) CreateAttribute(context.Context, *connect.Request[attributes.CreateAttributeRequest]) (*connect.Response[attributes.CreateAttributeResponse], error) {

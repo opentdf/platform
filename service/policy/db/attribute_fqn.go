@@ -205,6 +205,50 @@ func (c *PolicyDBClient) GetAttributesByValueFqns(ctx context.Context, r *attrib
 	return list, nil
 }
 
+// GetKeyMappingsByFqns returns, for each requested attribute value FQN, the
+// governing attribute rule and the effective KAS keys needed to build key
+// splits. Keys are resolved with value > definition > namespace precedence using
+// the mapped key model (SimpleKasKey), mirroring the client-side granter
+// resolution. Values configured only with legacy KeyAccessServer grants (no
+// kas_keys) return an empty key set; migrate such policy to keys to use this API.
+func (c *PolicyDBClient) GetKeyMappingsByFqns(ctx context.Context, r *attributes.GetKeyMappingsByFqnsRequest) (map[string]*attributes.GetKeyMappingsByFqnsResponse_AttributeKeyMapping, error) {
+	ctx, span := c.Start(ctx, "DB:GetKeyMappingsByFqns")
+	defer span.End()
+
+	pairs, err := c.GetAttributesByValueFqns(ctx, &attributes.GetAttributeValuesByFqnsRequest{Fqns: r.GetFqns()})
+	if err != nil {
+		return nil, err
+	}
+
+	mappings := make(map[string]*attributes.GetKeyMappingsByFqnsResponse_AttributeKeyMapping, len(pairs))
+	for fqn, pair := range pairs {
+		attr := pair.GetAttribute()
+		mappings[fqn] = &attributes.GetKeyMappingsByFqnsResponse_AttributeKeyMapping{
+			Fqn:  fqn,
+			Rule: attr.GetRule(),
+			Keys: resolveEffectiveKasKeys(pair.GetValue(), attr),
+		}
+	}
+
+	return mappings, nil
+}
+
+// resolveEffectiveKasKeys selects the effective mapped KAS keys for a value using
+// value > definition > namespace precedence, matching the SDK granter logic in
+// sdk/granter.go (newGranterFromService).
+func resolveEffectiveKasKeys(value *policy.Value, attr *policy.Attribute) []*policy.SimpleKasKey {
+	if keys := value.GetKasKeys(); len(keys) > 0 {
+		return keys
+	}
+	if keys := attr.GetKasKeys(); len(keys) > 0 {
+		return keys
+	}
+	if keys := attr.GetNamespace().GetKasKeys(); len(keys) > 0 {
+		return keys
+	}
+	return nil
+}
+
 func definitionFqnFromValueFqn(valueFqn string) string {
 	httpPrefix := "http://"
 	httpsPrefix := "https://"

@@ -1523,6 +1523,56 @@ func (s *AttributesSuite) Test_UnsafeUpdateAttribute_WithNewName() {
 	s.Contains(val.GetFqn(), updated.GetName())
 }
 
+func (s *AttributesSuite) Test_GetKeyMappingsByFqns() {
+	created, err := s.db.PolicyClient.CreateAttribute(s.ctx, &attributes.CreateAttributeRequest{
+		Name:        "test__get_key_mappings_by_fqns",
+		NamespaceId: fixtureNamespaceID,
+		Rule:        policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF,
+		Values:      []string{"alpha", "beta"},
+	})
+	s.Require().NoError(err)
+	s.NotNil(created)
+
+	got, err := s.db.PolicyClient.GetAttribute(s.ctx, created.GetId())
+	s.Require().NoError(err)
+	s.Require().Len(got.GetValues(), 2)
+
+	fqnAlpha := got.GetValues()[0].GetFqn()
+	fqnBeta := got.GetValues()[1].GetFqn()
+
+	// Without any assigned keys, the rule is returned and keys are empty.
+	mappings, err := s.db.PolicyClient.GetKeyMappingsByFqns(s.ctx, &attributes.GetKeyMappingsByFqnsRequest{
+		Fqns: []string{fqnAlpha, fqnBeta},
+	})
+	s.Require().NoError(err)
+	s.Len(mappings, 2)
+	for _, fqn := range []string{fqnAlpha, fqnBeta} {
+		m, ok := mappings[fqn]
+		s.Require().True(ok)
+		s.Equal(fqn, m.GetFqn())
+		s.Equal(policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF, m.GetRule())
+		s.Empty(m.GetKeys())
+	}
+
+	// A definition-level key is inherited by values that have no key of their own.
+	kasKeyFixture := s.f.GetKasRegistryServerKeys("kas_key_1")
+	kasKey, err := s.db.PolicyClient.GetKey(s.ctx, &kasregistry.GetKeyRequest_Id{Id: kasKeyFixture.ID})
+	s.Require().NoError(err)
+	_, err = s.db.PolicyClient.AssignPublicKeyToAttribute(s.ctx, &attributes.AttributeKey{
+		AttributeId: created.GetId(),
+		KeyId:       kasKey.GetKey().GetId(),
+	})
+	s.Require().NoError(err)
+
+	mappings, err = s.db.PolicyClient.GetKeyMappingsByFqns(s.ctx, &attributes.GetKeyMappingsByFqnsRequest{
+		Fqns: []string{fqnAlpha},
+	})
+	s.Require().NoError(err)
+	s.Require().Len(mappings, 1)
+	s.Require().Len(mappings[fqnAlpha].GetKeys(), 1)
+	validateSimpleKasKey(&s.Suite, kasKey, mappings[fqnAlpha].GetKeys()[0])
+}
+
 func (s *AttributesSuite) Test_UnsafeUpdateAttribute_NormalizesCasing() {
 	created, err := s.db.PolicyClient.CreateAttribute(s.ctx, &attributes.CreateAttributeRequest{
 		Name:        "BANANA_PUDDING",

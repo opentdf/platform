@@ -150,6 +150,44 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/policy.attributes.GetAttributeValuesByFqnsResponse'
+  /policy.attributes.AttributesService/GetKeyMappingsByFqns:
+    post:
+      tags:
+        - policy.attributes.AttributesService
+      summary: GetKeyMappingsByFqns
+      description: |-
+        Returns only key-mapping information (rule and effective KAS keys) for the
+         requested attribute value FQNs, for client-side key split construction.
+      operationId: policy.attributes.AttributesService.GetKeyMappingsByFqns
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/policy.attributes.GetKeyMappingsByFqnsRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/policy.attributes.GetKeyMappingsByFqnsResponse'
   /policy.attributes.AttributesService/CreateAttribute:
     post:
       tags:
@@ -2139,6 +2177,75 @@ components:
           title: value
           $ref: '#/components/schemas/policy.attributes.GetAttributeValuesByFqnsResponse.AttributeAndValue'
       title: FqnAttributeValuesEntry
+      additionalProperties: false
+    policy.attributes.GetKeyMappingsByFqnsRequest:
+      type: object
+      properties:
+        fqns:
+          type: array
+          items:
+            type: string
+            maxItems: 250
+            minItems: 1
+          title: fqns
+          maxItems: 250
+          minItems: 1
+          description: |-
+            Required
+             Fully Qualified Names of attribute values (i.e. https://<namespace>/attr/<attribute_name>/value/<value_name>), normalized to lower case.
+      title: GetKeyMappingsByFqnsRequest
+      additionalProperties: false
+      description: |-
+        Key Mappings By FQNs (client-side key split path)
+
+        Narrow read API for the client-side encrypt flow. Given attribute value FQNs,
+        returns only the information needed to build key splits: the governing
+        attribute rule and the effective KAS keys resolved server-side. It does not
+        return subject mappings, resource mappings, obligations, sibling values, or
+        metadata. Prefer this over GetAttributeValuesByFqns when building splits.
+    policy.attributes.GetKeyMappingsByFqnsResponse:
+      type: object
+      properties:
+        fqnKeyMappings:
+          type: object
+          title: fqn_key_mappings
+          additionalProperties:
+            title: value
+            $ref: '#/components/schemas/policy.attributes.GetKeyMappingsByFqnsResponse.AttributeKeyMapping'
+          description: map of FQNs to their key mapping information, for O(1) lookup
+      title: GetKeyMappingsByFqnsResponse
+      additionalProperties: false
+    policy.attributes.GetKeyMappingsByFqnsResponse.AttributeKeyMapping:
+      type: object
+      properties:
+        fqn:
+          type: string
+          title: fqn
+          description: the attribute value FQN this mapping is for
+        rule:
+          title: rule
+          description: the attribute rule, which governs how splits combine (any_of / all_of / hierarchy)
+          $ref: '#/components/schemas/policy.AttributeRuleTypeEnum'
+        keys:
+          type: array
+          items:
+            $ref: '#/components/schemas/policy.SimpleKasKey'
+          title: keys
+          description: |-
+            effective KAS keys resolved for this value (value > definition > namespace
+             precedence, key mappings preferred over legacy grants); may be empty
+      title: AttributeKeyMapping
+      additionalProperties: false
+    policy.attributes.GetKeyMappingsByFqnsResponse.FqnKeyMappingsEntry:
+      type: object
+      properties:
+        key:
+          type: string
+          title: key
+        value:
+          title: value
+          $ref: '#/components/schemas/policy.attributes.GetKeyMappingsByFqnsResponse.AttributeKeyMapping'
+      title: FqnKeyMappingsEntry
       additionalProperties: false
     policy.attributes.ListAttributeValuesRequest:
       type: object

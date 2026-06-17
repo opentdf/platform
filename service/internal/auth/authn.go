@@ -362,10 +362,17 @@ func (a Authentication) MuxHandler(handler http.Handler) http.Handler {
 				origin = "http://" + strings.TrimSuffix(origin, ":80")
 			}
 		}
-		accessTok, ctx, err := a.checkToken(r.Context(), header, receiverInfo{
+		ri := receiverInfo{
 			u: []string{normalizeURL(origin, r.URL)},
 			m: []string{r.Method},
-		}, dp)
+		}
+		log.DebugContext(
+			r.Context(), "dpop receiverInfo set (http handler)",
+			slog.Any("expected_htm", ri.m),
+			slog.Any("expected_htu", ri.u),
+			slog.String("request_method", r.Method),
+		)
+		accessTok, ctx, err := a.checkToken(r.Context(), header, ri, dp)
 		if err != nil {
 			// Check if this is a nonce error requiring a challenge
 			var nonceErr *DPoPNonceError
@@ -484,6 +491,13 @@ func (a Authentication) ConnectAuthNInterceptor() connect.UnaryInterceptorFunc {
 				},
 				m: []string{req.HTTPMethod()},
 			}
+			log.DebugContext(
+				ctx, "dpop receiverInfo set (connect interceptor)",
+				slog.Any("expected_htm", ri.m),
+				slog.Any("expected_htu", ri.u),
+				slog.String("procedure", procedure),
+				slog.String("connect_http_method", req.HTTPMethod()),
+			)
 
 			header := req.Header()["Authorization"]
 			if len(header) < 1 {
@@ -884,6 +898,12 @@ func (a Authentication) validateDPoP(accessToken jwt.Token, acessTokenRaw string
 		return nil, errors.New("`htm` claim invalid format in DPoP JWT")
 	}
 
+	a.logger.Debug(
+		"dpop htm validation",
+		slog.String("received_htm", htm),
+		slog.Any("expected_htm", dpopInfo.m),
+		slog.Bool("match", slices.Contains(dpopInfo.m, htm)),
+	)
 	if !slices.Contains(dpopInfo.m, htm) {
 		return nil, fmt.Errorf("incorrect `htm` claim in DPoP JWT; received [%v], but should match [%v]", htm, dpopInfo.m)
 	}
@@ -962,13 +982,20 @@ func (a Authentication) ipcReauthCheck(ctx context.Context, path string, header 
 
 			// Validate the token and create a JWT token
 			ipcHost := header.Get("Host")
-			token, ctxWithJWK, err := a.checkToken(ctx, authHeader, receiverInfo{
+			ri := receiverInfo{
 				u: []string{
 					"http://" + ipcHost + path,
 					"https://" + ipcHost + path,
 				},
 				m: []string{http.MethodPost},
-			}, header["Dpop"])
+			}
+			a.logger.DebugContext(
+				ctx, "dpop receiverInfo set (ipc reauth)",
+				slog.Any("expected_htm", ri.m),
+				slog.Any("expected_htu", ri.u),
+				slog.String("path", path),
+			)
+			token, ctxWithJWK, err := a.checkToken(ctx, authHeader, ri, header["Dpop"])
 			if err != nil {
 				return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("unauthenticated"))
 			}

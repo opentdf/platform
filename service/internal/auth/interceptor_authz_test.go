@@ -9,7 +9,7 @@ import (
 	"github.com/creasty/defaults"
 	"github.com/lestrrat-go/jwx/v2/jwt"
 	"github.com/opentdf/platform/protocol/go/policy/attributes"
-	"github.com/opentdf/platform/service/internal/auth/authz"
+	internalauthz "github.com/opentdf/platform/service/internal/auth/authz"
 	_ "github.com/opentdf/platform/service/internal/auth/authz/casbin" // Register casbin authorizer
 	"github.com/opentdf/platform/service/logger"
 	"github.com/stretchr/testify/suite"
@@ -38,7 +38,7 @@ func (s *InterceptorAuthzSuite) SetupTest() {
 // =============================================================================
 
 func (s *InterceptorAuthzSuite) TestV1_AdminCanAccessAll() {
-	policyCfg := PolicyConfig{}
+	policyCfg := internalauthz.PolicyConfig{}
 	err := defaults.Set(&policyCfg)
 	s.Require().NoError(err)
 
@@ -60,7 +60,7 @@ func (s *InterceptorAuthzSuite) TestV1_AdminCanAccessAll() {
 
 	for _, tc := range tests {
 		s.Run(tc.name, func() {
-			req := &authz.Request{
+			req := &internalauthz.Request{
 				Token:  token,
 				RPC:    tc.rpc,
 				Action: tc.action,
@@ -70,13 +70,13 @@ func (s *InterceptorAuthzSuite) TestV1_AdminCanAccessAll() {
 			s.Require().NoError(err)
 			s.Require().NotNil(decision)
 			s.Equal(tc.expected, decision.Allowed, "expected allowed=%v for %s", tc.expected, tc.name)
-			s.Equal(authz.ModeV1, decision.Mode)
+			s.Equal(internalauthz.ModeV1, decision.Mode)
 		})
 	}
 }
 
 func (s *InterceptorAuthzSuite) TestV1_StandardUserPermissions() {
-	policyCfg := PolicyConfig{}
+	policyCfg := internalauthz.PolicyConfig{}
 	err := defaults.Set(&policyCfg)
 	s.Require().NoError(err)
 
@@ -105,7 +105,7 @@ func (s *InterceptorAuthzSuite) TestV1_StandardUserPermissions() {
 
 	for _, tc := range tests {
 		s.Run(tc.name, func() {
-			req := &authz.Request{
+			req := &internalauthz.Request{
 				Token:  token,
 				RPC:    tc.rpc,
 				Action: tc.action,
@@ -115,13 +115,13 @@ func (s *InterceptorAuthzSuite) TestV1_StandardUserPermissions() {
 			s.Require().NoError(err)
 			s.Require().NotNil(decision)
 			s.Equal(tc.expected, decision.Allowed, "expected allowed=%v for %s", tc.expected, tc.name)
-			s.Equal(authz.ModeV1, decision.Mode)
+			s.Equal(internalauthz.ModeV1, decision.Mode)
 		})
 	}
 }
 
 func (s *InterceptorAuthzSuite) TestV1_UnknownRoleDenied() {
-	policyCfg := PolicyConfig{}
+	policyCfg := internalauthz.PolicyConfig{}
 	err := defaults.Set(&policyCfg)
 	s.Require().NoError(err)
 
@@ -142,7 +142,7 @@ func (s *InterceptorAuthzSuite) TestV1_UnknownRoleDenied() {
 
 	for _, tc := range tests {
 		s.Run(tc.name, func() {
-			req := &authz.Request{
+			req := &internalauthz.Request{
 				Token:  token,
 				RPC:    tc.rpc,
 				Action: ActionRead,
@@ -152,13 +152,13 @@ func (s *InterceptorAuthzSuite) TestV1_UnknownRoleDenied() {
 			s.Require().NoError(err)
 			s.Require().NotNil(decision)
 			s.False(decision.Allowed, "unknown role should be denied for %s", tc.rpc)
-			s.Equal(authz.ModeV1, decision.Mode)
+			s.Equal(internalauthz.ModeV1, decision.Mode)
 		})
 	}
 }
 
 func (s *InterceptorAuthzSuite) TestV1_UnknownRolePublicRoutes() {
-	policyCfg := PolicyConfig{}
+	policyCfg := internalauthz.PolicyConfig{}
 	err := defaults.Set(&policyCfg)
 	s.Require().NoError(err)
 
@@ -177,7 +177,7 @@ func (s *InterceptorAuthzSuite) TestV1_UnknownRolePublicRoutes() {
 
 	for _, tc := range tests {
 		s.Run(tc.name, func() {
-			req := &authz.Request{
+			req := &internalauthz.Request{
 				Token:  token,
 				RPC:    tc.rpc,
 				Action: ActionRead,
@@ -187,17 +187,18 @@ func (s *InterceptorAuthzSuite) TestV1_UnknownRolePublicRoutes() {
 			s.Require().NoError(err)
 			s.Require().NotNil(decision)
 			s.True(decision.Allowed, "unknown role should be ALLOWED for public route %s", tc.rpc)
-			s.Equal(authz.ModeV1, decision.Mode)
+			s.Equal(internalauthz.ModeV1, decision.Mode)
 		})
 	}
 }
 
 func (s *InterceptorAuthzSuite) TestV1_CustomRoleMapping() {
-	policyCfg := PolicyConfig{}
+	policyCfg := internalauthz.PolicyConfig{}
 	err := defaults.Set(&policyCfg)
 	s.Require().NoError(err)
 
 	// Map external roles to internal roles
+	//nolint:staticcheck // Exercise deprecated RoleMap compatibility.
 	policyCfg.RoleMap = map[string]string{
 		"admin":    "external-admin",
 		"standard": "external-standard",
@@ -207,7 +208,7 @@ func (s *InterceptorAuthzSuite) TestV1_CustomRoleMapping() {
 
 	// Token with mapped admin role
 	adminToken := s.newTokenWithRoles("external-admin")
-	req := &authz.Request{
+	req := &internalauthz.Request{
 		Token:  adminToken,
 		RPC:    "/policy.attributes.AttributesService/CreateAttribute",
 		Action: ActionWrite,
@@ -219,7 +220,7 @@ func (s *InterceptorAuthzSuite) TestV1_CustomRoleMapping() {
 
 	// Token with mapped standard role
 	standardToken := s.newTokenWithRoles("external-standard")
-	req = &authz.Request{
+	req = &internalauthz.Request{
 		Token:  standardToken,
 		RPC:    "/policy.attributes.AttributesService/CreateAttribute",
 		Action: ActionWrite,
@@ -231,7 +232,7 @@ func (s *InterceptorAuthzSuite) TestV1_CustomRoleMapping() {
 }
 
 func (s *InterceptorAuthzSuite) TestV1_ExtendedPolicy() {
-	policyCfg := PolicyConfig{}
+	policyCfg := internalauthz.PolicyConfig{}
 	err := defaults.Set(&policyCfg)
 	s.Require().NoError(err)
 
@@ -245,7 +246,7 @@ func (s *InterceptorAuthzSuite) TestV1_ExtendedPolicy() {
 	token := s.newTokenWithRoles("custom-user")
 
 	// Custom role can access custom service
-	req := &authz.Request{
+	req := &internalauthz.Request{
 		Token:  token,
 		RPC:    "/custom.service.CustomService/GetCustom",
 		Action: ActionRead,
@@ -256,7 +257,7 @@ func (s *InterceptorAuthzSuite) TestV1_ExtendedPolicy() {
 	s.True(decision.Allowed, "custom role should be allowed for custom service")
 
 	// Custom role cannot access other services
-	req = &authz.Request{
+	req = &internalauthz.Request{
 		Token:  token,
 		RPC:    "/policy.attributes.AttributesService/GetAttribute",
 		Action: ActionRead,
@@ -287,7 +288,7 @@ func (s *InterceptorAuthzSuite) TestV2_AdminWildcardAccess() {
 
 	for _, tc := range tests {
 		s.Run(tc.name, func() {
-			req := &authz.Request{
+			req := &internalauthz.Request{
 				Token:  token,
 				RPC:    tc.rpc,
 				Action: ActionRead,
@@ -297,7 +298,7 @@ func (s *InterceptorAuthzSuite) TestV2_AdminWildcardAccess() {
 			s.Require().NoError(err)
 			s.Require().NotNil(decision)
 			s.True(decision.Allowed, "admin should have wildcard access to %s", tc.rpc)
-			s.Equal(authz.ModeV2, decision.Mode)
+			s.Equal(internalauthz.ModeV2, decision.Mode)
 		})
 	}
 }
@@ -310,7 +311,7 @@ p, role:kas-user, /kas.*, *, allow`
 
 	// Policy reader token
 	policyToken := s.newTokenWithRoles("policy-reader")
-	policyReq := &authz.Request{
+	policyReq := &internalauthz.Request{
 		Token:  policyToken,
 		RPC:    "/policy.attributes.AttributesService/GetAttribute",
 		Action: ActionRead,
@@ -321,7 +322,7 @@ p, role:kas-user, /kas.*, *, allow`
 	s.True(decision.Allowed, "policy-reader should access policy service")
 
 	// Policy reader cannot access KAS
-	kasReq := &authz.Request{
+	kasReq := &internalauthz.Request{
 		Token:  policyToken,
 		RPC:    "/kas.AccessService/Rewrap",
 		Action: ActionRead,
@@ -333,7 +334,7 @@ p, role:kas-user, /kas.*, *, allow`
 
 	// KAS user token
 	kasToken := s.newTokenWithRoles("kas-user")
-	kasReq = &authz.Request{
+	kasReq = &internalauthz.Request{
 		Token:  kasToken,
 		RPC:    "/kas.AccessService/Rewrap",
 		Action: ActionRead,
@@ -350,7 +351,7 @@ func (s *InterceptorAuthzSuite) TestV2_UnknownRoleDenied() {
 
 	// Token with unknown role
 	token := s.newTokenWithRoles("unknown-role")
-	req := &authz.Request{
+	req := &internalauthz.Request{
 		Token:  token,
 		RPC:    "/some.Service/Method",
 		Action: ActionRead,
@@ -360,7 +361,7 @@ func (s *InterceptorAuthzSuite) TestV2_UnknownRoleDenied() {
 	s.Require().NoError(err)
 	s.Require().NotNil(decision)
 	s.False(decision.Allowed, "unknown role should be denied")
-	s.Equal(authz.ModeV2, decision.Mode)
+	s.Equal(internalauthz.ModeV2, decision.Mode)
 }
 
 func (s *InterceptorAuthzSuite) TestV2_MultipleRoles() {
@@ -374,7 +375,7 @@ p, role:role-b, /service.B/*, *, allow`
 	token := s.newTokenWithRoles("role-a", "role-b")
 
 	// Should access service A
-	reqA := &authz.Request{
+	reqA := &internalauthz.Request{
 		Token:  token,
 		RPC:    "/service.A/Method",
 		Action: ActionRead,
@@ -384,7 +385,7 @@ p, role:role-b, /service.B/*, *, allow`
 	s.True(decision.Allowed, "token with role-a should access service A")
 
 	// Should access service B
-	reqB := &authz.Request{
+	reqB := &internalauthz.Request{
 		Token:  token,
 		RPC:    "/service.B/Method",
 		Action: ActionRead,
@@ -394,7 +395,7 @@ p, role:role-b, /service.B/*, *, allow`
 	s.True(decision.Allowed, "token with role-b should access service B")
 
 	// Should not access service C
-	reqC := &authz.Request{
+	reqC := &internalauthz.Request{
 		Token:  token,
 		RPC:    "/service.C/Method",
 		Action: ActionRead,
@@ -413,13 +414,13 @@ p, role:finance-admin, /policy.attributes.AttributesService/*, namespace=finance
 
 	// HR admin with HR namespace dimension
 	hrToken := s.newTokenWithRoles("hr-admin")
-	hrResource := authz.ResolverResource(map[string]string{"namespace": "hr"})
-	hrReq := &authz.Request{
+	hrResource := internalauthz.ResolverResource(map[string]string{"namespace": "hr"})
+	hrReq := &internalauthz.Request{
 		Token:  hrToken,
 		RPC:    "/policy.attributes.AttributesService/UpdateAttribute",
 		Action: ActionWrite,
-		ResourceContext: &authz.ResolverContext{
-			Resources: []*authz.ResolverResource{&hrResource},
+		ResourceContext: &internalauthz.ResolverContext{
+			Resources: []*internalauthz.ResolverResource{&hrResource},
 		},
 	}
 	decision, err := authorizer.Authorize(context.Background(), hrReq)
@@ -428,13 +429,13 @@ p, role:finance-admin, /policy.attributes.AttributesService/*, namespace=finance
 	s.True(decision.Allowed, "hr-admin should be allowed with namespace=hr dimension")
 
 	// HR admin with finance namespace dimension should be denied
-	financeResource := authz.ResolverResource(map[string]string{"namespace": "finance"})
-	financeReq := &authz.Request{
+	financeResource := internalauthz.ResolverResource(map[string]string{"namespace": "finance"})
+	financeReq := &internalauthz.Request{
 		Token:  hrToken,
 		RPC:    "/policy.attributes.AttributesService/UpdateAttribute",
 		Action: ActionWrite,
-		ResourceContext: &authz.ResolverContext{
-			Resources: []*authz.ResolverResource{&financeResource},
+		ResourceContext: &internalauthz.ResolverContext{
+			Resources: []*internalauthz.ResolverResource{&financeResource},
 		},
 	}
 	decision, err = authorizer.Authorize(context.Background(), financeReq)
@@ -444,12 +445,12 @@ p, role:finance-admin, /policy.attributes.AttributesService/*, namespace=finance
 
 	// Finance admin with finance namespace should be allowed
 	financeToken := s.newTokenWithRoles("finance-admin")
-	financeReq = &authz.Request{
+	financeReq = &internalauthz.Request{
 		Token:  financeToken,
 		RPC:    "/policy.attributes.AttributesService/UpdateAttribute",
 		Action: ActionWrite,
-		ResourceContext: &authz.ResolverContext{
-			Resources: []*authz.ResolverResource{&financeResource},
+		ResourceContext: &internalauthz.ResolverContext{
+			Resources: []*internalauthz.ResolverResource{&financeResource},
 		},
 	}
 	decision, err = authorizer.Authorize(context.Background(), financeReq)
@@ -460,7 +461,7 @@ p, role:finance-admin, /policy.attributes.AttributesService/*, namespace=finance
 
 func (s *InterceptorAuthzSuite) TestAuthorizeV2_InvokesRegisteredResolver() {
 	csvPolicy := "p, role:hr-admin, /policy.attributes.AttributesService/*, namespace=hr, allow"
-	registry := authz.NewResolverRegistry()
+	registry := internalauthz.NewResolverRegistry()
 	scopedRegistry := registry.ScopedForService(&grpc.ServiceDesc{
 		ServiceName: "policy.attributes.AttributesService",
 		Methods: []grpc.MethodDesc{
@@ -469,9 +470,9 @@ func (s *InterceptorAuthzSuite) TestAuthorizeV2_InvokesRegisteredResolver() {
 	})
 
 	resolverCalled := false
-	scopedRegistry.MustRegister("UpdateAttribute", func(_ context.Context, _ connect.AnyRequest) (authz.ResolverContext, error) {
+	scopedRegistry.MustRegister("UpdateAttribute", func(_ context.Context, _ connect.AnyRequest) (internalauthz.ResolverContext, error) {
 		resolverCalled = true
-		resolverCtx := authz.NewResolverContext()
+		resolverCtx := internalauthz.NewResolverContext()
 		res := resolverCtx.NewResource()
 		res.AddDimension("namespace", "hr")
 		resolverCtx.SetResolvedData("attribute", "resolved")
@@ -505,7 +506,7 @@ func (s *InterceptorAuthzSuite) TestV2_EmptyToken() {
 
 	// Empty token (no roles)
 	token := jwt.New()
-	req := &authz.Request{
+	req := &internalauthz.Request{
 		Token:  token,
 		RPC:    "/some.Service/Method",
 		Action: ActionRead,
@@ -561,7 +562,7 @@ func (s *InterceptorAuthzSuite) TestGetAction() {
 // =============================================================================
 
 func (s *InterceptorAuthzSuite) TestV1_ReturnsCorrectMode() {
-	policyCfg := PolicyConfig{}
+	policyCfg := internalauthz.PolicyConfig{}
 	err := defaults.Set(&policyCfg)
 	s.Require().NoError(err)
 
@@ -582,7 +583,7 @@ func (s *InterceptorAuthzSuite) TestV2_ReturnsCorrectMode() {
 // =============================================================================
 
 func (s *InterceptorAuthzSuite) TestV1_GRPCPathCompatibility() {
-	policyCfg := PolicyConfig{}
+	policyCfg := internalauthz.PolicyConfig{}
 	err := defaults.Set(&policyCfg)
 	s.Require().NoError(err)
 
@@ -598,7 +599,7 @@ func (s *InterceptorAuthzSuite) TestV1_GRPCPathCompatibility() {
 
 	for _, path := range grpcPaths {
 		s.Run(path, func() {
-			req := &authz.Request{
+			req := &internalauthz.Request{
 				Token:  adminToken,
 				RPC:    path,
 				Action: ActionRead,
@@ -607,13 +608,13 @@ func (s *InterceptorAuthzSuite) TestV1_GRPCPathCompatibility() {
 
 			s.Require().NoError(err)
 			s.True(decision.Allowed, "admin should access gRPC path: %s", path)
-			s.Equal(authz.ModeV1, decision.Mode)
+			s.Equal(internalauthz.ModeV1, decision.Mode)
 		})
 	}
 }
 
 func (s *InterceptorAuthzSuite) TestV1_HTTPPathCompatibility() {
-	policyCfg := PolicyConfig{}
+	policyCfg := internalauthz.PolicyConfig{}
 	err := defaults.Set(&policyCfg)
 	s.Require().NoError(err)
 
@@ -627,7 +628,7 @@ func (s *InterceptorAuthzSuite) TestV1_HTTPPathCompatibility() {
 
 	for _, path := range httpPaths {
 		s.Run(path, func() {
-			req := &authz.Request{
+			req := &internalauthz.Request{
 				Token:  standardToken,
 				RPC:    path,
 				Action: ActionWrite,
@@ -636,7 +637,7 @@ func (s *InterceptorAuthzSuite) TestV1_HTTPPathCompatibility() {
 
 			s.Require().NoError(err)
 			s.True(decision.Allowed, "standard should access HTTP path: %s", path)
-			s.Equal(authz.ModeV1, decision.Mode)
+			s.Equal(internalauthz.ModeV1, decision.Mode)
 		})
 	}
 }
@@ -669,13 +670,9 @@ func (s *InterceptorAuthzSuite) newTokenWithRoles(roles ...string) jwt.Token {
 }
 
 // createV1Authorizer creates a v1 Casbin authorizer using the same path as the interceptor
-func (s *InterceptorAuthzSuite) createV1Authorizer(policyCfg PolicyConfig) authz.Authorizer {
-	// Create the v1 Casbin enforcer (same as authn.go)
-	enforcer, err := NewCasbinEnforcer(CasbinConfig{PolicyConfig: policyCfg}, s.logger)
-	s.Require().NoError(err)
-
+func (s *InterceptorAuthzSuite) createV1Authorizer(policyCfg internalauthz.PolicyConfig) internalauthz.Authorizer {
 	// Create authz config matching authn.go initialization
-	authzPolicyCfg := authz.PolicyConfig{
+	authzPolicyCfg := internalauthz.PolicyConfig{
 		Engine:        policyCfg.Engine,
 		Version:       "v1",
 		UserNameClaim: policyCfg.UserNameClaim,
@@ -684,37 +681,33 @@ func (s *InterceptorAuthzSuite) createV1Authorizer(policyCfg PolicyConfig) authz
 		Csv:           policyCfg.Csv,
 		Extension:     policyCfg.Extension,
 		Model:         policyCfg.Model,
-		RoleMap:       policyCfg.RoleMap,
+		//nolint:staticcheck // Exercise deprecated RoleMap compatibility.
+		RoleMap: policyCfg.RoleMap,
 	}
-	authzCfg := authz.Config{
-		Engine:       "casbin",
-		Version:      "v1",
+	authzCfg := internalauthz.Config{
 		PolicyConfig: authzPolicyCfg,
 		Logger:       s.logger,
-		Options:      []authz.Option{authz.WithV1Enforcer(enforcer)},
 	}
 
-	authorizer, err := authz.New(authzCfg)
+	authorizer, err := internalauthz.New(authzCfg)
 	s.Require().NoError(err)
 	return authorizer
 }
 
 // createV2Authorizer creates a v2 Casbin authorizer
-func (s *InterceptorAuthzSuite) createV2Authorizer(csvPolicy string) authz.Authorizer {
-	authzPolicyCfg := authz.PolicyConfig{
+func (s *InterceptorAuthzSuite) createV2Authorizer(csvPolicy string) internalauthz.Authorizer {
+	authzPolicyCfg := internalauthz.PolicyConfig{
 		Engine:      "casbin",
 		Version:     "v2",
 		GroupsClaim: "realm_access.roles",
 		Csv:         csvPolicy,
 	}
-	authzCfg := authz.Config{
-		Engine:       "casbin",
-		Version:      "v2",
+	authzCfg := internalauthz.Config{
 		PolicyConfig: authzPolicyCfg,
 		Logger:       s.logger,
 	}
 
-	authorizer, err := authz.New(authzCfg)
+	authorizer, err := internalauthz.New(authzCfg)
 	s.Require().NoError(err)
 	return authorizer
 }

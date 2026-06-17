@@ -1,48 +1,57 @@
 package authz
 
 // PolicyConfig contains the policy configuration for authorization.
-// This mirrors auth.PolicyConfig to avoid circular imports while maintaining
-// the same field structure for consistent configuration.
 type PolicyConfig struct {
+	Builtin string `mapstructure:"-" json:"-"`
+
 	// Issuer is the configured token issuer for role provider requests.
-	Issuer string
+	Issuer string `mapstructure:"-" json:"-"`
 
 	// Engine specifies the authorization engine to use.
 	// - "casbin" (default): Casbin policy engine
 	// - "cedar": AWS Cedar policy engine (future)
 	// - "opa": Open Policy Agent engine (future)
-	Engine string
+	Engine string `mapstructure:"engine" json:"engine" default:"casbin"`
 
 	// Version specifies the engine-specific authorization model version.
 	// For Casbin:
 	// - "v1" (default): Legacy path-based authorization (subject, resource, action)
 	// - "v2": RPC + dimensions authorization (subject, rpc, dimensions)
-	Version string
+	// v2 enables fine-grained resource-level authorization using AuthzResolvers.
+	Version string `mapstructure:"version" json:"version" default:"v1"`
 
 	// Username claim to use for user information
-	UserNameClaim string
+	UserNameClaim string `mapstructure:"username_claim" json:"username_claim" default:"preferred_username"`
 
-	// Claim to use for group/role information (dot notation supported, e.g., "realm_access.roles")
-	GroupsClaim string
+	// Claim to use for group/role information
+	GroupsClaim string `mapstructure:"groups_claim" json:"groups_claim" default:"realm_access.roles"`
+
+	// Role provider configuration (resolved via StartOptions)
+	RolesProvider RolesProviderConfig `mapstructure:"roles_provider" json:"roles_provider"`
 
 	// Claim to use to reference idP clientID
-	ClientIDClaim string
+	ClientIDClaim string `mapstructure:"client_id_claim" json:"client_id_claim" default:"azp"`
 
-	// Override the builtin policy with a custom policy (CSV format)
-	Csv string
+	// Deprecated: Use GroupsClaim instead
+	RoleClaim string `mapstructure:"claim" json:"claim" default:"realm_access.roles"`
+
+	// Deprecated: Use Casbin grouping statements g, <user/group>, <role>
+	RoleMap map[string]string `mapstructure:"map" json:"map"`
+
+	// Override the builtin policy with a custom policy
+	Csv string `mapstructure:"csv" json:"csv"`
 
 	// Extend the builtin policy with a custom policy
-	Extension string
+	Extension string `mapstructure:"extension" json:"extension"`
 
-	// Casbin model configuration (for custom models)
-	Model string
+	Model string `mapstructure:"model" json:"model"`
 
-	// RoleMap maps IdP roles to internal platform roles.
-	//
-	// Deprecated: Use Casbin grouping statements g, <user/group>, <role>
-	RoleMap map[string]string
+	// Override the default string-adapter
+	Adapter any `mapstructure:"-" json:"-"`
+}
 
-	// Adapter is an optional custom policy adapter (e.g., SQL)
-	// If nil, the default CSV string adapter is used.
-	Adapter any
+// RolesProviderConfig contains role-provider selection and provider-specific settings.
+type RolesProviderConfig struct {
+	Name   string         `mapstructure:"name" json:"name"`
+	Config map[string]any `mapstructure:"config" json:"config"`
 }

@@ -51,6 +51,18 @@ type AuthSuite struct {
 	auth   *Authentication
 }
 
+type staticProvider struct {
+	roles []string
+	err   error
+}
+
+func (p staticProvider) Roles(_ context.Context, _ jwt.Token, _ authz.RoleRequest) ([]string, error) {
+	if p.err != nil {
+		return nil, p.err
+	}
+	return p.roles, nil
+}
+
 type FakeAccessTokenSource struct {
 	dpopKey     jwk.Key
 	accessToken string
@@ -179,7 +191,7 @@ func (s *AuthSuite) SetupTest() {
 		}
 	}))
 
-	policyCfg := PolicyConfig{
+	policyCfg := internalauthz.PolicyConfig{
 		ClientIDClaim: "cid",
 	}
 	err = defaults.Set(&policyCfg)
@@ -242,16 +254,21 @@ func TestNormalizeUrl(t *testing.T) {
 	}
 }
 
-func TestPermissionDeniedLogAttrs(t *testing.T) {
+func TestPermissionDeniedDecisionLogAttrs(t *testing.T) {
 	tok := jwt.New()
 	require.NoError(t, tok.Set(jwt.SubjectKey, "client-subject"))
 
-	attrs := permissionDeniedLogAttrs(tok, map[string]any{
-		casbinAuthzConfiguredGroupsClaimKey: "custom.groups",
-		casbinAuthzSubjectGroupsKey:         []string{"opentdf-standard"},
-	}, ErrPermissionDenied)
+	decision := &internalauthz.Decision{
+		Reason: "v2: denied policy.attributes.AttributesService/GetAttribute",
+		Mode:   internalauthz.ModeV2,
+		Metadata: internalauthz.DecisionMetadata{
+			GroupsClaim: "custom.groups",
+		},
+	}
+	permissionErr := errors.New("permission denied")
+	attrs := permissionDeniedDecisionLogAttrs(tok, decision, permissionErr)
 
-	require.Len(t, attrs, 3)
+	require.Len(t, attrs, 5)
 	assert.Equal(t, slog.String("azp", "client-subject"), attrs[0])
 
 	casbinAuthzAttr, ok := attrs[1].(slog.Attr)
@@ -259,26 +276,28 @@ func TestPermissionDeniedLogAttrs(t *testing.T) {
 	assert.Equal(t, "casbin_authz", casbinAuthzAttr.Key)
 
 	casbinAuthzAttrs := casbinAuthzAttr.Value.Group()
-	require.Len(t, casbinAuthzAttrs, 2)
+	require.Len(t, casbinAuthzAttrs, 1)
 	assert.Equal(t, slog.String("configured_groups_claim", "custom.groups"), casbinAuthzAttrs[0])
-	assert.Equal(t, "subject_groups", casbinAuthzAttrs[1].Key)
-	assert.Equal(t, []string{"opentdf-standard"}, casbinAuthzAttrs[1].Value.Any())
 
-	errorAttr, ok := attrs[2].(slog.Attr)
+	assert.Equal(t, slog.String("mode", "v2"), attrs[2])
+	assert.Equal(t, slog.String("reason", "v2: denied policy.attributes.AttributesService/GetAttribute"), attrs[3])
+
+	errorAttr, ok := attrs[4].(slog.Attr)
 	require.True(t, ok)
 	assert.Equal(t, "error", errorAttr.Key)
 	loggedErr, ok := errorAttr.Value.Any().(error)
 	require.True(t, ok)
-	if !errors.Is(loggedErr, ErrPermissionDenied) {
-		t.Fatalf("expected error to wrap %v", ErrPermissionDenied)
+	if !errors.Is(loggedErr, permissionErr) {
+		t.Fatalf("expected error to wrap %v", permissionErr)
 	}
 }
 
-func TestPermissionDeniedLogAttrsWithoutSubjectInfo(t *testing.T) {
+func TestPermissionDeniedDecisionLogAttrsWithoutDecision(t *testing.T) {
 	tok := jwt.New()
 	require.NoError(t, tok.Set(jwt.SubjectKey, "client-subject"))
 
-	attrs := permissionDeniedLogAttrs(tok, nil, ErrPermissionDenied)
+	permissionErr := errors.New("permission denied")
+	attrs := permissionDeniedDecisionLogAttrs(tok, nil, permissionErr)
 
 	require.Len(t, attrs, 2)
 	assert.Equal(t, slog.String("azp", "client-subject"), attrs[0])
@@ -288,8 +307,8 @@ func TestPermissionDeniedLogAttrsWithoutSubjectInfo(t *testing.T) {
 	assert.Equal(t, "error", errorAttr.Key)
 	loggedErr, ok := errorAttr.Value.Any().(error)
 	require.True(t, ok)
-	if !errors.Is(loggedErr, ErrPermissionDenied) {
-		t.Fatalf("expected error to wrap %v", ErrPermissionDenied)
+	if !errors.Is(loggedErr, permissionErr) {
+		t.Fatalf("expected error to wrap %v", permissionErr)
 	}
 }
 
@@ -306,8 +325,8 @@ func TestResolveRoleProviderNamed(t *testing.T) {
 	logger := logger.CreateTestLogger()
 	cfg := Config{
 		AuthNConfig: AuthNConfig{
-			Policy: PolicyConfig{
-				RolesProvider: RolesProviderConfig{
+			Policy: internalauthz.PolicyConfig{
+				RolesProvider: internalauthz.RolesProviderConfig{
 					Name: "mock",
 				},
 			},
@@ -327,8 +346,8 @@ func TestResolveRoleProviderMissingName(t *testing.T) {
 	logger := logger.CreateTestLogger()
 	cfg := Config{
 		AuthNConfig: AuthNConfig{
-			Policy: PolicyConfig{
-				RolesProvider: RolesProviderConfig{
+			Policy: internalauthz.PolicyConfig{
+				RolesProvider: internalauthz.RolesProviderConfig{
 					Name: "missing",
 				},
 			},
@@ -402,7 +421,7 @@ func (s *AuthSuite) Test_ConnectAuthNAndAuthZInterceptors_ClientIDPropagated() {
 	s.Require().NoError(tok.Set("azp", "test-client-id"))
 	s.Require().NoError(tok.Set("realm_access", map[string][]string{"roles": {"opentdf-standard"}}))
 
-	policyCfg := new(PolicyConfig)
+	policyCfg := new(internalauthz.PolicyConfig)
 	err := defaults.Set(policyCfg)
 	s.Require().NoError(err)
 
@@ -461,7 +480,7 @@ func (s *AuthSuite) Test_MuxHandler_RoleProviderErrorReturnsInternalServerError(
 	signedTok, err := jwt.Sign(tok, jwt.WithKey(jwa.RS256, s.key))
 	s.Require().NoError(err)
 
-	policyCfg := PolicyConfig{ClientIDClaim: "cid"}
+	policyCfg := internalauthz.PolicyConfig{ClientIDClaim: "cid"}
 	s.Require().NoError(defaults.Set(&policyCfg))
 	auth, err := NewAuthenticator(s.T().Context(), Config{
 		AuthNConfig: AuthNConfig{
@@ -497,7 +516,7 @@ func (s *AuthSuite) Test_MuxHandler_UsesAuthorizer() {
 	signedTok, err := jwt.Sign(tok, jwt.WithKey(jwa.RS256, s.key))
 	s.Require().NoError(err)
 
-	policyCfg := PolicyConfig{ClientIDClaim: "cid"}
+	policyCfg := internalauthz.PolicyConfig{ClientIDClaim: "cid"}
 	s.Require().NoError(defaults.Set(&policyCfg))
 	auth, err := NewAuthenticator(s.T().Context(), Config{
 		AuthNConfig: AuthNConfig{
@@ -540,7 +559,7 @@ func (s *AuthSuite) Test_MuxHandler_NilAuthorizerReturnsInternalServerError() {
 	signedTok, err := jwt.Sign(tok, jwt.WithKey(jwa.RS256, s.key))
 	s.Require().NoError(err)
 
-	policyCfg := PolicyConfig{ClientIDClaim: "cid"}
+	policyCfg := internalauthz.PolicyConfig{ClientIDClaim: "cid"}
 	s.Require().NoError(defaults.Set(&policyCfg))
 	auth, err := NewAuthenticator(s.T().Context(), Config{
 		AuthNConfig: AuthNConfig{
@@ -579,7 +598,7 @@ func (s *AuthSuite) Test_MuxHandler_V2WithoutResourceContextFailsClosedForDimens
 	signedTok, err := jwt.Sign(tok, jwt.WithKey(jwa.RS256, s.key))
 	s.Require().NoError(err)
 
-	policyCfg := PolicyConfig{
+	policyCfg := internalauthz.PolicyConfig{
 		Version:       "v2",
 		ClientIDClaim: "cid",
 		GroupsClaim:   "realm_access.roles",
@@ -619,7 +638,7 @@ func (s *AuthSuite) Test_ConnectAuthNInterceptor_RoleProviderErrorReturnsInterna
 	signedTok, err := jwt.Sign(tok, jwt.WithKey(jwa.RS256, s.key))
 	s.Require().NoError(err)
 
-	policyCfg := new(PolicyConfig)
+	policyCfg := new(internalauthz.PolicyConfig)
 	s.Require().NoError(defaults.Set(policyCfg))
 	auth, err := NewAuthenticator(s.T().Context(), Config{
 		AuthNConfig: AuthNConfig{

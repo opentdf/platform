@@ -31,7 +31,7 @@ func createResourceMapping(cmd *cobra.Command, args []string) {
 	})
 	metadataLabels = c.Flags.GetStringSlice("label", metadataLabels, cli.FlagsStringSliceOptions{Min: 0})
 
-	resourceMapping, err := h.CreateResourceMapping(attrID, terms, grpID, nsID, nsFqn, getMetadataMutable(metadataLabels))
+	resourceMapping, err := h.CreateResourceMapping(cmd.Context(), attrID, terms, grpID, nsID, nsFqn, getMetadataMutable(metadataLabels))
 	if err != nil {
 		cli.ExitWithError("Failed to create resource mapping", err)
 	}
@@ -59,7 +59,7 @@ func getResourceMapping(cmd *cobra.Command, args []string) {
 
 	id := c.Flags.GetRequiredID("id")
 
-	resourceMapping, err := h.GetResourceMapping(id)
+	resourceMapping, err := h.GetResourceMapping(cmd.Context(), id)
 	if err != nil {
 		cli.ExitWithError(fmt.Sprintf("Failed to get resource mapping (%s)", id), err)
 	}
@@ -141,7 +141,7 @@ func updateResourceMapping(cmd *cobra.Command, args []string) {
 	terms = c.Flags.GetStringSlice("terms", terms, cli.FlagsStringSliceOptions{})
 	metadataLabels = c.Flags.GetStringSlice("label", metadataLabels, cli.FlagsStringSliceOptions{Min: 0})
 
-	resourceMapping, err := h.UpdateResourceMapping(id, attrValueID, grpID, nsID, nsFqn, terms, getMetadataMutable(metadataLabels), getMetadataUpdateBehavior())
+	resourceMapping, err := h.UpdateResourceMapping(cmd.Context(), id, attrValueID, grpID, nsID, nsFqn, terms, getMetadataMutable(metadataLabels), getMetadataUpdateBehavior())
 	if err != nil {
 		cli.ExitWithError(fmt.Sprintf("Failed to update resource mapping (%s)", id), err)
 	}
@@ -172,12 +172,12 @@ func deleteResourceMapping(cmd *cobra.Command, args []string) {
 
 	cli.ConfirmAction(cli.ActionDelete, "resource-mapping", id, force)
 
-	resourceMapping, err := h.GetResourceMapping(id)
+	resourceMapping, err := h.GetResourceMapping(cmd.Context(), id)
 	if err != nil {
 		cli.ExitWithError(fmt.Sprintf("Failed to get resource mapping for delete (%s)", id), err)
 	}
 
-	_, err = h.DeleteResourceMapping(id)
+	_, err = h.DeleteResourceMapping(cmd.Context(), id)
 	if err != nil {
 		cli.ExitWithError(fmt.Sprintf("Failed to delete resource mapping (%s)", id), err)
 	}

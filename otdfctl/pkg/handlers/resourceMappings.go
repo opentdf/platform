@@ -9,8 +9,8 @@ import (
 )
 
 // Creates and returns the created resource mapping
-func (h *Handler) CreateResourceMapping(attributeID string, terms []string, grpID, namespaceID, namespaceFqn string, metadata *common.MetadataMutable) (*policy.ResourceMapping, error) {
-	res, err := h.sdk.ResourceMapping.CreateResourceMapping(context.Background(), &resourcemapping.CreateResourceMappingRequest{
+func (h *Handler) CreateResourceMapping(ctx context.Context, attributeID string, terms []string, grpID, namespaceID, namespaceFqn string, metadata *common.MetadataMutable) (*policy.ResourceMapping, error) {
+	res, err := h.sdk.ResourceMapping.CreateResourceMapping(ctx, &resourcemapping.CreateResourceMappingRequest{
 		AttributeValueId: attributeID,
 		GroupId:          grpID,
 		NamespaceId:      namespaceID,
@@ -22,11 +22,11 @@ func (h *Handler) CreateResourceMapping(attributeID string, terms []string, grpI
 		return nil, err
 	}
 
-	return h.GetResourceMapping(res.GetResourceMapping().GetId())
+	return h.GetResourceMapping(ctx, res.GetResourceMapping().GetId())
 }
 
-func (h *Handler) GetResourceMapping(id string) (*policy.ResourceMapping, error) {
-	res, err := h.sdk.ResourceMapping.GetResourceMapping(context.Background(), &resourcemapping.GetResourceMappingRequest{
+func (h *Handler) GetResourceMapping(ctx context.Context, id string) (*policy.ResourceMapping, error) {
+	res, err := h.sdk.ResourceMapping.GetResourceMapping(ctx, &resourcemapping.GetResourceMappingRequest{
 		Id: id,
 	})
 	if err != nil {
@@ -49,8 +49,8 @@ func (h *Handler) ListResourceMappings(ctx context.Context, namespaceID, namespa
 
 // TODO: verify updation behavior
 // Updates and returns the updated resource mapping
-func (h *Handler) UpdateResourceMapping(id, attrValueID, grpID, namespaceID, namespaceFqn string, terms []string, metadata *common.MetadataMutable, behavior common.MetadataUpdateEnum) (*policy.ResourceMapping, error) {
-	_, err := h.sdk.ResourceMapping.UpdateResourceMapping(context.Background(), &resourcemapping.UpdateResourceMappingRequest{
+func (h *Handler) UpdateResourceMapping(ctx context.Context, id, attrValueID, grpID, namespaceID, namespaceFqn string, terms []string, metadata *common.MetadataMutable, behavior common.MetadataUpdateEnum) (*policy.ResourceMapping, error) {
+	_, err := h.sdk.ResourceMapping.UpdateResourceMapping(ctx, &resourcemapping.UpdateResourceMappingRequest{
 		Id:                     id,
 		AttributeValueId:       attrValueID,
 		Terms:                  terms,
@@ -64,11 +64,11 @@ func (h *Handler) UpdateResourceMapping(id, attrValueID, grpID, namespaceID, nam
 		return nil, err
 	}
 
-	return h.GetResourceMapping(id)
+	return h.GetResourceMapping(ctx, id)
 }
 
-func (h *Handler) DeleteResourceMapping(id string) (*policy.ResourceMapping, error) {
-	resp, err := h.sdk.ResourceMapping.DeleteResourceMapping(context.Background(), &resourcemapping.DeleteResourceMappingRequest{
+func (h *Handler) DeleteResourceMapping(ctx context.Context, id string) (*policy.ResourceMapping, error) {
+	resp, err := h.sdk.ResourceMapping.DeleteResourceMapping(ctx, &resourcemapping.DeleteResourceMappingRequest{
 		Id: id,
 	})
 	if err != nil {

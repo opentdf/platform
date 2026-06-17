@@ -189,16 +189,21 @@ func (s *AttributesService) GetKeyMappingsByFqns(ctx context.Context,
 	return connect.NewResponse(rsp), nil
 }
 
-// GetEntitleableAttributesByFqns is defined in the proto but implemented in a
-// follow-up change (the server-side decisioning migration). It returns
-// Unimplemented until then.
 func (s *AttributesService) GetEntitleableAttributesByFqns(ctx context.Context,
-	_ *connect.Request[attributes.GetEntitleableAttributesByFqnsRequest],
+	req *connect.Request[attributes.GetEntitleableAttributesByFqnsRequest],
 ) (*connect.Response[attributes.GetEntitleableAttributesByFqnsResponse], error) {
-	_, span := s.Start(ctx, "GetEntitleableAttributesByFqns")
+	ctx, span := s.Start(ctx, "GetEntitleableAttributesByFqns")
 	defer span.End()
 
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("GetEntitleableAttributesByFqns is not yet implemented"))
+	rsp := &attributes.GetEntitleableAttributesByFqnsResponse{}
+
+	entitleable, err := s.dbClient.GetEntitleableAttributesByFqns(ctx, req.Msg)
+	if err != nil {
+		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextGetRetrievalFailed, slog.String("fqns", fmt.Sprintf("%v", req.Msg.GetFqns())))
+	}
+	rsp.FqnEntitleableAttributes = entitleable
+
+	return connect.NewResponse(rsp), nil
 }
 
 func (s *AttributesService) UpdateAttribute(ctx context.Context,

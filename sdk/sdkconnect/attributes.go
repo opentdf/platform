@@ -22,6 +22,7 @@ type AttributesServiceClient interface {
 	GetAttribute(ctx context.Context, req *attributes.GetAttributeRequest) (*attributes.GetAttributeResponse, error)
 	GetAttributeValuesByFqns(ctx context.Context, req *attributes.GetAttributeValuesByFqnsRequest) (*attributes.GetAttributeValuesByFqnsResponse, error)
 	GetKeyMappingsByFqns(ctx context.Context, req *attributes.GetKeyMappingsByFqnsRequest) (*attributes.GetKeyMappingsByFqnsResponse, error)
+	GetEntitleableAttributesByFqns(ctx context.Context, req *attributes.GetEntitleableAttributesByFqnsRequest) (*attributes.GetEntitleableAttributesByFqnsResponse, error)
 	CreateAttribute(ctx context.Context, req *attributes.CreateAttributeRequest) (*attributes.CreateAttributeResponse, error)
 	UpdateAttribute(ctx context.Context, req *attributes.UpdateAttributeRequest) (*attributes.UpdateAttributeResponse, error)
 	DeactivateAttribute(ctx context.Context, req *attributes.DeactivateAttributeRequest) (*attributes.DeactivateAttributeResponse, error)
@@ -78,6 +79,15 @@ func (w *AttributesServiceClientConnectWrapper) GetAttributeValuesByFqns(ctx con
 func (w *AttributesServiceClientConnectWrapper) GetKeyMappingsByFqns(ctx context.Context, req *attributes.GetKeyMappingsByFqnsRequest) (*attributes.GetKeyMappingsByFqnsResponse, error) {
 	// Wrap Connect RPC client request
 	res, err := w.AttributesServiceClient.GetKeyMappingsByFqns(ctx, connect.NewRequest(req))
+	if res == nil {
+		return nil, err
+	}
+	return res.Msg, err
+}
+
+func (w *AttributesServiceClientConnectWrapper) GetEntitleableAttributesByFqns(ctx context.Context, req *attributes.GetEntitleableAttributesByFqnsRequest) (*attributes.GetEntitleableAttributesByFqnsResponse, error) {
+	// Wrap Connect RPC client request
+	res, err := w.AttributesServiceClient.GetEntitleableAttributesByFqns(ctx, connect.NewRequest(req))
 	if res == nil {
 		return nil, err
 	}

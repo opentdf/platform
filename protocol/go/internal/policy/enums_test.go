@@ -19,6 +19,33 @@ func TestOperatorConstants(t *testing.T) {
 	}
 }
 
+func TestComparisonConstants(t *testing.T) {
+	if ComparisonEquals != policyproto.ConditionComparisonOperatorEnum_CONDITION_COMPARISON_OPERATOR_ENUM_EQUALS {
+		t.Errorf("ComparisonEquals = %d, want %d", ComparisonEquals, policyproto.ConditionComparisonOperatorEnum_CONDITION_COMPARISON_OPERATOR_ENUM_EQUALS)
+	}
+	if ComparisonContains != policyproto.ConditionComparisonOperatorEnum_CONDITION_COMPARISON_OPERATOR_ENUM_CONTAINS {
+		t.Errorf("ComparisonContains = %d, want %d", ComparisonContains, policyproto.ConditionComparisonOperatorEnum_CONDITION_COMPARISON_OPERATOR_ENUM_CONTAINS)
+	}
+	if ComparisonStartsWith != policyproto.ConditionComparisonOperatorEnum_CONDITION_COMPARISON_OPERATOR_ENUM_STARTS_WITH {
+		t.Errorf("ComparisonStartsWith = %d, want %d", ComparisonStartsWith, policyproto.ConditionComparisonOperatorEnum_CONDITION_COMPARISON_OPERATOR_ENUM_STARTS_WITH)
+	}
+	if ComparisonEndsWith != policyproto.ConditionComparisonOperatorEnum_CONDITION_COMPARISON_OPERATOR_ENUM_ENDS_WITH {
+		t.Errorf("ComparisonEndsWith = %d, want %d", ComparisonEndsWith, policyproto.ConditionComparisonOperatorEnum_CONDITION_COMPARISON_OPERATOR_ENUM_ENDS_WITH)
+	}
+}
+
+func TestQuantifierConstants(t *testing.T) {
+	if QuantifierAny != policyproto.ConditionQuantifierEnum_CONDITION_QUANTIFIER_ENUM_ANY {
+		t.Errorf("QuantifierAny = %d, want %d", QuantifierAny, policyproto.ConditionQuantifierEnum_CONDITION_QUANTIFIER_ENUM_ANY)
+	}
+	if QuantifierAll != policyproto.ConditionQuantifierEnum_CONDITION_QUANTIFIER_ENUM_ALL {
+		t.Errorf("QuantifierAll = %d, want %d", QuantifierAll, policyproto.ConditionQuantifierEnum_CONDITION_QUANTIFIER_ENUM_ALL)
+	}
+	if QuantifierNone != policyproto.ConditionQuantifierEnum_CONDITION_QUANTIFIER_ENUM_NONE {
+		t.Errorf("QuantifierNone = %d, want %d", QuantifierNone, policyproto.ConditionQuantifierEnum_CONDITION_QUANTIFIER_ENUM_NONE)
+	}
+}
+
 func TestBooleanConstants(t *testing.T) {
 	if BooleanAnd != policyproto.ConditionBooleanTypeEnum_CONDITION_BOOLEAN_TYPE_ENUM_AND {
 		t.Errorf("BooleanAnd = %d, want %d", BooleanAnd, policyproto.ConditionBooleanTypeEnum_CONDITION_BOOLEAN_TYPE_ENUM_AND)

@@ -180,6 +180,32 @@ enum ConditionBooleanTypeEnum {
   CONDITION_BOOLEAN_TYPE_ENUM_OR = 2;
 }
 
+// How a selector result is compared against a comparison value. Replaces the all-in-one
+// SubjectMappingOperatorEnum by separating the comparison from the quantifier (see
+// ConditionQuantifierEnum) and case sensitivity.
+enum ConditionComparisonOperatorEnum {
+  CONDITION_COMPARISON_OPERATOR_ENUM_UNSPECIFIED = 0;
+  // exact string equality
+  CONDITION_COMPARISON_OPERATOR_ENUM_EQUALS = 1;
+  // substring containment
+  CONDITION_COMPARISON_OPERATOR_ENUM_CONTAINS = 2;
+  // prefix match
+  CONDITION_COMPARISON_OPERATOR_ENUM_STARTS_WITH = 3;
+  // suffix match; the safe operator for domain matching (e.g. email domains)
+  CONDITION_COMPARISON_OPERATOR_ENUM_ENDS_WITH = 4;
+}
+
+// How matches are aggregated across the comparison set (subject_external_values).
+enum ConditionQuantifierEnum {
+  CONDITION_QUANTIFIER_ENUM_UNSPECIFIED = 0;
+  // at least one match (legacy IN behavior)
+  CONDITION_QUANTIFIER_ENUM_ANY = 1;
+  // every expected value matches
+  CONDITION_QUANTIFIER_ENUM_ALL = 2;
+  // no matches (legacy NOT_IN behavior)
+  CONDITION_QUANTIFIER_ENUM_NONE = 3;
+}
+
 /*
    Subject Mapping: A Policy assigning Subject Set(s) to a permitted attribute
    value + action(s) combination
@@ -204,6 +230,59 @@ message SubjectMapping {
   common.Metadata metadata = 100;
 }
 
+/*
+   Dynamic Value Resolver: the dynamic half of a DynamicValueMapping. It resolves a selector
+   against the entity representation, then tests whether any resolved entity value matches the
+   requested resource value segment under comparison. The match is inherently existential over
+   the resolved entity values, so no quantifier is carried here.
+*/
+message DynamicValueResolver {
+  // a selector for a field value on a flattened Entity Representation (such as from
+  // idP/LDAP), e.g. ".patientAssignments[]"
+  string subject_external_selector_value = 1 [(buf.validate.field).required = true];
+
+  // how the requested resource value segment is compared against each value the selector
+  // resolves from the entity representation
+  ConditionComparisonOperatorEnum comparison = 2 [
+    (buf.validate.field).enum.defined_only = true,
+    (buf.validate.field).required = true
+  ];
+
+  // when set true, comparison is case-insensitive; unset is treated as case-sensitive. Modeled as
+  // BoolValue so an explicit false is distinguishable from unset, leaving room to change the default.
+  google.protobuf.BoolValue case_insensitive = 3;
+}
+
+/*
+   Dynamic Value Mapping: a Policy assigning permitted action(s) to
+   dynamically-requested values under an Attribute Definition. It raises entitlement
+   authority from a concrete Attribute Value to the Attribute Definition: at decision time
+   the value_resolver compares the requested resource value segment against the entity
+   representation, avoiding pre-provisioning a value + subject mapping per discrete value.
+*/
+message DynamicValueMapping {
+  string id = 1;
+
+  // the Attribute Definition whose values are entitled dynamically
+  Attribute attribute_definition = 2;
+
+  // the dynamic resolver matched against the requested resource value segment
+  DynamicValueResolver value_resolver = 3;
+
+  // optional static pre-gate on the entity, evaluated with normal SubjectConditionSet
+  // semantics (no dynamic overload). When present, both the gate and the resolver must
+  // pass for entitlement.
+  SubjectConditionSet subject_condition_set = 4;
+
+  // the actions permitted by subjects in this mapping
+  repeated Action actions = 5;
+
+  // the namespace containing this mapping
+  Namespace namespace = 6;
+
+  common.Metadata metadata = 100;
+}
+
 /**
    A Condition defines a rule of <the value at the flattened 'selector value'
    location> <operator> <subject external values>
@@ -213,16 +292,28 @@ message Condition {
   // from idP/LDAP)
   string subject_external_selector_value = 1 [(buf.validate.field).required = true];
 
-  // the evaluation operator of relation
+  // Deprecated: use comparison + quantifier (+ case_insensitive) instead. Normalized to the
+  // decomposed fields in the service layer for backward compatibility.
   SubjectMappingOperatorEnum operator = 2 [
+    deprecated = true,
     (buf.validate.field).enum.defined_only = true,
-    (buf.validate.field).required = true
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE
   ];
 
   // list of comparison values for the result of applying the
   // subject_external_selector_value on a flattened Entity Representation
   // (Subject), evaluated by the operator
   repeated string subject_external_values = 3 [(buf.validate.field).repeated.min_items = 1];
+
+  // how each selector result is compared to subject_external_values entries
+  ConditionComparisonOperatorEnum comparison = 4 [(buf.validate.field).enum.defined_only = true];
+
+  // how matches are aggregated across subject_external_values
+  ConditionQuantifierEnum quantifier = 5 [(buf.validate.field).enum.defined_only = true];
+
+  // when set true, comparison is case-insensitive; unset is treated as case-sensitive. Modeled as
+  // BoolValue so an explicit false is distinguishable from unset, leaving room to change the default.
+  google.protobuf.BoolValue case_insensitive = 6;
 }
 
 // A collection of Conditions evaluated by the boolean_operator provided

@@ -202,6 +202,66 @@ ORDER BY
 LIMIT @limit_
 OFFSET @offset_;
 
+-- name: getSubjectMappingsByValueFqns :many
+-- Returns value-level subject mappings for the provided attribute value FQNs,
+-- for entitlement resolution. Each row carries the value FQN it maps to so the
+-- caller can group mappings by FQN. Namespace-level mappings (no attribute value)
+-- are excluded by the inner join on attribute_values.
+WITH subject_actions AS (
+    SELECT
+        sma.subject_mapping_id,
+        COALESCE(
+            JSONB_AGG(JSONB_BUILD_OBJECT('id', a.id, 'name', a.name,
+                'namespace', CASE WHEN a.namespace_id IS NULL THEN NULL
+                    ELSE JSONB_BUILD_OBJECT('id', ans.id, 'name', ans.name, 'fqn', ans_fqns.fqn)
+                END
+            )) FILTER (WHERE a.is_standard = TRUE),
+            '[]'::JSONB
+        ) AS standard_actions,
+        COALESCE(
+            JSONB_AGG(JSONB_BUILD_OBJECT('id', a.id, 'name', a.name,
+                'namespace', CASE WHEN a.namespace_id IS NULL THEN NULL
+                    ELSE JSONB_BUILD_OBJECT('id', ans.id, 'name', ans.name, 'fqn', ans_fqns.fqn)
+                END
+            )) FILTER (WHERE a.is_standard = FALSE),
+            '[]'::JSONB
+        ) AS custom_actions
+    FROM subject_mapping_actions sma
+    JOIN actions a ON sma.action_id = a.id
+    LEFT JOIN attribute_namespaces ans ON ans.id = a.namespace_id
+    LEFT JOIN attribute_fqns ans_fqns ON ans_fqns.namespace_id = ans.id AND ans_fqns.attribute_id IS NULL AND ans_fqns.value_id IS NULL
+    GROUP BY sma.subject_mapping_id
+)
+SELECT
+    sm.id,
+    fqns.fqn AS value_fqn,
+    sa.standard_actions,
+    sa.custom_actions,
+    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', sm.metadata -> 'labels', 'created_at', sm.created_at, 'updated_at', sm.updated_at)) AS metadata,
+    JSON_BUILD_OBJECT(
+        'id', scs.id,
+        'metadata', JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', scs.metadata->'labels', 'created_at', scs.created_at, 'updated_at', scs.updated_at)),
+        'subject_sets', scs.condition,
+        'namespace', CASE
+            WHEN scs.namespace_id IS NULL THEN NULL
+            ELSE JSON_BUILD_OBJECT('id', scs_ns.id, 'name', scs_ns.name, 'fqn', scs_ns_fqns.fqn)
+        END
+    ) AS subject_condition_set,
+    JSON_BUILD_OBJECT(
+        'id', av.id,
+        'value', av.value,
+        'active', av.active,
+        'fqn', fqns.fqn
+    ) AS attribute_value
+FROM subject_mappings sm
+JOIN attribute_values av ON sm.attribute_value_id = av.id
+JOIN attribute_fqns fqns ON av.id = fqns.value_id
+LEFT JOIN subject_actions sa ON sm.id = sa.subject_mapping_id
+LEFT JOIN subject_condition_set scs ON scs.id = sm.subject_condition_set_id
+LEFT JOIN attribute_namespaces scs_ns ON scs_ns.id = scs.namespace_id
+LEFT JOIN attribute_fqns scs_ns_fqns ON scs_ns_fqns.namespace_id = scs_ns.id AND scs_ns_fqns.attribute_id IS NULL AND scs_ns_fqns.value_id IS NULL
+WHERE fqns.fqn = ANY(@value_fqns::TEXT[]);
+
 -- name: getSubjectMapping :one
 SELECT
     sm.id,

@@ -24,6 +24,7 @@ const (
 	AttributesService_GetAttribute_FullMethodName                       = "/policy.attributes.AttributesService/GetAttribute"
 	AttributesService_GetAttributeValuesByFqns_FullMethodName           = "/policy.attributes.AttributesService/GetAttributeValuesByFqns"
 	AttributesService_GetKeyMappingsByFqns_FullMethodName               = "/policy.attributes.AttributesService/GetKeyMappingsByFqns"
+	AttributesService_GetEntitleableAttributesByFqns_FullMethodName     = "/policy.attributes.AttributesService/GetEntitleableAttributesByFqns"
 	AttributesService_CreateAttribute_FullMethodName                    = "/policy.attributes.AttributesService/CreateAttribute"
 	AttributesService_UpdateAttribute_FullMethodName                    = "/policy.attributes.AttributesService/UpdateAttribute"
 	AttributesService_DeactivateAttribute_FullMethodName                = "/policy.attributes.AttributesService/DeactivateAttribute"
@@ -58,6 +59,10 @@ type AttributesServiceClient interface {
 	// Returns only key-mapping information (rule and effective KAS keys) for the
 	// requested attribute value FQNs, for client-side key split construction.
 	GetKeyMappingsByFqns(ctx context.Context, in *GetKeyMappingsByFqnsRequest, opts ...grpc.CallOption) (*GetKeyMappingsByFqnsResponse, error)
+	// Returns only entitlement-relevant information (rule, value identity, ordered
+	// definition values, and subject mappings) for the requested attribute value
+	// FQNs, for server-side decisioning / entitlement resolution.
+	GetEntitleableAttributesByFqns(ctx context.Context, in *GetEntitleableAttributesByFqnsRequest, opts ...grpc.CallOption) (*GetEntitleableAttributesByFqnsResponse, error)
 	CreateAttribute(ctx context.Context, in *CreateAttributeRequest, opts ...grpc.CallOption) (*CreateAttributeResponse, error)
 	UpdateAttribute(ctx context.Context, in *UpdateAttributeRequest, opts ...grpc.CallOption) (*UpdateAttributeResponse, error)
 	DeactivateAttribute(ctx context.Context, in *DeactivateAttributeRequest, opts ...grpc.CallOption) (*DeactivateAttributeResponse, error)
@@ -134,6 +139,15 @@ func (c *attributesServiceClient) GetAttributeValuesByFqns(ctx context.Context, 
 func (c *attributesServiceClient) GetKeyMappingsByFqns(ctx context.Context, in *GetKeyMappingsByFqnsRequest, opts ...grpc.CallOption) (*GetKeyMappingsByFqnsResponse, error) {
 	out := new(GetKeyMappingsByFqnsResponse)
 	err := c.cc.Invoke(ctx, AttributesService_GetKeyMappingsByFqns_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *attributesServiceClient) GetEntitleableAttributesByFqns(ctx context.Context, in *GetEntitleableAttributesByFqnsRequest, opts ...grpc.CallOption) (*GetEntitleableAttributesByFqnsResponse, error) {
+	out := new(GetEntitleableAttributesByFqnsResponse)
+	err := c.cc.Invoke(ctx, AttributesService_GetEntitleableAttributesByFqns_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -296,6 +310,10 @@ type AttributesServiceServer interface {
 	// Returns only key-mapping information (rule and effective KAS keys) for the
 	// requested attribute value FQNs, for client-side key split construction.
 	GetKeyMappingsByFqns(context.Context, *GetKeyMappingsByFqnsRequest) (*GetKeyMappingsByFqnsResponse, error)
+	// Returns only entitlement-relevant information (rule, value identity, ordered
+	// definition values, and subject mappings) for the requested attribute value
+	// FQNs, for server-side decisioning / entitlement resolution.
+	GetEntitleableAttributesByFqns(context.Context, *GetEntitleableAttributesByFqnsRequest) (*GetEntitleableAttributesByFqnsResponse, error)
 	CreateAttribute(context.Context, *CreateAttributeRequest) (*CreateAttributeResponse, error)
 	UpdateAttribute(context.Context, *UpdateAttributeRequest) (*UpdateAttributeResponse, error)
 	DeactivateAttribute(context.Context, *DeactivateAttributeRequest) (*DeactivateAttributeResponse, error)
@@ -343,6 +361,9 @@ func (UnimplementedAttributesServiceServer) GetAttributeValuesByFqns(context.Con
 }
 func (UnimplementedAttributesServiceServer) GetKeyMappingsByFqns(context.Context, *GetKeyMappingsByFqnsRequest) (*GetKeyMappingsByFqnsResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetKeyMappingsByFqns not implemented")
+}
+func (UnimplementedAttributesServiceServer) GetEntitleableAttributesByFqns(context.Context, *GetEntitleableAttributesByFqnsRequest) (*GetEntitleableAttributesByFqnsResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetEntitleableAttributesByFqns not implemented")
 }
 func (UnimplementedAttributesServiceServer) CreateAttribute(context.Context, *CreateAttributeRequest) (*CreateAttributeResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method CreateAttribute not implemented")
@@ -488,6 +509,24 @@ func _AttributesService_GetKeyMappingsByFqns_Handler(srv interface{}, ctx contex
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(AttributesServiceServer).GetKeyMappingsByFqns(ctx, req.(*GetKeyMappingsByFqnsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _AttributesService_GetEntitleableAttributesByFqns_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetEntitleableAttributesByFqnsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AttributesServiceServer).GetEntitleableAttributesByFqns(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AttributesService_GetEntitleableAttributesByFqns_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AttributesServiceServer).GetEntitleableAttributesByFqns(ctx, req.(*GetEntitleableAttributesByFqnsRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -788,6 +827,10 @@ var AttributesService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetKeyMappingsByFqns",
 			Handler:    _AttributesService_GetKeyMappingsByFqns_Handler,
+		},
+		{
+			MethodName: "GetEntitleableAttributesByFqns",
+			Handler:    _AttributesService_GetEntitleableAttributesByFqns_Handler,
 		},
 		{
 			MethodName: "CreateAttribute",

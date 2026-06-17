@@ -2,6 +2,7 @@ package db
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log/slog"
 	"strings"
@@ -231,6 +232,104 @@ func (c *PolicyDBClient) GetKeyMappingsByFqns(ctx context.Context, r *attributes
 	}
 
 	return mappings, nil
+}
+
+// GetEntitleableAttributesByFqns returns, for each requested attribute value FQN,
+// the information needed to resolve entitlements: the attribute rule, the value
+// identity, the definition's ordered value FQNs (for hierarchy rule logic), and
+// the value-level subject mappings. It runs two selective queries: the attribute
+// FQN lookup for rule/value/sibling data, and a single subject-mapping-by-FQN
+// query, avoiding the full-policy load used by the entitlement path today.
+func (c *PolicyDBClient) GetEntitleableAttributesByFqns(ctx context.Context, r *attributes.GetEntitleableAttributesByFqnsRequest) (map[string]*attributes.GetEntitleableAttributesByFqnsResponse_EntitleableAttribute, error) {
+	ctx, span := c.Start(ctx, "DB:GetEntitleableAttributesByFqns")
+	defer span.End()
+
+	fqns := r.GetFqns()
+	normalized := make([]string, len(fqns))
+	for i, fqn := range fqns {
+		normalized[i] = strings.ToLower(fqn)
+	}
+
+	pairs, err := c.GetAttributesByValueFqns(ctx, &attributes.GetAttributeValuesByFqnsRequest{Fqns: normalized})
+	if err != nil {
+		return nil, err
+	}
+
+	// Fetch value-level subject mappings for the requested FQNs in one query and
+	// group them by the value FQN they map to.
+	smRows, err := c.queries.getSubjectMappingsByValueFqns(ctx, normalized)
+	if err != nil {
+		return nil, db.WrapIfKnownInvalidQueryErr(err)
+	}
+	subjectMappingsByFqn := make(map[string][]*policy.SubjectMapping, len(smRows))
+	for _, row := range smRows {
+		sm, err := hydrateSubjectMappingForEntitlement(row)
+		if err != nil {
+			return nil, err
+		}
+		subjectMappingsByFqn[row.ValueFqn] = append(subjectMappingsByFqn[row.ValueFqn], sm)
+	}
+
+	entitleable := make(map[string]*attributes.GetEntitleableAttributesByFqnsResponse_EntitleableAttribute, len(pairs))
+	for fqn, pair := range pairs {
+		attr := pair.GetAttribute()
+
+		definitionValueFqns := make([]string, 0, len(attr.GetValues()))
+		for _, v := range attr.GetValues() {
+			definitionValueFqns = append(definitionValueFqns, v.GetFqn())
+		}
+
+		entitleable[fqn] = &attributes.GetEntitleableAttributesByFqnsResponse_EntitleableAttribute{
+			Fqn:                 fqn,
+			AttributeFqn:        attr.GetFqn(),
+			Rule:                attr.GetRule(),
+			ValueId:             pair.GetValue().GetId(),
+			DefinitionValueFqns: definitionValueFqns,
+			SubjectMappings:     subjectMappingsByFqn[fqn],
+		}
+	}
+
+	return entitleable, nil
+}
+
+// hydrateSubjectMappingForEntitlement converts a getSubjectMappingsByValueFqns
+// row into a policy.SubjectMapping, mirroring the hydration in ListSubjectMappings.
+func hydrateSubjectMappingForEntitlement(row getSubjectMappingsByValueFqnsRow) (*policy.SubjectMapping, error) {
+	metadata := &common.Metadata{}
+	if err := unmarshalMetadata(row.Metadata, metadata); err != nil {
+		return nil, err
+	}
+
+	av := &policy.Value{}
+	if err := unmarshalAttributeValue(row.AttributeValue, av); err != nil {
+		return nil, err
+	}
+
+	stdActionsBytes, err := json.Marshal(row.StandardActions)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal standard actions: %w", err)
+	}
+	customActionsBytes, err := json.Marshal(row.CustomActions)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal custom actions: %w", err)
+	}
+	actions := []*policy.Action{}
+	if err := unmarshalAllActionsProto(stdActionsBytes, customActionsBytes, &actions); err != nil {
+		return nil, err
+	}
+
+	scs := policy.SubjectConditionSet{}
+	if err := unmarshalSubjectConditionSet(row.SubjectConditionSet, &scs); err != nil {
+		return nil, err
+	}
+
+	return &policy.SubjectMapping{
+		Id:                  row.ID,
+		Metadata:            metadata,
+		AttributeValue:      av,
+		SubjectConditionSet: &scs,
+		Actions:             actions,
+	}, nil
 }
 
 // resolveEffectiveKasKeys selects the effective mapped KAS keys for a value using

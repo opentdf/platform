@@ -21,6 +21,7 @@ type AttributesServiceClient interface {
 	ListAttributeValues(ctx context.Context, req *attributes.ListAttributeValuesRequest) (*attributes.ListAttributeValuesResponse, error)
 	GetAttribute(ctx context.Context, req *attributes.GetAttributeRequest) (*attributes.GetAttributeResponse, error)
 	GetAttributeValuesByFqns(ctx context.Context, req *attributes.GetAttributeValuesByFqnsRequest) (*attributes.GetAttributeValuesByFqnsResponse, error)
+	GetKeyMappingsByFqns(ctx context.Context, req *attributes.GetKeyMappingsByFqnsRequest) (*attributes.GetKeyMappingsByFqnsResponse, error)
 	CreateAttribute(ctx context.Context, req *attributes.CreateAttributeRequest) (*attributes.CreateAttributeResponse, error)
 	UpdateAttribute(ctx context.Context, req *attributes.UpdateAttributeRequest) (*attributes.UpdateAttributeResponse, error)
 	DeactivateAttribute(ctx context.Context, req *attributes.DeactivateAttributeRequest) (*attributes.DeactivateAttributeResponse, error)
@@ -68,6 +69,15 @@ func (w *AttributesServiceClientConnectWrapper) GetAttribute(ctx context.Context
 func (w *AttributesServiceClientConnectWrapper) GetAttributeValuesByFqns(ctx context.Context, req *attributes.GetAttributeValuesByFqnsRequest) (*attributes.GetAttributeValuesByFqnsResponse, error) {
 	// Wrap Connect RPC client request
 	res, err := w.AttributesServiceClient.GetAttributeValuesByFqns(ctx, connect.NewRequest(req))
+	if res == nil {
+		return nil, err
+	}
+	return res.Msg, err
+}
+
+func (w *AttributesServiceClientConnectWrapper) GetKeyMappingsByFqns(ctx context.Context, req *attributes.GetKeyMappingsByFqnsRequest) (*attributes.GetKeyMappingsByFqnsResponse, error) {
+	// Wrap Connect RPC client request
+	res, err := w.AttributesServiceClient.GetKeyMappingsByFqns(ctx, connect.NewRequest(req))
 	if res == nil {
 		return nil, err
 	}

@@ -23,6 +23,10 @@ import (
 var ErrDeprecatedListAttributeValues = errors.New("deprecated: ListAttributeValues has been removed. Use GetAttribute instead")
 
 type AttributesService struct { //nolint:revive // AttributesService is a valid name for this struct
+	// Embed the generated Unimplemented handler so RPCs whose handlers are added
+	// in follow-up changes (GetKeyMappingsByFqns, GetEntitleableAttributesByFqns)
+	// satisfy the interface and return CodeUnimplemented until implemented.
+	attributesconnect.UnimplementedAttributesServiceHandler
 	dbClient policydb.PolicyDBClient
 	logger   *logger.Logger
 	config   *policyconfig.Config

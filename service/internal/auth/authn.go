@@ -446,8 +446,13 @@ func IPCMetadataClientInterceptor(log *logger.Logger) connect.UnaryInterceptorFu
 			incoming := true
 			clientID, err := ctxAuth.GetClientIDFromContext(ctx, incoming)
 			if err != nil {
-				// metadata will not always be found over IPC - log other errors
-				if !errors.Is(err, ctxAuth.ErrNoMetadataFound) {
+				switch {
+				case errors.Is(err, ctxAuth.ErrNoMetadataFound):
+				case errors.Is(err, ctxAuth.ErrMissingClientID):
+					// IPC calls may not propagate tokens/clients across service boundaries, which is not
+					// necessarily an error case but is useful to know when debugging
+					log.DebugContext(ctx, "IPCMetadataClientInterceptor", slog.Any("error", err))
+				default:
 					log.ErrorContext(ctx, "IPCMetadataClientInterceptor", slog.Any("error", err))
 				}
 			} else {

@@ -201,8 +201,7 @@ func (a *Authorizer) authorize(ctx context.Context, req *authz.Request) (*authz.
 		subjects = append(subjects, rolePrefix+defaultRole)
 	}
 
-	// Serialize dimensions to canonical string
-	dims, err := serializeDimensions(req.ResourceContext)
+	resourceDims, err := serializeDimensions(req.ResourceContext)
 	if err != nil {
 		return nil, fmt.Errorf("v2 authorization invalid resource dimensions: %w", err)
 	}
@@ -211,24 +210,63 @@ func (a *Authorizer) authorize(ctx context.Context, req *authz.Request) (*authz.
 		"v2 authorization check",
 		slog.Any("subjects", subjects),
 		slog.String("rpc", req.RPC),
-		slog.String("dims", dims),
+		slog.Any("resource_dims", resourceDims),
 	)
 
-	// Check each subject (role or username)
-	// Track if any enforcement succeeded without error to distinguish
-	// "all denied" from "all errored" (system failure)
+	var (
+		matchedSubjects []string
+		seenSubjects    = make(map[string]struct{}, len(subjects))
+	)
+	// Casbin BatchEnforce/BulkEnforce could be investigated for efficiency if
+	// resource or subject counts grow.
+	for _, dims := range resourceDims {
+		allowed, allowedSubject, enforcementErr := a.authorizeResource(req.RPC, dims, subjects)
+		if enforcementErr != nil {
+			return nil, fmt.Errorf("v2 authorization system error: %w", enforcementErr)
+		}
+		if !allowed {
+			return &authz.Decision{
+				Allowed: false,
+				Reason:  fmt.Sprintf("v2: denied %s with dims=%s", req.RPC, dims),
+				Mode:    authz.ModeV2,
+				Metadata: authz.DecisionMetadata{
+					GroupsClaim: a.groupsClaim,
+				},
+			}, nil
+		}
+		if allowedSubject != "" {
+			if _, seen := seenSubjects[allowedSubject]; !seen {
+				seenSubjects[allowedSubject] = struct{}{}
+				matchedSubjects = append(matchedSubjects, allowedSubject)
+			}
+		}
+	}
+	matchedSubject := strings.Join(matchedSubjects, ", ")
+
+	return &authz.Decision{
+		Allowed:       true,
+		Reason:        fmt.Sprintf("v2: %s on %s", matchedSubject, req.RPC),
+		Mode:          authz.ModeV2,
+		MatchedPolicy: matchedSubject,
+		Metadata: authz.DecisionMetadata{
+			GroupsClaim: a.groupsClaim,
+		},
+	}, nil
+}
+
+func (a *Authorizer) authorizeResource(rpc, dims string, subjects []string) (bool, string, error) {
 	var (
 		anyCheckedSuccessfully bool
 		lastErr                error
 	)
 
 	for _, subject := range subjects {
-		allowed, err := a.enforcer.Enforce(subject, req.RPC, dims)
+		allowed, err := a.enforcer.Enforce(subject, rpc, dims)
 		if err != nil {
 			a.logger.Error(
 				"v2 enforcement error",
 				slog.String("subject", subject),
-				slog.String("rpc", req.RPC),
+				slog.String("rpc", rpc),
 				slog.String("dims", dims),
 				slog.Any("error", err),
 			)
@@ -237,81 +275,67 @@ func (a *Authorizer) authorize(ctx context.Context, req *authz.Request) (*authz.
 		}
 
 		anyCheckedSuccessfully = true
-
 		if allowed {
 			a.logger.Debug(
 				"v2 authorization allowed",
 				slog.String("subject", subject),
-				slog.String("rpc", req.RPC),
+				slog.String("rpc", rpc),
 				slog.String("dims", dims),
 			)
-			return &authz.Decision{
-				Allowed:       true,
-				Reason:        fmt.Sprintf("v2: %s on %s with dims=%s", subject, req.RPC, dims),
-				Mode:          authz.ModeV2,
-				MatchedPolicy: subject,
-				Metadata: authz.DecisionMetadata{
-					GroupsClaim: a.groupsClaim,
-				},
-			}, nil
+			return true, subject, nil
 		}
 	}
 
-	// If ALL subjects failed with errors (none checked successfully),
-	// return a system error instead of a denial
 	if !anyCheckedSuccessfully && lastErr != nil {
-		return nil, fmt.Errorf("v2 authorization system error: %w", lastErr)
+		return false, "", lastErr
 	}
 
 	a.logger.Debug(
 		"v2 authorization denied",
 		slog.Any("subjects", subjects),
-		slog.String("rpc", req.RPC),
+		slog.String("rpc", rpc),
 		slog.String("dims", dims),
 	)
-
-	return &authz.Decision{
-		Allowed: false,
-		Reason:  fmt.Sprintf("v2: denied %s with dims=%s", req.RPC, dims),
-		Mode:    authz.ModeV2,
-		Metadata: authz.DecisionMetadata{
-			GroupsClaim: a.groupsClaim,
-		},
-	}, nil
+	return false, "", nil
 }
 
-// serializeDimensions converts ResolverContext to canonical dimension string.
+// serializeDimensions converts ResolverContext resources to canonical dimension strings.
+// Each non-empty resource is serialized independently so each resource's dimensions
+// are evaluated with all-of semantics.
 // Format: key1=value1&key2=value2 (keys sorted alphabetically)
-// Returns "*" if no dimensions are present.
-func serializeDimensions(ctx *authz.ResolverContext) (string, error) {
+// Returns ["*"] if no dimensions are present.
+func serializeDimensions(ctx *authz.ResolverContext) ([]string, error) {
 	if ctx == nil || len(ctx.Resources) == 0 {
-		return "*", nil
+		return []string{"*"}, nil
 	}
 
-	// Collect all dimensions from all resources
-	allDims := make(map[string]string)
+	dims := make([]string, 0, len(ctx.Resources))
 	for _, resource := range ctx.Resources {
-		if resource == nil {
+		if resource == nil || len(*resource) == 0 {
 			continue
 		}
-		for k, v := range *resource {
-			if !isValidDimensionKey(k) {
-				return "", fmt.Errorf("invalid dimension key %q: keys must not contain any of %q", k, disallowedDimensionKeyChars)
-			}
-			if existing, exists := allDims[k]; exists && existing != v {
-				return "", fmt.Errorf("conflicting values for dimension key %q: %q != %q", k, existing, v)
-			}
-			allDims[k] = v
+
+		serialized, err := serializeResource(resource)
+		if err != nil {
+			return nil, err
 		}
+		// Revisit deduplicating equivalent serialized resource dimensions when productionizing List RPCs/requests.
+		dims = append(dims, serialized)
 	}
 
-	if len(allDims) == 0 {
-		return "*", nil
+	if len(dims) == 0 {
+		return []string{"*"}, nil
 	}
 
-	// Sort keys for canonical ordering
-	keys := make([]string, 0, len(allDims))
-	for k := range allDims {
+	return dims, nil
+}
+
+func serializeResource(resource *authz.ResolverResource) (string, error) {
+	keys := make([]string, 0, len(*resource))
+	for k := range *resource {
+		if !isValidDimensionKey(k) {
+			return "", fmt.Errorf("invalid dimension key %q: keys must not contain any of %q", k, disallowedDimensionKeyChars)
+		}
 		keys = append(keys, k)
 	}
 	sort.Strings(keys)
@@ -323,7 +347,7 @@ func serializeDimensions(ctx *authz.ResolverContext) (string, error) {
 	// readable because pair parsing splits on the first '='.
 	parts := make([]string, 0, len(keys))
 	for _, k := range keys {
-		parts = append(parts, fmt.Sprintf("%s=%s", k, escapeDimensionValue(allDims[k])))
+		parts = append(parts, fmt.Sprintf("%s=%s", k, escapeDimensionValue((*resource)[k])))
 	}
 
 	return strings.Join(parts, "&"), nil

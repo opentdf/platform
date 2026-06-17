@@ -2,6 +2,7 @@ package auth
 
 import (
 	"context"
+	"errors"
 	"strings"
 	"testing"
 
@@ -498,6 +499,39 @@ func (s *InterceptorAuthzSuite) TestAuthorizeV2_InvokesRegisteredResolver() {
 	s.True(resolverCalled, "registered resolver should be invoked")
 	s.Require().NotNil(result.resourceContext)
 	s.Equal("resolved", result.resourceContext.GetResolvedData("attribute"))
+}
+
+func (s *InterceptorAuthzSuite) TestAuthorizeV2_ResolverErrorFailsClosed() {
+	csvPolicy := "p, role:hr-admin, /policy.attributes.AttributesService/*, namespace=hr, allow"
+	registry := internalauthz.NewResolverRegistry()
+	scopedRegistry := registry.ScopedForService(&grpc.ServiceDesc{
+		ServiceName: "policy.attributes.AttributesService",
+		Methods: []grpc.MethodDesc{
+			{MethodName: "UpdateAttribute"},
+		},
+	})
+
+	scopedRegistry.MustRegister("UpdateAttribute", func(_ context.Context, _ connect.AnyRequest) (internalauthz.ResolverContext, error) {
+		return internalauthz.NewResolverContext(), errors.New("resolver db unavailable")
+	})
+
+	authn := &Authentication{
+		logger:                s.logger,
+		authorizer:            s.createV2Authorizer(csvPolicy),
+		authzResolverRegistry: registry,
+	}
+
+	req := &authzTestRequest{
+		Request:   connect.NewRequest(&attributes.GetAttributeRequest{}),
+		procedure: "/policy.attributes.AttributesService/UpdateAttribute",
+	}
+
+	result := authn.authorize(s.T().Context(), s.logger, s.newTokenWithRoles("hr-admin"), req, ActionWrite)
+
+	s.Require().Error(result.err)
+	s.Equal(connect.CodePermissionDenied, result.errCode)
+	s.Equal("authorization context resolution failed", result.err.Error())
+	s.Nil(result.decision)
 }
 
 func (s *InterceptorAuthzSuite) TestV2_EmptyToken() {

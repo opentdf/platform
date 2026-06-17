@@ -57,6 +57,23 @@ Feature: Authz v2 default policy authorization
       When I send a request to list KAS keys for URI "https://kas-a.example.com"
       Then the response should be permission denied
 
+    Scenario: URI-specific KAS roles authorize ID-based GetKey using resolved KAS URI
+      Given I use the platform as "opentdf-admin"
+      And I create KAS keys:
+        | kas_uri                      | key_id       |
+        | https://kas-a-id.example.com | kas-a-id-kid |
+        | https://kas-b-id.example.com | kas-b-id-kid |
+      Given I use the platform as "kas-a"
+      When I send a request to get KAS key "kas-a-id-kid" by stored ID
+      Then the response should be successful
+      When I send a request to get KAS key "kas-b-id-kid" by stored ID
+      Then the response should be permission denied
+      Given I use the platform as "kas-b"
+      When I send a request to get KAS key "kas-b-id-kid" by stored ID
+      Then the response should be successful
+      When I send a request to get KAS key "kas-a-id-kid" by stored ID
+      Then the response should be permission denied
+
     # Security: URL values containing '&' and '=' must not be mis-parsed as
     # extra dimensions. A kas-a scoped role must not gain access to a different
     # KAS key whose URI injects a trailing "kas_uri=https://kas-a.example.com".

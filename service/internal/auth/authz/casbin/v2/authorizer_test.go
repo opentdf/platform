@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"testing"
 
 	"github.com/lestrrat-go/jwx/v2/jwt"
@@ -269,6 +270,136 @@ func (s *CasbinAuthorizerSuite) TestAuthorizeV2_MultipleDimensions() {
 	decision, err = authorizer.Authorize(context.Background(), wrongAttrReq)
 	s.Require().NoError(err)
 	s.False(decision.Allowed, "should NOT be allowed with wrong attribute")
+}
+
+func (s *CasbinAuthorizerSuite) TestAuthorizeV2_MultipleResourcesAllOf() {
+	cfg := authz.Config{
+		PolicyConfig: authz.PolicyConfig{
+			Version:     "v2",
+			GroupsClaim: "realm_access.roles",
+			Csv:         `p, role:hr-admin, /policy.attributes.AttributesService/Update*, namespace=hr, allow`, // ? This really should be a List req
+		},
+		Logger: s.logger,
+	}
+
+	authorizer, err := s.newAuthorizer(cfg)
+	s.Require().NoError(err)
+
+	token := createTestToken(s.T(), map[string]interface{}{
+		"realm_access": map[string]interface{}{
+			"roles": []interface{}{"hr-admin"},
+		},
+	})
+
+	allowedReq := &authz.Request{
+		Token:  token,
+		RPC:    "/policy.attributes.AttributesService/UpdateAttribute",
+		Action: "write",
+		ResourceContext: &authz.ResolverContext{
+			Resources: []*authz.ResolverResource{
+				{"namespace": "hr", "attribute": "classification"},
+				{"namespace": "hr", "attribute": "department"},
+			},
+		},
+	}
+
+	decision, err := authorizer.Authorize(s.T().Context(), allowedReq)
+	s.Require().NoError(err)
+	s.True(decision.Allowed, "all HR resources should be allowed")
+
+	deniedReq := &authz.Request{
+		Token:  token,
+		RPC:    "/policy.attributes.AttributesService/UpdateAttribute",
+		Action: "write",
+		ResourceContext: &authz.ResolverContext{
+			Resources: []*authz.ResolverResource{
+				{"namespace": "hr", "attribute": "classification"},
+				{"namespace": "finance", "attribute": "payroll"},
+			},
+		},
+	}
+
+	decision, err = authorizer.Authorize(s.T().Context(), deniedReq)
+	s.Require().NoError(err)
+	s.False(decision.Allowed, "one denied resource should deny the aggregate request")
+}
+
+func (s *CasbinAuthorizerSuite) TestAuthorizeV2_MultipleResourcesSkipsNilAndEmpty() {
+	cfg := authz.Config{
+		PolicyConfig: authz.PolicyConfig{
+			Version:     "v2",
+			GroupsClaim: "realm_access.roles",
+			Csv:         `p, role:hr-admin, /policy.attributes.AttributesService/Update*, namespace=hr, allow`,
+		},
+		Logger: s.logger,
+	}
+
+	authorizer, err := s.newAuthorizer(cfg)
+	s.Require().NoError(err)
+
+	token := createTestToken(s.T(), map[string]interface{}{
+		"realm_access": map[string]interface{}{
+			"roles": []interface{}{"hr-admin"},
+		},
+	})
+	emptyResource := authz.ResolverResource{}
+
+	decision, err := authorizer.Authorize(s.T().Context(), &authz.Request{
+		Token:  token,
+		RPC:    "/policy.attributes.AttributesService/UpdateAttribute",
+		Action: "write",
+		ResourceContext: &authz.ResolverContext{
+			Resources: []*authz.ResolverResource{
+				nil,
+				&emptyResource,
+				{"namespace": "hr", "attribute": "classification"},
+			},
+		},
+	})
+	s.Require().NoError(err)
+	s.True(decision.Allowed, "nil and empty resources should be skipped when a real resource is present")
+}
+
+func (s *CasbinAuthorizerSuite) TestAuthorizeV2_EnforcementErrorReturnsSystemError() {
+	brokenModel := strings.Replace(
+		modelV2,
+		"m = g(r.sub, p.sub) && keyMatch(r.rpc, p.rpc) && dimensionMatch(r.dims, p.dims)",
+		"m = g(r.sub, p.sub) && keyMatch(r.rpc, p.rpc) && missingDimensionMatch(r.dims, p.dims)",
+		1,
+	)
+	cfg := authz.Config{
+		PolicyConfig: authz.PolicyConfig{
+			Version:     "v2",
+			GroupsClaim: "realm_access.roles",
+			Model:       brokenModel,
+			Csv:         `p, role:hr-admin, /policy.attributes.AttributesService/Update*, namespace=hr, allow`,
+		},
+		Logger: s.logger,
+	}
+
+	authorizer, err := s.newAuthorizer(cfg)
+	s.Require().NoError(err)
+
+	token := createTestToken(s.T(), map[string]interface{}{
+		"realm_access": map[string]interface{}{
+			"roles": []interface{}{"hr-admin"},
+		},
+	})
+
+	decision, err := authorizer.Authorize(s.T().Context(), &authz.Request{
+		Token:  token,
+		RPC:    "/policy.attributes.AttributesService/UpdateAttribute",
+		Action: "write",
+		ResourceContext: &authz.ResolverContext{
+			Resources: []*authz.ResolverResource{
+				{"namespace": "hr"},
+			},
+		},
+	})
+
+	s.Require().Error(err)
+	s.Nil(decision)
+	s.Contains(err.Error(), "v2 authorization system error")
 }
 
 func (s *CasbinAuthorizerSuite) TestAuthorizeV2_WildcardDimension() {
@@ -654,7 +785,7 @@ func TestDimensionMatch(t *testing.T) {
 			expected:   true,
 		},
 		{
-			name:       "exact match multiple dimensions",
+			name:       "exact match multiple dimensions - order insensitive",
 			reqDims:    "attribute=classification&namespace=hr",
 			policyDims: "namespace=hr&attribute=classification",
 			expected:   true,
@@ -722,18 +853,18 @@ func TestSerializeDimensions(t *testing.T) {
 	tests := []struct {
 		name      string
 		ctx       *authz.ResolverContext
-		expected  string
+		expected  []string
 		expectErr bool
 	}{
 		{
 			name:     "nil context",
 			ctx:      nil,
-			expected: "*",
+			expected: []string{"*"},
 		},
 		{
 			name:     "empty context",
 			ctx:      &authz.ResolverContext{},
-			expected: "*",
+			expected: []string{"*"},
 		},
 		{
 			name: "single dimension",
@@ -742,7 +873,7 @@ func TestSerializeDimensions(t *testing.T) {
 					{"namespace": "hr"},
 				},
 			},
-			expected: "namespace=hr",
+			expected: []string{"namespace=hr"},
 		},
 		{
 			name: "multiple dimensions sorted alphabetically",
@@ -751,27 +882,51 @@ func TestSerializeDimensions(t *testing.T) {
 					{"namespace": "hr", "attribute": "classification"},
 				},
 			},
-			expected: "attribute=classification&namespace=hr",
+			expected: []string{"attribute=classification&namespace=hr"},
 		},
 		{
-			name: "multiple resources merged",
+			name: "multiple resources remain independent",
 			ctx: &authz.ResolverContext{
 				Resources: []*authz.ResolverResource{
-					{"namespace": "hr"},
-					{"attribute": "classification"},
+					{"namespace": "hr", "attribute": "classification"},
+					{"namespace": "finance", "attribute": "payroll"},
 				},
 			},
-			expected: "attribute=classification&namespace=hr",
+			expected: []string{
+				"attribute=classification&namespace=hr",
+				"attribute=payroll&namespace=finance",
+			},
 		},
 		{
-			name: "conflicting duplicate dimension key fails",
+			name: "conflicting duplicate keys across resources are allowed",
 			ctx: &authz.ResolverContext{
 				Resources: []*authz.ResolverResource{
 					{"namespace": "hr"},
 					{"namespace": "finance"},
 				},
 			},
-			expectErr: true,
+			expected: []string{"namespace=hr", "namespace=finance"},
+		},
+		{
+			name: "mixed real nil and empty resources skips nil and empty",
+			ctx: &authz.ResolverContext{
+				Resources: []*authz.ResolverResource{
+					nil,
+					{},
+					{"namespace": "hr"},
+				},
+			},
+			expected: []string{"namespace=hr"},
+		},
+		{
+			name: "only nil and empty resources returns wildcard",
+			ctx: &authz.ResolverContext{
+				Resources: []*authz.ResolverResource{
+					nil,
+					{},
+				},
+			},
+			expected: []string{"*"},
 		},
 		{
 			name: "invalid key with separator fails",
@@ -866,7 +1021,8 @@ func TestSerializeDimensions_InjectionPrevention(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			result, err := serializeDimensions(tc.ctx)
 			require.NoError(t, err)
-			assert.Equal(t, tc.expected, result)
+			require.Len(t, result, 1)
+			assert.Equal(t, tc.expected, result[0])
 		})
 	}
 }
@@ -926,8 +1082,9 @@ func TestParseDimensions_RoundTrip(t *testing.T) {
 
 			serialized, err := serializeDimensions(ctx)
 			require.NoError(t, err)
+			require.Len(t, serialized, 1)
 
-			parsed, ok := parseDimensions(serialized)
+			parsed, ok := parseDimensions(serialized[0])
 			require.True(t, ok, "parseDimensions must succeed on serialized output")
 			assert.Equal(t, tc.input, parsed, "round-trip must preserve original values exactly")
 		})
@@ -1010,9 +1167,10 @@ func TestDimensionMatch_WithURIValues(t *testing.T) {
 			}
 			serialized, err := serializeDimensions(ctx)
 			require.NoError(t, err)
+			require.Len(t, serialized, 1)
 
-			result := dimensionMatch(serialized, tc.policyDims)
-			assert.Equal(t, tc.expected, result, "dimensionMatch(%q, %q)", serialized, tc.policyDims)
+			result := dimensionMatch(serialized[0], tc.policyDims)
+			assert.Equal(t, tc.expected, result, "dimensionMatch(%q, %q)", serialized[0], tc.policyDims)
 		})
 	}
 }

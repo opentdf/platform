@@ -83,10 +83,14 @@ func (r *ResolverRegistry) ScopedForService(serviceDesc *grpc.ServiceDesc) *Scop
 
 // register is internal - adds a resolver for a specific full method path.
 // External callers should use ScopedResolverRegistry.
-func (r *ResolverRegistry) register(fullMethodPath string, resolver ResolverFunc) {
+func (r *ResolverRegistry) register(fullMethodPath string, resolver ResolverFunc) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
+	if _, exists := r.resolvers[fullMethodPath]; exists {
+		return fmt.Errorf("resolver already registered for method %q", fullMethodPath)
+	}
 	r.resolvers[fullMethodPath] = resolver
+	return nil
 }
 
 // ScopedResolverRegistry is a namespace-scoped view of the registry.
@@ -112,8 +116,7 @@ func (s *ScopedResolverRegistry) Register(methodName string, resolver ResolverFu
 
 	// Build full method path: /<ServiceName>/<MethodName>
 	fullPath := "/" + s.serviceDesc.ServiceName + "/" + methodName
-	s.parent.register(fullPath, resolver)
-	return nil
+	return s.parent.register(fullPath, resolver)
 }
 
 // MustRegister is like Register but panics on error.

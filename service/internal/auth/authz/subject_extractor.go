@@ -98,6 +98,9 @@ func (e SubjectExtractor) ClientIDFromToken(ctx context.Context, token jwt.Token
 	if e.ClientIDClaim == "" {
 		return "", ErrClientIDClaimNotConfigured
 	}
+	if token == nil {
+		return "", ErrTokenRequired
+	}
 	claims, err := token.AsMap(ctx)
 	if err != nil {
 		return "", fmt.Errorf("failed to parse token as a map and find claim at [%s]: %w", e.ClientIDClaim, err)
@@ -114,17 +117,15 @@ func (e SubjectExtractor) ClientIDFromToken(ctx context.Context, token jwt.Token
 }
 
 func normalizeRoles(roles []string, usePrefix bool) []string {
-	if !usePrefix {
-		return roles
-	}
-	prefixed := make([]string, 0, len(roles))
+	normalized := make([]string, 0, len(roles))
+
 	for _, role := range roles {
 		if role == "" {
 			continue
 		}
-		prefixed = append(prefixed, subjectWithPrefix(role, SubjectRolePrefix, usePrefix))
+		normalized = append(normalized, subjectWithPrefix(role, SubjectRolePrefix, usePrefix))
 	}
-	return prefixed
+	return normalized
 }
 
 func subjectWithPrefix(subject, prefix string, usePrefix bool) string {

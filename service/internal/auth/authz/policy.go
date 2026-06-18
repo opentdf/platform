@@ -46,7 +46,8 @@ type PolicyConfig struct {
 
 	Model string `mapstructure:"model" json:"model"`
 
-	// Override the default string-adapter
+	// Adapter is intentionally any to allow future adapter config shapes beyond Casbin persist.Adapter.
+	// Conversion and validation happen downstream.
 	Adapter any `mapstructure:"-" json:"-"`
 }
 

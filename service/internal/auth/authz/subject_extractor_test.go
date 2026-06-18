@@ -54,6 +54,21 @@ func TestSubjectExtractorCanPrefixSubjects(t *testing.T) {
 	require.Equal(t, []string{"role:admin"}, roles)
 }
 
+func TestSubjectExtractorFiltersEmptyRolesWithoutPrefix(t *testing.T) {
+	token := jwt.New()
+	require.NoError(t, token.Set("preferred_username", "alice"))
+
+	extractor := SubjectExtractor{
+		UserNameClaim: "preferred_username",
+		RoleProvider:  staticRoleProvider{roles: []string{"admin", "", "viewer"}},
+	}
+
+	subjects, roles, err := extractor.BuildSubjectFromToken(t.Context(), token, platformauthz.RoleRequest{}, false)
+	require.NoError(t, err)
+	require.Equal(t, []string{"admin", "viewer", "alice"}, subjects)
+	require.Equal(t, []string{"admin", "viewer"}, roles)
+}
+
 func TestSubjectExtractorRequiresTokenWhenClaimsAreNotCached(t *testing.T) {
 	extractor := SubjectExtractor{
 		UserNameClaim: "preferred_username",
@@ -66,6 +81,15 @@ func TestSubjectExtractorRequiresTokenWhenClaimsAreNotCached(t *testing.T) {
 	require.ErrorIs(t, err, ErrTokenRequired)
 	require.Nil(t, subjects)
 	require.Nil(t, roles)
+}
+
+func TestSubjectExtractorClientIDFromNilToken(t *testing.T) {
+	extractor := SubjectExtractor{ClientIDClaim: "azp"}
+
+	got, err := extractor.ClientIDFromToken(t.Context(), nil)
+
+	require.Empty(t, got)
+	require.ErrorIs(t, err, ErrTokenRequired)
 }
 
 func TestSubjectExtractorClientIDFromToken(t *testing.T) {

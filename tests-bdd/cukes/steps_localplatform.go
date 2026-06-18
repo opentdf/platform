@@ -37,6 +37,8 @@ const (
 	debugVersion                       = "DEBUG"
 	platformImageEnvironment           = "PLATFORM_IMAGE"
 	platformImageEnvironmentLocalImage = "platform-cukes:latest"
+	clientID                           = "opentdf"
+	platformClientSecret               = "secret"
 	userContextKey                     = "platform_users"
 )
 
@@ -123,7 +125,7 @@ func (s *LocalPlatformStepDefinitions) commonLocalPlatform(ctx context.Context, 
 			platformSDK, err := otdf.New(
 				scenarioContext.ScenarioOptions.PlatformEndpoint,
 				otdf.WithInsecureSkipVerifyConn(),
-				otdf.WithClientCredentials("opentdf", "secret", nil),
+				otdf.WithClientCredentials(clientID, platformClientSecret, nil),
 			)
 			if err != nil {
 				return ctx, err
@@ -237,13 +239,10 @@ func (s *LocalPlatformStepDefinitions) commonLocalPlatform(ctx context.Context, 
 		})
 	}
 
-	const clientID = "opentdf"
-	const clientSecret = "secret"
-
 	platformSDK, err := otdf.New(
 		scenarioContext.ScenarioOptions.PlatformEndpoint,
 		otdf.WithInsecureSkipVerifyConn(),
-		otdf.WithClientCredentials(clientID, clientSecret, nil),
+		otdf.WithClientCredentials(clientID, platformClientSecret, nil),
 	)
 	if err != nil {
 		return ctx, err
@@ -314,7 +313,7 @@ func (s *LocalPlatformStepDefinitions) iUseThePlatformAs(ctx context.Context, ro
 	platformSDK, err := otdf.New(
 		scenarioContext.ScenarioOptions.PlatformEndpoint,
 		otdf.WithInsecureSkipVerifyConn(),
-		otdf.WithClientCredentials(clientID, "secret", nil),
+		otdf.WithClientCredentials(clientID, platformClientSecret, nil),
 	)
 	if err != nil {
 		return ctx, err

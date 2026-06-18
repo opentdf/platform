@@ -2,6 +2,7 @@ package authz
 
 import (
 	"context"
+	"fmt"
 	"sync"
 	"testing"
 
@@ -48,7 +49,7 @@ func (s *ResolverSuite) TestRegistry_RegisterAndGet() {
 	}
 
 	// Use internal register method (normally called via scoped registry)
-	registry.register("/test.Service/TestMethod", testResolver)
+	s.Require().NoError(registry.register("/test.Service/TestMethod", testResolver))
 
 	resolver, ok := registry.Get("/test.Service/TestMethod")
 	s.True(ok)
@@ -56,6 +57,26 @@ func (s *ResolverSuite) TestRegistry_RegisterAndGet() {
 
 	// Verify the resolver is the same by calling it
 	_, _ = resolver(context.Background(), nil)
+	s.True(called)
+}
+
+func (s *ResolverSuite) TestRegistry_ZeroValueRegisterAndGet() {
+	var registry ResolverRegistry
+	called := false
+	testResolver := func(_ context.Context, _ connect.AnyRequest) (ResolverContext, error) {
+		called = true
+		return NewResolverContext(), nil
+	}
+
+	s.Require().NoError(registry.register("/test.Service/TestMethod", testResolver))
+	s.NotNil(registry.resolvers)
+
+	resolver, ok := registry.Get("/test.Service/TestMethod")
+	s.True(ok)
+	s.NotNil(resolver)
+
+	_, err := resolver(s.T().Context(), nil)
+	s.Require().NoError(err)
 	s.True(called)
 }
 
@@ -72,10 +93,12 @@ func (s *ResolverSuite) TestRegistry_ThreadSafety() {
 		go func(id int) {
 			defer wg.Done()
 			for j := range numOperations {
-				methodPath := "/test.Service/Method" + string(rune('A'+id%26)) + string(rune('0'+j%10))
-				registry.register(methodPath, func(_ context.Context, _ connect.AnyRequest) (ResolverContext, error) {
+				methodPath := fmt.Sprintf("/test.Service/Method%d_%d", id, j)
+				if err := registry.register(methodPath, func(_ context.Context, _ connect.AnyRequest) (ResolverContext, error) {
 					return NewResolverContext(), nil
-				})
+				}); err != nil {
+					s.T().Errorf("register resolver: %v", err)
+				}
 			}
 		}(i)
 	}
@@ -146,6 +169,39 @@ func (s *ResolverSuite) TestScoped_Register_ValidMethod() {
 	s.NotNil(resolver)
 }
 
+func (s *ResolverSuite) TestScoped_Register_DuplicateMethodReturnsErrorAndKeepsOriginal() {
+	registry := NewResolverRegistry()
+	serviceDesc := &grpc.ServiceDesc{
+		ServiceName: "policy.AttributesService",
+		Methods: []grpc.MethodDesc{
+			{MethodName: "CreateAttribute"},
+		},
+	}
+	scoped := registry.ScopedForService(serviceDesc)
+
+	firstResolverCalled := false
+	firstResolver := func(_ context.Context, _ connect.AnyRequest) (ResolverContext, error) {
+		firstResolverCalled = true
+		return NewResolverContext(), nil
+	}
+	secondResolver := func(_ context.Context, _ connect.AnyRequest) (ResolverContext, error) {
+		s.Fail("duplicate registration overwrote original resolver")
+		return NewResolverContext(), nil
+	}
+
+	s.Require().NoError(scoped.Register("CreateAttribute", firstResolver))
+	err := scoped.Register("CreateAttribute", secondResolver)
+
+	s.Require().Error(err)
+	s.Require().ErrorIs(err, errResolverAlreadyRegistered)
+	s.Contains(err.Error(), `method "/policy.AttributesService/CreateAttribute"`)
+	resolver, ok := registry.Get("/policy.AttributesService/CreateAttribute")
+	s.True(ok)
+	_, callErr := resolver(s.T().Context(), nil)
+	s.Require().NoError(callErr)
+	s.True(firstResolverCalled)
+}
+
 func (s *ResolverSuite) TestScoped_Register_InvalidMethod() {
 	registry := NewResolverRegistry()
 	serviceDesc := &grpc.ServiceDesc{
@@ -193,6 +249,34 @@ func (s *ResolverSuite) TestScoped_MustRegister_ValidMethod() {
 	resolver, ok := registry.Get("/policy.AttributesService/GetAttribute")
 	s.True(ok)
 	s.NotNil(resolver)
+}
+
+func (s *ResolverSuite) TestScoped_MustRegister_DuplicateMethodPanics() {
+	registry := NewResolverRegistry()
+	serviceDesc := &grpc.ServiceDesc{
+		ServiceName: "policy.AttributesService",
+		Methods: []grpc.MethodDesc{
+			{MethodName: "GetAttribute"},
+		},
+	}
+	scoped := registry.ScopedForService(serviceDesc)
+
+	testResolver := func(_ context.Context, _ connect.AnyRequest) (ResolverContext, error) {
+		return NewResolverContext(), nil
+	}
+
+	scoped.MustRegister("GetAttribute", testResolver)
+
+	func() {
+		defer func() {
+			panicValue := recover()
+			s.Require().NotNil(panicValue)
+			err, ok := panicValue.(error)
+			s.Require().True(ok)
+			s.Require().ErrorIs(err, errResolverAlreadyRegistered)
+		}()
+		scoped.MustRegister("GetAttribute", testResolver)
+	}()
 }
 
 func (s *ResolverSuite) TestScoped_MustRegister_InvalidMethod_Panics() {

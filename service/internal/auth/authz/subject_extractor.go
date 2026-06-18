@@ -10,7 +10,7 @@ import (
 	"github.com/lestrrat-go/jwx/v2/jwt"
 	"github.com/opentdf/platform/service/logger"
 	platformauthz "github.com/opentdf/platform/service/pkg/authz"
-	"github.com/opentdf/platform/service/pkg/util"
+	"github.com/opentdf/platform/service/pkg/dotnotation"
 )
 
 const (
@@ -146,7 +146,7 @@ func (e SubjectExtractor) ClientIDFromToken(ctx context.Context, token jwt.Token
 	if err != nil {
 		return "", fmt.Errorf("failed to parse token as a map and find claim at [%s]: %w", e.clientIDClaim, err)
 	}
-	found := util.Dotnotation(claims, e.clientIDClaim)
+	found := dotnotation.Dotnotation(claims, e.clientIDClaim)
 	if found == nil {
 		return "", fmt.Errorf("%w at [%s]", ErrClientIDClaimNotFound, e.clientIDClaim)
 	}

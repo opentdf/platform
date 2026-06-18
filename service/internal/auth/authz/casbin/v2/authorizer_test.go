@@ -1322,7 +1322,7 @@ func TestDimensionMatchFunc(t *testing.T) {
 	})
 }
 
-func (s *CasbinAuthorizerSuite) TestAuthorizeV2_DefaultPolicyDenyNonAdminRoles() {
+func (s *CasbinAuthorizerSuite) TestAuthorizeV2_DefaultPolicyCoverage() {
 	// Use the built-in default policy (no custom Csv)
 	cfg := authz.Config{
 		PolicyConfig: authz.PolicyConfig{
@@ -1334,29 +1334,133 @@ func (s *CasbinAuthorizerSuite) TestAuthorizeV2_DefaultPolicyDenyNonAdminRoles()
 	authorizer, err := s.newAuthorizer(cfg)
 	s.Require().NoError(err)
 
-	const rpc = "/policy.kasregistry.KeyAccessServerRegistryService/GetKey"
-
 	standardToken := createTestToken(s.T(), map[string]interface{}{
 		"realm_access": map[string]interface{}{"roles": []interface{}{"opentdf-standard"}},
 	})
-	unknownToken := createTestToken(s.T(), map[string]interface{}{
-		"realm_access": map[string]interface{}{"roles": []interface{}{"opentdf-unknown"}},
-	})
+	unknownToken := createTestToken(s.T(), map[string]interface{}{})
 	adminToken := createTestToken(s.T(), map[string]interface{}{
 		"realm_access": map[string]interface{}{"roles": []interface{}{"opentdf-admin"}},
 	})
 
-	standardDecision, err := authorizer.Authorize(s.T().Context(), &authz.Request{Token: standardToken, RPC: rpc})
-	s.Require().NoError(err)
-	s.False(standardDecision.Allowed, "opentdf-standard should be denied for GetKey in default policy")
+	readRPCs := []string{
+		"/policy.actions.ActionService/GetAction",
+		"/policy.actions.ActionService/ListActions",
+		"/policy.kasregistry.KeyAccessServerRegistryService/GetKey",
+		"/policy.kasregistry.KeyAccessServerRegistryService/ListKeys",
+		"/policy.keymanagement.KeyManagementService/GetProviderConfig",
+		"/policy.keymanagement.KeyManagementService/ListProviderConfigs",
+		"/policy.obligations.Service/GetObligation",
+		"/policy.obligations.Service/ListObligations",
+		"/policy.registeredresources.RegisteredResourcesService/GetRegisteredResource",
+		"/policy.registeredresources.RegisteredResourcesService/ListRegisteredResources",
+		"/policy.subjectmapping.SubjectMappingService/GetSubjectConditionSet",
+		"/policy.subjectmapping.SubjectMappingService/ListSubjectConditionSets",
+	}
 
-	unknownDecision, err := authorizer.Authorize(s.T().Context(), &authz.Request{Token: unknownToken, RPC: rpc})
-	s.Require().NoError(err)
-	s.False(unknownDecision.Allowed, "opentdf-unknown should be denied for GetKey in default policy")
+	mutatingRPCs := []string{
+		"/policy.actions.ActionService/CreateAction",
+		"/policy.kasregistry.KeyAccessServerRegistryService/CreateKey",
+		"/policy.kasregistry.KeyAccessServerRegistryService/RotateKey",
+		"/policy.keymanagement.KeyManagementService/DeleteProviderConfig",
+		"/policy.obligations.Service/UpdateObligation",
+		"/policy.registeredresources.RegisteredResourcesService/DeleteRegisteredResource",
+		"/policy.subjectmapping.SubjectMappingService/DeleteAllUnmappedSubjectConditionSets",
+	}
 
-	adminDecision, err := authorizer.Authorize(s.T().Context(), &authz.Request{Token: adminToken, RPC: rpc})
-	s.Require().NoError(err)
-	s.True(adminDecision.Allowed, "opentdf-admin should be allowed for GetKey in default policy")
+	type testCase struct {
+		name    string
+		token   jwt.Token
+		rpc     string
+		action  string
+		allowed bool
+	}
+
+	tests := []testCase{
+		{
+			name:    "standard can hit rewrap",
+			token:   standardToken,
+			rpc:     "/kas.AccessService/Rewrap",
+			action:  "read",
+			allowed: true,
+		},
+	}
+
+	for _, rpc := range readRPCs {
+		tests = append(
+			tests,
+			testCase{
+				name:    "admin can read " + rpc,
+				token:   adminToken,
+				rpc:     rpc,
+				action:  "read",
+				allowed: true,
+			},
+			testCase{
+				name:    "standard can read " + rpc,
+				token:   standardToken,
+				rpc:     rpc,
+				action:  "read",
+				allowed: true,
+			},
+			testCase{
+				name:    "unknown cannot read " + rpc,
+				token:   unknownToken,
+				rpc:     rpc,
+				action:  "read",
+				allowed: false,
+			},
+		)
+	}
+
+	for _, rpc := range mutatingRPCs {
+		tests = append(
+			tests,
+			testCase{
+				name:    "admin can mutate " + rpc,
+				token:   adminToken,
+				rpc:     rpc,
+				action:  "write",
+				allowed: true,
+			},
+			testCase{
+				name:    "standard cannot mutate " + rpc,
+				token:   standardToken,
+				rpc:     rpc,
+				action:  "write",
+				allowed: false,
+			},
+			testCase{
+				name:    "unknown cannot mutate " + rpc,
+				token:   unknownToken,
+				rpc:     rpc,
+				action:  "write",
+				allowed: false,
+			},
+		)
+	}
+
+	for _, tc := range tests {
+		s.Run(tc.name, func() {
+			decision, err := authorizer.Authorize(s.T().Context(), &authz.Request{
+				Token:  tc.token,
+				RPC:    tc.rpc,
+				Action: tc.action,
+			})
+			s.Require().NoError(err)
+			s.Require().NotNil(decision)
+			s.Equal(tc.allowed, decision.Allowed)
+		})
+	}
+
+	// Unknown can hit rewrap
+	req := &authz.Request{
+		Token:  unknownToken,
+		RPC:    "/kas.AccessService/Rewrap",
+		Action: "read",
+	}
+	decision, err := authorizer.Authorize(s.T().Context(), req)
+	s.Require().NotNil(decision)
+	s.True(decision.Allowed)
 }
 
 func (s *CasbinAuthorizerSuite) newAuthorizer(cfg authz.Config) (authz.Authorizer, error) {

@@ -8,7 +8,7 @@ import (
 	"github.com/lestrrat-go/jwx/v2/jwt"
 	"github.com/opentdf/platform/service/logger"
 	platformauthz "github.com/opentdf/platform/service/pkg/authz"
-	"github.com/opentdf/platform/service/pkg/util"
+	"github.com/opentdf/platform/service/pkg/dotnotation"
 )
 
 // JWTClaimsRoleProvider extracts role/group values from a configured JWT claim.
@@ -104,7 +104,7 @@ func (p *JWTClaimsRoleProvider) nestedClaim(claim any, selectors []string) any {
 		return nil
 	}
 
-	nested := util.Dotnotation(claimMap, strings.Join(selectors, "."))
+	nested := dotnotation.Dotnotation(claimMap, strings.Join(selectors, "."))
 	if nested == nil && p.logger != nil {
 		p.logger.Warn(
 			"claim not found",

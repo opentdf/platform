@@ -28,10 +28,20 @@ p, role:standard, /grpc.health.v1.Health/*, *, allow
 p, role:standard, /kas.AccessService/*, *, allow
 
 # Policy services (read access via gRPC)
+p, role:standard, /policy.actions.ActionService/Get*, *, allow
+p, role:standard, /policy.actions.ActionService/List*, *, allow
 p, role:standard, /policy.attributes.AttributesService/Get*, *, allow
 p, role:standard, /policy.attributes.AttributesService/List*, *, allow
+p, role:standard, /policy.kasregistry.KeyAccessServerRegistryService/Get*, *, allow
+p, role:standard, /policy.kasregistry.KeyAccessServerRegistryService/List*, *, allow
+p, role:standard, /policy.keymanagement.KeyManagementService/Get*, *, allow
+p, role:standard, /policy.keymanagement.KeyManagementService/List*, *, allow
 p, role:standard, /policy.namespaces.NamespaceService/Get*, *, allow
 p, role:standard, /policy.namespaces.NamespaceService/List*, *, allow
+p, role:standard, /policy.obligations.Service/Get*, *, allow
+p, role:standard, /policy.obligations.Service/List*, *, allow
+p, role:standard, /policy.registeredresources.RegisteredResourcesService/Get*, *, allow
+p, role:standard, /policy.registeredresources.RegisteredResourcesService/List*, *, allow
 p, role:standard, /policy.subjectmapping.SubjectMappingService/Get*, *, allow
 p, role:standard, /policy.subjectmapping.SubjectMappingService/List*, *, allow
 p, role:standard, /policy.subjectmapping.SubjectMappingService/Match*, *, allow
@@ -41,10 +51,6 @@ p, role:standard, /policy.resourcemapping.ResourceMappingService/List*, *, allow
 # Authorization service
 p, role:standard, /authorization.AuthorizationService/*, *, allow
 p, role:standard, /authorization.v2.AuthorizationService/*, *, allow
-
-# Entity resolution service
-p, role:standard, /entityresolution.EntityResolutionService/*, *, allow
-p, role:standard, /entityresolution.v2.EntityResolutionService/*, *, allow
 
 # ============================================================================
 # Unknown Role - Unauthenticated/Public Access

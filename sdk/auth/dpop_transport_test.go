@@ -11,11 +11,15 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync"
 	"testing"
 
+	"connectrpc.com/connect"
 	"github.com/lestrrat-go/jwx/v2/jwa"
 	"github.com/lestrrat-go/jwx/v2/jwk"
 	"github.com/lestrrat-go/jwx/v2/jwt"
+	"github.com/opentdf/platform/protocol/go/kas"
+	"github.com/opentdf/platform/protocol/go/kas/kasconnect"
 )
 
 // mockTokenSource implements AccessTokenSource for testing
@@ -287,6 +291,85 @@ func TestDPoPTransport_NonceRetryReplaysBodyWithoutGetBody(t *testing.T) {
 	}
 	if resp.StatusCode != http.StatusOK {
 		t.Errorf("final status = %d, want %d", resp.StatusCode, http.StatusOK)
+	}
+}
+
+// TestDPoPTransport_NonceRetryReplaysConnectUnaryBody is the end-to-end
+// regression for the bug that broke every body-bearing otdfctl/SDK call when
+// the platform enables the DPoP-Nonce challenge (RFC 9449 §8): the nonce
+// retry would re-issue the request with an exhausted body, and net/http
+// would abort with "ContentLength=N with Body length 0". This exercises a
+// real Connect-go unary client (the production code path), not a hand-built
+// http.Request.
+func TestDPoPTransport_NonceRetryReplaysConnectUnaryBody(t *testing.T) {
+	key := generateTestKey(t)
+	ts := &mockTokenSource{token: "test-token"}
+
+	const nonce = "test-nonce-12345"
+	var (
+		mu             sync.Mutex
+		receivedBodies [][]byte
+	)
+
+	mux := http.NewServeMux()
+	mux.HandleFunc("/kas.AccessService/PublicKey", func(w http.ResponseWriter, r *http.Request) {
+		body, err := io.ReadAll(r.Body)
+		if err != nil {
+			t.Errorf("read body: %v", err)
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+
+		mu.Lock()
+		receivedBodies = append(receivedBodies, append([]byte(nil), body...))
+		callNum := len(receivedBodies)
+		mu.Unlock()
+
+		if callNum == 1 {
+			w.Header().Set("DPoP-Nonce", nonce)
+			w.WriteHeader(http.StatusUnauthorized)
+			return
+		}
+		w.Header().Set("Content-Type", r.Header.Get("Content-Type"))
+		w.WriteHeader(http.StatusOK)
+	})
+	server := httptest.NewServer(mux)
+	defer server.Close()
+
+	httpClient := &http.Client{Transport: &DPoPTransport{
+		Base:        http.DefaultTransport,
+		DPoPKey:     key,
+		TokenSource: ts,
+	}}
+
+	client := kasconnect.NewAccessServiceClient(httpClient, server.URL)
+
+	// A non-trivial body — mirrors what otdfctl sends for any unary RPC with
+	// payload (e.g. policy attributes value key assign, KAS Rewrap).
+	resp, err := client.PublicKey(context.Background(), connect.NewRequest(&kas.PublicKeyRequest{
+		Algorithm: "rsa:2048",
+		Fmt:       "pem",
+	}))
+	if err != nil {
+		t.Fatalf("unary call failed: %v", err)
+	}
+	if resp == nil {
+		t.Fatal("nil response")
+	}
+
+	mu.Lock()
+	defer mu.Unlock()
+
+	if len(receivedBodies) != 2 {
+		t.Fatalf("expected 2 calls (initial + retry), got %d", len(receivedBodies))
+	}
+	if len(receivedBodies[0]) == 0 {
+		t.Fatal("first call body was empty — Connect-go did not send a payload")
+	}
+	if !bytes.Equal(receivedBodies[0], receivedBodies[1]) {
+		t.Errorf("retry body differs from initial body\n  initial (len=%d): %x\n  retry   (len=%d): %x",
+			len(receivedBodies[0]), receivedBodies[0],
+			len(receivedBodies[1]), receivedBodies[1])
 	}
 }
 

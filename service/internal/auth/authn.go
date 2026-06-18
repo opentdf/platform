@@ -198,11 +198,11 @@ func NewAuthenticator(ctx context.Context, cfg Config, logger *logger.Logger, we
 
 func resolveRoleProvider(ctx context.Context, cfg Config, logger *logger.Logger) (authz.RoleProvider, error) {
 	if cfg.Policy.RolesProvider.Name != "" {
-		if cfg.RoleProvider != nil && cfg.RoleProviderFactories != nil {
+		if cfg.RoleProvider != nil || cfg.RoleProviderFactories != nil {
 			logger.Warn(
 				"role provider configured in start options is ignored because roles_provider is set",
 				slog.String("roles_provider", cfg.Policy.RolesProvider.Name),
-			)
+
 		}
 		if cfg.RoleProviderFactories == nil {
 			return nil, fmt.Errorf("no role provider factories are registered, cannot create provider %q", cfg.Policy.RolesProvider.Name)

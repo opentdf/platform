@@ -630,11 +630,10 @@ p, alice, /policy.attributes.AttributesService/Get*, *, allow`,
 	})
 
 	subjectExtractor := casbinAuthorizer.subjectExtractor
-	subjects, roles, err := subjectExtractor.BuildSubjectFromToken(
+	subjects, roles, err := subjectExtractor.BuildV2SubjectsFromToken(
 		s.T().Context(),
 		token,
 		platformauthz.RoleRequest{},
-		true,
 	)
 	s.Require().NoError(err)
 	s.Equal([]string{"client:test-client", "role:admin", "alice"}, subjects)

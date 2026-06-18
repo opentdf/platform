@@ -23,33 +23,76 @@ var (
 	ErrClientIDClaimNotFound      = errors.New("client ID claim not found")
 	ErrClientIDClaimNotString     = errors.New("client ID claim is not a string")
 	ErrTokenRequired              = errors.New("token is required")
+	ErrSubjectExtractorLogger     = errors.New("subject extractor logger is required")
+	ErrSubjectExtractorRoles      = errors.New("subject extractor role provider is required")
 )
 
 type SubjectExtractor struct {
-	UserNameClaim string
-	ClientIDClaim string
-	RoleProvider  platformauthz.RoleProvider
-	Logger        *logger.Logger
+	userNameClaim string
+	clientIDClaim string
+	roleProvider  platformauthz.RoleProvider
+	logger        *logger.Logger
 }
 
-func (e SubjectExtractor) BuildSubjectFromToken(ctx context.Context, token jwt.Token, req platformauthz.RoleRequest, usePrefix bool) ([]string, []string, error) {
+// NewSubjectExtractor constructs a subject extractor with required dependencies.
+func NewSubjectExtractor(userNameClaim, clientIDClaim string, roleProvider platformauthz.RoleProvider, log *logger.Logger) (SubjectExtractor, error) {
+	if log == nil {
+		return SubjectExtractor{}, ErrSubjectExtractorLogger
+	}
+	if roleProvider == nil {
+		return SubjectExtractor{}, ErrSubjectExtractorRoles
+	}
+
+	return SubjectExtractor{
+		userNameClaim: userNameClaim,
+		clientIDClaim: clientIDClaim,
+		roleProvider:  roleProvider,
+		logger:        log,
+	}, nil
+}
+
+// BuildV1SubjectsFromToken preserves legacy subjects: claims.Groups plus
+// claims.Subject as-is, including empty values. It does not emit an independent
+// client ID subject or filter reserved role:/client: username prefixes.
+func (e SubjectExtractor) BuildV1SubjectsFromToken(ctx context.Context, token jwt.Token, req platformauthz.RoleRequest) ([]string, []string, error) {
 	subjects := []string{}
 
-	if e.Logger != nil {
-		e.Logger.Debug("building subject from token")
-	}
+	e.logger.Debug("building v1 subjects from token")
 
 	claims, err := e.ClaimsForRequest(ctx, token, req)
 	if err != nil {
 		return nil, nil, err
 	}
-	roles := normalizeRoles(claims.Groups, usePrefix)
 
-	if clientID := claims.ClientID; clientID != "" {
-		subjects = append(subjects, subjectWithPrefix(clientID, SubjectClientPrefix, usePrefix))
+	subjects = append(subjects, claims.Groups...)
+	subjects = append(subjects, claims.Subject)
+
+	return subjects, append([]string(nil), claims.Groups...), nil
+}
+
+// BuildV2SubjectsFromToken emits typed subjects: client IDs and roles use
+// reserved prefixes, empty roles are filtered, and usernames with role:/client:
+// prefixes are skipped to avoid collisions.
+func (e SubjectExtractor) BuildV2SubjectsFromToken(ctx context.Context, token jwt.Token, req platformauthz.RoleRequest) ([]string, []string, error) {
+	subjects := []string{}
+
+	e.logger.Debug("building v2 subjects from token")
+
+	claims, err := e.ClaimsForRequest(ctx, token, req)
+	if err != nil {
+		return nil, nil, err
 	}
+	roles := normalizeV2Roles(claims.Groups)
+
+	if claims.ClientID != "" {
+		subjects = append(subjects, subjectWithPrefix(claims.ClientID, SubjectClientPrefix))
+	}
+
 	subjects = append(subjects, roles...)
 	if claims.Subject != "" {
+		if e.usernameHasReservedPrefix(claims.Subject) {
+			return subjects, append([]string(nil), roles...), nil
+		}
 		subjects = append(subjects, claims.Subject)
 	}
 
@@ -75,12 +118,10 @@ func (e SubjectExtractor) ClaimsForRequest(ctx context.Context, token jwt.Token,
 	}
 
 	var roles []string
-	if e.RoleProvider != nil {
-		var err error
-		roles, err = e.RoleProvider.Roles(ctx, token, req)
-		if err != nil {
-			return platformauthz.RequestClaims{}, err
-		}
+	var err error
+	roles, err = e.roleProvider.Roles(ctx, token, req)
+	if err != nil {
+		return platformauthz.RequestClaims{}, err
 	}
 	claims, _ := platformauthz.ClaimsFromContext(ctx)
 	claims.Subject = e.usernameFromToken(token)
@@ -95,7 +136,7 @@ func (e SubjectExtractor) ClaimsForRequest(ctx context.Context, token jwt.Token,
 }
 
 func (e SubjectExtractor) ClientIDFromToken(ctx context.Context, token jwt.Token) (string, error) {
-	if e.ClientIDClaim == "" {
+	if e.clientIDClaim == "" {
 		return "", ErrClientIDClaimNotConfigured
 	}
 	if token == nil {
@@ -103,82 +144,78 @@ func (e SubjectExtractor) ClientIDFromToken(ctx context.Context, token jwt.Token
 	}
 	claims, err := token.AsMap(ctx)
 	if err != nil {
-		return "", fmt.Errorf("failed to parse token as a map and find claim at [%s]: %w", e.ClientIDClaim, err)
+		return "", fmt.Errorf("failed to parse token as a map and find claim at [%s]: %w", e.clientIDClaim, err)
 	}
-	found := util.Dotnotation(claims, e.ClientIDClaim)
+	found := util.Dotnotation(claims, e.clientIDClaim)
 	if found == nil {
-		return "", fmt.Errorf("%w at [%s]", ErrClientIDClaimNotFound, e.ClientIDClaim)
+		return "", fmt.Errorf("%w at [%s]", ErrClientIDClaimNotFound, e.clientIDClaim)
 	}
 	clientID, ok := found.(string)
 	if !ok {
-		return "", fmt.Errorf("%w at [%s]", ErrClientIDClaimNotString, e.ClientIDClaim)
+		return "", fmt.Errorf("%w at [%s]", ErrClientIDClaimNotString, e.clientIDClaim)
 	}
 	return clientID, nil
 }
 
-func normalizeRoles(roles []string, usePrefix bool) []string {
+func normalizeV2Roles(roles []string) []string {
 	normalized := make([]string, 0, len(roles))
 
 	for _, role := range roles {
 		if role == "" {
 			continue
 		}
-		normalized = append(normalized, subjectWithPrefix(role, SubjectRolePrefix, usePrefix))
+		normalized = append(normalized, subjectWithPrefix(role, SubjectRolePrefix))
 	}
 	return normalized
 }
 
-func subjectWithPrefix(subject, prefix string, usePrefix bool) string {
-	if !usePrefix || strings.HasPrefix(subject, prefix) {
+func subjectWithPrefix(subject, prefix string) string {
+	if strings.HasPrefix(subject, prefix) {
 		return subject
 	}
 	return prefix + subject
 }
 
 func (e SubjectExtractor) usernameFromToken(token jwt.Token) string {
-	if token == nil || e.UserNameClaim == "" {
+	if token == nil || e.userNameClaim == "" {
 		return ""
 	}
 
-	claim, found := token.Get(e.UserNameClaim)
+	claim, found := token.Get(e.userNameClaim)
 	if !found {
 		return ""
 	}
 
 	username, ok := claim.(string)
 	if !ok {
-		if e.Logger != nil {
-			e.Logger.Warn(
-				"username claim not of type string",
-				slog.String("claim", e.UserNameClaim),
-				slog.Any("claims", claim),
-			)
-		}
-		return ""
-	}
-	if username == "" {
-		return ""
-	}
-	if strings.HasPrefix(username, SubjectRolePrefix) {
-		if e.Logger != nil {
-			e.Logger.Warn(
-				"ignoring username subject with reserved role prefix",
-				slog.String("claim", e.UserNameClaim),
-				slog.String("prefix", SubjectRolePrefix),
-			)
-		}
-		return ""
-	}
-	if strings.HasPrefix(username, SubjectClientPrefix) {
-		if e.Logger != nil {
-			e.Logger.Warn(
-				"ignoring username subject with reserved client prefix",
-				slog.String("claim", e.UserNameClaim),
-				slog.String("prefix", SubjectClientPrefix),
-			)
-		}
+		e.logger.Warn(
+			"username claim not of type string",
+			slog.String("claim", e.userNameClaim),
+			slog.Any("claims", claim),
+		)
 		return ""
 	}
 
 	return username
+}
+
+func (e SubjectExtractor) usernameHasReservedPrefix(username string) bool {
+	if strings.HasPrefix(username, SubjectRolePrefix) {
+		e.logger.Warn(
+			"ignoring username subject with reserved role prefix",
+			slog.String("claim", e.userNameClaim),
+			slog.String("prefix", SubjectRolePrefix),
+		)
+		return true
+	}
+	if strings.HasPrefix(username, SubjectClientPrefix) {
+		e.logger.Warn(
+			"ignoring username subject with reserved client prefix",
+			slog.String("claim", e.userNameClaim),
+			slog.String("prefix", SubjectClientPrefix),
+		)
+		return true
+	}
+
+	return false
 }

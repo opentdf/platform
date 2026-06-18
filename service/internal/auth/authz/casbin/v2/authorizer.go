@@ -77,18 +77,22 @@ func NewAuthorizer(cfg authz.CasbinV2Config, log *logger.Logger) (*Authorizer, e
 	if roleProvider == nil {
 		roleProvider = authz.NewJWTClaimsRoleProvider(cfg.GroupsClaim, log)
 	}
+	subjectExtractor, err := authz.NewSubjectExtractor(
+		cfg.UserNameClaim,
+		cfg.ClientIDClaim,
+		roleProvider,
+		log,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create subject extractor: %w", err)
+	}
 
 	authorizer := &Authorizer{
-		issuer:      cfg.Issuer,
-		groupsClaim: cfg.GroupsClaim,
-		logger:      log,
-		enforcer:    enforcer,
-		subjectExtractor: authz.SubjectExtractor{
-			UserNameClaim: cfg.UserNameClaim,
-			ClientIDClaim: cfg.ClientIDClaim,
-			RoleProvider:  roleProvider,
-			Logger:        log,
-		},
+		issuer:           cfg.Issuer,
+		groupsClaim:      cfg.GroupsClaim,
+		logger:           log,
+		enforcer:         enforcer,
+		subjectExtractor: subjectExtractor,
 	}
 
 	log.Info(
@@ -191,7 +195,7 @@ func (a *Authorizer) authorize(ctx context.Context, req *authz.Request) (*authz.
 		Resource: req.RPC,
 		Action:   req.Action,
 	}
-	subjects, _, err := a.subjectExtractor.BuildSubjectFromToken(ctx, req.Token, roleReq, true)
+	subjects, _, err := a.subjectExtractor.BuildV2SubjectsFromToken(ctx, req.Token, roleReq)
 	if err != nil {
 		return nil, fmt.Errorf("v2 authorization subject extraction error: %w", err)
 	}

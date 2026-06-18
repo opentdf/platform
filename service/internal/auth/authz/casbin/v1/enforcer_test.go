@@ -549,7 +549,7 @@ func (s *AuthnCasbinSuite) Test_Username_Policy() {
 	s.False(allowed)
 }
 
-func (s *AuthnCasbinSuite) Test_ClientID_Policy() {
+func (s *AuthnCasbinSuite) Test_ClientID_Policy_DoesNotMatchClientIDSubject() {
 	policyCfg := internalauthz.PolicyConfig{}
 	err := defaults.Set(&policyCfg)
 	s.Require().NoError(err)
@@ -568,7 +568,7 @@ func (s *AuthnCasbinSuite) Test_ClientID_Policy() {
 
 	allowed, err := s.enforce(enforcer, tok, "new.service.DoSomething", "read")
 	s.Require().NoError(err)
-	s.True(allowed)
+	s.False(allowed)
 
 	allowed, err = s.enforce(enforcer, tok, "policy.attributes.List", "read")
 	s.Require().NoError(err)

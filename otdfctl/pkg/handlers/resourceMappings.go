@@ -9,7 +9,8 @@ import (
 )
 
 // Creates and returns the created resource mapping
-func (h *Handler) CreateResourceMapping(ctx context.Context, attributeID string, terms []string, grpID, namespaceID, namespaceFqn string, metadata *common.MetadataMutable) (*policy.ResourceMapping, error) {
+func (h *Handler) CreateResourceMapping(ctx context.Context, attributeID string, terms []string, grpID, namespace string, metadata *common.MetadataMutable) (*policy.ResourceMapping, error) {
+	namespaceID, namespaceFqn := getNamespaceIDAndFQN(namespace)
 	res, err := h.sdk.ResourceMapping.CreateResourceMapping(ctx, &resourcemapping.CreateResourceMappingRequest{
 		AttributeValueId: attributeID,
 		GroupId:          grpID,
@@ -36,7 +37,8 @@ func (h *Handler) GetResourceMapping(ctx context.Context, id string) (*policy.Re
 	return res.GetResourceMapping(), nil
 }
 
-func (h *Handler) ListResourceMappings(ctx context.Context, namespaceID, namespaceFqn string, limit, offset int32) (*resourcemapping.ListResourceMappingsResponse, error) {
+func (h *Handler) ListResourceMappings(ctx context.Context, namespace string, limit, offset int32) (*resourcemapping.ListResourceMappingsResponse, error) {
+	namespaceID, namespaceFqn := getNamespaceIDAndFQN(namespace)
 	return h.sdk.ResourceMapping.ListResourceMappings(ctx, &resourcemapping.ListResourceMappingsRequest{
 		NamespaceId:  namespaceID,
 		NamespaceFqn: namespaceFqn,
@@ -49,7 +51,8 @@ func (h *Handler) ListResourceMappings(ctx context.Context, namespaceID, namespa
 
 // TODO: verify updation behavior
 // Updates and returns the updated resource mapping
-func (h *Handler) UpdateResourceMapping(ctx context.Context, id, attrValueID, grpID, namespaceID, namespaceFqn string, terms []string, metadata *common.MetadataMutable, behavior common.MetadataUpdateEnum) (*policy.ResourceMapping, error) {
+func (h *Handler) UpdateResourceMapping(ctx context.Context, id, attrValueID, grpID, namespace string, terms []string, metadata *common.MetadataMutable, behavior common.MetadataUpdateEnum) (*policy.ResourceMapping, error) {
+	namespaceID, namespaceFqn := getNamespaceIDAndFQN(namespace)
 	_, err := h.sdk.ResourceMapping.UpdateResourceMapping(ctx, &resourcemapping.UpdateResourceMappingRequest{
 		Id:                     id,
 		AttributeValueId:       attrValueID,

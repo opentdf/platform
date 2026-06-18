@@ -24,14 +24,13 @@ func createResourceMapping(cmd *cobra.Command, args []string) {
 
 	attrID := c.Flags.GetRequiredID("attribute-value-id")
 	grpID := c.Flags.GetOptionalID("group-id")
-	nsID := c.Flags.GetOptionalID("namespace-id")
-	nsFqn := c.Flags.GetOptionalString("namespace-fqn")
+	namespace := c.Flags.GetOptionalString("namespace")
 	terms = c.Flags.GetStringSlice("terms", terms, cli.FlagsStringSliceOptions{
 		Min: 1,
 	})
 	metadataLabels = c.Flags.GetStringSlice("label", metadataLabels, cli.FlagsStringSliceOptions{Min: 0})
 
-	resourceMapping, err := h.CreateResourceMapping(cmd.Context(), attrID, terms, grpID, nsID, nsFqn, getMetadataMutable(metadataLabels))
+	resourceMapping, err := h.CreateResourceMapping(cmd.Context(), attrID, terms, grpID, namespace, getMetadataMutable(metadataLabels))
 	if err != nil {
 		cli.ExitWithError("Failed to create resource mapping", err)
 	}
@@ -87,10 +86,9 @@ func listResourceMappings(cmd *cobra.Command, args []string) {
 
 	limit := c.Flags.GetRequiredInt32("limit")
 	offset := c.Flags.GetRequiredInt32("offset")
-	nsID := c.Flags.GetOptionalID("namespace-id")
-	nsFqn := c.Flags.GetOptionalString("namespace-fqn")
+	namespace := c.Flags.GetOptionalString("namespace")
 
-	resp, err := h.ListResourceMappings(cmd.Context(), nsID, nsFqn, limit, offset)
+	resp, err := h.ListResourceMappings(cmd.Context(), namespace, limit, offset)
 	if err != nil {
 		cli.ExitWithError("Failed to list resource mappings", err)
 	}
@@ -134,12 +132,11 @@ func updateResourceMapping(cmd *cobra.Command, args []string) {
 	id := c.Flags.GetRequiredID("id")
 	attrValueID := c.Flags.GetOptionalID("attribute-value-id")
 	grpID := c.Flags.GetOptionalID("group-id")
-	nsID := c.Flags.GetOptionalID("namespace-id")
-	nsFqn := c.Flags.GetOptionalString("namespace-fqn")
+	namespace := c.Flags.GetOptionalString("namespace")
 	terms = c.Flags.GetStringSlice("terms", terms, cli.FlagsStringSliceOptions{})
 	metadataLabels = c.Flags.GetStringSlice("label", metadataLabels, cli.FlagsStringSliceOptions{Min: 0})
 
-	resourceMapping, err := h.UpdateResourceMapping(cmd.Context(), id, attrValueID, grpID, nsID, nsFqn, terms, getMetadataMutable(metadataLabels), getMetadataUpdateBehavior())
+	resourceMapping, err := h.UpdateResourceMapping(cmd.Context(), id, attrValueID, grpID, namespace, terms, getMetadataMutable(metadataLabels), getMetadataUpdateBehavior())
 	if err != nil {
 		cli.ExitWithError(fmt.Sprintf("Failed to update resource mapping (%s)", id), err)
 	}
@@ -213,16 +210,7 @@ func initResourceMappingsCommands() {
 		createDoc.GetDocFlag("group-id").Default,
 		createDoc.GetDocFlag("group-id").Description,
 	)
-	createDoc.Flags().String(
-		createDoc.GetDocFlag("namespace-id").Name,
-		createDoc.GetDocFlag("namespace-id").Default,
-		createDoc.GetDocFlag("namespace-id").Description,
-	)
-	createDoc.Flags().String(
-		createDoc.GetDocFlag("namespace-fqn").Name,
-		createDoc.GetDocFlag("namespace-fqn").Default,
-		createDoc.GetDocFlag("namespace-fqn").Description,
-	)
+	injectNamespaceFlag(createDoc)
 	injectLabelFlags(&createDoc.Command, false)
 
 	getDoc := man.Docs.GetCommand("policy/resource-mappings/get",
@@ -237,16 +225,7 @@ func initResourceMappingsCommands() {
 	listDoc := man.Docs.GetCommand("policy/resource-mappings/list",
 		man.WithRun(listResourceMappings),
 	)
-	listDoc.Flags().String(
-		listDoc.GetDocFlag("namespace-id").Name,
-		listDoc.GetDocFlag("namespace-id").Default,
-		listDoc.GetDocFlag("namespace-id").Description,
-	)
-	listDoc.Flags().String(
-		listDoc.GetDocFlag("namespace-fqn").Name,
-		listDoc.GetDocFlag("namespace-fqn").Default,
-		listDoc.GetDocFlag("namespace-fqn").Description,
-	)
+	injectNamespaceFlag(listDoc)
 	injectListPaginationFlags(listDoc)
 
 	updateDoc := man.Docs.GetCommand("policy/resource-mappings/update",
@@ -273,16 +252,7 @@ func initResourceMappingsCommands() {
 		updateDoc.GetDocFlag("group-id").Default,
 		updateDoc.GetDocFlag("group-id").Description,
 	)
-	updateDoc.Flags().String(
-		updateDoc.GetDocFlag("namespace-id").Name,
-		updateDoc.GetDocFlag("namespace-id").Default,
-		updateDoc.GetDocFlag("namespace-id").Description,
-	)
-	updateDoc.Flags().String(
-		updateDoc.GetDocFlag("namespace-fqn").Name,
-		updateDoc.GetDocFlag("namespace-fqn").Default,
-		updateDoc.GetDocFlag("namespace-fqn").Description,
-	)
+	injectNamespaceFlag(updateDoc)
 	injectLabelFlags(&updateDoc.Command, true)
 
 	deleteDoc := man.Docs.GetCommand("policy/resource-mappings/delete",

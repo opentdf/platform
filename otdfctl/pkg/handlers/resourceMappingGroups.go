@@ -33,7 +33,8 @@ func (h *Handler) GetResourceMappingGroup(ctx context.Context, id string) (*poli
 	return res.GetResourceMappingGroup(), nil
 }
 
-func (h *Handler) ListResourceMappingGroups(ctx context.Context, namespaceID, namespaceFqn string, limit, offset int32) (*resourcemapping.ListResourceMappingGroupsResponse, error) {
+func (h *Handler) ListResourceMappingGroups(ctx context.Context, namespace string, limit, offset int32) (*resourcemapping.ListResourceMappingGroupsResponse, error) {
+	namespaceID, namespaceFqn := getNamespaceIDAndFQN(namespace)
 	return h.sdk.ResourceMapping.ListResourceMappingGroups(ctx, &resourcemapping.ListResourceMappingGroupsRequest{
 		NamespaceId:  namespaceID,
 		NamespaceFqn: namespaceFqn,

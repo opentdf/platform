@@ -16,11 +16,9 @@ command:
     - name: group-id
       description: The ID of the resource mapping group to assign this mapping to
       default: ''
-    - name: namespace-id
-      description: Optional ID of the namespace that owns this resource mapping. If a group is provided, it must match the group's namespace.
-      default: ''
-    - name: namespace-fqn
-      description: Optional FQN of the namespace that owns this resource mapping (alternative to namespace-id).
+    - name: namespace
+      shorthand: s
+      description: Optional ID or FQN of the namespace that owns this resource mapping. If a group is provided, it must match the group's namespace.
       default: ''
     - name: label
       description: "Optional metadata 'labels' in the format: key=value"

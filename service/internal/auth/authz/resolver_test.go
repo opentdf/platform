@@ -499,6 +499,34 @@ func (s *ResolverSuite) TestFullWorkflow_ServiceRegistration() {
 	s.Equal("read", (*getCtx.Resources[0])["action"])
 }
 
+// --- Context Utility Tests ---
+
+func (s *ResolverSuite) TestContextWithResolverContext_RoundTrip() {
+	rc := &ResolverContext{}
+	rc.SetResolvedData("mykey", "myval")
+
+	ctx := ContextWithResolverContext(s.T().Context(), rc)
+	got := ResolverContextFromContext(ctx)
+
+	s.Same(rc, got, "ResolverContextFromContext must return the same pointer that was stored")
+}
+
+func (s *ResolverSuite) TestGetResolvedDataFromContext_PopulatedContext() {
+	rc := NewResolverContext()
+	expected := struct{ Name string }{"test-value"}
+	rc.SetResolvedData("mykey", expected)
+
+	ctx := ContextWithResolverContext(s.T().Context(), &rc)
+	got := GetResolvedDataFromContext(ctx, "mykey")
+
+	s.Equal(expected, got)
+}
+
+func (s *ResolverSuite) TestGetResolvedDataFromContext_BareContext_ReturnsNil() {
+	got := GetResolvedDataFromContext(s.T().Context(), "mykey")
+	s.Nil(got, "GetResolvedDataFromContext on a bare context should return nil without panicking")
+}
+
 // --- Additional Test Functions (non-suite) ---
 
 func TestResolverRegistry_Basic(t *testing.T) {

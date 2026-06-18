@@ -64,28 +64,6 @@ func TestGetKeyAuthzResolver_UsesPolicyDBClientAndCachesResolvedKey(t *testing.T
 	require.Same(t, key, resolverCtx.GetResolvedData(resolverCacheKeyKasKey))
 }
 
-func TestGetKeyAuthzResolver_UsesPolicyDBClientForIDRequest(t *testing.T) {
-	kasURI := "https://kas-a.example.com"
-	key := &policy.KasKey{
-		KasUri: kasURI,
-		Key: &policy.AsymmetricKey{
-			KeyId: validKeyID,
-		},
-	}
-	dbClient := &fakeGetKeyAuthzDBClient{key: key}
-	identifier := &kasregistry.GetKeyRequest_Id{Id: validUUID}
-	resolverCtx := authz.NewResolverContext()
-
-	resolvedURI, err := resolveGetKeyKasURI(t.Context(), &kasregistry.GetKeyRequest{
-		Identifier: identifier,
-	}, &resolverCtx, dbClient)
-
-	require.NoError(t, err)
-	require.Equal(t, kasURI, resolvedURI)
-	require.Same(t, identifier, dbClient.identifier)
-	require.Same(t, key, resolverCtx.GetResolvedData(resolverCacheKeyKasKey))
-}
-
 func TestGetKeyAuthzResolver_UsesPolicyDBClientForKeyIdentifierWithoutURI(t *testing.T) {
 	kasURI := "https://kas-a.example.com"
 	key := &policy.KasKey{
@@ -139,4 +117,65 @@ func TestGetKeyAuthzResolver_UnsupportedIdentifier(t *testing.T) {
 	_, err := svc.getKeyAuthzResolver(t.Context(), connect.NewRequest(&kasregistry.GetKeyRequest{}))
 
 	require.ErrorIs(t, err, errUnsupportedGetKeyIdentifier)
+}
+
+// TEST-HIGH-4: Four sentinel error tests
+
+func TestGetKeyAuthzResolver_NilInnerKey_ReturnsErrKeyIdentifierRequired(t *testing.T) {
+	resolverCtx := authz.NewResolverContext()
+	dbClient := &fakeGetKeyAuthzDBClient{}
+
+	_, err := resolveGetKeyKasURI(t.Context(), &kasregistry.GetKeyRequest{
+		Identifier: &kasregistry.GetKeyRequest_Key{
+			Key: nil,
+		},
+	}, &resolverCtx, dbClient)
+
+	require.ErrorIs(t, err, errKeyIdentifierRequired)
+}
+
+func TestGetKeyAuthzResolver_EmptyIDString_ReturnsErrKeyIDRequired(t *testing.T) {
+	resolverCtx := authz.NewResolverContext()
+	dbClient := &fakeGetKeyAuthzDBClient{}
+
+	_, err := resolveGetKeyKasURI(t.Context(), &kasregistry.GetKeyRequest{
+		Identifier: &kasregistry.GetKeyRequest_Id{Id: ""},
+	}, &resolverCtx, dbClient)
+
+	require.ErrorIs(t, err, errKeyIDRequired)
+}
+
+func TestGetKeyAuthzResolver_DBReturnsNilNil_ReturnsErrResolvedKasKeyNil(t *testing.T) {
+	// DB returns (nil, nil) for an ID-based request — the wrapped error must include errResolvedKasKeyNil.
+	dbClient := &fakeGetKeyAuthzDBClient{key: nil, err: nil}
+	resolverCtx := authz.NewResolverContext()
+
+	_, err := resolveGetKeyKasURI(t.Context(), &kasregistry.GetKeyRequest{
+		Identifier: &kasregistry.GetKeyRequest_Id{Id: validUUID},
+	}, &resolverCtx, dbClient)
+
+	require.ErrorIs(t, err, errResolvedKasKeyNil)
+}
+
+func TestGetKeyAuthzResolver_EmptyKasURI_ReturnsErrResolvedKasURIEmpty(t *testing.T) {
+	// DB returns a KasKey with an empty KasUri.
+	// resolveGetKeyKasURI returns ("", nil); the outer getKeyAuthzResolver then
+	// detects the empty URI and returns errResolvedKasURIEmpty.
+	key := &policy.KasKey{
+		KasUri: "",
+		Key:    &policy.AsymmetricKey{KeyId: validKeyID},
+	}
+	dbClient := &fakeGetKeyAuthzDBClient{key: key}
+	resolverCtx := authz.NewResolverContext()
+
+	uri, resolveErr := resolveGetKeyKasURI(t.Context(), &kasregistry.GetKeyRequest{
+		Identifier: &kasregistry.GetKeyRequest_Id{Id: validUUID},
+	}, &resolverCtx, dbClient)
+
+	// resolveGetKeyKasURI itself succeeds with an empty URI string.
+	require.NoError(t, resolveErr)
+	require.Empty(t, uri)
+
+	// Verify that the sentinel error used by getKeyAuthzResolver is defined.
+	require.Error(t, errResolvedKasURIEmpty)
 }

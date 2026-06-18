@@ -795,15 +795,6 @@ p, role:unknown, /kas.AccessService/Rewrap, *, allow`,
 	}
 }
 
-func (s *CasbinAuthorizerSuite) newAuthorizer(cfg authz.Config) (authz.Authorizer, error) {
-	adapterCfg := authz.AdapterConfigFromExternal(cfg)
-	v2Cfg, ok := adapterCfg.(authz.CasbinV2Config)
-	if !ok {
-		return nil, fmt.Errorf("expected v2 config, got %T", adapterCfg)
-	}
-	return NewAuthorizer(v2Cfg, s.logger)
-}
-
 // Test dimension matching logic
 func TestDimensionMatch(t *testing.T) {
 	tests := []struct {
@@ -1213,6 +1204,172 @@ func TestDimensionMatch_WithURIValues(t *testing.T) {
 			assert.Equal(t, tc.expected, result, "dimensionMatch(%q, %q)", serialized[0], tc.policyDims)
 		})
 	}
+}
+
+// TEST-MED-1: kas_uri dimension tests with URI values containing & and =
+func (s *CasbinAuthorizerSuite) TestAuthorizeV2_KasURIDimensionAllowed() {
+	const kasURI = "https://kas-a.example.com?q=1&foo=bar"
+	escapedURI := escapeDimensionValue(kasURI)
+	csvPolicy := "p, role:kas-reader, /policy.kasregistry.KeyAccessServerRegistryService/GetKey, kas_uri=" + escapedURI + ", allow"
+
+	cfg := authz.Config{
+		PolicyConfig: authz.PolicyConfig{
+			Version:     "v2",
+			GroupsClaim: "realm_access.roles",
+			Csv:         csvPolicy,
+		},
+		Logger: s.logger,
+	}
+	authorizer, err := s.newAuthorizer(cfg)
+	s.Require().NoError(err)
+
+	token := createTestToken(s.T(), map[string]interface{}{
+		"realm_access": map[string]interface{}{
+			"roles": []interface{}{"kas-reader"},
+		},
+	})
+
+	kasURIResource := authz.ResolverResource(map[string]string{"kas_uri": kasURI})
+	req := &authz.Request{
+		Token:  token,
+		RPC:    "/policy.kasregistry.KeyAccessServerRegistryService/GetKey",
+		Action: "read",
+		ResourceContext: &authz.ResolverContext{
+			Resources: []*authz.ResolverResource{&kasURIResource},
+		},
+	}
+
+	decision, err := authorizer.Authorize(s.T().Context(), req)
+	s.Require().NoError(err)
+	s.True(decision.Allowed, "kas-reader with matching kas_uri (containing & and =) should be allowed")
+}
+
+func (s *CasbinAuthorizerSuite) TestAuthorizeV2_KasURIDimensionDeniedOnMismatch() {
+	const kasURI = "https://kas-a.example.com?q=1&foo=bar"
+	escapedURI := escapeDimensionValue(kasURI)
+	csvPolicy := "p, role:kas-reader, /policy.kasregistry.KeyAccessServerRegistryService/GetKey, kas_uri=" + escapedURI + ", allow"
+
+	cfg := authz.Config{
+		PolicyConfig: authz.PolicyConfig{
+			Version:     "v2",
+			GroupsClaim: "realm_access.roles",
+			Csv:         csvPolicy,
+		},
+		Logger: s.logger,
+	}
+	authorizer, err := s.newAuthorizer(cfg)
+	s.Require().NoError(err)
+
+	token := createTestToken(s.T(), map[string]interface{}{
+		"realm_access": map[string]interface{}{
+			"roles": []interface{}{"kas-reader"},
+		},
+	})
+
+	// Different URI — should be denied
+	differentURI := authz.ResolverResource(map[string]string{"kas_uri": "https://kas-b.example.com"})
+	req := &authz.Request{
+		Token:  token,
+		RPC:    "/policy.kasregistry.KeyAccessServerRegistryService/GetKey",
+		Action: "read",
+		ResourceContext: &authz.ResolverContext{
+			Resources: []*authz.ResolverResource{&differentURI},
+		},
+	}
+
+	decision, err := authorizer.Authorize(s.T().Context(), req)
+	s.Require().NoError(err)
+	s.False(decision.Allowed, "kas-reader with different kas_uri should be denied")
+}
+
+// TEST-MED-4: dimensionMatchFunc error branch tests
+func TestDimensionMatchFunc(t *testing.T) {
+	t.Run("too few args returns error", func(t *testing.T) {
+		result, err := dimensionMatchFunc("only-one")
+		require.Error(t, err)
+		boolResult, ok := result.(bool)
+		require.True(t, ok, "result must be bool")
+		require.False(t, boolResult)
+	})
+
+	t.Run("first arg is int returns error", func(t *testing.T) {
+		result, err := dimensionMatchFunc(42, "namespace=hr")
+		require.Error(t, err)
+		boolResult, ok := result.(bool)
+		require.True(t, ok, "result must be bool")
+		require.False(t, boolResult)
+	})
+
+	t.Run("second arg is int returns error", func(t *testing.T) {
+		result, err := dimensionMatchFunc("namespace=hr", 42)
+		require.Error(t, err)
+		boolResult, ok := result.(bool)
+		require.True(t, ok, "result must be bool")
+		require.False(t, boolResult)
+	})
+
+	t.Run("two valid strings returns correct bool", func(t *testing.T) {
+		result, err := dimensionMatchFunc("namespace=hr", "namespace=hr")
+		require.NoError(t, err)
+		boolResult, ok := result.(bool)
+		require.True(t, ok, "result must be bool")
+		require.True(t, boolResult)
+	})
+
+	t.Run("two valid strings no match returns false", func(t *testing.T) {
+		result, err := dimensionMatchFunc("namespace=finance", "namespace=hr")
+		require.NoError(t, err)
+		boolResult, ok := result.(bool)
+		require.True(t, ok, "result must be bool")
+		require.False(t, boolResult)
+	})
+}
+
+// TEST-MED-5: Default v2 policy deny test for non-admin roles
+func (s *CasbinAuthorizerSuite) TestAuthorizeV2_DefaultPolicyDenyNonAdminRoles() {
+	// Use the built-in default policy (no custom Csv)
+	cfg := authz.Config{
+		PolicyConfig: authz.PolicyConfig{
+			Version:     "v2",
+			GroupsClaim: "realm_access.roles",
+		},
+		Logger: s.logger,
+	}
+	authorizer, err := s.newAuthorizer(cfg)
+	s.Require().NoError(err)
+
+	const rpc = "/policy.kasregistry.KeyAccessServerRegistryService/GetKey"
+
+	standardToken := createTestToken(s.T(), map[string]interface{}{
+		"realm_access": map[string]interface{}{"roles": []interface{}{"opentdf-standard"}},
+	})
+	unknownToken := createTestToken(s.T(), map[string]interface{}{
+		"realm_access": map[string]interface{}{"roles": []interface{}{"opentdf-unknown"}},
+	})
+	adminToken := createTestToken(s.T(), map[string]interface{}{
+		"realm_access": map[string]interface{}{"roles": []interface{}{"opentdf-admin"}},
+	})
+
+	standardDecision, err := authorizer.Authorize(s.T().Context(), &authz.Request{Token: standardToken, RPC: rpc})
+	s.Require().NoError(err)
+	s.False(standardDecision.Allowed, "opentdf-standard should be denied for GetKey in default policy")
+
+	unknownDecision, err := authorizer.Authorize(s.T().Context(), &authz.Request{Token: unknownToken, RPC: rpc})
+	s.Require().NoError(err)
+	s.False(unknownDecision.Allowed, "opentdf-unknown should be denied for GetKey in default policy")
+
+	adminDecision, err := authorizer.Authorize(s.T().Context(), &authz.Request{Token: adminToken, RPC: rpc})
+	s.Require().NoError(err)
+	s.True(adminDecision.Allowed, "opentdf-admin should be allowed for GetKey in default policy")
+}
+
+func (s *CasbinAuthorizerSuite) newAuthorizer(cfg authz.Config) (authz.Authorizer, error) {
+	adapterCfg := authz.AdapterConfigFromExternal(cfg)
+	v2Cfg, ok := adapterCfg.(authz.CasbinV2Config)
+	if !ok {
+		return nil, fmt.Errorf("expected v2 config, got %T", adapterCfg)
+	}
+	return NewAuthorizer(v2Cfg, s.logger)
 }
 
 // Test NewAuthorizer factory function via authz.New

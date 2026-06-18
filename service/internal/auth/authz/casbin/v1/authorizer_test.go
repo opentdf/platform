@@ -201,6 +201,35 @@ func (s *AuthorizerSuite) TestAuthorizeEnforcementErrorReturnsSystemError() {
 	s.Nil(decision)
 }
 
+// TEST-LOW-2: Nil request and nil token guard tests
+func (s *AuthorizerSuite) TestAuthorize_NilRequest_ReturnsError() {
+	authorizer, err := NewAuthorizer(authz.CasbinV1Config{
+		PolicyConfig: authz.PolicyConfig{
+			GroupsClaim: "realm_access.roles",
+			Csv:         "p, role:admin, *, *, allow",
+		},
+	}, s.logger)
+	s.Require().NoError(err)
+
+	decision, err := authorizer.Authorize(s.T().Context(), nil)
+	s.Require().Error(err)
+	s.Nil(decision)
+}
+
+func (s *AuthorizerSuite) TestAuthorize_NilToken_ReturnsError() {
+	authorizer, err := NewAuthorizer(authz.CasbinV1Config{
+		PolicyConfig: authz.PolicyConfig{
+			GroupsClaim: "realm_access.roles",
+			Csv:         "p, role:admin, *, *, allow",
+		},
+	}, s.logger)
+	s.Require().NoError(err)
+
+	decision, err := authorizer.Authorize(s.T().Context(), &authz.Request{Token: nil})
+	s.Require().Error(err)
+	s.Nil(decision)
+}
+
 func createAuthorizerTestToken(t *testing.T, claims map[string]interface{}) jwt.Token {
 	t.Helper()
 	token := jwt.New()

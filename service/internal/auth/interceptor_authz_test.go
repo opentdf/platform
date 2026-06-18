@@ -677,6 +677,150 @@ func (s *InterceptorAuthzSuite) TestV1_HTTPPathCompatibility() {
 }
 
 // =============================================================================
+// TEST-HIGH-1: Interceptor deny path test
+// =============================================================================
+
+func (s *InterceptorAuthzSuite) TestAuthorizeV2_DenyPathReturnsPermissionDenied() {
+	// Policy that only allows role:kas-reader, so role:other is denied.
+	csvPolicy := "p, role:kas-reader, /policy.kasregistry.KeyAccessServerRegistryService/GetKey, *, allow"
+	authn := &Authentication{
+		logger:     s.logger,
+		authorizer: s.createV2Authorizer(csvPolicy),
+	}
+
+	req := &authzTestRequest{
+		Request:   connect.NewRequest(&attributes.GetAttributeRequest{}),
+		procedure: "/policy.kasregistry.KeyAccessServerRegistryService/GetKey",
+	}
+
+	// token whose role is NOT authorized
+	token := s.newTokenWithRoles("other-role")
+	result := authn.authorize(s.T().Context(), s.logger, token, req, ActionRead)
+
+	s.Require().NoError(result.err)
+	s.Require().NotNil(result.decision)
+	s.False(result.decision.Allowed, "role not in policy should be denied")
+	// The interceptor wrapper converts denied decisions to CodePermissionDenied
+	// Verify the decision mode is v2
+	s.Equal(internalauthz.ModeV2, result.decision.Mode)
+}
+
+// =============================================================================
+// TEST-HIGH-2: Interceptor internal-error path tests
+// =============================================================================
+
+func (s *InterceptorAuthzSuite) TestAuthorize_NoToken_ReturnsCodeUnauthenticated() {
+	// authorize() is called after token extraction – simulate nil token
+	// by verifying the interceptor path: ConnectAuthZInterceptor checks token from context.
+	// We test the authorize() function directly with a nil token which causes subject extraction failure.
+	csvPolicy := "p, role:admin, *, *, allow"
+	authn := &Authentication{
+		logger:     s.logger,
+		authorizer: s.createV2Authorizer(csvPolicy),
+	}
+
+	req := &authzTestRequest{
+		Request:   connect.NewRequest(&attributes.GetAttributeRequest{}),
+		procedure: "/policy.attributes.AttributesService/GetAttribute",
+	}
+
+	// nil token → Authorize receives nil token → returns error → CodeInternal in authorize()
+	// But the outer interceptor returns CodeUnauthenticated when token is nil.
+	// Here we test the authorize() result when the authorizer itself returns an error due to nil token.
+	result := authn.authorize(s.T().Context(), s.logger, nil, req, ActionRead)
+
+	// authorize() passes nil token to Authorize(), which returns "authorization token is required"
+	s.Require().Error(result.err)
+	s.Equal(connect.CodeInternal, result.errCode)
+}
+
+func (s *InterceptorAuthzSuite) TestAuthorize_AuthorizerReturnsError_ReturnsCodeInternal() {
+	authn := &Authentication{
+		logger:     s.logger,
+		authorizer: &errorAuthorizer{err: errors.New("db unavailable")},
+	}
+
+	req := &authzTestRequest{
+		Request:   connect.NewRequest(&attributes.GetAttributeRequest{}),
+		procedure: "/policy.attributes.AttributesService/GetAttribute",
+	}
+
+	result := authn.authorize(s.T().Context(), s.logger, s.newTokenWithRoles("admin"), req, ActionRead)
+
+	s.Require().Error(result.err)
+	s.Equal(connect.CodeInternal, result.errCode)
+}
+
+func (s *InterceptorAuthzSuite) TestAuthorize_NilAuthorizer_ReturnsCodeInternal() {
+	authn := &Authentication{
+		logger:     s.logger,
+		authorizer: nil,
+	}
+
+	req := &authzTestRequest{
+		Request:   connect.NewRequest(&attributes.GetAttributeRequest{}),
+		procedure: "/policy.attributes.AttributesService/GetAttribute",
+	}
+
+	result := authn.authorize(s.T().Context(), s.logger, s.newTokenWithRoles("admin"), req, ActionRead)
+
+	s.Require().Error(result.err)
+	s.Equal(connect.CodeInternal, result.errCode)
+}
+
+// errorAuthorizer is an Authorizer that always returns a non-nil error.
+type errorAuthorizer struct {
+	err error
+}
+
+func (e *errorAuthorizer) Authorize(_ context.Context, _ *internalauthz.Request) (*internalauthz.Decision, error) {
+	return nil, e.err
+}
+
+func (e *errorAuthorizer) Version() string { return "error" }
+
+func (e *errorAuthorizer) SupportsResourceAuthorization() bool { return false }
+
+// =============================================================================
+// TEST-MED-2: resolveResourceContext unregistered-procedure branch test
+// =============================================================================
+
+func (s *InterceptorAuthzSuite) TestResolveResourceContext_UnregisteredProcedure_ReturnsNil() {
+	// Registry has a resolver for "OtherMethod" but not for "GetKey".
+	csvPolicy := "p, role:admin, *, *, allow"
+	registry := internalauthz.NewResolverRegistry()
+	scopedRegistry := registry.ScopedForService(&grpc.ServiceDesc{
+		ServiceName: "policy.kasregistry.KeyAccessServerRegistryService",
+		Methods: []grpc.MethodDesc{
+			{MethodName: "OtherMethod"},
+			{MethodName: "GetKey"},
+		},
+	})
+	scopedRegistry.MustRegister("OtherMethod", func(_ context.Context, _ connect.AnyRequest) (internalauthz.ResolverContext, error) {
+		ctx := internalauthz.NewResolverContext()
+		return ctx, nil
+	})
+
+	authn := &Authentication{
+		logger:                s.logger,
+		authorizer:            s.createV2Authorizer(csvPolicy),
+		authzResolverRegistry: registry,
+	}
+
+	req := &authzTestRequest{
+		Request:   connect.NewRequest(&attributes.GetAttributeRequest{}),
+		procedure: "/policy.kasregistry.KeyAccessServerRegistryService/GetKey",
+	}
+
+	// resolveResourceContext for an unregistered method should return nil, errNoResourceContext
+	resourceCtx, err := authn.resolveResourceContext(s.T().Context(), s.logger, req)
+
+	s.Require().Error(err)
+	s.Require().ErrorIs(err, errNoResourceContext)
+	s.Nil(resourceCtx)
+}
+
+// =============================================================================
 // Helper Methods (must be placed after all exported Test methods per lint rules)
 // =============================================================================
 

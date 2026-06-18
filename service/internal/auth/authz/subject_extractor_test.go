@@ -186,3 +186,22 @@ func TestSubjectExtractorIgnoresUsernameWithReservedRolePrefix(t *testing.T) {
 	require.Equal(t, []string{"role:admin"}, subjects)
 	require.Equal(t, []string{"role:admin"}, roles)
 }
+
+func TestSubjectExtractorIgnoresUsernameWithReservedClientPrefix(t *testing.T) {
+	token := jwt.New()
+	require.NoError(t, token.Set("preferred_username", "client:kas-a"))
+
+	extractor := SubjectExtractor{
+		UserNameClaim: "preferred_username",
+		RoleProvider:  staticRoleProvider{roles: []string{"role:admin"}},
+	}
+
+	subjects, roles, err := extractor.BuildSubjectFromToken(t.Context(), token, platformauthz.RoleRequest{}, false)
+	require.NoError(t, err)
+	// username "client:kas-a" must not appear in subjects because it uses the reserved client: prefix
+	require.Equal(t, []string{"role:admin"}, subjects)
+	require.Equal(t, []string{"role:admin"}, roles)
+	for _, s := range subjects {
+		require.NotEqual(t, "client:kas-a", s, "username with reserved client prefix must not be included in subjects")
+	}
+}

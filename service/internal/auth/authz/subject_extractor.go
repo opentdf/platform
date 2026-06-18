@@ -169,6 +169,16 @@ func (e SubjectExtractor) usernameFromToken(token jwt.Token) string {
 		}
 		return ""
 	}
+	if strings.HasPrefix(username, SubjectClientPrefix) {
+		if e.Logger != nil {
+			e.Logger.Warn(
+				"ignoring username subject with reserved client prefix",
+				slog.String("claim", e.UserNameClaim),
+				slog.String("prefix", SubjectClientPrefix),
+			)
+		}
+		return ""
+	}
 
 	return username
 }

@@ -316,6 +316,14 @@ func TestPermissionDeniedDecisionLogAttrsWithoutDecision(t *testing.T) {
 	}
 }
 
+func TestWithAuthzResolverRegistry(t *testing.T) {
+	registry := internalauthz.NewResolverRegistry()
+	auth := &Authentication{}
+	opt := WithAuthzResolverRegistry(registry)
+	opt(auth)
+	require.Same(t, registry, auth.authzResolverRegistry)
+}
+
 func TestResolveRoleProviderDefault(t *testing.T) {
 	logger := logger.CreateTestLogger()
 	cfg := Config{}

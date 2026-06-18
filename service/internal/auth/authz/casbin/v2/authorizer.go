@@ -255,11 +255,6 @@ func (a *Authorizer) authorize(ctx context.Context, req *authz.Request) (*authz.
 }
 
 func (a *Authorizer) authorizeResource(rpc, dims string, subjects []string) (bool, string, error) {
-	var (
-		anyCheckedSuccessfully bool
-		lastErr                error
-	)
-
 	for _, subject := range subjects {
 		allowed, err := a.enforcer.Enforce(subject, rpc, dims)
 		if err != nil {
@@ -270,11 +265,9 @@ func (a *Authorizer) authorizeResource(rpc, dims string, subjects []string) (boo
 				slog.String("dims", dims),
 				slog.Any("error", err),
 			)
-			lastErr = err
-			continue
+			return false, "", err
 		}
 
-		anyCheckedSuccessfully = true
 		if allowed {
 			a.logger.Debug(
 				"v2 authorization allowed",
@@ -284,10 +277,6 @@ func (a *Authorizer) authorizeResource(rpc, dims string, subjects []string) (boo
 			)
 			return true, subject, nil
 		}
-	}
-
-	if !anyCheckedSuccessfully && lastErr != nil {
-		return false, "", lastErr
 	}
 
 	a.logger.Debug(

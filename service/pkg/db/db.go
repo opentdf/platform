@@ -12,6 +12,7 @@ import (
 	"time"
 
 	sq "github.com/Masterminds/squirrel"
+	"github.com/exaring/otelpgx"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -249,6 +250,10 @@ func (c Config) buildConfig() (*pgxpool.Config, error) {
 	parsed.MaxConnLifetime = time.Duration(c.Pool.MaxConnLifetime) * time.Second
 	parsed.MaxConnIdleTime = time.Duration(c.Pool.MaxConnIdleTime) * time.Second
 	parsed.HealthCheckPeriod = time.Duration(c.Pool.HealthCheckPeriod) * time.Second
+
+	// Instrument all database queries with OpenTelemetry tracing via pgx native tracer interface.
+	// When tracing is disabled, the global provider is noop and spans are zero-cost.
+	parsed.ConnConfig.Tracer = otelpgx.NewTracer()
 
 	// Configure the search_path schema immediately on connection opening
 	parsed.AfterConnect = func(ctx context.Context, conn *pgx.Conn) error {

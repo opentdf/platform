@@ -46,7 +46,6 @@ func (p *JWTClaimsRoleProvider) Roles(_ context.Context, token jwt.Token, _ plat
 			p.logger.Warn(
 				"claim not found",
 				slog.String("claim", p.groupsClaim),
-				slog.Any("claims", claim),
 			)
 		}
 		return nil, nil
@@ -110,7 +109,6 @@ func (p *JWTClaimsRoleProvider) nestedClaim(claim any, selectors []string) any {
 		p.logger.Warn(
 			"claim not found",
 			slog.String("claim", p.groupsClaim),
-			slog.Any("claims", nested),
 		)
 	}
 	return nested

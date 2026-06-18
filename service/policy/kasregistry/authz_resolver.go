@@ -31,7 +31,7 @@ type getKeyAuthzDBClient interface {
 	GetKey(context.Context, any) (*policy.KasKey, error)
 }
 
-func (s KeyAccessServerRegistry) getKeyAuthzResolver(ctx context.Context, req connect.AnyRequest) (authz.ResolverContext, error) {
+func (s *KeyAccessServerRegistry) getKeyAuthzResolver(ctx context.Context, req connect.AnyRequest) (authz.ResolverContext, error) {
 	resolverCtx := authz.NewResolverContext()
 
 	msg, ok := req.Any().(*kasr.GetKeyRequest)

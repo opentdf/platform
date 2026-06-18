@@ -345,6 +345,11 @@ func (a Authentication) MuxHandler(handler http.Handler) http.Handler {
 			http.Error(w, "internal server error", http.StatusInternalServerError)
 			return
 		}
+		if decision == nil {
+			log.ErrorContext(ctx, "authorization error", slog.String("error", "authorizer returned nil decision")) //nolint:contextcheck // checkToken derives ctx from r.Context.
+			http.Error(w, "internal server error", http.StatusInternalServerError)
+			return
+		}
 		if !decision.Allowed {
 			log.WarnContext( //nolint:contextcheck // checkToken derives ctx from r.Context.
 				ctx,
@@ -675,6 +680,17 @@ func (a *Authentication) authorize(
 		log.ErrorContext(
 			ctx, "authorization error",
 			slog.Any("error", authzErr),
+			slog.String("procedure", req.Spec().Procedure),
+		)
+		return authzResult{
+			err:     errors.New("authorization system error"),
+			errCode: connect.CodeInternal,
+		}
+	}
+	if decision == nil {
+		log.ErrorContext(
+			ctx, "authorization error",
+			slog.String("error", "authorizer returned nil decision"),
 			slog.String("procedure", req.Spec().Procedure),
 		)
 		return authzResult{

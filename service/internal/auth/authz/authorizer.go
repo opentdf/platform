@@ -189,6 +189,7 @@ func New(cfg Config) (Authorizer, error) {
 	engine := cfg.Engine
 	if engine == "" {
 		engine = DefaultEngine
+		cfg.Engine = engine
 	}
 
 	factory, exists := GetFactory(engine)

@@ -139,6 +139,33 @@ func TestNew_DefaultValues(t *testing.T) {
 	assert.Equal(t, testFactoryName, receivedCfg.Engine)
 }
 
+func TestNew_DefaultEnginePassedToFactory(t *testing.T) {
+	var receivedCfg Config
+	testFactory := func(cfg Config) (Authorizer, error) {
+		receivedCfg = cfg
+		return &mockAuthorizer{version: cfg.Version}, nil
+	}
+
+	factoriesMu.Lock()
+	previousFactory, hadPreviousFactory := factories[DefaultEngine]
+	factories[DefaultEngine] = testFactory
+	factoriesMu.Unlock()
+	t.Cleanup(func() {
+		factoriesMu.Lock()
+		defer factoriesMu.Unlock()
+		if hadPreviousFactory {
+			factories[DefaultEngine] = previousFactory
+			return
+		}
+		delete(factories, DefaultEngine)
+	})
+
+	auth, err := New(Config{})
+	require.NoError(t, err)
+	require.NotNil(t, auth)
+	assert.Equal(t, DefaultEngine, receivedCfg.Engine)
+}
+
 func TestApplyOptions_Empty(t *testing.T) {
 	cfg := applyOptions()
 	assert.Nil(t, cfg.RoleProvider)

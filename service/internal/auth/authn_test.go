@@ -69,13 +69,17 @@ type FakeAccessTokenSource struct {
 }
 
 type recordingAuthorizer struct {
-	req      *internalauthz.Request
-	decision *internalauthz.Decision
-	err      error
+	req               *internalauthz.Request
+	decision          *internalauthz.Decision
+	err               error
+	returnNilDecision bool
 }
 
 func (a *recordingAuthorizer) Authorize(_ context.Context, req *internalauthz.Request) (*internalauthz.Decision, error) {
 	a.req = req
+	if a.returnNilDecision {
+		return nil, a.err
+	}
 	if a.decision != nil || a.err != nil {
 		return a.decision, a.err
 	}
@@ -571,6 +575,42 @@ func (s *AuthSuite) Test_MuxHandler_NilAuthorizerReturnsInternalServerError() {
 	}, logger.CreateTestLogger(), func(_ string, _ any) error { return nil })
 	s.Require().NoError(err)
 	auth.authorizer = nil
+
+	called := false
+	handler := auth.MuxHandler(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
+		called = true
+	}))
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/attributes/example/value", nil)
+	req.Header.Set("Authorization", "Bearer "+string(signedTok))
+
+	handler.ServeHTTP(rec, req)
+
+	s.Equal(http.StatusInternalServerError, rec.Code)
+	s.False(called)
+}
+
+func (s *AuthSuite) Test_MuxHandler_NilAuthorizerDecisionReturnsInternalServerError() {
+	tok := jwt.New()
+	s.Require().NoError(tok.Set(jwt.ExpirationKey, time.Now().Add(time.Hour)))
+	s.Require().NoError(tok.Set("iss", s.server.URL))
+	s.Require().NoError(tok.Set("aud", "test"))
+	s.Require().NoError(tok.Set("cid", "client-123"))
+	signedTok, err := jwt.Sign(tok, jwt.WithKey(jwa.RS256, s.key))
+	s.Require().NoError(err)
+
+	policyCfg := internalauthz.PolicyConfig{ClientIDClaim: "cid"}
+	s.Require().NoError(defaults.Set(&policyCfg))
+	auth, err := NewAuthenticator(s.T().Context(), Config{
+		AuthNConfig: AuthNConfig{
+			EnforceDPoP: false,
+			Issuer:      s.server.URL,
+			Audience:    "test",
+			Policy:      policyCfg,
+		},
+	}, logger.CreateTestLogger(), func(_ string, _ any) error { return nil })
+	s.Require().NoError(err)
+	auth.authorizer = &recordingAuthorizer{returnNilDecision: true}
 
 	called := false
 	handler := auth.MuxHandler(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {

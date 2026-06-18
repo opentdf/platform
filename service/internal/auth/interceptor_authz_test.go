@@ -10,9 +10,12 @@ import (
 	"github.com/creasty/defaults"
 	"github.com/lestrrat-go/jwx/v2/jwt"
 	"github.com/opentdf/platform/protocol/go/policy/attributes"
+	"github.com/opentdf/platform/protocol/go/policy/kasregistry"
+	"github.com/opentdf/platform/protocol/go/policy/kasregistry/kasregistryconnect"
 	internalauthz "github.com/opentdf/platform/service/internal/auth/authz"
 	_ "github.com/opentdf/platform/service/internal/auth/authz/casbin" // Register casbin authorizer
 	"github.com/opentdf/platform/service/logger"
+	ctxAuth "github.com/opentdf/platform/service/pkg/auth"
 	"github.com/stretchr/testify/suite"
 	"google.golang.org/grpc"
 )
@@ -34,9 +37,7 @@ func (s *InterceptorAuthzSuite) SetupTest() {
 	s.logger = logger.CreateTestLogger()
 }
 
-// =============================================================================
 // V1 Mode Tests - Path-based authorization (used by ConnectUnaryServerInterceptor)
-// =============================================================================
 
 func (s *InterceptorAuthzSuite) TestV1_AdminCanAccessAll() {
 	policyCfg := internalauthz.PolicyConfig{}
@@ -269,9 +270,7 @@ func (s *InterceptorAuthzSuite) TestV1_ExtendedPolicy() {
 	s.False(decision.Allowed, "custom role should be denied for policy service")
 }
 
-// =============================================================================
 // V2 Mode Tests - RPC + Dimensions authorization
-// =============================================================================
 
 func (s *InterceptorAuthzSuite) TestV2_AdminWildcardAccess() {
 	csvPolicy := "p, role:admin, *, *, allow"
@@ -534,6 +533,39 @@ func (s *InterceptorAuthzSuite) TestAuthorizeV2_ResolverErrorFailsClosed() {
 	s.Nil(result.decision)
 }
 
+func (s *InterceptorAuthzSuite) TestAuthorizeV2_UnregisteredResolverProcedureUsesNilResourceContext() {
+	const requestedRPC = "/policy.attributes.AttributesService/GetAttribute"
+
+	csvPolicy := "p, role:attribute-reader, " + requestedRPC + ", *, allow"
+	registry := internalauthz.NewResolverRegistry()
+	_, hasRequestedResolver := registry.Get(requestedRPC)
+	s.False(hasRequestedResolver, "requested RPC should not have a resolver")
+
+	authn := &Authentication{
+		logger:                s.logger,
+		authorizer:            s.createV2Authorizer(csvPolicy),
+		authzResolverRegistry: registry,
+	}
+
+	req := &authzTestRequest{
+		Request:   connect.NewRequest(&attributes.GetAttributeRequest{}),
+		procedure: requestedRPC,
+	}
+	ctx := ctxAuth.ContextWithAuthNInfo(s.T().Context(), nil, s.newTokenWithRoles("attribute-reader"), "raw-token")
+	nextCalled := false
+	next := func(ctx context.Context, _ connect.AnyRequest) (connect.AnyResponse, error) {
+		nextCalled = true
+		s.Nil(internalauthz.ResolverContextFromContext(ctx), "handler context should not have resolver context")
+		return connect.NewResponse(&attributes.GetAttributeResponse{}), nil
+	}
+
+	resp, err := authn.ConnectAuthZInterceptor()(next)(ctx, req)
+
+	s.Require().NoError(err)
+	s.Require().NotNil(resp)
+	s.True(nextCalled, "next handler should be called when wildcard-dimension policy allows the RPC")
+}
+
 func (s *InterceptorAuthzSuite) TestV2_EmptyToken() {
 	csvPolicy := "p, role:admin, *, *, allow"
 	authorizer := s.createV2Authorizer(csvPolicy)
@@ -562,9 +594,16 @@ func (r *authzTestRequest) Spec() connect.Spec {
 	return connect.Spec{Procedure: r.procedure}
 }
 
-// =============================================================================
+type authzGetKeyTestRequest struct {
+	*connect.Request[kasregistry.GetKeyRequest]
+	procedure string
+}
+
+func (r *authzGetKeyTestRequest) Spec() connect.Spec {
+	return connect.Spec{Procedure: r.procedure}
+}
+
 // Action Mapping Tests (used by getAction in the interceptor)
-// =============================================================================
 
 func (s *InterceptorAuthzSuite) TestGetAction() {
 	tests := []struct {
@@ -591,9 +630,7 @@ func (s *InterceptorAuthzSuite) TestGetAction() {
 	}
 }
 
-// =============================================================================
 // Version and Mode Tests
-// =============================================================================
 
 func (s *InterceptorAuthzSuite) TestV1_ReturnsCorrectMode() {
 	policyCfg := internalauthz.PolicyConfig{}
@@ -612,9 +649,7 @@ func (s *InterceptorAuthzSuite) TestV2_ReturnsCorrectMode() {
 	s.True(authorizer.SupportsResourceAuthorization())
 }
 
-// =============================================================================
 // Path Handling Tests (v1 strips gRPC leading slash, keeps HTTP leading slash)
-// =============================================================================
 
 func (s *InterceptorAuthzSuite) TestV1_GRPCPathCompatibility() {
 	policyCfg := internalauthz.PolicyConfig{}
@@ -676,9 +711,142 @@ func (s *InterceptorAuthzSuite) TestV1_HTTPPathCompatibility() {
 	}
 }
 
-// =============================================================================
+func (s *InterceptorAuthzSuite) TestAuthorizeV2_DenyPathReturnsPermissionDenied() {
+	// Policy that only allows role:kas-reader, so role:other is denied.
+	csvPolicy := "p, role:kas-reader, " + kasregistryconnect.KeyAccessServerRegistryServiceGetKeyProcedure + ", *, allow"
+	authn := &Authentication{
+		logger:     s.logger,
+		authorizer: s.createV2Authorizer(csvPolicy),
+	}
+
+	req := &authzGetKeyTestRequest{
+		Request:   connect.NewRequest(&kasregistry.GetKeyRequest{}),
+		procedure: kasregistryconnect.KeyAccessServerRegistryServiceGetKeyProcedure,
+	}
+
+	// token whose role is NOT authorized
+	token := s.newTokenWithRoles("other-role")
+	ctx := ctxAuth.ContextWithAuthNInfo(s.T().Context(), nil, token, "raw-token")
+	nextCalled := false
+	next := func(_ context.Context, _ connect.AnyRequest) (connect.AnyResponse, error) {
+		nextCalled = true
+		return connect.NewResponse(&kasregistry.GetKeyResponse{}), nil
+	}
+
+	_, err := authn.ConnectAuthZInterceptor()(next)(ctx, req)
+
+	s.Require().Error(err)
+	s.Equal(connect.CodePermissionDenied, connect.CodeOf(err))
+	s.False(nextCalled, "next handler should not be called on denied authorization")
+}
+
+func (s *InterceptorAuthzSuite) TestAuthorize_NoToken_ReturnsCodeUnauthenticated() {
+	csvPolicy := "p, role:admin, *, *, allow"
+	authn := &Authentication{
+		logger:     s.logger,
+		authorizer: s.createV2Authorizer(csvPolicy),
+	}
+
+	req := &authzTestRequest{
+		Request:   connect.NewRequest(&attributes.GetAttributeRequest{}),
+		procedure: "/policy.attributes.AttributesService/GetAttribute",
+	}
+	nextCalled := false
+	next := func(_ context.Context, _ connect.AnyRequest) (connect.AnyResponse, error) {
+		nextCalled = true
+		return connect.NewResponse(&attributes.GetAttributeResponse{}), nil
+	}
+
+	_, err := authn.ConnectAuthZInterceptor()(next)(s.T().Context(), req)
+
+	s.Require().Error(err)
+	s.Equal(connect.CodeUnauthenticated, connect.CodeOf(err))
+	s.False(nextCalled, "next handler should not be called without an access token")
+}
+
+func (s *InterceptorAuthzSuite) TestAuthorize_AuthorizerReturnsError_ReturnsCodeInternal() {
+	authn := &Authentication{
+		logger:     s.logger,
+		authorizer: &errorAuthorizer{err: errors.New("db unavailable")},
+	}
+
+	req := &authzTestRequest{
+		Request:   connect.NewRequest(&attributes.GetAttributeRequest{}),
+		procedure: "/policy.attributes.AttributesService/GetAttribute",
+	}
+
+	result := authn.authorize(s.T().Context(), s.logger, s.newTokenWithRoles("admin"), req, ActionRead)
+
+	s.Require().Error(result.err)
+	s.Equal(connect.CodeInternal, result.errCode)
+}
+
+func (s *InterceptorAuthzSuite) TestAuthorize_NilAuthorizer_ReturnsCodeInternal() {
+	authn := &Authentication{
+		logger:     s.logger,
+		authorizer: nil,
+	}
+
+	req := &authzTestRequest{
+		Request:   connect.NewRequest(&attributes.GetAttributeRequest{}),
+		procedure: "/policy.attributes.AttributesService/GetAttribute",
+	}
+
+	result := authn.authorize(s.T().Context(), s.logger, s.newTokenWithRoles("admin"), req, ActionRead)
+
+	s.Require().Error(result.err)
+	s.Equal(connect.CodeInternal, result.errCode)
+}
+
+// errorAuthorizer is an Authorizer that always returns a non-nil error.
+type errorAuthorizer struct {
+	err error
+}
+
+func (e *errorAuthorizer) Authorize(_ context.Context, _ *internalauthz.Request) (*internalauthz.Decision, error) {
+	return nil, e.err
+}
+
+func (e *errorAuthorizer) Version() string { return "error" }
+
+func (e *errorAuthorizer) SupportsResourceAuthorization() bool { return false }
+
+func (s *InterceptorAuthzSuite) TestResolveResourceContext_UnregisteredProcedure_ReturnsNil() {
+	// Registry has a resolver for "OtherMethod" but not for "GetKey".
+	csvPolicy := "p, role:admin, *, *, allow"
+	registry := internalauthz.NewResolverRegistry()
+	scopedRegistry := registry.ScopedForService(&grpc.ServiceDesc{
+		ServiceName: "policy.kasregistry.KeyAccessServerRegistryService",
+		Methods: []grpc.MethodDesc{
+			{MethodName: "OtherMethod"},
+			{MethodName: "GetKey"},
+		},
+	})
+	scopedRegistry.MustRegister("OtherMethod", func(_ context.Context, _ connect.AnyRequest) (internalauthz.ResolverContext, error) {
+		ctx := internalauthz.NewResolverContext()
+		return ctx, nil
+	})
+
+	authn := &Authentication{
+		logger:                s.logger,
+		authorizer:            s.createV2Authorizer(csvPolicy),
+		authzResolverRegistry: registry,
+	}
+
+	req := &authzTestRequest{
+		Request:   connect.NewRequest(&attributes.GetAttributeRequest{}),
+		procedure: "/policy.kasregistry.KeyAccessServerRegistryService/GetKey",
+	}
+
+	// resolveResourceContext for an unregistered method should return nil, errNoResourceContext
+	resourceCtx, err := authn.resolveResourceContext(s.T().Context(), s.logger, req)
+
+	s.Require().Error(err)
+	s.Require().ErrorIs(err, errNoResourceContext)
+	s.Nil(resourceCtx)
+}
+
 // Helper Methods (must be placed after all exported Test methods per lint rules)
-// =============================================================================
 
 // newTestToken creates a test JWT token with the given claims
 func (s *InterceptorAuthzSuite) newTestToken(claims map[string]interface{}) jwt.Token {

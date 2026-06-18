@@ -138,12 +138,16 @@ func NewAuthenticator(ctx context.Context, cfg Config, logger *logger.Logger, we
 	if err != nil {
 		return nil, err
 	}
-	a.subjectExtractor = internalauthz.SubjectExtractor{
-		UserNameClaim: cfg.Policy.UserNameClaim,
-		ClientIDClaim: cfg.Policy.ClientIDClaim,
-		RoleProvider:  roleProvider,
-		Logger:        logger,
+	subjectExtractor, err := internalauthz.NewSubjectExtractor(
+		cfg.Policy.UserNameClaim,
+		cfg.Policy.ClientIDClaim,
+		roleProvider,
+		logger,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create subject extractor: %w", err)
 	}
+	a.subjectExtractor = subjectExtractor
 
 	policyCfg := cfg.Policy
 	policyCfg.Issuer = cfg.Issuer

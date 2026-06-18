@@ -106,16 +106,6 @@ func (s *KasRegistryStepDefinitions) iGetKASKeyByStoredID(ctx context.Context, k
 	return ctx, nil
 }
 
-func (s *KasRegistryStepDefinitions) iListKASKeysForURI(ctx context.Context, kasURI string) (context.Context, error) {
-	scenarioContext := GetPlatformScenarioContext(ctx)
-	scenarioContext.ClearError()
-	_, err := scenarioContext.SDK.KeyAccessServerRegistry.ListKeys(ctx, &kasregistry.ListKeysRequest{
-		KasFilter: &kasregistry.ListKeysRequest_KasUri{KasUri: normalizeKASURI(kasURI)},
-	})
-	scenarioContext.SetError(err)
-	return ctx, nil
-}
-
 func normalizeKASURI(uri string) string {
 	if strings.HasPrefix(uri, "http://") || strings.HasPrefix(uri, "https://") {
 		return uri
@@ -128,5 +118,4 @@ func RegisterKasRegistryStepDefinitions(ctx *godog.ScenarioContext) {
 	ctx.Step(`^I create KAS keys:$`, stepDefinitions.iCreateKASKeys)
 	ctx.Step(`^I send a request to get KAS key "([^"]*)"$`, stepDefinitions.iGetKASKey)
 	ctx.Step(`^I send a request to get KAS key "([^"]*)" by stored ID$`, stepDefinitions.iGetKASKeyByStoredID)
-	ctx.Step(`^I send a request to list KAS keys for URI "([^"]*)"$`, stepDefinitions.iListKASKeysForURI)
 }

@@ -333,7 +333,14 @@ func (c PolicyDBClient) ensureNoDynamicValueMappingCoexistence(ctx context.Conte
 	}
 	definitionID, err := c.queries.getAttributeDefinitionIDByValueID(ctx, attributeValueID)
 	if err != nil {
-		return db.WrapIfKnownInvalidQueryErr(err)
+		wrapped := db.WrapIfKnownInvalidQueryErr(err)
+		// A non-existent attribute value has no parent definition to guard, so there is no
+		// coexisting dynamic mapping to reject. Let the normal create path surface the
+		// foreign-key violation instead of masking it as not-found.
+		if errors.Is(wrapped, db.ErrNotFound) {
+			return nil
+		}
+		return wrapped
 	}
 	count, err := c.queries.countDynamicValueMappingsByDefinitionID(ctx, definitionID)
 	if err != nil {

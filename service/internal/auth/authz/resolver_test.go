@@ -60,6 +60,26 @@ func (s *ResolverSuite) TestRegistry_RegisterAndGet() {
 	s.True(called)
 }
 
+func (s *ResolverSuite) TestRegistry_ZeroValueRegisterAndGet() {
+	var registry ResolverRegistry
+	called := false
+	testResolver := func(_ context.Context, _ connect.AnyRequest) (ResolverContext, error) {
+		called = true
+		return NewResolverContext(), nil
+	}
+
+	s.Require().NoError(registry.register("/test.Service/TestMethod", testResolver))
+	s.NotNil(registry.resolvers)
+
+	resolver, ok := registry.Get("/test.Service/TestMethod")
+	s.True(ok)
+	s.NotNil(resolver)
+
+	_, err := resolver(s.T().Context(), nil)
+	s.Require().NoError(err)
+	s.True(called)
+}
+
 func (s *ResolverSuite) TestRegistry_ThreadSafety() {
 	registry := NewResolverRegistry()
 	const numGoroutines = 100
@@ -173,7 +193,8 @@ func (s *ResolverSuite) TestScoped_Register_DuplicateMethodReturnsErrorAndKeepsO
 	err := scoped.Register("CreateAttribute", secondResolver)
 
 	s.Require().Error(err)
-	s.Contains(err.Error(), `resolver already registered for method "/policy.AttributesService/CreateAttribute"`)
+	s.Require().ErrorIs(err, errResolverAlreadyRegistered)
+	s.Contains(err.Error(), `method "/policy.AttributesService/CreateAttribute"`)
 	resolver, ok := registry.Get("/policy.AttributesService/CreateAttribute")
 	s.True(ok)
 	_, callErr := resolver(s.T().Context(), nil)
@@ -246,9 +267,16 @@ func (s *ResolverSuite) TestScoped_MustRegister_DuplicateMethodPanics() {
 
 	scoped.MustRegister("GetAttribute", testResolver)
 
-	s.Panics(func() {
+	func() {
+		defer func() {
+			panicValue := recover()
+			s.Require().NotNil(panicValue)
+			err, ok := panicValue.(error)
+			s.Require().True(ok)
+			s.Require().ErrorIs(err, errResolverAlreadyRegistered)
+		}()
 		scoped.MustRegister("GetAttribute", testResolver)
-	})
+	}()
 }
 
 func (s *ResolverSuite) TestScoped_MustRegister_InvalidMethod_Panics() {

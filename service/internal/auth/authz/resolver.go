@@ -2,6 +2,7 @@ package authz
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"slices"
 	"sync"
@@ -52,6 +53,8 @@ type ResolverRegistry struct {
 	resolvers map[string]ResolverFunc // full method path -> resolver
 }
 
+var errResolverAlreadyRegistered = errors.New("resolver already registered")
+
 // NewResolverRegistry creates a new resolver registry.
 func NewResolverRegistry() *ResolverRegistry {
 	return &ResolverRegistry{
@@ -86,8 +89,11 @@ func (r *ResolverRegistry) ScopedForService(serviceDesc *grpc.ServiceDesc) *Scop
 func (r *ResolverRegistry) register(fullMethodPath string, resolver ResolverFunc) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
+	if r.resolvers == nil {
+		r.resolvers = make(map[string]ResolverFunc)
+	}
 	if _, exists := r.resolvers[fullMethodPath]; exists {
-		return fmt.Errorf("resolver already registered for method %q", fullMethodPath)
+		return errors.Join(errResolverAlreadyRegistered, fmt.Errorf("method %q", fullMethodPath))
 	}
 	r.resolvers[fullMethodPath] = resolver
 	return nil

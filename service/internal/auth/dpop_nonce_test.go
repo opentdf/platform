@@ -143,6 +143,7 @@ func (s *AuthSuite) newAuthWithNonce() *Authentication {
 				DPoP: DPoPConfig{
 					RequireNonce:    true,
 					NonceExpiration: 5 * time.Minute,
+					StrictHTU:       false,
 				},
 			},
 		},

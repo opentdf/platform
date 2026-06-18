@@ -141,9 +141,9 @@ runs:
     - name: Download latest init-temp-keys.sh, docker-compose.yaml, and watch.sh
       shell: bash
       run: |
-        curl -sSfL https://raw.githubusercontent.com/opentdf/platform/refs/tags/feat-kc26-dpop/.github/scripts/init-temp-keys.sh > otdf-test-platform/.github/scripts/init-temp-keys.sh
-        curl -sSfL https://raw.githubusercontent.com/opentdf/platform/refs/tags/feat-kc26-dpop/docker-compose.yaml > otdf-test-platform/docker-compose.yaml
-        curl -sSfL https://raw.githubusercontent.com/opentdf/platform/refs/tags/feat-kc26-dpop/.github/scripts/watch.sh > otdf-test-platform/.github/scripts/watch.sh
+        curl -sSfL https://raw.githubusercontent.com/opentdf/platform/${{ inputs.platform-ref }}/.github/scripts/init-temp-keys.sh > otdf-test-platform/.github/scripts/init-temp-keys.sh
+        curl -sSfL https://raw.githubusercontent.com/opentdf/platform/${{ inputs.platform-ref }}/docker-compose.yaml > otdf-test-platform/docker-compose.yaml
+        curl -sSfL https://raw.githubusercontent.com/opentdf/platform/${{ inputs.platform-ref }}/.github/scripts/watch.sh > otdf-test-platform/.github/scripts/watch.sh
     - name: Set up go (platform's go version)
       id: setup-go
       uses: actions/setup-go@0aaccfd150d50ccaeb58ebd88d36e91967a5f35b # v5.4.0

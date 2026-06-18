@@ -790,7 +790,7 @@ func (s *AuthSuite) Test_CheckToken_AcceptsDPoP_GET() {
 		alg:              jwa.RS256,
 		typ:              "dpop+jwt",
 		htm:              http.MethodGet,
-		htu:              "/kas.AccessService/PublicKey",
+		htu:              "https://localhost:8080/kas.AccessService/PublicKey",
 		iat:              time.Now(),
 	})
 
@@ -798,7 +798,10 @@ func (s *AuthSuite) Test_CheckToken_AcceptsDPoP_GET() {
 		context.Background(),
 		[]string{"DPoP " + string(signedTok)},
 		receiverInfo{
-			u: []string{"/kas.AccessService/PublicKey"},
+			u: []string{
+				"http://localhost:8080/kas.AccessService/PublicKey",
+				"https://localhost:8080/kas.AccessService/PublicKey",
+			},
 			m: []string{http.MethodGet},
 		},
 		[]string{dpopToken},

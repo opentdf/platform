@@ -1465,6 +1465,7 @@ func (s *CasbinAuthorizerSuite) TestAuthorizeV2_DefaultPolicyCoverage() {
 		Action: "read",
 	}
 	decision, err := authorizer.Authorize(s.T().Context(), req)
+	s.Require().NoError(err)
 	s.Require().NotNil(decision)
 	s.True(decision.Allowed)
 }

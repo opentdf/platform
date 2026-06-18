@@ -587,8 +587,15 @@ func (s SDK) prepareManifest(ctx context.Context, t *TDFObject, tdfConfig TDFCon
 		symKeys = append(symKeys, symKey)
 
 		// policy binding
-		policyBindingHash := hex.EncodeToString(ocrypto.CalculateSHA256Hmac(symKey, base64PolicyObject))
-		pbstring := string(ocrypto.Base64Encode([]byte(policyBindingHash)))
+		// Spec (>= 4.3.0) requires Base64(HMAC); pre-4.3.0 TDFs used Base64(hex(HMAC)).
+		// useHex tracks the same threshold as segment/root signatures via WithTargetMode.
+		hmacBytes := ocrypto.CalculateSHA256Hmac(symKey, base64PolicyObject)
+		var pbstring string
+		if tdfConfig.useHex {
+			pbstring = string(ocrypto.Base64Encode([]byte(hex.EncodeToString(hmacBytes))))
+		} else {
+			pbstring = string(ocrypto.Base64Encode(hmacBytes))
+		}
 		policyBinding := PolicyBinding{
 			Alg:  "HS256",
 			Hash: pbstring,
@@ -1247,7 +1254,7 @@ func createRewrapRequest(_ context.Context, r *Reader) (map[string]*kas.Unsigned
 			invalidPolicy = !ok
 			alg, ok = policyBinding["alg"].(string)
 			invalidPolicy = invalidPolicy || !ok
-		case (PolicyBinding):
+		case PolicyBinding:
 			hash = policyBinding.Hash
 			alg = policyBinding.Alg
 		default:

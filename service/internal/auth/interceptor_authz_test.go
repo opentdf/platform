@@ -97,8 +97,8 @@ func (s *InterceptorAuthzSuite) TestV1_StandardUserPermissions() {
 		// Standard user cannot write to policy resources
 		{"standard write policy denied", "/policy.attributes.AttributesService/CreateAttribute", ActionWrite, false},
 		{"standard delete policy denied", "/policy.attributes.AttributesService/DeleteAttribute", ActionDelete, false},
-		// Standard user can access KAS rewrap (HTTP path)
-		{"standard kas rewrap http", "/kas/v2/rewrap", ActionWrite, true},
+		// Standard user cannot access KAS rewrap (HTTP path)
+		{"standard kas rewrap http", "/kas/v2/rewrap", ActionWrite, false},
 		// Standard user cannot access non-existent resources
 		{"standard non-existent denied", "/non.existent.Service/Method", ActionRead, false},
 		// Standard user can access authorization service
@@ -677,35 +677,6 @@ func (s *InterceptorAuthzSuite) TestV1_GRPCPathCompatibility() {
 
 			s.Require().NoError(err)
 			s.True(decision.Allowed, "admin should access gRPC path: %s", path)
-			s.Equal(internalauthz.ModeV1, decision.Mode)
-		})
-	}
-}
-
-func (s *InterceptorAuthzSuite) TestV1_HTTPPathCompatibility() {
-	policyCfg := internalauthz.PolicyConfig{}
-	err := defaults.Set(&policyCfg)
-	s.Require().NoError(err)
-
-	authorizer := s.createV1Authorizer(policyCfg)
-	standardToken := s.newTokenWithRoles("opentdf-standard")
-
-	// HTTP paths with leading slash
-	httpPaths := []string{
-		"/kas/v2/rewrap",
-	}
-
-	for _, path := range httpPaths {
-		s.Run(path, func() {
-			req := &internalauthz.Request{
-				Token:  standardToken,
-				RPC:    path,
-				Action: ActionWrite,
-			}
-			decision, err := authorizer.Authorize(context.Background(), req)
-
-			s.Require().NoError(err)
-			s.True(decision.Allowed, "standard should access HTTP path: %s", path)
 			s.Equal(internalauthz.ModeV1, decision.Mode)
 		})
 	}

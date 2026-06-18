@@ -1343,24 +1343,63 @@ func (s *CasbinAuthorizerSuite) TestAuthorizeV2_DefaultPolicyCoverage() {
 	})
 
 	readRPCs := []string{
+		// ActionService Get*/List*
 		"/policy.actions.ActionService/GetAction",
 		"/policy.actions.ActionService/ListActions",
+
+		// AttributesService Get*/List*
 		"/policy.attributes.AttributesService/GetAttribute",
+		"/policy.attributes.AttributesService/GetAttributeValue",
+		"/policy.attributes.AttributesService/GetAttributeValuesByFqns",
 		"/policy.attributes.AttributesService/ListAttributes",
+		"/policy.attributes.AttributesService/ListAttributeValues",
+
+		// KeyAccessServerRegistryService Get*/List*
+		"/policy.kasregistry.KeyAccessServerRegistryService/GetBaseKey",
+		"/policy.kasregistry.KeyAccessServerRegistryService/GetKeyAccessServer",
 		"/policy.kasregistry.KeyAccessServerRegistryService/GetKey",
+		"/policy.kasregistry.KeyAccessServerRegistryService/ListKeyAccessServerGrants",
+		"/policy.kasregistry.KeyAccessServerRegistryService/ListKeyAccessServers",
+		"/policy.kasregistry.KeyAccessServerRegistryService/ListKeyMappings",
 		"/policy.kasregistry.KeyAccessServerRegistryService/ListKeys",
+
+		// KeyManagementService Get*/List*
 		"/policy.keymanagement.KeyManagementService/GetProviderConfig",
 		"/policy.keymanagement.KeyManagementService/ListProviderConfigs",
+
+		// NamespaceService Get*/List*
 		"/policy.namespaces.NamespaceService/GetNamespace",
 		"/policy.namespaces.NamespaceService/ListNamespaces",
+
+		// Obligations Service Get*/List*
 		"/policy.obligations.Service/GetObligation",
+		"/policy.obligations.Service/GetObligationsByFQNs",
+		"/policy.obligations.Service/GetObligationTrigger",
+		"/policy.obligations.Service/GetObligationValue",
+		"/policy.obligations.Service/GetObligationValuesByFQNs",
 		"/policy.obligations.Service/ListObligations",
+		"/policy.obligations.Service/ListObligationTriggers",
+
+		// RegisteredResourcesService Get*/List*
 		"/policy.registeredresources.RegisteredResourcesService/GetRegisteredResource",
+		"/policy.registeredresources.RegisteredResourcesService/GetRegisteredResourceValue",
+		"/policy.registeredresources.RegisteredResourcesService/GetRegisteredResourceValuesByFQNs",
 		"/policy.registeredresources.RegisteredResourcesService/ListRegisteredResources",
-		"/policy.resourcemapping.ResourceMappingService/GetResourceMapping",
-		"/policy.resourcemapping.ResourceMappingService/ListResourceMappings",
+		"/policy.registeredresources.RegisteredResourcesService/ListRegisteredResourceValues",
+
+		// SubjectMappingService Get*/List*/Match*
 		"/policy.subjectmapping.SubjectMappingService/GetSubjectConditionSet",
+		"/policy.subjectmapping.SubjectMappingService/GetSubjectMapping",
 		"/policy.subjectmapping.SubjectMappingService/ListSubjectConditionSets",
+		"/policy.subjectmapping.SubjectMappingService/ListSubjectMappings",
+		"/policy.subjectmapping.SubjectMappingService/MatchSubjectMappings",
+
+		// ResourceMappingService Get*/List*
+		"/policy.resourcemapping.ResourceMappingService/GetResourceMapping",
+		"/policy.resourcemapping.ResourceMappingService/GetResourceMappingGroup",
+		"/policy.resourcemapping.ResourceMappingService/ListResourceMappingGroups",
+		"/policy.resourcemapping.ResourceMappingService/ListResourceMappings",
+		"/policy.resourcemapping.ResourceMappingService/ListResourceMappingsByGroupFqns",
 	}
 
 	mutatingRPCs := []string{

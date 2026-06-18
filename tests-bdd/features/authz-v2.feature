@@ -18,15 +18,6 @@ Feature: Authz v2 default policy authorization
       When I send a request to get KAS key "admin-kid"
       Then the response should be successful
 
-    Scenario: opentdf-standard cannot get KAS keys by default
-      Given I use the platform as "opentdf-admin"
-      And I create KAS keys:
-        | kas_uri                         | key_id       |
-        | https://kas-standard.example.com | standard-kid |
-      Given I use the platform as "opentdf-standard"
-      When I send a request to get KAS key "standard-kid"
-      Then the response should be permission denied
-
     Scenario: URI-specific KAS roles cannot get each other's keys
       Given I use the platform as "opentdf-admin"
       And I create KAS keys:

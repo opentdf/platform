@@ -1,0 +1,135 @@
+package subjectmappingbuiltin
+
+import (
+	"fmt"
+	"log/slog"
+
+	"github.com/opentdf/platform/lib/flattening"
+	"github.com/opentdf/platform/lib/identifier"
+	entityresolutionV2 "github.com/opentdf/platform/protocol/go/entityresolution/v2"
+	"github.com/opentdf/platform/protocol/go/policy"
+	"github.com/opentdf/platform/protocol/go/policy/attributes"
+)
+
+// DynamicValueMappingsByDefinitionFQN indexes dynamic mappings by their
+// parent attribute definition FQN for O(1) lookup during decisioning.
+type DynamicValueMappingsByDefinitionFQN map[string][]*policy.DynamicValueMapping
+
+// EvaluateDynamicValueMappingsWithActions resolves the dynamic, definition
+// level entitlement mappings for the resources under evaluation. For each decisionable
+// attribute value it finds the mappings on the value's parent definition, runs the
+// optional static SubjectConditionSet gate, then compares the requested resource value
+// segment against the entity representation via the mapping's resolver. On a match the
+// mapping's actions are entitled on that concrete value FQN.
+//
+// The output shape matches EvaluateSubjectMappingsWithActions so the PDP can merge the
+// two results uniformly before rule evaluation.
+func EvaluateDynamicValueMappingsWithActions(
+	mappingsByDefinitionFQN DynamicValueMappingsByDefinitionFQN,
+	decisionableAttributes map[string]*attributes.GetAttributeValuesByFqnsResponse_AttributeAndValue,
+	entityRepresentation *entityresolutionV2.EntityRepresentation,
+	l *slog.Logger,
+) (AttributeValueFQNsToActions, error) {
+	entitlementsSet := make(AttributeValueFQNsToActions)
+	if len(mappingsByDefinitionFQN) == 0 || entityRepresentation == nil {
+		return entitlementsSet, nil
+	}
+
+	for _, entity := range entityRepresentation.GetAdditionalProps() {
+		flattenedEntity, err := flattening.Flatten(entity.AsMap())
+		if err != nil {
+			return nil, fmt.Errorf("failure to flatten entity in definition value entitlement builtin: %w", err)
+		}
+
+		for valueFQN, attributeAndValue := range decisionableAttributes {
+			definitionFQN := attributeAndValue.GetAttribute().GetFqn()
+			mappings := mappingsByDefinitionFQN[definitionFQN]
+			if len(mappings) == 0 {
+				continue
+			}
+
+			segment, err := resourceValueSegment(valueFQN, attributeAndValue.GetValue())
+			if err != nil {
+				return nil, err
+			}
+
+			// mappings on the same definition are OR-ed together
+			for _, mapping := range mappings {
+				matched, err := evaluateDynamicValueMapping(mapping, flattenedEntity, segment)
+				if err != nil {
+					return nil, err
+				}
+				if !matched {
+					continue
+				}
+				if _, ok := entitlementsSet[valueFQN]; !ok {
+					entitlementsSet[valueFQN] = make([]*policy.Action, 0)
+				}
+				entitlementsSet[valueFQN] = append(
+					entitlementsSet[valueFQN],
+					dedupeSubjectMappingActions(mapping.GetActions(), l)...,
+				)
+			}
+		}
+	}
+
+	return entitlementsSet, nil
+}
+
+// evaluateDynamicValueMapping returns true when the optional static gate
+// passes (if present) AND the dynamic resolver matches the resource value segment.
+func evaluateDynamicValueMapping(
+	mapping *policy.DynamicValueMapping,
+	entity flattening.Flattened,
+	segment string,
+) (bool, error) {
+	// optional static pre-gate: all subject sets AND together with normal semantics
+	for _, subjectSet := range mapping.GetSubjectConditionSet().GetSubjectSets() {
+		ok, err := EvaluateSubjectSet(subjectSet, entity)
+		if err != nil {
+			return false, err
+		}
+		if !ok {
+			return false, nil
+		}
+	}
+
+	return evaluateValueResolver(mapping.GetValueResolver(), entity, segment)
+}
+
+// evaluateValueResolver reports whether any entity value resolved by the selector matches the
+// requested resource value segment under the resolver's comparison operator. The match is
+// existential over the entity values; case sensitivity follows the resolver's case_insensitive flag.
+func evaluateValueResolver(resolver *policy.DynamicValueResolver, entity flattening.Flattened, segment string) (bool, error) {
+	entityValues := flattening.GetFromFlattened(entity, resolver.GetSubjectExternalSelectorValue())
+	comparison := resolver.GetComparison()
+	caseInsensitive := resolver.GetCaseInsensitive().GetValue()
+
+	for _, ev := range entityValues {
+		if ev == nil {
+			continue
+		}
+		ok, err := compareEntityValue(comparison, caseInsensitive, fmt.Sprintf("%v", ev), segment)
+		if err != nil {
+			return false, err
+		}
+		if ok {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+// resourceValueSegment returns the concrete value segment for a resource value FQN,
+// preferring the value already parsed onto the policy.Value and falling back to parsing
+// the FQN.
+func resourceValueSegment(valueFQN string, value *policy.Value) (string, error) {
+	if v := value.GetValue(); v != "" {
+		return v, nil
+	}
+	parsed, err := identifier.Parse[*identifier.FullyQualifiedAttribute](valueFQN)
+	if err != nil {
+		return "", fmt.Errorf("parsing resource value FQN %q: %w", valueFQN, err)
+	}
+	return parsed.Value, nil
+}

@@ -91,8 +91,12 @@ func NewJustInTimePDP(
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch all obligations: %w", err)
 	}
+	allDynamicValueMappings, err := store.ListAllDynamicValueMappings(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch all dynamic value mappings: %w", err)
+	}
 
-	pdp, err := NewPolicyDecisionPoint(ctx, log, allAttributes, allSubjectMappings, allRegisteredResources, allowDirectEntitlements, namespacedPolicy)
+	pdp, err := NewPolicyDecisionPointWithDynamicValueMappings(ctx, log, allAttributes, allSubjectMappings, allDynamicValueMappings, allRegisteredResources, allowDirectEntitlements, namespacedPolicy)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create new policy decision point: %w", err)
 	}

@@ -61,6 +61,7 @@ type PolicyDecisionPoint struct {
 	allEntitleableAttributesByValueFQN map[string]*attrs.GetAttributeValuesByFqnsResponse_AttributeAndValue
 	allRegisteredResourceValuesByFQN   map[string]*policy.RegisteredResourceValue
 	allAttributesByDefinitionFQN       map[string]*policy.Attribute
+	dynamicMappingsByDefinitionFQN     subjectmappingbuiltin.DynamicValueMappingsByDefinitionFQN
 	allowDirectEntitlements            bool
 	namespacedPolicy                   bool
 }
@@ -82,6 +83,31 @@ func NewPolicyDecisionPoint(
 	l *logger.Logger,
 	allAttributeDefinitions []*policy.Attribute,
 	allSubjectMappings []*policy.SubjectMapping,
+	allRegisteredResources []*policy.RegisteredResource,
+	allowDirectEntitlements bool,
+	namespacedPolicy bool,
+) (*PolicyDecisionPoint, error) {
+	return NewPolicyDecisionPointWithDynamicValueMappings(
+		ctx,
+		l,
+		allAttributeDefinitions,
+		allSubjectMappings,
+		nil,
+		allRegisteredResources,
+		allowDirectEntitlements,
+		namespacedPolicy,
+	)
+}
+
+// NewPolicyDecisionPointWithDynamicValueMappings is NewPolicyDecisionPoint
+// plus the dynamic, definition-level value entitlement mappings (DSPX-2754). The mappings
+// argument may be nil/empty when the feature is unused.
+func NewPolicyDecisionPointWithDynamicValueMappings(
+	ctx context.Context,
+	l *logger.Logger,
+	allAttributeDefinitions []*policy.Attribute,
+	allSubjectMappings []*policy.SubjectMapping,
+	allDynamicValueMappings []*policy.DynamicValueMapping,
 	allRegisteredResources []*policy.RegisteredResource,
 	allowDirectEntitlements bool,
 	namespacedPolicy bool,
@@ -160,6 +186,43 @@ func NewPolicyDecisionPoint(
 		allEntitleableAttributesByValueFQN[mappedValueFQN] = mapped
 	}
 
+	dynamicMappingsByDefinitionFQN := make(subjectmappingbuiltin.DynamicValueMappingsByDefinitionFQN)
+	for _, mapping := range allDynamicValueMappings {
+		if err := validateDynamicValueMapping(mapping); err != nil {
+			l.WarnContext(ctx,
+				"invalid dynamic value mapping - skipping",
+				slog.Any("dynamic_value_mapping", mapping),
+				slog.Any("error", err),
+			)
+			continue
+		}
+
+		if namespacedPolicy {
+			ns := mapping.GetNamespace()
+			if ns == nil || (ns.GetId() == "" && ns.GetFqn() == "") {
+				l.TraceContext(ctx,
+					"unnamespaced dynamic value mapping in strict namespaced-policy mode - skipping",
+					slog.String("reason", "dynamic_value_mapping_namespace_missing"),
+					slog.String("dynamic_value_mapping_id", mapping.GetId()),
+					slog.String("attribute_definition_fqn", mapping.GetAttributeDefinition().GetFqn()),
+				)
+				continue
+			}
+		}
+
+		definitionFQN := mapping.GetAttributeDefinition().GetFqn()
+		if _, ok := allAttributesByDefinitionFQN[definitionFQN]; !ok {
+			l.WarnContext(ctx,
+				"dynamic value mapping references unknown attribute definition - skipping",
+				slog.String("dynamic_value_mapping_id", mapping.GetId()),
+				slog.String("attribute_definition_fqn", definitionFQN),
+			)
+			continue
+		}
+
+		dynamicMappingsByDefinitionFQN[definitionFQN] = append(dynamicMappingsByDefinitionFQN[definitionFQN], mapping)
+	}
+
 	allRegisteredResourceValuesByFQN := make(map[string]*policy.RegisteredResourceValue)
 	for _, rr := range allRegisteredResources {
 		if err := validateRegisteredResource(rr); err != nil {
@@ -192,12 +255,13 @@ func NewPolicyDecisionPoint(
 	}
 
 	pdp := &PolicyDecisionPoint{
-		l,
-		allEntitleableAttributesByValueFQN,
-		allRegisteredResourceValuesByFQN,
-		allAttributesByDefinitionFQN,
-		allowDirectEntitlements,
-		namespacedPolicy,
+		logger:                             l,
+		allEntitleableAttributesByValueFQN: allEntitleableAttributesByValueFQN,
+		allRegisteredResourceValuesByFQN:   allRegisteredResourceValuesByFQN,
+		allAttributesByDefinitionFQN:       allAttributesByDefinitionFQN,
+		dynamicMappingsByDefinitionFQN:     dynamicMappingsByDefinitionFQN,
+		allowDirectEntitlements:            allowDirectEntitlements,
+		namespacedPolicy:                   namespacedPolicy,
 	}
 	return pdp, nil
 }
@@ -245,6 +309,7 @@ func (p *PolicyDecisionPoint) GetDecision(
 		p.allRegisteredResourceValuesByFQN,
 		p.allEntitleableAttributesByValueFQN,
 		p.allAttributesByDefinitionFQN, /* action, */
+		p.dynamicMappingsByDefinitionFQN,
 		resources,
 		p.allowDirectEntitlements,
 	)
@@ -301,6 +366,24 @@ func (p *PolicyDecisionPoint) GetDecision(
 		}
 	}
 
+	// Evaluate dynamic, definition-level value entitlement mappings (DSPX-2754) and merge
+	// their results into the entitled FQNs before rule evaluation.
+	if len(p.dynamicMappingsByDefinitionFQN) > 0 {
+		dynamicEntitledFQNsToActions, err := subjectmappingbuiltin.EvaluateDynamicValueMappingsWithActions(
+			p.dynamicMappingsByDefinitionFQN,
+			decisionableAttributes,
+			entityRepresentation,
+			l.Logger,
+		)
+		if err != nil {
+			return nil, nil, fmt.Errorf("error evaluating dynamic value mappings: %w", err)
+		}
+		for fqn, actions := range dynamicEntitledFQNsToActions {
+			entitledFQNsToActions[fqn] = append(entitledFQNsToActions[fqn], actions...)
+		}
+		l.DebugContext(ctx, "evaluated dynamic value mappings", slog.Any("dynamic_entitled_value_fqns_to_actions", dynamicEntitledFQNsToActions))
+	}
+
 	decision := &Decision{
 		AllPermitted: true,
 		Results:      make([]ResourceDecision, len(resources)),
@@ -355,6 +438,7 @@ func (p *PolicyDecisionPoint) GetDecisionRegisteredResource(
 		p.allRegisteredResourceValuesByFQN,
 		p.allEntitleableAttributesByValueFQN,
 		p.allAttributesByDefinitionFQN, /*action, */
+		p.dynamicMappingsByDefinitionFQN,
 		resources,
 		p.allowDirectEntitlements,
 	)

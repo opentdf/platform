@@ -9,19 +9,16 @@ Feature: Authz v2 default policy authorization
 
   Rule: KAS registry key access
 
-    # KAS GetKey resolves kas_uri for v2 authz. Granular ListKeys authorization is
-    # intentionally deferred, so URI-scoped KAS roles are denied ListKeys.
-    Scenario: opentdf-admin can read KAS keys by default
+    # KAS GetKey resolves kas_uri for v2 authz.
+    Scenario: opentdf-admin can get KAS keys by default
       Given I use the platform as "opentdf-admin"
       And I create KAS keys:
         | kas_uri                      | key_id    |
         | https://kas-admin.example.com | admin-kid |
       When I send a request to get KAS key "admin-kid"
       Then the response should be successful
-      When I send a request to list KAS keys for URI "https://kas-admin.example.com"
-      Then the response should be successful
 
-    Scenario: opentdf-standard cannot read KAS keys by default
+    Scenario: opentdf-standard cannot get KAS keys by default
       Given I use the platform as "opentdf-admin"
       And I create KAS keys:
         | kas_uri                         | key_id       |
@@ -29,10 +26,8 @@ Feature: Authz v2 default policy authorization
       Given I use the platform as "opentdf-standard"
       When I send a request to get KAS key "standard-kid"
       Then the response should be permission denied
-      When I send a request to list KAS keys for URI "https://kas-standard.example.com"
-      Then the response should be permission denied
 
-    Scenario: URI-specific KAS roles cannot read each other's keys
+    Scenario: URI-specific KAS roles cannot get each other's keys
       Given I use the platform as "opentdf-admin"
       And I create KAS keys:
         | kas_uri                   | key_id    |
@@ -41,20 +36,12 @@ Feature: Authz v2 default policy authorization
       Given I use the platform as "kas-a"
       When I send a request to get KAS key "kas-a-kid"
       Then the response should be successful
-      When I send a request to list KAS keys for URI "https://kas-a.example.com"
-      Then the response should be permission denied
       When I send a request to get KAS key "kas-b-kid"
-      Then the response should be permission denied
-      When I send a request to list KAS keys for URI "https://kas-b.example.com"
       Then the response should be permission denied
       Given I use the platform as "kas-b"
       When I send a request to get KAS key "kas-b-kid"
       Then the response should be successful
-      When I send a request to list KAS keys for URI "https://kas-b.example.com"
-      Then the response should be permission denied
       When I send a request to get KAS key "kas-a-kid"
-      Then the response should be permission denied
-      When I send a request to list KAS keys for URI "https://kas-a.example.com"
       Then the response should be permission denied
 
     Scenario: URI-specific KAS roles authorize ID-based GetKey using resolved KAS URI

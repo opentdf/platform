@@ -666,7 +666,6 @@ func (s *InterceptorAuthzSuite) TestV1_HTTPPathCompatibility() {
 	}
 }
 
-
 func (s *InterceptorAuthzSuite) TestAuthorizeV2_DenyPathReturnsPermissionDenied() {
 	// Policy that only allows role:kas-reader, so role:other is denied.
 	csvPolicy := "p, role:kas-reader, /policy.kasregistry.KeyAccessServerRegistryService/GetKey, *, allow"
@@ -691,7 +690,6 @@ func (s *InterceptorAuthzSuite) TestAuthorizeV2_DenyPathReturnsPermissionDenied(
 	// Verify the decision mode is v2
 	s.Equal(internalauthz.ModeV2, result.decision.Mode)
 }
-
 
 func (s *InterceptorAuthzSuite) TestAuthorize_NoToken_ReturnsCodeUnauthenticated() {
 	// authorize() is called after token extraction – simulate nil token
@@ -764,7 +762,6 @@ func (e *errorAuthorizer) Authorize(_ context.Context, _ *internalauthz.Request)
 func (e *errorAuthorizer) Version() string { return "error" }
 
 func (e *errorAuthorizer) SupportsResourceAuthorization() bool { return false }
-
 
 func (s *InterceptorAuthzSuite) TestResolveResourceContext_UnregisteredProcedure_ReturnsNil() {
 	// Registry has a resolver for "OtherMethod" but not for "GetKey".

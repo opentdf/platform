@@ -338,7 +338,8 @@ func matchHTU(received string, acceptable []string, strict bool) bool {
 func (a Authentication) MuxHandler(handler http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		publicRoute := slices.ContainsFunc(a.publicRoutes, a.isPublicRoute(r.URL.Path)) //nolint:contextcheck // There is no way to pass a context here
-		r = r.WithContext(ctxAuth.ContextWithPublicRoute(r.Context(), publicRoute))
+		ctxWithRoute := ctxAuth.ContextWithPublicRoute(r.Context(), publicRoute)
+		r = r.WithContext(ctxWithRoute)
 		if publicRoute {
 			handler.ServeHTTP(w, r)
 			return
@@ -367,12 +368,12 @@ func (a Authentication) MuxHandler(handler http.Handler) http.Handler {
 			m: []string{r.Method},
 		}
 		log.DebugContext(
-			r.Context(), "dpop receiverInfo set (http handler)",
+			ctxWithRoute, "dpop receiverInfo set (http handler)",
 			slog.Any("expected_htm", ri.m),
 			slog.Any("expected_htu", ri.u),
 			slog.String("request_method", r.Method),
 		)
-		accessTok, ctx, err := a.checkToken(r.Context(), header, ri, dp)
+		accessTok, ctxWithAuthX, err := a.checkToken(ctxWithRoute, header, ri, dp)
 		if err != nil {
 			// Check if this is a nonce error requiring a challenge
 			var nonceErr *DPoPNonceError
@@ -383,7 +384,7 @@ func (a Authentication) MuxHandler(handler http.Handler) http.Handler {
 				http.Error(w, "unauthenticated", http.StatusUnauthorized)
 				return
 			}
-			log.WarnContext(ctx,
+			log.WarnContext(ctxWithAuthX,
 				"unauthenticated",
 				slog.Any("error", err),
 				slog.Any("dpop", dp),
@@ -397,10 +398,10 @@ func (a Authentication) MuxHandler(handler http.Handler) http.Handler {
 			w.Header().Set("DPoP-Nonce", a.dpopNonceManager.getCurrentNonce())
 		}
 
-		clientID, err := a.getClientIDFromToken(ctx, accessTok)
+		clientID, err := a.getClientIDFromToken(ctxWithAuthX, accessTok)
 		if err != nil {
 			log.WarnContext(
-				ctx,
+				ctxWithAuthX,
 				"could not determine client ID from token",
 				slog.Any("err", err),
 			)
@@ -408,8 +409,8 @@ func (a Authentication) MuxHandler(handler http.Handler) http.Handler {
 			log = log.
 				With("client_id", clientID).
 				With("configured_client_id_claim_name", a.oidcConfiguration.Policy.ClientIDClaim)
-			ctx = ctxAuth.EnrichIncomingContextMetadataWithAuthn(ctx, log, clientID)
-			ctx = authz.ContextWithClientID(ctx, clientID)
+			ctxWithAuthX = ctxAuth.EnrichIncomingContextMetadataWithAuthn(ctxWithAuthX, log, clientID)
+			ctxWithAuthX = authz.ContextWithClientID(ctxWithAuthX, clientID)
 		}
 
 		// Check if the token is allowed to access the resource
@@ -429,9 +430,9 @@ func (a Authentication) MuxHandler(handler http.Handler) http.Handler {
 			Resource: r.URL.Path,
 			Action:   action,
 		}
-		ctx, err = a.enforcer.ContextWithClaims(ctx, accessTok, roleReq)
+		ctxWithClaims, err := a.enforcer.ContextWithClaims(ctxWithAuthX, accessTok, roleReq)
 		if err != nil {
-			log.WarnContext(r.Context(), "role provider error", slog.Any("error", err)) //nolint:contextcheck // request context is already derived with public route state above.
+			log.WarnContext(ctxWithClaims, "role provider error", slog.Any("error", err))
 			if errors.Is(err, ErrPermissionDenied) {
 				http.Error(w, "permission denied", http.StatusForbidden)
 				return
@@ -439,10 +440,10 @@ func (a Authentication) MuxHandler(handler http.Handler) http.Handler {
 			http.Error(w, "internal server error", http.StatusInternalServerError)
 			return
 		}
-		if result, err := a.enforcer.Enforce(ctx, accessTok, roleReq); err != nil {
+		if result, err := a.enforcer.Enforce(ctxWithClaims, accessTok, roleReq); err != nil {
 			if errors.Is(err, ErrPermissionDenied) {
 				log.WarnContext(
-					ctx,
+					ctxWithClaims,
 					"permission denied",
 					permissionDeniedLogAttrs(accessTok, result.CasbinAuthz, err)...,
 				)
@@ -453,7 +454,7 @@ func (a Authentication) MuxHandler(handler http.Handler) http.Handler {
 			return
 		} else if !result.Allowed {
 			log.WarnContext(
-				ctx,
+				ctxWithClaims,
 				"permission denied",
 				permissionDeniedLogAttrs(accessTok, result.CasbinAuthz, nil)...,
 			)
@@ -461,7 +462,7 @@ func (a Authentication) MuxHandler(handler http.Handler) http.Handler {
 			return
 		}
 
-		r = r.WithContext(ctx)
+		r = r.WithContext(ctxWithClaims)
 		handler.ServeHTTP(w, r)
 	})
 }

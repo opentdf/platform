@@ -1206,7 +1206,6 @@ func TestDimensionMatch_WithURIValues(t *testing.T) {
 	}
 }
 
-// TEST-MED-1: kas_uri dimension tests with URI values containing & and =
 func (s *CasbinAuthorizerSuite) TestAuthorizeV2_KasURIDimensionAllowed() {
 	const kasURI = "https://kas-a.example.com?q=1&foo=bar"
 	escapedURI := escapeDimensionValue(kasURI)
@@ -1282,7 +1281,6 @@ func (s *CasbinAuthorizerSuite) TestAuthorizeV2_KasURIDimensionDeniedOnMismatch(
 	s.False(decision.Allowed, "kas-reader with different kas_uri should be denied")
 }
 
-// TEST-MED-4: dimensionMatchFunc error branch tests
 func TestDimensionMatchFunc(t *testing.T) {
 	t.Run("too few args returns error", func(t *testing.T) {
 		result, err := dimensionMatchFunc("only-one")
@@ -1325,7 +1323,6 @@ func TestDimensionMatchFunc(t *testing.T) {
 	})
 }
 
-// TEST-MED-5: Default v2 policy deny test for non-admin roles
 func (s *CasbinAuthorizerSuite) TestAuthorizeV2_DefaultPolicyDenyNonAdminRoles() {
 	// Use the built-in default policy (no custom Csv)
 	cfg := authz.Config{

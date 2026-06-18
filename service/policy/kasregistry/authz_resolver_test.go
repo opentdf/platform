@@ -119,7 +119,6 @@ func TestGetKeyAuthzResolver_UnsupportedIdentifier(t *testing.T) {
 	require.ErrorIs(t, err, errUnsupportedGetKeyIdentifier)
 }
 
-// TEST-HIGH-4: Four sentinel error tests
 
 func TestGetKeyAuthzResolver_NilInnerKey_ReturnsErrKeyIdentifierRequired(t *testing.T) {
 	resolverCtx := authz.NewResolverContext()

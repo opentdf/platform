@@ -34,9 +34,7 @@ func (s *InterceptorAuthzSuite) SetupTest() {
 	s.logger = logger.CreateTestLogger()
 }
 
-// =============================================================================
 // V1 Mode Tests - Path-based authorization (used by ConnectUnaryServerInterceptor)
-// =============================================================================
 
 func (s *InterceptorAuthzSuite) TestV1_AdminCanAccessAll() {
 	policyCfg := internalauthz.PolicyConfig{}
@@ -269,9 +267,7 @@ func (s *InterceptorAuthzSuite) TestV1_ExtendedPolicy() {
 	s.False(decision.Allowed, "custom role should be denied for policy service")
 }
 
-// =============================================================================
 // V2 Mode Tests - RPC + Dimensions authorization
-// =============================================================================
 
 func (s *InterceptorAuthzSuite) TestV2_AdminWildcardAccess() {
 	csvPolicy := "p, role:admin, *, *, allow"
@@ -562,9 +558,7 @@ func (r *authzTestRequest) Spec() connect.Spec {
 	return connect.Spec{Procedure: r.procedure}
 }
 
-// =============================================================================
 // Action Mapping Tests (used by getAction in the interceptor)
-// =============================================================================
 
 func (s *InterceptorAuthzSuite) TestGetAction() {
 	tests := []struct {
@@ -591,9 +585,7 @@ func (s *InterceptorAuthzSuite) TestGetAction() {
 	}
 }
 
-// =============================================================================
 // Version and Mode Tests
-// =============================================================================
 
 func (s *InterceptorAuthzSuite) TestV1_ReturnsCorrectMode() {
 	policyCfg := internalauthz.PolicyConfig{}
@@ -612,9 +604,7 @@ func (s *InterceptorAuthzSuite) TestV2_ReturnsCorrectMode() {
 	s.True(authorizer.SupportsResourceAuthorization())
 }
 
-// =============================================================================
 // Path Handling Tests (v1 strips gRPC leading slash, keeps HTTP leading slash)
-// =============================================================================
 
 func (s *InterceptorAuthzSuite) TestV1_GRPCPathCompatibility() {
 	policyCfg := internalauthz.PolicyConfig{}
@@ -676,9 +666,6 @@ func (s *InterceptorAuthzSuite) TestV1_HTTPPathCompatibility() {
 	}
 }
 
-// =============================================================================
-// TEST-HIGH-1: Interceptor deny path test
-// =============================================================================
 
 func (s *InterceptorAuthzSuite) TestAuthorizeV2_DenyPathReturnsPermissionDenied() {
 	// Policy that only allows role:kas-reader, so role:other is denied.
@@ -705,9 +692,6 @@ func (s *InterceptorAuthzSuite) TestAuthorizeV2_DenyPathReturnsPermissionDenied(
 	s.Equal(internalauthz.ModeV2, result.decision.Mode)
 }
 
-// =============================================================================
-// TEST-HIGH-2: Interceptor internal-error path tests
-// =============================================================================
 
 func (s *InterceptorAuthzSuite) TestAuthorize_NoToken_ReturnsCodeUnauthenticated() {
 	// authorize() is called after token extraction – simulate nil token
@@ -781,9 +765,6 @@ func (e *errorAuthorizer) Version() string { return "error" }
 
 func (e *errorAuthorizer) SupportsResourceAuthorization() bool { return false }
 
-// =============================================================================
-// TEST-MED-2: resolveResourceContext unregistered-procedure branch test
-// =============================================================================
 
 func (s *InterceptorAuthzSuite) TestResolveResourceContext_UnregisteredProcedure_ReturnsNil() {
 	// Registry has a resolver for "OtherMethod" but not for "GetKey".
@@ -820,9 +801,7 @@ func (s *InterceptorAuthzSuite) TestResolveResourceContext_UnregisteredProcedure
 	s.Nil(resourceCtx)
 }
 
-// =============================================================================
 // Helper Methods (must be placed after all exported Test methods per lint rules)
-// =============================================================================
 
 // newTestToken creates a test JWT token with the given claims
 func (s *InterceptorAuthzSuite) newTestToken(claims map[string]interface{}) jwt.Token {

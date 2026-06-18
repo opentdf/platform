@@ -201,7 +201,6 @@ func (s *AuthorizerSuite) TestAuthorizeEnforcementErrorReturnsSystemError() {
 	s.Nil(decision)
 }
 
-// TEST-LOW-2: Nil request and nil token guard tests
 func (s *AuthorizerSuite) TestAuthorize_NilRequest_ReturnsError() {
 	authorizer, err := NewAuthorizer(authz.CasbinV1Config{
 		PolicyConfig: authz.PolicyConfig{

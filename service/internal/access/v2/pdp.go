@@ -211,9 +211,21 @@ func NewPolicyDecisionPointWithDynamicValueMappings(
 		}
 
 		definitionFQN := mapping.GetAttributeDefinition().GetFqn()
-		if _, ok := allAttributesByDefinitionFQN[definitionFQN]; !ok {
+		canonicalDef, ok := allAttributesByDefinitionFQN[definitionFQN]
+		if !ok {
 			l.WarnContext(ctx,
 				"dynamic value mapping references unknown attribute definition - skipping",
+				slog.String("dynamic_value_mapping_id", mapping.GetId()),
+				slog.String("attribute_definition_fqn", definitionFQN),
+			)
+			continue
+		}
+
+		// Defense in depth alongside validateDynamicValueMapping: the mapping's own definition may
+		// carry an unset rule, so reject HIERARCHY using the canonical definition.
+		if canonicalDef.GetRule() == policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY {
+			l.WarnContext(ctx,
+				"dynamic value mapping references HIERARCHY attribute definition - skipping",
 				slog.String("dynamic_value_mapping_id", mapping.GetId()),
 				slog.String("attribute_definition_fqn", definitionFQN),
 			)

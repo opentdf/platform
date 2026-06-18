@@ -159,6 +159,53 @@ func TestEvaluateDynamicValueMappings_StaticGate(t *testing.T) {
 	assert.Empty(t, got[valueFQN])
 }
 
+// TestEvaluateDynamicValueMappings_StaticGate_MultipleSubjectSets locks the AND aggregation
+// across multiple SubjectSets in the optional static pre-gate: every subject set must pass for
+// the gate (and therefore the mapping) to entitle.
+func TestEvaluateDynamicValueMappings_StaticGate_MultipleSubjectSets(t *testing.T) {
+	const def = "https://hospital.co/attr/mrn"
+	const valueFQN = "https://hospital.co/attr/mrn/value/mrn-123"
+
+	subjectSet := func(selector, value string) *policy.SubjectSet {
+		return &policy.SubjectSet{
+			ConditionGroups: []*policy.ConditionGroup{{
+				BooleanOperator: policy.ConditionBooleanTypeEnum_CONDITION_BOOLEAN_TYPE_ENUM_AND,
+				Conditions: []*policy.Condition{{
+					SubjectExternalSelectorValue: selector,
+					Operator:                     policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_IN,
+					SubjectExternalValues:        []string{value},
+				}},
+			}},
+		}
+	}
+	scs := &policy.SubjectConditionSet{
+		SubjectSets: []*policy.SubjectSet{
+			subjectSet(".department", "cardiology"),
+			subjectSet(".role", "provider"),
+		},
+	}
+	mapping := dvemMapping(def, ".patientAssignments[]", policy.ConditionComparisonOperatorEnum_CONDITION_COMPARISON_OPERATOR_ENUM_EQUALS, false, scs, "read")
+	byDef := DynamicValueMappingsByDefinitionFQN{def: {mapping}}
+
+	// both subject sets satisfied + resolver match -> entitled
+	got, err := EvaluateDynamicValueMappingsWithActions(byDef, dvemDecisionable(def, valueFQN, "mrn-123"), dvemEntityRep(t, map[string]interface{}{
+		"department":         "cardiology",
+		"role":               "provider",
+		"patientAssignments": []interface{}{"mrn-123"},
+	}), slog.Default())
+	require.NoError(t, err)
+	assert.Equal(t, []string{"read"}, dvemActionNames(got[valueFQN]))
+
+	// second subject set unsatisfied -> gate fails (AND) -> no entitlement
+	got, err = EvaluateDynamicValueMappingsWithActions(byDef, dvemDecisionable(def, valueFQN, "mrn-123"), dvemEntityRep(t, map[string]interface{}{
+		"department":         "cardiology",
+		"role":               "nurse",
+		"patientAssignments": []interface{}{"mrn-123"},
+	}), slog.Default())
+	require.NoError(t, err)
+	assert.Empty(t, got[valueFQN])
+}
+
 // TestEvaluateDynamicValueMappings_CrossDefinitionNoLeak verifies a mapping
 // only applies to its own definition: the same value segment under a different definition
 // is not entitled.

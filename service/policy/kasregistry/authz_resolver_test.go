@@ -156,24 +156,15 @@ func TestGetKeyAuthzResolver_DBReturnsNilNil_ReturnsErrResolvedKasKeyNil(t *test
 }
 
 func TestGetKeyAuthzResolver_EmptyKasURI_ReturnsErrResolvedKasURIEmpty(t *testing.T) {
-	// DB returns a KasKey with an empty KasUri.
-	// resolveGetKeyKasURI returns ("", nil); the outer getKeyAuthzResolver then
-	// detects the empty URI and returns errResolvedKasURIEmpty.
 	key := &policy.KasKey{
 		KasUri: "",
 		Key:    &policy.AsymmetricKey{KeyId: validKeyID},
 	}
-	dbClient := &fakeGetKeyAuthzDBClient{key: key}
 	resolverCtx := authz.NewResolverContext()
 
-	uri, resolveErr := resolveGetKeyKasURI(t.Context(), &kasregistry.GetKeyRequest{
+	_, err := resolveGetKeyKasURI(t.Context(), &kasregistry.GetKeyRequest{
 		Identifier: &kasregistry.GetKeyRequest_Id{Id: validUUID},
-	}, &resolverCtx, dbClient)
+	}, &resolverCtx, &fakeGetKeyAuthzDBClient{key: key})
 
-	// resolveGetKeyKasURI itself succeeds with an empty URI string.
-	require.NoError(t, resolveErr)
-	require.Empty(t, uri)
-
-	// Verify that the sentinel error used by getKeyAuthzResolver is defined.
-	require.Error(t, errResolvedKasURIEmpty)
+	require.ErrorIs(t, err, errResolvedKasURIEmpty)
 }

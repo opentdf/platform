@@ -13,6 +13,7 @@ import (
 	internalauthz "github.com/opentdf/platform/service/internal/auth/authz"
 	_ "github.com/opentdf/platform/service/internal/auth/authz/casbin" // Register casbin authorizer
 	"github.com/opentdf/platform/service/logger"
+	ctxAuth "github.com/opentdf/platform/service/pkg/auth"
 	"github.com/stretchr/testify/suite"
 	"google.golang.org/grpc"
 )
@@ -681,20 +682,21 @@ func (s *InterceptorAuthzSuite) TestAuthorizeV2_DenyPathReturnsPermissionDenied(
 
 	// token whose role is NOT authorized
 	token := s.newTokenWithRoles("other-role")
-	result := authn.authorize(s.T().Context(), s.logger, token, req, ActionRead)
+	ctx := ctxAuth.ContextWithAuthNInfo(s.T().Context(), nil, token, "raw-token")
+	nextCalled := false
+	next := func(_ context.Context, _ connect.AnyRequest) (connect.AnyResponse, error) {
+		nextCalled = true
+		return connect.NewResponse(&attributes.GetAttributeResponse{}), nil
+	}
 
-	s.Require().NoError(result.err)
-	s.Require().NotNil(result.decision)
-	s.False(result.decision.Allowed, "role not in policy should be denied")
-	// The interceptor wrapper converts denied decisions to CodePermissionDenied
-	// Verify the decision mode is v2
-	s.Equal(internalauthz.ModeV2, result.decision.Mode)
+	_, err := authn.ConnectAuthZInterceptor()(next)(ctx, req)
+
+	s.Require().Error(err)
+	s.Equal(connect.CodePermissionDenied, connect.CodeOf(err))
+	s.False(nextCalled, "next handler should not be called on denied authorization")
 }
 
 func (s *InterceptorAuthzSuite) TestAuthorize_NoToken_ReturnsCodeUnauthenticated() {
-	// authorize() is called after token extraction – simulate nil token
-	// by verifying the interceptor path: ConnectAuthZInterceptor checks token from context.
-	// We test the authorize() function directly with a nil token which causes subject extraction failure.
 	csvPolicy := "p, role:admin, *, *, allow"
 	authn := &Authentication{
 		logger:     s.logger,
@@ -705,15 +707,17 @@ func (s *InterceptorAuthzSuite) TestAuthorize_NoToken_ReturnsCodeUnauthenticated
 		Request:   connect.NewRequest(&attributes.GetAttributeRequest{}),
 		procedure: "/policy.attributes.AttributesService/GetAttribute",
 	}
+	nextCalled := false
+	next := func(_ context.Context, _ connect.AnyRequest) (connect.AnyResponse, error) {
+		nextCalled = true
+		return connect.NewResponse(&attributes.GetAttributeResponse{}), nil
+	}
 
-	// nil token → Authorize receives nil token → returns error → CodeInternal in authorize()
-	// But the outer interceptor returns CodeUnauthenticated when token is nil.
-	// Here we test the authorize() result when the authorizer itself returns an error due to nil token.
-	result := authn.authorize(s.T().Context(), s.logger, nil, req, ActionRead)
+	_, err := authn.ConnectAuthZInterceptor()(next)(s.T().Context(), req)
 
-	// authorize() passes nil token to Authorize(), which returns "authorization token is required"
-	s.Require().Error(result.err)
-	s.Equal(connect.CodeInternal, result.errCode)
+	s.Require().Error(err)
+	s.Equal(connect.CodeUnauthenticated, connect.CodeOf(err))
+	s.False(nextCalled, "next handler should not be called without an access token")
 }
 
 func (s *InterceptorAuthzSuite) TestAuthorize_AuthorizerReturnsError_ReturnsCodeInternal() {

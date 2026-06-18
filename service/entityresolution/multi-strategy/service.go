@@ -116,7 +116,17 @@ func (s *Service) ResolveEntity(ctx context.Context, entityID string, claimsMap 
 		result.Metadata["strategy_provider"] = strategy.Provider
 		result.Metadata["entity_type"] = strategy.EntityType
 		result.Metadata["failure_strategy"] = failureStrategy
-		result.Metadata["attempted_strategies"] = attemptedStrategies
+		// Coerce []string -> []interface{} so structpb.NewValue (called by
+		// the v2 ResolveEntities handler when it serializes metadata into
+		// EntityRepresentation.AdditionalProps) can encode it. structpb's
+		// NewValue accepts string|float64|bool|nil|map|[]interface{} only -
+		// a raw []string trips "proto: invalid type: []string" and the
+		// resolved entity is silently dropped via `continue` in the loop.
+		attemptedAny := make([]interface{}, len(attemptedStrategies))
+		for i, s := range attemptedStrategies {
+			attemptedAny[i] = s
+		}
+		result.Metadata["attempted_strategies"] = attemptedAny
 
 		return result, nil
 	}

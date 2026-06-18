@@ -262,11 +262,12 @@ func (r *granter) addMappedKey(fqn AttributeValueFQN, sk *policy.SimpleKasKey) e
 		return fmt.Errorf("invalid KAS URL in policy service associated with [%s]: %w", fqn, err)
 	}
 	rl.identifier = key.GetKid()
+	algStr, _ := formatAlg(key.GetAlgorithm())
 	r.logger.Debug("added mapped key",
 		slog.Any("fqn", fqn),
 		slog.String("kas", sk.GetKasUri()),
 		slog.String("kid", key.GetKid()),
-		slog.String("alg", algProto2String(policy.KasPublicKeyAlgEnum(key.GetAlgorithm()))),
+		slog.String("alg", algStr),
 	)
 	rls = append(rls, rl)
 	r.mapTable[fqn.key] = rls

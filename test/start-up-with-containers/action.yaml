@@ -138,11 +138,10 @@ runs:
         path: otdf-test-platform
         ref: ${{ inputs.platform-ref }}
         persist-credentials: false
-    - name: Download latest init-temp-keys.sh, docker-compose.yaml, and watch.sh
+    - name: Download latest init-temp-keys.sh and watch.sh
       shell: bash
       run: |
         curl -sSfL https://raw.githubusercontent.com/opentdf/platform/refs/tags/feat-kc26-dpop/.github/scripts/init-temp-keys.sh > otdf-test-platform/.github/scripts/init-temp-keys.sh
-        curl -sSfL https://raw.githubusercontent.com/opentdf/platform/refs/tags/feat-kc26-dpop/docker-compose.yaml > otdf-test-platform/docker-compose.yaml
         curl -sSfL https://raw.githubusercontent.com/opentdf/platform/refs/tags/feat-kc26-dpop/.github/scripts/watch.sh > otdf-test-platform/.github/scripts/watch.sh
     - name: Set up go (platform's go version)
       id: setup-go
@@ -280,6 +279,18 @@ runs:
       if: ${{ inputs.dpop-challenge-enabled == 'true' }}
       run: |
         yq e '.server.auth.dpop.require_nonce = true' -i opentdf.yaml
+      working-directory: otdf-test-platform
+    - name: Overlay DPoP-capable Keycloak (26.2)
+      # The default docker-compose pins Keycloak 25 so downstream consumers stay on
+      # it; DPoP testing needs Keycloak 26.2 plus the admin-fine-grained-authz:v1
+      # feature flag, overlaid only when the nonce challenge flow is enabled.
+      shell: bash
+      if: ${{ inputs.dpop-challenge-enabled == 'true' }}
+      run: |
+        yq e '
+          (.services.keycloak.image = "keycloak/keycloak:26.2")
+          | (.services.keycloak.environment.KC_FEATURES = "preview,token-exchange,admin-fine-grained-authz:v1")
+        ' -i docker-compose.yaml
       working-directory: otdf-test-platform
     - name: Configure logging
       shell: bash

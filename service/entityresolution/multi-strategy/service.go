@@ -123,8 +123,8 @@ func (s *Service) ResolveEntity(ctx context.Context, entityID string, claimsMap 
 		// a raw []string trips "proto: invalid type: []string" and the
 		// resolved entity is silently dropped via `continue` in the loop.
 		attemptedAny := make([]interface{}, len(attemptedStrategies))
-		for i, s := range attemptedStrategies {
-			attemptedAny[i] = s
+		for i, strat := range attemptedStrategies {
+			attemptedAny[i] = strat
 		}
 		result.Metadata["attempted_strategies"] = attemptedAny
 

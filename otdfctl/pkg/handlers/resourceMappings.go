@@ -9,10 +9,13 @@ import (
 )
 
 // Creates and returns the created resource mapping
-func (h *Handler) CreateResourceMapping(attributeID string, terms []string, grpID string, metadata *common.MetadataMutable) (*policy.ResourceMapping, error) {
-	res, err := h.sdk.ResourceMapping.CreateResourceMapping(context.Background(), &resourcemapping.CreateResourceMappingRequest{
+func (h *Handler) CreateResourceMapping(ctx context.Context, attributeID string, terms []string, grpID, namespace string, metadata *common.MetadataMutable) (*policy.ResourceMapping, error) {
+	namespaceID, namespaceFqn := getNamespaceIDAndFQN(namespace)
+	res, err := h.sdk.ResourceMapping.CreateResourceMapping(ctx, &resourcemapping.CreateResourceMappingRequest{
 		AttributeValueId: attributeID,
 		GroupId:          grpID,
+		NamespaceId:      namespaceID,
+		NamespaceFqn:     namespaceFqn,
 		Terms:            terms,
 		Metadata:         metadata,
 	})
@@ -20,11 +23,11 @@ func (h *Handler) CreateResourceMapping(attributeID string, terms []string, grpI
 		return nil, err
 	}
 
-	return h.GetResourceMapping(res.GetResourceMapping().GetId())
+	return h.GetResourceMapping(ctx, res.GetResourceMapping().GetId())
 }
 
-func (h *Handler) GetResourceMapping(id string) (*policy.ResourceMapping, error) {
-	res, err := h.sdk.ResourceMapping.GetResourceMapping(context.Background(), &resourcemapping.GetResourceMappingRequest{
+func (h *Handler) GetResourceMapping(ctx context.Context, id string) (*policy.ResourceMapping, error) {
+	res, err := h.sdk.ResourceMapping.GetResourceMapping(ctx, &resourcemapping.GetResourceMappingRequest{
 		Id: id,
 	})
 	if err != nil {
@@ -34,8 +37,11 @@ func (h *Handler) GetResourceMapping(id string) (*policy.ResourceMapping, error)
 	return res.GetResourceMapping(), nil
 }
 
-func (h *Handler) ListResourceMappings(ctx context.Context, limit, offset int32) (*resourcemapping.ListResourceMappingsResponse, error) {
+func (h *Handler) ListResourceMappings(ctx context.Context, namespace string, limit, offset int32) (*resourcemapping.ListResourceMappingsResponse, error) {
+	namespaceID, namespaceFqn := getNamespaceIDAndFQN(namespace)
 	return h.sdk.ResourceMapping.ListResourceMappings(ctx, &resourcemapping.ListResourceMappingsRequest{
+		NamespaceId:  namespaceID,
+		NamespaceFqn: namespaceFqn,
 		Pagination: &policy.PageRequest{
 			Limit:  limit,
 			Offset: offset,
@@ -45,12 +51,15 @@ func (h *Handler) ListResourceMappings(ctx context.Context, limit, offset int32)
 
 // TODO: verify updation behavior
 // Updates and returns the updated resource mapping
-func (h *Handler) UpdateResourceMapping(id string, attrValueID string, grpID string, terms []string, metadata *common.MetadataMutable, behavior common.MetadataUpdateEnum) (*policy.ResourceMapping, error) {
-	_, err := h.sdk.ResourceMapping.UpdateResourceMapping(context.Background(), &resourcemapping.UpdateResourceMappingRequest{
+func (h *Handler) UpdateResourceMapping(ctx context.Context, id, attrValueID, grpID, namespace string, terms []string, metadata *common.MetadataMutable, behavior common.MetadataUpdateEnum) (*policy.ResourceMapping, error) {
+	namespaceID, namespaceFqn := getNamespaceIDAndFQN(namespace)
+	_, err := h.sdk.ResourceMapping.UpdateResourceMapping(ctx, &resourcemapping.UpdateResourceMappingRequest{
 		Id:                     id,
 		AttributeValueId:       attrValueID,
 		Terms:                  terms,
 		GroupId:                grpID,
+		NamespaceId:            namespaceID,
+		NamespaceFqn:           namespaceFqn,
 		Metadata:               metadata,
 		MetadataUpdateBehavior: behavior,
 	})
@@ -58,11 +67,11 @@ func (h *Handler) UpdateResourceMapping(id string, attrValueID string, grpID str
 		return nil, err
 	}
 
-	return h.GetResourceMapping(id)
+	return h.GetResourceMapping(ctx, id)
 }
 
-func (h *Handler) DeleteResourceMapping(id string) (*policy.ResourceMapping, error) {
-	resp, err := h.sdk.ResourceMapping.DeleteResourceMapping(context.Background(), &resourcemapping.DeleteResourceMappingRequest{
+func (h *Handler) DeleteResourceMapping(ctx context.Context, id string) (*policy.ResourceMapping, error) {
+	resp, err := h.sdk.ResourceMapping.DeleteResourceMapping(ctx, &resourcemapping.DeleteResourceMappingRequest{
 		Id: id,
 	})
 	if err != nil {

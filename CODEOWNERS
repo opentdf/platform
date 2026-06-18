@@ -17,8 +17,8 @@
 
 ### Documentation
 
-*.md            @opentdf/maintainers
-/docs/          @opentdf/maintainers
+*.md            @opentdf/maintainers @opentdf/documentation
+/docs/          @opentdf/maintainers @opentdf/documentation
 /examples/      @opentdf/maintainers
 /examples/go.*  @opentdf/maintainers @opentdf/security
 

@@ -43,9 +43,6 @@ func (s *KeyAccessServerRegistry) getKeyAuthzResolver(ctx context.Context, req c
 	if err != nil {
 		return resolverCtx, err
 	}
-	if kasURI == "" {
-		return resolverCtx, errResolvedKasURIEmpty
-	}
 
 	res := resolverCtx.NewResource()
 	res.AddDimension(authzDimensionKasURI, kasURI)
@@ -77,6 +74,9 @@ func resolveGetKeyKasURI(ctx context.Context, msg *kasr.GetKeyRequest, resolverC
 	}
 	if key == nil {
 		return "", fmt.Errorf("%w: %w", errResolveKasKeyForAuthz, errResolvedKasKeyNil)
+	}
+	if key.GetKasUri() == "" {
+		return "", errResolvedKasURIEmpty
 	}
 
 	resolverCtx.SetResolvedData(resolverCacheKeyKasKey, key)

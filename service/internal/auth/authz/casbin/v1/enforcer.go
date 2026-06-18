@@ -125,11 +125,14 @@ func newCasbinEnforcer(c casbinConfig, logger *logger.Logger) (*Enforcer, error)
 	if c.RoleProvider == nil {
 		c.RoleProvider = internalauthz.NewJWTClaimsRoleProvider(c.GroupsClaim, logger)
 	}
-	subjectExtractor := internalauthz.SubjectExtractor{
-		UserNameClaim: c.UserNameClaim,
-		ClientIDClaim: c.ClientIDClaim,
-		RoleProvider:  c.RoleProvider,
-		Logger:        logger,
+	subjectExtractor, err := internalauthz.NewSubjectExtractor(
+		c.UserNameClaim,
+		c.ClientIDClaim,
+		c.RoleProvider,
+		logger,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create subject extractor: %w", err)
 	}
 
 	return &Enforcer{
@@ -188,7 +191,7 @@ func (e *Enforcer) enforce(ctx context.Context, token jwt.Token, req platformaut
 }
 
 func (e *Enforcer) buildSubjectFromToken(ctx context.Context, t jwt.Token, req platformauthz.RoleRequest) (casbinSubject, []string, error) {
-	subjects, roles, err := e.subjectExtractor.BuildSubjectFromToken(ctx, t, req, false)
+	subjects, roles, err := e.subjectExtractor.BuildV1SubjectsFromToken(ctx, t, req)
 	if err != nil {
 		return nil, nil, err
 	}

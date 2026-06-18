@@ -316,6 +316,14 @@ func TestPermissionDeniedDecisionLogAttrsWithoutDecision(t *testing.T) {
 	}
 }
 
+func TestWithAuthzResolverRegistry(t *testing.T) {
+	registry := internalauthz.NewResolverRegistry()
+	auth := &Authentication{}
+	opt := WithAuthzResolverRegistry(registry)
+	opt(auth)
+	require.Same(t, registry, auth.authzResolverRegistry)
+}
+
 func TestResolveRoleProviderDefault(t *testing.T) {
 	logger := logger.CreateTestLogger()
 	cfg := Config{}
@@ -1332,15 +1340,20 @@ func Test_GetClientIDFromToken(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			subjectExtractor, err := internalauthz.NewSubjectExtractor(
+				"",
+				tt.clientIDClaim,
+				staticProvider{},
+				logger.CreateTestLogger(),
+			)
+			require.NoError(t, err)
 			auth := &Authentication{
-				subjectExtractor: internalauthz.SubjectExtractor{
-					ClientIDClaim: tt.clientIDClaim,
-				},
+				subjectExtractor: subjectExtractor,
 			}
 
 			tok := jwt.New()
 			for k, v := range tt.claims {
-				err := tok.Set(k, v)
+				err = tok.Set(k, v)
 				require.NoError(t, err)
 			}
 

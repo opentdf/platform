@@ -342,6 +342,9 @@ func (s KeyAccessServerRegistry) GetKey(ctx context.Context, r *connect.Request[
 		ObjectType: audit.ObjectTypeKasRegistryKeys,
 	}
 
+	// URI-based requests intentionally skip the authz resolver's DB call because the
+	// resolver returns the URI directly from the request without fetching the key.
+	// Those requests always take this fallback path to populate the full KasKey.
 	key, ok := authz.GetResolvedDataFromContext(ctx, resolverCacheKeyKasKey).(*policy.KasKey)
 	if !ok || key == nil {
 		var err error

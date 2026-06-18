@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/lestrrat-go/jwx/v2/jwt"
+	"github.com/opentdf/platform/service/logger"
 	platformauthz "github.com/opentdf/platform/service/pkg/authz"
 	"github.com/stretchr/testify/require"
 )
@@ -17,6 +18,28 @@ func (p staticRoleProvider) Roles(_ context.Context, _ jwt.Token, _ platformauth
 	return p.roles, nil
 }
 
+func newTestSubjectExtractor(t *testing.T, userNameClaim, clientIDClaim string, roleProvider platformauthz.RoleProvider) SubjectExtractor {
+	t.Helper()
+
+	extractor, err := NewSubjectExtractor(userNameClaim, clientIDClaim, roleProvider, logger.CreateTestLogger())
+	require.NoError(t, err)
+	return extractor
+}
+
+func TestNewSubjectExtractorRequiresLogger(t *testing.T) {
+	extractor, err := NewSubjectExtractor("preferred_username", "azp", staticRoleProvider{}, nil)
+
+	require.ErrorIs(t, err, ErrSubjectExtractorLogger)
+	require.Zero(t, extractor)
+}
+
+func TestNewSubjectExtractorRequiresRoleProvider(t *testing.T) {
+	extractor, err := NewSubjectExtractor("preferred_username", "azp", nil, logger.CreateTestLogger())
+
+	require.ErrorIs(t, err, ErrSubjectExtractorRoles)
+	require.Zero(t, extractor)
+}
+
 func TestSubjectExtractorGroupsClaimSupportsStringSlices(t *testing.T) {
 	token := jwt.New()
 	require.NoError(t, token.Set("azp", "test-client"))
@@ -25,58 +48,59 @@ func TestSubjectExtractorGroupsClaimSupportsStringSlices(t *testing.T) {
 		"roles": []string{"opentdf-admin", "opentdf-standard"},
 	}))
 
-	extractor := SubjectExtractor{
-		UserNameClaim: "preferred_username",
-		ClientIDClaim: "azp",
-		RoleProvider:  NewJWTClaimsRoleProvider("realm_access.roles", nil),
-	}
-
-	subjects, roles, err := extractor.BuildSubjectFromToken(t.Context(), token, platformauthz.RoleRequest{}, false)
+	log := logger.CreateTestLogger()
+	extractor, err := NewSubjectExtractor("preferred_username", "azp", NewJWTClaimsRoleProvider("realm_access.roles", log), log)
 	require.NoError(t, err)
-	require.Equal(t, []string{"test-client", "opentdf-admin", "opentdf-standard", "alice"}, subjects)
+
+	subjects, roles, err := extractor.BuildV1SubjectsFromToken(t.Context(), token, platformauthz.RoleRequest{})
+	require.NoError(t, err)
+	require.Equal(t, []string{"opentdf-admin", "opentdf-standard", "alice"}, subjects)
 	require.Equal(t, []string{"opentdf-admin", "opentdf-standard"}, roles)
 }
 
-func TestSubjectExtractorCanPrefixSubjects(t *testing.T) {
+func TestSubjectExtractorDoesNotAppendClientIDForV1(t *testing.T) {
 	token := jwt.New()
 	require.NoError(t, token.Set("azp", "test-client"))
 	require.NoError(t, token.Set("preferred_username", "alice"))
 
-	extractor := SubjectExtractor{
-		UserNameClaim: "preferred_username",
-		ClientIDClaim: "azp",
-		RoleProvider:  staticRoleProvider{roles: []string{"admin", ""}},
-	}
+	extractor := newTestSubjectExtractor(t, "preferred_username", "azp", staticRoleProvider{roles: []string{"admin"}})
 
-	subjects, roles, err := extractor.BuildSubjectFromToken(t.Context(), token, platformauthz.RoleRequest{}, true)
+	subjects, roles, err := extractor.BuildV1SubjectsFromToken(t.Context(), token, platformauthz.RoleRequest{})
+	require.NoError(t, err)
+	require.Equal(t, []string{"admin", "alice"}, subjects)
+	require.Equal(t, []string{"admin"}, roles)
+	require.NotContains(t, subjects, "test-client")
+}
+
+func TestSubjectExtractorBuildsV2TypedSubjects(t *testing.T) {
+	token := jwt.New()
+	require.NoError(t, token.Set("azp", "test-client"))
+	require.NoError(t, token.Set("preferred_username", "alice"))
+
+	extractor := newTestSubjectExtractor(t, "preferred_username", "azp", staticRoleProvider{roles: []string{"admin", ""}})
+
+	subjects, roles, err := extractor.BuildV2SubjectsFromToken(t.Context(), token, platformauthz.RoleRequest{})
 	require.NoError(t, err)
 	require.Equal(t, []string{"client:test-client", "role:admin", "alice"}, subjects)
 	require.Equal(t, []string{"role:admin"}, roles)
 }
 
-func TestSubjectExtractorFiltersEmptyRolesWithoutPrefix(t *testing.T) {
+func TestSubjectExtractorPreservesEmptyRolesForV1(t *testing.T) {
 	token := jwt.New()
 	require.NoError(t, token.Set("preferred_username", "alice"))
 
-	extractor := SubjectExtractor{
-		UserNameClaim: "preferred_username",
-		RoleProvider:  staticRoleProvider{roles: []string{"admin", "", "viewer"}},
-	}
+	extractor := newTestSubjectExtractor(t, "preferred_username", "", staticRoleProvider{roles: []string{"admin", "", "viewer"}})
 
-	subjects, roles, err := extractor.BuildSubjectFromToken(t.Context(), token, platformauthz.RoleRequest{}, false)
+	subjects, roles, err := extractor.BuildV1SubjectsFromToken(t.Context(), token, platformauthz.RoleRequest{})
 	require.NoError(t, err)
-	require.Equal(t, []string{"admin", "viewer", "alice"}, subjects)
-	require.Equal(t, []string{"admin", "viewer"}, roles)
+	require.Equal(t, []string{"admin", "", "viewer", "alice"}, subjects)
+	require.Equal(t, []string{"admin", "", "viewer"}, roles)
 }
 
 func TestSubjectExtractorRequiresTokenWhenClaimsAreNotCached(t *testing.T) {
-	extractor := SubjectExtractor{
-		UserNameClaim: "preferred_username",
-		ClientIDClaim: "azp",
-		RoleProvider:  staticRoleProvider{roles: []string{"admin"}},
-	}
+	extractor := newTestSubjectExtractor(t, "preferred_username", "azp", staticRoleProvider{roles: []string{"admin"}})
 
-	subjects, roles, err := extractor.BuildSubjectFromToken(t.Context(), nil, platformauthz.RoleRequest{}, true)
+	subjects, roles, err := extractor.BuildV2SubjectsFromToken(t.Context(), nil, platformauthz.RoleRequest{})
 
 	require.ErrorIs(t, err, ErrTokenRequired)
 	require.Nil(t, subjects)
@@ -84,7 +108,7 @@ func TestSubjectExtractorRequiresTokenWhenClaimsAreNotCached(t *testing.T) {
 }
 
 func TestSubjectExtractorClientIDFromNilToken(t *testing.T) {
-	extractor := SubjectExtractor{ClientIDClaim: "azp"}
+	extractor := newTestSubjectExtractor(t, "", "azp", staticRoleProvider{})
 
 	got, err := extractor.ClientIDFromToken(t.Context(), nil)
 
@@ -144,7 +168,7 @@ func TestSubjectExtractorClientIDFromToken(t *testing.T) {
 				require.NoError(t, token.Set(k, v))
 			}
 
-			extractor := SubjectExtractor{ClientIDClaim: tt.claim}
+			extractor := newTestSubjectExtractor(t, "", tt.claim, staticRoleProvider{})
 			got, err := extractor.ClientIDFromToken(t.Context(), token)
 
 			require.Equal(t, tt.want, got)
@@ -157,32 +181,70 @@ func TestSubjectExtractorClientIDFromToken(t *testing.T) {
 	}
 }
 
-func TestSubjectExtractorDoesNotAppendEmptyUsername(t *testing.T) {
+func TestSubjectExtractorPreservesEmptyUsernameForV1(t *testing.T) {
 	token := jwt.New()
 	require.NoError(t, token.Set("preferred_username", ""))
 
-	extractor := SubjectExtractor{
-		UserNameClaim: "preferred_username",
-		RoleProvider:  staticRoleProvider{roles: []string{"role:admin"}},
-	}
+	extractor := newTestSubjectExtractor(t, "preferred_username", "", staticRoleProvider{roles: []string{"role:admin"}})
 
-	subjects, roles, err := extractor.BuildSubjectFromToken(t.Context(), token, platformauthz.RoleRequest{}, false)
+	subjects, roles, err := extractor.BuildV1SubjectsFromToken(t.Context(), token, platformauthz.RoleRequest{})
 	require.NoError(t, err)
-	require.Equal(t, []string{"role:admin"}, subjects)
+	require.Equal(t, []string{"role:admin", ""}, subjects)
 	require.Equal(t, []string{"role:admin"}, roles)
 }
 
-func TestSubjectExtractorIgnoresUsernameWithReservedRolePrefix(t *testing.T) {
+func TestSubjectExtractorPreservesRolePrefixedUsernameForV1(t *testing.T) {
 	token := jwt.New()
 	require.NoError(t, token.Set("preferred_username", "role:admin"))
 
-	extractor := SubjectExtractor{
-		UserNameClaim: "preferred_username",
-		RoleProvider:  staticRoleProvider{roles: []string{"role:admin"}},
+	extractor := newTestSubjectExtractor(t, "preferred_username", "", staticRoleProvider{roles: []string{"viewer"}})
+
+	subjects, roles, err := extractor.BuildV1SubjectsFromToken(t.Context(), token, platformauthz.RoleRequest{})
+	require.NoError(t, err)
+	require.Equal(t, []string{"viewer", "role:admin"}, subjects)
+	require.Equal(t, []string{"viewer"}, roles)
+}
+
+func TestSubjectExtractorPreservesClientPrefixedUsernameForV1(t *testing.T) {
+	token := jwt.New()
+	require.NoError(t, token.Set("preferred_username", "client:kas-a"))
+
+	extractor := newTestSubjectExtractor(t, "preferred_username", "", staticRoleProvider{roles: []string{"admin"}})
+
+	subjects, roles, err := extractor.BuildV1SubjectsFromToken(t.Context(), token, platformauthz.RoleRequest{})
+	require.NoError(t, err)
+	require.Equal(t, []string{"admin", "client:kas-a"}, subjects)
+	require.Equal(t, []string{"admin"}, roles)
+}
+
+func TestSubjectExtractorSkipsReservedNamespaceUsernameForV2(t *testing.T) {
+	tests := []struct {
+		name     string
+		username string
+	}{
+		{
+			name:     "role prefix",
+			username: "role:username-admin",
+		},
+		{
+			name:     "client prefix",
+			username: "client:kas-a",
+		},
 	}
 
-	subjects, roles, err := extractor.BuildSubjectFromToken(t.Context(), token, platformauthz.RoleRequest{}, false)
-	require.NoError(t, err)
-	require.Equal(t, []string{"role:admin"}, subjects)
-	require.Equal(t, []string{"role:admin"}, roles)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			token := jwt.New()
+			require.NoError(t, token.Set("azp", "test-client"))
+			require.NoError(t, token.Set("preferred_username", tt.username))
+
+			extractor := newTestSubjectExtractor(t, "preferred_username", "azp", staticRoleProvider{roles: []string{"admin"}})
+
+			subjects, roles, err := extractor.BuildV2SubjectsFromToken(t.Context(), token, platformauthz.RoleRequest{})
+			require.NoError(t, err)
+			require.Equal(t, []string{"client:test-client", "role:admin"}, subjects)
+			require.Equal(t, []string{"role:admin"}, roles)
+			require.NotContains(t, subjects, tt.username)
+		})
+	}
 }

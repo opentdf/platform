@@ -116,7 +116,16 @@ func (s *Service) ResolveEntity(ctx context.Context, entityID string, claimsMap 
 		result.Metadata["strategy_provider"] = strategy.Provider
 		result.Metadata["entity_type"] = strategy.EntityType
 		result.Metadata["failure_strategy"] = failureStrategy
-		result.Metadata["attempted_strategies"] = attemptedStrategies
+		// Coerce []string → []interface{} so structpb.NewValue (called by the
+		// v2 ResolveEntities handler when serializing metadata into an
+		// EntityRepresentation) can accept the value. structpb.NewValue only
+		// accepts []interface{}, not []string, and silently drops the entity
+		// via `continue` on a type mismatch. See opentdf/platform#3645.
+		attemptedAny := make([]interface{}, len(attemptedStrategies))
+		for i, s := range attemptedStrategies {
+			attemptedAny[i] = s
+		}
+		result.Metadata["attempted_strategies"] = attemptedAny
 
 		return result, nil
 	}

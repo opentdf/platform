@@ -157,41 +157,6 @@ func (a Assertion) GetHash() ([]byte, error) {
 	return ocrypto.SHA256AsHex(transformedJSON), nil
 }
 
-func (s *Statement) UnmarshalJSON(data []byte) error {
-	// Define a custom struct for deserialization
-	type Alias Statement
-	aux := &struct {
-		Value json.RawMessage `json:"value,omitempty"`
-		*Alias
-	}{
-		Alias: (*Alias)(s),
-	}
-
-	if err := json.Unmarshal(data, &aux); err != nil {
-		return err
-	}
-
-	// Attempt to decode Value as an object
-	var temp map[string]interface{}
-	if json.Unmarshal(aux.Value, &temp) == nil {
-		// Re-encode the object as a string and assign to Value
-		objAsString, err := json.Marshal(temp)
-		if err != nil {
-			return err
-		}
-		s.Value = string(objAsString)
-	} else {
-		// Assign raw string to Value
-		var str string
-		if err := json.Unmarshal(aux.Value, &str); err != nil {
-			return fmt.Errorf("value is neither a valid JSON object nor a string: %s", string(aux.Value))
-		}
-		s.Value = str
-	}
-
-	return nil
-}
-
 // Statement includes information applying to the scope of the assertion.
 // It could contain rights, handling instructions, or general metadata.
 type Statement struct {
@@ -200,7 +165,7 @@ type Statement struct {
 	// Schema describes the schema of the payload. (e.g. tdf)
 	Schema string `json:"schema,omitempty" validate:"required"`
 	// Value is the payload of the assertion.
-	Value string `json:"value,omitempty"  validate:"required"`
+	Value json.RawMessage `json:"value,omitempty"  validate:"required"`
 }
 
 // Binding enforces cryptographic integrity of the assertion.
@@ -355,7 +320,7 @@ func GetSystemMetadataAssertionConfig() (AssertionConfig, error) {
 		Statement: Statement{
 			Format: "json",
 			Schema: SystemMetadataSchemaV1,
-			Value:  string(metadataJSON),
+			Value:  metadataJSON,
 		},
 	}, nil
 }

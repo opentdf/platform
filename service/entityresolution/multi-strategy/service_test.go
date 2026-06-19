@@ -296,10 +296,11 @@ func TestMultiStrategyService_FailureStrategyContinue(t *testing.T) {
 		t.Errorf("Expected entity_type '%s', got '%v'", types.EntityTypeSubject, result.Metadata["entity_type"])
 	}
 
-	// Verify attempted strategies metadata
-	attemptedStrategies, ok := result.Metadata["attempted_strategies"].([]string)
+	// Verify attempted strategies metadata. Stored as []interface{} (not []string)
+	// so it survives structpb.NewValue serialization in the v2 ResolveEntities handler.
+	attemptedStrategies, ok := result.Metadata["attempted_strategies"].([]interface{})
 	if !ok || len(attemptedStrategies) != 2 {
-		t.Errorf("Expected attempted_strategies to contain 2 strategies, got %v", result.Metadata["attempted_strategies"])
+		t.Errorf("Expected attempted_strategies to contain 2 strategies as []interface{}, got %T %v", result.Metadata["attempted_strategies"], result.Metadata["attempted_strategies"])
 	}
 }
 

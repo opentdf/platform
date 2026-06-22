@@ -104,18 +104,22 @@ type Authentication struct {
 	logger *logger.Logger
 	// DPoP nonce management
 	dpopNonceManager *dpopNonceManager
+	// dpopReplayCache rejects replayed DPoP proofs by `jti`
+	dpopReplayCache *dpopReplayCache
 
 	// Used for testing
 	_testCheckTokenFunc func(ctx context.Context, authHeader []string, dpopInfo receiverInfo, dpopHeader []string) (jwt.Token, context.Context, error)
 }
 
-// dpopNonceManager manages server-issued DPoP nonces per RFC 9449 §8
+// nonceState is an immutable snapshot of the active and previous nonces,
+// swapped atomically on rotation.
 type nonceState struct {
 	currentNonce  string
 	previousNonce string
 	rotatedAt     time.Time
 }
 
+// dpopNonceManager manages server-issued DPoP nonces per RFC 9449 §8
 type dpopNonceManager struct {
 	state        atomic.Pointer[nonceState]
 	mu           sync.Mutex // serializes rotation only
@@ -180,11 +184,20 @@ func (nm *dpopNonceManager) validateNonce(nonce string) bool {
 
 // Creates new authN which is used to verify tokens for a set of given issuers
 func NewAuthenticator(ctx context.Context, cfg Config, logger *logger.Logger, wellknownRegistration func(namespace string, config any) error) (*Authentication, error) {
+	// Remember DPoP `jti` values for the acceptance window so a captured proof
+	// cannot be replayed; a proof older than DPoPSkew is rejected by the `iat`
+	// check, so the cache TTL tracks that window.
+	replayTTL := cfg.DPoPSkew
+	if replayTTL <= 0 {
+		replayTTL = time.Hour
+	}
+
 	a := &Authentication{
 		enforceDPoP:      cfg.EnforceDPoP,
 		strictDPoPHTU:    cfg.DPoP.StrictHTU,
 		logger:           logger,
 		dpopNonceManager: newDPoPNonceManager(cfg.DPoP.RequireNonce, cfg.DPoP.NonceExpiration),
+		dpopReplayCache:  newDPoPReplayCache(replayTTL),
 	}
 
 	tokenVerifier, oidcConfig, err := newTokenVerifier(ctx, cfg.AuthNConfig, a.logger)
@@ -384,7 +397,8 @@ func (a Authentication) MuxHandler(handler http.Handler) http.Handler {
 				http.Error(w, "unauthenticated", http.StatusUnauthorized)
 				return
 			}
-			log.WarnContext(ctxWithAuthX,
+			log.WarnContext(
+				ctxWithAuthX,
 				"unauthenticated",
 				slog.Any("error", err),
 				slog.Any("dpop", dp),
@@ -623,7 +637,8 @@ func permissionDeniedLogAttrs(token jwt.Token, casbinAuthz CasbinAuthzLog, err e
 	attrs := []any{slog.String("azp", token.Subject())}
 
 	if casbinAuthz.ConfiguredGroupsClaim != "" || casbinAuthz.SubjectGroups != nil {
-		attrs = append(attrs, slog.Group("casbin_authz",
+		attrs = append(attrs, slog.Group(
+			"casbin_authz",
 			slog.String("configured_groups_claim", casbinAuthz.ConfiguredGroupsClaim),
 			slog.Any("subject_groups", casbinAuthz.SubjectGroups),
 		))
@@ -799,7 +814,7 @@ func (a *Authentication) checkToken(ctx context.Context, authHeader []string, dp
 		if errors.As(err, &nonceErr) {
 			a.logger.DebugContext(ctx, "dpop nonce challenge issued", slog.String("reason", nonceErr.Message))
 		} else {
-			a.logger.Warn("failed to validate dpop", slog.Any("err", err))
+			a.logger.WarnContext(ctx, "failed to validate dpop", slog.Any("err", err))
 		}
 		return nil, nil, err
 	}
@@ -948,6 +963,21 @@ func (a Authentication) validateDPoP(accessToken jwt.Token, acessTokenRaw string
 		}
 	}
 
+	// Replay protection (RFC 9449 §11.1): reject a proof whose `jti` has already
+	// been seen within the acceptance window. Checked last so only otherwise-valid
+	// proofs populate the cache, preventing an attacker from poisoning it.
+	jtiI, ok := dpopToken.Get("jti")
+	if !ok {
+		return nil, errors.New("missing `jti` claim in DPoP JWT")
+	}
+	jti, ok := jtiI.(string)
+	if !ok {
+		return nil, errors.New("`jti` claim invalid format in DPoP JWT")
+	}
+	if a.dpopReplayCache.observe(jti, time.Now()) {
+		return nil, errors.New("DPoP proof replay detected; `jti` already used")
+	}
+
 	return dpopKey, nil
 }
 
@@ -955,14 +985,16 @@ func (a Authentication) isPublicRoute(path string) func(string) bool {
 	return func(route string) bool {
 		matched, err := doublestar.Match(route, path)
 		if err != nil {
-			a.logger.Warn("error matching route",
+			a.logger.Warn(
+				"error matching route",
 				slog.String("route", route),
 				slog.String("path", path),
 				slog.Any("error", err),
 			)
 			return false
 		}
-		a.logger.Trace("matching route",
+		a.logger.Trace(
+			"matching route",
 			slog.String("route", route),
 			slog.String("path", path),
 			slog.Bool("matched", matched),

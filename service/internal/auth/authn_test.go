@@ -809,6 +809,51 @@ func (s *AuthSuite) Test_CheckToken_AcceptsDPoP_GET() {
 	s.Require().NoError(err)
 }
 
+// Test_CheckToken_RejectsReplayedDPoP verifies that reusing the same DPoP proof
+// (identical `jti`) within the acceptance window is rejected per RFC 9449 §11.1,
+// even though the first presentation succeeds.
+func (s *AuthSuite) Test_CheckToken_RejectsReplayedDPoP() {
+	dpopRaw, err := rsa.GenerateKey(rand.Reader, 2048)
+	s.Require().NoError(err)
+	dpopKey, err := jwk.FromRaw(dpopRaw)
+	s.Require().NoError(err)
+	s.Require().NoError(dpopKey.Set(jwk.AlgorithmKey, jwa.RS256))
+	dpopPublic, err := dpopKey.PublicKey()
+	s.Require().NoError(err)
+
+	tok := jwt.New()
+	s.Require().NoError(tok.Set(jwt.ExpirationKey, time.Now().Add(time.Hour)))
+	s.Require().NoError(tok.Set("iss", s.server.URL))
+	s.Require().NoError(tok.Set("aud", "test"))
+	s.Require().NoError(tok.Set("cid", "client-replay"))
+	thumbprint, err := dpopKey.Thumbprint(crypto.SHA256)
+	s.Require().NoError(err)
+	cnf := map[string]string{"jkt": base64.URLEncoding.WithPadding(base64.NoPadding).EncodeToString(thumbprint)}
+	s.Require().NoError(tok.Set("cnf", cnf))
+	signedTok, err := jwt.Sign(tok, jwt.WithKey(jwa.RS256, s.key))
+	s.Require().NoError(err)
+
+	dpopToken := makeDPoPToken(s.T(), dpopTestCase{
+		key:              dpopPublic,
+		actualSigningKey: dpopKey,
+		accessToken:      signedTok,
+		alg:              jwa.RS256,
+		typ:              "dpop+jwt",
+		htm:              http.MethodPost,
+		htu:              "/a/path",
+		iat:              time.Now(),
+	})
+
+	ri := receiverInfo{u: []string{"/a/path"}, m: []string{http.MethodPost}}
+
+	_, _, err = s.auth.checkToken(context.Background(), []string{"DPoP " + string(signedTok)}, ri, []string{dpopToken})
+	s.Require().NoError(err, "first presentation of the proof should succeed")
+
+	_, _, err = s.auth.checkToken(context.Background(), []string{"DPoP " + string(signedTok)}, ri, []string{dpopToken})
+	s.Require().Error(err, "replaying the same proof should be rejected")
+	s.Contains(err.Error(), "replay")
+}
+
 // Test_ConnectAuthNInterceptor_PropagatesHTTPMethod verifies that the Connect
 // interceptor forwards the actual HTTP method (from req.HTTPMethod()) into
 // receiverInfo.m, instead of hardcoding POST. This is what makes DPoP
@@ -1027,9 +1072,10 @@ func (s *AuthSuite) Test_Allowing_Auth_With_No_DPoP() {
 	}
 	config := Config{}
 	config.AuthNConfig = authnConfig
-	auth, err := NewAuthenticator(context.Background(), config, &logger.Logger{
-		Logger: slog.New(slog.Default().Handler()),
-	},
+	auth, err := NewAuthenticator(
+		context.Background(), config, &logger.Logger{
+			Logger: slog.New(slog.Default().Handler()),
+		},
 		func(_ string, _ any) error { return nil },
 	)
 

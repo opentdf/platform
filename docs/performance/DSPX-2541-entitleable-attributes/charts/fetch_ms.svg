@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="760" height="460" font-family="sans-serif">
+<rect width="760" height="460" fill="white"/>
+<text x="380.0" y="28" text-anchor="middle" font-size="16" fill="#222222">Entitlements fetch latency vs total subject mappings (DSPX-2541)</text>
+<line x1="78.0" y1="56" x2="78.0" y2="396" stroke="#d9d9d9"/>
+<text x="78.0" y="414" text-anchor="middle" font-size="11" fill="#222222">1e4</text>
+<line x1="590.0" y1="56" x2="590.0" y2="396" stroke="#d9d9d9"/>
+<text x="590.0" y="414" text-anchor="middle" font-size="11" fill="#222222">1e5</text>
+<line x1="78" y1="396.0" x2="590" y2="396.0" stroke="#d9d9d9"/>
+<text x="70" y="400.0" text-anchor="end" font-size="11" fill="#222222">1e2</text>
+<line x1="78" y1="226.0" x2="590" y2="226.0" stroke="#d9d9d9"/>
+<text x="70" y="230.0" text-anchor="end" font-size="11" fill="#222222">1e3</text>
+<line x1="78" y1="56.0" x2="590" y2="56.0" stroke="#d9d9d9"/>
+<text x="70" y="60.0" text-anchor="end" font-size="11" fill="#222222">1e4</text>
+<rect x="78" y="56" width="512" height="340" fill="none" stroke="#333333"/>
+<text x="334.0" y="442" text-anchor="middle" font-size="13" fill="#222222">Total subject mappings (N, log scale)</text>
+<text x="18" y="226.0" text-anchor="middle" font-size="13" fill="#222222" transform="rotate(-90 18 226.0)">Fetch latency (ms, log scale)</text>
+<path d="M78.0,233.7 L435.9,87.6" fill="none" stroke="#c1121f" stroke-width="2.5"/>
+<circle cx="78.0" cy="233.7" r="3" fill="#c1121f"/>
+<circle cx="435.9" cy="87.6" r="3" fill="#c1121f"/>
+<line x1="604" y1="64" x2="626" y2="64" stroke="#c1121f" stroke-width="2.5"/>
+<text x="632" y="68" font-size="11" fill="#222222">fullload (list all attrs + SMs)</text>
+<path d="M78.0,275.7 L435.9,190.5" fill="none" stroke="#0353a4" stroke-width="2.5"/>
+<circle cx="78.0" cy="275.7" r="3" fill="#0353a4"/>
+<circle cx="435.9" cy="190.5" r="3" fill="#0353a4"/>
+<line x1="604" y1="86" x2="626" y2="86" stroke="#0353a4" stroke-width="2.5"/>
+<text x="632" y="90" font-size="11" fill="#222222">byfqns (GetEntitleableAttributesByFqns)</text>
+</svg>

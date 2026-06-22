@@ -81,13 +81,13 @@ func Test_BuildConfig_ConnString(t *testing.T) {
 		},
 		{
 			config: &Config{
-				Host:                    "localhost",
-				Port:                    5432,
-				Database:                "opentdf",
-				User:                    "postgres",
-				Password:                "changeme",
-				SSLMode:                 "prefer",
-				StatementTimeoutSeconds: 30,
+				Host:             "localhost",
+				Port:             5432,
+				Database:         "opentdf",
+				User:             "postgres",
+				Password:         "changeme",
+				SSLMode:          "prefer",
+				StatementTimeout: 30,
 			},
 			want: "postgres://postgres:changeme@localhost:5432/opentdf?sslmode=prefer",
 			wantRuntimeParams: map[string]string{
@@ -110,5 +110,57 @@ func Test_BuildConfig_ConnString(t *testing.T) {
 			}
 			assert.Equal(t, value, cfg.ConnConfig.RuntimeParams[key])
 		}
+	}
+}
+
+func Test_BuildMigrationConfig_OverridesForMigration(t *testing.T) {
+	tests := []struct {
+		name string
+		cfg  Config
+	}{
+		{
+			name: "disables statement timeout when statement timeout is configured",
+			cfg: Config{
+				Host:             "localhost",
+				Port:             5432,
+				Database:         "opentdf",
+				User:             "postgres",
+				Password:         "changeme",
+				SSLMode:          "prefer",
+				StatementTimeout: 30,
+				Pool: PoolConfig{
+					MaxConns:     10,
+					MinConns:     2,
+					MinIdleConns: 2,
+				},
+			},
+		},
+		{
+			name: "disables statement timeout when statement timeout is not configured",
+			cfg: Config{
+				Host:     "localhost",
+				Port:     5432,
+				Database: "opentdf",
+				User:     "postgres",
+				Password: "changeme",
+				SSLMode:  "prefer",
+				Pool: PoolConfig{
+					MaxConns:     10,
+					MinConns:     2,
+					MinIdleConns: 2,
+				},
+			},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			cfg, err := test.cfg.buildMigrationConfig()
+			require.NoError(t, err)
+			assert.Equal(t, "0", cfg.ConnConfig.RuntimeParams["statement_timeout"])
+			assert.EqualValues(t, 1, cfg.MaxConns)
+			assert.EqualValues(t, 0, cfg.MinConns)
+			assert.EqualValues(t, 0, cfg.MinIdleConns)
+		})
 	}
 }

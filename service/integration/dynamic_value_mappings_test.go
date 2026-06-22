@@ -195,6 +195,38 @@ func (s *DynamicValueMappingsSuite) TestListByDefinition() {
 	s.Equal(attr.GetId(), resp.GetDynamicValueMappings()[0].GetAttributeDefinition().GetId())
 }
 
+func (s *DynamicValueMappingsSuite) TestListByDefinition_Pagination() {
+	attr := s.createDefinition("dvem_list_page", policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF)
+	for _, selector := range []string{".a[]", ".b[]", ".c[]"} {
+		_, err := s.db.PolicyClient.CreateDynamicValueMapping(s.ctx, &dynamicvaluemapping.CreateDynamicValueMappingRequest{
+			AttributeDefinitionId: attr.GetId(),
+			ValueResolver:         s.resolver(selector, policy.ConditionComparisonOperatorEnum_CONDITION_COMPARISON_OPERATOR_ENUM_EQUALS),
+			Actions:               []*policy.Action{s.readAction()},
+		})
+		s.Require().NoError(err)
+	}
+
+	// first page: limit 2 of 3 -> next offset points past the page
+	first, err := s.db.PolicyClient.ListDynamicValueMappings(s.ctx, &dynamicvaluemapping.ListDynamicValueMappingsRequest{
+		AttributeDefinitionId: attr.GetId(),
+		Pagination:            &policy.PageRequest{Limit: 2},
+	})
+	s.Require().NoError(err)
+	s.Len(first.GetDynamicValueMappings(), 2)
+	s.Equal(int32(3), first.GetPagination().GetTotal())
+	s.Equal(int32(2), first.GetPagination().GetNextOffset())
+
+	// second page: remaining item, no further pages
+	second, err := s.db.PolicyClient.ListDynamicValueMappings(s.ctx, &dynamicvaluemapping.ListDynamicValueMappingsRequest{
+		AttributeDefinitionId: attr.GetId(),
+		Pagination:            &policy.PageRequest{Limit: 2, Offset: 2},
+	})
+	s.Require().NoError(err)
+	s.Len(second.GetDynamicValueMappings(), 1)
+	s.Equal(int32(3), second.GetPagination().GetTotal())
+	s.Equal(int32(0), second.GetPagination().GetNextOffset())
+}
+
 // createDefinition makes a fresh attribute under the example.com namespace with no values
 // or subject mappings, so each test controls its own coexistence state.
 func (s *DynamicValueMappingsSuite) createDefinition(name string, rule policy.AttributeRuleTypeEnum) *policy.Attribute {

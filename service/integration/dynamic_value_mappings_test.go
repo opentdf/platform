@@ -216,6 +216,13 @@ func (s *DynamicValueMappingsSuite) TestListByDefinition_Pagination() {
 	s.Equal(int32(3), first.GetPagination().GetTotal())
 	s.Equal(int32(2), first.GetPagination().GetNextOffset())
 
+	// track ids to assert the pages partition the corpus (no overlap, no gaps)
+	seen := map[string]struct{}{}
+	for _, m := range first.GetDynamicValueMappings() {
+		seen[m.GetId()] = struct{}{}
+	}
+	s.Len(seen, 2, "first page should contain two distinct mappings")
+
 	// second page: remaining item, no further pages
 	second, err := s.db.PolicyClient.ListDynamicValueMappings(s.ctx, &dynamicvaluemapping.ListDynamicValueMappingsRequest{
 		AttributeDefinitionId: attr.GetId(),
@@ -225,6 +232,13 @@ func (s *DynamicValueMappingsSuite) TestListByDefinition_Pagination() {
 	s.Len(second.GetDynamicValueMappings(), 1)
 	s.Equal(int32(3), second.GetPagination().GetTotal())
 	s.Equal(int32(0), second.GetPagination().GetNextOffset())
+
+	for _, m := range second.GetDynamicValueMappings() {
+		_, overlap := seen[m.GetId()]
+		s.False(overlap, "page 2 must not repeat an item from page 1")
+		seen[m.GetId()] = struct{}{}
+	}
+	s.Len(seen, 3, "combined pages should cover all created mappings exactly once")
 }
 
 // createDefinition makes a fresh attribute under the example.com namespace with no values

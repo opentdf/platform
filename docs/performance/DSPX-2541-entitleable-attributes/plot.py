@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
-"""Generate an SVG chart from the DSPX-2541 entitlements fetch benchmark.
+"""Generate SVG charts from the DSPX-2541 benchmark CSVs.
 
 Pure Python standard library only (no matplotlib, no network), so it runs on a
-fresh clone with just `python3`. It emits a single log-log line chart comparing
-the two fetch paths' latency as the total subject-mapping count (N) grows:
+fresh clone with just `python3`. It auto-detects the CSV schema by header:
 
-    charts/fetch_ms.svg   fullload vs byfqns, ms (y, log) over N (x, log)
+  DB fetch CSV  (header has `ms`):     charts/fetch_ms.svg   (fullload vs byfqns)
+  In-memory PDP (header has `op`):     charts/pdp_<op>_latency.svg, charts/pdp_<op>_heap.svg
+                                       for op in {decision, entitlements} (full vs scoped)
 
 Usage:
     python3 plot.py [results.csv] [charts_dir]
@@ -17,32 +18,12 @@ import os
 import sys
 
 W, H = 760, 460
-ML, MR, MT, MB = 78, 170, 56, 64  # margins (right margin holds the legend)
+ML, MR, MT, MB = 78, 190, 56, 64  # margins (right margin holds the legend)
 PLOT_W = W - ML - MR
 PLOT_H = H - MT - MB
-
-COLORS = {"fullload": "#c1121f", "byfqns": "#0353a4"}
-LABELS = {"fullload": "fullload (list all attrs + SMs)", "byfqns": "byfqns (GetEntitleableAttributesByFqns)"}
-ORDER = ("fullload", "byfqns")
 GRID, AXIS, TEXT = "#d9d9d9", "#333333", "#222222"
+RED, BLUE = "#c1121f", "#0353a4"
 LOG_FLOOR = 1e-3
-
-
-def read_rows(path):
-    rows = []
-    with open(path, newline="") as fh:
-        for r in csv.DictReader(fh):
-            rows.append({"mode": r["mode"], "n": int(r["n"]), "ms": float(r["ms"])})
-    return rows
-
-
-def series(rows):
-    out = {}
-    for r in rows:
-        out.setdefault(r["mode"], []).append((r["n"], r["ms"]))
-    for m in out:
-        out[m].sort(key=lambda p: p[0])
-    return out
 
 
 def lg(v):
@@ -54,33 +35,25 @@ def bounds(vals):
     return (lo, hi) if hi > lo else (lo, lo + 1)
 
 
-def main():
-    csv_path = sys.argv[1] if len(sys.argv) > 1 else "results.csv"
-    charts_dir = sys.argv[2] if len(sys.argv) > 2 else "charts"
-    rows = read_rows(csv_path)
-    if not rows:
-        print(f"no rows in {csv_path}", file=sys.stderr)
-        return 1
-    s = series(rows)
-
-    xs = [r["n"] for r in rows]
-    ys = [r["ms"] for r in rows]
+def render_chart(title, y_label, series, colors, labels, order, dest):
+    """series: {name: [(x, y), ...]}; draws a log-log line chart to dest (SVG)."""
+    xs = [x for pts in series.values() for x, _ in pts]
+    ys = [y for pts in series.values() for _, y in pts]
+    if not xs:
+        return
     xlo, xhi = bounds(xs)
     ylo, yhi = bounds(ys)
 
     def px(n):
         return ML + (lg(n) - xlo) / (xhi - xlo) * PLOT_W
 
-    def py(ms):
-        return MT + PLOT_H - (lg(ms) - ylo) / (yhi - ylo) * PLOT_H
+    def py(v):
+        return MT + PLOT_H - (lg(v) - ylo) / (yhi - ylo) * PLOT_H
 
-    out = []
-    out.append(f'<svg xmlns="http://www.w3.org/2000/svg" width="{W}" height="{H}" font-family="sans-serif">')
-    out.append(f'<rect width="{W}" height="{H}" fill="white"/>')
-    out.append(f'<text x="{W/2}" y="28" text-anchor="middle" font-size="16" fill="{TEXT}">'
-               'Entitlements fetch latency vs total subject mappings (DSPX-2541)</text>')
+    out = [f'<svg xmlns="http://www.w3.org/2000/svg" width="{W}" height="{H}" font-family="sans-serif">',
+           f'<rect width="{W}" height="{H}" fill="white"/>',
+           f'<text x="{W/2}" y="28" text-anchor="middle" font-size="16" fill="{TEXT}">{title}</text>']
 
-    # gridlines + axis ticks (powers of 10)
     for e in range(xlo, xhi + 1):
         x = px(10 ** e)
         out.append(f'<line x1="{x:.1f}" y1="{MT}" x2="{x:.1f}" y2="{MT+PLOT_H}" stroke="{GRID}"/>')
@@ -94,31 +67,74 @@ def main():
     out.append(f'<text x="{ML+PLOT_W/2}" y="{H-18}" text-anchor="middle" font-size="13" fill="{TEXT}">'
                'Total subject mappings (N, log scale)</text>')
     out.append(f'<text x="18" y="{MT+PLOT_H/2}" text-anchor="middle" font-size="13" fill="{TEXT}" '
-               f'transform="rotate(-90 18 {MT+PLOT_H/2})">Fetch latency (ms, log scale)</text>')
+               f'transform="rotate(-90 18 {MT+PLOT_H/2})">{y_label}</text>')
 
-    # series
-    legend_y = MT + 8
-    for mode in ORDER:
-        pts = s.get(mode)
+    ly = MT + 8
+    for name in order:
+        pts = series.get(name)
         if not pts:
             continue
-        color = COLORS.get(mode, "#666")
-        path = " ".join(f"{'M' if i == 0 else 'L'}{px(n):.1f},{py(ms):.1f}" for i, (n, ms) in enumerate(pts))
+        pts = sorted(pts, key=lambda p: p[0])
+        color = colors.get(name, "#666")
+        path = " ".join(f"{'M' if i == 0 else 'L'}{px(x):.1f},{py(y):.1f}" for i, (x, y) in enumerate(pts))
         out.append(f'<path d="{path}" fill="none" stroke="{color}" stroke-width="2.5"/>')
-        for n, ms in pts:
-            out.append(f'<circle cx="{px(n):.1f}" cy="{py(ms):.1f}" r="3" fill="{color}"/>')
+        for x, y in pts:
+            out.append(f'<circle cx="{px(x):.1f}" cy="{py(y):.1f}" r="3" fill="{color}"/>')
         lx = ML + PLOT_W + 14
-        out.append(f'<line x1="{lx}" y1="{legend_y}" x2="{lx+22}" y2="{legend_y}" stroke="{color}" stroke-width="2.5"/>')
-        out.append(f'<text x="{lx+28}" y="{legend_y+4}" font-size="11" fill="{TEXT}">{LABELS.get(mode, mode)}</text>')
-        legend_y += 22
+        out.append(f'<line x1="{lx}" y1="{ly}" x2="{lx+22}" y2="{ly}" stroke="{color}" stroke-width="2.5"/>')
+        out.append(f'<text x="{lx+28}" y="{ly+4}" font-size="11" fill="{TEXT}">{labels.get(name, name)}</text>')
+        ly += 22
 
     out.append("</svg>")
-
-    os.makedirs(charts_dir, exist_ok=True)
-    dest = os.path.join(charts_dir, "fetch_ms.svg")
+    os.makedirs(os.path.dirname(dest) or ".", exist_ok=True)
     with open(dest, "w") as fh:
         fh.write("\n".join(out))
     print(f"wrote {dest}")
+
+
+def plot_db(rows, charts_dir):
+    colors = {"fullload": RED, "byfqns": BLUE}
+    labels = {"fullload": "fullload (list all attrs + SMs)", "byfqns": "byfqns (GetEntitleableAttributesByFqns)"}
+    series = {}
+    for r in rows:
+        series.setdefault(r["mode"], []).append((int(r["n"]), float(r["ms"])))
+    render_chart("Entitlements fetch latency vs total subject mappings (DSPX-2541)",
+                 "Fetch latency (ms, log scale)", series, colors, labels,
+                 ("fullload", "byfqns"), os.path.join(charts_dir, "fetch_ms.svg"))
+
+
+def plot_pdp(rows, charts_dir):
+    colors = {"full": RED, "scoped": BLUE}
+    labels = {"full": "full (PDP over all policy)", "scoped": "scoped (PDP over needed subset)"}
+    ops = sorted({r["op"] for r in rows})
+    for op in ops:
+        op_rows = [r for r in rows if r["op"] == op]
+        lat, heap = {}, {}
+        for r in op_rows:
+            lat.setdefault(r["mode"], []).append((int(r["n"]), float(r["op_p50_us"])))
+            heap.setdefault(r["mode"], []).append((int(r["n"]), float(r["heap_mb"])))
+        render_chart(f"PDP {op} p50 latency vs N (DSPX-2541)", "p50 latency (us, log scale)",
+                     lat, colors, labels, ("full", "scoped"), os.path.join(charts_dir, f"pdp_{op}_latency.svg"))
+        render_chart(f"PDP {op} retained heap vs N (DSPX-2541)", "Retained heap (MB, log scale)",
+                     heap, colors, labels, ("full", "scoped"), os.path.join(charts_dir, f"pdp_{op}_heap.svg"))
+
+
+def main():
+    csv_path = sys.argv[1] if len(sys.argv) > 1 else "results.csv"
+    charts_dir = sys.argv[2] if len(sys.argv) > 2 else "charts"
+    with open(csv_path, newline="") as fh:
+        rows = list(csv.DictReader(fh))
+    if not rows:
+        print(f"no rows in {csv_path}", file=sys.stderr)
+        return 1
+    header = rows[0].keys()
+    if "op" in header:
+        plot_pdp(rows, charts_dir)
+    elif "ms" in header:
+        plot_db(rows, charts_dir)
+    else:
+        print(f"unrecognized CSV schema in {csv_path}: {list(header)}", file=sys.stderr)
+        return 1
     return 0
 
 

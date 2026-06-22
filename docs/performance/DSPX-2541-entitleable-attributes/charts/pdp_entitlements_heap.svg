@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="760" height="460" font-family="sans-serif">
+<rect width="760" height="460" fill="white"/>
+<text x="380.0" y="28" text-anchor="middle" font-size="16" fill="#222222">PDP entitlements retained heap vs N (DSPX-2541)</text>
+<line x1="78.0" y1="56" x2="78.0" y2="396" stroke="#d9d9d9"/>
+<text x="78.0" y="414" text-anchor="middle" font-size="11" fill="#222222">1e4</text>
+<line x1="324.0" y1="56" x2="324.0" y2="396" stroke="#d9d9d9"/>
+<text x="324.0" y="414" text-anchor="middle" font-size="11" fill="#222222">1e5</text>
+<line x1="570.0" y1="56" x2="570.0" y2="396" stroke="#d9d9d9"/>
+<text x="570.0" y="414" text-anchor="middle" font-size="11" fill="#222222">1e6</text>
+<line x1="78" y1="396.0" x2="570" y2="396.0" stroke="#d9d9d9"/>
+<text x="70" y="400.0" text-anchor="end" font-size="11" fill="#222222">1e-2</text>
+<line x1="78" y1="328.0" x2="570" y2="328.0" stroke="#d9d9d9"/>
+<text x="70" y="332.0" text-anchor="end" font-size="11" fill="#222222">1e-1</text>
+<line x1="78" y1="260.0" x2="570" y2="260.0" stroke="#d9d9d9"/>
+<text x="70" y="264.0" text-anchor="end" font-size="11" fill="#222222">1e0</text>
+<line x1="78" y1="192.0" x2="570" y2="192.0" stroke="#d9d9d9"/>
+<text x="70" y="196.0" text-anchor="end" font-size="11" fill="#222222">1e1</text>
+<line x1="78" y1="124.0" x2="570" y2="124.0" stroke="#d9d9d9"/>
+<text x="70" y="128.0" text-anchor="end" font-size="11" fill="#222222">1e2</text>
+<line x1="78" y1="56.0" x2="570" y2="56.0" stroke="#d9d9d9"/>
+<text x="70" y="60.0" text-anchor="end" font-size="11" fill="#222222">1e3</text>
+<rect x="78" y="56" width="492" height="340" fill="none" stroke="#333333"/>
+<text x="324.0" y="442" text-anchor="middle" font-size="13" fill="#222222">Total subject mappings (N, log scale)</text>
+<text x="18" y="226.0" text-anchor="middle" font-size="13" fill="#222222" transform="rotate(-90 18 226.0)">Retained heap (MB, log scale)</text>
+<path d="M78.0,190.7 L249.9,147.4 L324.0,127.6 L495.9,80.7 L570.0,60.0" fill="none" stroke="#c1121f" stroke-width="2.5"/>
+<circle cx="78.0" cy="190.7" r="3" fill="#c1121f"/>
+<circle cx="249.9" cy="147.4" r="3" fill="#c1121f"/>
+<circle cx="324.0" cy="127.6" r="3" fill="#c1121f"/>
+<circle cx="495.9" cy="80.7" r="3" fill="#c1121f"/>
+<circle cx="570.0" cy="60.0" r="3" fill="#c1121f"/>
+<line x1="584" y1="64" x2="606" y2="64" stroke="#c1121f" stroke-width="2.5"/>
+<text x="612" y="68" font-size="11" fill="#222222">full (PDP over all policy)</text>
+<path d="M78.0,362.6 L249.9,303.8 L324.0,277.8 L495.9,219.6 L570.0,196.8" fill="none" stroke="#0353a4" stroke-width="2.5"/>
+<circle cx="78.0" cy="362.6" r="3" fill="#0353a4"/>
+<circle cx="249.9" cy="303.8" r="3" fill="#0353a4"/>
+<circle cx="324.0" cy="277.8" r="3" fill="#0353a4"/>
+<circle cx="495.9" cy="219.6" r="3" fill="#0353a4"/>
+<circle cx="570.0" cy="196.8" r="3" fill="#0353a4"/>
+<line x1="584" y1="86" x2="606" y2="86" stroke="#0353a4" stroke-width="2.5"/>
+<text x="612" y="90" font-size="11" fill="#222222">scoped (PDP over needed subset)</text>
+</svg>

@@ -1,64 +1,75 @@
-# Entitlements Fetch Path: Full Policy Load vs By-FQN
+# Entitlements Optimization Benchmarks (DSPX-2541)
 
-A reproducible benchmark for [DSPX-2541](https://virtru.atlassian.net/browse/DSPX-2541), comparing how
-the decisioning/entitlement path fetches the policy it needs:
+Reproducible benchmarks for [DSPX-2541](https://virtru.atlassian.net/browse/DSPX-2541), quantifying the
+cost of the decisioning/entitlement path and the projected win from fetching only what's needed. Two
+layers, both below the RPC server (matching the `dspx-2754-perf-test` approach — no wired client/server):
 
-- **fullload (before).** The PDP loads the entire policy on every construction and refresh.
-  `EntitlementPolicyRetriever.ListAllAttributes` / `ListAllSubjectMappings`
-  ([`service/internal/access/v2/policy_store.go`](../../../service/internal/access/v2/policy_store.go))
-  page the whole DB, then `NewPolicyDecisionPoint` builds a value-FQN → (attribute, value, subject
-  mappings) map over all of it.
-- **byfqns (after).** `GetEntitleableAttributesByFqns`
-  ([`service/policy/db/attribute_fqn.go`](../../../service/policy/db/attribute_fqn.go)) fetches only the
-  value FQNs a decision references, in a bounded number of selective queries.
+1. **In-Memory PDP** (no Docker): construction time, retained heap, and per-operation latency for
+   `GetDecision` and `GetEntitlements`.
+2. **DB Fetch** (Docker): the cost of fetching policy from Postgres, full-load vs by-FQN.
 
-## Corpus
+The corpus mirrors the NG SAP reference scale: one `ANY_OF` definition, 5,000 attribute values, and N
+subject mappings spread across them (~N/5,000 per value), swept `10k…1M`.
 
-Mirrors the NG SAP reference scale: one `ANY_OF` definition, **5,000** attribute values, and **N**
-subject mappings spread across the values (so each value carries ~N/5,000 mappings). N is swept across
-`10k, 50k, 100k, 500k, 1M`. Each decision references **K = 10** value FQNs.
+## Layer 1: In-Memory PDP (`GetDecision` + `GetEntitlements`)
 
-## Hypothesis
+`TestEntitleablePDPBenchmark` (`service/internal/access/v2/entitleable_pdp_bench_test.go`, build tag
+`entpdpbench`) measures two modes per operation:
 
-- **fullload: O(total policy N).** It reads and indexes every attribute value and every subject mapping
-  regardless of what the decision needs, on every load/refresh.
-- **byfqns: O(K + mappings on those K values).** It reads only the requested values' definitions and
-  their subject mappings (~K·N/5,000 here), independent of the rest of the policy.
+- **full** — `NewPolicyDecisionPoint` over ALL policy (today's per-request load), then the operation.
+- **scoped** — PDP over only the subset the operation needs (the resource's value+SMs for a decision;
+  the entity's matched values+SMs for entitlements). Projects the optimized fetch the migration (PR B2)
+  would realize. It is shape-independent (in-memory protos through the existing PDP) and uses an `ANY_OF`
+  corpus so the needed subset is unambiguous. `scoped` is a projected lower bound, not the built
+  optimization.
 
-Expectation: `fullload` latency grows with N; `byfqns` stays orders of magnitude lower and grows only
-with the mappings attached to the requested values.
+Run (no Docker):
+```bash
+bash docs/performance/DSPX-2541-entitleable-attributes/run.sh
+ENT_PDP_MAX_N=100000 bash docs/performance/DSPX-2541-entitleable-attributes/run.sh   # cap for speed
+```
+Outputs `pdp_results.csv` and `charts/pdp_{decision,entitlements}_{latency,heap}.svg`.
 
-## What It Measures
+### Results (full `10k…1M` run)
+
+`GetEntitlements` is the dramatic win — `full` grows O(N) in both latency and heap; `scoped` tracks the
+entity's matched set (50 compartments), ~100× lower at 1M:
+
+| op | mode | N | construct ms | heap MB | p50 latency |
+|----|------|----|-------------|---------|-------------|
+| entitlements | full | 1,000,000 | 58.0 | 873.7 | **927.6 ms** |
+| entitlements | scoped | 1,000,000 | 0.6 | 8.5 | **9.1 ms** |
+| entitlements | full | 100,000 | 7.1 | 88.6 | 82.0 ms |
+| entitlements | scoped | 100,000 | 0.04 | 0.5 | 1.0 ms |
+
+`GetDecision`'s per-call evaluation is already cheap (~28 µs at 1M, both modes) because it only touches
+the resource value's mappings. Its cost is the **construction + heap** of loading all policy per request,
+which `scoped` removes:
+
+| op | mode | N | construct ms | heap MB | p50 latency |
+|----|------|----|-------------|---------|-------------|
+| decision | full | 1,000,000 | 67.5 | 873.4 | 28.3 µs |
+| decision | scoped | 1,000,000 | 0.008 | ~0 | 24.0 µs |
+
+Takeaway: the full-policy load is the dominant per-request cost (873 MB at 1M). For entitlements it also
+dominates latency (linear in N); for decisions it's construction/memory. Both collapse under `scoped`.
+
+## Layer 2: DB Fetch (full-load vs by-FQN)
 
 `TestEntitleableFetchBenchmark` (`service/integration/entitleable_fetch_db_bench_test.go`, build tag
-`entbench`) seeds each corpus against a real Postgres and records, per scale point:
+`entbench`) seeds N subject mappings against a real Postgres (testcontainers) and measures, per scale
+point, two fetch paths for serving a decision over K=10 value FQNs:
 
-| column | meaning |
-|--------|---------|
-| `mode` | `fullload` or `byfqns` |
-| `n`    | total subject mappings |
-| `k`    | requested value FQNs (10) |
-| `ms`   | fetch latency in milliseconds |
-| `rows` | subject mappings returned/loaded |
-| `pages`| list pages read (`fullload`) |
+- **fullload** — page all attributes + all subject mappings (the PDP cache build today).
+- **byfqns** — `GetEntitleableAttributesByFqns` for the requested FQNs.
 
-## Running
-
-Requires Docker (testcontainers Postgres). From a fresh clone:
-
+Run (requires Docker):
 ```bash
 bash docs/performance/DSPX-2541-entitleable-attributes/run-db.sh
-# bound runtime / disk on a smaller host:
 ENT_BENCH_MAX_N=100000 bash docs/performance/DSPX-2541-entitleable-attributes/run-db.sh
 ```
-
-Outputs `results.csv` and `charts/fetch_ms.svg`. The bench is build-tagged, so it never runs in normal
-`go test ./...` or CI.
-
-## Results
-
-`results.csv` / `charts/fetch_ms.svg` are committed from a capped run (`ENT_BENCH_MAX_N=50000`, single
-local testcontainer); regenerate the full `10k…1M` sweep with `run-db.sh`.
+Outputs `results.csv` and `charts/fetch_ms.svg`. `results.csv` is committed from a capped run
+(`ENT_BENCH_MAX_N=50000`); regenerate the full sweep with the script.
 
 | mode | N | rows | ms |
 |------|----|------|-----|
@@ -67,18 +78,16 @@ local testcontainer); regenerate the full `10k…1M` sweep with `run-db.sh`.
 | fullload | 50,000 | 50,000 | 6,518 |
 | byfqns | 50,000 | 100 | 1,618 |
 
-`fullload` latency climbs steeply with N (deep-OFFSET paging over the whole corpus), and it always
-returns the entire policy. `byfqns` returns only the requested values' mappings (~K·N/5,000) and stays
-well below `fullload`.
-
-Observation worth a follow-up: `byfqns` latency (1.6 s for 100 rows at N=50k) is high relative to the
-row count, which points at the `getSubjectMappingsByValueFqns` filter scanning rather than using an
-index on the `subject_mappings → attribute_values → attribute_fqns` join. An index there (cf. the
-existing `optimize-entitlement-list-indices` migration) should flatten `byfqns` further.
+Observation worth a follow-up: `byfqns` latency (1.6 s for 100 rows at N=50k) is high relative to the row
+count, pointing at the `getSubjectMappingsByValueFqns` filter scanning rather than using an index on the
+`subject_mappings → attribute_values → attribute_fqns` join (cf. the existing
+`optimize-entitlement-list-indices` migration). An index there should flatten `byfqns` further.
 
 ## Scope
 
-This benchmark covers the **DB fetch path**, which is what the new API changes. Wiring the new API into
-the in-memory PDP / `GetDecision` (so a decision no longer triggers a full-policy load) is a follow-up
-(the decisioning migration), tracked separately and pending the namespace-scoping/tenancy model; an
-in-memory decision-latency benchmark belongs with that change.
+Both layers test below the RPC server, matching the `dspx-2754-perf-test` approach (no wired client /
+server / ERS / Keycloak). `full` rows measure the existing code at scale; `scoped` rows project the
+optimization the migration (PR B2) would realize, and are valid independent of the still-open API-shape
+decisions (368/392) because they run in-memory through the existing PDP on an `ANY_OF` corpus. Hierarchy
+projection is deferred until that shape settles. The wired full-request-path benchmark is also out of
+scope here.

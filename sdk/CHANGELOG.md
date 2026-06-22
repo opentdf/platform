@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.23.0](https://github.com/opentdf/platform/compare/sdk/v0.22.0...sdk/v0.23.0) (2026-06-18)
+
+
+### Features
+
+* **sdk:** DSPX-2754 add DynamicValueMapping service client wrapper ([#3635](https://github.com/opentdf/platform/issues/3635)) ([4acf0ca](https://github.com/opentdf/platform/commit/4acf0caea4d601fb372efcf663793af8395a9e78))
+
 ## [0.22.0](https://github.com/opentdf/platform/compare/sdk/v0.21.0...sdk/v0.22.0) (2026-06-15)
 
 

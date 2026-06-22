@@ -434,6 +434,28 @@ components:
         - CONDITION_BOOLEAN_TYPE_ENUM_UNSPECIFIED
         - CONDITION_BOOLEAN_TYPE_ENUM_AND
         - CONDITION_BOOLEAN_TYPE_ENUM_OR
+    policy.ConditionComparisonOperatorEnum:
+      type: string
+      title: ConditionComparisonOperatorEnum
+      enum:
+        - CONDITION_COMPARISON_OPERATOR_ENUM_UNSPECIFIED
+        - CONDITION_COMPARISON_OPERATOR_ENUM_EQUALS
+        - CONDITION_COMPARISON_OPERATOR_ENUM_CONTAINS
+        - CONDITION_COMPARISON_OPERATOR_ENUM_STARTS_WITH
+        - CONDITION_COMPARISON_OPERATOR_ENUM_ENDS_WITH
+      description: |-
+        How a selector result is compared against a comparison value. Replaces the all-in-one
+         SubjectMappingOperatorEnum by separating the comparison from the quantifier (see
+         ConditionQuantifierEnum) and case sensitivity.
+    policy.ConditionQuantifierEnum:
+      type: string
+      title: ConditionQuantifierEnum
+      enum:
+        - CONDITION_QUANTIFIER_ENUM_UNSPECIFIED
+        - CONDITION_QUANTIFIER_ENUM_ANY
+        - CONDITION_QUANTIFIER_ENUM_ALL
+        - CONDITION_QUANTIFIER_ENUM_NONE
+      description: How matches are aggregated across the comparison set (subject_external_values).
     policy.KasPublicKeyAlgEnum:
       type: string
       title: KasPublicKeyAlgEnum
@@ -752,7 +774,10 @@ components:
              from idP/LDAP)
         operator:
           title: operator
-          description: the evaluation operator of relation
+          description: |-
+            Deprecated: use comparison + quantifier (+ case_insensitive) instead. Normalized to the
+             decomposed fields in the service layer for backward compatibility.
+          deprecated: true
           $ref: '#/components/schemas/policy.SubjectMappingOperatorEnum'
         subjectExternalValues:
           type: array
@@ -765,10 +790,23 @@ components:
             list of comparison values for the result of applying the
              subject_external_selector_value on a flattened Entity Representation
              (Subject), evaluated by the operator
+        comparison:
+          title: comparison
+          description: how each selector result is compared to subject_external_values entries
+          $ref: '#/components/schemas/policy.ConditionComparisonOperatorEnum'
+        quantifier:
+          title: quantifier
+          description: how matches are aggregated across subject_external_values
+          $ref: '#/components/schemas/policy.ConditionQuantifierEnum'
+        caseInsensitive:
+          title: case_insensitive
+          description: |-
+            when set true, comparison is case-insensitive; unset is treated as case-sensitive. Modeled as
+             BoolValue so an explicit false is distinguishable from unset, leaving room to change the default.
+          $ref: '#/components/schemas/google.protobuf.BoolValue'
       title: Condition
       required:
         - subjectExternalSelectorValue
-        - operator
       additionalProperties: false
       description: |-
         *

@@ -168,6 +168,12 @@ func loadKey(k KeyPairInfo) (any, error) {
 		if err != nil {
 			return nil, fmt.Errorf("ocrypto.FromPrivatePEM (%s) failed: %w", k.Algorithm, err)
 		}
+		// Confirm the PEM dispatched to the scheme this KAS key claims, so a
+		// mislabeled key fails fast at load instead of producing garbage on
+		// unwrap. Covers both the hybrid PQ/T and pure ML-KEM decryptors.
+		if err := assertDecryptorAlgorithm(decryptor, k.Algorithm, k.KID); err != nil {
+			return nil, err
+		}
 		return StandardKEMCrypto{
 			KeyPairInfo:   k,
 			privateKeyPem: string(privatePEM),
@@ -496,4 +502,17 @@ func (s *StandardCrypto) Decrypt(_ context.Context, keyID trust.KeyIdentifier, c
 	}
 
 	return ocrypto.NewAESProtectedKey(rawKey)
+}
+
+// assertDecryptorAlgorithm cross-checks an OID-routed decryptor (from
+// ocrypto.FromPrivatePEM) against the algorithm the key record claims. Hybrid
+// decryptors expose a KeyType() method; if the routed decryptor lacks that
+// method or reports a different scheme, the stored PEM does not match its
+// metadata and we must refuse to decrypt under the asserted algorithm.
+func assertDecryptorAlgorithm(dec ocrypto.PrivateKeyDecryptor, expected, kid string) error {
+	kt, ok := dec.(interface{ KeyType() ocrypto.KeyType })
+	if !ok || string(kt.KeyType()) != expected {
+		return fmt.Errorf("hybrid key %s algorithm mismatch: PEM dispatched away from %s", kid, expected)
+	}
+	return nil
 }

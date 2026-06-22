@@ -110,6 +110,12 @@ func (b *BasicManager) Decrypt(ctx context.Context, keyDetails trust.KeyDetails,
 		if len(ephemeralPublicKey) > 0 {
 			return nil, fmt.Errorf("ephemeral public key should not be provided for %s decryption", alg)
 		}
+		// FromPrivatePEM routes by the OID inside the SPKI/PKCS#8 envelope. Cross-
+		// check the routed decryptor against the algorithm the key record claims;
+		// a mismatch means the stored PEM does not match its metadata.
+		if kt, ok := decrypter.(interface{ KeyType() ocrypto.KeyType }); !ok || kt.KeyType() != alg {
+			return nil, fmt.Errorf("KEM key %s algorithm mismatch: PEM dispatched away from %s", keyDetails.ID(), alg)
+		}
 		plaintext, err := decrypter.Decrypt(ciphertext)
 		if err != nil {
 			return nil, fmt.Errorf("failed to decrypt with %s: %w", alg, err)

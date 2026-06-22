@@ -8,12 +8,6 @@ import (
 	"fmt"
 )
 
-// PEM block types defined by RFC 7468 for SPKI / PKCS#8 envelopes.
-const (
-	pemBlockPublicKey  = "PUBLIC KEY"
-	pemBlockPrivateKey = "PRIVATE KEY"
-)
-
 // errNotKEM is returned by the generic SPKI / PKCS#8 KEM parsers when the
 // supplied DER blob is not a recognised KEM algorithm, signalling the caller
 // to fall through to other algorithm parsers.
@@ -49,8 +43,6 @@ type kemPKCS8 struct {
 	Algorithm  kemAlgorithmIdentifier
 	PrivateKey []byte
 }
-
-const bitsPerByte = 8
 
 // marshalKEMPublicSPKI encodes a raw KEM encapsulation key as RFC 5280
 // SubjectPublicKeyInfo using the supplied algorithm OID.

@@ -2,22 +2,17 @@ package ocrypto
 
 import (
 	"crypto/mlkem"
-	"crypto/rand"
-	"crypto/sha256"
 	"encoding/asn1"
 	"encoding/pem"
 	"fmt"
-	"io"
-
-	"github.com/cloudflare/circl/kem/xwing"
-	"golang.org/x/crypto/hkdf"
 )
 
-// kem is the post-quantum KEM contract implemented by ML-KEM, X-Wing, and the
-// NIST hybrid PQ/T schemes. Unifying behind this single interface collapses the
-// `hybrid-wrapped` and `mlkem-wrapped` wrap/unwrap paths into one envelope and
-// one AES-GCM call site; per-scheme key-derivation policy is selected by
-// wrapKey below.
+// kem is the post-quantum KEM contract implemented by the pure ML-KEM schemes.
+// It collapses the `mlkem-wrapped` wrap/unwrap path into one envelope and one
+// AES-GCM call site. The hybrid PQ/T schemes (X-Wing and the NIST EC + ML-KEM
+// composites) are IETF-draft-conformant and live behind their own per-scheme
+// encryptor/decryptor types in hybrid_nist.go and xwing.go, reached via the
+// OID-routed dispatcher in asym_encryption.go / asym_decryption.go.
 type kem interface {
 	keyType() KeyType
 	scheme() SchemeType
@@ -79,32 +74,12 @@ func kemByOID(oid asn1.ObjectIdentifier) (kem, bool) {
 	return ctor(), true
 }
 
-// kemByKeyType returns the kem adapter for the supplied KeyType, covering both
-// pure ML-KEM and hybrid PQ/T schemes. This is the entry point for wrap-side
-// dispatch where the caller knows the KAS algorithm but has not yet decoded a
-// public key.
-func kemByKeyType(kt KeyType) (kem, bool) {
-	switch kt { //nolint:exhaustive // only handle KEM types; other KeyTypes return false
-	case MLKEM768Key:
-		return mlkemKEM{variant: mlkem768}, true
-	case MLKEM1024Key:
-		return mlkemKEM{variant: mlkem1024}, true
-	case HybridXWingKey:
-		return xwingKEM{}, true
-	case HybridSecp256r1MLKEM768Key:
-		return nistHybridKEM{params: &p256mlkem768Params}, true
-	case HybridSecp384r1MLKEM1024Key:
-		return nistHybridKEM{params: &p384mlkem1024Params}, true
-	default:
-		return nil, false
-	}
-}
-
 // IsKEMKeyType reports whether the supplied KeyType is one of the KEM schemes
-// — pure ML-KEM or hybrid PQ/T — handled by the unified wrap/unwrap path.
+// — pure ML-KEM or hybrid PQ/T — that wrap a DEK through FromPublicPEM /
+// FromPrivatePEM rather than the RSA/EC paths. Callers use it as the routing
+// gate before delegating to WrapDEK.
 func IsKEMKeyType(kt KeyType) bool {
-	_, ok := kemByKeyType(kt)
-	return ok
+	return IsMLKEMKeyType(kt) || IsHybridKeyType(kt)
 }
 
 // --- mlkemKEM adapter -------------------------------------------------------
@@ -225,154 +200,6 @@ func (mlkemKEM) wrapKey(sharedSecret, _ /*salt*/, _ /*info*/ []byte) ([]byte, er
 	return append([]byte(nil), sharedSecret...), nil
 }
 
-// --- xwingKEM adapter -------------------------------------------------------
-
-type xwingKEM struct{}
-
-func (xwingKEM) keyType() KeyType   { return HybridXWingKey }
-func (xwingKEM) scheme() SchemeType { return Hybrid }
-func (xwingKEM) pubSize() int       { return XWingPublicKeySize }
-func (xwingKEM) privSize() int      { return XWingPrivateKeySize }
-func (xwingKEM) ctSize() int        { return XWingCiphertextSize }
-
-func (xwingKEM) encapsulate(pub []byte) ([]byte, []byte, error) {
-	if len(pub) != XWingPublicKeySize {
-		return nil, nil, fmt.Errorf("invalid X-Wing public key size: got %d want %d", len(pub), XWingPublicKeySize)
-	}
-	ss, ct, err := xwing.Encapsulate(pub, nil)
-	if err != nil {
-		return nil, nil, fmt.Errorf("xwing.Encapsulate failed: %w", err)
-	}
-	return ss, ct, nil
-}
-
-func (xwingKEM) decapsulate(priv, ct []byte) ([]byte, error) {
-	if len(priv) != XWingPrivateKeySize {
-		return nil, fmt.Errorf("invalid X-Wing private key size: got %d want %d", len(priv), XWingPrivateKeySize)
-	}
-	return xwing.Decapsulate(ct, priv), nil
-}
-
-func (xwingKEM) publicKeyPEM(pub []byte) (string, error) {
-	return rawToPEM(PEMBlockXWingPublicKey, pub, XWingPublicKeySize)
-}
-
-// wrapKey derives a 32-byte AES key from the X-Wing shared secret via
-// HKDF-SHA256 over (salt, info).
-func (xwingKEM) wrapKey(sharedSecret, salt, info []byte) ([]byte, error) {
-	return hkdfWrapKey(sharedSecret, salt, info)
-}
-
-// --- nistHybridKEM adapter --------------------------------------------------
-
-type nistHybridKEM struct {
-	params *hybridNISTParams
-}
-
-func (h nistHybridKEM) keyType() KeyType { return h.params.keyType }
-func (nistHybridKEM) scheme() SchemeType { return Hybrid }
-func (h nistHybridKEM) pubSize() int     { return h.params.ecPubSize + h.params.mlkemPubSize }
-func (h nistHybridKEM) privSize() int    { return h.params.ecPrivSize + h.params.mlkemPrivSize }
-func (h nistHybridKEM) ctSize() int      { return h.params.ecPubSize + h.params.mlkemCtSize }
-
-// mlkemAdapter returns the ML-KEM half of this hybrid scheme.
-func (h nistHybridKEM) mlkemAdapter() mlkemKEM {
-	if h.params.mlkemPubSize == MLKEM1024PublicKeySize {
-		return mlkemKEM{variant: mlkem1024}
-	}
-	return mlkemKEM{variant: mlkem768}
-}
-
-func (h nistHybridKEM) encapsulate(pub []byte) ([]byte, []byte, error) {
-	if len(pub) != h.pubSize() {
-		return nil, nil, fmt.Errorf("invalid %s public key size: got %d want %d", h.keyType(), len(pub), h.pubSize())
-	}
-	ecPubBytes := pub[:h.params.ecPubSize]
-	mlkemPubBytes := pub[h.params.ecPubSize:]
-
-	ecPub, err := h.params.curve.NewPublicKey(ecPubBytes)
-	if err != nil {
-		return nil, nil, fmt.Errorf("invalid EC public key: %w", err)
-	}
-	ephemeral, err := h.params.curve.GenerateKey(rand.Reader)
-	if err != nil {
-		return nil, nil, fmt.Errorf("ECDH ephemeral key generation failed: %w", err)
-	}
-	ecdhSecret, err := ephemeral.ECDH(ecPub)
-	if err != nil {
-		return nil, nil, fmt.Errorf("ECDH failed: %w", err)
-	}
-	ephemeralPub := ephemeral.PublicKey().Bytes()
-
-	mlkemSecret, mlkemCt, err := h.mlkemAdapter().encapsulate(mlkemPubBytes)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	combinedSecret := make([]byte, 0, len(ecdhSecret)+len(mlkemSecret))
-	combinedSecret = append(combinedSecret, ecdhSecret...)
-	combinedSecret = append(combinedSecret, mlkemSecret...)
-
-	hybridCt := make([]byte, 0, len(ephemeralPub)+len(mlkemCt))
-	hybridCt = append(hybridCt, ephemeralPub...)
-	hybridCt = append(hybridCt, mlkemCt...)
-
-	return combinedSecret, hybridCt, nil
-}
-
-func (h nistHybridKEM) decapsulate(priv, ct []byte) ([]byte, error) {
-	if len(priv) != h.privSize() {
-		return nil, fmt.Errorf("invalid %s private key size: got %d want %d", h.keyType(), len(priv), h.privSize())
-	}
-	if len(ct) != h.ctSize() {
-		return nil, fmt.Errorf("invalid %s ciphertext size: got %d want %d", h.keyType(), len(ct), h.ctSize())
-	}
-
-	ephemeralPubBytes := ct[:h.params.ecPubSize]
-	mlkemCtBytes := ct[h.params.ecPubSize:]
-	ecPrivBytes := priv[:h.params.ecPrivSize]
-	mlkemPrivBytes := priv[h.params.ecPrivSize:]
-
-	ecPriv, err := h.params.curve.NewPrivateKey(ecPrivBytes)
-	if err != nil {
-		return nil, fmt.Errorf("invalid EC private key: %w", err)
-	}
-	ephemeralPub, err := h.params.curve.NewPublicKey(ephemeralPubBytes)
-	if err != nil {
-		return nil, fmt.Errorf("invalid ephemeral EC public key: %w", err)
-	}
-	ecdhSecret, err := ecPriv.ECDH(ephemeralPub)
-	if err != nil {
-		return nil, fmt.Errorf("ECDH failed: %w", err)
-	}
-
-	// FIPS 203 §6.3 implicit rejection: a wrong-key ciphertext yields a
-	// pseudorandom shared secret without an error here; authentication is
-	// enforced by AES-GCM at the wrap layer.
-	mlkemSecret, err := h.mlkemAdapter().decapsulate(mlkemPrivBytes, mlkemCtBytes)
-	if err != nil {
-		return nil, err
-	}
-
-	combinedSecret := make([]byte, 0, len(ecdhSecret)+len(mlkemSecret))
-	combinedSecret = append(combinedSecret, ecdhSecret...)
-	combinedSecret = append(combinedSecret, mlkemSecret...)
-
-	return combinedSecret, nil
-}
-
-func (h nistHybridKEM) publicKeyPEM(pub []byte) (string, error) {
-	return rawToPEM(h.params.pubPEMBlock, pub, h.pubSize())
-}
-
-// wrapKey derives a 32-byte AES key from the concatenated EC+ML-KEM shared
-// secret via HKDF-SHA256 over (salt, info). The KDF here is load-bearing: it
-// is the combiner that binds the two halves of the hybrid into a single
-// uniformly-random wrap key.
-func (nistHybridKEM) wrapKey(sharedSecret, salt, info []byte) ([]byte, error) {
-	return hkdfWrapKey(sharedSecret, salt, info)
-}
-
 // --- wrap / unwrap ----------------------------------------------------------
 
 // wrapDEKWithKEM encapsulates against pub, asks the scheme adapter for an
@@ -450,21 +277,6 @@ func unwrapDEKWithKEM(k kem, priv, der, salt, info []byte) ([]byte, error) {
 	return plaintext, nil
 }
 
-// hkdfWrapKey derives the AES-256 wrap key used by the hybrid PQ/T KEM
-// schemes (X-Wing, NIST EC + ML-KEM). Pure ML-KEM uses the shared secret
-// directly and does not call this helper.
-func hkdfWrapKey(sharedSecret, salt, info []byte) ([]byte, error) {
-	if len(salt) == 0 {
-		salt = defaultTDFSalt()
-	}
-	hkdfObj := hkdf.New(sha256.New, sharedSecret, salt, info)
-	derivedKey := make([]byte, kemWrapKeySize)
-	if _, err := io.ReadFull(hkdfObj, derivedKey); err != nil {
-		return nil, fmt.Errorf("hkdf failure: %w", err)
-	}
-	return derivedKey, nil
-}
-
 // --- unified encryptor / decryptor ------------------------------------------
 
 // kemEncryptor satisfies PublicKeyEncryptor for every KEM family. It replaces
@@ -530,3 +342,8 @@ func newKEMDecryptor(k kem, privateKey, salt, info []byte) (*kemDecryptor, error
 func (d *kemDecryptor) Decrypt(data []byte) ([]byte, error) {
 	return unwrapDEKWithKEM(d.k, d.privateKey, data, d.salt, d.info)
 }
+
+// KeyType reports the KEM scheme this decryptor was built for. It lets callers
+// (e.g. the service layer's assertDecryptorAlgorithm guard) confirm that a PEM
+// dispatched to the scheme they expected.
+func (d *kemDecryptor) KeyType() KeyType { return d.k.keyType() }

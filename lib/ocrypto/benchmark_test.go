@@ -3,7 +3,6 @@ package ocrypto
 import (
 	"crypto/sha256"
 	"crypto/x509"
-	"encoding/asn1"
 	"fmt"
 	"testing"
 )
@@ -57,14 +56,12 @@ func benchTDFSalt() []byte {
 	return digest.Sum(nil)
 }
 
-// BenchmarkWrapDEK mirrors the actual TDF key-wrapping paths in sdk/tdf.go:
-//   - RSA:    FromPublicPEM -> Encrypt                (generateWrapKeyWithRSA)
-//   - EC:     NewECKeyPair -> ComputeECDHKey -> HKDF -> AES-GCM  (generateWrapKeyWithEC)
-//   - Hybrid: PubKeyFromPem -> Encapsulate -> HKDF -> AES-GCM -> ASN.1 (generateWrapKeyWithHybrid)
+// BenchmarkWrapDEK mirrors the actual TDF key-wrapping paths in sdk/tdf.go.
+// Hybrid paths go through FromPublicPEM -> Encrypt, matching how the SDK now
+// dispatches via OID after the draft-14 / draft-10 conformance refactor.
 func BenchmarkWrapDEK(b *testing.B) {
 	salt := benchTDFSalt()
 
-	// RSA-2048: setup KAS public key
 	rsaKP, err := NewRSAKeyPair(2048)
 	if err != nil {
 		b.Fatal(err)
@@ -74,7 +71,6 @@ func BenchmarkWrapDEK(b *testing.B) {
 		b.Fatal(err)
 	}
 
-	// EC P-256: setup KAS public key PEM
 	ecKP, err := NewECKeyPair(ECCModeSecp256r1)
 	if err != nil {
 		b.Fatal(err)
@@ -84,7 +80,6 @@ func BenchmarkWrapDEK(b *testing.B) {
 		b.Fatal(err)
 	}
 
-	// EC P-384: setup KAS public key PEM
 	ec384KP, err := NewECKeyPair(ECCModeSecp384r1)
 	if err != nil {
 		b.Fatal(err)
@@ -94,7 +89,6 @@ func BenchmarkWrapDEK(b *testing.B) {
 		b.Fatal(err)
 	}
 
-	// X-Wing: setup KAS public key PEM
 	xwingKP, err := NewXWingKeyPair()
 	if err != nil {
 		b.Fatal(err)
@@ -104,7 +98,6 @@ func BenchmarkWrapDEK(b *testing.B) {
 		b.Fatal(err)
 	}
 
-	// P256+MLKEM768: setup KAS public key PEM
 	p256KP, err := NewP256MLKEM768KeyPair()
 	if err != nil {
 		b.Fatal(err)
@@ -114,7 +107,6 @@ func BenchmarkWrapDEK(b *testing.B) {
 		b.Fatal(err)
 	}
 
-	// P384+MLKEM1024: setup KAS public key PEM
 	p384KP, err := NewP384MLKEM1024KeyPair()
 	if err != nil {
 		b.Fatal(err)
@@ -124,7 +116,6 @@ func BenchmarkWrapDEK(b *testing.B) {
 		b.Fatal(err)
 	}
 
-	// RSA: tdf.go calls FromPublicPEM -> Encrypt
 	b.Run("RSA-2048", func(b *testing.B) {
 		for b.Loop() {
 			enc, err := FromPublicPEM(rsaPubPEM)
@@ -136,7 +127,6 @@ func BenchmarkWrapDEK(b *testing.B) {
 		b.ReportMetric(float64(len(sinkBytes)), "wrapped-bytes")
 	})
 
-	// EC: tdf.go generates ephemeral EC keypair, computes ECDH, derives via HKDF, AES-GCM wraps
 	b.Run("EC-P256", func(b *testing.B) {
 		for b.Loop() {
 			ephKP, err := NewECKeyPair(ECCModeSecp256r1)
@@ -191,105 +181,43 @@ func BenchmarkWrapDEK(b *testing.B) {
 		b.ReportMetric(float64(len(sinkBytes)), "wrapped-bytes")
 	})
 
-	// X-Wing: tdf.go parses PEM, calls Encapsulate, HKDF, AES-GCM, then ASN.1 marshal
 	b.Run("XWing", func(b *testing.B) {
 		for b.Loop() {
-			pubKey, err := XWingPubKeyFromPem([]byte(xwingPubPEM))
+			enc, err := FromPublicPEM(xwingPubPEM)
 			if err != nil {
 				b.Fatal(err)
 			}
-			ss, ct, err := xwingKEM{}.encapsulate(pubKey)
-			if err != nil {
-				b.Fatal(err)
-			}
-			wrapKey, err := CalculateHKDF(salt, ss)
-			if err != nil {
-				b.Fatal(err)
-			}
-			gcm, err := NewAESGcm(wrapKey)
-			if err != nil {
-				b.Fatal(err)
-			}
-			encDEK, err := gcm.Encrypt(testDEK)
-			if err != nil {
-				b.Fatal(err)
-			}
-			sinkBytes, errSink = asn1.Marshal(kemEnvelope{
-				KEMCiphertext: ct,
-				EncryptedDEK:  encDEK,
-			})
+			sinkBytes, errSink = enc.Encrypt(testDEK)
 		}
 		b.ReportMetric(float64(len(sinkBytes)), "wrapped-bytes")
 	})
 
-	// P256+MLKEM768: same flow as X-Wing with different Encapsulate/PEM parse
 	b.Run("P256_MLKEM768", func(b *testing.B) {
 		for b.Loop() {
-			pubKey, err := P256MLKEM768PubKeyFromPem([]byte(p256PubPEM))
+			enc, err := FromPublicPEM(p256PubPEM)
 			if err != nil {
 				b.Fatal(err)
 			}
-			ss, ct, err := nistHybridKEM{params: &p256mlkem768Params}.encapsulate(pubKey)
-			if err != nil {
-				b.Fatal(err)
-			}
-			wrapKey, err := CalculateHKDF(salt, ss)
-			if err != nil {
-				b.Fatal(err)
-			}
-			gcm, err := NewAESGcm(wrapKey)
-			if err != nil {
-				b.Fatal(err)
-			}
-			encDEK, err := gcm.Encrypt(testDEK)
-			if err != nil {
-				b.Fatal(err)
-			}
-			sinkBytes, errSink = asn1.Marshal(kemEnvelope{
-				KEMCiphertext: ct,
-				EncryptedDEK:  encDEK,
-			})
+			sinkBytes, errSink = enc.Encrypt(testDEK)
 		}
 		b.ReportMetric(float64(len(sinkBytes)), "wrapped-bytes")
 	})
 
-	// P384+MLKEM1024: same flow with P384 variant
 	b.Run("P384_MLKEM1024", func(b *testing.B) {
 		for b.Loop() {
-			pubKey, err := P384MLKEM1024PubKeyFromPem([]byte(p384PubPEM))
+			enc, err := FromPublicPEM(p384PubPEM)
 			if err != nil {
 				b.Fatal(err)
 			}
-			ss, ct, err := nistHybridKEM{params: &p384mlkem1024Params}.encapsulate(pubKey)
-			if err != nil {
-				b.Fatal(err)
-			}
-			wrapKey, err := CalculateHKDF(salt, ss)
-			if err != nil {
-				b.Fatal(err)
-			}
-			gcm, err := NewAESGcm(wrapKey)
-			if err != nil {
-				b.Fatal(err)
-			}
-			encDEK, err := gcm.Encrypt(testDEK)
-			if err != nil {
-				b.Fatal(err)
-			}
-			sinkBytes, errSink = asn1.Marshal(kemEnvelope{
-				KEMCiphertext: ct,
-				EncryptedDEK:  encDEK,
-			})
+			sinkBytes, errSink = enc.Encrypt(testDEK)
 		}
 		b.ReportMetric(float64(len(sinkBytes)), "wrapped-bytes")
 	})
 }
 
 // BenchmarkUnwrapDEK mirrors the actual KAS unwrap paths in
-// service/internal/security/standard_crypto.go:Decrypt():
-//   - RSA:    pre-loaded AsymDecryption.Decrypt (key already parsed)
-//   - EC:     ECPrivateKeyFromPem (cached) -> NewSaltedECDecryptor(TDFSalt) -> DecryptWithEphemeralKey
-//   - Hybrid: PrivateKeyFromPem -> UnwrapDEK  (PEM parsed each time in current KAS code)
+// service/internal/security/standard_crypto.go:Decrypt(). Hybrid paths now go
+// through FromPrivatePEM -> Decrypt to match the OID-routed dispatcher.
 func BenchmarkUnwrapDEK(b *testing.B) {
 	salt := benchTDFSalt()
 
@@ -319,7 +247,7 @@ func BenchmarkUnwrapDEK(b *testing.B) {
 		b.Fatal(err)
 	}
 
-	// EC P-256: KAS caches the parsed private key, creates decryptor per request
+	// EC P-256
 	ecKASKP, err := NewECKeyPair(ECCModeSecp256r1)
 	if err != nil {
 		b.Fatal(err)
@@ -332,7 +260,6 @@ func BenchmarkUnwrapDEK(b *testing.B) {
 	if err != nil {
 		b.Fatal(err)
 	}
-	// Wrap using the TDF path: ephemeral keygen + ECDH + HKDF + AES-GCM
 	ecEphKP, err := NewECKeyPair(ECCModeSecp256r1)
 	if err != nil {
 		b.Fatal(err)
@@ -361,8 +288,6 @@ func BenchmarkUnwrapDEK(b *testing.B) {
 	if err != nil {
 		b.Fatal(err)
 	}
-	// KAS receives the ephemeral public key as DER (parsed from PEM in the manifest).
-	// DecryptWithEphemeralKey first tries x509.ParsePKIXPublicKey (DER), then compressed.
 	ecEphPubECDH, err := ECPubKeyFromPem([]byte(ecEphPubPEM))
 	if err != nil {
 		b.Fatal(err)
@@ -371,13 +296,12 @@ func BenchmarkUnwrapDEK(b *testing.B) {
 	if err != nil {
 		b.Fatal(err)
 	}
-	// KAS parses private key once (cached in StandardECCrypto)
 	ecKASPrivKey, err := ECPrivateKeyFromPem([]byte(ecKASPrivPEM))
 	if err != nil {
 		b.Fatal(err)
 	}
 
-	// EC P-384: same flow as P-256, just on a different curve
+	// EC P-384
 	ec384KASKP, err := NewECKeyPair(ECCModeSecp384r1)
 	if err != nil {
 		b.Fatal(err)
@@ -431,7 +355,7 @@ func BenchmarkUnwrapDEK(b *testing.B) {
 		b.Fatal(err)
 	}
 
-	// X-Wing: KAS parses PEM each call, then calls UnwrapDEK
+	// X-Wing
 	xwingKP, err := NewXWingKeyPair()
 	if err != nil {
 		b.Fatal(err)
@@ -445,7 +369,7 @@ func BenchmarkUnwrapDEK(b *testing.B) {
 		b.Fatal(err)
 	}
 
-	// P256+MLKEM768: KAS parses PEM each call, then calls UnwrapDEK
+	// P256+MLKEM768
 	p256KP, err := NewP256MLKEM768KeyPair()
 	if err != nil {
 		b.Fatal(err)
@@ -459,7 +383,7 @@ func BenchmarkUnwrapDEK(b *testing.B) {
 		b.Fatal(err)
 	}
 
-	// P384+MLKEM1024: KAS parses PEM each call, then calls UnwrapDEK
+	// P384+MLKEM1024
 	p384KP, err := NewP384MLKEM1024KeyPair()
 	if err != nil {
 		b.Fatal(err)
@@ -473,14 +397,12 @@ func BenchmarkUnwrapDEK(b *testing.B) {
 		b.Fatal(err)
 	}
 
-	// RSA: KAS has pre-loaded AsymDecryption, just calls Decrypt
 	b.Run("RSA-2048", func(b *testing.B) {
 		for b.Loop() {
 			sinkBytes, errSink = rsaDec.Decrypt(rsaWrapped)
 		}
 	})
 
-	// EC: KAS creates NewSaltedECDecryptor(cachedSK, TDFSalt, nil) -> DecryptWithEphemeralKey
 	b.Run("EC-P256", func(b *testing.B) {
 		for b.Loop() {
 			dec, err := NewSaltedECDecryptor(ecKASPrivKey, salt, nil)
@@ -501,168 +423,33 @@ func BenchmarkUnwrapDEK(b *testing.B) {
 		}
 	})
 
-	// X-Wing: KAS parses PEM then calls UnwrapDEK
 	b.Run("XWing", func(b *testing.B) {
 		for b.Loop() {
-			privKey, err := XWingPrivateKeyFromPem([]byte(xwingPrivPEM))
+			dec, err := FromPrivatePEM(xwingPrivPEM)
 			if err != nil {
 				b.Fatal(err)
 			}
-			sinkBytes, errSink = XWingUnwrapDEK(privKey, xwingWrapped)
+			sinkBytes, errSink = dec.Decrypt(xwingWrapped)
 		}
 	})
 
-	// P256+MLKEM768: KAS parses PEM then calls UnwrapDEK
 	b.Run("P256_MLKEM768", func(b *testing.B) {
 		for b.Loop() {
-			privKey, err := P256MLKEM768PrivateKeyFromPem([]byte(p256PrivPEM))
+			dec, err := FromPrivatePEM(p256PrivPEM)
 			if err != nil {
 				b.Fatal(err)
 			}
-			sinkBytes, errSink = P256MLKEM768UnwrapDEK(privKey, p256Wrapped)
+			sinkBytes, errSink = dec.Decrypt(p256Wrapped)
 		}
 	})
 
-	// P384+MLKEM1024: KAS parses PEM then calls UnwrapDEK
 	b.Run("P384_MLKEM1024", func(b *testing.B) {
 		for b.Loop() {
-			privKey, err := P384MLKEM1024PrivateKeyFromPem([]byte(p384PrivPEM))
+			dec, err := FromPrivatePEM(p384PrivPEM)
 			if err != nil {
 				b.Fatal(err)
 			}
-			sinkBytes, errSink = P384MLKEM1024UnwrapDEK(privKey, p384Wrapped)
-		}
-	})
-}
-
-func BenchmarkHybridSubOps(b *testing.B) {
-	xwingAdapter := xwingKEM{}
-	p256Adapter := nistHybridKEM{params: &p256mlkem768Params}
-	p384Adapter := nistHybridKEM{params: &p384mlkem1024Params}
-
-	// Setup X-Wing
-	xwingKP, err := NewXWingKeyPair()
-	if err != nil {
-		b.Fatal(err)
-	}
-	xwingSS, xwingCt, err := xwingAdapter.encapsulate(xwingKP.publicKey)
-	if err != nil {
-		b.Fatal(err)
-	}
-
-	// Setup P256+MLKEM768
-	p256KP, err := NewP256MLKEM768KeyPair()
-	if err != nil {
-		b.Fatal(err)
-	}
-	p256SS, p256Ct, err := p256Adapter.encapsulate(p256KP.publicKey)
-	if err != nil {
-		b.Fatal(err)
-	}
-
-	// Setup P384+MLKEM1024
-	p384KP, err := NewP384MLKEM1024KeyPair()
-	if err != nil {
-		b.Fatal(err)
-	}
-	p384SS, p384Ct, err := p384Adapter.encapsulate(p384KP.publicKey)
-	if err != nil {
-		b.Fatal(err)
-	}
-
-	salt := defaultTDFSalt()
-
-	// Pre-derive a wrap key for AES-GCM benchmarks
-	wrapKey, err := hkdfWrapKey(xwingSS, salt, nil)
-	if err != nil {
-		b.Fatal(err)
-	}
-
-	b.Run("XWing/Encapsulate", func(b *testing.B) {
-		for b.Loop() {
-			sinkBytes, sinkBytes, errSink = xwingAdapter.encapsulate(xwingKP.publicKey)
-		}
-	})
-	b.Run("XWing/HKDF", func(b *testing.B) {
-		for b.Loop() {
-			sinkBytes, errSink = hkdfWrapKey(xwingSS, salt, nil)
-		}
-	})
-	b.Run("XWing/AES-GCM-Encrypt", func(b *testing.B) {
-		gcm, err := NewAESGcm(wrapKey)
-		if err != nil {
-			b.Fatal(err)
-		}
-		for b.Loop() {
-			sinkBytes, errSink = gcm.Encrypt(testDEK)
-		}
-	})
-	b.Run("XWing/ASN1-Marshal", func(b *testing.B) {
-		wrapped := kemEnvelope{KEMCiphertext: xwingCt, EncryptedDEK: testDEK}
-		for b.Loop() {
-			sinkBytes, errSink = asn1.Marshal(wrapped)
-		}
-	})
-
-	// P256+MLKEM768 sub-ops
-	p256WrapKey, err := hkdfWrapKey(p256SS, salt, nil)
-	if err != nil {
-		b.Fatal(err)
-	}
-	b.Run("P256_MLKEM768/Encapsulate", func(b *testing.B) {
-		for b.Loop() {
-			sinkBytes, sinkBytes, errSink = p256Adapter.encapsulate(p256KP.publicKey)
-		}
-	})
-	b.Run("P256_MLKEM768/HKDF", func(b *testing.B) {
-		for b.Loop() {
-			sinkBytes, errSink = hkdfWrapKey(p256SS, salt, nil)
-		}
-	})
-	b.Run("P256_MLKEM768/AES-GCM-Encrypt", func(b *testing.B) {
-		gcm, err := NewAESGcm(p256WrapKey)
-		if err != nil {
-			b.Fatal(err)
-		}
-		for b.Loop() {
-			sinkBytes, errSink = gcm.Encrypt(testDEK)
-		}
-	})
-	b.Run("P256_MLKEM768/ASN1-Marshal", func(b *testing.B) {
-		wrapped := kemEnvelope{KEMCiphertext: p256Ct, EncryptedDEK: testDEK}
-		for b.Loop() {
-			sinkBytes, errSink = asn1.Marshal(wrapped)
-		}
-	})
-
-	// P384+MLKEM1024 sub-ops
-	p384WrapKey, err := hkdfWrapKey(p384SS, salt, nil)
-	if err != nil {
-		b.Fatal(err)
-	}
-	b.Run("P384_MLKEM1024/Encapsulate", func(b *testing.B) {
-		for b.Loop() {
-			sinkBytes, sinkBytes, errSink = p384Adapter.encapsulate(p384KP.publicKey)
-		}
-	})
-	b.Run("P384_MLKEM1024/HKDF", func(b *testing.B) {
-		for b.Loop() {
-			sinkBytes, errSink = hkdfWrapKey(p384SS, salt, nil)
-		}
-	})
-	b.Run("P384_MLKEM1024/AES-GCM-Encrypt", func(b *testing.B) {
-		gcm, err := NewAESGcm(p384WrapKey)
-		if err != nil {
-			b.Fatal(err)
-		}
-		for b.Loop() {
-			sinkBytes, errSink = gcm.Encrypt(testDEK)
-		}
-	})
-	b.Run("P384_MLKEM1024/ASN1-Marshal", func(b *testing.B) {
-		wrapped := kemEnvelope{KEMCiphertext: p384Ct, EncryptedDEK: testDEK}
-		for b.Loop() {
-			sinkBytes, errSink = asn1.Marshal(wrapped)
+			sinkBytes, errSink = dec.Decrypt(p384Wrapped)
 		}
 	})
 }

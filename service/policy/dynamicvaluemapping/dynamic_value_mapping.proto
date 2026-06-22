@@ -1,0 +1,178 @@
+syntax = "proto3";
+
+package policy.dynamicvaluemapping;
+
+import "buf/validate/validate.proto";
+import "common/common.proto";
+import "policy/objects.proto";
+import "policy/selectors.proto";
+import "policy/subjectmapping/subject_mapping.proto";
+
+/*
+   Dynamic Value Mapping CRUD operations
+
+   A DynamicValueMapping raises entitlement authority from a concrete AttributeValue to the
+   AttributeDefinition: at decision time the value_resolver compares the requested resource
+   value segment against the entity representation, avoiding pre-provisioning a value +
+   subject mapping per discrete value.
+*/
+
+message GetDynamicValueMappingRequest {
+  // Required
+  string id = 1 [(buf.validate.field).string.uuid = true];
+}
+message GetDynamicValueMappingResponse {
+  policy.DynamicValueMapping dynamic_value_mapping = 1;
+}
+
+enum SortDynamicValueMappingsType {
+  SORT_DYNAMIC_VALUE_MAPPINGS_TYPE_UNSPECIFIED = 0;
+  SORT_DYNAMIC_VALUE_MAPPINGS_TYPE_CREATED_AT = 1;
+  SORT_DYNAMIC_VALUE_MAPPINGS_TYPE_UPDATED_AT = 2;
+}
+
+message DynamicValueMappingsSort {
+  SortDynamicValueMappingsType field = 1 [(buf.validate.field).enum.defined_only = true];
+  policy.SortDirection direction = 2 [(buf.validate.field).enum.defined_only = true];
+}
+
+message ListDynamicValueMappingsRequest {
+  // Optional: Namespace ID or FQN to filter by
+  option (buf.validate.message).oneof = {
+    fields: ["namespace_id", "namespace_fqn"]
+    required: false
+  };
+  string namespace_id = 1 [(buf.validate.field).string.uuid = true];
+  string namespace_fqn = 2 [
+    (buf.validate.field).string = {
+      min_len: 1
+      uri: true
+    }
+  ];
+
+  // Optional: Attribute Definition ID to filter by
+  string attribute_definition_id = 3 [(buf.validate.field).cel = {
+    id: "optional_uuid_format"
+    message: "Optional field must be a valid UUID"
+    expression: "size(this) == 0 || this.matches('[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}')"
+  }];
+
+  // Optional
+  policy.PageRequest pagination = 10;
+
+  // Optional - CONSTRAINT: max 1 item
+  repeated DynamicValueMappingsSort sort = 11 [(buf.validate.field).repeated.max_items = 1];
+}
+message ListDynamicValueMappingsResponse {
+  repeated policy.DynamicValueMapping dynamic_value_mappings = 1;
+
+  policy.PageResponse pagination = 10;
+}
+
+message CreateDynamicValueMappingRequest {
+  // Required: Attribute Definition ID or FQN to scope the mapping to
+  option (buf.validate.message).oneof = {
+    fields: ["attribute_definition_id", "attribute_definition_fqn"]
+    required: true
+  };
+  // Optional: Namespace ID or FQN to scope the mapping to
+  option (buf.validate.message).oneof = {
+    fields: ["namespace_id", "namespace_fqn"]
+    required: false
+  };
+
+  string attribute_definition_id = 1 [(buf.validate.field).string.uuid = true];
+  string attribute_definition_fqn = 2 [
+    (buf.validate.field).string = {
+      min_len: 1
+      uri: true
+    }
+  ];
+
+  // Required: the dynamic resolver comparing entity selector result to the resource value segment
+  policy.DynamicValueResolver value_resolver = 3 [(buf.validate.field).required = true];
+
+  // Required: actions permitted on a matched value
+  repeated policy.Action actions = 4 [
+    (buf.validate.field).repeated.min_items = 1,
+    (buf.validate.field).cel = {
+      id: "action_name_or_id_not_empty"
+      message: "Action name or ID must not be empty if provided"
+      expression: "this.all(item, item.name != '' || item.id != '')"
+    }
+  ];
+
+  // Optional static pre-gate. Reuse an existing SubjectConditionSet (prioritized) ...
+  string existing_subject_condition_set_id = 5 [(buf.validate.field).cel = {
+    id: "optional_uuid_format"
+    message: "Optional field must be a valid UUID"
+    expression: "size(this) == 0 || this.matches('[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}')"
+  }];
+  // ... or create a new one (ignored if existing_subject_condition_set_id is provided)
+  policy.subjectmapping.SubjectConditionSetCreate new_subject_condition_set = 6;
+
+  // Optional: namespace ID or FQN for the mapping
+  string namespace_id = 7 [(buf.validate.field).string.uuid = true];
+  string namespace_fqn = 8 [
+    (buf.validate.field).string = {
+      min_len: 1
+      uri: true
+    }
+  ];
+
+  // Optional
+  common.MetadataMutable metadata = 100;
+}
+message CreateDynamicValueMappingResponse {
+  policy.DynamicValueMapping dynamic_value_mapping = 1;
+}
+
+message UpdateDynamicValueMappingRequest {
+  // Required
+  string id = 1 [(buf.validate.field).string.uuid = true];
+
+  // Optional: replace the dynamic resolver
+  policy.DynamicValueResolver value_resolver = 2;
+
+  // Optional: replace the static pre-gate SubjectConditionSet by id
+  string subject_condition_set_id = 3 [(buf.validate.field).cel = {
+    id: "optional_uuid_format"
+    message: "Optional field must be a valid UUID"
+    expression: "size(this) == 0 || this.matches('[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}')"
+  }];
+
+  // Optional: replace the entire list of actions
+  repeated policy.Action actions = 4 [(buf.validate.field).cel = {
+    id: "action_name_or_id_not_empty"
+    message: "Action name or ID must not be empty if provided"
+    expression: "this.size() == 0 || this.all(item, item.name != '' || item.id != '')"
+  }];
+
+  // Common metadata
+  common.MetadataMutable metadata = 100;
+  common.MetadataUpdateEnum metadata_update_behavior = 101;
+}
+message UpdateDynamicValueMappingResponse {
+  policy.DynamicValueMapping dynamic_value_mapping = 1;
+}
+
+message DeleteDynamicValueMappingRequest {
+  // Required
+  string id = 1 [(buf.validate.field).string.uuid = true];
+}
+message DeleteDynamicValueMappingResponse {
+  // Only ID of the deleted mapping provided
+  policy.DynamicValueMapping dynamic_value_mapping = 1;
+}
+
+service DynamicValueMappingService {
+  rpc ListDynamicValueMappings(ListDynamicValueMappingsRequest) returns (ListDynamicValueMappingsResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  rpc GetDynamicValueMapping(GetDynamicValueMappingRequest) returns (GetDynamicValueMappingResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  rpc CreateDynamicValueMapping(CreateDynamicValueMappingRequest) returns (CreateDynamicValueMappingResponse) {}
+  rpc UpdateDynamicValueMapping(UpdateDynamicValueMappingRequest) returns (UpdateDynamicValueMappingResponse) {}
+  rpc DeleteDynamicValueMapping(DeleteDynamicValueMappingRequest) returns (DeleteDynamicValueMappingResponse) {}
+}

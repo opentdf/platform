@@ -91,6 +91,7 @@ func (h Handler) ListKasKeys(
 	algorithm policy.Algorithm,
 	identifier KasIdentifier,
 	legacy *bool,
+	search string,
 	sort SortOption,
 ) (*kasregistry.ListKeysResponse, error) {
 	req := kasregistry.ListKeysRequest{
@@ -116,6 +117,9 @@ func (h Handler) ListKasKeys(
 		}
 	}
 	req.Legacy = legacy
+	if search != "" {
+		req.Search = &policy.Search{Term: search}
+	}
 	if !sort.IsZero() {
 		allowedFields := map[string]kasregistry.SortKasKeysType{
 			"key_id":     kasregistry.SortKasKeysType_SORT_KAS_KEYS_TYPE_KEY_ID,

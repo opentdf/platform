@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.34.0](https://github.com/opentdf/platform/compare/protocol/go/v0.33.0...protocol/go/v0.34.0) (2026-06-17)
+
+
+### ⚠ BREAKING CHANGES
+
+* **core:** Add min_len to search term. ([#3604](https://github.com/opentdf/platform/issues/3604))
+
+### Features
+
+* **policy:** DSPX-2754 DynamicValueMapping protos + generated code ([#3580](https://github.com/opentdf/platform/issues/3580)) ([090c0f6](https://github.com/opentdf/platform/commit/090c0f65508058502d17a850691957b7beaee785))
+
+
+### Bug Fixes
+
+* **core:** Add min_len to search term. ([#3604](https://github.com/opentdf/platform/issues/3604)) ([09e22dc](https://github.com/opentdf/platform/commit/09e22dc6df01de211ca15d9f7c8dd54e7eec2abd))
+
 ## [0.33.0](https://github.com/opentdf/platform/compare/protocol/go/v0.32.0...protocol/go/v0.33.0) (2026-06-12)
 
 

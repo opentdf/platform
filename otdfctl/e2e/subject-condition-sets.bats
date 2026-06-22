@@ -39,7 +39,7 @@ teardown_file() {
   # clear out all test env vars
   unset HOST WITH_CREDS NS_NAME NS_FQN NS_ID SCS_1 SCS_2 SCS_3
 
-  rm scs.json
+  rm -f scs.json
 }
 
 @test "Create a Subject Condition Set (SCS) - from file" {
@@ -173,6 +173,22 @@ teardown_file() {
   run_delete_scs "$scs_a_id"
   run_delete_scs "$scs_b_id"
   run_delete_scs "$scs_c_id"
+}
+
+@test "List SCS supports search flag" {
+  search_token="search-scs-${BATS_TEST_NUMBER}-${RANDOM}"
+  match_id=$(./otdfctl $HOST $WITH_CREDS policy scs create --subject-sets "$SCS_1" --namespace "$NS_ID" --label "search=$search_token-match" --json | jq -r '.id')
+  other_id=$(./otdfctl $HOST $WITH_CREDS policy scs create --subject-sets "$SCS_2" --namespace "$NS_ID" --label "search=$search_token-other" --json | jq -r '.id')
+
+  run_otdfctl_scs list --namespace "$NS_ID" --search "$search_token-match" --json
+  assert_success
+  assert_equal "$(echo "$output" | jq -r --arg id "$match_id" '[.subject_condition_sets[] | select(.id == $id)] | length')" "1"
+  assert_equal "$(echo "$output" | jq -r --arg id "$other_id" '[.subject_condition_sets[] | select(.id == $id)] | length')" "0"
+
+  run_delete_scs "$match_id"
+  assert_success
+  run_delete_scs "$other_id"
+  assert_success
 }
 
 @test "Create a SCS with namespace id" {

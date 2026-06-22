@@ -2,6 +2,7 @@ package ocrypto
 
 import (
 	"encoding/asn1"
+	"encoding/pem"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -17,13 +18,19 @@ func TestXWingKeyPairAndPEM(t *testing.T) {
 	privatePEM, err := keyPair.PrivateKeyInPemFormat()
 	require.NoError(t, err)
 
-	publicKey, err := XWingPubKeyFromPem([]byte(publicPEM))
+	enc, err := FromPublicPEM(publicPEM)
 	require.NoError(t, err)
-	privateKey, err := XWingPrivateKeyFromPem([]byte(privatePEM))
+	dec, err := FromPrivatePEM(privatePEM)
 	require.NoError(t, err)
 
-	assert.Len(t, publicKey, XWingPublicKeySize)
-	assert.Len(t, privateKey, XWingPrivateKeySize)
+	wrapped, err := enc.Encrypt([]byte("round-trip"))
+	require.NoError(t, err)
+	plaintext, err := dec.Decrypt(wrapped)
+	require.NoError(t, err)
+	assert.Equal(t, []byte("round-trip"), plaintext)
+
+	assert.Len(t, keyPair.publicKey, XWingPublicKeySize)
+	assert.Len(t, keyPair.privateKey, XWingPrivateKeySize)
 	assert.Equal(t, HybridXWingKey, keyPair.GetKeyType())
 }
 
@@ -110,6 +117,33 @@ func TestXWingPEMDispatch(t *testing.T) {
 	plaintext, err := xwingDecryptor.Decrypt(wrapped)
 	require.NoError(t, err)
 	assert.Equal(t, []byte("dispatch-dek"), plaintext)
+}
+
+// TestXWingPEMShape verifies that the emitted PEM blocks carry the X-Wing
+// OID inside standard SPKI/PKCS#8 envelopes per draft-connolly-cfrg-xwing-kem-10.
+func TestXWingPEMShape(t *testing.T) {
+	kp, err := NewXWingKeyPair()
+	require.NoError(t, err)
+
+	pubPEM, err := kp.PublicKeyInPemFormat()
+	require.NoError(t, err)
+	pubBlock, _ := pem.Decode([]byte(pubPEM))
+	require.NotNil(t, pubBlock)
+	assert.Equal(t, "PUBLIC KEY", pubBlock.Type)
+	gotOID, raw, err := parseHybridSPKI(pubBlock.Bytes)
+	require.NoError(t, err)
+	assert.True(t, gotOID.Equal(oidXWing))
+	assert.Len(t, raw, XWingPublicKeySize)
+
+	privPEM, err := kp.PrivateKeyInPemFormat()
+	require.NoError(t, err)
+	privBlock, _ := pem.Decode([]byte(privPEM))
+	require.NotNil(t, privBlock)
+	assert.Equal(t, "PRIVATE KEY", privBlock.Type)
+	gotOID, raw, err = parseHybridPKCS8(privBlock.Bytes)
+	require.NoError(t, err)
+	assert.True(t, gotOID.Equal(oidXWing))
+	assert.Len(t, raw, XWingPrivateKeySize)
 }
 
 func TestXWingEncapsulate(t *testing.T) {

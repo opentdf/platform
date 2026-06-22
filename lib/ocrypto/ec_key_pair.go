@@ -212,7 +212,7 @@ func (keyPair ECKeyPair) PrivateKeyInPemFormat() (string, error) {
 
 	privateKeyPem := pem.EncodeToMemory(
 		&pem.Block{
-			Type:  "PRIVATE KEY",
+			Type:  pemBlockPrivateKey,
 			Bytes: privateKeyBytes,
 		},
 	)
@@ -232,7 +232,7 @@ func (keyPair ECKeyPair) PublicKeyInPemFormat() (string, error) {
 
 	publicKeyPem := pem.EncodeToMemory(
 		&pem.Block{
-			Type:  "PUBLIC KEY",
+			Type:  pemBlockPublicKey,
 			Bytes: publicKeyBytes,
 		},
 	)

@@ -42,15 +42,14 @@ implemented decision path makes the asymmetry concrete:
 
 - **Static: O(N).** `NewPolicyDecisionPoint` validates and retains every one of the N subject
   mappings when it builds the in-memory policy
-  ([`service/internal/access/v2/pdp.go`](../../../service/internal/access/v2/pdp.go), the loop at
-  lines 147-187). At decision time
+  ([`service/internal/access/v2/pdp.go`](../../../service/internal/access/v2/pdp.go)). At decision time
   [`EvaluateSubjectMappingsWithActions`](../../../service/internal/subjectmappingbuiltin/subject_mapping_builtin_actions.go)
   evaluates every subject mapping attached to the requested value with no short-circuit, so a single
   decision does work proportional to the number of mappings on that value (~ N / 5,000). The corpus
   also has to be read from Postgres before any of this, on every load and refresh.
 - **Dynamic: O(1) in N.** A dynamic definition carries no statically provisioned values, so
   construction retains only the few `DynamicValueMapping`s
-  ([`pdp.go`](../../../service/internal/access/v2/pdp.go) lines 189-224). The value is synthesized
+  ([`pdp.go`](../../../service/internal/access/v2/pdp.go)). The value is synthesized
   from the resource FQN at decision time and
   [`EvaluateDynamicValueMappingsWithActions`](../../../service/internal/subjectmappingbuiltin/dynamic_value_mapping_builtin.go)
   tests membership of the resource segment in the entity's selector-resolved set, so decision cost
@@ -89,8 +88,8 @@ point N and each mode it records:
   `dynamic_value_mapping` (and one action row).
 - **Load Time (ms).** Wall time to page the corpus back to exhaustion through
   `ListSubjectMappings` (page size 5,000), mirroring the PDP cache load in
-  [`EntitlementPolicyRetriever.ListAllSubjectMappings`](../../../service/internal/access/v2/policy_store.go)
-  (lines 83-107). That list query is a multi-JOIN with `JSONB_AGG` + `GROUP BY` paginated by OFFSET,
+  [`EntitlementPolicyRetriever.ListAllSubjectMappings`](../../../service/internal/access/v2/policy_store.go).
+  That list query is a multi-JOIN with `JSONB_AGG` + `GROUP BY` paginated by OFFSET,
   so deep pages at large N degrade worse than linearly. Dynamic loads via `ListDynamicValueMappings`
   in a single page.
 
@@ -106,7 +105,7 @@ heap is covered by the in-memory benchmark and is not re-measured here.
   via a `SubjectConditionSet` (`.properties.userId IN [user-i]`). This is the user-by-compartment
   cross-product the static design forces. A single value therefore carries ~ N / 5,000 mappings.
 - **Dynamic:** the same definition with no provisioned values, plus one `DynamicValueMapping`
-  (resolver selector `.properties.compartments[]`, operator `RESOURCE_VALUE_IN`). The analyst entity
+  (resolver selector `.properties.compartments[]`, comparison `EQUALS`). The analyst entity
   carries a fixed cleared-set of 50 compartments resolved from the IdP/ERS.
 - Both modes decide the same request identically (permit), so the comparison is like for like.
 

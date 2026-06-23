@@ -760,7 +760,7 @@ func (p *Provider) verifyRewrapRequests(ctx context.Context, req *kaspb.Unsigned
 				continue
 			}
 		case "hybrid-wrapped":
-			if !p.HybridTDFEnabled && !p.Preview.HybridTDFEnabled {
+			if !p.Preview.HybridTDFEnabled {
 				p.Logger.WarnContext(ctx, "hybrid-wrapped not enabled")
 				failedKAORewrap(results, kao, err400("bad request"))
 				continue
@@ -774,7 +774,7 @@ func (p *Provider) verifyRewrapRequests(ctx context.Context, req *kaspb.Unsigned
 				continue
 			}
 		case "mlkem-wrapped":
-			if !p.HybridTDFEnabled && !p.Preview.HybridTDFEnabled {
+			if !p.Preview.MLKEMTDFEnabled {
 				p.Logger.WarnContext(ctx, "mlkem-wrapped not enabled")
 				failedKAORewrap(results, kao, err400("bad request"))
 				continue

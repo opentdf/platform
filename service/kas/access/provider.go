@@ -52,15 +52,24 @@ type KASConfig struct {
 	// Enabling is required to parse KAOs with the `ec-wrapped` type,
 	// and (currently) also enables responding with ECIES encrypted responses.
 	ECTDFEnabled     bool    `mapstructure:"ec_tdf_enabled" json:"ec_tdf_enabled"`
-	HybridTDFEnabled bool    `mapstructure:"hybrid_tdf_enabled" json:"hybrid_tdf_enabled"`
 	Preview          Preview `mapstructure:"preview" json:"preview"`
 	RegisteredKASURI string  `mapstructure:"registered_kas_uri" json:"registered_kas_uri"`
 }
 
 type Preview struct {
-	ECTDFEnabled     bool `mapstructure:"ec_tdf_enabled" json:"ec_tdf_enabled"`
+	ECTDFEnabled bool `mapstructure:"ec_tdf_enabled" json:"ec_tdf_enabled"`
+	// HybridTDFEnabled is a preview feature that enables support for hybrid rewrap in TDFs.
+	// Enabling is required to parse KAOs with the `hybrid-wrapped` type,
+	// and (currently) also enables responding with hybrid encrypted responses.
+	// This feature is experimental and may be removed or changed in future releases.
+	// Enabling this will also enable ML-KEM rewrap support by default.
 	HybridTDFEnabled bool `mapstructure:"hybrid_tdf_enabled" json:"hybrid_tdf_enabled"`
-	KeyManagement    bool `mapstructure:"key_management" json:"key_management"`
+	// MLKEMTDFEnabled is a preview feature that enables support for ML-KEM rewrap in TDFs.
+	// Enabling is required to parse KAOs with the `mlkem-wrapped` type,
+	// and (currently) also enables responding with ML-KEM encrypted responses.
+	// This feature is experimental and may be removed or changed in future releases.
+	MLKEMTDFEnabled bool `mapstructure:"mlkem_tdf_enabled" json:"mlkem_tdf_enabled"`
+	KeyManagement   bool `mapstructure:"key_management" json:"key_management"`
 }
 
 // Specifies the preferred/default key for a given algorithm type.
@@ -82,11 +91,13 @@ func (p *Provider) IsReady(ctx context.Context) error {
 // overrides, and emits a warning when the configured clock skew exceeds the default.
 func (p *Provider) ApplyConfig(cfg KASConfig, securityCfg *config.SecurityConfig) {
 	p.KASConfig = cfg
+	p.normalizePreview()
 	p.securityConfig = securityCfg
 
 	if p.Logger != nil {
 		if skew := p.acceptableSkew(); skew > config.DefaultUnsafeClockSkew {
-			p.Logger.Warn("configured SRT acceptable skew exceeds default",
+			p.Logger.Warn(
+				"configured SRT acceptable skew exceeds default",
 				slog.Duration("configured_skew", skew),
 				slog.Duration("default_skew", config.DefaultUnsafeClockSkew),
 			)
@@ -145,14 +156,13 @@ func (kasCfg KASConfig) String() string {
 	}
 
 	return fmt.Sprintf(
-		"KASConfig{Keyring:%v, ECCertID:%q, RSACertID:%q, RootKey:%s, KeyCacheExpiration:%s, ECTDFEnabled:%t, HybridTDFEnabled:%t, Preview:%+v, RegisteredKASURI:%q}",
+		"KASConfig{Keyring:%v, ECCertID:%q, RSACertID:%q, RootKey:%s, KeyCacheExpiration:%s, ECTDFEnabled:%t, Preview:%+v, RegisteredKASURI:%q}",
 		kasCfg.Keyring,
 		kasCfg.ECCertID,
 		kasCfg.RSACertID,
 		rootKeySummary,
 		kasCfg.KeyCacheExpiration,
 		kasCfg.ECTDFEnabled,
-		kasCfg.HybridTDFEnabled,
 		kasCfg.Preview,
 		kasCfg.RegisteredKASURI,
 	)
@@ -171,10 +181,17 @@ func (kasCfg KASConfig) LogValue() slog.Value {
 		slog.String("root_key", rootKeyVal),
 		slog.Duration("key_cache_expiration", kasCfg.KeyCacheExpiration),
 		slog.Bool("ec_tdf_enabled", kasCfg.ECTDFEnabled),
-		slog.Bool("hybrid_tdf_enabled", kasCfg.HybridTDFEnabled),
 		slog.Any("preview", kasCfg.Preview),
 		slog.String("registered_kas_uri", kasCfg.RegisteredKASURI),
 	)
+}
+
+// normalizePreview applies implied preview settings. Enabling the hybrid
+// preview also enables ML-KEM rewrap support (see Preview.HybridTDFEnabled).
+func (kasCfg *KASConfig) normalizePreview() {
+	if kasCfg.Preview.HybridTDFEnabled {
+		kasCfg.Preview.MLKEMTDFEnabled = true
+	}
 }
 
 // If there exists *any* legacy keys, returns empty list.

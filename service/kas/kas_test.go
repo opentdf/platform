@@ -56,7 +56,7 @@ func TestFilterMechanismsByPreview(t *testing.T) {
 		{
 			name: "top-level hybrid flag on keeps hpqt only",
 			algs: allAlgs,
-			cfg:  &access.KASConfig{HybridTDFEnabled: true},
+			cfg:  &access.KASConfig{Preview: access.Preview{HybridTDFEnabled: true}},
 			want: []ocrypto.KeyType{"rsa:2048", "rsa:4096", "hpqt:xwing", "hpqt:secp256r1-mlkem768"},
 		},
 		{
@@ -68,7 +68,7 @@ func TestFilterMechanismsByPreview(t *testing.T) {
 		{
 			name: "both flags on keeps everything",
 			algs: allAlgs,
-			cfg:  &access.KASConfig{ECTDFEnabled: true, HybridTDFEnabled: true},
+			cfg:  &access.KASConfig{Preview: access.Preview{ECTDFEnabled: true, HybridTDFEnabled: true, MLKEMTDFEnabled: true}},
 			want: allAlgs,
 		},
 		{
@@ -77,13 +77,14 @@ func TestFilterMechanismsByPreview(t *testing.T) {
 			cfg: &access.KASConfig{Preview: access.Preview{
 				ECTDFEnabled:     true,
 				HybridTDFEnabled: true,
+				MLKEMTDFEnabled:  true,
 			}},
 			want: allAlgs,
 		},
 		{
 			name: "empty input returns empty",
 			algs: []ocrypto.KeyType{},
-			cfg:  &access.KASConfig{ECTDFEnabled: true, HybridTDFEnabled: true},
+			cfg:  &access.KASConfig{Preview: access.Preview{ECTDFEnabled: true, HybridTDFEnabled: true, MLKEMTDFEnabled: true}},
 			want: []ocrypto.KeyType{},
 		},
 		{
@@ -91,6 +92,18 @@ func TestFilterMechanismsByPreview(t *testing.T) {
 			algs: []ocrypto.KeyType{"rsa:2048"},
 			cfg:  &access.KASConfig{},
 			want: []ocrypto.KeyType{"rsa:2048"},
+		},
+		{
+			name: "hybrid on, mlkem off drops pure mlkem but keeps hybrid",
+			algs: []ocrypto.KeyType{"rsa:2048", "hpqt:xwing", "mlkem:768", "mlkem:1024"},
+			cfg:  &access.KASConfig{Preview: access.Preview{HybridTDFEnabled: true}},
+			want: []ocrypto.KeyType{"rsa:2048", "hpqt:xwing"},
+		},
+		{
+			name: "mlkem on keeps pure mlkem",
+			algs: []ocrypto.KeyType{"rsa:2048", "hpqt:xwing", "mlkem:768", "mlkem:1024"},
+			cfg:  &access.KASConfig{Preview: access.Preview{HybridTDFEnabled: true, MLKEMTDFEnabled: true}},
+			want: []ocrypto.KeyType{"rsa:2048", "hpqt:xwing", "mlkem:768", "mlkem:1024"},
 		},
 	}
 
@@ -171,7 +184,7 @@ func TestLogSupportedMechanisms_EmitsInfoLine(t *testing.T) {
 		},
 		{
 			name:           "both preview flags",
-			cfg:            &access.KASConfig{Preview: access.Preview{ECTDFEnabled: true, HybridTDFEnabled: true}},
+			cfg:            &access.KASConfig{Preview: access.Preview{ECTDFEnabled: true, HybridTDFEnabled: true, MLKEMTDFEnabled: true}},
 			wantMechanisms: []string{"ec:secp256r1", "hpqt:xwing", "rsa:2048"},
 		},
 	}

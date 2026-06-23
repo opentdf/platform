@@ -29,8 +29,8 @@ func OnConfigUpdate(p *access.Provider) serviceregistry.OnConfigUpdateHook {
 		}
 
 		p.ApplyConfig(kasCfg, p.SecurityConfig())
-		p.Logger.TraceContext(ctx, "kas config reloaded", slog.Any("config", kasCfg))
-		logSupportedMechanisms(ctx, p.Logger, p.KeyDelegator, &kasCfg)
+		p.Logger.TraceContext(ctx, "kas config reloaded", slog.Any("config", p.KASConfig))
+		logSupportedMechanisms(ctx, p.Logger, p.KeyDelegator, &p.KASConfig)
 
 		return nil
 	}
@@ -115,8 +115,8 @@ func NewRegistration() *serviceregistry.Service[kasconnect.AccessServiceHandler]
 				p.ApplyConfig(kasCfg, srp.Security)
 				p.Tracer = srp.Tracer
 
-				srp.Logger.Debug("kas config loaded", slog.Any("config", kasCfg))
-				logSupportedMechanisms(context.Background(), srp.Logger, p.KeyDelegator, &kasCfg)
+				srp.Logger.Debug("kas config loaded", slog.Any("config", p.KASConfig))
+				logSupportedMechanisms(context.Background(), srp.Logger, p.KeyDelegator, &p.KASConfig)
 
 				if err := srp.RegisterReadinessCheck("kas", p.IsReady); err != nil {
 					srp.Logger.Error("failed to register kas readiness check", slog.String("error", err.Error()))
@@ -198,17 +198,18 @@ func logSupportedMechanisms(ctx context.Context, l *logger.Logger, kd *trust.Del
 
 // filterMechanismsByPreview drops algorithms whose corresponding rewrap path is
 // disabled. Keep aligned with the gating in service/kas/access/rewrap.go for
-// "ec-wrapped" and "hybrid-wrapped" key access objects.
+// "ec-wrapped", "hybrid-wrapped", and "mlkem-wrapped" key access objects.
 func filterMechanismsByPreview(algs []ocrypto.KeyType, kasCfg *access.KASConfig) []ocrypto.KeyType {
 	ecEnabled := kasCfg.ECTDFEnabled || kasCfg.Preview.ECTDFEnabled
-	hybridEnabled := kasCfg.HybridTDFEnabled || kasCfg.Preview.HybridTDFEnabled
 
 	out := make([]ocrypto.KeyType, 0, len(algs))
 	for _, a := range algs {
 		switch {
 		case !ecEnabled && ocrypto.IsECKeyType(a):
 			continue
-		case !hybridEnabled && ocrypto.IsHybridKeyType(a):
+		case !kasCfg.Preview.HybridTDFEnabled && (ocrypto.IsHybridKeyType(a) || ocrypto.IsMLKEMKeyType(a)):
+			continue
+		case !kasCfg.Preview.MLKEMTDFEnabled && ocrypto.IsMLKEMKeyType(a):
 			continue
 		}
 		out = append(out, a)

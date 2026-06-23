@@ -252,7 +252,8 @@ func TestWithConnectAndIPCInterceptorsTogether(t *testing.T) {
 	require.Len(t, cfg.extraIPCInterceptors, 1, "expected 1 IPC interceptor")
 
 	// Verify slices are independent (not sharing backing array)
-	assert.NotSame(t,
+	assert.NotSame(
+		t,
 		&cfg.extraConnectInterceptors[0],
 		&cfg.extraIPCInterceptors[0],
 		"connect and IPC interceptor slices must be independent",

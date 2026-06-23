@@ -72,7 +72,7 @@ func generateKeys(alg policy.Algorithm) (string, string, error) {
 func generateKeyPair(alg policy.Algorithm) (ocrypto.KeyPair, error) {
 	var key ocrypto.KeyPair
 	var err error
-	switch alg { //nolint:exhaustive // HPQT hybrid algorithms are intentionally unsupported by otdfctl
+	switch alg {
 	case policy.Algorithm_ALGORITHM_RSA_2048:
 		key, err = generateRSAKey(rsa2048Len)
 	case policy.Algorithm_ALGORITHM_RSA_4096:
@@ -83,9 +83,12 @@ func generateKeyPair(alg policy.Algorithm) (ocrypto.KeyPair, error) {
 		key, err = generateECCKey(ecSecp384Len)
 	case policy.Algorithm_ALGORITHM_EC_P521:
 		key, err = generateECCKey(ecSecp521Len)
-	// HPQT hybrid algorithms are intentionally disabled in otdfctl (#3625)
-	// pending the IETF key-format migration. Pure ML-KEM is conformant and
-	// stays enabled.
+	case policy.Algorithm_ALGORITHM_HPQT_XWING:
+		key, err = ocrypto.NewKeyPair(ocrypto.HybridXWingKey)
+	case policy.Algorithm_ALGORITHM_HPQT_SECP256R1_MLKEM768:
+		key, err = ocrypto.NewKeyPair(ocrypto.HybridSecp256r1MLKEM768Key)
+	case policy.Algorithm_ALGORITHM_HPQT_SECP384R1_MLKEM1024:
+		key, err = ocrypto.NewKeyPair(ocrypto.HybridSecp384r1MLKEM1024Key)
 	case policy.Algorithm_ALGORITHM_MLKEM_768:
 		key, err = ocrypto.NewKeyPair(ocrypto.MLKEM768Key)
 	case policy.Algorithm_ALGORITHM_MLKEM_1024:

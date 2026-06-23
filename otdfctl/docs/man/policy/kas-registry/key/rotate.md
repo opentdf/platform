@@ -88,6 +88,9 @@ otdfctl policy kas-registry key rotate --key "public-key-old" --kas "Secondary K
     | `ec:secp256r1` |
     | `ec:secp384r1` |
     | `ec:secp521r1` |
+    | `hpqt:secp256r1-mlkem768` |
+    | `hpqt:secp384r1-mlkem1024` |
+    | `hpqt:xwing`   |
     | `mlkem:768`    |
     | `mlkem:1024`   |
 

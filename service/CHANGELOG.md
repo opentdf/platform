@@ -1,5 +1,32 @@
 # Changelog
 
+## [0.18.0](https://github.com/opentdf/platform/compare/service/v0.17.0...service/v0.18.0) (2026-06-23)
+
+
+### ⚠ BREAKING CHANGES
+
+* **core:** conform hybrid PQ/T key formats to IETF drafts ([#3563](https://github.com/opentdf/platform/issues/3563))
+* **core:** Add min_len to search term. ([#3604](https://github.com/opentdf/platform/issues/3604))
+
+### Features
+
+* **authz:** enrich casbin authorization ([#3614](https://github.com/opentdf/platform/issues/3614)) ([8702ac1](https://github.com/opentdf/platform/commit/8702ac1760ba0952f3e6876dd733d7a20c9438cc))
+* **core:** Add search term information to protos. ([#3547](https://github.com/opentdf/platform/issues/3547)) ([40f35df](https://github.com/opentdf/platform/commit/40f35df8b9ed6299498f03821475f88526d9a5eb))
+* **core:** Add statement timeout parameter. ([#3544](https://github.com/opentdf/platform/issues/3544)) ([0ec99ee](https://github.com/opentdf/platform/commit/0ec99ee84a44bb2798038d421cfd9167f73036bd))
+* **core:** Adds comprehensive DPoP (RFC 9449) support ([#3582](https://github.com/opentdf/platform/issues/3582)) ([8a00646](https://github.com/opentdf/platform/commit/8a006469dc6e55455a2ce4715415671d39670ef6))
+* **core:** conform hybrid PQ/T key formats to IETF drafts ([#3563](https://github.com/opentdf/platform/issues/3563)) ([dc18568](https://github.com/opentdf/platform/commit/dc1856831383de1c5880121518c0fb83c429a5a5))
+* **policy:** Add the ability to do substring search ([#3551](https://github.com/opentdf/platform/issues/3551)) ([33b6fd7](https://github.com/opentdf/platform/commit/33b6fd7823bdcb1391d1bd4fb0211dfe1de704e6))
+* **policy:** DSPX-2754 DynamicValueMapping protos + generated code ([#3580](https://github.com/opentdf/platform/issues/3580)) ([090c0f6](https://github.com/opentdf/platform/commit/090c0f65508058502d17a850691957b7beaee785))
+* **policy:** DSPX-2998 optionally namespace resource mappings ([#3567](https://github.com/opentdf/platform/issues/3567)) ([2b6d54c](https://github.com/opentdf/platform/commit/2b6d54c1149f538ee1df3bdf17fb5e872b337b30))
+
+
+### Bug Fixes
+
+* **core:** Add min_len to search term. ([#3604](https://github.com/opentdf/platform/issues/3604)) ([09e22dc](https://github.com/opentdf/platform/commit/09e22dc6df01de211ca15d9f7c8dd54e7eec2abd))
+* **core:** log at debug instead of error for expected IPC missing client id state ([#3636](https://github.com/opentdf/platform/issues/3636)) ([fe7f787](https://github.com/opentdf/platform/commit/fe7f787944c774d16a03ecbfe92aa7c0e22575f4))
+* **deps:** bump github.com/opentdf/platform/sdk from 0.21.0 to 0.22.0 in /service ([#3618](https://github.com/opentdf/platform/issues/3618)) ([23b639a](https://github.com/opentdf/platform/commit/23b639afe1a1207d6fd69f0d876ffcc783990c27))
+* **deps:** Update to latest sdk, protos, ocrypto. ([#3658](https://github.com/opentdf/platform/issues/3658)) ([a47b3f1](https://github.com/opentdf/platform/commit/a47b3f1b9888e4cb0d4d1dacafa4e19ef1f0ca54))
+
 ## [0.17.0](https://github.com/opentdf/platform/compare/service/v0.16.0...service/v0.17.0) (2026-06-11)
 
 

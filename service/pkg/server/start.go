@@ -18,6 +18,7 @@ import (
 	"github.com/opentdf/platform/sdk/auth/oauth"
 	"github.com/opentdf/platform/sdk/httputil"
 	"github.com/opentdf/platform/service/internal/auth"
+	"github.com/opentdf/platform/service/internal/auth/authz"
 	"github.com/opentdf/platform/service/internal/server"
 	"github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/pkg/cache"
@@ -193,6 +194,11 @@ func Start(f ...StartOptions) error {
 		cfg.Server.CORS.AdditionalExposedHeaders = append(cfg.Server.CORS.AdditionalExposedHeaders, startConfig.additionalCORSExposedHeaders...)
 	}
 
+	// Create the global authz resolver registry before the server/authenticator.
+	// Services receive scoped views of this same registry during startup.
+	authzResolverRegistry := authz.NewResolverRegistry()
+	cfg.Server.AuthzResolverRegistry = authzResolverRegistry
+
 	// Create new server for grpc & http. Also will support in process grpc potentially too
 	logger.Debug("initializing opentdf server")
 	cfg.Server.WellKnownConfigRegister = wellknown.RegisterConfiguration
@@ -309,6 +315,7 @@ func Start(f ...StartOptions) error {
 		logger:                 logger,
 		reg:                    svcRegistry,
 		cacheManager:           cacheManager,
+		authzResolverRegistry:  authzResolverRegistry,
 	})
 	if err != nil {
 		logger.Error("issue starting services", slog.String("error", err.Error()))

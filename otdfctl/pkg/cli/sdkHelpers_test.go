@@ -17,6 +17,9 @@ func TestKeyAlgToEnum_RoundTrip(t *testing.T) {
 		{"ec:secp256r1", policy.Algorithm_ALGORITHM_EC_P256},
 		{"ec:secp384r1", policy.Algorithm_ALGORITHM_EC_P384},
 		{"ec:secp521r1", policy.Algorithm_ALGORITHM_EC_P521},
+		{"hpqt:xwing", policy.Algorithm_ALGORITHM_HPQT_XWING},
+		{"hpqt:secp256r1-mlkem768", policy.Algorithm_ALGORITHM_HPQT_SECP256R1_MLKEM768},
+		{"hpqt:secp384r1-mlkem1024", policy.Algorithm_ALGORITHM_HPQT_SECP384R1_MLKEM1024},
 	}
 
 	for _, tt := range tests {

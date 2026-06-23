@@ -1,7 +1,6 @@
 package ocrypto
 
 import (
-	"bytes"
 	"encoding/asn1"
 	"encoding/pem"
 	"errors"
@@ -130,11 +129,7 @@ func normalizeMLKEMPublicKey(input []byte, expectedRawSize int, expectedOID asn1
 		return input, nil
 	}
 
-	if bytes.HasPrefix(input, []byte("-----BEGIN")) {
-		block, _ := pem.Decode(input)
-		if block == nil {
-			return nil, errors.New("failed to decode PEM block")
-		}
+	if block, _ := pem.Decode(input); block != nil {
 		if block.Type != pemBlockPublicKey {
 			return nil, fmt.Errorf("expected %s PEM block, got %s", pemBlockPublicKey, block.Type)
 		}

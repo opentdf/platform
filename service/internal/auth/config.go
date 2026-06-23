@@ -24,14 +24,14 @@ type Config struct {
 
 // AuthNConfig is the configuration need for the platform to validate tokens
 type AuthNConfig struct { //nolint:revive // AuthNConfig is a valid name
-	EnforceDPoP  bool          `mapstructure:"enforceDPoP" json:"enforceDPoP" default:"false"`
-	Issuer       string        `mapstructure:"issuer" json:"issuer"`
-	Audience     string        `mapstructure:"audience" json:"audience"`
-	Policy       internalauthz.PolicyConfig  `mapstructure:"policy" json:"policy"`
-	CacheRefresh string        `mapstructure:"cache_refresh_interval" json:"cache_refresh_interval"`
-	DPoPSkew     time.Duration `mapstructure:"dpopskew" json:"dpopskew" default:"1h"`
-	TokenSkew    time.Duration `mapstructure:"skew" json:"skew" default:"1m"`
-	DPoP         DPoPConfig    `mapstructure:"dpop" json:"dpop"`
+	EnforceDPoP  bool                       `mapstructure:"enforceDPoP" json:"enforceDPoP" default:"false"`
+	Issuer       string                     `mapstructure:"issuer" json:"issuer"`
+	Audience     string                     `mapstructure:"audience" json:"audience"`
+	Policy       internalauthz.PolicyConfig `mapstructure:"policy" json:"policy"`
+	CacheRefresh string                     `mapstructure:"cache_refresh_interval" json:"cache_refresh_interval"`
+	DPoPSkew     time.Duration              `mapstructure:"dpopskew" json:"dpopskew" default:"1h"`
+	TokenSkew    time.Duration              `mapstructure:"skew" json:"skew" default:"1m"`
+	DPoP         DPoPConfig                 `mapstructure:"dpop" json:"dpop"`
 }
 
 type DPoPConfig struct {

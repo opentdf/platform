@@ -486,10 +486,10 @@ func (a Authentication) MuxHandler(handler http.Handler) http.Handler {
 			w.Header().Set("DPoP-Nonce", a.dpopNonceManager.getCurrentNonce())
 		}
 
-		clientID, err := a.subjectExtractor.ClientIDFromToken(ctxWithAuthX, accessTok) //nolint:contextcheck // r.Context includes public route state.
+		clientID, err := a.subjectExtractor.ClientIDFromToken(ctxWithAuthX, accessTok)
 		if err != nil {
-			log.WarnContext( //nolint:contextcheck // r.Context was enriched with public route state.
-				r.Context(),
+			log.WarnContext(
+				ctxWithAuthX,
 				"could not determine client ID from token",
 				slog.Any("err", err),
 			)
@@ -520,35 +520,35 @@ func (a Authentication) MuxHandler(handler http.Handler) http.Handler {
 		}
 		ctxWithClaims, err := a.subjectExtractor.ContextWithClaims(ctxWithAuthX, accessTok, roleReq)
 		if err != nil {
-			log.WarnContext(ctxWithClaims, "role provider error", slog.Any("error", err)) //nolint:contextcheck // request context is already derived with public route state above.
+			log.WarnContext(ctxWithClaims, "role provider error", slog.Any("error", err))
 			http.Error(w, "internal server error", http.StatusInternalServerError)
 			return
 		}
 		if a.authorizer == nil {
-			log.ErrorContext(ctxWithClaims, "authorizer not initialized") //nolint:contextcheck // checkToken derives ctx from r.Context.
+			log.ErrorContext(ctxWithClaims, "authorizer not initialized")
 			http.Error(w, "internal server error", http.StatusInternalServerError)
 			return
 		}
 		// Extra HTTP handlers do not use Connect resolvers, so v2 authorizers receive no
 		// resource dimensions here. Dimension-scoped v2 policy therefore fails closed
 		// unless the policy explicitly allows wildcard dimensions for this path.
-		decision, err := a.authorizer.Authorize(ctxWithClaims, &internalauthz.Request{ //nolint:contextcheck // checkToken derives ctx from r.Context.
+		decision, err := a.authorizer.Authorize(ctxWithClaims, &internalauthz.Request{
 			Token:  accessTok,
 			RPC:    r.URL.Path,
 			Action: roleReq.Action,
 		})
 		if err != nil {
-			log.ErrorContext(ctxWithClaims, "authorization error", slog.Any("error", err)) //nolint:contextcheck // checkToken derives ctx from r.Context.
+			log.ErrorContext(ctxWithClaims, "authorization error", slog.Any("error", err))
 			http.Error(w, "internal server error", http.StatusInternalServerError)
 			return
 		}
 		if decision == nil {
-			log.ErrorContext(ctxWithClaims, "authorization error", slog.String("error", "authorizer returned nil decision")) //nolint:contextcheck // checkToken derives ctx from r.Context.
+			log.ErrorContext(ctxWithClaims, "authorization error", slog.String("error", "authorizer returned nil decision"))
 			http.Error(w, "internal server error", http.StatusInternalServerError)
 			return
 		}
 		if !decision.Allowed {
-			log.WarnContext( //nolint:contextcheck // checkToken derives ctx from r.Context.
+			log.WarnContext(
 				ctxWithClaims,
 				"permission denied",
 				permissionDeniedDecisionLogAttrs(accessTok, decision, nil)...,

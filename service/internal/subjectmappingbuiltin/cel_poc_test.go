@@ -23,6 +23,7 @@ import (
 	"github.com/opentdf/platform/lib/flattening"
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/service/internal/subjectmappingbuiltin"
+	"github.com/opentdf/platform/service/internal/subjectmappingbuiltin/celeval"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -93,23 +94,16 @@ func celPOCEval(t *testing.T, env *cel.Env, expr string, values, targets []strin
 	return result
 }
 
-// celExprForLegacyOperator maps each legacy SubjectMappingOperatorEnum to a CEL expression over
-// (values, targets). This is the core of the spike: it shows the bespoke operators are
-// expressible in CEL without custom built-ins.
-//
-//nolint:exhaustive // UNSPECIFIED has no operator semantics to express in CEL
-var celExprForLegacyOperator = map[policy.SubjectMappingOperatorEnum]string{
-	policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_IN:          `targets.exists(t, t in values)`,
-	policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_NOT_IN:      `!targets.exists(t, t in values)`,
-	policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_IN_CONTAINS: `targets.exists(t, values.exists(v, v.contains(t)))`,
-}
-
 // TestCEL_LegacyOperatorEquivalence asserts that, for every legacy operator across a matrix of
-// target sets and entities, the CEL expression result equals the native EvaluateCondition
-// result. This is acceptance criterion #1.
+// target sets and entities, a condition lowered to CEL by celeval evaluates to the same result as
+// the native EvaluateCondition. This is acceptance criterion #1; celeval is the real lowering used
+// by the benchmarks, so this exercises production-shaped code rather than hand-written expressions.
 func TestCEL_LegacyOperatorEquivalence(t *testing.T) {
-	env := celPOCEnv(t)
-
+	operators := []policy.SubjectMappingOperatorEnum{
+		policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_IN,
+		policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_NOT_IN,
+		policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_IN_CONTAINS,
+	}
 	targetSets := [][]string{
 		{"option1", "option2"},
 		{"option3"},
@@ -117,23 +111,30 @@ func TestCEL_LegacyOperatorEquivalence(t *testing.T) {
 		{"acme.com"},
 	}
 
-	for op, expr := range celExprForLegacyOperator {
+	for _, op := range operators {
 		for _, targets := range targetSets {
-			for entityName, flat := range celPOCEntities {
-				condition := &policy.Condition{
-					SubjectExternalSelectorValue: celPOCSelector,
-					Operator:                     op,
-					SubjectExternalValues:        targets,
-				}
+			condition := &policy.Condition{
+				SubjectExternalSelectorValue: celPOCSelector,
+				Operator:                     op,
+				SubjectExternalValues:        targets,
+			}
+			// Wrap in a single-condition AND group so EvaluateSubjectSet(ss) == EvaluateCondition(c).
+			ss := &policy.SubjectSet{ConditionGroups: []*policy.ConditionGroup{{
+				BooleanOperator: policy.ConditionBooleanTypeEnum_CONDITION_BOOLEAN_TYPE_ENUM_AND,
+				Conditions:      []*policy.Condition{condition},
+			}}}
+			prog, err := celeval.CompileSubjectSet(ss)
+			require.NoError(t, err)
 
+			for entityName, flat := range celPOCEntities {
 				native, err := subjectmappingbuiltin.EvaluateCondition(condition, flat)
 				require.NoError(t, err)
 
-				values := celPOCSelectStrings(flat)
-				celResult := celPOCEval(t, env, expr, values, targets)
+				celResult, err := prog.Eval(flat)
+				require.NoError(t, err)
 
 				assert.Equalf(t, native, celResult,
-					"operator=%s expr=%q entity=%s targets=%v", op, expr, entityName, targets)
+					"operator=%s entity=%s targets=%v src=%q", op, entityName, targets, prog.Source())
 			}
 		}
 	}

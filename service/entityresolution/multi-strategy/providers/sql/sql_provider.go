@@ -57,7 +57,7 @@ func ensureDriverRegistered(driver string) {
 func normalizeDriverName(driver string) string {
 	driver = strings.ToLower(strings.TrimSpace(driver))
 	switch driver {
-	case postgresDriverAlias, postgresQLDriverAlias:
+	case pgxDriverAlias, postgresDriverAlias, postgresQLDriverAlias:
 		return defaultPostgreSQLDriver
 	default:
 		return driver
@@ -74,8 +74,8 @@ type Provider struct {
 
 // NewProvider creates a new SQL provider
 func NewProvider(ctx context.Context, name string, config Config) (*Provider, error) {
-	// Normalize aliases so "postgres" and "postgresql" use the registered pgx
-	// database/sql driver name.
+	// Normalize aliases so "pgx", "postgres", and "postgresql" use the
+	// registered pgx/v5 database/sql driver name.
 	config.Driver = normalizeDriverName(config.Driver)
 
 	// Register the database/sql driver for this provider's configured driver name

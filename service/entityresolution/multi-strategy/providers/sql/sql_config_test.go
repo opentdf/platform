@@ -20,18 +20,18 @@ func TestNormalizeDriverName(t *testing.T) {
 	}{
 		{
 			name:   "pgx",
-			driver: "pgx",
-			want:   "pgx",
+			driver: pgxDriverAlias,
+			want:   defaultPostgreSQLDriver,
 		},
 		{
 			name:   "postgres alias",
 			driver: postgresDriverAlias,
-			want:   "pgx",
+			want:   defaultPostgreSQLDriver,
 		},
 		{
 			name:   "postgresql alias with whitespace and case",
 			driver: " PostgreSQL ",
-			want:   "pgx",
+			want:   defaultPostgreSQLDriver,
 		},
 		{
 			name:   "other driver",
@@ -50,7 +50,7 @@ func TestNormalizeDriverName(t *testing.T) {
 }
 
 func TestBuildConnectionStringSupportsPostgresAliases(t *testing.T) {
-	tests := []string{"pgx", postgresDriverAlias, postgresQLDriverAlias, "Postgres"}
+	tests := []string{defaultPostgreSQLDriver, pgxDriverAlias, postgresDriverAlias, postgresQLDriverAlias, "Postgres"}
 
 	for _, driver := range tests {
 		t.Run(driver, func(t *testing.T) {

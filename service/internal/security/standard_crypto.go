@@ -120,7 +120,8 @@ func loadKeys(ks []KeyPairInfo) (*StandardCrypto, error) {
 	keysByAlg := make(map[string]keylist)
 	keysByID := make(keylist)
 	for _, k := range ks {
-		slog.Info("crypto cfg loading",
+		slog.Info(
+			"crypto cfg loading",
 			slog.Any("id", k.KID),
 			slog.Any("alg", k.Algorithm),
 		)
@@ -163,12 +164,26 @@ func loadKey(k KeyPairInfo) (any, error) {
 			ecCertificatePEM: string(certPEM),
 		}, nil
 	case AlgorithmHPQTXWing:
+		dec, err := ocrypto.FromPrivatePEM(string(privatePEM))
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse X-Wing private key: %w", err)
+		}
+		if err := assertDecryptorAlgorithm(dec, k.Algorithm, k.KID); err != nil {
+			return nil, err
+		}
 		return StandardXWingCrypto{
 			KeyPairInfo:        k,
 			xwingPrivateKeyPem: string(privatePEM),
 			xwingPublicKeyPem:  string(certPEM),
 		}, nil
 	case AlgorithmHPQTSecp256r1MLKEM768, AlgorithmHPQTSecp384r1MLKEM1024:
+		dec, err := ocrypto.FromPrivatePEM(string(privatePEM))
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse hybrid private key: %w", err)
+		}
+		if err := assertDecryptorAlgorithm(dec, k.Algorithm, k.KID); err != nil {
+			return nil, err
+		}
 		return StandardHybridCrypto{
 			KeyPairInfo:         k,
 			hybridPrivateKeyPem: string(privatePEM),
@@ -247,7 +262,8 @@ func loadDeprecatedKeys(rsaKeys map[string]StandardKeyInfo, ecKeys map[string]St
 		keysByID[id] = k
 	}
 	for id, kasInfo := range ecKeys {
-		slog.Info("cfg.ECKeys",
+		slog.Info(
+			"cfg.ECKeys",
 			slog.String("id", id),
 			slog.Any("kasInfo", kasInfo),
 		)
@@ -504,12 +520,14 @@ func (s *StandardCrypto) Decrypt(_ context.Context, keyID trust.KeyIdentifier, c
 			return nil, errors.New("ephemeral public key should not be provided for X-Wing decryption")
 		}
 
-		privateKey, err := ocrypto.XWingPrivateKeyFromPem([]byte(key.xwingPrivateKeyPem))
+		dec, err := ocrypto.FromPrivatePEM(key.xwingPrivateKeyPem)
 		if err != nil {
 			return nil, fmt.Errorf("failed to parse X-Wing private key: %w", err)
 		}
-
-		rawKey, err = ocrypto.XWingUnwrapDEK(privateKey, ciphertext)
+		if err := assertDecryptorAlgorithm(dec, key.Algorithm, kid); err != nil {
+			return nil, err
+		}
+		rawKey, err = dec.Decrypt(ciphertext)
 		if err != nil {
 			return nil, fmt.Errorf("failed to decrypt with X-Wing: %w", err)
 		}
@@ -519,27 +537,16 @@ func (s *StandardCrypto) Decrypt(_ context.Context, keyID trust.KeyIdentifier, c
 			return nil, errors.New("ephemeral public key should not be provided for hybrid decryption")
 		}
 
-		switch key.Algorithm {
-		case AlgorithmHPQTSecp256r1MLKEM768:
-			privateKey, err := ocrypto.P256MLKEM768PrivateKeyFromPem([]byte(key.hybridPrivateKeyPem))
-			if err != nil {
-				return nil, fmt.Errorf("failed to parse P256-MLKEM768 private key: %w", err)
-			}
-			rawKey, err = ocrypto.P256MLKEM768UnwrapDEK(privateKey, ciphertext)
-			if err != nil {
-				return nil, fmt.Errorf("failed to decrypt with P256-MLKEM768: %w", err)
-			}
-		case AlgorithmHPQTSecp384r1MLKEM1024:
-			privateKey, err := ocrypto.P384MLKEM1024PrivateKeyFromPem([]byte(key.hybridPrivateKeyPem))
-			if err != nil {
-				return nil, fmt.Errorf("failed to parse P384-MLKEM1024 private key: %w", err)
-			}
-			rawKey, err = ocrypto.P384MLKEM1024UnwrapDEK(privateKey, ciphertext)
-			if err != nil {
-				return nil, fmt.Errorf("failed to decrypt with P384-MLKEM1024: %w", err)
-			}
-		default:
-			return nil, fmt.Errorf("unsupported hybrid algorithm [%s]", key.Algorithm)
+		dec, err := ocrypto.FromPrivatePEM(key.hybridPrivateKeyPem)
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse hybrid private key: %w", err)
+		}
+		if err := assertDecryptorAlgorithm(dec, key.Algorithm, kid); err != nil {
+			return nil, err
+		}
+		rawKey, err = dec.Decrypt(ciphertext)
+		if err != nil {
+			return nil, fmt.Errorf("failed to decrypt with hybrid [%s]: %w", key.Algorithm, err)
 		}
 
 	default:
@@ -547,4 +554,17 @@ func (s *StandardCrypto) Decrypt(_ context.Context, keyID trust.KeyIdentifier, c
 	}
 
 	return ocrypto.NewAESProtectedKey(rawKey)
+}
+
+// assertDecryptorAlgorithm cross-checks an OID-routed decryptor (from
+// ocrypto.FromPrivatePEM) against the algorithm the key record claims. Hybrid
+// decryptors expose a KeyType() method; if the routed decryptor lacks that
+// method or reports a different scheme, the stored PEM does not match its
+// metadata and we must refuse to decrypt under the asserted algorithm.
+func assertDecryptorAlgorithm(dec ocrypto.PrivateKeyDecryptor, expected, kid string) error {
+	kt, ok := dec.(interface{ KeyType() ocrypto.KeyType })
+	if !ok || string(kt.KeyType()) != expected {
+		return fmt.Errorf("hybrid key %s algorithm mismatch: PEM dispatched away from %s", kid, expected)
+	}
+	return nil
 }

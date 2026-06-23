@@ -3,8 +3,10 @@ package auth
 import (
 	"context"
 	"crypto"
+	"crypto/rand"
 	"crypto/sha256"
 	"encoding/base64"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -13,7 +15,10 @@ import (
 	"net/url"
 	"path"
 	"slices"
+	"sort"
 	"strings"
+	"sync"
+	"sync/atomic"
 	"time"
 
 	"connectrpc.com/connect"
@@ -73,6 +78,7 @@ var (
 const (
 	refreshInterval                     = 15 * time.Minute
 	dpopJWTType                         = "dpop+jwt"
+	dpopNonceBytes                      = 16
 	casbinAuthzConfiguredGroupsClaimKey = "configured_groups_claim"
 	ActionRead                          = "read"
 	ActionWrite                         = "write"
@@ -83,7 +89,8 @@ const (
 
 // Authentication holds a jwks cache and information about the openid configuration
 type Authentication struct {
-	enforceDPoP bool
+	enforceDPoP   bool
+	strictDPoPHTU bool
 	// tokenVerifier validates access tokens against the configured IdP.
 	tokenVerifier *TokenVerifier
 	// openidConfigurations holds the openid configuration for the issuer
@@ -100,6 +107,10 @@ type Authentication struct {
 	ipcReauthRoutes []string
 	// Custom Logger
 	logger *logger.Logger
+	// DPoP nonce management
+	dpopNonceManager *dpopNonceManager
+	// dpopReplayCache rejects replayed DPoP proofs by `jti`
+	dpopReplayCache *dpopReplayCache
 
 	// Used for testing
 	_testCheckTokenFunc func(ctx context.Context, authHeader []string, dpopInfo receiverInfo, dpopHeader []string) (jwt.Token, context.Context, error)
@@ -116,11 +127,93 @@ func WithAuthzResolverRegistry(registry *internalauthz.ResolverRegistry) Authent
 	}
 }
 
+// nonceState is an immutable snapshot of the active and previous nonces,
+// swapped atomically on rotation.
+type nonceState struct {
+	currentNonce  string
+	previousNonce string
+	rotatedAt     time.Time
+}
+
+// dpopNonceManager manages server-issued DPoP nonces per RFC 9449 §8
+type dpopNonceManager struct {
+	state        atomic.Pointer[nonceState]
+	mu           sync.Mutex // serializes rotation only
+	expiration   time.Duration
+	requireNonce bool
+}
+
+func newDPoPNonceManager(requireNonce bool, expiration time.Duration) *dpopNonceManager {
+	nm := &dpopNonceManager{
+		requireNonce: requireNonce,
+		expiration:   expiration,
+	}
+	nm.state.Store(&nonceState{})
+	if requireNonce {
+		nm.rotate()
+	}
+	return nm
+}
+
+func (nm *dpopNonceManager) storeRotated(s *nonceState) {
+	nonce := make([]byte, dpopNonceBytes)
+	if _, err := rand.Read(nonce); err != nil {
+		panic(fmt.Sprintf("failed to generate nonce: %v", err))
+	}
+	nm.state.Store(&nonceState{
+		previousNonce: s.currentNonce,
+		currentNonce:  hex.EncodeToString(nonce),
+		rotatedAt:     time.Now(),
+	})
+}
+
+func (nm *dpopNonceManager) rotate() {
+	nm.mu.Lock()
+	defer nm.mu.Unlock()
+	nm.storeRotated(nm.state.Load())
+}
+
+func (nm *dpopNonceManager) getCurrentNonce() string {
+	s := nm.state.Load()
+	if time.Since(s.rotatedAt) <= nm.expiration {
+		return s.currentNonce
+	}
+
+	nm.mu.Lock()
+	defer nm.mu.Unlock()
+	// Double-check after acquiring the lock to prevent concurrent double-rotation.
+	s = nm.state.Load()
+	if time.Since(s.rotatedAt) > nm.expiration {
+		nm.storeRotated(s)
+		s = nm.state.Load()
+	}
+	return s.currentNonce
+}
+
+func (nm *dpopNonceManager) validateNonce(nonce string) bool {
+	if !nm.requireNonce {
+		return true
+	}
+	s := nm.state.Load()
+	return nonce != "" && (nonce == s.currentNonce || nonce == s.previousNonce)
+}
+
 // Creates new authN which is used to verify tokens for a set of given issuers
 func NewAuthenticator(ctx context.Context, cfg Config, logger *logger.Logger, wellknownRegistration func(namespace string, config any) error, opts ...AuthenticatorOption) (*Authentication, error) {
+	// Remember DPoP `jti` values for the acceptance window so a captured proof
+	// cannot be replayed; a proof older than DPoPSkew is rejected by the `iat`
+	// check, so the cache TTL tracks that window.
+	replayTTL := cfg.DPoPSkew
+	if replayTTL <= 0 {
+		replayTTL = time.Hour
+	}
+
 	a := &Authentication{
-		enforceDPoP: cfg.EnforceDPoP,
-		logger:      logger,
+		enforceDPoP:      cfg.EnforceDPoP,
+		strictDPoPHTU:    cfg.DPoP.StrictHTU,
+		logger:           logger,
+		dpopNonceManager: newDPoPNonceManager(cfg.DPoP.RequireNonce, cfg.DPoP.NonceExpiration),
+		dpopReplayCache:  newDPoPReplayCache(replayTTL),
 	}
 
 	// Apply options
@@ -197,6 +290,31 @@ func NewAuthenticator(ctx context.Context, cfg Config, logger *logger.Logger, we
 		logger.Warn("failed to register platform idp information", slog.Any("error", err))
 	}
 
+	// Register DPoP support feature
+	if err := wellknownRegistration("supports_dpop", true); err != nil {
+		logger.Warn("failed to register dpop support", slog.Any("error", err))
+	}
+
+	// Register supported DPoP JWT signing algorithms (RFC 9449 §5.1 dpop_signing_alg_values_supported)
+	// structpb.NewStruct rejects []string — convert to []any so each element goes through
+	// structpb.NewValue's accepted-type list.
+	supportedAlgsStr := make([]string, 0, len(allowedSignatureAlgorithms))
+	for alg := range allowedSignatureAlgorithms {
+		supportedAlgsStr = append(supportedAlgsStr, alg.String())
+	}
+	sort.Strings(supportedAlgsStr)
+	supportedAlgs := make([]any, len(supportedAlgsStr))
+	for i, s := range supportedAlgsStr {
+		supportedAlgs[i] = s
+	}
+	if err := wellknownRegistration("dpop_signing_alg_values_supported", supportedAlgs); err != nil {
+		logger.Warn("failed to register dpop supported alg values", slog.Any("error", err))
+	}
+
+	if err := wellknownRegistration("dpop_nonce_required", cfg.DPoP.RequireNonce); err != nil {
+		logger.Warn("failed to register dpop nonce required", slog.Any("error", err))
+	}
+
 	return a, nil
 }
 
@@ -240,6 +358,25 @@ type receiverInfo struct {
 	m []string
 }
 
+// DPoPNonceError indicates a missing or expired nonce that the client should retry with a fresh one.
+type DPoPNonceError struct {
+	Message string
+}
+
+func (e *DPoPNonceError) Error() string {
+	return e.Message
+}
+
+// DPoPNonceMalformedError indicates the nonce claim was present but had an invalid type or format.
+// Unlike DPoPNonceError, this is not retryable — the client sent a malformed proof.
+type DPoPNonceMalformedError struct {
+	Message string
+}
+
+func (e *DPoPNonceMalformedError) Error() string {
+	return e.Message
+}
+
 func normalizeURL(o string, u *url.URL) string {
 	// Currently this does not do a full normatlization
 	ou, err := url.Parse(o)
@@ -250,11 +387,46 @@ func normalizeURL(o string, u *url.URL) string {
 	return ou.String()
 }
 
+// matchHTU reports whether the htu claim from a DPoP JWT is acceptable.
+//
+// In strict mode the origin (scheme+host) must be present; a path-only htu is
+// rejected outright. When the origin is present it must match the origin of at
+// least one URI in acceptable (both http and https are tried).
+//
+// In loose mode a path-only htu (no scheme, no host) is accepted when its path
+// matches the path component of any URI in acceptable. When the origin is
+// present the same origin+path matching applies as in strict mode.
+func matchHTU(received string, acceptable []string, strict bool) bool {
+	u, err := url.Parse(received)
+	if err != nil {
+		return false
+	}
+	if u.Scheme == "" && u.Host == "" {
+		// Path-only htu.
+		if strict {
+			return false
+		}
+		for _, a := range acceptable {
+			au, err := url.Parse(a)
+			if err != nil {
+				continue
+			}
+			if au.Path == u.Path {
+				return true
+			}
+		}
+		return false
+	}
+	// Full URL: must match one of the acceptable URIs exactly.
+	return slices.Contains(acceptable, received)
+}
+
 // verifyTokenHandler is a http handler that verifies the token
 func (a Authentication) MuxHandler(handler http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		publicRoute := slices.ContainsFunc(a.publicRoutes, a.isPublicRoute(r.URL.Path)) //nolint:contextcheck // There is no way to pass a context here
-		r = r.WithContext(ctxAuth.ContextWithPublicRoute(r.Context(), publicRoute))
+		ctxWithRoute := ctxAuth.ContextWithPublicRoute(r.Context(), publicRoute)
+		r = r.WithContext(ctxWithRoute)
 		if publicRoute {
 			handler.ServeHTTP(w, r)
 			return
@@ -278,13 +450,29 @@ func (a Authentication) MuxHandler(handler http.Handler) http.Handler {
 				origin = "http://" + strings.TrimSuffix(origin, ":80")
 			}
 		}
-		accessTok, ctx, err := a.checkToken(r.Context(), header, receiverInfo{
+		ri := receiverInfo{
 			u: []string{normalizeURL(origin, r.URL)},
 			m: []string{r.Method},
-		}, dp)
+		}
+		log.DebugContext(
+			ctxWithRoute, "dpop receiverInfo set (http handler)",
+			slog.Any("expected_htm", ri.m),
+			slog.Any("expected_htu", ri.u),
+			slog.String("request_method", r.Method),
+		)
+		accessTok, ctxWithAuthX, err := a.checkToken(ctxWithRoute, header, ri, dp)
 		if err != nil {
-			log.WarnContext( //nolint:contextcheck // r.Context was enriched with public route state.
-				r.Context(),
+			// Check if this is a nonce error requiring a challenge
+			var nonceErr *DPoPNonceError
+			if errors.As(err, &nonceErr) {
+				nonce := a.dpopNonceManager.getCurrentNonce()
+				w.Header().Set("DPoP-Nonce", nonce)
+				w.Header().Set("WWW-Authenticate", `DPoP error="use_dpop_nonce"`)
+				http.Error(w, "unauthenticated", http.StatusUnauthorized)
+				return
+			}
+			log.WarnContext(
+				ctxWithAuthX,
 				"unauthenticated",
 				slog.Any("error", err),
 				slog.Any("dpop", dp),
@@ -293,7 +481,12 @@ func (a Authentication) MuxHandler(handler http.Handler) http.Handler {
 			return
 		}
 
-		clientID, err := a.subjectExtractor.ClientIDFromToken(r.Context(), accessTok) //nolint:contextcheck // r.Context includes public route state.
+		// Always send fresh nonce in successful responses when nonces are enabled
+		if a.dpopNonceManager.requireNonce {
+			w.Header().Set("DPoP-Nonce", a.dpopNonceManager.getCurrentNonce())
+		}
+
+		clientID, err := a.subjectExtractor.ClientIDFromToken(ctxWithAuthX, accessTok) //nolint:contextcheck // r.Context includes public route state.
 		if err != nil {
 			log.WarnContext( //nolint:contextcheck // r.Context was enriched with public route state.
 				r.Context(),
@@ -304,8 +497,8 @@ func (a Authentication) MuxHandler(handler http.Handler) http.Handler {
 			log = log.
 				With("client_id", clientID).
 				With("configured_client_id_claim_name", a.oidcConfiguration.Policy.ClientIDClaim)
-			ctx = ctxAuth.EnrichIncomingContextMetadataWithAuthn(ctx, log, clientID)
-			ctx = authz.ContextWithClientID(ctx, clientID)
+			ctxWithAuthX = ctxAuth.EnrichIncomingContextMetadataWithAuthn(ctxWithAuthX, log, clientID)
+			ctxWithAuthX = authz.ContextWithClientID(ctxWithAuthX, clientID)
 		}
 
 		// Check if the token is allowed to access the resource
@@ -325,38 +518,38 @@ func (a Authentication) MuxHandler(handler http.Handler) http.Handler {
 			Resource: r.URL.Path,
 			Action:   action,
 		}
-		ctx, err = a.subjectExtractor.ContextWithClaims(ctx, accessTok, roleReq)
+		ctxWithClaims, err := a.subjectExtractor.ContextWithClaims(ctxWithAuthX, accessTok, roleReq)
 		if err != nil {
-			log.WarnContext(r.Context(), "role provider error", slog.Any("error", err)) //nolint:contextcheck // request context is already derived with public route state above.
+			log.WarnContext(ctxWithClaims, "role provider error", slog.Any("error", err)) //nolint:contextcheck // request context is already derived with public route state above.
 			http.Error(w, "internal server error", http.StatusInternalServerError)
 			return
 		}
 		if a.authorizer == nil {
-			log.ErrorContext(ctx, "authorizer not initialized") //nolint:contextcheck // checkToken derives ctx from r.Context.
+			log.ErrorContext(ctxWithClaims, "authorizer not initialized") //nolint:contextcheck // checkToken derives ctx from r.Context.
 			http.Error(w, "internal server error", http.StatusInternalServerError)
 			return
 		}
 		// Extra HTTP handlers do not use Connect resolvers, so v2 authorizers receive no
 		// resource dimensions here. Dimension-scoped v2 policy therefore fails closed
 		// unless the policy explicitly allows wildcard dimensions for this path.
-		decision, err := a.authorizer.Authorize(ctx, &internalauthz.Request{ //nolint:contextcheck // checkToken derives ctx from r.Context.
+		decision, err := a.authorizer.Authorize(ctxWithClaims, &internalauthz.Request{ //nolint:contextcheck // checkToken derives ctx from r.Context.
 			Token:  accessTok,
 			RPC:    r.URL.Path,
 			Action: roleReq.Action,
 		})
 		if err != nil {
-			log.ErrorContext(ctx, "authorization error", slog.Any("error", err)) //nolint:contextcheck // checkToken derives ctx from r.Context.
+			log.ErrorContext(ctxWithClaims, "authorization error", slog.Any("error", err)) //nolint:contextcheck // checkToken derives ctx from r.Context.
 			http.Error(w, "internal server error", http.StatusInternalServerError)
 			return
 		}
 		if decision == nil {
-			log.ErrorContext(ctx, "authorization error", slog.String("error", "authorizer returned nil decision")) //nolint:contextcheck // checkToken derives ctx from r.Context.
+			log.ErrorContext(ctxWithClaims, "authorization error", slog.String("error", "authorizer returned nil decision")) //nolint:contextcheck // checkToken derives ctx from r.Context.
 			http.Error(w, "internal server error", http.StatusInternalServerError)
 			return
 		}
 		if !decision.Allowed {
 			log.WarnContext( //nolint:contextcheck // checkToken derives ctx from r.Context.
-				ctx,
+				ctxWithClaims,
 				"permission denied",
 				permissionDeniedDecisionLogAttrs(accessTok, decision, nil)...,
 			)
@@ -364,7 +557,7 @@ func (a Authentication) MuxHandler(handler http.Handler) http.Handler {
 			return
 		}
 
-		r = r.WithContext(ctx) //nolint:contextcheck // checkToken derives ctx from r.Context.
+		r = r.WithContext(ctxWithClaims)
 		handler.ServeHTTP(w, r)
 	})
 }
@@ -385,10 +578,22 @@ func (a Authentication) ConnectAuthNInterceptor() connect.UnaryInterceptorFunc {
 
 			log := a.logger
 
+			procedure := req.Spec().Procedure
+			host := req.Header().Get("Host")
 			ri := receiverInfo{
-				u: []string{req.Spec().Procedure},
-				m: []string{http.MethodPost},
+				u: []string{
+					"http://" + host + procedure,
+					"https://" + host + procedure,
+				},
+				m: []string{req.HTTPMethod()},
 			}
+			log.DebugContext(
+				ctx, "dpop receiverInfo set (connect interceptor)",
+				slog.Any("expected_htm", ri.m),
+				slog.Any("expected_htu", ri.u),
+				slog.String("procedure", procedure),
+				slog.String("connect_http_method", req.HTTPMethod()),
+			)
 
 			header := req.Header()["Authorization"]
 			if len(header) < 1 {
@@ -402,7 +607,34 @@ func (a Authentication) ConnectAuthNInterceptor() connect.UnaryInterceptorFunc {
 				req.Header()["Dpop"],
 			)
 			if err != nil {
+				// Check if this is a nonce error requiring a challenge
+				var nonceErr *DPoPNonceError
+				if errors.As(err, &nonceErr) {
+					nonce := a.dpopNonceManager.getCurrentNonce()
+					connectErr := connect.NewError(connect.CodeUnauthenticated, errors.New("unauthenticated"))
+					connectErr.Meta().Set("DPoP-Nonce", nonce)
+					connectErr.Meta().Set("WWW-Authenticate", `DPoP error="use_dpop_nonce"`)
+					return nil, connectErr
+				}
 				return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("unauthenticated"))
+			}
+
+			// Always send fresh nonce in successful responses when nonces are enabled.
+			// Wrap next so the DPoP-Nonce header is set on the response, not the outgoing client context.
+			if a.dpopNonceManager.requireNonce {
+				originalNext := next
+				next = func(ctx context.Context, req connect.AnyRequest) (connect.AnyResponse, error) {
+					res, err := originalNext(ctx, req)
+					if err != nil {
+						var connectErr *connect.Error
+						if errors.As(err, &connectErr) {
+							connectErr.Meta().Set("DPoP-Nonce", a.dpopNonceManager.getCurrentNonce())
+						}
+						return nil, err
+					}
+					res.Header().Set("DPoP-Nonce", a.dpopNonceManager.getCurrentNonce())
+					return res, nil
+				}
 			}
 
 			clientID, err := a.subjectExtractor.ClientIDFromToken(ctxWithJWK, token)
@@ -731,14 +963,19 @@ func (a *Authentication) checkToken(ctx context.Context, authHeader []string, dp
 		return a._testCheckTokenFunc(ctx, authHeader, dpopInfo, dpopHeader)
 	}
 
-	var tokenRaw string
+	var (
+		tokenRaw   string
+		authScheme string
+	)
 
 	// If we don't get a DPoP/Bearer token type, we can't proceed
 	switch {
 	case strings.HasPrefix(authHeader[0], "DPoP "):
 		tokenRaw = strings.TrimPrefix(authHeader[0], "DPoP ")
+		authScheme = "DPoP"
 	case strings.HasPrefix(authHeader[0], "Bearer "):
 		tokenRaw = strings.TrimPrefix(authHeader[0], "Bearer ")
+		authScheme = "Bearer"
 	default:
 		a.logger.WarnContext(ctx, "failed to validate authentication header: not of type bearer or dpop", slog.String("header", authHeader[0]))
 		return nil, nil, errors.New("not of type bearer or dpop")
@@ -762,6 +999,12 @@ func (a *Authentication) checkToken(ctx context.Context, authHeader []string, dp
 	}
 
 	_, tokenHasCNF := accessToken.Get("cnf")
+	if tokenHasCNF && authScheme == "Bearer" {
+		// RFC 9449 §7.1: DPoP-bound access tokens MUST be presented under the "DPoP"
+		// Authorization scheme. Warn for now to surface non-compliant SDKs; will be
+		// promoted to a hard reject in a future release once all SDKs are compliant.
+		a.logger.WarnContext(ctx, "DPoP-bound access token presented under Bearer Authorization scheme; per RFC 9449 §7.1 the DPoP scheme is required")
+	}
 	if !tokenHasCNF && !a.enforceDPoP {
 		// this condition is not quite tight because it's possible that the `cnf` claim may
 		// come from token introspection
@@ -770,7 +1013,12 @@ func (a *Authentication) checkToken(ctx context.Context, authHeader []string, dp
 	}
 	dpopKey, err := a.validateDPoP(accessToken, tokenRaw, dpopInfo, dpopHeader)
 	if err != nil {
-		a.logger.Warn("failed to validate dpop", slog.Any("err", err))
+		var nonceErr *DPoPNonceError
+		if errors.As(err, &nonceErr) {
+			a.logger.DebugContext(ctx, "dpop nonce challenge issued", slog.String("reason", nonceErr.Message))
+		} else {
+			a.logger.WarnContext(ctx, "failed to validate dpop", slog.Any("err", err))
+		}
 		return nil, nil, err
 	}
 	ctx = ctxAuth.ContextWithAuthNInfo(ctx, dpopKey, accessToken, tokenRaw)
@@ -788,7 +1036,7 @@ func (a Authentication) validateDPoP(accessToken jwt.Token, acessTokenRaw string
 		return nil, errors.New("missing `cnf` claim in access token")
 	}
 
-	cnfDict, ok := cnf.(map[string]interface{})
+	cnfDict, ok := cnf.(map[string]any)
 	if !ok {
 		return nil, errors.New("got `cnf` in an invalid format")
 	}
@@ -869,6 +1117,12 @@ func (a Authentication) validateDPoP(accessToken jwt.Token, acessTokenRaw string
 		return nil, errors.New("`htm` claim invalid format in DPoP JWT")
 	}
 
+	a.logger.Debug(
+		"dpop htm validation",
+		slog.String("received_htm", htm),
+		slog.Any("expected_htm", dpopInfo.m),
+		slog.Bool("match", slices.Contains(dpopInfo.m, htm)),
+	)
 	if !slices.Contains(dpopInfo.m, htm) {
 		return nil, fmt.Errorf("incorrect `htm` claim in DPoP JWT; received [%v], but should match [%v]", htm, dpopInfo.m)
 	}
@@ -882,7 +1136,7 @@ func (a Authentication) validateDPoP(accessToken jwt.Token, acessTokenRaw string
 		return nil, errors.New("`htu` claim invalid format in DPoP JWT")
 	}
 
-	if !slices.Contains(dpopInfo.u, htu) {
+	if !matchHTU(htu, dpopInfo.u, a.strictDPoPHTU) {
 		return nil, fmt.Errorf("incorrect `htu` claim in DPoP JWT; received [%v], but should match [%v]", htu, dpopInfo.u)
 	}
 
@@ -896,6 +1150,37 @@ func (a Authentication) validateDPoP(accessToken jwt.Token, acessTokenRaw string
 	if ath != base64.URLEncoding.WithPadding(base64.NoPadding).EncodeToString(h.Sum(nil)) {
 		return nil, errors.New("incorrect `ath` claim in DPoP JWT")
 	}
+
+	// Validate nonce if required
+	if a.dpopNonceManager.requireNonce {
+		nonceI, hasNonce := dpopToken.Get("nonce")
+		if !hasNonce {
+			return nil, &DPoPNonceError{Message: "missing `nonce` claim in DPoP JWT"}
+		}
+		nonce, nonceOk := nonceI.(string)
+		if !nonceOk {
+			return nil, &DPoPNonceMalformedError{Message: "`nonce` claim invalid format in DPoP JWT"}
+		}
+		if !a.dpopNonceManager.validateNonce(nonce) {
+			return nil, &DPoPNonceError{Message: "invalid or expired `nonce` claim in DPoP JWT"}
+		}
+	}
+
+	// Replay protection (RFC 9449 §11.1): reject a proof whose `jti` has already
+	// been seen within the acceptance window. Checked last so only otherwise-valid
+	// proofs populate the cache, preventing an attacker from poisoning it.
+	jtiI, ok := dpopToken.Get("jti")
+	if !ok {
+		return nil, errors.New("missing `jti` claim in DPoP JWT")
+	}
+	jti, ok := jtiI.(string)
+	if !ok {
+		return nil, errors.New("`jti` claim invalid format in DPoP JWT")
+	}
+	if a.dpopReplayCache.observe(jti, time.Now()) {
+		return nil, errors.New("DPoP proof replay detected; `jti` already used")
+	}
+
 	return dpopKey, nil
 }
 
@@ -932,10 +1217,21 @@ func (a Authentication) ipcReauthCheck(ctx context.Context, path string, header 
 			}
 
 			// Validate the token and create a JWT token
-			token, ctxWithJWK, err := a.checkToken(ctx, authHeader, receiverInfo{
-				u: []string{path},
+			ipcHost := header.Get("Host")
+			ri := receiverInfo{
+				u: []string{
+					"http://" + ipcHost + path,
+					"https://" + ipcHost + path,
+				},
 				m: []string{http.MethodPost},
-			}, header["Dpop"])
+			}
+			a.logger.DebugContext(
+				ctx, "dpop receiverInfo set (ipc reauth)",
+				slog.Any("expected_htm", ri.m),
+				slog.Any("expected_htu", ri.u),
+				slog.String("path", path),
+			)
+			token, ctxWithJWK, err := a.checkToken(ctx, authHeader, ri, header["Dpop"])
 			if err != nil {
 				return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("unauthenticated"))
 			}

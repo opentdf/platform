@@ -160,7 +160,8 @@ func (p *Provider) parseSRT(ctx context.Context, srt string) (jwt.Token, string,
 			"unable to validate or parse token",
 			slog.Any("error", err),
 			slog.Int("srt_length", len(srt)),
-			jwkThumbprintAttr(ctxAuth.GetJWKFromContext(ctx, p.Logger)))
+			jwkThumbprintAttr(ctxAuth.GetJWKFromContext(ctx, p.Logger)),
+		)
 		return nil, "", err401("could not parse token")
 	}
 
@@ -187,7 +188,8 @@ func (p *Provider) logSRTValidationFailure(ctx context.Context, token jwt.Token,
 
 	issuedAt := token.IssuedAt()
 	if !issuedAt.IsZero() {
-		fields = append(fields,
+		fields = append(
+			fields,
 			slog.Time("iat", issuedAt),
 			slog.Duration("iat_delta", issuedAt.Sub(now)),
 		)
@@ -198,7 +200,8 @@ func (p *Provider) logSRTValidationFailure(ctx context.Context, token jwt.Token,
 
 	expires := token.Expiration()
 	if !expires.IsZero() {
-		fields = append(fields,
+		fields = append(
+			fields,
 			slog.Time("exp", expires),
 			slog.Duration("exp_delta", now.Sub(expires)),
 		)
@@ -209,7 +212,8 @@ func (p *Provider) logSRTValidationFailure(ctx context.Context, token jwt.Token,
 
 	notBefore := token.NotBefore()
 	if !notBefore.IsZero() {
-		fields = append(fields,
+		fields = append(
+			fields,
 			slog.Time("nbf", notBefore),
 			slog.Duration("nbf_delta", notBefore.Sub(now)),
 		)
@@ -261,7 +265,8 @@ func (p *Provider) verifySRTSignature(ctx context.Context, srt string, dpopJWK j
 	)
 	if err != nil {
 		if p.Logger != nil {
-			p.Logger.WarnContext(ctx,
+			p.Logger.WarnContext(
+				ctx,
 				"unable to verify request token",
 				slog.Int("srt_length", len(srt)),
 				jwkThumbprintAttr(dpopJWK),
@@ -370,7 +375,8 @@ func (p *Provider) extractSRTBody(ctx context.Context, headers http.Header, in *
 	err := protojson.UnmarshalOptions{DiscardUnknown: true}.Unmarshal([]byte(rbString), &requestBody)
 	// if there are no requests then it could be a v1 request
 	if err != nil {
-		p.Logger.WarnContext(ctx,
+		p.Logger.WarnContext(
+			ctx,
 			"invalid SRT",
 			slog.Any("err_v2", err),
 			slog.Int("rb_string_length", len(rbString)),
@@ -382,7 +388,8 @@ func (p *Provider) extractSRTBody(ctx context.Context, headers http.Header, in *
 		var errv1 error
 
 		if requestBody, errv1 = extractAndConvertV1SRTBody([]byte(rbString)); errv1 != nil {
-			p.Logger.WarnContext(ctx,
+			p.Logger.WarnContext(
+				ctx,
 				"invalid SRT",
 				slog.Any("err_v1", errv1),
 				slog.Int("rb_string_length", len(rbString)),
@@ -393,7 +400,8 @@ func (p *Provider) extractSRTBody(ctx context.Context, headers http.Header, in *
 		isV1 = true
 	}
 	// TODO: this log is too big and should be reconsidered or removed
-	p.Logger.DebugContext(ctx,
+	p.Logger.DebugContext(
+		ctx,
 		"extracted request body",
 		slog.String("rewrap_body", requestBody.String()),
 		slog.String("rewrap_srt", rbString),
@@ -594,7 +602,8 @@ func (p *Provider) Rewrap(ctx context.Context, req *connect.Request[kaspb.Rewrap
 		}
 		kaoResults := *getMapValue(results)
 		if len(kaoResults) != 1 {
-			p.Logger.WarnContext(ctx,
+			p.Logger.WarnContext(
+				ctx,
 				"status 400 due to wrong result set size",
 				slog.Any("kao_results", kaoResults),
 				slog.Any("results", results),
@@ -681,7 +690,8 @@ func (p *Provider) verifyRewrapRequests(ctx context.Context, req *kaspb.Unsigned
 			// Get EC key size and convert to mode
 			keySize, err := ocrypto.GetECKeySize([]byte(ephemeralPubKeyPEM))
 			if err != nil {
-				p.Logger.WarnContext(ctx,
+				p.Logger.WarnContext(
+					ctx,
 					"failed to get EC key size",
 					slog.Any("kao", kao),
 					slog.Any("error", err),
@@ -692,7 +702,8 @@ func (p *Provider) verifyRewrapRequests(ctx context.Context, req *kaspb.Unsigned
 
 			mode, err := ocrypto.ECSizeToMode(keySize)
 			if err != nil {
-				p.Logger.WarnContext(ctx,
+				p.Logger.WarnContext(
+					ctx,
 					"failed to convert key size to mode",
 					slog.Any("kao", kao),
 					slog.Any("error", err),
@@ -704,7 +715,8 @@ func (p *Provider) verifyRewrapRequests(ctx context.Context, req *kaspb.Unsigned
 			// Parse the PEM public key
 			block, _ := pem.Decode([]byte(ephemeralPubKeyPEM))
 			if block == nil {
-				p.Logger.WarnContext(ctx,
+				p.Logger.WarnContext(
+					ctx,
 					"failed to decode PEM block",
 					slog.Any("kao", kao),
 					slog.Any("error", err),
@@ -715,7 +727,8 @@ func (p *Provider) verifyRewrapRequests(ctx context.Context, req *kaspb.Unsigned
 
 			pub, err := x509.ParsePKIXPublicKey(block.Bytes)
 			if err != nil {
-				p.Logger.WarnContext(ctx,
+				p.Logger.WarnContext(
+					ctx,
 					"failed to parse public key",
 					slog.Any("kao", kao),
 					slog.Any("error", err),
@@ -898,7 +911,8 @@ func (p *Provider) tdf3Rewrap(ctx context.Context, requests []*kaspb.UnsignedRew
 			// Store per-KAO results even on error so tamper signals (e.g. corrupted
 			// policy body → generic "bad request") reach the SDK rather than being
 			// replaced by a top-level "invalid request".
-			p.Logger.WarnContext(ctx,
+			p.Logger.WarnContext(
+				ctx,
 				"rewrap: verifyRewrapRequests failed",
 				slog.String("policy_id", policyID),
 				slog.Any("error", err),
@@ -916,12 +930,31 @@ func (p *Provider) tdf3Rewrap(ctx context.Context, requests []*kaspb.UnsignedRew
 
 	pdpAccessResults, accessErr := p.canAccess(ctx, tok, policies, additionalRewrapContext.Obligations.FulfillableFQNs)
 	if accessErr != nil {
-		p.Logger.DebugContext(ctx,
-			"tdf3rewrap: cannot access policy",
-			slog.Any("policies", policies),
-			slog.Any("error", accessErr),
+		category, isInternal := classifyAccessError(ctx, accessErr)
+		// Terse, sensitive-payload-free line for the routine-denial flood case.
+		// Floods read as floods, not as a forest of stack traces.
+		p.Logger.InfoContext(
+			ctx,
+			"tdf3rewrap: access evaluation failed",
+			slog.String("category", category),
+			slog.Bool("internal", isInternal),
+			slog.Int("policies", len(policies)),
+			slog.Int("requests", len(requests)),
 		)
-		failAllKaos(requests, results, err500("could not perform access"))
+		// Verbose / sensitive: only read when investigating one specific request.
+		p.Logger.DebugContext(
+			ctx,
+			"tdf3rewrap: access evaluation failed: details",
+			slog.String("category", category),
+			slog.Any("error", accessErr),
+			slog.Any("policies", policies),
+			slog.Any("fulfillable_obligation_fqns", additionalRewrapContext.Obligations.FulfillableFQNs),
+		)
+		if isInternal {
+			failAllKaos(requests, results, err500("internal: "+category))
+		} else {
+			failAllKaos(requests, results, err403("forbidden: "+category))
+		}
 		return "", results, nil
 	}
 

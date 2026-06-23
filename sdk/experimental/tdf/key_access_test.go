@@ -517,10 +517,10 @@ func TestWrapKeyWithPublicKey(t *testing.T) {
 
 		privateKeyPEM, err := xwingKeyPair.PrivateKeyInPemFormat()
 		require.NoError(t, err)
-		privateKey, err := ocrypto.XWingPrivateKeyFromPem([]byte(privateKeyPEM))
+		dec, err := ocrypto.FromPrivatePEM(privateKeyPEM)
 		require.NoError(t, err)
 
-		plaintext, err := ocrypto.XWingUnwrapDEK(privateKey, decodedWrappedKey)
+		plaintext, err := dec.Decrypt(decodedWrappedKey)
 		require.NoError(t, err)
 		assert.Equal(t, symKey, plaintext)
 	})
@@ -555,10 +555,10 @@ func TestWrapKeyWithPublicKey(t *testing.T) {
 
 		privateKeyPEM, err := keyPair.PrivateKeyInPemFormat()
 		require.NoError(t, err)
-		privateKey, err := ocrypto.P256MLKEM768PrivateKeyFromPem([]byte(privateKeyPEM))
+		dec, err := ocrypto.FromPrivatePEM(privateKeyPEM)
 		require.NoError(t, err)
 
-		plaintext, err := ocrypto.P256MLKEM768UnwrapDEK(privateKey, decodedWrappedKey)
+		plaintext, err := dec.Decrypt(decodedWrappedKey)
 		require.NoError(t, err)
 		assert.Equal(t, symKey, plaintext)
 	})
@@ -593,10 +593,10 @@ func TestWrapKeyWithPublicKey(t *testing.T) {
 
 		privateKeyPEM, err := keyPair.PrivateKeyInPemFormat()
 		require.NoError(t, err)
-		privateKey, err := ocrypto.P384MLKEM1024PrivateKeyFromPem([]byte(privateKeyPEM))
+		dec, err := ocrypto.FromPrivatePEM(privateKeyPEM)
 		require.NoError(t, err)
 
-		plaintext, err := ocrypto.P384MLKEM1024UnwrapDEK(privateKey, decodedWrappedKey)
+		plaintext, err := dec.Decrypt(decodedWrappedKey)
 		require.NoError(t, err)
 		assert.Equal(t, symKey, plaintext)
 	})

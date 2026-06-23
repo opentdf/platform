@@ -31,6 +31,10 @@ inputs:
     default: "true"
     description: 'Whether to provision fixture policy data after bootstrapping the platform'
     required: false
+  dpop-challenge-enabled:
+    default: "false"
+    description: 'Whether to enable the DPoP nonce challenge flow (sets server.auth.dpop.require_nonce: true)'
+    required: false
 
 outputs:
   platform-working-dir:
@@ -53,6 +57,7 @@ runs:
         LOG_LEVEL: ${{ inputs.log-level }}
         LOG_TYPE: ${{ inputs.log-type }}
         PROVISION_POLICY_FIXTURES: ${{ inputs.provision-policy-fixtures }}
+        DPOP_CHALLENGE_ENABLED: ${{ inputs.dpop-challenge-enabled }}
       run: |
         # Validate platform-ref (must contain only safe characters for a git ref)
         if [[ ! "${PLATFORM_REF}" =~ ^[a-zA-Z0-9._/-]+$ ]]; then
@@ -112,6 +117,16 @@ runs:
             ;;
           *)
             echo "Error: provision-policy-fixtures must be 'true' or 'false'."
+            exit 1
+            ;;
+        esac
+
+        # Validate dpop-challenge-enabled (must be true or false)
+        case "${DPOP_CHALLENGE_ENABLED}" in
+          true|false)
+            ;;
+          *)
+            echo "Error: dpop-challenge-enabled must be 'true' or 'false'."
             exit 1
             ;;
         esac
@@ -259,6 +274,24 @@ runs:
           | (.services.kas.keyring += [{"kid":"x1","alg":"hpqt:xwing"},{"kid":"h1","alg":"hpqt:secp256r1-mlkem768"},{"kid":"h2","alg":"hpqt:secp384r1-mlkem1024"}])
           | (.server.cryptoProvider.standard.keys += [{"kid":"x1","alg":"hpqt:xwing","private":"kas-xwing-private.pem","cert":"kas-xwing-public.pem"},{"kid":"h1","alg":"hpqt:secp256r1-mlkem768","private":"kas-p256mlkem768-private.pem","cert":"kas-p256mlkem768-public.pem"},{"kid":"h2","alg":"hpqt:secp384r1-mlkem1024","private":"kas-p384mlkem1024-private.pem","cert":"kas-p384mlkem1024-public.pem"}])
         ' -i opentdf.yaml
+      working-directory: otdf-test-platform
+    - name: Enable DPoP nonce challenge
+      shell: bash
+      if: ${{ inputs.dpop-challenge-enabled == 'true' }}
+      run: |
+        yq e '.server.auth.dpop.require_nonce = true' -i opentdf.yaml
+      working-directory: otdf-test-platform
+    - name: Overlay DPoP-capable Keycloak (26.2)
+      # The default docker-compose pins Keycloak 25 so downstream consumers stay on
+      # it; DPoP testing needs Keycloak 26.2 plus the admin-fine-grained-authz:v1
+      # feature flag, overlaid only when the nonce challenge flow is enabled.
+      shell: bash
+      if: ${{ inputs.dpop-challenge-enabled == 'true' }}
+      run: |
+        yq e '
+          (.services.keycloak.image = "keycloak/keycloak:26.2")
+          | (.services.keycloak.environment.KC_FEATURES = "preview,token-exchange,admin-fine-grained-authz:v1")
+        ' -i docker-compose.yaml
       working-directory: otdf-test-platform
     - name: Configure logging
       shell: bash

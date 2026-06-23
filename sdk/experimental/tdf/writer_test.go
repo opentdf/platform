@@ -202,7 +202,8 @@ func testInitialAttributesOnWriter(t *testing.T) {
 	}
 	initKAS := &policy.SimpleKasKey{KasUri: testKAS1, PublicKey: &policy.SimpleKasPublicKey{Algorithm: policy.Algorithm_ALGORITHM_RSA_2048, Kid: "kid1", Pem: mockRSAPublicKey1}}
 
-	writer, err := NewWriter(ctx,
+	writer, err := NewWriter(
+		ctx,
 		WithInitialAttributes(initAttrs),
 		WithDefaultKASForWriter(initKAS),
 	)
@@ -230,7 +231,8 @@ func testInitialAttributesOnWriter(t *testing.T) {
 	assert.True(t, found, "policy should include initial attribute")
 
 	// Overrides at Finalize should take precedence
-	writer2, err := NewWriter(ctx,
+	writer2, err := NewWriter(
+		ctx,
 		WithInitialAttributes(initAttrs),
 		WithDefaultKASForWriter(initKAS),
 	)
@@ -487,7 +489,8 @@ func testManifestGeneration(t *testing.T) {
 	customMimeType := "application/json"
 	encryptedMetadata := "Custom metadata content"
 
-	finalizeResult, err := writer.Finalize(ctx,
+	finalizeResult, err := writer.Finalize(
+		ctx,
 		WithAttributeValues(attributes),
 		WithPayloadMimeType(customMimeType),
 		WithEncryptedMetadata(encryptedMetadata),
@@ -525,7 +528,7 @@ func testManifestGeneration(t *testing.T) {
 
 	// Verify policy content
 	policyBytes, err := ocrypto.Base64Decode([]byte(encInfo.Policy))
-	require.NoError(t, (err))
+	require.NoError(t, err)
 	// Policy bytes are now raw JSON, not base64 encoded
 	var policy Policy
 	err = json.Unmarshal(policyBytes, &policy)
@@ -564,7 +567,8 @@ func testAssertionsAndMetadata(t *testing.T) {
 	attributes := []*policy.Value{
 		createTestAttribute("https://example.com/attr/Sensitivity/value/Restricted", testKAS1, "kid1"),
 	}
-	finalizeResult, err := writer.Finalize(ctx,
+	finalizeResult, err := writer.Finalize(
+		ctx,
 		WithAttributeValues(attributes),
 		WithEncryptedMetadata("Sensitive metadata content"),
 		WithAssertions(testAssertion),
@@ -892,35 +896,25 @@ func createTestAttributeWithAlgorithm(t *testing.T, fqn, kasURL, kid string, alg
 
 // hybridUnwrapForTest base64-decodes the wrappedKey from a manifest KAO and
 // unwraps it with the matching hybrid private key, asserting the recovered DEK
-// is non-empty. This proves the writer's `hybrid-wrapped` output is consumable
-// by the corresponding ocrypto unwrap path.
-func hybridUnwrapForTest(t *testing.T, ktype ocrypto.KeyType, privatePEM, wrappedKeyB64 string) {
+// exactly matches the writer DEK.
+func hybridUnwrapForTest(t *testing.T, ktype ocrypto.KeyType, privatePEM, wrappedKeyB64 string, expectedDEK []byte) {
 	t.Helper()
 	wrappedDER, err := ocrypto.Base64Decode([]byte(wrappedKeyB64))
 	require.NoError(t, err, "Base64Decode wrapped key")
 
-	switch ktype { //nolint:exhaustive // only handle hybrid types
-	case ocrypto.HybridXWingKey:
-		raw, err := ocrypto.XWingPrivateKeyFromPem([]byte(privatePEM))
-		require.NoError(t, err)
-		dek, err := ocrypto.XWingUnwrapDEK(raw, wrappedDER)
-		require.NoError(t, err, "XWingUnwrapDEK")
-		assert.NotEmpty(t, dek, "X-Wing recovered DEK")
-	case ocrypto.HybridSecp256r1MLKEM768Key:
-		raw, err := ocrypto.P256MLKEM768PrivateKeyFromPem([]byte(privatePEM))
-		require.NoError(t, err)
-		dek, err := ocrypto.P256MLKEM768UnwrapDEK(raw, wrappedDER)
-		require.NoError(t, err, "P256MLKEM768UnwrapDEK")
-		assert.NotEmpty(t, dek, "P-256+ML-KEM-768 recovered DEK")
-	case ocrypto.HybridSecp384r1MLKEM1024Key:
-		raw, err := ocrypto.P384MLKEM1024PrivateKeyFromPem([]byte(privatePEM))
-		require.NoError(t, err)
-		dek, err := ocrypto.P384MLKEM1024UnwrapDEK(raw, wrappedDER)
-		require.NoError(t, err, "P384MLKEM1024UnwrapDEK")
-		assert.NotEmpty(t, dek, "P-384+ML-KEM-1024 recovered DEK")
-	default:
-		t.Fatalf("unsupported hybrid key type for round-trip: %s", ktype)
+	dec, err := ocrypto.FromPrivatePEM(privatePEM)
+	require.NoError(t, err, "FromPrivatePEM")
+
+	type keyTyper interface {
+		KeyType() ocrypto.KeyType
 	}
+	kt, ok := dec.(keyTyper)
+	require.True(t, ok, "decryptor for %s must implement KeyType()", ktype)
+	assert.Equal(t, ktype, kt.KeyType(), "private PEM key type should match expected ktype")
+
+	dek, err := dec.Decrypt(wrappedDER)
+	require.NoError(t, err, "hybrid Decrypt")
+	assert.Equal(t, expectedDEK, dek, "%s recovered DEK", ktype)
 }
 
 func testHybridXWingFlow(t *testing.T) {
@@ -935,6 +929,7 @@ func testHybridXWingFlow(t *testing.T) {
 
 	writer, err := NewWriter(ctx)
 	require.NoError(t, err)
+	expectedDEK := append([]byte(nil), writer.dek...)
 
 	_, err = writer.WriteSegment(ctx, 0, []byte("hybrid xwing test data"))
 	require.NoError(t, err)
@@ -956,7 +951,7 @@ func testHybridXWingFlow(t *testing.T) {
 	assert.NotEmpty(t, keyAccess.WrappedKey)
 
 	validateManifestSchema(t, result.Manifest)
-	hybridUnwrapForTest(t, ocrypto.HybridXWingKey, privPEM, keyAccess.WrappedKey)
+	hybridUnwrapForTest(t, ocrypto.HybridXWingKey, privPEM, keyAccess.WrappedKey, expectedDEK)
 }
 
 func testHybridP256MLKEM768Flow(t *testing.T) {
@@ -971,6 +966,7 @@ func testHybridP256MLKEM768Flow(t *testing.T) {
 
 	writer, err := NewWriter(ctx)
 	require.NoError(t, err)
+	expectedDEK := append([]byte(nil), writer.dek...)
 
 	_, err = writer.WriteSegment(ctx, 0, []byte("hybrid p256 mlkem768 test data"))
 	require.NoError(t, err)
@@ -992,7 +988,7 @@ func testHybridP256MLKEM768Flow(t *testing.T) {
 	assert.NotEmpty(t, keyAccess.WrappedKey)
 
 	validateManifestSchema(t, result.Manifest)
-	hybridUnwrapForTest(t, ocrypto.HybridSecp256r1MLKEM768Key, privPEM, keyAccess.WrappedKey)
+	hybridUnwrapForTest(t, ocrypto.HybridSecp256r1MLKEM768Key, privPEM, keyAccess.WrappedKey, expectedDEK)
 }
 
 func testHybridP384MLKEM1024Flow(t *testing.T) {
@@ -1007,6 +1003,7 @@ func testHybridP384MLKEM1024Flow(t *testing.T) {
 
 	writer, err := NewWriter(ctx)
 	require.NoError(t, err)
+	expectedDEK := append([]byte(nil), writer.dek...)
 
 	_, err = writer.WriteSegment(ctx, 0, []byte("hybrid p384 mlkem1024 test data"))
 	require.NoError(t, err)
@@ -1028,7 +1025,7 @@ func testHybridP384MLKEM1024Flow(t *testing.T) {
 	assert.NotEmpty(t, keyAccess.WrappedKey)
 
 	validateManifestSchema(t, result.Manifest)
-	hybridUnwrapForTest(t, ocrypto.HybridSecp384r1MLKEM1024Key, privPEM, keyAccess.WrappedKey)
+	hybridUnwrapForTest(t, ocrypto.HybridSecp384r1MLKEM1024Key, privPEM, keyAccess.WrappedKey, expectedDEK)
 }
 
 // validateManifestSchema validates a TDF manifest against the JSON schema

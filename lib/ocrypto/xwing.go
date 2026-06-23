@@ -18,11 +18,23 @@ const (
 	XWingPublicKeySize  = xwing.PublicKeySize
 	XWingPrivateKeySize = xwing.PrivateKeySize
 	XWingCiphertextSize = xwing.CiphertextSize
-
-	PEMBlockXWingPublicKey  = "XWING PUBLIC KEY"
-	PEMBlockXWingPrivateKey = "XWING PRIVATE KEY"
 )
 
+// X-Wing wire-format note:
+//
+// The KEM primitive comes from github.com/cloudflare/circl/kem/xwing, which
+// currently implements draft-connolly-cfrg-xwing-kem-05. The SPKI/PKCS#8
+// envelope and AlgorithmIdentifier OID (id-XWing, draft-10 §5.8) follow
+// draft-10. The two drafts differ in the internal labeling/KDF chain of the
+// KEM itself, so wrapped keys produced here are NOT wire-compatible with a
+// pure draft-10 implementation.
+//
+// TODO(DSPX-TBD): swap the primitive to a draft-10 implementation once one
+// is available in Go (tracking: upgrade cloudflare/circl xwing to draft-10).
+
+// XWingWrappedKey is the ASN.1 envelope stored in wrapped_key. The X-Wing
+// drafts define only the KEM; this DEK wrapping envelope is local to OpenTDF
+// and unchanged across draft revisions.
 type XWingWrappedKey struct {
 	XWingCiphertext []byte `asn1:"tag:0"`
 	EncryptedDEK    []byte `asn1:"tag:1"`
@@ -63,23 +75,23 @@ func NewXWingKeyPair() (XWingKeyPair, error) {
 }
 
 func (k XWingKeyPair) PublicKeyInPemFormat() (string, error) {
-	return rawToPEM(PEMBlockXWingPublicKey, k.publicKey, XWingPublicKeySize)
+	der, err := marshalHybridSPKI(oidXWing, k.publicKey)
+	if err != nil {
+		return "", err
+	}
+	return string(pem.EncodeToMemory(&pem.Block{Type: pemBlockPublicKey, Bytes: der})), nil
 }
 
 func (k XWingKeyPair) PrivateKeyInPemFormat() (string, error) {
-	return rawToPEM(PEMBlockXWingPrivateKey, k.privateKey, XWingPrivateKeySize)
+	der, err := marshalHybridPKCS8(oidXWing, k.privateKey)
+	if err != nil {
+		return "", err
+	}
+	return string(pem.EncodeToMemory(&pem.Block{Type: pemBlockPrivateKey, Bytes: der})), nil
 }
 
 func (k XWingKeyPair) GetKeyType() KeyType {
 	return HybridXWingKey
-}
-
-func XWingPubKeyFromPem(data []byte) ([]byte, error) {
-	return decodeSizedPEMBlock(data, PEMBlockXWingPublicKey, XWingPublicKeySize)
-}
-
-func XWingPrivateKeyFromPem(data []byte) ([]byte, error) {
-	return decodeSizedPEMBlock(data, PEMBlockXWingPrivateKey, XWingPrivateKeySize)
 }
 
 func NewXWingEncryptor(publicKey, salt, info []byte) (*XWingEncryptor, error) {
@@ -99,7 +111,11 @@ func (e *XWingEncryptor) Encrypt(data []byte) ([]byte, error) {
 }
 
 func (e *XWingEncryptor) PublicKeyInPemFormat() (string, error) {
-	return rawToPEM(PEMBlockXWingPublicKey, e.publicKey, XWingPublicKeySize)
+	der, err := marshalHybridSPKI(oidXWing, e.publicKey)
+	if err != nil {
+		return "", err
+	}
+	return string(pem.EncodeToMemory(&pem.Block{Type: pemBlockPublicKey, Bytes: der})), nil
 }
 
 func (e *XWingEncryptor) Type() SchemeType {
@@ -136,6 +152,12 @@ func NewSaltedXWingDecryptor(privateKey, salt, info []byte) (*XWingDecryptor, er
 
 func (d *XWingDecryptor) Decrypt(data []byte) ([]byte, error) {
 	return xwingUnwrapDEK(d.privateKey, data, d.salt, d.info)
+}
+
+// KeyType identifies the hybrid scheme so KAS-layer callers can cross-check
+// the OID-routed decryptor against an asserted algorithm before trusting it.
+func (d *XWingDecryptor) KeyType() KeyType {
+	return HybridXWingKey
 }
 
 func XWingWrapDEK(publicKeyRaw, dek []byte) ([]byte, error) {
@@ -242,19 +264,4 @@ func deriveXWingWrapKey(sharedSecret, salt, info []byte) ([]byte, error) {
 	}
 
 	return derivedKey, nil
-}
-
-func decodeSizedPEMBlock(data []byte, blockType string, expectedSize int) ([]byte, error) {
-	block, _ := pem.Decode(data)
-	if block == nil {
-		return nil, fmt.Errorf("failed to parse PEM formatted %s", blockType)
-	}
-	if block.Type != blockType {
-		return nil, fmt.Errorf("unexpected PEM block type: got %s want %s", block.Type, blockType)
-	}
-	if len(block.Bytes) != expectedSize {
-		return nil, fmt.Errorf("invalid %s size: got %d want %d", blockType, len(block.Bytes), expectedSize)
-	}
-
-	return append([]byte(nil), block.Bytes...), nil
 }

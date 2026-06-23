@@ -24,13 +24,30 @@ type Config struct {
 
 // AuthNConfig is the configuration need for the platform to validate tokens
 type AuthNConfig struct { //nolint:revive // AuthNConfig is a valid name
-	EnforceDPoP  bool                       `mapstructure:"enforceDPoP" json:"enforceDPoP" default:"false"`
-	Issuer       string                     `mapstructure:"issuer" json:"issuer"`
-	Audience     string                     `mapstructure:"audience" json:"audience"`
-	Policy       internalauthz.PolicyConfig `mapstructure:"policy" json:"policy"`
-	CacheRefresh string                     `mapstructure:"cache_refresh_interval" json:"cache_refresh_interval"`
-	DPoPSkew     time.Duration              `mapstructure:"dpopskew" json:"dpopskew" default:"1h"`
-	TokenSkew    time.Duration              `mapstructure:"skew" json:"skew" default:"1m"`
+	EnforceDPoP  bool          `mapstructure:"enforceDPoP" json:"enforceDPoP" default:"false"`
+	Issuer       string        `mapstructure:"issuer" json:"issuer"`
+	Audience     string        `mapstructure:"audience" json:"audience"`
+	Policy       internalauthz.PolicyConfig  `mapstructure:"policy" json:"policy"`
+	CacheRefresh string        `mapstructure:"cache_refresh_interval" json:"cache_refresh_interval"`
+	DPoPSkew     time.Duration `mapstructure:"dpopskew" json:"dpopskew" default:"1h"`
+	TokenSkew    time.Duration `mapstructure:"skew" json:"skew" default:"1m"`
+	DPoP         DPoPConfig    `mapstructure:"dpop" json:"dpop"`
+}
+
+type DPoPConfig struct {
+	RequireNonce    bool          `mapstructure:"require_nonce" json:"require_nonce" default:"false"`
+	NonceExpiration time.Duration `mapstructure:"nonce_expiration" json:"nonce_expiration" default:"5m"`
+	// StrictHTU requires the htu claim in DPoP JWTs to include the origin
+	// (scheme + host). When false (default), a path-only htu is accepted as
+	// long as the path matches, easing SDK skew during rollout.
+	StrictHTU bool `mapstructure:"strict_htu" json:"strict_htu" default:"false"`
+}
+
+func (c DPoPConfig) Validate() error {
+	if c.RequireNonce && c.NonceExpiration <= 0 {
+		return errors.New("auth.dpop.nonce_expiration must be positive when require_nonce is true")
+	}
+	return nil
 }
 
 func (c AuthNConfig) validateAuthNConfig(logger *logger.Logger) error {
@@ -44,6 +61,10 @@ func (c AuthNConfig) validateAuthNConfig(logger *logger.Logger) error {
 
 	if !c.EnforceDPoP {
 		logger.Warn("config Auth.EnforceDPoP is false. DPoP will not be enforced.")
+	}
+
+	if err := c.DPoP.Validate(); err != nil {
+		return err
 	}
 
 	return nil

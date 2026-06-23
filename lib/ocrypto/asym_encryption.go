@@ -130,25 +130,6 @@ func newECIES(pub *ecdh.PublicKey, salt, info []byte) (ECEncryptor, error) {
 	return ECEncryptor{pub, ek, salt, info}, err
 }
 
-// NewAsymEncryption creates and returns a new AsymEncryption.
-//
-// Deprecated: Use FromPublicPEM instead.
-func NewAsymEncryption(publicKeyInPem string) (AsymEncryption, error) {
-	pub, err := getPublicPart(publicKeyInPem)
-	if err != nil {
-		return AsymEncryption{}, err
-	}
-
-	switch pub := pub.(type) {
-	case *rsa.PublicKey:
-		return AsymEncryption{pub}, nil
-	default:
-		break
-	}
-
-	return AsymEncryption{}, fmt.Errorf("unsupported public key type: %T", pub)
-}
-
 func getPublicPart(publicKeyInPem string) (any, error) {
 	block, _ := pem.Decode([]byte(publicKeyInPem))
 	if block == nil {
@@ -316,15 +297,8 @@ func hybridEncryptorFromSPKI(der, salt, info []byte) (PublicKeyEncryptor, bool, 
 		// which handles PKCS#1 keys, certificates, and stdlib-recognised SPKI.
 		return nil, false, nil //nolint:nilerr // intentional fall-through on non-envelope input
 	}
-	switch {
-	case oid.Equal(oidXWing):
-		enc, err := NewXWingEncryptor(raw, salt, info)
-		return enc, true, err
-	case oid.Equal(oidCompositeMLKEM768P256):
-		enc, err := NewP256MLKEM768Encryptor(raw)
-		return enc, true, err
-	case oid.Equal(oidCompositeMLKEM1024P384):
-		enc, err := NewP384MLKEM1024Encryptor(raw)
+	if k, ok := hybridKEMByOID(oid); ok {
+		enc, err := newKEMEncryptor(k, raw, salt, info)
 		return enc, true, err
 	}
 	// Valid SPKI envelope with a non-hybrid OID. If the stdlib recognises it,

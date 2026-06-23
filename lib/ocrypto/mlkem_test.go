@@ -18,10 +18,10 @@ func TestMLKEM768WrapUnwrapRoundTrip(t *testing.T) {
 	privateKeyBytes := keyPair.PrivateKey.Bytes()
 
 	dek := []byte("0123456789abcdef0123456789abcdef")
-	wrapped, err := MLKEM768WrapDEK(publicKeyBytes, dek)
+	wrapped, err := wrapDEKWithKEM(mlkemKEM{variant: mlkem768}, publicKeyBytes, dek, nil, nil)
 	require.NoError(t, err)
 
-	plaintext, err := MLKEM768UnwrapDEK(privateKeyBytes, wrapped)
+	plaintext, err := unwrapDEKWithKEM(mlkemKEM{variant: mlkem768}, privateKeyBytes, wrapped, nil, nil)
 	require.NoError(t, err)
 	assert.Equal(t, dek, plaintext)
 }
@@ -34,10 +34,10 @@ func TestMLKEM1024WrapUnwrapRoundTrip(t *testing.T) {
 	privateKeyBytes := keyPair.PrivateKey.Bytes()
 
 	dek := []byte("0123456789abcdef0123456789abcdef")
-	wrapped, err := MLKEM1024WrapDEK(publicKeyBytes, dek)
+	wrapped, err := wrapDEKWithKEM(mlkemKEM{variant: mlkem1024}, publicKeyBytes, dek, nil, nil)
 	require.NoError(t, err)
 
-	plaintext, err := MLKEM1024UnwrapDEK(privateKeyBytes, wrapped)
+	plaintext, err := unwrapDEKWithKEM(mlkemKEM{variant: mlkem1024}, privateKeyBytes, wrapped, nil, nil)
 	require.NoError(t, err)
 	assert.Equal(t, dek, plaintext)
 }
@@ -51,10 +51,10 @@ func TestMLKEM768WrapUnwrapWrongKeyFails(t *testing.T) {
 	publicKey1 := keyPair1.PrivateKey.EncapsulationKey().Bytes()
 	privateKey2 := keyPair2.PrivateKey.Bytes()
 
-	wrapped, err := MLKEM768WrapDEK(publicKey1, []byte("top secret dek"))
+	wrapped, err := wrapDEKWithKEM(mlkemKEM{variant: mlkem768}, publicKey1, []byte("top secret dek"), nil, nil)
 	require.NoError(t, err)
 
-	_, err = MLKEM768UnwrapDEK(privateKey2, wrapped)
+	_, err = unwrapDEKWithKEM(mlkemKEM{variant: mlkem768}, privateKey2, wrapped, nil, nil)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "AES-GCM decrypt failed")
 }
@@ -68,10 +68,10 @@ func TestMLKEM1024WrapUnwrapWrongKeyFails(t *testing.T) {
 	publicKey1 := keyPair1.PrivateKey.EncapsulationKey().Bytes()
 	privateKey2 := keyPair2.PrivateKey.Bytes()
 
-	wrapped, err := MLKEM1024WrapDEK(publicKey1, []byte("top secret dek"))
+	wrapped, err := wrapDEKWithKEM(mlkemKEM{variant: mlkem1024}, publicKey1, []byte("top secret dek"), nil, nil)
 	require.NoError(t, err)
 
-	_, err = MLKEM1024UnwrapDEK(privateKey2, wrapped)
+	_, err = unwrapDEKWithKEM(mlkemKEM{variant: mlkem1024}, privateKey2, wrapped, nil, nil)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "AES-GCM decrypt failed")
 }
@@ -106,7 +106,7 @@ func TestMLKEM768CiphertextSizeValidation(t *testing.T) {
 	der, err := asn1.Marshal(invalidWrapped)
 	require.NoError(t, err)
 
-	_, err = MLKEM768UnwrapDEK(privateKeyBytes, der)
+	_, err = unwrapDEKWithKEM(mlkemKEM{variant: mlkem768}, privateKeyBytes, der, nil, nil)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "ciphertext size")
 }
@@ -125,7 +125,7 @@ func TestMLKEM1024CiphertextSizeValidation(t *testing.T) {
 	der, err := asn1.Marshal(invalidWrapped)
 	require.NoError(t, err)
 
-	_, err = MLKEM1024UnwrapDEK(privateKeyBytes, der)
+	_, err = unwrapDEKWithKEM(mlkemKEM{variant: mlkem1024}, privateKeyBytes, der, nil, nil)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "ciphertext size")
 }

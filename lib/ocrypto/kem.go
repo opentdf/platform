@@ -74,6 +74,26 @@ func kemByOID(oid asn1.ObjectIdentifier) (kem, bool) {
 	return ctor(), true
 }
 
+// hybridKEMByOID returns the hybrid PQ/T kem adapter for the supplied
+// AlgorithmIdentifier OID. The hybrid schemes are kept out of kemRegistry
+// because their PKCS#8 private-key encoding differs from the RFC 5958 KEM
+// CHOICE that parseKEMPrivatePKCS8 expects (X-Wing/NIST store the raw key
+// directly, ML-KEM double-wraps the seed in a [0] IMPLICIT OCTET STRING).
+// The OID-routing dispatchers in asym_encryption.go / asym_decryption.go use
+// this helper to build kemEncryptor / kemDecryptor for hybrid keys.
+func hybridKEMByOID(oid asn1.ObjectIdentifier) (kem, bool) {
+	switch {
+	case oid.Equal(oidXWing):
+		return xwingKEM{}, true
+	case oid.Equal(oidCompositeMLKEM768P256):
+		return hybridNISTKEM{params: &p256mlkem768Params}, true
+	case oid.Equal(oidCompositeMLKEM1024P384):
+		return hybridNISTKEM{params: &p384mlkem1024Params}, true
+	default:
+		return nil, false
+	}
+}
+
 // IsKEMKeyType reports whether the supplied KeyType is one of the KEM schemes
 // — pure ML-KEM or hybrid PQ/T — that wrap a DEK through FromPublicPEM /
 // FromPrivatePEM rather than the RSA/EC paths. Callers use it as the routing
@@ -328,7 +348,10 @@ type kemDecryptor struct {
 }
 
 func newKEMDecryptor(k kem, privateKey, salt, info []byte) (*kemDecryptor, error) {
-	if len(privateKey) != k.privSize() {
+	// A negative privSize signals a variable-length encoding (the NIST hybrid's
+	// mlkemSeed||ECPrivateKey DER), whose exact length is validated inside
+	// decapsulate. Fixed-size schemes (ML-KEM, X-Wing) keep the strict check.
+	if k.privSize() >= 0 && len(privateKey) != k.privSize() {
 		return nil, fmt.Errorf("invalid %s private key size: got %d want %d", k.keyType(), len(privateKey), k.privSize())
 	}
 	return &kemDecryptor{

@@ -3127,8 +3127,8 @@ func (f *FakeKas) getRewrapResponse(rewrapRequest string, fulfillableObligations
 					kasPrivateKey = strings.ReplaceAll(lk.private, "\n\t", "\n")
 				}
 
-				asymDecrypt, err := ocrypto.NewAsymDecryption(kasPrivateKey)
-				f.s.Require().NoError(err, "ocrypto.NewAsymDecryption failed")
+				asymDecrypt, err := ocrypto.FromPrivatePEM(kasPrivateKey)
+				f.s.Require().NoError(err, "ocrypto.FromPrivatePEM failed")
 				symmetricKey, err := asymDecrypt.Decrypt(wrappedKey)
 				f.s.Require().NoError(err, "ocrypto.Decrypt failed for kao:[%s # %s (%s)] kas:[%s # %s (%s)]", kao.GetKasUrl(), kao.GetKid(), kao.GetSplitId(), f.URL, f.KID, f.Algorithm)
 				asymEncrypt, err := ocrypto.FromPublicPEM(bodyData.GetClientPublicKey())

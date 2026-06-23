@@ -2,7 +2,6 @@ package ocrypto
 
 import (
 	"encoding/asn1"
-	"encoding/pem"
 	"errors"
 	"fmt"
 )
@@ -83,22 +82,6 @@ func ParseKEMPublicSPKI(der []byte) (asn1.ObjectIdentifier, []byte, error) {
 	return s.Algorithm.Algorithm, s.PublicKey.RightAlign(), nil
 }
 
-// ParseMLKEMPublicSPKI returns the OID and raw encapsulation key bytes from an
-// SPKI DER blob if the algorithm is ML-KEM-768 or ML-KEM-1024.
-//
-// Deprecated: Use ParseKEMPublicSPKI and verify the returned OID against the
-// expected ML-KEM variant.
-func ParseMLKEMPublicSPKI(der []byte) (asn1.ObjectIdentifier, []byte, error) {
-	oid, raw, err := ParseKEMPublicSPKI(der)
-	if err != nil {
-		return nil, nil, err
-	}
-	if !oid.Equal(OIDMLKEM768) && !oid.Equal(OIDMLKEM1024) {
-		return nil, nil, errNotKEM
-	}
-	return oid, raw, nil
-}
-
 // parseKEMPrivatePKCS8 returns the OID and raw seed bytes from any PKCS#8 DER
 // blob whose AlgorithmIdentifier matches a registered KEM scheme and whose
 // inner private key is encoded as [0] IMPLICIT OCTET STRING. The sentinel
@@ -120,81 +103,4 @@ func parseKEMPrivatePKCS8(der []byte) (asn1.ObjectIdentifier, []byte, error) {
 		return nil, nil, fmt.Errorf("KEM PKCS#8 inner seed parse failed: %w", err)
 	}
 	return p.Algorithm.Algorithm, innerSeed, nil
-}
-
-// normalizeMLKEMPublicKey detects the input format and returns raw key bytes.
-// Accepts: raw key (1184/1568 bytes), SPKI DER (1206/1590 bytes), or PEM-wrapped SPKI.
-func normalizeMLKEMPublicKey(input []byte, expectedRawSize int, expectedOID asn1.ObjectIdentifier) ([]byte, error) {
-	if len(input) == expectedRawSize {
-		return input, nil
-	}
-
-	if block, _ := pem.Decode(input); block != nil {
-		if block.Type != pemBlockPublicKey {
-			return nil, fmt.Errorf("expected %s PEM block, got %s", pemBlockPublicKey, block.Type)
-		}
-		input = block.Bytes
-	}
-
-	oid, rawKey, err := ParseMLKEMPublicSPKI(input)
-	if err != nil {
-		if errors.Is(err, errNotKEM) {
-			return nil, errors.New("not an ML-KEM key in SPKI format")
-		}
-		return nil, fmt.Errorf("failed to parse SPKI: %w", err)
-	}
-
-	if !oid.Equal(expectedOID) {
-		return nil, fmt.Errorf("OID mismatch: expected %v, got %v", expectedOID, oid)
-	}
-
-	if len(rawKey) != expectedRawSize {
-		return nil, fmt.Errorf("extracted key has wrong size: got %d want %d", len(rawKey), expectedRawSize)
-	}
-
-	return rawKey, nil
-}
-
-// MLKEM768WrapDEK encapsulates against an ML-KEM-768 public key (raw, SPKI
-// DER, or PEM) and returns the ASN.1 DER envelope carrying the KEM ciphertext
-// and AES-GCM-wrapped DEK. The ML-KEM Decaps shared secret is used directly
-// as the AES-256 wrap key (no HKDF); see adr/decisions/2026-06-16-mlkem-direct-key-wrap.md.
-//
-// Deprecated: Use WrapDEK with MLKEM768Key, or construct via FromPublicPEM.
-func MLKEM768WrapDEK(publicKey, dek []byte) ([]byte, error) {
-	rawKey, err := normalizeMLKEMPublicKey(publicKey, MLKEM768PublicKeySize, OIDMLKEM768)
-	if err != nil {
-		return nil, fmt.Errorf("invalid ML-KEM-768 public key: %w", err)
-	}
-	return wrapDEKWithKEM(mlkemKEM{variant: mlkem768}, rawKey, dek, nil, nil)
-}
-
-// MLKEM768UnwrapDEK decapsulates the envelope produced by MLKEM768WrapDEK
-// using the supplied raw ML-KEM-768 seed. This is the binary-bytes counterpart
-// to FromPrivatePEM; callers that already hold a raw seed can use it directly
-// without re-encoding to PKCS#8 PEM.
-func MLKEM768UnwrapDEK(privateKeyRaw, wrappedDER []byte) ([]byte, error) {
-	return unwrapDEKWithKEM(mlkemKEM{variant: mlkem768}, privateKeyRaw, wrappedDER, nil, nil)
-}
-
-// MLKEM1024WrapDEK encapsulates against an ML-KEM-1024 public key (raw, SPKI
-// DER, or PEM) and returns the ASN.1 DER envelope carrying the KEM ciphertext
-// and AES-GCM-wrapped DEK. The ML-KEM Decaps shared secret is used directly
-// as the AES-256 wrap key (no HKDF); see adr/decisions/2026-06-16-mlkem-direct-key-wrap.md.
-//
-// Deprecated: Use WrapDEK with MLKEM1024Key, or construct via FromPublicPEM.
-func MLKEM1024WrapDEK(publicKey, dek []byte) ([]byte, error) {
-	rawKey, err := normalizeMLKEMPublicKey(publicKey, MLKEM1024PublicKeySize, OIDMLKEM1024)
-	if err != nil {
-		return nil, fmt.Errorf("invalid ML-KEM-1024 public key: %w", err)
-	}
-	return wrapDEKWithKEM(mlkemKEM{variant: mlkem1024}, rawKey, dek, nil, nil)
-}
-
-// MLKEM1024UnwrapDEK decapsulates the envelope produced by MLKEM1024WrapDEK
-// using the supplied raw ML-KEM-1024 seed. This is the binary-bytes counterpart
-// to FromPrivatePEM; callers that already hold a raw seed can use it directly
-// without re-encoding to PKCS#8 PEM.
-func MLKEM1024UnwrapDEK(privateKeyRaw, wrappedDER []byte) ([]byte, error) {
-	return unwrapDEKWithKEM(mlkemKEM{variant: mlkem1024}, privateKeyRaw, wrappedDER, nil, nil)
 }

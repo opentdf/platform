@@ -106,19 +106,6 @@ func FromPrivatePEMWithSalt(privateKeyInPem string, salt, info []byte) (PrivateK
 	return nil, errors.New("not a supported PEM formatted private key")
 }
 
-func NewAsymDecryption(privateKeyInPem string) (AsymDecryption, error) {
-	d, err := FromPrivatePEMWithSalt(privateKeyInPem, nil, nil)
-	if err != nil {
-		return AsymDecryption{}, err
-	}
-	switch d := d.(type) {
-	case AsymDecryption:
-		return d, nil
-	default:
-		return AsymDecryption{}, errors.New("not an RSA private key")
-	}
-}
-
 // Decrypt decrypts ciphertext with private key.
 func (asymDecryption AsymDecryption) Decrypt(data []byte) ([]byte, error) {
 	if asymDecryption.PrivateKey == nil {
@@ -232,15 +219,8 @@ func hybridDecryptorFromPKCS8(der, salt, info []byte) (PrivateKeyDecryptor, bool
 		// KEY). Fall through to the legacy decoder.
 		return nil, false, nil //nolint:nilerr // intentional fall-through on non-envelope input
 	}
-	switch {
-	case oid.Equal(oidXWing):
-		dec, err := NewSaltedXWingDecryptor(raw, salt, info)
-		return dec, true, err
-	case oid.Equal(oidCompositeMLKEM768P256):
-		dec, err := NewP256MLKEM768Decryptor(raw)
-		return dec, true, err
-	case oid.Equal(oidCompositeMLKEM1024P384):
-		dec, err := NewP384MLKEM1024Decryptor(raw)
+	if k, ok := hybridKEMByOID(oid); ok {
+		dec, err := newKEMDecryptor(k, raw, salt, info)
 		return dec, true, err
 	}
 	// Valid PKCS#8 envelope with a non-hybrid OID. If the stdlib recognises it,

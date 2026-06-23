@@ -42,7 +42,8 @@ func (fake FakeAccessTokenSource) MakeToken(tokenMaker func(jwk.Key) ([]byte, er
 func getTokenSource(t *testing.T) FakeAccessTokenSource {
 	dpopKey, _ := ocrypto.NewRSAKeyPair(2048)
 	dpopPEM, _ := dpopKey.PrivateKeyInPemFormat()
-	decryption, _ := ocrypto.NewAsymDecryption(dpopPEM)
+	dpopDecryptor, _ := ocrypto.FromPrivatePEM(dpopPEM)
+	decryption, _ := dpopDecryptor.(ocrypto.AsymDecryption)
 	dpopPEMPublic, _ := dpopKey.PublicKeyInPemFormat()
 	encryption, _ := ocrypto.FromPublicPEM(dpopPEMPublic)
 	dpopJWK, err := jwk.ParseKey([]byte(dpopPEM), jwk.WithPEM(true))
@@ -130,7 +131,8 @@ func TestCreatingRequest(t *testing.T) {
 }
 
 func Test_StoreKASKeys(t *testing.T) {
-	s, err := New("http://localhost:8080",
+	s, err := New(
+		"http://localhost:8080",
 		WithPlatformConfiguration(PlatformConfiguration{
 			"idp": map[string]interface{}{
 				"issuer":                 "https://example.org",
@@ -457,8 +459,10 @@ func Test_processRSAResponse(t *testing.T) {
 	require.NoError(t, err)
 	privateKeyPEM, err := mockPrivateKey.PrivateKeyInPemFormat()
 	require.NoError(t, err)
-	mockDecryptor, err := ocrypto.NewAsymDecryption(privateKeyPEM)
+	mockPrivateDecryptor, err := ocrypto.FromPrivatePEM(privateKeyPEM)
 	require.NoError(t, err)
+	mockDecryptor, ok := mockPrivateDecryptor.(ocrypto.AsymDecryption)
+	require.True(t, ok)
 
 	// Create a mock AsymEncryption to create the wrapped key
 	publicKeyPEM, err := mockPrivateKey.PublicKeyInPemFormat()

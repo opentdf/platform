@@ -181,9 +181,13 @@ func loadKey(k KeyPairInfo) (any, error) {
 			decryptor:     decryptor,
 		}, nil
 	case AlgorithmRSA2048, AlgorithmRSA4096:
-		asymDecryption, err := ocrypto.NewAsymDecryption(string(privatePEM))
+		decryptor, err := ocrypto.FromPrivatePEM(string(privatePEM))
 		if err != nil {
-			return nil, fmt.Errorf("ocrypto.NewAsymDecryption failed: %w", err)
+			return nil, fmt.Errorf("ocrypto.FromPrivatePEM failed: %w", err)
+		}
+		asymDecryption, ok := decryptor.(ocrypto.AsymDecryption)
+		if !ok {
+			return nil, fmt.Errorf("unexpected private key decryptor type: %T", decryptor)
 		}
 		publicKeyEncryptor, err := ocrypto.FromPublicPEM(string(certPEM))
 		if err != nil {
@@ -220,9 +224,13 @@ func loadDeprecatedKeys(rsaKeys map[string]StandardKeyInfo, ecKeys map[string]St
 			return nil, fmt.Errorf("failed to rsa private key file: %w", err)
 		}
 
-		asymDecryption, err := ocrypto.NewAsymDecryption(string(privatePemData))
+		decryptor, err := ocrypto.FromPrivatePEM(string(privatePemData))
 		if err != nil {
-			return nil, fmt.Errorf("ocrypto.NewAsymDecryption failed: %w", err)
+			return nil, fmt.Errorf("ocrypto.FromPrivatePEM failed: %w", err)
+		}
+		asymDecryption, ok := decryptor.(ocrypto.AsymDecryption)
+		if !ok {
+			return nil, fmt.Errorf("unexpected private key decryptor type: %T", decryptor)
 		}
 
 		publicPemData, err := os.ReadFile(kasInfo.PublicKeyPath)

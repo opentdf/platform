@@ -1,5 +1,22 @@
 # Changelog
 
+## [0.24.0](https://github.com/opentdf/platform/compare/sdk/v0.23.0...sdk/v0.24.0) (2026-06-23)
+
+
+### ⚠ BREAKING CHANGES
+
+* **core:** conform hybrid PQ/T key formats to IETF drafts ([#3563](https://github.com/opentdf/platform/issues/3563))
+
+### Features
+
+* **core:** Adds comprehensive DPoP (RFC 9449) support ([#3582](https://github.com/opentdf/platform/issues/3582)) ([8a00646](https://github.com/opentdf/platform/commit/8a006469dc6e55455a2ce4715415671d39670ef6))
+* **core:** conform hybrid PQ/T key formats to IETF drafts ([#3563](https://github.com/opentdf/platform/issues/3563)) ([dc18568](https://github.com/opentdf/platform/commit/dc1856831383de1c5880121518c0fb83c429a5a5))
+
+
+### Bug Fixes
+
+* **deps:** bump github.com/opentdf/platform/lib/ocrypto from 0.12.0 to 0.13.0 in /sdk ([#3654](https://github.com/opentdf/platform/issues/3654)) ([67c4992](https://github.com/opentdf/platform/commit/67c499259f646727e7127e20fe1174010477b2d0))
+
 ## [0.23.0](https://github.com/opentdf/platform/compare/sdk/v0.22.0...sdk/v0.23.0) (2026-06-18)
 
 

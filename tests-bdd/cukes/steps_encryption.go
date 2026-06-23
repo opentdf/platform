@@ -59,7 +59,8 @@ func (s *EncryptionStepDefinitions) userTokenForStoredAs(ctx context.Context, us
 	}
 
 	kcHostPort := net.JoinHostPort(localPlatformGlue.Options.Hostname, strconv.Itoa(localPlatformGlue.Options.keycloakPort))
-	tokenURL := fmt.Sprintf("http://%s/auth/realms/%s/protocol/openid-connect/token",
+	tokenURL := fmt.Sprintf(
+		"http://%s/auth/realms/%s/protocol/openid-connect/token",
 		kcHostPort,
 		scenarioContext.ScenarioOptions.KeycloakRealm,
 	)

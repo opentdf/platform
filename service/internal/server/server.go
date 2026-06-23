@@ -21,6 +21,7 @@ import (
 	"github.com/opentdf/platform/sdk"
 	sdkAudit "github.com/opentdf/platform/sdk/audit"
 	"github.com/opentdf/platform/service/internal/auth"
+	"github.com/opentdf/platform/service/internal/auth/authz"
 	"github.com/opentdf/platform/service/internal/security"
 	"github.com/opentdf/platform/service/internal/server/memhttp"
 	"github.com/opentdf/platform/service/logger"
@@ -70,6 +71,9 @@ type Config struct {
 	EnablePprof bool `mapstructure:"enable_pprof" json:"enable_pprof" default:"false"`
 	// Trace is for configuring open telemetry based tracing.
 	Trace tracing.Config `mapstructure:"trace" json:"trace"`
+
+	// AuthzResolverRegistry contains service-registered resolvers used by the auth interceptor.
+	AuthzResolverRegistry *authz.ResolverRegistry `mapstructure:"-" json:"-"`
 }
 
 func (c Config) LogValue() slog.Value {
@@ -265,6 +269,7 @@ func NewOpenTDFServer(config Config, logger *logger.Logger, cacheManager *cache.
 			config.Auth,
 			logger,
 			config.WellKnownConfigRegister,
+			auth.WithAuthzResolverRegistry(config.AuthzResolverRegistry),
 		)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create authentication interceptor: %w", err)
@@ -355,7 +360,8 @@ func newHTTPServer(c Config, connectRPC http.Handler, extraHTTP http.Handler, a 
 		effectiveExposed := c.CORS.EffectiveExposedHeaders()
 
 		// Log effective CORS config for operator visibility
-		l.Info("CORS middleware enabled",
+		l.Info(
+			"CORS middleware enabled",
 			slog.Any("allowed_origins", c.CORS.AllowedOrigins),
 			slog.Any("effective_methods", effectiveMethods),
 			slog.Any("effective_headers", effectiveHeaders),

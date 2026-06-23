@@ -37,6 +37,8 @@ const (
 	debugVersion                       = "DEBUG"
 	platformImageEnvironment           = "PLATFORM_IMAGE"
 	platformImageEnvironmentLocalImage = "platform-cukes:latest"
+	clientID                           = "opentdf"
+	platformClientSecret               = "secret"
 	userContextKey                     = "platform_users"
 )
 
@@ -123,7 +125,7 @@ func (s *LocalPlatformStepDefinitions) commonLocalPlatform(ctx context.Context, 
 			platformSDK, err := otdf.New(
 				scenarioContext.ScenarioOptions.PlatformEndpoint,
 				otdf.WithInsecureSkipVerifyConn(),
-				otdf.WithClientCredentials("opentdf", "secret", nil),
+				otdf.WithClientCredentials(clientID, platformClientSecret, nil),
 			)
 			if err != nil {
 				return ctx, err
@@ -237,13 +239,10 @@ func (s *LocalPlatformStepDefinitions) commonLocalPlatform(ctx context.Context, 
 		})
 	}
 
-	const clientID = "opentdf"
-	const clientSecret = "secret"
-
 	platformSDK, err := otdf.New(
 		scenarioContext.ScenarioOptions.PlatformEndpoint,
 		otdf.WithInsecureSkipVerifyConn(),
-		otdf.WithClientCredentials(clientID, clientSecret, nil),
+		otdf.WithClientCredentials(clientID, platformClientSecret, nil),
 	)
 	if err != nil {
 		return ctx, err
@@ -294,6 +293,33 @@ func (s *LocalPlatformStepDefinitions) aDefaultLocalPlatform(ctx context.Context
 		kcProvisionPath:        kt,
 		provisionDefaultPolicy: true,
 	})
+}
+
+func (s *LocalPlatformStepDefinitions) iUseThePlatformAs(ctx context.Context, role string) (context.Context, error) {
+	scenarioContext := GetPlatformScenarioContext(ctx)
+	clientIDByRole := map[string]string{
+		"opentdf-admin":    "opentdf",
+		"opentdf-standard": "opentdf-sdk",
+		"custom-non-admin": "opentdf-custom",
+		"kas-a":            "kas-a",
+		"kas-b":            "kas-b",
+	}
+
+	clientID, ok := clientIDByRole[role]
+	if !ok {
+		return ctx, fmt.Errorf("unknown platform role %q", role)
+	}
+
+	platformSDK, err := otdf.New(
+		scenarioContext.ScenarioOptions.PlatformEndpoint,
+		otdf.WithInsecureSkipVerifyConn(),
+		otdf.WithClientCredentials(clientID, platformClientSecret, nil),
+	)
+	if err != nil {
+		return ctx, err
+	}
+	scenarioContext.SDK = platformSDK
+	return ctx, nil
 }
 
 func (s *LocalPlatformStepDefinitions) aLocalPlatformWithTemplates(ctx context.Context, platformTemplate string, kcTemplate string) (context.Context, error) {
@@ -548,6 +574,7 @@ func RegisterLocalPlatformStepDefinitions(ctx *godog.ScenarioContext, x *Platfor
 	}
 	ctx.Step(`^an empty local platform$`, platformStepDefinitions.aEmptyLocalPlatform)
 	ctx.Step(`^a default local platform$`, platformStepDefinitions.aDefaultLocalPlatform)
+	ctx.Step(`^I use the platform as "([^"]*)"$`, platformStepDefinitions.iUseThePlatformAs)
 	ctx.Step(`^a user exists with username "([^"]*)" and email "([^"]*)" and the following attributes:$`, platformStepDefinitions.aUser)
 	ctx.Step(`^a local platform with platform template "([^"]*)" and keycloak template "([^"]*)"$`, platformStepDefinitions.aLocalPlatformWithTemplates)
 }

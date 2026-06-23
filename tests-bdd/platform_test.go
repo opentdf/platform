@@ -71,7 +71,8 @@ func runTests() int {
 		}
 		composeIoWriter = composeLogFile
 	}
-	composeLogger := slog.New(slog.NewTextHandler(composeIoWriter,
+	composeLogger := slog.New(slog.NewTextHandler(
+		composeIoWriter,
 		&slog.HandlerOptions{
 			Level: slog.LevelDebug,
 		},
@@ -89,7 +90,8 @@ func runTests() int {
 		}
 		platformIoWriter = platformLogFile
 	}
-	platformLogger := slog.New(slog.NewTextHandler(platformIoWriter,
+	platformLogger := slog.New(slog.NewTextHandler(
+		platformIoWriter,
 		&slog.HandlerOptions{
 			Level: slog.LevelDebug,
 		},
@@ -110,6 +112,7 @@ func runTests() int {
 			cukes.RegisterSubjectMappingsStepsDefinitions(ctx)
 			cukes.RegisterRegisteredResourcesStepDefinitions(ctx)
 			cukes.RegisterObligationsStepDefinitions(ctx, platformCukesContext)
+			cukes.RegisterKasRegistryStepDefinitions(ctx)
 			cukes.RegisterEncryptionStepDefinitions(ctx)
 			platformCukesContext.InitializeScenario(ctx)
 		},

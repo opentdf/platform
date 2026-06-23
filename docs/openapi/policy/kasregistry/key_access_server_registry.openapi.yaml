@@ -2,13 +2,19 @@ openapi: 3.1.0
 info:
   title: policy.kasregistry
 paths:
+<<<<<<< HEAD
   /key-access-servers:
     get:
+=======
+  /policy.kasregistry.KeyAccessServerRegistryService/ListKeyAccessServers:
+    post:
+>>>>>>> 9d16f80 (feat(authz): make v2 request limits configurable (#3508))
       tags:
         - policy.kasregistry.KeyAccessServerRegistryService
       summary: ListKeyAccessServers
       operationId: policy.kasregistry.KeyAccessServerRegistryService.ListKeyAccessServers
       parameters:
+<<<<<<< HEAD
         - name: pagination.limit
           in: query
           description: |-
@@ -35,6 +41,23 @@ paths:
             description: |-
               Optional
                Defaulted if not provided
+=======
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/policy.kasregistry.ListKeyAccessServersRequest'
+        required: true
+>>>>>>> 9d16f80 (feat(authz): make v2 request limits configurable (#3508))
       responses:
         default:
           description: Error
@@ -534,6 +557,12 @@ components:
         - ALGORITHM_EC_P256
         - ALGORITHM_EC_P384
         - ALGORITHM_EC_P521
+<<<<<<< HEAD
+=======
+        - ALGORITHM_HPQT_XWING
+        - ALGORITHM_HPQT_SECP256R1_MLKEM768
+        - ALGORITHM_HPQT_SECP384R1_MLKEM1024
+>>>>>>> 9d16f80 (feat(authz): make v2 request limits configurable (#3508))
       description: Supported key algorithms.
     policy.KasPublicKeyAlgEnum:
       type: string
@@ -545,6 +574,12 @@ components:
         - KAS_PUBLIC_KEY_ALG_ENUM_EC_SECP256R1
         - KAS_PUBLIC_KEY_ALG_ENUM_EC_SECP384R1
         - KAS_PUBLIC_KEY_ALG_ENUM_EC_SECP521R1
+<<<<<<< HEAD
+=======
+        - KAS_PUBLIC_KEY_ALG_ENUM_HPQT_XWING
+        - KAS_PUBLIC_KEY_ALG_ENUM_HPQT_SECP256R1_MLKEM768
+        - KAS_PUBLIC_KEY_ALG_ENUM_HPQT_SECP384R1_MLKEM1024
+>>>>>>> 9d16f80 (feat(authz): make v2 request limits configurable (#3508))
     policy.KeyMode:
       type: string
       title: KeyMode
@@ -563,6 +598,21 @@ components:
         - KEY_STATUS_ACTIVE
         - KEY_STATUS_ROTATED
       description: The status of the key
+<<<<<<< HEAD
+=======
+    policy.SortDirection:
+      type: string
+      title: SortDirection
+      enum:
+        - SORT_DIRECTION_UNSPECIFIED
+        - SORT_DIRECTION_ASC
+        - SORT_DIRECTION_DESC
+      description: |-
+        Sorting direction shared across list APIs.
+         When the 'sort' field is omitted or the chosen sort 'field' is UNSPECIFIED,
+         the endpoint's request message defines the default ordering; see the
+         specific List* request docs.
+>>>>>>> 9d16f80 (feat(authz): make v2 request limits configurable (#3508))
     policy.SourceType:
       type: string
       title: SourceType
@@ -574,6 +624,26 @@ components:
         Describes whether this kas is managed by the organization or if they imported
          the kas information from an external party. These two modes are necessary in order
          to encrypt a tdf dek with an external parties kas public key.
+<<<<<<< HEAD
+=======
+    policy.kasregistry.SortKasKeysType:
+      type: string
+      title: SortKasKeysType
+      enum:
+        - SORT_KAS_KEYS_TYPE_UNSPECIFIED
+        - SORT_KAS_KEYS_TYPE_KEY_ID
+        - SORT_KAS_KEYS_TYPE_CREATED_AT
+        - SORT_KAS_KEYS_TYPE_UPDATED_AT
+    policy.kasregistry.SortKeyAccessServersType:
+      type: string
+      title: SortKeyAccessServersType
+      enum:
+        - SORT_KEY_ACCESS_SERVERS_TYPE_UNSPECIFIED
+        - SORT_KEY_ACCESS_SERVERS_TYPE_NAME
+        - SORT_KEY_ACCESS_SERVERS_TYPE_URI
+        - SORT_KEY_ACCESS_SERVERS_TYPE_CREATED_AT
+        - SORT_KEY_ACCESS_SERVERS_TYPE_UPDATED_AT
+>>>>>>> 9d16f80 (feat(authz): make v2 request limits configurable (#3508))
     common.Metadata:
       type: object
       properties:
@@ -1147,7 +1217,11 @@ components:
             Required The algorithm to be used for the key
             The key_algorithm must be one of the defined values.:
             ```
+<<<<<<< HEAD
             this in [1, 2, 3, 4, 5]
+=======
+            this in [1, 2, 3, 4, 5, 6, 7, 8]
+>>>>>>> 9d16f80 (feat(authz): make v2 request limits configurable (#3508))
             ```
 
           $ref: '#/components/schemas/policy.Algorithm'
@@ -1670,7 +1744,11 @@ components:
             Filter keys by algorithm
             The key_algorithm must be one of the defined values.:
             ```
+<<<<<<< HEAD
             this in [0, 1, 2, 3, 4, 5]
+=======
+            this in [0, 1, 2, 3, 4, 5, 6, 7, 8]
+>>>>>>> 9d16f80 (feat(authz): make v2 request limits configurable (#3508))
             ```
 
           $ref: '#/components/schemas/policy.Algorithm'
@@ -1683,6 +1761,21 @@ components:
           title: pagination
           description: Optional Pagination request for the list of keys
           $ref: '#/components/schemas/policy.PageRequest'
+<<<<<<< HEAD
+=======
+        sort:
+          type: array
+          items:
+            $ref: '#/components/schemas/policy.kasregistry.KasKeysSort'
+          title: sort
+          maxItems: 1
+          description: |-
+            Optional - CONSTRAINT: max 1 item
+             Sort defaults:
+               - direction UNSPECIFIED defaults to DESC for the specified field
+               - field UNSPECIFIED defaults to created_at with the specified direction
+               - both UNSPECIFIED or sort omitted defaults to created_at DESC
+>>>>>>> 9d16f80 (feat(authz): make v2 request limits configurable (#3508))
       title: ListKeysRequest
       additionalProperties: false
       description: List all asymmetric keys managed by a specific Key Access Server or with a given algorithm
@@ -1932,7 +2025,11 @@ components:
             Required
             The key_algorithm must be one of the defined values.:
             ```
+<<<<<<< HEAD
             this in [1, 2, 3, 4, 5]
+=======
+            this in [1, 2, 3, 4, 5, 6, 7, 8]
+>>>>>>> 9d16f80 (feat(authz): make v2 request limits configurable (#3508))
             ```
 
           $ref: '#/components/schemas/policy.Algorithm'

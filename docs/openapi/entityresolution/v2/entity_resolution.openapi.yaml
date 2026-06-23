@@ -91,6 +91,54 @@ components:
          `Value` type union.
 
          The JSON representation for `NullValue` is JSON `null`.
+<<<<<<< HEAD
+=======
+    authorization.v2.Resource:
+      type: object
+      oneOf:
+        - properties:
+            attributeValues:
+              title: attribute_values
+              description: |+
+                a set of attribute value FQNs, such as those on a TDF, containing at least 1 value
+                if provided, resource.attribute_values must contain at least 1 valid FQN:
+                ```
+                this.fqns.size() > 0 && this.fqns.all(item, item.isUri())
+                ```
+
+              $ref: '#/components/schemas/authorization.v2.Resource.AttributeValues'
+          title: attribute_values
+          required:
+            - attributeValues
+        - properties:
+            registeredResourceValueFqn:
+              type: string
+              title: registered_resource_value_fqn
+              minLength: 1
+              format: uri
+              description: fully qualified name of the registered resource value stored in platform policy
+          title: registered_resource_value_fqn
+          required:
+            - registeredResourceValueFqn
+      properties:
+        ephemeralId:
+          type: string
+          title: ephemeral_id
+          description: ephemeral id for tracking between request and response
+      title: Resource
+      additionalProperties: false
+      description: Either a set of attribute values (such as those on a TDF) or a registered resource value
+    authorization.v2.Resource.AttributeValues:
+      type: object
+      properties:
+        fqns:
+          type: array
+          items:
+            type: string
+          title: fqns
+      title: AttributeValues
+      additionalProperties: false
+>>>>>>> 9d16f80 (feat(authz): make v2 request limits configurable (#3508))
     entity.Entity:
       type: object
       oneOf:

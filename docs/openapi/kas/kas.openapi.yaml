@@ -2,8 +2,13 @@ openapi: 3.1.0
 info:
   title: kas
 paths:
+<<<<<<< HEAD
   /kas/v2/kas_public_key:
     get:
+=======
+  /kas.AccessService/PublicKey:
+    post:
+>>>>>>> 9d16f80 (feat(authz): make v2 request limits configurable (#3508))
       tags:
         - kas.AccessService
       summary: PublicKey
@@ -37,8 +42,13 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/kas.PublicKeyResponse'
+<<<<<<< HEAD
   /kas/kas_public_key:
     get:
+=======
+  /kas.AccessService/LegacyPublicKey:
+    post:
+>>>>>>> 9d16f80 (feat(authz): make v2 request limits configurable (#3508))
       tags:
         - kas.AccessService
       summary: LegacyPublicKey
@@ -50,11 +60,29 @@ paths:
          buf:lint:ignore RPC_RESPONSE_STANDARD_NAME
       operationId: kas.AccessService.LegacyPublicKey
       parameters:
+<<<<<<< HEAD
         - name: algorithm
           in: query
           schema:
             type: string
             title: algorithm
+=======
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/kas.LegacyPublicKeyRequest'
+        required: true
+>>>>>>> 9d16f80 (feat(authz): make v2 request limits configurable (#3508))
       responses:
         default:
           description: Error
@@ -68,7 +96,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/google.protobuf.StringValue'
+<<<<<<< HEAD
   /kas/v2/rewrap:
+=======
+      deprecated: true
+  /kas.AccessService/Rewrap:
+>>>>>>> 9d16f80 (feat(authz): make v2 request limits configurable (#3508))
     post:
       tags:
         - kas.AccessService
@@ -231,6 +264,13 @@ components:
             error:
               type: string
               title: error
+<<<<<<< HEAD
+=======
+              description: |-
+                Error message when rewrap failed
+                 Present when status="fail"
+                 Human-readable description of the failure reason
+>>>>>>> 9d16f80 (feat(authz): make v2 request limits configurable (#3508))
           title: error
           required:
             - error
@@ -239,6 +279,13 @@ components:
               type: string
               title: kas_wrapped_key
               format: byte
+<<<<<<< HEAD
+=======
+              description: |-
+                Successfully rewrapped key encrypted with the session key
+                 Present when status="permit"
+                 Contains the DEK encrypted with the ephemeral session key
+>>>>>>> 9d16f80 (feat(authz): make v2 request limits configurable (#3508))
           title: kas_wrapped_key
           required:
             - kasWrappedKey
@@ -249,12 +296,32 @@ components:
           additionalProperties:
             title: value
             $ref: '#/components/schemas/google.protobuf.Value'
+<<<<<<< HEAD
         keyAccessObjectId:
           type: string
           title: key_access_object_id
         status:
           type: string
           title: status
+=======
+          description: |-
+            Metadata associated with this KAO result (e.g., required obligations)
+             Optional: May contain obligation requirements or other policy metadata
+             Common keys: "X-Required-Obligations" with array of obligation FQNs
+        keyAccessObjectId:
+          type: string
+          title: key_access_object_id
+          description: |-
+            Identifier matching the key_access_object_id from the request
+             Required: Always matches the ID from UnsignedRewrapRequest_WithKeyAccessObject
+        status:
+          type: string
+          title: status
+          description: |-
+            Status of the rewrap operation for this KAO
+             Required: Always
+             Values: "permit" (success), "fail" (failure)
+>>>>>>> 9d16f80 (feat(authz): make v2 request limits configurable (#3508))
       title: KeyAccessRewrapResult
       additionalProperties: false
     kas.KeyAccessRewrapResult.MetadataEntry:
@@ -440,6 +507,10 @@ components:
           title: algorithm
       title: WithPolicyRequest
       additionalProperties: false
+<<<<<<< HEAD
+=======
+      description: Request grouping policy with associated key access objects
+>>>>>>> 9d16f80 (feat(authz): make v2 request limits configurable (#3508))
     connect-protocol-version:
       type: number
       title: Connect-Protocol-Version

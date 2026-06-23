@@ -5,54 +5,11 @@ import (
 	"database/sql"
 	"fmt"
 	"strings"
-	"sync"
 
-	"github.com/jackc/pgx/v5/stdlib"
+	// Register the pgx/v5 database/sql driver for SQL providers.
+	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/opentdf/platform/service/entityresolution/multi-strategy/types"
 )
-
-var (
-	// driverRegMu guards lazy driver registration to prevent duplicate-register panics.
-	driverRegMu       sync.Mutex
-	registeredDrivers = make(map[string]struct{})
-)
-
-// ensureDriverRegistered lazily registers the named database/sql driver the first
-// time a SQL provider for that driver is created. This avoids the need for
-// consumers to add blank driver imports to their own binaries.
-//
-// Uses pgx/v5/stdlib for postgres (already a platform dependency). Other drivers
-// (mysql, sqlite) are not currently auto-registered and must be imported by the
-// consumer. Consumers that have already registered the driver themselves are
-// handled gracefully via a sql.Drivers() pre-check.
-func ensureDriverRegistered(driver string) {
-	driver = normalizeDriverName(driver)
-
-	driverRegMu.Lock()
-	defer driverRegMu.Unlock()
-
-	if _, ok := registeredDrivers[driver]; ok {
-		return
-	}
-
-	// Check whether the driver was already registered externally (e.g. via a
-	// blank import in the consumer binary) before attempting to register it.
-	// database/sql driver names are case-sensitive, so only an exact canonical
-	// match can satisfy sql.Open after the config driver is normalized.
-	for _, d := range sql.Drivers() {
-		if d == driver {
-			registeredDrivers[driver] = struct{}{}
-			return
-		}
-	}
-
-	if driver == defaultPostgreSQLDriver {
-		sql.Register(defaultPostgreSQLDriver, stdlib.GetDefaultDriver())
-		registeredDrivers[driver] = struct{}{}
-	}
-	// mysql and sqlite require imports not present in this module's dependencies.
-	// Add cases here when those drivers are added to go.mod.
-}
 
 func normalizeDriverName(driver string) string {
 	driver = strings.ToLower(strings.TrimSpace(driver))
@@ -77,10 +34,6 @@ func NewProvider(ctx context.Context, name string, config Config) (*Provider, er
 	// Normalize aliases so "pgx", "postgres", and "postgresql" use the
 	// registered pgx/v5 database/sql driver name.
 	config.Driver = normalizeDriverName(config.Driver)
-
-	// Register the database/sql driver for this provider's configured driver name
-	// if it has not already been registered.
-	ensureDriverRegistered(config.Driver)
 
 	provider := &Provider{
 		name:   name,

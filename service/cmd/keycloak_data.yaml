@@ -37,6 +37,19 @@ realms:
           - opentdf-admin
         copies: 10
       - client:
+          clientID: opentdf-dpop
+          enabled: true
+          name: opentdf-dpop
+          serviceAccountsEnabled: true
+          clientAuthenticatorType: client-secret
+          secret: secret
+          attributes:
+            dpop.bound.access.tokens: "true"
+          protocolMappers:
+            - *customAudMapper
+        sa_realm_roles:
+          - opentdf-admin
+      - client:
           clientID: opentdf-sdk
           enabled: true
           name: opentdf-sdk

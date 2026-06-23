@@ -459,7 +459,8 @@ func (s *AuthSuite) Test_ConnectAuthNInterceptor_RoleProviderErrorReturnsInterna
 
 type authnTestRequest struct {
 	*connect.Request[kas.RewrapRequest]
-	procedure string
+	procedure  string
+	httpMethod string
 }
 
 func (r *authnTestRequest) Spec() connect.Spec {
@@ -472,6 +473,13 @@ func (r *authnTestRequest) Peer() connect.Peer {
 
 func (r *authnTestRequest) Any() any {
 	return r.Msg
+}
+
+func (r *authnTestRequest) HTTPMethod() string {
+	if r.httpMethod == "" {
+		return http.MethodPost
+	}
+	return r.httpMethod
 }
 
 func (s *AuthSuite) Test_ConnectAuthNInterceptor_SetsPublicRouteContextForChainedMiddleware() {
@@ -718,6 +726,7 @@ func (s *AuthSuite) TestInvalid_DPoP_Cases() {
 		{dpopPublic, otherKey, signedTok, jwa.RS256, "dpop+jwt", http.MethodPost, "/a/path", "", time.Now(), "failed to verify signature on DPoP JWT"},
 		{dpopPublic, dpopKey, signedTok, jwa.RS256, "dpop+jwt", http.MethodPost, "/a/different/path", "", time.Now(), "incorrect `htu` claim in DPoP JWT"},
 		{dpopPublic, dpopKey, signedTok, jwa.RS256, "dpop+jwt", "POSTERS", "/a/path", "", time.Now(), "incorrect `htm` claim in DPoP JWT"},
+		{dpopPublic, dpopKey, signedTok, jwa.RS256, "dpop+jwt", http.MethodGet, "/a/path", "", time.Now(), "incorrect `htm` claim in DPoP JWT"},
 		{dpopPublic, dpopKey, signedTok, jwa.RS256, "dpop+jwt", http.MethodPost, "/a/path", "bad ath", time.Now(), "incorrect `ath` claim in DPoP JWT"},
 		{dpopPublic, dpopKey, signedTok, jwa.RS256, "dpop+jwt", http.MethodPost, "/a/path", "bad iat", time.Now().Add(2 * time.Hour), "\"iat\" not satisfied"},
 		{
@@ -745,6 +754,190 @@ func (s *AuthSuite) TestInvalid_DPoP_Cases() {
 
 			s.Require().Error(err)
 			s.Contains(err.Error(), testCase.errorMessage)
+		})
+	}
+}
+
+// Test_CheckToken_AcceptsDPoP_GET covers the ConnectRPC "Get requests" /
+// idempotent-RPC scenario (used by the Java connect-go client's Hasan
+// extension): the DPoP proof carries htm:"GET" and the server side must accept
+// it when the actual request method is GET.
+func (s *AuthSuite) Test_CheckToken_AcceptsDPoP_GET() {
+	dpopRaw, err := rsa.GenerateKey(rand.Reader, 2048)
+	s.Require().NoError(err)
+	dpopKey, err := jwk.FromRaw(dpopRaw)
+	s.Require().NoError(err)
+	s.Require().NoError(dpopKey.Set(jwk.AlgorithmKey, jwa.RS256))
+	dpopPublic, err := dpopKey.PublicKey()
+	s.Require().NoError(err)
+
+	tok := jwt.New()
+	s.Require().NoError(tok.Set(jwt.ExpirationKey, time.Now().Add(time.Hour)))
+	s.Require().NoError(tok.Set("iss", s.server.URL))
+	s.Require().NoError(tok.Set("aud", "test"))
+	s.Require().NoError(tok.Set("cid", "client-get"))
+	thumbprint, err := dpopKey.Thumbprint(crypto.SHA256)
+	s.Require().NoError(err)
+	cnf := map[string]string{"jkt": base64.URLEncoding.WithPadding(base64.NoPadding).EncodeToString(thumbprint)}
+	s.Require().NoError(tok.Set("cnf", cnf))
+	signedTok, err := jwt.Sign(tok, jwt.WithKey(jwa.RS256, s.key))
+	s.Require().NoError(err)
+
+	dpopToken := makeDPoPToken(s.T(), dpopTestCase{
+		key:              dpopPublic,
+		actualSigningKey: dpopKey,
+		accessToken:      signedTok,
+		alg:              jwa.RS256,
+		typ:              "dpop+jwt",
+		htm:              http.MethodGet,
+		htu:              "https://localhost:8080/kas.AccessService/PublicKey",
+		iat:              time.Now(),
+	})
+
+	_, _, err = s.auth.checkToken(
+		context.Background(),
+		[]string{"DPoP " + string(signedTok)},
+		receiverInfo{
+			u: []string{
+				"http://localhost:8080/kas.AccessService/PublicKey",
+				"https://localhost:8080/kas.AccessService/PublicKey",
+			},
+			m: []string{http.MethodGet},
+		},
+		[]string{dpopToken},
+	)
+	s.Require().NoError(err)
+}
+
+// Test_CheckToken_RejectsReplayedDPoP verifies that reusing the same DPoP proof
+// (identical `jti`) within the acceptance window is rejected per RFC 9449 §11.1,
+// even though the first presentation succeeds.
+func (s *AuthSuite) Test_CheckToken_RejectsReplayedDPoP() {
+	dpopRaw, err := rsa.GenerateKey(rand.Reader, 2048)
+	s.Require().NoError(err)
+	dpopKey, err := jwk.FromRaw(dpopRaw)
+	s.Require().NoError(err)
+	s.Require().NoError(dpopKey.Set(jwk.AlgorithmKey, jwa.RS256))
+	dpopPublic, err := dpopKey.PublicKey()
+	s.Require().NoError(err)
+
+	tok := jwt.New()
+	s.Require().NoError(tok.Set(jwt.ExpirationKey, time.Now().Add(time.Hour)))
+	s.Require().NoError(tok.Set("iss", s.server.URL))
+	s.Require().NoError(tok.Set("aud", "test"))
+	s.Require().NoError(tok.Set("cid", "client-replay"))
+	thumbprint, err := dpopKey.Thumbprint(crypto.SHA256)
+	s.Require().NoError(err)
+	cnf := map[string]string{"jkt": base64.URLEncoding.WithPadding(base64.NoPadding).EncodeToString(thumbprint)}
+	s.Require().NoError(tok.Set("cnf", cnf))
+	signedTok, err := jwt.Sign(tok, jwt.WithKey(jwa.RS256, s.key))
+	s.Require().NoError(err)
+
+	dpopToken := makeDPoPToken(s.T(), dpopTestCase{
+		key:              dpopPublic,
+		actualSigningKey: dpopKey,
+		accessToken:      signedTok,
+		alg:              jwa.RS256,
+		typ:              "dpop+jwt",
+		htm:              http.MethodPost,
+		htu:              "/a/path",
+		iat:              time.Now(),
+	})
+
+	ri := receiverInfo{u: []string{"/a/path"}, m: []string{http.MethodPost}}
+
+	_, _, err = s.auth.checkToken(context.Background(), []string{"DPoP " + string(signedTok)}, ri, []string{dpopToken})
+	s.Require().NoError(err, "first presentation of the proof should succeed")
+
+	_, _, err = s.auth.checkToken(context.Background(), []string{"DPoP " + string(signedTok)}, ri, []string{dpopToken})
+	s.Require().Error(err, "replaying the same proof should be rejected")
+	s.Contains(err.Error(), "replay")
+}
+
+// Test_ConnectAuthNInterceptor_PropagatesHTTPMethod verifies that the Connect
+// interceptor forwards the actual HTTP method (from req.HTTPMethod()) into
+// receiverInfo.m, instead of hardcoding POST. This is what makes DPoP
+// validation succeed for idempotent RPCs invoked via HTTP GET (ConnectRPC's
+// "Get requests" feature used by the Java client's Hasan extension).
+func (s *AuthSuite) Test_ConnectAuthNInterceptor_PropagatesHTTPMethod() {
+	tok := jwt.New()
+	s.Require().NoError(tok.Set(jwt.ExpirationKey, time.Now().Add(time.Hour)))
+	s.Require().NoError(tok.Set("iss", s.server.URL))
+	s.Require().NoError(tok.Set("aud", "test"))
+	s.Require().NoError(tok.Set("azp", "client-get"))
+	s.Require().NoError(tok.Set("realm_access", map[string][]string{"roles": {"opentdf-standard"}}))
+	signedTok, err := jwt.Sign(tok, jwt.WithKey(jwa.RS256, s.key))
+	s.Require().NoError(err)
+
+	for _, method := range []string{http.MethodGet, http.MethodPost} {
+		s.Run(method, func() {
+			var capturedMethods []string
+			s.auth._testCheckTokenFunc = func(ctx context.Context, _ []string, ri receiverInfo, _ []string) (jwt.Token, context.Context, error) {
+				capturedMethods = ri.m
+				return tok, ctx, nil
+			}
+			s.T().Cleanup(func() { s.auth._testCheckTokenFunc = nil })
+
+			interceptor := s.auth.ConnectAuthNInterceptor()
+			called := false
+			next := func(_ context.Context, _ connect.AnyRequest) (connect.AnyResponse, error) {
+				called = true
+				return connect.NewResponse(&kas.RewrapResponse{}), nil
+			}
+			req := &authnTestRequest{
+				Request:    connect.NewRequest(&kas.RewrapRequest{}),
+				procedure:  "/kas.AccessService/Rewrap",
+				httpMethod: method,
+			}
+			req.Header().Set("Authorization", "DPoP "+string(signedTok))
+
+			_, err := interceptor(next)(s.T().Context(), req)
+			s.Require().NoError(err)
+			s.True(called)
+			s.Equal([]string{method}, capturedMethods)
+		})
+	}
+}
+
+func TestMatchHTU(t *testing.T) {
+	full := []string{
+		"http://localhost:8080/svc/Method",
+		"https://localhost:8080/svc/Method",
+	}
+	pathOnly := []string{"/svc/Method"}
+
+	tests := []struct {
+		name       string
+		received   string
+		acceptable []string
+		strict     bool
+		want       bool
+	}{
+		// Loose mode: path-only htu accepted when path matches
+		{"loose/path-only match", "/svc/Method", full, false, true},
+		{"loose/path-only match against path-only acceptable", "/svc/Method", pathOnly, false, true},
+		{"loose/path-only mismatch", "/svc/Other", full, false, false},
+		// Loose mode: full URL accepted when it matches exactly
+		{"loose/full http match", "http://localhost:8080/svc/Method", full, false, true},
+		{"loose/full https match", "https://localhost:8080/svc/Method", full, false, true},
+		{"loose/full wrong path", "http://localhost:8080/svc/Other", full, false, false},
+		{"loose/full wrong host", "http://other:8080/svc/Method", full, false, false},
+		// Strict mode: path-only htu always rejected
+		{"strict/path-only rejected", "/svc/Method", full, true, false},
+		{"strict/path-only rejected against path-only acceptable", "/svc/Method", pathOnly, true, false},
+		// Strict mode: full URL accepted when it matches exactly
+		{"strict/full http match", "http://localhost:8080/svc/Method", full, true, true},
+		{"strict/full https match", "https://localhost:8080/svc/Method", full, true, true},
+		{"strict/full wrong path", "http://localhost:8080/svc/Other", full, true, false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := matchHTU(tt.received, tt.acceptable, tt.strict)
+			if got != tt.want {
+				t.Errorf("matchHTU(%q, %v, strict=%v) = %v, want %v",
+					tt.received, tt.acceptable, tt.strict, got, tt.want)
+			}
 		})
 	}
 }
@@ -879,9 +1072,10 @@ func (s *AuthSuite) Test_Allowing_Auth_With_No_DPoP() {
 	}
 	config := Config{}
 	config.AuthNConfig = authnConfig
-	auth, err := NewAuthenticator(context.Background(), config, &logger.Logger{
-		Logger: slog.New(slog.Default().Handler()),
-	},
+	auth, err := NewAuthenticator(
+		context.Background(), config, &logger.Logger{
+			Logger: slog.New(slog.Default().Handler()),
+		},
 		func(_ string, _ any) error { return nil },
 	)
 

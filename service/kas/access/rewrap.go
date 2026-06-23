@@ -944,13 +944,31 @@ func (p *Provider) tdf3Rewrap(ctx context.Context, requests []*kaspb.UnsignedRew
 
 	pdpAccessResults, accessErr := p.canAccess(ctx, tok, policies, additionalRewrapContext.Obligations.FulfillableFQNs)
 	if accessErr != nil {
+		category, isInternal := classifyAccessError(ctx, accessErr)
+		// Terse, sensitive-payload-free line for the routine-denial flood case.
+		// Floods read as floods, not as a forest of stack traces.
+		p.Logger.InfoContext(
+			ctx,
+			"tdf3rewrap: access evaluation failed",
+			slog.String("category", category),
+			slog.Bool("internal", isInternal),
+			slog.Int("policies", len(policies)),
+			slog.Int("requests", len(requests)),
+		)
+		// Verbose / sensitive: only read when investigating one specific request.
 		p.Logger.DebugContext(
 			ctx,
-			"tdf3rewrap: cannot access policy",
-			slog.Any("policies", policies),
+			"tdf3rewrap: access evaluation failed: details",
+			slog.String("category", category),
 			slog.Any("error", accessErr),
+			slog.Any("policies", policies),
+			slog.Any("fulfillable_obligation_fqns", additionalRewrapContext.Obligations.FulfillableFQNs),
 		)
-		failAllKaos(requests, results, err500("could not perform access"))
+		if isInternal {
+			failAllKaos(requests, results, err500("internal: "+category))
+		} else {
+			failAllKaos(requests, results, err403("forbidden: "+category))
+		}
 		return "", results, nil
 	}
 

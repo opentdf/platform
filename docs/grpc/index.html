@@ -5240,7 +5240,7 @@ string</p></td>
                   <td>entity_chain</td>
                   <td><a href="#entity.EntityChain">entity.EntityChain</a></td>
                   <td></td>
-                  <td><p>chain of one or more entities and at most 10 </p></td>
+                  <td><p>chain of one or more entities </p></td>
                 </tr>
               
                 <tr>
@@ -5321,7 +5321,7 @@ this case the resource acts as and represents a single entity for authorization/
         
       
         <h3 id="authorization.v2.GetDecisionMultiResourceRequest">GetDecisionMultiResourceRequest</h3>
-        <p>Can the identified entity/entities access?</p><p>1. one entity reference (actor)</p><p>2. one action</p><p>3. multiple resources</p><p>If entitled, checks obligation policy: fulfillable obligations must satisfy all triggered.</p><p>Note: this is a more performant bulk request for multiple resource decisions, up to 1000 per request</p>
+        <p>Can the identified entity/entities access?</p><p>1. one entity reference (actor)</p><p>2. one action</p><p>3. multiple resources</p><p>If entitled, checks obligation policy: fulfillable obligations must satisfy all triggered.</p><p>Note: this is a more performant bulk request for multiple resource decisions</p>
 
         
           <table class="field-table">
@@ -5544,7 +5544,7 @@ down the hierarchical values instead of returning solely the value that is direc
                   <td>attribute_values</td>
                   <td><a href="#authorization.v2.Resource.AttributeValues">Resource.AttributeValues</a></td>
                   <td></td>
-                  <td><p>a set of attribute value FQNs, such as those on a TDF, between 1 and 20 in count </p></td>
+                  <td><p>a set of attribute value FQNs, such as those on a TDF, containing at least 1 value </p></td>
                 </tr>
               
                 <tr>

@@ -413,6 +413,12 @@ components:
         - ALGORITHM_EC_P256
         - ALGORITHM_EC_P384
         - ALGORITHM_EC_P521
+<<<<<<< HEAD
+=======
+        - ALGORITHM_HPQT_XWING
+        - ALGORITHM_HPQT_SECP256R1_MLKEM768
+        - ALGORITHM_HPQT_SECP384R1_MLKEM1024
+>>>>>>> 9d16f80 (feat(authz): make v2 request limits configurable (#3508))
       description: Supported key algorithms.
     policy.AttributeRuleTypeEnum:
       type: string
@@ -439,6 +445,12 @@ components:
         - KAS_PUBLIC_KEY_ALG_ENUM_EC_SECP256R1
         - KAS_PUBLIC_KEY_ALG_ENUM_EC_SECP384R1
         - KAS_PUBLIC_KEY_ALG_ENUM_EC_SECP521R1
+<<<<<<< HEAD
+=======
+        - KAS_PUBLIC_KEY_ALG_ENUM_HPQT_XWING
+        - KAS_PUBLIC_KEY_ALG_ENUM_HPQT_SECP256R1_MLKEM768
+        - KAS_PUBLIC_KEY_ALG_ENUM_HPQT_SECP384R1_MLKEM1024
+>>>>>>> 9d16f80 (feat(authz): make v2 request limits configurable (#3508))
     policy.SourceType:
       type: string
       title: SourceType
@@ -645,6 +657,13 @@ components:
         name:
           type: string
           title: name
+<<<<<<< HEAD
+=======
+        namespace:
+          title: namespace
+          description: Namespace context for this action
+          $ref: '#/components/schemas/policy.Namespace'
+>>>>>>> 9d16f80 (feat(authz): make v2 request limits configurable (#3508))
         metadata:
           title: metadata
           $ref: '#/components/schemas/common.Metadata'
@@ -701,6 +720,7 @@ components:
       required:
         - rule
       additionalProperties: false
+<<<<<<< HEAD
     policy.Certificate:
       type: object
       properties:
@@ -718,6 +738,8 @@ components:
           $ref: '#/components/schemas/common.Metadata'
       title: Certificate
       additionalProperties: false
+=======
+>>>>>>> 9d16f80 (feat(authz): make v2 request limits configurable (#3508))
     policy.Condition:
       type: object
       properties:
@@ -1319,9 +1341,31 @@ components:
             Optional
             Optional field must be a valid UUID:
             ```
+<<<<<<< HEAD
             size(this) == 0 || this.matches('[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}')
             ```
 
+=======
+            size(this) == 0 || this.matches('^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$')
+            ```
+
+        namespaceId:
+          type: string
+          title: namespace_id
+          format: uuid
+          description: |-
+            Optional
+             The namespace that owns this resource mapping. If a group_id is provided,
+             this must match the group's namespace (and may be omitted to inherit it).
+        namespaceFqn:
+          type: string
+          title: namespace_fqn
+          minLength: 1
+          format: uri
+          description: |-
+            Optional
+             Alternative to namespace_id; the FQN of the owning namespace.
+>>>>>>> 9d16f80 (feat(authz): make v2 request limits configurable (#3508))
         metadata:
           title: metadata
           description: Optional
@@ -1487,9 +1531,30 @@ components:
             Optional
             Optional field must be a valid UUID:
             ```
+<<<<<<< HEAD
             size(this) == 0 || this.matches('[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}')
             ```
 
+=======
+            size(this) == 0 || this.matches('^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$')
+            ```
+
+        namespaceId:
+          type: string
+          title: namespace_id
+          format: uuid
+          description: |-
+            Optional
+             Filter the list to resource mappings owned by this namespace.
+        namespaceFqn:
+          type: string
+          title: namespace_fqn
+          minLength: 1
+          format: uri
+          description: |-
+            Optional
+             Filter the list to resource mappings owned by this namespace.
+>>>>>>> 9d16f80 (feat(authz): make v2 request limits configurable (#3508))
         pagination:
           title: pagination
           description: Optional
@@ -1583,7 +1648,11 @@ components:
             Optional
             Optional field must be a valid UUID:
             ```
+<<<<<<< HEAD
             size(this) == 0 || this.matches('[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}')
+=======
+            size(this) == 0 || this.matches('^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$')
+>>>>>>> 9d16f80 (feat(authz): make v2 request limits configurable (#3508))
             ```
 
         terms:
@@ -1601,9 +1670,31 @@ components:
             Optional
             Optional field must be a valid UUID:
             ```
+<<<<<<< HEAD
             size(this) == 0 || this.matches('[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}')
             ```
 
+=======
+            size(this) == 0 || this.matches('^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$')
+            ```
+
+        namespaceId:
+          type: string
+          title: namespace_id
+          format: uuid
+          description: |-
+            Optional
+             The namespace that owns this resource mapping. If a group_id is set on the
+             mapping, this must match the group's namespace.
+        namespaceFqn:
+          type: string
+          title: namespace_fqn
+          minLength: 1
+          format: uri
+          description: |-
+            Optional
+             Alternative to namespace_id; the FQN of the owning namespace.
+>>>>>>> 9d16f80 (feat(authz): make v2 request limits configurable (#3508))
         metadata:
           title: metadata
           description: |-

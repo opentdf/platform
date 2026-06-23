@@ -189,6 +189,47 @@ components:
         - STANDARD_ACTION_UNSPECIFIED
         - STANDARD_ACTION_DECRYPT
         - STANDARD_ACTION_TRANSMIT
+<<<<<<< HEAD
+=======
+    policy.Algorithm:
+      type: string
+      title: Algorithm
+      enum:
+        - ALGORITHM_UNSPECIFIED
+        - ALGORITHM_RSA_2048
+        - ALGORITHM_RSA_4096
+        - ALGORITHM_EC_P256
+        - ALGORITHM_EC_P384
+        - ALGORITHM_EC_P521
+        - ALGORITHM_HPQT_XWING
+        - ALGORITHM_HPQT_SECP256R1_MLKEM768
+        - ALGORITHM_HPQT_SECP384R1_MLKEM1024
+      description: Supported key algorithms.
+    policy.KasPublicKeyAlgEnum:
+      type: string
+      title: KasPublicKeyAlgEnum
+      enum:
+        - KAS_PUBLIC_KEY_ALG_ENUM_UNSPECIFIED
+        - KAS_PUBLIC_KEY_ALG_ENUM_RSA_2048
+        - KAS_PUBLIC_KEY_ALG_ENUM_RSA_4096
+        - KAS_PUBLIC_KEY_ALG_ENUM_EC_SECP256R1
+        - KAS_PUBLIC_KEY_ALG_ENUM_EC_SECP384R1
+        - KAS_PUBLIC_KEY_ALG_ENUM_EC_SECP521R1
+        - KAS_PUBLIC_KEY_ALG_ENUM_HPQT_XWING
+        - KAS_PUBLIC_KEY_ALG_ENUM_HPQT_SECP256R1_MLKEM768
+        - KAS_PUBLIC_KEY_ALG_ENUM_HPQT_SECP384R1_MLKEM1024
+    policy.SourceType:
+      type: string
+      title: SourceType
+      enum:
+        - SOURCE_TYPE_UNSPECIFIED
+        - SOURCE_TYPE_INTERNAL
+        - SOURCE_TYPE_EXTERNAL
+      description: |-
+        Describes whether this kas is managed by the organization or if they imported
+         the kas information from an external party. These two modes are necessary in order
+         to encrypt a tdf dek with an external parties kas public key.
+>>>>>>> 9d16f80 (feat(authz): make v2 request limits configurable (#3508))
     authorization.DecisionRequest:
       type: object
       properties:
@@ -783,12 +824,234 @@ components:
         name:
           type: string
           title: name
+<<<<<<< HEAD
+=======
+        namespace:
+          title: namespace
+          description: Namespace context for this action
+          $ref: '#/components/schemas/policy.Namespace'
+>>>>>>> 9d16f80 (feat(authz): make v2 request limits configurable (#3508))
         metadata:
           title: metadata
           $ref: '#/components/schemas/common.Metadata'
       title: Action
       additionalProperties: false
       description: An action an entity can take
+<<<<<<< HEAD
+    connect-protocol-version:
+      type: number
+      title: Connect-Protocol-Version
+      enum:
+        - 1
+      description: Define the version of the Connect protocol
+      const: 1
+    connect-timeout-header:
+      type: number
+      title: Connect-Timeout-Ms
+      description: Define the timeout, in ms
+    connect.error:
+=======
+    policy.KasPublicKey:
+>>>>>>> 9d16f80 (feat(authz): make v2 request limits configurable (#3508))
+      type: object
+      properties:
+        code:
+          type: string
+          examples:
+            - not_found
+          enum:
+            - canceled
+            - unknown
+            - invalid_argument
+            - deadline_exceeded
+            - not_found
+            - already_exists
+            - permission_denied
+            - resource_exhausted
+            - failed_precondition
+            - aborted
+            - out_of_range
+            - unimplemented
+            - internal
+            - unavailable
+            - data_loss
+            - unauthenticated
+          description: The status code, which should be an enum value of [google.rpc.Code][google.rpc.Code].
+        message:
+          type: string
+<<<<<<< HEAD
+=======
+          title: kid
+          maxLength: 32
+          minLength: 1
+          description: A unique string identifier for this key
+        alg:
+          not:
+            enum:
+              - 0
+          title: alg
+          description: |-
+            A known algorithm type with any additional parameters encoded.
+             To start, these may be `rsa:2048` for RSA-based wrapping and
+             `ec:secp256r1` for EC-based wrapping, but more formats may be added as needed.
+          $ref: '#/components/schemas/policy.KasPublicKeyAlgEnum'
+      title: KasPublicKey
+      additionalProperties: false
+      description: |-
+        Deprecated
+         A KAS public key and some associated metadata for further identifcation
+    policy.KasPublicKeySet:
+      type: object
+      properties:
+        keys:
+          type: array
+          items:
+            $ref: '#/components/schemas/policy.KasPublicKey'
+          title: keys
+      title: KasPublicKeySet
+      additionalProperties: false
+      description: |-
+        Deprecated
+         A list of known KAS public keys
+    policy.KeyAccessServer:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+        uri:
+          type: string
+          title: uri
+          description: |+
+            Address of a KAS instance
+            URI must be a valid URL (e.g., 'https://demo.com/') followed by additional segments. Each segment must start and end with an alphanumeric character, can contain hyphens, alphanumeric characters, and slashes.:
+            ```
+            this.matches('^https?://[a-zA-Z0-9]([a-zA-Z0-9\\-]{0,61}[a-zA-Z0-9])?(\\.[a-zA-Z0-9]([a-zA-Z0-9\\-]{0,61}[a-zA-Z0-9])?)*(:[0-9]+)?(/.*)?$')
+            ```
+
+        publicKey:
+          title: public_key
+          description: 'Deprecated: KAS can have multiple key pairs'
+          $ref: '#/components/schemas/policy.PublicKey'
+        sourceType:
+          title: source_type
+          description: 'The source of the KAS: (INTERNAL, EXTERNAL)'
+          $ref: '#/components/schemas/policy.SourceType'
+        kasKeys:
+          type: array
+          items:
+            $ref: '#/components/schemas/policy.SimpleKasKey'
+          title: kas_keys
+          description: Kas keys associated with this KAS
+        name:
+          type: string
+          title: name
+          description: |-
+            Optional
+             Unique name of the KAS instance
+        metadata:
+          title: metadata
+          description: Common metadata
+          $ref: '#/components/schemas/common.Metadata'
+      title: KeyAccessServer
+      additionalProperties: false
+      description: Key Access Server Registry
+    policy.Namespace:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+          description: generated uuid in database
+        name:
+          type: string
+          title: name
+          description: |-
+            used to partition Attribute Definitions, support by namespace AuthN and
+             enable federation
+        fqn:
+          type: string
+          title: fqn
+        active:
+          title: active
+          description: active by default until explicitly deactivated
+          $ref: '#/components/schemas/google.protobuf.BoolValue'
+        metadata:
+          title: metadata
+          $ref: '#/components/schemas/common.Metadata'
+        grants:
+          type: array
+          items:
+            $ref: '#/components/schemas/policy.KeyAccessServer'
+          title: grants
+          description: Deprecated KAS grants for the namespace. Use kas_keys instead.
+        kasKeys:
+          type: array
+          items:
+            $ref: '#/components/schemas/policy.SimpleKasKey'
+          title: kas_keys
+          description: Keys for the namespace
+      title: Namespace
+      additionalProperties: false
+    policy.PublicKey:
+      type: object
+      oneOf:
+        - properties:
+            cached:
+              title: cached
+              description: public key with additional information. Current preferred version
+              $ref: '#/components/schemas/policy.KasPublicKeySet'
+          title: cached
+          required:
+            - cached
+        - properties:
+            remote:
+              type: string
+              title: remote
+              description: |+
+                kas public key url - optional since can also be retrieved via public key
+                URI must be a valid URL (e.g., 'https://demo.com/') followed by additional segments. Each segment must start and end with an alphanumeric character, can contain hyphens, alphanumeric characters, and slashes.:
+                ```
+                this.matches('^https://[a-zA-Z0-9]([a-zA-Z0-9\\-]{0,61}[a-zA-Z0-9])?(\\.[a-zA-Z0-9]([a-zA-Z0-9\\-]{0,61}[a-zA-Z0-9])?)*(/.*)?$')
+                ```
+
+          title: remote
+          required:
+            - remote
+      title: PublicKey
+      additionalProperties: false
+      description: Deprecated
+    policy.SimpleKasKey:
+      type: object
+      properties:
+        kasUri:
+          type: string
+          title: kas_uri
+          description: The URL of the Key Access Server
+        publicKey:
+          title: public_key
+          description: The public key of the Key that belongs to the KAS
+          $ref: '#/components/schemas/policy.SimpleKasPublicKey'
+        kasId:
+          type: string
+          title: kas_id
+          description: The ID of the Key Access Server
+      title: SimpleKasKey
+      additionalProperties: false
+    policy.SimpleKasPublicKey:
+      type: object
+      properties:
+        algorithm:
+          title: algorithm
+          $ref: '#/components/schemas/policy.Algorithm'
+        kid:
+          type: string
+          title: kid
+        pem:
+          type: string
+          title: pem
+      title: SimpleKasPublicKey
+      additionalProperties: false
     connect-protocol-version:
       type: number
       title: Connect-Protocol-Version
@@ -827,6 +1090,7 @@ components:
           description: The status code, which should be an enum value of [google.rpc.Code][google.rpc.Code].
         message:
           type: string
+>>>>>>> 9d16f80 (feat(authz): make v2 request limits configurable (#3508))
           description: A developer-facing error message, which should be in English. Any user-facing error message should be localized and sent in the [google.rpc.Status.details][google.rpc.Status.details] field, or localized by the client.
         detail:
           $ref: '#/components/schemas/google.protobuf.Any'

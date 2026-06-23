@@ -2,7 +2,11 @@ openapi: 3.1.0
 info:
   title: entityresolution
 paths:
+<<<<<<< HEAD
   /entityresolution/resolve:
+=======
+  /entityresolution.EntityResolutionService/ResolveEntities:
+>>>>>>> 9d16f80 (feat(authz): make v2 request limits configurable (#3508))
     post:
       tags:
         - entityresolution.EntityResolutionService
@@ -28,13 +32,30 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/entityresolution.ResolveEntitiesResponse'
+<<<<<<< HEAD
   /entityresolution/entitychain:
+=======
+  /entityresolution.EntityResolutionService/CreateEntityChainFromJwt:
+>>>>>>> 9d16f80 (feat(authz): make v2 request limits configurable (#3508))
     post:
       tags:
         - entityresolution.EntityResolutionService
       summary: CreateEntityChainFromJwt
       description: 'Deprecated: use v2 CreateEntityChainsFromTokens instead'
       operationId: entityresolution.EntityResolutionService.CreateEntityChainFromJwt
+<<<<<<< HEAD
+=======
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+>>>>>>> 9d16f80 (feat(authz): make v2 request limits configurable (#3508))
       requestBody:
         content:
           application/json:

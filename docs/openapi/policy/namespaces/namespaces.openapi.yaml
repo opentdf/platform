@@ -325,6 +325,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/policy.namespaces.RemovePublicKeyFromNamespaceResponse'
+<<<<<<< HEAD
   /policy.namespaces.NamespaceService/AssignCertificateToNamespace:
     post:
       tags:
@@ -396,6 +397,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/policy.namespaces.RemoveCertificateFromNamespaceResponse'
+=======
+>>>>>>> 9d16f80 (feat(authz): make v2 request limits configurable (#3508))
 components:
   schemas:
     common.ActiveStateEnum:
@@ -424,6 +427,12 @@ components:
         - ALGORITHM_EC_P256
         - ALGORITHM_EC_P384
         - ALGORITHM_EC_P521
+<<<<<<< HEAD
+=======
+        - ALGORITHM_HPQT_XWING
+        - ALGORITHM_HPQT_SECP256R1_MLKEM768
+        - ALGORITHM_HPQT_SECP384R1_MLKEM1024
+>>>>>>> 9d16f80 (feat(authz): make v2 request limits configurable (#3508))
       description: Supported key algorithms.
     policy.KasPublicKeyAlgEnum:
       type: string
@@ -435,6 +444,24 @@ components:
         - KAS_PUBLIC_KEY_ALG_ENUM_EC_SECP256R1
         - KAS_PUBLIC_KEY_ALG_ENUM_EC_SECP384R1
         - KAS_PUBLIC_KEY_ALG_ENUM_EC_SECP521R1
+<<<<<<< HEAD
+=======
+        - KAS_PUBLIC_KEY_ALG_ENUM_HPQT_XWING
+        - KAS_PUBLIC_KEY_ALG_ENUM_HPQT_SECP256R1_MLKEM768
+        - KAS_PUBLIC_KEY_ALG_ENUM_HPQT_SECP384R1_MLKEM1024
+    policy.SortDirection:
+      type: string
+      title: SortDirection
+      enum:
+        - SORT_DIRECTION_UNSPECIFIED
+        - SORT_DIRECTION_ASC
+        - SORT_DIRECTION_DESC
+      description: |-
+        Sorting direction shared across list APIs.
+         When the 'sort' field is omitted or the chosen sort 'field' is UNSPECIFIED,
+         the endpoint's request message defines the default ordering; see the
+         specific List* request docs.
+>>>>>>> 9d16f80 (feat(authz): make v2 request limits configurable (#3508))
     policy.SourceType:
       type: string
       title: SourceType
@@ -446,6 +473,7 @@ components:
         Describes whether this kas is managed by the organization or if they imported
          the kas information from an external party. These two modes are necessary in order
          to encrypt a tdf dek with an external parties kas public key.
+<<<<<<< HEAD
     common.IdFqnIdentifier:
       type: object
       properties:
@@ -460,6 +488,17 @@ components:
           format: uri
       title: IdFqnIdentifier
       additionalProperties: false
+=======
+    policy.namespaces.SortNamespacesType:
+      type: string
+      title: SortNamespacesType
+      enum:
+        - SORT_NAMESPACES_TYPE_UNSPECIFIED
+        - SORT_NAMESPACES_TYPE_NAME
+        - SORT_NAMESPACES_TYPE_FQN
+        - SORT_NAMESPACES_TYPE_CREATED_AT
+        - SORT_NAMESPACES_TYPE_UPDATED_AT
+>>>>>>> 9d16f80 (feat(authz): make v2 request limits configurable (#3508))
     common.Metadata:
       type: object
       properties:
@@ -620,6 +659,7 @@ components:
          the Joda Time's [`ISODateTimeFormat.dateTime()`](
          http://joda-time.sourceforge.net/apidocs/org/joda/time/format/ISODateTimeFormat.html#dateTime()
          ) to obtain a formatter capable of generating timestamps in this format.
+<<<<<<< HEAD
     policy.Certificate:
       type: object
       properties:
@@ -637,6 +677,8 @@ components:
           $ref: '#/components/schemas/common.Metadata'
       title: Certificate
       additionalProperties: false
+=======
+>>>>>>> 9d16f80 (feat(authz): make v2 request limits configurable (#3508))
     policy.KasPublicKey:
       type: object
       properties:
@@ -867,6 +909,7 @@ components:
           title: pem
       title: SimpleKasPublicKey
       additionalProperties: false
+<<<<<<< HEAD
     policy.namespaces.AssignCertificateToNamespaceRequest:
       type: object
       properties:
@@ -900,6 +943,8 @@ components:
           $ref: '#/components/schemas/policy.Certificate'
       title: AssignCertificateToNamespaceResponse
       additionalProperties: false
+=======
+>>>>>>> 9d16f80 (feat(authz): make v2 request limits configurable (#3508))
     policy.namespaces.AssignKeyAccessServerToNamespaceRequest:
       type: object
       properties:

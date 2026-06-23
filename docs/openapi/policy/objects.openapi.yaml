@@ -21,6 +21,12 @@ components:
         - ALGORITHM_EC_P256
         - ALGORITHM_EC_P384
         - ALGORITHM_EC_P521
+<<<<<<< HEAD
+=======
+        - ALGORITHM_HPQT_XWING
+        - ALGORITHM_HPQT_SECP256R1_MLKEM768
+        - ALGORITHM_HPQT_SECP384R1_MLKEM1024
+>>>>>>> 9d16f80 (feat(authz): make v2 request limits configurable (#3508))
       description: Supported key algorithms.
     policy.AttributeRuleTypeEnum:
       type: string
@@ -47,6 +53,12 @@ components:
         - KAS_PUBLIC_KEY_ALG_ENUM_EC_SECP256R1
         - KAS_PUBLIC_KEY_ALG_ENUM_EC_SECP384R1
         - KAS_PUBLIC_KEY_ALG_ENUM_EC_SECP521R1
+<<<<<<< HEAD
+=======
+        - KAS_PUBLIC_KEY_ALG_ENUM_HPQT_XWING
+        - KAS_PUBLIC_KEY_ALG_ENUM_HPQT_SECP256R1_MLKEM768
+        - KAS_PUBLIC_KEY_ALG_ENUM_HPQT_SECP384R1_MLKEM1024
+>>>>>>> 9d16f80 (feat(authz): make v2 request limits configurable (#3508))
     policy.KeyMode:
       type: string
       title: KeyMode
@@ -248,6 +260,13 @@ components:
         name:
           type: string
           title: name
+<<<<<<< HEAD
+=======
+        namespace:
+          title: namespace
+          description: Namespace context for this action
+          $ref: '#/components/schemas/policy.Namespace'
+>>>>>>> 9d16f80 (feat(authz): make v2 request limits configurable (#3508))
         metadata:
           title: metadata
           $ref: '#/components/schemas/common.Metadata'
@@ -349,6 +368,7 @@ components:
       required:
         - rule
       additionalProperties: false
+<<<<<<< HEAD
     policy.Certificate:
       type: object
       properties:
@@ -366,6 +386,8 @@ components:
           $ref: '#/components/schemas/common.Metadata'
       title: Certificate
       additionalProperties: false
+=======
+>>>>>>> 9d16f80 (feat(authz): make v2 request limits configurable (#3508))
     policy.Condition:
       type: object
       properties:

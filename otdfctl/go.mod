@@ -17,7 +17,7 @@ require (
 	github.com/jrschumacher/go-osprofiles v0.0.0-20251201220924-3d077c5481e5
 	github.com/opentdf/platform/lib/flattening v0.1.3
 	github.com/opentdf/platform/lib/identifier v0.4.0
-	github.com/opentdf/platform/lib/ocrypto v0.12.0
+	github.com/opentdf/platform/lib/ocrypto v0.13.0
 	github.com/opentdf/platform/protocol/go v0.34.0
 	github.com/opentdf/platform/sdk v0.22.0
 	github.com/spf13/cobra v1.10.2

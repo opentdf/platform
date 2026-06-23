@@ -48,8 +48,8 @@ github.com/lestrrat-go/jwx/v2 v2.1.6 h1:hxM1gfDILk/l5ylers6BX/Eq1m/pnxe9NBwW6lVf
 github.com/lestrrat-go/jwx/v2 v2.1.6/go.mod h1:Y722kU5r/8mV7fYDifjug0r8FK8mZdw0K0GpJw/l8pU=
 github.com/lestrrat-go/option v1.0.1 h1:oAzP2fvZGQKWkvHa1/SAcFolBEca1oN+mQ7eooNBEYU=
 github.com/lestrrat-go/option v1.0.1/go.mod h1:5ZHFbivi4xwXxhxY9XHDe2FHo6/Z7WWmtT7T5nBBp3I=
-github.com/opentdf/platform/lib/ocrypto v0.12.0 h1:N449KWy7VdMO0JwfsrG0kM6Uy8VrEnVvBciwzRHwnlg=
-github.com/opentdf/platform/lib/ocrypto v0.12.0/go.mod h1:51UTmAWO6C8ghuMXiktpn63N+fLUQxY6zo8D65Ly0wQ=
+github.com/opentdf/platform/lib/ocrypto v0.13.0 h1:EHEb/MsniA0MSUsfUcRLdabp5Y89CLkCMJTAgQrAX8Y=
+github.com/opentdf/platform/lib/ocrypto v0.13.0/go.mod h1:TLaMvVE1aTqrgW8AZz0ZuxX/ZpI7l5IQOHyX99fdKl0=
 github.com/opentdf/platform/protocol/go v0.34.0 h1:HJstzUyOnbE8c39UIAf3ASkjkkqLEMxy/D0oiUWuzSA=
 github.com/opentdf/platform/protocol/go v0.34.0/go.mod h1:6A0vQJ5D4ZTLReWAp8Y/7jTFzlYCmL/IfMJWDHZS6M0=
 github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=

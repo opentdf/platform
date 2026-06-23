@@ -1390,6 +1390,13 @@ components:
         group:
           title: group
           $ref: '#/components/schemas/policy.ResourceMappingGroup'
+        namespace:
+          title: namespace
+          description: |-
+            The namespace that optionally owns this resource mapping. When the mapping
+             belongs to a group, this matches the group's namespace. The mapped
+             attribute value may belong to a different namespace.
+          $ref: '#/components/schemas/policy.Namespace'
       title: ResourceMapping
       required:
         - attributeValue

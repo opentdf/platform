@@ -310,6 +310,11 @@ message ResourceMapping {
   repeated string terms = 4;
 
   ResourceMappingGroup group = 5;
+
+  // The namespace that optionally owns this resource mapping. When the mapping
+  // belongs to a group, this matches the group's namespace. The mapped
+  // attribute value may belong to a different namespace.
+  Namespace namespace = 6;
 }
 
 // Describes whether this kas is managed by the organization or if they imported

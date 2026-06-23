@@ -1083,6 +1083,13 @@ components:
         group:
           title: group
           $ref: '#/components/schemas/policy.ResourceMappingGroup'
+        namespace:
+          title: namespace
+          description: |-
+            The namespace that optionally owns this resource mapping. When the mapping
+             belongs to a group, this matches the group's namespace. The mapped
+             attribute value may belong to a different namespace.
+          $ref: '#/components/schemas/policy.Namespace'
       title: ResourceMapping
       required:
         - attributeValue
@@ -1268,12 +1275,22 @@ components:
       additionalProperties: false
     policy.resourcemapping.CreateResourceMappingGroupRequest:
       type: object
+      allOf:
+        - oneOf:
+            - required:
+                - namespaceId
+            - required:
+                - namespaceFqn
       properties:
         namespaceId:
           type: string
           title: namespace_id
           format: uuid
-          description: Required
+        namespaceFqn:
+          type: string
+          title: namespace_fqn
+          minLength: 1
+          format: uri
         name:
           type: string
           title: name
@@ -1317,11 +1334,31 @@ components:
           title: group_id
           description: |+
             Optional
+<<<<<<< HEAD
             Optional field must be a valid UUID:
             ```
             size(this) == 0 || this.matches('[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}')
             ```
 
+=======
+            optional_uuid_format // Optional field must be a valid UUID
+        namespaceId:
+          type: string
+          title: namespace_id
+          format: uuid
+          description: |-
+            Optional
+             The namespace that owns this resource mapping. If a group_id is provided,
+             this must match the group's namespace (and may be omitted to inherit it).
+        namespaceFqn:
+          type: string
+          title: namespace_fqn
+          minLength: 1
+          format: uri
+          description: |-
+            Optional
+             Alternative to namespace_id; the FQN of the owning namespace.
+>>>>>>> e4a04ed (feat(policy)!: DSPX-2998 add namespace fields to resource mapping protos (#3565))
         metadata:
           title: metadata
           description: Optional
@@ -1414,6 +1451,7 @@ components:
         namespaceId:
           type: string
           title: namespace_id
+<<<<<<< HEAD
           description: |+
             Optional
             Optional field must be a valid UUID:
@@ -1421,6 +1459,16 @@ components:
             size(this) == 0 || this.matches('[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}')
             ```
 
+=======
+          format: uuid
+          description: Optional
+        namespaceFqn:
+          type: string
+          title: namespace_fqn
+          minLength: 1
+          format: uri
+          description: Optional
+>>>>>>> e4a04ed (feat(policy)!: DSPX-2998 add namespace fields to resource mapping protos (#3565))
         pagination:
           title: pagination
           description: Optional
@@ -1485,11 +1533,30 @@ components:
           title: group_id
           description: |+
             Optional
+<<<<<<< HEAD
             Optional field must be a valid UUID:
             ```
             size(this) == 0 || this.matches('[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}')
             ```
 
+=======
+            optional_uuid_format // Optional field must be a valid UUID
+        namespaceId:
+          type: string
+          title: namespace_id
+          format: uuid
+          description: |-
+            Optional
+             Filter the list to resource mappings owned by this namespace.
+        namespaceFqn:
+          type: string
+          title: namespace_fqn
+          minLength: 1
+          format: uri
+          description: |-
+            Optional
+             Filter the list to resource mappings owned by this namespace.
+>>>>>>> e4a04ed (feat(policy)!: DSPX-2998 add namespace fields to resource mapping protos (#3565))
         pagination:
           title: pagination
           description: Optional
@@ -1533,6 +1600,7 @@ components:
         namespaceId:
           type: string
           title: namespace_id
+<<<<<<< HEAD
           description: |+
             Optional
             Optional field must be a valid UUID:
@@ -1540,6 +1608,16 @@ components:
             size(this) == 0 || this.matches('[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}')
             ```
 
+=======
+          format: uuid
+          description: Optional
+        namespaceFqn:
+          type: string
+          title: namespace_fqn
+          minLength: 1
+          format: uri
+          description: Optional
+>>>>>>> e4a04ed (feat(policy)!: DSPX-2998 add namespace fields to resource mapping protos (#3565))
         name:
           type: string
           title: name
@@ -1599,11 +1677,31 @@ components:
           title: group_id
           description: |+
             Optional
+<<<<<<< HEAD
             Optional field must be a valid UUID:
             ```
             size(this) == 0 || this.matches('[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}')
             ```
 
+=======
+            optional_uuid_format // Optional field must be a valid UUID
+        namespaceId:
+          type: string
+          title: namespace_id
+          format: uuid
+          description: |-
+            Optional
+             The namespace that owns this resource mapping. If a group_id is set on the
+             mapping, this must match the group's namespace.
+        namespaceFqn:
+          type: string
+          title: namespace_fqn
+          minLength: 1
+          format: uri
+          description: |-
+            Optional
+             Alternative to namespace_id; the FQN of the owning namespace.
+>>>>>>> e4a04ed (feat(policy)!: DSPX-2998 add namespace fields to resource mapping protos (#3565))
         metadata:
           title: metadata
           description: |-

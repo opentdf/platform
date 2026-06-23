@@ -3529,6 +3529,15 @@ Base64 encoded public key in PEM format </p></td>
                   <td><p> </p></td>
                 </tr>
               
+                <tr>
+                  <td>namespace</td>
+                  <td><a href="#policy.Namespace">Namespace</a></td>
+                  <td></td>
+                  <td><p>The namespace that optionally owns this resource mapping. When the mapping
+belongs to a group, this matches the group&#39;s namespace. The mapped
+attribute value may belong to a different namespace. </p></td>
+                </tr>
+              
             </tbody>
           </table>
 
@@ -14632,7 +14641,14 @@ Common metadata </p></td>
                   <td>namespace_id</td>
                   <td><a href="#string">string</a></td>
                   <td></td>
-                  <td><p>Required </p></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>namespace_fqn</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
                 </tr>
               
                 <tr>
@@ -14709,6 +14725,23 @@ Common metadata </p></td>
                   <td><a href="#string">string</a></td>
                   <td></td>
                   <td><p>Optional </p></td>
+                </tr>
+              
+                <tr>
+                  <td>namespace_id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>Optional
+The namespace that owns this resource mapping. If a group_id is provided,
+this must match the group&#39;s namespace (and may be omitted to inherit it). </p></td>
+                </tr>
+              
+                <tr>
+                  <td>namespace_fqn</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>Optional
+Alternative to namespace_id; the FQN of the owning namespace. </p></td>
                 </tr>
               
                 <tr>
@@ -14959,6 +14992,13 @@ Common metadata </p></td>
                 </tr>
               
                 <tr>
+                  <td>namespace_fqn</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>Optional </p></td>
+                </tr>
+              
+                <tr>
                   <td>pagination</td>
                   <td><a href="#policy.PageRequest">policy.PageRequest</a></td>
                   <td></td>
@@ -15101,6 +15141,22 @@ Structure of the RM Group FQN is &#39;https://&lt;namespace&gt;/resm/&lt;group n
                 </tr>
               
                 <tr>
+                  <td>namespace_id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>Optional
+Filter the list to resource mappings owned by this namespace. </p></td>
+                </tr>
+              
+                <tr>
+                  <td>namespace_fqn</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>Optional
+Filter the list to resource mappings owned by this namespace. </p></td>
+                </tr>
+              
+                <tr>
                   <td>pagination</td>
                   <td><a href="#policy.PageRequest">policy.PageRequest</a></td>
                   <td></td>
@@ -15201,6 +15257,13 @@ Structure of the RM Group FQN is &#39;https://&lt;namespace&gt;/resm/&lt;group n
                 </tr>
               
                 <tr>
+                  <td>namespace_fqn</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>Optional </p></td>
+                </tr>
+              
+                <tr>
                   <td>name</td>
                   <td><a href="#string">string</a></td>
                   <td></td>
@@ -15288,6 +15351,23 @@ Structure of the RM Group FQN is &#39;https://&lt;namespace&gt;/resm/&lt;group n
                   <td><a href="#string">string</a></td>
                   <td></td>
                   <td><p>Optional </p></td>
+                </tr>
+              
+                <tr>
+                  <td>namespace_id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>Optional
+The namespace that owns this resource mapping. If a group_id is set on the
+mapping, this must match the group&#39;s namespace. </p></td>
+                </tr>
+              
+                <tr>
+                  <td>namespace_fqn</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>Optional
+Alternative to namespace_id; the FQN of the owning namespace. </p></td>
                 </tr>
               
                 <tr>

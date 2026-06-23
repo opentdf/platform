@@ -46,7 +46,7 @@ services:
       primary_db:
         type: sql
         connection:
-          driver: postgres
+          driver: pgx
           host: localhost
           port: 5432
           database: identity_db
@@ -496,7 +496,7 @@ providers:
   my_db:
     type: sql
     connection:
-      driver: postgres          # postgres, mysql, sqlite
+      driver: pgx               # pgx, mysql, sqlite
       host: localhost
       port: 5432
       database: identity_db

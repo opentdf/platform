@@ -26,9 +26,7 @@ var (
 // consumer. Consumers that have already registered the driver themselves are
 // handled gracefully via a sql.Drivers() pre-check.
 func ensureDriverRegistered(driver string) {
-	// Normalize to lowercase so "Postgres", "POSTGRES", and "postgres" all resolve
-	// to the same registered driver name. sql.Register is case-sensitive.
-	driver = strings.ToLower(strings.TrimSpace(driver))
+	driver = normalizeDriverName(driver)
 
 	driverRegMu.Lock()
 	defer driverRegMu.Unlock()
@@ -56,6 +54,16 @@ func ensureDriverRegistered(driver string) {
 	// Add cases here when those drivers are added to go.mod.
 }
 
+func normalizeDriverName(driver string) string {
+	driver = strings.ToLower(strings.TrimSpace(driver))
+	switch driver {
+	case "postgres", "postgresql":
+		return defaultPostgreSQLDriver
+	default:
+		return driver
+	}
+}
+
 // Provider implements the Provider interface for SQL databases
 type Provider struct {
 	name   string
@@ -66,10 +74,9 @@ type Provider struct {
 
 // NewProvider creates a new SQL provider
 func NewProvider(ctx context.Context, name string, config Config) (*Provider, error) {
-	// Normalize the driver name so "Postgres", "POSTGRES", and "postgres" all
-	// resolve correctly through ensureDriverRegistered and sql.Open, both of
-	// which use case-sensitive driver name matching.
-	config.Driver = strings.ToLower(strings.TrimSpace(config.Driver))
+	// Normalize aliases so "postgres" and "postgresql" use the registered pgx
+	// database/sql driver name.
+	config.Driver = normalizeDriverName(config.Driver)
 
 	// Register the database/sql driver for this provider's configured driver name
 	// if it has not already been registered.
@@ -304,7 +311,7 @@ func (p *Provider) Close() error {
 
 // buildConnectionString creates a connection string based on the driver
 func (p *Provider) buildConnectionString() (string, error) {
-	switch strings.ToLower(p.config.Driver) {
+	switch normalizeDriverName(p.config.Driver) {
 	case defaultPostgreSQLDriver:
 		return fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=%s",
 			p.config.Host, p.config.Port, p.config.Username, p.config.Password,

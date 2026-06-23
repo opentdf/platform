@@ -23,8 +23,8 @@ const (
 
 // NIST-assigned OIDs for ML-KEM (FIPS 203).
 var (
-	OidMLKEM768  = asn1.ObjectIdentifier{2, 16, 840, 1, 101, 3, 4, 4, 2}
-	OidMLKEM1024 = asn1.ObjectIdentifier{2, 16, 840, 1, 101, 3, 4, 4, 3}
+	OIDMLKEM768  = asn1.ObjectIdentifier{2, 16, 840, 1, 101, 3, 4, 4, 2}
+	OIDMLKEM1024 = asn1.ObjectIdentifier{2, 16, 840, 1, 101, 3, 4, 4, 3}
 )
 
 type kemAlgorithmIdentifier struct {
@@ -93,7 +93,7 @@ func ParseMLKEMPublicSPKI(der []byte) (asn1.ObjectIdentifier, []byte, error) {
 	if err != nil {
 		return nil, nil, err
 	}
-	if !oid.Equal(OidMLKEM768) && !oid.Equal(OidMLKEM1024) {
+	if !oid.Equal(OIDMLKEM768) && !oid.Equal(OIDMLKEM1024) {
 		return nil, nil, errNotKEM
 	}
 	return oid, raw, nil
@@ -162,7 +162,7 @@ func normalizeMLKEMPublicKey(input []byte, expectedRawSize int, expectedOID asn1
 //
 // Deprecated: Use WrapDEK with MLKEM768Key, or construct via FromPublicPEM.
 func MLKEM768WrapDEK(publicKey, dek []byte) ([]byte, error) {
-	rawKey, err := normalizeMLKEMPublicKey(publicKey, MLKEM768PublicKeySize, OidMLKEM768)
+	rawKey, err := normalizeMLKEMPublicKey(publicKey, MLKEM768PublicKeySize, OIDMLKEM768)
 	if err != nil {
 		return nil, fmt.Errorf("invalid ML-KEM-768 public key: %w", err)
 	}
@@ -184,7 +184,7 @@ func MLKEM768UnwrapDEK(privateKeyRaw, wrappedDER []byte) ([]byte, error) {
 //
 // Deprecated: Use WrapDEK with MLKEM1024Key, or construct via FromPublicPEM.
 func MLKEM1024WrapDEK(publicKey, dek []byte) ([]byte, error) {
-	rawKey, err := normalizeMLKEMPublicKey(publicKey, MLKEM1024PublicKeySize, OidMLKEM1024)
+	rawKey, err := normalizeMLKEMPublicKey(publicKey, MLKEM1024PublicKeySize, OIDMLKEM1024)
 	if err != nil {
 		return nil, fmt.Errorf("invalid ML-KEM-1024 public key: %w", err)
 	}

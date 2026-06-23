@@ -23,7 +23,7 @@ func TestMLKEM768WrapDEKFormats(t *testing.T) {
 	require.NoError(t, err, "Should accept raw key")
 
 	// Test 2: SPKI DER (1206 bytes)
-	spkiDER, err := marshalKEMPublicSPKI(OidMLKEM768, rawKey)
+	spkiDER, err := marshalKEMPublicSPKI(OIDMLKEM768, rawKey)
 	require.NoError(t, err)
 	require.Greater(t, len(spkiDER), len(rawKey), "SPKI DER should be larger than raw key")
 
@@ -68,7 +68,7 @@ func TestMLKEM1024WrapDEKFormats(t *testing.T) {
 	require.NoError(t, err, "Should accept raw key")
 
 	// Test 2: SPKI DER (1590 bytes)
-	spkiDER, err := marshalKEMPublicSPKI(OidMLKEM1024, rawKey)
+	spkiDER, err := marshalKEMPublicSPKI(OIDMLKEM1024, rawKey)
 	require.NoError(t, err)
 	require.Greater(t, len(spkiDER), len(rawKey), "SPKI DER should be larger than raw key")
 
@@ -110,7 +110,7 @@ func TestMLKEM768WrapDEKInvalidFormats(t *testing.T) {
 	// Wrong OID in SPKI
 	keyPair1024, err := NewMLKEM1024KeyPair()
 	require.NoError(t, err)
-	spki1024, err := marshalKEMPublicSPKI(OidMLKEM1024, keyPair1024.PrivateKey.EncapsulationKey().Bytes())
+	spki1024, err := marshalKEMPublicSPKI(OIDMLKEM1024, keyPair1024.PrivateKey.EncapsulationKey().Bytes())
 	require.NoError(t, err)
 
 	_, err = MLKEM768WrapDEK(spki1024, dek)

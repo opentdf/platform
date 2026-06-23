@@ -60,8 +60,8 @@ const kemWrapKeySize = 32
 // SPKI follow-up adds X-Wing and the two NIST hybrid OIDs by inserting
 // registry entries here.
 var kemRegistry = map[string]func() kem{
-	OidMLKEM768.String():  func() kem { return mlkemKEM{variant: mlkem768} },
-	OidMLKEM1024.String(): func() kem { return mlkemKEM{variant: mlkem1024} },
+	OIDMLKEM768.String():  func() kem { return mlkemKEM{variant: mlkem768} },
+	OIDMLKEM1024.String(): func() kem { return mlkemKEM{variant: mlkem1024} },
 }
 
 // kemByOID returns the kem adapter registered for the supplied OID, or false
@@ -172,9 +172,9 @@ func (m mlkemKEM) decapsulate(priv, ct []byte) ([]byte, error) {
 }
 
 func (m mlkemKEM) publicKeyPEM(pub []byte) (string, error) {
-	oid := OidMLKEM768
+	oid := OIDMLKEM768
 	if m.variant == mlkem1024 {
-		oid = OidMLKEM1024
+		oid = OIDMLKEM1024
 	}
 	der, err := marshalKEMPublicSPKI(oid, pub)
 	if err != nil {

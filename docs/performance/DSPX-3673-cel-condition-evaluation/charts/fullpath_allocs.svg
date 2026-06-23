@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="760" height="460" font-family="sans-serif">
+<rect width="760" height="460" fill="white"/>
+<text x="380.0" y="28" text-anchor="middle" font-size="16" fill="#222222">Entitlements path allocations vs subject mappings (DSPX-3673)</text>
+<line x1="78.0" y1="56" x2="78.0" y2="396" stroke="#d9d9d9"/>
+<text x="78.0" y="414" text-anchor="middle" font-size="11" fill="#222222">1e2</text>
+<line x1="319.0" y1="56" x2="319.0" y2="396" stroke="#d9d9d9"/>
+<text x="319.0" y="414" text-anchor="middle" font-size="11" fill="#222222">1e3</text>
+<line x1="560.0" y1="56" x2="560.0" y2="396" stroke="#d9d9d9"/>
+<text x="560.0" y="414" text-anchor="middle" font-size="11" fill="#222222">1e4</text>
+<line x1="78" y1="396.0" x2="560" y2="396.0" stroke="#d9d9d9"/>
+<text x="70" y="400.0" text-anchor="end" font-size="11" fill="#222222">1e2</text>
+<line x1="78" y1="311.0" x2="560" y2="311.0" stroke="#d9d9d9"/>
+<text x="70" y="315.0" text-anchor="end" font-size="11" fill="#222222">1e3</text>
+<line x1="78" y1="226.0" x2="560" y2="226.0" stroke="#d9d9d9"/>
+<text x="70" y="230.0" text-anchor="end" font-size="11" fill="#222222">1e4</text>
+<line x1="78" y1="141.0" x2="560" y2="141.0" stroke="#d9d9d9"/>
+<text x="70" y="145.0" text-anchor="end" font-size="11" fill="#222222">1e5</text>
+<line x1="78" y1="56.0" x2="560" y2="56.0" stroke="#d9d9d9"/>
+<text x="70" y="60.0" text-anchor="end" font-size="11" fill="#222222">1e6</text>
+<rect x="78" y="56" width="482" height="340" fill="none" stroke="#333333"/>
+<text x="319.0" y="442" text-anchor="middle" font-size="13" fill="#222222">Total subject mappings (log scale)</text>
+<text x="18" y="226.0" text-anchor="middle" font-size="13" fill="#222222" transform="rotate(-90 18 226.0)">allocs/op (log scale)</text>
+<path d="M78.0,214.3 L319.0,130.3 L487.5,71.0" fill="none" stroke="#c1121f" stroke-width="2.5"/>
+<circle cx="78.0" cy="214.3" r="3" fill="#c1121f"/>
+<circle cx="319.0" cy="130.3" r="3" fill="#c1121f"/>
+<circle cx="487.5" cy="71.0" r="3" fill="#c1121f"/>
+<line x1="574" y1="64" x2="596" y2="64" stroke="#c1121f" stroke-width="2.5"/>
+<text x="602" y="68" font-size="11" fill="#222222">rego (OPA + protojson, today)</text>
+<path d="M78.0,385.5 L319.0,309.3 L487.5,251.0" fill="none" stroke="#0353a4" stroke-width="2.5"/>
+<circle cx="78.0" cy="385.5" r="3" fill="#0353a4"/>
+<circle cx="319.0" cy="309.3" r="3" fill="#0353a4"/>
+<circle cx="487.5" cy="251.0" r="3" fill="#0353a4"/>
+<line x1="574" y1="86" x2="596" y2="86" stroke="#0353a4" stroke-width="2.5"/>
+<text x="602" y="90" font-size="11" fill="#222222">go_switch (direct Go)</text>
+<path d="M78.0,288.7 L319.0,204.2 L487.5,144.9" fill="none" stroke="#2a9d3f" stroke-width="2.5"/>
+<circle cx="78.0" cy="288.7" r="3" fill="#2a9d3f"/>
+<circle cx="319.0" cy="204.2" r="3" fill="#2a9d3f"/>
+<circle cx="487.5" cy="144.9" r="3" fill="#2a9d3f"/>
+<line x1="574" y1="108" x2="596" y2="108" stroke="#2a9d3f" stroke-width="2.5"/>
+<text x="602" y="112" font-size="11" fill="#222222">go_cel (direct Go + CEL)</text>
+</svg>

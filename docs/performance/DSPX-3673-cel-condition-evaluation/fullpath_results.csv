@@ -1,0 +1,10 @@
+layer,arm,mappings,ns_op,allocs_op,bytes_op
+fullpath,rego,100,1428989,13721,1849507
+fullpath,go_switch,100,9055,133,14141
+fullpath,go_cel,100,68378,1828,87616
+fullpath,rego,1000,13243956,133512,18323047
+fullpath,go_switch,1000,128323,1047,161329
+fullpath,go_cel,1000,725379,18039,902740
+fullpath,rego,5000,69193710,665686,103178438
+fullpath,go_switch,5000,657434,5077,757778
+fullpath,go_cel,5000,4532429,90065,4399943

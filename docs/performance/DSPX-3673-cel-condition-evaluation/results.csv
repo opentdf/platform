@@ -1,0 +1,10 @@
+layer,arm,groups,conds,ns_op,allocs_op,bytes_op
+operator,native,1,1,22,1,16
+operator,cel,1,1,532,18,775
+operator,cel_compile,1,1,84335,1470,104992
+operator,native,3,3,490,12,168
+operator,cel,3,3,4784,148,4635
+operator,cel_compile,3,3,354877,6873,454025
+operator,native,10,5,8634,60,880
+operator,cel,10,5,32056,804,24448
+operator,cel_compile,10,5,2318284,37318,3332031

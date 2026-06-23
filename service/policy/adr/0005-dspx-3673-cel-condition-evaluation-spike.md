@@ -65,10 +65,14 @@ enum + flag combinations are compositions of these primitives.
 Expressions are type-checked at compile time, so a malformed condition is rejected before the hot
 path (verified in the POC). This matches the safety posture of the current closed operator set.
 
-**Performance.** Not benchmarked in this spike. cel-go separates compile from evaluation, so the
-intended pattern is compile-once / cache / evaluate-many. Per-evaluation cost is documented by the
-project as nanoseconds to microseconds, but a comparison against the native switch on representative
-condition sets is required before adopting CEL on the decision path. This is the main open item.
+**Performance.** Benchmarked; see `docs/performance/DSPX-3673-cel-condition-evaluation/`. CEL is
+slower than the native switch per evaluation (24× at one condition, narrowing to ~4× at 50), staying
+in the sub-microsecond to tens-of-microseconds range, and compile is three to four orders of
+magnitude more than a single eval (84 µs to 2.3 ms), so CEL is only viable compile-once / cache. In
+the full entitlements path, though, that gap is immaterial: the OPA wrapper costs ~100× a direct Go
+call (69 ms vs 0.66 ms at 5,000 mappings), and the CEL-based path (4.5 ms) is an order of magnitude
+under it. The operator engine is not the bottleneck in this path; the OPA layer is. CEL's per-eval
+cost is acceptable relative to the path it would sit in, so performance is not the deciding factor.
 
 **Auditability.** A CEL string is human-readable and reviewable. The decomposed proto model
 (comparison + quantifier + flag) is also auditable and is what authors would continue to edit under
@@ -82,23 +86,24 @@ CEL is exposed to them. The hybrid option avoids that by keeping CEL internal to
 admin UI. Keeping the structured proto model as the authoring surface avoids that cost; CEL stays
 an implementation detail.
 
-**Existing Rego Path.** `subject_mapping_builtin.go` already embeds OPA Rego
-(`open-policy-agent/opa/v1/rego`) as a registered builtin. Adopting CEL should be weighed against
-consolidating on Rego instead. CEL is lighter and already vendored for validation; Rego is heavier
-but already wired as a builtin. The spike did not benchmark the two; choosing between them is a
-prerequisite to any adoption and should be its own decision.
+**Existing Rego Path.** `subject_mapping_builtin.go` registers a `subjectmapping.resolve` builtin,
+and `entitlements.rego` only calls that builtin. Rego does not evaluate operators; it wraps the Go
+switch and pays protojson marshalling at the boundary (`entitlements.OpaInput`). So Rego is not a
+third operator engine, and the benchmark measures it as wrapper overhead: ~100× a direct Go call and
+~130× the allocations (665,686 vs 5,077 allocs/op at 5,000 mappings). Removing or replacing the OPA
+layer is a larger performance lever than the operator engine, and is independent of the CEL decision.
 
 ## Migration and Backward Compatibility
 
 The condition stays in proto. Migration is internal:
 
-1. Add a function that lowers a stored `Condition` to a CEL source string: the deprecated
-   `operator` field and the decomposed `comparison` / `quantifier` / `case_insensitive` fields map
-   to the expressions in the table above. Existing stored conditions need no rewrite.
+1. Lower a stored `Condition` to a CEL source string: the deprecated `operator` field and the
+   decomposed `comparison` / `quantifier` / `case_insensitive` fields map to the expressions in the
+   table above. `celeval` already implements this. Existing stored conditions need no rewrite.
 2. Compile and cache the CEL program per condition (cache key on the lowered source). Evaluate the
    cached program in place of the operator switch.
-3. Run CEL and the native switch side by side in tests (the POC is the seed) until parity is
-   established, then make CEL the evaluation path.
+3. Run CEL and the native switch side by side in tests until parity is established, then make CEL the
+   evaluation path. `celeval`'s equivalence test against `EvaluateSubjectSet` is the seed.
 
 No proto change, no stored-data migration, and the deprecated `operator` field keeps working
 because it is one input to the lowering step.
@@ -120,8 +125,9 @@ revisiting if internal CEL adoption succeeds.
 ### Hybrid (Chosen)
 Proto stays the authored and stored form; CEL is the internal evaluation strategy. Stops operator
 sprawl in the evaluator, no proto break, no author retraining, defers the multi-language runtime
-question. Open item: benchmark CEL against the native switch and against the existing Rego builtin
-before wiring it into the decision path.
+question. The benchmark closes the original open item: CEL is slower than the switch but its cost is
+small next to the OPA wrapper that surrounds it, so performance does not block adoption. The
+remaining open item is the OPA layer itself, which dominates the path and is worth its own decision.
 
 ## References
 
@@ -129,5 +135,7 @@ before wiring it into the decision path.
 - DynamicValueMapping protos: commit `090c0f65508058502d17a850691957b7beaee785`
 - CEL: https://cel.dev and https://github.com/google/cel-go
 - POC: `service/internal/subjectmappingbuiltin/cel_poc_test.go`
+- Experimental evaluator: `service/internal/subjectmappingbuiltin/celeval/` (lowering + tests; unwired)
+- Benchmarks and results: `docs/performance/DSPX-3673-cel-condition-evaluation/`
 - Native evaluation: `service/internal/subjectmappingbuiltin/subject_mapping_builtin.go`
 - Prior spike (format reference): DSPX-2754

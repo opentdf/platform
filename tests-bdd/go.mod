@@ -9,7 +9,7 @@ require (
 	github.com/jackc/pgx/v5 v5.9.2
 	github.com/opentdf/platform/lib/fixtures v0.3.0
 	github.com/opentdf/platform/lib/identifier v0.0.2
-	github.com/opentdf/platform/lib/ocrypto v0.10.0
+	github.com/opentdf/platform/lib/ocrypto v0.13.0
 	github.com/opentdf/platform/protocol/go v0.30.0
 	github.com/opentdf/platform/sdk v0.17.0
 	github.com/opentdf/platform/service v0.7.2
@@ -47,6 +47,7 @@ require (
 	github.com/cenkalti/backoff/v4 v4.3.0 // indirect
 	github.com/cenkalti/backoff/v5 v5.0.3 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
+	github.com/cloudflare/circl v1.6.3 // indirect
 	github.com/compose-spec/compose-go/v2 v2.10.2 // indirect
 	github.com/containerd/console v1.0.5 // indirect
 	github.com/containerd/containerd/api v1.10.0 // indirect

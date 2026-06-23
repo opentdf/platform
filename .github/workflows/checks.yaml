@@ -496,8 +496,8 @@ jobs:
     uses: opentdf/tests/.github/workflows/xtest.yml@main
     with:
       focus-sdk: go
-      # use commit instead of ref so we can "go get" specific sdk version
-      platform-ref: ${{ github.event.pull_request.head.sha || github.sha }} lts
+      platform-ref: ${{ github.event.pull_request.head.sha || github.sha }} lts main
+      otdfctl-ref: ${{ github.event.pull_request.head.sha || github.sha }} main
 
   tests-bdd:
     name: Cucumber BDD Tests

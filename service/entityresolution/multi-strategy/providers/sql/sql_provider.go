@@ -57,7 +57,7 @@ func ensureDriverRegistered(driver string) {
 func normalizeDriverName(driver string) string {
 	driver = strings.ToLower(strings.TrimSpace(driver))
 	switch driver {
-	case "postgres", "postgresql":
+	case postgresDriverAlias, postgresQLDriverAlias:
 		return defaultPostgreSQLDriver
 	default:
 		return driver

@@ -7,6 +7,8 @@ import (
 const (
 	// Default SQL configuration values
 	defaultPostgreSQLDriver   = "pgx"
+	postgresDriverAlias       = "postgres"
+	postgresQLDriverAlias     = "postgresql"
 	defaultPostgreSQLPort     = 5432
 	defaultMaxOpenConnections = 25
 	defaultMaxIdleConnections = 5

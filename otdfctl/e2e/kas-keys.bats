@@ -128,6 +128,69 @@ format_kas_name_as_uri() {
   assert_not_equal "$(echo "$output" | jq -r .key.metadata.updated_at)" "null"
 }
 
+@test "kas-keys: create key (local mode, hpqt:xwing)" {
+  KEY_ID=$(generate_key_id)
+  # Local mode: otdfctl generates the hybrid keypair internally, so we assert
+  # the public key is present/non-empty rather than matching a known value.
+  run_otdfctl_key create --kas "${KAS_REGISTRY_ID}" --key-id "${KEY_ID}" --algorithm "hpqt:xwing" --mode "local" --wrapping-key-id "wrapping-key-1" --wrapping-key "${WRAPPING_KEY}" --json
+  assert_success
+  assert_equal "$(echo "$output" | jq -r .kas_id)" "${KAS_REGISTRY_ID}"
+  assert_equal "$(echo "$output" | jq -r .key.key_id)" "${KEY_ID}"
+  assert_equal "$(echo "$output" | jq -r .key.key_algorithm)" "6" # hpqt:xwing
+  assert_equal "$(echo "$output" | jq -r .key.key_mode)" "1"      # local
+  assert_equal "$(echo "$output" | jq -r .key.key_status)" "1"    # active
+  assert_equal "$(echo "$output" | jq -r .key.legacy)" "null"
+  assert_not_equal "$(echo "$output" | jq -r .key.public_key_ctx.pem)" "null"
+  assert_not_equal "$(echo "$output" | jq -r .key.public_key_ctx.pem)" ""
+  assert_equal "$(echo "$output" | jq -r .key.private_key_ctx.key_id)" "wrapping-key-1"
+  assert_not_equal "$(echo "$output" | jq -r .key.private_key_ctx.wrapped_key)" "null"
+  assert_not_equal "$(echo "$output" | jq -r .key.private_key_ctx.wrapped_key)" ""
+  assert_not_equal "$(echo "$output" | jq -r .key.metadata.created_at)" "null"
+  assert_not_equal "$(echo "$output" | jq -r .key.metadata.updated_at)" "null"
+}
+
+@test "kas-keys: create key (local mode, hpqt:secp256r1-mlkem768)" {
+  KEY_ID=$(generate_key_id)
+  # Local mode: otdfctl generates the hybrid keypair internally, so we assert
+  # the public key is present/non-empty rather than matching a known value.
+  run_otdfctl_key create --kas "${KAS_REGISTRY_ID}" --key-id "${KEY_ID}" --algorithm "hpqt:secp256r1-mlkem768" --mode "local" --wrapping-key-id "wrapping-key-1" --wrapping-key "${WRAPPING_KEY}" --json
+  assert_success
+  assert_equal "$(echo "$output" | jq -r .kas_id)" "${KAS_REGISTRY_ID}"
+  assert_equal "$(echo "$output" | jq -r .key.key_id)" "${KEY_ID}"
+  assert_equal "$(echo "$output" | jq -r .key.key_algorithm)" "7" # hpqt:secp256r1-mlkem768
+  assert_equal "$(echo "$output" | jq -r .key.key_mode)" "1"      # local
+  assert_equal "$(echo "$output" | jq -r .key.key_status)" "1"    # active
+  assert_equal "$(echo "$output" | jq -r .key.legacy)" "null"
+  assert_not_equal "$(echo "$output" | jq -r .key.public_key_ctx.pem)" "null"
+  assert_not_equal "$(echo "$output" | jq -r .key.public_key_ctx.pem)" ""
+  assert_equal "$(echo "$output" | jq -r .key.private_key_ctx.key_id)" "wrapping-key-1"
+  assert_not_equal "$(echo "$output" | jq -r .key.private_key_ctx.wrapped_key)" "null"
+  assert_not_equal "$(echo "$output" | jq -r .key.private_key_ctx.wrapped_key)" ""
+  assert_not_equal "$(echo "$output" | jq -r .key.metadata.created_at)" "null"
+  assert_not_equal "$(echo "$output" | jq -r .key.metadata.updated_at)" "null"
+}
+
+@test "kas-keys: create key (local mode, hpqt:secp384r1-mlkem1024)" {
+  KEY_ID=$(generate_key_id)
+  # Local mode: otdfctl generates the hybrid keypair internally, so we assert
+  # the public key is present/non-empty rather than matching a known value.
+  run_otdfctl_key create --kas "${KAS_REGISTRY_ID}" --key-id "${KEY_ID}" --algorithm "hpqt:secp384r1-mlkem1024" --mode "local" --wrapping-key-id "wrapping-key-1" --wrapping-key "${WRAPPING_KEY}" --json
+  assert_success
+  assert_equal "$(echo "$output" | jq -r .kas_id)" "${KAS_REGISTRY_ID}"
+  assert_equal "$(echo "$output" | jq -r .key.key_id)" "${KEY_ID}"
+  assert_equal "$(echo "$output" | jq -r .key.key_algorithm)" "8" # hpqt:secp384r1-mlkem1024
+  assert_equal "$(echo "$output" | jq -r .key.key_mode)" "1"      # local
+  assert_equal "$(echo "$output" | jq -r .key.key_status)" "1"    # active
+  assert_equal "$(echo "$output" | jq -r .key.legacy)" "null"
+  assert_not_equal "$(echo "$output" | jq -r .key.public_key_ctx.pem)" "null"
+  assert_not_equal "$(echo "$output" | jq -r .key.public_key_ctx.pem)" ""
+  assert_equal "$(echo "$output" | jq -r .key.private_key_ctx.key_id)" "wrapping-key-1"
+  assert_not_equal "$(echo "$output" | jq -r .key.private_key_ctx.wrapped_key)" "null"
+  assert_not_equal "$(echo "$output" | jq -r .key.private_key_ctx.wrapped_key)" ""
+  assert_not_equal "$(echo "$output" | jq -r .key.metadata.created_at)" "null"
+  assert_not_equal "$(echo "$output" | jq -r .key.metadata.updated_at)" "null"
+}
+
 @test "kas-keys: create key (public_key mode)" {
   KEY_ID=$(generate_key_id)
   run_otdfctl_key create --kas "${KAS_REGISTRY_ID}" --key-id "${KEY_ID}" --algorithm "rsa:2048" --mode "public_key" --public-key-pem "${PEM_B64}"  --json

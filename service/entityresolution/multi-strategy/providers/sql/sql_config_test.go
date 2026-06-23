@@ -35,6 +35,11 @@ func TestNormalizeDriverName(t *testing.T) {
 		},
 		{
 			name:   "other driver",
+			driver: "mysql",
+			want:   "mysql",
+		},
+		{
+			name:   "sqlite driver",
 			driver: "sqlite3",
 			want:   "sqlite3",
 		},

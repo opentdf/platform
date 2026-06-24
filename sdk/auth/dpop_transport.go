@@ -294,11 +294,24 @@ func cloneRequest(req *http.Request) *http.Request {
 	return req2
 }
 
-// bufferRequestBody reads req.Body into memory and replaces both Body and
-// GetBody on req so the DPoP nonce retry path can replay the body. No-op when
-// the body is empty or GetBody is already set.
+// bufferRequestBody reads req.Body into SDK-owned memory and replaces both Body
+// and GetBody on req so the body can be replayed safely on retry.
+//
+// We buffer even when the caller already set GetBody (which ConnectRPC does for
+// unary calls). ConnectRPC's GetBody hands back a single shared *payloadCloser
+// with a mutable read offset; when net/http reuses a keep-alive connection that
+// the server has since closed (the auth interceptor returns the 401 DPoP-Nonce
+// challenge without draining the body), net/http's internal rewind-and-retry
+// races on that shared offset and can present an empty body, surfacing as
+// "ContentLength=N with Body length 0". Replacing GetBody with a factory that
+// returns an independent bytes.Reader over an immutable []byte removes the
+// shared mutable state, so every (re)send reads the full payload.
+//
+// Streaming/unknown-length requests (ContentLength < 0, e.g. ConnectRPC client
+// streams over an io.Pipe) are left untouched so the stream is not drained;
+// DPoP-nonce retry is only meaningful for unary calls anyway.
 func bufferRequestBody(req *http.Request) error {
-	if req.Body == nil || req.Body == http.NoBody || req.GetBody != nil {
+	if req.Body == nil || req.Body == http.NoBody || req.ContentLength < 0 {
 		return nil
 	}
 	data, readErr := io.ReadAll(req.Body)

@@ -34,6 +34,7 @@ var logLevelNames = map[slog.Leveler]string{
 
 type Logger struct {
 	logger *slog.Logger
+	config Config
 }
 
 // Used to support custom log levels showing up with custom labels as well
@@ -61,10 +62,26 @@ func CreateAuditLogger(logger slog.Logger) *Logger {
 	}
 }
 
+func cloneConfig(cfg Config) Config {
+	cloned := cfg
+	cloned.JWTClaimMappings = append([]JWTClaimMapping(nil), cfg.JWTClaimMappings...)
+	return cloned
+}
+
+// ApplyConfig validates and stores the latest audit enrichment configuration.
+func (a *Logger) ApplyConfig(cfg Config) error {
+	if err := cfg.Validate(); err != nil {
+		return err
+	}
+	a.config = cloneConfig(cfg)
+	return nil
+}
+
 func (a *Logger) With(key string, value string) *Logger {
 	return &Logger{
 		//nolint:sloglint // custom logger should support key/value pairs in With attributes
 		logger: a.logger.With(key, value),
+		config: cloneConfig(a.config),
 	}
 }
 
@@ -81,7 +98,7 @@ func (tx *auditTransaction) addEvent(verb Verb, event *EventObject) {
 // logClose completes an audit transaction and emits all recorded events.
 // If success is false or err is not nil, events are logged as "cancelled" with the error attached.
 // Otherwise, events are logged with their originally recorded success/failure status.
-func (tx *auditTransaction) logClose(ctx context.Context, logger *slog.Logger, success bool, err error) {
+func (tx *auditTransaction) logClose(ctx context.Context, auditLogger *Logger, success bool, err error) {
 	tx.mu.Lock()
 	defer tx.mu.Unlock()
 	for _, event := range tx.events {
@@ -99,7 +116,7 @@ func (tx *auditTransaction) logClose(ctx context.Context, logger *slog.Logger, s
 		}
 
 		//nolint:sloglint // audit message is always just the verb
-		logger.Log(ctx, LevelAudit, string(event.verb), slog.Any("audit", *auditEvent))
+		auditLogger.logger.Log(ctx, LevelAudit, string(event.verb), slog.Any("audit", auditLogger.buildLogEntry(ctx, auditEvent)))
 	}
 }
 

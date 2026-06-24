@@ -377,6 +377,17 @@ func (e *DPoPNonceMalformedError) Error() string {
 	return e.Message
 }
 
+// DPoPProofError marks a non-retryable DPoP proof rejection (tampered htu/htm,
+// bad ath, replayed jti, malformed nonce). Handlers translate it into a
+// WWW-Authenticate: DPoP error="invalid_dpop_proof" challenge per RFC 9449 §7.1.
+type DPoPProofError struct {
+	err error
+}
+
+func (e *DPoPProofError) Error() string { return e.err.Error() }
+
+func (e *DPoPProofError) Unwrap() error { return e.err }
+
 func normalizeURL(o string, u *url.URL) string {
 	// Currently this does not do a full normatlization
 	ou, err := url.Parse(o)
@@ -468,6 +479,22 @@ func (a Authentication) MuxHandler(handler http.Handler) http.Handler {
 				nonce := a.dpopNonceManager.getCurrentNonce()
 				w.Header().Set("DPoP-Nonce", nonce)
 				w.Header().Set("WWW-Authenticate", `DPoP error="use_dpop_nonce"`)
+				http.Error(w, "unauthenticated", http.StatusUnauthorized)
+				return
+			}
+			// Other DPoP proof failures get an invalid_dpop_proof challenge (RFC 9449 §7.1).
+			var proofErr *DPoPProofError
+			if errors.As(err, &proofErr) {
+				if a.dpopNonceManager.requireNonce {
+					w.Header().Set("DPoP-Nonce", a.dpopNonceManager.getCurrentNonce())
+				}
+				w.Header().Set("WWW-Authenticate", `DPoP error="invalid_dpop_proof"`)
+				log.WarnContext(
+					ctxWithAuthX,
+					"unauthenticated",
+					slog.Any("error", err),
+					slog.Any("dpop", dp),
+				)
 				http.Error(w, "unauthenticated", http.StatusUnauthorized)
 				return
 			}
@@ -614,6 +641,16 @@ func (a Authentication) ConnectAuthNInterceptor() connect.UnaryInterceptorFunc {
 					connectErr := connect.NewError(connect.CodeUnauthenticated, errors.New("unauthenticated"))
 					connectErr.Meta().Set("DPoP-Nonce", nonce)
 					connectErr.Meta().Set("WWW-Authenticate", `DPoP error="use_dpop_nonce"`)
+					return nil, connectErr
+				}
+				// Other DPoP proof failures get an invalid_dpop_proof challenge (RFC 9449 §7.1).
+				var proofErr *DPoPProofError
+				if errors.As(err, &proofErr) {
+					connectErr := connect.NewError(connect.CodeUnauthenticated, errors.New("unauthenticated"))
+					if a.dpopNonceManager.requireNonce {
+						connectErr.Meta().Set("DPoP-Nonce", a.dpopNonceManager.getCurrentNonce())
+					}
+					connectErr.Meta().Set("WWW-Authenticate", `DPoP error="invalid_dpop_proof"`)
 					return nil, connectErr
 				}
 				return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("unauthenticated"))
@@ -1061,11 +1098,14 @@ func (a *Authentication) checkToken(ctx context.Context, authHeader []string, dp
 	if err != nil {
 		var nonceErr *DPoPNonceError
 		if errors.As(err, &nonceErr) {
+			// Retryable nonce challenge: returned unwrapped so handlers issue use_dpop_nonce.
 			a.logger.DebugContext(ctx, "dpop nonce challenge issued", slog.String("reason", nonceErr.Message))
-		} else {
-			a.logger.WarnContext(ctx, "failed to validate dpop", slog.Any("err", err))
+			return nil, nil, err
 		}
-		return nil, nil, err
+		// Any other DPoP proof failure (tampered htu/htm, bad ath, replayed jti,
+		// malformed nonce) becomes an invalid_dpop_proof challenge.
+		a.logger.WarnContext(ctx, "failed to validate dpop", slog.Any("err", err))
+		return nil, nil, &DPoPProofError{err: err}
 	}
 	ctx = ctxAuth.ContextWithAuthNInfo(ctx, dpopKey, accessToken, tokenRaw)
 	return accessToken, ctx, nil

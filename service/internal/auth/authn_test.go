@@ -844,6 +844,61 @@ func (s *AuthSuite) Test_ConnectAuthNInterceptor_RequiresHeaderWithExistingConte
 	s.Require().ErrorAs(err, &connectErr)
 }
 
+func (s *AuthSuite) Test_MuxHandler_DPoPProofError_IssuesInvalidProofChallenge() {
+	auth := s.newAuthDPoP(false)
+	rec := s.muxAuthErrorRecorder(auth, &DPoPProofError{err: errors.New("incorrect `htu` claim in DPoP JWT")})
+
+	s.Equal(http.StatusUnauthorized, rec.Code)
+	s.Equal(`DPoP error="invalid_dpop_proof"`, rec.Header().Get("WWW-Authenticate"))
+	// Without RequireNonce there is nothing to retry against, so no nonce is issued.
+	s.Empty(rec.Header().Get("DPoP-Nonce"))
+}
+
+func (s *AuthSuite) Test_MuxHandler_DPoPProofError_IncludesNonceWhenRequired() {
+	auth := s.newAuthDPoP(true)
+	rec := s.muxAuthErrorRecorder(auth, &DPoPProofError{err: errors.New("DPoP proof replay detected")})
+
+	s.Equal(http.StatusUnauthorized, rec.Code)
+	s.Equal(`DPoP error="invalid_dpop_proof"`, rec.Header().Get("WWW-Authenticate"))
+	s.NotEmpty(rec.Header().Get("DPoP-Nonce"), "a fresh nonce aids the client's retry")
+}
+
+func (s *AuthSuite) Test_MuxHandler_DPoPNonceError_IssuesUseNonceChallenge() {
+	auth := s.newAuthDPoP(true)
+	rec := s.muxAuthErrorRecorder(auth, &DPoPNonceError{Message: "nonce required for retry"})
+
+	s.Equal(http.StatusUnauthorized, rec.Code)
+	s.Equal(`DPoP error="use_dpop_nonce"`, rec.Header().Get("WWW-Authenticate"))
+	s.NotEmpty(rec.Header().Get("DPoP-Nonce"))
+}
+
+func (s *AuthSuite) Test_ConnectAuthNInterceptor_DPoPProofError_IssuesInvalidProofChallenge() {
+	auth := s.newAuthDPoP(false)
+	connectErr := s.connectAuthError(auth, &DPoPProofError{err: errors.New("incorrect `htu` claim in DPoP JWT")})
+
+	s.Equal(connect.CodeUnauthenticated, connectErr.Code())
+	s.Equal(`DPoP error="invalid_dpop_proof"`, connectErr.Meta().Get("WWW-Authenticate"))
+	s.Empty(connectErr.Meta().Get("DPoP-Nonce"))
+}
+
+func (s *AuthSuite) Test_ConnectAuthNInterceptor_DPoPProofError_IncludesNonceWhenRequired() {
+	auth := s.newAuthDPoP(true)
+	connectErr := s.connectAuthError(auth, &DPoPProofError{err: errors.New("DPoP proof replay detected")})
+
+	s.Equal(connect.CodeUnauthenticated, connectErr.Code())
+	s.Equal(`DPoP error="invalid_dpop_proof"`, connectErr.Meta().Get("WWW-Authenticate"))
+	s.NotEmpty(connectErr.Meta().Get("DPoP-Nonce"), "a fresh nonce aids the client's retry")
+}
+
+func (s *AuthSuite) Test_ConnectAuthNInterceptor_DPoPNonceError_IssuesUseNonceChallenge() {
+	auth := s.newAuthDPoP(true)
+	connectErr := s.connectAuthError(auth, &DPoPNonceError{Message: "nonce required for retry"})
+
+	s.Equal(connect.CodeUnauthenticated, connectErr.Code())
+	s.Equal(`DPoP error="use_dpop_nonce"`, connectErr.Meta().Get("WWW-Authenticate"))
+	s.NotEmpty(connectErr.Meta().Get("DPoP-Nonce"))
+}
+
 func (s *AuthSuite) Test_CheckToken_When_Authorization_Header_Invalid_Expect_Error() {
 	_, _, err := s.auth.checkToken(context.Background(), []string{"BPOP "}, receiverInfo{}, nil)
 	s.Require().Error(err)
@@ -1439,6 +1494,48 @@ func (s *AuthSuite) Test_RoleRequestForConnectProcedure() {
 			s.Equal(c.want, got)
 		})
 	}
+}
+
+// dpopChallengeRoute is a non-public route used by the DPoP challenge handler tests.
+// checkToken is stubbed in those tests, so the exact procedure value is irrelevant.
+const dpopChallengeRoute = "/dpop.test/Challenge"
+
+// muxAuthErrorRecorder drives MuxHandler with checkToken stubbed to return retErr and
+// returns the recorded response. The request carries DPoP Authorization + proof headers.
+func (s *AuthSuite) muxAuthErrorRecorder(auth *Authentication, retErr error) *httptest.ResponseRecorder {
+	auth._testCheckTokenFunc = func(context.Context, []string, receiverInfo, []string) (jwt.Token, context.Context, error) {
+		return nil, nil, retErr
+	}
+	handler := auth.MuxHandler(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {}))
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodPost, dpopChallengeRoute, nil)
+	req.Header.Set("Authorization", "DPoP token")
+	req.Header.Set("DPoP", "proof")
+	handler.ServeHTTP(rec, req)
+	return rec
+}
+
+// connectAuthError drives ConnectAuthNInterceptor with checkToken stubbed to return retErr
+// and returns the resulting *connect.Error.
+func (s *AuthSuite) connectAuthError(auth *Authentication, retErr error) *connect.Error {
+	auth._testCheckTokenFunc = func(context.Context, []string, receiverInfo, []string) (jwt.Token, context.Context, error) {
+		return nil, nil, retErr
+	}
+	interceptor := auth.ConnectAuthNInterceptor()
+	next := func(context.Context, connect.AnyRequest) (connect.AnyResponse, error) {
+		return connect.NewResponse(&kas.RewrapResponse{}), nil
+	}
+	req := &authnTestRequest{
+		Request:   connect.NewRequest(&kas.RewrapRequest{}),
+		procedure: dpopChallengeRoute,
+	}
+	req.Header().Set("Authorization", "DPoP token")
+	req.Header().Set("DPoP", "proof")
+	_, err := interceptor(next)(s.T().Context(), req)
+	s.Require().Error(err)
+	var connectErr *connect.Error
+	s.Require().ErrorAs(err, &connectErr)
+	return connectErr
 }
 
 func Test_GetClientIDFromToken(t *testing.T) {

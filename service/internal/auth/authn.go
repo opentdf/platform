@@ -209,7 +209,7 @@ func NewAuthenticator(ctx context.Context, cfg Config, logger *logger.Logger, we
 	}
 
 	a := &Authentication{
-		enforceDPoP:      cfg.EnforceDPoP,
+		enforceDPoP:      cfg.dpopEnforced(),
 		strictDPoPHTU:    cfg.DPoP.StrictHTU,
 		logger:           logger,
 		dpopNonceManager: newDPoPNonceManager(cfg.DPoP.RequireNonce, cfg.DPoP.NonceExpiration),

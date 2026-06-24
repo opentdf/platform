@@ -205,12 +205,12 @@ func (s *AuthSuite) SetupTest() {
 		context.Background(),
 		Config{
 			AuthNConfig: AuthNConfig{
-				EnforceDPoP: true,
-				Issuer:      s.server.URL,
-				Audience:    "test",
-				DPoPSkew:    time.Hour,
-				TokenSkew:   time.Minute,
-				Policy:      policyCfg,
+				Issuer:    s.server.URL,
+				Audience:  "test",
+				DPoPSkew:  time.Hour,
+				TokenSkew: time.Minute,
+				Policy:    policyCfg,
+				DPoP:      DPoPConfig{Enforce: true},
 			},
 			PublicRoutes: []string{
 				"/public",
@@ -496,10 +496,9 @@ func (s *AuthSuite) Test_MuxHandler_RoleProviderErrorReturnsInternalServerError(
 	s.Require().NoError(defaults.Set(&policyCfg))
 	auth, err := NewAuthenticator(s.T().Context(), Config{
 		AuthNConfig: AuthNConfig{
-			EnforceDPoP: false,
-			Issuer:      s.server.URL,
-			Audience:    "test",
-			Policy:      policyCfg,
+			Issuer:   s.server.URL,
+			Audience: "test",
+			Policy:   policyCfg,
 		},
 		RoleProvider: staticProvider{err: errors.New("role provider unavailable")},
 	}, logger.CreateTestLogger(), func(_ string, _ any) error { return nil })
@@ -532,10 +531,9 @@ func (s *AuthSuite) Test_MuxHandler_UsesAuthorizer() {
 	s.Require().NoError(defaults.Set(&policyCfg))
 	auth, err := NewAuthenticator(s.T().Context(), Config{
 		AuthNConfig: AuthNConfig{
-			EnforceDPoP: false,
-			Issuer:      s.server.URL,
-			Audience:    "test",
-			Policy:      policyCfg,
+			Issuer:   s.server.URL,
+			Audience: "test",
+			Policy:   policyCfg,
 		},
 	}, logger.CreateTestLogger(), func(_ string, _ any) error { return nil })
 	s.Require().NoError(err)
@@ -575,10 +573,9 @@ func (s *AuthSuite) Test_MuxHandler_NilAuthorizerReturnsInternalServerError() {
 	s.Require().NoError(defaults.Set(&policyCfg))
 	auth, err := NewAuthenticator(s.T().Context(), Config{
 		AuthNConfig: AuthNConfig{
-			EnforceDPoP: false,
-			Issuer:      s.server.URL,
-			Audience:    "test",
-			Policy:      policyCfg,
+			Issuer:   s.server.URL,
+			Audience: "test",
+			Policy:   policyCfg,
 		},
 	}, logger.CreateTestLogger(), func(_ string, _ any) error { return nil })
 	s.Require().NoError(err)
@@ -611,10 +608,9 @@ func (s *AuthSuite) Test_MuxHandler_NilAuthorizerDecisionReturnsInternalServerEr
 	s.Require().NoError(defaults.Set(&policyCfg))
 	auth, err := NewAuthenticator(s.T().Context(), Config{
 		AuthNConfig: AuthNConfig{
-			EnforceDPoP: false,
-			Issuer:      s.server.URL,
-			Audience:    "test",
-			Policy:      policyCfg,
+			Issuer:   s.server.URL,
+			Audience: "test",
+			Policy:   policyCfg,
 		},
 	}, logger.CreateTestLogger(), func(_ string, _ any) error { return nil })
 	s.Require().NoError(err)
@@ -655,10 +651,9 @@ func (s *AuthSuite) Test_MuxHandler_V2WithoutResourceContextFailsClosedForDimens
 	s.Require().NoError(defaults.Set(&policyCfg))
 	auth, err := NewAuthenticator(s.T().Context(), Config{
 		AuthNConfig: AuthNConfig{
-			EnforceDPoP: false,
-			Issuer:      s.server.URL,
-			Audience:    "test",
-			Policy:      policyCfg,
+			Issuer:   s.server.URL,
+			Audience: "test",
+			Policy:   policyCfg,
 		},
 	}, logger.CreateTestLogger(), func(_ string, _ any) error { return nil })
 	s.Require().NoError(err)
@@ -1379,9 +1374,8 @@ func makeDPoPToken(t *testing.T, tc dpopTestCase) string {
 
 func (s *AuthSuite) Test_Allowing_Auth_With_No_DPoP() {
 	authnConfig := AuthNConfig{
-		EnforceDPoP: false,
-		Issuer:      s.server.URL,
-		Audience:    "test",
+		Issuer:   s.server.URL,
+		Audience: "test",
 	}
 	config := Config{}
 	config.AuthNConfig = authnConfig

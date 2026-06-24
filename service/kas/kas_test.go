@@ -105,6 +105,12 @@ func TestFilterMechanismsByPreview(t *testing.T) {
 			cfg:  &access.KASConfig{Preview: access.Preview{HybridTDFEnabled: true, MLKEMTDFEnabled: true}},
 			want: []ocrypto.KeyType{"rsa:2048", "hpqt:xwing", "mlkem:768", "mlkem:1024"},
 		},
+		{
+			name: "mlkem on without hybrid keeps pure mlkem but drops hybrid",
+			algs: []ocrypto.KeyType{"rsa:2048", "hpqt:xwing", "mlkem:768", "mlkem:1024"},
+			cfg:  &access.KASConfig{Preview: access.Preview{MLKEMTDFEnabled: true}},
+			want: []ocrypto.KeyType{"rsa:2048", "mlkem:768", "mlkem:1024"},
+		},
 	}
 
 	for _, tc := range tests {

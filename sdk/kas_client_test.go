@@ -42,8 +42,10 @@ func (fake FakeAccessTokenSource) MakeToken(tokenMaker func(jwk.Key) ([]byte, er
 func getTokenSource(t *testing.T) FakeAccessTokenSource {
 	dpopKey, _ := ocrypto.NewRSAKeyPair(2048)
 	dpopPEM, _ := dpopKey.PrivateKeyInPemFormat()
-	dpopDecryptor, _ := ocrypto.FromPrivatePEM(dpopPEM)
-	decryption, _ := dpopDecryptor.(ocrypto.AsymDecryption)
+	dpopDecryptor, err := ocrypto.FromPrivatePEM(dpopPEM)
+	require.NoError(t, err)
+	decryption, ok := dpopDecryptor.(ocrypto.AsymDecryption)
+	require.True(t, ok, "expected RSA decryptor, got %T", dpopDecryptor)
 	dpopPEMPublic, _ := dpopKey.PublicKeyInPemFormat()
 	encryption, _ := ocrypto.FromPublicPEM(dpopPEMPublic)
 	dpopJWK, err := jwk.ParseKey([]byte(dpopPEM), jwk.WithPEM(true))

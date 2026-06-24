@@ -207,7 +207,7 @@ func filterMechanismsByPreview(algs []ocrypto.KeyType, kasCfg *access.KASConfig)
 		switch {
 		case !ecEnabled && ocrypto.IsECKeyType(a):
 			continue
-		case !kasCfg.Preview.HybridTDFEnabled && (ocrypto.IsHybridKeyType(a) || ocrypto.IsMLKEMKeyType(a)):
+		case !kasCfg.Preview.HybridTDFEnabled && ocrypto.IsHybridKeyType(a):
 			continue
 		case !kasCfg.Preview.MLKEMTDFEnabled && ocrypto.IsMLKEMKeyType(a):
 			continue

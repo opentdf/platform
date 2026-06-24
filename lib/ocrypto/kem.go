@@ -7,12 +7,13 @@ import (
 	"fmt"
 )
 
-// kem is the post-quantum KEM contract implemented by the pure ML-KEM schemes.
-// It collapses the `mlkem-wrapped` wrap/unwrap path into one envelope and one
-// AES-GCM call site. The hybrid PQ/T schemes (X-Wing and the NIST EC + ML-KEM
-// composites) are IETF-draft-conformant and live behind their own per-scheme
-// encryptor/decryptor types in hybrid_nist.go and xwing.go, reached via the
-// OID-routed dispatcher in asym_encryption.go / asym_decryption.go.
+// kem is the post-quantum KEM contract implemented by every KEM family: the
+// pure ML-KEM schemes and the IETF-draft hybrid PQ/T schemes (X-Wing and the
+// NIST EC + ML-KEM composites). Each family is adapted onto this interface
+// (mlkemKEM, xwingKEM, hybridNISTKEM) and they all share one envelope, one
+// AES-GCM call site, and the unified kemEncryptor / kemDecryptor types, reached
+// via the OID-routed dispatcher in asym_encryption.go / asym_decryption.go.
+// The wrap-key derivation still differs per family; see wrapKey below.
 type kem interface {
 	keyType() KeyType
 	scheme() SchemeType

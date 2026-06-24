@@ -54,12 +54,6 @@ func TestFilterMechanismsByPreview(t *testing.T) {
 			want: []ocrypto.KeyType{"rsa:2048", "rsa:4096", "ec:secp256r1", "ec:secp384r1"},
 		},
 		{
-			name: "top-level hybrid flag on keeps hpqt only",
-			algs: allAlgs,
-			cfg:  &access.KASConfig{Preview: access.Preview{HybridTDFEnabled: true}},
-			want: []ocrypto.KeyType{"rsa:2048", "rsa:4096", "hpqt:xwing", "hpqt:secp256r1-mlkem768"},
-		},
-		{
 			name: "preview hybrid flag on keeps hpqt only",
 			algs: allAlgs,
 			cfg:  &access.KASConfig{Preview: access.Preview{HybridTDFEnabled: true}},
@@ -94,10 +88,14 @@ func TestFilterMechanismsByPreview(t *testing.T) {
 			want: []ocrypto.KeyType{"rsa:2048"},
 		},
 		{
-			name: "hybrid on, mlkem off drops pure mlkem but keeps hybrid",
+			// (HybridTDFEnabled=true, MLKEMTDFEnabled=false) is unreachable at
+			// runtime because normalizePreview forces ML-KEM on whenever hybrid
+			// is enabled, so this asserts the negative gating via a reachable
+			// all-off config instead.
+			name: "all preview flags off drops pure mlkem and hybrid",
 			algs: []ocrypto.KeyType{"rsa:2048", "hpqt:xwing", "mlkem:768", "mlkem:1024"},
-			cfg:  &access.KASConfig{Preview: access.Preview{HybridTDFEnabled: true}},
-			want: []ocrypto.KeyType{"rsa:2048", "hpqt:xwing"},
+			cfg:  &access.KASConfig{},
+			want: []ocrypto.KeyType{"rsa:2048"},
 		},
 		{
 			name: "mlkem on keeps pure mlkem",

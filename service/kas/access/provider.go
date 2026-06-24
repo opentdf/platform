@@ -62,7 +62,8 @@ type Preview struct {
 	// Enabling is required to parse KAOs with the `hybrid-wrapped` type,
 	// and (currently) also enables responding with hybrid encrypted responses.
 	// This feature is experimental and may be removed or changed in future releases.
-	// Enabling this will also enable ML-KEM rewrap support by default.
+	// Enabling this also enables ML-KEM rewrap support; it cannot be enabled
+	// while ML-KEM is disabled (see normalizePreview).
 	HybridTDFEnabled bool `mapstructure:"hybrid_tdf_enabled" json:"hybrid_tdf_enabled"`
 	// MLKEMTDFEnabled is a preview feature that enables support for ML-KEM rewrap in TDFs.
 	// Enabling is required to parse KAOs with the `mlkem-wrapped` type,

@@ -18,20 +18,32 @@ const (
 )
 
 var (
-	errUnexpectedGetKeyAuthzRequestType = errors.New("unexpected GetKey authz request type")
-	errResolvedKasURIEmpty              = errors.New("resolved KAS URI is empty")
-	errKeyIdentifierRequired            = errors.New("key identifier is required")
-	errKeyIDRequired                    = errors.New("key id is required")
-	errUnsupportedGetKeyIdentifier      = errors.New("unsupported GetKey identifier")
-	errResolveKasKeyForAuthz            = errors.New("failed to resolve KAS key for authz")
-	errResolvedKasKeyNil                = errors.New("resolved KAS key is nil")
+	errUnexpectedGetKeyAuthzRequestType   = errors.New("unexpected GetKey authz request type")
+	errUnexpectedListKeysAuthzRequestType = errors.New("unexpected ListKeys authz request type")
+	errResolvedKasURIEmpty                = errors.New("resolved KAS URI is empty")
+	errKeyIdentifierRequired              = errors.New("key identifier is required")
+	errKeyIDRequired                      = errors.New("key id is required")
+	errUnsupportedGetKeyIdentifier        = errors.New("unsupported GetKey identifier")
+	errResolveKasKeyForAuthz              = errors.New("failed to resolve KAS key for authz")
+	errResolvedKasKeyNil                  = errors.New("resolved KAS key is nil")
+	errResolveListKeysForAuthz            = errors.New("failed to resolve ListKeys for authz")
+	errResolvedListKeysResponseNil        = errors.New("resolved ListKeys response is nil")
 )
 
-type getKeyAuthzDBClient interface {
+type keyAuthzDBClient interface {
 	GetKey(context.Context, any) (*policy.KasKey, error)
+	ListKeys(context.Context, *kasr.ListKeysRequest) (*kasr.ListKeysResponse, error)
 }
 
 func (s *KeyAccessServerRegistry) getKeyAuthzResolver(ctx context.Context, req connect.AnyRequest) (authz.ResolverContext, error) {
+	return s.resolveGetKeyAuthzContext(ctx, req)
+}
+
+func (s *KeyAccessServerRegistry) listKeysAuthzResolver(ctx context.Context, req connect.AnyRequest) (authz.ResolverContext, error) {
+	return s.resolveListKeysAuthzContext(ctx, req, s.dbClient)
+}
+
+func (s *KeyAccessServerRegistry) resolveGetKeyAuthzContext(ctx context.Context, req connect.AnyRequest) (authz.ResolverContext, error) {
 	resolverCtx := authz.NewResolverContext()
 
 	msg, ok := req.Any().(*kasr.GetKeyRequest)
@@ -50,7 +62,22 @@ func (s *KeyAccessServerRegistry) getKeyAuthzResolver(ctx context.Context, req c
 	return resolverCtx, nil
 }
 
-func resolveGetKeyKasURI(ctx context.Context, msg *kasr.GetKeyRequest, resolverCtx *authz.ResolverContext, dbClient getKeyAuthzDBClient) (string, error) {
+func (s *KeyAccessServerRegistry) resolveListKeysAuthzContext(ctx context.Context, req connect.AnyRequest, dbClient keyAuthzDBClient) (authz.ResolverContext, error) {
+	resolverCtx := authz.NewResolverContext()
+
+	msg, ok := req.Any().(*kasr.ListKeysRequest)
+	if !ok {
+		return resolverCtx, fmt.Errorf("%w: %T", errUnexpectedListKeysAuthzRequestType, req.Any())
+	}
+
+	if err := resolveListKeysAuthzResources(ctx, msg, &resolverCtx, dbClient); err != nil {
+		return resolverCtx, err
+	}
+
+	return resolverCtx, nil
+}
+
+func resolveGetKeyKasURI(ctx context.Context, msg *kasr.GetKeyRequest, resolverCtx *authz.ResolverContext, dbClient keyAuthzDBClient) (string, error) {
 	switch identifier := msg.GetIdentifier().(type) {
 	case *kasr.GetKeyRequest_Key:
 		keyIdentifier := identifier.Key
@@ -81,4 +108,42 @@ func resolveGetKeyKasURI(ctx context.Context, msg *kasr.GetKeyRequest, resolverC
 
 	resolverCtx.SetResolvedData(resolverCacheKeyKasKey, key)
 	return key.GetKasUri(), nil
+}
+
+func resolveListKeysAuthzResources(ctx context.Context, msg *kasr.ListKeysRequest, resolverCtx *authz.ResolverContext, dbClient keyAuthzDBClient) error {
+	// TODO: Replace this ListKeys call with a smaller query that returns only the distinct KAS URIs present for the request filters.
+	resp, err := dbClient.ListKeys(ctx, msg)
+	if err != nil {
+		return fmt.Errorf("%w: %w", errResolveListKeysForAuthz, err)
+	}
+	if resp == nil {
+		return fmt.Errorf("%w: %w", errResolveListKeysForAuthz, errResolvedListKeysResponseNil)
+	}
+
+	// List RPC resolvers only identify the resources to authorize. Do not cache
+	// the response as resolved data; handlers must run their own post-authz list
+	// query so response shaping stays in the RPC implementation.
+
+	return resolveListKeysReturnedKeyURIs(resolverCtx, resp.GetKasKeys())
+}
+
+func resolveListKeysReturnedKeyURIs(resolverCtx *authz.ResolverContext, keys []*policy.KasKey) error {
+	seen := make(map[string]struct{}, len(keys))
+	for _, key := range keys {
+		kasURI := key.GetKasUri()
+		if kasURI == "" {
+			return errResolvedKasURIEmpty
+		}
+		if _, ok := seen[kasURI]; ok {
+			continue
+		}
+		seen[kasURI] = struct{}{}
+		addKasURIResource(resolverCtx, kasURI)
+	}
+	return nil
+}
+
+func addKasURIResource(resolverCtx *authz.ResolverContext, kasURI string) {
+	res := resolverCtx.NewResource()
+	res.AddDimension(authzDimensionKasURI, kasURI)
 }

@@ -33,7 +33,7 @@ inputs:
     required: false
   dpop-challenge-enabled:
     default: "false"
-    description: 'Whether to enable the DPoP nonce challenge flow (sets server.auth.dpop.require_nonce: true)'
+    description: 'Whether to enable the DPoP nonce challenge flow (sets server.auth.dpop.require_nonce: true and server.auth.dpop.enforce: true)'
     required: false
 
 outputs:
@@ -279,7 +279,10 @@ runs:
       shell: bash
       if: ${{ inputs.dpop-challenge-enabled == 'true' }}
       run: |
-        yq e '.server.auth.dpop.require_nonce = true' -i opentdf.yaml
+        yq e '
+          (.server.auth.dpop.require_nonce = true)
+          | (.server.auth.dpop.enforce = true)
+        ' -i opentdf.yaml
       working-directory: otdf-test-platform
     - name: Overlay DPoP-capable Keycloak (26.2)
       # The default docker-compose pins Keycloak 25 so downstream consumers stay on

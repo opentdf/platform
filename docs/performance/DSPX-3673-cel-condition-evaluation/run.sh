@@ -43,4 +43,4 @@ python3 "${HERE}/plot.py" "${FP_RESULTS}" "${CHARTS_DIR}"
 
 echo "==> Done."
 echo "    Data:   ${OP_RESULTS}, ${FP_RESULTS}"
-echo "    Charts: ${CHARTS_DIR}/operator_latency.svg, ${CHARTS_DIR}/fullpath_{latency,allocs}.svg"
+echo "    Charts: ${CHARTS_DIR}/operator.svg, ${CHARTS_DIR}/fullpath.svg"

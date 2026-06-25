@@ -3,8 +3,7 @@
 Reproducible benchmarks for [DSPX-3673](https://virtru.atlassian.net/browse/DSPX-3673), the spike
 asking whether [CEL](https://cel.dev) should replace the bespoke Subject Mapping condition operators
 (see `service/policy/adr/0005-dspx-3673-cel-condition-evaluation-spike.md`). Two layers, both
-in-memory below the RPC server (matching the `dspx-2754-perf-test` and `DSPX-2541-entitleable-perf-test`
-approach, no wired client / server / ERS / Keycloak):
+in-memory below the RPC server:
 
 1. **Operator Engine** (no Docker): per-evaluation cost of the native operator switch vs a precompiled
    CEL program, plus the one-time CEL compile cost, swept over condition complexity.
@@ -30,9 +29,11 @@ Run (no Docker):
 ```bash
 bash docs/performance/DSPX-3673-cel-condition-evaluation/run.sh   # runs both layers
 ```
-Outputs `results.csv` and `charts/operator_latency.svg`.
+Outputs `results.csv` and `charts/operator.svg`.
 
 ### Results
+
+![CEL vs native operator evaluation: per-evaluation latency and one-time compile cost](charts/operator.svg)
 
 | arm | 1×1 | 3×3 (9 conds) | 10×5 (50 conds) |
 |-----|-----|---------------|-----------------|
@@ -62,9 +63,11 @@ Run (no Docker):
 bash docs/performance/DSPX-3673-cel-condition-evaluation/run.sh
 CEL_BENCH_MAX_N=1000 bash docs/performance/DSPX-3673-cel-condition-evaluation/run.sh   # cap N for speed
 ```
-Outputs `fullpath_results.csv` and `charts/fullpath_{latency,allocs}.svg`.
+Outputs `fullpath_results.csv` and `charts/fullpath.svg`.
 
 ### Results
+
+![Entitlements path latency and allocations vs subject mappings](charts/fullpath.svg)
 
 | arm | N=100 | N=1,000 | N=5,000 |
 |-----|-------|---------|---------|
@@ -95,7 +98,21 @@ race detector is off (it skews timing). Regenerate with `run.sh`.
 
 ## Scope
 
-Both layers run in-memory below the RPC server, matching the `DSPX-2541-entitleable-perf-test` approach
-(no wired client / server / ERS / Keycloak / DB). `celeval` is an experimental, unwired reference
-evaluator for the spike; it is not on any request path. The benchmark quantifies the OPA overhead but
-does not remove it. Hierarchy and multi-entity fan-out are out of scope.
+Both layers run in-memory below the RPC server, with no wired client / server / ERS / Keycloak / DB.
+`celeval` is an experimental, unwired reference evaluator for the spike; it is not on any request path.
+The benchmark quantifies the OPA overhead but does not remove it. Hierarchy and multi-entity fan-out
+are out of scope.
+
+## Files
+
+| File | Purpose |
+| --- | --- |
+| `../../../service/internal/subjectmappingbuiltin/cel_operator_bench_test.go` | Layer 1 harness (build tag `celbench`) |
+| `../../../service/authorization/cel_fullpath_bench_test.go` | Layer 2 harness (build tag `celbench`) |
+| `../../../service/internal/subjectmappingbuiltin/celeval/` | Experimental CEL evaluator + equivalence test |
+| `run.sh` | One-command reproduction (no Docker) |
+| `plot.py` | CSV to consolidated SVG figures (Python stdlib only) |
+| `results.csv` | Committed Layer 1 measurements |
+| `fullpath_results.csv` | Committed Layer 2 measurements |
+| `charts/operator.svg` | Layer 1 figure (per-eval latency, compile cost) |
+| `charts/fullpath.svg` | Layer 2 figure (latency, allocations) |

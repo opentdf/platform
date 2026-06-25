@@ -16,6 +16,12 @@ services:
       - kid: r1
         alg: rsa:2048
         legacy: true
+      - kid: x1
+        alg: hpqt:xwing
+      - kid: h1
+        alg: hpqt:secp256r1-mlkem768
+      - kid: h2
+        alg: hpqt:secp384r1-mlkem1024
   entityresolution:
     log_level: info
     url: http://localhost:8888/auth
@@ -117,3 +123,15 @@ server:
           alg: ec:secp256r1
           private: ./testdata/kas-ec-private.pem
           cert: ./testdata/kas-ec-cert.pem
+        - kid: x1
+          alg: hpqt:xwing
+          private: ./testdata/kas-xwing-private.pem
+          cert: ./testdata/kas-xwing-public.pem
+        - kid: h1
+          alg: hpqt:secp256r1-mlkem768
+          private: ./testdata/kas-p256mlkem768-private.pem
+          cert: ./testdata/kas-p256mlkem768-public.pem
+        - kid: h2
+          alg: hpqt:secp384r1-mlkem1024
+          private: ./testdata/kas-p384mlkem1024-private.pem
+          cert: ./testdata/kas-p384mlkem1024-public.pem

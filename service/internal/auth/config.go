@@ -4,9 +4,9 @@ import (
 	"errors"
 	"time"
 
-	"github.com/casbin/casbin/v2/persist"
+	internalauthz "github.com/opentdf/platform/service/internal/auth/authz"
 	"github.com/opentdf/platform/service/logger"
-	"github.com/opentdf/platform/service/pkg/authz"
+	platformauthz "github.com/opentdf/platform/service/pkg/authz"
 )
 
 // AuthConfig pulls AuthN and AuthZ together
@@ -18,47 +18,36 @@ type Config struct {
 	AuthNConfig     `mapstructure:",squash"`
 
 	// Programmatic role provider overrides (not loaded from config)
-	RoleProvider          authz.RoleProvider                   `mapstructure:"-" json:"-"`
-	RoleProviderFactories map[string]authz.RoleProviderFactory `mapstructure:"-" json:"-"`
+	RoleProvider          platformauthz.RoleProvider                   `mapstructure:"-" json:"-"`
+	RoleProviderFactories map[string]platformauthz.RoleProviderFactory `mapstructure:"-" json:"-"`
 }
 
 // AuthNConfig is the configuration need for the platform to validate tokens
 type AuthNConfig struct { //nolint:revive // AuthNConfig is a valid name
-	EnforceDPoP  bool          `mapstructure:"enforceDPoP" json:"enforceDPoP" default:"false"`
-	Issuer       string        `mapstructure:"issuer" json:"issuer"`
-	Audience     string        `mapstructure:"audience" json:"audience"`
-	Policy       PolicyConfig  `mapstructure:"policy" json:"policy"`
-	CacheRefresh string        `mapstructure:"cache_refresh_interval" json:"cache_refresh_interval"`
-	DPoPSkew     time.Duration `mapstructure:"dpopskew" json:"dpopskew" default:"1h"`
-	TokenSkew    time.Duration `mapstructure:"skew" json:"skew" default:"1m"`
+	EnforceDPoP  bool                       `mapstructure:"enforceDPoP" json:"enforceDPoP" default:"false"`
+	Issuer       string                     `mapstructure:"issuer" json:"issuer"`
+	Audience     string                     `mapstructure:"audience" json:"audience"`
+	Policy       internalauthz.PolicyConfig `mapstructure:"policy" json:"policy"`
+	CacheRefresh string                     `mapstructure:"cache_refresh_interval" json:"cache_refresh_interval"`
+	DPoPSkew     time.Duration              `mapstructure:"dpopskew" json:"dpopskew" default:"1h"`
+	TokenSkew    time.Duration              `mapstructure:"skew" json:"skew" default:"1m"`
+	DPoP         DPoPConfig                 `mapstructure:"dpop" json:"dpop"`
 }
 
-type PolicyConfig struct {
-	Builtin string `mapstructure:"-" json:"-"`
-	// Username claim to use for user information
-	UserNameClaim string `mapstructure:"username_claim" json:"username_claim" default:"preferred_username"`
-	// Claim to use for group/role information
-	GroupsClaim string `mapstructure:"groups_claim" json:"groups_claim" default:"realm_access.roles"`
-	// Role provider configuration (resolved via StartOptions)
-	RolesProvider RolesProviderConfig `mapstructure:"roles_provider" json:"roles_provider"`
-	// Claim to use to reference idP clientID
-	ClientIDClaim string `mapstructure:"client_id_claim" json:"client_id_claim" default:"azp"`
-	// Deprecated: Use GroupClain instead
-	RoleClaim string `mapstructure:"claim" json:"claim" default:"realm_access.roles"`
-	// Deprecated: Use Casbin grouping statements g, <user/group>, <role>
-	RoleMap map[string]string `mapstructure:"map" json:"map"`
-	// Override the builtin policy with a custom policy
-	Csv string `mapstructure:"csv" json:"csv"`
-	// Extend the builtin policy with a custom policy
-	Extension string `mapstructure:"extension" json:"extension"`
-	Model     string `mapstructure:"model" json:"model"`
-	// Override the default string-adapter
-	Adapter persist.Adapter `mapstructure:"-" json:"-"`
+type DPoPConfig struct {
+	RequireNonce    bool          `mapstructure:"require_nonce" json:"require_nonce" default:"false"`
+	NonceExpiration time.Duration `mapstructure:"nonce_expiration" json:"nonce_expiration" default:"5m"`
+	// StrictHTU requires the htu claim in DPoP JWTs to include the origin
+	// (scheme + host). When false (default), a path-only htu is accepted as
+	// long as the path matches, easing SDK skew during rollout.
+	StrictHTU bool `mapstructure:"strict_htu" json:"strict_htu" default:"false"`
 }
 
-type RolesProviderConfig struct {
-	Name   string         `mapstructure:"name" json:"name"`
-	Config map[string]any `mapstructure:"config" json:"config"`
+func (c DPoPConfig) Validate() error {
+	if c.RequireNonce && c.NonceExpiration <= 0 {
+		return errors.New("auth.dpop.nonce_expiration must be positive when require_nonce is true")
+	}
+	return nil
 }
 
 func (c AuthNConfig) validateAuthNConfig(logger *logger.Logger) error {
@@ -72,6 +61,10 @@ func (c AuthNConfig) validateAuthNConfig(logger *logger.Logger) error {
 
 	if !c.EnforceDPoP {
 		logger.Warn("config Auth.EnforceDPoP is false. DPoP will not be enforced.")
+	}
+
+	if err := c.DPoP.Validate(); err != nil {
+		return err
 	}
 
 	return nil

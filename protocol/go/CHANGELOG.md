@@ -1,5 +1,90 @@
 # Changelog
 
+## [0.35.0](https://github.com/opentdf/platform/compare/protocol/go/v0.34.0...protocol/go/v0.35.0) (2026-06-25)
+
+
+### Bug Fixes
+
+* **policy:** undo Condition.operator deprecation ([#3668](https://github.com/opentdf/platform/issues/3668)) ([917f66a](https://github.com/opentdf/platform/commit/917f66a3dc3fa4df63d9b1a901ff75d88234d3f2))
+
+## [0.34.0](https://github.com/opentdf/platform/compare/protocol/go/v0.33.0...protocol/go/v0.34.0) (2026-06-17)
+
+
+### ⚠ BREAKING CHANGES
+
+* **core:** Add min_len to search term. ([#3604](https://github.com/opentdf/platform/issues/3604))
+
+### Features
+
+* **policy:** DSPX-2754 DynamicValueMapping protos + generated code ([#3580](https://github.com/opentdf/platform/issues/3580)) ([090c0f6](https://github.com/opentdf/platform/commit/090c0f65508058502d17a850691957b7beaee785))
+
+
+### Bug Fixes
+
+* **core:** Add min_len to search term. ([#3604](https://github.com/opentdf/platform/issues/3604)) ([09e22dc](https://github.com/opentdf/platform/commit/09e22dc6df01de211ca15d9f7c8dd54e7eec2abd))
+
+## [0.33.0](https://github.com/opentdf/platform/compare/protocol/go/v0.32.0...protocol/go/v0.33.0) (2026-06-12)
+
+
+### ⚠ BREAKING CHANGES
+
+* **policy:** DSPX-2998 add namespace fields to resource mapping protos ([#3565](https://github.com/opentdf/platform/issues/3565))
+
+### Features
+
+* **authz:** make v2 request limits configurable ([#3508](https://github.com/opentdf/platform/issues/3508)) ([9d16f80](https://github.com/opentdf/platform/commit/9d16f8062e6164748a6a27c497272209b743339f))
+* **core:** Add search term information to protos. ([#3547](https://github.com/opentdf/platform/issues/3547)) ([40f35df](https://github.com/opentdf/platform/commit/40f35df8b9ed6299498f03821475f88526d9a5eb))
+* **policy:** DSPX-2998 add namespace fields to resource mapping protos ([#3565](https://github.com/opentdf/platform/issues/3565)) ([e4a04ed](https://github.com/opentdf/platform/commit/e4a04ed6ee04a346a00a49d3c1f381295f9e9443))
+
+
+### Bug Fixes
+
+* **ci:** Prefer go.work for toolchain info ([#3285](https://github.com/opentdf/platform/issues/3285)) ([3c05b22](https://github.com/opentdf/platform/commit/3c05b22ecac41380c7d8d80e9d487bb3001cd25d))
+* **deps:** bump the external group across 1 directory with 4 updates ([#3494](https://github.com/opentdf/platform/issues/3494)) ([5b87b2b](https://github.com/opentdf/platform/commit/5b87b2b2fc1c1f4d9f5003fc8ca3b446d3398884))
+
+## [0.32.0](https://github.com/opentdf/platform/compare/protocol/go/v0.31.0...protocol/go/v0.32.0) (2026-05-21)
+
+
+### Features
+
+* **core:** add hybrid NIST EC + ML-KEM key wrapping support ([#3276](https://github.com/opentdf/platform/issues/3276)) ([1209acc](https://github.com/opentdf/platform/commit/1209acc2f8ae24af121f6a2892817c20ebb14d25))
+
+## [0.31.0](https://github.com/opentdf/platform/compare/protocol/go/v0.30.0...protocol/go/v0.31.0) (2026-05-19)
+
+
+### Bug Fixes
+
+* **core:** remove deprecated grpc-gateway ([#3479](https://github.com/opentdf/platform/issues/3479)) ([a4230a2](https://github.com/opentdf/platform/commit/a4230a215db71ff369d49216f0f9f61fdb6c042e))
+
+## [0.30.0](https://github.com/opentdf/platform/compare/protocol/go/v0.29.0...protocol/go/v0.30.0) (2026-05-11)
+
+
+### Features
+
+* **policy:** Add FQN to RegisteredResourceValues ([#3446](https://github.com/opentdf/platform/issues/3446)) ([3199583](https://github.com/opentdf/platform/commit/3199583c4a6454ac7eabe1260a142e5c5ff067ad))
+* **policy:** Add resource mapping group FQNs ([#3447](https://github.com/opentdf/platform/issues/3447)) ([6a0b3c6](https://github.com/opentdf/platform/commit/6a0b3c63795cf79b4d87d561464101c7cd2cf351))
+
+## [0.29.0](https://github.com/opentdf/platform/compare/protocol/go/v0.28.0...protocol/go/v0.29.0) (2026-05-05)
+
+
+### Features
+
+* **policy:** support inline obligation triggers on attribute value create ([#3432](https://github.com/opentdf/platform/issues/3432)) ([876f512](https://github.com/opentdf/platform/commit/876f512f9ff944cebd3b6d65c7937446a74ace87))
+
+## [0.28.0](https://github.com/opentdf/platform/compare/protocol/go/v0.27.0...protocol/go/v0.28.0) (2026-04-28)
+
+
+### Features
+
+* **sdk:** add shorthand enum constants for policy types ([#3408](https://github.com/opentdf/platform/issues/3408)) ([c6f18cb](https://github.com/opentdf/platform/commit/c6f18cbcacc7fa285d834f504a6ce43b7363295d))
+
+## [0.27.0](https://github.com/opentdf/platform/compare/protocol/go/v0.26.0...protocol/go/v0.27.0) (2026-04-23)
+
+
+### Features
+
+* **policy:** add sort support to listkaskeys ([#3344](https://github.com/opentdf/platform/issues/3344)) ([de1fe92](https://github.com/opentdf/platform/commit/de1fe926e306a15ff50fa0042b4fee988b3be1e6))
+
 ## [0.26.0](https://github.com/opentdf/platform/compare/protocol/go/v0.25.0...protocol/go/v0.26.0) (2026-04-22)
 
 

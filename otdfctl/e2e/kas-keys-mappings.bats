@@ -2,10 +2,6 @@
 
 # Tests listing key mappings
 
-load "${BATS_LIB_PATH}/bats-support/load.bash"
-load "${BATS_LIB_PATH}/bats-assert/load.bash"
-load "otdfctl-utils.sh"
-
 # Helper functions for otdfctl commands
 run_otdfctl_key() {
   run sh -c "./otdfctl policy kas-registry key $HOST $WITH_CREDS $*"
@@ -64,6 +60,9 @@ run_otdfctl_namespace_delete() {
 }
 
 setup_file() {
+  bats_load_library bats-support
+  bats_load_library bats-assert
+  load "otdfctl-utils.sh"
   export WITH_CREDS='--with-client-creds-file ./creds.json'
   export HOST='--host http://localhost:8080'
   export KAS_URI="https://test-kas-for-mappings.com"
@@ -133,8 +132,9 @@ setup_file() {
 }
 
 setup() {
-  # No setup specific to individual tests needed here currently
-  : # No-op
+  bats_load_library bats-support
+  bats_load_library bats-assert
+  load "otdfctl-utils.sh"
 }
 
 teardown_file() {

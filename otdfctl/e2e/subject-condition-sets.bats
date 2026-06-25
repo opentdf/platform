@@ -16,8 +16,8 @@ setup_file() {
 }
 
 setup() {
-  load "${BATS_LIB_PATH}/bats-support/load.bash"
-  load "${BATS_LIB_PATH}/bats-assert/load.bash"
+  bats_load_library bats-support
+  bats_load_library bats-assert
 
   # invoke binary with credentials
   run_otdfctl_scs () {
@@ -39,7 +39,7 @@ teardown_file() {
   # clear out all test env vars
   unset HOST WITH_CREDS NS_NAME NS_FQN NS_ID SCS_1 SCS_2 SCS_3
 
-  rm scs.json
+  rm -f scs.json
 }
 
 @test "Create a Subject Condition Set (SCS) - from file" {
@@ -136,6 +136,59 @@ teardown_file() {
   run_delete_scs "$CREATED_ID"
     assert_success
     assert_output --partial "$CREATED_ID"
+}
+
+@test "List SCS supports sort and order flags" {
+  scs_a_id=$(./otdfctl $HOST $WITH_CREDS policy scs create --subject-sets "$SCS_1" --namespace "$NS_ID" --json | jq -r '.id')
+  scs_b_id=$(./otdfctl $HOST $WITH_CREDS policy scs create --subject-sets "$SCS_2" --namespace "$NS_ID" --json | jq -r '.id')
+  scs_c_id=$(./otdfctl $HOST $WITH_CREDS policy scs create --subject-sets "$SCS_3" --namespace "$NS_ID" --json | jq -r '.id')
+
+  run_otdfctl_scs list --namespace "$NS_ID" --order asc --limit 500 --json
+  assert_success
+  assert_equal "$(echo "$output" | jq -r --arg a "$scs_a_id" --arg b "$scs_b_id" --arg c "$scs_c_id" '[.subject_condition_sets[] | select(.id == $a or .id == $b or .id == $c) | .id] | join(",")')" "$scs_a_id,$scs_b_id,$scs_c_id"
+
+  run_otdfctl_scs list --namespace "$NS_ID" --sort created_at --order desc --limit 500 --json
+  assert_success
+  assert_equal "$(echo "$output" | jq -r --arg a "$scs_a_id" --arg b "$scs_b_id" --arg c "$scs_c_id" '[.subject_condition_sets[] | select(.id == $a or .id == $b or .id == $c) | .id] | join(",")')" "$scs_c_id,$scs_b_id,$scs_a_id"
+
+  run ./otdfctl $HOST $WITH_CREDS policy scs update --id "$scs_a_id" --subject-sets "$SCS_1" --label sort=a --json
+  assert_success
+  run ./otdfctl $HOST $WITH_CREDS policy scs update --id "$scs_b_id" --subject-sets "$SCS_2" --label sort=b --json
+  assert_success
+  run ./otdfctl $HOST $WITH_CREDS policy scs update --id "$scs_c_id" --subject-sets "$SCS_3" --label sort=c --json
+  assert_success
+
+  run_otdfctl_scs list --namespace "$NS_ID" --sort updated_at --order asc --limit 500 --json
+  assert_success
+  assert_equal "$(echo "$output" | jq -r --arg a "$scs_a_id" --arg b "$scs_b_id" --arg c "$scs_c_id" '[.subject_condition_sets[] | select(.id == $a or .id == $b or .id == $c) | .id] | join(",")')" "$scs_a_id,$scs_b_id,$scs_c_id"
+
+  run_otdfctl_scs list --namespace "$NS_ID" --sort created_at --limit 500 --json
+  assert_success
+  assert_equal "$(echo "$output" | jq -r --arg a "$scs_a_id" --arg b "$scs_b_id" --arg c "$scs_c_id" '[.subject_condition_sets[] | select(.id == $a or .id == $b or .id == $c) | .id] | join(",")')" "$scs_c_id,$scs_b_id,$scs_a_id"
+
+  run_otdfctl_scs list --namespace "$NS_ID" --order asc --limit 500 --json
+  assert_success
+  assert_equal "$(echo "$output" | jq -r --arg a "$scs_a_id" --arg b "$scs_b_id" --arg c "$scs_c_id" '[.subject_condition_sets[] | select(.id == $a or .id == $b or .id == $c) | .id] | join(",")')" "$scs_a_id,$scs_b_id,$scs_c_id"
+
+  run_delete_scs "$scs_a_id"
+  run_delete_scs "$scs_b_id"
+  run_delete_scs "$scs_c_id"
+}
+
+@test "List SCS supports search flag" {
+  search_token="search-scs-${BATS_TEST_NUMBER}-${RANDOM}"
+  match_id=$(./otdfctl $HOST $WITH_CREDS policy scs create --subject-sets "$SCS_1" --namespace "$NS_ID" --label "search=$search_token-match" --json | jq -r '.id')
+  other_id=$(./otdfctl $HOST $WITH_CREDS policy scs create --subject-sets "$SCS_2" --namespace "$NS_ID" --label "search=$search_token-other" --json | jq -r '.id')
+
+  run_otdfctl_scs list --namespace "$NS_ID" --search "$search_token-match" --json
+  assert_success
+  assert_equal "$(echo "$output" | jq -r --arg id "$match_id" '[.subject_condition_sets[] | select(.id == $id)] | length')" "1"
+  assert_equal "$(echo "$output" | jq -r --arg id "$other_id" '[.subject_condition_sets[] | select(.id == $id)] | length')" "0"
+
+  run_delete_scs "$match_id"
+  assert_success
+  run_delete_scs "$other_id"
+  assert_success
 }
 
 @test "Create a SCS with namespace id" {

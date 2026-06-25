@@ -43,6 +43,7 @@ const (
 	kKeySize               = 32
 	kWrapped               = "wrapped"
 	kECWrapped             = "ec-wrapped"
+	kHybridWrapped         = "hybrid-wrapped"
 	kKasProtocol           = "kas"
 	kSplitKeyType          = "split"
 	kGCMCipherAlgorithm    = "AES-256-GCM"
@@ -674,7 +675,15 @@ func createKeyAccess(kasInfo KASInfo, symKey []byte, policyBinding PolicyBinding
 	}
 
 	ktype := ocrypto.KeyType(kasInfo.Algorithm)
-	if ocrypto.IsECKeyType(ktype) {
+	switch {
+	case ocrypto.IsHybridKeyType(ktype):
+		wrappedKey, err := generateWrapKeyWithHybrid(kasInfo.Algorithm, kasInfo.PublicKey, symKey)
+		if err != nil {
+			return KeyAccess{}, err
+		}
+		keyAccess.KeyType = kHybridWrapped
+		keyAccess.WrappedKey = wrappedKey
+	case ocrypto.IsECKeyType(ktype):
 		mode, err := ocrypto.ECKeyTypeToMode(ktype)
 		if err != nil {
 			return KeyAccess{}, err
@@ -686,7 +695,7 @@ func createKeyAccess(kasInfo KASInfo, symKey []byte, policyBinding PolicyBinding
 		keyAccess.KeyType = kECWrapped
 		keyAccess.WrappedKey = wrappedKeyInfo.wrappedKey
 		keyAccess.EphemeralPublicKey = wrappedKeyInfo.publicKey
-	} else {
+	default:
 		wrappedKey, err := generateWrapKeyWithRSA(kasInfo.PublicKey, symKey)
 		if err != nil {
 			return KeyAccess{}, err
@@ -761,6 +770,14 @@ func generateWrapKeyWithRSA(publicKey string, symKey []byte) (string, error) {
 	return string(ocrypto.Base64Encode(wrappedKey)), nil
 }
 
+func generateWrapKeyWithHybrid(algorithm, publicKeyPEM string, symKey []byte) (string, error) {
+	wrappedDER, err := ocrypto.HybridWrapDEK(ocrypto.KeyType(algorithm), publicKeyPEM, symKey)
+	if err != nil {
+		return "", fmt.Errorf("generateWrapKeyWithHybrid: %w", err)
+	}
+	return string(ocrypto.Base64Encode(wrappedDER)), nil
+}
+
 // create policy object
 func createPolicyObject(attributes []AttributeValueFQN) (PolicyObject, error) {
 	uuidObj, err := uuid.NewUUID()
@@ -800,6 +817,37 @@ func allowListFromKASRegistry(ctx context.Context, logger *slog.Logger, kasRegis
 		return nil, fmt.Errorf("kasAllowlist.Add failed: %w", err)
 	}
 	return kasAllowlist, nil
+}
+
+// WithPolicyFrom returns a [TDFOption] that binds the source TDF's policy
+// (its attribute value FQNs) to the new TDF being created.
+//
+// Use this in re-wrap pipelines to preserve the source policy without
+// having to know about the manifest's base64 + JSON encoding:
+//
+//	if ok, _ := sdk.IsValidTdf(file); !ok {
+//	    // pass through unchanged
+//	}
+//	reader, err := s.LoadTDF(file)
+//	if err != nil {
+//	    return err
+//	}
+//	_, err = s.CreateTDF(out, transformed, sdk.WithPolicyFrom(reader))
+//
+// [Reader.Init] is not required: [Reader.DataAttributes] reads the policy
+// from the manifest, which [SDK.LoadTDF] has already populated. Calling
+// Init would trigger an unnecessary KAS rewrap.
+func WithPolicyFrom(r *Reader) TDFOption {
+	return func(c *TDFConfig) error {
+		if r == nil {
+			return errors.New("WithPolicyFrom: nil Reader")
+		}
+		attrs, err := r.DataAttributes()
+		if err != nil {
+			return fmt.Errorf("WithPolicyFrom: extracting source attributes: %w", err)
+		}
+		return WithDataAttributes(attrs...)(c)
+	}
 }
 
 // LoadTDF loads the tdf and prepare for reading the payload from TDF

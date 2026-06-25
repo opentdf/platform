@@ -67,8 +67,9 @@ func policyListResourceMappingGroups(cmd *cobra.Command, args []string) {
 
 	limit := c.Flags.GetRequiredInt32("limit")
 	offset := c.Flags.GetRequiredInt32("offset")
+	namespace := c.Flags.GetOptionalString("namespace")
 
-	resp, err := h.ListResourceMappingGroups(cmd.Context(), limit, offset)
+	resp, err := h.ListResourceMappingGroups(cmd.Context(), namespace, limit, offset)
 	if err != nil {
 		cli.ExitWithError("Failed to list resource mapping groups", err)
 	}
@@ -180,6 +181,7 @@ func initResourceMappingGroupsCommands() {
 	listDoc := man.Docs.GetCommand("policy/resource-mapping-groups/list",
 		man.WithRun(policyListResourceMappingGroups),
 	)
+	injectNamespaceFlag(listDoc)
 	injectListPaginationFlags(listDoc)
 
 	updateDoc := man.Docs.GetCommand("policy/resource-mapping-groups/update",

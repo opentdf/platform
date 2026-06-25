@@ -18,15 +18,14 @@ func TestExecuteRegisteredResources(t *testing.T) {
 
 	tests := []struct {
 		name    string
-		plan    *Plan
+		plan    *MigrationPlan
 		handler *mockExecutorHandler
-		runID   string
 		wantErr *expectedError
-		assert  func(t *testing.T, err error, executor *Executor, handler *mockExecutorHandler, plan *Plan)
+		assert  func(t *testing.T, err error, executor *MigrationExecutor, handler *mockExecutorHandler, plan *MigrationPlan)
 	}{
 		{
 			name: "creates registered resource shell and values with authoritative action target ids",
-			plan: &Plan{
+			plan: &MigrationPlan{
 				Scopes: []Scope{ScopeActions, ScopeRegisteredResources},
 				Actions: []*ActionPlan{
 					{
@@ -112,8 +111,7 @@ func TestExecuteRegisteredResources(t *testing.T) {
 					},
 				},
 			},
-			runID: "run-rr-123",
-			assert: func(t *testing.T, err error, executor *Executor, handler *mockExecutorHandler, plan *Plan) {
+			assert: func(t *testing.T, err error, executor *MigrationExecutor, handler *mockExecutorHandler, plan *MigrationPlan) {
 				t.Helper()
 
 				require.NoError(t, err)
@@ -127,7 +125,6 @@ func TestExecuteRegisteredResources(t *testing.T) {
 				assert.Equal(t, map[string]string{
 					"owner":                    "policy-team",
 					migrationLabelMigratedFrom: "rr-1",
-					migrationLabelRun:          "run-rr-123",
 				}, resourceCall.Metadata.GetLabels())
 
 				require.Contains(t, handler.createdRegisteredResourceValues, "rrv-1")
@@ -138,7 +135,6 @@ func TestExecuteRegisteredResources(t *testing.T) {
 				assert.Equal(t, map[string]string{
 					"classification":           "secret",
 					migrationLabelMigratedFrom: "rrv-1",
-					migrationLabelRun:          "run-rr-123",
 				}, valueCall.Metadata.GetLabels())
 				require.Len(t, valueCall.ActionAttributeValues, 2)
 				assert.Equal(t, "created-action-1", valueCall.ActionAttributeValues[0].GetActionId())
@@ -150,14 +146,12 @@ func TestExecuteRegisteredResources(t *testing.T) {
 				require.NotNil(t, resourceTarget.Execution)
 				assert.True(t, resourceTarget.Execution.Applied)
 				assert.Equal(t, "created-rr-1", resourceTarget.Execution.CreatedTargetID)
-				assert.Equal(t, "run-rr-123", resourceTarget.Execution.RunID)
 				assert.Equal(t, "created-rr-1", resourceTarget.TargetID())
 
 				valueTarget := plan.RegisteredResources[0].Target.Values[0]
 				require.NotNil(t, valueTarget.Execution)
 				assert.True(t, valueTarget.Execution.Applied)
 				assert.Equal(t, "created-rrv-1", valueTarget.Execution.CreatedTargetID)
-				assert.Equal(t, "run-rr-123", valueTarget.Execution.RunID)
 				assert.Equal(t, "created-rrv-1", valueTarget.TargetID())
 
 				assert.Equal(t, "created-action-1", executor.cachedActionTargetID("action-1", namespace1))
@@ -166,7 +160,7 @@ func TestExecuteRegisteredResources(t *testing.T) {
 		},
 		{
 			name: "skips already migrated registered resource targets",
-			plan: &Plan{
+			plan: &MigrationPlan{
 				Scopes: []Scope{ScopeActions, ScopeRegisteredResources},
 				RegisteredResources: []*RegisteredResourcePlan{
 					{
@@ -185,7 +179,7 @@ func TestExecuteRegisteredResources(t *testing.T) {
 				},
 			},
 			handler: &mockExecutorHandler{},
-			assert: func(t *testing.T, err error, _ *Executor, handler *mockExecutorHandler, plan *Plan) {
+			assert: func(t *testing.T, err error, _ *MigrationExecutor, handler *mockExecutorHandler, plan *MigrationPlan) {
 				t.Helper()
 
 				require.NoError(t, err)
@@ -198,7 +192,7 @@ func TestExecuteRegisteredResources(t *testing.T) {
 		},
 		{
 			name: "skips skipped registered resource targets",
-			plan: &Plan{
+			plan: &MigrationPlan{
 				Scopes: []Scope{ScopeRegisteredResources},
 				RegisteredResources: []*RegisteredResourcePlan{
 					{
@@ -217,7 +211,7 @@ func TestExecuteRegisteredResources(t *testing.T) {
 				},
 			},
 			handler: &mockExecutorHandler{},
-			assert: func(t *testing.T, err error, _ *Executor, handler *mockExecutorHandler, plan *Plan) {
+			assert: func(t *testing.T, err error, _ *MigrationExecutor, handler *mockExecutorHandler, plan *MigrationPlan) {
 				t.Helper()
 
 				require.NoError(t, err)
@@ -229,7 +223,7 @@ func TestExecuteRegisteredResources(t *testing.T) {
 		},
 		{
 			name: "ignores unresolved target status",
-			plan: &Plan{
+			plan: &MigrationPlan{
 				Scopes: []Scope{ScopeActions, ScopeRegisteredResources},
 				RegisteredResources: []*RegisteredResourcePlan{
 					{
@@ -237,13 +231,13 @@ func TestExecuteRegisteredResources(t *testing.T) {
 						Target: &RegisteredResourceTargetPlan{
 							Namespace: namespace1,
 							Status:    TargetStatusUnresolved,
-							Reason:    ErrDuplicateCanonicalMatch.Error(),
+							Reason:    "ambiguous target namespace",
 						},
 					},
 				},
 			},
 			handler: &mockExecutorHandler{},
-			assert: func(t *testing.T, err error, _ *Executor, handler *mockExecutorHandler, _ *Plan) {
+			assert: func(t *testing.T, err error, _ *MigrationExecutor, handler *mockExecutorHandler, _ *MigrationPlan) {
 				t.Helper()
 
 				require.NoError(t, err)
@@ -253,7 +247,7 @@ func TestExecuteRegisteredResources(t *testing.T) {
 		},
 		{
 			name: "ignores unresolved registered resource entry without target",
-			plan: &Plan{
+			plan: &MigrationPlan{
 				Scopes: []Scope{ScopeRegisteredResources},
 				RegisteredResources: []*RegisteredResourcePlan{
 					{
@@ -263,7 +257,7 @@ func TestExecuteRegisteredResources(t *testing.T) {
 				},
 			},
 			handler: &mockExecutorHandler{},
-			assert: func(t *testing.T, err error, _ *Executor, handler *mockExecutorHandler, _ *Plan) {
+			assert: func(t *testing.T, err error, _ *MigrationExecutor, handler *mockExecutorHandler, _ *MigrationPlan) {
 				t.Helper()
 
 				require.NoError(t, err)
@@ -272,101 +266,8 @@ func TestExecuteRegisteredResources(t *testing.T) {
 			},
 		},
 		{
-			name: "reuses existing registered resource parent on create targets",
-			plan: &Plan{
-				Scopes: []Scope{ScopeActions, ScopeRegisteredResources},
-				Actions: []*ActionPlan{
-					{
-						Source: &policy.Action{Id: "action-1", Name: "read"},
-						Targets: []*ActionTargetPlan{
-							{
-								Namespace: namespace1,
-								Status:    TargetStatusCreate,
-							},
-						},
-					},
-				},
-				RegisteredResources: []*RegisteredResourcePlan{
-					{
-						Source: &policy.RegisteredResource{Id: "rr-1", Name: "repo"},
-						Target: &RegisteredResourceTargetPlan{
-							Namespace:  namespace1,
-							Status:     TargetStatusCreate,
-							ExistingID: "existing-rr-1",
-							Values: []*RegisteredResourceValuePlan{
-								{
-									Source: &policy.RegisteredResourceValue{Id: "rrv-1", Value: "repo-a"},
-									ActionBindings: []*RegisteredResourceActionBinding{
-										{
-											SourceActionID: "action-1",
-											AttributeValue: &policy.Value{Id: "attribute-value-id-1"},
-										},
-									},
-								},
-								{
-									Source: &policy.RegisteredResourceValue{Id: "rrv-2", Value: "repo-b"},
-									ActionBindings: []*RegisteredResourceActionBinding{
-										{
-											SourceActionID: "action-1",
-											AttributeValue: &policy.Value{Id: "attribute-value-id-2"},
-										},
-									},
-								},
-							},
-						},
-					},
-				},
-			},
-			handler: &mockExecutorHandler{
-				results: map[string]map[string]*policy.Action{
-					"read": {
-						"ns-1": {Id: "created-action-1", Name: "read"},
-					},
-				},
-				registeredResourceValueResult: map[string]map[string]*policy.RegisteredResourceValue{
-					"rrv-2": {
-						"existing-rr-1": {Id: "created-rrv-2", Value: "repo-b"},
-					},
-				},
-				registeredResourcesByID: map[string]*policy.RegisteredResource{
-					"existing-rr-1": {
-						Id:   "existing-rr-1",
-						Name: "repo",
-						Values: []*policy.RegisteredResourceValue{
-							{Id: "existing-rrv-1", Value: "repo-a"},
-						},
-					},
-				},
-			},
-			assert: func(t *testing.T, err error, _ *Executor, handler *mockExecutorHandler, plan *Plan) {
-				t.Helper()
-
-				require.NoError(t, err)
-				assert.Nil(t, handler.createdRegisteredResources)
-				require.Contains(t, handler.createdRegisteredResourceValues, "rrv-2")
-				require.Contains(t, handler.createdRegisteredResourceValues["rrv-2"], "existing-rr-1")
-				assert.NotContains(t, handler.createdRegisteredResourceValues, "rrv-1")
-
-				target := plan.RegisteredResources[0].Target
-				require.NotNil(t, target.Execution)
-				assert.True(t, target.Execution.Applied)
-				assert.Equal(t, "existing-rr-1", target.Execution.CreatedTargetID)
-				assert.Equal(t, "existing-rr-1", target.TargetID())
-
-				existingValue := target.Values[0]
-				require.NotNil(t, existingValue.Execution)
-				assert.True(t, existingValue.Execution.Applied)
-				assert.Equal(t, "existing-rrv-1", existingValue.Execution.CreatedTargetID)
-
-				createdValue := target.Values[1]
-				require.NotNil(t, createdValue.Execution)
-				assert.True(t, createdValue.Execution.Applied)
-				assert.Equal(t, "created-rrv-2", createdValue.Execution.CreatedTargetID)
-			},
-		},
-		{
 			name: "records shell creation failures on the target",
-			plan: &Plan{
+			plan: &MigrationPlan{
 				Scopes: []Scope{ScopeActions, ScopeRegisteredResources},
 				RegisteredResources: []*RegisteredResourcePlan{
 					{
@@ -386,7 +287,7 @@ func TestExecuteRegisteredResources(t *testing.T) {
 				},
 			},
 			wantErr: wantError(errBoom, `create registered resource %q in namespace %q`, "rr-1", namespace1.GetFqn()),
-			assert: func(t *testing.T, err error, _ *Executor, handler *mockExecutorHandler, plan *Plan) {
+			assert: func(t *testing.T, err error, _ *MigrationExecutor, handler *mockExecutorHandler, plan *MigrationPlan) {
 				t.Helper()
 
 				require.Error(t, err)
@@ -397,7 +298,7 @@ func TestExecuteRegisteredResources(t *testing.T) {
 		},
 		{
 			name: "stops when a registered resource value cannot resolve its migrated action target",
-			plan: &Plan{
+			plan: &MigrationPlan{
 				Scopes: []Scope{ScopeActions, ScopeRegisteredResources},
 				RegisteredResources: []*RegisteredResourcePlan{
 					{
@@ -435,7 +336,7 @@ func TestExecuteRegisteredResources(t *testing.T) {
 				"rrv-1",
 				namespace1.GetFqn(),
 			),
-			assert: func(t *testing.T, err error, _ *Executor, handler *mockExecutorHandler, plan *Plan) {
+			assert: func(t *testing.T, err error, _ *MigrationExecutor, handler *mockExecutorHandler, plan *MigrationPlan) {
 				t.Helper()
 
 				require.Error(t, err)
@@ -449,7 +350,7 @@ func TestExecuteRegisteredResources(t *testing.T) {
 		},
 		{
 			name: "records value creation failures on the value target",
-			plan: &Plan{
+			plan: &MigrationPlan{
 				Scopes: []Scope{ScopeActions, ScopeRegisteredResources},
 				Actions: []*ActionPlan{
 					{
@@ -501,7 +402,7 @@ func TestExecuteRegisteredResources(t *testing.T) {
 				},
 			},
 			wantErr: wantError(errBoom, `create registered resource value %q for resource %q in namespace %q`, "rrv-1", "created-rr-1", namespace1.GetFqn()),
-			assert: func(t *testing.T, err error, _ *Executor, handler *mockExecutorHandler, plan *Plan) {
+			assert: func(t *testing.T, err error, _ *MigrationExecutor, handler *mockExecutorHandler, plan *MigrationPlan) {
 				t.Helper()
 
 				require.Error(t, err)
@@ -519,13 +420,10 @@ func TestExecuteRegisteredResources(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			executor, err := NewExecutor(tt.handler)
+			executor, err := NewMigrationExecutor(tt.handler)
 			require.NoError(t, err)
-			if tt.runID != "" {
-				executor.runID = tt.runID
-			}
 
-			err = executor.Execute(t.Context(), tt.plan)
+			err = executor.ExecuteMigration(t.Context(), tt.plan)
 			switch {
 			case tt.wantErr != nil:
 				require.Error(t, err)

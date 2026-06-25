@@ -480,6 +480,7 @@ func (s *AttributesSuite) Test_ListAttributes_OrdersByCreatedAt_Succeeds() {
 	ns, err := s.db.PolicyClient.CreateNamespace(s.ctx, &namespaces.CreateNamespaceRequest{Name: nsName})
 	s.Require().NoError(err)
 	s.Require().NotNil(ns)
+	defer deleteNamespaces(s.ctx, s.T(), s.db, []string{ns.GetId()})
 
 	create := func(i int) string {
 		name := fmt.Sprintf("order-test-attr-%d-%d", i, suffix)
@@ -510,7 +511,8 @@ func (s *AttributesSuite) Test_ListAttributes_OrdersByCreatedAt_Succeeds() {
 
 func (s *AttributesSuite) Test_ListAttributes_SortByName_ASC() {
 	nsID := s.createSortTestNamespace("sort-name-asc")
-	ids := s.createNamedSortTestAttributes(nsID, []string{"aaa-sort", "bbb-sort", "ccc-sort"})
+	ids := s.createSortTestAttributes(nsID, []string{"aaa-sort", "bbb-sort", "ccc-sort"})
+	defer deleteNamespaces(s.ctx, s.T(), s.db, []string{nsID})
 
 	listRsp, err := s.db.PolicyClient.ListAttributes(s.ctx, &attributes.ListAttributesRequest{
 		Namespace: nsID,
@@ -527,7 +529,8 @@ func (s *AttributesSuite) Test_ListAttributes_SortByName_ASC() {
 
 func (s *AttributesSuite) Test_ListAttributes_SortByName_DESC() {
 	nsID := s.createSortTestNamespace("sort-name-desc")
-	ids := s.createNamedSortTestAttributes(nsID, []string{"aaa-sortdesc", "bbb-sortdesc", "ccc-sortdesc"})
+	ids := s.createSortTestAttributes(nsID, []string{"aaa-sortdesc", "bbb-sortdesc", "ccc-sortdesc"})
+	defer deleteNamespaces(s.ctx, s.T(), s.db, []string{nsID})
 
 	listRsp, err := s.db.PolicyClient.ListAttributes(s.ctx, &attributes.ListAttributesRequest{
 		Namespace: nsID,
@@ -544,7 +547,8 @@ func (s *AttributesSuite) Test_ListAttributes_SortByName_DESC() {
 
 func (s *AttributesSuite) Test_ListAttributes_SortByCreatedAt_ASC() {
 	nsID := s.createSortTestNamespace("sort-created-asc")
-	ids := s.createSortTestAttributes(nsID, "createdasc-attr", 3)
+	ids := s.createSortTestAttributes(nsID, []string{"createdasc-attr-0", "createdasc-attr-1", "createdasc-attr-2"})
+	defer deleteNamespaces(s.ctx, s.T(), s.db, []string{nsID})
 
 	listRsp, err := s.db.PolicyClient.ListAttributes(s.ctx, &attributes.ListAttributesRequest{
 		Namespace: nsID,
@@ -561,7 +565,8 @@ func (s *AttributesSuite) Test_ListAttributes_SortByCreatedAt_ASC() {
 
 func (s *AttributesSuite) Test_ListAttributes_SortByCreatedAt_DESC() {
 	nsID := s.createSortTestNamespace("sort-created-desc")
-	ids := s.createSortTestAttributes(nsID, "createddesc-attr", 3)
+	ids := s.createSortTestAttributes(nsID, []string{"createddesc-attr-0", "createddesc-attr-1", "createddesc-attr-2"})
+	defer deleteNamespaces(s.ctx, s.T(), s.db, []string{nsID})
 
 	listRsp, err := s.db.PolicyClient.ListAttributes(s.ctx, &attributes.ListAttributesRequest{
 		Namespace: nsID,
@@ -578,7 +583,8 @@ func (s *AttributesSuite) Test_ListAttributes_SortByCreatedAt_DESC() {
 
 func (s *AttributesSuite) Test_ListAttributes_SortByUpdatedAt_DESC() {
 	nsID := s.createSortTestNamespace("sort-updated-desc")
-	ids := s.createSortTestAttributes(nsID, "upd-sort-attr", 3)
+	ids := s.createSortTestAttributes(nsID, []string{"upd-sort-attr-0", "upd-sort-attr-1", "upd-sort-attr-2"})
+	defer deleteNamespaces(s.ctx, s.T(), s.db, []string{nsID})
 
 	// Update the first attribute so its updated_at is the most recent
 	time.Sleep(5 * time.Millisecond)
@@ -606,7 +612,8 @@ func (s *AttributesSuite) Test_ListAttributes_SortByUpdatedAt_DESC() {
 
 func (s *AttributesSuite) Test_ListAttributes_SortByUpdatedAt_ASC() {
 	nsID := s.createSortTestNamespace("sort-updated-asc")
-	ids := s.createSortTestAttributes(nsID, "upd-sort-asc-attr", 3)
+	ids := s.createSortTestAttributes(nsID, []string{"upd-sort-asc-attr-0", "upd-sort-asc-attr-1", "upd-sort-asc-attr-2"})
+	defer deleteNamespaces(s.ctx, s.T(), s.db, []string{nsID})
 
 	// Update the last attribute so its updated_at is the most recent
 	time.Sleep(5 * time.Millisecond)
@@ -632,9 +639,42 @@ func (s *AttributesSuite) Test_ListAttributes_SortByUpdatedAt_ASC() {
 	assertIDsInOrder(s.T(), listRsp.GetAttributes(), func(attr *policy.Attribute) string { return attr.GetId() }, ids[0], ids[1], ids[2])
 }
 
-func (s *AttributesSuite) Test_ListAttributes_SortByUnspecifiedField_FallsBackToDefault() {
-	nsID := s.createSortTestNamespace("sort-unspecified")
-	ids := s.createSortTestAttributes(nsID, "unspecified-sort-attr", 3)
+func (s *AttributesSuite) Test_ListAttributes_SortTieBreaker_CreatedAtWithIDFallback() {
+	nsID := s.createSortTestNamespace("sort-tiebreaker")
+	suffix := time.Now().UnixNano()
+	ids := make([]string, 3)
+	for i := range 3 {
+		name := fmt.Sprintf("tiebreaker-attr-%d-%d", i, suffix)
+		created, err := s.db.PolicyClient.CreateAttribute(s.ctx, &attributes.CreateAttributeRequest{
+			Name:        name,
+			NamespaceId: nsID,
+			Rule:        policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
+		})
+		s.Require().NoError(err)
+		ids[i] = created.GetId()
+	}
+	defer deleteNamespaces(s.ctx, s.T(), s.db, []string{nsID})
+
+	s.Require().NoError(forceCreatedAtTie(s.ctx, s.db, "attribute_definitions", ids))
+
+	sorted := slices.Sorted(slices.Values(ids))
+
+	listRsp, err := s.db.PolicyClient.ListAttributes(s.ctx, &attributes.ListAttributesRequest{
+		Namespace: nsID,
+		Sort: []*attributes.AttributesSort{
+			{Field: attributes.SortAttributesType_SORT_ATTRIBUTES_TYPE_CREATED_AT, Direction: policy.SortDirection_SORT_DIRECTION_ASC},
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(listRsp)
+
+	assertIDsInOrder(s.T(), listRsp.GetAttributes(), func(attr *policy.Attribute) string { return attr.GetId() }, sorted[0], sorted[1], sorted[2])
+}
+
+func (s *AttributesSuite) Test_ListAttributes_SortByUnspecifiedField_DefaultsToCreatedAt() {
+	nsID := s.createSortTestNamespace("sort-unspecified-field")
+	ids := s.createSortTestAttributes(nsID, []string{"unspecified-field-attr-0", "unspecified-field-attr-1", "unspecified-field-attr-2"})
+	defer deleteNamespaces(s.ctx, s.T(), s.db, []string{nsID})
 
 	listRsp, err := s.db.PolicyClient.ListAttributes(s.ctx, &attributes.ListAttributesRequest{
 		Namespace: nsID,
@@ -645,7 +685,58 @@ func (s *AttributesSuite) Test_ListAttributes_SortByUnspecifiedField_FallsBackTo
 	s.Require().NoError(err)
 	s.NotNil(listRsp)
 
-	// Falls back to default created_at DESC ordering
+	// Field defaults to created_at, explicit ASC is preserved
+	assertIDsInOrder(s.T(), listRsp.GetAttributes(), func(attr *policy.Attribute) string { return attr.GetId() }, ids[0], ids[1], ids[2])
+}
+
+func (s *AttributesSuite) Test_ListAttributes_SortByUnspecifiedDirection_DefaultsToDESC() {
+	nsID := s.createSortTestNamespace("sort-unspecified-dir")
+	ids := s.createSortTestAttributes(nsID, []string{"unspecified-dir-attr-0", "unspecified-dir-attr-1", "unspecified-dir-attr-2"})
+	defer deleteNamespaces(s.ctx, s.T(), s.db, []string{nsID})
+
+	listRsp, err := s.db.PolicyClient.ListAttributes(s.ctx, &attributes.ListAttributesRequest{
+		Namespace: nsID,
+		Sort: []*attributes.AttributesSort{
+			{Field: attributes.SortAttributesType_SORT_ATTRIBUTES_TYPE_CREATED_AT, Direction: policy.SortDirection_SORT_DIRECTION_UNSPECIFIED},
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(listRsp)
+
+	// Direction defaults to DESC, explicit created_at field is preserved
+	assertIDsInOrder(s.T(), listRsp.GetAttributes(), func(attr *policy.Attribute) string { return attr.GetId() }, ids[2], ids[1], ids[0])
+}
+
+func (s *AttributesSuite) Test_ListAttributes_SortByBothUnspecified_DefaultsToCreatedAtDESC() {
+	nsID := s.createSortTestNamespace("sort-both-unspecified")
+	ids := s.createSortTestAttributes(nsID, []string{"both-unspecified-attr-0", "both-unspecified-attr-1", "both-unspecified-attr-2"})
+	defer deleteNamespaces(s.ctx, s.T(), s.db, []string{nsID})
+
+	listRsp, err := s.db.PolicyClient.ListAttributes(s.ctx, &attributes.ListAttributesRequest{
+		Namespace: nsID,
+		Sort: []*attributes.AttributesSort{
+			{Field: attributes.SortAttributesType_SORT_ATTRIBUTES_TYPE_UNSPECIFIED, Direction: policy.SortDirection_SORT_DIRECTION_UNSPECIFIED},
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(listRsp)
+
+	// Both default: created_at DESC
+	assertIDsInOrder(s.T(), listRsp.GetAttributes(), func(attr *policy.Attribute) string { return attr.GetId() }, ids[2], ids[1], ids[0])
+}
+
+func (s *AttributesSuite) Test_ListAttributes_SortOmitted() {
+	nsID := s.createSortTestNamespace("sort-omitted")
+	ids := s.createSortTestAttributes(nsID, []string{"omitted-sort-attr-0", "omitted-sort-attr-1", "omitted-sort-attr-2"})
+	defer deleteNamespaces(s.ctx, s.T(), s.db, []string{nsID})
+
+	listRsp, err := s.db.PolicyClient.ListAttributes(s.ctx, &attributes.ListAttributesRequest{
+		Namespace: nsID,
+	})
+	s.Require().NoError(err)
+	s.NotNil(listRsp)
+
+	// No sort provided: created_at DESC
 	assertIDsInOrder(s.T(), listRsp.GetAttributes(), func(attr *policy.Attribute) string { return attr.GetId() }, ids[2], ids[1], ids[0])
 }
 
@@ -728,6 +819,231 @@ func (s *AttributesSuite) Test_ListAttributes_Offset_Succeeds() {
 	for i, attr := range offsetListed {
 		s.True(proto.Equal(attr, listed[i+offset]))
 	}
+}
+
+func (s *AttributesSuite) Test_ListAttributes_SearchByFqn_Succeeds() {
+	suffix := time.Now().UnixNano()
+	ns, err := s.db.PolicyClient.CreateNamespace(s.ctx, &namespaces.CreateNamespaceRequest{
+		Name: fmt.Sprintf("dspx-search-attrs-%d.com", suffix),
+	})
+	s.Require().NoError(err)
+	defer deleteNamespaces(s.ctx, s.T(), s.db, []string{ns.GetId()})
+
+	alpha, err := s.db.PolicyClient.CreateAttribute(s.ctx, &attributes.CreateAttributeRequest{
+		Name:        fmt.Sprintf("dspx-search-alpha-%d", suffix),
+		NamespaceId: ns.GetId(),
+		Rule:        policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
+	})
+	s.Require().NoError(err)
+	beta, err := s.db.PolicyClient.CreateAttribute(s.ctx, &attributes.CreateAttributeRequest{
+		Name:        fmt.Sprintf("dspx-search-beta-%d", suffix),
+		NamespaceId: ns.GetId(),
+		Rule:        policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
+	})
+	s.Require().NoError(err)
+
+	byNameSubstring, err := s.db.PolicyClient.ListAttributes(s.ctx, &attributes.ListAttributesRequest{
+		State:  common.ActiveStateEnum_ACTIVE_STATE_ENUM_ANY,
+		Search: &policy.Search{Term: strings.ToUpper(alpha.GetName())},
+	})
+	s.Require().NoError(err)
+	s.Require().Len(byNameSubstring.GetAttributes(), 1)
+	s.Equal(alpha.GetId(), byNameSubstring.GetAttributes()[0].GetId())
+	s.Equal(int32(1), byNameSubstring.GetPagination().GetTotal())
+
+	byFqn, err := s.db.PolicyClient.ListAttributes(s.ctx, &attributes.ListAttributesRequest{
+		State:  common.ActiveStateEnum_ACTIVE_STATE_ENUM_ANY,
+		Search: &policy.Search{Term: strings.ToUpper(beta.GetFqn())},
+	})
+	s.Require().NoError(err)
+	s.Require().Len(byFqn.GetAttributes(), 1)
+	s.Equal(beta.GetId(), byFqn.GetAttributes()[0].GetId())
+	s.Equal(int32(1), byFqn.GetPagination().GetTotal())
+}
+
+func (s *AttributesSuite) Test_ListAttributes_SearchEscapesLikeWildcardLiterals_Succeeds() {
+	suffix := time.Now().UnixNano()
+	ns, err := s.db.PolicyClient.CreateNamespace(s.ctx, &namespaces.CreateNamespaceRequest{
+		Name: fmt.Sprintf("dspx-search-like-attrs-%d.com", suffix),
+	})
+	s.Require().NoError(err)
+	defer deleteNamespaces(s.ctx, s.T(), s.db, []string{ns.GetId()})
+
+	_, err = s.db.PolicyClient.CreateAttribute(s.ctx, &attributes.CreateAttributeRequest{
+		Name:        fmt.Sprintf("wildcarda-%d", suffix),
+		NamespaceId: ns.GetId(),
+		Rule:        policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
+	})
+	s.Require().NoError(err)
+	_, err = s.db.PolicyClient.CreateAttribute(s.ctx, &attributes.CreateAttributeRequest{
+		Name:        fmt.Sprintf("wildcardb-%d", suffix),
+		NamespaceId: ns.GetId(),
+		Rule:        policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
+	})
+	s.Require().NoError(err)
+
+	for _, query := range []string{
+		fmt.Sprintf("wildcard_-%d", suffix),
+		fmt.Sprintf("wildcard%%-%d", suffix),
+	} {
+		list, err := s.db.PolicyClient.ListAttributes(s.ctx, &attributes.ListAttributesRequest{
+			State:     common.ActiveStateEnum_ACTIVE_STATE_ENUM_ANY,
+			Namespace: ns.GetId(),
+			Search:    &policy.Search{Term: query},
+		})
+		s.Require().NoError(err)
+		s.Empty(list.GetAttributes())
+		s.Equal(int32(0), list.GetPagination().GetTotal())
+	}
+}
+
+func (s *AttributesSuite) Test_ListAttributes_SearchCombinesWithStateAndNamespace_Succeeds() {
+	suffix := time.Now().UnixNano()
+	searchQuery := fmt.Sprintf("dspx-search-state-attrs-%d", suffix)
+	firstNS, err := s.db.PolicyClient.CreateNamespace(s.ctx, &namespaces.CreateNamespaceRequest{
+		Name: fmt.Sprintf("dspx-search-state-attrs-a-%d.com", suffix),
+	})
+	s.Require().NoError(err)
+	secondNS, err := s.db.PolicyClient.CreateNamespace(s.ctx, &namespaces.CreateNamespaceRequest{
+		Name: fmt.Sprintf("dspx-search-state-attrs-b-%d.com", suffix),
+	})
+	s.Require().NoError(err)
+	defer deleteNamespaces(s.ctx, s.T(), s.db, []string{firstNS.GetId(), secondNS.GetId()})
+
+	active, err := s.db.PolicyClient.CreateAttribute(s.ctx, &attributes.CreateAttributeRequest{
+		Name:        "active-" + searchQuery,
+		NamespaceId: firstNS.GetId(),
+		Rule:        policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
+	})
+	s.Require().NoError(err)
+	inactive, err := s.db.PolicyClient.CreateAttribute(s.ctx, &attributes.CreateAttributeRequest{
+		Name:        "inactive-" + searchQuery,
+		NamespaceId: firstNS.GetId(),
+		Rule:        policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
+	})
+	s.Require().NoError(err)
+	_, err = s.db.PolicyClient.CreateAttribute(s.ctx, &attributes.CreateAttributeRequest{
+		Name:        "other-namespace-" + searchQuery,
+		NamespaceId: secondNS.GetId(),
+		Rule:        policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
+	})
+	s.Require().NoError(err)
+	_, err = s.db.PolicyClient.DeactivateAttribute(s.ctx, inactive.GetId())
+	s.Require().NoError(err)
+
+	activeList, err := s.db.PolicyClient.ListAttributes(s.ctx, &attributes.ListAttributesRequest{
+		State:     common.ActiveStateEnum_ACTIVE_STATE_ENUM_ACTIVE,
+		Namespace: firstNS.GetId(),
+		Search:    &policy.Search{Term: searchQuery},
+	})
+	s.Require().NoError(err)
+	s.Require().Len(activeList.GetAttributes(), 1)
+	s.Equal(active.GetId(), activeList.GetAttributes()[0].GetId())
+
+	inactiveList, err := s.db.PolicyClient.ListAttributes(s.ctx, &attributes.ListAttributesRequest{
+		State:     common.ActiveStateEnum_ACTIVE_STATE_ENUM_INACTIVE,
+		Namespace: firstNS.GetId(),
+		Search:    &policy.Search{Term: searchQuery},
+	})
+	s.Require().NoError(err)
+	s.Require().Len(inactiveList.GetAttributes(), 1)
+	s.Equal(inactive.GetId(), inactiveList.GetAttributes()[0].GetId())
+}
+
+func (s *AttributesSuite) Test_ListAttributes_SearchEmptyAndWhitespaceQuery_Succeeds() {
+	suffix := time.Now().UnixNano()
+	ns, err := s.db.PolicyClient.CreateNamespace(s.ctx, &namespaces.CreateNamespaceRequest{
+		Name: fmt.Sprintf("dspx-search-empty-attrs-%d.com", suffix),
+	})
+	s.Require().NoError(err)
+	defer deleteNamespaces(s.ctx, s.T(), s.db, []string{ns.GetId()})
+
+	_, err = s.db.PolicyClient.CreateAttribute(s.ctx, &attributes.CreateAttributeRequest{
+		Name:        fmt.Sprintf("dspx-search-empty-attr-%d", suffix),
+		NamespaceId: ns.GetId(),
+		Rule:        policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
+	})
+	s.Require().NoError(err)
+
+	noSearch, err := s.db.PolicyClient.ListAttributes(s.ctx, &attributes.ListAttributesRequest{
+		State:     common.ActiveStateEnum_ACTIVE_STATE_ENUM_ANY,
+		Namespace: ns.GetId(),
+	})
+	s.Require().NoError(err)
+	emptySearch, err := s.db.PolicyClient.ListAttributes(s.ctx, &attributes.ListAttributesRequest{
+		State:     common.ActiveStateEnum_ACTIVE_STATE_ENUM_ANY,
+		Namespace: ns.GetId(),
+		Search:    &policy.Search{Term: ""},
+	})
+	s.Require().NoError(err)
+	s.Equal(noSearch.GetPagination().GetTotal(), emptySearch.GetPagination().GetTotal())
+
+	whitespaceSearch, err := s.db.PolicyClient.ListAttributes(s.ctx, &attributes.ListAttributesRequest{
+		State:     common.ActiveStateEnum_ACTIVE_STATE_ENUM_ANY,
+		Namespace: ns.GetId(),
+		Search:    &policy.Search{Term: " "},
+	})
+	s.Require().NoError(err)
+	s.Equal(noSearch.GetPagination().GetTotal(), whitespaceSearch.GetPagination().GetTotal())
+}
+
+func (s *AttributesSuite) Test_ListAttributes_SearchPaginationAppliesAfterFiltering_Succeeds() {
+	suffix := time.Now().UnixNano()
+	searchToken := fmt.Sprintf("dspx-search-page-attrs-%d", suffix)
+	ns, err := s.db.PolicyClient.CreateNamespace(s.ctx, &namespaces.CreateNamespaceRequest{
+		Name: fmt.Sprintf("dspx-page-attrs-ns-%d.com", suffix),
+	})
+	s.Require().NoError(err)
+	defer deleteNamespaces(s.ctx, s.T(), s.db, []string{ns.GetId()})
+
+	names := []string{
+		"a-" + searchToken,
+		"b-" + searchToken,
+		"c-" + searchToken,
+		fmt.Sprintf("dspx-search-page-attrs-other-%d", suffix),
+	}
+	ids := make([]string, len(names))
+	for i, name := range names {
+		created, err := s.db.PolicyClient.CreateAttribute(s.ctx, &attributes.CreateAttributeRequest{
+			Name:        name,
+			NamespaceId: ns.GetId(),
+			Rule:        policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
+		})
+		s.Require().NoError(err)
+		ids[i] = created.GetId()
+	}
+
+	firstPage, err := s.db.PolicyClient.ListAttributes(s.ctx, &attributes.ListAttributesRequest{
+		State:      common.ActiveStateEnum_ACTIVE_STATE_ENUM_ANY,
+		Namespace:  ns.GetId(),
+		Search:     &policy.Search{Term: searchToken},
+		Pagination: &policy.PageRequest{Limit: 2},
+		Sort: []*attributes.AttributesSort{
+			{Field: attributes.SortAttributesType_SORT_ATTRIBUTES_TYPE_NAME, Direction: policy.SortDirection_SORT_DIRECTION_ASC},
+		},
+	})
+	s.Require().NoError(err)
+	s.Require().Len(firstPage.GetAttributes(), 2)
+	s.Equal(int32(3), firstPage.GetPagination().GetTotal())
+	s.Equal(int32(2), firstPage.GetPagination().GetNextOffset())
+	s.Equal(ids[0], firstPage.GetAttributes()[0].GetId())
+	s.Equal(ids[1], firstPage.GetAttributes()[1].GetId())
+
+	secondPage, err := s.db.PolicyClient.ListAttributes(s.ctx, &attributes.ListAttributesRequest{
+		State:      common.ActiveStateEnum_ACTIVE_STATE_ENUM_ANY,
+		Namespace:  ns.GetId(),
+		Search:     &policy.Search{Term: searchToken},
+		Pagination: &policy.PageRequest{Limit: 2, Offset: 2},
+		Sort: []*attributes.AttributesSort{
+			{Field: attributes.SortAttributesType_SORT_ATTRIBUTES_TYPE_NAME, Direction: policy.SortDirection_SORT_DIRECTION_ASC},
+		},
+	})
+	s.Require().NoError(err)
+	s.Require().Len(secondPage.GetAttributes(), 1)
+	s.Equal(int32(3), secondPage.GetPagination().GetTotal())
+	s.Equal(int32(2), secondPage.GetPagination().GetCurrentOffset())
+	s.Equal(int32(0), secondPage.GetPagination().GetNextOffset())
+	s.Equal(ids[2], secondPage.GetAttributes()[0].GetId())
 }
 
 func (s *AttributesSuite) Test_ListAttributes_FqnsIncluded() {
@@ -1801,33 +2117,15 @@ func (s *AttributesSuite) createSortTestNamespace(label string) string {
 	return ns.GetId()
 }
 
-// createSortTestAttributes creates count attributes in the given namespace with 5ms gaps for distinct timestamps.
-// Returns the attribute IDs in creation order.
-func (s *AttributesSuite) createSortTestAttributes(nsID string, label string, count int) []string { //nolint:unparam // count is parameterized for reuse across endpoint test files
-	ids := make([]string, count)
-	for i := range count {
+// createSortTestAttributes creates attributes in the given namespace with the given prefixes,
+// adding 5ms gaps between creations for distinct timestamps. Returns the attribute IDs in creation order.
+func (s *AttributesSuite) createSortTestAttributes(nsID string, prefixes []string) []string {
+	ids := make([]string, len(prefixes))
+	for i, prefix := range prefixes {
 		if i > 0 {
 			time.Sleep(5 * time.Millisecond)
 		}
-		name := fmt.Sprintf("%s-%d-%d", label, i, time.Now().UnixNano())
-		created, err := s.db.PolicyClient.CreateAttribute(s.ctx, &attributes.CreateAttributeRequest{
-			Name:        name,
-			NamespaceId: nsID,
-			Rule:        policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
-		})
-		s.Require().NoError(err)
-		ids[i] = created.GetId()
-	}
-	return ids
-}
-
-// createNamedSortTestAttributes creates attributes with specific name prefixes for name-sort testing.
-// Returns the attribute IDs in the same order as the prefixes.
-func (s *AttributesSuite) createNamedSortTestAttributes(nsID string, prefixes []string) []string {
-	suffix := time.Now().UnixNano()
-	ids := make([]string, len(prefixes))
-	for i, prefix := range prefixes {
-		name := fmt.Sprintf("%s-%d", prefix, suffix)
+		name := fmt.Sprintf("%s-%d", prefix, time.Now().UnixNano())
 		created, err := s.db.PolicyClient.CreateAttribute(s.ctx, &attributes.CreateAttributeRequest{
 			Name:        name,
 			NamespaceId: nsID,

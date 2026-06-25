@@ -1160,3 +1160,16 @@ func (s *RegisteredResourcesSuite) TestListRegisteredResourcesRequest_Sort() {
 	s.Require().Error(err)
 	s.Require().ErrorContains(err, "sort")
 }
+
+func (s *RegisteredResourcesSuite) TestListRegisteredResourcesRequest_Search() {
+	s.Require().NoError(s.v.Validate(&registeredresources.ListRegisteredResourcesRequest{
+		Search: &policy.Search{Term: "resource"},
+	}))
+	s.Require().NoError(s.v.Validate(&registeredresources.ListRegisteredResourcesRequest{}))
+
+	err := s.v.Validate(&registeredresources.ListRegisteredResourcesRequest{
+		Search: &policy.Search{},
+	})
+	s.Require().Error(err)
+	s.Require().ErrorContains(err, errMsgStringMinLen)
+}

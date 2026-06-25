@@ -67,8 +67,10 @@ func policyListSubjectMappings(cmd *cobra.Command, args []string) {
 	limit := c.Flags.GetRequiredInt32("limit")
 	offset := c.Flags.GetRequiredInt32("offset")
 	namespace := c.Flags.GetOptionalString("namespace")
+	search := c.Flags.GetOptionalString("search")
+	sort := getSortOption(c)
 
-	resp, err := h.ListSubjectMappings(cmd.Context(), limit, offset, namespace)
+	resp, err := h.ListSubjectMappings(cmd.Context(), limit, offset, namespace, search, sort)
 	if err != nil {
 		cli.ExitWithError("Failed to get subject mappings", err)
 	}
@@ -326,7 +328,8 @@ func policyMatchSubjectMappings(cmd *cobra.Command, args []string) {
 }
 
 func initSubjectMappingsCommands() {
-	getDoc := man.Docs.GetCommand("policy/subject-mappings/get",
+	getDoc := man.Docs.GetCommand(
+		"policy/subject-mappings/get",
 		man.WithRun(policyGetSubjectMapping),
 	)
 	getDoc.Flags().StringP(
@@ -336,10 +339,13 @@ func initSubjectMappingsCommands() {
 		getDoc.GetDocFlag("id").Description,
 	)
 
-	listDoc := man.Docs.GetCommand("policy/subject-mappings/list",
+	listDoc := man.Docs.GetCommand(
+		"policy/subject-mappings/list",
 		man.WithRun(policyListSubjectMappings),
 	)
 	injectListPaginationFlags(listDoc)
+	injectListSearchFlag(listDoc)
+	injectListSortFlags(listDoc)
 	listDoc.Flags().StringP(
 		listDoc.GetDocFlag("namespace").Name,
 		listDoc.GetDocFlag("namespace").Shorthand,
@@ -347,7 +353,8 @@ func initSubjectMappingsCommands() {
 		listDoc.GetDocFlag("namespace").Description,
 	)
 
-	createDoc := man.Docs.GetCommand("policy/subject-mappings/create",
+	createDoc := man.Docs.GetCommand(
+		"policy/subject-mappings/create",
 		man.WithRun(policyCreateSubjectMapping),
 	)
 	createDoc.Flags().StringP(
@@ -397,7 +404,8 @@ func initSubjectMappingsCommands() {
 	)
 	injectLabelFlags(&createDoc.Command, false)
 
-	updateDoc := man.Docs.GetCommand("policy/subject-mappings/update",
+	updateDoc := man.Docs.GetCommand(
+		"policy/subject-mappings/update",
 		man.WithRun(policyUpdateSubjectMapping),
 	)
 	updateDoc.Flags().StringP(
@@ -435,7 +443,8 @@ func initSubjectMappingsCommands() {
 	)
 	injectLabelFlags(&updateDoc.Command, true)
 
-	deleteDoc := man.Docs.GetCommand("policy/subject-mappings/delete",
+	deleteDoc := man.Docs.GetCommand(
+		"policy/subject-mappings/delete",
 		man.WithRun(policyDeleteSubjectMapping),
 	)
 	deleteDoc.Flags().StringP(
@@ -450,7 +459,8 @@ func initSubjectMappingsCommands() {
 		deleteDoc.GetDocFlag("force").Description,
 	)
 
-	matchDoc := man.Docs.GetCommand("policy/subject-mappings/match",
+	matchDoc := man.Docs.GetCommand(
+		"policy/subject-mappings/match",
 		man.WithRun(policyMatchSubjectMappings),
 	)
 	matchDoc.Flags().StringP(
@@ -467,7 +477,8 @@ func initSubjectMappingsCommands() {
 		matchDoc.GetDocFlag("selector").Description,
 	)
 
-	doc := man.Docs.GetCommand("policy/subject-mappings",
+	doc := man.Docs.GetCommand(
+		"policy/subject-mappings",
 		man.WithSubcommands(
 			createDoc,
 			getDoc,

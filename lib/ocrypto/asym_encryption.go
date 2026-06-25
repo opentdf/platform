@@ -23,8 +23,9 @@ import (
 type SchemeType string
 
 const (
-	RSA SchemeType = "wrapped"
-	EC  SchemeType = "ec-wrapped"
+	RSA    SchemeType = "wrapped"
+	EC     SchemeType = "ec-wrapped"
+	Hybrid SchemeType = "hybrid-wrapped"
 )
 
 type PublicKeyEncryptor interface {
@@ -69,6 +70,25 @@ func FromPublicPEM(publicKeyInPem string) (PublicKeyEncryptor, error) {
 }
 
 func FromPublicPEMWithSalt(publicKeyInPem string, salt, info []byte) (PublicKeyEncryptor, error) {
+	block, _ := pem.Decode([]byte(publicKeyInPem))
+	if block == nil {
+		return nil, errors.New("failed to parse PEM formatted public key")
+	}
+
+	// Hybrid PQ/T public keys are SPKI-wrapped under one of our known OIDs.
+	// Peek at the AlgorithmIdentifier and route hybrids to their constructors;
+	// everything else (RSA, EC, CERTIFICATE) falls through to the x509 path.
+	if block.Type == pemBlockPublicKey {
+		if enc, matched, err := hybridEncryptorFromSPKI(block.Bytes, salt, info); matched {
+			return enc, err
+		}
+	}
+	// X.509 certificates carrying a hybrid SPKI are out of scope; reject them
+	// with a clear message so operators don't see a confusing x509 parse error.
+	if block.Type == pemBlockCertificate && containsHybridOID(block.Bytes) {
+		return nil, errors.New("certificate-wrapped hybrid keys are not supported; provide a bare SPKI PUBLIC KEY")
+	}
+
 	pub, err := getPublicPart(publicKeyInPem)
 	if err != nil {
 		return nil, err
@@ -223,7 +243,7 @@ func publicKeyInPemFormat(pk any) (string, error) {
 
 	publicKeyPem := pem.EncodeToMemory(
 		&pem.Block{
-			Type:  "PUBLIC KEY",
+			Type:  pemBlockPublicKey,
 			Bytes: publicKeyBytes,
 		},
 	)
@@ -255,21 +275,51 @@ func (e ECEncryptor) Encrypt(data []byte) ([]byte, error) {
 		return nil, fmt.Errorf("aes.NewCipher failed: %w", err)
 	}
 
-	gcm, err := cipher.NewGCM(block)
+	gcm, err := cipher.NewGCMWithRandomNonce(block)
 	if err != nil {
-		return nil, fmt.Errorf("cipher.NewGCM failed: %w", err)
+		return nil, fmt.Errorf("cipher.NewGCMWithRandomNonce failed: %w", err)
 	}
 
-	nonce := make([]byte, gcm.NonceSize())
-	if _, err := io.ReadFull(rand.Reader, nonce); err != nil {
-		return nil, fmt.Errorf("nonce generation failed: %w", err)
-	}
-
-	ciphertext := gcm.Seal(nonce, nonce, data, nil)
+	ciphertext := gcm.Seal(nil, nil, data, nil)
 	return ciphertext, nil
 }
 
 // PublicKeyInPemFormat Returns public key in pem format.
 func (e ECEncryptor) PublicKeyInPemFormat() (string, error) {
 	return publicKeyInPemFormat(e.ek.Public())
+}
+
+// hybridEncryptorFromSPKI tries to decode `der` as a hybrid PQ/T
+// SubjectPublicKeyInfo. The `matched` return reports whether the dispatcher
+// owns the result: when true, the caller MUST return whatever this function
+// returns (encryptor or error) without trying the legacy x509 path. When
+// false, the caller falls through to the standard RSA/EC handling.
+// Salt/info are honoured only for X-Wing (the NIST composite-KEM hybrids
+// derive their wrap key without them).
+func hybridEncryptorFromSPKI(der, salt, info []byte) (PublicKeyEncryptor, bool, error) {
+	oid, raw, parseErr := parseHybridSPKI(der)
+	if parseErr != nil {
+		// Structurally not an SPKI envelope. Fall through to the legacy path,
+		// which handles PKCS#1 keys, certificates, and stdlib-recognised SPKI.
+		return nil, false, nil //nolint:nilerr // intentional fall-through on non-envelope input
+	}
+	switch {
+	case oid.Equal(oidXWing):
+		enc, err := NewXWingEncryptor(raw, salt, info)
+		return enc, true, err
+	case oid.Equal(oidCompositeMLKEM768P256):
+		enc, err := NewP256MLKEM768Encryptor(raw)
+		return enc, true, err
+	case oid.Equal(oidCompositeMLKEM1024P384):
+		enc, err := NewP384MLKEM1024Encryptor(raw)
+		return enc, true, err
+	}
+	// Valid SPKI envelope with a non-hybrid OID. If the stdlib recognises it,
+	// fall through so the legacy RSA/EC path can handle it. Otherwise, surface
+	// a precise error rather than letting x509 return its generic message —
+	// that prevents an unknown OID from being silently retried as RSA/EC.
+	if _, x509Err := x509.ParsePKIXPublicKey(der); x509Err == nil {
+		return nil, false, nil
+	}
+	return nil, true, fmt.Errorf("unsupported public-key algorithm OID %s: not a known hybrid scheme and not recognised by crypto/x509", oid)
 }

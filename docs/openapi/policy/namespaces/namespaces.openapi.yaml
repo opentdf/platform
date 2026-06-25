@@ -353,6 +353,9 @@ components:
         - ALGORITHM_EC_P256
         - ALGORITHM_EC_P384
         - ALGORITHM_EC_P521
+        - ALGORITHM_HPQT_XWING
+        - ALGORITHM_HPQT_SECP256R1_MLKEM768
+        - ALGORITHM_HPQT_SECP384R1_MLKEM1024
       description: Supported key algorithms.
     policy.KasPublicKeyAlgEnum:
       type: string
@@ -364,6 +367,9 @@ components:
         - KAS_PUBLIC_KEY_ALG_ENUM_EC_SECP256R1
         - KAS_PUBLIC_KEY_ALG_ENUM_EC_SECP384R1
         - KAS_PUBLIC_KEY_ALG_ENUM_EC_SECP521R1
+        - KAS_PUBLIC_KEY_ALG_ENUM_HPQT_XWING
+        - KAS_PUBLIC_KEY_ALG_ENUM_HPQT_SECP256R1_MLKEM768
+        - KAS_PUBLIC_KEY_ALG_ENUM_HPQT_SECP384R1_MLKEM1024
     policy.SortDirection:
       type: string
       title: SortDirection
@@ -373,11 +379,9 @@ components:
         - SORT_DIRECTION_DESC
       description: |-
         Sorting direction shared across list APIs.
-         Notes:
-         - When a sort field is provided, UNSPECIFIED is treated as ASC.
-         - When the 'sort' field is omitted or the chosen sort 'field' is UNSPECIFIED,
-           the endpoint's request message defines the default ordering; see the
-           specific List* request docs.
+         When the 'sort' field is omitted or the chosen sort 'field' is UNSPECIFIED,
+         the endpoint's request message defines the default ordering; see the
+         specific List* request docs.
     policy.SourceType:
       type: string
       title: SourceType
@@ -751,6 +755,16 @@ components:
       title: PublicKey
       additionalProperties: false
       description: Deprecated
+    policy.Search:
+      type: object
+      properties:
+        term:
+          type: string
+          title: term
+          maxLength: 253
+          minLength: 1
+      title: Search
+      additionalProperties: false
     policy.SimpleKasKey:
       type: object
       properties:
@@ -930,7 +944,16 @@ components:
             $ref: '#/components/schemas/policy.namespaces.NamespacesSort'
           title: sort
           maxItems: 1
+          description: |-
+            Optional - CONSTRAINT: max 1 item
+             Sort defaults:
+               - direction UNSPECIFIED defaults to DESC for the specified field
+               - field UNSPECIFIED defaults to created_at with the specified direction
+               - both UNSPECIFIED or sort omitted defaults to created_at DESC
+        search:
+          title: search
           description: Optional
+          $ref: '#/components/schemas/policy.Search'
       title: ListNamespacesRequest
       additionalProperties: false
     policy.namespaces.ListNamespacesResponse:

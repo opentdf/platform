@@ -32,9 +32,12 @@ import (
 const (
 	// Failure while connecting to a service.
 	// Check your configuration and/or retry.
-	ErrGrpcDialFailed                = Error("failed to dial grpc endpoint")
-	ErrShutdownFailed                = Error("failed to shutdown sdk")
-	ErrPlatformUnreachable           = Error("platform unreachable or not responding")
+	ErrGrpcDialFailed      = Error("failed to dial grpc endpoint")
+	ErrShutdownFailed      = Error("failed to shutdown sdk")
+	ErrPlatformUnreachable = Error("platform unreachable or not responding")
+	// ErrHealthCheckUnsupported is returned by SDK.IsHealthy when the SDK is configured
+	// in IPC mode, which does not support the gRPC Health protocol.
+	ErrHealthCheckUnsupported        = Error("health check not supported in IPC mode")
 	ErrPlatformConfigFailed          = Error("failed to retrieve platform configuration")
 	ErrPlatformEndpointMalformed     = Error("platform endpoint is malformed")
 	ErrPlatformIssuerNotFound        = Error("issuer not found in well-known idp configuration")
@@ -93,6 +96,7 @@ type SDK struct {
 	RegisteredResources     sdkconnect.RegisteredResourcesServiceClient
 	ResourceMapping         sdkconnect.ResourceMappingServiceClient
 	SubjectMapping          sdkconnect.SubjectMappingServiceClient
+	DynamicValueMapping     sdkconnect.DynamicValueMappingServiceClient
 	Unsafe                  sdkconnect.UnsafeServiceClient
 	KeyManagement           sdkconnect.KeyManagementServiceClient
 	wellknownConfiguration  sdkconnect.WellKnownServiceClient
@@ -226,6 +230,7 @@ func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 		RegisteredResources:     sdkconnect.NewRegisteredResourcesServiceClientConnectWrapper(platformConn.Client, platformConn.Endpoint, platformConn.Options...),
 		ResourceMapping:         sdkconnect.NewResourceMappingServiceClientConnectWrapper(platformConn.Client, platformConn.Endpoint, platformConn.Options...),
 		SubjectMapping:          sdkconnect.NewSubjectMappingServiceClientConnectWrapper(platformConn.Client, platformConn.Endpoint, platformConn.Options...),
+		DynamicValueMapping:     sdkconnect.NewDynamicValueMappingServiceClientConnectWrapper(platformConn.Client, platformConn.Endpoint, platformConn.Options...),
 		Unsafe:                  sdkconnect.NewUnsafeServiceClientConnectWrapper(platformConn.Client, platformConn.Endpoint, platformConn.Options...),
 		KeyAccessServerRegistry: sdkconnect.NewKeyAccessServerRegistryServiceClientConnectWrapper(platformConn.Client, platformConn.Endpoint, platformConn.Options...),
 		Authorization:           sdkconnect.NewAuthorizationServiceClientConnectWrapper(platformConn.Client, platformConn.Endpoint, platformConn.Options...),
@@ -308,6 +313,26 @@ func (s SDK) Logger() *slog.Logger {
 // Conn returns the underlying http connection
 func (s SDK) Conn() *ConnectRPCConnection {
 	return s.conn
+}
+
+// IsHealthy reports whether the platform's gRPC Health v1 endpoint is reachable and SERVING.
+// The check honors ctx for deadline and cancellation; OTEL tracing works automatically when
+// otelconnect.NewInterceptor is registered via WithExtraClientOptions at SDK construction.
+//
+// Returns:
+//   - (true, nil) when the platform reports SERVING.
+//   - (false, nil) when the platform is reachable but reports NOT_SERVING or UNKNOWN.
+//   - (false, ErrHealthCheckUnsupported) when the SDK is configured in IPC mode.
+//   - (false, error) wrapping ErrPlatformUnreachable on transport failure or ctx errors.
+func (s SDK) IsHealthy(ctx context.Context) (bool, error) {
+	if s.ipc || s.conn == nil {
+		return false, ErrHealthCheckUnsupported
+	}
+	healthy, err := checkPlatformHealth(ctx, s.conn.Endpoint, s.conn.Client, s.conn.Options)
+	if err != nil {
+		return false, errors.Join(ErrPlatformUnreachable, err)
+	}
+	return healthy, nil
 }
 
 type TdfType string
@@ -413,21 +438,42 @@ func isValidManifest(manifest string, intensity SchemaValidationIntensity) (bool
 	return true, nil
 }
 
-// Test connectability to the platform and validate a healthy status
-func validateHealthyPlatformConnection(platformEndpoint string, httpClient *http.Client, options []connect.ClientOption) error {
+// checkPlatformHealth issues a single gRPC Health v1 Check against the platform endpoint and
+// reports whether the response is SERVING. ctx controls deadline, cancellation, and trace-context.
+func checkPlatformHealth(
+	ctx context.Context,
+	endpoint string,
+	httpClient *http.Client,
+	options []connect.ClientOption,
+) (bool, error) {
+	checkURL, err := url.JoinPath(endpoint, "grpc.health.v1.Health", "Check")
+	if err != nil {
+		return false, err
+	}
 	healthClient := connect.NewClient[healthpb.HealthCheckRequest, healthpb.HealthCheckResponse](
 		httpClient,
-		platformEndpoint+"/grpc.health.v1.Health/Check",
+		checkURL,
 		options...,
 	)
-	res, err := healthClient.CallUnary(
-		context.Background(),
-		connect.NewRequest(&healthpb.HealthCheckRequest{}),
-	)
-	if err != nil || res.Msg.GetStatus() != healthpb.HealthCheckResponse_SERVING {
+	res, err := healthClient.CallUnary(ctx, connect.NewRequest(&healthpb.HealthCheckRequest{}))
+	if err != nil {
+		return false, err
+	}
+	return res.Msg.GetStatus() == healthpb.HealthCheckResponse_SERVING, nil
+}
+
+// validateHealthyPlatformConnection is the construction-time reachability gate used by New when
+// WithConnectionValidation is set. Callers pass cfg.extraClientOptions (pre-auth) because the
+// auth and audit interceptors are assembled after this gate fires; the runtime SDK.IsHealthy
+// method uses the post-interceptor s.conn.Options instead.
+func validateHealthyPlatformConnection(platformEndpoint string, httpClient *http.Client, options []connect.ClientOption) error {
+	healthy, err := checkPlatformHealth(context.Background(), platformEndpoint, httpClient, options)
+	if err != nil {
 		return errors.Join(ErrPlatformUnreachable, err)
 	}
-
+	if !healthy {
+		return ErrPlatformUnreachable
+	}
 	return nil
 }
 

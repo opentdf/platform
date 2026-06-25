@@ -51,12 +51,11 @@ func NewRegistration(ns string, dbRegister serviceregistry.DBRegister) *servicer
 	return &serviceregistry.Service[attributesconnect.AttributesServiceHandler]{
 		Close: as.Close,
 		ServiceOptions: serviceregistry.ServiceOptions[attributesconnect.AttributesServiceHandler]{
-			Namespace:       ns,
-			DB:              dbRegister,
-			ServiceDesc:     &attributes.AttributesService_ServiceDesc,
-			ConnectRPCFunc:  attributesconnect.NewAttributesServiceHandler,
-			GRPCGatewayFunc: attributes.RegisterAttributesServiceHandler,
-			OnConfigUpdate:  onUpdateConfigHook,
+			Namespace:      ns,
+			DB:             dbRegister,
+			ServiceDesc:    &attributes.AttributesService_ServiceDesc,
+			ConnectRPCFunc: attributesconnect.NewAttributesServiceHandler,
+			OnConfigUpdate: onUpdateConfigHook,
 			RegisterFunc: func(srp serviceregistry.RegistrationParams) (attributesconnect.AttributesServiceHandler, serviceregistry.HandlerServer) {
 				logger := srp.Logger
 				cfg, err := policyconfig.GetSharedPolicyConfig(srp.Config)
@@ -380,7 +379,7 @@ func (s *AttributesService) RemoveKeyAccessServerFromAttribute(ctx context.Conte
 	attributeKas, err := s.dbClient.RemoveKeyAccessServerFromAttribute(ctx, req.Msg.GetAttributeKeyAccessServer())
 	if err != nil {
 		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
-		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextUpdateFailed, slog.String("attributeKas", req.Msg.GetAttributeKeyAccessServer().String()))
+		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextUpdateFailed, slog.String("attribute_kas", req.Msg.GetAttributeKeyAccessServer().String()))
 	}
 
 	auditParams.ObjectID = attributeKas.GetAttributeId()
@@ -408,7 +407,7 @@ func (s *AttributesService) RemoveKeyAccessServerFromValue(ctx context.Context, 
 	valueKas, err := s.dbClient.RemoveKeyAccessServerFromValue(ctx, req.Msg.GetValueKeyAccessServer())
 	if err != nil {
 		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
-		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextUpdateFailed, slog.String("attributeValueKas", req.Msg.GetValueKeyAccessServer().String()))
+		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextUpdateFailed, slog.String("attribute_value_kas", req.Msg.GetValueKeyAccessServer().String()))
 	}
 
 	auditParams.ObjectID = valueKas.GetValueId()
@@ -431,7 +430,7 @@ func (s *AttributesService) AssignPublicKeyToAttribute(ctx context.Context, r *c
 	ak, err := s.dbClient.AssignPublicKeyToAttribute(ctx, r.Msg.GetAttributeKey())
 	if err != nil {
 		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
-		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextCreationFailed, slog.String("attributeKey", r.Msg.GetAttributeKey().String()))
+		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextCreationFailed, slog.String("attribute_key", r.Msg.GetAttributeKey().String()))
 	}
 
 	auditParams.ObjectID = ak.GetAttributeId()
@@ -453,7 +452,7 @@ func (s *AttributesService) RemovePublicKeyFromAttribute(ctx context.Context, r 
 	ak, err := s.dbClient.RemovePublicKeyFromAttribute(ctx, r.Msg.GetAttributeKey())
 	if err != nil {
 		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
-		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextDeletionFailed, slog.String("attributeKey", r.Msg.GetAttributeKey().String()))
+		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextDeletionFailed, slog.String("attribute_key", r.Msg.GetAttributeKey().String()))
 	}
 
 	auditParams.ObjectID = ak.GetAttributeId()
@@ -474,7 +473,7 @@ func (s *AttributesService) AssignPublicKeyToValue(ctx context.Context, r *conne
 	vk, err := s.dbClient.AssignPublicKeyToValue(ctx, r.Msg.GetValueKey())
 	if err != nil {
 		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
-		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextCreationFailed, slog.String("attributeKey", r.Msg.GetValueKey().String()))
+		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextCreationFailed, slog.String("value_key", r.Msg.GetValueKey().String()))
 	}
 
 	auditParams.ObjectID = vk.GetValueId()
@@ -496,7 +495,7 @@ func (s *AttributesService) RemovePublicKeyFromValue(ctx context.Context, r *con
 	vk, err := s.dbClient.RemovePublicKeyFromValue(ctx, r.Msg.GetValueKey())
 	if err != nil {
 		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
-		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextDeletionFailed, slog.String("attributeKey", r.Msg.GetValueKey().String()))
+		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextDeletionFailed, slog.String("value_key", r.Msg.GetValueKey().String()))
 	}
 
 	auditParams.ObjectID = vk.GetValueId()

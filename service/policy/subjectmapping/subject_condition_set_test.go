@@ -442,3 +442,18 @@ func Test_ListSubjectConditionSetsRequest_Sort(t *testing.T) {
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "sort")
 }
+
+func Test_ListSubjectConditionSetsRequest_Search(t *testing.T) {
+	v := getValidator()
+
+	require.NoError(t, v.Validate(&subjectmapping.ListSubjectConditionSetsRequest{
+		Search: &policy.Search{Term: "condition"},
+	}))
+	require.NoError(t, v.Validate(&subjectmapping.ListSubjectConditionSetsRequest{}))
+
+	err := v.Validate(&subjectmapping.ListSubjectConditionSetsRequest{
+		Search: &policy.Search{},
+	})
+	require.Error(t, err)
+	require.Contains(t, err.Error(), errMessageMinLen)
+}

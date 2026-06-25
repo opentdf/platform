@@ -19,7 +19,7 @@ func (h Handler) GetSubjectConditionSet(ctx context.Context, id string) (*policy
 	return resp.GetSubjectConditionSet(), nil
 }
 
-func (h Handler) ListSubjectConditionSets(ctx context.Context, limit, offset int32, namespace string) (*subjectmapping.ListSubjectConditionSetsResponse, error) {
+func (h Handler) ListSubjectConditionSets(ctx context.Context, limit, offset int32, namespace string, search string, sort SortOption) (*subjectmapping.ListSubjectConditionSetsResponse, error) {
 	req := &subjectmapping.ListSubjectConditionSetsRequest{
 		Pagination: &policy.PageRequest{
 			Limit:  limit,
@@ -27,6 +27,20 @@ func (h Handler) ListSubjectConditionSets(ctx context.Context, limit, offset int
 		},
 	}
 	req.NamespaceId, req.NamespaceFqn = getNamespaceIDAndFQN(namespace)
+	if search != "" {
+		req.Search = &policy.Search{Term: search}
+	}
+	if !sort.IsZero() {
+		allowedFields := map[string]subjectmapping.SortSubjectConditionSetsType{
+			"created_at": subjectmapping.SortSubjectConditionSetsType_SORT_SUBJECT_CONDITION_SETS_TYPE_CREATED_AT,
+			"updated_at": subjectmapping.SortSubjectConditionSetsType_SORT_SUBJECT_CONDITION_SETS_TYPE_UPDATED_AT,
+		}
+		field, err := sortField("subject condition sets", sort, allowedFields)
+		if err != nil {
+			return nil, err
+		}
+		req.Sort = []*subjectmapping.SubjectConditionSetsSort{{Field: field, Direction: sort.Direction}}
+	}
 	return h.sdk.SubjectMapping.ListSubjectConditionSets(ctx, req)
 }
 

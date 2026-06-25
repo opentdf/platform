@@ -236,16 +236,18 @@ func ProcessDoc(doc string) (*Doc, error) {
 	long := "# " + matter.Title + "\n\n" + strings.TrimSpace(string(rest))
 
 	var args cobra.PositionalArgs
-	if len(c.Args) > 0 {
+	switch {
+	case len(c.Args) > 0 && len(c.ArbitraryArgs) > 0:
+		args = cobra.MinimumNArgs(len(c.Args))
+	case len(c.Args) > 0:
 		args = cobra.ExactArgs(len(c.Args))
-	}
-	if len(c.ArbitraryArgs) > 0 {
+	case len(c.ArbitraryArgs) > 0:
 		args = cobra.ArbitraryArgs
 	}
 
 	d := Doc{
 		cobra.Command{
-			Use:     c.Name,
+			Use:     buildUseString(c.Name, c.Args, c.ArbitraryArgs),
 			Args:    args,
 			Hidden:  c.Hidden,
 			Aliases: c.Aliases,
@@ -257,4 +259,16 @@ func ProcessDoc(doc string) (*Doc, error) {
 	}
 
 	return &d, nil
+}
+
+func buildUseString(name string, args, arbitraryArgs []string) string {
+	parts := make([]string, 0, 1+len(args)+len(arbitraryArgs))
+	parts = append(parts, name)
+	for _, a := range args {
+		parts = append(parts, "<"+a+">")
+	}
+	for _, a := range arbitraryArgs {
+		parts = append(parts, "["+a+"]")
+	}
+	return strings.Join(parts, " ")
 }

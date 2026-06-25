@@ -2,49 +2,28 @@ openapi: 3.1.0
 info:
   title: policy.kasregistry
 paths:
-  /key-access-servers:
-    get:
+  /policy.kasregistry.KeyAccessServerRegistryService/ListKeyAccessServers:
+    post:
       tags:
         - policy.kasregistry.KeyAccessServerRegistryService
       summary: ListKeyAccessServers
       operationId: policy.kasregistry.KeyAccessServerRegistryService.ListKeyAccessServers
       parameters:
-        - name: pagination.limit
-          in: query
-          description: |-
-            Optional
-             Set to configured default limit if not provided
-             Maximum limit set in platform config and enforced by services
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
           schema:
-            type: integer
-            title: limit
-            format: int32
-            description: |-
-              Optional
-               Set to configured default limit if not provided
-               Maximum limit set in platform config and enforced by services
-        - name: pagination.offset
-          in: query
-          description: |-
-            Optional
-             Defaulted if not provided
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
           schema:
-            type: integer
-            title: offset
-            format: int32
-            description: |-
-              Optional
-               Defaulted if not provided
-        - name: sort.field
-          in: query
-          schema:
-            title: field
-            $ref: '#/components/schemas/policy.kasregistry.SortKeyAccessServersType'
-        - name: sort.direction
-          in: query
-          schema:
-            title: direction
-            $ref: '#/components/schemas/policy.SortDirection'
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/policy.kasregistry.ListKeyAccessServersRequest'
+        required: true
       responses:
         default:
           description: Error
@@ -544,6 +523,9 @@ components:
         - ALGORITHM_EC_P256
         - ALGORITHM_EC_P384
         - ALGORITHM_EC_P521
+        - ALGORITHM_HPQT_XWING
+        - ALGORITHM_HPQT_SECP256R1_MLKEM768
+        - ALGORITHM_HPQT_SECP384R1_MLKEM1024
       description: Supported key algorithms.
     policy.KasPublicKeyAlgEnum:
       type: string
@@ -555,6 +537,9 @@ components:
         - KAS_PUBLIC_KEY_ALG_ENUM_EC_SECP256R1
         - KAS_PUBLIC_KEY_ALG_ENUM_EC_SECP384R1
         - KAS_PUBLIC_KEY_ALG_ENUM_EC_SECP521R1
+        - KAS_PUBLIC_KEY_ALG_ENUM_HPQT_XWING
+        - KAS_PUBLIC_KEY_ALG_ENUM_HPQT_SECP256R1_MLKEM768
+        - KAS_PUBLIC_KEY_ALG_ENUM_HPQT_SECP384R1_MLKEM1024
     policy.KeyMode:
       type: string
       title: KeyMode
@@ -582,11 +567,9 @@ components:
         - SORT_DIRECTION_DESC
       description: |-
         Sorting direction shared across list APIs.
-         Notes:
-         - When a sort field is provided, UNSPECIFIED is treated as ASC.
-         - When the 'sort' field is omitted or the chosen sort 'field' is UNSPECIFIED,
-           the endpoint's request message defines the default ordering; see the
-           specific List* request docs.
+         When the 'sort' field is omitted or the chosen sort 'field' is UNSPECIFIED,
+         the endpoint's request message defines the default ordering; see the
+         specific List* request docs.
     policy.SourceType:
       type: string
       title: SourceType
@@ -598,6 +581,14 @@ components:
         Describes whether this kas is managed by the organization or if they imported
          the kas information from an external party. These two modes are necessary in order
          to encrypt a tdf dek with an external parties kas public key.
+    policy.kasregistry.SortKasKeysType:
+      type: string
+      title: SortKasKeysType
+      enum:
+        - SORT_KAS_KEYS_TYPE_UNSPECIFIED
+        - SORT_KAS_KEYS_TYPE_KEY_ID
+        - SORT_KAS_KEYS_TYPE_CREATED_AT
+        - SORT_KAS_KEYS_TYPE_UPDATED_AT
     policy.kasregistry.SortKeyAccessServersType:
       type: string
       title: SortKeyAccessServersType
@@ -1053,6 +1044,16 @@ components:
           description: Required Base64 encoded public key in PEM format
       title: PublicKeyCtx
       additionalProperties: false
+    policy.Search:
+      type: object
+      properties:
+        term:
+          type: string
+          title: term
+          maxLength: 253
+          minLength: 1
+      title: Search
+      additionalProperties: false
     policy.SimpleKasKey:
       type: object
       properties:
@@ -1180,7 +1181,7 @@ components:
             Required The algorithm to be used for the key
             The key_algorithm must be one of the defined values.:
             ```
-            this in [1, 2, 3, 4, 5]
+            this in [1, 2, 3, 4, 5, 6, 7, 8]
             ```
 
           $ref: '#/components/schemas/policy.Algorithm'
@@ -1480,6 +1481,17 @@ components:
       title: KasKeyIdentifier
       additionalProperties: false
       description: Nested message for specifying the active key using KAS ID and Key ID
+    policy.kasregistry.KasKeysSort:
+      type: object
+      properties:
+        field:
+          title: field
+          $ref: '#/components/schemas/policy.kasregistry.SortKasKeysType'
+        direction:
+          title: direction
+          $ref: '#/components/schemas/policy.SortDirection'
+      title: KasKeysSort
+      additionalProperties: false
     policy.kasregistry.KeyAccessServerGrants:
       type: object
       properties:
@@ -1628,8 +1640,14 @@ components:
           maxItems: 1
           description: |-
             Optional - CONSTRAINT: max 1 item
-             Default ordering when omitted or when the first entry's field is UNSPECIFIED:
-             created_at DESC, then id ASC (tie-breaker).
+             Sort defaults:
+               - direction UNSPECIFIED defaults to DESC for the specified field
+               - field UNSPECIFIED defaults to created_at with the specified direction
+               - both UNSPECIFIED or sort omitted defaults to created_at DESC
+        search:
+          title: search
+          description: Optional
+          $ref: '#/components/schemas/policy.Search'
       title: ListKeyAccessServersRequest
       additionalProperties: false
     policy.kasregistry.ListKeyAccessServersResponse:
@@ -1724,7 +1742,7 @@ components:
             Filter keys by algorithm
             The key_algorithm must be one of the defined values.:
             ```
-            this in [0, 1, 2, 3, 4, 5]
+            this in [0, 1, 2, 3, 4, 5, 6, 7, 8]
             ```
 
           $ref: '#/components/schemas/policy.Algorithm'
@@ -1737,6 +1755,22 @@ components:
           title: pagination
           description: Optional Pagination request for the list of keys
           $ref: '#/components/schemas/policy.PageRequest'
+        sort:
+          type: array
+          items:
+            $ref: '#/components/schemas/policy.kasregistry.KasKeysSort'
+          title: sort
+          maxItems: 1
+          description: |-
+            Optional - CONSTRAINT: max 1 item
+             Sort defaults:
+               - direction UNSPECIFIED defaults to DESC for the specified field
+               - field UNSPECIFIED defaults to created_at with the specified direction
+               - both UNSPECIFIED or sort omitted defaults to created_at DESC
+        search:
+          title: search
+          description: Optional
+          $ref: '#/components/schemas/policy.Search'
       title: ListKeysRequest
       additionalProperties: false
       description: List all asymmetric keys managed by a specific Key Access Server or with a given algorithm
@@ -1986,7 +2020,7 @@ components:
             Required
             The key_algorithm must be one of the defined values.:
             ```
-            this in [1, 2, 3, 4, 5]
+            this in [1, 2, 3, 4, 5, 6, 7, 8]
             ```
 
           $ref: '#/components/schemas/policy.Algorithm'

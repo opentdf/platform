@@ -3,6 +3,7 @@ package cli
 import (
 	"io"
 	"os"
+	"strings"
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -15,17 +16,17 @@ const (
 
 func ExitWithError(errMsg string, err error) {
 	// This is temporary until we can refactor the code to use the Cli struct
-	(&Cli{printer: &Printer{enabled: true}}).ExitWithError(errMsg, err)
+	(&Cli{printer: defaultPrinter()}).ExitWithError(errMsg, err)
 }
 
 func ExitWithNotFoundError(errMsg string, err error) {
 	// This is temporary until we can refactor the code to use the Cli struct
-	(&Cli{printer: &Printer{enabled: true}}).ExitWithNotFoundError(errMsg, err)
+	(&Cli{printer: defaultPrinter()}).ExitWithNotFoundError(errMsg, err)
 }
 
 func ExitWithWarning(warnMsg string) {
 	// This is temporary until we can refactor the code to use the Cli struct
-	(&Cli{printer: &Printer{enabled: true}}).ExitWithWarning(warnMsg)
+	(&Cli{printer: defaultPrinter()}).ExitWithWarning(warnMsg)
 }
 
 // ExitWithError prints an error message and exits with a non-zero status code.
@@ -57,10 +58,16 @@ func (c *Cli) ExitWithSuccess(msg string) {
 }
 
 func (c *Cli) ExitWithMessage(msg string, code int) {
-	if c.printer.enabled {
-		c.println(os.Stdout, msg)
-		os.Exit(code)
+	w := os.Stdout
+	if code != ExitCodeSuccess {
+		w = os.Stderr
 	}
+	if c.printer.json {
+		c.printJSON(MessageJSON(statusForExitCode(code), strings.TrimSpace(msg)), w)
+	} else {
+		c.println(w, msg)
+	}
+	os.Exit(code)
 }
 
 func (c *Cli) ExitWithJSON(v interface{}, code int) {
@@ -79,4 +86,11 @@ func (c *Cli) ExitWith(styledMsg string, jsonMsg interface{}, code int, w io.Wri
 		c.println(w, styledMsg)
 	}
 	os.Exit(code)
+}
+
+func statusForExitCode(code int) string {
+	if code == ExitCodeSuccess {
+		return "SUCCESS"
+	}
+	return "ERROR"
 }

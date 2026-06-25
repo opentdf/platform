@@ -52,13 +52,15 @@ type KASConfig struct {
 	// Enabling is required to parse KAOs with the `ec-wrapped` type,
 	// and (currently) also enables responding with ECIES encrypted responses.
 	ECTDFEnabled     bool    `mapstructure:"ec_tdf_enabled" json:"ec_tdf_enabled"`
+	HybridTDFEnabled bool    `mapstructure:"hybrid_tdf_enabled" json:"hybrid_tdf_enabled"`
 	Preview          Preview `mapstructure:"preview" json:"preview"`
 	RegisteredKASURI string  `mapstructure:"registered_kas_uri" json:"registered_kas_uri"`
 }
 
 type Preview struct {
-	ECTDFEnabled  bool `mapstructure:"ec_tdf_enabled" json:"ec_tdf_enabled"`
-	KeyManagement bool `mapstructure:"key_management" json:"key_management"`
+	ECTDFEnabled     bool `mapstructure:"ec_tdf_enabled" json:"ec_tdf_enabled"`
+	HybridTDFEnabled bool `mapstructure:"hybrid_tdf_enabled" json:"hybrid_tdf_enabled"`
+	KeyManagement    bool `mapstructure:"key_management" json:"key_management"`
 }
 
 // Specifies the preferred/default key for a given algorithm type.
@@ -143,13 +145,14 @@ func (kasCfg KASConfig) String() string {
 	}
 
 	return fmt.Sprintf(
-		"KASConfig{Keyring:%v, ECCertID:%q, RSACertID:%q, RootKey:%s, KeyCacheExpiration:%s, ECTDFEnabled:%t, Preview:%+v, RegisteredKASURI:%q}",
+		"KASConfig{Keyring:%v, ECCertID:%q, RSACertID:%q, RootKey:%s, KeyCacheExpiration:%s, ECTDFEnabled:%t, HybridTDFEnabled:%t, Preview:%+v, RegisteredKASURI:%q}",
 		kasCfg.Keyring,
 		kasCfg.ECCertID,
 		kasCfg.RSACertID,
 		rootKeySummary,
 		kasCfg.KeyCacheExpiration,
 		kasCfg.ECTDFEnabled,
+		kasCfg.HybridTDFEnabled,
 		kasCfg.Preview,
 		kasCfg.RegisteredKASURI,
 	)
@@ -168,6 +171,7 @@ func (kasCfg KASConfig) LogValue() slog.Value {
 		slog.String("root_key", rootKeyVal),
 		slog.Duration("key_cache_expiration", kasCfg.KeyCacheExpiration),
 		slog.Bool("ec_tdf_enabled", kasCfg.ECTDFEnabled),
+		slog.Bool("hybrid_tdf_enabled", kasCfg.HybridTDFEnabled),
 		slog.Any("preview", kasCfg.Preview),
 		slog.String("registered_kas_uri", kasCfg.RegisteredKASURI),
 	)

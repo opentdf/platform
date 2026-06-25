@@ -68,9 +68,23 @@ LIMIT @limit_
 OFFSET @offset_; 
 
 -- name: listKeyAccessServers :many
-WITH counted AS (
-    SELECT COUNT(kas.id) AS total
+WITH params AS (
+    SELECT
+        COALESCE(NULLIF(@sort_field::text, ''), 'created_at') AS resolved_field,
+        COALESCE(NULLIF(@sort_direction::text, ''), 'DESC') AS resolved_direction
+),
+filtered AS (
+    SELECT kas.*
     FROM key_access_servers AS kas
+    WHERE (
+        sqlc.narg('search')::TEXT IS NULL
+        OR kas.name LIKE sqlc.narg('search')::TEXT ESCAPE '\'
+        OR kas.uri ILIKE sqlc.narg('search')::TEXT ESCAPE '\' -- Use slower case-insensitive matching, URIs can be registered with variable casing.
+    )
+),
+counted AS (
+    SELECT COUNT(kas.id) AS total
+    FROM filtered AS kas
 )
 SELECT kas.id,
     kas.uri,
@@ -80,8 +94,9 @@ SELECT kas.id,
     JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', kas.metadata -> 'labels', 'created_at', kas.created_at, 'updated_at', kas.updated_at)) AS metadata,
     kask_keys.keys,
     counted.total
-FROM key_access_servers AS kas
+FROM filtered AS kas
 CROSS JOIN counted
+CROSS JOIN params p
 LEFT JOIN (
         SELECT
             kask.key_access_server_id,
@@ -101,15 +116,14 @@ LEFT JOIN (
         GROUP BY kask.key_access_server_id
     ) kask_keys ON kas.id = kask_keys.key_access_server_id
 ORDER BY
-    CASE WHEN @sort_field::text = 'name' AND @sort_direction::text = 'ASC' THEN kas.name END ASC,
-    CASE WHEN @sort_field::text = 'name' AND @sort_direction::text = 'DESC' THEN kas.name END DESC,
-    CASE WHEN @sort_field::text = 'uri' AND @sort_direction::text = 'ASC' THEN kas.uri END ASC,
-    CASE WHEN @sort_field::text = 'uri' AND @sort_direction::text = 'DESC' THEN kas.uri END DESC,
-    CASE WHEN @sort_field::text = 'created_at' AND @sort_direction::text = 'ASC' THEN kas.created_at END ASC,
-    CASE WHEN @sort_field::text = 'created_at' AND @sort_direction::text = 'DESC' THEN kas.created_at END DESC,
-    CASE WHEN @sort_field::text = 'updated_at' AND @sort_direction::text = 'ASC' THEN kas.updated_at END ASC,
-    CASE WHEN @sort_field::text = 'updated_at' AND @sort_direction::text = 'DESC' THEN kas.updated_at END DESC,
-    kas.created_at DESC,
+    CASE WHEN p.resolved_field = 'name' AND p.resolved_direction = 'ASC' THEN kas.name END ASC,
+    CASE WHEN p.resolved_field = 'name' AND p.resolved_direction = 'DESC' THEN kas.name END DESC,
+    CASE WHEN p.resolved_field = 'uri' AND p.resolved_direction = 'ASC' THEN kas.uri END ASC,
+    CASE WHEN p.resolved_field = 'uri' AND p.resolved_direction = 'DESC' THEN kas.uri END DESC,
+    CASE WHEN p.resolved_field = 'created_at' AND p.resolved_direction = 'ASC' THEN kas.created_at END ASC,
+    CASE WHEN p.resolved_field = 'created_at' AND p.resolved_direction = 'DESC' THEN kas.created_at END DESC,
+    CASE WHEN p.resolved_field = 'updated_at' AND p.resolved_direction = 'ASC' THEN kas.updated_at END ASC,
+    CASE WHEN p.resolved_field = 'updated_at' AND p.resolved_direction = 'DESC' THEN kas.updated_at END DESC,
     kas.id ASC
 LIMIT @limit_
 OFFSET @offset_;
@@ -347,7 +361,12 @@ SELECT EXISTS (
 );
 
 -- name: listKeys :many
-WITH listed AS (
+WITH params AS (
+    SELECT
+        COALESCE(NULLIF(@sort_field::text, ''), 'created_at') AS resolved_field,
+        COALESCE(NULLIF(@sort_direction::text, ''), 'DESC') AS resolved_direction
+),
+listed AS (
     SELECT
         kas.id AS kas_id,
         kas.uri AS kas_uri
@@ -382,13 +401,25 @@ SELECT
 FROM key_access_server_keys AS kask
 INNER JOIN
     listed ON kask.key_access_server_id = listed.kas_id
-LEFT JOIN 
+CROSS JOIN params p
+LEFT JOIN
     provider_config as pc ON kask.provider_config_id = pc.id
 WHERE
     (sqlc.narg('key_algorithm')::integer IS NULL OR kask.key_algorithm = sqlc.narg('key_algorithm')::integer)
     AND (sqlc.narg('legacy')::boolean IS NULL OR kask.legacy = sqlc.narg('legacy')::boolean)
-ORDER BY kask.created_at DESC
-LIMIT @limit_ 
+    AND (
+        sqlc.narg('search')::TEXT IS NULL
+        OR kask.key_id ILIKE sqlc.narg('search')::TEXT ESCAPE '\'
+    )
+ORDER BY
+    CASE WHEN p.resolved_field = 'key_id' AND p.resolved_direction = 'ASC' THEN kask.key_id END ASC,
+    CASE WHEN p.resolved_field = 'key_id' AND p.resolved_direction = 'DESC' THEN kask.key_id END DESC,
+    CASE WHEN p.resolved_field = 'created_at' AND p.resolved_direction = 'ASC' THEN kask.created_at END ASC,
+    CASE WHEN p.resolved_field = 'created_at' AND p.resolved_direction = 'DESC' THEN kask.created_at END DESC,
+    CASE WHEN p.resolved_field = 'updated_at' AND p.resolved_direction = 'ASC' THEN kask.updated_at END ASC,
+    CASE WHEN p.resolved_field = 'updated_at' AND p.resolved_direction = 'DESC' THEN kask.updated_at END DESC,
+    kask.id ASC
+LIMIT @limit_
 OFFSET @offset_;
 
 -- name: deleteKey :execrows

@@ -8,7 +8,7 @@ import (
 	"github.com/opentdf/platform/protocol/go/policy"
 )
 
-func (e *Executor) executeObligationTriggers(ctx context.Context, plans []*ObligationTriggerPlan) error {
+func (e *MigrationExecutor) executeObligationTriggers(ctx context.Context, plans []*ObligationTriggerPlan) error {
 	if len(plans) == 0 {
 		return nil
 	}
@@ -30,7 +30,7 @@ func (e *Executor) executeObligationTriggers(ctx context.Context, plans []*Oblig
 	return nil
 }
 
-func (e *Executor) executeObligationTriggerTarget(ctx context.Context, triggerPlan *ObligationTriggerPlan, target *ObligationTriggerTargetPlan) error {
+func (e *MigrationExecutor) executeObligationTriggerTarget(ctx context.Context, triggerPlan *ObligationTriggerPlan, target *ObligationTriggerTargetPlan) error {
 	//nolint:exhaustive // Obligation-trigger execution only handles create and already-migrated explicitly; all other statuses are unsupported.
 	switch target.Status {
 	case TargetStatusAlreadyMigrated:
@@ -49,7 +49,7 @@ func (e *Executor) executeObligationTriggerTarget(ctx context.Context, triggerPl
 	}
 }
 
-func (e *Executor) createObligationTriggerTarget(ctx context.Context, triggerPlan *ObligationTriggerPlan, target *ObligationTriggerTargetPlan) error {
+func (e *MigrationExecutor) createObligationTriggerTarget(ctx context.Context, triggerPlan *ObligationTriggerPlan, target *ObligationTriggerTargetPlan) error {
 	actionID, err := e.requireActionTargetID(target.ActionSourceID, target.Namespace, triggerPlan.Source.GetId())
 	if err != nil {
 		return err
@@ -64,26 +64,22 @@ func (e *Executor) createObligationTriggerTarget(ctx context.Context, triggerPla
 		metadataForCreate(
 			triggerPlan.Source.GetId(),
 			metadataLabels(triggerPlan.Source.GetMetadata()),
-			e.runID,
 		),
 	)
 	if err != nil {
 		target.Execution = &ExecutionResult{
-			RunID:   e.runID,
 			Failure: err.Error(),
 		}
 		return fmt.Errorf("create obligation trigger %q in namespace %q: %w", triggerPlan.Source.GetId(), namespaceLabel(target.Namespace), err)
 	}
 	if created.GetId() == "" {
 		target.Execution = &ExecutionResult{
-			RunID:   e.runID,
 			Failure: ErrMissingCreatedTargetID.Error(),
 		}
 		return fmt.Errorf("%w: obligation trigger %q target %q", ErrMissingCreatedTargetID, triggerPlan.Source.GetId(), namespaceLabel(target.Namespace))
 	}
 
 	target.Execution = &ExecutionResult{
-		RunID:           e.runID,
 		Applied:         true,
 		CreatedTargetID: created.GetId(),
 	}
@@ -92,7 +88,7 @@ func (e *Executor) createObligationTriggerTarget(ctx context.Context, triggerPla
 }
 
 // TODO: Eventually make this generic when we merge sm / rr
-func (e *Executor) requireActionTargetID(sourceID string, targetNamespace *policy.Namespace, ownerID string) (string, error) {
+func (e *MigrationExecutor) requireActionTargetID(sourceID string, targetNamespace *policy.Namespace, ownerID string) (string, error) {
 	if sourceID == "" {
 		return "", fmt.Errorf("%w: obligation trigger %q action source id is missing", ErrMissingMigratedTarget, ownerID)
 	}

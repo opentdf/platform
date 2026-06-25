@@ -7,7 +7,7 @@ import (
 	"github.com/opentdf/platform/protocol/go/policy"
 )
 
-func (e *Executor) rememberSubjectConditionSetTarget(sourceID string, target *SubjectConditionSetTargetPlan) {
+func (e *MigrationExecutor) rememberSubjectConditionSetTarget(sourceID string, target *SubjectConditionSetTargetPlan) {
 	if e == nil || sourceID == "" || target == nil {
 		return
 	}
@@ -27,7 +27,7 @@ func (e *Executor) rememberSubjectConditionSetTarget(sourceID string, target *Su
 	e.subjectConditionSets[sourceID][namespaceKey] = target
 }
 
-func (e *Executor) cachedScsTargetID(sourceID string, namespace *policy.Namespace) string {
+func (e *MigrationExecutor) cachedScsTargetID(sourceID string, namespace *policy.Namespace) string {
 	if e == nil || sourceID == "" {
 		return ""
 	}
@@ -50,7 +50,7 @@ func (e *Executor) cachedScsTargetID(sourceID string, namespace *policy.Namespac
 	return target.TargetID()
 }
 
-func (e *Executor) executeSubjectConditionSets(ctx context.Context, plans []*SubjectConditionSetPlan) error {
+func (e *MigrationExecutor) executeSubjectConditionSets(ctx context.Context, plans []*SubjectConditionSetPlan) error {
 	if len(plans) == 0 {
 		return nil
 	}
@@ -74,7 +74,7 @@ func (e *Executor) executeSubjectConditionSets(ctx context.Context, plans []*Sub
 	return nil
 }
 
-func (e *Executor) executeSubjectConditionSetTarget(ctx context.Context, scsPlan *SubjectConditionSetPlan, target *SubjectConditionSetTargetPlan) error {
+func (e *MigrationExecutor) executeSubjectConditionSetTarget(ctx context.Context, scsPlan *SubjectConditionSetPlan, target *SubjectConditionSetTargetPlan) error {
 	//nolint:exhaustive // SCS execution only handles create and already-migrated explicitly; all other statuses are unsupported.
 	switch target.Status {
 	case TargetStatusAlreadyMigrated:
@@ -94,7 +94,7 @@ func (e *Executor) executeSubjectConditionSetTarget(ctx context.Context, scsPlan
 	}
 }
 
-func (e *Executor) createSubjectConditionSetTarget(ctx context.Context, scsPlan *SubjectConditionSetPlan, target *SubjectConditionSetTargetPlan) error {
+func (e *MigrationExecutor) createSubjectConditionSetTarget(ctx context.Context, scsPlan *SubjectConditionSetPlan, target *SubjectConditionSetTargetPlan) error {
 	namespace := namespaceIdentifier(target.Namespace)
 	if namespace == "" {
 		return fmt.Errorf("%w: subject condition set %q", ErrTargetNamespaceRequired, scsPlan.Source.GetId())
@@ -106,27 +106,23 @@ func (e *Executor) createSubjectConditionSetTarget(ctx context.Context, scsPlan 
 		metadataForCreate(
 			scsPlan.Source.GetId(),
 			metadataLabels(scsPlan.Source.GetMetadata()),
-			e.runID,
 		),
 		namespace,
 	)
 	if err != nil {
 		target.Execution = &ExecutionResult{
-			RunID:   e.runID,
 			Failure: err.Error(),
 		}
 		return fmt.Errorf("create subject condition set %q in namespace %q: %w", scsPlan.Source.GetId(), namespaceLabel(target.Namespace), err)
 	}
 	if created.GetId() == "" {
 		target.Execution = &ExecutionResult{
-			RunID:   e.runID,
 			Failure: ErrMissingCreatedTargetID.Error(),
 		}
 		return fmt.Errorf("%w: subject condition set %q target %q", ErrMissingCreatedTargetID, scsPlan.Source.GetId(), namespaceLabel(target.Namespace))
 	}
 
 	target.Execution = &ExecutionResult{
-		RunID:           e.runID,
 		Applied:         true,
 		CreatedTargetID: created.GetId(),
 	}

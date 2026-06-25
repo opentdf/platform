@@ -259,6 +259,128 @@ A1UdIwQYMBaAFLg9mMeD25ZGvmjSYaunIPoeekzlMA8GA1UdEwEB/wQFMAMBAf8w
 CgYIKoZIzj0EAwIDSAAwRQIhALYXC70t37RlmIkRDlUTehiVEHpSQXz04wQ9Ivw+
 4h4hAiBNR3rD3KieiJaiJrCfM6TPJL7TIch7pAhMHdG6IPJMoQ==
 -----END CERTIFICATE-----`
+
+	// Hybrid fixtures use draft-conformant SPKI/PKCS#8 envelopes; the
+	// AlgorithmIdentifier OID inside selects the scheme.
+	mockHybridXWingPublicKey = `-----BEGIN PUBLIC KEY-----
+MIIE1DANBgsrBgEEAYPmLYHIegOCBMEA5Xp+IGgwFPYa/POk5vSNSUkJzFFAkBhu
+myyFhyMA8Xh3+1MWoXkyHDgTkXZ6HBeKlZllDQk5R1m1tElztoh4zrIJACpTBdi1
+wYE6DHJFm3m6bNKdWGNblwxOJmJkZPEdW9NFzAE21buSB9M5zfdJzWZJAJmKvhey
+xItgArh43ekDAXVgN3gR7VSp0QZpkNCVQ8ZU+aluKZU4Z8yjn5sjc5s9k0ljvRrI
+H6lR7rNqd9wGIkgxxpAj9xCEa8WTqZcHQmJ3mgJAmqKSJnqSAnBsOmk7sdoBBVxf
+yVZZCxNHnQS2EHO/5WmzyJhokcwNiweHOSaqRaGEHrMK2NBJKHCzc6SyMdhBrHVW
+nlM5+WlFSSWs+manYuEEL8QNVKACR0gmRLVl1qUzVCQgLKIw/qvNPCceTQADnfpU
+kDTCbRu8AltC0WjFq6pYNAgB44rIINKjC/nPZJENkaMKUNIJljZQejUX+7Y2dnCl
+FnEemVlFjFUDKfXKjtBotxZmdByl8gqfKlBMY4xi2ip+SNV46bPA8al7jlZZmZdS
+pIou7ryWjchAkRpB0wiXZxce06d8oSB4sDogFmjD6XVmnfDGrIhyFEbEAUySFGuA
+x/x8HAGt56V2YyoqT9h5uZc0O5cFdyymhbCeU+Grnft7UaLAOxRHzZirSZK5wmOz
+QUxEvqHH+AcrrtyedeghKFGPA/VIZbFaiGxTXQuLK0tkAbsOz4pgOwdpjRZIZGI5
+WodKcngC5YutUkvKR4twOotseZiSIQJXp4mK1vtzzwZaH0bLiyQ82SQ00LstSYo6
+kRmwTapOzhwplwGpSTDEm8u1WPYKVOZx3xsvAPMiUEW4ugGSoIq/EZXOZbKP9BJd
+f2CzTHG28egFD7G+hJA+M8q/v4Ix0aE91+BomAcX8DJqPeFN+fdDO/W45UF0KVt6
+nMFW4FwOAINADIh5aaBfiYKgzrhzmsUnrfYlt0isbdlxU8YDBvaPyCcNT9ihqpJI
+FRuuKdV/n+rJRok27+Sp/dkVNYIAe3cgolul+FIo4JUpqPC3fiAViBy2kztffzm3
+t2tjADMbnhqE43p5YjRob+bJcWy8t1TFtgW99gGvumXPDDhg7McvLpWWB+K1yqxv
+ZxxXc9rMsIZFsnksqXSuBCo6Iji7/wO5e3E73vCuYTmnPLQ4TNweP8JHczJIejV2
+zKUTkuafOILIdYWTq+q3gYIABnqhWge+QPa+a2TPKLAUMfOR0FGE9hYlFJWeyKY7
+EcGskeoWHuuZEkkYdyLPB4iYf9kqtZCrV7u5ePO9POaoIpp5sIKvmeS6kBcIj7PI
+01s75tisRtmMlByG0SeVQ1ks6Vy5KAot/xaVVWVin8qGDyKjahoSG7lA1EtEHjqP
+oHQYS9OQQPN3bwyohphP6OFDiZQJtIMgVlwBUlMkOYIIppxeabizK2WlUbcteuya
+Jtgxigg4VHorrdAO5Vs294lcxoByc6vNuui7XshKi5Rw/DWQJZEsr4OIz3ew70zP
+e9upCAS6SSZwYgfGpHkyXZhrVoxRuLuJvRbU8KXFlEqg8ljqSrwFfp45HljxUGZD
+NbkBs5eEoflYBOsbTvaVsv+HHxp0Uf0nWLNMAKrM33nWFwf1AquYTQ==
+-----END PUBLIC KEY-----`
+
+	mockHybridXWingPrivateKey = `-----BEGIN PRIVATE KEY-----
+MDQCAQAwDQYLKwYBBAGD5i2ByHoEICDfofZU3VTH8Q1a9aHROFy3+lmOoLZMJH8p
+1JpbISFo
+-----END PRIVATE KEY-----`
+
+	mockHybridP256MLKEM768PublicKey = `-----BEGIN PUBLIC KEY-----
+MIIE8jAKBggrBgEFBQcGOwOCBOIAoLwah7dVaYyMsSSEZ2A8gEWgH4ErZgg6TxME
+c6QaWfZXy/qqkNAK6SqekNxcipzL/yhzyolOv9FYtPS7OnuwfMMt/WU/CboZX3h2
+TrmPE5cr9tuSx9IKS9SCqRVLaAtJTJxUEZB/+usvcHrLEGFhSKOpiFFmOqSf4jHH
+2zsj7/IdXVWKqItpqtkQD8CZRDxjPpJuSOm87mwjTPBYNtVq0UkokDkn13AD1ag3
+JBCukusrWogKGgAbE7uo6XywwqOk2tNQtqeWa/qLn7nFVscvhDO6GIJfy/IuVBjB
+koK47YqHOSELusRYkbkBQ7fNnlVa92a54BWVRzEiP8ZIXMpuuWlQIcam5FYZbaEy
+VyWTbyrE7otfodVBcqOcHiScmtGu6ZxF7QvCvropBQYkutBqfJnMeUa9MRhP3LM3
+CDaCBPijTIkjMaCkhGkgULVF+6SNMVwdx1a/eVyatgQoZwFvm9peHuCWCOizxrOL
+nrQz/Rw5WeU12kAf9pgljlVqJ6i14UYZR2a2kBgrbjti/uhL2Gcc7HhfjoG8hhN7
+3So29dUI55qXCkJQtFawA+VoR/UMTvClQFSunsyG7UYWwPFaRIWcfVLMRHBN+WjB
+zpFO/cMf2Xl/XQkNCQUvE2Uol6yofwxB7sUx3vELePE0UMd8nUmKikeoxOluUdR1
+tYZSjiaOHgBTxTouAfUBWkoNd5R38PiMR7Ibpga1nrxkOTaa7hNTS4WHWRFEytuR
+1lbKcnJN40dNDYiwLdQxl/mqerWk0ad+npp6KPtyhHMPP0vNf7ReieM014N5TDGK
+/8WGmWp51aQjbiVeufyRGtum8MeX4GqVMRC7IUNO8YdvrMhPU0eW5pxYSoSLvkW6
+yPtVpRuKb8K7ldO8rojPEbuKsLiwxBISQfq/OvUrstNrN3LIE6vB9PdevYkR+kFu
+ktKlnAWZoAwAK4x7yBgMwnGlJ4K+mnIkQGK1acOPhDyIq7ICywN3kwd2WlxMlfCU
+q7k57ErMQcJfH7jKCTmvoABtQYWj3bnIDmeNdxQ+M3g92qSBUcdcz5k9VCCKEKAp
+ZEZun7wnY9AVp0sZTDqQU5F7GPVdFdYXsZYOSshqKuY23MYWEqOJSDrAcOVk99MQ
+uGg79EwX60QdizFeO0mGcjgUqmlKfbGwG7optbOlHDSDZ8NEW+SoaFrLFtkY3uR1
+1CBm87wxPUyAaLA5H9CGobB6RPZuJMvMxSsq6/RhfpI5phCY9Dgw1RV2waiE/fci
+tnanjhsoslE2H7gIh9Jl+DUfe4lJoWfNrQYqGHExmjuBuOM4FgAtmKKjHBUvv6CO
+pmGqwYEGxiG2MRQNzIt/UCsyhtU/b5yMtdmteYhZN4kZ6oK3k8eXvWN9GqOs8RC0
+ZsqGTaNhINSgTNIfx8AkLjk/w0VvuNZCubMWSemVLRlUihNl+hJ9pCsaTGS95rWz
+RFKAGhfGK0OXbnK7OSopNBO3DszD1EWBl+sj3ZxN+ixceca6rlRYMNVGX/nAVLl/
+KlR0FEi8JNEHn/aye9kIYtUumyesvIniX1wkejL5Jl5DVEOeoILYFgKlgbz2GPCm
+jm5yzO8Ec8iylqHWzcISmAAmM+m/HzxeG4q8SWVKOX13fcGfzefrmuFlhdebLRk7
+SqJ8NgNk4+OKYhSmR7Qkht1d+D/wjA==
+-----END PUBLIC KEY-----`
+
+	mockHybridP256MLKEM768PrivateKey = `-----BEGIN PRIVATE KEY-----
+MIHLAgEAMAoGCCsGAQUFBwY7BIG5hcInRjjCXDDko9wJHhg2DE/3724DfxIFmOib
+tXGwDWsz+sG/jR0kRZoeTuQ5zhAOlqlg2lUMPOT9Bp7HMN6zBDB3AgEBBCDScuOG
+Sq9sarjdnXOHdNC215Y7YpFjaql0feyc3Q9luqAKBggqhkjOPQMBB6FEA0IABHPI
+spah1s3CEpgAJjPpvx88XhuKvEllSjl9d33Bn83n65rhZYXXmy0ZO0qifDYDZOPj
+imIUpke0JIbdXfg/8Iw=
+-----END PRIVATE KEY-----`
+
+	mockHybridP384MLKEM1024PublicKey = `-----BEGIN PUBLIC KEY-----
+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
+2hzLNMaM
+-----END PUBLIC KEY-----`
+
+	mockHybridP384MLKEM1024PrivateKey = `-----BEGIN PRIVATE KEY-----
+MIH5AgEAMAoGCCsGAQUFBwY/BIHnfScTvewzChFWiX30GHpd1ukmokPA6ay6CWAh
+cug754hacNevVKE9vcaVMV1nESyVPQFLC1ffm5rxzA7WOcBDbTCBpAIBAQQwMHnD
+CvoaxknaDTS4un1XewOzbUfWOsPEbR/EXECstStq9ZZuGkNgPOysvH86/ZbCoAcG
+BSuBBAAioWQDYgAEEd4xKBvpxj5cWThUgJ/Eo6Cv/1UWNmcNSoSixrP0RjJnOYE2
+zyIDzoydy/HUUp5fpBjZCt343M3sfglouBkBzcxD9qKYuQsUafi9Vea6gVw46HPJ
+JxpfRL4Q2hzLNMaM
+-----END PRIVATE KEY-----`
 )
 
 type TestReadAt struct {
@@ -349,6 +471,7 @@ func (s *TDFSuite) Test_SimpleTDF() {
 		tdfOptions     []TDFOption
 		tdfReadOptions []TDFReaderOption
 		useHex         bool
+		expectedSize   int64 // override default expectedTdfSize if non-zero
 	}
 
 	metaData := []byte(`{"displayName" : "openTDF go sdk"}`)
@@ -428,6 +551,54 @@ func (s *TDFSuite) Test_SimpleTDF() {
 			},
 			useHex: true,
 		},
+		{
+			name: "metadata-hybrid-p256-mlkem768",
+			tdfOptions: []TDFOption{
+				WithKasInformation(KASInfo{
+					URL:       s.kasTestURLLookup["https://f.kas/"],
+					PublicKey: "",
+				}),
+				WithMetaData(string(metaData)),
+				WithDataAttributes(attributes...),
+				WithWrappingKeyAlg(ocrypto.HybridSecp256r1MLKEM768Key),
+			},
+			tdfReadOptions: []TDFReaderOption{
+				WithKasAllowlist([]string{s.kasTestURLLookup["https://f.kas/"]}),
+			},
+			expectedSize: 3364,
+		},
+		{
+			name: "metadata-hybrid-p384-mlkem1024",
+			tdfOptions: []TDFOption{
+				WithKasInformation(KASInfo{
+					URL:       s.kasTestURLLookup["https://g.kas/"],
+					PublicKey: "",
+				}),
+				WithMetaData(string(metaData)),
+				WithDataAttributes(attributes...),
+				WithWrappingKeyAlg(ocrypto.HybridSecp384r1MLKEM1024Key),
+			},
+			tdfReadOptions: []TDFReaderOption{
+				WithKasAllowlist([]string{s.kasTestURLLookup["https://g.kas/"]}),
+			},
+			expectedSize: 4048,
+		},
+		{
+			name: "metadata-hybrid-xwing",
+			tdfOptions: []TDFOption{
+				WithKasInformation(KASInfo{
+					URL:       s.kasTestURLLookup["https://h.kas/"],
+					PublicKey: "",
+				}),
+				WithMetaData(string(metaData)),
+				WithDataAttributes(attributes...),
+				WithWrappingKeyAlg(ocrypto.HybridXWingKey),
+			},
+			tdfReadOptions: []TDFReaderOption{
+				WithKasAllowlist([]string{s.kasTestURLLookup["https://h.kas/"]}),
+			},
+			expectedSize: 3320,
+		},
 	}
 
 	for _, config := range testConfigs {
@@ -448,11 +619,14 @@ func (s *TDFSuite) Test_SimpleTDF() {
 				tdfObj, err := s.sdk.CreateTDF(fileWriter, bufReader, config.tdfOptions...)
 
 				s.Require().NoError(err)
+				expected := expectedTdfSize
 				if config.useHex {
-					s.InDelta(float64(expectedTdfSizeWithHex), float64(tdfObj.size), 64.0)
-				} else {
-					s.InDelta(float64(expectedTdfSize), float64(tdfObj.size), 64.0)
+					expected = expectedTdfSizeWithHex
 				}
+				if config.expectedSize != 0 {
+					expected = config.expectedSize
+				}
+				s.InDelta(float64(expected), float64(tdfObj.size), 64.0)
 
 				// test meta data and build meta data
 				readSeeker, err := os.Open(tdfFilename)
@@ -2572,7 +2746,7 @@ func (s *TDFSuite) testDecryptWithReader(sdk *SDK, tdfFile, decryptedTdfFileName
 	resultBuf := bytes.Repeat([]byte{char}, int(bufSize))
 
 	// read last 5 bytes
-	n, err := r.ReadAt(buf, test.fileSize-(bufSize))
+	n, err := r.ReadAt(buf, test.fileSize-bufSize)
 	if err != nil {
 		s.Require().ErrorIs(err, io.EOF)
 	}
@@ -2630,23 +2804,26 @@ func (s *TDFSuite) startBackend() {
 	fa := &FakeAttributes{s: s}
 
 	kasesToMake := []struct {
-		url, private, public, kid string
+		url, private, public, kid, algorithm string
 	}{
-		{"http://localhost:65432/", mockRSAPrivateKey1, mockRSAPublicKey1, defaultKID},
-		{"http://[::1]:65432/", mockRSAPrivateKey1, mockRSAPublicKey1, defaultKID},
-		{"https://a.kas/", mockRSAPrivateKey1, mockRSAPublicKey1, defaultKID},
-		{"https://b.kas/", mockRSAPrivateKey2, mockRSAPublicKey2, defaultKID},
-		{"https://c.kas/", mockRSAPrivateKey3, mockRSAPublicKey3, defaultKID},
-		{"https://d.kas/", mockECPrivateKey1, mockECPublicKey1, "e1"},
-		{"https://e.kas/", mockECPrivateKey2, mockECPublicKey2, defaultKID},
-		{kasAu, mockRSAPrivateKey1, mockRSAPublicKey1, defaultKID},
-		{kasCa, mockRSAPrivateKey2, mockRSAPublicKey2, defaultKID},
-		{kasUk, mockRSAPrivateKey2, mockRSAPublicKey2, defaultKID},
-		{kasNz, mockRSAPrivateKey3, mockRSAPublicKey3, defaultKID},
-		{kasUs, mockRSAPrivateKey1, mockRSAPublicKey1, defaultKID},
-		{baseKeyURL, mockRSAPrivateKey1, mockRSAPublicKey1, baseKeyKID},
-		{evenMoreSpecificKas, mockRSAPrivateKey3, mockRSAPublicKey3, "r3"},
-		{obligationKas, mockRSAPrivateKey3, mockRSAPublicKey3, "r3"},
+		{"http://localhost:65432/", mockRSAPrivateKey1, mockRSAPublicKey1, defaultKID, "rsa:2048"},
+		{"http://[::1]:65432/", mockRSAPrivateKey1, mockRSAPublicKey1, defaultKID, "rsa:2048"},
+		{"https://a.kas/", mockRSAPrivateKey1, mockRSAPublicKey1, defaultKID, "rsa:2048"},
+		{"https://b.kas/", mockRSAPrivateKey2, mockRSAPublicKey2, defaultKID, "rsa:2048"},
+		{"https://c.kas/", mockRSAPrivateKey3, mockRSAPublicKey3, defaultKID, "rsa:2048"},
+		{"https://d.kas/", mockECPrivateKey1, mockECPublicKey1, "e1", string(ocrypto.EC256Key)},
+		{"https://e.kas/", mockECPrivateKey2, mockECPublicKey2, defaultKID, string(ocrypto.EC256Key)},
+		{kasAu, mockRSAPrivateKey1, mockRSAPublicKey1, defaultKID, "rsa:2048"},
+		{kasCa, mockRSAPrivateKey2, mockRSAPublicKey2, defaultKID, "rsa:2048"},
+		{kasUk, mockRSAPrivateKey2, mockRSAPublicKey2, defaultKID, "rsa:2048"},
+		{kasNz, mockRSAPrivateKey3, mockRSAPublicKey3, defaultKID, "rsa:2048"},
+		{kasUs, mockRSAPrivateKey1, mockRSAPublicKey1, defaultKID, "rsa:2048"},
+		{baseKeyURL, mockRSAPrivateKey1, mockRSAPublicKey1, baseKeyKID, "rsa:2048"},
+		{evenMoreSpecificKas, mockRSAPrivateKey3, mockRSAPublicKey3, "r3", "rsa:2048"},
+		{obligationKas, mockRSAPrivateKey3, mockRSAPublicKey3, "r3", "rsa:2048"},
+		{"https://f.kas/", mockHybridP256MLKEM768PrivateKey, mockHybridP256MLKEM768PublicKey, "h1", string(ocrypto.HybridSecp256r1MLKEM768Key)},
+		{"https://g.kas/", mockHybridP384MLKEM1024PrivateKey, mockHybridP384MLKEM1024PublicKey, "h2", string(ocrypto.HybridSecp384r1MLKEM1024Key)},
+		{"https://h.kas/", mockHybridXWingPrivateKey, mockHybridXWingPublicKey, "h3", string(ocrypto.HybridXWingKey)},
 	}
 	fkar := &FakeKASRegistry{kases: kasesToMake, s: s}
 
@@ -2661,7 +2838,7 @@ func (s *TDFSuite) startBackend() {
 
 		s.kases[i] = FakeKas{
 			s: s, privateKey: ki.private, KASInfo: KASInfo{
-				URL: ki.url, PublicKey: ki.public, KID: ki.kid, Algorithm: "rsa:2048",
+				URL: ki.url, PublicKey: ki.public, KID: ki.kid, Algorithm: ki.algorithm,
 			},
 			legakeys:                  map[string]keyInfo{},
 			attrToRequiredObligations: obligationMap,
@@ -2689,7 +2866,8 @@ func (s *TDFSuite) startBackend() {
 
 	ats := getTokenSource(s.T())
 
-	sdk, err := New(sdkPlatformURL,
+	sdk, err := New(
+		sdkPlatformURL,
 		WithClientCredentials("test", "test", nil),
 		withCustomAccessTokenSource(&ats),
 		WithTokenEndpoint("http://localhost:65432/auth/token"),
@@ -2725,7 +2903,8 @@ func (f *FakeAttributes) GetAttributeValuesByFqns(_ context.Context, in *connect
 	for _, fqn := range in.Msg.GetFqns() {
 		av, err := NewAttributeValueFQN(fqn)
 		if err != nil {
-			slog.Error("invalid fqn",
+			slog.Error(
+				"invalid fqn",
 				slog.String("fqn", fqn),
 				slog.Any("error", err),
 			)
@@ -2750,7 +2929,7 @@ type FakeKASRegistry struct {
 	kasregistryconnect.UnimplementedKeyAccessServerRegistryServiceHandler
 	s     *TDFSuite
 	kases []struct {
-		url, private, public, kid string
+		url, private, public, kid, algorithm string
 	}
 }
 
@@ -2912,6 +3091,32 @@ func (f *FakeKas) getRewrapResponse(rewrapRequest string, fulfillableObligations
 				resp.SessionPublicKey = sessionKey
 				entityWrappedKey, err = asymEncrypt.Encrypt(symmetricKey)
 				f.s.Require().NoError(err, "ocrypto.AsymEncryption.encrypt failed")
+
+			case "hybrid-wrapped":
+				kasPrivateKey := strings.ReplaceAll(f.privateKey, "\n\t", "\n")
+				if kao.GetKid() != "" && kao.GetKid() != f.KID {
+					lk, ok := f.legakeys[kaoReq.GetKeyAccessObject().GetKid()]
+					f.s.Require().True(ok, "unable to find key [%s]", kao.GetKid())
+					kasPrivateKey = strings.ReplaceAll(lk.private, "\n\t", "\n")
+				}
+
+				dec, err := ocrypto.FromPrivatePEM(kasPrivateKey)
+				f.s.Require().NoError(err, "failed to parse hybrid private key PEM")
+				kt, ok := dec.(interface{ KeyType() ocrypto.KeyType })
+				f.s.Require().True(ok, "hybrid private key decryptor must expose KeyType")
+				f.s.Equal(f.Algorithm, string(kt.KeyType()), "hybrid private key algorithm mismatch")
+				symmetricKey, err := dec.Decrypt(wrappedKey)
+				f.s.Require().NoError(err, "failed to unwrap hybrid wrapped key")
+
+				asymEncrypt, err := ocrypto.FromPublicPEMWithSalt(bodyData.GetClientPublicKey(), tdfSalt(), nil)
+				f.s.Require().NoError(err, "ocrypto.FromPublicPEMWithSalt failed")
+				if e, found := asymEncrypt.(ocrypto.ECEncryptor); found {
+					sessionKey, err := e.PublicKeyInPemFormat()
+					f.s.Require().NoError(err, "unable to serialize ephemeral key")
+					resp.SessionPublicKey = sessionKey
+				}
+				entityWrappedKey, err = asymEncrypt.Encrypt(symmetricKey)
+				f.s.Require().NoError(err, "ocrypto.encrypt failed")
 
 			case "wrapped":
 				kasPrivateKey := strings.ReplaceAll(f.privateKey, "\n\t", "\n")

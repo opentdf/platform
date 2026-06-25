@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -11,6 +12,7 @@ import (
 	"github.com/opentdf/platform/protocol/go/common"
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/actions"
+	"github.com/opentdf/platform/protocol/go/policy/attributes"
 	"github.com/opentdf/platform/protocol/go/policy/namespaces"
 	"github.com/opentdf/platform/protocol/go/policy/subjectmapping"
 	"github.com/opentdf/platform/service/internal/fixtures"
@@ -599,7 +601,8 @@ func (s *SubjectMappingsSuite) Test_ListSubjectMappings_OrdersByCreatedAt_Succee
 }
 
 func (s *SubjectMappingsSuite) Test_ListSubjectMappings_SortByCreatedAt_ASC() {
-	ids := s.createSortTestSubjectMappings("sort-created-asc")
+	ids := s.createSortTestSubjectMappings([]string{"sort-created-asc-0", "sort-created-asc-1", "sort-created-asc-2"})
+	defer s.deleteSortTestSubjectMappings(ids)
 
 	listRsp, err := s.db.PolicyClient.ListSubjectMappings(s.ctx, &subjectmapping.ListSubjectMappingsRequest{
 		Sort: []*subjectmapping.SubjectMappingsSort{
@@ -614,7 +617,8 @@ func (s *SubjectMappingsSuite) Test_ListSubjectMappings_SortByCreatedAt_ASC() {
 }
 
 func (s *SubjectMappingsSuite) Test_ListSubjectMappings_SortByCreatedAt_DESC() {
-	ids := s.createSortTestSubjectMappings("sort-created-desc")
+	ids := s.createSortTestSubjectMappings([]string{"sort-created-desc-0", "sort-created-desc-1", "sort-created-desc-2"})
+	defer s.deleteSortTestSubjectMappings(ids)
 
 	listRsp, err := s.db.PolicyClient.ListSubjectMappings(s.ctx, &subjectmapping.ListSubjectMappingsRequest{
 		Sort: []*subjectmapping.SubjectMappingsSort{
@@ -629,7 +633,8 @@ func (s *SubjectMappingsSuite) Test_ListSubjectMappings_SortByCreatedAt_DESC() {
 }
 
 func (s *SubjectMappingsSuite) Test_ListSubjectMappings_SortByUpdatedAt_DESC() {
-	ids := s.createSortTestSubjectMappings("sort-updated-desc")
+	ids := s.createSortTestSubjectMappings([]string{"sort-updated-desc-0", "sort-updated-desc-1", "sort-updated-desc-2"})
+	defer s.deleteSortTestSubjectMappings(ids)
 
 	// Update the first mapping so its updated_at is the most recent
 	time.Sleep(5 * time.Millisecond)
@@ -655,7 +660,8 @@ func (s *SubjectMappingsSuite) Test_ListSubjectMappings_SortByUpdatedAt_DESC() {
 }
 
 func (s *SubjectMappingsSuite) Test_ListSubjectMappings_SortByUpdatedAt_ASC() {
-	ids := s.createSortTestSubjectMappings("sort-updated-asc")
+	ids := s.createSortTestSubjectMappings([]string{"sort-updated-asc-0", "sort-updated-asc-1", "sort-updated-asc-2"})
+	defer s.deleteSortTestSubjectMappings(ids)
 
 	// Update the last mapping so its updated_at is the most recent
 	time.Sleep(5 * time.Millisecond)
@@ -680,8 +686,60 @@ func (s *SubjectMappingsSuite) Test_ListSubjectMappings_SortByUpdatedAt_ASC() {
 	assertIDsInOrder(s.T(), listRsp.GetSubjectMappings(), func(sm *policy.SubjectMapping) string { return sm.GetId() }, ids[0], ids[1], ids[2])
 }
 
-func (s *SubjectMappingsSuite) Test_ListSubjectMappings_SortByUnspecified_FallsBackToDefault() {
-	ids := s.createSortTestSubjectMappings("sort-unspecified")
+func (s *SubjectMappingsSuite) Test_ListSubjectMappings_SortTieBreaker_CreatedAtWithIDFallback() {
+	fixtureAttrValID := s.f.GetAttributeValueKey("example.net/attr/attr1/value/value2").ID
+	actionRead := s.f.GetStandardAction(policydb.ActionRead.String())
+
+	suffix := time.Now().UnixNano()
+	ids := make([]string, 3)
+	for i := range 3 {
+		email := fmt.Sprintf("tiebreaker-sm-%d-%d@example.com", i, suffix)
+		scs := &subjectmapping.SubjectConditionSetCreate{
+			SubjectSets: []*policy.SubjectSet{
+				{
+					ConditionGroups: []*policy.ConditionGroup{
+						{
+							BooleanOperator: policy.ConditionBooleanTypeEnum_CONDITION_BOOLEAN_TYPE_ENUM_AND,
+							Conditions: []*policy.Condition{
+								{
+									SubjectExternalSelectorValue: ".email",
+									Operator:                     policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_IN,
+									SubjectExternalValues:        []string{email},
+								},
+							},
+						},
+					},
+				},
+			},
+		}
+		created, err := s.db.PolicyClient.CreateSubjectMapping(s.ctx, &subjectmapping.CreateSubjectMappingRequest{
+			AttributeValueId:       fixtureAttrValID,
+			NewSubjectConditionSet: scs,
+			Actions:                []*policy.Action{actionRead},
+		})
+		s.Require().NoError(err)
+		ids[i] = created.GetId()
+	}
+	defer s.deleteSortTestSubjectMappings(ids)
+
+	s.Require().NoError(forceCreatedAtTie(s.ctx, s.db, "subject_mappings", ids))
+
+	sorted := slices.Sorted(slices.Values(ids))
+
+	listRsp, err := s.db.PolicyClient.ListSubjectMappings(s.ctx, &subjectmapping.ListSubjectMappingsRequest{
+		Sort: []*subjectmapping.SubjectMappingsSort{
+			{Field: subjectmapping.SortSubjectMappingsType_SORT_SUBJECT_MAPPINGS_TYPE_CREATED_AT, Direction: policy.SortDirection_SORT_DIRECTION_ASC},
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(listRsp)
+
+	assertIDsInOrder(s.T(), listRsp.GetSubjectMappings(), func(sm *policy.SubjectMapping) string { return sm.GetId() }, sorted[0], sorted[1], sorted[2])
+}
+
+func (s *SubjectMappingsSuite) Test_ListSubjectMappings_SortByUnspecifiedField_DefaultsToCreatedAt() {
+	ids := s.createSortTestSubjectMappings([]string{"unspecified-field-sm-0", "unspecified-field-sm-1", "unspecified-field-sm-2"})
+	defer s.deleteSortTestSubjectMappings(ids)
 
 	listRsp, err := s.db.PolicyClient.ListSubjectMappings(s.ctx, &subjectmapping.ListSubjectMappingsRequest{
 		Sort: []*subjectmapping.SubjectMappingsSort{
@@ -691,7 +749,51 @@ func (s *SubjectMappingsSuite) Test_ListSubjectMappings_SortByUnspecified_FallsB
 	s.Require().NoError(err)
 	s.NotNil(listRsp)
 
-	// Falls back to default created_at DESC ordering
+	// Field defaults to created_at, explicit ASC is preserved
+	assertIDsInOrder(s.T(), listRsp.GetSubjectMappings(), func(sm *policy.SubjectMapping) string { return sm.GetId() }, ids[0], ids[1], ids[2])
+}
+
+func (s *SubjectMappingsSuite) Test_ListSubjectMappings_SortByUnspecifiedDirection_DefaultsToDESC() {
+	ids := s.createSortTestSubjectMappings([]string{"unspecified-dir-sm-0", "unspecified-dir-sm-1", "unspecified-dir-sm-2"})
+	defer s.deleteSortTestSubjectMappings(ids)
+
+	listRsp, err := s.db.PolicyClient.ListSubjectMappings(s.ctx, &subjectmapping.ListSubjectMappingsRequest{
+		Sort: []*subjectmapping.SubjectMappingsSort{
+			{Field: subjectmapping.SortSubjectMappingsType_SORT_SUBJECT_MAPPINGS_TYPE_CREATED_AT, Direction: policy.SortDirection_SORT_DIRECTION_UNSPECIFIED},
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(listRsp)
+
+	// Direction defaults to DESC, explicit created_at field is preserved
+	assertIDsInOrder(s.T(), listRsp.GetSubjectMappings(), func(sm *policy.SubjectMapping) string { return sm.GetId() }, ids[2], ids[1], ids[0])
+}
+
+func (s *SubjectMappingsSuite) Test_ListSubjectMappings_SortByBothUnspecified_DefaultsToCreatedAtDESC() {
+	ids := s.createSortTestSubjectMappings([]string{"both-unspecified-sm-0", "both-unspecified-sm-1", "both-unspecified-sm-2"})
+	defer s.deleteSortTestSubjectMappings(ids)
+
+	listRsp, err := s.db.PolicyClient.ListSubjectMappings(s.ctx, &subjectmapping.ListSubjectMappingsRequest{
+		Sort: []*subjectmapping.SubjectMappingsSort{
+			{Field: subjectmapping.SortSubjectMappingsType_SORT_SUBJECT_MAPPINGS_TYPE_UNSPECIFIED, Direction: policy.SortDirection_SORT_DIRECTION_UNSPECIFIED},
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(listRsp)
+
+	// Both default: created_at DESC
+	assertIDsInOrder(s.T(), listRsp.GetSubjectMappings(), func(sm *policy.SubjectMapping) string { return sm.GetId() }, ids[2], ids[1], ids[0])
+}
+
+func (s *SubjectMappingsSuite) Test_ListSubjectMappings_SortOmitted() {
+	ids := s.createSortTestSubjectMappings([]string{"sort-omitted-sm-0", "sort-omitted-sm-1", "sort-omitted-sm-2"})
+	defer s.deleteSortTestSubjectMappings(ids)
+
+	listRsp, err := s.db.PolicyClient.ListSubjectMappings(s.ctx, &subjectmapping.ListSubjectMappingsRequest{})
+	s.Require().NoError(err)
+	s.NotNil(listRsp)
+
+	// No sort provided: created_at DESC
 	assertIDsInOrder(s.T(), listRsp.GetSubjectMappings(), func(sm *policy.SubjectMapping) string { return sm.GetId() }, ids[2], ids[1], ids[0])
 }
 
@@ -937,6 +1039,237 @@ func (s *SubjectMappingsSuite) Test_ListSubjectMappings_NoNamespaceFilter_Return
 	s.True(foundCom)
 	s.True(foundNet)
 	s.True(foundUnnamespaced)
+}
+
+func (s *SubjectMappingsSuite) Test_ListSubjectMappings_SearchByAttributeValueFQNAndLabels_Succeeds() {
+	suffix := time.Now().UnixNano()
+	attrName := fmt.Sprintf("list-sm-search-attr-%d", suffix)
+	valueToken := fmt.Sprintf("fqn-only-%d", suffix)
+	ns, values := s.createSearchSubjectMappingNamespace(suffix, []string{
+		valueToken,
+		fmt.Sprintf("label-holder-%d", suffix),
+		fmt.Sprintf("label-key-holder-%d", suffix),
+		fmt.Sprintf("condition-holder-%d", suffix),
+		fmt.Sprintf("unmatched-%d", suffix),
+	})
+	s.T().Cleanup(func() {
+		s.deleteSearchSubjectMappingNamespace(ns)
+	})
+
+	actionToken := fmt.Sprintf("action-only-%d", suffix)
+	labelToken := fmt.Sprintf("label-only-%d", suffix)
+	labelKeyToken := fmt.Sprintf("label-key-only-%d", suffix)
+	selectorToken := fmt.Sprintf(".selector-only-%d", suffix)
+	externalToken := fmt.Sprintf("external-only-%d@example.com", suffix)
+
+	fqnSM := s.createSearchSubjectMapping(ns.GetId(), values[0].GetId(), ".fqn-holder", []string{"fqn-holder@example.com"}, "read", nil)
+	labelSM := s.createSearchSubjectMapping(ns.GetId(), values[1].GetId(), ".label-holder", []string{"label-holder@example.com"}, actionToken, map[string]string{
+		"search-label": labelToken,
+		"other-label":  fmt.Sprintf("other-label-%d", suffix),
+	})
+	labelKeySM := s.createSearchSubjectMapping(ns.GetId(), values[2].GetId(), ".label-key-holder", []string{"label-key-holder@example.com"}, "read", map[string]string{labelKeyToken: "not-searchable-by-key"})
+	conditionSM := s.createSearchSubjectMapping(ns.GetId(), values[3].GetId(), selectorToken, []string{externalToken}, "read", nil)
+	unmatchedSM := s.createSearchSubjectMapping(ns.GetId(), values[4].GetId(), ".unmatched", []string{"unmatched@example.com"}, "read", map[string]string{"unused": fmt.Sprintf("unused-%d", suffix)})
+
+	tests := []struct {
+		name string
+		term string
+		ids  []string
+	}{
+		{name: "attribute value fqn", term: strings.ToUpper(values[0].GetFqn()), ids: []string{fqnSM.GetId()}},
+		{name: "attribute name in fqn", term: attrName, ids: []string{fqnSM.GetId(), labelSM.GetId(), labelKeySM.GetId(), conditionSM.GetId(), unmatchedSM.GetId()}},
+		{name: "attribute value in fqn", term: valueToken, ids: []string{fqnSM.GetId()}},
+		{name: "metadata label value among multiple labels", term: strings.ToUpper(labelToken), ids: []string{labelSM.GetId()}},
+	}
+
+	for _, tc := range tests {
+		s.Run(tc.name, func() {
+			list, err := s.db.PolicyClient.ListSubjectMappings(s.ctx, &subjectmapping.ListSubjectMappingsRequest{
+				NamespaceId: ns.GetId(),
+				Search:      &policy.Search{Term: tc.term},
+			})
+			s.Require().NoError(err)
+			gotIDs := make([]string, 0, len(list.GetSubjectMappings()))
+			for _, sm := range list.GetSubjectMappings() {
+				gotIDs = append(gotIDs, sm.GetId())
+			}
+			s.ElementsMatch(tc.ids, gotIDs)
+			s.Equal(int32(len(tc.ids)), list.GetPagination().GetTotal())
+		})
+	}
+
+	// ListSubjectMappings search is intentionally limited to attribute value FQNs
+	// and metadata label values; action names, label keys, and subject condition
+	// selectors/external values should not affect filtered results.
+	for _, term := range []string{
+		actionToken,
+		labelKeyToken,
+		selectorToken,
+		externalToken,
+	} {
+		list, err := s.db.PolicyClient.ListSubjectMappings(s.ctx, &subjectmapping.ListSubjectMappingsRequest{
+			NamespaceId: ns.GetId(),
+			Search:      &policy.Search{Term: term},
+		})
+		s.Require().NoError(err)
+		s.Empty(list.GetSubjectMappings())
+		s.Equal(int32(0), list.GetPagination().GetTotal())
+	}
+}
+
+func (s *SubjectMappingsSuite) Test_ListSubjectMappings_SearchTrimsWhitespace_Succeeds() {
+	suffix := time.Now().UnixNano()
+	labelToken := fmt.Sprintf("trimmed-label-%d", suffix)
+
+	ns, values := s.createSearchSubjectMappingNamespace(suffix, []string{fmt.Sprintf("trimmed-%d", suffix)})
+	s.T().Cleanup(func() {
+		s.deleteSearchSubjectMappingNamespace(ns)
+	})
+
+	sm := s.createSearchSubjectMapping(ns.GetId(), values[0].GetId(), ".trimmed", []string{"trimmed@example.com"}, "read", map[string]string{"search-label": labelToken})
+
+	list, err := s.db.PolicyClient.ListSubjectMappings(s.ctx, &subjectmapping.ListSubjectMappingsRequest{
+		NamespaceId: ns.GetId(),
+		Search:      &policy.Search{Term: " " + labelToken + " "},
+	})
+	s.Require().NoError(err)
+	s.Require().Len(list.GetSubjectMappings(), 1)
+	s.Equal(sm.GetId(), list.GetSubjectMappings()[0].GetId())
+	s.Equal(int32(1), list.GetPagination().GetTotal())
+}
+
+func (s *SubjectMappingsSuite) Test_ListSubjectMappings_SearchEscapesLikeWildcardLiterals_Succeeds() {
+	suffix := time.Now().UnixNano()
+
+	ns, values := s.createSearchSubjectMappingNamespace(suffix, []string{
+		fmt.Sprintf("wildcarda-%d", suffix),
+		fmt.Sprintf("wildcardb-%d", suffix),
+	})
+	s.T().Cleanup(func() {
+		s.deleteSearchSubjectMappingNamespace(ns)
+	})
+
+	s.createSearchSubjectMapping(ns.GetId(), values[0].GetId(), ".wildcard-a", []string{"wildcard-a@example.com"}, "read", map[string]string{"wildcard": fmt.Sprintf("wildcarda-%d", suffix)})
+	s.createSearchSubjectMapping(ns.GetId(), values[1].GetId(), ".wildcard-b", []string{"wildcard-b@example.com"}, "read", map[string]string{"wildcard": fmt.Sprintf("wildcardb-%d", suffix)})
+
+	for _, term := range []string{
+		fmt.Sprintf("wildcard_-%d", suffix),
+		fmt.Sprintf("wildcard%%-%d", suffix),
+	} {
+		list, err := s.db.PolicyClient.ListSubjectMappings(s.ctx, &subjectmapping.ListSubjectMappingsRequest{
+			NamespaceId: ns.GetId(),
+			Search:      &policy.Search{Term: term},
+		})
+		s.Require().NoError(err)
+		s.Empty(list.GetSubjectMappings())
+		s.Equal(int32(0), list.GetPagination().GetTotal())
+	}
+}
+
+func (s *SubjectMappingsSuite) Test_ListSubjectMappings_SearchCombinesWithNamespace_Succeeds() {
+	suffix := time.Now().UnixNano()
+	searchToken := fmt.Sprintf("namespace-and-search-%d", suffix)
+
+	firstNS, firstValues := s.createSearchSubjectMappingNamespace(suffix, []string{fmt.Sprintf("first-%d", suffix)})
+	s.T().Cleanup(func() {
+		s.deleteSearchSubjectMappingNamespace(firstNS)
+	})
+	secondNS, secondValues := s.createSearchSubjectMappingNamespace(suffix+1, []string{fmt.Sprintf("second-%d", suffix)})
+	s.T().Cleanup(func() {
+		s.deleteSearchSubjectMappingNamespace(secondNS)
+	})
+
+	firstSM := s.createSearchSubjectMapping(firstNS.GetId(), firstValues[0].GetId(), ".first", []string{"first@example.com"}, "read", map[string]string{"search": searchToken})
+	secondSM := s.createSearchSubjectMapping(secondNS.GetId(), secondValues[0].GetId(), ".second", []string{"second@example.com"}, "read", map[string]string{"search": searchToken})
+
+	byFirstNS, err := s.db.PolicyClient.ListSubjectMappings(s.ctx, &subjectmapping.ListSubjectMappingsRequest{
+		NamespaceId: firstNS.GetId(),
+		Search:      &policy.Search{Term: searchToken},
+	})
+	s.Require().NoError(err)
+	s.Require().Len(byFirstNS.GetSubjectMappings(), 1)
+	s.Equal(firstSM.GetId(), byFirstNS.GetSubjectMappings()[0].GetId())
+	s.Equal(int32(1), byFirstNS.GetPagination().GetTotal())
+
+	bySecondFQN, err := s.db.PolicyClient.ListSubjectMappings(s.ctx, &subjectmapping.ListSubjectMappingsRequest{
+		NamespaceFqn: secondNS.GetFqn(),
+		Search:       &policy.Search{Term: searchToken},
+	})
+	s.Require().NoError(err)
+	s.Require().Len(bySecondFQN.GetSubjectMappings(), 1)
+	s.Equal(secondSM.GetId(), bySecondFQN.GetSubjectMappings()[0].GetId())
+	s.Equal(int32(1), bySecondFQN.GetPagination().GetTotal())
+}
+
+func (s *SubjectMappingsSuite) Test_ListSubjectMappings_SearchEmptyQuery_Succeeds() {
+	suffix := time.Now().UnixNano()
+	ns, values := s.createSearchSubjectMappingNamespace(suffix, []string{fmt.Sprintf("empty-search-%d", suffix)})
+	s.T().Cleanup(func() {
+		s.deleteSearchSubjectMappingNamespace(ns)
+	})
+	s.createSearchSubjectMapping(ns.GetId(), values[0].GetId(), ".empty-search", []string{"empty-search@example.com"}, "read", nil)
+
+	noSearch, err := s.db.PolicyClient.ListSubjectMappings(s.ctx, &subjectmapping.ListSubjectMappingsRequest{
+		NamespaceId: ns.GetId(),
+	})
+	s.Require().NoError(err)
+	emptySearch, err := s.db.PolicyClient.ListSubjectMappings(s.ctx, &subjectmapping.ListSubjectMappingsRequest{
+		NamespaceId: ns.GetId(),
+		Search:      &policy.Search{Term: ""},
+	})
+	s.Require().NoError(err)
+	s.Equal(noSearch.GetPagination().GetTotal(), emptySearch.GetPagination().GetTotal())
+	s.Len(emptySearch.GetSubjectMappings(), len(noSearch.GetSubjectMappings()))
+}
+
+func (s *SubjectMappingsSuite) Test_ListSubjectMappings_SearchPaginationAppliesAfterFiltering_Succeeds() {
+	suffix := time.Now().UnixNano()
+	searchToken := fmt.Sprintf("search-page-%d", suffix)
+	ns, values := s.createSearchSubjectMappingNamespace(suffix, []string{
+		fmt.Sprintf("page-a-%d", suffix),
+		fmt.Sprintf("page-b-%d", suffix),
+		fmt.Sprintf("page-c-%d", suffix),
+		fmt.Sprintf("page-other-%d", suffix),
+	})
+	s.T().Cleanup(func() {
+		s.deleteSearchSubjectMappingNamespace(ns)
+	})
+
+	ids := make([]string, 3)
+	for i := range ids {
+		ids[i] = s.createSearchSubjectMapping(ns.GetId(), values[i].GetId(), fmt.Sprintf(".page-%d", i), []string{fmt.Sprintf("page-%d@example.com", i)}, "read", map[string]string{"search": searchToken}).GetId()
+	}
+	s.createSearchSubjectMapping(ns.GetId(), values[3].GetId(), ".page-other", []string{"page-other@example.com"}, "read", map[string]string{"other": fmt.Sprintf("other-%d", suffix)})
+
+	firstPage, err := s.db.PolicyClient.ListSubjectMappings(s.ctx, &subjectmapping.ListSubjectMappingsRequest{
+		NamespaceId: ns.GetId(),
+		Search:      &policy.Search{Term: searchToken},
+		Pagination:  &policy.PageRequest{Limit: 2},
+		Sort: []*subjectmapping.SubjectMappingsSort{
+			{Field: subjectmapping.SortSubjectMappingsType_SORT_SUBJECT_MAPPINGS_TYPE_CREATED_AT, Direction: policy.SortDirection_SORT_DIRECTION_ASC},
+		},
+	})
+	s.Require().NoError(err)
+	s.Require().Len(firstPage.GetSubjectMappings(), 2)
+	s.Equal(int32(3), firstPage.GetPagination().GetTotal())
+	s.Equal(int32(2), firstPage.GetPagination().GetNextOffset())
+	s.Equal(ids[0], firstPage.GetSubjectMappings()[0].GetId())
+	s.Equal(ids[1], firstPage.GetSubjectMappings()[1].GetId())
+
+	secondPage, err := s.db.PolicyClient.ListSubjectMappings(s.ctx, &subjectmapping.ListSubjectMappingsRequest{
+		NamespaceId: ns.GetId(),
+		Search:      &policy.Search{Term: searchToken},
+		Pagination:  &policy.PageRequest{Limit: 2, Offset: 2},
+		Sort: []*subjectmapping.SubjectMappingsSort{
+			{Field: subjectmapping.SortSubjectMappingsType_SORT_SUBJECT_MAPPINGS_TYPE_CREATED_AT, Direction: policy.SortDirection_SORT_DIRECTION_ASC},
+		},
+	})
+	s.Require().NoError(err)
+	s.Require().Len(secondPage.GetSubjectMappings(), 1)
+	s.Equal(int32(3), secondPage.GetPagination().GetTotal())
+	s.Equal(int32(2), secondPage.GetPagination().GetCurrentOffset())
+	s.Equal(int32(0), secondPage.GetPagination().GetNextOffset())
+	s.Equal(ids[2], secondPage.GetSubjectMappings()[0].GetId())
 }
 
 func (s *SubjectMappingsSuite) TestDeleteSubjectMapping() {
@@ -1381,8 +1714,129 @@ func (s *SubjectMappingsSuite) Test_ListSubjectConditionSets_NoNamespaceFilter_R
 	s.True(foundUnnamespaced)
 }
 
+func (s *SubjectMappingsSuite) Test_ListSubjectConditionSets_SearchByMetadataLabelValues_PaginationSort_Succeeds() {
+	suffix := time.Now().UnixNano()
+	searchToken := fmt.Sprintf("dspx-scs-search-%d", suffix)
+
+	multiLabel := map[string]string{
+		"name":    "another",
+		"display": searchToken,
+	}
+	labelValueMatch := s.newSearchTestSubjectConditionSet(fmt.Sprintf(".dspx_scs_selector_%d", suffix), []string{"engineering"}, multiLabel, "")
+	anotherLabelValueMatch := s.newSearchTestSubjectConditionSet(fmt.Sprintf(".dspx_scs_other_%d", suffix), []string{"finance"}, map[string]string{"owner": "group-" + searchToken}, "")
+	labelKeyOnlyNonMatch := s.newSearchTestSubjectConditionSet(fmt.Sprintf(".dspx_scs_key_only_%d", suffix), []string{"legal"}, map[string]string{searchToken: "not-a-matching-value"}, "")
+	conditionOnlyNonMatch := s.newSearchTestSubjectConditionSet("."+searchToken+".department", []string{"value-" + searchToken}, map[string]string{"team": "finance"}, "")
+	defer s.deleteTestSCSs([]string{
+		labelValueMatch.GetId(),
+		anotherLabelValueMatch.GetId(),
+		labelKeyOnlyNonMatch.GetId(),
+		conditionOnlyNonMatch.GetId(),
+	})
+
+	listRsp, err := s.db.PolicyClient.ListSubjectConditionSets(s.ctx, &subjectmapping.ListSubjectConditionSetsRequest{
+		Search: &policy.Search{Term: strings.ToUpper(searchToken)},
+		Sort: []*subjectmapping.SubjectConditionSetsSort{
+			{Field: subjectmapping.SortSubjectConditionSetsType_SORT_SUBJECT_CONDITION_SETS_TYPE_CREATED_AT, Direction: policy.SortDirection_SORT_DIRECTION_ASC},
+		},
+	})
+	s.Require().NoError(err)
+	s.Require().NotNil(listRsp)
+	s.Require().Len(listRsp.GetSubjectConditionSets(), 2)
+	s.Equal(labelValueMatch.GetId(), listRsp.GetSubjectConditionSets()[0].GetId())
+	s.Equal(anotherLabelValueMatch.GetId(), listRsp.GetSubjectConditionSets()[1].GetId())
+	s.Equal(int32(2), listRsp.GetPagination().GetTotal())
+
+	firstPage, err := s.db.PolicyClient.ListSubjectConditionSets(s.ctx, &subjectmapping.ListSubjectConditionSetsRequest{
+		Search:     &policy.Search{Term: searchToken},
+		Pagination: &policy.PageRequest{Limit: 1},
+		Sort: []*subjectmapping.SubjectConditionSetsSort{
+			{Field: subjectmapping.SortSubjectConditionSetsType_SORT_SUBJECT_CONDITION_SETS_TYPE_CREATED_AT, Direction: policy.SortDirection_SORT_DIRECTION_ASC},
+		},
+	})
+	s.Require().NoError(err)
+	s.Len(firstPage.GetSubjectConditionSets(), 1)
+	s.Equal(labelValueMatch.GetId(), firstPage.GetSubjectConditionSets()[0].GetId())
+	s.Equal(int32(2), firstPage.GetPagination().GetTotal())
+	s.Equal(int32(1), firstPage.GetPagination().GetNextOffset())
+}
+
+func (s *SubjectMappingsSuite) Test_ListSubjectConditionSets_SearchEscapesLikeWildcardLiterals_Succeeds() {
+	suffix := time.Now().UnixNano()
+	conditionSetIDs := []string{
+		s.newSearchTestSubjectConditionSet(
+			fmt.Sprintf(".dspx_scs_like_a_%d", suffix),
+			[]string{"engineering"},
+			map[string]string{"team": fmt.Sprintf("wildcarda-%d", suffix)},
+			"",
+		).GetId(),
+		s.newSearchTestSubjectConditionSet(
+			fmt.Sprintf(".dspx_scs_like_b_%d", suffix),
+			[]string{"finance"},
+			map[string]string{"team": fmt.Sprintf("wildcardb-%d", suffix)},
+			"",
+		).GetId(),
+	}
+	defer s.deleteTestSCSs(conditionSetIDs)
+
+	for _, query := range []string{
+		fmt.Sprintf("wildcard_-%d", suffix),
+		fmt.Sprintf("wildcard%%-%d", suffix),
+	} {
+		listRsp, err := s.db.PolicyClient.ListSubjectConditionSets(s.ctx, &subjectmapping.ListSubjectConditionSetsRequest{
+			Search: &policy.Search{Term: query},
+		})
+		s.Require().NoError(err)
+		s.Empty(listRsp.GetSubjectConditionSets())
+		s.Equal(int32(0), listRsp.GetPagination().GetTotal())
+	}
+}
+
+func (s *SubjectMappingsSuite) Test_ListSubjectConditionSets_SearchCombinesWithNamespace_Succeeds() {
+	comNsID := s.exampleComNsID()
+	netNsID := s.exampleNetNsID()
+	searchToken := fmt.Sprintf("dspx-scs-namespace-search-%d", time.Now().UnixNano())
+
+	comSCS := s.newSearchTestSubjectConditionSet(fmt.Sprintf(".dspx_scs_com_%d", time.Now().UnixNano()), []string{"com-value"}, map[string]string{"team": "com-" + searchToken}, comNsID)
+	netSCS := s.newSearchTestSubjectConditionSet(fmt.Sprintf(".dspx_scs_net_%d", time.Now().UnixNano()), []string{"net-value"}, map[string]string{"team": "net-" + searchToken}, netNsID)
+	unnamespacedSCS := s.newSearchTestSubjectConditionSet(fmt.Sprintf(".dspx_scs_global_%d", time.Now().UnixNano()), []string{"unnamespaced-value"}, map[string]string{"team": "global-" + searchToken}, "")
+	defer s.deleteTestSCSs([]string{comSCS.GetId(), netSCS.GetId(), unnamespacedSCS.GetId()})
+
+	listRsp, err := s.db.PolicyClient.ListSubjectConditionSets(s.ctx, &subjectmapping.ListSubjectConditionSetsRequest{
+		NamespaceId: comNsID,
+		Search:      &policy.Search{Term: "com-" + searchToken},
+	})
+	s.Require().NoError(err)
+	s.Require().Len(listRsp.GetSubjectConditionSets(), 1)
+	s.Equal(comSCS.GetId(), listRsp.GetSubjectConditionSets()[0].GetId())
+	s.Equal(comNsID, listRsp.GetSubjectConditionSets()[0].GetNamespace().GetId())
+	s.Equal(int32(1), listRsp.GetPagination().GetTotal())
+}
+
+func (s *SubjectMappingsSuite) Test_ListSubjectConditionSets_SearchEmptyAndWhitespace_Succeeds() {
+	searchToken := fmt.Sprintf("dspx-scs-trim-%d", time.Now().UnixNano())
+	created := s.newSearchTestSubjectConditionSet(fmt.Sprintf(".dspx_scs_trim_%d", time.Now().UnixNano()), []string{"trim-value"}, map[string]string{"team": searchToken}, "")
+	defer s.deleteTestSCSs([]string{created.GetId()})
+
+	noSearch, err := s.db.PolicyClient.ListSubjectConditionSets(s.ctx, &subjectmapping.ListSubjectConditionSetsRequest{})
+	s.Require().NoError(err)
+	emptySearch, err := s.db.PolicyClient.ListSubjectConditionSets(s.ctx, &subjectmapping.ListSubjectConditionSetsRequest{
+		Search: &policy.Search{Term: ""},
+	})
+	s.Require().NoError(err)
+	s.Equal(noSearch.GetPagination().GetTotal(), emptySearch.GetPagination().GetTotal())
+
+	leadingSpaceSearch, err := s.db.PolicyClient.ListSubjectConditionSets(s.ctx, &subjectmapping.ListSubjectConditionSetsRequest{
+		Search: &policy.Search{Term: " " + searchToken},
+	})
+	s.Require().NoError(err)
+	s.Require().Len(leadingSpaceSearch.GetSubjectConditionSets(), 1)
+	s.Equal(created.GetId(), leadingSpaceSearch.GetSubjectConditionSets()[0].GetId())
+	s.Equal(int32(1), leadingSpaceSearch.GetPagination().GetTotal())
+}
+
 func (s *SubjectMappingsSuite) Test_ListSubjectConditionSets_SortByCreatedAt_ASC() {
-	ids := s.createSortTestSubjectConditionSets("sort-scs-created-asc")
+	ids := s.createSortTestSubjectConditionSets([]string{"sort-scs-created-asc-0", "sort-scs-created-asc-1", "sort-scs-created-asc-2"})
+	defer s.deleteTestSCSs(ids)
 
 	listRsp, err := s.db.PolicyClient.ListSubjectConditionSets(s.ctx, &subjectmapping.ListSubjectConditionSetsRequest{
 		Sort: []*subjectmapping.SubjectConditionSetsSort{
@@ -1397,7 +1851,8 @@ func (s *SubjectMappingsSuite) Test_ListSubjectConditionSets_SortByCreatedAt_ASC
 }
 
 func (s *SubjectMappingsSuite) Test_ListSubjectConditionSets_SortByCreatedAt_DESC() {
-	ids := s.createSortTestSubjectConditionSets("sort-scs-created-desc")
+	ids := s.createSortTestSubjectConditionSets([]string{"sort-scs-created-desc-0", "sort-scs-created-desc-1", "sort-scs-created-desc-2"})
+	defer s.deleteTestSCSs(ids)
 
 	listRsp, err := s.db.PolicyClient.ListSubjectConditionSets(s.ctx, &subjectmapping.ListSubjectConditionSetsRequest{
 		Sort: []*subjectmapping.SubjectConditionSetsSort{
@@ -1412,7 +1867,8 @@ func (s *SubjectMappingsSuite) Test_ListSubjectConditionSets_SortByCreatedAt_DES
 }
 
 func (s *SubjectMappingsSuite) Test_ListSubjectConditionSets_SortByUpdatedAt_DESC() {
-	ids := s.createSortTestSubjectConditionSets("sort-scs-updated-desc")
+	ids := s.createSortTestSubjectConditionSets([]string{"sort-scs-updated-desc-0", "sort-scs-updated-desc-1", "sort-scs-updated-desc-2"})
+	defer s.deleteTestSCSs(ids)
 
 	// Update the first SCS so its updated_at is the most recent
 	time.Sleep(5 * time.Millisecond)
@@ -1438,7 +1894,8 @@ func (s *SubjectMappingsSuite) Test_ListSubjectConditionSets_SortByUpdatedAt_DES
 }
 
 func (s *SubjectMappingsSuite) Test_ListSubjectConditionSets_SortByUpdatedAt_ASC() {
-	ids := s.createSortTestSubjectConditionSets("sort-scs-updated-asc")
+	ids := s.createSortTestSubjectConditionSets([]string{"sort-scs-updated-asc-0", "sort-scs-updated-asc-1", "sort-scs-updated-asc-2"})
+	defer s.deleteTestSCSs(ids)
 
 	// Update the last SCS so its updated_at is the most recent
 	time.Sleep(5 * time.Millisecond)
@@ -1463,8 +1920,52 @@ func (s *SubjectMappingsSuite) Test_ListSubjectConditionSets_SortByUpdatedAt_ASC
 	assertIDsInOrder(s.T(), listRsp.GetSubjectConditionSets(), func(scs *policy.SubjectConditionSet) string { return scs.GetId() }, ids[0], ids[1], ids[2])
 }
 
-func (s *SubjectMappingsSuite) Test_ListSubjectConditionSets_SortByUnspecified_FallsBackToDefault() {
-	ids := s.createSortTestSubjectConditionSets("sort-scs-unspecified")
+func (s *SubjectMappingsSuite) Test_ListSubjectConditionSets_SortTieBreaker_CreatedAtWithIDFallback() {
+	suffix := time.Now().UnixNano()
+	ids := make([]string, 3)
+	for i := range 3 {
+		val := fmt.Sprintf("tiebreaker-scs-%d-%d", i, suffix)
+		created, err := s.db.PolicyClient.CreateSubjectConditionSet(s.ctx, &subjectmapping.SubjectConditionSetCreate{
+			SubjectSets: []*policy.SubjectSet{
+				{
+					ConditionGroups: []*policy.ConditionGroup{
+						{
+							BooleanOperator: policy.ConditionBooleanTypeEnum_CONDITION_BOOLEAN_TYPE_ENUM_AND,
+							Conditions: []*policy.Condition{
+								{
+									SubjectExternalSelectorValue: ".sort_test",
+									Operator:                     policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_IN,
+									SubjectExternalValues:        []string{val},
+								},
+							},
+						},
+					},
+				},
+			},
+		}, "", "")
+		s.Require().NoError(err)
+		ids[i] = created.GetId()
+	}
+	defer s.deleteTestSCSs(ids)
+
+	s.Require().NoError(forceCreatedAtTie(s.ctx, s.db, "subject_condition_set", ids))
+
+	sorted := slices.Sorted(slices.Values(ids))
+
+	listRsp, err := s.db.PolicyClient.ListSubjectConditionSets(s.ctx, &subjectmapping.ListSubjectConditionSetsRequest{
+		Sort: []*subjectmapping.SubjectConditionSetsSort{
+			{Field: subjectmapping.SortSubjectConditionSetsType_SORT_SUBJECT_CONDITION_SETS_TYPE_CREATED_AT, Direction: policy.SortDirection_SORT_DIRECTION_ASC},
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(listRsp)
+
+	assertIDsInOrder(s.T(), listRsp.GetSubjectConditionSets(), func(scs *policy.SubjectConditionSet) string { return scs.GetId() }, sorted[0], sorted[1], sorted[2])
+}
+
+func (s *SubjectMappingsSuite) Test_ListSubjectConditionSets_SortByUnspecifiedField_DefaultsToCreatedAt() {
+	ids := s.createSortTestSubjectConditionSets([]string{"unspecified-field-scs-0", "unspecified-field-scs-1", "unspecified-field-scs-2"})
+	defer s.deleteTestSCSs(ids)
 
 	listRsp, err := s.db.PolicyClient.ListSubjectConditionSets(s.ctx, &subjectmapping.ListSubjectConditionSetsRequest{
 		Sort: []*subjectmapping.SubjectConditionSetsSort{
@@ -1474,7 +1975,51 @@ func (s *SubjectMappingsSuite) Test_ListSubjectConditionSets_SortByUnspecified_F
 	s.Require().NoError(err)
 	s.NotNil(listRsp)
 
-	// Falls back to default created_at DESC ordering
+	// Field defaults to created_at, explicit ASC is preserved
+	assertIDsInOrder(s.T(), listRsp.GetSubjectConditionSets(), func(scs *policy.SubjectConditionSet) string { return scs.GetId() }, ids[0], ids[1], ids[2])
+}
+
+func (s *SubjectMappingsSuite) Test_ListSubjectConditionSets_SortByUnspecifiedDirection_DefaultsToDESC() {
+	ids := s.createSortTestSubjectConditionSets([]string{"unspecified-dir-scs-0", "unspecified-dir-scs-1", "unspecified-dir-scs-2"})
+	defer s.deleteTestSCSs(ids)
+
+	listRsp, err := s.db.PolicyClient.ListSubjectConditionSets(s.ctx, &subjectmapping.ListSubjectConditionSetsRequest{
+		Sort: []*subjectmapping.SubjectConditionSetsSort{
+			{Field: subjectmapping.SortSubjectConditionSetsType_SORT_SUBJECT_CONDITION_SETS_TYPE_CREATED_AT, Direction: policy.SortDirection_SORT_DIRECTION_UNSPECIFIED},
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(listRsp)
+
+	// Direction defaults to DESC, explicit created_at field is preserved
+	assertIDsInOrder(s.T(), listRsp.GetSubjectConditionSets(), func(scs *policy.SubjectConditionSet) string { return scs.GetId() }, ids[2], ids[1], ids[0])
+}
+
+func (s *SubjectMappingsSuite) Test_ListSubjectConditionSets_SortByBothUnspecified_DefaultsToCreatedAtDESC() {
+	ids := s.createSortTestSubjectConditionSets([]string{"both-unspecified-scs-0", "both-unspecified-scs-1", "both-unspecified-scs-2"})
+	defer s.deleteTestSCSs(ids)
+
+	listRsp, err := s.db.PolicyClient.ListSubjectConditionSets(s.ctx, &subjectmapping.ListSubjectConditionSetsRequest{
+		Sort: []*subjectmapping.SubjectConditionSetsSort{
+			{Field: subjectmapping.SortSubjectConditionSetsType_SORT_SUBJECT_CONDITION_SETS_TYPE_UNSPECIFIED, Direction: policy.SortDirection_SORT_DIRECTION_UNSPECIFIED},
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(listRsp)
+
+	// Both default: created_at DESC
+	assertIDsInOrder(s.T(), listRsp.GetSubjectConditionSets(), func(scs *policy.SubjectConditionSet) string { return scs.GetId() }, ids[2], ids[1], ids[0])
+}
+
+func (s *SubjectMappingsSuite) Test_ListSubjectConditionSets_SortOmitted() {
+	ids := s.createSortTestSubjectConditionSets([]string{"sort-omitted-scs-0", "sort-omitted-scs-1", "sort-omitted-scs-2"})
+	defer s.deleteTestSCSs(ids)
+
+	listRsp, err := s.db.PolicyClient.ListSubjectConditionSets(s.ctx, &subjectmapping.ListSubjectConditionSetsRequest{})
+	s.Require().NoError(err)
+	s.NotNil(listRsp)
+
+	// No sort provided: created_at DESC
 	assertIDsInOrder(s.T(), listRsp.GetSubjectConditionSets(), func(scs *policy.SubjectConditionSet) string { return scs.GetId() }, ids[2], ids[1], ids[0])
 }
 
@@ -2666,19 +3211,42 @@ func (s *SubjectMappingsSuite) newSCSInNamespace(nsID string) *policy.SubjectCon
 	return scs
 }
 
-// createSortTestSubjectMappings creates 3 subject mappings with 5ms gaps for distinct timestamps.
-// Returns the subject mapping IDs in creation order.
-func (s *SubjectMappingsSuite) createSortTestSubjectMappings(label string) []string {
+func (s *SubjectMappingsSuite) newSearchTestSubjectConditionSet(selector string, values []string, labels map[string]string, namespaceID string) *policy.SubjectConditionSet {
+	scs, err := s.db.PolicyClient.CreateSubjectConditionSet(s.ctx, &subjectmapping.SubjectConditionSetCreate{
+		SubjectSets: []*policy.SubjectSet{
+			{
+				ConditionGroups: []*policy.ConditionGroup{
+					{
+						BooleanOperator: policy.ConditionBooleanTypeEnum_CONDITION_BOOLEAN_TYPE_ENUM_AND,
+						Conditions: []*policy.Condition{
+							{
+								SubjectExternalSelectorValue: selector,
+								Operator:                     policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_IN,
+								SubjectExternalValues:        values,
+							},
+						},
+					},
+				},
+			},
+		},
+		Metadata: &common.MetadataMutable{
+			Labels: labels,
+		},
+	}, namespaceID, "")
+	s.Require().NoError(err)
+	return scs
+}
+
+func (s *SubjectMappingsSuite) createSortTestSubjectMappings(prefixes []string) []string {
 	fixtureAttrValID := s.f.GetAttributeValueKey("example.net/attr/attr1/value/value2").ID
 	actionRead := s.f.GetStandardAction(policydb.ActionRead.String())
 
-	const count = 3
-	ids := make([]string, count)
-	for i := range count {
+	ids := make([]string, len(prefixes))
+	for i, prefix := range prefixes {
 		if i > 0 {
 			time.Sleep(5 * time.Millisecond)
 		}
-		email := fmt.Sprintf("%s-%d-%d@example.com", label, i, time.Now().UnixNano())
+		email := fmt.Sprintf("%s-%d@example.com", prefix, time.Now().UnixNano())
 		scs := &subjectmapping.SubjectConditionSetCreate{
 			SubjectSets: []*policy.SubjectSet{
 				{
@@ -2708,16 +3276,13 @@ func (s *SubjectMappingsSuite) createSortTestSubjectMappings(label string) []str
 	return ids
 }
 
-// createSortTestSubjectConditionSets creates 3 subject condition sets with 5ms gaps for distinct timestamps.
-// Returns the SCS IDs in creation order.
-func (s *SubjectMappingsSuite) createSortTestSubjectConditionSets(label string) []string {
-	const count = 3
-	ids := make([]string, count)
-	for i := range count {
+func (s *SubjectMappingsSuite) createSortTestSubjectConditionSets(prefixes []string) []string {
+	ids := make([]string, len(prefixes))
+	for i, prefix := range prefixes {
 		if i > 0 {
 			time.Sleep(5 * time.Millisecond)
 		}
-		val := fmt.Sprintf("%s-%d-%d", label, i, time.Now().UnixNano())
+		val := fmt.Sprintf("%s-%d", prefix, time.Now().UnixNano())
 		created, err := s.db.PolicyClient.CreateSubjectConditionSet(s.ctx, &subjectmapping.SubjectConditionSetCreate{
 			SubjectSets: []*policy.SubjectSet{
 				{
@@ -2740,4 +3305,89 @@ func (s *SubjectMappingsSuite) createSortTestSubjectConditionSets(label string) 
 		ids[i] = created.GetId()
 	}
 	return ids
+}
+
+func (s *SubjectMappingsSuite) createSearchSubjectMappingNamespace(suffix int64, values []string) (*policy.Namespace, []*policy.Value) {
+	ns, err := s.db.PolicyClient.CreateNamespace(s.ctx, &namespaces.CreateNamespaceRequest{
+		Name: fmt.Sprintf("list-sm-search-%d.example", suffix),
+	})
+	s.Require().NoError(err)
+	s.Require().NotNil(ns)
+
+	attr, err := s.db.PolicyClient.CreateAttribute(s.ctx, &attributes.CreateAttributeRequest{
+		Name:        fmt.Sprintf("list-sm-search-attr-%d", suffix),
+		NamespaceId: ns.GetId(),
+		Rule:        policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
+	})
+	s.Require().NoError(err)
+	s.Require().NotNil(attr)
+
+	createdValues := make([]*policy.Value, len(values))
+	for i, value := range values {
+		created, err := s.db.PolicyClient.CreateAttributeValue(s.ctx, attr.GetId(), &attributes.CreateAttributeValueRequest{
+			Value: value,
+		})
+		s.Require().NoError(err)
+		createdValues[i] = created
+	}
+
+	return ns, createdValues
+}
+
+func (s *SubjectMappingsSuite) createSearchSubjectMapping(
+	namespaceID string,
+	attributeValueID string,
+	selector string,
+	externalValues []string,
+	actionName string,
+	labels map[string]string,
+) *policy.SubjectMapping {
+	created, err := s.db.PolicyClient.CreateSubjectMapping(s.ctx, &subjectmapping.CreateSubjectMappingRequest{
+		NamespaceId:      namespaceID,
+		AttributeValueId: attributeValueID,
+		Actions:          []*policy.Action{{Name: actionName}},
+		Metadata:         &common.MetadataMutable{Labels: labels},
+		NewSubjectConditionSet: &subjectmapping.SubjectConditionSetCreate{
+			SubjectSets: []*policy.SubjectSet{
+				{
+					ConditionGroups: []*policy.ConditionGroup{
+						{
+							BooleanOperator: policy.ConditionBooleanTypeEnum_CONDITION_BOOLEAN_TYPE_ENUM_AND,
+							Conditions: []*policy.Condition{
+								{
+									SubjectExternalSelectorValue: selector,
+									Operator:                     policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_IN,
+									SubjectExternalValues:        externalValues,
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	})
+	s.Require().NoError(err)
+	s.Require().NotNil(created)
+	return created
+}
+
+func (s *SubjectMappingsSuite) deleteSearchSubjectMappingNamespace(ns *policy.Namespace) {
+	_, err := s.db.PolicyClient.UnsafeDeleteNamespace(s.ctx, ns, ns.GetFqn())
+	s.Require().NoError(err)
+}
+
+// deleteSortTestSubjectMappings cleans up subject mappings created by sort tests.
+func (s *SubjectMappingsSuite) deleteSortTestSubjectMappings(ids []string) {
+	for _, id := range ids {
+		_, err := s.db.PolicyClient.DeleteSubjectMapping(s.ctx, id)
+		s.Require().NoError(err)
+	}
+}
+
+// deleteTestSCSs cleans up subject condition sets created by sort tests.
+func (s *SubjectMappingsSuite) deleteTestSCSs(ids []string) {
+	for _, id := range ids {
+		_, err := s.db.PolicyClient.DeleteSubjectConditionSet(s.ctx, id)
+		s.Require().NoError(err)
+	}
 }

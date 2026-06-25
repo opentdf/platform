@@ -1,5 +1,11 @@
+# This template tracks service/cmd/keycloak_data.yaml. Only the templated
+# values (hostname/kcPort/platformPort/realm) and BDD-specific additions
+# marked inline (e.g., the `impersonation` client role on opentdf's
+# service account, used for RFC 8693 token-exchange in the encrypt/decrypt
+# scenarios) should differ from that file; when keycloak_data.yaml
+# changes, update this template to match.
 baseUrl: &baseUrl http://{{.hostname}}:{{.kcPort}}
-serverBaseUrl: &serverBaseUrl https://{{.hostname}}:{{.platformPort}}
+serverBaseUrl: &serverBaseUrl http://{{.hostname}}:{{.platformPort}}
 customAudMapper: &customAudMapper
   name: audience-mapper
   protocol: openid-connect
@@ -35,6 +41,11 @@ realms:
             - *customAudMapper
         sa_realm_roles:
           - opentdf-admin
+        # BDD-only: grant impersonation so the admin SDK can exchange its
+        # token for a user-scoped token in encrypt/decrypt scenarios.
+        sa_client_roles:
+          realm-management:
+            - impersonation
         copies: 10
       - client:
           clientID: opentdf-sdk

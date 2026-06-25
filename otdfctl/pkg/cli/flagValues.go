@@ -15,23 +15,27 @@ type FlagsStringSliceOptions struct {
 	Max int
 }
 
-type flagHelper struct {
+type Flags struct {
 	cmd *cobra.Command
 }
 
-func newFlagHelper(cmd *cobra.Command) *flagHelper {
-	return &flagHelper{cmd: cmd}
+func newFlags(cmd *cobra.Command) *Flags {
+	return &Flags{cmd: cmd}
 }
 
-func (f flagHelper) GetRequiredString(flag string) string {
-	v := f.cmd.Flag(flag).Value.String()
+func (f Flags) GetRequiredString(flag string) string {
+	p := f.cmd.Flag(flag)
+	if p == nil {
+		ExitWithError("Flag '--"+flag+"' is not registered", nil)
+	}
+	v := p.Value.String()
 	if v == "" {
 		ExitWithError("Flag '--"+flag+"' is required", nil)
 	}
 	return v
 }
 
-func (f flagHelper) GetRequiredID(idFlag string) string {
+func (f Flags) GetRequiredID(idFlag string) string {
 	v := f.GetRequiredString(idFlag)
 	id, err := uuid.Parse(v)
 	if err != nil {
@@ -40,7 +44,7 @@ func (f flagHelper) GetRequiredID(idFlag string) string {
 	return id.String()
 }
 
-func (f flagHelper) GetOptionalID(idFlag string) string {
+func (f Flags) GetOptionalID(idFlag string) string {
 	p := f.GetOptionalString(idFlag)
 	if p == "" {
 		return ""
@@ -52,7 +56,7 @@ func (f flagHelper) GetOptionalID(idFlag string) string {
 	return id.String()
 }
 
-func (f flagHelper) GetOptionalString(flag string) string {
+func (f Flags) GetOptionalString(flag string) string {
 	p := f.cmd.Flag(flag)
 	if p == nil {
 		return ""
@@ -60,7 +64,7 @@ func (f flagHelper) GetOptionalString(flag string) string {
 	return p.Value.String()
 }
 
-func (f flagHelper) GetStringSlice(flag string, v []string, opts FlagsStringSliceOptions) []string {
+func (f Flags) GetStringSlice(flag string, v []string, opts FlagsStringSliceOptions) []string {
 	if len(v) < opts.Min {
 		ExitWithError(fmt.Sprintf("Flag '--%s' must have at least %d non-empty values", flag, opts.Min), nil)
 	}
@@ -70,7 +74,7 @@ func (f flagHelper) GetStringSlice(flag string, v []string, opts FlagsStringSlic
 	return v
 }
 
-func (f flagHelper) GetRequiredInt32(flag string) int32 {
+func (f Flags) GetRequiredInt32(flag string) int32 {
 	v, e := f.cmd.Flags().GetInt32(flag)
 	if e != nil {
 		ExitWithError("Flag '--"+flag+"' is required", nil)
@@ -82,18 +86,18 @@ func (f flagHelper) GetRequiredInt32(flag string) int32 {
 	return v
 }
 
-func (f flagHelper) GetOptionalInt32(flag string) int32 {
+func (f Flags) GetOptionalInt32(flag string) int32 {
 	v, _ := f.cmd.Flags().GetInt32(flag)
 	return v
 }
 
-func (f flagHelper) GetOptionalBool(flag string) bool {
+func (f Flags) GetOptionalBool(flag string) bool {
 	v, _ := f.cmd.Flags().GetBool(flag)
 	return v
 }
 
 // Returns nil when the flag is not explicitly set.
-func (f flagHelper) GetOptionalBoolWrapper(flag string) *wrapperspb.BoolValue {
+func (f Flags) GetOptionalBoolWrapper(flag string) *wrapperspb.BoolValue {
 	if !f.cmd.Flags().Changed(flag) {
 		return nil
 	}
@@ -101,7 +105,7 @@ func (f flagHelper) GetOptionalBoolWrapper(flag string) *wrapperspb.BoolValue {
 	return wrapperspb.Bool(v)
 }
 
-func (f flagHelper) GetRequiredBool(flag string) bool {
+func (f Flags) GetRequiredBool(flag string) bool {
 	v, e := f.cmd.Flags().GetBool(flag)
 	if e != nil {
 		ExitWithError("Flag '--"+flag+"' is required", nil)
@@ -123,18 +127,6 @@ func GetState(cmd *cobra.Command) common.ActiveStateEnum {
 	}
 	return state
 }
-
-// func (f flagHelper) GetStructSlice(flag string, v []StructFlag[T], opts flagHelperStringSliceOptions) ([]StructFlag[T], err) {
-// 	if len(v) < opts.Min {
-// 		fmt.Println(ErrorMessage(fmt.Sprintf("Flag %s must have at least %d non-empty values", flag, opts.Min), nil))
-// 		os.Exit(1)
-// 	}
-// 	if opts.Max > 0 && len(v) > opts.Max {
-// 		fmt.Println(ErrorMessage(fmt.Sprintf("Flag %s must have at most %d non-empty values", flag, opts.Max), nil))
-// 		os.Exit(1)
-// 	}
-// 	return v
-// }
 
 // type StructFlag[T any] struct {
 // 	Val T

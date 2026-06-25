@@ -150,8 +150,10 @@ func listSubjectConditionSets(cmd *cobra.Command, args []string) {
 	limit := c.Flags.GetRequiredInt32("limit")
 	offset := c.Flags.GetRequiredInt32("offset")
 	namespace := c.Flags.GetOptionalString("namespace")
+	search := c.Flags.GetOptionalString("search")
+	sort := getSortOption(c)
 
-	resp, err := h.ListSubjectConditionSets(cmd.Context(), limit, offset, namespace)
+	resp, err := h.ListSubjectConditionSets(cmd.Context(), limit, offset, namespace, search, sort)
 	if err != nil {
 		cli.ExitWithError("Error listing subject condition sets", err)
 	}
@@ -323,7 +325,8 @@ func pruneSubjectConditionSet(cmd *cobra.Command, args []string) {
 var subjectConditionSetsCmd *cobra.Command
 
 func initSubjectConditionSetsCommands() {
-	createDoc := man.Docs.GetCommand("policy/subject-condition-sets/create",
+	createDoc := man.Docs.GetCommand(
+		"policy/subject-condition-sets/create",
 		man.WithRun(createSubjectConditionSet),
 	)
 	injectLabelFlags(&createDoc.Command, false)
@@ -346,7 +349,8 @@ func initSubjectConditionSetsCommands() {
 		createDoc.GetDocFlag("namespace").Description,
 	)
 
-	getDoc := man.Docs.GetCommand("policy/subject-condition-sets/get",
+	getDoc := man.Docs.GetCommand(
+		"policy/subject-condition-sets/get",
 		man.WithRun(getSubjectConditionSet),
 	)
 	getDoc.Flags().StringP(
@@ -356,10 +360,13 @@ func initSubjectConditionSetsCommands() {
 		getDoc.GetDocFlag("id").Description,
 	)
 
-	listDoc := man.Docs.GetCommand("policy/subject-condition-sets/list",
+	listDoc := man.Docs.GetCommand(
+		"policy/subject-condition-sets/list",
 		man.WithRun(listSubjectConditionSets),
 	)
 	injectListPaginationFlags(listDoc)
+	injectListSearchFlag(listDoc)
+	injectListSortFlags(listDoc)
 	listDoc.Flags().StringP(
 		listDoc.GetDocFlag("namespace").Name,
 		listDoc.GetDocFlag("namespace").Shorthand,
@@ -367,7 +374,8 @@ func initSubjectConditionSetsCommands() {
 		listDoc.GetDocFlag("namespace").Description,
 	)
 
-	updateDoc := man.Docs.GetCommand("policy/subject-condition-sets/update",
+	updateDoc := man.Docs.GetCommand(
+		"policy/subject-condition-sets/update",
 		man.WithRun(updateSubjectConditionSet),
 	)
 	updateDoc.Flags().StringP(
@@ -416,7 +424,8 @@ func initSubjectConditionSetsCommands() {
 		pruneDoc.GetDocFlag("force").Description,
 	)
 
-	doc := man.Docs.GetCommand("policy/subject-condition-sets",
+	doc := man.Docs.GetCommand(
+		"policy/subject-condition-sets",
 		man.WithSubcommands(
 			createDoc,
 			getDoc,

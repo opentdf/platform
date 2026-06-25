@@ -89,15 +89,16 @@ type PoolConfig struct {
 }
 
 type Config struct {
-	Host           string     `mapstructure:"host" json:"host" default:"localhost"`
-	Port           int        `mapstructure:"port" json:"port" default:"5432"`
-	Database       string     `mapstructure:"database" json:"database" default:"opentdf"`
-	User           string     `mapstructure:"user" json:"user" default:"postgres"`
-	Password       string     `mapstructure:"password" json:"password" default:"changeme"`
-	SSLMode        string     `mapstructure:"sslmode" json:"sslmode" default:"prefer"`
-	Schema         string     `mapstructure:"schema" json:"schema" default:"opentdf"`
-	ConnectTimeout int        `mapstructure:"connect_timeout_seconds" json:"connect_timeout_seconds" default:"15"`
-	Pool           PoolConfig `mapstructure:"pool" json:"pool"`
+	Host             string     `mapstructure:"host" json:"host" default:"localhost"`
+	Port             int        `mapstructure:"port" json:"port" default:"5432"`
+	Database         string     `mapstructure:"database" json:"database" default:"opentdf"`
+	User             string     `mapstructure:"user" json:"user" default:"postgres"`
+	Password         string     `mapstructure:"password" json:"password" default:"changeme"`
+	SSLMode          string     `mapstructure:"sslmode" json:"sslmode" default:"prefer"`
+	Schema           string     `mapstructure:"schema" json:"schema" default:"opentdf"`
+	ConnectTimeout   int        `mapstructure:"connect_timeout_seconds" json:"connect_timeout_seconds" default:"15"`
+	StatementTimeout int        `mapstructure:"statement_timeout_seconds" json:"statement_timeout_seconds"`
+	Pool             PoolConfig `mapstructure:"pool" json:"pool"`
 
 	RunMigrations    bool      `mapstructure:"runMigrations" json:"runMigrations" default:"true"`
 	MigrationsFS     *embed.FS `mapstructure:"-" json:"-"`
@@ -114,7 +115,9 @@ func (c Config) LogValue() slog.Value {
 		slog.String("sslmode", c.SSLMode),
 		slog.String("schema", c.Schema),
 		slog.Int("connect_timeout_seconds", c.ConnectTimeout),
-		slog.Group("pool",
+		slog.Int("statement_timeout_seconds", c.StatementTimeout),
+		slog.Group(
+			"pool",
 			slog.Int("max_connection_count", int(c.Pool.MaxConns)),
 			slog.Int("min_connection_count", int(c.Pool.MinConns)),
 			slog.Int("max_connection_lifetime_seconds", c.Pool.MaxConnLifetime),
@@ -224,7 +227,8 @@ func (c *Client) Close() {
 }
 
 func (c Config) buildConfig() (*pgxpool.Config, error) {
-	u := fmt.Sprintf("postgres://%s:%s@%s/%s?sslmode=%s",
+	u := fmt.Sprintf(
+		"postgres://%s:%s@%s/%s?sslmode=%s",
 		c.User,
 		url.QueryEscape(c.Password),
 		net.JoinHostPort(c.Host, strconv.Itoa(c.Port)),
@@ -250,11 +254,16 @@ func (c Config) buildConfig() (*pgxpool.Config, error) {
 	parsed.MaxConnIdleTime = time.Duration(c.Pool.MaxConnIdleTime) * time.Second
 	parsed.HealthCheckPeriod = time.Duration(c.Pool.HealthCheckPeriod) * time.Second
 
+	if c.StatementTimeout > 0 {
+		parsed.ConnConfig.RuntimeParams["statement_timeout"] = fmt.Sprintf("%ds", c.StatementTimeout)
+	}
+
 	// Configure the search_path schema immediately on connection opening
 	parsed.AfterConnect = func(ctx context.Context, conn *pgx.Conn) error {
 		_, err := conn.Exec(ctx, "SET search_path TO "+pgx.Identifier{c.Schema}.Sanitize())
 		if err != nil {
-			slog.Error("failed to set database client search_path",
+			slog.Error(
+				"failed to set database client search_path",
 				slog.String("schema", c.Schema),
 				slog.Any("error", err),
 			)
@@ -263,6 +272,20 @@ func (c Config) buildConfig() (*pgxpool.Config, error) {
 		slog.Debug("successfully set database client search_path", slog.String("schema", c.Schema))
 		return nil
 	}
+	return parsed, nil
+}
+
+func (c Config) buildMigrationConfig() (*pgxpool.Config, error) {
+	parsed, err := c.buildConfig()
+	if err != nil {
+		return nil, err
+	}
+
+	parsed.MaxConns = 1
+	parsed.MinConns = 0
+	parsed.MinIdleConns = 0
+	parsed.ConnConfig.RuntimeParams["statement_timeout"] = "0"
+
 	return parsed, nil
 }
 

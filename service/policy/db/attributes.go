@@ -147,11 +147,13 @@ func (c PolicyDBClient) ListAttributes(ctx context.Context, r *attributes.ListAt
 	}
 
 	sortField, sortDirection := GetAttributesSortParams(r.GetSort())
+	search := pgtypeSubstringSearchPattern(r.GetSearch().GetTerm())
 
 	list, err := c.queries.listAttributesDetail(ctx, listAttributesDetailParams{
 		Active:        active,
 		NamespaceID:   pgtypeUUID(namespaceID),
 		NamespaceName: pgtypeText(namespaceName),
+		Search:        search,
 		Limit:         limit,
 		Offset:        offset,
 		SortField:     sortField,

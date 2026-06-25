@@ -1,5 +1,89 @@
 # Changelog
 
+## [0.24.0](https://github.com/opentdf/platform/compare/sdk/v0.23.0...sdk/v0.24.0) (2026-06-23)
+
+
+### ⚠ BREAKING CHANGES
+
+* **core:** conform hybrid PQ/T key formats to IETF drafts ([#3563](https://github.com/opentdf/platform/issues/3563))
+
+### Features
+
+* **core:** Adds comprehensive DPoP (RFC 9449) support ([#3582](https://github.com/opentdf/platform/issues/3582)) ([8a00646](https://github.com/opentdf/platform/commit/8a006469dc6e55455a2ce4715415671d39670ef6))
+* **core:** conform hybrid PQ/T key formats to IETF drafts ([#3563](https://github.com/opentdf/platform/issues/3563)) ([dc18568](https://github.com/opentdf/platform/commit/dc1856831383de1c5880121518c0fb83c429a5a5))
+
+
+### Bug Fixes
+
+* **deps:** bump github.com/opentdf/platform/lib/ocrypto from 0.12.0 to 0.13.0 in /sdk ([#3654](https://github.com/opentdf/platform/issues/3654)) ([67c4992](https://github.com/opentdf/platform/commit/67c499259f646727e7127e20fe1174010477b2d0))
+
+## [0.23.0](https://github.com/opentdf/platform/compare/sdk/v0.22.0...sdk/v0.23.0) (2026-06-18)
+
+
+### Features
+
+* **sdk:** DSPX-2754 add DynamicValueMapping service client wrapper ([#3635](https://github.com/opentdf/platform/issues/3635)) ([4acf0ca](https://github.com/opentdf/platform/commit/4acf0caea4d601fb372efcf663793af8395a9e78))
+
+## [0.22.0](https://github.com/opentdf/platform/compare/sdk/v0.21.0...sdk/v0.22.0) (2026-06-15)
+
+
+### Bug Fixes
+
+* **ci:** Prefer go.work for toolchain info ([#3285](https://github.com/opentdf/platform/issues/3285)) ([3c05b22](https://github.com/opentdf/platform/commit/3c05b22ecac41380c7d8d80e9d487bb3001cd25d))
+* **deps:** bump github.com/opentdf/platform/protocol/go from 0.32.0 to 0.33.1 in /sdk ([#3609](https://github.com/opentdf/platform/issues/3609)) ([d5cfc8d](https://github.com/opentdf/platform/commit/d5cfc8d7e3978c0935f22b789945da6369e26846))
+
+## [0.21.0](https://github.com/opentdf/platform/compare/sdk/v0.20.0...sdk/v0.21.0) (2026-05-28)
+
+
+### Features
+
+* **core:** add hybrid NIST EC + ML-KEM key wrapping support ([#3276](https://github.com/opentdf/platform/issues/3276)) ([1209acc](https://github.com/opentdf/platform/commit/1209acc2f8ae24af121f6a2892817c20ebb14d25))
+* **sdk:** add WithPolicyFrom re-wrap helper ([#3476](https://github.com/opentdf/platform/issues/3476)) ([baa1403](https://github.com/opentdf/platform/commit/baa1403cf5fb445623e84b00859c2c0cf8c0a20a))
+
+
+### Bug Fixes
+
+* **deps:** bump github.com/opentdf/platform/lib/ocrypto from 0.10.0 to 0.11.0 in /sdk ([#3522](https://github.com/opentdf/platform/issues/3522)) ([e147d12](https://github.com/opentdf/platform/commit/e147d12152076e348f5813148dd8093844c51c8a))
+* **deps:** bump github.com/opentdf/platform/lib/ocrypto from 0.11.0 to 0.12.0 in /sdk ([#3534](https://github.com/opentdf/platform/issues/3534)) ([e95fb70](https://github.com/opentdf/platform/commit/e95fb70342be3aeb87eca102479c962aa2d664e8))
+* **deps:** bump github.com/opentdf/platform/protocol/go from 0.30.0 to 0.31.0 in /sdk ([#3496](https://github.com/opentdf/platform/issues/3496)) ([1415e8e](https://github.com/opentdf/platform/commit/1415e8e7e9e7f8d76cef0ab65d0045822524b6a5))
+* **deps:** bump github.com/opentdf/platform/protocol/go from 0.31.0 to 0.32.0 in /sdk ([#3520](https://github.com/opentdf/platform/issues/3520)) ([0385ab4](https://github.com/opentdf/platform/commit/0385ab44ede2b20e9ca557c7033c62e23349944a))
+* **sdk:** DSPX-3464 Adds subject_token_type to RFC 8693 token exchanges ([#3465](https://github.com/opentdf/platform/issues/3465)) ([ed9b0fc](https://github.com/opentdf/platform/commit/ed9b0fca6ca9a733e2904c1905f7c31a9ebdb64d))
+
+## [0.20.0](https://github.com/opentdf/platform/compare/sdk/v0.19.0...sdk/v0.20.0) (2026-05-11)
+
+
+### Bug Fixes
+
+* **deps:** bump module protocol/go to v0.30.0 throughout ([#3459](https://github.com/opentdf/platform/issues/3459)) ([8eaa502](https://github.com/opentdf/platform/commit/8eaa502b0f949ddbe18a5a1dac0931b92eec2351))
+
+## [0.19.0](https://github.com/opentdf/platform/compare/sdk/v0.18.0...sdk/v0.19.0) (2026-05-06)
+
+
+### Bug Fixes
+
+* **deps:** bump the external group across 1 directory with 7 updates ([#3422](https://github.com/opentdf/platform/issues/3422)) ([be0da08](https://github.com/opentdf/platform/commit/be0da0833863d432cf844858f20a0912c2802e51))
+
+## [0.18.0](https://github.com/opentdf/platform/compare/sdk/v0.17.0...sdk/v0.18.0) (2026-04-29)
+
+
+### Features
+
+* **sdk:** IsHealthy(ctx) public reachability probe ([#3412](https://github.com/opentdf/platform/issues/3412)) ([3e2cf98](https://github.com/opentdf/platform/commit/3e2cf981eded81dafaaf30af642592401caa16f3))
+
+
+### Bug Fixes
+
+* **deps:** bump github.com/opentdf/platform/protocol/go from 0.27.0 to 0.28.0 in /sdk ([#3415](https://github.com/opentdf/platform/issues/3415)) ([701bd9f](https://github.com/opentdf/platform/commit/701bd9f32fca5d9508331ee19966180e4c54d0e7))
+* **deps:** bump go.opentelemetry.io/otel from 1.40.0 to 1.41.0 in /sdk ([#3399](https://github.com/opentdf/platform/issues/3399)) ([d98418b](https://github.com/opentdf/platform/commit/d98418beb9e42819ba0e8376f43771f2ca7855af))
+
+## [0.17.0](https://github.com/opentdf/platform/compare/sdk/v0.16.0...sdk/v0.17.0) (2026-04-24)
+
+
+### Bug Fixes
+
+* **deps:** bump github.com/opentdf/platform/protocol/go from 0.25.0 to 0.26.0 in /sdk ([#3380](https://github.com/opentdf/platform/issues/3380)) ([5e36f94](https://github.com/opentdf/platform/commit/5e36f943280fec86e2d9a4917c576b6731ed8419))
+* **deps:** bump github.com/opentdf/platform/protocol/go from 0.26.0 to 0.27.0 in /sdk ([#3393](https://github.com/opentdf/platform/issues/3393)) ([7659957](https://github.com/opentdf/platform/commit/7659957ed9612397d7e72c6b309006224f3cf214))
+
 ## [0.16.0](https://github.com/opentdf/platform/compare/sdk/v0.15.0...sdk/v0.16.0) (2026-04-21)
 
 

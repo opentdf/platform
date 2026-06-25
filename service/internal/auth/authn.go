@@ -3,8 +3,10 @@ package auth
 import (
 	"context"
 	"crypto"
+	"crypto/rand"
 	"crypto/sha256"
 	"encoding/base64"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -12,9 +14,11 @@ import (
 	"net/http"
 	"net/url"
 	"path"
-	"regexp"
 	"slices"
+	"sort"
 	"strings"
+	"sync"
+	"sync/atomic"
 	"time"
 
 	"connectrpc.com/connect"
@@ -24,12 +28,13 @@ import (
 	"github.com/lestrrat-go/jwx/v2/jws"
 	"github.com/lestrrat-go/jwx/v2/jwt"
 
+	internalauthz "github.com/opentdf/platform/service/internal/auth/authz"
+	_ "github.com/opentdf/platform/service/internal/auth/authz/casbin" // Register casbin authorizer
 	"github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/logger/audit"
-	"google.golang.org/grpc/metadata"
-
 	ctxAuth "github.com/opentdf/platform/service/pkg/auth"
 	"github.com/opentdf/platform/service/pkg/authz"
+	"google.golang.org/grpc/metadata"
 )
 
 var (
@@ -41,8 +46,6 @@ var (
 		// KAS Public Key Endpoints
 		"/kas.AccessService/PublicKey",
 		"/kas.AccessService/LegacyPublicKey",
-		"/kas/kas_public_key",
-		"/kas/v2/kas_public_key",
 		// HealthZ
 		"/healthz",
 		"/grpc.health.v1.Health/Check",
@@ -64,108 +67,198 @@ var (
 		jwa.PS512: true,
 	}
 
-	// Exported error variables for client ID processing
-	ErrClientIDClaimNotConfigured = errors.New("no client ID claim configured")
-	ErrClientIDClaimNotFound      = errors.New("client ID claim not found")
-	ErrClientIDClaimNotString     = errors.New("client ID claim is not a string")
-
 	canonicalIPCHeaderClientID    = http.CanonicalHeaderKey("x-ipc-auth-client-id")
 	canonicalIPCHeaderAccessToken = http.CanonicalHeaderKey("x-ipc-access-token")
+
+	// errNoResourceContext indicates no resolver is registered or resource authorization is not supported.
+	// This is not an error condition - it means resource-level authorization is not applicable.
+	errNoResourceContext = errors.New("no resource context")
 )
 
 const (
-	refreshInterval = 15 * time.Minute
-	ActionRead      = "read"
-	ActionWrite     = "write"
-	ActionDelete    = "delete"
-	ActionUnsafe    = "unsafe"
-	ActionOther     = "other"
+	refreshInterval                     = 15 * time.Minute
+	dpopJWTType                         = "dpop+jwt"
+	dpopNonceBytes                      = 16
+	casbinAuthzConfiguredGroupsClaimKey = "configured_groups_claim"
+	ActionRead                          = "read"
+	ActionWrite                         = "write"
+	ActionDelete                        = "delete"
+	ActionUnsafe                        = "unsafe"
+	ActionOther                         = "other"
 )
 
 // Authentication holds a jwks cache and information about the openid configuration
 type Authentication struct {
-	enforceDPoP bool
-	// keySet holds a cached key set
-	cachedKeySet jwk.Set
+	enforceDPoP   bool
+	strictDPoPHTU bool
+	// tokenVerifier validates access tokens against the configured IdP.
+	tokenVerifier *TokenVerifier
 	// openidConfigurations holds the openid configuration for the issuer
 	oidcConfiguration AuthNConfig
-	// Casbin enforcer
-	enforcer *Enforcer
+	// authorizer is the pluggable authorization engine (v1, v2, etc.)
+	authorizer internalauthz.Authorizer
+	// authzResolverRegistry holds per-method resolvers for extracting authorization dimensions
+	authzResolverRegistry *internalauthz.ResolverRegistry
+	// subjectExtractor extracts configured authorization subjects from request tokens.
+	subjectExtractor internalauthz.SubjectExtractor
 	// Public Routes HTTP & gRPC
 	publicRoutes []string
 	// IPC Reauthorization Routes
 	ipcReauthRoutes []string
 	// Custom Logger
 	logger *logger.Logger
+	// DPoP nonce management
+	dpopNonceManager *dpopNonceManager
+	// dpopReplayCache rejects replayed DPoP proofs by `jti`
+	dpopReplayCache *dpopReplayCache
 
 	// Used for testing
 	_testCheckTokenFunc func(ctx context.Context, authHeader []string, dpopInfo receiverInfo, dpopHeader []string) (jwt.Token, context.Context, error)
 }
 
+// AuthenticatorOption is a functional option for configuring Authentication.
+type AuthenticatorOption func(*Authentication)
+
+// WithAuthzResolverRegistry sets the authorization resolver registry.
+// When set, the interceptors will call resolvers to extract authorization dimensions.
+func WithAuthzResolverRegistry(registry *internalauthz.ResolverRegistry) AuthenticatorOption {
+	return func(a *Authentication) {
+		a.authzResolverRegistry = registry
+	}
+}
+
+// nonceState is an immutable snapshot of the active and previous nonces,
+// swapped atomically on rotation.
+type nonceState struct {
+	currentNonce  string
+	previousNonce string
+	rotatedAt     time.Time
+}
+
+// dpopNonceManager manages server-issued DPoP nonces per RFC 9449 §8
+type dpopNonceManager struct {
+	state        atomic.Pointer[nonceState]
+	mu           sync.Mutex // serializes rotation only
+	expiration   time.Duration
+	requireNonce bool
+}
+
+func newDPoPNonceManager(requireNonce bool, expiration time.Duration) *dpopNonceManager {
+	nm := &dpopNonceManager{
+		requireNonce: requireNonce,
+		expiration:   expiration,
+	}
+	nm.state.Store(&nonceState{})
+	if requireNonce {
+		nm.rotate()
+	}
+	return nm
+}
+
+func (nm *dpopNonceManager) storeRotated(s *nonceState) {
+	nonce := make([]byte, dpopNonceBytes)
+	if _, err := rand.Read(nonce); err != nil {
+		panic(fmt.Sprintf("failed to generate nonce: %v", err))
+	}
+	nm.state.Store(&nonceState{
+		previousNonce: s.currentNonce,
+		currentNonce:  hex.EncodeToString(nonce),
+		rotatedAt:     time.Now(),
+	})
+}
+
+func (nm *dpopNonceManager) rotate() {
+	nm.mu.Lock()
+	defer nm.mu.Unlock()
+	nm.storeRotated(nm.state.Load())
+}
+
+func (nm *dpopNonceManager) getCurrentNonce() string {
+	s := nm.state.Load()
+	if time.Since(s.rotatedAt) <= nm.expiration {
+		return s.currentNonce
+	}
+
+	nm.mu.Lock()
+	defer nm.mu.Unlock()
+	// Double-check after acquiring the lock to prevent concurrent double-rotation.
+	s = nm.state.Load()
+	if time.Since(s.rotatedAt) > nm.expiration {
+		nm.storeRotated(s)
+		s = nm.state.Load()
+	}
+	return s.currentNonce
+}
+
+func (nm *dpopNonceManager) validateNonce(nonce string) bool {
+	if !nm.requireNonce {
+		return true
+	}
+	s := nm.state.Load()
+	return nonce != "" && (nonce == s.currentNonce || nonce == s.previousNonce)
+}
+
 // Creates new authN which is used to verify tokens for a set of given issuers
-func NewAuthenticator(ctx context.Context, cfg Config, logger *logger.Logger, wellknownRegistration func(namespace string, config any) error) (*Authentication, error) {
+func NewAuthenticator(ctx context.Context, cfg Config, logger *logger.Logger, wellknownRegistration func(namespace string, config any) error, opts ...AuthenticatorOption) (*Authentication, error) {
+	// Remember DPoP `jti` values for the acceptance window so a captured proof
+	// cannot be replayed; a proof older than DPoPSkew is rejected by the `iat`
+	// check, so the cache TTL tracks that window.
+	replayTTL := cfg.DPoPSkew
+	if replayTTL <= 0 {
+		replayTTL = time.Hour
+	}
+
 	a := &Authentication{
-		enforceDPoP: cfg.EnforceDPoP,
-		logger:      logger,
+		enforceDPoP:      cfg.EnforceDPoP,
+		strictDPoPHTU:    cfg.DPoP.StrictHTU,
+		logger:           logger,
+		dpopNonceManager: newDPoPNonceManager(cfg.DPoP.RequireNonce, cfg.DPoP.NonceExpiration),
+		dpopReplayCache:  newDPoPReplayCache(replayTTL),
 	}
 
-	// validate the configuration
-	if err := cfg.validateAuthNConfig(a.logger); err != nil {
-		return nil, err
+	// Apply options
+	for _, opt := range opts {
+		opt(a)
 	}
 
-	cache := jwk.NewCache(ctx)
-
-	// Build new cache
-	// Discover OIDC Configuration
-	oidcConfig, err := DiscoverOIDCConfiguration(ctx, cfg.Issuer, a.logger)
+	tokenVerifier, oidcConfig, err := newTokenVerifier(ctx, cfg.AuthNConfig, a.logger)
 	if err != nil {
 		return nil, err
 	}
-
-	// If the issuer is different from the one in the configuration, update the configuration
-	// This could happen if we are hitting an internal endpoint. Example we might point to https://keycloak.opentdf.svc/realms/opentdf
-	// but the external facing issuer is https://keycloak.opentdf.local/realms/opentdf
-	if oidcConfig.Issuer != cfg.Issuer {
-		cfg.Issuer = oidcConfig.Issuer
-	}
-
-	cacheInterval, err := time.ParseDuration(cfg.CacheRefresh)
-	if err != nil {
-		logger.ErrorContext(ctx,
-			"invalid cache_refresh_interval",
-			slog.String("cache_refresh_interval", cfg.CacheRefresh),
-			slog.Any("err", err),
-		)
-		cacheInterval = refreshInterval
-	}
-
-	// Register the jwks_uri with the cache
-	if err := cache.Register(oidcConfig.JwksURI, jwk.WithMinRefreshInterval(cacheInterval)); err != nil {
-		return nil, err
-	}
+	a.tokenVerifier = tokenVerifier
 
 	roleProvider, err := resolveRoleProvider(ctx, cfg, logger)
 	if err != nil {
 		return nil, err
 	}
-	casbinConfig := CasbinConfig{
-		PolicyConfig: cfg.Policy,
-		RoleProvider: roleProvider,
-	}
-	logger.Info("initializing casbin enforcer")
-	if a.enforcer, err = NewCasbinEnforcer(casbinConfig, a.logger); err != nil {
-		return nil, fmt.Errorf("failed to initialize casbin enforcer: %w", err)
-	}
-
-	// Need to refresh the cache to verify jwks is available
-	_, err = cache.Refresh(ctx, oidcConfig.JwksURI)
+	subjectExtractor, err := internalauthz.NewSubjectExtractor(
+		cfg.Policy.UserNameClaim,
+		cfg.Policy.ClientIDClaim,
+		roleProvider,
+		logger,
+	)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to create subject extractor: %w", err)
 	}
+	a.subjectExtractor = subjectExtractor
 
-	// Set the cache
-	a.cachedKeySet = jwk.NewCachedSet(cache, oidcConfig.JwksURI)
+	policyCfg := cfg.Policy
+	policyCfg.Issuer = cfg.Issuer
+
+	// Initialize the pluggable authorizer based on engine and version
+	authzCfg := internalauthz.Config{
+		PolicyConfig: policyCfg,
+		Logger:       logger,
+		Options:      []internalauthz.Option{internalauthz.WithRoleProvider(roleProvider)},
+	}
+	logger.Info(
+		"initializing authorizer",
+		slog.String("engine", policyCfg.Engine),
+		slog.String("version", policyCfg.Version),
+	)
+	if a.authorizer, err = internalauthz.New(authzCfg); err != nil {
+		return nil, fmt.Errorf("failed to initialize authorizer: %w", err)
+	}
 
 	// Combine public routes
 	a.publicRoutes = append(a.publicRoutes, cfg.PublicRoutes...)
@@ -174,10 +267,10 @@ func NewAuthenticator(ctx context.Context, cfg Config, logger *logger.Logger, we
 	// Combine IPC reauthorization routes
 	a.ipcReauthRoutes = append(ipcReauthRoutes[:], cfg.IPCReauthRoutes...)
 
-	a.oidcConfiguration = cfg.AuthNConfig
+	a.oidcConfiguration = tokenVerifier.oidcConfiguration
 
 	// Try an register oidc issuer to wellknown service but don't return an error if it fails
-	if err := wellknownRegistration("platform_issuer", cfg.Issuer); err != nil {
+	if err := wellknownRegistration("platform_issuer", a.oidcConfiguration.Issuer); err != nil {
 		logger.Warn("failed to register platform issuer", slog.Any("error", err))
 	}
 
@@ -197,7 +290,65 @@ func NewAuthenticator(ctx context.Context, cfg Config, logger *logger.Logger, we
 		logger.Warn("failed to register platform idp information", slog.Any("error", err))
 	}
 
+	// Register DPoP support feature
+	if err := wellknownRegistration("supports_dpop", true); err != nil {
+		logger.Warn("failed to register dpop support", slog.Any("error", err))
+	}
+
+	// Register supported DPoP JWT signing algorithms (RFC 9449 §5.1 dpop_signing_alg_values_supported)
+	// structpb.NewStruct rejects []string — convert to []any so each element goes through
+	// structpb.NewValue's accepted-type list.
+	supportedAlgsStr := make([]string, 0, len(allowedSignatureAlgorithms))
+	for alg := range allowedSignatureAlgorithms {
+		supportedAlgsStr = append(supportedAlgsStr, alg.String())
+	}
+	sort.Strings(supportedAlgsStr)
+	supportedAlgs := make([]any, len(supportedAlgsStr))
+	for i, s := range supportedAlgsStr {
+		supportedAlgs[i] = s
+	}
+	if err := wellknownRegistration("dpop_signing_alg_values_supported", supportedAlgs); err != nil {
+		logger.Warn("failed to register dpop supported alg values", slog.Any("error", err))
+	}
+
+	if err := wellknownRegistration("dpop_nonce_required", cfg.DPoP.RequireNonce); err != nil {
+		logger.Warn("failed to register dpop nonce required", slog.Any("error", err))
+	}
+
 	return a, nil
+}
+
+func resolveRoleProvider(ctx context.Context, cfg Config, logger *logger.Logger) (authz.RoleProvider, error) {
+	if cfg.Policy.RolesProvider.Name != "" {
+		if cfg.RoleProvider != nil && cfg.RoleProviderFactories != nil {
+			logger.Warn(
+				"role provider configured in start options is ignored because roles_provider is set",
+				slog.String("roles_provider", cfg.Policy.RolesProvider.Name),
+			)
+		}
+		if cfg.RoleProviderFactories == nil {
+			return nil, fmt.Errorf("no role provider factories are registered, cannot create provider %q", cfg.Policy.RolesProvider.Name)
+		}
+		factory, ok := cfg.RoleProviderFactories[cfg.Policy.RolesProvider.Name]
+		if !ok {
+			return nil, fmt.Errorf("role provider factory not registered: %s", cfg.Policy.RolesProvider.Name)
+		}
+		providerCfg := authz.ProviderConfig{
+			Config:        cfg.Policy.RolesProvider.Config,
+			UsernameClaim: cfg.Policy.UserNameClaim,
+			GroupsClaim:   cfg.Policy.GroupsClaim,
+			ClientIDClaim: cfg.Policy.ClientIDClaim,
+		}
+		provider, err := factory(ctx, providerCfg)
+		if err != nil {
+			return nil, fmt.Errorf("role provider factory failed: %w", err)
+		}
+		return provider, nil
+	}
+	if cfg.RoleProvider != nil {
+		return cfg.RoleProvider, nil
+	}
+	return internalauthz.NewJWTClaimsRoleProvider(cfg.Policy.GroupsClaim, logger), nil
 }
 
 type receiverInfo struct {
@@ -205,6 +356,25 @@ type receiverInfo struct {
 	u []string
 	// Allowed HTTP methods of the request
 	m []string
+}
+
+// DPoPNonceError indicates a missing or expired nonce that the client should retry with a fresh one.
+type DPoPNonceError struct {
+	Message string
+}
+
+func (e *DPoPNonceError) Error() string {
+	return e.Message
+}
+
+// DPoPNonceMalformedError indicates the nonce claim was present but had an invalid type or format.
+// Unlike DPoPNonceError, this is not retryable — the client sent a malformed proof.
+type DPoPNonceMalformedError struct {
+	Message string
+}
+
+func (e *DPoPNonceMalformedError) Error() string {
+	return e.Message
 }
 
 func normalizeURL(o string, u *url.URL) string {
@@ -217,10 +387,47 @@ func normalizeURL(o string, u *url.URL) string {
 	return ou.String()
 }
 
+// matchHTU reports whether the htu claim from a DPoP JWT is acceptable.
+//
+// In strict mode the origin (scheme+host) must be present; a path-only htu is
+// rejected outright. When the origin is present it must match the origin of at
+// least one URI in acceptable (both http and https are tried).
+//
+// In loose mode a path-only htu (no scheme, no host) is accepted when its path
+// matches the path component of any URI in acceptable. When the origin is
+// present the same origin+path matching applies as in strict mode.
+func matchHTU(received string, acceptable []string, strict bool) bool {
+	u, err := url.Parse(received)
+	if err != nil {
+		return false
+	}
+	if u.Scheme == "" && u.Host == "" {
+		// Path-only htu.
+		if strict {
+			return false
+		}
+		for _, a := range acceptable {
+			au, err := url.Parse(a)
+			if err != nil {
+				continue
+			}
+			if au.Path == u.Path {
+				return true
+			}
+		}
+		return false
+	}
+	// Full URL: must match one of the acceptable URIs exactly.
+	return slices.Contains(acceptable, received)
+}
+
 // verifyTokenHandler is a http handler that verifies the token
 func (a Authentication) MuxHandler(handler http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if slices.ContainsFunc(a.publicRoutes, a.isPublicRoute(r.URL.Path)) { //nolint:contextcheck // There is no way to pass a context here
+		publicRoute := slices.ContainsFunc(a.publicRoutes, a.isPublicRoute(r.URL.Path)) //nolint:contextcheck // There is no way to pass a context here
+		ctxWithRoute := ctxAuth.ContextWithPublicRoute(r.Context(), publicRoute)
+		r = r.WithContext(ctxWithRoute)
+		if publicRoute {
 			handler.ServeHTTP(w, r)
 			return
 		}
@@ -243,12 +450,29 @@ func (a Authentication) MuxHandler(handler http.Handler) http.Handler {
 				origin = "http://" + strings.TrimSuffix(origin, ":80")
 			}
 		}
-		accessTok, ctx, err := a.checkToken(r.Context(), header, receiverInfo{
+		ri := receiverInfo{
 			u: []string{normalizeURL(origin, r.URL)},
 			m: []string{r.Method},
-		}, dp)
+		}
+		log.DebugContext(
+			ctxWithRoute, "dpop receiverInfo set (http handler)",
+			slog.Any("expected_htm", ri.m),
+			slog.Any("expected_htu", ri.u),
+			slog.String("request_method", r.Method),
+		)
+		accessTok, ctxWithAuthX, err := a.checkToken(ctxWithRoute, header, ri, dp)
 		if err != nil {
-			log.WarnContext(ctx,
+			// Check if this is a nonce error requiring a challenge
+			var nonceErr *DPoPNonceError
+			if errors.As(err, &nonceErr) {
+				nonce := a.dpopNonceManager.getCurrentNonce()
+				w.Header().Set("DPoP-Nonce", nonce)
+				w.Header().Set("WWW-Authenticate", `DPoP error="use_dpop_nonce"`)
+				http.Error(w, "unauthenticated", http.StatusUnauthorized)
+				return
+			}
+			log.WarnContext(
+				ctxWithAuthX,
 				"unauthenticated",
 				slog.Any("error", err),
 				slog.Any("dpop", dp),
@@ -257,10 +481,15 @@ func (a Authentication) MuxHandler(handler http.Handler) http.Handler {
 			return
 		}
 
-		clientID, err := a.getClientIDFromToken(ctx, accessTok)
+		// Always send fresh nonce in successful responses when nonces are enabled
+		if a.dpopNonceManager.requireNonce {
+			w.Header().Set("DPoP-Nonce", a.dpopNonceManager.getCurrentNonce())
+		}
+
+		clientID, err := a.subjectExtractor.ClientIDFromToken(ctxWithAuthX, accessTok)
 		if err != nil {
 			log.WarnContext(
-				ctx,
+				ctxWithAuthX,
 				"could not determine client ID from token",
 				slog.Any("err", err),
 			)
@@ -268,7 +497,8 @@ func (a Authentication) MuxHandler(handler http.Handler) http.Handler {
 			log = log.
 				With("client_id", clientID).
 				With("configured_client_id_claim_name", a.oidcConfiguration.Policy.ClientIDClaim)
-			ctx = ctxAuth.EnrichIncomingContextMetadataWithAuthn(ctx, log, clientID)
+			ctxWithAuthX = ctxAuth.EnrichIncomingContextMetadataWithAuthn(ctxWithAuthX, log, clientID)
+			ctxWithAuthX = authz.ContextWithClientID(ctxWithAuthX, clientID)
 		}
 
 		// Check if the token is allowed to access the resource
@@ -288,70 +518,87 @@ func (a Authentication) MuxHandler(handler http.Handler) http.Handler {
 			Resource: r.URL.Path,
 			Action:   action,
 		}
-		if allow, err := a.enforcer.Enforce(ctx, accessTok, roleReq); err != nil {
-			if errors.Is(err, ErrPermissionDenied) {
-				log.WarnContext(
-					ctx,
-					"permission denied",
-					slog.String("azp", accessTok.Subject()),
-					slog.Any("error", err),
-				)
-				http.Error(w, "permission denied", http.StatusForbidden)
-				return
-			}
+		ctxWithClaims, err := a.subjectExtractor.ContextWithClaims(ctxWithAuthX, accessTok, roleReq)
+		if err != nil {
+			log.WarnContext(ctxWithClaims, "role provider error", slog.Any("error", err))
 			http.Error(w, "internal server error", http.StatusInternalServerError)
 			return
-		} else if !allow {
+		}
+		if a.authorizer == nil {
+			log.ErrorContext(ctxWithClaims, "authorizer not initialized")
+			http.Error(w, "internal server error", http.StatusInternalServerError)
+			return
+		}
+		// Extra HTTP handlers do not use Connect resolvers, so v2 authorizers receive no
+		// resource dimensions here. Dimension-scoped v2 policy therefore fails closed
+		// unless the policy explicitly allows wildcard dimensions for this path.
+		decision, err := a.authorizer.Authorize(ctxWithClaims, &internalauthz.Request{
+			Token:  accessTok,
+			RPC:    r.URL.Path,
+			Action: roleReq.Action,
+		})
+		if err != nil {
+			log.ErrorContext(ctxWithClaims, "authorization error", slog.Any("error", err))
+			http.Error(w, "internal server error", http.StatusInternalServerError)
+			return
+		}
+		if decision == nil {
+			log.ErrorContext(ctxWithClaims, "authorization error", slog.String("error", "authorizer returned nil decision"))
+			http.Error(w, "internal server error", http.StatusInternalServerError)
+			return
+		}
+		if !decision.Allowed {
 			log.WarnContext(
-				ctx,
+				ctxWithClaims,
 				"permission denied",
-				slog.String("azp", accessTok.Subject()),
+				permissionDeniedDecisionLogAttrs(accessTok, decision, nil)...,
 			)
 			http.Error(w, "permission denied", http.StatusForbidden)
 			return
 		}
 
-		r = r.WithContext(ctx)
+		r = r.WithContext(ctxWithClaims)
 		handler.ServeHTTP(w, r)
 	})
 }
 
-// UnaryServerInterceptor is a grpc interceptor that verifies the token in the metadata
-func (a Authentication) ConnectUnaryServerInterceptor() connect.UnaryInterceptorFunc {
+// ConnectAuthNInterceptor authenticates Connect requests and enriches the
+// request context with configured token claims needed by later middleware.
+func (a Authentication) ConnectAuthNInterceptor() connect.UnaryInterceptorFunc {
 	interceptor := func(next connect.UnaryFunc) connect.UnaryFunc {
 		return connect.UnaryFunc(func(
 			ctx context.Context,
 			req connect.AnyRequest,
 		) (connect.AnyResponse, error) {
-			// if the token is already in the context, skip the interceptor
-			if ctxAuth.GetAccessTokenFromContext(ctx, a.logger) != nil {
+			publicRoute := slices.ContainsFunc(a.publicRoutes, a.isPublicRoute(req.Spec().Procedure)) //nolint:contextcheck // There is no way to pass a context here
+			ctx = ctxAuth.ContextWithPublicRoute(ctx, publicRoute)
+			if publicRoute {
 				return next(ctx, req)
 			}
 
 			log := a.logger
 
+			procedure := req.Spec().Procedure
+			host := req.Header().Get("Host")
 			ri := receiverInfo{
-				u: []string{req.Spec().Procedure},
-				m: []string{http.MethodPost},
+				u: []string{
+					"http://" + host + procedure,
+					"https://" + host + procedure,
+				},
+				m: []string{req.HTTPMethod()},
 			}
-
-			ri.u = append(ri.u, a.lookupGatewayPaths(ctx, req.Spec().Procedure, req.Header())...)
-
-			// Interceptor Logic
-			// Allow health checks and other public routes to pass through
-			if slices.ContainsFunc(a.publicRoutes, a.isPublicRoute(req.Spec().Procedure)) { //nolint:contextcheck // There is no way to pass a context here
-				return next(ctx, req)
-			}
+			log.DebugContext(
+				ctx, "dpop receiverInfo set (connect interceptor)",
+				slog.Any("expected_htm", ri.m),
+				slog.Any("expected_htu", ri.u),
+				slog.String("procedure", procedure),
+				slog.String("connect_http_method", req.HTTPMethod()),
+			)
 
 			header := req.Header()["Authorization"]
 			if len(header) < 1 {
 				return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("missing authorization header"))
 			}
-
-			// parse the rpc method
-			p := strings.Split(req.Spec().Procedure, "/")
-			resource := path.Join(p[1], p[2])
-			action := getAction(p[2])
 
 			token, ctxWithJWK, err := a.checkToken(
 				ctx,
@@ -360,10 +607,37 @@ func (a Authentication) ConnectUnaryServerInterceptor() connect.UnaryInterceptor
 				req.Header()["Dpop"],
 			)
 			if err != nil {
+				// Check if this is a nonce error requiring a challenge
+				var nonceErr *DPoPNonceError
+				if errors.As(err, &nonceErr) {
+					nonce := a.dpopNonceManager.getCurrentNonce()
+					connectErr := connect.NewError(connect.CodeUnauthenticated, errors.New("unauthenticated"))
+					connectErr.Meta().Set("DPoP-Nonce", nonce)
+					connectErr.Meta().Set("WWW-Authenticate", `DPoP error="use_dpop_nonce"`)
+					return nil, connectErr
+				}
 				return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("unauthenticated"))
 			}
 
-			clientID, err := a.getClientIDFromToken(ctxWithJWK, token)
+			// Always send fresh nonce in successful responses when nonces are enabled.
+			// Wrap next so the DPoP-Nonce header is set on the response, not the outgoing client context.
+			if a.dpopNonceManager.requireNonce {
+				originalNext := next
+				next = func(ctx context.Context, req connect.AnyRequest) (connect.AnyResponse, error) {
+					res, err := originalNext(ctx, req)
+					if err != nil {
+						var connectErr *connect.Error
+						if errors.As(err, &connectErr) {
+							connectErr.Meta().Set("DPoP-Nonce", a.dpopNonceManager.getCurrentNonce())
+						}
+						return nil, err
+					}
+					res.Header().Set("DPoP-Nonce", a.dpopNonceManager.getCurrentNonce())
+					return res, nil
+				}
+			}
+
+			clientID, err := a.subjectExtractor.ClientIDFromToken(ctxWithJWK, token)
 			if err != nil {
 				log.WarnContext(
 					ctxWithJWK,
@@ -375,34 +649,115 @@ func (a Authentication) ConnectUnaryServerInterceptor() connect.UnaryInterceptor
 					With("client_id", clientID).
 					With("configured_client_id_claim_name", a.oidcConfiguration.Policy.ClientIDClaim)
 				ctxWithJWK = ctxAuth.EnrichIncomingContextMetadataWithAuthn(ctxWithJWK, log, clientID)
+				ctxWithJWK = authz.ContextWithClientID(ctxWithJWK, clientID)
 			}
 
-			// Check if the token is allowed to access the resource
-			roleReq := authz.RoleRequest{
-				Issuer:   a.oidcConfiguration.Issuer,
-				Resource: resource,
-				Action:   action,
+			roleReq, err := roleRequestForConnectProcedure(a.oidcConfiguration.Issuer, req.Spec().Procedure)
+			if err != nil {
+				return nil, connect.NewError(connect.CodeInvalidArgument, err)
 			}
-			if allowed, err := a.enforcer.Enforce(ctxWithJWK, token, roleReq); err != nil {
-				if errors.Is(err, ErrPermissionDenied) {
-					log.WarnContext(
-						ctxWithJWK,
-						"permission denied",
-						slog.String("azp", token.Subject()),
-						slog.Any("error", err),
-					)
-					return nil, connect.NewError(connect.CodePermissionDenied, errors.New("permission denied"))
-				}
-				return nil, err
-			} else if !allowed {
-				log.WarnContext(ctxWithJWK, "permission denied", slog.String("azp", token.Subject()))
-				return nil, connect.NewError(connect.CodePermissionDenied, errors.New("permission denied"))
+			ctxWithJWK, err = a.subjectExtractor.ContextWithClaims(ctxWithJWK, token, roleReq)
+			if err != nil {
+				log.WarnContext(ctxWithJWK, "role provider error", slog.Any("error", err))
+				return nil, connect.NewError(connect.CodeInternal, errors.New("role provider error"))
 			}
-
 			return next(ctxWithJWK, req)
 		})
 	}
 	return connect.UnaryInterceptorFunc(interceptor)
+}
+
+// ConnectAuthZInterceptor authorizes Connect requests using token and
+// configured claims already stored in the request context.
+func (a Authentication) ConnectAuthZInterceptor() connect.UnaryInterceptorFunc {
+	interceptor := func(next connect.UnaryFunc) connect.UnaryFunc {
+		return connect.UnaryFunc(func(
+			ctx context.Context,
+			req connect.AnyRequest,
+		) (connect.AnyResponse, error) {
+			if publicRoute, ok := ctxAuth.PublicRouteFromContext(ctx); ok && publicRoute {
+				return next(ctx, req)
+			}
+
+			token := ctxAuth.GetAccessTokenFromContext(ctx, a.logger)
+			if token == nil {
+				return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("missing access token in context"))
+			}
+
+			roleReq, err := roleRequestForConnectProcedure(a.oidcConfiguration.Issuer, req.Spec().Procedure)
+			if err != nil {
+				return nil, connect.NewError(connect.CodeInvalidArgument, err)
+			}
+
+			log := a.logger
+			result := a.authorize(ctx, log, token, req, roleReq.Action)
+			if result.err != nil {
+				return nil, connect.NewError(result.errCode, result.err)
+			}
+
+			decision := result.decision
+			if !decision.Allowed {
+				log.WarnContext(
+					ctx, "permission denied",
+					permissionDeniedDecisionLogAttrs(token, decision, nil)...,
+				)
+				return nil, connect.NewError(connect.CodePermissionDenied, errors.New("permission denied"))
+			}
+
+			log.DebugContext(
+				ctx, "authorization granted",
+				slog.String("mode", string(decision.Mode)),
+				slog.String("reason", decision.Reason),
+			)
+
+			handlerCtx := ctx
+			if result.resourceContext != nil {
+				handlerCtx = internalauthz.ContextWithResolverContext(handlerCtx, result.resourceContext)
+			}
+
+			return next(handlerCtx, req)
+		})
+	}
+	return connect.UnaryInterceptorFunc(interceptor)
+}
+
+func permissionDeniedDecisionLogAttrs(token jwt.Token, decision *internalauthz.Decision, err error) []any {
+	attrs := []any{slog.String("azp", token.Subject())}
+
+	if decision != nil && decision.Metadata.GroupsClaim != "" {
+		attrs = append(attrs, slog.Group(
+			"casbin_authz",
+			slog.String(casbinAuthzConfiguredGroupsClaimKey, decision.Metadata.GroupsClaim),
+		))
+	}
+
+	if decision != nil {
+		attrs = append(
+			attrs,
+			slog.String("mode", string(decision.Mode)),
+			slog.String("reason", decision.Reason),
+		)
+	}
+
+	if err != nil {
+		attrs = append(attrs, slog.Any("error", err))
+	}
+
+	return attrs
+}
+
+func roleRequestForConnectProcedure(issuer, procedure string) (authz.RoleRequest, error) {
+	parts := strings.Split(procedure, "/")
+	if len(parts) < 3 || parts[1] == "" || parts[2] == "" {
+		return authz.RoleRequest{}, fmt.Errorf("invalid connect procedure %q", procedure)
+	}
+
+	method := parts[2]
+	return authz.RoleRequest{
+		Issuer:   issuer,
+		Resource: path.Join(parts[1], method),
+		Action:   getAction(method),
+	}, nil
 }
 
 // IPCMetadataClientInterceptor transfers gRPC outgoing metadata to Connect request headers for IPC calls
@@ -420,8 +775,13 @@ func IPCMetadataClientInterceptor(log *logger.Logger) connect.UnaryInterceptorFu
 			incoming := true
 			clientID, err := ctxAuth.GetClientIDFromContext(ctx, incoming)
 			if err != nil {
-				// metadata will not always be found over IPC - log other errors
-				if !errors.Is(err, ctxAuth.ErrNoMetadataFound) {
+				switch {
+				case errors.Is(err, ctxAuth.ErrNoMetadataFound):
+				case errors.Is(err, ctxAuth.ErrMissingClientID):
+					// IPC calls may not propagate tokens/clients across service boundaries, which is not
+					// necessarily an error case but is useful to know when debugging
+					log.DebugContext(ctx, "IPCMetadataClientInterceptor", slog.Any("error", err))
+				default:
 					log.ErrorContext(ctx, "IPCMetadataClientInterceptor", slog.Any("error", err))
 				}
 			} else {
@@ -438,10 +798,52 @@ func IPCMetadataClientInterceptor(log *logger.Logger) connect.UnaryInterceptorFu
 	})
 }
 
+// rehydrateIPCAuthContext reconstructs pkg/auth context from propagated IPC metadata.
+// It only transports an already-authenticated token across an internal hop; it does not
+// validate the token again. Network-facing requests must continue to rely on the
+// ConnectUnaryServerInterceptor auth middleware for validation.
+func rehydrateIPCAuthContext(ctx context.Context, l *logger.Logger) (context.Context, error) {
+	if ctxAuth.GetAccessTokenFromContext(ctx, l) != nil && ctxAuth.GetRawAccessTokenFromContext(ctx, l) != "" {
+		return ctx, nil
+	}
+
+	md, ok := metadata.FromIncomingContext(ctx)
+	if !ok {
+		return ctx, nil
+	}
+
+	rawToken := rawAccessTokenFromIncomingMetadata(md)
+	if rawToken == "" {
+		return ctx, nil
+	}
+
+	parsed, err := jwt.Parse([]byte(rawToken), jwt.WithVerify(false), jwt.WithValidate(false))
+	if err != nil {
+		if l != nil {
+			l.ErrorContext(ctx, "failed to rehydrate IPC access token from metadata", slog.Any("error", err))
+		}
+		return ctx, fmt.Errorf("rehydrate IPC access token from metadata: %w", err)
+	}
+
+	return ctxAuth.ContextWithAuthNInfo(ctx, ctxAuth.GetJWKFromContext(ctx, l), parsed, rawToken), nil
+}
+
+func rawAccessTokenFromIncomingMetadata(md metadata.MD) string {
+	if accessTokens := md.Get(ctxAuth.AccessTokenKey); len(accessTokens) > 0 && accessTokens[0] != "" {
+		return accessTokens[0]
+	}
+
+	authHeaders := md.Get("authorization")
+	if len(authHeaders) == 0 || authHeaders[0] == "" {
+		return ""
+	}
+	return strings.TrimPrefix(strings.TrimPrefix(authHeaders[0], "Bearer "), "DPoP ")
+}
+
 // IPCUnaryServerInterceptor is a grpc interceptor that:
-// 1. verifies the token in the metadata
-// 2. reauthorizes the token if the route is in the list
-// 3. translates known IPC Connect request headers back to context metadata for downstream consumers
+// 1. translates known IPC Connect request headers back to incoming metadata
+// 2. reauthorizes routes that are configured for IPC reauth
+// 3. rehydrates auth context from propagated incoming metadata without revalidating it
 func (a Authentication) IPCUnaryServerInterceptor() connect.UnaryInterceptorFunc {
 	interceptor := func(next connect.UnaryFunc) connect.UnaryFunc {
 		return connect.UnaryFunc(func(
@@ -467,10 +869,122 @@ func (a Authentication) IPCUnaryServerInterceptor() connect.UnaryInterceptorFunc
 			if err != nil {
 				return nil, err
 			}
+			nextCtx, err = rehydrateIPCAuthContext(nextCtx, a.logger)
+			if err != nil {
+				return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("invalid IPC authentication context"))
+			}
 			return next(nextCtx, req)
 		})
 	}
 	return connect.UnaryInterceptorFunc(interceptor)
+}
+
+// authzResult holds the result of an authorization check
+type authzResult struct {
+	decision        *internalauthz.Decision
+	resourceContext *internalauthz.ResolverContext // Cached resolver data for handler reuse
+	err             error
+	errCode         connect.Code
+}
+
+// resolveResourceContext attempts to resolve authorization dimensions using a registered resolver.
+// Returns errNoResourceContext if no resolver is registered or if resolvers are not supported.
+func (a *Authentication) resolveResourceContext(
+	ctx context.Context,
+	log *logger.Logger,
+	req connect.AnyRequest,
+) (*internalauthz.ResolverContext, error) {
+	// Skip if resolver registry not available or authorizer doesn't support resource authorization
+	if a.authzResolverRegistry == nil || a.authorizer == nil || !a.authorizer.SupportsResourceAuthorization() {
+		return nil, errNoResourceContext
+	}
+
+	resolver, ok := a.authzResolverRegistry.Get(req.Spec().Procedure)
+	if !ok {
+		return nil, errNoResourceContext
+	}
+
+	resolvedCtx, err := resolver(ctx, req)
+	if err != nil {
+		log.WarnContext(
+			ctx, "authz resolver failed",
+			slog.String("procedure", req.Spec().Procedure),
+			slog.Any("error", err),
+		)
+		return nil, err
+	}
+
+	return &resolvedCtx, nil
+}
+
+// authorize performs the full authorization check for a request.
+// It builds the authorization request, resolves resource context if applicable,
+// and returns the authorization decision.
+func (a *Authentication) authorize(
+	ctx context.Context,
+	log *logger.Logger,
+	token jwt.Token,
+	req connect.AnyRequest,
+	action string,
+) authzResult {
+	// Defensive check: authorizer must be initialized
+	if a.authorizer == nil {
+		log.ErrorContext(ctx, "authorizer not initialized")
+		return authzResult{
+			err:     errors.New("authorization system not configured"),
+			errCode: connect.CodeInternal,
+		}
+	}
+
+	// Build authorization request
+	authzReq := &internalauthz.Request{
+		Token:  token,
+		RPC:    req.Spec().Procedure,
+		Action: action,
+	}
+
+	// Try to resolve resource context for fine-grained authorization
+	resourceCtx, resolveErr := a.resolveResourceContext(ctx, log, req)
+	if resolveErr != nil && !errors.Is(resolveErr, errNoResourceContext) {
+		return authzResult{
+			err:     errors.New("authorization context resolution failed"),
+			errCode: connect.CodePermissionDenied,
+		}
+	}
+	// Only set resource context if we actually resolved one (not errNoResourceContext)
+	if resolveErr == nil {
+		authzReq.ResourceContext = resourceCtx
+	}
+
+	// Perform authorization check
+	decision, authzErr := a.authorizer.Authorize(ctx, authzReq)
+	if authzErr != nil {
+		log.ErrorContext(
+			ctx, "authorization error",
+			slog.Any("error", authzErr),
+			slog.String("procedure", req.Spec().Procedure),
+		)
+		return authzResult{
+			err:     errors.New("authorization system error"),
+			errCode: connect.CodeInternal,
+		}
+	}
+	if decision == nil {
+		log.ErrorContext(
+			ctx, "authorization error",
+			slog.String("error", "authorizer returned nil decision"),
+			slog.String("procedure", req.Spec().Procedure),
+		)
+		return authzResult{
+			err:     errors.New("authorization system error"),
+			errCode: connect.CodeInternal,
+		}
+	}
+
+	return authzResult{
+		decision:        decision,
+		resourceContext: resourceCtx, // Pass resolved data to handler for cache reuse
+	}
 }
 
 // getAction returns the action based on the rpc name
@@ -495,29 +1009,30 @@ func (a *Authentication) checkToken(ctx context.Context, authHeader []string, dp
 		return a._testCheckTokenFunc(ctx, authHeader, dpopInfo, dpopHeader)
 	}
 
-	var tokenRaw string
+	var (
+		tokenRaw   string
+		authScheme string
+	)
 
 	// If we don't get a DPoP/Bearer token type, we can't proceed
 	switch {
 	case strings.HasPrefix(authHeader[0], "DPoP "):
 		tokenRaw = strings.TrimPrefix(authHeader[0], "DPoP ")
+		authScheme = "DPoP"
 	case strings.HasPrefix(authHeader[0], "Bearer "):
 		tokenRaw = strings.TrimPrefix(authHeader[0], "Bearer ")
+		authScheme = "Bearer"
 	default:
 		a.logger.WarnContext(ctx, "failed to validate authentication header: not of type bearer or dpop", slog.String("header", authHeader[0]))
 		return nil, nil, errors.New("not of type bearer or dpop")
 	}
 
-	// Now we verify the token signature
-	accessToken, err := jwt.Parse([]byte(tokenRaw),
-		jwt.WithKeySet(a.cachedKeySet),
-		jwt.WithValidate(true),
-		jwt.WithIssuer(a.oidcConfiguration.Issuer),
-		jwt.WithAudience(a.oidcConfiguration.Audience),
-		jwt.WithAcceptableSkew(a.oidcConfiguration.TokenSkew),
-	)
+	if a.tokenVerifier == nil {
+		return nil, nil, errors.New("access token verifier is not configured")
+	}
+
+	accessToken, err := a.tokenVerifier.VerifyAccessToken(ctx, tokenRaw)
 	if err != nil {
-		a.logger.Warn("failed to validate auth token", slog.Any("err", err))
 		return nil, nil, err
 	}
 
@@ -530,6 +1045,12 @@ func (a *Authentication) checkToken(ctx context.Context, authHeader []string, dp
 	}
 
 	_, tokenHasCNF := accessToken.Get("cnf")
+	if tokenHasCNF && authScheme == "Bearer" {
+		// RFC 9449 §7.1: DPoP-bound access tokens MUST be presented under the "DPoP"
+		// Authorization scheme. Warn for now to surface non-compliant SDKs; will be
+		// promoted to a hard reject in a future release once all SDKs are compliant.
+		a.logger.WarnContext(ctx, "DPoP-bound access token presented under Bearer Authorization scheme; per RFC 9449 §7.1 the DPoP scheme is required")
+	}
 	if !tokenHasCNF && !a.enforceDPoP {
 		// this condition is not quite tight because it's possible that the `cnf` claim may
 		// come from token introspection
@@ -538,7 +1059,12 @@ func (a *Authentication) checkToken(ctx context.Context, authHeader []string, dp
 	}
 	dpopKey, err := a.validateDPoP(accessToken, tokenRaw, dpopInfo, dpopHeader)
 	if err != nil {
-		a.logger.Warn("failed to validate dpop", slog.Any("err", err))
+		var nonceErr *DPoPNonceError
+		if errors.As(err, &nonceErr) {
+			a.logger.DebugContext(ctx, "dpop nonce challenge issued", slog.String("reason", nonceErr.Message))
+		} else {
+			a.logger.WarnContext(ctx, "failed to validate dpop", slog.Any("err", err))
+		}
 		return nil, nil, err
 	}
 	ctx = ctxAuth.ContextWithAuthNInfo(ctx, dpopKey, accessToken, tokenRaw)
@@ -556,7 +1082,7 @@ func (a Authentication) validateDPoP(accessToken jwt.Token, acessTokenRaw string
 		return nil, errors.New("missing `cnf` claim in access token")
 	}
 
-	cnfDict, ok := cnf.(map[string]interface{})
+	cnfDict, ok := cnf.(map[string]any)
 	if !ok {
 		return nil, errors.New("got `cnf` in an invalid format")
 	}
@@ -580,7 +1106,7 @@ func (a Authentication) validateDPoP(accessToken jwt.Token, acessTokenRaw string
 	}
 	sig := dpop.Signatures()[0]
 	protectedHeaders := sig.ProtectedHeaders()
-	if protectedHeaders.Type() != "dpop+jwt" {
+	if protectedHeaders.Type() != dpopJWTType {
 		return nil, fmt.Errorf("invalid typ on DPoP JWT: %v", protectedHeaders.Type())
 	}
 
@@ -637,6 +1163,12 @@ func (a Authentication) validateDPoP(accessToken jwt.Token, acessTokenRaw string
 		return nil, errors.New("`htm` claim invalid format in DPoP JWT")
 	}
 
+	a.logger.Debug(
+		"dpop htm validation",
+		slog.String("received_htm", htm),
+		slog.Any("expected_htm", dpopInfo.m),
+		slog.Bool("match", slices.Contains(dpopInfo.m, htm)),
+	)
 	if !slices.Contains(dpopInfo.m, htm) {
 		return nil, fmt.Errorf("incorrect `htm` claim in DPoP JWT; received [%v], but should match [%v]", htm, dpopInfo.m)
 	}
@@ -650,7 +1182,7 @@ func (a Authentication) validateDPoP(accessToken jwt.Token, acessTokenRaw string
 		return nil, errors.New("`htu` claim invalid format in DPoP JWT")
 	}
 
-	if !slices.Contains(dpopInfo.u, htu) {
+	if !matchHTU(htu, dpopInfo.u, a.strictDPoPHTU) {
 		return nil, fmt.Errorf("incorrect `htu` claim in DPoP JWT; received [%v], but should match [%v]", htu, dpopInfo.u)
 	}
 
@@ -664,6 +1196,37 @@ func (a Authentication) validateDPoP(accessToken jwt.Token, acessTokenRaw string
 	if ath != base64.URLEncoding.WithPadding(base64.NoPadding).EncodeToString(h.Sum(nil)) {
 		return nil, errors.New("incorrect `ath` claim in DPoP JWT")
 	}
+
+	// Validate nonce if required
+	if a.dpopNonceManager.requireNonce {
+		nonceI, hasNonce := dpopToken.Get("nonce")
+		if !hasNonce {
+			return nil, &DPoPNonceError{Message: "missing `nonce` claim in DPoP JWT"}
+		}
+		nonce, nonceOk := nonceI.(string)
+		if !nonceOk {
+			return nil, &DPoPNonceMalformedError{Message: "`nonce` claim invalid format in DPoP JWT"}
+		}
+		if !a.dpopNonceManager.validateNonce(nonce) {
+			return nil, &DPoPNonceError{Message: "invalid or expired `nonce` claim in DPoP JWT"}
+		}
+	}
+
+	// Replay protection (RFC 9449 §11.1): reject a proof whose `jti` has already
+	// been seen within the acceptance window. Checked last so only otherwise-valid
+	// proofs populate the cache, preventing an attacker from poisoning it.
+	jtiI, ok := dpopToken.Get("jti")
+	if !ok {
+		return nil, errors.New("missing `jti` claim in DPoP JWT")
+	}
+	jti, ok := jtiI.(string)
+	if !ok {
+		return nil, errors.New("`jti` claim invalid format in DPoP JWT")
+	}
+	if a.dpopReplayCache.observe(jti, time.Now()) {
+		return nil, errors.New("DPoP proof replay detected; `jti` already used")
+	}
+
 	return dpopKey, nil
 }
 
@@ -671,92 +1234,22 @@ func (a Authentication) isPublicRoute(path string) func(string) bool {
 	return func(route string) bool {
 		matched, err := doublestar.Match(route, path)
 		if err != nil {
-			a.logger.Warn("error matching route",
+			a.logger.Warn(
+				"error matching route",
 				slog.String("route", route),
 				slog.String("path", path),
 				slog.Any("error", err),
 			)
 			return false
 		}
-		a.logger.Trace("matching route",
+		a.logger.Trace(
+			"matching route",
 			slog.String("route", route),
 			slog.String("path", path),
 			slog.Bool("matched", matched),
 		)
 		return matched
 	}
-}
-
-func (a Authentication) lookupOrigins(header http.Header) []string {
-	result := make([]string, 0)
-	for _, m := range []string{"Grpcgateway-Origin", "Grpcgateway-Referer", "Origin"} {
-		origins := header.Values(m)
-		if len(origins) == 0 {
-			continue
-		}
-		for _, o := range origins {
-			if strings.HasSuffix(o, ":443") {
-				o = "https://" + strings.TrimPrefix(strings.TrimSuffix(o, ":443"), "https://")
-			} else {
-				o = strings.TrimSuffix(o, ":80")
-			}
-			result = append(result, o)
-		}
-	}
-	return result
-}
-
-var goodPaths = regexp.MustCompile(`^[\w/-]{1,128}$`)
-
-func (a Authentication) lookupGatewayPaths(ctx context.Context, procedure string, header http.Header) []string {
-	origins := a.lookupOrigins(header)
-	if len(origins) == 0 {
-		return nil
-	}
-
-	var paths []string
-	switch procedure {
-	case "/kas.AccessService/Rewrap":
-		paths = append(paths, "/kas/v2/rewrap")
-	default:
-		patterns := header["Pattern"]
-		if len(patterns) == 0 {
-			a.logger.InfoContext(ctx,
-				"underspecified grpc gateway path; no pattern header",
-				slog.Any("origin", origins),
-				slog.String("procedure", procedure),
-			)
-			paths = allowedPublicEndpoints[:]
-		} else {
-			a.logger.InfoContext(ctx,
-				"underspecified grpc gateway path; patterns found",
-				slog.Any("origin", origins),
-				slog.String("procedure", procedure),
-				slog.Any("patterns", patterns),
-			)
-		}
-		for _, pattern := range patterns {
-			if matched := goodPaths.MatchString(pattern); matched {
-				paths = append(paths, pattern)
-			}
-		}
-		if len(paths) != len(patterns) {
-			a.logger.WarnContext(ctx,
-				"invalid grpc gateway path; ignoring one or more invalid patterns",
-				slog.Any("origin", origins),
-				slog.String("procedure", procedure),
-				slog.Any("patterns", patterns),
-			)
-		}
-	}
-
-	u := make([]string, 0, len(origins)*len(paths))
-	for _, o := range origins {
-		for _, p := range paths {
-			u = append(u, normalizeURL(o, &url.URL{Path: p}))
-		}
-	}
-	return u
 }
 
 func (a Authentication) ipcReauthCheck(ctx context.Context, path string, header http.Header) (context.Context, error) {
@@ -769,46 +1262,34 @@ func (a Authentication) ipcReauthCheck(ctx context.Context, path string, header 
 				return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("missing authorization header"))
 			}
 
-			u := []string{path}
-			u = append(u, a.lookupGatewayPaths(ctx, path, header)...)
-
 			// Validate the token and create a JWT token
-			token, ctxWithJWK, err := a.checkToken(ctx, authHeader, receiverInfo{
-				u: u,
+			ipcHost := header.Get("Host")
+			ri := receiverInfo{
+				u: []string{
+					"http://" + ipcHost + path,
+					"https://" + ipcHost + path,
+				},
 				m: []string{http.MethodPost},
-			}, header["Dpop"])
+			}
+			a.logger.DebugContext(
+				ctx, "dpop receiverInfo set (ipc reauth)",
+				slog.Any("expected_htm", ri.m),
+				slog.Any("expected_htu", ri.u),
+				slog.String("path", path),
+			)
+			token, ctxWithJWK, err := a.checkToken(ctx, authHeader, ri, header["Dpop"])
 			if err != nil {
 				return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("unauthenticated"))
 			}
 
 			// Return the next context with the token
-			clientID, err := a.getClientIDFromToken(ctxWithJWK, token)
+			clientID, err := a.subjectExtractor.ClientIDFromToken(ctxWithJWK, token)
 			if err != nil {
 				return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("unauthenticated"))
 			}
-			return ctxAuth.EnrichIncomingContextMetadataWithAuthn(ctxWithJWK, a.logger, clientID), nil
+			ctxWithJWK = ctxAuth.EnrichIncomingContextMetadataWithAuthn(ctxWithJWK, a.logger, clientID)
+			return authz.ContextWithClientID(ctxWithJWK, clientID), nil
 		}
 	}
 	return ctx, nil
-}
-
-// getClientIDFromToken returns the client ID from the token if found (dot notation)
-func (a *Authentication) getClientIDFromToken(ctx context.Context, tok jwt.Token) (string, error) {
-	clientIDClaim := a.oidcConfiguration.Policy.ClientIDClaim
-	if clientIDClaim == "" {
-		return "", ErrClientIDClaimNotConfigured
-	}
-	claimsMap, err := tok.AsMap(ctx)
-	if err != nil {
-		return "", fmt.Errorf("failed to parse token as a map and find claim at [%s]: %w", clientIDClaim, err)
-	}
-	found := dotNotation(claimsMap, clientIDClaim)
-	if found == nil {
-		return "", fmt.Errorf("%w at [%s]", ErrClientIDClaimNotFound, clientIDClaim)
-	}
-	clientID, isString := found.(string)
-	if !isString {
-		return "", fmt.Errorf("%w at [%s]", ErrClientIDClaimNotString, clientIDClaim)
-	}
-	return clientID, nil
 }

@@ -1,12 +1,11 @@
 #!/usr/bin/env bats
 
-load "${BATS_LIB_PATH}/bats-support/load.bash"
-load "${BATS_LIB_PATH}/bats-assert/load.bash"
-load "otdfctl-utils.sh"
-
 # Tests for attributes
 
 setup_file() {
+  bats_load_library bats-support
+  bats_load_library bats-assert
+  load "otdfctl-utils.sh"
   export WITH_CREDS='--with-client-creds-file ./creds.json'
   export HOST='--host http://localhost:8080'
 
@@ -26,6 +25,8 @@ setup_file() {
 
 # always create a randomly named attribute
 setup() {
+  bats_load_library bats-support
+  bats_load_library bats-assert
   # invoke binary with credentials
   run_otdfctl_attr() {
     run sh -c "./otdfctl $HOST $WITH_CREDS policy attributes $*"
@@ -145,6 +146,64 @@ teardown_file() {
   assert_line --regexp "Current Offset.*0"
 }
 
+@test "List attribute definitions supports sort and order flags" {
+  sort_prefix="sort_attr_${BATS_TEST_NUMBER}_$RANDOM"
+  attr_a_id=$(./otdfctl $HOST $WITH_CREDS policy attributes create --namespace "$NS_ID" --name "${sort_prefix}_alpha" --rule ANY_OF --json | jq -r '.id')
+  attr_b_id=$(./otdfctl $HOST $WITH_CREDS policy attributes create --namespace "$NS_ID" --name "${sort_prefix}_bravo" --rule ANY_OF --json | jq -r '.id')
+  attr_c_id=$(./otdfctl $HOST $WITH_CREDS policy attributes create --namespace "$NS_ID" --name "${sort_prefix}_charlie" --rule ANY_OF --json | jq -r '.id')
+
+  run_otdfctl_attr list --sort name --order asc --limit 500 --json
+  assert_success
+  assert_equal "$(echo "$output" | jq -r --arg prefix "$sort_prefix" '[.attributes[] | select(.name | startswith($prefix)) | .id] | join(",")')" "$attr_a_id,$attr_b_id,$attr_c_id"
+
+  run_otdfctl_attr list --sort name --order desc --limit 500 --json
+  assert_success
+  assert_equal "$(echo "$output" | jq -r --arg prefix "$sort_prefix" '[.attributes[] | select(.name | startswith($prefix)) | .id] | join(",")')" "$attr_c_id,$attr_b_id,$attr_a_id"
+
+  run_otdfctl_attr list --sort created_at --order asc --limit 500 --json
+  assert_success
+  assert_equal "$(echo "$output" | jq -r --arg a "$attr_a_id" --arg b "$attr_b_id" --arg c "$attr_c_id" '[.attributes[] | select(.id == $a or .id == $b or .id == $c) | .id] | join(",")')" "$attr_a_id,$attr_b_id,$attr_c_id"
+
+  run_otdfctl_attr update --id "$attr_a_id" --label sort=a --json
+  assert_success
+  run_otdfctl_attr update --id "$attr_b_id" --label sort=b --json
+  assert_success
+  run_otdfctl_attr update --id "$attr_c_id" --label sort=c --json
+  assert_success
+
+  run_otdfctl_attr list --sort updated_at --order asc --limit 500 --json
+  assert_success
+  assert_equal "$(echo "$output" | jq -r --arg a "$attr_a_id" --arg b "$attr_b_id" --arg c "$attr_c_id" '[.attributes[] | select(.id == $a or .id == $b or .id == $c) | .id] | join(",")')" "$attr_a_id,$attr_b_id,$attr_c_id"
+
+  run_otdfctl_attr list --sort name --limit 500 --json
+  assert_success
+  assert_equal "$(echo "$output" | jq -r --arg prefix "$sort_prefix" '[.attributes[] | select(.name | startswith($prefix)) | .id] | join(",")')" "$attr_c_id,$attr_b_id,$attr_a_id"
+
+  run_otdfctl_attr list --order asc --limit 500 --json
+  assert_success
+  assert_equal "$(echo "$output" | jq -r --arg a "$attr_a_id" --arg b "$attr_b_id" --arg c "$attr_c_id" '[.attributes[] | select(.id == $a or .id == $b or .id == $c) | .id] | join(",")')" "$attr_a_id,$attr_b_id,$attr_c_id"
+
+  run_otdfctl_attr unsafe delete --force --id "$attr_a_id"
+  run_otdfctl_attr unsafe delete --force --id "$attr_b_id"
+  run_otdfctl_attr unsafe delete --force --id "$attr_c_id"
+}
+
+@test "List attribute definitions supports search flag" {
+  search_prefix="search_attr_${BATS_TEST_NUMBER}_$RANDOM"
+  match_id=$(./otdfctl $HOST $WITH_CREDS policy attributes create --namespace "$NS_ID" --name "${search_prefix}_match" --rule ANY_OF --json | jq -r '.id')
+  other_id=$(./otdfctl $HOST $WITH_CREDS policy attributes create --namespace "$NS_ID" --name "${search_prefix}_other" --rule ANY_OF --json | jq -r '.id')
+
+  run_otdfctl_attr list --search "${search_prefix}_match" --limit 500 --json
+  assert_success
+  assert_equal "$(echo "$output" | jq -r --arg id "$match_id" '[.attributes[] | select(.id == $id)] | length')" "1"
+  assert_equal "$(echo "$output" | jq -r --arg id "$other_id" '[.attributes[] | select(.id == $id)] | length')" "0"
+
+  run_otdfctl_attr unsafe delete --force --id "$match_id"
+  assert_success
+  run_otdfctl_attr unsafe delete --force --id "$other_id"
+  assert_success
+}
+
 @test "List - comprehensive pagination tests" {
   # create 10 random attributes so we have confidence there are >= 10 attribute definitions
   for i in {1..10}; do
@@ -235,7 +294,7 @@ teardown_file() {
   # ensure non-JSON output reflects reordered values immediately
   run_otdfctl_attr unsafe update --id "$CREATED_ID" --values-order "$VAL1_ID" --values-order "$VAL2_ID" --force
   assert_success
-  assert_line --regexp "Value IDs\\s+│\\[$VAL1_ID, $VAL2_ID\\]"
+  assert_line --regexp "Value IDs[[:space:]]+│\\[$VAL1_ID, $VAL2_ID\\]"
 
   run_otdfctl_attr unsafe update --id "$CREATED_ID" --allow-traversal --json --force
   assert_success

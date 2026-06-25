@@ -43,10 +43,12 @@ func (c PolicyDBClient) ListKeyAccessServers(ctx context.Context, r *kasregistry
 	}
 
 	sortField, sortDirection := GetKeyAccessServersSortParams(r.GetSort())
+	search := pgtypeSubstringSearchPattern(r.GetSearch().GetTerm())
 
 	list, err := c.queries.listKeyAccessServers(ctx, listKeyAccessServersParams{
 		Offset:        offset,
 		Limit:         limit,
+		Search:        search,
 		SortField:     sortField,
 		SortDirection: sortDirection,
 	})
@@ -608,14 +610,20 @@ func (c PolicyDBClient) ListKeys(ctx context.Context, r *kasregistry.ListKeysReq
 		legacy = pgtypeBool(r.GetLegacy())
 	}
 
+	sortField, sortDirection := GetKasKeysSortParams(r.GetSort())
+	search := pgtypeSubstringSearchPattern(r.GetSearch().GetTerm())
+
 	params := listKeysParams{
-		Legacy:       legacy,
-		KeyAlgorithm: algo,
-		KasID:        kasID,
-		KasUri:       kasURI,
-		KasName:      kasName,
-		Offset:       offset,
-		Limit:        limit,
+		Legacy:        legacy,
+		KeyAlgorithm:  algo,
+		Search:        search,
+		KasID:         kasID,
+		KasUri:        kasURI,
+		KasName:       kasName,
+		Offset:        offset,
+		Limit:         limit,
+		SortField:     sortField,
+		SortDirection: sortDirection,
 	}
 
 	listRows, err := c.queries.listKeys(ctx, params)

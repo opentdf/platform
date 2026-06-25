@@ -18,15 +18,14 @@ func TestExecuteActions(t *testing.T) {
 
 	tests := []struct {
 		name    string
-		plan    *Plan
+		plan    *MigrationPlan
 		handler *mockExecutorHandler
-		runID   string
 		wantErr *expectedError
-		assert  func(t *testing.T, err error, executor *Executor, handler *mockExecutorHandler, plan *Plan)
+		assert  func(t *testing.T, err error, executor *MigrationExecutor, handler *mockExecutorHandler, plan *MigrationPlan)
 	}{
 		{
 			name: "handles created, existing, and already migrated action targets",
-			plan: &Plan{
+			plan: &MigrationPlan{
 				Scopes: []Scope{ScopeActions},
 				Actions: []*ActionPlan{
 					{
@@ -66,8 +65,7 @@ func TestExecuteActions(t *testing.T) {
 					},
 				},
 			},
-			runID: "run-123",
-			assert: func(t *testing.T, err error, executor *Executor, handler *mockExecutorHandler, plan *Plan) {
+			assert: func(t *testing.T, err error, executor *MigrationExecutor, handler *mockExecutorHandler, plan *MigrationPlan) {
 				t.Helper()
 
 				require.NoError(t, err)
@@ -80,7 +78,6 @@ func TestExecuteActions(t *testing.T) {
 					"owner":                    "policy-team",
 					"env":                      "dev",
 					migrationLabelMigratedFrom: "action-1",
-					migrationLabelRun:          "run-123",
 				}, handler.created["decrypt"]["ns-1"].Metadata.GetLabels())
 
 				createdTarget := plan.Actions[0].Targets[0]
@@ -89,7 +86,6 @@ func TestExecuteActions(t *testing.T) {
 				require.NotNil(t, createdTarget.Execution)
 				assert.True(t, createdTarget.Execution.Applied)
 				assert.Equal(t, "created-action-1", createdTarget.Execution.CreatedTargetID)
-				assert.Equal(t, "run-123", createdTarget.Execution.RunID)
 				assert.Equal(t, "created-action-1", createdTarget.TargetID())
 
 				existingTarget := plan.Actions[0].Targets[1]
@@ -106,7 +102,7 @@ func TestExecuteActions(t *testing.T) {
 		},
 		{
 			name: "ignores unresolved target status",
-			plan: &Plan{
+			plan: &MigrationPlan{
 				Scopes: []Scope{ScopeActions},
 				Actions: []*ActionPlan{
 					{
@@ -122,7 +118,7 @@ func TestExecuteActions(t *testing.T) {
 				},
 			},
 			handler: &mockExecutorHandler{},
-			assert: func(t *testing.T, err error, executor *Executor, handler *mockExecutorHandler, _ *Plan) {
+			assert: func(t *testing.T, err error, executor *MigrationExecutor, handler *mockExecutorHandler, _ *MigrationPlan) {
 				t.Helper()
 
 				require.NoError(t, err)
@@ -132,7 +128,7 @@ func TestExecuteActions(t *testing.T) {
 		},
 		{
 			name: "returns error for missing existing standard target id",
-			plan: &Plan{
+			plan: &MigrationPlan{
 				Scopes: []Scope{ScopeActions},
 				Actions: []*ActionPlan{
 					{
@@ -148,7 +144,7 @@ func TestExecuteActions(t *testing.T) {
 			},
 			handler: &mockExecutorHandler{},
 			wantErr: wantError(ErrMissingExistingTarget, `action %q target %q`, "action-1", namespace1.GetFqn()),
-			assert: func(t *testing.T, err error, executor *Executor, handler *mockExecutorHandler, _ *Plan) {
+			assert: func(t *testing.T, err error, executor *MigrationExecutor, handler *mockExecutorHandler, _ *MigrationPlan) {
 				t.Helper()
 
 				require.Error(t, err)
@@ -158,7 +154,7 @@ func TestExecuteActions(t *testing.T) {
 		},
 		{
 			name: "returns error for missing already migrated target id",
-			plan: &Plan{
+			plan: &MigrationPlan{
 				Scopes: []Scope{ScopeActions},
 				Actions: []*ActionPlan{
 					{
@@ -174,7 +170,7 @@ func TestExecuteActions(t *testing.T) {
 			},
 			handler: &mockExecutorHandler{},
 			wantErr: wantError(ErrMissingMigratedTarget, `action %q target %q`, "action-1", namespace1.GetFqn()),
-			assert: func(t *testing.T, err error, executor *Executor, handler *mockExecutorHandler, _ *Plan) {
+			assert: func(t *testing.T, err error, executor *MigrationExecutor, handler *mockExecutorHandler, _ *MigrationPlan) {
 				t.Helper()
 
 				require.Error(t, err)
@@ -184,7 +180,7 @@ func TestExecuteActions(t *testing.T) {
 		},
 		{
 			name: "returns error for missing target namespace",
-			plan: &Plan{
+			plan: &MigrationPlan{
 				Scopes: []Scope{ScopeActions},
 				Actions: []*ActionPlan{
 					{
@@ -199,7 +195,7 @@ func TestExecuteActions(t *testing.T) {
 			},
 			handler: &mockExecutorHandler{},
 			wantErr: wantError(ErrTargetNamespaceRequired, `action %q`, "action-1"),
-			assert: func(t *testing.T, err error, executor *Executor, handler *mockExecutorHandler, _ *Plan) {
+			assert: func(t *testing.T, err error, executor *MigrationExecutor, handler *mockExecutorHandler, _ *MigrationPlan) {
 				t.Helper()
 
 				require.Error(t, err)
@@ -209,7 +205,7 @@ func TestExecuteActions(t *testing.T) {
 		},
 		{
 			name: "returns error for missing created target id",
-			plan: &Plan{
+			plan: &MigrationPlan{
 				Scopes: []Scope{ScopeActions},
 				Actions: []*ActionPlan{
 					{
@@ -231,7 +227,7 @@ func TestExecuteActions(t *testing.T) {
 				},
 			},
 			wantErr: wantError(ErrMissingCreatedTargetID, `action %q target %q`, "action-1", namespace1.GetFqn()),
-			assert: func(t *testing.T, err error, executor *Executor, handler *mockExecutorHandler, plan *Plan) {
+			assert: func(t *testing.T, err error, executor *MigrationExecutor, handler *mockExecutorHandler, plan *MigrationPlan) {
 				t.Helper()
 
 				require.Error(t, err)
@@ -243,7 +239,7 @@ func TestExecuteActions(t *testing.T) {
 		},
 		{
 			name: "returns error for unsupported target status",
-			plan: &Plan{
+			plan: &MigrationPlan{
 				Scopes: []Scope{ScopeActions},
 				Actions: []*ActionPlan{
 					{
@@ -265,7 +261,7 @@ func TestExecuteActions(t *testing.T) {
 				namespace1.GetFqn(),
 				TargetStatus("bogus"),
 			),
-			assert: func(t *testing.T, err error, executor *Executor, handler *mockExecutorHandler, _ *Plan) {
+			assert: func(t *testing.T, err error, executor *MigrationExecutor, handler *mockExecutorHandler, _ *MigrationPlan) {
 				t.Helper()
 
 				require.Error(t, err)
@@ -280,13 +276,10 @@ func TestExecuteActions(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			executor, err := NewExecutor(tt.handler)
+			executor, err := NewMigrationExecutor(tt.handler)
 			require.NoError(t, err)
-			if tt.runID != "" {
-				executor.runID = tt.runID
-			}
 
-			err = executor.Execute(t.Context(), tt.plan)
+			err = executor.ExecuteMigration(t.Context(), tt.plan)
 			switch {
 			case tt.wantErr != nil:
 				require.Error(t, err)

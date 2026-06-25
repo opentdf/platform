@@ -10,6 +10,7 @@ import (
 	"github.com/opentdf/platform/protocol/go/common"
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/attributes"
+	"github.com/opentdf/platform/protocol/go/policy/obligations"
 	"github.com/opentdf/platform/protocol/go/policy/unsafe"
 	"github.com/opentdf/platform/service/pkg/db"
 	"google.golang.org/protobuf/types/known/wrapperspb"
@@ -36,6 +37,19 @@ func (c PolicyDBClient) CreateAttributeValue(ctx context.Context, attributeID st
 	_, err = c.queries.upsertAttributeValueFqn(ctx, createdID)
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
+	}
+
+	for _, trigger := range r.GetObligationTriggers() {
+		_, err = c.CreateObligationTrigger(ctx, &obligations.AddObligationTriggerRequest{
+			ObligationValue: trigger.GetObligationValue(),
+			Action:          trigger.GetAction(),
+			AttributeValue:  &common.IdFqnIdentifier{Id: createdID},
+			Context:         trigger.GetContext(),
+			Metadata:        trigger.GetMetadata(),
+		})
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	return c.GetAttributeValue(ctx, createdID)

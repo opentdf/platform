@@ -64,6 +64,11 @@ func (i TokenAddingInterceptor) AddCredentials(
 		return status.Error(codes.Unauthenticated, err.Error())
 	}
 
+	slog.DebugContext(
+		ctx, "preparing dpop for grpc request",
+		slog.String("grpc_method", method),
+		slog.String("dpop_htm", http.MethodPost),
+	)
 	dpopTok, err := i.GetDPoPToken(method, http.MethodPost, string(accessToken))
 	if err == nil {
 		newMetadata = append(newMetadata, "DPoP", dpopTok)
@@ -99,6 +104,12 @@ func (i TokenAddingInterceptor) AddCredentialsConnect() connect.UnaryInterceptor
 			req.Header().Set("Authorization", fmt.Sprintf("DPoP %s", accessToken))
 
 			// Add DPoP header if possible
+			slog.DebugContext(
+				ctx, "preparing dpop for connect request",
+				slog.String("procedure", req.Spec().Procedure),
+				slog.String("dpop_htm", http.MethodPost),
+				slog.Any("stream_type", req.Spec().StreamType),
+			)
 			dpopTok, err := i.GetDPoPToken(req.Spec().Procedure, http.MethodPost, string(accessToken))
 			if err == nil {
 				req.Header().Set("DPoP", dpopTok)
@@ -146,6 +157,11 @@ func (i TokenAddingInterceptor) GetDPoPToken(path, method, accessToken string) (
 		h.Write([]byte(accessToken))
 		ath := h.Sum(nil)
 
+		slog.Debug(
+			"building dpop token",
+			slog.String("htm", method),
+			slog.String("htu", path),
+		)
 		dpopTok, err := jwt.NewBuilder().
 			Claim("htu", path).
 			Claim("htm", method).

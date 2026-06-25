@@ -44,6 +44,21 @@ func FromPrivatePEMWithSalt(privateKeyInPem string, salt, info []byte) (PrivateK
 		return AsymDecryption{}, errors.New("failed to parse PEM formatted private key")
 	}
 
+	// Hybrid PQ/T private keys are PKCS#8-wrapped under one of our known OIDs.
+	// Peek at the AlgorithmIdentifier and route hybrids to their constructors;
+	// everything else (RSA, EC, EC PRIVATE KEY) falls through to x509.
+	if block.Type == pemBlockPrivateKey {
+		if dec, matched, err := hybridDecryptorFromPKCS8(block.Bytes, salt, info); matched {
+			return dec, err
+		}
+	}
+	// Reject CERTIFICATE blocks containing a hybrid SPKI: certificates are not
+	// supported as a private-key transport, but operators sometimes paste them
+	// here by mistake. Symmetric with the public-key path.
+	if block.Type == pemBlockCertificate && containsHybridOID(block.Bytes) {
+		return AsymDecryption{}, errors.New("certificate-wrapped hybrid keys are not supported; provide a bare PKCS#8 PRIVATE KEY")
+	}
+
 	priv, err := x509.ParsePKCS8PrivateKey(block.Bytes)
 	switch {
 	case err == nil:
@@ -171,29 +186,59 @@ func (e ECDecryptor) DecryptWithEphemeralKey(data, ephemeral []byte) ([]byte, er
 		return nil, fmt.Errorf("hkdf failure: %w", err)
 	}
 
-	// Encrypt data with derived key using aes-gcm
+	if len(data) < GcmStandardNonceSize+aes.BlockSize {
+		return nil, errors.New("ciphertext too short")
+	}
+
+	// Decrypt data with derived key using AES-GCM.
 	block, err := aes.NewCipher(derivedKey)
 	if err != nil {
 		return nil, fmt.Errorf("aes.NewCipher failure: %w", err)
 	}
 
-	gcm, err := cipher.NewGCM(block)
+	gcm, err := cipher.NewGCMWithRandomNonce(block)
 	if err != nil {
-		return nil, fmt.Errorf("cipher.NewGCM failure: %w", err)
+		return nil, fmt.Errorf("cipher.NewGCMWithRandomNonce failure: %w", err)
 	}
 
-	nonceSize := gcm.NonceSize()
-	if len(data) < nonceSize {
-		return nil, errors.New("ciphertext too short")
-	}
-
-	nonce, ciphertext := data[:nonceSize], data[nonceSize:]
-	plaintext, err := gcm.Open(nil, nonce, ciphertext, nil)
+	plaintext, err := gcm.Open(nil, nil, data, nil)
 	if err != nil {
 		return nil, fmt.Errorf("gcm.Open failure: %w", err)
 	}
 
 	return plaintext, nil
+}
+
+// hybridDecryptorFromPKCS8 mirrors hybridEncryptorFromSPKI for PKCS#8 private
+// keys. The `matched` return reports whether the dispatcher owns the result:
+// when true, the caller MUST return whatever this function returns. When
+// false, the caller falls through to the legacy RSA/EC PKCS#8 / PKCS#1 path.
+// Salt/info are honoured only for X-Wing.
+func hybridDecryptorFromPKCS8(der, salt, info []byte) (PrivateKeyDecryptor, bool, error) {
+	oid, raw, parseErr := parseHybridPKCS8(der)
+	if parseErr != nil {
+		// Structurally not a PKCS#8 envelope (e.g. PKCS#1 RSA or EC PRIVATE
+		// KEY). Fall through to the legacy decoder.
+		return nil, false, nil //nolint:nilerr // intentional fall-through on non-envelope input
+	}
+	switch {
+	case oid.Equal(oidXWing):
+		dec, err := NewSaltedXWingDecryptor(raw, salt, info)
+		return dec, true, err
+	case oid.Equal(oidCompositeMLKEM768P256):
+		dec, err := NewP256MLKEM768Decryptor(raw)
+		return dec, true, err
+	case oid.Equal(oidCompositeMLKEM1024P384):
+		dec, err := NewP384MLKEM1024Decryptor(raw)
+		return dec, true, err
+	}
+	// Valid PKCS#8 envelope with a non-hybrid OID. If the stdlib recognises it,
+	// fall through. Otherwise surface a precise "unknown OID" error so the
+	// caller doesn't end up reporting a confusing PKCS#1/EC-Private-Key error.
+	if _, x509Err := x509.ParsePKCS8PrivateKey(der); x509Err == nil {
+		return nil, false, nil
+	}
+	return nil, true, fmt.Errorf("unsupported private-key algorithm OID %s: not a known hybrid scheme and not recognised by crypto/x509", oid)
 }
 
 func convCurve(c ecdh.Curve) elliptic.Curve {

@@ -2,6 +2,14 @@ logger:
   level: debug
   type: text
   output: stderr
+audit:
+  # Optional JWT claim mappings for audit enrichment.
+  # Paths use dot notation over the emitted audit log shape.
+  # jwt_claim_mappings:
+  #   - claim: sub
+  #     path: eventMetaData.requester.sub
+  #   - claim: realm_access.roles
+  #     path: eventMetaData.requester.roles
 # DB and Server configurations are defaulted for local development
 # db:
 #   host: localhost
@@ -10,6 +18,7 @@ logger:
 #   password: changeme
 #   sslmode: prefer
 #   connect_timeout_seconds: 15
+#   statement_timeout_seconds: 30
 #   pool:
 #     max_connection_count: 4
 #     min_connection_count: 0
@@ -22,6 +31,7 @@ services:
     registered_kas_uri: http://localhost:8080 # Should match what you have registered for *this* KAS in the policy db.
     preview:
       ec_tdf_enabled: false
+      hybrid_tdf_enabled: false
       key_management: false
     root_key: a8c4824daafcfa38ed0d13002e92b08720e6c4fcee67d52e954c1a6e045907d1 # For local development testing only
     keyring:

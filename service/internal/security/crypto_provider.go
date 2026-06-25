@@ -11,4 +11,11 @@ const (
 	// Used for encryption with RSA of the KAO
 	AlgorithmRSA2048 = "rsa:2048"
 	AlgorithmRSA4096 = "rsa:4096"
+
+	// Used for hybrid X-Wing wrapping of the KAO
+	AlgorithmHPQTXWing = "hpqt:xwing"
+
+	// Used for hybrid NIST EC + ML-KEM wrapping of the KAO
+	AlgorithmHPQTSecp256r1MLKEM768  = "hpqt:secp256r1-mlkem768"
+	AlgorithmHPQTSecp384r1MLKEM1024 = "hpqt:secp384r1-mlkem1024"
 )

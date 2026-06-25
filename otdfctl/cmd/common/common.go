@@ -39,7 +39,7 @@ func applyOutputFormatPreference(c *cli.Cli, store *profiles.OtdfctlProfileStore
 // returns the profile and the current profile store
 func InitProfile(c *cli.Cli) *profiles.OtdfctlProfileStore {
 	var err error
-	profileName := c.FlagHelper.GetOptionalString("profile")
+	profileName := c.Flags.GetOptionalString("profile")
 
 	hasKeyringStore, err := osprofiles.HasGlobalStore(config.AppName, osprofiles.WithKeyringStore())
 	if err != nil {
@@ -91,11 +91,11 @@ func NewHandler(c *cli.Cli) handlers.Handler {
 	var cp *profiles.OtdfctlProfileStore
 
 	// Non-profile flags
-	host := c.FlagHelper.GetOptionalString("host")
-	tlsNoVerify := c.FlagHelper.GetOptionalBool("tls-no-verify")
-	withClientCreds := c.FlagHelper.GetOptionalString("with-client-creds")
-	withClientCredsFile := c.FlagHelper.GetOptionalString("with-client-creds-file")
-	withAccessToken := c.FlagHelper.GetOptionalString("with-access-token")
+	host := c.Flags.GetOptionalString("host")
+	tlsNoVerify := c.Flags.GetOptionalBool("tls-no-verify")
+	withClientCreds := c.Flags.GetOptionalString("with-client-creds")
+	withClientCredsFile := c.Flags.GetOptionalString("with-client-creds-file")
+	withAccessToken := c.Flags.GetOptionalString("with-access-token")
 	var inMemoryProfile bool
 
 	authFlags := []string{"--with-access-token", "--with-client-creds", "--with-client-creds-file"}

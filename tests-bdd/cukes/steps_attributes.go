@@ -56,10 +56,10 @@ func (s *AttributesStepDefinitions) createAttributeRequestFromTable(scenarioCont
 						return nil, errors.New("unable to extract namespace ID")
 					}
 					createAttributeRequest.NamespaceId = id
-				case "name":
-					createAttributeRequest.Name = cell.Value
+				case nameKey:
+					createAttributeRequest.Name = strings.TrimSpace(cell.Value)
 				case "rule":
-					switch cell.Value {
+					switch strings.TrimSpace(cell.Value) {
 					case "anyOf":
 						createAttributeRequest.Rule = policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF
 					case "allOf":

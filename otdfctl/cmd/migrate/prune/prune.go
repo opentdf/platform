@@ -11,6 +11,5 @@ var (
 )
 
 func InitCommands() {
-	Cmd.Hidden = true
 	Cmd.AddCommand(pruneNamespacedPolicyCmd())
 }

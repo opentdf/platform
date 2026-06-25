@@ -286,26 +286,14 @@ func convertAlgEnum2Simple(a policy.KasPublicKeyAlgEnum) policy.Algorithm {
 		return policy.Algorithm_ALGORITHM_RSA_2048
 	case policy.KasPublicKeyAlgEnum_KAS_PUBLIC_KEY_ALG_ENUM_RSA_4096:
 		return policy.Algorithm_ALGORITHM_RSA_4096
+	case policy.KasPublicKeyAlgEnum_KAS_PUBLIC_KEY_ALG_ENUM_HPQT_XWING:
+		return policy.Algorithm_ALGORITHM_HPQT_XWING
+	case policy.KasPublicKeyAlgEnum_KAS_PUBLIC_KEY_ALG_ENUM_HPQT_SECP256R1_MLKEM768:
+		return policy.Algorithm_ALGORITHM_HPQT_SECP256R1_MLKEM768
+	case policy.KasPublicKeyAlgEnum_KAS_PUBLIC_KEY_ALG_ENUM_HPQT_SECP384R1_MLKEM1024:
+		return policy.Algorithm_ALGORITHM_HPQT_SECP384R1_MLKEM1024
 	case policy.KasPublicKeyAlgEnum_KAS_PUBLIC_KEY_ALG_ENUM_UNSPECIFIED:
 		return policy.Algorithm_ALGORITHM_UNSPECIFIED
-	default:
-		return policy.Algorithm_ALGORITHM_UNSPECIFIED
-	}
-}
-
-// convertStringToAlgorithm converts a string algorithm representation to policy.Algorithm
-func convertStringToAlgorithm(alg string) policy.Algorithm {
-	switch ocrypto.KeyType(strings.ToLower(alg)) {
-	case ocrypto.EC256Key:
-		return policy.Algorithm_ALGORITHM_EC_P256
-	case ocrypto.EC384Key:
-		return policy.Algorithm_ALGORITHM_EC_P384
-	case ocrypto.EC521Key:
-		return policy.Algorithm_ALGORITHM_EC_P521
-	case ocrypto.RSA2048Key:
-		return policy.Algorithm_ALGORITHM_RSA_2048
-	case ocrypto.RSA4096Key:
-		return policy.Algorithm_ALGORITHM_RSA_4096
 	default:
 		return policy.Algorithm_ALGORITHM_UNSPECIFIED
 	}
@@ -490,29 +478,16 @@ func algProto2String(e policy.KasPublicKeyAlgEnum) string {
 		return string(ocrypto.RSA2048Key)
 	case policy.KasPublicKeyAlgEnum_KAS_PUBLIC_KEY_ALG_ENUM_RSA_4096:
 		return string(ocrypto.RSA4096Key)
+	case policy.KasPublicKeyAlgEnum_KAS_PUBLIC_KEY_ALG_ENUM_HPQT_XWING:
+		return string(ocrypto.HybridXWingKey)
+	case policy.KasPublicKeyAlgEnum_KAS_PUBLIC_KEY_ALG_ENUM_HPQT_SECP256R1_MLKEM768:
+		return string(ocrypto.HybridSecp256r1MLKEM768Key)
+	case policy.KasPublicKeyAlgEnum_KAS_PUBLIC_KEY_ALG_ENUM_HPQT_SECP384R1_MLKEM1024:
+		return string(ocrypto.HybridSecp384r1MLKEM1024Key)
 	case policy.KasPublicKeyAlgEnum_KAS_PUBLIC_KEY_ALG_ENUM_UNSPECIFIED:
 		return ""
 	}
 	return ""
-}
-
-func algProto2OcryptoKeyType(e policy.Algorithm) ocrypto.KeyType {
-	switch e {
-	case policy.Algorithm_ALGORITHM_EC_P256:
-		return ocrypto.EC256Key
-	case policy.Algorithm_ALGORITHM_EC_P384:
-		return ocrypto.EC384Key
-	case policy.Algorithm_ALGORITHM_EC_P521:
-		return ocrypto.EC521Key
-	case policy.Algorithm_ALGORITHM_RSA_2048:
-		return ocrypto.RSA2048Key
-	case policy.Algorithm_ALGORITHM_RSA_4096:
-		return ocrypto.RSA4096Key
-	case policy.Algorithm_ALGORITHM_UNSPECIFIED:
-		return ocrypto.KeyType("")
-	default:
-		return ocrypto.KeyType("")
-	}
 }
 
 func storeKeysToCache(logger *slog.Logger, kases []*policy.KeyAccessServer, keys []*policy.SimpleKasKey, c *kasKeyCache, kc *rlKeyCache) {
@@ -726,7 +701,10 @@ func (r granter) resolveTemplate(ctx context.Context, kaoKeyAlg string, genSplit
 				}
 				o.identifier = kpub.KID
 				// Convert the string algorithm to the appropriate enum
-				algEnum := convertStringToAlgorithm(kpub.Algorithm)
+				algEnum, err := getKasKeyAlg(strings.ToLower(kpub.Algorithm))
+				if err != nil {
+					return nil, fmt.Errorf("unsupported algorithm for kas [%s#%s]: %w", o.KASURI(), kpub.KID, err)
+				}
 				r.keyCache.c[*o] = &policy.SimpleKasKey{
 					KasUri: o.KASURI(),
 					PublicKey: &policy.SimpleKasPublicKey{
@@ -740,7 +718,10 @@ func (r granter) resolveTemplate(ctx context.Context, kaoKeyAlg string, genSplit
 			if !ok || kpub.GetPublicKey() == nil || kpub.GetPublicKey().GetPem() == "" {
 				return nil, fmt.Errorf("no key found for resource locator [%s]", o)
 			}
-			algorithm := algProto2OcryptoKeyType(kpub.GetPublicKey().GetAlgorithm())
+			algorithm, err := PolicyAlgorithmToKeyType(kpub.GetPublicKey().GetAlgorithm())
+			if err != nil {
+				return nil, fmt.Errorf("invalid algorithm [%v] for kas %s with kid [%s]: %w", kpub.GetPublicKey().GetAlgorithm(), kpub.GetKasUri(), kpub.GetPublicKey().GetKid(), err)
+			}
 			p = append(p, kaoTpl{o.KASURI(), splitID, o.ID(), kpub.GetPublicKey().GetPem(), algorithm})
 		}
 	}

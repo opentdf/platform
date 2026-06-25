@@ -19,7 +19,7 @@ func getKeyAccessRegistry(cmd *cobra.Command, args []string) {
 	h := common.NewHandler(c)
 	defer h.Close()
 
-	id := c.FlagHelper.GetRequiredID("id")
+	id := c.Flags.GetRequiredID("id")
 
 	kas, err := h.GetKasRegistryEntry(cmd.Context(), handlers.KasIdentifier{
 		ID: id,
@@ -61,8 +61,10 @@ func listKeyAccessRegistries(cmd *cobra.Command, args []string) {
 
 	limit := c.Flags.GetRequiredInt32("limit")
 	offset := c.Flags.GetRequiredInt32("offset")
+	search := c.Flags.GetOptionalString("search")
+	sort := getSortOption(c)
 
-	resp, err := h.ListKasRegistryEntries(cmd.Context(), limit, offset)
+	resp, err := h.ListKasRegistryEntries(cmd.Context(), limit, offset, search, sort)
 	if err != nil {
 		cli.ExitWithError("Failed to list Registered KAS entries", err)
 	}
@@ -212,7 +214,8 @@ func deleteKeyAccessRegistry(cmd *cobra.Command, args []string) {
 }
 
 func initKASRegistryCommands() {
-	getDoc := man.Docs.GetCommand("policy/kas-registry/get",
+	getDoc := man.Docs.GetCommand(
+		"policy/kas-registry/get",
 		man.WithRun(getKeyAccessRegistry),
 	)
 	getDoc.Flags().StringP(
@@ -222,12 +225,16 @@ func initKASRegistryCommands() {
 		getDoc.GetDocFlag("id").Description,
 	)
 
-	listDoc := man.Docs.GetCommand("policy/kas-registry/list",
+	listDoc := man.Docs.GetCommand(
+		"policy/kas-registry/list",
 		man.WithRun(listKeyAccessRegistries),
 	)
 	injectListPaginationFlags(listDoc)
+	injectListSearchFlag(listDoc)
+	injectListSortFlags(listDoc)
 
-	createDoc := man.Docs.GetCommand("policy/kas-registry/create",
+	createDoc := man.Docs.GetCommand(
+		"policy/kas-registry/create",
 		man.WithRun(createKeyAccessRegistry),
 	)
 	createDoc.Flags().StringP(
@@ -256,7 +263,8 @@ func initKASRegistryCommands() {
 	)
 	injectLabelFlags(&createDoc.Command, false)
 
-	updateDoc := man.Docs.GetCommand("policy/kas-registry/update",
+	updateDoc := man.Docs.GetCommand(
+		"policy/kas-registry/update",
 		man.WithRun(updateKeyAccessRegistry),
 	)
 	updateDoc.Flags().StringP(
@@ -291,7 +299,8 @@ func initKASRegistryCommands() {
 	)
 	injectLabelFlags(&updateDoc.Command, true)
 
-	deleteDoc := man.Docs.GetCommand("policy/kas-registry/delete",
+	deleteDoc := man.Docs.GetCommand(
+		"policy/kas-registry/delete",
 		man.WithRun(deleteKeyAccessRegistry),
 	)
 	deleteDoc.Flags().StringP(

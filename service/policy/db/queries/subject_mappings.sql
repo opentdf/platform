@@ -3,6 +3,11 @@
 ----------------------------------------------------------------
 
 -- name: listSubjectConditionSets :many
+WITH params AS (
+    SELECT
+        COALESCE(NULLIF(@sort_field::text, ''), 'created_at') AS resolved_field,
+        COALESCE(NULLIF(@sort_direction::text, ''), 'DESC') AS resolved_direction
+)
 SELECT
     scs.id,
     scs.condition,
@@ -15,16 +20,26 @@ SELECT
 FROM subject_condition_set scs
 LEFT JOIN attribute_namespaces n ON n.id = scs.namespace_id
 LEFT JOIN attribute_fqns ns_fqns ON ns_fqns.namespace_id = n.id AND ns_fqns.attribute_id IS NULL AND ns_fqns.value_id IS NULL
+CROSS JOIN params p
 WHERE
-    (sqlc.narg('namespace_id')::uuid IS NULL AND sqlc.narg('namespace_fqn')::text IS NULL)
-    OR scs.namespace_id = sqlc.narg('namespace_id')::uuid
-    OR ns_fqns.fqn = sqlc.narg('namespace_fqn')::text
+    (
+        (sqlc.narg('namespace_id')::uuid IS NULL AND sqlc.narg('namespace_fqn')::text IS NULL)
+        OR scs.namespace_id = sqlc.narg('namespace_id')::uuid
+        OR ns_fqns.fqn = sqlc.narg('namespace_fqn')::text
+    )
+    AND CASE
+        WHEN sqlc.narg('search')::TEXT IS NULL THEN TRUE
+        ELSE EXISTS (
+            SELECT 1
+            FROM JSONB_EACH_TEXT(COALESCE(scs.metadata -> 'labels', '{}'::JSONB)) AS label(key, value)
+            WHERE label.value ILIKE sqlc.narg('search')::TEXT ESCAPE '\'
+        )
+    END
 ORDER BY
-    CASE WHEN @sort_field::text = 'created_at' AND @sort_direction::text = 'ASC' THEN scs.created_at END ASC,
-    CASE WHEN @sort_field::text = 'created_at' AND @sort_direction::text = 'DESC' THEN scs.created_at END DESC,
-    CASE WHEN @sort_field::text = 'updated_at' AND @sort_direction::text = 'ASC' THEN scs.updated_at END ASC,
-    CASE WHEN @sort_field::text = 'updated_at' AND @sort_direction::text = 'DESC' THEN scs.updated_at END DESC,
-    scs.created_at DESC,
+    CASE WHEN p.resolved_field = 'created_at' AND p.resolved_direction = 'ASC' THEN scs.created_at END ASC,
+    CASE WHEN p.resolved_field = 'created_at' AND p.resolved_direction = 'DESC' THEN scs.created_at END DESC,
+    CASE WHEN p.resolved_field = 'updated_at' AND p.resolved_direction = 'ASC' THEN scs.updated_at END ASC,
+    CASE WHEN p.resolved_field = 'updated_at' AND p.resolved_direction = 'DESC' THEN scs.updated_at END DESC,
     scs.id ASC
 LIMIT @limit_
 OFFSET @offset_;
@@ -72,7 +87,12 @@ RETURNING id;
 ----------------------------------------------------------------
 
 -- name: listSubjectMappings :many
-WITH subject_actions AS (
+WITH params AS (
+    SELECT
+        COALESCE(NULLIF(@sort_field::text, ''), 'created_at') AS resolved_field,
+        COALESCE(NULLIF(@sort_direction::text, ''), 'DESC') AS resolved_direction
+),
+subject_actions AS (
     SELECT
         sma.subject_mapping_id,
         COALESCE(
@@ -96,15 +116,33 @@ WITH subject_actions AS (
     LEFT JOIN attribute_namespaces ans ON ans.id = a.namespace_id
     LEFT JOIN attribute_fqns ans_fqns ON ans_fqns.namespace_id = ans.id AND ans_fqns.attribute_id IS NULL AND ans_fqns.value_id IS NULL
     GROUP BY sma.subject_mapping_id
-), counted AS (
-    SELECT COUNT(sm.id) AS total
+), filtered_subject_mappings AS (
+    SELECT DISTINCT sm.id
     FROM subject_mappings sm
+    LEFT JOIN attribute_values av ON sm.attribute_value_id = av.id
+    LEFT JOIN attribute_fqns fqns ON av.id = fqns.value_id
     LEFT JOIN attribute_namespaces sm_ns ON sm_ns.id = sm.namespace_id
     LEFT JOIN attribute_fqns sm_ns_fqns ON sm_ns_fqns.namespace_id = sm_ns.id AND sm_ns_fqns.attribute_id IS NULL AND sm_ns_fqns.value_id IS NULL
     WHERE
-        (sqlc.narg('namespace_id')::uuid IS NULL AND sqlc.narg('namespace_fqn')::text IS NULL)
-        OR sm.namespace_id = sqlc.narg('namespace_id')::uuid
-        OR sm_ns_fqns.fqn = sqlc.narg('namespace_fqn')::text
+        (
+            (sqlc.narg('namespace_id')::uuid IS NULL AND sqlc.narg('namespace_fqn')::text IS NULL)
+            OR sm.namespace_id = sqlc.narg('namespace_id')::uuid
+            OR sm_ns_fqns.fqn = sqlc.narg('namespace_fqn')::text
+        )
+        AND CASE
+            WHEN sqlc.narg('search')::TEXT IS NULL THEN TRUE
+            ELSE (
+                fqns.fqn LIKE sqlc.narg('search')::TEXT ESCAPE '\'
+                OR EXISTS (
+                    SELECT 1
+                    FROM JSONB_EACH_TEXT(COALESCE(sm.metadata -> 'labels', '{}'::JSONB)) AS label(key, value)
+                    WHERE label.value ILIKE sqlc.narg('search')::TEXT ESCAPE '\'
+                )
+            )
+        END
+), counted AS (
+    SELECT COUNT(id) AS total
+    FROM filtered_subject_mappings
 )
 SELECT
     sm.id,
@@ -132,7 +170,9 @@ SELECT
     END AS namespace,
     counted.total
 FROM subject_mappings sm
+JOIN filtered_subject_mappings fsm ON fsm.id = sm.id
 CROSS JOIN counted
+CROSS JOIN params p
 LEFT JOIN subject_actions sa ON sm.id = sa.subject_mapping_id
 LEFT JOIN attribute_values av ON sm.attribute_value_id = av.id
 LEFT JOIN attribute_fqns fqns ON av.id = fqns.value_id
@@ -141,10 +181,6 @@ LEFT JOIN attribute_namespaces scs_ns ON scs_ns.id = scs.namespace_id
 LEFT JOIN attribute_fqns scs_ns_fqns ON scs_ns_fqns.namespace_id = scs_ns.id AND scs_ns_fqns.attribute_id IS NULL AND scs_ns_fqns.value_id IS NULL
 LEFT JOIN attribute_namespaces sm_ns ON sm_ns.id = sm.namespace_id
 LEFT JOIN attribute_fqns sm_ns_fqns ON sm_ns_fqns.namespace_id = sm_ns.id AND sm_ns_fqns.attribute_id IS NULL AND sm_ns_fqns.value_id IS NULL
-WHERE
-    (sqlc.narg('namespace_id')::uuid IS NULL AND sqlc.narg('namespace_fqn')::text IS NULL)
-    OR sm.namespace_id = sqlc.narg('namespace_id')::uuid
-    OR sm_ns_fqns.fqn = sqlc.narg('namespace_fqn')::text
 GROUP BY
     sm.id,
     sa.standard_actions,
@@ -155,13 +191,13 @@ GROUP BY
     sm_ns.id, sm_ns.name, sm_ns_fqns.fqn,
     av.id, av.value, av.active,
     fqns.fqn,
-    counted.total
+    counted.total,
+    p.resolved_field, p.resolved_direction
 ORDER BY
-    CASE WHEN @sort_field::text = 'created_at' AND @sort_direction::text = 'ASC' THEN sm.created_at END ASC,
-    CASE WHEN @sort_field::text = 'created_at' AND @sort_direction::text = 'DESC' THEN sm.created_at END DESC,
-    CASE WHEN @sort_field::text = 'updated_at' AND @sort_direction::text = 'ASC' THEN sm.updated_at END ASC,
-    CASE WHEN @sort_field::text = 'updated_at' AND @sort_direction::text = 'DESC' THEN sm.updated_at END DESC,
-    sm.created_at DESC,
+    CASE WHEN p.resolved_field = 'created_at' AND p.resolved_direction = 'ASC' THEN sm.created_at END ASC,
+    CASE WHEN p.resolved_field = 'created_at' AND p.resolved_direction = 'DESC' THEN sm.created_at END DESC,
+    CASE WHEN p.resolved_field = 'updated_at' AND p.resolved_direction = 'ASC' THEN sm.updated_at END ASC,
+    CASE WHEN p.resolved_field = 'updated_at' AND p.resolved_direction = 'DESC' THEN sm.updated_at END DESC,
     sm.id ASC
 LIMIT @limit_
 OFFSET @offset_;

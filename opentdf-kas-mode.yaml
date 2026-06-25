@@ -11,6 +11,14 @@ logger:
   level: debug
   type: text
   output: stderr
+audit:
+  # Optional JWT claim mappings for audit enrichment.
+  # Paths use dot notation over the emitted audit log shape.
+  # jwt_claim_mappings:
+  #   - claim: sub
+  #     path: eventMetaData.requester.sub
+  #   - claim: realm_access.roles
+  #     path: eventMetaData.requester.roles
 security:
   unsafe:
     # Increase only when diagnosing clock drift issues; default is 1m
@@ -33,6 +41,12 @@ services:
       - kid: r1
         alg: rsa:2048
         legacy: true
+      - kid: x1
+        alg: hpqt:xwing
+      - kid: h1
+        alg: hpqt:secp256r1-mlkem768
+      - kid: h2
+        alg: hpqt:secp384r1-mlkem1024
 server:
   public_hostname: localhost
   tls:
@@ -123,4 +137,16 @@ server:
           alg: ec:secp256r1
           private: kas-ec-private.pem
           cert: kas-ec-cert.pem
+        - kid: x1
+          alg: hpqt:xwing
+          private: kas-xwing-private.pem
+          cert: kas-xwing-public.pem
+        - kid: h1
+          alg: hpqt:secp256r1-mlkem768
+          private: kas-p256mlkem768-private.pem
+          cert: kas-p256mlkem768-public.pem
+        - kid: h2
+          alg: hpqt:secp384r1-mlkem1024
+          private: kas-p384mlkem1024-private.pem
+          cert: kas-p384mlkem1024-public.pem
   port: 8181

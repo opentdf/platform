@@ -1,9 +1,5 @@
 #!/usr/bin/env bats
 
-load "${BATS_LIB_PATH}/bats-support/load.bash"
-load "${BATS_LIB_PATH}/bats-assert/load.bash"
-load "otdfctl-utils.sh"
-
 run_otdfctl_kas_registry_create() {
   run sh -c "./otdfctl policy kas-registry create $HOST $WITH_CREDS $*"
 }
@@ -13,6 +9,9 @@ run_otdfctl_provider_create() {
 }
 
 setup_file() {
+  bats_load_library bats-support
+  bats_load_library bats-assert
+  load "otdfctl-utils.sh"
   export WITH_CREDS='--with-client-creds-file ./creds.json'
   export HOST='--host http://localhost:8080'
   # This command is not a 'kas-registry key' subcommand, so it won't use run_otdfctl_key
@@ -37,8 +36,9 @@ setup_file() {
 }
 
 setup() {
-  # No setup specific to individual tests needed here currently
-  : # No-op
+  bats_load_library bats-support
+  bats_load_library bats-assert
+  load "otdfctl-utils.sh"
 }
 
 
@@ -116,6 +116,69 @@ format_kas_name_as_uri() {
   assert_equal "$(echo "$output" | jq -r .kas_id)" "${KAS_REGISTRY_ID}"
   assert_equal "$(echo "$output" | jq -r .key.key_id)" "${KEY_ID}"
   assert_equal "$(echo "$output" | jq -r .key.key_algorithm)" "3" # ec:secp256r1
+  assert_equal "$(echo "$output" | jq -r .key.key_mode)" "1"      # local
+  assert_equal "$(echo "$output" | jq -r .key.key_status)" "1"    # active
+  assert_equal "$(echo "$output" | jq -r .key.legacy)" "null"
+  assert_not_equal "$(echo "$output" | jq -r .key.public_key_ctx.pem)" "null"
+  assert_not_equal "$(echo "$output" | jq -r .key.public_key_ctx.pem)" ""
+  assert_equal "$(echo "$output" | jq -r .key.private_key_ctx.key_id)" "wrapping-key-1"
+  assert_not_equal "$(echo "$output" | jq -r .key.private_key_ctx.wrapped_key)" "null"
+  assert_not_equal "$(echo "$output" | jq -r .key.private_key_ctx.wrapped_key)" ""
+  assert_not_equal "$(echo "$output" | jq -r .key.metadata.created_at)" "null"
+  assert_not_equal "$(echo "$output" | jq -r .key.metadata.updated_at)" "null"
+}
+
+@test "kas-keys: create key (local mode, hpqt:xwing)" {
+  KEY_ID=$(generate_key_id)
+  # Local mode: otdfctl generates the hybrid keypair internally, so we assert
+  # the public key is present/non-empty rather than matching a known value.
+  run_otdfctl_key create --kas "${KAS_REGISTRY_ID}" --key-id "${KEY_ID}" --algorithm "hpqt:xwing" --mode "local" --wrapping-key-id "wrapping-key-1" --wrapping-key "${WRAPPING_KEY}" --json
+  assert_success
+  assert_equal "$(echo "$output" | jq -r .kas_id)" "${KAS_REGISTRY_ID}"
+  assert_equal "$(echo "$output" | jq -r .key.key_id)" "${KEY_ID}"
+  assert_equal "$(echo "$output" | jq -r .key.key_algorithm)" "6" # hpqt:xwing
+  assert_equal "$(echo "$output" | jq -r .key.key_mode)" "1"      # local
+  assert_equal "$(echo "$output" | jq -r .key.key_status)" "1"    # active
+  assert_equal "$(echo "$output" | jq -r .key.legacy)" "null"
+  assert_not_equal "$(echo "$output" | jq -r .key.public_key_ctx.pem)" "null"
+  assert_not_equal "$(echo "$output" | jq -r .key.public_key_ctx.pem)" ""
+  assert_equal "$(echo "$output" | jq -r .key.private_key_ctx.key_id)" "wrapping-key-1"
+  assert_not_equal "$(echo "$output" | jq -r .key.private_key_ctx.wrapped_key)" "null"
+  assert_not_equal "$(echo "$output" | jq -r .key.private_key_ctx.wrapped_key)" ""
+  assert_not_equal "$(echo "$output" | jq -r .key.metadata.created_at)" "null"
+  assert_not_equal "$(echo "$output" | jq -r .key.metadata.updated_at)" "null"
+}
+
+@test "kas-keys: create key (local mode, hpqt:secp256r1-mlkem768)" {
+  KEY_ID=$(generate_key_id)
+  # Local mode: otdfctl generates the hybrid keypair internally, so we assert
+  # the public key is present/non-empty rather than matching a known value.
+  run_otdfctl_key create --kas "${KAS_REGISTRY_ID}" --key-id "${KEY_ID}" --algorithm "hpqt:secp256r1-mlkem768" --mode "local" --wrapping-key-id "wrapping-key-1" --wrapping-key "${WRAPPING_KEY}" --json
+  assert_success
+  assert_equal "$(echo "$output" | jq -r .kas_id)" "${KAS_REGISTRY_ID}"
+  assert_equal "$(echo "$output" | jq -r .key.key_id)" "${KEY_ID}"
+  assert_equal "$(echo "$output" | jq -r .key.key_algorithm)" "7" # hpqt:secp256r1-mlkem768
+  assert_equal "$(echo "$output" | jq -r .key.key_mode)" "1"      # local
+  assert_equal "$(echo "$output" | jq -r .key.key_status)" "1"    # active
+  assert_equal "$(echo "$output" | jq -r .key.legacy)" "null"
+  assert_not_equal "$(echo "$output" | jq -r .key.public_key_ctx.pem)" "null"
+  assert_not_equal "$(echo "$output" | jq -r .key.public_key_ctx.pem)" ""
+  assert_equal "$(echo "$output" | jq -r .key.private_key_ctx.key_id)" "wrapping-key-1"
+  assert_not_equal "$(echo "$output" | jq -r .key.private_key_ctx.wrapped_key)" "null"
+  assert_not_equal "$(echo "$output" | jq -r .key.private_key_ctx.wrapped_key)" ""
+  assert_not_equal "$(echo "$output" | jq -r .key.metadata.created_at)" "null"
+  assert_not_equal "$(echo "$output" | jq -r .key.metadata.updated_at)" "null"
+}
+
+@test "kas-keys: create key (local mode, hpqt:secp384r1-mlkem1024)" {
+  KEY_ID=$(generate_key_id)
+  # Local mode: otdfctl generates the hybrid keypair internally, so we assert
+  # the public key is present/non-empty rather than matching a known value.
+  run_otdfctl_key create --kas "${KAS_REGISTRY_ID}" --key-id "${KEY_ID}" --algorithm "hpqt:secp384r1-mlkem1024" --mode "local" --wrapping-key-id "wrapping-key-1" --wrapping-key "${WRAPPING_KEY}" --json
+  assert_success
+  assert_equal "$(echo "$output" | jq -r .kas_id)" "${KAS_REGISTRY_ID}"
+  assert_equal "$(echo "$output" | jq -r .key.key_id)" "${KEY_ID}"
+  assert_equal "$(echo "$output" | jq -r .key.key_algorithm)" "8" # hpqt:secp384r1-mlkem1024
   assert_equal "$(echo "$output" | jq -r .key.key_mode)" "1"      # local
   assert_equal "$(echo "$output" | jq -r .key.key_status)" "1"    # active
   assert_equal "$(echo "$output" | jq -r .key.legacy)" "null"
@@ -435,6 +498,23 @@ format_kas_name_as_uri() {
   assert_not_equal "$(echo "$output" | jq -r .key.metadata.updated_at)" "null"
 }
 
+@test "kas-keys: get key by UUID-form user key-id and kasId" {
+  KEY_ID_GET_USER_UUID=$(uuidgen)
+  run_otdfctl_key create --kas "${KAS_REGISTRY_ID}" --key-id "${KEY_ID_GET_USER_UUID}" --algorithm "rsa:2048" --mode "public_key" --public-key-pem "${PEM_B64}" --json
+  assert_success
+  local created_key_system_id_for_get=$(echo "$output" | jq -r .key.id)
+
+  run_otdfctl_key get --key "${KEY_ID_GET_USER_UUID}" --kas "${KAS_REGISTRY_ID}" --json
+  assert_success
+  assert_equal "$(echo "$output" | jq -r .kas_id)" "${KAS_REGISTRY_ID}"
+  assert_equal "$(echo "$output" | jq -r .key.id)" "${created_key_system_id_for_get}"
+  assert_equal "$(echo "$output" | jq -r .key.key_id)" "${KEY_ID_GET_USER_UUID}"
+  assert_equal "$(echo "$output" | jq -r .key.key_algorithm)" "1" # rsa:2048
+  assert_equal "$(echo "$output" | jq -r .key.key_mode)" "4"      # public_key
+  assert_equal "$(echo "$output" | jq -r .key.key_status)" "1"    # active
+  assert_equal "$(echo "$output" | jq -r .key.public_key_ctx.pem)" "${PEM_B64}"
+}
+
 @test "kas-keys: get key by user key-id and kasName" {
   KEY_ID_GET_USER_kas=$(generate_key_id)
   run_otdfctl_key create --kas "kas-registry-for-keys-test" --key-id "${KEY_ID_GET_USER_kas}" --algorithm "rsa:2048" --mode "public_key" --public-key-pem "${PEM_B64}"  --json
@@ -572,7 +652,8 @@ format_kas_name_as_uri() {
 @test "kas-keys: update key (missing id)" {
   run_otdfctl_key update --json
   assert_failure
-  assert_output --partial "ERROR    Flag '--id' is required"
+  assert_equal "$(echo "$output" | jq -r .status)" "ERROR"
+  assert_equal "$(echo "$output" | jq -r .message)" "Flag '--id' is required"
 }
 
 # LIST Tests
@@ -615,6 +696,75 @@ format_kas_name_as_uri() {
   assert_equal "$(echo "$output" | jq -r --arg id "${key2_system_id}" '.kas_keys[] | select(.key.id == $id) | .key.private_key_ctx')" "null"
   assert_not_equal "$(echo "$output" | jq -r --arg id "${key2_system_id}" '.kas_keys[] | select(.key.id == $id) | .key.metadata.created_at')" "null"
   assert_not_equal "$(echo "$output" | jq -r --arg id "${key2_system_id}" '.kas_keys[] | select(.key.id == $id) | .key.metadata.updated_at')" "null"
+}
+
+@test "kas-keys: list keys supports sort and order flags" {
+  sort_prefix="sort-key-$BATS_TEST_NUMBER-$RANDOM"
+  run_otdfctl_key create --kas "${KAS_REGISTRY_ID}" --key-id "${sort_prefix}-alpha" --algorithm "rsa:2048" --mode "public_key" --public-key-pem "${PEM_B64_RSA}" --json
+  assert_success
+  key_a_id=$(echo "$output" | jq -r .key.id)
+
+  run_otdfctl_key create --kas "${KAS_REGISTRY_ID}" --key-id "${sort_prefix}-bravo" --algorithm "rsa:2048" --mode "public_key" --public-key-pem "${PEM_B64_RSA}" --json
+  assert_success
+  key_b_id=$(echo "$output" | jq -r .key.id)
+
+  run_otdfctl_key create --kas "${KAS_REGISTRY_ID}" --key-id "${sort_prefix}-charlie" --algorithm "rsa:2048" --mode "public_key" --public-key-pem "${PEM_B64_RSA}" --json
+  assert_success
+  key_c_id=$(echo "$output" | jq -r .key.id)
+
+  run_otdfctl_key list --kas "${KAS_REGISTRY_ID}" --sort key_id --order desc --limit 500 --json
+  assert_success
+  assert_equal "$(echo "$output" | jq -r --arg prefix "$sort_prefix" '[.kas_keys[] | select(.key.key_id | startswith($prefix)) | .key.id] | join(",")')" "$key_c_id,$key_b_id,$key_a_id"
+
+  run_otdfctl_key list --kas "${KAS_REGISTRY_ID}" --sort key_id --order asc --limit 500 --json
+  assert_success
+  assert_equal "$(echo "$output" | jq -r --arg prefix "$sort_prefix" '[.kas_keys[] | select(.key.key_id | startswith($prefix)) | .key.id] | join(",")')" "$key_a_id,$key_b_id,$key_c_id"
+
+  run_otdfctl_key list --kas "${KAS_REGISTRY_ID}" --sort created_at --order asc --limit 500 --json
+  assert_success
+  assert_equal "$(echo "$output" | jq -r --arg a "$key_a_id" --arg b "$key_b_id" --arg c "$key_c_id" '[.kas_keys[] | select(.key.id == $a or .key.id == $b or .key.id == $c) | .key.id] | join(",")')" "$key_a_id,$key_b_id,$key_c_id"
+
+  run_otdfctl_key update --id "$key_a_id" --label sort=a --json
+  assert_success
+  run_otdfctl_key update --id "$key_b_id" --label sort=b --json
+  assert_success
+  run_otdfctl_key update --id "$key_c_id" --label sort=c --json
+  assert_success
+
+  run_otdfctl_key list --kas "${KAS_REGISTRY_ID}" --sort updated_at --order asc --limit 500 --json
+  assert_success
+  assert_equal "$(echo "$output" | jq -r --arg a "$key_a_id" --arg b "$key_b_id" --arg c "$key_c_id" '[.kas_keys[] | select(.key.id == $a or .key.id == $b or .key.id == $c) | .key.id] | join(",")')" "$key_a_id,$key_b_id,$key_c_id"
+
+  run_otdfctl_key list --kas "${KAS_REGISTRY_ID}" --sort key_id --limit 500 --json
+  assert_success
+  assert_equal "$(echo "$output" | jq -r --arg prefix "$sort_prefix" '[.kas_keys[] | select(.key.key_id | startswith($prefix)) | .key.id] | join(",")')" "$key_c_id,$key_b_id,$key_a_id"
+
+  run_otdfctl_key list --kas "${KAS_REGISTRY_ID}" --order asc --limit 500 --json
+  assert_success
+  assert_equal "$(echo "$output" | jq -r --arg a "$key_a_id" --arg b "$key_b_id" --arg c "$key_c_id" '[.kas_keys[] | select(.key.id == $a or .key.id == $b or .key.id == $c) | .key.id] | join(",")')" "$key_a_id,$key_b_id,$key_c_id"
+}
+
+@test "kas-keys: list keys supports search flag" {
+  search_prefix="search-key-${BATS_TEST_NUMBER}-${RANDOM}"
+  match_kid="${search_prefix}-match"
+  other_kid="${search_prefix}-other"
+
+  run_otdfctl_key create --kas "${KAS_REGISTRY_ID}" --key-id "$match_kid" --algorithm "rsa:2048" --mode "public_key" --public-key-pem "${PEM_B64_RSA}" --json
+  assert_success
+  match_id=$(echo "$output" | jq -r .key.id)
+  run_otdfctl_key create --kas "${KAS_REGISTRY_ID}" --key-id "$other_kid" --algorithm "rsa:2048" --mode "public_key" --public-key-pem "${PEM_B64_RSA}" --json
+  assert_success
+  other_id=$(echo "$output" | jq -r .key.id)
+
+  run_otdfctl_key list --kas "${KAS_REGISTRY_ID}" --search "$match_kid" --json
+  assert_success
+  assert_equal "$(echo "$output" | jq -r --arg id "$match_id" '[.kas_keys[] | select(.key.id == $id)] | length')" "1"
+  assert_equal "$(echo "$output" | jq -r --arg id "$other_id" '[.kas_keys[] | select(.key.id == $id)] | length')" "0"
+
+  run_otdfctl_key unsafe delete --id "$match_id" --kas-uri "$KAS_URI" --key-id "$match_kid" --force
+  assert_success
+  run_otdfctl_key unsafe delete --id "$other_id" --kas-uri "$KAS_URI" --key-id "$other_kid" --force
+  assert_success
 }
 
 @test "kas-keys: list keys (pagination with limit and offset)" {
@@ -900,6 +1050,31 @@ format_kas_name_as_uri() {
   assert_equal "$(echo "$output" | jq -r .rotated_resources.rotated_out_key.key.id)" "${OLD_KEY_SYSTEM_ID}"
   assert_equal "$(echo "$output" | jq -r .rotated_resources.rotated_out_key.key.key_id)" "${OLD_KEY_ID}"
   assert_equal "$(echo "$output" | jq -r .rotated_resources.rotated_out_key.key.key_status)" "2" # rotated (old key should be marked as rotated)
+}
+
+@test "kas-keys: rotate key by UUID-form user key-id and kasId" {
+  # Create a key with a user-defined key ID that is formatted as a UUID.
+  OLD_KEY_ID=$(uuidgen)
+  run_otdfctl_key create --kas "${KAS_REGISTRY_ID}" --key-id "${OLD_KEY_ID}" --algorithm "rsa:2048" --mode "public_key" --public-key-pem "${PEM_B64}" --json
+  assert_success
+  OLD_KEY_SYSTEM_ID=$(echo "$output" | jq -r .key.id)
+
+  # Rotate by user-defined key ID with KAS filter. The UUID-form key ID should not be treated as the system ID.
+  NEW_KEY_ID=$(generate_key_id)
+  run_otdfctl_key rotate --key "${OLD_KEY_ID}" --kas "${KAS_REGISTRY_ID}" --key-id "${NEW_KEY_ID}" --algorithm "rsa:2048" --mode "public_key" --public-key-pem "${PEM_B64}" --json
+  assert_success
+
+  NEW_KEY_SYSTEM_ID=$(echo "$output" | jq -r .kas_key.key.id)
+  assert_not_equal "${OLD_KEY_SYSTEM_ID}" "${NEW_KEY_SYSTEM_ID}"
+  assert_equal "$(echo "$output" | jq -r .kas_key.kas_id)" "${KAS_REGISTRY_ID}"
+  assert_equal "$(echo "$output" | jq -r .kas_key.key.key_id)" "${NEW_KEY_ID}"
+  assert_equal "$(echo "$output" | jq -r .kas_key.key.key_algorithm)" "1" # rsa:2048
+  assert_equal "$(echo "$output" | jq -r .kas_key.key.key_mode)" "4"      # public_key
+  assert_equal "$(echo "$output" | jq -r .kas_key.key.key_status)" "1"    # active
+  assert_equal "$(echo "$output" | jq -r .kas_key.key.public_key_ctx.pem)" "${PEM_B64}"
+  assert_equal "$(echo "$output" | jq -r .rotated_resources.rotated_out_key.key.id)" "${OLD_KEY_SYSTEM_ID}"
+  assert_equal "$(echo "$output" | jq -r .rotated_resources.rotated_out_key.key.key_id)" "${OLD_KEY_ID}"
+  assert_equal "$(echo "$output" | jq -r .rotated_resources.rotated_out_key.key.key_status)" "2" # rotated
 }
 
 @test "kas-keys: rotate key (missing key)" {

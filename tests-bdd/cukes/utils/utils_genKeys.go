@@ -15,6 +15,8 @@ import (
 	"os/exec"
 	"path"
 	"time"
+
+	"github.com/opentdf/platform/lib/ocrypto"
 )
 
 const (
@@ -33,6 +35,7 @@ func GenerateTempKeys(ctx context.Context, outputPath string) {
 	generateRSACertificate(outputPath)
 	generateECParameters(outputPath)
 	generateECCertificate(outputPath)
+	generateHybridKeys(outputPath)
 	generateJavaKeystore(ctx, outputPath)
 }
 
@@ -202,4 +205,87 @@ func createJavaKeystore(ctx context.Context, certPath, keystorePath string) {
 	}
 
 	log.Printf("Java keystore generated successfully: %s", keystorePath)
+}
+
+// generateHybridKeys creates X-Wing, P256+ML-KEM-768, and P384+ML-KEM-1024 key pairs.
+func generateHybridKeys(outputPath string) {
+	specs := []struct {
+		name       string
+		newKeyPair func() (priv, pub string, err error)
+		privateOut string
+		publicOut  string
+	}{
+		{"X-Wing", generateXWingKeyPair, "kas-xwing-private.pem", "kas-xwing-public.pem"},
+		{"P256+ML-KEM-768", generateP256MLKEM768KeyPair, "kas-p256mlkem768-private.pem", "kas-p256mlkem768-public.pem"},
+		{"P384+ML-KEM-1024", generateP384MLKEM1024KeyPair, "kas-p384mlkem1024-private.pem", "kas-p384mlkem1024-public.pem"},
+	}
+
+	for _, s := range specs {
+		priv, pub, err := s.newKeyPair()
+		if err != nil {
+			log.Fatalf("Failed to generate %s key pair: %v", s.name, err)
+		}
+
+		privPath := path.Join(outputPath, s.privateOut)
+		pubPath := path.Join(outputPath, s.publicOut)
+
+		if err := os.WriteFile(privPath, []byte(priv), 0o600); err != nil {
+			log.Fatalf("Failed to write %s: %v", privPath, err)
+		}
+		if err := os.WriteFile(pubPath, []byte(pub), 0o600); err != nil {
+			log.Fatalf("Failed to write %s: %v", pubPath, err)
+		}
+
+		log.Printf("%s key pair generated successfully:", s.name)
+		log.Printf("  - Private: %s", privPath)
+		log.Printf("  - Public:  %s", pubPath)
+	}
+}
+
+func generateXWingKeyPair() (string, string, error) {
+	kp, err := ocrypto.NewXWingKeyPair()
+	if err != nil {
+		return "", "", err
+	}
+	priv, err := kp.PrivateKeyInPemFormat()
+	if err != nil {
+		return "", "", err
+	}
+	pub, err := kp.PublicKeyInPemFormat()
+	if err != nil {
+		return "", "", err
+	}
+	return priv, pub, nil
+}
+
+func generateP256MLKEM768KeyPair() (string, string, error) {
+	kp, err := ocrypto.NewP256MLKEM768KeyPair()
+	if err != nil {
+		return "", "", err
+	}
+	priv, err := kp.PrivateKeyInPemFormat()
+	if err != nil {
+		return "", "", err
+	}
+	pub, err := kp.PublicKeyInPemFormat()
+	if err != nil {
+		return "", "", err
+	}
+	return priv, pub, nil
+}
+
+func generateP384MLKEM1024KeyPair() (string, string, error) {
+	kp, err := ocrypto.NewP384MLKEM1024KeyPair()
+	if err != nil {
+		return "", "", err
+	}
+	priv, err := kp.PrivateKeyInPemFormat()
+	if err != nil {
+		return "", "", err
+	}
+	pub, err := kp.PublicKeyInPemFormat()
+	if err != nil {
+		return "", "", err
+	}
+	return priv, pub, nil
 }

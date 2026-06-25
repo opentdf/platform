@@ -53,18 +53,54 @@ done
 file_to_watch="$1"
 shift
 
+file_signature() {
+    if [[ ! -e "$1" ]]; then
+        echo "missing"
+        return
+    fi
+
+    if stat -c '%i:%s:%Y' "$1" >/dev/null 2>&1; then
+        stat -c '%i:%s:%Y' "$1"
+        return
+    fi
+
+    stat -f '%i:%z:%m' "$1"
+}
+
 wait_for_change_to() {
-    if which inotifywait; then
-        echo "[INFO] inotifywaiting to [${file_to_watch}]"
-        inotifywait -e modify -e move -e create -e delete -e attrib -r "${file_to_watch}"
+    if command -v inotifywait >/dev/null 2>&1; then
+        local watch_dir
+        local watch_name
+        local changed_file
+
+        watch_dir=$(dirname "${file_to_watch}")
+        watch_name=$(basename "${file_to_watch}")
+
+        echo "[INFO] inotifywaiting to [${file_to_watch}] via [${watch_dir}]"
+        while true; do
+            changed_file=$(inotifywait -q \
+                -e close_write \
+                -e moved_to \
+                -e delete \
+                -e attrib \
+                --format '%f' \
+                "${watch_dir}")
+
+            if [[ "${changed_file}" == "${watch_name}" ]]; then
+                return
+            fi
+        done
     else
-        m=$(date -r "${file_to_watch}" +%s)
+        local m
+        local n
+
+        m=$(file_signature "${file_to_watch}")
         echo "[INFO] stat checking [${file_to_watch}] from [${m}]"
         while true; do
             sleep 1
-            n=$(date -r "${file_to_watch}" +%s)
-            echo "[INFO] stat checking [${file_to_watch}] from [${m} < ${n}]"
-            if [[ $m < $n ]]; then
+            n=$(file_signature "${file_to_watch}")
+            echo "[INFO] stat checking [${file_to_watch}] from [${m} != ${n}]"
+            if [[ "${m}" != "${n}" ]]; then
                 return
             fi
         done

@@ -2,9 +2,11 @@ package wellknownconfiguration
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log/slog"
+	"net/http"
 	"sync"
 
 	"connectrpc.com/connect"
@@ -44,13 +46,28 @@ func UpdateConfigurationBaseKey(config any) {
 func NewRegistration() *serviceregistry.Service[wellknownconfigurationconnect.WellKnownServiceHandler] {
 	return &serviceregistry.Service[wellknownconfigurationconnect.WellKnownServiceHandler]{
 		ServiceOptions: serviceregistry.ServiceOptions[wellknownconfigurationconnect.WellKnownServiceHandler]{
-			Namespace:       "wellknown",
-			ServiceDesc:     &wellknown.WellKnownService_ServiceDesc,
-			ConnectRPCFunc:  wellknownconfigurationconnect.NewWellKnownServiceHandler,
-			GRPCGatewayFunc: wellknown.RegisterWellKnownServiceHandler,
+			Namespace:      "wellknown",
+			ServiceDesc:    &wellknown.WellKnownService_ServiceDesc,
+			ConnectRPCFunc: wellknownconfigurationconnect.NewWellKnownServiceHandler,
 			RegisterFunc: func(srp serviceregistry.RegistrationParams) (wellknownconfigurationconnect.WellKnownServiceHandler, serviceregistry.HandlerServer) {
 				wk := &WellKnownService{logger: srp.Logger}
-				return wk, nil
+				return wk, func(_ context.Context, mux *http.ServeMux) error {
+					mux.HandleFunc("GET /.well-known/opentdf-configuration", func(w http.ResponseWriter, _ *http.Request) {
+						rwMutex.RLock()
+						cfg, err := structpb.NewStruct(wellKnownConfiguration)
+						rwMutex.RUnlock()
+						if err != nil {
+							srp.Logger.Error("failed to create struct for wellknown configuration", slog.String("error", err.Error()))
+							http.Error(w, "internal error", http.StatusInternalServerError)
+							return
+						}
+						w.Header().Set("Content-Type", "application/json")
+						if err := json.NewEncoder(w).Encode(cfg.AsMap()); err != nil {
+							srp.Logger.Error("failed to encode wellknown configuration", slog.String("error", err.Error()))
+						}
+					})
+					return nil
+				}
 			},
 		},
 	}

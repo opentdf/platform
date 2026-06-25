@@ -61,7 +61,7 @@ func (s *RegisteredResourcesStepDefinitions) iSendARequestToCreateARegisteredRes
 			switch cellIndexMap[ci] {
 			case referenceIDColumn:
 				referenceID = v
-			case "name":
+			case nameKey:
 				req.Name = v
 			case namespaceIDKey:
 				nsID, ok := scenarioContext.GetObject(v).(string)

@@ -3,8 +3,10 @@ package access
 import (
 	"context"
 	"errors"
+	"log/slog"
 	"strconv"
 
+	"connectrpc.com/connect"
 	authzV2 "github.com/opentdf/platform/protocol/go/authorization/v2"
 	"github.com/opentdf/platform/protocol/go/entity"
 	"github.com/opentdf/platform/protocol/go/policy"
@@ -17,6 +19,39 @@ const (
 	ErrDecisionUnexpected      = Error("authorization decision unexpected")
 	ErrDecisionCountUnexpected = Error("authorization decision count unexpected")
 )
+
+// Sanitized cause-class vocabulary surfaced in client-facing rewrap error
+// messages and in InfoContext log lines. Stable strings; greppable; safe to
+// emit at info level (no resource attributes, no client identifiers, no FQNs).
+const (
+	// 4xx: routine denials. Default for any unknown access-evaluation error.
+	AccessErrCategoryPDPDenied = "pdp-denied"
+	// 5xx: the authorization service did not answer (transport / availability).
+	AccessErrCategoryAuthServiceUnavailable = "auth-service-unavailable"
+	// 5xx: our context was cancelled or timed out before we got an answer.
+	AccessErrCategoryContextCancelled = "context-cancelled"
+)
+
+// classifyAccessError maps an error from canAccess / GetDecision into a
+// sanitized category tag and a flag indicating whether it represents an
+// internal/infrastructure failure (5xx) rather than a routine denial (4xx).
+//
+// Default to 403: misclassifying a denial as 500 pages oncall on every
+// failed rewrap. Only mark internal for clear transport-level failures.
+func classifyAccessError(ctx context.Context, err error) (string, bool) {
+	if ctxErr := ctx.Err(); ctxErr != nil && errors.Is(err, ctxErr) {
+		return AccessErrCategoryContextCancelled, true
+	}
+	switch connect.CodeOf(err) { //nolint:exhaustive // transport-level codes only; everything else defaults to a denial
+	case connect.CodeUnavailable,
+		connect.CodeDeadlineExceeded,
+		connect.CodeCanceled,
+		connect.CodeResourceExhausted,
+		connect.CodeAborted:
+		return AccessErrCategoryAuthServiceUnavailable, true
+	}
+	return AccessErrCategoryPDPDenied, false
+}
 
 var decryptAction = &policy.Action{
 	Name: actions.ActionNameRead,
@@ -101,7 +136,22 @@ func (p *Provider) checkAttributes(ctx context.Context, resources []*authzV2.Res
 		}
 		dr, err := p.SDK.AuthorizationV2.GetDecision(ctx, req)
 		if err != nil {
-			p.Logger.ErrorContext(ctx, "error received from GetDecision")
+			category, _ := classifyAccessError(ctx, err)
+			p.Logger.InfoContext(
+				ctx,
+				"get decision failed",
+				slog.String("category", category),
+				slog.String("code", connect.CodeOf(err).String()),
+				slog.Int("resources", 1),
+			)
+			p.Logger.DebugContext(
+				ctx,
+				"get decision failed: details",
+				slog.String("category", category),
+				slog.Any("error", err),
+				slog.Any("fulfillable_obligation_fqns", fulfillableObligationFQNs),
+				slog.Any("resource", resources[0]),
+			)
 			return nil, errors.Join(ErrDecisionUnexpected, err)
 		}
 		return []*authzV2.ResourceDecision{dr.GetDecision()}, nil
@@ -119,7 +169,22 @@ func (p *Provider) checkAttributes(ctx context.Context, resources []*authzV2.Res
 
 	dr, err := p.SDK.AuthorizationV2.GetDecisionMultiResource(ctx, req)
 	if err != nil {
-		p.Logger.ErrorContext(ctx, "error received from GetDecisionMultiResource")
+		category, _ := classifyAccessError(ctx, err)
+		p.Logger.InfoContext(
+			ctx,
+			"get multi-resource decision failed",
+			slog.String("category", category),
+			slog.String("code", connect.CodeOf(err).String()),
+			slog.Int("resources", len(resources)),
+		)
+		p.Logger.DebugContext(
+			ctx,
+			"get multi-resource decision failed: details",
+			slog.String("category", category),
+			slog.Any("error", err),
+			slog.Any("fulfillable_obligation_fqns", fulfillableObligationFQNs),
+			slog.Any("resources", resources),
+		)
 		return nil, errors.Join(ErrDecisionUnexpected, err)
 	}
 	return dr.GetResourceDecisions(), nil

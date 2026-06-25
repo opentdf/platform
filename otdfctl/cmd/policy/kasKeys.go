@@ -83,6 +83,12 @@ func generateKeyPair(alg policy.Algorithm) (ocrypto.KeyPair, error) {
 		key, err = generateECCKey(ecSecp384Len)
 	case policy.Algorithm_ALGORITHM_EC_P521:
 		key, err = generateECCKey(ecSecp521Len)
+	case policy.Algorithm_ALGORITHM_HPQT_XWING:
+		key, err = ocrypto.NewKeyPair(ocrypto.HybridXWingKey)
+	case policy.Algorithm_ALGORITHM_HPQT_SECP256R1_MLKEM768:
+		key, err = ocrypto.NewKeyPair(ocrypto.HybridSecp256r1MLKEM768Key)
+	case policy.Algorithm_ALGORITHM_HPQT_SECP384R1_MLKEM1024:
+		key, err = ocrypto.NewKeyPair(ocrypto.HybridSecp384r1MLKEM1024Key)
 	case policy.Algorithm_ALGORITHM_UNSPECIFIED:
 		fallthrough
 	default:
@@ -306,7 +312,8 @@ func policyImportKasKey(cmd *cobra.Command, args []string) {
 		resolvedKasID = kasEntry.GetId()
 	}
 
-	importedKey, err := h.CreateKasKey(c.Context(),
+	importedKey, err := h.CreateKasKey(
+		c.Context(),
 		resolvedKasID,
 		keyIdentifier,
 		alg,
@@ -342,11 +349,13 @@ func policyGetKasKey(cmd *cobra.Command, args []string) {
 	var identifier *kasregistry.KasKeyIdentifier
 	var err error
 
-	if utils.ClassifyString(id) != utils.StringTypeUUID {
+	kasIdentifier := c.Flags.GetOptionalString("kas")
+	if kasIdentifier != "" || utils.ClassifyString(id) != utils.StringTypeUUID {
 		identifier, err = getKasKeyIdentifier(c)
 		if err != nil {
 			cli.ExitWithError("Invalid key identifier", err)
 		}
+		id = ""
 	}
 	kasKey, err := h.GetKasKey(c.Context(), id, identifier)
 	if err != nil {
@@ -373,7 +382,8 @@ func policyUpdateKasKey(cmd *cobra.Command, args []string) {
 		c.Context(),
 		id,
 		getMetadataMutable(metadataLabels),
-		getMetadataUpdateBehavior())
+		getMetadataUpdateBehavior(),
+	)
 	if err != nil {
 		cli.ExitWithError("Failed to update kas key", err)
 	}
@@ -413,6 +423,8 @@ func policyListKasKeys(cmd *cobra.Command, args []string) {
 	if err != nil {
 		cli.ExitWithError("Invalid legacy flag", err)
 	}
+	search := c.Flags.GetOptionalString("search")
+	sort := getSortOption(c)
 
 	kasLookup, err := resolveKasIdentifier(kasIdentifier)
 	if err != nil {
@@ -420,7 +432,7 @@ func policyListKasKeys(cmd *cobra.Command, args []string) {
 	}
 
 	// Get the list of keys.
-	resp, err := h.ListKasKeys(c.Context(), limit, offset, alg, kasLookup, legacy)
+	resp, err := h.ListKasKeys(c.Context(), limit, offset, alg, kasLookup, legacy, search, sort)
 	if err != nil {
 		cli.ExitWithError("Failed to list kas keys", err)
 	}
@@ -584,11 +596,13 @@ func policyRotateKasKey(cmd *cobra.Command, args []string) {
 	}
 
 	var identifier *kasregistry.KasKeyIdentifier
-	if utils.ClassifyString(oldKey) != utils.StringTypeUUID {
+	kasIdentifier := c.Flags.GetOptionalString("kas")
+	if kasIdentifier != "" || utils.ClassifyString(oldKey) != utils.StringTypeUUID {
 		identifier, err = getKasKeyIdentifier(c)
 		if err != nil {
 			cli.ExitWithError("Invalid key identifier", err)
 		}
+		oldKey = ""
 	}
 
 	// Call the rotate key function
@@ -819,7 +833,8 @@ func getLegacyFlag(c *cli.Cli) (*bool, error) {
 
 func initKASKeysCommands() {
 	// Create Kas Key
-	createDoc := man.Docs.GetCommand("policy/kas-registry/key/create",
+	createDoc := man.Docs.GetCommand(
+		"policy/kas-registry/key/create",
 		man.WithRun(policyCreateKasKey),
 	)
 	createDoc.Flags().StringP(
@@ -877,9 +892,11 @@ func initKASKeysCommands() {
 		createDoc.GetDocFlag("private-key-pem").Description,
 	)
 	injectLabelFlags(&createDoc.Command, false)
+	createDoc.MarkSensitiveFlags()
 
 	// Get Kas Key
-	getDoc := man.Docs.GetCommand("policy/kas-registry/key/get",
+	getDoc := man.Docs.GetCommand(
+		"policy/kas-registry/key/get",
 		man.WithRun(policyGetKasKey),
 	)
 	getDoc.Flags().StringP(
@@ -895,7 +912,8 @@ func initKASKeysCommands() {
 		getDoc.GetDocFlag("kas").Description,
 	)
 	// Update Kas Key
-	updateDoc := man.Docs.GetCommand("policy/kas-registry/key/update",
+	updateDoc := man.Docs.GetCommand(
+		"policy/kas-registry/key/update",
 		man.WithRun(policyUpdateKasKey),
 	)
 	updateDoc.Flags().StringP(
@@ -907,7 +925,8 @@ func initKASKeysCommands() {
 	injectLabelFlags(&updateDoc.Command, true)
 
 	// List Kas Keys
-	listDoc := man.Docs.GetCommand("policy/kas-registry/key/list",
+	listDoc := man.Docs.GetCommand(
+		"policy/kas-registry/key/list",
 		man.WithRun(policyListKasKeys),
 	)
 	listDoc.Flags().StringP(
@@ -929,9 +948,12 @@ func initKASKeysCommands() {
 		listDoc.GetDocFlag("legacy").Description,
 	)
 	injectListPaginationFlags(listDoc)
+	injectListSearchFlag(listDoc)
+	injectListSortFlags(listDoc)
 
 	// Rotate Kas Key
-	rotateDoc := man.Docs.GetCommand("policy/kas-registry/key/rotate",
+	rotateDoc := man.Docs.GetCommand(
+		"policy/kas-registry/key/rotate",
 		man.WithRun(policyRotateKasKey),
 	)
 	rotateDoc.Flags().StringP(
@@ -995,9 +1017,11 @@ func initKASKeysCommands() {
 		rotateDoc.GetDocFlag("private-key-pem").Description,
 	)
 	injectLabelFlags(&rotateDoc.Command, true)
+	rotateDoc.MarkSensitiveFlags()
 
 	// Import Kas Key
-	importDoc := man.Docs.GetCommand("policy/kas-registry/key/import",
+	importDoc := man.Docs.GetCommand(
+		"policy/kas-registry/key/import",
 		man.WithRun(policyImportKasKey),
 	)
 	importDoc.Flags().StringP(
@@ -1049,8 +1073,10 @@ func initKASKeysCommands() {
 		importDoc.GetDocFlag("legacy").Description,
 	)
 	injectLabelFlags(&importDoc.Command, false)
+	importDoc.MarkSensitiveFlags()
 
-	mappingsDoc := man.Docs.GetCommand("policy/kas-registry/key/list-mappings",
+	mappingsDoc := man.Docs.GetCommand(
+		"policy/kas-registry/key/list-mappings",
 		man.WithRun(policyListKeyMappings),
 	)
 	mappingsDoc.Flags().StringP(
@@ -1084,7 +1110,8 @@ func initKASKeysCommands() {
 		unsafeCmd.GetDocFlag("force").Description,
 	)
 
-	unsafeDeleteDoc := man.Docs.GetCommand("policy/kas-registry/key/unsafe/delete",
+	unsafeDeleteDoc := man.Docs.GetCommand(
+		"policy/kas-registry/key/unsafe/delete",
 		man.WithRun(policyUnsafeDeleteKasKey),
 	)
 	unsafeDeleteDoc.Flags().StringP(

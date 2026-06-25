@@ -11,17 +11,18 @@ Feature: Authz v2 default policy authorization
 
     Scenario: URI-specific KAS role can list unfiltered only while all keys match its KAS URI
       Given I use the platform as "opentdf-admin"
+      And I remove all KAS keys
       And I create KAS keys:
-        | kas_uri                              | key_id                 |
-        | https://kas-a-unfiltered.example.com | kas-a-unfiltered-kid   |
+        | kas_uri                              | key_id               |
+        | https://kas-a-unfiltered.example.com | kas-a-unfiltered-kid |
       Given I use the platform as "kas-a"
       When I send a request to list KAS keys
       Then the response should be successful
       And the listed KAS keys should contain only "kas-a-unfiltered-kid"
       Given I use the platform as "opentdf-admin"
       And I create KAS keys:
-        | kas_uri                              | key_id                 |
-        | https://kas-b-unfiltered.example.com | kas-b-unfiltered-kid   |
+        | kas_uri                              | key_id               |
+        | https://kas-b-unfiltered.example.com | kas-b-unfiltered-kid |
       Given I use the platform as "kas-a"
       When I send a request to list KAS keys
       Then the response should be permission denied

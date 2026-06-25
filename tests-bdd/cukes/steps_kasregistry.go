@@ -10,6 +10,7 @@ import (
 	"github.com/cucumber/godog"
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/kasregistry"
+	policyunsafe "github.com/opentdf/platform/protocol/go/policy/unsafe"
 )
 
 const (
@@ -68,6 +69,48 @@ func (s *KasRegistryStepDefinitions) iCreateKASKeys(ctx context.Context, tbl *go
 		scenarioContext.RecordObject(keyID, keyResp.GetKasKey().GetKey().GetId())
 		scenarioContext.RecordObject(keyID+"_kas_uri", kasURI)
 		scenarioContext.RecordObject(keyID+"_kas_id", kasResp.GetKeyAccessServer().GetId())
+	}
+
+	return ctx, nil
+}
+
+func (s *KasRegistryStepDefinitions) iRemoveAllKASKeys(ctx context.Context) (context.Context, error) {
+	scenarioContext := GetPlatformScenarioContext(ctx)
+	scenarioContext.ClearError()
+
+	resp, err := scenarioContext.SDK.KeyAccessServerRegistry.ListKeys(ctx, &kasregistry.ListKeysRequest{})
+	scenarioContext.SetError(err)
+	if err != nil {
+		return ctx, err
+	}
+
+	kasIDs := make(map[string]struct{})
+	for _, kasKey := range resp.GetKasKeys() {
+		kasID := kasKey.GetKasId()
+		if kasID != "" {
+			kasIDs[kasID] = struct{}{}
+		}
+
+		key := kasKey.GetKey()
+		_, err := scenarioContext.SDK.Unsafe.UnsafeDeleteKasKey(ctx, &policyunsafe.UnsafeDeleteKasKeyRequest{
+			Id:     key.GetId(),
+			Kid:    key.GetKeyId(),
+			KasUri: kasKey.GetKasUri(),
+		})
+		scenarioContext.SetError(err)
+		if err != nil {
+			return ctx, err
+		}
+	}
+
+	for kasID := range kasIDs {
+		_, err := scenarioContext.SDK.KeyAccessServerRegistry.DeleteKeyAccessServer(ctx, &kasregistry.DeleteKeyAccessServerRequest{
+			Id: kasID,
+		})
+		scenarioContext.SetError(err)
+		if err != nil {
+			return ctx, err
+		}
 	}
 
 	return ctx, nil
@@ -242,6 +285,7 @@ func splitKASKeyIDs(keyIDs string) []string {
 func RegisterKasRegistryStepDefinitions(ctx *godog.ScenarioContext) {
 	stepDefinitions := KasRegistryStepDefinitions{}
 	ctx.Step(`^I create KAS keys:$`, stepDefinitions.iCreateKASKeys)
+	ctx.Step(`^I remove all KAS keys$`, stepDefinitions.iRemoveAllKASKeys)
 	ctx.Step(`^I send a request to get KAS key "([^"]*)"$`, stepDefinitions.iGetKASKey)
 	ctx.Step(`^I send a request to get KAS key "([^"]*)" by stored ID$`, stepDefinitions.iGetKASKeyByStoredID)
 	ctx.Step(`^I send a request to list KAS keys$`, stepDefinitions.iListKASKeys)

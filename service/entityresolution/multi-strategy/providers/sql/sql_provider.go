@@ -14,8 +14,8 @@ import (
 func normalizeDriverName(driver string) string {
 	driver = strings.ToLower(strings.TrimSpace(driver))
 	switch driver {
-	case pgxDriverAlias, postgresDriverAlias, postgresQLDriverAlias:
-		return defaultPostgreSQLDriver
+	case defaultPostgreSQLDriver, pgxDriverAlias, postgresQLDriverAlias:
+		return canonicalPGXDriver
 	default:
 		return driver
 	}
@@ -265,7 +265,7 @@ func (p *Provider) Close() error {
 // buildConnectionString creates a connection string based on the driver
 func (p *Provider) buildConnectionString() (string, error) {
 	switch normalizeDriverName(p.config.Driver) {
-	case defaultPostgreSQLDriver:
+	case canonicalPGXDriver:
 		return fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=%s",
 			p.config.Host, p.config.Port, p.config.Username, p.config.Password,
 			p.config.Database, p.config.SSLMode), nil

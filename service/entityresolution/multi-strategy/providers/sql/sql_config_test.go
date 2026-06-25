@@ -1,15 +1,14 @@
 package sql
 
 import (
-	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 )
 
-func TestDefaultConfigUsesPGXDriver(t *testing.T) {
+func TestDefaultConfigUsesPostgreSQLDriver(t *testing.T) {
 	config := DefaultConfig()
-	if config.Driver != defaultPostgreSQLDriver {
-		t.Fatalf("expected default driver %q, got %q", defaultPostgreSQLDriver, config.Driver)
-	}
+	require.Equal(t, defaultPostgreSQLDriver, config.Driver)
 }
 
 func TestNormalizeDriverName(t *testing.T) {
@@ -21,17 +20,17 @@ func TestNormalizeDriverName(t *testing.T) {
 		{
 			name:   "pgx",
 			driver: pgxDriverAlias,
-			want:   defaultPostgreSQLDriver,
+			want:   canonicalPGXDriver,
 		},
 		{
-			name:   "postgres alias",
-			driver: postgresDriverAlias,
-			want:   defaultPostgreSQLDriver,
+			name:   "postgres default",
+			driver: defaultPostgreSQLDriver,
+			want:   canonicalPGXDriver,
 		},
 		{
 			name:   "postgresql alias with whitespace and case",
 			driver: " PostgreSQL ",
-			want:   defaultPostgreSQLDriver,
+			want:   canonicalPGXDriver,
 		},
 		{
 			name:   "other driver",
@@ -47,15 +46,13 @@ func TestNormalizeDriverName(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := normalizeDriverName(tt.driver); got != tt.want {
-				t.Fatalf("expected %q, got %q", tt.want, got)
-			}
+			require.Equal(t, tt.want, normalizeDriverName(tt.driver))
 		})
 	}
 }
 
 func TestBuildConnectionStringSupportsPostgresAliases(t *testing.T) {
-	tests := []string{defaultPostgreSQLDriver, pgxDriverAlias, postgresDriverAlias, postgresQLDriverAlias, "Postgres"}
+	tests := []string{canonicalPGXDriver, defaultPostgreSQLDriver, pgxDriverAlias, postgresQLDriverAlias, "Postgres"}
 
 	for _, driver := range tests {
 		t.Run(driver, func(t *testing.T) {
@@ -72,12 +69,8 @@ func TestBuildConnectionStringSupportsPostgresAliases(t *testing.T) {
 			}
 
 			connStr, err := provider.buildConnectionString()
-			if err != nil {
-				t.Fatalf("expected postgres alias to build connection string: %v", err)
-			}
-			if !strings.Contains(connStr, "dbname=identity_db") {
-				t.Fatalf("expected database name in connection string, got %q", connStr)
-			}
+			require.NoError(t, err)
+			require.Contains(t, connStr, "dbname=identity_db")
 		})
 	}
 }

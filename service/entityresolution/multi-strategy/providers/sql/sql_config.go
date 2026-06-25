@@ -6,9 +6,9 @@ import (
 
 const (
 	// Default SQL configuration values
-	defaultPostgreSQLDriver   = "pgx/v5"
+	defaultPostgreSQLDriver   = "postgres"
+	canonicalPGXDriver        = "pgx/v5"
 	pgxDriverAlias            = "pgx"
-	postgresDriverAlias       = "postgres"
 	postgresQLDriverAlias     = "postgresql"
 	defaultPostgreSQLPort     = 5432
 	defaultMaxOpenConnections = 25
@@ -21,7 +21,7 @@ const (
 // SQLConfig defines configuration for SQL database providers
 type Config struct {
 	// Database connection configuration
-	Driver   string `mapstructure:"driver"` // "pgx/v5", "mysql", "sqlite" ("pgx", "postgres", and "postgresql" are accepted as aliases)
+	Driver   string `mapstructure:"driver"` // "postgres", "mysql", "sqlite" ("pgx", "pgx/v5", and "postgresql" are accepted as aliases)
 	Host     string `mapstructure:"host"`
 	Port     int    `mapstructure:"port"`
 	Database string `mapstructure:"database"`

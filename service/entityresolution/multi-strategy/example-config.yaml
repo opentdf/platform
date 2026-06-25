@@ -22,7 +22,7 @@ services:
       user_db:
         type: sql
         connection:
-          driver: pgx/v5
+          driver: postgres
           host: localhost
           port: 5432
           database: user_directory

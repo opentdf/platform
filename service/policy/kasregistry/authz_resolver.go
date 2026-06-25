@@ -38,14 +38,14 @@ type keyAuthzDBClient interface {
 }
 
 func (s *KeyAccessServerRegistry) getKeyAuthzResolver(ctx context.Context, req connect.AnyRequest) (authz.ResolverContext, error) {
-	return s.resolveGetKeyAuthzContext(ctx, req)
+	return resolveGetKeyAuthzContext(ctx, req, s.dbClient)
 }
 
 func (s *KeyAccessServerRegistry) listKeysAuthzResolver(ctx context.Context, req connect.AnyRequest) (authz.ResolverContext, error) {
-	return s.resolveListKeysAuthzContext(ctx, req, s.dbClient)
+	return resolveListKeysAuthzContext(ctx, req, s.dbClient)
 }
 
-func (s *KeyAccessServerRegistry) resolveGetKeyAuthzContext(ctx context.Context, req connect.AnyRequest) (authz.ResolverContext, error) {
+func resolveGetKeyAuthzContext(ctx context.Context, req connect.AnyRequest, dbClient keyAuthzDBClient) (authz.ResolverContext, error) {
 	resolverCtx := authz.NewResolverContext()
 
 	msg, ok := req.Any().(*kasr.GetKeyRequest)
@@ -53,7 +53,7 @@ func (s *KeyAccessServerRegistry) resolveGetKeyAuthzContext(ctx context.Context,
 		return resolverCtx, fmt.Errorf("%w: %T", errUnexpectedGetKeyAuthzRequestType, req.Any())
 	}
 
-	kasURI, err := resolveGetKeyKasURI(ctx, msg, &resolverCtx, s.dbClient)
+	kasURI, err := resolveGetKeyKasURI(ctx, msg, &resolverCtx, dbClient)
 	if err != nil {
 		return resolverCtx, err
 	}
@@ -64,7 +64,7 @@ func (s *KeyAccessServerRegistry) resolveGetKeyAuthzContext(ctx context.Context,
 	return resolverCtx, nil
 }
 
-func (s *KeyAccessServerRegistry) resolveListKeysAuthzContext(ctx context.Context, req connect.AnyRequest, dbClient keyAuthzDBClient) (authz.ResolverContext, error) {
+func resolveListKeysAuthzContext(ctx context.Context, req connect.AnyRequest, dbClient keyAuthzDBClient) (authz.ResolverContext, error) {
 	resolverCtx := authz.NewResolverContext()
 
 	msg, ok := req.Any().(*kasr.ListKeysRequest)

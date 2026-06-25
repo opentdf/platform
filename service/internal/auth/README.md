@@ -91,6 +91,9 @@ Other URI characters such as `:`, `/`, `?`, `=`, and `+` can stay readable. For 
 p, role:kas-reader, /policy.kasregistry.KeyAccessServerRegistryService/GetKey, kas_uri=https://kas.example.com?foo=bar%26baz=qux, allow
 ```
 
+> [!NOTE]
+> This escaping only covers authz v2 dimension parsing. Policy rows are still Casbin CSV, so if a URI contains a literal comma, quote the policy field using valid CSV/Casbin syntax. Quotes and newlines should not appear unescaped in valid KAS URIs.
+
 The embedded v2 [default policy](https://github.com/opentdf/platform/blob/8702ac1760ba0952f3e6876dd733d7a20c9438cc/service/internal/auth/authz/casbin/v2/policy.csv) grants:
 
 - `role:admin` full access.

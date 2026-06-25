@@ -39,13 +39,42 @@ The interceptor calls a service-registered resolver only when the selected autho
 
 Services register resolvers through their scoped `AuthzResolverRegistry` during service startup. A resolver may return one or more resources, and every non-empty resource must be allowed for the request to pass.
 
+### Moving From Authz v1 to v2 Policy
+
+When moving policy from v1 to v2:
+
+- Change policy rows from `p, subject, resource, action, effect` to `p, subject, rpc, dimensions, effect`.
+- Use the full Connect/gRPC RPC path in the `rpc` column, including the leading slash, for example `/policy.kasregistry.KeyAccessServerRegistryService/GetKey`.
+- Remove the separate action column. In v2, the RPC method represents the operation.
+- Use `*` for dimensions when the policy is only subject/RPC scoped.
+- Use concrete dimensions only for RPCs with registered resolvers. Today, `GetKey` and `ListKeys` can use `kas_uri=<value>`.
+
+For example, a v1 read rule:
+
+```csv
+p, role:standard, kasregistry.*, read, allow
+```
+
+becomes a v2 RPC-scoped rule:
+
+```csv
+p, role:standard, /policy.kasregistry.KeyAccessServerRegistryService/Get*, *, allow
+```
+
+and a v2 dimension-scoped `GetKey` rule:
+
+```csv
+p, role:kas-reader, /policy.kasregistry.KeyAccessServerRegistryService/GetKey, kas_uri=https://kas.example.com, allow
+```
+
 ### Current v2 Dimension Coverage
 
-The table lists production resolver coverage in this workspace. The v2 authorizer supports arbitrary dimension keys supplied by resolvers, but only the RPC below currently has a registered production resolver.
+The table lists production resolver coverage in this workspace. The v2 authorizer supports arbitrary dimension keys supplied by resolvers, but only the RPCs below currently have registered production resolvers.
 
 | RPC | Available dimensions |
 | --- | --- |
 | `/policy.kasregistry.KeyAccessServerRegistryService/GetKey` | `kas_uri` |
+| `/policy.kasregistry.KeyAccessServerRegistryService/ListKeys` | `kas_uri` |
 | All other RPCs | none (`*`) |
 
 ### KAS URI Policy Encoding
@@ -62,7 +91,7 @@ Other URI characters such as `:`, `/`, `?`, `=`, and `+` can stay readable. For 
 p, role:kas-reader, /policy.kasregistry.KeyAccessServerRegistryService/GetKey, kas_uri=https://kas.example.com?foo=bar%26baz=qux, allow
 ```
 
-The embedded v2 default policy grants:
+The embedded v2 [default policy](https://github.com/opentdf/platform/blob/8702ac1760ba0952f3e6876dd733d7a20c9438cc/service/internal/auth/authz/casbin/v2/policy.csv) grants:
 
 - `role:admin` full access.
 - `role:standard` read access to policy `Get*`, `List*`, and `Match*` RPCs, access to KAS, health, discovery, and authorization services.

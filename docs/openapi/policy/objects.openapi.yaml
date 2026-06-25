@@ -398,10 +398,7 @@ components:
              from idP/LDAP)
         operator:
           title: operator
-          description: |-
-            Deprecated: use comparison + quantifier (+ case_insensitive) instead. Normalized to the
-             decomposed fields in the service layer for backward compatibility.
-          deprecated: true
+          description: the evaluation operator of relation
           $ref: '#/components/schemas/policy.SubjectMappingOperatorEnum'
         subjectExternalValues:
           type: array

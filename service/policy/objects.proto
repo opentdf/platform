@@ -292,10 +292,8 @@ message Condition {
   // from idP/LDAP)
   string subject_external_selector_value = 1 [(buf.validate.field).required = true];
 
-  // Deprecated: use comparison + quantifier (+ case_insensitive) instead. Normalized to the
-  // decomposed fields in the service layer for backward compatibility.
+  // the evaluation operator of relation
   SubjectMappingOperatorEnum operator = 2 [
-    deprecated = true,
     (buf.validate.field).enum.defined_only = true,
     (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE
   ];

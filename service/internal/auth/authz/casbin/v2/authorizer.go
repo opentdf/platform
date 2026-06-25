@@ -200,10 +200,7 @@ func (a *Authorizer) authorize(ctx context.Context, req *authz.Request) (*authz.
 		return nil, fmt.Errorf("v2 authorization subject extraction error: %w", err)
 	}
 
-	// If no subjects found, use default role
-	if len(subjects) == 0 {
-		subjects = append(subjects, rolePrefix+defaultRole)
-	}
+	subjects = append(subjects, rolePrefix+defaultRole)
 
 	resourceDims, err := serializeDimensions(req.ResourceContext)
 	if err != nil {

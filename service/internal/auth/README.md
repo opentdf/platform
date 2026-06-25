@@ -37,7 +37,7 @@ Authz v2 is the Casbin RPC + dimensions model. It authorizes `(subject, rpc, dim
 
 The interceptor calls a service-registered resolver only when the selected authorizer supports resource authorization. If no resolver is registered for the RPC, v2 evaluates the request with wildcard dimensions (`*`). Policies that require a concrete dimension then deny; policies using wildcard dimensions may still allow.
 
-Services register resolvers through their scoped `AuthzResolverRegistry` during service startup. A resolver may return one or more resources, and every non-empty resource must be allowed for the request to pass.
+Services register resolvers through their scoped `ScopedResolverRegistry` during service startup. A resolver may return one or more resources, and every non-empty resource must be allowed for the request to pass.
 
 ### Moving From Authz v1 to v2 Policy
 

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 
 	"github.com/cucumber/godog"
@@ -110,6 +111,7 @@ func (s *KasRegistryStepDefinitions) iGetKASKeyByStoredID(ctx context.Context, k
 func (s *KasRegistryStepDefinitions) iListKASKeys(ctx context.Context) (context.Context, error) {
 	scenarioContext := GetPlatformScenarioContext(ctx)
 	scenarioContext.ClearError()
+	scenarioContext.RecordObject(listKASKeysResponse, (*kasregistry.ListKeysResponse)(nil))
 
 	resp, err := scenarioContext.SDK.KeyAccessServerRegistry.ListKeys(ctx, &kasregistry.ListKeysRequest{})
 	scenarioContext.SetError(err)
@@ -123,6 +125,7 @@ func (s *KasRegistryStepDefinitions) iListKASKeys(ctx context.Context) (context.
 func (s *KasRegistryStepDefinitions) iListKASKeysForURI(ctx context.Context, kasURI string) (context.Context, error) {
 	scenarioContext := GetPlatformScenarioContext(ctx)
 	scenarioContext.ClearError()
+	scenarioContext.RecordObject(listKASKeysResponse, (*kasregistry.ListKeysResponse)(nil))
 
 	resp, err := scenarioContext.SDK.KeyAccessServerRegistry.ListKeys(ctx, &kasregistry.ListKeysRequest{
 		KasFilter: &kasregistry.ListKeysRequest_KasUri{KasUri: normalizeKASURI(kasURI)},
@@ -143,6 +146,7 @@ func (s *KasRegistryStepDefinitions) iListKASKeysByStoredKASID(ctx context.Conte
 	}
 
 	scenarioContext.ClearError()
+	scenarioContext.RecordObject(listKASKeysResponse, (*kasregistry.ListKeysResponse)(nil))
 	resp, err := scenarioContext.SDK.KeyAccessServerRegistry.ListKeys(ctx, &kasregistry.ListKeysRequest{
 		KasFilter: &kasregistry.ListKeysRequest_KasId{KasId: kasID},
 	})
@@ -162,7 +166,7 @@ func (s *KasRegistryStepDefinitions) listedKASKeysContain(ctx context.Context, k
 
 	listed := listedKASKeyIDs(resp)
 	for _, keyID := range splitKASKeyIDs(keyIDs) {
-		if _, ok := listed[keyID]; !ok {
+		if !slices.Contains(listed, keyID) {
 			return fmt.Errorf("listed KAS keys did not contain %q", keyID)
 		}
 	}
@@ -182,8 +186,14 @@ func (s *KasRegistryStepDefinitions) listedKASKeysContainOnly(ctx context.Contex
 		return fmt.Errorf("expected %d listed KAS keys, got %d", len(expected), len(listed))
 	}
 
+	listedCounts := make(map[string]int, len(listed))
+	for _, keyID := range listed {
+		listedCounts[keyID]++
+	}
+
 	for _, keyID := range expected {
-		if _, ok := listed[keyID]; !ok {
+		listedCounts[keyID]--
+		if listedCounts[keyID] < 0 {
 			return fmt.Errorf("listed KAS keys did not contain %q", keyID)
 		}
 	}
@@ -207,12 +217,12 @@ func getListKASKeysResponse(ctx context.Context) (*kasregistry.ListKeysResponse,
 	return resp, nil
 }
 
-func listedKASKeyIDs(resp *kasregistry.ListKeysResponse) map[string]struct{} {
-	keyIDs := make(map[string]struct{}, len(resp.GetKasKeys()))
+func listedKASKeyIDs(resp *kasregistry.ListKeysResponse) []string {
+	keyIDs := make([]string, 0, len(resp.GetKasKeys()))
 	for _, kasKey := range resp.GetKasKeys() {
 		keyID := kasKey.GetKey().GetKeyId()
 		if keyID != "" {
-			keyIDs[keyID] = struct{}{}
+			keyIDs = append(keyIDs, keyID)
 		}
 	}
 	return keyIDs

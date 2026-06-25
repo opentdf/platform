@@ -9,6 +9,7 @@ import (
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/kasregistry"
 	"github.com/opentdf/platform/service/internal/auth/authz"
+	"github.com/opentdf/platform/service/logger"
 	"github.com/stretchr/testify/require"
 )
 
@@ -195,6 +196,24 @@ func TestListKeysAuthzResolver_KasURIFilterUsesReturnedKeyURIs(t *testing.T) {
 	require.Len(t, resolverCtx.Resources, 1)
 	require.Equal(t, kasURI, (*resolverCtx.Resources[0])[authzDimensionKasURI])
 	require.Same(t, req, dbClient.listKeysReq)
+	require.Same(t, resp, resolverCtx.GetResolvedData(resolverCacheKeyListKeysResponse))
+}
+
+func Test_ListKeysUsesResolvedAuthorizedResponse(t *testing.T) {
+	resp := &kasregistry.ListKeysResponse{
+		KasKeys: []*policy.KasKey{
+			{KasUri: "https://kas-a.example.com", Key: &policy.AsymmetricKey{KeyId: validKeyID}},
+		},
+	}
+	resolverCtx := authz.NewResolverContext()
+	resolverCtx.SetResolvedData(resolverCacheKeyListKeysResponse, resp)
+	ctx := authz.ContextWithResolverContext(t.Context(), &resolverCtx)
+	svc := KeyAccessServerRegistry{logger: logger.CreateTestLogger()}
+
+	got, err := svc.ListKeys(ctx, connect.NewRequest(&kasregistry.ListKeysRequest{}))
+
+	require.NoError(t, err)
+	require.Same(t, resp, got.Msg)
 }
 
 func TestListKeysAuthzResolver_KasIDFilterUsesReturnedKeyURIs(t *testing.T) {

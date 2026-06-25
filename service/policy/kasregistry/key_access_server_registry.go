@@ -367,6 +367,10 @@ func (s KeyAccessServerRegistry) GetKey(ctx context.Context, r *connect.Request[
 func (s KeyAccessServerRegistry) ListKeys(ctx context.Context, r *connect.Request[kasr.ListKeysRequest]) (*connect.Response[kasr.ListKeysResponse], error) {
 	s.logger.DebugContext(ctx, "listing KAS Keys")
 
+	if resp, ok := authz.GetResolvedDataFromContext(ctx, resolverCacheKeyListKeysResponse).(*kasr.ListKeysResponse); ok && resp != nil {
+		return connect.NewResponse(resp), nil
+	}
+
 	resp, err := s.dbClient.ListKeys(ctx, r.Msg)
 	if err != nil {
 		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextListRetrievalFailed, slog.String("key_access_server_keys", r.Msg.String()))

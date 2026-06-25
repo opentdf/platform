@@ -15,6 +15,8 @@ const (
 	authzDimensionKasURI = "kas_uri"
 	// resolverCacheKeyKasKey is the key used to cache a resolved KAS key in the authz resolver context.
 	resolverCacheKeyKasKey = "kas_key"
+	// resolverCacheKeyListKeysResponse is the key used to cache the authorized ListKeys response.
+	resolverCacheKeyListKeysResponse = "list_keys_response"
 )
 
 var (
@@ -120,10 +122,7 @@ func resolveListKeysAuthzResources(ctx context.Context, msg *kasr.ListKeysReques
 		return fmt.Errorf("%w: %w", errResolveListKeysForAuthz, errResolvedListKeysResponseNil)
 	}
 
-	// List RPC resolvers only identify the resources to authorize. Do not cache
-	// the response as resolved data; handlers must run their own post-authz list
-	// query so response shaping stays in the RPC implementation.
-
+	resolverCtx.SetResolvedData(resolverCacheKeyListKeysResponse, resp)
 	return resolveListKeysReturnedKeyURIs(resolverCtx, resp.GetKasKeys())
 }
 

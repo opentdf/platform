@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.35.0](https://github.com/opentdf/platform/compare/protocol/go/v0.34.0...protocol/go/v0.35.0) (2026-06-25)
+
+
+### Bug Fixes
+
+* **policy:** undo Condition.operator deprecation ([#3668](https://github.com/opentdf/platform/issues/3668)) ([917f66a](https://github.com/opentdf/platform/commit/917f66a3dc3fa4df63d9b1a901ff75d88234d3f2))
+
 ## [0.34.0](https://github.com/opentdf/platform/compare/protocol/go/v0.33.0...protocol/go/v0.34.0) (2026-06-17)
 
 

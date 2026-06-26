@@ -44,7 +44,7 @@ func TestFilterMechanismsByPreview(t *testing.T) {
 		{
 			name: "top-level ec flag on keeps ec only",
 			algs: allAlgs,
-			cfg:  &access.KASConfig{ECTDFEnabled: true},
+			cfg:  &access.KASConfig{Preview: access.Preview{ECTDFEnabled: true}},
 			want: []ocrypto.KeyType{"rsa:2048", "rsa:4096", "ec:secp256r1", "ec:secp384r1"},
 		},
 		{

@@ -48,10 +48,12 @@ type KASConfig struct {
 	KeyCacheExpiration time.Duration `mapstructure:"key_cache_expiration" json:"key_cache_expiration"`
 
 	// Deprecated
-	// Enables experimental EC rewrap support in TDFs
-	// Enabling is required to parse KAOs with the `ec-wrapped` type,
-	// and (currently) also enables responding with ECIES encrypted responses.
-	ECTDFEnabled     bool    `mapstructure:"ec_tdf_enabled" json:"ec_tdf_enabled"`
+	// Moved to Preview
+	ECTDFEnabled bool `mapstructure:"ec_tdf_enabled" json:"ec_tdf_enabled"`
+	// Deprecated
+	// Moved to Preview
+	HybridTDFEnabled bool `mapstructure:"hybrid_tdf_enabled" json:"hybrid_tdf_enabled"`
+
 	Preview          Preview `mapstructure:"preview" json:"preview"`
 	RegisteredKASURI string  `mapstructure:"registered_kas_uri" json:"registered_kas_uri"`
 }
@@ -157,13 +159,12 @@ func (kasCfg KASConfig) String() string {
 	}
 
 	return fmt.Sprintf(
-		"KASConfig{Keyring:%v, ECCertID:%q, RSACertID:%q, RootKey:%s, KeyCacheExpiration:%s, ECTDFEnabled:%t, Preview:%+v, RegisteredKASURI:%q}",
+		"KASConfig{Keyring:%v, ECCertID:%q, RSACertID:%q, RootKey:%s, KeyCacheExpiration:%s,  Preview:%+v, RegisteredKASURI:%q}",
 		kasCfg.Keyring,
 		kasCfg.ECCertID,
 		kasCfg.RSACertID,
 		rootKeySummary,
 		kasCfg.KeyCacheExpiration,
-		kasCfg.ECTDFEnabled,
 		kasCfg.Preview,
 		kasCfg.RegisteredKASURI,
 	)
@@ -181,7 +182,6 @@ func (kasCfg KASConfig) LogValue() slog.Value {
 		slog.String("rsacertid", kasCfg.RSACertID),
 		slog.String("root_key", rootKeyVal),
 		slog.Duration("key_cache_expiration", kasCfg.KeyCacheExpiration),
-		slog.Bool("ec_tdf_enabled", kasCfg.ECTDFEnabled),
 		slog.Any("preview", kasCfg.Preview),
 		slog.String("registered_kas_uri", kasCfg.RegisteredKASURI),
 	)
@@ -189,7 +189,14 @@ func (kasCfg KASConfig) LogValue() slog.Value {
 
 // normalizePreview applies implied preview settings. Enabling the hybrid
 // preview also enables ML-KEM rewrap support (see Preview.HybridTDFEnabled).
+// Also upgrades Deprecated ECTDFEnabled and HybridTDFEnabled to the Preview struct.
 func (kasCfg *KASConfig) normalizePreview() {
+	if kasCfg.ECTDFEnabled {
+		kasCfg.Preview.ECTDFEnabled = true
+	}
+	if kasCfg.HybridTDFEnabled {
+		kasCfg.Preview.HybridTDFEnabled = true
+	}
 	if kasCfg.Preview.HybridTDFEnabled {
 		kasCfg.Preview.MLKEMTDFEnabled = true
 	}

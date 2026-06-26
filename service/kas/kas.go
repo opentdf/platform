@@ -200,7 +200,7 @@ func logSupportedMechanisms(ctx context.Context, l *logger.Logger, kd *trust.Del
 // disabled. Keep aligned with the gating in service/kas/access/rewrap.go for
 // "ec-wrapped", "hybrid-wrapped", and "mlkem-wrapped" key access objects.
 func filterMechanismsByPreview(algs []ocrypto.KeyType, kasCfg *access.KASConfig) []ocrypto.KeyType {
-	ecEnabled := kasCfg.ECTDFEnabled || kasCfg.Preview.ECTDFEnabled
+	ecEnabled := kasCfg.Preview.ECTDFEnabled
 
 	out := make([]ocrypto.KeyType, 0, len(algs))
 	for _, a := range algs {

@@ -6,10 +6,8 @@ import (
 	"fmt"
 	"strings"
 
-	// Database drivers would be imported here:
-	// _ "github.com/lib/pq"           // PostgreSQL driver
-	// _ "github.com/go-sql-driver/mysql" // MySQL driver
-	// _ "github.com/mattn/go-sqlite3" // SQLite driver
+	// Register the pgx database/sql driver for configured SQL providers.
+	_ "github.com/jackc/pgx/v5/stdlib"
 
 	"github.com/opentdf/platform/service/entityresolution/multi-strategy/types"
 )
@@ -254,7 +252,7 @@ func (p *Provider) Close() error {
 // buildConnectionString creates a connection string based on the driver
 func (p *Provider) buildConnectionString() (string, error) {
 	switch strings.ToLower(p.config.Driver) {
-	case "postgres":
+	case "postgres", "pgx":
 		return fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=%s",
 			p.config.Host, p.config.Port, p.config.Username, p.config.Password,
 			p.config.Database, p.config.SSLMode), nil

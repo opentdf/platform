@@ -1,0 +1,7 @@
+layer,arm,mappings,ns_op,allocs_op,bytes_op
+entitlements,native,100,9318,133,14142
+entitlements,cel,100,68442,1828,87620
+entitlements,native,1000,129479,1047,161329
+entitlements,cel,1000,733455,18039,902739
+entitlements,native,5000,698425,5077,757777
+entitlements,cel,5000,4632995,90065,4399923

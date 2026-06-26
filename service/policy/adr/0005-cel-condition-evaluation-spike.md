@@ -21,9 +21,9 @@ outside that shape: numeric/ordinal clearance, cross-field comparisons, dynamic 
 (the DynamicValueMapping problem), cardinality, and regex/glob (already deferred by #3335). CEL
 expresses all of these; the axes cannot grow into them without becoming a query language (see
 [Expressiveness](#expressiveness)). The per-evaluation cost is higher than the native switch but
-immaterial against the OPA-dominated request path (see [Tradeoffs](#tradeoffs)), so performance does
-not constrain the choice. One engine then covers subject mappings and DynamicValueMapping, and new
-capabilities need no schema change.
+small against a v2 decision, which is dominated by policy fetch and PDP construction (see
+[Tradeoffs](#tradeoffs)), so performance does not constrain the choice. One engine then covers subject
+mappings and DynamicValueMapping, and new capabilities need no schema change.
 
 The costs are real but one-time and bounded: a proto/storage change with a migration that backfills
 existing conditions to CEL (the `celeval` lowering already does this), server-side validation on
@@ -102,15 +102,16 @@ worthwhile because the authored expression can use it directly.
 Expressions are type-checked at compile time, so a malformed condition is rejected before the hot
 path (verified in the POC). This matches the safety posture of the current closed operator set.
 
-**Performance.** Benchmarked; see `docs/performance/cel-condition-evaluation/`. The native
-Go switch is faster per evaluation than CEL for both operator sets: legacy 24 ns–8.2 µs, decomposed
-48 ns–9.1 µs, with CEL 3.7–23× slower depending on size, all in the sub-microsecond to
-tens-of-microseconds range. CEL compile is three to four orders of magnitude more than one eval
-(80 µs–2.3 ms), so any CEL path must compile-once / cache. In the full entitlements path, though,
-that gap is immaterial: the OPA wrapper costs ~100× a direct Go call (69 ms vs 0.66 ms at 5,000
-mappings), and a CEL-based path (4.5 ms) is an order of magnitude under it. The operator engine is
-not the bottleneck; the OPA layer is. So performance does not constrain the engine choice, and the
-extra cost of raw/compiled CEL over the native switch is paid where it does not matter.
+**Performance.** Benchmarked; see `docs/performance/cel-condition-evaluation/`. The native Go switch
+is faster per evaluation than CEL for both operator sets: legacy 24 ns–8.2 µs, decomposed 48 ns–9.1 µs,
+with CEL 3.7–23× slower depending on size, all in the sub-microsecond to tens-of-microseconds range.
+At the entitlements level (N subject mappings on a decision) native stays ~6–7× ahead (e.g. 0.70 ms
+vs 4.6 ms at 5,000 mappings), both linear in N. CEL compile is three to four orders of magnitude more
+than one eval (80 µs–2.3 ms), so any CEL path must compile-once / cache. The v2 PDP
+(`service/internal/access/v2`) evaluates in pure Go with no OPA, and per the v2 PDP performance work a
+decision is dominated by policy fetch/load and PDP construction, not per-decision evaluation. So this
+microsecond-to-low-millisecond engine difference is a small slice of a v2 decision, and performance
+does not constrain the engine choice.
 
 **Expressiveness.** This is the decisive advantage and the reason to favor raw CEL. The decomposed
 axes cover one shape (selector values vs a static string list); CEL covers regex, numeric/ordinal,
@@ -136,12 +137,10 @@ this option. Mitigations: a constrained CEL environment (only the selectors/func
 server-side compile + protovalidate so malformed expressions are rejected on write, and a documented
 library of expressions for the common cases the decomposed axes covered.
 
-**Existing Rego Path.** `subject_mapping_builtin.go` registers a `subjectmapping.resolve` builtin,
-and `entitlements.rego` only calls that builtin. Rego does not evaluate operators; it wraps the Go
-switch and pays protojson marshalling at the boundary (`entitlements.OpaInput`). So Rego is not a
-third operator engine, and the benchmark measures it as wrapper overhead: ~100× a direct Go call and
-~130× the allocations (665,686 vs 5,077 allocs/op at 5,000 mappings). Removing or replacing the OPA
-layer is a larger performance lever than the operator engine, and is independent of the CEL decision.
+**No OPA In v2.** OPA/rego exists only in the legacy v1 authorization service; the v2 path
+(`service/internal/access/v2`) evaluates subject mappings in pure Go (`pdp.go:460`). So this decision
+is purely native Go switch vs CEL within v2; there is no OPA layer to weigh, and the engine choice is
+independent of the v1 path being retired.
 
 ## Migration and Backward Compatibility
 
@@ -188,7 +187,7 @@ stored condition to a cached CEL program).
   (tested); new operators become expression changes, not enum + switch changes.
 - ✅ Expressiveness: with a richer typed context, reaches the regex/numeric/cross-field/set/cardinality
   cases the axes cannot.
-- ✅ No proto break and no SDK impact (CEL stays server-internal); eval cost immaterial vs OPA.
+- ✅ No proto break and no SDK impact (CEL stays server-internal); eval cost small vs policy fetch / PDP construction in v2.
 - 🔴 Slower per eval than native, plus compile cost (80 µs–2.3 ms), so it needs a compile/cache layer.
 - 🔴 Two representations to keep aligned (proto ↔ lowered CEL); the lowering is code to own and test.
 - 🔴 The expressiveness gains still need a typed entity/resource context, and authors keep editing the
@@ -202,20 +201,20 @@ Store the CEL expression as the condition and evaluate it directly.
 - ✅ No lowering layer and no proto ↔ CEL drift; the stored artifact is the executed artifact.
 - ✅ One engine across subject mappings and DynamicValueMapping; new capabilities need no schema
   change.
-- ✅ Eval cost equals hybrid and is immaterial against the OPA-dominated path.
+- ✅ Eval cost equals hybrid and is small against policy fetch / PDP construction in v2.
 - 🔴 Proto/storage change superseding the just-merged structured axes; needs a migration (the
   `celeval` lowering backfills existing conditions, so no hand authoring).
 - 🔴 Client-side validation or rendering needs a CEL runtime in that language (not transport, which is
   just a string); mitigated by server-side `cel.Compile` + protovalidate.
 - 🔴 Authoring UX: authors and admin UIs write CEL instead of structured fields; needs a constrained
   CEL environment and a documented expression library as guardrails.
-- 🔴 Slower per eval than native, immaterial against OPA.
+- 🔴 Slower per eval than native, but small against a v2 decision (policy fetch / PDP construction).
 
 Recommended because expressiveness is the durable differentiator the decomposed axes structurally cannot
-grow into, the per-eval cost is paid where it does not matter (OPA dominates by ~100×), and storing
-CEL directly avoids a proto↔CEL sync layer. The migration, client-side validation, and authoring
-guardrails are one-time, bounded costs. A separate open item remains regardless of this choice: the
-OPA wrapper dominates the path and is worth its own decision.
+grow into, the per-eval cost is paid where it does not matter (a v2 decision is dominated by policy
+fetch and PDP construction, not per-decision evaluation), and storing CEL directly avoids a proto↔CEL
+sync layer. The migration, client-side validation, and authoring guardrails are one-time, bounded
+costs.
 
 ## References
 

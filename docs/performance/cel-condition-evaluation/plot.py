@@ -6,10 +6,10 @@ fresh clone with just `python3`. It emits one multi-panel, log-log figure per
 layer, each with a single shared legend. The CSV schema is auto-detected by
 header:
 
-    operator CSV (header has `groups`):  charts/operator.svg
-        2 panels: per-evaluation latency (native, cel); compile cost (cel_compile)
-    fullpath CSV (header has `mappings`): charts/fullpath.svg
-        2 panels: per-request latency; per-request allocations (rego, go_switch, go_cel)
+    operator CSV (header has `groups`):      charts/operator.svg
+        2 panels: legacy and decomposed per-evaluation latency (native, cel)
+    entitlements CSV (header has `mappings`): charts/entitlements.svg
+        2 panels: per-decision latency; per-decision allocations (native, cel)
 
 Usage:
     python3 plot.py <results.csv> [charts_dir]
@@ -180,26 +180,22 @@ def plot_operator(rows, charts_dir):
     )
 
 
-def plot_fullpath(rows, charts_dir):
-    colors = {"rego": RED, "go_switch": BLUE, "go_cel": GREEN}
-    labels = {
-        "rego": "rego (OPA + protojson, today)",
-        "go_switch": "go_switch (direct Go)",
-        "go_cel": "go_cel (direct Go + CEL)",
-    }
-    order = ("rego", "go_switch", "go_cel")
+def plot_entitlements(rows, charts_dir):
+    colors = {"native": BLUE, "cel": RED}
+    labels = {"native": "native (Go switch, v2)", "cel": "cel (precompiled)"}
+    order = ("native", "cel")
 
     def x_of(r):
         return int(r["mappings"])
 
     svg_panel_figure(
-        "Entitlements path vs subject mappings",
+        "Entitlements evaluation vs subject mappings (v2)",
         "Total subject mappings (log scale)",
         [
-            {"subtitle": "Per-request latency", "ylabel": "ns/op", "ydata": series_for(rows, x_of, "ns_op")},
-            {"subtitle": "Per-request allocations", "ylabel": "allocs/op", "ydata": series_for(rows, x_of, "allocs_op")},
+            {"subtitle": "Per-decision latency", "ylabel": "ns/op", "ydata": series_for(rows, x_of, "ns_op")},
+            {"subtitle": "Per-decision allocations", "ylabel": "allocs/op", "ydata": series_for(rows, x_of, "allocs_op")},
         ],
-        colors, labels, order, os.path.join(charts_dir, "fullpath.svg"),
+        colors, labels, order, os.path.join(charts_dir, "entitlements.svg"),
     )
 
 
@@ -215,7 +211,7 @@ def main():
     if "groups" in header:
         plot_operator(rows, charts_dir)
     elif "mappings" in header:
-        plot_fullpath(rows, charts_dir)
+        plot_entitlements(rows, charts_dir)
     else:
         print(f"unrecognized CSV schema in {csv_path}: {list(header)}", file=sys.stderr)
         return 1

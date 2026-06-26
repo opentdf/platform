@@ -1,22 +1,22 @@
 //go:build celbench
 
-// Layer 2 of the CEL performance deliverable: full entitlements-path benchmark. Measures the
-// per-request cost of three ways to compute entitlements over the same policy + entity:
+// Layer 2 of the CEL performance deliverable: entitlements-evaluation benchmark for the v2 path.
+// The v2 PDP evaluates subject mappings in pure Go via
+// EvaluateSubjectMappingMultipleEntitiesWithActions (service/internal/access/v2/pdp.go:460); there
+// is no OPA/rego in v2 (that lives only in the legacy v1 authorization service). This benchmark
+// isolates the operator engine on the step the v2 PDP performs, comparing the native Go evaluator
+// against precompiled CEL across the number of subject mappings on the decision.
 //
-//   - rego:      the status quo. OpaInput (protojson marshal) + the prepared OPA query, which calls
-//     the subjectmapping.resolve builtin -> EvaluateSubjectMappingMultipleEntities.
-//   - go_switch: EvaluateSubjectMappingMultipleEntities directly, no OPA.
-//   - go_cel:    the same orchestration with condition evaluation via precompiled CEL (celeval).
+// End-to-end v2 decision cost (policy fetch, PDP construction, attribute-rule layer) is covered by
+// the existing v2 PDP performance work and is not re-measured here.
 //
-// rego vs go_switch isolates the OPA + serialization overhead; go_switch vs go_cel isolates the
-// operator-engine difference at full granularity. Build-tagged (celbench) and driven by
-// docs/performance/cel-condition-evaluation/run.sh (sets CEL_BENCH_FP_OUT, CEL_BENCH_MAX_N).
+// Build-tagged (celbench); driven by docs/performance/cel-condition-evaluation/run.sh, which sets
+// CEL_BENCH_ENT_OUT.
 //
-//	go test -tags celbench -run TestCELFullPathBenchmark ./authorization/
-package authorization_test
+//	go test -tags celbench -run TestCELEntitlementsBenchmark ./internal/subjectmappingbuiltin/
+package subjectmappingbuiltin_test
 
 import (
-	"context"
 	"encoding/csv"
 	"fmt"
 	"os"
@@ -24,25 +24,21 @@ import (
 	"strconv"
 	"testing"
 
-	"github.com/open-policy-agent/opa/v1/ast"
-	"github.com/open-policy-agent/opa/v1/rego"
 	"github.com/opentdf/platform/lib/flattening"
 	"github.com/opentdf/platform/protocol/go/entityresolution"
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/attributes"
-	"github.com/opentdf/platform/service/authorization/policies"
-	"github.com/opentdf/platform/service/internal/entitlements"
 	"github.com/opentdf/platform/service/internal/subjectmappingbuiltin"
 	"github.com/opentdf/platform/service/internal/subjectmappingbuiltin/celeval"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/types/known/structpb"
 )
 
-const fpSelector = ".attributes.role[]"
+const entSelector = ".attributes.role[]"
 
-// buildFullPathFixture builds n attribute mappings, each with one subject mapping whose condition
-// set matches an entity carrying role "analyst", plus the single matching entity.
-func buildFullPathFixture(t *testing.T, n int) (map[string]*attributes.GetAttributeValuesByFqnsResponse_AttributeAndValue, *entityresolution.ResolveEntitiesResponse) {
+// buildEntitlementsFixture builds n attribute mappings, each with one subject mapping whose
+// condition set matches an entity carrying role "analyst", plus the single matching entity.
+func buildEntitlementsFixture(t *testing.T, n int) (map[string]*attributes.GetAttributeValuesByFqnsResponse_AttributeAndValue, *entityresolution.ResolveEntitiesResponse) {
 	t.Helper()
 	sms := make(map[string]*attributes.GetAttributeValuesByFqnsResponse_AttributeAndValue, n)
 	for i := 0; i < n; i++ {
@@ -56,7 +52,7 @@ func buildFullPathFixture(t *testing.T, n int) (map[string]*attributes.GetAttrib
 							ConditionGroups: []*policy.ConditionGroup{{
 								BooleanOperator: policy.ConditionBooleanTypeEnum_CONDITION_BOOLEAN_TYPE_ENUM_AND,
 								Conditions: []*policy.Condition{{
-									SubjectExternalSelectorValue: fpSelector,
+									SubjectExternalSelectorValue: entSelector,
 									Operator:                     policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_IN,
 									SubjectExternalValues:        []string{"analyst"},
 								}},
@@ -81,18 +77,18 @@ func buildFullPathFixture(t *testing.T, n int) (map[string]*attributes.GetAttrib
 	return sms, ers
 }
 
-// compiledMapping holds the precompiled CEL programs for one attribute mapping's subject mappings
+// entCompiledMapping holds the precompiled CEL programs for one attribute mapping's subject mappings
 // (outer slice: subject mappings; inner slice: that mapping's subject sets).
-type compiledMapping struct {
+type entCompiledMapping struct {
 	attr            string
 	subjectMappings [][]*celeval.Program
 }
 
-func compileMappings(t *testing.T, sms map[string]*attributes.GetAttributeValuesByFqnsResponse_AttributeAndValue) []compiledMapping {
+func compileEntitlementsMappings(t *testing.T, sms map[string]*attributes.GetAttributeValuesByFqnsResponse_AttributeAndValue) []entCompiledMapping {
 	t.Helper()
-	out := make([]compiledMapping, 0, len(sms))
+	out := make([]entCompiledMapping, 0, len(sms))
 	for attr, av := range sms {
-		cm := compiledMapping{attr: attr}
+		cm := entCompiledMapping{attr: attr}
 		for _, sm := range av.GetValue().GetSubjectMappings() {
 			programs := make([]*celeval.Program, 0)
 			for _, ss := range sm.GetSubjectConditionSet().GetSubjectSets() {
@@ -107,9 +103,9 @@ func compileMappings(t *testing.T, sms map[string]*attributes.GetAttributeValues
 	return out
 }
 
-// evalCELMultipleEntities mirrors EvaluateSubjectMappingMultipleEntities (subject mappings OR-ed,
+// evalCELEntitlements mirrors EvaluateSubjectMappingMultipleEntities (subject mappings OR-ed,
 // subject sets AND-ed) but evaluates conditions with precompiled CEL programs.
-func evalCELMultipleEntities(compiled []compiledMapping, ers *entityresolution.ResolveEntitiesResponse) (map[string][]string, error) {
+func evalCELEntitlements(compiled []entCompiledMapping, ers *entityresolution.ResolveEntitiesResponse) (map[string][]string, error) {
 	results := make(map[string][]string)
 	for _, er := range ers.GetEntityRepresentations() {
 		set := make(map[string]bool)
@@ -151,10 +147,10 @@ func evalCELMultipleEntities(compiled []compiledMapping, ers *entityresolution.R
 	return results, nil
 }
 
-func TestCELFullPathBenchmark(t *testing.T) {
-	out := os.Getenv("CEL_BENCH_FP_OUT")
+func TestCELEntitlementsBenchmark(t *testing.T) {
+	out := os.Getenv("CEL_BENCH_ENT_OUT")
 	if out == "" {
-		out = "fullpath_results.csv"
+		out = "entitlements_results.csv"
 	}
 	maxN := 5000
 	if v := os.Getenv("CEL_BENCH_MAX_N"); v != "" {
@@ -171,18 +167,6 @@ func TestCELFullPathBenchmark(t *testing.T) {
 		}
 	}
 
-	// Prepare the OPA query once (mirrors authorization.go loadRegoAndBuiltins).
-	subjectmappingbuiltin.SubjectMappingBuiltin()
-	regoModule, err := policies.EntitlementsRego.ReadFile("entitlements/entitlements.rego")
-	require.NoError(t, err)
-	prepared, err := rego.New(
-		rego.Query("data.opentdf.entitlements.attributes"),
-		rego.Module("entitlements.rego", string(regoModule)),
-		rego.SetRegoVersion(ast.RegoV0),
-		rego.StrictBuiltinErrors(true),
-	).PrepareForEval(context.Background())
-	require.NoError(t, err)
-
 	f, err := os.Create(out)
 	require.NoError(t, err)
 	defer f.Close()
@@ -190,50 +174,41 @@ func TestCELFullPathBenchmark(t *testing.T) {
 	defer w.Flush()
 	require.NoError(t, w.Write([]string{"layer", "arm", "mappings", "ns_op", "allocs_op", "bytes_op"}))
 
-	ctx := context.Background()
 	for _, n := range sizes {
-		sms, ers := buildFullPathFixture(t, n)
-		compiled := compileMappings(t, sms)
+		sms, ers := buildEntitlementsFixture(t, n)
+		compiled := compileEntitlementsMappings(t, sms)
 
-		// Sanity: all three arms agree on the entitlement set before timing.
-		goRes, err := subjectmappingbuiltin.EvaluateSubjectMappingMultipleEntities(sms, ers.GetEntityRepresentations())
+		// Sanity: both arms agree on the entitlement set before timing.
+		nativeRes, err := subjectmappingbuiltin.EvaluateSubjectMappingMultipleEntities(sms, ers.GetEntityRepresentations())
 		require.NoError(t, err)
-		celRes, err := evalCELMultipleEntities(compiled, ers)
+		celRes, err := evalCELEntitlements(compiled, ers)
 		require.NoError(t, err)
-		requireSameEntitlements(t, goRes, celRes)
+		requireSameEntitlements(t, nativeRes, celRes)
 
-		regoB := testing.Benchmark(func(b *testing.B) {
-			for i := 0; i < b.N; i++ {
-				in, _ := entitlements.OpaInput(sms, ers)
-				_, _ = prepared.Eval(ctx, rego.EvalInput(in))
-			}
-		})
-		goB := testing.Benchmark(func(b *testing.B) {
+		native := testing.Benchmark(func(b *testing.B) {
 			for i := 0; i < b.N; i++ {
 				_, _ = subjectmappingbuiltin.EvaluateSubjectMappingMultipleEntities(sms, ers.GetEntityRepresentations())
 			}
 		})
-		celB := testing.Benchmark(func(b *testing.B) {
+		cel := testing.Benchmark(func(b *testing.B) {
 			for i := 0; i < b.N; i++ {
-				_, _ = evalCELMultipleEntities(compiled, ers)
+				_, _ = evalCELEntitlements(compiled, ers)
 			}
 		})
 
-		writeFPRow(t, w, "rego", n, regoB)
-		writeFPRow(t, w, "go_switch", n, goB)
-		writeFPRow(t, w, "go_cel", n, celB)
+		writeEntRow(t, w, "native", n, native)
+		writeEntRow(t, w, "cel", n, cel)
 
-		t.Logf("mappings=%5d  rego=%10.1f µs  go_switch=%8.1f µs  go_cel=%8.1f µs  (rego/go_switch=%.1fx)",
-			n,
-			float64(regoB.NsPerOp())/1000, float64(goB.NsPerOp())/1000, float64(celB.NsPerOp())/1000,
-			float64(regoB.NsPerOp())/float64(goB.NsPerOp()))
+		t.Logf("mappings=%5d  native=%8.1f µs  cel=%8.1f µs  (cel/native=%.1fx)",
+			n, float64(native.NsPerOp())/1000, float64(cel.NsPerOp())/1000,
+			float64(cel.NsPerOp())/float64(native.NsPerOp()))
 	}
 }
 
-func writeFPRow(t *testing.T, w *csv.Writer, arm string, n int, r testing.BenchmarkResult) {
+func writeEntRow(t *testing.T, w *csv.Writer, arm string, n int, r testing.BenchmarkResult) {
 	t.Helper()
 	require.NoError(t, w.Write([]string{
-		"fullpath", arm, strconv.Itoa(n),
+		"entitlements", arm, strconv.Itoa(n),
 		strconv.FormatInt(r.NsPerOp(), 10),
 		strconv.FormatInt(r.AllocsPerOp(), 10),
 		strconv.FormatInt(r.AllocedBytesPerOp(), 10),

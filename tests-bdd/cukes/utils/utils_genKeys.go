@@ -36,7 +36,7 @@ func GenerateTempKeys(ctx context.Context, outputPath string) {
 	generateECParameters(outputPath)
 	generateECCertificate(outputPath)
 	generateJavaKeystore(ctx, outputPath)
-    generatePostQuantumKeys(outputPath)
+	generatePostQuantumKeys(outputPath)
 }
 
 // generateRSACertificate creates a self-signed RSA certificate and private key.

@@ -794,6 +794,37 @@ p, role:unknown, /kas.AccessService/Rewrap, *, allow`,
 	}
 }
 
+func (s *CasbinAuthorizerSuite) TestAuthorizeV2_AllRequestsIncludeUnknownRole() {
+	cfg := authz.Config{
+		PolicyConfig: authz.PolicyConfig{
+			Version:     "v2",
+			GroupsClaim: "realm_access.roles",
+			Csv:         "p, role:unknown, /kas.AccessService/Rewrap, *, allow",
+		},
+		Logger: s.logger,
+	}
+
+	authorizer, err := s.newAuthorizer(cfg)
+	s.Require().NoError(err)
+
+	token := createTestToken(s.T(), map[string]interface{}{
+		"realm_access": map[string]interface{}{
+			"roles": []interface{}{"standard"},
+		},
+	})
+
+	decision, err := authorizer.Authorize(context.Background(), &authz.Request{
+		Token:  token,
+		RPC:    "/kas.AccessService/Rewrap",
+		Action: "read",
+	})
+
+	s.Require().NoError(err)
+	s.Require().NotNil(decision)
+	s.True(decision.Allowed)
+	s.Equal("role:unknown", decision.MatchedPolicy)
+}
+
 // Test dimension matching logic
 func TestDimensionMatch(t *testing.T) {
 	tests := []struct {

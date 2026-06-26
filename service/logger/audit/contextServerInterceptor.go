@@ -2,7 +2,6 @@ package audit
 
 import (
 	"context"
-	"log/slog"
 	"net/http"
 
 	"connectrpc.com/connect"
@@ -13,7 +12,7 @@ import (
 
 // ContextServerInterceptor allows audit events to track request state.
 // This is required for audit logging.
-func ContextServerInterceptor(logger *slog.Logger) connect.UnaryInterceptorFunc {
+func ContextServerInterceptor(logger *Logger) connect.UnaryInterceptorFunc {
 	interceptor := func(next connect.UnaryFunc) connect.UnaryFunc {
 		return connect.UnaryFunc(func(ctx context.Context, req connect.AnyRequest) (connect.AnyResponse, error) {
 			// Get metadata from the context

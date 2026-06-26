@@ -81,6 +81,7 @@ func NewRegistration(ns string, dbRegister serviceregistry.DBRegister) *servicer
 
 				if srp.AuthzResolverRegistry != nil {
 					srp.AuthzResolverRegistry.MustRegister("GetKey", kasrSvc.getKeyAuthzResolver)
+					srp.AuthzResolverRegistry.MustRegister("ListKeys", kasrSvc.listKeysAuthzResolver)
 				}
 
 				kasrSvc.config = cfg
@@ -365,6 +366,11 @@ func (s KeyAccessServerRegistry) GetKey(ctx context.Context, r *connect.Request[
 
 func (s KeyAccessServerRegistry) ListKeys(ctx context.Context, r *connect.Request[kasr.ListKeysRequest]) (*connect.Response[kasr.ListKeysResponse], error) {
 	s.logger.DebugContext(ctx, "listing KAS Keys")
+
+	if resp, ok := authz.GetResolvedDataFromContext(ctx, resolverCacheKeyListKeysResponse).(*kasr.ListKeysResponse); ok && resp != nil {
+		return connect.NewResponse(resp), nil
+	}
+
 	resp, err := s.dbClient.ListKeys(ctx, r.Msg)
 	if err != nil {
 		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextListRetrievalFailed, slog.String("key_access_server_keys", r.Msg.String()))
@@ -386,7 +392,8 @@ func (s KeyAccessServerRegistry) RotateKey(ctx context.Context, r *connect.Reque
 			Id: i.Id,
 		}
 	case *kasr.RotateKeyRequest_Key:
-		s.logger.DebugContext(ctx,
+		s.logger.DebugContext(
+			ctx,
 			"rotating key by Kas Key",
 			slog.String("active_key_id", i.Key.GetKid()),
 			slog.String("new_key_id", r.Msg.GetNewKey().GetKeyId()),

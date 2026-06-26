@@ -11,6 +11,14 @@ logger:
   level: debug
   type: text
   output: stderr
+audit:
+  # Optional JWT claim mappings for audit enrichment.
+  # Paths use dot notation over the emitted audit log shape.
+  # jwt_claim_mappings:
+  #   - claim: sub
+  #     path: eventMetaData.requester.sub
+  #   - claim: realm_access.roles
+  #     path: eventMetaData.requester.roles
 security:
   unsafe:
     # Increase only when diagnosing clock drift issues; default is 1m

@@ -21,6 +21,25 @@ const (
 	aavPairParts      = 2
 )
 
+func resolveRegisteredResourceValueFQN(scenarioContext *PlatformScenarioContext, resourceValueRef string) (string, error) {
+	resourceValueRef = strings.TrimSpace(resourceValueRef)
+	if rrValue, ok := scenarioContext.GetObject(resourceValueRef).(*policy.RegisteredResourceValue); ok && rrValue != nil {
+		if rrValue.GetResource() == nil {
+			return "", fmt.Errorf("registered resource value %s missing resource", resourceValueRef)
+		}
+		namespaceName := ""
+		if rrValue.GetResource().GetNamespace() != nil {
+			namespaceName = rrValue.GetResource().GetNamespace().GetName()
+		}
+		return (&identifier.FullyQualifiedRegisteredResourceValue{
+			Namespace: namespaceName,
+			Name:      rrValue.GetResource().GetName(),
+			Value:     rrValue.GetValue(),
+		}).FQN(), nil
+	}
+	return resourceValueRef, nil
+}
+
 func (s *RegisteredResourcesStepDefinitions) iSendARequestToCreateARegisteredResourceWith(ctx context.Context, tbl *godog.Table) (context.Context, error) {
 	scenarioContext := GetPlatformScenarioContext(ctx)
 	scenarioContext.ClearError()
@@ -169,20 +188,9 @@ func (s *RegisteredResourcesStepDefinitions) iSendADecisionRequestForEntityChain
 
 	entityChain := &entity.EntityChain{Entities: entities}
 
-	resourceValueFQN := strings.TrimSpace(resourceValueRef)
-	if rrValue, ok := scenarioContext.GetObject(resourceValueFQN).(*policy.RegisteredResourceValue); ok && rrValue != nil {
-		if rrValue.GetResource() == nil {
-			return ctx, fmt.Errorf("registered resource value %s missing resource", resourceValueRef)
-		}
-		namespaceName := ""
-		if rrValue.GetResource() != nil && rrValue.GetResource().GetNamespace() != nil {
-			namespaceName = rrValue.GetResource().GetNamespace().GetName()
-		}
-		resourceValueFQN = (&identifier.FullyQualifiedRegisteredResourceValue{
-			Namespace: namespaceName,
-			Name:      rrValue.GetResource().GetName(),
-			Value:     rrValue.GetValue(),
-		}).FQN()
+	resourceValueFQN, err := resolveRegisteredResourceValueFQN(scenarioContext, resourceValueRef)
+	if err != nil {
+		return ctx, err
 	}
 
 	req := &authzV2.GetDecisionRequest{
@@ -194,6 +202,85 @@ func (s *RegisteredResourcesStepDefinitions) iSendADecisionRequestForEntityChain
 			EphemeralId: "resource1",
 			Resource: &authzV2.Resource_RegisteredResourceValueFqn{
 				RegisteredResourceValueFqn: resourceValueFQN,
+			},
+		},
+		FulfillableObligationFqns: getAllObligationsFromScenario(scenarioContext),
+	}
+
+	resp, err := scenarioContext.SDK.AuthorizationV2.GetDecision(ctx, req)
+	if err != nil {
+		scenarioContext.SetError(err)
+		return ctx, err
+	}
+
+	scenarioContext.RecordObject(decisionResponse, resp)
+	return ctx, nil
+}
+
+func (s *RegisteredResourcesStepDefinitions) iSendADecisionRequestForRegisteredResourceValueEntityForActionOnResource(ctx context.Context, entityValueRef string, action string, resource string) (context.Context, error) {
+	scenarioContext := GetPlatformScenarioContext(ctx)
+
+	entityFQN, err := resolveRegisteredResourceValueFQN(scenarioContext, entityValueRef)
+	if err != nil {
+		return ctx, err
+	}
+
+	var resourceFQNs []string
+	for r := range strings.SplitSeq(resource, ",") {
+		resourceFQNs = append(resourceFQNs, strings.TrimSpace(r))
+	}
+
+	req := &authzV2.GetDecisionRequest{
+		EntityIdentifier: &authzV2.EntityIdentifier{
+			Identifier: &authzV2.EntityIdentifier_RegisteredResourceValueFqn{
+				RegisteredResourceValueFqn: entityFQN,
+			},
+		},
+		Action: &policy.Action{Name: strings.ToLower(action)},
+		Resource: &authzV2.Resource{
+			EphemeralId: "resource1",
+			Resource: &authzV2.Resource_AttributeValues_{
+				AttributeValues: &authzV2.Resource_AttributeValues{
+					Fqns: resourceFQNs,
+				},
+			},
+		},
+		FulfillableObligationFqns: getAllObligationsFromScenario(scenarioContext),
+	}
+
+	resp, err := scenarioContext.SDK.AuthorizationV2.GetDecision(ctx, req)
+	if err != nil {
+		scenarioContext.SetError(err)
+		return ctx, err
+	}
+
+	scenarioContext.RecordObject(decisionResponse, resp)
+	return ctx, nil
+}
+
+func (s *RegisteredResourcesStepDefinitions) iSendADecisionRequestForRegisteredResourceValueEntityForActionOnRegisteredResourceValue(ctx context.Context, entityValueRef string, action string, resourceValueRef string) (context.Context, error) {
+	scenarioContext := GetPlatformScenarioContext(ctx)
+
+	entityFQN, err := resolveRegisteredResourceValueFQN(scenarioContext, entityValueRef)
+	if err != nil {
+		return ctx, err
+	}
+	resourceFQN, err := resolveRegisteredResourceValueFQN(scenarioContext, resourceValueRef)
+	if err != nil {
+		return ctx, err
+	}
+
+	req := &authzV2.GetDecisionRequest{
+		EntityIdentifier: &authzV2.EntityIdentifier{
+			Identifier: &authzV2.EntityIdentifier_RegisteredResourceValueFqn{
+				RegisteredResourceValueFqn: entityFQN,
+			},
+		},
+		Action: &policy.Action{Name: strings.ToLower(action)},
+		Resource: &authzV2.Resource{
+			EphemeralId: "resource1",
+			Resource: &authzV2.Resource_RegisteredResourceValueFqn{
+				RegisteredResourceValueFqn: resourceFQN,
 			},
 		},
 		FulfillableObligationFqns: getAllObligationsFromScenario(scenarioContext),
@@ -227,21 +314,9 @@ func (s *RegisteredResourcesStepDefinitions) iSendAMultiResourceDecisionRequestF
 	resources := make([]*authzV2.Resource, 0)
 	resourceFQNMap := make(map[string]string)
 	for idx, resourceValueRef := range strings.Split(resourceValueRefs, ",") {
-		resourceValueRef = strings.TrimSpace(resourceValueRef)
-		resourceValueFQN := resourceValueRef
-		if rrValue, ok := scenarioContext.GetObject(resourceValueRef).(*policy.RegisteredResourceValue); ok && rrValue != nil {
-			if rrValue.GetResource() == nil {
-				return ctx, fmt.Errorf("registered resource value %s missing resource", resourceValueRef)
-			}
-			namespaceName := ""
-			if rrValue.GetResource().GetNamespace() != nil {
-				namespaceName = rrValue.GetResource().GetNamespace().GetName()
-			}
-			resourceValueFQN = (&identifier.FullyQualifiedRegisteredResourceValue{
-				Namespace: namespaceName,
-				Name:      rrValue.GetResource().GetName(),
-				Value:     rrValue.GetValue(),
-			}).FQN()
+		resourceValueFQN, err := resolveRegisteredResourceValueFQN(scenarioContext, resourceValueRef)
+		if err != nil {
+			return ctx, err
 		}
 
 		ephemeralID := fmt.Sprintf("rrv-%d", idx)
@@ -300,6 +375,8 @@ func RegisterRegisteredResourcesStepDefinitions(ctx *godog.ScenarioContext) {
 	ctx.Step(`^I send a request to create a registered resource with:$`, stepDefinitions.iSendARequestToCreateARegisteredResourceWith)
 	ctx.Step(`^I send a request to create a registered resource value with:$`, stepDefinitions.iSendARequestToCreateARegisteredResourceValueWith)
 	ctx.Step(`^I send a decision request for entity chain "([^"]*)" for "([^"]*)" action on registered resource value "([^"]*)"$`, stepDefinitions.iSendADecisionRequestForEntityChainForActionOnRegisteredResourceValue)
+	ctx.Step(`^I send a decision request for registered resource value entity "([^"]*)" for "([^"]*)" action on resource "([^"]*)"$`, stepDefinitions.iSendADecisionRequestForRegisteredResourceValueEntityForActionOnResource)
+	ctx.Step(`^I send a decision request for registered resource value entity "([^"]*)" for "([^"]*)" action on registered resource value "([^"]*)"$`, stepDefinitions.iSendADecisionRequestForRegisteredResourceValueEntityForActionOnRegisteredResourceValue)
 	ctx.Step(`^I send a multi-resource decision request for entity chain "([^"]*)" for "([^"]*)" action on registered resource values "([^"]*)"$`, stepDefinitions.iSendAMultiResourceDecisionRequestForEntityChainForActionOnRegisteredResourceValues)
 	ctx.Step(`^the multi-resource decision should be "([^"]*)"$`, stepDefinitions.theMultiResourceDecisionShouldBe)
 }

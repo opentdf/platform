@@ -23,6 +23,7 @@ import (
 	"connectrpc.com/connect"
 	"github.com/lestrrat-go/jwx/v2/jwa"
 	"github.com/lestrrat-go/jwx/v2/jwk"
+	"github.com/lestrrat-go/jwx/v2/jws"
 	"github.com/lestrrat-go/jwx/v2/jwt"
 	"github.com/opentdf/platform/lib/identifier"
 	"github.com/opentdf/platform/lib/ocrypto"
@@ -255,14 +256,45 @@ func (p *Provider) validateSRTClaims(ctx context.Context, token jwt.Token, requi
 	return userErr
 }
 
+// srtSignatureAlgorithms enumerates the asymmetric JWS algorithms accepted for
+// the signed request token. The SRT is signed with the client's DPoP key, so its
+// algorithm follows the key type (RS256/PS* for RSA, ES256/384/512 for EC).
+// Mirrors the DPoP proof allowlist in the auth package.
+var srtSignatureAlgorithms = map[jwa.SignatureAlgorithm]bool{ //nolint:exhaustive // only asymmetric algorithms
+	jwa.RS256: true,
+	jwa.RS384: true,
+	jwa.RS512: true,
+	jwa.ES256: true,
+	jwa.ES384: true,
+	jwa.ES512: true,
+	jwa.PS256: true,
+	jwa.PS384: true,
+	jwa.PS512: true,
+}
+
 // verifySRTSignature validates the SRT signature against the supplied DPoP key when
 // verification is required.
 func (p *Provider) verifySRTSignature(ctx context.Context, srt string, dpopJWK jwk.Key) error {
-	_, err := jwt.Parse(
-		[]byte(srt),
-		jwt.WithKey(jwa.RS256, dpopJWK),
-		jwt.WithValidate(false),
-	)
+	// The SRT is signed with the client's DPoP key, whose JWS algorithm depends on
+	// the key type. Read the algorithm from the SRT header (validated against an
+	// asymmetric allowlist) instead of assuming RS256, so EC DPoP keys (e.g.
+	// ES256) verify.
+	alg := jwa.RS256
+	if parsed, perr := jws.Parse([]byte(srt)); perr == nil {
+		if sigs := parsed.Signatures(); len(sigs) > 0 {
+			alg = sigs[0].ProtectedHeaders().Algorithm()
+		}
+	}
+	var err error
+	if !srtSignatureAlgorithms[alg] {
+		err = fmt.Errorf("unsupported request token algorithm: %q", alg)
+	} else {
+		_, err = jwt.Parse(
+			[]byte(srt),
+			jwt.WithKey(alg, dpopJWK),
+			jwt.WithValidate(false),
+		)
+	}
 	if err != nil {
 		if p.Logger != nil {
 			p.Logger.WarnContext(

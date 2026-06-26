@@ -257,7 +257,7 @@ func getResourceDecisionableAttributes(
 		if !ok {
 			// The value FQN is not a concrete policy value. A synthetic value is created
 			// when either direct entitlements are enabled (experimental) OR the parent
-			// definition carries a dynamic value entitlement mapping (DSPX-2754), since
+			// definition carries a dynamic value entitlement mapping, since
 			// dynamic mappings entitle values that are not pre-provisioned in policy.
 			parentDefinition, err := getDefinition(attrValueFQN, entitleableAttributesByDefinitionFQN)
 			if err != nil {

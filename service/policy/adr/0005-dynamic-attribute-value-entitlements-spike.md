@@ -3,10 +3,9 @@
 Entitling highly dynamic, high-cardinality attribute values (medical record numbers, account IDs,
 email-like identifiers) is impractical today: each value must be duplicated as an `AttributeValue` and
 paired with its own `SubjectMapping` + `SubjectConditionSet`, then kept constantly in sync with an
-external system of record. The cross-repo ADR [virtru-corp/adr#266](https://github.com/virtru-corp/adr/pull/266)
+external system of record. An upstream design ADR
 chose a definition-level dynamic entitlement model (its Option 3) but **explicitly deferred to an
-implementation spike** the question of *how* to model it. This document records what that spike
-([DSPX-2754](https://virtru.atlassian.net/browse/DSPX-2754)) found.
+implementation spike** the question of *how* to model it. This document records what that spike found.
 
 The original spike prototyped all three options as a throwaway package to make them comparable on real
 behavior. The recommendation below (a new primitive carrying a new operator) is now implemented as
@@ -17,7 +16,7 @@ production code: the `DynamicValueMapping` primitive
 wired into the PDP. The findings below record why that shape was chosen over the alternatives.
 
 > [!NOTE]
-> The upstream ADR ([virtru-corp/adr#266](https://github.com/virtru-corp/adr/pull/266)) named this
+> The upstream ADR named this
 > primitive `DefinitionValueEntitlementMapping` but explicitly noted that primitive names are subject to
 > change during implementation. It is implemented here as `DynamicValueMapping`, which is shorter, omits
 > the redundant "Entitlement" (consistent with `SubjectMapping`/`ResourceMapping`), and avoids overloading
@@ -114,7 +113,10 @@ not share one field.
   suffices) and `ALL_OF` (every value must match).
 - **API Enforcement**: a definition must not carry both a value-level static subject mapping and a dynamic
   mapping (`ValidateNoCoexistence`), and `HIERARCHY` definitions are rejected for dynamic entitlement since
-  they require statically ordered values (`ValidateRule`).
+  they require statically ordered values (`ValidateRule`). The constraint is on value-level *subject
+  mappings*, not on the existence of attribute *values*: a definition may still have concrete values (for
+  obligation triggers, FQN resolution, etc.) alongside a dynamic mapping. What is disallowed is pairing
+  those values with their own subject mappings on a definition that is also entitled dynamically.
 - **Direct-Entitlements Overlap / Migration** (@biscoe916 Q1): a direct entitlement is effectively a
   `(value FQN, actions)` pair sourced from ERS at decision time. `TestDirectEntitlementOverlap` shows the
   dynamic mapping reproduces the identical grant from a single policy artifact, supporting the
@@ -136,5 +138,4 @@ not share one field.
 ## Out Of Scope
 
 The broader options (do nothing, productize direct entitlements, plugin PDP) were already decided in
-[virtru-corp/adr#266](https://github.com/virtru-corp/adr/pull/266). This spike only covers how to model the
-chosen definition-level approach.
+the upstream design ADR. This spike only covers how to model the chosen definition-level approach.

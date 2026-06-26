@@ -21,7 +21,7 @@ CREATE TABLE IF NOT EXISTS dynamic_value_mappings (
     updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
-COMMENT ON TABLE dynamic_value_mappings IS 'Definition-scoped dynamic value entitlement mappings (DSPX-2754)';
+COMMENT ON TABLE dynamic_value_mappings IS 'Definition-scoped dynamic value entitlement mappings';
 COMMENT ON COLUMN dynamic_value_mappings.subject_external_selector_value IS 'Selector resolved against the entity representation, compared to the requested resource value segment';
 COMMENT ON COLUMN dynamic_value_mappings.comparison IS 'policy.ConditionComparisonOperatorEnum value';
 COMMENT ON COLUMN dynamic_value_mappings.case_insensitive IS 'When true, the comparison is case-insensitive';

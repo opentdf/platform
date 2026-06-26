@@ -42,7 +42,7 @@ func (c PolicyDBClient) CreateDynamicValueMapping(ctx context.Context, r *dynami
 	}
 
 	// Enforce no-coexistence: a definition cannot have both value-level subject mappings
-	// and a dynamic value entitlement mapping (DSPX-2754 / ADR 0005).
+	// and a dynamic value entitlement mapping.
 	if err := c.ensureNoValueSubjectMappingCoexistence(ctx, attr.GetId()); err != nil {
 		return nil, err
 	}

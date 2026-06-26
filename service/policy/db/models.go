@@ -234,7 +234,7 @@ type BaseKey struct {
 	KeyAccessServerKeyID pgtype.UUID `json:"key_access_server_key_id"`
 }
 
-// Definition-scoped dynamic value entitlement mappings (DSPX-2754)
+// Definition-scoped dynamic value entitlement mappings
 type DynamicValueMapping struct {
 	ID                    string `json:"id"`
 	AttributeDefinitionID string `json:"attribute_definition_id"`

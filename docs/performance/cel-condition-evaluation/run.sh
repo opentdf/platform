@@ -1,8 +1,7 @@
 #!/usr/bin/env bash
 #
-# Reproduce the DSPX-3673 CEL-vs-native benchmarks (no Docker). Both layers run
-# in-memory below the RPC server, matching the dspx-2754-perf-test / DSPX-2541
-# approach (no wired client / server / ERS / Keycloak).
+# Reproduce the CEL-vs-native benchmarks (no Docker). Both layers run in-memory
+# below the RPC server (no wired client / server / ERS / Keycloak).
 #
 #   Layer 1 (operator engine): native operator switch vs precompiled CEL, plus
 #            one-time CEL compile cost, swept over condition complexity.
@@ -11,10 +10,10 @@
 #
 # From a fresh clone:
 #
-#   bash docs/performance/DSPX-3673-cel-condition-evaluation/run.sh
+#   bash docs/performance/cel-condition-evaluation/run.sh
 #
 # Optional: cap the largest Layer 2 scale point to bound runtime:
-#   CEL_BENCH_MAX_N=1000 bash docs/performance/DSPX-3673-cel-condition-evaluation/run.sh
+#   CEL_BENCH_MAX_N=1000 bash docs/performance/cel-condition-evaluation/run.sh
 #
 set -euo pipefail
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generate consolidated SVG charts for the DSPX-3673 CEL benchmark CSVs.
+"""Generate consolidated SVG charts for the CEL benchmark CSVs.
 
 Pure Python standard library only (no matplotlib, no network), so it runs on a
 fresh clone with just `python3`. It emits one multi-panel, log-log figure per
@@ -160,28 +160,23 @@ def series_for(rows, x_of, ykey):
 
 
 def plot_operator(rows, charts_dir):
-    colors = {"native": BLUE, "cel": RED, "cel_compile": GRAY}
-    labels = {
-        "native": "native (Go operator switch)",
-        "cel": "cel (precompiled, per-eval)",
-        "cel_compile": "cel_compile (one-time)",
-    }
-    order = ("native", "cel", "cel_compile")
+    colors = {"native": BLUE, "cel": RED}
+    labels = {"native": "native (Go switch)", "cel": "cel (precompiled, per-eval)"}
+    order = ("native", "cel")
 
     def x_of(r):
         return int(r["groups"]) * int(r["conds"])
 
-    per_eval = series_for([r for r in rows if r["arm"] in ("native", "cel")], x_of, "ns_op")
-    compile_cost = series_for([r for r in rows if r["arm"] == "cel_compile"], x_of, "ns_op")
+    panels = []
+    for ops, subtitle in (("legacy", "Legacy operators"), ("decomposed", "Decomposed operators (#3335)")):
+        sub = [r for r in rows if r.get("ops") == ops and r["arm"] in ("native", "cel")]
+        panels.append({"subtitle": subtitle, "ylabel": "ns/op (log scale)",
+                       "ydata": series_for(sub, x_of, "ns_op")})
 
     svg_panel_figure(
-        "CEL vs native operator evaluation (DSPX-3673)",
+        "CEL vs native operator evaluation",
         "Conditions per subject set (log scale)",
-        [
-            {"subtitle": "Per-evaluation latency", "ylabel": "ns/op", "ydata": per_eval},
-            {"subtitle": "Compile cost (one-time)", "ylabel": "ns/op", "ydata": compile_cost},
-        ],
-        colors, labels, order, os.path.join(charts_dir, "operator.svg"),
+        panels, colors, labels, order, os.path.join(charts_dir, "operator.svg"),
     )
 
 
@@ -198,7 +193,7 @@ def plot_fullpath(rows, charts_dir):
         return int(r["mappings"])
 
     svg_panel_figure(
-        "Entitlements path vs subject mappings (DSPX-3673)",
+        "Entitlements path vs subject mappings",
         "Total subject mappings (log scale)",
         [
             {"subtitle": "Per-request latency", "ylabel": "ns/op", "ydata": series_for(rows, x_of, "ns_op")},

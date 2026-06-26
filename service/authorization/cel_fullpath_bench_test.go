@@ -1,6 +1,6 @@
 //go:build celbench
 
-// Layer 2 of the DSPX-3673 performance deliverable: full entitlements-path benchmark. Measures the
+// Layer 2 of the CEL performance deliverable: full entitlements-path benchmark. Measures the
 // per-request cost of three ways to compute entitlements over the same policy + entity:
 //
 //   - rego:      the status quo. OpaInput (protojson marshal) + the prepared OPA query, which calls
@@ -10,7 +10,7 @@
 //
 // rego vs go_switch isolates the OPA + serialization overhead; go_switch vs go_cel isolates the
 // operator-engine difference at full granularity. Build-tagged (celbench) and driven by
-// docs/performance/DSPX-3673-cel-condition-evaluation/run.sh (sets CEL_BENCH_FP_OUT, CEL_BENCH_MAX_N).
+// docs/performance/cel-condition-evaluation/run.sh (sets CEL_BENCH_FP_OUT, CEL_BENCH_MAX_N).
 //
 //	go test -tags celbench -run TestCELFullPathBenchmark ./authorization/
 package authorization_test

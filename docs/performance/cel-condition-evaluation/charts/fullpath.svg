@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="776" height="444" viewBox="0 0 776 444" font-family="Helvetica,Arial,sans-serif">
 <rect width="776" height="444" fill="white"/>
-<text x="388" y="26" text-anchor="middle" font-size="18" font-weight="bold" fill="#222222">Entitlements path vs subject mappings (DSPX-3673)</text>
+<text x="388" y="26" text-anchor="middle" font-size="18" font-weight="bold" fill="#222222">Entitlements path vs subject mappings</text>
 <line x1="88" y1="52" x2="112" y2="52" stroke="#c1121f" stroke-width="2.5"/>
 <circle cx="100" cy="52" r="3.2" fill="#c1121f"/>
 <text x="120" y="56" font-size="13" fill="#222222">rego (OPA + protojson, today)</text>

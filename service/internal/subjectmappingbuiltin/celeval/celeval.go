@@ -1,11 +1,11 @@
-// Package celeval is an EXPERIMENTAL, spike-only reference implementation for DSPX-3673. It lowers
+// Package celeval is an EXPERIMENTAL, spike-only reference implementation. It lowers
 // the policy Subject Condition Set model (SubjectSet -> ConditionGroup -> Condition) to a single
 // CEL (https://cel.dev) expression and evaluates it against a flattened entity.
 //
 // It exists to benchmark CEL against the hand-written operator switch in
 // subject_mapping_builtin.go (EvaluateCondition / EvaluateConditionGroup / EvaluateSubjectSet) and
 // is the reference for the migration sketch in
-// service/policy/adr/0005-dspx-3673-cel-condition-evaluation-spike.md.
+// service/policy/adr/0005-cel-condition-evaluation-spike.md.
 //
 // It is NOT wired into any request path. Do not use in production without the review the ADR calls
 // for.

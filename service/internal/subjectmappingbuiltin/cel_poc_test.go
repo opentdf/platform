@@ -1,6 +1,6 @@
 package subjectmappingbuiltin_test
 
-// Spike POC for DSPX-3673: evaluate whether CEL (https://cel.dev, cel-go) can express the
+// Spike POC: evaluate whether CEL (https://cel.dev, cel-go) can express the
 // Subject Mapping / Subject Condition Set operators currently implemented as a hand-written
 // switch in subject_mapping_builtin.go (EvaluateCondition), plus the decomposed operators
 // proposed in https://github.com/opentdf/platform/issues/3335.
@@ -11,7 +11,7 @@ package subjectmappingbuiltin_test
 // result for the decomposed cases (ALL quantifier, case-insensitive match).
 //
 // Findings and the recommendation are written up in
-// service/policy/adr/0005-dspx-3673-cel-condition-evaluation-spike.md. This file is a spike
+// service/policy/adr/0005-cel-condition-evaluation-spike.md. This file is a spike
 // artifact: it is test-only and touches no production evaluation path.
 
 import (

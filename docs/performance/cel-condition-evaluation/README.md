@@ -1,12 +1,13 @@
-# CEL vs Native Condition Evaluation Benchmarks (DSPX-3673)
+# CEL vs Native Condition Evaluation Benchmarks
 
-Reproducible benchmarks for [DSPX-3673](https://virtru.atlassian.net/browse/DSPX-3673), the spike
-asking whether [CEL](https://cel.dev) should replace the bespoke Subject Mapping condition operators
-(see `service/policy/adr/0005-dspx-3673-cel-condition-evaluation-spike.md`). Two layers, both
-in-memory below the RPC server:
+Reproducible benchmarks for the CEL condition-evaluation spike, asking whether
+[CEL](https://cel.dev) should replace the bespoke Subject Mapping condition operators (see
+`service/policy/adr/0005-cel-condition-evaluation-spike.md`). Two layers, both in-memory below the
+RPC server:
 
 1. **Operator Engine** (no Docker): per-evaluation cost of the native operator switch vs a precompiled
-   CEL program, plus the one-time CEL compile cost, swept over condition complexity.
+   CEL program, plus the one-time CEL compile cost, swept over condition complexity, for the legacy
+   operators and the decomposed axes.
 2. **Full Entitlements Path** (no Docker): the cost of computing entitlements three ways, swept over
    subject-mapping count, to separate the OPA wrapper overhead from the operator engine.
 
@@ -17,35 +18,46 @@ is CEL vs the Go switch; Rego is an orchestration wrapper measured separately.
 ## Layer 1: Operator Engine
 
 `TestCELOperatorBenchmark` (`service/internal/subjectmappingbuiltin/cel_operator_bench_test.go`, build
-tag `celbench`) builds a `SubjectSet` of `groups × conds` conditions (mixed IN / NOT_IN / IN_CONTAINS,
-crafted so every condition is true and the whole set is traversed) and times three arms:
+tag `celbench`) builds a `SubjectSet` of `groups × conds` conditions crafted so every condition is
+true and the whole set is traversed, and times three arms for two operator sets:
 
-- **native** — `EvaluateSubjectSet` (the hand-written switch).
+- **native** — a hand-written Go switch (`EvaluateSubjectSet` for legacy; a representative decomposed
+  evaluator standing in for what "keep bespoke" must implement for the merged axes).
 - **cel** — a `cel.Program` compiled once from the SubjectSet (`celeval`), evaluated per call by
   binding the entity's selector values.
 - **cel_compile** — the one-time cost of compiling that program (amortized under compile-once / cache).
 
 Run (no Docker):
 ```bash
-bash docs/performance/DSPX-3673-cel-condition-evaluation/run.sh   # runs both layers
+bash docs/performance/cel-condition-evaluation/run.sh   # runs both layers
 ```
 Outputs `results.csv` and `charts/operator.svg`.
 
 ### Results
 
-![CEL vs native operator evaluation: per-evaluation latency and one-time compile cost](charts/operator.svg)
+![CEL vs native operator evaluation: legacy and decomposed operators, per-evaluation latency](charts/operator.svg)
+
+Legacy operators (IN / NOT_IN / IN_CONTAINS):
 
 | arm | 1×1 | 3×3 (9 conds) | 10×5 (50 conds) |
 |-----|-----|---------------|-----------------|
-| native | 22 ns | 490 ns | 8.6 µs |
-| cel (per-eval) | 532 ns | 4.8 µs | 32.1 µs |
-| cel_compile (one-time) | 84 µs | 355 µs | 2.3 ms |
-| cel / native | 24× | 9.8× | 3.7× |
+| native | 24 ns | 462 ns | 8.2 µs |
+| cel (per-eval) | 561 ns | 4.6 µs | 32.1 µs |
+| cel_compile (one-time) | 80.7 µs | 353 µs | 2.3 ms |
+| cel / native | 23× | 9.9× | 3.9× |
 
-The native switch is faster per evaluation at every size (24× at one condition, narrowing to ~4× at
-50). CEL's per-eval cost stays in the sub-microsecond to tens-of-microseconds range. Compile is three
-to four orders of magnitude more expensive than a single eval, so CEL is only viable with
-compile-once / cache, never compile-per-request.
+Decomposed axes (comparison + quantifier + case_insensitive):
+
+| arm | 1×1 | 3×3 (9 conds) | 10×5 (50 conds) |
+|-----|-----|---------------|-----------------|
+| native | 48 ns | 665 ns | 9.1 µs |
+| cel (per-eval) | 532 ns | 4.6 µs | 33.4 µs |
+| cel_compile (one-time) | 80.9 µs | 335 µs | 1.9 ms |
+| cel / native | 11× | 6.9× | 3.7× |
+
+The native switch is faster per evaluation for both operator sets (3.7–23× ahead of CEL), all in the
+sub-microsecond to tens-of-microseconds range. Compile is three to four orders of magnitude more than
+a single eval, so any CEL path is only viable with compile-once / cache, never compile-per-request.
 
 ## Layer 2: Full Entitlements Path
 
@@ -60,8 +72,8 @@ to produce entitlements over the same policy + entity:
 
 Run (no Docker):
 ```bash
-bash docs/performance/DSPX-3673-cel-condition-evaluation/run.sh
-CEL_BENCH_MAX_N=1000 bash docs/performance/DSPX-3673-cel-condition-evaluation/run.sh   # cap N for speed
+bash docs/performance/cel-condition-evaluation/run.sh
+CEL_BENCH_MAX_N=1000 bash docs/performance/cel-condition-evaluation/run.sh   # cap N for speed
 ```
 Outputs `fullpath_results.csv` and `charts/fullpath.svg`.
 
@@ -84,10 +96,11 @@ bottleneck in the entitlements path; the OPA layer is.
 
 ## Takeaway
 
-CEL is slower than the native switch (Layer 1), but in the path where it would actually run (Layer 2)
-that difference is dwarfed by the OPA wrapper. The case for CEL is maintainability (one engine, new
-operators become expression changes), not speed, and its cost is acceptable relative to the path it
-sits in. The larger performance lever surfaced here is the OPA wrapper itself, independent of the
+Performance is not the deciding factor. The native switch is fastest per evaluation, but the operator
+engine is a small slice of an OPA-dominated request (the OPA wrapper costs ~100× a direct Go call).
+The recommendation (store conditions as CEL) is argued in the ADR on expressiveness: capabilities the
+decomposed axes cannot express (regex, numeric/ordinal, cross-field, dynamic set-vs-set, cardinality).
+A separate, larger performance lever surfaced here is the OPA wrapper itself, independent of the
 operator engine.
 
 ## Environment
@@ -114,5 +127,5 @@ are out of scope.
 | `plot.py` | CSV to consolidated SVG figures (Python stdlib only) |
 | `results.csv` | Committed Layer 1 measurements |
 | `fullpath_results.csv` | Committed Layer 2 measurements |
-| `charts/operator.svg` | Layer 1 figure (per-eval latency, compile cost) |
+| `charts/operator.svg` | Layer 1 figure (legacy + decomposed, per-eval latency) |
 | `charts/fullpath.svg` | Layer 2 figure (latency, allocations) |

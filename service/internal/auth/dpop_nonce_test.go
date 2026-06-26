@@ -7,6 +7,7 @@ import (
 	"crypto/rsa"
 	"crypto/sha256"
 	"encoding/base64"
+	"errors"
 	"net/http"
 	"testing"
 	"time"
@@ -103,6 +104,31 @@ func TestDPoPNonceError(t *testing.T) {
 	})
 }
 
+func TestDPoPProofError(t *testing.T) {
+	inner := errors.New("incorrect `htu` claim in DPoP JWT")
+	var err error = &DPoPProofError{err: inner}
+
+	t.Run("error message delegates to inner", func(t *testing.T) {
+		// Handlers/tests rely on substring matching of the underlying error.
+		assert.Equal(t, inner.Error(), err.Error())
+	})
+
+	t.Run("unwraps to inner error", func(t *testing.T) {
+		assert.ErrorIs(t, err, inner)
+	})
+
+	t.Run("detected via errors.As", func(t *testing.T) {
+		var proofErr *DPoPProofError
+		require.ErrorAs(t, err, &proofErr)
+	})
+
+	t.Run("does not match DPoPNonceError", func(t *testing.T) {
+		// A wrapped non-nonce failure must not be mistaken for a retryable challenge.
+		var nonceErr *DPoPNonceError
+		assert.NotErrorAs(t, err, &nonceErr)
+	})
+}
+
 func TestDPoPAlgorithmRestrictions(t *testing.T) {
 	testCases := []struct {
 		alg     jwa.SignatureAlgorithm
@@ -131,6 +157,12 @@ func TestDPoPAlgorithmRestrictions(t *testing.T) {
 
 // newAuthWithNonce creates an Authentication using the suite's OIDC server with RequireNonce=true.
 func (s *AuthSuite) newAuthWithNonce() *Authentication {
+	return s.newAuthDPoP(true)
+}
+
+// newAuthDPoP creates a DPoP-enforcing Authentication backed by the suite's OIDC server,
+// with the nonce challenge toggled by requireNonce.
+func (s *AuthSuite) newAuthDPoP(requireNonce bool) *Authentication {
 	auth, err := NewAuthenticator(
 		context.Background(),
 		Config{
@@ -141,7 +173,7 @@ func (s *AuthSuite) newAuthWithNonce() *Authentication {
 				DPoPSkew:    time.Hour,
 				TokenSkew:   time.Minute,
 				DPoP: DPoPConfig{
-					RequireNonce:    true,
+					RequireNonce:    requireNonce,
 					NonceExpiration: 5 * time.Minute,
 					StrictHTU:       false,
 				},
@@ -285,6 +317,10 @@ func (s *AuthSuite) TestDPoP_MalformedNonce_Returns_DPoPNonceMalformedError() {
 	// Confirm it does NOT match DPoPNonceError, so handlers hard-reject rather than issue a challenge.
 	var nonceErr *DPoPNonceError
 	s.Require().NotErrorAs(err, &nonceErr)
+
+	// checkToken wraps it in DPoPProofError so handlers issue an invalid_dpop_proof challenge.
+	var proofErr *DPoPProofError
+	s.Require().ErrorAs(err, &proofErr)
 }
 
 func (s *AuthSuite) TestDPoP_WrongNonce_Returns_DPoPNonceError() {

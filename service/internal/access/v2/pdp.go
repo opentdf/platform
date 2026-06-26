@@ -63,6 +63,7 @@ type PolicyDecisionPoint struct {
 	allAttributesByDefinitionFQN       map[string]*policy.Attribute
 	dynamicMappingsByDefinitionFQN     subjectmappingbuiltin.DynamicValueMappingsByDefinitionFQN
 	allowDirectEntitlements            bool
+	allowDynamicValueMappings          bool
 	namespacedPolicy                   bool
 }
 
@@ -75,9 +76,28 @@ var (
 	ErrMissingRequiredPolicy = errors.New("access: both attribute definitions and subject mappings must be provided or neither")
 )
 
+// pdpOptions holds optional, experimental PolicyDecisionPoint features.
+type pdpOptions struct {
+	dynamicValueMappings      []*policy.DynamicValueMapping
+	allowDynamicValueMappings bool
+}
+
+// PDPOption configures optional PolicyDecisionPoint behavior.
+type PDPOption func(*pdpOptions)
+
+// WithDynamicValueMappings enables the experimental, definition-level dynamic value mapping feature.
+// When allow is false (or this option is omitted) the mappings are not evaluated at decision time.
+func WithDynamicValueMappings(mappings []*policy.DynamicValueMapping, allow bool) PDPOption {
+	return func(o *pdpOptions) {
+		o.dynamicValueMappings = mappings
+		o.allowDynamicValueMappings = allow
+	}
+}
+
 // NewPolicyDecisionPoint creates a new Policy Decision Point instance.
 // It is presumed that all Attribute Definitions and Subject Mappings are valid and contain the entirety of entitlement policy.
-// Attribute Values without Subject Mappings will be ignored in decisioning.
+// Attribute Values without Subject Mappings will be ignored in decisioning. The experimental dynamic
+// value mapping feature is enabled via WithDynamicValueMappings.
 func NewPolicyDecisionPoint(
 	ctx context.Context,
 	l *logger.Logger,
@@ -86,32 +106,15 @@ func NewPolicyDecisionPoint(
 	allRegisteredResources []*policy.RegisteredResource,
 	allowDirectEntitlements bool,
 	namespacedPolicy bool,
+	opts ...PDPOption,
 ) (*PolicyDecisionPoint, error) {
-	return NewPolicyDecisionPointWithDynamicValueMappings(
-		ctx,
-		l,
-		allAttributeDefinitions,
-		allSubjectMappings,
-		nil,
-		allRegisteredResources,
-		allowDirectEntitlements,
-		namespacedPolicy,
-	)
-}
+	var options pdpOptions
+	for _, opt := range opts {
+		opt(&options)
+	}
+	allDynamicValueMappings := options.dynamicValueMappings
+	allowDynamicValueMappings := options.allowDynamicValueMappings
 
-// NewPolicyDecisionPointWithDynamicValueMappings is NewPolicyDecisionPoint
-// plus the dynamic, definition-level value entitlement mappings (DSPX-2754). The mappings
-// argument may be nil/empty when the feature is unused.
-func NewPolicyDecisionPointWithDynamicValueMappings(
-	ctx context.Context,
-	l *logger.Logger,
-	allAttributeDefinitions []*policy.Attribute,
-	allSubjectMappings []*policy.SubjectMapping,
-	allDynamicValueMappings []*policy.DynamicValueMapping,
-	allRegisteredResources []*policy.RegisteredResource,
-	allowDirectEntitlements bool,
-	namespacedPolicy bool,
-) (*PolicyDecisionPoint, error) {
 	var err error
 
 	if l == nil {
@@ -197,19 +200,6 @@ func NewPolicyDecisionPointWithDynamicValueMappings(
 			continue
 		}
 
-		if namespacedPolicy {
-			ns := mapping.GetNamespace()
-			if ns == nil || (ns.GetId() == "" && ns.GetFqn() == "") {
-				l.TraceContext(ctx,
-					"unnamespaced dynamic value mapping in strict namespaced-policy mode - skipping",
-					slog.String("reason", "dynamic_value_mapping_namespace_missing"),
-					slog.String("dynamic_value_mapping_id", mapping.GetId()),
-					slog.String("attribute_definition_fqn", mapping.GetAttributeDefinition().GetFqn()),
-				)
-				continue
-			}
-		}
-
 		definitionFQN := mapping.GetAttributeDefinition().GetFqn()
 		canonicalDef, ok := allAttributesByDefinitionFQN[definitionFQN]
 		if !ok {
@@ -222,9 +212,10 @@ func NewPolicyDecisionPointWithDynamicValueMappings(
 		}
 
 		// Defense in depth alongside validateDynamicValueMapping: the mapping's own definition may
-		// carry an unset rule, so reject HIERARCHY using the canonical definition.
+		// carry an unset rule, so reject HIERARCHY using the canonical definition. This indicates
+		// inconsistent policy data that needs correction, so log at error level and still decide.
 		if canonicalDef.GetRule() == policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY {
-			l.WarnContext(ctx,
+			l.ErrorContext(ctx,
 				"dynamic value mapping references HIERARCHY attribute definition - skipping",
 				slog.String("dynamic_value_mapping_id", mapping.GetId()),
 				slog.String("attribute_definition_fqn", definitionFQN),
@@ -273,6 +264,7 @@ func NewPolicyDecisionPointWithDynamicValueMappings(
 		allAttributesByDefinitionFQN:       allAttributesByDefinitionFQN,
 		dynamicMappingsByDefinitionFQN:     dynamicMappingsByDefinitionFQN,
 		allowDirectEntitlements:            allowDirectEntitlements,
+		allowDynamicValueMappings:          allowDynamicValueMappings,
 		namespacedPolicy:                   namespacedPolicy,
 	}
 	return pdp, nil
@@ -378,9 +370,9 @@ func (p *PolicyDecisionPoint) GetDecision(
 		}
 	}
 
-	// Evaluate dynamic, definition-level value entitlement mappings (DSPX-2754) and merge
+	// Evaluate dynamic, definition-level value entitlement mappings and merge
 	// their results into the entitled FQNs before rule evaluation.
-	if len(p.dynamicMappingsByDefinitionFQN) > 0 {
+	if p.allowDynamicValueMappings && len(p.dynamicMappingsByDefinitionFQN) > 0 {
 		dynamicEntitledFQNsToActions, err := subjectmappingbuiltin.EvaluateDynamicValueMappingsWithActions(
 			p.dynamicMappingsByDefinitionFQN,
 			decisionableAttributes,
@@ -388,7 +380,7 @@ func (p *PolicyDecisionPoint) GetDecision(
 			l.Logger,
 		)
 		if err != nil {
-			return nil, nil, fmt.Errorf("error evaluating dynamic value mappings: %w", err)
+			return nil, nil, fmt.Errorf("%w: %w", ErrDynamicValueMappingEvaluation, err)
 		}
 		for fqn, actions := range dynamicEntitledFQNsToActions {
 			entitledFQNsToActions[fqn] = append(entitledFQNsToActions[fqn], actions...)

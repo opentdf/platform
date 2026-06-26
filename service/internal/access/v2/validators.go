@@ -142,14 +142,14 @@ func validateDynamicValueMapping(mapping *policy.DynamicValueMapping) error {
 		return fmt.Errorf("dynamic value mapping is nil: %w", ErrInvalidDynamicValueMapping)
 	}
 	def := mapping.GetAttributeDefinition()
-	if def == nil || def.GetFqn() == "" {
+	if def.GetFqn() == "" {
 		return fmt.Errorf("mapping's attribute definition is missing: %w", ErrInvalidDynamicValueMapping)
 	}
 	if def.GetRule() == policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY {
 		return fmt.Errorf("HIERARCHY definitions are not supported for dynamic value entitlement: %w", ErrInvalidDynamicValueMapping)
 	}
 	resolver := mapping.GetValueResolver()
-	if resolver == nil || resolver.GetSubjectExternalSelectorValue() == "" {
+	if resolver.GetSubjectExternalSelectorValue() == "" {
 		return fmt.Errorf("mapping's value resolver selector is empty: %w", ErrInvalidDynamicValueMapping)
 	}
 	if resolver.GetComparison() == policy.ConditionComparisonOperatorEnum_CONDITION_COMPARISON_OPERATOR_ENUM_UNSPECIFIED {

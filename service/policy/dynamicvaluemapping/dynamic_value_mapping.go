@@ -144,23 +144,32 @@ func (s DynamicValueMappingService) UpdateDynamicValueMapping(ctx context.Contex
 		ObjectID:   id,
 	}
 
-	original, err := s.dbClient.GetDynamicValueMapping(ctx, id)
-	if err != nil {
-		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
-		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextGetRetrievalFailed, slog.String("id", id))
-	}
+	// Get-then-update and the success audit run in a transaction so the audited "original" is
+	// consistent with the applied update.
+	err := s.dbClient.RunInTx(ctx, func(txClient *policydb.PolicyDBClient) error {
+		original, err := txClient.GetDynamicValueMapping(ctx, id)
+		if err != nil {
+			s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
+			return err
+		}
 
-	updated, err := s.dbClient.UpdateDynamicValueMapping(ctx, req.Msg)
+		updated, err := txClient.UpdateDynamicValueMapping(ctx, req.Msg)
+		if err != nil {
+			s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
+			return err
+		}
+
+		auditParams.Original = original
+		auditParams.Updated = updated
+		s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
+
+		rsp.DynamicValueMapping = updated
+		return nil
+	})
 	if err != nil {
-		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
 		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextUpdateFailed, slog.String("id", id), slog.String("dynamicValueMapping", req.Msg.String()))
 	}
 
-	auditParams.Original = original
-	auditParams.Updated = updated
-	s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
-
-	rsp.DynamicValueMapping = updated
 	return connect.NewResponse(rsp), nil
 }
 

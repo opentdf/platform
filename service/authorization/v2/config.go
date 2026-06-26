@@ -56,6 +56,9 @@ type Config struct {
 	// enable entity direct entitlements that do not require subject mappings
 	AllowDirectEntitlements bool `mapstructure:"allow_direct_entitlements" json:"allow_direct_entitlements" default:"false"`
 
+	// enable definition-level dynamic value mappings in access decisioning
+	AllowDynamicValueMappings bool `mapstructure:"allow_dynamic_value_mappings" json:"allow_dynamic_value_mappings" default:"false"`
+
 	// enforce strict namespaced entitlement evaluation behavior in access decisioning
 	EnforceNamespacedEntitlements bool `mapstructure:"enforce_namespaced_entitlements" json:"enforce_namespaced_entitlements" default:"false"`
 }
@@ -107,6 +110,7 @@ func (c *Config) LogValue() slog.Value {
 			),
 		),
 		slog.Bool("allow_direct_entitlements", c.AllowDirectEntitlements),
+		slog.Bool("allow_dynamic_value_mappings", c.AllowDynamicValueMappings),
 		slog.Bool("enforce_namespaced_entitlements", c.EnforceNamespacedEntitlements),
 	)
 }

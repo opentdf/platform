@@ -6,7 +6,7 @@ import (
 )
 
 // Test_GetDecision_DynamicValueMapping_MultiValue exercises the full
-// GetDecision path for dynamic, definition-level value entitlement (DSPX-2754), focused on
+// GetDecision path for dynamic, definition-level value entitlement, focused on
 // the multi-value rule semantics: a single resource carries two dynamic values under one
 // definition while the entity is entitled to only one. ANY_OF should permit, ALL_OF deny.
 func (s *PDPTestSuite) Test_GetDecision_DynamicValueMapping_MultiValue() {
@@ -32,15 +32,15 @@ func (s *PDPTestSuite) Test_GetDecision_DynamicValueMapping_MultiValue() {
 			Actions:   []*policy.Action{testActionRead},
 			Namespace: namespace,
 		}
-		pdp, err := NewPolicyDecisionPointWithDynamicValueMappings(
+		pdp, err := NewPolicyDecisionPoint(
 			s.T().Context(),
 			s.logger,
 			[]*policy.Attribute{attr},
 			[]*policy.SubjectMapping{},
-			[]*policy.DynamicValueMapping{mapping},
 			nil,
 			false, // allowDirectEntitlements: dynamic mappings synthesize values on their own
 			false, // namespacedPolicy
+			WithDynamicValueMappings([]*policy.DynamicValueMapping{mapping}, true),
 		)
 		s.Require().NoError(err)
 		s.Require().NotNil(pdp)

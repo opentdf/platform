@@ -35,8 +35,8 @@ func GenerateTempKeys(ctx context.Context, outputPath string) {
 	generateRSACertificate(outputPath)
 	generateECParameters(outputPath)
 	generateECCertificate(outputPath)
-	generateHybridKeys(outputPath)
 	generateJavaKeystore(ctx, outputPath)
+    generatePostQuantumKeys(outputPath)
 }
 
 // generateRSACertificate creates a self-signed RSA certificate and private key.
@@ -207,8 +207,8 @@ func createJavaKeystore(ctx context.Context, certPath, keystorePath string) {
 	log.Printf("Java keystore generated successfully: %s", keystorePath)
 }
 
-// generateHybridKeys creates post-quantum key pairs: X-Wing, P256+ML-KEM-768, P384+ML-KEM-1024, ML-KEM-768, and ML-KEM-1024.
-func generateHybridKeys(outputPath string) {
+// generatePostQuantumKeys creates post-quantum key pairs: X-Wing, P256+ML-KEM-768, P384+ML-KEM-1024, ML-KEM-768, and ML-KEM-1024.
+func generatePostQuantumKeys(outputPath string) {
 	specs := []struct {
 		name       string
 		newKeyPair func() (priv, pub string, err error)

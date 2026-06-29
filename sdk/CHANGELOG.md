@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.25.0](https://github.com/opentdf/platform/compare/sdk/v0.24.0...sdk/v0.25.0) (2026-06-29)
+
+
+### Features
+
+* **kas:** Adds FIPS-203 wrap with ML-KEM-768/1024 ([#3652](https://github.com/opentdf/platform/issues/3652)) ([06f30ef](https://github.com/opentdf/platform/commit/06f30ef7f2eb6a5dce587efa906d4bd70b7cd8dc))
+
+
+### Bug Fixes
+
+* **deps:** bump github.com/opentdf/platform/lib/ocrypto from 0.13.0 to 0.14.0 in /sdk ([#3684](https://github.com/opentdf/platform/issues/3684)) ([78366f7](https://github.com/opentdf/platform/commit/78366f7c9c6f4ef251aa0b1084533580843fb942))
+* **deps:** bump github.com/opentdf/platform/protocol/go from 0.34.0 to 0.36.0 in /sdk ([#3681](https://github.com/opentdf/platform/issues/3681)) ([b6cc5cd](https://github.com/opentdf/platform/commit/b6cc5cda2ea9bc6a74f53c1ecf5de71aed514e13))
+
 ## [0.24.0](https://github.com/opentdf/platform/compare/sdk/v0.23.0...sdk/v0.24.0) (2026-06-23)
 
 

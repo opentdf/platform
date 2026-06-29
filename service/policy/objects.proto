@@ -180,32 +180,6 @@ enum ConditionBooleanTypeEnum {
   CONDITION_BOOLEAN_TYPE_ENUM_OR = 2;
 }
 
-// How a selector result is compared against a comparison value. Replaces the all-in-one
-// SubjectMappingOperatorEnum by separating the comparison from the quantifier (see
-// ConditionQuantifierEnum) and case sensitivity.
-enum ConditionComparisonOperatorEnum {
-  CONDITION_COMPARISON_OPERATOR_ENUM_UNSPECIFIED = 0;
-  // exact string equality
-  CONDITION_COMPARISON_OPERATOR_ENUM_EQUALS = 1;
-  // substring containment
-  CONDITION_COMPARISON_OPERATOR_ENUM_CONTAINS = 2;
-  // prefix match
-  CONDITION_COMPARISON_OPERATOR_ENUM_STARTS_WITH = 3;
-  // suffix match; the safe operator for domain matching (e.g. email domains)
-  CONDITION_COMPARISON_OPERATOR_ENUM_ENDS_WITH = 4;
-}
-
-// How matches are aggregated across the comparison set (subject_external_values).
-enum ConditionQuantifierEnum {
-  CONDITION_QUANTIFIER_ENUM_UNSPECIFIED = 0;
-  // at least one match (legacy IN behavior)
-  CONDITION_QUANTIFIER_ENUM_ANY = 1;
-  // every expected value matches
-  CONDITION_QUANTIFIER_ENUM_ALL = 2;
-  // no matches (legacy NOT_IN behavior)
-  CONDITION_QUANTIFIER_ENUM_NONE = 3;
-}
-
 /*
    Subject Mapping: A Policy assigning Subject Set(s) to a permitted attribute
    value + action(s) combination
@@ -233,8 +207,8 @@ message SubjectMapping {
 /*
    Dynamic Value Resolver: the dynamic half of a DynamicValueMapping. It resolves a selector
    against the entity representation, then tests whether any resolved entity value matches the
-   requested resource value segment under comparison. The match is inherently existential over
-   the resolved entity values, so no quantifier is carried here.
+   requested resource value segment under the operator. The match is inherently existential over
+   the resolved entity values.
 */
 message DynamicValueResolver {
   // a selector for a field value on a flattened Entity Representation (such as from
@@ -242,15 +216,15 @@ message DynamicValueResolver {
   string subject_external_selector_value = 1 [(buf.validate.field).required = true];
 
   // how the requested resource value segment is compared against each value the selector
-  // resolves from the entity representation
-  ConditionComparisonOperatorEnum comparison = 2 [
-    (buf.validate.field).enum.defined_only = true,
+  // resolves from the entity representation. NOT_IN is unsupported because dynamic resolution
+  // is existential over the resolved entity values.
+  SubjectMappingOperatorEnum operator = 2 [
+    (buf.validate.field).enum = {
+      defined_only: true
+      not_in: [2]
+    },
     (buf.validate.field).required = true
   ];
-
-  // when set true, comparison is case-insensitive; unset is treated as case-sensitive. Modeled as
-  // BoolValue so an explicit false is distinguishable from unset, leaving room to change the default.
-  google.protobuf.BoolValue case_insensitive = 3;
 }
 
 /*
@@ -295,7 +269,7 @@ message Condition {
   // the evaluation operator of relation
   SubjectMappingOperatorEnum operator = 2 [
     (buf.validate.field).enum.defined_only = true,
-    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE
+    (buf.validate.field).required = true
   ];
 
   // list of comparison values for the result of applying the
@@ -303,15 +277,10 @@ message Condition {
   // (Subject), evaluated by the operator
   repeated string subject_external_values = 3 [(buf.validate.field).repeated.min_items = 1];
 
-  // how each selector result is compared to subject_external_values entries
-  ConditionComparisonOperatorEnum comparison = 4 [(buf.validate.field).enum.defined_only = true];
-
-  // how matches are aggregated across subject_external_values
-  ConditionQuantifierEnum quantifier = 5 [(buf.validate.field).enum.defined_only = true];
-
-  // when set true, comparison is case-insensitive; unset is treated as case-sensitive. Modeled as
-  // BoolValue so an explicit false is distinguishable from unset, leaving room to change the default.
-  google.protobuf.BoolValue case_insensitive = 6;
+  // formerly the decomposed comparison/quantifier/case_insensitive fields; reserved to
+  // prevent reuse with incompatible meaning
+  reserved 4, 5, 6;
+  reserved "comparison", "quantifier", "case_insensitive";
 }
 
 // A collection of Conditions evaluated by the boolean_operator provided

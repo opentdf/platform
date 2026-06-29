@@ -379,14 +379,6 @@
                 </li>
               
                 <li>
-                  <a href="#policy.ConditionComparisonOperatorEnum"><span class="badge">E</span>ConditionComparisonOperatorEnum</a>
-                </li>
-              
-                <li>
-                  <a href="#policy.ConditionQuantifierEnum"><span class="badge">E</span>ConditionQuantifierEnum</a>
-                </li>
-              
-                <li>
                   <a href="#policy.KasPublicKeyAlgEnum"><span class="badge">E</span>KasPublicKeyAlgEnum</a>
                 </li>
               
@@ -2753,28 +2745,6 @@ subject_external_selector_value on a flattened Entity Representation
 (Subject), evaluated by the operator </p></td>
                 </tr>
               
-                <tr>
-                  <td>comparison</td>
-                  <td><a href="#policy.ConditionComparisonOperatorEnum">ConditionComparisonOperatorEnum</a></td>
-                  <td></td>
-                  <td><p>how each selector result is compared to subject_external_values entries </p></td>
-                </tr>
-              
-                <tr>
-                  <td>quantifier</td>
-                  <td><a href="#policy.ConditionQuantifierEnum">ConditionQuantifierEnum</a></td>
-                  <td></td>
-                  <td><p>how matches are aggregated across subject_external_values </p></td>
-                </tr>
-              
-                <tr>
-                  <td>case_insensitive</td>
-                  <td><a href="#google.protobuf.BoolValue">google.protobuf.BoolValue</a></td>
-                  <td></td>
-                  <td><p>when set true, comparison is case-insensitive; unset is treated as case-sensitive. Modeled as
-BoolValue so an explicit false is distinguishable from unset, leaving room to change the default. </p></td>
-                </tr>
-              
             </tbody>
           </table>
 
@@ -2882,7 +2852,7 @@ pass for entitlement. </p></td>
         
       
         <h3 id="policy.DynamicValueResolver">DynamicValueResolver</h3>
-        <p>Dynamic Value Resolver: the dynamic half of a DynamicValueMapping. It resolves a selector</p><p>against the entity representation, then tests whether any resolved entity value matches the</p><p>requested resource value segment under comparison. The match is inherently existential over</p><p>the resolved entity values, so no quantifier is carried here.</p>
+        <p>Dynamic Value Resolver: the dynamic half of a DynamicValueMapping. It resolves a selector</p><p>against the entity representation, then tests whether any resolved entity value matches the</p><p>requested resource value segment under the operator. The match is inherently existential over</p><p>the resolved entity values.</p>
 
         
           <table class="field-table">
@@ -2900,19 +2870,12 @@ idP/LDAP), e.g. &#34;.patientAssignments[]&#34; </p></td>
                 </tr>
               
                 <tr>
-                  <td>comparison</td>
-                  <td><a href="#policy.ConditionComparisonOperatorEnum">ConditionComparisonOperatorEnum</a></td>
+                  <td>operator</td>
+                  <td><a href="#policy.SubjectMappingOperatorEnum">SubjectMappingOperatorEnum</a></td>
                   <td></td>
                   <td><p>how the requested resource value segment is compared against each value the selector
-resolves from the entity representation </p></td>
-                </tr>
-              
-                <tr>
-                  <td>case_insensitive</td>
-                  <td><a href="#google.protobuf.BoolValue">google.protobuf.BoolValue</a></td>
-                  <td></td>
-                  <td><p>when set true, comparison is case-insensitive; unset is treated as case-sensitive. Modeled as
-BoolValue so an explicit false is distinguishable from unset, leaving room to change the default. </p></td>
+resolves from the entity representation. NOT_IN is unsupported because dynamic resolution
+is existential over the resolved entity values. </p></td>
                 </tr>
               
             </tbody>
@@ -4431,82 +4394,6 @@ Migrate to &#39;create&#39; action name</p></td>
                 <td>CONDITION_BOOLEAN_TYPE_ENUM_OR</td>
                 <td>2</td>
                 <td><p></p></td>
-              </tr>
-            
-          </tbody>
-        </table>
-      
-        <h3 id="policy.ConditionComparisonOperatorEnum">ConditionComparisonOperatorEnum</h3>
-        <p>How a selector result is compared against a comparison value. Replaces the all-in-one</p><p>SubjectMappingOperatorEnum by separating the comparison from the quantifier (see</p><p>ConditionQuantifierEnum) and case sensitivity.</p>
-        <table class="enum-table">
-          <thead>
-            <tr><td>Name</td><td>Number</td><td>Description</td></tr>
-          </thead>
-          <tbody>
-            
-              <tr>
-                <td>CONDITION_COMPARISON_OPERATOR_ENUM_UNSPECIFIED</td>
-                <td>0</td>
-                <td><p></p></td>
-              </tr>
-            
-              <tr>
-                <td>CONDITION_COMPARISON_OPERATOR_ENUM_EQUALS</td>
-                <td>1</td>
-                <td><p>exact string equality</p></td>
-              </tr>
-            
-              <tr>
-                <td>CONDITION_COMPARISON_OPERATOR_ENUM_CONTAINS</td>
-                <td>2</td>
-                <td><p>substring containment</p></td>
-              </tr>
-            
-              <tr>
-                <td>CONDITION_COMPARISON_OPERATOR_ENUM_STARTS_WITH</td>
-                <td>3</td>
-                <td><p>prefix match</p></td>
-              </tr>
-            
-              <tr>
-                <td>CONDITION_COMPARISON_OPERATOR_ENUM_ENDS_WITH</td>
-                <td>4</td>
-                <td><p>suffix match; the safe operator for domain matching (e.g. email domains)</p></td>
-              </tr>
-            
-          </tbody>
-        </table>
-      
-        <h3 id="policy.ConditionQuantifierEnum">ConditionQuantifierEnum</h3>
-        <p>How matches are aggregated across the comparison set (subject_external_values).</p>
-        <table class="enum-table">
-          <thead>
-            <tr><td>Name</td><td>Number</td><td>Description</td></tr>
-          </thead>
-          <tbody>
-            
-              <tr>
-                <td>CONDITION_QUANTIFIER_ENUM_UNSPECIFIED</td>
-                <td>0</td>
-                <td><p></p></td>
-              </tr>
-            
-              <tr>
-                <td>CONDITION_QUANTIFIER_ENUM_ANY</td>
-                <td>1</td>
-                <td><p>at least one match (legacy IN behavior)</p></td>
-              </tr>
-            
-              <tr>
-                <td>CONDITION_QUANTIFIER_ENUM_ALL</td>
-                <td>2</td>
-                <td><p>every expected value matches</p></td>
-              </tr>
-            
-              <tr>
-                <td>CONDITION_QUANTIFIER_ENUM_NONE</td>
-                <td>3</td>
-                <td><p>no matches (legacy NOT_IN behavior)</p></td>
               </tr>
             
           </tbody>

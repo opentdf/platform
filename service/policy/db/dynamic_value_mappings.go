@@ -12,15 +12,13 @@ import (
 	"github.com/opentdf/platform/protocol/go/policy/attributes"
 	"github.com/opentdf/platform/protocol/go/policy/dynamicvaluemapping"
 	"github.com/opentdf/platform/service/pkg/db"
-	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
 type dynamicValueMappingRow struct {
 	id                           string
 	attributeDefinitionID        string
 	subjectExternalSelectorValue string
-	comparison                   int16
-	caseInsensitive              bool
+	operator                     int16
 	subjectConditionSetID        pgtype.UUID
 	actions                      interface{}
 	metadata                     []byte
@@ -29,8 +27,8 @@ type dynamicValueMappingRow struct {
 
 func (c PolicyDBClient) CreateDynamicValueMapping(ctx context.Context, r *dynamicvaluemapping.CreateDynamicValueMappingRequest) (*policy.DynamicValueMapping, error) {
 	resolver := r.GetValueResolver()
-	if resolver.GetComparison() == policy.ConditionComparisonOperatorEnum_CONDITION_COMPARISON_OPERATOR_ENUM_UNSPECIFIED {
-		return nil, errors.Join(db.ErrEnumValueInvalid, errors.New("value_resolver.comparison must be specified"))
+	if err := validateDynamicValueResolverOperator(resolver.GetOperator()); err != nil {
+		return nil, err
 	}
 
 	attr, err := c.resolveDynamicValueMappingAttribute(ctx, r.GetAttributeDefinitionId(), r.GetAttributeDefinitionFqn())
@@ -75,8 +73,7 @@ func (c PolicyDBClient) CreateDynamicValueMapping(ctx context.Context, r *dynami
 	createdID, err := c.queries.createDynamicValueMapping(ctx, createDynamicValueMappingParams{
 		AttributeDefinitionID:        attr.GetId(),
 		SubjectExternalSelectorValue: resolver.GetSubjectExternalSelectorValue(),
-		Comparison:                   int16(resolver.GetComparison()),
-		CaseInsensitive:              resolver.GetCaseInsensitive().GetValue(),
+		Operator:                     int16(resolver.GetOperator()),
 		Metadata:                     metadataJSON,
 		SubjectConditionSetID:        pgtypeUUID(scs.GetId()),
 		NamespaceID:                  parsedNamespaceID,
@@ -102,8 +99,7 @@ func (c PolicyDBClient) GetDynamicValueMapping(ctx context.Context, id string) (
 		id:                           row.ID,
 		attributeDefinitionID:        row.AttributeDefinitionID,
 		subjectExternalSelectorValue: row.SubjectExternalSelectorValue,
-		comparison:                   row.Comparison,
-		caseInsensitive:              row.CaseInsensitive,
+		operator:                     row.Operator,
 		subjectConditionSetID:        row.SubjectConditionSetID,
 		actions:                      row.Actions,
 		metadata:                     row.Metadata,
@@ -140,8 +136,7 @@ func (c PolicyDBClient) ListDynamicValueMappings(ctx context.Context, r *dynamic
 			id:                           row.ID,
 			attributeDefinitionID:        row.AttributeDefinitionID,
 			subjectExternalSelectorValue: row.SubjectExternalSelectorValue,
-			comparison:                   row.Comparison,
-			caseInsensitive:              row.CaseInsensitive,
+			operator:                     row.Operator,
 			subjectConditionSetID:        row.SubjectConditionSetID,
 			actions:                      row.Actions,
 			metadata:                     row.Metadata,
@@ -193,12 +188,11 @@ func (c PolicyDBClient) UpdateDynamicValueMapping(ctx context.Context, r *dynami
 	}
 
 	if resolver := r.GetValueResolver(); resolver != nil {
-		if resolver.GetComparison() == policy.ConditionComparisonOperatorEnum_CONDITION_COMPARISON_OPERATOR_ENUM_UNSPECIFIED {
-			return nil, errors.Join(db.ErrEnumValueInvalid, errors.New("value_resolver.comparison must be specified"))
+		if err := validateDynamicValueResolverOperator(resolver.GetOperator()); err != nil {
+			return nil, err
 		}
 		updateParams.SubjectExternalSelectorValue = pgtypeText(resolver.GetSubjectExternalSelectorValue())
-		updateParams.Comparison = pgtype.Int2{Int16: int16(resolver.GetComparison()), Valid: true}
-		updateParams.CaseInsensitive = pgtype.Bool{Bool: resolver.GetCaseInsensitive().GetValue(), Valid: true}
+		updateParams.Operator = pgtype.Int2{Int16: int16(resolver.GetOperator()), Valid: true}
 	}
 
 	targetNamespaceID := before.GetNamespace().GetId()
@@ -263,8 +257,7 @@ func (c PolicyDBClient) hydrateDynamicValueMapping(ctx context.Context, row dyna
 		AttributeDefinition: attr,
 		ValueResolver: &policy.DynamicValueResolver{
 			SubjectExternalSelectorValue: row.subjectExternalSelectorValue,
-			Comparison:                   policy.ConditionComparisonOperatorEnum(row.comparison),
-			CaseInsensitive:              wrapperspb.Bool(row.caseInsensitive),
+			Operator:                     policy.SubjectMappingOperatorEnum(row.operator),
 		},
 		Actions:   actions,
 		Namespace: namespace,
@@ -293,6 +286,22 @@ func (c PolicyDBClient) resolveDynamicValueMappingAttribute(ctx context.Context,
 		return nil, db.WrapIfKnownInvalidQueryErr(
 			errors.Join(db.ErrMissingValue, errors.New("either an attribute definition ID or FQN is required")),
 		)
+	}
+}
+
+// validateDynamicValueResolverOperator rejects operators that are invalid for dynamic value
+// resolution. Resolution is existential over the entity values, so NOT_IN has no meaning.
+func validateDynamicValueResolverOperator(operator policy.SubjectMappingOperatorEnum) error {
+	switch operator {
+	case policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_IN,
+		policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_IN_CONTAINS:
+		return nil
+	case policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_NOT_IN:
+		return errors.Join(db.ErrEnumValueInvalid, errors.New("value_resolver.operator NOT_IN is unsupported for dynamic value resolution"))
+	case policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_UNSPECIFIED:
+		return errors.Join(db.ErrEnumValueInvalid, errors.New("value_resolver.operator must be specified"))
+	default:
+		return errors.Join(db.ErrEnumValueInvalid, errors.New("value_resolver.operator is unsupported"))
 	}
 }
 

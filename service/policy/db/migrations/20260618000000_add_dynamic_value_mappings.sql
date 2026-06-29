@@ -9,10 +9,9 @@
 CREATE TABLE IF NOT EXISTS dynamic_value_mappings (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     attribute_definition_id UUID NOT NULL REFERENCES attribute_definitions(id) ON DELETE CASCADE,
-    -- value_resolver: selector against the flattened entity representation + comparison operator
+    -- value_resolver: selector against the flattened entity representation + operator
     subject_external_selector_value TEXT NOT NULL,
-    comparison SMALLINT NOT NULL,
-    case_insensitive BOOLEAN NOT NULL DEFAULT FALSE,
+    operator SMALLINT NOT NULL,
     -- optional static pre-gate, evaluated with normal SubjectConditionSet semantics
     subject_condition_set_id UUID REFERENCES subject_condition_set(id) ON DELETE CASCADE,
     namespace_id UUID REFERENCES attribute_namespaces(id) ON DELETE CASCADE,
@@ -23,8 +22,7 @@ CREATE TABLE IF NOT EXISTS dynamic_value_mappings (
 
 COMMENT ON TABLE dynamic_value_mappings IS 'Definition-scoped dynamic value entitlement mappings';
 COMMENT ON COLUMN dynamic_value_mappings.subject_external_selector_value IS 'Selector resolved against the entity representation, compared to the requested resource value segment';
-COMMENT ON COLUMN dynamic_value_mappings.comparison IS 'policy.ConditionComparisonOperatorEnum value';
-COMMENT ON COLUMN dynamic_value_mappings.case_insensitive IS 'When true, the comparison is case-insensitive';
+COMMENT ON COLUMN dynamic_value_mappings.operator IS 'policy.SubjectMappingOperatorEnum value';
 
 CREATE TRIGGER dynamic_value_mappings_updated_at
   BEFORE UPDATE ON dynamic_value_mappings

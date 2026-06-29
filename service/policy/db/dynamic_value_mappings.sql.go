@@ -56,8 +56,7 @@ WITH inserted_mapping AS (
     INSERT INTO dynamic_value_mappings (
         attribute_definition_id,
         subject_external_selector_value,
-        comparison,
-        case_insensitive,
+        operator,
         metadata,
         subject_condition_set_id,
         namespace_id
@@ -67,9 +66,8 @@ WITH inserted_mapping AS (
         $2,
         $3,
         $4,
-        $5,
-        $6::uuid,
-        $7::uuid
+        $5::uuid,
+        $6::uuid
     )
     RETURNING id
 ),
@@ -77,7 +75,7 @@ inserted_actions AS (
     INSERT INTO dynamic_value_mapping_actions (dynamic_value_mapping_id, action_id)
     SELECT
         (SELECT id FROM inserted_mapping),
-        unnest($8::uuid[])
+        unnest($7::uuid[])
 )
 SELECT id FROM inserted_mapping
 `
@@ -85,8 +83,7 @@ SELECT id FROM inserted_mapping
 type createDynamicValueMappingParams struct {
 	AttributeDefinitionID        string      `json:"attribute_definition_id"`
 	SubjectExternalSelectorValue string      `json:"subject_external_selector_value"`
-	Comparison                   int16       `json:"comparison"`
-	CaseInsensitive              bool        `json:"case_insensitive"`
+	Operator                     int16       `json:"operator"`
 	Metadata                     []byte      `json:"metadata"`
 	SubjectConditionSetID        pgtype.UUID `json:"subject_condition_set_id"`
 	NamespaceID                  pgtype.UUID `json:"namespace_id"`
@@ -99,8 +96,7 @@ type createDynamicValueMappingParams struct {
 //	    INSERT INTO dynamic_value_mappings (
 //	        attribute_definition_id,
 //	        subject_external_selector_value,
-//	        comparison,
-//	        case_insensitive,
+//	        operator,
 //	        metadata,
 //	        subject_condition_set_id,
 //	        namespace_id
@@ -110,9 +106,8 @@ type createDynamicValueMappingParams struct {
 //	        $2,
 //	        $3,
 //	        $4,
-//	        $5,
-//	        $6::uuid,
-//	        $7::uuid
+//	        $5::uuid,
+//	        $6::uuid
 //	    )
 //	    RETURNING id
 //	),
@@ -120,15 +115,14 @@ type createDynamicValueMappingParams struct {
 //	    INSERT INTO dynamic_value_mapping_actions (dynamic_value_mapping_id, action_id)
 //	    SELECT
 //	        (SELECT id FROM inserted_mapping),
-//	        unnest($8::uuid[])
+//	        unnest($7::uuid[])
 //	)
 //	SELECT id FROM inserted_mapping
 func (q *Queries) createDynamicValueMapping(ctx context.Context, arg createDynamicValueMappingParams) (string, error) {
 	row := q.db.QueryRow(ctx, createDynamicValueMapping,
 		arg.AttributeDefinitionID,
 		arg.SubjectExternalSelectorValue,
-		arg.Comparison,
-		arg.CaseInsensitive,
+		arg.Operator,
 		arg.Metadata,
 		arg.SubjectConditionSetID,
 		arg.NamespaceID,
@@ -201,8 +195,7 @@ SELECT
     dvem.id,
     dvem.attribute_definition_id,
     dvem.subject_external_selector_value,
-    dvem.comparison,
-    dvem.case_insensitive,
+    dvem.operator,
     dvem.subject_condition_set_id,
     COALESCE(da.actions, '[]'::JSONB) AS actions,
     JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', dvem.metadata -> 'labels', 'created_at', dvem.created_at, 'updated_at', dvem.updated_at)) AS metadata,
@@ -221,8 +214,7 @@ type getDynamicValueMappingRow struct {
 	ID                           string      `json:"id"`
 	AttributeDefinitionID        string      `json:"attribute_definition_id"`
 	SubjectExternalSelectorValue string      `json:"subject_external_selector_value"`
-	Comparison                   int16       `json:"comparison"`
-	CaseInsensitive              bool        `json:"case_insensitive"`
+	Operator                     int16       `json:"operator"`
 	SubjectConditionSetID        pgtype.UUID `json:"subject_condition_set_id"`
 	Actions                      interface{} `json:"actions"`
 	Metadata                     []byte      `json:"metadata"`
@@ -259,8 +251,7 @@ type getDynamicValueMappingRow struct {
 //	    dvem.id,
 //	    dvem.attribute_definition_id,
 //	    dvem.subject_external_selector_value,
-//	    dvem.comparison,
-//	    dvem.case_insensitive,
+//	    dvem.operator,
 //	    dvem.subject_condition_set_id,
 //	    COALESCE(da.actions, '[]'::JSONB) AS actions,
 //	    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', dvem.metadata -> 'labels', 'created_at', dvem.created_at, 'updated_at', dvem.updated_at)) AS metadata,
@@ -280,8 +271,7 @@ func (q *Queries) getDynamicValueMapping(ctx context.Context, id string) (getDyn
 		&i.ID,
 		&i.AttributeDefinitionID,
 		&i.SubjectExternalSelectorValue,
-		&i.Comparison,
-		&i.CaseInsensitive,
+		&i.Operator,
 		&i.SubjectConditionSetID,
 		&i.Actions,
 		&i.Metadata,
@@ -334,8 +324,7 @@ SELECT
     dvem.id,
     dvem.attribute_definition_id,
     dvem.subject_external_selector_value,
-    dvem.comparison,
-    dvem.case_insensitive,
+    dvem.operator,
     dvem.subject_condition_set_id,
     COALESCE(da.actions, '[]'::JSONB) AS actions,
     JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', dvem.metadata -> 'labels', 'created_at', dvem.created_at, 'updated_at', dvem.updated_at)) AS metadata,
@@ -385,8 +374,7 @@ type listDynamicValueMappingsRow struct {
 	ID                           string      `json:"id"`
 	AttributeDefinitionID        string      `json:"attribute_definition_id"`
 	SubjectExternalSelectorValue string      `json:"subject_external_selector_value"`
-	Comparison                   int16       `json:"comparison"`
-	CaseInsensitive              bool        `json:"case_insensitive"`
+	Operator                     int16       `json:"operator"`
 	SubjectConditionSetID        pgtype.UUID `json:"subject_condition_set_id"`
 	Actions                      interface{} `json:"actions"`
 	Metadata                     []byte      `json:"metadata"`
@@ -440,8 +428,7 @@ type listDynamicValueMappingsRow struct {
 //	    dvem.id,
 //	    dvem.attribute_definition_id,
 //	    dvem.subject_external_selector_value,
-//	    dvem.comparison,
-//	    dvem.case_insensitive,
+//	    dvem.operator,
 //	    dvem.subject_condition_set_id,
 //	    COALESCE(da.actions, '[]'::JSONB) AS actions,
 //	    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', dvem.metadata -> 'labels', 'created_at', dvem.created_at, 'updated_at', dvem.updated_at)) AS metadata,
@@ -496,8 +483,7 @@ func (q *Queries) listDynamicValueMappings(ctx context.Context, arg listDynamicV
 			&i.ID,
 			&i.AttributeDefinitionID,
 			&i.SubjectExternalSelectorValue,
-			&i.Comparison,
-			&i.CaseInsensitive,
+			&i.Operator,
 			&i.SubjectConditionSetID,
 			&i.Actions,
 			&i.Metadata,
@@ -521,31 +507,30 @@ WITH
         SET
             metadata = COALESCE($1::JSONB, metadata),
             subject_external_selector_value = COALESCE($2::TEXT, subject_external_selector_value),
-            comparison = COALESCE($3::SMALLINT, comparison),
-            case_insensitive = COALESCE($4::BOOLEAN, case_insensitive),
-            subject_condition_set_id = COALESCE($5::UUID, subject_condition_set_id)
-        WHERE id = $6
+            operator = COALESCE($3::SMALLINT, operator),
+            subject_condition_set_id = COALESCE($4::UUID, subject_condition_set_id)
+        WHERE id = $5
         RETURNING id
     ),
     action_delete AS (
         DELETE FROM dynamic_value_mapping_actions
         WHERE
-            dynamic_value_mapping_id = $6
-            AND $7::UUID[] IS NOT NULL
-            AND action_id NOT IN (SELECT unnest($7::UUID[]))
+            dynamic_value_mapping_id = $5
+            AND $6::UUID[] IS NOT NULL
+            AND action_id NOT IN (SELECT unnest($6::UUID[]))
     ),
     action_insert AS (
         INSERT INTO dynamic_value_mapping_actions (dynamic_value_mapping_id, action_id)
         SELECT
-            $6,
+            $5,
             a
-        FROM unnest($7::UUID[]) AS a
+        FROM unnest($6::UUID[]) AS a
         WHERE
-            $7::UUID[] IS NOT NULL
+            $6::UUID[] IS NOT NULL
             AND NOT EXISTS (
                 SELECT 1
                 FROM dynamic_value_mapping_actions
-                WHERE dynamic_value_mapping_id = $6 AND action_id = a
+                WHERE dynamic_value_mapping_id = $5 AND action_id = a
             )
     ),
     update_count AS (
@@ -559,8 +544,7 @@ FROM update_count
 type updateDynamicValueMappingParams struct {
 	Metadata                     []byte      `json:"metadata"`
 	SubjectExternalSelectorValue pgtype.Text `json:"subject_external_selector_value"`
-	Comparison                   pgtype.Int2 `json:"comparison"`
-	CaseInsensitive              pgtype.Bool `json:"case_insensitive"`
+	Operator                     pgtype.Int2 `json:"operator"`
 	SubjectConditionSetID        pgtype.UUID `json:"subject_condition_set_id"`
 	ID                           string      `json:"id"`
 	ActionIds                    []string    `json:"action_ids"`
@@ -574,31 +558,30 @@ type updateDynamicValueMappingParams struct {
 //	        SET
 //	            metadata = COALESCE($1::JSONB, metadata),
 //	            subject_external_selector_value = COALESCE($2::TEXT, subject_external_selector_value),
-//	            comparison = COALESCE($3::SMALLINT, comparison),
-//	            case_insensitive = COALESCE($4::BOOLEAN, case_insensitive),
-//	            subject_condition_set_id = COALESCE($5::UUID, subject_condition_set_id)
-//	        WHERE id = $6
+//	            operator = COALESCE($3::SMALLINT, operator),
+//	            subject_condition_set_id = COALESCE($4::UUID, subject_condition_set_id)
+//	        WHERE id = $5
 //	        RETURNING id
 //	    ),
 //	    action_delete AS (
 //	        DELETE FROM dynamic_value_mapping_actions
 //	        WHERE
-//	            dynamic_value_mapping_id = $6
-//	            AND $7::UUID[] IS NOT NULL
-//	            AND action_id NOT IN (SELECT unnest($7::UUID[]))
+//	            dynamic_value_mapping_id = $5
+//	            AND $6::UUID[] IS NOT NULL
+//	            AND action_id NOT IN (SELECT unnest($6::UUID[]))
 //	    ),
 //	    action_insert AS (
 //	        INSERT INTO dynamic_value_mapping_actions (dynamic_value_mapping_id, action_id)
 //	        SELECT
-//	            $6,
+//	            $5,
 //	            a
-//	        FROM unnest($7::UUID[]) AS a
+//	        FROM unnest($6::UUID[]) AS a
 //	        WHERE
-//	            $7::UUID[] IS NOT NULL
+//	            $6::UUID[] IS NOT NULL
 //	            AND NOT EXISTS (
 //	                SELECT 1
 //	                FROM dynamic_value_mapping_actions
-//	                WHERE dynamic_value_mapping_id = $6 AND action_id = a
+//	                WHERE dynamic_value_mapping_id = $5 AND action_id = a
 //	            )
 //	    ),
 //	    update_count AS (
@@ -611,8 +594,7 @@ func (q *Queries) updateDynamicValueMapping(ctx context.Context, arg updateDynam
 	result, err := q.db.Exec(ctx, updateDynamicValueMapping,
 		arg.Metadata,
 		arg.SubjectExternalSelectorValue,
-		arg.Comparison,
-		arg.CaseInsensitive,
+		arg.Operator,
 		arg.SubjectConditionSetID,
 		arg.ID,
 		arg.ActionIds,

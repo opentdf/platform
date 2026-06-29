@@ -205,117 +205,65 @@ ConditionEval:
 
 func EvaluateCondition(condition *policy.Condition, entity flattening.Flattened) (bool, error) {
 	mappedValues := flattening.GetFromFlattened(entity, condition.GetSubjectExternalSelectorValue())
-	comparison, quantifier := normalizedConditionOperators(condition)
-	caseInsensitive := condition.GetCaseInsensitive().GetValue()
-
-	// matches reports whether any mapped (entity) value matches the given comparison value.
-	matches := func(comparisonValue string) (bool, error) {
-		for _, mappedValue := range mappedValues {
-			ok, err := compareEntityValue(comparison, caseInsensitive, fmt.Sprintf("%v", mappedValue), comparisonValue)
-			if err != nil {
-				return false, err
-			}
-			if ok {
-				return true, nil
-			}
-		}
-		return false, nil
-	}
-
-	switch quantifier {
-	case policy.ConditionQuantifierEnum_CONDITION_QUANTIFIER_ENUM_ANY:
-		// at least one subject_external_values entry matches at least one mapped value
-		for _, comparisonValue := range condition.GetSubjectExternalValues() {
-			ok, err := matches(comparisonValue)
-			if err != nil {
-				return false, err
-			}
-			if ok {
-				return true, nil
-			}
-		}
-		return false, nil
-	case policy.ConditionQuantifierEnum_CONDITION_QUANTIFIER_ENUM_NONE:
-		// no subject_external_values entry matches any mapped value
-		for _, comparisonValue := range condition.GetSubjectExternalValues() {
-			ok, err := matches(comparisonValue)
-			if err != nil {
-				return false, err
-			}
-			if ok {
-				return false, nil
-			}
-		}
-		return true, nil
-	case policy.ConditionQuantifierEnum_CONDITION_QUANTIFIER_ENUM_ALL:
-		// every subject_external_values entry matches at least one mapped value
-		for _, comparisonValue := range condition.GetSubjectExternalValues() {
-			ok, err := matches(comparisonValue)
-			if err != nil {
-				return false, err
-			}
-			if !ok {
-				return false, nil
-			}
-		}
-		return true, nil
-	case policy.ConditionQuantifierEnum_CONDITION_QUANTIFIER_ENUM_UNSPECIFIED:
-		return false, errors.New("unspecified condition quantifier")
-	default:
-		return false, errors.New("unsupported condition quantifier: " + quantifier.String())
-	}
-}
-
-// normalizedConditionOperators returns the comparison and quantifier to evaluate a condition with.
-// When the decomposed fields are unset it derives them from the deprecated operator field, so
-// conditions authored before the decomposition keep working unchanged.
-func normalizedConditionOperators(condition *policy.Condition) (policy.ConditionComparisonOperatorEnum, policy.ConditionQuantifierEnum) {
-	comparison := condition.GetComparison()
-	quantifier := condition.GetQuantifier()
-	if comparison != policy.ConditionComparisonOperatorEnum_CONDITION_COMPARISON_OPERATOR_ENUM_UNSPECIFIED ||
-		quantifier != policy.ConditionQuantifierEnum_CONDITION_QUANTIFIER_ENUM_UNSPECIFIED {
-		return comparison, quantifier
-	}
-	switch condition.GetOperator() { //nolint:staticcheck // deprecated operator retained for backward-compat normalization
+	// slog.Debug("mapped values", "", mappedValues)
+	result := false
+	switch condition.GetOperator() {
 	case policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_IN:
-		return policy.ConditionComparisonOperatorEnum_CONDITION_COMPARISON_OPERATOR_ENUM_EQUALS, policy.ConditionQuantifierEnum_CONDITION_QUANTIFIER_ENUM_ANY
+		// slog.Debug("the operator is IN")
+		for _, possibleValue := range condition.GetSubjectExternalValues() {
+			// slog.Debug("possible value", "", possibleValue)
+			for _, mappedValue := range mappedValues {
+				// slog.Debug("comparing values: ", "possible=", possibleValue, "mapped=", mappedValue)
+				if possibleValue == mappedValue {
+					// slog.Debug("comparison true")
+					result = true
+					break
+				}
+			}
+			if result {
+				break
+			}
+		}
 	case policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_NOT_IN:
-		return policy.ConditionComparisonOperatorEnum_CONDITION_COMPARISON_OPERATOR_ENUM_EQUALS, policy.ConditionQuantifierEnum_CONDITION_QUANTIFIER_ENUM_NONE
+		notInResult := true
+		for _, possibleValue := range condition.GetSubjectExternalValues() {
+			for _, mappedValue := range mappedValues {
+				// slog.Debug("comparing values: ", "possible=", possibleValue, "mapped=", mappedValue)
+				if possibleValue == mappedValue {
+					// slog.Debug("comparison true")
+					notInResult = false
+					break
+				}
+			}
+			if !notInResult {
+				break
+			}
+		}
+		if notInResult {
+			result = true
+		}
 	case policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_IN_CONTAINS:
-		return policy.ConditionComparisonOperatorEnum_CONDITION_COMPARISON_OPERATOR_ENUM_CONTAINS, policy.ConditionQuantifierEnum_CONDITION_QUANTIFIER_ENUM_ANY
+		// slog.Debug("the operator is CONTAINS")
+		for _, possibleValue := range condition.GetSubjectExternalValues() {
+			// slog.Debug("possible value", "", possibleValue)
+			for _, mappedValue := range mappedValues {
+				mappedValueStr := fmt.Sprintf("%v", mappedValue)
+				// slog.Debug("comparing values: ", "possible=", possibleValue, "mapped=", mappedValueStr)
+				if strings.Contains(mappedValueStr, possibleValue) {
+					result = true
+					break
+				}
+			}
+			if result {
+				break
+			}
+		}
 	case policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_UNSPECIFIED:
-		// leaves both UNSPECIFIED so EvaluateCondition returns a clear error
-		return comparison, quantifier
+		// unspecified subject mapping operator
+		return false, errors.New("unspecified subject mapping operator: " + condition.GetOperator().String())
 	default:
-		// leaves both UNSPECIFIED so EvaluateCondition returns a clear error
-		return comparison, quantifier
+		// unsupported subject mapping operator
+		return false, errors.New("unsupported subject mapping operator: " + condition.GetOperator().String())
 	}
-}
-
-// compareEntityValue reports whether an entity value matches a comparison value under the given
-// comparison operator. The entity value is the haystack and the comparison value is the needle,
-// matching both the static condition (entity value vs authored value) and the dynamic resolver
-// (entity value vs requested resource segment). Both operands are whitespace-trimmed, and folded
-// to lower case when caseInsensitive.
-func compareEntityValue(comparison policy.ConditionComparisonOperatorEnum, caseInsensitive bool, entityValue, comparisonValue string) (bool, error) {
-	a := strings.TrimSpace(entityValue)
-	b := strings.TrimSpace(comparisonValue)
-	if caseInsensitive {
-		a = strings.ToLower(a)
-		b = strings.ToLower(b)
-	}
-	switch comparison {
-	case policy.ConditionComparisonOperatorEnum_CONDITION_COMPARISON_OPERATOR_ENUM_EQUALS:
-		return a == b, nil
-	case policy.ConditionComparisonOperatorEnum_CONDITION_COMPARISON_OPERATOR_ENUM_CONTAINS:
-		return strings.Contains(a, b), nil
-	case policy.ConditionComparisonOperatorEnum_CONDITION_COMPARISON_OPERATOR_ENUM_STARTS_WITH:
-		return strings.HasPrefix(a, b), nil
-	case policy.ConditionComparisonOperatorEnum_CONDITION_COMPARISON_OPERATOR_ENUM_ENDS_WITH:
-		return strings.HasSuffix(a, b), nil
-	case policy.ConditionComparisonOperatorEnum_CONDITION_COMPARISON_OPERATOR_ENUM_UNSPECIFIED:
-		return false, errors.New("unspecified condition comparison operator")
-	default:
-		return false, fmt.Errorf("unsupported condition comparison operator: %s", comparison)
-	}
+	return result, nil
 }

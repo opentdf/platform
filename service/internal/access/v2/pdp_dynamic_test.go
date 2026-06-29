@@ -27,7 +27,7 @@ func (s *PDPTestSuite) Test_GetDecision_DynamicValueMapping_MultiValue() {
 			AttributeDefinition: attr,
 			ValueResolver: &policy.DynamicValueResolver{
 				SubjectExternalSelectorValue: ".properties.patientAssignments[]",
-				Comparison:                   policy.ConditionComparisonOperatorEnum_CONDITION_COMPARISON_OPERATOR_ENUM_EQUALS,
+				Operator:                     policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_IN,
 			},
 			Actions:   []*policy.Action{testActionRead},
 			Namespace: namespace,

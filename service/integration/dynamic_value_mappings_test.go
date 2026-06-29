@@ -50,7 +50,7 @@ func (s *DynamicValueMappingsSuite) TestCreateAndGet() {
 
 	created, err := s.db.PolicyClient.CreateDynamicValueMapping(s.ctx, &dynamicvaluemapping.CreateDynamicValueMappingRequest{
 		AttributeDefinitionId: attr.GetId(),
-		ValueResolver:         s.resolver(".patientAssignments[]", policy.ConditionComparisonOperatorEnum_CONDITION_COMPARISON_OPERATOR_ENUM_EQUALS),
+		ValueResolver:         s.resolver(".patientAssignments[]", policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_IN),
 		Actions:               []*policy.Action{s.readAction()},
 	})
 	s.Require().NoError(err)
@@ -60,7 +60,7 @@ func (s *DynamicValueMappingsSuite) TestCreateAndGet() {
 	s.Require().NoError(err)
 	s.Equal(attr.GetId(), got.GetAttributeDefinition().GetId())
 	s.Equal(".patientAssignments[]", got.GetValueResolver().GetSubjectExternalSelectorValue())
-	s.Equal(policy.ConditionComparisonOperatorEnum_CONDITION_COMPARISON_OPERATOR_ENUM_EQUALS, got.GetValueResolver().GetComparison())
+	s.Equal(policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_IN, got.GetValueResolver().GetOperator())
 	s.Len(got.GetActions(), 1)
 	s.Nil(got.GetSubjectConditionSet(), "optional static pre-gate omitted")
 }
@@ -70,7 +70,7 @@ func (s *DynamicValueMappingsSuite) TestCreateWithStaticGate() {
 
 	created, err := s.db.PolicyClient.CreateDynamicValueMapping(s.ctx, &dynamicvaluemapping.CreateDynamicValueMappingRequest{
 		AttributeDefinitionId:  attr.GetId(),
-		ValueResolver:          s.resolver(".patientAssignments[]", policy.ConditionComparisonOperatorEnum_CONDITION_COMPARISON_OPERATOR_ENUM_EQUALS),
+		ValueResolver:          s.resolver(".patientAssignments[]", policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_IN),
 		Actions:                []*policy.Action{s.readAction()},
 		NewSubjectConditionSet: s.sampleSCSCreate(),
 	})
@@ -87,7 +87,7 @@ func (s *DynamicValueMappingsSuite) TestRejectsHierarchyDefinition() {
 
 	_, err := s.db.PolicyClient.CreateDynamicValueMapping(s.ctx, &dynamicvaluemapping.CreateDynamicValueMappingRequest{
 		AttributeDefinitionId: attr.GetId(),
-		ValueResolver:         s.resolver(".x[]", policy.ConditionComparisonOperatorEnum_CONDITION_COMPARISON_OPERATOR_ENUM_EQUALS),
+		ValueResolver:         s.resolver(".x[]", policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_IN),
 		Actions:               []*policy.Action{s.readAction()},
 	})
 	s.Require().Error(err, "HIERARCHY definitions must be rejected")
@@ -108,7 +108,7 @@ func (s *DynamicValueMappingsSuite) TestNoCoexistence_SubjectMappingThenDynamic(
 	// definition now has a value-level subject mapping; a dynamic mapping must be rejected
 	_, err = s.db.PolicyClient.CreateDynamicValueMapping(s.ctx, &dynamicvaluemapping.CreateDynamicValueMappingRequest{
 		AttributeDefinitionId: attr.GetId(),
-		ValueResolver:         s.resolver(".x[]", policy.ConditionComparisonOperatorEnum_CONDITION_COMPARISON_OPERATOR_ENUM_EQUALS),
+		ValueResolver:         s.resolver(".x[]", policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_IN),
 		Actions:               []*policy.Action{s.readAction()},
 	})
 	s.Require().Error(err, "dynamic mapping must not coexist with value-level subject mappings")
@@ -119,7 +119,7 @@ func (s *DynamicValueMappingsSuite) TestNoCoexistence_DynamicThenSubjectMapping(
 
 	_, err := s.db.PolicyClient.CreateDynamicValueMapping(s.ctx, &dynamicvaluemapping.CreateDynamicValueMappingRequest{
 		AttributeDefinitionId: attr.GetId(),
-		ValueResolver:         s.resolver(".x[]", policy.ConditionComparisonOperatorEnum_CONDITION_COMPARISON_OPERATOR_ENUM_EQUALS),
+		ValueResolver:         s.resolver(".x[]", policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_IN),
 		Actions:               []*policy.Action{s.readAction()},
 	})
 	s.Require().NoError(err)
@@ -141,7 +141,7 @@ func (s *DynamicValueMappingsSuite) TestRejectsRuleChangeToHierarchy() {
 
 	_, err := s.db.PolicyClient.CreateDynamicValueMapping(s.ctx, &dynamicvaluemapping.CreateDynamicValueMappingRequest{
 		AttributeDefinitionId: attr.GetId(),
-		ValueResolver:         s.resolver(".x[]", policy.ConditionComparisonOperatorEnum_CONDITION_COMPARISON_OPERATOR_ENUM_EQUALS),
+		ValueResolver:         s.resolver(".x[]", policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_IN),
 		Actions:               []*policy.Action{s.readAction()},
 	})
 	s.Require().NoError(err)
@@ -158,18 +158,18 @@ func (s *DynamicValueMappingsSuite) TestUpdateAndDelete() {
 
 	created, err := s.db.PolicyClient.CreateDynamicValueMapping(s.ctx, &dynamicvaluemapping.CreateDynamicValueMappingRequest{
 		AttributeDefinitionId: attr.GetId(),
-		ValueResolver:         s.resolver(".patientAssignments[]", policy.ConditionComparisonOperatorEnum_CONDITION_COMPARISON_OPERATOR_ENUM_EQUALS),
+		ValueResolver:         s.resolver(".patientAssignments[]", policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_IN),
 		Actions:               []*policy.Action{s.readAction()},
 	})
 	s.Require().NoError(err)
 
 	updated, err := s.db.PolicyClient.UpdateDynamicValueMapping(s.ctx, &dynamicvaluemapping.UpdateDynamicValueMappingRequest{
 		Id:            created.GetId(),
-		ValueResolver: s.resolver(".accounts[]", policy.ConditionComparisonOperatorEnum_CONDITION_COMPARISON_OPERATOR_ENUM_CONTAINS),
+		ValueResolver: s.resolver(".accounts[]", policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_IN_CONTAINS),
 	})
 	s.Require().NoError(err)
 	s.Equal(".accounts[]", updated.GetValueResolver().GetSubjectExternalSelectorValue())
-	s.Equal(policy.ConditionComparisonOperatorEnum_CONDITION_COMPARISON_OPERATOR_ENUM_CONTAINS, updated.GetValueResolver().GetComparison())
+	s.Equal(policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_IN_CONTAINS, updated.GetValueResolver().GetOperator())
 
 	_, err = s.db.PolicyClient.DeleteDynamicValueMapping(s.ctx, created.GetId())
 	s.Require().NoError(err)
@@ -182,7 +182,7 @@ func (s *DynamicValueMappingsSuite) TestListByDefinition() {
 	attr := s.createDefinition("dvem_list", policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF)
 	_, err := s.db.PolicyClient.CreateDynamicValueMapping(s.ctx, &dynamicvaluemapping.CreateDynamicValueMappingRequest{
 		AttributeDefinitionId: attr.GetId(),
-		ValueResolver:         s.resolver(".patientAssignments[]", policy.ConditionComparisonOperatorEnum_CONDITION_COMPARISON_OPERATOR_ENUM_EQUALS),
+		ValueResolver:         s.resolver(".patientAssignments[]", policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_IN),
 		Actions:               []*policy.Action{s.readAction()},
 	})
 	s.Require().NoError(err)
@@ -200,7 +200,7 @@ func (s *DynamicValueMappingsSuite) TestListByDefinition_Pagination() {
 	for _, selector := range []string{".a[]", ".b[]", ".c[]"} {
 		_, err := s.db.PolicyClient.CreateDynamicValueMapping(s.ctx, &dynamicvaluemapping.CreateDynamicValueMappingRequest{
 			AttributeDefinitionId: attr.GetId(),
-			ValueResolver:         s.resolver(selector, policy.ConditionComparisonOperatorEnum_CONDITION_COMPARISON_OPERATOR_ENUM_EQUALS),
+			ValueResolver:         s.resolver(selector, policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_IN),
 			Actions:               []*policy.Action{s.readAction()},
 		})
 		s.Require().NoError(err)
@@ -259,10 +259,10 @@ func (s *DynamicValueMappingsSuite) readAction() *policy.Action {
 	return s.f.GetStandardAction(policydb.ActionRead.String())
 }
 
-func (s *DynamicValueMappingsSuite) resolver(selector string, comparison policy.ConditionComparisonOperatorEnum) *policy.DynamicValueResolver {
+func (s *DynamicValueMappingsSuite) resolver(selector string, operator policy.SubjectMappingOperatorEnum) *policy.DynamicValueResolver {
 	return &policy.DynamicValueResolver{
 		SubjectExternalSelectorValue: selector,
-		Comparison:                   comparison,
+		Operator:                     operator,
 	}
 }
 

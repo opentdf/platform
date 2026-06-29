@@ -240,10 +240,8 @@ type DynamicValueMapping struct {
 	AttributeDefinitionID string `json:"attribute_definition_id"`
 	// Selector resolved against the entity representation, compared to the requested resource value segment
 	SubjectExternalSelectorValue string `json:"subject_external_selector_value"`
-	// policy.ConditionComparisonOperatorEnum value
-	Comparison int16 `json:"comparison"`
-	// When true, the comparison is case-insensitive
-	CaseInsensitive       bool               `json:"case_insensitive"`
+	// policy.SubjectMappingOperatorEnum value
+	Operator              int16              `json:"operator"`
 	SubjectConditionSetID pgtype.UUID        `json:"subject_condition_set_id"`
 	NamespaceID           pgtype.UUID        `json:"namespace_id"`
 	Metadata              []byte             `json:"metadata"`

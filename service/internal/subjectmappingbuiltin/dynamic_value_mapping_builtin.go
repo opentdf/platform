@@ -1,8 +1,10 @@
 package subjectmappingbuiltin
 
 import (
+	"errors"
 	"fmt"
 	"log/slog"
+	"strings"
 
 	"github.com/opentdf/platform/lib/flattening"
 	"github.com/opentdf/platform/lib/identifier"
@@ -98,22 +100,30 @@ func evaluateDynamicValueMapping(
 }
 
 // evaluateValueResolver reports whether any entity value resolved by the selector matches the
-// requested resource value segment under the resolver's comparison operator. The match is
-// existential over the entity values; case sensitivity follows the resolver's case_insensitive flag.
+// requested resource value segment under the resolver's operator. The match is existential over
+// the entity values. NOT_IN is unsupported because dynamic resolution is existential.
 func evaluateValueResolver(resolver *policy.DynamicValueResolver, entity flattening.Flattened, segment string) (bool, error) {
-	entityValues := flattening.GetFromFlattened(entity, resolver.GetSubjectExternalSelectorValue())
-	comparison := resolver.GetComparison()
-	caseInsensitive := resolver.GetCaseInsensitive().GetValue()
+	operator := resolver.GetOperator()
+	var match func(entityValue string) bool
+	switch operator {
+	case policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_IN:
+		match = func(entityValue string) bool { return entityValue == segment }
+	case policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_IN_CONTAINS:
+		match = func(entityValue string) bool { return strings.Contains(entityValue, segment) }
+	case policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_NOT_IN:
+		return false, errors.New("NOT_IN is unsupported for dynamic value resolution")
+	case policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_UNSPECIFIED:
+		return false, errors.New("unspecified dynamic value resolver operator")
+	default:
+		return false, fmt.Errorf("unsupported dynamic value resolver operator: %s", operator)
+	}
 
+	entityValues := flattening.GetFromFlattened(entity, resolver.GetSubjectExternalSelectorValue())
 	for _, ev := range entityValues {
 		if ev == nil {
 			continue
 		}
-		ok, err := compareEntityValue(comparison, caseInsensitive, fmt.Sprintf("%v", ev), segment)
-		if err != nil {
-			return false, err
-		}
-		if ok {
+		if match(fmt.Sprintf("%v", ev)) {
 			return true, nil
 		}
 	}

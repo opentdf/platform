@@ -45,8 +45,7 @@ SELECT
     dvem.id,
     dvem.attribute_definition_id,
     dvem.subject_external_selector_value,
-    dvem.comparison,
-    dvem.case_insensitive,
+    dvem.operator,
     dvem.subject_condition_set_id,
     COALESCE(da.actions, '[]'::JSONB) AS actions,
     JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', dvem.metadata -> 'labels', 'created_at', dvem.created_at, 'updated_at', dvem.updated_at)) AS metadata,
@@ -110,8 +109,7 @@ SELECT
     dvem.id,
     dvem.attribute_definition_id,
     dvem.subject_external_selector_value,
-    dvem.comparison,
-    dvem.case_insensitive,
+    dvem.operator,
     dvem.subject_condition_set_id,
     COALESCE(da.actions, '[]'::JSONB) AS actions,
     JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', dvem.metadata -> 'labels', 'created_at', dvem.created_at, 'updated_at', dvem.updated_at)) AS metadata,
@@ -130,8 +128,7 @@ WITH inserted_mapping AS (
     INSERT INTO dynamic_value_mappings (
         attribute_definition_id,
         subject_external_selector_value,
-        comparison,
-        case_insensitive,
+        operator,
         metadata,
         subject_condition_set_id,
         namespace_id
@@ -139,8 +136,7 @@ WITH inserted_mapping AS (
     VALUES (
         @attribute_definition_id,
         @subject_external_selector_value,
-        @comparison,
-        @case_insensitive,
+        @operator,
         @metadata,
         sqlc.narg('subject_condition_set_id')::uuid,
         sqlc.narg('namespace_id')::uuid
@@ -162,8 +158,7 @@ WITH
         SET
             metadata = COALESCE(sqlc.narg('metadata')::JSONB, metadata),
             subject_external_selector_value = COALESCE(sqlc.narg('subject_external_selector_value')::TEXT, subject_external_selector_value),
-            comparison = COALESCE(sqlc.narg('comparison')::SMALLINT, comparison),
-            case_insensitive = COALESCE(sqlc.narg('case_insensitive')::BOOLEAN, case_insensitive),
+            operator = COALESCE(sqlc.narg('operator')::SMALLINT, operator),
             subject_condition_set_id = COALESCE(sqlc.narg('subject_condition_set_id')::UUID, subject_condition_set_id)
         WHERE id = sqlc.arg('id')
         RETURNING id

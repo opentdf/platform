@@ -10,7 +10,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/types/known/structpb"
-	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
 func dvemEntityRep(t *testing.T, props map[string]interface{}) *entityresolutionV2.EntityRepresentation {
@@ -48,13 +47,12 @@ func dvemDecisionable(defFQN, valueFQN, segment string) map[string]*attributes.G
 	}
 }
 
-func dvemMapping(defFQN, selector string, comparison policy.ConditionComparisonOperatorEnum, caseInsensitive bool, scs *policy.SubjectConditionSet, actionNames ...string) *policy.DynamicValueMapping {
+func dvemMapping(defFQN, selector string, operator policy.SubjectMappingOperatorEnum, scs *policy.SubjectConditionSet, actionNames ...string) *policy.DynamicValueMapping {
 	return &policy.DynamicValueMapping{
 		AttributeDefinition: &policy.Attribute{Fqn: defFQN},
 		ValueResolver: &policy.DynamicValueResolver{
 			SubjectExternalSelectorValue: selector,
-			Comparison:                   comparison,
-			CaseInsensitive:              wrapperspb.Bool(caseInsensitive),
+			Operator:                     operator,
 		},
 		SubjectConditionSet: scs,
 		Actions:             dvemActions(actionNames...),
@@ -82,7 +80,7 @@ func TestEvaluateDynamicValueMappings_MRNExample(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			mapping := dvemMapping(def, tc.selector, policy.ConditionComparisonOperatorEnum_CONDITION_COMPARISON_OPERATOR_ENUM_EQUALS, false, nil, tc.acts...)
+			mapping := dvemMapping(def, tc.selector, policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_IN, nil, tc.acts...)
 			byDef := DynamicValueMappingsByDefinitionFQN{def: {mapping}}
 
 			got, err := EvaluateDynamicValueMappingsWithActions(byDef, dvemDecisionable(def, valueFQN, "mrn-123"), dvemEntityRep(t, tc.props), slog.Default())
@@ -96,24 +94,11 @@ func TestEvaluateDynamicValueMappings_MRNExample(t *testing.T) {
 	}
 }
 
-// TestEvaluateDynamicValueMappings_Canonicalization covers the external
-// system case-mismatch concern: the IdP reports MRN-123, policy stores mrn-123.
-func TestEvaluateDynamicValueMappings_Canonicalization(t *testing.T) {
-	const def = "https://hospital.co/attr/mrn"
-	const valueFQN = "https://hospital.co/attr/mrn/value/mrn-123"
-	mapping := dvemMapping(def, ".medicalRecordNumber", policy.ConditionComparisonOperatorEnum_CONDITION_COMPARISON_OPERATOR_ENUM_EQUALS, true, nil, "read")
-	byDef := DynamicValueMappingsByDefinitionFQN{def: {mapping}}
-
-	got, err := EvaluateDynamicValueMappingsWithActions(byDef, dvemDecisionable(def, valueFQN, "mrn-123"), dvemEntityRep(t, map[string]interface{}{"medicalRecordNumber": "MRN-123"}), slog.Default())
-	require.NoError(t, err)
-	assert.Equal(t, []string{"read"}, dvemActionNames(got[valueFQN]))
-}
-
 // TestEvaluateDynamicValueMappings_InContains covers the substring operator.
 func TestEvaluateDynamicValueMappings_InContains(t *testing.T) {
 	const def = "https://acme.co/attr/group"
 	const valueFQN = "https://acme.co/attr/group/value/team"
-	mapping := dvemMapping(def, ".groups[]", policy.ConditionComparisonOperatorEnum_CONDITION_COMPARISON_OPERATOR_ENUM_CONTAINS, false, nil, "read")
+	mapping := dvemMapping(def, ".groups[]", policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_IN_CONTAINS, nil, "read")
 	byDef := DynamicValueMappingsByDefinitionFQN{def: {mapping}}
 
 	got, err := EvaluateDynamicValueMappingsWithActions(byDef, dvemDecisionable(def, valueFQN, "team"), dvemEntityRep(t, map[string]interface{}{"groups": []interface{}{"prefix-team-suffix"}}), slog.Default())
@@ -139,7 +124,7 @@ func TestEvaluateDynamicValueMappings_StaticGate(t *testing.T) {
 			}},
 		}},
 	}
-	mapping := dvemMapping(def, ".patientAssignments[]", policy.ConditionComparisonOperatorEnum_CONDITION_COMPARISON_OPERATOR_ENUM_EQUALS, false, scs, "read")
+	mapping := dvemMapping(def, ".patientAssignments[]", policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_IN, scs, "read")
 	byDef := DynamicValueMappingsByDefinitionFQN{def: {mapping}}
 
 	// cardiology provider assigned to mrn-123 -> gate + resolver pass
@@ -184,7 +169,7 @@ func TestEvaluateDynamicValueMappings_StaticGate_MultipleSubjectSets(t *testing.
 			subjectSet(".role", "provider"),
 		},
 	}
-	mapping := dvemMapping(def, ".patientAssignments[]", policy.ConditionComparisonOperatorEnum_CONDITION_COMPARISON_OPERATOR_ENUM_EQUALS, false, scs, "read")
+	mapping := dvemMapping(def, ".patientAssignments[]", policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_IN, scs, "read")
 	byDef := DynamicValueMappingsByDefinitionFQN{def: {mapping}}
 
 	// both subject sets satisfied + resolver match -> entitled
@@ -212,7 +197,7 @@ func TestEvaluateDynamicValueMappings_StaticGate_MultipleSubjectSets(t *testing.
 func TestEvaluateDynamicValueMappings_CrossDefinitionNoLeak(t *testing.T) {
 	const defA = "https://a.co/attr/x"
 	const defB = "https://b.co/attr/y"
-	mapping := dvemMapping(defA, ".assignments[]", policy.ConditionComparisonOperatorEnum_CONDITION_COMPARISON_OPERATOR_ENUM_EQUALS, false, nil, "read")
+	mapping := dvemMapping(defA, ".assignments[]", policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_IN, nil, "read")
 	byDef := DynamicValueMappingsByDefinitionFQN{defA: {mapping}}
 	entity := dvemEntityRep(t, map[string]interface{}{"assignments": []interface{}{"shared-1"}})
 

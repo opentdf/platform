@@ -152,8 +152,16 @@ func validateDynamicValueMapping(mapping *policy.DynamicValueMapping) error {
 	if resolver.GetSubjectExternalSelectorValue() == "" {
 		return fmt.Errorf("mapping's value resolver selector is empty: %w", ErrInvalidDynamicValueMapping)
 	}
-	if resolver.GetComparison() == policy.ConditionComparisonOperatorEnum_CONDITION_COMPARISON_OPERATOR_ENUM_UNSPECIFIED {
-		return fmt.Errorf("mapping's value resolver comparison is unspecified: %w", ErrInvalidDynamicValueMapping)
+	switch resolver.GetOperator() {
+	case policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_IN,
+		policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_IN_CONTAINS:
+		// supported existential operators
+	case policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_NOT_IN:
+		return fmt.Errorf("NOT_IN is unsupported for dynamic value resolution: %w", ErrInvalidDynamicValueMapping)
+	case policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_UNSPECIFIED:
+		return fmt.Errorf("mapping's value resolver operator is unspecified: %w", ErrInvalidDynamicValueMapping)
+	default:
+		return fmt.Errorf("mapping's value resolver operator is unsupported: %w", ErrInvalidDynamicValueMapping)
 	}
 	if len(mapping.GetActions()) == 0 {
 		return fmt.Errorf("mapping's actions are empty: %w", ErrInvalidDynamicValueMapping)

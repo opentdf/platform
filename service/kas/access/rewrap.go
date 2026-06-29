@@ -678,7 +678,7 @@ func (p *Provider) verifyRewrapRequests(ctx context.Context, req *kaspb.Unsigned
 		switch kao.GetKeyAccessObject().GetKeyType() {
 		case "ec-wrapped":
 
-			if !p.ECTDFEnabled && !p.Preview.ECTDFEnabled {
+			if !p.Preview.ECTDFEnabled {
 				p.Logger.WarnContext(ctx, "ec-wrapped not enabled")
 				failedKAORewrap(results, kao, err400("ec-wrapped not enabled"))
 				continue
@@ -760,7 +760,7 @@ func (p *Provider) verifyRewrapRequests(ctx context.Context, req *kaspb.Unsigned
 				continue
 			}
 		case "hybrid-wrapped":
-			if !p.HybridTDFEnabled && !p.Preview.HybridTDFEnabled {
+			if !p.Preview.HybridTDFEnabled {
 				p.Logger.WarnContext(ctx, "hybrid-wrapped not enabled")
 				failedKAORewrap(results, kao, err400("bad request"))
 				continue
@@ -770,6 +770,20 @@ func (p *Provider) verifyRewrapRequests(ctx context.Context, req *kaspb.Unsigned
 			dek, err = p.KeyDelegator.Decrypt(ctx, kid, kao.GetKeyAccessObject().GetWrappedKey(), nil)
 			if err != nil {
 				p.Logger.WarnContext(ctx, "failed to decrypt hybrid key", slog.Any("error", err))
+				failedKAORewrap(results, kao, err400("bad request"))
+				continue
+			}
+		case "mlkem-wrapped":
+			if !p.Preview.MLKEMTDFEnabled {
+				p.Logger.WarnContext(ctx, "mlkem-wrapped not enabled")
+				failedKAORewrap(results, kao, err400("bad request"))
+				continue
+			}
+
+			kid := trust.KeyIdentifier(kao.GetKeyAccessObject().GetKid())
+			dek, err = p.KeyDelegator.Decrypt(ctx, kid, kao.GetKeyAccessObject().GetWrappedKey(), nil)
+			if err != nil {
+				p.Logger.WarnContext(ctx, "failed to decrypt ML-KEM key", slog.Any("error", err))
 				failedKAORewrap(results, kao, err400("bad request"))
 				continue
 			}
@@ -975,7 +989,7 @@ func (p *Provider) tdf3Rewrap(ctx context.Context, requests []*kaspb.UnsignedRew
 			failAllKaos(requests, results, err400("invalid request"))
 			return "", results, nil
 		}
-		if !p.ECTDFEnabled && !p.Preview.ECTDFEnabled {
+		if !p.Preview.ECTDFEnabled {
 			p.Logger.ErrorContext(ctx, "ec rewrap not enabled")
 			failAllKaos(requests, results, err400("invalid request"))
 			return "", results, nil

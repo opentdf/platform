@@ -89,6 +89,48 @@
   printf '%s\n' "$output" | grep "Hello P384+ML-KEM-1024 wrappers!"
 }
 
+@test "examples: roundtrip Z-TDF with ML-KEM-768 wrapped KAO" {
+  echo "[INFO] create a tdf3 format file"
+  run go run ./examples encrypt -o sensitive-with-mlkem768.txt.tdf --autoconfigure=false -A "mlkem:768" "Hello ML-KEM-768 wrappers!"
+  echo "[INFO] echoing output; if successful, this is just the manifest"
+  echo "$output"
+
+  echo "[INFO] Validate the manifest lists the expected type in its KAO"
+  kaotype=$(jq -r '.encryptionInformation.keyAccess[0].type' <<<"${output}")
+  echo "$kaotype"
+  [ "$kaotype" = mlkem-wrapped ]
+
+  kid=$(jq -r '.encryptionInformation.keyAccess[0].kid' <<<"${output}")
+  echo "kao.kid=$kid"
+  [ "$kid" = m1 ]
+
+  echo "[INFO] decrypting..."
+  run go run ./examples decrypt sensitive-with-mlkem768.txt.tdf
+  echo "$output"
+  printf '%s\n' "$output" | grep "Hello ML-KEM-768 wrappers!"
+}
+
+@test "examples: roundtrip Z-TDF with ML-KEM-1024 wrapped KAO" {
+  echo "[INFO] create a tdf3 format file"
+  run go run ./examples encrypt -o sensitive-with-mlkem1024.txt.tdf --autoconfigure=false -A "mlkem:1024" "Hello ML-KEM-1024 wrappers!"
+  echo "[INFO] echoing output; if successful, this is just the manifest"
+  echo "$output"
+
+  echo "[INFO] Validate the manifest lists the expected type in its KAO"
+  kaotype=$(jq -r '.encryptionInformation.keyAccess[0].type' <<<"${output}")
+  echo "$kaotype"
+  [ "$kaotype" = mlkem-wrapped ]
+
+  kid=$(jq -r '.encryptionInformation.keyAccess[0].kid' <<<"${output}")
+  echo "kao.kid=$kid"
+  [ "$kid" = m2 ]
+
+  echo "[INFO] decrypting..."
+  run go run ./examples decrypt sensitive-with-mlkem1024.txt.tdf
+  echo "$output"
+  printf '%s\n' "$output" | grep "Hello ML-KEM-1024 wrappers!"
+}
+
 @test "examples: legacy key support Z-TDF" {
   echo "[INFO] validating default key is r1"
   echo "[INFO] default key result: $(grpcurl "localhost:8080" "kas.AccessService/PublicKey")"
@@ -272,6 +314,10 @@ services:
         alg: hpqt:secp256r1-mlkem768
       - kid: h2
         alg: hpqt:secp384r1-mlkem1024
+      - kid: m1
+        alg: mlkem:768
+      - kid: m2
+        alg: mlkem:1024
   policy:
     enabled: true
   authorization:
@@ -331,6 +377,14 @@ server:
           alg: hpqt:secp384r1-mlkem1024
           private: kas-p384mlkem1024-private.pem
           cert: kas-p384mlkem1024-public.pem
+        - kid: m1
+          alg: mlkem:768
+          private: kas-mlkem768-private.pem
+          cert: kas-mlkem768-public.pem
+        - kid: m2
+          alg: mlkem:1024
+          private: kas-mlkem1024-private.pem
+          cert: kas-mlkem1024-public.pem
   port: 8080
 opa:
   embedded: true

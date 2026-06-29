@@ -234,7 +234,7 @@ func BenchmarkUnwrapDEK(b *testing.B) {
 	if err != nil {
 		b.Fatal(err)
 	}
-	rsaEnc, err := NewAsymEncryption(rsaPubPEM)
+	rsaEnc, err := FromPublicPEM(rsaPubPEM)
 	if err != nil {
 		b.Fatal(err)
 	}
@@ -242,7 +242,7 @@ func BenchmarkUnwrapDEK(b *testing.B) {
 	if err != nil {
 		b.Fatal(err)
 	}
-	rsaDec, err := NewAsymDecryption(rsaPrivPEM)
+	rsaDec, err := FromPrivatePEM(rsaPrivPEM)
 	if err != nil {
 		b.Fatal(err)
 	}
@@ -364,7 +364,7 @@ func BenchmarkUnwrapDEK(b *testing.B) {
 	if err != nil {
 		b.Fatal(err)
 	}
-	xwingWrapped, err := XWingWrapDEK(xwingKP.publicKey, testDEK)
+	xwingWrapped, err := wrapDEKWithKEM(xwingKEM{}, xwingKP.publicKey, testDEK, salt, nil)
 	if err != nil {
 		b.Fatal(err)
 	}
@@ -378,7 +378,7 @@ func BenchmarkUnwrapDEK(b *testing.B) {
 	if err != nil {
 		b.Fatal(err)
 	}
-	p256Wrapped, err := P256MLKEM768WrapDEK(p256KP.publicKey, testDEK)
+	p256Wrapped, err := wrapDEKWithKEM(hybridNISTKEM{params: &p256mlkem768Params}, p256KP.publicKey, testDEK, nil, nil)
 	if err != nil {
 		b.Fatal(err)
 	}
@@ -392,7 +392,7 @@ func BenchmarkUnwrapDEK(b *testing.B) {
 	if err != nil {
 		b.Fatal(err)
 	}
-	p384Wrapped, err := P384MLKEM1024WrapDEK(p384KP.publicKey, testDEK)
+	p384Wrapped, err := wrapDEKWithKEM(hybridNISTKEM{params: &p384mlkem1024Params}, p384KP.publicKey, testDEK, nil, nil)
 	if err != nil {
 		b.Fatal(err)
 	}
@@ -473,7 +473,7 @@ func TestWrappedKeySizeComparison(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	rsaEnc, err := NewAsymEncryption(rsaPubPEM)
+	rsaEnc, err := FromPublicPEM(rsaPubPEM)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -547,7 +547,7 @@ func TestWrappedKeySizeComparison(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	xwingWrapped, err := XWingWrapDEK(xwingKP.publicKey, testDEK)
+	xwingWrapped, err := wrapDEKWithKEM(xwingKEM{}, xwingKP.publicKey, testDEK, nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -567,7 +567,7 @@ func TestWrappedKeySizeComparison(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	p256Wrapped, err := P256MLKEM768WrapDEK(p256KP.publicKey, testDEK)
+	p256Wrapped, err := wrapDEKWithKEM(hybridNISTKEM{params: &p256mlkem768Params}, p256KP.publicKey, testDEK, nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -587,7 +587,7 @@ func TestWrappedKeySizeComparison(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	p384Wrapped, err := P384MLKEM1024WrapDEK(p384KP.publicKey, testDEK)
+	p384Wrapped, err := wrapDEKWithKEM(hybridNISTKEM{params: &p384mlkem1024Params}, p384KP.publicKey, testDEK, nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}

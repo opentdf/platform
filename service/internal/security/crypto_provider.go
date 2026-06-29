@@ -18,4 +18,8 @@ const (
 	// Used for hybrid NIST EC + ML-KEM wrapping of the KAO
 	AlgorithmHPQTSecp256r1MLKEM768  = "hpqt:secp256r1-mlkem768"
 	AlgorithmHPQTSecp384r1MLKEM1024 = "hpqt:secp384r1-mlkem1024"
+
+	// Used for encryption with ML-KEM of the KAO
+	AlgorithmMLKEM768  = "mlkem:768"
+	AlgorithmMLKEM1024 = "mlkem:1024"
 )

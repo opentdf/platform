@@ -165,8 +165,8 @@ func wrapKeyWithPublicKey(symKey []byte, pubKeyInfo keysplit.KASPublicKey) (stri
 	// Determine key type based on algorithm
 	ktype := ocrypto.KeyType(pubKeyInfo.Algorithm)
 
-	if ocrypto.IsHybridKeyType(ktype) {
-		return wrapKeyWithHybrid(ktype, pubKeyInfo.PEM, symKey)
+	if ocrypto.IsKEMKeyType(ktype) {
+		return wrapKeyWithKEM(ktype, pubKeyInfo.PEM, symKey)
 	}
 	if ocrypto.IsECKeyType(ktype) {
 		// Handle EC key wrapping
@@ -249,10 +249,18 @@ func wrapKeyWithRSA(kasPublicKeyPEM string, symKey []byte) (string, error) {
 	return string(ocrypto.Base64Encode(encryptedKey)), nil
 }
 
-func wrapKeyWithHybrid(ktype ocrypto.KeyType, kasPublicKeyPEM string, symKey []byte) (string, string, string, error) {
-	wrappedDER, err := ocrypto.HybridWrapDEK(ktype, kasPublicKeyPEM, symKey)
+// wrapKeyWithKEM wraps a DEK with any KEM scheme — pure ML-KEM or hybrid
+// (X-Wing, NIST PQ/T). Returns the base64-encoded envelope, the manifest
+// scheme name (`hybrid-wrapped` or `mlkem-wrapped`), and an empty ephemeral
+// key string (KEMs do not emit one in this profile).
+func wrapKeyWithKEM(ktype ocrypto.KeyType, kasPublicKeyPEM string, symKey []byte) (string, string, string, error) {
+	wrappedDER, err := ocrypto.WrapDEK(ktype, kasPublicKeyPEM, symKey)
 	if err != nil {
-		return "", "", "", fmt.Errorf("hybrid wrap failed: %w", err)
+		return "", "", "", fmt.Errorf("kem wrap failed: %w", err)
 	}
-	return string(ocrypto.Base64Encode(wrappedDER)), "hybrid-wrapped", "", nil
+	scheme := "hybrid-wrapped"
+	if ocrypto.IsMLKEMKeyType(ktype) {
+		scheme = "mlkem-wrapped"
+	}
+	return string(ocrypto.Base64Encode(wrappedDER)), scheme, "", nil
 }

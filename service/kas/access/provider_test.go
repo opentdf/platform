@@ -11,6 +11,45 @@ func TestInferLegacyKeys_empty(t *testing.T) {
 	assert.Empty(t, inferLegacyKeys(nil))
 }
 
+func TestApplyConfig_NormalizesHybridToMLKEM(t *testing.T) {
+	tests := []struct {
+		name      string
+		preview   Preview
+		wantMLKEM bool
+	}{
+		{
+			name:      "hybrid on enables mlkem",
+			preview:   Preview{HybridTDFEnabled: true},
+			wantMLKEM: true,
+		},
+		{
+			name:      "hybrid and mlkem on stays on",
+			preview:   Preview{HybridTDFEnabled: true, MLKEMTDFEnabled: true},
+			wantMLKEM: true,
+		},
+		{
+			name:      "mlkem on without hybrid is untouched",
+			preview:   Preview{MLKEMTDFEnabled: true},
+			wantMLKEM: true,
+		},
+		{
+			name:      "both off stays off",
+			preview:   Preview{},
+			wantMLKEM: false,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			p := &Provider{}
+			p.ApplyConfig(KASConfig{Preview: tc.preview}, nil)
+			assert.Equal(t, tc.wantMLKEM, p.Preview.MLKEMTDFEnabled)
+			// HybridTDFEnabled is never altered by normalization.
+			assert.Equal(t, tc.preview.HybridTDFEnabled, p.Preview.HybridTDFEnabled)
+		})
+	}
+}
+
 func TestInferLegacyKeys_singles(t *testing.T) {
 	one := []CurrentKeyFor{
 		{

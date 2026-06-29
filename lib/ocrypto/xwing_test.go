@@ -1,7 +1,6 @@
 package ocrypto
 
 import (
-	"encoding/asn1"
 	"encoding/pem"
 	"testing"
 
@@ -45,10 +44,10 @@ func TestXWingWrapUnwrapRoundTrip(t *testing.T) {
 	require.NoError(t, err)
 
 	dek := []byte("0123456789abcdef0123456789abcdef")
-	wrapped, err := XWingWrapDEK(keyPair.publicKey, dek)
+	wrapped, err := wrapDEKWithKEM(xwingKEM{}, keyPair.publicKey, dek, nil, nil)
 	require.NoError(t, err)
 
-	plaintext, err := XWingUnwrapDEK(keyPair.privateKey, wrapped)
+	plaintext, err := unwrapDEKWithKEM(xwingKEM{}, keyPair.privateKey, wrapped, nil, nil)
 	require.NoError(t, err)
 	assert.Equal(t, dek, plaintext)
 }
@@ -59,28 +58,12 @@ func TestXWingWrapUnwrapWrongKeyFails(t *testing.T) {
 	wrongKeyPair, err := NewXWingKeyPair()
 	require.NoError(t, err)
 
-	wrapped, err := XWingWrapDEK(keyPair.publicKey, []byte("top secret dek"))
+	wrapped, err := wrapDEKWithKEM(xwingKEM{}, keyPair.publicKey, []byte("top secret dek"), nil, nil)
 	require.NoError(t, err)
 
-	_, err = XWingUnwrapDEK(wrongKeyPair.privateKey, wrapped)
+	_, err = unwrapDEKWithKEM(xwingKEM{}, wrongKeyPair.privateKey, wrapped, nil, nil)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "AES-GCM decrypt failed")
-}
-
-func TestXWingWrappedKeyASN1RoundTrip(t *testing.T) {
-	original := XWingWrappedKey{
-		XWingCiphertext: []byte("ciphertext"),
-		EncryptedDEK:    []byte("encrypted-dek"),
-	}
-
-	der, err := asn1.Marshal(original)
-	require.NoError(t, err)
-
-	var decoded XWingWrappedKey
-	rest, err := asn1.Unmarshal(der, &decoded)
-	require.NoError(t, err)
-	assert.Empty(t, rest)
-	assert.Equal(t, original, decoded)
 }
 
 func TestXWingPEMDispatch(t *testing.T) {
@@ -98,7 +81,7 @@ func TestXWingPEMDispatch(t *testing.T) {
 	decryptor, err := FromPrivatePEMWithSalt(privatePEM, []byte("salt"), []byte("info"))
 	require.NoError(t, err)
 
-	xwingEncryptor, ok := encryptor.(*XWingEncryptor)
+	xwingEncryptor, ok := encryptor.(*kemEncryptor)
 	require.True(t, ok)
 	assert.Equal(t, Hybrid, xwingEncryptor.Type())
 	assert.Equal(t, HybridXWingKey, xwingEncryptor.KeyType())
@@ -108,7 +91,7 @@ func TestXWingPEMDispatch(t *testing.T) {
 	require.NoError(t, err)
 	assert.Empty(t, metadata)
 
-	xwingDecryptor, ok := decryptor.(*XWingDecryptor)
+	xwingDecryptor, ok := decryptor.(*kemDecryptor)
 	require.True(t, ok)
 
 	wrapped, err := xwingEncryptor.Encrypt([]byte("dispatch-dek"))

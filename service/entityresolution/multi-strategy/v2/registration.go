@@ -117,12 +117,12 @@ func (ers *ERSV2) ResolveEntities(
 
 		// Add resolved claims
 		for claimName, claimValue := range result.Claims {
-			resultData[claimName] = claimValue
+			resultData[claimName] = normalizeStructValue(claimValue)
 		}
 
 		// Add metadata with "metadata_" prefix
 		for metaKey, metaValue := range result.Metadata {
-			resultData[("metadata_" + metaKey)] = metaValue
+			resultData[("metadata_" + metaKey)] = normalizeStructValue(metaValue)
 		}
 
 		// Convert to protobuf struct
@@ -382,6 +382,31 @@ func (ers *ERSV2) createEntityFromResultV2(ctx context.Context, result *types.En
 	// Set the EphemeralId on the entity
 	entityV2.EphemeralId = entityID
 	return entityV2
+}
+
+func normalizeStructValue(value interface{}) interface{} {
+	switch typed := value.(type) {
+	case []string:
+		normalized := make([]interface{}, len(typed))
+		for i, item := range typed {
+			normalized[i] = item
+		}
+		return normalized
+	case []interface{}:
+		normalized := make([]interface{}, len(typed))
+		for i, item := range typed {
+			normalized[i] = normalizeStructValue(item)
+		}
+		return normalized
+	case map[string]interface{}:
+		normalized := make(map[string]interface{}, len(typed))
+		for key, item := range typed {
+			normalized[key] = normalizeStructValue(item)
+		}
+		return normalized
+	default:
+		return value
+	}
 }
 
 // Helper functions for v2

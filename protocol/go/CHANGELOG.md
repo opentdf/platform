@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.36.0](https://github.com/opentdf/platform/compare/protocol/go/v0.35.0...protocol/go/v0.36.0) (2026-06-29)
+
+
+### Features
+
+* **kas:** Adds FIPS-203 wrap with ML-KEM-768/1024 ([#3652](https://github.com/opentdf/platform/issues/3652)) ([06f30ef](https://github.com/opentdf/platform/commit/06f30ef7f2eb6a5dce587efa906d4bd70b7cd8dc))
+
 ## [0.35.0](https://github.com/opentdf/platform/compare/protocol/go/v0.34.0...protocol/go/v0.35.0) (2026-06-25)
 
 

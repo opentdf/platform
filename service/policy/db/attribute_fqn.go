@@ -216,6 +216,9 @@ func (c *PolicyDBClient) GetKeyMappingsByFqns(ctx context.Context, r *attributes
 	defer span.End()
 
 	fqns := r.GetFqns()
+	if len(fqns) == 0 {
+		return map[string]*attributes.GetKeyMappingsByFqnsResponse_AttributeKeyMapping{}, nil
+	}
 	normalized := make([]string, len(fqns))
 	for i, fqn := range fqns {
 		normalized[i] = strings.ToLower(fqn)
@@ -257,6 +260,12 @@ func (c *PolicyDBClient) GetEntitleableAttributesByFqns(ctx context.Context, r *
 	defer span.End()
 
 	fqns := r.GetFqns()
+	if len(fqns) == 0 {
+		return &attributes.GetEntitleableAttributesByFqnsResponse{
+			Definitions:              map[string]*attributes.GetEntitleableAttributesByFqnsResponse_EntitleableDefinition{},
+			FqnEntitleableAttributes: map[string]*attributes.GetEntitleableAttributesByFqnsResponse_EntitleableAttribute{},
+		}, nil
+	}
 	normalized := make([]string, len(fqns))
 	for i, fqn := range fqns {
 		normalized[i] = strings.ToLower(fqn)

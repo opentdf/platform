@@ -1675,6 +1675,7 @@ func (s *AttributesSuite) Test_GetKeyMappingsByFqns() {
 			Fqns: []string{"https://keymap-dne.example/attr/nope/value/nope"},
 		})
 		s.Require().Error(err)
+		s.Require().ErrorIs(err, db.ErrNotFound)
 	})
 }
 
@@ -1728,6 +1729,7 @@ func (s *AttributesSuite) Test_GetEntitleableAttributesByFqns_NonExistentFqn_Fai
 		Fqns: []string{"https://entitleable-dne.example/attr/nope/value/nope"},
 	})
 	s.Require().Error(err)
+	s.Require().ErrorIs(err, db.ErrNotFound)
 }
 
 func (s *AttributesSuite) Test_GetEntitleableAttributesByFqns_MissingValueAllowTraversal_Fails() {

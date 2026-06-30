@@ -178,23 +178,22 @@ func assertHybridNISTPrivateKeyLayout(t *testing.T, keyPair HybridNISTKeyPair, p
 func assertHybridNISTWrappedCiphertextLayout(t *testing.T, keyPair HybridNISTKeyPair, params *hybridNISTParams, mlkemCiphertextSize int) {
 	t.Helper()
 
-	enc, err := NewP256MLKEM768Encryptor(keyPair.publicKey)
-	if params.keyType == HybridSecp384r1MLKEM1024Key {
-		enc, err = NewP384MLKEM1024Encryptor(keyPair.publicKey)
-	}
+	pubPEM, err := keyPair.PublicKeyInPemFormat()
+	require.NoError(t, err)
+	enc, err := FromPublicPEM(pubPEM)
 	require.NoError(t, err)
 
 	wrappedDER, err := enc.Encrypt([]byte("layout-test-dek"))
 	require.NoError(t, err)
 
-	var wrapped HybridNISTWrappedKey
+	var wrapped kemEnvelope
 	rest, err := asn1.Unmarshal(wrappedDER, &wrapped)
 	require.NoError(t, err)
 	require.Empty(t, rest)
-	require.Len(t, wrapped.HybridCiphertext, mlkemCiphertextSize+params.ecPubSize)
-	require.Len(t, wrapped.HybridCiphertext[:mlkemCiphertextSize], mlkemCiphertextSize)
+	require.Len(t, wrapped.KEMCiphertext, mlkemCiphertextSize+params.ecPubSize)
+	require.Len(t, wrapped.KEMCiphertext[:mlkemCiphertextSize], mlkemCiphertextSize)
 
-	ephemeralECPub := wrapped.HybridCiphertext[mlkemCiphertextSize:]
+	ephemeralECPub := wrapped.KEMCiphertext[mlkemCiphertextSize:]
 	require.Len(t, ephemeralECPub, params.ecPubSize)
 	require.Equal(t, byte(0x04), ephemeralECPub[0], "ephemeral EC point must be uncompressed SEC1")
 	_, err = params.curve.NewPublicKey(ephemeralECPub)

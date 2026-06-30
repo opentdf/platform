@@ -5,6 +5,26 @@ import (
 	"fmt"
 )
 
+// WrapDEK parses the recipient's KEM public key PEM via the OID/PEM-routed
+// dispatcher and produces the ASN.1-encoded wrapped DEK envelope. It covers
+// both pure ML-KEM (`mlkem-wrapped`) and hybrid PQ/T (`hybrid-wrapped`) KAOs so
+// SDK and service callers can wrap against any KEM scheme without a per-scheme
+// switch — the encryptor returned by FromPublicPEM selects the format.
+func WrapDEK(ktype KeyType, kasPublicKeyPEM string, dek []byte) ([]byte, error) {
+	if !IsKEMKeyType(ktype) {
+		return nil, fmt.Errorf("unsupported KEM key type: %s", ktype)
+	}
+
+	enc, err := FromPublicPEM(kasPublicKeyPEM)
+	if err != nil {
+		return nil, fmt.Errorf("kem public key: %w", err)
+	}
+	if enc.KeyType() != ktype {
+		return nil, fmt.Errorf("kem key type mismatch: PEM is %s, requested %s", enc.KeyType(), ktype)
+	}
+	return enc.Encrypt(dek)
+}
+
 // HybridWrapDEK parses the recipient's hybrid public key PEM via the
 // OID-routed dispatcher, asserts the encryptor matches the requested ktype,
 // and produces the ASN.1-encoded wrapped DEK envelope used in

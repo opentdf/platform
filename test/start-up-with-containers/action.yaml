@@ -274,7 +274,7 @@ runs:
       shell: bash
       if: ${{ inputs.ec-tdf-enabled == 'true' }}
       run: |
-        yq e '.services.kas.ec_tdf_enabled = true' -i opentdf.yaml
+        yq e '.services.kas.preview.ec_tdf_enabled = true' -i opentdf.yaml
       working-directory: otdf-test-platform
     - name: Enable PQ (mlkem, xwing, and hybrid) wrapping for TDFs
       shell: bash

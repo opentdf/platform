@@ -7,7 +7,7 @@ const (
 	TDFSpecVersion = "4.3.0"
 
 	// The three-part semantic version number of this SDK
-	Version = "0.24.0" // x-release-please-version
+	Version = "0.25.0" // x-release-please-version
 )
 
 // SupportedFeatures returns a list of optional features supported by this SDK build.

@@ -6,7 +6,7 @@ This repo is a Go workspace (`go.work`) containing multiple Go modules, built us
 
 - `service/`: main OpenTDF server and platform services (binary entrypoint: `service/main.go`).
 - `sdk/`: Go SDK and generated clients.
-- `otdfctl/`: Command line for interacting with server, provising CLI for all SDK operations.
+- `otdfctl/`: Command line for interacting with server, providing CLI for all SDK operations.
 - `lib/*/`: shared libraries (e.g., `lib/ocrypto`, `lib/identifier`).
 - `protocol/` and `service/`: protobuf sources; generated Go lives under `protocol/go/` and docs under `docs/grpc/` + `docs/openapi/`.
 - `tests-bdd/`: BDD/integration-style tests (Godog) and feature files (`tests-bdd/features/`).
@@ -37,7 +37,7 @@ Prefer `make` targets at repo root:
 **CRITICAL**: All Go code changes must pass these checks before being marked as complete:
 
 1. **Linting**: `make lint`
-   - Must pass with 0 issues
+   - Must pass with 0 new issues
    - Fixes common issues: formatting, shadowing, unused code, suspicious constructs
    - Never let the user discover linting issues from CI
 
@@ -59,8 +59,7 @@ Prefer `make` targets at repo root:
 ## Commit & Pull Request Guidelines
 
 - Commit messages follow Conventional Commits (e.g., `feat(sdk): ...`, `fix(core): ...`).
-- DCO sign-off is required: use `git commit -S -s -m "feat(scope): summary"`. See `CONTRIBUTING.md`.
-- Commits must be cryptographically signed (-S)
+- DCO sign-off is required: use `git commit -S -s -m "feat(scope): summary"` (`-S` = cryptographic signing, `-s` = DCO). See `CONTRIBUTING.md`.
 - PRs should describe changes, include testing notes, and update docs/tests when applicable (see `.github/pull_request_template.md`).
 
 ## Security & Configuration Tips

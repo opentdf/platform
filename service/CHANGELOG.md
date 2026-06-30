@@ -1,5 +1,25 @@
 # Changelog
 
+## [0.19.0](https://github.com/opentdf/platform/compare/service/v0.18.0...service/v0.19.0) (2026-06-30)
+
+
+### Features
+
+* **authz:** Authz-v2 docs ([#3670](https://github.com/opentdf/platform/issues/3670)) ([4ab7fe8](https://github.com/opentdf/platform/commit/4ab7fe88c97c8bffdd168a92759b1dbdd1874f20))
+* **authz:** move DPoP enforcement into dpop.enforce config (DSPX-3397) ([#3666](https://github.com/opentdf/platform/issues/3666)) ([daebade](https://github.com/opentdf/platform/commit/daebadeaa8401fcd14a7faabfa6dd6aaca22aea8))
+* **core:** add global audit config and add configured JWT claims to audit logs ([#3429](https://github.com/opentdf/platform/issues/3429)) ([03021fa](https://github.com/opentdf/platform/commit/03021fab10cf80da56d6e58274081cf32c39a689))
+* **kas:** Adds FIPS-203 wrap with ML-KEM-768/1024 ([#3652](https://github.com/opentdf/platform/issues/3652)) ([06f30ef](https://github.com/opentdf/platform/commit/06f30ef7f2eb6a5dce587efa906d4bd70b7cd8dc))
+* **policy:** Add kas_uri dimenstion to ListKeys. ([#3663](https://github.com/opentdf/platform/issues/3663)) ([41cee41](https://github.com/opentdf/platform/commit/41cee41ac9cee8c6d0730ca7c165ac9c22242ac4))
+
+
+### Bug Fixes
+
+* **authz:** Add default role for every req. ([#3664](https://github.com/opentdf/platform/issues/3664)) ([2a7095a](https://github.com/opentdf/platform/commit/2a7095afb8bb55eb07b2ab877ace12389eeeba97))
+* **authz:** emit WWW-Authenticate DPoP on all proof rejections (DSPX-3397) ([#3665](https://github.com/opentdf/platform/issues/3665)) ([d7caacd](https://github.com/opentdf/platform/commit/d7caacdc8e2d459baeee3af81ecf8a7cf6fea727))
+* **deps:** bump github.com/opentdf/platform/sdk from 0.24.0 to 0.25.0 in /service ([#3687](https://github.com/opentdf/platform/issues/3687)) ([0b7f77a](https://github.com/opentdf/platform/commit/0b7f77aabff010a95b97e8c087f2475cd7c11003))
+* **kas:** verify rewrap SRT with its actual JWS algorithm ([#3691](https://github.com/opentdf/platform/issues/3691)) ([1f073b6](https://github.com/opentdf/platform/commit/1f073b6a8fac4d0628253f4835e7b2dcaf40a4e8))
+* **policy:** undo Condition.operator deprecation ([#3668](https://github.com/opentdf/platform/issues/3668)) ([917f66a](https://github.com/opentdf/platform/commit/917f66a3dc3fa4df63d9b1a901ff75d88234d3f2))
+
 ## [0.18.0](https://github.com/opentdf/platform/compare/service/v0.17.0...service/v0.18.0) (2026-06-23)
 
 

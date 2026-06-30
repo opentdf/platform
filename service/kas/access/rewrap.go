@@ -282,7 +282,9 @@ func (p *Provider) verifySRTSignature(ctx context.Context, srt string, dpopJWK j
 	alg := jwa.RS256
 	if parsed, perr := jws.Parse([]byte(srt)); perr == nil {
 		if sigs := parsed.Signatures(); len(sigs) > 0 {
-			alg = sigs[0].ProtectedHeaders().Algorithm()
+			if headers := sigs[0].ProtectedHeaders(); headers != nil {
+				alg = headers.Algorithm()
+			}
 		}
 	}
 	var err error

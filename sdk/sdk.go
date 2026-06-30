@@ -205,6 +205,7 @@ func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 	// Wrap HTTP client with DPoP transport for resource requests.
 	// cfg.dpopJWK is populated by resolveDPoPKey (called inside buildIDPTokenSource).
 	httpClient := cfg.httpClient
+	dpopHandledByTransport := false
 	if accessTokenSource != nil {
 		var dpopKey jwk.Key
 		dpopKey, err = pickDPoPKey(cfg)
@@ -213,10 +214,15 @@ func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 		}
 		if dpopKey != nil {
 			httpClient = auth.NewDPoPHTTPClient(cfg.httpClient, dpopKey, accessTokenSource, cfg.tokenEndpoint)
+			dpopHandledByTransport = true
 		}
 	}
 
-	if accessTokenSource != nil {
+	// When the DPoP transport is active it sets both the Authorization and DPoP
+	// headers (with a correctly normalized htu) and handles DPoP-Nonce retries, so
+	// the credential interceptor would only overwrite those headers with a weaker
+	// proof. Add the interceptor only when the transport is not handling DPoP.
+	if accessTokenSource != nil && !dpopHandledByTransport {
 		interceptor := auth.NewTokenAddingInterceptorWithClient(accessTokenSource, httpClient)
 		uci = append(uci, interceptor.AddCredentialsConnect())
 	}
@@ -305,6 +311,9 @@ func buildIDPTokenSource(c *config) (auth.AccessTokenSource, error) {
 
 	// There are uses for uncredentialed clients (i.e. consuming the well-known configuration).
 	if c.clientCredentials == nil && c.oauthAccessTokenSource == nil {
+		if c.dpopJWK != nil || len(c.dpopKeyPEM) > 0 || c.dpopAlgorithm != "" {
+			getLogger().Warn("DPoP key configured but no credentials supplied; DPoP will be disabled")
+		}
 		return nil, nil //nolint:nilnil // not having credentials is not an error
 	}
 

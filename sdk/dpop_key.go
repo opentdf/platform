@@ -141,20 +141,31 @@ func validateDPoPKeyAlgorithm(key jwk.Key) error {
 	}
 }
 
-// resolveDPoPKey returns the jwk.Key to use for DPoP based on the config.
-// Priority: dpopJWK (already set/cached) → dpopKeyPEM (load from PEM) → dpopAlgorithm (generate).
-// The resolved key is cached in c.dpopJWK after first resolution.
-// Returns (nil, nil) when no custom DPoP key is configured; callers fall back to auto-generated RSA.
+// resolveDPoPKey returns the jwk.Key to use for DPoP based on the config, using a
+// single fixed priority:
 //
-//nolint:nilnil // nil key signals "use auto-generated RSA path" — not an error condition
+//	dpopJWK       (WithDPoPJWK)                          → validate algorithm, return
+//	dpopKeyPEM    (WithDPoPKeyPEM)                       → load from PEM, apply optional algorithm override
+//	dpopAlgorithm (WithDPoPAlgorithm)                    → generate a fresh ephemeral key
+//	dpopKey       (WithSessionSignerRSA / auto-generated) → convert the RSA key pair to a JWK
+//	none configured                                      → (nil, nil)
+//
+// The function is pure: it does not mutate the config. Because the dpopAlgorithm
+// branch generates a new ephemeral key on every call, callers MUST resolve once
+// and share the result between the token source and the DPoP transport.
+//
+// A (nil, nil) return means no DPoP key is configured; callers auto-generate a
+// default RSA key in that case.
+//
+//nolint:nilnil // nil key signals "no DPoP key configured" — not an error condition
 func resolveDPoPKey(c *config) (jwk.Key, error) {
-	if c.dpopJWK != nil {
+	switch {
+	case c.dpopJWK != nil:
 		if err := validateDPoPKeyAlgorithm(c.dpopJWK); err != nil {
 			return nil, err
 		}
 		return c.dpopJWK, nil
-	}
-	if len(c.dpopKeyPEM) > 0 { //nolint:nestif // linear priority chain with nested error handling — complexity is inherent
+	case len(c.dpopKeyPEM) > 0:
 		key, err := loadDPoPKeyFromPEM(c.dpopKeyPEM)
 		if err != nil {
 			return nil, fmt.Errorf("failed to load DPoP key from PEM: %w", err)
@@ -168,16 +179,20 @@ func resolveDPoPKey(c *config) (jwk.Key, error) {
 				return nil, fmt.Errorf("failed to apply DPoP algorithm override: %w", err)
 			}
 		}
-		c.dpopJWK = key
 		return key, nil
-	}
-	if c.dpopAlgorithm != "" {
+	case c.dpopAlgorithm != "":
 		key, err := generateDPoPKeyForAlg(c.dpopAlgorithm)
 		if err != nil {
 			return nil, fmt.Errorf("failed to generate DPoP key: %w", err)
 		}
-		c.dpopJWK = key
 		return key, nil
+	case c.dpopKey != nil:
+		key, err := getDPoPJWK(c.dpopKey)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create DPoP JWK: %w", err)
+		}
+		return key, nil
+	default:
+		return nil, nil
 	}
-	return nil, nil
 }

@@ -205,6 +205,202 @@ func (c *PolicyDBClient) GetAttributesByValueFqns(ctx context.Context, r *attrib
 	return list, nil
 }
 
+// GetKeyMappingsByFqns returns, for each requested attribute value FQN, the
+// governing attribute rule and the effective KAS keys needed to build key
+// splits. Keys are resolved with value > definition > namespace precedence using
+// the mapped key model (SimpleKasKey), mirroring the client-side granter
+// resolution. Values configured only with legacy KeyAccessServer grants (no
+// kas_keys) return an empty key set; migrate such policy to keys to use this API.
+func (c *PolicyDBClient) GetKeyMappingsByFqns(ctx context.Context, r *attributes.GetKeyMappingsByFqnsRequest) (map[string]*attributes.GetKeyMappingsByFqnsResponse_AttributeKeyMapping, error) {
+	ctx, span := c.Start(ctx, "DB:GetKeyMappingsByFqns")
+	defer span.End()
+
+	fqns := r.GetFqns()
+	normalized := make([]string, len(fqns))
+	for i, fqn := range fqns {
+		normalized[i] = strings.ToLower(fqn)
+	}
+
+	pairs, err := c.GetAttributesByValueFqns(ctx, &attributes.GetAttributeValuesByFqnsRequest{Fqns: normalized})
+	if err != nil {
+		return nil, err
+	}
+	// GetAttributesByValueFqns resolves to the definition (with a nil value) when a
+	// value FQN is missing and the attribute has allow_traversal enabled. This API
+	// is value-FQN specific, so reject any FQN that did not resolve to a value.
+	for fqn, pair := range pairs {
+		if pair.GetValue() == nil {
+			return nil, fmt.Errorf("could not find value for FQN [%s]: %w", fqn, db.ErrNotFound)
+		}
+	}
+
+	mappings := make(map[string]*attributes.GetKeyMappingsByFqnsResponse_AttributeKeyMapping, len(pairs))
+	for fqn, pair := range pairs {
+		attr := pair.GetAttribute()
+		mappings[fqn] = &attributes.GetKeyMappingsByFqnsResponse_AttributeKeyMapping{
+			Rule: attr.GetRule(),
+			Keys: resolveEffectiveKasKeys(pair.GetValue(), attr),
+		}
+	}
+
+	return mappings, nil
+}
+
+// GetEntitleableAttributesByFqns returns, for each requested attribute value FQN,
+// the information needed to resolve entitlements: the attribute rule, the value
+// identity, the definition's ordered value FQNs (for hierarchy rule logic), and
+// the value-level subject mappings. It runs two selective queries: the attribute
+// FQN lookup for rule/value/sibling data, and a single subject-mapping-by-FQN
+// query, avoiding the full-policy load used by the entitlement path today.
+func (c *PolicyDBClient) GetEntitleableAttributesByFqns(ctx context.Context, r *attributes.GetEntitleableAttributesByFqnsRequest) (*attributes.GetEntitleableAttributesByFqnsResponse, error) {
+	ctx, span := c.Start(ctx, "DB:GetEntitleableAttributesByFqns")
+	defer span.End()
+
+	fqns := r.GetFqns()
+	normalized := make([]string, len(fqns))
+	for i, fqn := range fqns {
+		normalized[i] = strings.ToLower(fqn)
+	}
+
+	pairs, err := c.GetAttributesByValueFqns(ctx, &attributes.GetAttributeValuesByFqnsRequest{Fqns: normalized})
+	if err != nil {
+		return nil, err
+	}
+	// GetAttributesByValueFqns resolves to the definition (with a nil value) when a
+	// value FQN is missing and the attribute has allow_traversal enabled. This API
+	// is value-FQN specific, so reject any FQN that did not resolve to a value.
+	for fqn, pair := range pairs {
+		if pair.GetValue() == nil {
+			return nil, fmt.Errorf("could not find value for FQN [%s]: %w", fqn, db.ErrNotFound)
+		}
+	}
+
+	// Build the subject-mapping fetch set: the requested value FQNs plus, for every
+	// hierarchy definition referenced, all of its value FQNs (so the hierarchy
+	// siblings' subject mappings are available for entitlement propagation).
+	smFetchSet := make(map[string]struct{}, len(normalized))
+	for _, fqn := range normalized {
+		smFetchSet[fqn] = struct{}{}
+	}
+	for _, pair := range pairs {
+		attr := pair.GetAttribute()
+		if attr.GetRule() != policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY {
+			continue
+		}
+		for _, v := range attr.GetValues() {
+			smFetchSet[v.GetFqn()] = struct{}{}
+		}
+	}
+	smFetchFqns := make([]string, 0, len(smFetchSet))
+	for fqn := range smFetchSet {
+		smFetchFqns = append(smFetchFqns, fqn)
+	}
+
+	// Fetch the value-level subject mappings in one query, grouped by value FQN.
+	smRows, err := c.queries.getSubjectMappingsByValueFqns(ctx, smFetchFqns)
+	if err != nil {
+		return nil, db.WrapIfKnownInvalidQueryErr(err)
+	}
+	subjectMappingsByFqn := make(map[string][]*policy.SubjectMapping, len(smRows))
+	for _, row := range smRows {
+		sm, err := hydrateSubjectMappingForEntitlement(row)
+		if err != nil {
+			return nil, err
+		}
+		subjectMappingsByFqn[row.ValueFqn] = append(subjectMappingsByFqn[row.ValueFqn], sm)
+	}
+
+	entitleableValue := func(fqn, valueID string) *attributes.GetEntitleableAttributesByFqnsResponse_EntitleableValue {
+		return &attributes.GetEntitleableAttributesByFqnsResponse_EntitleableValue{
+			Fqn:             fqn,
+			ValueId:         valueID,
+			SubjectMappings: subjectMappingsByFqn[fqn],
+		}
+	}
+
+	rsp := &attributes.GetEntitleableAttributesByFqnsResponse{
+		Definitions:              make(map[string]*attributes.GetEntitleableAttributesByFqnsResponse_EntitleableDefinition, len(pairs)),
+		FqnEntitleableAttributes: make(map[string]*attributes.GetEntitleableAttributesByFqnsResponse_EntitleableAttribute, len(pairs)),
+	}
+
+	for fqn, pair := range pairs {
+		attr := pair.GetAttribute()
+		defFqn := attr.GetFqn()
+
+		// One definition entry per referenced definition. For hierarchy, carry the
+		// ordered values with their subject mappings; for any_of/all_of, leave empty.
+		if _, ok := rsp.GetDefinitions()[defFqn]; !ok {
+			def := &attributes.GetEntitleableAttributesByFqnsResponse_EntitleableDefinition{
+				Rule: attr.GetRule(),
+			}
+			if attr.GetRule() == policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY {
+				def.Values = make([]*attributes.GetEntitleableAttributesByFqnsResponse_EntitleableValue, 0, len(attr.GetValues()))
+				for _, v := range attr.GetValues() {
+					def.Values = append(def.Values, entitleableValue(v.GetFqn(), v.GetId()))
+				}
+			}
+			rsp.Definitions[defFqn] = def
+		}
+
+		rsp.FqnEntitleableAttributes[fqn] = &attributes.GetEntitleableAttributesByFqnsResponse_EntitleableAttribute{
+			DefinitionFqn: defFqn,
+			Value:         entitleableValue(fqn, pair.GetValue().GetId()),
+		}
+	}
+
+	return rsp, nil
+}
+
+// hydrateSubjectMappingForEntitlement converts a getSubjectMappingsByValueFqns
+// row into a policy.SubjectMapping, mirroring the hydration in ListSubjectMappings.
+func hydrateSubjectMappingForEntitlement(row getSubjectMappingsByValueFqnsRow) (*policy.SubjectMapping, error) {
+	metadata := &common.Metadata{}
+	if err := unmarshalMetadata(row.Metadata, metadata); err != nil {
+		return nil, err
+	}
+
+	av := &policy.Value{}
+	if err := unmarshalAttributeValue(row.AttributeValue, av); err != nil {
+		return nil, err
+	}
+
+	// standard_actions / custom_actions are selected as ::jsonb, so sqlc yields raw
+	// []byte that unmarshalAllActionsProto consumes directly (no json.Marshal round-trip).
+	actions := []*policy.Action{}
+	if err := unmarshalAllActionsProto(row.StandardActions, row.CustomActions, &actions); err != nil {
+		return nil, err
+	}
+
+	scs := policy.SubjectConditionSet{}
+	if err := unmarshalSubjectConditionSet(row.SubjectConditionSet, &scs); err != nil {
+		return nil, err
+	}
+
+	return &policy.SubjectMapping{
+		Id:                  row.ID,
+		Metadata:            metadata,
+		AttributeValue:      av,
+		SubjectConditionSet: &scs,
+		Actions:             actions,
+	}, nil
+}
+
+// resolveEffectiveKasKeys selects the effective mapped KAS keys for a value using
+// value > definition > namespace precedence, matching the SDK granter logic in
+// sdk/granter.go (newGranterFromService).
+func resolveEffectiveKasKeys(value *policy.Value, attr *policy.Attribute) []*policy.SimpleKasKey {
+	if keys := value.GetKasKeys(); len(keys) > 0 {
+		return keys
+	}
+	if keys := attr.GetKasKeys(); len(keys) > 0 {
+		return keys
+	}
+	if keys := attr.GetNamespace().GetKasKeys(); len(keys) > 0 {
+		return keys
+	}
+	return nil
+}
+
 func definitionFqnFromValueFqn(valueFqn string) string {
 	httpPrefix := "http://"
 	httpsPrefix := "https://"

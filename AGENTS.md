@@ -59,7 +59,8 @@ Prefer `make` targets at repo root:
 ## Commit & Pull Request Guidelines
 
 - Commit messages follow Conventional Commits (e.g., `feat(sdk): ...`, `fix(core): ...`).
-- DCO sign-off is required: use `git commit -s -m "feat(scope): summary"`. See `CONTRIBUTING.md`.
+- DCO sign-off is required: use `git commit -S -s -m "feat(scope): summary"`. See `CONTRIBUTING.md`.
+- Commits must be cryptographically signed (-S)
 - PRs should describe changes, include testing notes, and update docs/tests when applicable (see `.github/pull_request_template.md`).
 
 ## Security & Configuration Tips

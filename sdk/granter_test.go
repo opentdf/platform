@@ -11,6 +11,8 @@ import (
 	"strings"
 	"testing"
 
+	"connectrpc.com/connect"
+
 	"github.com/opentdf/platform/lib/ocrypto"
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/attributes"
@@ -810,6 +812,74 @@ func (*mockAttributesClient) GetAttributeValuesByFqns(_ context.Context, req *at
 	return &attributes.GetAttributeValuesByFqnsResponse{
 		FqnAttributeValues: av,
 	}, nil
+}
+
+// effectiveMockKasKeys mirrors the server-side resolveEffectiveKasKeys: the
+// most-specific mapped keys with value > definition > namespace precedence.
+func effectiveMockKasKeys(v *policy.Value, a *policy.Attribute) []*policy.SimpleKasKey {
+	if k := v.GetKasKeys(); len(k) > 0 {
+		return k
+	}
+	if k := a.GetKasKeys(); len(k) > 0 {
+		return k
+	}
+	if k := a.GetNamespace().GetKasKeys(); len(k) > 0 {
+		return k
+	}
+	return nil
+}
+
+func (*mockAttributesClient) GetKeyMappingsByFqns(_ context.Context, req *attributes.GetKeyMappingsByFqnsRequest) (*attributes.GetKeyMappingsByFqnsResponse, error) {
+	out := make(map[string]*attributes.GetKeyMappingsByFqnsResponse_AttributeKeyMapping)
+	for _, v := range req.GetFqns() {
+		vfqn, err := NewAttributeValueFQN(v)
+		if err != nil {
+			return nil, err
+		}
+		val := mockValueFor(vfqn)
+		attr := val.GetAttribute()
+		out[v] = &attributes.GetKeyMappingsByFqnsResponse_AttributeKeyMapping{
+			Rule: attr.GetRule(),
+			Keys: effectiveMockKasKeys(val, attr),
+		}
+	}
+	return &attributes.GetKeyMappingsByFqnsResponse{FqnKeyMappings: out}, nil
+}
+
+// unimplementedKeyMappingsClient models an older platform that does not expose
+// GetKeyMappingsByFqns; the granter must fall back to GetAttributeValuesByFqns.
+type unimplementedKeyMappingsClient struct {
+	mockAttributesClient
+}
+
+func (*unimplementedKeyMappingsClient) GetKeyMappingsByFqns(_ context.Context, _ *attributes.GetKeyMappingsByFqnsRequest) (*attributes.GetKeyMappingsByFqnsResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("not implemented"))
+}
+
+// TestReasonerKeyMappingFallback verifies that grant-only values and older
+// platforms (no GetKeyMappingsByFqns) resolve to the same plan as the key-mapping
+// path, via the GetAttributeValuesByFqns fallback.
+func TestReasonerKeyMappingFallback(t *testing.T) {
+	policy := []AttributeValueFQN{spk2spk} // grant-based value (no mapped keys)
+	defaults := []string{kasUs}
+	want := []keySplitStep{{evenMoreSpecificKas, ""}}
+	noSplit := func() string { return "" }
+
+	for _, tc := range []struct {
+		name string
+		as   sdkconnect.AttributesServiceClient
+	}{
+		{"per-value fallback (empty key set)", &mockAttributesClient{}},
+		{"full fallback (RPC unimplemented)", &unimplementedKeyMappingsClient{}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			reasoner, err := newGranterFromService(t.Context(), slog.Default(), newKasKeyCache(), tc.as, policy...)
+			require.NoError(t, err)
+			plan, err := reasoner.plan(defaults, noSplit)
+			require.NoError(t, err)
+			assert.ElementsMatch(t, want, plan)
+		})
+	}
 }
 
 // Tests titles are written in the form [{attr}.{value}] => [{resulting kas boolean exp}]

@@ -10,6 +10,8 @@ import (
 	"sort"
 	"strings"
 
+	"connectrpc.com/connect"
+
 	"github.com/opentdf/platform/lib/ocrypto"
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/attributes"
@@ -419,18 +421,17 @@ func (r granter) byAttribute(fqn AttributeValueFQN) *keyAccessGrant {
 	return r.grantTable[fqn.key]
 }
 
-// Gets a list of directory of KAS grants for a list of attribute FQNs
+// Gets a list of directory of KAS grants for a list of attribute FQNs.
+//
+// Resolution uses GetKeyMappingsByFqns, which returns the effective mapped KAS
+// keys per value (value > definition > namespace precedence, resolved
+// server-side). Values that resolve to no mapped keys (e.g. configured only with
+// legacy KAS grants) fall back to GetAttributeValuesByFqns so their grants still
+// resolve.
 func newGranterFromService(ctx context.Context, logger *slog.Logger, keyCache *kasKeyCache, as sdkconnect.AttributesServiceClient, fqns ...AttributeValueFQN) (granter, error) {
 	fqnsStr := make([]string, len(fqns))
 	for i, v := range fqns {
 		fqnsStr[i] = v.String()
-	}
-
-	av, err := as.GetAttributeValuesByFqns(ctx, &attributes.GetAttributeValuesByFqnsRequest{
-		Fqns: fqnsStr,
-	})
-	if err != nil {
-		return granter{}, err
 	}
 
 	grants := granter{
@@ -439,35 +440,102 @@ func newGranterFromService(ctx context.Context, logger *slog.Logger, keyCache *k
 		grantTable: make(map[string]*keyAccessGrant),
 		keyCache:   &rlKeyCache{c: make(map[ResourceLocator]*policy.SimpleKasKey)},
 	}
-	for fqnstr, pair := range av.GetFqnAttributeValues() {
+
+	km, err := as.GetKeyMappingsByFqns(ctx, &attributes.GetKeyMappingsByFqnsRequest{Fqns: fqnsStr})
+	if err != nil {
+		// Older platforms do not expose GetKeyMappingsByFqns; fall back to the full
+		// attribute lookup for all values.
+		if connect.CodeOf(err) == connect.CodeUnimplemented {
+			if e := grants.addGrantsFromAttributeValues(ctx, logger, keyCache, as, fqnsStr); e != nil {
+				return grants, e
+			}
+			return grants, nil
+		}
+		return granter{}, err
+	}
+
+	var fallback []string
+	for fqnstr, m := range km.GetFqnKeyMappings() {
 		fqn, err := NewAttributeValueFQN(fqnstr)
 		if err != nil {
 			return grants, err
 		}
-		def := pair.GetAttribute()
+		keys := m.GetKeys()
+		if len(keys) == 0 {
+			// No mapped keys (legacy-grant-only or unconfigured); resolve via the
+			// full attribute lookup below.
+			fallback = append(fallback, fqnstr)
+			continue
+		}
+		// Only the rule and FQN are read downstream (constructAttributeBoolean /
+		// ruleToOperator), so a minimal attribute is sufficient.
+		attr := &policy.Attribute{Fqn: fqn.Prefix().String(), Rule: m.GetRule()}
+		for _, sk := range keys {
+			if err := grants.addMappedKey(fqn, sk); err != nil {
+				logger.Debug("failed to add mapped key",
+					slog.Any("fqn", fqn),
+					slog.Any("error", err),
+				)
+				continue
+			}
+			grants.typ = mappedFound
+			if _, present := grants.grantTable[fqn.key]; !present {
+				grants.grantTable[fqn.key] = &keyAccessGrant{attr, []string{sk.GetKasUri()}}
+			} else {
+				grants.grantTable[fqn.key].kases = append(grants.grantTable[fqn.key].kases, sk.GetKasUri())
+			}
+			// Populate the SDK key cache for wrapping (addMappedKey already filled
+			// the granter's rlKeyCache).
+			storeKeysToCache(logger, nil, []*policy.SimpleKasKey{sk}, keyCache, nil)
+		}
+	}
 
-		if def != nil {
-			storeKeysToCache(logger, def.GetGrants(), def.GetKasKeys(), keyCache, grants.keyCache)
-		}
-		v := pair.GetValue()
-		gType := noKeysFound
-		if v != nil {
-			gType = grants.addAllGrants(fqn, v, def)
-			storeKeysToCache(logger, v.GetGrants(), v.GetKasKeys(), keyCache, grants.keyCache)
-		}
-
-		// If no more specific grant was found, then add the value grants
-		if gType == noKeysFound && def != nil {
-			gType = grants.addAllGrants(fqn, def, def)
-			storeKeysToCache(logger, def.GetGrants(), def.GetKasKeys(), keyCache, grants.keyCache)
-		}
-		if gType == noKeysFound && def.GetNamespace() != nil {
-			grants.addAllGrants(fqn, def.GetNamespace(), def)
-			storeKeysToCache(logger, def.GetNamespace().GetGrants(), def.GetNamespace().GetKasKeys(), keyCache, grants.keyCache)
+	if len(fallback) > 0 {
+		if err := grants.addGrantsFromAttributeValues(ctx, logger, keyCache, as, fallback); err != nil {
+			return grants, err
 		}
 	}
 
 	return grants, nil
+}
+
+// addGrantsFromAttributeValues resolves grants for the given value FQNs via the
+// full GetAttributeValuesByFqns lookup (value > definition > namespace), used as
+// the fallback for values with no mapped keys.
+func (r *granter) addGrantsFromAttributeValues(ctx context.Context, logger *slog.Logger, keyCache *kasKeyCache, as sdkconnect.AttributesServiceClient, fqns []string) error {
+	av, err := as.GetAttributeValuesByFqns(ctx, &attributes.GetAttributeValuesByFqnsRequest{Fqns: fqns})
+	if err != nil {
+		return err
+	}
+	for fqnstr, pair := range av.GetFqnAttributeValues() {
+		fqn, err := NewAttributeValueFQN(fqnstr)
+		if err != nil {
+			return err
+		}
+		def := pair.GetAttribute()
+
+		if def != nil {
+			storeKeysToCache(logger, def.GetGrants(), def.GetKasKeys(), keyCache, r.keyCache)
+		}
+		v := pair.GetValue()
+		gType := noKeysFound
+		if v != nil {
+			gType = r.addAllGrants(fqn, v, def)
+			storeKeysToCache(logger, v.GetGrants(), v.GetKasKeys(), keyCache, r.keyCache)
+		}
+
+		// If no more specific grant was found, then add the value grants
+		if gType == noKeysFound && def != nil {
+			gType = r.addAllGrants(fqn, def, def)
+			storeKeysToCache(logger, def.GetGrants(), def.GetKasKeys(), keyCache, r.keyCache)
+		}
+		if gType == noKeysFound && def.GetNamespace() != nil {
+			r.addAllGrants(fqn, def.GetNamespace(), def)
+			storeKeysToCache(logger, def.GetNamespace().GetGrants(), def.GetNamespace().GetKasKeys(), keyCache, r.keyCache)
+		}
+	}
+
+	return nil
 }
 
 func algProto2String(e policy.KasPublicKeyAlgEnum) string {

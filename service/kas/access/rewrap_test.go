@@ -1468,6 +1468,29 @@ func TestVerifySRTSignature(t *testing.T) {
 			},
 		},
 		{
+			name: "PS256",
+			build: func(t *testing.T) (string, jwk.Key) {
+				priv := entityPrivateKey(t)
+				return makeSRTAndKey(t, jwa.PS256, priv, &priv.PublicKey)
+			},
+		},
+		{
+			name: "PS384",
+			build: func(t *testing.T) (string, jwk.Key) {
+				priv := entityPrivateKey(t)
+				return makeSRTAndKey(t, jwa.PS384, priv, &priv.PublicKey)
+			},
+		},
+		{
+			name: "PS512",
+			build: func(t *testing.T) (string, jwk.Key) {
+				// entityPrivateKey is 1024-bit, too small for PS512 (needs 2048+).
+				priv, err := rsa.GenerateKey(rand.Reader, 2048)
+				require.NoError(t, err)
+				return makeSRTAndKey(t, jwa.PS512, priv, &priv.PublicKey)
+			},
+		},
+		{
 			name: "ES256",
 			build: func(t *testing.T) (string, jwk.Key) {
 				priv, pub := ecKey(t, elliptic.P256())
@@ -1492,10 +1515,11 @@ func TestVerifySRTSignature(t *testing.T) {
 			name:      "HS256 rejected",
 			wantError: true,
 			build: func(t *testing.T) (string, jwk.Key) {
+				secret := []byte("symmetric-secret")
 				tok := jwt.New()
-				s, err := jwt.Sign(tok, jwt.WithKey(jwa.HS256, []byte("symmetric-secret")))
+				s, err := jwt.Sign(tok, jwt.WithKey(jwa.HS256, secret))
 				require.NoError(t, err)
-				dpopKey, err := jwk.FromRaw(entityPublicKey(t))
+				dpopKey, err := jwk.FromRaw(secret)
 				require.NoError(t, err)
 				return string(s), dpopKey
 			},

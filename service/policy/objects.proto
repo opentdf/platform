@@ -276,11 +276,6 @@ message Condition {
   // subject_external_selector_value on a flattened Entity Representation
   // (Subject), evaluated by the operator
   repeated string subject_external_values = 3 [(buf.validate.field).repeated.min_items = 1];
-
-  // formerly the decomposed comparison/quantifier/case_insensitive fields; reserved to
-  // prevent reuse with incompatible meaning
-  reserved 4, 5, 6;
-  reserved "comparison", "quantifier", "case_insensitive";
 }
 
 // A collection of Conditions evaluated by the boolean_operator provided

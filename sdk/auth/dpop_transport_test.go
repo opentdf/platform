@@ -7,11 +7,14 @@ import (
 	"crypto/rsa"
 	"crypto/sha256"
 	"encoding/base64"
+	"errors"
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 
 	"connectrpc.com/connect"
@@ -25,9 +28,13 @@ import (
 // mockTokenSource implements AccessTokenSource for testing
 type mockTokenSource struct {
 	token string
+	err   error
 }
 
 func (m *mockTokenSource) AccessToken(_ context.Context, _ *http.Client) (AccessToken, error) {
+	if m.err != nil {
+		return "", m.err
+	}
 	return AccessToken(m.token), nil
 }
 
@@ -509,4 +516,230 @@ func TestDPoPTransport_TokenEndpointNoATH(t *testing.T) {
 		t.Fatalf("request failed: %v", err)
 	}
 	defer resp.Body.Close()
+}
+
+func mustReq(t *testing.T, rawURL string) *http.Request {
+	t.Helper()
+	req, err := http.NewRequest(http.MethodGet, rawURL, nil)
+	if err != nil {
+		t.Fatalf("create request: %v", err)
+	}
+	return req
+}
+
+// TestNormalizeURI exercises the RFC 9449 HTTP URI normalization directly so that
+// default-port stripping, scheme/host lowercasing, and query/fragment removal are
+// each asserted (the integration test only checks the path substring).
+func TestNormalizeURI(t *testing.T) {
+	tests := []struct {
+		name string
+		url  string
+		want string
+	}{
+		{"https default port stripped", "https://example.com:443/path", "https://example.com/path"},
+		{"http default port stripped", "http://example.com:80/path", "http://example.com/path"},
+		{"https non-default port kept", "https://example.com:8443/path", "https://example.com:8443/path"},
+		{"http non-default port kept", "http://example.com:8080/path", "http://example.com:8080/path"},
+		{"scheme and host lowercased, path preserved", "HTTPS://EXAMPLE.COM/Path", "https://example.com/Path"},
+		{"query and fragment dropped", "https://example.com/p?a=b#frag", "https://example.com/p"},
+		{"empty path", "https://example.com", "https://example.com"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			u, err := url.Parse(tt.url)
+			if err != nil {
+				t.Fatalf("parse %q: %v", tt.url, err)
+			}
+			if got := normalizeURI(u); got != tt.want {
+				t.Errorf("normalizeURI(%q) = %q, want %q", tt.url, got, tt.want)
+			}
+		})
+	}
+}
+
+// TestDPoPTransport_TokenSourceErrorAborts verifies that a token-fetch failure
+// aborts the request with an error and never reaches the network — DPoP auth must
+// fail closed rather than send a proof bound to no access token.
+func TestDPoPTransport_TokenSourceErrorAborts(t *testing.T) {
+	key := generateTestKey(t)
+	ts := &mockTokenSource{err: errors.New("token fetch failed")}
+
+	var called int32
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		atomic.AddInt32(&called, 1)
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer server.Close()
+
+	transport := &DPoPTransport{Base: http.DefaultTransport, DPoPKey: key, TokenSource: ts}
+	client := &http.Client{Transport: transport}
+
+	resp, err := client.Do(mustReq(t, server.URL))
+	if err == nil {
+		resp.Body.Close()
+		t.Fatal("expected error when token source fails, got nil")
+	}
+	if got := atomic.LoadInt32(&called); got != 0 {
+		t.Errorf("server should not be called when token fetch fails, got %d calls", got)
+	}
+}
+
+// TestDPoPTransport_NoRetryOnPlain401 verifies that a 401 without a DPoP-Nonce
+// header (a genuine auth failure) is propagated unchanged and not retried.
+func TestDPoPTransport_NoRetryOnPlain401(t *testing.T) {
+	key := generateTestKey(t)
+	var callCount int32
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		atomic.AddInt32(&callCount, 1)
+		w.WriteHeader(http.StatusUnauthorized)
+	}))
+	defer server.Close()
+
+	transport := &DPoPTransport{Base: http.DefaultTransport, DPoPKey: key, TokenSource: &mockTokenSource{token: "t"}}
+	client := &http.Client{Transport: transport}
+
+	resp, err := client.Do(mustReq(t, server.URL))
+	if err != nil {
+		t.Fatalf("request failed: %v", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusUnauthorized {
+		t.Errorf("status = %d, want 401", resp.StatusCode)
+	}
+	if got := atomic.LoadInt32(&callCount); got != 1 {
+		t.Errorf("expected exactly 1 call (no retry), got %d", got)
+	}
+}
+
+// TestDPoPTransport_NoRetryWhenNonceUnchanged verifies the loop-prevention guard:
+// when the server returns a 401 echoing the nonce the client already sent, the
+// transport does not retry.
+func TestDPoPTransport_NoRetryWhenNonceUnchanged(t *testing.T) {
+	key := generateTestKey(t)
+	const nonce = "stable-nonce"
+	var callCount int32
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		n := atomic.AddInt32(&callCount, 1)
+		w.Header().Set("DPoP-Nonce", nonce)
+		if n == 1 {
+			// Prime the client's nonce cache via a successful response.
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+		// Second request already carries this nonce; returning it again must not retry.
+		w.WriteHeader(http.StatusUnauthorized)
+	}))
+	defer server.Close()
+
+	transport := &DPoPTransport{Base: http.DefaultTransport, DPoPKey: key, TokenSource: &mockTokenSource{token: "t"}}
+	client := &http.Client{Transport: transport}
+
+	resp1, err := client.Do(mustReq(t, server.URL))
+	if err != nil {
+		t.Fatalf("first request failed: %v", err)
+	}
+	resp1.Body.Close()
+
+	resp2, err := client.Do(mustReq(t, server.URL))
+	if err != nil {
+		t.Fatalf("second request failed: %v", err)
+	}
+	resp2.Body.Close()
+	if resp2.StatusCode != http.StatusUnauthorized {
+		t.Errorf("status = %d, want 401", resp2.StatusCode)
+	}
+	if got := atomic.LoadInt32(&callCount); got != 2 {
+		t.Errorf("expected 2 calls (no retry on unchanged nonce), got %d", got)
+	}
+}
+
+// TestDPoPTransport_RetryOnRotatedNonce verifies that when the server rotates its
+// nonce (returns a 401 with a nonce different from the cached one), the transport
+// retries with the fresh nonce — the RFC 9449 §8 case the original guard missed.
+func TestDPoPTransport_RetryOnRotatedNonce(t *testing.T) {
+	key := generateTestKey(t)
+	const (
+		nonce1 = "nonce-1"
+		nonce2 = "nonce-2"
+	)
+	var callCount int32
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch atomic.AddInt32(&callCount, 1) {
+		case 1:
+			w.Header().Set("DPoP-Nonce", nonce1) // prime cache via success
+			w.WriteHeader(http.StatusOK)
+		case 2:
+			w.Header().Set("DPoP-Nonce", nonce2) // rotate with a challenge
+			w.WriteHeader(http.StatusUnauthorized)
+		default:
+			pub, err := key.PublicKey()
+			if err != nil {
+				t.Errorf("public key: %v", err)
+			}
+			tok := parseDPoPProof(t, r.Header.Get("DPoP"), pub)
+			if got, _ := tok.Get("nonce"); got != nonce2 {
+				t.Errorf("retry nonce = %v, want %q", got, nonce2)
+			}
+			w.WriteHeader(http.StatusOK)
+		}
+	}))
+	defer server.Close()
+
+	transport := &DPoPTransport{Base: http.DefaultTransport, DPoPKey: key, TokenSource: &mockTokenSource{token: "t"}}
+	client := &http.Client{Transport: transport}
+
+	resp1, err := client.Do(mustReq(t, server.URL))
+	if err != nil {
+		t.Fatalf("first request failed: %v", err)
+	}
+	resp1.Body.Close()
+
+	resp2, err := client.Do(mustReq(t, server.URL))
+	if err != nil {
+		t.Fatalf("second request failed: %v", err)
+	}
+	resp2.Body.Close()
+	if resp2.StatusCode != http.StatusOK {
+		t.Errorf("status = %d, want 200 after rotated-nonce retry", resp2.StatusCode)
+	}
+	if got := atomic.LoadInt32(&callCount); got != 3 {
+		t.Errorf("expected 3 calls (prime + challenge + retry), got %d", got)
+	}
+}
+
+// TestDPoPTransport_ConcurrentRequests drives many requests through one shared
+// transport so the race detector covers the lazy nonce-map init and nonce cache.
+func TestDPoPTransport_ConcurrentRequests(t *testing.T) {
+	key := generateTestKey(t)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Header.Get("DPoP") == "" {
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+		w.Header().Set("DPoP-Nonce", "rotating")
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer server.Close()
+
+	transport := &DPoPTransport{Base: http.DefaultTransport, DPoPKey: key, TokenSource: &mockTokenSource{token: "t"}}
+	client := &http.Client{Transport: transport}
+
+	const n = 16
+	var wg sync.WaitGroup
+	errs := make(chan error, n)
+	for range n {
+		wg.Go(func() {
+			resp, err := client.Do(mustReq(t, server.URL))
+			if err != nil {
+				errs <- err
+				return
+			}
+			resp.Body.Close()
+		})
+	}
+	wg.Wait()
+	close(errs)
+	for err := range errs {
+		t.Errorf("concurrent request failed: %v", err)
+	}
 }

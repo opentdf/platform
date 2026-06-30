@@ -23,9 +23,9 @@ func getNewDPoPKey(dpopKeyPair *ocrypto.RsaKeyPair) (string, jwk.Key, *ocrypto.A
 	if err != nil {
 		return "", nil, nil, fmt.Errorf("error getting dpop of key: %w", err)
 	}
-	dpopPublicKeyPEM, err := dpopKeyPair.PrivateKeyInPemFormat()
+	dpopPublicKeyPEM, err := dpopKeyPair.PublicKeyInPemFormat()
 	if err != nil {
-		return "", nil, nil, fmt.Errorf("error getting dpop of key: %w", err)
+		return "", nil, nil, fmt.Errorf("error getting dpop public key: %w", err)
 	}
 
 	dpopKey, err := jwk.ParseKey([]byte(dpopPrivateKeyPEM), jwk.WithPEM(true))

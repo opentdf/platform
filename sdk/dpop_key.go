@@ -125,6 +125,22 @@ func inferDPoPAlgorithm(key jwk.Key) (jwa.SignatureAlgorithm, error) {
 	}
 }
 
+// validateDPoPKeyAlgorithm ensures a caller-supplied JWK carries a supported DPoP
+// signing algorithm. Without this check a missing/invalid algorithm would only
+// surface when signing the first proof, far from the misconfiguration.
+func validateDPoPKeyAlgorithm(key jwk.Key) error {
+	alg := key.Algorithm()
+	if alg == nil || alg.String() == "" {
+		return errors.New("DPoP JWK is missing required Algorithm field; set it with key.Set(jwk.AlgorithmKey, ...)")
+	}
+	switch alg.String() {
+	case dpopAlgES256, dpopAlgES384, dpopAlgES512, dpopAlgRS256, dpopAlgRS384, dpopAlgRS512:
+		return nil
+	default:
+		return fmt.Errorf("unsupported DPoP JWK algorithm %q; allowed: %s", alg.String(), dpopAllowedAlgs)
+	}
+}
+
 // resolveDPoPKey returns the jwk.Key to use for DPoP based on the config.
 // Priority: dpopJWK (already set/cached) → dpopKeyPEM (load from PEM) → dpopAlgorithm (generate).
 // The resolved key is cached in c.dpopJWK after first resolution.
@@ -133,6 +149,9 @@ func inferDPoPAlgorithm(key jwk.Key) (jwa.SignatureAlgorithm, error) {
 //nolint:nilnil // nil key signals "use auto-generated RSA path" — not an error condition
 func resolveDPoPKey(c *config) (jwk.Key, error) {
 	if c.dpopJWK != nil {
+		if err := validateDPoPKeyAlgorithm(c.dpopJWK); err != nil {
+			return nil, err
+		}
 		return c.dpopJWK, nil
 	}
 	if len(c.dpopKeyPEM) > 0 { //nolint:nestif // linear priority chain with nested error handling — complexity is inherent

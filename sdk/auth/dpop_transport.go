@@ -29,8 +29,9 @@ type DPoPTransport struct {
 	DPoPKey jwk.Key
 
 	// TokenSource provides access tokens for resource requests.
-	// When the token is DPoP-bound (token_type=DPoP), the transport
-	// sets Authorization: DPoP <token> and includes the ath claim.
+	// For resource requests (any URL other than TokenEndpoint), the transport
+	// sets Authorization: DPoP <token> and includes the ath claim binding the
+	// proof to the access token. Requests to TokenEndpoint get neither.
 	TokenSource AccessTokenSource
 
 	// TokenEndpoint is the OAuth token endpoint URL.
@@ -109,13 +110,20 @@ func (t *DPoPTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 
 // retryWithNonce handles a DPoP-Nonce server challenge. It returns the retried
 // response and true when a retry was performed, or the original response and
-// false when no retry was needed (missing nonce header or nonce already used).
+// false when no retry was needed.
+//
+// A retry happens once per request whenever the server supplies a DPoP-Nonce
+// that differs from the one we already sent (RFC 9449 §8). Requiring a *different*
+// nonce both covers the initial challenge (we sent none) and a server that rotates
+// its nonce after previously accepting one, while preventing a retry loop when the
+// server keeps returning the same nonce we just used. The single retry is returned
+// as-is even if it is itself a 401.
 func (t *DPoPTransport) retryWithNonce(
 	req *http.Request, base http.RoundTripper,
 	resp *http.Response, origin, nonce string, isTokenRequest bool,
 ) (*http.Response, bool, error) {
 	newNonce := resp.Header.Get("DPoP-Nonce")
-	if newNonce == "" || nonce != "" {
+	if newNonce == "" || newNonce == nonce {
 		return resp, false, nil
 	}
 

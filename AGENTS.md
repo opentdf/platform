@@ -65,3 +65,44 @@ Prefer `make` targets at repo root:
 ## Security & Configuration Tips
 
 - Don’t commit secrets/keys. Use local configs like `opentdf-dev.yaml` and follow `SECURITY.md`.
+
+## Spec-Driven Architecture Workflow
+
+For cross-cutting changes in this repo, prefer the repo’s spec-driven workflow over coding directly from vague intent.
+
+Use ADR/spec/proto artifacts when work:
+
+- spans multiple layers (`service`, `proto`, `sdk`, `cli`, `docs/ops`)
+- introduces or changes a public/service seam
+- affects compatibility, rollout, or fallback behavior
+- changes service ownership or modular-binary placement
+
+Artifact hierarchy:
+
+- **ADR** — broad architectural direction, tradeoffs, rejected alternatives, future phases
+- **Spec** — current-phase behavioral contract
+- **Proto** — tight seam/service contract, narrower than the spec
+
+Monorepo layers:
+
+- `service` — runtime/server behavior, modular-binary placement, config, auth
+- `proto` — wire/service contract
+- `sdk` — client behavior, capability detection, fallback
+- `cli` — operator/developer UX
+- `docs/ops` — rollout, migration, deployment guidance
+
+Rules:
+
+- Do not blur service ownership just because multiple services can run in one binary. Even in `all` mode, namespace/runtime ownership still matters.
+- Proto changes should be additive by default. Do not add speculative future-phase fields without a current-phase spec need.
+- If unresolved questions materially affect service ownership, proto shape, SDK behavior, fallback behavior, rollout, or validation, stop and escalate rather than guessing.
+
+Detailed guidance:
+
+- `docs/specs/AGENTS.md`
+- `docs/agents/AGENTS.md`
+- `docs/agents/adr-spec-proto-orchestration.md`
+- `docs/agents/effort-routing-and-agent-quality.md`
+- `docs/agents/spec-executor.md`
+
+Shared agent playbooks live under `docs/agents/`. Harness-specific wrappers may live under `.pi/agents/` and should reference the shared docs rather than redefining the workflow.

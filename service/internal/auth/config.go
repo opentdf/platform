@@ -24,6 +24,8 @@ type Config struct {
 
 // AuthNConfig is the configuration need for the platform to validate tokens
 type AuthNConfig struct { //nolint:revive // AuthNConfig is a valid name
+	// Deprecated: use DPoP.Enforce (server.auth.dpop.enforce) instead. Still honored
+	// during the migration window: DPoP is enforced when either field is true.
 	EnforceDPoP  bool                       `mapstructure:"enforceDPoP" json:"enforceDPoP" default:"false"`
 	Issuer       string                     `mapstructure:"issuer" json:"issuer"`
 	Audience     string                     `mapstructure:"audience" json:"audience"`
@@ -34,7 +36,16 @@ type AuthNConfig struct { //nolint:revive // AuthNConfig is a valid name
 	DPoP         DPoPConfig                 `mapstructure:"dpop" json:"dpop"`
 }
 
+// dpopEnforced reports whether DPoP-bound tokens are required. Enforcement is on
+// when either the new DPoP.Enforce field or the deprecated EnforceDPoP field is set.
+func (c AuthNConfig) dpopEnforced() bool {
+	return c.DPoP.Enforce || c.EnforceDPoP // honor deprecated EnforceDPoP during migration
+}
+
 type DPoPConfig struct {
+	// Enforce requires access tokens to be DPoP-bound. Replaces the deprecated
+	// top-level server.auth.enforceDPoP field.
+	Enforce         bool          `mapstructure:"enforce" json:"enforce" default:"false"`
 	RequireNonce    bool          `mapstructure:"require_nonce" json:"require_nonce" default:"false"`
 	NonceExpiration time.Duration `mapstructure:"nonce_expiration" json:"nonce_expiration" default:"5m"`
 	// StrictHTU requires the htu claim in DPoP JWTs to include the origin
@@ -59,8 +70,12 @@ func (c AuthNConfig) validateAuthNConfig(logger *logger.Logger) error {
 		return errors.New("config Auth.Audience is required")
 	}
 
-	if !c.EnforceDPoP {
-		logger.Warn("config Auth.EnforceDPoP is false. DPoP will not be enforced.")
+	if c.EnforceDPoP {
+		logger.Warn("config server.auth.enforceDPoP is deprecated; use server.auth.dpop.enforce instead")
+	}
+
+	if !c.dpopEnforced() {
+		logger.Warn("DPoP is not enforced; set server.auth.dpop.enforce: true to require DPoP-bound tokens")
 	}
 
 	if err := c.DPoP.Validate(); err != nil {

@@ -276,7 +276,7 @@ func NewOpenTDFServer(config Config, logger *logger.Logger, cacheManager *cache.
 		}
 		logger.Debug("authentication interceptor enabled")
 	} else {
-		logger.Warn("disabling authentication. this is deprecated and will be removed. if you are using an IdP without DPoP set `enforceDPoP = false`")
+		logger.Warn("disabling authentication. this is deprecated and will be removed. if you are using an IdP without DPoP set `server.auth.dpop.enforce = false`")
 	}
 
 	var ipcAuthInts []connect.Interceptor
@@ -349,7 +349,7 @@ func newHTTPServer(c Config, connectRPC http.Handler, extraHTTP http.Handler, a 
 	if c.Auth.Enabled {
 		httpHandler = a.MuxHandler(httpHandler)
 	} else {
-		l.Error("disabling authentication. this is deprecated and will be removed. if you are using an IdP without DPoP set `enforceDPoP = false`")
+		l.Error("disabling authentication. this is deprecated and will be removed. if you are using an IdP without DPoP set `server.auth.dpop.enforce = false`")
 	}
 
 	// CORS

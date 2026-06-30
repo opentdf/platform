@@ -11,6 +11,7 @@ import (
 
 	"github.com/lestrrat-go/jwx/v2/jwa"
 	"github.com/lestrrat-go/jwx/v2/jwk"
+	"github.com/opentdf/platform/lib/ocrypto"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -133,12 +134,12 @@ func TestResolveDPoPKey(t *testing.T) {
 		require.NotNil(t, key, "expected key")
 	})
 
-	t.Run("PEM path caches into dpopJWK", func(t *testing.T) {
+	t.Run("PEM path resolves without mutating config", func(t *testing.T) {
 		c := &config{dpopKeyPEM: ecPEM}
 		key, err := resolveDPoPKey(c)
 		require.NoError(t, err)
 		assert.Equal(t, jwa.ES256, key.Algorithm(), "alg")
-		assert.NotNil(t, c.dpopJWK, "expected resolved key cached in dpopJWK")
+		assert.Nil(t, c.dpopJWK, "resolveDPoPKey must be pure and not cache into dpopJWK")
 	})
 
 	t.Run("PEM with algorithm override", func(t *testing.T) {
@@ -154,6 +155,15 @@ func TestResolveDPoPKey(t *testing.T) {
 		key, err := resolveDPoPKey(&config{dpopAlgorithm: dpopAlgES384})
 		require.NoError(t, err)
 		assert.Equal(t, jwa.ES384, key.Algorithm(), "alg")
+	})
+
+	t.Run("RSA key pair resolves to RS256 JWK", func(t *testing.T) {
+		rsaKeyPair, err := ocrypto.NewRSAKeyPair(dpopKeySize)
+		require.NoError(t, err, "generate RSA key pair")
+		key, err := resolveDPoPKey(&config{dpopKey: &rsaKeyPair})
+		require.NoError(t, err)
+		require.NotNil(t, key, "expected key for RSA key pair")
+		assert.Equal(t, jwa.RS256, key.Algorithm(), "alg")
 	})
 }
 

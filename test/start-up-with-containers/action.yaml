@@ -35,6 +35,10 @@ inputs:
     default: "false"
     description: 'Whether to enable the DPoP nonce challenge flow (sets server.auth.dpop.require_nonce: true)'
     required: false
+  dpop-enforce-required:
+    default: "false"
+    description: 'Whether to enforce DPoP-bound access tokens (sets server.auth.dpop.enforce: true)'
+    required: false
 
 outputs:
   platform-working-dir:
@@ -58,6 +62,7 @@ runs:
         LOG_TYPE: ${{ inputs.log-type }}
         PROVISION_POLICY_FIXTURES: ${{ inputs.provision-policy-fixtures }}
         DPOP_CHALLENGE_ENABLED: ${{ inputs.dpop-challenge-enabled }}
+        DPOP_ENFORCE_REQUIRED: ${{ inputs.dpop-enforce-required }}
       run: |
         # Validate platform-ref (must contain only safe characters for a git ref)
         if [[ ! "${PLATFORM_REF}" =~ ^[a-zA-Z0-9._/-]+$ ]]; then
@@ -127,6 +132,16 @@ runs:
             ;;
           *)
             echo "Error: dpop-challenge-enabled must be 'true' or 'false'."
+            exit 1
+            ;;
+        esac
+
+        # Validate dpop-enforce-required (must be true or false)
+        case "${DPOP_ENFORCE_REQUIRED}" in
+          true|false)
+            ;;
+          *)
+            echo "Error: dpop-enforce-required must be 'true' or 'false'."
             exit 1
             ;;
         esac
@@ -280,6 +295,12 @@ runs:
       if: ${{ inputs.dpop-challenge-enabled == 'true' }}
       run: |
         yq e '.server.auth.dpop.require_nonce = true' -i opentdf.yaml
+      working-directory: otdf-test-platform
+    - name: Enable DPoP enforcement
+      shell: bash
+      if: ${{ inputs.dpop-enforce-required == 'true' }}
+      run: |
+        yq e '.server.auth.dpop.enforce = true' -i opentdf.yaml
       working-directory: otdf-test-platform
     - name: Overlay DPoP-capable Keycloak (26.2)
       # The default docker-compose pins Keycloak 25 so downstream consumers stay on

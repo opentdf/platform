@@ -1,0 +1,82 @@
+---
+import Layout from "@/layouts/Layout.astro";
+import { VECTOR_INDEX, SPEC_VERSION } from "@/data/vectors";
+---
+
+<Layout
+  title="BaseTDF KAO Explorer"
+  description="Interactive companion to the BaseTDF v4.4 Key Access Object specification"
+>
+  <section class="space-y-6">
+    <header>
+      <h1 class="text-3xl font-bold">BaseTDF KAO Explorer</h1>
+      <p class="text-slate-600 mt-2">
+        Interactive companion to the BaseTDF v{SPEC_VERSION} Key Access Object
+        specification. Walk through the format, examine fields, run conformance
+        vectors against a browser-side validator, and verify policy bindings.
+      </p>
+    </header>
+
+    <ul class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <li class="border rounded p-4 bg-white">
+        <h2 class="font-semibold">Inspector</h2>
+        <p class="text-sm text-slate-600 mt-1">
+          Paste a KAO and see structural validation, alias resolution, and the
+          v4.4 normalised form.
+        </p>
+        <a href="/inspector" class="text-sky-700 text-sm">Open inspector →</a>
+      </li>
+
+      <li class="border rounded p-4 bg-white">
+        <h2 class="font-semibold">Algorithm walkthroughs</h2>
+        <p class="text-sm text-slate-600 mt-1">
+          Encrypt and decrypt steps for each algorithm family.
+        </p>
+        <ul class="text-sm mt-2 space-x-2">
+          <li class="inline"><a class="text-sky-700" href="/algorithms/RSA-OAEP-256">RSA-OAEP-256</a></li>
+          <li class="inline"><a class="text-sky-700" href="/algorithms/ECDH-HKDF">ECDH-HKDF</a></li>
+          <li class="inline"><a class="text-sky-700" href="/algorithms/ML-KEM-768">ML-KEM-768</a></li>
+          <li class="inline"><a class="text-sky-700" href="/algorithms/X-ECDH-ML-KEM-768">Hybrid</a></li>
+        </ul>
+      </li>
+
+      <li class="border rounded p-4 bg-white">
+        <h2 class="font-semibold">Test vectors</h2>
+        <p class="text-sm text-slate-600 mt-1">
+          {VECTOR_INDEX.length} conformance vectors. Run them against the
+          browser-side validator and compare to the Python reference.
+        </p>
+        <a href="/vectors" class="text-sky-700 text-sm">Open runner →</a>
+      </li>
+
+      <li class="border rounded p-4 bg-white">
+        <h2 class="font-semibold">Policy-binding playground</h2>
+        <p class="text-sm text-slate-600 mt-1">
+          Compute and verify HMAC-SHA256 policy bindings, including legacy
+          hex-then-base64 detection.
+        </p>
+        <a href="/binding" class="text-sky-700 text-sm">Open playground →</a>
+      </li>
+
+      <li class="border rounded p-4 bg-white md:col-span-2">
+        <h2 class="font-semibold">Error code reference</h2>
+        <p class="text-sm text-slate-600 mt-1">
+          The canonical taxonomy that every conformance vector cites. Stays in
+          lockstep with the conformance doc and the Python validator.
+        </p>
+        <a href="/errors" class="text-sky-700 text-sm">Browse →</a>
+      </li>
+    </ul>
+
+    <section class="border rounded p-4 bg-white text-sm">
+      <h2 class="font-semibold mb-2">Where this fits</h2>
+      <p class="text-slate-700">
+        This site renders <code>spec/schema/BaseTDF/kao.schema.json</code> and
+        <code>spec/testvectors/kao/</code> at build time. The browser-side
+        validator at <code>src/lib/kao-runtime.ts</code> mirrors the Python
+        reference at <code>spec/tools/python/src/basetdf_kao/validate.py</code>;
+        a Vitest parity suite asserts they agree on every vector.
+      </p>
+    </section>
+  </section>
+</Layout>

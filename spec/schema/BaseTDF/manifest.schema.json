@@ -1,0 +1,269 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://opentdf.io/spec/schema/BaseTDF/manifest.schema.json",
+  "title": "BaseTDF Manifest",
+  "description": "TDF manifest schema for BaseTDF v4.4.0. Describes the complete structure of 0.manifest.json within a TDF ZIP container. References KAO, policy, integrity, and assertion sub-schemas. Supports both v4.3 backward-compatible fields and v4.4 fields.",
+  "type": "object",
+  "properties": {
+    "schemaVersion": {
+      "type": "string",
+      "description": "Semantic version of the TDF specification that the writer conformed to when creating the TDF. Writers conforming to this specification MUST set this to '4.4.0'. Readers MUST accept '4.3.x' and '4.4.x' versions. Absence indicates a pre-4.3.0 legacy TDF."
+    },
+    "payload": {
+      "$ref": "#/definitions/payload"
+    },
+    "encryptionInformation": {
+      "$ref": "#/definitions/encryptionInformation"
+    },
+    "assertions": {
+      "type": "array",
+      "description": "Verifiable assertions bound to the TDF. Each assertion provides metadata, handling instructions, or other claims cryptographically linked to the TDF instance. See BaseTDF-ASN.",
+      "items": {
+        "$ref": "#/definitions/assertion"
+      }
+    }
+  },
+  "required": ["payload", "encryptionInformation"],
+  "additionalProperties": false,
+  "definitions": {
+    "payload": {
+      "type": "object",
+      "description": "Describes the encrypted payload stored in the ZIP archive.",
+      "properties": {
+        "type": {
+          "type": "string",
+          "description": "MUST be 'reference'. Indicates the payload is stored as a reference within the container.",
+          "enum": ["reference"]
+        },
+        "url": {
+          "type": "string",
+          "description": "MUST be '0.payload'. The entry name within the ZIP archive that holds the encrypted content.",
+          "enum": ["0.payload"]
+        },
+        "protocol": {
+          "type": "string",
+          "description": "MUST be 'zip'. Identifies the container protocol used for payload storage.",
+          "enum": ["zip"]
+        },
+        "mimeType": {
+          "type": "string",
+          "description": "MIME type of the original plaintext before encryption. Default: 'application/octet-stream'. Writers SHOULD set this to the actual content type when known."
+        },
+        "isEncrypted": {
+          "type": "boolean",
+          "description": "MUST be true for TDF payloads. Indicates the payload content is encrypted.",
+          "const": true
+        },
+        "tdf_spec_version": {
+          "type": "string",
+          "description": "Legacy field. Semver version number of the TDF spec. Superseded by the top-level schemaVersion field."
+        }
+      },
+      "required": ["type", "url", "protocol", "isEncrypted"],
+      "additionalProperties": false
+    },
+    "encryptionInformation": {
+      "type": "object",
+      "description": "Central manifest structure binding together key access, content encryption method, integrity verification, and policy.",
+      "properties": {
+        "type": {
+          "type": "string",
+          "description": "MUST be 'split'. Identifies the key access protocol type. In split mode, the DEK is XOR-split across one or more Key Access Objects.",
+          "enum": ["split"]
+        },
+        "keyAccess": {
+          "type": "array",
+          "description": "One or more Key Access Objects (KAOs) used to retrieve key shares from Key Access Services. See BaseTDF-KAO.",
+          "items": {
+            "$ref": "kao.schema.json"
+          },
+          "minItems": 1
+        },
+        "method": {
+          "$ref": "#/definitions/method"
+        },
+        "integrityInformation": {
+          "$ref": "#/definitions/integrityInformation"
+        },
+        "policy": {
+          "type": "string",
+          "description": "Base64-encoded JSON policy object. The exact base64 string as stored here is the canonical representation used for policy binding computation. Implementations MUST NOT re-encode, re-serialize, or transform this string before computing or verifying the policy binding. See BaseTDF-POL."
+        }
+      },
+      "required": ["type", "keyAccess", "method", "integrityInformation", "policy"],
+      "additionalProperties": false
+    },
+    "method": {
+      "type": "object",
+      "description": "Content encryption method. Specifies the symmetric algorithm and mode used to encrypt the payload.",
+      "properties": {
+        "algorithm": {
+          "type": "string",
+          "description": "Algorithm identifier for content encryption. MUST be a registered content encryption algorithm from BaseTDF-ALG. Current value: 'AES-256-GCM'.",
+          "enum": ["AES-256-GCM"]
+        },
+        "iv": {
+          "type": "string",
+          "description": "Base64-encoded initialization vector. For AES-256-GCM with segmented payloads, this field is present but MAY be empty (''), since each segment carries its own IV prepended to the ciphertext."
+        },
+        "isStreamable": {
+          "type": "boolean",
+          "description": "MUST be true. Indicates that the payload is encrypted in segments supporting streaming decryption.",
+          "const": true
+        }
+      },
+      "required": ["algorithm", "isStreamable"],
+      "additionalProperties": false
+    },
+    "integrityInformation": {
+      "type": "object",
+      "description": "Payload integrity hashes and root signature. Provides the data needed to verify that the payload has not been modified. See BaseTDF-INT.",
+      "properties": {
+        "rootSignature": {
+          "$ref": "#/definitions/rootSignature"
+        },
+        "segmentHashAlg": {
+          "type": "string",
+          "description": "Algorithm used to hash individual segments. MUST be a registered integrity MAC algorithm from BaseTDF-ALG.",
+          "enum": ["HS256", "GMAC"]
+        },
+        "segmentSizeDefault": {
+          "type": "integer",
+          "description": "Default plaintext segment size in bytes (before encryption).",
+          "minimum": 1
+        },
+        "encryptedSegmentSizeDefault": {
+          "type": "integer",
+          "description": "Default encrypted segment size in bytes (after encryption). For AES-256-GCM this equals segmentSizeDefault + 28 (12 bytes IV + 16 bytes authentication tag).",
+          "minimum": 29
+        },
+        "segments": {
+          "type": "array",
+          "description": "Ordered array of per-segment integrity records. MUST contain one entry for each segment in the payload.",
+          "items": {
+            "$ref": "#/definitions/segment"
+          }
+        }
+      },
+      "required": [
+        "rootSignature",
+        "segmentHashAlg",
+        "segmentSizeDefault",
+        "encryptedSegmentSizeDefault",
+        "segments"
+      ],
+      "additionalProperties": false
+    },
+    "rootSignature": {
+      "type": "object",
+      "description": "The aggregate signature over all segment hashes, providing whole-payload integrity.",
+      "properties": {
+        "alg": {
+          "type": "string",
+          "description": "Algorithm used for the root signature. MUST be a registered integrity algorithm from BaseTDF-ALG. Values: 'HS256' (HMAC-SHA-256) or 'GMAC'.",
+          "enum": ["HS256", "GMAC"]
+        },
+        "sig": {
+          "type": "string",
+          "description": "Base64-encoded root signature value."
+        }
+      },
+      "required": ["alg", "sig"],
+      "additionalProperties": false
+    },
+    "segment": {
+      "type": "object",
+      "description": "Per-segment integrity record. Contains hash and size information for a single encrypted segment.",
+      "properties": {
+        "hash": {
+          "type": "string",
+          "description": "Base64-encoded hash of the encrypted segment, computed with the algorithm specified by segmentHashAlg."
+        },
+        "segmentSize": {
+          "type": "integer",
+          "description": "Plaintext size of this segment in bytes. May differ from segmentSizeDefault for the last segment.",
+          "minimum": 0
+        },
+        "encryptedSegmentSize": {
+          "type": "integer",
+          "description": "Encrypted size of this segment in bytes. Must equal segmentSize + 28 for AES-256-GCM.",
+          "minimum": 28
+        }
+      },
+      "required": ["hash", "encryptedSegmentSize"],
+      "additionalProperties": false
+    },
+    "assertion": {
+      "type": "object",
+      "description": "A verifiable assertion bound to the TDF. Provides metadata, handling instructions, or other claims. See BaseTDF-ASN.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for this assertion within the TDF instance. Implementations SHOULD use UUIDs or other globally unique identifiers."
+        },
+        "type": {
+          "type": "string",
+          "description": "The category of the assertion. Standard values are 'handling' and 'other'. Custom types SHOULD use a namespaced identifier (e.g., 'x-myapp-audit') to avoid collisions."
+        },
+        "scope": {
+          "type": "string",
+          "description": "What the assertion applies to. 'tdo' means the entire TDF object; 'payload' means only the encrypted payload data.",
+          "enum": ["tdo", "payload"]
+        },
+        "appliesToState": {
+          "type": "string",
+          "description": "Whether the statement applies to data in the 'encrypted' or 'unencrypted' state.",
+          "enum": ["encrypted", "unencrypted"]
+        },
+        "statement": {
+          "$ref": "#/definitions/statement"
+        },
+        "binding": {
+          "$ref": "#/definitions/assertionBinding"
+        }
+      },
+      "required": ["id", "type", "scope", "appliesToState", "statement"],
+      "additionalProperties": false
+    },
+    "statement": {
+      "type": "object",
+      "description": "The assertion statement content. Carries the actual content of the assertion.",
+      "properties": {
+        "format": {
+          "type": "string",
+          "description": "Describes the encoding format of the value field. Standard formats: 'json-structured', 'json', 'base64binary', 'string'. Additional application-specific formats are permitted."
+        },
+        "schema": {
+          "type": "string",
+          "description": "Identifies the schema or vocabulary that the value conforms to. Typically a URI or well-known identifier."
+        },
+        "value": {
+          "description": "The assertion payload, encoded according to format. For 'json-structured' format, this may be either a JSON object (inline) or a JSON-encoded string. Implementations MUST accept both representations.",
+          "oneOf": [
+            { "type": "string" },
+            { "type": "object" }
+          ]
+        }
+      },
+      "required": ["format", "schema", "value"],
+      "additionalProperties": false
+    },
+    "assertionBinding": {
+      "type": "object",
+      "description": "Cryptographic binding that prevents assertion modification and cross-TDF replay. Contains a JWS Compact Serialization encoding a JWT with assertionHash and assertionSig claims.",
+      "properties": {
+        "method": {
+          "type": "string",
+          "description": "The binding method. MUST be 'jws' when present.",
+          "enum": ["jws"]
+        },
+        "signature": {
+          "type": "string",
+          "description": "A JWS Compact Serialization (RFC 7515) containing the signed binding payload with assertionHash and assertionSig claims."
+        }
+      },
+      "required": ["method", "signature"],
+      "additionalProperties": false
+    }
+  }
+}

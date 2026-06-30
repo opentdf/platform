@@ -23,6 +23,8 @@ import (
 	"github.com/lestrrat-go/jwx/v2/jwt"
 	"github.com/opentdf/platform/protocol/go/kas"
 	"github.com/opentdf/platform/protocol/go/kas/kasconnect"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // mockTokenSource implements AccessTokenSource for testing
@@ -46,18 +48,12 @@ func (m *mockTokenSource) MakeToken(_ func(jwk.Key) ([]byte, error)) ([]byte, er
 func generateTestKey(t *testing.T) jwk.Key {
 	t.Helper()
 	rawKey, err := rsa.GenerateKey(rand.Reader, 2048)
-	if err != nil {
-		t.Fatalf("failed to generate RSA key: %v", err)
-	}
+	require.NoError(t, err, "failed to generate RSA key")
 
 	key, err := jwk.FromRaw(rawKey)
-	if err != nil {
-		t.Fatalf("failed to create JWK: %v", err)
-	}
+	require.NoError(t, err, "failed to create JWK")
 
-	if err := key.Set(jwk.AlgorithmKey, jwa.RS256); err != nil {
-		t.Fatalf("failed to set algorithm: %v", err)
-	}
+	require.NoError(t, key.Set(jwk.AlgorithmKey, jwa.RS256), "failed to set algorithm")
 
 	return key
 }
@@ -66,9 +62,7 @@ func parseDPoPProof(t *testing.T, proofStr string, key jwk.Key) jwt.Token {
 	t.Helper()
 
 	token, err := jwt.Parse([]byte(proofStr), jwt.WithKey(jwa.RS256, key))
-	if err != nil {
-		t.Fatalf("failed to parse DPoP proof: %v", err)
-	}
+	require.NoError(t, err, "failed to parse DPoP proof")
 
 	return token
 }
@@ -83,55 +77,44 @@ func TestDPoPTransport_AddsProofToRequests(t *testing.T) {
 
 		// Verify DPoP header exists
 		dpopHeader := r.Header.Get("DPoP")
-		if dpopHeader == "" {
-			t.Error("DPoP header not present")
+		if !assert.NotEmpty(t, dpopHeader, "DPoP header not present") {
 			return
 		}
 
 		// Verify Authorization header
 		authHeader := r.Header.Get("Authorization")
-		if !strings.HasPrefix(authHeader, "DPoP ") {
-			t.Errorf("Authorization header = %q, want prefix 'DPoP '", authHeader)
-		}
+		assert.True(t, strings.HasPrefix(authHeader, "DPoP "), "Authorization header = %q, want prefix 'DPoP '", authHeader)
 
 		// Parse and verify the proof
 		publicKey, err := key.PublicKey()
-		if err != nil {
-			t.Fatalf("failed to get public key: %v", err)
+		if !assert.NoError(t, err, "failed to get public key") {
+			return
 		}
 
 		token := parseDPoPProof(t, dpopHeader, publicKey)
 
 		// Check htm claim
-		if htm, ok := token.Get("htm"); !ok || htm != "GET" {
-			t.Errorf("htm claim = %v, want 'GET'", htm)
-		}
+		htm, ok := token.Get("htm")
+		assert.True(t, ok && htm == "GET", "htm claim = %v, want 'GET'", htm)
 
 		// Check htu claim (should be normalized)
 		htu, ok := token.Get("htu")
-		if !ok {
-			t.Error("htu claim missing")
-		} else if htuStr, isStr := htu.(string); !isStr {
-			t.Errorf("htu claim not a string: %v", htu)
-		} else if htuStr == "" {
-			t.Error("htu claim is empty")
+		if assert.True(t, ok, "htu claim missing") {
+			htuStr, isStr := htu.(string)
+			assert.True(t, isStr, "htu claim not a string: %v", htu)
+			assert.NotEmpty(t, htuStr, "htu claim is empty")
 		}
 
 		// Check ath claim (access token hash)
-		if ath, athOK := token.Get("ath"); !athOK {
-			t.Error("ath claim missing")
-		} else {
+		if ath, athOK := token.Get("ath"); assert.True(t, athOK, "ath claim missing") {
 			expectedHash := sha256.Sum256([]byte("test-access-token"))
 			expectedATH := base64.RawURLEncoding.EncodeToString(expectedHash[:])
-			if ath != expectedATH {
-				t.Errorf("ath claim = %v, want %v", ath, expectedATH)
-			}
+			assert.Equal(t, expectedATH, ath, "ath claim")
 		}
 
 		// Check jti claim
-		if jti, jtiOK := token.Get("jti"); !jtiOK || jti == "" {
-			t.Error("jti claim missing or empty")
-		}
+		jti, jtiOK := token.Get("jti")
+		assert.True(t, jtiOK && jti != "", "jti claim missing or empty")
 
 		w.WriteHeader(http.StatusOK)
 	}))
@@ -145,19 +128,13 @@ func TestDPoPTransport_AddsProofToRequests(t *testing.T) {
 
 	client := &http.Client{Transport: transport}
 	req, err := http.NewRequest(http.MethodGet, server.URL, nil)
-	if err != nil {
-		t.Fatalf("failed to create request: %v", err)
-	}
+	require.NoError(t, err, "failed to create request")
 
 	resp, err := client.Do(req)
-	if err != nil {
-		t.Fatalf("request failed: %v", err)
-	}
+	require.NoError(t, err, "request failed")
 	defer resp.Body.Close()
 
-	if !called {
-		t.Error("server handler was not called")
-	}
+	assert.True(t, called, "server handler was not called")
 }
 
 func TestDPoPTransport_NonceRetry(t *testing.T) {
@@ -171,24 +148,22 @@ func TestDPoPTransport_NonceRetry(t *testing.T) {
 		callCount++
 
 		dpopHeader := r.Header.Get("DPoP")
-		if dpopHeader == "" {
-			t.Error("DPoP header not present")
+		if !assert.NotEmpty(t, dpopHeader, "DPoP header not present") {
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
 
 		publicKey, err := key.PublicKey()
-		if err != nil {
-			t.Fatalf("failed to get public key: %v", err)
+		if !assert.NoError(t, err, "failed to get public key") {
+			return
 		}
 
 		token := parseDPoPProof(t, dpopHeader, publicKey)
 
 		if callCount == 1 {
 			// First request should not have nonce
-			if _, ok := token.Get("nonce"); ok {
-				t.Error("first request should not have nonce claim")
-			}
+			_, ok := token.Get("nonce")
+			assert.False(t, ok, "first request should not have nonce claim")
 
 			// Send 401 with nonce challenge
 			w.Header().Set("DPoP-Nonce", nonce)
@@ -197,10 +172,8 @@ func TestDPoPTransport_NonceRetry(t *testing.T) {
 		}
 
 		// Second request should have the nonce
-		if nonceVal, ok := token.Get("nonce"); !ok {
-			t.Error("second request missing nonce claim")
-		} else if nonceVal != nonce {
-			t.Errorf("nonce claim = %v, want %v", nonceVal, nonce)
+		if nonceVal, ok := token.Get("nonce"); assert.True(t, ok, "second request missing nonce claim") {
+			assert.Equal(t, nonce, nonceVal, "nonce claim")
 		}
 
 		w.WriteHeader(http.StatusOK)
@@ -215,23 +188,14 @@ func TestDPoPTransport_NonceRetry(t *testing.T) {
 
 	client := &http.Client{Transport: transport}
 	req, err := http.NewRequest(http.MethodGet, server.URL, nil)
-	if err != nil {
-		t.Fatalf("failed to create request: %v", err)
-	}
+	require.NoError(t, err, "failed to create request")
 
 	resp, err := client.Do(req)
-	if err != nil {
-		t.Fatalf("request failed: %v", err)
-	}
+	require.NoError(t, err, "request failed")
 	defer resp.Body.Close()
 
-	if callCount != 2 {
-		t.Errorf("expected 2 calls (initial + retry), got %d", callCount)
-	}
-
-	if resp.StatusCode != http.StatusOK {
-		t.Errorf("final status = %d, want %d", resp.StatusCode, http.StatusOK)
-	}
+	assert.Equal(t, 2, callCount, "expected 2 calls (initial + retry)")
+	assert.Equal(t, http.StatusOK, resp.StatusCode, "final status")
 }
 
 // TestDPoPTransport_NonceRetryReplaysBodyWithoutGetBody reproduces the failure
@@ -249,8 +213,7 @@ func TestDPoPTransport_NonceRetryReplaysBodyWithoutGetBody(t *testing.T) {
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		body, err := io.ReadAll(r.Body)
-		if err != nil {
-			t.Errorf("call %d: read body: %v", len(receivedBodies)+1, err)
+		if !assert.NoError(t, err, "call %d: read body", len(receivedBodies)+1) {
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
@@ -274,31 +237,21 @@ func TestDPoPTransport_NonceRetryReplaysBodyWithoutGetBody(t *testing.T) {
 	client := &http.Client{Transport: transport}
 
 	req, err := http.NewRequest(http.MethodPost, server.URL, nil)
-	if err != nil {
-		t.Fatalf("create request: %v", err)
-	}
+	require.NoError(t, err, "create request")
 	bodyBytes := []byte(expectedBody)
 	req.Body = io.NopCloser(bytes.NewReader(bodyBytes))
 	req.ContentLength = int64(len(bodyBytes))
 	// GetBody intentionally NOT set — mirrors ConnectRPC/gRPC generated clients.
 
 	resp, err := client.Do(req)
-	if err != nil {
-		t.Fatalf("request failed: %v", err)
-	}
+	require.NoError(t, err, "request failed")
 	defer resp.Body.Close()
 
-	if len(receivedBodies) != 2 {
-		t.Fatalf("expected 2 calls (initial + retry), got %d", len(receivedBodies))
-	}
+	require.Len(t, receivedBodies, 2, "expected 2 calls (initial + retry)")
 	for i, got := range receivedBodies {
-		if got != expectedBody {
-			t.Errorf("call %d body = %q, want %q", i+1, got, expectedBody)
-		}
+		assert.JSONEqf(t, expectedBody, got, "call %d body", i+1)
 	}
-	if resp.StatusCode != http.StatusOK {
-		t.Errorf("final status = %d, want %d", resp.StatusCode, http.StatusOK)
-	}
+	assert.Equal(t, http.StatusOK, resp.StatusCode, "final status")
 }
 
 // TestDPoPTransport_NonceRetryReplaysConnectUnaryBody is the end-to-end
@@ -321,8 +274,7 @@ func TestDPoPTransport_NonceRetryReplaysConnectUnaryBody(t *testing.T) {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/kas.AccessService/PublicKey", func(w http.ResponseWriter, r *http.Request) {
 		body, err := io.ReadAll(r.Body)
-		if err != nil {
-			t.Errorf("read body: %v", err)
+		if !assert.NoError(t, err, "read body") {
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
@@ -357,27 +309,15 @@ func TestDPoPTransport_NonceRetryReplaysConnectUnaryBody(t *testing.T) {
 		Algorithm: "rsa:2048",
 		Fmt:       "pem",
 	}))
-	if err != nil {
-		t.Fatalf("unary call failed: %v", err)
-	}
-	if resp == nil {
-		t.Fatal("nil response")
-	}
+	require.NoError(t, err, "unary call failed")
+	require.NotNil(t, resp, "nil response")
 
 	mu.Lock()
 	defer mu.Unlock()
 
-	if len(receivedBodies) != 2 {
-		t.Fatalf("expected 2 calls (initial + retry), got %d", len(receivedBodies))
-	}
-	if len(receivedBodies[0]) == 0 {
-		t.Fatal("first call body was empty — Connect-go did not send a payload")
-	}
-	if !bytes.Equal(receivedBodies[0], receivedBodies[1]) {
-		t.Errorf("retry body differs from initial body\n  initial (len=%d): %x\n  retry   (len=%d): %x",
-			len(receivedBodies[0]), receivedBodies[0],
-			len(receivedBodies[1]), receivedBodies[1])
-	}
+	require.Len(t, receivedBodies, 2, "expected 2 calls (initial + retry)")
+	require.NotEmpty(t, receivedBodies[0], "first call body was empty — Connect-go did not send a payload")
+	assert.Equal(t, receivedBodies[0], receivedBodies[1], "retry body differs from initial body")
 }
 
 func TestDPoPTransport_URINormalization(t *testing.T) {
@@ -416,25 +356,23 @@ func TestDPoPTransport_URINormalization(t *testing.T) {
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				dpopHeader := r.Header.Get("DPoP")
 				publicKey, err := key.PublicKey()
-				if err != nil {
-					t.Fatalf("failed to get public key: %v", err)
+				if !assert.NoError(t, err, "failed to get public key") {
+					return
 				}
 
 				token := parseDPoPProof(t, dpopHeader, publicKey)
 
 				htu, ok := token.Get("htu")
-				if !ok {
-					t.Fatal("htu claim missing")
+				if !assert.True(t, ok, "htu claim missing") {
+					return
 				}
 
 				// The htu should have normalized the URL
 				htuStr, isStr := htu.(string)
-				if !isStr {
-					t.Fatalf("htu claim is not a string: %T", htu)
+				if !assert.Truef(t, isStr, "htu claim is not a string: %T", htu) {
+					return
 				}
-				if !strings.Contains(htuStr, "/path") {
-					t.Errorf("htu = %s, want to contain normalized path", htuStr)
-				}
+				assert.Contains(t, htuStr, "/path", "htu = %s, want to contain normalized path", htuStr)
 
 				w.WriteHeader(http.StatusOK)
 			}))
@@ -451,17 +389,11 @@ func TestDPoPTransport_URINormalization(t *testing.T) {
 			// Use the server URL but replace path
 			testURL := server.URL + "/path"
 			req, err := http.NewRequest(http.MethodGet, testURL, nil)
-			if err != nil {
-				t.Fatalf("failed to create request: %v", err)
-			}
+			require.NoError(t, err, "failed to create request")
 
 			resp, err := client.Do(req)
-			if err == nil {
-				resp.Body.Close()
-			}
-			if err != nil {
-				t.Fatalf("request failed: %v", err)
-			}
+			require.NoError(t, err, "request failed")
+			resp.Body.Close()
 		})
 	}
 }
@@ -471,28 +403,24 @@ func TestDPoPTransport_TokenEndpointNoATH(t *testing.T) {
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		dpopHeader := r.Header.Get("DPoP")
-		if dpopHeader == "" {
-			t.Error("DPoP header not present")
+		if !assert.NotEmpty(t, dpopHeader, "DPoP header not present") {
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
 
 		publicKey, err := key.PublicKey()
-		if err != nil {
-			t.Fatalf("failed to get public key: %v", err)
+		if !assert.NoError(t, err, "failed to get public key") {
+			return
 		}
 
 		token := parseDPoPProof(t, dpopHeader, publicKey)
 
 		// Token endpoint requests should NOT have ath claim
-		if _, ok := token.Get("ath"); ok {
-			t.Error("token endpoint request should not have ath claim")
-		}
+		_, ok := token.Get("ath")
+		assert.False(t, ok, "token endpoint request should not have ath claim")
 
 		// Should not have Authorization header for token endpoint
-		if auth := r.Header.Get("Authorization"); auth != "" {
-			t.Errorf("token endpoint should not have Authorization header, got %q", auth)
-		}
+		assert.Empty(t, r.Header.Get("Authorization"), "token endpoint should not have Authorization header")
 
 		w.WriteHeader(http.StatusOK)
 	}))
@@ -507,23 +435,17 @@ func TestDPoPTransport_TokenEndpointNoATH(t *testing.T) {
 
 	client := &http.Client{Transport: transport}
 	req, err := http.NewRequest(http.MethodPost, server.URL, nil)
-	if err != nil {
-		t.Fatalf("failed to create request: %v", err)
-	}
+	require.NoError(t, err, "failed to create request")
 
 	resp, err := client.Do(req)
-	if err != nil {
-		t.Fatalf("request failed: %v", err)
-	}
+	require.NoError(t, err, "request failed")
 	defer resp.Body.Close()
 }
 
 func mustReq(t *testing.T, rawURL string) *http.Request {
 	t.Helper()
 	req, err := http.NewRequest(http.MethodGet, rawURL, nil)
-	if err != nil {
-		t.Fatalf("create request: %v", err)
-	}
+	require.NoError(t, err, "create request")
 	return req
 }
 
@@ -547,12 +469,8 @@ func TestNormalizeURI(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			u, err := url.Parse(tt.url)
-			if err != nil {
-				t.Fatalf("parse %q: %v", tt.url, err)
-			}
-			if got := normalizeURI(u); got != tt.want {
-				t.Errorf("normalizeURI(%q) = %q, want %q", tt.url, got, tt.want)
-			}
+			require.NoErrorf(t, err, "parse %q", tt.url)
+			assert.Equalf(t, tt.want, normalizeURI(u), "normalizeURI(%q)", tt.url)
 		})
 	}
 }
@@ -577,11 +495,9 @@ func TestDPoPTransport_TokenSourceErrorAborts(t *testing.T) {
 	resp, err := client.Do(mustReq(t, server.URL))
 	if err == nil {
 		resp.Body.Close()
-		t.Fatal("expected error when token source fails, got nil")
+		require.Fail(t, "expected error when token source fails, got nil")
 	}
-	if got := atomic.LoadInt32(&called); got != 0 {
-		t.Errorf("server should not be called when token fetch fails, got %d calls", got)
-	}
+	assert.Zero(t, atomic.LoadInt32(&called), "server should not be called when token fetch fails")
 }
 
 // TestDPoPTransport_NoRetryOnPlain401 verifies that a 401 without a DPoP-Nonce
@@ -599,16 +515,10 @@ func TestDPoPTransport_NoRetryOnPlain401(t *testing.T) {
 	client := &http.Client{Transport: transport}
 
 	resp, err := client.Do(mustReq(t, server.URL))
-	if err != nil {
-		t.Fatalf("request failed: %v", err)
-	}
+	require.NoError(t, err, "request failed")
 	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusUnauthorized {
-		t.Errorf("status = %d, want 401", resp.StatusCode)
-	}
-	if got := atomic.LoadInt32(&callCount); got != 1 {
-		t.Errorf("expected exactly 1 call (no retry), got %d", got)
-	}
+	assert.Equal(t, http.StatusUnauthorized, resp.StatusCode, "status")
+	assert.Equal(t, int32(1), atomic.LoadInt32(&callCount), "expected exactly 1 call (no retry)")
 }
 
 // TestDPoPTransport_NoRetryWhenNonceUnchanged verifies the loop-prevention guard:
@@ -635,22 +545,14 @@ func TestDPoPTransport_NoRetryWhenNonceUnchanged(t *testing.T) {
 	client := &http.Client{Transport: transport}
 
 	resp1, err := client.Do(mustReq(t, server.URL))
-	if err != nil {
-		t.Fatalf("first request failed: %v", err)
-	}
+	require.NoError(t, err, "first request failed")
 	resp1.Body.Close()
 
 	resp2, err := client.Do(mustReq(t, server.URL))
-	if err != nil {
-		t.Fatalf("second request failed: %v", err)
-	}
+	require.NoError(t, err, "second request failed")
 	resp2.Body.Close()
-	if resp2.StatusCode != http.StatusUnauthorized {
-		t.Errorf("status = %d, want 401", resp2.StatusCode)
-	}
-	if got := atomic.LoadInt32(&callCount); got != 2 {
-		t.Errorf("expected 2 calls (no retry on unchanged nonce), got %d", got)
-	}
+	assert.Equal(t, http.StatusUnauthorized, resp2.StatusCode, "status")
+	assert.Equal(t, int32(2), atomic.LoadInt32(&callCount), "expected 2 calls (no retry on unchanged nonce)")
 }
 
 // TestDPoPTransport_RetryOnRotatedNonce verifies that when the server rotates its
@@ -673,13 +575,10 @@ func TestDPoPTransport_RetryOnRotatedNonce(t *testing.T) {
 			w.WriteHeader(http.StatusUnauthorized)
 		default:
 			pub, err := key.PublicKey()
-			if err != nil {
-				t.Errorf("public key: %v", err)
-			}
+			assert.NoError(t, err, "public key")
 			tok := parseDPoPProof(t, r.Header.Get("DPoP"), pub)
-			if got, _ := tok.Get("nonce"); got != nonce2 {
-				t.Errorf("retry nonce = %v, want %q", got, nonce2)
-			}
+			got, _ := tok.Get("nonce")
+			assert.Equalf(t, nonce2, got, "retry nonce")
 			w.WriteHeader(http.StatusOK)
 		}
 	}))
@@ -689,22 +588,14 @@ func TestDPoPTransport_RetryOnRotatedNonce(t *testing.T) {
 	client := &http.Client{Transport: transport}
 
 	resp1, err := client.Do(mustReq(t, server.URL))
-	if err != nil {
-		t.Fatalf("first request failed: %v", err)
-	}
+	require.NoError(t, err, "first request failed")
 	resp1.Body.Close()
 
 	resp2, err := client.Do(mustReq(t, server.URL))
-	if err != nil {
-		t.Fatalf("second request failed: %v", err)
-	}
+	require.NoError(t, err, "second request failed")
 	resp2.Body.Close()
-	if resp2.StatusCode != http.StatusOK {
-		t.Errorf("status = %d, want 200 after rotated-nonce retry", resp2.StatusCode)
-	}
-	if got := atomic.LoadInt32(&callCount); got != 3 {
-		t.Errorf("expected 3 calls (prime + challenge + retry), got %d", got)
-	}
+	assert.Equal(t, http.StatusOK, resp2.StatusCode, "status after rotated-nonce retry")
+	assert.Equal(t, int32(3), atomic.LoadInt32(&callCount), "expected 3 calls (prime + challenge + retry)")
 }
 
 // TestDPoPTransport_ConcurrentRequests drives many requests through one shared
@@ -740,6 +631,6 @@ func TestDPoPTransport_ConcurrentRequests(t *testing.T) {
 	wg.Wait()
 	close(errs)
 	for err := range errs {
-		t.Errorf("concurrent request failed: %v", err)
+		assert.NoError(t, err, "concurrent request failed")
 	}
 }

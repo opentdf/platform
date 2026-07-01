@@ -463,6 +463,7 @@ func TestNormalizeURI(t *testing.T) {
 		{"https non-default port kept", "https://example.com:8443/path", "https://example.com:8443/path"},
 		{"http non-default port kept", "http://example.com:8080/path", "http://example.com:8080/path"},
 		{"scheme and host lowercased, path preserved", "HTTPS://EXAMPLE.COM/Path", "https://example.com/Path"},
+		{"escaped reserved path preserved", "https://example.com/a%2Fb", "https://example.com/a%2Fb"},
 		{"query and fragment dropped", "https://example.com/p?a=b#frag", "https://example.com/p"},
 		{"empty path", "https://example.com", "https://example.com"},
 		{"uppercase host with default port", "HTTPS://EXAMPLE.COM:443/Path", "https://example.com/Path"},
@@ -640,6 +641,59 @@ func TestDPoPTransport_RetryOnRotatedNonce(t *testing.T) {
 	resp2.Body.Close()
 	assert.Equal(t, http.StatusOK, resp2.StatusCode, "status after rotated-nonce retry")
 	assert.Equal(t, int32(3), atomic.LoadInt32(&callCount), "expected 3 calls (prime + challenge + retry)")
+}
+
+// TestDPoPTransport_CachesNonceFromRetrySuccess verifies that a nonce the server
+// rotates onto the successful *retry* response is cached and reused by the next
+// request. An early return on the retry path would drop it, forcing a fresh
+// 401/retry round-trip every time.
+func TestDPoPTransport_CachesNonceFromRetrySuccess(t *testing.T) {
+	key := generateTestKey(t)
+	const (
+		challengeNonce = "challenge-nonce"
+		rotatedNonce   = "rotated-on-success"
+	)
+	nonceOf := func(r *http.Request) string {
+		pub, err := key.PublicKey()
+		assert.NoError(t, err, "public key")
+		tok := parseDPoPProof(t, r.Header.Get("DPoP"), pub)
+		got, _ := tok.Get("nonce")
+		s, _ := got.(string)
+		return s
+	}
+	var callCount int32
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch atomic.AddInt32(&callCount, 1) {
+		case 1:
+			// Initial request carries no nonce; challenge for one.
+			w.Header().Set("DPoP-Nonce", challengeNonce)
+			w.WriteHeader(http.StatusUnauthorized)
+		case 2:
+			// Retry carries the challenge nonce; succeed but rotate the nonce.
+			assert.Equal(t, challengeNonce, nonceOf(r), "retry nonce")
+			w.Header().Set("DPoP-Nonce", rotatedNonce)
+			w.WriteHeader(http.StatusOK)
+		default:
+			// Next request must reuse the nonce rotated on the successful retry.
+			assert.Equal(t, rotatedNonce, nonceOf(r), "next-request nonce")
+			w.WriteHeader(http.StatusOK)
+		}
+	}))
+	defer server.Close()
+
+	transport := &DPoPTransport{Base: http.DefaultTransport, DPoPKey: key, TokenSource: &mockTokenSource{token: "t"}}
+	client := &http.Client{Transport: transport}
+
+	resp1, err := client.Do(mustReq(t, server.URL))
+	require.NoError(t, err, "first request failed")
+	resp1.Body.Close()
+	assert.Equal(t, http.StatusOK, resp1.StatusCode, "status after challenge retry")
+
+	resp2, err := client.Do(mustReq(t, server.URL))
+	require.NoError(t, err, "second request failed")
+	resp2.Body.Close()
+	assert.Equal(t, http.StatusOK, resp2.StatusCode, "status")
+	assert.Equal(t, int32(3), atomic.LoadInt32(&callCount), "expected 3 calls (challenge + retry + reuse)")
 }
 
 // TestDPoPTransport_ConcurrentRequests drives many requests through one shared

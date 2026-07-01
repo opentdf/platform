@@ -7,6 +7,7 @@ import (
 	"crypto/rsa"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/lestrrat-go/jwx/v2/jwa"
 	"github.com/lestrrat-go/jwx/v2/jwk"
@@ -87,6 +88,14 @@ func loadDPoPKeyFromPEM(pemBytes []byte) (jwk.Key, error) {
 		return nil, fmt.Errorf("failed to parse DPoP key PEM: %w", err)
 	}
 
+	// A public-only PEM cannot sign proofs; reject it here with a clear message
+	// rather than letting inference or signing fail later.
+	if isPriv, err := jwk.IsPrivateKey(key); err != nil {
+		return nil, fmt.Errorf("failed to inspect DPoP key PEM: %w", err)
+	} else if !isPriv {
+		return nil, errors.New("DPoP key PEM must contain private signing material; a public-only key cannot sign proofs")
+	}
+
 	// Infer algorithm when not already set in the PEM
 	if key.Algorithm() == jwa.NoSignature || key.Algorithm().String() == "" {
 		alg, err := inferDPoPAlgorithm(key)
@@ -108,16 +117,7 @@ func inferDPoPAlgorithm(key jwk.Key) (jwa.SignatureAlgorithm, error) {
 		if err := key.Raw(&rawKey); err != nil {
 			return "", fmt.Errorf("failed to get raw EC key for algorithm inference: %w", err)
 		}
-		switch rawKey.Curve {
-		case elliptic.P256():
-			return jwa.ES256, nil
-		case elliptic.P384():
-			return jwa.ES384, nil
-		case elliptic.P521():
-			return jwa.ES512, nil
-		default:
-			return "", errors.New("unsupported EC curve for DPoP")
-		}
+		return ecCurveToDPoPAlg(rawKey.Curve)
 	case jwa.RSA:
 		return jwa.RS256, nil
 	default:
@@ -125,20 +125,69 @@ func inferDPoPAlgorithm(key jwk.Key) (jwa.SignatureAlgorithm, error) {
 	}
 }
 
-// validateDPoPKeyAlgorithm ensures a caller-supplied JWK carries a supported DPoP
-// signing algorithm. Without this check a missing/invalid algorithm would only
-// surface when signing the first proof, far from the misconfiguration.
-func validateDPoPKeyAlgorithm(key jwk.Key) error {
+// ecCurveToDPoPAlg maps an EC curve to its RFC 7518 ECDSA algorithm
+// (P-256→ES256, P-384→ES384, P-521→ES512).
+func ecCurveToDPoPAlg(curve elliptic.Curve) (jwa.SignatureAlgorithm, error) {
+	switch curve {
+	case elliptic.P256():
+		return jwa.ES256, nil
+	case elliptic.P384():
+		return jwa.ES384, nil
+	case elliptic.P521():
+		return jwa.ES512, nil
+	default:
+		return "", errors.New("unsupported EC curve for DPoP")
+	}
+}
+
+// validateDPoPKey ensures a resolved DPoP JWK can actually sign proofs, catching
+// misconfiguration at resolution time instead of when the first proof is signed.
+// It checks, in order: a supported algorithm is set, the key carries private
+// signing material, the algorithm family matches the key type (ES* → EC, RS* → RSA),
+// and — for EC keys — the curve matches the ES algorithm (P-256↔ES256, etc.).
+func validateDPoPKey(key jwk.Key) error {
 	alg := key.Algorithm()
 	if alg == nil || alg.String() == "" {
 		return errors.New("DPoP JWK is missing required Algorithm field; set it with key.Set(jwk.AlgorithmKey, ...)")
 	}
-	switch alg.String() {
+	algStr := alg.String()
+	switch algStr {
 	case dpopAlgES256, dpopAlgES384, dpopAlgES512, dpopAlgRS256, dpopAlgRS384, dpopAlgRS512:
-		return nil
+		// supported
 	default:
-		return fmt.Errorf("unsupported DPoP JWK algorithm %q; allowed: %s", alg.String(), dpopAllowedAlgs)
+		return fmt.Errorf("unsupported DPoP JWK algorithm %q; allowed: %s", algStr, dpopAllowedAlgs)
 	}
+
+	isPriv, err := jwk.IsPrivateKey(key)
+	if err != nil {
+		return fmt.Errorf("failed to inspect DPoP JWK: %w", err)
+	}
+	if !isPriv {
+		return errors.New("DPoP JWK must contain private signing material; a public-only key cannot sign proofs")
+	}
+
+	switch {
+	case strings.HasPrefix(algStr, "ES"):
+		if key.KeyType() != jwa.EC {
+			return fmt.Errorf("DPoP algorithm %q requires an EC key, got key type %q", algStr, key.KeyType())
+		}
+		var rawKey ecdsa.PrivateKey
+		if err := key.Raw(&rawKey); err != nil {
+			return fmt.Errorf("failed to read EC key for DPoP validation: %w", err)
+		}
+		wantAlg, err := ecCurveToDPoPAlg(rawKey.Curve)
+		if err != nil {
+			return err
+		}
+		if wantAlg.String() != algStr {
+			return fmt.Errorf("DPoP algorithm %q does not match EC key curve (expected %q for this curve)", algStr, wantAlg.String())
+		}
+	case strings.HasPrefix(algStr, "RS"):
+		if key.KeyType() != jwa.RSA {
+			return fmt.Errorf("DPoP algorithm %q requires an RSA key, got key type %q", algStr, key.KeyType())
+		}
+	}
+	return nil
 }
 
 // resolveDPoPKey returns the jwk.Key to use for DPoP based on the config, using a
@@ -156,14 +205,27 @@ func validateDPoPKeyAlgorithm(key jwk.Key) error {
 //
 // A (nil, nil) return means no DPoP key is configured; callers auto-generate a
 // default RSA key in that case.
+func resolveDPoPKey(c *config) (jwk.Key, error) {
+	key, err := selectDPoPKey(c)
+	if err != nil || key == nil {
+		return key, err
+	}
+	// Validate every resolved key uniformly so callers get a clear error at
+	// resolution time regardless of how the key was supplied (JWK, PEM, alg, or
+	// the RSA key pair), rather than a signing failure on the first proof.
+	if err := validateDPoPKey(key); err != nil {
+		return nil, err
+	}
+	return key, nil
+}
+
+// selectDPoPKey picks the DPoP key from the config by fixed priority without
+// validating it (see resolveDPoPKey). A (nil, nil) return means none configured.
 //
 //nolint:nilnil // nil key signals "no DPoP key configured" — not an error condition
-func resolveDPoPKey(c *config) (jwk.Key, error) {
+func selectDPoPKey(c *config) (jwk.Key, error) {
 	switch {
 	case c.dpopJWK != nil:
-		if err := validateDPoPKeyAlgorithm(c.dpopJWK); err != nil {
-			return nil, err
-		}
 		return c.dpopJWK, nil
 	case len(c.dpopKeyPEM) > 0:
 		key, err := loadDPoPKeyFromPEM(c.dpopKeyPEM)

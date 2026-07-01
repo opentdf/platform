@@ -408,7 +408,7 @@ func originFromHost(host string, secure bool) string {
 	}
 	if port := u.Port(); port != "" &&
 		!(scheme == "https" && port == "443") && //nolint:staticcheck // QF1001: written as it would be understood (don't append port if the port is expected for its scheme)
-		!(scheme == "http" && port == "80") {
+		!(scheme == "http" && port == "80") { //nolint:staticcheck // QF1001: as above
 		h += ":" + port
 	}
 	return scheme + "://" + h

@@ -655,7 +655,9 @@ func TestDPoPTransport_CachesNonceFromRetrySuccess(t *testing.T) {
 	)
 	nonceOf := func(r *http.Request) string {
 		pub, err := key.PublicKey()
-		assert.NoError(t, err, "public key")
+		// assert (not require) because this runs on the httptest server goroutine,
+		// where t.FailNow via require is unsafe.
+		assert.NoError(t, err, "public key") //nolint:testifylint // require unsafe off the test goroutine
 		tok := parseDPoPProof(t, r.Header.Get("DPoP"), pub)
 		got, _ := tok.Get("nonce")
 		s, _ := got.(string)

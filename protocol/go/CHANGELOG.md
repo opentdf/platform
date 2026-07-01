@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.37.0](https://github.com/opentdf/platform/compare/protocol/go/v0.36.0...protocol/go/v0.37.0) (2026-07-01)
+
+
+### ⚠ BREAKING CHANGES
+
+* **policy:** undo subject mapping operator decomposition ([#3685](https://github.com/opentdf/platform/issues/3685))
+
+### Features
+
+* **policy:** add narrow attribute read API protos and generated code ([#3634](https://github.com/opentdf/platform/issues/3634)) ([5726720](https://github.com/opentdf/platform/commit/572672007abd7e0a3598f8303661487cfb0d2db5))
+* **policy:** undo subject mapping operator decomposition ([#3685](https://github.com/opentdf/platform/issues/3685)) ([84f3b92](https://github.com/opentdf/platform/commit/84f3b92a4f82dd527ef93de3361ec22990eae479))
+
 ## [0.36.0](https://github.com/opentdf/platform/compare/protocol/go/v0.35.0...protocol/go/v0.36.0) (2026-06-29)
 
 

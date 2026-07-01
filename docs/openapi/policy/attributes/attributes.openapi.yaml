@@ -150,6 +150,83 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/policy.attributes.GetAttributeValuesByFqnsResponse'
+  /policy.attributes.AttributesService/GetKeyMappingsByFqns:
+    post:
+      tags:
+        - policy.attributes.AttributesService
+      summary: GetKeyMappingsByFqns
+      description: |-
+        Returns only key-mapping information (rule and effective KAS keys) for the
+         requested attribute value FQNs, for client-side key split construction.
+      operationId: policy.attributes.AttributesService.GetKeyMappingsByFqns
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/policy.attributes.GetKeyMappingsByFqnsRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/policy.attributes.GetKeyMappingsByFqnsResponse'
+  /policy.attributes.AttributesService/GetEntitleableAttributesByFqns:
+    post:
+      tags:
+        - policy.attributes.AttributesService
+      summary: GetEntitleableAttributesByFqns
+      description: |-
+        Returns only entitlement-relevant information (rule, value identity, ordered
+         definition values, and subject mappings) for the requested attribute value
+         FQNs, for server-side decisioning / entitlement resolution.
+      operationId: policy.attributes.AttributesService.GetEntitleableAttributesByFqns
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/policy.attributes.GetEntitleableAttributesByFqnsRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/policy.attributes.GetEntitleableAttributesByFqnsResponse'
   /policy.attributes.AttributesService/CreateAttribute:
     post:
       tags:
@@ -2105,6 +2182,194 @@ components:
           title: value
           $ref: '#/components/schemas/policy.attributes.GetAttributeValuesByFqnsResponse.AttributeAndValue'
       title: FqnAttributeValuesEntry
+      additionalProperties: false
+    policy.attributes.GetEntitleableAttributesByFqnsRequest:
+      type: object
+      properties:
+        fqns:
+          type: array
+          items:
+            type: string
+            maxItems: 250
+            minItems: 1
+          title: fqns
+          maxItems: 250
+          minItems: 1
+          description: |-
+            Required
+             Fully Qualified Names of attribute values (i.e. https://<namespace>/attr/<attribute_name>/value/<value_name>), normalized to lower case.
+      title: GetEntitleableAttributesByFqnsRequest
+      additionalProperties: false
+      description: |-
+        Entitleable Attributes By FQNs (server-side decisioning path)
+
+        Narrow read API for Auth Service / Access PDP entitlement resolution. Given
+        attribute value FQNs, returns the parent definitions (deduped, each with its
+        rule) and, per requested value, the value identity and the subject mappings
+        needed to resolve entitlements. Hierarchy definitions additionally carry their
+        ordered values with subject mappings, for hierarchy rule propagation. It does
+        not return KAS keys, grants, resource mappings, obligations, or metadata.
+    policy.attributes.GetEntitleableAttributesByFqnsResponse:
+      type: object
+      properties:
+        definitions:
+          type: object
+          title: definitions
+          additionalProperties:
+            title: value
+            $ref: '#/components/schemas/policy.attributes.GetEntitleableAttributesByFqnsResponse.EntitleableDefinition'
+          description: map of definition FQN to its definition, returned once each (deduped)
+        fqnEntitleableAttributes:
+          type: object
+          title: fqn_entitleable_attributes
+          additionalProperties:
+            title: value
+            $ref: '#/components/schemas/policy.attributes.GetEntitleableAttributesByFqnsResponse.EntitleableAttribute'
+          description: map of requested value FQN to its value and parent definition reference, for O(1) lookup
+      title: GetEntitleableAttributesByFqnsResponse
+      additionalProperties: false
+    policy.attributes.GetEntitleableAttributesByFqnsResponse.DefinitionsEntry:
+      type: object
+      properties:
+        key:
+          type: string
+          title: key
+        value:
+          title: value
+          $ref: '#/components/schemas/policy.attributes.GetEntitleableAttributesByFqnsResponse.EntitleableDefinition'
+      title: DefinitionsEntry
+      additionalProperties: false
+    policy.attributes.GetEntitleableAttributesByFqnsResponse.EntitleableAttribute:
+      type: object
+      properties:
+        definitionFqn:
+          type: string
+          title: definition_fqn
+          description: the FQN of the parent definition, a key into `definitions`
+        value:
+          title: value
+          description: the requested attribute value plus its subject mappings
+          $ref: '#/components/schemas/policy.attributes.GetEntitleableAttributesByFqnsResponse.EntitleableValue'
+      title: EntitleableAttribute
+      additionalProperties: false
+    policy.attributes.GetEntitleableAttributesByFqnsResponse.EntitleableDefinition:
+      type: object
+      properties:
+        rule:
+          title: rule
+          description: the attribute rule, which drives rule logic during decisioning
+          $ref: '#/components/schemas/policy.AttributeRuleTypeEnum'
+        values:
+          type: array
+          items:
+            $ref: '#/components/schemas/policy.attributes.GetEntitleableAttributesByFqnsResponse.EntitleableValue'
+          title: values
+          description: |-
+            the definition's values in order, each with its subject mappings. Populated
+             ONLY for hierarchy definitions (whose decisioning needs sibling values and
+             their mappings to propagate entitlement up the chain). Empty for any_of /
+             all_of, where the requested per-value entries below carry what's needed.
+      title: EntitleableDefinition
+      additionalProperties: false
+      description: |-
+        An attribute definition referenced by one or more requested value FQNs,
+         returned once regardless of how many of its values were requested.
+    policy.attributes.GetEntitleableAttributesByFqnsResponse.EntitleableValue:
+      type: object
+      properties:
+        fqn:
+          type: string
+          title: fqn
+          description: the attribute value FQN
+        valueId:
+          type: string
+          title: value_id
+          description: identity of the attribute value
+        subjectMappings:
+          type: array
+          items:
+            $ref: '#/components/schemas/policy.SubjectMapping'
+          title: subject_mappings
+          description: subject mappings used to resolve entitlements for this value
+      title: EntitleableValue
+      additionalProperties: false
+      description: An attribute value plus the subject mappings that entitle it.
+    policy.attributes.GetEntitleableAttributesByFqnsResponse.FqnEntitleableAttributesEntry:
+      type: object
+      properties:
+        key:
+          type: string
+          title: key
+        value:
+          title: value
+          $ref: '#/components/schemas/policy.attributes.GetEntitleableAttributesByFqnsResponse.EntitleableAttribute'
+      title: FqnEntitleableAttributesEntry
+      additionalProperties: false
+    policy.attributes.GetKeyMappingsByFqnsRequest:
+      type: object
+      properties:
+        fqns:
+          type: array
+          items:
+            type: string
+            maxItems: 250
+            minItems: 1
+          title: fqns
+          maxItems: 250
+          minItems: 1
+          description: |-
+            Required
+             Fully Qualified Names of attribute values (i.e. https://<namespace>/attr/<attribute_name>/value/<value_name>), normalized to lower case.
+      title: GetKeyMappingsByFqnsRequest
+      additionalProperties: false
+      description: |-
+        Key Mappings By FQNs (client-side key split path)
+
+        Narrow read API for the client-side encrypt flow. Given attribute value FQNs,
+        returns only the information needed to build key splits: the governing
+        attribute rule and the effective KAS keys resolved server-side. It does not
+        return subject mappings, resource mappings, obligations, sibling values, or
+        metadata. Prefer this over GetAttributeValuesByFqns when building splits.
+    policy.attributes.GetKeyMappingsByFqnsResponse:
+      type: object
+      properties:
+        fqnKeyMappings:
+          type: object
+          title: fqn_key_mappings
+          additionalProperties:
+            title: value
+            $ref: '#/components/schemas/policy.attributes.GetKeyMappingsByFqnsResponse.AttributeKeyMapping'
+          description: map of value FQN to its key mapping information, for O(1) lookup
+      title: GetKeyMappingsByFqnsResponse
+      additionalProperties: false
+    policy.attributes.GetKeyMappingsByFqnsResponse.AttributeKeyMapping:
+      type: object
+      properties:
+        rule:
+          title: rule
+          description: the attribute rule, which governs how splits combine (any_of / all_of / hierarchy)
+          $ref: '#/components/schemas/policy.AttributeRuleTypeEnum'
+        keys:
+          type: array
+          items:
+            $ref: '#/components/schemas/policy.SimpleKasKey'
+          title: keys
+          description: |-
+            effective KAS keys resolved for this value (value > definition > namespace
+             precedence). Legacy grants are not used by this API; values configured only
+             with grants and no kas_keys return an empty key set.
+      title: AttributeKeyMapping
+      additionalProperties: false
+    policy.attributes.GetKeyMappingsByFqnsResponse.FqnKeyMappingsEntry:
+      type: object
+      properties:
+        key:
+          type: string
+          title: key
+        value:
+          title: value
+          $ref: '#/components/schemas/policy.attributes.GetKeyMappingsByFqnsResponse.AttributeKeyMapping'
+      title: FqnKeyMappingsEntry
       additionalProperties: false
     policy.attributes.ListAttributeValuesRequest:
       type: object

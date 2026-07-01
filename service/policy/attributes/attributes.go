@@ -172,6 +172,18 @@ func (s *AttributesService) GetAttributeValuesByFqns(ctx context.Context,
 	return connect.NewResponse(rsp), nil
 }
 
+func (s *AttributesService) GetKeyMappingsByFqns(_ context.Context, _ *connect.Request[attributes.GetKeyMappingsByFqnsRequest]) (*connect.Response[attributes.GetKeyMappingsByFqnsResponse], error) {
+	// Server implementation lands in the follow-up service PR; the proto and
+	// generated code are released first.
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("GetKeyMappingsByFqns is not yet implemented"))
+}
+
+func (s *AttributesService) GetEntitleableAttributesByFqns(_ context.Context, _ *connect.Request[attributes.GetEntitleableAttributesByFqnsRequest]) (*connect.Response[attributes.GetEntitleableAttributesByFqnsResponse], error) {
+	// Server implementation lands in the follow-up service PR; the proto and
+	// generated code are released first.
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("GetEntitleableAttributesByFqns is not yet implemented"))
+}
+
 func (s *AttributesService) UpdateAttribute(ctx context.Context,
 	req *connect.Request[attributes.UpdateAttributeRequest],
 ) (*connect.Response[attributes.UpdateAttributeResponse], error) {

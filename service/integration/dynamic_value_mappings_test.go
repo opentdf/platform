@@ -11,6 +11,7 @@ import (
 	"github.com/opentdf/platform/protocol/go/policy/subjectmapping"
 	"github.com/opentdf/platform/protocol/go/policy/unsafe"
 	"github.com/opentdf/platform/service/internal/fixtures"
+	"github.com/opentdf/platform/service/pkg/db"
 	policydb "github.com/opentdf/platform/service/policy/db"
 	"github.com/stretchr/testify/suite"
 )
@@ -90,7 +91,7 @@ func (s *DynamicValueMappingsSuite) TestRejectsHierarchyDefinition() {
 		ValueResolver:         s.resolver(".x[]", policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_IN),
 		Actions:               []*policy.Action{s.readAction()},
 	})
-	s.Require().Error(err, "HIERARCHY definitions must be rejected")
+	s.Require().ErrorIs(err, db.ErrEnumValueInvalid, "HIERARCHY definitions must be rejected")
 }
 
 func (s *DynamicValueMappingsSuite) TestNoCoexistence_SubjectMappingThenDynamic() {
@@ -111,7 +112,7 @@ func (s *DynamicValueMappingsSuite) TestNoCoexistence_SubjectMappingThenDynamic(
 		ValueResolver:         s.resolver(".x[]", policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_IN),
 		Actions:               []*policy.Action{s.readAction()},
 	})
-	s.Require().Error(err, "dynamic mapping must not coexist with value-level subject mappings")
+	s.Require().ErrorIs(err, db.ErrRestrictViolation, "dynamic mapping must not coexist with value-level subject mappings")
 }
 
 func (s *DynamicValueMappingsSuite) TestNoCoexistence_DynamicThenSubjectMapping() {
@@ -133,7 +134,7 @@ func (s *DynamicValueMappingsSuite) TestNoCoexistence_DynamicThenSubjectMapping(
 		Actions:                []*policy.Action{s.readAction()},
 		NewSubjectConditionSet: s.sampleSCSCreate(),
 	})
-	s.Require().Error(err, "value-level subject mapping must not coexist with a dynamic mapping")
+	s.Require().ErrorIs(err, db.ErrRestrictViolation, "value-level subject mapping must not coexist with a dynamic mapping")
 }
 
 func (s *DynamicValueMappingsSuite) TestRejectsRuleChangeToHierarchy() {
@@ -150,7 +151,7 @@ func (s *DynamicValueMappingsSuite) TestRejectsRuleChangeToHierarchy() {
 		Id:   attr.GetId(),
 		Rule: policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY,
 	})
-	s.Require().Error(err, "changing the rule to HIERARCHY must be rejected when a dynamic mapping exists")
+	s.Require().ErrorIs(err, db.ErrRestrictViolation, "changing the rule to HIERARCHY must be rejected when a dynamic mapping exists")
 }
 
 func (s *DynamicValueMappingsSuite) TestUpdateAndDelete() {

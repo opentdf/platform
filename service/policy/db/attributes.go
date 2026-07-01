@@ -473,7 +473,7 @@ func (c PolicyDBClient) UnsafeUpdateAttribute(ctx context.Context, r *unsafe.Uns
 		}
 		if dynamicCount > 0 {
 			return nil, errors.Join(db.ErrRestrictViolation,
-				fmt.Errorf("attribute definition [%s] has a definition value entitlement mapping; its rule cannot be changed to HIERARCHY", id))
+				fmt.Errorf("attribute definition [%s] has a dynamic value mapping; its rule cannot be changed to HIERARCHY", id))
 		}
 	}
 

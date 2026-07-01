@@ -21,7 +21,7 @@ func Test_NewEntitlementPolicyCache(t *testing.T) {
 	refreshInterval := 10 * time.Second
 	mockCache, _ := cache.TestCacheClient(mockCacheExpiry)
 
-	c, err := NewEntitlementPolicyCache(ctx, l, nil, mockCache, refreshInterval)
+	c, err := NewEntitlementPolicyCache(ctx, l, nil, mockCache, refreshInterval, false)
 	require.NoError(t, err)
 	assert.NotNil(t, c)
 	assert.Equal(t, refreshInterval, c.configuredRefreshInterval)
@@ -33,11 +33,11 @@ func Test_EntitlementPolicyCache_RefreshInterval(t *testing.T) {
 	ctx := t.Context()
 	mockCache, _ := cache.TestCacheClient(mockCacheExpiry)
 
-	_, err := NewEntitlementPolicyCache(ctx, l, nil, mockCache, refreshInterval)
+	_, err := NewEntitlementPolicyCache(ctx, l, nil, mockCache, refreshInterval, false)
 	require.ErrorIs(t, err, ErrCacheDisabled)
 
 	refreshInterval = 10 * time.Second
-	c, err := NewEntitlementPolicyCache(ctx, l, nil, mockCache, refreshInterval)
+	c, err := NewEntitlementPolicyCache(ctx, l, nil, mockCache, refreshInterval, false)
 	require.NoError(t, err)
 	assert.NotNil(t, c)
 }
@@ -53,7 +53,7 @@ func Test_EntitlementPolicyCache_Enabled(t *testing.T) {
 	assert.False(t, c.IsEnabled())
 	assert.False(t, c.IsReady(ctx))
 
-	c, err = NewEntitlementPolicyCache(ctx, l, nil, mockCache, refreshInterval)
+	c, err = NewEntitlementPolicyCache(ctx, l, nil, mockCache, refreshInterval, false)
 	require.NoError(t, err)
 	assert.NotNil(t, c)
 	assert.True(t, c.IsEnabled())
@@ -65,7 +65,7 @@ func Test_EntitlementPolicyCache_CacheMiss(t *testing.T) {
 	ctx := t.Context()
 	mockCache, _ := cache.TestCacheClient(mockCacheExpiry)
 
-	c, err := NewEntitlementPolicyCache(ctx, l, nil, mockCache, 1*time.Hour)
+	c, err := NewEntitlementPolicyCache(ctx, l, nil, mockCache, 1*time.Hour, false)
 	require.NoError(t, err)
 
 	// No errors, but empty lists on cache misses
@@ -93,7 +93,7 @@ func Test_EntitlementPolicyCache_CacheHits(t *testing.T) {
 	_ = mockCache.Set(ctx, subjectMappingsCacheKey, subjMappingsList, nil)
 	_ = mockCache.Set(ctx, registeredResourcesCacheKey, resourcesList, nil)
 
-	c, err := NewEntitlementPolicyCache(ctx, l, nil, mockCache, 1*time.Hour)
+	c, err := NewEntitlementPolicyCache(ctx, l, nil, mockCache, 1*time.Hour, false)
 	require.NoError(t, err)
 
 	// Allow for some concurrency overhead in cache library to prevent flakiness in tests

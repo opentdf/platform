@@ -49,6 +49,10 @@ type EntitlementPolicyCache struct {
 	// SDK-connected retriever to fetch fresh data from policy services
 	retriever *access.EntitlementPolicyRetriever
 
+	// allowDynamicValueMappings gates fetching the experimental dynamic value mappings, so cache
+	// health does not depend on that endpoint when the feature is disabled.
+	allowDynamicValueMappings bool
+
 	// Refresh state
 	configuredRefreshInterval time.Duration
 	stopRefresh               chan struct{}
@@ -76,6 +80,7 @@ func NewEntitlementPolicyCache(
 	retriever *access.EntitlementPolicyRetriever,
 	cacheClient *cache.Cache,
 	cacheRefreshInterval time.Duration,
+	allowDynamicValueMappings bool,
 ) (*EntitlementPolicyCache, error) {
 	if cacheRefreshInterval == 0 {
 		return nil, ErrCacheDisabled
@@ -88,6 +93,7 @@ func NewEntitlementPolicyCache(
 		logger:                    l,
 		cacheClient:               cacheClient,
 		retriever:                 retriever,
+		allowDynamicValueMappings: allowDynamicValueMappings,
 		configuredRefreshInterval: cacheRefreshInterval,
 		stopRefresh:               make(chan struct{}),
 		refreshCompleted:          make(chan struct{}),
@@ -180,9 +186,14 @@ func (c *EntitlementPolicyCache) Refresh(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	dynamicValueMappings, err := c.retriever.ListAllDynamicValueMappings(ctx)
-	if err != nil {
-		return err
+	// Only fetch the experimental dynamic value mappings when enabled, so cache readiness does not
+	// depend on that endpoint while the feature is off.
+	var dynamicValueMappings []*policy.DynamicValueMapping
+	if c.allowDynamicValueMappings {
+		dynamicValueMappings, err = c.retriever.ListAllDynamicValueMappings(ctx)
+		if err != nil {
+			return err
+		}
 	}
 	registeredResources, err := c.retriever.ListAllRegisteredResources(ctx)
 	if err != nil {

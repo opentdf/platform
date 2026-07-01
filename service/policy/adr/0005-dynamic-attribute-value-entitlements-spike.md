@@ -36,33 +36,37 @@ new operator is the shared mechanic *every* shape needs, and the new primitive i
 for it. Reuse-of-subject-mappings and a new-attribute-rule were both prototyped and found to carry
 avoidable downsides (below).
 
-### Shared Mechanic: a new operator (required by every option)
+### Shared Mechanic: comparing against the resource value
 
 Existing condition evaluation compares an entity's selector result against a **static list authored into
 policy** (`policy.Condition.subject_external_values`; see
 [`subjectmappingbuiltin.EvaluateCondition`](../../internal/subjectmappingbuiltin/subject_mapping_builtin.go)).
-The dynamic case **inverts** the comparison: the right-hand operand is the **resource's value segment**
+The dynamic case supplies a different right-hand operand: the **resource's value segment**
 (e.g. `mrn-123`, parsed from `…/value/mrn-123`), known only at decision time, tested for membership in the
 entity's selector-resolved set (e.g. `.patientAssignments` → `["mrn-123","mrn-789"]`).
 
-This inversion cannot be expressed by the current operators, so a new operator is unavoidable regardless
-of container. The spike implements `RESOURCE_VALUE_IN` (and `RESOURCE_VALUE_IN_CONTAINS`) as the inversion
-of `IN` / `IN_CONTAINS`. Per @jrschumacher's feedback on the ADR, the operator name should make the
-direction explicit, so `RESOURCE_VALUE_IN` reads as "the resource value is in the selector result".
+No new operator enum is required for this. `DynamicValueResolver` reuses `SubjectMappingOperatorEnum`:
+`IN` matches when the resource segment equals any resolved entity value, and `IN_CONTAINS` matches on
+substring containment. The match is inherently existential over the resolved values, so `NOT_IN` is
+rejected (a definition-wide "not entitled" has no meaning at decision time). Reusing the existing
+operator keeps the resolver and subject-mapping vocabularies aligned; see
+[`evaluateValueResolver`](../../internal/subjectmappingbuiltin/dynamic_value_mapping_builtin.go).
 
-This single function (`evaluateDynamicMatch` in `core.go`) backs all three prototyped shapes. The
-`TestMRNExampleAcrossAllShapes` test replays the ADR's worked example against all three and confirms they
-decide identically. The shapes therefore differ only in schema, admin UX, and enforcement, not behavior.
+> [!NOTE]
+> The original spike prototyped a dedicated `RESOURCE_VALUE_IN` operator to make the direction
+> explicit. Implementation reused `SubjectMappingOperatorEnum` instead: the resolver already fixes the
+> comparison direction (resource segment against the resolved set), so a separate enum added surface
+> without changing behavior.
 
 ## Options
 
 | Dimension | A. Reuse Subject Mappings | B. New Primitive (recommended) | C. New Attribute Rule |
 | --- | --- | --- | --- |
 | Expresses "dynamic" in schema | ✗ must overload `subject_external_values` with a sentinel | ✓ typed fields, intent explicit | ◑ rule value implies it |
-| Operator field honesty | ✗ static `SubjectMappingOperatorEnum` reused for dynamic meaning | ✓ typed to dynamic operators only | ✓ |
+| Operator field honesty | ✗ static `SubjectMappingOperatorEnum` reused, dynamic meaning implicit | ✓ `SubjectMappingOperatorEnum` in a resolver whose direction is explicit (`NOT_IN` rejected) | ✓ |
 | Combination rule (ANY_OF/ALL_OF) still available | ✓ orthogonal | ✓ orthogonal | ✗ rule slot consumed (see below) |
 | Reuses existing evaluator code | ✓ partial (static leaves) | ✗ (new, small) | ✗ |
-| Mixed static + dynamic conditions | ✓ supported | ✗ would need a companion subject mapping | ✗ |
+| Mixed static + dynamic conditions | ✓ supported | ✓ optional `SubjectConditionSet` pre-gate | ✗ |
 | Admin/UX clarity | ✗ "why is this subject mapping on a definition?" | ✓ distinct object, distinct mental model | ◑ overloads "rule" concept |
 | Migration drift from today | low (same tables) | medium (new table/proto) | medium |
 
@@ -99,11 +103,13 @@ not share one field.
   email-like identifiers (`user@acme.co` fails to parse). If the owner/email use case is in scope, the
   value grammar must be deliberately widened, but only to a set that excludes the ambiguous characters
   above.
-- **Canonicalization** (@biscoe916): external systems disagree with policy on case and whitespace. Without a
-  normalization step, `MRN-123` from the IdP fails to match `mrn-123` in the FQN. The spike applies a
-  pluggable `Canonicalizer` (default: lowercase + trim) to both sides. `TestCanonicalization` shows the
-  match succeed with it and fail without it. A real implementation must decide where canonicalization is
-  authoritative and whether it is configurable per definition.
+- **Canonicalization** (@biscoe916): external systems disagree with policy on case and whitespace, so
+  `MRN-123` from the IdP would not match `mrn-123` in the FQN. The spike explored a pluggable
+  `Canonicalizer` (lowercase + trim). The shipped resolver does **not** canonicalize: matching is exact
+  and case-sensitive (`IN` compares equality, `IN_CONTAINS` substring), keeping behavior predictable and
+  the operator vocabulary shared with static subject mappings. Where case/whitespace normalization should
+  live, and whether it is configurable per definition, is left as a follow-up rather than baked into the
+  first release.
 - **Cross-Definition / Namespace Collisions** (@jakedoublev): because entitlement is keyed to the value's
   *parent definition FQN*, the same pass-through segment under a different definition is **not** granted
   (`TestCrossDefinitionNoLeak`). This is the key advantage of entitling concrete value FQNs over entitling

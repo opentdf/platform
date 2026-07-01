@@ -617,7 +617,7 @@ func (as *AuthorizationService) getDecisions(ctx context.Context, dr *authorizat
 			auditECEntitlements := make([]audit.EntityChainEntitlement, 0)
 			auditEntityDecisions := make([]audit.EntityDecision, 0)
 
-			// Entitlements for environment entites in chain
+			// Entitlements for environment entities in chain
 			envEntityAttrValues := make(map[string][]string)
 			// Entitlementsfor sbuject entities in chain
 			subjectEntityAttrValues := make(map[string][]string)

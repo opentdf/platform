@@ -2,7 +2,7 @@ FROM cgr.dev/chainguard/go:latest AS builder
 ARG TARGETOS TARGETARCH
 
 WORKDIR /app
-# dependencies, add local,dependant package here
+# dependencies, add local,dependent package here
 COPY protocol/ protocol/
 COPY sdk/ sdk/
 COPY lib/ lib/

@@ -2,7 +2,7 @@
 
 A Docker container with [wiremock](https://wiremock.org/) + [wiremock grpc extension](https://wiremock.org/docs/grpc/)
 
-WireMock requires service decriptions for the proto spec.  To generate service descriptions:
+WireMock requires service descriptions for the proto spec.  To generate service descriptions:
 
 ```shell
 buf build ../../proto \

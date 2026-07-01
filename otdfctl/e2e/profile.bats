@@ -10,7 +10,7 @@ setup() {
   bats_load_library bats-support
   bats_load_library bats-assert
 
-  run_otdfctl() {
+  run_otdfctl_profile() {
     run bash -c "./otdfctl profile $*"
   }
 
@@ -22,18 +22,18 @@ setup() {
 }
 
 teardown() {
-  run_otdfctl delete-all --force
-  run_otdfctl delete-all --store keyring --force
+  run_otdfctl_profile delete-all --force
+  run_otdfctl_profile delete-all --store keyring --force
 }
 
 @test "profile create" {
   profile="${PROFILE_TEST_PREFIX}-create"
-  run_otdfctl create "$profile" http://localhost:8080
+  run_otdfctl_profile create "$profile" http://localhost:8080
   assert_success
   assert_output --partial "Profile ${profile} created"
 
   # Invalid endpoint should fail with a helpful message
-  run_otdfctl create "$profile" localhost:8080
+  run_otdfctl_profile create "$profile" localhost:8080
   assert_failure
   assert_output --partial "Failed to create profile"
   assert_output --partial "invalid scheme"
@@ -43,13 +43,13 @@ teardown() {
   profile1="${PROFILE_TEST_PREFIX}-list-1"
   profile2="${PROFILE_TEST_PREFIX}-list-2"
 
-  run_otdfctl create "$profile1" http://localhost:8080
+  run_otdfctl_profile create "$profile1" http://localhost:8080
   assert_success
 
-  run_otdfctl create "$profile2" http://localhost:8080 --set-default
+  run_otdfctl_profile create "$profile2" http://localhost:8080 --set-default
   assert_success
 
-  run_otdfctl list
+  run_otdfctl_profile list
   assert_success
   assert_output --partial "Listing profiles from filesystem"
   assert_output --partial "  ${profile1}"
@@ -64,7 +64,7 @@ teardown() {
   run_otdfctl_profile_keyring create --set-default "$profile2_keyring" http://localhost:8080
   assert_success
 
-  run_otdfctl list --store keyring
+  run_otdfctl_profile list --store keyring
   assert_success
   assert_output --partial "Listing profiles from keyring"
   assert_output --partial "  ${profile1_keyring}"
@@ -74,10 +74,10 @@ teardown() {
 @test "profile get shows profile details" {
   profile="${PROFILE_TEST_PREFIX}-get"
 
-  run_otdfctl create "$profile" http://localhost:8080 --set-default
+  run_otdfctl_profile create "$profile" http://localhost:8080 --set-default
   assert_success
 
-  run_otdfctl get "$profile"
+  run_otdfctl_profile get "$profile"
   assert_success
   assert_output --partial "Profile"
   assert_output --partial "$profile"
@@ -91,7 +91,7 @@ teardown() {
   run_otdfctl_profile_keyring create --set-default "$profile_keyring" http://localhost:8080
   assert_success
 
-  run_otdfctl get "$profile_keyring" --store keyring
+  run_otdfctl_profile get "$profile_keyring" --store keyring
   assert_success
   assert_output --partial "Profile"
   assert_output --partial "$profile_keyring"
@@ -106,17 +106,17 @@ teardown() {
   default_profile="${base}-default"
   target_profile="${base}-target"
 
-  run_otdfctl create "$default_profile" http://localhost:8080 --set-default
+  run_otdfctl_profile create "$default_profile" http://localhost:8080 --set-default
   assert_success
 
-  run_otdfctl create "$target_profile" http://localhost:8080
+  run_otdfctl_profile create "$target_profile" http://localhost:8080
   assert_success
 
-  run_otdfctl delete "$target_profile"
+  run_otdfctl_profile delete "$target_profile"
   assert_success
   assert_output --partial "Deleted profile ${target_profile} from filesystem"
 
-  run_otdfctl list
+  run_otdfctl_profile list
   assert_success
   refute_output --partial "$target_profile"
 
@@ -130,11 +130,11 @@ teardown() {
   run_otdfctl_profile_keyring create "$target_profile_keyring" http://localhost:8080
   assert_success
 
-  run_otdfctl delete "$target_profile_keyring" --store keyring
+  run_otdfctl_profile delete "$target_profile_keyring" --store keyring
   assert_success
   assert_output --partial "Deleted profile ${target_profile_keyring} from keyring"
 
-  run_otdfctl list --store keyring
+  run_otdfctl_profile list --store keyring
   assert_success
   refute_output --partial "$target_profile_keyring"
 }
@@ -143,13 +143,13 @@ teardown() {
   profile1="${PROFILE_TEST_PREFIX}-list-json-1"
   profile2="${PROFILE_TEST_PREFIX}-list-json-2"
 
-  run_otdfctl create "$profile1" http://localhost:8080
+  run_otdfctl_profile create "$profile1" http://localhost:8080
   assert_success
 
-  run_otdfctl create "$profile2" http://localhost:8080 --set-default
+  run_otdfctl_profile create "$profile2" http://localhost:8080 --set-default
   assert_success
 
-  run_otdfctl list --json
+  run_otdfctl_profile list --json
   assert_success
   assert_equal "$(echo "$output" | jq -r .store)" "filesystem"
   echo "$output" | jq -e --arg profile1 "$profile1" --arg profile2 "$profile2" \
@@ -159,10 +159,10 @@ teardown() {
 @test "profile get supports json output" {
   profile="${PROFILE_TEST_PREFIX}-get-json"
 
-  run_otdfctl create "$profile" http://localhost:8080 --set-default --output-format json
+  run_otdfctl_profile create "$profile" http://localhost:8080 --set-default --output-format json
   assert_success
 
-  run_otdfctl get "$profile" --json
+  run_otdfctl_profile get "$profile" --json
   assert_success
   assert_equal "$(echo "$output" | jq -r .profile)" "$profile"
   assert_equal "$(echo "$output" | jq -r .endpoint)" "http://localhost:8080"
@@ -173,7 +173,7 @@ teardown() {
 @test "profile errors support json output" {
   profile="${PROFILE_TEST_PREFIX}-missing-json"
 
-  run_otdfctl get "$profile" --json
+  run_otdfctl_profile get "$profile" --json
   assert_failure
   assert_equal "$(echo "$output" | jq -r .status)" "ERROR"
   echo "$output" | jq -e --arg profile "$profile" '.message | contains($profile)'
@@ -184,17 +184,17 @@ teardown() {
   profile1="${base}-1"
   profile2="${base}-2"
 
-  run_otdfctl create "$profile1" http://localhost:8080 --set-default
+  run_otdfctl_profile create "$profile1" http://localhost:8080 --set-default
   assert_success
 
-  run_otdfctl create "$profile2" http://localhost:8081
+  run_otdfctl_profile create "$profile2" http://localhost:8081
   assert_success
 
-  run_otdfctl set-default "$profile2"
+  run_otdfctl_profile set-default "$profile2"
   assert_success
   assert_output --partial "Set profile ${profile2} as default"
 
-  run_otdfctl list
+  run_otdfctl_profile list
   assert_success
   assert_output --partial "* ${profile2}"
 }
@@ -202,14 +202,14 @@ teardown() {
 @test "profile set-endpoint updates endpoint" {
   profile="${PROFILE_TEST_PREFIX}-set-endpoint"
 
-  run_otdfctl create "$profile" http://localhost:8080
+  run_otdfctl_profile create "$profile" http://localhost:8080
   assert_success
 
-  run_otdfctl set-endpoint "$profile" http://localhost:8081
+  run_otdfctl_profile set-endpoint "$profile" http://localhost:8081
   assert_success
   assert_output --partial "Set endpoint http://localhost:8081 for profile ${profile}"
 
-  run_otdfctl get "$profile"
+  run_otdfctl_profile get "$profile"
   assert_success
   assert_output --partial "http://localhost:8081"
 }
@@ -219,17 +219,17 @@ teardown() {
   profile1="${base}-1"
   profile2="${base}-2"
 
-  run_otdfctl create "$profile1" http://localhost:8080 --set-default
+  run_otdfctl_profile create "$profile1" http://localhost:8080 --set-default
   assert_success
 
-  run_otdfctl create "$profile2" http://localhost:8081
+  run_otdfctl_profile create "$profile2" http://localhost:8081
   assert_success
 
-  run_otdfctl delete-all --force
+  run_otdfctl_profile delete-all --force
   assert_success
   assert_output --regexp '^Deleted [0-9]+ profiles from filesystem$'
 
-  run_otdfctl list
+  run_otdfctl_profile list
   assert_success
   refute_output --partial "$profile1"
   refute_output --partial "$profile2"
@@ -244,11 +244,11 @@ teardown() {
   run_otdfctl_profile_keyring create "$profile2_keyring" http://localhost:8081
   assert_success
 
-  run_otdfctl delete-all --store keyring --force
+  run_otdfctl_profile delete-all --store keyring --force
   assert_success
   assert_output --regexp '^Deleted [0-9]+ profiles from keyring$'
 
-  run_otdfctl list --store keyring
+  run_otdfctl_profile list --store keyring
   assert_success
   refute_output --partial "$profile1_keyring"
   refute_output --partial "$profile2_keyring"
@@ -265,27 +265,27 @@ teardown() {
   run_otdfctl_profile_keyring create "$profile2" http://localhost:8081
   assert_success
 
-  run_otdfctl list --store keyring
+  run_otdfctl_profile list --store keyring
   assert_success
   assert_output --partial "$profile1"
   assert_output --partial "$profile2"
 
-  run_otdfctl list
+  run_otdfctl_profile list
   assert_success
   refute_output --partial "$profile1"
   refute_output --partial "$profile2"
 
-  run_otdfctl migrate
+  run_otdfctl_profile migrate
   assert_success
   assert_output --partial "Migration complete."
 
-  run_otdfctl list
+  run_otdfctl_profile list
   assert_success
   assert_output --partial "Listing profiles from filesystem"
   assert_output --partial "* ${profile1}"
   assert_output --partial "  ${profile2}"
 
-  run_otdfctl list --store keyring
+  run_otdfctl_profile list --store keyring
   assert_success
   assert_output --partial "Listing profiles from keyring"
   refute_output --partial "$profile1"
@@ -303,16 +303,16 @@ teardown() {
   run_otdfctl_profile_keyring create "$profile2" http://localhost:8081
   assert_success
 
-  run_otdfctl list --store keyring
+  run_otdfctl_profile list --store keyring
   assert_success
   assert_output --partial "$profile1"
   assert_output --partial "$profile2"
 
-  run_otdfctl cleanup --force
+  run_otdfctl_profile cleanup --force
   assert_success
   assert_output --partial "Keyring profile store cleanup complete"
 
-  run_otdfctl list --store keyring
+  run_otdfctl_profile list --store keyring
   assert_success
   refute_output --partial "$profile1"
   refute_output --partial "$profile2"

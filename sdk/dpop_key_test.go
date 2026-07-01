@@ -254,6 +254,18 @@ func TestValidateDPoPKey(t *testing.T) {
 		assert.Contains(t, err.Error(), "RSA key", "error should mention RSA key requirement")
 	})
 
+	t.Run("RSA PEM overridden to ES256 rejected", func(t *testing.T) {
+		raw, err := rsa.GenerateKey(rand.Reader, 2048)
+		require.NoError(t, err, "generate RSA key")
+		pemBytes := pem.EncodeToMemory(&pem.Block{
+			Type:  "RSA PRIVATE KEY",
+			Bytes: x509.MarshalPKCS1PrivateKey(raw),
+		})
+		_, err = resolveDPoPKey(&config{dpopKeyPEM: pemBytes, dpopAlgorithm: "ES256"})
+		require.Error(t, err, "expected error for RSA PEM overridden to ES256")
+		assert.Contains(t, err.Error(), "EC key", "error should mention EC key requirement")
+	})
+
 	t.Run("EC curve/algorithm mismatch rejected", func(t *testing.T) {
 		raw, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 		require.NoError(t, err, "generate P-256 key")

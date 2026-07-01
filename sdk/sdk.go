@@ -343,16 +343,11 @@ func buildIDPTokenSource(c *config) (auth.AccessTokenSource, jwk.Key, error) {
 		return nil, nil, fmt.Errorf("failed to resolve DPoP key: %w", err)
 	}
 
-	// No DPoP key configured: auto-generate a default RSA key pair and use it.
+	// No DPoP key configured: auto-generate a default ephemeral ES256/P-256 key.
 	if dpopKey == nil {
-		rsaKeyPair, err := ocrypto.NewRSAKeyPair(dpopKeySize)
+		dpopKey, err = generateDPoPKeyForAlg(dpopAlgES256)
 		if err != nil {
-			return nil, nil, fmt.Errorf("could not generate RSA Key: %w", err)
-		}
-		c.dpopKey = &rsaKeyPair
-		dpopKey, err = getDPoPJWK(c.dpopKey)
-		if err != nil {
-			return nil, nil, fmt.Errorf("failed to create DPoP JWK: %w", err)
+			return nil, nil, fmt.Errorf("failed to generate default DPoP key: %w", err)
 		}
 	}
 

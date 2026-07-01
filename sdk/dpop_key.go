@@ -204,7 +204,7 @@ func validateDPoPKey(key jwk.Key) error {
 // and share the result between the token source and the DPoP transport.
 //
 // A (nil, nil) return means no DPoP key is configured; callers auto-generate a
-// default RSA key in that case.
+// default ephemeral ES256/P-256 key in that case.
 func resolveDPoPKey(c *config) (jwk.Key, error) {
 	key, err := selectDPoPKey(c)
 	if err != nil || key == nil {

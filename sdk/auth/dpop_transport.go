@@ -131,6 +131,14 @@ func (t *DPoPTransport) retryWithNonce(
 	}
 
 	t.setCachedNonce(origin, newNonce)
+
+	// A one-shot body (streaming / unknown length) was consumed by the first
+	// attempt and cannot be replayed; cache the nonce for the next request but
+	// return the 401 rather than resending an empty body.
+	if req.Body != nil && req.Body != http.NoBody && req.GetBody == nil {
+		return resp, false, nil
+	}
+
 	resp.Body.Close()
 
 	req3 := cloneRequest(req)

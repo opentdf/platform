@@ -22,8 +22,8 @@ setup() {
 }
 
 teardown() {
-  run_otdfctl profile delete-all --force
-  run_otdfctl profile delete-all --store keyring --force
+  run_otdfctl delete-all --force
+  run_otdfctl delete-all --store keyring --force
 }
 
 @test "profile create" {
@@ -116,7 +116,7 @@ teardown() {
   assert_success
   assert_output --partial "Deleted profile ${target_profile} from filesystem"
 
-  run_otdfctl profile list
+  run_otdfctl list
   assert_success
   refute_output --partial "$target_profile"
 

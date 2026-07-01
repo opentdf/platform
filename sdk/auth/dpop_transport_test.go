@@ -465,6 +465,10 @@ func TestNormalizeURI(t *testing.T) {
 		{"scheme and host lowercased, path preserved", "HTTPS://EXAMPLE.COM/Path", "https://example.com/Path"},
 		{"query and fragment dropped", "https://example.com/p?a=b#frag", "https://example.com/p"},
 		{"empty path", "https://example.com", "https://example.com"},
+		{"uppercase host with default port", "HTTPS://EXAMPLE.COM:443/Path", "https://example.com/Path"},
+		{"ipv6 default port stripped", "https://[::1]:443/path", "https://[::1]/path"},
+		{"ipv6 non-default port kept", "https://[::1]:8443/path", "https://[::1]:8443/path"},
+		{"ipv6 literal ending in 443 kept", "https://[fe80::443]/path", "https://[fe80::443]/path"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -473,6 +477,46 @@ func TestNormalizeURI(t *testing.T) {
 			assert.Equalf(t, tt.want, normalizeURI(u), "normalizeURI(%q)", tt.url)
 		})
 	}
+}
+
+// TestGetOrigin exercises origin extraction, ensuring default ports are stripped
+// (so a URL with an explicit :443 shares a nonce-cache key with one without) and
+// IPv6 literals keep their brackets.
+func TestGetOrigin(t *testing.T) {
+	tests := []struct {
+		name string
+		url  string
+		want string
+	}{
+		{"no port", "https://example.com/path", "https://example.com"},
+		{"default https port stripped", "https://example.com:443/path", "https://example.com"},
+		{"default http port stripped", "http://example.com:80/path", "http://example.com"},
+		{"non-default port kept", "https://example.com:8443/path", "https://example.com:8443"},
+		{"scheme and host lowercased", "HTTPS://EXAMPLE.COM:443/p", "https://example.com"},
+		{"ipv6 default port stripped", "https://[::1]:443/path", "https://[::1]"},
+		{"ipv6 non-default port kept", "https://[::1]:8443/path", "https://[::1]:8443"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			u, err := url.Parse(tt.url)
+			require.NoErrorf(t, err, "parse %q", tt.url)
+			assert.Equalf(t, tt.want, getOrigin(u), "getOrigin(%q)", tt.url)
+		})
+	}
+}
+
+// TestIsTokenEndpointRequest_PortNormalization confirms token-endpoint detection
+// treats an explicit default port as equivalent to no port.
+func TestIsTokenEndpointRequest_PortNormalization(t *testing.T) {
+	transport := &DPoPTransport{TokenEndpoint: "https://example.com/token"}
+
+	withPort, err := url.Parse("https://example.com:443/token")
+	require.NoError(t, err, "parse url with port")
+	assert.True(t, transport.isTokenEndpointRequest(withPort), "explicit :443 should match configured endpoint")
+
+	other, err := url.Parse("https://example.com/other")
+	require.NoError(t, err, "parse url with different path")
+	assert.False(t, transport.isTokenEndpointRequest(other), "different path should not match")
 }
 
 // TestDPoPTransport_TokenSourceErrorAborts verifies that a token-fetch failure

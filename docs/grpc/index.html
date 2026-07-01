@@ -993,6 +993,50 @@
                 </li>
               
                 <li>
+                  <a href="#policy.attributes.GetEntitleableAttributesByFqnsRequest"><span class="badge">M</span>GetEntitleableAttributesByFqnsRequest</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.attributes.GetEntitleableAttributesByFqnsResponse"><span class="badge">M</span>GetEntitleableAttributesByFqnsResponse</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.attributes.GetEntitleableAttributesByFqnsResponse.DefinitionsEntry"><span class="badge">M</span>GetEntitleableAttributesByFqnsResponse.DefinitionsEntry</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.attributes.GetEntitleableAttributesByFqnsResponse.EntitleableAttribute"><span class="badge">M</span>GetEntitleableAttributesByFqnsResponse.EntitleableAttribute</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.attributes.GetEntitleableAttributesByFqnsResponse.EntitleableDefinition"><span class="badge">M</span>GetEntitleableAttributesByFqnsResponse.EntitleableDefinition</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.attributes.GetEntitleableAttributesByFqnsResponse.EntitleableValue"><span class="badge">M</span>GetEntitleableAttributesByFqnsResponse.EntitleableValue</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.attributes.GetEntitleableAttributesByFqnsResponse.FqnEntitleableAttributesEntry"><span class="badge">M</span>GetEntitleableAttributesByFqnsResponse.FqnEntitleableAttributesEntry</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.attributes.GetKeyMappingsByFqnsRequest"><span class="badge">M</span>GetKeyMappingsByFqnsRequest</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.attributes.GetKeyMappingsByFqnsResponse"><span class="badge">M</span>GetKeyMappingsByFqnsResponse</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.attributes.GetKeyMappingsByFqnsResponse.AttributeKeyMapping"><span class="badge">M</span>GetKeyMappingsByFqnsResponse.AttributeKeyMapping</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.attributes.GetKeyMappingsByFqnsResponse.FqnKeyMappingsEntry"><span class="badge">M</span>GetKeyMappingsByFqnsResponse.FqnKeyMappingsEntry</a>
+                </li>
+              
+                <li>
                   <a href="#policy.attributes.ListAttributeValuesRequest"><span class="badge">M</span>ListAttributeValuesRequest</a>
                 </li>
               
@@ -8972,6 +9016,340 @@ Fully Qualified Names of attribute values (i.e. https://&lt;namespace&gt;/attr/&
 
         
       
+        <h3 id="policy.attributes.GetEntitleableAttributesByFqnsRequest">GetEntitleableAttributesByFqnsRequest</h3>
+        <p>Entitleable Attributes By FQNs (server-side decisioning path)</p><p>Narrow read API for Auth Service / Access PDP entitlement resolution. Given</p><p>attribute value FQNs, returns the parent definitions (deduped, each with its</p><p>rule) and, per requested value, the value identity and the subject mappings</p><p>needed to resolve entitlements. Hierarchy definitions additionally carry their</p><p>ordered values with subject mappings, for hierarchy rule propagation. It does</p><p>not return KAS keys, grants, resource mappings, obligations, or metadata.</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>fqns</td>
+                  <td><a href="#string">string</a></td>
+                  <td>repeated</td>
+                  <td><p>Required
+Fully Qualified Names of attribute values (i.e. https://&lt;namespace&gt;/attr/&lt;attribute_name&gt;/value/&lt;value_name&gt;), normalized to lower case. </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.attributes.GetEntitleableAttributesByFqnsResponse">GetEntitleableAttributesByFqnsResponse</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>definitions</td>
+                  <td><a href="#policy.attributes.GetEntitleableAttributesByFqnsResponse.DefinitionsEntry">GetEntitleableAttributesByFqnsResponse.DefinitionsEntry</a></td>
+                  <td>repeated</td>
+                  <td><p>map of definition FQN to its definition, returned once each (deduped) </p></td>
+                </tr>
+              
+                <tr>
+                  <td>fqn_entitleable_attributes</td>
+                  <td><a href="#policy.attributes.GetEntitleableAttributesByFqnsResponse.FqnEntitleableAttributesEntry">GetEntitleableAttributesByFqnsResponse.FqnEntitleableAttributesEntry</a></td>
+                  <td>repeated</td>
+                  <td><p>map of requested value FQN to its value and parent definition reference, for O(1) lookup </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.attributes.GetEntitleableAttributesByFqnsResponse.DefinitionsEntry">GetEntitleableAttributesByFqnsResponse.DefinitionsEntry</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>key</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>value</td>
+                  <td><a href="#policy.attributes.GetEntitleableAttributesByFqnsResponse.EntitleableDefinition">GetEntitleableAttributesByFqnsResponse.EntitleableDefinition</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.attributes.GetEntitleableAttributesByFqnsResponse.EntitleableAttribute">GetEntitleableAttributesByFqnsResponse.EntitleableAttribute</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>definition_fqn</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>the FQN of the parent definition, a key into `definitions` </p></td>
+                </tr>
+              
+                <tr>
+                  <td>value</td>
+                  <td><a href="#policy.attributes.GetEntitleableAttributesByFqnsResponse.EntitleableValue">GetEntitleableAttributesByFqnsResponse.EntitleableValue</a></td>
+                  <td></td>
+                  <td><p>the requested attribute value plus its subject mappings </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.attributes.GetEntitleableAttributesByFqnsResponse.EntitleableDefinition">GetEntitleableAttributesByFqnsResponse.EntitleableDefinition</h3>
+        <p>An attribute definition referenced by one or more requested value FQNs,</p><p>returned once regardless of how many of its values were requested.</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>rule</td>
+                  <td><a href="#policy.AttributeRuleTypeEnum">policy.AttributeRuleTypeEnum</a></td>
+                  <td></td>
+                  <td><p>the attribute rule, which drives rule logic during decisioning </p></td>
+                </tr>
+              
+                <tr>
+                  <td>values</td>
+                  <td><a href="#policy.attributes.GetEntitleableAttributesByFqnsResponse.EntitleableValue">GetEntitleableAttributesByFqnsResponse.EntitleableValue</a></td>
+                  <td>repeated</td>
+                  <td><p>the definition&#39;s values in order, each with its subject mappings. Populated
+ONLY for hierarchy definitions (whose decisioning needs sibling values and
+their mappings to propagate entitlement up the chain). Empty for any_of /
+all_of, where the requested per-value entries below carry what&#39;s needed. </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.attributes.GetEntitleableAttributesByFqnsResponse.EntitleableValue">GetEntitleableAttributesByFqnsResponse.EntitleableValue</h3>
+        <p>An attribute value plus the subject mappings that entitle it.</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>fqn</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>the attribute value FQN </p></td>
+                </tr>
+              
+                <tr>
+                  <td>value_id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>identity of the attribute value </p></td>
+                </tr>
+              
+                <tr>
+                  <td>subject_mappings</td>
+                  <td><a href="#policy.SubjectMapping">policy.SubjectMapping</a></td>
+                  <td>repeated</td>
+                  <td><p>subject mappings used to resolve entitlements for this value </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.attributes.GetEntitleableAttributesByFqnsResponse.FqnEntitleableAttributesEntry">GetEntitleableAttributesByFqnsResponse.FqnEntitleableAttributesEntry</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>key</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>value</td>
+                  <td><a href="#policy.attributes.GetEntitleableAttributesByFqnsResponse.EntitleableAttribute">GetEntitleableAttributesByFqnsResponse.EntitleableAttribute</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.attributes.GetKeyMappingsByFqnsRequest">GetKeyMappingsByFqnsRequest</h3>
+        <p>Key Mappings By FQNs (client-side key split path)</p><p>Narrow read API for the client-side encrypt flow. Given attribute value FQNs,</p><p>returns only the information needed to build key splits: the governing</p><p>attribute rule and the effective KAS keys resolved server-side. It does not</p><p>return subject mappings, resource mappings, obligations, sibling values, or</p><p>metadata. Prefer this over GetAttributeValuesByFqns when building splits.</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>fqns</td>
+                  <td><a href="#string">string</a></td>
+                  <td>repeated</td>
+                  <td><p>Required
+Fully Qualified Names of attribute values (i.e. https://&lt;namespace&gt;/attr/&lt;attribute_name&gt;/value/&lt;value_name&gt;), normalized to lower case. </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.attributes.GetKeyMappingsByFqnsResponse">GetKeyMappingsByFqnsResponse</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>fqn_key_mappings</td>
+                  <td><a href="#policy.attributes.GetKeyMappingsByFqnsResponse.FqnKeyMappingsEntry">GetKeyMappingsByFqnsResponse.FqnKeyMappingsEntry</a></td>
+                  <td>repeated</td>
+                  <td><p>map of value FQN to its key mapping information, for O(1) lookup </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.attributes.GetKeyMappingsByFqnsResponse.AttributeKeyMapping">GetKeyMappingsByFqnsResponse.AttributeKeyMapping</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>rule</td>
+                  <td><a href="#policy.AttributeRuleTypeEnum">policy.AttributeRuleTypeEnum</a></td>
+                  <td></td>
+                  <td><p>the attribute rule, which governs how splits combine (any_of / all_of / hierarchy) </p></td>
+                </tr>
+              
+                <tr>
+                  <td>keys</td>
+                  <td><a href="#policy.SimpleKasKey">policy.SimpleKasKey</a></td>
+                  <td>repeated</td>
+                  <td><p>effective KAS keys resolved for this value (value &gt; definition &gt; namespace
+precedence). Legacy grants are not used by this API; values configured only
+with grants and no kas_keys return an empty key set. </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.attributes.GetKeyMappingsByFqnsResponse.FqnKeyMappingsEntry">GetKeyMappingsByFqnsResponse.FqnKeyMappingsEntry</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>key</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>value</td>
+                  <td><a href="#policy.attributes.GetKeyMappingsByFqnsResponse.AttributeKeyMapping">GetKeyMappingsByFqnsResponse.AttributeKeyMapping</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
         <h3 id="policy.attributes.ListAttributeValuesRequest">ListAttributeValuesRequest</h3>
         <p></p>
 
@@ -9591,6 +9969,23 @@ Use GetAttribute</p></td>
               </tr>
             
               <tr>
+                <td>GetKeyMappingsByFqns</td>
+                <td><a href="#policy.attributes.GetKeyMappingsByFqnsRequest">GetKeyMappingsByFqnsRequest</a></td>
+                <td><a href="#policy.attributes.GetKeyMappingsByFqnsResponse">GetKeyMappingsByFqnsResponse</a></td>
+                <td><p>Returns only key-mapping information (rule and effective KAS keys) for the
+requested attribute value FQNs, for client-side key split construction.</p></td>
+              </tr>
+            
+              <tr>
+                <td>GetEntitleableAttributesByFqns</td>
+                <td><a href="#policy.attributes.GetEntitleableAttributesByFqnsRequest">GetEntitleableAttributesByFqnsRequest</a></td>
+                <td><a href="#policy.attributes.GetEntitleableAttributesByFqnsResponse">GetEntitleableAttributesByFqnsResponse</a></td>
+                <td><p>Returns only entitlement-relevant information (rule, value identity, ordered
+definition values, and subject mappings) for the requested attribute value
+FQNs, for server-side decisioning / entitlement resolution.</p></td>
+              </tr>
+            
+              <tr>
                 <td>CreateAttribute</td>
                 <td><a href="#policy.attributes.CreateAttributeRequest">CreateAttributeRequest</a></td>
                 <td><a href="#policy.attributes.CreateAttributeResponse">CreateAttributeResponse</a></td>
@@ -9771,6 +10166,16 @@ Value RPCs
             
               <tr>
                 <td>GetAttributeValuesByFqns</td>
+                <td><p>NO_SIDE_EFFECTS</p></td>
+              </tr>
+            
+              <tr>
+                <td>GetKeyMappingsByFqns</td>
+                <td><p>NO_SIDE_EFFECTS</p></td>
+              </tr>
+            
+              <tr>
+                <td>GetEntitleableAttributesByFqns</td>
                 <td><p>NO_SIDE_EFFECTS</p></td>
               </tr>
             

@@ -129,6 +129,22 @@ func TestDPoPProofError(t *testing.T) {
 	})
 }
 
+func TestDPoPEnforcement_Migration(t *testing.T) {
+	t.Run("new dpop.enforce field enables enforcement", func(t *testing.T) {
+		cfg := AuthNConfig{DPoP: DPoPConfig{Enforce: true}}
+		assert.True(t, cfg.dpopEnforced())
+	})
+
+	t.Run("deprecated enforceDPoP field still enables enforcement", func(t *testing.T) {
+		cfg := AuthNConfig{EnforceDPoP: true} // verifying the deprecated field is still honored
+		assert.True(t, cfg.dpopEnforced())
+	})
+
+	t.Run("neither set means not enforced", func(t *testing.T) {
+		assert.False(t, AuthNConfig{}.dpopEnforced())
+	})
+}
+
 func TestDPoPAlgorithmRestrictions(t *testing.T) {
 	testCases := []struct {
 		alg     jwa.SignatureAlgorithm
@@ -167,12 +183,12 @@ func (s *AuthSuite) newAuthDPoP(requireNonce bool) *Authentication {
 		context.Background(),
 		Config{
 			AuthNConfig: AuthNConfig{
-				EnforceDPoP: true,
-				Issuer:      s.server.URL,
-				Audience:    "test",
-				DPoPSkew:    time.Hour,
-				TokenSkew:   time.Minute,
+				Issuer:    s.server.URL,
+				Audience:  "test",
+				DPoPSkew:  time.Hour,
+				TokenSkew: time.Minute,
 				DPoP: DPoPConfig{
+					Enforce:         true,
 					RequireNonce:    requireNonce,
 					NonceExpiration: 5 * time.Minute,
 					StrictHTU:       false,

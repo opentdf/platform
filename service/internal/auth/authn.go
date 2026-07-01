@@ -388,6 +388,32 @@ func (e *DPoPProofError) Error() string { return e.err.Error() }
 
 func (e *DPoPProofError) Unwrap() error { return e.err }
 
+// originFromHost builds a normalized scheme://host origin from a request's Host
+// header. It parses with Hostname()/Port() rather than trimming a ":443"/":80"
+// suffix so it handles IPv6 literals and hosts that merely end in the default
+// port, and lowercases the host to match the SDK's htu normalization (the DPoP
+// htu match is an exact string comparison, so both sides must normalize alike).
+func originFromHost(host string, secure bool) string {
+	scheme := "http"
+	if secure {
+		scheme = "https"
+	}
+	u, err := url.Parse(scheme + "://" + host)
+	if err != nil {
+		return scheme + "://" + host
+	}
+	h := strings.ToLower(u.Hostname())
+	if strings.Contains(h, ":") {
+		h = "[" + h + "]" // re-bracket IPv6 literal stripped by Hostname()
+	}
+	if port := u.Port(); port != "" &&
+		!(scheme == "https" && port == "443") &&
+		!(scheme == "http" && port == "80") {
+		h += ":" + port
+	}
+	return scheme + "://" + h
+}
+
 func normalizeURL(o string, u *url.URL) string {
 	// Currently this does not do a full normatlization
 	ou, err := url.Parse(o)
@@ -454,12 +480,7 @@ func (a Authentication) MuxHandler(handler http.Handler) http.Handler {
 		}
 		origin := r.Header.Get("Origin")
 		if origin == "" {
-			origin = r.Host
-			if r.TLS != nil {
-				origin = "https://" + strings.TrimSuffix(origin, ":443")
-			} else {
-				origin = "http://" + strings.TrimSuffix(origin, ":80")
-			}
+			origin = originFromHost(r.Host, r.TLS != nil)
 		}
 		ri := receiverInfo{
 			u: []string{normalizeURL(origin, r.URL)},

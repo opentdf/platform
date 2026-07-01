@@ -181,7 +181,7 @@ func NewHandler(c *cli.Cli, extraSDKOpts ...sdk.Option) handlers.Handler {
 		cp = InitProfile(c)
 	}
 
-	if err := auth.ValidateProfileAuthCredentials(c.Context(), cp); err != nil {
+	if err := auth.ValidateProfileAuthCredentials(c.Context(), cp, extraSDKOpts...); err != nil {
 		endpoint := cp.GetEndpoint()
 		var certErr *tls.CertificateVerificationError
 		if errors.As(err, &certErr) {

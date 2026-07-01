@@ -26,6 +26,26 @@ func jwkToPEMForTest(t *testing.T, key interface{ Raw(any) error }) []byte {
 	return pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: der})
 }
 
+// publicKeyPEMForTest extracts the public half of a private jwk.Key and encodes
+// it as a PKIX public-key PEM (used to verify public-only keys are rejected).
+func publicKeyPEMForTest(t *testing.T, key interface{ Raw(any) error }) []byte {
+	t.Helper()
+	var raw any
+	require.NoError(t, key.Raw(&raw), "failed to get raw key")
+	var pub any
+	switch k := raw.(type) {
+	case *rsa.PrivateKey:
+		pub = &k.PublicKey
+	case *ecdsa.PrivateKey:
+		pub = &k.PublicKey
+	default:
+		t.Fatalf("unsupported key type %T", raw)
+	}
+	der, err := x509.MarshalPKIXPublicKey(pub)
+	require.NoError(t, err, "failed to marshal public key")
+	return pem.EncodeToMemory(&pem.Block{Type: "PUBLIC KEY", Bytes: der})
+}
+
 func TestGenerateDPoPKeyForAlg_EC(t *testing.T) {
 	tests := []struct {
 		alg     string
@@ -117,6 +137,20 @@ func TestLoadDPoPKeyFromPEM_InvalidPEM(t *testing.T) {
 	assert.Error(t, err, "expected error for invalid PEM")
 }
 
+func TestLoadDPoPKeyFromPEM_PublicKeyRejected(t *testing.T) {
+	for _, alg := range []string{dpopAlgRS256, dpopAlgES256} {
+		t.Run(alg, func(t *testing.T) {
+			generated, err := generateDPoPKeyForAlg(alg)
+			require.NoError(t, err, "generate test key")
+			pubPEM := publicKeyPEMForTest(t, generated)
+
+			_, err = loadDPoPKeyFromPEM(pubPEM)
+			require.Error(t, err, "expected error for public-only PEM")
+			assert.Contains(t, err.Error(), "private", "error should mention missing private material")
+		})
+	}
+}
+
 func TestResolveDPoPKey(t *testing.T) {
 	ecKey, err := generateDPoPKeyForAlg(dpopAlgES256)
 	require.NoError(t, err, "generate EC key")
@@ -167,23 +201,67 @@ func TestResolveDPoPKey(t *testing.T) {
 	})
 }
 
-func TestValidateDPoPKeyAlgorithm(t *testing.T) {
-	t.Run("missing algorithm errors", func(t *testing.T) {
+func TestValidateDPoPKey(t *testing.T) {
+	rsaJWK := func(t *testing.T) jwk.Key {
+		t.Helper()
 		raw, err := rsa.GenerateKey(rand.Reader, 2048)
-		require.NoError(t, err, "generate key")
+		require.NoError(t, err, "generate RSA key")
 		k, err := jwk.FromRaw(raw)
 		require.NoError(t, err, "jwk.FromRaw")
-		_, err = resolveDPoPKey(&config{dpopJWK: k})
+		return k
+	}
+
+	t.Run("missing algorithm errors", func(t *testing.T) {
+		k := rsaJWK(t)
+		_, err := resolveDPoPKey(&config{dpopJWK: k})
 		assert.Error(t, err, "expected error for JWK without algorithm")
 	})
 
 	t.Run("unsupported algorithm errors", func(t *testing.T) {
+		k := rsaJWK(t)
+		require.NoError(t, k.Set(jwk.AlgorithmKey, jwa.HS256), "set alg")
+		_, err := resolveDPoPKey(&config{dpopJWK: k})
+		assert.Error(t, err, "expected error for unsupported algorithm")
+	})
+
+	t.Run("public-only JWK rejected", func(t *testing.T) {
 		raw, err := rsa.GenerateKey(rand.Reader, 2048)
-		require.NoError(t, err, "generate key")
+		require.NoError(t, err, "generate RSA key")
+		k, err := jwk.FromRaw(&raw.PublicKey)
+		require.NoError(t, err, "jwk.FromRaw public")
+		require.NoError(t, k.Set(jwk.AlgorithmKey, jwa.RS256), "set alg")
+		_, err = resolveDPoPKey(&config{dpopJWK: k})
+		require.Error(t, err, "expected error for public-only JWK")
+		assert.Contains(t, err.Error(), "private", "error should mention missing private material")
+	})
+
+	t.Run("RSA key with EC algorithm rejected", func(t *testing.T) {
+		k := rsaJWK(t)
+		require.NoError(t, k.Set(jwk.AlgorithmKey, jwa.ES256), "set alg")
+		_, err := resolveDPoPKey(&config{dpopJWK: k})
+		require.Error(t, err, "expected error for RSA key labeled ES256")
+		assert.Contains(t, err.Error(), "EC key", "error should mention EC key requirement")
+	})
+
+	t.Run("EC key with RSA algorithm rejected", func(t *testing.T) {
+		raw, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+		require.NoError(t, err, "generate EC key")
 		k, err := jwk.FromRaw(raw)
 		require.NoError(t, err, "jwk.FromRaw")
-		require.NoError(t, k.Set(jwk.AlgorithmKey, jwa.HS256), "set alg")
+		require.NoError(t, k.Set(jwk.AlgorithmKey, jwa.RS256), "set alg")
 		_, err = resolveDPoPKey(&config{dpopJWK: k})
-		assert.Error(t, err, "expected error for unsupported algorithm")
+		require.Error(t, err, "expected error for EC key labeled RS256")
+		assert.Contains(t, err.Error(), "RSA key", "error should mention RSA key requirement")
+	})
+
+	t.Run("EC curve/algorithm mismatch rejected", func(t *testing.T) {
+		raw, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+		require.NoError(t, err, "generate P-256 key")
+		k, err := jwk.FromRaw(raw)
+		require.NoError(t, err, "jwk.FromRaw")
+		require.NoError(t, k.Set(jwk.AlgorithmKey, jwa.ES512), "set mismatched alg")
+		_, err = resolveDPoPKey(&config{dpopJWK: k})
+		require.Error(t, err, "expected error for P-256 key labeled ES512")
+		assert.Contains(t, err.Error(), "curve", "error should mention curve mismatch")
 	})
 }

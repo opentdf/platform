@@ -284,6 +284,30 @@ func getDPoPJWK(dpopKey *ocrypto.RsaKeyPair) (jwk.Key, error) {
 	return key, nil
 }
 
+// NewDPoPValidationHTTPClient wraps base so its requests carry a DPoP proof signed
+// with the key resolved from opts (the same WithDPoP* options passed to New). It is
+// intended for token-endpoint calls made outside the SDK's own connection (e.g. a
+// CLI pre-flight credential check): the proof binds the request via htu but carries
+// no ath claim or Authorization header, and DPoP-Nonce challenges are retried.
+//
+// base is returned unchanged when no DPoP key is configured in opts. When only
+// WithDPoPAlgorithm is set, a fresh ephemeral key is generated for this client;
+// that is fine for a throwaway validation token that is never reused.
+func NewDPoPValidationHTTPClient(base *http.Client, opts ...Option) (*http.Client, error) {
+	c := &config{}
+	for _, o := range opts {
+		o(c)
+	}
+	key, err := resolveDPoPKey(c)
+	if err != nil {
+		return nil, fmt.Errorf("failed to resolve DPoP key: %w", err)
+	}
+	if key == nil {
+		return base, nil
+	}
+	return auth.NewDPoPHTTPClient(base, key, nil, ""), nil
+}
+
 // buildIDPTokenSource builds the access token source and resolves the DPoP key
 // once, returning it so the caller can give the DPoP transport the same key the
 // token source binds to. The returned key is nil when DPoP is not in effect
@@ -299,16 +323,19 @@ func buildIDPTokenSource(c *config) (auth.AccessTokenSource, jwk.Key, error) {
 		return c.customAccessTokenSource, dpopKey, nil
 	}
 
+	// Surface a conflicting exchange configuration before the uncredentialed
+	// fast-path below, so the misconfiguration is reported instead of silently
+	// producing a nil (uncredentialed) token source.
+	if c.certExchange != nil && c.tokenExchange != nil {
+		return nil, nil, errors.New("cannot do both token exchange and certificate exchange")
+	}
+
 	// There are uses for uncredentialed clients (i.e. consuming the well-known configuration).
 	if c.clientCredentials == nil && c.oauthAccessTokenSource == nil {
 		if c.dpopJWK != nil || len(c.dpopKeyPEM) > 0 || c.dpopAlgorithm != "" || c.dpopKey != nil {
 			getLogger().Warn("DPoP key configured but no credentials supplied; DPoP will be disabled")
 		}
 		return nil, nil, nil
-	}
-
-	if c.certExchange != nil && c.tokenExchange != nil {
-		return nil, nil, errors.New("cannot do both token exchange and certificate exchange")
 	}
 
 	dpopKey, err := resolveDPoPKey(c)

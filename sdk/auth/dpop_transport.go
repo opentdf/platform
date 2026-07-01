@@ -87,14 +87,17 @@ func (t *DPoPTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 		return resp, err
 	}
 
-	// Handle DPoP-Nonce challenge (RFC 9449 §8)
+	// Handle DPoP-Nonce challenge (RFC 9449 §8). On a retry, fall through with the
+	// retried response so its own DPoP-Nonce (if the server rotates the nonce on the
+	// now-successful response) still updates the cache below; returning early here
+	// would drop it and force another 401/retry on the next request.
 	if resp.StatusCode == http.StatusUnauthorized {
 		retryResp, retried, err := t.retryWithNonce(req2, base, resp, origin, nonce, isTokenRequest)
 		if err != nil {
 			return nil, err
 		}
 		if retried {
-			return retryResp, nil
+			resp = retryResp
 		}
 	}
 
@@ -279,8 +282,11 @@ func normalizedHostPort(u *url.URL) string {
 // - Lowercase scheme and host
 // - Remove default ports (80 for http, 443 for https)
 // - Strip query and fragment
+//
+// The path uses EscapedPath so percent-encoded reserved bytes (e.g. %2F) are
+// preserved verbatim in the htu claim; u.Path would decode them and change the URI.
 func normalizeURI(u *url.URL) string {
-	return fmt.Sprintf("%s://%s%s", strings.ToLower(u.Scheme), normalizedHostPort(u), u.Path)
+	return fmt.Sprintf("%s://%s%s", strings.ToLower(u.Scheme), normalizedHostPort(u), u.EscapedPath())
 }
 
 // getOrigin returns the origin (scheme://host:port) from a URL, normalized to

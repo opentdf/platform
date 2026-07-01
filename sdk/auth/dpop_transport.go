@@ -253,9 +253,26 @@ func (t *DPoPTransport) isTokenEndpointRequest(u *url.URL) bool {
 		return false
 	}
 
-	return u.Scheme == cachedURL.Scheme &&
-		u.Host == cachedURL.Host &&
-		u.Path == cachedURL.Path
+	return normalizeURI(u) == normalizeURI(cachedURL)
+}
+
+// normalizedHostPort returns the URL host lowercased with the scheme's default
+// port (80 for http, 443 for https) removed. IPv6 literals keep their brackets.
+func normalizedHostPort(u *url.URL) string {
+	scheme := strings.ToLower(u.Scheme)
+	host := strings.ToLower(u.Hostname())
+	if strings.Contains(host, ":") {
+		host = "[" + host + "]" // re-bracket IPv6 literal stripped by Hostname()
+	}
+
+	port := u.Port()
+	if port == "" ||
+		(scheme == "http" && port == "80") ||
+		(scheme == "https" && port == "443") {
+		return host
+	}
+
+	return host + ":" + port
 }
 
 // normalizeURI normalizes the URI per RFC 9449 HTTP URI Normalization:
@@ -263,21 +280,13 @@ func (t *DPoPTransport) isTokenEndpointRequest(u *url.URL) bool {
 // - Remove default ports (80 for http, 443 for https)
 // - Strip query and fragment
 func normalizeURI(u *url.URL) string {
-	scheme := strings.ToLower(u.Scheme)
-	host := strings.ToLower(u.Host)
-
-	// Remove default ports
-	if (scheme == "http" && strings.HasSuffix(host, ":80")) ||
-		(scheme == "https" && strings.HasSuffix(host, ":443")) {
-		host = host[:strings.LastIndex(host, ":")]
-	}
-
-	return fmt.Sprintf("%s://%s%s", scheme, host, u.Path)
+	return fmt.Sprintf("%s://%s%s", strings.ToLower(u.Scheme), normalizedHostPort(u), u.Path)
 }
 
-// getOrigin returns the origin (scheme://host:port) from a URL, normalized to lowercase.
+// getOrigin returns the origin (scheme://host:port) from a URL, normalized to
+// lowercase with the scheme's default port removed.
 func getOrigin(u *url.URL) string {
-	return strings.ToLower(fmt.Sprintf("%s://%s", u.Scheme, u.Host))
+	return fmt.Sprintf("%s://%s", strings.ToLower(u.Scheme), normalizedHostPort(u))
 }
 
 // getCachedNonce retrieves the cached nonce for an origin.

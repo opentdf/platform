@@ -29,7 +29,7 @@ func NewOAuthAccessTokenSource(
 	}
 
 	tokenSource := OAuthAccessTokenSource{
-		source:         source,
+		source:         cachingTokenSource(source),
 		scopes:         scopes,
 		asymDecryption: *asymDecryption,
 		dpopKey:        dpopKey,
@@ -37,6 +37,15 @@ func NewOAuthAccessTokenSource(
 	}
 
 	return &tokenSource, nil
+}
+
+// cachingTokenSource wraps a token source so that a valid token is reused across
+// calls instead of being re-fetched. AccessToken is on the request hot path
+// (once per gRPC/Connect call, plus once more to compute the DPoP ath claim), so
+// an uncached source would risk an IdP round-trip on every request. Wrapping an
+// already-caching source is harmless.
+func cachingTokenSource(source oauth2.TokenSource) oauth2.TokenSource {
+	return oauth2.ReuseTokenSource(nil, source)
 }
 
 // AccessToken use a pointer receiver so that the token state is shared
@@ -62,7 +71,7 @@ func (t *OAuthAccessTokenSource) MakeToken(tokenMaker func(jwk.Key) ([]byte, err
 // newOAuthAccessTokenSourceFromJWK creates an OAuthAccessTokenSource using a pre-built JWK key.
 func newOAuthAccessTokenSourceFromJWK(source oauth2.TokenSource, scopes []string, key jwk.Key) *OAuthAccessTokenSource {
 	return &OAuthAccessTokenSource{
-		source:  source,
+		source:  cachingTokenSource(source),
 		scopes:  scopes,
 		dpopKey: key,
 	}

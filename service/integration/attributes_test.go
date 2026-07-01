@@ -1636,17 +1636,21 @@ func (s *AttributesSuite) Test_GetKeyMappingsByFqns() {
 		assertSingleKey(mappings[fqnGamma], policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF, key1)
 	})
 
-	s.Run("legacy grants only: keys empty (grants are ignored)", func() {
-		// value1 (and its definition attr1) are configured only with legacy
-		// KeyAccessServer grants and no key mappings. This API resolves kas_keys
-		// and ignores grants, so the key set must be empty.
+	s.Run("legacy grants resolve to keys (grants with cached keys only)", func() {
+		// value1 is configured only with legacy KeyAccessServer grants (no key
+		// mappings): one to a cached-key KAS (local.kas.com:3000, kid r1) and one
+		// to a remote-only KAS (kas.example.com). Grants are resolved into the key
+		// set, but only grants that carry a cached public key can be returned; the
+		// remote-only grant is skipped (no kid/pem to hand the client).
 		fqn := "https://example.com/attr/attr1/value/value1"
 		mappings := keysByFqn(fqn)
 		s.Require().Len(mappings, 1)
 		m := mappings[fqn]
 		s.Require().NotNil(m)
 		s.Equal(policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF, m.GetRule())
-		s.Empty(m.GetKeys())
+		s.Require().Len(m.GetKeys(), 1)
+		s.Equal("https://local.kas.com:3000", m.GetKeys()[0].GetKasUri())
+		s.Equal("r1", m.GetKeys()[0].GetPublicKey().GetKid())
 	})
 
 	s.Run("errors when a value is missing even with allow_traversal", func() {
@@ -1827,6 +1831,53 @@ func (s *AttributesSuite) Test_GetEntitleableAttributesByFqns_Hierarchy() {
 	// The requested low value carries no subject mappings (the only mapping is on
 	// the mid value); confirms the per-value entry does not inherit sibling mappings.
 	s.Empty(e.GetValue().GetSubjectMappings())
+}
+
+func (s *AttributesSuite) Test_GetEntitleableAttributesByFqns_SubjectMappingNamespace() {
+	// The entitleable subject mappings must carry the subject mapping's own
+	// namespace, which the PDP's strict namespaced-entitlements filter relies on.
+	created, err := s.db.PolicyClient.CreateAttribute(s.ctx, &attributes.CreateAttributeRequest{
+		Name:        "test__entitleable_sm_namespace",
+		NamespaceId: fixtureNamespaceID,
+		Rule:        policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF,
+		Values:      []string{"v1"},
+	})
+	s.Require().NoError(err)
+	got, err := s.db.PolicyClient.GetAttribute(s.ctx, created.GetId())
+	s.Require().NoError(err)
+	val := got.GetValues()[0]
+
+	_, err = s.db.PolicyClient.CreateSubjectMapping(s.ctx, &subjectmapping.CreateSubjectMappingRequest{
+		AttributeValueId: val.GetId(),
+		NamespaceId:      fixtureNamespaceID,
+		// A namespaced subject mapping requires an action in the same namespace; use
+		// a custom action (the standard actions are unnamespaced).
+		Actions: []*policy.Action{{Name: "entitleable_ns_read"}},
+		NewSubjectConditionSet: &subjectmapping.SubjectConditionSetCreate{
+			SubjectSets: []*policy.SubjectSet{{
+				ConditionGroups: []*policy.ConditionGroup{{
+					BooleanOperator: policy.ConditionBooleanTypeEnum_CONDITION_BOOLEAN_TYPE_ENUM_AND,
+					Conditions: []*policy.Condition{{
+						SubjectExternalSelectorValue: ".clearance",
+						Operator:                     policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_IN,
+						SubjectExternalValues:        []string{"secret"},
+					}},
+				}},
+			}},
+		},
+	})
+	s.Require().NoError(err)
+
+	resp, err := s.db.PolicyClient.GetEntitleableAttributesByFqns(s.ctx, &attributes.GetEntitleableAttributesByFqnsRequest{
+		Fqns: []string{val.GetFqn()},
+	})
+	s.Require().NoError(err)
+	e := resp.GetFqnEntitleableAttributes()[val.GetFqn()]
+	s.Require().NotNil(e)
+	sms := e.GetValue().GetSubjectMappings()
+	s.Require().Len(sms, 1)
+	s.Require().NotNil(sms[0].GetNamespace())
+	s.Equal(fixtureNamespaceID, sms[0].GetNamespace().GetId())
 }
 
 func (s *AttributesSuite) Test_UnsafeUpdateAttribute_NormalizesCasing() {

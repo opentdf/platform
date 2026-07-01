@@ -385,26 +385,48 @@ func hydrateSubjectMappingForEntitlement(row getSubjectMappingsByValueFqnsRow) (
 		return nil, err
 	}
 
+	// The subject mapping's own namespace is needed for strict namespaced-mode
+	// entitlement filtering in the PDP (NewPolicyDecisionPoint reads sm.Namespace).
+	namespace, err := hydrateNamespaceFromInterface(row.Namespace)
+	if err != nil {
+		return nil, err
+	}
+
 	return &policy.SubjectMapping{
 		Id:                  row.ID,
 		Metadata:            metadata,
 		AttributeValue:      av,
 		SubjectConditionSet: &scs,
 		Actions:             actions,
+		Namespace:           namespace,
 	}, nil
 }
 
 // resolveEffectiveKasKeys selects the effective mapped KAS keys for a value using
 // value > definition > namespace precedence, matching the SDK granter logic in
 // sdk/granter.go (newGranterFromService).
+// resolveEffectiveKasKeys returns the most-specific effective keys for a value
+// with value > definition > namespace precedence. Within a level, mapped keys
+// (kas_keys) are preferred; if a level has none, its legacy KAS grants are
+// converted to keys. Resolution stops at the first level that yields any key, so
+// grant-configured policy resolves the same way the client granter did before.
 func resolveEffectiveKasKeys(value *policy.Value, attr *policy.Attribute) []*policy.SimpleKasKey {
 	if keys := value.GetKasKeys(); len(keys) > 0 {
+		return keys
+	}
+	if keys := grantsToSimpleKasKeys(value.GetGrants()); len(keys) > 0 {
 		return keys
 	}
 	if keys := attr.GetKasKeys(); len(keys) > 0 {
 		return keys
 	}
+	if keys := grantsToSimpleKasKeys(attr.GetGrants()); len(keys) > 0 {
+		return keys
+	}
 	if keys := attr.GetNamespace().GetKasKeys(); len(keys) > 0 {
+		return keys
+	}
+	if keys := grantsToSimpleKasKeys(attr.GetNamespace().GetGrants()); len(keys) > 0 {
 		return keys
 	}
 	return nil

@@ -26,7 +26,6 @@ func TestNewOAuthAccessTokenSource_Success(t *testing.T) {
 	// Sanity Checks
 	require.NoError(t, err)
 	assert.NotNil(t, tokenSource)
-	assert.Equal(t, mockSource, tokenSource.source)
 	assert.Equal(t, mockScopes, tokenSource.scopes)
 	// DPoP values
 	assert.Equal(t, asymDecryption, &tokenSource.asymDecryption)
@@ -54,7 +53,6 @@ func TestNewOAuthAccessTokenSource_ExpiredToken(t *testing.T) {
 	// Sanity Checks
 	require.NoError(t, err)
 	assert.NotNil(t, tokenSource)
-	assert.Equal(t, mockSource, tokenSource.source)
 	// Interface checks
 	tok, err := tokenSource.AccessToken(t.Context(), nil)
 	require.Error(t, err)
@@ -74,11 +72,40 @@ func TestNewOAuthAccessTokenSource_InvalidTokenSource(t *testing.T) {
 	// Sanity Checks
 	require.NoError(t, err)
 	assert.NotNil(t, tokenSource)
-	assert.Equal(t, mockSource, tokenSource.source)
 	// Interface checks
 	tok, err := tokenSource.AccessToken(t.Context(), nil)
 	require.Error(t, err)
 	assert.Empty(t, tok)
+}
+
+// countingTokenSource records how many times the underlying source is queried,
+// so tests can assert that valid tokens are cached rather than re-fetched.
+type countingTokenSource struct {
+	calls int
+	tok   *oauth2.Token
+}
+
+func (c *countingTokenSource) Token() (*oauth2.Token, error) {
+	c.calls++
+	return c.tok, nil
+}
+
+func TestNewOAuthAccessTokenSource_CachesValidToken(t *testing.T) {
+	counting := &countingTokenSource{
+		tok: &oauth2.Token{AccessToken: "mockToken", Expiry: time.Now().Add(time.Hour)},
+	}
+	mockKey, _ := ocrypto.NewRSAKeyPair(dpopKeySize)
+
+	tokenSource, err := NewOAuthAccessTokenSource(counting, []string{"scope1"}, &mockKey)
+	require.NoError(t, err)
+
+	for range 3 {
+		tok, err := tokenSource.AccessToken(t.Context(), nil)
+		require.NoError(t, err)
+		assert.Equal(t, auth.AccessToken("mockToken"), tok)
+	}
+
+	assert.Equal(t, 1, counting.calls, "valid token should be fetched once and reused")
 }
 
 func TestNewOAuthAccessTokenSource_InvalidKey(t *testing.T) {

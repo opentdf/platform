@@ -50,6 +50,7 @@ func NewJustInTimePDP(
 	sdk *otdfSDK.SDK,
 	store EntitlementPolicyStore,
 	allowDirectEntitlements bool,
+	allowDynamicValueMappings bool,
 	namespacedPolicy bool,
 ) (*JustInTimePDP, error) {
 	var err error
@@ -91,8 +92,16 @@ func NewJustInTimePDP(
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch all obligations: %w", err)
 	}
+	// Experimental: only load dynamic value mappings when the feature is enabled.
+	var allDynamicValueMappings []*policy.DynamicValueMapping
+	if allowDynamicValueMappings {
+		allDynamicValueMappings, err = store.ListAllDynamicValueMappings(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("failed to fetch all dynamic value mappings: %w", err)
+		}
+	}
 
-	pdp, err := NewPolicyDecisionPoint(ctx, log, allAttributes, allSubjectMappings, allRegisteredResources, allowDirectEntitlements, namespacedPolicy)
+	pdp, err := NewPolicyDecisionPoint(ctx, log, allAttributes, allSubjectMappings, allRegisteredResources, allowDirectEntitlements, namespacedPolicy, WithDynamicValueMappings(allDynamicValueMappings, allowDynamicValueMappings))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create new policy decision point: %w", err)
 	}

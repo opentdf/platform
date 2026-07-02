@@ -98,7 +98,7 @@ func NewRegistration() *serviceregistry.Service[authzV2Connect.AuthorizationServ
 				}
 
 				retriever := access.NewEntitlementPolicyRetriever(as.sdk)
-				as.cache, err = NewEntitlementPolicyCache(context.Background(), l, retriever, cacheClient, refreshInterval)
+				as.cache, err = NewEntitlementPolicyCache(context.Background(), l, retriever, cacheClient, refreshInterval, authZCfg.AllowDynamicValueMappings)
 				if err != nil {
 					l.Error("failed to create entitlement policy cache", slog.Any("error", err))
 					panic(fmt.Errorf("failed to create entitlement policy cache: %w", err))
@@ -147,7 +147,7 @@ func (as *Service) GetEntitlements(ctx context.Context, req *connect.Request[aut
 	withComprehensiveHierarchy := req.Msg.GetWithComprehensiveHierarchy()
 
 	// When authorization service can consume cached policy, switch to the other PDP (process based on policy passed in)
-	pdp, err := access.NewJustInTimePDP(ctx, as.logger, as.sdk, as.cache, as.config.AllowDirectEntitlements, as.config.EnforceNamespacedEntitlements)
+	pdp, err := access.NewJustInTimePDP(ctx, as.logger, as.sdk, as.cache, as.config.AllowDirectEntitlements, as.config.AllowDynamicValueMappings, as.config.EnforceNamespacedEntitlements)
 	if err != nil {
 		return nil, statusifyError(ctx, as.logger, errors.Join(ErrFailedToGetEntitlements, ErrFailedToInitPDP, err))
 	}
@@ -174,7 +174,7 @@ func (as *Service) GetDecision(ctx context.Context, req *connect.Request[authzV2
 		return nil, err
 	}
 
-	pdp, err := access.NewJustInTimePDP(ctx, as.logger, as.sdk, as.cache, as.config.AllowDirectEntitlements, as.config.EnforceNamespacedEntitlements)
+	pdp, err := access.NewJustInTimePDP(ctx, as.logger, as.sdk, as.cache, as.config.AllowDirectEntitlements, as.config.AllowDynamicValueMappings, as.config.EnforceNamespacedEntitlements)
 	if err != nil {
 		return nil, statusifyError(ctx, as.logger, errors.Join(ErrFailedToInitPDP, err))
 	}
@@ -224,7 +224,7 @@ func (as *Service) GetDecisionMultiResource(ctx context.Context, req *connect.Re
 		return nil, err
 	}
 
-	pdp, err := access.NewJustInTimePDP(ctx, as.logger, as.sdk, as.cache, as.config.AllowDirectEntitlements, as.config.EnforceNamespacedEntitlements)
+	pdp, err := access.NewJustInTimePDP(ctx, as.logger, as.sdk, as.cache, as.config.AllowDirectEntitlements, as.config.AllowDynamicValueMappings, as.config.EnforceNamespacedEntitlements)
 	if err != nil {
 		return nil, statusifyError(ctx, as.logger, errors.Join(ErrFailedToInitPDP, err))
 	}
@@ -277,7 +277,7 @@ func (as *Service) GetDecisionBulk(ctx context.Context, req *connect.Request[aut
 		return nil, err
 	}
 
-	pdp, err := access.NewJustInTimePDP(ctx, as.logger, as.sdk, as.cache, as.config.AllowDirectEntitlements, as.config.EnforceNamespacedEntitlements)
+	pdp, err := access.NewJustInTimePDP(ctx, as.logger, as.sdk, as.cache, as.config.AllowDirectEntitlements, as.config.AllowDynamicValueMappings, as.config.EnforceNamespacedEntitlements)
 	if err != nil {
 		return nil, statusifyError(ctx, as.logger, errors.Join(ErrFailedToInitPDP, err))
 	}

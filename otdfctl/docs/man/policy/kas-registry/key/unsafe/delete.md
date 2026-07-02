@@ -5,7 +5,7 @@ command:
   flags:
     - name: id
       shorthand: i
-      description: Sytem given ID of the key
+      description: System-given ID of the key
       required: true
     - name: kas-uri
       description: The URI of the KAS instance

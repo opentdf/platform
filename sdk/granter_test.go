@@ -894,6 +894,30 @@ func TestReasonerKeyMappingFallback(t *testing.T) {
 	}
 }
 
+// A single request that mixes mapped-key values (MP: mapped kas_keys) with
+// grant-configured values (REL: legacy grants) must resolve every attribute and
+// combine them into one plan. The server returns keys for both (cached-key grants
+// are converted alongside mapped keys), so the plan should carry the mapped KAS
+// and both grant KASes.
+func TestReasonerMixedMappingsAndGrants(t *testing.T) {
+	policy := []AttributeValueFQN{mpa, mpb, rel2aus, rel2can}
+	reasoner, err := newGranterFromService(t.Context(), slog.Default(), newKasKeyCache(), &mockAttributesClient{}, policy...)
+	require.NoError(t, err)
+
+	i := 0
+	plan, err := reasoner.plan([]string{kasUs}, func() string {
+		i++
+		return strconv.Itoa(i)
+	})
+	require.NoError(t, err)
+
+	got := make(map[string]bool)
+	for _, s := range plan {
+		got[s.KAS] = true
+	}
+	assert.ElementsMatch(t, []string{evenMoreSpecificKas, kasAu, kasCa}, slices.Collect(maps.Keys(got)))
+}
+
 // Tests titles are written in the form [{attr}.{value}] => [{resulting kas boolean exp}]
 // where the left hand side is the list of attributes passed in and the right
 // is the resulting split steps

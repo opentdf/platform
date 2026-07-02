@@ -76,7 +76,7 @@ func mapKasPublicKeyAlgToAlgorithm(alg policy.KasPublicKeyAlgEnum) policy.Algori
 func grantsToSimpleKasKeys(grants []*policy.KeyAccessServer) []*policy.SimpleKasKey {
 	keys := make([]*policy.SimpleKasKey, 0)
 	for _, grant := range grants {
-		if grant == nil || grant.GetUri() == "" {
+		if grant.GetUri() == "" {
 			continue
 		}
 		for _, pk := range grant.GetPublicKey().GetCached().GetKeys() {

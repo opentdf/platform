@@ -182,8 +182,8 @@ github.com/opentdf/platform/lib/identifier v0.4.0 h1:gJf4FqHxqpMdMdMwhI9QmvfHEfM
 github.com/opentdf/platform/lib/identifier v0.4.0/go.mod h1:+gONr5mVf1YlLorZUeRefxiudYfC6JeQN7EwrKMk4g8=
 github.com/opentdf/platform/lib/ocrypto v0.14.0 h1:qAIOFpz72/QDhYC0oLRXgA5uEnyv1xqkc7kvWQSRFcY=
 github.com/opentdf/platform/lib/ocrypto v0.14.0/go.mod h1:TLaMvVE1aTqrgW8AZz0ZuxX/ZpI7l5IQOHyX99fdKl0=
-github.com/opentdf/platform/protocol/go v0.36.0 h1:R/Zfb3+AQPA0Ybv25rz8WpWy7SongPP2LdGHCwErZWE=
-github.com/opentdf/platform/protocol/go v0.36.0/go.mod h1:6A0vQJ5D4ZTLReWAp8Y/7jTFzlYCmL/IfMJWDHZS6M0=
+github.com/opentdf/platform/protocol/go v0.37.0 h1:gA4zlfxbswhEadlK/0L/UYpRjiT166EClbcJQEdYcZ0=
+github.com/opentdf/platform/protocol/go v0.37.0/go.mod h1:6A0vQJ5D4ZTLReWAp8Y/7jTFzlYCmL/IfMJWDHZS6M0=
 github.com/opentdf/platform/sdk v0.25.0 h1:SuHHgdFzaklDCx8zP3p9d06tDgeCbCuNhU/cUKjFd6w=
 github.com/opentdf/platform/sdk v0.25.0/go.mod h1:kl4a4PoV3YoumaL5LTJzdB+SZINyCo4A9IdnLZN9aM4=
 github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=

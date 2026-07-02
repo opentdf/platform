@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.5.0](https://github.com/opentdf/platform/compare/lib/identifier/v0.4.0...lib/identifier/v0.5.0) (2026-07-02)
+
+
+### Bug Fixes
+
+* **ci:** Prefer go.work for toolchain info ([#3285](https://github.com/opentdf/platform/issues/3285)) ([3c05b22](https://github.com/opentdf/platform/commit/3c05b22ecac41380c7d8d80e9d487bb3001cd25d))
+
 ## [0.4.0](https://github.com/opentdf/platform/compare/lib/identifier/v0.3.0...lib/identifier/v0.4.0) (2026-04-21)
 
 

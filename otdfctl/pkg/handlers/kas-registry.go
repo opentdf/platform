@@ -15,20 +15,20 @@ type KasIdentifier struct {
 	URI  string
 }
 
-func (h Handler) GetKasRegistryEntry(ctx context.Context, identifer KasIdentifier) (*policy.KeyAccessServer, error) {
+func (h Handler) GetKasRegistryEntry(ctx context.Context, identifier KasIdentifier) (*policy.KeyAccessServer, error) {
 	req := &kasregistry.GetKeyAccessServerRequest{}
 	switch {
-	case identifer.ID != "":
+	case identifier.ID != "":
 		req.Identifier = &kasregistry.GetKeyAccessServerRequest_KasId{
-			KasId: identifer.ID,
+			KasId: identifier.ID,
 		}
-	case identifer.Name != "":
+	case identifier.Name != "":
 		req.Identifier = &kasregistry.GetKeyAccessServerRequest_Name{
-			Name: identifer.Name,
+			Name: identifier.Name,
 		}
-	case identifer.URI != "":
+	case identifier.URI != "":
 		req.Identifier = &kasregistry.GetKeyAccessServerRequest_Uri{
-			Uri: identifer.URI,
+			Uri: identifier.URI,
 		}
 	default:
 		return nil, errors.New("id, name or uri must be provided")

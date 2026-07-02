@@ -94,7 +94,7 @@ func TestCreateNamespace_WithInvalidCharacter_Fails(t *testing.T) {
 		"name?123.net",
 		"name*123.org",
 		"name:123.uk",
-		// preceeding and trailing hyphens
+		// preceding and trailing hyphens
 		"-name.org",
 		"name.org-",
 	}

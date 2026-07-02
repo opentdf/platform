@@ -1216,7 +1216,7 @@ func (s *KasRegistryKeySuite) Test_RotateKey_NoAttributeKeyMapping_Success() {
 	s.Equal(newKey.GetPrivateKeyCtx().GetWrappedKey(), rotatedInKey.GetKasKey().GetKey().GetPrivateKeyCtx().GetWrappedKey())
 	s.Equal(policy.KeyStatus_KEY_STATUS_ACTIVE, rotatedInKey.GetKasKey().GetKey().GetKeyStatus())
 
-	// Validate the rotated resoureces in the response.
+	// Validate the rotated resources in the response.
 	s.Equal(rotatedInKey.GetRotatedResources().GetRotatedOutKey().GetKey().GetId(), keyMap[rotateKey].GetKey().GetId())
 	s.Empty(rotatedInKey.GetRotatedResources().GetAttributeDefinitionMappings())
 	s.Empty(rotatedInKey.GetRotatedResources().GetNamespaceMappings())
@@ -2684,7 +2684,7 @@ func (s *KasRegistryKeySuite) setupAttributesForRotate(numAttrsToRotate, numAttr
 			attributesToNotRotate[i-numAttrsToNotRotate] = noRotateAttr
 		}
 	}
-	// Go through and assing the values to public keys
+	// Go through and assign the values to public keys
 	for _, value := range attributesToRotate[0].GetValues() {
 		if value.GetId() == "" {
 			continue

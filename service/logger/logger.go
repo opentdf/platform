@@ -148,7 +148,7 @@ func CreateTestLogger() *Logger {
 	return logger
 }
 
-// TODO: We can filter by keys if we need to in the future so they don't get proccessed by the masqer
+// TODO: We can filter by keys if we need to in the future so they don't get processed by the masqer
 func (l *Logger) replaceAttrChain(groups []string, a slog.Attr) slog.Attr {
 	return audit.ReplaceAttrAuditLevel(groups, a)
 }

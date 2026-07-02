@@ -103,7 +103,7 @@ func (pdp *Pdp) groupDataAttributesByDefinition(ctx context.Context, dataAttribu
 	return groupings, nil
 }
 
-// maps defintion FQN to definition object
+// maps definition FQN to definition object
 func (pdp *Pdp) mapFqnToDefinitions(ctx context.Context, attributeDefinitions []*policy.Attribute) (map[string]*policy.Attribute, error) {
 	grouped := make(map[string]*policy.Attribute)
 

@@ -681,7 +681,7 @@ components:
       additionalProperties: false
       description: |-
         Deprecated
-         A KAS public key and some associated metadata for further identifcation
+         A KAS public key and some associated metadata for further identification
     policy.KasPublicKeySet:
       type: object
       properties:

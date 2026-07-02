@@ -280,7 +280,7 @@ func Start(f ...StartOptions) error {
 			return fmt.Errorf("could not retrieve oidc configuration: %w", err)
 		}
 
-		// provide token endpoint -- sdk cannot discover it since well-known service isnt running yet
+		// provide token endpoint -- sdk cannot discover it since well-known service is not running yet
 		sdkOptions = append(sdkOptions, sdk.WithTokenEndpoint(oidcconfig.TokenEndpoint)) //nolint:staticcheck // Backward-compatible explicit token endpoint option.
 	}
 

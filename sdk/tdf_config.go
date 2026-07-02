@@ -251,7 +251,7 @@ func WithTargetMode(mode string) TDFOption {
 	}
 }
 
-// Schema Validation where 0 = none (skip), 1 = lax (allowing novel entries, 'falsy' values for unkowns), 2 = strict (rejecting novel entries, strict match to manifest schema)
+// Schema Validation where 0 = none (skip), 1 = lax (allowing novel entries, 'falsy' values for unknowns), 2 = strict (rejecting novel entries, strict match to manifest schema)
 type SchemaValidationIntensity int
 
 const (

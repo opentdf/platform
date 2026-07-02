@@ -344,7 +344,7 @@ func EntityResolution(ctx context.Context,
 }
 
 func typeToGenericJSONMap[Marshalable any](inputStruct Marshalable, logger *logger.Logger) (map[string]interface{}, error) {
-	// For now, since we dont' know the "shape" of the entity/user record or representation we will get from a specific entity store,
+	// For now, since we don't know the "shape" of the entity/user record or representation we will get from a specific entity store,
 	tmpDoc, err := json.Marshal(inputStruct)
 	if err != nil {
 		logger.Error("error marshalling input type!", slog.String("error", err.Error()))

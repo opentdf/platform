@@ -237,7 +237,8 @@ func (r *granter) addGrant(fqn AttributeValueFQN, kas string, attr *policy.Attri
 func (r *granter) addMappedKey(fqn AttributeValueFQN, sk *policy.SimpleKasKey) error {
 	key := sk.GetPublicKey()
 	if key == nil || key.GetKid() == "" || key.GetPem() == "" {
-		r.logger.Debug("invalid cached key in policy service",
+		r.logger.Debug(
+			"invalid cached key in policy service",
 			slog.String("kas", sk.GetKasUri()),
 			slog.Any("value", fqn),
 		)
@@ -254,7 +255,8 @@ func (r *granter) addMappedKey(fqn AttributeValueFQN, sk *policy.SimpleKasKey) e
 
 	rl, err := NewResourceLocator(sk.GetKasUri())
 	if err != nil {
-		r.logger.Debug("invalid KAS URL in policy service",
+		r.logger.Debug(
+			"invalid KAS URL in policy service",
 			slog.String("kas", sk.GetKasUri()),
 			slog.Any("value", fqn),
 			slog.Any("error", err),
@@ -262,7 +264,8 @@ func (r *granter) addMappedKey(fqn AttributeValueFQN, sk *policy.SimpleKasKey) e
 		return fmt.Errorf("invalid KAS URL in policy service associated with [%s]: %w", fqn, err)
 	}
 	rl.identifier = key.GetKid()
-	r.logger.Debug("added mapped key",
+	r.logger.Debug(
+		"added mapped key",
 		slog.Any("fqn", fqn),
 		slog.String("kas", sk.GetKasUri()),
 		slog.String("kid", key.GetKid()),
@@ -324,7 +327,8 @@ func (r *granter) addAllGrants(fqn AttributeValueFQN, ag grantableObject, attr *
 	// Check for mapped keys
 	for _, k := range ag.GetKasKeys() {
 		if k == nil || k.GetKasUri() == "" {
-			r.logger.Debug("invalid KAS key in policy service",
+			r.logger.Debug(
+				"invalid KAS key in policy service",
 				slog.Any("simple_kas_key", k),
 				slog.Any("value", fqn),
 			)
@@ -335,7 +339,8 @@ func (r *granter) addAllGrants(fqn AttributeValueFQN, ag grantableObject, attr *
 		result = r.typ
 		err := r.addMappedKey(fqn, k)
 		if err != nil {
-			r.logger.Debug("failed to add mapped key",
+			r.logger.Debug(
+				"failed to add mapped key",
 				slog.Any("fqn", fqn),
 				slog.String("kas", kasURI),
 				slog.Any("error", err),
@@ -361,7 +366,8 @@ func (r *granter) addAllGrants(fqn AttributeValueFQN, ag grantableObject, attr *
 				for _, k := range g.GetKasKeys() {
 					err := r.addMappedKey(fqn, k)
 					if err != nil {
-						r.logger.Warn("failed to add mapped key",
+						r.logger.Warn(
+							"failed to add mapped key",
 							slog.Any("fqn", fqn),
 							slog.String("kas", kasURI),
 							slog.Any("error", err),
@@ -372,7 +378,8 @@ func (r *granter) addAllGrants(fqn AttributeValueFQN, ag grantableObject, attr *
 			}
 			ks := g.GetPublicKey().GetCached().GetKeys()
 			if len(ks) == 0 {
-				r.logger.Debug("no cached key in policy service",
+				r.logger.Debug(
+					"no cached key in policy service",
 					slog.String("kas", kasURI),
 					slog.Any("value", fqn),
 				)
@@ -380,7 +387,8 @@ func (r *granter) addAllGrants(fqn AttributeValueFQN, ag grantableObject, attr *
 			}
 			for _, k := range ks {
 				if k.GetKid() == "" || k.GetPem() == "" {
-					r.logger.Debug("invalid cached key in policy service",
+					r.logger.Debug(
+						"invalid cached key in policy service",
 						slog.String("kas", kasURI),
 						slog.Any("value", fqn),
 						slog.Any("key", k),
@@ -398,7 +406,8 @@ func (r *granter) addAllGrants(fqn AttributeValueFQN, ag grantableObject, attr *
 				}
 				err := r.addMappedKey(fqn, sk)
 				if err != nil {
-					r.logger.Warn("failed to add mapped key",
+					r.logger.Warn(
+						"failed to add mapped key",
 						slog.Any("fqn", fqn),
 						slog.String("kas", kasURI),
 						slog.Any("error", err),
@@ -518,7 +527,8 @@ func storeKeysToCache(logger *slog.Logger, kases []*policy.KeyAccessServer, keys
 			if kc != nil && ki.GetKid() != "" && ki.GetPem() != "" {
 				rl, err := NewResourceLocator(kas.GetUri())
 				if err != nil {
-					logger.Debug("failed to create ResourceLocator",
+					logger.Debug(
+						"failed to create ResourceLocator",
 						slog.String("kas", kas.GetUri()),
 						slog.Any("error", err),
 					)
@@ -553,7 +563,8 @@ func storeKeysToCache(logger *slog.Logger, kases []*policy.KeyAccessServer, keys
 		if kc != nil && key.GetPublicKey().GetKid() != "" && key.GetPublicKey().GetPem() != "" {
 			rl, err := NewResourceLocator(key.GetKasUri())
 			if err != nil {
-				logger.Debug("failed to create ResourceLocator",
+				logger.Debug(
+					"failed to create ResourceLocator",
 					slog.String("kas", key.GetKasUri()),
 					slog.Any("error", err),
 				)
@@ -821,7 +832,7 @@ func (r *granter) insertKeysForAttribute(e attributeBooleanExpression) (booleanK
 		for _, term := range clause.values {
 			grant := r.byAttribute(term)
 			if grant == nil {
-				return booleanKeyExpression{}, fmt.Errorf("no defintion or grant found for [%s]", term)
+				return booleanKeyExpression{}, fmt.Errorf("no definition or grant found for [%s]", term)
 			}
 			kases := grant.kases
 			if len(kases) == 0 {
@@ -836,7 +847,8 @@ func (r *granter) insertKeysForAttribute(e attributeBooleanExpression) (booleanK
 					var err error
 					rl, err = NewResourceLocator(kas)
 					if err != nil {
-						r.logger.Warn("invalid KAS URL in policy service",
+						r.logger.Warn(
+							"invalid KAS URL in policy service",
 							slog.String("kas", kas),
 							slog.Any("value", term),
 							slog.Any("error", err),

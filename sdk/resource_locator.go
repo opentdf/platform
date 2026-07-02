@@ -92,16 +92,16 @@ func (rl ResourceLocator) GetIdentifier() (string, error) {
 	// read the identifier if it exists
 	switch rl.protocol & 0xf0 {
 	case identifierNone, urlProtocolHTTPS:
-		return "", fmt.Errorf("legacy resource locator identifer: %x", rl.protocol)
+		return "", fmt.Errorf("legacy resource locator identifier: %x", rl.protocol)
 	case identifier2Byte, identifier8Byte, identifier32Byte:
 		if rl.identifier == "" {
-			return "", fmt.Errorf("no resource locator identifer: %d", rl.protocol)
+			return "", fmt.Errorf("no resource locator identifier: %d", rl.protocol)
 		}
 		// remove padding
 		cleanedIdentifier := strings.TrimRight(rl.identifier, "\x00")
 		return cleanedIdentifier, nil
 	}
-	return "", fmt.Errorf("unsupported identifer protocol: %x", rl.protocol)
+	return "", fmt.Errorf("unsupported identifier protocol: %x", rl.protocol)
 }
 
 // GetURL - Retrieve a fully qualified protocol+body URL string from a ResourceLocator struct

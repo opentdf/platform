@@ -911,11 +911,16 @@ func TestReasonerMixedMappingsAndGrants(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	got := make(map[string]struct{})
-	for _, s := range plan {
-		got[s.KAS] = struct{}{}
+	// The mapped attribute (MP) forms its own split; the grant attribute (REL,
+	// ANY_OF) shares a split across its two KASes. Assert the full plan (KAS plus
+	// split id) rather than a KAS set, so mapped-key splits stay distinct instead
+	// of collapsing by KAS.
+	want := []keySplitStep{
+		{evenMoreSpecificKas, "1"},
+		{kasAu, "2"},
+		{kasCa, "2"},
 	}
-	assert.ElementsMatch(t, []string{evenMoreSpecificKas, kasAu, kasCa}, slices.Collect(maps.Keys(got)))
+	assert.ElementsMatch(t, want, plan)
 }
 
 // Tests titles are written in the form [{attr}.{value}] => [{resulting kas boolean exp}]

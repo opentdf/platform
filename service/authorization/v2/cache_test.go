@@ -114,3 +114,29 @@ func Test_EntitlementPolicyCache_CacheHits(t *testing.T) {
 	assert.Len(t, registeredResources, 1)
 	assert.Equal(t, "res1", registeredResources[0].GetName())
 }
+
+func Test_EntitlementPolicyCache_DynamicValueMappings(t *testing.T) {
+	ctx := t.Context()
+	mockCache, _ := cache.TestCacheClient(mockCacheExpiry)
+
+	c, err := NewEntitlementPolicyCache(ctx, l, nil, mockCache, 1*time.Hour, true)
+	require.NoError(t, err)
+	assert.True(t, c.allowDynamicValueMappings)
+
+	// Cache miss: empty result, no error
+	mappings, err := c.ListAllDynamicValueMappings(ctx)
+	require.NoError(t, err)
+	assert.Empty(t, mappings)
+
+	// Cache hit: returns what was set
+	dvmList := []*policy.DynamicValueMapping{{Id: "dvm-1"}}
+	_ = mockCache.Set(ctx, dynamicValueMappingsCacheKey, dvmList, nil)
+
+	// Allow for some concurrency overhead in cache library to prevent flakiness in tests
+	time.Sleep(10 * time.Millisecond)
+
+	mappings, err = c.ListAllDynamicValueMappings(ctx)
+	require.NoError(t, err)
+	assert.Len(t, mappings, 1)
+	assert.Equal(t, "dvm-1", mappings[0].GetId())
+}

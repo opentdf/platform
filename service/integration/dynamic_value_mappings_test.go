@@ -94,6 +94,17 @@ func (s *DynamicValueMappingsSuite) TestRejectsHierarchyDefinition() {
 	s.Require().ErrorIs(err, db.ErrEnumValueInvalid, "HIERARCHY definitions must be rejected")
 }
 
+func (s *DynamicValueMappingsSuite) TestRejectsNotInOperator() {
+	attr := s.createDefinition("dvem_not_in", policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF)
+
+	_, err := s.db.PolicyClient.CreateDynamicValueMapping(s.ctx, &dynamicvaluemapping.CreateDynamicValueMappingRequest{
+		AttributeDefinitionId: attr.GetId(),
+		ValueResolver:         s.resolver(".x[]", policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_NOT_IN),
+		Actions:               []*policy.Action{s.readAction()},
+	})
+	s.Require().ErrorIs(err, db.ErrEnumValueInvalid, "NOT_IN operator must be rejected for dynamic value resolution")
+}
+
 func (s *DynamicValueMappingsSuite) TestNoCoexistence_SubjectMappingThenDynamic() {
 	attr := s.createDefinition("dvem_coexist_fwd", policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF)
 	val, err := s.db.PolicyClient.CreateAttributeValue(s.ctx, attr.GetId(), &attributes.CreateAttributeValueRequest{Value: "v1"})
@@ -176,7 +187,7 @@ func (s *DynamicValueMappingsSuite) TestUpdateAndDelete() {
 	s.Require().NoError(err)
 
 	_, err = s.db.PolicyClient.GetDynamicValueMapping(s.ctx, created.GetId())
-	s.Require().Error(err, "mapping should be gone after delete")
+	s.Require().ErrorIs(err, db.ErrNotFound, "mapping should be gone after delete")
 }
 
 func (s *DynamicValueMappingsSuite) TestListByDefinition() {

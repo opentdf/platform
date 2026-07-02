@@ -37,41 +37,54 @@ func EvaluateDynamicValueMappingsWithActions(
 		return entitlementsSet, nil
 	}
 
+	// Flatten each entity in the representation once; a mapping matches if any entity satisfies it.
+	flattenedEntities := make([]flattening.Flattened, 0, len(entityRepresentation.GetAdditionalProps()))
 	for _, entity := range entityRepresentation.GetAdditionalProps() {
 		flattenedEntity, err := flattening.Flatten(entity.AsMap())
 		if err != nil {
 			return nil, fmt.Errorf("failure to flatten entity in definition value entitlement builtin: %w", err)
 		}
+		flattenedEntities = append(flattenedEntities, flattenedEntity)
+	}
 
-		for valueFQN, attributeAndValue := range decisionableAttributes {
-			definitionFQN := attributeAndValue.GetAttribute().GetFqn()
-			mappings := mappingsByDefinitionFQN[definitionFQN]
-			if len(mappings) == 0 {
-				continue
-			}
+	for valueFQN, attributeAndValue := range decisionableAttributes {
+		definitionFQN := attributeAndValue.GetAttribute().GetFqn()
+		mappings := mappingsByDefinitionFQN[definitionFQN]
+		if len(mappings) == 0 {
+			continue
+		}
 
-			segment, err := resourceValueSegment(valueFQN, attributeAndValue.GetValue())
-			if err != nil {
-				return nil, err
-			}
+		segment, err := resourceValueSegment(valueFQN, attributeAndValue.GetValue())
+		if err != nil {
+			return nil, err
+		}
 
-			// mappings on the same definition are OR-ed together
-			for _, mapping := range mappings {
-				matched, err := evaluateDynamicValueMapping(mapping, flattenedEntity, segment)
+		// mappings on the same definition are OR-ed together
+		for _, mapping := range mappings {
+			// A mapping is satisfied if any entity in the representation matches it. Evaluate
+			// existentially and append the mapping's actions at most once per value FQN, so multiple
+			// matching entities (e.g. person + client) do not duplicate the entitlement.
+			matched := false
+			for _, flattenedEntity := range flattenedEntities {
+				ok, err := evaluateDynamicValueMapping(mapping, flattenedEntity, segment)
 				if err != nil {
 					return nil, err
 				}
-				if !matched {
-					continue
+				if ok {
+					matched = true
+					break
 				}
-				if _, ok := entitlementsSet[valueFQN]; !ok {
-					entitlementsSet[valueFQN] = make([]*policy.Action, 0)
-				}
-				entitlementsSet[valueFQN] = append(
-					entitlementsSet[valueFQN],
-					dedupeSubjectMappingActions(mapping.GetActions(), l)...,
-				)
 			}
+			if !matched {
+				continue
+			}
+			if _, ok := entitlementsSet[valueFQN]; !ok {
+				entitlementsSet[valueFQN] = make([]*policy.Action, 0)
+			}
+			entitlementsSet[valueFQN] = append(
+				entitlementsSet[valueFQN],
+				dedupeSubjectMappingActions(mapping.GetActions(), l)...,
+			)
 		}
 	}
 

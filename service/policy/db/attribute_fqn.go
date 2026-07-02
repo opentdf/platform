@@ -205,12 +205,37 @@ func (c *PolicyDBClient) GetAttributesByValueFqns(ctx context.Context, r *attrib
 	return list, nil
 }
 
+// resolveValueFqns normalizes the requested FQNs, resolves them via
+// GetAttributesByValueFqns, and rejects any FQN that resolved only to a
+// definition (nil value, which GetAttributesByValueFqns returns when a value is
+// missing and allow_traversal is enabled). These value-FQN APIs require a
+// concrete value per requested FQN. Returns the normalized FQNs and the resolved
+// pairs.
+func (c *PolicyDBClient) resolveValueFqns(ctx context.Context, fqns []string) ([]string, map[string]*attributes.GetAttributeValuesByFqnsResponse_AttributeAndValue, error) {
+	normalized := make([]string, len(fqns))
+	for i, fqn := range fqns {
+		normalized[i] = strings.ToLower(fqn)
+	}
+
+	pairs, err := c.GetAttributesByValueFqns(ctx, &attributes.GetAttributeValuesByFqnsRequest{Fqns: normalized})
+	if err != nil {
+		return nil, nil, err
+	}
+	for fqn, pair := range pairs {
+		if pair.GetValue() == nil {
+			return nil, nil, fmt.Errorf("could not find value for FQN [%s]: %w", fqn, db.ErrNotFound)
+		}
+	}
+	return normalized, pairs, nil
+}
+
 // GetKeyMappingsByFqns returns, for each requested attribute value FQN, the
 // governing attribute rule and the effective KAS keys needed to build key
-// splits. Keys are resolved with value > definition > namespace precedence using
-// the mapped key model (SimpleKasKey), mirroring the client-side granter
-// resolution. Values configured only with legacy KeyAccessServer grants (no
-// kas_keys) return an empty key set; migrate such policy to keys to use this API.
+// splits. Keys are resolved with value > definition > namespace precedence,
+// preferring the mapped key model (SimpleKasKey) but falling back to legacy
+// KeyAccessServer grants at each level, mirroring the client-side granter
+// resolution. Grants without a usable cached public key (missing kid/pem) yield
+// no key for that level.
 func (c *PolicyDBClient) GetKeyMappingsByFqns(ctx context.Context, r *attributes.GetKeyMappingsByFqnsRequest) (map[string]*attributes.GetKeyMappingsByFqnsResponse_AttributeKeyMapping, error) {
 	ctx, span := c.Start(ctx, "DB:GetKeyMappingsByFqns")
 	defer span.End()
@@ -219,22 +244,10 @@ func (c *PolicyDBClient) GetKeyMappingsByFqns(ctx context.Context, r *attributes
 	if len(fqns) == 0 {
 		return map[string]*attributes.GetKeyMappingsByFqnsResponse_AttributeKeyMapping{}, nil
 	}
-	normalized := make([]string, len(fqns))
-	for i, fqn := range fqns {
-		normalized[i] = strings.ToLower(fqn)
-	}
 
-	pairs, err := c.GetAttributesByValueFqns(ctx, &attributes.GetAttributeValuesByFqnsRequest{Fqns: normalized})
+	_, pairs, err := c.resolveValueFqns(ctx, fqns)
 	if err != nil {
 		return nil, err
-	}
-	// GetAttributesByValueFqns resolves to the definition (with a nil value) when a
-	// value FQN is missing and the attribute has allow_traversal enabled. This API
-	// is value-FQN specific, so reject any FQN that did not resolve to a value.
-	for fqn, pair := range pairs {
-		if pair.GetValue() == nil {
-			return nil, fmt.Errorf("could not find value for FQN [%s]: %w", fqn, db.ErrNotFound)
-		}
 	}
 
 	mappings := make(map[string]*attributes.GetKeyMappingsByFqnsResponse_AttributeKeyMapping, len(pairs))
@@ -266,22 +279,9 @@ func (c *PolicyDBClient) GetEntitleableAttributesByFqns(ctx context.Context, r *
 			FqnEntitleableAttributes: map[string]*attributes.GetEntitleableAttributesByFqnsResponse_EntitleableAttribute{},
 		}, nil
 	}
-	normalized := make([]string, len(fqns))
-	for i, fqn := range fqns {
-		normalized[i] = strings.ToLower(fqn)
-	}
-
-	pairs, err := c.GetAttributesByValueFqns(ctx, &attributes.GetAttributeValuesByFqnsRequest{Fqns: normalized})
+	normalized, pairs, err := c.resolveValueFqns(ctx, fqns)
 	if err != nil {
 		return nil, err
-	}
-	// GetAttributesByValueFqns resolves to the definition (with a nil value) when a
-	// value FQN is missing and the attribute has allow_traversal enabled. This API
-	// is value-FQN specific, so reject any FQN that did not resolve to a value.
-	for fqn, pair := range pairs {
-		if pair.GetValue() == nil {
-			return nil, fmt.Errorf("could not find value for FQN [%s]: %w", fqn, db.ErrNotFound)
-		}
 	}
 
 	// Build the subject-mapping fetch set: the requested value FQNs plus, for every

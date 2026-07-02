@@ -162,7 +162,7 @@ SELECT
         'id', av.id,
         'value', av.value,
         'active', av.active,
-        'fqn', fqns.fqn
+        'fqn', av_fqns.fqn
     ) AS attribute_value,
     CASE
         WHEN sm.namespace_id IS NULL THEN NULL
@@ -175,7 +175,7 @@ CROSS JOIN counted
 CROSS JOIN params p
 LEFT JOIN subject_actions sa ON sm.id = sa.subject_mapping_id
 LEFT JOIN attribute_values av ON sm.attribute_value_id = av.id
-LEFT JOIN attribute_fqns fqns ON av.id = fqns.value_id
+LEFT JOIN attribute_fqns av_fqns ON av.id = av_fqns.value_id
 LEFT JOIN subject_condition_set scs ON scs.id = sm.subject_condition_set_id
 LEFT JOIN attribute_namespaces scs_ns ON scs_ns.id = scs.namespace_id
 LEFT JOIN attribute_fqns scs_ns_fqns ON scs_ns_fqns.namespace_id = scs_ns.id AND scs_ns_fqns.attribute_id IS NULL AND scs_ns_fqns.value_id IS NULL
@@ -190,7 +190,7 @@ GROUP BY
     scs_ns.id, scs_ns.name, scs_ns_fqns.fqn,
     sm_ns.id, sm_ns.name, sm_ns_fqns.fqn,
     av.id, av.value, av.active,
-    fqns.fqn,
+    av_fqns.fqn,
     counted.total,
     p.resolved_field, p.resolved_direction
 ORDER BY
@@ -243,7 +243,7 @@ SELECT
         'id', av.id,
         'value', av.value,
         'active', av.active,
-        'fqn', fqns.fqn
+        'fqn', av_fqns.fqn
     ) AS attribute_value,
     CASE
         WHEN sm.namespace_id IS NULL THEN NULL
@@ -251,14 +251,14 @@ SELECT
     END AS namespace
 FROM subject_mappings sm
 LEFT JOIN attribute_values av ON sm.attribute_value_id = av.id
-LEFT JOIN attribute_fqns fqns ON av.id = fqns.value_id
+LEFT JOIN attribute_fqns av_fqns ON av.id = av_fqns.value_id
 LEFT JOIN subject_condition_set scs ON scs.id = sm.subject_condition_set_id
 LEFT JOIN attribute_namespaces scs_ns ON scs_ns.id = scs.namespace_id
 LEFT JOIN attribute_fqns scs_ns_fqns ON scs_ns_fqns.namespace_id = scs_ns.id AND scs_ns_fqns.attribute_id IS NULL AND scs_ns_fqns.value_id IS NULL
 LEFT JOIN attribute_namespaces sm_ns ON sm_ns.id = sm.namespace_id
 LEFT JOIN attribute_fqns sm_ns_fqns ON sm_ns_fqns.namespace_id = sm_ns.id AND sm_ns_fqns.attribute_id IS NULL AND sm_ns_fqns.value_id IS NULL
 WHERE sm.id = $1
-GROUP BY av.id, fqns.fqn, sm.id, scs.id, scs.namespace_id, scs_ns.id, scs_ns.name, scs_ns_fqns.fqn, sm_ns.id, sm_ns.name, sm_ns_fqns.fqn;
+GROUP BY av.id, av_fqns.fqn, sm.id, scs.id, scs.namespace_id, scs_ns.id, scs_ns.name, scs_ns_fqns.fqn, sm_ns.id, sm_ns.name, sm_ns_fqns.fqn;
 
 -- name: matchSubjectMappings :many
 WITH subject_actions AS (

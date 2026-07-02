@@ -16,6 +16,7 @@ import (
 	"sync"
 
 	"connectrpc.com/connect"
+	"github.com/lestrrat-go/jwx/v2/jwk"
 	"github.com/opentdf/platform/lib/ocrypto"
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/wellknownconfiguration"
@@ -196,12 +197,27 @@ func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 	// Add request ID interceptor
 	uci = append(uci, audit.MetadataAddingConnectInterceptor())
 
-	accessTokenSource, err := buildIDPTokenSource(cfg)
+	accessTokenSource, dpopKey, err := buildIDPTokenSource(cfg)
 	if err != nil {
 		return nil, err
 	}
-	if accessTokenSource != nil {
-		interceptor := auth.NewTokenAddingInterceptorWithClient(accessTokenSource, cfg.httpClient)
+
+	// Wrap HTTP client with DPoP transport for resource requests. The DPoP key is
+	// resolved once in buildIDPTokenSource and returned here so the transport signs
+	// proofs with the same key the token source binds tokens to.
+	httpClient := cfg.httpClient
+	dpopHandledByTransport := false
+	if accessTokenSource != nil && dpopKey != nil {
+		httpClient = auth.NewDPoPHTTPClient(cfg.httpClient, dpopKey, accessTokenSource, cfg.tokenEndpoint)
+		dpopHandledByTransport = true
+	}
+
+	// When the DPoP transport is active it sets both the Authorization and DPoP
+	// headers (with a correctly normalized htu) and handles DPoP-Nonce retries, so
+	// the credential interceptor would only overwrite those headers with a weaker
+	// proof. Add the interceptor only when the transport is not handling DPoP.
+	if accessTokenSource != nil && !dpopHandledByTransport {
+		interceptor := auth.NewTokenAddingInterceptorWithClient(accessTokenSource, httpClient)
 		uci = append(uci, interceptor.AddCredentialsConnect())
 	}
 
@@ -209,7 +225,7 @@ func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 	if cfg.coreConn != nil {
 		platformConn = cfg.coreConn
 	} else {
-		platformConn = &ConnectRPCConnection{Endpoint: platformEndpoint, Client: cfg.httpClient, Options: append(cfg.extraClientOptions, connect.WithInterceptors(uci...))}
+		platformConn = &ConnectRPCConnection{Endpoint: platformEndpoint, Client: httpClient, Options: append(cfg.extraClientOptions, connect.WithInterceptors(uci...))}
 	}
 
 	if cfg.entityResolutionConn != nil {
@@ -250,55 +266,109 @@ func IsPlatformEndpointMalformed(e string) bool {
 	return false
 }
 
-func buildIDPTokenSource(c *config) (auth.AccessTokenSource, error) {
+func getDPoPJWK(dpopKey *ocrypto.RsaKeyPair) (jwk.Key, error) {
+	dpopPrivateKeyPEM, err := dpopKey.PrivateKeyInPemFormat()
+	if err != nil {
+		return nil, fmt.Errorf("error getting dpop private key: %w", err)
+	}
+
+	key, err := jwk.ParseKey([]byte(dpopPrivateKeyPEM), jwk.WithPEM(true))
+	if err != nil {
+		return nil, fmt.Errorf("error creating JWK: %w", err)
+	}
+
+	if err := key.Set(jwk.AlgorithmKey, "RS256"); err != nil {
+		return nil, fmt.Errorf("error setting key algorithm: %w", err)
+	}
+
+	return key, nil
+}
+
+// NewDPoPValidationHTTPClient wraps base so its requests carry a DPoP proof signed
+// with the key resolved from opts (the same WithDPoP* options passed to New). It is
+// intended for token-endpoint calls made outside the SDK's own connection (e.g. a
+// CLI pre-flight credential check): the proof binds the request via htu but carries
+// no ath claim or Authorization header, and DPoP-Nonce challenges are retried.
+//
+// base is returned unchanged when no DPoP key is configured in opts. When only
+// WithDPoPAlgorithm is set, a fresh ephemeral key is generated for this client;
+// that is fine for a throwaway validation token that is never reused.
+func NewDPoPValidationHTTPClient(base *http.Client, opts ...Option) (*http.Client, error) {
+	c := &config{}
+	for _, o := range opts {
+		o(c)
+	}
+	key, err := resolveDPoPKey(c)
+	if err != nil {
+		return nil, fmt.Errorf("failed to resolve DPoP key: %w", err)
+	}
+	if key == nil {
+		return base, nil
+	}
+	return auth.NewDPoPHTTPClient(base, key, nil, ""), nil
+}
+
+// buildIDPTokenSource builds the access token source and resolves the DPoP key
+// once, returning it so the caller can give the DPoP transport the same key the
+// token source binds to. The returned key is nil when DPoP is not in effect
+// (no credentials, or no key configured for a custom token source).
+func buildIDPTokenSource(c *config) (auth.AccessTokenSource, jwk.Key, error) {
 	if c.customAccessTokenSource != nil {
-		return c.customAccessTokenSource, nil
+		// A custom token source manages its own credentials, but a configured DPoP
+		// key still drives the resource-request transport.
+		dpopKey, err := resolveDPoPKey(c)
+		if err != nil {
+			return nil, nil, fmt.Errorf("failed to resolve DPoP key: %w", err)
+		}
+		return c.customAccessTokenSource, dpopKey, nil
+	}
+
+	// Surface a conflicting exchange configuration before the uncredentialed
+	// fast-path below, so the misconfiguration is reported instead of silently
+	// producing a nil (uncredentialed) token source.
+	if c.certExchange != nil && c.tokenExchange != nil {
+		return nil, nil, errors.New("cannot do both token exchange and certificate exchange")
 	}
 
 	// There are uses for uncredentialed clients (i.e. consuming the well-known configuration).
 	if c.clientCredentials == nil && c.oauthAccessTokenSource == nil {
-		return nil, nil //nolint:nilnil // not having credentials is not an error
-	}
-
-	if c.certExchange != nil && c.tokenExchange != nil {
-		return nil, errors.New("cannot do both token exchange and certificate exchange")
-	}
-
-	if c.dpopKey == nil {
-		rsaKeyPair, err := ocrypto.NewRSAKeyPair(dpopKeySize)
-		if err != nil {
-			return nil, fmt.Errorf("could not generate RSA Key: %w", err)
+		if c.dpopJWK != nil || len(c.dpopKeyPEM) > 0 || c.dpopAlgorithm != "" || c.dpopKey != nil {
+			getLogger().Warn("DPoP key configured but no credentials supplied; DPoP will be disabled")
 		}
-		c.dpopKey = &rsaKeyPair
+		return nil, nil, nil
 	}
 
-	var ts auth.AccessTokenSource
-	var err error
+	dpopKey, err := resolveDPoPKey(c)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to resolve DPoP key: %w", err)
+	}
 
+	// No DPoP key configured: auto-generate a default ephemeral ES256/P-256 key.
+	if dpopKey == nil {
+		dpopKey, err = generateDPoPKeyForAlg(dpopAlgES256)
+		if err != nil {
+			return nil, nil, fmt.Errorf("failed to generate default DPoP key: %w", err)
+		}
+	}
+
+	ts, err := buildIDPTokenSourceFromJWK(c, dpopKey)
+	if err != nil {
+		return nil, nil, err
+	}
+	return ts, dpopKey, nil
+}
+
+func buildIDPTokenSourceFromJWK(c *config, key jwk.Key) (auth.AccessTokenSource, error) {
 	switch {
 	case c.oauthAccessTokenSource != nil:
-		ts, err = NewOAuthAccessTokenSource(c.oauthAccessTokenSource, c.scopes, c.dpopKey)
+		return newOAuthAccessTokenSourceFromJWK(c.oauthAccessTokenSource, c.scopes, key), nil
 	case c.certExchange != nil:
-		ts, err = NewCertExchangeTokenSource(c.logger, *c.certExchange, *c.clientCredentials, c.tokenEndpoint, c.dpopKey)
+		return newCertExchangeTokenSourceFromJWK(c.logger, *c.certExchange, *c.clientCredentials, c.tokenEndpoint, key)
 	case c.tokenExchange != nil:
-		ts, err = NewIDPTokenExchangeTokenSource(
-			c.logger,
-			*c.tokenExchange,
-			*c.clientCredentials,
-			c.tokenEndpoint,
-			c.scopes,
-			c.dpopKey,
-		)
+		return newIDPTokenExchangeTokenSourceFromJWK(c.logger, *c.tokenExchange, *c.clientCredentials, c.tokenEndpoint, c.scopes, key)
 	default:
-		ts, err = NewIDPAccessTokenSource(
-			*c.clientCredentials,
-			c.tokenEndpoint,
-			c.scopes,
-			c.dpopKey,
-		)
+		return newIDPAccessTokenSourceFromJWK(*c.clientCredentials, c.tokenEndpoint, c.scopes, key)
 	}
-
-	return ts, err
 }
 
 func (s SDK) Close() error {

@@ -55,6 +55,23 @@ Prefer `make` targets at repo root:
 - **BDD tests**: run `cd tests-bdd && go test ./...` (requires Docker; feature files are `tests-bdd/features/*.feature`).
 - **Integration tests** may require the compose stack; follow module README(s) under `service/`.
 - **README tests**: verify code examples in documentation compile and work correctly.
+- **Cross-SDK e2e (xtest)**: the `opentdf/tests` repo runs the platform against the go/java/js SDKs. Use it to validate cross-language behavior (e.g. DPoP, TDF interop) that unit tests can't cover.
+
+### Running xtest on a branch
+
+xtest lives in `opentdf/tests` and is triggered with `gh workflow run`. Push your branch first, then point each `*-ref` input at the branch to test (use the default branch for components you didn't change). Example — testing a platform + otdfctl branch against the standard java/web SDK branches:
+
+```bash
+gh workflow run xtest.yml \
+  --repo opentdf/tests \
+  --ref main \
+  -f platform-ref=my-platform-branch \
+  -f otdfctl-ref=my-platform-branch \
+  -f java-ref=main \
+  -f js-ref=main
+```
+
+The command prints the run URL. Poll it with `gh run view <run-id> --repo opentdf/tests`, and read a job's logs with `gh run view --job=<job-id> --repo opentdf/tests --log`. When checking a specific feature, confirm its tests actually ran and were not `SKIPPED` (grep the log for the test file, e.g. `test_dpop.py`).
 
 ## Commit & Pull Request Guidelines
 

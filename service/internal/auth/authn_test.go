@@ -258,6 +258,28 @@ func TestNormalizeUrl(t *testing.T) {
 	}
 }
 
+func TestOriginFromHost(t *testing.T) {
+	for _, tt := range []struct {
+		name   string
+		host   string
+		secure bool
+		out    string
+	}{
+		{"https default port stripped", "example.com:443", true, "https://example.com"},
+		{"http default port stripped", "example.com:80", false, "http://example.com"},
+		{"https non-default port kept", "example.com:8443", true, "https://example.com:8443"},
+		{"http no port", "example.com", false, "http://example.com"},
+		{"host lowercased", "EXAMPLE.COM:443", true, "https://example.com"},
+		{"ipv6 default port stripped", "[::1]:443", true, "https://[::1]"},
+		{"ipv6 non-default port kept", "[::1]:8443", true, "https://[::1]:8443"},
+		{"ipv6 literal ending in 443 kept", "[fe80::443]", true, "https://[fe80::443]"},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.out, originFromHost(tt.host, tt.secure))
+		})
+	}
+}
+
 func TestPermissionDeniedDecisionLogAttrs(t *testing.T) {
 	tok := jwt.New()
 	require.NoError(t, tok.Set(jwt.SubjectKey, "client-subject"))

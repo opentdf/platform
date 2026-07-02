@@ -86,7 +86,7 @@ func InitProfile(c *cli.Cli) *profiles.OtdfctlProfileStore {
 // TODO make this a preRun hook
 //
 //nolint:nestif // separate refactor [https://github.com/opentdf/otdfctl/issues/383]
-func NewHandler(c *cli.Cli) handlers.Handler {
+func NewHandler(c *cli.Cli, extraSDKOpts ...sdk.Option) handlers.Handler {
 	// if global flags are set then validate and create a temporary profile in memory
 	var cp *profiles.OtdfctlProfileStore
 
@@ -181,7 +181,7 @@ func NewHandler(c *cli.Cli) handlers.Handler {
 		cp = InitProfile(c)
 	}
 
-	if err := auth.ValidateProfileAuthCredentials(c.Context(), cp); err != nil {
+	if err := auth.ValidateProfileAuthCredentials(c.Context(), cp, extraSDKOpts...); err != nil {
 		endpoint := cp.GetEndpoint()
 		var certErr *tls.CertificateVerificationError
 		if errors.As(err, &certErr) {
@@ -209,7 +209,11 @@ func NewHandler(c *cli.Cli) handlers.Handler {
 		cli.ExitWithError("Failed to get access token.", err)
 	}
 
-	h, err := handlers.New(handlers.WithProfile(cp))
+	handlerFuncs := []handlers.HandlerOptsFunc{handlers.WithProfile(cp)}
+	if len(extraSDKOpts) > 0 {
+		handlerFuncs = append(handlerFuncs, handlers.WithExtraSDKOpts(extraSDKOpts...))
+	}
+	h, err := handlers.New(handlerFuncs...)
 	if err != nil {
 		cli.ExitWithError("Unexpected error", err)
 	}

@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.26.0](https://github.com/opentdf/platform/compare/sdk/v0.25.0...sdk/v0.26.0) (2026-07-02)
+
+
+### Features
+
+* **policy:** add narrow attribute read API protos and generated code ([#3634](https://github.com/opentdf/platform/issues/3634)) ([5726720](https://github.com/opentdf/platform/commit/572672007abd7e0a3598f8303661487cfb0d2db5))
+* **sdk:** resolve key splits via GetKeyMappingsByFqns ([#3699](https://github.com/opentdf/platform/issues/3699)) ([7a2320b](https://github.com/opentdf/platform/commit/7a2320b30c7914b7e54600fc2390d41ce495a76b))
+
+
+### Bug Fixes
+
+* **deps:** bump github.com/opentdf/platform/protocol/go from 0.36.0 to 0.37.0 in /sdk ([#3707](https://github.com/opentdf/platform/issues/3707)) ([4277e96](https://github.com/opentdf/platform/commit/4277e9619491d3177ccafebbdf8c397378fe05ce))
+
 ## [0.25.0](https://github.com/opentdf/platform/compare/sdk/v0.24.0...sdk/v0.25.0) (2026-06-29)
 
 

@@ -856,6 +856,17 @@ func (*unimplementedKeyMappingsClient) GetKeyMappingsByFqns(_ context.Context, _
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("not implemented"))
 }
 
+// emptyKeyMappingsClient models a server that succeeds but omits the requested
+// FQNs from the response map; the granter must fall back per value rather than
+// silently drop them.
+type emptyKeyMappingsClient struct {
+	mockAttributesClient
+}
+
+func (*emptyKeyMappingsClient) GetKeyMappingsByFqns(_ context.Context, _ *attributes.GetKeyMappingsByFqnsRequest) (*attributes.GetKeyMappingsByFqnsResponse, error) {
+	return &attributes.GetKeyMappingsByFqnsResponse{}, nil
+}
+
 // TestReasonerKeyMappingFallback verifies that grant-only values and older
 // platforms (no GetKeyMappingsByFqns) resolve to the same plan as the key-mapping
 // path, via the GetAttributeValuesByFqns fallback.
@@ -871,6 +882,7 @@ func TestReasonerKeyMappingFallback(t *testing.T) {
 	}{
 		{"per-value fallback (empty key set)", &mockAttributesClient{}},
 		{"full fallback (RPC unimplemented)", &unimplementedKeyMappingsClient{}},
+		{"per-value fallback (FQN omitted from response)", &emptyKeyMappingsClient{}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			reasoner, err := newGranterFromService(t.Context(), slog.Default(), newKasKeyCache(), tc.as, policy...)

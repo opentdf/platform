@@ -447,24 +447,26 @@ func newGranterFromService(ctx context.Context, logger *slog.Logger, keyCache *k
 		// attribute lookup for all values.
 		if connect.CodeOf(err) == connect.CodeUnimplemented {
 			if e := grants.addGrantsFromAttributeValues(ctx, logger, keyCache, as, fqnsStr); e != nil {
-				return grants, e
+				return granter{}, e
 			}
 			return grants, nil
 		}
 		return granter{}, err
 	}
 
+	// Iterate the requested FQNs (not the response map) so a value the server
+	// omits still falls back rather than being silently dropped. The response is
+	// keyed by normalized FQN, and the protobuf getters are nil-safe, so an absent
+	// or nil entry yields empty keys and resolves via the fallback below.
+	mappings := km.GetFqnKeyMappings()
 	var fallback []string
-	for fqnstr, m := range km.GetFqnKeyMappings() {
-		fqn, err := NewAttributeValueFQN(fqnstr)
-		if err != nil {
-			return grants, err
-		}
+	for _, fqn := range fqns {
+		m := mappings[fqn.key]
 		keys := m.GetKeys()
 		if len(keys) == 0 {
-			// No mapped keys (legacy-grant-only or unconfigured); resolve via the
-			// full attribute lookup below.
-			fallback = append(fallback, fqnstr)
+			// No mapped keys (legacy-grant-only, unconfigured, or omitted); resolve
+			// via the full attribute lookup below.
+			fallback = append(fallback, fqn.key)
 			continue
 		}
 		// Only the rule and FQN are read downstream (constructAttributeBoolean /
@@ -492,7 +494,7 @@ func newGranterFromService(ctx context.Context, logger *slog.Logger, keyCache *k
 
 	if len(fallback) > 0 {
 		if err := grants.addGrantsFromAttributeValues(ctx, logger, keyCache, as, fallback); err != nil {
-			return grants, err
+			return granter{}, err
 		}
 	}
 

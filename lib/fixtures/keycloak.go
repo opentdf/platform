@@ -996,7 +996,8 @@ func getRealmRolesByList(ctx context.Context, realmName string, tm *TokenManager
 			ctx,
 			token.AccessToken,
 			realmName,
-			roleName)
+			roleName,
+		)
 		if err != nil {
 			slog.Error("error getting realm role for realm",
 				slog.String("role", roleName),
@@ -1217,7 +1218,7 @@ func createCertExchange(ctx context.Context, connectParams *KeycloakConnectParam
 
 	authExecutions, err := client.GetAuthenticationExecutions(ctx, token.AccessToken, connectParams.Realm, topLevelFlowName)
 	if err != nil {
-		slog.Error("error gettings executions", slog.Any("error", err))
+		slog.Error("error getting executions", slog.Any("error", err))
 		return err
 	}
 	if len(authExecutions) != 1 {
@@ -1251,7 +1252,8 @@ func createCertExchange(ctx context.Context, connectParams *KeycloakConnectParam
 	config["x509-cert-auth.certificate-policy-mode"] = "All"
 	executionConfig["config"] = config
 	if err := updateExecutionConfig(ctx, client, execution, connectParams, token.AccessToken, executionConfig); err != nil {
-		slog.Error("error updating x509 auth flow configs",
+		slog.Error(
+			"error updating x509 auth flow configs",
 			slog.String("client_id", clientID),
 			slog.Any("error", err),
 		)
@@ -1260,7 +1262,8 @@ func createCertExchange(ctx context.Context, connectParams *KeycloakConnectParam
 
 	execution.Requirement = &requiredRequirement
 	if err := client.UpdateAuthenticationExecution(ctx, token.AccessToken, connectParams.Realm, topLevelFlowName, *execution); err != nil {
-		slog.Error("error updating x509 auth flow requjirement",
+		slog.Error(
+			"error updating x509 auth flow requjirement",
 			slog.String("client_id", clientID),
 			slog.Any("error", err),
 		)
@@ -1295,7 +1298,8 @@ func createCertExchange(ctx context.Context, connectParams *KeycloakConnectParam
 	flowBindings["direct_grant"] = *flowID
 	updatedClient.AuthenticationFlowBindingOverrides = &flowBindings
 	if err := client.UpdateClient(ctx, token.AccessToken, connectParams.Realm, *updatedClient); err != nil {
-		slog.Error("error updating client auth flow binding overrides",
+		slog.Error(
+			"error updating client auth flow binding overrides",
 			slog.String("client_id", clientID),
 			slog.Any("error", err),
 		)
@@ -1303,7 +1307,8 @@ func createCertExchange(ctx context.Context, connectParams *KeycloakConnectParam
 	}
 
 	//nolint:sloglint // allow existing emojis
-	slog.Info("✅ created Cert Exchange Authentication",
+	slog.Info(
+		"✅ created Cert Exchange Authentication",
 		slog.String("flow_id", *flowID),
 	)
 

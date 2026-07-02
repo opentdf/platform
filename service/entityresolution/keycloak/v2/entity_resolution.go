@@ -163,7 +163,8 @@ func EntityResolution(ctx context.Context,
 	var resolvedEntities []*entityresolutionV2.EntityRepresentation
 
 	for idx, ident := range payload {
-		logger.DebugContext(ctx,
+		logger.DebugContext(
+			ctx,
 			"lookup",
 			slog.Any("entity", ident.GetEntityType()),
 		)
@@ -173,7 +174,8 @@ func EntityResolution(ctx context.Context,
 		exactMatch := true
 		switch ident.GetEntityType().(type) {
 		case *entity.Entity_ClientId:
-			logger.DebugContext(ctx,
+			logger.DebugContext(
+				ctx,
 				"looking up",
 				slog.Any("type", ident.GetEntityType()),
 				slog.String("client_id", ident.GetClientId()),
@@ -239,7 +241,8 @@ func EntityResolution(ctx context.Context,
 				connect.NewError(connect.CodeInternal, ErrGetRetrievalFailed)
 		case len(users) == 1:
 			user := users[0]
-			logger.DebugContext(ctx,
+			logger.DebugContext(
+				ctx,
 				"user",
 				slog.Any("details", user),
 				slog.String("entity", ident.String()),
@@ -345,7 +348,7 @@ func EntityResolution(ctx context.Context,
 }
 
 func typeToGenericJSONMap[Marshalable any](inputStruct Marshalable, logger *logger.Logger) (map[string]interface{}, error) {
-	// For now, since we dont' know the "shape" of the entity/user record or representation we will get from a specific entity store,
+	// For now, since we don't know the "shape" of the entity/user record or representation we will get from a specific entity store,
 	tmpDoc, err := json.Marshal(inputStruct)
 	if err != nil {
 		logger.Error("error marshalling input type!", slog.String("error", err.Error()))
@@ -370,7 +373,8 @@ func expandGroup(ctx context.Context, groupID string, kcConnector *Connector, kc
 	if err == nil {
 		grpMembers, memberErr := retrieveGroupMembers(ctx, logger, *grp.ID, kcConfig.Realm, svcCache, kcConnector)
 		if memberErr == nil {
-			logger.DebugContext(ctx,
+			logger.DebugContext(
+				ctx,
 				"adding members",
 				slog.Int("amount", len(grpMembers)),
 				slog.String("from group", *grp.Name),

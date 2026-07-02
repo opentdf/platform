@@ -372,7 +372,8 @@ func (as *AuthorizationService) GetEntitlements(ctx context.Context, req *connec
 		return nil, connect.NewError(connect.CodeInternal, errors.New("failed to build rego input"))
 	}
 
-	results, err := as.eval.Eval(ctx,
+	results, err := as.eval.Eval(
+		ctx,
 		rego.EvalInput(in),
 	)
 	if err != nil {
@@ -428,7 +429,8 @@ func (as *AuthorizationService) GetEntitlements(ctx context.Context, req *connec
 			entitlement, valueOK := value.(string)
 			// If value is not okay skip adding to entitlements
 			if !valueOK {
-				as.logger.WarnContext(ctx, "issue with adding entitlement",
+				as.logger.WarnContext(
+					ctx, "issue with adding entitlement",
 					slog.String("entity_id", entity.GetId()),
 					slog.String("entitlement", entitlement),
 				)
@@ -518,7 +520,7 @@ func (as *AuthorizationService) getDecisions(ctx context.Context, dr *authorizat
 	}
 	if err != nil {
 		// if attribute an FQN does not exist
-		// return deny for all entity chains aginst this RAs
+		// return deny for all entity chains against these RAs
 		if errors.Is(err, status.Error(codes.NotFound, db.ErrTextNotFound)) || errors.Is(err, ErrEmptyStringAttribute) {
 			for raIdx, ra := range dr.GetResourceAttributes() {
 				for ecIdx, ec := range dr.GetEntityChains() {
@@ -617,9 +619,9 @@ func (as *AuthorizationService) getDecisions(ctx context.Context, dr *authorizat
 			auditECEntitlements := make([]audit.EntityChainEntitlement, 0)
 			auditEntityDecisions := make([]audit.EntityDecision, 0)
 
-			// Entitlements for environment entites in chain
+			// Entitlements for environment entities in chain
 			envEntityAttrValues := make(map[string][]string)
-			// Entitlementsfor sbuject entities in chain
+			// Entitlements for subject entities in chain
 			subjectEntityAttrValues := make(map[string][]string)
 
 			// handle empty entity / attr list

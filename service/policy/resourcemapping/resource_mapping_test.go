@@ -468,7 +468,7 @@ func Test_UpdateResourceMappingRequest_Succeeds(t *testing.T) {
 			"",
 			[]string{"term1"},
 			"",
-			"empty valud ID",
+			"empty valid ID",
 		},
 		{
 			"",

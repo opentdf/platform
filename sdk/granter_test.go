@@ -911,9 +911,9 @@ func TestReasonerMixedMappingsAndGrants(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	got := make(map[string]bool)
+	got := make(map[string]struct{})
 	for _, s := range plan {
-		got[s.KAS] = true
+		got[s.KAS] = struct{}{}
 	}
 	assert.ElementsMatch(t, []string{evenMoreSpecificKas, kasAu, kasCa}, slices.Collect(maps.Keys(got)))
 }

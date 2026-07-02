@@ -474,8 +474,9 @@ func newGranterFromService(ctx context.Context, logger *slog.Logger, keyCache *k
 		attr := &policy.Attribute{Fqn: fqn.Prefix().String(), Rule: m.GetRule()}
 		for _, sk := range keys {
 			if err := grants.addMappedKey(fqn, sk); err != nil {
-				logger.Debug("failed to add mapped key",
+				logger.Warn("failed to add mapped key",
 					slog.Any("fqn", fqn),
+					slog.String("kas", sk.GetKasUri()),
 					slog.Any("error", err),
 				)
 				continue

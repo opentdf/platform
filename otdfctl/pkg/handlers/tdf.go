@@ -39,6 +39,7 @@ type TDFInspect struct {
 }
 
 func (h Handler) EncryptBytes(
+	ctx context.Context,
 	tdfType string,
 	unencrypted []byte,
 	attrValues []string,
@@ -94,7 +95,7 @@ func (h Handler) EncryptBytes(
 			opts = append(opts, sdk.WithTargetMode(targetMode))
 		}
 
-		_, err := h.sdk.CreateTDF(enc, bytes.NewReader(unencrypted), opts...)
+		_, err := h.sdk.CreateTDFContext(ctx, enc, bytes.NewReader(unencrypted), opts...)
 		return enc, err
 	default:
 		return nil, errors.New("unknown TDF type")
@@ -148,6 +149,13 @@ func (h Handler) DecryptBytes(
 		r, err := h.sdk.LoadTDF(ec, opts...)
 		if err != nil {
 			return nil, err
+		}
+		// Perform the key unwrap (KAS Rewrap) up front with the caller's
+		// context so the request propagates the active trace. Without this the
+		// unwrap is triggered lazily by io.Copy below using context.Background,
+		// which would start a new, disconnected trace.
+		if err = r.Init(ctx); err != nil {
+			return nil, formatDecryptError(ctx, r.Obligations, err)
 		}
 		//nolint:errorlint // callers intended to test error equality directly
 		if _, err = io.Copy(pt, r); err != nil && err != io.EOF {

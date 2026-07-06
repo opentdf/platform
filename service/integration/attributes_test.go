@@ -1653,9 +1653,10 @@ func (s *AttributesSuite) Test_GetKeyMappingsByFqns() {
 		s.Equal("r1", m.GetKeys()[0].GetPublicKey().GetKid())
 	})
 
-	s.Run("errors when a value is missing even with allow_traversal", func() {
-		// allow_traversal lets GetAttributesByValueFqns fall back to the definition
-		// for a missing value; this value-FQN API must still reject it.
+	s.Run("missing value resolves at definition level with allow_traversal", func() {
+		// allow_traversal lets a not-yet-created value fall back to its definition, so
+		// GetKeyMappingsByFqns resolves the definition's key for that value and
+		// front-loaded TDF creation still gets a key set.
 		ns, err := s.db.PolicyClient.CreateNamespace(s.ctx, &namespaces.CreateNamespaceRequest{Name: "keymap-traversal.example"})
 		s.Require().NoError(err)
 		created, err := s.db.PolicyClient.CreateAttribute(s.ctx, &attributes.CreateAttributeRequest{
@@ -1667,11 +1668,17 @@ func (s *AttributesSuite) Test_GetKeyMappingsByFqns() {
 		})
 		s.Require().NoError(err)
 
-		_, err = s.db.PolicyClient.GetKeyMappingsByFqns(s.ctx, &attributes.GetKeyMappingsByFqnsRequest{
-			Fqns: []string{fqnBuilder(ns.GetName(), created.GetName(), "missing_value")},
+		key1 := keyByFixture("kas_key_1")
+		_, err = s.db.PolicyClient.AssignPublicKeyToAttribute(s.ctx, &attributes.AttributeKey{
+			AttributeId: created.GetId(),
+			KeyId:       key1.GetKey().GetId(),
 		})
-		s.Require().Error(err)
-		s.Require().ErrorIs(err, db.ErrNotFound)
+		s.Require().NoError(err)
+
+		missingFqn := fqnBuilder(ns.GetName(), created.GetName(), "missing_value")
+		mappings := keysByFqn(missingFqn)
+		s.Require().Len(mappings, 1)
+		assertSingleKey(mappings[missingFqn], policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF, key1)
 	})
 
 	s.Run("errors when a requested fqn does not exist", func() {
@@ -1736,10 +1743,10 @@ func (s *AttributesSuite) Test_GetEntitleableAttributesByFqns_NonExistentFqn_Fai
 	s.Require().ErrorIs(err, db.ErrNotFound)
 }
 
-func (s *AttributesSuite) Test_GetEntitleableAttributesByFqns_MissingValueAllowTraversal_Fails() {
-	// allow_traversal lets GetAttributesByValueFqns fall back to the definition for
-	// a missing value; this value-FQN API must reject it rather than return an
-	// entry with an empty value_id.
+func (s *AttributesSuite) Test_GetEntitleableAttributesByFqns_MissingValueAllowTraversal_Succeeds() {
+	// allow_traversal lets a not-yet-created value fall back to its definition, so
+	// this API returns the definition context plus an entry with an empty value
+	// identity (no value_id, no subject mappings) rather than erroring.
 	ns, err := s.db.PolicyClient.CreateNamespace(s.ctx, &namespaces.CreateNamespaceRequest{Name: "entitleable-traversal.example"})
 	s.Require().NoError(err)
 	created, err := s.db.PolicyClient.CreateAttribute(s.ctx, &attributes.CreateAttributeRequest{
@@ -1751,11 +1758,25 @@ func (s *AttributesSuite) Test_GetEntitleableAttributesByFqns_MissingValueAllowT
 	})
 	s.Require().NoError(err)
 
-	_, err = s.db.PolicyClient.GetEntitleableAttributesByFqns(s.ctx, &attributes.GetEntitleableAttributesByFqnsRequest{
-		Fqns: []string{fqnBuilder(ns.GetName(), created.GetName(), "missing_value")},
+	missingFqn := fqnBuilder(ns.GetName(), created.GetName(), "missing_value")
+	resp, err := s.db.PolicyClient.GetEntitleableAttributesByFqns(s.ctx, &attributes.GetEntitleableAttributesByFqnsRequest{
+		Fqns: []string{missingFqn},
 	})
-	s.Require().Error(err)
-	s.Require().ErrorIs(err, db.ErrNotFound)
+	s.Require().NoError(err)
+
+	got, err := s.db.PolicyClient.GetAttribute(s.ctx, created.GetId())
+	s.Require().NoError(err)
+	defFqn := got.GetFqn()
+	def := resp.GetDefinitions()[defFqn]
+	s.Require().NotNil(def)
+	s.Equal(policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF, def.GetRule())
+
+	e := resp.GetFqnEntitleableAttributes()[missingFqn]
+	s.Require().NotNil(e)
+	s.Equal(defFqn, e.GetDefinitionFqn())
+	s.Equal(missingFqn, e.GetValue().GetFqn())
+	s.Empty(e.GetValue().GetValueId())
+	s.Empty(e.GetValue().GetSubjectMappings())
 }
 
 func (s *AttributesSuite) Test_GetEntitleableAttributesByFqns_Hierarchy() {

@@ -205,12 +205,13 @@ func (c *PolicyDBClient) GetAttributesByValueFqns(ctx context.Context, r *attrib
 	return list, nil
 }
 
-// resolveValueFqns normalizes the requested FQNs, resolves them via
-// GetAttributesByValueFqns, and rejects any FQN that resolved only to a
-// definition (nil value, which GetAttributesByValueFqns returns when a value is
-// missing and allow_traversal is enabled). These value-FQN APIs require a
-// concrete value per requested FQN. Returns the normalized FQNs and the resolved
-// pairs.
+// resolveValueFqns normalizes the requested FQNs and resolves them via
+// GetAttributesByValueFqns, returning the normalized FQNs and the resolved pairs.
+// Definition-only pairs (nil value) are retained: GetAttributesByValueFqns
+// returns them when a value is missing but its definition sets allow_traversal,
+// so callers can resolve at the definition level for front-loaded TDF creation.
+// Missing values without allow_traversal already error inside
+// GetAttributesByValueFqns, so a surviving nil value always means traversal.
 func (c *PolicyDBClient) resolveValueFqns(ctx context.Context, fqns []string) ([]string, map[string]*attributes.GetAttributeValuesByFqnsResponse_AttributeAndValue, error) {
 	normalized := make([]string, len(fqns))
 	for i, fqn := range fqns {
@@ -221,11 +222,6 @@ func (c *PolicyDBClient) resolveValueFqns(ctx context.Context, fqns []string) ([
 	if err != nil {
 		return nil, nil, err
 	}
-	for fqn, pair := range pairs {
-		if pair.GetValue() == nil {
-			return nil, nil, fmt.Errorf("could not find value for FQN [%s]: %w", fqn, db.ErrNotFound)
-		}
-	}
 	return normalized, pairs, nil
 }
 
@@ -235,7 +231,9 @@ func (c *PolicyDBClient) resolveValueFqns(ctx context.Context, fqns []string) ([
 // preferring the mapped key model (SimpleKasKey) but falling back to legacy
 // KeyAccessServer grants at each level, mirroring the client-side granter
 // resolution. Grants without a usable cached public key (missing kid/pem) yield
-// no key for that level.
+// no key for that level. A value that does not exist under a definition with
+// allow_traversal resolves at the definition (then namespace) level, so
+// front-loaded TDF creation still gets a key set.
 func (c *PolicyDBClient) GetKeyMappingsByFqns(ctx context.Context, r *attributes.GetKeyMappingsByFqnsRequest) (map[string]*attributes.GetKeyMappingsByFqnsResponse_AttributeKeyMapping, error) {
 	ctx, span := c.Start(ctx, "DB:GetKeyMappingsByFqns")
 	defer span.End()
@@ -253,6 +251,8 @@ func (c *PolicyDBClient) GetKeyMappingsByFqns(ctx context.Context, r *attributes
 	mappings := make(map[string]*attributes.GetKeyMappingsByFqnsResponse_AttributeKeyMapping, len(pairs))
 	for fqn, pair := range pairs {
 		attr := pair.GetAttribute()
+		// A nil value is an allow_traversal miss; resolveEffectiveKasKeys skips the
+		// (absent) value level and resolves from the definition/namespace.
 		mappings[fqn] = &attributes.GetKeyMappingsByFqnsResponse_AttributeKeyMapping{
 			Rule: attr.GetRule(),
 			Keys: resolveEffectiveKasKeys(pair.GetValue(), attr),
@@ -268,6 +268,9 @@ func (c *PolicyDBClient) GetKeyMappingsByFqns(ctx context.Context, r *attributes
 // the value-level subject mappings. It runs two selective queries: the attribute
 // FQN lookup for rule/value/sibling data, and a single subject-mapping-by-FQN
 // query, avoiding the full-policy load used by the entitlement path today.
+// A value that does not exist under a definition with allow_traversal is returned
+// with its definition and an empty value identity (no value_id, no subject
+// mappings), so front-loaded values still carry their definition context.
 func (c *PolicyDBClient) GetEntitleableAttributesByFqns(ctx context.Context, r *attributes.GetEntitleableAttributesByFqnsRequest) (*attributes.GetEntitleableAttributesByFqnsResponse, error) {
 	ctx, span := c.Start(ctx, "DB:GetEntitleableAttributesByFqns")
 	defer span.End()
@@ -351,6 +354,9 @@ func (c *PolicyDBClient) GetEntitleableAttributesByFqns(ctx context.Context, r *
 			rsp.Definitions[defFqn] = def
 		}
 
+		// For an allow_traversal miss, pair.GetValue() is nil: GetId() yields "" and
+		// there are no value-level subject mappings, so the entry carries only the
+		// definition context and an empty value identity.
 		rsp.FqnEntitleableAttributes[fqn] = &attributes.GetEntitleableAttributesByFqnsResponse_EntitleableAttribute{
 			DefinitionFqn: defFqn,
 			Value:         entitleableValue(fqn, pair.GetValue().GetId()),

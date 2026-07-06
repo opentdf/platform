@@ -1636,21 +1636,18 @@ func (s *AttributesSuite) Test_GetKeyMappingsByFqns() {
 		assertSingleKey(mappings[fqnGamma], policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF, key1)
 	})
 
-	s.Run("legacy grants resolve to keys (grants with cached keys only)", func() {
+	s.Run("legacy grants are not resolved to keys (client resolves grants)", func() {
 		// value1 is configured only with legacy KeyAccessServer grants (no key
-		// mappings): one to a cached-key KAS (local.kas.com:3000, kid r1) and one
-		// to a remote-only KAS (kas.example.com). Grants are resolved into the key
-		// set, but only grants that carry a cached public key can be returned; the
-		// remote-only grant is skipped (no kid/pem to hand the client).
+		// mappings). This API returns mapped keys only, so the key set is empty and
+		// the client granter resolves the grants via GetAttributeValuesByFqns. The
+		// rule is still populated.
 		fqn := "https://example.com/attr/attr1/value/value1"
 		mappings := keysByFqn(fqn)
 		s.Require().Len(mappings, 1)
 		m := mappings[fqn]
 		s.Require().NotNil(m)
 		s.Equal(policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF, m.GetRule())
-		s.Require().Len(m.GetKeys(), 1)
-		s.Equal("https://local.kas.com:3000", m.GetKeys()[0].GetKasUri())
-		s.Equal("r1", m.GetKeys()[0].GetPublicKey().GetKid())
+		s.Empty(m.GetKeys())
 	})
 
 	s.Run("missing value resolves at definition level with allow_traversal", func() {

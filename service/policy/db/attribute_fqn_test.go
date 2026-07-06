@@ -61,7 +61,8 @@ func TestResolveEffectiveKasKeys(t *testing.T) {
 		}
 	}
 
-	// Legacy grants with a cached public key resolve to SimpleKasKeys.
+	// Legacy grants are never resolved to keys here: grant-configured values yield
+	// no mapped key, and the client granter resolves grants via its fallback.
 	grantKAS := func(uri, id, kid string) *policy.KeyAccessServer {
 		return &policy.KeyAccessServer{
 			Uri: uri,
@@ -73,13 +74,6 @@ func TestResolveEffectiveKasKeys(t *testing.T) {
 					}},
 				},
 			},
-		}
-	}
-	grantKey := func(uri, id, kid string) *policy.SimpleKasKey {
-		return &policy.SimpleKasKey{
-			KasUri:    uri,
-			KasId:     id,
-			PublicKey: &policy.SimpleKasPublicKey{Algorithm: policy.Algorithm_ALGORITHM_RSA_2048, Kid: kid, Pem: "pem"},
 		}
 	}
 	valueGrant := grantKAS("https://vg-kas", "vg", "vgk")
@@ -123,39 +117,33 @@ func TestResolveEffectiveKasKeys(t *testing.T) {
 			want:  nil,
 		},
 		{
-			name:  "value grant resolves when no mapped keys",
+			name:  "value grant only yields no key (resolved by client fallback)",
 			value: &policy.Value{Grants: []*policy.KeyAccessServer{valueGrant}},
 			attr:  def(nil, nil),
-			want:  []*policy.SimpleKasKey{grantKey("https://vg-kas", "vg", "vgk")},
+			want:  nil,
 		},
 		{
-			name:  "value mapped key preferred over value grant",
+			name:  "value mapped key returned, value grant ignored",
 			value: &policy.Value{KasKeys: []*policy.SimpleKasKey{valueKey}, Grants: []*policy.KeyAccessServer{valueGrant}},
 			attr:  def(nil, nil),
 			want:  []*policy.SimpleKasKey{valueKey},
 		},
 		{
-			name:  "value grant preferred over definition mapped key",
+			name:  "definition mapped key preferred over value grant",
 			value: &policy.Value{Grants: []*policy.KeyAccessServer{valueGrant}},
 			attr:  def([]*policy.SimpleKasKey{defKey}, nil),
-			want:  []*policy.SimpleKasKey{grantKey("https://vg-kas", "vg", "vgk")},
+			want:  []*policy.SimpleKasKey{defKey},
 		},
 		{
-			name:  "definition grant used when value has none",
+			name:  "definition grant only yields no key",
 			value: &policy.Value{},
 			attr:  &policy.Attribute{Grants: []*policy.KeyAccessServer{defGrant}, Namespace: &policy.Namespace{}},
-			want:  []*policy.SimpleKasKey{grantKey("https://dg-kas", "dg", "dgk")},
+			want:  nil,
 		},
 		{
-			name:  "namespace grant used when value and definition have none",
+			name:  "namespace grant only yields no key",
 			value: &policy.Value{},
 			attr:  &policy.Attribute{Namespace: &policy.Namespace{Grants: []*policy.KeyAccessServer{nsGrant}}},
-			want:  []*policy.SimpleKasKey{grantKey("https://ng-kas", "ng", "ngk")},
-		},
-		{
-			name:  "grant without a cached key is skipped",
-			value: &policy.Value{Grants: []*policy.KeyAccessServer{{Uri: "https://remote-only", Id: "ro"}}},
-			attr:  def(nil, nil),
 			want:  nil,
 		},
 	}

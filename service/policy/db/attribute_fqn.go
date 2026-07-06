@@ -226,14 +226,13 @@ func (c *PolicyDBClient) resolveValueFqns(ctx context.Context, fqns []string) ([
 }
 
 // GetKeyMappingsByFqns returns, for each requested attribute value FQN, the
-// governing attribute rule and the effective KAS keys needed to build key
-// splits. Keys are resolved with value > definition > namespace precedence,
-// preferring the mapped key model (SimpleKasKey) but falling back to legacy
-// KeyAccessServer grants at each level, mirroring the client-side granter
-// resolution. Grants without a usable cached public key (missing kid/pem) yield
-// no key for that level. A value that does not exist under a definition with
+// governing attribute rule and the effective mapped KAS keys needed to build key
+// splits, resolved with value > definition > namespace precedence. Only mapped
+// keys (kas_keys) are returned; a value configured only with legacy KAS grants
+// yields an empty key set, and the client granter resolves those grants via
+// GetAttributeValuesByFqns. A value that does not exist under a definition with
 // allow_traversal resolves at the definition (then namespace) level, so
-// front-loaded TDF creation still gets a key set.
+// front-loaded TDF creation still gets a mapped key set.
 func (c *PolicyDBClient) GetKeyMappingsByFqns(ctx context.Context, r *attributes.GetKeyMappingsByFqnsRequest) (map[string]*attributes.GetKeyMappingsByFqnsResponse_AttributeKeyMapping, error) {
 	ctx, span := c.Start(ctx, "DB:GetKeyMappingsByFqns")
 	defer span.End()
@@ -252,7 +251,7 @@ func (c *PolicyDBClient) GetKeyMappingsByFqns(ctx context.Context, r *attributes
 	for fqn, pair := range pairs {
 		attr := pair.GetAttribute()
 		// A nil value is an allow_traversal miss; resolveEffectiveKasKeys skips the
-		// (absent) value level and resolves from the definition/namespace.
+		// (absent) value level and resolves mapped keys from the definition/namespace.
 		mappings[fqn] = &attributes.GetKeyMappingsByFqnsResponse_AttributeKeyMapping{
 			Rule: attr.GetRule(),
 			Keys: resolveEffectiveKasKeys(pair.GetValue(), attr),
@@ -408,28 +407,20 @@ func hydrateSubjectMappingForEntitlement(row getSubjectMappingsByValueFqnsRow) (
 	}, nil
 }
 
-// resolveEffectiveKasKeys returns the most-specific effective keys for a value
-// with value > definition > namespace precedence. Within a level, mapped keys
-// (kas_keys) are preferred; if a level has none, its legacy KAS grants are
-// converted to keys. Resolution stops at the first level that yields any key, so
-// grant-configured policy resolves the same way the client granter did before.
+// resolveEffectiveKasKeys returns the most-specific mapped KAS keys for a value
+// with value > definition > namespace precedence, stopping at the first level
+// that has mapped keys (kas_keys). Legacy KAS grants are intentionally not
+// resolved here: a value configured only with grants yields no key, and the
+// client granter falls back to GetAttributeValuesByFqns to resolve grants
+// (including remote grants that cannot be represented as a SimpleKasKey).
 func resolveEffectiveKasKeys(value *policy.Value, attr *policy.Attribute) []*policy.SimpleKasKey {
 	if keys := value.GetKasKeys(); len(keys) > 0 {
-		return keys
-	}
-	if keys := grantsToSimpleKasKeys(value.GetGrants()); len(keys) > 0 {
 		return keys
 	}
 	if keys := attr.GetKasKeys(); len(keys) > 0 {
 		return keys
 	}
-	if keys := grantsToSimpleKasKeys(attr.GetGrants()); len(keys) > 0 {
-		return keys
-	}
 	if keys := attr.GetNamespace().GetKasKeys(); len(keys) > 0 {
-		return keys
-	}
-	if keys := grantsToSimpleKasKeys(attr.GetNamespace().GetGrants()); len(keys) > 0 {
 		return keys
 	}
 	return nil

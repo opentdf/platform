@@ -39,64 +39,6 @@ func mapAlgorithmToKasPublicKeyAlg(alg policy.Algorithm) policy.KasPublicKeyAlgE
 	}
 }
 
-func mapKasPublicKeyAlgToAlgorithm(alg policy.KasPublicKeyAlgEnum) policy.Algorithm {
-	switch alg {
-	case policy.KasPublicKeyAlgEnum_KAS_PUBLIC_KEY_ALG_ENUM_RSA_2048:
-		return policy.Algorithm_ALGORITHM_RSA_2048
-	case policy.KasPublicKeyAlgEnum_KAS_PUBLIC_KEY_ALG_ENUM_RSA_4096:
-		return policy.Algorithm_ALGORITHM_RSA_4096
-	case policy.KasPublicKeyAlgEnum_KAS_PUBLIC_KEY_ALG_ENUM_EC_SECP256R1:
-		return policy.Algorithm_ALGORITHM_EC_P256
-	case policy.KasPublicKeyAlgEnum_KAS_PUBLIC_KEY_ALG_ENUM_EC_SECP384R1:
-		return policy.Algorithm_ALGORITHM_EC_P384
-	case policy.KasPublicKeyAlgEnum_KAS_PUBLIC_KEY_ALG_ENUM_EC_SECP521R1:
-		return policy.Algorithm_ALGORITHM_EC_P521
-	case policy.KasPublicKeyAlgEnum_KAS_PUBLIC_KEY_ALG_ENUM_HPQT_XWING:
-		return policy.Algorithm_ALGORITHM_HPQT_XWING
-	case policy.KasPublicKeyAlgEnum_KAS_PUBLIC_KEY_ALG_ENUM_HPQT_SECP256R1_MLKEM768:
-		return policy.Algorithm_ALGORITHM_HPQT_SECP256R1_MLKEM768
-	case policy.KasPublicKeyAlgEnum_KAS_PUBLIC_KEY_ALG_ENUM_HPQT_SECP384R1_MLKEM1024:
-		return policy.Algorithm_ALGORITHM_HPQT_SECP384R1_MLKEM1024
-	case policy.KasPublicKeyAlgEnum_KAS_PUBLIC_KEY_ALG_ENUM_MLKEM_768:
-		return policy.Algorithm_ALGORITHM_MLKEM_768
-	case policy.KasPublicKeyAlgEnum_KAS_PUBLIC_KEY_ALG_ENUM_MLKEM_1024:
-		return policy.Algorithm_ALGORITHM_MLKEM_1024
-	case policy.KasPublicKeyAlgEnum_KAS_PUBLIC_KEY_ALG_ENUM_UNSPECIFIED:
-		return policy.Algorithm_ALGORITHM_UNSPECIFIED
-	default:
-		return policy.Algorithm_ALGORITHM_UNSPECIFIED
-	}
-}
-
-// grantsToSimpleKasKeys converts legacy KAS grants into SimpleKasKeys using each
-// grant's cached public keys, so grant-configured policy resolves to the same
-// key set that the mapped-key model produces. Grants without a usable cached
-// public key (missing kid or pem) are skipped: a SimpleKasKey without both cannot
-// be consumed by the client key-split builder.
-func grantsToSimpleKasKeys(grants []*policy.KeyAccessServer) []*policy.SimpleKasKey {
-	keys := make([]*policy.SimpleKasKey, 0)
-	for _, grant := range grants {
-		if grant.GetUri() == "" {
-			continue
-		}
-		for _, pk := range grant.GetPublicKey().GetCached().GetKeys() {
-			if pk.GetKid() == "" || pk.GetPem() == "" {
-				continue
-			}
-			keys = append(keys, &policy.SimpleKasKey{
-				KasUri: grant.GetUri(),
-				KasId:  grant.GetId(),
-				PublicKey: &policy.SimpleKasPublicKey{
-					Algorithm: mapKasPublicKeyAlgToAlgorithm(pk.GetAlg()),
-					Kid:       pk.GetKid(),
-					Pem:       pk.GetPem(),
-				},
-			})
-		}
-	}
-	return keys
-}
-
 func mapKasKeysToGrants(keys []*policy.SimpleKasKey, existingGrants []*policy.KeyAccessServer, l *logger.Logger) ([]*policy.KeyAccessServer, error) {
 	kasMap := make(map[string]*policy.KeyAccessServer)
 

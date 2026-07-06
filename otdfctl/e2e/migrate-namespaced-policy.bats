@@ -1937,7 +1937,7 @@ teardown_file() {
 
   create_legacy_obligation_trigger trigger_a_id "$ATTR_A_VAL_1_ID" "$custom_action_id" "$obligation_a_value_id" --client-id "$trigger_a_client_id" "${trigger_a_labels[@]}"
   create_legacy_obligation_trigger trigger_b_id "$ATTR_B_VAL_1_ID" "$GLOBAL_READ_ID" "$obligation_b_value_id" --client-id "$trigger_b_client_id" --label "test_case=obligation-triggers" --label "fixture=${TEST_PREFIX}-trigger-b"
-  create_legacy_obligation_trigger trigger_attr_b_obligation_a_id "$ATTR_B_VAL_2_ID" "$custom_action_id" "$obligation_a_value_id" --client-id "$trigger_attr_b_obligation_a_client_id" --label "test_case=obligation-triggers" --label "fixture=${TEST_PREFIX}-trigger-attr-b-obligation-a"
+  create_legacy_obligation_trigger trigger_attr_b_obligation_a_id "$ATTR_B_VAL_1_ID" "$custom_action_id" "$obligation_a_value_id" --client-id "$trigger_attr_b_obligation_a_client_id" --label "test_case=obligation-triggers" --label "fixture=${TEST_PREFIX}-trigger-attr-b-obligation-a"
 
   lookup_namespaced_action_id ns_b_read_action_id "read" "$NS_B_ID"
 
@@ -1959,14 +1959,14 @@ teardown_file() {
   assert_namespace_state_delta "$ns_b_state_before" "$ns_b_state_after" 1 0 0 0 1
 
   assert_obligation_trigger_created_in_namespace "$trigger_a_id" "$NS_A_ID" "$ATTR_A_VAL_1_ID" "$obligation_a_value_id" "$custom_action_name" "$custom_action_id" "create" "$trigger_a_client_id"
-  assert_obligation_trigger_created_in_namespace "$trigger_attr_b_obligation_a_id" "$NS_B_ID" "$ATTR_B_VAL_2_ID" "$obligation_a_value_id" "$custom_action_name" "$custom_action_id" "create" "$trigger_attr_b_obligation_a_client_id"
+  assert_obligation_trigger_created_in_namespace "$trigger_attr_b_obligation_a_id" "$NS_B_ID" "$ATTR_B_VAL_1_ID" "$obligation_a_value_id" "$custom_action_name" "$custom_action_id" "create" "$trigger_attr_b_obligation_a_client_id"
 
   assert_obligation_trigger_already_migrated_in_namespace "$trigger_b_id" "$NS_B_ID" "$existing_trigger_b_id"
   assert_standard_action_resolved_in_namespace "read" "$NS_B_ID"
 
   assert_legacy_obligation_trigger_still_exists "$trigger_a_id" "$NS_A_ID" "$ATTR_A_VAL_1_ID" "$custom_action_id" "$obligation_a_value_id" "$trigger_a_client_id"
   assert_legacy_obligation_trigger_still_exists "$trigger_b_id" "$NS_B_ID" "$ATTR_B_VAL_1_ID" "$GLOBAL_READ_ID" "$obligation_b_value_id" "$trigger_b_client_id"
-  assert_legacy_obligation_trigger_still_exists "$trigger_attr_b_obligation_a_id" "$NS_B_ID" "$ATTR_B_VAL_2_ID" "$custom_action_id" "$obligation_a_value_id" "$trigger_attr_b_obligation_a_client_id"
+  assert_legacy_obligation_trigger_still_exists "$trigger_attr_b_obligation_a_id" "$NS_B_ID" "$ATTR_B_VAL_1_ID" "$custom_action_id" "$obligation_a_value_id" "$trigger_attr_b_obligation_a_client_id"
 
   # Re-running the same migration should be idempotent. The previously created
   # custom action target and trigger target should resolve as already_migrated,

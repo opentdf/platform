@@ -402,9 +402,6 @@ func hydrateSubjectMappingForEntitlement(row getSubjectMappingsByValueFqnsRow) (
 	}, nil
 }
 
-// resolveEffectiveKasKeys selects the effective mapped KAS keys for a value using
-// value > definition > namespace precedence, matching the SDK granter logic in
-// sdk/granter.go (newGranterFromService).
 // resolveEffectiveKasKeys returns the most-specific effective keys for a value
 // with value > definition > namespace precedence. Within a level, mapped keys
 // (kas_keys) are preferred; if a level has none, its legacy KAS grants are

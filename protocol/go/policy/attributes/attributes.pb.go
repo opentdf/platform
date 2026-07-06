@@ -2839,11 +2839,9 @@ type GetKeyMappingsByFqnsResponse_AttributeKeyMapping struct {
 	// the attribute rule, which governs how splits combine (any_of / all_of / hierarchy)
 	Rule policy.AttributeRuleTypeEnum `protobuf:"varint,1,opt,name=rule,proto3,enum=policy.AttributeRuleTypeEnum" json:"rule,omitempty"`
 	// effective KAS keys resolved for this value (value > definition > namespace
-	// precedence). Mapped keys (kas_keys) are preferred at each level; if a level
-	// has none, its legacy KAS grants that carry a cached public key are converted
-	// to keys, so grant-configured policy resolves the same way the client granter
-	// did. Grants without a cached kid/pem yield no key. A value with no keys at any
-	// level returns an empty key set.
+	// precedence). Legacy grants are not used by this API; values configured only
+	// with grants and no kas_keys return an empty key set, and the client resolves
+	// those grants via GetAttributeValuesByFqns.
 	Keys []*policy.SimpleKasKey `protobuf:"bytes,2,rep,name=keys,proto3" json:"keys,omitempty"`
 }
 

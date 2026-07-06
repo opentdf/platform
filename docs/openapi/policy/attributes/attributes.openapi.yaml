@@ -2361,11 +2361,9 @@ components:
           title: keys
           description: |-
             effective KAS keys resolved for this value (value > definition > namespace
-             precedence). Mapped keys (kas_keys) are preferred at each level; if a level
-             has none, its legacy KAS grants that carry a cached public key are converted
-             to keys, so grant-configured policy resolves the same way the client granter
-             did. Grants without a cached kid/pem yield no key. A value with no keys at any
-             level returns an empty key set.
+             precedence). Legacy grants are not used by this API; values configured only
+             with grants and no kas_keys return an empty key set, and the client resolves
+             those grants via GetAttributeValuesByFqns.
       title: AttributeKeyMapping
       additionalProperties: false
     policy.attributes.GetKeyMappingsByFqnsResponse.FqnKeyMappingsEntry:

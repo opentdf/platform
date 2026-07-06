@@ -1779,7 +1779,9 @@ func (x *GetAttributeValuesByFqnsResponse) GetFqnAttributeValues() map[string]*G
 // returns only the information needed to build key splits: the governing
 // attribute rule and the effective KAS keys resolved server-side. It does not
 // return subject mappings, resource mappings, obligations, sibling values, or
-// metadata. Prefer this over GetAttributeValuesByFqns when building splits.
+// metadata. Prefer this over GetAttributeValuesByFqns when building splits. A
+// value that does not exist under a definition with allow_traversal resolves at
+// the definition (then namespace) level, supporting front-loaded TDF creation.
 type GetKeyMappingsByFqnsRequest struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
@@ -1884,7 +1886,10 @@ func (x *GetKeyMappingsByFqnsResponse) GetFqnKeyMappings() map[string]*GetKeyMap
 // rule) and, per requested value, the value identity and the subject mappings
 // needed to resolve entitlements. Hierarchy definitions additionally carry their
 // ordered values with subject mappings, for hierarchy rule propagation. It does
-// not return KAS keys, grants, resource mappings, obligations, or metadata.
+// not return KAS keys, grants, resource mappings, obligations, or metadata. A
+// value that does not exist under a definition with allow_traversal is returned
+// with its definition and an empty value identity (no value_id, no subject
+// mappings).
 type GetEntitleableAttributesByFqnsRequest struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
@@ -2834,8 +2839,11 @@ type GetKeyMappingsByFqnsResponse_AttributeKeyMapping struct {
 	// the attribute rule, which governs how splits combine (any_of / all_of / hierarchy)
 	Rule policy.AttributeRuleTypeEnum `protobuf:"varint,1,opt,name=rule,proto3,enum=policy.AttributeRuleTypeEnum" json:"rule,omitempty"`
 	// effective KAS keys resolved for this value (value > definition > namespace
-	// precedence). Legacy grants are not used by this API; values configured only
-	// with grants and no kas_keys return an empty key set.
+	// precedence). Mapped keys (kas_keys) are preferred at each level; if a level
+	// has none, its legacy KAS grants that carry a cached public key are converted
+	// to keys, so grant-configured policy resolves the same way the client granter
+	// did. Grants without a cached kid/pem yield no key. A value with no keys at any
+	// level returns an empty key set.
 	Keys []*policy.SimpleKasKey `protobuf:"bytes,2,rep,name=keys,proto3" json:"keys,omitempty"`
 }
 

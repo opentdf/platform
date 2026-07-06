@@ -1911,6 +1911,7 @@ teardown_file() {
   local obligation_b_value="${TEST_PREFIX}-notify-b-default"
   local trigger_a_client_id="${TEST_PREFIX}-client-a"
   local trigger_b_client_id="${TEST_PREFIX}-client-b"
+  local trigger_attr_b_obligation_a_client_id="${TEST_PREFIX}-client-attr-b-obligation-a"
   local custom_action_labels=(--label "test_case=obligation-triggers" --label "fixture=${TEST_PREFIX}-custom-action")
   local trigger_a_labels=(--label "test_case=obligation-triggers" --label "fixture=${TEST_PREFIX}-trigger-a")
   local custom_action_id
@@ -1920,6 +1921,7 @@ teardown_file() {
   local obligation_b_value_id
   local trigger_a_id
   local trigger_b_id
+  local trigger_attr_b_obligation_a_id
   local ns_b_read_action_id
   local existing_trigger_b_id
   local ns_a_state_before
@@ -1935,6 +1937,7 @@ teardown_file() {
 
   create_legacy_obligation_trigger trigger_a_id "$ATTR_A_VAL_1_ID" "$custom_action_id" "$obligation_a_value_id" --client-id "$trigger_a_client_id" "${trigger_a_labels[@]}"
   create_legacy_obligation_trigger trigger_b_id "$ATTR_B_VAL_1_ID" "$GLOBAL_READ_ID" "$obligation_b_value_id" --client-id "$trigger_b_client_id" --label "test_case=obligation-triggers" --label "fixture=${TEST_PREFIX}-trigger-b"
+  create_legacy_obligation_trigger trigger_attr_b_obligation_a_id "$ATTR_B_VAL_2_ID" "$custom_action_id" "$obligation_a_value_id" --client-id "$trigger_attr_b_obligation_a_client_id" --label "test_case=obligation-triggers" --label "fixture=${TEST_PREFIX}-trigger-attr-b-obligation-a"
 
   lookup_namespaced_action_id ns_b_read_action_id "read" "$NS_B_ID"
 
@@ -1953,23 +1956,29 @@ teardown_file() {
   ns_b_state_after=$(namespace_state_json "$NS_B_ID")
 
   assert_namespace_state_delta "$ns_a_state_before" "$ns_a_state_after" 1 0 0 0 1
-  assert_namespace_state_delta "$ns_b_state_before" "$ns_b_state_after" 0 0 0 0 0
+  assert_namespace_state_delta "$ns_b_state_before" "$ns_b_state_after" 1 0 0 0 1
 
   assert_obligation_trigger_created_in_namespace "$trigger_a_id" "$NS_A_ID" "$ATTR_A_VAL_1_ID" "$obligation_a_value_id" "$custom_action_name" "$custom_action_id" "create" "$trigger_a_client_id"
+  assert_obligation_trigger_created_in_namespace "$trigger_attr_b_obligation_a_id" "$NS_B_ID" "$ATTR_B_VAL_2_ID" "$obligation_a_value_id" "$custom_action_name" "$custom_action_id" "create" "$trigger_attr_b_obligation_a_client_id"
 
   assert_obligation_trigger_already_migrated_in_namespace "$trigger_b_id" "$NS_B_ID" "$existing_trigger_b_id"
   assert_standard_action_resolved_in_namespace "read" "$NS_B_ID"
 
   assert_legacy_obligation_trigger_still_exists "$trigger_a_id" "$NS_A_ID" "$ATTR_A_VAL_1_ID" "$custom_action_id" "$obligation_a_value_id" "$trigger_a_client_id"
   assert_legacy_obligation_trigger_still_exists "$trigger_b_id" "$NS_B_ID" "$ATTR_B_VAL_1_ID" "$GLOBAL_READ_ID" "$obligation_b_value_id" "$trigger_b_client_id"
+  assert_legacy_obligation_trigger_still_exists "$trigger_attr_b_obligation_a_id" "$NS_B_ID" "$ATTR_B_VAL_2_ID" "$custom_action_id" "$obligation_a_value_id" "$trigger_attr_b_obligation_a_client_id"
 
   # Re-running the same migration should be idempotent. The previously created
   # custom action target and trigger target should resolve as already_migrated,
   # while the pre-existing canonical trigger remains already_migrated.
-  local custom_action_target_id
+  local custom_action_target_a_id
+  local custom_action_target_b_id
   local trigger_a_target_id
-  custom_action_target_id=$(action_id_by_name_in_namespace "$custom_action_name" "$NS_A_ID")
+  local trigger_attr_b_obligation_a_target_id
+  custom_action_target_a_id=$(action_id_by_name_in_namespace "$custom_action_name" "$NS_A_ID")
+  custom_action_target_b_id=$(action_id_by_name_in_namespace "$custom_action_name" "$NS_B_ID")
   trigger_a_target_id=$(obligation_trigger_id_by_migrated_from "$NS_A_ID" "$trigger_a_id")
+  trigger_attr_b_obligation_a_target_id=$(obligation_trigger_id_by_migrated_from "$NS_B_ID" "$trigger_attr_b_obligation_a_id")
 
   ns_a_state_before="$ns_a_state_after"
   ns_b_state_before="$ns_b_state_after"
@@ -1983,9 +1992,11 @@ teardown_file() {
   assert_namespace_state_delta "$ns_a_state_before" "$ns_a_state_after" 0 0 0 0 0
   assert_namespace_state_delta "$ns_b_state_before" "$ns_b_state_after" 0 0 0 0 0
 
-  assert_action_already_migrated_in_namespace "$custom_action_name" "$NS_A_ID" "$custom_action_target_id"
+  assert_action_already_migrated_in_namespace "$custom_action_name" "$NS_A_ID" "$custom_action_target_a_id"
+  assert_action_already_migrated_in_namespace "$custom_action_name" "$NS_B_ID" "$custom_action_target_b_id"
   assert_standard_action_resolved_in_namespace "read" "$NS_B_ID"
   assert_obligation_trigger_already_migrated_in_namespace "$trigger_a_id" "$NS_A_ID" "$trigger_a_target_id"
+  assert_obligation_trigger_already_migrated_in_namespace "$trigger_attr_b_obligation_a_id" "$NS_B_ID" "$trigger_attr_b_obligation_a_target_id"
   assert_obligation_trigger_already_migrated_in_namespace "$trigger_b_id" "$NS_B_ID" "$existing_trigger_b_id"
 }
 
@@ -2632,7 +2643,7 @@ teardown_file() {
   create_global_action delete_a_action_id "$delete_a_action_name" --label "test_case=prune-obligation-triggers" --label "fixture=${TEST_PREFIX}-delete-a-action"
   create_global_action delete_b_action_id "$delete_b_action_name" --label "test_case=prune-obligation-triggers" --label "fixture=${TEST_PREFIX}-delete-b-action"
   create_namespaced_obligation delete_a_obligation_id "$NS_A_ID" "${TEST_PREFIX}-prune-trigger-delete-a" --label "test_case=prune-obligation-triggers" --label "fixture=${TEST_PREFIX}-delete-a-obligation"
-  create_namespaced_obligation delete_b_obligation_id "$NS_A_ID" "${TEST_PREFIX}-prune-trigger-delete-b" --label "test_case=prune-obligation-triggers" --label "fixture=${TEST_PREFIX}-delete-b-obligation"
+  create_namespaced_obligation delete_b_obligation_id "$NS_B_ID" "${TEST_PREFIX}-prune-trigger-delete-b" --label "test_case=prune-obligation-triggers" --label "fixture=${TEST_PREFIX}-delete-b-obligation"
   create_obligation_value delete_a_value_id "$delete_a_obligation_id" "${TEST_PREFIX}-delete-a-value" --label "test_case=prune-obligation-triggers" --label "fixture=${TEST_PREFIX}-delete-a-value"
   create_obligation_value delete_b_value_id "$delete_b_obligation_id" "${TEST_PREFIX}-delete-b-value" --label "test_case=prune-obligation-triggers" --label "fixture=${TEST_PREFIX}-delete-b-value"
   create_legacy_obligation_trigger delete_a_trigger_id "$ATTR_A_VAL_1_ID" "$delete_a_action_id" "$delete_a_value_id" --client-id "${TEST_PREFIX}-delete-a-client" --label "test_case=prune-obligation-triggers" --label "fixture=${TEST_PREFIX}-delete-a-trigger"
@@ -2645,7 +2656,7 @@ teardown_file() {
   delete_b_trigger_target_id=$(obligation_trigger_id_by_migrated_from "$NS_A_ID" "$delete_b_trigger_id")
 
   create_global_action not_migrated_global_action_id "$not_migrated_global_action_name" --label "test_case=prune-obligation-triggers" --label "fixture=${TEST_PREFIX}-not-migrated-action"
-  create_namespaced_obligation not_migrated_source_obligation_id "$NS_A_ID" "${TEST_PREFIX}-prune-trigger-not-migrated" --label "test_case=prune-obligation-triggers" --label "fixture=${TEST_PREFIX}-not-migrated-obligation"
+  create_namespaced_obligation not_migrated_source_obligation_id "$NS_B_ID" "${TEST_PREFIX}-prune-trigger-not-migrated" --label "test_case=prune-obligation-triggers" --label "fixture=${TEST_PREFIX}-not-migrated-obligation"
   create_obligation_value not_migrated_source_value_id "$not_migrated_source_obligation_id" "${TEST_PREFIX}-not-migrated-value" --label "test_case=prune-obligation-triggers" --label "fixture=${TEST_PREFIX}-not-migrated-value"
   create_legacy_obligation_trigger not_migrated_source_trigger_id "$ATTR_A_VAL_1_ID" "$not_migrated_global_action_id" "$not_migrated_source_value_id" --client-id "${TEST_PREFIX}-not-migrated-client" --label "test_case=prune-obligation-triggers" --label "fixture=${TEST_PREFIX}-not-migrated-trigger"
 

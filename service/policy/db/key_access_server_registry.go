@@ -34,6 +34,11 @@ type kasParams struct {
 	KasName pgtype.Text
 }
 
+var (
+	ErrUnsafeUpdateKeyExistingModeUnsupported    = errors.New("ErrUnsafeUpdateKeyExistingModeUnsupported: existing key mode cannot be unsafely updated")
+	ErrUnsafeUpdateKeyProviderConfigExistingMode = errors.New("ErrUnsafeUpdateKeyProviderConfigExistingMode: existing key mode cannot receive provider_config_id update with unspecified key mode")
+)
+
 func (c PolicyDBClient) ListKeyAccessServers(ctx context.Context, r *kasregistry.ListKeyAccessServersRequest) (*kasregistry.ListKeyAccessServersResponse, error) {
 	limit, offset := c.getRequestedLimitOffset(r.GetPagination())
 
@@ -550,6 +555,60 @@ func (c PolicyDBClient) UpdateKey(ctx context.Context, r *kasregistry.UpdateKeyR
 		ID:       id,
 		Metadata: metadataJSON,
 	})
+}
+
+func (c PolicyDBClient) UnsafeUpdateKey(ctx context.Context, existing *policy.KasKey, r *unsafe.UnsafeUpdateKeyRequest) (*policy.KasKey, error) {
+	id := r.GetId()
+	if !pgtypeUUID(id).Valid {
+		return nil, db.ErrUUIDInvalid
+	}
+	if existing.GetKey().GetId() != id {
+		return nil, errors.Join(db.ErrSelectIdentifierInvalid, fmt.Errorf("key ID mismatch: expected %s, got %s", existing.GetKey().GetId(), id))
+	}
+
+	params, err := validateUnsafeUpdateKey(existing, r)
+	if err != nil {
+		return nil, err
+	}
+
+	count, err := c.queries.unsafeUpdateKey(ctx, params)
+	if err != nil {
+		return nil, db.WrapIfKnownInvalidQueryErr(err)
+	}
+	if count == 0 {
+		return nil, db.ErrNotFound
+	} else if count > 1 {
+		c.logger.Warn("unsafeUpdateKey updated more than one row", slog.Int64("count", count))
+	}
+
+	return c.GetKey(ctx, &kasregistry.GetKeyRequest_Id{
+		Id: id,
+	})
+}
+
+// Current validation at the proto level is:
+// 1.) If mode == UNSPECIFIED || REMOTE there must be a provider_config_id that is a valid UUID
+// 2.) If mode == PUBLIC_KEY there should be no provider config.
+func validateUnsafeUpdateKey(existing *policy.KasKey, r *unsafe.UnsafeUpdateKeyRequest) (unsafeUpdateKeyParams, error) {
+	existingMode := existing.GetKey().GetKeyMode()
+	params := unsafeUpdateKeyParams{
+		ID:               r.GetId(),
+		ProviderConfigID: pgtypeUUID(r.GetProviderConfigId()),
+	}
+
+	if existingMode != policy.KeyMode_KEY_MODE_PUBLIC_KEY_ONLY && existingMode != policy.KeyMode_KEY_MODE_REMOTE {
+		return params, ErrUnsafeUpdateKeyExistingModeUnsupported
+	}
+
+	if r.GetKeyMode() == policy.KeyMode_KEY_MODE_UNSPECIFIED && existingMode != policy.KeyMode_KEY_MODE_REMOTE {
+		return params, ErrUnsafeUpdateKeyProviderConfigExistingMode
+	}
+
+	if r.GetKeyMode() != policy.KeyMode_KEY_MODE_UNSPECIFIED {
+		params.KeyMode = pgtypeInt4(int32(r.GetKeyMode()), true)
+	}
+
+	return params, nil
 }
 
 func (c PolicyDBClient) ListKeys(ctx context.Context, r *kasregistry.ListKeysRequest) (*kasregistry.ListKeysResponse, error) {

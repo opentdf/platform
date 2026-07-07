@@ -300,7 +300,7 @@ func (s KeyAccessServerRegistry) UpdateKey(ctx context.Context, req *connect.Req
 		updated, err := txClient.UpdateKey(ctx, req.Msg)
 		if err != nil {
 			s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
-			return err
+			return db.StatusifyError(ctx, s.logger, err, db.ErrTextUpdateFailed, slog.String("key_access_server_keys", req.Msg.GetId()))
 		}
 
 		// Only key status and metadata can be updated

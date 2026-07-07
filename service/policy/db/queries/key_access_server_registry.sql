@@ -351,6 +351,13 @@ SET
     metadata = COALESCE(sqlc.narg('metadata'), metadata)
 WHERE id = $1;
 
+-- name: unsafeUpdateKey :execrows
+UPDATE key_access_server_keys
+SET
+    key_mode = COALESCE(sqlc.narg('key_mode'), key_mode),
+    provider_config_id = sqlc.arg('provider_config_id')
+WHERE id = @id;
+
 -- name: keyAccessServerExists :one
 SELECT EXISTS (
     SELECT 1

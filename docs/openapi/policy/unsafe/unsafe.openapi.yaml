@@ -1672,6 +1672,7 @@ components:
         providerConfigId:
           type: string
           title: provider_config_id
+          format: uuid
           description: |-
             Conditionally Required
              Configuration ID for the key provider. Required for KEY_MODE_REMOTE and KEY_MODE_UNSPECIFIED; empty for KEY_MODE_PUBLIC_KEY_ONLY.

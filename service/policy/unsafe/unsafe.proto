@@ -217,7 +217,10 @@ message UnsafeUpdateKeyRequest {
   policy.KeyMode key_mode = 2 [(buf.validate.field).enum.defined_only = true];
   // Conditionally Required
   // Configuration ID for the key provider. Required for KEY_MODE_REMOTE and KEY_MODE_UNSPECIFIED; empty for KEY_MODE_PUBLIC_KEY_ONLY.
-  string provider_config_id = 3;
+  string provider_config_id = 3 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string.uuid = true
+  ];
 }
 
 message UnsafeUpdateKeyResponse {

@@ -14,6 +14,7 @@ import (
 	"github.com/opentdf/platform/protocol/go/policy/attributes"
 	"github.com/opentdf/platform/protocol/go/policy/kasregistry"
 	"github.com/opentdf/platform/protocol/go/policy/namespaces"
+	"github.com/opentdf/platform/protocol/go/policy/subjectmapping"
 	"github.com/opentdf/platform/protocol/go/policy/unsafe"
 	"github.com/opentdf/platform/service/internal/fixtures"
 	"github.com/opentdf/platform/service/pkg/db"
@@ -1521,6 +1522,380 @@ func (s *AttributesSuite) Test_UnsafeUpdateAttribute_WithNewName() {
 	s.NotNil(val)
 	s.Equal(fqns[1], val.GetFqn())
 	s.Contains(val.GetFqn(), updated.GetName())
+}
+
+func (s *AttributesSuite) Test_GetKeyMappingsByFqns() {
+	keyByFixture := func(name string) *policy.KasKey {
+		f := s.f.GetKasRegistryServerKeys(name)
+		k, err := s.db.PolicyClient.GetKey(s.ctx, &kasregistry.GetKeyRequest_Id{Id: f.ID})
+		s.Require().NoError(err)
+		return k
+	}
+	keysByFqn := func(fqns ...string) map[string]*attributes.GetKeyMappingsByFqnsResponse_AttributeKeyMapping {
+		m, err := s.db.PolicyClient.GetKeyMappingsByFqns(s.ctx, &attributes.GetKeyMappingsByFqnsRequest{Fqns: fqns})
+		s.Require().NoError(err)
+		return m
+	}
+	assertSingleKey := func(m *attributes.GetKeyMappingsByFqnsResponse_AttributeKeyMapping, expectedRule policy.AttributeRuleTypeEnum, expected *policy.KasKey) {
+		s.Require().NotNil(m)
+		s.Equal(expectedRule, m.GetRule())
+		s.Require().Len(m.GetKeys(), 1)
+		validateSimpleKasKey(&s.Suite, expected, m.GetKeys()[0])
+	}
+
+	s.Run("rule returned and keys empty when none assigned", func() {
+		created, err := s.db.PolicyClient.CreateAttribute(s.ctx, &attributes.CreateAttributeRequest{
+			Name:        "test__keymap_none",
+			NamespaceId: fixtureNamespaceID,
+			Rule:        policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF,
+			Values:      []string{"alpha", "beta"},
+		})
+		s.Require().NoError(err)
+		got, err := s.db.PolicyClient.GetAttribute(s.ctx, created.GetId())
+		s.Require().NoError(err)
+		fqnAlpha, fqnBeta := got.GetValues()[0].GetFqn(), got.GetValues()[1].GetFqn()
+
+		mappings := keysByFqn(fqnAlpha, fqnBeta)
+		s.Len(mappings, 2)
+		for _, fqn := range []string{fqnAlpha, fqnBeta} {
+			m, ok := mappings[fqn]
+			s.Require().True(ok)
+			s.Equal(policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF, m.GetRule())
+			s.Empty(m.GetKeys())
+		}
+	})
+
+	s.Run("definition-level key inherited by value with no key", func() {
+		created, err := s.db.PolicyClient.CreateAttribute(s.ctx, &attributes.CreateAttributeRequest{
+			Name:        "test__keymap_def",
+			NamespaceId: fixtureNamespaceID,
+			Rule:        policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF,
+			Values:      []string{"alpha"},
+		})
+		s.Require().NoError(err)
+		got, err := s.db.PolicyClient.GetAttribute(s.ctx, created.GetId())
+		s.Require().NoError(err)
+		fqnAlpha := got.GetValues()[0].GetFqn()
+
+		key1 := keyByFixture("kas_key_1")
+		_, err = s.db.PolicyClient.AssignPublicKeyToAttribute(s.ctx, &attributes.AttributeKey{
+			AttributeId: created.GetId(),
+			KeyId:       key1.GetKey().GetId(),
+		})
+		s.Require().NoError(err)
+
+		mappings := keysByFqn(fqnAlpha)
+		s.Require().Len(mappings, 1)
+		assertSingleKey(mappings[fqnAlpha], policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF, key1)
+	})
+
+	s.Run("value-level keys: multiple values resolve to their own keys", func() {
+		created, err := s.db.PolicyClient.CreateAttribute(s.ctx, &attributes.CreateAttributeRequest{
+			Name:        "test__keymap_values",
+			NamespaceId: fixtureNamespaceID,
+			Rule:        policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF,
+			Values:      []string{"alpha", "beta"},
+		})
+		s.Require().NoError(err)
+		got, err := s.db.PolicyClient.GetAttribute(s.ctx, created.GetId())
+		s.Require().NoError(err)
+		v1, v2 := got.GetValues()[0], got.GetValues()[1]
+
+		key1, key2 := keyByFixture("kas_key_1"), keyByFixture("kas_key_2")
+		_, err = s.db.PolicyClient.AssignPublicKeyToValue(s.ctx, &attributes.ValueKey{ValueId: v1.GetId(), KeyId: key1.GetKey().GetId()})
+		s.Require().NoError(err)
+		_, err = s.db.PolicyClient.AssignPublicKeyToValue(s.ctx, &attributes.ValueKey{ValueId: v2.GetId(), KeyId: key2.GetKey().GetId()})
+		s.Require().NoError(err)
+
+		mappings := keysByFqn(v1.GetFqn(), v2.GetFqn())
+		s.Require().Len(mappings, 2)
+		assertSingleKey(mappings[v1.GetFqn()], policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF, key1)
+		assertSingleKey(mappings[v2.GetFqn()], policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF, key2)
+	})
+
+	s.Run("namespace-level key inherited when no value or definition key", func() {
+		ns, err := s.db.PolicyClient.CreateNamespace(s.ctx, &namespaces.CreateNamespaceRequest{Name: "keymap-ns.example"})
+		s.Require().NoError(err)
+		created, err := s.db.PolicyClient.CreateAttribute(s.ctx, &attributes.CreateAttributeRequest{
+			Name:        "test__keymap_ns",
+			NamespaceId: ns.GetId(),
+			Rule:        policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF,
+			Values:      []string{"gamma"},
+		})
+		s.Require().NoError(err)
+		got, err := s.db.PolicyClient.GetAttribute(s.ctx, created.GetId())
+		s.Require().NoError(err)
+		fqnGamma := got.GetValues()[0].GetFqn()
+
+		key1 := keyByFixture("kas_key_1")
+		_, err = s.db.PolicyClient.AssignPublicKeyToNamespace(s.ctx, &namespaces.NamespaceKey{NamespaceId: ns.GetId(), KeyId: key1.GetKey().GetId()})
+		s.Require().NoError(err)
+
+		mappings := keysByFqn(fqnGamma)
+		s.Require().Len(mappings, 1)
+		assertSingleKey(mappings[fqnGamma], policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF, key1)
+	})
+
+	s.Run("legacy grants are not resolved to keys (client resolves grants)", func() {
+		// value1 is configured only with legacy KeyAccessServer grants (no key
+		// mappings). This API returns mapped keys only, so the key set is empty and
+		// the client granter resolves the grants via GetAttributeValuesByFqns. The
+		// rule is still populated.
+		fqn := "https://example.com/attr/attr1/value/value1"
+		mappings := keysByFqn(fqn)
+		s.Require().Len(mappings, 1)
+		m := mappings[fqn]
+		s.Require().NotNil(m)
+		s.Equal(policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF, m.GetRule())
+		s.Empty(m.GetKeys())
+	})
+
+	s.Run("missing value resolves at definition level with allow_traversal", func() {
+		// allow_traversal lets a not-yet-created value fall back to its definition, so
+		// GetKeyMappingsByFqns resolves the definition's key for that value and
+		// front-loaded TDF creation still gets a key set.
+		ns, err := s.db.PolicyClient.CreateNamespace(s.ctx, &namespaces.CreateNamespaceRequest{Name: "keymap-traversal.example"})
+		s.Require().NoError(err)
+		created, err := s.db.PolicyClient.CreateAttribute(s.ctx, &attributes.CreateAttributeRequest{
+			Name:           "test__keymap_traversal",
+			NamespaceId:    ns.GetId(),
+			Rule:           policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF,
+			Values:         []string{"alpha"},
+			AllowTraversal: &wrapperspb.BoolValue{Value: true},
+		})
+		s.Require().NoError(err)
+
+		key1 := keyByFixture("kas_key_1")
+		_, err = s.db.PolicyClient.AssignPublicKeyToAttribute(s.ctx, &attributes.AttributeKey{
+			AttributeId: created.GetId(),
+			KeyId:       key1.GetKey().GetId(),
+		})
+		s.Require().NoError(err)
+
+		missingFqn := fqnBuilder(ns.GetName(), created.GetName(), "missing_value")
+		mappings := keysByFqn(missingFqn)
+		s.Require().Len(mappings, 1)
+		assertSingleKey(mappings[missingFqn], policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF, key1)
+	})
+
+	s.Run("errors when a requested fqn does not exist", func() {
+		_, err := s.db.PolicyClient.GetKeyMappingsByFqns(s.ctx, &attributes.GetKeyMappingsByFqnsRequest{
+			Fqns: []string{"https://keymap-dne.example/attr/nope/value/nope"},
+		})
+		s.Require().Error(err)
+		s.Require().ErrorIs(err, db.ErrNotFound)
+	})
+}
+
+func (s *AttributesSuite) Test_GetEntitleableAttributesByFqns() {
+	value1 := s.f.GetAttributeValueKey("example.com/attr/attr1/value/value1")
+	value2 := s.f.GetAttributeValueKey("example.com/attr/attr1/value/value2")
+	defFqn := "https://example.com/attr/attr1"
+	fqn1 := "https://example.com/attr/attr1/value/value1"
+	fqn2 := "https://example.com/attr/attr1/value/value2"
+
+	resp, err := s.db.PolicyClient.GetEntitleableAttributesByFqns(s.ctx, &attributes.GetEntitleableAttributesByFqnsRequest{
+		Fqns: []string{fqn1, fqn2},
+	})
+	s.Require().NoError(err)
+
+	// The definition is returned once (deduped) even though two of its values were
+	// requested. attr1 is ANY_OF, so its values list is empty (only hierarchy
+	// definitions carry their values).
+	s.Len(resp.GetDefinitions(), 1)
+	def := resp.GetDefinitions()[defFqn]
+	s.Require().NotNil(def)
+	s.Equal(policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF, def.GetRule())
+	s.Empty(def.GetValues())
+
+	// Per-requested-value entries reference the definition and carry subject
+	// mappings grouped by value FQN. Every returned mapping must belong to the
+	// requested value (verifies grouping by FQN).
+	s.Len(resp.GetFqnEntitleableAttributes(), 2)
+	assertValueEntry := func(fqn, valueID string, minSMs int) {
+		e := resp.GetFqnEntitleableAttributes()[fqn]
+		s.Require().NotNil(e)
+		s.Equal(defFqn, e.GetDefinitionFqn())
+		s.Equal(fqn, e.GetValue().GetFqn())
+		s.Equal(valueID, e.GetValue().GetValueId())
+		s.GreaterOrEqual(len(e.GetValue().GetSubjectMappings()), minSMs)
+		for _, sm := range e.GetValue().GetSubjectMappings() {
+			s.Equal(fqn, sm.GetAttributeValue().GetFqn())
+			s.NotEmpty(sm.GetId())
+			s.NotNil(sm.GetSubjectConditionSet())
+		}
+	}
+	// value1 has multiple value-level subject mappings in the fixtures; value2 has one.
+	assertValueEntry(fqn1, value1.ID, 3)
+	assertValueEntry(fqn2, value2.ID, 1)
+}
+
+func (s *AttributesSuite) Test_GetEntitleableAttributesByFqns_NonExistentFqn_Fails() {
+	// Matches GetAttributeValuesByFqns: a requested FQN that does not exist errors
+	// rather than being silently absent.
+	_, err := s.db.PolicyClient.GetEntitleableAttributesByFqns(s.ctx, &attributes.GetEntitleableAttributesByFqnsRequest{
+		Fqns: []string{"https://entitleable-dne.example/attr/nope/value/nope"},
+	})
+	s.Require().Error(err)
+	s.Require().ErrorIs(err, db.ErrNotFound)
+}
+
+func (s *AttributesSuite) Test_GetEntitleableAttributesByFqns_MissingValueAllowTraversal_Succeeds() {
+	// allow_traversal lets a not-yet-created value fall back to its definition, so
+	// this API returns the definition context plus an entry with an empty value
+	// identity (no value_id, no subject mappings) rather than erroring.
+	ns, err := s.db.PolicyClient.CreateNamespace(s.ctx, &namespaces.CreateNamespaceRequest{Name: "entitleable-traversal.example"})
+	s.Require().NoError(err)
+	created, err := s.db.PolicyClient.CreateAttribute(s.ctx, &attributes.CreateAttributeRequest{
+		Name:           "test__entitleable_traversal",
+		NamespaceId:    ns.GetId(),
+		Rule:           policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF,
+		Values:         []string{"alpha"},
+		AllowTraversal: &wrapperspb.BoolValue{Value: true},
+	})
+	s.Require().NoError(err)
+
+	missingFqn := fqnBuilder(ns.GetName(), created.GetName(), "missing_value")
+	resp, err := s.db.PolicyClient.GetEntitleableAttributesByFqns(s.ctx, &attributes.GetEntitleableAttributesByFqnsRequest{
+		Fqns: []string{missingFqn},
+	})
+	s.Require().NoError(err)
+
+	got, err := s.db.PolicyClient.GetAttribute(s.ctx, created.GetId())
+	s.Require().NoError(err)
+	defFqn := got.GetFqn()
+	def := resp.GetDefinitions()[defFqn]
+	s.Require().NotNil(def)
+	s.Equal(policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF, def.GetRule())
+
+	e := resp.GetFqnEntitleableAttributes()[missingFqn]
+	s.Require().NotNil(e)
+	s.Equal(defFqn, e.GetDefinitionFqn())
+	s.Equal(missingFqn, e.GetValue().GetFqn())
+	s.Empty(e.GetValue().GetValueId())
+	s.Empty(e.GetValue().GetSubjectMappings())
+}
+
+func (s *AttributesSuite) Test_GetEntitleableAttributesByFqns_Hierarchy() {
+	// A hierarchy definition's full ordered values (with subject mappings) are
+	// returned once, even when only one value is requested.
+	created, err := s.db.PolicyClient.CreateAttribute(s.ctx, &attributes.CreateAttributeRequest{
+		Name:        "test__entitleable_hierarchy",
+		NamespaceId: fixtureNamespaceID,
+		Rule:        policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY,
+		Values:      []string{"high", "mid", "low"},
+	})
+	s.Require().NoError(err)
+
+	got, err := s.db.PolicyClient.GetAttribute(s.ctx, created.GetId())
+	s.Require().NoError(err)
+	s.Require().Len(got.GetValues(), 3)
+	defFqn := got.GetFqn()
+	highFqn := got.GetValues()[0].GetFqn()
+	midFqn := got.GetValues()[1].GetFqn()
+	lowFqn := got.GetValues()[2].GetFqn()
+
+	// A subject mapping on the middle value, to confirm hierarchy values carry SMs.
+	_, err = s.db.PolicyClient.CreateSubjectMapping(s.ctx, &subjectmapping.CreateSubjectMappingRequest{
+		AttributeValueId: got.GetValues()[1].GetId(),
+		Actions:          []*policy.Action{s.f.GetStandardAction(policydb.ActionRead.String())},
+		NewSubjectConditionSet: &subjectmapping.SubjectConditionSetCreate{
+			SubjectSets: []*policy.SubjectSet{{
+				ConditionGroups: []*policy.ConditionGroup{{
+					BooleanOperator: policy.ConditionBooleanTypeEnum_CONDITION_BOOLEAN_TYPE_ENUM_AND,
+					Conditions: []*policy.Condition{{
+						SubjectExternalSelectorValue: ".clearance",
+						Operator:                     policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_IN,
+						SubjectExternalValues:        []string{"mid"},
+					}},
+				}},
+			}},
+		},
+	})
+	s.Require().NoError(err)
+
+	// Request only the lowest value; the response must still carry the whole
+	// definition's ordered values plus the mid value's subject mapping.
+	resp, err := s.db.PolicyClient.GetEntitleableAttributesByFqns(s.ctx, &attributes.GetEntitleableAttributesByFqnsRequest{
+		Fqns: []string{lowFqn},
+	})
+	s.Require().NoError(err)
+
+	// Only the requested value is in the per-FQN map; the hierarchy siblings come
+	// back via the definition's values, not as extra entitleable attributes.
+	s.Len(resp.GetFqnEntitleableAttributes(), 1)
+	_, hasHigh := resp.GetFqnEntitleableAttributes()[highFqn]
+	_, hasMid := resp.GetFqnEntitleableAttributes()[midFqn]
+	s.False(hasHigh)
+	s.False(hasMid)
+
+	def := resp.GetDefinitions()[defFqn]
+	s.Require().NotNil(def)
+	s.Equal(policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY, def.GetRule())
+	s.Require().Len(def.GetValues(), 3)
+	// Ordered high -> mid -> low (definition values_order).
+	s.Equal(highFqn, def.GetValues()[0].GetFqn())
+	s.Equal(midFqn, def.GetValues()[1].GetFqn())
+	s.Equal(lowFqn, def.GetValues()[2].GetFqn())
+	// The mid value carries the subject mapping; siblings have none.
+	s.Len(def.GetValues()[1].GetSubjectMappings(), 1)
+	s.Empty(def.GetValues()[0].GetSubjectMappings())
+	s.Empty(def.GetValues()[2].GetSubjectMappings())
+
+	e := resp.GetFqnEntitleableAttributes()[lowFqn]
+	s.Require().NotNil(e)
+	s.Equal(defFqn, e.GetDefinitionFqn())
+	s.Equal(lowFqn, e.GetValue().GetFqn())
+	// The requested low value carries no subject mappings (the only mapping is on
+	// the mid value); confirms the per-value entry does not inherit sibling mappings.
+	s.Empty(e.GetValue().GetSubjectMappings())
+}
+
+func (s *AttributesSuite) Test_GetEntitleableAttributesByFqns_SubjectMappingNamespace() {
+	// The entitleable subject mappings must carry the subject mapping's own
+	// namespace, which the PDP's strict namespaced-entitlements filter relies on.
+	created, err := s.db.PolicyClient.CreateAttribute(s.ctx, &attributes.CreateAttributeRequest{
+		Name:        "test__entitleable_sm_namespace",
+		NamespaceId: fixtureNamespaceID,
+		Rule:        policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF,
+		Values:      []string{"v1"},
+	})
+	s.Require().NoError(err)
+	got, err := s.db.PolicyClient.GetAttribute(s.ctx, created.GetId())
+	s.Require().NoError(err)
+	val := got.GetValues()[0]
+
+	_, err = s.db.PolicyClient.CreateSubjectMapping(s.ctx, &subjectmapping.CreateSubjectMappingRequest{
+		AttributeValueId: val.GetId(),
+		NamespaceId:      fixtureNamespaceID,
+		// A namespaced subject mapping requires an action in the same namespace; use
+		// a custom action (the standard actions are unnamespaced).
+		Actions: []*policy.Action{{Name: "entitleable_ns_read"}},
+		NewSubjectConditionSet: &subjectmapping.SubjectConditionSetCreate{
+			SubjectSets: []*policy.SubjectSet{{
+				ConditionGroups: []*policy.ConditionGroup{{
+					BooleanOperator: policy.ConditionBooleanTypeEnum_CONDITION_BOOLEAN_TYPE_ENUM_AND,
+					Conditions: []*policy.Condition{{
+						SubjectExternalSelectorValue: ".clearance",
+						Operator:                     policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_IN,
+						SubjectExternalValues:        []string{"secret"},
+					}},
+				}},
+			}},
+		},
+	})
+	s.Require().NoError(err)
+
+	resp, err := s.db.PolicyClient.GetEntitleableAttributesByFqns(s.ctx, &attributes.GetEntitleableAttributesByFqnsRequest{
+		Fqns: []string{val.GetFqn()},
+	})
+	s.Require().NoError(err)
+	e := resp.GetFqnEntitleableAttributes()[val.GetFqn()]
+	s.Require().NotNil(e)
+	sms := e.GetValue().GetSubjectMappings()
+	s.Require().Len(sms, 1)
+	s.Require().NotNil(sms[0].GetNamespace())
+	s.Equal(fixtureNamespaceID, sms[0].GetNamespace().GetId())
 }
 
 func (s *AttributesSuite) Test_UnsafeUpdateAttribute_NormalizesCasing() {

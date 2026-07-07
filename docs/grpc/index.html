@@ -18943,7 +18943,7 @@ deleted, created, and unsafely re-ordered as necessary. </p></td>
         
       
         <h3 id="policy.unsafe.UnsafeUpdateKeyRequest">UnsafeUpdateKeyRequest</h3>
-        <p>WARNING!!</p><p>Updating a key in place can retroactively alter decryptability for existing TDFs.</p><p>This support-only operation is limited to switching between REMOTE and PUBLIC_KEY_ONLY</p><p>key modes while preserving the existing KID, KAS URI, and public key.</p>
+        <p>WARNING!!</p><p>Updating a key in place can retroactively alter decryptability for existing TDFs.</p><p>This support-only operation is limited to switching between REMOTE and PUBLIC_KEY_ONLY</p><p>key modes, or updating the provider configuration for an existing REMOTE key, while</p><p>preserving the existing KID, KAS URI, and public key.</p>
 
         
           <table class="field-table">
@@ -18964,8 +18964,9 @@ UUID of the Key </p></td>
                   <td>key_mode</td>
                   <td><a href="#policy.KeyMode">policy.KeyMode</a></td>
                   <td></td>
-                  <td><p>Required
-Target key mode. Only KEY_MODE_REMOTE and KEY_MODE_PUBLIC_KEY_ONLY are supported. </p></td>
+                  <td><p>Optional
+Target key mode. Only KEY_MODE_REMOTE and KEY_MODE_PUBLIC_KEY_ONLY mode changes are supported.
+KEY_MODE_UNSPECIFIED with provider_config_id updates only the provider configuration for an existing REMOTE key. </p></td>
                 </tr>
               
                 <tr>
@@ -18973,7 +18974,7 @@ Target key mode. Only KEY_MODE_REMOTE and KEY_MODE_PUBLIC_KEY_ONLY are supported
                   <td><a href="#string">string</a></td>
                   <td></td>
                   <td><p>Conditionally Required
-Configuration ID for the key provider. Required for KEY_MODE_REMOTE and empty for KEY_MODE_PUBLIC_KEY_ONLY. </p></td>
+Configuration ID for the key provider. Required for KEY_MODE_REMOTE and KEY_MODE_UNSPECIFIED; empty for KEY_MODE_PUBLIC_KEY_ONLY. </p></td>
                 </tr>
               
             </tbody>

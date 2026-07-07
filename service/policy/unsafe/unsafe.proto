@@ -191,6 +191,37 @@ message UnsafeDeleteKasKeyResponse {
   policy.KasKey key = 1;
 }
 
+// WARNING!!
+// Updating a key in place can retroactively alter decryptability for existing TDFs.
+// This support-only operation is limited to switching between REMOTE and PUBLIC_KEY_ONLY
+// key modes while preserving the existing KID, KAS URI, and public key.
+message UnsafeUpdateKeyRequest {
+  option (buf.validate.message).cel = {
+    id: "key_mode_supported"
+    message: "key_mode must be KEY_MODE_REMOTE or KEY_MODE_PUBLIC_KEY_ONLY."
+    expression: "this.key_mode in [3, 4]"
+  };
+  option (buf.validate.message).cel = {
+    id: "provider_config_id_optionally_required"
+    message: "provider_config_id is required if key_mode is KEY_MODE_REMOTE. It must be empty for KEY_MODE_PUBLIC_KEY_ONLY."
+    expression: "(this.key_mode == 3 && this.provider_config_id != '') || (this.key_mode == 4 && this.provider_config_id == '')"
+  };
+
+  // Required
+  // UUID of the Key
+  string id = 1 [(buf.validate.field).string.uuid = true];
+  // Required
+  // Target key mode. Only KEY_MODE_REMOTE and KEY_MODE_PUBLIC_KEY_ONLY are supported.
+  policy.KeyMode key_mode = 2 [(buf.validate.field).enum.defined_only = true];
+  // Conditionally Required
+  // Configuration ID for the key provider. Required for KEY_MODE_REMOTE and empty for KEY_MODE_PUBLIC_KEY_ONLY.
+  string provider_config_id = 3;
+}
+
+message UnsafeUpdateKeyResponse {
+  policy.KasKey key = 1;
+}
+
 ///
 /// Unsafe Service
 ///
@@ -219,5 +250,6 @@ service UnsafeService {
   /*--------------------------------------*
    * Kas Key RPCs
    *---------------------------------------*/
+  rpc UnsafeUpdateKey(UnsafeUpdateKeyRequest) returns (UnsafeUpdateKeyResponse) {}
   rpc UnsafeDeleteKasKey(UnsafeDeleteKasKeyRequest) returns (UnsafeDeleteKasKeyResponse) {}
 }

@@ -2,6 +2,7 @@ package unsafe
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 
@@ -409,6 +410,10 @@ func (s *UnsafeService) UnsafeDeleteAttributeValue(ctx context.Context, req *con
 		Id: id,
 	}
 	return connect.NewResponse(rsp), nil
+}
+
+func (s *UnsafeService) UnsafeUpdateKey(_ context.Context, _ *connect.Request[unsafe.UnsafeUpdateKeyRequest]) (*connect.Response[unsafe.UnsafeUpdateKeyResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("policy.unsafe.UnsafeService.UnsafeUpdateKey is not implemented"))
 }
 
 func (s *UnsafeService) UnsafeDeleteKasKey(ctx context.Context, req *connect.Request[unsafe.UnsafeDeleteKasKeyRequest]) (*connect.Response[unsafe.UnsafeDeleteKasKeyResponse], error) {

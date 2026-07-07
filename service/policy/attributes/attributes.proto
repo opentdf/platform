@@ -345,7 +345,7 @@ message GetAttributeValuesByFqnsResponse {
 
    Narrow read API for the client-side encrypt flow. Given attribute value FQNs,
    returns only the information needed to build key splits: the governing
-   attribute rule and the effective KAS keys resolved server-side. It does not
+   attribute rule and the effective mapped KAS keys resolved server-side. It does not
    return subject mappings, resource mappings, obligations, sibling values, or
    metadata. Prefer this over GetAttributeValuesByFqns when building splits. A
    value that does not exist under a definition with allow_traversal resolves at
@@ -378,13 +378,13 @@ message GetKeyMappingsByFqnsResponse {
 
    Narrow read API for Auth Service / Access PDP entitlement resolution. Given
    attribute value FQNs, returns the parent definitions (deduped, each with its
-   rule) and, per requested value, the value identity and the subject mappings
-   needed to resolve entitlements. Hierarchy definitions additionally carry their
-   ordered values with subject mappings, for hierarchy rule propagation. It does
-   not return KAS keys, grants, resource mappings, obligations, or metadata. A
-   value that does not exist under a definition with allow_traversal is returned
-   with its definition and an empty value identity (no value_id, no subject
-   mappings).
+   rule and namespace identity) and, per requested value, the value identity and
+   the subject mappings needed to resolve entitlements. Hierarchy definitions
+   additionally carry their ordered values with subject mappings, for hierarchy
+   rule propagation. It does not return KAS keys, grants, resource mappings,
+   obligations, or metadata. A value that does not exist under a definition with
+   allow_traversal is returned with its definition and an empty value identity (no
+   value_id, no subject mappings).
 */
 message GetEntitleableAttributesByFqnsRequest {
   // Required
@@ -414,6 +414,10 @@ message GetEntitleableAttributesByFqnsResponse {
     // their mappings to propagate entitlement up the chain). Empty for any_of /
     // all_of, where the requested per-value entries below carry what's needed.
     repeated EntitleableValue values = 2;
+    // the definition's namespace identity (id and fqn), needed for
+    // namespaced-policy decisioning and registered-resource matching. Only the
+    // identity is populated; grants, keys, and metadata are not.
+    policy.Namespace namespace = 3;
   }
   message EntitleableAttribute {
     // the FQN of the parent definition, a key into `definitions`

@@ -10,10 +10,9 @@ import (
 )
 
 const (
-	validUUID                                = "00000000-0000-0000-0000-000000000000"
-	ruleIDStringUUID                         = "string.uuid"
-	ruleIDProviderConfigIDOptionallyRequired = "provider_config_id_optionally_required"
-	ruleIDKeyModeSupported                   = "key_mode_supported"
+	validUUID              = "00000000-0000-0000-0000-000000000000"
+	ruleIDStringUUID       = "string.uuid"
+	ruleIDKeyModeSupported = "key_mode_supported"
 )
 
 func getValidator() protovalidate.Validator {
@@ -88,23 +87,21 @@ func TestUnsafeUpdateKeyRequest(t *testing.T) {
 			errorMessage: ruleIDStringUUID,
 		},
 		{
-			name: "remote mode requires provider config",
+			name: "remote mode provider config requirement is service-owned",
 			req: &unsafepb.UnsafeUpdateKeyRequest{
 				Id:      validUUID,
 				KeyMode: policy.KeyMode_KEY_MODE_REMOTE,
 			},
-			expectError:  true,
-			errorMessage: ruleIDProviderConfigIDOptionallyRequired,
+			expectError: false,
 		},
 		{
-			name: "public key only mode clears provider config",
+			name: "public key only provider config prohibition is service-owned",
 			req: &unsafepb.UnsafeUpdateKeyRequest{
 				Id:               validUUID,
 				KeyMode:          policy.KeyMode_KEY_MODE_PUBLIC_KEY_ONLY,
 				ProviderConfigId: validUUID,
 			},
-			expectError:  true,
-			errorMessage: ruleIDProviderConfigIDOptionallyRequired,
+			expectError: false,
 		},
 		{
 			name: "unsupported key mode",
@@ -124,6 +121,65 @@ func TestUnsafeUpdateKeyRequest(t *testing.T) {
 			if tc.expectError {
 				require.Error(t, err)
 				require.Contains(t, err.Error(), tc.errorMessage)
+				return
+			}
+			require.NoError(t, err)
+		})
+	}
+}
+
+func TestValidateUnsafeUpdateKeyRequest(t *testing.T) {
+	testCases := []struct {
+		name string
+		req  *unsafepb.UnsafeUpdateKeyRequest
+		err  error
+	}{
+		{
+			name: "remote requires provider config",
+			req: &unsafepb.UnsafeUpdateKeyRequest{
+				Id:      validUUID,
+				KeyMode: policy.KeyMode_KEY_MODE_REMOTE,
+			},
+			err: errUnsafeUpdateKeyProviderConfigRequired,
+		},
+		{
+			name: "unspecified requires provider config",
+			req: &unsafepb.UnsafeUpdateKeyRequest{
+				Id: validUUID,
+			},
+			err: errUnsafeUpdateKeyProviderConfigUpdateRequired,
+		},
+		{
+			name: "public key only rejects provider config",
+			req: &unsafepb.UnsafeUpdateKeyRequest{
+				Id:               validUUID,
+				KeyMode:          policy.KeyMode_KEY_MODE_PUBLIC_KEY_ONLY,
+				ProviderConfigId: validUUID,
+			},
+			err: errUnsafeUpdateKeyProviderConfigNotAllowed,
+		},
+		{
+			name: "remote accepts provider config",
+			req: &unsafepb.UnsafeUpdateKeyRequest{
+				Id:               validUUID,
+				KeyMode:          policy.KeyMode_KEY_MODE_REMOTE,
+				ProviderConfigId: validUUID,
+			},
+		},
+		{
+			name: "public key only accepts empty provider config",
+			req: &unsafepb.UnsafeUpdateKeyRequest{
+				Id:      validUUID,
+				KeyMode: policy.KeyMode_KEY_MODE_PUBLIC_KEY_ONLY,
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			err := validateUnsafeUpdateKeyRequest(tc.req)
+			if tc.err != nil {
+				require.ErrorIs(t, err, tc.err)
 				return
 			}
 			require.NoError(t, err)

@@ -37,6 +37,8 @@ type kasParams struct {
 var (
 	ErrUnsafeUpdateKeyExistingModeUnsupported    = errors.New("ErrUnsafeUpdateKeyExistingModeUnsupported: existing key mode cannot be unsafely updated")
 	ErrUnsafeUpdateKeyProviderConfigExistingMode = errors.New("ErrUnsafeUpdateKeyProviderConfigExistingMode: existing key mode cannot receive provider_config_id update with unspecified key mode")
+	ErrUnsafeUpdateKeyProviderConfigRequired     = errors.New("ErrUnsafeUpdateKeyProviderConfigRequired: provider_config_id is required for requested key mode")
+	ErrUnsafeUpdateKeyProviderConfigNotAllowed   = errors.New("ErrUnsafeUpdateKeyProviderConfigNotAllowed: provider_config_id must be empty for requested key mode")
 )
 
 func (c PolicyDBClient) ListKeyAccessServers(ctx context.Context, r *kasregistry.ListKeyAccessServersRequest) (*kasregistry.ListKeyAccessServersResponse, error) {
@@ -586,9 +588,6 @@ func (c PolicyDBClient) UnsafeUpdateKey(ctx context.Context, existing *policy.Ka
 	})
 }
 
-// Current validation at the proto level is:
-// 1.) If mode == UNSPECIFIED || REMOTE there must be a provider_config_id that is a valid UUID
-// 2.) If mode == PUBLIC_KEY there should be no provider config.
 func validateUnsafeUpdateKey(existing *policy.KasKey, r *unsafe.UnsafeUpdateKeyRequest) (unsafeUpdateKeyParams, error) {
 	existingMode := existing.GetKey().GetKeyMode()
 	params := unsafeUpdateKeyParams{
@@ -602,6 +601,17 @@ func validateUnsafeUpdateKey(existing *policy.KasKey, r *unsafe.UnsafeUpdateKeyR
 
 	if r.GetKeyMode() == policy.KeyMode_KEY_MODE_UNSPECIFIED && existingMode != policy.KeyMode_KEY_MODE_REMOTE {
 		return params, ErrUnsafeUpdateKeyProviderConfigExistingMode
+	}
+
+	switch r.GetKeyMode() {
+	case policy.KeyMode_KEY_MODE_REMOTE, policy.KeyMode_KEY_MODE_UNSPECIFIED:
+		if r.GetProviderConfigId() == "" {
+			return params, ErrUnsafeUpdateKeyProviderConfigRequired
+		}
+	case policy.KeyMode_KEY_MODE_PUBLIC_KEY_ONLY:
+		if r.GetProviderConfigId() != "" {
+			return params, ErrUnsafeUpdateKeyProviderConfigNotAllowed
+		}
 	}
 
 	if r.GetKeyMode() != policy.KeyMode_KEY_MODE_UNSPECIFIED {

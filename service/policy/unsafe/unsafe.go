@@ -2,12 +2,14 @@ package unsafe
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 
 	"connectrpc.com/connect"
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/kasregistry"
+	"github.com/opentdf/platform/protocol/go/policy/keymanagement"
 	"github.com/opentdf/platform/protocol/go/policy/unsafe"
 	"github.com/opentdf/platform/protocol/go/policy/unsafe/unsafeconnect"
 	"github.com/opentdf/platform/service/logger"
@@ -24,6 +26,12 @@ type UnsafeService struct { //nolint:revive // UnsafeService is a valid name for
 	logger   *logger.Logger
 	config   *policyconfig.Config
 }
+
+var (
+	errUnsafeUpdateKeyProviderConfigRequired       = errors.New("provider_config_id is required when key_mode is KEY_MODE_REMOTE")
+	errUnsafeUpdateKeyProviderConfigUpdateRequired = errors.New("provider_config_id is required when key_mode is KEY_MODE_UNSPECIFIED to update provider configuration")
+	errUnsafeUpdateKeyProviderConfigNotAllowed     = errors.New("provider_config_id must be empty when key_mode is KEY_MODE_PUBLIC_KEY_ONLY")
+)
 
 func OnConfigUpdate(unsafeSvc *UnsafeService) serviceregistry.OnConfigUpdateHook {
 	return func(_ context.Context, cfg config.ServiceConfig) error {
@@ -422,6 +430,11 @@ func (s *UnsafeService) UnsafeUpdateKey(ctx context.Context, req *connect.Reques
 		ObjectID:   id,
 	}
 
+	if err := validateUnsafeUpdateKeyRequest(req.Msg); err != nil {
+		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
+		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+	}
+
 	err := s.dbClient.RunInTx(ctx, func(txClient *policydb.PolicyDBClient) error {
 		existing, err := txClient.GetKey(ctx, &kasregistry.GetKeyRequest_Id{Id: id})
 		if err != nil {
@@ -430,6 +443,16 @@ func (s *UnsafeService) UnsafeUpdateKey(ctx context.Context, req *connect.Reques
 		}
 
 		auditParams.Original = unsafeUpdateKeyAuditValue(existing)
+
+		if providerConfigID := req.Msg.GetProviderConfigId(); providerConfigID != "" {
+			if _, err := txClient.GetProviderConfig(ctx, &keymanagement.GetProviderConfigRequest_Id{Id: providerConfigID}); err != nil {
+				s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
+				if errors.Is(err, db.ErrNotFound) {
+					return connect.NewError(connect.CodeNotFound, fmt.Errorf("provider_config_id %q does not reference an existing provider config", providerConfigID))
+				}
+				return db.StatusifyError(ctx, s.logger, err, db.ErrTextGetRetrievalFailed, slog.String("provider_config_id", providerConfigID))
+			}
+		}
 
 		updated, err := txClient.UnsafeUpdateKey(ctx, existing, req.Msg)
 		if err != nil {
@@ -448,6 +471,25 @@ func (s *UnsafeService) UnsafeUpdateKey(ctx context.Context, req *connect.Reques
 	}
 
 	return connect.NewResponse(rsp), nil
+}
+
+func validateUnsafeUpdateKeyRequest(req *unsafe.UnsafeUpdateKeyRequest) error {
+	switch req.GetKeyMode() {
+	case policy.KeyMode_KEY_MODE_REMOTE:
+		if req.GetProviderConfigId() == "" {
+			return errUnsafeUpdateKeyProviderConfigRequired
+		}
+	case policy.KeyMode_KEY_MODE_UNSPECIFIED:
+		if req.GetProviderConfigId() == "" {
+			return errUnsafeUpdateKeyProviderConfigUpdateRequired
+		}
+	case policy.KeyMode_KEY_MODE_PUBLIC_KEY_ONLY:
+		if req.GetProviderConfigId() != "" {
+			return errUnsafeUpdateKeyProviderConfigNotAllowed
+		}
+	}
+
+	return nil
 }
 
 func unsafeUpdateKeyAuditValue(kasKey *policy.KasKey) *policy.KasKey {

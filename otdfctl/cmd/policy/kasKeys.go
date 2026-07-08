@@ -448,12 +448,6 @@ func policyUnsafeUpdateKasKey(cmd *cobra.Command, args []string) {
 	existingKey := existingKasKey.GetKey()
 	confirmID := fmt.Sprintf("Id: %s\n\tKAS URI: %s\n\tKID: %s", existingKey.GetId(), existingKasKey.GetKasUri(), existingKey.GetKeyId())
 	cli.ConfirmAction(cli.ActionUpdateUnsafe, "key", confirmID, force)
-	if !force {
-		input := cli.AskForInput(fmt.Sprintf("To confirm you want to %s this key and accept any side effects, please enter the KID to proceed: %s", cli.ActionUpdateUnsafe, existingKey.GetKeyId()))
-		if input != existingKey.GetKeyId() {
-			cli.ExitWithError("Confirmation prompt failed", fmt.Errorf("entered KID [%s] does not match required KID: %s", input, existingKey.GetKeyId()))
-		}
-	}
 
 	kasKey, err := h.UnsafeUpdateKasKey(c.Context(), id, mode, providerConfigID)
 	if err != nil {

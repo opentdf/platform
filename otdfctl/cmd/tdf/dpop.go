@@ -21,10 +21,10 @@ func dpopSDKOpts(c *cli.Cli) []sdk.Option {
 		}
 		opts = append(opts, sdk.WithDPoPKeyPEM(pemBytes))
 		if dpopAlg != "" {
-			opts = append(opts, sdk.WithDPoPAlgorithm(dpopAlg))
+			opts = append(opts, sdk.WithDPoPAlgorithm(sdk.SigningAlgorithm(dpopAlg)))
 		}
 	} else if dpopAlg != "" {
-		opts = append(opts, sdk.WithDPoPAlgorithm(dpopAlg))
+		opts = append(opts, sdk.WithDPoPAlgorithm(sdk.SigningAlgorithm(dpopAlg)))
 	}
 	return opts
 }

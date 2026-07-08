@@ -345,7 +345,7 @@ func buildIDPTokenSource(c *config) (auth.AccessTokenSource, jwk.Key, error) {
 
 	// No DPoP key configured: auto-generate a default ephemeral ES256/P-256 key.
 	if dpopKey == nil {
-		dpopKey, err = generateDPoPKeyForAlg(dpopAlgES256)
+		dpopKey, err = generateDPoPKeyForAlg(ES256)
 		if err != nil {
 			return nil, nil, fmt.Errorf("failed to generate default DPoP key: %w", err)
 		}

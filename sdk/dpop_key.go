@@ -13,34 +13,24 @@ import (
 	"github.com/lestrrat-go/jwx/v2/jwk"
 )
 
-// Supported DPoP algorithm identifiers (RFC 9449 §4.2).
-const (
-	dpopAlgES256 = "ES256"
-	dpopAlgES384 = "ES384"
-	dpopAlgES512 = "ES512"
-	dpopAlgRS256 = "RS256"
-	dpopAlgRS384 = "RS384"
-	dpopAlgRS512 = "RS512"
-)
-
-const dpopAllowedAlgs = dpopAlgES256 + ", " + dpopAlgES384 + ", " + dpopAlgES512 + ", " +
-	dpopAlgRS256 + ", " + dpopAlgRS384 + ", " + dpopAlgRS512
+const dpopAllowedAlgs = string(ES256) + ", " + string(ES384) + ", " + string(ES512) + ", " +
+	string(RS256) + ", " + string(RS384) + ", " + string(RS512)
 
 // generateDPoPKeyForAlg generates an ephemeral DPoP private key for the given algorithm.
 // Supported algorithms: ES256, ES384, ES512, RS256, RS384, RS512.
-func generateDPoPKeyForAlg(alg string) (jwk.Key, error) {
+func generateDPoPKeyForAlg(alg SigningAlgorithm) (jwk.Key, error) {
 	switch alg {
-	case dpopAlgES256:
+	case ES256:
 		return generateECDSAKey(elliptic.P256(), jwa.ES256)
-	case dpopAlgES384:
+	case ES384:
 		return generateECDSAKey(elliptic.P384(), jwa.ES384)
-	case dpopAlgES512:
+	case ES512:
 		return generateECDSAKey(elliptic.P521(), jwa.ES512)
-	case dpopAlgRS256:
+	case RS256:
 		return generateRSAKey(jwa.RS256)
-	case dpopAlgRS384:
+	case RS384:
 		return generateRSAKey(jwa.RS384)
-	case dpopAlgRS512:
+	case RS512:
 		return generateRSAKey(jwa.RS512)
 	default:
 		return nil, fmt.Errorf("unsupported DPoP algorithm %q; allowed: %s", alg, dpopAllowedAlgs)
@@ -151,8 +141,8 @@ func validateDPoPKey(key jwk.Key) error {
 		return errors.New("DPoP JWK is missing required Algorithm field; set it with key.Set(jwk.AlgorithmKey, ...)")
 	}
 	algStr := alg.String()
-	switch algStr {
-	case dpopAlgES256, dpopAlgES384, dpopAlgES512, dpopAlgRS256, dpopAlgRS384, dpopAlgRS512:
+	switch SigningAlgorithm(algStr) {
+	case ES256, ES384, ES512, RS256, RS384, RS512:
 		// supported
 	default:
 		return fmt.Errorf("unsupported DPoP JWK algorithm %q; allowed: %s", algStr, dpopAllowedAlgs)
@@ -234,7 +224,7 @@ func selectDPoPKey(c *config) (jwk.Key, error) {
 		}
 		if c.dpopAlgorithm != "" {
 			var algVal jwa.SignatureAlgorithm
-			if err := algVal.Accept(c.dpopAlgorithm); err != nil {
+			if err := algVal.Accept(string(c.dpopAlgorithm)); err != nil {
 				return nil, fmt.Errorf("invalid DPoP algorithm override %q: %w", c.dpopAlgorithm, err)
 			}
 			if err := key.Set(jwk.AlgorithmKey, algVal); err != nil {

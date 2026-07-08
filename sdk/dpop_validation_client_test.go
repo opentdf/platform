@@ -22,7 +22,7 @@ func TestNewDPoPValidationHTTPClient(t *testing.T) {
 		}))
 		defer server.Close()
 
-		client, err := NewDPoPValidationHTTPClient(http.DefaultClient, WithDPoPAlgorithm(dpopAlgES256))
+		client, err := NewDPoPValidationHTTPClient(http.DefaultClient, WithDPoPAlgorithm(ES256))
 		require.NoError(t, err, "NewDPoPValidationHTTPClient")
 
 		resp, err := client.Do(mustGet(t, server.URL))

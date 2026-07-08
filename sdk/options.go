@@ -17,6 +17,19 @@ import (
 
 type Option func(*config)
 
+// SigningAlgorithm identifies a JWS signing algorithm (RFC 7518 §3.1).
+type SigningAlgorithm string
+
+// Supported JWS signing algorithms for DPoP proof tokens (RFC 9449 §4.2).
+const (
+	ES256 SigningAlgorithm = "ES256"
+	ES384 SigningAlgorithm = "ES384"
+	ES512 SigningAlgorithm = "ES512"
+	RS256 SigningAlgorithm = "RS256"
+	RS384 SigningAlgorithm = "RS384"
+	RS512 SigningAlgorithm = "RS512"
+)
+
 type ConnectRPCConnection struct {
 	Client   *http.Client
 	Endpoint string
@@ -37,7 +50,7 @@ type config struct {
 	kasSessionKey                      *ocrypto.RsaKeyPair
 	dpopKey                            *ocrypto.RsaKeyPair
 	dpopJWK                            jwk.Key
-	dpopAlgorithm                      string
+	dpopAlgorithm                      SigningAlgorithm
 	dpopKeyPEM                         []byte
 	ipc                                bool
 	tdfFeatures                        tdfFeatures
@@ -237,7 +250,7 @@ func WithLogger(logger *slog.Logger) Option {
 // Supported: ES256, ES384, ES512, RS256, RS384, RS512.
 // When this option is unset the SDK falls back to an auto-generated RSA key; ES256 is the
 // recommended choice and is what the otdfctl CLI uses for a bare --dpop flag.
-func WithDPoPAlgorithm(alg string) Option {
+func WithDPoPAlgorithm(alg SigningAlgorithm) Option {
 	return func(c *config) {
 		c.dpopAlgorithm = alg
 	}

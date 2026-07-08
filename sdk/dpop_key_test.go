@@ -48,17 +48,17 @@ func publicKeyPEMForTest(t *testing.T, key interface{ Raw(any) error }) []byte {
 
 func TestGenerateDPoPKeyForAlg_EC(t *testing.T) {
 	tests := []struct {
-		alg     string
+		alg     SigningAlgorithm
 		wantAlg jwa.SignatureAlgorithm
 		curve   elliptic.Curve
 	}{
-		{dpopAlgES256, jwa.ES256, elliptic.P256()},
-		{dpopAlgES384, jwa.ES384, elliptic.P384()},
-		{dpopAlgES512, jwa.ES512, elliptic.P521()},
+		{ES256, jwa.ES256, elliptic.P256()},
+		{ES384, jwa.ES384, elliptic.P384()},
+		{ES512, jwa.ES512, elliptic.P521()},
 	}
 
 	for _, tt := range tests {
-		t.Run(tt.alg, func(t *testing.T) {
+		t.Run(string(tt.alg), func(t *testing.T) {
 			key, err := generateDPoPKeyForAlg(tt.alg)
 			require.NoErrorf(t, err, "generateDPoPKeyForAlg(%q)", tt.alg)
 			assert.Equal(t, tt.wantAlg, key.Algorithm(), "algorithm")
@@ -71,16 +71,16 @@ func TestGenerateDPoPKeyForAlg_EC(t *testing.T) {
 
 func TestGenerateDPoPKeyForAlg_RSA(t *testing.T) {
 	tests := []struct {
-		alg     string
+		alg     SigningAlgorithm
 		wantAlg jwa.SignatureAlgorithm
 	}{
-		{dpopAlgRS256, jwa.RS256},
-		{dpopAlgRS384, jwa.RS384},
-		{dpopAlgRS512, jwa.RS512},
+		{RS256, jwa.RS256},
+		{RS384, jwa.RS384},
+		{RS512, jwa.RS512},
 	}
 
 	for _, tt := range tests {
-		t.Run(tt.alg, func(t *testing.T) {
+		t.Run(string(tt.alg), func(t *testing.T) {
 			key, err := generateDPoPKeyForAlg(tt.alg)
 			require.NoErrorf(t, err, "generateDPoPKeyForAlg(%q)", tt.alg)
 			assert.Equal(t, tt.wantAlg, key.Algorithm(), "algorithm")
@@ -91,8 +91,8 @@ func TestGenerateDPoPKeyForAlg_RSA(t *testing.T) {
 }
 
 func TestGenerateDPoPKeyForAlg_Invalid(t *testing.T) {
-	for _, alg := range []string{"INVALID", "", "HS256", "PS256"} {
-		t.Run(alg, func(t *testing.T) {
+	for _, alg := range []SigningAlgorithm{"INVALID", "", "HS256", "PS256"} {
+		t.Run(string(alg), func(t *testing.T) {
 			_, err := generateDPoPKeyForAlg(alg)
 			assert.Errorf(t, err, "expected error for alg %q", alg)
 		})
@@ -100,7 +100,7 @@ func TestGenerateDPoPKeyForAlg_Invalid(t *testing.T) {
 }
 
 func TestLoadDPoPKeyFromPEM_RSA(t *testing.T) {
-	generated, err := generateDPoPKeyForAlg(dpopAlgRS256)
+	generated, err := generateDPoPKeyForAlg(RS256)
 	require.NoError(t, err, "failed to generate RSA test key")
 	pemBytes := jwkToPEMForTest(t, generated)
 
@@ -111,16 +111,16 @@ func TestLoadDPoPKeyFromPEM_RSA(t *testing.T) {
 
 func TestLoadDPoPKeyFromPEM_EC(t *testing.T) {
 	tests := []struct {
-		alg     string
+		alg     SigningAlgorithm
 		wantAlg jwa.SignatureAlgorithm
 	}{
-		{dpopAlgES256, jwa.ES256},
-		{dpopAlgES384, jwa.ES384},
-		{dpopAlgES512, jwa.ES512},
+		{ES256, jwa.ES256},
+		{ES384, jwa.ES384},
+		{ES512, jwa.ES512},
 	}
 
 	for _, tt := range tests {
-		t.Run(tt.alg, func(t *testing.T) {
+		t.Run(string(tt.alg), func(t *testing.T) {
 			generated, err := generateDPoPKeyForAlg(tt.alg)
 			require.NoError(t, err, "failed to generate EC test key")
 			pemBytes := jwkToPEMForTest(t, generated)
@@ -138,8 +138,8 @@ func TestLoadDPoPKeyFromPEM_InvalidPEM(t *testing.T) {
 }
 
 func TestLoadDPoPKeyFromPEM_PublicKeyRejected(t *testing.T) {
-	for _, alg := range []string{dpopAlgRS256, dpopAlgES256} {
-		t.Run(alg, func(t *testing.T) {
+	for _, alg := range []SigningAlgorithm{RS256, ES256} {
+		t.Run(string(alg), func(t *testing.T) {
 			generated, err := generateDPoPKeyForAlg(alg)
 			require.NoError(t, err, "generate test key")
 			pubPEM := publicKeyPEMForTest(t, generated)
@@ -152,7 +152,7 @@ func TestLoadDPoPKeyFromPEM_PublicKeyRejected(t *testing.T) {
 }
 
 func TestResolveDPoPKey(t *testing.T) {
-	ecKey, err := generateDPoPKeyForAlg(dpopAlgES256)
+	ecKey, err := generateDPoPKeyForAlg(ES256)
 	require.NoError(t, err, "generate EC key")
 	ecPEM := jwkToPEMForTest(t, ecKey)
 
@@ -177,16 +177,16 @@ func TestResolveDPoPKey(t *testing.T) {
 	})
 
 	t.Run("PEM with algorithm override", func(t *testing.T) {
-		rsaKey, err := generateDPoPKeyForAlg(dpopAlgRS256)
+		rsaKey, err := generateDPoPKeyForAlg(RS256)
 		require.NoError(t, err, "generate RSA key")
-		c := &config{dpopKeyPEM: jwkToPEMForTest(t, rsaKey), dpopAlgorithm: dpopAlgRS512}
+		c := &config{dpopKeyPEM: jwkToPEMForTest(t, rsaKey), dpopAlgorithm: RS512}
 		key, err := resolveDPoPKey(c)
 		require.NoError(t, err)
 		assert.Equal(t, jwa.RS512, key.Algorithm(), "alg override")
 	})
 
 	t.Run("generate from algorithm", func(t *testing.T) {
-		key, err := resolveDPoPKey(&config{dpopAlgorithm: dpopAlgES384})
+		key, err := resolveDPoPKey(&config{dpopAlgorithm: ES384})
 		require.NoError(t, err)
 		assert.Equal(t, jwa.ES384, key.Algorithm(), "alg")
 	})

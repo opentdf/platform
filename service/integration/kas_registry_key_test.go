@@ -20,7 +20,6 @@ import (
 	"github.com/opentdf/platform/protocol/go/policy/unsafe"
 	"github.com/opentdf/platform/service/internal/fixtures"
 	"github.com/opentdf/platform/service/pkg/db"
-	policydb "github.com/opentdf/platform/service/policy/db"
 	"github.com/stretchr/testify/suite"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
@@ -555,7 +554,7 @@ func (s *KasRegistryKeySuite) Test_UnsafeUpdateKey_NonexistentProviderConfig_Fai
 	})
 	s.Require().Error(err)
 	s.Nil(updatedKey)
-	s.Require().ErrorContains(err, db.ErrForeignKeyViolation.Error())
+	s.Require().ErrorIs(err, db.ErrUnsafeUpdateKeyProviderConfigNotFound)
 
 	gotKey, err := s.db.PolicyClient.GetKey(s.ctx, &kasregistry.GetKeyRequest_Id{
 		Id: createdKey.GetKey().GetId(),
@@ -592,7 +591,7 @@ func (s *KasRegistryKeySuite) Test_UnsafeUpdateKey_UnsupportedExistingKeyMode_Fa
 	})
 	s.Require().Error(err)
 	s.Nil(updatedKey)
-	s.Require().ErrorIs(err, policydb.ErrUnsafeUpdateKeyExistingModeUnsupported)
+	s.Require().ErrorIs(err, db.ErrUnsafeUpdateKeyExistingModeUnsupported)
 
 	gotKey, err := s.db.PolicyClient.GetKey(s.ctx, &kasregistry.GetKeyRequest_Id{
 		Id: createdKey.GetKey().GetId(),

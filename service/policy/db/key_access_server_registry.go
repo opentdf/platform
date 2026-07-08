@@ -15,6 +15,7 @@ import (
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/attributes"
 	"github.com/opentdf/platform/protocol/go/policy/kasregistry"
+	"github.com/opentdf/platform/protocol/go/policy/keymanagement"
 	"github.com/opentdf/platform/protocol/go/policy/namespaces"
 	"github.com/opentdf/platform/protocol/go/policy/unsafe"
 	"github.com/opentdf/platform/service/pkg/db"
@@ -33,13 +34,6 @@ type kasParams struct {
 	KasURI  pgtype.Text
 	KasName pgtype.Text
 }
-
-var (
-	ErrUnsafeUpdateKeyExistingModeUnsupported    = errors.New("ErrUnsafeUpdateKeyExistingModeUnsupported: existing key mode cannot be unsafely updated")
-	ErrUnsafeUpdateKeyProviderConfigExistingMode = errors.New("ErrUnsafeUpdateKeyProviderConfigExistingMode: existing key mode cannot receive provider_config_id update with unspecified key mode")
-	ErrUnsafeUpdateKeyProviderConfigRequired     = errors.New("ErrUnsafeUpdateKeyProviderConfigRequired: provider_config_id is required for requested key mode")
-	ErrUnsafeUpdateKeyProviderConfigNotAllowed   = errors.New("ErrUnsafeUpdateKeyProviderConfigNotAllowed: provider_config_id must be empty for requested key mode")
-)
 
 func (c PolicyDBClient) ListKeyAccessServers(ctx context.Context, r *kasregistry.ListKeyAccessServersRequest) (*kasregistry.ListKeyAccessServersResponse, error) {
 	limit, offset := c.getRequestedLimitOffset(r.GetPagination())
@@ -560,17 +554,29 @@ func (c PolicyDBClient) UpdateKey(ctx context.Context, r *kasregistry.UpdateKeyR
 }
 
 func (c PolicyDBClient) UnsafeUpdateKey(ctx context.Context, existing *policy.KasKey, r *unsafe.UnsafeUpdateKeyRequest) (*policy.KasKey, error) {
+	if existing.GetKey() == nil {
+		return nil, errors.New("existing key is nil")
+	}
+
 	id := r.GetId()
 	if !pgtypeUUID(id).Valid {
 		return nil, db.ErrUUIDInvalid
 	}
 	if existing.GetKey().GetId() != id {
-		return nil, errors.Join(db.ErrSelectIdentifierInvalid, fmt.Errorf("key ID mismatch: expected %s, got %s", existing.GetKey().GetId(), id))
+		return nil, fmt.Errorf("key ID mismatch: expected %s, got %s", existing.GetKey().GetId(), id)
 	}
 
 	params, err := validateUnsafeUpdateKey(existing, r)
 	if err != nil {
 		return nil, err
+	}
+	if params.ProviderConfigID.Valid {
+		if _, err := c.GetProviderConfig(ctx, &keymanagement.GetProviderConfigRequest_Id{Id: r.GetProviderConfigId()}); err != nil {
+			if errors.Is(err, db.ErrNotFound) {
+				return nil, db.ErrUnsafeUpdateKeyProviderConfigNotFound
+			}
+			return nil, err
+		}
 	}
 
 	count, err := c.queries.unsafeUpdateKey(ctx, params)
@@ -588,34 +594,40 @@ func (c PolicyDBClient) UnsafeUpdateKey(ctx context.Context, existing *policy.Ka
 	})
 }
 
+// validateUnsafeUpdateKey allows only remote and public-key-only keys to be
+// updated, requiring a provider config when the resulting mode uses one.
 func validateUnsafeUpdateKey(existing *policy.KasKey, r *unsafe.UnsafeUpdateKeyRequest) (unsafeUpdateKeyParams, error) {
 	existingMode := existing.GetKey().GetKeyMode()
 	params := unsafeUpdateKeyParams{
-		ID:               r.GetId(),
-		ProviderConfigID: pgtypeUUID(r.GetProviderConfigId()),
+		ID: r.GetId(),
 	}
+	newKeyMode := pgtypeInt4(int32(r.GetKeyMode()), true)
+	newProviderConfiguration := pgtypeUUID(r.GetProviderConfigId())
 
 	if existingMode != policy.KeyMode_KEY_MODE_PUBLIC_KEY_ONLY && existingMode != policy.KeyMode_KEY_MODE_REMOTE {
-		return params, ErrUnsafeUpdateKeyExistingModeUnsupported
-	}
-
-	if r.GetKeyMode() == policy.KeyMode_KEY_MODE_UNSPECIFIED && existingMode != policy.KeyMode_KEY_MODE_REMOTE {
-		return params, ErrUnsafeUpdateKeyProviderConfigExistingMode
+		return params, db.ErrUnsafeUpdateKeyExistingModeUnsupported
 	}
 
 	switch r.GetKeyMode() {
-	case policy.KeyMode_KEY_MODE_REMOTE, policy.KeyMode_KEY_MODE_UNSPECIFIED:
-		if r.GetProviderConfigId() == "" {
-			return params, ErrUnsafeUpdateKeyProviderConfigRequired
+	case policy.KeyMode_KEY_MODE_REMOTE:
+		if !newProviderConfiguration.Valid {
+			return params, db.ErrUnsafeUpdateKeyProviderConfigRequired
 		}
+		params.KeyMode = newKeyMode
+		params.ProviderConfigID = newProviderConfiguration
 	case policy.KeyMode_KEY_MODE_PUBLIC_KEY_ONLY:
 		if r.GetProviderConfigId() != "" {
-			return params, ErrUnsafeUpdateKeyProviderConfigNotAllowed
+			return params, db.ErrUnsafeUpdateKeyProviderConfigNotAllowed
 		}
-	}
-
-	if r.GetKeyMode() != policy.KeyMode_KEY_MODE_UNSPECIFIED {
-		params.KeyMode = pgtypeInt4(int32(r.GetKeyMode()), true)
+		params.KeyMode = newKeyMode
+	case policy.KeyMode_KEY_MODE_UNSPECIFIED:
+		if existingMode != policy.KeyMode_KEY_MODE_REMOTE {
+			return params, db.ErrUnsafeUpdateKeyProviderConfigExistingMode
+		}
+		if !newProviderConfiguration.Valid {
+			return params, db.ErrUnsafeUpdateKeyProviderConfigRequired
+		}
+		params.ProviderConfigID = newProviderConfiguration
 	}
 
 	return params, nil

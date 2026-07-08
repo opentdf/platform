@@ -6,6 +6,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/unsafe"
+	servicedb "github.com/opentdf/platform/service/pkg/db"
 	"github.com/stretchr/testify/require"
 )
 
@@ -61,33 +62,33 @@ func TestValidateUnsafeUpdateKey(t *testing.T) {
 			existingMode:   policy.KeyMode_KEY_MODE_PUBLIC_KEY_ONLY,
 			requestMode:    policy.KeyMode_KEY_MODE_UNSPECIFIED,
 			providerConfig: unsafeUpdateKeyTestUUID,
-			wantErr:        ErrUnsafeUpdateKeyProviderConfigExistingMode,
+			wantErr:        servicedb.ErrUnsafeUpdateKeyProviderConfigExistingMode,
 		},
 		{
 			name:         "remote requires provider config",
 			existingMode: policy.KeyMode_KEY_MODE_PUBLIC_KEY_ONLY,
 			requestMode:  policy.KeyMode_KEY_MODE_REMOTE,
-			wantErr:      ErrUnsafeUpdateKeyProviderConfigRequired,
+			wantErr:      servicedb.ErrUnsafeUpdateKeyProviderConfigRequired,
 		},
 		{
 			name:         "provider config only update requires provider config",
 			existingMode: policy.KeyMode_KEY_MODE_REMOTE,
 			requestMode:  policy.KeyMode_KEY_MODE_UNSPECIFIED,
-			wantErr:      ErrUnsafeUpdateKeyProviderConfigRequired,
+			wantErr:      servicedb.ErrUnsafeUpdateKeyProviderConfigRequired,
 		},
 		{
 			name:           "public key only rejects provider config",
 			existingMode:   policy.KeyMode_KEY_MODE_REMOTE,
 			requestMode:    policy.KeyMode_KEY_MODE_PUBLIC_KEY_ONLY,
 			providerConfig: unsafeUpdateKeyTestUUID,
-			wantErr:        ErrUnsafeUpdateKeyProviderConfigNotAllowed,
+			wantErr:        servicedb.ErrUnsafeUpdateKeyProviderConfigNotAllowed,
 		},
 		{
 			name:           "existing config root key rejected before request validation",
 			existingMode:   policy.KeyMode_KEY_MODE_CONFIG_ROOT_KEY,
 			requestMode:    policy.KeyMode_KEY_MODE_REMOTE,
 			providerConfig: unsafeUpdateKeyTestUUID,
-			wantErr:        ErrUnsafeUpdateKeyExistingModeUnsupported,
+			wantErr:        servicedb.ErrUnsafeUpdateKeyExistingModeUnsupported,
 		},
 	}
 

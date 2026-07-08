@@ -424,19 +424,6 @@ func unsafeUpdateKasKeyMode(modeArg string) (policy.KeyMode, error) {
 	}
 }
 
-func validateUnsafeUpdateKasKeyParams(mode policy.KeyMode, providerConfigID string) error {
-	switch {
-	case mode == policy.KeyMode_KEY_MODE_UNSPECIFIED && providerConfigID == "":
-		return errors.New("mode or provider-config-id must be provided")
-	case mode == policy.KeyMode_KEY_MODE_REMOTE && providerConfigID == "":
-		return errors.New("provider-config-id is required when mode is remote")
-	case mode == policy.KeyMode_KEY_MODE_PUBLIC_KEY_ONLY && providerConfigID != "":
-		return errors.New("provider-config-id must be empty when mode is public_key")
-	default:
-		return nil
-	}
-}
-
 func policyUnsafeUpdateKasKey(cmd *cobra.Command, args []string) {
 	c := cli.New(cmd, args)
 
@@ -448,9 +435,6 @@ func policyUnsafeUpdateKasKey(cmd *cobra.Command, args []string) {
 	mode, err := unsafeUpdateKasKeyMode(modeArg)
 	if err != nil {
 		cli.ExitWithError("Invalid key mode", err)
-	}
-	if err := validateUnsafeUpdateKasKeyParams(mode, providerConfigID); err != nil {
-		cli.ExitWithError("Invalid key parameters", err)
 	}
 
 	h := common.NewHandler(c)

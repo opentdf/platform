@@ -803,22 +803,52 @@ format_kas_name_as_uri() {
   assert_output --partial "Flag '--id' is required"
 }
 
-@test "kas-keys: unsafe update key failure - (missing update fields)" {
-  run_otdfctl_key unsafe update --id "ded32e6d-9fec-4a4c-a391-13158c52e5f2" --force
+@test "kas-keys: unsafe update key failure - (missing provider configuration)" {
+  KEY_ID_UNSAFE_UPDATE=$(generate_key_id)
+  run_otdfctl_key create --kas "${KAS_REGISTRY_ID}" --key-id "${KEY_ID_UNSAFE_UPDATE}" --algorithm "rsa:2048" --mode "remote" --public-key-pem "${PEM_B64}" --provider-config-id "${PC_ID}" --wrapping-key-id "wrapping-key-remote" --json
+  assert_success
+  local key_system_id=$(echo "$output" | jq -r .key.id)
+
+  run_otdfctl_key unsafe update --id "${key_system_id}" --force
   assert_failure
-  assert_output --partial "mode or provider-config-id must be provided"
+  assert_output --partial "Failed to update kas key"
+  assert_output --partial "provider_config_id is required for requested key mode"
 }
 
 @test "kas-keys: unsafe update key failure - (remote mode missing provider config)" {
-  run_otdfctl_key unsafe update --id "ded32e6d-9fec-4a4c-a391-13158c52e5f2" --mode remote --force
+  KEY_ID_UNSAFE_UPDATE=$(generate_key_id)
+  run_otdfctl_key create --kas "${KAS_REGISTRY_ID}" --key-id "${KEY_ID_UNSAFE_UPDATE}" --algorithm "rsa:2048" --mode "public_key" --public-key-pem "${PEM_B64}" --json
+  assert_success
+  local key_system_id=$(echo "$output" | jq -r .key.id)
+
+  run_otdfctl_key unsafe update --id "${key_system_id}" --mode remote --force
   assert_failure
-  assert_output --partial "provider-config-id is required when mode is remote"
+  assert_output --partial "Failed to update kas key"
+  assert_output --partial "provider_config_id is required for requested key mode"
 }
 
 @test "kas-keys: unsafe update key failure - (public_key mode with provider config)" {
-  run_otdfctl_key unsafe update --id "ded32e6d-9fec-4a4c-a391-13158c52e5f2" --mode public_key --provider-config-id "298c9446-ef71-49eb-a6ef-960149095a76" --force
+  KEY_ID_UNSAFE_UPDATE=$(generate_key_id)
+  run_otdfctl_key create --kas "${KAS_REGISTRY_ID}" --key-id "${KEY_ID_UNSAFE_UPDATE}" --algorithm "rsa:2048" --mode "remote" --public-key-pem "${PEM_B64}" --provider-config-id "${PC_ID}" --wrapping-key-id "wrapping-key-remote" --json
+  assert_success
+  local key_system_id=$(echo "$output" | jq -r .key.id)
+
+  run_otdfctl_key unsafe update --id "${key_system_id}" --mode public_key --provider-config-id "${PC_ID}" --force
   assert_failure
-  assert_output --partial "provider-config-id must be empty when mode is public_key"
+  assert_output --partial "Failed to update kas key"
+  assert_output --partial "provider_config_id must be empty for requested key mode"
+}
+
+@test "kas-keys: unsafe update key failure - (existing key mode unsupported)" {
+  KEY_ID_UNSAFE_UPDATE=$(generate_key_id)
+  run_otdfctl_key create --kas "${KAS_REGISTRY_ID}" --key-id "${KEY_ID_UNSAFE_UPDATE}" --algorithm "rsa:2048" --mode local --wrapping-key-id "wrapping-key-local" --wrapping-key "${WRAPPING_KEY}" --json
+  assert_success
+  local key_system_id=$(echo "$output" | jq -r .key.id)
+
+  run_otdfctl_key unsafe update --id "${key_system_id}" --mode public_key --force
+  assert_failure
+  assert_output --partial "Failed to update kas key"
+  assert_output --partial "existing key mode cannot be updated"
 }
 
 @test "kas-keys: unsafe update key failure - (unsupported mode)" {

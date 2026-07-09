@@ -9017,7 +9017,7 @@ Fully Qualified Names of attribute values (i.e. https://&lt;namespace&gt;/attr/&
         
       
         <h3 id="policy.attributes.GetEntitleableAttributesByFqnsRequest">GetEntitleableAttributesByFqnsRequest</h3>
-        <p>Entitleable Attributes By FQNs (server-side decisioning path)</p><p>Narrow read API for Auth Service / Access PDP entitlement resolution. Given</p><p>attribute value FQNs, returns the parent definitions (deduped, each with its</p><p>rule) and, per requested value, the value identity and the subject mappings</p><p>needed to resolve entitlements. Hierarchy definitions additionally carry their</p><p>ordered values with subject mappings, for hierarchy rule propagation. It does</p><p>not return KAS keys, grants, resource mappings, obligations, or metadata.</p>
+        <p>Entitleable Attributes By FQNs (server-side decisioning path)</p><p>Narrow read API for Auth Service / Access PDP entitlement resolution. Given</p><p>attribute value FQNs, returns the parent definitions (deduped, each with its</p><p>rule and namespace identity) and, per requested value, the value identity and</p><p>the subject mappings needed to resolve entitlements. Hierarchy definitions</p><p>additionally carry their ordered values with subject mappings, for hierarchy</p><p>rule propagation. It does not return KAS keys, grants, resource mappings,</p><p>obligations, or metadata. A value that does not exist under a definition with</p><p>allow_traversal is returned with its definition and an empty value identity (no</p><p>value_id, no subject mappings).</p>
 
         
           <table class="field-table">
@@ -9161,6 +9161,15 @@ their mappings to propagate entitlement up the chain). Empty for any_of /
 all_of, where the requested per-value entries below carry what&#39;s needed. </p></td>
                 </tr>
               
+                <tr>
+                  <td>namespace</td>
+                  <td><a href="#policy.Namespace">policy.Namespace</a></td>
+                  <td></td>
+                  <td><p>the definition&#39;s namespace identity (id and fqn), needed for
+namespaced-policy decisioning and registered-resource matching. Only the
+identity is populated; grants, keys, and metadata are not. </p></td>
+                </tr>
+              
             </tbody>
           </table>
 
@@ -9238,7 +9247,7 @@ all_of, where the requested per-value entries below carry what&#39;s needed. </p
         
       
         <h3 id="policy.attributes.GetKeyMappingsByFqnsRequest">GetKeyMappingsByFqnsRequest</h3>
-        <p>Key Mappings By FQNs (client-side key split path)</p><p>Narrow read API for the client-side encrypt flow. Given attribute value FQNs,</p><p>returns only the information needed to build key splits: the governing</p><p>attribute rule and the effective KAS keys resolved server-side. It does not</p><p>return subject mappings, resource mappings, obligations, sibling values, or</p><p>metadata. Prefer this over GetAttributeValuesByFqns when building splits.</p>
+        <p>Key Mappings By FQNs (client-side key split path)</p><p>Narrow read API for the client-side encrypt flow. Given attribute value FQNs,</p><p>returns only the information needed to build key splits: the governing</p><p>attribute rule and the effective mapped KAS keys resolved server-side. It does not</p><p>return subject mappings, resource mappings, obligations, sibling values, or</p><p>metadata. Prefer this over GetAttributeValuesByFqns when building splits. A</p><p>value that does not exist under a definition with allow_traversal resolves at</p><p>the definition (then namespace) level, supporting front-loaded TDF creation.</p>
 
         
           <table class="field-table">
@@ -9309,7 +9318,8 @@ Fully Qualified Names of attribute values (i.e. https://&lt;namespace&gt;/attr/&
                   <td>repeated</td>
                   <td><p>effective KAS keys resolved for this value (value &gt; definition &gt; namespace
 precedence). Legacy grants are not used by this API; values configured only
-with grants and no kas_keys return an empty key set. </p></td>
+with grants and no kas_keys return an empty key set, and the client resolves
+those grants via GetAttributeValuesByFqns. </p></td>
                 </tr>
               
             </tbody>

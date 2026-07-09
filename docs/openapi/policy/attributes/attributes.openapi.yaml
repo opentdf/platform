@@ -2205,10 +2205,13 @@ components:
 
         Narrow read API for Auth Service / Access PDP entitlement resolution. Given
         attribute value FQNs, returns the parent definitions (deduped, each with its
-        rule) and, per requested value, the value identity and the subject mappings
-        needed to resolve entitlements. Hierarchy definitions additionally carry their
-        ordered values with subject mappings, for hierarchy rule propagation. It does
-        not return KAS keys, grants, resource mappings, obligations, or metadata.
+        rule and namespace identity) and, per requested value, the value identity and
+        the subject mappings needed to resolve entitlements. Hierarchy definitions
+        additionally carry their ordered values with subject mappings, for hierarchy
+        rule propagation. It does not return KAS keys, grants, resource mappings,
+        obligations, or metadata. A value that does not exist under a definition with
+        allow_traversal is returned with its definition and an empty value identity (no
+        value_id, no subject mappings).
     policy.attributes.GetEntitleableAttributesByFqnsResponse:
       type: object
       properties:
@@ -2269,6 +2272,13 @@ components:
              ONLY for hierarchy definitions (whose decisioning needs sibling values and
              their mappings to propagate entitlement up the chain). Empty for any_of /
              all_of, where the requested per-value entries below carry what's needed.
+        namespace:
+          title: namespace
+          description: |-
+            the definition's namespace identity (id and fqn), needed for
+             namespaced-policy decisioning and registered-resource matching. Only the
+             identity is populated; grants, keys, and metadata are not.
+          $ref: '#/components/schemas/policy.Namespace'
       title: EntitleableDefinition
       additionalProperties: false
       description: |-
@@ -2327,9 +2337,11 @@ components:
 
         Narrow read API for the client-side encrypt flow. Given attribute value FQNs,
         returns only the information needed to build key splits: the governing
-        attribute rule and the effective KAS keys resolved server-side. It does not
+        attribute rule and the effective mapped KAS keys resolved server-side. It does not
         return subject mappings, resource mappings, obligations, sibling values, or
-        metadata. Prefer this over GetAttributeValuesByFqns when building splits.
+        metadata. Prefer this over GetAttributeValuesByFqns when building splits. A
+        value that does not exist under a definition with allow_traversal resolves at
+        the definition (then namespace) level, supporting front-loaded TDF creation.
     policy.attributes.GetKeyMappingsByFqnsResponse:
       type: object
       properties:
@@ -2357,7 +2369,8 @@ components:
           description: |-
             effective KAS keys resolved for this value (value > definition > namespace
              precedence). Legacy grants are not used by this API; values configured only
-             with grants and no kas_keys return an empty key set.
+             with grants and no kas_keys return an empty key set, and the client resolves
+             those grants via GetAttributeValuesByFqns.
       title: AttributeKeyMapping
       additionalProperties: false
     policy.attributes.GetKeyMappingsByFqnsResponse.FqnKeyMappingsEntry:

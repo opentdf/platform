@@ -53,8 +53,9 @@ func (c PolicyDBClient) CreateAttributeValue(ctx context.Context, attributeID st
 		}
 	}
 
+	createdSubjectMappings := make([]*policy.SubjectMapping, 0, len(r.GetSubjectMappings()))
 	for _, mapping := range r.GetSubjectMappings() {
-		_, err = c.CreateSubjectMapping(ctx, &subjectmapping.CreateSubjectMappingRequest{
+		createdSubjectMapping, err := c.CreateSubjectMapping(ctx, &subjectmapping.CreateSubjectMappingRequest{
 			AttributeValueId:              createdID,
 			Actions:                       mapping.GetActions(),
 			ExistingSubjectConditionSetId: mapping.GetExistingSubjectConditionSetId(),
@@ -66,9 +67,15 @@ func (c PolicyDBClient) CreateAttributeValue(ctx context.Context, attributeID st
 		if err != nil {
 			return nil, err
 		}
+		createdSubjectMappings = append(createdSubjectMappings, createdSubjectMapping)
 	}
 
-	return c.GetAttributeValue(ctx, createdID)
+	createdValue, err := c.GetAttributeValue(ctx, createdID)
+	if err != nil {
+		return nil, err
+	}
+	createdValue.SubjectMappings = createdSubjectMappings
+	return createdValue, nil
 }
 
 func (c PolicyDBClient) GetAttributeValue(ctx context.Context, identifier any) (*policy.Value, error) {

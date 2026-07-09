@@ -290,8 +290,12 @@ message AttributeValueSubjectMappingRequest {
   // Optional
   // Namespace ID or FQN for the subject mapping
   option (buf.validate.message).oneof = { fields: ["namespace_id", "namespace_fqn"], required: false };
-  string namespace_id = 4 [(buf.validate.field).string.uuid = true];
+  string namespace_id = 4 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string.uuid = true
+  ];
   string namespace_fqn = 5 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
     (buf.validate.field).string = {
       min_len: 1
       uri: true
@@ -326,7 +330,7 @@ message CreateAttributeValueRequest {
 
   // Optional
   // Subject mappings to associate with the newly created attribute value.
-  repeated AttributeValueSubjectMappingRequest subject_mappings = 12;
+  repeated AttributeValueSubjectMappingRequest subject_mappings = 12 [(buf.validate.field).repeated.max_items = 250];
 
   // Optional
   // Common metadata

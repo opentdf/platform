@@ -1343,6 +1343,8 @@ func (s *AttributeValuesSuite) Test_CreateAttributeValue_WithSubjectMappings_Suc
 	})
 	s.Require().NoError(err)
 	s.NotNil(createdValue)
+	s.Require().Len(createdValue.GetSubjectMappings(), 1)
+	s.Equal(createdValue.GetId(), createdValue.GetSubjectMappings()[0].GetAttributeValue().GetId())
 
 	listedMappings, err := s.db.PolicyClient.ListSubjectMappings(s.ctx, &subjectmapping.ListSubjectMappingsRequest{
 		NamespaceId: ns.GetId(),

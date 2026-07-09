@@ -2028,6 +2028,7 @@ components:
           items:
             $ref: '#/components/schemas/policy.attributes.AttributeValueSubjectMappingRequest'
           title: subject_mappings
+          maxItems: 250
           description: |-
             Optional
              Subject mappings to associate with the newly created attribute value.

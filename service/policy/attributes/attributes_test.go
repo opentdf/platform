@@ -6,10 +6,12 @@ import (
 	"testing"
 
 	"buf.build/go/protovalidate"
+	"connectrpc.com/connect"
 	"github.com/opentdf/platform/protocol/go/common"
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/attributes"
 	"github.com/opentdf/platform/protocol/go/policy/subjectmapping"
+	policyconfig "github.com/opentdf/platform/service/policy/config"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
@@ -513,6 +515,13 @@ func TestCreateAttributeValue_WithSubjectMappings_Request(t *testing.T) {
 			},
 		},
 	}
+	tooManySubjectMappings := make([]*attributes.AttributeValueSubjectMappingRequest, 251)
+	for i := range tooManySubjectMappings {
+		tooManySubjectMappings[i] = &attributes.AttributeValueSubjectMappingRequest{
+			Actions:                []*policy.Action{{Id: validUUID}},
+			NewSubjectConditionSet: validSubjectConditionSet,
+		}
+	}
 
 	testCases := []struct {
 		name         string
@@ -548,6 +557,20 @@ func TestCreateAttributeValue_WithSubjectMappings_Request(t *testing.T) {
 						Actions:                       []*policy.Action{{Id: validUUID}},
 						ExistingSubjectConditionSetId: validUUID,
 						NamespaceFqn:                  validFQN,
+					},
+				},
+			},
+			expectError: false,
+		},
+		{
+			name: "valid without namespace",
+			req: &attributes.CreateAttributeValueRequest{
+				AttributeId: validUUID,
+				Value:       validValue1,
+				SubjectMappings: []*attributes.AttributeValueSubjectMappingRequest{
+					{
+						Actions:                []*policy.Action{{Id: validUUID}},
+						NewSubjectConditionSet: validSubjectConditionSet,
 					},
 				},
 			},
@@ -630,6 +653,16 @@ func TestCreateAttributeValue_WithSubjectMappings_Request(t *testing.T) {
 			expectError:  true,
 			errorMessage: "message.oneof",
 		},
+		{
+			name: "invalid too many subject mappings",
+			req: &attributes.CreateAttributeValueRequest{
+				AttributeId:     validUUID,
+				Value:           validValue1,
+				SubjectMappings: tooManySubjectMappings,
+			},
+			expectError:  true,
+			errorMessage: "max_items",
+		},
 	}
 
 	v := getValidator()
@@ -645,6 +678,29 @@ func TestCreateAttributeValue_WithSubjectMappings_Request(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestCreateAttributeValue_WithSubjectMappings_NamespacedPolicyRequiresNamespace(t *testing.T) {
+	service := &AttributesService{
+		config: &policyconfig.Config{
+			NamespacedPolicy: true,
+		},
+	}
+
+	_, err := service.CreateAttributeValue(t.Context(), connect.NewRequest(&attributes.CreateAttributeValueRequest{
+		AttributeId: validUUID,
+		Value:       validValue1,
+		SubjectMappings: []*attributes.AttributeValueSubjectMappingRequest{
+			{
+				Actions:                       []*policy.Action{{Id: validUUID}},
+				ExistingSubjectConditionSetId: validUUID,
+			},
+		},
+	}))
+
+	require.Error(t, err)
+	require.Equal(t, connect.CodeInvalidArgument, connect.CodeOf(err))
+	require.Contains(t, err.Error(), "either namespace_id or namespace_fqn must be provided")
 }
 
 func TestCreateAttributeValue_ValueTooLong_Fails(t *testing.T) {

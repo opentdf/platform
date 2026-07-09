@@ -345,7 +345,13 @@ func bufferRequestBody(req *http.Request) error {
 	if req.Body == nil || req.Body == http.NoBody || req.ContentLength < 0 {
 		return nil
 	}
-	data, readErr := io.ReadAll(req.Body)
+	// Pre-size from ContentLength (guaranteed >= 0 here) so this is a single exact
+	// allocation instead of io.ReadAll's grow-by-doubling. ConnectRPC unary payloads
+	// are already fully buffered in memory, so this is a straight copy of a
+	// known-length body. ReadFrom still reads to EOF, so behavior is unchanged if
+	// ContentLength ever under-/over-states the actual body.
+	buf := bytes.NewBuffer(make([]byte, 0, req.ContentLength))
+	_, readErr := buf.ReadFrom(req.Body)
 	closeErr := req.Body.Close()
 	if readErr != nil {
 		return fmt.Errorf("buffering DPoP request body: %w", readErr)
@@ -353,6 +359,7 @@ func bufferRequestBody(req *http.Request) error {
 	if closeErr != nil {
 		return fmt.Errorf("closing DPoP request body: %w", closeErr)
 	}
+	data := buf.Bytes()
 	req.Body = io.NopCloser(bytes.NewReader(data))
 	req.GetBody = func() (io.ReadCloser, error) {
 		return io.NopCloser(bytes.NewReader(data)), nil

@@ -1708,6 +1708,14 @@ func (s *AttributesSuite) Test_GetEntitleableAttributesByFqns() {
 	s.Equal(policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF, def.GetRule())
 	s.Empty(def.GetValues())
 
+	// The definition carries its namespace identity (id, name, fqn) only; grants,
+	// keys, and metadata are not populated.
+	s.NotEmpty(def.GetNamespace().GetId())
+	s.Equal("https://example.com", def.GetNamespace().GetFqn())
+	s.Equal("example.com", def.GetNamespace().GetName())
+	s.Empty(def.GetNamespace().GetGrants())
+	s.Empty(def.GetNamespace().GetKasKeys())
+
 	// Per-requested-value entries reference the definition and carry subject
 	// mappings grouped by value FQN. Every returned mapping must belong to the
 	// requested value (verifies grouping by FQN).
@@ -1767,6 +1775,9 @@ func (s *AttributesSuite) Test_GetEntitleableAttributesByFqns_MissingValueAllowT
 	def := resp.GetDefinitions()[defFqn]
 	s.Require().NotNil(def)
 	s.Equal(policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF, def.GetRule())
+	// The definition (and its namespace) still resolves under allow_traversal.
+	s.Equal(ns.GetId(), def.GetNamespace().GetId())
+	s.Equal(got.GetNamespace().GetFqn(), def.GetNamespace().GetFqn())
 
 	e := resp.GetFqnEntitleableAttributes()[missingFqn]
 	s.Require().NotNil(e)

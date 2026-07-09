@@ -26,7 +26,7 @@ var (
 
 func encryptRun(cmd *cobra.Command, args []string) {
 	c := cli.New(cmd, args, cli.WithPrintJSON())
-	h := common.NewHandler(c, dpopSDKOpts(c)...)
+	h := common.NewHandler(c)
 	defer h.Close()
 
 	var filePath string
@@ -190,18 +190,6 @@ func InitEncryptCommand() {
 		encryptDoc.GetDocFlag("target-mode").Name,
 		encryptDoc.GetDocFlag("target-mode").Default,
 		encryptDoc.GetDocFlag("target-mode").Description,
-	)
-	encryptDoc.Flags().String(
-		encryptDoc.GetDocFlag("dpop").Name,
-		encryptDoc.GetDocFlag("dpop").Default,
-		encryptDoc.GetDocFlag("dpop").Description,
-	)
-	// NoOptDefVal enables bare --dpop (without =value) to default to ES256.
-	encryptDoc.Flags().Lookup(encryptDoc.GetDocFlag("dpop").Name).NoOptDefVal = "ES256"
-	encryptDoc.Flags().String(
-		encryptDoc.GetDocFlag("dpop-key").Name,
-		encryptDoc.GetDocFlag("dpop-key").Default,
-		encryptDoc.GetDocFlag("dpop-key").Description,
 	)
 	encryptDoc.GroupID = TDF
 }

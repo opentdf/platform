@@ -31,9 +31,9 @@ type handlerOpts struct {
 	sdkOpts []sdk.Option
 }
 
-type HandlerOptsFunc func(handlerOpts) handlerOpts
+type handlerOptsFunc func(handlerOpts) handlerOpts
 
-func WithEndpoint(endpoint string, tlsNoVerify bool) HandlerOptsFunc {
+func WithEndpoint(endpoint string, tlsNoVerify bool) handlerOptsFunc {
 	return func(c handlerOpts) handlerOpts {
 		c.endpoint = endpoint
 		c.TLSNoVerify = tlsNoVerify
@@ -41,7 +41,7 @@ func WithEndpoint(endpoint string, tlsNoVerify bool) HandlerOptsFunc {
 	}
 }
 
-func WithProfile(profile *profiles.OtdfctlProfileStore) HandlerOptsFunc {
+func WithProfile(profile *profiles.OtdfctlProfileStore) handlerOptsFunc {
 	return func(c handlerOpts) handlerOpts {
 		c.profile = profile
 		c.endpoint = profile.GetEndpoint()
@@ -58,23 +58,15 @@ func WithProfile(profile *profiles.OtdfctlProfileStore) HandlerOptsFunc {
 	}
 }
 
-func WithSDKOpts(opts ...sdk.Option) HandlerOptsFunc {
+func WithSDKOpts(opts ...sdk.Option) handlerOptsFunc {
 	return func(c handlerOpts) handlerOpts {
 		c.sdkOpts = opts
 		return c
 	}
 }
 
-// WithExtraSDKOpts appends additional SDK options without replacing those set by WithProfile.
-func WithExtraSDKOpts(opts ...sdk.Option) HandlerOptsFunc {
-	return func(c handlerOpts) handlerOpts {
-		c.sdkOpts = append(c.sdkOpts, opts...)
-		return c
-	}
-}
-
 // Creates a new handler wrapping the SDK, which is authenticated through the cached client-credentials flow tokens
-func New(opts ...HandlerOptsFunc) (Handler, error) {
+func New(opts ...handlerOptsFunc) (Handler, error) {
 	var o handlerOpts
 	for _, f := range opts {
 		o = f(o)

@@ -10,10 +10,12 @@ import (
 )
 
 // TestNewDPoPValidationHTTPClient verifies the helper otdfctl uses to make a
-// DPoP-bound token-endpoint request during credential validation: a request
-// carries a DPoP proof header when a key is configured, and none otherwise.
+// DPoP-bound token-endpoint request during credential validation: the request
+// carries a DPoP proof header whether or not a key is explicitly configured,
+// matching the DPoP-on default the credentialed SDK client applies.
 func TestNewDPoPValidationHTTPClient(t *testing.T) {
-	t.Run("adds DPoP proof when algorithm configured", func(t *testing.T) {
+	assertAddsDPoPProof := func(t *testing.T, opts ...Option) {
+		t.Helper()
 		var gotDPoP, gotAuthz string
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			gotDPoP = r.Header.Get("DPoP")
@@ -22,7 +24,7 @@ func TestNewDPoPValidationHTTPClient(t *testing.T) {
 		}))
 		defer server.Close()
 
-		client, err := NewDPoPValidationHTTPClient(http.DefaultClient, WithDPoPAlgorithm(ES256))
+		client, err := NewDPoPValidationHTTPClient(http.DefaultClient, opts...)
 		require.NoError(t, err, "NewDPoPValidationHTTPClient")
 
 		resp, err := client.Do(mustGet(t, server.URL))
@@ -32,13 +34,14 @@ func TestNewDPoPValidationHTTPClient(t *testing.T) {
 		assert.NotEmpty(t, gotDPoP, "expected a DPoP proof header on the token request")
 		// Token-endpoint requests bind via htu only: no ath claim / Authorization header.
 		assert.Empty(t, gotAuthz, "token-endpoint request must not carry an Authorization header")
+	}
+
+	t.Run("adds DPoP proof when algorithm configured", func(t *testing.T) {
+		assertAddsDPoPProof(t, WithDPoPAlgorithm(ES256))
 	})
 
-	t.Run("returns base client unchanged when no DPoP configured", func(t *testing.T) {
-		base := &http.Client{}
-		client, err := NewDPoPValidationHTTPClient(base)
-		require.NoError(t, err, "NewDPoPValidationHTTPClient")
-		assert.Same(t, base, client, "expected the base client returned unchanged")
+	t.Run("adds DPoP proof by default when no DPoP configured", func(t *testing.T) {
+		assertAddsDPoPProof(t)
 	})
 
 	t.Run("propagates invalid key configuration as an error", func(t *testing.T) {

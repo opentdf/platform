@@ -290,9 +290,11 @@ func getDPoPJWK(dpopKey *ocrypto.RsaKeyPair) (jwk.Key, error) {
 // CLI pre-flight credential check): the proof binds the request via htu but carries
 // no ath claim or Authorization header, and DPoP-Nonce challenges are retried.
 //
-// base is returned unchanged when no DPoP key is configured in opts. When only
-// WithDPoPAlgorithm is set, a fresh ephemeral key is generated for this client;
-// that is fine for a throwaway validation token that is never reused.
+// When no DPoP key is configured in opts a fresh ephemeral ES256 key is generated,
+// mirroring the default the real SDK client applies in buildIDPTokenSource. This
+// keeps the pre-flight validation token request consistent with the credentialed
+// client so a DPoP-enforcing token endpoint accepts both; the throwaway validation
+// token is never reused, so an ephemeral key is fine.
 func NewDPoPValidationHTTPClient(base *http.Client, opts ...Option) (*http.Client, error) {
 	c := &config{}
 	for _, o := range opts {
@@ -303,7 +305,10 @@ func NewDPoPValidationHTTPClient(base *http.Client, opts ...Option) (*http.Clien
 		return nil, fmt.Errorf("failed to resolve DPoP key: %w", err)
 	}
 	if key == nil {
-		return base, nil
+		key, err = generateDPoPKeyForAlg(ES256)
+		if err != nil {
+			return nil, fmt.Errorf("failed to generate default DPoP key: %w", err)
+		}
 	}
 	return auth.NewDPoPHTTPClient(base, key, nil, ""), nil
 }

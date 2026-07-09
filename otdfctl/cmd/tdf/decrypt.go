@@ -23,7 +23,7 @@ var (
 
 func decryptRun(cmd *cobra.Command, args []string) {
 	c := cli.New(cmd, args, cli.WithPrintJSON())
-	h := common.NewHandler(c, dpopSDKOpts(c)...)
+	h := common.NewHandler(c)
 	defer h.Close()
 
 	output := c.Flags.GetOptionalString("out")
@@ -132,18 +132,6 @@ func InitDecryptCommand() {
 		decryptDoc.GetDocFlag("kas-allowlist").Shorthand,
 		nil,
 		decryptDoc.GetDocFlag("kas-allowlist").Description,
-	)
-	decryptDoc.Flags().String(
-		decryptDoc.GetDocFlag("dpop").Name,
-		decryptDoc.GetDocFlag("dpop").Default,
-		decryptDoc.GetDocFlag("dpop").Description,
-	)
-	// NoOptDefVal enables bare --dpop (without =value) to default to ES256.
-	decryptDoc.Flags().Lookup(decryptDoc.GetDocFlag("dpop").Name).NoOptDefVal = "ES256"
-	decryptDoc.Flags().String(
-		decryptDoc.GetDocFlag("dpop-key").Name,
-		decryptDoc.GetDocFlag("dpop-key").Default,
-		decryptDoc.GetDocFlag("dpop-key").Description,
 	)
 
 	decryptDoc.GroupID = TDF

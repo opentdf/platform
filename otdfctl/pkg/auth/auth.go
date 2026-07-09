@@ -178,18 +178,16 @@ func GetSDKAuthOptionFromProfile(profile *profiles.OtdfctlProfileStore) (sdk.Opt
 	}
 }
 
-// ValidateProfileAuthCredentials validates the profile's stored credentials. Any
-// extra SDK options (e.g. WithDPoP*) are applied to the client-credentials token
-// request so validation exercises the same auth as later handler calls; without
-// them a DPoP-enforcing token endpoint would reject the pre-flight request.
-func ValidateProfileAuthCredentials(ctx context.Context, profile *profiles.OtdfctlProfileStore, opts ...sdk.Option) error {
+// ValidateProfileAuthCredentials validates the profile's stored credentials by
+// exercising the same client-credentials token request later handler calls use.
+func ValidateProfileAuthCredentials(ctx context.Context, profile *profiles.OtdfctlProfileStore) error {
 	c := profile.GetAuthCredentials()
 
 	switch c.AuthType {
 	case "":
 		return ErrProfileCredentialsNotFound
 	case profiles.AuthTypeClientCredentials:
-		_, err := GetTokenWithClientCreds(ctx, profile.GetEndpoint(), c.ClientID, c.ClientSecret, profile.GetTLSNoVerify(), c.Scopes, opts...)
+		_, err := GetTokenWithClientCreds(ctx, profile.GetEndpoint(), c.ClientID, c.ClientSecret, profile.GetTLSNoVerify(), c.Scopes)
 		if err != nil {
 			return err
 		}
@@ -217,11 +215,11 @@ func GetTokenWithProfile(ctx context.Context, profile *profiles.OtdfctlProfileSt
 	}
 }
 
-// Uses the OAuth2 client credentials flow to obtain a token. Any extra SDK options
-// (e.g. WithDPoP*) wrap the token-request HTTP client so the request carries a DPoP
-// proof when configured.
-func GetTokenWithClientCreds(ctx context.Context, endpoint string, clientID string, clientSecret string, tlsNoVerify bool, scopes []string, opts ...sdk.Option) (*oauth2.Token, error) {
-	httpClient, err := sdk.NewDPoPValidationHTTPClient(utils.NewHTTPClient(tlsNoVerify), opts...)
+// Uses the OAuth2 client credentials flow to obtain a token. The token-request HTTP
+// client is DPoP-bound by default (matching the SDK client), so the request carries a
+// DPoP proof and a DPoP-enforcing token endpoint accepts it.
+func GetTokenWithClientCreds(ctx context.Context, endpoint string, clientID string, clientSecret string, tlsNoVerify bool, scopes []string) (*oauth2.Token, error) {
+	httpClient, err := sdk.NewDPoPValidationHTTPClient(utils.NewHTTPClient(tlsNoVerify))
 	if err != nil {
 		return nil, err
 	}

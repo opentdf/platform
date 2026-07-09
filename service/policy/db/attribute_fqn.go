@@ -343,6 +343,12 @@ func (c *PolicyDBClient) GetEntitleableAttributesByFqns(ctx context.Context, r *
 		if _, ok := rsp.GetDefinitions()[defFqn]; !ok {
 			def := &attributes.GetEntitleableAttributesByFqnsResponse_EntitleableDefinition{
 				Rule: attr.GetRule(),
+				// Identity only; grants, keys, and metadata are intentionally omitted.
+				Namespace: &policy.Namespace{
+					Id:   attr.GetNamespace().GetId(),
+					Name: attr.GetNamespace().GetName(),
+					Fqn:  attr.GetNamespace().GetFqn(),
+				},
 			}
 			if attr.GetRule() == policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY {
 				def.Values = make([]*attributes.GetEntitleableAttributesByFqnsResponse_EntitleableValue, 0, len(attr.GetValues()))

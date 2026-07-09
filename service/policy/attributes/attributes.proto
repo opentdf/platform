@@ -7,6 +7,7 @@ import "common/common.proto";
 import "google/protobuf/wrappers.proto";
 import "policy/objects.proto";
 import "policy/selectors.proto";
+import "policy/subjectmapping/subject_mapping.proto";
 
 /*
    Key Access Server Grants
@@ -265,6 +266,42 @@ message AttributeValueObligationTriggerRequest {
   common.MetadataMutable metadata = 100;
 }
 
+message AttributeValueSubjectMappingRequest {
+  // Required. The actions permitted by subjects in this mapping.
+  repeated policy.Action actions = 1 [
+    (buf.validate.field).repeated.min_items = 1,
+    (buf.validate.field).cel = {
+      id: "action_name_or_id_not_empty"
+      message: "Action name or ID must not be empty if provided"
+      expression: "this.all(item, item.name != '' || item.id != '')"
+    }
+  ];
+
+  // Either of the following:
+  // Reuse existing SubjectConditionSet (NOTE: prioritized over new_subject_condition_set)
+  string existing_subject_condition_set_id = 2 [(buf.validate.field).cel = {
+    id: "optional_uuid_format"
+    message: "Optional field must be a valid UUID"
+    expression: "size(this) == 0 || this.matches('[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}')"
+  }];
+  // Create new SubjectConditionSet (NOTE: ignored if existing_subject_condition_set_id is provided)
+  policy.subjectmapping.SubjectConditionSetCreate new_subject_condition_set = 3;
+
+  // Optional
+  // Namespace ID or FQN for the subject mapping
+  option (buf.validate.message).oneof = { fields: ["namespace_id", "namespace_fqn"], required: false };
+  string namespace_id = 4 [(buf.validate.field).string.uuid = true];
+  string namespace_fqn = 5 [
+    (buf.validate.field).string = {
+      min_len: 1
+      uri: true
+    }
+  ];
+
+  // Optional. Common metadata for the subject mapping.
+  common.MetadataMutable metadata = 100;
+}
+
 message CreateAttributeValueRequest {
   // Required
   string attribute_id = 1 [(buf.validate.field).string.uuid = true];
@@ -286,6 +323,10 @@ message CreateAttributeValueRequest {
   // Optional
   // Existing obligation values to trigger for the newly created attribute value.
   repeated AttributeValueObligationTriggerRequest obligation_triggers = 11;
+
+  // Optional
+  // Subject mappings to associate with the newly created attribute value.
+  repeated AttributeValueSubjectMappingRequest subject_mappings = 12;
 
   // Optional
   // Common metadata

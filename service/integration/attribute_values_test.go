@@ -14,9 +14,11 @@ import (
 	"github.com/opentdf/platform/protocol/go/policy/kasregistry"
 	"github.com/opentdf/platform/protocol/go/policy/namespaces"
 	"github.com/opentdf/platform/protocol/go/policy/obligations"
+	"github.com/opentdf/platform/protocol/go/policy/subjectmapping"
 	"github.com/opentdf/platform/protocol/go/policy/unsafe"
 	"github.com/opentdf/platform/service/internal/fixtures"
 	"github.com/opentdf/platform/service/pkg/db"
+	policydb "github.com/opentdf/platform/service/policy/db"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -1289,6 +1291,126 @@ func (s *AttributeValuesSuite) Test_CreateAttributeValue_WithObligationTriggers_
 	s.Require().Error(err)
 	s.Nil(createdValue)
 	s.Require().ErrorIs(err, db.ErrNotFound)
+}
+
+func (s *AttributeValuesSuite) Test_CreateAttributeValue_WithSubjectMappings_Succeeds() {
+	ns, err := s.db.PolicyClient.CreateNamespace(s.ctx, &namespaces.CreateNamespaceRequest{
+		Name: "test-inline-subject-mappings.com",
+	})
+	s.Require().NoError(err)
+	s.NotNil(ns)
+	s.namespaces = append(s.namespaces, ns)
+
+	attrDef, err := s.db.PolicyClient.CreateAttribute(s.ctx, &attributes.CreateAttributeRequest{
+		Name:        "test-inline-subject-mappings-attr",
+		NamespaceId: ns.GetId(),
+		Rule:        policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
+	})
+	s.Require().NoError(err)
+	s.NotNil(attrDef)
+
+	readAction := s.getActionByNameInNamespace("read", ns.GetId())
+
+	createdValue, err := s.db.PolicyClient.CreateAttributeValue(s.ctx, attrDef.GetId(), &attributes.CreateAttributeValueRequest{
+		Value: "test_value_with_inline_subject_mapping",
+		SubjectMappings: []*attributes.AttributeValueSubjectMappingRequest{
+			{
+				Actions: []*policy.Action{{Name: readAction.GetName()}},
+				NewSubjectConditionSet: &subjectmapping.SubjectConditionSetCreate{
+					SubjectSets: []*policy.SubjectSet{
+						{
+							ConditionGroups: []*policy.ConditionGroup{
+								{
+									BooleanOperator: policy.ConditionBooleanTypeEnum_CONDITION_BOOLEAN_TYPE_ENUM_AND,
+									Conditions: []*policy.Condition{
+										{
+											SubjectExternalSelectorValue: ".email",
+											Operator:                     policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_IN,
+											SubjectExternalValues:        []string{"inline-subject-mapping@example.com"},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+				NamespaceId: ns.GetId(),
+				Metadata: &common.MetadataMutable{
+					Labels: map[string]string{"source": "inline-subject-mapping"},
+				},
+			},
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(createdValue)
+
+	listedMappings, err := s.db.PolicyClient.ListSubjectMappings(s.ctx, &subjectmapping.ListSubjectMappingsRequest{
+		NamespaceId: ns.GetId(),
+	})
+	s.Require().NoError(err)
+
+	var gotMapping *policy.SubjectMapping
+	for _, mapping := range listedMappings.GetSubjectMappings() {
+		if mapping.GetAttributeValue().GetId() == createdValue.GetId() {
+			gotMapping = mapping
+			break
+		}
+	}
+	s.Require().NotNil(gotMapping)
+	s.Equal(createdValue.GetId(), gotMapping.GetAttributeValue().GetId())
+	s.Equal(ns.GetId(), gotMapping.GetNamespace().GetId())
+	s.Equal("inline-subject-mapping", gotMapping.GetMetadata().GetLabels()["source"])
+	s.Require().Len(gotMapping.GetActions(), 1)
+	s.Equal(readAction.GetId(), gotMapping.GetActions()[0].GetId())
+	s.Require().NotNil(gotMapping.GetSubjectConditionSet())
+	s.Require().Len(gotMapping.GetSubjectConditionSet().GetSubjectSets(), 1)
+
+	retrievedMapping, err := s.db.PolicyClient.GetSubjectMapping(s.ctx, gotMapping.GetId())
+	s.Require().NoError(err)
+	s.Equal(createdValue.GetId(), retrievedMapping.GetAttributeValue().GetId())
+}
+
+func (s *AttributeValuesSuite) Test_CreateAttributeValue_WithSubjectMappings_RollsBackValueWhenMappingFails() {
+	ns, err := s.db.PolicyClient.CreateNamespace(s.ctx, &namespaces.CreateNamespaceRequest{
+		Name: "test-inline-subject-mappings-rollback.com",
+	})
+	s.Require().NoError(err)
+	s.NotNil(ns)
+	s.namespaces = append(s.namespaces, ns)
+
+	attrDef, err := s.db.PolicyClient.CreateAttribute(s.ctx, &attributes.CreateAttributeRequest{
+		Name:        "test-inline-subject-mappings-rollback-attr",
+		NamespaceId: ns.GetId(),
+		Rule:        policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
+	})
+	s.Require().NoError(err)
+	s.NotNil(attrDef)
+
+	readAction := s.getActionByNameInNamespace("read", ns.GetId())
+	valueName := "test_value_inline_subject_mapping_rollback"
+
+	err = s.db.PolicyClient.RunInTx(s.ctx, func(txClient *policydb.PolicyDBClient) error {
+		createdValue, err := txClient.CreateAttributeValue(s.ctx, attrDef.GetId(), &attributes.CreateAttributeValueRequest{
+			Value: valueName,
+			SubjectMappings: []*attributes.AttributeValueSubjectMappingRequest{
+				{
+					Actions:                       []*policy.Action{{Id: readAction.GetId()}},
+					ExistingSubjectConditionSetId: nonExistentSubjectMappingID,
+					NamespaceId:                   ns.GetId(),
+				},
+			},
+		})
+		s.Nil(createdValue)
+		return err
+	})
+	s.Require().Error(err)
+	s.Require().ErrorIs(err, db.ErrNotFound)
+
+	createdValue, err := s.db.PolicyClient.CreateAttributeValue(s.ctx, attrDef.GetId(), &attributes.CreateAttributeValueRequest{
+		Value: valueName,
+	})
+	s.Require().NoError(err)
+	s.NotNil(createdValue)
 }
 
 func TestAttributeValuesSuite(t *testing.T) {

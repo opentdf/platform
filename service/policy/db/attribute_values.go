@@ -11,6 +11,7 @@ import (
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/attributes"
 	"github.com/opentdf/platform/protocol/go/policy/obligations"
+	"github.com/opentdf/platform/protocol/go/policy/subjectmapping"
 	"github.com/opentdf/platform/protocol/go/policy/unsafe"
 	"github.com/opentdf/platform/service/pkg/db"
 	"google.golang.org/protobuf/types/known/wrapperspb"
@@ -46,6 +47,21 @@ func (c PolicyDBClient) CreateAttributeValue(ctx context.Context, attributeID st
 			AttributeValue:  &common.IdFqnIdentifier{Id: createdID},
 			Context:         trigger.GetContext(),
 			Metadata:        trigger.GetMetadata(),
+		})
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	for _, mapping := range r.GetSubjectMappings() {
+		_, err = c.CreateSubjectMapping(ctx, &subjectmapping.CreateSubjectMappingRequest{
+			AttributeValueId:              createdID,
+			Actions:                       mapping.GetActions(),
+			ExistingSubjectConditionSetId: mapping.GetExistingSubjectConditionSetId(),
+			NewSubjectConditionSet:        mapping.GetNewSubjectConditionSet(),
+			NamespaceId:                   mapping.GetNamespaceId(),
+			NamespaceFqn:                  mapping.GetNamespaceFqn(),
+			Metadata:                      mapping.GetMetadata(),
 		})
 		if err != nil {
 			return nil, err

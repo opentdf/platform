@@ -2828,7 +2828,7 @@ subject_external_selector_value on a flattened Entity Representation
         
       
         <h3 id="policy.DynamicValueMapping">DynamicValueMapping</h3>
-        <p>Dynamic Value Mapping: a Policy assigning permitted action(s) to</p><p>dynamically-requested values under an Attribute Definition. It raises entitlement</p><p>authority from a concrete Attribute Value to the Attribute Definition: at decision time</p><p>the value_resolver compares the requested resource value segment against the entity</p><p>representation, avoiding pre-provisioning a value + subject mapping per discrete value.</p>
+        <p>Dynamic Value Mapping: a Policy assigning permitted action(s) to</p><p>dynamically-requested values under an Attribute Definition. It raises entitlement</p><p>authority from a concrete Attribute Value to the Attribute Definition: at decision time</p><p>the value_resolver compares the requested resource value segment against the entity</p><p>representation, avoiding pre-provisioning a value + subject mapping per discrete value.</p><p>Combination semantics: multiple dynamic value mappings on the same definition are OR-ed (any</p><p>match entitles); within a mapping, the optional subject_condition_set's subject sets are AND-ed</p><p>(every set must pass), matching subject mapping evaluation.</p><p>Coexistence: a definition with a dynamic value mapping cannot also carry value-level subject</p><p>mappings, and values under such a definition cannot be added to a registered resource's action</p><p>attribute values (those values resolve at decision time, so they are not meaningful as static</p><p>registered-resource entitlements).</p>
 
         
           <table class="field-table">
@@ -2919,7 +2919,9 @@ idP/LDAP), e.g. &#34;.patientAssignments[]&#34; </p></td>
                   <td></td>
                   <td><p>how the requested resource value segment is compared against each value the selector
 resolves from the entity representation. NOT_IN is unsupported because dynamic resolution
-is existential over the resolved entity values. </p></td>
+is existential over the resolved entity values. IN_CONTAINS is substring-based and
+over-matches by design (e.g. &#34;admin&#34; matches &#34;superadmin&#34;, &#34;admin-readonly&#34;); prefer IN
+unless substring matching is genuinely intended. </p></td>
                 </tr>
               
             </tbody>

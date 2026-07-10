@@ -52,6 +52,15 @@ rejected (a definition-wide "not entitled" has no meaning at decision time). Reu
 operator keeps the resolver and subject-mapping vocabularies aligned; see
 [`evaluateValueResolver`](../../internal/subjectmappingbuiltin/dynamic_value_mapping_builtin.go).
 
+**Combination Semantics.** Multiple dynamic value mappings on one definition are OR-ed (any match
+entitles); within a mapping, the optional SubjectConditionSet's subject sets are AND-ed (every set
+must pass). This matches subject-mapping evaluation.
+
+> [!CAUTION]
+> `IN_CONTAINS` is substring-based and over-matches by design: a segment `admin` matches
+> `superadmin`, `admin-readonly`, `org-admin`, etc. Prefer exact `IN` unless substring matching is
+> genuinely intended, since a broad substring can entitle values that were not meant to be granted.
+
 > [!NOTE]
 > The original spike prototyped a dedicated `RESOURCE_VALUE_IN` operator to make the direction
 > explicit. Implementation reused `SubjectMappingOperatorEnum` instead: the resolver already fixes the
@@ -123,6 +132,9 @@ not share one field.
   mappings*, not on the existence of attribute *values*: a definition may still have concrete values (for
   obligation triggers, FQN resolution, etc.) alongside a dynamic mapping. What is disallowed is pairing
   those values with their own subject mappings on a definition that is also entitled dynamically.
+  For the same reason, a value under a dynamically-entitled definition cannot be added to a Registered
+  Resource's action attribute values: those values resolve at decision time and are not meaningful as
+  static registered-resource entitlements.
 - **Direct-Entitlements Overlap / Migration** (@biscoe916 Q1): a direct entitlement is effectively a
   `(value FQN, actions)` pair sourced from ERS at decision time. `TestDirectEntitlementOverlap` shows the
   dynamic mapping reproduces the identical grant from a single policy artifact, supporting the

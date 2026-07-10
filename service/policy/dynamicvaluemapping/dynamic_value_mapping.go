@@ -53,7 +53,7 @@ func NewRegistration(ns string, dbRegister serviceregistry.DBRegister) *servicer
 				logger := srp.Logger
 				cfg, err := policyconfig.GetSharedPolicyConfig(srp.Config)
 				if err != nil {
-					logger.Error("error getting dynamic value mapping service policy config", slog.String("error", err.Error()))
+					logger.Error("error getting dynamic value mapping service policy config", slog.Any("error", err))
 					panic(err)
 				}
 

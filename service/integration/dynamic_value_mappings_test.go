@@ -8,6 +8,7 @@ import (
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/attributes"
 	"github.com/opentdf/platform/protocol/go/policy/dynamicvaluemapping"
+	"github.com/opentdf/platform/protocol/go/policy/registeredresources"
 	"github.com/opentdf/platform/protocol/go/policy/subjectmapping"
 	"github.com/opentdf/platform/protocol/go/policy/unsafe"
 	"github.com/opentdf/platform/service/internal/fixtures"
@@ -146,6 +147,43 @@ func (s *DynamicValueMappingsSuite) TestNoCoexistence_DynamicThenSubjectMapping(
 		NewSubjectConditionSet: s.sampleSCSCreate(),
 	})
 	s.Require().ErrorIs(err, db.ErrRestrictViolation, "value-level subject mapping must not coexist with a dynamic mapping")
+}
+
+func (s *DynamicValueMappingsSuite) TestNoCoexistence_RegisteredResourceAAV() {
+	attr := s.createDefinition("dvem_rr_coexist", policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF)
+	val, err := s.db.PolicyClient.CreateAttributeValue(s.ctx, attr.GetId(), &attributes.CreateAttributeValueRequest{Value: "rr_dvm_val"})
+	s.Require().NoError(err)
+
+	_, err = s.db.PolicyClient.CreateDynamicValueMapping(s.ctx, &dynamicvaluemapping.CreateDynamicValueMappingRequest{
+		AttributeDefinitionId: attr.GetId(),
+		ValueResolver:         s.resolver(".x[]", policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_IN),
+		Actions:               []*policy.Action{s.readAction()},
+	})
+	s.Require().NoError(err)
+
+	regRes, err := s.db.PolicyClient.CreateRegisteredResource(s.ctx, &registeredresources.CreateRegisteredResourceRequest{
+		NamespaceId: s.f.GetNamespaceKey("example.com").ID,
+		Name:        "dvem_rr_coexist_res",
+	})
+	s.Require().NoError(err)
+
+	// A value under a definition with a dynamic mapping must not be added to a registered resource's
+	// action attribute values.
+	_, err = s.db.PolicyClient.CreateRegisteredResourceValue(s.ctx, &registeredresources.CreateRegisteredResourceValueRequest{
+		ResourceId: regRes.GetId(),
+		Value:      "rr_val_1",
+		ActionAttributeValues: []*registeredresources.ActionAttributeValue{
+			{
+				ActionIdentifier: &registeredresources.ActionAttributeValue_ActionName{
+					ActionName: policydb.ActionRead.String(),
+				},
+				AttributeValueIdentifier: &registeredresources.ActionAttributeValue_AttributeValueFqn{
+					AttributeValueFqn: val.GetFqn(),
+				},
+			},
+		},
+	})
+	s.Require().ErrorIs(err, db.ErrRestrictViolation, "value under a DVM definition must not be added to a registered resource's action attribute values")
 }
 
 func (s *DynamicValueMappingsSuite) TestRejectsRuleChangeToHierarchy() {

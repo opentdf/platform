@@ -91,9 +91,6 @@ func (c PolicyDBClient) GetDynamicValueMapping(ctx context.Context, id string) (
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
-	if row.ID == "" {
-		return nil, db.ErrNotFound
-	}
 
 	return c.hydrateDynamicValueMapping(ctx, dynamicValueMappingRow{
 		id:                           row.ID,
@@ -333,29 +330,38 @@ func (c PolicyDBClient) ensureNoValueSubjectMappingCoexistence(ctx context.Conte
 	return nil
 }
 
-// ensureNoDynamicValueMappingCoexistence rejects creation of a value-level
-// subject mapping when the value's parent definition already has a dynamic value
-// entitlement mapping.
-func (c PolicyDBClient) ensureNoDynamicValueMappingCoexistence(ctx context.Context, attributeValueID string) error {
+// definitionHasDynamicValueMapping reports whether the attribute value's parent definition already
+// has a dynamic value mapping, returning the parent definition ID for error context. A non-existent
+// attribute value has no parent definition to guard, so it returns (false) and lets the caller's
+// normal path surface the foreign-key violation instead of masking it as not-found.
+func (c PolicyDBClient) definitionHasDynamicValueMapping(ctx context.Context, attributeValueID string) (string, bool, error) {
 	if attributeValueID == "" {
-		return nil
+		return "", false, nil
 	}
 	definitionID, err := c.queries.getAttributeDefinitionIDByValueID(ctx, attributeValueID)
 	if err != nil {
 		wrapped := db.WrapIfKnownInvalidQueryErr(err)
-		// A non-existent attribute value has no parent definition to guard, so there is no
-		// coexisting dynamic mapping to reject. Let the normal create path surface the
-		// foreign-key violation instead of masking it as not-found.
 		if errors.Is(wrapped, db.ErrNotFound) {
-			return nil
+			return "", false, nil
 		}
-		return wrapped
+		return "", false, wrapped
 	}
 	count, err := c.queries.countDynamicValueMappingsByDefinitionID(ctx, definitionID)
 	if err != nil {
-		return db.WrapIfKnownInvalidQueryErr(err)
+		return "", false, db.WrapIfKnownInvalidQueryErr(err)
 	}
-	if count > 0 {
+	return definitionID, count > 0, nil
+}
+
+// ensureNoDynamicValueMappingCoexistence rejects creation of a value-level
+// subject mapping when the value's parent definition already has a dynamic value
+// entitlement mapping.
+func (c PolicyDBClient) ensureNoDynamicValueMappingCoexistence(ctx context.Context, attributeValueID string) error {
+	definitionID, has, err := c.definitionHasDynamicValueMapping(ctx, attributeValueID)
+	if err != nil {
+		return err
+	}
+	if has {
 		return errors.Join(db.ErrRestrictViolation,
 			fmt.Errorf("attribute definition [%s] has a dynamic value mapping; it cannot also have value-level subject mappings", definitionID))
 	}

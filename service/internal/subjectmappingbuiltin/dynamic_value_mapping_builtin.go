@@ -13,6 +13,14 @@ import (
 	"github.com/opentdf/platform/protocol/go/policy/attributes"
 )
 
+// Named errors for invalid dynamic value resolver operators, so the PDP/authz layer can errors.Is
+// them and log that the stored policy is malformed and needs correction.
+var (
+	ErrDynamicResolverOperatorUnspecified = errors.New("unspecified dynamic value resolver operator")
+	ErrDynamicResolverOperatorNotIn       = errors.New("NOT_IN is unsupported for dynamic value resolution")
+	ErrDynamicResolverOperatorUnsupported = errors.New("unsupported dynamic value resolver operator")
+)
+
 // DynamicValueMappingsByDefinitionFQN indexes dynamic mappings by their
 // parent attribute definition FQN for O(1) lookup during decisioning.
 type DynamicValueMappingsByDefinitionFQN map[string][]*policy.DynamicValueMapping
@@ -98,7 +106,9 @@ func evaluateDynamicValueMapping(
 	entity flattening.Flattened,
 	segment string,
 ) (bool, error) {
-	// optional static pre-gate: all subject sets AND together with normal semantics
+	// optional static pre-gate: the SubjectConditionSet's subject sets are AND-ed (every subject set
+	// must pass), matching subject-mapping semantics (see EvaluateEntitlements in
+	// subject_mapping_builtin.go). Multiple mappings on the same definition are OR-ed by the caller.
 	for _, subjectSet := range mapping.GetSubjectConditionSet().GetSubjectSets() {
 		ok, err := EvaluateSubjectSet(subjectSet, entity)
 		if err != nil {
@@ -122,13 +132,15 @@ func evaluateValueResolver(resolver *policy.DynamicValueResolver, entity flatten
 	case policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_IN:
 		match = func(entityValue string) bool { return entityValue == segment }
 	case policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_IN_CONTAINS:
+		// Substring match: this over-matches by design (e.g. "admin" matches "superadmin",
+		// "admin-readonly"). Prefer IN (exact) unless substring matching is genuinely intended.
 		match = func(entityValue string) bool { return strings.Contains(entityValue, segment) }
 	case policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_NOT_IN:
-		return false, errors.New("NOT_IN is unsupported for dynamic value resolution")
+		return false, ErrDynamicResolverOperatorNotIn
 	case policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_UNSPECIFIED:
-		return false, errors.New("unspecified dynamic value resolver operator")
+		return false, ErrDynamicResolverOperatorUnspecified
 	default:
-		return false, fmt.Errorf("unsupported dynamic value resolver operator: %s", operator)
+		return false, fmt.Errorf("%w: %s", ErrDynamicResolverOperatorUnsupported, operator)
 	}
 
 	entityValues := flattening.GetFromFlattened(entity, resolver.GetSubjectExternalSelectorValue())

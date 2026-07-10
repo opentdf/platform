@@ -217,10 +217,14 @@ func (c *EntitlementPolicyCache) Refresh(ctx context.Context) error {
 		return errors.Join(ErrFailedToSet, err)
 	}
 
-	err = c.cacheClient.Set(ctx, dynamicValueMappingsCacheKey, dynamicValueMappings, authzCacheTags)
-	if err != nil {
-		c.isCacheFilled = false
-		return errors.Join(ErrFailedToSet, err)
+	// Only cache dynamic value mappings when the feature is enabled, so a disabled feature does not
+	// store an empty slice (the fetch above is gated the same way).
+	if c.allowDynamicValueMappings {
+		err = c.cacheClient.Set(ctx, dynamicValueMappingsCacheKey, dynamicValueMappings, authzCacheTags)
+		if err != nil {
+			c.isCacheFilled = false
+			return errors.Join(ErrFailedToSet, err)
+		}
 	}
 
 	err = c.cacheClient.Set(ctx, registeredResourcesCacheKey, registeredResources, authzCacheTags)

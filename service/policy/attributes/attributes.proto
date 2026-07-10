@@ -548,7 +548,11 @@ service AttributesService {
   rpc GetAttribute(GetAttributeRequest) returns (GetAttributeResponse) {
     option idempotency_level = NO_SIDE_EFFECTS;
   }
+  // Deprecated
+  // Use GetKeyMappingsByFqns for client-side key splits and
+  // GetEntitleableAttributesByFqns for server-side entitlement resolution.
   rpc GetAttributeValuesByFqns(GetAttributeValuesByFqnsRequest) returns (GetAttributeValuesByFqnsResponse) {
+    option deprecated = true;
     option idempotency_level = NO_SIDE_EFFECTS;
   }
   // Returns only key-mapping information (rule and effective KAS keys) for the

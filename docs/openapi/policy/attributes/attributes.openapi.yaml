@@ -120,6 +120,10 @@ paths:
       tags:
         - policy.attributes.AttributesService
       summary: GetAttributeValuesByFqns
+      description: |-
+        Deprecated
+         Use GetKeyMappingsByFqns for client-side key splits and
+         GetEntitleableAttributesByFqns for server-side entitlement resolution.
       operationId: policy.attributes.AttributesService.GetAttributeValuesByFqns
       parameters:
         - name: Connect-Protocol-Version
@@ -150,6 +154,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/policy.attributes.GetAttributeValuesByFqnsResponse'
+      deprecated: true
   /policy.attributes.AttributesService/GetKeyMappingsByFqns:
     post:
       tags:

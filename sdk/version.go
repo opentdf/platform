@@ -14,7 +14,8 @@ const (
 // Used by xtest integration harness for feature detection.
 func SupportedFeatures() []string {
 	return []string{
-		"dpop",       // RFC 9449 DPoP (Demonstrating Proof-of-Possession)
-		"connectrpc", // Connect RPC protocol support
+		"dpop",                 // RFC 9449 DPoP (Demonstrating Proof-of-Possession)
+		"dpop_nonce_challenge", // RFC 9449 §8 server-issued DPoP-Nonce challenge/retry
+		"connectrpc",           // Connect RPC protocol support
 	}
 }

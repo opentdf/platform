@@ -32,6 +32,10 @@ type version struct {
 	BuildTime     string `json:"build_time"`
 	SDKVersion    string `json:"sdk_version"`
 	SchemaVersion string `json:"schema_version"`
+	// SupportedFeatures surfaces sdk.SupportedFeatures() so tooling (e.g. the xtest
+	// harness) can detect optional capabilities of this build from a machine-readable
+	// signal instead of scraping help text. Emitted only on the --json path.
+	SupportedFeatures []string `json:"supported_features"`
 }
 
 func init() {
@@ -40,12 +44,13 @@ func init() {
 
 		if c.Flags.GetOptionalBool("version") {
 			v := version{
-				AppName:       config.AppName,
-				Version:       config.Version,
-				CommitSha:     config.CommitSha,
-				BuildTime:     config.BuildTime,
-				SDKVersion:    sdk.Version,
-				SchemaVersion: sdk.TDFSpecVersion,
+				AppName:           config.AppName,
+				Version:           config.Version,
+				CommitSha:         config.CommitSha,
+				BuildTime:         config.BuildTime,
+				SDKVersion:        sdk.Version,
+				SchemaVersion:     sdk.TDFSpecVersion,
+				SupportedFeatures: sdk.SupportedFeatures(),
 			}
 
 			version := fmt.Sprintf("%s version %s (%s) %s", config.AppName, config.Version, config.BuildTime, config.CommitSha)

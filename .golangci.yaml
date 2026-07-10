@@ -227,6 +227,7 @@ formatters:
     paths:
       - .*\.pb\.go
       - .*\.pb\.gw.go
+      - sdk/sdkconnect/  # generated connect wrappers; forward deprecated RPCs
       - otdfctl/tui/
       - third_party$
       - builtin$

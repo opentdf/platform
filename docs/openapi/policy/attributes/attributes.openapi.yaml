@@ -121,8 +121,7 @@ paths:
         - policy.attributes.AttributesService
       summary: GetAttributeValuesByFqns
       description: |-
-        Deprecated
-         Use GetKeyMappingsByFqns for client-side key splits and
+        Deprecated: Use GetKeyMappingsByFqns for client-side key splits and
          GetEntitleableAttributesByFqns for server-side entitlement resolution.
       operationId: policy.attributes.AttributesService.GetAttributeValuesByFqns
       parameters:

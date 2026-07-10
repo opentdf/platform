@@ -56,8 +56,7 @@ type AttributesServiceClient interface {
 	ListAttributeValues(ctx context.Context, in *ListAttributeValuesRequest, opts ...grpc.CallOption) (*ListAttributeValuesResponse, error)
 	GetAttribute(ctx context.Context, in *GetAttributeRequest, opts ...grpc.CallOption) (*GetAttributeResponse, error)
 	// Deprecated: Do not use.
-	// Deprecated
-	// Use GetKeyMappingsByFqns for client-side key splits and
+	// Deprecated: Use GetKeyMappingsByFqns for client-side key splits and
 	// GetEntitleableAttributesByFqns for server-side entitlement resolution.
 	GetAttributeValuesByFqns(ctx context.Context, in *GetAttributeValuesByFqnsRequest, opts ...grpc.CallOption) (*GetAttributeValuesByFqnsResponse, error)
 	// Returns only key-mapping information (rule and effective KAS keys) for the
@@ -312,8 +311,7 @@ type AttributesServiceServer interface {
 	ListAttributeValues(context.Context, *ListAttributeValuesRequest) (*ListAttributeValuesResponse, error)
 	GetAttribute(context.Context, *GetAttributeRequest) (*GetAttributeResponse, error)
 	// Deprecated: Do not use.
-	// Deprecated
-	// Use GetKeyMappingsByFqns for client-side key splits and
+	// Deprecated: Use GetKeyMappingsByFqns for client-side key splits and
 	// GetEntitleableAttributesByFqns for server-side entitlement resolution.
 	GetAttributeValuesByFqns(context.Context, *GetAttributeValuesByFqnsRequest) (*GetAttributeValuesByFqnsResponse, error)
 	// Returns only key-mapping information (rule and effective KAS keys) for the

@@ -110,8 +110,7 @@ type AttributesServiceClient interface {
 	// Deprecated: do not use.
 	ListAttributeValues(context.Context, *connect.Request[attributes.ListAttributeValuesRequest]) (*connect.Response[attributes.ListAttributeValuesResponse], error)
 	GetAttribute(context.Context, *connect.Request[attributes.GetAttributeRequest]) (*connect.Response[attributes.GetAttributeResponse], error)
-	// Deprecated
-	// Use GetKeyMappingsByFqns for client-side key splits and
+	// Deprecated: Use GetKeyMappingsByFqns for client-side key splits and
 	// GetEntitleableAttributesByFqns for server-side entitlement resolution.
 	//
 	// Deprecated: do not use.
@@ -462,8 +461,7 @@ type AttributesServiceHandler interface {
 	// Deprecated: do not use.
 	ListAttributeValues(context.Context, *connect.Request[attributes.ListAttributeValuesRequest]) (*connect.Response[attributes.ListAttributeValuesResponse], error)
 	GetAttribute(context.Context, *connect.Request[attributes.GetAttributeRequest]) (*connect.Response[attributes.GetAttributeResponse], error)
-	// Deprecated
-	// Use GetKeyMappingsByFqns for client-side key splits and
+	// Deprecated: Use GetKeyMappingsByFqns for client-side key splits and
 	// GetEntitleableAttributesByFqns for server-side entitlement resolution.
 	//
 	// Deprecated: do not use.

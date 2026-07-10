@@ -63,7 +63,7 @@ v2 `ListAttributes` and `GetAttribute` return attributes without values. Separat
 * 🟩 **Good**, follows `ListRegisteredResourceValues` pattern
 * 🟩 **Good**, multi-attribute fetch in one paginated call avoids N+1
 * 🟩 **Good**, v2 versioning follows authorization v2 pattern, non-breaking
-* 🟨 **Neutral**, consumers need two calls for attribute + values
+* 🟥 **Bad**, consumers need two calls for attribute + values
 * 🟥 **Bad**, new SQL queries partially duplicate existing ones (minus values join)
 
 ### Option 4: Application-layer cap
@@ -73,7 +73,7 @@ Cap values via `LIMIT` in `JSON_AGG` (truncate) or error when a threshold is exc
 * 🟩 **Good**, minimal code change
 * 🟥 **Bad**, breaking change either way: truncation drops data silently, erroring fails previously working calls
 * 🟥 **Bad**, no pagination mechanism to retrieve beyond the cap
-* 🟥 **Bad**, query still joins all values, cap is applied after aggregation
+* 🟥 **Bad**, requires SQL restructuring (e.g., lateral subqueries) to avoid full aggregation before capping
 
 ### Option 5: Do nothing
 
@@ -84,10 +84,18 @@ Operators manage attribute cardinality through governance.
 * 🟥 **Bad**, no paginated value retrieval exists
 * 🟥 **Bad**, risk is invisible to operators until an outage
 
+## Decision Outcome
+
+Chosen option: **Option 3, v2 with dedicated ListAttributeValues RPC**. Attribute queries are fully decoupled from value queries, follows existing platform patterns, and is non-breaking.
+
+`repeated attribute_ids` is capped (e.g., 100) and validated server-side to prevent shifting unbounded pressure from output to input. Pagination applies across all matched values flattened.
+
+`ListAttributesByFqns` is replaced by v2 `ListAttributes` with an FQN filter.
+
 ### Rejected Alternatives
 
-* **Option 1: Modify v1 RPCs**: the `values_pagination` field is optional, but using it changes the response shape. Breaking change disguised as an optional field.
-* **Option 4: Application-layer cap**: breaking change either way: truncation drops data silently, erroring fails previously working calls. No pagination to retrieve beyond the cap.
+* **Option 1: Modify v1 RPCs**: breaking change disguised as an optional field.
+* **Option 4: Application-layer cap**: breaking change with no pagination path forward.
 
 ## Validation
 

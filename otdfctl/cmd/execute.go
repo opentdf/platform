@@ -40,11 +40,13 @@ func Execute(opts ...ExecuteOptFunc) {
 	if c.mountTo != nil {
 		err := MountRoot(c.mountTo, c.renameCmd)
 		if err != nil {
+			finishTrace()
 			os.Exit(cli.ExitCodeError)
 		}
 	} else {
 		err := RootCmd.Execute()
 		if err != nil {
+			finishTrace()
 			os.Exit(cli.ExitCodeError)
 		}
 	}

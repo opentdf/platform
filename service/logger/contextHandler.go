@@ -7,6 +7,7 @@ import (
 	"github.com/google/uuid"
 	sdkAudit "github.com/opentdf/platform/sdk/audit"
 	"github.com/opentdf/platform/service/logger/audit"
+	"go.opentelemetry.io/otel/trace"
 )
 
 // ContextHandler is a custom slog.Handler that adds context attributes to log records from values set to the
@@ -27,6 +28,16 @@ func (h *ContextHandler) Handle(ctx context.Context, r slog.Record) error {
 			slog.String(string(sdkAudit.UserAgentContextKey), contextData.UserAgent),
 			slog.String(string(sdkAudit.RequestIPContextKey), contextData.RequestIP),
 			slog.String(string(sdkAudit.ActorIDContextKey), contextData.ActorID),
+		)
+	}
+
+	// Correlate logs with distributed traces: stamp trace_id/span_id from the
+	// active span so a log line links back to its Jaeger trace. Independent of
+	// RequestID so logs emitted outside the audit path still correlate.
+	if sc := trace.SpanContextFromContext(ctx); sc.IsValid() {
+		r.AddAttrs(
+			slog.String("trace_id", sc.TraceID().String()),
+			slog.String("span_id", sc.SpanID().String()),
 		)
 	}
 

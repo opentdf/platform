@@ -4,6 +4,8 @@ import (
 	"errors"
 	"log/slog"
 
+	"connectrpc.com/connect"
+	"connectrpc.com/otelconnect"
 	"github.com/opentdf/platform/otdfctl/pkg/auth"
 	"github.com/opentdf/platform/otdfctl/pkg/profiles"
 	"github.com/opentdf/platform/otdfctl/pkg/utils"
@@ -88,6 +90,16 @@ func New(opts ...handlerOptsFunc) (Handler, error) {
 		sdk.WithConnectionValidation(),
 		sdk.WithLogger(slog.Default()),
 	}
+
+	// Propagate the active trace context to platform/KAS so their spans join
+	// the CLI's trace. When no tracer provider is configured this uses the
+	// global no-op provider and is effectively inert.
+	if otelInterceptor, err := otelconnect.NewInterceptor(otelconnect.WithoutTraceEvents()); err != nil {
+		slog.Warn("failed to create otel connect interceptor; tracing disabled", slog.Any("error", err))
+	} else {
+		defaultSDKOpts = append(defaultSDKOpts, sdk.WithExtraClientOptions(connect.WithInterceptors(otelInterceptor)))
+	}
+
 	if o.TLSNoVerify {
 		defaultSDKOpts = append(defaultSDKOpts, sdk.WithInsecureSkipVerifyConn())
 	}

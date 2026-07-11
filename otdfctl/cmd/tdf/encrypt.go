@@ -108,6 +108,7 @@ func encryptRun(cmd *cobra.Command, args []string) {
 
 	// Do the encryption
 	encrypted, err := h.EncryptBytes(
+		c.Context(),
 		tdfType,
 		bytesSlice,
 		attrValues,

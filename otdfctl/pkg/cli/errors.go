@@ -14,6 +14,18 @@ const (
 	ExitCodeError   = 1
 )
 
+// OnExit, if set, is invoked immediately before the process exits via any of
+// the Exit* helpers. It gives long-lived resources (e.g. an OpenTelemetry
+// tracer provider) a chance to flush, since os.Exit does not run deferred
+// functions. It must be safe to call more than once.
+var OnExit func()
+
+func runOnExit() {
+	if OnExit != nil {
+		OnExit()
+	}
+}
+
 func ExitWithError(errMsg string, err error) {
 	// This is temporary until we can refactor the code to use the Cli struct
 	(&Cli{printer: defaultPrinter()}).ExitWithError(errMsg, err)
@@ -67,12 +79,14 @@ func (c *Cli) ExitWithMessage(msg string, code int) {
 	} else {
 		c.println(w, msg)
 	}
+	runOnExit()
 	os.Exit(code)
 }
 
 func (c *Cli) ExitWithJSON(v interface{}, code int) {
 	if c.printer.json {
 		c.printJSON(v, os.Stdout)
+		runOnExit()
 		os.Exit(code)
 	}
 }
@@ -85,6 +99,7 @@ func (c *Cli) ExitWith(styledMsg string, jsonMsg interface{}, code int, w io.Wri
 	} else {
 		c.println(w, styledMsg)
 	}
+	runOnExit()
 	os.Exit(code)
 }
 

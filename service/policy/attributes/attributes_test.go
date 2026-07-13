@@ -621,6 +621,36 @@ func TestCreateAttributeValue_WithSubjectMappings_Request(t *testing.T) {
 			errorMessage: "optional_uuid_format",
 		},
 		{
+			name: "invalid without subject condition set source",
+			req: &attributes.CreateAttributeValueRequest{
+				AttributeId: validUUID,
+				Value:       validValue1,
+				SubjectMappings: []*attributes.AttributeValueSubjectMappingRequest{
+					{
+						Actions: []*policy.Action{{Id: validUUID}},
+					},
+				},
+			},
+			expectError:  true,
+			errorMessage: "subject_condition_set_source",
+		},
+		{
+			name: "invalid with both subject condition set sources",
+			req: &attributes.CreateAttributeValueRequest{
+				AttributeId: validUUID,
+				Value:       validValue1,
+				SubjectMappings: []*attributes.AttributeValueSubjectMappingRequest{
+					{
+						Actions:                       []*policy.Action{{Id: validUUID}},
+						ExistingSubjectConditionSetId: validUUID,
+						NewSubjectConditionSet:        validSubjectConditionSet,
+					},
+				},
+			},
+			expectError:  true,
+			errorMessage: "subject_condition_set_source",
+		},
+		{
 			name: "invalid namespace fqn",
 			req: &attributes.CreateAttributeValueRequest{
 				AttributeId: validUUID,

@@ -1922,6 +1922,12 @@ components:
           $ref: '#/components/schemas/common.MetadataMutable'
       title: AttributeValueSubjectMappingRequest
       additionalProperties: false
+      description: |+
+        Exactly one of existing_subject_condition_set_id or new_subject_condition_set must be provided:
+        ```
+        (this.existing_subject_condition_set_id != '') != has(this.new_subject_condition_set)
+        ```
+
     policy.attributes.AttributesSort:
       type: object
       properties:

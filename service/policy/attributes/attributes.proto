@@ -267,6 +267,12 @@ message AttributeValueObligationTriggerRequest {
 }
 
 message AttributeValueSubjectMappingRequest {
+  option (buf.validate.message).cel = {
+    id: "subject_condition_set_source"
+    message: "Exactly one of existing_subject_condition_set_id or new_subject_condition_set must be provided"
+    expression: "(this.existing_subject_condition_set_id != '') != has(this.new_subject_condition_set)"
+  };
+
   // Required. The actions permitted by subjects in this mapping.
   repeated policy.Action actions = 1 [
     (buf.validate.field).repeated.min_items = 1,

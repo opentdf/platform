@@ -7,6 +7,7 @@ import (
 
 	"github.com/opentdf/platform/service/entityresolution/multi-strategy/types"
 	"github.com/opentdf/platform/service/logger"
+	"google.golang.org/protobuf/types/known/structpb"
 )
 
 func TestMultiStrategyService_JWT_Claims_Provider(t *testing.T) {
@@ -502,5 +503,191 @@ func TestMultiStrategyService_DefaultFailureStrategy(t *testing.T) {
 
 	if strategyErr.Type != types.ErrorTypeStrategy {
 		t.Errorf("Expected ErrorTypeStrategy, got %v", strategyErr.Type)
+	}
+}
+
+// TestResolveEntity_MetadataIsStructpbSerializable is the type-hygiene
+// contract test called out in spec item 1: every value the multi-strategy
+// service writes into EntityResult.Metadata on the success path MUST be
+// acceptable to structpb.NewValue, because the v2 ResolveEntities handler
+// passes the whole map through structpb.NewStruct. Any value that trips
+// "proto: invalid type: T" causes the handler to silently drop the entity
+// via `continue`, so this contract is what keeps the class of bug shut.
+func TestResolveEntity_MetadataIsStructpbSerializable(t *testing.T) {
+	config := types.MultiStrategyConfig{
+		Providers: map[string]types.ProviderConfig{
+			"jwt": {
+				Type:       "claims",
+				Connection: map[string]interface{}{},
+			},
+		},
+		MappingStrategies: []types.MappingStrategy{
+			{
+				Name:       "jwt_strategy",
+				Provider:   "jwt",
+				EntityType: types.EntityTypeSubject,
+				Conditions: types.StrategyConditions{
+					JWTClaims: []types.JWTClaimCondition{
+						{Claim: "aud", Operator: "exists"},
+					},
+				},
+				OutputMapping: []types.OutputMapping{
+					{SourceClaim: "sub", ClaimName: "subject"},
+				},
+			},
+		},
+	}
+
+	service, err := NewService(t.Context(), config, &logger.Logger{})
+	if err != nil {
+		t.Fatalf("Failed to create service: %v", err)
+	}
+	defer service.Close()
+
+	claims := types.JWTClaims{
+		"sub": "user123",
+		"aud": "test-audience",
+	}
+	ctx := context.WithValue(t.Context(), types.JWTClaimsContextKey, claims)
+	result, err := service.ResolveEntity(ctx, "user123", claims)
+	if err != nil {
+		t.Fatalf("Failed to resolve entity: %v", err)
+	}
+
+	for key, value := range result.Metadata {
+		if _, err := structpb.NewValue(value); err != nil {
+			t.Errorf("metadata key %q holds a value structpb.NewValue rejects: %v (type %T)", key, err, value)
+		}
+	}
+}
+
+// TestResolveEntity_AttemptedStrategiesStructpbSerializable is spec item 2:
+// on the success path, result.Metadata["attempted_strategies"] must be a
+// value structpb.NewValue accepts. A raw []string does not qualify — only
+// []interface{}. This test asserts the specific field so a regression here
+// is unmistakable in the failure output.
+func TestResolveEntity_AttemptedStrategiesStructpbSerializable(t *testing.T) {
+	config := types.MultiStrategyConfig{
+		Providers: map[string]types.ProviderConfig{
+			"jwt": {
+				Type:       "claims",
+				Connection: map[string]interface{}{},
+			},
+		},
+		MappingStrategies: []types.MappingStrategy{
+			{
+				Name:       "jwt_strategy",
+				Provider:   "jwt",
+				EntityType: types.EntityTypeSubject,
+				Conditions: types.StrategyConditions{
+					JWTClaims: []types.JWTClaimCondition{
+						{Claim: "aud", Operator: "exists"},
+					},
+				},
+				OutputMapping: []types.OutputMapping{
+					{SourceClaim: "sub", ClaimName: "subject"},
+				},
+			},
+		},
+	}
+
+	service, err := NewService(t.Context(), config, &logger.Logger{})
+	if err != nil {
+		t.Fatalf("Failed to create service: %v", err)
+	}
+	defer service.Close()
+
+	claims := types.JWTClaims{
+		"sub": "user123",
+		"aud": "test-audience",
+	}
+	ctx := context.WithValue(t.Context(), types.JWTClaimsContextKey, claims)
+	result, err := service.ResolveEntity(ctx, "user123", claims)
+	if err != nil {
+		t.Fatalf("Failed to resolve entity: %v", err)
+	}
+
+	if _, err := structpb.NewValue(result.Metadata["attempted_strategies"]); err != nil {
+		t.Fatalf("attempted_strategies must be structpb.NewValue-compatible, got error %v for type %T", err, result.Metadata["attempted_strategies"])
+	}
+}
+
+// TestResolveEntity_AttemptedStrategiesAccumulatesAcrossContinue is spec
+// item 3: with FailureStrategyContinue and earlier strategies erroring,
+// attempted_strategies must accumulate every attempted name AND remain
+// structpb-serializable. Guards against a fix that only handles the
+// single-strategy success path.
+func TestResolveEntity_AttemptedStrategiesAccumulatesAcrossContinue(t *testing.T) {
+	config := types.MultiStrategyConfig{
+		FailureStrategy: types.FailureStrategyContinue,
+		Providers: map[string]types.ProviderConfig{
+			"bad_provider_1": {Type: "claims", Connection: map[string]interface{}{}},
+			"bad_provider_2": {Type: "claims", Connection: map[string]interface{}{}},
+			"good_provider":  {Type: "claims", Connection: map[string]interface{}{}},
+		},
+		MappingStrategies: []types.MappingStrategy{
+			{
+				Name:       "failing_strategy_1",
+				Provider:   "bad_provider_1",
+				EntityType: types.EntityTypeSubject,
+				Conditions: types.StrategyConditions{
+					JWTClaims: []types.JWTClaimCondition{{Claim: "aud", Operator: "exists"}},
+				},
+				OutputMapping: []types.OutputMapping{{SourceClaim: "sub", ClaimName: "subject"}},
+			},
+			{
+				Name:       "failing_strategy_2",
+				Provider:   "bad_provider_2",
+				EntityType: types.EntityTypeSubject,
+				Conditions: types.StrategyConditions{
+					JWTClaims: []types.JWTClaimCondition{{Claim: "aud", Operator: "exists"}},
+				},
+				OutputMapping: []types.OutputMapping{{SourceClaim: "sub", ClaimName: "subject"}},
+			},
+			{
+				Name:       "success_strategy",
+				Provider:   "good_provider",
+				EntityType: types.EntityTypeSubject,
+				Conditions: types.StrategyConditions{
+					JWTClaims: []types.JWTClaimCondition{{Claim: "aud", Operator: "exists"}},
+				},
+				OutputMapping: []types.OutputMapping{{SourceClaim: "sub", ClaimName: "subject"}},
+			},
+		},
+	}
+
+	service, err := NewService(t.Context(), config, &logger.Logger{})
+	if err != nil {
+		t.Fatalf("Failed to create service: %v", err)
+	}
+
+	// Delete the two bad providers so their strategies error and the loop
+	// hits the `continue` path before the good provider succeeds.
+	_ = service.providerRegistry.providers["bad_provider_1"].Close()
+	delete(service.providerRegistry.providers, "bad_provider_1")
+	_ = service.providerRegistry.providers["bad_provider_2"].Close()
+	delete(service.providerRegistry.providers, "bad_provider_2")
+
+	claims := types.JWTClaims{
+		"sub": "user123",
+		"aud": "test-audience",
+	}
+	ctx := context.WithValue(t.Context(), types.JWTClaimsContextKey, claims)
+	result, err := service.ResolveEntity(ctx, "user123", claims)
+	if err != nil {
+		t.Fatalf("Expected success with fallback strategy, got error: %v", err)
+	}
+
+	value, err := structpb.NewValue(result.Metadata["attempted_strategies"])
+	if err != nil {
+		t.Fatalf("attempted_strategies must be structpb.NewValue-compatible, got error %v for type %T", err, result.Metadata["attempted_strategies"])
+	}
+
+	list := value.GetListValue()
+	if list == nil {
+		t.Fatalf("attempted_strategies must serialize to a ListValue, got %T", value.GetKind())
+	}
+	if got, want := len(list.GetValues()), 3; got != want {
+		t.Fatalf("attempted_strategies length = %d, want %d", got, want)
 	}
 }

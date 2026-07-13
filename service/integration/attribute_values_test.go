@@ -1333,7 +1333,6 @@ func (s *AttributeValuesSuite) Test_CreateAttributeValue_WithSubjectMappings_Suc
 						},
 					},
 				},
-				NamespaceId: ns.GetId(),
 				Metadata: &common.MetadataMutable{
 					Labels: map[string]string{"source": "inline-subject-mapping"},
 				},
@@ -1411,6 +1410,59 @@ func (s *AttributeValuesSuite) Test_CreateAttributeValue_WithSubjectMappings_Suc
 	retrievedMapping, err := s.db.PolicyClient.GetSubjectMapping(s.ctx, gotMapping.GetId())
 	s.Require().NoError(err)
 	s.Equal(createdValue.GetId(), retrievedMapping.GetAttributeValue().GetId())
+}
+
+func (s *AttributeValuesSuite) Test_CreateAttributeValue_WithSubjectMappings_ExplicitNamespaceMismatch_Fails() {
+	attrNamespace, err := s.db.PolicyClient.CreateNamespace(s.ctx, &namespaces.CreateNamespaceRequest{
+		Name: "test-inline-subject-mapping-attr-ns.com",
+	})
+	s.Require().NoError(err)
+	s.namespaces = append(s.namespaces, attrNamespace)
+
+	mappingNamespace, err := s.db.PolicyClient.CreateNamespace(s.ctx, &namespaces.CreateNamespaceRequest{
+		Name: "test-inline-subject-mapping-sm-ns.com",
+	})
+	s.Require().NoError(err)
+	s.namespaces = append(s.namespaces, mappingNamespace)
+
+	attrDef, err := s.db.PolicyClient.CreateAttribute(s.ctx, &attributes.CreateAttributeRequest{
+		Name:        "test-inline-subject-mapping-mismatch-attr",
+		NamespaceId: attrNamespace.GetId(),
+		Rule:        policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
+	})
+	s.Require().NoError(err)
+
+	createdValue, err := s.db.PolicyClient.CreateAttributeValue(s.ctx, attrDef.GetId(), &attributes.CreateAttributeValueRequest{
+		Value: "test_value_with_inline_subject_mapping_mismatch",
+		SubjectMappings: []*attributes.AttributeValueSubjectMappingRequest{
+			{
+				Actions:     []*policy.Action{{Name: "read"}},
+				NamespaceId: mappingNamespace.GetId(),
+				NewSubjectConditionSet: &subjectmapping.SubjectConditionSetCreate{
+					SubjectSets: []*policy.SubjectSet{
+						{
+							ConditionGroups: []*policy.ConditionGroup{
+								{
+									BooleanOperator: policy.ConditionBooleanTypeEnum_CONDITION_BOOLEAN_TYPE_ENUM_AND,
+									Conditions: []*policy.Condition{
+										{
+											SubjectExternalSelectorValue: ".email",
+											Operator:                     policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_IN,
+											SubjectExternalValues:        []string{"inline-subject-mapping-mismatch@example.com"},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	})
+
+	s.Require().Error(err)
+	s.Nil(createdValue)
+	s.Require().ErrorIs(err, db.ErrNamespaceMismatch)
 }
 
 func TestAttributeValuesSuite(t *testing.T) {

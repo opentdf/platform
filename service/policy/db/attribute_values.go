@@ -53,13 +53,27 @@ func (c PolicyDBClient) CreateAttributeValue(ctx context.Context, attributeID st
 		}
 	}
 
+	var attributeNamespaceID string
+	if len(r.GetSubjectMappings()) > 0 {
+		attr, err := c.GetAttribute(ctx, attributeID)
+		if err != nil {
+			return nil, err
+		}
+		attributeNamespaceID = attr.GetNamespace().GetId()
+	}
+
 	for _, mapping := range r.GetSubjectMappings() {
+		namespaceID := mapping.GetNamespaceId()
+		if namespaceID == "" && mapping.GetNamespaceFqn() == "" {
+			namespaceID = attributeNamespaceID
+		}
+
 		_, err := c.CreateSubjectMapping(ctx, &subjectmapping.CreateSubjectMappingRequest{
 			AttributeValueId:              createdID,
 			Actions:                       mapping.GetActions(),
 			ExistingSubjectConditionSetId: mapping.GetExistingSubjectConditionSetId(),
 			NewSubjectConditionSet:        mapping.GetNewSubjectConditionSet(),
-			NamespaceId:                   mapping.GetNamespaceId(),
+			NamespaceId:                   namespaceID,
 			NamespaceFqn:                  mapping.GetNamespaceFqn(),
 			Metadata:                      mapping.GetMetadata(),
 		})

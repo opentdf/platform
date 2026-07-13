@@ -279,14 +279,6 @@ func (s *AttributesService) DeactivateAttribute(ctx context.Context,
 func (s *AttributesService) CreateAttributeValue(ctx context.Context, req *connect.Request[attributes.CreateAttributeValueRequest]) (*connect.Response[attributes.CreateAttributeValueResponse], error) {
 	rsp := &attributes.CreateAttributeValueResponse{}
 
-	if s.config != nil && s.config.NamespacedPolicy {
-		for _, mapping := range req.Msg.GetSubjectMappings() {
-			if mapping.GetNamespaceId() == "" && mapping.GetNamespaceFqn() == "" {
-				return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("either namespace_id or namespace_fqn must be provided for subject mappings"))
-			}
-		}
-	}
-
 	auditParams := audit.PolicyEventParams{
 		ObjectType: audit.ObjectTypeAttributeValue,
 		ActionType: audit.ActionTypeCreate,

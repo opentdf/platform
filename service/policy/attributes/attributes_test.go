@@ -618,7 +618,7 @@ func TestCreateAttributeValue_WithSubjectMappings_Request(t *testing.T) {
 				},
 			},
 			expectError:  true,
-			errorMessage: "optional_uuid_format",
+			errorMessage: "string.uuid",
 		},
 		{
 			name: "invalid without subject condition set source",

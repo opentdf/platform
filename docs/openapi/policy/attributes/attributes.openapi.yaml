@@ -1895,14 +1895,10 @@ components:
         existingSubjectConditionSetId:
           type: string
           title: existing_subject_condition_set_id
-          description: |+
+          format: uuid
+          description: |-
             Either of the following:
              Reuse existing SubjectConditionSet (NOTE: prioritized over new_subject_condition_set)
-            Optional field must be a valid UUID:
-            ```
-            size(this) == 0 || this.matches('[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}')
-            ```
-
         newSubjectConditionSet:
           title: new_subject_condition_set
           description: 'Create new SubjectConditionSet (NOTE: ignored if existing_subject_condition_set_id is provided)'

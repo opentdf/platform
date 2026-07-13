@@ -4,8 +4,11 @@ import (
 	"testing"
 
 	"buf.build/go/protovalidate"
+	"connectrpc.com/connect"
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/subjectmapping"
+	"github.com/opentdf/platform/service/logger"
+	policyconfig "github.com/opentdf/platform/service/policy/config"
 	"github.com/stretchr/testify/require"
 )
 
@@ -35,6 +38,62 @@ var validActions = []*policy.Action{
 	{
 		Name: "read",
 	},
+}
+
+func newNamespacedSubjectMappingService() SubjectMappingService {
+	return SubjectMappingService{
+		logger: logger.CreateTestLogger(),
+		config: &policyconfig.Config{
+			NamespacedPolicy: true,
+		},
+	}
+}
+
+func validSubjectConditionSetCreate() *subjectmapping.SubjectConditionSetCreate {
+	return &subjectmapping.SubjectConditionSetCreate{
+		SubjectSets: []*policy.SubjectSet{
+			{
+				ConditionGroups: []*policy.ConditionGroup{
+					{
+						Conditions: []*policy.Condition{
+							{
+								Operator:                     policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_IN,
+								SubjectExternalSelectorValue: ".some_field",
+								SubjectExternalValues:        []string{"some_value"},
+							},
+						},
+						BooleanOperator: policy.ConditionBooleanTypeEnum_CONDITION_BOOLEAN_TYPE_ENUM_OR,
+					},
+				},
+			},
+		},
+	}
+}
+
+func Test_CreateSubjectMapping_NamespacedPolicyRequiresNamespace(t *testing.T) {
+	service := newNamespacedSubjectMappingService()
+
+	_, err := service.CreateSubjectMapping(t.Context(), connect.NewRequest(&subjectmapping.CreateSubjectMappingRequest{
+		AttributeValueId:       fakeID,
+		Actions:                validActions,
+		NewSubjectConditionSet: validSubjectConditionSetCreate(),
+	}))
+
+	require.Error(t, err)
+	require.Equal(t, connect.CodeInvalidArgument, connect.CodeOf(err))
+	require.Contains(t, err.Error(), "either namespace_id or namespace_fqn must be provided")
+}
+
+func Test_CreateSubjectConditionSet_NamespacedPolicyRequiresNamespace(t *testing.T) {
+	service := newNamespacedSubjectMappingService()
+
+	_, err := service.CreateSubjectConditionSet(t.Context(), connect.NewRequest(&subjectmapping.CreateSubjectConditionSetRequest{
+		SubjectConditionSet: validSubjectConditionSetCreate(),
+	}))
+
+	require.Error(t, err)
+	require.Equal(t, connect.CodeInvalidArgument, connect.CodeOf(err))
+	require.Contains(t, err.Error(), "either namespace_id or namespace_fqn must be provided")
 }
 
 func Test_CreateSubjectMappingRequest_InvalidSubjectConditionSet_Fails(t *testing.T) {

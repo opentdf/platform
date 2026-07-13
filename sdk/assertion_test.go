@@ -23,9 +23,9 @@ func TestTDFWithAssertion(t *testing.T) {
 		Scope:          "tdo",
 		AppliesToState: "encrypted",
 		Statement: Statement{
-			Format: "json+stanag5636",
-			Schema: "urn:nato:stanag:5636:A:1:elements:json",
-			Value:  "{\"ocl\":{\"pol\":\"62c76c68-d73d-4628-8ccc-4c1e18118c22\",\"cls\":\"SECRET\",\"catl\":[{\"type\":\"P\",\"name\":\"Releasable To\",\"vals\":[\"usa\"]}],\"dcr\":\"2024-10-21T20:47:36Z\"},\"context\":{\"@base\":\"urn:nato:stanag:5636:A:1:elements:json\"}}",
+			Format: "json-structured",
+			Schema: "https://geojson.org/schema/GeoJSON.json",
+			Value:  "{\"type\":\"Feature\",\"geometry\":{\"type\":\"Point\",\"coordinates\":[125.6,10.1]},\"properties\":{\"name\":\"Dinagat Islands\"}}",
 		},
 	}
 
@@ -40,26 +40,27 @@ func TestTDFWithAssertion(t *testing.T) {
 	hashOfAssertion, err := assertion.GetHash()
 	require.NoError(t, err)
 
-	assert.Equal(t, "4a447a13c5a32730d20bdf7feecb9ffe16649bc731914b574d80035a3927f860", string(hashOfAssertion))
+	assert.Equal(t, "34e8f263fe9fc3787fde8783e758d885ac4005013ec9bc0c3d44dc2b82d4a237", string(hashOfAssertion))
 }
 
 func TestTDFWithAssertionJsonObject(t *testing.T) {
 	// Define the assertion config with a JSON object in the statement value
 	value := `{
-		"ocl": {
-			"pol": "2ccf11cb-6c9a-4e49-9746-a7f0a295945d",
-			"cls": "SECRET",
-			"catl": [
-				{
-					"type": "P",
-					"name": "Releasable To",
-					"vals": ["usa"]
-				}
-			],
-			"dcr": "2024-12-17T13:00:52Z"
+		"type": "Feature",
+		"geometry": {
+			"type": "Polygon",
+			"coordinates": [
+				[
+					[100.1, 0.2],
+					[101.3, 0.4],
+					[101.5, 1.6],
+					[100.7, 1.8],
+					[100.1, 0.2]
+				]
+			]
 		},
-		"context": {
-			"@base": "urn:nato:stanag:5636:A:1:elements:json"
+		"properties": {
+			"name": "A Polygon"
 		}
 	}`
 	assertionConfig := AssertionConfig{
@@ -69,6 +70,7 @@ func TestTDFWithAssertionJsonObject(t *testing.T) {
 		AppliesToState: "", // Use "" or a pointer to a string if necessary
 		Statement: Statement{
 			Format: "json-structured",
+			Schema: "https://geojson.org/schema/GeoJSON.json",
 			Value:  value,
 		},
 	}
@@ -86,20 +88,21 @@ func TestTDFWithAssertionJsonObject(t *testing.T) {
 	err := json.Unmarshal([]byte(assertionConfig.Statement.Value), &obj)
 	require.NoError(t, err, "Unmarshaling the Value into a map should succeed")
 
-	ocl, ok := obj["ocl"].(map[string]interface{})
-	require.True(t, ok, "Parsed Value should contain 'ocl' as an object")
-	require.Equal(t, "SECRET", ocl["cls"], "'cls' field should match")
-	require.Equal(t, "2ccf11cb-6c9a-4e49-9746-a7f0a295945d", ocl["pol"], "'pol' field should match")
+	assert.Equal(t, "Feature", obj["type"], "'type' field should be Feature")
 
-	context, ok := obj["context"].(map[string]interface{})
-	require.True(t, ok, "Parsed Value should contain 'context' as an object")
-	require.Equal(t, "urn:nato:stanag:5636:A:1:elements:json", context["@base"], "'@base' field should match")
+	properties, ok := obj["properties"].(map[string]interface{})
+	require.True(t, ok, "Parsed Value should contain 'properties' as an object")
+	assert.Equal(t, "A Polygon", properties["name"], "'name' property should match")
+
+	geometry, ok := obj["geometry"].(map[string]interface{})
+	require.True(t, ok, "Parsed Value should contain 'geometry' as an object")
+	assert.Equal(t, "Polygon", geometry["type"], "'type' of geometry should be Polygon")
 
 	// Calculate the hash of the assertion
 	hashOfAssertion, err := assertion.GetHash()
 	require.NoError(t, err)
 
-	expectedHash := "722dd40a90a0f7ec718fb156207a647e64daa43c0ae1f033033473a172c72aee"
+	expectedHash := "08942aeb07a59d8520a8a0f9b30009766fb10b016d0b107856eec7c357d70dd3"
 	assert.Equal(t, expectedHash, string(hashOfAssertion))
 }
 
@@ -112,29 +115,58 @@ func TestDeserializingAssertionWithJSONInStatementValue(t *testing.T) {
       "appliesToState": null,
       "statement": {
         "format": "json-structured",
+        "schema": "https://geojson.org/schema/GeoJSON.json",
         "value": {
-          "ocl": {
-            "pol": "2ccf11cb-6c9a-4e49-9746-a7f0a295945d",
-            "cls": "SECRET",
-            "catl": [
-              {
-                "type": "P",
-                "name": "Releasable To",
-                "vals": [
-                  "usa"
+          "type": "FeatureCollection",
+          "features": [
+            {
+              "type": "Feature",
+              "geometry": {
+                "type": "Point",
+                "coordinates": [
+                  -80.837753,
+                  35.227222
                 ]
+              },
+              "properties": {
+                "name": "Charlotte"
               }
-            ],
-            "dcr": "2024-12-17T13:00:52Z"
-          },
-          "context": {
-            "@base": "urn:nato:stanag:5636:A:1:elements:json"
-          }
+            },
+            {
+              "type": "Feature",
+              "geometry": {
+                "type": "Polygon",
+                "coordinates": [
+                  [
+                    [
+                      -80.843,
+                      35.228
+                    ],
+                    [
+                      -80.843,
+                      35.226
+                    ],
+                    [
+                      -80.841,
+                      35.226
+                    ],
+                    [
+                      -80.841,
+                      35.228
+                    ],
+                    [
+                      -80.843,
+                      35.228
+                    ]
+                  ]
+                ]
+              },
+              "properties": {
+                "name": "Uptown"
+              }
+            }
+          ]
         }
-      },
-      "binding": {
-        "method": "jws",
-        "signature": "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJDb25maWRlbnRpYWxpdHlJbmZvcm1hdGlvbiI6InsgXCJvY2xcIjogeyBcInBvbFwiOiBcIjJjY2YxMWNiLTZjOWEtNGU0OS05NzQ2LWE3ZjBhMjk1OTQ1ZFwiLCBcImNsc1wiOiBcIlNFQ1JFVFwiLCBcImNhdGxcIjogWyB7IFwidHlwZVwiOiBcIlBcIiwgXCJuYW1lXCI6IFwiUmVsZWFzYWJsZSBUb1wiLCBcInZhbHNcIjogWyBcInVzYVwiIF0gfSBdLCBcImRjclwiOiBcIjIwMjQtMTItMTdUMTM6MDA6NTJaXCIgfSwgXCJjb250ZXh0XCI6IHsgXCJAYmFzZVwiOiBcInVybjpuYXRvOnN0YW5hZzo1NjM2OkE6MTplbGVtZW50czpqc29uXCIgfSB9In0.LlOzRLKKXMAqXDNsx9Ha5915CGcAkNLuBfI7jJmx6CnfQrLXhlRHWW3_aLv5DPsKQC6vh9gDQBH19o7q7EcukvK4IabA4l0oP8ePgHORaajyj7ONjoeudv_zQ9XN7xU447S3QznzOoasuWAFoN4682Fhf99Kjl6rhDCzmZhTwQw9drP7s41nNA5SwgEhoZj-X9KkNW5GbWjA95eb8uVRRWk8dOnVje6j8mlJuOtKdhMxQ8N5n0vBYYhiss9c4XervBjWAxwAMdbRaQN0iPZtMzIkxKLYxBZDvTnYSAqzpvfGPzkSI-Ze_hUZs2hp-ADNnYUJBf_LzFmKyqHjPSFQ7A"
       }
     }`
 
@@ -143,23 +175,55 @@ func TestDeserializingAssertionWithJSONInStatementValue(t *testing.T) {
 	require.NoError(t, err, "Error deserializing the assertion with a JSON object in the statement value")
 
 	expectedAssertionValue, _ := jcs.Transform([]byte(`{
-          "ocl": {
-            "pol": "2ccf11cb-6c9a-4e49-9746-a7f0a295945d",
-            "cls": "SECRET",
-            "catl": [
-              {
-                "type": "P",
-                "name": "Releasable To",
-                "vals": [
-                  "usa"
+          "type": "FeatureCollection",
+          "features": [
+            {
+              "type": "Feature",
+              "geometry": {
+                "type": "Point",
+                "coordinates": [
+                  -80.837753,
+                  35.227222
                 ]
+              },
+              "properties": {
+                "name": "Charlotte"
               }
-            ],
-            "dcr": "2024-12-17T13:00:52Z"
-          },
-          "context": {
-            "@base": "urn:nato:stanag:5636:A:1:elements:json"
-          }
+            },
+            {
+              "type": "Feature",
+              "geometry": {
+                "type": "Polygon",
+                "coordinates": [
+                  [
+                    [
+                      -80.843,
+                      35.228
+                    ],
+                    [
+                      -80.843,
+                      35.226
+                    ],
+                    [
+                      -80.841,
+                      35.226
+                    ],
+                    [
+                      -80.841,
+                      35.228
+                    ],
+                    [
+                      -80.843,
+                      35.228
+                    ]
+                  ]
+                ]
+              },
+              "properties": {
+                "name": "Uptown"
+              }
+            }
+          ]
         }`))
 	actualAssertionValue, err := jcs.Transform([]byte(assertion.Statement.Value))
 	require.NoError(t, err, "Error transforming the assertion statement value")
@@ -174,7 +238,8 @@ func TestDeserializingAssertionWithStringInStatementValue(t *testing.T) {
       "scope": "tdo",
       "appliesToState": null,
       "statement": {
-        "format": "json-structured",
+        "format": "string",
+		"schema": "",
         "value": "this is a value"
       },
       "binding": {

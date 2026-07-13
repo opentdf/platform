@@ -178,8 +178,6 @@ func GetSDKAuthOptionFromProfile(profile *profiles.OtdfctlProfileStore) (sdk.Opt
 	}
 }
 
-// ValidateProfileAuthCredentials validates the profile's stored credentials by
-// exercising the same client-credentials token request later handler calls use.
 func ValidateProfileAuthCredentials(ctx context.Context, profile *profiles.OtdfctlProfileStore) error {
 	c := profile.GetAuthCredentials()
 
@@ -215,9 +213,9 @@ func GetTokenWithProfile(ctx context.Context, profile *profiles.OtdfctlProfileSt
 	}
 }
 
-// Uses the OAuth2 client credentials flow to obtain a token. The token-request HTTP
-// client is DPoP-bound by default (matching the SDK client), so the request carries a
-// DPoP proof and a DPoP-enforcing token endpoint accepts it.
+// GetTokenWithClientCreds uses the OAuth2 client credentials flow to obtain a token.
+// The token-request HTTP client is DPoP-bound by default (matching the SDK client),
+// so the request carries a DPoP proof and a DPoP-enforcing token endpoint accepts it.
 func GetTokenWithClientCreds(ctx context.Context, endpoint string, clientID string, clientSecret string, tlsNoVerify bool, scopes []string) (*oauth2.Token, error) {
 	httpClient, err := sdk.NewDPoPValidationHTTPClient(utils.NewHTTPClient(tlsNoVerify))
 	if err != nil {

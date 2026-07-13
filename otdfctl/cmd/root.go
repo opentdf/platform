@@ -32,9 +32,8 @@ type version struct {
 	BuildTime     string `json:"build_time"`
 	SDKVersion    string `json:"sdk_version"`
 	SchemaVersion string `json:"schema_version"`
-	// SupportedFeatures surfaces sdk.SupportedFeatures() so tooling (e.g. the xtest
-	// harness) can detect optional capabilities of this build from a machine-readable
-	// signal instead of scraping help text. Emitted only on the --json path.
+	// SupportedFeatures adds sdk.SupportedFeatures() to `--version --json`.
+	// This allows integrators (and opentdf/tests/xtest) to detect optional, experimental, or removed capabilities.
 	SupportedFeatures []string `json:"supported_features"`
 }
 

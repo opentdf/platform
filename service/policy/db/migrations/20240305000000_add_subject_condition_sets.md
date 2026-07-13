@@ -29,15 +29,16 @@ all the way back up the tree to an internal Platform-ABAC `Attribute Value`.
 
 ### Note: PDPs
 
-    A PDP should consider all of the following joined by an AND relationship:
-    - more than one SubjectMapping for an Attribute Value
-    - more than one SubjectSet in the JSONB of a SubjectConditionSet
-    - more than one ConditionGroup on a SubjectSet
+    A PDP evaluates subject mappings with the following boolean logic:
+    - more than one SubjectMapping for an Attribute Value: OR (any matching mapping entitles the subject)
+    - more than one SubjectSet in the JSONB of a SubjectConditionSet: AND
+    - more than one ConditionGroup on a SubjectSet: AND
 
-    For now, ConditionGroups are the only place a policy platform administrator has control over the boolean
-    operator to associate Conditions via AND or OR. If an admin needs to OR together multiple ConditionGroups
-    in a SubjectSet, or multiple SubjectSets in a SubjectMapping, that can be accomplished with multiple
-    AttributeValues and an AttributeDefinition rule of ANY_OF associating them together.
+    ConditionGroups are the only place a policy platform administrator has direct control over the boolean
+    operator to associate Conditions via AND or OR. If an admin needs OR logic across SubjectSets
+    in a SubjectConditionSet, that can be accomplished with multiple SubjectMappings for the same
+    AttributeValue (since SubjectMappings are ORed), or with multiple AttributeValues and an
+    AttributeDefinition rule of ANY_OF associating them together.
 
 # ERD
 

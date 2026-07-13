@@ -53,9 +53,8 @@ func (c PolicyDBClient) CreateAttributeValue(ctx context.Context, attributeID st
 		}
 	}
 
-	createdSubjectMappings := make([]*policy.SubjectMapping, 0, len(r.GetSubjectMappings()))
 	for _, mapping := range r.GetSubjectMappings() {
-		createdSubjectMapping, err := c.CreateSubjectMapping(ctx, &subjectmapping.CreateSubjectMappingRequest{
+		_, err := c.CreateSubjectMapping(ctx, &subjectmapping.CreateSubjectMappingRequest{
 			AttributeValueId:              createdID,
 			Actions:                       mapping.GetActions(),
 			ExistingSubjectConditionSetId: mapping.GetExistingSubjectConditionSetId(),
@@ -67,15 +66,9 @@ func (c PolicyDBClient) CreateAttributeValue(ctx context.Context, attributeID st
 		if err != nil {
 			return nil, err
 		}
-		createdSubjectMappings = append(createdSubjectMappings, createdSubjectMapping)
 	}
 
-	createdValue, err := c.GetAttributeValue(ctx, createdID)
-	if err != nil {
-		return nil, err
-	}
-	createdValue.SubjectMappings = createdSubjectMappings
-	return createdValue, nil
+	return c.GetAttributeValue(ctx, createdID)
 }
 
 func (c PolicyDBClient) GetAttributeValue(ctx context.Context, identifier any) (*policy.Value, error) {
@@ -143,6 +136,12 @@ func (c PolicyDBClient) GetAttributeValue(ctx context.Context, identifier any) (
 		return nil, err
 	}
 
+	subjectMappings := []*policy.SubjectMapping{}
+	if err := unmarshalSubjectMappingsProto(av.SubjectMappings, &subjectMappings); err != nil {
+		c.logger.ErrorContext(ctx, "could not unmarshal subject mappings", slog.String("error", err.Error()))
+		return nil, err
+	}
+
 	return &policy.Value{
 		Id:       av.ID,
 		Value:    av.Value,
@@ -151,10 +150,11 @@ func (c PolicyDBClient) GetAttributeValue(ctx context.Context, identifier any) (
 		Attribute: &policy.Attribute{
 			Id: av.AttributeDefinitionID,
 		},
-		Fqn:         av.Fqn.String,
-		Grants:      grants,
-		KasKeys:     keys,
-		Obligations: obligations,
+		Fqn:             av.Fqn.String,
+		Grants:          grants,
+		KasKeys:         keys,
+		Obligations:     obligations,
+		SubjectMappings: subjectMappings,
 	}, nil
 }
 

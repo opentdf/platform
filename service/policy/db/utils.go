@@ -219,6 +219,26 @@ func unmarshalSubjectConditionSet(subjectConditionSetJSON []byte, scs *policy.Su
 	return nil
 }
 
+func unmarshalSubjectMappingsProto(subjectMappingsJSON []byte, mappings *[]*policy.SubjectMapping) error {
+	var raw []json.RawMessage
+
+	if subjectMappingsJSON != nil {
+		if err := json.Unmarshal(subjectMappingsJSON, &raw); err != nil {
+			return fmt.Errorf("failed to unmarshal subject mappings array [%s]: %w", string(subjectMappingsJSON), err)
+		}
+
+		for _, r := range raw {
+			sm := policy.SubjectMapping{}
+			if err := protojson.Unmarshal(r, &sm); err != nil {
+				return fmt.Errorf("failed to unmarshal subject mapping [%s]: %w", string(r), err)
+			}
+			*mappings = append(*mappings, &sm)
+		}
+	}
+
+	return nil
+}
+
 func unmarshalResourceMappingGroup(rmgroupJSON []byte, rmg *policy.ResourceMappingGroup) error {
 	if rmgroupJSON != nil {
 		if err := protojson.Unmarshal(rmgroupJSON, rmg); err != nil {

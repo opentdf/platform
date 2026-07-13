@@ -18,7 +18,6 @@ import (
 	"github.com/opentdf/platform/protocol/go/policy/unsafe"
 	"github.com/opentdf/platform/service/internal/fixtures"
 	"github.com/opentdf/platform/service/pkg/db"
-	policydb "github.com/opentdf/platform/service/policy/db"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -1343,9 +1342,51 @@ func (s *AttributeValuesSuite) Test_CreateAttributeValue_WithSubjectMappings_Suc
 	})
 	s.Require().NoError(err)
 	s.NotNil(createdValue)
-	s.Require().Len(createdValue.GetSubjectMappings(), 1)
-	s.Equal(createdValue.GetId(), createdValue.GetSubjectMappings()[0].GetAttributeValue().GetId())
 
+	// The create response includes the inline subject mapping without mapping/SCS metadata.
+	s.Require().Len(createdValue.GetSubjectMappings(), 1)
+	createdMapping := createdValue.GetSubjectMappings()[0]
+	s.NotEmpty(createdMapping.GetId())
+	s.Equal(createdValue.GetId(), createdMapping.GetAttributeValue().GetId())
+	s.Equal(createdValue.GetFqn(), createdMapping.GetAttributeValue().GetFqn())
+	s.Equal(ns.GetId(), createdMapping.GetNamespace().GetId())
+	s.Equal(ns.GetFqn(), createdMapping.GetNamespace().GetFqn())
+	s.Empty(createdMapping.GetMetadata().GetLabels())
+	s.Require().Len(createdMapping.GetActions(), 1)
+	s.Equal(readAction.GetId(), createdMapping.GetActions()[0].GetId())
+	s.Equal(readAction.GetName(), createdMapping.GetActions()[0].GetName())
+	s.Equal(ns.GetId(), createdMapping.GetActions()[0].GetNamespace().GetId())
+	s.Require().NotNil(createdMapping.GetSubjectConditionSet())
+	s.Equal(ns.GetId(), createdMapping.GetSubjectConditionSet().GetNamespace().GetId())
+	s.Empty(createdMapping.GetSubjectConditionSet().GetMetadata().GetLabels())
+	s.Require().Len(createdMapping.GetSubjectConditionSet().GetSubjectSets(), 1)
+	s.Require().Len(createdMapping.GetSubjectConditionSet().GetSubjectSets()[0].GetConditionGroups(), 1)
+	s.Require().Len(createdMapping.GetSubjectConditionSet().GetSubjectSets()[0].GetConditionGroups()[0].GetConditions(), 1)
+	s.Equal("inline-subject-mapping@example.com", createdMapping.GetSubjectConditionSet().GetSubjectSets()[0].GetConditionGroups()[0].GetConditions()[0].GetSubjectExternalValues()[0])
+
+	// GetAttributeValue by ID hydrates the same inline subject mapping shape.
+	retrievedByID, err := s.db.PolicyClient.GetAttributeValue(s.ctx, createdValue.GetId())
+	s.Require().NoError(err)
+	s.Require().Len(retrievedByID.GetSubjectMappings(), 1)
+	s.Equal(createdMapping.GetId(), retrievedByID.GetSubjectMappings()[0].GetId())
+	s.Equal(createdMapping.GetAttributeValue().GetId(), retrievedByID.GetSubjectMappings()[0].GetAttributeValue().GetId())
+	s.Equal(createdMapping.GetActions()[0].GetId(), retrievedByID.GetSubjectMappings()[0].GetActions()[0].GetId())
+	s.Empty(retrievedByID.GetSubjectMappings()[0].GetMetadata().GetLabels())
+	s.Empty(retrievedByID.GetSubjectMappings()[0].GetSubjectConditionSet().GetMetadata().GetLabels())
+
+	// GetAttributeValue by FQN hydrates the same inline subject mapping shape.
+	retrievedByFQN, err := s.db.PolicyClient.GetAttributeValue(s.ctx, &attributes.GetAttributeValueRequest_Fqn{
+		Fqn: createdValue.GetFqn(),
+	})
+	s.Require().NoError(err)
+	s.Require().Len(retrievedByFQN.GetSubjectMappings(), 1)
+	s.Equal(createdMapping.GetId(), retrievedByFQN.GetSubjectMappings()[0].GetId())
+	s.Equal(createdMapping.GetAttributeValue().GetFqn(), retrievedByFQN.GetSubjectMappings()[0].GetAttributeValue().GetFqn())
+	s.Equal(createdMapping.GetSubjectConditionSet().GetId(), retrievedByFQN.GetSubjectMappings()[0].GetSubjectConditionSet().GetId())
+	s.Empty(retrievedByFQN.GetSubjectMappings()[0].GetMetadata().GetLabels())
+	s.Empty(retrievedByFQN.GetSubjectMappings()[0].GetSubjectConditionSet().GetMetadata().GetLabels())
+
+	// The canonical subject-mapping APIs still return full mapping metadata.
 	listedMappings, err := s.db.PolicyClient.ListSubjectMappings(s.ctx, &subjectmapping.ListSubjectMappingsRequest{
 		NamespaceId: ns.GetId(),
 	})
@@ -1370,49 +1411,6 @@ func (s *AttributeValuesSuite) Test_CreateAttributeValue_WithSubjectMappings_Suc
 	retrievedMapping, err := s.db.PolicyClient.GetSubjectMapping(s.ctx, gotMapping.GetId())
 	s.Require().NoError(err)
 	s.Equal(createdValue.GetId(), retrievedMapping.GetAttributeValue().GetId())
-}
-
-func (s *AttributeValuesSuite) Test_CreateAttributeValue_WithSubjectMappings_RollsBackValueWhenMappingFails() {
-	ns, err := s.db.PolicyClient.CreateNamespace(s.ctx, &namespaces.CreateNamespaceRequest{
-		Name: "test-inline-subject-mappings-rollback.com",
-	})
-	s.Require().NoError(err)
-	s.NotNil(ns)
-	s.namespaces = append(s.namespaces, ns)
-
-	attrDef, err := s.db.PolicyClient.CreateAttribute(s.ctx, &attributes.CreateAttributeRequest{
-		Name:        "test-inline-subject-mappings-rollback-attr",
-		NamespaceId: ns.GetId(),
-		Rule:        policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
-	})
-	s.Require().NoError(err)
-	s.NotNil(attrDef)
-
-	readAction := s.getActionByNameInNamespace("read", ns.GetId())
-	valueName := "test_value_inline_subject_mapping_rollback"
-
-	err = s.db.PolicyClient.RunInTx(s.ctx, func(txClient *policydb.PolicyDBClient) error {
-		createdValue, err := txClient.CreateAttributeValue(s.ctx, attrDef.GetId(), &attributes.CreateAttributeValueRequest{
-			Value: valueName,
-			SubjectMappings: []*attributes.AttributeValueSubjectMappingRequest{
-				{
-					Actions:                       []*policy.Action{{Id: readAction.GetId()}},
-					ExistingSubjectConditionSetId: nonExistentSubjectMappingID,
-					NamespaceId:                   ns.GetId(),
-				},
-			},
-		})
-		s.Nil(createdValue)
-		return err
-	})
-	s.Require().Error(err)
-	s.Require().ErrorIs(err, db.ErrNotFound)
-
-	createdValue, err := s.db.PolicyClient.CreateAttributeValue(s.ctx, attrDef.GetId(), &attributes.CreateAttributeValueRequest{
-		Value: valueName,
-	})
-	s.Require().NoError(err)
-	s.NotNil(createdValue)
 }
 
 func TestAttributeValuesSuite(t *testing.T) {

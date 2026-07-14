@@ -76,7 +76,7 @@ func Test_CreateResourceMapping_NamespacedPolicyRequiresNamespace(t *testing.T) 
 
 	require.Error(t, err)
 	require.Equal(t, connect.CodeInvalidArgument, connect.CodeOf(err))
-	require.Contains(t, err.Error(), "namespace is required: provide either namespace_id, namespace_fqn, or group_id")
+	require.ErrorIs(t, err, errNamespacedPolicyNamespaceRequired)
 }
 
 func getMaxTerms() []string {

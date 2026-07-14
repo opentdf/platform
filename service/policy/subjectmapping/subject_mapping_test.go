@@ -81,7 +81,7 @@ func Test_CreateSubjectMapping_NamespacedPolicyRequiresNamespace(t *testing.T) {
 
 	require.Error(t, err)
 	require.Equal(t, connect.CodeInvalidArgument, connect.CodeOf(err))
-	require.Contains(t, err.Error(), "either namespace_id or namespace_fqn must be provided")
+	require.ErrorIs(t, err, errNamespacedPolicyNamespaceRequired)
 }
 
 func Test_CreateSubjectConditionSet_NamespacedPolicyRequiresNamespace(t *testing.T) {
@@ -93,7 +93,7 @@ func Test_CreateSubjectConditionSet_NamespacedPolicyRequiresNamespace(t *testing
 
 	require.Error(t, err)
 	require.Equal(t, connect.CodeInvalidArgument, connect.CodeOf(err))
-	require.Contains(t, err.Error(), "either namespace_id or namespace_fqn must be provided")
+	require.ErrorIs(t, err, errNamespacedPolicyNamespaceRequired)
 }
 
 func Test_CreateSubjectMappingRequest_InvalidSubjectConditionSet_Fails(t *testing.T) {

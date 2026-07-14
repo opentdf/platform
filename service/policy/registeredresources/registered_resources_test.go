@@ -42,7 +42,7 @@ func (s *RegisteredResourcesSuite) TestCreateRegisteredResource_NamespacedPolicy
 
 	s.Require().Error(err)
 	s.Require().Equal(connect.CodeInvalidArgument, connect.CodeOf(err))
-	s.Require().Contains(err.Error(), "namespace is required: provide either namespace_id or namespace_fqn")
+	s.Require().ErrorIs(err, errNamespacedPolicyNamespaceRequired)
 }
 
 const (

@@ -73,7 +73,7 @@ func (s *ActionSuite) Test_CreateAction_NamespacedPolicyRequiresNamespace() {
 
 	s.Require().Error(err)
 	s.Require().Equal(connect.CodeInvalidArgument, connect.CodeOf(err))
-	s.Require().Contains(err.Error(), "either namespace_id or namespace_fqn must be provided")
+	s.Require().ErrorIs(err, errNamespacedPolicyNamespaceRequired)
 }
 
 func (s *ActionSuite) Test_CreateActionRequest_Fails() {

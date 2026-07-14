@@ -185,7 +185,9 @@ func ValidateProfileAuthCredentials(ctx context.Context, profile *profiles.Otdfc
 	case "":
 		return ErrProfileCredentialsNotFound
 	case profiles.AuthTypeClientCredentials:
-		_, err := GetTokenWithClientCreds(ctx, profile.GetEndpoint(), c.ClientID, c.ClientSecret, profile.GetTLSNoVerify(), c.Scopes)
+		// Validation exercises the DPoP-bound path so it succeeds against a
+		// DPoP-enforcing token endpoint; the token is discarded.
+		_, err := GetTokenWithClientCreds(ctx, profile.GetEndpoint(), c.ClientID, c.ClientSecret, profile.GetTLSNoVerify(), c.Scopes, true)
 		if err != nil {
 			return err
 		}
@@ -205,7 +207,9 @@ func GetTokenWithProfile(ctx context.Context, profile *profiles.OtdfctlProfileSt
 
 	switch c.AuthType {
 	case profiles.AuthTypeClientCredentials:
-		return GetTokenWithClientCreds(ctx, profile.GetEndpoint(), c.ClientID, c.ClientSecret, profile.GetTLSNoVerify(), c.Scopes)
+		// print/reuse path: return a plain bearer token (not DPoP sender-constrained)
+		// so it stays usable outside otdfctl. See DSPX-3998.
+		return GetTokenWithClientCreds(ctx, profile.GetEndpoint(), c.ClientID, c.ClientSecret, profile.GetTLSNoVerify(), c.Scopes, false)
 	case profiles.AuthTypeAccessToken:
 		return buildToken(&c), nil
 	default:
@@ -214,12 +218,25 @@ func GetTokenWithProfile(ctx context.Context, profile *profiles.OtdfctlProfileSt
 }
 
 // GetTokenWithClientCreds uses the OAuth2 client credentials flow to obtain a token.
-// The token-request HTTP client is DPoP-bound by default (matching the SDK client),
-// so the request carries a DPoP proof and a DPoP-enforcing token endpoint accepts it.
-func GetTokenWithClientCreds(ctx context.Context, endpoint string, clientID string, clientSecret string, tlsNoVerify bool, scopes []string) (*oauth2.Token, error) {
-	httpClient, err := sdk.NewDPoPValidationHTTPClient(utils.NewHTTPClient(tlsNoVerify))
-	if err != nil {
-		return nil, err
+//
+// When dpop is true the token-request HTTP client is DPoP-bound (matching the SDK
+// client), so the request carries a DPoP proof that a DPoP-enforcing token endpoint
+// accepts and the returned token is sender-constrained (cnf.jkt) to an ephemeral key.
+// Use this for validating that credentials work end to end, where the token itself is
+// discarded.
+//
+// When dpop is false the token is a plain bearer token with no sender constraint, so it
+// remains usable outside otdfctl (e.g. printed for reuse). This preserves backward
+// compatibility for `print-access-token`; making an exported token reusable *under*
+// DPoP (key export and/or OS secure storage) is tracked in DSPX-3998.
+func GetTokenWithClientCreds(ctx context.Context, endpoint string, clientID string, clientSecret string, tlsNoVerify bool, scopes []string, dpop bool) (*oauth2.Token, error) {
+	httpClient := utils.NewHTTPClient(tlsNoVerify)
+	if dpop {
+		var err error
+		httpClient, err = sdk.NewDPoPValidationHTTPClient(httpClient)
+		if err != nil {
+			return nil, err
+		}
 	}
 	rp, err := newOidcRelyingParty(ctx, endpoint, tlsNoVerify, oidcClientCredentials{
 		clientID:     clientID,

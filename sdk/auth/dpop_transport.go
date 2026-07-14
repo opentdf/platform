@@ -39,6 +39,11 @@ type DPoPTransport struct {
 	// and do not include the ath claim.
 	TokenEndpoint string
 
+	// tokenFetchTimeout bounds the internal access-token fetch performed while
+	// adding the ath claim to resource requests. It mirrors the configured
+	// client's Timeout so a hung IdP cannot stall the request indefinitely.
+	tokenFetchTimeout time.Duration
+
 	nonceMu           sync.RWMutex
 	nonceCache        map[string]string
 	cachedTokenURL    *url.URL
@@ -87,11 +92,14 @@ func (t *DPoPTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 		return resp, err
 	}
 
-	// Handle DPoP-Nonce challenge (RFC 9449 §8). On a retry, fall through with the
-	// retried response so its own DPoP-Nonce (if the server rotates the nonce on the
-	// now-successful response) still updates the cache below; returning early here
-	// would drop it and force another 401/retry on the next request.
-	if resp.StatusCode == http.StatusUnauthorized {
+	// Handle DPoP-Nonce challenge (RFC 9449 §8). Resource servers signal a required
+	// nonce with 401, while the authorization server (token endpoint) uses 400; handle
+	// both. On a retry, fall through with the retried response so its own DPoP-Nonce (if
+	// the server rotates the nonce on the now-successful response) still updates the
+	// cache below; returning early here would drop it and force another challenge on the
+	// next request.
+	if resp.StatusCode == http.StatusUnauthorized ||
+		(resp.StatusCode == http.StatusBadRequest && resp.Header.Get("DPoP-Nonce") != "") {
 		retryResp, retried, err := t.retryWithNonce(req2, base, resp, origin, nonce, isTokenRequest)
 		if err != nil {
 			return nil, err
@@ -178,7 +186,7 @@ func (t *DPoPTransport) addDPoPProof(req *http.Request, base http.RoundTripper, 
 	// For resource requests (not token endpoint), add ath claim
 	var accessToken string
 	if !isTokenRequest && t.TokenSource != nil {
-		client := &http.Client{Transport: base}
+		client := &http.Client{Transport: base, Timeout: t.tokenFetchTimeout}
 		at, err := t.TokenSource.AccessToken(req.Context(), client)
 		if err != nil {
 			return fmt.Errorf("failed to get access token: %w", err)
@@ -380,10 +388,11 @@ func NewDPoPHTTPClient(baseClient *http.Client, dpopKey jwk.Key, tokenSource Acc
 	}
 
 	dpopTransport := &DPoPTransport{
-		Base:          transport,
-		DPoPKey:       dpopKey,
-		TokenSource:   tokenSource,
-		TokenEndpoint: tokenEndpoint,
+		Base:              transport,
+		DPoPKey:           dpopKey,
+		TokenSource:       tokenSource,
+		TokenEndpoint:     tokenEndpoint,
+		tokenFetchTimeout: baseClient.Timeout,
 	}
 
 	return &http.Client{

@@ -337,8 +337,12 @@ func buildIDPTokenSource(c *config) (auth.AccessTokenSource, jwk.Key, error) {
 
 	// There are uses for uncredentialed clients (i.e. consuming the well-known configuration).
 	if c.clientCredentials == nil && c.oauthAccessTokenSource == nil {
+		// DPoP only takes effect once requests are credentialed. If the caller
+		// explicitly configured a DPoP key but supplied no credentials, fail loudly
+		// rather than silently returning an unbound client and downgrading the
+		// caller's expected security posture.
 		if c.dpopJWK != nil || len(c.dpopKeyPEM) > 0 || c.dpopAlgorithm != "" || c.dpopKey != nil {
-			getLogger().Warn("DPoP key configured but no credentials supplied; DPoP will be disabled")
+			return nil, nil, errors.New("DPoP configured (WithDPoP*) but no client credentials or OAuth token source supplied")
 		}
 		return nil, nil, nil
 	}

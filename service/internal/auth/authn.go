@@ -628,10 +628,15 @@ func (a Authentication) ConnectAuthNInterceptor() connect.UnaryInterceptorFunc {
 
 			procedure := req.Spec().Procedure
 			host := req.Header().Get("Host")
+			// Build the acceptable htu values with the same normalization the SDK
+			// applies when signing its proof (lowercased host, default ports
+			// stripped) so the exact-string htu comparison in matchHTU succeeds.
+			// Both schemes are offered because the interceptor cannot observe the
+			// wire scheme here.
 			ri := receiverInfo{
 				u: []string{
-					"http://" + host + procedure,
-					"https://" + host + procedure,
+					originFromHost(host, false) + procedure,
+					originFromHost(host, true) + procedure,
 				},
 				m: []string{req.HTTPMethod()},
 			}

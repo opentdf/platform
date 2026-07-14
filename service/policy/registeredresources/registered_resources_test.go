@@ -5,8 +5,11 @@ import (
 	"testing"
 
 	"buf.build/go/protovalidate"
+	"connectrpc.com/connect"
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/registeredresources"
+	"github.com/opentdf/platform/service/logger"
+	policyconfig "github.com/opentdf/platform/service/policy/config"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -25,6 +28,21 @@ func (s *RegisteredResourcesSuite) SetupSuite() {
 
 func TestRegisteredResourcesServiceProtos(t *testing.T) {
 	suite.Run(t, new(RegisteredResourcesSuite))
+}
+
+func (s *RegisteredResourcesSuite) TestCreateRegisteredResource_NamespacedPolicyRequiresNamespace() {
+	service := &RegisteredResourcesService{
+		logger: logger.CreateTestLogger(),
+		config: &policyconfig.Config{NamespacedPolicy: true},
+	}
+
+	_, err := service.CreateRegisteredResource(s.T().Context(), connect.NewRequest(&registeredresources.CreateRegisteredResourceRequest{
+		Name: validName,
+	}))
+
+	s.Require().Error(err)
+	s.Require().Equal(connect.CodeInvalidArgument, connect.CodeOf(err))
+	s.Require().Contains(err.Error(), "namespace is required: provide either namespace_id or namespace_fqn")
 }
 
 const (

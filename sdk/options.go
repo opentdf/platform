@@ -248,7 +248,7 @@ func WithLogger(logger *slog.Logger) Option {
 
 // WithDPoPAlgorithm enables DPoP with an ephemeral key generated for the given algorithm.
 // Supported: ES256, ES384, ES512, RS256, RS384, RS512.
-// When this option is unset the SDK falls back to an auto-generated RSA key; ES256 is the
+// When no DPoP key is otherwise configured, the SDK auto-generates an ephemeral ES256 (P-256) key by default; ES256 is the
 // recommended choice and is what the otdfctl CLI uses for a bare --dpop flag.
 func WithDPoPAlgorithm(alg SigningAlgorithm) Option {
 	return func(c *config) {

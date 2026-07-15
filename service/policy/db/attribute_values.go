@@ -55,14 +55,11 @@ func (c PolicyDBClient) CreateAttributeValue(ctx context.Context, attributeID st
 
 	var attributeNamespaceID string
 	if len(r.GetSubjectMappings()) > 0 {
-		namespaces, err := c.queries.getAttributeValueNamespaceIDs(ctx, []string{createdID})
+		attr, err := c.GetAttribute(ctx, attributeID)
 		if err != nil {
-			return nil, db.WrapIfKnownInvalidQueryErr(err)
+			return nil, err
 		}
-		if len(namespaces) != 1 {
-			return nil, db.ErrNotFound
-		}
-		attributeNamespaceID = namespaces[0].NamespaceID
+		attributeNamespaceID = attr.GetNamespace().GetId()
 	}
 
 	for _, mapping := range r.GetSubjectMappings() {
@@ -71,7 +68,7 @@ func (c PolicyDBClient) CreateAttributeValue(ctx context.Context, attributeID st
 			namespaceID = attributeNamespaceID
 		}
 
-		_, err := c.createSubjectMapping(ctx, &subjectmapping.CreateSubjectMappingRequest{
+		_, err := c.CreateSubjectMapping(ctx, &subjectmapping.CreateSubjectMappingRequest{
 			AttributeValueId:              createdID,
 			Actions:                       mapping.GetActions(),
 			ExistingSubjectConditionSetId: mapping.GetExistingSubjectConditionSetId(),

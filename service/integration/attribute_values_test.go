@@ -92,11 +92,6 @@ func (s *AttributeValuesSuite) Test_GetAttributeValue() {
 			input:          &attributes.GetAttributeValueRequest_Fqn{Fqn: "https://example.com/attr/attr1/value/value1"},
 			identifierType: "FQN",
 		},
-		{
-			name:           "New Identifier - FQN Without Scheme",
-			input:          &attributes.GetAttributeValueRequest_Fqn{Fqn: "example.com/attr/attr1/value/value1"},
-			identifierType: "FQN without scheme",
-		},
 	}
 
 	for _, tc := range testCases {

@@ -163,27 +163,24 @@ SELECT
     JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', av.metadata -> 'labels', 'created_at', av.created_at, 'updated_at', av.updated_at)) as metadata,
     av.attribute_definition_id,
     fqns.fqn,
-    grants.grants,
-    value_keys.keys as keys,
-    ao.obligations,
-    asm.subject_mappings
-FROM attribute_values av
-LEFT JOIN attribute_fqns fqns ON av.id = fqns.value_id
-LEFT JOIN LATERAL (
-    SELECT JSONB_AGG(
+    JSONB_AGG(
         DISTINCT JSONB_BUILD_OBJECT(
             'id', kas.id,
             'uri', kas.uri,
             'name', kas.name,
             'public_key', kas.public_key
         )
-    ) AS grants
-    FROM attribute_value_key_access_grants avkag
-    JOIN key_access_servers kas ON avkag.key_access_server_id = kas.id
-    WHERE avkag.attribute_value_id = av.id
-) grants ON TRUE
-LEFT JOIN LATERAL (
+    ) FILTER (WHERE avkag.attribute_value_id IS NOT NULL) AS grants,
+    value_keys.keys as keys,
+    ao.obligations,
+    asm.subject_mappings
+FROM attribute_values av
+LEFT JOIN attribute_fqns fqns ON av.id = fqns.value_id
+LEFT JOIN attribute_value_key_access_grants avkag ON av.id = avkag.attribute_value_id
+LEFT JOIN key_access_servers kas ON avkag.key_access_server_id = kas.id
+LEFT JOIN (
     SELECT
+        k.value_id,
         JSONB_AGG(
             DISTINCT JSONB_BUILD_OBJECT(
                 'kas_uri', kas.uri,
@@ -198,8 +195,8 @@ LEFT JOIN LATERAL (
     FROM attribute_value_public_key_map k
     INNER JOIN key_access_server_keys kask ON k.key_access_server_key_id = kask.id
     INNER JOIN key_access_servers kas ON kas.id = kask.key_access_server_id
-    WHERE k.value_id = av.id
-) value_keys ON TRUE
+    GROUP BY k.value_id
+) value_keys ON av.id = value_keys.value_id
 LEFT JOIN attribute_obligations ao ON av.id = ao.attribute_value_id
 LEFT JOIN LATERAL (
     SELECT
@@ -255,7 +252,8 @@ LEFT JOIN LATERAL (
     WHERE sm.attribute_value_id = av.id
 ) asm ON TRUE
 WHERE ($1::uuid IS NULL OR av.id = $1::uuid)
-  AND ($2::text IS NULL OR fqns.fqn = CONCAT('https://', REGEXP_REPLACE($2::text, '^https://', '')))
+  AND ($2::text IS NULL OR REGEXP_REPLACE(fqns.fqn, '^https://', '') = REGEXP_REPLACE($2::text, '^https://', ''))
+GROUP BY av.id, fqns.fqn, value_keys.keys, ao.obligations, asm.subject_mappings
 `
 
 type getAttributeValueParams struct {
@@ -368,27 +366,24 @@ type getAttributeValueRow struct {
 //	    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', av.metadata -> 'labels', 'created_at', av.created_at, 'updated_at', av.updated_at)) as metadata,
 //	    av.attribute_definition_id,
 //	    fqns.fqn,
-//	    grants.grants,
-//	    value_keys.keys as keys,
-//	    ao.obligations,
-//	    asm.subject_mappings
-//	FROM attribute_values av
-//	LEFT JOIN attribute_fqns fqns ON av.id = fqns.value_id
-//	LEFT JOIN LATERAL (
-//	    SELECT JSONB_AGG(
+//	    JSONB_AGG(
 //	        DISTINCT JSONB_BUILD_OBJECT(
 //	            'id', kas.id,
 //	            'uri', kas.uri,
 //	            'name', kas.name,
 //	            'public_key', kas.public_key
 //	        )
-//	    ) AS grants
-//	    FROM attribute_value_key_access_grants avkag
-//	    JOIN key_access_servers kas ON avkag.key_access_server_id = kas.id
-//	    WHERE avkag.attribute_value_id = av.id
-//	) grants ON TRUE
-//	LEFT JOIN LATERAL (
+//	    ) FILTER (WHERE avkag.attribute_value_id IS NOT NULL) AS grants,
+//	    value_keys.keys as keys,
+//	    ao.obligations,
+//	    asm.subject_mappings
+//	FROM attribute_values av
+//	LEFT JOIN attribute_fqns fqns ON av.id = fqns.value_id
+//	LEFT JOIN attribute_value_key_access_grants avkag ON av.id = avkag.attribute_value_id
+//	LEFT JOIN key_access_servers kas ON avkag.key_access_server_id = kas.id
+//	LEFT JOIN (
 //	    SELECT
+//	        k.value_id,
 //	        JSONB_AGG(
 //	            DISTINCT JSONB_BUILD_OBJECT(
 //	                'kas_uri', kas.uri,
@@ -403,8 +398,8 @@ type getAttributeValueRow struct {
 //	    FROM attribute_value_public_key_map k
 //	    INNER JOIN key_access_server_keys kask ON k.key_access_server_key_id = kask.id
 //	    INNER JOIN key_access_servers kas ON kas.id = kask.key_access_server_id
-//	    WHERE k.value_id = av.id
-//	) value_keys ON TRUE
+//	    GROUP BY k.value_id
+//	) value_keys ON av.id = value_keys.value_id
 //	LEFT JOIN attribute_obligations ao ON av.id = ao.attribute_value_id
 //	LEFT JOIN LATERAL (
 //	    SELECT
@@ -460,7 +455,8 @@ type getAttributeValueRow struct {
 //	    WHERE sm.attribute_value_id = av.id
 //	) asm ON TRUE
 //	WHERE ($1::uuid IS NULL OR av.id = $1::uuid)
-//	  AND ($2::text IS NULL OR fqns.fqn = CONCAT('https://', REGEXP_REPLACE($2::text, '^https://', '')))
+//	  AND ($2::text IS NULL OR REGEXP_REPLACE(fqns.fqn, '^https://', '') = REGEXP_REPLACE($2::text, '^https://', ''))
+//	GROUP BY av.id, fqns.fqn, value_keys.keys, ao.obligations, asm.subject_mappings
 func (q *Queries) getAttributeValue(ctx context.Context, arg getAttributeValueParams) (getAttributeValueRow, error) {
 	row := q.db.QueryRow(ctx, getAttributeValue, arg.ID, arg.Fqn)
 	var i getAttributeValueRow

@@ -291,8 +291,8 @@ message AttributeValueSubjectMappingRequest {
   // Create a new SubjectConditionSet.
   policy.subjectmapping.SubjectConditionSetCreate new_subject_condition_set = 3;
 
-  // Optional
-  // Namespace ID or FQN for the subject mapping
+  // Optional. Namespace ID or FQN for the subject mapping.
+  // If omitted, the parent attribute's namespace is inherited.
   option (buf.validate.message).oneof = { fields: ["namespace_id", "namespace_fqn"], required: false };
   string namespace_id = 4 [
     (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,

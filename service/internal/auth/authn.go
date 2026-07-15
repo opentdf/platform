@@ -400,6 +400,12 @@ func originFromHost(host string, secure bool) string {
 	}
 	u, err := url.Parse(scheme + "://" + host)
 	if err != nil {
+		// Fall back to the raw value, but surface the failure: a DPoP htu match is
+		// an exact string comparison, so an unnormalized origin here is a likely
+		// cause of an otherwise inexplicable proof rejection.
+		slog.Debug("dpop: failed to parse origin from host; using unnormalized value",
+			slog.String("host", host),
+			slog.String("error", err.Error()))
 		return scheme + "://" + host
 	}
 	h := strings.ToLower(u.Hostname())
@@ -418,6 +424,9 @@ func normalizeURL(o string, u *url.URL) string {
 	// Currently this does not do a full normatlization
 	ou, err := url.Parse(o)
 	if err != nil {
+		slog.Debug("dpop: failed to parse origin for normalization; using request url",
+			slog.String("origin", o),
+			slog.String("error", err.Error()))
 		return u.String()
 	}
 	ou.Path = u.Path

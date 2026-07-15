@@ -1352,10 +1352,9 @@ type AttributeValueSubjectMappingRequest struct {
 
 	// Required. The actions permitted by subjects in this mapping.
 	Actions []*policy.Action `protobuf:"bytes,1,rep,name=actions,proto3" json:"actions,omitempty"`
-	// Either of the following:
-	// Reuse existing SubjectConditionSet (NOTE: prioritized over new_subject_condition_set)
+	// Reuse an existing SubjectConditionSet.
 	ExistingSubjectConditionSetId string `protobuf:"bytes,2,opt,name=existing_subject_condition_set_id,json=existingSubjectConditionSetId,proto3" json:"existing_subject_condition_set_id,omitempty"`
-	// Create new SubjectConditionSet (NOTE: ignored if existing_subject_condition_set_id is provided)
+	// Create a new SubjectConditionSet.
 	NewSubjectConditionSet *subjectmapping.SubjectConditionSetCreate `protobuf:"bytes,3,opt,name=new_subject_condition_set,json=newSubjectConditionSet,proto3" json:"new_subject_condition_set,omitempty"`
 	NamespaceId            string                                    `protobuf:"bytes,4,opt,name=namespace_id,json=namespaceId,proto3" json:"namespace_id,omitempty"`
 	NamespaceFqn           string                                    `protobuf:"bytes,5,opt,name=namespace_fqn,json=namespaceFqn,proto3" json:"namespace_fqn,omitempty"`

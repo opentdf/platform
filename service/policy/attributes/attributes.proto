@@ -283,13 +283,12 @@ message AttributeValueSubjectMappingRequest {
     }
   ];
 
-  // Either of the following:
-  // Reuse existing SubjectConditionSet (NOTE: prioritized over new_subject_condition_set)
+  // Reuse an existing SubjectConditionSet.
   string existing_subject_condition_set_id = 2 [
     (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
     (buf.validate.field).string.uuid = true
   ];
-  // Create new SubjectConditionSet (NOTE: ignored if existing_subject_condition_set_id is provided)
+  // Create a new SubjectConditionSet.
   policy.subjectmapping.SubjectConditionSetCreate new_subject_condition_set = 3;
 
   // Optional

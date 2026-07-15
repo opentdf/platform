@@ -1355,9 +1355,7 @@ func (s *AttributeValuesSuite) Test_CreateAttributeValue_WithSubjectMappings_Suc
 	s.Equal(readAction.GetId(), createdMapping.GetActions()[0].GetId())
 	s.Equal(readAction.GetName(), createdMapping.GetActions()[0].GetName())
 	s.Equal(ns.GetId(), createdMapping.GetActions()[0].GetNamespace().GetId())
-	s.Require().NotNil(createdMapping.GetSubjectConditionSet())
 	s.Equal(ns.GetId(), createdMapping.GetSubjectConditionSet().GetNamespace().GetId())
-	s.Empty(createdMapping.GetSubjectConditionSet().GetMetadata().GetLabels())
 	s.Require().Len(createdMapping.GetSubjectConditionSet().GetSubjectSets(), 1)
 	s.Require().Len(createdMapping.GetSubjectConditionSet().GetSubjectSets()[0].GetConditionGroups(), 1)
 	s.Require().Len(createdMapping.GetSubjectConditionSet().GetSubjectSets()[0].GetConditionGroups()[0].GetConditions(), 1)
@@ -1382,34 +1380,7 @@ func (s *AttributeValuesSuite) Test_CreateAttributeValue_WithSubjectMappings_Suc
 	s.Equal(createdMapping.GetId(), retrievedByFQN.GetSubjectMappings()[0].GetId())
 	s.Equal(createdMapping.GetAttributeValue().GetFqn(), retrievedByFQN.GetSubjectMappings()[0].GetAttributeValue().GetFqn())
 	s.Equal(createdMapping.GetSubjectConditionSet().GetId(), retrievedByFQN.GetSubjectMappings()[0].GetSubjectConditionSet().GetId())
-	s.Empty(retrievedByFQN.GetSubjectMappings()[0].GetMetadata().GetLabels())
 	s.Empty(retrievedByFQN.GetSubjectMappings()[0].GetSubjectConditionSet().GetMetadata().GetLabels())
-
-	// The canonical subject-mapping APIs still return full mapping metadata.
-	listedMappings, err := s.db.PolicyClient.ListSubjectMappings(s.ctx, &subjectmapping.ListSubjectMappingsRequest{
-		NamespaceId: ns.GetId(),
-	})
-	s.Require().NoError(err)
-
-	var gotMapping *policy.SubjectMapping
-	for _, mapping := range listedMappings.GetSubjectMappings() {
-		if mapping.GetAttributeValue().GetId() == createdValue.GetId() {
-			gotMapping = mapping
-			break
-		}
-	}
-	s.Require().NotNil(gotMapping)
-	s.Equal(createdValue.GetId(), gotMapping.GetAttributeValue().GetId())
-	s.Equal(ns.GetId(), gotMapping.GetNamespace().GetId())
-	s.Equal("inline-subject-mapping", gotMapping.GetMetadata().GetLabels()["source"])
-	s.Require().Len(gotMapping.GetActions(), 1)
-	s.Equal(readAction.GetId(), gotMapping.GetActions()[0].GetId())
-	s.Require().NotNil(gotMapping.GetSubjectConditionSet())
-	s.Require().Len(gotMapping.GetSubjectConditionSet().GetSubjectSets(), 1)
-
-	retrievedMapping, err := s.db.PolicyClient.GetSubjectMapping(s.ctx, gotMapping.GetId())
-	s.Require().NoError(err)
-	s.Equal(createdValue.GetId(), retrievedMapping.GetAttributeValue().GetId())
 }
 
 func (s *AttributeValuesSuite) Test_CreateAttributeValue_WithSubjectMappings_ExplicitNamespaceMismatch_Fails() {

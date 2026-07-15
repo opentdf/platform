@@ -1900,12 +1900,10 @@ components:
           type: string
           title: existing_subject_condition_set_id
           format: uuid
-          description: |-
-            Either of the following:
-             Reuse existing SubjectConditionSet (NOTE: prioritized over new_subject_condition_set)
+          description: Reuse an existing SubjectConditionSet.
         newSubjectConditionSet:
           title: new_subject_condition_set
-          description: 'Create new SubjectConditionSet (NOTE: ignored if existing_subject_condition_set_id is provided)'
+          description: Create a new SubjectConditionSet.
           $ref: '#/components/schemas/policy.subjectmapping.SubjectConditionSetCreate'
         namespaceId:
           type: string

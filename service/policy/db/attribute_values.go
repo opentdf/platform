@@ -152,7 +152,7 @@ func (c PolicyDBClient) GetAttributeValue(ctx context.Context, identifier any) (
 
 	subjectMappings := []*policy.SubjectMapping{}
 	if err := unmarshalSubjectMappingsProto(av.SubjectMappings, &subjectMappings); err != nil {
-		c.logger.ErrorContext(ctx, "could not unmarshal subject mappings", slog.String("error", err.Error()))
+		c.logger.ErrorContext(ctx, "could not unmarshal subject mappings", slog.Any("error", err))
 		return nil, err
 	}
 

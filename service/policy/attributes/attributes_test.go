@@ -525,7 +525,6 @@ func TestCreateAttributeValue_WithSubjectMappings_Request(t *testing.T) {
 	testCases := []struct {
 		name         string
 		req          *attributes.CreateAttributeValueRequest
-		expectError  bool
 		errorMessage string
 	}{
 		{
@@ -544,7 +543,6 @@ func TestCreateAttributeValue_WithSubjectMappings_Request(t *testing.T) {
 					},
 				},
 			},
-			expectError: false,
 		},
 		{
 			name: "valid with existing subject condition set and namespace fqn",
@@ -559,7 +557,6 @@ func TestCreateAttributeValue_WithSubjectMappings_Request(t *testing.T) {
 					},
 				},
 			},
-			expectError: false,
 		},
 		{
 			name: "valid without namespace",
@@ -573,7 +570,6 @@ func TestCreateAttributeValue_WithSubjectMappings_Request(t *testing.T) {
 					},
 				},
 			},
-			expectError: false,
 		},
 		{
 			name: "invalid with missing action",
@@ -587,7 +583,6 @@ func TestCreateAttributeValue_WithSubjectMappings_Request(t *testing.T) {
 					},
 				},
 			},
-			expectError:  true,
 			errorMessage: "actions",
 		},
 		{
@@ -603,7 +598,6 @@ func TestCreateAttributeValue_WithSubjectMappings_Request(t *testing.T) {
 					},
 				},
 			},
-			expectError:  true,
 			errorMessage: "action_name_or_id_not_empty",
 		},
 		{
@@ -619,7 +613,6 @@ func TestCreateAttributeValue_WithSubjectMappings_Request(t *testing.T) {
 					},
 				},
 			},
-			expectError:  true,
 			errorMessage: "string.uuid",
 		},
 		{
@@ -634,7 +627,6 @@ func TestCreateAttributeValue_WithSubjectMappings_Request(t *testing.T) {
 					},
 				},
 			},
-			expectError:  true,
 			errorMessage: "subject_condition_set_source",
 		},
 		{
@@ -651,7 +643,6 @@ func TestCreateAttributeValue_WithSubjectMappings_Request(t *testing.T) {
 					},
 				},
 			},
-			expectError:  true,
 			errorMessage: "subject_condition_set_source",
 		},
 		{
@@ -667,7 +658,6 @@ func TestCreateAttributeValue_WithSubjectMappings_Request(t *testing.T) {
 					},
 				},
 			},
-			expectError:  true,
 			errorMessage: errMessageURI,
 		},
 		{
@@ -684,7 +674,6 @@ func TestCreateAttributeValue_WithSubjectMappings_Request(t *testing.T) {
 					},
 				},
 			},
-			expectError:  true,
 			errorMessage: "message.oneof",
 		},
 		{
@@ -694,7 +683,6 @@ func TestCreateAttributeValue_WithSubjectMappings_Request(t *testing.T) {
 				Value:           validValue1,
 				SubjectMappings: tooManySubjectMappings,
 			},
-			expectError:  true,
 			errorMessage: "max_items",
 		},
 	}
@@ -704,7 +692,7 @@ func TestCreateAttributeValue_WithSubjectMappings_Request(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			err := v.Validate(tc.req)
-			if tc.expectError {
+			if tc.errorMessage != "" {
 				require.Error(t, err)
 				require.Contains(t, err.Error(), tc.errorMessage)
 			} else {

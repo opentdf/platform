@@ -7,14 +7,33 @@ import (
 	"crypto/rsa"
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 
 	"github.com/lestrrat-go/jwx/v2/jwa"
 	"github.com/lestrrat-go/jwx/v2/jwk"
 )
 
-const dpopAllowedAlgs = string(ES256) + ", " + string(ES384) + ", " + string(ES512) + ", " +
-	string(RS256) + ", " + string(RS384) + ", " + string(RS512)
+// validDPoPAlgs is the single source of truth for the JWS algorithms permitted
+// for DPoP proofs (RFC 9449 §4.2, restricted to the asymmetric families we
+// support). generateDPoPKeyForAlg, validateDPoPKey, and the PEM algorithm
+// override all consult it via SigningAlgorithm.Valid so the set cannot drift.
+var validDPoPAlgs = []SigningAlgorithm{ES256, ES384, ES512, RS256, RS384, RS512}
+
+// Valid reports whether a is a SigningAlgorithm supported for DPoP proofs.
+func (a SigningAlgorithm) Valid() bool {
+	return slices.Contains(validDPoPAlgs, a)
+}
+
+// dpopAllowedAlgs is the human-readable allow-list used in error messages,
+// derived from validDPoPAlgs so it can never drift from the enforced set.
+var dpopAllowedAlgs = func() string {
+	names := make([]string, len(validDPoPAlgs))
+	for i, a := range validDPoPAlgs {
+		names[i] = string(a)
+	}
+	return strings.Join(names, ", ")
+}()
 
 // generateDPoPKeyForAlg generates an ephemeral DPoP private key for the given algorithm.
 // Supported algorithms: ES256, ES384, ES512, RS256, RS384, RS512.
@@ -69,7 +88,8 @@ func generateRSAKey(alg jwa.SignatureAlgorithm) (jwk.Key, error) {
 }
 
 // loadDPoPKeyFromPEM parses a PEM-encoded private key and returns it as a jwk.Key.
-// The DPoP algorithm is inferred from the key type:
+// The DPoP algorithm is inferred from the key type when the key does not already
+// carry one:
 //   - EC P-256 → ES256, P-384 → ES384, P-521 → ES512
 //   - RSA → RS256
 func loadDPoPKeyFromPEM(pemBytes []byte) (jwk.Key, error) {
@@ -141,10 +161,7 @@ func validateDPoPKey(key jwk.Key) error {
 		return errors.New("DPoP JWK is missing required Algorithm field; set it with key.Set(jwk.AlgorithmKey, ...)")
 	}
 	algStr := alg.String()
-	switch SigningAlgorithm(algStr) {
-	case ES256, ES384, ES512, RS256, RS384, RS512:
-		// supported
-	default:
+	if !SigningAlgorithm(algStr).Valid() {
 		return fmt.Errorf("unsupported DPoP JWK algorithm %q; allowed: %s", algStr, dpopAllowedAlgs)
 	}
 
@@ -186,7 +203,7 @@ func validateDPoPKey(key jwk.Key) error {
 //	dpopJWK       (WithDPoPJWK)                          → validate algorithm, return
 //	dpopKeyPEM    (WithDPoPKeyPEM)                       → load from PEM, apply optional algorithm override
 //	dpopAlgorithm (WithDPoPAlgorithm)                    → generate a fresh ephemeral key
-//	dpopKey       (WithSessionSignerRSA / auto-generated) → convert the RSA key pair to a JWK
+//	dpopKey       (WithSessionSignerRSA)                 → convert the RSA key pair to a JWK
 //	none configured                                      → (nil, nil)
 //
 // The function is pure: it does not mutate the config. Because the dpopAlgorithm
@@ -223,6 +240,11 @@ func selectDPoPKey(c *config) (jwk.Key, error) {
 			return nil, fmt.Errorf("failed to load DPoP key from PEM: %w", err)
 		}
 		if c.dpopAlgorithm != "" {
+			// Restrict the override to the DPoP allow-list; jwa.Accept alone would
+			// admit any JWX algorithm (e.g. HS256, none).
+			if !c.dpopAlgorithm.Valid() {
+				return nil, fmt.Errorf("invalid DPoP algorithm override %q; allowed: %s", c.dpopAlgorithm, dpopAllowedAlgs)
+			}
 			var algVal jwa.SignatureAlgorithm
 			if err := algVal.Accept(string(c.dpopAlgorithm)); err != nil {
 				return nil, fmt.Errorf("invalid DPoP algorithm override %q: %w", c.dpopAlgorithm, err)

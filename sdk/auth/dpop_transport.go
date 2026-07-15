@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"crypto/sha256"
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -44,6 +45,7 @@ type DPoPTransport struct {
 	// client's Timeout so a hung IdP cannot stall the request indefinitely.
 	tokenFetchTimeout time.Duration
 
+	nonceOnce         sync.Once
 	nonceMu           sync.RWMutex
 	nonceCache        map[string]string
 	cachedTokenURL    *url.URL
@@ -52,16 +54,20 @@ type DPoPTransport struct {
 
 // RoundTrip implements http.RoundTripper, adding DPoP proofs to requests.
 func (t *DPoPTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	// Guard the zero value / direct construction: addDPoPProof dereferences the key
+	// unconditionally, so a nil key would otherwise nil-panic mid-request.
+	if t.DPoPKey == nil {
+		return nil, errors.New("DPoP transport has no signing key")
+	}
+
 	base := t.Base
 	if base == nil {
 		base = http.DefaultTransport
 	}
 
-	t.nonceMu.Lock()
-	if t.nonceCache == nil {
-		t.nonceCache = make(map[string]string)
-	}
-	t.nonceMu.Unlock()
+	// NewDPoPHTTPClient initializes the cache; the Once covers a directly
+	// constructed transport without paying a write-lock on every request.
+	t.nonceOnce.Do(t.initNonceCache)
 
 	// Clone request to avoid modifying the original
 	req2 := cloneRequest(req)
@@ -311,6 +317,16 @@ func getOrigin(u *url.URL) string {
 	return fmt.Sprintf("%s://%s", strings.ToLower(u.Scheme), normalizedHostPort(u))
 }
 
+// initNonceCache lazily allocates the per-origin nonce cache. It is idempotent
+// and safe to call once via nonceOnce even when the constructor already set it.
+func (t *DPoPTransport) initNonceCache() {
+	t.nonceMu.Lock()
+	defer t.nonceMu.Unlock()
+	if t.nonceCache == nil {
+		t.nonceCache = make(map[string]string)
+	}
+}
+
 // getCachedNonce retrieves the cached nonce for an origin.
 func (t *DPoPTransport) getCachedNonce(origin string) string {
 	t.nonceMu.RLock()
@@ -377,7 +393,12 @@ func bufferRequestBody(req *http.Request) error {
 
 // NewDPoPHTTPClient creates a new HTTP client with DPoP transport wrapping.
 // The client will automatically add DPoP proofs to all requests.
-func NewDPoPHTTPClient(baseClient *http.Client, dpopKey jwk.Key, tokenSource AccessTokenSource, tokenEndpoint string) *http.Client {
+//
+// It returns an error when tokenEndpoint is non-empty but cannot be parsed: an
+// unparseable endpoint would otherwise make token-endpoint requests silently
+// misclassified as resource requests (adding an ath claim and Authorization
+// header to the token exchange itself).
+func NewDPoPHTTPClient(baseClient *http.Client, dpopKey jwk.Key, tokenSource AccessTokenSource, tokenEndpoint string) (*http.Client, error) {
 	if baseClient == nil {
 		baseClient = http.DefaultClient
 	}
@@ -393,6 +414,18 @@ func NewDPoPHTTPClient(baseClient *http.Client, dpopKey jwk.Key, tokenSource Acc
 		TokenSource:       tokenSource,
 		TokenEndpoint:     tokenEndpoint,
 		tokenFetchTimeout: baseClient.Timeout,
+		nonceCache:        make(map[string]string),
+	}
+
+	// Validate and cache the parsed endpoint up front so isTokenEndpointRequest
+	// never has to swallow a parse error at request time.
+	if tokenEndpoint != "" {
+		parsed, err := url.Parse(tokenEndpoint)
+		if err != nil {
+			return nil, fmt.Errorf("invalid DPoP token endpoint %q: %w", tokenEndpoint, err)
+		}
+		dpopTransport.cachedTokenURL = parsed
+		dpopTransport.cachedTokenURLStr = tokenEndpoint
 	}
 
 	return &http.Client{
@@ -400,5 +433,5 @@ func NewDPoPHTTPClient(baseClient *http.Client, dpopKey jwk.Key, tokenSource Acc
 		CheckRedirect: baseClient.CheckRedirect,
 		Jar:           baseClient.Jar,
 		Timeout:       baseClient.Timeout,
-	}
+	}, nil
 }

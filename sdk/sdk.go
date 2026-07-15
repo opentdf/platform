@@ -208,7 +208,10 @@ func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 	httpClient := cfg.httpClient
 	dpopHandledByTransport := false
 	if accessTokenSource != nil && dpopKey != nil {
-		httpClient = auth.NewDPoPHTTPClient(cfg.httpClient, dpopKey, accessTokenSource, cfg.tokenEndpoint)
+		httpClient, err = auth.NewDPoPHTTPClient(cfg.httpClient, dpopKey, accessTokenSource, cfg.tokenEndpoint)
+		if err != nil {
+			return nil, err
+		}
 		dpopHandledByTransport = true
 	}
 
@@ -310,7 +313,7 @@ func NewDPoPValidationHTTPClient(base *http.Client, opts ...Option) (*http.Clien
 			return nil, fmt.Errorf("failed to generate default DPoP key: %w", err)
 		}
 	}
-	return auth.NewDPoPHTTPClient(base, key, nil, ""), nil
+	return auth.NewDPoPHTTPClient(base, key, nil, "")
 }
 
 // buildIDPTokenSource builds the access token source and resolves the DPoP key

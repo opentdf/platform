@@ -615,6 +615,25 @@ func TestDPoPTransport_TokenEndpointNonceRetryOn400(t *testing.T) {
 	assert.Equal(t, int32(2), atomic.LoadInt32(&callCount), "expected 2 calls (initial 400 + retry)")
 }
 
+// TestDPoPTransport_NilKeyErrors verifies the zero-value / direct-construction
+// guard: RoundTrip returns an error instead of nil-panicking when DPoPKey is nil.
+func TestDPoPTransport_NilKeyErrors(t *testing.T) {
+	transport := &DPoPTransport{Base: http.DefaultTransport}
+	client := &http.Client{Transport: transport}
+
+	_, err := client.Do(mustReq(t, "http://example.com"))
+	require.Error(t, err, "expected an error when the DPoP key is nil")
+}
+
+// TestNewDPoPHTTPClient_InvalidTokenEndpoint verifies the constructor rejects an
+// unparseable token endpoint rather than silently misclassifying token requests.
+func TestNewDPoPHTTPClient_InvalidTokenEndpoint(t *testing.T) {
+	key := generateTestKey(t)
+
+	_, err := NewDPoPHTTPClient(nil, key, nil, "://missing-scheme")
+	require.Error(t, err, "expected an error for an unparseable token endpoint")
+}
+
 // TestDPoPTransport_NoRetryOnPlain400 verifies that a 400 without a DPoP-Nonce
 // header (an ordinary bad request) is propagated unchanged and not retried.
 func TestDPoPTransport_NoRetryOnPlain400(t *testing.T) {
@@ -672,9 +691,10 @@ func TestDPoPTransport_TokenFetchHonorsClientTimeout(t *testing.T) {
 	defer resource.Close()
 
 	base := &http.Client{Timeout: 50 * time.Millisecond}
-	client := NewDPoPHTTPClient(base, key, &slowClientTokenSource{url: slow.URL}, "")
+	client, err := NewDPoPHTTPClient(base, key, &slowClientTokenSource{url: slow.URL}, "")
+	require.NoError(t, err, "failed to build DPoP client")
 
-	_, err := client.Do(mustReq(t, resource.URL))
+	_, err = client.Do(mustReq(t, resource.URL))
 	require.Error(t, err, "expected the token fetch to hit the configured timeout")
 }
 

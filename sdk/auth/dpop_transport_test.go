@@ -3,6 +3,8 @@ package auth
 import (
 	"bytes"
 	"context"
+	"crypto/ecdsa"
+	"crypto/elliptic"
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/sha256"
@@ -59,13 +61,46 @@ func generateTestKey(t *testing.T) jwk.Key {
 	return key
 }
 
-func parseDPoPProof(t *testing.T, proofStr string, key jwk.Key) jwt.Token {
+// generateTestKeyForAlg generates a signing key for the given JWS algorithm so
+// tests can exercise the EC (ES*) proof path in addition to RSA.
+func generateTestKeyForAlg(t *testing.T, alg jwa.SignatureAlgorithm) jwk.Key {
 	t.Helper()
 
-	token, err := jwt.Parse([]byte(proofStr), jwt.WithKey(jwa.RS256, key))
-	require.NoError(t, err, "failed to parse DPoP proof")
+	var raw any
+	var err error
+	switch alg { //nolint:exhaustive // test helper supports only the algorithms it needs; default rejects the rest
+	case jwa.RS256:
+		raw, err = rsa.GenerateKey(rand.Reader, 2048)
+	case jwa.ES256:
+		raw, err = ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	case jwa.ES384:
+		raw, err = ecdsa.GenerateKey(elliptic.P384(), rand.Reader)
+	default:
+		t.Fatalf("unsupported test algorithm %q", alg)
+	}
+	require.NoError(t, err, "failed to generate raw key")
 
-	return token
+	key, err := jwk.FromRaw(raw)
+	require.NoError(t, err, "failed to create JWK")
+	require.NoError(t, key.Set(jwk.AlgorithmKey, alg), "failed to set algorithm")
+
+	return key
+}
+
+// parseDPoPProof verifies a proof against key and returns the parsed token. The
+// verification algorithm is taken from the key so EC (ES*) proofs are exercised
+// as well as RSA. It uses assert (not require) and returns ok=false on failure:
+// it runs inside httptest server goroutines, where require's FailNow would call
+// runtime.Goexit on the wrong goroutine instead of failing the test cleanly.
+func parseDPoPProof(t *testing.T, proofStr string, key jwk.Key) (jwt.Token, bool) {
+	t.Helper()
+
+	token, err := jwt.Parse([]byte(proofStr), jwt.WithKey(key.Algorithm(), key))
+	if !assert.NoError(t, err, "failed to parse DPoP proof") {
+		return nil, false
+	}
+
+	return token, true
 }
 
 func TestDPoPTransport_AddsProofToRequests(t *testing.T) {
@@ -92,7 +127,10 @@ func TestDPoPTransport_AddsProofToRequests(t *testing.T) {
 			return
 		}
 
-		token := parseDPoPProof(t, dpopHeader, publicKey)
+		token, ok := parseDPoPProof(t, dpopHeader, publicKey)
+		if !ok {
+			return
+		}
 
 		// Check htm claim
 		htm, ok := token.Get("htm")
@@ -138,6 +176,45 @@ func TestDPoPTransport_AddsProofToRequests(t *testing.T) {
 	assert.True(t, called, "server handler was not called")
 }
 
+// TestDPoPTransport_ProofAlgorithms exercises proof signing and verification for
+// each supported asymmetric family, not just RSA. ES* is a distinct jwx signing
+// path and ES256/P-256 is the SDK default, so a regression there would otherwise
+// ship untested.
+func TestDPoPTransport_ProofAlgorithms(t *testing.T) {
+	for _, alg := range []jwa.SignatureAlgorithm{jwa.RS256, jwa.ES256, jwa.ES384} {
+		t.Run(alg.String(), func(t *testing.T) {
+			key := generateTestKeyForAlg(t, alg)
+			ts := &mockTokenSource{token: "test-access-token"}
+
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				publicKey, err := key.PublicKey()
+				if !assert.NoError(t, err, "failed to get public key") {
+					return
+				}
+				// Parsing verifies the signature with the EC/RSA public key, so a
+				// successful parse proves the proof was correctly signed for alg.
+				token, ok := parseDPoPProof(t, r.Header.Get("DPoP"), publicKey)
+				if !ok {
+					w.WriteHeader(http.StatusUnauthorized)
+					return
+				}
+				_, hasATH := token.Get("ath")
+				assert.True(t, hasATH, "resource request proof should carry ath")
+				w.WriteHeader(http.StatusOK)
+			}))
+			defer server.Close()
+
+			transport := &DPoPTransport{Base: http.DefaultTransport, DPoPKey: key, TokenSource: ts}
+			client := &http.Client{Transport: transport}
+
+			resp, err := client.Do(mustReq(t, server.URL))
+			require.NoError(t, err, "request failed")
+			defer resp.Body.Close()
+			assert.Equalf(t, http.StatusOK, resp.StatusCode, "final status for %s", alg)
+		})
+	}
+}
+
 func TestDPoPTransport_NonceRetry(t *testing.T) {
 	key := generateTestKey(t)
 	ts := &mockTokenSource{token: "test-token"}
@@ -159,7 +236,10 @@ func TestDPoPTransport_NonceRetry(t *testing.T) {
 			return
 		}
 
-		token := parseDPoPProof(t, dpopHeader, publicKey)
+		token, parsed := parseDPoPProof(t, dpopHeader, publicKey)
+		if !parsed {
+			return
+		}
 
 		if callCount == 1 {
 			// First request should not have nonce
@@ -361,7 +441,10 @@ func TestDPoPTransport_URINormalization(t *testing.T) {
 					return
 				}
 
-				token := parseDPoPProof(t, dpopHeader, publicKey)
+				token, ok := parseDPoPProof(t, dpopHeader, publicKey)
+				if !ok {
+					return
+				}
 
 				htu, ok := token.Get("htu")
 				if !assert.True(t, ok, "htu claim missing") {
@@ -414,11 +497,14 @@ func TestDPoPTransport_TokenEndpointNoATH(t *testing.T) {
 			return
 		}
 
-		token := parseDPoPProof(t, dpopHeader, publicKey)
+		token, ok := parseDPoPProof(t, dpopHeader, publicKey)
+		if !ok {
+			return
+		}
 
 		// Token endpoint requests should NOT have ath claim
-		_, ok := token.Get("ath")
-		assert.False(t, ok, "token endpoint request should not have ath claim")
+		_, hasATH := token.Get("ath")
+		assert.False(t, hasATH, "token endpoint request should not have ath claim")
 
 		// Should not have Authorization header for token endpoint
 		assert.Empty(t, r.Header.Get("Authorization"), "token endpoint should not have Authorization header")
@@ -585,7 +671,10 @@ func TestDPoPTransport_TokenEndpointNonceRetryOn400(t *testing.T) {
 		if !assert.NoError(t, err, "failed to get public key") {
 			return
 		}
-		token := parseDPoPProof(t, r.Header.Get("DPoP"), publicKey)
+		token, parsed := parseDPoPProof(t, r.Header.Get("DPoP"), publicKey)
+		if !parsed {
+			return
+		}
 		// Token-endpoint requests never carry an ath claim.
 		_, hasATH := token.Get("ath")
 		assert.False(t, hasATH, "token endpoint proof must not carry ath")
@@ -753,7 +842,10 @@ func TestDPoPTransport_RetryOnRotatedNonce(t *testing.T) {
 		default:
 			pub, err := key.PublicKey()
 			assert.NoError(t, err, "public key")
-			tok := parseDPoPProof(t, r.Header.Get("DPoP"), pub)
+			tok, ok := parseDPoPProof(t, r.Header.Get("DPoP"), pub)
+			if !ok {
+				return
+			}
 			got, _ := tok.Get("nonce")
 			assert.Equalf(t, nonce2, got, "retry nonce")
 			w.WriteHeader(http.StatusOK)
@@ -790,7 +882,10 @@ func TestDPoPTransport_CachesNonceFromRetrySuccess(t *testing.T) {
 		// assert (not require) because this runs on the httptest server goroutine,
 		// where t.FailNow via require is unsafe.
 		assert.NoError(t, err, "public key") //nolint:testifylint // require unsafe off the test goroutine
-		tok := parseDPoPProof(t, r.Header.Get("DPoP"), pub)
+		tok, ok := parseDPoPProof(t, r.Header.Get("DPoP"), pub)
+		if !ok {
+			return ""
+		}
 		got, _ := tok.Get("nonce")
 		s, _ := got.(string)
 		return s

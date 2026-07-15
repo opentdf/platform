@@ -30,6 +30,11 @@ func TestNewOAuthAccessTokenSource_Success(t *testing.T) {
 	// DPoP values
 	assert.Equal(t, asymDecryption, &tokenSource.asymDecryption)
 	assert.Equal(t, dpopPublicKeyPEM, tokenSource.dpopPEM)
+	// Guard the fix that switched dpopPEM to public material: comparing against
+	// getNewDPoPKey alone is tautological, so assert it is genuinely a public key
+	// block — a regression to the private PEM would leak signing material.
+	assert.Contains(t, tokenSource.dpopPEM, "PUBLIC KEY", "dpopPEM must hold the public key")
+	assert.NotContains(t, tokenSource.dpopPEM, "PRIVATE KEY", "dpopPEM must not hold private key material")
 	assert.Equal(t, dpopKey, tokenSource.dpopKey)
 	// Interface checks
 	tok, err := tokenSource.AccessToken(t.Context(), nil)

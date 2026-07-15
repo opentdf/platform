@@ -16,6 +16,7 @@ import (
 	"sync"
 	"sync/atomic"
 	"testing"
+	"time"
 
 	"connectrpc.com/connect"
 	"github.com/lestrrat-go/jwx/v2/jwa"
@@ -564,6 +565,117 @@ func TestDPoPTransport_NoRetryOnPlain401(t *testing.T) {
 	defer resp.Body.Close()
 	assert.Equal(t, http.StatusUnauthorized, resp.StatusCode, "status")
 	assert.Equal(t, int32(1), atomic.LoadInt32(&callCount), "expected exactly 1 call (no retry)")
+}
+
+// TestDPoPTransport_TokenEndpointNonceRetryOn400 verifies the RFC 9449 §8 case
+// for the authorization server: the token endpoint challenges a missing nonce
+// with 400 (not 401) plus a DPoP-Nonce header, and the transport must retry once
+// with the supplied nonce. TokenEndpoint is set so the request is treated as a
+// token request (no ath claim), mirroring the otdfctl validation flow.
+func TestDPoPTransport_TokenEndpointNonceRetryOn400(t *testing.T) {
+	key := generateTestKey(t)
+	const nonce = "as-issued-nonce"
+
+	var callCount int32
+	var serverURL string
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		n := atomic.AddInt32(&callCount, 1)
+
+		publicKey, err := key.PublicKey()
+		if !assert.NoError(t, err, "failed to get public key") {
+			return
+		}
+		token := parseDPoPProof(t, r.Header.Get("DPoP"), publicKey)
+		// Token-endpoint requests never carry an ath claim.
+		_, hasATH := token.Get("ath")
+		assert.False(t, hasATH, "token endpoint proof must not carry ath")
+
+		if n == 1 {
+			_, ok := token.Get("nonce")
+			assert.False(t, ok, "first request should not carry a nonce")
+			w.Header().Set("DPoP-Nonce", nonce)
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+		if nonceVal, ok := token.Get("nonce"); assert.True(t, ok, "retry missing nonce claim") {
+			assert.Equal(t, nonce, nonceVal, "nonce claim")
+		}
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer server.Close()
+	serverURL = server.URL
+
+	transport := &DPoPTransport{Base: http.DefaultTransport, DPoPKey: key, TokenEndpoint: serverURL}
+	client := &http.Client{Transport: transport}
+
+	resp, err := client.Do(mustReq(t, serverURL))
+	require.NoError(t, err, "request failed")
+	defer resp.Body.Close()
+	assert.Equal(t, http.StatusOK, resp.StatusCode, "final status")
+	assert.Equal(t, int32(2), atomic.LoadInt32(&callCount), "expected 2 calls (initial 400 + retry)")
+}
+
+// TestDPoPTransport_NoRetryOnPlain400 verifies that a 400 without a DPoP-Nonce
+// header (an ordinary bad request) is propagated unchanged and not retried.
+func TestDPoPTransport_NoRetryOnPlain400(t *testing.T) {
+	key := generateTestKey(t)
+	var callCount int32
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		atomic.AddInt32(&callCount, 1)
+		w.WriteHeader(http.StatusBadRequest)
+	}))
+	defer server.Close()
+
+	transport := &DPoPTransport{Base: http.DefaultTransport, DPoPKey: key, TokenSource: &mockTokenSource{token: "t"}}
+	client := &http.Client{Transport: transport}
+
+	resp, err := client.Do(mustReq(t, server.URL))
+	require.NoError(t, err, "request failed")
+	defer resp.Body.Close()
+	assert.Equal(t, http.StatusBadRequest, resp.StatusCode, "status")
+	assert.Equal(t, int32(1), atomic.LoadInt32(&callCount), "expected exactly 1 call (no retry)")
+}
+
+// slowClientTokenSource fetches from url using the client the transport supplies,
+// so a test can assert the transport applies its configured timeout to the
+// internal access-token fetch.
+type slowClientTokenSource struct{ url string }
+
+func (s *slowClientTokenSource) AccessToken(_ context.Context, client *http.Client) (AccessToken, error) {
+	resp, err := client.Get(s.url)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+	return AccessToken("token"), nil
+}
+
+func (s *slowClientTokenSource) MakeToken(_ func(jwk.Key) ([]byte, error)) ([]byte, error) {
+	return nil, nil
+}
+
+// TestDPoPTransport_TokenFetchHonorsClientTimeout verifies that NewDPoPHTTPClient
+// propagates the base client's Timeout to the internal access-token fetch, so a
+// hung IdP cannot stall a resource request indefinitely.
+func TestDPoPTransport_TokenFetchHonorsClientTimeout(t *testing.T) {
+	key := generateTestKey(t)
+
+	slow := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		time.Sleep(500 * time.Millisecond)
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer slow.Close()
+
+	resource := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer resource.Close()
+
+	base := &http.Client{Timeout: 50 * time.Millisecond}
+	client := NewDPoPHTTPClient(base, key, &slowClientTokenSource{url: slow.URL}, "")
+
+	_, err := client.Do(mustReq(t, resource.URL))
+	require.Error(t, err, "expected the token fetch to hit the configured timeout")
 }
 
 // TestDPoPTransport_NoRetryWhenNonceUnchanged verifies the loop-prevention guard:

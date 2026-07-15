@@ -1229,6 +1229,45 @@ func (s *AuthSuite) Test_ConnectAuthNInterceptor_PropagatesHTTPMethod() {
 	}
 }
 
+// Test_ConnectAuthNInterceptor_NormalizesHostForHTU verifies that the Connect
+// interceptor builds its acceptable htu values from a normalized Host (lowercased,
+// default ports stripped) via originFromHost, so the exact-string htu comparison
+// matches what the SDK signs. A mixed-case host with an explicit :443 is the
+// regression case: without normalization the server would reject a valid proof.
+func (s *AuthSuite) Test_ConnectAuthNInterceptor_NormalizesHostForHTU() {
+	tok := jwt.New()
+
+	var capturedU []string
+	s.auth._testCheckTokenFunc = func(ctx context.Context, _ []string, ri receiverInfo, _ []string) (jwt.Token, context.Context, error) {
+		capturedU = ri.u
+		return tok, ctx, nil
+	}
+	s.T().Cleanup(func() { s.auth._testCheckTokenFunc = nil })
+
+	interceptor := s.auth.ConnectAuthNInterceptor()
+	called := false
+	next := func(_ context.Context, _ connect.AnyRequest) (connect.AnyResponse, error) {
+		called = true
+		return connect.NewResponse(&kas.RewrapResponse{}), nil
+	}
+	req := &authnTestRequest{
+		Request:    connect.NewRequest(&kas.RewrapRequest{}),
+		procedure:  "/kas.AccessService/Rewrap",
+		httpMethod: http.MethodPost,
+	}
+	req.Header().Set("Authorization", "DPoP test")
+	req.Header().Set("Host", "EXAMPLE.com:443")
+
+	_, err := interceptor(next)(s.T().Context(), req)
+	s.Require().NoError(err)
+	s.True(called)
+	// Host lowercased; :443 stripped for https (default) but kept for http (non-default).
+	s.Equal([]string{
+		"http://example.com:443/kas.AccessService/Rewrap",
+		"https://example.com/kas.AccessService/Rewrap",
+	}, capturedU)
+}
+
 func TestMatchHTU(t *testing.T) {
 	full := []string{
 		"http://localhost:8080/svc/Method",

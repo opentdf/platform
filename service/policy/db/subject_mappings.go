@@ -265,32 +265,41 @@ func (c PolicyDBClient) DeleteAllUnmappedSubjectConditionSets(ctx context.Contex
 // Creates a new subject mapping and returns it. If an existing subject condition set id is provided, it will be used.
 // If a new subject condition set is provided, it will be created. The existing subject condition set id takes precedence.
 func (c PolicyDBClient) CreateSubjectMapping(ctx context.Context, s *subjectmapping.CreateSubjectMappingRequest) (*policy.SubjectMapping, error) {
+	createdID, err := c.createSubjectMapping(ctx, s)
+	if err != nil {
+		return nil, err
+	}
+
+	return c.GetSubjectMapping(ctx, createdID)
+}
+
+func (c PolicyDBClient) createSubjectMapping(ctx context.Context, s *subjectmapping.CreateSubjectMappingRequest) (string, error) {
 	attributeValueID := s.GetAttributeValueId()
 	resolvedNamespaceID, err := c.resolveNamespace(ctx, s.GetNamespaceId(), s.GetNamespaceFqn())
 	if err != nil {
-		return nil, err
+		return "", err
 	}
 	parsedNamespaceID := pgtypeUUID(resolvedNamespaceID)
 
 	// Resolve action IDs from the request (by id or by name)
 	actionIDs, err := c.resolveSubjectMappingActions(ctx, s.GetActions(), parsedNamespaceID)
 	if err != nil {
-		return nil, err
+		return "", err
 	}
 
 	// Resolve or create the subject condition set
 	scs, err := c.resolveSubjectConditionSet(ctx, s, resolvedNamespaceID)
 	if err != nil {
-		return nil, err
+		return "", err
 	}
 
 	if err := c.validateSubjectMappingNamespaceConsistency(ctx, resolvedNamespaceID, attributeValueID, actionIDs, scs); err != nil {
-		return nil, err
+		return "", err
 	}
 
 	metadataJSON, _, err := db.MarshalCreateMetadata(s.GetMetadata())
 	if err != nil {
-		return nil, db.WrapIfKnownInvalidQueryErr(err)
+		return "", db.WrapIfKnownInvalidQueryErr(err)
 	}
 
 	createdID, err := c.queries.createSubjectMapping(ctx, createSubjectMappingParams{
@@ -301,10 +310,10 @@ func (c PolicyDBClient) CreateSubjectMapping(ctx context.Context, s *subjectmapp
 		NamespaceID:           parsedNamespaceID,
 	})
 	if err != nil {
-		return nil, db.WrapIfKnownInvalidQueryErr(err)
+		return "", db.WrapIfKnownInvalidQueryErr(err)
 	}
 
-	return c.GetSubjectMapping(ctx, createdID)
+	return createdID, nil
 }
 
 func (c PolicyDBClient) GetSubjectMapping(ctx context.Context, id string) (*policy.SubjectMapping, error) {
@@ -674,17 +683,17 @@ func (c PolicyDBClient) validateSubjectMappingNamespaceConsistency(
 ) error {
 	// Attribute value namespace check only applies when the SM is namespaced
 	if targetNsID != "" {
-		av, err := c.GetAttributeValue(ctx, attributeValueID)
+		namespaces, err := c.queries.getAttributeValueNamespaceIDs(ctx, []string{attributeValueID})
 		if err != nil {
 			return db.WrapIfKnownInvalidQueryErr(err)
 		}
-		attr, err := c.GetAttribute(ctx, av.GetAttribute().GetId())
-		if err != nil {
-			return db.WrapIfKnownInvalidQueryErr(err)
+		if len(namespaces) != 1 {
+			return db.ErrNotFound
 		}
-		if attr.GetNamespace().GetId() != targetNsID {
+		attributeNamespaceID := namespaces[0].NamespaceID
+		if attributeNamespaceID != targetNsID {
 			return errors.Join(db.ErrNamespaceMismatch,
-				fmt.Errorf("attribute value namespace [%s] does not match the specified subject mapping namespace [%s]", attr.GetNamespace().GetId(), targetNsID))
+				fmt.Errorf("attribute value namespace [%s] does not match the specified subject mapping namespace [%s]", attributeNamespaceID, targetNsID))
 		}
 	}
 

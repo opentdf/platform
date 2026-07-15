@@ -110,6 +110,10 @@ type AttributesServiceClient interface {
 	// Deprecated: do not use.
 	ListAttributeValues(context.Context, *connect.Request[attributes.ListAttributeValuesRequest]) (*connect.Response[attributes.ListAttributeValuesResponse], error)
 	GetAttribute(context.Context, *connect.Request[attributes.GetAttributeRequest]) (*connect.Response[attributes.GetAttributeResponse], error)
+	// Deprecated: Use GetKeyMappingsByFqns for client-side key splits and
+	// GetEntitleableAttributesByFqns for server-side entitlement resolution.
+	//
+	// Deprecated: do not use.
 	GetAttributeValuesByFqns(context.Context, *connect.Request[attributes.GetAttributeValuesByFqnsRequest]) (*connect.Response[attributes.GetAttributeValuesByFqnsResponse], error)
 	// Returns only key-mapping information (rule and effective KAS keys) for the
 	// requested attribute value FQNs, for client-side key split construction.
@@ -340,6 +344,8 @@ func (c *attributesServiceClient) GetAttribute(ctx context.Context, req *connect
 }
 
 // GetAttributeValuesByFqns calls policy.attributes.AttributesService.GetAttributeValuesByFqns.
+//
+// Deprecated: do not use.
 func (c *attributesServiceClient) GetAttributeValuesByFqns(ctx context.Context, req *connect.Request[attributes.GetAttributeValuesByFqnsRequest]) (*connect.Response[attributes.GetAttributeValuesByFqnsResponse], error) {
 	return c.getAttributeValuesByFqns.CallUnary(ctx, req)
 }
@@ -455,6 +461,10 @@ type AttributesServiceHandler interface {
 	// Deprecated: do not use.
 	ListAttributeValues(context.Context, *connect.Request[attributes.ListAttributeValuesRequest]) (*connect.Response[attributes.ListAttributeValuesResponse], error)
 	GetAttribute(context.Context, *connect.Request[attributes.GetAttributeRequest]) (*connect.Response[attributes.GetAttributeResponse], error)
+	// Deprecated: Use GetKeyMappingsByFqns for client-side key splits and
+	// GetEntitleableAttributesByFqns for server-side entitlement resolution.
+	//
+	// Deprecated: do not use.
 	GetAttributeValuesByFqns(context.Context, *connect.Request[attributes.GetAttributeValuesByFqnsRequest]) (*connect.Response[attributes.GetAttributeValuesByFqnsResponse], error)
 	// Returns only key-mapping information (rule and effective KAS keys) for the
 	// requested attribute value FQNs, for client-side key split construction.

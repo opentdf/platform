@@ -14210,14 +14210,16 @@ The type of key manager (e.g. &#34;aws&#34;, &#34;gcp&#34;, &#34;azure&#34;, &#3
                   <td>name</td>
                   <td><a href="#string">string</a></td>
                   <td></td>
-                  <td><p> </p></td>
+                  <td><p>Provider config name. When using name, manager SHOULD also be set because
+provider config uniqueness is based on (name, manager). Omitting manager
+can match multiple provider configs and returns a non-deterministic result. </p></td>
                 </tr>
               
                 <tr>
                   <td>manager</td>
                   <td><a href="#string">string</a></td>
                   <td></td>
-                  <td><p>Optional - filter by manager type when searching by name </p></td>
+                  <td><p>Key manager implementation name. SHOULD be set when searching by name. </p></td>
                 </tr>
               
             </tbody>

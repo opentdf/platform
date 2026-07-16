@@ -161,7 +161,7 @@ type GetProviderConfigRequest struct {
 	//	*GetProviderConfigRequest_Id
 	//	*GetProviderConfigRequest_Name
 	Identifier isGetProviderConfigRequest_Identifier `protobuf_oneof:"identifier"`
-	// Optional - filter by manager type when searching by name
+	// Key manager implementation name. SHOULD be set when searching by name.
 	Manager string `protobuf:"bytes,4,opt,name=manager,proto3" json:"manager,omitempty"`
 }
 
@@ -234,6 +234,9 @@ type GetProviderConfigRequest_Id struct {
 }
 
 type GetProviderConfigRequest_Name struct {
+	// Provider config name. When using name, manager SHOULD also be set because
+	// provider config uniqueness is based on (name, manager). Omitting manager
+	// can match multiple provider configs and returns a non-deterministic result.
 	Name string `protobuf:"bytes,3,opt,name=name,proto3,oneof"`
 }
 

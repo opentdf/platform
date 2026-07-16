@@ -480,6 +480,10 @@ components:
               type: string
               title: name
               minLength: 1
+              description: |-
+                Provider config name. When using name, manager SHOULD also be set because
+                 provider config uniqueness is based on (name, manager). Omitting manager
+                 can match multiple provider configs and returns a non-deterministic result.
           title: name
           required:
             - name
@@ -487,7 +491,7 @@ components:
         manager:
           type: string
           title: manager
-          description: Optional - filter by manager type when searching by name
+          description: Key manager implementation name. SHOULD be set when searching by name.
       title: GetProviderConfigRequest
       additionalProperties: false
     policy.keymanagement.GetProviderConfigResponse:

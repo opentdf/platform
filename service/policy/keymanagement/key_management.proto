@@ -33,9 +33,12 @@ message GetProviderConfigRequest {
   oneof identifier {
     option (buf.validate.oneof).required = true;
     string id = 2 [(buf.validate.field).string.uuid = true];
+    // Provider config name. When using name, manager SHOULD also be set because
+    // provider config uniqueness is based on (name, manager). Omitting manager
+    // can match multiple provider configs and returns a non-deterministic result.
     string name = 3 [(buf.validate.field).string.min_len = 1];
   }
-  // Optional - filter by manager type when searching by name
+  // Key manager implementation name. SHOULD be set when searching by name.
   string manager = 4 [(buf.validate.field).required = false];
 }
 message GetProviderConfigResponse {

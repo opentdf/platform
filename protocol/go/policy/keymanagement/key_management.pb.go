@@ -162,7 +162,7 @@ type GetProviderConfigRequest struct {
 	//	*GetProviderConfigRequest_Name
 	//	*GetProviderConfigRequest_NameManager_
 	Identifier isGetProviderConfigRequest_Identifier `protobuf_oneof:"identifier"`
-	// DEPRECATED, please use the NameIdentifier and specify manager + name together.
+	// DEPRECATED, please use the NameManager and specify manager + name together.
 	// Using this without manager could result in non-deterministic responses.
 	// Optional - filter by manager type when searching by name
 	//
@@ -248,7 +248,7 @@ type GetProviderConfigRequest_Id struct {
 }
 
 type GetProviderConfigRequest_Name struct {
-	// DEPRECATED, please use the NameIdentifier and specify manager + name together.
+	// DEPRECATED, please use the NameManager and specify manager + name together.
 	// Using this without manager could result in non-deterministic responses.
 	//
 	// Deprecated: Marked as deprecated in policy/keymanagement/key_management.proto.
@@ -657,7 +657,9 @@ type GetProviderConfigRequest_NameManager struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Name    string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	// The name of the key provider
+	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	// The type of key manager.
 	Manager string `protobuf:"bytes,2,opt,name=manager,proto3" json:"manager,omitempty"`
 }
 

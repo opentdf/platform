@@ -481,7 +481,7 @@ components:
               title: name
               minLength: 1
               description: |-
-                DEPRECATED, please use the NameIdentifier and specify manager + name together.
+                DEPRECATED, please use the NameManager and specify manager + name together.
                  Using this without manager could result in non-deterministic responses.
               deprecated: true
           title: name
@@ -500,7 +500,7 @@ components:
           type: string
           title: manager
           description: |-
-            DEPRECATED, please use the NameIdentifier and specify manager + name together.
+            DEPRECATED, please use the NameManager and specify manager + name together.
              Using this without manager could result in non-deterministic responses.
              Optional - filter by manager type when searching by name
           deprecated: true
@@ -513,10 +513,12 @@ components:
           type: string
           title: name
           minLength: 1
+          description: The name of the key provider
         manager:
           type: string
           title: manager
           minLength: 1
+          description: The type of key manager.
       title: NameManager
       additionalProperties: false
     policy.keymanagement.GetProviderConfigResponse:

@@ -45,6 +45,13 @@ func (c PolicyDBClient) CreateDynamicValueMapping(ctx context.Context, r *dynami
 		return nil, err
 	}
 
+	// Enforce no-coexistence with registered-resource action attribute values: a definition
+	// whose values are already statically entitled on a registered resource cannot also have a
+	// dynamic value mapping. Mirrors the forward guard in createRegisteredResourceActionAttributeValues.
+	if err := c.ensureNoRegisteredResourceAAVCoexistence(ctx, attr.GetId()); err != nil {
+		return nil, err
+	}
+
 	resolvedNamespaceID, err := c.resolveNamespace(ctx, r.GetNamespaceId(), r.GetNamespaceFqn())
 	if err != nil {
 		return nil, err
@@ -326,6 +333,21 @@ func (c PolicyDBClient) ensureNoValueSubjectMappingCoexistence(ctx context.Conte
 	if count > 0 {
 		return errors.Join(db.ErrRestrictViolation,
 			fmt.Errorf("attribute definition [%s] already has value-level subject mappings; it cannot also have a dynamic value mapping", definitionID))
+	}
+	return nil
+}
+
+// ensureNoRegisteredResourceAAVCoexistence rejects creation of a dynamic mapping when any of the
+// definition's values are already referenced by a registered resource's action attribute values.
+// Mirrors the forward guard in createRegisteredResourceActionAttributeValues.
+func (c PolicyDBClient) ensureNoRegisteredResourceAAVCoexistence(ctx context.Context, definitionID string) error {
+	count, err := c.queries.countRegisteredResourceActionAttributeValuesByDefinitionID(ctx, definitionID)
+	if err != nil {
+		return db.WrapIfKnownInvalidQueryErr(err)
+	}
+	if count > 0 {
+		return errors.Join(db.ErrRestrictViolation,
+			fmt.Errorf("attribute definition [%s] has values referenced by a registered resource's action attribute values; it cannot also have a dynamic value mapping", definitionID))
 	}
 	return nil
 }

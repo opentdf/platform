@@ -209,6 +209,14 @@ SELECT COUNT(id)
 FROM dynamic_value_mappings
 WHERE attribute_definition_id = $1;
 
+-- name: countRegisteredResourceActionAttributeValuesByDefinitionID :one
+-- Counts registered-resource action-attribute-values whose attribute value belongs to the given
+-- definition. Used to enforce no-coexistence with dynamic value entitlement mappings.
+SELECT COUNT(rav.id)
+FROM registered_resource_action_attribute_values rav
+JOIN attribute_values av ON rav.attribute_value_id = av.id
+WHERE av.attribute_definition_id = $1;
+
 -- name: getAttributeDefinitionIDByValueID :one
 SELECT attribute_definition_id
 FROM attribute_values

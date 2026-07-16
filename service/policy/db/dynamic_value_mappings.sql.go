@@ -30,6 +30,27 @@ func (q *Queries) countDynamicValueMappingsByDefinitionID(ctx context.Context, a
 	return count, err
 }
 
+const countRegisteredResourceActionAttributeValuesByDefinitionID = `-- name: countRegisteredResourceActionAttributeValuesByDefinitionID :one
+SELECT COUNT(rav.id)
+FROM registered_resource_action_attribute_values rav
+JOIN attribute_values av ON rav.attribute_value_id = av.id
+WHERE av.attribute_definition_id = $1
+`
+
+// Counts registered-resource action-attribute-values whose attribute value belongs to the given
+// definition. Used to enforce no-coexistence with dynamic value entitlement mappings.
+//
+//	SELECT COUNT(rav.id)
+//	FROM registered_resource_action_attribute_values rav
+//	JOIN attribute_values av ON rav.attribute_value_id = av.id
+//	WHERE av.attribute_definition_id = $1
+func (q *Queries) countRegisteredResourceActionAttributeValuesByDefinitionID(ctx context.Context, attributeDefinitionID string) (int64, error) {
+	row := q.db.QueryRow(ctx, countRegisteredResourceActionAttributeValuesByDefinitionID, attributeDefinitionID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const countValueSubjectMappingsByDefinitionID = `-- name: countValueSubjectMappingsByDefinitionID :one
 SELECT COUNT(sm.id)
 FROM subject_mappings sm

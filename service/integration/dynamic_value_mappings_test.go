@@ -186,6 +186,45 @@ func (s *DynamicValueMappingsSuite) TestNoCoexistence_RegisteredResourceAAV() {
 	s.Require().ErrorIs(err, db.ErrRestrictViolation, "value under a DVM definition must not be added to a registered resource's action attribute values")
 }
 
+func (s *DynamicValueMappingsSuite) TestNoCoexistence_RegisteredResourceAAVThenDynamic() {
+	attr := s.createDefinition("dvem_rr_coexist_rev", policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF)
+	val, err := s.db.PolicyClient.CreateAttributeValue(s.ctx, attr.GetId(), &attributes.CreateAttributeValueRequest{Value: "rr_dvm_val_rev"})
+	s.Require().NoError(err)
+
+	regRes, err := s.db.PolicyClient.CreateRegisteredResource(s.ctx, &registeredresources.CreateRegisteredResourceRequest{
+		NamespaceId: s.f.GetNamespaceKey("example.com").ID,
+		Name:        "dvem_rr_coexist_rev_res",
+	})
+	s.Require().NoError(err)
+
+	// The value is added to a registered resource's action attribute values before any dynamic
+	// mapping exists, so this succeeds.
+	_, err = s.db.PolicyClient.CreateRegisteredResourceValue(s.ctx, &registeredresources.CreateRegisteredResourceValueRequest{
+		ResourceId: regRes.GetId(),
+		Value:      "rr_val_rev_1",
+		ActionAttributeValues: []*registeredresources.ActionAttributeValue{
+			{
+				ActionIdentifier: &registeredresources.ActionAttributeValue_ActionName{
+					ActionName: policydb.ActionRead.String(),
+				},
+				AttributeValueIdentifier: &registeredresources.ActionAttributeValue_AttributeValueFqn{
+					AttributeValueFqn: val.GetFqn(),
+				},
+			},
+		},
+	})
+	s.Require().NoError(err)
+
+	// The definition now has a value referenced by a registered resource's action attribute values;
+	// a dynamic mapping must be rejected.
+	_, err = s.db.PolicyClient.CreateDynamicValueMapping(s.ctx, &dynamicvaluemapping.CreateDynamicValueMappingRequest{
+		AttributeDefinitionId: attr.GetId(),
+		ValueResolver:         s.resolver(".x[]", policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_IN),
+		Actions:               []*policy.Action{s.readAction()},
+	})
+	s.Require().ErrorIs(err, db.ErrRestrictViolation, "dynamic mapping must not coexist with values already on a registered resource's action attribute values")
+}
+
 func (s *DynamicValueMappingsSuite) TestRejectsRuleChangeToHierarchy() {
 	attr := s.createDefinition("dvem_rule_guard", policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF)
 

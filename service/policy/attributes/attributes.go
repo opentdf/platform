@@ -287,6 +287,10 @@ func (s *AttributesService) CreateAttributeValue(ctx context.Context, req *conne
 		ObjectType: audit.ObjectTypeSubjectMapping,
 		ActionType: audit.ActionTypeCreate,
 	}
+	obligationTriggerAuditParams := audit.PolicyEventParams{
+		ObjectType: audit.ObjectTypeObligationTrigger,
+		ActionType: audit.ActionTypeCreate,
+	}
 
 	err := s.dbClient.RunInTx(ctx, func(txClient *policydb.PolicyDBClient) error {
 		item, err := txClient.CreateAttributeValue(ctx, req.Msg.GetAttributeId(), req.Msg)
@@ -294,6 +298,9 @@ func (s *AttributesService) CreateAttributeValue(ctx context.Context, req *conne
 			s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
 			if len(req.Msg.GetSubjectMappings()) > 0 {
 				s.logger.Audit.PolicyCRUDFailure(ctx, subjectMappingAuditParams)
+			}
+			if len(req.Msg.GetObligationTriggers()) > 0 {
+				s.logger.Audit.PolicyCRUDFailure(ctx, obligationTriggerAuditParams)
 			}
 			return err
 		}
@@ -306,6 +313,15 @@ func (s *AttributesService) CreateAttributeValue(ctx context.Context, req *conne
 			subjectMappingAuditParams.ObjectID = mapping.GetId()
 			subjectMappingAuditParams.Original = mapping
 			s.logger.Audit.PolicyCRUDSuccess(ctx, subjectMappingAuditParams)
+		}
+		for _, obligation := range item.GetObligations() {
+			for _, value := range obligation.GetValues() {
+				for _, trigger := range value.GetTriggers() {
+					obligationTriggerAuditParams.ObjectID = trigger.GetId()
+					obligationTriggerAuditParams.Original = trigger
+					s.logger.Audit.PolicyCRUDSuccess(ctx, obligationTriggerAuditParams)
+				}
+			}
 		}
 
 		rsp.Value = item

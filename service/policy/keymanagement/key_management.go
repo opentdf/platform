@@ -159,7 +159,7 @@ func (ksvc Service) GetProviderConfig(ctx context.Context, req *connect.Request[
 		return nil, connect.NewError(connect.CodeInvalidArgument, nil)
 	}
 
-	pc, err := ksvc.dbClient.GetProviderConfig(ctx, req.Msg.GetIdentifier())
+	pc, err := ksvc.dbClient.GetProviderConfig(ctx, req.Msg)
 	if err != nil {
 		return nil, db.StatusifyError(ctx, ksvc.logger, err, db.ErrTextGetRetrievalFailed, slog.String("keyManagementService", req.Msg.String()))
 	}
@@ -197,8 +197,10 @@ func (ksvc Service) UpdateProviderConfig(ctx context.Context, req *connect.Reque
 		ObjectID:   providerConfigID,
 	}
 
-	original, err := ksvc.dbClient.GetProviderConfig(ctx, &keyMgmtProto.GetProviderConfigRequest_Id{
-		Id: providerConfigID,
+	original, err := ksvc.dbClient.GetProviderConfig(ctx, &keyMgmtProto.GetProviderConfigRequest{
+		Identifier: &keyMgmtProto.GetProviderConfigRequest_Id{
+			Id: providerConfigID,
+		},
 	})
 	if err != nil {
 		ksvc.logger.Audit.PolicyCRUDFailure(ctx, auditParams)

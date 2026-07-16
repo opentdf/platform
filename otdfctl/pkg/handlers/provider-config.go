@@ -29,7 +29,7 @@ func (h Handler) CreateProviderConfig(
 	return resp.GetProviderConfig(), nil
 }
 
-func (h Handler) GetProviderConfig(ctx context.Context, id, name string) (*policy.KeyProviderConfig, error) {
+func (h Handler) GetProviderConfig(ctx context.Context, id, name, manager string) (*policy.KeyProviderConfig, error) {
 	req := keymanagement.GetProviderConfigRequest{}
 	if id != "" {
 		req.Identifier = &keymanagement.GetProviderConfigRequest_Id{
@@ -39,6 +39,7 @@ func (h Handler) GetProviderConfig(ctx context.Context, id, name string) (*polic
 		req.Identifier = &keymanagement.GetProviderConfigRequest_Name{
 			Name: name,
 		}
+		req.Manager = manager
 	}
 
 	resp, err := h.sdk.KeyManagement.GetProviderConfig(ctx, &req)

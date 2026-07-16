@@ -115,8 +115,10 @@ func (s *KeyManagementSuite) Test_CreateProviderConfig_CapitalizedName_Succeeds(
 	pc := s.createTestProviderConfig(providerName, validProviderConfig, nil)
 	pcIDs = append(pcIDs, pc.GetId())
 
-	pcGet, err := s.db.PolicyClient.GetProviderConfig(s.ctx, &keymanagement.GetProviderConfigRequest_Name{
-		Name: s.testProvider,
+	pcGet, err := s.db.PolicyClient.GetProviderConfig(s.ctx, &keymanagement.GetProviderConfigRequest{
+		Identifier: &keymanagement.GetProviderConfigRequest_Name{
+			Name: s.testProvider,
+		},
 	})
 	s.Require().NoError(err)
 	s.NotNil(pcGet)
@@ -133,8 +135,10 @@ func (s *KeyManagementSuite) Test_GetProviderConfig_WithId_Succeeds() {
 	pc := s.createTestProviderConfig(s.testProvider, validProviderConfig, nil)
 	pcIDs = append(pcIDs, pc.GetId())
 
-	pc, err := s.db.PolicyClient.GetProviderConfig(s.ctx, &keymanagement.GetProviderConfigRequest_Id{
-		Id: pc.GetId(),
+	pc, err := s.db.PolicyClient.GetProviderConfig(s.ctx, &keymanagement.GetProviderConfigRequest{
+		Identifier: &keymanagement.GetProviderConfigRequest_Id{
+			Id: pc.GetId(),
+		},
 	})
 	s.Require().NoError(err)
 	s.NotNil(pc)
@@ -149,13 +153,47 @@ func (s *KeyManagementSuite) Test_GetProviderConfig_WithName_Succeeds() {
 	pc := s.createTestProviderConfig(s.testProvider, validProviderConfig, nil)
 	pcIDs = append(pcIDs, pc.GetId())
 
-	pc, err := s.db.PolicyClient.GetProviderConfig(s.ctx, &keymanagement.GetProviderConfigRequest_Name{
-		Name: s.testProvider,
+	pc, err := s.db.PolicyClient.GetProviderConfig(s.ctx, &keymanagement.GetProviderConfigRequest{
+		Identifier: &keymanagement.GetProviderConfigRequest_Name{
+			Name: s.testProvider,
+		},
 	})
 	s.Require().NoError(err)
 	s.NotNil(pc)
 	s.Equal(s.testProvider, pc.GetName())
 	s.Equal(validProviderConfig, pc.GetConfigJson())
+}
+
+func (s *KeyManagementSuite) Test_GetProviderConfig_WithNameAndManager_Succeeds() {
+	pcIDs := make([]string, 0)
+	defer func() {
+		s.deleteTestProviderConfigs(pcIDs)
+	}()
+
+	pc1 := s.createTestProviderConfigWithManager(s.testProvider, validProviderConfig, nil)
+	pcIDs = append(pcIDs, pc1.GetId())
+
+	pc2, err := s.db.PolicyClient.CreateProviderConfig(s.ctx, &keymanagement.CreateProviderConfigRequest{
+		Name:       s.testProvider,
+		Manager:    "test-manager",
+		ConfigJson: validProviderConfig2,
+	})
+	s.Require().NoError(err)
+	s.NotNil(pc2)
+	pcIDs = append(pcIDs, pc2.GetId())
+
+	pc, err := s.db.PolicyClient.GetProviderConfig(s.ctx, &keymanagement.GetProviderConfigRequest{
+		Identifier: &keymanagement.GetProviderConfigRequest_Name{
+			Name: s.testProvider,
+		},
+		Manager: "test-manager",
+	})
+	s.Require().NoError(err)
+	s.NotNil(pc)
+	s.Equal(pc2.GetId(), pc.GetId())
+	s.Equal(s.testProvider, pc.GetName())
+	s.Equal("test-manager", pc.GetManager())
+	s.Equal(validProviderConfig2, pc.GetConfigJson())
 }
 
 func (s *KeyManagementSuite) Test_GetProviderConfig_MixedCaseName_Succeeds() {
@@ -168,8 +206,10 @@ func (s *KeyManagementSuite) Test_GetProviderConfig_MixedCaseName_Succeeds() {
 	pc := s.createTestProviderConfig(mixedCaseName, validProviderConfig, nil)
 	pcIDs = append(pcIDs, pc.GetId())
 
-	pcGet, err := s.db.PolicyClient.GetProviderConfig(s.ctx, &keymanagement.GetProviderConfigRequest_Name{
-		Name: s.testProvider, // search with lowercase name
+	pcGet, err := s.db.PolicyClient.GetProviderConfig(s.ctx, &keymanagement.GetProviderConfigRequest{
+		Identifier: &keymanagement.GetProviderConfigRequest_Name{
+			Name: s.testProvider, // search with lowercase name
+		},
 	})
 	s.Require().NoError(err)
 	s.NotNil(pcGet)
@@ -178,7 +218,7 @@ func (s *KeyManagementSuite) Test_GetProviderConfig_MixedCaseName_Succeeds() {
 }
 
 func (s *KeyManagementSuite) Test_GetProviderConfig_InvalidIdentifier_Fails() {
-	pc, err := s.db.PolicyClient.GetProviderConfig(s.ctx, &map[string]string{})
+	pc, err := s.db.PolicyClient.GetProviderConfig(s.ctx, &keymanagement.GetProviderConfigRequest{})
 	s.Require().Error(err)
 	s.Nil(pc)
 }
@@ -653,16 +693,20 @@ func (s *KeyManagementSuite) Test_GetProviderConfig_IncludesManagerField() {
 	pcIDs = append(pcIDs, pc.GetId())
 
 	// Get by ID
-	retrievedByID, err := s.db.PolicyClient.GetProviderConfig(s.ctx, &keymanagement.GetProviderConfigRequest_Id{
-		Id: pc.GetId(),
+	retrievedByID, err := s.db.PolicyClient.GetProviderConfig(s.ctx, &keymanagement.GetProviderConfigRequest{
+		Identifier: &keymanagement.GetProviderConfigRequest_Id{
+			Id: pc.GetId(),
+		},
 	})
 	s.Require().NoError(err)
 	s.NotNil(retrievedByID)
 	s.Equal("opentdf.io/basic", retrievedByID.GetManager())
 
 	// Get by Name
-	retrievedByName, err := s.db.PolicyClient.GetProviderConfig(s.ctx, &keymanagement.GetProviderConfigRequest_Name{
-		Name: s.testProvider,
+	retrievedByName, err := s.db.PolicyClient.GetProviderConfig(s.ctx, &keymanagement.GetProviderConfigRequest{
+		Identifier: &keymanagement.GetProviderConfigRequest_Name{
+			Name: s.testProvider,
+		},
 	})
 	s.Require().NoError(err)
 	s.NotNil(retrievedByName)

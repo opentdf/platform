@@ -47,10 +47,10 @@ func (c PolicyDBClient) CreateProviderConfig(ctx context.Context, r *keymanageme
 	}, nil
 }
 
-func (c PolicyDBClient) GetProviderConfig(ctx context.Context, identifier any) (*policy.KeyProviderConfig, error) {
+func (c PolicyDBClient) GetProviderConfig(ctx context.Context, r *keymanagement.GetProviderConfigRequest) (*policy.KeyProviderConfig, error) {
 	var params getProviderConfigParams
 
-	switch i := identifier.(type) {
+	switch i := r.GetIdentifier().(type) {
 	case *keymanagement.GetProviderConfigRequest_Id:
 		id := pgtypeUUID(i.Id)
 		if !id.Valid {
@@ -62,7 +62,8 @@ func (c PolicyDBClient) GetProviderConfig(ctx context.Context, identifier any) (
 		if !name.Valid {
 			return nil, db.ErrSelectIdentifierInvalid
 		}
-		params = getProviderConfigParams{Name: name}
+		params.Name = name
+		params.Manager = pgtypeText(r.GetManager())
 	default:
 		// unexpected type
 		return nil, errors.Join(db.ErrUnknownSelectIdentifier, fmt.Errorf("type [%T] value [%v]", i, i))
@@ -144,8 +145,10 @@ func (c PolicyDBClient) UpdateProviderConfig(ctx context.Context, r *keymanageme
 
 	// if extend we need to merge the metadata
 	metadataJSON, _, err := db.MarshalUpdateMetadata(r.GetMetadata(), r.GetMetadataUpdateBehavior(), func() (*common.Metadata, error) {
-		a, err := c.GetProviderConfig(ctx, &keymanagement.GetProviderConfigRequest_Id{
-			Id: r.GetId(),
+		a, err := c.GetProviderConfig(ctx, &keymanagement.GetProviderConfigRequest{
+			Identifier: &keymanagement.GetProviderConfigRequest_Id{
+				Id: r.GetId(),
+			},
 		})
 		if err != nil {
 			return nil, err
@@ -173,8 +176,10 @@ func (c PolicyDBClient) UpdateProviderConfig(ctx context.Context, r *keymanageme
 		c.logger.Warn("updateProviderConfig updated more than one row", slog.Int64("count", count))
 	}
 
-	return c.GetProviderConfig(ctx, &keymanagement.GetProviderConfigRequest_Id{
-		Id: id,
+	return c.GetProviderConfig(ctx, &keymanagement.GetProviderConfigRequest{
+		Identifier: &keymanagement.GetProviderConfigRequest_Id{
+			Id: id,
+		},
 	})
 }
 

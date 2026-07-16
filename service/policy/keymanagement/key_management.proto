@@ -50,7 +50,7 @@ message GetProviderConfigRequest {
     NameManager name_manager = 5;
   }
   // DEPRECATED, please use the NameManager and specify manager + name together.
-  // Using this without manager could result in non-deterministic responses.
+  // Not populating manager when searching by name could result in non-deterministic responses.
   // Optional - filter by manager type when searching by name
   string manager = 4 [
     deprecated = true,

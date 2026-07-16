@@ -7,6 +7,7 @@ import "common/common.proto";
 import "google/protobuf/wrappers.proto";
 import "policy/objects.proto";
 import "policy/selectors.proto";
+import "policy/subjectmapping/subject_mapping.proto";
 
 /*
    Key Access Server Grants
@@ -265,6 +266,50 @@ message AttributeValueObligationTriggerRequest {
   common.MetadataMutable metadata = 100;
 }
 
+message AttributeValueSubjectMappingRequest {
+  option (buf.validate.message).cel = {
+    id: "subject_condition_set_source"
+    message: "Exactly one of existing_subject_condition_set_id or new_subject_condition_set must be provided"
+    expression: "(this.existing_subject_condition_set_id != '') != has(this.new_subject_condition_set)"
+  };
+
+  // Required. The actions permitted by subjects in this mapping.
+  repeated policy.Action actions = 1 [
+    (buf.validate.field).repeated.min_items = 1,
+    (buf.validate.field).cel = {
+      id: "action_name_or_id_not_empty"
+      message: "Action name or ID must not be empty if provided"
+      expression: "this.all(item, item.name != '' || item.id != '')"
+    }
+  ];
+
+  // Reuse an existing SubjectConditionSet.
+  string existing_subject_condition_set_id = 2 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string.uuid = true
+  ];
+  // Create a new SubjectConditionSet.
+  policy.subjectmapping.SubjectConditionSetCreate new_subject_condition_set = 3;
+
+  // Optional. Namespace ID or FQN for the subject mapping.
+  // If omitted, the parent attribute's namespace is inherited.
+  option (buf.validate.message).oneof = { fields: ["namespace_id", "namespace_fqn"], required: false };
+  string namespace_id = 4 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string.uuid = true
+  ];
+  string namespace_fqn = 5 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      min_len: 1
+      uri: true
+    }
+  ];
+
+  // Optional. Common metadata for the subject mapping.
+  common.MetadataMutable metadata = 100;
+}
+
 message CreateAttributeValueRequest {
   // Required
   string attribute_id = 1 [(buf.validate.field).string.uuid = true];
@@ -286,6 +331,10 @@ message CreateAttributeValueRequest {
   // Optional
   // Existing obligation values to trigger for the newly created attribute value.
   repeated AttributeValueObligationTriggerRequest obligation_triggers = 11;
+
+  // Optional
+  // Subject mappings to associate with the newly created attribute value.
+  repeated AttributeValueSubjectMappingRequest subject_mappings = 12 [(buf.validate.field).repeated.max_items = 250];
 
   // Optional
   // Common metadata

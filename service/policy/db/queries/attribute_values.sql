@@ -100,7 +100,8 @@ SELECT
         )
     ) FILTER (WHERE avkag.attribute_value_id IS NOT NULL) AS grants,
     value_keys.keys as keys,
-    ao.obligations
+    ao.obligations,
+    asm.subject_mappings
 FROM attribute_values av
 LEFT JOIN attribute_fqns fqns ON av.id = fqns.value_id
 LEFT JOIN attribute_value_key_access_grants avkag ON av.id = avkag.attribute_value_id
@@ -125,9 +126,62 @@ LEFT JOIN (
     GROUP BY k.value_id
 ) value_keys ON av.id = value_keys.value_id
 LEFT JOIN attribute_obligations ao ON av.id = ao.attribute_value_id
+LEFT JOIN LATERAL (
+    SELECT
+        JSONB_AGG(
+            JSONB_BUILD_OBJECT(
+                'id', sm.id,
+                'actions', COALESCE(actions.actions, '[]'::JSONB),
+                'subject_condition_set', JSONB_BUILD_OBJECT(
+                    'id', scs.id,
+                    'subject_sets', scs.condition,
+                    'namespace', CASE
+                        WHEN scs.namespace_id IS NULL THEN NULL
+                        ELSE JSONB_BUILD_OBJECT('id', scs_ns.id, 'name', scs_ns.name, 'fqn', scs_ns_fqns.fqn)
+                    END
+                ),
+                'attribute_value', JSONB_BUILD_OBJECT(
+                    'id', av.id,
+                    'value', av.value,
+                    'active', av.active,
+                    'fqn', fqns.fqn
+                ),
+                'namespace', CASE
+                    WHEN sm.namespace_id IS NULL THEN NULL
+                    ELSE JSONB_BUILD_OBJECT('id', sm_ns.id, 'name', sm_ns.name, 'fqn', sm_ns_fqns.fqn)
+                END
+            )
+            ORDER BY sm.created_at, sm.id
+        ) AS subject_mappings
+    FROM subject_mappings sm
+    LEFT JOIN LATERAL (
+        SELECT JSONB_AGG(
+            JSONB_BUILD_OBJECT(
+                'id', a.id,
+                'name', a.name,
+                'namespace', CASE
+                    WHEN a.namespace_id IS NULL THEN NULL
+                    ELSE JSONB_BUILD_OBJECT('id', action_ns.id, 'name', action_ns.name, 'fqn', action_ns_fqns.fqn)
+                END
+            )
+            ORDER BY a.name, a.id
+        ) AS actions
+        FROM subject_mapping_actions sma
+        JOIN actions a ON sma.action_id = a.id
+        LEFT JOIN attribute_namespaces action_ns ON action_ns.id = a.namespace_id
+        LEFT JOIN attribute_fqns action_ns_fqns ON action_ns_fqns.namespace_id = action_ns.id AND action_ns_fqns.attribute_id IS NULL AND action_ns_fqns.value_id IS NULL
+        WHERE sma.subject_mapping_id = sm.id
+    ) actions ON TRUE
+    LEFT JOIN subject_condition_set scs ON scs.id = sm.subject_condition_set_id
+    LEFT JOIN attribute_namespaces scs_ns ON scs_ns.id = scs.namespace_id
+    LEFT JOIN attribute_fqns scs_ns_fqns ON scs_ns_fqns.namespace_id = scs_ns.id AND scs_ns_fqns.attribute_id IS NULL AND scs_ns_fqns.value_id IS NULL
+    LEFT JOIN attribute_namespaces sm_ns ON sm_ns.id = sm.namespace_id
+    LEFT JOIN attribute_fqns sm_ns_fqns ON sm_ns_fqns.namespace_id = sm_ns.id AND sm_ns_fqns.attribute_id IS NULL AND sm_ns_fqns.value_id IS NULL
+    WHERE sm.attribute_value_id = av.id
+) asm ON TRUE
 WHERE (sqlc.narg('id')::uuid IS NULL OR av.id = sqlc.narg('id')::uuid)
   AND (sqlc.narg('fqn')::text IS NULL OR REGEXP_REPLACE(fqns.fqn, '^https://', '') = REGEXP_REPLACE(sqlc.narg('fqn')::text, '^https://', ''))
-GROUP BY av.id, fqns.fqn, value_keys.keys, ao.obligations;
+GROUP BY av.id, fqns.fqn, value_keys.keys, ao.obligations, asm.subject_mappings;
 
 -- name: createAttributeValue :one
 INSERT INTO attribute_values (attribute_definition_id, value, metadata)

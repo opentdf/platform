@@ -20,6 +20,8 @@ const (
 	kcErrNone    = 0
 	kcErrUnknown = -1
 
+	standardTokenExchangeEnabledAttribute = "standard.token.exchange.enabled"
+
 	// Token refresh constants
 	defaultTokenBufferSeconds    = 120 // 2 minutes before expiration
 	defaultFallbackExpiryMinutes = 5   // Fallback when token doesn't provide ExpiresIn
@@ -1076,104 +1078,38 @@ func createTokenExchangeWithTokenManager(ctx context.Context, connectParams *Key
 	}
 	client := tm.GetClient()
 
-	// Step 1- enable permissions for target client
-	idForTargetClientID, err := getIDOfClient(ctx, tm, connectParams, &targetClientID)
+	requesterClients, err := client.GetClients(ctx, token.AccessToken, connectParams.Realm, gocloak.GetClientsParams{
+		ClientID: gocloak.StringP(startClientID),
+	})
 	if err != nil {
-		return err
+		return fmt.Errorf("error getting token exchange requester client %q: %w", startClientID, err)
 	}
-	enabled := true
-	mgmtPermissionsRepr, err := client.UpdateClientManagementPermissions(ctx, token.AccessToken,
-		connectParams.Realm, *idForTargetClientID,
-		gocloak.ManagementPermissionRepresentation{Enabled: &enabled})
-	if err != nil {
-		slog.Error("error creating management permissions", slog.Any("error", err))
-		return err
+	if len(requesterClients) == 0 {
+		return fmt.Errorf("token exchange requester client %q not found", startClientID)
 	}
-	tokenExchangePolicyPermissionResourceID := mgmtPermissionsRepr.Resource
-	scopePermissions := *mgmtPermissionsRepr.ScopePermissions
-	tokenExchangePolicyScopePermissionID := scopePermissions["token-exchange"]
-	slog.Debug("creating management permission",
-		slog.String("resource", *tokenExchangePolicyPermissionResourceID),
-		slog.String("scope_permission_id", tokenExchangePolicyScopePermissionID))
 
-	slog.Debug("step 2 - get realm mgmt client id")
-	realmMangementClientName := "realm-management"
-	realmManagementClientID, err := getIDOfClient(ctx, tm, connectParams, &realmMangementClientName)
-	if err != nil {
-		return err
+	requesterClient := withStandardTokenExchangeEnabled(*requesterClients[0])
+	if err := client.UpdateClient(ctx, token.AccessToken, connectParams.Realm, requesterClient); err != nil {
+		return fmt.Errorf("error enabling standard token exchange for requester client %q targeting %q: %w", startClientID, targetClientID, err)
 	}
-	slog.Debug("client information",
-		slog.String("client_name", realmMangementClientName),
-		slog.String("client_id", *realmManagementClientID))
 
-	slog.Debug("step 3 - add policy for token exchange")
-	policyType := "client"
-	policyName := fmt.Sprintf("%s-%s-exchange-policy", targetClientID, startClientID)
-	realmMgmtExchangePolicyRepresentation := gocloak.PolicyRepresentation{
-		Logic: gocloak.POSITIVE,
-		Name:  &policyName,
-		Type:  &policyType,
-	}
-	policyClients := []string{startClientID}
-	realmMgmtExchangePolicyRepresentation.Clients = &policyClients
+	slog.Info("enabled standard token exchange for client",
+		slog.String("requester_client_id", startClientID),
+		slog.String("target_client_id", targetClientID))
 
-	realmMgmtPolicy, err := client.CreatePolicy(ctx, token.AccessToken, connectParams.Realm,
-		*realmManagementClientID, realmMgmtExchangePolicyRepresentation)
-	if err != nil {
-		switch kcErrCode(err) {
-		case http.StatusConflict:
-			//nolint:sloglint // allow existing emojis
-			slog.Warn("⏭️ policy already exists; skipping remainder of token exchange creation", slog.String("policy", *realmMgmtExchangePolicyRepresentation.Name))
-			return nil
-		default:
-			slog.Error("error creating realm management policy", slog.Any("error", err))
-			return err
-		}
-	}
-	tokenExchangePolicyID := realmMgmtPolicy.ID
-	//nolint:sloglint // allow existing emojis
-	slog.Info("✅ created token exchange policy", slog.String("policy_id", *tokenExchangePolicyID))
-
-	slog.Debug("step 4 - get token exchange scope identifier")
-	resourceRep, err := client.GetResource(ctx, token.AccessToken, connectParams.Realm, *realmManagementClientID, *tokenExchangePolicyPermissionResourceID)
-	if err != nil {
-		slog.Error("error getting resource", slog.Any("error", err))
-		return err
-	}
-	var tokenExchangeScopeID *string
-	tokenExchangeScopeID = nil
-	for _, scope := range *resourceRep.Scopes {
-		if *scope.Name == "token-exchange" {
-			tokenExchangeScopeID = scope.ID
-		}
-	}
-	if tokenExchangeScopeID == nil {
-		return errors.New("no token exchange scope found")
-	}
-	slog.Debug("token exchange scope information",
-		slog.String("scope_id", *tokenExchangeScopeID))
-
-	clientPermissionName := "token-exchange.permission.client." + *idForTargetClientID
-	clientType := "Scope"
-	clientPermissionResources := []string{*tokenExchangePolicyPermissionResourceID}
-	clientPermissionPolicies := []string{*tokenExchangePolicyID}
-	clientPermissionScopes := []string{*tokenExchangeScopeID}
-	permissionScopePolicyRepresentation := gocloak.PolicyRepresentation{
-		ID:               &tokenExchangePolicyScopePermissionID,
-		Name:             &clientPermissionName,
-		Type:             &clientType,
-		Logic:            gocloak.POSITIVE,
-		DecisionStrategy: gocloak.UNANIMOUS,
-		Resources:        &clientPermissionResources,
-		Policies:         &clientPermissionPolicies,
-		Scopes:           &clientPermissionScopes,
-	}
-	if err := client.UpdatePermissionScope(ctx, token.AccessToken, connectParams.Realm,
-		*realmManagementClientID, tokenExchangePolicyScopePermissionID, permissionScopePolicyRepresentation); err != nil {
-		slog.Error("error creating permission scope", slog.Any("error", err))
-		return err
-	}
 	return nil
+}
+
+func withStandardTokenExchangeEnabled(client gocloak.Client) gocloak.Client {
+	attributes := make(map[string]string)
+	if client.Attributes != nil {
+		for key, value := range *client.Attributes {
+			attributes[key] = value
+		}
+	}
+	attributes[standardTokenExchangeEnabledAttribute] = "true"
+	client.Attributes = &attributes
+	return client
 }
 
 func createCertExchange(ctx context.Context, connectParams *KeycloakConnectParams, topLevelFlowName, clientID string) error {

@@ -297,18 +297,6 @@ runs:
       run: |
         yq e '.server.auth.dpop.enforce = true' -i opentdf.yaml
       working-directory: otdf-test-platform
-    - name: Overlay DPoP-capable Keycloak (26.2)
-      # The default docker-compose pins Keycloak 25 so downstream consumers stay on
-      # it; DPoP testing needs Keycloak 26.2 plus the admin-fine-grained-authz:v1
-      # feature flag, overlaid only when the nonce challenge flow is enabled.
-      shell: bash
-      if: ${{ inputs.dpop-challenge-enabled == 'true' }}
-      run: |
-        yq e '
-          (.services.keycloak.image = "keycloak/keycloak:26.2")
-          | (.services.keycloak.environment.KC_FEATURES = "preview,token-exchange,admin-fine-grained-authz:v1")
-        ' -i docker-compose.yaml
-      working-directory: otdf-test-platform
     - name: Configure logging
       shell: bash
       env:

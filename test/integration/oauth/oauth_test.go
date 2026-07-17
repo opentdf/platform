@@ -509,10 +509,10 @@ func extractDPoPToken(r *http.Request, t *testing.T) jwt.Token {
 
 func setupKeycloak(ctx context.Context, t *testing.T) (tc.Container, string, string) {
 	containerReq := tc.ContainerRequest{
-		Image:        "ghcr.io/opentdf/keycloak:sha-8a6d35a",
+		Image:        "keycloak/keycloak:26.2",
 		ExposedPorts: []string{"8082/tcp", "8083/tcp"},
 		Cmd: []string{
-			"start-dev", "--http-port=8082", "--https-port=8083", "--features=preview", "--verbose",
+			"start-dev", "--http-port=8082", "--https-port=8083", "--verbose",
 			"-Djavax.net.ssl.trustStorePassword=password", "-Djavax.net.ssl.HostnameVerifier=AllowAll",
 			"-Djavax.net.debug=ssl",
 			"-Djavax.net.ssl.trustStore=/truststore/truststore.jks",
@@ -524,8 +524,8 @@ func setupKeycloak(ctx context.Context, t *testing.T) (tc.Container, string, str
 			{HostFilePath: "testdata/localhost.key", ContainerFilePath: "/etc/x509/tls/localhost.key", FileMode: int64(0o600)},
 		},
 		Env: map[string]string{
-			"KEYCLOAK_ADMIN":                "admin",
-			"KEYCLOAK_ADMIN_PASSWORD":       "admin",
+			"KC_BOOTSTRAP_ADMIN_USERNAME":   "admin",
+			"KC_BOOTSTRAP_ADMIN_PASSWORD":   "admin",
 			"KC_HTTPS_KEY_STORE_PASSWORD":   "password",
 			"KC_HTTPS_KEY_STORE_FILE":       "/truststore/truststore.jks",
 			"KC_HTTPS_CERTIFICATE_FILE":     "/etc/x509/tls/localhost.crt",

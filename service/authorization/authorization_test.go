@@ -150,10 +150,12 @@ func Test_GetDecisionsAllOf_Pass(t *testing.T) {
 	testrego := rego.New(
 		rego.SetRegoVersion(ast.RegoV0),
 		rego.Query("data.example.p"),
-		rego.Module("example.rego",
+		rego.Module(
+			"example.rego",
 			`package example
 			p = {"e1":["https://www.example.org/attr/foo/value/value1"]} { true }`,
-		))
+		),
+	)
 
 	// Run evaluation.
 	prepared, err := testrego.PrepareForEval(t.Context())
@@ -250,10 +252,12 @@ func Test_GetDecisionsAllOf_Pass(t *testing.T) {
 	testrego = rego.New(
 		rego.SetRegoVersion(ast.RegoV0),
 		rego.Query("data.example.p"),
-		rego.Module("example.rego",
+		rego.Module(
+			"example.rego",
 			`package example
 			p = {"e1": ["https://www.example.org/attr/foo/value/value1", "https://www.example.org/attr/foo/value/value2"]} { true }`,
-		))
+		),
+	)
 
 	// Run evaluation.
 	prepared, err = testrego.PrepareForEval(t.Context())
@@ -341,10 +345,12 @@ func Test_GetDecisions_AllOf_Fail(t *testing.T) {
 	testrego := rego.New(
 		rego.SetRegoVersion(ast.RegoV0),
 		rego.Query("data.example.p"),
-		rego.Module("example.rego",
+		rego.Module(
+			"example.rego",
 			`package example
 			p = {"e1": ["https://www.example.org/attr/foo/value/value1"]} { true }`,
-		))
+		),
+	)
 
 	// Run evaluation.
 	prepared, err := testrego.PrepareForEval(t.Context())
@@ -420,10 +426,12 @@ func Test_GetDecisionsAllOfWithEnvironmental_Pass(t *testing.T) {
 	testrego := rego.New(
 		rego.SetRegoVersion(ast.RegoV0),
 		rego.Query("data.example.p"),
-		rego.Module("example.rego",
+		rego.Module(
+			"example.rego",
 			`package example
 			p = {"e2":["https://www.example.org/attr/foo/value/value1"], "e1":[]} { true }`,
-		))
+		),
+	)
 
 	// Run evaluation.
 	prepared, err := testrego.PrepareForEval(t.Context())
@@ -519,10 +527,12 @@ func Test_GetDecisionsAllOfWithEnvironmental_Fail(t *testing.T) {
 	testrego := rego.New(
 		rego.SetRegoVersion(ast.RegoV0),
 		rego.Query("data.example.p"),
-		rego.Module("example.rego",
+		rego.Module(
+			"example.rego",
 			`package example
 			p = {"e2":["https://www.example.org/attr/foo/value/value1"], "e1":[]} { true }`,
-		))
+		),
+	)
 
 	// Run evaluation.
 	prepared, err := testrego.PrepareForEval(t.Context())
@@ -619,10 +629,12 @@ func Test_GetEntitlementsSimple(t *testing.T) {
 	rego := rego.New(
 		rego.SetRegoVersion(ast.RegoV0),
 		rego.Query("data.example.p"),
-		rego.Module("example.rego",
+		rego.Module(
+			"example.rego",
 			`package example
 			p = {"e1":["https://www.example.org/attr/foo/value/value1"]} { true }`,
-		))
+		),
+	)
 
 	// Run evaluation.
 	prepared, err := rego.PrepareForEval(t.Context())
@@ -694,10 +706,12 @@ func Test_GetEntitlementsFqnCasing(t *testing.T) {
 	rego := rego.New(
 		rego.SetRegoVersion(ast.RegoV0),
 		rego.Query("data.example.p"),
-		rego.Module("example.rego",
+		rego.Module(
+			"example.rego",
 			`package example
 			p = {"e1":["https://www.example.org/attr/foo/value/value1"]} { true }`,
-		))
+		),
+	)
 
 	// Run evaluation.
 	prepared, err := rego.PrepareForEval(t.Context())
@@ -774,10 +788,12 @@ func Test_GetEntitlements_HandlesPagination(t *testing.T) {
 	rego := rego.New(
 		rego.SetRegoVersion(ast.RegoV0),
 		rego.Query("data.example.p"),
-		rego.Module("example.rego",
+		rego.Module(
+			"example.rego",
 			`package example
 			p = {"e1":["https://www.example.org/attr/foo/value/value1"]} { true }`,
-		))
+		),
+	)
 
 	// Run evaluation.
 	prepared, err := rego.PrepareForEval(t.Context())
@@ -868,10 +884,12 @@ func Test_GetEntitlementsWithComprehensiveHierarchy(t *testing.T) {
 	rego := rego.New(
 		rego.SetRegoVersion(ast.RegoV0),
 		rego.Query("data.example.p"),
-		rego.Module("example.rego",
+		rego.Module(
+			"example.rego",
 			`package example
 			p = {"e1":["https://www.example.org/attr/foo/value/value1"]} { true }`,
-		))
+		),
+	)
 
 	// Run evaluation.
 	prepared, err := rego.PrepareForEval(t.Context())
@@ -1110,10 +1128,12 @@ func Test_GetDecisions_RA_FQN_Edge_Cases(t *testing.T) {
 	testrego := rego.New(
 		rego.SetRegoVersion(ast.RegoV0),
 		rego.Query("data.example.p"),
-		rego.Module("example.rego",
+		rego.Module(
+			"example.rego",
 			`package example
 			p = {"e1":[]} { true }`,
-		))
+		),
+	)
 
 	// Run evaluation.
 	prepared, err := testrego.PrepareForEval(t.Context())
@@ -1167,7 +1187,7 @@ func Test_GetDecisions_RA_FQN_Edge_Cases(t *testing.T) {
 	assert.Len(t, resp.Msg.GetDecisionResponses(), 1)
 	assert.Equal(t, authorization.DecisionResponse_DECISION_DENY, resp.Msg.GetDecisionResponses()[0].GetDecision())
 
-	//////////  TEST2: FQN that doesnt exist //////////
+	//////////  TEST2: FQN that does not exist //////////
 
 	// will hit getAttributesByValueFqns but will get error
 	getAttributesByValueFqnsResponse = attr.GetAttributeValuesByFqnsResponse{}
@@ -1329,10 +1349,12 @@ func Test_GetDecisionsAllOf_Pass_EC_RA_Length_Mismatch(t *testing.T) {
 	testrego := rego.New(
 		rego.SetRegoVersion(ast.RegoV0),
 		rego.Query("data.example.p"),
-		rego.Module("example.rego",
+		rego.Module(
+			"example.rego",
 			`package example
 			p = {"e1":["https://www.example.org/attr/foo/value/value1"]} { true }`,
-		))
+		),
+	)
 
 	// Run evaluation.
 	prepared, err := testrego.PrepareForEval(t.Context())
@@ -1452,10 +1474,12 @@ func Test_GetDecisionsAllOf_Pass_EC_RA_Length_Mismatch(t *testing.T) {
 	testrego = rego.New(
 		rego.SetRegoVersion(ast.RegoV0),
 		rego.Query("data.example.p"),
-		rego.Module("example.rego",
+		rego.Module(
+			"example.rego",
 			`package example
 			p = {"e1": ["https://www.example.org/attr/foo/value/value1", "https://www.example.org/attr/foo/value/value2"]} { true }`,
-		))
+		),
+	)
 
 	// Run evaluation.
 	prepared, err = testrego.PrepareForEval(t.Context())
@@ -1522,10 +1546,12 @@ func Test_GetDecisionsAllOf_Pass_EC_RA_Length_Mismatch(t *testing.T) {
 	testrego = rego.New(
 		rego.SetRegoVersion(ast.RegoV0),
 		rego.Query("data.example.p"),
-		rego.Module("example.rego",
+		rego.Module(
+			"example.rego",
 			`package example
 			p = {"e1": ["https://www.example.org/attr/foo/value/value1", "https://www.example.org/attr/foo/value/value2", "https://www.example.org/attr/foo/value/value3"]} { true }`,
-		))
+		),
+	)
 
 	// Run evaluation.
 	prepared, err = testrego.PrepareForEval(t.Context())
@@ -1646,10 +1672,12 @@ func Test_GetDecisions_Empty_EC_RA(t *testing.T) {
 	testrego := rego.New(
 		rego.SetRegoVersion(ast.RegoV0),
 		rego.Query("data.example.p"),
-		rego.Module("example.rego",
+		rego.Module(
+			"example.rego",
 			`package example
 			p = {"e1":[]} { true }`,
-		))
+		),
+	)
 
 	// Run evaluation.
 	prepared, err := testrego.PrepareForEval(t.Context())

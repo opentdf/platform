@@ -740,7 +740,7 @@ func (s *AttributeValuesSuite) Test_UnsafeReactivateAttributeValue_DoesNotReacti
 	s.False(gotVal.GetActive().GetValue())
 }
 
-// Add tests for assinging key to value / removing key from value
+// Add tests for assigning key to value / removing key from value
 
 func (s *AttributeValuesSuite) Test_AssignPublicKeyToAttributeValue_Returns_Error_When_Attribute_Not_Found() {
 	kasKeys := s.f.GetKasRegistryServerKeys("kas_key_1")

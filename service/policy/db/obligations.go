@@ -748,7 +748,7 @@ func (c PolicyDBClient) resolveObligationTriggerActionID(ctx context.Context, ac
 
 	actionName := strings.ToLower(action.GetName())
 	if actionName == "" {
-		// this shouldnt happen due to proto validation, but just in case
+		// this should not happen due to proto validation, but just in case
 		return "", errors.Join(
 			db.ErrMissingValue,
 			errors.New("action identifier must include either id or name"),

@@ -67,7 +67,8 @@ func WrapIfKnownInvalidQueryErr(err error) error {
 		case pgerrcode.CheckViolation:
 			return errors.Join(ErrCheckViolation, e)
 		default:
-			slog.Error("unknown error code",
+			slog.Error(
+				"unknown error code",
 				slog.String("error", e.Message),
 				slog.String("code", e.Code),
 			)
@@ -124,7 +125,7 @@ const (
 	ErrTextRestrictViolation            = "intended action would violate a restriction"
 	ErrTextFqnMissingValue              = "FQN must specify a valid value and be of format 'https://<namespace>/attr/<attribute name>/value/<value>'"
 	ErrTextListLimitTooLarge            = "requested pagination limit must be less than or equal to configured limit"
-	ErrTextInvalidIdentifier            = "value sepcified as the identifier is invalid"
+	ErrTextInvalidIdentifier            = "value specified as the identifier is invalid"
 	ErrorTextUnknownIdentifier          = "could not match identifier to known type"
 	ErrorTextUpdateToUnspecified        = "cannot update to unspecified value"
 	ErrTextKeyRotationFailed            = "key rotation failed"

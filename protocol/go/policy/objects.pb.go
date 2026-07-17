@@ -2218,7 +2218,7 @@ func (x *Key) GetMetadata() *common.Metadata {
 }
 
 // Deprecated
-// A KAS public key and some associated metadata for further identifcation
+// A KAS public key and some associated metadata for further identification
 type KasPublicKey struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache

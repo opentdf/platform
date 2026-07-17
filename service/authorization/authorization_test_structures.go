@@ -245,7 +245,7 @@ func (*paginatedMockSubjectMappingClient) DeleteAllUnmappedSubjectConditionSets(
 	return &sm.DeleteAllUnmappedSubjectConditionSetsResponse{}, nil
 }
 
-// // Mock paginated attributs client for testing ////
+// // Mock paginated attributes client for testing ////
 type paginatedMockAttributesClient struct{}
 
 var (

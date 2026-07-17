@@ -208,7 +208,7 @@ func WithCustomCoreConnection(conn *ConnectRPCConnection) Option {
 	}
 }
 
-// WithExtraClientOptions returns an Option that adds extra connect rpc client options to the conect rpc clients
+// WithExtraClientOptions returns an Option that adds extra connect rpc client options to the connect rpc clients
 func WithExtraClientOptions(opts ...connect.ClientOption) Option {
 	return func(c *config) {
 		c.extraClientOptions = opts

@@ -111,7 +111,8 @@ func listAttributes(cmd *cobra.Command) error {
 		if err != nil {
 			return err
 		}
-		slog.Info("found attributes in namespace",
+		slog.Info(
+			"found attributes in namespace",
 			slog.Int("count", len(lsr.GetAttributes())),
 			slog.String("ns", n),
 		)
@@ -136,7 +137,8 @@ func listAttributes(cmd *cobra.Command) error {
 func nsuuid(ctx context.Context, s *sdk.SDK, u string) (string, error) {
 	url, err := url.Parse(u)
 	if err != nil {
-		slog.Error("namespace url.Parse",
+		slog.Error(
+			"namespace url.Parse",
 			slog.String("url", u),
 			slog.Any("error", err),
 		)
@@ -169,7 +171,7 @@ func attruuid(ctx context.Context, s *sdk.SDK, nsu, fqn string) (string, error) 
 			return a.GetId(), nil
 		}
 	}
-	return "", fmt.Errorf("%w: unable to find attibute [%s]", ErrNotFound, fqn)
+	return "", fmt.Errorf("%w: unable to find attribute [%s]", ErrNotFound, fqn)
 }
 
 func avuuid(ctx context.Context, s *sdk.SDK, auuid, vs string) (string, error) {
@@ -183,7 +185,7 @@ func avuuid(ctx context.Context, s *sdk.SDK, auuid, vs string) (string, error) {
 			return v.GetId(), nil
 		}
 	}
-	return "", fmt.Errorf("%w: unable to find attibute value [%s]", ErrNotFound, vs)
+	return "", fmt.Errorf("%w: unable to find attribute value [%s]", ErrNotFound, vs)
 }
 
 func addNamespace(ctx context.Context, s *sdk.SDK, u string) (string, error) {
@@ -224,7 +226,8 @@ func addAttribute(cmd *cobra.Command) error {
 	}
 	attrEl, err := url.PathUnescape(m[2])
 	if err != nil {
-		slog.Error("url.PathUnescape(attr)",
+		slog.Error(
+			"url.PathUnescape(attr)",
 			slog.String("attr", m[2]),
 			slog.Any("error", err),
 		)
@@ -234,7 +237,8 @@ func addAttribute(cmd *cobra.Command) error {
 	if err != nil {
 		return err
 	}
-	slog.Info("created attribute",
+	slog.Info(
+		"created attribute",
 		slog.String("passedin", attrEl),
 		slog.String("id", aid),
 	)
@@ -270,13 +274,15 @@ func removeAttribute(cmd *cobra.Command) error {
 				Fqn: strings.ToLower(attr),
 			})
 			if err != nil {
-				slog.Error("failed to UnsafeDeleteAttribute",
+				slog.Error(
+					"failed to UnsafeDeleteAttribute",
 					slog.String("id", auuid),
 					slog.Any("error", err),
 				)
 				return err
 			}
-			slog.Info("deleted attribute",
+			slog.Info(
+				"deleted attribute",
 				slog.String("attr", attr),
 				slog.Any("resp", resp),
 			)
@@ -286,13 +292,15 @@ func removeAttribute(cmd *cobra.Command) error {
 			Id: auuid,
 		})
 		if err != nil {
-			slog.Error("failed to DeactivateAttribute",
+			slog.Error(
+				"failed to DeactivateAttribute",
 				slog.String("id", auuid),
 				slog.Any("error", err),
 			)
 			return err
 		}
-		slog.Info("deactivated attribute",
+		slog.Info(
+			"deactivated attribute",
 			slog.String("attr", attr),
 			slog.Any("resp", resp),
 		)
@@ -310,13 +318,15 @@ func removeAttribute(cmd *cobra.Command) error {
 				Fqn: strings.ToLower(attr + "/value/" + url.PathEscape(v)),
 			})
 			if err != nil {
-				slog.Error("failed to UnsafeDeleteAttributeValue",
+				slog.Error(
+					"failed to UnsafeDeleteAttributeValue",
 					slog.Any("error", err),
 					slog.String("id", avu),
 				)
 				return err
 			}
-			slog.Info("deactivated attribute value",
+			slog.Info(
+				"deactivated attribute value",
 				slog.String("attr", attr),
 				slog.String("value", v),
 				slog.Any("resp", r),
@@ -326,13 +336,15 @@ func removeAttribute(cmd *cobra.Command) error {
 				Id: avu,
 			})
 			if err != nil {
-				slog.Error("failed to DeactivateAttributeValue",
+				slog.Error(
+					"failed to DeactivateAttributeValue",
 					slog.String("id", avu),
 					slog.Any("error", err),
 				)
 				return err
 			}
-			slog.Info("deactivated attribute value",
+			slog.Info(
+				"deactivated attribute value",
 				slog.String("attr", attr),
 				slog.String("value", v),
 				slog.Any("resp", r),
@@ -364,7 +376,8 @@ func upsertAttr(ctx context.Context, s *sdk.SDK, auth, name string, values []str
 	})
 	if err != nil {
 		//nolint:sloglint // safe to log auth in examples
-		slog.Error("failed to CreateAttribute",
+		slog.Error(
+			"failed to CreateAttribute",
 			slog.String("auth", auth),
 			slog.String("name", name),
 			slog.Any("values", values),

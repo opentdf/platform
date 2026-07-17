@@ -1452,7 +1452,7 @@ func (r *Reader) buildKey(_ context.Context, results []kaoResult) error {
 		base64Hash := ocrypto.Base64Encode(completeHashBuilder.Bytes())
 
 		if string(hashOfAssertionAsHex) != assertionHash {
-			return fmt.Errorf("%w: assertion hash missmatch", ErrAssertionFailure{ID: assertion.ID})
+			return fmt.Errorf("%w: assertion hash mismatch", ErrAssertionFailure{ID: assertion.ID})
 		}
 
 		if assertionSig != string(base64Hash) {
@@ -1491,7 +1491,7 @@ func (r *Reader) doPayloadKeyUnwrap(ctx context.Context) error { //nolint:gocogn
 		return err
 	}
 	for kasurl, req := range reqs {
-		// if ignoreing allowlist then warn
+		// if ignoring allowlist then warn
 		// if kas url is not allowed then return error
 		if r.config.ignoreAllowList {
 			getLogger().WarnContext(ctx, "kasAllowlist is ignored, kas url is allowed", slog.String("kas_url", kasurl))

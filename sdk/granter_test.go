@@ -778,7 +778,8 @@ func TestReasonerConstructAttributeBoolean(t *testing.T) {
 				func() string {
 					j++
 					return strconv.Itoa(j)
-				})
+				},
+			)
 			require.NoError(t, err)
 			assert.Equal(t, tc.tpl, tpl)
 		})
@@ -1034,14 +1035,14 @@ func TestReasonerSpecificityWithNamespaces(t *testing.T) {
 		plan     []keySplitStep
 	}{
 		{
-			"no grants on value, attr, namesapce should result in provided kas",
+			"no grants on value, attr, namespace should result in provided kas",
 			"nogrant.nogrant.nogrant => default",
 			[]AttributeValueFQN{uns2uns},
 			[]string{kasUs},
 			[]keySplitStep{{kasUs, ""}},
 		},
 		{
-			"grant on namesapce with no grant on attr or value should result in only namesapce specfific kas split step",
+			"grant on namespace with no grant on attr or value should result in only namespace-specific kas split step",
 			"grant.nogrant.nogrant => nsSpecificKas",
 			[]AttributeValueFQN{spk2uns2uns},
 			[]string{kasUs},

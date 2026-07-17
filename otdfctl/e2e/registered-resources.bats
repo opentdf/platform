@@ -431,7 +431,7 @@ teardown_file() {
     assert_failure
     assert_output --partial "Either 'id' or 'fqn' must be provided"
 
-  # invalud id
+  # invalid id
   run_otdfctl_reg_res_values get --id 'not_a_uuid'
     assert_failure
     assert_output --partial "must be a valid UUID"

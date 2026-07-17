@@ -630,6 +630,18 @@ func (c PolicyDBClient) createRegisteredResourceActionAttributeValues(ctx contex
 			return err
 		}
 
+		// A definition entitled dynamically resolves its values at decision time; those values are
+		// not meaningful as static registered-resource entitlements. Reject them, mirroring the
+		// value-level subject-mapping coexistence rule.
+		definitionID, hasDVM, err := c.definitionHasDynamicValueMapping(ctx, attributeValueID)
+		if err != nil {
+			return err
+		}
+		if hasDVM {
+			return errors.Join(db.ErrRestrictViolation,
+				fmt.Errorf("attribute value [%s] is under attribute definition [%s] which has a dynamic value mapping; it cannot be added to a registered resource's action attribute values", attributeValueID, definitionID))
+		}
+
 		createActionAttributeValueParams[i] = createRegisteredResourceActionAttributeValuesParams{
 			RegisteredResourceValueID: registeredResourceValueID,
 			ActionID:                  actionID,

@@ -362,9 +362,12 @@ func cloneRequest(req *http.Request) *http.Request {
 // returns an independent bytes.Reader over an immutable []byte removes the
 // shared mutable state, so every (re)send reads the full payload.
 //
-// Streaming/unknown-length requests (ContentLength < 0, e.g. ConnectRPC client
-// streams over an io.Pipe) are left untouched so the stream is not drained;
-// DPoP-nonce retry is only meaningful for unary calls anyway.
+// This transport is intended for bounded internal RPC request bodies. Go also
+// treats ContentLength == 0 with a non-nil body as unknown, but such bodies are
+// intentionally buffered to EOF here so nonce retries remain transparent.
+// Callers must not pass an unbounded body in that form. ConnectRPC streaming
+// requests use ContentLength < 0 and are left untouched, so they cannot be
+// retried after a nonce challenge.
 func bufferRequestBody(req *http.Request) error {
 	if req.Body == nil || req.Body == http.NoBody || req.ContentLength < 0 {
 		return nil

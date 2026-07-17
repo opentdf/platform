@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"net/http"
 	"net/url"
 	"os"
 	"strconv"
@@ -184,7 +185,9 @@ func ValidateProfileAuthCredentials(ctx context.Context, profile *profiles.Otdfc
 	case "":
 		return ErrProfileCredentialsNotFound
 	case profiles.AuthTypeClientCredentials:
-		_, err := GetTokenWithClientCreds(ctx, profile.GetEndpoint(), c.ClientID, c.ClientSecret, profile.GetTLSNoVerify(), c.Scopes)
+		// Validation exercises the DPoP-bound path so it succeeds against a
+		// DPoP-enforcing token endpoint; the token is discarded.
+		_, err := GetTokenWithClientCredsDPoP(ctx, profile.GetEndpoint(), c.ClientID, c.ClientSecret, profile.GetTLSNoVerify(), c.Scopes)
 		if err != nil {
 			return err
 		}
@@ -204,6 +207,8 @@ func GetTokenWithProfile(ctx context.Context, profile *profiles.OtdfctlProfileSt
 
 	switch c.AuthType {
 	case profiles.AuthTypeClientCredentials:
+		// print/reuse path: return a plain bearer token (not DPoP sender-constrained)
+		// so it stays usable outside otdfctl. See DSPX-3998.
 		return GetTokenWithClientCreds(ctx, profile.GetEndpoint(), c.ClientID, c.ClientSecret, profile.GetTLSNoVerify(), c.Scopes)
 	case profiles.AuthTypeAccessToken:
 		return buildToken(&c), nil
@@ -212,12 +217,36 @@ func GetTokenWithProfile(ctx context.Context, profile *profiles.OtdfctlProfileSt
 	}
 }
 
-// Uses the OAuth2 client credentials flow to obtain a token.
+// GetTokenWithClientCreds uses the OAuth2 client credentials flow to obtain a plain
+// bearer token with no sender constraint, so it remains usable outside otdfctl (e.g.
+// printed for reuse). Making an exported token reusable *under* DPoP (key export and/or
+// OS secure storage) is tracked in DSPX-3998.
 func GetTokenWithClientCreds(ctx context.Context, endpoint string, clientID string, clientSecret string, tlsNoVerify bool, scopes []string) (*oauth2.Token, error) {
+	return getTokenWithClientCreds(ctx, endpoint, clientID, clientSecret, tlsNoVerify, scopes, false)
+}
+
+// GetTokenWithClientCredsDPoP is like GetTokenWithClientCreds but binds the token-request
+// HTTP client to DPoP (matching the SDK client), so the request carries a DPoP proof that
+// a DPoP-enforcing token endpoint accepts and the returned token is sender-constrained
+// (cnf.jkt) to an ephemeral key. Use this for validating that credentials work end to end,
+// where the token itself is discarded.
+func GetTokenWithClientCredsDPoP(ctx context.Context, endpoint string, clientID string, clientSecret string, tlsNoVerify bool, scopes []string) (*oauth2.Token, error) {
+	return getTokenWithClientCreds(ctx, endpoint, clientID, clientSecret, tlsNoVerify, scopes, true)
+}
+
+func getTokenWithClientCreds(ctx context.Context, endpoint string, clientID string, clientSecret string, tlsNoVerify bool, scopes []string, dpop bool) (*oauth2.Token, error) {
+	httpClient := utils.NewHTTPClient(tlsNoVerify)
+	if dpop {
+		var err error
+		httpClient, err = sdk.NewDPoPValidationHTTPClient(httpClient)
+		if err != nil {
+			return nil, err
+		}
+	}
 	rp, err := newOidcRelyingParty(ctx, endpoint, tlsNoVerify, oidcClientCredentials{
 		clientID:     clientID,
 		clientSecret: clientSecret,
-	})
+	}, httpClient)
 	if err != nil {
 		return nil, err
 	}
@@ -337,14 +366,14 @@ func RevokeAccessToken(ctx context.Context, endpoint, clientID, refreshToken str
 	rp, err := newOidcRelyingParty(ctx, endpoint, tlsNoVerify, oidcClientCredentials{
 		clientID: clientID,
 		isPublic: true,
-	})
+	}, utils.NewHTTPClient(tlsNoVerify))
 	if err != nil {
 		return err
 	}
 	return oidcrp.RevokeToken(ctx, rp, refreshToken, "refresh_token")
 }
 
-func newOidcRelyingParty(ctx context.Context, endpoint string, tlsNoVerify bool, clientCreds oidcClientCredentials) (oidcrp.RelyingParty, error) {
+func newOidcRelyingParty(ctx context.Context, endpoint string, tlsNoVerify bool, clientCreds oidcClientCredentials, httpClient *http.Client) (oidcrp.RelyingParty, error) {
 	if clientCreds.clientID == "" {
 		return nil, errors.New("client ID is required")
 	}
@@ -367,6 +396,6 @@ func newOidcRelyingParty(ctx context.Context, endpoint string, tlsNoVerify bool,
 		clientCreds.clientSecret,
 		"",
 		nil,
-		oidcrp.WithHTTPClient(utils.NewHTTPClient(tlsNoVerify)),
+		oidcrp.WithHTTPClient(httpClient),
 	)
 }

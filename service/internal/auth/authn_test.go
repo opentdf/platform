@@ -248,12 +248,35 @@ func TestNormalizeUrl(t *testing.T) {
 		{"http://localhost", "/", "http://localhost/"},
 		{"https://localhost", "/somewhere", "https://localhost/somewhere"},
 		{"http://localhost", "", "http://localhost"},
+		{"http://localhost", "/a%2Fb", "http://localhost/a%2Fb"},
 	} {
 		t.Run(tt.origin+tt.path, func(t *testing.T) {
 			u, err := url.Parse(tt.path)
 			require.NoError(t, err)
 			s := normalizeURL(tt.origin, u)
 			assert.Equal(t, s, tt.out)
+		})
+	}
+}
+
+func TestOriginFromHost(t *testing.T) {
+	for _, tt := range []struct {
+		name   string
+		host   string
+		secure bool
+		out    string
+	}{
+		{"https default port stripped", "example.com:443", true, "https://example.com"},
+		{"http default port stripped", "example.com:80", false, "http://example.com"},
+		{"https non-default port kept", "example.com:8443", true, "https://example.com:8443"},
+		{"http no port", "example.com", false, "http://example.com"},
+		{"host lowercased", "EXAMPLE.COM:443", true, "https://example.com"},
+		{"ipv6 default port stripped", "[::1]:443", true, "https://[::1]"},
+		{"ipv6 non-default port kept", "[::1]:8443", true, "https://[::1]:8443"},
+		{"ipv6 literal ending in 443 kept", "[fe80::443]", true, "https://[fe80::443]"},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.out, originFromHost(tt.host, tt.secure))
 		})
 	}
 }
@@ -1207,6 +1230,45 @@ func (s *AuthSuite) Test_ConnectAuthNInterceptor_PropagatesHTTPMethod() {
 	}
 }
 
+// Test_ConnectAuthNInterceptor_NormalizesHostForHTU verifies that the Connect
+// interceptor builds its acceptable htu values from a normalized Host (lowercased,
+// default ports stripped) via originFromHost, so the exact-string htu comparison
+// matches what the SDK signs. A mixed-case host with an explicit :443 is the
+// regression case: without normalization the server would reject a valid proof.
+func (s *AuthSuite) Test_ConnectAuthNInterceptor_NormalizesHostForHTU() {
+	tok := jwt.New()
+
+	var capturedU []string
+	s.auth._testCheckTokenFunc = func(ctx context.Context, _ []string, ri receiverInfo, _ []string) (jwt.Token, context.Context, error) {
+		capturedU = ri.u
+		return tok, ctx, nil
+	}
+	s.T().Cleanup(func() { s.auth._testCheckTokenFunc = nil })
+
+	interceptor := s.auth.ConnectAuthNInterceptor()
+	called := false
+	next := func(_ context.Context, _ connect.AnyRequest) (connect.AnyResponse, error) {
+		called = true
+		return connect.NewResponse(&kas.RewrapResponse{}), nil
+	}
+	req := &authnTestRequest{
+		Request:    connect.NewRequest(&kas.RewrapRequest{}),
+		procedure:  "/kas.AccessService/Rewrap",
+		httpMethod: http.MethodPost,
+	}
+	req.Header().Set("Authorization", "DPoP test")
+	req.Header().Set("Host", "EXAMPLE.com:443")
+
+	_, err := interceptor(next)(s.T().Context(), req)
+	s.Require().NoError(err)
+	s.True(called)
+	// Host lowercased; :443 stripped for https (default) but kept for http (non-default).
+	s.Equal([]string{
+		"http://example.com:443/kas.AccessService/Rewrap",
+		"https://example.com/kas.AccessService/Rewrap",
+	}, capturedU)
+}
+
 func TestMatchHTU(t *testing.T) {
 	full := []string{
 		"http://localhost:8080/svc/Method",
@@ -1225,9 +1287,12 @@ func TestMatchHTU(t *testing.T) {
 		{"loose/path-only match", "/svc/Method", full, false, true},
 		{"loose/path-only match against path-only acceptable", "/svc/Method", pathOnly, false, true},
 		{"loose/path-only mismatch", "/svc/Other", full, false, false},
+		{"loose/path-only percent normalization", "/svc/%4dethod", full, false, true},
+		{"loose/path-only reserved encoding preserved", "/svc%2FMethod", full, false, false},
 		// Loose mode: full URL accepted when it matches exactly
 		{"loose/full http match", "http://localhost:8080/svc/Method", full, false, true},
 		{"loose/full https match", "https://localhost:8080/svc/Method", full, false, true},
+		{"loose/full syntax normalization", "HTTP://LOCALHOST:8080/svc/%4dethod", full, false, true},
 		{"loose/full wrong path", "http://localhost:8080/svc/Other", full, false, false},
 		{"loose/full wrong host", "http://other:8080/svc/Method", full, false, false},
 		// Strict mode: path-only htu always rejected
@@ -1236,6 +1301,12 @@ func TestMatchHTU(t *testing.T) {
 		// Strict mode: full URL accepted when it matches exactly
 		{"strict/full http match", "http://localhost:8080/svc/Method", full, true, true},
 		{"strict/full https match", "https://localhost:8080/svc/Method", full, true, true},
+		{"strict/empty path normalized", "https://localhost:8080", []string{"https://localhost:8080/"}, true, true},
+		{"strict/default port normalized", "HTTPS://LOCALHOST:443/svc/Method", []string{"https://localhost/svc/Method"}, true, true},
+		{"strict/percent hex normalized", "https://localhost:8080/svc%2fMethod", []string{"https://localhost:8080/svc%2FMethod"}, true, true},
+		{"strict/unreserved percent decoded", "https://localhost:8080/svc/%4dethod", full, true, true},
+		{"strict/dot segments removed", "https://localhost:8080/a/../svc/Method", full, true, true},
+		{"strict/reserved encoding differs", "https://localhost:8080/svc%2FMethod", full, true, false},
 		{"strict/full wrong path", "http://localhost:8080/svc/Other", full, true, false},
 	}
 

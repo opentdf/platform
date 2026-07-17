@@ -23,9 +23,9 @@ func getNewDPoPKey(dpopKeyPair *ocrypto.RsaKeyPair) (string, jwk.Key, *ocrypto.A
 	if err != nil {
 		return "", nil, nil, fmt.Errorf("error getting dpop of key: %w", err)
 	}
-	dpopPublicKeyPEM, err := dpopKeyPair.PrivateKeyInPemFormat()
+	dpopPublicKeyPEM, err := dpopKeyPair.PublicKeyInPemFormat()
 	if err != nil {
-		return "", nil, nil, fmt.Errorf("error getting dpop of key: %w", err)
+		return "", nil, nil, fmt.Errorf("error getting dpop public key: %w", err)
 	}
 
 	dpopKey, err := jwk.ParseKey([]byte(dpopPrivateKeyPEM), jwk.WithPEM(true))
@@ -111,4 +111,24 @@ func (t *IDPAccessTokenSource) AccessToken(_ context.Context, client *http.Clien
 
 func (t *IDPAccessTokenSource) MakeToken(tokenMaker func(jwk.Key) ([]byte, error)) ([]byte, error) {
 	return tokenMaker(t.dpopKey)
+}
+
+// newIDPAccessTokenSourceFromJWK creates an IDPAccessTokenSource using a pre-built JWK key.
+func newIDPAccessTokenSourceFromJWK(
+	credentials oauth.ClientCredentials,
+	idpTokenEndpoint string,
+	scopes []string,
+	key jwk.Key,
+) (*IDPAccessTokenSource, error) {
+	endpoint, err := url.Parse(idpTokenEndpoint)
+	if err != nil {
+		return nil, fmt.Errorf("invalid url [%s]: %w", idpTokenEndpoint, err)
+	}
+	return &IDPAccessTokenSource{
+		credentials:      credentials,
+		idpTokenEndpoint: *endpoint,
+		scopes:           scopes,
+		dpopKey:          key,
+		tokenMutex:       &sync.Mutex{},
+	}, nil
 }

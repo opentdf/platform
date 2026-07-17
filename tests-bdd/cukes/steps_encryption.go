@@ -20,19 +20,9 @@ import (
 )
 
 const (
-	// Admin client used for both the platform SDK and as the exchanger in
-	// RFC 8693 user-impersonation token exchange. keycloak_base.template
-	// grants its service account the `impersonation` role on
-	// realm-management so it may obtain user-scoped tokens.
-	exchangeClientID     = "opentdf"
-	exchangeClientSecret = "secret"
-	// Target audience of the exchanged token; matches the token_exchanges
-	// policy wired in keycloak_base.template (start_client: opentdf,
-	// target_client: opentdf-sdk).
-	exchangeTargetClientID = "opentdf-sdk"
-	// Standard OAuth grant-type and token-type URNs from RFC 8693 — not credentials.
-	tokenExchangeGrant = "urn:ietf:params:oauth:grant-type:token-exchange" //nolint:gosec // URN identifier, not a credential
-	accessTokenType    = "urn:ietf:params:oauth:token-type:access_token"   //nolint:gosec // URN identifier, not a credential
+	userTokenClientID     = "opentdf-sdk"
+	userTokenClientSecret = "secret"
+	bddUserPassword       = "testuser123"
 
 	tokenEndpointTimeout = 10 * time.Second
 )
@@ -47,10 +37,9 @@ type decryptResult struct {
 
 type EncryptionStepDefinitions struct{}
 
-// userTokenForStoredAs mints a user-scoped SDK via RFC 8693 token exchange:
-// the admin client authenticates with client_credentials, then exchanges
-// that token for one representing the target user. Stashes the resulting
-// SDK under the given reference key.
+// userTokenForStoredAs mints a user-scoped SDK via password grant against
+// the BDD fixture user. Stashes the resulting SDK under the given reference
+// key.
 func (s *EncryptionStepDefinitions) userTokenForStoredAs(ctx context.Context, username, ref string) (context.Context, error) {
 	scenarioContext := GetPlatformScenarioContext(ctx)
 	localPlatformGlue, ok := (*scenarioContext.TestSuiteContext.PlatformGlue).(*LocalDevPlatformGlue)
@@ -65,13 +54,9 @@ func (s *EncryptionStepDefinitions) userTokenForStoredAs(ctx context.Context, us
 		scenarioContext.ScenarioOptions.KeycloakRealm,
 	)
 
-	adminToken, err := fetchAdminAccessToken(ctx, tokenURL)
+	token, err := fetchUserAccessToken(ctx, tokenURL, username)
 	if err != nil {
-		return ctx, fmt.Errorf("fetch admin token for exchange: %w", err)
-	}
-	token, err := exchangeForUserToken(ctx, tokenURL, adminToken.AccessToken, username)
-	if err != nil {
-		return ctx, fmt.Errorf("exchange admin token for user %q: %w", username, err)
+		return ctx, fmt.Errorf("fetch access token for user %q: %w", username, err)
 	}
 
 	userSDK, err := otdf.New(
@@ -186,36 +171,18 @@ func getDecryptResult(ctx context.Context, ref string) (*decryptResult, error) {
 	return result, nil
 }
 
-// fetchAdminAccessToken mints an admin service-account token via the
-// client_credentials grant against the exchange client.
-func fetchAdminAccessToken(ctx context.Context, tokenURL string) (*oauth2.Token, error) {
+// fetchUserAccessToken mints a token for a BDD fixture user through the
+// regular direct-access password grant. Keycloak standard token exchange
+// intentionally does not support requested_subject impersonation.
+func fetchUserAccessToken(ctx context.Context, tokenURL, username string) (*oauth2.Token, error) {
 	form := url.Values{
-		"grant_type":    {"client_credentials"},
-		"client_id":     {exchangeClientID},
-		"client_secret": {exchangeClientSecret},
+		"grant_type":    {"password"},
+		"client_id":     {userTokenClientID},
+		"client_secret": {userTokenClientSecret},
+		"username":      {username},
+		"password":      {bddUserPassword},
 	}
-	return postForTokenEndpoint(ctx, tokenURL, form, "client_credentials")
-}
-
-// exchangeForUserToken takes a valid admin token and asks Keycloak for a
-// user-scoped token via RFC 8693 token exchange with `requested_subject`.
-// Requires the exchange client to have the realm-management `impersonation`
-// role. `audience` routes the exchange through the opentdf->opentdf-sdk
-// policy configured in keycloak_base.template so the returned token is
-// minted for opentdf-sdk, matching the SDK's own token-exchange flow
-// (see sdk/auth/oauth/oauth.go).
-func exchangeForUserToken(ctx context.Context, tokenURL, adminAccessToken, username string) (*oauth2.Token, error) {
-	form := url.Values{
-		"grant_type":           {tokenExchangeGrant},
-		"client_id":            {exchangeClientID},
-		"client_secret":        {exchangeClientSecret},
-		"subject_token":        {adminAccessToken},
-		"subject_token_type":   {accessTokenType},
-		"requested_token_type": {accessTokenType},
-		"audience":             {exchangeTargetClientID},
-		"requested_subject":    {username},
-	}
-	return postForTokenEndpoint(ctx, tokenURL, form, "token-exchange")
+	return postForTokenEndpoint(ctx, tokenURL, form, "password")
 }
 
 // postForTokenEndpoint POSTs a token-endpoint form and decodes the standard

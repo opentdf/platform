@@ -19,7 +19,7 @@ func TestWithStandardTokenExchangeEnabled(t *testing.T) {
 	if updatedClient.Attributes == nil {
 		t.Fatal("expected attributes to be set")
 	}
-	if got := (*updatedClient.Attributes)[standardTokenExchangeEnabledAttribute]; got != "true" {
+	if got := (*updatedClient.Attributes)[standardTokenExchangeEnabledAttribute]; got != keycloakBoolTrue {
 		t.Fatalf("expected %s to be true, got %q", standardTokenExchangeEnabledAttribute, got)
 	}
 	if got := (*updatedClient.Attributes)["client.secret.creation.time"]; got != "12345" {
@@ -36,7 +36,33 @@ func TestWithStandardTokenExchangeEnabledInitializesAttributes(t *testing.T) {
 	if updatedClient.Attributes == nil {
 		t.Fatal("expected attributes to be initialized")
 	}
-	if got := (*updatedClient.Attributes)[standardTokenExchangeEnabledAttribute]; got != "true" {
+	if got := (*updatedClient.Attributes)[standardTokenExchangeEnabledAttribute]; got != keycloakBoolTrue {
 		t.Fatalf("expected %s to be true, got %q", standardTokenExchangeEnabledAttribute, got)
+	}
+}
+
+func TestExactClientByClientID(t *testing.T) {
+	const clientID = "opentdf"
+	clients := []*gocloak.Client{
+		{ClientID: gocloak.StringP("opentdf-extra")},
+		{ClientID: gocloak.StringP(clientID), ID: gocloak.StringP("uuid-opentdf")},
+	}
+
+	client, err := exactClientByClientID(clients, clientID)
+	if err != nil {
+		t.Fatalf("expected exact client match: %v", err)
+	}
+	if got := *client.ID; got != "uuid-opentdf" {
+		t.Fatalf("expected exact client uuid, got %q", got)
+	}
+}
+
+func TestExactClientByClientIDReturnsErrorForPrefixOnlyMatch(t *testing.T) {
+	clients := []*gocloak.Client{
+		{ClientID: gocloak.StringP("opentdf-extra")},
+	}
+
+	if _, err := exactClientByClientID(clients, "opentdf"); err == nil {
+		t.Fatal("expected exact client match error")
 	}
 }

@@ -21,6 +21,7 @@ const (
 	kcErrUnknown = -1
 
 	standardTokenExchangeEnabledAttribute = "standard.token.exchange.enabled"
+	keycloakBoolTrue                      = "true"
 
 	// Token refresh constants
 	defaultTokenBufferSeconds    = 120 // 2 minutes before expiration
@@ -1088,7 +1089,12 @@ func createTokenExchangeWithTokenManager(ctx context.Context, connectParams *Key
 		return fmt.Errorf("token exchange requester client %q not found", startClientID)
 	}
 
-	requesterClient := withStandardTokenExchangeEnabled(*requesterClients[0])
+	requesterClient, err := exactClientByClientID(requesterClients, startClientID)
+	if err != nil {
+		return err
+	}
+
+	requesterClient = withStandardTokenExchangeEnabled(requesterClient)
 	if err := client.UpdateClient(ctx, token.AccessToken, connectParams.Realm, requesterClient); err != nil {
 		return fmt.Errorf("error enabling standard token exchange for requester client %q targeting %q: %w", startClientID, targetClientID, err)
 	}
@@ -1100,6 +1106,18 @@ func createTokenExchangeWithTokenManager(ctx context.Context, connectParams *Key
 	return nil
 }
 
+func exactClientByClientID(clients []*gocloak.Client, clientID string) (gocloak.Client, error) {
+	for _, client := range clients {
+		if client == nil || client.ClientID == nil {
+			continue
+		}
+		if *client.ClientID == clientID {
+			return *client, nil
+		}
+	}
+	return gocloak.Client{}, fmt.Errorf("token exchange requester client %q not found by exact clientID match", clientID)
+}
+
 func withStandardTokenExchangeEnabled(client gocloak.Client) gocloak.Client {
 	attributes := make(map[string]string)
 	if client.Attributes != nil {
@@ -1107,7 +1125,7 @@ func withStandardTokenExchangeEnabled(client gocloak.Client) gocloak.Client {
 			attributes[key] = value
 		}
 	}
-	attributes[standardTokenExchangeEnabledAttribute] = "true"
+	attributes[standardTokenExchangeEnabledAttribute] = keycloakBoolTrue
 	client.Attributes = &attributes
 	return client
 }

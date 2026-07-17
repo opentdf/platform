@@ -552,7 +552,7 @@ func TestNormalizeURI(t *testing.T) {
 		{"scheme and host lowercased, path preserved", "HTTPS://EXAMPLE.COM/Path", "https://example.com/Path"},
 		{"escaped reserved path preserved", "https://example.com/a%2Fb", "https://example.com/a%2Fb"},
 		{"query and fragment dropped", "https://example.com/p?a=b#frag", "https://example.com/p"},
-		{"empty path", "https://example.com", "https://example.com"},
+		{"empty path normalized to slash", "https://example.com", "https://example.com/"},
 		{"uppercase host with default port", "HTTPS://EXAMPLE.COM:443/Path", "https://example.com/Path"},
 		{"ipv6 default port stripped", "https://[::1]:443/path", "https://[::1]/path"},
 		{"ipv6 non-default port kept", "https://[::1]:8443/path", "https://[::1]:8443/path"},

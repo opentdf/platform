@@ -303,12 +303,17 @@ func normalizedHostPort(u *url.URL) string {
 // normalizeURI normalizes the URI per RFC 9449 HTTP URI Normalization:
 // - Lowercase scheme and host
 // - Remove default ports (80 for http, 443 for https)
+// - Normalize an empty HTTP path to "/"
 // - Strip query and fragment
 //
 // The path uses EscapedPath so percent-encoded reserved bytes (e.g. %2F) are
 // preserved verbatim in the htu claim; u.Path would decode them and change the URI.
 func normalizeURI(u *url.URL) string {
-	return fmt.Sprintf("%s://%s%s", strings.ToLower(u.Scheme), normalizedHostPort(u), u.EscapedPath())
+	escapedPath := u.EscapedPath()
+	if escapedPath == "" {
+		escapedPath = "/"
+	}
+	return fmt.Sprintf("%s://%s%s", strings.ToLower(u.Scheme), normalizedHostPort(u), escapedPath)
 }
 
 // getOrigin returns the origin (scheme://host:port) from a URL, normalized to

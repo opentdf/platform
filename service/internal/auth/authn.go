@@ -79,6 +79,8 @@ const (
 	refreshInterval                     = 15 * time.Minute
 	dpopJWTType                         = "dpop+jwt"
 	dpopNonceBytes                      = 16
+	httpScheme                          = "http"
+	httpsScheme                         = "https"
 	casbinAuthzConfiguredGroupsClaimKey = "configured_groups_claim"
 	ActionRead                          = "read"
 	ActionWrite                         = "write"
@@ -391,12 +393,11 @@ func (e *DPoPProofError) Unwrap() error { return e.err }
 // originFromHost builds a normalized scheme://host origin from a request's Host
 // header. It parses with Hostname()/Port() rather than trimming a ":443"/":80"
 // suffix so it handles IPv6 literals and hosts that merely end in the default
-// port, and lowercases the host to match the SDK's htu normalization (the DPoP
-// htu match is an exact string comparison, so both sides must normalize alike).
+// port, and lowercases the host to match the SDK's htu normalization.
 func originFromHost(host string, secure bool) string {
-	scheme := "http"
+	scheme := httpScheme
 	if secure {
-		scheme = "https"
+		scheme = httpsScheme
 	}
 	u, err := url.Parse(scheme + "://" + host)
 	if err != nil {
@@ -413,15 +414,14 @@ func originFromHost(host string, secure bool) string {
 		h = "[" + h + "]" // re-bracket IPv6 literal stripped by Hostname()
 	}
 	if port := u.Port(); port != "" &&
-		!(scheme == "https" && port == "443") && //nolint:staticcheck // QF1001: written as it would be understood (don't append port if the port is expected for its scheme)
-		!(scheme == "http" && port == "80") { //nolint:staticcheck // QF1001: as above
+		!(scheme == httpsScheme && port == "443") && //nolint:staticcheck // QF1001: written as it would be understood (don't append port if the port is expected for its scheme)
+		!(scheme == httpScheme && port == "80") { //nolint:staticcheck // QF1001: as above
 		h += ":" + port
 	}
 	return scheme + "://" + h
 }
 
 func normalizeURL(o string, u *url.URL) string {
-	// Currently this does not do a full normatlization
 	ou, err := url.Parse(o)
 	if err != nil {
 		slog.Debug("dpop: failed to parse origin for normalization; using request url",
@@ -430,6 +430,10 @@ func normalizeURL(o string, u *url.URL) string {
 		return u.String()
 	}
 	ou.Path = u.Path
+	ou.RawPath = u.RawPath
+	ou.RawQuery = ""
+	ou.ForceQuery = false
+	ou.Fragment = ""
 	return ou.String()
 }
 
@@ -452,19 +456,29 @@ func matchHTU(received string, acceptable []string, strict bool) bool {
 		if strict {
 			return false
 		}
+		receivedPath := normalizeEscapedPath(u.EscapedPath())
 		for _, a := range acceptable {
 			au, err := url.Parse(a)
 			if err != nil {
 				continue
 			}
-			if au.Path == u.Path {
+			if normalizeEscapedPath(au.EscapedPath()) == receivedPath {
 				return true
 			}
 		}
 		return false
 	}
-	// Full URL: must match one of the acceptable URIs exactly.
-	return slices.Contains(acceptable, received)
+	normalizedReceived, err := normalizeDPoPURI(received)
+	if err != nil {
+		return false
+	}
+	for _, a := range acceptable {
+		normalizedAcceptable, err := normalizeDPoPURI(a)
+		if err == nil && normalizedAcceptable == normalizedReceived {
+			return true
+		}
+	}
+	return false
 }
 
 // verifyTokenHandler is a http handler that verifies the token

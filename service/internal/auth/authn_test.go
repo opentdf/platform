@@ -248,6 +248,7 @@ func TestNormalizeUrl(t *testing.T) {
 		{"http://localhost", "/", "http://localhost/"},
 		{"https://localhost", "/somewhere", "https://localhost/somewhere"},
 		{"http://localhost", "", "http://localhost"},
+		{"http://localhost", "/a%2Fb", "http://localhost/a%2Fb"},
 	} {
 		t.Run(tt.origin+tt.path, func(t *testing.T) {
 			u, err := url.Parse(tt.path)
@@ -1286,9 +1287,12 @@ func TestMatchHTU(t *testing.T) {
 		{"loose/path-only match", "/svc/Method", full, false, true},
 		{"loose/path-only match against path-only acceptable", "/svc/Method", pathOnly, false, true},
 		{"loose/path-only mismatch", "/svc/Other", full, false, false},
+		{"loose/path-only percent normalization", "/svc/%4dethod", full, false, true},
+		{"loose/path-only reserved encoding preserved", "/svc%2FMethod", full, false, false},
 		// Loose mode: full URL accepted when it matches exactly
 		{"loose/full http match", "http://localhost:8080/svc/Method", full, false, true},
 		{"loose/full https match", "https://localhost:8080/svc/Method", full, false, true},
+		{"loose/full syntax normalization", "HTTP://LOCALHOST:8080/svc/%4dethod", full, false, true},
 		{"loose/full wrong path", "http://localhost:8080/svc/Other", full, false, false},
 		{"loose/full wrong host", "http://other:8080/svc/Method", full, false, false},
 		// Strict mode: path-only htu always rejected
@@ -1297,6 +1301,12 @@ func TestMatchHTU(t *testing.T) {
 		// Strict mode: full URL accepted when it matches exactly
 		{"strict/full http match", "http://localhost:8080/svc/Method", full, true, true},
 		{"strict/full https match", "https://localhost:8080/svc/Method", full, true, true},
+		{"strict/empty path normalized", "https://localhost:8080", []string{"https://localhost:8080/"}, true, true},
+		{"strict/default port normalized", "HTTPS://LOCALHOST:443/svc/Method", []string{"https://localhost/svc/Method"}, true, true},
+		{"strict/percent hex normalized", "https://localhost:8080/svc%2fMethod", []string{"https://localhost:8080/svc%2FMethod"}, true, true},
+		{"strict/unreserved percent decoded", "https://localhost:8080/svc/%4dethod", full, true, true},
+		{"strict/dot segments removed", "https://localhost:8080/a/../svc/Method", full, true, true},
+		{"strict/reserved encoding differs", "https://localhost:8080/svc%2FMethod", full, true, false},
 		{"strict/full wrong path", "http://localhost:8080/svc/Other", full, true, false},
 	}
 

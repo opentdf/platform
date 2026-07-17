@@ -17,6 +17,7 @@ import (
 	sdkauth "github.com/opentdf/platform/sdk/auth"
 	"github.com/opentdf/platform/sdk/auth/oauth"
 	"github.com/opentdf/platform/sdk/httputil"
+	access "github.com/opentdf/platform/service/internal/access/v2"
 	"github.com/opentdf/platform/service/internal/auth"
 	"github.com/opentdf/platform/service/internal/auth/authz"
 	"github.com/opentdf/platform/service/internal/server"
@@ -432,6 +433,8 @@ func setupERSConnection(cfg *config.Config, oidcconfig *auth.OIDCConfiguration, 
 	}
 
 	ersConnectRPCConn := &sdk.ConnectRPCConnection{}
+	ersConnectRPCConn.Options = append(ersConnectRPCConn.Options,
+		connect.WithInterceptors(access.NewOrganizationIDClientInterceptor()))
 
 	// OTel tracing and metrics for outbound ERS Connect RPCs (outermost interceptor)
 	if ersTraceInt, err := tracing.ConnectClientTraceInterceptor(); err != nil {
@@ -511,7 +514,15 @@ func configureERSAuthentication(cfg *config.Config, oidcconfig *auth.OIDCConfigu
 func setupIPCSDK(cfg *config.Config, oidcconfig *auth.OIDCConfiguration, otdf *server.OpenTDFServer, logger *logger.Logger, sdkOptions []sdk.Option) (*sdk.SDK, error) {
 	// Use IPC for the SDK client
 	sdkOptions = append(sdkOptions, sdk.WithIPC())
-	sdkOptions = append(sdkOptions, sdk.WithCustomCoreConnection(otdf.ConnectRPCInProcess.Conn()))
+	baseConn := otdf.ConnectRPCInProcess.Conn()
+	coreConn := *baseConn
+	coreConn.Options = append(slices.Clone(baseConn.Options),
+		connect.WithInterceptors(access.NewOrganizationIDClientInterceptor()))
+	sdkOptions = append(sdkOptions, sdk.WithCustomCoreConnection(&coreConn))
+	ersConn := coreConn
+	ersConn.Options = append(slices.Clone(coreConn.Options),
+		connect.WithInterceptors(access.NewOrganizationIDClientInterceptor()))
+	sdkOptions = append(sdkOptions, sdk.WithCustomEntityResolutionConnection(&ersConn))
 
 	// handle ERS connection for core mode
 	if slices.Contains(cfg.Mode, serviceregistry.ModeCore.String()) && !slices.Contains(cfg.Mode, serviceregistry.ModeERS.String()) {
@@ -537,6 +548,9 @@ func setupIPCSDK(cfg *config.Config, oidcconfig *auth.OIDCConfiguration, otdf *s
 // setupExternalSDK configures and creates SDK client for external mode
 func setupExternalSDK(cfg *config.Config, logger *logger.Logger, sdkOptions []sdk.Option) (*sdk.SDK, error) {
 	// Use the provided SDK config
+	sdkOptions = append(sdkOptions, sdk.WithExtraClientOptions(
+		connect.WithInterceptors(access.NewOrganizationIDClientInterceptor()),
+	))
 	if cfg.SDKConfig.CorePlatformConnection.Insecure {
 		sdkOptions = append(sdkOptions, sdk.WithInsecureSkipVerifyConn())
 	}

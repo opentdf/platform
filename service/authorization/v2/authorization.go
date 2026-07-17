@@ -167,6 +167,7 @@ func (as *Service) GetEntitlements(ctx context.Context, req *connect.Request[aut
 func (as *Service) GetDecision(ctx context.Context, req *connect.Request[authzV2.GetDecisionRequest]) (*connect.Response[authzV2.GetDecisionResponse], error) {
 	as.logger.DebugContext(ctx, "getting decision")
 
+	ctx = access.WithOrganizationID(ctx, req.Header().Get(access.OrganizationIDHeader))
 	ctx, span := as.Start(ctx, "GetDecision")
 	defer span.End()
 
@@ -217,6 +218,7 @@ func (as *Service) GetDecision(ctx context.Context, req *connect.Request[authzV2
 func (as *Service) GetDecisionMultiResource(ctx context.Context, req *connect.Request[authzV2.GetDecisionMultiResourceRequest]) (*connect.Response[authzV2.GetDecisionMultiResourceResponse], error) {
 	as.logger.DebugContext(ctx, "getting decision multi resource")
 
+	ctx = access.WithOrganizationID(ctx, req.Header().Get(access.OrganizationIDHeader))
 	ctx, span := as.Start(ctx, "GetDecisionMultiResource")
 	defer span.End()
 
@@ -270,6 +272,7 @@ func (as *Service) GetDecisionMultiResource(ctx context.Context, req *connect.Re
 func (as *Service) GetDecisionBulk(ctx context.Context, req *connect.Request[authzV2.GetDecisionBulkRequest]) (*connect.Response[authzV2.GetDecisionBulkResponse], error) {
 	as.logger.DebugContext(ctx, "getting decision bulk")
 
+	ctx = access.WithOrganizationID(ctx, req.Header().Get(access.OrganizationIDHeader))
 	ctx, span := as.Start(ctx, "GetDecisionBulk")
 	defer span.End()
 

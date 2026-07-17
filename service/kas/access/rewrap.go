@@ -29,6 +29,7 @@ import (
 	"github.com/opentdf/platform/lib/ocrypto"
 	"github.com/opentdf/platform/protocol/go/entity"
 	kaspb "github.com/opentdf/platform/protocol/go/kas"
+	accessv2 "github.com/opentdf/platform/service/internal/access/v2"
 	"github.com/opentdf/platform/service/internal/security"
 	"github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/logger/audit"
@@ -588,6 +589,7 @@ func getMapValue[Map ~map[K]V, K comparable, V any](m Map) *V {
 }
 
 func (p *Provider) Rewrap(ctx context.Context, req *connect.Request[kaspb.RewrapRequest]) (*connect.Response[kaspb.RewrapResponse], error) {
+	ctx = accessv2.WithOrganizationID(ctx, req.Header().Get(accessv2.OrganizationIDHeader))
 	in := req.Msg
 	p.Logger.DebugContext(ctx, "REWRAP")
 

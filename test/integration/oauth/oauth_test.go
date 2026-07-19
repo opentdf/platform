@@ -217,7 +217,7 @@ func (s *OAuthSuite) TestGettingAccessTokenWithoutDPoPProofFails() {
 
 	req, err := http.NewRequest(http.MethodPost, s.keycloakEndpoint, strings.NewReader(formData.Encode()))
 	s.Require().NoError(err)
-	req.SetBasicAuth("opentdf-sdk", "secret")
+	req.SetBasicAuth("opentdf-sdk", "secret") // #nosec G101 -- test-only Keycloak client secret
 	req.Header.Set("Accept", "application/json")
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 
@@ -570,9 +570,9 @@ func setupStandardKeycloak(ctx context.Context, t *testing.T) (tc.Container, str
 		},
 		Env: map[string]string{
 			"KC_BOOTSTRAP_ADMIN_USERNAME": "admin",
-			"KC_BOOTSTRAP_ADMIN_PASSWORD": "admin",
+			"KC_BOOTSTRAP_ADMIN_PASSWORD": "admin", // #nosec G101 -- test-only Keycloak admin password
 			"KEYCLOAK_ADMIN":              "admin",
-			"KEYCLOAK_ADMIN_PASSWORD":     "admin",
+			"KEYCLOAK_ADMIN_PASSWORD":     "admin", // #nosec G101 -- test-only Keycloak admin password
 		},
 
 		WaitingFor: wait.ForLog("Running the server"),
@@ -588,7 +588,7 @@ func setupStandardKeycloak(ctx context.Context, t *testing.T) (tc.Container, str
 	connectParams := fixtures.KeycloakConnectParams{
 		BasePath:         keycloakBase,
 		Username:         "admin",
-		Password:         "admin",
+		Password:         "admin", // #nosec G101 -- test-only Keycloak admin password
 		Realm:            realm,
 		Audience:         "opentdf",
 		AllowInsecureTLS: true,
@@ -620,7 +620,7 @@ func setupCustomKeycloakForCertExchange(ctx context.Context, t *testing.T) (tc.C
 			"KC_BOOTSTRAP_ADMIN_USERNAME":   "admin",
 			"KC_BOOTSTRAP_ADMIN_PASSWORD":   "admin",
 			"KEYCLOAK_ADMIN":                "admin",
-			"KEYCLOAK_ADMIN_PASSWORD":       "admin",
+			"KEYCLOAK_ADMIN_PASSWORD":       "admin", // #nosec G101 -- test-only Keycloak admin password
 			"KC_HTTPS_KEY_STORE_PASSWORD":   "password",
 			"KC_HTTPS_KEY_STORE_FILE":       "/truststore/truststore.jks",
 			"KC_HTTPS_CERTIFICATE_FILE":     "/etc/x509/tls/localhost.crt",

@@ -8,7 +8,7 @@ import (
 
 func TestWithStandardTokenExchangeEnabled(t *testing.T) {
 	existingAttributes := map[string]string{
-		"client.secret.creation.time": "12345",
+		"client.secret.creation.time": "12345", // #nosec G101 -- Keycloak metadata key used in unit test, not a credential
 	}
 	client := gocloak.Client{
 		Attributes: &existingAttributes,
@@ -43,7 +43,7 @@ func TestWithStandardTokenExchangeEnabledInitializesAttributes(t *testing.T) {
 
 func TestWithDPoPBoundAccessTokens(t *testing.T) {
 	existingAttributes := map[string]string{
-		"client.secret.creation.time": "12345",
+		"client.secret.creation.time": "12345", // #nosec G101 -- Keycloak metadata key used in unit test, not a credential
 	}
 	client := gocloak.Client{
 		Attributes: &existingAttributes,

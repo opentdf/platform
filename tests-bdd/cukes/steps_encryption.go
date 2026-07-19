@@ -20,7 +20,7 @@ import (
 )
 
 const (
-	userTokenClientID     = "opentdf-sdk"
+	userTokenClientID     = "opentdf-sdk". //nolint:gosec // Test Credential
 	userTokenClientSecret = "secret"
 	bddUserPassword       = "testuser123"
 

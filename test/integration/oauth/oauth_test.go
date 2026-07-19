@@ -33,7 +33,7 @@ import (
 )
 
 const (
-	standardKeycloakImage = "us-docker.pkg.dev/prj-infra-automation-ktbz/remote-proxy-quay/keycloak/keycloak:26.4.0"
+	standardKeycloakImage = "quay.io/keycloak/keycloak:26.4.0"
 	customKeycloakImage   = "ghcr.io/opentdf/keycloak:sha-8a6d35a"
 )
 

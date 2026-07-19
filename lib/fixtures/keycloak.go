@@ -21,6 +21,7 @@ const (
 	kcErrUnknown = -1
 
 	standardTokenExchangeEnabledAttribute = "standard.token.exchange.enabled"
+	dpopBoundAccessTokensAttribute        = "dpop.bound.access.tokens"
 	keycloakBoolTrue                      = "true"
 
 	// Token refresh constants
@@ -104,6 +105,29 @@ func SetupKeycloak(ctx context.Context, kcConnectParams KeycloakConnectParams) e
 }
 
 func SetupKeycloakWithConfig(ctx context.Context, kcConnectParams KeycloakConnectParams, tmConfig *TokenManagerConfig) error {
+	return setupKeycloakWithConfig(ctx, kcConnectParams, tmConfig, keycloakSetupOptions{
+		includeCustomDPoPMapper: true,
+		includeCertExchange:     true,
+	})
+}
+
+func SetupStandardKeycloak(ctx context.Context, kcConnectParams KeycloakConnectParams) error {
+	return SetupStandardKeycloakWithConfig(ctx, kcConnectParams, nil)
+}
+
+func SetupStandardKeycloakWithConfig(ctx context.Context, kcConnectParams KeycloakConnectParams, tmConfig *TokenManagerConfig) error {
+	return setupKeycloakWithConfig(ctx, kcConnectParams, tmConfig, keycloakSetupOptions{
+		includeCustomDPoPMapper: false,
+		includeCertExchange:     false,
+	})
+}
+
+type keycloakSetupOptions struct {
+	includeCustomDPoPMapper bool
+	includeCertExchange     bool
+}
+
+func setupKeycloakWithConfig(ctx context.Context, kcConnectParams KeycloakConnectParams, tmConfig *TokenManagerConfig, options keycloakSetupOptions) error {
 	// Create TokenManager
 	tm, err := NewTokenManager(ctx, &kcConnectParams, tmConfig)
 	if err != nil {
@@ -175,31 +199,7 @@ func SetupKeycloakWithConfig(ctx context.Context, kcConnectParams KeycloakConnec
 	opentdfAuthorizationClientID := "tdf-authorization-svc"
 	realmMangementClientName := "realm-management"
 
-	protocolMappers := []gocloak.ProtocolMapperRepresentation{
-		{
-			Name:           gocloak.StringP("audience-mapper"),
-			Protocol:       gocloak.StringP("openid-connect"),
-			ProtocolMapper: gocloak.StringP("oidc-audience-mapper"),
-			Config: &map[string]string{
-				"included.client.audience": kcConnectParams.Audience,
-				"included.custom.audience": "custom_audience",
-				"access.token.claim":       "true",
-				"id.token.claim":           "true",
-			},
-		},
-		{
-			Name:           gocloak.StringP("dpop-mapper"),
-			Protocol:       gocloak.StringP("openid-connect"),
-			ProtocolMapper: gocloak.StringP("virtru-oidc-protocolmapper"),
-			Config: &map[string]string{
-				"claim.name":         "tdf_claims",
-				"client.dpop":        "true",
-				"tdf_claims.enabled": "true",
-				"access.token.claim": "true",
-				"client.publickey":   "X-VirtruPubKey",
-			},
-		},
-	}
+	protocolMappers := defaultProtocolMappers(kcConnectParams.Audience, options.includeCustomDPoPMapper)
 
 	// Create Roles
 	roles := []string{opentdfAdminRoleName, opentdfStandardRoleName, testingOnlyRoleName}
@@ -246,7 +246,7 @@ func SetupKeycloakWithConfig(ctx context.Context, kcConnectParams KeycloakConnec
 	}
 
 	// Create OpenTDF Client
-	_, err = createClient(ctx, tm, &kcConnectParams, gocloak.Client{
+	opentdfClient := gocloak.Client{
 		ClientID:                gocloak.StringP(opentdfClientID),
 		Enabled:                 gocloak.BoolP(true),
 		Name:                    gocloak.StringP(opentdfClientID),
@@ -254,7 +254,11 @@ func SetupKeycloakWithConfig(ctx context.Context, kcConnectParams KeycloakConnec
 		ClientAuthenticatorType: gocloak.StringP("client-secret"),
 		Secret:                  gocloak.StringP("secret"),
 		ProtocolMappers:         &protocolMappers,
-	}, []gocloak.Role{*opentdfAdminRole}, nil)
+	}
+	if !options.includeCustomDPoPMapper {
+		opentdfClient = withDPoPBoundAccessTokens(opentdfClient)
+	}
+	_, err = createClient(ctx, tm, &kcConnectParams, opentdfClient, []gocloak.Role{*opentdfAdminRole}, nil)
 	if err != nil {
 		return err
 	}
@@ -288,7 +292,7 @@ func SetupKeycloakWithConfig(ctx context.Context, kcConnectParams KeycloakConnec
 	}
 
 	// Create TDF SDK Client
-	sdkNumericID, err := createClient(ctx, tm, &kcConnectParams, gocloak.Client{
+	opentdfSdkClient := gocloak.Client{
 		ClientID: gocloak.StringP(opentdfSdkClientID),
 		Enabled:  gocloak.BoolP(true),
 		// OptionalClientScopes:    &[]string{"testscope"},
@@ -298,7 +302,11 @@ func SetupKeycloakWithConfig(ctx context.Context, kcConnectParams KeycloakConnec
 		Secret:                    gocloak.StringP("secret"),
 		DirectAccessGrantsEnabled: gocloak.BoolP(true),
 		ProtocolMappers:           &protocolMappers,
-	}, []gocloak.Role{*opentdfStandardRole, *testingOnlyRole}, nil)
+	}
+	if !options.includeCustomDPoPMapper {
+		opentdfSdkClient = withDPoPBoundAccessTokens(opentdfSdkClient)
+	}
+	sdkNumericID, err := createClient(ctx, tm, &kcConnectParams, opentdfSdkClient, []gocloak.Role{*opentdfStandardRole, *testingOnlyRole}, nil)
 	if err != nil {
 		return err
 	}
@@ -375,11 +383,44 @@ func SetupKeycloakWithConfig(ctx context.Context, kcConnectParams KeycloakConnec
 	if err := createTokenExchange(ctx, &kcConnectParams, opentdfClientID, opentdfSdkClientID); err != nil {
 		return err
 	}
-	if err := createCertExchange(ctx, &kcConnectParams, "x509-auth-flow", opentdfSdkClientID); err != nil {
-		return err
+	if options.includeCertExchange {
+		if err := createCertExchange(ctx, &kcConnectParams, "x509-auth-flow", opentdfSdkClientID); err != nil {
+			return err
+		}
 	}
 
 	return nil
+}
+
+func defaultProtocolMappers(audience string, includeCustomDPoPMapper bool) []gocloak.ProtocolMapperRepresentation {
+	protocolMappers := []gocloak.ProtocolMapperRepresentation{
+		{
+			Name:           gocloak.StringP("audience-mapper"),
+			Protocol:       gocloak.StringP("openid-connect"),
+			ProtocolMapper: gocloak.StringP("oidc-audience-mapper"),
+			Config: &map[string]string{
+				"included.client.audience": audience,
+				"included.custom.audience": "custom_audience",
+				"access.token.claim":       "true",
+				"id.token.claim":           "true",
+			},
+		},
+	}
+	if includeCustomDPoPMapper {
+		protocolMappers = append(protocolMappers, gocloak.ProtocolMapperRepresentation{
+			Name:           gocloak.StringP("dpop-mapper"),
+			Protocol:       gocloak.StringP("openid-connect"),
+			ProtocolMapper: gocloak.StringP("virtru-oidc-protocolmapper"),
+			Config: &map[string]string{
+				"claim.name":         "tdf_claims",
+				"client.dpop":        "true",
+				"tdf_claims.enabled": "true",
+				"access.token.claim": "true",
+				"client.publickey":   "X-VirtruPubKey",
+			},
+		})
+	}
+	return protocolMappers
 }
 
 func SetupCustomKeycloak(ctx context.Context, kcParams KeycloakConnectParams, keycloakData KeycloakData) error {
@@ -1119,13 +1160,21 @@ func exactClientByClientID(clients []*gocloak.Client, clientID string) (gocloak.
 }
 
 func withStandardTokenExchangeEnabled(client gocloak.Client) gocloak.Client {
+	return withClientAttribute(client, standardTokenExchangeEnabledAttribute, keycloakBoolTrue)
+}
+
+func withDPoPBoundAccessTokens(client gocloak.Client) gocloak.Client {
+	return withClientAttribute(client, dpopBoundAccessTokensAttribute, keycloakBoolTrue)
+}
+
+func withClientAttribute(client gocloak.Client, key, value string) gocloak.Client {
 	attributes := make(map[string]string)
 	if client.Attributes != nil {
-		for key, value := range *client.Attributes {
-			attributes[key] = value
+		for existingKey, existingValue := range *client.Attributes {
+			attributes[existingKey] = existingValue
 		}
 	}
-	attributes[standardTokenExchangeEnabledAttribute] = keycloakBoolTrue
+	attributes[key] = value
 	client.Attributes = &attributes
 	return client
 }

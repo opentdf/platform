@@ -41,6 +41,56 @@ func TestWithStandardTokenExchangeEnabledInitializesAttributes(t *testing.T) {
 	}
 }
 
+func TestWithDPoPBoundAccessTokens(t *testing.T) {
+	existingAttributes := map[string]string{
+		"client.secret.creation.time": "12345",
+	}
+	client := gocloak.Client{
+		Attributes: &existingAttributes,
+	}
+
+	updatedClient := withDPoPBoundAccessTokens(client)
+
+	if updatedClient.Attributes == nil {
+		t.Fatal("expected attributes to be set")
+	}
+	if got := (*updatedClient.Attributes)[dpopBoundAccessTokensAttribute]; got != keycloakBoolTrue {
+		t.Fatalf("expected %s to be true, got %q", dpopBoundAccessTokensAttribute, got)
+	}
+	if got := (*updatedClient.Attributes)["client.secret.creation.time"]; got != "12345" {
+		t.Fatalf("expected existing attribute to be preserved, got %q", got)
+	}
+	if _, ok := existingAttributes[dpopBoundAccessTokensAttribute]; ok {
+		t.Fatal("expected original attributes map to remain unchanged")
+	}
+}
+
+func TestDefaultProtocolMappersForStandardKeycloakExcludeCustomDPoPMapper(t *testing.T) {
+	mappers := defaultProtocolMappers("https://platform.example", false)
+
+	if len(mappers) != 1 {
+		t.Fatalf("expected only the audience mapper, got %d mappers", len(mappers))
+	}
+	if got := *mappers[0].ProtocolMapper; got != "oidc-audience-mapper" {
+		t.Fatalf("expected audience mapper, got %q", got)
+	}
+}
+
+func TestDefaultProtocolMappersForCustomKeycloakIncludeCustomDPoPMapper(t *testing.T) {
+	mappers := defaultProtocolMappers("https://platform.example", true)
+
+	found := false
+	for _, mapper := range mappers {
+		if mapper.ProtocolMapper != nil && *mapper.ProtocolMapper == "virtru-oidc-protocolmapper" {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Fatal("expected custom Keycloak setup to include virtru-oidc-protocolmapper")
+	}
+}
+
 func TestExactClientByClientID(t *testing.T) {
 	const clientID = "opentdf"
 	clients := []*gocloak.Client{

@@ -480,15 +480,46 @@ components:
               type: string
               title: name
               minLength: 1
+              description: |-
+                DEPRECATED, please use the NameManager and specify manager + name together.
+                 Using this without manager could result in non-deterministic responses.
+              deprecated: true
           title: name
           required:
             - name
+        - properties:
+            nameManager:
+              title: name_manager
+              description: Search by name and manager.
+              $ref: '#/components/schemas/policy.keymanagement.GetProviderConfigRequest.NameManager'
+          title: name_manager
+          required:
+            - nameManager
       properties:
         manager:
           type: string
           title: manager
-          description: Optional - filter by manager type when searching by name
+          description: |-
+            DEPRECATED, please use the NameManager and specify manager + name together.
+             Not populating manager when searching by name could result in non-deterministic responses.
+             Optional - filter by manager type when searching by name
+          deprecated: true
       title: GetProviderConfigRequest
+      additionalProperties: false
+    policy.keymanagement.GetProviderConfigRequest.NameManager:
+      type: object
+      properties:
+        name:
+          type: string
+          title: name
+          minLength: 1
+          description: The name of the key provider
+        manager:
+          type: string
+          title: manager
+          minLength: 1
+          description: The type of key manager.
+      title: NameManager
       additionalProperties: false
     policy.keymanagement.GetProviderConfigResponse:
       type: object

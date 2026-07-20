@@ -56,14 +56,27 @@ func (c PolicyDBClient) GetProviderConfig(ctx context.Context, r *keymanagement.
 		if !id.Valid {
 			return nil, db.ErrUUIDInvalid
 		}
+		c.logger.DebugContext(ctx, "getting provider config by ID", slog.String("id", i.Id))
 		params = getProviderConfigParams{ID: id}
 	case *keymanagement.GetProviderConfigRequest_Name:
-		name := pgtypeText(strings.ToLower(i.Name))
+		return nil, db.ErrDeprecated
+	case *keymanagement.GetProviderConfigRequest_NameAndManager:
+		nameIdentifier := i.NameAndManager
+		name := pgtypeText(strings.ToLower(nameIdentifier.GetName()))
 		if !name.Valid {
 			return nil, db.ErrSelectIdentifierInvalid
 		}
+		manager := pgtypeText(nameIdentifier.GetManager())
+		if !manager.Valid {
+			return nil, db.ErrSelectIdentifierInvalid
+		}
+		c.logger.DebugContext(ctx,
+			"getting provider config by name",
+			slog.String("name", nameIdentifier.GetName()),
+			slog.String("manager", nameIdentifier.GetManager()),
+		)
 		params.Name = name
-		params.Manager = pgtypeText(r.GetManager())
+		params.Manager = manager
 	default:
 		// unexpected type
 		return nil, errors.Join(db.ErrUnknownSelectIdentifier, fmt.Errorf("type [%T] value [%v]", i, i))

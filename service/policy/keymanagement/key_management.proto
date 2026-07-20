@@ -29,17 +29,29 @@ message CreateProviderConfigResponse {
 }
 
 message GetProviderConfigRequest {
+  message NameIdentifier {
+    string name = 1 [(buf.validate.field).string.min_len = 1];
+    string manager = 2 [(buf.validate.field).string.min_len = 1];
+  }
+
   // Required
   oneof identifier {
     option (buf.validate.oneof).required = true;
     string id = 2 [(buf.validate.field).string.uuid = true];
-    // Provider config name. When using name, manager SHOULD also be set because
-    // provider config uniqueness is based on (name, manager). Omitting manager
-    // can match multiple provider configs and returns a non-deterministic result.
-    string name = 3 [(buf.validate.field).string.min_len = 1];
+    // DEPRECATED, please use name_and_manager and specify manager + name together.
+    // Using this without manager could result in non-deterministic responses.
+    string name = 3 [
+      deprecated = true,
+      (buf.validate.field).string.min_len = 1
+    ];
+    NameIdentifier name_and_manager = 5;
   }
-  // Key manager implementation name. SHOULD be set when searching by name.
-  string manager = 4 [(buf.validate.field).required = false];
+  // DEPRECATED, please use name_and_manager and specify manager + name together.
+  // Using this without name is ignored.
+  string manager = 4 [
+    deprecated = true,
+    (buf.validate.field).required = false
+  ];
 }
 message GetProviderConfigResponse {
   KeyProviderConfig provider_config = 1;

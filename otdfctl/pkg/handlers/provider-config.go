@@ -36,10 +36,12 @@ func (h Handler) GetProviderConfig(ctx context.Context, id, name, manager string
 			Id: id,
 		}
 	} else if name != "" {
-		req.Identifier = &keymanagement.GetProviderConfigRequest_Name{
-			Name: name,
+		req.Identifier = &keymanagement.GetProviderConfigRequest_NameAndManager{
+			NameAndManager: &keymanagement.GetProviderConfigRequest_NameIdentifier{
+				Name:    name,
+				Manager: manager,
+			},
 		}
-		req.Manager = manager
 	}
 
 	resp, err := h.sdk.KeyManagement.GetProviderConfig(ctx, &req)

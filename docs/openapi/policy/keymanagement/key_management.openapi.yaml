@@ -481,18 +481,41 @@ components:
               title: name
               minLength: 1
               description: |-
-                Provider config name. When using name, manager SHOULD also be set because
-                 provider config uniqueness is based on (name, manager). Omitting manager
-                 can match multiple provider configs and returns a non-deterministic result.
+                DEPRECATED, please use name_and_manager and specify manager + name together.
+                 Using this without manager could result in non-deterministic responses.
+              deprecated: true
           title: name
           required:
             - name
+        - properties:
+            nameAndManager:
+              title: name_and_manager
+              $ref: '#/components/schemas/policy.keymanagement.GetProviderConfigRequest.NameIdentifier'
+          title: name_and_manager
+          required:
+            - nameAndManager
       properties:
         manager:
           type: string
           title: manager
-          description: Key manager implementation name. SHOULD be set when searching by name.
+          description: |-
+            DEPRECATED, please use name_and_manager and specify manager + name together.
+             Using this without name is ignored.
+          deprecated: true
       title: GetProviderConfigRequest
+      additionalProperties: false
+    policy.keymanagement.GetProviderConfigRequest.NameIdentifier:
+      type: object
+      properties:
+        name:
+          type: string
+          title: name
+          minLength: 1
+        manager:
+          type: string
+          title: manager
+          minLength: 1
+      title: NameIdentifier
       additionalProperties: false
     policy.keymanagement.GetProviderConfigResponse:
       type: object

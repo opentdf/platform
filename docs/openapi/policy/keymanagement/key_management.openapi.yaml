@@ -480,9 +480,7 @@ components:
               type: string
               title: name
               minLength: 1
-              description: |-
-                DEPRECATED, please use the NameManager and specify manager + name together.
-                 Using this without manager could result in non-deterministic responses.
+              description: DEPRECATED, please use the NameManager and specify manager + name together.
               deprecated: true
           title: name
           required:
@@ -499,10 +497,7 @@ components:
         manager:
           type: string
           title: manager
-          description: |-
-            DEPRECATED, please use the NameManager and specify manager + name together.
-             Not populating manager when searching by name could result in non-deterministic responses.
-             Optional - filter by manager type when searching by name
+          description: DEPRECATED, please use the NameManager and specify manager + name together.
           deprecated: true
       title: GetProviderConfigRequest
       additionalProperties: false

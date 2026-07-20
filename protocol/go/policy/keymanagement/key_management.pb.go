@@ -163,8 +163,6 @@ type GetProviderConfigRequest struct {
 	//	*GetProviderConfigRequest_NameManager_
 	Identifier isGetProviderConfigRequest_Identifier `protobuf_oneof:"identifier"`
 	// DEPRECATED, please use the NameManager and specify manager + name together.
-	// Not populating manager when searching by name could result in non-deterministic responses.
-	// Optional - filter by manager type when searching by name
 	//
 	// Deprecated: Marked as deprecated in policy/keymanagement/key_management.proto.
 	Manager string `protobuf:"bytes,4,opt,name=manager,proto3" json:"manager,omitempty"`
@@ -249,7 +247,6 @@ type GetProviderConfigRequest_Id struct {
 
 type GetProviderConfigRequest_Name struct {
 	// DEPRECATED, please use the NameManager and specify manager + name together.
-	// Using this without manager could result in non-deterministic responses.
 	//
 	// Deprecated: Marked as deprecated in policy/keymanagement/key_management.proto.
 	Name string `protobuf:"bytes,3,opt,name=name,proto3,oneof"`

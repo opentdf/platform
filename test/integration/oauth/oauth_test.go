@@ -215,7 +215,7 @@ func (s *OAuthSuite) TestGettingAccessTokenWithoutDPoPProofFails() {
 	formData := url.Values{}
 	formData.Set("grant_type", "client_credentials")
 
-	req, err := http.NewRequest(http.MethodPost, s.keycloakEndpoint, strings.NewReader(formData.Encode()))
+	req, err := http.NewRequestWithContext(s.T().Context(), http.MethodPost, s.keycloakEndpoint, strings.NewReader(formData.Encode()))
 	s.Require().NoError(err)
 	req.SetBasicAuth("opentdf-sdk", "secret") // #nosec G101 -- test-only Keycloak client secret
 	req.Header.Set("Accept", "application/json")
@@ -658,12 +658,9 @@ func setupCustomKeycloakForCertExchange(ctx context.Context, t *testing.T) (tc.C
 }
 
 func startKeycloakContainer(ctx context.Context, t *testing.T, containerReq tc.ContainerRequest) tc.Container {
-	var providerType tc.ProviderType
-
+	providerType := tc.ProviderDocker
 	if os.Getenv("TESTCONTAINERS_PODMAN") == "true" {
 		providerType = tc.ProviderPodman
-	} else {
-		providerType = tc.ProviderDocker
 	}
 
 	keycloak, err := tc.GenericContainer(ctx, tc.GenericContainerRequest{
@@ -671,9 +668,7 @@ func startKeycloakContainer(ctx context.Context, t *testing.T, containerReq tc.C
 		ContainerRequest: containerReq,
 		Started:          true,
 	})
-	if err != nil {
-		t.Fatalf("error starting keycloak container: %v", err)
-	}
+	require.NoError(t, err, "error starting keycloak container")
 
 	return keycloak
 }

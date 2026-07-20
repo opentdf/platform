@@ -21,7 +21,7 @@ const (
 	kcErrUnknown = -1
 
 	standardTokenExchangeEnabledAttribute = "standard.token.exchange.enabled"
-	dpopBoundAccessTokensAttribute        = "dpop.bound.access.tokens"
+	dpopBoundAccessTokensAttribute        = "dpop.bound.access.tokens" //nolint:gosec // Keycloak client attribute name, not a credential.
 	keycloakBoolTrue                      = "true"
 
 	// Token refresh constants
@@ -379,8 +379,8 @@ func setupKeycloakWithConfig(ctx context.Context, kcConnectParams KeycloakConnec
 		panic("Oh no!, failed to create user :(")
 	}
 
-	// Create token exchange opentdf->opentdf sdk
-	if err := createTokenExchange(ctx, &kcConnectParams, opentdfClientID, opentdfSdkClientID); err != nil {
+	// Enable standard token exchange for the requester client.
+	if err := createTokenExchange(ctx, &kcConnectParams, opentdfClientID); err != nil {
 		return err
 	}
 	if options.includeCertExchange {
@@ -555,7 +555,7 @@ func SetupCustomKeycloakWithConfig(ctx context.Context, kcParams KeycloakConnect
 		// create token exchanges
 		if realmToCreate.TokenExchanges != nil {
 			for _, tokenExchange := range realmToCreate.TokenExchanges {
-				err := createTokenExchangeWithTokenManager(ctx, &kcConnectParams, tm, tokenExchange.StartClientID, tokenExchange.TargetClientID)
+				err := createTokenExchangeWithTokenManager(ctx, &kcConnectParams, tm, tokenExchange.StartClientID)
 				if err != nil {
 					return err
 				}
@@ -1103,16 +1103,16 @@ func getIDOfClient(ctx context.Context, tm *TokenManager, connectParams *Keycloa
 	return clientID, nil
 }
 
-func createTokenExchange(ctx context.Context, connectParams *KeycloakConnectParams, startClientID string, targetClientID string) error {
+func createTokenExchange(ctx context.Context, connectParams *KeycloakConnectParams, startClientID string) error {
 	// Create TokenManager and delegate to TokenManager version
 	tm, err := NewTokenManager(ctx, connectParams, nil)
 	if err != nil {
 		return fmt.Errorf("failed to create token manager: %w", err)
 	}
-	return createTokenExchangeWithTokenManager(ctx, connectParams, tm, startClientID, targetClientID)
+	return createTokenExchangeWithTokenManager(ctx, connectParams, tm, startClientID)
 }
 
-func createTokenExchangeWithTokenManager(ctx context.Context, connectParams *KeycloakConnectParams, tm *TokenManager, startClientID string, targetClientID string) error {
+func createTokenExchangeWithTokenManager(ctx context.Context, connectParams *KeycloakConnectParams, tm *TokenManager, startClientID string) error {
 	// Get fresh token
 	token, err := tm.GetToken(ctx)
 	if err != nil {
@@ -1137,12 +1137,11 @@ func createTokenExchangeWithTokenManager(ctx context.Context, connectParams *Key
 
 	requesterClient = withStandardTokenExchangeEnabled(requesterClient)
 	if err := client.UpdateClient(ctx, token.AccessToken, connectParams.Realm, requesterClient); err != nil {
-		return fmt.Errorf("error enabling standard token exchange for requester client %q targeting %q: %w", startClientID, targetClientID, err)
+		return fmt.Errorf("error enabling standard token exchange for requester client %q: %w", startClientID, err)
 	}
 
 	slog.Info("enabled standard token exchange for client",
-		slog.String("requester_client_id", startClientID),
-		slog.String("target_client_id", targetClientID))
+		slog.String("requester_client_id", startClientID))
 
 	return nil
 }

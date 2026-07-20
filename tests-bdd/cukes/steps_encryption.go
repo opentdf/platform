@@ -20,8 +20,8 @@ import (
 )
 
 const (
-	userTokenClientID     = "opentdf-sdk" //nolint:gosec // Test Credential
-	userTokenClientSecret = "secret"
+	userTokenClientID     = "opentdf-sdk" //nolint:gosec // Test credential.
+	userTokenClientSecret = "secret"      //nolint:gosec // Test credential.
 	bddUserPassword       = "testuser123"
 
 	tokenEndpointTimeout = 10 * time.Second

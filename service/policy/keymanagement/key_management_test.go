@@ -15,6 +15,7 @@ const (
 	errMessageConfig     = "config_json"
 	errMessageIdentifier = "identifier"
 	errMessageUUID       = "uuid"
+	errMessageMinLen     = "string.min_len"
 )
 
 var (
@@ -119,7 +120,7 @@ func Test_GetProviderConfigRequest(t *testing.T) {
 			errorMessage: errMessageUUID,
 		},
 		{
-			name: "Invalid Name (empty)",
+			name: "Invalid Name (empty) identifier",
 			req: &keymanagement.GetProviderConfigRequest{
 				Identifier: &keymanagement.GetProviderConfigRequest_Name{
 					Name: "",
@@ -138,7 +139,7 @@ func Test_GetProviderConfigRequest(t *testing.T) {
 			expectError: false,
 		},
 		{
-			name: "Valid Name",
+			name: "Valid Name Identifier",
 			req: &keymanagement.GetProviderConfigRequest{
 				Identifier: &keymanagement.GetProviderConfigRequest_Name{
 					Name: validName,
@@ -147,7 +148,31 @@ func Test_GetProviderConfigRequest(t *testing.T) {
 			expectError: false,
 		},
 		{
-			name: "Valid Name and Manager",
+			name: "Invalid Name and Manager identifier (empty name)",
+			req: &keymanagement.GetProviderConfigRequest{
+				Identifier: &keymanagement.GetProviderConfigRequest_NameAndManager{
+					NameAndManager: &keymanagement.GetProviderConfigRequest_NameIdentifier{
+						Manager: validManager,
+					},
+				},
+			},
+			expectError:  true,
+			errorMessage: errMessageMinLen,
+		},
+		{
+			name: "Invalid Name and Manager identifier (empty manager)",
+			req: &keymanagement.GetProviderConfigRequest{
+				Identifier: &keymanagement.GetProviderConfigRequest_NameAndManager{
+					NameAndManager: &keymanagement.GetProviderConfigRequest_NameIdentifier{
+						Name: validName,
+					},
+				},
+			},
+			expectError:  true,
+			errorMessage: errMessageMinLen,
+		},
+		{
+			name: "Valid Name and Manager identifier",
 			req: &keymanagement.GetProviderConfigRequest{
 				Identifier: &keymanagement.GetProviderConfigRequest_NameAndManager{
 					NameAndManager: &keymanagement.GetProviderConfigRequest_NameIdentifier{

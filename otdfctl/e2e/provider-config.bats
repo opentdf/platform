@@ -92,6 +92,12 @@ delete_pc_by_id() {
     assert_output --partial "missing [manager]"
 }
 
+@test "fail to get provider configuration - no name with manager" {
+    run_otdfctl_key_pc get --manager test-config
+    assert_failure
+    assert_output --partial "missing [name]"
+}
+
 @test "fail to get provider configuration - no required flags" {
      run_otdfctl_key_pc get
      assert_failure
@@ -102,6 +108,20 @@ delete_pc_by_id() {
     assert_failure
     assert_output --partial "Failed to get provider config: not_found"
 }
+
+@test "fail to get provider configuration with id, name" {
+    run_otdfctl_key_pc get --id test-id --manager "$TEST_MANAGER" --name "a-name"
+    assert_failure
+    assert_ouput "if any flags in the group [id name] are set none of the others can be; [id name] were all set"
+}
+
+@test "fail to get provider configuration with empty name and manager" {
+    run_otdfctl_key_pc get --name '""' --manager '""'
+    assert_failure
+    assert_output --partial "name_and_manager.name: must be at least 1 characters [string.min_len]"
+    assert_output --partial "name_and_manager.manager: must be at least 1 characters [string.min_len]"
+}
+
 @test "list provider configurations" {
     NAME="tst-config-4"
     run_otdfctl_key_pc create --name "$NAME" --config '"$VALID_CONFIG"' --manager "$TEST_MANAGER" --json

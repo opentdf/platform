@@ -35,7 +35,7 @@ func (h Handler) GetProviderConfig(ctx context.Context, id, name, manager string
 		req.Identifier = &keymanagement.GetProviderConfigRequest_Id{
 			Id: id,
 		}
-	} else if name != "" {
+	} else {
 		req.Identifier = &keymanagement.GetProviderConfigRequest_NameAndManager{
 			NameAndManager: &keymanagement.GetProviderConfigRequest_NameIdentifier{
 				Name:    name,

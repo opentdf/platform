@@ -2,6 +2,7 @@ package cukes
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"path/filepath"
@@ -10,6 +11,11 @@ import (
 	"github.com/cucumber/godog"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
+)
+
+const (
+	ldapFileMode       = 0o644
+	ldapStartupTimeout = 60 * time.Second
 )
 
 type LDAPStepDefinitions struct {
@@ -28,7 +34,7 @@ func (s *LDAPStepDefinitions) anLDAPDirectoryWithTestUsers(ctx context.Context) 
 
 	glue, ok := (*scenarioContext.TestSuiteContext.PlatformGlue).(*LocalDevPlatformGlue)
 	if !ok {
-		return ctx, fmt.Errorf("platform glue is not LocalDevPlatformGlue")
+		return ctx, errors.New("platform glue is not LocalDevPlatformGlue")
 	}
 	projectDir := glue.Options.ProjectDir
 
@@ -51,15 +57,15 @@ func (s *LDAPStepDefinitions) anLDAPDirectoryWithTestUsers(ctx context.Context) 
 			{
 				HostFilePath:      ouFile,
 				ContainerFilePath: "/container/service/slapd/assets/config/bootstrap/ldif/custom/01_organizational_units.ldif",
-				FileMode:          0o644,
+				FileMode:          ldapFileMode,
 			},
 			{
 				HostFilePath:      usersFile,
 				ContainerFilePath: "/container/service/slapd/assets/config/bootstrap/ldif/custom/02_test_users.ldif",
-				FileMode:          0o644,
+				FileMode:          ldapFileMode,
 			},
 		},
-		WaitingFor: wait.ForLog("slapd starting").WithStartupTimeout(60 * time.Second),
+		WaitingFor: wait.ForLog("slapd starting").WithStartupTimeout(ldapStartupTimeout),
 	}
 
 	ldapContainer, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{

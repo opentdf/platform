@@ -26,6 +26,7 @@ type UnsafeServiceClient interface {
 	UnsafeUpdateAttributeValue(ctx context.Context, req *unsafe.UnsafeUpdateAttributeValueRequest) (*unsafe.UnsafeUpdateAttributeValueResponse, error)
 	UnsafeReactivateAttributeValue(ctx context.Context, req *unsafe.UnsafeReactivateAttributeValueRequest) (*unsafe.UnsafeReactivateAttributeValueResponse, error)
 	UnsafeDeleteAttributeValue(ctx context.Context, req *unsafe.UnsafeDeleteAttributeValueRequest) (*unsafe.UnsafeDeleteAttributeValueResponse, error)
+	UnsafeUpdateKey(ctx context.Context, req *unsafe.UnsafeUpdateKeyRequest) (*unsafe.UnsafeUpdateKeyResponse, error)
 	UnsafeDeleteKasKey(ctx context.Context, req *unsafe.UnsafeDeleteKasKeyRequest) (*unsafe.UnsafeDeleteKasKeyResponse, error)
 }
 
@@ -104,6 +105,15 @@ func (w *UnsafeServiceClientConnectWrapper) UnsafeReactivateAttributeValue(ctx c
 func (w *UnsafeServiceClientConnectWrapper) UnsafeDeleteAttributeValue(ctx context.Context, req *unsafe.UnsafeDeleteAttributeValueRequest) (*unsafe.UnsafeDeleteAttributeValueResponse, error) {
 	// Wrap Connect RPC client request
 	res, err := w.UnsafeServiceClient.UnsafeDeleteAttributeValue(ctx, connect.NewRequest(req))
+	if res == nil {
+		return nil, err
+	}
+	return res.Msg, err
+}
+
+func (w *UnsafeServiceClientConnectWrapper) UnsafeUpdateKey(ctx context.Context, req *unsafe.UnsafeUpdateKeyRequest) (*unsafe.UnsafeUpdateKeyResponse, error) {
+	// Wrap Connect RPC client request
+	res, err := w.UnsafeServiceClient.UnsafeUpdateKey(ctx, connect.NewRequest(req))
 	if res == nil {
 		return nil, err
 	}

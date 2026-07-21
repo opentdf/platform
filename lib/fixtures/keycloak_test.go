@@ -75,7 +75,7 @@ func TestWithClientAudienceMapper(t *testing.T) {
 		t.Fatalf("expected one protocol mapper, got %d", got)
 	}
 	mapper := (*client.ProtocolMappers)[0]
-	if got := *mapper.ProtocolMapper; got != "oidc-audience-mapper" {
+	if got := *mapper.ProtocolMapper; got != oidcAudienceMapper {
 		t.Fatalf("expected audience mapper, got %q", got)
 	}
 	if got := (*mapper.Config)["included.client.audience"]; got != "opentdf-sdk" {
@@ -101,7 +101,7 @@ func TestDefaultProtocolMappersForStandardKeycloakExcludeCustomDPoPMapper(t *tes
 	if len(mappers) != 1 {
 		t.Fatalf("expected only the audience mapper, got %d mappers", len(mappers))
 	}
-	if got := *mappers[0].ProtocolMapper; got != "oidc-audience-mapper" {
+	if got := *mappers[0].ProtocolMapper; got != oidcAudienceMapper {
 		t.Fatalf("expected audience mapper, got %q", got)
 	}
 }

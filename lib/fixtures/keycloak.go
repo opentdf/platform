@@ -23,6 +23,7 @@ const (
 	standardTokenExchangeEnabledAttribute = "standard.token.exchange.enabled"
 	dpopBoundAccessTokensAttribute        = "dpop.bound.access.tokens" //nolint:gosec // Keycloak client attribute name, not a credential.
 	keycloakBoolTrue                      = "true"
+	oidcAudienceMapper                    = "oidc-audience-mapper"
 
 	// Token refresh constants
 	defaultTokenBufferSeconds    = 120 // 2 minutes before expiration
@@ -397,7 +398,7 @@ func defaultProtocolMappers(audience string, includeCustomDPoPMapper bool) []goc
 		{
 			Name:           gocloak.StringP("audience-mapper"),
 			Protocol:       gocloak.StringP("openid-connect"),
-			ProtocolMapper: gocloak.StringP("oidc-audience-mapper"),
+			ProtocolMapper: gocloak.StringP(oidcAudienceMapper),
 			Config: &map[string]string{
 				"included.client.audience": audience,
 				"included.custom.audience": "custom_audience",
@@ -1179,7 +1180,7 @@ func withClientAudienceMapper(client gocloak.Client, audience string) gocloak.Cl
 	}
 
 	for _, mapper := range mappers {
-		if mapper.ProtocolMapper == nil || *mapper.ProtocolMapper != "oidc-audience-mapper" || mapper.Config == nil {
+		if mapper.ProtocolMapper == nil || *mapper.ProtocolMapper != oidcAudienceMapper || mapper.Config == nil {
 			continue
 		}
 		if (*mapper.Config)["included.client.audience"] == audience {
@@ -1191,7 +1192,7 @@ func withClientAudienceMapper(client gocloak.Client, audience string) gocloak.Cl
 	mappers = append(mappers, gocloak.ProtocolMapperRepresentation{
 		Name:           gocloak.StringP("token-exchange-audience-" + audience),
 		Protocol:       gocloak.StringP("openid-connect"),
-		ProtocolMapper: gocloak.StringP("oidc-audience-mapper"),
+		ProtocolMapper: gocloak.StringP(oidcAudienceMapper),
 		Config: &map[string]string{
 			"included.client.audience": audience,
 			"access.token.claim":       "true",

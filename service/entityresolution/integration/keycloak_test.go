@@ -178,13 +178,13 @@ func (a *KeycloakTestAdapter) createKeycloakContainerConfig() internal.Container
 		Image:        "ghcr.io/opentdf/keycloak-standard:26.4.0",
 		ExposedPorts: []string{"8080/tcp"},
 		Env: map[string]string{
-			"KEYCLOAK_ADMIN":          a.config.AdminUser,
-			"KEYCLOAK_ADMIN_PASSWORD": a.config.AdminPass,
-			"KC_HTTP_ENABLED":         "true",
-			"KC_HOSTNAME_STRICT":      "false",
-			"KC_HEALTH_ENABLED":       "true",
-			"KC_METRICS_ENABLED":      "false",
-			"KC_LOG_LEVEL":            "WARN", // Reduce log noise for faster startup
+			"KC_BOOTSTRAP_ADMIN_USERNAME": a.config.AdminUser,
+			"KC_BOOTSTRAP_ADMIN_PASSWORD": a.config.AdminPass,
+			"KC_HTTP_ENABLED":             "true",
+			"KC_HOSTNAME_STRICT":          "false",
+			"KC_HEALTH_ENABLED":           "true",
+			"KC_METRICS_ENABLED":          "false",
+			"KC_LOG_LEVEL":                "WARN", // Reduce log noise for faster startup
 		},
 		Cmd:          []string{"start-dev"},
 		WaitStrategy: wait.ForListeningPort("8080/tcp").WithStartupTimeout(2 * time.Minute),
@@ -299,7 +299,7 @@ func (a *KeycloakTestAdapter) enableUnmanagedUserAttributes(ctx context.Context)
 		return fmt.Errorf("failed to get realm user profile config: %w", err)
 	}
 	var upConfig map[string]interface{}
-	if err := json.Unmarshal([]byte(realmUserProfileResp.String()), &upConfig); err != nil {
+	if err := json.Unmarshal(realmUserProfileResp.Body(), &upConfig); err != nil {
 		return fmt.Errorf("failed to parse realm user profile config: %w", err)
 	}
 	upConfig["unmanagedAttributePolicy"] = "ENABLED"

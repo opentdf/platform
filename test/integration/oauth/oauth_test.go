@@ -572,8 +572,6 @@ func setupStandardKeycloak(ctx context.Context, t *testing.T) (tc.Container, str
 		Env: map[string]string{
 			"KC_BOOTSTRAP_ADMIN_USERNAME": "admin",
 			"KC_BOOTSTRAP_ADMIN_PASSWORD": "admin", // #nosec G101 -- test-only Keycloak admin password
-			"KEYCLOAK_ADMIN":              "admin",
-			"KEYCLOAK_ADMIN_PASSWORD":     "admin", // #nosec G101 -- test-only Keycloak admin password
 		},
 
 		WaitingFor: wait.ForHTTP("/realms/master/.well-known/openid-configuration").

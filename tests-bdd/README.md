@@ -302,6 +302,94 @@ The extension uses the configuration in `.vscode/settings.json` to locate your f
 - After installing the extension, you may need to reload VSCode or the extension for autocompletion to work.
 - If autocompletion is not working for specific steps, make sure that the steps are defined properly. Run the tests locally and ensure that no undefined steps are found.
 
+### Multi-Strategy ERS Testing (Claims + LDAP)
+
+The `@multi-strategy-ers` scenarios validate that multi-strategy entity resolution works end-to-end through the full gRPC stack: **SDK → Connect RPC → platform server → ERS → LDAP**.
+
+These tests exist because direct-call Go integration tests (in `service/entityresolution/integration/`) bypass the gRPC/Connect RPC serialization layer. Bugs like structpb coercion (#3645) and pgx driver issues (#3672) only manifest at the serialization boundary — invisible to unit tests but caught by these BDD tests.
+
+#### What's tested
+
+| Scenario | User | LDAP department | Resource | Expected |
+|----------|------|----------------|----------|----------|
+| 1 | alice | engineering | engineering | PERMIT |
+| 2 | bob | marketing | engineering | DENY |
+| 3 | charlie | security | security | PERMIT |
+
+Each scenario creates its own namespace, attribute definitions, and subject mappings, then issues an authorization decision request. The ERS resolves the `user_name` entity against LDAP to retrieve department claims, which are then evaluated against subject mapping conditions.
+
+#### Architecture
+
+```
+┌──────────┐    ┌─────────────┐    ┌──────────┐    ┌─────────────────┐    ┌──────────┐
+│  SDK     │───▶│ Connect RPC │───▶│ Platform │───▶│ Multi-Strategy  │───▶│  LDAP    │
+│ (client) │    │  (gRPC)     │    │ (server) │    │ ERS (Claims +   │    │ (osixia/ │
+│          │◀───│             │◀───│          │◀───│  LDAP providers)│◀───│ openldap)│
+└──────────┘    └─────────────┘    └──────────┘    └─────────────────┘    └──────────┘
+```
+
+The multi-strategy ERS config uses two providers:
+- **claims_passthrough** — passes through JWT claims (e.g. `userName`)
+- **ldap_by_username** — looks up the user in LDAP by `uid`, returns `departmentNumber`, `mail`, `uid`
+
+#### Getting started
+
+**Prerequisites:**
+- Docker (via Colima or Docker Desktop)
+- Go 1.25+
+- JDK (`keytool` required for Keycloak truststore generation)
+  ```bash
+  brew install openjdk
+  ```
+
+**1. Set environment variables** (Colima users):
+```bash
+export DOCKER_HOST="unix://$HOME/.colima/default/docker.sock"
+export TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE=/var/run/docker.sock
+export TESTCONTAINERS_RYUK_DISABLED=true
+export PLATFORM_IMAGE=DEBUG
+```
+
+Add `keytool` to PATH if using brew-installed OpenJDK:
+```bash
+export PATH="/opt/homebrew/opt/openjdk/bin:$PATH"
+```
+
+**2. Run the multi-strategy ERS tests:**
+```bash
+go test ./tests-bdd/ -v --tags=cukes --godog.tags=@multi-strategy-ers --count=1
+```
+
+With console logging for debugging:
+```bash
+CUKES_LOG_HANDLER=console go test ./tests-bdd/ -v --tags=cukes \
+  --godog.tags=@multi-strategy-ers --godog.format=pretty --count=1
+```
+
+**3. Verify output:**
+All 3 scenarios should pass (42 steps, 0 failures). You'll see LDAP testcontainer startup, platform service registration, and authorization decision logs.
+
+#### Key files
+
+| File | Purpose |
+|------|---------|
+| [`features/multi-strategy-ers.feature`](features/multi-strategy-ers.feature) | Gherkin scenarios (3 scenarios, `@stateless`) |
+| [`cukes/steps_ldap.go`](cukes/steps_ldap.go) | LDAP testcontainer step definition |
+| [`cukes/resources/platform.multi_strategy_ers.template`](cukes/resources/platform.multi_strategy_ers.template) | Platform config with multi-strategy ERS |
+
+#### How it works
+
+1. **LDAP testcontainer** starts `osixia/openldap:1.5.0` with LDIF fixtures from `service/entityresolution/integration/ldap_test_data/` (8 test users with distinct department values)
+2. **Platform template** configures ERS in `multi-strategy` mode with `failure_strategy: "continue"` and two providers (Claims + LDAP)
+3. **Each scenario** creates a namespace, department attribute (anyOf rule), subject mapping with `.department` selector, and then issues an authorization decision for a `user_name` entity
+4. The platform resolves the entity through ERS → LDAP, gets department claims, evaluates subject mappings, and returns PERMIT or DENY
+
+#### Notes
+
+- The feature uses `@stateless` so the platform instance and LDAP container are shared across all scenarios within the feature. Each scenario uses a unique namespace to avoid data conflicts.
+- LDAP test data lives in `service/entityresolution/integration/ldap_test_data/` and is shared with the Go integration tests.
+- The `--copy-service` flag is used with the LDAP container to avoid macOS `sed -i` compatibility issues with bind mounts.
+
 ## TODO
 - Improve execution time for platform testing
   - Remove keycloak with wiremock/mock or mock

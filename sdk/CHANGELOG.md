@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.27.0](https://github.com/opentdf/platform/compare/sdk/v0.26.0...sdk/v0.27.0) (2026-07-21)
+
+
+### Features
+
+* **policy:** Add UnsafeUpdateKey rpc. ([#3728](https://github.com/opentdf/platform/issues/3728)) ([c89b193](https://github.com/opentdf/platform/commit/c89b1933e3931bc1984711f2268c8adedd786db4))
+
 ## [0.26.0](https://github.com/opentdf/platform/compare/sdk/v0.25.0...sdk/v0.26.0) (2026-07-02)
 
 

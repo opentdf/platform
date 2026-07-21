@@ -70,6 +70,7 @@ type LocalDevScenarioOptions struct {
 	InsecureSkipVerifyConn bool
 	DatabaseName           string
 	PlatformPort           int
+	LDAPPort               int
 }
 
 func (d *DockerComposeLogger) Printf(format string, v ...interface{}) {
@@ -135,6 +136,7 @@ func (c *PlatformTestSuiteContext) InitializeScenario(scenarioContext *godog.Sce
 					KeycloakRealm:          trackedScenarioContext.ScenarioOptions.KeycloakRealm,
 					PlatformEndpoint:       trackedScenarioContext.ScenarioOptions.PlatformEndpoint,
 					InsecureSkipVerifyConn: trackedScenarioContext.ScenarioOptions.InsecureSkipVerifyConn,
+					LDAPPort:               trackedScenarioContext.ScenarioOptions.LDAPPort,
 				},
 				TestSuiteContext: c,
 			}

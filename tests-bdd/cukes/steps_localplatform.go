@@ -557,6 +557,7 @@ func createPlatformConfiguration(options *LocalDevOptions, scenarioOptions *Loca
 		"pgHost":          pgHost,
 		"platformKeysDir": platformKeysDir,
 		"authRealm":       scenarioOptions.KeycloakRealm,
+		"ldapPort":        scenarioOptions.LDAPPort,
 	}); err != nil {
 		return tempFileName, err
 	}

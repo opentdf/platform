@@ -33,7 +33,7 @@ import (
 )
 
 const (
-	standardKeycloakImage = "quay.io/keycloak/keycloak:26.4.0"
+	standardKeycloakImage = "ghcr.io/opentdf/keycloak-standard:26.4.0"
 	customKeycloakImage   = "ghcr.io/opentdf/keycloak:sha-8a6d35a"
 )
 
@@ -293,12 +293,13 @@ func (s *OAuthSuite) TestDoingTokenExchangeWithKeycloak() {
 	s.Require().True(ok)
 	s.Require().Equal(exchangeCredentials.ClientID, azpClaim)
 
-	// verify that the exchanged token has a scope that is only allowed for the client that got the original token
-	scope, ok := tokenDetails.Get("scope")
-	s.Require().True(ok)
-	scopeString, ok := scope.(string)
-	s.Require().True(ok)
-	s.Require().Contains(scopeString, "testscope")
+	// Standard token exchange should issue the exchanged token for the requested
+	// audience without leaking scopes from the subject token.
+	if scope, ok := tokenDetails.Get("scope"); ok {
+		scopeString, ok := scope.(string)
+		s.Require().True(ok)
+		s.Require().NotContains(scopeString, "testscope")
+	}
 }
 
 func (s *OAuthSuite) TestClientSecretNoNonce() {
@@ -575,7 +576,12 @@ func setupStandardKeycloak(ctx context.Context, t *testing.T) (tc.Container, str
 			"KEYCLOAK_ADMIN_PASSWORD":     "admin", // #nosec G101 -- test-only Keycloak admin password
 		},
 
-		WaitingFor: wait.ForLog("Running the server"),
+		WaitingFor: wait.ForHTTP("/realms/master/.well-known/openid-configuration").
+			WithPort("8082/tcp").
+			WithStatusCodeMatcher(func(status int) bool {
+				return status == http.StatusOK
+			}).
+			WithStartupTimeout(2 * time.Minute),
 	}
 
 	keycloak := startKeycloakContainer(ctx, t, containerReq)
@@ -614,7 +620,7 @@ func setupCustomKeycloakForCertExchange(ctx context.Context, t *testing.T) (tc.C
 		Files: []tc.ContainerFile{
 			{HostFilePath: "testdata/new-ca.jks", ContainerFilePath: "/truststore/truststore.jks", FileMode: int64(0o644)},
 			{HostFilePath: "testdata/localhost.crt", ContainerFilePath: "/etc/x509/tls/localhost.crt", FileMode: int64(0o644)},
-			{HostFilePath: "testdata/localhost.key", ContainerFilePath: "/etc/x509/tls/localhost.key", FileMode: int64(0o600)},
+			{HostFilePath: "testdata/localhost.key", ContainerFilePath: "/etc/x509/tls/localhost.key", FileMode: int64(0o644)},
 		},
 		Env: map[string]string{
 			"KC_BOOTSTRAP_ADMIN_USERNAME":   "admin",
@@ -628,7 +634,7 @@ func setupCustomKeycloakForCertExchange(ctx context.Context, t *testing.T) (tc.C
 			"KC_HTTPS_CLIENT_AUTH":          "request",
 		},
 
-		WaitingFor: wait.ForLog("Running the server"),
+		WaitingFor: wait.ForLog("Running the server").WithStartupTimeout(2 * time.Minute),
 	}
 
 	keycloak := startKeycloakContainer(ctx, t, containerReq)

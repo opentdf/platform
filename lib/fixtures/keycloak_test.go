@@ -65,6 +65,36 @@ func TestWithDPoPBoundAccessTokens(t *testing.T) {
 	}
 }
 
+func TestWithClientAudienceMapper(t *testing.T) {
+	client := withClientAudienceMapper(gocloak.Client{}, "opentdf-sdk")
+
+	if client.ProtocolMappers == nil {
+		t.Fatal("expected protocol mappers to be set")
+	}
+	if got := len(*client.ProtocolMappers); got != 1 {
+		t.Fatalf("expected one protocol mapper, got %d", got)
+	}
+	mapper := (*client.ProtocolMappers)[0]
+	if got := *mapper.ProtocolMapper; got != "oidc-audience-mapper" {
+		t.Fatalf("expected audience mapper, got %q", got)
+	}
+	if got := (*mapper.Config)["included.client.audience"]; got != "opentdf-sdk" {
+		t.Fatalf("expected opentdf-sdk audience, got %q", got)
+	}
+}
+
+func TestWithClientAudienceMapperDoesNotDuplicateExistingAudience(t *testing.T) {
+	client := withClientAudienceMapper(gocloak.Client{}, "opentdf-sdk")
+	client = withClientAudienceMapper(client, "opentdf-sdk")
+
+	if client.ProtocolMappers == nil {
+		t.Fatal("expected protocol mappers to be set")
+	}
+	if got := len(*client.ProtocolMappers); got != 1 {
+		t.Fatalf("expected one protocol mapper, got %d", got)
+	}
+}
+
 func TestDefaultProtocolMappersForStandardKeycloakExcludeCustomDPoPMapper(t *testing.T) {
 	mappers := defaultProtocolMappers("https://platform.example", false)
 

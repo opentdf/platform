@@ -380,7 +380,7 @@ func setupKeycloakWithConfig(ctx context.Context, kcConnectParams KeycloakConnec
 	}
 
 	// Enable standard token exchange for the requester client.
-	if err := createTokenExchange(ctx, &kcConnectParams, opentdfClientID); err != nil {
+	if err := createTokenExchange(ctx, &kcConnectParams, opentdfClientID, opentdfSdkClientID); err != nil {
 		return err
 	}
 	if options.includeCertExchange {
@@ -555,7 +555,7 @@ func SetupCustomKeycloakWithConfig(ctx context.Context, kcParams KeycloakConnect
 		// create token exchanges
 		if realmToCreate.TokenExchanges != nil {
 			for _, tokenExchange := range realmToCreate.TokenExchanges {
-				err := createTokenExchangeWithTokenManager(ctx, &kcConnectParams, tm, tokenExchange.StartClientID)
+				err := createTokenExchangeWithTokenManager(ctx, &kcConnectParams, tm, tokenExchange.StartClientID, tokenExchange.TargetClientID)
 				if err != nil {
 					return err
 				}
@@ -1103,16 +1103,16 @@ func getIDOfClient(ctx context.Context, tm *TokenManager, connectParams *Keycloa
 	return clientID, nil
 }
 
-func createTokenExchange(ctx context.Context, connectParams *KeycloakConnectParams, startClientID string) error {
+func createTokenExchange(ctx context.Context, connectParams *KeycloakConnectParams, startClientID, targetClientID string) error {
 	// Create TokenManager and delegate to TokenManager version
 	tm, err := NewTokenManager(ctx, connectParams, nil)
 	if err != nil {
 		return fmt.Errorf("failed to create token manager: %w", err)
 	}
-	return createTokenExchangeWithTokenManager(ctx, connectParams, tm, startClientID)
+	return createTokenExchangeWithTokenManager(ctx, connectParams, tm, startClientID, targetClientID)
 }
 
-func createTokenExchangeWithTokenManager(ctx context.Context, connectParams *KeycloakConnectParams, tm *TokenManager, startClientID string) error {
+func createTokenExchangeWithTokenManager(ctx context.Context, connectParams *KeycloakConnectParams, tm *TokenManager, startClientID, targetClientID string) error {
 	// Get fresh token
 	token, err := tm.GetToken(ctx)
 	if err != nil {
@@ -1136,12 +1136,14 @@ func createTokenExchangeWithTokenManager(ctx context.Context, connectParams *Key
 	}
 
 	requesterClient = withStandardTokenExchangeEnabled(requesterClient)
+	requesterClient = withClientAudienceMapper(requesterClient, targetClientID)
 	if err := client.UpdateClient(ctx, token.AccessToken, connectParams.Realm, requesterClient); err != nil {
 		return fmt.Errorf("error enabling standard token exchange for requester client %q: %w", startClientID, err)
 	}
 
 	slog.Info("enabled standard token exchange for client",
-		slog.String("requester_client_id", startClientID))
+		slog.String("requester_client_id", startClientID),
+		slog.String("target_client_id", targetClientID))
 
 	return nil
 }
@@ -1164,6 +1166,39 @@ func withStandardTokenExchangeEnabled(client gocloak.Client) gocloak.Client {
 
 func withDPoPBoundAccessTokens(client gocloak.Client) gocloak.Client {
 	return withClientAttribute(client, dpopBoundAccessTokensAttribute, keycloakBoolTrue)
+}
+
+func withClientAudienceMapper(client gocloak.Client, audience string) gocloak.Client {
+	if audience == "" {
+		return client
+	}
+
+	mappers := make([]gocloak.ProtocolMapperRepresentation, 0)
+	if client.ProtocolMappers != nil {
+		mappers = append(mappers, (*client.ProtocolMappers)...)
+	}
+
+	for _, mapper := range mappers {
+		if mapper.ProtocolMapper == nil || *mapper.ProtocolMapper != "oidc-audience-mapper" || mapper.Config == nil {
+			continue
+		}
+		if (*mapper.Config)["included.client.audience"] == audience {
+			client.ProtocolMappers = &mappers
+			return client
+		}
+	}
+
+	mappers = append(mappers, gocloak.ProtocolMapperRepresentation{
+		Name:           gocloak.StringP("token-exchange-audience-" + audience),
+		Protocol:       gocloak.StringP("openid-connect"),
+		ProtocolMapper: gocloak.StringP("oidc-audience-mapper"),
+		Config: &map[string]string{
+			"included.client.audience": audience,
+			"access.token.claim":       "true",
+		},
+	})
+	client.ProtocolMappers = &mappers
+	return client
 }
 
 func withClientAttribute(client gocloak.Client, key, value string) gocloak.Client {

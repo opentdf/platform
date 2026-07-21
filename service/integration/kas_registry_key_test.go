@@ -465,13 +465,13 @@ func (s *KasRegistryKeySuite) Test_UnsafeUpdateKey_PublicKeyOnlyToRemote_Success
 	s.T().Cleanup(func() {
 		s.cleanupUnsafeUpdateKeyTestResources([]string{createdKey.GetKey().GetId()}, []string{providerConfig.GetId()})
 	})
-	expectedKey := proto.Clone(createdKey).(*policy.KasKey)
+	expectedKey := proto.CloneOf(createdKey)
 	expectedKey.GetKey().KeyMode = policy.KeyMode_KEY_MODE_REMOTE
 	expectedKey.GetKey().ProviderConfig = providerConfig
 
 	updatedKey, err := s.db.PolicyClient.UnsafeUpdateKey(s.ctx, createdKey, &unsafe.UnsafeUpdateKeyRequest{
 		Id:               createdKey.GetKey().GetId(),
-		KeyMode:          policy.KeyMode_KEY_MODE_REMOTE,
+		TargetKeyMode:    policy.KeyMode_KEY_MODE_REMOTE,
 		ProviderConfigId: providerConfig.GetId(),
 	})
 	s.Require().NoError(err)
@@ -492,13 +492,13 @@ func (s *KasRegistryKeySuite) Test_UnsafeUpdateKey_RemoteToPublicKeyOnly_Success
 	s.T().Cleanup(func() {
 		s.cleanupUnsafeUpdateKeyTestResources([]string{createdKey.GetKey().GetId()}, []string{providerConfig.GetId()})
 	})
-	expectedKey := proto.Clone(createdKey).(*policy.KasKey)
+	expectedKey := proto.CloneOf(createdKey)
 	expectedKey.GetKey().KeyMode = policy.KeyMode_KEY_MODE_PUBLIC_KEY_ONLY
 	expectedKey.GetKey().ProviderConfig = nil
 
 	updatedKey, err := s.db.PolicyClient.UnsafeUpdateKey(s.ctx, createdKey, &unsafe.UnsafeUpdateKeyRequest{
-		Id:      createdKey.GetKey().GetId(),
-		KeyMode: policy.KeyMode_KEY_MODE_PUBLIC_KEY_ONLY,
+		Id:            createdKey.GetKey().GetId(),
+		TargetKeyMode: policy.KeyMode_KEY_MODE_PUBLIC_KEY_ONLY,
 	})
 	s.Require().NoError(err)
 	s.Require().NotNil(updatedKey)
@@ -522,7 +522,7 @@ func (s *KasRegistryKeySuite) Test_UnsafeUpdateKey_ChangeProviderConfig_Success(
 			[]string{originalProviderConfig.GetId(), updatedProviderConfig.GetId()},
 		)
 	})
-	expectedKey := proto.Clone(createdKey).(*policy.KasKey)
+	expectedKey := proto.CloneOf(createdKey)
 	expectedKey.GetKey().ProviderConfig = updatedProviderConfig
 
 	updatedKey, err := s.db.PolicyClient.UnsafeUpdateKey(s.ctx, createdKey, &unsafe.UnsafeUpdateKeyRequest{
@@ -549,7 +549,7 @@ func (s *KasRegistryKeySuite) Test_UnsafeUpdateKey_NonexistentProviderConfig_Fai
 
 	updatedKey, err := s.db.PolicyClient.UnsafeUpdateKey(s.ctx, createdKey, &unsafe.UnsafeUpdateKeyRequest{
 		Id:               createdKey.GetKey().GetId(),
-		KeyMode:          policy.KeyMode_KEY_MODE_REMOTE,
+		TargetKeyMode:    policy.KeyMode_KEY_MODE_REMOTE,
 		ProviderConfigId: uuid.NewString(),
 	})
 	s.Require().Error(err)
@@ -586,7 +586,7 @@ func (s *KasRegistryKeySuite) Test_UnsafeUpdateKey_UnsupportedExistingKeyMode_Fa
 
 	updatedKey, err := s.db.PolicyClient.UnsafeUpdateKey(s.ctx, createdKey, &unsafe.UnsafeUpdateKeyRequest{
 		Id:               createdKey.GetKey().GetId(),
-		KeyMode:          policy.KeyMode_KEY_MODE_REMOTE,
+		TargetKeyMode:    policy.KeyMode_KEY_MODE_REMOTE,
 		ProviderConfigId: providerConfig.GetId(),
 	})
 	s.Require().Error(err)

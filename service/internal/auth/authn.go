@@ -339,7 +339,7 @@ func resolveRoleProvider(ctx context.Context, cfg Config, logger *logger.Logger)
 			GroupsClaim:   cfg.Policy.GroupsClaim,
 			ClientIDClaim: cfg.Policy.ClientIDClaim,
 		}
-		provider, err := factory(ctx, providerCfg)
+		provider, err := factory(ctx, providerCfg, logger)
 		if err != nil {
 			return nil, fmt.Errorf("role provider factory failed: %w", err)
 		}

@@ -1357,7 +1357,9 @@ type DynamicValueResolver struct {
 	SubjectExternalSelectorValue string `protobuf:"bytes,1,opt,name=subject_external_selector_value,json=subjectExternalSelectorValue,proto3" json:"subject_external_selector_value,omitempty"`
 	// how the requested resource value segment is compared against each value the selector
 	// resolves from the entity representation. NOT_IN is unsupported because dynamic resolution
-	// is existential over the resolved entity values.
+	// is existential over the resolved entity values. IN_CONTAINS is substring-based and
+	// over-matches by design (e.g. "admin" matches "superadmin", "admin-readonly"); prefer IN
+	// unless substring matching is genuinely intended.
 	Operator SubjectMappingOperatorEnum `protobuf:"varint,2,opt,name=operator,proto3,enum=policy.SubjectMappingOperatorEnum" json:"operator,omitempty"`
 }
 
@@ -1412,6 +1414,15 @@ func (x *DynamicValueResolver) GetOperator() SubjectMappingOperatorEnum {
 // authority from a concrete Attribute Value to the Attribute Definition: at decision time
 // the value_resolver compares the requested resource value segment against the entity
 // representation, avoiding pre-provisioning a value + subject mapping per discrete value.
+//
+// Combination semantics: multiple dynamic value mappings on the same definition are OR-ed (any
+// match entitles); within a mapping, the optional subject_condition_set's subject sets are AND-ed
+// (every set must pass), matching subject mapping evaluation.
+//
+// Coexistence: a definition with a dynamic value mapping cannot also carry value-level subject
+// mappings, and values under such a definition cannot be added to a registered resource's action
+// attribute values (those values resolve at decision time, so they are not meaningful as static
+// registered-resource entitlements).
 type DynamicValueMapping struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache

@@ -9,6 +9,7 @@ import (
 	"github.com/opentdf/platform/protocol/go/common"
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/attributes"
+	"github.com/opentdf/platform/protocol/go/policy/subjectmapping"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
@@ -483,6 +484,215 @@ func TestCreateAttributeValue_WithObligationTriggers_Request(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			err := v.Validate(tc.req)
 			if tc.expectError {
+				require.Error(t, err)
+				require.Contains(t, err.Error(), tc.errorMessage)
+			} else {
+				require.NoError(t, err)
+			}
+		})
+	}
+}
+
+func TestCreateAttributeValue_WithSubjectMappings_Request(t *testing.T) {
+	validFQN := "https://example.com"
+	validSubjectConditionSet := &subjectmapping.SubjectConditionSetCreate{
+		SubjectSets: []*policy.SubjectSet{
+			{
+				ConditionGroups: []*policy.ConditionGroup{
+					{
+						BooleanOperator: policy.ConditionBooleanTypeEnum_CONDITION_BOOLEAN_TYPE_ENUM_AND,
+						Conditions: []*policy.Condition{
+							{
+								SubjectExternalSelectorValue: ".email",
+								Operator:                     policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_IN,
+								SubjectExternalValues:        []string{"user@example.com"},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+	tooManySubjectMappings := make([]*attributes.AttributeValueSubjectMappingRequest, 251)
+	for i := range tooManySubjectMappings {
+		tooManySubjectMappings[i] = &attributes.AttributeValueSubjectMappingRequest{
+			Actions:                []*policy.Action{{Id: validUUID}},
+			NewSubjectConditionSet: validSubjectConditionSet,
+			NamespaceId:            validUUID,
+		}
+	}
+
+	testCases := []struct {
+		name         string
+		req          *attributes.CreateAttributeValueRequest
+		errorMessage string
+	}{
+		{
+			name: "valid with new subject condition set",
+			req: &attributes.CreateAttributeValueRequest{
+				AttributeId: validUUID,
+				Value:       validValue1,
+				SubjectMappings: []*attributes.AttributeValueSubjectMappingRequest{
+					{
+						Actions:                []*policy.Action{{Name: "read"}},
+						NewSubjectConditionSet: validSubjectConditionSet,
+						NamespaceId:            validUUID,
+						Metadata: &common.MetadataMutable{
+							Labels: map[string]string{"source": "inline"},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "valid with existing subject condition set and namespace fqn",
+			req: &attributes.CreateAttributeValueRequest{
+				AttributeId: validUUID,
+				Value:       validValue1,
+				SubjectMappings: []*attributes.AttributeValueSubjectMappingRequest{
+					{
+						Actions:                       []*policy.Action{{Id: validUUID}},
+						ExistingSubjectConditionSetId: validUUID,
+						NamespaceFqn:                  validFQN,
+					},
+				},
+			},
+		},
+		{
+			name: "valid without namespace",
+			req: &attributes.CreateAttributeValueRequest{
+				AttributeId: validUUID,
+				Value:       validValue1,
+				SubjectMappings: []*attributes.AttributeValueSubjectMappingRequest{
+					{
+						Actions:                []*policy.Action{{Id: validUUID}},
+						NewSubjectConditionSet: validSubjectConditionSet,
+					},
+				},
+			},
+		},
+		{
+			name: "invalid with missing action",
+			req: &attributes.CreateAttributeValueRequest{
+				AttributeId: validUUID,
+				Value:       validValue1,
+				SubjectMappings: []*attributes.AttributeValueSubjectMappingRequest{
+					{
+						NewSubjectConditionSet: validSubjectConditionSet,
+						NamespaceId:            validUUID,
+					},
+				},
+			},
+			errorMessage: "actions",
+		},
+		{
+			name: "invalid with empty action identifier",
+			req: &attributes.CreateAttributeValueRequest{
+				AttributeId: validUUID,
+				Value:       validValue1,
+				SubjectMappings: []*attributes.AttributeValueSubjectMappingRequest{
+					{
+						Actions:                []*policy.Action{{}},
+						NewSubjectConditionSet: validSubjectConditionSet,
+						NamespaceId:            validUUID,
+					},
+				},
+			},
+			errorMessage: "action_name_or_id_not_empty",
+		},
+		{
+			name: "invalid existing subject condition set id",
+			req: &attributes.CreateAttributeValueRequest{
+				AttributeId: validUUID,
+				Value:       validValue1,
+				SubjectMappings: []*attributes.AttributeValueSubjectMappingRequest{
+					{
+						Actions:                       []*policy.Action{{Id: validUUID}},
+						ExistingSubjectConditionSetId: "invalid-uuid",
+						NamespaceId:                   validUUID,
+					},
+				},
+			},
+			errorMessage: "string.uuid",
+		},
+		{
+			name: "invalid without subject condition set source",
+			req: &attributes.CreateAttributeValueRequest{
+				AttributeId: validUUID,
+				Value:       validValue1,
+				SubjectMappings: []*attributes.AttributeValueSubjectMappingRequest{
+					{
+						Actions:     []*policy.Action{{Id: validUUID}},
+						NamespaceId: validUUID,
+					},
+				},
+			},
+			errorMessage: "subject_condition_set_source",
+		},
+		{
+			name: "invalid with both subject condition set sources",
+			req: &attributes.CreateAttributeValueRequest{
+				AttributeId: validUUID,
+				Value:       validValue1,
+				SubjectMappings: []*attributes.AttributeValueSubjectMappingRequest{
+					{
+						Actions:                       []*policy.Action{{Id: validUUID}},
+						ExistingSubjectConditionSetId: validUUID,
+						NewSubjectConditionSet:        validSubjectConditionSet,
+						NamespaceId:                   validUUID,
+					},
+				},
+			},
+			errorMessage: "subject_condition_set_source",
+		},
+		{
+			name: "invalid namespace fqn",
+			req: &attributes.CreateAttributeValueRequest{
+				AttributeId: validUUID,
+				Value:       validValue1,
+				SubjectMappings: []*attributes.AttributeValueSubjectMappingRequest{
+					{
+						Actions:                []*policy.Action{{Id: validUUID}},
+						NewSubjectConditionSet: validSubjectConditionSet,
+						NamespaceFqn:           "not-a-uri",
+					},
+				},
+			},
+			errorMessage: errMessageURI,
+		},
+		{
+			name: "invalid namespace id and fqn together",
+			req: &attributes.CreateAttributeValueRequest{
+				AttributeId: validUUID,
+				Value:       validValue1,
+				SubjectMappings: []*attributes.AttributeValueSubjectMappingRequest{
+					{
+						Actions:                []*policy.Action{{Id: validUUID}},
+						NewSubjectConditionSet: validSubjectConditionSet,
+						NamespaceId:            validUUID,
+						NamespaceFqn:           validFQN,
+					},
+				},
+			},
+			errorMessage: "message.oneof",
+		},
+		{
+			name: "invalid too many subject mappings",
+			req: &attributes.CreateAttributeValueRequest{
+				AttributeId:     validUUID,
+				Value:           validValue1,
+				SubjectMappings: tooManySubjectMappings,
+			},
+			errorMessage: "max_items",
+		},
+	}
+
+	v := getValidator()
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			err := v.Validate(tc.req)
+			if tc.errorMessage != "" {
 				require.Error(t, err)
 				require.Contains(t, err.Error(), tc.errorMessage)
 			} else {

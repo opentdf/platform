@@ -1662,8 +1662,12 @@ components:
           description: |-
             Required
              UUID of the Key
-        keyMode:
-          title: key_mode
+        targetKeyMode:
+          title: target_key_mode
+          enum:
+            - 0
+            - 3
+            - 4
           description: |-
             Optional
              Target key mode. Only KEY_MODE_REMOTE and KEY_MODE_PUBLIC_KEY_ONLY mode changes are supported.
@@ -1675,21 +1679,15 @@ components:
           format: uuid
           description: |-
             Conditionally Required
-             Configuration ID for the key provider. Service validation requires this for
-             KEY_MODE_REMOTE and KEY_MODE_UNSPECIFIED; it must be empty for KEY_MODE_PUBLIC_KEY_ONLY.
+             Configuration ID for the key provider. Required for KEY_MODE_REMOTE and KEY_MODE_UNSPECIFIED; empty for KEY_MODE_PUBLIC_KEY_ONLY.
       title: UnsafeUpdateKeyRequest
       additionalProperties: false
-      description: |+
+      description: |-
         WARNING!!
          Updating a key in place can retroactively alter decryptability for existing TDFs.
          This support-only operation is limited to switching between REMOTE and PUBLIC_KEY_ONLY
          key modes, or updating the provider configuration for an existing REMOTE key, while
          preserving the existing KID, KAS URI, and public key.
-        key_mode must be KEY_MODE_UNSPECIFIED, KEY_MODE_REMOTE, or KEY_MODE_PUBLIC_KEY_ONLY.:
-        ```
-        this.key_mode in [0, 3, 4]
-        ```
-
     policy.unsafe.UnsafeUpdateKeyResponse:
       type: object
       properties:

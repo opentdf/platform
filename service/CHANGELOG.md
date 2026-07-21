@@ -1,5 +1,24 @@
 # Changelog
 
+## [0.20.0](https://github.com/opentdf/platform/compare/service/v0.19.0...service/v0.20.0) (2026-07-07)
+
+
+### ⚠ BREAKING CHANGES
+
+* **policy:** undo subject mapping operator decomposition ([#3685](https://github.com/opentdf/platform/issues/3685))
+
+### Features
+
+* **policy:** add narrow attribute read API protos and generated code ([#3634](https://github.com/opentdf/platform/issues/3634)) ([5726720](https://github.com/opentdf/platform/commit/572672007abd7e0a3598f8303661487cfb0d2db5))
+* **policy:** implement narrow attribute read APIs ([#3697](https://github.com/opentdf/platform/issues/3697)) ([eaee9b2](https://github.com/opentdf/platform/commit/eaee9b2da0191129e0d7a0413e6ea7294cad5b63))
+* **policy:** undo subject mapping operator decomposition ([#3685](https://github.com/opentdf/platform/issues/3685)) ([84f3b92](https://github.com/opentdf/platform/commit/84f3b92a4f82dd527ef93de3361ec22990eae479))
+
+
+### Bug Fixes
+
+* **deps:** bump protocol/go to 0.37.0 and sdk to 0.26.0 in /service ([#3721](https://github.com/opentdf/platform/issues/3721)) ([95d7aa4](https://github.com/opentdf/platform/commit/95d7aa445a9cdec149ab17a9a62f56577688136c))
+* **policy:** include attribute value fqn in subject mapping lookup ([#3720](https://github.com/opentdf/platform/issues/3720)) ([8b63934](https://github.com/opentdf/platform/commit/8b6393436568b7dc2874479b5c3bd6d53109e658))
+
 ## [0.19.0](https://github.com/opentdf/platform/compare/service/v0.18.0...service/v0.19.0) (2026-06-30)
 
 

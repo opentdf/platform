@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.38.0](https://github.com/opentdf/platform/compare/protocol/go/v0.37.0...protocol/go/v0.38.0) (2026-07-09)
+
+
+### Features
+
+* **policy:** add entitleable namespace field and narrow-read-API doc corrections ([#3727](https://github.com/opentdf/platform/issues/3727)) ([0fc2f01](https://github.com/opentdf/platform/commit/0fc2f01fbb0d75b04d2a5dcb94e5acdea9f62b6f))
+
 ## [0.37.0](https://github.com/opentdf/platform/compare/protocol/go/v0.36.0...protocol/go/v0.37.0) (2026-07-01)
 
 

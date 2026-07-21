@@ -197,21 +197,17 @@ message UnsafeDeleteKasKeyResponse {
 // key modes, or updating the provider configuration for an existing REMOTE key, while
 // preserving the existing KID, KAS URI, and public key.
 message UnsafeUpdateKeyRequest {
-  option (buf.validate.message).cel = {
-    id: "key_mode_supported"
-    message: "key_mode must be KEY_MODE_UNSPECIFIED, KEY_MODE_REMOTE, or KEY_MODE_PUBLIC_KEY_ONLY."
-    expression: "this.key_mode in [0, 3, 4]"
-  };
   // Required
   // UUID of the Key
   string id = 1 [(buf.validate.field).string.uuid = true];
   // Optional
   // Target key mode. Only KEY_MODE_REMOTE and KEY_MODE_PUBLIC_KEY_ONLY mode changes are supported.
   // KEY_MODE_UNSPECIFIED with provider_config_id updates only the provider configuration for an existing REMOTE key.
-  policy.KeyMode key_mode = 2 [(buf.validate.field).enum.defined_only = true];
+  policy.KeyMode target_key_mode = 2 [(buf.validate.field).enum = {
+    in: [0, 3, 4]
+  }];
   // Conditionally Required
-  // Configuration ID for the key provider. Service validation requires this for
-  // KEY_MODE_REMOTE and KEY_MODE_UNSPECIFIED; it must be empty for KEY_MODE_PUBLIC_KEY_ONLY.
+  // Configuration ID for the key provider. Required for KEY_MODE_REMOTE and KEY_MODE_UNSPECIFIED; empty for KEY_MODE_PUBLIC_KEY_ONLY.
   string provider_config_id = 3 [
     (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
     (buf.validate.field).string.uuid = true

@@ -43,6 +43,7 @@ var (
 	ErrCheckViolation                            = errors.New("ErrCheckViolation: check constraint violation")
 	ErrFqnMismatch                               = errors.New("ErrFqnMismatch: FQN mismatch")
 	ErrUnsafeUpdateKeyExistingModeUnsupported    = errors.New("ErrUnsafeUpdateKeyExistingModeUnsupported: existing key mode cannot be unsafely updated")
+	ErrUnsafeUpdateKeyTargetModeUnsupported      = errors.New("ErrUnsafeUpdateKeyTargetModeUnsupported: target key mode cannot be used for an unsafe update")
 	ErrUnsafeUpdateKeyProviderConfigExistingMode = errors.New("ErrUnsafeUpdateKeyProviderConfigExistingMode: existing key mode cannot receive provider_config_id update with unspecified key mode")
 	ErrUnsafeUpdateKeyProviderConfigRequired     = errors.New("ErrUnsafeUpdateKeyProviderConfigRequired: provider_config_id is required for requested key mode")
 	ErrUnsafeUpdateKeyProviderConfigNotAllowed   = errors.New("ErrUnsafeUpdateKeyProviderConfigNotAllowed: provider_config_id must be empty for requested key mode")
@@ -144,6 +145,7 @@ const (
 	ErrorTextFqnMismatch                               = "fqn mismatch"
 	ErrorTextInactiveAttributeValue                    = "inactive attribute value"
 	ErrorTextUnsafeUpdateKeyExistingModeUnsupported    = "existing key mode cannot be updated"
+	ErrorTextUnsafeUpdateKeyTargetModeUnsupported      = "target key mode cannot be used for an unsafe update"
 	ErrorTextUnsafeUpdateKeyProviderConfigExistingMode = "existing key mode cannot receive provider_config_id update with unspecified key mode"
 	ErrorTextUnsafeUpdateKeyProviderConfigRequired     = "provider_config_id is required for requested key mode"
 	ErrorTextUnsafeUpdateKeyProviderConfigNotAllowed   = "provider_config_id must be empty for requested key mode"
@@ -235,6 +237,10 @@ func StatusifyError(ctx context.Context, l *logger.Logger, err error, fallbackEr
 	if errors.Is(err, ErrUnsafeUpdateKeyExistingModeUnsupported) {
 		l.ErrorContext(ctx, ErrorTextUnsafeUpdateKeyExistingModeUnsupported, logs...)
 		return connect.NewError(connect.CodeInvalidArgument, errors.New(ErrorTextUnsafeUpdateKeyExistingModeUnsupported))
+	}
+	if errors.Is(err, ErrUnsafeUpdateKeyTargetModeUnsupported) {
+		l.ErrorContext(ctx, ErrorTextUnsafeUpdateKeyTargetModeUnsupported, logs...)
+		return connect.NewError(connect.CodeInvalidArgument, errors.New(ErrorTextUnsafeUpdateKeyTargetModeUnsupported))
 	}
 	if errors.Is(err, ErrUnsafeUpdateKeyProviderConfigExistingMode) {
 		l.ErrorContext(ctx, ErrorTextUnsafeUpdateKeyProviderConfigExistingMode, logs...)

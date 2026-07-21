@@ -65,6 +65,13 @@ func TestValidateUnsafeUpdateKey(t *testing.T) {
 			wantErr:        servicedb.ErrUnsafeUpdateKeyProviderConfigExistingMode,
 		},
 		{
+			name:           "provider config update - invalid provider config",
+			existingMode:   policy.KeyMode_KEY_MODE_REMOTE,
+			requestMode:    policy.KeyMode_KEY_MODE_UNSPECIFIED,
+			providerConfig: "",
+			wantErr:        servicedb.ErrUnsafeUpdateKeyProviderConfigRequired,
+		},
+		{
 			name:         "remote requires provider config",
 			existingMode: policy.KeyMode_KEY_MODE_PUBLIC_KEY_ONLY,
 			requestMode:  policy.KeyMode_KEY_MODE_REMOTE,
@@ -90,6 +97,12 @@ func TestValidateUnsafeUpdateKey(t *testing.T) {
 			providerConfig: unsafeUpdateKeyTestUUID,
 			wantErr:        servicedb.ErrUnsafeUpdateKeyExistingModeUnsupported,
 		},
+		{
+			name:         "unsupported target mode rejected",
+			existingMode: policy.KeyMode_KEY_MODE_REMOTE,
+			requestMode:  policy.KeyMode_KEY_MODE_CONFIG_ROOT_KEY,
+			wantErr:      servicedb.ErrUnsafeUpdateKeyTargetModeUnsupported,
+		},
 	}
 
 	for _, tt := range tests {
@@ -100,7 +113,7 @@ func TestValidateUnsafeUpdateKey(t *testing.T) {
 				},
 			}, &unsafe.UnsafeUpdateKeyRequest{
 				Id:               unsafeUpdateKeyTestUUID,
-				KeyMode:          tt.requestMode,
+				TargetKeyMode:    tt.requestMode,
 				ProviderConfigId: tt.providerConfig,
 			})
 

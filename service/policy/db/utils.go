@@ -11,6 +11,7 @@ import (
 	"github.com/opentdf/platform/protocol/go/common"
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/attributes"
+	"github.com/opentdf/platform/protocol/go/policy/dynamicvaluemapping"
 	"github.com/opentdf/platform/protocol/go/policy/kasregistry"
 	"github.com/opentdf/platform/protocol/go/policy/namespaces"
 	"github.com/opentdf/platform/protocol/go/policy/obligations"
@@ -219,6 +220,26 @@ func unmarshalSubjectConditionSet(subjectConditionSetJSON []byte, scs *policy.Su
 	return nil
 }
 
+func unmarshalSubjectMappingsProto(subjectMappingsJSON []byte, mappings *[]*policy.SubjectMapping) error {
+	var raw []json.RawMessage
+
+	if subjectMappingsJSON != nil {
+		if err := json.Unmarshal(subjectMappingsJSON, &raw); err != nil {
+			return fmt.Errorf("failed to unmarshal subject mappings array [%s]: %w", string(subjectMappingsJSON), err)
+		}
+
+		for _, r := range raw {
+			sm := policy.SubjectMapping{}
+			if err := protojson.Unmarshal(r, &sm); err != nil {
+				return fmt.Errorf("failed to unmarshal subject mapping [%s]: %w", string(r), err)
+			}
+			*mappings = append(*mappings, &sm)
+		}
+	}
+
+	return nil
+}
+
 func unmarshalResourceMappingGroup(rmgroupJSON []byte, rmg *policy.ResourceMappingGroup) error {
 	if rmgroupJSON != nil {
 		if err := protojson.Unmarshal(rmgroupJSON, rmg); err != nil {
@@ -423,6 +444,26 @@ func GetSubjectMappingsSortParams(sort []*subjectmapping.SubjectMappingsSort) (s
 		return "", ""
 	}
 	return getSubjectMappingsSortField(sort[0].GetField()), getSortDirection(sort[0].GetDirection())
+}
+
+func getDynamicValueMappingsSortField(field dynamicvaluemapping.SortDynamicValueMappingsType) string {
+	switch field {
+	case dynamicvaluemapping.SortDynamicValueMappingsType_SORT_DYNAMIC_VALUE_MAPPINGS_TYPE_CREATED_AT:
+		return sortFieldCreatedAt
+	case dynamicvaluemapping.SortDynamicValueMappingsType_SORT_DYNAMIC_VALUE_MAPPINGS_TYPE_UPDATED_AT:
+		return sortFieldUpdatedAt
+	case dynamicvaluemapping.SortDynamicValueMappingsType_SORT_DYNAMIC_VALUE_MAPPINGS_TYPE_UNSPECIFIED:
+		fallthrough
+	default:
+		return ""
+	}
+}
+
+func GetDynamicValueMappingsSortParams(sort []*dynamicvaluemapping.DynamicValueMappingsSort) (string, string) {
+	if len(sort) == 0 {
+		return "", ""
+	}
+	return getDynamicValueMappingsSortField(sort[0].GetField()), getSortDirection(sort[0].GetDirection())
 }
 
 func UUIDToString(uuid pgtype.UUID) string {

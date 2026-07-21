@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.35.0](https://github.com/opentdf/platform/compare/otdfctl/v0.34.0...otdfctl/v0.35.0) (2026-07-07)
+
+
+### Bug Fixes
+
+* **cli:** Pull namespace for OTs from attr val ([#3725](https://github.com/opentdf/platform/issues/3725)) ([2146d0f](https://github.com/opentdf/platform/commit/2146d0f6774882c83887c7c5004159859e408f5c))
+
 ## [0.34.0](https://github.com/opentdf/platform/compare/otdfctl/v0.33.0...otdfctl/v0.34.0) (2026-07-01)
 
 

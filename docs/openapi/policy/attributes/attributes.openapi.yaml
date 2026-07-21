@@ -120,6 +120,9 @@ paths:
       tags:
         - policy.attributes.AttributesService
       summary: GetAttributeValuesByFqns
+      description: |-
+        Deprecated: Use GetKeyMappingsByFqns for client-side key splits and
+         GetEntitleableAttributesByFqns for server-side entitlement resolution.
       operationId: policy.attributes.AttributesService.GetAttributeValuesByFqns
       parameters:
         - name: Connect-Protocol-Version
@@ -150,6 +153,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/policy.attributes.GetAttributeValuesByFqnsResponse'
+      deprecated: true
   /policy.attributes.AttributesService/GetKeyMappingsByFqns:
     post:
       tags:
@@ -1876,6 +1880,52 @@ components:
         - obligationValue
         - action
       additionalProperties: false
+    policy.attributes.AttributeValueSubjectMappingRequest:
+      type: object
+      properties:
+        actions:
+          type: array
+          items:
+            $ref: '#/components/schemas/policy.Action'
+          title: actions
+          minItems: 1
+          description: |+
+            Required. The actions permitted by subjects in this mapping.
+            Action name or ID must not be empty if provided:
+            ```
+            this.all(item, item.name != '' || item.id != '')
+            ```
+
+        existingSubjectConditionSetId:
+          type: string
+          title: existing_subject_condition_set_id
+          format: uuid
+          description: Reuse an existing SubjectConditionSet.
+        newSubjectConditionSet:
+          title: new_subject_condition_set
+          description: Create a new SubjectConditionSet.
+          $ref: '#/components/schemas/policy.subjectmapping.SubjectConditionSetCreate'
+        namespaceId:
+          type: string
+          title: namespace_id
+          format: uuid
+        namespaceFqn:
+          type: string
+          title: namespace_fqn
+          minLength: 1
+          format: uri
+        metadata:
+          title: metadata
+          description: Optional. Common metadata for the subject mapping.
+          $ref: '#/components/schemas/common.MetadataMutable'
+      title: AttributeValueSubjectMappingRequest
+      additionalProperties: false
+      description: |+
+        Exactly one of existing_subject_condition_set_id or new_subject_condition_set must be provided:
+        ```
+        (this.existing_subject_condition_set_id != '') != has(this.new_subject_condition_set)
+        ```
+
     policy.attributes.AttributesSort:
       type: object
       properties:
@@ -1977,6 +2027,15 @@ components:
           description: |-
             Optional
              Existing obligation values to trigger for the newly created attribute value.
+        subjectMappings:
+          type: array
+          items:
+            $ref: '#/components/schemas/policy.attributes.AttributeValueSubjectMappingRequest'
+          title: subject_mappings
+          maxItems: 250
+          description: |-
+            Optional
+             Subject mappings to associate with the newly created attribute value.
         metadata:
           title: metadata
           description: |-
@@ -2205,10 +2264,13 @@ components:
 
         Narrow read API for Auth Service / Access PDP entitlement resolution. Given
         attribute value FQNs, returns the parent definitions (deduped, each with its
-        rule) and, per requested value, the value identity and the subject mappings
-        needed to resolve entitlements. Hierarchy definitions additionally carry their
-        ordered values with subject mappings, for hierarchy rule propagation. It does
-        not return KAS keys, grants, resource mappings, obligations, or metadata.
+        rule and namespace identity) and, per requested value, the value identity and
+        the subject mappings needed to resolve entitlements. Hierarchy definitions
+        additionally carry their ordered values with subject mappings, for hierarchy
+        rule propagation. It does not return KAS keys, grants, resource mappings,
+        obligations, or metadata. A value that does not exist under a definition with
+        allow_traversal is returned with its definition and an empty value identity (no
+        value_id, no subject mappings).
     policy.attributes.GetEntitleableAttributesByFqnsResponse:
       type: object
       properties:
@@ -2269,6 +2331,13 @@ components:
              ONLY for hierarchy definitions (whose decisioning needs sibling values and
              their mappings to propagate entitlement up the chain). Empty for any_of /
              all_of, where the requested per-value entries below carry what's needed.
+        namespace:
+          title: namespace
+          description: |-
+            the definition's namespace identity (id and fqn), needed for
+             namespaced-policy decisioning and registered-resource matching. Only the
+             identity is populated; grants, keys, and metadata are not.
+          $ref: '#/components/schemas/policy.Namespace'
       title: EntitleableDefinition
       additionalProperties: false
       description: |-
@@ -2327,9 +2396,11 @@ components:
 
         Narrow read API for the client-side encrypt flow. Given attribute value FQNs,
         returns only the information needed to build key splits: the governing
-        attribute rule and the effective KAS keys resolved server-side. It does not
+        attribute rule and the effective mapped KAS keys resolved server-side. It does not
         return subject mappings, resource mappings, obligations, sibling values, or
-        metadata. Prefer this over GetAttributeValuesByFqns when building splits.
+        metadata. Prefer this over GetAttributeValuesByFqns when building splits. A
+        value that does not exist under a definition with allow_traversal resolves at
+        the definition (then namespace) level, supporting front-loaded TDF creation.
     policy.attributes.GetKeyMappingsByFqnsResponse:
       type: object
       properties:
@@ -2357,7 +2428,8 @@ components:
           description: |-
             effective KAS keys resolved for this value (value > definition > namespace
              precedence). Legacy grants are not used by this API; values configured only
-             with grants and no kas_keys return an empty key set.
+             with grants and no kas_keys return an empty key set, and the client resolves
+             those grants via GetAttributeValuesByFqns.
       title: AttributeKeyMapping
       additionalProperties: false
     policy.attributes.GetKeyMappingsByFqnsResponse.FqnKeyMappingsEntry:
@@ -2614,6 +2686,24 @@ components:
           format: uuid
           description: Required
       title: ValueKeyAccessServer
+      additionalProperties: false
+    policy.subjectmapping.SubjectConditionSetCreate:
+      type: object
+      properties:
+        subjectSets:
+          type: array
+          items:
+            $ref: '#/components/schemas/policy.SubjectSet'
+          title: subject_sets
+          minItems: 1
+          description: Required
+        metadata:
+          title: metadata
+          description: |-
+            Optional
+             Common metadata
+          $ref: '#/components/schemas/common.MetadataMutable'
+      title: SubjectConditionSetCreate
       additionalProperties: false
     connect-protocol-version:
       type: number

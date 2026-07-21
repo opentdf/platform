@@ -334,7 +334,7 @@ func TestResolveRoleProviderDefault(t *testing.T) {
 }
 
 func TestResolveRoleProviderNamed(t *testing.T) {
-	logger := logger.CreateTestLogger()
+	log := logger.CreateTestLogger()
 	cfg := Config{
 		AuthNConfig: AuthNConfig{
 			Policy: internalauthz.PolicyConfig{
@@ -344,12 +344,12 @@ func TestResolveRoleProviderNamed(t *testing.T) {
 			},
 		},
 		RoleProviderFactories: map[string]authz.RoleProviderFactory{
-			"mock": func(_ context.Context, _ authz.ProviderConfig) (authz.RoleProvider, error) {
+			"mock": func(_ context.Context, _ authz.ProviderConfig, _ *logger.Logger) (authz.RoleProvider, error) {
 				return staticProvider{roles: []string{"role:admin"}}, nil
 			},
 		},
 	}
-	provider, err := resolveRoleProvider(t.Context(), cfg, logger)
+	provider, err := resolveRoleProvider(t.Context(), cfg, log)
 	require.NoError(t, err)
 	require.NotNil(t, provider)
 }

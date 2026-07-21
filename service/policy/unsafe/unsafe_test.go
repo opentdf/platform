@@ -12,7 +12,7 @@ import (
 const (
 	validUUID              = "00000000-0000-0000-0000-000000000000"
 	ruleIDStringUUID       = "string.uuid"
-	ruleIDKeyModeSupported = "key_mode_supported"
+	ruleIDKeyModeSupported = "enum.in"
 )
 
 func getValidator() protovalidate.Validator {
@@ -34,7 +34,7 @@ func TestUnsafeUpdateKeyRequest(t *testing.T) {
 			name: "valid update to remote mode key",
 			req: &unsafepb.UnsafeUpdateKeyRequest{
 				Id:               validUUID,
-				KeyMode:          policy.KeyMode_KEY_MODE_REMOTE,
+				TargetKeyMode:    policy.KeyMode_KEY_MODE_REMOTE,
 				ProviderConfigId: validUUID,
 			},
 			expectError: false,
@@ -42,8 +42,8 @@ func TestUnsafeUpdateKeyRequest(t *testing.T) {
 		{
 			name: "valid update to public key only mode",
 			req: &unsafepb.UnsafeUpdateKeyRequest{
-				Id:      validUUID,
-				KeyMode: policy.KeyMode_KEY_MODE_PUBLIC_KEY_ONLY,
+				Id:            validUUID,
+				TargetKeyMode: policy.KeyMode_KEY_MODE_PUBLIC_KEY_ONLY,
 			},
 			expectError: false,
 		},
@@ -51,7 +51,7 @@ func TestUnsafeUpdateKeyRequest(t *testing.T) {
 			name: "valid provider config update with unspecified mode",
 			req: &unsafepb.UnsafeUpdateKeyRequest{
 				Id:               validUUID,
-				KeyMode:          policy.KeyMode_KEY_MODE_UNSPECIFIED,
+				TargetKeyMode:    policy.KeyMode_KEY_MODE_UNSPECIFIED,
 				ProviderConfigId: validUUID,
 			},
 			expectError: false,
@@ -60,7 +60,7 @@ func TestUnsafeUpdateKeyRequest(t *testing.T) {
 			name: "invalid id",
 			req: &unsafepb.UnsafeUpdateKeyRequest{
 				Id:               "not-a-uuid",
-				KeyMode:          policy.KeyMode_KEY_MODE_REMOTE,
+				TargetKeyMode:    policy.KeyMode_KEY_MODE_REMOTE,
 				ProviderConfigId: validUUID,
 			},
 			expectError:  true,
@@ -70,7 +70,7 @@ func TestUnsafeUpdateKeyRequest(t *testing.T) {
 			name: "invalid provider config id",
 			req: &unsafepb.UnsafeUpdateKeyRequest{
 				Id:               validUUID,
-				KeyMode:          policy.KeyMode_KEY_MODE_REMOTE,
+				TargetKeyMode:    policy.KeyMode_KEY_MODE_REMOTE,
 				ProviderConfigId: "not-a-uuid",
 			},
 			expectError:  true,
@@ -80,7 +80,7 @@ func TestUnsafeUpdateKeyRequest(t *testing.T) {
 			name: "invalid provider config id with spaces only",
 			req: &unsafepb.UnsafeUpdateKeyRequest{
 				Id:               validUUID,
-				KeyMode:          policy.KeyMode_KEY_MODE_REMOTE,
+				TargetKeyMode:    policy.KeyMode_KEY_MODE_REMOTE,
 				ProviderConfigId: "  ",
 			},
 			expectError:  true,
@@ -89,8 +89,8 @@ func TestUnsafeUpdateKeyRequest(t *testing.T) {
 		{
 			name: "remote mode provider config requirement is service-owned",
 			req: &unsafepb.UnsafeUpdateKeyRequest{
-				Id:      validUUID,
-				KeyMode: policy.KeyMode_KEY_MODE_REMOTE,
+				Id:            validUUID,
+				TargetKeyMode: policy.KeyMode_KEY_MODE_REMOTE,
 			},
 			expectError: false,
 		},
@@ -98,7 +98,7 @@ func TestUnsafeUpdateKeyRequest(t *testing.T) {
 			name: "public key only provider config prohibition is service-owned",
 			req: &unsafepb.UnsafeUpdateKeyRequest{
 				Id:               validUUID,
-				KeyMode:          policy.KeyMode_KEY_MODE_PUBLIC_KEY_ONLY,
+				TargetKeyMode:    policy.KeyMode_KEY_MODE_PUBLIC_KEY_ONLY,
 				ProviderConfigId: validUUID,
 			},
 			expectError: false,
@@ -106,8 +106,8 @@ func TestUnsafeUpdateKeyRequest(t *testing.T) {
 		{
 			name: "unsupported key mode",
 			req: &unsafepb.UnsafeUpdateKeyRequest{
-				Id:      validUUID,
-				KeyMode: policy.KeyMode_KEY_MODE_CONFIG_ROOT_KEY,
+				Id:            validUUID,
+				TargetKeyMode: policy.KeyMode_KEY_MODE_CONFIG_ROOT_KEY,
 			},
 			expectError:  true,
 			errorMessage: ruleIDKeyModeSupported,

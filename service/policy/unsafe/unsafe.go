@@ -467,7 +467,7 @@ func unsafeUpdateKeyAuditValue(kasKey *policy.KasKey) *policy.KasKey {
 
 func unsafeUpdateKeyAuditProviderConfig(providerConfig *policy.KeyProviderConfig) *policy.KeyProviderConfig {
 	if providerConfig == nil {
-		return &policy.KeyProviderConfig{}
+		return nil
 	}
 
 	return &policy.KeyProviderConfig{

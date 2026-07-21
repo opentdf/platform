@@ -62,6 +62,12 @@ func TestStatusifyErrorUnsafeUpdateKeyErrors(t *testing.T) {
 			text: ErrorTextUnsafeUpdateKeyExistingModeUnsupported,
 		},
 		{
+			name: "target mode unsupported",
+			err:  ErrUnsafeUpdateKeyTargetModeUnsupported,
+			code: connect.CodeInvalidArgument,
+			text: ErrorTextUnsafeUpdateKeyTargetModeUnsupported,
+		},
+		{
 			name: "provider config existing mode",
 			err:  ErrUnsafeUpdateKeyProviderConfigExistingMode,
 			code: connect.CodeInvalidArgument,

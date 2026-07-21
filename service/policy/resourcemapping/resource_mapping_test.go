@@ -4,7 +4,10 @@ import (
 	"testing"
 
 	"buf.build/go/protovalidate"
+	"connectrpc.com/connect"
 	"github.com/opentdf/platform/protocol/go/policy/resourcemapping"
+	"github.com/opentdf/platform/service/logger"
+	policyconfig "github.com/opentdf/platform/service/policy/config"
 	"github.com/stretchr/testify/require"
 )
 
@@ -58,6 +61,22 @@ func getValidator() protovalidate.Validator {
 		panic(err)
 	}
 	return v
+}
+
+func Test_CreateResourceMapping_NamespacedPolicyRequiresNamespace(t *testing.T) {
+	service := ResourceMappingService{
+		logger: logger.CreateTestLogger(),
+		config: &policyconfig.Config{NamespacedPolicy: true},
+	}
+
+	_, err := service.CreateResourceMapping(t.Context(), connect.NewRequest(&resourcemapping.CreateResourceMappingRequest{
+		AttributeValueId: validUUID,
+		Terms:            []string{"term1"},
+	}))
+
+	require.Error(t, err)
+	require.Equal(t, connect.CodeInvalidArgument, connect.CodeOf(err))
+	require.ErrorIs(t, err, errNamespacedPolicyNamespaceRequired)
 }
 
 func getMaxTerms() []string {

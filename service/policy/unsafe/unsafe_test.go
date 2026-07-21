@@ -12,7 +12,7 @@ import (
 const (
 	validUUID              = "00000000-0000-0000-0000-000000000000"
 	ruleIDStringUUID       = "string.uuid"
-	ruleIDKeyModeSupported = "key_mode_supported"
+	ruleIDKeyModeSupported = "enum.in"
 )
 
 func getValidator() protovalidate.Validator {

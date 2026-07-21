@@ -629,7 +629,7 @@ func validateUnsafeUpdateKey(existing *policy.KasKey, r *unsafe.UnsafeUpdateKeyR
 		}
 		params.ProviderConfigID = newProviderConfiguration
 	case policy.KeyMode_KEY_MODE_CONFIG_ROOT_KEY, policy.KeyMode_KEY_MODE_PROVIDER_ROOT_KEY:
-		return params, fmt.Errorf("%w: %s", db.ErrUnsafeUpdateKeyTargetModeUnsupported, r.GetTargetKeyMode())
+		fallthrough
 	default:
 		return params, fmt.Errorf("%w: %s", db.ErrUnsafeUpdateKeyTargetModeUnsupported, r.GetTargetKeyMode())
 	}

@@ -96,7 +96,6 @@ func TestValidateUnsafeUpdateKey(t *testing.T) {
 			requestMode:  policy.KeyMode_KEY_MODE_CONFIG_ROOT_KEY,
 			wantErr:      servicedb.ErrUnsafeUpdateKeyTargetModeUnsupported,
 		},
-		// TODO: Add a test about the invalid provider config id for remote mode
 	}
 
 	for _, tt := range tests {

@@ -67,8 +67,18 @@ func (s *LDAPStepDefinitions) anLDAPDirectoryWithTestUsers(ctx context.Context) 
 		Started:          true,
 	})
 	if err != nil {
+		if ldapContainer != nil {
+			_ = ldapContainer.Terminate(context.WithoutCancel(ctx))
+		}
 		return ctx, fmt.Errorf("failed to start LDAP container: %w", err)
 	}
+
+	setupComplete := false
+	defer func() {
+		if !setupComplete {
+			_ = ldapContainer.Terminate(context.WithoutCancel(ctx))
+		}
+	}()
 
 	host, err := ldapContainer.Host(ctx)
 	if err != nil {
@@ -90,6 +100,7 @@ func (s *LDAPStepDefinitions) anLDAPDirectoryWithTestUsers(ctx context.Context) 
 		logger.Info("terminating LDAP testcontainer")
 		return ldapContainer.Terminate(context.WithoutCancel(ctx))
 	})
+	setupComplete = true
 
 	return ctx, nil
 }

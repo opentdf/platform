@@ -112,7 +112,7 @@ delete_pc_by_id() {
 @test "fail to get provider configuration with id, name" {
     run_otdfctl_key_pc get --id test-id --manager "$TEST_MANAGER" --name "a-name"
     assert_failure
-    assert_ouput "if any flags in the group [id name] are set none of the others can be; [id name] were all set"
+    assert_output --partial "if any flags in the group [id name] are set none of the others can be; [id name] were all set"
 }
 
 @test "fail to get provider configuration with empty name and manager" {

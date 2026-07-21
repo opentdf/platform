@@ -11,7 +11,7 @@ replace (
 
 require (
 	github.com/lestrrat-go/jwx/v2 v2.1.6
-	github.com/opentdf/platform/lib/fixtures v0.0.0-00010101000000-000000000000
+	github.com/opentdf/platform/lib/fixtures v0.6.0
 	github.com/opentdf/platform/sdk v0.0.0-00010101000000-000000000000
 	github.com/stretchr/testify v1.11.1
 	github.com/testcontainers/testcontainers-go v0.42.0

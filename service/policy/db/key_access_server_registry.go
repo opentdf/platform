@@ -621,11 +621,11 @@ func validateUnsafeUpdateKey(existing *policy.KasKey, r *unsafe.UnsafeUpdateKeyR
 		}
 		params.KeyMode = newKeyMode
 	case policy.KeyMode_KEY_MODE_UNSPECIFIED:
-		if existingMode != policy.KeyMode_KEY_MODE_REMOTE {
-			return params, db.ErrUnsafeUpdateKeyProviderConfigExistingMode
-		}
 		if !newProviderConfiguration.Valid {
 			return params, db.ErrUnsafeUpdateKeyProviderConfigRequired
+		}
+		if existingMode != policy.KeyMode_KEY_MODE_REMOTE {
+			return params, db.ErrUnsafeUpdateKeyProviderConfigExistingMode
 		}
 		params.ProviderConfigID = newProviderConfiguration
 	case policy.KeyMode_KEY_MODE_CONFIG_ROOT_KEY, policy.KeyMode_KEY_MODE_PROVIDER_ROOT_KEY:

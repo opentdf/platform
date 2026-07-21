@@ -65,6 +65,13 @@ func TestValidateUnsafeUpdateKey(t *testing.T) {
 			wantErr:        servicedb.ErrUnsafeUpdateKeyProviderConfigExistingMode,
 		},
 		{
+			name:           "provider config update - invalid provider config",
+			existingMode:   policy.KeyMode_KEY_MODE_REMOTE,
+			requestMode:    policy.KeyMode_KEY_MODE_UNSPECIFIED,
+			providerConfig: "",
+			wantErr:        servicedb.ErrUnsafeUpdateKeyProviderConfigRequired,
+		},
+		{
 			name:         "remote requires provider config",
 			existingMode: policy.KeyMode_KEY_MODE_PUBLIC_KEY_ONLY,
 			requestMode:  policy.KeyMode_KEY_MODE_REMOTE,

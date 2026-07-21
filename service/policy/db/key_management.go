@@ -59,7 +59,7 @@ func (c PolicyDBClient) GetProviderConfig(ctx context.Context, r *keymanagement.
 		c.logger.DebugContext(ctx, "getting provider config by ID", slog.String("id", i.Id))
 		params = getProviderConfigParams{ID: id}
 	case *keymanagement.GetProviderConfigRequest_Name:
-		return nil, db.ErrDeprecated
+		return nil, db.ErrIdentifierDeprecated
 	case *keymanagement.GetProviderConfigRequest_NameManager_:
 		nameIdentifier := i.NameManager
 		name := pgtypeText(strings.ToLower(nameIdentifier.GetName()))

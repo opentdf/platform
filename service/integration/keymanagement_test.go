@@ -164,7 +164,7 @@ func (s *KeyManagementSuite) Test_GetProviderConfig_WithNameOnlyIdentifier_Fails
 		},
 	})
 	s.Require().Error(err)
-	s.Require().ErrorIs(err, db.ErrDeprecated)
+	s.Require().ErrorIs(err, db.ErrIdentifierDeprecated)
 }
 
 func (s *KeyManagementSuite) Test_GetProviderConfig_WithManagerOnly_Fails() {

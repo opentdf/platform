@@ -1880,6 +1880,52 @@ components:
         - obligationValue
         - action
       additionalProperties: false
+    policy.attributes.AttributeValueSubjectMappingRequest:
+      type: object
+      properties:
+        actions:
+          type: array
+          items:
+            $ref: '#/components/schemas/policy.Action'
+          title: actions
+          minItems: 1
+          description: |+
+            Required. The actions permitted by subjects in this mapping.
+            Action name or ID must not be empty if provided:
+            ```
+            this.all(item, item.name != '' || item.id != '')
+            ```
+
+        existingSubjectConditionSetId:
+          type: string
+          title: existing_subject_condition_set_id
+          format: uuid
+          description: Reuse an existing SubjectConditionSet.
+        newSubjectConditionSet:
+          title: new_subject_condition_set
+          description: Create a new SubjectConditionSet.
+          $ref: '#/components/schemas/policy.subjectmapping.SubjectConditionSetCreate'
+        namespaceId:
+          type: string
+          title: namespace_id
+          format: uuid
+        namespaceFqn:
+          type: string
+          title: namespace_fqn
+          minLength: 1
+          format: uri
+        metadata:
+          title: metadata
+          description: Optional. Common metadata for the subject mapping.
+          $ref: '#/components/schemas/common.MetadataMutable'
+      title: AttributeValueSubjectMappingRequest
+      additionalProperties: false
+      description: |+
+        Exactly one of existing_subject_condition_set_id or new_subject_condition_set must be provided:
+        ```
+        (this.existing_subject_condition_set_id != '') != has(this.new_subject_condition_set)
+        ```
+
     policy.attributes.AttributesSort:
       type: object
       properties:
@@ -1981,6 +2027,15 @@ components:
           description: |-
             Optional
              Existing obligation values to trigger for the newly created attribute value.
+        subjectMappings:
+          type: array
+          items:
+            $ref: '#/components/schemas/policy.attributes.AttributeValueSubjectMappingRequest'
+          title: subject_mappings
+          maxItems: 250
+          description: |-
+            Optional
+             Subject mappings to associate with the newly created attribute value.
         metadata:
           title: metadata
           description: |-
@@ -2631,6 +2686,24 @@ components:
           format: uuid
           description: Required
       title: ValueKeyAccessServer
+      additionalProperties: false
+    policy.subjectmapping.SubjectConditionSetCreate:
+      type: object
+      properties:
+        subjectSets:
+          type: array
+          items:
+            $ref: '#/components/schemas/policy.SubjectSet'
+          title: subject_sets
+          minItems: 1
+          description: Required
+        metadata:
+          title: metadata
+          description: |-
+            Optional
+             Common metadata
+          $ref: '#/components/schemas/common.MetadataMutable'
+      title: SubjectConditionSetCreate
       additionalProperties: false
     connect-protocol-version:
       type: number

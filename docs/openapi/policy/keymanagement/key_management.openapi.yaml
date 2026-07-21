@@ -480,42 +480,41 @@ components:
               type: string
               title: name
               minLength: 1
-              description: |-
-                DEPRECATED, please use name_and_manager and specify manager + name together.
-                 Using this without manager could result in non-deterministic responses.
+              description: DEPRECATED, please use the NameManager and specify manager + name together.
               deprecated: true
           title: name
           required:
             - name
         - properties:
-            nameAndManager:
-              title: name_and_manager
-              $ref: '#/components/schemas/policy.keymanagement.GetProviderConfigRequest.NameIdentifier'
-          title: name_and_manager
+            nameManager:
+              title: name_manager
+              description: Search by name and manager.
+              $ref: '#/components/schemas/policy.keymanagement.GetProviderConfigRequest.NameManager'
+          title: name_manager
           required:
-            - nameAndManager
+            - nameManager
       properties:
         manager:
           type: string
           title: manager
-          description: |-
-            DEPRECATED, please use name_and_manager and specify manager + name together.
-             Using this without name is ignored.
+          description: DEPRECATED, please use the NameManager and specify manager + name together.
           deprecated: true
       title: GetProviderConfigRequest
       additionalProperties: false
-    policy.keymanagement.GetProviderConfigRequest.NameIdentifier:
+    policy.keymanagement.GetProviderConfigRequest.NameManager:
       type: object
       properties:
         name:
           type: string
           title: name
           minLength: 1
+          description: The name of the key provider
         manager:
           type: string
           title: manager
           minLength: 1
-      title: NameIdentifier
+          description: The type of key manager.
+      title: NameManager
       additionalProperties: false
     policy.keymanagement.GetProviderConfigResponse:
       type: object

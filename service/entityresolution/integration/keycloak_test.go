@@ -2,6 +2,7 @@ package integration
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -174,16 +175,16 @@ func (a *KeycloakTestAdapter) TeardownTestData(ctx context.Context) error {
 // createKeycloakContainerConfig returns a Keycloak container configuration
 func (a *KeycloakTestAdapter) createKeycloakContainerConfig() internal.ContainerConfig {
 	return internal.ContainerConfig{
-		Image:        "quay.io/keycloak/keycloak:23.0",
+		Image:        "ghcr.io/opentdf/keycloak-standard:26.4.0",
 		ExposedPorts: []string{"8080/tcp"},
 		Env: map[string]string{
-			"KEYCLOAK_ADMIN":          a.config.AdminUser,
-			"KEYCLOAK_ADMIN_PASSWORD": a.config.AdminPass,
-			"KC_HTTP_ENABLED":         "true",
-			"KC_HOSTNAME_STRICT":      "false",
-			"KC_HEALTH_ENABLED":       "true",
-			"KC_METRICS_ENABLED":      "false",
-			"KC_LOG_LEVEL":            "WARN", // Reduce log noise for faster startup
+			"KC_BOOTSTRAP_ADMIN_USERNAME": a.config.AdminUser,
+			"KC_BOOTSTRAP_ADMIN_PASSWORD": a.config.AdminPass,
+			"KC_HTTP_ENABLED":             "true",
+			"KC_HOSTNAME_STRICT":          "false",
+			"KC_HEALTH_ENABLED":           "true",
+			"KC_METRICS_ENABLED":          "false",
+			"KC_LOG_LEVEL":                "WARN", // Reduce log noise for faster startup
 		},
 		Cmd:          []string{"start-dev"},
 		WaitStrategy: wait.ForListeningPort("8080/tcp").WithStartupTimeout(2 * time.Minute),
@@ -284,6 +285,27 @@ func (a *KeycloakTestAdapter) createTestRealm(ctx context.Context) error {
 			slog.String("id", realmID))
 	}
 
+	if err := a.enableUnmanagedUserAttributes(ctx); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (a *KeycloakTestAdapter) enableUnmanagedUserAttributes(ctx context.Context) error {
+	realmProfileURL := fmt.Sprintf("%s/admin/realms/%s/users/profile", a.config.AdminURL, a.config.Realm)
+	realmUserProfileResp, err := a.keycloakClient.GetRequestWithBearerAuth(ctx, a.adminToken.AccessToken).Get(realmProfileURL)
+	if err != nil {
+		return fmt.Errorf("failed to get realm user profile config: %w", err)
+	}
+	var upConfig map[string]interface{}
+	if err := json.Unmarshal(realmUserProfileResp.Body(), &upConfig); err != nil {
+		return fmt.Errorf("failed to parse realm user profile config: %w", err)
+	}
+	upConfig["unmanagedAttributePolicy"] = "ENABLED"
+	if _, err := a.keycloakClient.GetRequestWithBearerAuth(ctx, a.adminToken.AccessToken).SetBody(upConfig).Put(realmProfileURL); err != nil {
+		return fmt.Errorf("failed to enable unmanaged user attributes: %w", err)
+	}
 	return nil
 }
 

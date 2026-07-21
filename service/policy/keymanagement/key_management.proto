@@ -29,8 +29,10 @@ message CreateProviderConfigResponse {
 }
 
 message GetProviderConfigRequest {
-  message NameIdentifier {
+  message NameManager {
+    // The name of the key provider
     string name = 1 [(buf.validate.field).string.min_len = 1];
+    // The type of key manager.
     string manager = 2 [(buf.validate.field).string.min_len = 1];
   }
 
@@ -38,16 +40,15 @@ message GetProviderConfigRequest {
   oneof identifier {
     option (buf.validate.oneof).required = true;
     string id = 2 [(buf.validate.field).string.uuid = true];
-    // DEPRECATED, please use name_and_manager and specify manager + name together.
-    // Using this without manager could result in non-deterministic responses.
+    // DEPRECATED, please use the NameManager and specify manager + name together.
     string name = 3 [
       deprecated = true,
       (buf.validate.field).string.min_len = 1
     ];
-    NameIdentifier name_and_manager = 5;
+    // Search by name and manager.
+    NameManager name_manager = 5;
   }
-  // DEPRECATED, please use name_and_manager and specify manager + name together.
-  // Using this without name is ignored.
+  // DEPRECATED, please use the NameManager and specify manager + name together.
   string manager = 4 [
     deprecated = true,
     (buf.validate.field).required = false

@@ -150,8 +150,8 @@ func Test_GetProviderConfigRequest(t *testing.T) {
 		{
 			name: "Invalid Name and Manager identifier (empty name)",
 			req: &keymanagement.GetProviderConfigRequest{
-				Identifier: &keymanagement.GetProviderConfigRequest_NameAndManager{
-					NameAndManager: &keymanagement.GetProviderConfigRequest_NameIdentifier{
+				Identifier: &keymanagement.GetProviderConfigRequest_NameManager_{
+					NameManager: &keymanagement.GetProviderConfigRequest_NameManager{
 						Manager: validManager,
 					},
 				},
@@ -162,8 +162,8 @@ func Test_GetProviderConfigRequest(t *testing.T) {
 		{
 			name: "Invalid Name and Manager identifier (empty manager)",
 			req: &keymanagement.GetProviderConfigRequest{
-				Identifier: &keymanagement.GetProviderConfigRequest_NameAndManager{
-					NameAndManager: &keymanagement.GetProviderConfigRequest_NameIdentifier{
+				Identifier: &keymanagement.GetProviderConfigRequest_NameManager_{
+					NameManager: &keymanagement.GetProviderConfigRequest_NameManager{
 						Name: validName,
 					},
 				},
@@ -174,8 +174,8 @@ func Test_GetProviderConfigRequest(t *testing.T) {
 		{
 			name: "Valid Name and Manager identifier",
 			req: &keymanagement.GetProviderConfigRequest{
-				Identifier: &keymanagement.GetProviderConfigRequest_NameAndManager{
-					NameAndManager: &keymanagement.GetProviderConfigRequest_NameIdentifier{
+				Identifier: &keymanagement.GetProviderConfigRequest_NameManager_{
+					NameManager: &keymanagement.GetProviderConfigRequest_NameManager{
 						Name:    validName,
 						Manager: validManager,
 					},

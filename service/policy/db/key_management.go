@@ -60,8 +60,8 @@ func (c PolicyDBClient) GetProviderConfig(ctx context.Context, r *keymanagement.
 		params = getProviderConfigParams{ID: id}
 	case *keymanagement.GetProviderConfigRequest_Name:
 		return nil, db.ErrDeprecated
-	case *keymanagement.GetProviderConfigRequest_NameAndManager:
-		nameIdentifier := i.NameAndManager
+	case *keymanagement.GetProviderConfigRequest_NameManager_:
+		nameIdentifier := i.NameManager
 		name := pgtypeText(strings.ToLower(nameIdentifier.GetName()))
 		if !name.Valid {
 			return nil, db.ErrSelectIdentifierInvalid

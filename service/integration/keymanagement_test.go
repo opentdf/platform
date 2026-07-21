@@ -769,9 +769,9 @@ func (s *KeyManagementSuite) getUniqueProviderName(baseName string) string {
 	return baseName + "-" + uuid.NewString()[:8]
 }
 
-func (s *KeyManagementSuite) providerConfigNameIdentifier(name, manager string) *keymanagement.GetProviderConfigRequest_NameAndManager {
-	return &keymanagement.GetProviderConfigRequest_NameAndManager{
-		NameAndManager: &keymanagement.GetProviderConfigRequest_NameIdentifier{
+func (s *KeyManagementSuite) providerConfigNameIdentifier(name, manager string) *keymanagement.GetProviderConfigRequest_NameManager_ {
+	return &keymanagement.GetProviderConfigRequest_NameManager_{
+		NameManager: &keymanagement.GetProviderConfigRequest_NameManager{
 			Name:    name,
 			Manager: manager,
 		},

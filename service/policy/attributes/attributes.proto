@@ -7,6 +7,7 @@ import "common/common.proto";
 import "google/protobuf/wrappers.proto";
 import "policy/objects.proto";
 import "policy/selectors.proto";
+import "policy/subjectmapping/subject_mapping.proto";
 
 /*
    Key Access Server Grants
@@ -265,6 +266,50 @@ message AttributeValueObligationTriggerRequest {
   common.MetadataMutable metadata = 100;
 }
 
+message AttributeValueSubjectMappingRequest {
+  option (buf.validate.message).cel = {
+    id: "subject_condition_set_source"
+    message: "Exactly one of existing_subject_condition_set_id or new_subject_condition_set must be provided"
+    expression: "(this.existing_subject_condition_set_id != '') != has(this.new_subject_condition_set)"
+  };
+
+  // Required. The actions permitted by subjects in this mapping.
+  repeated policy.Action actions = 1 [
+    (buf.validate.field).repeated.min_items = 1,
+    (buf.validate.field).cel = {
+      id: "action_name_or_id_not_empty"
+      message: "Action name or ID must not be empty if provided"
+      expression: "this.all(item, item.name != '' || item.id != '')"
+    }
+  ];
+
+  // Reuse an existing SubjectConditionSet.
+  string existing_subject_condition_set_id = 2 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string.uuid = true
+  ];
+  // Create a new SubjectConditionSet.
+  policy.subjectmapping.SubjectConditionSetCreate new_subject_condition_set = 3;
+
+  // Optional. Namespace ID or FQN for the subject mapping.
+  // If omitted, the parent attribute's namespace is inherited.
+  option (buf.validate.message).oneof = { fields: ["namespace_id", "namespace_fqn"], required: false };
+  string namespace_id = 4 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string.uuid = true
+  ];
+  string namespace_fqn = 5 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      min_len: 1
+      uri: true
+    }
+  ];
+
+  // Optional. Common metadata for the subject mapping.
+  common.MetadataMutable metadata = 100;
+}
+
 message CreateAttributeValueRequest {
   // Required
   string attribute_id = 1 [(buf.validate.field).string.uuid = true];
@@ -286,6 +331,10 @@ message CreateAttributeValueRequest {
   // Optional
   // Existing obligation values to trigger for the newly created attribute value.
   repeated AttributeValueObligationTriggerRequest obligation_triggers = 11;
+
+  // Optional
+  // Subject mappings to associate with the newly created attribute value.
+  repeated AttributeValueSubjectMappingRequest subject_mappings = 12 [(buf.validate.field).repeated.max_items = 250];
 
   // Optional
   // Common metadata
@@ -345,9 +394,11 @@ message GetAttributeValuesByFqnsResponse {
 
    Narrow read API for the client-side encrypt flow. Given attribute value FQNs,
    returns only the information needed to build key splits: the governing
-   attribute rule and the effective KAS keys resolved server-side. It does not
+   attribute rule and the effective mapped KAS keys resolved server-side. It does not
    return subject mappings, resource mappings, obligations, sibling values, or
-   metadata. Prefer this over GetAttributeValuesByFqns when building splits.
+   metadata. Prefer this over GetAttributeValuesByFqns when building splits. A
+   value that does not exist under a definition with allow_traversal resolves at
+   the definition (then namespace) level, supporting front-loaded TDF creation.
 */
 message GetKeyMappingsByFqnsRequest {
   // Required
@@ -363,7 +414,8 @@ message GetKeyMappingsByFqnsResponse {
     AttributeRuleTypeEnum rule = 1;
     // effective KAS keys resolved for this value (value > definition > namespace
     // precedence). Legacy grants are not used by this API; values configured only
-    // with grants and no kas_keys return an empty key set.
+    // with grants and no kas_keys return an empty key set, and the client resolves
+    // those grants via GetAttributeValuesByFqns.
     repeated policy.SimpleKasKey keys = 2;
   }
   // map of value FQN to its key mapping information, for O(1) lookup
@@ -375,10 +427,13 @@ message GetKeyMappingsByFqnsResponse {
 
    Narrow read API for Auth Service / Access PDP entitlement resolution. Given
    attribute value FQNs, returns the parent definitions (deduped, each with its
-   rule) and, per requested value, the value identity and the subject mappings
-   needed to resolve entitlements. Hierarchy definitions additionally carry their
-   ordered values with subject mappings, for hierarchy rule propagation. It does
-   not return KAS keys, grants, resource mappings, obligations, or metadata.
+   rule and namespace identity) and, per requested value, the value identity and
+   the subject mappings needed to resolve entitlements. Hierarchy definitions
+   additionally carry their ordered values with subject mappings, for hierarchy
+   rule propagation. It does not return KAS keys, grants, resource mappings,
+   obligations, or metadata. A value that does not exist under a definition with
+   allow_traversal is returned with its definition and an empty value identity (no
+   value_id, no subject mappings).
 */
 message GetEntitleableAttributesByFqnsRequest {
   // Required
@@ -408,6 +463,10 @@ message GetEntitleableAttributesByFqnsResponse {
     // their mappings to propagate entitlement up the chain). Empty for any_of /
     // all_of, where the requested per-value entries below carry what's needed.
     repeated EntitleableValue values = 2;
+    // the definition's namespace identity (id and fqn), needed for
+    // namespaced-policy decisioning and registered-resource matching. Only the
+    // identity is populated; grants, keys, and metadata are not.
+    policy.Namespace namespace = 3;
   }
   message EntitleableAttribute {
     // the FQN of the parent definition, a key into `definitions`
@@ -538,7 +597,10 @@ service AttributesService {
   rpc GetAttribute(GetAttributeRequest) returns (GetAttributeResponse) {
     option idempotency_level = NO_SIDE_EFFECTS;
   }
+  // Deprecated: Use GetKeyMappingsByFqns for client-side key splits and
+  // GetEntitleableAttributesByFqns for server-side entitlement resolution.
   rpc GetAttributeValuesByFqns(GetAttributeValuesByFqnsRequest) returns (GetAttributeValuesByFqnsResponse) {
+    option deprecated = true;
     option idempotency_level = NO_SIDE_EFFECTS;
   }
   // Returns only key-mapping information (rule and effective KAS keys) for the

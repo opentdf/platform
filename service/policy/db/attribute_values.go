@@ -11,6 +11,7 @@ import (
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/attributes"
 	"github.com/opentdf/platform/protocol/go/policy/obligations"
+	"github.com/opentdf/platform/protocol/go/policy/subjectmapping"
 	"github.com/opentdf/platform/protocol/go/policy/unsafe"
 	"github.com/opentdf/platform/service/pkg/db"
 	"google.golang.org/protobuf/types/known/wrapperspb"
@@ -46,6 +47,35 @@ func (c PolicyDBClient) CreateAttributeValue(ctx context.Context, attributeID st
 			AttributeValue:  &common.IdFqnIdentifier{Id: createdID},
 			Context:         trigger.GetContext(),
 			Metadata:        trigger.GetMetadata(),
+		})
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	var attributeNamespaceID string
+	if len(r.GetSubjectMappings()) > 0 {
+		attr, err := c.GetAttribute(ctx, attributeID)
+		if err != nil {
+			return nil, err
+		}
+		attributeNamespaceID = attr.GetNamespace().GetId()
+	}
+
+	for _, mapping := range r.GetSubjectMappings() {
+		namespaceID := mapping.GetNamespaceId()
+		if namespaceID == "" && mapping.GetNamespaceFqn() == "" {
+			namespaceID = attributeNamespaceID
+		}
+
+		_, err := c.CreateSubjectMapping(ctx, &subjectmapping.CreateSubjectMappingRequest{
+			AttributeValueId:              createdID,
+			Actions:                       mapping.GetActions(),
+			ExistingSubjectConditionSetId: mapping.GetExistingSubjectConditionSetId(),
+			NewSubjectConditionSet:        mapping.GetNewSubjectConditionSet(),
+			NamespaceId:                   namespaceID,
+			NamespaceFqn:                  mapping.GetNamespaceFqn(),
+			Metadata:                      mapping.GetMetadata(),
 		})
 		if err != nil {
 			return nil, err
@@ -120,6 +150,12 @@ func (c PolicyDBClient) GetAttributeValue(ctx context.Context, identifier any) (
 		return nil, err
 	}
 
+	subjectMappings := []*policy.SubjectMapping{}
+	if err := unmarshalSubjectMappingsProto(av.SubjectMappings, &subjectMappings); err != nil {
+		c.logger.ErrorContext(ctx, "could not unmarshal subject mappings", slog.Any("error", err))
+		return nil, err
+	}
+
 	return &policy.Value{
 		Id:       av.ID,
 		Value:    av.Value,
@@ -128,10 +164,11 @@ func (c PolicyDBClient) GetAttributeValue(ctx context.Context, identifier any) (
 		Attribute: &policy.Attribute{
 			Id: av.AttributeDefinitionID,
 		},
-		Fqn:         av.Fqn.String,
-		Grants:      grants,
-		KasKeys:     keys,
-		Obligations: obligations,
+		Fqn:             av.Fqn.String,
+		Grants:          grants,
+		KasKeys:         keys,
+		Obligations:     obligations,
+		SubjectMappings: subjectMappings,
 	}, nil
 }
 

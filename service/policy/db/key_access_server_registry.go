@@ -601,14 +601,14 @@ func validateUnsafeUpdateKey(existing *policy.KasKey, r *unsafe.UnsafeUpdateKeyR
 	params := unsafeUpdateKeyParams{
 		ID: r.GetId(),
 	}
-	newKeyMode := pgtypeInt4(int32(r.GetKeyMode()), true)
+	newKeyMode := pgtypeInt4(int32(r.GetTargetKeyMode()), true)
 	newProviderConfiguration := pgtypeUUID(r.GetProviderConfigId())
 
 	if existingMode != policy.KeyMode_KEY_MODE_PUBLIC_KEY_ONLY && existingMode != policy.KeyMode_KEY_MODE_REMOTE {
 		return params, db.ErrUnsafeUpdateKeyExistingModeUnsupported
 	}
 
-	switch r.GetKeyMode() {
+	switch r.GetTargetKeyMode() {
 	case policy.KeyMode_KEY_MODE_REMOTE:
 		if !newProviderConfiguration.Valid {
 			return params, db.ErrUnsafeUpdateKeyProviderConfigRequired
@@ -628,6 +628,10 @@ func validateUnsafeUpdateKey(existing *policy.KasKey, r *unsafe.UnsafeUpdateKeyR
 			return params, db.ErrUnsafeUpdateKeyProviderConfigRequired
 		}
 		params.ProviderConfigID = newProviderConfiguration
+	case policy.KeyMode_KEY_MODE_CONFIG_ROOT_KEY, policy.KeyMode_KEY_MODE_PROVIDER_ROOT_KEY:
+		return params, fmt.Errorf("%w: %s", db.ErrUnsafeUpdateKeyTargetModeUnsupported, r.GetTargetKeyMode())
+	default:
+		return params, fmt.Errorf("%w: %s", db.ErrUnsafeUpdateKeyTargetModeUnsupported, r.GetTargetKeyMode())
 	}
 
 	return params, nil

@@ -560,8 +560,8 @@ func TestMultiStrategy_ClaimsThenLDAPFallback(t *testing.T) {
 		t.Fatalf("Expected %d attempted_strategies, got %d: %v", len(expectedStrategies), len(attemptedStrategies), attemptedStrategies)
 	}
 	for i, expected := range expectedStrategies {
-		got, ok := attemptedStrategies[i].(string)
-		if !ok || got != expected {
+		got, isStr := attemptedStrategies[i].(string)
+		if !isStr || got != expected {
 			t.Fatalf("Expected attempted_strategies[%d] = %q, got %v", i, expected, attemptedStrategies[i])
 		}
 	}

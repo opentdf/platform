@@ -265,8 +265,8 @@ github.com/opencontainers/go-digest v1.0.0 h1:apOUWs51W5PlhuyGyz9FCeeBIOUDA/6nW8
 github.com/opencontainers/go-digest v1.0.0/go.mod h1:0JzlMkj0TRzQZfJkVvzbP0HBR3IKzErnv2BNG4W4MAM=
 github.com/opencontainers/image-spec v1.1.1 h1:y0fUlFfIZhPF1W537XOLg0/fcx6zcHCJwooC2xJA040=
 github.com/opencontainers/image-spec v1.1.1/go.mod h1:qpqAh3Dmcf36wStyyWU+kCeDgrGnAve2nCC8+7h8Q0M=
-github.com/opentdf/platform/lib/fixtures v0.5.0 h1:uXLZF0xuc0fSssXkcKHL0onN/0aYk1HkkarBj6zGflQ=
-github.com/opentdf/platform/lib/fixtures v0.5.0/go.mod h1:ctyrVn+eTObHAPy3vrdPO0O1mc3vgQ6lc9pBTdhBAfo=
+github.com/opentdf/platform/lib/fixtures v0.6.0 h1:XHlXYZnYfwllSQu/D8tc0JDCTwavhtKS8Pa4OpV5rmE=
+github.com/opentdf/platform/lib/fixtures v0.6.0/go.mod h1:snB7lx6eJKBVQtHXpGbxwZHLNO9vxjqOx36C0H3dE2k=
 github.com/opentdf/platform/lib/flattening v0.1.3 h1:IuOm/wJVXNrzOV676Ticgr0wyBkL+lVjsoSfh+WSkNo=
 github.com/opentdf/platform/lib/flattening v0.1.3/go.mod h1:Gs/T+6FGZKk9OAdz2Jf1R8CTGeNRYrq1lZGDeYT3hrY=
 github.com/opentdf/platform/lib/identifier v0.4.0 h1:gJf4FqHxqpMdMdMwhI9QmvfHEfMLW4KvEr/qjk7hnio=

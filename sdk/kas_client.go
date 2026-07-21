@@ -10,6 +10,7 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"strings"
 	"time"
 
 	"connectrpc.com/connect"
@@ -322,7 +323,11 @@ func parseBaseURL(rawURL string) (string, error) {
 		addr = net.JoinHostPort(host, port)
 	}
 
-	return fmt.Sprintf("%s://%s", u.Scheme, addr), nil
+	// Preserve the base path so a KAS served under one (e.g. https://host/kas)
+	// still routes; Connect appends "/procedure". Trailing slash trimmed to avoid "//".
+	path := strings.TrimSuffix(u.Path, "/")
+
+	return fmt.Sprintf("%s://%s%s", u.Scheme, addr, path), nil
 }
 
 func (k *KASClient) getRewrapRequest(reqs []*kas.UnsignedRewrapRequest_WithPolicyRequest, pubKey string) (*kas.RewrapRequest, error) {

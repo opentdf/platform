@@ -237,19 +237,37 @@ func TestParseBaseUrl(t *testing.T) {
 		{
 			name:        "Valid URL with scheme and port",
 			input:       "https://example.com:8080/path",
-			expected:    "https://example.com:8080",
+			expected:    "https://example.com:8080/path",
 			expectError: false,
 		},
 		{
 			name:        "Valid URL with scheme and no port",
 			input:       "https://example.com/path",
-			expected:    "https://example.com",
+			expected:    "https://example.com/path",
 			expectError: false,
 		},
 		{
 			name:        "Valid URL with default port",
 			input:       "http://example.com",
 			expected:    "http://example.com",
+			expectError: false,
+		},
+		{
+			name:        "Host-root KAS URL preserves empty path",
+			input:       "https://example.com",
+			expected:    "https://example.com",
+			expectError: false,
+		},
+		{
+			name:        "Base-path KAS URL preserves path (e.g. saas-dsp)",
+			input:       "https://api.secure.develop.virtru.com/dsp/d302f05d-d99f-4dc1-b769-0a8345870172",
+			expected:    "https://api.secure.develop.virtru.com/dsp/d302f05d-d99f-4dc1-b769-0a8345870172",
+			expectError: false,
+		},
+		{
+			name:        "Trailing slash is trimmed to avoid doubled path separator",
+			input:       "https://example.com/dsp/",
+			expected:    "https://example.com/dsp",
 			expectError: false,
 		},
 		{

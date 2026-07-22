@@ -320,7 +320,7 @@ Each scenario creates its own namespace, attribute definitions, and subject mapp
 
 #### Architecture
 
-```
+```text
 ┌──────────┐    ┌─────────────┐    ┌──────────┐    ┌─────────────────┐    ┌──────────┐
 │  SDK     │───▶│ Connect RPC │───▶│ Platform │───▶│ Multi-Strategy  │───▶│  LDAP    │
 │ (client) │    │  (gRPC)     │    │ (server) │    │ ERS (Claims +   │    │ (osixia/ │
@@ -338,11 +338,13 @@ The multi-strategy ERS config uses two providers:
 - Docker (via Colima or Docker Desktop)
 - Go 1.25+
 - JDK (`keytool` required for Keycloak truststore generation)
+
   ```bash
   brew install openjdk
   ```
 
 **1. Set environment variables** (Colima users):
+
 ```bash
 export DOCKER_HOST="unix://$HOME/.colima/default/docker.sock"
 export TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE=/var/run/docker.sock
@@ -351,16 +353,19 @@ export PLATFORM_IMAGE=DEBUG
 ```
 
 Add `keytool` to PATH if using brew-installed OpenJDK:
+
 ```bash
 export PATH="/opt/homebrew/opt/openjdk/bin:$PATH"
 ```
 
 **2. Run the multi-strategy ERS tests:**
+
 ```bash
 go test ./tests-bdd/ -v --tags=cukes --godog.tags=@multi-strategy-ers --count=1
 ```
 
 With console logging for debugging:
+
 ```bash
 CUKES_LOG_HANDLER=console go test ./tests-bdd/ -v --tags=cukes \
   --godog.tags=@multi-strategy-ers --godog.format=pretty --count=1

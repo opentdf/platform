@@ -15,9 +15,14 @@ Feature: Encrypt and decrypt with dynamic value mappings
       | name       | value       |
       | department | ["finance"] |
       | clearance  | ["alpha"]   |
+    And a user exists with username "carol" and email "carol@example.com" and the following attributes:
+      | name       | value           |
+      | department | ["engineering"] |
+      | clearance  | ["beta"]        |
     And a local platform with platform template "cukes/resources/platform.dynamic_value_mappings.template" and keycloak template "cukes/resources/keycloak_base.template"
     And a user token for "alice" stored as "alice_tok"
     And a user token for "bob" stored as "bob_tok"
+    And a user token for "carol" stored as "carol_tok"
     And I submit a request to create a namespace with name "example.com" and reference id "ns1"
     And I send a request to create an attribute with:
       | namespace_id | name      | rule  | values             |
@@ -60,7 +65,10 @@ Feature: Encrypt and decrypt with dynamic value mappings
     And the response should be successful
     When I encrypt plaintext "gated engineering" with attributes "https://example.com/attr/team/value/engineering" stored as "tdf_gated"
     And using token "alice_tok", decrypt "tdf_gated" stored as "alice_gated"
+    And using token "carol_tok", decrypt "tdf_gated" stored as "carol_gated"
     Then the decryption stored as "alice_gated" should succeed with plaintext "gated engineering"
+    # carol matches the mapping (department engineering) but fails the static pre-gate (no clearance alpha)
+    And the decryption stored as "carol_gated" should be denied
 
   Scenario: ALL_OF multi-value requires entitlement to every bound value
     Given I send a request to create a dynamic value mapping with:

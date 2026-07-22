@@ -111,6 +111,7 @@ func runTests() int {
 			cukes.RegisterAuthorizationStepDefinitions(ctx)
 			cukes.RegisterSubjectMappingsStepsDefinitions(ctx)
 			cukes.RegisterDynamicValueMappingsStepDefinitions(ctx)
+			cukes.RegisterDirectEntitlementsStepDefinitions(ctx)
 			cukes.RegisterRegisteredResourcesStepDefinitions(ctx)
 			cukes.RegisterObligationsStepDefinitions(ctx, platformCukesContext)
 			cukes.RegisterKasRegistryStepDefinitions(ctx)

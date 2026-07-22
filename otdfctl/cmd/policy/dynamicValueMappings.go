@@ -163,6 +163,9 @@ func policyCreateDynamicValueMapping(cmd *cobra.Command, args []string) {
 	if len(actionFlagValues) == 0 {
 		cli.ExitWithError("At least one Action [--action] is required", nil)
 	}
+	if existingSCSID != "" && newScsJSON != "" {
+		cli.ExitWithError("Only one of [--subject-condition-set-id, --subject-condition-set-new] may be provided", nil)
+	}
 
 	resolver := &policy.DynamicValueResolver{
 		SubjectExternalSelectorValue: selector,

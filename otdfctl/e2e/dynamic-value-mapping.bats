@@ -112,12 +112,16 @@ teardown_file() {
 }
 
 @test "Create dynamic value mapping rejects coexistence with value subject mappings" {
-    coex_attr=$(./otdfctl $HOST $WITH_CREDS policy attributes create --namespace "$NS_ID" --name "coex_${BATS_TEST_NUMBER}_$RANDOM" --rule ANY_OF -v v1 --json)
-    coex_attr_id=$(echo "$coex_attr" | jq -r '.id')
-    coex_val_id=$(echo "$coex_attr" | jq -r '.values[0].id')
+    run ./otdfctl $HOST $WITH_CREDS policy attributes create --namespace "$NS_ID" --name "coex_${BATS_TEST_NUMBER}_$RANDOM" --rule ANY_OF -v v1 --json
+    assert_success
+    coex_attr_id=$(echo "$output" | jq -r '.id')
+    coex_val_id=$(echo "$output" | jq -r '.values[0].id')
+    assert_not_equal "$coex_attr_id" ""
+    assert_not_equal "$coex_val_id" ""
 
     # attach a value-level subject mapping to the definition
-    ./otdfctl $HOST $WITH_CREDS policy subject-mappings create -a "$coex_val_id" --action "$ACTION_READ_NAME" --subject-condition-set-new "$SCS_1" --json
+    run ./otdfctl $HOST $WITH_CREDS policy subject-mappings create -a "$coex_val_id" --action "$ACTION_READ_NAME" --subject-condition-set-new "$SCS_1" --json
+    assert_success
 
     # a dynamic value mapping on the same definition must be rejected by the server
     run_otdfctl_dvm create --attribute-definition-id "$coex_attr_id" --selector "$SELECTOR" --operator IN --action "$ACTION_READ_NAME"
@@ -125,7 +129,8 @@ teardown_file() {
 }
 
 @test "Get dynamic value mapping" {
-    run ./otdfctl $HOST $WITH_CREDS policy dvm create --attribute-definition-id "$DVM_ATTR_ID" --selector "$SELECTOR" --operator IN --action "$ACTION_READ_NAME" --json
+    # exercise the singular 'dynamic-value-mapping' alias here
+    run ./otdfctl $HOST $WITH_CREDS policy dynamic-value-mapping create --attribute-definition-id "$DVM_ATTR_ID" --selector "$SELECTOR" --operator IN --action "$ACTION_READ_NAME" --json
         assert_success
         created=$(echo "$output" | jq -r '.id')
         assert_not_equal "$created" "null"
@@ -226,4 +231,8 @@ teardown_file() {
     run_otdfctl_dvm delete --id "$to_delete" --force
         assert_success
         assert_line --regexp "Id.*$to_delete"
+
+    # deletion must persist
+    run_otdfctl_dvm get --id "$to_delete"
+        assert_failure
 }

@@ -22,7 +22,7 @@ command:
         - IN
         - IN_CONTAINS
     - name: action
-      description: Each 'id' or 'name' of an Action to be entitled (i.e. 'create', 'read', 'update', 'delete')
+      description: Each 'id' or 'name' of an Action to be entitled (i.e. 'create', 'read', 'update', 'delete'). At least one is required.
     - name: subject-condition-set-id
       description: Known preexisting Subject Condition Set Id to use as a static pre-gate
     - name: subject-condition-set-new

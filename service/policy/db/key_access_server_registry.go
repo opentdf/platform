@@ -573,13 +573,15 @@ func (c PolicyDBClient) UnsafeUpdateKey(ctx context.Context, existing *policy.Ka
 	if params.ProviderConfigID.Valid {
 		_, err := c.GetProviderConfig(ctx, &keymanagement.GetProviderConfigRequest{
 			Identifier: &keymanagement.GetProviderConfigRequest_Id{
-				Id: id,
+				Id: r.GetProviderConfigId(),
 			},
 		})
-		if errors.Is(err, db.ErrNotFound) {
-			return nil, db.ErrUnsafeUpdateKeyProviderConfigNotFound
+		if err != nil {
+			if errors.Is(err, db.ErrNotFound) {
+				err = db.ErrUnsafeUpdateKeyProviderConfigNotFound
+			}
+			return nil, err
 		}
-		return nil, err
 	}
 
 	count, err := c.queries.unsafeUpdateKey(ctx, params)

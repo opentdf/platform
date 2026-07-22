@@ -426,7 +426,7 @@ func (s *UnsafeService) UnsafeUpdateKey(ctx context.Context, req *connect.Reques
 		existing, err := txClient.GetKey(ctx, &kasregistry.GetKeyRequest_Id{Id: id})
 		if err != nil {
 			s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
-			return err
+			return db.StatusifyError(ctx, s.logger, err, db.ErrTextGetRetrievalFailed, slog.String("id", id))
 		}
 
 		auditParams.Original = unsafeUpdateKeyAuditValue(existing)
@@ -434,7 +434,7 @@ func (s *UnsafeService) UnsafeUpdateKey(ctx context.Context, req *connect.Reques
 		updated, err := txClient.UnsafeUpdateKey(ctx, existing, req.Msg)
 		if err != nil {
 			s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
-			return err
+			return db.StatusifyError(ctx, s.logger, err, db.ErrTextUpdateFailed, slog.String("id", id))
 		}
 
 		auditParams.Updated = unsafeUpdateKeyAuditValue(updated)
@@ -444,7 +444,7 @@ func (s *UnsafeService) UnsafeUpdateKey(ctx context.Context, req *connect.Reques
 		return nil
 	})
 	if err != nil {
-		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextGetRetrievalFailed, slog.String("id", id))
+		return nil, err
 	}
 
 	return connect.NewResponse(rsp), nil

@@ -178,9 +178,11 @@ func parseDirectEntitlementsFromClaims(entityStruct *structpb.Struct) ([]*entity
 }
 
 func parseDirectEntitlementFQN(entry map[string]interface{}) (string, error) {
+	// Attribute value FQNs are case-insensitive in policy and the PDP lowercases resource FQNs
+	// before matching, so normalize here to avoid a mixed-case claim being missed and denied.
 	if raw, ok := entry["attribute_value_fqn"]; ok {
 		if fqn, fqnOK := raw.(string); fqnOK {
-			fqn = strings.TrimSpace(fqn)
+			fqn = strings.ToLower(strings.TrimSpace(fqn))
 			if fqn != "" {
 				return fqn, nil
 			}
@@ -188,7 +190,7 @@ func parseDirectEntitlementFQN(entry map[string]interface{}) (string, error) {
 	}
 	if raw, ok := entry["attributeValueFqn"]; ok {
 		if fqn, fqnOK := raw.(string); fqnOK {
-			fqn = strings.TrimSpace(fqn)
+			fqn = strings.ToLower(strings.TrimSpace(fqn))
 			if fqn != "" {
 				return fqn, nil
 			}

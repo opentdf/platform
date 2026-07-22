@@ -7,9 +7,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"net"
 	"net/http"
 	"net/url"
+	"strings"
 	"time"
 
 	"connectrpc.com/connect"
@@ -313,16 +313,19 @@ func parseBaseURL(rawURL string) (string, error) {
 		return "", err
 	}
 
-	host := u.Hostname()
-	port := u.Port()
+	// Build the Connect base URL (Connect appends "/kas.AccessService/<Method>").
+	// Strip only the well-known legacy KAS suffixes so a base-path deployment keeps its
+	// path. Mirrors the JS SDK's getPlatformUrlFromKasEndpoint.
+	u.User = nil
+	u.RawQuery = ""
+	u.Fragment = ""
+	path := strings.TrimRight(u.Path, "/")
+	path = strings.TrimSuffix(path, "/v2/rewrap")
+	path = strings.TrimSuffix(path, "/kas")
+	u.Path = path
+	u.RawPath = ""
 
-	// Add port only if it's present
-	addr := host
-	if port != "" {
-		addr = net.JoinHostPort(host, port)
-	}
-
-	return fmt.Sprintf("%s://%s", u.Scheme, addr), nil
+	return u.String(), nil
 }
 
 func (k *KASClient) getRewrapRequest(reqs []*kas.UnsignedRewrapRequest_WithPolicyRequest, pubKey string) (*kas.RewrapRequest, error) {

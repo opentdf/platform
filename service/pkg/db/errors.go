@@ -30,6 +30,7 @@ var (
 	ErrTxCommitFailed                            = errors.New("ErrTxCommitFailed: failed to commit DB transaction")
 	ErrSelectIdentifierInvalid                   = errors.New("ErrSelectIdentifierInvalid: invalid identifier value for select query")
 	ErrUnknownSelectIdentifier                   = errors.New("ErrUnknownSelectIdentifier: unknown identifier type for select query")
+	ErrIdentifierDeprecated                      = errors.New("ErrIdentifierDeprecated: identifier is deprecated")
 	ErrCannotUpdateToUnspecified                 = errors.New("ErrCannotUpdateToUnspecified: cannot update to unspecified value")
 	ErrKeyRotationFailed                         = errors.New("ErrTextKeyRotationFailed: key rotation failed")
 	ErrExpectedBase64EncodedValue                = errors.New("ErrExpectedBase64EncodedValue: expected base64 encoded value")
@@ -48,7 +49,6 @@ var (
 	ErrUnsafeUpdateKeyProviderConfigRequired     = errors.New("ErrUnsafeUpdateKeyProviderConfigRequired: provider_config_id is required for requested key mode")
 	ErrUnsafeUpdateKeyProviderConfigNotAllowed   = errors.New("ErrUnsafeUpdateKeyProviderConfigNotAllowed: provider_config_id must be empty for requested key mode")
 	ErrUnsafeUpdateKeyProviderConfigNotFound     = errors.New("ErrUnsafeUpdateKeyProviderConfigNotFound: provider_config_id does not reference an existing provider config")
-	ErrIdentifierDeprecated                      = errors.New("ErrIdentifierDeprecated: identifier is deprecated")
 )
 
 // Get helpful error message for PostgreSQL violation
@@ -133,6 +133,7 @@ const (
 	ErrTextListLimitTooLarge                           = "requested pagination limit must be less than or equal to configured limit"
 	ErrTextInvalidIdentifier                           = "value sepcified as the identifier is invalid"
 	ErrorTextUnknownIdentifier                         = "could not match identifier to known type"
+	ErrorTextIdentifierDeprecated                      = "identifier is deprecated"
 	ErrorTextUpdateToUnspecified                       = "cannot update to unspecified value"
 	ErrTextKeyRotationFailed                           = "key rotation failed"
 	ErrorTextExpectedBase64EncodedValue                = "expected base64 encoded value"
@@ -151,7 +152,6 @@ const (
 	ErrorTextUnsafeUpdateKeyProviderConfigRequired     = "provider_config_id is required for requested key mode"
 	ErrorTextUnsafeUpdateKeyProviderConfigNotAllowed   = "provider_config_id must be empty for requested key mode"
 	ErrorTextUnsafeUpdateKeyProviderConfigNotFound     = "provider_config_id does not reference an existing provider config"
-	ErrorIdentifierDeprecated                          = "identifier is deprecated"
 )
 
 func StatusifyError(ctx context.Context, l *logger.Logger, err error, fallbackErr string, logs ...any) error {
@@ -193,8 +193,8 @@ func StatusifyError(ctx context.Context, l *logger.Logger, err error, fallbackEr
 		return connect.NewError(connect.CodeInvalidArgument, errors.New(ErrTextInvalidIdentifier))
 	}
 	if errors.Is(err, ErrIdentifierDeprecated) {
-		l.ErrorContext(ctx, ErrorIdentifierDeprecated, logs...)
-		return connect.NewError(connect.CodeInvalidArgument, errors.New(ErrorIdentifierDeprecated))
+		l.ErrorContext(ctx, ErrorTextIdentifierDeprecated, logs...)
+		return connect.NewError(connect.CodeInvalidArgument, errors.New(ErrorTextIdentifierDeprecated))
 	}
 	if errors.Is(err, ErrUnknownSelectIdentifier) {
 		l.ErrorContext(ctx, ErrorTextUnknownIdentifier, logs...)

@@ -20,7 +20,7 @@ import (
 	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/sdk/resource"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
-	semconv "go.opentelemetry.io/otel/semconv/v1.40.0"
+	semconv "go.opentelemetry.io/otel/semconv/v1.41.0"
 	"go.opentelemetry.io/otel/trace/noop"
 	"google.golang.org/grpc/metadata"
 	"gopkg.in/natefinch/lumberjack.v2"
@@ -124,11 +124,9 @@ func InitTracer(ctx context.Context, cfg Config) (func(), error) {
 	}
 
 	// 3. Create Resource: Combine attributes from explicit config, defaults, and environment.
-	baseRes := resource.NewWithAttributes(
-		semconv.SchemaURL,
-		semconv.ServiceNameKey.String(ServiceName),
-		// Add other static resource attributes here if needed
-	)
+	// Keep explicit attributes schemaless so the selected SDK's resource schema
+	// remains authoritative when OpenTelemetry semantic conventions advance.
+	baseRes := resource.NewSchemaless(semconv.ServiceNameKey.String(ServiceName))
 
 	defaultRes := resource.Default() // Attributes detected by the SDK (host, OS, process, etc.)
 	if defaultRes == nil {

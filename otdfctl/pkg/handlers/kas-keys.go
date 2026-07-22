@@ -88,7 +88,7 @@ func (h Handler) UpdateKasKey(ctx context.Context, id string, metadata *common.M
 func (h Handler) UnsafeUpdateKasKey(ctx context.Context, id string, mode policy.KeyMode, providerConfigID string) (*policy.KasKey, error) {
 	resp, err := h.sdk.Unsafe.UnsafeUpdateKey(ctx, &unsafe.UnsafeUpdateKeyRequest{
 		Id:               id,
-		KeyMode:          mode,
+		TargetKeyMode:    mode,
 		ProviderConfigId: providerConfigID,
 	})
 	if err != nil {

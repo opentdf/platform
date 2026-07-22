@@ -124,9 +124,11 @@ func InitTracer(ctx context.Context, cfg Config) (func(), error) {
 	}
 
 	// 3. Create Resource: Combine attributes from explicit config, defaults, and environment.
-	// Keep explicit attributes schemaless so the selected SDK's resource schema
-	// remains authoritative when OpenTelemetry semantic conventions advance.
-	baseRes := resource.NewSchemaless(semconv.ServiceNameKey.String(ServiceName))
+	baseRes := resource.NewWithAttributes(
+		semconv.SchemaURL,
+		semconv.ServiceNameKey.String(ServiceName),
+		// Add other static resource attributes here if needed
+	)
 
 	defaultRes := resource.Default() // Attributes detected by the SDK (host, OS, process, etc.)
 	if defaultRes == nil {

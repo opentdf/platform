@@ -48,6 +48,7 @@ var (
 	ErrUnsafeUpdateKeyProviderConfigRequired     = errors.New("ErrUnsafeUpdateKeyProviderConfigRequired: provider_config_id is required for requested key mode")
 	ErrUnsafeUpdateKeyProviderConfigNotAllowed   = errors.New("ErrUnsafeUpdateKeyProviderConfigNotAllowed: provider_config_id must be empty for requested key mode")
 	ErrUnsafeUpdateKeyProviderConfigNotFound     = errors.New("ErrUnsafeUpdateKeyProviderConfigNotFound: provider_config_id does not reference an existing provider config")
+	ErrIdentifierDeprecated                      = errors.New("ErrIdentifierDeprecated: identifier is deprecated")
 )
 
 // Get helpful error message for PostgreSQL violation
@@ -150,6 +151,7 @@ const (
 	ErrorTextUnsafeUpdateKeyProviderConfigRequired     = "provider_config_id is required for requested key mode"
 	ErrorTextUnsafeUpdateKeyProviderConfigNotAllowed   = "provider_config_id must be empty for requested key mode"
 	ErrorTextUnsafeUpdateKeyProviderConfigNotFound     = "provider_config_id does not reference an existing provider config"
+	ErrorIdentifierDeprecated                          = "identifier is deprecated"
 )
 
 func StatusifyError(ctx context.Context, l *logger.Logger, err error, fallbackErr string, logs ...any) error {
@@ -189,6 +191,10 @@ func StatusifyError(ctx context.Context, l *logger.Logger, err error, fallbackEr
 	if errors.Is(err, ErrSelectIdentifierInvalid) {
 		l.ErrorContext(ctx, ErrTextInvalidIdentifier, logs...)
 		return connect.NewError(connect.CodeInvalidArgument, errors.New(ErrTextInvalidIdentifier))
+	}
+	if errors.Is(err, ErrIdentifierDeprecated) {
+		l.ErrorContext(ctx, ErrorIdentifierDeprecated, logs...)
+		return connect.NewError(connect.CodeInvalidArgument, errors.New(ErrorIdentifierDeprecated))
 	}
 	if errors.Is(err, ErrUnknownSelectIdentifier) {
 		l.ErrorContext(ctx, ErrorTextUnknownIdentifier, logs...)

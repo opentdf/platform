@@ -15,34 +15,40 @@ import (
 )
 
 var (
-	ErrUniqueConstraintViolation  = errors.New("ErrUniqueConstraintViolation: value must be unique")
-	ErrNotNullViolation           = errors.New("ErrNotNullViolation: value cannot be null")
-	ErrForeignKeyViolation        = errors.New("ErrForeignKeyViolation: value is referenced by another table")
-	ErrRestrictViolation          = errors.New("ErrRestrictViolation: value cannot be deleted due to restriction")
-	ErrNotFound                   = errors.New("ErrNotFound: value not found")
-	ErrAttributeValueInactive     = errors.New("ErrAttributeValueInactive: attribute value inactive")
-	ErrEnumValueInvalid           = errors.New("ErrEnumValueInvalid: not a valid enum value")
-	ErrUUIDInvalid                = errors.New("ErrUUIDInvalid: value not a valid UUID")
-	ErrMissingValue               = errors.New("ErrMissingValue: value must be included")
-	ErrListLimitTooLarge          = errors.New("ErrListLimitTooLarge: requested limit greater than configured maximum")
-	ErrTxBeginFailed              = errors.New("ErrTxBeginFailed: failed to begin DB transaction")
-	ErrTxRollbackFailed           = errors.New("ErrTxRollbackFailed: failed to rollback DB transaction")
-	ErrTxCommitFailed             = errors.New("ErrTxCommitFailed: failed to commit DB transaction")
-	ErrSelectIdentifierInvalid    = errors.New("ErrSelectIdentifierInvalid: invalid identifier value for select query")
-	ErrIdentifierDeprecated       = errors.New("ErrIdentifierDeprecated: identifier is deprecated")
-	ErrUnknownSelectIdentifier    = errors.New("ErrUnknownSelectIdentifier: unknown identifier type for select query")
-	ErrCannotUpdateToUnspecified  = errors.New("ErrCannotUpdateToUnspecified: cannot update to unspecified value")
-	ErrKeyRotationFailed          = errors.New("ErrTextKeyRotationFailed: key rotation failed")
-	ErrExpectedBase64EncodedValue = errors.New("ErrExpectedBase64EncodedValue: expected base64 encoded value")
-	ErrUnencryptedPrivateKey      = errors.New("ErrUnencryptedPrivateKey: unencrypted private key not allowed")
-	ErrMarshalValueFailed         = errors.New("ErrMashalValueFailed: failed to marshal value")
-	ErrUnmarshalValueFailed       = errors.New("ErrUnmarshalValueFailed: failed to unmarshal value")
-	ErrNamespaceMismatch          = errors.New("ErrNamespaceMismatch: namespace mismatch")
-	ErrKIDMismatch                = errors.New("ErrKIDMismatch: Key ID mismatch")
-	ErrKasURIMismatch             = errors.New("ErrKasURIMismatch: KAS URI mismatch")
-	ErrInvalidOblTriParam         = errors.New("ErrInvalidOblTriParam: either the obligation value, attribute value, or action provided was not found")
-	ErrCheckViolation             = errors.New("ErrCheckViolation: check constraint violation")
-	ErrFqnMismatch                = errors.New("ErrFqnMismatch: FQN mismatch")
+	ErrUniqueConstraintViolation                 = errors.New("ErrUniqueConstraintViolation: value must be unique")
+	ErrNotNullViolation                          = errors.New("ErrNotNullViolation: value cannot be null")
+	ErrForeignKeyViolation                       = errors.New("ErrForeignKeyViolation: value is referenced by another table")
+	ErrRestrictViolation                         = errors.New("ErrRestrictViolation: value cannot be deleted due to restriction")
+	ErrNotFound                                  = errors.New("ErrNotFound: value not found")
+	ErrAttributeValueInactive                    = errors.New("ErrAttributeValueInactive: attribute value inactive")
+	ErrEnumValueInvalid                          = errors.New("ErrEnumValueInvalid: not a valid enum value")
+	ErrUUIDInvalid                               = errors.New("ErrUUIDInvalid: value not a valid UUID")
+	ErrMissingValue                              = errors.New("ErrMissingValue: value must be included")
+	ErrListLimitTooLarge                         = errors.New("ErrListLimitTooLarge: requested limit greater than configured maximum")
+	ErrTxBeginFailed                             = errors.New("ErrTxBeginFailed: failed to begin DB transaction")
+	ErrTxRollbackFailed                          = errors.New("ErrTxRollbackFailed: failed to rollback DB transaction")
+	ErrTxCommitFailed                            = errors.New("ErrTxCommitFailed: failed to commit DB transaction")
+	ErrSelectIdentifierInvalid                   = errors.New("ErrSelectIdentifierInvalid: invalid identifier value for select query")
+	ErrUnknownSelectIdentifier                   = errors.New("ErrUnknownSelectIdentifier: unknown identifier type for select query")
+	ErrIdentifierDeprecated                      = errors.New("ErrIdentifierDeprecated: identifier is deprecated")
+	ErrCannotUpdateToUnspecified                 = errors.New("ErrCannotUpdateToUnspecified: cannot update to unspecified value")
+	ErrKeyRotationFailed                         = errors.New("ErrTextKeyRotationFailed: key rotation failed")
+	ErrExpectedBase64EncodedValue                = errors.New("ErrExpectedBase64EncodedValue: expected base64 encoded value")
+	ErrUnencryptedPrivateKey                     = errors.New("ErrUnencryptedPrivateKey: unencrypted private key not allowed")
+	ErrMarshalValueFailed                        = errors.New("ErrMashalValueFailed: failed to marshal value")
+	ErrUnmarshalValueFailed                      = errors.New("ErrUnmarshalValueFailed: failed to unmarshal value")
+	ErrNamespaceMismatch                         = errors.New("ErrNamespaceMismatch: namespace mismatch")
+	ErrKIDMismatch                               = errors.New("ErrKIDMismatch: Key ID mismatch")
+	ErrKasURIMismatch                            = errors.New("ErrKasURIMismatch: KAS URI mismatch")
+	ErrInvalidOblTriParam                        = errors.New("ErrInvalidOblTriParam: either the obligation value, attribute value, or action provided was not found")
+	ErrCheckViolation                            = errors.New("ErrCheckViolation: check constraint violation")
+	ErrFqnMismatch                               = errors.New("ErrFqnMismatch: FQN mismatch")
+	ErrUnsafeUpdateKeyExistingModeUnsupported    = errors.New("ErrUnsafeUpdateKeyExistingModeUnsupported: existing key mode cannot be unsafely updated")
+	ErrUnsafeUpdateKeyTargetModeUnsupported      = errors.New("ErrUnsafeUpdateKeyTargetModeUnsupported: target key mode cannot be used for an unsafe update")
+	ErrUnsafeUpdateKeyProviderConfigExistingMode = errors.New("ErrUnsafeUpdateKeyProviderConfigExistingMode: existing key mode cannot receive provider_config_id update with unspecified key mode")
+	ErrUnsafeUpdateKeyProviderConfigRequired     = errors.New("ErrUnsafeUpdateKeyProviderConfigRequired: provider_config_id is required for requested key mode")
+	ErrUnsafeUpdateKeyProviderConfigNotAllowed   = errors.New("ErrUnsafeUpdateKeyProviderConfigNotAllowed: provider_config_id must be empty for requested key mode")
+	ErrUnsafeUpdateKeyProviderConfigNotFound     = errors.New("ErrUnsafeUpdateKeyProviderConfigNotFound: provider_config_id does not reference an existing provider config")
 )
 
 // Get helpful error message for PostgreSQL violation
@@ -111,35 +117,41 @@ func NewUniqueAlreadyExistsError(value string) error {
 }
 
 const (
-	ErrTextCreationFailed               = "resource creation failed"
-	ErrTextDeletionFailed               = "resource deletion failed"
-	ErrTextDeactivationFailed           = "resource deactivation failed"
-	ErrTextGetRetrievalFailed           = "resource retrieval failed"
-	ErrTextListRetrievalFailed          = "resource list retrieval failed"
-	ErrTextUpdateFailed                 = "resource update failed"
-	ErrTextNotFound                     = "resource not found"
-	ErrTextConflict                     = "resource unique field violation"
-	ErrTextRelationInvalid              = "resource relation invalid"
-	ErrTextEnumValueInvalid             = "enum value invalid"
-	ErrTextUUIDInvalid                  = "invalid input syntax for type uuid"
-	ErrTextRestrictViolation            = "intended action would violate a restriction"
-	ErrTextFqnMissingValue              = "FQN must specify a valid value and be of format 'https://<namespace>/attr/<attribute name>/value/<value>'"
-	ErrTextListLimitTooLarge            = "requested pagination limit must be less than or equal to configured limit"
-	ErrTextInvalidIdentifier            = "value sepcified as the identifier is invalid"
-	ErrorIdentifierDeprecated           = "identifier is deprecated"
-	ErrorTextUnknownIdentifier          = "could not match identifier to known type"
-	ErrorTextUpdateToUnspecified        = "cannot update to unspecified value"
-	ErrTextKeyRotationFailed            = "key rotation failed"
-	ErrorTextExpectedBase64EncodedValue = "expected base64 encoded value"
-	ErrorTextUnencryptedPrivateKey      = "unencrypted private key not allowed"
-	ErrorTextMarshalFailed              = "failed to marshal value"
-	ErrorTextUnmarsalFailed             = "failed to unmarshal value"
-	ErrorTextNamespaceMismatch          = "namespace mismatch"
-	ErrorTextKasURIMismatch             = "kas uri mismatch"
-	ErrorTextKIDMismatch                = "key id mismatch"
-	ErrorTextInvalidOblTrigParam        = "either the obligation value, attribute value, or action provided is invalid"
-	ErrorTextFqnMismatch                = "fqn mismatch"
-	ErrorTextInactiveAttributeValue     = "inactive attribute value"
+	ErrTextCreationFailed                              = "resource creation failed"
+	ErrTextDeletionFailed                              = "resource deletion failed"
+	ErrTextDeactivationFailed                          = "resource deactivation failed"
+	ErrTextGetRetrievalFailed                          = "resource retrieval failed"
+	ErrTextListRetrievalFailed                         = "resource list retrieval failed"
+	ErrTextUpdateFailed                                = "resource update failed"
+	ErrTextNotFound                                    = "resource not found"
+	ErrTextConflict                                    = "resource unique field violation"
+	ErrTextRelationInvalid                             = "resource relation invalid"
+	ErrTextEnumValueInvalid                            = "enum value invalid"
+	ErrTextUUIDInvalid                                 = "invalid input syntax for type uuid"
+	ErrTextRestrictViolation                           = "intended action would violate a restriction"
+	ErrTextFqnMissingValue                             = "FQN must specify a valid value and be of format 'https://<namespace>/attr/<attribute name>/value/<value>'"
+	ErrTextListLimitTooLarge                           = "requested pagination limit must be less than or equal to configured limit"
+	ErrTextInvalidIdentifier                           = "value sepcified as the identifier is invalid"
+	ErrorTextUnknownIdentifier                         = "could not match identifier to known type"
+	ErrorTextIdentifierDeprecated                      = "identifier is deprecated"
+	ErrorTextUpdateToUnspecified                       = "cannot update to unspecified value"
+	ErrTextKeyRotationFailed                           = "key rotation failed"
+	ErrorTextExpectedBase64EncodedValue                = "expected base64 encoded value"
+	ErrorTextUnencryptedPrivateKey                     = "unencrypted private key not allowed"
+	ErrorTextMarshalFailed                             = "failed to marshal value"
+	ErrorTextUnmarsalFailed                            = "failed to unmarshal value"
+	ErrorTextNamespaceMismatch                         = "namespace mismatch"
+	ErrorTextKasURIMismatch                            = "kas uri mismatch"
+	ErrorTextKIDMismatch                               = "key id mismatch"
+	ErrorTextInvalidOblTrigParam                       = "either the obligation value, attribute value, or action provided is invalid"
+	ErrorTextFqnMismatch                               = "fqn mismatch"
+	ErrorTextInactiveAttributeValue                    = "inactive attribute value"
+	ErrorTextUnsafeUpdateKeyExistingModeUnsupported    = "existing key mode cannot be updated"
+	ErrorTextUnsafeUpdateKeyTargetModeUnsupported      = "target key mode cannot be used for an unsafe update"
+	ErrorTextUnsafeUpdateKeyProviderConfigExistingMode = "existing key mode cannot receive provider_config_id update with unspecified key mode"
+	ErrorTextUnsafeUpdateKeyProviderConfigRequired     = "provider_config_id is required for requested key mode"
+	ErrorTextUnsafeUpdateKeyProviderConfigNotAllowed   = "provider_config_id must be empty for requested key mode"
+	ErrorTextUnsafeUpdateKeyProviderConfigNotFound     = "provider_config_id does not reference an existing provider config"
 )
 
 func StatusifyError(ctx context.Context, l *logger.Logger, err error, fallbackErr string, logs ...any) error {
@@ -151,6 +163,10 @@ func StatusifyError(ctx context.Context, l *logger.Logger, err error, fallbackEr
 	if errors.Is(err, ErrNotFound) {
 		l.ErrorContext(ctx, ErrTextNotFound, logs...)
 		return connect.NewError(connect.CodeNotFound, errors.New(ErrTextNotFound))
+	}
+	if errors.Is(err, ErrUnsafeUpdateKeyProviderConfigNotFound) {
+		l.ErrorContext(ctx, ErrorTextUnsafeUpdateKeyProviderConfigNotFound, logs...)
+		return connect.NewError(connect.CodeNotFound, errors.New(ErrorTextUnsafeUpdateKeyProviderConfigNotFound))
 	}
 	if errors.Is(err, ErrForeignKeyViolation) {
 		l.ErrorContext(ctx, ErrTextRelationInvalid, logs...)
@@ -177,8 +193,8 @@ func StatusifyError(ctx context.Context, l *logger.Logger, err error, fallbackEr
 		return connect.NewError(connect.CodeInvalidArgument, errors.New(ErrTextInvalidIdentifier))
 	}
 	if errors.Is(err, ErrIdentifierDeprecated) {
-		l.ErrorContext(ctx, ErrorIdentifierDeprecated, logs...)
-		return connect.NewError(connect.CodeInvalidArgument, errors.New(ErrorIdentifierDeprecated))
+		l.ErrorContext(ctx, ErrorTextIdentifierDeprecated, logs...)
+		return connect.NewError(connect.CodeInvalidArgument, errors.New(ErrorTextIdentifierDeprecated))
 	}
 	if errors.Is(err, ErrUnknownSelectIdentifier) {
 		l.ErrorContext(ctx, ErrorTextUnknownIdentifier, logs...)
@@ -223,6 +239,26 @@ func StatusifyError(ctx context.Context, l *logger.Logger, err error, fallbackEr
 	if errors.Is(err, ErrAttributeValueInactive) {
 		l.ErrorContext(ctx, ErrorTextInactiveAttributeValue, logs...)
 		return connect.NewError(connect.CodeInvalidArgument, errors.New(ErrorTextInactiveAttributeValue))
+	}
+	if errors.Is(err, ErrUnsafeUpdateKeyExistingModeUnsupported) {
+		l.ErrorContext(ctx, ErrorTextUnsafeUpdateKeyExistingModeUnsupported, logs...)
+		return connect.NewError(connect.CodeInvalidArgument, errors.New(ErrorTextUnsafeUpdateKeyExistingModeUnsupported))
+	}
+	if errors.Is(err, ErrUnsafeUpdateKeyTargetModeUnsupported) {
+		l.ErrorContext(ctx, ErrorTextUnsafeUpdateKeyTargetModeUnsupported, logs...)
+		return connect.NewError(connect.CodeInvalidArgument, errors.New(ErrorTextUnsafeUpdateKeyTargetModeUnsupported))
+	}
+	if errors.Is(err, ErrUnsafeUpdateKeyProviderConfigExistingMode) {
+		l.ErrorContext(ctx, ErrorTextUnsafeUpdateKeyProviderConfigExistingMode, logs...)
+		return connect.NewError(connect.CodeInvalidArgument, errors.New(ErrorTextUnsafeUpdateKeyProviderConfigExistingMode))
+	}
+	if errors.Is(err, ErrUnsafeUpdateKeyProviderConfigRequired) {
+		l.ErrorContext(ctx, ErrorTextUnsafeUpdateKeyProviderConfigRequired, logs...)
+		return connect.NewError(connect.CodeInvalidArgument, errors.New(ErrorTextUnsafeUpdateKeyProviderConfigRequired))
+	}
+	if errors.Is(err, ErrUnsafeUpdateKeyProviderConfigNotAllowed) {
+		l.ErrorContext(ctx, ErrorTextUnsafeUpdateKeyProviderConfigNotAllowed, logs...)
+		return connect.NewError(connect.CodeInvalidArgument, errors.New(ErrorTextUnsafeUpdateKeyProviderConfigNotAllowed))
 	}
 	if errors.Is(err, ErrNamespaceMismatch) {
 		l.ErrorContext(ctx, ErrorTextNamespaceMismatch, logs...)

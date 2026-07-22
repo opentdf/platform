@@ -1303,6 +1303,35 @@ func (q *Queries) setBaseKey(ctx context.Context, keyAccessServerKeyID pgtype.UU
 	return result.RowsAffected(), nil
 }
 
+const unsafeUpdateKey = `-- name: unsafeUpdateKey :execrows
+UPDATE key_access_server_keys
+SET
+    key_mode = COALESCE($1, key_mode),
+    provider_config_id = $2
+WHERE id = $3
+`
+
+type unsafeUpdateKeyParams struct {
+	KeyMode          pgtype.Int4 `json:"key_mode"`
+	ProviderConfigID pgtype.UUID `json:"provider_config_id"`
+	ID               string      `json:"id"`
+}
+
+// unsafeUpdateKey
+//
+//	UPDATE key_access_server_keys
+//	SET
+//	    key_mode = COALESCE($1, key_mode),
+//	    provider_config_id = $2
+//	WHERE id = $3
+func (q *Queries) unsafeUpdateKey(ctx context.Context, arg unsafeUpdateKeyParams) (int64, error) {
+	result, err := q.db.Exec(ctx, unsafeUpdateKey, arg.KeyMode, arg.ProviderConfigID, arg.ID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const updateKey = `-- name: updateKey :execrows
 UPDATE key_access_server_keys
 SET

@@ -15,6 +15,7 @@ import (
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/attributes"
 	"github.com/opentdf/platform/protocol/go/policy/kasregistry"
+	"github.com/opentdf/platform/protocol/go/policy/keymanagement"
 	"github.com/opentdf/platform/protocol/go/policy/namespaces"
 	"github.com/opentdf/platform/protocol/go/policy/unsafe"
 	"github.com/opentdf/platform/service/pkg/db"
@@ -550,6 +551,95 @@ func (c PolicyDBClient) UpdateKey(ctx context.Context, r *kasregistry.UpdateKeyR
 		ID:       id,
 		Metadata: metadataJSON,
 	})
+}
+
+func (c PolicyDBClient) UnsafeUpdateKey(ctx context.Context, existing *policy.KasKey, r *unsafe.UnsafeUpdateKeyRequest) (*policy.KasKey, error) {
+	if existing.GetKey() == nil {
+		return nil, errors.New("existing key is nil")
+	}
+
+	id := r.GetId()
+	if !pgtypeUUID(id).Valid {
+		return nil, db.ErrUUIDInvalid
+	}
+	if existing.GetKey().GetId() != id {
+		return nil, fmt.Errorf("key ID mismatch: expected %s, got %s", existing.GetKey().GetId(), id)
+	}
+
+	params, err := validateUnsafeUpdateKey(existing, r)
+	if err != nil {
+		return nil, err
+	}
+	if params.ProviderConfigID.Valid {
+		_, err := c.GetProviderConfig(ctx, &keymanagement.GetProviderConfigRequest{
+			Identifier: &keymanagement.GetProviderConfigRequest_Id{
+				Id: r.GetProviderConfigId(),
+			},
+		})
+		if err != nil {
+			if errors.Is(err, db.ErrNotFound) {
+				err = db.ErrUnsafeUpdateKeyProviderConfigNotFound
+			}
+			return nil, err
+		}
+	}
+
+	count, err := c.queries.unsafeUpdateKey(ctx, params)
+	if err != nil {
+		return nil, db.WrapIfKnownInvalidQueryErr(err)
+	}
+	if count == 0 {
+		return nil, db.ErrNotFound
+	} else if count > 1 {
+		c.logger.Warn("unsafeUpdateKey updated more than one row", slog.Int64("count", count))
+	}
+
+	return c.GetKey(ctx, &kasregistry.GetKeyRequest_Id{
+		Id: id,
+	})
+}
+
+// validateUnsafeUpdateKey allows only remote and public-key-only keys to be
+// updated, requiring a provider config when the resulting mode uses one.
+func validateUnsafeUpdateKey(existing *policy.KasKey, r *unsafe.UnsafeUpdateKeyRequest) (unsafeUpdateKeyParams, error) {
+	existingMode := existing.GetKey().GetKeyMode()
+	params := unsafeUpdateKeyParams{
+		ID: r.GetId(),
+	}
+	newKeyMode := pgtypeInt4(int32(r.GetTargetKeyMode()), true)
+	newProviderConfiguration := pgtypeUUID(r.GetProviderConfigId())
+
+	if existingMode != policy.KeyMode_KEY_MODE_PUBLIC_KEY_ONLY && existingMode != policy.KeyMode_KEY_MODE_REMOTE {
+		return params, db.ErrUnsafeUpdateKeyExistingModeUnsupported
+	}
+
+	switch r.GetTargetKeyMode() {
+	case policy.KeyMode_KEY_MODE_REMOTE:
+		if !newProviderConfiguration.Valid {
+			return params, db.ErrUnsafeUpdateKeyProviderConfigRequired
+		}
+		params.KeyMode = newKeyMode
+		params.ProviderConfigID = newProviderConfiguration
+	case policy.KeyMode_KEY_MODE_PUBLIC_KEY_ONLY:
+		if r.GetProviderConfigId() != "" {
+			return params, db.ErrUnsafeUpdateKeyProviderConfigNotAllowed
+		}
+		params.KeyMode = newKeyMode
+	case policy.KeyMode_KEY_MODE_UNSPECIFIED:
+		if !newProviderConfiguration.Valid {
+			return params, db.ErrUnsafeUpdateKeyProviderConfigRequired
+		}
+		if existingMode != policy.KeyMode_KEY_MODE_REMOTE {
+			return params, db.ErrUnsafeUpdateKeyProviderConfigExistingMode
+		}
+		params.ProviderConfigID = newProviderConfiguration
+	case policy.KeyMode_KEY_MODE_CONFIG_ROOT_KEY, policy.KeyMode_KEY_MODE_PROVIDER_ROOT_KEY:
+		fallthrough
+	default:
+		return params, fmt.Errorf("%w: %s", db.ErrUnsafeUpdateKeyTargetModeUnsupported, r.GetTargetKeyMode())
+	}
+
+	return params, nil
 }
 
 func (c PolicyDBClient) ListKeys(ctx context.Context, r *kasregistry.ListKeysRequest) (*kasregistry.ListKeysResponse, error) {

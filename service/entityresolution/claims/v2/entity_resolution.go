@@ -31,12 +31,12 @@ type EntityResolutionServiceV2 struct {
 	trace.Tracer
 }
 
-type ClaimsConfig struct {
+type Config struct {
 	AllowDirectEntitlements bool `mapstructure:"allow_direct_entitlements" json:"allow_direct_entitlements" default:"false"`
 }
 
 func RegisterClaimsERS(cfg config.ServiceConfig, logger *logger.Logger) (EntityResolutionServiceV2, serviceregistry.HandlerServer) {
-	var inputConfig ClaimsConfig
+	var inputConfig Config
 	if err := mapstructure.Decode(cfg, &inputConfig); err != nil {
 		logger.Error("failed to decode claims entity resolution configuration", slog.Any("error", err))
 		log.Fatalf("Failed to decode claims entity resolution configuration: %v", err)

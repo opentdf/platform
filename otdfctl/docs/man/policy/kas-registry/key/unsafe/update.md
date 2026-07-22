@@ -26,13 +26,13 @@ Make sure you know what you are doing.
 
 ## Examples
 
-Change a public key-only key to remote mode:
+Change a key of mode `public_key` key to one of mode `remote`:
 
 ```shell
 otdfctl policy kas-registry key unsafe update --id 3c51a593-cbf8-419d-b7dc-b656d0bedfbb --mode remote --provider-config-id 298c9446-ef71-49eb-a6ef-960149095a76
 ```
 
-Change a remote key to public key-only mode:
+Change a `remote` key to `public_key` mode:
 
 ```shell
 otdfctl policy kas-registry key unsafe update --id 3c51a593-cbf8-419d-b7dc-b656d0bedfbb --mode public_key

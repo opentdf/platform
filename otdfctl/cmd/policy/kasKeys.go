@@ -406,6 +406,62 @@ func policyUpdateKasKey(cmd *cobra.Command, args []string) {
 	common.HandleSuccess(cmd, kasKey.GetKey().GetId(), t, kasKey)
 }
 
+func unsafeUpdateKasKeyMode(modeArg string) (policy.KeyMode, error) {
+	if modeArg == "" {
+		return policy.KeyMode_KEY_MODE_UNSPECIFIED, nil
+	}
+
+	mode, err := modeToEnum(modeArg)
+	if err != nil {
+		return policy.KeyMode_KEY_MODE_UNSPECIFIED, err
+	}
+
+	switch mode { //nolint:exhaustive // only remote and public_key are supported for unsafe update.
+	case policy.KeyMode_KEY_MODE_REMOTE, policy.KeyMode_KEY_MODE_PUBLIC_KEY_ONLY:
+		return mode, nil
+	default:
+		return policy.KeyMode_KEY_MODE_UNSPECIFIED, fmt.Errorf("mode must be %q or %q", keyModeRemote, keyModePublicKeyOnly)
+	}
+}
+
+func policyUnsafeUpdateKasKey(cmd *cobra.Command, args []string) {
+	c := cli.New(cmd, args)
+
+	id := c.Flags.GetRequiredID("id")
+	modeArg := c.Flags.GetOptionalString("mode")
+	providerConfigID := c.Flags.GetOptionalID("provider-config-id")
+	force := c.Flags.GetOptionalBool("force")
+
+	mode, err := unsafeUpdateKasKeyMode(modeArg)
+	if err != nil {
+		cli.ExitWithError("Invalid key mode", err)
+	}
+
+	h := common.NewHandler(c)
+	defer h.Close()
+
+	existingKasKey, err := h.GetKasKey(c.Context(), id, nil)
+	if err != nil {
+		cli.ExitWithError("Failed to get kas key", err)
+	}
+
+	existingKey := existingKasKey.GetKey()
+	confirmID := fmt.Sprintf("Id: %s\n\tKAS URI: %s\n\tKID: %s", existingKey.GetId(), existingKasKey.GetKasUri(), existingKey.GetKeyId())
+	cli.ConfirmAction(cli.ActionUpdateUnsafe, "key", confirmID, force)
+
+	kasKey, err := h.UnsafeUpdateKasKey(c.Context(), id, mode, providerConfigID)
+	if err != nil {
+		cli.ExitWithError("Failed to update kas key", err)
+	}
+
+	rows := getTableRows(kasKey)
+	if mdRows := getMetadataRows(kasKey.GetKey().GetMetadata()); mdRows != nil {
+		rows = append(rows, mdRows...)
+	}
+	t := cli.NewTabular(rows...)
+	common.HandleSuccess(cmd, kasKey.GetKey().GetId(), t, kasKey)
+}
+
 func policyListKasKeys(cmd *cobra.Command, args []string) {
 	c := cli.New(cmd, args)
 	h := common.NewHandler(c)
@@ -1137,7 +1193,30 @@ func initKASKeysCommands() {
 		unsafeDeleteDoc.GetDocFlag("kas-uri").Description,
 	)
 
-	unsafeCmd.AddSubcommands(unsafeDeleteDoc)
+	unsafeUpdateDoc := man.Docs.GetCommand(
+		"policy/kas-registry/key/unsafe/update",
+		man.WithRun(policyUnsafeUpdateKasKey),
+	)
+	unsafeUpdateDoc.Flags().StringP(
+		unsafeUpdateDoc.GetDocFlag("id").Name,
+		unsafeUpdateDoc.GetDocFlag("id").Shorthand,
+		unsafeUpdateDoc.GetDocFlag("id").Default,
+		unsafeUpdateDoc.GetDocFlag("id").Description,
+	)
+	unsafeUpdateDoc.Flags().StringP(
+		unsafeUpdateDoc.GetDocFlag("mode").Name,
+		unsafeUpdateDoc.GetDocFlag("mode").Shorthand,
+		unsafeUpdateDoc.GetDocFlag("mode").Default,
+		unsafeUpdateDoc.GetDocFlag("mode").Description,
+	)
+	unsafeUpdateDoc.Flags().StringP(
+		unsafeUpdateDoc.GetDocFlag("provider-config-id").Name,
+		unsafeUpdateDoc.GetDocFlag("provider-config-id").Shorthand,
+		unsafeUpdateDoc.GetDocFlag("provider-config-id").Default,
+		unsafeUpdateDoc.GetDocFlag("provider-config-id").Description,
+	)
+
+	unsafeCmd.AddSubcommands(unsafeDeleteDoc, unsafeUpdateDoc)
 	policyKasRegistryKeysCmd.AddSubcommands(createDoc, getDoc, updateDoc, listDoc, rotateDoc, importDoc, mappingsDoc, unsafeCmd)
 	KasRegistryCmd.AddCommand(&policyKasRegistryKeysCmd.Command)
 }

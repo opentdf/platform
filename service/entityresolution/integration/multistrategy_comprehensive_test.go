@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"net"
 	"path/filepath"
-	"reflect"
 	"runtime"
 	"strings"
 	"testing"
@@ -551,14 +550,20 @@ func TestMultiStrategy_ClaimsThenLDAPFallback(t *testing.T) {
 		t.Fatalf("Expected LDAP search_filter for alice, got %v", got)
 	}
 
-	attemptedStrategies, ok := result.Metadata["attempted_strategies"].([]string)
+	expectedStrategies := []string{"claims_direct_lookup", "ldap_directory_lookup"}
+	attemptedStrategies, ok := result.Metadata["attempted_strategies"].([]interface{})
 	if !ok {
-		t.Fatalf("Expected attempted_strategies to be []string, got %T", result.Metadata["attempted_strategies"])
+		t.Fatalf("Expected attempted_strategies to be []interface{}, got %T", result.Metadata["attempted_strategies"])
 	}
 
-	expectedStrategies := []string{"claims_direct_lookup", "ldap_directory_lookup"}
-	if !reflect.DeepEqual(attemptedStrategies, expectedStrategies) {
-		t.Fatalf("Expected attempted_strategies %v, got %v", expectedStrategies, attemptedStrategies)
+	if len(attemptedStrategies) != len(expectedStrategies) {
+		t.Fatalf("Expected %d attempted_strategies, got %d: %v", len(expectedStrategies), len(attemptedStrategies), attemptedStrategies)
+	}
+	for i, expected := range expectedStrategies {
+		got, isStr := attemptedStrategies[i].(string)
+		if !isStr || got != expected {
+			t.Fatalf("Expected attempted_strategies[%d] = %q, got %v", i, expected, attemptedStrategies[i])
+		}
 	}
 }
 

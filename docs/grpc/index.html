@@ -2188,6 +2188,14 @@
                 </li>
               
                 <li>
+                  <a href="#policy.unsafe.UnsafeUpdateKeyRequest"><span class="badge">M</span>UnsafeUpdateKeyRequest</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.unsafe.UnsafeUpdateKeyResponse"><span class="badge">M</span>UnsafeUpdateKeyResponse</a>
+                </li>
+              
+                <li>
                   <a href="#policy.unsafe.UnsafeUpdateNamespaceRequest"><span class="badge">M</span>UnsafeUpdateNamespaceRequest</a>
                 </li>
               
@@ -19091,6 +19099,72 @@ deleted, created, and unsafely re-ordered as necessary. </p></td>
 
         
       
+        <h3 id="policy.unsafe.UnsafeUpdateKeyRequest">UnsafeUpdateKeyRequest</h3>
+        <p>WARNING!!</p><p>Updating a key in place can retroactively alter decryptability for existing TDFs.</p><p>This support-only operation is limited to switching between REMOTE and PUBLIC_KEY_ONLY</p><p>key modes, or updating the provider configuration for an existing REMOTE key, while</p><p>preserving the existing KID, KAS URI, and public key.</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>Required
+UUID of the Key </p></td>
+                </tr>
+              
+                <tr>
+                  <td>target_key_mode</td>
+                  <td><a href="#policy.KeyMode">policy.KeyMode</a></td>
+                  <td></td>
+                  <td><p>Optional
+Target key mode. Only KEY_MODE_REMOTE and KEY_MODE_PUBLIC_KEY_ONLY mode changes are supported.
+KEY_MODE_UNSPECIFIED with provider_config_id updates only the provider configuration for an existing REMOTE key. </p></td>
+                </tr>
+              
+                <tr>
+                  <td>provider_config_id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>Conditionally Required
+Configuration ID for the key provider. Required for KEY_MODE_REMOTE and KEY_MODE_UNSPECIFIED; empty for KEY_MODE_PUBLIC_KEY_ONLY. </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.unsafe.UnsafeUpdateKeyResponse">UnsafeUpdateKeyResponse</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>key</td>
+                  <td><a href="#policy.KasKey">policy.KasKey</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
         <h3 id="policy.unsafe.UnsafeUpdateNamespaceRequest">UnsafeUpdateNamespaceRequest</h3>
         <p>WARNING!!</p><p>Updating the Namespace of an Attribute will retroactively alter access to existing TDFs of the old and new Namespace name.</p><p>Existing Attribute Definitions and their Values under the Namespace will now be associated with the new Namespace name.</p>
 
@@ -19230,12 +19304,19 @@ Value RPCs
               </tr>
             
               <tr>
-                <td>UnsafeDeleteKasKey</td>
-                <td><a href="#policy.unsafe.UnsafeDeleteKasKeyRequest">UnsafeDeleteKasKeyRequest</a></td>
-                <td><a href="#policy.unsafe.UnsafeDeleteKasKeyResponse">UnsafeDeleteKasKeyResponse</a></td>
+                <td>UnsafeUpdateKey</td>
+                <td><a href="#policy.unsafe.UnsafeUpdateKeyRequest">UnsafeUpdateKeyRequest</a></td>
+                <td><a href="#policy.unsafe.UnsafeUpdateKeyResponse">UnsafeUpdateKeyResponse</a></td>
                 <td><p>--------------------------------------*
 Kas Key RPCs
 ---------------------------------------</p></td>
+              </tr>
+            
+              <tr>
+                <td>UnsafeDeleteKasKey</td>
+                <td><a href="#policy.unsafe.UnsafeDeleteKasKeyRequest">UnsafeDeleteKasKeyRequest</a></td>
+                <td><a href="#policy.unsafe.UnsafeDeleteKasKeyResponse">UnsafeDeleteKasKeyResponse</a></td>
+                <td><p></p></td>
               </tr>
             
           </tbody>

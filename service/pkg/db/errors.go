@@ -30,6 +30,7 @@ var (
 	ErrTxCommitFailed                            = errors.New("ErrTxCommitFailed: failed to commit DB transaction")
 	ErrSelectIdentifierInvalid                   = errors.New("ErrSelectIdentifierInvalid: invalid identifier value for select query")
 	ErrUnknownSelectIdentifier                   = errors.New("ErrUnknownSelectIdentifier: unknown identifier type for select query")
+	ErrIdentifierDeprecated                      = errors.New("ErrIdentifierDeprecated: identifier is deprecated")
 	ErrCannotUpdateToUnspecified                 = errors.New("ErrCannotUpdateToUnspecified: cannot update to unspecified value")
 	ErrKeyRotationFailed                         = errors.New("ErrTextKeyRotationFailed: key rotation failed")
 	ErrExpectedBase64EncodedValue                = errors.New("ErrExpectedBase64EncodedValue: expected base64 encoded value")
@@ -132,6 +133,7 @@ const (
 	ErrTextListLimitTooLarge                           = "requested pagination limit must be less than or equal to configured limit"
 	ErrTextInvalidIdentifier                           = "value sepcified as the identifier is invalid"
 	ErrorTextUnknownIdentifier                         = "could not match identifier to known type"
+	ErrorTextIdentifierDeprecated                      = "identifier is deprecated"
 	ErrorTextUpdateToUnspecified                       = "cannot update to unspecified value"
 	ErrTextKeyRotationFailed                           = "key rotation failed"
 	ErrorTextExpectedBase64EncodedValue                = "expected base64 encoded value"
@@ -189,6 +191,10 @@ func StatusifyError(ctx context.Context, l *logger.Logger, err error, fallbackEr
 	if errors.Is(err, ErrSelectIdentifierInvalid) {
 		l.ErrorContext(ctx, ErrTextInvalidIdentifier, logs...)
 		return connect.NewError(connect.CodeInvalidArgument, errors.New(ErrTextInvalidIdentifier))
+	}
+	if errors.Is(err, ErrIdentifierDeprecated) {
+		l.ErrorContext(ctx, ErrorTextIdentifierDeprecated, logs...)
+		return connect.NewError(connect.CodeInvalidArgument, errors.New(ErrorTextIdentifierDeprecated))
 	}
 	if errors.Is(err, ErrUnknownSelectIdentifier) {
 		l.ErrorContext(ctx, ErrorTextUnknownIdentifier, logs...)

@@ -150,16 +150,9 @@ func (ksvc Service) CreateProviderConfig(ctx context.Context, req *connect.Reque
 func (ksvc Service) GetProviderConfig(ctx context.Context, req *connect.Request[keyMgmtProto.GetProviderConfigRequest]) (*connect.Response[keyMgmtProto.GetProviderConfigResponse], error) {
 	rsp := &keyMgmtProto.GetProviderConfigResponse{}
 
-	switch req := req.Msg.GetIdentifier().(type) {
-	case *keyMgmtProto.GetProviderConfigRequest_Id:
-		ksvc.logger.DebugContext(ctx, "getting provider config by ID", slog.String("id", req.Id))
-	case *keyMgmtProto.GetProviderConfigRequest_Name:
-		ksvc.logger.DebugContext(ctx, "getting provider config by Name", slog.String("name", req.Name))
-	default:
-		return nil, connect.NewError(connect.CodeInvalidArgument, nil)
-	}
+	ksvc.logger.DebugContext(ctx, "getting Provider Config")
 
-	pc, err := ksvc.dbClient.GetProviderConfig(ctx, req.Msg.GetIdentifier())
+	pc, err := ksvc.dbClient.GetProviderConfig(ctx, req.Msg)
 	if err != nil {
 		return nil, db.StatusifyError(ctx, ksvc.logger, err, db.ErrTextGetRetrievalFailed, slog.String("keyManagementService", req.Msg.String()))
 	}
@@ -197,8 +190,10 @@ func (ksvc Service) UpdateProviderConfig(ctx context.Context, req *connect.Reque
 		ObjectID:   providerConfigID,
 	}
 
-	original, err := ksvc.dbClient.GetProviderConfig(ctx, &keyMgmtProto.GetProviderConfigRequest_Id{
-		Id: providerConfigID,
+	original, err := ksvc.dbClient.GetProviderConfig(ctx, &keyMgmtProto.GetProviderConfigRequest{
+		Identifier: &keyMgmtProto.GetProviderConfigRequest_Id{
+			Id: providerConfigID,
+		},
 	})
 	if err != nil {
 		ksvc.logger.Audit.PolicyCRUDFailure(ctx, auditParams)

@@ -12,7 +12,7 @@ import (
 func TestAccessToken_ReturnsTokenFromSource(t *testing.T) {
 	s := &SDK{tokenSource: FakeAccessTokenSource{accessToken: "test-token"}}
 
-	tok, err := s.AccessToken(context.Background())
+	tok, err := s.Auth().AccessToken(context.Background())
 	require.NoError(t, err)
 	assert.Equal(t, auth.AccessToken("test-token"), tok)
 }
@@ -20,7 +20,15 @@ func TestAccessToken_ReturnsTokenFromSource(t *testing.T) {
 func TestAccessToken_NoTokenSource(t *testing.T) {
 	s := &SDK{}
 
-	tok, err := s.AccessToken(context.Background())
+	tok, err := s.Auth().AccessToken(context.Background())
 	require.ErrorIs(t, err, ErrNoAccessTokenSource)
+	assert.Empty(t, tok)
+}
+
+func TestAccessToken_EmptyToken(t *testing.T) {
+	s := &SDK{tokenSource: FakeAccessTokenSource{accessToken: ""}}
+
+	tok, err := s.Auth().AccessToken(context.Background())
+	require.ErrorIs(t, err, ErrAccessTokenInvalid)
 	assert.Empty(t, tok)
 }

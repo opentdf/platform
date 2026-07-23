@@ -306,15 +306,6 @@ func (s SDK) Close() error {
 	return nil
 }
 
-// AccessToken returns a valid access token for the SDK's configured credentials.
-// It returns ErrNoAccessTokenSource if the SDK was constructed without credentials.
-func (s *SDK) AccessToken(ctx context.Context) (auth.AccessToken, error) {
-	if s.tokenSource == nil {
-		return "", ErrNoAccessTokenSource
-	}
-	return s.tokenSource.AccessToken(ctx, s.httpClient)
-}
-
 // Logger returns the configured slog.Logger for this SDK instance
 func (s SDK) Logger() *slog.Logger {
 	return s.logger

@@ -7,7 +7,44 @@ Feature: Multi-strategy ERS entity resolution (Claims + LDAP)
 
   Background:
     Given an LDAP directory with test users
-    And a local platform with platform template "cukes/resources/platform.multi_strategy_ers.template" and keycloak template "cukes/resources/keycloak_base.template"
+    And an ERS configuration with mode "multi-strategy" and failure strategy "continue"
+    And an ERS provider "jwt_claims" of type "claims"
+    And an ERS provider "ldap_directory" of type "ldap" connected to the LDAP directory
+    And an ERS mapping strategy "claims_passthrough" using provider "jwt_claims"
+      """
+      entity_type: subject
+      conditions:
+        jwt_claims:
+          - claim: userName
+            operator: exists
+      output_mapping:
+        - source_claim: userName
+          claim_name: username
+      """
+    And an ERS mapping strategy "ldap_by_username" using provider "ldap_directory"
+      """
+      entity_type: subject
+      conditions:
+        jwt_claims:
+          - claim: userName
+            operator: exists
+      ldap_search:
+        base_dn: "ou=users,dc=opentdf,dc=test"
+        filter: "(&(objectClass=inetOrgPerson)(uid={username}))"
+        scope: subtree
+        attributes: ["uid", "mail", "departmentNumber"]
+      input_mapping:
+        - jwt_claim: userName
+          parameter: username
+      output_mapping:
+        - source_attribute: departmentNumber
+          claim_name: department
+        - source_attribute: mail
+          claim_name: email
+        - source_attribute: uid
+          claim_name: username
+      """
+    And a local platform with inline ERS configuration
 
   Scenario: LDAP-resolved engineering user gets PERMIT
     Given I submit a request to create a namespace with name "eng-permit.test" and reference id "ns_eng_permit"

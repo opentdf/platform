@@ -372,7 +372,7 @@ CUKES_LOG_HANDLER=console go test ./tests-bdd/ -v --tags=cukes \
 ```
 
 **3. Verify output:**
-All 3 scenarios should pass (42 steps, 0 failures). You'll see LDAP testcontainer startup, platform service registration, and authorization decision logs.
+All 3 scenarios should pass (57 steps, 0 failures). You'll see LDAP testcontainer startup, platform service registration, and authorization decision logs.
 
 #### Key files
 
@@ -380,12 +380,12 @@ All 3 scenarios should pass (42 steps, 0 failures). You'll see LDAP testcontaine
 |------|---------|
 | [`features/multi-strategy-ers.feature`](features/multi-strategy-ers.feature) | Gherkin scenarios (3 scenarios, `@stateless`) |
 | [`cukes/steps_ldap.go`](cukes/steps_ldap.go) | LDAP testcontainer step definition |
-| [`cukes/resources/platform.multi_strategy_ers.template`](cukes/resources/platform.multi_strategy_ers.template) | Platform config with multi-strategy ERS |
+| [`cukes/steps_ers.go`](cukes/steps_ers.go) | Inline ERS configuration step definitions (DocString-based) |
 
 #### How it works
 
 1. **LDAP testcontainer** starts `osixia/openldap:1.5.0` with LDIF fixtures from `service/entityresolution/integration/ldap_test_data/` (8 test users with distinct department values)
-2. **Platform template** configures ERS in `multi-strategy` mode with `failure_strategy: "continue"` and two providers (Claims + LDAP)
+2. **Inline ERS configuration** in the feature file's Background defines providers (Claims + LDAP) and mapping strategies with DocString YAML, making the full config visible without referencing external template files
 3. **Each scenario** creates a namespace, department attribute (anyOf rule), subject mapping with `.department` selector, and then issues an authorization decision for a `user_name` entity
 4. The platform resolves the entity through ERS → LDAP, gets department claims, evaluates subject mappings, and returns PERMIT or DENY
 

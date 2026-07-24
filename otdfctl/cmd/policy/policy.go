@@ -114,6 +114,7 @@ func InitCommands() {
 	initNamespacesCommands()
 	initSubjectConditionSetsCommands()
 	initSubjectMappingsCommands()
+	initDynamicValueMappingsCommands()
 	initObligationsCommands()
 	initResourceMappingsCommands()
 	initResourceMappingGroupsCommands()

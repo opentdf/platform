@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.22.0](https://github.com/opentdf/platform/compare/service/v0.21.0...service/v0.22.0) (2026-07-24)
+
+
+### Bug Fixes
+
+* **ers:** marshal/unmarshal metadata correctly. ([#3672](https://github.com/opentdf/platform/issues/3672)) ([225f7ab](https://github.com/opentdf/platform/commit/225f7ab7337063e2fae658167806386acdc230a6))
+
 ## [0.21.0](https://github.com/opentdf/platform/compare/service/v0.20.0...service/v0.21.0) (2026-07-22)
 
 

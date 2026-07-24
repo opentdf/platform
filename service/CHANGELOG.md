@@ -1,5 +1,73 @@
 # Changelog
 
+## [0.21.0](https://github.com/opentdf/platform/compare/service/v0.20.0...service/v0.21.0) (2026-07-22)
+
+
+### ⚠ BREAKING CHANGES
+
+* **policy:** GetPC does not respect manager field. ([#3752](https://github.com/opentdf/platform/issues/3752))
+
+### Features
+
+* **core:** Update fixtures ([#3766](https://github.com/opentdf/platform/issues/3766)) ([9ac1640](https://github.com/opentdf/platform/commit/9ac1640df7d8447cdaaa540d0eacc98daa3c832d))
+* **policy:** add entitleable namespace field and narrow-read-API doc corrections ([#3727](https://github.com/opentdf/platform/issues/3727)) ([0fc2f01](https://github.com/opentdf/platform/commit/0fc2f01fbb0d75b04d2a5dcb94e5acdea9f62b6f))
+* **policy:** Add name and manager lookup ([#3753](https://github.com/opentdf/platform/issues/3753)) ([bfbc65d](https://github.com/opentdf/platform/commit/bfbc65d6f56a7d28144379f535bd82ce61e62bdd))
+* **policy:** Add UnsafeUpdateKey implementation ([#3731](https://github.com/opentdf/platform/issues/3731)) ([cd47518](https://github.com/opentdf/platform/commit/cd475182d1e4bc90673d71234d7a175b7aeed3d8))
+* **policy:** Add UnsafeUpdateKey rpc. ([#3728](https://github.com/opentdf/platform/issues/3728)) ([c89b193](https://github.com/opentdf/platform/commit/c89b1933e3931bc1984711f2268c8adedd786db4))
+* **policy:** create subject mappings with attribute values ([#3741](https://github.com/opentdf/platform/issues/3741)) ([718320b](https://github.com/opentdf/platform/commit/718320b2bbe1a03041ed70bb3b20eb3c30cf64fa))
+* **policy:** deprecate GetAttributeValuesByFqns in favor of narrow read APIs ([#3745](https://github.com/opentdf/platform/issues/3745)) ([baba709](https://github.com/opentdf/platform/commit/baba70913cfe615448ab05b465ecdaf037791889))
+* **policy:** dynamic attribute value entitlement mappings ([#3568](https://github.com/opentdf/platform/issues/3568)) ([21e95e0](https://github.com/opentdf/platform/commit/21e95e04c9f5903dc4c437d12ea790bbbf20bbb1))
+* **policy:** populate entitleable definition namespace ([#3737](https://github.com/opentdf/platform/issues/3737)) ([3f32839](https://github.com/opentdf/platform/commit/3f32839689e257338babb91903298b3b0256385c))
+
+
+### Bug Fixes
+
+* **authz:** use standard Keycloak token exchange ([#3754](https://github.com/opentdf/platform/issues/3754)) ([de9ae0d](https://github.com/opentdf/platform/commit/de9ae0dde552267470b44c4e09854034cbc70e84))
+* **core:** Pass the platform logger to the authz role provider factory ([#3732](https://github.com/opentdf/platform/issues/3732)) ([9c32554](https://github.com/opentdf/platform/commit/9c32554958aef3572728c0465a047c7779a06d95))
+* **core:** prevent OpenTelemetry resource schema conflicts ([#3769](https://github.com/opentdf/platform/issues/3769)) ([4a0c41c](https://github.com/opentdf/platform/commit/4a0c41c9e7ca14291b4bed4e02a0a0cae59f2444))
+* **deps:** bump github.com/opentdf/platform/protocol/go from 0.38.0 to 0.39.0 in /service ([#3764](https://github.com/opentdf/platform/issues/3764)) ([8d430f5](https://github.com/opentdf/platform/commit/8d430f5f1944c754c74b055b1366351ab43fa72b))
+* **ers:** coerce attempted_strategies []string to []interface{} for structpb ([#3645](https://github.com/opentdf/platform/issues/3645)) ([71d6e90](https://github.com/opentdf/platform/commit/71d6e906ef46409f64b032230c0081e9c6337ce8))
+* **policy:** GetPC does not respect manager field. ([#3752](https://github.com/opentdf/platform/issues/3752)) ([0d3c0a0](https://github.com/opentdf/platform/commit/0d3c0a0e49de669b0c4bb691d51ff0abef787693))
+
+## [0.20.0](https://github.com/opentdf/platform/compare/service/v0.19.0...service/v0.20.0) (2026-07-07)
+
+
+### ⚠ BREAKING CHANGES
+
+* **policy:** undo subject mapping operator decomposition ([#3685](https://github.com/opentdf/platform/issues/3685))
+
+### Features
+
+* **policy:** add narrow attribute read API protos and generated code ([#3634](https://github.com/opentdf/platform/issues/3634)) ([5726720](https://github.com/opentdf/platform/commit/572672007abd7e0a3598f8303661487cfb0d2db5))
+* **policy:** implement narrow attribute read APIs ([#3697](https://github.com/opentdf/platform/issues/3697)) ([eaee9b2](https://github.com/opentdf/platform/commit/eaee9b2da0191129e0d7a0413e6ea7294cad5b63))
+* **policy:** undo subject mapping operator decomposition ([#3685](https://github.com/opentdf/platform/issues/3685)) ([84f3b92](https://github.com/opentdf/platform/commit/84f3b92a4f82dd527ef93de3361ec22990eae479))
+
+
+### Bug Fixes
+
+* **deps:** bump protocol/go to 0.37.0 and sdk to 0.26.0 in /service ([#3721](https://github.com/opentdf/platform/issues/3721)) ([95d7aa4](https://github.com/opentdf/platform/commit/95d7aa445a9cdec149ab17a9a62f56577688136c))
+* **policy:** include attribute value fqn in subject mapping lookup ([#3720](https://github.com/opentdf/platform/issues/3720)) ([8b63934](https://github.com/opentdf/platform/commit/8b6393436568b7dc2874479b5c3bd6d53109e658))
+
+## [0.19.0](https://github.com/opentdf/platform/compare/service/v0.18.0...service/v0.19.0) (2026-06-30)
+
+
+### Features
+
+* **authz:** Authz-v2 docs ([#3670](https://github.com/opentdf/platform/issues/3670)) ([4ab7fe8](https://github.com/opentdf/platform/commit/4ab7fe88c97c8bffdd168a92759b1dbdd1874f20))
+* **authz:** move DPoP enforcement into dpop.enforce config (DSPX-3397) ([#3666](https://github.com/opentdf/platform/issues/3666)) ([daebade](https://github.com/opentdf/platform/commit/daebadeaa8401fcd14a7faabfa6dd6aaca22aea8))
+* **core:** add global audit config and add configured JWT claims to audit logs ([#3429](https://github.com/opentdf/platform/issues/3429)) ([03021fa](https://github.com/opentdf/platform/commit/03021fab10cf80da56d6e58274081cf32c39a689))
+* **kas:** Adds FIPS-203 wrap with ML-KEM-768/1024 ([#3652](https://github.com/opentdf/platform/issues/3652)) ([06f30ef](https://github.com/opentdf/platform/commit/06f30ef7f2eb6a5dce587efa906d4bd70b7cd8dc))
+* **policy:** Add kas_uri dimenstion to ListKeys. ([#3663](https://github.com/opentdf/platform/issues/3663)) ([41cee41](https://github.com/opentdf/platform/commit/41cee41ac9cee8c6d0730ca7c165ac9c22242ac4))
+
+
+### Bug Fixes
+
+* **authz:** Add default role for every req. ([#3664](https://github.com/opentdf/platform/issues/3664)) ([2a7095a](https://github.com/opentdf/platform/commit/2a7095afb8bb55eb07b2ab877ace12389eeeba97))
+* **authz:** emit WWW-Authenticate DPoP on all proof rejections (DSPX-3397) ([#3665](https://github.com/opentdf/platform/issues/3665)) ([d7caacd](https://github.com/opentdf/platform/commit/d7caacdc8e2d459baeee3af81ecf8a7cf6fea727))
+* **deps:** bump github.com/opentdf/platform/sdk from 0.24.0 to 0.25.0 in /service ([#3687](https://github.com/opentdf/platform/issues/3687)) ([0b7f77a](https://github.com/opentdf/platform/commit/0b7f77aabff010a95b97e8c087f2475cd7c11003))
+* **kas:** verify rewrap SRT with its actual JWS algorithm ([#3691](https://github.com/opentdf/platform/issues/3691)) ([1f073b6](https://github.com/opentdf/platform/commit/1f073b6a8fac4d0628253f4835e7b2dcaf40a4e8))
+* **policy:** undo Condition.operator deprecation ([#3668](https://github.com/opentdf/platform/issues/3668)) ([917f66a](https://github.com/opentdf/platform/commit/917f66a3dc3fa4df63d9b1a901ff75d88234d3f2))
+
 ## [0.18.0](https://github.com/opentdf/platform/compare/service/v0.17.0...service/v0.18.0) (2026-06-23)
 
 

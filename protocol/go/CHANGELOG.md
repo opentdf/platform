@@ -1,5 +1,41 @@
 # Changelog
 
+## [0.39.0](https://github.com/opentdf/platform/compare/protocol/go/v0.38.0...protocol/go/v0.39.0) (2026-07-21)
+
+
+### Features
+
+* **policy:** Add name and manager lookup ([#3753](https://github.com/opentdf/platform/issues/3753)) ([bfbc65d](https://github.com/opentdf/platform/commit/bfbc65d6f56a7d28144379f535bd82ce61e62bdd))
+* **policy:** Add UnsafeUpdateKey rpc. ([#3728](https://github.com/opentdf/platform/issues/3728)) ([c89b193](https://github.com/opentdf/platform/commit/c89b1933e3931bc1984711f2268c8adedd786db4))
+* **policy:** create subject mappings with attribute values ([#3741](https://github.com/opentdf/platform/issues/3741)) ([718320b](https://github.com/opentdf/platform/commit/718320b2bbe1a03041ed70bb3b20eb3c30cf64fa))
+* **policy:** deprecate GetAttributeValuesByFqns in favor of narrow read APIs ([#3745](https://github.com/opentdf/platform/issues/3745)) ([baba709](https://github.com/opentdf/platform/commit/baba70913cfe615448ab05b465ecdaf037791889))
+
+## [0.38.0](https://github.com/opentdf/platform/compare/protocol/go/v0.37.0...protocol/go/v0.38.0) (2026-07-09)
+
+
+### Features
+
+* **policy:** add entitleable namespace field and narrow-read-API doc corrections ([#3727](https://github.com/opentdf/platform/issues/3727)) ([0fc2f01](https://github.com/opentdf/platform/commit/0fc2f01fbb0d75b04d2a5dcb94e5acdea9f62b6f))
+
+## [0.37.0](https://github.com/opentdf/platform/compare/protocol/go/v0.36.0...protocol/go/v0.37.0) (2026-07-01)
+
+
+### ⚠ BREAKING CHANGES
+
+* **policy:** undo subject mapping operator decomposition ([#3685](https://github.com/opentdf/platform/issues/3685))
+
+### Features
+
+* **policy:** add narrow attribute read API protos and generated code ([#3634](https://github.com/opentdf/platform/issues/3634)) ([5726720](https://github.com/opentdf/platform/commit/572672007abd7e0a3598f8303661487cfb0d2db5))
+* **policy:** undo subject mapping operator decomposition ([#3685](https://github.com/opentdf/platform/issues/3685)) ([84f3b92](https://github.com/opentdf/platform/commit/84f3b92a4f82dd527ef93de3361ec22990eae479))
+
+## [0.36.0](https://github.com/opentdf/platform/compare/protocol/go/v0.35.0...protocol/go/v0.36.0) (2026-06-29)
+
+
+### Features
+
+* **kas:** Adds FIPS-203 wrap with ML-KEM-768/1024 ([#3652](https://github.com/opentdf/platform/issues/3652)) ([06f30ef](https://github.com/opentdf/platform/commit/06f30ef7f2eb6a5dce587efa906d4bd70b7cd8dc))
+
 ## [0.35.0](https://github.com/opentdf/platform/compare/protocol/go/v0.34.0...protocol/go/v0.35.0) (2026-06-25)
 
 

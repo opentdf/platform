@@ -172,6 +172,37 @@ func (s *AttributesService) GetAttributeValuesByFqns(ctx context.Context,
 	return connect.NewResponse(rsp), nil
 }
 
+func (s *AttributesService) GetKeyMappingsByFqns(ctx context.Context,
+	req *connect.Request[attributes.GetKeyMappingsByFqnsRequest],
+) (*connect.Response[attributes.GetKeyMappingsByFqnsResponse], error) {
+	ctx, span := s.Start(ctx, "GetKeyMappingsByFqns")
+	defer span.End()
+
+	rsp := &attributes.GetKeyMappingsByFqnsResponse{}
+
+	mappings, err := s.dbClient.GetKeyMappingsByFqns(ctx, req.Msg)
+	if err != nil {
+		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextGetRetrievalFailed, slog.String("fqns", fmt.Sprintf("%v", req.Msg.GetFqns())))
+	}
+	rsp.FqnKeyMappings = mappings
+
+	return connect.NewResponse(rsp), nil
+}
+
+func (s *AttributesService) GetEntitleableAttributesByFqns(ctx context.Context,
+	req *connect.Request[attributes.GetEntitleableAttributesByFqnsRequest],
+) (*connect.Response[attributes.GetEntitleableAttributesByFqnsResponse], error) {
+	ctx, span := s.Start(ctx, "GetEntitleableAttributesByFqns")
+	defer span.End()
+
+	rsp, err := s.dbClient.GetEntitleableAttributesByFqns(ctx, req.Msg)
+	if err != nil {
+		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextGetRetrievalFailed, slog.String("fqns", fmt.Sprintf("%v", req.Msg.GetFqns())))
+	}
+
+	return connect.NewResponse(rsp), nil
+}
+
 func (s *AttributesService) UpdateAttribute(ctx context.Context,
 	req *connect.Request[attributes.UpdateAttributeRequest],
 ) (*connect.Response[attributes.UpdateAttributeResponse], error) {
@@ -252,17 +283,46 @@ func (s *AttributesService) CreateAttributeValue(ctx context.Context, req *conne
 		ObjectType: audit.ObjectTypeAttributeValue,
 		ActionType: audit.ActionTypeCreate,
 	}
+	subjectMappingAuditParams := audit.PolicyEventParams{
+		ObjectType: audit.ObjectTypeSubjectMapping,
+		ActionType: audit.ActionTypeCreate,
+	}
+	obligationTriggerAuditParams := audit.PolicyEventParams{
+		ObjectType: audit.ObjectTypeObligationTrigger,
+		ActionType: audit.ActionTypeCreate,
+	}
 
 	err := s.dbClient.RunInTx(ctx, func(txClient *policydb.PolicyDBClient) error {
 		item, err := txClient.CreateAttributeValue(ctx, req.Msg.GetAttributeId(), req.Msg)
 		if err != nil {
 			s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
+			if len(req.Msg.GetSubjectMappings()) > 0 {
+				s.logger.Audit.PolicyCRUDFailure(ctx, subjectMappingAuditParams)
+			}
+			if len(req.Msg.GetObligationTriggers()) > 0 {
+				s.logger.Audit.PolicyCRUDFailure(ctx, obligationTriggerAuditParams)
+			}
 			return err
 		}
 
 		auditParams.ObjectID = item.GetId()
 		auditParams.Original = item
 		s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
+
+		for _, mapping := range item.GetSubjectMappings() {
+			subjectMappingAuditParams.ObjectID = mapping.GetId()
+			subjectMappingAuditParams.Original = mapping
+			s.logger.Audit.PolicyCRUDSuccess(ctx, subjectMappingAuditParams)
+		}
+		for _, obligation := range item.GetObligations() {
+			for _, value := range obligation.GetValues() {
+				for _, trigger := range value.GetTriggers() {
+					obligationTriggerAuditParams.ObjectID = trigger.GetId()
+					obligationTriggerAuditParams.Original = trigger
+					s.logger.Audit.PolicyCRUDSuccess(ctx, obligationTriggerAuditParams)
+				}
+			}
+		}
 
 		rsp.Value = item
 

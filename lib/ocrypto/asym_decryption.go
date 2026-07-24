@@ -43,11 +43,22 @@ func FromPrivatePEMWithSalt(privateKeyInPem string, salt, info []byte) (PrivateK
 	if block == nil {
 		return AsymDecryption{}, errors.New("failed to parse PEM formatted private key")
 	}
-
-	// Hybrid PQ/T private keys are PKCS#8-wrapped under one of our known OIDs.
-	// Peek at the AlgorithmIdentifier and route hybrids to their constructors;
-	// everything else (RSA, EC, EC PRIVATE KEY) falls through to x509.
+	// Pure ML-KEM private keys are PKCS#8-wrapped under the NIST OIDs handled by
+	// the unified kem path. Try these first so an ML-KEM key is never misrouted
+	// into the hybrid OID dispatcher.
 	if block.Type == pemBlockPrivateKey {
+		switch oid, seed, err := parseKEMPrivatePKCS8(block.Bytes); {
+		case err == nil:
+			if k, ok := kemByOID(oid); ok {
+				return newKEMDecryptor(k, seed, salt, info)
+			}
+		case !errors.Is(err, errNotKEM):
+			return AsymDecryption{}, err
+		}
+
+		// Hybrid PQ/T private keys are PKCS#8-wrapped under our composite-KEM
+		// OIDs. Route hybrids to their per-scheme constructors; everything else
+		// (RSA, EC, EC PRIVATE KEY) falls through to x509.
 		if dec, matched, err := hybridDecryptorFromPKCS8(block.Bytes, salt, info); matched {
 			return dec, err
 		}
@@ -93,19 +104,6 @@ func FromPrivatePEMWithSalt(privateKeyInPem string, salt, info []byte) (PrivateK
 	}
 
 	return nil, errors.New("not a supported PEM formatted private key")
-}
-
-func NewAsymDecryption(privateKeyInPem string) (AsymDecryption, error) {
-	d, err := FromPrivatePEMWithSalt(privateKeyInPem, nil, nil)
-	if err != nil {
-		return AsymDecryption{}, err
-	}
-	switch d := d.(type) {
-	case AsymDecryption:
-		return d, nil
-	default:
-		return AsymDecryption{}, errors.New("not an RSA private key")
-	}
 }
 
 // Decrypt decrypts ciphertext with private key.
@@ -221,15 +219,8 @@ func hybridDecryptorFromPKCS8(der, salt, info []byte) (PrivateKeyDecryptor, bool
 		// KEY). Fall through to the legacy decoder.
 		return nil, false, nil //nolint:nilerr // intentional fall-through on non-envelope input
 	}
-	switch {
-	case oid.Equal(oidXWing):
-		dec, err := NewSaltedXWingDecryptor(raw, salt, info)
-		return dec, true, err
-	case oid.Equal(oidCompositeMLKEM768P256):
-		dec, err := NewP256MLKEM768Decryptor(raw)
-		return dec, true, err
-	case oid.Equal(oidCompositeMLKEM1024P384):
-		dec, err := NewP384MLKEM1024Decryptor(raw)
+	if k, ok := hybridKEMByOID(oid); ok {
+		dec, err := newKEMDecryptor(k, raw, salt, info)
 		return dec, true, err
 	}
 	// Valid PKCS#8 envelope with a non-hybrid OID. If the stdlib recognises it,

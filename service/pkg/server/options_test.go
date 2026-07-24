@@ -7,6 +7,7 @@ import (
 	"connectrpc.com/connect"
 	"github.com/go-viper/mapstructure/v2"
 	"github.com/lestrrat-go/jwx/v2/jwt"
+	"github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/pkg/authz"
 	"github.com/opentdf/platform/service/pkg/config"
 	"github.com/stretchr/testify/assert"
@@ -276,7 +277,7 @@ func TestWithAuthZRoleProvider(t *testing.T) {
 
 func TestWithAuthZRoleProviderFactory(t *testing.T) {
 	var cfg StartConfig
-	cfg = WithAuthZRoleProviderFactory("mock", func(_ context.Context, _ authz.ProviderConfig) (authz.RoleProvider, error) {
+	cfg = WithAuthZRoleProviderFactory("mock", func(_ context.Context, _ authz.ProviderConfig, _ *logger.Logger) (authz.RoleProvider, error) {
 		return noopRoleProvider{}, nil
 	})(cfg)
 

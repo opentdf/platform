@@ -329,15 +329,50 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/policy.unsafe.UnsafeDeleteAttributeValueResponse'
+  /policy.unsafe.UnsafeService/UnsafeUpdateKey:
+    post:
+      tags:
+        - policy.unsafe.UnsafeService
+      summary: UnsafeUpdateKey
+      description: |-
+        --------------------------------------*
+         Kas Key RPCs
+        ---------------------------------------
+      operationId: policy.unsafe.UnsafeService.UnsafeUpdateKey
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/policy.unsafe.UnsafeUpdateKeyRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/policy.unsafe.UnsafeUpdateKeyResponse'
   /policy.unsafe.UnsafeService/UnsafeDeleteKasKey:
     post:
       tags:
         - policy.unsafe.UnsafeService
       summary: UnsafeDeleteKasKey
-      description: |-
-        --------------------------------------*
-         Kas Key RPCs
-        ---------------------------------------
       operationId: policy.unsafe.UnsafeService.UnsafeDeleteKasKey
       parameters:
         - name: Connect-Protocol-Version
@@ -390,6 +425,8 @@ components:
         - ALGORITHM_HPQT_XWING
         - ALGORITHM_HPQT_SECP256R1_MLKEM768
         - ALGORITHM_HPQT_SECP384R1_MLKEM1024
+        - ALGORITHM_MLKEM_768
+        - ALGORITHM_MLKEM_1024
       description: Supported key algorithms.
     policy.AttributeRuleTypeEnum:
       type: string
@@ -406,28 +443,6 @@ components:
         - CONDITION_BOOLEAN_TYPE_ENUM_UNSPECIFIED
         - CONDITION_BOOLEAN_TYPE_ENUM_AND
         - CONDITION_BOOLEAN_TYPE_ENUM_OR
-    policy.ConditionComparisonOperatorEnum:
-      type: string
-      title: ConditionComparisonOperatorEnum
-      enum:
-        - CONDITION_COMPARISON_OPERATOR_ENUM_UNSPECIFIED
-        - CONDITION_COMPARISON_OPERATOR_ENUM_EQUALS
-        - CONDITION_COMPARISON_OPERATOR_ENUM_CONTAINS
-        - CONDITION_COMPARISON_OPERATOR_ENUM_STARTS_WITH
-        - CONDITION_COMPARISON_OPERATOR_ENUM_ENDS_WITH
-      description: |-
-        How a selector result is compared against a comparison value. Replaces the all-in-one
-         SubjectMappingOperatorEnum by separating the comparison from the quantifier (see
-         ConditionQuantifierEnum) and case sensitivity.
-    policy.ConditionQuantifierEnum:
-      type: string
-      title: ConditionQuantifierEnum
-      enum:
-        - CONDITION_QUANTIFIER_ENUM_UNSPECIFIED
-        - CONDITION_QUANTIFIER_ENUM_ANY
-        - CONDITION_QUANTIFIER_ENUM_ALL
-        - CONDITION_QUANTIFIER_ENUM_NONE
-      description: How matches are aggregated across the comparison set (subject_external_values).
     policy.KasPublicKeyAlgEnum:
       type: string
       title: KasPublicKeyAlgEnum
@@ -441,6 +456,8 @@ components:
         - KAS_PUBLIC_KEY_ALG_ENUM_HPQT_XWING
         - KAS_PUBLIC_KEY_ALG_ENUM_HPQT_SECP256R1_MLKEM768
         - KAS_PUBLIC_KEY_ALG_ENUM_HPQT_SECP384R1_MLKEM1024
+        - KAS_PUBLIC_KEY_ALG_ENUM_MLKEM_768
+        - KAS_PUBLIC_KEY_ALG_ENUM_MLKEM_1024
     policy.KeyMode:
       type: string
       title: KeyMode
@@ -764,10 +781,7 @@ components:
              from idP/LDAP)
         operator:
           title: operator
-          description: |-
-            Deprecated: use comparison + quantifier (+ case_insensitive) instead. Normalized to the
-             decomposed fields in the service layer for backward compatibility.
-          deprecated: true
+          description: the evaluation operator of relation
           $ref: '#/components/schemas/policy.SubjectMappingOperatorEnum'
         subjectExternalValues:
           type: array
@@ -780,23 +794,10 @@ components:
             list of comparison values for the result of applying the
              subject_external_selector_value on a flattened Entity Representation
              (Subject), evaluated by the operator
-        comparison:
-          title: comparison
-          description: how each selector result is compared to subject_external_values entries
-          $ref: '#/components/schemas/policy.ConditionComparisonOperatorEnum'
-        quantifier:
-          title: quantifier
-          description: how matches are aggregated across subject_external_values
-          $ref: '#/components/schemas/policy.ConditionQuantifierEnum'
-        caseInsensitive:
-          title: case_insensitive
-          description: |-
-            when set true, comparison is case-insensitive; unset is treated as case-sensitive. Modeled as
-             BoolValue so an explicit false is distinguishable from unset, leaving room to change the default.
-          $ref: '#/components/schemas/google.protobuf.BoolValue'
       title: Condition
       required:
         - subjectExternalSelectorValue
+        - operator
       additionalProperties: false
       description: |-
         *
@@ -1650,6 +1651,50 @@ components:
           title: value
           $ref: '#/components/schemas/policy.Value'
       title: UnsafeUpdateAttributeValueResponse
+      additionalProperties: false
+    policy.unsafe.UnsafeUpdateKeyRequest:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+          format: uuid
+          description: |-
+            Required
+             UUID of the Key
+        targetKeyMode:
+          title: target_key_mode
+          enum:
+            - 0
+            - 3
+            - 4
+          description: |-
+            Optional
+             Target key mode. Only KEY_MODE_REMOTE and KEY_MODE_PUBLIC_KEY_ONLY mode changes are supported.
+             KEY_MODE_UNSPECIFIED with provider_config_id updates only the provider configuration for an existing REMOTE key.
+          $ref: '#/components/schemas/policy.KeyMode'
+        providerConfigId:
+          type: string
+          title: provider_config_id
+          format: uuid
+          description: |-
+            Conditionally Required
+             Configuration ID for the key provider. Required for KEY_MODE_REMOTE and KEY_MODE_UNSPECIFIED; empty for KEY_MODE_PUBLIC_KEY_ONLY.
+      title: UnsafeUpdateKeyRequest
+      additionalProperties: false
+      description: |-
+        WARNING!!
+         Updating a key in place can retroactively alter decryptability for existing TDFs.
+         This support-only operation is limited to switching between REMOTE and PUBLIC_KEY_ONLY
+         key modes, or updating the provider configuration for an existing REMOTE key, while
+         preserving the existing KID, KAS URI, and public key.
+    policy.unsafe.UnsafeUpdateKeyResponse:
+      type: object
+      properties:
+        key:
+          title: key
+          $ref: '#/components/schemas/policy.KasKey'
+      title: UnsafeUpdateKeyResponse
       additionalProperties: false
     policy.unsafe.UnsafeUpdateNamespaceRequest:
       type: object

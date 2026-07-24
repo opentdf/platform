@@ -234,6 +234,26 @@ type BaseKey struct {
 	KeyAccessServerKeyID pgtype.UUID `json:"key_access_server_key_id"`
 }
 
+// Definition-scoped dynamic value entitlement mappings
+type DynamicValueMapping struct {
+	ID                    string `json:"id"`
+	AttributeDefinitionID string `json:"attribute_definition_id"`
+	// Selector resolved against the entity representation, compared to the requested resource value segment
+	SubjectExternalSelectorValue string `json:"subject_external_selector_value"`
+	// policy.SubjectMappingOperatorEnum value
+	Operator              int16              `json:"operator"`
+	SubjectConditionSetID pgtype.UUID        `json:"subject_condition_set_id"`
+	NamespaceID           pgtype.UUID        `json:"namespace_id"`
+	Metadata              []byte             `json:"metadata"`
+	CreatedAt             pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt             pgtype.Timestamptz `json:"updated_at"`
+}
+
+type DynamicValueMappingAction struct {
+	DynamicValueMappingID string `json:"dynamic_value_mapping_id"`
+	ActionID              string `json:"action_id"`
+}
+
 // Table to store the known registrations of key access servers (KASs)
 type KeyAccessServer struct {
 	// Primary key for the table

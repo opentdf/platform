@@ -1,5 +1,29 @@
 # Changelog
 
+## [0.35.0](https://github.com/opentdf/platform/compare/otdfctl/v0.34.0...otdfctl/v0.35.0) (2026-07-07)
+
+
+### Bug Fixes
+
+* **cli:** Pull namespace for OTs from attr val ([#3725](https://github.com/opentdf/platform/issues/3725)) ([2146d0f](https://github.com/opentdf/platform/commit/2146d0f6774882c83887c7c5004159859e408f5c))
+
+## [0.34.0](https://github.com/opentdf/platform/compare/otdfctl/v0.33.0...otdfctl/v0.34.0) (2026-07-01)
+
+
+### Features
+
+* **cli:** Add search to cli ([#3616](https://github.com/opentdf/platform/issues/3616)) ([1fb2549](https://github.com/opentdf/platform/commit/1fb2549a637af313cc4bd279b39f89d95d77a4b4))
+* **cli:** DSPX-2998 namespace flags for resource mapping commands ([#3576](https://github.com/opentdf/platform/issues/3576)) ([beaaac5](https://github.com/opentdf/platform/commit/beaaac5e0abe3cd2f4e68e254c2ddf214b319698))
+* **core:** Disable pq algorithms due to format change ([#3625](https://github.com/opentdf/platform/issues/3625)) ([4a7353d](https://github.com/opentdf/platform/commit/4a7353d440635e83a8819676b028b257fa49f62e))
+* **core:** Re-enable pq algorithms after format change ([#3651](https://github.com/opentdf/platform/issues/3651)) ([005f9de](https://github.com/opentdf/platform/commit/005f9deb19357c9b08c83e77bc8431a3bee40c8e))
+* **kas:** Adds FIPS-203 wrap with ML-KEM-768/1024 ([#3652](https://github.com/opentdf/platform/issues/3652)) ([06f30ef](https://github.com/opentdf/platform/commit/06f30ef7f2eb6a5dce587efa906d4bd70b7cd8dc))
+
+
+### Bug Fixes
+
+* **cli:** fix the get key command. ([#3598](https://github.com/opentdf/platform/issues/3598)) ([6f832d6](https://github.com/opentdf/platform/commit/6f832d6fa6505083316897cc630c36d6e3ba2467))
+* **deps:** bump github.com/opentdf/platform/sdk from 0.22.0 to 0.25.0 in /otdfctl ([#3690](https://github.com/opentdf/platform/issues/3690)) ([ec2dc5c](https://github.com/opentdf/platform/commit/ec2dc5cea80bc9b8ca614de1f9b66cbea0032cd1))
+
 ## [0.33.0](https://github.com/opentdf/platform/compare/otdfctl/v0.32.0...otdfctl/v0.33.0) (2026-06-09)
 
 

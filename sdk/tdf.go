@@ -44,6 +44,7 @@ const (
 	kWrapped               = "wrapped"
 	kECWrapped             = "ec-wrapped"
 	kHybridWrapped         = "hybrid-wrapped"
+	kMLKEMWrapped          = "mlkem-wrapped"
 	kKasProtocol           = "kas"
 	kSplitKeyType          = "split"
 	kGCMCipherAlgorithm    = "AES-256-GCM"
@@ -676,12 +677,12 @@ func createKeyAccess(kasInfo KASInfo, symKey []byte, policyBinding PolicyBinding
 
 	ktype := ocrypto.KeyType(kasInfo.Algorithm)
 	switch {
-	case ocrypto.IsHybridKeyType(ktype):
-		wrappedKey, err := generateWrapKeyWithHybrid(kasInfo.Algorithm, kasInfo.PublicKey, symKey)
+	case ocrypto.IsKEMKeyType(ktype):
+		wrappedKey, scheme, err := generateWrapKeyWithKEM(ktype, kasInfo.PublicKey, symKey)
 		if err != nil {
 			return KeyAccess{}, err
 		}
-		keyAccess.KeyType = kHybridWrapped
+		keyAccess.KeyType = scheme
 		keyAccess.WrappedKey = wrappedKey
 	case ocrypto.IsECKeyType(ktype):
 		mode, err := ocrypto.ECKeyTypeToMode(ktype)
@@ -770,12 +771,19 @@ func generateWrapKeyWithRSA(publicKey string, symKey []byte) (string, error) {
 	return string(ocrypto.Base64Encode(wrappedKey)), nil
 }
 
-func generateWrapKeyWithHybrid(algorithm, publicKeyPEM string, symKey []byte) (string, error) {
-	wrappedDER, err := ocrypto.HybridWrapDEK(ocrypto.KeyType(algorithm), publicKeyPEM, symKey)
+// generateWrapKeyWithKEM wraps a DEK with any KEM scheme — pure ML-KEM or
+// hybrid (X-Wing, NIST PQ/T). Returns the base64-encoded envelope and the
+// wire scheme name (`hybrid-wrapped` or `mlkem-wrapped`) for the manifest.
+func generateWrapKeyWithKEM(ktype ocrypto.KeyType, publicKeyPEM string, symKey []byte) (string, string, error) {
+	wrappedDER, err := ocrypto.WrapDEK(ktype, publicKeyPEM, symKey)
 	if err != nil {
-		return "", fmt.Errorf("generateWrapKeyWithHybrid: %w", err)
+		return "", "", fmt.Errorf("generateWrapKeyWithKEM: %w", err)
 	}
-	return string(ocrypto.Base64Encode(wrappedDER)), nil
+	scheme := kHybridWrapped
+	if ocrypto.IsMLKEMKeyType(ktype) {
+		scheme = kMLKEMWrapped
+	}
+	return string(ocrypto.Base64Encode(wrappedDER)), scheme, nil
 }
 
 // create policy object
@@ -1247,7 +1255,7 @@ func createRewrapRequest(_ context.Context, r *Reader) (map[string]*kas.Unsigned
 			invalidPolicy = !ok
 			alg, ok = policyBinding["alg"].(string)
 			invalidPolicy = invalidPolicy || !ok
-		case (PolicyBinding):
+		case PolicyBinding:
 			hash = policyBinding.Hash
 			alg = policyBinding.Alg
 		default:

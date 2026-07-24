@@ -1,5 +1,5 @@
 # configures the platform to run only the KAS and well known service
-# build off this config file if you intend on running a (or multiple) seperate kas instance(s)
+# build off this config file if you intend on running one or multiple separate KAS instances
 mode: kas
 sdk_config:
   core:
@@ -55,7 +55,8 @@ server:
     key: ./keys/platform-key.pem
   auth:
     enabled: true
-    enforceDPoP: false
+    dpop:
+      enforce: false
     audience: "http://localhost:8080"
     issuer: http://localhost:8888/auth/realms/opentdf
     policy:

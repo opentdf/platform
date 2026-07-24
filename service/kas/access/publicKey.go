@@ -77,7 +77,8 @@ func (p *Provider) LegacyPublicKey(ctx context.Context, req *connect.Request[kas
 			return nil, connect.NewError(connect.CodeInternal, errors.Join(ErrConfig, errors.New("configuration error")))
 		}
 	case security.AlgorithmRSA2048, security.AlgorithmHPQTXWing,
-		security.AlgorithmHPQTSecp256r1MLKEM768, security.AlgorithmHPQTSecp384r1MLKEM1024, "":
+		security.AlgorithmHPQTSecp256r1MLKEM768, security.AlgorithmHPQTSecp384r1MLKEM1024,
+		security.AlgorithmMLKEM768, security.AlgorithmMLKEM1024, "":
 		// For RSA keys, return the public key in PKCS8 format
 		pem, err = keyDetails.ExportPublicKey(ctx, trust.KeyTypePKCS8)
 		if err != nil {
@@ -154,7 +155,9 @@ func (p *Provider) PublicKey(ctx context.Context, req *connect.Request[kaspb.Pub
 		return r(ecPublicKeyPem, kid, err)
 	case security.AlgorithmHPQTXWing,
 		security.AlgorithmHPQTSecp256r1MLKEM768,
-		security.AlgorithmHPQTSecp384r1MLKEM1024:
+		security.AlgorithmHPQTSecp384r1MLKEM1024,
+		security.AlgorithmMLKEM768,
+		security.AlgorithmMLKEM1024:
 		switch fmt {
 		case "pkcs8", "":
 			publicKeyPEM, err := keyDetails.ExportPublicKey(ctx, trust.KeyTypePKCS8)

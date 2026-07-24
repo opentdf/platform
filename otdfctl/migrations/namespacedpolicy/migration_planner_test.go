@@ -257,8 +257,9 @@ func TestPlannerRetrieveUsesRequestedScopeBoundaries(t *testing.T) {
 		),
 	)
 	legacyTrigger := &policy.ObligationTrigger{
-		Id:     "trigger-1",
-		Action: &policy.Action{Id: legacyAction.GetId(), Name: legacyAction.GetName()},
+		Id:             "trigger-1",
+		Action:         &policy.Action{Id: legacyAction.GetId(), Name: legacyAction.GetName()},
+		AttributeValue: testAttributeValue("https://example.com/attr/classification/value/secret", targetNamespace),
 		ObligationValue: &policy.ObligationValue{
 			Id:  "ov-1",
 			Fqn: "https://example.com/obl/notify/value/email",
@@ -425,8 +426,9 @@ func TestPlannerPlanAllScopesBuildsAllPlanSections(t *testing.T) {
 		),
 	)
 	legacyTrigger := &policy.ObligationTrigger{
-		Id:     "trigger-1",
-		Action: &policy.Action{Id: legacyAction.GetId(), Name: legacyAction.GetName()},
+		Id:             "trigger-1",
+		Action:         &policy.Action{Id: legacyAction.GetId(), Name: legacyAction.GetName()},
+		AttributeValue: testAttributeValue("https://example.com/attr/classification/value/secret", targetNamespace),
 		ObligationValue: &policy.ObligationValue{
 			Id:  "ov-1",
 			Fqn: "https://example.com/obl/notify/value/email",

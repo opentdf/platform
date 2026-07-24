@@ -273,9 +273,13 @@ func (k *KASClient) handleRSAKeyResponse(response *kas.RewrapResponse) (map[stri
 		return nil, fmt.Errorf("ocrypto.PrivateKeyInPemFormat failed: %w", err)
 	}
 
-	asymDecryption, err := ocrypto.NewAsymDecryption(clientPrivateKey)
+	decryptor, err := ocrypto.FromPrivatePEM(clientPrivateKey)
 	if err != nil {
-		return nil, fmt.Errorf("ocrypto.NewAsymDecryption failed: %w", err)
+		return nil, fmt.Errorf("ocrypto.FromPrivatePEM failed: %w", err)
+	}
+	asymDecryption, ok := decryptor.(ocrypto.AsymDecryption)
+	if !ok {
+		return nil, fmt.Errorf("session key is not an RSA private key: %T", decryptor)
 	}
 
 	return k.processRSAResponse(response, asymDecryption)

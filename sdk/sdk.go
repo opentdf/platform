@@ -45,6 +45,7 @@ const (
 	ErrPlatformTokenEndpointNotFound = Error("token_endpoint not found in well-known idp configuration")
 	ErrPlatformEndpointNotFound      = Error("platform_endpoint not found in well-known configuration")
 	ErrAccessTokenInvalid            = Error("access token is invalid")
+	ErrNoAccessTokenSource           = Error("no access token source configured; SDK was created without credentials")
 	ErrWellKnowConfigEmpty           = Error("well-known configuration is empty")
 	ErrAttributeNotFound             = Error("attribute not found")
 )

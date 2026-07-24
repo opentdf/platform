@@ -35,6 +35,10 @@ inputs:
     default: "false"
     description: 'Whether to enable the DPoP nonce challenge flow (sets server.auth.dpop.require_nonce: true)'
     required: false
+  dpop-enforce-required:
+    default: "false"
+    description: 'Whether to enforce DPoP-bound access tokens (sets server.auth.dpop.enforce: true)'
+    required: false
 
 outputs:
   platform-working-dir:
@@ -58,6 +62,7 @@ runs:
         LOG_TYPE: ${{ inputs.log-type }}
         PROVISION_POLICY_FIXTURES: ${{ inputs.provision-policy-fixtures }}
         DPOP_CHALLENGE_ENABLED: ${{ inputs.dpop-challenge-enabled }}
+        DPOP_ENFORCE_REQUIRED: ${{ inputs.dpop-enforce-required }}
       run: |
         # Validate platform-ref (must contain only safe characters for a git ref)
         if [[ ! "${PLATFORM_REF}" =~ ^[a-zA-Z0-9._/-]+$ ]]; then
@@ -130,6 +135,16 @@ runs:
             exit 1
             ;;
         esac
+
+        # Validate dpop-enforce-required (must be true or false)
+        case "${DPOP_ENFORCE_REQUIRED}" in
+          true|false)
+            ;;
+          *)
+            echo "Error: dpop-enforce-required must be 'true' or 'false'."
+            exit 1
+            ;;
+        esac
     - name: Check out platform
       uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
       with:
@@ -141,9 +156,9 @@ runs:
     - name: Download latest init-temp-keys.sh, docker-compose.yaml, and watch.sh
       shell: bash
       run: |
-        curl -sSfL https://raw.githubusercontent.com/opentdf/platform/refs/tags/pqc-enabled/.github/scripts/init-temp-keys.sh > otdf-test-platform/.github/scripts/init-temp-keys.sh
-        curl -sSfL https://raw.githubusercontent.com/opentdf/platform/refs/tags/pqc-enabled/docker-compose.yaml > otdf-test-platform/docker-compose.yaml
-        curl -sSfL https://raw.githubusercontent.com/opentdf/platform/refs/tags/pqc-enabled/.github/scripts/watch.sh > otdf-test-platform/.github/scripts/watch.sh
+        curl --retry 5 --retry-delay 2 --retry-all-errors -sSfL https://raw.githubusercontent.com/opentdf/platform/refs/tags/pqc-enabled/.github/scripts/init-temp-keys.sh > otdf-test-platform/.github/scripts/init-temp-keys.sh
+        curl --retry 5 --retry-delay 2 --retry-all-errors -sSfL https://raw.githubusercontent.com/opentdf/platform/refs/tags/pqc-enabled/docker-compose.yaml > otdf-test-platform/docker-compose.yaml
+        curl --retry 5 --retry-delay 2 --retry-all-errors -sSfL https://raw.githubusercontent.com/opentdf/platform/refs/tags/pqc-enabled/.github/scripts/watch.sh > otdf-test-platform/.github/scripts/watch.sh
     - name: Set up go (platform's go version)
       id: setup-go
       uses: actions/setup-go@0aaccfd150d50ccaeb58ebd88d36e91967a5f35b # v5.4.0
@@ -209,11 +224,6 @@ runs:
           # For versions 0.7.1 and later, we allow rsa:4096 ec:secp384r1 ec:secp521r1
           allowed_algorithms+=(rsa:4096 ec:secp384r1 ec:secp521r1)
         fi
-        # Only allow PQC algorithms if the platform generated PQC key files
-        if [[ ! -f kas-xwing-private.pem ]]; then
-          printf "PQC key files not found; skipping PQC configuration (platform may not support PQC key types)\n" 1>&2
-          exit 0
-        fi
         keyring='[{"kid":"ec1","alg":"ec:secp256r1"},{"kid":"r1","alg":"rsa:2048"}]'
         keys='[{"kid":"e1","alg":"ec:secp256r1","private":"kas-ec-private.pem","cert":"kas-ec-cert.pem"},{"kid":"ec1","alg":"ec:secp256r1","private":"kas-ec-private.pem","cert":"kas-ec-cert.pem"},{"kid":"r1","alg":"rsa:2048","private":"kas-private.pem","cert":"kas-cert.pem"}]'
         while IFS= read -r key_json; do
@@ -259,7 +269,7 @@ runs:
       shell: bash
       if: ${{ inputs.ec-tdf-enabled == 'true' }}
       run: |
-        yq e '.services.kas.ec_tdf_enabled = true' -i opentdf.yaml
+        yq e '.services.kas.preview.ec_tdf_enabled = true' -i opentdf.yaml
       working-directory: otdf-test-platform
     - name: Enable PQ (mlkem, xwing, and hybrid) wrapping for TDFs
       shell: bash
@@ -281,17 +291,11 @@ runs:
       run: |
         yq e '.server.auth.dpop.require_nonce = true' -i opentdf.yaml
       working-directory: otdf-test-platform
-    - name: Overlay DPoP-capable Keycloak (26.2)
-      # The default docker-compose pins Keycloak 25 so downstream consumers stay on
-      # it; DPoP testing needs Keycloak 26.2 plus the admin-fine-grained-authz:v1
-      # feature flag, overlaid only when the nonce challenge flow is enabled.
+    - name: Enable DPoP enforcement
       shell: bash
-      if: ${{ inputs.dpop-challenge-enabled == 'true' }}
+      if: ${{ inputs.dpop-enforce-required == 'true' }}
       run: |
-        yq e '
-          (.services.keycloak.image = "keycloak/keycloak:26.2")
-          | (.services.keycloak.environment.KC_FEATURES = "preview,token-exchange,admin-fine-grained-authz:v1")
-        ' -i docker-compose.yaml
+        yq e '.server.auth.dpop.enforce = true' -i opentdf.yaml
       working-directory: otdf-test-platform
     - name: Configure logging
       shell: bash

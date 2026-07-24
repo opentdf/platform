@@ -41,14 +41,6 @@ const (
 	P384MLKEM1024CiphertextSize = P384MLKEM1024MLKEMCtSize + P384MLKEM1024ECPublicKeySize     // 1665
 )
 
-// HybridNISTWrappedKey is the ASN.1 envelope stored in wrapped_key. The IETF
-// composite-KEM draft defines only the KEM; this DEK wrapping envelope is
-// kept identical to its pre-conformance shape so the TDF layer is unaffected.
-type HybridNISTWrappedKey struct {
-	HybridCiphertext []byte `asn1:"tag:0"`
-	EncryptedDEK     []byte `asn1:"tag:1"`
-}
-
 // hybridNISTParams captures the curve-specific parameters for one composite-KEM
 // hybrid scheme.
 type hybridNISTParams struct {
@@ -93,18 +85,6 @@ var p384mlkem1024Params = hybridNISTParams{
 //   - privateKey = mlkemSeed             || ECPrivateKey(DER, RFC 5915)
 type HybridNISTKeyPair struct {
 	publicKey  []byte
-	privateKey []byte
-	params     *hybridNISTParams
-}
-
-// HybridNISTEncryptor implements PublicKeyEncryptor for composite-KEM hybrids.
-type HybridNISTEncryptor struct {
-	publicKey []byte
-	params    *hybridNISTParams
-}
-
-// HybridNISTDecryptor implements PrivateKeyDecryptor for composite-KEM hybrids.
-type HybridNISTDecryptor struct {
 	privateKey []byte
 	params     *hybridNISTParams
 }
@@ -212,98 +192,133 @@ func (k HybridNISTKeyPair) GetKeyType() KeyType {
 	return k.params.keyType
 }
 
-func NewP256MLKEM768Encryptor(publicKey []byte) (*HybridNISTEncryptor, error) {
-	return newHybridNISTEncryptor(&p256mlkem768Params, publicKey)
+// hybridNISTKEM adapts a NIST composite-KEM hybrid (EC + ML-KEM) onto the
+// shared kem interface so it flows through wrapDEKWithKEM / unwrapDEKWithKEM
+// and the single kemEnvelope wire format. The combiner that produces the
+// AES-256 wrap key is folded into encapsulate / decapsulate, so wrapKey is an
+// identity pass-through of the already-derived key (mirroring pure ML-KEM).
+type hybridNISTKEM struct {
+	params *hybridNISTParams
 }
 
-func NewP384MLKEM1024Encryptor(publicKey []byte) (*HybridNISTEncryptor, error) {
-	return newHybridNISTEncryptor(&p384mlkem1024Params, publicKey)
-}
+func (k hybridNISTKEM) keyType() KeyType { return k.params.keyType }
+func (hybridNISTKEM) scheme() SchemeType { return Hybrid }
+func (k hybridNISTKEM) pubSize() int     { return k.params.mlkemPubSize + k.params.ecPubSize }
+func (k hybridNISTKEM) ctSize() int      { return k.params.mlkemCtSize + k.params.ecPubSize }
 
-func newHybridNISTEncryptor(p *hybridNISTParams, publicKey []byte) (*HybridNISTEncryptor, error) {
-	expectedSize := p.mlkemPubSize + p.ecPubSize
-	if len(publicKey) != expectedSize {
-		return nil, fmt.Errorf("invalid %s public key size: got %d want %d", p.keyType, len(publicKey), expectedSize)
+// privSize is negative to mark a variable-length private key encoding
+// (mlkemSeed || ECPrivateKey DER, whose length depends on the RFC 5915
+// serialization). newKEMDecryptor skips its exact-size check for this scheme;
+// decapsulate validates the layout instead.
+func (hybridNISTKEM) privSize() int { return -1 }
+
+// encapsulate performs ECDH against an ephemeral key, ML-KEM encapsulation, and
+// the SHA3-256 combiner (draft-ietf-lamps-pq-composite-kem-14 §3.4), returning
+// the 32-byte combined key as the "shared secret" and `mlkemCT || ephemeralEC`
+// as the ciphertext. Math is preserved verbatim from the former
+// hybridNISTWrapDEK.
+func (k hybridNISTKEM) encapsulate(publicKeyRaw []byte) ([]byte, []byte, error) {
+	p := k.params
+	expectedPubSize := p.mlkemPubSize + p.ecPubSize
+	if len(publicKeyRaw) != expectedPubSize {
+		return nil, nil, fmt.Errorf("invalid %s public key size: got %d want %d", p.keyType, len(publicKeyRaw), expectedPubSize)
 	}
-	return &HybridNISTEncryptor{
-		publicKey: append([]byte(nil), publicKey...),
-		params:    p,
-	}, nil
+
+	mlkemPubBytes := publicKeyRaw[:p.mlkemPubSize]
+	ecPubBytes := publicKeyRaw[p.mlkemPubSize:]
+
+	ecPub, err := p.curve.NewPublicKey(ecPubBytes)
+	if err != nil {
+		return nil, nil, fmt.Errorf("invalid EC public key: %w", err)
+	}
+	ephemeral, err := p.curve.GenerateKey(rand.Reader)
+	if err != nil {
+		return nil, nil, fmt.Errorf("ECDH ephemeral key generation failed: %w", err)
+	}
+	tradSS, err := ephemeral.ECDH(ecPub)
+	if err != nil {
+		return nil, nil, fmt.Errorf("ECDH failed: %w", err)
+	}
+	ephemeralPub := ephemeral.PublicKey().Bytes()
+
+	mlkemSS, mlkemCT, err := mlkemEncapsulate(p, mlkemPubBytes)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	wrapKey := hybridNISTCombiner(p, mlkemSS, tradSS, ephemeralPub, ecPubBytes)
+
+	hybridCt := make([]byte, 0, len(mlkemCT)+len(ephemeralPub))
+	hybridCt = append(hybridCt, mlkemCT...)
+	hybridCt = append(hybridCt, ephemeralPub...)
+
+	return wrapKey, hybridCt, nil
 }
 
-func (e *HybridNISTEncryptor) Encrypt(data []byte) ([]byte, error) {
-	return hybridNISTWrapDEK(e.params, e.publicKey, data)
+// decapsulate is the symmetric inverse of encapsulate, returning the combiner
+// output as the "shared secret". Math is preserved verbatim from the former
+// hybridNISTUnwrapDEK. The ciphertext length is validated by unwrapDEKWithKEM
+// against ctSize() before this is called.
+func (k hybridNISTKEM) decapsulate(privateKeyRaw, ct []byte) ([]byte, error) {
+	p := k.params
+	if len(privateKeyRaw) <= mlkemSeedSize {
+		return nil, fmt.Errorf("invalid %s private key: shorter than ML-KEM seed + ECPrivateKey", p.keyType)
+	}
+	mlkemSeed := privateKeyRaw[:mlkemSeedSize]
+	ecPrivDER := privateKeyRaw[mlkemSeedSize:]
+
+	mlkemCT := ct[:p.mlkemCtSize]
+	ephemeralPubBytes := ct[p.mlkemCtSize:]
+
+	ecdsaPriv, err := x509.ParseECPrivateKey(ecPrivDER)
+	if err != nil {
+		return nil, fmt.Errorf("parse ECPrivateKey: %w", err)
+	}
+	if ecdsaPriv.Curve != p.namedCurve {
+		return nil, fmt.Errorf("EC private key curve mismatch for %s", p.keyType)
+	}
+	ecdhPriv, err := ecdsaPriv.ECDH()
+	if err != nil {
+		return nil, fmt.Errorf("convert ECDSA to ECDH: %w", err)
+	}
+	tradPK := ecdhPriv.PublicKey().Bytes()
+
+	ephemeralPub, err := p.curve.NewPublicKey(ephemeralPubBytes)
+	if err != nil {
+		return nil, fmt.Errorf("invalid ephemeral EC public key: %w", err)
+	}
+	tradSS, err := ecdhPriv.ECDH(ephemeralPub)
+	if err != nil {
+		return nil, fmt.Errorf("ECDH failed: %w", err)
+	}
+
+	// ML-KEM implicit rejection (FIPS 203 §6.3) yields a pseudorandom shared
+	// secret on a wrong-key ciphertext rather than an error here; the AES-GCM
+	// decrypt in unwrapDEKWithKEM provides authentication.
+	mlkemSS, err := mlkemDecapsulate(p, mlkemSeed, mlkemCT)
+	if err != nil {
+		return nil, fmt.Errorf("ML-KEM decapsulate failed: %w", err)
+	}
+
+	return hybridNISTCombiner(p, mlkemSS, tradSS, ephemeralPubBytes, tradPK), nil
 }
 
-func (e *HybridNISTEncryptor) PublicKeyInPemFormat() (string, error) {
-	der, err := marshalHybridSPKI(e.params.oid, e.publicKey)
+func (k hybridNISTKEM) publicKeyPEM(pub []byte) (string, error) {
+	der, err := marshalHybridSPKI(k.params.oid, pub)
 	if err != nil {
 		return "", err
 	}
 	return string(pem.EncodeToMemory(&pem.Block{Type: pemBlockPublicKey, Bytes: der})), nil
 }
 
-func (e *HybridNISTEncryptor) Type() SchemeType     { return Hybrid }
-func (e *HybridNISTEncryptor) KeyType() KeyType     { return e.params.keyType }
-func (e *HybridNISTEncryptor) EphemeralKey() []byte { return nil }
-
-func (e *HybridNISTEncryptor) Metadata() (map[string]string, error) {
-	return make(map[string]string), nil
-}
-
-func NewP256MLKEM768Decryptor(privateKey []byte) (*HybridNISTDecryptor, error) {
-	return newHybridNISTDecryptor(&p256mlkem768Params, privateKey)
-}
-
-func NewP384MLKEM1024Decryptor(privateKey []byte) (*HybridNISTDecryptor, error) {
-	return newHybridNISTDecryptor(&p384mlkem1024Params, privateKey)
-}
-
-func newHybridNISTDecryptor(p *hybridNISTParams, privateKey []byte) (*HybridNISTDecryptor, error) {
-	if len(privateKey) <= mlkemSeedSize {
-		return nil, fmt.Errorf("invalid %s private key: shorter than ML-KEM seed + ECPrivateKey", p.keyType)
+// wrapKey is an identity pass-through: encapsulate / decapsulate already ran the
+// SHA3-256 combiner, which emits the 32-byte AES-256 key directly (no extra KDF
+// per draft-14 §3.4). The length check guards against a combiner change.
+func (hybridNISTKEM) wrapKey(sharedSecret, _ /*salt*/, _ /*info*/ []byte) ([]byte, error) {
+	if len(sharedSecret) != kemWrapKeySize {
+		return nil, fmt.Errorf("invalid hybrid NIST wrap key size: got %d want %d", len(sharedSecret), kemWrapKeySize)
 	}
-	// Parse the EC DER tail up front so a malformed key surfaces at
-	// construction time — mirrors newHybridNISTEncryptor's exact-size check
-	// on the public-key side. The parsed key itself is discarded; Decrypt
-	// re-parses (cheap relative to ML-KEM decapsulation) for code simplicity.
-	ecPriv, err := x509.ParseECPrivateKey(privateKey[mlkemSeedSize:])
-	if err != nil {
-		return nil, fmt.Errorf("invalid %s private key: parse ECPrivateKey: %w", p.keyType, err)
-	}
-	if ecPriv.Curve != p.namedCurve {
-		return nil, fmt.Errorf("invalid %s private key: EC curve mismatch", p.keyType)
-	}
-	return &HybridNISTDecryptor{
-		privateKey: append([]byte(nil), privateKey...),
-		params:     p,
-	}, nil
-}
-
-func (d *HybridNISTDecryptor) Decrypt(data []byte) ([]byte, error) {
-	return hybridNISTUnwrapDEK(d.params, d.privateKey, data)
-}
-
-// KeyType identifies the hybrid scheme so KAS-layer callers can cross-check
-// the OID-routed decryptor against an asserted algorithm before trusting it.
-func (d *HybridNISTDecryptor) KeyType() KeyType {
-	return d.params.keyType
-}
-
-func P256MLKEM768WrapDEK(publicKeyRaw, dek []byte) ([]byte, error) {
-	return hybridNISTWrapDEK(&p256mlkem768Params, publicKeyRaw, dek)
-}
-
-func P256MLKEM768UnwrapDEK(privateKeyRaw, wrappedDER []byte) ([]byte, error) {
-	return hybridNISTUnwrapDEK(&p256mlkem768Params, privateKeyRaw, wrappedDER)
-}
-
-func P384MLKEM1024WrapDEK(publicKeyRaw, dek []byte) ([]byte, error) {
-	return hybridNISTWrapDEK(&p384mlkem1024Params, publicKeyRaw, dek)
-}
-
-func P384MLKEM1024UnwrapDEK(privateKeyRaw, wrappedDER []byte) ([]byte, error) {
-	return hybridNISTUnwrapDEK(&p384mlkem1024Params, privateKeyRaw, wrappedDER)
+	return append([]byte(nil), sharedSecret...), nil
 }
 
 // hybridNISTCombiner returns the 32-byte SHA3-256 digest defined in
@@ -381,125 +396,4 @@ func mlkemDecapsulate(p *hybridNISTParams, mlkemSeed, mlkemCT []byte) ([]byte, e
 	default:
 		return nil, fmt.Errorf("unsupported ML-KEM key type: %s", p.keyType)
 	}
-}
-
-func hybridNISTWrapDEK(p *hybridNISTParams, publicKeyRaw, dek []byte) ([]byte, error) {
-	expectedPubSize := p.mlkemPubSize + p.ecPubSize
-	if len(publicKeyRaw) != expectedPubSize {
-		return nil, fmt.Errorf("invalid %s public key size: got %d want %d", p.keyType, len(publicKeyRaw), expectedPubSize)
-	}
-
-	mlkemPubBytes := publicKeyRaw[:p.mlkemPubSize]
-	ecPubBytes := publicKeyRaw[p.mlkemPubSize:]
-
-	ecPub, err := p.curve.NewPublicKey(ecPubBytes)
-	if err != nil {
-		return nil, fmt.Errorf("invalid EC public key: %w", err)
-	}
-	ephemeral, err := p.curve.GenerateKey(rand.Reader)
-	if err != nil {
-		return nil, fmt.Errorf("ECDH ephemeral key generation failed: %w", err)
-	}
-	tradSS, err := ephemeral.ECDH(ecPub)
-	if err != nil {
-		return nil, fmt.Errorf("ECDH failed: %w", err)
-	}
-	ephemeralPub := ephemeral.PublicKey().Bytes()
-
-	mlkemSS, mlkemCT, err := mlkemEncapsulate(p, mlkemPubBytes)
-	if err != nil {
-		return nil, err
-	}
-
-	wrapKey := hybridNISTCombiner(p, mlkemSS, tradSS, ephemeralPub, ecPubBytes)
-
-	hybridCt := make([]byte, 0, len(mlkemCT)+len(ephemeralPub))
-	hybridCt = append(hybridCt, mlkemCT...)
-	hybridCt = append(hybridCt, ephemeralPub...)
-
-	gcm, err := NewAESGcm(wrapKey)
-	if err != nil {
-		return nil, fmt.Errorf("NewAESGcm failed: %w", err)
-	}
-	encryptedDEK, err := gcm.Encrypt(dek)
-	if err != nil {
-		return nil, fmt.Errorf("AES-GCM encrypt failed: %w", err)
-	}
-
-	wrappedDER, err := asn1.Marshal(HybridNISTWrappedKey{
-		HybridCiphertext: hybridCt,
-		EncryptedDEK:     encryptedDEK,
-	})
-	if err != nil {
-		return nil, fmt.Errorf("asn1.Marshal failed: %w", err)
-	}
-	return wrappedDER, nil
-}
-
-func hybridNISTUnwrapDEK(p *hybridNISTParams, privateKeyRaw, wrappedDER []byte) ([]byte, error) {
-	if len(privateKeyRaw) <= mlkemSeedSize {
-		return nil, fmt.Errorf("invalid %s private key: shorter than ML-KEM seed + ECPrivateKey", p.keyType)
-	}
-	mlkemSeed := privateKeyRaw[:mlkemSeedSize]
-	ecPrivDER := privateKeyRaw[mlkemSeedSize:]
-
-	var wrapped HybridNISTWrappedKey
-	rest, err := asn1.Unmarshal(wrappedDER, &wrapped)
-	if err != nil {
-		return nil, fmt.Errorf("asn1.Unmarshal failed: %w", err)
-	}
-	if len(rest) != 0 {
-		return nil, fmt.Errorf("asn1.Unmarshal left %d trailing bytes", len(rest))
-	}
-
-	expectedCtSize := p.mlkemCtSize + p.ecPubSize
-	if len(wrapped.HybridCiphertext) != expectedCtSize {
-		return nil, fmt.Errorf("invalid %s ciphertext size: got %d want %d",
-			p.keyType, len(wrapped.HybridCiphertext), expectedCtSize)
-	}
-
-	mlkemCT := wrapped.HybridCiphertext[:p.mlkemCtSize]
-	ephemeralPubBytes := wrapped.HybridCiphertext[p.mlkemCtSize:]
-
-	ecdsaPriv, err := x509.ParseECPrivateKey(ecPrivDER)
-	if err != nil {
-		return nil, fmt.Errorf("parse ECPrivateKey: %w", err)
-	}
-	if ecdsaPriv.Curve != p.namedCurve {
-		return nil, fmt.Errorf("EC private key curve mismatch for %s", p.keyType)
-	}
-	ecdhPriv, err := ecdsaPriv.ECDH()
-	if err != nil {
-		return nil, fmt.Errorf("convert ECDSA to ECDH: %w", err)
-	}
-	tradPK := ecdhPriv.PublicKey().Bytes()
-
-	ephemeralPub, err := p.curve.NewPublicKey(ephemeralPubBytes)
-	if err != nil {
-		return nil, fmt.Errorf("invalid ephemeral EC public key: %w", err)
-	}
-	tradSS, err := ecdhPriv.ECDH(ephemeralPub)
-	if err != nil {
-		return nil, fmt.Errorf("ECDH failed: %w", err)
-	}
-
-	// ML-KEM implicit rejection (FIPS 203 §6.3) yields a pseudorandom shared
-	// secret on a wrong-key ciphertext rather than an error here; the AES-GCM
-	// decrypt below provides authentication.
-	mlkemSS, err := mlkemDecapsulate(p, mlkemSeed, mlkemCT)
-	if err != nil {
-		return nil, fmt.Errorf("ML-KEM decapsulate failed: %w", err)
-	}
-
-	wrapKey := hybridNISTCombiner(p, mlkemSS, tradSS, ephemeralPubBytes, tradPK)
-
-	gcm, err := NewAESGcm(wrapKey)
-	if err != nil {
-		return nil, fmt.Errorf("NewAESGcm failed: %w", err)
-	}
-	plaintext, err := gcm.Decrypt(wrapped.EncryptedDEK)
-	if err != nil {
-		return nil, fmt.Errorf("AES-GCM decrypt failed: %w", err)
-	}
-	return plaintext, nil
 }

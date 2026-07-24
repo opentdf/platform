@@ -4,6 +4,7 @@ import (
 	"crypto/ecdh"
 	"crypto/ecdsa"
 	"crypto/elliptic"
+	"crypto/mlkem"
 	"crypto/rand"
 	"crypto/sha256"
 	"crypto/x509"
@@ -15,46 +16,6 @@ import (
 	"strings"
 
 	"golang.org/x/crypto/hkdf"
-)
-
-type ECCMode uint8
-
-type KeyType string
-
-const (
-	RSA2048Key KeyType = "rsa:2048"
-	RSA4096Key KeyType = "rsa:4096"
-	EC256Key   KeyType = "ec:secp256r1"
-	EC384Key   KeyType = "ec:secp384r1"
-	EC521Key   KeyType = "ec:secp521r1"
-)
-
-// ParseKeyType validates a string as a known KeyType, returning an error for
-// unrecognized values.
-func ParseKeyType(alg string) (KeyType, error) {
-	switch KeyType(alg) {
-	case RSA2048Key, RSA4096Key,
-		EC256Key, EC384Key, EC521Key,
-		HybridXWingKey, HybridSecp256r1MLKEM768Key, HybridSecp384r1MLKEM1024Key:
-		return KeyType(alg), nil
-	default:
-		return "", fmt.Errorf("unrecognized key type: %s", alg)
-	}
-}
-
-const (
-	ECCModeSecp256r1 ECCMode = 0
-	ECCModeSecp384r1 ECCMode = 1
-	ECCModeSecp521r1 ECCMode = 2
-	ECCModeSecp256k1 ECCMode = 3
-)
-
-const (
-	ECCurveP256Size = 256
-	ECCurveP384Size = 384
-	ECCurveP521Size = 521
-	RSA2048Size     = 2048
-	RSA4096Size     = 4096
 )
 
 type KeyPair interface {
@@ -79,6 +40,10 @@ func NewKeyPair(kt KeyType) (KeyPair, error) {
 		return NewECKeyPair(mode)
 	case HybridSecp256r1MLKEM768Key, HybridSecp384r1MLKEM1024Key, HybridXWingKey:
 		return NewHybridKeyPair(kt)
+	case MLKEM768Key:
+		return NewMLKEMKeyPair()
+	case MLKEM1024Key:
+		return NewMLKEM1024KeyPair()
 	default:
 		return nil, fmt.Errorf("unsupported key type: %v", kt)
 	}
@@ -88,95 +53,12 @@ type ECKeyPair struct {
 	PrivateKey *ecdsa.PrivateKey
 }
 
-func IsECKeyType(kt KeyType) bool {
-	switch kt { //nolint:exhaustive // only handle ec types
-	case EC256Key, EC384Key, EC521Key:
-		return true
-	default:
-		return false
-	}
+type MLKEMKeyPair struct {
+	PrivateKey *mlkem.DecapsulationKey768
 }
 
-func IsRSAKeyType(kt KeyType) bool {
-	switch kt { //nolint:exhaustive // only handle rsa types
-	case RSA2048Key, RSA4096Key:
-		return true
-	default:
-		return false
-	}
-}
-
-// GetECCurveFromECCMode return elliptic curve from ecc mode
-func GetECCurveFromECCMode(mode ECCMode) (elliptic.Curve, error) {
-	var c elliptic.Curve
-
-	switch mode {
-	case ECCModeSecp256r1:
-		c = elliptic.P256()
-	case ECCModeSecp384r1:
-		c = elliptic.P384()
-	case ECCModeSecp521r1:
-		c = elliptic.P521()
-	case ECCModeSecp256k1:
-		// TODO FIXME - unsupported?
-		return nil, errors.New("unsupported ECC mode")
-	default:
-		return nil, fmt.Errorf("unsupported ECC mode %d", mode)
-	}
-
-	return c, nil
-}
-
-func (mode ECCMode) String() string {
-	switch mode {
-	case ECCModeSecp256r1:
-		return "ec:secp256r1"
-	case ECCModeSecp384r1:
-		return "ec:secp384r1"
-	case ECCModeSecp521r1:
-		return "ec:secp521r1"
-	case ECCModeSecp256k1:
-		return "ec:secp256k1"
-	}
-	return "unspecified"
-}
-
-// ECSizeToMode converts a curve size to an ECCMode
-func ECSizeToMode(size int) (ECCMode, error) {
-	switch size {
-	case ECCurveP256Size:
-		return ECCModeSecp256r1, nil
-	case ECCurveP384Size:
-		return ECCModeSecp384r1, nil
-	case ECCurveP521Size:
-		return ECCModeSecp521r1, nil
-	default:
-		return 0, fmt.Errorf("unsupported EC curve size: %d", size)
-	}
-}
-
-func ECKeyTypeToMode(kt KeyType) (ECCMode, error) {
-	switch kt { //nolint:exhaustive // only handle ec types
-	case EC256Key:
-		return ECCModeSecp256r1, nil
-	case EC384Key:
-		return ECCModeSecp384r1, nil
-	case EC521Key:
-		return ECCModeSecp521r1, nil
-	default:
-		return 0, fmt.Errorf("unsupported type: %v", kt)
-	}
-}
-
-func RSAKeyTypeToBits(kt KeyType) (int, error) {
-	switch kt { //nolint:exhaustive // only handle rsa types
-	case RSA2048Key:
-		return RSA2048Size, nil
-	case RSA4096Key:
-		return RSA4096Size, nil
-	default:
-		return 0, fmt.Errorf("unsupported type: %v", kt)
-	}
+type MLKEM1024KeyPair struct {
+	PrivateKey *mlkem.DecapsulationKey1024
 }
 
 // NewECKeyPair Generates an EC key pair of the given bit size.
@@ -452,7 +334,7 @@ func ECPrivateKeyInPemFormat(privateKey ecdsa.PrivateKey) (string, error) {
 
 	privateKeyPem := pem.EncodeToMemory(
 		&pem.Block{
-			Type:  "PRIVATE KEY",
+			Type:  pemBlockPrivateKey,
 			Bytes: privateKeyBytes,
 		},
 	)
@@ -468,7 +350,7 @@ func ECPublicKeyInPemFormat(publicKey ecdsa.PublicKey) (string, error) {
 
 	publicKeyPem := pem.EncodeToMemory(
 		&pem.Block{
-			Type:  "PUBLIC KEY",
+			Type:  pemBlockPublicKey,
 			Bytes: pkb,
 		},
 	)
@@ -508,4 +390,78 @@ func GetECKeySize(pemData []byte) (int, error) {
 // GetKeyType returns the key type (ECKey)
 func (keyPair ECKeyPair) GetKeyType() KeyType {
 	return EC256Key
+}
+
+func NewMLKEMKeyPair() (MLKEMKeyPair, error) {
+	privateKey, err := mlkem.GenerateKey768()
+	if err != nil {
+		return MLKEMKeyPair{}, fmt.Errorf("mlkem.GenerateKey768 failed: %w", err)
+	}
+
+	return MLKEMKeyPair{PrivateKey: privateKey}, nil
+}
+
+func NewMLKEM1024KeyPair() (MLKEM1024KeyPair, error) {
+	privateKey, err := mlkem.GenerateKey1024()
+	if err != nil {
+		return MLKEM1024KeyPair{}, fmt.Errorf("mlkem.GenerateKey1024 failed: %w", err)
+	}
+
+	return MLKEM1024KeyPair{PrivateKey: privateKey}, nil
+}
+
+func (keyPair MLKEMKeyPair) PrivateKeyInPemFormat() (string, error) {
+	if keyPair.PrivateKey == nil {
+		return "", errors.New("failed to generate PEM formatted private key")
+	}
+
+	der, err := marshalKEMPrivatePKCS8(OIDMLKEM768, keyPair.PrivateKey.Bytes())
+	if err != nil {
+		return "", fmt.Errorf("marshal ML-KEM-768 PKCS#8 failed: %w", err)
+	}
+	return string(pem.EncodeToMemory(&pem.Block{Type: pemBlockPrivateKey, Bytes: der})), nil
+}
+
+func (keyPair MLKEMKeyPair) PublicKeyInPemFormat() (string, error) {
+	if keyPair.PrivateKey == nil {
+		return "", errors.New("failed to generate PEM formatted public key")
+	}
+
+	der, err := marshalKEMPublicSPKI(OIDMLKEM768, keyPair.PrivateKey.EncapsulationKey().Bytes())
+	if err != nil {
+		return "", fmt.Errorf("marshal ML-KEM-768 SPKI failed: %w", err)
+	}
+	return string(pem.EncodeToMemory(&pem.Block{Type: pemBlockPublicKey, Bytes: der})), nil
+}
+
+func (keyPair MLKEMKeyPair) GetKeyType() KeyType {
+	return MLKEM768Key
+}
+
+func (keyPair MLKEM1024KeyPair) PrivateKeyInPemFormat() (string, error) {
+	if keyPair.PrivateKey == nil {
+		return "", errors.New("failed to generate PEM formatted private key")
+	}
+
+	der, err := marshalKEMPrivatePKCS8(OIDMLKEM1024, keyPair.PrivateKey.Bytes())
+	if err != nil {
+		return "", fmt.Errorf("marshal ML-KEM-1024 PKCS#8 failed: %w", err)
+	}
+	return string(pem.EncodeToMemory(&pem.Block{Type: pemBlockPrivateKey, Bytes: der})), nil
+}
+
+func (keyPair MLKEM1024KeyPair) PublicKeyInPemFormat() (string, error) {
+	if keyPair.PrivateKey == nil {
+		return "", errors.New("failed to generate PEM formatted public key")
+	}
+
+	der, err := marshalKEMPublicSPKI(OIDMLKEM1024, keyPair.PrivateKey.EncapsulationKey().Bytes())
+	if err != nil {
+		return "", fmt.Errorf("marshal ML-KEM-1024 SPKI failed: %w", err)
+	}
+	return string(pem.EncodeToMemory(&pem.Block{Type: pemBlockPublicKey, Bytes: der})), nil
+}
+
+func (keyPair MLKEM1024KeyPair) GetKeyType() KeyType {
+	return MLKEM1024Key
 }

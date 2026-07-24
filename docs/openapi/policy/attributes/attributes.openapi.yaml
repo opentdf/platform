@@ -120,6 +120,9 @@ paths:
       tags:
         - policy.attributes.AttributesService
       summary: GetAttributeValuesByFqns
+      description: |-
+        Deprecated: Use GetKeyMappingsByFqns for client-side key splits and
+         GetEntitleableAttributesByFqns for server-side entitlement resolution.
       operationId: policy.attributes.AttributesService.GetAttributeValuesByFqns
       parameters:
         - name: Connect-Protocol-Version
@@ -150,6 +153,84 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/policy.attributes.GetAttributeValuesByFqnsResponse'
+      deprecated: true
+  /policy.attributes.AttributesService/GetKeyMappingsByFqns:
+    post:
+      tags:
+        - policy.attributes.AttributesService
+      summary: GetKeyMappingsByFqns
+      description: |-
+        Returns only key-mapping information (rule and effective KAS keys) for the
+         requested attribute value FQNs, for client-side key split construction.
+      operationId: policy.attributes.AttributesService.GetKeyMappingsByFqns
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/policy.attributes.GetKeyMappingsByFqnsRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/policy.attributes.GetKeyMappingsByFqnsResponse'
+  /policy.attributes.AttributesService/GetEntitleableAttributesByFqns:
+    post:
+      tags:
+        - policy.attributes.AttributesService
+      summary: GetEntitleableAttributesByFqns
+      description: |-
+        Returns only entitlement-relevant information (rule, value identity, ordered
+         definition values, and subject mappings) for the requested attribute value
+         FQNs, for server-side decisioning / entitlement resolution.
+      operationId: policy.attributes.AttributesService.GetEntitleableAttributesByFqns
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/policy.attributes.GetEntitleableAttributesByFqnsRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/policy.attributes.GetEntitleableAttributesByFqnsResponse'
   /policy.attributes.AttributesService/CreateAttribute:
     post:
       tags:
@@ -725,6 +806,8 @@ components:
         - ALGORITHM_HPQT_XWING
         - ALGORITHM_HPQT_SECP256R1_MLKEM768
         - ALGORITHM_HPQT_SECP384R1_MLKEM1024
+        - ALGORITHM_MLKEM_768
+        - ALGORITHM_MLKEM_1024
       description: Supported key algorithms.
     policy.AttributeRuleTypeEnum:
       type: string
@@ -741,28 +824,6 @@ components:
         - CONDITION_BOOLEAN_TYPE_ENUM_UNSPECIFIED
         - CONDITION_BOOLEAN_TYPE_ENUM_AND
         - CONDITION_BOOLEAN_TYPE_ENUM_OR
-    policy.ConditionComparisonOperatorEnum:
-      type: string
-      title: ConditionComparisonOperatorEnum
-      enum:
-        - CONDITION_COMPARISON_OPERATOR_ENUM_UNSPECIFIED
-        - CONDITION_COMPARISON_OPERATOR_ENUM_EQUALS
-        - CONDITION_COMPARISON_OPERATOR_ENUM_CONTAINS
-        - CONDITION_COMPARISON_OPERATOR_ENUM_STARTS_WITH
-        - CONDITION_COMPARISON_OPERATOR_ENUM_ENDS_WITH
-      description: |-
-        How a selector result is compared against a comparison value. Replaces the all-in-one
-         SubjectMappingOperatorEnum by separating the comparison from the quantifier (see
-         ConditionQuantifierEnum) and case sensitivity.
-    policy.ConditionQuantifierEnum:
-      type: string
-      title: ConditionQuantifierEnum
-      enum:
-        - CONDITION_QUANTIFIER_ENUM_UNSPECIFIED
-        - CONDITION_QUANTIFIER_ENUM_ANY
-        - CONDITION_QUANTIFIER_ENUM_ALL
-        - CONDITION_QUANTIFIER_ENUM_NONE
-      description: How matches are aggregated across the comparison set (subject_external_values).
     policy.KasPublicKeyAlgEnum:
       type: string
       title: KasPublicKeyAlgEnum
@@ -776,6 +837,8 @@ components:
         - KAS_PUBLIC_KEY_ALG_ENUM_HPQT_XWING
         - KAS_PUBLIC_KEY_ALG_ENUM_HPQT_SECP256R1_MLKEM768
         - KAS_PUBLIC_KEY_ALG_ENUM_HPQT_SECP384R1_MLKEM1024
+        - KAS_PUBLIC_KEY_ALG_ENUM_MLKEM_768
+        - KAS_PUBLIC_KEY_ALG_ENUM_MLKEM_1024
     policy.SortDirection:
       type: string
       title: SortDirection
@@ -1113,10 +1176,7 @@ components:
              from idP/LDAP)
         operator:
           title: operator
-          description: |-
-            Deprecated: use comparison + quantifier (+ case_insensitive) instead. Normalized to the
-             decomposed fields in the service layer for backward compatibility.
-          deprecated: true
+          description: the evaluation operator of relation
           $ref: '#/components/schemas/policy.SubjectMappingOperatorEnum'
         subjectExternalValues:
           type: array
@@ -1129,23 +1189,10 @@ components:
             list of comparison values for the result of applying the
              subject_external_selector_value on a flattened Entity Representation
              (Subject), evaluated by the operator
-        comparison:
-          title: comparison
-          description: how each selector result is compared to subject_external_values entries
-          $ref: '#/components/schemas/policy.ConditionComparisonOperatorEnum'
-        quantifier:
-          title: quantifier
-          description: how matches are aggregated across subject_external_values
-          $ref: '#/components/schemas/policy.ConditionQuantifierEnum'
-        caseInsensitive:
-          title: case_insensitive
-          description: |-
-            when set true, comparison is case-insensitive; unset is treated as case-sensitive. Modeled as
-             BoolValue so an explicit false is distinguishable from unset, leaving room to change the default.
-          $ref: '#/components/schemas/google.protobuf.BoolValue'
       title: Condition
       required:
         - subjectExternalSelectorValue
+        - operator
       additionalProperties: false
       description: |-
         *
@@ -1833,6 +1880,52 @@ components:
         - obligationValue
         - action
       additionalProperties: false
+    policy.attributes.AttributeValueSubjectMappingRequest:
+      type: object
+      properties:
+        actions:
+          type: array
+          items:
+            $ref: '#/components/schemas/policy.Action'
+          title: actions
+          minItems: 1
+          description: |+
+            Required. The actions permitted by subjects in this mapping.
+            Action name or ID must not be empty if provided:
+            ```
+            this.all(item, item.name != '' || item.id != '')
+            ```
+
+        existingSubjectConditionSetId:
+          type: string
+          title: existing_subject_condition_set_id
+          format: uuid
+          description: Reuse an existing SubjectConditionSet.
+        newSubjectConditionSet:
+          title: new_subject_condition_set
+          description: Create a new SubjectConditionSet.
+          $ref: '#/components/schemas/policy.subjectmapping.SubjectConditionSetCreate'
+        namespaceId:
+          type: string
+          title: namespace_id
+          format: uuid
+        namespaceFqn:
+          type: string
+          title: namespace_fqn
+          minLength: 1
+          format: uri
+        metadata:
+          title: metadata
+          description: Optional. Common metadata for the subject mapping.
+          $ref: '#/components/schemas/common.MetadataMutable'
+      title: AttributeValueSubjectMappingRequest
+      additionalProperties: false
+      description: |+
+        Exactly one of existing_subject_condition_set_id or new_subject_condition_set must be provided:
+        ```
+        (this.existing_subject_condition_set_id != '') != has(this.new_subject_condition_set)
+        ```
+
     policy.attributes.AttributesSort:
       type: object
       properties:
@@ -1934,6 +2027,15 @@ components:
           description: |-
             Optional
              Existing obligation values to trigger for the newly created attribute value.
+        subjectMappings:
+          type: array
+          items:
+            $ref: '#/components/schemas/policy.attributes.AttributeValueSubjectMappingRequest'
+          title: subject_mappings
+          maxItems: 250
+          description: |-
+            Optional
+             Subject mappings to associate with the newly created attribute value.
         metadata:
           title: metadata
           description: |-
@@ -2139,6 +2241,207 @@ components:
           title: value
           $ref: '#/components/schemas/policy.attributes.GetAttributeValuesByFqnsResponse.AttributeAndValue'
       title: FqnAttributeValuesEntry
+      additionalProperties: false
+    policy.attributes.GetEntitleableAttributesByFqnsRequest:
+      type: object
+      properties:
+        fqns:
+          type: array
+          items:
+            type: string
+            maxItems: 250
+            minItems: 1
+          title: fqns
+          maxItems: 250
+          minItems: 1
+          description: |-
+            Required
+             Fully Qualified Names of attribute values (i.e. https://<namespace>/attr/<attribute_name>/value/<value_name>), normalized to lower case.
+      title: GetEntitleableAttributesByFqnsRequest
+      additionalProperties: false
+      description: |-
+        Entitleable Attributes By FQNs (server-side decisioning path)
+
+        Narrow read API for Auth Service / Access PDP entitlement resolution. Given
+        attribute value FQNs, returns the parent definitions (deduped, each with its
+        rule and namespace identity) and, per requested value, the value identity and
+        the subject mappings needed to resolve entitlements. Hierarchy definitions
+        additionally carry their ordered values with subject mappings, for hierarchy
+        rule propagation. It does not return KAS keys, grants, resource mappings,
+        obligations, or metadata. A value that does not exist under a definition with
+        allow_traversal is returned with its definition and an empty value identity (no
+        value_id, no subject mappings).
+    policy.attributes.GetEntitleableAttributesByFqnsResponse:
+      type: object
+      properties:
+        definitions:
+          type: object
+          title: definitions
+          additionalProperties:
+            title: value
+            $ref: '#/components/schemas/policy.attributes.GetEntitleableAttributesByFqnsResponse.EntitleableDefinition'
+          description: map of definition FQN to its definition, returned once each (deduped)
+        fqnEntitleableAttributes:
+          type: object
+          title: fqn_entitleable_attributes
+          additionalProperties:
+            title: value
+            $ref: '#/components/schemas/policy.attributes.GetEntitleableAttributesByFqnsResponse.EntitleableAttribute'
+          description: map of requested value FQN to its value and parent definition reference, for O(1) lookup
+      title: GetEntitleableAttributesByFqnsResponse
+      additionalProperties: false
+    policy.attributes.GetEntitleableAttributesByFqnsResponse.DefinitionsEntry:
+      type: object
+      properties:
+        key:
+          type: string
+          title: key
+        value:
+          title: value
+          $ref: '#/components/schemas/policy.attributes.GetEntitleableAttributesByFqnsResponse.EntitleableDefinition'
+      title: DefinitionsEntry
+      additionalProperties: false
+    policy.attributes.GetEntitleableAttributesByFqnsResponse.EntitleableAttribute:
+      type: object
+      properties:
+        definitionFqn:
+          type: string
+          title: definition_fqn
+          description: the FQN of the parent definition, a key into `definitions`
+        value:
+          title: value
+          description: the requested attribute value plus its subject mappings
+          $ref: '#/components/schemas/policy.attributes.GetEntitleableAttributesByFqnsResponse.EntitleableValue'
+      title: EntitleableAttribute
+      additionalProperties: false
+    policy.attributes.GetEntitleableAttributesByFqnsResponse.EntitleableDefinition:
+      type: object
+      properties:
+        rule:
+          title: rule
+          description: the attribute rule, which drives rule logic during decisioning
+          $ref: '#/components/schemas/policy.AttributeRuleTypeEnum'
+        values:
+          type: array
+          items:
+            $ref: '#/components/schemas/policy.attributes.GetEntitleableAttributesByFqnsResponse.EntitleableValue'
+          title: values
+          description: |-
+            the definition's values in order, each with its subject mappings. Populated
+             ONLY for hierarchy definitions (whose decisioning needs sibling values and
+             their mappings to propagate entitlement up the chain). Empty for any_of /
+             all_of, where the requested per-value entries below carry what's needed.
+        namespace:
+          title: namespace
+          description: |-
+            the definition's namespace identity (id and fqn), needed for
+             namespaced-policy decisioning and registered-resource matching. Only the
+             identity is populated; grants, keys, and metadata are not.
+          $ref: '#/components/schemas/policy.Namespace'
+      title: EntitleableDefinition
+      additionalProperties: false
+      description: |-
+        An attribute definition referenced by one or more requested value FQNs,
+         returned once regardless of how many of its values were requested.
+    policy.attributes.GetEntitleableAttributesByFqnsResponse.EntitleableValue:
+      type: object
+      properties:
+        fqn:
+          type: string
+          title: fqn
+          description: the attribute value FQN
+        valueId:
+          type: string
+          title: value_id
+          description: identity of the attribute value
+        subjectMappings:
+          type: array
+          items:
+            $ref: '#/components/schemas/policy.SubjectMapping'
+          title: subject_mappings
+          description: subject mappings used to resolve entitlements for this value
+      title: EntitleableValue
+      additionalProperties: false
+      description: An attribute value plus the subject mappings that entitle it.
+    policy.attributes.GetEntitleableAttributesByFqnsResponse.FqnEntitleableAttributesEntry:
+      type: object
+      properties:
+        key:
+          type: string
+          title: key
+        value:
+          title: value
+          $ref: '#/components/schemas/policy.attributes.GetEntitleableAttributesByFqnsResponse.EntitleableAttribute'
+      title: FqnEntitleableAttributesEntry
+      additionalProperties: false
+    policy.attributes.GetKeyMappingsByFqnsRequest:
+      type: object
+      properties:
+        fqns:
+          type: array
+          items:
+            type: string
+            maxItems: 250
+            minItems: 1
+          title: fqns
+          maxItems: 250
+          minItems: 1
+          description: |-
+            Required
+             Fully Qualified Names of attribute values (i.e. https://<namespace>/attr/<attribute_name>/value/<value_name>), normalized to lower case.
+      title: GetKeyMappingsByFqnsRequest
+      additionalProperties: false
+      description: |-
+        Key Mappings By FQNs (client-side key split path)
+
+        Narrow read API for the client-side encrypt flow. Given attribute value FQNs,
+        returns only the information needed to build key splits: the governing
+        attribute rule and the effective mapped KAS keys resolved server-side. It does not
+        return subject mappings, resource mappings, obligations, sibling values, or
+        metadata. Prefer this over GetAttributeValuesByFqns when building splits. A
+        value that does not exist under a definition with allow_traversal resolves at
+        the definition (then namespace) level, supporting front-loaded TDF creation.
+    policy.attributes.GetKeyMappingsByFqnsResponse:
+      type: object
+      properties:
+        fqnKeyMappings:
+          type: object
+          title: fqn_key_mappings
+          additionalProperties:
+            title: value
+            $ref: '#/components/schemas/policy.attributes.GetKeyMappingsByFqnsResponse.AttributeKeyMapping'
+          description: map of value FQN to its key mapping information, for O(1) lookup
+      title: GetKeyMappingsByFqnsResponse
+      additionalProperties: false
+    policy.attributes.GetKeyMappingsByFqnsResponse.AttributeKeyMapping:
+      type: object
+      properties:
+        rule:
+          title: rule
+          description: the attribute rule, which governs how splits combine (any_of / all_of / hierarchy)
+          $ref: '#/components/schemas/policy.AttributeRuleTypeEnum'
+        keys:
+          type: array
+          items:
+            $ref: '#/components/schemas/policy.SimpleKasKey'
+          title: keys
+          description: |-
+            effective KAS keys resolved for this value (value > definition > namespace
+             precedence). Legacy grants are not used by this API; values configured only
+             with grants and no kas_keys return an empty key set, and the client resolves
+             those grants via GetAttributeValuesByFqns.
+      title: AttributeKeyMapping
+      additionalProperties: false
+    policy.attributes.GetKeyMappingsByFqnsResponse.FqnKeyMappingsEntry:
+      type: object
+      properties:
+        key:
+          type: string
+          title: key
+        value:
+          title: value
+          $ref: '#/components/schemas/policy.attributes.GetKeyMappingsByFqnsResponse.AttributeKeyMapping'
+      title: FqnKeyMappingsEntry
       additionalProperties: false
     policy.attributes.ListAttributeValuesRequest:
       type: object
@@ -2383,6 +2686,24 @@ components:
           format: uuid
           description: Required
       title: ValueKeyAccessServer
+      additionalProperties: false
+    policy.subjectmapping.SubjectConditionSetCreate:
+      type: object
+      properties:
+        subjectSets:
+          type: array
+          items:
+            $ref: '#/components/schemas/policy.SubjectSet'
+          title: subject_sets
+          minItems: 1
+          description: Required
+        metadata:
+          title: metadata
+          description: |-
+            Optional
+             Common metadata
+          $ref: '#/components/schemas/common.MetadataMutable'
+      title: SubjectConditionSetCreate
       additionalProperties: false
     connect-protocol-version:
       type: number

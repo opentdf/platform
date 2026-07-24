@@ -2,10 +2,11 @@
 
 ## Project Structure & Module Organization
 
-This repo is a Go workspace (`go.work`) containing multiple Go modules:
+This repo is a Go workspace (`go.work`) containing multiple Go modules, built using make.
 
 - `service/`: main OpenTDF server and platform services (binary entrypoint: `service/main.go`).
 - `sdk/`: Go SDK and generated clients.
+- `otdfctl/`: Command line for interacting with server, providing CLI for all SDK operations.
 - `lib/*/`: shared libraries (e.g., `lib/ocrypto`, `lib/identifier`).
 - `protocol/` and `service/`: protobuf sources; generated Go lives under `protocol/go/` and docs under `docs/grpc/` + `docs/openapi/`.
 - `tests-bdd/`: BDD/integration-style tests (Godog) and feature files (`tests-bdd/features/`).
@@ -26,9 +27,8 @@ Prefer `make` targets at repo root:
 - Go formatting is enforced: run `make fmt` (uses `golangci-lint fmt`; Go uses tabs for indentation).
 - Imports should be goimports-compatible; keep package names lowercase; exported identifiers use `PascalCase`.
 - Protobuf changes must pass `buf lint` and should be regenerated via `make proto-generate`.
-- Always run `gofumpt` on Go files after making changes
-- The project uses `gofumpt` (stricter than `gofmt`) for formatting
-- Before completing Go-related tasks, run: `~/go/bin/gofumpt -w <files>`
+- Always run `make fmt` on Go files after making changes.
+- Always use signed commits with 'conventional commit' messages.
 
 ## Testing Guidelines
 
@@ -36,12 +36,12 @@ Prefer `make` targets at repo root:
 
 **CRITICAL**: All Go code changes must pass these checks before being marked as complete:
 
-1. **Linting**: `golangci-lint run ./path/to/changed/files.go`
-   - Must pass with 0 issues
+1. **Linting**: `make lint`
+   - Must pass with 0 new issues
    - Fixes common issues: formatting, shadowing, unused code, suspicious constructs
    - Never let the user discover linting issues from CI
 
-2. **Unit Tests**: `go test ./...` (or `make test` from repo root)
+2. **Unit Tests**: `make test` from repo root
    - All existing tests must continue to pass
    - Add tests for new functionality
 
@@ -59,7 +59,7 @@ Prefer `make` targets at repo root:
 ## Commit & Pull Request Guidelines
 
 - Commit messages follow Conventional Commits (e.g., `feat(sdk): ...`, `fix(core): ...`).
-- DCO sign-off is required: use `git commit -s -m "feat(scope): summary"`. See `CONTRIBUTING.md`.
+- DCO sign-off is required: use `git commit -S -s -m "feat(scope): summary"` (`-S` = cryptographic signing, `-s` = DCO). See `CONTRIBUTING.md`.
 - PRs should describe changes, include testing notes, and update docs/tests when applicable (see `.github/pull_request_template.md`).
 
 ## Security & Configuration Tips

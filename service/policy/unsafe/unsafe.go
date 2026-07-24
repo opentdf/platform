@@ -411,6 +411,72 @@ func (s *UnsafeService) UnsafeDeleteAttributeValue(ctx context.Context, req *con
 	return connect.NewResponse(rsp), nil
 }
 
+func (s *UnsafeService) UnsafeUpdateKey(ctx context.Context, req *connect.Request[unsafe.UnsafeUpdateKeyRequest]) (*connect.Response[unsafe.UnsafeUpdateKeyResponse], error) {
+	id := req.Msg.GetId()
+
+	rsp := &unsafe.UnsafeUpdateKeyResponse{}
+
+	auditParams := audit.PolicyEventParams{
+		ActionType: audit.ActionTypeUpdate,
+		ObjectType: audit.ObjectTypeKasRegistryKeys,
+		ObjectID:   id,
+	}
+
+	err := s.dbClient.RunInTx(ctx, func(txClient *policydb.PolicyDBClient) error {
+		existing, err := txClient.GetKey(ctx, &kasregistry.GetKeyRequest_Id{Id: id})
+		if err != nil {
+			s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
+			return db.StatusifyError(ctx, s.logger, err, db.ErrTextGetRetrievalFailed, slog.String("id", id))
+		}
+
+		auditParams.Original = unsafeUpdateKeyAuditValue(existing)
+
+		updated, err := txClient.UnsafeUpdateKey(ctx, existing, req.Msg)
+		if err != nil {
+			s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
+			return db.StatusifyError(ctx, s.logger, err, db.ErrTextUpdateFailed, slog.String("id", id))
+		}
+
+		auditParams.Updated = unsafeUpdateKeyAuditValue(updated)
+		s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
+
+		rsp.Key = updated
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return connect.NewResponse(rsp), nil
+}
+
+func unsafeUpdateKeyAuditValue(kasKey *policy.KasKey) *policy.KasKey {
+	if kasKey.GetKey() == nil {
+		return nil
+	}
+
+	return &policy.KasKey{
+		KasUri: kasKey.GetKasUri(),
+		Key: &policy.AsymmetricKey{
+			KeyId:          kasKey.GetKey().GetKeyId(),
+			KeyMode:        kasKey.GetKey().GetKeyMode(),
+			ProviderConfig: unsafeUpdateKeyAuditProviderConfig(kasKey.GetKey().GetProviderConfig()),
+		},
+	}
+}
+
+func unsafeUpdateKeyAuditProviderConfig(providerConfig *policy.KeyProviderConfig) *policy.KeyProviderConfig {
+	if providerConfig == nil {
+		return nil
+	}
+
+	return &policy.KeyProviderConfig{
+		Id:      providerConfig.GetId(),
+		Name:    providerConfig.GetName(),
+		Manager: providerConfig.GetManager(),
+	}
+}
+
 func (s *UnsafeService) UnsafeDeleteKasKey(ctx context.Context, req *connect.Request[unsafe.UnsafeDeleteKasKeyRequest]) (*connect.Response[unsafe.UnsafeDeleteKasKeyResponse], error) {
 	id := req.Msg.GetId()
 

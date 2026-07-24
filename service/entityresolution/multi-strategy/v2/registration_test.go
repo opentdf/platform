@@ -9,9 +9,68 @@ import (
 	ersV2 "github.com/opentdf/platform/protocol/go/entityresolution/v2"
 	"github.com/opentdf/platform/service/entityresolution/multi-strategy/types"
 	"github.com/opentdf/platform/service/logger"
+	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/types/known/anypb"
 	"google.golang.org/protobuf/types/known/structpb"
 )
+
+func TestClaimsToResultData(t *testing.T) {
+	type profile struct {
+		Name   string   `json:"name"`
+		Groups []string `json:"groups"`
+	}
+
+	tests := []struct {
+		name   string
+		claims map[string]interface{}
+		want   map[string]interface{}
+	}{
+		{
+			name:   "nil claims",
+			claims: nil,
+			want:   map[string]interface{}{},
+		},
+		{
+			name: "all claims are normalized in one pass",
+			claims: map[string]interface{}{
+				"groups":    []string{"engineering", "platform"},
+				"group_ids": []int{1, 2},
+				"attributes": map[string][]bool{
+					"enabled": {true, false},
+				},
+				"profile": profile{Name: "alice", Groups: []string{"engineering"}},
+				"age":     42,
+			},
+			want: map[string]interface{}{
+				"groups":    []interface{}{"engineering", "platform"},
+				"group_ids": []interface{}{float64(1), float64(2)},
+				"attributes": map[string]interface{}{
+					"enabled": []interface{}{true, false},
+				},
+				"profile": map[string]interface{}{
+					"name":   "alice",
+					"groups": []interface{}{"engineering"},
+				},
+				"age": float64(42),
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := claimsToResultData(tt.claims)
+			require.NoError(t, err)
+			require.Equal(t, tt.want, got)
+		})
+	}
+}
+
+func TestClaimsToResultDataReturnsMarshalError(t *testing.T) {
+	claims := map[string]interface{}{"unsupported": make(chan int)}
+
+	_, err := claimsToResultData(claims)
+	require.Error(t, err)
+}
 
 // TestERSV2_ResolveEntities_PopulatesRepresentations is spec item 4: the
 // v2 handler's direct symptom test. When ResolveEntity succeeds but its

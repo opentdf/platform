@@ -112,12 +112,13 @@ func (ers *ERSV2) ResolveEntities(
 			continue
 		}
 
-		// Convert multi-strategy result to v2 protocol format
-		resultData := make(map[string]interface{})
-
-		// Add resolved claims
-		for claimName, claimValue := range result.Claims {
-			resultData[claimName] = claimValue
+		// Convert all resolved claims to protobuf-compatible JSON values at once.
+		resultData, err := claimsToResultData(result.Claims)
+		if err != nil {
+			ers.logger.Error("failed to normalize resolved claims",
+				slog.String("entity_id", entityID),
+				slog.String("error", err.Error()))
+			continue
 		}
 
 		// Add metadata with "metadata_" prefix
@@ -382,6 +383,22 @@ func (ers *ERSV2) createEntityFromResultV2(ctx context.Context, result *types.En
 	// Set the EphemeralId on the entity
 	entityV2.EphemeralId = entityID
 	return entityV2
+}
+
+func claimsToResultData(claims map[string]interface{}) (map[string]interface{}, error) {
+	bytes, err := json.Marshal(claims)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal claims: %w", err)
+	}
+
+	resultData := make(map[string]interface{})
+	if err := json.Unmarshal(bytes, &resultData); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal claims: %w", err)
+	}
+	if resultData == nil {
+		resultData = make(map[string]interface{})
+	}
+	return resultData, nil
 }
 
 // Helper functions for v2

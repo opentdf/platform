@@ -247,7 +247,15 @@ func ECPrivateKeyFromPem(privateECKeyInPem []byte) (*ecdh.PrivateKey, error) {
 	}
 
 	priv, err := x509.ParsePKCS8PrivateKey(block.Bytes)
-	if err != nil {
+	switch {
+	case err == nil:
+	case strings.Contains(err.Error(), "use ParseECPrivateKey instead"):
+		// Check if it's in SEC1 / RFC 5915 encoding using the same pattern as `asym_decryption.go`: `FromPrivatePEMWithSalt`
+		priv, err = x509.ParseECPrivateKey(block.Bytes)
+		if err != nil {
+			return nil, fmt.Errorf("ec x509.ParseECPrivateKey failed: %w", err)
+		}
+	default:
 		return nil, fmt.Errorf("ec x509.ParsePKCS8PrivateKey failed: %w", err)
 	}
 

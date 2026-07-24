@@ -114,6 +114,8 @@ func runTests() int {
 			cukes.RegisterObligationsStepDefinitions(ctx, platformCukesContext)
 			cukes.RegisterKasRegistryStepDefinitions(ctx)
 			cukes.RegisterEncryptionStepDefinitions(ctx)
+			cukes.RegisterLDAPStepDefinitions(ctx, platformCukesContext)
+			cukes.RegisterERSStepDefinitions(ctx, platformCukesContext)
 			platformCukesContext.InitializeScenario(ctx)
 		},
 		Options: &opts,

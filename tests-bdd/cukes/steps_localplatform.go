@@ -59,6 +59,7 @@ type platformStartOptions struct {
 	platformProvisionPath  *string
 	kcProvisionPath        *template.Template
 	provisionDefaultPolicy bool
+	ersConfig              *ERSInlineConfig
 }
 
 func (s *LocalPlatformStepDefinitions) aUser(ctx context.Context, username string, email string, attributes *godog.Table) (context.Context, error) {
@@ -170,7 +171,7 @@ func (s *LocalPlatformStepDefinitions) commonLocalPlatform(ctx context.Context, 
 	if !exists {
 		version = platformImageEnvironmentLocalImage
 	}
-	platformConfigPath, err := createPlatformConfiguration(localPlatformOptions, scenarioContext.ScenarioOptions, version == debugVersion, options.platformProvisionPath)
+	platformConfigPath, err := createPlatformConfiguration(localPlatformOptions, scenarioContext.ScenarioOptions, version == debugVersion, options.platformProvisionPath, options.ersConfig)
 	if err != nil {
 		return ctx, err
 	}
@@ -530,7 +531,7 @@ func createPlatformComposeConfiguration(options *LocalDevOptions) (string, error
 }
 
 // createPlatformConfiguration generates a platform configuration from a go text template for platform option settings
-func createPlatformConfiguration(options *LocalDevOptions, scenarioOptions *LocalDevScenarioOptions, devMode bool, platformTemplatePath *string) (string, error) {
+func createPlatformConfiguration(options *LocalDevOptions, scenarioOptions *LocalDevScenarioOptions, devMode bool, platformTemplatePath *string, ersConfig *ERSInlineConfig) (string, error) {
 	tempFileName := path.Join(options.CukesDir, "opentdf.yaml")
 	platformKeysDir := options.KeysDir
 	pgHost := "localhost"
@@ -557,10 +558,33 @@ func createPlatformConfiguration(options *LocalDevOptions, scenarioOptions *Loca
 		"pgHost":          pgHost,
 		"platformKeysDir": platformKeysDir,
 		"authRealm":       scenarioOptions.KeycloakRealm,
+		"ldapPort":        scenarioOptions.LDAPPort,
 	}); err != nil {
 		return tempFileName, err
 	}
-	err := os.WriteFile(tempFileName, strBuffer.Bytes(), os.FileMode(0o755)) //nolint:mnd // mkdir dir
+
+	renderedBytes := strBuffer.Bytes()
+	if ersConfig != nil {
+		var configMap map[interface{}]interface{}
+		if err := yaml.Unmarshal(renderedBytes, &configMap); err != nil {
+			return tempFileName, fmt.Errorf("failed to parse rendered platform config: %w", err)
+		}
+		services, ok := configMap["services"].(map[interface{}]interface{})
+		if !ok {
+			return tempFileName, errors.New("services section not found in platform config")
+		}
+		ersSection, err := buildEntityResolutionConfig(ersConfig, options.Hostname, scenarioOptions.LDAPPort)
+		if err != nil {
+			return tempFileName, fmt.Errorf("failed to build ERS config: %w", err)
+		}
+		services["entityresolution"] = ersSection
+		renderedBytes, err = yaml.Marshal(configMap)
+		if err != nil {
+			return tempFileName, fmt.Errorf("failed to marshal patched platform config: %w", err)
+		}
+	}
+
+	err := os.WriteFile(tempFileName, renderedBytes, os.FileMode(0o755)) //nolint:mnd // mkdir dir
 	if err != nil {
 		return tempFileName, err
 	}

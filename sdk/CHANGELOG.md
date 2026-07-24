@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.28.0](https://github.com/opentdf/platform/compare/sdk/v0.27.0...sdk/v0.28.0) (2026-07-24)
+
+
+### Features
+
+* **sdk:** add AccessToken accessor to SDK ([#3775](https://github.com/opentdf/platform/issues/3775)) ([2911e22](https://github.com/opentdf/platform/commit/2911e22e1223cae5c81eadcc346000d3224a4fcd))
+
 ## [0.27.0](https://github.com/opentdf/platform/compare/sdk/v0.26.0...sdk/v0.27.0) (2026-07-21)
 
 

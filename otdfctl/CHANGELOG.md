@@ -1,5 +1,24 @@
 # Changelog
 
+## [0.36.0](https://github.com/opentdf/platform/compare/otdfctl/v0.35.0...otdfctl/v0.36.0) (2026-07-24)
+
+
+### ⚠ BREAKING CHANGES
+
+* **policy:** GetPC does not respect manager field. ([#3752](https://github.com/opentdf/platform/issues/3752))
+
+### Features
+
+* **cli:** expose handler hook for injecting SDK options ([#3755](https://github.com/opentdf/platform/issues/3755)) ([76305b0](https://github.com/opentdf/platform/commit/76305b04af3f1129dbe1ed337ef731de54be0457))
+* **cli:** Unsafe update key cli ([#3733](https://github.com/opentdf/platform/issues/3733)) ([65d888e](https://github.com/opentdf/platform/commit/65d888ed2436954063d895bc31ce98674d2a1208))
+
+
+### Bug Fixes
+
+* **deps:** bump github.com/opentdf/platform/protocol/go from 0.36.0 to 0.39.0 in /otdfctl ([#3765](https://github.com/opentdf/platform/issues/3765)) ([a3346f8](https://github.com/opentdf/platform/commit/a3346f8a5e897e891c675ec3752b6a6780f6b906))
+* **deps:** bump github.com/opentdf/platform/sdk from 0.25.0 to 0.27.0 in /otdfctl ([#3773](https://github.com/opentdf/platform/issues/3773)) ([490c990](https://github.com/opentdf/platform/commit/490c99062f96577e96499f2e87034f11f7da5c0b))
+* **policy:** GetPC does not respect manager field. ([#3752](https://github.com/opentdf/platform/issues/3752)) ([0d3c0a0](https://github.com/opentdf/platform/commit/0d3c0a0e49de669b0c4bb691d51ff0abef787693))
+
 ## [0.35.0](https://github.com/opentdf/platform/compare/otdfctl/v0.34.0...otdfctl/v0.35.0) (2026-07-07)
 
 

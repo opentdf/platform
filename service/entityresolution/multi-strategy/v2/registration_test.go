@@ -2,7 +2,6 @@ package multistrategy
 
 import (
 	"context"
-	"reflect"
 	"testing"
 
 	"connectrpc.com/connect"
@@ -10,6 +9,7 @@ import (
 	ersV2 "github.com/opentdf/platform/protocol/go/entityresolution/v2"
 	"github.com/opentdf/platform/service/entityresolution/multi-strategy/types"
 	"github.com/opentdf/platform/service/logger"
+	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/types/known/anypb"
 	"google.golang.org/protobuf/types/known/structpb"
 )
@@ -59,12 +59,8 @@ func TestClaimsToResultData(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got, err := claimsToResultData(tt.claims)
-			if err != nil {
-				t.Fatalf("claimsToResultData() error = %v", err)
-			}
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("claimsToResultData() = %#v, want %#v", got, tt.want)
-			}
+			require.NoError(t, err)
+			require.Equal(t, tt.want, got)
 		})
 	}
 }
@@ -72,9 +68,8 @@ func TestClaimsToResultData(t *testing.T) {
 func TestClaimsToResultDataReturnsMarshalError(t *testing.T) {
 	claims := map[string]interface{}{"unsupported": make(chan int)}
 
-	if _, err := claimsToResultData(claims); err == nil {
-		t.Fatal("claimsToResultData() error = nil, want marshal error")
-	}
+	_, err := claimsToResultData(claims)
+	require.Error(t, err)
 }
 
 // TestERSV2_ResolveEntities_PopulatesRepresentations is spec item 4: the

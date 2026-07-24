@@ -112,17 +112,18 @@ func (ers *ERSV2) ResolveEntities(
 			continue
 		}
 
-		// Convert multi-strategy result to v2 protocol format
-		resultData := make(map[string]interface{})
-
-		// Add resolved claims
-		for claimName, claimValue := range result.Claims {
-			resultData[claimName] = normalizeStructValue(claimValue)
+		// Convert all resolved claims to protobuf-compatible JSON values at once.
+		resultData, err := claimsToResultData(result.Claims)
+		if err != nil {
+			ers.logger.Error("failed to normalize resolved claims",
+				slog.String("entity_id", entityID),
+				slog.String("error", err.Error()))
+			continue
 		}
 
 		// Add metadata with "metadata_" prefix
 		for metaKey, metaValue := range result.Metadata {
-			resultData[("metadata_" + metaKey)] = normalizeStructValue(metaValue)
+			resultData[("metadata_" + metaKey)] = metaValue
 		}
 
 		// Convert to protobuf struct
@@ -384,29 +385,20 @@ func (ers *ERSV2) createEntityFromResultV2(ctx context.Context, result *types.En
 	return entityV2
 }
 
-func normalizeStructValue(value interface{}) interface{} {
-	switch typed := value.(type) {
-	case []string:
-		normalized := make([]interface{}, len(typed))
-		for i, item := range typed {
-			normalized[i] = item
-		}
-		return normalized
-	case []interface{}:
-		normalized := make([]interface{}, len(typed))
-		for i, item := range typed {
-			normalized[i] = normalizeStructValue(item)
-		}
-		return normalized
-	case map[string]interface{}:
-		normalized := make(map[string]interface{}, len(typed))
-		for key, item := range typed {
-			normalized[key] = normalizeStructValue(item)
-		}
-		return normalized
-	default:
-		return value
+func claimsToResultData(claims map[string]interface{}) (map[string]interface{}, error) {
+	bytes, err := json.Marshal(claims)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal claims: %w", err)
 	}
+
+	resultData := make(map[string]interface{})
+	if err := json.Unmarshal(bytes, &resultData); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal claims: %w", err)
+	}
+	if resultData == nil {
+		resultData = make(map[string]interface{})
+	}
+	return resultData, nil
 }
 
 // Helper functions for v2

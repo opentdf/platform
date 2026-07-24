@@ -7,7 +7,9 @@ import (
 	"strings"
 
 	// Register the pgx database/sql driver for configured SQL providers.
+	_ "github.com/go-sql-driver/mysql" // MySQL driver
 	_ "github.com/jackc/pgx/v5/stdlib"
+	_ "github.com/mattn/go-sqlite3" // SQLite driver
 
 	"github.com/opentdf/platform/service/entityresolution/multi-strategy/types"
 )

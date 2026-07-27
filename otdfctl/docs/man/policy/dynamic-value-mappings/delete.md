@@ -21,11 +21,13 @@ For more information about dynamic value mappings, see the `dynamic-value-mappin
 ## Examples
 
 Delete a dynamic value mapping by ID (prompts for confirmation):
+
 ```shell
 otdfctl policy dynamic-value-mappings delete --id 3c51a593-cd4d-4b74-9f97-3b3b6b0a6f21
 ```
 
 Delete without the interactive confirmation:
+
 ```shell
 otdfctl policy dynamic-value-mappings delete --id 3c51a593-cd4d-4b74-9f97-3b3b6b0a6f21 --force
 ```

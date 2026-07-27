@@ -19,11 +19,13 @@ For more information about dynamic value mappings, see the `dynamic-value-mappin
 ## Examples
 
 Get a dynamic value mapping by ID:
+
 ```shell
 otdfctl policy dynamic-value-mappings get --id 3c51a593-cd4d-4b74-9f97-3b3b6b0a6f21
 ```
 
 Get a dynamic value mapping as JSON:
+
 ```shell
 otdfctl policy dynamic-value-mappings get --id 3c51a593-cd4d-4b74-9f97-3b3b6b0a6f21 --json
 ```

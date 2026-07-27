@@ -53,16 +53,19 @@ For more information about subject condition sets, see the `subject-condition-se
 ## Examples
 
 Create a dynamic value mapping entitling 'read' where a patient assignment matches the requested value:
+
 ```shell
 otdfctl policy dynamic-value-mappings create --attribute 891cfe85-b381-4f85-9699-5f7dbfe2a9ab --selector '.patientAssignments[]' --operator IN --action read
 ```
 
 Create a dynamic value mapping scoped by Attribute Definition FQN with a substring operator:
+
 ```shell
 otdfctl policy dynamic-value-mappings create --attribute https://hospital.co/attr/mrn --selector '.patientAssignments[]' --operator IN_CONTAINS --action read
 ```
 
 Create a dynamic value mapping with a static pre-gate Subject Condition Set:
+
 ```shell
 otdfctl policy dynamic-value-mappings create --attribute 891cfe85-b381-4f85-9699-5f7dbfe2a9ab --selector '.patientAssignments[]' --operator IN --action read --subject-condition-set '[
   {

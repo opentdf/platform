@@ -120,7 +120,7 @@ teardown_file() {
     assert_not_equal "$coex_val_id" ""
 
     # attach a value-level subject mapping to the definition
-    run ./otdfctl $HOST $WITH_CREDS policy subject-mappings create -a "$coex_val_id" --action "$ACTION_READ_NAME" --subject-condition-set "$SCS_1" --json
+    run ./otdfctl $HOST $WITH_CREDS policy subject-mappings create -a "$coex_val_id" --action "$ACTION_READ_NAME" --subject-condition-set-new "$SCS_1" --json
     assert_success
 
     # a dynamic value mapping on the same definition must be rejected by the server

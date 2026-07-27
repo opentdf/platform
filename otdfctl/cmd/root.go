@@ -32,6 +32,9 @@ type version struct {
 	BuildTime     string `json:"build_time"`
 	SDKVersion    string `json:"sdk_version"`
 	SchemaVersion string `json:"schema_version"`
+	// SupportedFeatures adds sdk.SupportedFeatures() to `--version --json`.
+	// This allows integrators (and opentdf/tests/xtest) to detect optional, experimental, or removed capabilities.
+	SupportedFeatures []string `json:"supported_features"`
 }
 
 func init() {
@@ -40,12 +43,13 @@ func init() {
 
 		if c.Flags.GetOptionalBool("version") {
 			v := version{
-				AppName:       config.AppName,
-				Version:       config.Version,
-				CommitSha:     config.CommitSha,
-				BuildTime:     config.BuildTime,
-				SDKVersion:    sdk.Version,
-				SchemaVersion: sdk.TDFSpecVersion,
+				AppName:           config.AppName,
+				Version:           config.Version,
+				CommitSha:         config.CommitSha,
+				BuildTime:         config.BuildTime,
+				SDKVersion:        sdk.Version,
+				SchemaVersion:     sdk.TDFSpecVersion,
+				SupportedFeatures: sdk.SupportedFeatures(),
 			}
 
 			version := fmt.Sprintf("%s version %s (%s) %s", config.AppName, config.Version, config.BuildTime, config.CommitSha)

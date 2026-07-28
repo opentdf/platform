@@ -13,6 +13,7 @@ import (
 	"github.com/opentdf/platform/protocol/go/entityresolution"
 	"github.com/opentdf/platform/service/entityresolution/multi-strategy/types"
 	"github.com/opentdf/platform/service/logger"
+	"github.com/opentdf/platform/service/pkg/protohelper"
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
 	"go.opentelemetry.io/otel/trace"
 	"google.golang.org/protobuf/encoding/protojson"
@@ -110,12 +111,12 @@ func (ers *ERS) ResolveEntities(
 
 		// Add resolved claims
 		for claimName, claimValue := range result.Claims {
-			resultData[claimName] = StructPBCompatibleValue(claimValue)
+			resultData[claimName] = protohelper.StructPBCompatibleValue(claimValue)
 		}
 
 		// Add metadata with "metadata_" prefix
 		for metaKey, metaValue := range result.Metadata {
-			resultData[("metadata_" + metaKey)] = StructPBCompatibleValue(metaValue)
+			resultData[("metadata_" + metaKey)] = protohelper.StructPBCompatibleValue(metaValue)
 		}
 
 		// Convert to protobuf struct
@@ -445,29 +446,4 @@ func RegisterERS(config map[string]interface{}, logger *logger.Logger) (*ERS, se
 	}
 
 	return ers, nil
-}
-
-func StructPBCompatibleValue(value interface{}) interface{} {
-	switch v := value.(type) {
-	case []string:
-		result := make([]interface{}, len(v))
-		for i, item := range v {
-			result[i] = item
-		}
-		return result
-	case []interface{}:
-		result := make([]interface{}, len(v))
-		for i, item := range v {
-			result[i] = StructPBCompatibleValue(item)
-		}
-		return result
-	case map[string]interface{}:
-		result := make(map[string]interface{}, len(v))
-		for key, item := range v {
-			result[key] = StructPBCompatibleValue(item)
-		}
-		return result
-	default:
-		return value
-	}
 }

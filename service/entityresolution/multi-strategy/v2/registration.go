@@ -16,6 +16,7 @@ import (
 	multistrategy "github.com/opentdf/platform/service/entityresolution/multi-strategy"
 	"github.com/opentdf/platform/service/entityresolution/multi-strategy/types"
 	"github.com/opentdf/platform/service/logger"
+	"github.com/opentdf/platform/service/pkg/protohelper"
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
 	"go.opentelemetry.io/otel/trace"
 	"google.golang.org/protobuf/encoding/protojson"
@@ -124,7 +125,7 @@ func (ers *ERSV2) ResolveEntities(
 
 		// Add metadata with "metadata_" prefix
 		for metaKey, metaValue := range result.Metadata {
-			resultData[("metadata_" + metaKey)] = multistrategy.StructPBCompatibleValue(metaValue)
+			resultData[("metadata_" + metaKey)] = protohelper.StructPBCompatibleValue(metaValue)
 		}
 
 		// Convert to protobuf struct

@@ -80,7 +80,8 @@ func (ers *ERS) ResolveEntities(
 		}
 
 		// Resolve entity using multi-strategy service
-		result, err := ers.service.ResolveEntity(ctx, entityID, claimsMap)
+		ctxWithClaims := context.WithValue(ctx, types.JWTClaimsContextKey, claimsMap)
+		result, err := ers.service.ResolveEntity(ctxWithClaims, entityID, claimsMap)
 		if err != nil {
 			ers.logger.Error("failed to resolve entity",
 				slog.String("entity_id", entityID),
@@ -109,12 +110,12 @@ func (ers *ERS) ResolveEntities(
 
 		// Add resolved claims
 		for claimName, claimValue := range result.Claims {
-			resultData[claimName] = claimValue
+			resultData[claimName] = structPBCompatibleValue(claimValue)
 		}
 
 		// Add metadata with "metadata_" prefix
 		for metaKey, metaValue := range result.Metadata {
-			resultData[("metadata_" + metaKey)] = metaValue
+			resultData[("metadata_" + metaKey)] = structPBCompatibleValue(metaValue)
 		}
 
 		// Convert to protobuf struct
@@ -444,4 +445,29 @@ func RegisterERS(config map[string]interface{}, logger *logger.Logger) (*ERS, se
 	}
 
 	return ers, nil
+}
+
+func structPBCompatibleValue(value interface{}) interface{} {
+	switch v := value.(type) {
+	case []string:
+		result := make([]interface{}, len(v))
+		for i, item := range v {
+			result[i] = item
+		}
+		return result
+	case []interface{}:
+		result := make([]interface{}, len(v))
+		for i, item := range v {
+			result[i] = structPBCompatibleValue(item)
+		}
+		return result
+	case map[string]interface{}:
+		result := make(map[string]interface{}, len(v))
+		for key, item := range v {
+			result[key] = structPBCompatibleValue(item)
+		}
+		return result
+	default:
+		return value
+	}
 }

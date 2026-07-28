@@ -161,3 +161,35 @@ func TestApplyHooks_UnknownHookVariantIsDropped(t *testing.T) {
 	})
 	assert.Empty(t, o.sdkOpts, "unknown hook variants must not contribute SDK options")
 }
+
+func TestResolveSDKFactory_FallsBackToDefault(t *testing.T) {
+	var o handlerOpts
+	assert.NotNil(t, o.resolveSDKFactory(), "unset factory must fall back to the default")
+}
+
+func TestResolveSDKFactory_PerHandlerOverridesDefault(t *testing.T) {
+	sentinel := &sdk.SDK{}
+	o := WithSDKFactory(func(string, ...sdk.Option) (*sdk.SDK, error) {
+		return sentinel, nil
+	})(handlerOpts{})
+
+	got, err := o.resolveSDKFactory()("https://platform.example.test")
+	require.NoError(t, err)
+	assert.Same(t, sentinel, got, "per-handler factory must take precedence over the default")
+}
+
+func TestSetDefaultSDKFactory_OverridesAndResets(t *testing.T) {
+	t.Cleanup(func() { SetDefaultSDKFactory(nil) }) // restore sdk.New
+
+	sentinel := &sdk.SDK{}
+	SetDefaultSDKFactory(func(string, ...sdk.Option) (*sdk.SDK, error) {
+		return sentinel, nil
+	})
+
+	got, err := handlerOpts{}.resolveSDKFactory()("https://platform.example.test")
+	require.NoError(t, err)
+	assert.Same(t, sentinel, got, "SetDefaultSDKFactory must install the process-wide factory")
+
+	SetDefaultSDKFactory(nil)
+	assert.NotNil(t, handlerOpts{}.resolveSDKFactory(), "nil must reset to a usable default")
+}

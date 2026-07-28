@@ -226,12 +226,12 @@ func (c PolicyDBClient) ListObligations(ctx context.Context, r *obligations.List
 	parsedID := pgtypeUUID(namespaceID)
 	idIsValid := parsedID.Valid
 
-	sortField, sortDirection := GetObligationsSortParams(r.GetSort())
-
 	if useID && !idIsValid {
 		return nil, nil, db.ErrUUIDInvalid
 	}
 
+	sortField, sortDirection := GetObligationsSortParams(r.GetSort())
+	searchTerm := pgtypeSubstringSearchPattern(r.GetSearch().GetTerm())
 	limit, offset := c.getRequestedLimitOffset(r.GetPagination())
 
 	maxLimit := c.listCfg.limitMax
@@ -242,6 +242,7 @@ func (c PolicyDBClient) ListObligations(ctx context.Context, r *obligations.List
 	rows, err := c.queries.listObligations(ctx, listObligationsParams{
 		NamespaceID:   parsedID,
 		NamespaceFqn:  pgtypeText(r.GetNamespaceFqn()),
+		Search:        searchTerm,
 		Limit:         limit,
 		Offset:        offset,
 		SortField:     sortField,

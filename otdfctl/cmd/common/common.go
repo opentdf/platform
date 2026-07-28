@@ -85,8 +85,15 @@ func InitProfile(c *cli.Cli) *profiles.OtdfctlProfileStore {
 // instantiates a new handler with authentication via client credentials
 // TODO make this a preRun hook
 //
+// NewHandler resolves the current profile from cli flags, validates
+// credentials, and returns a Handler ready for use. Extension points that
+// need to inject SDK options based on the resolved profile — for example,
+// interceptors that a downstream CLI wants attached to every SDK call — can
+// pass one or more handlers.Hook values, which run in order after profile
+// resolution and before the underlying SDK is built.
+//
 //nolint:nestif // separate refactor [https://github.com/opentdf/otdfctl/issues/383]
-func NewHandler(c *cli.Cli) handlers.Handler {
+func NewHandler(c *cli.Cli, hooks ...handlers.Hook) handlers.Handler {
 	// if global flags are set then validate and create a temporary profile in memory
 	var cp *profiles.OtdfctlProfileStore
 
@@ -209,7 +216,11 @@ func NewHandler(c *cli.Cli) handlers.Handler {
 		cli.ExitWithError("Failed to get access token.", err)
 	}
 
-	h, err := handlers.New(handlers.WithProfile(cp))
+	opts := []handlers.HandlerOption{handlers.WithProfile(cp)}
+	if len(hooks) > 0 {
+		opts = append(opts, handlers.WithHook(hooks...))
+	}
+	h, err := handlers.New(opts...)
 	if err != nil {
 		cli.ExitWithError("Unexpected error", err)
 	}

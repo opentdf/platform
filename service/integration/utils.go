@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/opentdf/platform/protocol/go/policy/namespaces"
 	"github.com/opentdf/platform/service/internal/fixtures"
 	"github.com/stretchr/testify/require"
 )
@@ -42,6 +43,18 @@ func forceDeleteRows(ctx context.Context, db fixtures.DBInterface, table string,
 	)
 	_, err := db.Client.Pgx.Exec(ctx, sql, ids)
 	return err
+}
+
+func deleteNamespaces(ctx context.Context, tb testing.TB, db fixtures.DBInterface, ids []string) {
+	tb.Helper()
+
+	for _, id := range ids {
+		ns, err := db.PolicyClient.GetNamespace(ctx, &namespaces.GetNamespaceRequest_NamespaceId{NamespaceId: id})
+		require.NoError(tb, err)
+
+		_, err = db.PolicyClient.UnsafeDeleteNamespace(ctx, ns, ns.GetFqn())
+		require.NoError(tb, err)
+	}
 }
 
 // forceCreatedAtTie sets created_at to a fixed timestamp for the given IDs,

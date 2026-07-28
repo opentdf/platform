@@ -5,6 +5,8 @@ import (
 
 	"connectrpc.com/connect"
 	"github.com/casbin/casbin/v2/persist"
+	"github.com/opentdf/platform/sdk"
+	"github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/pkg/authz"
 	"github.com/opentdf/platform/service/pkg/config"
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
@@ -12,6 +14,19 @@ import (
 )
 
 type StartOptions func(StartConfig) StartConfig
+
+type InterceptorParams struct {
+	SDK    *sdk.SDK
+	Logger *logger.Logger
+	Config config.InterceptorConfig
+}
+
+// InterceptorFactory creates a named external Connect interceptor. Returning a
+// nil interceptor skips registration for that factory.
+type InterceptorFactory struct {
+	Name    string
+	Factory func(InterceptorParams) (connect.Interceptor, error)
+}
 
 type StartConfig struct {
 	ConfigKey             string
@@ -26,8 +41,9 @@ type StartConfig struct {
 	configLoaders         []config.Loader
 	configLoaderOrder     []string
 
-	extraConnectInterceptors []connect.Interceptor
-	extraIPCInterceptors     []connect.Interceptor
+	extraConnectInterceptors     []connect.Interceptor
+	extraIPCInterceptors         []connect.Interceptor
+	externalInterceptorFactories []InterceptorFactory
 
 	trustKeyManagerCtxs []trust.NamedKeyManagerCtxFactory
 
@@ -83,8 +99,8 @@ func WithPublicRoutes(routes []string) StartOptions {
 	}
 }
 
-// WithIPCReauthRoutes option sets the IPC reauthorization routes for the server.
-// It enables the server to reauthorize IPC routes and embed the token on the context.
+// WithIPCReauthRoutes sets the IPC routes that should be fully reauthorized
+// instead of only rehydrating auth context from propagated metadata.
 func WithIPCReauthRoutes(routes []string) StartOptions {
 	return func(c StartConfig) StartConfig {
 		c.IPCReauthRoutes = routes
@@ -174,6 +190,17 @@ func WithConfigLoaderOrder(loaderOrder []string) StartOptions {
 func WithConnectInterceptors(interceptors ...connect.Interceptor) StartOptions {
 	return func(c StartConfig) StartConfig {
 		c.extraConnectInterceptors = append(c.extraConnectInterceptors, interceptors...)
+		return c
+	}
+}
+
+// WithExternalInterceptorFactories appends named factories for external
+// Connect interceptors that need access to startup-created clients, such as the
+// IPC SDK connection. Factories are evaluated after the SDK is created and
+// before externally reachable service handlers are registered.
+func WithExternalInterceptorFactories(factories ...InterceptorFactory) StartOptions {
+	return func(c StartConfig) StartConfig {
+		c.externalInterceptorFactories = append(c.externalInterceptorFactories, factories...)
 		return c
 	}
 }

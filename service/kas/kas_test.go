@@ -44,7 +44,7 @@ func TestFilterMechanismsByPreview(t *testing.T) {
 		{
 			name: "top-level ec flag on keeps ec only",
 			algs: allAlgs,
-			cfg:  &access.KASConfig{ECTDFEnabled: true},
+			cfg:  &access.KASConfig{Preview: access.Preview{ECTDFEnabled: true}},
 			want: []ocrypto.KeyType{"rsa:2048", "rsa:4096", "ec:secp256r1", "ec:secp384r1"},
 		},
 		{
@@ -52,12 +52,6 @@ func TestFilterMechanismsByPreview(t *testing.T) {
 			algs: allAlgs,
 			cfg:  &access.KASConfig{Preview: access.Preview{ECTDFEnabled: true}},
 			want: []ocrypto.KeyType{"rsa:2048", "rsa:4096", "ec:secp256r1", "ec:secp384r1"},
-		},
-		{
-			name: "top-level hybrid flag on keeps hpqt only",
-			algs: allAlgs,
-			cfg:  &access.KASConfig{HybridTDFEnabled: true},
-			want: []ocrypto.KeyType{"rsa:2048", "rsa:4096", "hpqt:xwing", "hpqt:secp256r1-mlkem768"},
 		},
 		{
 			name: "preview hybrid flag on keeps hpqt only",
@@ -68,7 +62,7 @@ func TestFilterMechanismsByPreview(t *testing.T) {
 		{
 			name: "both flags on keeps everything",
 			algs: allAlgs,
-			cfg:  &access.KASConfig{ECTDFEnabled: true, HybridTDFEnabled: true},
+			cfg:  &access.KASConfig{Preview: access.Preview{ECTDFEnabled: true, HybridTDFEnabled: true, MLKEMTDFEnabled: true}},
 			want: allAlgs,
 		},
 		{
@@ -77,13 +71,14 @@ func TestFilterMechanismsByPreview(t *testing.T) {
 			cfg: &access.KASConfig{Preview: access.Preview{
 				ECTDFEnabled:     true,
 				HybridTDFEnabled: true,
+				MLKEMTDFEnabled:  true,
 			}},
 			want: allAlgs,
 		},
 		{
 			name: "empty input returns empty",
 			algs: []ocrypto.KeyType{},
-			cfg:  &access.KASConfig{ECTDFEnabled: true, HybridTDFEnabled: true},
+			cfg:  &access.KASConfig{Preview: access.Preview{ECTDFEnabled: true, HybridTDFEnabled: true, MLKEMTDFEnabled: true}},
 			want: []ocrypto.KeyType{},
 		},
 		{
@@ -91,6 +86,28 @@ func TestFilterMechanismsByPreview(t *testing.T) {
 			algs: []ocrypto.KeyType{"rsa:2048"},
 			cfg:  &access.KASConfig{},
 			want: []ocrypto.KeyType{"rsa:2048"},
+		},
+		{
+			// (HybridTDFEnabled=true, MLKEMTDFEnabled=false) is unreachable at
+			// runtime because normalizePreview forces ML-KEM on whenever hybrid
+			// is enabled, so this asserts the negative gating via a reachable
+			// all-off config instead.
+			name: "all preview flags off drops pure mlkem and hybrid",
+			algs: []ocrypto.KeyType{"rsa:2048", "hpqt:xwing", "mlkem:768", "mlkem:1024"},
+			cfg:  &access.KASConfig{},
+			want: []ocrypto.KeyType{"rsa:2048"},
+		},
+		{
+			name: "mlkem on keeps pure mlkem",
+			algs: []ocrypto.KeyType{"rsa:2048", "hpqt:xwing", "mlkem:768", "mlkem:1024"},
+			cfg:  &access.KASConfig{Preview: access.Preview{HybridTDFEnabled: true, MLKEMTDFEnabled: true}},
+			want: []ocrypto.KeyType{"rsa:2048", "hpqt:xwing", "mlkem:768", "mlkem:1024"},
+		},
+		{
+			name: "mlkem on without hybrid keeps pure mlkem but drops hybrid",
+			algs: []ocrypto.KeyType{"rsa:2048", "hpqt:xwing", "mlkem:768", "mlkem:1024"},
+			cfg:  &access.KASConfig{Preview: access.Preview{MLKEMTDFEnabled: true}},
+			want: []ocrypto.KeyType{"rsa:2048", "mlkem:768", "mlkem:1024"},
 		},
 	}
 
@@ -171,7 +188,7 @@ func TestLogSupportedMechanisms_EmitsInfoLine(t *testing.T) {
 		},
 		{
 			name:           "both preview flags",
-			cfg:            &access.KASConfig{Preview: access.Preview{ECTDFEnabled: true, HybridTDFEnabled: true}},
+			cfg:            &access.KASConfig{Preview: access.Preview{ECTDFEnabled: true, HybridTDFEnabled: true, MLKEMTDFEnabled: true}},
 			wantMechanisms: []string{"ec:secp256r1", "hpqt:xwing", "rsa:2048"},
 		},
 	}

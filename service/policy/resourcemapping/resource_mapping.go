@@ -2,6 +2,7 @@ package resourcemapping
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 
@@ -23,6 +24,8 @@ type ResourceMappingService struct { //nolint:revive // ResourceMappingService i
 	logger   *logger.Logger
 	config   *policyconfig.Config
 }
+
+var errNamespacedPolicyNamespaceRequired = errors.New("namespace is required: provide either namespace_id, namespace_fqn, or group_id")
 
 func OnConfigUpdate(rmSvc *ResourceMappingService) serviceregistry.OnConfigUpdateHook {
 	return func(_ context.Context, cfg config.ServiceConfig) error {
@@ -257,6 +260,13 @@ func (s ResourceMappingService) CreateResourceMapping(ctx context.Context,
 	rsp := &resourcemapping.CreateResourceMappingResponse{}
 
 	s.logger.DebugContext(ctx, "creating resource mapping")
+
+	// --- BEGIN namespace enforcement (remove when namespaced_policy flag is phased out) ---
+	// A group implies a namespace, so a mapping assigned to a group satisfies the requirement.
+	if s.config.NamespacedPolicy && req.Msg.GetNamespaceId() == "" && req.Msg.GetNamespaceFqn() == "" && req.Msg.GetGroupId() == "" {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errNamespacedPolicyNamespaceRequired)
+	}
+	// --- END namespace enforcement ---
 
 	auditParams := audit.PolicyEventParams{
 		ActionType: audit.ActionTypeCreate,

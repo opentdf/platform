@@ -2,41 +2,6 @@ openapi: 3.1.0
 info:
   title: entityresolution.v2
 paths:
-  /entityresolution.v2.EntityResolutionService/CreateEntityChainsFromTokens:
-    post:
-      tags:
-        - entityresolution.v2.EntityResolutionService
-      summary: CreateEntityChainsFromTokens
-      operationId: entityresolution.v2.EntityResolutionService.CreateEntityChainsFromTokens
-      parameters:
-        - name: Connect-Protocol-Version
-          in: header
-          required: true
-          schema:
-            $ref: '#/components/schemas/connect-protocol-version'
-        - name: Connect-Timeout-Ms
-          in: header
-          schema:
-            $ref: '#/components/schemas/connect-timeout-header'
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/entityresolution.v2.CreateEntityChainsFromTokensRequest'
-        required: true
-      responses:
-        default:
-          description: Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/connect.error'
-        "200":
-          description: Success
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/entityresolution.v2.CreateEntityChainsFromTokensResponse'
   /entityresolution.v2.EntityResolutionService/ResolveEntities:
     post:
       tags:
@@ -72,39 +37,92 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/entityresolution.v2.ResolveEntitiesResponse'
+  /entityresolution.v2.EntityResolutionService/CreateEntityChainsFromTokens:
+    post:
+      tags:
+        - entityresolution.v2.EntityResolutionService
+      summary: CreateEntityChainsFromTokens
+      operationId: entityresolution.v2.EntityResolutionService.CreateEntityChainsFromTokens
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/entityresolution.v2.CreateEntityChainsFromTokensRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/entityresolution.v2.CreateEntityChainsFromTokensResponse'
 components:
   schemas:
+    entity.Entity.Category:
+      type: string
+      title: Category
+      enum:
+        - CATEGORY_UNSPECIFIED
+        - CATEGORY_SUBJECT
+        - CATEGORY_ENVIRONMENT
+    google.protobuf.NullValue:
+      type: string
+      title: NullValue
+      enum:
+        - NULL_VALUE
+      description: |-
+        `NullValue` is a singleton enumeration to represent the null value for the
+         `Value` type union.
+
+         The JSON representation for `NullValue` is JSON `null`.
     authorization.v2.Resource:
       type: object
-      allOf:
+      oneOf:
         - properties:
-            ephemeralId:
-              type: string
-              title: ephemeral_id
-              description: ephemeral id for tracking between request and response
-        - oneOf:
-            - type: object
-              properties:
-                attributeValues:
-                  title: attribute_values
-                  description: |
-                    a set of attribute value FQNs, such as those on a TDF, between 1 and 20 in count
-                    attribute_values_required // if provided, resource.attribute_values must be between 1 and 20 in count with all valid FQNs
-                  $ref: '#/components/schemas/authorization.v2.Resource.AttributeValues'
+            attributeValues:
               title: attribute_values
-              required:
-                - attributeValues
-            - type: object
-              properties:
-                registeredResourceValueFqn:
-                  type: string
-                  title: registered_resource_value_fqn
-                  minLength: 1
-                  format: uri
-                  description: fully qualified name of the registered resource value stored in platform policy
+              description: |+
+                a set of attribute value FQNs, such as those on a TDF, containing at least 1 value
+                if provided, resource.attribute_values must contain at least 1 valid FQN:
+                ```
+                this.fqns.size() > 0 && this.fqns.all(item, item.isUri())
+                ```
+
+              $ref: '#/components/schemas/authorization.v2.Resource.AttributeValues'
+          title: attribute_values
+          required:
+            - attributeValues
+        - properties:
+            registeredResourceValueFqn:
+              type: string
               title: registered_resource_value_fqn
-              required:
-                - registeredResourceValueFqn
+              minLength: 1
+              format: uri
+              description: fully qualified name of the registered resource value stored in platform policy
+          title: registered_resource_value_fqn
+          required:
+            - registeredResourceValueFqn
+      properties:
+        ephemeralId:
+          type: string
+          title: ephemeral_id
+          description: ephemeral id for tracking between request and response
       title: Resource
       additionalProperties: false
       description: Either a set of attribute values (such as those on a TDF) or a registered resource value
@@ -118,130 +136,49 @@ components:
           title: fqns
       title: AttributeValues
       additionalProperties: false
-    connect-protocol-version:
-      type: number
-      title: Connect-Protocol-Version
-      enum:
-        - 1
-      description: Define the version of the Connect protocol
-      const: 1
-    connect-timeout-header:
-      type: number
-      title: Connect-Timeout-Ms
-      description: Define the timeout, in ms
-    connect.error:
-      type: object
-      properties:
-        code:
-          type: string
-          examples:
-            - not_found
-          enum:
-            - canceled
-            - unknown
-            - invalid_argument
-            - deadline_exceeded
-            - not_found
-            - already_exists
-            - permission_denied
-            - resource_exhausted
-            - failed_precondition
-            - aborted
-            - out_of_range
-            - unimplemented
-            - internal
-            - unavailable
-            - data_loss
-            - unauthenticated
-          description: The status code, which should be an enum value of [google.rpc.Code][google.rpc.Code].
-        message:
-          type: string
-          description: A developer-facing error message, which should be in English. Any user-facing error message should be localized and sent in the [google.rpc.Status.details][google.rpc.Status.details] field, or localized by the client.
-        details:
-          type: array
-          items:
-            $ref: '#/components/schemas/connect.error_details.Any'
-          description: A list of messages that carry the error details. There is no limit on the number of messages.
-      title: Connect Error
-      additionalProperties: true
-      description: 'Error type returned by Connect: https://connectrpc.com/docs/go/errors/#http-representation'
-    connect.error_details.Any:
-      type: object
-      properties:
-        type:
-          type: string
-          description: 'A URL that acts as a globally unique identifier for the type of the serialized message. For example: `type.googleapis.com/google.rpc.ErrorInfo`. This is used to determine the schema of the data in the `value` field and is the discriminator for the `debug` field.'
-        value:
-          type: string
-          format: binary
-          description: The Protobuf message, serialized as bytes and base64-encoded. The specific message type is identified by the `type` field.
-        debug:
-          oneOf:
-            - type: object
-              title: Any
-              additionalProperties: true
-              description: Detailed error information.
-          discriminator:
-            propertyName: type
-          title: Debug
-          description: Deserialized error detail payload. The 'type' field indicates the schema. This field is for easier debugging and should not be relied upon for application logic.
-      additionalProperties: true
-      description: Contains an arbitrary serialized message along with a @type that describes the type of the serialized message, with an additional debug field for ConnectRPC error details.
     entity.Entity:
       type: object
-      allOf:
+      oneOf:
         - properties:
-            ephemeralId:
-              type: string
-              title: ephemeral_id
-              description: ephemeral id for tracking between request and response
-            category:
-              title: category
-              $ref: '#/components/schemas/entity.Entity.Category'
-        - oneOf:
-            - type: object
-              properties:
-                claims:
-                  title: claims
-                  description: used by ERS claims mode
-                  $ref: '#/components/schemas/google.protobuf.Any'
+            claims:
               title: claims
-              required:
-                - claims
-            - type: object
-              properties:
-                clientId:
-                  type: string
-                  title: client_id
+              description: used by ERS claims mode
+              $ref: '#/components/schemas/google.protobuf.Any'
+          title: claims
+          required:
+            - claims
+        - properties:
+            clientId:
+              type: string
               title: client_id
-              required:
-                - clientId
-            - type: object
-              properties:
-                emailAddress:
-                  type: string
-                  title: email_address
+          title: client_id
+          required:
+            - clientId
+        - properties:
+            emailAddress:
+              type: string
               title: email_address
-              required:
-                - emailAddress
-            - type: object
-              properties:
-                userName:
-                  type: string
-                  title: user_name
+          title: email_address
+          required:
+            - emailAddress
+        - properties:
+            userName:
+              type: string
               title: user_name
-              required:
-                - userName
+          title: user_name
+          required:
+            - userName
+      properties:
+        ephemeralId:
+          type: string
+          title: ephemeral_id
+          description: ephemeral id for tracking between request and response
+        category:
+          title: category
+          $ref: '#/components/schemas/entity.Entity.Category'
       title: Entity
       additionalProperties: false
       description: PE (Person Entity) or NPE (Non-Person Entity)
-    entity.Entity.Category:
-      type: string
-      title: Category
-      enum:
-        - CATEGORY_UNSPECIFIED
-        - CATEGORY_SUBJECT
-        - CATEGORY_ENVIRONMENT
     entity.EntityChain:
       type: object
       properties:
@@ -385,6 +322,9 @@ components:
         value:
           type: string
           format: binary
+        debug:
+          type: object
+          additionalProperties: true
       additionalProperties: true
       description: Contains an arbitrary serialized message along with a @type that describes the type of the serialized message.
     google.protobuf.ListValue:
@@ -402,16 +342,6 @@ components:
         `ListValue` is a wrapper around a repeated field of values.
 
          The JSON representation for `ListValue` is JSON array.
-    google.protobuf.NullValue:
-      type: string
-      title: NullValue
-      enum:
-        - NULL_VALUE
-      description: |-
-        `NullValue` is a singleton enumeration to represent the null value for the
-         `Value` type union.
-
-         The JSON representation for `NullValue` is JSON `null`.
     google.protobuf.Struct:
       type: object
       additionalProperties:
@@ -452,6 +382,50 @@ components:
          variants. Absence of any variant indicates an error.
 
          The JSON representation for `Value` is JSON value.
+    connect-protocol-version:
+      type: number
+      title: Connect-Protocol-Version
+      enum:
+        - 1
+      description: Define the version of the Connect protocol
+      const: 1
+    connect-timeout-header:
+      type: number
+      title: Connect-Timeout-Ms
+      description: Define the timeout, in ms
+    connect.error:
+      type: object
+      properties:
+        code:
+          type: string
+          examples:
+            - not_found
+          enum:
+            - canceled
+            - unknown
+            - invalid_argument
+            - deadline_exceeded
+            - not_found
+            - already_exists
+            - permission_denied
+            - resource_exhausted
+            - failed_precondition
+            - aborted
+            - out_of_range
+            - unimplemented
+            - internal
+            - unavailable
+            - data_loss
+            - unauthenticated
+          description: The status code, which should be an enum value of [google.rpc.Code][google.rpc.Code].
+        message:
+          type: string
+          description: A developer-facing error message, which should be in English. Any user-facing error message should be localized and sent in the [google.rpc.Status.details][google.rpc.Status.details] field, or localized by the client.
+        detail:
+          $ref: '#/components/schemas/google.protobuf.Any'
+      title: Connect Error
+      additionalProperties: true
+      description: 'Error type returned by Connect: https://connectrpc.com/docs/go/errors/#http-representation'
 security: []
 tags:
   - name: entityresolution.v2.EntityResolutionService

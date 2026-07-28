@@ -40,6 +40,65 @@ func Test_GetListLimit(t *testing.T) {
 	}
 }
 
+func TestPgtypeSubstringSearchPattern(t *testing.T) {
+	tests := []struct {
+		name  string
+		query string
+		want  string
+		valid bool
+	}{
+		{
+			name:  "empty query",
+			query: "",
+			valid: false,
+		},
+		{
+			name:  "whitespace only query",
+			query: " \t\n ",
+			valid: false,
+		},
+		{
+			name:  "trims query",
+			query: "  namespace  ",
+			want:  "%namespace%",
+			valid: true,
+		},
+		{
+			name:  "lowercases namespace fqn",
+			query: "HTTPS://Tenant.Example.COM",
+			want:  "%https://tenant.example.com%",
+			valid: true,
+		},
+		{
+			name:  "escapes like wildcard literals",
+			query: "tenant_%example.com",
+			want:  `%tenant\_\%example.com%`,
+			valid: true,
+		},
+		{
+			name:  "escapes like escape literal",
+			query: `tenant\example.com`,
+			want:  `%tenant\\example.com%`,
+			valid: true,
+		},
+		{
+			name:  "keeps sql-ish input in parameter value",
+			query: `%' OR 1=1 --`,
+			want:  `%\%' or 1=1 --%`,
+			valid: true,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			got := pgtypeSubstringSearchPattern(tc.query)
+
+			assert.Equal(t, tc.valid, got.Valid)
+			assert.Equal(t, tc.want, got.String)
+		})
+	}
+}
+
 func Test_GetNextOffset(t *testing.T) {
 	var defaultTestListLimit int32 = 250
 	cases := []struct {

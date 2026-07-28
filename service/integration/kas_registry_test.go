@@ -169,6 +169,157 @@ func (s *KasRegistrySuite) Test_ListKeyAccessServers_Offset_Succeeds() {
 	}
 }
 
+func (s *KasRegistrySuite) Test_ListKeyAccessServers_SearchByNameAndUri_Succeeds() {
+	suffix := time.Now().UnixNano()
+	alpha, err := s.db.PolicyClient.CreateKeyAccessServer(s.ctx, &kasregistry.CreateKeyAccessServerRequest{
+		Uri:  fmt.Sprintf("https://dspx-search-alpha-%d.example.com", suffix),
+		Name: fmt.Sprintf("dspx-search-alpha-%d", suffix),
+	})
+	s.Require().NoError(err)
+	betaURI := fmt.Sprintf("https://DSPX-Search-Beta-%d.example.com", suffix)
+	beta, err := s.db.PolicyClient.CreateKeyAccessServer(s.ctx, &kasregistry.CreateKeyAccessServerRequest{
+		Uri:  betaURI,
+		Name: fmt.Sprintf("dspx-search-beta-%d", suffix),
+	})
+	s.Require().NoError(err)
+	other, err := s.db.PolicyClient.CreateKeyAccessServer(s.ctx, &kasregistry.CreateKeyAccessServerRequest{
+		Uri:  fmt.Sprintf("https://dspx-other-%d.example.com", suffix),
+		Name: fmt.Sprintf("dspx-other-%d", suffix),
+	})
+	s.Require().NoError(err)
+	defer s.deleteTestKeyAccessServers([]string{alpha.GetId(), beta.GetId(), other.GetId()})
+
+	byName, err := s.db.PolicyClient.ListKeyAccessServers(s.ctx, &kasregistry.ListKeyAccessServersRequest{
+		Search: &policy.Search{Term: strings.ToUpper(alpha.GetName())},
+	})
+	s.Require().NoError(err)
+	s.Require().Len(byName.GetKeyAccessServers(), 1)
+	s.Equal(alpha.GetId(), byName.GetKeyAccessServers()[0].GetId())
+	s.Equal(int32(1), byName.GetPagination().GetTotal())
+
+	byURI, err := s.db.PolicyClient.ListKeyAccessServers(s.ctx, &kasregistry.ListKeyAccessServersRequest{
+		Search: &policy.Search{Term: strings.ToUpper(betaURI)},
+	})
+	s.Require().NoError(err)
+	s.Require().Len(byURI.GetKeyAccessServers(), 1)
+	s.Equal(beta.GetId(), byURI.GetKeyAccessServers()[0].GetId())
+	s.Equal(int32(1), byURI.GetPagination().GetTotal())
+}
+
+func (s *KasRegistrySuite) Test_ListKeyAccessServers_SearchEscapesLikeWildcardLiterals_Succeeds() {
+	suffix := time.Now().UnixNano()
+	searchDomain := fmt.Sprintf("dspx-search-like-%d.example.com", suffix)
+	alpha, err := s.db.PolicyClient.CreateKeyAccessServer(s.ctx, &kasregistry.CreateKeyAccessServerRequest{
+		Uri:  "https://wildcarda." + searchDomain,
+		Name: fmt.Sprintf("wildcarda-%d", suffix),
+	})
+	s.Require().NoError(err)
+	beta, err := s.db.PolicyClient.CreateKeyAccessServer(s.ctx, &kasregistry.CreateKeyAccessServerRequest{
+		Uri:  "https://wildcardb." + searchDomain,
+		Name: fmt.Sprintf("wildcardb-%d", suffix),
+	})
+	s.Require().NoError(err)
+	defer s.deleteTestKeyAccessServers([]string{alpha.GetId(), beta.GetId()})
+
+	for _, query := range []string{
+		"wildcard_." + searchDomain,
+		"wildcard%." + searchDomain,
+	} {
+		list, err := s.db.PolicyClient.ListKeyAccessServers(s.ctx, &kasregistry.ListKeyAccessServersRequest{
+			Search: &policy.Search{Term: query},
+		})
+		s.Require().NoError(err)
+		s.Empty(list.GetKeyAccessServers())
+		s.Equal(int32(0), list.GetPagination().GetTotal())
+	}
+}
+
+func (s *KasRegistrySuite) Test_ListKeyAccessServers_SearchEmptyQuery_Succeeds() {
+	suffix := time.Now().UnixNano()
+	created, err := s.db.PolicyClient.CreateKeyAccessServer(s.ctx, &kasregistry.CreateKeyAccessServerRequest{
+		Uri:  fmt.Sprintf("https://dspx-search-empty-%d.example.com", suffix),
+		Name: fmt.Sprintf("dspx-search-empty-%d", suffix),
+	})
+	s.Require().NoError(err)
+	defer s.deleteTestKeyAccessServers([]string{created.GetId()})
+
+	noSearch, err := s.db.PolicyClient.ListKeyAccessServers(s.ctx, &kasregistry.ListKeyAccessServersRequest{})
+	s.Require().NoError(err)
+	emptySearch, err := s.db.PolicyClient.ListKeyAccessServers(s.ctx, &kasregistry.ListKeyAccessServersRequest{
+		Search: &policy.Search{Term: ""},
+	})
+	s.Require().NoError(err)
+	s.Equal(noSearch.GetPagination().GetTotal(), emptySearch.GetPagination().GetTotal())
+}
+
+func (s *KasRegistrySuite) Test_ListKeyAccessServers_SearchDoesTrimWhitespace_Succeeds() {
+	suffix := time.Now().UnixNano()
+	searchToken := fmt.Sprintf("dspx-search-whitespace-%d", suffix)
+	created, err := s.db.PolicyClient.CreateKeyAccessServer(s.ctx, &kasregistry.CreateKeyAccessServerRequest{
+		Uri:  fmt.Sprintf("https://%s.example.com", searchToken),
+		Name: searchToken,
+	})
+	s.Require().NoError(err)
+	defer s.deleteTestKeyAccessServers([]string{created.GetId()})
+
+	list, err := s.db.PolicyClient.ListKeyAccessServers(s.ctx, &kasregistry.ListKeyAccessServersRequest{
+		Search: &policy.Search{Term: " " + searchToken + " "},
+	})
+	s.Require().NoError(err)
+	s.Require().Len(list.GetKeyAccessServers(), 1)
+	s.Equal(int32(1), list.GetPagination().GetTotal())
+	s.Equal(created.GetId(), list.GetKeyAccessServers()[0].GetId())
+}
+
+func (s *KasRegistrySuite) Test_ListKeyAccessServers_SearchPaginationAppliesAfterFiltering_Succeeds() {
+	suffix := time.Now().UnixNano()
+	searchToken := fmt.Sprintf("dspx-search-page-%d", suffix)
+	names := []string{
+		"a-" + searchToken,
+		"b-" + searchToken,
+		"c-" + searchToken,
+		fmt.Sprintf("dspx-search-page-other-%d", suffix),
+	}
+	ids := make([]string, len(names))
+	for i, name := range names {
+		created, err := s.db.PolicyClient.CreateKeyAccessServer(s.ctx, &kasregistry.CreateKeyAccessServerRequest{
+			Uri:  fmt.Sprintf("https://%s.example.com", name),
+			Name: name,
+		})
+		s.Require().NoError(err)
+		ids[i] = created.GetId()
+	}
+	defer s.deleteTestKeyAccessServers(ids)
+
+	firstPage, err := s.db.PolicyClient.ListKeyAccessServers(s.ctx, &kasregistry.ListKeyAccessServersRequest{
+		Search:     &policy.Search{Term: searchToken},
+		Pagination: &policy.PageRequest{Limit: 2},
+		Sort: []*kasregistry.KeyAccessServersSort{
+			{Field: kasregistry.SortKeyAccessServersType_SORT_KEY_ACCESS_SERVERS_TYPE_NAME, Direction: policy.SortDirection_SORT_DIRECTION_ASC},
+		},
+	})
+	s.Require().NoError(err)
+	s.Require().Len(firstPage.GetKeyAccessServers(), 2)
+	s.Equal(int32(3), firstPage.GetPagination().GetTotal())
+	s.Equal(int32(2), firstPage.GetPagination().GetNextOffset())
+	s.Equal(ids[0], firstPage.GetKeyAccessServers()[0].GetId())
+	s.Equal(ids[1], firstPage.GetKeyAccessServers()[1].GetId())
+
+	secondPage, err := s.db.PolicyClient.ListKeyAccessServers(s.ctx, &kasregistry.ListKeyAccessServersRequest{
+		Search:     &policy.Search{Term: searchToken},
+		Pagination: &policy.PageRequest{Limit: 2, Offset: 2},
+		Sort: []*kasregistry.KeyAccessServersSort{
+			{Field: kasregistry.SortKeyAccessServersType_SORT_KEY_ACCESS_SERVERS_TYPE_NAME, Direction: policy.SortDirection_SORT_DIRECTION_ASC},
+		},
+	})
+	s.Require().NoError(err)
+	s.Require().Len(secondPage.GetKeyAccessServers(), 1)
+	s.Equal(int32(3), secondPage.GetPagination().GetTotal())
+	s.Equal(int32(2), secondPage.GetPagination().GetCurrentOffset())
+	s.Equal(int32(0), secondPage.GetPagination().GetNextOffset())
+	s.Equal(ids[2], secondPage.GetKeyAccessServers()[0].GetId())
+}
+
 func (s *KasRegistrySuite) Test_GetKeyAccessServer() {
 	remoteFixture := s.f.GetKasRegistryKey("key_access_server_1")
 	localFixture := s.f.GetKasRegistryKey("key_access_server_2")
@@ -880,7 +1031,7 @@ func (s *KasRegistrySuite) Test_GetKeyAccessServer_ByIdNameUri_ReturnSameResult(
 
 func (s *KasRegistrySuite) Test_ListKeyAccessServers_SortByCreatedAt_ASC() {
 	ids := s.createSortTestKeyAccessServers([]string{"sort-kas-created-asc-0", "sort-kas-created-asc-1", "sort-kas-created-asc-2"})
-	defer s.deleteSortTestKeyAccessServers(ids)
+	defer s.deleteTestKeyAccessServers(ids)
 
 	listRsp, err := s.db.PolicyClient.ListKeyAccessServers(s.ctx, &kasregistry.ListKeyAccessServersRequest{
 		Sort: []*kasregistry.KeyAccessServersSort{
@@ -895,7 +1046,7 @@ func (s *KasRegistrySuite) Test_ListKeyAccessServers_SortByCreatedAt_ASC() {
 
 func (s *KasRegistrySuite) Test_ListKeyAccessServers_SortByCreatedAt_DESC() {
 	ids := s.createSortTestKeyAccessServers([]string{"sort-kas-created-desc-0", "sort-kas-created-desc-1", "sort-kas-created-desc-2"})
-	defer s.deleteSortTestKeyAccessServers(ids)
+	defer s.deleteTestKeyAccessServers(ids)
 
 	listRsp, err := s.db.PolicyClient.ListKeyAccessServers(s.ctx, &kasregistry.ListKeyAccessServersRequest{
 		Sort: []*kasregistry.KeyAccessServersSort{
@@ -910,7 +1061,7 @@ func (s *KasRegistrySuite) Test_ListKeyAccessServers_SortByCreatedAt_DESC() {
 
 func (s *KasRegistrySuite) Test_ListKeyAccessServers_SortByUpdatedAt_DESC() {
 	ids := s.createSortTestKeyAccessServers([]string{"sort-kas-updated-desc-0", "sort-kas-updated-desc-1", "sort-kas-updated-desc-2"})
-	defer s.deleteSortTestKeyAccessServers(ids)
+	defer s.deleteTestKeyAccessServers(ids)
 
 	time.Sleep(5 * time.Millisecond)
 	_, err := s.db.PolicyClient.UpdateKeyAccessServer(s.ctx, ids[0], &kasregistry.UpdateKeyAccessServerRequest{
@@ -935,7 +1086,7 @@ func (s *KasRegistrySuite) Test_ListKeyAccessServers_SortByUpdatedAt_DESC() {
 
 func (s *KasRegistrySuite) Test_ListKeyAccessServers_SortByUpdatedAt_ASC() {
 	ids := s.createSortTestKeyAccessServers([]string{"sort-kas-updated-asc-0", "sort-kas-updated-asc-1", "sort-kas-updated-asc-2"})
-	defer s.deleteSortTestKeyAccessServers(ids)
+	defer s.deleteTestKeyAccessServers(ids)
 
 	time.Sleep(5 * time.Millisecond)
 	_, err := s.db.PolicyClient.UpdateKeyAccessServer(s.ctx, ids[2], &kasregistry.UpdateKeyAccessServerRequest{
@@ -960,7 +1111,7 @@ func (s *KasRegistrySuite) Test_ListKeyAccessServers_SortByUpdatedAt_ASC() {
 
 func (s *KasRegistrySuite) Test_ListKeyAccessServers_SortByName_ASC() {
 	ids := s.createSortTestKeyAccessServers([]string{"aaa-kas-sort", "bbb-kas-sort", "ccc-kas-sort"})
-	defer s.deleteSortTestKeyAccessServers(ids)
+	defer s.deleteTestKeyAccessServers(ids)
 
 	listRsp, err := s.db.PolicyClient.ListKeyAccessServers(s.ctx, &kasregistry.ListKeyAccessServersRequest{
 		Sort: []*kasregistry.KeyAccessServersSort{
@@ -975,7 +1126,7 @@ func (s *KasRegistrySuite) Test_ListKeyAccessServers_SortByName_ASC() {
 
 func (s *KasRegistrySuite) Test_ListKeyAccessServers_SortByName_DESC() {
 	ids := s.createSortTestKeyAccessServers([]string{"aaa-kas-sortdesc", "bbb-kas-sortdesc", "ccc-kas-sortdesc"})
-	defer s.deleteSortTestKeyAccessServers(ids)
+	defer s.deleteTestKeyAccessServers(ids)
 
 	listRsp, err := s.db.PolicyClient.ListKeyAccessServers(s.ctx, &kasregistry.ListKeyAccessServersRequest{
 		Sort: []*kasregistry.KeyAccessServersSort{
@@ -990,7 +1141,7 @@ func (s *KasRegistrySuite) Test_ListKeyAccessServers_SortByName_DESC() {
 
 func (s *KasRegistrySuite) Test_ListKeyAccessServers_SortByUri_ASC() {
 	ids := s.createSortTestKeyAccessServers([]string{"aaa-kas-uri", "bbb-kas-uri", "ccc-kas-uri"})
-	defer s.deleteSortTestKeyAccessServers(ids)
+	defer s.deleteTestKeyAccessServers(ids)
 
 	listRsp, err := s.db.PolicyClient.ListKeyAccessServers(s.ctx, &kasregistry.ListKeyAccessServersRequest{
 		Sort: []*kasregistry.KeyAccessServersSort{
@@ -1005,7 +1156,7 @@ func (s *KasRegistrySuite) Test_ListKeyAccessServers_SortByUri_ASC() {
 
 func (s *KasRegistrySuite) Test_ListKeyAccessServers_SortByUri_DESC() {
 	ids := s.createSortTestKeyAccessServers([]string{"aaa-kas-uridesc", "bbb-kas-uridesc", "ccc-kas-uridesc"})
-	defer s.deleteSortTestKeyAccessServers(ids)
+	defer s.deleteTestKeyAccessServers(ids)
 
 	listRsp, err := s.db.PolicyClient.ListKeyAccessServers(s.ctx, &kasregistry.ListKeyAccessServersRequest{
 		Sort: []*kasregistry.KeyAccessServersSort{
@@ -1030,7 +1181,7 @@ func (s *KasRegistrySuite) Test_ListKeyAccessServers_SortTieBreaker_CreatedAtWit
 		s.Require().NoError(err)
 		ids[i] = created.GetId()
 	}
-	defer s.deleteSortTestKeyAccessServers(ids)
+	defer s.deleteTestKeyAccessServers(ids)
 
 	s.Require().NoError(forceCreatedAtTie(s.ctx, s.db, "key_access_servers", ids))
 
@@ -1049,7 +1200,7 @@ func (s *KasRegistrySuite) Test_ListKeyAccessServers_SortTieBreaker_CreatedAtWit
 
 func (s *KasRegistrySuite) Test_ListKeyAccessServers_SortByUnspecifiedField_DefaultsToCreatedAt() {
 	ids := s.createSortTestKeyAccessServers([]string{"unspecified-field-kas-0", "unspecified-field-kas-1", "unspecified-field-kas-2"})
-	defer s.deleteSortTestKeyAccessServers(ids)
+	defer s.deleteTestKeyAccessServers(ids)
 
 	listRsp, err := s.db.PolicyClient.ListKeyAccessServers(s.ctx, &kasregistry.ListKeyAccessServersRequest{
 		Sort: []*kasregistry.KeyAccessServersSort{
@@ -1065,7 +1216,7 @@ func (s *KasRegistrySuite) Test_ListKeyAccessServers_SortByUnspecifiedField_Defa
 
 func (s *KasRegistrySuite) Test_ListKeyAccessServers_SortByUnspecifiedDirection_DefaultsToDESC() {
 	ids := s.createSortTestKeyAccessServers([]string{"unspecified-dir-kas-0", "unspecified-dir-kas-1", "unspecified-dir-kas-2"})
-	defer s.deleteSortTestKeyAccessServers(ids)
+	defer s.deleteTestKeyAccessServers(ids)
 
 	listRsp, err := s.db.PolicyClient.ListKeyAccessServers(s.ctx, &kasregistry.ListKeyAccessServersRequest{
 		Sort: []*kasregistry.KeyAccessServersSort{
@@ -1081,7 +1232,7 @@ func (s *KasRegistrySuite) Test_ListKeyAccessServers_SortByUnspecifiedDirection_
 
 func (s *KasRegistrySuite) Test_ListKeyAccessServers_SortByBothUnspecified_DefaultsToCreatedAtDESC() {
 	ids := s.createSortTestKeyAccessServers([]string{"both-unspecified-kas-0", "both-unspecified-kas-1", "both-unspecified-kas-2"})
-	defer s.deleteSortTestKeyAccessServers(ids)
+	defer s.deleteTestKeyAccessServers(ids)
 
 	listRsp, err := s.db.PolicyClient.ListKeyAccessServers(s.ctx, &kasregistry.ListKeyAccessServersRequest{
 		Sort: []*kasregistry.KeyAccessServersSort{
@@ -1097,7 +1248,7 @@ func (s *KasRegistrySuite) Test_ListKeyAccessServers_SortByBothUnspecified_Defau
 
 func (s *KasRegistrySuite) Test_ListKeyAccessServers_SortOmitted() {
 	ids := s.createSortTestKeyAccessServers([]string{"sort-omitted-kas-0", "sort-omitted-kas-1", "sort-omitted-kas-2"})
-	defer s.deleteSortTestKeyAccessServers(ids)
+	defer s.deleteTestKeyAccessServers(ids)
 
 	listRsp, err := s.db.PolicyClient.ListKeyAccessServers(s.ctx, &kasregistry.ListKeyAccessServersRequest{})
 	s.Require().NoError(err)
@@ -1172,8 +1323,8 @@ func (s *KasRegistrySuite) createSortTestKeyAccessServers(prefixes []string) []s
 	return ids
 }
 
-// deleteSortTestKeyAccessServers cleans up KAS entries created by sort tests.
-func (s *KasRegistrySuite) deleteSortTestKeyAccessServers(ids []string) {
+// deleteTestKeyAccessServers cleans up KAS entries created by sort tests.
+func (s *KasRegistrySuite) deleteTestKeyAccessServers(ids []string) {
 	for _, id := range ids {
 		_, err := s.db.PolicyClient.DeleteKeyAccessServer(s.ctx, id)
 		s.Require().NoError(err)

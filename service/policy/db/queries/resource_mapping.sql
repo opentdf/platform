@@ -11,10 +11,12 @@ SELECT rmg.id,
     COUNT(*) OVER() AS total
 FROM resource_mapping_groups rmg
 JOIN attribute_namespaces ns ON rmg.namespace_id = ns.id
-WHERE (sqlc.narg('namespace_id')::uuid IS NULL OR rmg.namespace_id = sqlc.narg('namespace_id')::uuid) 
+LEFT JOIN attribute_fqns ns_fqn ON ns_fqn.namespace_id = ns.id AND ns_fqn.attribute_id IS NULL AND ns_fqn.value_id IS NULL
+WHERE (sqlc.narg('namespace_id')::uuid IS NULL OR rmg.namespace_id = sqlc.narg('namespace_id')::uuid)
+  AND (sqlc.narg('namespace_fqn')::text IS NULL OR ns_fqn.fqn = sqlc.narg('namespace_fqn')::text)
 ORDER BY rmg.created_at DESC
-LIMIT @limit_ 
-OFFSET @offset_; 
+LIMIT @limit_
+OFFSET @offset_;
 
 -- name: getResourceMappingGroup :one
 SELECT rmg.id,
@@ -61,17 +63,29 @@ SELECT
                 'fqn', CONCAT('https://', rmg_ns.name, '/resm/', rmg.name)::TEXT
             )
     END)::JSON AS group,
+    (CASE
+        WHEN m.namespace_id IS NULL THEN NULL
+        ELSE JSON_BUILD_OBJECT(
+                'id', rm_ns.id,
+                'name', rm_ns.name,
+                'fqn', rm_ns_fqn.fqn
+            )
+    END)::JSON AS namespace,
     COUNT(*) OVER() AS total
 FROM resource_mappings m
 LEFT JOIN attribute_values av on m.attribute_value_id = av.id
 LEFT JOIN attribute_fqns fqns on av.id = fqns.value_id
 LEFT JOIN resource_mapping_groups rmg ON m.group_id = rmg.id
 LEFT JOIN attribute_namespaces rmg_ns ON rmg.namespace_id = rmg_ns.id
+LEFT JOIN attribute_namespaces rm_ns ON m.namespace_id = rm_ns.id
+LEFT JOIN attribute_fqns rm_ns_fqn ON rm_ns_fqn.namespace_id = rm_ns.id AND rm_ns_fqn.attribute_id IS NULL AND rm_ns_fqn.value_id IS NULL
 WHERE (sqlc.narg('group_id')::uuid IS NULL OR m.group_id = sqlc.narg('group_id')::uuid)
-GROUP BY av.id, m.id, fqns.fqn, rmg.id, rmg.name, rmg.namespace_id, rmg_ns.name
+  AND (sqlc.narg('namespace_id')::uuid IS NULL OR m.namespace_id = sqlc.narg('namespace_id')::uuid)
+  AND (sqlc.narg('namespace_fqn')::text IS NULL OR rm_ns_fqn.fqn = sqlc.narg('namespace_fqn')::text)
+GROUP BY av.id, m.id, fqns.fqn, rmg.id, rmg.name, rmg.namespace_id, rmg_ns.name, rm_ns.id, rm_ns_fqn.fqn
 ORDER BY m.created_at DESC
-LIMIT @limit_ 
-OFFSET @offset_; 
+LIMIT @limit_
+OFFSET @offset_;
 
 -- name: listResourceMappingsByFullyQualifiedGroup :many
 -- CTE to cache the group JSON build since it will be the same for all mappings of the group
@@ -98,11 +112,21 @@ SELECT
     JSON_BUILD_OBJECT('id', av.id, 'value', av.value, 'fqn', fqns.fqn) as attribute_value,
     m.terms,
     JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', m.metadata -> 'labels', 'created_at', m.created_at, 'updated_at', m.updated_at)) as metadata,
-    g.group
+    g.group,
+    (CASE
+        WHEN m.namespace_id IS NULL THEN NULL
+        ELSE JSON_BUILD_OBJECT(
+                'id', rm_ns.id,
+                'name', rm_ns.name,
+                'fqn', rm_ns_fqn.fqn
+            )
+    END)::JSON AS namespace
 FROM resource_mappings m
 JOIN groups_cte g ON m.group_id = g.id
 JOIN attribute_values av on m.attribute_value_id = av.id
 JOIN attribute_fqns fqns on av.id = fqns.value_id
+LEFT JOIN attribute_namespaces rm_ns ON m.namespace_id = rm_ns.id
+LEFT JOIN attribute_fqns rm_ns_fqn ON rm_ns_fqn.namespace_id = rm_ns.id AND rm_ns_fqn.attribute_id IS NULL AND rm_ns_fqn.value_id IS NULL
 ORDER BY m.created_at DESC;
 
 -- name: getResourceMapping :one
@@ -119,18 +143,28 @@ SELECT
                 'namespace_id', rmg.namespace_id,
                 'fqn', CONCAT('https://', rmg_ns.name, '/resm/', rmg.name)::TEXT
             )
-    END)::JSON AS group
-FROM resource_mappings m 
+    END)::JSON AS group,
+    (CASE
+        WHEN m.namespace_id IS NULL THEN NULL
+        ELSE JSON_BUILD_OBJECT(
+                'id', rm_ns.id,
+                'name', rm_ns.name,
+                'fqn', rm_ns_fqn.fqn
+            )
+    END)::JSON AS namespace
+FROM resource_mappings m
 LEFT JOIN attribute_values av on m.attribute_value_id = av.id
 LEFT JOIN attribute_fqns fqns on av.id = fqns.value_id
 LEFT JOIN resource_mapping_groups rmg ON m.group_id = rmg.id
 LEFT JOIN attribute_namespaces rmg_ns ON rmg.namespace_id = rmg_ns.id
+LEFT JOIN attribute_namespaces rm_ns ON m.namespace_id = rm_ns.id
+LEFT JOIN attribute_fqns rm_ns_fqn ON rm_ns_fqn.namespace_id = rm_ns.id AND rm_ns_fqn.attribute_id IS NULL AND rm_ns_fqn.value_id IS NULL
 WHERE m.id = $1
-GROUP BY av.id, m.id, fqns.fqn, rmg.id, rmg.name, rmg.namespace_id, rmg_ns.name;
+GROUP BY av.id, m.id, fqns.fqn, rmg.id, rmg.name, rmg.namespace_id, rmg_ns.name, rm_ns.id, rm_ns_fqn.fqn;
 
 -- name: createResourceMapping :one
-INSERT INTO resource_mappings (attribute_value_id, terms, metadata, group_id)
-VALUES ($1, $2, $3, $4)
+INSERT INTO resource_mappings (attribute_value_id, terms, metadata, group_id, namespace_id)
+VALUES ($1, $2, $3, $4, $5)
 RETURNING id;
 
 -- name: updateResourceMapping :execrows
@@ -139,7 +173,8 @@ SET
     attribute_value_id = COALESCE(sqlc.narg('attribute_value_id'), attribute_value_id),
     terms = COALESCE(sqlc.narg('terms'), terms),
     metadata = COALESCE(sqlc.narg('metadata'), metadata),
-    group_id = COALESCE(sqlc.narg('group_id'), group_id)
+    group_id = COALESCE(sqlc.narg('group_id'), group_id),
+    namespace_id = COALESCE(sqlc.narg('namespace_id'), namespace_id)
 WHERE id = $1;
 
 -- name: deleteResourceMapping :execrows

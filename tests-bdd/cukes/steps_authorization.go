@@ -115,8 +115,110 @@ func (s *AuthorizationServiceStepDefinitions) iSendADecisionRequestForEntityChai
 	return ctx, nil
 }
 
+func (s *AuthorizationServiceStepDefinitions) iSendADecisionRequestForEntityChainForActionOnResourceWithFulfillableObligations(ctx context.Context, entityChainID, action, resource, fulfillableObligations string) (context.Context, error) {
+	scenarioContext := GetPlatformScenarioContext(ctx)
+
+	obligationFQNs := parseFqnsList(fulfillableObligations)
+	err := s.sendDecisionRequestV2WithFulfillableObligations(ctx, scenarioContext, entityChainID, action, resource, obligationFQNs)
+	if err != nil {
+		return ctx, err
+	}
+
+	return ctx, nil
+}
+
+func (s *AuthorizationServiceStepDefinitions) iSendADecisionRequestForEntityChainForActionOnResourceWithNoFulfillableObligations(ctx context.Context, entityChainID, action, resource string) (context.Context, error) {
+	return s.iSendADecisionRequestForEntityChainForActionOnResourceWithFulfillableObligations(ctx, entityChainID, action, resource, "[]")
+}
+
+// Step: I send a multi-resource decision request for entity chain "id" for "action" action on resources: (table)
+func (s *AuthorizationServiceStepDefinitions) iSendAMultiResourceDecisionRequestForEntityChainForActionOnResources(ctx context.Context, entityChainID string, action string, tbl *godog.Table) (context.Context, error) {
+	scenarioContext := GetPlatformScenarioContext(ctx)
+	scenarioContext.ClearError()
+
+	entityChain, err := buildEntityChainFromIDs(scenarioContext, entityChainID)
+	if err != nil {
+		return ctx, err
+	}
+
+	resources, resourceFQNMap, err := buildResourcesFromTable(tbl)
+	if err != nil {
+		return ctx, err
+	}
+
+	// Create v2 multi-resource decision request
+	req := &authzV2.GetDecisionMultiResourceRequest{
+		EntityIdentifier: &authzV2.EntityIdentifier{
+			Identifier: &authzV2.EntityIdentifier_EntityChain{
+				EntityChain: entityChain,
+			},
+		},
+		Action: &policy.Action{
+			Name: strings.ToLower(action),
+		},
+		Resources: resources,
+		// For testing purposes, we declare that we can fulfill all obligations
+		FulfillableObligationFqns: getAllObligationsFromScenario(scenarioContext),
+	}
+
+	resp, err := scenarioContext.SDK.AuthorizationV2.GetDecisionMultiResource(ctx, req)
+
+	scenarioContext.SetError(err)
+	scenarioContext.RecordObject(multiDecisionResponseKey, resp)
+	scenarioContext.RecordObject(decisionResponse, resp)
+	scenarioContext.RecordObject("resourceFQNMap", resourceFQNMap)
+
+	return ctx, nil
+}
+
+func (s *AuthorizationServiceStepDefinitions) iSendAMultiResourceDecisionRequestForEntityChainForActionOnResourcesWithNoFulfillableObligations(ctx context.Context, entityChainID string, action string, tbl *godog.Table) (context.Context, error) {
+	return s.iSendAMultiResourceDecisionRequestForEntityChainForActionOnResourcesWithFulfillableObligations(ctx, entityChainID, action, "[]", tbl)
+}
+
+func (s *AuthorizationServiceStepDefinitions) iSendAMultiResourceDecisionRequestForEntityChainForActionOnResourcesWithFulfillableObligations(ctx context.Context, entityChainID string, action string, fulfillableObligations string, tbl *godog.Table) (context.Context, error) {
+	scenarioContext := GetPlatformScenarioContext(ctx)
+	scenarioContext.ClearError()
+
+	entityChain, err := buildEntityChainFromIDs(scenarioContext, entityChainID)
+	if err != nil {
+		return ctx, err
+	}
+
+	resources, resourceFQNMap, err := buildResourcesFromTable(tbl)
+	if err != nil {
+		return ctx, err
+	}
+
+	obligationFQNs := parseFqnsList(fulfillableObligations)
+	req := &authzV2.GetDecisionMultiResourceRequest{
+		EntityIdentifier: &authzV2.EntityIdentifier{
+			Identifier: &authzV2.EntityIdentifier_EntityChain{
+				EntityChain: entityChain,
+			},
+		},
+		Action: &policy.Action{
+			Name: strings.ToLower(action),
+		},
+		Resources:                 resources,
+		FulfillableObligationFqns: obligationFQNs,
+	}
+
+	resp, err := scenarioContext.SDK.AuthorizationV2.GetDecisionMultiResource(ctx, req)
+
+	scenarioContext.SetError(err)
+	scenarioContext.RecordObject(multiDecisionResponseKey, resp)
+	scenarioContext.RecordObject(decisionResponse, resp)
+	scenarioContext.RecordObject("resourceFQNMap", resourceFQNMap)
+
+	return ctx, nil
+}
+
 // Send decision request using v2 API (with obligations support)
 func (s *AuthorizationServiceStepDefinitions) sendDecisionRequestV2(ctx context.Context, scenarioContext *PlatformScenarioContext, entityChainID string, action string, resource string) error {
+	return s.sendDecisionRequestV2WithFulfillableObligations(ctx, scenarioContext, entityChainID, action, resource, getAllObligationsFromScenario(scenarioContext))
+}
+
+func (s *AuthorizationServiceStepDefinitions) sendDecisionRequestV2WithFulfillableObligations(ctx context.Context, scenarioContext *PlatformScenarioContext, entityChainID string, action string, resource string, fulfillableObligations []string) error {
 	// Build entity chain from stored v2 entities
 	var entities []*entity.Entity
 	for _, entityID := range strings.Split(entityChainID, ",") {
@@ -155,8 +257,7 @@ func (s *AuthorizationServiceStepDefinitions) sendDecisionRequestV2(ctx context.
 				},
 			},
 		},
-		// For testing purposes, we declare that we can fulfill all obligations
-		FulfillableObligationFqns: getAllObligationsFromScenario(scenarioContext),
+		FulfillableObligationFqns: fulfillableObligations,
 	}
 
 	resp, err := scenarioContext.SDK.AuthorizationV2.GetDecision(ctx, req)
@@ -183,6 +284,97 @@ func getAllObligationsFromScenario(scenarioContext *PlatformScenarioContext) []s
 	}
 
 	return obligationFQNs
+}
+
+func buildEntityChainFromIDs(scenarioContext *PlatformScenarioContext, entityChainID string) (*entity.EntityChain, error) {
+	var entities []*entity.Entity
+	for _, entityID := range strings.Split(entityChainID, ",") {
+		ent, ok := scenarioContext.GetObject(strings.TrimSpace(entityID)).(*entity.Entity)
+		if !ok {
+			return nil, fmt.Errorf("entity %s not found or invalid type", entityID)
+		}
+		entities = append(entities, ent)
+	}
+
+	return &entity.EntityChain{Entities: entities}, nil
+}
+
+func buildResourcesFromTable(tbl *godog.Table) ([]*authzV2.Resource, map[string]string, error) {
+	var resources []*authzV2.Resource
+	resourceFQNMap := make(map[string]string)
+	resourceIdx := 0
+	for ri, row := range tbl.Rows {
+		if ri == 0 {
+			continue
+		}
+		for _, cell := range row.Cells {
+			fqn := strings.TrimSpace(cell.Value)
+			ephemeralID := fmt.Sprintf("resource%d", resourceIdx)
+			resourceFQNMap[ephemeralID] = fqn
+			resources = append(resources, &authzV2.Resource{
+				EphemeralId: ephemeralID,
+				Resource: &authzV2.Resource_AttributeValues_{
+					AttributeValues: &authzV2.Resource_AttributeValues{
+						Fqns: []string{fqn},
+					},
+				},
+			})
+			resourceIdx++
+		}
+	}
+
+	if len(resources) == 0 {
+		return nil, nil, errors.New("no resources provided")
+	}
+
+	return resources, resourceFQNMap, nil
+}
+
+func parseFqnsList(raw string) []string {
+	raw = strings.TrimSpace(raw)
+	if raw == "" || raw == "[]" || strings.EqualFold(raw, "none") || strings.EqualFold(raw, "null") {
+		return nil
+	}
+	if strings.HasPrefix(raw, "[") && strings.HasSuffix(raw, "]") {
+		raw = strings.TrimSpace(strings.TrimSuffix(strings.TrimPrefix(raw, "["), "]"))
+		if raw == "" {
+			return nil
+		}
+	}
+	if raw == "" {
+		return nil
+	}
+	out := make([]string, 0)
+	for f := range strings.SplitSeq(raw, ",") {
+		f = strings.TrimSpace(f)
+		if f != "" {
+			out = append(out, f)
+		}
+	}
+	if len(out) == 0 {
+		return nil
+	}
+	return out
+}
+
+// Step: I should get N decision responses
+func (s *AuthorizationServiceStepDefinitions) iShouldGetNDecisionResponses(ctx context.Context, count int) (context.Context, error) {
+	scenarioContext := GetPlatformScenarioContext(ctx)
+
+	decisionRespV2, ok := scenarioContext.GetObject(multiDecisionResponseKey).(*authzV2.GetDecisionMultiResourceResponse)
+	if !ok {
+		decisionRespV2, ok = scenarioContext.GetObject(decisionResponse).(*authzV2.GetDecisionMultiResourceResponse)
+		if !ok {
+			return ctx, errors.New("multi-decision response not found or invalid")
+		}
+	}
+
+	actualCount := len(decisionRespV2.GetResourceDecisions())
+	if actualCount != count {
+		return ctx, fmt.Errorf("expected %d decision responses, got %d", count, actualCount)
+	}
+
+	return ctx, nil
 }
 
 func (s *AuthorizationServiceStepDefinitions) iShouldGetADecisionResponse(ctx context.Context, expectedResponse string) (context.Context, error) {
@@ -214,10 +406,77 @@ func (s *AuthorizationServiceStepDefinitions) iShouldGetADecisionResponse(ctx co
 	return ctx, errors.New("decision response not found or invalid")
 }
 
+// Step: the multi-resource decision should be "PERMIT" or "DENY"
+func (s *AuthorizationServiceStepDefinitions) theMultiResourceDecisionShouldBe(ctx context.Context, expectedDecision string) (context.Context, error) {
+	scenarioContext := GetPlatformScenarioContext(ctx)
+	resp, ok := scenarioContext.GetObject(multiDecisionResponseKey).(*authzV2.GetDecisionMultiResourceResponse)
+	if !ok {
+		resp, ok = scenarioContext.GetObject(decisionResponse).(*authzV2.GetDecisionMultiResourceResponse)
+		if !ok {
+			return ctx, errors.New("multi-decision response not found or invalid")
+		}
+	}
+
+	allPermitted := resp.GetAllPermitted()
+	if allPermitted == nil {
+		return ctx, errors.New("multi-decision missing all_permitted flag")
+	}
+
+	expected := strings.EqualFold(expectedDecision, "PERMIT")
+	if allPermitted.GetValue() != expected {
+		return ctx, fmt.Errorf("unexpected multi-decision result: got %v expected %v", allPermitted.GetValue(), expected)
+	}
+
+	return ctx, nil
+}
+
+// Step: the decision response for resource FQN should be "PERMIT" or "DENY"
+func (s *AuthorizationServiceStepDefinitions) theDecisionResponseForResourceShouldBe(ctx context.Context, resourceFQN string, expectedDecision string) (context.Context, error) {
+	scenarioContext := GetPlatformScenarioContext(ctx)
+
+	decisionRespV2, ok := scenarioContext.GetObject(multiDecisionResponseKey).(*authzV2.GetDecisionMultiResourceResponse)
+	if !ok {
+		decisionRespV2, ok = scenarioContext.GetObject(decisionResponse).(*authzV2.GetDecisionMultiResourceResponse)
+		if !ok {
+			return ctx, errors.New("multi-decision response not found or invalid")
+		}
+	}
+
+	resourceFQNMap, ok := scenarioContext.GetObject("resourceFQNMap").(map[string]string)
+	if !ok || len(resourceFQNMap) == 0 {
+		return ctx, errors.New("resourceFQNMap not found or empty")
+	}
+
+	expectedDecision = "DECISION_" + strings.ToUpper(strings.TrimSpace(expectedDecision))
+	for _, rd := range decisionRespV2.GetResourceDecisions() {
+		if fqn, exists := resourceFQNMap[rd.GetEphemeralResourceId()]; exists && fqn == resourceFQN {
+			actualDecision := rd.GetDecision().String()
+			if actualDecision != expectedDecision {
+				return ctx, fmt.Errorf("unexpected decision for resource %s: %s instead of %s", resourceFQN, actualDecision, expectedDecision)
+			}
+			return ctx, nil
+		}
+	}
+
+	known := make([]string, 0, len(resourceFQNMap))
+	for _, fqn := range resourceFQNMap {
+		known = append(known, fqn)
+	}
+	return ctx, fmt.Errorf("resource %s not found in decision responses (known: %v)", resourceFQN, known)
+}
+
 func RegisterAuthorizationStepDefinitions(ctx *godog.ScenarioContext) {
 	stepDefinitions := AuthorizationServiceStepDefinitions{}
 	ctx.Step(`^there is a "([^"]*)" subject entity with value "([^"]*)" and referenced as "([^"]*)"$`, stepDefinitions.thereIsASubjectEntityWithValueAndReferencedAs)
 	ctx.Step(`^there is a "([^"]*)" environment entity with value "([^"]*)" and referenced as "([^"]*)"$`, stepDefinitions.thereIsAEnvEntityWithValueAndReferencedAs)
 	ctx.Step(`^I send a decision request for entity chain "([^"]*)" for "([^"]*)" action on resource "([^"]*)"$`, stepDefinitions.iSendADecisionRequestForEntityChainForActionOnResource)
+	ctx.Step(`^I send a decision request for entity chain "([^"]*)" for "([^"]*)" action on resource "([^"]*)" with fulfillable obligations "([^"]*)"$`, stepDefinitions.iSendADecisionRequestForEntityChainForActionOnResourceWithFulfillableObligations)
+	ctx.Step(`^I send a decision request for entity chain "([^"]*)" for "([^"]*)" action on resource "([^"]*)" with no fulfillable obligations$`, stepDefinitions.iSendADecisionRequestForEntityChainForActionOnResourceWithNoFulfillableObligations)
+	ctx.Step(`^I send a multi-resource decision request for entity chain "([^"]*)" for "([^"]*)" action on resources:$`, stepDefinitions.iSendAMultiResourceDecisionRequestForEntityChainForActionOnResources)
+	ctx.Step(`^I send a multi-resource decision request for entity chain "([^"]*)" for "([^"]*)" action on resources with no fulfillable obligations:$`, stepDefinitions.iSendAMultiResourceDecisionRequestForEntityChainForActionOnResourcesWithNoFulfillableObligations)
+	ctx.Step(`^I send a multi-resource decision request for entity chain "([^"]*)" for "([^"]*)" action on resources with fulfillable obligations "([^"]*)":$`, stepDefinitions.iSendAMultiResourceDecisionRequestForEntityChainForActionOnResourcesWithFulfillableObligations)
 	ctx.Step(`^I should get a "([^"]*)" decision response$`, stepDefinitions.iShouldGetADecisionResponse)
+	ctx.Step(`^I should get (\d+) decision responses$`, stepDefinitions.iShouldGetNDecisionResponses)
+	ctx.Step(`^the multi-resource decision should be "([^"]*)"$`, stepDefinitions.theMultiResourceDecisionShouldBe)
+	ctx.Step(`^the decision response for resource "([^"]*)" should be "([^"]*)"$`, stepDefinitions.theDecisionResponseForResourceShouldBe)
 }

@@ -37,9 +37,13 @@ func getNewDPoPKey(dpopKeyPair *ocrypto.RsaKeyPair) (string, jwk.Key, *ocrypto.A
 		return "", nil, nil, fmt.Errorf("error setting the key algorithm: %w", err)
 	}
 
-	asymDecryption, err := ocrypto.NewAsymDecryption(dpopPrivateKeyPEM)
+	decryptor, err := ocrypto.FromPrivatePEM(dpopPrivateKeyPEM)
 	if err != nil {
 		return "", nil, nil, fmt.Errorf("error creating asymmetric decryptor: %w", err)
+	}
+	asymDecryption, ok := decryptor.(ocrypto.AsymDecryption)
+	if !ok {
+		return "", nil, nil, fmt.Errorf("DPoP key is not an RSA private key: %T", decryptor)
 	}
 
 	return dpopPublicKeyPEM, dpopKey, &asymDecryption, nil

@@ -18,7 +18,14 @@ SELECT
 FROM attribute_namespaces ns
 LEFT JOIN attribute_fqns fqns ON ns.id = fqns.namespace_id AND fqns.attribute_id IS NULL
 CROSS JOIN params p
-WHERE (sqlc.narg('active')::BOOLEAN IS NULL OR ns.active = sqlc.narg('active')::BOOLEAN)
+WHERE
+    (sqlc.narg('active')::BOOLEAN IS NULL OR ns.active = sqlc.narg('active')::BOOLEAN)
+    -- No search-specific optimization is added here. If needed, consider
+    -- a pg_trgm-backed GIN index on attribute_fqns.fqn.
+    AND (
+        sqlc.narg('search')::TEXT IS NULL
+        OR fqns.fqn LIKE sqlc.narg('search')::TEXT ESCAPE '\'
+    )
 ORDER BY
     CASE WHEN p.resolved_field = 'name' AND p.resolved_direction = 'ASC' THEN ns.name END ASC,
     CASE WHEN p.resolved_field = 'name' AND p.resolved_direction = 'DESC' THEN ns.name END DESC,

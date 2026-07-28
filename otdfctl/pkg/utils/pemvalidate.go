@@ -41,10 +41,6 @@ func ValidatePublicKeyPEM(pemBytes []byte, expected policy.Algorithm) error {
 		if enc.KeyType() != ocrypto.EC521Key {
 			return errors.New("algorithm mismatch: expected EC P-521")
 		}
-	case policy.Algorithm_ALGORITHM_HPQT_XWING:
-		if enc.KeyType() != ocrypto.HybridXWingKey {
-			return errors.New("algorithm mismatch: expected hybrid X-Wing (X25519 + ML-KEM-768)")
-		}
 	case policy.Algorithm_ALGORITHM_HPQT_SECP256R1_MLKEM768:
 		if enc.KeyType() != ocrypto.HybridSecp256r1MLKEM768Key {
 			return errors.New("algorithm mismatch: expected hybrid NIST P-256 + ML-KEM-768")
@@ -52,6 +48,18 @@ func ValidatePublicKeyPEM(pemBytes []byte, expected policy.Algorithm) error {
 	case policy.Algorithm_ALGORITHM_HPQT_SECP384R1_MLKEM1024:
 		if enc.KeyType() != ocrypto.HybridSecp384r1MLKEM1024Key {
 			return errors.New("algorithm mismatch: expected hybrid NIST P-384 + ML-KEM-1024")
+		}
+	case policy.Algorithm_ALGORITHM_HPQT_XWING:
+		if enc.KeyType() != ocrypto.HybridXWingKey {
+			return errors.New("algorithm mismatch: expected hybrid X-Wing (X25519 + ML-KEM-768)")
+		}
+	case policy.Algorithm_ALGORITHM_MLKEM_768:
+		if enc.KeyType() != ocrypto.MLKEM768Key {
+			return errors.New("algorithm mismatch: expected ML-KEM-768")
+		}
+	case policy.Algorithm_ALGORITHM_MLKEM_1024:
+		if enc.KeyType() != ocrypto.MLKEM1024Key {
+			return errors.New("algorithm mismatch: expected ML-KEM-1024")
 		}
 	case policy.Algorithm_ALGORITHM_UNSPECIFIED:
 		fallthrough

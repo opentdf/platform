@@ -38,13 +38,16 @@ func (h Handler) GetNamespace(ctx context.Context, identifier string) (*policy.N
 	return resp.GetNamespace(), nil
 }
 
-func (h Handler) ListNamespaces(ctx context.Context, state common.ActiveStateEnum, limit, offset int32, sort SortOption) (*namespaces.ListNamespacesResponse, error) {
+func (h Handler) ListNamespaces(ctx context.Context, state common.ActiveStateEnum, limit, offset int32, search string, sort SortOption) (*namespaces.ListNamespacesResponse, error) {
 	req := &namespaces.ListNamespacesRequest{
 		State: state,
 		Pagination: &policy.PageRequest{
 			Limit:  limit,
 			Offset: offset,
 		},
+	}
+	if search != "" {
+		req.Search = &policy.Search{Term: search}
 	}
 	if !sort.IsZero() {
 		allowedFields := map[string]namespaces.SortNamespacesType{

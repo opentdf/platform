@@ -35,8 +35,8 @@ func GenerateTempKeys(ctx context.Context, outputPath string) {
 	generateRSACertificate(outputPath)
 	generateECParameters(outputPath)
 	generateECCertificate(outputPath)
-	generateHybridKeys(outputPath)
 	generateJavaKeystore(ctx, outputPath)
+	generatePostQuantumKeys(outputPath)
 }
 
 // generateRSACertificate creates a self-signed RSA certificate and private key.
@@ -207,8 +207,8 @@ func createJavaKeystore(ctx context.Context, certPath, keystorePath string) {
 	log.Printf("Java keystore generated successfully: %s", keystorePath)
 }
 
-// generateHybridKeys creates X-Wing, P256+ML-KEM-768, and P384+ML-KEM-1024 key pairs.
-func generateHybridKeys(outputPath string) {
+// generatePostQuantumKeys creates post-quantum key pairs: X-Wing, P256+ML-KEM-768, P384+ML-KEM-1024, ML-KEM-768, and ML-KEM-1024.
+func generatePostQuantumKeys(outputPath string) {
 	specs := []struct {
 		name       string
 		newKeyPair func() (priv, pub string, err error)
@@ -218,6 +218,8 @@ func generateHybridKeys(outputPath string) {
 		{"X-Wing", generateXWingKeyPair, "kas-xwing-private.pem", "kas-xwing-public.pem"},
 		{"P256+ML-KEM-768", generateP256MLKEM768KeyPair, "kas-p256mlkem768-private.pem", "kas-p256mlkem768-public.pem"},
 		{"P384+ML-KEM-1024", generateP384MLKEM1024KeyPair, "kas-p384mlkem1024-private.pem", "kas-p384mlkem1024-public.pem"},
+		{"ML-KEM-768", generateMLKEM768KeyPair, "kas-mlkem768-private.pem", "kas-mlkem768-public.pem"},
+		{"ML-KEM-1024", generateMLKEM1024KeyPair, "kas-mlkem1024-private.pem", "kas-mlkem1024-public.pem"},
 	}
 
 	for _, s := range specs {
@@ -276,6 +278,38 @@ func generateP256MLKEM768KeyPair() (string, string, error) {
 
 func generateP384MLKEM1024KeyPair() (string, string, error) {
 	kp, err := ocrypto.NewP384MLKEM1024KeyPair()
+	if err != nil {
+		return "", "", err
+	}
+	priv, err := kp.PrivateKeyInPemFormat()
+	if err != nil {
+		return "", "", err
+	}
+	pub, err := kp.PublicKeyInPemFormat()
+	if err != nil {
+		return "", "", err
+	}
+	return priv, pub, nil
+}
+
+func generateMLKEM768KeyPair() (string, string, error) {
+	kp, err := ocrypto.NewMLKEMKeyPair()
+	if err != nil {
+		return "", "", err
+	}
+	priv, err := kp.PrivateKeyInPemFormat()
+	if err != nil {
+		return "", "", err
+	}
+	pub, err := kp.PublicKeyInPemFormat()
+	if err != nil {
+		return "", "", err
+	}
+	return priv, pub, nil
+}
+
+func generateMLKEM1024KeyPair() (string, string, error) {
+	kp, err := ocrypto.NewMLKEM1024KeyPair()
 	if err != nil {
 		return "", "", err
 	}

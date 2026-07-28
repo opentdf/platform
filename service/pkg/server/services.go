@@ -14,6 +14,7 @@ import (
 	entityresolutionV2 "github.com/opentdf/platform/service/entityresolution/v2"
 	"github.com/opentdf/platform/service/health"
 	authn "github.com/opentdf/platform/service/internal/auth"
+	"github.com/opentdf/platform/service/internal/auth/authz"
 	"github.com/opentdf/platform/service/internal/server"
 	"github.com/opentdf/platform/service/kas"
 	logging "github.com/opentdf/platform/service/logger"
@@ -126,6 +127,7 @@ type startServicesParams struct {
 	reg                    *serviceregistry.Registry
 	cacheManager           *cache.Manager
 	keyManagerCtxFactories []trust.NamedKeyManagerCtxFactory
+	authzResolverRegistry  *authz.ResolverRegistry
 }
 
 // startServices iterates through the registered namespaces and starts the services
@@ -151,7 +153,8 @@ func startServices(ctx context.Context, params startServicesParams) error {
 
 		// Skip the namespace if the mode is not enabled
 		if !modeEnabled {
-			logger.Info("skipping namespace",
+			logger.Info(
+				"skipping namespace",
 				slog.String("namespace", ns),
 				slog.String("mode", namespace.Mode),
 			)
@@ -163,15 +166,9 @@ func startServices(ctx context.Context, params startServicesParams) error {
 
 		// If ns has log_level in config, create new logger with that level
 		if err == nil {
-			if extractedLogLevel != cfg.Logger.Level {
-				slog.Debug("configuring logger")
-				newLoggerConfig := cfg.Logger
-				newLoggerConfig.Level = extractedLogLevel
-				newSvcLogger, err := logging.NewLogger(newLoggerConfig)
-				// only assign if logger successfully created
-				if err == nil {
-					svcLogger = newSvcLogger.With("namespace", ns)
-				}
+			svcLogger, err = buildNamespaceLogger(svcLogger, cfg, ns, extractedLogLevel)
+			if err != nil {
+				return err
 			}
 		}
 
@@ -194,7 +191,8 @@ func startServices(ctx context.Context, params startServicesParams) error {
 
 			// Function to create a cache given cache options
 			createCacheClient := func(options cache.Options) (*cache.Cache, error) {
-				slog.Info("creating cache client for",
+				slog.Info(
+					"creating cache client for",
 					slog.String("namespace", ns),
 					slog.String("service", svc.GetServiceDesc().ServiceName),
 				)
@@ -203,6 +201,13 @@ func startServices(ctx context.Context, params startServicesParams) error {
 					return nil, fmt.Errorf("issue creating cache client for %s: %w", ns, err)
 				}
 				return cacheClient, nil
+			}
+
+			// Create a scoped authz resolver registry for this service
+			// This ensures services can only register resolvers for their own methods
+			var scopedAuthzRegistry *authz.ScopedResolverRegistry
+			if params.authzResolverRegistry != nil {
+				scopedAuthzRegistry = params.authzResolverRegistry.ScopedForService(svc.GetServiceDesc())
 			}
 
 			var accessTokenVerifier authn.AccessTokenVerifier
@@ -223,6 +228,7 @@ func startServices(ctx context.Context, params startServicesParams) error {
 				AccessTokenVerifier:    accessTokenVerifier,
 				NewCacheClient:         createCacheClient,
 				KeyManagerCtxFactories: keyManagerCtxFactories,
+				AuthzResolverRegistry:  scopedAuthzRegistry,
 			})
 			if err != nil {
 				return err
@@ -251,7 +257,8 @@ func startServices(ctx context.Context, params startServicesParams) error {
 				"service running",
 				slog.String("namespace", ns),
 				slog.String("service", svc.GetServiceDesc().ServiceName),
-				slog.Group("database",
+				slog.Group(
+					"database",
 					slog.Any("required", svcDBClient != nil),
 					slog.Any("migration_status", determineStatusOfMigration(svcDBClient)),
 				),
@@ -274,13 +281,34 @@ func extractServiceLoggerConfig(cfg config.ServiceConfig) (string, error) {
 	return "", fmt.Errorf("could not decode service log level: %w", err)
 }
 
+func buildNamespaceLogger(baseLogger *logging.Logger, cfg *config.Config, ns, level string) (*logging.Logger, error) {
+	if level == cfg.Logger.Level {
+		return baseLogger, nil
+	}
+
+	slog.Debug("configuring logger")
+	newLoggerConfig := cfg.Logger
+	newLoggerConfig.Level = level
+
+	namespaceLogger, loggerErr := logging.NewLogger(newLoggerConfig)
+	if loggerErr != nil {
+		return nil, fmt.Errorf("invalid namespace logger config for %s: %w", ns, loggerErr)
+	}
+
+	if err := namespaceLogger.Audit.ApplyConfig(cfg.Audit); err != nil {
+		return nil, fmt.Errorf("could not apply audit config for namespace %s: %w", ns, err)
+	}
+	return namespaceLogger.With("namespace", ns), nil
+}
+
 // newServiceDBClient creates a new database client for the specified namespace.
 // It initializes the client with the provided context, logger configuration, database configuration,
 // namespace, and migrations. It returns the created client and any error encountered during creation.
 func newServiceDBClient(ctx context.Context, logCfg logging.Config, dbCfg db.Config, trace trace.Tracer, ns string, migrations *embed.FS) (*db.Client, error) {
 	var err error
 
-	client, err := db.New(ctx, dbCfg, logCfg, &trace,
+	client, err := db.New(
+		ctx, dbCfg, logCfg, &trace,
 		db.WithService(ns),
 		db.WithMigrations(migrations),
 	)

@@ -29,11 +29,46 @@ type handlerOpts struct {
 	profile *profiles.OtdfctlProfileStore
 
 	sdkOpts []sdk.Option
+
+	hooks []Hook
 }
 
-type handlerOptsFunc func(handlerOpts) handlerOpts
+// HandlerOption configures a Handler during construction. Callers compose
+// options by passing them to New; extension points that want to defer their
+// SDK-option contribution until profile resolution is complete should use
+// WithHook rather than WithSDKOpts.
+type HandlerOption func(handlerOpts) handlerOpts
 
-func WithEndpoint(endpoint string, tlsNoVerify bool) handlerOptsFunc {
+// Hook is the umbrella type for handler-construction hooks. Concrete hook
+// variants (PreSDKHook, and any future point-specific hooks added later)
+// implement Hook so callers can pass them uniformly through WithHook and
+// common.NewHandler. New hook points are added by declaring a new named
+// callback type, giving it an isHandlerHook receiver, and extending the
+// applyHooks dispatch switch — no new exported registration function is
+// needed.
+type Hook interface {
+	isHandlerHook()
+}
+
+// PreSDKHookContext exposes the resolved handler configuration to a
+// PreSDKHook callback so it can decide which SDK options to contribute
+// (for example, an interceptor that only attaches for a specific endpoint
+// or profile).
+type PreSDKHookContext struct {
+	Endpoint    string
+	TLSNoVerify bool
+	Profile     *profiles.OtdfctlProfileStore
+}
+
+// PreSDKHook runs after every HandlerOption has been applied and before
+// sdk.New is called. It returns additional SDK options that get appended to
+// the final options list. Multiple PreSDKHooks compose in registration
+// order and each sees the same fully-resolved PreSDKHookContext.
+type PreSDKHook func(PreSDKHookContext) []sdk.Option
+
+func (PreSDKHook) isHandlerHook() {}
+
+func WithEndpoint(endpoint string, tlsNoVerify bool) HandlerOption {
 	return func(c handlerOpts) handlerOpts {
 		c.endpoint = endpoint
 		c.TLSNoVerify = tlsNoVerify
@@ -41,8 +76,11 @@ func WithEndpoint(endpoint string, tlsNoVerify bool) handlerOptsFunc {
 	}
 }
 
-func WithProfile(profile *profiles.OtdfctlProfileStore) handlerOptsFunc {
+func WithProfile(profile *profiles.OtdfctlProfileStore) HandlerOption {
 	return func(c handlerOpts) handlerOpts {
+		if profile == nil {
+			return c
+		}
 		c.profile = profile
 		c.endpoint = profile.GetEndpoint()
 		c.TLSNoVerify = profile.GetTLSNoVerify()
@@ -58,19 +96,72 @@ func WithProfile(profile *profiles.OtdfctlProfileStore) handlerOptsFunc {
 	}
 }
 
-func WithSDKOpts(opts ...sdk.Option) handlerOptsFunc {
+func WithSDKOpts(opts ...sdk.Option) HandlerOption {
 	return func(c handlerOpts) handlerOpts {
 		c.sdkOpts = opts
 		return c
 	}
 }
 
+// WithHook registers one or more Hooks that run during handler construction
+// after every HandlerOption has been applied and before the SDK is built.
+// Nil entries are ignored so a caller cannot accidentally register a hook
+// that would panic on execution.
+func WithHook(hooks ...Hook) HandlerOption {
+	return func(c handlerOpts) handlerOpts {
+		for _, h := range hooks {
+			if h == nil {
+				continue
+			}
+			c.hooks = append(c.hooks, h)
+		}
+		return c
+	}
+}
+
+// applyHooks dispatches every registered Hook to the callback attached to
+// its concrete variant. Each variant gets its own context type derived from
+// the resolved handler configuration, and any SDK options the hook returns
+// are appended to o.sdkOpts. Broken out of New so the extension point is
+// directly testable without touching the network. Unknown Hook variants
+// are dropped so future variants added upstream do not panic older code
+// paths that have not yet been updated to dispatch them.
+func applyHooks(o handlerOpts) handlerOpts {
+	if len(o.hooks) == 0 {
+		return o
+	}
+	for _, h := range o.hooks {
+		// Switch anticipates future Hook variants (see Hook doc) even though
+		// only PreSDKHook exists today, so gocritic's single-case suggestion
+		// would force a rewrite the moment a second variant lands.
+		//nolint:gocritic // extensible dispatch, keep switch
+		switch v := h.(type) {
+		case PreSDKHook:
+			// A typed-nil function value stored in the Hook interface
+			// passes the untyped-nil filter inside WithHook, so guard
+			// per-variant here before invoking the callback.
+			if v == nil {
+				continue
+			}
+			ctx := PreSDKHookContext{
+				Endpoint:    o.endpoint,
+				TLSNoVerify: o.TLSNoVerify,
+				Profile:     o.profile,
+			}
+			o.sdkOpts = append(o.sdkOpts, v(ctx)...)
+		}
+	}
+	return o
+}
+
 // Creates a new handler wrapping the SDK, which is authenticated through the cached client-credentials flow tokens
-func New(opts ...handlerOptsFunc) (Handler, error) {
+func New(opts ...HandlerOption) (Handler, error) {
 	var o handlerOpts
 	for _, f := range opts {
 		o = f(o)
 	}
+
+	o = applyHooks(o)
 
 	u, err := utils.NormalizeEndpoint(o.endpoint)
 	if err != nil {

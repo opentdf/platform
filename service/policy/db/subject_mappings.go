@@ -124,10 +124,12 @@ func (c PolicyDBClient) ListSubjectConditionSets(ctx context.Context, r *subject
 	}
 
 	sortField, sortDirection := GetSubjectConditionSetsSortParams(r.GetSort())
+	search := pgtypeSubstringSearchPattern(r.GetSearch().GetTerm())
 
 	list, err := c.queries.listSubjectConditionSets(ctx, listSubjectConditionSetsParams{
 		NamespaceID:   pgtypeUUID(r.GetNamespaceId()),
 		NamespaceFqn:  pgtypeText(r.GetNamespaceFqn()),
+		Search:        search,
 		Limit:         limit,
 		Offset:        offset,
 		SortField:     sortField,
@@ -264,6 +266,13 @@ func (c PolicyDBClient) DeleteAllUnmappedSubjectConditionSets(ctx context.Contex
 // If a new subject condition set is provided, it will be created. The existing subject condition set id takes precedence.
 func (c PolicyDBClient) CreateSubjectMapping(ctx context.Context, s *subjectmapping.CreateSubjectMappingRequest) (*policy.SubjectMapping, error) {
 	attributeValueID := s.GetAttributeValueId()
+
+	// Enforce no-coexistence: a value-level subject mapping cannot be created on a
+	// definition that already has a dynamic value entitlement mapping.
+	if err := c.ensureNoDynamicValueMappingCoexistence(ctx, attributeValueID); err != nil {
+		return nil, err
+	}
+
 	resolvedNamespaceID, err := c.resolveNamespace(ctx, s.GetNamespaceId(), s.GetNamespaceFqn())
 	if err != nil {
 		return nil, err
@@ -359,10 +368,12 @@ func (c PolicyDBClient) ListSubjectMappings(ctx context.Context, r *subjectmappi
 	}
 
 	sortField, sortDirection := GetSubjectMappingsSortParams(r.GetSort())
+	search := pgtypeSubstringSearchPattern(r.GetSearch().GetTerm())
 
 	list, err := c.queries.listSubjectMappings(ctx, listSubjectMappingsParams{
 		NamespaceID:   pgtypeUUID(r.GetNamespaceId()),
 		NamespaceFqn:  pgtypeText(r.GetNamespaceFqn()),
+		Search:        search,
 		Limit:         limit,
 		Offset:        offset,
 		SortField:     sortField,

@@ -63,7 +63,7 @@ func (h Handler) GetObligation(ctx context.Context, id, fqn string) (*policy.Obl
 	return resp.GetObligation(), nil
 }
 
-func (h Handler) ListObligations(ctx context.Context, limit, offset int32, namespace string, sort SortOption) (*obligations.ListObligationsResponse, error) {
+func (h Handler) ListObligations(ctx context.Context, limit, offset int32, namespace string, search string, sort SortOption) (*obligations.ListObligationsResponse, error) {
 	req := &obligations.ListObligationsRequest{
 		Pagination: &policy.PageRequest{
 			Limit:  limit,
@@ -72,6 +72,9 @@ func (h Handler) ListObligations(ctx context.Context, limit, offset int32, names
 	}
 	if namespace != "" {
 		req.NamespaceId, req.NamespaceFqn = getNamespaceIDAndFQN(namespace)
+	}
+	if search != "" {
+		req.Search = &policy.Search{Term: search}
 	}
 	if !sort.IsZero() {
 		allowedFields := map[string]obligations.SortObligationsType{

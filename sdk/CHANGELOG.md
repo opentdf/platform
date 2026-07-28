@@ -1,5 +1,70 @@
 # Changelog
 
+## [0.27.0](https://github.com/opentdf/platform/compare/sdk/v0.26.0...sdk/v0.27.0) (2026-07-21)
+
+
+### Features
+
+* **policy:** Add UnsafeUpdateKey rpc. ([#3728](https://github.com/opentdf/platform/issues/3728)) ([c89b193](https://github.com/opentdf/platform/commit/c89b1933e3931bc1984711f2268c8adedd786db4))
+
+## [0.26.0](https://github.com/opentdf/platform/compare/sdk/v0.25.0...sdk/v0.26.0) (2026-07-02)
+
+
+### Features
+
+* **policy:** add narrow attribute read API protos and generated code ([#3634](https://github.com/opentdf/platform/issues/3634)) ([5726720](https://github.com/opentdf/platform/commit/572672007abd7e0a3598f8303661487cfb0d2db5))
+* **sdk:** resolve key splits via GetKeyMappingsByFqns ([#3699](https://github.com/opentdf/platform/issues/3699)) ([7a2320b](https://github.com/opentdf/platform/commit/7a2320b30c7914b7e54600fc2390d41ce495a76b))
+
+
+### Bug Fixes
+
+* **deps:** bump github.com/opentdf/platform/protocol/go from 0.36.0 to 0.37.0 in /sdk ([#3707](https://github.com/opentdf/platform/issues/3707)) ([4277e96](https://github.com/opentdf/platform/commit/4277e9619491d3177ccafebbdf8c397378fe05ce))
+
+## [0.25.0](https://github.com/opentdf/platform/compare/sdk/v0.24.0...sdk/v0.25.0) (2026-06-29)
+
+
+### Features
+
+* **kas:** Adds FIPS-203 wrap with ML-KEM-768/1024 ([#3652](https://github.com/opentdf/platform/issues/3652)) ([06f30ef](https://github.com/opentdf/platform/commit/06f30ef7f2eb6a5dce587efa906d4bd70b7cd8dc))
+
+
+### Bug Fixes
+
+* **deps:** bump github.com/opentdf/platform/lib/ocrypto from 0.13.0 to 0.14.0 in /sdk ([#3684](https://github.com/opentdf/platform/issues/3684)) ([78366f7](https://github.com/opentdf/platform/commit/78366f7c9c6f4ef251aa0b1084533580843fb942))
+* **deps:** bump github.com/opentdf/platform/protocol/go from 0.34.0 to 0.36.0 in /sdk ([#3681](https://github.com/opentdf/platform/issues/3681)) ([b6cc5cd](https://github.com/opentdf/platform/commit/b6cc5cda2ea9bc6a74f53c1ecf5de71aed514e13))
+
+## [0.24.0](https://github.com/opentdf/platform/compare/sdk/v0.23.0...sdk/v0.24.0) (2026-06-23)
+
+
+### ⚠ BREAKING CHANGES
+
+* **core:** conform hybrid PQ/T key formats to IETF drafts ([#3563](https://github.com/opentdf/platform/issues/3563))
+
+### Features
+
+* **core:** Adds comprehensive DPoP (RFC 9449) support ([#3582](https://github.com/opentdf/platform/issues/3582)) ([8a00646](https://github.com/opentdf/platform/commit/8a006469dc6e55455a2ce4715415671d39670ef6))
+* **core:** conform hybrid PQ/T key formats to IETF drafts ([#3563](https://github.com/opentdf/platform/issues/3563)) ([dc18568](https://github.com/opentdf/platform/commit/dc1856831383de1c5880121518c0fb83c429a5a5))
+
+
+### Bug Fixes
+
+* **deps:** bump github.com/opentdf/platform/lib/ocrypto from 0.12.0 to 0.13.0 in /sdk ([#3654](https://github.com/opentdf/platform/issues/3654)) ([67c4992](https://github.com/opentdf/platform/commit/67c499259f646727e7127e20fe1174010477b2d0))
+
+## [0.23.0](https://github.com/opentdf/platform/compare/sdk/v0.22.0...sdk/v0.23.0) (2026-06-18)
+
+
+### Features
+
+* **sdk:** DSPX-2754 add DynamicValueMapping service client wrapper ([#3635](https://github.com/opentdf/platform/issues/3635)) ([4acf0ca](https://github.com/opentdf/platform/commit/4acf0caea4d601fb372efcf663793af8395a9e78))
+
+## [0.22.0](https://github.com/opentdf/platform/compare/sdk/v0.21.0...sdk/v0.22.0) (2026-06-15)
+
+
+### Bug Fixes
+
+* **ci:** Prefer go.work for toolchain info ([#3285](https://github.com/opentdf/platform/issues/3285)) ([3c05b22](https://github.com/opentdf/platform/commit/3c05b22ecac41380c7d8d80e9d487bb3001cd25d))
+* **deps:** bump github.com/opentdf/platform/protocol/go from 0.32.0 to 0.33.1 in /sdk ([#3609](https://github.com/opentdf/platform/issues/3609)) ([d5cfc8d](https://github.com/opentdf/platform/commit/d5cfc8d7e3978c0935f22b789945da6369e26846))
+
 ## [0.21.0](https://github.com/opentdf/platform/compare/sdk/v0.20.0...sdk/v0.21.0) (2026-05-28)
 
 

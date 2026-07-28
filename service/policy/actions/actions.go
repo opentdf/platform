@@ -37,6 +37,8 @@ type ActionService struct {
 	config   *policyconfig.Config
 }
 
+var errNamespacedPolicyNamespaceRequired = errors.New("either namespace_id or namespace_fqn must be provided")
+
 func OnConfigUpdate(actionsSvc *ActionService) serviceregistry.OnConfigUpdateHook {
 	return func(_ context.Context, cfg config.ServiceConfig) error {
 		sharedCfg, err := policyconfig.GetSharedPolicyConfig(cfg)
@@ -114,7 +116,7 @@ func (a *ActionService) ListActions(ctx context.Context, req *connect.Request[ac
 func (a *ActionService) CreateAction(ctx context.Context, req *connect.Request[actions.CreateActionRequest]) (*connect.Response[actions.CreateActionResponse], error) {
 	a.logger.DebugContext(ctx, "creating action", slog.String("name", req.Msg.GetName()))
 	if a.config.NamespacedPolicy && req.Msg.GetNamespaceId() == "" && req.Msg.GetNamespaceFqn() == "" {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("either namespace_id or namespace_fqn must be provided"))
+		return nil, connect.NewError(connect.CodeInvalidArgument, errNamespacedPolicyNamespaceRequired)
 	}
 
 	auditParams := audit.PolicyEventParams{

@@ -18,6 +18,7 @@ import (
 	"github.com/opentdf/platform/sdk/auth/oauth"
 	"github.com/opentdf/platform/sdk/httputil"
 	"github.com/opentdf/platform/service/internal/auth"
+	"github.com/opentdf/platform/service/internal/auth/authz"
 	"github.com/opentdf/platform/service/internal/server"
 	"github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/pkg/cache"
@@ -36,6 +37,11 @@ const devModeMessage = `
 ╚═════╝ ╚══════╝  ╚═══╝  ╚══════╝╚══════╝ ╚═════╝ ╚═╝     ╚═╝     ╚═╝╚══════╝╚═╝  ╚═══╝   ╚═╝       ╚═╝     ╚═╝ ╚═════╝ ╚═════╝ ╚══════╝                                                                                        
 `
 const dpopKeySize = 2048
+
+var (
+	ErrExternalInterceptorFactoryNameRequired = errors.New("external connect interceptor factory name is required")
+	ErrExternalInterceptorFactoryFuncRequired = errors.New("external connect interceptor factory func is required")
+)
 
 func Start(f ...StartOptions) error {
 	startConfig := StartConfig{}
@@ -112,6 +118,9 @@ func Start(f ...StartOptions) error {
 	if err != nil {
 		return fmt.Errorf("could not start logger: %w", err)
 	}
+	if err := logger.Audit.ApplyConfig(cfg.Audit); err != nil {
+		return fmt.Errorf("could not apply audit config: %w", err)
+	}
 
 	// Set default for places we can't pass the logger
 	slog.SetDefault(logger.Logger)
@@ -187,6 +196,11 @@ func Start(f ...StartOptions) error {
 		logger.Info("additional CORS exposed headers added via options", slog.Any("headers", startConfig.additionalCORSExposedHeaders))
 		cfg.Server.CORS.AdditionalExposedHeaders = append(cfg.Server.CORS.AdditionalExposedHeaders, startConfig.additionalCORSExposedHeaders...)
 	}
+
+	// Create the global authz resolver registry before the server/authenticator.
+	// Services receive scoped views of this same registry during startup.
+	authzResolverRegistry := authz.NewResolverRegistry()
+	cfg.Server.AuthzResolverRegistry = authzResolverRegistry
 
 	// Create new server for grpc & http. Also will support in process grpc potentially too
 	logger.Debug("initializing opentdf server")
@@ -282,6 +296,19 @@ func Start(f ...StartOptions) error {
 
 	defer client.Close()
 
+	for _, factory := range startConfig.externalInterceptorFactories {
+		if err := validateExternalInterceptorFactory(factory); err != nil {
+			return err
+		}
+		interceptor, err := factory.Factory(newInterceptorParams(factory, cfg, client, logger))
+		if err != nil {
+			return fmt.Errorf("failed to create external connect interceptor %q: %w", factory.Name, err)
+		}
+		if interceptor != nil {
+			otdf.ConnectRPC.Interceptors = append(otdf.ConnectRPC.Interceptors, connect.WithInterceptors(interceptor))
+		}
+	}
+
 	logger.Info("starting services")
 	err = startServices(ctx, startServicesParams{
 		cfg:                    cfg,
@@ -291,6 +318,7 @@ func Start(f ...StartOptions) error {
 		logger:                 logger,
 		reg:                    svcRegistry,
 		cacheManager:           cacheManager,
+		authzResolverRegistry:  authzResolverRegistry,
 	})
 	if err != nil {
 		logger.Error("issue starting services", slog.String("error", err.Error()))
@@ -330,6 +358,24 @@ func Start(f ...StartOptions) error {
 	}
 
 	return nil
+}
+
+func validateExternalInterceptorFactory(factory InterceptorFactory) error {
+	if factory.Name == "" {
+		return ErrExternalInterceptorFactoryNameRequired
+	}
+	if factory.Factory == nil {
+		return ErrExternalInterceptorFactoryFuncRequired
+	}
+	return nil
+}
+
+func newInterceptorParams(factory InterceptorFactory, cfg *config.Config, client *sdk.SDK, logger *logger.Logger) InterceptorParams {
+	return InterceptorParams{
+		SDK:    client,
+		Logger: logger,
+		Config: cfg.Interceptors[factory.Name],
+	}
 }
 
 // waitForShutdownSignal blocks until a SIGINT or SIGTERM is received.

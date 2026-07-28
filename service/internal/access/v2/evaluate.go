@@ -17,12 +17,13 @@ import (
 )
 
 var (
-	ErrInvalidResource              = errors.New("access: invalid resource")
-	ErrFQNNotFound                  = errors.New("access: FQN not found")
-	ErrDefinitionNotFound           = errors.New("access: definition not found for FQN")
-	ErrFailedEvaluation             = errors.New("access: failed to evaluate definition")
-	ErrMissingRequiredSpecifiedRule = errors.New("access: AttributeDefinition rule cannot be unspecified")
-	ErrUnrecognizedRule             = errors.New("access: unrecognized AttributeDefinition rule")
+	ErrInvalidResource               = errors.New("access: invalid resource")
+	ErrFQNNotFound                   = errors.New("access: FQN not found")
+	ErrDefinitionNotFound            = errors.New("access: definition not found for FQN")
+	ErrFailedEvaluation              = errors.New("access: failed to evaluate definition")
+	ErrMissingRequiredSpecifiedRule  = errors.New("access: AttributeDefinition rule cannot be unspecified")
+	ErrUnrecognizedRule              = errors.New("access: unrecognized AttributeDefinition rule")
+	ErrDynamicValueMappingEvaluation = errors.New("access: failed to evaluate dynamic value mappings")
 )
 
 // getResourceDecision evaluates the access decision for a single resource, driving the flows

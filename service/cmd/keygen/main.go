@@ -1,4 +1,4 @@
-// Package main generates hybrid post-quantum KAS key pairs (X-Wing, P256+ML-KEM-768, P384+ML-KEM-1024)
+// Package main generates post-quantum KAS key pairs (X-Wing, P256+ML-KEM-768, P384+ML-KEM-1024, ML-KEM-768, ML-KEM-1024)
 // as PEM files for use with the OpenTDF platform.
 package main
 
@@ -44,6 +44,18 @@ func main() {
 			newKeyPair: generateP384MLKEM1024,
 			privateOut: "kas-p384mlkem1024-private.pem",
 			publicOut:  "kas-p384mlkem1024-public.pem",
+		},
+		{
+			name:       "ML-KEM-768",
+			newKeyPair: generateMLKEM768,
+			privateOut: "kas-mlkem768-private.pem",
+			publicOut:  "kas-mlkem768-public.pem",
+		},
+		{
+			name:       "ML-KEM-1024",
+			newKeyPair: generateMLKEM1024,
+			privateOut: "kas-mlkem1024-private.pem",
+			publicOut:  "kas-mlkem1024-public.pem",
 		},
 	}
 
@@ -101,6 +113,38 @@ func generateP256MLKEM768() (string, string, error) {
 
 func generateP384MLKEM1024() (string, string, error) {
 	kp, err := ocrypto.NewP384MLKEM1024KeyPair()
+	if err != nil {
+		return "", "", err
+	}
+	priv, err := kp.PrivateKeyInPemFormat()
+	if err != nil {
+		return "", "", err
+	}
+	pub, err := kp.PublicKeyInPemFormat()
+	if err != nil {
+		return "", "", err
+	}
+	return priv, pub, nil
+}
+
+func generateMLKEM768() (string, string, error) {
+	kp, err := ocrypto.NewMLKEMKeyPair()
+	if err != nil {
+		return "", "", err
+	}
+	priv, err := kp.PrivateKeyInPemFormat()
+	if err != nil {
+		return "", "", err
+	}
+	pub, err := kp.PublicKeyInPemFormat()
+	if err != nil {
+		return "", "", err
+	}
+	return priv, pub, nil
+}
+
+func generateMLKEM1024() (string, string, error) {
+	kp, err := ocrypto.NewMLKEM1024KeyPair()
 	if err != nil {
 		return "", "", err
 	}

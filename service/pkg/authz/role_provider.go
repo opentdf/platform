@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/lestrrat-go/jwx/v2/jwt"
+	"github.com/opentdf/platform/service/logger"
 )
 
 // RoleProvider returns role/group identifiers used as Casbin subjects.
@@ -12,7 +13,7 @@ type RoleProvider interface {
 }
 
 // RoleProviderFactory constructs a RoleProvider at startup.
-type RoleProviderFactory func(ctx context.Context, cfg ProviderConfig) (RoleProvider, error)
+type RoleProviderFactory func(ctx context.Context, cfg ProviderConfig, log *logger.Logger) (RoleProvider, error)
 
 // ProviderConfig carries provider-specific configuration and claim selectors.
 type ProviderConfig struct {

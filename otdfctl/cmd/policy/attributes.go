@@ -90,9 +90,10 @@ func listAttributes(cmd *cobra.Command, args []string) {
 	state := cli.GetState(cmd)
 	limit := c.Flags.GetRequiredInt32("limit")
 	offset := c.Flags.GetRequiredInt32("offset")
+	search := c.Flags.GetOptionalString("search")
 	sort := getSortOption(c)
 
-	resp, err := h.ListAttributes(cmd.Context(), state, limit, offset, sort)
+	resp, err := h.ListAttributes(cmd.Context(), state, limit, offset, search, sort)
 	if err != nil {
 		cli.ExitWithError("Failed to list attributes", err)
 	}
@@ -355,7 +356,8 @@ func policyRemoveKeyFromAttribute(cmd *cobra.Command, args []string) {
 
 func initAttributesCommands() {
 	// Create an attribute
-	createDoc := man.Docs.GetCommand("policy/attributes/create",
+	createDoc := man.Docs.GetCommand(
+		"policy/attributes/create",
 		man.WithRun(createAttribute),
 	)
 	createDoc.Flags().StringP(
@@ -391,7 +393,8 @@ func initAttributesCommands() {
 	injectLabelFlags(&createDoc.Command, false)
 
 	// Get an attribute
-	getDoc := man.Docs.GetCommand("policy/attributes/get",
+	getDoc := man.Docs.GetCommand(
+		"policy/attributes/get",
 		man.WithRun(getAttribute),
 	)
 	getDoc.Flags().StringP(
@@ -402,7 +405,8 @@ func initAttributesCommands() {
 	)
 
 	// List attributes
-	listDoc := man.Docs.GetCommand("policy/attributes/list",
+	listDoc := man.Docs.GetCommand(
+		"policy/attributes/list",
 		man.WithRun(listAttributes),
 	)
 	listDoc.Flags().StringP(
@@ -412,10 +416,12 @@ func initAttributesCommands() {
 		listDoc.GetDocFlag("state").Description,
 	)
 	injectListPaginationFlags(listDoc)
+	injectListSearchFlag(listDoc)
 	injectListSortFlags(listDoc)
 
 	// Update an attribute
-	updateDoc := man.Docs.GetCommand("policy/attributes/update",
+	updateDoc := man.Docs.GetCommand(
+		"policy/attributes/update",
 		man.WithRun(updateAttribute),
 	)
 	updateDoc.Flags().StringP(
@@ -427,7 +433,8 @@ func initAttributesCommands() {
 	injectLabelFlags(&updateDoc.Command, true)
 
 	// Deactivate an attribute
-	deactivateDoc := man.Docs.GetCommand("policy/attributes/deactivate",
+	deactivateDoc := man.Docs.GetCommand(
+		"policy/attributes/deactivate",
 		man.WithRun(deactivateAttribute),
 	)
 	deactivateDoc.Flags().StringP(
@@ -444,13 +451,15 @@ func initAttributesCommands() {
 
 	// unsafe actions on attributes
 	unsafeCmd := man.Docs.GetCommand("policy/attributes/unsafe")
-	unsafeCmd.PersistentFlags().BoolVar(&forceUnsafe,
+	unsafeCmd.PersistentFlags().BoolVar(
+		&forceUnsafe,
 		unsafeCmd.GetDocFlag("force").Name,
 		false,
 		unsafeCmd.GetDocFlag("force").Description,
 	)
 
-	reactivateCmd := man.Docs.GetCommand("policy/attributes/unsafe/reactivate",
+	reactivateCmd := man.Docs.GetCommand(
+		"policy/attributes/unsafe/reactivate",
 		man.WithRun(unsafeReactivateAttribute),
 	)
 	reactivateCmd.Flags().StringP(
@@ -459,7 +468,8 @@ func initAttributesCommands() {
 		reactivateCmd.GetDocFlag("id").Default,
 		reactivateCmd.GetDocFlag("id").Description,
 	)
-	deleteCmd := man.Docs.GetCommand("policy/attributes/unsafe/delete",
+	deleteCmd := man.Docs.GetCommand(
+		"policy/attributes/unsafe/delete",
 		man.WithRun(unsafeDeleteAttribute),
 	)
 	deleteCmd.Flags().StringP(
@@ -468,7 +478,8 @@ func initAttributesCommands() {
 		deleteCmd.GetDocFlag("id").Default,
 		deleteCmd.GetDocFlag("id").Description,
 	)
-	unsafeUpdateCmd := man.Docs.GetCommand("policy/attributes/unsafe/update",
+	unsafeUpdateCmd := man.Docs.GetCommand(
+		"policy/attributes/unsafe/update",
 		man.WithRun(unsafeUpdateAttribute),
 	)
 	unsafeUpdateCmd.Flags().StringP(
@@ -505,7 +516,8 @@ func initAttributesCommands() {
 	keyCmd := man.Docs.GetCommand("policy/attributes/key")
 
 	// Assign KAS key to attribute
-	assignKasKeyCmd := man.Docs.GetCommand("policy/attributes/key/assign",
+	assignKasKeyCmd := man.Docs.GetCommand(
+		"policy/attributes/key/assign",
 		man.WithRun(policyAssignKeyToAttribute),
 	)
 	assignKasKeyCmd.Flags().StringP(
@@ -521,7 +533,8 @@ func initAttributesCommands() {
 		assignKasKeyCmd.GetDocFlag("key-id").Description,
 	)
 
-	removeKasKeyCmd := man.Docs.GetCommand("policy/attributes/key/remove",
+	removeKasKeyCmd := man.Docs.GetCommand(
+		"policy/attributes/key/remove",
 		man.WithRun(policyRemoveKeyFromAttribute),
 	)
 	removeKasKeyCmd.Flags().StringP(

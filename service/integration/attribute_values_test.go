@@ -14,6 +14,7 @@ import (
 	"github.com/opentdf/platform/protocol/go/policy/kasregistry"
 	"github.com/opentdf/platform/protocol/go/policy/namespaces"
 	"github.com/opentdf/platform/protocol/go/policy/obligations"
+	"github.com/opentdf/platform/protocol/go/policy/subjectmapping"
 	"github.com/opentdf/platform/protocol/go/policy/unsafe"
 	"github.com/opentdf/platform/service/internal/fixtures"
 	"github.com/opentdf/platform/service/pkg/db"
@@ -1289,6 +1290,150 @@ func (s *AttributeValuesSuite) Test_CreateAttributeValue_WithObligationTriggers_
 	s.Require().Error(err)
 	s.Nil(createdValue)
 	s.Require().ErrorIs(err, db.ErrNotFound)
+}
+
+func (s *AttributeValuesSuite) Test_CreateAttributeValue_WithSubjectMappings_Succeeds() {
+	ns, err := s.db.PolicyClient.CreateNamespace(s.ctx, &namespaces.CreateNamespaceRequest{
+		Name: "test-inline-subject-mappings.com",
+	})
+	s.Require().NoError(err)
+	s.NotNil(ns)
+	s.namespaces = append(s.namespaces, ns)
+
+	attrDef, err := s.db.PolicyClient.CreateAttribute(s.ctx, &attributes.CreateAttributeRequest{
+		Name:        "test-inline-subject-mappings-attr",
+		NamespaceId: ns.GetId(),
+		Rule:        policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
+	})
+	s.Require().NoError(err)
+	s.NotNil(attrDef)
+
+	readAction := s.getActionByNameInNamespace("read", ns.GetId())
+
+	createdValue, err := s.db.PolicyClient.CreateAttributeValue(s.ctx, attrDef.GetId(), &attributes.CreateAttributeValueRequest{
+		Value: "test_value_with_inline_subject_mapping",
+		SubjectMappings: []*attributes.AttributeValueSubjectMappingRequest{
+			{
+				Actions: []*policy.Action{{Name: readAction.GetName()}},
+				NewSubjectConditionSet: &subjectmapping.SubjectConditionSetCreate{
+					SubjectSets: []*policy.SubjectSet{
+						{
+							ConditionGroups: []*policy.ConditionGroup{
+								{
+									BooleanOperator: policy.ConditionBooleanTypeEnum_CONDITION_BOOLEAN_TYPE_ENUM_AND,
+									Conditions: []*policy.Condition{
+										{
+											SubjectExternalSelectorValue: ".email",
+											Operator:                     policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_IN,
+											SubjectExternalValues:        []string{"inline-subject-mapping@example.com"},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+				Metadata: &common.MetadataMutable{
+					Labels: map[string]string{"source": "inline-subject-mapping"},
+				},
+			},
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(createdValue)
+
+	// The create response includes the inline subject mapping without mapping/SCS metadata.
+	s.Require().Len(createdValue.GetSubjectMappings(), 1)
+	createdMapping := createdValue.GetSubjectMappings()[0]
+	s.NotEmpty(createdMapping.GetId())
+	s.Equal(createdValue.GetId(), createdMapping.GetAttributeValue().GetId())
+	s.Equal(createdValue.GetFqn(), createdMapping.GetAttributeValue().GetFqn())
+	s.Equal(ns.GetId(), createdMapping.GetNamespace().GetId())
+	s.Equal(ns.GetFqn(), createdMapping.GetNamespace().GetFqn())
+	s.Empty(createdMapping.GetMetadata().GetLabels())
+	s.Require().Len(createdMapping.GetActions(), 1)
+	s.Equal(readAction.GetId(), createdMapping.GetActions()[0].GetId())
+	s.Equal(readAction.GetName(), createdMapping.GetActions()[0].GetName())
+	s.Equal(ns.GetId(), createdMapping.GetActions()[0].GetNamespace().GetId())
+	s.Equal(ns.GetId(), createdMapping.GetSubjectConditionSet().GetNamespace().GetId())
+	s.Require().Len(createdMapping.GetSubjectConditionSet().GetSubjectSets(), 1)
+	s.Require().Len(createdMapping.GetSubjectConditionSet().GetSubjectSets()[0].GetConditionGroups(), 1)
+	s.Require().Len(createdMapping.GetSubjectConditionSet().GetSubjectSets()[0].GetConditionGroups()[0].GetConditions(), 1)
+	s.Equal("inline-subject-mapping@example.com", createdMapping.GetSubjectConditionSet().GetSubjectSets()[0].GetConditionGroups()[0].GetConditions()[0].GetSubjectExternalValues()[0])
+
+	// GetAttributeValue by ID hydrates the same inline subject mapping shape.
+	retrievedByID, err := s.db.PolicyClient.GetAttributeValue(s.ctx, createdValue.GetId())
+	s.Require().NoError(err)
+	s.Require().Len(retrievedByID.GetSubjectMappings(), 1)
+	s.Equal(createdMapping.GetId(), retrievedByID.GetSubjectMappings()[0].GetId())
+	s.Equal(createdMapping.GetAttributeValue().GetId(), retrievedByID.GetSubjectMappings()[0].GetAttributeValue().GetId())
+	s.Equal(createdMapping.GetActions()[0].GetId(), retrievedByID.GetSubjectMappings()[0].GetActions()[0].GetId())
+	s.Empty(retrievedByID.GetSubjectMappings()[0].GetMetadata().GetLabels())
+	s.Empty(retrievedByID.GetSubjectMappings()[0].GetSubjectConditionSet().GetMetadata().GetLabels())
+
+	// GetAttributeValue by FQN hydrates the same inline subject mapping shape.
+	retrievedByFQN, err := s.db.PolicyClient.GetAttributeValue(s.ctx, &attributes.GetAttributeValueRequest_Fqn{
+		Fqn: createdValue.GetFqn(),
+	})
+	s.Require().NoError(err)
+	s.Require().Len(retrievedByFQN.GetSubjectMappings(), 1)
+	s.Equal(createdMapping.GetId(), retrievedByFQN.GetSubjectMappings()[0].GetId())
+	s.Equal(createdMapping.GetAttributeValue().GetFqn(), retrievedByFQN.GetSubjectMappings()[0].GetAttributeValue().GetFqn())
+	s.Equal(createdMapping.GetSubjectConditionSet().GetId(), retrievedByFQN.GetSubjectMappings()[0].GetSubjectConditionSet().GetId())
+	s.Empty(retrievedByFQN.GetSubjectMappings()[0].GetSubjectConditionSet().GetMetadata().GetLabels())
+}
+
+func (s *AttributeValuesSuite) Test_CreateAttributeValue_WithSubjectMappings_ExplicitNamespaceMismatch_Fails() {
+	attrNamespace, err := s.db.PolicyClient.CreateNamespace(s.ctx, &namespaces.CreateNamespaceRequest{
+		Name: "test-inline-subject-mapping-attr-ns.com",
+	})
+	s.Require().NoError(err)
+	s.namespaces = append(s.namespaces, attrNamespace)
+
+	mappingNamespace, err := s.db.PolicyClient.CreateNamespace(s.ctx, &namespaces.CreateNamespaceRequest{
+		Name: "test-inline-subject-mapping-sm-ns.com",
+	})
+	s.Require().NoError(err)
+	s.namespaces = append(s.namespaces, mappingNamespace)
+
+	attrDef, err := s.db.PolicyClient.CreateAttribute(s.ctx, &attributes.CreateAttributeRequest{
+		Name:        "test-inline-subject-mapping-mismatch-attr",
+		NamespaceId: attrNamespace.GetId(),
+		Rule:        policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
+	})
+	s.Require().NoError(err)
+
+	createdValue, err := s.db.PolicyClient.CreateAttributeValue(s.ctx, attrDef.GetId(), &attributes.CreateAttributeValueRequest{
+		Value: "test_value_with_inline_subject_mapping_mismatch",
+		SubjectMappings: []*attributes.AttributeValueSubjectMappingRequest{
+			{
+				Actions:     []*policy.Action{{Name: "read"}},
+				NamespaceId: mappingNamespace.GetId(),
+				NewSubjectConditionSet: &subjectmapping.SubjectConditionSetCreate{
+					SubjectSets: []*policy.SubjectSet{
+						{
+							ConditionGroups: []*policy.ConditionGroup{
+								{
+									BooleanOperator: policy.ConditionBooleanTypeEnum_CONDITION_BOOLEAN_TYPE_ENUM_AND,
+									Conditions: []*policy.Condition{
+										{
+											SubjectExternalSelectorValue: ".email",
+											Operator:                     policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_IN,
+											SubjectExternalValues:        []string{"inline-subject-mapping-mismatch@example.com"},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	})
+
+	s.Require().Error(err)
+	s.Nil(createdValue)
+	s.Require().ErrorIs(err, db.ErrNamespaceMismatch)
 }
 
 func TestAttributeValuesSuite(t *testing.T) {

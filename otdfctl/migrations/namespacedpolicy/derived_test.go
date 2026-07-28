@@ -59,8 +59,9 @@ func TestDeriveTargetsCollectsTargetsAndReferencesFromDependencies(t *testing.T)
 			},
 			ObligationTriggers: []*policy.ObligationTrigger{
 				{
-					Id:     "trigger-1",
-					Action: &policy.Action{Id: "action-1", Name: "decrypt"},
+					Id:             "trigger-1",
+					Action:         &policy.Action{Id: "action-1", Name: "decrypt"},
+					AttributeValue: testAttributeValue("https://example.com/attr/classification/value/secret", namespace),
 					ObligationValue: &policy.ObligationValue{
 						Id:         "ov-1",
 						Fqn:        "https://example.com/obl/notify/value/email",
@@ -87,6 +88,43 @@ func TestDeriveTargetsCollectsTargetsAndReferencesFromDependencies(t *testing.T)
 	assert.Equal(t, namespace.GetId(), derived.RegisteredResources[0].Target.GetId())
 	require.Len(t, derived.ObligationTriggers, 1)
 	assert.Equal(t, namespace.GetId(), derived.ObligationTriggers[0].Target.GetId())
+}
+
+func TestDeriveTargetsDerivesObligationTriggerNamespaceFromAttributeValue(t *testing.T) {
+	t.Parallel()
+
+	attributeNamespace := &policy.Namespace{
+		Id:  "ns-attribute",
+		Fqn: "https://attributes.example.com",
+	}
+	obligationNamespace := &policy.Namespace{
+		Id:  "ns-obligation",
+		Fqn: "https://obligations.example.com",
+	}
+
+	derived, err := deriveTargets(
+		&Retrieved{
+			Scopes: []Scope{ScopeObligationTriggers},
+			Candidates: Candidates{
+				ObligationTriggers: []*policy.ObligationTrigger{
+					{
+						Id:             "trigger-1",
+						Action:         &policy.Action{Id: "action-1", Name: "decrypt"},
+						AttributeValue: testAttributeValue("https://attributes.example.com/attr/classification/value/secret", attributeNamespace),
+						ObligationValue: &policy.ObligationValue{
+							Id:         "ov-1",
+							Fqn:        "https://obligations.example.com/obl/notify/value/email",
+							Obligation: &policy.Obligation{Namespace: obligationNamespace},
+						},
+					},
+				},
+			},
+		},
+		[]*policy.Namespace{attributeNamespace, obligationNamespace},
+	)
+	require.NoError(t, err)
+	require.Len(t, derived.ObligationTriggers, 1)
+	assert.Equal(t, attributeNamespace.GetId(), derived.ObligationTriggers[0].Target.GetId())
 }
 
 func TestDeriveTargetsFailsWhenSubjectMappingNamespaceCannotBeDerived(t *testing.T) {
@@ -230,8 +268,9 @@ func TestDeriveTargetsSkipsNilObligationTriggerCandidate(t *testing.T) {
 				ObligationTriggers: []*policy.ObligationTrigger{
 					nil,
 					{
-						Id:     "trigger-1",
-						Action: &policy.Action{Id: "action-1", Name: "decrypt"},
+						Id:             "trigger-1",
+						Action:         &policy.Action{Id: "action-1", Name: "decrypt"},
+						AttributeValue: testAttributeValue("https://example.com/attr/classification/value/secret", namespace),
 						ObligationValue: &policy.ObligationValue{
 							Id:         "ov-1",
 							Fqn:        "https://example.com/obl/notify/value/email",

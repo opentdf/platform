@@ -155,13 +155,6 @@ func namespaceFromAttributeValue(value *policy.Value) *policy.Namespace {
 	}
 }
 
-func namespaceFromObligationValue(value *policy.ObligationValue) *policy.Namespace {
-	if value == nil {
-		return nil
-	}
-	return value.GetObligation().GetNamespace()
-}
-
 func hasRegisteredResourceActionAttributeValues(resource *policy.RegisteredResource) bool {
 	if resource == nil {
 		return false

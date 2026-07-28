@@ -27,6 +27,8 @@ var InProcessSupportedAlgorithms = []ocrypto.KeyType{
 	ocrypto.HybridXWingKey,
 	ocrypto.HybridSecp256r1MLKEM768Key,
 	ocrypto.HybridSecp384r1MLKEM1024Key,
+	ocrypto.MLKEM768Key,
+	ocrypto.MLKEM1024Key,
 }
 
 func convertPEMToJWK(_ string) (string, error) {
@@ -96,11 +98,8 @@ func (k *KeyDetailsAdapter) ExportPublicKey(_ context.Context, format trust.KeyT
 		if rsaKey, err := k.cryptoProvider.RSAPublicKey(kid); err == nil {
 			return rsaKey, nil
 		}
-		if hybridKey, err := k.cryptoProvider.HybridPublicKey(kid); err == nil {
-			return hybridKey, nil
-		}
-		if xwingKey, err := k.cryptoProvider.XWingPublicKey(kid); err == nil {
-			return xwingKey, nil
+		if kemKey, err := k.cryptoProvider.KEMPublicKey(kid); err == nil {
+			return kemKey, nil
 		}
 		return k.cryptoProvider.ECPublicKey(kid)
 	default:
@@ -274,6 +273,12 @@ func (a *InProcessProvider) Decrypt(ctx context.Context, keyDetails trust.KeyDet
 		}
 		return a.cryptoProvider.Decrypt(ctx, trust.KeyIdentifier(kid), ciphertext, nil)
 
+	case AlgorithmMLKEM768, AlgorithmMLKEM1024:
+		if len(ephemeralPublicKey) > 0 {
+			return nil, errors.New("ephemeral public key should not be provided for ML-KEM decryption")
+		}
+		return a.cryptoProvider.Decrypt(ctx, trust.KeyIdentifier(kid), ciphertext, nil)
+
 	default:
 		return nil, errors.New("unsupported key algorithm")
 	}
@@ -360,9 +365,7 @@ func (a *InProcessProvider) determineKeyType(kid string) (string, error) {
 		return key.Algorithm, nil
 	case StandardECCrypto:
 		return key.Algorithm, nil
-	case StandardXWingCrypto:
-		return key.Algorithm, nil
-	case StandardHybridCrypto:
+	case StandardKEMCrypto:
 		return key.Algorithm, nil
 	}
 

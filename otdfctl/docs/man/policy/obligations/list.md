@@ -14,6 +14,8 @@ command:
     - name: namespace
       shorthand: n
       description: Namespace ID or FQN by which to filter results
+    - name: search
+      description: Search term to filter results
     - name: sort
       description: Sort list results by field
     - name: order
@@ -23,6 +25,14 @@ command:
 List obligations definitions (optionally by namespace).
 
 For more information about obligations, see the `obligations` subcommand.
+
+## Search Fields
+
+The `--search` term is trimmed and matched as a substring against these values:
+
+| Value | Description |
+| --- | --- |
+| Obligation FQN | Fully qualified obligation name, built as `<namespace-fqn>/obl/<obligation-name>` |
 
 ## Sort Options
 
@@ -56,6 +66,12 @@ otdfctl policy obligations list --order asc
 
 ```shell
 otdfctl policy obligations list --limit 10 --offset 0
+```
+
+Search obligations by FQN:
+
+```shell
+otdfctl policy obligations list --search retention
 ```
 
 Sort obligations by name ascending:

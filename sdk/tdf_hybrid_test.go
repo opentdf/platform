@@ -22,13 +22,13 @@ func TestCreateKeyAccessWithXWingKey(t *testing.T) {
 	assert.Empty(t, keyAccess.EphemeralPublicKey)
 	assert.NotEmpty(t, keyAccess.WrappedKey)
 
-	privateKey, err := ocrypto.XWingPrivateKeyFromPem([]byte(mockHybridXWingPrivateKey))
+	dec, err := ocrypto.FromPrivatePEM(mockHybridXWingPrivateKey)
 	require.NoError(t, err)
 
 	wrappedKey, err := ocrypto.Base64Decode([]byte(keyAccess.WrappedKey))
 	require.NoError(t, err)
 
-	plaintext, err := ocrypto.XWingUnwrapDEK(privateKey, wrappedKey)
+	plaintext, err := dec.Decrypt(wrappedKey)
 	require.NoError(t, err)
 	assert.Equal(t, symKey, plaintext)
 }
@@ -47,13 +47,13 @@ func TestCreateKeyAccessWithP256MLKEM768Key(t *testing.T) {
 	assert.Empty(t, keyAccess.EphemeralPublicKey)
 	assert.NotEmpty(t, keyAccess.WrappedKey)
 
-	privateKey, err := ocrypto.P256MLKEM768PrivateKeyFromPem([]byte(mockHybridP256MLKEM768PrivateKey))
+	dec, err := ocrypto.FromPrivatePEM(mockHybridP256MLKEM768PrivateKey)
 	require.NoError(t, err)
 
 	wrappedKey, err := ocrypto.Base64Decode([]byte(keyAccess.WrappedKey))
 	require.NoError(t, err)
 
-	plaintext, err := ocrypto.P256MLKEM768UnwrapDEK(privateKey, wrappedKey)
+	plaintext, err := dec.Decrypt(wrappedKey)
 	require.NoError(t, err)
 	assert.Equal(t, symKey, plaintext)
 }
@@ -72,13 +72,13 @@ func TestCreateKeyAccessWithP384MLKEM1024Key(t *testing.T) {
 	assert.Empty(t, keyAccess.EphemeralPublicKey)
 	assert.NotEmpty(t, keyAccess.WrappedKey)
 
-	privateKey, err := ocrypto.P384MLKEM1024PrivateKeyFromPem([]byte(mockHybridP384MLKEM1024PrivateKey))
+	dec, err := ocrypto.FromPrivatePEM(mockHybridP384MLKEM1024PrivateKey)
 	require.NoError(t, err)
 
 	wrappedKey, err := ocrypto.Base64Decode([]byte(keyAccess.WrappedKey))
 	require.NoError(t, err)
 
-	plaintext, err := ocrypto.P384MLKEM1024UnwrapDEK(privateKey, wrappedKey)
+	plaintext, err := dec.Decrypt(wrappedKey)
 	require.NoError(t, err)
 	assert.Equal(t, symKey, plaintext)
 }

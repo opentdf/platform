@@ -24,12 +24,13 @@ func createResourceMapping(cmd *cobra.Command, args []string) {
 
 	attrID := c.Flags.GetRequiredID("attribute-value-id")
 	grpID := c.Flags.GetOptionalID("group-id")
+	namespace := c.Flags.GetOptionalString("namespace")
 	terms = c.Flags.GetStringSlice("terms", terms, cli.FlagsStringSliceOptions{
 		Min: 1,
 	})
 	metadataLabels = c.Flags.GetStringSlice("label", metadataLabels, cli.FlagsStringSliceOptions{Min: 0})
 
-	resourceMapping, err := h.CreateResourceMapping(attrID, terms, grpID, getMetadataMutable(metadataLabels))
+	resourceMapping, err := h.CreateResourceMapping(cmd.Context(), attrID, terms, grpID, namespace, getMetadataMutable(metadataLabels))
 	if err != nil {
 		cli.ExitWithError("Failed to create resource mapping", err)
 	}
@@ -40,6 +41,8 @@ func createResourceMapping(cmd *cobra.Command, args []string) {
 		{"Terms", strings.Join(resourceMapping.GetTerms(), ", ")},
 		{"Group Id", resourceMapping.GetGroup().GetId()},
 		{"Group Name", resourceMapping.GetGroup().GetName()},
+		{"Namespace Id", resourceMapping.GetNamespace().GetId()},
+		{"Namespace", resourceMapping.GetNamespace().GetFqn()},
 	}
 	if mdRows := getMetadataRows(resourceMapping.GetMetadata()); mdRows != nil {
 		rows = append(rows, mdRows...)
@@ -55,7 +58,7 @@ func getResourceMapping(cmd *cobra.Command, args []string) {
 
 	id := c.Flags.GetRequiredID("id")
 
-	resourceMapping, err := h.GetResourceMapping(id)
+	resourceMapping, err := h.GetResourceMapping(cmd.Context(), id)
 	if err != nil {
 		cli.ExitWithError(fmt.Sprintf("Failed to get resource mapping (%s)", id), err)
 	}
@@ -66,6 +69,8 @@ func getResourceMapping(cmd *cobra.Command, args []string) {
 		{"Terms", strings.Join(resourceMapping.GetTerms(), ", ")},
 		{"Group Id", resourceMapping.GetGroup().GetId()},
 		{"Group Name", resourceMapping.GetGroup().GetName()},
+		{"Namespace Id", resourceMapping.GetNamespace().GetId()},
+		{"Namespace", resourceMapping.GetNamespace().GetFqn()},
 	}
 	if mdRows := getMetadataRows(resourceMapping.GetMetadata()); mdRows != nil {
 		rows = append(rows, mdRows...)
@@ -81,8 +86,9 @@ func listResourceMappings(cmd *cobra.Command, args []string) {
 
 	limit := c.Flags.GetRequiredInt32("limit")
 	offset := c.Flags.GetRequiredInt32("offset")
+	namespace := c.Flags.GetOptionalString("namespace")
 
-	resp, err := h.ListResourceMappings(cmd.Context(), limit, offset)
+	resp, err := h.ListResourceMappings(cmd.Context(), namespace, limit, offset)
 	if err != nil {
 		cli.ExitWithError("Failed to list resource mappings", err)
 	}
@@ -92,8 +98,8 @@ func listResourceMappings(cmd *cobra.Command, args []string) {
 		table.NewFlexColumn("attr_value_id", "Attribute Value Id", cli.FlexColumnWidthFive),
 		table.NewFlexColumn("attr_value", "Attribute Value", cli.FlexColumnWidthTwo),
 		table.NewFlexColumn("terms", "Terms", cli.FlexColumnWidthFour),
-		table.NewFlexColumn("group_id", "Group Id", cli.FlexColumnWidthFive),
 		table.NewFlexColumn("group_name", "Group Name", cli.FlexColumnWidthTwo),
+		table.NewFlexColumn("namespace", "Namespace", cli.FlexColumnWidthTwo),
 		table.NewFlexColumn("labels", "Labels", cli.FlexColumnWidthOne),
 		table.NewFlexColumn("created_at", "Created At", cli.FlexColumnWidthOne),
 		table.NewFlexColumn("updated_at", "Updated At", cli.FlexColumnWidthOne),
@@ -105,8 +111,8 @@ func listResourceMappings(cmd *cobra.Command, args []string) {
 			"id":            resourceMapping.GetId(),
 			"attr_value_id": resourceMapping.GetAttributeValue().GetId(),
 			"attr_value":    resourceMapping.GetAttributeValue().GetValue(),
-			"group_id":      resourceMapping.GetGroup().GetId(),
 			"group_name":    resourceMapping.GetGroup().GetName(),
+			"namespace":     resourceMapping.GetNamespace().GetFqn(),
 			"terms":         strings.Join(resourceMapping.GetTerms(), ", "),
 			"labels":        metadata["Labels"],
 			"created_at":    metadata["Created At"],
@@ -126,10 +132,11 @@ func updateResourceMapping(cmd *cobra.Command, args []string) {
 	id := c.Flags.GetRequiredID("id")
 	attrValueID := c.Flags.GetOptionalID("attribute-value-id")
 	grpID := c.Flags.GetOptionalID("group-id")
+	namespace := c.Flags.GetOptionalString("namespace")
 	terms = c.Flags.GetStringSlice("terms", terms, cli.FlagsStringSliceOptions{})
 	metadataLabels = c.Flags.GetStringSlice("label", metadataLabels, cli.FlagsStringSliceOptions{Min: 0})
 
-	resourceMapping, err := h.UpdateResourceMapping(id, attrValueID, grpID, terms, getMetadataMutable(metadataLabels), getMetadataUpdateBehavior())
+	resourceMapping, err := h.UpdateResourceMapping(cmd.Context(), id, attrValueID, grpID, namespace, terms, getMetadataMutable(metadataLabels), getMetadataUpdateBehavior())
 	if err != nil {
 		cli.ExitWithError(fmt.Sprintf("Failed to update resource mapping (%s)", id), err)
 	}
@@ -140,6 +147,8 @@ func updateResourceMapping(cmd *cobra.Command, args []string) {
 		{"Terms", strings.Join(resourceMapping.GetTerms(), ", ")},
 		{"Group Id", resourceMapping.GetGroup().GetId()},
 		{"Group Name", resourceMapping.GetGroup().GetName()},
+		{"Namespace Id", resourceMapping.GetNamespace().GetId()},
+		{"Namespace", resourceMapping.GetNamespace().GetFqn()},
 	}
 	if mdRows := getMetadataRows(resourceMapping.GetMetadata()); mdRows != nil {
 		rows = append(rows, mdRows...)
@@ -158,12 +167,12 @@ func deleteResourceMapping(cmd *cobra.Command, args []string) {
 
 	cli.ConfirmAction(cli.ActionDelete, "resource-mapping", id, force)
 
-	resourceMapping, err := h.GetResourceMapping(id)
+	resourceMapping, err := h.GetResourceMapping(cmd.Context(), id)
 	if err != nil {
 		cli.ExitWithError(fmt.Sprintf("Failed to get resource mapping for delete (%s)", id), err)
 	}
 
-	_, err = h.DeleteResourceMapping(id)
+	_, err = h.DeleteResourceMapping(cmd.Context(), id)
 	if err != nil {
 		cli.ExitWithError(fmt.Sprintf("Failed to delete resource mapping (%s)", id), err)
 	}
@@ -174,6 +183,8 @@ func deleteResourceMapping(cmd *cobra.Command, args []string) {
 		{"Terms", strings.Join(resourceMapping.GetTerms(), ", ")},
 		{"Group Id", resourceMapping.GetGroup().GetId()},
 		{"Group Name", resourceMapping.GetGroup().GetName()},
+		{"Namespace Id", resourceMapping.GetNamespace().GetId()},
+		{"Namespace", resourceMapping.GetNamespace().GetFqn()},
 	}
 	t := cli.NewTabular(rows...)
 	common.HandleSuccess(cmd, resourceMapping.GetId(), t, resourceMapping)
@@ -199,6 +210,7 @@ func initResourceMappingsCommands() {
 		createDoc.GetDocFlag("group-id").Default,
 		createDoc.GetDocFlag("group-id").Description,
 	)
+	injectNamespaceFlag(createDoc)
 	injectLabelFlags(&createDoc.Command, false)
 
 	getDoc := man.Docs.GetCommand("policy/resource-mappings/get",
@@ -213,6 +225,7 @@ func initResourceMappingsCommands() {
 	listDoc := man.Docs.GetCommand("policy/resource-mappings/list",
 		man.WithRun(listResourceMappings),
 	)
+	injectNamespaceFlag(listDoc)
 	injectListPaginationFlags(listDoc)
 
 	updateDoc := man.Docs.GetCommand("policy/resource-mappings/update",
@@ -239,6 +252,7 @@ func initResourceMappingsCommands() {
 		updateDoc.GetDocFlag("group-id").Default,
 		updateDoc.GetDocFlag("group-id").Description,
 	)
+	injectNamespaceFlag(updateDoc)
 	injectLabelFlags(&updateDoc.Command, true)
 
 	deleteDoc := man.Docs.GetCommand("policy/resource-mappings/delete",

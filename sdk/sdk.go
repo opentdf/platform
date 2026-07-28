@@ -45,6 +45,7 @@ const (
 	ErrPlatformTokenEndpointNotFound = Error("token_endpoint not found in well-known idp configuration")
 	ErrPlatformEndpointNotFound      = Error("platform_endpoint not found in well-known configuration")
 	ErrAccessTokenInvalid            = Error("access token is invalid")
+	ErrNoAccessTokenSource           = Error("no access token source configured; SDK was created without credentials")
 	ErrWellKnowConfigEmpty           = Error("well-known configuration is empty")
 	ErrAttributeNotFound             = Error("attribute not found")
 )
@@ -96,6 +97,7 @@ type SDK struct {
 	RegisteredResources     sdkconnect.RegisteredResourcesServiceClient
 	ResourceMapping         sdkconnect.ResourceMappingServiceClient
 	SubjectMapping          sdkconnect.SubjectMappingServiceClient
+	DynamicValueMapping     sdkconnect.DynamicValueMappingServiceClient
 	Unsafe                  sdkconnect.UnsafeServiceClient
 	KeyManagement           sdkconnect.KeyManagementServiceClient
 	wellknownConfiguration  sdkconnect.WellKnownServiceClient
@@ -229,6 +231,7 @@ func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 		RegisteredResources:     sdkconnect.NewRegisteredResourcesServiceClientConnectWrapper(platformConn.Client, platformConn.Endpoint, platformConn.Options...),
 		ResourceMapping:         sdkconnect.NewResourceMappingServiceClientConnectWrapper(platformConn.Client, platformConn.Endpoint, platformConn.Options...),
 		SubjectMapping:          sdkconnect.NewSubjectMappingServiceClientConnectWrapper(platformConn.Client, platformConn.Endpoint, platformConn.Options...),
+		DynamicValueMapping:     sdkconnect.NewDynamicValueMappingServiceClientConnectWrapper(platformConn.Client, platformConn.Endpoint, platformConn.Options...),
 		Unsafe:                  sdkconnect.NewUnsafeServiceClientConnectWrapper(platformConn.Client, platformConn.Endpoint, platformConn.Options...),
 		KeyAccessServerRegistry: sdkconnect.NewKeyAccessServerRegistryServiceClientConnectWrapper(platformConn.Client, platformConn.Endpoint, platformConn.Options...),
 		Authorization:           sdkconnect.NewAuthorizationServiceClientConnectWrapper(platformConn.Client, platformConn.Endpoint, platformConn.Options...),

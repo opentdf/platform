@@ -1,37 +1,29 @@
-package auth
+package v1
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"log/slog"
 	"strings"
 
 	"github.com/casbin/casbin/v2"
 	casbinModel "github.com/casbin/casbin/v2/model"
+	"github.com/casbin/casbin/v2/persist"
 	stringadapter "github.com/casbin/casbin/v2/persist/string-adapter"
 	"github.com/lestrrat-go/jwx/v2/jwt"
+	internalauthz "github.com/opentdf/platform/service/internal/auth/authz"
 	"github.com/opentdf/platform/service/logger"
-	"github.com/opentdf/platform/service/pkg/authz"
+	platformauthz "github.com/opentdf/platform/service/pkg/authz"
 
 	_ "embed"
 )
 
 var (
-	rolePrefix          = "role:"
-	defaultRole         = "unknown"
-	ErrPermissionDenied = errors.New("permission denied")
+	rolePrefix  = "role:"
+	defaultRole = "unknown"
 )
 
-type EnforcementResult struct {
-	Allowed     bool
-	CasbinAuthz CasbinAuthzLog
-}
-
-type CasbinAuthzLog struct {
-	ConfiguredGroupsClaim string
-	SubjectGroups         []string
-}
+type EnforcementResult = internalauthz.EnforcementResult
 
 //go:embed casbin_policy.csv
 var builtinPolicy string
@@ -39,26 +31,25 @@ var builtinPolicy string
 //go:embed casbin_model.conf
 var defaultModel string
 
+// Enforcer is the Casbin enforcer with platform-specific configuration
 type Enforcer struct {
-	*casbin.Enforcer
-	Config CasbinConfig
-	Policy string
-	logger *logger.Logger
-
-	isDefaultPolicy bool
-	isDefaultModel  bool
-	roleProvider    authz.RoleProvider
+	casbinEnforcer   *casbin.Enforcer
+	Config           casbinConfig
+	Policy           string
+	logger           *logger.Logger
+	subjectExtractor internalauthz.SubjectExtractor
 }
 
 type casbinSubject []string
 
-type CasbinConfig struct {
-	PolicyConfig
-	RoleProvider authz.RoleProvider
+type casbinConfig struct {
+	internalauthz.PolicyConfig
+	Adapter      persist.Adapter
+	RoleProvider platformauthz.RoleProvider
 }
 
 // newCasbinEnforcer creates a new casbin enforcer
-func NewCasbinEnforcer(c CasbinConfig, logger *logger.Logger) (*Enforcer, error) {
+func newCasbinEnforcer(c casbinConfig, logger *logger.Logger) (*Enforcer, error) {
 	// Set Casbin config defaults if not provided
 	isDefaultModel := false
 	if c.Model == "" {
@@ -77,7 +68,9 @@ func NewCasbinEnforcer(c CasbinConfig, logger *logger.Logger) (*Enforcer, error)
 		isDefaultPolicy = true
 	}
 
+	//nolint:staticcheck // Preserve deprecated RoleMap behavior for v1 compatibility.
 	if c.RoleMap != nil {
+		//nolint:staticcheck // Preserve deprecated RoleMap behavior for v1 compatibility.
 		for k, v := range c.RoleMap {
 			c.Csv = strings.Join([]string{
 				c.Csv,
@@ -94,6 +87,7 @@ func NewCasbinEnforcer(c CasbinConfig, logger *logger.Logger) (*Enforcer, error)
 
 	// Because we provided built in group mappings we need to add them
 	// if extensions and rolemap are not provided
+	//nolint:staticcheck // Preserve deprecated RoleMap behavior for v1 compatibility.
 	if c.RoleMap == nil && c.Extension == "" {
 		c.Csv = strings.Join([]string{
 			c.Csv,
@@ -109,7 +103,8 @@ func NewCasbinEnforcer(c CasbinConfig, logger *logger.Logger) (*Enforcer, error)
 		c.Adapter = stringadapter.NewAdapter(c.Csv)
 	}
 
-	logger.Debug("creating casbin enforcer",
+	logger.Debug(
+		"creating casbin enforcer",
 		slog.Any("config", c),
 		slog.Bool("isDefaultModel", isDefaultModel),
 		slog.Bool("isBuiltinPolicy", isDefaultPolicy),
@@ -127,53 +122,57 @@ func NewCasbinEnforcer(c CasbinConfig, logger *logger.Logger) (*Enforcer, error)
 		return nil, fmt.Errorf("failed to create casbin enforcer: %w", err)
 	}
 
-	roleProvider := c.RoleProvider
-	if roleProvider == nil {
-		roleProvider = newJWTClaimsRoleProvider(c.GroupsClaim, logger)
+	if c.RoleProvider == nil {
+		c.RoleProvider = internalauthz.NewJWTClaimsRoleProvider(c.GroupsClaim, logger)
+	}
+	subjectExtractor, err := internalauthz.NewSubjectExtractor(
+		c.UserNameClaim,
+		c.ClientIDClaim,
+		c.RoleProvider,
+		logger,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create subject extractor: %w", err)
 	}
 
 	return &Enforcer{
-		Enforcer:        e,
-		Config:          c,
-		Policy:          c.Csv,
-		isDefaultPolicy: isDefaultPolicy,
-		isDefaultModel:  isDefaultModel,
-		logger:          logger,
-		roleProvider:    roleProvider,
+		casbinEnforcer:   e,
+		Config:           c,
+		Policy:           c.Csv,
+		logger:           logger,
+		subjectExtractor: subjectExtractor,
 	}, nil
 }
 
-// casbinEnforce is a helper function to enforce the policy with casbin
+// enforce checks the request against the v1 Casbin policy.
 // TODO implement a common type so this can be used for both http and grpc
-func (e *Enforcer) Enforce(ctx context.Context, token jwt.Token, req authz.RoleRequest) (EnforcementResult, error) {
+func (e *Enforcer) enforce(ctx context.Context, token jwt.Token, req platformauthz.RoleRequest) (EnforcementResult, error) {
 	// extract the role claim from the token
-	s, subjectGroups, err := e.buildSubjectFromToken(ctx, token, req)
-	result := EnforcementResult{
-		CasbinAuthz: CasbinAuthzLog{
-			ConfiguredGroupsClaim: e.Config.GroupsClaim,
-			SubjectGroups:         subjectGroups,
-		},
-	}
+	s, _, err := e.buildSubjectFromToken(ctx, token, req)
+	result := EnforcementResult{GroupsClaim: e.Config.GroupsClaim}
 	if err != nil {
 		e.logger.Warn("role provider error", slog.Any("error", err))
-		return result, ErrPermissionDenied
+		return result, err
 	}
 	s = append(s, rolePrefix+defaultRole)
 
 	resource := req.Resource
 	action := req.Action
 	for _, info := range s {
-		allowed, err := e.Enforcer.Enforce(info, resource, action)
+		allowed, err := e.casbinEnforcer.Enforce(info, resource, action)
 		if err != nil {
-			e.logger.Error("enforce by role error",
+			e.logger.Error(
+				"enforce by role error",
 				slog.String("subject_info", info),
 				slog.String("action", action),
 				slog.String("resource", resource),
-				slog.Any("error", err),
+				slog.String("error", err.Error()),
 			)
+			return result, err
 		}
 		if allowed {
-			e.logger.Debug("allowed by policy",
+			e.logger.Debug(
+				"allowed by policy",
 				slog.String("subject_info", info),
 				slog.String("action", action),
 				slog.String("resource", resource),
@@ -182,36 +181,19 @@ func (e *Enforcer) Enforce(ctx context.Context, token jwt.Token, req authz.RoleR
 			return result, nil
 		}
 	}
-	e.logger.Debug("permission denied by policy",
+	e.logger.Debug(
+		"permission denied by policy",
 		slog.Any("subject_info", s),
 		slog.String("action", action),
 		slog.String("resource", resource),
 	)
-	return result, ErrPermissionDenied
+	return result, nil
 }
 
-func (e *Enforcer) buildSubjectFromToken(ctx context.Context, t jwt.Token, req authz.RoleRequest) (casbinSubject, []string, error) {
-	var subject string
-	info := casbinSubject{}
-
-	e.logger.Debug("building subject from token")
-	roles, err := e.roleProvider.Roles(ctx, t, req)
+func (e *Enforcer) buildSubjectFromToken(ctx context.Context, t jwt.Token, req platformauthz.RoleRequest) (casbinSubject, []string, error) {
+	subjects, roles, err := e.subjectExtractor.BuildV1SubjectsFromToken(ctx, t, req)
 	if err != nil {
 		return nil, nil, err
 	}
-
-	if claim, found := t.Get(e.Config.UserNameClaim); found {
-		sub, ok := claim.(string)
-		subject = sub
-		if !ok {
-			e.logger.Warn("username claim not of type string",
-				slog.String("claim", e.Config.UserNameClaim),
-				slog.Any("claims", claim),
-			)
-			subject = ""
-		}
-	}
-	info = append(info, roles...)
-	info = append(info, subject)
-	return info, append([]string(nil), roles...), nil
+	return casbinSubject(subjects), roles, nil
 }

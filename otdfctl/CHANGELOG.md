@@ -1,5 +1,49 @@
 # Changelog
 
+## [0.35.0](https://github.com/opentdf/platform/compare/otdfctl/v0.34.0...otdfctl/v0.35.0) (2026-07-07)
+
+
+### Bug Fixes
+
+* **cli:** Pull namespace for OTs from attr val ([#3725](https://github.com/opentdf/platform/issues/3725)) ([2146d0f](https://github.com/opentdf/platform/commit/2146d0f6774882c83887c7c5004159859e408f5c))
+
+## [0.34.0](https://github.com/opentdf/platform/compare/otdfctl/v0.33.0...otdfctl/v0.34.0) (2026-07-01)
+
+
+### Features
+
+* **cli:** Add search to cli ([#3616](https://github.com/opentdf/platform/issues/3616)) ([1fb2549](https://github.com/opentdf/platform/commit/1fb2549a637af313cc4bd279b39f89d95d77a4b4))
+* **cli:** DSPX-2998 namespace flags for resource mapping commands ([#3576](https://github.com/opentdf/platform/issues/3576)) ([beaaac5](https://github.com/opentdf/platform/commit/beaaac5e0abe3cd2f4e68e254c2ddf214b319698))
+* **core:** Disable pq algorithms due to format change ([#3625](https://github.com/opentdf/platform/issues/3625)) ([4a7353d](https://github.com/opentdf/platform/commit/4a7353d440635e83a8819676b028b257fa49f62e))
+* **core:** Re-enable pq algorithms after format change ([#3651](https://github.com/opentdf/platform/issues/3651)) ([005f9de](https://github.com/opentdf/platform/commit/005f9deb19357c9b08c83e77bc8431a3bee40c8e))
+* **kas:** Adds FIPS-203 wrap with ML-KEM-768/1024 ([#3652](https://github.com/opentdf/platform/issues/3652)) ([06f30ef](https://github.com/opentdf/platform/commit/06f30ef7f2eb6a5dce587efa906d4bd70b7cd8dc))
+
+
+### Bug Fixes
+
+* **cli:** fix the get key command. ([#3598](https://github.com/opentdf/platform/issues/3598)) ([6f832d6](https://github.com/opentdf/platform/commit/6f832d6fa6505083316897cc630c36d6e3ba2467))
+* **deps:** bump github.com/opentdf/platform/sdk from 0.22.0 to 0.25.0 in /otdfctl ([#3690](https://github.com/opentdf/platform/issues/3690)) ([ec2dc5c](https://github.com/opentdf/platform/commit/ec2dc5cea80bc9b8ca614de1f9b66cbea0032cd1))
+
+## [0.33.0](https://github.com/opentdf/platform/compare/otdfctl/v0.32.0...otdfctl/v0.33.0) (2026-06-09)
+
+
+### Features
+
+* **cli:** improve auth ([#3466](https://github.com/opentdf/platform/issues/3466)) ([b244910](https://github.com/opentdf/platform/commit/b24491098219277a107068ff73499fe3d135b553))
+* **core:** add hybrid NIST EC + ML-KEM key wrapping support ([#3276](https://github.com/opentdf/platform/issues/3276)) ([1209acc](https://github.com/opentdf/platform/commit/1209acc2f8ae24af121f6a2892817c20ebb14d25))
+
+
+### Bug Fixes
+
+* **ci:** Prefer go.work for toolchain info ([#3285](https://github.com/opentdf/platform/issues/3285)) ([3c05b22](https://github.com/opentdf/platform/commit/3c05b22ecac41380c7d8d80e9d487bb3001cd25d))
+* **cli:** deprecate flaghelper for new flags ([#3583](https://github.com/opentdf/platform/issues/3583)) ([8f3c429](https://github.com/opentdf/platform/commit/8f3c42903170e91d1cc6e8552a3fa0aaa6aadbe5))
+* **deps:** bump github.com/opentdf/platform/lib/ocrypto from 0.10.0 to 0.11.0 in /otdfctl ([#3530](https://github.com/opentdf/platform/issues/3530)) ([745a205](https://github.com/opentdf/platform/commit/745a205ba338b10229e09b2ae7e18ed0fc126833))
+* **deps:** bump github.com/opentdf/platform/lib/ocrypto from 0.11.0 to 0.12.0 in /otdfctl ([#3536](https://github.com/opentdf/platform/issues/3536)) ([8d1c018](https://github.com/opentdf/platform/commit/8d1c0185976f91bfa8ba2f2e6002d03f5c2d552c))
+* **deps:** bump github.com/opentdf/platform/protocol/go from 0.30.0 to 0.31.0 in /otdfctl ([#3499](https://github.com/opentdf/platform/issues/3499)) ([fa91478](https://github.com/opentdf/platform/commit/fa91478424d409648bd7814d31e0bced47918bbe))
+* **deps:** bump github.com/opentdf/platform/protocol/go from 0.31.0 to 0.32.0 in /otdfctl ([#3531](https://github.com/opentdf/platform/issues/3531)) ([23946e4](https://github.com/opentdf/platform/commit/23946e458d71b822988fab983e949f8d82d99e61))
+* **deps:** bump github.com/opentdf/platform/sdk from 0.17.0 to 0.21.0 in /otdfctl ([#3549](https://github.com/opentdf/platform/issues/3549)) ([1cb751e](https://github.com/opentdf/platform/commit/1cb751ec3798e1c5c6acac77475cb190aaf0edf1))
+* **deps:** bump the external group across 1 directory with 4 updates ([#3494](https://github.com/opentdf/platform/issues/3494)) ([5b87b2b](https://github.com/opentdf/platform/commit/5b87b2b2fc1c1f4d9f5003fc8ca3b446d3398884))
+
 ## [0.32.0](https://github.com/opentdf/platform/compare/otdfctl/v0.31.0...otdfctl/v0.32.0) (2026-05-19)
 
 

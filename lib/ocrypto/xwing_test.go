@@ -1,7 +1,7 @@
 package ocrypto
 
 import (
-	"encoding/asn1"
+	"encoding/pem"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -17,13 +17,19 @@ func TestXWingKeyPairAndPEM(t *testing.T) {
 	privatePEM, err := keyPair.PrivateKeyInPemFormat()
 	require.NoError(t, err)
 
-	publicKey, err := XWingPubKeyFromPem([]byte(publicPEM))
+	enc, err := FromPublicPEM(publicPEM)
 	require.NoError(t, err)
-	privateKey, err := XWingPrivateKeyFromPem([]byte(privatePEM))
+	dec, err := FromPrivatePEM(privatePEM)
 	require.NoError(t, err)
 
-	assert.Len(t, publicKey, XWingPublicKeySize)
-	assert.Len(t, privateKey, XWingPrivateKeySize)
+	wrapped, err := enc.Encrypt([]byte("round-trip"))
+	require.NoError(t, err)
+	plaintext, err := dec.Decrypt(wrapped)
+	require.NoError(t, err)
+	assert.Equal(t, []byte("round-trip"), plaintext)
+
+	assert.Len(t, keyPair.publicKey, XWingPublicKeySize)
+	assert.Len(t, keyPair.privateKey, XWingPrivateKeySize)
 	assert.Equal(t, HybridXWingKey, keyPair.GetKeyType())
 }
 
@@ -38,10 +44,10 @@ func TestXWingWrapUnwrapRoundTrip(t *testing.T) {
 	require.NoError(t, err)
 
 	dek := []byte("0123456789abcdef0123456789abcdef")
-	wrapped, err := XWingWrapDEK(keyPair.publicKey, dek)
+	wrapped, err := wrapDEKWithKEM(xwingKEM{}, keyPair.publicKey, dek, nil, nil)
 	require.NoError(t, err)
 
-	plaintext, err := XWingUnwrapDEK(keyPair.privateKey, wrapped)
+	plaintext, err := unwrapDEKWithKEM(xwingKEM{}, keyPair.privateKey, wrapped, nil, nil)
 	require.NoError(t, err)
 	assert.Equal(t, dek, plaintext)
 }
@@ -52,28 +58,12 @@ func TestXWingWrapUnwrapWrongKeyFails(t *testing.T) {
 	wrongKeyPair, err := NewXWingKeyPair()
 	require.NoError(t, err)
 
-	wrapped, err := XWingWrapDEK(keyPair.publicKey, []byte("top secret dek"))
+	wrapped, err := wrapDEKWithKEM(xwingKEM{}, keyPair.publicKey, []byte("top secret dek"), nil, nil)
 	require.NoError(t, err)
 
-	_, err = XWingUnwrapDEK(wrongKeyPair.privateKey, wrapped)
+	_, err = unwrapDEKWithKEM(xwingKEM{}, wrongKeyPair.privateKey, wrapped, nil, nil)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "AES-GCM decrypt failed")
-}
-
-func TestXWingWrappedKeyASN1RoundTrip(t *testing.T) {
-	original := XWingWrappedKey{
-		XWingCiphertext: []byte("ciphertext"),
-		EncryptedDEK:    []byte("encrypted-dek"),
-	}
-
-	der, err := asn1.Marshal(original)
-	require.NoError(t, err)
-
-	var decoded XWingWrappedKey
-	rest, err := asn1.Unmarshal(der, &decoded)
-	require.NoError(t, err)
-	assert.Empty(t, rest)
-	assert.Equal(t, original, decoded)
 }
 
 func TestXWingPEMDispatch(t *testing.T) {
@@ -91,7 +81,7 @@ func TestXWingPEMDispatch(t *testing.T) {
 	decryptor, err := FromPrivatePEMWithSalt(privatePEM, []byte("salt"), []byte("info"))
 	require.NoError(t, err)
 
-	xwingEncryptor, ok := encryptor.(*XWingEncryptor)
+	xwingEncryptor, ok := encryptor.(*kemEncryptor)
 	require.True(t, ok)
 	assert.Equal(t, Hybrid, xwingEncryptor.Type())
 	assert.Equal(t, HybridXWingKey, xwingEncryptor.KeyType())
@@ -101,7 +91,7 @@ func TestXWingPEMDispatch(t *testing.T) {
 	require.NoError(t, err)
 	assert.Empty(t, metadata)
 
-	xwingDecryptor, ok := decryptor.(*XWingDecryptor)
+	xwingDecryptor, ok := decryptor.(*kemDecryptor)
 	require.True(t, ok)
 
 	wrapped, err := xwingEncryptor.Encrypt([]byte("dispatch-dek"))
@@ -110,6 +100,33 @@ func TestXWingPEMDispatch(t *testing.T) {
 	plaintext, err := xwingDecryptor.Decrypt(wrapped)
 	require.NoError(t, err)
 	assert.Equal(t, []byte("dispatch-dek"), plaintext)
+}
+
+// TestXWingPEMShape verifies that the emitted PEM blocks carry the X-Wing
+// OID inside standard SPKI/PKCS#8 envelopes per draft-connolly-cfrg-xwing-kem-10.
+func TestXWingPEMShape(t *testing.T) {
+	kp, err := NewXWingKeyPair()
+	require.NoError(t, err)
+
+	pubPEM, err := kp.PublicKeyInPemFormat()
+	require.NoError(t, err)
+	pubBlock, _ := pem.Decode([]byte(pubPEM))
+	require.NotNil(t, pubBlock)
+	assert.Equal(t, "PUBLIC KEY", pubBlock.Type)
+	gotOID, raw, err := parseHybridSPKI(pubBlock.Bytes)
+	require.NoError(t, err)
+	assert.True(t, gotOID.Equal(oidXWing))
+	assert.Len(t, raw, XWingPublicKeySize)
+
+	privPEM, err := kp.PrivateKeyInPemFormat()
+	require.NoError(t, err)
+	privBlock, _ := pem.Decode([]byte(privPEM))
+	require.NotNil(t, privBlock)
+	assert.Equal(t, "PRIVATE KEY", privBlock.Type)
+	gotOID, raw, err = parseHybridPKCS8(privBlock.Bytes)
+	require.NoError(t, err)
+	assert.True(t, gotOID.Equal(oidXWing))
+	assert.Len(t, raw, XWingPrivateKeySize)
 }
 
 func TestXWingEncapsulate(t *testing.T) {

@@ -85,12 +85,26 @@ func (h Handler) UpdateKasKey(ctx context.Context, id string, metadata *common.M
 	return resp.GetKasKey(), nil
 }
 
+func (h Handler) UnsafeUpdateKasKey(ctx context.Context, id string, mode policy.KeyMode, providerConfigID string) (*policy.KasKey, error) {
+	resp, err := h.sdk.Unsafe.UnsafeUpdateKey(ctx, &unsafe.UnsafeUpdateKeyRequest{
+		Id:               id,
+		TargetKeyMode:    mode,
+		ProviderConfigId: providerConfigID,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return resp.GetKey(), nil
+}
+
 func (h Handler) ListKasKeys(
 	ctx context.Context,
 	limit, offset int32,
 	algorithm policy.Algorithm,
 	identifier KasIdentifier,
 	legacy *bool,
+	search string,
 	sort SortOption,
 ) (*kasregistry.ListKeysResponse, error) {
 	req := kasregistry.ListKeysRequest{
@@ -116,6 +130,9 @@ func (h Handler) ListKasKeys(
 		}
 	}
 	req.Legacy = legacy
+	if search != "" {
+		req.Search = &policy.Search{Term: search}
+	}
 	if !sort.IsZero() {
 		allowedFields := map[string]kasregistry.SortKasKeysType{
 			"key_id":     kasregistry.SortKasKeysType_SORT_KAS_KEYS_TYPE_KEY_ID,

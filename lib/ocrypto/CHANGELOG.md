@@ -1,5 +1,28 @@
 # Changelog
 
+## [0.14.0](https://github.com/opentdf/platform/compare/lib/ocrypto/v0.13.0...lib/ocrypto/v0.14.0) (2026-06-29)
+
+
+### Features
+
+* **kas:** Adds FIPS-203 wrap with ML-KEM-768/1024 ([#3652](https://github.com/opentdf/platform/issues/3652)) ([06f30ef](https://github.com/opentdf/platform/commit/06f30ef7f2eb6a5dce587efa906d4bd70b7cd8dc))
+
+## [0.13.0](https://github.com/opentdf/platform/compare/lib/ocrypto/v0.12.0...lib/ocrypto/v0.13.0) (2026-06-22)
+
+
+### ⚠ BREAKING CHANGES
+
+* **core:** conform hybrid PQ/T key formats to IETF drafts ([#3563](https://github.com/opentdf/platform/issues/3563))
+
+### Features
+
+* **core:** conform hybrid PQ/T key formats to IETF drafts ([#3563](https://github.com/opentdf/platform/issues/3563)) ([dc18568](https://github.com/opentdf/platform/commit/dc1856831383de1c5880121518c0fb83c429a5a5))
+
+
+### Bug Fixes
+
+* **ci:** Prefer go.work for toolchain info ([#3285](https://github.com/opentdf/platform/issues/3285)) ([3c05b22](https://github.com/opentdf/platform/commit/3c05b22ecac41380c7d8d80e9d487bb3001cd25d))
+
 ## [0.12.0](https://github.com/opentdf/platform/compare/lib/ocrypto/v0.11.0...lib/ocrypto/v0.12.0) (2026-05-27)
 
 

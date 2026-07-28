@@ -99,9 +99,10 @@ func policyListObligations(cmd *cobra.Command, args []string) {
 	namespace := c.Flags.GetOptionalString("namespace")
 	limit := c.Flags.GetRequiredInt32("limit")
 	offset := c.Flags.GetRequiredInt32("offset")
+	search := c.Flags.GetOptionalString("search")
 	sort := getSortOption(c)
 
-	resp, err := h.ListObligations(cmd.Context(), limit, offset, namespace, sort)
+	resp, err := h.ListObligations(cmd.Context(), limit, offset, namespace, search, sort)
 	if err != nil {
 		cli.ExitWithError("Failed to list obligations", err)
 	}
@@ -498,7 +499,8 @@ func parseTriggers(triggerInput string) ([]*obligations.ValueTriggerRequest, err
 
 func initObligationsCommands() {
 	// Obligations commands
-	getDoc := man.Docs.GetCommand("policy/obligations/get",
+	getDoc := man.Docs.GetCommand(
+		"policy/obligations/get",
 		man.WithRun(policyGetObligation),
 	)
 	getDoc.Flags().StringP(
@@ -516,7 +518,8 @@ func initObligationsCommands() {
 	getDoc.MarkFlagsMutuallyExclusive("id", "fqn")
 	getDoc.MarkFlagsOneRequired("id", "fqn")
 
-	listDoc := man.Docs.GetCommand("policy/obligations/list",
+	listDoc := man.Docs.GetCommand(
+		"policy/obligations/list",
 		man.WithRun(policyListObligations),
 	)
 	listDoc.Flags().StringP(
@@ -526,9 +529,11 @@ func initObligationsCommands() {
 		listDoc.GetDocFlag("namespace").Description,
 	)
 	injectListPaginationFlags(listDoc)
+	injectListSearchFlag(listDoc)
 	injectListSortFlags(listDoc)
 
-	createDoc := man.Docs.GetCommand("policy/obligations/create",
+	createDoc := man.Docs.GetCommand(
+		"policy/obligations/create",
 		man.WithRun(policyCreateObligation),
 	)
 	createDoc.Flags().StringP(
@@ -552,7 +557,8 @@ func initObligationsCommands() {
 	)
 	injectLabelFlags(&createDoc.Command, false)
 
-	updateDoc := man.Docs.GetCommand("policy/obligations/update",
+	updateDoc := man.Docs.GetCommand(
+		"policy/obligations/update",
 		man.WithRun(policyUpdateObligation),
 	)
 	updateDoc.Flags().StringP(
@@ -569,7 +575,8 @@ func initObligationsCommands() {
 	)
 	injectLabelFlags(&updateDoc.Command, true)
 
-	deleteDoc := man.Docs.GetCommand("policy/obligations/delete",
+	deleteDoc := man.Docs.GetCommand(
+		"policy/obligations/delete",
 		man.WithRun(policyDeleteObligation),
 	)
 	deleteDoc.Flags().StringP(
@@ -594,7 +601,8 @@ func initObligationsCommands() {
 
 	// Obligation Values commands
 
-	getValueDoc := man.Docs.GetCommand("policy/obligations/values/get",
+	getValueDoc := man.Docs.GetCommand(
+		"policy/obligations/values/get",
 		man.WithRun(policyGetObligationValue),
 	)
 	getValueDoc.Flags().StringP(
@@ -612,7 +620,8 @@ func initObligationsCommands() {
 	getValueDoc.MarkFlagsMutuallyExclusive("id", "fqn")
 	getValueDoc.MarkFlagsOneRequired("id", "fqn")
 
-	createValueDoc := man.Docs.GetCommand("policy/obligations/values/create",
+	createValueDoc := man.Docs.GetCommand(
+		"policy/obligations/values/create",
 		man.WithRun(policyCreateObligationValue),
 	)
 	createValueDoc.Flags().StringP(
@@ -635,7 +644,8 @@ func initObligationsCommands() {
 	)
 	injectLabelFlags(&createValueDoc.Command, false)
 
-	updateValueDoc := man.Docs.GetCommand("policy/obligations/values/update",
+	updateValueDoc := man.Docs.GetCommand(
+		"policy/obligations/values/update",
 		man.WithRun(policyUpdateObligationValue),
 	)
 	updateValueDoc.Flags().StringP(
@@ -657,7 +667,8 @@ func initObligationsCommands() {
 		updateValueDoc.GetDocFlag("triggers").Description,
 	)
 	injectLabelFlags(&updateValueDoc.Command, true)
-	deleteValueDoc := man.Docs.GetCommand("policy/obligations/values/delete",
+	deleteValueDoc := man.Docs.GetCommand(
+		"policy/obligations/values/delete",
 		man.WithRun(policyDeleteObligationValue),
 	)
 	deleteValueDoc.Flags().StringP(
@@ -681,7 +692,8 @@ func initObligationsCommands() {
 	deleteValueDoc.MarkFlagsOneRequired("id", "fqn")
 
 	// Obligation Triggers commands
-	createTriggerDoc := man.Docs.GetCommand("policy/obligations/triggers/create",
+	createTriggerDoc := man.Docs.GetCommand(
+		"policy/obligations/triggers/create",
 		man.WithRun(policyCreateObligationTrigger),
 	)
 	createTriggerDoc.Flags().StringP(
@@ -710,7 +722,8 @@ func initObligationsCommands() {
 	)
 	injectLabelFlags(&createTriggerDoc.Command, false)
 
-	deleteTriggerDoc := man.Docs.GetCommand("policy/obligations/triggers/delete",
+	deleteTriggerDoc := man.Docs.GetCommand(
+		"policy/obligations/triggers/delete",
 		man.WithRun(policyDeleteObligationTrigger),
 	)
 	deleteTriggerDoc.Flags().StringP(
@@ -725,7 +738,8 @@ func initObligationsCommands() {
 		deleteTriggerDoc.GetDocFlag("force").Description,
 	)
 
-	listTriggerDoc := man.Docs.GetCommand("policy/obligations/triggers/list",
+	listTriggerDoc := man.Docs.GetCommand(
+		"policy/obligations/triggers/list",
 		man.WithRun(policyListObligationTriggers),
 	)
 	listTriggerDoc.Flags().StringP(
@@ -738,7 +752,8 @@ func initObligationsCommands() {
 
 	// Add commands to the policy command
 
-	policyObligationsDoc := man.Docs.GetCommand("policy/obligations",
+	policyObligationsDoc := man.Docs.GetCommand(
+		"policy/obligations",
 		man.WithSubcommands(
 			getDoc,
 			listDoc,
@@ -748,7 +763,8 @@ func initObligationsCommands() {
 		),
 	)
 
-	policyObligationValuesDoc := man.Docs.GetCommand("policy/obligations/values",
+	policyObligationValuesDoc := man.Docs.GetCommand(
+		"policy/obligations/values",
 		man.WithSubcommands(
 			getValueDoc,
 			createValueDoc,
@@ -757,7 +773,8 @@ func initObligationsCommands() {
 		),
 	)
 
-	policyObligationTriggersDoc := man.Docs.GetCommand("policy/obligations/triggers",
+	policyObligationTriggersDoc := man.Docs.GetCommand(
+		"policy/obligations/triggers",
 		man.WithSubcommands(
 			createTriggerDoc,
 			deleteTriggerDoc,

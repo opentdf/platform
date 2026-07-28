@@ -1,5 +1,83 @@
 # Changelog
 
+## [0.39.0](https://github.com/opentdf/platform/compare/protocol/go/v0.38.0...protocol/go/v0.39.0) (2026-07-21)
+
+
+### Features
+
+* **policy:** Add name and manager lookup ([#3753](https://github.com/opentdf/platform/issues/3753)) ([bfbc65d](https://github.com/opentdf/platform/commit/bfbc65d6f56a7d28144379f535bd82ce61e62bdd))
+* **policy:** Add UnsafeUpdateKey rpc. ([#3728](https://github.com/opentdf/platform/issues/3728)) ([c89b193](https://github.com/opentdf/platform/commit/c89b1933e3931bc1984711f2268c8adedd786db4))
+* **policy:** create subject mappings with attribute values ([#3741](https://github.com/opentdf/platform/issues/3741)) ([718320b](https://github.com/opentdf/platform/commit/718320b2bbe1a03041ed70bb3b20eb3c30cf64fa))
+* **policy:** deprecate GetAttributeValuesByFqns in favor of narrow read APIs ([#3745](https://github.com/opentdf/platform/issues/3745)) ([baba709](https://github.com/opentdf/platform/commit/baba70913cfe615448ab05b465ecdaf037791889))
+
+## [0.38.0](https://github.com/opentdf/platform/compare/protocol/go/v0.37.0...protocol/go/v0.38.0) (2026-07-09)
+
+
+### Features
+
+* **policy:** add entitleable namespace field and narrow-read-API doc corrections ([#3727](https://github.com/opentdf/platform/issues/3727)) ([0fc2f01](https://github.com/opentdf/platform/commit/0fc2f01fbb0d75b04d2a5dcb94e5acdea9f62b6f))
+
+## [0.37.0](https://github.com/opentdf/platform/compare/protocol/go/v0.36.0...protocol/go/v0.37.0) (2026-07-01)
+
+
+### ⚠ BREAKING CHANGES
+
+* **policy:** undo subject mapping operator decomposition ([#3685](https://github.com/opentdf/platform/issues/3685))
+
+### Features
+
+* **policy:** add narrow attribute read API protos and generated code ([#3634](https://github.com/opentdf/platform/issues/3634)) ([5726720](https://github.com/opentdf/platform/commit/572672007abd7e0a3598f8303661487cfb0d2db5))
+* **policy:** undo subject mapping operator decomposition ([#3685](https://github.com/opentdf/platform/issues/3685)) ([84f3b92](https://github.com/opentdf/platform/commit/84f3b92a4f82dd527ef93de3361ec22990eae479))
+
+## [0.36.0](https://github.com/opentdf/platform/compare/protocol/go/v0.35.0...protocol/go/v0.36.0) (2026-06-29)
+
+
+### Features
+
+* **kas:** Adds FIPS-203 wrap with ML-KEM-768/1024 ([#3652](https://github.com/opentdf/platform/issues/3652)) ([06f30ef](https://github.com/opentdf/platform/commit/06f30ef7f2eb6a5dce587efa906d4bd70b7cd8dc))
+
+## [0.35.0](https://github.com/opentdf/platform/compare/protocol/go/v0.34.0...protocol/go/v0.35.0) (2026-06-25)
+
+
+### Bug Fixes
+
+* **policy:** undo Condition.operator deprecation ([#3668](https://github.com/opentdf/platform/issues/3668)) ([917f66a](https://github.com/opentdf/platform/commit/917f66a3dc3fa4df63d9b1a901ff75d88234d3f2))
+
+## [0.34.0](https://github.com/opentdf/platform/compare/protocol/go/v0.33.0...protocol/go/v0.34.0) (2026-06-17)
+
+
+### ⚠ BREAKING CHANGES
+
+* **core:** Add min_len to search term. ([#3604](https://github.com/opentdf/platform/issues/3604))
+
+### Features
+
+* **policy:** DSPX-2754 DynamicValueMapping protos + generated code ([#3580](https://github.com/opentdf/platform/issues/3580)) ([090c0f6](https://github.com/opentdf/platform/commit/090c0f65508058502d17a850691957b7beaee785))
+
+
+### Bug Fixes
+
+* **core:** Add min_len to search term. ([#3604](https://github.com/opentdf/platform/issues/3604)) ([09e22dc](https://github.com/opentdf/platform/commit/09e22dc6df01de211ca15d9f7c8dd54e7eec2abd))
+
+## [0.33.0](https://github.com/opentdf/platform/compare/protocol/go/v0.32.0...protocol/go/v0.33.0) (2026-06-12)
+
+
+### ⚠ BREAKING CHANGES
+
+* **policy:** DSPX-2998 add namespace fields to resource mapping protos ([#3565](https://github.com/opentdf/platform/issues/3565))
+
+### Features
+
+* **authz:** make v2 request limits configurable ([#3508](https://github.com/opentdf/platform/issues/3508)) ([9d16f80](https://github.com/opentdf/platform/commit/9d16f8062e6164748a6a27c497272209b743339f))
+* **core:** Add search term information to protos. ([#3547](https://github.com/opentdf/platform/issues/3547)) ([40f35df](https://github.com/opentdf/platform/commit/40f35df8b9ed6299498f03821475f88526d9a5eb))
+* **policy:** DSPX-2998 add namespace fields to resource mapping protos ([#3565](https://github.com/opentdf/platform/issues/3565)) ([e4a04ed](https://github.com/opentdf/platform/commit/e4a04ed6ee04a346a00a49d3c1f381295f9e9443))
+
+
+### Bug Fixes
+
+* **ci:** Prefer go.work for toolchain info ([#3285](https://github.com/opentdf/platform/issues/3285)) ([3c05b22](https://github.com/opentdf/platform/commit/3c05b22ecac41380c7d8d80e9d487bb3001cd25d))
+* **deps:** bump the external group across 1 directory with 4 updates ([#3494](https://github.com/opentdf/platform/issues/3494)) ([5b87b2b](https://github.com/opentdf/platform/commit/5b87b2b2fc1c1f4d9f5003fc8ca3b446d3398884))
+
 ## [0.32.0](https://github.com/opentdf/platform/compare/protocol/go/v0.31.0...protocol/go/v0.32.0) (2026-05-21)
 
 

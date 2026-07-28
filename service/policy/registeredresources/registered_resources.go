@@ -25,6 +25,8 @@ type RegisteredResourcesService struct { //nolint:revive // RegisteredResourcesS
 	config   *policyconfig.Config
 }
 
+var errNamespacedPolicyNamespaceRequired = errors.New("namespace is required: provide either namespace_id or namespace_fqn")
+
 func OnConfigUpdate(s *RegisteredResourcesService) serviceregistry.OnConfigUpdateHook {
 	return func(_ context.Context, cfg config.ServiceConfig) error {
 		sharedCfg, err := policyconfig.GetSharedPolicyConfig(cfg)
@@ -98,7 +100,7 @@ func (s *RegisteredResourcesService) CreateRegisteredResource(ctx context.Contex
 
 	// --- BEGIN namespace enforcement (remove when enforce_namespace flag is phased out) ---
 	if s.config.NamespacedPolicy && req.Msg.GetNamespaceId() == "" && req.Msg.GetNamespaceFqn() == "" {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("namespace is required: provide either namespace_id or namespace_fqn"))
+		return nil, connect.NewError(connect.CodeInvalidArgument, errNamespacedPolicyNamespaceRequired)
 	}
 	// --- END namespace enforcement ---
 

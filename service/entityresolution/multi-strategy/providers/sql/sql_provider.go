@@ -6,11 +6,8 @@ import (
 	"fmt"
 	"strings"
 
-	// Database drivers would be imported here:
-	// _ "github.com/lib/pq"           // PostgreSQL driver
-	// _ "github.com/go-sql-driver/mysql" // MySQL driver
-	// _ "github.com/mattn/go-sqlite3" // SQLite driver
-
+	// Register pgx as a database/sql driver for PostgreSQL ERS providers.
+	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/opentdf/platform/service/entityresolution/multi-strategy/types"
 )
 
@@ -44,8 +41,14 @@ func NewProvider(ctx context.Context, name string, config Config) (*Provider, er
 		)
 	}
 
+	// Keep "postgres" as the configuration value while using pgx internally.
+	databaseDriver := config.Driver
+	if databaseDriver == "postgres" {
+		databaseDriver = "pgx/v5"
+	}
+
 	// Open database connection
-	db, err := sql.Open(config.Driver, connStr)
+	db, err := sql.Open(databaseDriver, connStr)
 	if err != nil {
 		return nil, types.WrapMultiStrategyError(
 			types.ErrorTypeProvider,

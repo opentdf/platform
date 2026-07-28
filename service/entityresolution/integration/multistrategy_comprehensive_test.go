@@ -21,7 +21,6 @@ import (
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
 
-	_ "github.com/lib/pq" // PostgreSQL driver
 	_ "github.com/mattn/go-sqlite3"
 )
 
@@ -156,7 +155,7 @@ func TestMultiStrategy_SQLOnly(t *testing.T) {
 	// Retry connection to handle container startup timing
 	var db *sql.DB
 	for i := 0; i < 10; i++ {
-		db, err = sql.Open("postgres", connStr)
+		db, err = sql.Open("pgx/v5", connStr)
 		if err != nil {
 			time.Sleep(500 * time.Millisecond)
 			continue

@@ -33,13 +33,24 @@ func parseDynamicValueMappingActions(values []string) []*policy.Action {
 	return actions
 }
 
-// parseDynamicValueMappingOperator validates the readable operator choice and returns its enum.
-// Only IN and IN_CONTAINS are supported; NOT_IN, UNSPECIFIED, and unknown values are rejected.
-func parseDynamicValueMappingOperator(operator string) policy.SubjectMappingOperatorEnum {
+// validateDynamicValueMappingOperator validates the readable operator choice and returns its enum.
+// Only IN and IN_CONTAINS are supported; NOT_IN, UNSPECIFIED, and unknown values are rejected with
+// an error.
+func validateDynamicValueMappingOperator(operator string) (policy.SubjectMappingOperatorEnum, error) {
 	op := handlers.GetSubjectMappingOperatorFromChoice(operator)
 	if op != policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_IN &&
 		op != policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_IN_CONTAINS {
-		cli.ExitWithError(fmt.Sprintf("Invalid --operator %q; must be one of %s", operator, strings.Join(handlers.DynamicValueMappingOperatorEnumChoices, ", ")), nil)
+		return op, fmt.Errorf("invalid --operator %q; must be one of %s", operator, strings.Join(handlers.DynamicValueMappingOperatorEnumChoices, ", "))
+	}
+	return op, nil
+}
+
+// parseDynamicValueMappingOperator validates the readable operator choice and returns its enum,
+// exiting with an error on an unsupported operator.
+func parseDynamicValueMappingOperator(operator string) policy.SubjectMappingOperatorEnum {
+	op, err := validateDynamicValueMappingOperator(operator)
+	if err != nil {
+		cli.ExitWithError(err.Error(), nil)
 	}
 	return op
 }

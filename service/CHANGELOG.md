@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.23.0](https://github.com/opentdf/platform/compare/service/v0.22.0...service/v0.23.0) (2026-07-28)
+
+
+### Bug Fixes
+
+* **ers:** use pgx database/sql driver in SQL ERS provider ([#3543](https://github.com/opentdf/platform/issues/3543)) ([fa19bfa](https://github.com/opentdf/platform/commit/fa19bfac88553ce97154245a1a32093726bfa7ce))
+
 ## [0.22.0](https://github.com/opentdf/platform/compare/service/v0.21.0...service/v0.22.0) (2026-07-27)
 
 

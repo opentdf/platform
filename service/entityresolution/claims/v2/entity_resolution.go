@@ -38,7 +38,6 @@ type Config struct {
 func RegisterClaimsERS(cfg config.ServiceConfig, logger *logger.Logger) (EntityResolutionServiceV2, serviceregistry.HandlerServer) {
 	var inputConfig Config
 	if err := mapstructure.Decode(cfg, &inputConfig); err != nil {
-		logger.Error("failed to decode claims entity resolution configuration", slog.Any("error", err))
 		log.Fatalf("Failed to decode claims entity resolution configuration: %v", err)
 	}
 	claimsSVC := EntityResolutionServiceV2{

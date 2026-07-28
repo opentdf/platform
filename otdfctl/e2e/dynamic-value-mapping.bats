@@ -88,7 +88,7 @@ teardown_file() {
     # NOT_IN operator is rejected client-side
     run_otdfctl_dvm create --attribute "$DVM_ATTR_ID" --selector "$SELECTOR" --operator NOT_IN --action "$ACTION_READ_NAME"
         assert_failure
-        assert_output --partial "Invalid --operator"
+        assert_output --partial "invalid --operator"
 
     # operator is required
     run_otdfctl_dvm create --attribute "$DVM_ATTR_ID" --selector "$SELECTOR" --action "$ACTION_READ_NAME"

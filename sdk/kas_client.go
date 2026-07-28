@@ -10,6 +10,7 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"strings"
 	"time"
 
 	"connectrpc.com/connect"
@@ -41,6 +42,10 @@ type KASClient struct {
 	// Set this to enable legacy, non-batch rewrap requests
 	supportSingleRewrapEndpoint bool
 	fulfillableObligations      []string
+
+	// Set via WithExperimentalPreserveKASURLPath to keep the path component
+	// of KAS URLs when addressing the Key Access Service.
+	preserveKASURLPath bool
 }
 
 type kaoResult struct {
@@ -81,7 +86,7 @@ func (k *KASClient) makeRewrapRequest(ctx context.Context, requests []*kas.Unsig
 		return nil, err
 	}
 	kasURL := requests[0].GetKeyAccessObjects()[0].GetKeyAccessObject().GetKasUrl()
-	parsedURL, err := parseBaseURL(kasURL)
+	parsedURL, err := parseBaseURL(kasURL, k.preserveKASURLPath)
 	if err != nil {
 		return nil, fmt.Errorf("cannot parse kas url(%s): %w", kasURL, err)
 	}
@@ -307,7 +312,7 @@ func (k *KASClient) processRSAResponse(response *kas.RewrapResponse, asymDecrypt
 	return policyResults, nil
 }
 
-func parseBaseURL(rawURL string) (string, error) {
+func parseBaseURL(rawURL string, preservePath bool) (string, error) {
 	u, err := url.Parse(rawURL)
 	if err != nil {
 		return "", err
@@ -322,7 +327,16 @@ func parseBaseURL(rawURL string) (string, error) {
 		addr = net.JoinHostPort(host, port)
 	}
 
-	return fmt.Sprintf("%s://%s", u.Scheme, addr), nil
+	base := fmt.Sprintf("%s://%s", u.Scheme, addr)
+
+	// By default the path is stripped, addressing only scheme://host[:port].
+	// When preservePath is set (see WithExperimentalPreserveKASURLPath), keep
+	// any path prefix so path-served KAS instances remain reachable.
+	if preservePath {
+		base += strings.TrimRight(u.Path, "/")
+	}
+
+	return base, nil
 }
 
 func (k *KASClient) getRewrapRequest(reqs []*kas.UnsignedRewrapRequest_WithPolicyRequest, pubKey string) (*kas.RewrapRequest, error) {
@@ -433,7 +447,7 @@ func (s SDK) getPublicKey(ctx context.Context, kasurl, algorithm, kidToFind stri
 			return cachedValue, nil
 		}
 	}
-	parsedURL, err := parseBaseURL(kasurl)
+	parsedURL, err := parseBaseURL(kasurl, s.preserveKASURLPath)
 	if err != nil {
 		return nil, fmt.Errorf("cannot parse kas url(%s): %w", kasurl, err)
 	}

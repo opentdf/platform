@@ -44,6 +44,7 @@ type config struct {
 	shouldValidatePlatformConnectivity bool
 	fulfillableObligationFQNs          []string
 	logger                             *slog.Logger
+	preserveKASURLPath                 bool
 }
 
 // Options specific to TDF protocol features
@@ -226,5 +227,17 @@ func WithFulfillableObligationFQNs(fqns []string) Option {
 func WithLogger(logger *slog.Logger) Option {
 	return func(c *config) {
 		c.logger = logger
+	}
+}
+
+// WithlPreserveKASURLPath preserves the path component of KAS URLs
+// when addressing the Key Access Service.
+//
+// Deprecated: this is a temporary, experimental shim to unblock path-prefixed
+// KAS deployments and will be removed once path handling is addressed
+// natively. Do not build long-lived integrations on it.
+func WithPreserveKASURLPath() Option {
+	return func(c *config) {
+		c.preserveKASURLPath = true
 	}
 }

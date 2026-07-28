@@ -172,6 +172,7 @@ func (s SDK) prepareDecryptors(ctx context.Context, bulkReq *BulkDecryptRequest)
 // performRewraps executes all rewrap requests with KAS servers
 func (s SDK) performRewraps(ctx context.Context, bulkReq *BulkDecryptRequest, kasRewrapRequests map[string][]*kas.UnsignedRewrapRequest_WithPolicyRequest, fulfillableObligations []string) (map[string][]kaoResult, error) {
 	kasClient := newKASClient(s.conn.Client, s.conn.Options, s.tokenSource, s.kasSessionKey, fulfillableObligations)
+	kasClient.preserveKASURLPath = s.preserveKASURLPath
 	allRewrapResp := make(map[string][]kaoResult)
 	var err error
 

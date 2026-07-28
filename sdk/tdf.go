@@ -70,6 +70,7 @@ type Reader struct {
 	kasSessionKey       ocrypto.KeyPair
 	config              TDFReaderConfig
 	requiredObligations *RequiredObligations
+	preserveKASURLPath  bool
 }
 
 type RequiredObligations struct {
@@ -911,14 +912,15 @@ func (s SDK) LoadTDF(reader io.ReadSeeker, opts ...TDFReaderOption) (*Reader, er
 	}
 
 	return &Reader{
-		tokenSource:    s.tokenSource,
-		httpClient:     s.conn.Client,
-		connectOptions: s.conn.Options,
-		tdfReader:      tdfReader,
-		manifest:       *manifestObj,
-		kasSessionKey:  config.kasSessionKey,
-		config:         *config,
-		payloadSize:    payloadSize,
+		tokenSource:        s.tokenSource,
+		httpClient:         s.conn.Client,
+		connectOptions:     s.conn.Options,
+		tdfReader:          tdfReader,
+		manifest:           *manifestObj,
+		kasSessionKey:      config.kasSessionKey,
+		config:             *config,
+		payloadSize:        payloadSize,
+		preserveKASURLPath: s.preserveKASURLPath,
 	}, nil
 }
 
@@ -1475,6 +1477,7 @@ func (r *Reader) buildKey(_ context.Context, results []kaoResult) error {
 // Unwraps the payload key, if possible, using the access service
 func (r *Reader) doPayloadKeyUnwrap(ctx context.Context) error { //nolint:gocognit // Better readability keeping it as is
 	kasClient := newKASClient(r.httpClient, r.connectOptions, r.tokenSource, r.kasSessionKey, r.config.fulfillableObligationFQNs)
+	kasClient.preserveKASURLPath = r.preserveKASURLPath
 
 	var kaoResults []kaoResult
 	reqFail := func(err error, req *kas.UnsignedRewrapRequest_WithPolicyRequest) {

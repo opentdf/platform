@@ -229,10 +229,11 @@ func TestUpgradeRewrapRequestV1(t *testing.T) {
 
 func TestParseBaseUrl(t *testing.T) {
 	tests := []struct {
-		name        string
-		input       string
-		expected    string
-		expectError bool
+		name         string
+		input        string
+		preservePath bool
+		expected     string
+		expectError  bool
 	}{
 		{
 			name:        "Valid URL with scheme and port",
@@ -258,11 +259,39 @@ func TestParseBaseUrl(t *testing.T) {
 			expected:    "",
 			expectError: true,
 		},
+		{
+			name:         "Preserve path with scheme and port",
+			input:        "https://example.com:8080/my-kas",
+			preservePath: true,
+			expected:     "https://example.com:8080/my-kas",
+			expectError:  false,
+		},
+		{
+			name:         "Preserve multi-segment path",
+			input:        "https://example.com/path/my-platform",
+			preservePath: true,
+			expected:     "https://example.com/path/my-platform",
+			expectError:  false,
+		},
+		{
+			name:         "Preserve path trims trailing slash",
+			input:        "https://example.com/my-kas/",
+			preservePath: true,
+			expected:     "https://example.com/my-kas",
+			expectError:  false,
+		},
+		{
+			name:         "Preserve path with no path is host only",
+			input:        "https://example.com",
+			preservePath: true,
+			expected:     "https://example.com",
+			expectError:  false,
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result, err := parseBaseURL(tt.input)
+			result, err := parseBaseURL(tt.input, tt.preservePath)
 			if tt.expectError {
 				require.Error(t, err, "Expected an error for test case: %s", tt.name)
 			} else {

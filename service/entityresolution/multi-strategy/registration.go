@@ -110,12 +110,12 @@ func (ers *ERS) ResolveEntities(
 
 		// Add resolved claims
 		for claimName, claimValue := range result.Claims {
-			resultData[claimName] = structPBCompatibleValue(claimValue)
+			resultData[claimName] = StructPBCompatibleValue(claimValue)
 		}
 
 		// Add metadata with "metadata_" prefix
 		for metaKey, metaValue := range result.Metadata {
-			resultData[("metadata_" + metaKey)] = structPBCompatibleValue(metaValue)
+			resultData[("metadata_" + metaKey)] = StructPBCompatibleValue(metaValue)
 		}
 
 		// Convert to protobuf struct
@@ -447,7 +447,7 @@ func RegisterERS(config map[string]interface{}, logger *logger.Logger) (*ERS, se
 	return ers, nil
 }
 
-func structPBCompatibleValue(value interface{}) interface{} {
+func StructPBCompatibleValue(value interface{}) interface{} {
 	switch v := value.(type) {
 	case []string:
 		result := make([]interface{}, len(v))
@@ -458,13 +458,13 @@ func structPBCompatibleValue(value interface{}) interface{} {
 	case []interface{}:
 		result := make([]interface{}, len(v))
 		for i, item := range v {
-			result[i] = structPBCompatibleValue(item)
+			result[i] = StructPBCompatibleValue(item)
 		}
 		return result
 	case map[string]interface{}:
 		result := make(map[string]interface{}, len(v))
 		for key, item := range v {
-			result[key] = structPBCompatibleValue(item)
+			result[key] = StructPBCompatibleValue(item)
 		}
 		return result
 	default:

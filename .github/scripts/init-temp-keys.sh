@@ -79,7 +79,7 @@ docker run \
   -v $(pwd)/keys:/keys \
   --entrypoint keytool \
   --user $(id -u):$(id -g) \
-  keycloak/keycloak:25.0 \
+  keycloak/keycloak:26.4 \
   -importkeystore \
   -srckeystore /keys/ca.p12 \
   -srcstoretype PKCS12 \

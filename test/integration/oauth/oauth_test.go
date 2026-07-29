@@ -34,7 +34,6 @@ import (
 
 const (
 	standardKeycloakImage = "ghcr.io/opentdf/keycloak-standard:26.4.0"
-	customKeycloakImage   = "ghcr.io/opentdf/keycloak:sha-8a6d35a"
 )
 
 type OAuthSuite struct {
@@ -572,6 +571,7 @@ func setupStandardKeycloak(ctx context.Context, t *testing.T) (tc.Container, str
 		Env: map[string]string{
 			"KC_BOOTSTRAP_ADMIN_USERNAME": "admin",
 			"KC_BOOTSTRAP_ADMIN_PASSWORD": "admin", // #nosec G101 -- test-only Keycloak admin password
+			"KC_FEATURES":                 "dpop",
 		},
 
 		WaitingFor: wait.ForHTTP("/realms/master/.well-known/openid-configuration").
@@ -606,7 +606,7 @@ func setupStandardKeycloak(ctx context.Context, t *testing.T) (tc.Container, str
 
 func setupCustomKeycloakForCertExchange(ctx context.Context, t *testing.T) (tc.Container, string) {
 	containerReq := tc.ContainerRequest{
-		Image:        customKeycloakImage,
+		Image:        standardKeycloakImage,
 		ExposedPorts: []string{"8082/tcp", "8083/tcp"},
 		Cmd: []string{
 			"start-dev", "--http-port=8082", "--https-port=8083", "--verbose",
@@ -622,9 +622,8 @@ func setupCustomKeycloakForCertExchange(ctx context.Context, t *testing.T) (tc.C
 		},
 		Env: map[string]string{
 			"KC_BOOTSTRAP_ADMIN_USERNAME":   "admin",
-			"KC_BOOTSTRAP_ADMIN_PASSWORD":   "admin",
-			"KEYCLOAK_ADMIN":                "admin",
-			"KEYCLOAK_ADMIN_PASSWORD":       "admin", // #nosec G101 -- test-only Keycloak admin password
+			"KC_BOOTSTRAP_ADMIN_PASSWORD":   "admin", // #nosec G101 -- test-only Keycloak admin password
+			"KC_FEATURES":                   "dpop",
 			"KC_HTTPS_KEY_STORE_PASSWORD":   "password",
 			"KC_HTTPS_KEY_STORE_FILE":       "/truststore/truststore.jks",
 			"KC_HTTPS_CERTIFICATE_FILE":     "/etc/x509/tls/localhost.crt",
@@ -632,7 +631,15 @@ func setupCustomKeycloakForCertExchange(ctx context.Context, t *testing.T) (tc.C
 			"KC_HTTPS_CLIENT_AUTH":          "request",
 		},
 
-		WaitingFor: wait.ForLog("Running the server").WithStartupTimeout(2 * time.Minute),
+		// Wait on an actual HTTP response rather than the "Running the server" log line:
+		// in Keycloak 26.4 that message is printed (as the dev-mode warning) before the HTTP
+		// connector is accepting connections, which races the admin login below.
+		WaitingFor: wait.ForHTTP("/realms/master/.well-known/openid-configuration").
+			WithPort("8082/tcp").
+			WithStatusCodeMatcher(func(status int) bool {
+				return status == http.StatusOK
+			}).
+			WithStartupTimeout(2 * time.Minute),
 	}
 
 	keycloak := startKeycloakContainer(ctx, t, containerReq)

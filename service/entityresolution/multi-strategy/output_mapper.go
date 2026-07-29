@@ -40,7 +40,8 @@ func (om *OutputMapper) MapResult(rawResult *types.RawResult, outputMappings []t
 	}
 
 	// Apply output mappings
-	for _, mapping := range outputMappings {
+	appliedTransformations := make([]string, len(outputMappings))
+	for i, mapping := range outputMappings {
 		if err := om.applyMapping(rawResult, entityResult, mapping); err != nil {
 			return nil, types.WrapMultiStrategyError(
 				types.ErrorTypeMapping,
@@ -53,10 +54,12 @@ func (om *OutputMapper) MapResult(rawResult *types.RawResult, outputMappings []t
 				},
 			)
 		}
+		appliedTransformations[i] = mapping.Transformation
 	}
 
 	// Add mapping metadata
 	entityResult.Metadata["output_mappings_applied"] = len(outputMappings)
+	entityResult.Metadata["output_mappings_applied_transformations"] = strings.Join(appliedTransformations, ",")
 	entityResult.Metadata["claims_mapped"] = len(entityResult.Claims)
 
 	return entityResult, nil

@@ -21,7 +21,8 @@ const (
 
 // SQL-specific transformation constants
 const (
-	SQLPostgresArray = "postgres_array"
+	SQLPostgresArray  = "postgres_array"
+	SQLPostgresObject = "postgres_object"
 )
 
 // LDAP-specific transformation constants
@@ -53,6 +54,7 @@ func GetCommonTransformations() []string {
 func GetSQLTransformations() []string {
 	return []string{
 		SQLPostgresArray,
+		SQLPostgresObject,
 	}
 }
 

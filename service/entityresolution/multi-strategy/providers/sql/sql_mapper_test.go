@@ -1,6 +1,7 @@
 package sql
 
 import (
+	"reflect"
 	"testing"
 
 	"github.com/opentdf/platform/service/entityresolution/multi-strategy/types"
@@ -143,6 +144,22 @@ func TestSQLMapper_TransformResults(t *testing.T) {
 			expectError: false,
 		},
 		{
+			name: "PostgreSQL object (JSON) transformation",
+			rawData: map[string]interface{}{
+				"attributes": `{"department":"Engineering","clearance":"secret"}`,
+			},
+			outputMapping: []types.OutputMapping{
+				{SourceColumn: "attributes", ClaimName: "user_attributes", Transformation: "postgres_object"},
+			},
+			expectedClaims: map[string]interface{}{
+				"user_attributes": map[string]any{
+					"department": "Engineering",
+					"clearance":  "secret",
+				},
+			},
+			expectError: false,
+		},
+		{
 			name: "CSV to array transformation",
 			rawData: map[string]interface{}{
 				"roles": "manager,analyst,reviewer",
@@ -220,7 +237,7 @@ func verifyClaimValue(t *testing.T, claims map[string]interface{}, key string, e
 	// Handle slice comparison
 	expectedSlice, isSlice := expectedValue.([]string)
 	if !isSlice {
-		if actualValue != expectedValue {
+		if !reflect.DeepEqual(actualValue, expectedValue) {
 			t.Errorf("Claim %s: expected %v, got %v", key, expectedValue, actualValue)
 		}
 		return
@@ -376,6 +393,7 @@ func TestSQLMapper_GetSupportedTransformations(t *testing.T) {
 		"uppercase",
 		// SQL-specific transformations
 		"postgres_array",
+		"postgres_object",
 	}
 
 	if len(transformations) != len(expectedTransformations) {

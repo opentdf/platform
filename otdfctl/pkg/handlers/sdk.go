@@ -228,6 +228,9 @@ func New(opts ...HandlerOption) (Handler, error) {
 	if err != nil {
 		return Handler{}, err
 	}
+	if s == nil {
+		return Handler{}, errors.New("sdk factory returned a nil SDK")
+	}
 
 	return Handler{
 		sdk:              s,

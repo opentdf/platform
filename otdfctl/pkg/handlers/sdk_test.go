@@ -168,6 +168,28 @@ func TestResolveSDKFactory_FallsBackToDefault(t *testing.T) {
 	assert.NotNil(t, o.resolveSDKFactory(), "unset factory must fall back to the default")
 }
 
+// TestNew_UsesResolvedFactoryAndStoresSDK verifies New calls the resolved
+// factory with the normalized endpoint and stores the SDK it returns.
+func TestNew_UsesResolvedFactoryAndStoresSDK(t *testing.T) {
+	// Trailing slash: non-normalized input New must trim before the factory.
+	p := newInMemoryProfile(t, "https://platform.example.test/", false)
+
+	sentinel := &sdk.SDK{}
+	var gotEndpoint string
+	override := WithSDKFactory(func(endpoint string, _ ...sdk.Option) (*sdk.SDK, error) {
+		gotEndpoint = endpoint
+		return sentinel, nil
+	})
+
+	h, err := New(override, WithProfile(p))
+	require.NoError(t, err)
+
+	assert.Equal(t, "https://platform.example.test:443", gotEndpoint,
+		"New must call the resolved factory with the normalized endpoint")
+	assert.Same(t, sentinel, h.Direct(),
+		"New must store the SDK returned by the resolved factory on the handler")
+}
+
 func TestResolveSDKFactory_PerHandlerOverridesDefault(t *testing.T) {
 	sentinel := &sdk.SDK{}
 	o := WithSDKFactory(func(string, ...sdk.Option) (*sdk.SDK, error) {
@@ -266,4 +288,17 @@ func TestNew_HTTPEndpointReachesFactoryAsPlaintext(t *testing.T) {
 
 	assert.Len(t, optsPlaintext, len(optsSecure)+1,
 		"an http endpoint must add WithInsecurePlaintextConn reaching the factory")
+}
+
+// TestNew_NilSDKFromFactoryIsRejected guards against a factory returning
+// (nil, nil), which would yield a Handler with a nil SDK.
+func TestNew_NilSDKFromFactoryIsRejected(t *testing.T) {
+	p := newInMemoryProfile(t, "https://platform.example.test", false)
+	nilFactory := WithSDKFactory(func(string, ...sdk.Option) (*sdk.SDK, error) {
+		return nil, nil //nolint:nilnil // deliberately exercising the (nil, nil) guard
+	})
+
+	_, err := New(nilFactory, WithProfile(p))
+
+	require.Error(t, err, "a factory returning a nil SDK with no error must be rejected")
 }

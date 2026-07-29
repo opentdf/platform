@@ -13,6 +13,7 @@ func TestGetCommonTransformations(t *testing.T) {
 		CommonString,
 		CommonLowercase,
 		CommonUppercase,
+		CommonTrim,
 	}
 
 	if len(transformations) != len(expected) {

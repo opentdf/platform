@@ -391,6 +391,7 @@ func TestSQLMapper_GetSupportedTransformations(t *testing.T) {
 		"string",
 		"lowercase",
 		"uppercase",
+		"trim",
 		// SQL-specific transformations
 		"postgres_array",
 		"postgres_object",

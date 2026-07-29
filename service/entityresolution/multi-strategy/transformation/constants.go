@@ -14,6 +14,7 @@ const (
 	CommonString    = "string"
 	CommonLowercase = "lowercase"
 	CommonUppercase = "uppercase"
+	CommonTrim      = "trim"
 
 	// Common parsing transformations
 	CommonCSVToArray = "csv_to_array"
@@ -47,6 +48,7 @@ func GetCommonTransformations() []string {
 		CommonString,
 		CommonLowercase,
 		CommonUppercase,
+		CommonTrim,
 	}
 }
 

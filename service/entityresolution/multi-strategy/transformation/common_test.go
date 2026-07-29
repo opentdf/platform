@@ -37,6 +37,12 @@ func TestApplyCSVToArray(t *testing.T) {
 			hasError: false,
 		},
 		{
+			name:     "Empty entries are filtered out",
+			input:    "apple,,banana, ,cherry",
+			expected: []string{"apple", "banana", "cherry"},
+			hasError: false,
+		},
+		{
 			name:     "Non-string input",
 			input:    123,
 			expected: nil,
@@ -345,6 +351,20 @@ func TestApplyCommonTransformation(t *testing.T) {
 			input:          "hello",
 			expected:       "HELLO",
 			hasError:       false,
+		},
+		{
+			name:           "Trim transformation",
+			transformation: CommonTrim,
+			input:          "  hello  ",
+			expected:       "hello",
+			hasError:       false,
+		},
+		{
+			name:           "Trim requires string",
+			transformation: CommonTrim,
+			input:          123,
+			expected:       nil,
+			hasError:       true,
 		},
 		{
 			name:           "Unknown transformation",

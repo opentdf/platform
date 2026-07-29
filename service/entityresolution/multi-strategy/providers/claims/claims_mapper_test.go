@@ -356,6 +356,7 @@ func TestClaimsMapper_GetSupportedTransformations(t *testing.T) {
 		"string",
 		"lowercase",
 		"uppercase",
+		"trim",
 		"jwt_extract_scope",
 		"jwt_normalize_groups",
 	}

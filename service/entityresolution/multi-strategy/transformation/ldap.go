@@ -21,7 +21,9 @@ func ApplyLDAPTransformation(value interface{}, transformation string) (interfac
 	}
 }
 
-// ApplyLDAPDNToCNArray converts array of DNs to array of CNs
+// ApplyLDAPDNToCNArray converts array of DNs to array of CNs. A single DN
+// string is also accepted and returned as a one-element array to accommodate
+// single-valued LDAP attributes.
 func ApplyLDAPDNToCNArray(value interface{}) (interface{}, error) {
 	// Handle []interface{} arrays
 	if arr, ok := value.([]interface{}); ok {
@@ -49,7 +51,16 @@ func ApplyLDAPDNToCNArray(value interface{}) (interface{}, error) {
 		return result, nil
 	}
 
-	return nil, fmt.Errorf("ldap_dn_to_cn_array transformation requires array input, got %T", value)
+	// Handle single DN string
+	if str, ok := value.(string); ok {
+		cn := ExtractCNFromDN(str)
+		if cn == "" {
+			return []string{}, nil
+		}
+		return []string{cn}, nil
+	}
+
+	return nil, fmt.Errorf("ldap_dn_to_cn_array transformation requires string or array input, got %T", value)
 }
 
 // ApplyLDAPDNToCN converts single DN to CN

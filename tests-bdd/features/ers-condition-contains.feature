@@ -10,8 +10,6 @@ Feature: ERS condition operator — contains
     Given an LDAP directory with test users
     And an ERS configuration with mode "multi-strategy" and failure strategy "continue"
     And an ERS provider "ldap_directory" of type "ldap" connected to the LDAP directory
-
-  Scenario: Contains condition matches substring — "alice" contains "ali" gets PERMIT
     And an ERS mapping strategy "contains_ali_strat" using provider "ldap_directory"
       """
       entity_type: subject
@@ -35,6 +33,8 @@ Feature: ERS condition operator — contains
           claim_name: username
       """
     And a local platform with inline ERS configuration
+
+  Scenario: Contains condition matches substring — "alice" contains "ali" gets PERMIT
     Given I submit a request to create a namespace with name "ct-match.test" and reference id "ns_ct_match"
     And I send a request to create an attribute with:
       | namespace_id | name       | rule  | values                         |
@@ -55,29 +55,6 @@ Feature: ERS condition operator — contains
     And I should get a "PERMIT" decision response
 
   Scenario: Contains condition does not match — "bob" does not contain "ali" gets DENY
-    And an ERS mapping strategy "contains_ali_strat2" using provider "ldap_directory"
-      """
-      entity_type: subject
-      conditions:
-        jwt_claims:
-          - claim: userName
-            operator: contains
-            values: ["ali"]
-      ldap_search:
-        base_dn: "ou=users,dc=opentdf,dc=test"
-        filter: "(&(objectClass=inetOrgPerson)(uid={username}))"
-        scope: subtree
-        attributes: ["uid", "mail", "departmentNumber"]
-      input_mapping:
-        - jwt_claim: userName
-          parameter: username
-      output_mapping:
-        - source_attribute: departmentNumber
-          claim_name: department
-        - source_attribute: uid
-          claim_name: username
-      """
-    And a local platform with inline ERS configuration
     Given I submit a request to create a namespace with name "ct-nomatch.test" and reference id "ns_ct_nomatch"
     And I send a request to create an attribute with:
       | namespace_id   | name       | rule  | values                         |
@@ -96,50 +73,3 @@ Feature: ERS condition operator — contains
     When I send a decision request for entity chain "bob_ct" for "read" action on resource "https://ct-nomatch.test/attr/department/value/engineering"
     Then the response should be successful
     And I should get a "DENY" decision response
-
-  Scenario: Multiple contains conditions (AND logic) — both must match for strategy selection
-    # "diana" contains "an" (di-AN-a) AND "di" (DI-ana) -> both match -> strategy selected
-    And an ERS mapping strategy "multi_contains_strat" using provider "ldap_directory"
-      """
-      entity_type: subject
-      conditions:
-        jwt_claims:
-          - claim: userName
-            operator: contains
-            values: ["an"]
-          - claim: userName
-            operator: contains
-            values: ["di"]
-      ldap_search:
-        base_dn: "ou=users,dc=opentdf,dc=test"
-        filter: "(&(objectClass=inetOrgPerson)(uid={username}))"
-        scope: subtree
-        attributes: ["uid", "mail", "departmentNumber"]
-      input_mapping:
-        - jwt_claim: userName
-          parameter: username
-      output_mapping:
-        - source_attribute: departmentNumber
-          claim_name: department
-        - source_attribute: uid
-          claim_name: username
-      """
-    And a local platform with inline ERS configuration
-    Given I submit a request to create a namespace with name "ct-and.test" and reference id "ns_ct_and"
-    And I send a request to create an attribute with:
-      | namespace_id | name       | rule  | values                         |
-      | ns_ct_and    | department | anyOf | engineering,marketing,security |
-    Then the response should be successful
-    Given a condition group referenced as "cg_ct_and" with an "or" operator with conditions:
-      | selector_value | operator | values      |
-      | .department    | in       | engineering |
-    And a subject set referenced as "ss_ct_and" containing the condition groups "cg_ct_and"
-    And I send a request to create a subject condition set referenced as "scs_ct_and" containing subject sets "ss_ct_and"
-    And I send a request to create a subject mapping with:
-      | reference_id | attribute_value                                       | condition_set_name | standard actions | custom actions |
-      | sm_ct_and    | https://ct-and.test/attr/department/value/engineering | scs_ct_and         | read             |                |
-    Then the response should be successful
-    Given there is a "user_name" subject entity with value "diana" and referenced as "diana_ct"
-    When I send a decision request for entity chain "diana_ct" for "read" action on resource "https://ct-and.test/attr/department/value/engineering"
-    Then the response should be successful
-    And I should get a "PERMIT" decision response

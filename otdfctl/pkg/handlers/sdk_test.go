@@ -3,6 +3,7 @@ package handlers
 import (
 	"testing"
 
+	"github.com/opentdf/platform/otdfctl/pkg/profiles"
 	"github.com/opentdf/platform/sdk"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -192,4 +193,77 @@ func TestSetDefaultSDKFactory_OverridesAndResets(t *testing.T) {
 
 	SetDefaultSDKFactory(nil)
 	assert.NotNil(t, handlerOpts{}.resolveSDKFactory(), "nil must reset to a usable default")
+}
+
+// newInMemoryProfile builds a client-credentials profile in memory so New can
+// resolve auth options without touching the network.
+func newInMemoryProfile(t *testing.T, endpoint string, tlsNoVerify bool) *profiles.OtdfctlProfileStore {
+	t.Helper()
+	store, err := profiles.NewOtdfctlProfileStore(
+		profiles.ProfileDriverMemory,
+		&profiles.ProfileConfig{Name: "test", Endpoint: endpoint, TLSNoVerify: tlsNoVerify},
+		true,
+	)
+	require.NoError(t, err)
+	require.NoError(t, store.SetAuthCredentials(profiles.AuthCredentials{
+		AuthType:     profiles.AuthTypeClientCredentials,
+		ClientID:     "test-client",
+		ClientSecret: "test-secret",
+	}))
+	return store
+}
+
+// captureFactoryArgs runs New with a factory that records what it received
+// instead of building a real SDK.
+func captureFactoryArgs(t *testing.T, opts ...HandlerOption) (string, []sdk.Option) {
+	t.Helper()
+	var (
+		gotEndpoint string
+		gotOpts     []sdk.Option
+	)
+	capture := WithSDKFactory(func(endpoint string, sdkOpts ...sdk.Option) (*sdk.SDK, error) {
+		gotEndpoint = endpoint
+		gotOpts = sdkOpts
+		return &sdk.SDK{}, nil
+	})
+	_, err := New(append([]HandlerOption{capture}, opts...)...)
+	require.NoError(t, err)
+	return gotEndpoint, gotOpts
+}
+
+// TestNew_PassesNormalizedEndpointToFactory confirms the factory receives the
+// normalized endpoint, not the raw profile value.
+func TestNew_PassesNormalizedEndpointToFactory(t *testing.T) {
+	p := newInMemoryProfile(t, "https://platform.example.test", false)
+
+	endpoint, _ := captureFactoryArgs(t, WithProfile(p))
+
+	assert.Equal(t, "https://platform.example.test:443", endpoint,
+		"factory must receive the normalized endpoint New computed")
+}
+
+// TestNew_TLSNoVerifyReachesFactory proves --tls-no-verify adds an SDK option
+// reaching the factory. It asserts the delta because sdk.Option is opaque.
+func TestNew_TLSNoVerifyReachesFactory(t *testing.T) {
+	off := newInMemoryProfile(t, "https://platform.example.test", false)
+	on := newInMemoryProfile(t, "https://platform.example.test", true)
+
+	_, optsOff := captureFactoryArgs(t, WithProfile(off))
+	_, optsOn := captureFactoryArgs(t, WithProfile(on))
+
+	assert.Len(t, optsOn, len(optsOff)+1,
+		"--tls-no-verify must add exactly one SDK option (WithInsecureSkipVerifyConn) reaching the factory")
+}
+
+// TestNew_HTTPEndpointReachesFactoryAsPlaintext proves an http endpoint adds
+// the plaintext-connection option reaching the factory.
+func TestNew_HTTPEndpointReachesFactoryAsPlaintext(t *testing.T) {
+	secure := newInMemoryProfile(t, "https://platform.example.test", false)
+	plaintext := newInMemoryProfile(t, "http://platform.example.test", false)
+
+	_, optsSecure := captureFactoryArgs(t, WithProfile(secure))
+	_, optsPlaintext := captureFactoryArgs(t, WithProfile(plaintext))
+
+	assert.Len(t, optsPlaintext, len(optsSecure)+1,
+		"an http endpoint must add WithInsecurePlaintextConn reaching the factory")
 }

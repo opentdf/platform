@@ -1,6 +1,7 @@
 package multistrategy
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
@@ -155,8 +156,44 @@ func (om *OutputMapper) applyTransformation(value interface{}, transformation st
 	case "trim":
 		return om.transformTrim(value)
 
+	case "postgres_object":
+		return om.transformPostgresObject(value)
+
 	default:
 		return nil, fmt.Errorf("unknown transformation: %s", transformation)
+	}
+}
+
+// transformPostgresObject converts a Postgres JSON/JSONB query result into a map[string]any.
+// Postgres drivers may return JSON/JSONB values as []byte, string, or an already-parsed map.
+func (om *OutputMapper) transformPostgresObject(value interface{}) (interface{}, error) {
+	if value == nil {
+		return map[string]any{}, nil
+	}
+
+	switch v := value.(type) {
+	case map[string]any:
+		return v, nil
+	case []byte:
+		if len(v) == 0 {
+			return map[string]any{}, nil
+		}
+		result := map[string]any{}
+		if err := json.Unmarshal(v, &result); err != nil {
+			return nil, fmt.Errorf("postgres_object transformation failed to unmarshal []byte: %w", err)
+		}
+		return result, nil
+	case string:
+		if v == "" {
+			return map[string]any{}, nil
+		}
+		result := map[string]any{}
+		if err := json.Unmarshal([]byte(v), &result); err != nil {
+			return nil, fmt.Errorf("postgres_object transformation failed to unmarshal string: %w", err)
+		}
+		return result, nil
+	default:
+		return nil, fmt.Errorf("postgres_object transformation requires []byte, string, or map[string]any input, got %T", value)
 	}
 }
 

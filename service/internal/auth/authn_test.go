@@ -1250,7 +1250,7 @@ func TestMatchHTU(t *testing.T) {
 	}
 }
 
-func (s *AuthSuite) TestDPoPEndToEnd_GRPC() {
+func (s *AuthSuite) TestDPoPEndToEnd_Connect() {
 	dpopKeyRaw, err := rsa.GenerateKey(rand.Reader, 2048)
 	s.Require().NoError(err)
 	dpopKey, err := jwk.FromRaw(dpopKeyRaw)
@@ -1291,13 +1291,13 @@ func (s *AuthSuite) TestDPoPEndToEnd_GRPC() {
 		MinVersion: tls.VersionTLS12,
 	}))
 
-	conn, _ := grpc.NewClient("passthrough://bufconn", grpc.WithContextDialer(func(ctx context.Context, _ string) (net.Conn, error) {
-		return server.Listener.DialContext(ctx, "tcp", "http://localhost:8080")
-	}), grpc.WithTransportCredentials(insecure.NewCredentials()), grpc.WithUnaryInterceptor(addingInterceptor.AddCredentials))
+	client := kasconnect.NewAccessServiceClient(
+		server.Client(),
+		server.Listener.Addr().String(),
+		connect.WithInterceptors(addingInterceptor.AddCredentialsConnect()),
+	)
 
-	client := kas.NewAccessServiceClient(conn)
-
-	_, err = client.Rewrap(context.Background(), &kas.RewrapRequest{})
+	_, err = client.Rewrap(context.Background(), connect.NewRequest(&kas.RewrapRequest{}))
 	s.Require().NoError(err)
 
 	// interceptor propagated clientID from the token at the configured claim

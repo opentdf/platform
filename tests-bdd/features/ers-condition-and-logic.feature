@@ -14,7 +14,7 @@ Feature: ERS condition — multiple conditions AND logic
         jwt_claims:
           - claim: userName
             operator: contains
-            values: ["an"]
+            values: ["a"]
           - claim: userName
             operator: contains
             values: ["di"]
@@ -34,7 +34,7 @@ Feature: ERS condition — multiple conditions AND logic
       """
     And a local platform with inline ERS configuration
 
-  Scenario: Both AND conditions match — diana contains "an" and "di" gets PERMIT
+  Scenario: Both AND conditions match — diana contains "a" and "di" gets PERMIT
     Given I submit a request to create a namespace with name "and-match.test" and reference id "ns_and_match"
     And I send a request to create an attribute with:
       | namespace_id  | name       | rule  | values                         |
@@ -54,7 +54,7 @@ Feature: ERS condition — multiple conditions AND logic
     Then the response should be successful
     And I should get a "PERMIT" decision response
 
-  Scenario: Only one AND condition matches — alice contains "ali" but not "di" gets DENY
+  Scenario: Only one AND condition matches — alice contains "a" but not "di" gets DENY
     Given I submit a request to create a namespace with name "and-partial.test" and reference id "ns_and_partial"
     And I send a request to create an attribute with:
       | namespace_id    | name       | rule  | values                         |

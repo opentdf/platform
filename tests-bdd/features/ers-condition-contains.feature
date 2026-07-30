@@ -17,7 +17,7 @@ Feature: ERS condition operator — contains
         jwt_claims:
           - claim: userName
             operator: contains
-            values: ["ali"]
+            values: ["ALI"]
       ldap_search:
         base_dn: "ou=users,dc=opentdf,dc=test"
         filter: "(&(objectClass=inetOrgPerson)(uid={username}))"
@@ -34,7 +34,7 @@ Feature: ERS condition operator — contains
       """
     And a local platform with inline ERS configuration
 
-  Scenario: Contains condition matches substring — "alice" contains "ali" gets PERMIT
+  Scenario: Contains condition matches substring case-insensitively — "alice" contains "ALI" gets PERMIT
     Given I submit a request to create a namespace with name "ct-match.test" and reference id "ns_ct_match"
     And I send a request to create an attribute with:
       | namespace_id | name       | rule  | values                         |
@@ -54,7 +54,7 @@ Feature: ERS condition operator — contains
     Then the response should be successful
     And I should get a "PERMIT" decision response
 
-  Scenario: Contains condition does not match — "bob" does not contain "ali" gets DENY
+  Scenario: Contains condition does not match — "bob" does not contain "ALI" gets DENY
     Given I submit a request to create a namespace with name "ct-nomatch.test" and reference id "ns_ct_nomatch"
     And I send a request to create an attribute with:
       | namespace_id   | name       | rule  | values                         |

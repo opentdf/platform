@@ -14,6 +14,7 @@ const (
 	CommonString    = "string"
 	CommonLowercase = "lowercase"
 	CommonUppercase = "uppercase"
+	CommonTrim      = "trim"
 
 	// Common parsing transformations
 	CommonCSVToArray = "csv_to_array"
@@ -21,7 +22,8 @@ const (
 
 // SQL-specific transformation constants
 const (
-	SQLPostgresArray = "postgres_array"
+	SQLPostgresArray  = "postgres_array"
+	SQLPostgresObject = "postgres_object"
 )
 
 // LDAP-specific transformation constants
@@ -46,6 +48,7 @@ func GetCommonTransformations() []string {
 		CommonString,
 		CommonLowercase,
 		CommonUppercase,
+		CommonTrim,
 	}
 }
 
@@ -53,6 +56,7 @@ func GetCommonTransformations() []string {
 func GetSQLTransformations() []string {
 	return []string{
 		SQLPostgresArray,
+		SQLPostgresObject,
 	}
 }
 

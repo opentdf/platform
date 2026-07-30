@@ -18,12 +18,16 @@ func ApplyCommonTransformation(value interface{}, transformation string) (interf
 		return ApplyLowercase(value)
 	case CommonUppercase:
 		return ApplyUppercase(value)
+	case CommonTrim:
+		return ApplyTrim(value)
 	default:
 		return nil, fmt.Errorf("unsupported common transformation: %s", transformation)
 	}
 }
 
-// ApplyCSVToArray converts comma-separated strings to string arrays
+// ApplyCSVToArray converts comma-separated strings to string arrays.
+// Whitespace is trimmed from each entry and empty entries are dropped so that
+// inputs like "a,,b" yield ["a", "b"].
 func ApplyCSVToArray(value interface{}) (interface{}, error) {
 	str, ok := value.(string)
 	if !ok {
@@ -35,10 +39,14 @@ func ApplyCSVToArray(value interface{}) (interface{}, error) {
 	}
 
 	parts := strings.Split(str, ",")
-	for i, part := range parts {
-		parts[i] = strings.TrimSpace(part)
+	result := make([]string, 0, len(parts))
+	for _, part := range parts {
+		trimmed := strings.TrimSpace(part)
+		if trimmed != "" {
+			result = append(result, trimmed)
+		}
 	}
-	return parts, nil
+	return result, nil
 }
 
 // ApplyArray ensures the value is returned as an array type
@@ -80,4 +88,12 @@ func ApplyUppercase(value interface{}) (interface{}, error) {
 		return strings.ToUpper(str), nil
 	}
 	return strings.ToUpper(fmt.Sprintf("%v", value)), nil
+}
+
+// ApplyTrim trims leading and trailing whitespace from string values.
+func ApplyTrim(value interface{}) (interface{}, error) {
+	if str, ok := value.(string); ok {
+		return strings.TrimSpace(str), nil
+	}
+	return nil, fmt.Errorf("trim transformation requires string input, got %T", value)
 }

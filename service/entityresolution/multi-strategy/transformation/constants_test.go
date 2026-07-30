@@ -13,6 +13,7 @@ func TestGetCommonTransformations(t *testing.T) {
 		CommonString,
 		CommonLowercase,
 		CommonUppercase,
+		CommonTrim,
 	}
 
 	if len(transformations) != len(expected) {
@@ -155,6 +156,7 @@ func TestTransformationConstants(t *testing.T) {
 		{"Common Uppercase", CommonUppercase, "uppercase"},
 
 		{"SQL Postgres Array", SQLPostgresArray, "postgres_array"},
+		{"SQL Postgres Object", SQLPostgresObject, "postgres_object"},
 		{"LDAP DN to CN Array", LDAPDNToCNArray, "ldap_dn_to_cn_array"},
 		{"LDAP DN to CN", LDAPDNToCN, "ldap_dn_to_cn"},
 		{"LDAP Attribute Values", LDAPAttrValues, "ldap_attribute_values"},

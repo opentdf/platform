@@ -142,8 +142,20 @@ func TestApplyLDAPDNToCNArray(t *testing.T) {
 			hasError: false,
 		},
 		{
-			name:     "Non-array input",
+			name:     "Single DN string",
 			input:    "CN=Single,OU=Users,DC=company,DC=com",
+			expected: []string{"Single"},
+			hasError: false,
+		},
+		{
+			name:     "Single string without CN",
+			input:    "OU=NoCommonName,DC=company,DC=com",
+			expected: []string{},
+			hasError: false,
+		},
+		{
+			name:     "Unsupported input type",
+			input:    12345,
 			expected: nil,
 			hasError: true,
 		},

@@ -381,6 +381,7 @@ func TestLDAPMapper_GetSupportedTransformations(t *testing.T) {
 		"string",
 		"lowercase",
 		"uppercase",
+		"trim",
 		// LDAP-specific transformations
 		"ldap_dn_to_cn_array",
 		"ldap_dn_to_cn",

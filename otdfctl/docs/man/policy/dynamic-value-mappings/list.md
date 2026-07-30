@@ -8,8 +8,9 @@ command:
     - name: namespace
       shorthand: n
       description: Namespace ID or FQN to filter results
-    - name: attribute-definition-id
-      description: Attribute Definition ID to filter results
+    - name: attribute
+      shorthand: a
+      description: URI or ID of the Attribute Definition to filter results
     - name: limit
       shorthand: l
       description: Limit retrieved count

@@ -11,6 +11,7 @@ import (
 	"github.com/opentdf/platform/otdfctl/pkg/cli"
 	"github.com/opentdf/platform/otdfctl/pkg/handlers"
 	"github.com/opentdf/platform/otdfctl/pkg/man"
+	"github.com/opentdf/platform/otdfctl/pkg/utils"
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/subjectmapping"
 	"github.com/spf13/cobra"
@@ -32,13 +33,24 @@ func parseDynamicValueMappingActions(values []string) []*policy.Action {
 	return actions
 }
 
-// parseDynamicValueMappingOperator validates the readable operator choice and returns its enum.
-// Only IN and IN_CONTAINS are supported; NOT_IN, UNSPECIFIED, and unknown values are rejected.
-func parseDynamicValueMappingOperator(operator string) policy.SubjectMappingOperatorEnum {
+// validateDynamicValueMappingOperator validates the readable operator choice and returns its enum.
+// Only IN and IN_CONTAINS are supported; NOT_IN, UNSPECIFIED, and unknown values are rejected with
+// an error.
+func validateDynamicValueMappingOperator(operator string) (policy.SubjectMappingOperatorEnum, error) {
 	op := handlers.GetSubjectMappingOperatorFromChoice(operator)
 	if op != policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_IN &&
 		op != policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_IN_CONTAINS {
-		cli.ExitWithError(fmt.Sprintf("Invalid --operator %q; must be one of %s", operator, strings.Join(handlers.DynamicValueMappingOperatorEnumChoices, ", ")), nil)
+		return op, fmt.Errorf("invalid --operator %q; must be one of %s", operator, strings.Join(handlers.DynamicValueMappingOperatorEnumChoices, ", "))
+	}
+	return op, nil
+}
+
+// parseDynamicValueMappingOperator validates the readable operator choice and returns its enum,
+// exiting with an error on an unsupported operator.
+func parseDynamicValueMappingOperator(operator string) policy.SubjectMappingOperatorEnum {
+	op, err := validateDynamicValueMappingOperator(operator)
+	if err != nil {
+		cli.ExitWithError(err.Error(), nil)
 	}
 	return op
 }
@@ -94,10 +106,10 @@ func policyListDynamicValueMappings(cmd *cobra.Command, args []string) {
 	limit := c.Flags.GetRequiredInt32("limit")
 	offset := c.Flags.GetRequiredInt32("offset")
 	namespace := c.Flags.GetOptionalString("namespace")
-	attrDefID := c.Flags.GetOptionalID("attribute-definition-id")
+	attribute := c.Flags.GetOptionalString("attribute")
 	sort := getSortOption(c)
 
-	resp, err := h.ListDynamicValueMappings(cmd.Context(), limit, offset, namespace, attrDefID, sort)
+	resp, err := h.ListDynamicValueMappings(cmd.Context(), limit, offset, namespace, attribute, sort)
 	if err != nil {
 		cli.ExitWithError("Failed to list dynamic value mappings", err)
 	}
@@ -137,22 +149,17 @@ func policyCreateDynamicValueMapping(cmd *cobra.Command, args []string) {
 	h := common.NewHandler(c)
 	defer h.Close()
 
-	attrDefID := c.Flags.GetOptionalID("attribute-definition-id")
-	attrDefFQN := c.Flags.GetOptionalString("attribute-definition-fqn")
+	attribute := c.Flags.GetOptionalString("attribute")
 	selector := c.Flags.GetOptionalString("selector")
 	operator := c.Flags.GetOptionalString("operator")
 	actionFlagValues = c.Flags.GetStringSlice("action", actionFlagValues, cli.FlagsStringSliceOptions{Min: 0})
-	existingSCSID := c.Flags.GetOptionalID("subject-condition-set-id")
-	newScsJSON := c.Flags.GetOptionalString("subject-condition-set-new")
+	subjectConditionSet := c.Flags.GetOptionalString("subject-condition-set")
 	namespace := c.Flags.GetOptionalString("namespace")
 	metadataLabels = c.Flags.GetStringSlice("label", metadataLabels, cli.FlagsStringSliceOptions{Min: 0})
 
 	// validations
-	if attrDefID == "" && attrDefFQN == "" {
-		cli.ExitWithError("One of [--attribute-definition-id, --attribute-definition-fqn] is required", nil)
-	}
-	if attrDefID != "" && attrDefFQN != "" {
-		cli.ExitWithError("Only one of [--attribute-definition-id, --attribute-definition-fqn] may be provided", nil)
+	if attribute == "" {
+		cli.ExitWithError("The Attribute Definition reference [--attribute] is required", nil)
 	}
 	if selector == "" {
 		cli.ExitWithError("The resolver selector [--selector] is required", nil)
@@ -163,9 +170,6 @@ func policyCreateDynamicValueMapping(cmd *cobra.Command, args []string) {
 	if len(actionFlagValues) == 0 {
 		cli.ExitWithError("At least one Action [--action] is required", nil)
 	}
-	if existingSCSID != "" && newScsJSON != "" {
-		cli.ExitWithError("Only one of [--subject-condition-set-id, --subject-condition-set-new] may be provided", nil)
-	}
 
 	resolver := &policy.DynamicValueResolver{
 		SubjectExternalSelectorValue: selector,
@@ -173,18 +177,25 @@ func policyCreateDynamicValueMapping(cmd *cobra.Command, args []string) {
 	}
 	actions := parseDynamicValueMappingActions(actionFlagValues)
 
+	// The static pre-gate accepts either an existing Subject Condition Set (referenced by UUID) or a
+	// JSON array of Subject Sets to create a new one.
+	var existingSCSID string
 	var scs *subjectmapping.SubjectConditionSetCreate
-	if newScsJSON != "" {
-		ss, err := unmarshalSubjectSetsProto([]byte(newScsJSON))
-		if err != nil {
-			cli.ExitWithError("Error unmarshalling subject sets", err)
-		}
-		scs = &subjectmapping.SubjectConditionSetCreate{
-			SubjectSets: ss,
+	if subjectConditionSet != "" {
+		if utils.ClassifyString(subjectConditionSet) == utils.StringTypeUUID {
+			existingSCSID = subjectConditionSet
+		} else {
+			ss, err := unmarshalSubjectSetsProto([]byte(subjectConditionSet))
+			if err != nil {
+				cli.ExitWithError("Error unmarshalling subject sets", err)
+			}
+			scs = &subjectmapping.SubjectConditionSetCreate{
+				SubjectSets: ss,
+			}
 		}
 	}
 
-	mapping, err := h.CreateDynamicValueMapping(cmd.Context(), attrDefID, attrDefFQN, resolver, actions, existingSCSID, scs, namespace, getMetadataMutable(metadataLabels))
+	mapping, err := h.CreateDynamicValueMapping(cmd.Context(), attribute, resolver, actions, existingSCSID, scs, namespace, getMetadataMutable(metadataLabels))
 	if err != nil {
 		cli.ExitWithError("Failed to create dynamic value mapping", err)
 	}
@@ -211,10 +222,8 @@ func policyUpdateDynamicValueMapping(cmd *cobra.Command, args []string) {
 	metadataLabels = c.Flags.GetStringSlice("label", metadataLabels, cli.FlagsStringSliceOptions{Min: 0})
 
 	// The resolver is replaced as a whole and both of its fields are required, so --selector and
-	// --operator must be provided together (or both omitted to leave the resolver unchanged).
-	if (selector == "") != (operator == "") {
-		cli.ExitWithError("Both [--selector, --operator] must be provided together to replace the resolver", nil)
-	}
+	// --operator must be provided together (or both omitted to leave the resolver unchanged). This
+	// pairing is enforced by MarkFlagsRequiredTogether when the command is wired up.
 	var resolver *policy.DynamicValueResolver
 	if selector != "" {
 		resolver = &policy.DynamicValueResolver{
@@ -301,10 +310,11 @@ func initDynamicValueMappingsCommands() {
 		listDoc.GetDocFlag("namespace").Default,
 		listDoc.GetDocFlag("namespace").Description,
 	)
-	listDoc.Flags().String(
-		listDoc.GetDocFlag("attribute-definition-id").Name,
-		listDoc.GetDocFlag("attribute-definition-id").Default,
-		listDoc.GetDocFlag("attribute-definition-id").Description,
+	listDoc.Flags().StringP(
+		listDoc.GetDocFlag("attribute").Name,
+		listDoc.GetDocFlag("attribute").Shorthand,
+		listDoc.GetDocFlag("attribute").Default,
+		listDoc.GetDocFlag("attribute").Description,
 	)
 
 	createDoc := man.Docs.GetCommand(
@@ -312,15 +322,10 @@ func initDynamicValueMappingsCommands() {
 		man.WithRun(policyCreateDynamicValueMapping),
 	)
 	createDoc.Flags().StringP(
-		createDoc.GetDocFlag("attribute-definition-id").Name,
-		createDoc.GetDocFlag("attribute-definition-id").Shorthand,
-		createDoc.GetDocFlag("attribute-definition-id").Default,
-		createDoc.GetDocFlag("attribute-definition-id").Description,
-	)
-	createDoc.Flags().String(
-		createDoc.GetDocFlag("attribute-definition-fqn").Name,
-		createDoc.GetDocFlag("attribute-definition-fqn").Default,
-		createDoc.GetDocFlag("attribute-definition-fqn").Description,
+		createDoc.GetDocFlag("attribute").Name,
+		createDoc.GetDocFlag("attribute").Shorthand,
+		createDoc.GetDocFlag("attribute").Default,
+		createDoc.GetDocFlag("attribute").Description,
 	)
 	createDoc.Flags().StringP(
 		createDoc.GetDocFlag("selector").Name,
@@ -342,14 +347,9 @@ func initDynamicValueMappingsCommands() {
 		createDoc.GetDocFlag("action").Description,
 	)
 	createDoc.Flags().String(
-		createDoc.GetDocFlag("subject-condition-set-id").Name,
-		createDoc.GetDocFlag("subject-condition-set-id").Default,
-		createDoc.GetDocFlag("subject-condition-set-id").Description,
-	)
-	createDoc.Flags().String(
-		createDoc.GetDocFlag("subject-condition-set-new").Name,
-		createDoc.GetDocFlag("subject-condition-set-new").Default,
-		createDoc.GetDocFlag("subject-condition-set-new").Description,
+		createDoc.GetDocFlag("subject-condition-set").Name,
+		createDoc.GetDocFlag("subject-condition-set").Default,
+		createDoc.GetDocFlag("subject-condition-set").Description,
 	)
 	createDoc.Flags().StringP(
 		createDoc.GetDocFlag("namespace").Name,
@@ -393,6 +393,8 @@ func initDynamicValueMappingsCommands() {
 		updateDoc.GetDocFlag("subject-condition-set-id").Default,
 		updateDoc.GetDocFlag("subject-condition-set-id").Description,
 	)
+	// The resolver is replaced as a whole; both fields are required together to replace it.
+	updateDoc.MarkFlagsRequiredTogether("selector", "operator")
 	injectLabelFlags(&updateDoc.Command, true)
 
 	deleteDoc := man.Docs.GetCommand(

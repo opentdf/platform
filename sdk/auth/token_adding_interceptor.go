@@ -100,6 +100,11 @@ func (i TokenAddingInterceptor) AddCredentialsConnect() connect.UnaryInterceptor
 				return nil, connect.NewError(connect.CodeUnauthenticated, err)
 			}
 
+			if dpopTokenSource, ok := i.tokenSource.(DPoPSupportingAccessTokenSource); ok && !dpopTokenSource.DPoPSupported() {
+				req.Header().Set("Authorization", fmt.Sprintf("Bearer %s", accessToken))
+				return next(ctx, req)
+			}
+
 			// Add Authorization header
 			req.Header().Set("Authorization", fmt.Sprintf("DPoP %s", accessToken))
 

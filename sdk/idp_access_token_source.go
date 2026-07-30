@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"strings"
 	"sync"
 
 	"github.com/lestrrat-go/jwx/v2/jwa"
@@ -111,4 +112,12 @@ func (t *IDPAccessTokenSource) AccessToken(_ context.Context, client *http.Clien
 
 func (t *IDPAccessTokenSource) MakeToken(tokenMaker func(jwk.Key) ([]byte, error)) ([]byte, error) {
 	return tokenMaker(t.dpopKey)
+}
+
+// DPoPSupported reports whether the most recently retrieved access token is DPoP-bound.
+func (t *IDPAccessTokenSource) DPoPSupported() bool {
+	t.tokenMutex.Lock()
+	defer t.tokenMutex.Unlock()
+
+	return t.token != nil && strings.EqualFold(t.token.TokenType, "DPoP")
 }

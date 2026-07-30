@@ -41,9 +41,12 @@ func setupTokenAddingInterceptor(t *testing.T) (TokenAddingInterceptor, jwk.Key)
 	err = key.Set(jwk.AlgorithmKey, jwa.RS256)
 	require.NoError(t, err, "error setting the algorithm on the JWK")
 
-	ts := FakeTokenSource{
-		key:         key,
-		accessToken: "thisisafakeaccesstoken",
+	ts := DPoPFakeTokenSource{
+		FakeTokenSource: FakeTokenSource{
+			key:         key,
+			accessToken: "thisisafakeaccesstoken",
+		},
+		dpopSupported: true,
 	}
 
 	oo := NewTokenAddingInterceptorWithClient(&ts, httputil.SafeHTTPClientWithTLSConfig(&tls.Config{
@@ -117,6 +120,26 @@ func TestAddingTokensToOutgoingRequest_Connect(t *testing.T) {
 	require.NoError(t, err, "error making call")
 
 	checkAccessAndDpopTokens(t, serverConnect.accessToken, serverConnect.dpopToken, key)
+}
+
+func TestAddingTokensToOutgoingRequest_Connect_BearerToken(t *testing.T) {
+	ts := DPoPFakeTokenSource{
+		FakeTokenSource: FakeTokenSource{
+			accessToken: "thisisafakeaccesstoken",
+		},
+		dpopSupported: false,
+	}
+	interceptor := NewTokenAddingInterceptorWithClient(&ts, httputil.SafeHTTPClient())
+	serverConnect := FakeAccessServiceServerConnect{}
+	clientConnect, stopC := runConnectServer(&serverConnect, interceptor)
+	defer stopC()
+
+	_, err := clientConnect.PublicKey(t.Context(), connect.NewRequest(&kas.PublicKeyRequest{}))
+	require.NoError(t, err, "error making call")
+
+	assert.Equal(t, []string{"Bearer thisisafakeaccesstoken"}, serverConnect.accessToken)
+	assert.Equal(t, []string{""}, serverConnect.dpopToken)
+	assert.False(t, ts.makeTokenCalled)
 }
 
 func Test_InvalidCredentials_DoesNotSendMessage(t *testing.T) {
@@ -194,8 +217,18 @@ func (f *FakeAccessServiceServer) Rewrap(context.Context, *kas.RewrapRequest) (*
 }
 
 type FakeTokenSource struct {
-	key         jwk.Key
-	accessToken string
+	key             jwk.Key
+	accessToken     string
+	makeTokenCalled bool
+}
+
+type DPoPFakeTokenSource struct {
+	FakeTokenSource
+	dpopSupported bool
+}
+
+func (fts *DPoPFakeTokenSource) DPoPSupported() bool {
+	return fts.dpopSupported
 }
 
 func (fts *FakeTokenSource) AccessToken(context.Context, *http.Client) (AccessToken, error) {
@@ -206,6 +239,7 @@ func (fts *FakeTokenSource) AccessToken(context.Context, *http.Client) (AccessTo
 }
 
 func (fts *FakeTokenSource) MakeToken(f func(jwk.Key) ([]byte, error)) ([]byte, error) {
+	fts.makeTokenCalled = true
 	if fts.key == nil {
 		return nil, errors.New("no such key")
 	}

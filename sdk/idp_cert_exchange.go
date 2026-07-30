@@ -4,6 +4,7 @@ import (
 	"context"
 	"log/slog"
 	"net/http"
+	"strings"
 	"sync"
 
 	"github.com/lestrrat-go/jwx/v2/jwk"
@@ -59,4 +60,12 @@ func (c *CertExchangeTokenSource) AccessToken(ctx context.Context, _ *http.Clien
 
 func (c *CertExchangeTokenSource) MakeToken(tokenMaker func(jwk.Key) ([]byte, error)) ([]byte, error) {
 	return tokenMaker(c.key)
+}
+
+// DPoPSupported reports whether the most recently retrieved access token is DPoP-bound.
+func (c *CertExchangeTokenSource) DPoPSupported() bool {
+	c.tokenMutex.Lock()
+	defer c.tokenMutex.Unlock()
+
+	return c.token != nil && strings.EqualFold(c.token.TokenType, "DPoP")
 }

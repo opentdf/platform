@@ -33,10 +33,10 @@ func TestNewOAuthAccessTokenSource_Success(t *testing.T) {
 	assert.Equal(t, dpopPublicKeyPEM, tokenSource.dpopPEM)
 	assert.Equal(t, dpopKey, tokenSource.dpopKey)
 	// Interface checks
-	tok, err := tokenSource.AccessToken(t.Context(), nil)
+	credential, err := tokenSource.AccessTokenCredential(t.Context(), nil)
 	require.NoError(t, err)
-	assert.Equal(t, tok, auth.AccessToken(mockToken))
-	assert.True(t, tokenSource.DPoPSupported())
+	assert.Equal(t, credential.Token, auth.AccessToken(mockToken))
+	assert.True(t, credential.DPoPSupported)
 	made, err := tokenSource.MakeToken(func(jwk.Key) ([]byte, error) { return []byte(mockToken), nil })
 	require.NoError(t, err)
 	assert.Equal(t, made, []byte(mockToken))
@@ -50,9 +50,9 @@ func TestOAuthAccessTokenSource_DPoPSupported_BearerToken(t *testing.T) {
 	tokenSource, err := NewOAuthAccessTokenSource(mockSource, nil, &mockKey)
 	require.NoError(t, err)
 
-	_, err = tokenSource.AccessToken(t.Context(), nil)
+	credential, err := tokenSource.AccessTokenCredential(t.Context(), nil)
 	require.NoError(t, err)
-	assert.False(t, tokenSource.DPoPSupported())
+	assert.False(t, credential.DPoPSupported)
 }
 
 func TestNewOAuthAccessTokenSource_ExpiredToken(t *testing.T) {

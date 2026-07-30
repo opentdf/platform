@@ -142,6 +142,72 @@ func TestAddingTokensToOutgoingRequest_Connect_BearerToken(t *testing.T) {
 	assert.False(t, ts.makeTokenCalled)
 }
 
+func TestAddingTokensToOutgoingRequest_Connect_BindsSchemeToAtomicCredential(t *testing.T) {
+	privateKey, err := rsa.GenerateKey(rand.Reader, 2048)
+	require.NoError(t, err)
+	key, err := jwk.FromRaw(privateKey)
+	require.NoError(t, err)
+	require.NoError(t, key.Set(jwk.AlgorithmKey, jwa.RS256))
+
+	for _, tc := range []struct {
+		name              string
+		credential        AccessTokenCredential
+		refreshed         AccessTokenCredential
+		wantAuthorization string
+		wantDPoP          bool
+	}{
+		{
+			name: "dpop token is not downgraded when refresh returns bearer",
+			credential: AccessTokenCredential{
+				Token:         "dpop-access-token",
+				DPoPSupported: true,
+			},
+			refreshed: AccessTokenCredential{
+				Token:         "bearer-access-token",
+				DPoPSupported: false,
+			},
+			wantAuthorization: "DPoP dpop-access-token",
+			wantDPoP:          true,
+		},
+		{
+			name: "bearer token is not upgraded when refresh returns dpop",
+			credential: AccessTokenCredential{
+				Token:         "bearer-access-token",
+				DPoPSupported: false,
+			},
+			refreshed: AccessTokenCredential{
+				Token:         "dpop-access-token",
+				DPoPSupported: true,
+			},
+			wantAuthorization: "Bearer bearer-access-token",
+			wantDPoP:          false,
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			ts := ConcurrentRefreshTokenSource{
+				FakeTokenSource: FakeTokenSource{key: key},
+				credential:      tc.credential,
+				refreshed:       tc.refreshed,
+			}
+			interceptor := NewTokenAddingInterceptorWithClient(&ts, httputil.SafeHTTPClient())
+			serverConnect := FakeAccessServiceServerConnect{}
+			clientConnect, stopC := runConnectServer(&serverConnect, interceptor)
+			defer stopC()
+
+			_, err := clientConnect.PublicKey(t.Context(), connect.NewRequest(&kas.PublicKeyRequest{}))
+			require.NoError(t, err)
+
+			assert.Equal(t, []string{tc.wantAuthorization}, serverConnect.accessToken)
+			if tc.wantDPoP {
+				assert.NotEmpty(t, serverConnect.dpopToken[0])
+			} else {
+				assert.Equal(t, []string{""}, serverConnect.dpopToken)
+				assert.False(t, ts.makeTokenCalled)
+			}
+		})
+	}
+}
+
 func Test_InvalidCredentials_DoesNotSendMessage(t *testing.T) {
 	ts := FakeTokenSource{key: nil, accessToken: ""}
 	serverGrpc := FakeAccessServiceServer{}
@@ -227,8 +293,33 @@ type DPoPFakeTokenSource struct {
 	dpopSupported bool
 }
 
-func (fts *DPoPFakeTokenSource) DPoPSupported() bool {
-	return fts.dpopSupported
+func (fts *DPoPFakeTokenSource) AccessTokenCredential(ctx context.Context, client *http.Client) (AccessTokenCredential, error) {
+	token, err := fts.AccessToken(ctx, client)
+	if err != nil {
+		return AccessTokenCredential{}, err
+	}
+
+	return AccessTokenCredential{Token: token, DPoPSupported: fts.dpopSupported}, nil
+}
+
+// ConcurrentRefreshTokenSource models a refresh that completes between the
+// legacy separate token and DPoP-status calls.
+type ConcurrentRefreshTokenSource struct {
+	FakeTokenSource
+	credential AccessTokenCredential
+	refreshed  AccessTokenCredential
+}
+
+func (fts *ConcurrentRefreshTokenSource) AccessToken(context.Context, *http.Client) (AccessToken, error) {
+	return fts.credential.Token, nil
+}
+
+func (fts *ConcurrentRefreshTokenSource) DPoPSupported() bool {
+	return fts.refreshed.DPoPSupported
+}
+
+func (fts *ConcurrentRefreshTokenSource) AccessTokenCredential(context.Context, *http.Client) (AccessTokenCredential, error) {
+	return fts.credential, nil
 }
 
 func (fts *FakeTokenSource) AccessToken(context.Context, *http.Client) (AccessToken, error) {

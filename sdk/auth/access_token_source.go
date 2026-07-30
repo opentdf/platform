@@ -16,11 +16,17 @@ type AccessTokenSource interface {
 	MakeToken(func(jwk.Key) ([]byte, error)) ([]byte, error)
 }
 
-// DPoPSupportingAccessTokenSource is implemented by token sources that know
-// whether the access token they most recently returned is DPoP-bound.
+// AccessTokenCredential binds an access token to its DPoP status.
+type AccessTokenCredential struct {
+	Token         AccessToken
+	DPoPSupported bool
+}
+
+// AccessTokenCredentialSource is implemented by token sources that can return
+// an access token and its DPoP status atomically.
 //
 // Token sources without this optional interface retain the SDK's existing DPoP
 // behavior for backwards compatibility.
-type DPoPSupportingAccessTokenSource interface {
-	DPoPSupported() bool
+type AccessTokenCredentialSource interface {
+	AccessTokenCredential(ctx context.Context, client *http.Client) (AccessTokenCredential, error)
 }

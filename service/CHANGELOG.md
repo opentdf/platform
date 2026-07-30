@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.24.0](https://github.com/opentdf/platform/compare/service/v0.23.0...service/v0.24.0) (2026-07-30)
+
+
+### Features
+
+* **authz:** dynamic value mapping and direct entitlement e2e coverage ([#3774](https://github.com/opentdf/platform/issues/3774)) ([49c80a0](https://github.com/opentdf/platform/commit/49c80a0755908178cc695fc62ae3c40a635d655d))
+
+
+### Bug Fixes
+
+* **ers:** Add postgres_object output transformation for JSON/JSONB results ([#3800](https://github.com/opentdf/platform/issues/3800)) ([4618439](https://github.com/opentdf/platform/commit/46184390756f87b15fab3dd3f6dcdefd4dc3b925))
+
 ## [0.23.0](https://github.com/opentdf/platform/compare/service/v0.22.0...service/v0.23.0) (2026-07-28)
 
 

@@ -176,6 +176,9 @@ func (om *OutputMapper) transformPostgresObject(value interface{}) (interface{},
 
 	switch v := value.(type) {
 	case map[string]any:
+		if v == nil {
+			return map[string]any{}, nil
+		}
 		return v, nil
 	case []byte:
 		if len(v) == 0 {
@@ -185,6 +188,9 @@ func (om *OutputMapper) transformPostgresObject(value interface{}) (interface{},
 		if err := json.Unmarshal(v, &result); err != nil {
 			return nil, fmt.Errorf("postgres_object transformation failed to unmarshal []byte: %w", err)
 		}
+		if result == nil {
+			return map[string]any{}, nil
+		}
 		return result, nil
 	case string:
 		if v == "" {
@@ -193,6 +199,9 @@ func (om *OutputMapper) transformPostgresObject(value interface{}) (interface{},
 		result := map[string]any{}
 		if err := json.Unmarshal([]byte(v), &result); err != nil {
 			return nil, fmt.Errorf("postgres_object transformation failed to unmarshal string: %w", err)
+		}
+		if result == nil {
+			return map[string]any{}, nil
 		}
 		return result, nil
 	default:

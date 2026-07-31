@@ -100,3 +100,58 @@ func TestResolveEntities_ClaimsProviderUsesInlineClaimsContext(t *testing.T) {
 		t.Fatalf("expected successful resolution, got error payload: %v", result["error"])
 	}
 }
+
+func TestResolveEntities_UserNameEntityDoesNotSeedClaimsContext(t *testing.T) {
+	t.Helper()
+
+	erService, err := NewERS(t.Context(), types.MultiStrategyConfig{
+		Providers: map[string]types.ProviderConfig{
+			"jwt": {
+				Type:       "claims",
+				Connection: map[string]interface{}{},
+			},
+		},
+		FailureStrategy: types.FailureStrategyContinue,
+		MappingStrategies: []types.MappingStrategy{
+			{
+				Name:       "claims_passthrough",
+				Provider:   "jwt",
+				EntityType: types.EntityTypeSubject,
+				Conditions: types.StrategyConditions{
+					JWTClaims: []types.JWTClaimCondition{{Claim: "userName", Operator: "exists"}},
+				},
+				OutputMapping: []types.OutputMapping{{SourceClaim: "userName", ClaimName: "username"}},
+			},
+		},
+	}, logger.CreateTestLogger())
+	if err != nil {
+		t.Fatalf("NewERS() error = %v", err)
+	}
+
+	resp, err := erService.ResolveEntities(t.Context(), connect.NewRequest(&entityresolution.ResolveEntitiesRequest{
+		Entities: []*authorization.Entity{{
+			Id:         "alice-user-name",
+			EntityType: &authorization.Entity_UserName{UserName: "alice"},
+		}},
+	}))
+	if err != nil {
+		t.Fatalf("ResolveEntities() error = %v", err)
+	}
+
+	if got := len(resp.Msg.GetEntityRepresentations()); got != 1 {
+		t.Fatalf("expected 1 entity representation, got %d", got)
+	}
+
+	props := resp.Msg.GetEntityRepresentations()[0].GetAdditionalProps()
+	if len(props) != 1 {
+		t.Fatalf("expected 1 additional props entry, got %d", len(props))
+	}
+
+	result := props[0].AsMap()
+	if _, hasError := result["error"]; !hasError {
+		t.Fatalf("expected claims provider to fail without middleware claims for user_name entity, got %v", result)
+	}
+	if got := result["entity_id"]; got != "alice-user-name" {
+		t.Fatalf("expected entity_id alice-user-name, got %v", got)
+	}
+}

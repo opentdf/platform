@@ -55,6 +55,7 @@ func (ers *ERS) ResolveEntities(
 			continue
 		}
 
+		resolveCtx := ctx
 		var claimsMap types.JWTClaims
 		switch entity.GetEntityType().(type) {
 		case *authorization.Entity_Claims:
@@ -68,6 +69,7 @@ func (ers *ERS) ResolveEntities(
 				}
 				// Convert to map[string]interface{}
 				claimsMap = claimsStruct.AsMap()
+				resolveCtx = context.WithValue(ctx, types.JWTClaimsContextKey, claimsMap)
 			}
 		default:
 			entityBytes, err := protojson.Marshal(entity)
@@ -81,8 +83,7 @@ func (ers *ERS) ResolveEntities(
 		}
 
 		// Resolve entity using multi-strategy service
-		ctxWithClaims := context.WithValue(ctx, types.JWTClaimsContextKey, claimsMap)
-		result, err := ers.service.ResolveEntity(ctxWithClaims, entityID, claimsMap)
+		result, err := ers.service.ResolveEntity(resolveCtx, entityID, claimsMap)
 		if err != nil {
 			ers.logger.Error("failed to resolve entity",
 				slog.String("entity_id", entityID),

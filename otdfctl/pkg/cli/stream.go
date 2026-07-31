@@ -3,18 +3,11 @@ package cli
 import (
 	"bytes"
 	"encoding/json"
-	"fmt"
 	"io"
 	"iter"
-	"strings"
-	"text/tabwriter"
-)
 
-// tabwriter configuration for the streamed styled table.
-const (
-	streamTabMinWidth = 0
-	streamTabWidth    = 2
-	streamTabPadding  = 2
+	"github.com/charmbracelet/lipgloss"
+	"github.com/charmbracelet/lipgloss/table"
 )
 
 // StreamList renders a list of items incrementally to w.
@@ -23,10 +16,10 @@ const (
 // encoding one item at a time so the full result set is never held in memory.
 // This is the memory-bounded path, suitable for very large lists.
 //
-// In styled mode it writes a tab-aligned table with the given column headers,
-// one row per item derived from row. Column alignment requires measuring every
-// cell, so the styled path buffers rows until the stream completes; use JSON
-// mode when memory bounds matter for a large result set.
+// In styled mode it renders a bordered, styled table with the given column
+// headers, one row per item derived from row. Aligning and styling the table
+// requires every cell, so the styled path buffers rows until the stream
+// completes; use JSON mode when memory bounds matter for a large result set.
 //
 // items is an iter.Seq2 yielding (item, err) so callers can feed a paged
 // iterator without materializing it. A non-nil err (for example, a failed page
@@ -37,7 +30,7 @@ func (c *Cli) StreamList(w io.Writer, headers []string, row func(any) []string, 
 	if c.printer != nil && c.printer.json {
 		return streamJSONArray(w, items)
 	}
-	return streamTable(w, headers, row, items)
+	return renderStyledTable(w, headers, row, items)
 }
 
 // streamJSONArray writes items as a pretty-printed JSON array, marshaling one
@@ -89,20 +82,38 @@ func marshalStreamItem(item any) ([]byte, error) {
 	return bytes.TrimRight(buf.Bytes(), "\n"), nil
 }
 
-// streamTable writes a tab-aligned table of headers followed by one row per
-// item. tabwriter buffers writes and only reports errors on Flush, so the
-// per-row writes are not error-checked (fmt.Fprint* returns are excluded from
-// errcheck); a non-nil iterator error aborts before Flush and is returned.
-func streamTable(w io.Writer, headers []string, row func(any) []string, items iter.Seq2[any, error]) error {
-	tw := tabwriter.NewWriter(w, streamTabMinWidth, streamTabWidth, streamTabPadding, ' ', 0)
-	if len(headers) > 0 {
-		fmt.Fprintln(tw, strings.Join(headers, "\t"))
-	}
+// renderStyledTable buffers every row, then renders a rounded, styled table
+// matching the look of NewTable. Alignment and styling need all rows, so the
+// stream is drained first; a non-nil iterator error aborts before rendering and
+// is returned. The rendered table is written to w in a single call.
+func renderStyledTable(w io.Writer, headers []string, row func(any) []string, items iter.Seq2[any, error]) error {
+	rows := make([][]string, 0)
 	for item, err := range items {
 		if err != nil {
 			return err
 		}
-		fmt.Fprintln(tw, strings.Join(row(item), "\t"))
+		rows = append(rows, row(item))
 	}
-	return tw.Flush()
+
+	t := table.New().
+		Border(lipgloss.RoundedBorder()).
+		BorderStyle(styleTable).
+		StyleFunc(styledTableCell).
+		Rows(rows...)
+	if len(headers) > 0 {
+		t = t.Headers(headers...)
+	}
+
+	_, err := io.WriteString(w, t.String()+"\n")
+	return err
+}
+
+// styledTableCell styles table cells to match NewTable: adaptive foreground with
+// horizontal padding for every cell, bold for the header row.
+func styledTableCell(row, _ int) lipgloss.Style {
+	style := styleTable.Padding(0, 1)
+	if row == table.HeaderRow {
+		return style.Bold(true)
+	}
+	return style
 }

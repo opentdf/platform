@@ -148,6 +148,8 @@ func TestStreamListTable(t *testing.T) {
 	assert.Contains(t, out, "beta")
 	// header is written before the rows
 	assert.Less(t, strings.Index(out, "ID"), strings.Index(out, "alpha"))
+	// styled mode renders a bordered table rather than plain text
+	assert.Contains(t, out, "╭")
 }
 
 func TestStreamListTableNoHeaders(t *testing.T) {
@@ -170,7 +172,7 @@ func TestStreamListTableIteratorError(t *testing.T) {
 	require.ErrorIs(t, err, sentinel)
 }
 
-func TestStreamListTableFlushError(t *testing.T) {
+func TestStreamListTableWriteError(t *testing.T) {
 	c := New(&cobra.Command{Use: "test"}, nil)
 
 	row := func(v any) []string { s, _ := v.([]string); return s }

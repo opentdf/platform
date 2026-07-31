@@ -10,7 +10,7 @@ func TestTokenTypeFromOAuthTokenType(t *testing.T) {
 	}{
 		{name: "dpop", tokenType: "DPoP", want: TokenTypeDPoP},
 		{name: "bearer", tokenType: "Bearer", want: TokenTypeBearer},
-		{name: "lowercase dpop is not a token type", tokenType: "dpop", want: TokenTypeBearer},
+		{name: "lowercase dpop", tokenType: "dpop", want: TokenTypeDPoP},
 		{name: "missing token type", want: TokenTypeBearer},
 	} {
 		t.Run(tc.name, func(t *testing.T) {

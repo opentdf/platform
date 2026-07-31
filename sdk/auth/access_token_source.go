@@ -3,6 +3,7 @@ package auth
 import (
 	"context"
 	"net/http"
+	"strings"
 
 	"github.com/lestrrat-go/jwx/v2/jwk"
 )
@@ -17,10 +18,10 @@ const (
 )
 
 // TokenTypeFromOAuthTokenType returns the authentication scheme required for
-// an OAuth access token. Only the canonical DPoP token type requires a DPoP
-// proof; all other values use the Bearer scheme.
+// an OAuth access token. A DPoP token type requires a DPoP proof; all other
+// values use the Bearer scheme.
 func TokenTypeFromOAuthTokenType(tokenType string) TokenType {
-	if tokenType == string(TokenTypeDPoP) {
+	if strings.EqualFold(tokenType, string(TokenTypeDPoP)) {
 		return TokenTypeDPoP
 	}
 

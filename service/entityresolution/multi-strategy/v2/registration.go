@@ -20,6 +20,7 @@ import (
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
 	"go.opentelemetry.io/otel/trace"
 	"google.golang.org/protobuf/encoding/protojson"
+	"google.golang.org/protobuf/types/known/anypb"
 	"google.golang.org/protobuf/types/known/structpb"
 )
 
@@ -243,8 +244,8 @@ func (ers *ERSV2) createEntityChainFromSingleTokenV2(ctx context.Context, token 
 		// Put JWT claims into context for providers to access
 		ctxWithClaims := context.WithValue(ctx, types.JWTClaimsContextKey, jwtClaims)
 
-		// Resolve entity using this strategy
-		entityResult, err := ers.service.ResolveEntity(ctxWithClaims, token.GetEphemeralId(), jwtClaims)
+		// Resolve entity using this already-selected strategy.
+		entityResult, err := ers.service.ResolveEntityWithStrategy(ctxWithClaims, token.GetEphemeralId(), jwtClaims, strategy)
 		if err != nil {
 			lastError = err
 			ers.logger.WarnContext(ctx, "strategy failed for token",
@@ -311,81 +312,58 @@ func (ers *ERSV2) createEntityChainFromSingleTokenV2(ctx context.Context, token 
 	}, nil
 }
 
-// createEntityFromResultV2 converts a multi-strategy EntityResult to a v2 entity.Entity
+// createEntityFromResultV2 converts a multi-strategy EntityResult to a v2 entity.Entity.
+//
+// For token-derived entity chains, preserve the resolved claims directly in the chain so
+// downstream authz can consume the resolved subject/environment context without rehydrating
+// through ERS and re-routing strategy selection from a lossy identity projection.
 func (ers *ERSV2) createEntityFromResultV2(ctx context.Context, result *types.EntityResult, strategy *types.MappingStrategy, tokenID string) *entity.Entity {
-	// Determine entity category based on strategy configuration
-	category := entity.Entity_CATEGORY_SUBJECT // Default
+	category := entity.Entity_CATEGORY_SUBJECT
 	if strategy.EntityType == types.EntityTypeEnvironment {
 		category = entity.Entity_CATEGORY_ENVIRONMENT
 	}
 
-	// Create entity based on available claims
-	// Priority: username > email > client_id > subject
-	var entityV2 *entity.Entity
-
-	if username, exists := result.Claims["username"]; exists {
-		if usernameStr, ok := username.(string); ok && usernameStr != "" {
-			entityV2 = &entity.Entity{
-				EntityType: &entity.Entity_UserName{UserName: usernameStr},
-				Category:   category,
-			}
-		}
-	}
-
-	if entityV2 == nil {
-		if email, exists := result.Claims["email_address"]; exists {
-			if emailStr, ok := email.(string); ok && emailStr != "" {
-				entityV2 = &entity.Entity{
-					EntityType: &entity.Entity_EmailAddress{EmailAddress: emailStr},
-					Category:   category,
-				}
-			}
-		}
-	}
-
-	if entityV2 == nil {
-		if clientID, exists := result.Claims["client_id"]; exists {
-			if clientIDStr, ok := clientID.(string); ok && clientIDStr != "" {
-				entityV2 = &entity.Entity{
-					EntityType: &entity.Entity_ClientId{ClientId: clientIDStr},
-					Category:   category,
-				}
-			}
-		}
-	}
-
-	if entityV2 == nil {
-		if subject, exists := result.Claims["subject"]; exists {
-			if subjectStr, ok := subject.(string); ok && subjectStr != "" {
-				entityV2 = &entity.Entity{
-					EntityType: &entity.Entity_UserName{UserName: subjectStr},
-					Category:   category,
-				}
-			}
-		}
-	}
-
-	// Fallback: use token ID as username if no suitable claim found
-	if entityV2 == nil {
-		ers.logger.WarnContext(ctx, "no suitable entity type found in claims, using token ID as fallback",
+	resultData, err := claimsToResultData(result.Claims)
+	if err != nil {
+		ers.logger.WarnContext(ctx, "failed to normalize resolved claims for entity chain, falling back to minimal claims payload",
 			slog.String("token_id", tokenID),
-			slog.Any("available_claims", extractClaimNames(types.JWTClaims(result.Claims))))
-		entityV2 = &entity.Entity{
-			EntityType: &entity.Entity_UserName{UserName: tokenID},
-			Category:   category,
+			slog.String("strategy", strategy.Name),
+			slog.String("error", err.Error()))
+		resultData = map[string]interface{}{}
+		for key, value := range result.Claims {
+			resultData[key] = protohelper.StructPBCompatibleValue(value)
 		}
 	}
 
-	// Generate entity ID: strategy-tokenid-type-value
-	entityID := fmt.Sprintf("%s-%s-%s-%s",
+	claimsStruct, err := structpb.NewStruct(resultData)
+	if err != nil {
+		ers.logger.WarnContext(ctx, "failed to build structpb claims for entity chain, using fallback token id claim",
+			slog.String("token_id", tokenID),
+			slog.String("strategy", strategy.Name),
+			slog.String("error", err.Error()))
+		claimsStruct, _ = structpb.NewStruct(map[string]interface{}{"token_id": tokenID})
+	}
+
+	claimsAny, err := anypb.New(claimsStruct)
+	if err != nil {
+		ers.logger.WarnContext(ctx, "failed to wrap claims payload for entity chain, using fallback token id claim",
+			slog.String("token_id", tokenID),
+			slog.String("strategy", strategy.Name),
+			slog.String("error", err.Error()))
+		fallbackStruct, _ := structpb.NewStruct(map[string]interface{}{"token_id": tokenID})
+		claimsAny, _ = anypb.New(fallbackStruct)
+	}
+
+	entityID := fmt.Sprintf("%s-%s-claims-%s",
 		strategy.Name,
 		tokenID,
-		getEntityTypeStringV2(entityV2),
-		getEntityValueV2(entityV2.GetEntityType()))
+		preferredEntityValueFromClaims(result.Claims, tokenID))
 
-	// Set the EphemeralId on the entity
-	entityV2.EphemeralId = entityID
-	return entityV2
+	return &entity.Entity{
+		EphemeralId: entityID,
+		EntityType:  &entity.Entity_Claims{Claims: claimsAny},
+		Category:    category,
+	}
 }
 
 func claimsToResultData(claims map[string]interface{}) (map[string]interface{}, error) {
@@ -437,22 +415,22 @@ func getEntityTypeStringV2(entityV2 *entity.Entity) string {
 		return "email"
 	case *entity.Entity_ClientId:
 		return "client_id"
+	case *entity.Entity_Claims:
+		return "claims"
 	default:
 		return "unknown"
 	}
 }
 
-func getEntityValueV2(entityType interface{}) string {
-	switch et := entityType.(type) {
-	case *entity.Entity_UserName:
-		return et.UserName
-	case *entity.Entity_EmailAddress:
-		return et.EmailAddress
-	case *entity.Entity_ClientId:
-		return et.ClientId
-	default:
-		return "unknown"
+func preferredEntityValueFromClaims(claims map[string]interface{}, fallback string) string {
+	for _, key := range []string{"username", "email_address", "client_id", "subject"} {
+		if raw, exists := claims[key]; exists {
+			if value, ok := raw.(string); ok && value != "" {
+				return value
+			}
+		}
 	}
+	return fallback
 }
 
 // RegisterMultiStrategyERSV2 registers the v2 multi-strategy ERS service

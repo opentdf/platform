@@ -145,6 +145,27 @@ func (s *Service) ResolveEntity(ctx context.Context, entityID string, claimsMap 
 	)
 }
 
+// ResolveEntityWithStrategy executes one already-selected strategy without re-running
+// strategy matching. This is used when building token chains that include one entity per
+// successful matching strategy.
+func (s *Service) ResolveEntityWithStrategy(ctx context.Context, entityID string, claimsMap types.JWTClaims, strategy *types.MappingStrategy) (*types.EntityResult, error) {
+	result, err := s.executeStrategy(ctx, entityID, claimsMap, strategy)
+	if err != nil {
+		return nil, err
+	}
+
+	failureStrategy := s.config.FailureStrategy
+	if failureStrategy == "" {
+		failureStrategy = types.FailureStrategyFailFast
+	}
+	result.Metadata["strategy_name"] = strategy.Name
+	result.Metadata["strategy_provider"] = strategy.Provider
+	result.Metadata["entity_type"] = strategy.EntityType
+	result.Metadata["failure_strategy"] = failureStrategy
+	result.Metadata["attempted_strategies"] = []interface{}{strategy.Name}
+	return result, nil
+}
+
 // HealthCheck performs health checks on all providers
 func (s *Service) HealthCheck(ctx context.Context) error {
 	providers := s.providerRegistry.GetAllProviders()

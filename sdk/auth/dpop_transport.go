@@ -2,6 +2,7 @@ package auth
 
 import (
 	"bytes"
+	"context"
 	"crypto/sha256"
 	"encoding/base64"
 	"errors"
@@ -34,11 +35,21 @@ type DPoPTransport struct {
 	// For resource requests (any URL other than TokenEndpoint), the transport
 	// sets Authorization: DPoP <token> and includes the ath claim binding the
 	// proof to the access token. Requests to TokenEndpoint get neither.
+	//
+	// When TokenSource also implements AccessTokenCredentialSource and reports a
+	// non-DPoP scheme for a resource request, the transport instead sets
+	// Authorization: Bearer <token> and sends no DPoP proof, matching the
+	// credential interceptor so a bearer token source is not forced onto DPoP.
 	TokenSource AccessTokenSource
 
 	// TokenEndpoint is the OAuth token endpoint URL.
 	// Requests to this endpoint are treated as token requests
 	// and do not include the ath claim.
+	//
+	// TokenEndpoint must not be mutated after the transport is first used:
+	// isTokenEndpointRequest caches the parsed URL (and NewDPoPHTTPClient
+	// pre-parses it at construction), so a later change would not take effect
+	// and would race with the cached read.
 	TokenEndpoint string
 
 	// tokenFetchTimeout bounds the internal access-token fetch performed while
@@ -165,7 +176,33 @@ func (t *DPoPTransport) retryWithNonce(
 }
 
 // addDPoPProof generates and adds DPoP proof to the request headers.
+//
+// For a resource request it first resolves the access token and its scheme. A
+// bearer token source (one whose AccessTokenCredentialSource reports a non-DPoP
+// scheme) short-circuits to Authorization: Bearer with no proof, mirroring the
+// credential interceptor so it is not forced onto DPoP. Otherwise the proof is
+// bound to the token via the ath claim and Authorization: DPoP is set.
 func (t *DPoPTransport) addDPoPProof(req *http.Request, base http.RoundTripper, nonce string, isTokenRequest bool) error {
+	// Resolve the resource-request credential up front so a bearer token source
+	// short-circuits before any proof is built. Token-endpoint requests skip this:
+	// they always carry a proof (no ath) regardless of the eventual token scheme.
+	var credential AccessTokenCredential
+	if !isTokenRequest && t.TokenSource != nil {
+		var err error
+		credential, err = t.resourceCredential(req.Context(), base)
+		if err != nil {
+			return fmt.Errorf("failed to get access token: %w", err)
+		}
+		if credential.Type != TokenTypeDPoP {
+			// A bearer token is not sender-constrained: send no ath and no proof.
+			// Drop any inherited DPoP header so a bearer request never carries a
+			// stale proof on a retry clone.
+			req.Header.Del("DPoP")
+			req.Header.Set("Authorization", "Bearer "+string(credential.Token))
+			return nil
+		}
+	}
+
 	// Normalize the htu (RFC 9449 HTTP URI Normalization)
 	htu := normalizeURI(req.URL)
 
@@ -181,16 +218,10 @@ func (t *DPoPTransport) addDPoPProof(req *http.Request, base http.RoundTripper, 
 		builder = builder.Claim("nonce", nonce)
 	}
 
-	// For resource requests (not token endpoint), add ath claim
-	var accessToken string
+	// For resource requests (not token endpoint), bind the proof to the access
+	// token via the ath claim.
+	accessToken := string(credential.Token)
 	if !isTokenRequest && t.TokenSource != nil {
-		client := &http.Client{Transport: base, Timeout: t.tokenFetchTimeout}
-		at, err := t.TokenSource.AccessToken(req.Context(), client)
-		if err != nil {
-			return fmt.Errorf("failed to get access token: %w", err)
-		}
-		accessToken = string(at)
-
 		// Calculate ath = base64url(SHA-256(access_token))
 		h := sha256.New()
 		h.Write([]byte(accessToken))
@@ -232,6 +263,23 @@ func (t *DPoPTransport) addDPoPProof(req *http.Request, base http.RoundTripper, 
 	}
 
 	return nil
+}
+
+// resourceCredential resolves the access token and its authentication scheme for
+// a resource request. When TokenSource implements AccessTokenCredentialSource the
+// IdP-granted scheme is honored, so a bearer token source yields TokenTypeBearer.
+// Otherwise the token is treated as DPoP sender-constrained, preserving the SDK's
+// original transport behavior and matching the credential interceptor's default.
+func (t *DPoPTransport) resourceCredential(ctx context.Context, base http.RoundTripper) (AccessTokenCredential, error) {
+	client := &http.Client{Transport: base, Timeout: t.tokenFetchTimeout}
+	if cs, ok := t.TokenSource.(AccessTokenCredentialSource); ok {
+		return cs.AccessTokenCredential(ctx, client)
+	}
+	token, err := t.TokenSource.AccessToken(ctx, client)
+	if err != nil {
+		return AccessTokenCredential{}, err
+	}
+	return AccessTokenCredential{Token: token, Type: TokenTypeDPoP}, nil
 }
 
 // isTokenEndpointRequest checks if the URL matches the configured token endpoint.

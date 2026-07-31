@@ -12,6 +12,11 @@ const (
 
 // SupportedFeatures returns a list of optional features supported by this SDK build.
 // Used by xtest integration harness for feature detection.
+//
+// These strings are part of the stable API surface. The xtest harness silently
+// SKIPs (rather than fails) tests gated on an unknown feature string, so removing
+// or renaming a feature here must be coordinated with opentdf/tests before merging
+// to avoid quietly disabling coverage.
 func SupportedFeatures() []string {
 	return []string{
 		"dpop",                 // RFC 9449 DPoP (Demonstrating Proof-of-Possession)

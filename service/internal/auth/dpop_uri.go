@@ -81,7 +81,13 @@ func isUnreserved(c byte) bool {
 // removeDotSegments implements RFC 3986 section 5.2.4 without collapsing
 // repeated slashes, which are significant path data.
 func removeDotSegments(input string) string {
-	var output string
+	var output strings.Builder
+	output.Grow(len(input))
+	trimLast := func() {
+		trimmed := trimLastPathSegment(output.String())
+		output.Reset()
+		output.WriteString(trimmed)
+	}
 	for input != "" {
 		switch {
 		case strings.HasPrefix(input, "../"):
@@ -94,25 +100,25 @@ func removeDotSegments(input string) string {
 			input = "/"
 		case strings.HasPrefix(input, "/../"):
 			input = input[3:]
-			output = trimLastPathSegment(output)
+			trimLast()
 		case input == "/..":
 			input = "/"
-			output = trimLastPathSegment(output)
+			trimLast()
 		case input == "." || input == "..":
 			input = ""
 		default:
 			n := strings.IndexByte(input[1:], '/')
 			if n < 0 {
-				output += input
+				output.WriteString(input)
 				input = ""
 			} else {
 				n++
-				output += input[:n]
+				output.WriteString(input[:n])
 				input = input[n:]
 			}
 		}
 	}
-	return output
+	return output.String()
 }
 
 func trimLastPathSegment(path string) string {

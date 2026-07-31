@@ -48,17 +48,27 @@ func (m *mockTokenSource) MakeToken(_ func(jwk.Key) ([]byte, error)) ([]byte, er
 	return nil, nil
 }
 
+// mockCredentialTokenSource additionally implements AccessTokenCredentialSource so
+// tests can exercise the transport's handling of a caller-declared token scheme
+// (Bearer vs. DPoP), matching the SDK's real IdP token sources.
+type mockCredentialTokenSource struct {
+	mockTokenSource
+	tokenType TokenType
+}
+
+func (m *mockCredentialTokenSource) AccessTokenCredential(_ context.Context, _ *http.Client) (AccessTokenCredential, error) {
+	if m.err != nil {
+		return AccessTokenCredential{}, m.err
+	}
+	return AccessTokenCredential{Token: AccessToken(m.token), Type: m.tokenType}, nil
+}
+
+// generateTestKey returns the SDK's production-default signing key (ES256/P-256)
+// so the primary tests exercise the same proof path shipped by default. RSA and
+// the other supported families are covered by generateTestKeyForAlg.
 func generateTestKey(t *testing.T) jwk.Key {
 	t.Helper()
-	rawKey, err := rsa.GenerateKey(rand.Reader, 2048)
-	require.NoError(t, err, "failed to generate RSA key")
-
-	key, err := jwk.FromRaw(rawKey)
-	require.NoError(t, err, "failed to create JWK")
-
-	require.NoError(t, key.Set(jwk.AlgorithmKey, jwa.RS256), "failed to set algorithm")
-
-	return key
+	return generateTestKeyForAlg(t, jwa.ES256)
 }
 
 // generateTestKeyForAlg generates a signing key for the given JWS algorithm so
@@ -104,7 +114,17 @@ func parseDPoPProof(t *testing.T, proofStr string, key jwk.Key) (jwt.Token, bool
 }
 
 func TestDPoPTransport_AddsProofToRequests(t *testing.T) {
-	key := generateTestKey(t)
+	// Run the full proof path against both the production-default EC key and RSA
+	// so a regression in either signing family is caught by a primary test.
+	for _, alg := range []jwa.SignatureAlgorithm{jwa.RS256, jwa.ES256} {
+		t.Run(alg.String(), func(t *testing.T) {
+			testDPoPAddsProofToRequests(t, generateTestKeyForAlg(t, alg))
+		})
+	}
+}
+
+func testDPoPAddsProofToRequests(t *testing.T, key jwk.Key) {
+	t.Helper()
 	ts := &mockTokenSource{token: "test-access-token"}
 
 	called := false
@@ -216,7 +236,18 @@ func TestDPoPTransport_ProofAlgorithms(t *testing.T) {
 }
 
 func TestDPoPTransport_NonceRetry(t *testing.T) {
-	key := generateTestKey(t)
+	// Exercise the nonce challenge/retry path on both signing families: the retry
+	// re-signs the proof, so an EC- or RSA-specific regression there would ship
+	// untested if only one algorithm ran.
+	for _, alg := range []jwa.SignatureAlgorithm{jwa.RS256, jwa.ES256} {
+		t.Run(alg.String(), func(t *testing.T) {
+			testDPoPNonceRetry(t, generateTestKeyForAlg(t, alg))
+		})
+	}
+}
+
+func testDPoPNonceRetry(t *testing.T, key jwk.Key) {
+	t.Helper()
 	ts := &mockTokenSource{token: "test-token"}
 
 	callCount := 0
@@ -527,6 +558,98 @@ func TestDPoPTransport_TokenEndpointNoATH(t *testing.T) {
 	resp, err := client.Do(req)
 	require.NoError(t, err, "request failed")
 	defer resp.Body.Close()
+}
+
+// TestDPoPTransport_BearerTokenSourceSkipsProof verifies that a token source
+// reporting a Bearer scheme (via AccessTokenCredentialSource) is honored on a
+// resource request: the transport sends Authorization: Bearer and no DPoP proof,
+// matching the credential interceptor rather than forcing the bearer token onto
+// DPoP (which a bearer-token resource server would reject).
+func TestDPoPTransport_BearerTokenSourceSkipsProof(t *testing.T) {
+	key := generateTestKey(t)
+	ts := &mockCredentialTokenSource{
+		mockTokenSource: mockTokenSource{token: "bearer-access-token"},
+		tokenType:       TokenTypeBearer,
+	}
+
+	var called int32
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		atomic.AddInt32(&called, 1)
+		assert.Empty(t, r.Header.Get("DPoP"), "bearer request must not carry a DPoP proof")
+		assert.Equal(t, "Bearer bearer-access-token", r.Header.Get("Authorization"), "Authorization header")
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer server.Close()
+
+	transport := &DPoPTransport{Base: http.DefaultTransport, DPoPKey: key, TokenSource: ts}
+	client := &http.Client{Transport: transport}
+
+	resp, err := client.Do(mustReq(t, server.URL))
+	require.NoError(t, err, "request failed")
+	defer resp.Body.Close()
+	assert.Equal(t, http.StatusOK, resp.StatusCode, "final status")
+	assert.Equal(t, int32(1), atomic.LoadInt32(&called), "server should be called exactly once")
+}
+
+// TestDPoPTransport_DPoPCredentialSourceSignsProof verifies that a credential
+// source reporting the DPoP scheme keeps the full sender-constrained behavior:
+// a proof with an ath claim and Authorization: DPoP.
+func TestDPoPTransport_DPoPCredentialSourceSignsProof(t *testing.T) {
+	key := generateTestKey(t)
+	ts := &mockCredentialTokenSource{
+		mockTokenSource: mockTokenSource{token: "dpop-access-token"},
+		tokenType:       TokenTypeDPoP,
+	}
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.True(t, strings.HasPrefix(r.Header.Get("Authorization"), "DPoP "), "Authorization = %q, want DPoP scheme", r.Header.Get("Authorization"))
+
+		publicKey, err := key.PublicKey()
+		if !assert.NoError(t, err, "failed to get public key") {
+			return
+		}
+		token, ok := parseDPoPProof(t, r.Header.Get("DPoP"), publicKey)
+		if !ok {
+			return
+		}
+		if ath, athOK := token.Get("ath"); assert.True(t, athOK, "DPoP request proof should carry ath") {
+			expected := sha256.Sum256([]byte("dpop-access-token"))
+			assert.Equal(t, base64.RawURLEncoding.EncodeToString(expected[:]), ath, "ath claim")
+		}
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer server.Close()
+
+	transport := &DPoPTransport{Base: http.DefaultTransport, DPoPKey: key, TokenSource: ts}
+	client := &http.Client{Transport: transport}
+
+	resp, err := client.Do(mustReq(t, server.URL))
+	require.NoError(t, err, "request failed")
+	defer resp.Body.Close()
+	assert.Equal(t, http.StatusOK, resp.StatusCode, "final status")
+}
+
+// TestDPoPTransport_BearerStripsInheritedProof verifies the bearer path drops any
+// DPoP header already present on the request, so a retry clone (which inherits the
+// prior attempt's headers) can never send a bearer token alongside a stale proof.
+func TestDPoPTransport_BearerStripsInheritedProof(t *testing.T) {
+	key := generateTestKey(t)
+	transport := &DPoPTransport{
+		Base:    http.DefaultTransport,
+		DPoPKey: key,
+		TokenSource: &mockCredentialTokenSource{
+			mockTokenSource: mockTokenSource{token: "bearer-access-token"},
+			tokenType:       TokenTypeBearer,
+		},
+	}
+
+	req, err := http.NewRequest(http.MethodGet, "https://example.com/resource", nil)
+	require.NoError(t, err, "create request")
+	req.Header.Set("DPoP", "stale-proof")
+
+	require.NoError(t, transport.addDPoPProof(req, http.DefaultTransport, "", false), "addDPoPProof")
+	assert.Empty(t, req.Header.Get("DPoP"), "inherited DPoP proof should be stripped for a bearer request")
+	assert.Equal(t, "Bearer bearer-access-token", req.Header.Get("Authorization"), "Authorization header")
 }
 
 func mustReq(t *testing.T, rawURL string) *http.Request {

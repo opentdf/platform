@@ -21,4 +21,4 @@ set hostKeyDir=%hostKeyDir%/keys
 set "hostKeyDir=%hostKeyDir:\=/%"
 
 openssl pkcs12 -export -in keys/keycloak-ca.pem -inkey keys/keycloak-ca-private.pem -out keys/ca.p12 -nodes -passout pass:password
-docker run -v %hostKeyDir%:/keys --entrypoint keytool keycloak/keycloak:25.0 -importkeystore -srckeystore /keys/ca.p12 -srcstoretype PKCS12 -destkeystore /keys/ca.jks -deststoretype JKS -srcstorepass "password" -deststorepass "password" -noprompt
+docker run -v %hostKeyDir%:/keys --entrypoint keytool keycloak/keycloak:26.4 -importkeystore -srckeystore /keys/ca.p12 -srcstoretype PKCS12 -destkeystore /keys/ca.jks -deststoretype JKS -srcstorepass "password" -deststorepass "password" -noprompt

@@ -180,6 +180,7 @@ func (a *KeycloakTestAdapter) createKeycloakContainerConfig() internal.Container
 		Env: map[string]string{
 			"KC_BOOTSTRAP_ADMIN_USERNAME": a.config.AdminUser,
 			"KC_BOOTSTRAP_ADMIN_PASSWORD": a.config.AdminPass,
+			"KC_FEATURES":                 "dpop",
 			"KC_HTTP_ENABLED":             "true",
 			"KC_HOSTNAME_STRICT":          "false",
 			"KC_HEALTH_ENABLED":           "true",

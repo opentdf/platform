@@ -30,6 +30,7 @@ services:
       KC_BOOTSTRAP_ADMIN_USERNAME: admin
       KC_BOOTSTRAP_ADMIN_PASSWORD: changeme
       #KC_HOSTNAME_URL: http://localhost:8888/auth
+      KC_FEATURES: dpop
       KC_HEALTH_ENABLED: "true"
       KC_HTTPS_KEY_STORE_PASSWORD: "password"
       KC_HTTPS_KEY_STORE_FILE: "/truststore/truststore.jks"

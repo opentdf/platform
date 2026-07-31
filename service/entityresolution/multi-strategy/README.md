@@ -129,6 +129,7 @@ services:
 | Transformation | Input | Output | Use Case |
 |---------------|-------|---------|----------|
 | `postgres_array` | `"{apple,banana,cherry}"` | `["apple", "banana", "cherry"]` | PostgreSQL arrays |
+| `postgres_object` | `[]byte`, `string`, or `map[string]any` holding a JSON object (e.g. `'{"dept":"eng","level":3}'`) | `map[string]any{"dept":"eng","level":3}` | PostgreSQL `json`/`jsonb` columns surfaced as structured claims. `nil`, empty `[]byte`, and empty `string` normalize to `{}`; any other input type is an error. |
 
 ### LDAP-Specific Transformations
 

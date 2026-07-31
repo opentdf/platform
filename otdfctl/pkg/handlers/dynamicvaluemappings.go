@@ -3,6 +3,7 @@ package handlers
 import (
 	"context"
 
+	"github.com/google/uuid"
 	"github.com/opentdf/platform/protocol/go/common"
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/dynamicvaluemapping"
@@ -14,6 +15,15 @@ import (
 // values, so a negative operator is not supported.
 var DynamicValueMappingOperatorEnumChoices = []string{SubjectMappingOperatorIn, SubjectMappingOperatorInContains}
 
+// getAttributeDefinitionIDAndFQN splits a single attribute definition reference into its ID and FQN
+// components: a UUID is treated as an ID, anything else as an FQN. Mirrors getNamespaceIDAndFQN.
+func getAttributeDefinitionIDAndFQN(attribute string) (string, string) {
+	if _, err := uuid.Parse(attribute); err != nil {
+		return "", attribute
+	}
+	return attribute, ""
+}
+
 func (h Handler) GetDynamicValueMapping(ctx context.Context, id string) (*policy.DynamicValueMapping, error) {
 	resp, err := h.sdk.DynamicValueMapping.GetDynamicValueMapping(ctx, &dynamicvaluemapping.GetDynamicValueMappingRequest{
 		Id: id,
@@ -21,7 +31,7 @@ func (h Handler) GetDynamicValueMapping(ctx context.Context, id string) (*policy
 	return resp.GetDynamicValueMapping(), err
 }
 
-func (h Handler) ListDynamicValueMappings(ctx context.Context, limit, offset int32, namespace, attrDefID string, sort SortOption) (*dynamicvaluemapping.ListDynamicValueMappingsResponse, error) {
+func (h Handler) ListDynamicValueMappings(ctx context.Context, limit, offset int32, namespace, attribute string, sort SortOption) (*dynamicvaluemapping.ListDynamicValueMappingsResponse, error) {
 	req := &dynamicvaluemapping.ListDynamicValueMappingsRequest{
 		Pagination: &policy.PageRequest{
 			Limit:  limit,
@@ -29,8 +39,17 @@ func (h Handler) ListDynamicValueMappings(ctx context.Context, limit, offset int
 		},
 	}
 	req.NamespaceId, req.NamespaceFqn = getNamespaceIDAndFQN(namespace)
-	if attrDefID != "" {
-		req.AttributeDefinitionId = attrDefID
+	// The list request filters by Attribute Definition ID only, so resolve an FQN to its ID client-side.
+	if attribute != "" {
+		if _, err := uuid.Parse(attribute); err == nil {
+			req.AttributeDefinitionId = attribute
+		} else {
+			attr, err := h.GetAttribute(ctx, attribute)
+			if err != nil {
+				return nil, err
+			}
+			req.AttributeDefinitionId = attr.GetId()
+		}
 	}
 	if !sort.IsZero() {
 		allowedFields := map[string]dynamicvaluemapping.SortDynamicValueMappingsType{
@@ -47,7 +66,8 @@ func (h Handler) ListDynamicValueMappings(ctx context.Context, limit, offset int
 }
 
 // Creates and returns the created dynamic value mapping
-func (h Handler) CreateDynamicValueMapping(ctx context.Context, attrDefID, attrDefFQN string, resolver *policy.DynamicValueResolver, actions []*policy.Action, existingSCSID string, newSCS *subjectmapping.SubjectConditionSetCreate, namespace string, m *common.MetadataMutable) (*policy.DynamicValueMapping, error) {
+func (h Handler) CreateDynamicValueMapping(ctx context.Context, attribute string, resolver *policy.DynamicValueResolver, actions []*policy.Action, existingSCSID string, newSCS *subjectmapping.SubjectConditionSetCreate, namespace string, m *common.MetadataMutable) (*policy.DynamicValueMapping, error) {
+	attrDefID, attrDefFQN := getAttributeDefinitionIDAndFQN(attribute)
 	req := &dynamicvaluemapping.CreateDynamicValueMappingRequest{
 		AttributeDefinitionId:         attrDefID,
 		AttributeDefinitionFqn:        attrDefFQN,

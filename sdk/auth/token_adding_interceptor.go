@@ -49,14 +49,25 @@ func (i TokenAddingInterceptor) AddCredentialsConnect() connect.UnaryInterceptor
 			ctx context.Context,
 			req connect.AnyRequest,
 		) (connect.AnyResponse, error) {
-			accessToken, err := i.tokenSource.AccessToken(ctx, i.httpClient)
+			credential := AccessTokenCredential{Type: TokenTypeDPoP}
+			var err error
+			if credentialSource, ok := i.tokenSource.(AccessTokenCredentialSource); ok {
+				credential, err = credentialSource.AccessTokenCredential(ctx, i.httpClient)
+			} else {
+				credential.Token, err = i.tokenSource.AccessToken(ctx, i.httpClient)
+			}
 			if err != nil {
 				slog.ErrorContext(ctx, "error getting access token", slog.Any("error", err))
 				return nil, connect.NewError(connect.CodeUnauthenticated, err)
 			}
 
+			if credential.Type != TokenTypeDPoP {
+				req.Header().Set("Authorization", fmt.Sprintf("Bearer %s", credential.Token))
+				return next(ctx, req)
+			}
+
 			// Add Authorization header
-			req.Header().Set("Authorization", fmt.Sprintf("DPoP %s", accessToken))
+			req.Header().Set("Authorization", fmt.Sprintf("DPoP %s", credential.Token))
 
 			// Add DPoP header if possible
 			slog.DebugContext(
@@ -65,7 +76,7 @@ func (i TokenAddingInterceptor) AddCredentialsConnect() connect.UnaryInterceptor
 				slog.String("dpop_htm", http.MethodPost),
 				slog.Any("stream_type", req.Spec().StreamType),
 			)
-			dpopTok, err := i.GetDPoPToken(req.Spec().Procedure, http.MethodPost, string(accessToken))
+			dpopTok, err := i.GetDPoPToken(req.Spec().Procedure, http.MethodPost, string(credential.Token))
 			if err == nil {
 				req.Header().Set("DPoP", dpopTok)
 			} else {

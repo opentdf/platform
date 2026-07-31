@@ -3,6 +3,7 @@ package handlers
 import (
 	"testing"
 
+	"github.com/opentdf/platform/otdfctl/pkg/profiles"
 	"github.com/opentdf/platform/sdk"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -160,4 +161,144 @@ func TestApplyHooks_UnknownHookVariantIsDropped(t *testing.T) {
 		o = applyHooks(o)
 	})
 	assert.Empty(t, o.sdkOpts, "unknown hook variants must not contribute SDK options")
+}
+
+func TestResolveSDKFactory_FallsBackToDefault(t *testing.T) {
+	var o handlerOpts
+	assert.NotNil(t, o.resolveSDKFactory(), "unset factory must fall back to the default")
+}
+
+// TestNew_UsesResolvedFactoryAndStoresSDK verifies New calls the resolved
+// factory with the normalized endpoint and stores the SDK it returns.
+func TestNew_UsesResolvedFactoryAndStoresSDK(t *testing.T) {
+	// Trailing slash: non-normalized input New must trim before the factory.
+	p := newInMemoryProfile(t, "https://platform.example.test/", false)
+
+	sentinel := &sdk.SDK{}
+	var gotEndpoint string
+	override := WithSDKFactory(func(endpoint string, _ ...sdk.Option) (*sdk.SDK, error) {
+		gotEndpoint = endpoint
+		return sentinel, nil
+	})
+
+	h, err := New(override, WithProfile(p))
+	require.NoError(t, err)
+
+	assert.Equal(t, "https://platform.example.test:443", gotEndpoint,
+		"New must call the resolved factory with the normalized endpoint")
+	assert.Same(t, sentinel, h.Direct(),
+		"New must store the SDK returned by the resolved factory on the handler")
+}
+
+func TestResolveSDKFactory_PerHandlerOverridesDefault(t *testing.T) {
+	sentinel := &sdk.SDK{}
+	o := WithSDKFactory(func(string, ...sdk.Option) (*sdk.SDK, error) {
+		return sentinel, nil
+	})(handlerOpts{})
+
+	got, err := o.resolveSDKFactory()("https://platform.example.test")
+	require.NoError(t, err)
+	assert.Same(t, sentinel, got, "per-handler factory must take precedence over the default")
+}
+
+func TestSetDefaultSDKFactory_OverridesAndResets(t *testing.T) {
+	t.Cleanup(func() { SetDefaultSDKFactory(nil) }) // restore sdk.New
+
+	sentinel := &sdk.SDK{}
+	SetDefaultSDKFactory(func(string, ...sdk.Option) (*sdk.SDK, error) {
+		return sentinel, nil
+	})
+
+	got, err := handlerOpts{}.resolveSDKFactory()("https://platform.example.test")
+	require.NoError(t, err)
+	assert.Same(t, sentinel, got, "SetDefaultSDKFactory must install the process-wide factory")
+
+	SetDefaultSDKFactory(nil)
+	assert.NotNil(t, handlerOpts{}.resolveSDKFactory(), "nil must reset to a usable default")
+}
+
+// newInMemoryProfile builds a client-credentials profile in memory so New can
+// resolve auth options without touching the network.
+func newInMemoryProfile(t *testing.T, endpoint string, tlsNoVerify bool) *profiles.OtdfctlProfileStore {
+	t.Helper()
+	store, err := profiles.NewOtdfctlProfileStore(
+		profiles.ProfileDriverMemory,
+		&profiles.ProfileConfig{Name: "test", Endpoint: endpoint, TLSNoVerify: tlsNoVerify},
+		true,
+	)
+	require.NoError(t, err)
+	require.NoError(t, store.SetAuthCredentials(profiles.AuthCredentials{
+		AuthType:     profiles.AuthTypeClientCredentials,
+		ClientID:     "test-client",
+		ClientSecret: "test-secret",
+	}))
+	return store
+}
+
+// captureFactoryArgs runs New with a factory that records what it received
+// instead of building a real SDK.
+func captureFactoryArgs(t *testing.T, opts ...HandlerOption) (string, []sdk.Option) {
+	t.Helper()
+	var (
+		gotEndpoint string
+		gotOpts     []sdk.Option
+	)
+	capture := WithSDKFactory(func(endpoint string, sdkOpts ...sdk.Option) (*sdk.SDK, error) {
+		gotEndpoint = endpoint
+		gotOpts = sdkOpts
+		return &sdk.SDK{}, nil
+	})
+	_, err := New(append([]HandlerOption{capture}, opts...)...)
+	require.NoError(t, err)
+	return gotEndpoint, gotOpts
+}
+
+// TestNew_PassesNormalizedEndpointToFactory confirms the factory receives the
+// normalized endpoint, not the raw profile value.
+func TestNew_PassesNormalizedEndpointToFactory(t *testing.T) {
+	p := newInMemoryProfile(t, "https://platform.example.test", false)
+
+	endpoint, _ := captureFactoryArgs(t, WithProfile(p))
+
+	assert.Equal(t, "https://platform.example.test:443", endpoint,
+		"factory must receive the normalized endpoint New computed")
+}
+
+// TestNew_TLSNoVerifyReachesFactory proves --tls-no-verify adds an SDK option
+// reaching the factory. It asserts the delta because sdk.Option is opaque.
+func TestNew_TLSNoVerifyReachesFactory(t *testing.T) {
+	off := newInMemoryProfile(t, "https://platform.example.test", false)
+	on := newInMemoryProfile(t, "https://platform.example.test", true)
+
+	_, optsOff := captureFactoryArgs(t, WithProfile(off))
+	_, optsOn := captureFactoryArgs(t, WithProfile(on))
+
+	assert.Len(t, optsOn, len(optsOff)+1,
+		"--tls-no-verify must add exactly one SDK option (WithInsecureSkipVerifyConn) reaching the factory")
+}
+
+// TestNew_HTTPEndpointReachesFactoryAsPlaintext proves an http endpoint adds
+// the plaintext-connection option reaching the factory.
+func TestNew_HTTPEndpointReachesFactoryAsPlaintext(t *testing.T) {
+	secure := newInMemoryProfile(t, "https://platform.example.test", false)
+	plaintext := newInMemoryProfile(t, "http://platform.example.test", false)
+
+	_, optsSecure := captureFactoryArgs(t, WithProfile(secure))
+	_, optsPlaintext := captureFactoryArgs(t, WithProfile(plaintext))
+
+	assert.Len(t, optsPlaintext, len(optsSecure)+1,
+		"an http endpoint must add WithInsecurePlaintextConn reaching the factory")
+}
+
+// TestNew_NilSDKFromFactoryIsRejected guards against a factory returning
+// (nil, nil), which would yield a Handler with a nil SDK.
+func TestNew_NilSDKFromFactoryIsRejected(t *testing.T) {
+	p := newInMemoryProfile(t, "https://platform.example.test", false)
+	nilFactory := WithSDKFactory(func(string, ...sdk.Option) (*sdk.SDK, error) {
+		return nil, nil //nolint:nilnil // deliberately exercising the (nil, nil) guard
+	})
+
+	_, err := New(nilFactory, WithProfile(p))
+
+	require.Error(t, err, "a factory returning a nil SDK with no error must be rejected")
 }

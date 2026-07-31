@@ -94,19 +94,28 @@ func NewIDPAccessTokenSource(
 }
 
 // AccessToken use a pointer receiver so that the token state is shared
-func (t *IDPAccessTokenSource) AccessToken(_ context.Context, client *http.Client) (auth.AccessToken, error) {
+func (t *IDPAccessTokenSource) AccessToken(ctx context.Context, client *http.Client) (auth.AccessToken, error) {
+	credential, err := t.AccessTokenCredential(ctx, client)
+	return credential.Token, err
+}
+
+// AccessTokenCredential returns the cached access token and its DPoP status atomically.
+func (t *IDPAccessTokenSource) AccessTokenCredential(_ context.Context, client *http.Client) (auth.AccessTokenCredential, error) {
 	t.tokenMutex.Lock()
 	defer t.tokenMutex.Unlock()
 
 	if t.token == nil || t.token.Expired() {
 		tok, err := oauth.GetAccessToken(client, t.idpTokenEndpoint.String(), t.scopes, t.credentials, t.dpopKey)
 		if err != nil {
-			return "", fmt.Errorf("error getting access token: %w", err)
+			return auth.AccessTokenCredential{}, fmt.Errorf("error getting access token: %w", err)
 		}
 		t.token = tok
 	}
 
-	return auth.AccessToken(t.token.AccessToken), nil
+	return auth.AccessTokenCredential{
+		Token: auth.AccessToken(t.token.AccessToken),
+		Type:  auth.TokenTypeFromOAuthTokenType(t.token.TokenType),
+	}, nil
 }
 
 func (t *IDPAccessTokenSource) MakeToken(tokenMaker func(jwk.Key) ([]byte, error)) ([]byte, error) {

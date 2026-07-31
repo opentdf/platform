@@ -4,7 +4,6 @@ import (
 	"context"
 	"log/slog"
 	"net/http"
-	"strings"
 
 	"github.com/lestrrat-go/jwx/v2/jwk"
 	"github.com/opentdf/platform/lib/ocrypto"
@@ -53,8 +52,8 @@ func (i *IDPTokenExchangeTokenSource) AccessTokenCredential(ctx context.Context,
 	}
 
 	return auth.AccessTokenCredential{
-		Token:         auth.AccessToken(i.token.AccessToken),
-		DPoPSupported: strings.EqualFold(i.token.TokenType, "DPoP"),
+		Token: auth.AccessToken(i.token.AccessToken),
+		Type:  auth.TokenTypeFromOAuthTokenType(i.token.TokenType),
 	}, nil
 }
 

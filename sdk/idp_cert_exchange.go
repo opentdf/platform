@@ -4,7 +4,6 @@ import (
 	"context"
 	"log/slog"
 	"net/http"
-	"strings"
 	"sync"
 
 	"github.com/lestrrat-go/jwx/v2/jwk"
@@ -62,8 +61,8 @@ func (c *CertExchangeTokenSource) AccessTokenCredential(ctx context.Context, _ *
 	}
 
 	return auth.AccessTokenCredential{
-		Token:         auth.AccessToken(c.token.AccessToken),
-		DPoPSupported: strings.EqualFold(c.token.TokenType, "DPoP"),
+		Token: auth.AccessToken(c.token.AccessToken),
+		Type:  auth.TokenTypeFromOAuthTokenType(c.token.TokenType),
 	}, nil
 }
 

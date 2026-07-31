@@ -46,7 +46,7 @@ func setupTokenAddingInterceptor(t *testing.T) (TokenAddingInterceptor, jwk.Key)
 			key:         key,
 			accessToken: "thisisafakeaccesstoken",
 		},
-		dpopSupported: true,
+		tokenType: TokenTypeDPoP,
 	}
 
 	oo := NewTokenAddingInterceptorWithClient(&ts, httputil.SafeHTTPClientWithTLSConfig(&tls.Config{
@@ -127,7 +127,7 @@ func TestAddingTokensToOutgoingRequest_Connect_BearerToken(t *testing.T) {
 		FakeTokenSource: FakeTokenSource{
 			accessToken: "thisisafakeaccesstoken",
 		},
-		dpopSupported: false,
+		tokenType: TokenTypeBearer,
 	}
 	interceptor := NewTokenAddingInterceptorWithClient(&ts, httputil.SafeHTTPClient())
 	serverConnect := FakeAccessServiceServerConnect{}
@@ -159,12 +159,12 @@ func TestAddingTokensToOutgoingRequest_Connect_BindsSchemeToAtomicCredential(t *
 		{
 			name: "dpop token is not downgraded when refresh returns bearer",
 			credential: AccessTokenCredential{
-				Token:         "dpop-access-token",
-				DPoPSupported: true,
+				Token: "dpop-access-token",
+				Type:  TokenTypeDPoP,
 			},
 			refreshed: AccessTokenCredential{
-				Token:         "bearer-access-token",
-				DPoPSupported: false,
+				Token: "bearer-access-token",
+				Type:  TokenTypeBearer,
 			},
 			wantAuthorization: "DPoP dpop-access-token",
 			wantDPoP:          true,
@@ -172,12 +172,12 @@ func TestAddingTokensToOutgoingRequest_Connect_BindsSchemeToAtomicCredential(t *
 		{
 			name: "bearer token is not upgraded when refresh returns dpop",
 			credential: AccessTokenCredential{
-				Token:         "bearer-access-token",
-				DPoPSupported: false,
+				Token: "bearer-access-token",
+				Type:  TokenTypeBearer,
 			},
 			refreshed: AccessTokenCredential{
-				Token:         "dpop-access-token",
-				DPoPSupported: true,
+				Token: "dpop-access-token",
+				Type:  TokenTypeDPoP,
 			},
 			wantAuthorization: "Bearer bearer-access-token",
 			wantDPoP:          false,
@@ -290,7 +290,7 @@ type FakeTokenSource struct {
 
 type DPoPFakeTokenSource struct {
 	FakeTokenSource
-	dpopSupported bool
+	tokenType TokenType
 }
 
 func (fts *DPoPFakeTokenSource) AccessTokenCredential(ctx context.Context, client *http.Client) (AccessTokenCredential, error) {
@@ -299,7 +299,7 @@ func (fts *DPoPFakeTokenSource) AccessTokenCredential(ctx context.Context, clien
 		return AccessTokenCredential{}, err
 	}
 
-	return AccessTokenCredential{Token: token, DPoPSupported: fts.dpopSupported}, nil
+	return AccessTokenCredential{Token: token, Type: fts.tokenType}, nil
 }
 
 // ConcurrentRefreshTokenSource models a refresh that completes between the
@@ -312,10 +312,6 @@ type ConcurrentRefreshTokenSource struct {
 
 func (fts *ConcurrentRefreshTokenSource) AccessToken(context.Context, *http.Client) (AccessToken, error) {
 	return fts.credential.Token, nil
-}
-
-func (fts *ConcurrentRefreshTokenSource) DPoPSupported() bool {
-	return fts.refreshed.DPoPSupported
 }
 
 func (fts *ConcurrentRefreshTokenSource) AccessTokenCredential(context.Context, *http.Client) (AccessTokenCredential, error) {

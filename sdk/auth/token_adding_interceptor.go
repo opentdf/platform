@@ -94,7 +94,7 @@ func (i TokenAddingInterceptor) AddCredentialsConnect() connect.UnaryInterceptor
 			ctx context.Context,
 			req connect.AnyRequest,
 		) (connect.AnyResponse, error) {
-			credential := AccessTokenCredential{DPoPSupported: true}
+			credential := AccessTokenCredential{Type: TokenTypeDPoP}
 			var err error
 			if credentialSource, ok := i.tokenSource.(AccessTokenCredentialSource); ok {
 				credential, err = credentialSource.AccessTokenCredential(ctx, i.httpClient)
@@ -106,7 +106,7 @@ func (i TokenAddingInterceptor) AddCredentialsConnect() connect.UnaryInterceptor
 				return nil, connect.NewError(connect.CodeUnauthenticated, err)
 			}
 
-			if !credential.DPoPSupported {
+			if credential.Type != TokenTypeDPoP {
 				req.Header().Set("Authorization", fmt.Sprintf("Bearer %s", credential.Token))
 				return next(ctx, req)
 			}

@@ -36,13 +36,13 @@ func TestNewOAuthAccessTokenSource_Success(t *testing.T) {
 	credential, err := tokenSource.AccessTokenCredential(t.Context(), nil)
 	require.NoError(t, err)
 	assert.Equal(t, credential.Token, auth.AccessToken(mockToken))
-	assert.True(t, credential.DPoPSupported)
+	assert.Equal(t, auth.TokenTypeDPoP, credential.Type)
 	made, err := tokenSource.MakeToken(func(jwk.Key) ([]byte, error) { return []byte(mockToken), nil })
 	require.NoError(t, err)
 	assert.Equal(t, made, []byte(mockToken))
 }
 
-func TestOAuthAccessTokenSource_DPoPSupported_BearerToken(t *testing.T) {
+func TestOAuthAccessTokenSource_TokenTypeBearer(t *testing.T) {
 	mockSource := oauth2.StaticTokenSource(&oauth2.Token{AccessToken: "mockToken", TokenType: "Bearer"})
 	mockKey, err := ocrypto.NewRSAKeyPair(dpopKeySize)
 	require.NoError(t, err)
@@ -52,7 +52,7 @@ func TestOAuthAccessTokenSource_DPoPSupported_BearerToken(t *testing.T) {
 
 	credential, err := tokenSource.AccessTokenCredential(t.Context(), nil)
 	require.NoError(t, err)
-	assert.False(t, credential.DPoPSupported)
+	assert.Equal(t, auth.TokenTypeBearer, credential.Type)
 }
 
 func TestNewOAuthAccessTokenSource_ExpiredToken(t *testing.T) {

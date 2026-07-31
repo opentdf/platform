@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"net/http"
-	"strings"
 
 	"github.com/lestrrat-go/jwx/v2/jwk"
 	"github.com/opentdf/platform/lib/ocrypto"
@@ -60,8 +59,8 @@ func (t *OAuthAccessTokenSource) AccessTokenCredential(_ context.Context, _ *htt
 	}
 
 	return auth.AccessTokenCredential{
-		Token:         auth.AccessToken(tok.AccessToken),
-		DPoPSupported: strings.EqualFold(tok.Type(), "DPoP"),
+		Token: auth.AccessToken(tok.AccessToken),
+		Type:  auth.TokenTypeFromOAuthTokenType(tok.Type()),
 	}, nil
 }
 

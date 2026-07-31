@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
-	"strings"
 	"sync"
 
 	"github.com/lestrrat-go/jwx/v2/jwa"
@@ -114,8 +113,8 @@ func (t *IDPAccessTokenSource) AccessTokenCredential(_ context.Context, client *
 	}
 
 	return auth.AccessTokenCredential{
-		Token:         auth.AccessToken(t.token.AccessToken),
-		DPoPSupported: strings.EqualFold(t.token.TokenType, "DPoP"),
+		Token: auth.AccessToken(t.token.AccessToken),
+		Type:  auth.TokenTypeFromOAuthTokenType(t.token.TokenType),
 	}, nil
 }
 

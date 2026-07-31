@@ -87,9 +87,22 @@ adapter := NewMultiStrategyTestAdapter()
 ```
 
 **Supported Providers:**
-- JWT Claims Provider (used in tests)
+- JWT Claims Provider
 - SQL Provider (SQLite/PostgreSQL support)
 - LDAP Provider (enterprise directory integration)
+
+#### Multi-strategy provider contract matrix
+
+`internal/resolved_token_chain_contract.go` owns the shared token-chain behavior.
+Provider adapters in `multistrategy_provider_contract_test.go` supply only setup,
+configuration, token fixtures, and expected mapped fields. The suite runs the same
+multi-entity chain scenarios for claims, SQL, and LDAP with both environment→subject
+and subject→environment strategy order, single and multiple tokens, collection-valued
+context, and fail-closed mixed valid/invalid token batches.
+
+When adding a provider, enroll one adapter to receive the existing contract scenarios.
+When adding a provider-independent token-chain behavior, add it once to
+`ResolvedTokenChainContractSuite` so every enrolled provider runs it.
 
 **Strategy Testing:**
 - Multiple mapping strategies with conditions

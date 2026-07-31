@@ -21,6 +21,8 @@ command:
         - ec:secp256r1
         - ec:secp384r1
         - ec:secp521r1
+        - mlkem:768
+        - mlkem:1024
       default: rsa:2048
     - name: with-assertion-verification-keys
       description: >
@@ -63,6 +65,8 @@ The session-key-algorithm specifies the algorithm to use for the session key. Th
 - ec:secp256r1
 - ec:secp384r1
 - ec:secp521r1
+- mlkem:768
+- mlkem:1024
 
 Example
 
@@ -70,6 +74,10 @@ Example
 # Decrypt a file using the ec:secp256r1 algorithm for the session key
 # EXPERIMENTAL
 otdfctl decrypt hello.txt --session-key-algorithm ec:secp256r1
+
+# Decrypt a file using a pure ML-KEM-768 session key
+# EXPERIMENTAL
+otdfctl decrypt hello.txt --session-key-algorithm mlkem:768
 ```
 
 ### ZTDF Assertion Verification (experimental)

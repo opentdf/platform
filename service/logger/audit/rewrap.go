@@ -20,12 +20,13 @@ type KasAttribute struct {
 }
 
 type RewrapAuditEventParams struct {
-	Policy        KasPolicy
-	IsSuccess     bool
-	TDFFormat     string
-	Algorithm     string
-	PolicyBinding string
-	KeyID         string
+	Policy         KasPolicy
+	IsSuccess      bool
+	TDFFormat      string
+	Algorithm      string
+	PolicyBinding  string
+	KeyID          string
+	SessionKeyType string
 }
 
 func CreateRewrapAuditEvent(ctx context.Context, params RewrapAuditEventParams) (*EventObject, error) {
@@ -61,10 +62,11 @@ func CreateRewrapAuditEvent(ctx context.Context, params RewrapAuditEventParams) 
 			Attributes: make([]any, 0),
 		},
 		EventMetaData: auditEventMetadata{
-			"keyID":         params.KeyID,
-			"policyBinding": params.PolicyBinding,
-			"tdfFormat":     params.TDFFormat,
-			"algorithm":     params.Algorithm,
+			"keyID":          params.KeyID,
+			"policyBinding":  params.PolicyBinding,
+			"tdfFormat":      params.TDFFormat,
+			"algorithm":      params.Algorithm,
+			"sessionKeyType": params.SessionKeyType,
 		},
 		ClientInfo: eventClientInfo{
 			Platform:  "kas",

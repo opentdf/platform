@@ -39,6 +39,10 @@ func decryptRun(cmd *cobra.Command, args []string) {
 		sessionKeyAlgorithm = ocrypto.EC384Key
 	case string(ocrypto.EC521Key):
 		sessionKeyAlgorithm = ocrypto.EC521Key
+	case string(ocrypto.MLKEM768Key):
+		sessionKeyAlgorithm = ocrypto.MLKEM768Key
+	case string(ocrypto.MLKEM1024Key):
+		sessionKeyAlgorithm = ocrypto.MLKEM1024Key
 	default:
 		sessionKeyAlgorithm = ocrypto.RSA2048Key
 	}

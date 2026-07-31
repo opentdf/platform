@@ -42,19 +42,28 @@ func NewCertExchangeTokenSource(logger *slog.Logger, info oauth.CertExchangeInfo
 }
 
 func (c *CertExchangeTokenSource) AccessToken(ctx context.Context, _ *http.Client) (auth.AccessToken, error) {
+	credential, err := c.AccessTokenCredential(ctx, nil)
+	return credential.Token, err
+}
+
+// AccessTokenCredential returns the cached certificate-exchange token and its DPoP status atomically.
+func (c *CertExchangeTokenSource) AccessTokenCredential(ctx context.Context, _ *http.Client) (auth.AccessTokenCredential, error) {
 	c.tokenMutex.Lock()
 	defer c.tokenMutex.Unlock()
 
 	if c.token == nil || c.token.Expired() {
 		tok, err := oauth.DoCertExchange(ctx, c.IdpEndpoint, c.info, c.credentials, c.key)
 		if err != nil {
-			return "", err
+			return auth.AccessTokenCredential{}, err
 		}
 
 		c.token = tok
 	}
 
-	return auth.AccessToken(c.token.AccessToken), nil
+	return auth.AccessTokenCredential{
+		Token: auth.AccessToken(c.token.AccessToken),
+		Type:  auth.TokenTypeFromOAuthTokenType(c.token.TokenType),
+	}, nil
 }
 
 func (c *CertExchangeTokenSource) MakeToken(tokenMaker func(jwk.Key) ([]byte, error)) ([]byte, error) {

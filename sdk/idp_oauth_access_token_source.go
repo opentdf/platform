@@ -11,7 +11,7 @@ import (
 	"golang.org/x/oauth2"
 )
 
-// OAuthAccessTokenSource allow connecting to an IDP and obtain a DPoP bound access token
+// OAuthAccessTokenSource allows connecting to an IDP and obtaining an access token.
 type OAuthAccessTokenSource struct {
 	source         oauth2.TokenSource
 	scopes         []string
@@ -40,19 +40,28 @@ func NewOAuthAccessTokenSource(
 }
 
 // AccessToken use a pointer receiver so that the token state is shared
-func (t *OAuthAccessTokenSource) AccessToken(_ context.Context, _ *http.Client) (auth.AccessToken, error) { // must satisfy auth.AccessTokenSource interface
+func (t *OAuthAccessTokenSource) AccessToken(ctx context.Context, client *http.Client) (auth.AccessToken, error) {
+	credential, err := t.AccessTokenCredential(ctx, client)
+	return credential.Token, err
+}
+
+// AccessTokenCredential returns an access token and its DPoP status from the same token response.
+func (t *OAuthAccessTokenSource) AccessTokenCredential(_ context.Context, _ *http.Client) (auth.AccessTokenCredential, error) {
 	tok, err := t.source.Token()
 	if err != nil {
-		return "", fmt.Errorf("error getting access token: %w", err)
+		return auth.AccessTokenCredential{}, fmt.Errorf("error getting access token: %w", err)
 	}
 
 	// Non-nil with AccessToken and not Expired
 	if !tok.Valid() {
-		return "", ErrAccessTokenInvalid
+		return auth.AccessTokenCredential{}, ErrAccessTokenInvalid
 		// TODO: refresh tokens if expired?
 	}
 
-	return auth.AccessToken(tok.AccessToken), nil
+	return auth.AccessTokenCredential{
+		Token: auth.AccessToken(tok.AccessToken),
+		Type:  auth.TokenTypeFromOAuthTokenType(tok.Type()),
+	}, nil
 }
 
 func (t *OAuthAccessTokenSource) MakeToken(tokenMaker func(jwk.Key) ([]byte, error)) ([]byte, error) {

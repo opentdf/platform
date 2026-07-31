@@ -8,7 +8,6 @@ require (
 	github.com/Masterminds/semver/v3 v3.5.0
 	github.com/google/uuid v1.6.0
 	github.com/gowebpki/jcs v1.0.1
-	github.com/grpc-ecosystem/go-grpc-middleware/v2 v2.3.3
 	github.com/lestrrat-go/jwx/v2 v2.1.6
 	github.com/opentdf/platform/lib/ocrypto v0.14.0
 	github.com/opentdf/platform/protocol/go v0.39.0

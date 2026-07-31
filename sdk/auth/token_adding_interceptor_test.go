@@ -9,7 +9,6 @@ import (
 	"crypto/tls"
 	"encoding/base64"
 	"errors"
-	"net"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -24,11 +23,6 @@ import (
 	"github.com/opentdf/platform/sdk/httputil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
-	"google.golang.org/grpc/metadata"
-	"google.golang.org/grpc/test/bufconn"
-	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
 func setupTokenAddingInterceptor(t *testing.T) (TokenAddingInterceptor, jwk.Key) {
@@ -95,19 +89,6 @@ func checkAccessAndDpopTokens(t *testing.T, accessToken []string, dpopToken []st
 	ath, ok := parsedToken.Get("ath")
 	require.True(t, ok, "error getting ath claim")
 	assert.Equal(t, expectedHash, ath, "invalid ath claim in token")
-}
-
-func TestAddingTokensToOutgoingRequest(t *testing.T) {
-	oo, key := setupTokenAddingInterceptor(t)
-
-	serverGrpc := FakeAccessServiceServer{}
-
-	clientGrpc, stopG := runServer(&serverGrpc, oo)
-	defer stopG()
-	_, err := clientGrpc.PublicKey(t.Context(), &kas.PublicKeyRequest{})
-	require.NoError(t, err, "error making call")
-
-	checkAccessAndDpopTokens(t, serverGrpc.accessToken, serverGrpc.dpopToken, key)
 }
 
 func TestAddingTokensToOutgoingRequest_Connect(t *testing.T) {
@@ -198,20 +179,6 @@ func TestAddingTokensToOutgoingRequest_Connect_UsesAtomicCredential(t *testing.T
 	}
 }
 
-func Test_InvalidCredentials_DoesNotSendMessage(t *testing.T) {
-	ts := FakeTokenSource{key: nil, accessToken: ""}
-	serverGrpc := FakeAccessServiceServer{}
-	oo := NewTokenAddingInterceptorWithClient(&ts, httputil.SafeHTTPClientWithTLSConfig(&tls.Config{
-		MinVersion: tls.VersionTLS12,
-	}))
-
-	clientGrpc, stopG := runServer(&serverGrpc, oo)
-	defer stopG()
-
-	_, err := clientGrpc.PublicKey(t.Context(), &kas.PublicKeyRequest{})
-	require.Error(t, err, "should not have sent message because the token source returned an error")
-}
-
 func Test_InvalidCredentials_DoesNotSendMessage_Connect(t *testing.T) {
 	ts := FakeTokenSource{key: nil, accessToken: ""}
 	serverConnect := FakeAccessServiceServerConnect{}
@@ -242,34 +209,6 @@ func (f *FakeAccessServiceServerConnect) PublicKey(ctx context.Context, req *con
 		f.dpopKey = nil
 	}
 	return connect.NewResponse(&kas.PublicKeyResponse{}), nil
-}
-
-type FakeAccessServiceServer struct {
-	accessToken []string
-	dpopToken   []string
-	dpopKey     jwk.Key
-	kas.UnimplementedAccessServiceServer
-}
-
-func (f *FakeAccessServiceServer) PublicKey(ctx context.Context, _ *kas.PublicKeyRequest) (*kas.PublicKeyResponse, error) {
-	if md, ok := metadata.FromIncomingContext(ctx); ok {
-		f.accessToken = md.Get("authorization")
-		f.dpopToken = md.Get("dpop")
-	}
-	var ok bool
-	f.dpopKey, ok = ctx.Value("dpop-jwk").(jwk.Key)
-	if !ok {
-		f.dpopKey = nil
-	}
-	return &kas.PublicKeyResponse{}, nil
-}
-
-func (f *FakeAccessServiceServer) LegacyPublicKey(context.Context, *kas.LegacyPublicKeyRequest) (*wrapperspb.StringValue, error) {
-	return &wrapperspb.StringValue{}, nil
-}
-
-func (f *FakeAccessServiceServer) Rewrap(context.Context, *kas.RewrapRequest) (*kas.RewrapResponse, error) {
-	return &kas.RewrapResponse{}, nil
 }
 
 type FakeTokenSource struct {
@@ -339,41 +278,6 @@ func runConnectServer(
 		// Safely close the server
 		if server != nil {
 			server.Close()
-		}
-	}
-}
-
-func runServer( //nolint:ireturn // this is pretty concrete
-	f *FakeAccessServiceServer, oo TokenAddingInterceptor,
-) (kas.AccessServiceClient, func()) {
-	buffer := 1024 * 1024
-	listener := bufconn.Listen(buffer)
-
-	s := grpc.NewServer()
-	kas.RegisterAccessServiceServer(s, f)
-	serverError := make(chan error, 1)
-	go func() {
-		if err := s.Serve(listener); err != nil {
-			serverError <- err
-		}
-		close(serverError)
-	}()
-
-	conn, _ := grpc.NewClient("passthrough:///bufconn", grpc.WithContextDialer(func(context.Context, string) (net.Conn, error) {
-		return listener.Dial()
-	}), grpc.WithTransportCredentials(insecure.NewCredentials()), grpc.WithUnaryInterceptor(oo.AddCredentials))
-
-	client := kas.NewAccessServiceClient(conn)
-
-	return client, func() {
-		// Gracefully stop the server
-		s.GracefulStop()
-		// Wait for server to complete or stop immediately if already stopped
-		select {
-		case <-serverError:
-			// Server already stopped, nothing to do
-		default:
-			s.Stop()
 		}
 	}
 }

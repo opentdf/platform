@@ -63,6 +63,25 @@ func TestStreamListJSON(t *testing.T) {
 	)
 	require.NoError(t, c.StreamList(&buf, []string{"ID", "Name"}, nil, items))
 
+	// Exact-output assertion: each object's opening brace is indented two spaces
+	// by the separator (SetIndent does not prefix the opening "{"), matching
+	// printJSON. Pins the layout against separator regressions.
+	const wantJSON = `[
+  {
+    "id": "1",
+    "name": "alpha"
+  },
+  {
+    "id": "2",
+    "name": "beta"
+  }
+]
+`
+	// Exact byte comparison on purpose: JSONEq ignores whitespace, but this test
+	// exists to pin the indentation/formatting, not JSON equality.
+	//nolint:testifylint // encoded-compare: exact formatting is the assertion
+	assert.Equal(t, wantJSON, buf.String())
+
 	var decoded []map[string]string
 	require.NoError(t, json.Unmarshal(buf.Bytes(), &decoded))
 	require.Len(t, decoded, 2)

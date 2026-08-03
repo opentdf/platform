@@ -25,7 +25,7 @@ const (
 // pendingEvent represents a single audit event waiting to be logged
 type pendingEvent struct {
 	verb  Verb
-	event *EventObject
+	event RecordedEvent
 }
 
 var logLevelNames = map[slog.Leveler]string{
@@ -86,13 +86,17 @@ func (a *Logger) With(key string, value string) *Logger {
 }
 
 // addEvent appends a pending audit event to the transaction
-func (tx *auditTransaction) addEvent(verb Verb, event *EventObject) {
+func (tx *auditTransaction) addEvent(verb Verb, event RecordedEvent) error {
 	tx.mu.Lock()
 	defer tx.mu.Unlock()
+	if tx.closed {
+		return ErrTransactionClosed
+	}
 	tx.events = append(tx.events, pendingEvent{
 		verb:  verb,
-		event: event,
+		event: cloneRecordedEvent(event),
 	})
+	return nil
 }
 
 // logClose completes an audit transaction and emits all recorded events.
@@ -100,23 +104,30 @@ func (tx *auditTransaction) addEvent(verb Verb, event *EventObject) {
 // Otherwise, events are logged with their originally recorded success/failure status.
 func (tx *auditTransaction) logClose(ctx context.Context, auditLogger *Logger, success bool, err error) {
 	tx.mu.Lock()
-	defer tx.mu.Unlock()
-	for _, event := range tx.events {
+	if tx.closed {
+		tx.mu.Unlock()
+		return
+	}
+	tx.closed = true
+	events := tx.events
+	tx.events = nil
+	tx.mu.Unlock()
+	for _, event := range events {
 		auditEvent := event.event
 
 		if !success {
-			auditEvent.Action.Result = ActionResultCancel
+			auditEvent.Action.Result = ActionResultCancel.String()
 		}
 
 		if err != nil {
 			if auditEvent.EventMetaData == nil {
-				auditEvent.EventMetaData = make(auditEventMetadata)
+				auditEvent.EventMetaData = make(map[string]any)
 			}
 			auditEvent.EventMetaData["cancellation_error"] = err.Error()
 		}
 
 		//nolint:sloglint // audit message is always just the verb
-		auditLogger.logger.Log(ctx, LevelAudit, string(event.verb), slog.Any("audit", auditLogger.buildLogEntry(ctx, auditEvent)))
+		auditLogger.logger.Log(ctx, LevelAudit, string(event.verb), slog.Any("audit", auditLogger.buildRecordedLogEntry(ctx, auditEvent)))
 	}
 }
 
@@ -163,7 +174,22 @@ func LogAuditEvent(ctx context.Context, verb Verb, event *EventObject) {
 	if event == nil {
 		panic("nil audit event provided")
 	}
-	tx.addEvent(verb, event)
+	if err := tx.addEvent(verb, recordedEventFromLegacy(*event)); err != nil {
+		panic(err)
+	}
+}
+
+// Record adds an externally constructed event to the current request audit
+// transaction. The event is deeply snapshotted before Record returns.
+func (a *Logger) Record(ctx context.Context, verb Verb, event RecordedEvent) error {
+	if a == nil || verb == "" {
+		return ErrInvalidEvent
+	}
+	tx, ok := ctx.Value(contextKey{}).(*auditTransaction)
+	if !ok || tx == nil {
+		return ErrNoTransaction
+	}
+	return tx.addEvent(verb, event)
 }
 
 func (a *Logger) rewrapBase(ctx context.Context, eventParams RewrapAuditEventParams) {

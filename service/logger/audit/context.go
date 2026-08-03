@@ -14,6 +14,7 @@ type contextKey struct{}
 type auditTransaction struct {
 	ContextData
 	events []pendingEvent
+	closed bool
 	mu     sync.Mutex
 }
 

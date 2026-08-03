@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"math"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -72,6 +73,19 @@ func TestRecordReturnsInvalidEventForPanickingValue(t *testing.T) {
 
 	err := logger.Record(ctx, Verb("read"), event)
 	require.ErrorIs(t, err, ErrInvalidEvent)
+}
+
+func TestRecordPreservesLargeNumericMetadata(t *testing.T) {
+	logger, buffer := createTestLogger()
+	ctx := createTestContext(t)
+	event := RecordedEvent{EventMetaData: map[string]any{"sequence": uint64(math.MaxUint64)}}
+	require.NoError(t, logger.Record(ctx, Verb("read"), event))
+
+	tx, ok := ctx.Value(contextKey{}).(*auditTransaction)
+	require.True(t, ok)
+	require.Equal(t, json.Number("18446744073709551615"), tx.events[0].event.EventMetaData["sequence"])
+	tx.logClose(ctx, logger, true, nil)
+	require.Contains(t, buffer.String(), `"sequence":18446744073709551615`)
 }
 
 type panickingJSONValue struct{}

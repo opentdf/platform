@@ -1,6 +1,7 @@
 package audit
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -94,7 +95,9 @@ func snapshotRecordedEvent(event RecordedEvent) (RecordedEvent, error) {
 			snapshotErr = fmt.Errorf("%w: %w", ErrInvalidEvent, err)
 			return
 		}
-		if err := json.Unmarshal(encoded, &snapshot); err != nil {
+		decoder := json.NewDecoder(bytes.NewReader(encoded))
+		decoder.UseNumber()
+		if err := decoder.Decode(&snapshot); err != nil {
 			snapshotErr = fmt.Errorf("%w: %w", ErrInvalidEvent, err)
 		}
 	}()

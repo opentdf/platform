@@ -40,13 +40,31 @@ type Config struct {
 	Type   string `mapstructure:"type" json:"type" default:"json"`
 }
 
+// Option configures a Logger at construction time.
+type Option func(*loggerOptions)
+
+type loggerOptions struct {
+	auditProcessor audit.Processor
+}
+
+// WithAuditProcessor configures the processor used by the audit logger.
+func WithAuditProcessor(processor audit.Processor) Option {
+	return func(options *loggerOptions) {
+		options.auditProcessor = processor
+	}
+}
+
 const (
 	LevelTrace = slog.Level(-8)
 )
 
-func NewLogger(config Config) (*Logger, error) {
+func NewLogger(config Config, options ...Option) (*Logger, error) {
 	var sLogger *slog.Logger
 	logger := new(Logger)
+	loggerOpts := loggerOptions{}
+	for _, option := range options {
+		option(&loggerOpts)
+	}
 
 	w, err := getWriter(config)
 	if err != nil {
@@ -83,7 +101,11 @@ func NewLogger(config Config) (*Logger, error) {
 	})
 
 	auditLoggerBase := slog.New(auditLoggerHandler)
-	auditLogger := audit.CreateAuditLogger(*auditLoggerBase)
+	auditOptions := []audit.Option{audit.WithDiagnosticLogger(sLogger)}
+	if loggerOpts.auditProcessor != nil {
+		auditOptions = append(auditOptions, audit.WithProcessor(loggerOpts.auditProcessor))
+	}
+	auditLogger := audit.CreateAuditLogger(*auditLoggerBase, auditOptions...)
 
 	logger.Logger = sLogger
 	logger.Audit = auditLogger

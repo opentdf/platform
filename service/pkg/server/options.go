@@ -7,6 +7,7 @@ import (
 	"github.com/casbin/casbin/v2/persist"
 	"github.com/opentdf/platform/sdk"
 	"github.com/opentdf/platform/service/logger"
+	"github.com/opentdf/platform/service/logger/audit"
 	"github.com/opentdf/platform/service/pkg/authz"
 	"github.com/opentdf/platform/service/pkg/config"
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
@@ -49,11 +50,23 @@ type StartConfig struct {
 
 	authzRoleProvider          authz.RoleProvider
 	authzRoleProviderFactories map[string]authz.RoleProviderFactory
+	auditProcessor             audit.Processor
+	auditProcessorSet          bool
 
 	// CORS additive configuration - appended to YAML/env config values
 	additionalCORSHeaders        []string
 	additionalCORSMethods        []string
 	additionalCORSExposedHeaders []string
+}
+
+// WithAuditProcessor configures an instance-scoped processor for finalized
+// audit events. The processor must be safe for concurrent use.
+func WithAuditProcessor(processor audit.Processor) StartOptions {
+	return func(c StartConfig) StartConfig {
+		c.auditProcessor = processor
+		c.auditProcessorSet = true
+		return c
+	}
 }
 
 // Deprecated: Use WithConfigKey

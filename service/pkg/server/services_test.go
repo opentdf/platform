@@ -8,11 +8,18 @@ import (
 
 	"github.com/opentdf/platform/service/internal/server"
 	"github.com/opentdf/platform/service/logger"
+	"github.com/opentdf/platform/service/logger/audit"
 	"github.com/opentdf/platform/service/pkg/config"
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
 	"github.com/stretchr/testify/suite"
 	"google.golang.org/grpc"
 )
+
+type dropAuditProcessor struct{}
+
+func (*dropAuditProcessor) Process(context.Context, audit.FinalizedEvent) (audit.ProcessResult, error) {
+	return audit.ProcessResult{Drop: true}, nil
+}
 
 type spyTestService struct {
 	wasCalled  bool
@@ -230,6 +237,20 @@ func (suite *ServiceTestSuite) TestBuildNamespaceLoggerRejectsInvalidOverrideLev
 	suite.Require().Error(err)
 	suite.Nil(namespaceLogger)
 	suite.ErrorContains(err, "invalid namespace logger config for policy")
+}
+
+func (suite *ServiceTestSuite) TestBuildNamespaceLoggerRetainsAuditProcessor() {
+	processor := &dropAuditProcessor{}
+	baseLogger, err := logger.NewLogger(
+		logger.Config{Output: "stdout", Level: "info", Type: "json"},
+		logger.WithAuditProcessor(processor),
+	)
+	suite.Require().NoError(err)
+	cfg := &config.Config{Logger: logger.Config{Output: "stdout", Level: "info", Type: "json"}}
+
+	namespaceLogger, err := buildNamespaceLogger(baseLogger, cfg, "policy", "debug")
+	suite.Require().NoError(err)
+	suite.Same(processor, namespaceLogger.Audit.Processor())
 }
 
 func (suite *ServiceTestSuite) TestStartServicesWithVariousCases() {

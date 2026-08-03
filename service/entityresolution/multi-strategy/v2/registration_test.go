@@ -325,3 +325,39 @@ func TestResolveEntities_UserNameEntityDoesNotSeedClaimsContext(t *testing.T) {
 		t.Fatalf("expected entity_id alice-user-name, got %v", got)
 	}
 }
+
+func TestCreateEntityFromResultV2ExcludesResolutionMetadataFromPolicyClaims(t *testing.T) {
+	ers := &ERSV2{logger: logger.CreateTestLogger()}
+	result := &types.EntityResult{
+		Claims: map[string]interface{}{
+			"username":   "alice",
+			"department": "engineering",
+		},
+		Metadata: map[string]interface{}{
+			"strategy_name":     "sql_subject",
+			"strategy_provider": "directory",
+			"provider_type":     "sql",
+		},
+	}
+	strategy := &types.MappingStrategy{
+		Name:       "sql_subject",
+		EntityType: types.EntityTypeSubject,
+	}
+
+	resolved := ers.createEntityFromResultV2(t.Context(), result, strategy, "token-1")
+	require.Equal(t, entity.Entity_CATEGORY_SUBJECT, resolved.GetCategory())
+	require.NotNil(t, resolved.GetClaims())
+
+	var claimsStruct structpb.Struct
+	require.NoError(t, resolved.GetClaims().UnmarshalTo(&claimsStruct))
+	policyClaims := claimsStruct.AsMap()
+
+	require.Equal(t, "alice", policyClaims["username"])
+	require.Equal(t, "engineering", policyClaims["department"])
+	require.NotContains(t, policyClaims, "strategy_name")
+	require.NotContains(t, policyClaims, "strategy_provider")
+	require.NotContains(t, policyClaims, "provider_type")
+	require.NotContains(t, policyClaims, "metadata_strategy_name")
+	require.NotContains(t, policyClaims, "metadata_strategy_provider")
+	require.NotContains(t, policyClaims, "metadata_provider_type")
+}

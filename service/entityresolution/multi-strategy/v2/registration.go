@@ -317,6 +317,12 @@ func (ers *ERSV2) createEntityChainFromSingleTokenV2(ctx context.Context, token 
 // For token-derived entity chains, preserve the resolved claims directly in the chain so
 // downstream authz can consume the resolved subject/environment context without rehydrating
 // through ERS and re-routing strategy selection from a lossy identity projection.
+//
+// EntityResult.Metadata is intentionally omitted. It describes ERS resolution mechanics and
+// provenance, not the subject or environment entity. Including it in this claims payload would
+// expose it to subject mappings and couple portable ABAC policy to multi-strategy provider names,
+// strategy ordering, and other deployment-specific ERS structure. Resolution metadata belongs
+// in observability or a dedicated out-of-band metadata channel, not in policy input.
 func (ers *ERSV2) createEntityFromResultV2(ctx context.Context, result *types.EntityResult, strategy *types.MappingStrategy, tokenID string) *entity.Entity {
 	category := entity.Entity_CATEGORY_SUBJECT
 	if strategy.EntityType == types.EntityTypeEnvironment {

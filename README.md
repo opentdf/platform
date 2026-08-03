@@ -235,7 +235,7 @@ service follows a modular binary architecture, while the sub-services are gRPC s
 
 **Policy** is the set of rules that govern access to the platform.
 
-**OIDC** is the OpenID Connect protocol used solely for authentication within the OpenTDF platform.
+**OIDC** is the OpenID Connect protocol OpenTDF uses for authentication plus trusted identity claims that feed authorization and policy decisions. See [OpenTDF and OpenID Connect (OIDC)](./docs/OIDC.md).
 
 - **IdP** - Identity Provider. This is the service that authenticates the user.
 - **Keycloak** is the turn-key OIDC provider used within the platform for proof-of-value, but should be replaced with a

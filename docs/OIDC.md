@@ -25,7 +25,7 @@ For concrete setup details, see [Configuration](./Configuring.md#server-configur
 | Use validated claims for authorization and policy evaluation | No | Yes |
 | Publish `/.well-known/opentdf-configuration` for OpenTDF clients | No | Yes |
 
-In this repository's local quickstart, Keycloak fills the external IdP role. In other deployments, OpenTDF's OIDC authentication relies on the configured issuer, audience, and the issuer's discovery/JWKS endpoints.
+In this repository's local quickstart, Keycloak fills the external IdP role. In other deployments, OpenTDF's OIDC authentication relies on the configured external issuer, expected audience, and that issuer's discovery/JWKS endpoints.
 
 ## Two different well-known endpoints
 
@@ -43,15 +43,15 @@ That distinction is important: OpenTDF may publish metadata *about* the configur
 - **Issuer**
   - Configured as `server.auth.issuer`.
   - OpenTDF uses this URL to discover OIDC metadata at `/.well-known/openid-configuration`.
-  - During discovery, OpenTDF uses the issuer value returned by the discovery document for token validation.
+  - OpenTDF expects the configured issuer and the discovery document's `issuer` value to agree; if they differ, the discovery document's issuer value is used for token validation.
 
 - **Audience**
   - Configured as `server.auth.audience`.
-  - OpenTDF validates the incoming token's `aud` claim against this value.
+  - OpenTDF validates the incoming token's `aud` claim against this expected audience value.
 
 - **JWKS / signing keys**
   - OpenTDF reads `jwks_uri` from the discovery document.
-  - It caches the remote key set and refreshes it using `server.auth.cache_refresh_interval`.
+  - It caches the remote key set and uses `server.auth.cache_refresh_interval` as the minimum refresh interval for that JWKS cache.
   - Incoming access-token signatures are validated against that cached JWKS.
 
 - **Claims**
@@ -67,7 +67,7 @@ That distinction is important: OpenTDF may publish metadata *about* the configur
 
 ## End-to-end conceptual flow
 
-1. A client authenticates with the external OIDC provider.
+1. An end user or a machine-to-machine OAuth client authenticates with the external OIDC provider.
 2. The provider issues an access token for the audience OpenTDF expects.
 3. OpenTDF uses the configured issuer to discover OIDC metadata and load the provider's JWKS.
 4. The client calls an OpenTDF API with the access token (and optionally DPoP proof headers when that deployment uses DPoP).
@@ -82,11 +82,11 @@ sequenceDiagram
     participant Policy as OpenTDF authz/policy
 
     Note over OpenTDF,IdP: OpenTDF discovers issuer metadata and JWKS from the external IdP
-    Client->>IdP: Authenticate and request access token
+    Client->>IdP: Authenticate user or client<br/>and request access token
     IdP-->>Client: Signed access token with claims
-    Client->>OpenTDF: API request with token\n(+ DPoP proof when configured)
-    OpenTDF->>OpenTDF: Validate signature, issuer, audience,\nexpiry/skew, optional DPoP
-    OpenTDF->>Policy: Extract configured claims\n(username / groups / client ID)
+    Client->>OpenTDF: API request with token<br/>(+ DPoP proof when configured)
+    OpenTDF->>OpenTDF: Validate signature, issuer, audience,<br/>expiry/skew, optional DPoP
+    OpenTDF->>Policy: Extract configured claims<br/>(username / groups / client ID)
     Policy-->>OpenTDF: Authorization + policy context
     OpenTDF-->>Client: API response
 ```

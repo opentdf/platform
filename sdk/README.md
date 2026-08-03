@@ -34,7 +34,6 @@ package main
 import (
 	"bytes"
 	"fmt"
-	"io"
 	"log"
 	"os"
 	"strings"
@@ -80,30 +79,36 @@ func main() {
 
 	fmt.Printf("Ciphertext is %d bytes long\n", ciphertext.Len())
 
-	// Decrypt the TDF
-	// LoadTDF contacts the Key Access Service (KAS) to verify that this client
-	// has been granted access to the data attributes, then decrypts the TDF.
+	// Decrypt the TDF and write the plaintext to a file.
+	// DecryptTo contacts the Key Access Service (KAS) to verify that this
+	// client has been granted access to the data attributes, then decrypts
+	// the TDF and writes the plaintext directly to the given writer.
 	// Note: The client must have entitlements configured on the platform first.
-	r, err := s.LoadTDF(bytes.NewReader(ciphertext.Bytes()))
-	if err != nil {
-		log.Fatalf("Failed to load TDF: %v", err)
-	}
-
-	// Write the decrypted plaintext to a file
 	f, err := os.Create("output.txt")
 	if err != nil {
 		log.Fatalf("Failed to create output file: %v", err)
 	}
 	defer f.Close()
 
-	_, err = io.Copy(f, r)
-	if err != nil {
-		log.Fatalf("Failed to write decrypted content: %v", err)
+	if err := s.DecryptTo(f, ciphertext.Bytes()); err != nil {
+		log.Fatalf("Failed to decrypt TDF: %v", err)
 	}
 
 	fmt.Println("Successfully created and decrypted TDF")
 }
 ```
+
+`DecryptTo` is one of three decrypt convenience helpers, each a thin wrapper
+over `LoadTDF` + `Reader.WriteTo` for the common decrypt-to-plaintext case —
+pick whichever shape fits:
+
+- `DecryptBytes(ciphertext []byte) ([]byte, error)` — ciphertext in memory, plaintext back as `[]byte`.
+- `DecryptTo(out io.Writer, ciphertext []byte) error` — ciphertext in memory, plaintext to any `io.Writer`.
+- `DecryptFile(inputPath, outputPath string) error` — TDF file on disk, plaintext to another file on disk; streams directly, never buffers the whole payload in memory.
+
+Call `LoadTDF` directly instead when streaming very large payloads, or when
+you need to read manifest data (attributes, assertions) between load and
+write.
 
 ### Configuration Values
 

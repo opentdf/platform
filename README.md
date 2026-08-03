@@ -9,7 +9,8 @@
 ## Documentation
 
 - [Configuration](./docs/Configuring.md)
-- [Multi-Strategy Entity Resolution Service](./ERS_TESTING.md)
+- [OpenID Connect (OIDC)](./docs/OIDC.md)
+- [Multi-Strategy Entity Resolution Service](./service/entityresolution/multi-strategy/README.md)
 - [Development](#for-contributors)
 - [Policy Config Schema](./service/policy/db/schema_erd.md)
 - [Policy Config Testing Diagram](./service/integration/testing_diagram.png)
@@ -101,7 +102,7 @@ go test ./service/entityresolution/integration -run TestMultiStrategy -v
 #### Configuration Options
 
 - **`opentdf-ers-test.yaml`** - Complete OpenTDF platform with multi-strategy ERS
-- **`ERS_TESTING.md`** - Comprehensive documentation and examples
+- [**`service/entityresolution/multi-strategy/README.md`**](./service/entityresolution/multi-strategy/README.md) - Comprehensive documentation and examples
 
 The multi-strategy ERS (preview) provides enterprise-grade identity resolution with failover, multiple provider support, and flexible mapping strategies.
 

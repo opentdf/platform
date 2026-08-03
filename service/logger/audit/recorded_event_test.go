@@ -65,6 +65,21 @@ func TestRecordReturnsTypedErrors(t *testing.T) {
 	require.ErrorIs(t, err, ErrInvalidEvent)
 }
 
+func TestRecordReturnsInvalidEventForPanickingValue(t *testing.T) {
+	logger, _ := createTestLogger()
+	ctx := createTestContext(t)
+	event := RecordedEvent{EventMetaData: map[string]any{"bad": panickingJSONValue{}}}
+
+	err := logger.Record(ctx, Verb("read"), event)
+	require.ErrorIs(t, err, ErrInvalidEvent)
+}
+
+type panickingJSONValue struct{}
+
+func (panickingJSONValue) MarshalJSON() ([]byte, error) {
+	panic("cannot serialize")
+}
+
 func TestRecordCancellationDoesNotMutateCaller(t *testing.T) {
 	logger, buffer := createTestLogger()
 	ctx := createTestContext(t)

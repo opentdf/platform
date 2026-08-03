@@ -135,6 +135,11 @@ func (a *Logger) Processor() Processor {
 
 // addEvent appends a pending audit event to the transaction
 func (tx *auditTransaction) addEvent(verb Verb, event RecordedEvent) error {
+	snapshot := cloneRecordedEvent(event)
+	return tx.addSnapshot(verb, snapshot)
+}
+
+func (tx *auditTransaction) addSnapshot(verb Verb, event RecordedEvent) error {
 	tx.mu.Lock()
 	defer tx.mu.Unlock()
 	if tx.closed {
@@ -142,7 +147,7 @@ func (tx *auditTransaction) addEvent(verb Verb, event RecordedEvent) error {
 	}
 	tx.events = append(tx.events, pendingEvent{
 		verb:  verb,
-		event: cloneRecordedEvent(event),
+		event: event,
 	})
 	return nil
 }
@@ -245,7 +250,11 @@ func (a *Logger) Record(ctx context.Context, verb Verb, event RecordedEvent) err
 	if !ok || tx == nil {
 		return ErrNoTransaction
 	}
-	return tx.addEvent(verb, event)
+	snapshot, err := snapshotRecordedEvent(event)
+	if err != nil {
+		return err
+	}
+	return tx.addSnapshot(verb, snapshot)
 }
 
 func (a *Logger) rewrapBase(ctx context.Context, eventParams RewrapAuditEventParams) {

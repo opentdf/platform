@@ -2,7 +2,9 @@ package audit
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
+	"fmt"
 
 	"github.com/google/uuid"
 )
@@ -31,6 +33,7 @@ type RecordedEvent struct {
 	Timestamp     string             `json:"timestamp" audit:"reserved"`
 }
 
+// RecordedObject identifies the resource affected by an audit action.
 type RecordedObject struct {
 	Type       string                   `json:"type" audit:"reserved"`
 	ID         string                   `json:"id"`
@@ -38,22 +41,26 @@ type RecordedObject struct {
 	Attributes RecordedObjectAttributes `json:"attributes,omitempty"`
 }
 
+// RecordedObjectAttributes contains optional policy attributes for a resource.
 type RecordedObjectAttributes struct {
 	Assertions  []string `json:"assertions,omitempty"`
 	Attrs       []string `json:"attrs,omitempty"`
 	Permissions []string `json:"permissions,omitempty"`
 }
 
+// RecordedAction describes the operation and its result.
 type RecordedAction struct {
 	Type   string `json:"type" audit:"reserved"`
 	Result string `json:"result" audit:"reserved"`
 }
 
+// RecordedActor identifies the principal performing the operation.
 type RecordedActor struct {
 	ID         string `json:"id" audit:"reserved"`
 	Attributes []any  `json:"attributes"`
 }
 
+// RecordedClientInfo describes the client and service recording the event.
 type RecordedClientInfo struct {
 	UserAgent string `json:"userAgent" audit:"reserved"`
 	Platform  string `json:"platform" audit:"reserved"`
@@ -71,6 +78,27 @@ func cloneRecordedEvent(event RecordedEvent) RecordedEvent {
 		panic("normalized recorded audit event must be a map")
 	}
 	return recordedEventFromMap(cloned)
+}
+
+func snapshotRecordedEvent(event RecordedEvent) (RecordedEvent, error) {
+	var snapshot RecordedEvent
+	var snapshotErr error
+	func() {
+		defer func() {
+			if recovered := recover(); recovered != nil {
+				snapshotErr = fmt.Errorf("%w: event snapshot panic: %v", ErrInvalidEvent, recovered)
+			}
+		}()
+		encoded, err := json.Marshal(event)
+		if err != nil {
+			snapshotErr = fmt.Errorf("%w: %w", ErrInvalidEvent, err)
+			return
+		}
+		if err := json.Unmarshal(encoded, &snapshot); err != nil {
+			snapshotErr = fmt.Errorf("%w: %w", ErrInvalidEvent, err)
+		}
+	}()
+	return snapshot, snapshotErr
 }
 
 func recordedEventFromMap(event map[string]any) RecordedEvent {

@@ -102,9 +102,46 @@ func main() {
 over `LoadTDF` + `Reader.WriteTo` for the common decrypt-to-plaintext case —
 pick whichever shape fits:
 
-- `DecryptBytes(ciphertext []byte) ([]byte, error)` — ciphertext in memory, plaintext back as `[]byte`.
-- `DecryptTo(out io.Writer, ciphertext []byte) error` — ciphertext in memory, plaintext to any `io.Writer`.
-- `DecryptFile(inputPath, outputPath string) error` — TDF file on disk, plaintext to another file on disk; streams directly, never buffers the whole payload in memory.
+**`DecryptBytes`** — decrypt ciphertext bytes to plaintext bytes:
+
+```go
+// Before
+reader, err := s.LoadTDF(bytes.NewReader(ciphertext))
+if err != nil {
+    return err
+}
+var buf bytes.Buffer
+_, err = reader.WriteTo(&buf)
+plaintext := buf.Bytes()
+
+// After
+plaintext, err := s.DecryptBytes(ciphertext)
+```
+
+**`DecryptTo`** — decrypt ciphertext bytes to any `io.Writer`:
+
+```go
+// Before
+reader, err := s.LoadTDF(bytes.NewReader(ciphertext))
+if err != nil {
+    return err
+}
+_, err = reader.WriteTo(os.Stdout)
+
+// After
+err := s.DecryptTo(os.Stdout, ciphertext)
+```
+
+**`DecryptFile`** — decrypt a TDF file to an output file:
+
+```go
+// Before
+in, err := os.Open("secret.tdf")
+// ... LoadTDF, os.Create("secret.txt"), WriteTo, close both, handle errors at each step
+
+// After
+err := s.DecryptFile("secret.tdf", "secret.txt")
+```
 
 Call `LoadTDF` directly instead when streaming very large payloads, or when
 you need to read manifest data (attributes, assertions) between load and

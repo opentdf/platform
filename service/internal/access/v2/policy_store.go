@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 
+	"connectrpc.com/connect"
+
 	"github.com/opentdf/platform/protocol/go/common"
 	"github.com/opentdf/platform/protocol/go/policy"
 	attrs "github.com/opentdf/platform/protocol/go/policy/attributes"
@@ -33,6 +35,52 @@ var (
 	ErrFailedToFetchObligations          = errors.New("failed to fetch obligations from policy service")
 )
 
+const (
+	// entitlementPolicyMaxPageSize is the initial (optimistic) page size requested when loading
+	// entitlement policy. It is deliberately large so small policy objects are fetched in few
+	// round trips; paginateAll shrinks it automatically when a page exceeds the connect message
+	// size limit. It matches the policy service's configured list request maximum, which is the
+	// largest page the service will honor.
+	entitlementPolicyMaxPageSize = 2500
+	// entitlementPolicyMinPageSize is the floor the page size shrinks to; a single policy object
+	// cannot exceed the connect message size limit, so a page of one always fits.
+	entitlementPolicyMinPageSize = 1
+	// entitlementPolicyPageShrinkDivisor halves the page size on each resource_exhausted retry.
+	entitlementPolicyPageShrinkDivisor = 2
+)
+
+// isResourceExhausted reports whether err is a connect resource_exhausted error, such as an
+// in-process list page whose serialized size exceeds the configured max message size (default 4MB).
+func isResourceExhausted(err error) bool {
+	return connect.CodeOf(err) == connect.CodeResourceExhausted
+}
+
+// paginateAll repeatedly invokes fetchPage, advancing to the offset it returns, until no more pages
+// remain (nextOffset <= 0). fetchPage is responsible for making the list request and appending the
+// returned items to the caller's accumulator.
+//
+// If a page fails with resource_exhausted (the serialized page exceeded the connect read limit), the
+// page size is halved and the SAME offset is retried, so the aggregate load stays under the limit
+// regardless of individual object size. fetchPage must not append items when it returns an error.
+func paginateAll(fetchPage func(offset, limit int32) (nextOffset int32, err error)) error {
+	var offset int32
+	limit := int32(entitlementPolicyMaxPageSize)
+	for {
+		nextOffset, err := fetchPage(offset, limit)
+		if err != nil {
+			if isResourceExhausted(err) && limit > entitlementPolicyMinPageSize {
+				limit = max(limit/entitlementPolicyPageShrinkDivisor, entitlementPolicyMinPageSize)
+				continue
+			}
+			return err
+		}
+		if nextOffset <= 0 {
+			return nil
+		}
+		offset = nextOffset
+	}
+}
+
 // EntitlementPolicyRetriever satisfies the EntitlementPolicyStore interface and fetches fresh
 // entitlement policy data from the policy services via SDK.
 type EntitlementPolicyRetriever struct {
@@ -55,133 +103,116 @@ func (p *EntitlementPolicyRetriever) IsReady(_ context.Context) bool {
 
 func (p *EntitlementPolicyRetriever) ListAllAttributes(ctx context.Context) ([]*policy.Attribute, error) {
 	// If quantity of attributes exceeds maximum list pagination, all are needed to determine entitlements
-	var nextOffset int32
 	attrsList := make([]*policy.Attribute, 0)
 
-	for {
+	err := paginateAll(func(offset, limit int32) (int32, error) {
 		listed, err := p.SDK.Attributes.ListAttributes(ctx, &attrs.ListAttributesRequest{
 			State: common.ActiveStateEnum_ACTIVE_STATE_ENUM_ACTIVE,
-			// defer to service default for limit pagination
 			Pagination: &policy.PageRequest{
-				Offset: nextOffset,
+				Offset: offset,
+				Limit:  limit,
 			},
 		})
 		if err != nil {
-			return nil, errors.Join(ErrFailedToFetchAttributes, err)
+			return 0, err
 		}
-
-		nextOffset = listed.GetPagination().GetNextOffset()
 		attrsList = append(attrsList, listed.GetAttributes()...)
-
-		if nextOffset <= 0 {
-			break
-		}
+		return listed.GetPagination().GetNextOffset(), nil
+	})
+	if err != nil {
+		return nil, errors.Join(ErrFailedToFetchAttributes, err)
 	}
 	return attrsList, nil
 }
 
 func (p *EntitlementPolicyRetriever) ListAllSubjectMappings(ctx context.Context) ([]*policy.SubjectMapping, error) {
-	// If quantity of attributes exceeds maximum list pagination, all are needed to determine entitlements
-	var nextOffset int32
+	// If quantity of subject mappings exceeds maximum list pagination, all are needed to determine entitlements
 	smList := make([]*policy.SubjectMapping, 0)
 
-	for {
+	err := paginateAll(func(offset, limit int32) (int32, error) {
 		listed, err := p.SDK.SubjectMapping.ListSubjectMappings(ctx, &subjectmapping.ListSubjectMappingsRequest{
-			// defer to service default for limit pagination
 			Pagination: &policy.PageRequest{
-				Offset: nextOffset,
+				Offset: offset,
+				Limit:  limit,
 			},
 		})
 		if err != nil {
-			return nil, errors.Join(ErrFailedToFetchSubjectMappings, err)
+			return 0, err
 		}
-
-		nextOffset = listed.GetPagination().GetNextOffset()
 		smList = append(smList, listed.GetSubjectMappings()...)
-
-		if nextOffset <= 0 {
-			break
-		}
+		return listed.GetPagination().GetNextOffset(), nil
+	})
+	if err != nil {
+		return nil, errors.Join(ErrFailedToFetchSubjectMappings, err)
 	}
 	return smList, nil
 }
 
 func (p *EntitlementPolicyRetriever) ListAllDynamicValueMappings(ctx context.Context) ([]*policy.DynamicValueMapping, error) {
 	// If quantity exceeds maximum list pagination, all are needed to determine entitlements
-	var nextOffset int32
 	mappingsList := make([]*policy.DynamicValueMapping, 0)
 
-	for {
+	err := paginateAll(func(offset, limit int32) (int32, error) {
 		listed, err := p.SDK.DynamicValueMapping.ListDynamicValueMappings(ctx, &dynamicvaluemapping.ListDynamicValueMappingsRequest{
-			// defer to service default for limit pagination
 			Pagination: &policy.PageRequest{
-				Offset: nextOffset,
+				Offset: offset,
+				Limit:  limit,
 			},
 		})
 		if err != nil {
-			return nil, errors.Join(ErrFailedToFetchDynamicValueMappings, err)
+			return 0, err
 		}
-
-		nextOffset = listed.GetPagination().GetNextOffset()
 		mappingsList = append(mappingsList, listed.GetDynamicValueMappings()...)
-
-		if nextOffset <= 0 {
-			break
-		}
+		return listed.GetPagination().GetNextOffset(), nil
+	})
+	if err != nil {
+		return nil, errors.Join(ErrFailedToFetchDynamicValueMappings, err)
 	}
 	return mappingsList, nil
 }
 
 func (p *EntitlementPolicyRetriever) ListAllRegisteredResources(ctx context.Context) ([]*policy.RegisteredResource, error) {
 	// If quantity of registered resources exceeds maximum list pagination, all are needed to determine entitlements
-	var nextOffset int32
 	rrList := make([]*policy.RegisteredResource, 0)
 
-	for {
+	err := paginateAll(func(offset, limit int32) (int32, error) {
 		listed, err := p.SDK.RegisteredResources.ListRegisteredResources(ctx, &registeredresources.ListRegisteredResourcesRequest{
-			// defer to service default for limit pagination
 			Pagination: &policy.PageRequest{
-				Offset: nextOffset,
+				Offset: offset,
+				Limit:  limit,
 			},
 		})
 		if err != nil {
-			return nil, errors.Join(ErrFailedToFetchRegisteredResources, err)
+			return 0, err
 		}
-
-		nextOffset = listed.GetPagination().GetNextOffset()
 		rrList = append(rrList, listed.GetResources()...)
-
-		if nextOffset <= 0 {
-			break
-		}
+		return listed.GetPagination().GetNextOffset(), nil
+	})
+	if err != nil {
+		return nil, errors.Join(ErrFailedToFetchRegisteredResources, err)
 	}
-
 	return rrList, nil
 }
 
 func (p *EntitlementPolicyRetriever) ListAllObligations(ctx context.Context) ([]*policy.Obligation, error) {
 	// If quantity of obligations exceeds maximum list pagination, all are needed to determine entitlements
-	var nextOffset int32
 	obligationList := make([]*policy.Obligation, 0)
 
-	for {
+	err := paginateAll(func(offset, limit int32) (int32, error) {
 		listed, err := p.SDK.Obligations.ListObligations(ctx, &obligations.ListObligationsRequest{
-			// defer to service default for limit pagination
 			Pagination: &policy.PageRequest{
-				Offset: nextOffset,
+				Offset: offset,
+				Limit:  limit,
 			},
 		})
 		if err != nil {
-			return nil, errors.Join(ErrFailedToFetchObligations, err)
+			return 0, err
 		}
-
-		nextOffset = listed.GetPagination().GetNextOffset()
 		obligationList = append(obligationList, listed.GetObligations()...)
-
-		if nextOffset <= 0 {
-			break
-		}
+		return listed.GetPagination().GetNextOffset(), nil
+	})
+	if err != nil {
+		return nil, errors.Join(ErrFailedToFetchObligations, err)
 	}
-
 	return obligationList, nil
 }

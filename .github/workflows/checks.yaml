@@ -248,9 +248,7 @@ jobs:
       - name: verify builtin casbin policy
         run: test/builtin-casbin.bats
       - name: create roundtrip test data and run tests
-        # TODO(opentdf/platform#3821): temporarily scoped to the resource-exhaustion
-        # regression test only. Restore full suite with `go test ./service/rttests -v`.
-        run: go test ./service/rttests -v -run Test_GetDecisions_ResourceExhaustion
+        run: go test ./service/rttests -v
       - name: enable static entitlements rego policy
         run: yq eval '.services.authorization.rego.path = "./test/rego/static-entitlements.rego"' -i opentdf.yaml
       - run: sleep 30

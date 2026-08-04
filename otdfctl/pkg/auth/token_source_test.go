@@ -162,12 +162,9 @@ func TestProfileTokenSource_InvalidateForcesRefresh(t *testing.T) {
 	assert.Equal(t, "current", tok.AccessToken)
 	require.Equal(t, int32(0), hits.Load())
 
-	// Server has revoked the token; Invalidate() forces the next call to refresh.
+	// Server has revoked the token; Invalidate() forces the next call to refresh
+	// even though the stored token hasn't expired yet.
 	ts.Invalidate()
-	// Zero the stored expiry so the underlying oauth2 source sees the token as invalid.
-	creds := profile.GetAuthCredentials()
-	creds.AccessToken.Expiration = time.Now().Add(-time.Hour).Unix()
-	require.NoError(t, profile.SetAuthCredentials(creds))
 
 	tok, err = ts.Token()
 	require.NoError(t, err)

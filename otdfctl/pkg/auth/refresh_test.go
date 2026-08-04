@@ -232,6 +232,58 @@ func TestRefreshAccessTokenGenericFailure(t *testing.T) {
 	assert.Equal(t, "refresh", creds.AccessToken.RefreshToken)
 }
 
+func TestRefreshAccessTokenNoRotationKeepsOldRefreshToken(t *testing.T) {
+	tokenServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		err := json.NewEncoder(w).Encode(map[string]any{
+			"access_token": "new-access",
+			"token_type":   "Bearer",
+			"expires_in":   3600,
+		})
+		assert.NoError(t, err)
+	}))
+	defer tokenServer.Close()
+
+	resolver := func(string, bool) (string, error) {
+		return tokenServer.URL, nil
+	}
+
+	profile := newTestProfile(t, profiles.AuthTypeAccessToken, "old-access", "original-refresh", time.Now().Add(-time.Hour).Unix())
+	err := refreshAccessToken(t.Context(), profile, resolver)
+	require.NoError(t, err)
+
+	creds := profile.GetAuthCredentials()
+	assert.Equal(t, "new-access", creds.AccessToken.AccessToken)
+	assert.Equal(t, "original-refresh", creds.AccessToken.RefreshToken,
+		"when IdP omits refresh_token, the existing one must be preserved")
+}
+
+func TestRefreshAccessTokenRotationStoresNewRefreshToken(t *testing.T) {
+	tokenServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		err := json.NewEncoder(w).Encode(map[string]any{
+			"access_token":  "new-access",
+			"refresh_token": "rotated-refresh",
+			"token_type":    "Bearer",
+			"expires_in":    3600,
+		})
+		assert.NoError(t, err)
+	}))
+	defer tokenServer.Close()
+
+	resolver := func(string, bool) (string, error) {
+		return tokenServer.URL, nil
+	}
+
+	profile := newTestProfile(t, profiles.AuthTypeAccessToken, "old-access", "original-refresh", time.Now().Add(-time.Hour).Unix())
+	err := refreshAccessToken(t.Context(), profile, resolver)
+	require.NoError(t, err)
+
+	creds := profile.GetAuthCredentials()
+	assert.Equal(t, "rotated-refresh", creds.AccessToken.RefreshToken,
+		"when IdP returns a new refresh_token, it must replace the old one")
+}
+
 func TestRefreshAccessTokenEmptyClientID(t *testing.T) {
 	tokenServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "application/json")

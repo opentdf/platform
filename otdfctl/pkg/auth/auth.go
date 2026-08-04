@@ -214,7 +214,10 @@ func GetTokenWithProfile(ctx context.Context, profile *profiles.OtdfctlProfileSt
 	case profiles.AuthTypeClientCredentials:
 		return GetTokenWithClientCreds(ctx, profile.GetEndpoint(), c.ClientID, c.ClientSecret, profile.GetTLSNoVerify(), c.Scopes)
 	case profiles.AuthTypeAccessToken:
-		if !buildToken(&c).Valid() && HasRefreshToken(profile) {
+		if !buildToken(&c).Valid() {
+			if !HasRefreshToken(profile) {
+				return nil, ErrAccessTokenExpired
+			}
 			if err := RefreshAccessToken(ctx, profile); err != nil {
 				return nil, err
 			}

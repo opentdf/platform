@@ -99,12 +99,18 @@ func refreshAccessToken(ctx context.Context, profile *profiles.OtdfctlProfileSto
 		slog.Warn("token response missing expires_in, assuming 1 hour")
 	}
 
+	// Some IdPs omit refresh_token on refresh (no-rotation); keep the old one.
+	refreshToken := newToken.RefreshToken
+	if refreshToken == "" {
+		refreshToken = creds.AccessToken.RefreshToken
+	}
+
 	newCreds := profiles.AuthCredentials{
 		AuthType: profiles.AuthTypeAccessToken,
 		AccessToken: profiles.AuthCredentialsAccessToken{
 			ClientID:     clientID,
 			AccessToken:  newToken.AccessToken,
-			RefreshToken: newToken.RefreshToken,
+			RefreshToken: refreshToken,
 			Expiration:   expiration,
 		},
 	}

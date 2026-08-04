@@ -22,6 +22,7 @@ type profileTokenSource struct {
 	mu           sync.Mutex
 	inner        oauth2.TokenSource
 	cachedAccess string
+	forceRefresh bool
 }
 
 func newProfileTokenSource(profile *profiles.OtdfctlProfileStore) *profileTokenSource {
@@ -60,8 +61,9 @@ func (p *profileTokenSource) Token() (*oauth2.Token, error) {
 	}
 
 	if tok.AccessToken != p.cachedAccess {
-		p.persist(creds, tok)
-		p.cachedAccess = tok.AccessToken
+		if p.persist(creds, tok) {
+			p.cachedAccess = tok.AccessToken
+		}
 	}
 	return tok, nil
 }
@@ -73,6 +75,7 @@ func (p *profileTokenSource) Invalidate() {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	p.inner = nil
+	p.forceRefresh = true
 }
 
 // rebuild constructs the inner oauth2.TokenSource from the profile's creds.
@@ -106,6 +109,11 @@ func (p *profileTokenSource) rebuild(creds profiles.AuthCredentials) error {
 	}
 
 	oldToken := buildToken(&creds)
+	if p.forceRefresh {
+		oldToken.AccessToken = ""
+		oldToken.Expiry = time.Time{}
+		p.forceRefresh = false
+	}
 	p.inner = cfg.TokenSource(ctx, oldToken)
 	p.cachedAccess = oldToken.AccessToken
 	return nil
@@ -115,7 +123,7 @@ func (p *profileTokenSource) rebuild(creds profiles.AuthCredentials) error {
 // refresh_token on refresh (RFC-compliant no-rotation); keep the old one in
 // that case. A write-back failure is logged but not returned — the fresh
 // token is still valid for the in-flight call.
-func (p *profileTokenSource) persist(oldCreds profiles.AuthCredentials, tok *oauth2.Token) {
+func (p *profileTokenSource) persist(oldCreds profiles.AuthCredentials, tok *oauth2.Token) bool {
 	refresh := tok.RefreshToken
 	if refresh == "" {
 		refresh = oldCreds.AccessToken.RefreshToken
@@ -142,7 +150,8 @@ func (p *profileTokenSource) persist(oldCreds profiles.AuthCredentials, tok *oau
 	}
 	if err := p.profile.SetAuthCredentials(newCreds); err != nil {
 		slog.Warn("failed to persist refreshed credentials", slog.Any("error", err))
-		return
+		return false
 	}
 	slog.Info("access token refreshed", slog.String("profile", p.profile.Name()))
+	return true
 }

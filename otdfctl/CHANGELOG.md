@@ -1,27 +1,5 @@
 # Changelog
 
-## [0.36.0](https://github.com/opentdf/platform/compare/otdfctl/v0.35.0...otdfctl/v0.36.0) (2026-08-04)
-
-
-### ⚠ BREAKING CHANGES
-
-* **policy:** GetPC does not respect manager field. ([#3752](https://github.com/opentdf/platform/issues/3752))
-
-### Features
-
-* **authz:** dynamic value mapping and direct entitlement e2e coverage ([#3774](https://github.com/opentdf/platform/issues/3774)) ([49c80a0](https://github.com/opentdf/platform/commit/49c80a0755908178cc695fc62ae3c40a635d655d))
-* **cli:** add an sdkfactory for optional override in otdfctl for extension ([#3793](https://github.com/opentdf/platform/issues/3793)) ([c2f2afe](https://github.com/opentdf/platform/commit/c2f2afe385df1914dde029d81cdf2f6c7b2e4669))
-* **cli:** add dynamic value mapping CRUD commands and e2e tests ([#3768](https://github.com/opentdf/platform/issues/3768)) ([aecd265](https://github.com/opentdf/platform/commit/aecd265b8d8c1eeefc0559b5c499fb2f09efcc32))
-* **cli:** expose handler hook for injecting SDK options ([#3755](https://github.com/opentdf/platform/issues/3755)) ([76305b0](https://github.com/opentdf/platform/commit/76305b04af3f1129dbe1ed337ef731de54be0457))
-* **cli:** Unsafe update key cli ([#3733](https://github.com/opentdf/platform/issues/3733)) ([65d888e](https://github.com/opentdf/platform/commit/65d888ed2436954063d895bc31ce98674d2a1208))
-
-
-### Bug Fixes
-
-* **deps:** bump github.com/opentdf/platform/protocol/go from 0.36.0 to 0.39.0 in /otdfctl ([#3765](https://github.com/opentdf/platform/issues/3765)) ([a3346f8](https://github.com/opentdf/platform/commit/a3346f8a5e897e891c675ec3752b6a6780f6b906))
-* **deps:** bump github.com/opentdf/platform/sdk from 0.25.0 to 0.27.0 in /otdfctl ([#3773](https://github.com/opentdf/platform/issues/3773)) ([490c990](https://github.com/opentdf/platform/commit/490c99062f96577e96499f2e87034f11f7da5c0b))
-* **policy:** GetPC does not respect manager field. ([#3752](https://github.com/opentdf/platform/issues/3752)) ([0d3c0a0](https://github.com/opentdf/platform/commit/0d3c0a0e49de669b0c4bb691d51ff0abef787693))
-
 ## [0.35.0](https://github.com/opentdf/platform/compare/otdfctl/v0.34.0...otdfctl/v0.35.0) (2026-07-07)
 
 

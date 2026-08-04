@@ -82,6 +82,12 @@ func refreshAccessToken(ctx context.Context, profile *profiles.OtdfctlProfileSto
 	tokenSource := oauth2Config.TokenSource(ctx, oldToken)
 	newToken, err := tokenSource.Token()
 	if err != nil {
+		if isInvalidGrant(err) {
+			// Refresh token is dead server-side; wipe stored creds so the next
+			// command hits the login prompt cleanly.
+			_ = profile.SetAuthCredentials(profiles.AuthCredentials{})
+			return errors.Join(ErrRefreshTokenInvalid, err)
+		}
 		return fmt.Errorf("%w: %w", ErrRefreshFailed, err)
 	}
 
@@ -142,4 +148,11 @@ func getTokenEndpoint(endpoint string, tlsNoVerify bool) (string, error) {
 		return "", fmt.Errorf("failed to get platform configuration: %w", err)
 	}
 	return pc.tokenEndpoint, nil
+}
+
+// isInvalidGrant reports whether err is an oauth2 token-endpoint error carrying
+// RFC 6749 §5.2 code "invalid_grant" — i.e. the refresh token is expired or revoked.
+func isInvalidGrant(err error) bool {
+	var re *oauth2.RetrieveError
+	return errors.As(err, &re) && re.ErrorCode == "invalid_grant"
 }

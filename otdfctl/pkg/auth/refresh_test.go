@@ -189,9 +189,10 @@ func TestRefreshAccessTokenEndpointError(t *testing.T) {
 	require.ErrorContains(t, err, "failed to get token endpoint")
 }
 
-func TestRefreshAccessTokenRefreshFails(t *testing.T) {
+func TestRefreshAccessTokenInvalidGrant(t *testing.T) {
 	tokenServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		w.WriteHeader(http.StatusUnauthorized)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadRequest)
 		err := json.NewEncoder(w).Encode(map[string]string{"error": "invalid_grant"})
 		assert.NoError(t, err)
 	}))
@@ -204,7 +205,31 @@ func TestRefreshAccessTokenRefreshFails(t *testing.T) {
 	profile := newTestProfile(t, profiles.AuthTypeAccessToken, "tok", "refresh", time.Now().Add(-time.Hour).Unix())
 	err := refreshAccessToken(t.Context(), profile, resolver)
 	require.Error(t, err)
+	require.ErrorIs(t, err, ErrRefreshTokenInvalid)
+
+	// Creds should be wiped so the next command re-prompts login.
+	creds := profile.GetAuthCredentials()
+	assert.Empty(t, creds.AuthType)
+	assert.Empty(t, creds.AccessToken.RefreshToken)
+}
+
+func TestRefreshAccessTokenGenericFailure(t *testing.T) {
+	tokenServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+	}))
+	defer tokenServer.Close()
+
+	resolver := func(string, bool) (string, error) {
+		return tokenServer.URL, nil
+	}
+
+	profile := newTestProfile(t, profiles.AuthTypeAccessToken, "tok", "refresh", time.Now().Add(-time.Hour).Unix())
+	err := refreshAccessToken(t.Context(), profile, resolver)
+	require.Error(t, err)
 	require.ErrorIs(t, err, ErrRefreshFailed)
+	// Creds should NOT be wiped on transient failures.
+	creds := profile.GetAuthCredentials()
+	assert.Equal(t, "refresh", creds.AccessToken.RefreshToken)
 }
 
 func TestRefreshAccessTokenEmptyClientID(t *testing.T) {

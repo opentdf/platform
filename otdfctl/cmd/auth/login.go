@@ -2,6 +2,7 @@ package auth
 
 import (
 	"fmt"
+	"log/slog"
 
 	"github.com/opentdf/platform/otdfctl/cmd/common"
 	"github.com/opentdf/platform/otdfctl/pkg/auth"
@@ -39,6 +40,14 @@ func codeLogin(cmd *cobra.Command, args []string) {
 	}); err != nil {
 		c.ExitWithError("failed to set auth credentials", err)
 	}
+
+	// The profile store is filesystem-backed (see common.InitProfile). Warn the
+	// user that a refresh token has been written to disk and recommend the OS
+	// keychain when higher assurance is required.
+	if tok.RefreshToken != "" {
+		slog.Warn("refresh token stored in filesystem-backed profile; OS keychain is recommended for higher assurance")
+	}
+
 	c.ExitWithMessage(fmt.Sprintf("Code login complete for profile: [%s]", cp.Name()), cli.ExitCodeSuccess)
 }
 

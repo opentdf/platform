@@ -171,11 +171,13 @@ func finalizeOutput(tmpPath, outputPath string) error {
 	if renameErr := os.Rename(tmpPath, outputPath); renameErr != nil {
 		finalizeErr := fmt.Errorf("failed to finalize output file %s: %w", outputPath, renameErr)
 		if restoreErr := os.Rename(backupPath, outputPath); restoreErr != nil {
-			return errors.Join(finalizeErr, fmt.Errorf("failed to restore original output file %s: %w", outputPath, restoreErr))
+			return joinTempFileCleanup(errors.Join(finalizeErr, fmt.Errorf("failed to restore original output file %s from backup %s: %w", outputPath, backupPath, restoreErr)), tmpPath)
 		}
 		return joinTempFileCleanup(finalizeErr, tmpPath)
 	}
-	_ = os.Remove(backupPath)
+	if removeErr := os.Remove(backupPath); removeErr != nil {
+		return fmt.Errorf("output file %s finalized, but failed to remove backup %s: %w", outputPath, backupPath, removeErr)
+	}
 	return nil
 }
 

@@ -16,8 +16,8 @@ func TestIsResourceExhausted(t *testing.T) {
 	assert.False(t, isResourceExhausted(nil))
 }
 
-// pagingSource simulates a paginated list endpoint that returns resource_exhausted whenever the
-// requested page would contain more than maxPerPage items, mimicking the connect message size limit.
+// pagingSource fakes a list endpoint that returns resource_exhausted when a page would exceed
+// maxPerPage items, mimicking the connect message size limit.
 type pagingSource struct {
 	total      int32
 	maxPerPage int32
@@ -36,7 +36,7 @@ func (s *pagingSource) fetch(offset, limit int32) (int32, error) {
 	if remaining := s.total - offset; pageSize > remaining {
 		pageSize = remaining
 	}
-	// Simulate the transport limit: a page carrying too many items is rejected before any data.
+	// Too-large page is rejected before any data is returned.
 	if pageSize > s.maxPerPage {
 		return 0, connect.NewError(connect.CodeResourceExhausted, errors.New("message too large"))
 	}
@@ -87,7 +87,7 @@ func TestPaginateAll_FloorStopsWhenSingleItemStillExhausts(t *testing.T) {
 		calls++
 		lastLimit = limit
 		// Always too large, even at the floor: must terminate and surface the error, not loop forever.
-		return 0, connect.NewError(connect.CodeResourceExhausted, errors.New("single object too large"))
+		return 0, connect.NewError(connect.CodeResourceExhausted, errors.New("too large"))
 	})
 	require.Error(t, err)
 	assert.True(t, isResourceExhausted(err))

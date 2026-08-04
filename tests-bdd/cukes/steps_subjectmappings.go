@@ -79,6 +79,44 @@ func (s *SubjectMappingsStepDefinitions) iSendARequestToCreateSubjectMapping(ctx
 	return ctx, nil
 }
 
+// aLargePaddedSubjectConditionSet creates a condition set with one real matching value plus
+// paddingCount synthetic values, built programmatically since 25k inline table values are not
+// feasible. Shared across several subject mappings, it inflates the v2 PDP's global
+// ListAllSubjectMappings load past the 4MB message limit (opentdf/platform#3821). Recorded under
+// referenceID for the standard subject-mapping create step's "condition_set_name".
+func (s *SubjectMappingsStepDefinitions) aLargePaddedSubjectConditionSet(ctx context.Context, referenceID, selector, matchValue string, paddingCount int) (context.Context, error) {
+	scenarioContext := GetPlatformScenarioContext(ctx)
+	scenarioContext.ClearError()
+
+	values := make([]string, 0, paddingCount+1)
+	values = append(values, matchValue)
+	for i := range paddingCount {
+		values = append(values, fmt.Sprintf("subject-external-value-padding-%08d", i))
+	}
+
+	req := &subjectmapping.CreateSubjectConditionSetRequest{
+		SubjectConditionSet: &subjectmapping.SubjectConditionSetCreate{
+			SubjectSets: []*policy.SubjectSet{{
+				ConditionGroups: []*policy.ConditionGroup{{
+					BooleanOperator: policy.ConditionBooleanTypeEnum_CONDITION_BOOLEAN_TYPE_ENUM_AND,
+					Conditions: []*policy.Condition{{
+						SubjectExternalSelectorValue: selector,
+						Operator:                     policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_IN,
+						SubjectExternalValues:        values,
+					}},
+				}},
+			}},
+		},
+	}
+
+	resp, err := scenarioContext.SDK.SubjectMapping.CreateSubjectConditionSet(ctx, req)
+	if resp != nil {
+		scenarioContext.RecordObject(referenceID, resp.GetSubjectConditionSet())
+	}
+	scenarioContext.SetError(err)
+	return ctx, nil
+}
+
 func (s *SubjectMappingsStepDefinitions) iSendARequestToCreateSubjectConditionSet(ctx context.Context, referenceID string, subjectSetIDs string) (context.Context, error) {
 	return s.createSubjectConditionSet(ctx, referenceID, subjectSetIDs, "")
 }
@@ -188,6 +226,7 @@ func RegisterSubjectMappingsStepsDefinitions(ctx *godog.ScenarioContext) {
 	subjectMappingStepDefinitions := &SubjectMappingsStepDefinitions{}
 	ctx.Step(`a condition group referenced as "([^"]*)" with an "([^"]*)" operator with conditions:$`, subjectMappingStepDefinitions.aConditionGroup)
 	ctx.Step(`^a subject set referenced as "([^"]*)" containing the condition groups "([^"]*)"$`, subjectMappingStepDefinitions.aSubjectSet)
+	ctx.Step(`^a large subject condition set referenced as "([^"]*)" matching selector "([^"]*)" value "([^"]*)" padded with (\d+) external values$`, subjectMappingStepDefinitions.aLargePaddedSubjectConditionSet)
 	ctx.Step(`^I send a request to create a subject condition set referenced as "([^"]*)" containing subject sets "([^"]*)"$`, subjectMappingStepDefinitions.iSendARequestToCreateSubjectConditionSet)
 	ctx.Step(`^I send a request to create a subject condition set referenced as "([^"]*)" in namespace "([^"]*)" containing subject sets "([^"]*)"$`, subjectMappingStepDefinitions.iSendARequestToCreateSubjectConditionSetInNamespace)
 	ctx.Step(`^I send a request to create a subject mapping with:$`, subjectMappingStepDefinitions.iSendARequestToCreateSubjectMapping)

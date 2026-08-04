@@ -36,32 +36,25 @@ var (
 )
 
 const (
-	// entitlementPolicyMaxPageSize is the initial (optimistic) page size requested when loading
-	// entitlement policy. It is deliberately large so small policy objects are fetched in few
-	// round trips; paginateAll shrinks it automatically when a page exceeds the connect message
-	// size limit. It matches the policy service's configured list request maximum, which is the
-	// largest page the service will honor.
+	// entitlementPolicyMaxPageSize is the optimistic initial page size (matches the policy
+	// service's max); paginateAll shrinks it toward the floor on resource_exhausted.
 	entitlementPolicyMaxPageSize = 2500
-	// entitlementPolicyMinPageSize is the floor the page size shrinks to; a single policy object
-	// cannot exceed the connect message size limit, so a page of one always fits.
+	// entitlementPolicyMinPageSize is the shrink floor; a single object always fits under the limit.
 	entitlementPolicyMinPageSize = 1
 	// entitlementPolicyPageShrinkDivisor halves the page size on each resource_exhausted retry.
 	entitlementPolicyPageShrinkDivisor = 2
 )
 
-// isResourceExhausted reports whether err is a connect resource_exhausted error, such as an
-// in-process list page whose serialized size exceeds the configured max message size (default 4MB).
+// isResourceExhausted reports whether err is a connect resource_exhausted error (e.g. a page whose
+// serialized size exceeds the max message size, default 4MB).
 func isResourceExhausted(err error) bool {
 	return connect.CodeOf(err) == connect.CodeResourceExhausted
 }
 
-// paginateAll repeatedly invokes fetchPage, advancing to the offset it returns, until no more pages
-// remain (nextOffset <= 0). fetchPage is responsible for making the list request and appending the
-// returned items to the caller's accumulator.
-//
-// If a page fails with resource_exhausted (the serialized page exceeded the connect read limit), the
-// page size is halved and the SAME offset is retried, so the aggregate load stays under the limit
-// regardless of individual object size. fetchPage must not append items when it returns an error.
+// paginateAll invokes fetchPage until no pages remain (nextOffset <= 0). On resource_exhausted it
+// halves the page size and retries the same offset, keeping the load under the message limit
+// regardless of object size. fetchPage makes the list request and appends items; it must not append
+// when returning an error.
 func paginateAll(fetchPage func(offset, limit int32) (nextOffset int32, err error)) error {
 	var offset int32
 	limit := int32(entitlementPolicyMaxPageSize)

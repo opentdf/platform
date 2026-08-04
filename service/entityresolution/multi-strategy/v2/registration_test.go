@@ -1,7 +1,6 @@
 package multistrategy
 
 import (
-	"context"
 	"testing"
 
 	"connectrpc.com/connect"
@@ -137,16 +136,7 @@ func TestERSV2_ResolveEntities_PopulatesRepresentations(t *testing.T) {
 		},
 	})
 
-	// The claims provider reads JWT claims from ctx (see
-	// providers/claims/claims_provider.go). In production, upstream callers
-	// (admin API middleware, JustInTimePDP) populate this before invoking
-	// the handler; we mirror that here so the strategy actually succeeds
-	// and we exercise the serialization path where the bug lives.
-	ctx := context.WithValue(t.Context(), types.JWTClaimsContextKey, types.JWTClaims{
-		"sub":   "alice",
-		"email": "alice@example.com",
-	})
-	resp, err := ers.ResolveEntities(ctx, req)
+	resp, err := ers.ResolveEntities(t.Context(), req)
 	if err != nil {
 		t.Fatalf("ResolveEntities returned error: %v", err)
 	}
@@ -187,5 +177,151 @@ func TestERSV2_ResolveEntities_PopulatesRepresentations(t *testing.T) {
 	}
 	if got := list.GetValues()[0].GetStringValue(); got != "jwt_strategy" {
 		t.Errorf("metadata_attempted_strategies[0] = %q, want %q", got, "jwt_strategy")
+	}
+}
+
+func TestResolveEntities_ClaimsProviderUsesInlineClaimsContext(t *testing.T) {
+	t.Helper()
+
+	erService, err := NewERSV2(t.Context(), types.MultiStrategyConfig{
+		Providers: map[string]types.ProviderConfig{
+			"jwt": {
+				Type:       "claims",
+				Connection: map[string]interface{}{},
+			},
+		},
+		MappingStrategies: []types.MappingStrategy{
+			{
+				Name:       "claims_passthrough",
+				Provider:   "jwt",
+				EntityType: types.EntityTypeSubject,
+				Conditions: types.StrategyConditions{
+					JWTClaims: []types.JWTClaimCondition{
+						{
+							Claim:    "sub",
+							Operator: "exists",
+						},
+					},
+				},
+				OutputMapping: []types.OutputMapping{
+					{
+						SourceClaim: "sub",
+						ClaimName:   "subject",
+					},
+					{
+						SourceClaim: "email",
+						ClaimName:   "email_address",
+					},
+				},
+			},
+		},
+	}, logger.CreateTestLogger())
+	if err != nil {
+		t.Fatalf("NewERSV2() error = %v", err)
+	}
+
+	claimsStruct, err := structpb.NewStruct(map[string]interface{}{
+		"sub":   "diana",
+		"email": "diana@example.com",
+	})
+	if err != nil {
+		t.Fatalf("structpb.NewStruct() error = %v", err)
+	}
+
+	claimsAny, err := anypb.New(claimsStruct)
+	if err != nil {
+		t.Fatalf("anypb.New() error = %v", err)
+	}
+
+	resp, err := erService.ResolveEntities(t.Context(), connect.NewRequest(&ersV2.ResolveEntitiesRequest{
+		Entities: []*entity.Entity{
+			{
+				EphemeralId: "diana-claims",
+				EntityType:  &entity.Entity_Claims{Claims: claimsAny},
+				Category:    entity.Entity_CATEGORY_SUBJECT,
+			},
+		},
+	}))
+	if err != nil {
+		t.Fatalf("ResolveEntities() error = %v", err)
+	}
+
+	if got := len(resp.Msg.GetEntityRepresentations()); got != 1 {
+		t.Fatalf("expected 1 entity representation, got %d", got)
+	}
+
+	props := resp.Msg.GetEntityRepresentations()[0].GetAdditionalProps()
+	if len(props) != 1 {
+		t.Fatalf("expected 1 additional props entry, got %d", len(props))
+	}
+
+	result := props[0].AsMap()
+	if got := result["subject"]; got != "diana" {
+		t.Fatalf("expected subject diana, got %v", got)
+	}
+	if got := result["email_address"]; got != "diana@example.com" {
+		t.Fatalf("expected email_address diana@example.com, got %v", got)
+	}
+	if got := result["metadata_source"]; got != "jwt_claims" {
+		t.Fatalf("expected metadata_source jwt_claims, got %v", got)
+	}
+	if _, hasError := result["error"]; hasError {
+		t.Fatalf("expected successful resolution, got error payload: %v", result["error"])
+	}
+}
+
+func TestResolveEntities_UserNameEntityDoesNotSeedClaimsContext(t *testing.T) {
+	t.Helper()
+
+	erService, err := NewERSV2(t.Context(), types.MultiStrategyConfig{
+		Providers: map[string]types.ProviderConfig{
+			"jwt": {
+				Type:       "claims",
+				Connection: map[string]interface{}{},
+			},
+		},
+		FailureStrategy: types.FailureStrategyContinue,
+		MappingStrategies: []types.MappingStrategy{
+			{
+				Name:       "claims_passthrough",
+				Provider:   "jwt",
+				EntityType: types.EntityTypeSubject,
+				Conditions: types.StrategyConditions{
+					JWTClaims: []types.JWTClaimCondition{{Claim: "userName", Operator: "exists"}},
+				},
+				OutputMapping: []types.OutputMapping{{SourceClaim: "userName", ClaimName: "username"}},
+			},
+		},
+	}, logger.CreateTestLogger())
+	if err != nil {
+		t.Fatalf("NewERSV2() error = %v", err)
+	}
+
+	resp, err := erService.ResolveEntities(t.Context(), connect.NewRequest(&ersV2.ResolveEntitiesRequest{
+		Entities: []*entity.Entity{{
+			EphemeralId: "alice-user-name",
+			EntityType:  &entity.Entity_UserName{UserName: "alice"},
+			Category:    entity.Entity_CATEGORY_SUBJECT,
+		}},
+	}))
+	if err != nil {
+		t.Fatalf("ResolveEntities() error = %v", err)
+	}
+
+	if got := len(resp.Msg.GetEntityRepresentations()); got != 1 {
+		t.Fatalf("expected 1 entity representation, got %d", got)
+	}
+
+	props := resp.Msg.GetEntityRepresentations()[0].GetAdditionalProps()
+	if len(props) != 1 {
+		t.Fatalf("expected 1 additional props entry, got %d", len(props))
+	}
+
+	result := props[0].AsMap()
+	if _, hasError := result["error"]; !hasError {
+		t.Fatalf("expected claims provider to fail without middleware claims for user_name entity, got %v", result)
+	}
+	if got := result["entity_id"]; got != "alice-user-name" {
+		t.Fatalf("expected entity_id alice-user-name, got %v", got)
 	}
 }

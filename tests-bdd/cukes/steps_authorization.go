@@ -12,6 +12,7 @@ import (
 	"github.com/opentdf/platform/protocol/go/policy"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/types/known/anypb"
+	"google.golang.org/protobuf/types/known/structpb"
 )
 
 type AuthorizationServiceStepDefinitions struct{}
@@ -21,14 +22,18 @@ const (
 )
 
 func ConvertInterfaceToAny(jsonData []byte) (*anypb.Any, error) {
-	// Create an empty Any
+	// First allow callers to provide a native Any JSON payload.
 	anyMsg := &anypb.Any{}
+	if err := protojson.Unmarshal(jsonData, anyMsg); err == nil {
+		return anyMsg, nil
+	}
 
-	// Use protojson's Unmarshal which handles @type automatically
-	if err := protojson.Unmarshal(jsonData, anyMsg); err != nil {
+	// For claims entities in BDD, plain JSON objects are the ergonomic input.
+	claimsStruct := &structpb.Struct{}
+	if err := protojson.Unmarshal(jsonData, claimsStruct); err != nil {
 		return nil, err
 	}
-	return anyMsg, nil
+	return anypb.New(claimsStruct)
 }
 
 func GetActionsFromValues(standardActions *string, customActions *string) []*policy.Action {
@@ -96,6 +101,16 @@ func (s *AuthorizationServiceStepDefinitions) thereIsAEnvEntityWithValueAndRefer
 func (s *AuthorizationServiceStepDefinitions) thereIsASubjectEntityWithValueAndReferencedAs(ctx context.Context, entityIDType string, entityIDValue string, referenceID string) (context.Context, error) {
 	scenarioContext := GetPlatformScenarioContext(ctx)
 	entity, err := s.createEntity(referenceID, "SUBJECT", entityIDType, entityIDValue)
+	if err != nil {
+		return ctx, err
+	}
+	scenarioContext.RecordObject(referenceID, entity)
+	return ctx, nil
+}
+
+func (s *AuthorizationServiceStepDefinitions) thereIsAClaimsSubjectEntityReferencedAsWithClaims(ctx context.Context, referenceID string, doc *godog.DocString) (context.Context, error) {
+	scenarioContext := GetPlatformScenarioContext(ctx)
+	entity, err := s.createEntity(referenceID, "SUBJECT", "claims", doc.Content)
 	if err != nil {
 		return ctx, err
 	}
@@ -468,6 +483,7 @@ func (s *AuthorizationServiceStepDefinitions) theDecisionResponseForResourceShou
 func RegisterAuthorizationStepDefinitions(ctx *godog.ScenarioContext) {
 	stepDefinitions := AuthorizationServiceStepDefinitions{}
 	ctx.Step(`^there is a "([^"]*)" subject entity with value "([^"]*)" and referenced as "([^"]*)"$`, stepDefinitions.thereIsASubjectEntityWithValueAndReferencedAs)
+	ctx.Step(`^there is a claims subject entity referenced as "([^"]*)" with claims:$`, stepDefinitions.thereIsAClaimsSubjectEntityReferencedAsWithClaims)
 	ctx.Step(`^there is a "([^"]*)" environment entity with value "([^"]*)" and referenced as "([^"]*)"$`, stepDefinitions.thereIsAEnvEntityWithValueAndReferencedAs)
 	ctx.Step(`^I send a decision request for entity chain "([^"]*)" for "([^"]*)" action on resource "([^"]*)"$`, stepDefinitions.iSendADecisionRequestForEntityChainForActionOnResource)
 	ctx.Step(`^I send a decision request for entity chain "([^"]*)" for "([^"]*)" action on resource "([^"]*)" with fulfillable obligations "([^"]*)"$`, stepDefinitions.iSendADecisionRequestForEntityChainForActionOnResourceWithFulfillableObligations)

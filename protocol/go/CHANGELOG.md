@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.40.0](https://github.com/opentdf/platform/compare/protocol/go/v0.39.0...protocol/go/v0.40.0) (2026-08-04)
+
+
+### Features
+
+* **sdk:** add ForAction helper to authorization/v2 ([#3783](https://github.com/opentdf/platform/issues/3783)) ([f203f14](https://github.com/opentdf/platform/commit/f203f14cef179ef2b23d65a66c66be3adfc46bb5))
+
+
+### Bug Fixes
+
+* **deps:** bump the external group across 1 directory with 2 updates ([#3746](https://github.com/opentdf/platform/issues/3746)) ([2e492a5](https://github.com/opentdf/platform/commit/2e492a5ac93535bfa906a65c2dd9eeacca96aae0))
+
 ## [0.39.0](https://github.com/opentdf/platform/compare/protocol/go/v0.38.0...protocol/go/v0.39.0) (2026-07-21)
 
 

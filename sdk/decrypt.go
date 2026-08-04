@@ -2,6 +2,7 @@ package sdk
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -20,7 +21,10 @@ var maxDecryptBytesSize int64 = 1 << 30 // 1 GiB
 // plaintext. A thin wrapper over [SDK.LoadTDF] + [Reader.WriteTo] for the
 // common case where the ciphertext already fits comfortably in memory:
 //
-//	plaintext, err := sdk.DecryptBytes(ciphertext)
+//	plaintext, err := sdk.DecryptBytes(ctx, ciphertext)
+//
+// ctx governs the KAS rewrap request (the only network call this method
+// makes) and is honored for cancellation/timeout.
 //
 // Rejects payloads over 1 GiB up front, before buffering anything, since
 // DecryptBytes holds the full plaintext in memory. For streaming, very
@@ -28,10 +32,13 @@ var maxDecryptBytesSize int64 = 1 << 30 // 1 GiB
 // between load and write, call [SDK.LoadTDF] directly, or use [SDK.DecryptTo]
 // / [SDK.DecryptFile], which stream to their destination instead of
 // buffering.
-func (s SDK) DecryptBytes(ciphertext []byte, opts ...TDFReaderOption) ([]byte, error) {
-	reader, err := s.LoadTDF(bytes.NewReader(ciphertext), opts...)
+func (s SDK) DecryptBytes(ctx context.Context, ciphertext []byte, opts ...TDFReaderOption) ([]byte, error) {
+	reader, err := s.LoadTDF(bytes.NewReader(ciphertext), opts...) //nolint:contextcheck // LoadTDF doesn't accept a context; ctx is applied via reader.Init below
 	if err != nil {
 		return nil, fmt.Errorf("%w: %w", ErrTDFNotDecryptable, err)
+	}
+	if err = reader.Init(ctx); err != nil {
+		return nil, fmt.Errorf("%w: %w", ErrTDFDecryptFailed, err)
 	}
 
 	size, err := reader.Seek(0, io.SeekEnd)
@@ -47,7 +54,7 @@ func (s SDK) DecryptBytes(ciphertext []byte, opts ...TDFReaderOption) ([]byte, e
 
 	var buf bytes.Buffer
 	buf.Grow(int(size))
-	if _, err = reader.WriteTo(&buf); err != nil {
+	if _, err = reader.WriteTo(&buf); err != nil { //nolint:contextcheck // WriteTo doesn't accept a context; the key unwrap already ran under ctx via reader.Init above
 		return nil, fmt.Errorf("%w: %w", ErrTDFDecryptFailed, err)
 	}
 	return buf.Bytes(), nil
@@ -58,13 +65,19 @@ func (s SDK) DecryptBytes(ciphertext []byte, opts ...TDFReaderOption) ([]byte, e
 // who already have a destination writer (a file, os.Stdout, an HTTP
 // response, etc.) and don't need the plaintext held in memory:
 //
-//	err := sdk.DecryptTo(os.Stdout, ciphertext)
-func (s SDK) DecryptTo(out io.Writer, ciphertext []byte, opts ...TDFReaderOption) error {
-	reader, err := s.LoadTDF(bytes.NewReader(ciphertext), opts...)
+//	err := sdk.DecryptTo(ctx, os.Stdout, ciphertext)
+//
+// ctx governs the KAS rewrap request (the only network call this method
+// makes) and is honored for cancellation/timeout.
+func (s SDK) DecryptTo(ctx context.Context, out io.Writer, ciphertext []byte, opts ...TDFReaderOption) error {
+	reader, err := s.LoadTDF(bytes.NewReader(ciphertext), opts...) //nolint:contextcheck // LoadTDF doesn't accept a context; ctx is applied via reader.Init below
 	if err != nil {
 		return fmt.Errorf("%w: %w", ErrTDFNotDecryptable, err)
 	}
-	if _, err = reader.WriteTo(out); err != nil {
+	if err = reader.Init(ctx); err != nil {
+		return fmt.Errorf("%w: %w", ErrTDFDecryptFailed, err)
+	}
+	if _, err = reader.WriteTo(out); err != nil { //nolint:contextcheck // WriteTo doesn't accept a context; the key unwrap already ran under ctx via reader.Init above
 		return fmt.Errorf("%w: %w", ErrTDFDecryptFailed, err)
 	}
 	return nil
@@ -75,7 +88,10 @@ func (s SDK) DecryptTo(out io.Writer, ciphertext []byte, opts ...TDFReaderOption
 // common file-to-file case; streams directly from disk rather than
 // buffering the ciphertext or plaintext in memory:
 //
-//	err := sdk.DecryptFile("secret.tdf", "secret.txt")
+//	err := sdk.DecryptFile(ctx, "secret.tdf", "secret.txt")
+//
+// ctx governs the KAS rewrap request (the only network call this method
+// makes) and is honored for cancellation/timeout.
 //
 // Plaintext is written to a temp file in outputPath's directory (created
 // with mode 0600, since it holds decrypted content) and only renamed onto
@@ -102,7 +118,7 @@ func (s SDK) DecryptTo(out io.Writer, ciphertext []byte, opts ...TDFReaderOption
 // platforms (notably Windows) reject or handle inconsistently. DecryptFile
 // checks with [os.SameFile] and returns an error up front rather than
 // relying on platform-specific rename-over-an-open-file semantics.
-func (s SDK) DecryptFile(inputPath, outputPath string, opts ...TDFReaderOption) error {
+func (s SDK) DecryptFile(ctx context.Context, inputPath, outputPath string, opts ...TDFReaderOption) error {
 	in, err := os.Open(inputPath)
 	if err != nil {
 		return fmt.Errorf("failed to open input TDF %s: %w", inputPath, err)
@@ -110,13 +126,20 @@ func (s SDK) DecryptFile(inputPath, outputPath string, opts ...TDFReaderOption) 
 	defer in.Close()
 
 	outInfo, outStatErr := os.Stat(outputPath)
-	if outStatErr == nil {
-		if inInfo, inStatErr := in.Stat(); inStatErr == nil && os.SameFile(inInfo, outInfo) {
+	switch {
+	case outStatErr == nil:
+		inInfo, inStatErr := in.Stat()
+		if inStatErr != nil {
+			return fmt.Errorf("failed to inspect input TDF %s: %w", inputPath, inStatErr)
+		}
+		if os.SameFile(inInfo, outInfo) {
 			return fmt.Errorf("inputPath and outputPath must not be the same file: %s", outputPath)
 		}
 		if outInfo.IsDir() {
 			return fmt.Errorf("outputPath %s is a directory, not a file", outputPath)
 		}
+	case !errors.Is(outStatErr, os.ErrNotExist):
+		return fmt.Errorf("failed to inspect output file %s: %w", outputPath, outStatErr)
 	}
 
 	tmp, err := os.CreateTemp(filepath.Dir(outputPath), ".decrypt-*.tmp")
@@ -125,7 +148,7 @@ func (s SDK) DecryptFile(inputPath, outputPath string, opts ...TDFReaderOption) 
 	}
 	tmpPath := tmp.Name()
 
-	reader, err := s.LoadTDF(in, opts...)
+	reader, err := s.LoadTDF(in, opts...) //nolint:contextcheck // LoadTDF doesn't accept a context; ctx is applied via reader.Init below
 	if err != nil {
 		loadErr := fmt.Errorf("%w: %w", ErrTDFNotDecryptable, err)
 		if closeErr := tmp.Close(); closeErr != nil {
@@ -134,7 +157,15 @@ func (s SDK) DecryptFile(inputPath, outputPath string, opts ...TDFReaderOption) 
 		return joinTempFileCleanup(loadErr, tmpPath)
 	}
 
-	_, writeErr := reader.WriteTo(tmp)
+	if err = reader.Init(ctx); err != nil {
+		initErr := fmt.Errorf("%w: %w", ErrTDFDecryptFailed, err)
+		if closeErr := tmp.Close(); closeErr != nil {
+			initErr = errors.Join(initErr, closeErr)
+		}
+		return joinTempFileCleanup(initErr, tmpPath)
+	}
+
+	_, writeErr := reader.WriteTo(tmp) //nolint:contextcheck // WriteTo doesn't accept a context; the key unwrap already ran under ctx via reader.Init above
 	closeErr := tmp.Close()
 	switch {
 	case writeErr != nil:
@@ -165,12 +196,14 @@ func (s SDK) DecryptFile(inputPath, outputPath string, opts ...TDFReaderOption) 
 func finalizeOutput(tmpPath, outputPath string) error {
 	fi, statErr := os.Stat(outputPath)
 	switch {
-	case statErr != nil:
+	case errors.Is(statErr, os.ErrNotExist):
 		// Nothing at outputPath to preserve; rename directly.
 		if renameErr := os.Rename(tmpPath, outputPath); renameErr != nil {
 			return joinTempFileCleanup(fmt.Errorf("failed to finalize output file %s: %w", outputPath, renameErr), tmpPath)
 		}
 		return nil
+	case statErr != nil:
+		return joinTempFileCleanup(fmt.Errorf("failed to inspect output file %s: %w", outputPath, statErr), tmpPath)
 	case fi.IsDir():
 		return joinTempFileCleanup(fmt.Errorf("outputPath %s is a directory, not a file", outputPath), tmpPath)
 	}

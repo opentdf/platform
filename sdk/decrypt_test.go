@@ -13,7 +13,7 @@ import (
 func TestDecryptBytes_InvalidCiphertext(t *testing.T) {
 	sdk := newSDK()
 
-	plaintext, err := sdk.DecryptBytes([]byte("not a valid tdf"))
+	plaintext, err := sdk.DecryptBytes(t.Context(), []byte("not a valid tdf"))
 
 	require.ErrorIs(t, err, ErrTDFNotDecryptable)
 	require.Nil(t, plaintext)
@@ -23,7 +23,7 @@ func TestDecryptTo_InvalidCiphertext(t *testing.T) {
 	sdk := newSDK()
 	var dest bytes.Buffer
 
-	err := sdk.DecryptTo(&dest, []byte("not a valid tdf"))
+	err := sdk.DecryptTo(t.Context(), &dest, []byte("not a valid tdf"))
 
 	require.ErrorIs(t, err, ErrTDFNotDecryptable)
 	require.Empty(t, dest.Bytes())
@@ -52,7 +52,7 @@ func TestDecryptBytes_RejectsPayloadOverSizeLimit(t *testing.T) {
 	maxDecryptBytesSize = int64(len(plaintext)) - 1
 	defer func() { maxDecryptBytesSize = original }()
 
-	got, err := sdk.DecryptBytes(ciphertext.Bytes())
+	got, err := sdk.DecryptBytes(t.Context(), ciphertext.Bytes())
 
 	require.ErrorIs(t, err, ErrTDFNotDecryptable)
 	require.Nil(t, got)
@@ -65,7 +65,7 @@ func TestDecryptBytes_OptionErrorSurfaces(t *testing.T) {
 		return failErr
 	})
 
-	plaintext, err := sdk.DecryptBytes([]byte("not a valid tdf"), failingOption)
+	plaintext, err := sdk.DecryptBytes(t.Context(), []byte("not a valid tdf"), failingOption)
 
 	require.ErrorIs(t, err, failErr)
 	require.ErrorIs(t, err, ErrTDFNotDecryptable)
@@ -80,7 +80,7 @@ func TestDecryptTo_OptionErrorSurfaces(t *testing.T) {
 	})
 	var dest bytes.Buffer
 
-	err := sdk.DecryptTo(&dest, []byte("not a valid tdf"), failingOption)
+	err := sdk.DecryptTo(t.Context(), &dest, []byte("not a valid tdf"), failingOption)
 
 	require.ErrorIs(t, err, failErr)
 	require.ErrorIs(t, err, ErrTDFNotDecryptable)
@@ -92,7 +92,7 @@ func TestDecryptFile_MissingInput(t *testing.T) {
 	inputPath := filepath.Join(t.TempDir(), "does-not-exist.tdf")
 	outputPath := filepath.Join(t.TempDir(), "out.txt")
 
-	err := sdk.DecryptFile(inputPath, outputPath)
+	err := sdk.DecryptFile(t.Context(), inputPath, outputPath)
 
 	require.Error(t, err)
 	require.ErrorContains(t, err, inputPath)
@@ -106,7 +106,7 @@ func TestDecryptFile_UnwritableOutput(t *testing.T) {
 	require.NoError(t, os.WriteFile(inputPath, []byte("not a valid tdf"), 0o600))
 	outputPath := filepath.Join(t.TempDir(), "missing-dir", "out.txt")
 
-	err := sdk.DecryptFile(inputPath, outputPath)
+	err := sdk.DecryptFile(t.Context(), inputPath, outputPath)
 
 	require.Error(t, err)
 	require.ErrorContains(t, err, outputPath)
@@ -118,7 +118,7 @@ func TestDecryptFile_RemovesOutputOnLoadFailure(t *testing.T) {
 	require.NoError(t, os.WriteFile(inputPath, []byte("not a valid tdf"), 0o600))
 	outputPath := filepath.Join(t.TempDir(), "out.txt")
 
-	err := sdk.DecryptFile(inputPath, outputPath)
+	err := sdk.DecryptFile(t.Context(), inputPath, outputPath)
 
 	require.ErrorIs(t, err, ErrTDFNotDecryptable)
 	_, statErr := os.Stat(outputPath)
@@ -133,7 +133,7 @@ func TestDecryptFile_PreservesExistingOutputOnLoadFailure(t *testing.T) {
 	original := []byte("pre-existing content that must survive a failed decrypt")
 	require.NoError(t, os.WriteFile(outputPath, original, 0o600))
 
-	err := sdk.DecryptFile(inputPath, outputPath)
+	err := sdk.DecryptFile(t.Context(), inputPath, outputPath)
 
 	require.ErrorIs(t, err, ErrTDFNotDecryptable)
 	got, readErr := os.ReadFile(outputPath)
@@ -147,7 +147,7 @@ func TestDecryptFile_RejectsSamePath(t *testing.T) {
 	original := []byte("must not be touched")
 	require.NoError(t, os.WriteFile(path, original, 0o600))
 
-	err := sdk.DecryptFile(path, path)
+	err := sdk.DecryptFile(t.Context(), path, path)
 
 	require.Error(t, err)
 	require.ErrorContains(t, err, path)
@@ -165,7 +165,7 @@ func TestDecryptFile_RejectsSameFileViaDifferentPath(t *testing.T) {
 	require.NoError(t, os.WriteFile(inputPath, original, 0o600))
 	require.NoError(t, os.Link(inputPath, linkedPath))
 
-	err := sdk.DecryptFile(inputPath, linkedPath)
+	err := sdk.DecryptFile(t.Context(), inputPath, linkedPath)
 
 	require.Error(t, err)
 	got, readErr := os.ReadFile(inputPath)
@@ -180,7 +180,7 @@ func TestDecryptFile_RejectsDirectoryOutputPath(t *testing.T) {
 	outputPath := filepath.Join(t.TempDir(), "a-directory")
 	require.NoError(t, os.Mkdir(outputPath, 0o700))
 
-	err := sdk.DecryptFile(inputPath, outputPath)
+	err := sdk.DecryptFile(t.Context(), inputPath, outputPath)
 
 	require.Error(t, err)
 	require.ErrorContains(t, err, outputPath)
@@ -199,7 +199,7 @@ func TestDecryptFile_OptionErrorSurfaces(t *testing.T) {
 		return failErr
 	})
 
-	err := sdk.DecryptFile(inputPath, outputPath, failingOption)
+	err := sdk.DecryptFile(t.Context(), inputPath, outputPath, failingOption)
 
 	require.ErrorIs(t, err, failErr)
 	require.ErrorIs(t, err, ErrTDFNotDecryptable)

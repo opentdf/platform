@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.29.0](https://github.com/opentdf/platform/compare/sdk/v0.28.0...sdk/v0.29.0) (2026-08-04)
+
+
+### Features
+
+* **sdk:** add TDF decrypt convenience helpers ([#3828](https://github.com/opentdf/platform/issues/3828)) ([8c287c3](https://github.com/opentdf/platform/commit/8c287c3f1dd01ae06239252e38bd2257df98740a))
+
+
+### Bug Fixes
+
+* **deps:** bump the external group across 1 directory with 5 updates ([#3694](https://github.com/opentdf/platform/issues/3694)) ([c4023b9](https://github.com/opentdf/platform/commit/c4023b9dc5b0f649b7a541bfefc9e6bec22d9a31))
+
 ## [0.28.0](https://github.com/opentdf/platform/compare/sdk/v0.27.0...sdk/v0.28.0) (2026-08-03)
 
 

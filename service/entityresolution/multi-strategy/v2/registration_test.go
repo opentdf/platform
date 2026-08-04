@@ -112,21 +112,15 @@ func TestERSV2_ResolveEntities_PopulatesRepresentations(t *testing.T) {
 	}
 
 	ers, err := NewERSV2(t.Context(), config, logger.CreateTestLogger())
-	if err != nil {
-		t.Fatalf("Failed to create ERSV2: %v", err)
-	}
+	require.NoError(t, err)
 
 	claimsStruct, err := structpb.NewStruct(map[string]interface{}{
 		"sub":   "alice",
 		"email": "alice@example.com",
 	})
-	if err != nil {
-		t.Fatalf("Failed to build claims struct: %v", err)
-	}
+	require.NoError(t, err)
 	claimsAny, err := anypb.New(claimsStruct)
-	if err != nil {
-		t.Fatalf("Failed to wrap claims in anypb.Any: %v", err)
-	}
+	require.NoError(t, err)
 
 	req := connect.NewRequest(&ersV2.ResolveEntitiesRequest{
 		Entities: []*entity.Entity{
@@ -138,52 +132,32 @@ func TestERSV2_ResolveEntities_PopulatesRepresentations(t *testing.T) {
 	})
 
 	resp, err := ers.ResolveEntities(t.Context(), req)
-	if err != nil {
-		t.Fatalf("ResolveEntities returned error: %v", err)
-	}
+	require.NoError(t, err)
 
 	reps := resp.Msg.GetEntityRepresentations()
-	if len(reps) != 1 {
-		t.Fatalf("EntityRepresentations length = %d, want 1 (empty response means the handler silently dropped the entity via structpb.NewStruct failure)", len(reps))
-	}
-	if got := reps[0].GetOriginalId(); got != "entity-1" {
-		t.Errorf("OriginalId = %q, want %q", got, "entity-1")
-	}
+	require.Len(t, reps, 1, "empty response means the handler silently dropped the entity via structpb.NewStruct failure")
+	require.Equal(t, "entity-1", reps[0].GetOriginalId())
 
 	props := reps[0].GetAdditionalProps()
-	if len(props) != 1 {
-		t.Fatalf("AdditionalProps length = %d, want 1", len(props))
-	}
+	require.Len(t, props, 1)
 	fields := props[0].GetFields()
 
 	// The resolved claim should be present.
-	if got := fields["username"].GetStringValue(); got != "alice" {
-		t.Errorf("username in AdditionalProps = %q, want %q", got, "alice")
-	}
+	require.Equal(t, "alice", fields["username"].GetStringValue())
 
 	// metadata_attempted_strategies MUST serialize to a ListValue. If the
 	// source-level fix regresses and the field is stored as []string again,
 	// structpb.NewStruct will drop the whole entity and this assertion (and
 	// the length assertion above) will fail.
 	metaAttempted, ok := fields["metadata_attempted_strategies"]
-	if !ok {
-		t.Fatalf("metadata_attempted_strategies missing from AdditionalProps; the handler likely dropped the entity")
-	}
+	require.True(t, ok, "metadata_attempted_strategies missing from AdditionalProps; the handler likely dropped the entity")
 	list := metaAttempted.GetListValue()
-	if list == nil {
-		t.Fatalf("metadata_attempted_strategies must be a ListValue, got kind %T", metaAttempted.GetKind())
-	}
-	if got, want := len(list.GetValues()), 1; got != want {
-		t.Errorf("metadata_attempted_strategies length = %d, want %d", got, want)
-	}
-	if got := list.GetValues()[0].GetStringValue(); got != "jwt_strategy" {
-		t.Errorf("metadata_attempted_strategies[0] = %q, want %q", got, "jwt_strategy")
-	}
+	require.NotNil(t, list, "metadata_attempted_strategies has kind %T", metaAttempted.GetKind())
+	require.Len(t, list.GetValues(), 1)
+	require.Equal(t, "jwt_strategy", list.GetValues()[0].GetStringValue())
 }
 
 func TestResolveEntities_ClaimsProviderUsesInlineClaimsContext(t *testing.T) {
-	t.Helper()
-
 	erService, err := NewERSV2(t.Context(), types.MultiStrategyConfig{
 		Providers: map[string]types.ProviderConfig{
 			"jwt": {
@@ -217,22 +191,16 @@ func TestResolveEntities_ClaimsProviderUsesInlineClaimsContext(t *testing.T) {
 			},
 		},
 	}, logger.CreateTestLogger())
-	if err != nil {
-		t.Fatalf("NewERSV2() error = %v", err)
-	}
+	require.NoError(t, err)
 
 	claimsStruct, err := structpb.NewStruct(map[string]interface{}{
 		"sub":   "diana",
 		"email": "diana@example.com",
 	})
-	if err != nil {
-		t.Fatalf("structpb.NewStruct() error = %v", err)
-	}
+	require.NoError(t, err)
 
 	claimsAny, err := anypb.New(claimsStruct)
-	if err != nil {
-		t.Fatalf("anypb.New() error = %v", err)
-	}
+	require.NoError(t, err)
 
 	resp, err := erService.ResolveEntities(t.Context(), connect.NewRequest(&ersV2.ResolveEntitiesRequest{
 		Entities: []*entity.Entity{
@@ -243,37 +211,20 @@ func TestResolveEntities_ClaimsProviderUsesInlineClaimsContext(t *testing.T) {
 			},
 		},
 	}))
-	if err != nil {
-		t.Fatalf("ResolveEntities() error = %v", err)
-	}
-
-	if got := len(resp.Msg.GetEntityRepresentations()); got != 1 {
-		t.Fatalf("expected 1 entity representation, got %d", got)
-	}
+	require.NoError(t, err)
+	require.Len(t, resp.Msg.GetEntityRepresentations(), 1)
 
 	props := resp.Msg.GetEntityRepresentations()[0].GetAdditionalProps()
-	if len(props) != 1 {
-		t.Fatalf("expected 1 additional props entry, got %d", len(props))
-	}
+	require.Len(t, props, 1)
 
 	result := props[0].AsMap()
-	if got := result["subject"]; got != "diana" {
-		t.Fatalf("expected subject diana, got %v", got)
-	}
-	if got := result["email_address"]; got != "diana@example.com" {
-		t.Fatalf("expected email_address diana@example.com, got %v", got)
-	}
-	if got := result["metadata_source"]; got != "jwt_claims" {
-		t.Fatalf("expected metadata_source jwt_claims, got %v", got)
-	}
-	if _, hasError := result["error"]; hasError {
-		t.Fatalf("expected successful resolution, got error payload: %v", result["error"])
-	}
+	require.Equal(t, "diana", result["subject"])
+	require.Equal(t, "diana@example.com", result["email_address"])
+	require.Equal(t, "jwt_claims", result["metadata_source"])
+	require.NotContains(t, result, "error")
 }
 
 func TestResolveEntities_UserNameEntityDoesNotSeedClaimsContext(t *testing.T) {
-	t.Helper()
-
 	erService, err := NewERSV2(t.Context(), types.MultiStrategyConfig{
 		Providers: map[string]types.ProviderConfig{
 			"jwt": {
@@ -294,9 +245,7 @@ func TestResolveEntities_UserNameEntityDoesNotSeedClaimsContext(t *testing.T) {
 			},
 		},
 	}, logger.CreateTestLogger())
-	if err != nil {
-		t.Fatalf("NewERSV2() error = %v", err)
-	}
+	require.NoError(t, err)
 
 	resp, err := erService.ResolveEntities(t.Context(), connect.NewRequest(&ersV2.ResolveEntitiesRequest{
 		Entities: []*entity.Entity{{
@@ -305,26 +254,15 @@ func TestResolveEntities_UserNameEntityDoesNotSeedClaimsContext(t *testing.T) {
 			Category:    entity.Entity_CATEGORY_SUBJECT,
 		}},
 	}))
-	if err != nil {
-		t.Fatalf("ResolveEntities() error = %v", err)
-	}
-
-	if got := len(resp.Msg.GetEntityRepresentations()); got != 1 {
-		t.Fatalf("expected 1 entity representation, got %d", got)
-	}
+	require.NoError(t, err)
+	require.Len(t, resp.Msg.GetEntityRepresentations(), 1)
 
 	props := resp.Msg.GetEntityRepresentations()[0].GetAdditionalProps()
-	if len(props) != 1 {
-		t.Fatalf("expected 1 additional props entry, got %d", len(props))
-	}
+	require.Len(t, props, 1)
 
 	result := props[0].AsMap()
-	if _, hasError := result["error"]; !hasError {
-		t.Fatalf("expected claims provider to fail without middleware claims for user_name entity, got %v", result)
-	}
-	if got := result["entity_id"]; got != "alice-user-name" {
-		t.Fatalf("expected entity_id alice-user-name, got %v", got)
-	}
+	require.Contains(t, result, "error")
+	require.Equal(t, "alice-user-name", result["entity_id"])
 }
 
 func TestCreateEntityFromResultV2ExcludesResolutionMetadataFromPolicyClaims(t *testing.T) {

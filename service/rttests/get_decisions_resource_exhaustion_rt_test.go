@@ -98,9 +98,55 @@ func largePaddedSubjectExternalValues(clientID string) []string {
 	return values
 }
 
+// cleanup best-effort removes everything the test created, in dependency order:
+// subject mappings and the shared condition set are hard-deleted (this is what drops
+// the ~8MB of subject-mapping data so it can't break later steps), then the attribute
+// and namespace are deactivated (soft delete is all the API offers for those). Errors
+// are logged, not fatal -- a failed teardown should not mask the test's own result.
+func (s *GetDecisionsResourceExhaustionSuite) cleanup(nsID, attrID, scsID *string, smIDs *[]string) {
+	ctx := context.Background()
+	client := s.client
+
+	for _, id := range *smIDs {
+		if _, err := client.SubjectMapping.DeleteSubjectMapping(ctx, &subjectmapping.DeleteSubjectMappingRequest{Id: id}); err != nil {
+			slog.Warn("cleanup: failed to delete subject mapping", slog.String("id", id), slog.Any("error", err))
+		}
+	}
+	if *scsID != "" {
+		if _, err := client.SubjectMapping.DeleteSubjectConditionSet(ctx, &subjectmapping.DeleteSubjectConditionSetRequest{Id: *scsID}); err != nil {
+			slog.Warn("cleanup: failed to delete subject condition set", slog.String("id", *scsID), slog.Any("error", err))
+		}
+	}
+	if *attrID != "" {
+		if _, err := client.Attributes.DeactivateAttribute(ctx, &attributes.DeactivateAttributeRequest{Id: *attrID}); err != nil {
+			slog.Warn("cleanup: failed to deactivate attribute", slog.String("id", *attrID), slog.Any("error", err))
+		}
+	}
+	if *nsID != "" {
+		if _, err := client.Namespaces.DeactivateNamespace(ctx, &namespaces.DeactivateNamespaceRequest{Id: *nsID}); err != nil {
+			slog.Warn("cleanup: failed to deactivate namespace", slog.String("id", *nsID), slog.Any("error", err))
+		}
+	}
+}
+
 func (s *GetDecisionsResourceExhaustionSuite) Test_GetDecision_LargeSubjectMappingSet_DoesNotExhaustResources() {
 	ctx := context.Background()
 	client := s.client
+
+	// Track everything we create so we can tear it down. This is important: the
+	// large subject mappings (~8MB total) this test creates would otherwise linger
+	// on a persistent/CI server and break later steps that load ALL subject mappings
+	// globally -- notably the v1 GetEntitlements path (test/rego/*.bats), which is
+	// out of scope for the v2 fix and still fails at the 4MB limit. Cleanup runs even
+	// on a require failure, since testify's FailNow uses runtime.Goexit which still
+	// runs deferred functions.
+	var (
+		nsID   string
+		attrID string
+		scsID  string
+		smIDs  []string
+	)
+	defer s.cleanup(&nsID, &attrID, &scsID, &smIDs)
 
 	// Unique namespace so the test is self-contained and re-runnable against a
 	// persistent server.
@@ -111,7 +157,7 @@ func (s *GetDecisionsResourceExhaustionSuite) Test_GetDecision_LargeSubjectMappi
 		Name: nsName,
 	})
 	s.Require().NoError(err)
-	nsID := nsResp.GetNamespace().GetId()
+	nsID = nsResp.GetNamespace().GetId()
 
 	// One attribute with enough values to host each of our large subject mappings.
 	valueNames := make([]string, 0, numLargeSubjectMappings)
@@ -125,6 +171,7 @@ func (s *GetDecisionsResourceExhaustionSuite) Test_GetDecision_LargeSubjectMappi
 		Values:      valueNames,
 	})
 	s.Require().NoError(err)
+	attrID = attrResp.GetAttribute().GetId()
 	createdValues := attrResp.GetAttribute().GetValues()
 	s.Require().Len(createdValues, numLargeSubjectMappings)
 
@@ -153,14 +200,14 @@ func (s *GetDecisionsResourceExhaustionSuite) Test_GetDecision_LargeSubjectMappi
 		},
 	})
 	s.Require().NoError(err)
-	scsID := scsResp.GetSubjectConditionSet().GetId()
+	scsID = scsResp.GetSubjectConditionSet().GetId()
 
 	// Attach a subject mapping (reusing the shared condition set) to each value so the
 	// global ListAllSubjectMappings load carries the large condition set once per
 	// mapping, multiplying the payload past the 4MB limit.
 	slog.Info("creating large subject mappings", slog.Int("count", numLargeSubjectMappings))
 	for _, v := range createdValues {
-		_, err = client.SubjectMapping.CreateSubjectMapping(ctx, &subjectmapping.CreateSubjectMappingRequest{
+		smResp, err := client.SubjectMapping.CreateSubjectMapping(ctx, &subjectmapping.CreateSubjectMappingRequest{
 			AttributeValueId:              v.GetId(),
 			ExistingSubjectConditionSetId: scsID,
 			Actions: []*policy.Action{
@@ -168,6 +215,7 @@ func (s *GetDecisionsResourceExhaustionSuite) Test_GetDecision_LargeSubjectMappi
 			},
 		})
 		s.Require().NoError(err)
+		smIDs = append(smIDs, smResp.GetSubjectMapping().GetId())
 	}
 
 	// v2 GetDecision referencing a single value FQN. The JIT PDP loads ALL subject

@@ -1,6 +1,7 @@
 package profiles
 
 import (
+	"encoding/json"
 	"errors"
 	"strings"
 
@@ -25,6 +26,9 @@ type ProfileConfig struct {
 	TLSNoVerify     bool            `json:"tlsNoVerify"`
 	OutputFormat    string          `json:"outputFormat,omitempty"`
 	AuthCredentials AuthCredentials `json:"authCredentials"`
+	// Extensions holds opaque, namespaced data for projects extending otdfctl.
+	// otdfctl does not interpret it; use GetExtension/SetExtension to access it.
+	Extensions map[string]json.RawMessage `json:"extensions,omitempty"`
 }
 
 func (pc *ProfileConfig) GetName() string {

@@ -163,53 +163,36 @@ func ParseClaimsJWT(accessToken string) (JWTClaims, error) {
 	return c, nil
 }
 
+// GetSDKAuthOptionFromProfile dispatches to the provider registered for the profile's auth type.
 func GetSDKAuthOptionFromProfile(profile *profiles.OtdfctlProfileStore) (sdk.Option, error) {
-	c := profile.GetAuthCredentials()
-
-	switch c.AuthType {
-	case profiles.AuthTypeClientCredentials:
-		return sdk.WithClientCredentials(c.ClientID, c.ClientSecret, NormalizeScopes(c.Scopes)), nil
-	case profiles.AuthTypeAccessToken:
-		tokenSource := oauth2.StaticTokenSource(buildToken(&c))
-		return sdk.WithOAuthAccessTokenSource(tokenSource), nil
-	default:
-		return nil, ErrInvalidAuthType
+	provider, err := lookupProvider(profile.GetAuthCredentials().AuthType)
+	if err != nil {
+		return nil, err
 	}
+	return provider.SDKAuthOption(profile)
 }
 
+// ValidateProfileAuthCredentials dispatches to the provider registered for the profile's auth
+// type. An unset auth type returns ErrProfileCredentialsNotFound.
 func ValidateProfileAuthCredentials(ctx context.Context, profile *profiles.OtdfctlProfileStore) error {
-	c := profile.GetAuthCredentials()
-
-	switch c.AuthType {
-	case "":
+	authType := profile.GetAuthCredentials().AuthType
+	if authType == "" {
 		return ErrProfileCredentialsNotFound
-	case profiles.AuthTypeClientCredentials:
-		_, err := GetTokenWithClientCreds(ctx, profile.GetEndpoint(), c.ClientID, c.ClientSecret, profile.GetTLSNoVerify(), c.Scopes)
-		if err != nil {
-			return err
-		}
-		return nil
-	case profiles.AuthTypeAccessToken:
-		if !buildToken(&c).Valid() {
-			return ErrAccessTokenExpired
-		}
-	default:
-		return ErrInvalidAuthType
 	}
-	return nil
+	provider, err := lookupProvider(authType)
+	if err != nil {
+		return err
+	}
+	return provider.Validate(ctx, profile)
 }
 
+// GetTokenWithProfile dispatches to the provider registered for the profile's auth type.
 func GetTokenWithProfile(ctx context.Context, profile *profiles.OtdfctlProfileStore) (*oauth2.Token, error) {
-	c := profile.GetAuthCredentials()
-
-	switch c.AuthType {
-	case profiles.AuthTypeClientCredentials:
-		return GetTokenWithClientCreds(ctx, profile.GetEndpoint(), c.ClientID, c.ClientSecret, profile.GetTLSNoVerify(), c.Scopes)
-	case profiles.AuthTypeAccessToken:
-		return buildToken(&c), nil
-	default:
-		return nil, ErrInvalidAuthType
+	provider, err := lookupProvider(profile.GetAuthCredentials().AuthType)
+	if err != nil {
+		return nil, err
 	}
+	return provider.GetToken(ctx, profile)
 }
 
 // Uses the OAuth2 client credentials flow to obtain a token.

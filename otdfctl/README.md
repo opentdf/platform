@@ -38,6 +38,63 @@ The output format (currently `styled` or `json`) is stored with each profile (vi
 2. Run the handler which is located in `pkg/handlers` and pass the values as arguments
 3. Handle any errors and return the result in a lite TUI format
 
+### Extending otdfctl
+
+Projects that build a CLI on top of otdfctl (via `cmd.RootCmd.AddCommand(...)` or
+`cmd.MountRoot`) can extend profiles and authentication without forking.
+
+#### Storing custom data on a profile
+
+Each profile has a namespaced extension store. Persist your own typed data with the generic
+`profiles.GetExtension` / `profiles.SetExtension` helpers — otdfctl stores it as opaque JSON
+and never interprets it:
+
+```go
+type AcmeCreds struct {
+	APIKey string `json:"apiKey"`
+	Region string `json:"region"`
+}
+
+// write
+_ = profiles.SetExtension(store, "acme", AcmeCreds{APIKey: "abc", Region: "us"})
+
+// read: absent -> (zero, false, nil)
+creds, ok, err := profiles.GetExtension[AcmeCreds](store, "acme")
+```
+
+Different extensions may use different types; each owns its own name.
+
+#### Registering a custom auth process
+
+Authentication is pluggable. Implement `auth.Provider` and register it (typically from an
+`init()`) to teach otdfctl a new auth type. The provider reads its credentials from the profile
+— usually via the extension store above — and returns the matching `sdk.Option`:
+
+```go
+const acmeAuthType = "acme"
+
+type acmeProvider struct{}
+
+func (acmeProvider) SDKAuthOption(p *profiles.OtdfctlProfileStore) (sdk.Option, error) {
+	creds, _, err := profiles.GetExtension[AcmeCreds](p, "acme")
+	if err != nil {
+		return nil, err
+	}
+	// Build an oauth2.TokenSource from creds, then wrap it:
+	return sdk.WithOAuthAccessTokenSource(tokenSourceFrom(creds)), nil
+}
+
+func (acmeProvider) Validate(ctx context.Context, p *profiles.OtdfctlProfileStore) error { /* ... */ }
+func (acmeProvider) GetToken(ctx context.Context, p *profiles.OtdfctlProfileStore) (*oauth2.Token, error) { /* ... */ }
+
+func init() {
+	auth.RegisterProvider(acmeAuthType, acmeProvider{})
+}
+```
+
+Set the profile's auth type to your custom string (via `store.SetAuthCredentials`) so otdfctl
+dispatches to your provider when building the SDK client.
+
 ### TUI
 
 > [!CAUTION]

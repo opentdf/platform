@@ -1,9 +1,11 @@
 package cmd
 
 import (
+	"context"
 	"fmt"
 	"log/slog"
 	"os"
+	"sync"
 
 	"github.com/opentdf/platform/otdfctl/cmd/auth"
 	cfg "github.com/opentdf/platform/otdfctl/cmd/config"
@@ -14,8 +16,10 @@ import (
 	"github.com/opentdf/platform/otdfctl/pkg/cli"
 	"github.com/opentdf/platform/otdfctl/pkg/config"
 	"github.com/opentdf/platform/otdfctl/pkg/man"
+	"github.com/opentdf/platform/otdfctl/pkg/tracing"
 	"github.com/opentdf/platform/sdk"
 	"github.com/spf13/cobra"
+	"go.opentelemetry.io/otel"
 )
 
 var (
@@ -23,6 +27,11 @@ var (
 	clientCredsJSON string
 
 	RootCmd = &man.Docs.GetDoc("<root>").Command
+
+	// finishTrace ends the root command span and flushes the tracer provider.
+	// It is invoked from PersistentPostRunE (normal exit) and via cli.OnExit
+	// (os.Exit paths), guarded so it runs exactly once.
+	finishTrace = func() {}
 )
 
 type version struct {
@@ -86,6 +95,31 @@ func init() {
 
 			slog.SetDefault(logger)
 		}
+
+		// Start OpenTelemetry tracing for this command. This is a no-op unless
+		// OTEL_EXPORTER_OTLP_ENDPOINT is set, so it adds no cost to normal runs.
+		shutdown, enabled := tracing.Init(context.Background())
+		if enabled {
+			ctx := tracing.ExtractParentFromEnv(context.Background())
+			ctx, span := otel.Tracer("otdfctl").Start(ctx, "cli."+cmd.Name())
+			cmd.SetContext(ctx)
+
+			var once sync.Once
+			finishTrace = func() {
+				once.Do(func() {
+					span.End()
+					shutdown()
+				})
+			}
+			// Ensure spans flush even when a command exits via os.Exit.
+			cli.OnExit = finishTrace
+		}
+		return nil
+	}
+
+	// Flush traces on the normal (non-os.Exit) return path.
+	RootCmd.PersistentPostRunE = func(_ *cobra.Command, _ []string) error {
+		finishTrace()
 		return nil
 	}
 

@@ -29,6 +29,35 @@ func TestDecryptTo_InvalidCiphertext(t *testing.T) {
 	require.Empty(t, dest.Bytes())
 }
 
+// DecryptBytes checks the plaintext size (via Seek, from the manifest's
+// segment sizes) before buffering anything, so this never needs a working
+// KAS to reach the size check.
+func TestDecryptBytes_RejectsPayloadOverSizeLimit(t *testing.T) {
+	sdk := newSDK()
+	sdk.wellknownConfiguration = newMockWellKnownService(createWellKnown(nil), nil)
+	plaintext := []byte("this plaintext is bigger than our lowered test limit")
+
+	var ciphertext bytes.Buffer
+	_, err := sdk.CreateTDF(&ciphertext, bytes.NewReader(plaintext), func(tdfConfig *TDFConfig) error {
+		tdfConfig.kasInfoList = []KASInfo{{
+			URL:       "example.com",
+			PublicKey: mockRSAPublicKey1,
+			Default:   true,
+		}}
+		return nil
+	})
+	require.NoError(t, err)
+
+	original := maxDecryptBytesSize
+	maxDecryptBytesSize = int64(len(plaintext)) - 1
+	defer func() { maxDecryptBytesSize = original }()
+
+	got, err := sdk.DecryptBytes(ciphertext.Bytes())
+
+	require.ErrorIs(t, err, ErrTDFNotDecryptable)
+	require.Nil(t, got)
+}
+
 func TestDecryptBytes_OptionErrorSurfaces(t *testing.T) {
 	sdk := newSDK()
 	failErr := errors.New("boom")

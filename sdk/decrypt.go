@@ -9,20 +9,44 @@ import (
 	"path/filepath"
 )
 
+// maxDecryptBytesSize caps the plaintext size DecryptBytes will buffer into
+// memory. Payloads larger than this should use DecryptTo, DecryptFile (both
+// stream to their destination instead of buffering), or LoadTDF directly.
+// A var, not a const, so tests can override it rather than constructing a
+// multi-gigabyte fixture.
+var maxDecryptBytesSize int64 = 1 << 30 // 1 GiB
+
 // DecryptBytes decrypts a TDF payload held in memory and returns the
 // plaintext. A thin wrapper over [SDK.LoadTDF] + [Reader.WriteTo] for the
 // common case where the ciphertext already fits comfortably in memory:
 //
 //	plaintext, err := sdk.DecryptBytes(ciphertext)
 //
-// For streaming, very large payloads, or reading manifest data (attributes,
-// assertions) between load and write, call [SDK.LoadTDF] directly.
+// Rejects payloads over 1 GiB up front, before buffering anything, since
+// DecryptBytes holds the full plaintext in memory. For streaming, very
+// large payloads, or reading manifest data (attributes, assertions)
+// between load and write, call [SDK.LoadTDF] directly, or use [SDK.DecryptTo]
+// / [SDK.DecryptFile], which stream to their destination instead of
+// buffering.
 func (s SDK) DecryptBytes(ciphertext []byte, opts ...TDFReaderOption) ([]byte, error) {
 	reader, err := s.LoadTDF(bytes.NewReader(ciphertext), opts...)
 	if err != nil {
 		return nil, fmt.Errorf("%w: %w", ErrTDFNotDecryptable, err)
 	}
+
+	size, err := reader.Seek(0, io.SeekEnd)
+	if err != nil {
+		return nil, fmt.Errorf("%w: %w", ErrTDFNotDecryptable, err)
+	}
+	if size > maxDecryptBytesSize {
+		return nil, fmt.Errorf("%w: plaintext is %d bytes, exceeds the %d byte limit for DecryptBytes; use DecryptTo, DecryptFile, or LoadTDF directly for large payloads", ErrTDFNotDecryptable, size, maxDecryptBytesSize)
+	}
+	if _, err = reader.Seek(0, io.SeekStart); err != nil {
+		return nil, fmt.Errorf("%w: %w", ErrTDFNotDecryptable, err)
+	}
+
 	var buf bytes.Buffer
+	buf.Grow(int(size))
 	if _, err = reader.WriteTo(&buf); err != nil {
 		return nil, fmt.Errorf("%w: %w", ErrTDFDecryptFailed, err)
 	}

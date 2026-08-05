@@ -1317,6 +1317,8 @@ func Test_GetDecisions_ResourceExhausted_HintsV2(t *testing.T) {
 
 	getAttributesByValueFqnsResponse = attr.GetAttributeValuesByFqnsResponse{}
 	errGetAttributesByValueFqns = connect.NewError(connect.CodeResourceExhausted, errors.New("message size 8205724 is larger than configured max 4194304"))
+	// Reset the shared mock error even if an assertion below aborts the test.
+	t.Cleanup(func() { errGetAttributesByValueFqns = nil })
 
 	req := connect.Request[authorization.GetDecisionsRequest]{
 		Msg: &authorization.GetDecisionsRequest{
@@ -1346,8 +1348,6 @@ func Test_GetDecisions_ResourceExhausted_HintsV2(t *testing.T) {
 	assert.Nil(t, resp)
 	assert.Equal(t, connect.CodeInternal, connect.CodeOf(err), "resource_exhausted is surfaced as internal")
 	assert.Contains(t, err.Error(), "v2", "error should point the caller to the v2 authorization API")
-
-	errGetAttributesByValueFqns = nil
 }
 
 func Test_GetDecisionsAllOf_Pass_EC_RA_Length_Mismatch(t *testing.T) {

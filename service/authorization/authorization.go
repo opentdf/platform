@@ -728,6 +728,14 @@ func retrieveAttributeDefinitions(ctx context.Context, attrFqns []string, sdk *o
 		Fqns: attrFqns,
 	})
 	if err != nil {
+		// A resource_exhausted here means the attribute definitions for the requested FQNs
+		// exceed the max message size (e.g. an attribute with a very large number of values).
+		// v1 cannot page this internal load; point the caller at v2, which can. See #3821.
+		if connect.CodeOf(err) == connect.CodeResourceExhausted {
+			return nil, connect.NewError(connect.CodeResourceExhausted, fmt.Errorf(
+				"attribute definitions for the requested FQNs are too large for the v1 authorization API; "+
+					"upgrade to the v2 authorization API (authorization.v2.AuthorizationService): %w", err))
+		}
 		return nil, err
 	}
 	// If `allow_traversal` is true for an attribute definition

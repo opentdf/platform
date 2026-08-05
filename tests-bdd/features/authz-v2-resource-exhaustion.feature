@@ -2,8 +2,7 @@
 Feature: v2 GetDecision tolerates large subject-mapping sets (opentdf/platform#3821)
   The v2 PDP loads every subject mapping (each embedding its condition set) to make a
   decision; once the aggregate exceeds the 4MB connect limit it fails with
-  resource_exhausted. A few mappings sharing one large condition set reproduce it. Black-box:
-  asserts only that a decision is returned, not how the fix is implemented.
+  resource_exhausted. A few mappings sharing one large condition set reproduce it.
 
   Background:
     Given a user exists with username "alice" and email "alice@example.com" and the following attributes:

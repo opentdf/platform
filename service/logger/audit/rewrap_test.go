@@ -25,13 +25,16 @@ func TestCreateRewrapAuditEventHappyPath(t *testing.T) {
 		},
 	}
 
+	sessionKeyType := "ec:secp256r1"
+
 	params := RewrapAuditEventParams{
-		Policy:        kasPolicy,
-		IsSuccess:     true,
-		TDFFormat:     TestTDFFormat,
-		Algorithm:     TestAlgorithm,
-		PolicyBinding: TestPolicyBinding,
-		KeyID:         keyID,
+		Policy:         kasPolicy,
+		IsSuccess:      true,
+		TDFFormat:      TestTDFFormat,
+		Algorithm:      TestAlgorithm,
+		PolicyBinding:  TestPolicyBinding,
+		KeyID:          keyID,
+		SessionKeyType: sessionKeyType,
 	}
 
 	event, err := CreateRewrapAuditEvent(createTestContext(t), params)
@@ -69,10 +72,11 @@ func TestCreateRewrapAuditEventHappyPath(t *testing.T) {
 	}
 
 	expectedEventMetaData := auditEventMetadata{
-		"keyID":         keyID,
-		"policyBinding": TestPolicyBinding,
-		"tdfFormat":     TestTDFFormat,
-		"algorithm":     TestAlgorithm,
+		"keyID":          keyID,
+		"policyBinding":  TestPolicyBinding,
+		"tdfFormat":      TestTDFFormat,
+		"algorithm":      TestAlgorithm,
+		"sessionKeyType": sessionKeyType,
 	}
 	if !reflect.DeepEqual(event.EventMetaData, expectedEventMetaData) {
 		t.Fatalf("event metadata did not match expected: got %+v, want %+v", event.EventMetaData, expectedEventMetaData)

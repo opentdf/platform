@@ -6,6 +6,7 @@ command:
     - name: id
       description: The ID of the resource mapping group to delete
       default: ''
+      required: true
     - name: force
       description: Force deletion without interactive confirmation (dangerous)
 ---

@@ -22,7 +22,6 @@ command:
     - name: value
       shorthand: v
       description: Value of the attribute (i.e. 'value1')
-      required: true
     - name: namespace
       shorthand: s
       description: Namespace ID of the attribute

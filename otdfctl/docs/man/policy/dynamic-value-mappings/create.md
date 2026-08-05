@@ -10,15 +10,18 @@ command:
     - name: attribute
       description: URI or ID of the Attribute Definition to scope the mapping to
       shorthand: a
+      required: true
     - name: selector
       description: Selector for a field on the flattened Entity Representation (e.g. '.patientAssignments[]')
       shorthand: s
+      required: true
     - name: operator
       description: How the requested resource value segment is compared against each entity selector value
       shorthand: o
       enum:
         - IN
         - IN_CONTAINS
+      required: true
     - name: action
       description: Each 'id' or 'name' of an Action to be entitled (i.e. 'create', 'read', 'update', 'delete'). At least one is required.
     - name: subject-condition-set

@@ -10,9 +10,11 @@ command:
     - name: namespace-id
       description: The ID of the namespace of the group
       default: ''
+      required: true
     - name: name
       description: The name of the group
       default: ''
+      required: true
     - name: label
       description: "Optional metadata 'labels' in the format: key=value"
       shorthand: l

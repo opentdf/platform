@@ -8,6 +8,7 @@ command:
     - name: id
       shorthand: i
       description: ID of the registered resource value to update
+      required: true
     - name: value
       shorthand: v
       description: Optional updated value of the registered resource value (must be unique within the Registered Resource)

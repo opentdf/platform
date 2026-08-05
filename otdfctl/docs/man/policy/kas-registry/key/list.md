@@ -8,11 +8,9 @@ command:
     - name: limit
       shorthand: l
       description: Maximum number of keys to return
-      required: true
     - name: offset
       shorthand: o
       description: Number of keys to skip before starting to return results
-      required: true
     - name: algorithm
       shorthand: a
       description: Key Algorithm to filter for

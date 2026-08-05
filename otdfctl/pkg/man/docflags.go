@@ -19,6 +19,7 @@ type DocFlag struct {
 	Default     string   `yaml:"default"`
 	Enum        []string `yaml:"enum"`
 	Sensitive   bool     `yaml:"sensitive"`
+	Required    bool     `yaml:"required"`
 }
 
 func (d *Doc) GetDocFlag(name string) DocFlag {
@@ -55,6 +56,26 @@ func (d *Doc) MarkSensitiveFlags() {
 			if err := d.Flags().SetAnnotation(df.Name, SensitiveAnnotationKey, []string{"true"}); err != nil {
 				panic(fmt.Sprintf("failed to mark flag %q as sensitive for command %q: %v", df.Name, d.Use, err))
 			}
+		}
+	}
+}
+
+// MarkRequiredFlags marks every flag the doc metadata declares `required: true`
+// as required on the command, so cobra enforces it and tools generated from the
+// command tree (e.g. MCP) can advertise the flag as required. Flags declared
+// required in the doc but not registered on this command are skipped (they may
+// be registered on a subcommand or via a shared injector). Call after all flags
+// have been registered.
+func (d *Doc) MarkRequiredFlags() {
+	for _, df := range d.DocFlags {
+		if !df.Required {
+			continue
+		}
+		if d.Flags().Lookup(df.Name) == nil {
+			continue
+		}
+		if err := d.MarkFlagRequired(df.Name); err != nil {
+			panic(fmt.Sprintf("failed to mark flag %q as required for command %q: %v", df.Name, d.Use, err))
 		}
 	}
 }

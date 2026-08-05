@@ -10,6 +10,7 @@ command:
     - name: attribute-value-id
       description: The ID of the attribute value to map to the resource.
       default: ''
+      required: true
     - name: terms
       description: The synonym terms to match for the resource mapping.
       default: ''

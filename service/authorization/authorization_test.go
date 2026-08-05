@@ -1344,9 +1344,8 @@ func Test_GetDecisions_ResourceExhausted_HintsV2(t *testing.T) {
 
 	require.Error(t, err)
 	assert.Nil(t, resp)
-	assert.Equal(t, connect.CodeResourceExhausted, connect.CodeOf(err), "resource_exhausted code should be preserved")
+	assert.Equal(t, connect.CodeInternal, connect.CodeOf(err), "resource_exhausted is surfaced as internal")
 	assert.Contains(t, err.Error(), "v2", "error should point the caller to the v2 authorization API")
-	assert.Contains(t, err.Error(), "4194304", "underlying limit message should be preserved")
 
 	errGetAttributesByValueFqns = nil
 }

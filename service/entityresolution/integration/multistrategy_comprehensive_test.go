@@ -923,7 +923,7 @@ func chainEntityClaimsMap(t *testing.T, ent *entity.Entity) map[string]interface
 	t.Helper()
 	claims := ent.GetClaims()
 	if claims == nil {
-		return map[string]interface{}{}
+		t.Fatalf("chain entity %q carries no claims; entity type is %T", ent.GetEphemeralId(), ent.GetEntityType())
 	}
 
 	var claimsStruct structpb.Struct
@@ -1022,7 +1022,16 @@ func startSeededLDAPContainer(ctx context.Context, t *testing.T) (testcontainers
 				FileMode:          0o644,
 			},
 		},
-		WaitingFor: wait.ForListeningPort("389/tcp").WithStartupTimeout(60 * time.Second),
+		WaitingFor: wait.ForAll(
+			wait.ForListeningPort("389/tcp"),
+			wait.ForExec([]string{
+				"sh", "-c",
+				"ldapsearch -x -H ldap://localhost:389 " +
+					"-D cn=admin,dc=opentdf,dc=test -w admin123 " +
+					"-b ou=users,dc=opentdf,dc=test '(uid=alice)' dn " +
+					"| grep -q '^dn: uid=alice,ou=users,dc=opentdf,dc=test$'",
+			}),
+		).WithDeadline(60 * time.Second),
 	}
 
 	ldapContainer, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
@@ -1045,9 +1054,6 @@ func startSeededLDAPContainer(ctx context.Context, t *testing.T) (testcontainers
 	if err != nil {
 		t.Fatalf("Failed to get LDAP container port: %v", err)
 	}
-
-	// Give OpenLDAP time to finish applying custom LDIF fixtures before tests search under ou=users.
-	time.Sleep(5 * time.Second)
 
 	return ldapContainer, host, int(mappedPort.Num())
 }

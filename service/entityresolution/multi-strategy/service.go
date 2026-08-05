@@ -112,22 +112,7 @@ func (s *Service) ResolveEntity(ctx context.Context, entityID string, claimsMap 
 		}
 
 		// Success - add strategy metadata and return result
-		result.Metadata["strategy_name"] = strategy.Name
-		result.Metadata["strategy_provider"] = strategy.Provider
-		result.Metadata["entity_type"] = strategy.EntityType
-		result.Metadata["failure_strategy"] = failureStrategy
-		// Coerce []string -> []interface{} so structpb.NewValue (called by
-		// the v2 ResolveEntities handler when it serializes metadata into
-		// EntityRepresentation.AdditionalProps) can encode it. structpb's
-		// NewValue accepts string|float64|bool|nil|map|[]interface{} only -
-		// a raw []string trips "proto: invalid type: []string" and the
-		// resolved entity is silently dropped via `continue` in the loop.
-		attemptedAny := make([]interface{}, len(attemptedStrategies))
-		for i, strat := range attemptedStrategies {
-			attemptedAny[i] = strat
-		}
-		result.Metadata["attempted_strategies"] = attemptedAny
-
+		s.applyStrategyMetadata(result, strategy, attemptedStrategies)
 		return result, nil
 	}
 
@@ -154,15 +139,7 @@ func (s *Service) ResolveEntityWithStrategy(ctx context.Context, entityID string
 		return nil, err
 	}
 
-	failureStrategy := s.config.FailureStrategy
-	if failureStrategy == "" {
-		failureStrategy = types.FailureStrategyFailFast
-	}
-	result.Metadata["strategy_name"] = strategy.Name
-	result.Metadata["strategy_provider"] = strategy.Provider
-	result.Metadata["entity_type"] = strategy.EntityType
-	result.Metadata["failure_strategy"] = failureStrategy
-	result.Metadata["attempted_strategies"] = []interface{}{strategy.Name}
+	s.applyStrategyMetadata(result, strategy, []string{strategy.Name})
 	return result, nil
 }
 
@@ -217,6 +194,26 @@ func (s *Service) GetProviders() map[string]string {
 	}
 
 	return result
+}
+
+// applyStrategyMetadata records selected-strategy provenance on the result. The attempted
+// strategies are converted to []interface{} because structpb.NewValue cannot encode []string.
+func (s *Service) applyStrategyMetadata(result *types.EntityResult, strategy *types.MappingStrategy, attemptedStrategies []string) {
+	failureStrategy := s.config.FailureStrategy
+	if failureStrategy == "" {
+		failureStrategy = types.FailureStrategyFailFast
+	}
+
+	attemptedAny := make([]interface{}, len(attemptedStrategies))
+	for i, attempted := range attemptedStrategies {
+		attemptedAny[i] = attempted
+	}
+
+	result.Metadata["strategy_name"] = strategy.Name
+	result.Metadata["strategy_provider"] = strategy.Provider
+	result.Metadata["entity_type"] = strategy.EntityType
+	result.Metadata["failure_strategy"] = failureStrategy
+	result.Metadata["attempted_strategies"] = attemptedAny
 }
 
 // executeStrategy executes a single mapping strategy

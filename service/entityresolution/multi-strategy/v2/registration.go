@@ -273,7 +273,29 @@ func (ers *ERSV2) createEntityChainFromSingleTokenV2(ctx context.Context, token 
 		}
 
 		// Success! Create entity from result
-		entityV2 := ers.createEntityFromResultV2(ctx, entityResult, strategy, token.GetEphemeralId())
+		entityV2, err := ers.createEntityFromResultV2(ctx, entityResult, strategy, token.GetEphemeralId())
+		if err != nil {
+			lastError = err
+			ers.logger.WarnContext(ctx, "failed to serialize resolved entity for token",
+				slog.String("token_id", token.GetEphemeralId()),
+				slog.String("strategy", strategy.Name),
+				slog.String("error", err.Error()))
+
+			if failureStrategy == types.FailureStrategyFailFast {
+				return nil, types.WrapMultiStrategyError(
+					types.ErrorTypeMapping,
+					"resolved entity serialization failed with fail-fast policy",
+					err,
+					map[string]interface{}{
+						"token_id":             token.GetEphemeralId(),
+						"strategy":             strategy.Name,
+						"failure_strategy":     failureStrategy,
+						"attempted_strategies": attemptedStrategies,
+					},
+				)
+			}
+			continue
+		}
 		entities = append(entities, entityV2)
 
 		ers.logger.DebugContext(ctx, "successfully resolved entity for token",
@@ -323,7 +345,7 @@ func (ers *ERSV2) createEntityChainFromSingleTokenV2(ctx context.Context, token 
 // expose it to subject mappings and couple portable ABAC policy to multi-strategy provider names,
 // strategy ordering, and other deployment-specific ERS structure. Resolution metadata belongs
 // in observability or a dedicated out-of-band metadata channel, not in policy input.
-func (ers *ERSV2) createEntityFromResultV2(ctx context.Context, result *types.EntityResult, strategy *types.MappingStrategy, tokenID string) *entity.Entity {
+func (ers *ERSV2) createEntityFromResultV2(_ context.Context, result *types.EntityResult, strategy *types.MappingStrategy, tokenID string) (*entity.Entity, error) {
 	category := entity.Entity_CATEGORY_SUBJECT
 	if strategy.EntityType == types.EntityTypeEnvironment {
 		category = entity.Entity_CATEGORY_ENVIRONMENT
@@ -331,33 +353,32 @@ func (ers *ERSV2) createEntityFromResultV2(ctx context.Context, result *types.En
 
 	resultData, err := claimsToResultData(result.Claims)
 	if err != nil {
-		ers.logger.WarnContext(ctx, "failed to normalize resolved claims for entity chain, falling back to minimal claims payload",
-			slog.String("token_id", tokenID),
-			slog.String("strategy", strategy.Name),
-			slog.String("error", err.Error()))
-		resultData = map[string]interface{}{}
-		for key, value := range result.Claims {
-			resultData[key] = protohelper.StructPBCompatibleValue(value)
-		}
+		return nil, types.WrapMultiStrategyError(
+			types.ErrorTypeMapping,
+			"failed to normalize resolved claims for entity chain",
+			err,
+			map[string]interface{}{"token_id": tokenID, "strategy": strategy.Name},
+		)
 	}
 
 	claimsStruct, err := structpb.NewStruct(resultData)
 	if err != nil {
-		ers.logger.WarnContext(ctx, "failed to build structpb claims for entity chain, using fallback token id claim",
-			slog.String("token_id", tokenID),
-			slog.String("strategy", strategy.Name),
-			slog.String("error", err.Error()))
-		claimsStruct, _ = structpb.NewStruct(map[string]interface{}{"token_id": tokenID})
+		return nil, types.WrapMultiStrategyError(
+			types.ErrorTypeMapping,
+			"failed to build structpb claims for entity chain",
+			err,
+			map[string]interface{}{"token_id": tokenID, "strategy": strategy.Name},
+		)
 	}
 
 	claimsAny, err := anypb.New(claimsStruct)
 	if err != nil {
-		ers.logger.WarnContext(ctx, "failed to wrap claims payload for entity chain, using fallback token id claim",
-			slog.String("token_id", tokenID),
-			slog.String("strategy", strategy.Name),
-			slog.String("error", err.Error()))
-		fallbackStruct, _ := structpb.NewStruct(map[string]interface{}{"token_id": tokenID})
-		claimsAny, _ = anypb.New(fallbackStruct)
+		return nil, types.WrapMultiStrategyError(
+			types.ErrorTypeMapping,
+			"failed to wrap claims payload for entity chain",
+			err,
+			map[string]interface{}{"token_id": tokenID, "strategy": strategy.Name},
+		)
 	}
 
 	entityID := fmt.Sprintf("%s-%s-claims-%s",
@@ -369,7 +390,7 @@ func (ers *ERSV2) createEntityFromResultV2(ctx context.Context, result *types.En
 		EphemeralId: entityID,
 		EntityType:  &entity.Entity_Claims{Claims: claimsAny},
 		Category:    category,
-	}
+	}, nil
 }
 
 func claimsToResultData(claims map[string]interface{}) (map[string]interface{}, error) {

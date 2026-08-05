@@ -58,6 +58,13 @@ func TestResolveEntityWithStrategyExecutesSelectedStrategy(t *testing.T) {
 	if got := result.Metadata["strategy_name"]; got != "client_strategy" {
 		t.Fatalf("expected strategy_name client_strategy, got %v", got)
 	}
+	attempted, ok := result.Metadata["attempted_strategies"].([]interface{})
+	if !ok {
+		t.Fatalf("attempted_strategies must be []interface{} for structpb encoding, got %T", result.Metadata["attempted_strategies"])
+	}
+	if len(attempted) != 1 || attempted[0] != "client_strategy" {
+		t.Fatalf("expected attempted_strategies [client_strategy], got %v", attempted)
+	}
 }
 
 func TestMultiStrategyService_JWT_Claims_Provider(t *testing.T) {

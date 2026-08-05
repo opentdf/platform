@@ -344,7 +344,8 @@ func TestCreateEntityFromResultV2ExcludesResolutionMetadataFromPolicyClaims(t *t
 		EntityType: types.EntityTypeSubject,
 	}
 
-	resolved := ers.createEntityFromResultV2(t.Context(), result, strategy, "token-1")
+	resolved, err := ers.createEntityFromResultV2(t.Context(), result, strategy, "token-1")
+	require.NoError(t, err)
 	require.Equal(t, entity.Entity_CATEGORY_SUBJECT, resolved.GetCategory())
 	require.NotNil(t, resolved.GetClaims())
 
@@ -360,4 +361,23 @@ func TestCreateEntityFromResultV2ExcludesResolutionMetadataFromPolicyClaims(t *t
 	require.NotContains(t, policyClaims, "metadata_strategy_name")
 	require.NotContains(t, policyClaims, "metadata_strategy_provider")
 	require.NotContains(t, policyClaims, "metadata_provider_type")
+}
+
+func TestCreateEntityFromResultV2RejectsUnserializableClaims(t *testing.T) {
+	ers := &ERSV2{logger: logger.CreateTestLogger()}
+	result := &types.EntityResult{
+		Claims: map[string]interface{}{
+			"username":    "alice",
+			"unsupported": make(chan int),
+		},
+	}
+	strategy := &types.MappingStrategy{
+		Name:       "sql_subject",
+		EntityType: types.EntityTypeSubject,
+	}
+
+	resolved, err := ers.createEntityFromResultV2(t.Context(), result, strategy, "token-1")
+	require.Error(t, err)
+	require.Nil(t, resolved)
+	require.ErrorContains(t, err, "failed to normalize resolved claims for entity chain")
 }

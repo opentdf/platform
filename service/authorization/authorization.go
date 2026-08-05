@@ -516,6 +516,11 @@ func (as *AuthorizationService) getDecisions(ctx context.Context, dr *authorizat
 	if err == nil {
 		dataAttrDefsAndVals, err = retrieveAttributeDefinitions(ctx, allPertinentFQNS.GetAttributeValueFqns(), as.sdk)
 	}
+	// Preserve the resource_exhausted code and v2 upgrade hint from retrieveAttributeDefinitions
+	// rather than flattening it to a generic internal error (#3821).
+	if err != nil && connect.CodeOf(err) == connect.CodeResourceExhausted {
+		return nil, err
+	}
 	if err != nil {
 		// if attribute an FQN does not exist
 		// return deny for all entity chains aginst this RAs

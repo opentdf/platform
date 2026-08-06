@@ -4,7 +4,7 @@ Feature: Claims-only ERS resolution (no LDAP)
   by a claims-only multi-strategy ERS without needing LDAP.
 
   Background:
-    And an ERS configuration with mode "multi-strategy" and failure strategy "continue"
+    Given an ERS configuration with mode "multi-strategy" and failure strategy "continue"
     And an ERS provider "jwt_claims" of type "claims"
     And an ERS mapping strategy "claims_department" using provider "jwt_claims"
       """

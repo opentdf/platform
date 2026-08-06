@@ -1,13 +1,14 @@
 @claims-ldap-fallback-ers @stateless
-Feature: Claims-to-LDAP fallback via condition-based strategy routing
-  Validate that condition-based strategy selection correctly routes entity
-  resolution: a claims strategy with condition "department exists" is skipped
-  when the entity lacks a department claim, and the LDAP strategy with
-  condition "userName exists" matches and provides the department from LDAP.
+Feature: Claims-to-LDAP fallback via continue failure strategy
+  Validate that failure_strategy "continue" allows LDAP to resolve entities
+  after the claims strategy fails. The claims strategy condition "userName
+  exists" matches user_name entities, but the claims provider fails because
+  JWTClaimsContextKey is only populated for Entity_Claims — not Entity_UserName.
+  Under "continue", this error is ignored and the LDAP strategy succeeds.
 
-  This demonstrates the fallback pattern where claims serve as a fast path
-  (when claims already contain the needed attributes) and LDAP acts as the
-  fallback (when claims are incomplete).
+  Also validates the claims fast path: when an Entity_Claims entity carries
+  the needed attributes inline, the claims strategy succeeds directly without
+  needing LDAP.
 
   Background:
     Given an LDAP directory with test users
@@ -19,7 +20,7 @@ Feature: Claims-to-LDAP fallback via condition-based strategy routing
       entity_type: subject
       conditions:
         jwt_claims:
-          - claim: department
+          - claim: userName
             operator: exists
       output_mapping:
         - source_claim: department
@@ -52,7 +53,7 @@ Feature: Claims-to-LDAP fallback via condition-based strategy routing
       """
     And a local platform with inline ERS configuration
 
-  Scenario: Entity without department claim falls back to LDAP — engineering user gets PERMIT
+  Scenario: Claims fails for user_name, continue allows LDAP fallback — engineering user gets PERMIT
     Given I submit a request to create a namespace with name "fallback.test" and reference id "ns_fb"
     And I send a request to create an attribute with:
       | namespace_id | name       | rule  | values                         |
@@ -72,7 +73,7 @@ Feature: Claims-to-LDAP fallback via condition-based strategy routing
     Then the response should be successful
     And I should get a "PERMIT" decision response
 
-  Scenario: Entity without department claim falls back to LDAP — operations user gets DENY
+  Scenario: Claims fails for user_name, LDAP resolves non-engineering department — DENY
     Given I submit a request to create a namespace with name "fallback-deny.test" and reference id "ns_fb_deny"
     And I send a request to create an attribute with:
       | namespace_id | name       | rule  | values                         |
@@ -91,3 +92,26 @@ Feature: Claims-to-LDAP fallback via condition-based strategy routing
     When I send a decision request for entity chain "eve_fb" for "read" action on resource "https://fallback-deny.test/attr/department/value/engineering"
     Then the response should be successful
     And I should get a "DENY" decision response
+
+  Scenario: Entity_Claims with department skips LDAP — claims fast path PERMIT
+    Given I submit a request to create a namespace with name "fastpath.test" and reference id "ns_fp"
+    And I send a request to create an attribute with:
+      | namespace_id | name       | rule  | values                         |
+      | ns_fp        | department | anyOf | engineering,marketing,security |
+    Then the response should be successful
+    Given a condition group referenced as "cg_fp" with an "or" operator with conditions:
+      | selector_value | operator | values      |
+      | .department    | in       | engineering |
+    And a subject set referenced as "ss_fp" containing the condition groups "cg_fp"
+    And I send a request to create a subject condition set referenced as "scs_fp" containing subject sets "ss_fp"
+    And I send a request to create a subject mapping with:
+      | reference_id | attribute_value                                          | condition_set_name | standard actions | custom actions |
+      | sm_fp        | https://fastpath.test/attr/department/value/engineering  | scs_fp             | read             |                |
+    Then the response should be successful
+    Given there is a claims subject entity referenced as "alice_fp" with claims:
+      """
+      {"userName":"alice","department":"engineering"}
+      """
+    When I send a decision request for entity chain "alice_fp" for "read" action on resource "https://fastpath.test/attr/department/value/engineering"
+    Then the response should be successful
+    And I should get a "PERMIT" decision response

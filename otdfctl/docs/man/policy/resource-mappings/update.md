@@ -8,6 +8,7 @@ command:
     - name: id
       description: The ID of the resource mapping to update.
       default: ''
+      required: true
     - name: attribute-value-id
       description: The ID of the attribute value to map to the resource.
       default: ''

@@ -125,4 +125,21 @@ func InitCommands() {
 	initKASKeysCommands()
 	initKASGrantsCommands()
 	initBaseKeysCommands()
+
+	// Enforce `required: true` from the man docs across all policy commands now
+	// that every command's flags are registered. Marking required at the cobra
+	// layer both validates invocations and lets generated tooling (e.g. MCP)
+	// advertise which inputs are mandatory.
+	markPolicyRequiredFlags()
+}
+
+// markPolicyRequiredFlags applies MarkRequiredFlags to every policy command doc.
+// The doc registry caches the same *Doc used to build each command, so this
+// reads the flags registered by the init*Commands functions above.
+func markPolicyRequiredFlags() {
+	for path, doc := range man.Docs.En {
+		if path == "policy" || strings.HasPrefix(path, "policy/") {
+			doc.MarkRequiredFlags()
+		}
+	}
 }

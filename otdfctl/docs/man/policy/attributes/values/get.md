@@ -8,6 +8,7 @@ command:
     - name: id
       shorthand: i
       description: The ID of the attribute value to get
+      required: true
 ---
 
 Retrieve an attribute value along with its metadata.

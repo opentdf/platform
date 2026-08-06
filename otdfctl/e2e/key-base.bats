@@ -151,7 +151,7 @@ teardown_file() {
 @test "base-key: set (missing key identifier: id or keyId)" {
   run_otdfctl_base_key set --kas "${KAS_REGISTRY_ID_BASE_KEY_TEST}"
   assert_failure
-  assert_output --partial "Flag '--key' is required"
+  assert_output --partial 'required flag(s) "key" not set'
 }
 
 @test "base-key: set (using non-existent keyId)" {

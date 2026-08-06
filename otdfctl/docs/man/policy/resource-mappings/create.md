@@ -10,9 +10,11 @@ command:
     - name: attribute-value-id
       description: The ID of the attribute value to map to the resource.
       default: ''
+      required: true
     - name: terms
       description: The synonym terms to match for the resource mapping.
       default: ''
+      required: true
     - name: group-id
       description: The ID of the resource mapping group to assign this mapping to
       default: ''

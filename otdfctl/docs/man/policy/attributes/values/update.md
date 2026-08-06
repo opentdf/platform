@@ -9,6 +9,7 @@ command:
     - name: id
       shorthand: i
       description: The ID of the attribute value to update
+      required: true
     - name: label
       description: "Optional metadata 'labels' in the format: key=value"
       shorthand: l

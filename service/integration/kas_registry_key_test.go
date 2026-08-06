@@ -2501,6 +2501,91 @@ func (s *KasRegistryKeySuite) Test_ListKeys_SortByUpdatedAt_ASC() {
 	assertIDsInOrder(s.T(), list.GetKasKeys(), func(k *policy.KasKey) string { return k.GetKey().GetId() }, ids[0], ids[1], ids[2])
 }
 
+// rotateOneSortTestKey rotates the key at keyIDs[idx] so it becomes ROTATED,
+// returning the ID of the newly created ACTIVE key.
+func (s *KasRegistryKeySuite) rotateOneSortTestKey(keyIDs []string, idx int) string {
+	activeKey, err := s.db.PolicyClient.GetKey(s.ctx, &kasregistry.GetKeyRequest_Id{Id: keyIDs[idx]})
+	s.Require().NoError(err)
+
+	ts := time.Now().UnixNano()
+	rotated, err := s.db.PolicyClient.RotateKey(s.ctx, activeKey, &kasregistry.RotateKeyRequest_NewKey{
+		KeyId:        fmt.Sprintf("statussort-rotated-%d", ts),
+		Algorithm:    policy.Algorithm_ALGORITHM_RSA_2048,
+		KeyMode:      policy.KeyMode_KEY_MODE_CONFIG_ROOT_KEY,
+		PublicKeyCtx: &policy.PublicKeyCtx{Pem: keyCtx},
+		PrivateKeyCtx: &policy.PrivateKeyCtx{
+			KeyId:      fmt.Sprintf("statussort-rotated-priv-%d", ts),
+			WrappedKey: keyCtx,
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(rotated)
+
+	return rotated.GetKasKey().GetKey().GetId()
+}
+
+// assertKeyStatusesOrdered asserts the listed statuses are sorted by their
+// numeric enum value in the given direction.
+func (s *KasRegistryKeySuite) assertKeyStatusesOrdered(keys []*policy.KasKey, ascending bool) {
+	s.Require().GreaterOrEqual(len(keys), 2, "need at least two keys to assert ordering")
+
+	statuses := make([]policy.KeyStatus, 0, len(keys))
+	for _, k := range keys {
+		statuses = append(statuses, k.GetKey().GetKeyStatus())
+	}
+
+	for i := 1; i < len(statuses); i++ {
+		if ascending {
+			s.LessOrEqual(statuses[i-1], statuses[i], "statuses not ascending: %v", statuses)
+		} else {
+			s.GreaterOrEqual(statuses[i-1], statuses[i], "statuses not descending: %v", statuses)
+		}
+	}
+
+	// Guard against a vacuous pass if every key shares one status.
+	s.NotEqual(statuses[0], statuses[len(statuses)-1], "expected mixed statuses: %v", statuses)
+}
+
+func (s *KasRegistryKeySuite) Test_ListKeys_SortByKeyStatus_ASC() {
+	ids, kasID := s.createSortTestKasKeys([]string{"statusasc-kk-0", "statusasc-kk-1"})
+	ids = append(ids, s.rotateOneSortTestKey(ids, 0))
+	s.T().Cleanup(func() {
+		s.deleteSortTestKasKeys(ids, kasID)
+	})
+
+	list, err := s.db.PolicyClient.ListKeys(s.ctx, &kasregistry.ListKeysRequest{
+		KasFilter: &kasregistry.ListKeysRequest_KasId{KasId: kasID},
+		Sort: []*kasregistry.KasKeysSort{
+			{Field: kasregistry.SortKasKeysType_SORT_KAS_KEYS_TYPE_KEY_STATUS, Direction: policy.SortDirection_SORT_DIRECTION_ASC},
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(list)
+
+	// ACTIVE (1) before ROTATED (2)
+	s.assertKeyStatusesOrdered(list.GetKasKeys(), true)
+}
+
+func (s *KasRegistryKeySuite) Test_ListKeys_SortByKeyStatus_DESC() {
+	ids, kasID := s.createSortTestKasKeys([]string{"statusdesc-kk-0", "statusdesc-kk-1"})
+	ids = append(ids, s.rotateOneSortTestKey(ids, 0))
+	s.T().Cleanup(func() {
+		s.deleteSortTestKasKeys(ids, kasID)
+	})
+
+	list, err := s.db.PolicyClient.ListKeys(s.ctx, &kasregistry.ListKeysRequest{
+		KasFilter: &kasregistry.ListKeysRequest_KasId{KasId: kasID},
+		Sort: []*kasregistry.KasKeysSort{
+			{Field: kasregistry.SortKasKeysType_SORT_KAS_KEYS_TYPE_KEY_STATUS, Direction: policy.SortDirection_SORT_DIRECTION_DESC},
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(list)
+
+	// ROTATED (2) before ACTIVE (1)
+	s.assertKeyStatusesOrdered(list.GetKasKeys(), false)
+}
+
 func (s *KasRegistryKeySuite) Test_ListKeys_SortTieBreaker_CreatedAtWithIDFallback() {
 	kasReq := kasregistry.CreateKeyAccessServerRequest{
 		Name: "tiebreaker-kk-kas-" + uuid.NewString(),

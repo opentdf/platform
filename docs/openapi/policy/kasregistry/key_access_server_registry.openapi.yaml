@@ -593,6 +593,7 @@ components:
         - SORT_KAS_KEYS_TYPE_KEY_ID
         - SORT_KAS_KEYS_TYPE_CREATED_AT
         - SORT_KAS_KEYS_TYPE_UPDATED_AT
+        - SORT_KAS_KEYS_TYPE_KEY_STATUS
     policy.kasregistry.SortKeyAccessServersType:
       type: string
       title: SortKeyAccessServersType

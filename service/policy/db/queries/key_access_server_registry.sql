@@ -425,6 +425,8 @@ ORDER BY
     CASE WHEN p.resolved_field = 'created_at' AND p.resolved_direction = 'DESC' THEN kask.created_at END DESC,
     CASE WHEN p.resolved_field = 'updated_at' AND p.resolved_direction = 'ASC' THEN kask.updated_at END ASC,
     CASE WHEN p.resolved_field = 'updated_at' AND p.resolved_direction = 'DESC' THEN kask.updated_at END DESC,
+    CASE WHEN p.resolved_field = 'key_status' AND p.resolved_direction = 'ASC' THEN kask.key_status END ASC,
+    CASE WHEN p.resolved_field = 'key_status' AND p.resolved_direction = 'DESC' THEN kask.key_status END DESC,
     kask.id ASC
 LIMIT @limit_
 OFFSET @offset_;

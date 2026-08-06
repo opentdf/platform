@@ -1196,6 +1196,22 @@ func Test_GetKasKeysSortParams(t *testing.T) {
 			expectedDirection: "DESC",
 		},
 		{
+			name: "KEY_STATUS with ASC",
+			sort: []*kasregistry.KasKeysSort{
+				{Field: kasregistry.SortKasKeysType_SORT_KAS_KEYS_TYPE_KEY_STATUS, Direction: policy.SortDirection_SORT_DIRECTION_ASC},
+			},
+			expectedField:     "key_status",
+			expectedDirection: "ASC",
+		},
+		{
+			name: "KEY_STATUS with DESC",
+			sort: []*kasregistry.KasKeysSort{
+				{Field: kasregistry.SortKasKeysType_SORT_KAS_KEYS_TYPE_KEY_STATUS, Direction: policy.SortDirection_SORT_DIRECTION_DESC},
+			},
+			expectedField:     "key_status",
+			expectedDirection: "DESC",
+		},
+		{
 			name: "UNSPECIFIED direction returns empty direction",
 			sort: []*kasregistry.KasKeysSort{
 				{Field: kasregistry.SortKasKeysType_SORT_KAS_KEYS_TYPE_KEY_ID, Direction: policy.SortDirection_SORT_DIRECTION_UNSPECIFIED},

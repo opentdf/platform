@@ -14,6 +14,7 @@ command:
     - name: terms
       description: The synonym terms to match for the resource mapping.
       default: ''
+      required: true
     - name: group-id
       description: The ID of the resource mapping group to assign this mapping to
       default: ''

@@ -346,7 +346,7 @@ teardown_file() {
   # missing flag
   run_otdfctl_obl create
     assert_failure
-    assert_output --partial "Flag '--name' is required"
+    assert_output --partial 'required flag(s) "name", "namespace" not set'
   
   # conflict
   run_otdfctl_obl create --name test_create_obl_conflict --namespace "$NS_ID" --json
@@ -586,10 +586,10 @@ teardown_file() {
   # missing flag
   run_otdfctl_obl_values create
     assert_failure
-    assert_output --partial "Flag '--obligation' is required"
+    assert_output --partial 'required flag(s) "obligation", "value" not set'
   run_otdfctl_obl_values create --obligation "$OBL_ID"
     assert_failure
-    assert_output --partial "Flag '--value' is required"
+    assert_output --partial 'required flag(s) "value" not set'
 
   # non-existent obligation fqn
   run_otdfctl_obl_values create --obligation invalid_fqn --value test_create_obl_val
@@ -1019,17 +1019,17 @@ EOF
 
 @test "Create an obligation trigger - Bad" {
   # missing flags
-  run_otdfctl_obl_triggers create --attribute-value "http://example.com/attr/attr_name/value/attr_value" --action "read" 
-  assert_failure 
-  assert_output --partial "Flag '--obligation-value' is required"
+  run_otdfctl_obl_triggers create --attribute-value "http://example.com/attr/attr_name/value/attr_value" --action "read"
+  assert_failure
+  assert_output --partial 'required flag(s) "obligation-value" not set'
   
   run_otdfctl_obl_triggers create --obligation-value "http://example.com/attr/attr_name/value/attr_value" --action "read"
   assert_failure
-  assert_output --partial "Flag '--attribute-value' is required"
+  assert_output --partial 'required flag(s) "attribute-value" not set'
 
   run_otdfctl_obl_triggers create --obligation-value "http://example.com/attr/attr_name/value/attr_value" --attribute-value "http://example.com/attr/attr_name/value/attr_value"
   assert_failure
-  assert_output --partial "Flag '--action' is required"
+  assert_output --partial 'required flag(s) "action" not set'
 }
 
 @test "Delete an obligation trigger - Good" {

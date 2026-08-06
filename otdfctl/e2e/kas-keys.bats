@@ -312,21 +312,21 @@ format_kas_name_as_uri() {
 @test "kas-keys: create key (missing key-id)" {
   run_otdfctl_key create --kas "${KAS_REGISTRY_ID}" --algorithm "rsa:2048" --mode "local" --wrapping-key-id "wrapping-key-1" --wrapping-key "${WRAPPING_KEY}"
   assert_failure
-  assert_output --partial "Flag '--key-id' is required"
+  assert_output --partial 'required flag(s) "key-id" not set'
 }
 
 @test "kas-keys: create key (missing algorithm)" {
   KEY_ID=$(generate_key_id)
   run_otdfctl_key create --kas "${KAS_REGISTRY_ID}" --key-id "${KEY_ID}" --mode "local" --wrapping-key-id "wrapping-key-1" --wrapping-key "${WRAPPING_KEY}"
   assert_failure
-  assert_output --partial "Flag '--algorithm' is required"
+  assert_output --partial 'required flag(s) "algorithm" not set'
 }
 
 @test "kas-keys: create key (missing mode)" {
   KEY_ID=$(generate_key_id)
   run_otdfctl_key create --kas "${KAS_REGISTRY_ID}" --key-id "${KEY_ID}" --algorithm "rsa:2048" --wrapping-key-id "wrapping-key-1" --wrapping-key "${WRAPPING_KEY}"
   assert_failure
-  assert_output --partial "Flag '--mode' is required"
+  assert_output --partial 'required flag(s) "mode" not set'
 }
 
 @test "kas-keys: create key (local mode, missing wrapping-key-id)" {
@@ -421,7 +421,7 @@ format_kas_name_as_uri() {
   KEY_ID=$(generate_key_id)
   run_otdfctl_key create --key-id "${KEY_ID}" --algorithm "rsa:2048" --mode "public_key" --public-key-pem "${PEM_B64}"
   assert_failure
-  assert_output --partial "Flag '--kas' is required"
+  assert_output --partial 'required flag(s) "kas" not set'
 }
 
 @test "kas-keys: create key (using kasName)" {
@@ -612,7 +612,7 @@ format_kas_name_as_uri() {
 @test "kas-keys: get key (failure: only kas, missing key-id or system id)" {
   run_otdfctl_key get --kas "${KAS_REGISTRY_ID}" --json
   assert_failure
-  assert_output --partial "Flag '--key' is required"
+  assert_output --partial 'required flag(s) "key" not set'
 }
 
 @test "kas-keys: get key (not found by system ID)" {
@@ -692,8 +692,7 @@ format_kas_name_as_uri() {
 @test "kas-keys: update key (missing id)" {
   run_otdfctl_key update --json
   assert_failure
-  assert_equal "$(echo "$output" | jq -r .status)" "ERROR"
-  assert_equal "$(echo "$output" | jq -r .message)" "Flag '--id' is required"
+  assert_output --partial 'required flag(s) "id" not set'
 }
 
 @test "kas-keys: unsafe update key mode remote to public_key" {
@@ -800,7 +799,7 @@ format_kas_name_as_uri() {
 @test "kas-keys: unsafe update key failure - (missing id)" {
   run_otdfctl_key unsafe update --mode public_key --force
   assert_failure
-  assert_output --partial "Flag '--id' is required"
+  assert_output --partial 'required flag(s) "id" not set'
 }
 
 @test "kas-keys: unsafe update key failure - (missing provider configuration)" {
@@ -1281,25 +1280,25 @@ format_kas_name_as_uri() {
 @test "kas-keys: rotate key (missing key)" {
   run_otdfctl_key rotate --key-id "new-key-id" --algorithm "rsa:2048" --mode "public_key" --public-key-pem "${PEM_B64}"
   assert_failure
-  assert_output --partial "Flag '--key' is required"
+  assert_output --partial 'required flag(s) "key" not set'
 }
 
 @test "kas-keys: rotate key (missing key-id)" {
   run_otdfctl_key rotate --key "old-key-id" --algorithm "rsa:2048" --mode "public_key" --public-key-pem "${PEM_B64}"
   assert_failure
-  assert_output --partial "Flag '--key-id' is required"
+  assert_output --partial 'required flag(s) "key-id" not set'
 }
 
 @test "kas-keys: rotate key (missing algorithm)" {
   run_otdfctl_key rotate --key "old-key-id" --key-id "new-key-id" --mode "public_key" --public-key-pem "${PEM_B64}"
   assert_failure
-  assert_output --partial "Flag '--algorithm' is required"
+  assert_output --partial 'required flag(s) "algorithm" not set'
 }
 
 @test "kas-keys: rotate key (missing mode)" {
   run_otdfctl_key rotate --key "old-key-id" --key-id "new-key-id" --algorithm "rsa:2048" --public-key-pem "${PEM_B64}"
   assert_failure
-  assert_output --partial "Flag '--mode' is required"
+  assert_output --partial 'required flag(s) "mode" not set'
 }
 
 @test "kas-keys: rotate key (local mode, missing wrapping-key-id)" {
@@ -1453,16 +1452,16 @@ format_kas_name_as_uri() {
 
 @test "kas-keys: import key failure - missing required private key" {
   KEY_ID="import-fail-$(generate_key_id)"
-  
+
   run_otdfctl_key import --key-id "${KEY_ID}" \
     --algorithm "rsa:2048" \
     --kas "${KAS_REGISTRY_ID}" \
     --wrapping-key-id "test-wrapping-key" \
     --wrapping-key "${WRAPPING_KEY}" \
     --public-key-pem "${PEM_B64}"
-  
+
   assert_failure
-  assert_output --partial "'--private-key-pem' is required"
+  assert_output --partial 'required flag(s) "private-key-pem" not set'
 }
 
 @test "kas-keys: import key failure - invalid wrapping key" {
@@ -1527,30 +1526,30 @@ format_kas_name_as_uri() {
 
 @test "kas-keys: import key failure - missing wrapping key ID" {
   KEY_ID="import-fail-$(generate_key_id)"
-  
+
   run_otdfctl_key import --key-id "${KEY_ID}" \
     --algorithm "rsa:2048" \
     --kas "${KAS_REGISTRY_ID}" \
     --wrapping-key "${WRAPPING_KEY}" \
     --public-key-pem "${PEM_B64}" \
     --private-key-pem "${PEM_B64}"
-  
+
   assert_failure
-  assert_output --partial "'--wrapping-key-id' is required"
+  assert_output --partial 'required flag(s) "wrapping-key-id" not set'
 }
 
 @test "kas-keys: import key failure - missing wrapping key" {
   KEY_ID="import-fail-$(generate_key_id)"
-  
+
   run_otdfctl_key import --key-id "${KEY_ID}" \
     --algorithm "rsa:2048" \
     --kas "${KAS_REGISTRY_ID}" \
     --wrapping-key-id "test-wrapping-key" \
     --public-key-pem "${PEM_B64}" \
     --private-key-pem "${PEM_B64}"
-  
+
   assert_failure
-  assert_output --partial "'--wrapping-key' is required"
+  assert_output --partial 'required flag(s) "wrapping-key" not set'
 }
 
 @test "kas-keys: delete key" {
@@ -1571,17 +1570,17 @@ format_kas_name_as_uri() {
 @test "kas-keys: delete key failure - (missing id)" {
   run_otdfctl_key unsafe delete --kas-uri "a-uri" --key-id "key" --force
   assert_failure
-  assert_output --partial "Flag '--id' is required"
+  assert_output --partial 'required flag(s) "id" not set'
 }
 
 @test "kas-keys: delete key failure - (missing key-id)" {
   run_otdfctl_key unsafe delete --id "ded32e6d-9fec-4a4c-a391-13158c52e5f2" --kas-uri "a-uri" --force
   assert_failure
-  assert_output --partial "Flag '--key-id' is required"
+  assert_output --partial 'required flag(s) "key-id" not set'
 }
 
 @test "kas-keys: delete key failure - (missing kas-uri)" {
   run_otdfctl_key unsafe delete --id "ded32e6d-9fec-4a4c-a391-13158c52e5f2" --key-id "kid" --force
   assert_failure
-  assert_output --partial "Flag '--kas-uri' is required"
+  assert_output --partial 'required flag(s) "kas-uri" not set'
 }

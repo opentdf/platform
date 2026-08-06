@@ -272,29 +272,19 @@ func (ers *ERSV2) createEntityChainFromSingleTokenV2(ctx context.Context, token 
 			continue
 		}
 
-		// Success! Create entity from result
-		entityV2, err := ers.createEntityFromResultV2(ctx, entityResult, strategy, token.GetEphemeralId())
+		// Success! Create entity from result.
+		// If this serialization step fails after strategy resolution succeeded, fail the
+		// token chain immediately regardless of failure strategy to avoid partial chains.
+		entityV2, err := ers.createEntityForTokenChain(
+			ctx,
+			entityResult,
+			strategy,
+			token.GetEphemeralId(),
+			failureStrategy,
+			attemptedStrategies,
+		)
 		if err != nil {
-			lastError = err
-			ers.logger.WarnContext(ctx, "failed to serialize resolved entity for token",
-				slog.String("token_id", token.GetEphemeralId()),
-				slog.String("strategy", strategy.Name),
-				slog.String("error", err.Error()))
-
-			if failureStrategy == types.FailureStrategyFailFast {
-				return nil, types.WrapMultiStrategyError(
-					types.ErrorTypeMapping,
-					"resolved entity serialization failed with fail-fast policy",
-					err,
-					map[string]interface{}{
-						"token_id":             token.GetEphemeralId(),
-						"strategy":             strategy.Name,
-						"failure_strategy":     failureStrategy,
-						"attempted_strategies": attemptedStrategies,
-					},
-				)
-			}
-			continue
+			return nil, err
 		}
 		entities = append(entities, entityV2)
 
@@ -332,6 +322,39 @@ func (ers *ERSV2) createEntityChainFromSingleTokenV2(ctx context.Context, token 
 		EphemeralId: token.GetEphemeralId(),
 		Entities:    entities,
 	}, nil
+}
+
+// createEntityForTokenChain serializes a successfully resolved strategy result. Serialization
+// failures always fail closed because omitting the result would create a partial identity chain.
+func (ers *ERSV2) createEntityForTokenChain(
+	ctx context.Context,
+	result *types.EntityResult,
+	strategy *types.MappingStrategy,
+	tokenID string,
+	failureStrategy string,
+	attemptedStrategies []string,
+) (*entity.Entity, error) {
+	entityV2, err := ers.createEntityFromResultV2(ctx, result, strategy, tokenID)
+	if err == nil {
+		return entityV2, nil
+	}
+
+	ers.logger.WarnContext(ctx, "failed to serialize resolved entity for token",
+		slog.String("token_id", tokenID),
+		slog.String("strategy", strategy.Name),
+		slog.String("error", err.Error()))
+
+	return nil, types.WrapMultiStrategyError(
+		types.ErrorTypeMapping,
+		"resolved entity serialization failed after successful strategy resolution",
+		err,
+		map[string]interface{}{
+			"token_id":             tokenID,
+			"strategy":             strategy.Name,
+			"failure_strategy":     failureStrategy,
+			"attempted_strategies": attemptedStrategies,
+		},
+	)
 }
 
 // createEntityFromResultV2 converts a multi-strategy EntityResult to a v2 entity.Entity.

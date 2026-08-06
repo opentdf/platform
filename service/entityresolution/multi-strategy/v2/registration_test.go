@@ -1,6 +1,7 @@
 package multistrategy
 
 import (
+	"errors"
 	"testing"
 
 	"connectrpc.com/connect"
@@ -380,4 +381,45 @@ func TestCreateEntityFromResultV2RejectsUnserializableClaims(t *testing.T) {
 	require.Error(t, err)
 	require.Nil(t, resolved)
 	require.ErrorContains(t, err, "failed to normalize resolved claims for entity chain")
+}
+
+func TestCreateEntityForTokenChainFailsClosedOnSerializationErrorWithContinue(t *testing.T) {
+	ers := &ERSV2{logger: logger.CreateTestLogger()}
+	result := &types.EntityResult{
+		Claims: map[string]interface{}{
+			"username":    "alice",
+			"unsupported": make(chan int),
+		},
+	}
+	strategy := &types.MappingStrategy{
+		Name:       "bad_subject",
+		EntityType: types.EntityTypeSubject,
+	}
+
+	resolved, err := ers.createEntityForTokenChain(
+		t.Context(),
+		result,
+		strategy,
+		"token-1",
+		types.FailureStrategyContinue,
+		[]string{"bad_subject"},
+	)
+	require.Error(t, err)
+	require.Nil(t, resolved)
+	require.ErrorContains(t, err, "resolved entity serialization failed after successful strategy resolution")
+	require.ErrorContains(t, err, "failed to normalize resolved claims for entity chain")
+
+	var outer *types.MultiStrategyError
+	require.ErrorAs(t, err, &outer)
+	require.Equal(t, types.ErrorTypeMapping, outer.Type)
+	require.Equal(t, "token-1", outer.Context["token_id"])
+	require.Equal(t, "bad_subject", outer.Context["strategy"])
+	require.Equal(t, types.FailureStrategyContinue, outer.Context["failure_strategy"])
+	require.Equal(t, []string{"bad_subject"}, outer.Context["attempted_strategies"])
+
+	var inner *types.MultiStrategyError
+	require.ErrorAs(t, errors.Unwrap(err), &inner)
+	require.Equal(t, types.ErrorTypeMapping, inner.Type)
+	require.Equal(t, "token-1", inner.Context["token_id"])
+	require.Equal(t, "bad_subject", inner.Context["strategy"])
 }

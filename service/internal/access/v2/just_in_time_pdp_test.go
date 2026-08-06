@@ -5,6 +5,7 @@ import (
 	"errors"
 	"testing"
 
+	authzV2 "github.com/opentdf/platform/protocol/go/authorization/v2"
 	"github.com/opentdf/platform/protocol/go/entity"
 	entityresolutionV2 "github.com/opentdf/platform/protocol/go/entityresolution/v2"
 	otdfSDK "github.com/opentdf/platform/sdk"
@@ -17,21 +18,32 @@ import (
 type typedChainERSClient struct {
 	createCalls  int
 	resolveCalls int
+	createReq    *entityresolutionV2.CreateEntityChainsFromTokensRequest
+	resolveReq   *entityresolutionV2.ResolveEntitiesRequest
 }
 
-func (c *typedChainERSClient) CreateEntityChainsFromTokens(_ context.Context, _ *entityresolutionV2.CreateEntityChainsFromTokensRequest) (*entityresolutionV2.CreateEntityChainsFromTokensResponse, error) {
+func (c *typedChainERSClient) CreateEntityChainsFromTokens(_ context.Context, req *entityresolutionV2.CreateEntityChainsFromTokensRequest) (*entityresolutionV2.CreateEntityChainsFromTokensResponse, error) {
 	c.createCalls++
+	c.createReq = req
 	return &entityresolutionV2.CreateEntityChainsFromTokensResponse{EntityChains: []*entity.EntityChain{{
-		Entities: []*entity.Entity{{
-			EphemeralId: "typed-user",
-			EntityType:  &entity.Entity_UserName{UserName: "alice"},
-			Category:    entity.Entity_CATEGORY_SUBJECT,
-		}},
+		Entities: []*entity.Entity{
+			{
+				EphemeralId: "typed-user",
+				EntityType:  &entity.Entity_UserName{UserName: "alice"},
+				Category:    entity.Entity_CATEGORY_SUBJECT,
+			},
+			{
+				EphemeralId: "typed-env",
+				EntityType:  &entity.Entity_ClientId{ClientId: "client-1"},
+				Category:    entity.Entity_CATEGORY_ENVIRONMENT,
+			},
+		},
 	}}}, nil
 }
 
-func (c *typedChainERSClient) ResolveEntities(_ context.Context, _ *entityresolutionV2.ResolveEntitiesRequest) (*entityresolutionV2.ResolveEntitiesResponse, error) {
+func (c *typedChainERSClient) ResolveEntities(_ context.Context, req *entityresolutionV2.ResolveEntitiesRequest) (*entityresolutionV2.ResolveEntitiesResponse, error) {
 	c.resolveCalls++
+	c.resolveReq = req
 	return &entityresolutionV2.ResolveEntitiesResponse{EntityRepresentations: []*entityresolutionV2.EntityRepresentation{{OriginalId: "typed-user"}}}, nil
 }
 
@@ -39,16 +51,25 @@ type claimsChainERSClient struct {
 	createCalls  int
 	resolveCalls int
 	claims       *anypb.Any
+	createReq    *entityresolutionV2.CreateEntityChainsFromTokensRequest
 }
 
-func (c *claimsChainERSClient) CreateEntityChainsFromTokens(_ context.Context, _ *entityresolutionV2.CreateEntityChainsFromTokensRequest) (*entityresolutionV2.CreateEntityChainsFromTokensResponse, error) {
+func (c *claimsChainERSClient) CreateEntityChainsFromTokens(_ context.Context, req *entityresolutionV2.CreateEntityChainsFromTokensRequest) (*entityresolutionV2.CreateEntityChainsFromTokensResponse, error) {
 	c.createCalls++
+	c.createReq = req
 	return &entityresolutionV2.CreateEntityChainsFromTokensResponse{EntityChains: []*entity.EntityChain{{
-		Entities: []*entity.Entity{{
-			EphemeralId: "claims-user",
-			EntityType:  &entity.Entity_Claims{Claims: c.claims},
-			Category:    entity.Entity_CATEGORY_SUBJECT,
-		}},
+		Entities: []*entity.Entity{
+			{
+				EphemeralId: "claims-user",
+				EntityType:  &entity.Entity_Claims{Claims: c.claims},
+				Category:    entity.Entity_CATEGORY_SUBJECT,
+			},
+			{
+				EphemeralId: "claims-env",
+				EntityType:  &entity.Entity_Claims{Claims: c.claims},
+				Category:    entity.Entity_CATEGORY_ENVIRONMENT,
+			},
+		},
 	}}}, nil
 }
 
@@ -71,12 +92,20 @@ func TestResolveEntitiesFromTokenUsesResolvedClaimsWithoutHydration(t *testing.T
 		logger: logger.CreateTestLogger(),
 		sdk:    &otdfSDK.SDK{EntityResolutionV2: client},
 	}
+	resources := []*authzV2.Resource{{EphemeralId: "resource-1"}}
+	token := &entity.Token{EphemeralId: "token", Jwt: "token"}
 
-	reps, err := pdp.resolveEntitiesFromToken(t.Context(), &entity.Token{EphemeralId: "token", Jwt: "token"}, true, nil)
+	reps, err := pdp.resolveEntitiesFromToken(t.Context(), token, true, resources)
 	require.NoError(t, err)
 	require.Len(t, reps, 1)
 	require.Equal(t, 1, client.createCalls)
 	require.Zero(t, client.resolveCalls)
+	require.NotNil(t, client.createReq)
+	require.Len(t, client.createReq.GetTokens(), 1)
+	require.Equal(t, token.GetEphemeralId(), client.createReq.GetTokens()[0].GetEphemeralId())
+	require.Equal(t, token.GetJwt(), client.createReq.GetTokens()[0].GetJwt())
+	require.Len(t, client.createReq.GetResources(), 1)
+	require.Equal(t, "resource-1", client.createReq.GetResources()[0].GetEphemeralId())
 	require.Len(t, reps[0].GetAdditionalProps(), 1)
 	require.Equal(t, "alice", reps[0].GetAdditionalProps()[0].AsMap()["username"])
 	require.Equal(t, "engineering", reps[0].GetAdditionalProps()[0].AsMap()["department"])
@@ -88,20 +117,25 @@ func TestResolveEntitiesFromTokenFallsBackToHydrationForTypedChain(t *testing.T)
 		logger: logger.CreateTestLogger(),
 		sdk:    &otdfSDK.SDK{EntityResolutionV2: client},
 	}
+	resources := []*authzV2.Resource{{EphemeralId: "resource-1"}}
+	token := &entity.Token{EphemeralId: "token", Jwt: "token"}
 
-	reps, err := pdp.resolveEntitiesFromToken(t.Context(), &entity.Token{EphemeralId: "token", Jwt: "token"}, true, nil)
-	if err != nil {
-		t.Fatalf("resolveEntitiesFromToken() error = %v", err)
-	}
-	if len(reps) != 1 {
-		t.Fatalf("expected 1 representation, got %d", len(reps))
-	}
-	if client.createCalls != 1 {
-		t.Fatalf("expected 1 CreateEntityChainsFromTokens call, got %d", client.createCalls)
-	}
-	if client.resolveCalls != 1 {
-		t.Fatalf("expected 1 fallback ResolveEntities call, got %d", client.resolveCalls)
-	}
+	reps, err := pdp.resolveEntitiesFromToken(t.Context(), token, true, resources)
+	require.NoError(t, err)
+	require.Len(t, reps, 1)
+	require.Equal(t, 1, client.createCalls)
+	require.Equal(t, 1, client.resolveCalls)
+	require.NotNil(t, client.createReq)
+	require.Len(t, client.createReq.GetTokens(), 1)
+	require.Equal(t, token.GetEphemeralId(), client.createReq.GetTokens()[0].GetEphemeralId())
+	require.Equal(t, token.GetJwt(), client.createReq.GetTokens()[0].GetJwt())
+	require.Len(t, client.createReq.GetResources(), 1)
+	require.Equal(t, "resource-1", client.createReq.GetResources()[0].GetEphemeralId())
+	require.NotNil(t, client.resolveReq)
+	require.Len(t, client.resolveReq.GetEntities(), 1)
+	require.Equal(t, "typed-user", client.resolveReq.GetEntities()[0].GetEphemeralId())
+	require.Equal(t, entity.Entity_CATEGORY_SUBJECT, client.resolveReq.GetEntities()[0].GetCategory())
+	require.IsType(t, &entity.Entity_UserName{}, client.resolveReq.GetEntities()[0].GetEntityType())
 }
 
 func TestEntityRepresentationsFromResolvedChain(t *testing.T) {

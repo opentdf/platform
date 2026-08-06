@@ -13,6 +13,7 @@ command:
       required: true
     - name: action
       description: Each 'id' or 'name' of an Action to be entitled (i.e. 'create', 'read', 'update', 'delete')
+      required: true
     - name: subject-condition-set-id
       description: Known preexisting Subject Condition Set Id
     - name: subject-condition-set-new

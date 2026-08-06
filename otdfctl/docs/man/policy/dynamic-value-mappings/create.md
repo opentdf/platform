@@ -24,6 +24,7 @@ command:
       required: true
     - name: action
       description: Each 'id' or 'name' of an Action to be entitled (i.e. 'create', 'read', 'update', 'delete'). At least one is required.
+      required: true
     - name: subject-condition-set
       description: "Static pre-gate Subject Condition Set: either a known preexisting Subject Condition Set ID, or a JSON array of Subject Sets to create a new one"
     - name: namespace

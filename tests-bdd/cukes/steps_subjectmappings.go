@@ -81,9 +81,7 @@ func (s *SubjectMappingsStepDefinitions) iSendARequestToCreateSubjectMapping(ctx
 
 // aLargePaddedSubjectConditionSet creates a condition set with one real matching value plus
 // paddingCount synthetic values, built programmatically since 25k inline table values are not
-// feasible. Shared across several subject mappings, it inflates the v2 PDP's global
-// ListAllSubjectMappings load past the 4MB message limit (opentdf/platform#3821). Recorded under
-// referenceID for the standard subject-mapping create step's "condition_set_name".
+// feasible.
 func (s *SubjectMappingsStepDefinitions) aLargePaddedSubjectConditionSet(ctx context.Context, referenceID, selector, matchValue string, paddingCount int) (context.Context, error) {
 	scenarioContext := GetPlatformScenarioContext(ctx)
 	scenarioContext.ClearError()
@@ -118,9 +116,7 @@ func (s *SubjectMappingsStepDefinitions) aLargePaddedSubjectConditionSet(ctx con
 }
 
 // iSendARequestToCreateASubjectMappingForEveryValue creates one subject mapping per value of the
-// referenced attribute, all sharing conditionSetRef. With an attribute of 1000+ values this produces
-// enough subject mappings that the v2 PDP's global ListAllSubjectMappings load exceeds the 4MB
-// message limit (opentdf/platform#3821); size-adaptive paging must shrink the page until it fits.
+// referenced attribute, all sharing conditionSetRef.
 func (s *SubjectMappingsStepDefinitions) iSendARequestToCreateASubjectMappingForEveryValue(ctx context.Context, attributeRef, conditionSetRef, action string) (context.Context, error) {
 	scenarioContext := GetPlatformScenarioContext(ctx)
 	scenarioContext.ClearError()

@@ -3,25 +3,18 @@ package cukes
 import (
 	"testing"
 
+	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/types/known/structpb"
 )
 
 func TestConvertInterfaceToAny_PlainClaimsJSON(t *testing.T) {
 	anyMsg, err := ConvertInterfaceToAny([]byte(`{"userName":"diana","department":"engineering"}`))
-	if err != nil {
-		t.Fatalf("ConvertInterfaceToAny() error = %v", err)
-	}
+	require.NoError(t, err)
 
 	var claimsStruct structpb.Struct
-	if err := anyMsg.UnmarshalTo(&claimsStruct); err != nil {
-		t.Fatalf("UnmarshalTo(structpb.Struct) error = %v", err)
-	}
+	require.NoError(t, anyMsg.UnmarshalTo(&claimsStruct))
 
 	claims := claimsStruct.AsMap()
-	if got := claims["userName"]; got != "diana" {
-		t.Fatalf("expected userName diana, got %v", got)
-	}
-	if got := claims["department"]; got != "engineering" {
-		t.Fatalf("expected department engineering, got %v", got)
-	}
+	require.Equal(t, "diana", claims["userName"])
+	require.Equal(t, "engineering", claims["department"])
 }

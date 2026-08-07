@@ -85,10 +85,54 @@ func (s *AttributesStepDefinitions) createAttributeRequestFromTable(scenarioCont
 	return requests, nil
 }
 
+// iSendARequestToCreateAnAttributeWithGeneratedValues creates an attribute with valueCount
+// programmatically-generated values (v0000, v0001, ...), too many to list inline. It records the
+// created attribute under referenceID so a subject mapping can later be added for each value,
+// reproducing the many-values shape of opentdf/platform#3821.
+func (s *AttributesStepDefinitions) iSendARequestToCreateAnAttributeWithGeneratedValues(ctx context.Context, referenceID, namespaceRef, name, rule string, valueCount int) (context.Context, error) {
+	scenarioContext := GetPlatformScenarioContext(ctx)
+	scenarioContext.ClearError()
+
+	nsID, ok := scenarioContext.GetObject(strings.TrimSpace(namespaceRef)).(string)
+	if !ok {
+		return ctx, fmt.Errorf("unable to get namespace id for %s", namespaceRef)
+	}
+
+	var ruleType policy.AttributeRuleTypeEnum
+	switch strings.TrimSpace(rule) {
+	case "anyOf":
+		ruleType = policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF
+	case "allOf":
+		ruleType = policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF
+	case "hierarchy":
+		ruleType = policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY
+	default:
+		return ctx, fmt.Errorf("unknown attribute rule type %s", rule)
+	}
+
+	values := make([]string, 0, valueCount)
+	for i := range valueCount {
+		values = append(values, fmt.Sprintf("v%04d", i))
+	}
+
+	resp, err := scenarioContext.SDK.Attributes.CreateAttribute(ctx, &attributes.CreateAttributeRequest{
+		NamespaceId: nsID,
+		Name:        strings.TrimSpace(name),
+		Rule:        ruleType,
+		Values:      values,
+	})
+	if resp != nil {
+		scenarioContext.RecordObject(strings.TrimSpace(referenceID), resp.GetAttribute())
+	}
+	scenarioContext.SetError(err)
+	return ctx, nil
+}
+
 func RegisterAttributeStepDefinitions(ctx *godog.ScenarioContext, x *PlatformTestSuiteContext) {
 	stepDefinitions := AttributesStepDefinitions{
 		PlatformCukesContext: x,
 	}
 	ctx.Step(`^a (anyOf|allOf|hierarchy) attribute definition with values: "([^"]*)"$`, stepDefinitions.aAttributeDef)
 	ctx.Step(`^I send a request to create an attribute with:$`, stepDefinitions.iSendARequestToCreateAnAttributeWith)
+	ctx.Step(`^I send a request to create an attribute referenced as "([^"]*)" in namespace "([^"]*)" named "([^"]*)" with rule "([^"]*)" and (\d+) generated values$`, stepDefinitions.iSendARequestToCreateAnAttributeWithGeneratedValues)
 }

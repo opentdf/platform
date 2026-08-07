@@ -2501,51 +2501,6 @@ func (s *KasRegistryKeySuite) Test_ListKeys_SortByUpdatedAt_ASC() {
 	assertIDsInOrder(s.T(), list.GetKasKeys(), func(k *policy.KasKey) string { return k.GetKey().GetId() }, ids[0], ids[1], ids[2])
 }
 
-// rotateOneSortTestKey rotates the key at keyIDs[idx] so it becomes ROTATED,
-// returning the ID of the newly created ACTIVE key.
-func (s *KasRegistryKeySuite) rotateOneSortTestKey(keyIDs []string, idx int) string {
-	activeKey, err := s.db.PolicyClient.GetKey(s.ctx, &kasregistry.GetKeyRequest_Id{Id: keyIDs[idx]})
-	s.Require().NoError(err)
-
-	ts := time.Now().UnixNano()
-	rotated, err := s.db.PolicyClient.RotateKey(s.ctx, activeKey, &kasregistry.RotateKeyRequest_NewKey{
-		KeyId:        fmt.Sprintf("statussort-rotated-%d", ts),
-		Algorithm:    policy.Algorithm_ALGORITHM_RSA_2048,
-		KeyMode:      policy.KeyMode_KEY_MODE_CONFIG_ROOT_KEY,
-		PublicKeyCtx: &policy.PublicKeyCtx{Pem: keyCtx},
-		PrivateKeyCtx: &policy.PrivateKeyCtx{
-			KeyId:      fmt.Sprintf("statussort-rotated-priv-%d", ts),
-			WrappedKey: keyCtx,
-		},
-	})
-	s.Require().NoError(err)
-	s.NotNil(rotated)
-
-	return rotated.GetKasKey().GetKey().GetId()
-}
-
-// assertKeyStatusesOrdered asserts the listed statuses are sorted by their
-// numeric enum value in the given direction.
-func (s *KasRegistryKeySuite) assertKeyStatusesOrdered(keys []*policy.KasKey, ascending bool) {
-	s.Require().GreaterOrEqual(len(keys), 2, "need at least two keys to assert ordering")
-
-	statuses := make([]policy.KeyStatus, 0, len(keys))
-	for _, k := range keys {
-		statuses = append(statuses, k.GetKey().GetKeyStatus())
-	}
-
-	for i := 1; i < len(statuses); i++ {
-		if ascending {
-			s.LessOrEqual(statuses[i-1], statuses[i], "statuses not ascending: %v", statuses)
-		} else {
-			s.GreaterOrEqual(statuses[i-1], statuses[i], "statuses not descending: %v", statuses)
-		}
-	}
-
-	// Guard against a vacuous pass if every key shares one status.
-	s.NotEqual(statuses[0], statuses[len(statuses)-1], "expected mixed statuses: %v", statuses)
-}
-
 func (s *KasRegistryKeySuite) Test_ListKeys_SortByKeyStatus_ASC() {
 	ids, kasID := s.createSortTestKasKeys([]string{"statusasc-kk-0", "statusasc-kk-1"})
 	ids = append(ids, s.rotateOneSortTestKey(ids, 0))
@@ -3226,6 +3181,51 @@ func (s *KasRegistryKeySuite) createSortTestKasKeys(prefixes []string) ([]string
 // deleteSortTestKasKeys cleans up kas keys and their parent KAS created by sort tests.
 func (s *KasRegistryKeySuite) deleteSortTestKasKeys(keyIDs []string, kasID string) {
 	s.cleanupKeys(keyIDs, []string{kasID})
+}
+
+// rotateOneSortTestKey rotates the key at keyIDs[idx] so it becomes ROTATED,
+// returning the ID of the newly created ACTIVE key.
+func (s *KasRegistryKeySuite) rotateOneSortTestKey(keyIDs []string, idx int) string {
+	activeKey, err := s.db.PolicyClient.GetKey(s.ctx, &kasregistry.GetKeyRequest_Id{Id: keyIDs[idx]})
+	s.Require().NoError(err)
+
+	ts := time.Now().UnixNano()
+	rotated, err := s.db.PolicyClient.RotateKey(s.ctx, activeKey, &kasregistry.RotateKeyRequest_NewKey{
+		KeyId:        fmt.Sprintf("statussort-rotated-%d", ts),
+		Algorithm:    policy.Algorithm_ALGORITHM_RSA_2048,
+		KeyMode:      policy.KeyMode_KEY_MODE_CONFIG_ROOT_KEY,
+		PublicKeyCtx: &policy.PublicKeyCtx{Pem: keyCtx},
+		PrivateKeyCtx: &policy.PrivateKeyCtx{
+			KeyId:      fmt.Sprintf("statussort-rotated-priv-%d", ts),
+			WrappedKey: keyCtx,
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(rotated)
+
+	return rotated.GetKasKey().GetKey().GetId()
+}
+
+// assertKeyStatusesOrdered asserts the listed statuses are sorted by their
+// numeric enum value in the given direction.
+func (s *KasRegistryKeySuite) assertKeyStatusesOrdered(keys []*policy.KasKey, ascending bool) {
+	s.Require().GreaterOrEqual(len(keys), 2, "need at least two keys to assert ordering")
+
+	statuses := make([]policy.KeyStatus, 0, len(keys))
+	for _, k := range keys {
+		statuses = append(statuses, k.GetKey().GetKeyStatus())
+	}
+
+	for i := 1; i < len(statuses); i++ {
+		if ascending {
+			s.LessOrEqual(statuses[i-1], statuses[i], "statuses not ascending: %v", statuses)
+		} else {
+			s.GreaterOrEqual(statuses[i-1], statuses[i], "statuses not descending: %v", statuses)
+		}
+	}
+
+	// Guard against a vacuous pass if every key shares one status.
+	s.NotEqual(statuses[0], statuses[len(statuses)-1], "expected mixed statuses: %v", statuses)
 }
 
 func (s *KasRegistryKeySuite) createListKeysSearchTestKeys(kids []string) (string, map[string]string) {

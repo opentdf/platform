@@ -19,7 +19,6 @@ import (
 	"github.com/stretchr/testify/suite"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
-	"google.golang.org/protobuf/encoding/protojson"
 )
 
 // These roundtrip tests are to be run when the platform server is up and running
@@ -273,7 +272,7 @@ func (s *RoundtripSuite) CreateTestData() error {
 		slog.Error("could not list attributes", slog.String("error", err.Error()))
 		return err
 	}
-	slog.Info("list attributes", slog.String("response", protojson.Format(allAttr)))
+	slog.Info("listed attributes", slog.Int("count", len(allAttr.GetAttributes())))
 
 	slog.Info("##################################\n#######################################")
 
@@ -350,10 +349,7 @@ func (s *RoundtripSuite) CreateTestData() error {
 			break
 		}
 	}
-	resp := &subjectmapping.ListSubjectMappingsResponse{
-		SubjectMappings: smList,
-	}
-	slog.InfoContext(ctx, "list all subject mappings", slog.String("subject_mappings", protojson.Format(resp)))
+	slog.InfoContext(ctx, "listed all subject mappings", slog.Int("count", len(smList)))
 
 	return nil
 }

@@ -79,6 +79,72 @@ func (s *SubjectMappingsStepDefinitions) iSendARequestToCreateSubjectMapping(ctx
 	return ctx, nil
 }
 
+// aLargePaddedSubjectConditionSet creates a condition set with one real matching value plus
+// paddingCount synthetic values, built programmatically since 25k inline table values are not
+// feasible.
+func (s *SubjectMappingsStepDefinitions) aLargePaddedSubjectConditionSet(ctx context.Context, referenceID, selector, matchValue string, paddingCount int) (context.Context, error) {
+	scenarioContext := GetPlatformScenarioContext(ctx)
+	scenarioContext.ClearError()
+
+	values := make([]string, 0, paddingCount+1)
+	values = append(values, matchValue)
+	for i := range paddingCount {
+		values = append(values, fmt.Sprintf("subject-external-value-padding-%08d", i))
+	}
+
+	req := &subjectmapping.CreateSubjectConditionSetRequest{
+		SubjectConditionSet: &subjectmapping.SubjectConditionSetCreate{
+			SubjectSets: []*policy.SubjectSet{{
+				ConditionGroups: []*policy.ConditionGroup{{
+					BooleanOperator: policy.ConditionBooleanTypeEnum_CONDITION_BOOLEAN_TYPE_ENUM_AND,
+					Conditions: []*policy.Condition{{
+						SubjectExternalSelectorValue: selector,
+						Operator:                     policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_IN,
+						SubjectExternalValues:        values,
+					}},
+				}},
+			}},
+		},
+	}
+
+	resp, err := scenarioContext.SDK.SubjectMapping.CreateSubjectConditionSet(ctx, req)
+	if resp != nil {
+		scenarioContext.RecordObject(referenceID, resp.GetSubjectConditionSet())
+	}
+	scenarioContext.SetError(err)
+	return ctx, nil
+}
+
+// iSendARequestToCreateASubjectMappingForEveryValue creates one subject mapping per value of the
+// referenced attribute, all sharing conditionSetRef.
+func (s *SubjectMappingsStepDefinitions) iSendARequestToCreateASubjectMappingForEveryValue(ctx context.Context, attributeRef, conditionSetRef, action string) (context.Context, error) {
+	scenarioContext := GetPlatformScenarioContext(ctx)
+	scenarioContext.ClearError()
+
+	attribute, ok := scenarioContext.GetObject(strings.TrimSpace(attributeRef)).(*policy.Attribute)
+	if !ok {
+		return ctx, fmt.Errorf("unable to get attribute for %s", attributeRef)
+	}
+	scs, ok := scenarioContext.GetObject(strings.TrimSpace(conditionSetRef)).(*policy.SubjectConditionSet)
+	if !ok {
+		return ctx, fmt.Errorf("unable to get condition set for %s", conditionSetRef)
+	}
+
+	actions := GetActionsFromValues(&action, nil)
+	for _, value := range attribute.GetValues() {
+		_, err := scenarioContext.SDK.SubjectMapping.CreateSubjectMapping(ctx, &subjectmapping.CreateSubjectMappingRequest{
+			AttributeValueId:              value.GetId(),
+			ExistingSubjectConditionSetId: scs.GetId(),
+			Actions:                       actions,
+		})
+		if err != nil {
+			scenarioContext.SetError(err)
+			return ctx, nil
+		}
+	}
+	return ctx, nil
+}
+
 func (s *SubjectMappingsStepDefinitions) iSendARequestToCreateSubjectConditionSet(ctx context.Context, referenceID string, subjectSetIDs string) (context.Context, error) {
 	return s.createSubjectConditionSet(ctx, referenceID, subjectSetIDs, "")
 }
@@ -188,7 +254,9 @@ func RegisterSubjectMappingsStepsDefinitions(ctx *godog.ScenarioContext) {
 	subjectMappingStepDefinitions := &SubjectMappingsStepDefinitions{}
 	ctx.Step(`a condition group referenced as "([^"]*)" with an "([^"]*)" operator with conditions:$`, subjectMappingStepDefinitions.aConditionGroup)
 	ctx.Step(`^a subject set referenced as "([^"]*)" containing the condition groups "([^"]*)"$`, subjectMappingStepDefinitions.aSubjectSet)
+	ctx.Step(`^a large subject condition set referenced as "([^"]*)" matching selector "([^"]*)" value "([^"]*)" padded with (\d+) external values$`, subjectMappingStepDefinitions.aLargePaddedSubjectConditionSet)
 	ctx.Step(`^I send a request to create a subject condition set referenced as "([^"]*)" containing subject sets "([^"]*)"$`, subjectMappingStepDefinitions.iSendARequestToCreateSubjectConditionSet)
 	ctx.Step(`^I send a request to create a subject condition set referenced as "([^"]*)" in namespace "([^"]*)" containing subject sets "([^"]*)"$`, subjectMappingStepDefinitions.iSendARequestToCreateSubjectConditionSetInNamespace)
 	ctx.Step(`^I send a request to create a subject mapping with:$`, subjectMappingStepDefinitions.iSendARequestToCreateSubjectMapping)
+	ctx.Step(`^I send a request to create a subject mapping for every value of attribute "([^"]*)" using condition set "([^"]*)" with action "([^"]*)"$`, subjectMappingStepDefinitions.iSendARequestToCreateASubjectMappingForEveryValue)
 }

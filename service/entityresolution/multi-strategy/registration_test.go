@@ -8,13 +8,12 @@ import (
 	"github.com/opentdf/platform/protocol/go/entityresolution"
 	"github.com/opentdf/platform/service/entityresolution/multi-strategy/types"
 	"github.com/opentdf/platform/service/logger"
+	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/types/known/anypb"
 	"google.golang.org/protobuf/types/known/structpb"
 )
 
 func TestResolveEntities_ClaimsProviderUsesInlineClaimsContext(t *testing.T) {
-	t.Helper()
-
 	erService, err := NewERS(t.Context(), types.MultiStrategyConfig{
 		Providers: map[string]types.ProviderConfig{
 			"jwt": {
@@ -48,22 +47,16 @@ func TestResolveEntities_ClaimsProviderUsesInlineClaimsContext(t *testing.T) {
 			},
 		},
 	}, logger.CreateTestLogger())
-	if err != nil {
-		t.Fatalf("NewERS() error = %v", err)
-	}
+	require.NoError(t, err)
 
 	claimsStruct, err := structpb.NewStruct(map[string]interface{}{
 		"sub":   "diana",
 		"email": "diana@example.com",
 	})
-	if err != nil {
-		t.Fatalf("structpb.NewStruct() error = %v", err)
-	}
+	require.NoError(t, err)
 
 	claimsAny, err := anypb.New(claimsStruct)
-	if err != nil {
-		t.Fatalf("anypb.New() error = %v", err)
-	}
+	require.NoError(t, err)
 
 	resp, err := erService.ResolveEntities(t.Context(), connect.NewRequest(&entityresolution.ResolveEntitiesRequest{
 		Entities: []*authorization.Entity{
@@ -73,37 +66,20 @@ func TestResolveEntities_ClaimsProviderUsesInlineClaimsContext(t *testing.T) {
 			},
 		},
 	}))
-	if err != nil {
-		t.Fatalf("ResolveEntities() error = %v", err)
-	}
-
-	if got := len(resp.Msg.GetEntityRepresentations()); got != 1 {
-		t.Fatalf("expected 1 entity representation, got %d", got)
-	}
+	require.NoError(t, err)
+	require.Len(t, resp.Msg.GetEntityRepresentations(), 1)
 
 	props := resp.Msg.GetEntityRepresentations()[0].GetAdditionalProps()
-	if len(props) != 1 {
-		t.Fatalf("expected 1 additional props entry, got %d", len(props))
-	}
+	require.Len(t, props, 1)
 
 	result := props[0].AsMap()
-	if got := result["subject"]; got != "diana" {
-		t.Fatalf("expected subject diana, got %v", got)
-	}
-	if got := result["email_address"]; got != "diana@example.com" {
-		t.Fatalf("expected email_address diana@example.com, got %v", got)
-	}
-	if got := result["metadata_source"]; got != "jwt_claims" {
-		t.Fatalf("expected metadata_source jwt_claims, got %v", got)
-	}
-	if _, hasError := result["error"]; hasError {
-		t.Fatalf("expected successful resolution, got error payload: %v", result["error"])
-	}
+	require.Equal(t, "diana", result["subject"])
+	require.Equal(t, "diana@example.com", result["email_address"])
+	require.Equal(t, "jwt_claims", result["metadata_source"])
+	require.NotContains(t, result, "error")
 }
 
 func TestResolveEntities_UserNameEntityDoesNotSeedClaimsContext(t *testing.T) {
-	t.Helper()
-
 	erService, err := NewERS(t.Context(), types.MultiStrategyConfig{
 		Providers: map[string]types.ProviderConfig{
 			"jwt": {
@@ -124,9 +100,7 @@ func TestResolveEntities_UserNameEntityDoesNotSeedClaimsContext(t *testing.T) {
 			},
 		},
 	}, logger.CreateTestLogger())
-	if err != nil {
-		t.Fatalf("NewERS() error = %v", err)
-	}
+	require.NoError(t, err)
 
 	resp, err := erService.ResolveEntities(t.Context(), connect.NewRequest(&entityresolution.ResolveEntitiesRequest{
 		Entities: []*authorization.Entity{{
@@ -134,24 +108,13 @@ func TestResolveEntities_UserNameEntityDoesNotSeedClaimsContext(t *testing.T) {
 			EntityType: &authorization.Entity_UserName{UserName: "alice"},
 		}},
 	}))
-	if err != nil {
-		t.Fatalf("ResolveEntities() error = %v", err)
-	}
-
-	if got := len(resp.Msg.GetEntityRepresentations()); got != 1 {
-		t.Fatalf("expected 1 entity representation, got %d", got)
-	}
+	require.NoError(t, err)
+	require.Len(t, resp.Msg.GetEntityRepresentations(), 1)
 
 	props := resp.Msg.GetEntityRepresentations()[0].GetAdditionalProps()
-	if len(props) != 1 {
-		t.Fatalf("expected 1 additional props entry, got %d", len(props))
-	}
+	require.Len(t, props, 1)
 
 	result := props[0].AsMap()
-	if _, hasError := result["error"]; !hasError {
-		t.Fatalf("expected claims provider to fail without middleware claims for user_name entity, got %v", result)
-	}
-	if got := result["entity_id"]; got != "alice-user-name" {
-		t.Fatalf("expected entity_id alice-user-name, got %v", got)
-	}
+	require.Contains(t, result, "error")
+	require.Equal(t, "alice-user-name", result["entity_id"])
 }

@@ -1,37 +1,38 @@
 package protohelper
 
 import (
-	"reflect"
 	"testing"
 
+	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/types/known/structpb"
 )
 
 func TestStructPBCompatibleValue(t *testing.T) {
 	input := map[string]interface{}{
 		"attempted_strategies": []string{"claims", "ldap"},
+		"scores":               []float64{1.5, 2.5},
+		"flags":                []bool{true, false},
+		"identifiers":          []int{1, 2},
 		"nested": map[string]interface{}{
 			"values": []interface{}{
 				"ok",
 				[]string{"a", "b"},
-				map[string]interface{}{"inner": []string{"x", "y"}},
+				map[string]interface{}{
+					"inner": []bool{true, false},
+				},
 			},
 		},
 	}
 
 	normalized := StructPBCompatibleValue(input)
-
 	normalizedMap, ok := normalized.(map[string]interface{})
-	if !ok {
-		t.Fatalf("expected normalized result to be map[string]interface{}, got %T", normalized)
-	}
+	require.True(t, ok, "normalized result has type %T", normalized)
 
-	expectedStrategies := []interface{}{"claims", "ldap"}
-	if !reflect.DeepEqual(normalizedMap["attempted_strategies"], expectedStrategies) {
-		t.Fatalf("expected attempted_strategies %v, got %v", expectedStrategies, normalizedMap["attempted_strategies"])
-	}
+	require.Equal(t, []interface{}{"claims", "ldap"}, normalizedMap["attempted_strategies"])
+	require.Equal(t, []interface{}{1.5, 2.5}, normalizedMap["scores"])
+	require.Equal(t, []interface{}{true, false}, normalizedMap["flags"])
+	require.Equal(t, []interface{}{1, 2}, normalizedMap["identifiers"])
 
-	if _, err := structpb.NewStruct(normalizedMap); err != nil {
-		t.Fatalf("expected normalized map to be structpb-compatible, got error: %v", err)
-	}
+	_, err := structpb.NewStruct(normalizedMap)
+	require.NoError(t, err)
 }

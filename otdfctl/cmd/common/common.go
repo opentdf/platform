@@ -207,8 +207,11 @@ func NewHandler(c *cli.Cli, hooks ...handlers.Hook) handlers.Handler {
 			cli.ExitWithWarning("Profile missing credentials. Please login or add client credentials.")
 		}
 
+		if errors.Is(err, auth.ErrRefreshTokenInvalid) {
+			cli.ExitWithWarning("Your session has expired. Please login again.")
+		}
 		if errors.Is(err, auth.ErrAccessTokenExpired) {
-			cli.ExitWithWarning("Access token expired. Please login or add flag-provided credentials.")
+			cli.ExitWithWarning("Access token expired and could not be refreshed. Please login or add flag-provided credentials.")
 		}
 		if errors.Is(err, auth.ErrAccessTokenNotFound) {
 			cli.ExitWithWarning("No access token found. Please login or add flag-provided credentials.")

@@ -171,8 +171,7 @@ func GetSDKAuthOptionFromProfile(profile *profiles.OtdfctlProfileStore) (sdk.Opt
 	case profiles.AuthTypeClientCredentials:
 		return sdk.WithClientCredentials(c.ClientID, c.ClientSecret, NormalizeScopes(c.Scopes)), nil
 	case profiles.AuthTypeAccessToken:
-		tokenSource := oauth2.StaticTokenSource(buildToken(&c))
-		return sdk.WithOAuthAccessTokenSource(tokenSource), nil
+		return sdk.WithOAuthAccessTokenSource(newProfileTokenSource(profile)), nil
 	default:
 		return nil, ErrInvalidAuthType
 	}
@@ -193,8 +192,17 @@ func ValidateProfileAuthCredentials(ctx context.Context, profile *profiles.Otdfc
 		}
 		return nil
 	case profiles.AuthTypeAccessToken:
-		if !buildToken(&c).Valid() {
+		if buildToken(&c).Valid() {
+			return nil
+		}
+		if !HasRefreshToken(profile) {
 			return ErrAccessTokenExpired
+		}
+		if err := RefreshAccessToken(ctx, profile); err != nil {
+			if errors.Is(err, ErrRefreshTokenInvalid) {
+				return err
+			}
+			return errors.Join(ErrAccessTokenExpired, err)
 		}
 	default:
 		return ErrInvalidAuthType
@@ -211,6 +219,15 @@ func GetTokenWithProfile(ctx context.Context, profile *profiles.OtdfctlProfileSt
 		// so it stays usable outside otdfctl. See DSPX-3998.
 		return GetTokenWithClientCreds(ctx, profile.GetEndpoint(), c.ClientID, c.ClientSecret, profile.GetTLSNoVerify(), c.Scopes)
 	case profiles.AuthTypeAccessToken:
+		if !buildToken(&c).Valid() {
+			if !HasRefreshToken(profile) {
+				return nil, ErrAccessTokenExpired
+			}
+			if err := RefreshAccessToken(ctx, profile); err != nil {
+				return nil, err
+			}
+			c = profile.GetAuthCredentials()
+		}
 		return buildToken(&c), nil
 	default:
 		return nil, ErrInvalidAuthType

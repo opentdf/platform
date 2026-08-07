@@ -3191,12 +3191,13 @@ func (s *KasRegistryKeySuite) rotateOneSortTestKey(keyIDs []string, idx int) str
 
 	ts := time.Now().UnixNano()
 	rotated, err := s.db.PolicyClient.RotateKey(s.ctx, activeKey, &kasregistry.RotateKeyRequest_NewKey{
-		KeyId:        fmt.Sprintf("statussort-rotated-%d", ts),
+		// key_id is varchar(36), so keep the generated IDs short
+		KeyId:        fmt.Sprintf("rot-%d", ts),
 		Algorithm:    policy.Algorithm_ALGORITHM_RSA_2048,
 		KeyMode:      policy.KeyMode_KEY_MODE_CONFIG_ROOT_KEY,
 		PublicKeyCtx: &policy.PublicKeyCtx{Pem: keyCtx},
 		PrivateKeyCtx: &policy.PrivateKeyCtx{
-			KeyId:      fmt.Sprintf("statussort-rotated-priv-%d", ts),
+			KeyId:      fmt.Sprintf("rot-priv-%d", ts),
 			WrappedKey: keyCtx,
 		},
 	})

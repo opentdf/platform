@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"os"
 	"os/signal"
+	"reflect"
 	"slices"
 	"syscall"
 
@@ -21,6 +22,7 @@ import (
 	"github.com/opentdf/platform/service/internal/auth/authz"
 	"github.com/opentdf/platform/service/internal/server"
 	"github.com/opentdf/platform/service/logger"
+	"github.com/opentdf/platform/service/logger/audit"
 	"github.com/opentdf/platform/service/pkg/cache"
 	"github.com/opentdf/platform/service/pkg/config"
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
@@ -41,12 +43,16 @@ const dpopKeySize = 2048
 var (
 	ErrExternalInterceptorFactoryNameRequired = errors.New("external connect interceptor factory name is required")
 	ErrExternalInterceptorFactoryFuncRequired = errors.New("external connect interceptor factory func is required")
+	ErrAuditProcessorRequired                 = errors.New("audit processor is required")
 )
 
 func Start(f ...StartOptions) error {
 	startConfig := StartConfig{}
 	for _, fn := range f {
 		startConfig = fn(startConfig)
+	}
+	if startConfig.auditProcessorSet && isNilAuditProcessor(startConfig.auditProcessor) {
+		return ErrAuditProcessorRequired
 	}
 
 	ctx := context.Background()
@@ -114,7 +120,11 @@ func Start(f ...StartOptions) error {
 	}
 
 	slog.Debug("configuring logger")
-	logger, err := logger.NewLogger(cfg.Logger)
+	loggerOptions := make([]logger.Option, 0, 1)
+	if startConfig.auditProcessor != nil {
+		loggerOptions = append(loggerOptions, logger.WithAuditProcessor(startConfig.auditProcessor))
+	}
+	logger, err := logger.NewLogger(cfg.Logger, loggerOptions...)
 	if err != nil {
 		return fmt.Errorf("could not start logger: %w", err)
 	}
@@ -358,6 +368,20 @@ func Start(f ...StartOptions) error {
 	}
 
 	return nil
+}
+
+func isNilAuditProcessor(processor audit.Processor) bool {
+	if processor == nil {
+		return true
+	}
+	value := reflect.ValueOf(processor)
+	//nolint:exhaustive // only nil-capable reflection kinds require handling
+	switch value.Kind() {
+	case reflect.Chan, reflect.Func, reflect.Interface, reflect.Map, reflect.Pointer, reflect.Slice:
+		return value.IsNil()
+	default:
+		return false
+	}
 }
 
 func validateExternalInterceptorFactory(factory InterceptorFactory) error {

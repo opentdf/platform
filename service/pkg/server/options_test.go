@@ -8,11 +8,29 @@ import (
 	"github.com/go-viper/mapstructure/v2"
 	"github.com/lestrrat-go/jwx/v2/jwt"
 	"github.com/opentdf/platform/service/logger"
+	"github.com/opentdf/platform/service/logger/audit"
 	"github.com/opentdf/platform/service/pkg/authz"
 	"github.com/opentdf/platform/service/pkg/config"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+func TestWithAuditProcessor(t *testing.T) {
+	processor := audit.ProcessorFunc(func(context.Context, audit.FinalizedEvent) (audit.ProcessResult, error) {
+		return audit.ProcessResult{Drop: true}, nil
+	})
+
+	cfg := WithAuditProcessor(processor)(StartConfig{})
+	require.NotNil(t, cfg.auditProcessor)
+	require.True(t, cfg.auditProcessorSet)
+}
+
+func TestWithAuditProcessorRejectsNil(t *testing.T) {
+	require.ErrorIs(t, Start(WithAuditProcessor(nil)), ErrAuditProcessorRequired)
+
+	var processor audit.ProcessorFunc
+	require.ErrorIs(t, Start(WithAuditProcessor(processor)), ErrAuditProcessorRequired)
+}
 
 // noopInterceptor returns a connect.UnaryInterceptorFunc that passes through.
 func noopInterceptor() connect.Interceptor {

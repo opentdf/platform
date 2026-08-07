@@ -33,8 +33,31 @@ var logLevelNames = map[slog.Leveler]string{
 }
 
 type Logger struct {
-	logger *slog.Logger
-	config Config
+	logger      *slog.Logger
+	diagnostics *slog.Logger
+	processor   Processor
+	config      Config
+}
+
+// Option configures an audit logger at construction time.
+type Option func(*Logger)
+
+// WithProcessor configures the finalized-event processor.
+func WithProcessor(processor Processor) Option {
+	return func(logger *Logger) {
+		if processor != nil {
+			logger.processor = processor
+		}
+	}
+}
+
+// WithDiagnosticLogger routes processor failures to an operational logger.
+func WithDiagnosticLogger(diagnostics *slog.Logger) Option {
+	return func(logger *Logger) {
+		if diagnostics != nil {
+			logger.diagnostics = diagnostics
+		}
+	}
 }
 
 // Used to support custom log levels showing up with custom labels as well
@@ -56,10 +79,16 @@ func ReplaceAttrAuditLevel(_ []string, a slog.Attr) slog.Attr {
 	return a
 }
 
-func CreateAuditLogger(logger slog.Logger) *Logger {
-	return &Logger{
-		logger: &logger,
+func CreateAuditLogger(logger slog.Logger, options ...Option) *Logger {
+	auditLogger := &Logger{
+		logger:      &logger,
+		diagnostics: slog.Default(),
+		processor:   defaultProcessor{},
 	}
+	for _, option := range options {
+		option(auditLogger)
+	}
+	return auditLogger
 }
 
 func cloneConfig(cfg Config) Config {
@@ -78,11 +107,30 @@ func (a *Logger) ApplyConfig(cfg Config) error {
 }
 
 func (a *Logger) With(key string, value string) *Logger {
+	diagnostics := a.diagnostics
+	if diagnostics == nil {
+		diagnostics = slog.Default()
+	}
+	processor := a.processor
+	if processor == nil {
+		processor = defaultProcessor{}
+	}
 	return &Logger{
 		//nolint:sloglint // custom logger should support key/value pairs in With attributes
 		logger: a.logger.With(key, value),
-		config: cloneConfig(a.config),
+		//nolint:sloglint // mirror the same scoped attributes on operational diagnostics
+		diagnostics: diagnostics.With(key, value),
+		processor:   processor,
+		config:      cloneConfig(a.config),
 	}
+}
+
+// Processor returns the immutable processor configured for this logger.
+func (a *Logger) Processor() Processor {
+	if a.processor == nil {
+		return defaultProcessor{}
+	}
+	return a.processor
 }
 
 // addEvent appends a pending audit event to the transaction
@@ -131,8 +179,12 @@ func (tx *auditTransaction) logClose(ctx context.Context, auditLogger *Logger, s
 			auditEvent.EventMetaData["cancellation_error"] = err.Error()
 		}
 
-		//nolint:sloglint // audit message is always just the verb
-		auditLogger.logger.Log(ctx, LevelAudit, string(event.verb), slog.Any("audit", auditLogger.buildRecordedLogEntry(ctx, auditEvent)))
+		finalized := FinalizedEvent{
+			Verb:  event.verb,
+			Event: cloneRecordedEvent(auditEvent),
+			Audit: auditLogger.buildRecordedLogEntry(ctx, auditEvent),
+		}
+		auditLogger.processAndEmit(ctx, finalized)
 	}
 }
 
@@ -171,6 +223,10 @@ func (a *Logger) GetDecisionV2(ctx context.Context, eventParams GetDecisionV2Eve
 	LogAuditEvent(ctx, VerbDecision, event)
 }
 
+// LogAuditEvent records a legacy OpenTDF event and retains its historical panic
+// behavior when no transaction exists or the event is nil.
+//
+// Deprecated: Use (*Logger).Record for externally supplied events.
 func LogAuditEvent(ctx context.Context, verb Verb, event *EventObject) {
 	tx, ok := ctx.Value(contextKey{}).(*auditTransaction)
 	if !ok {
@@ -218,4 +274,30 @@ func (a *Logger) policyCrudBase(ctx context.Context, isSuccess bool, eventParams
 		return
 	}
 	LogAuditEvent(ctx, VerbPolicyCRUD, auditEvent)
+}
+
+func (a *Logger) processAndEmit(ctx context.Context, event FinalizedEvent) {
+	processor := a.processor
+	if processor == nil {
+		processor = defaultProcessor{}
+	}
+	result, err := processEvent(ctx, processor, event)
+	if err == nil {
+		err = validateProcessResult(result)
+	}
+	if err != nil {
+		diagnostics := a.diagnostics
+		if diagnostics == nil {
+			diagnostics = slog.Default()
+		}
+		diagnostics.ErrorContext(ctx, "audit processor failed; emitting default event", slog.Any("error", err))
+		result, _ = defaultProcessor{}.Process(ctx, event)
+	}
+	if result.Drop {
+		return
+	}
+	for _, emission := range result.Emissions {
+		//nolint:sloglint // processor-defined audit messages are intentionally dynamic
+		a.logger.LogAttrs(ctx, emission.Level, emission.Message, emission.Attrs...)
+	}
 }

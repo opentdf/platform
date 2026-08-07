@@ -23,19 +23,10 @@ import (
 // These tests exercise the real ERSV2 handler (no HTTP layer) with real
 // providers, mirroring the JustInTimePDP call patterns from production.
 
-// serializationTestConfig builds a config with a claims provider and
-// strategies covering the shapes needed to exercise the two v2 call paths:
-//   - user_strategy: matches on `sub` (JWT-cased, as CreateEntityChainsFromTokens
-//     sees it on the first call).
-//   - user_mirror_strategy: matches on `userName` (proto-cased, as the default
-//     ResolveEntities path derives it from an Entity_UserName payload — the
-//     second call in the JustInTimePDP handshake).
-//   - client_strategy: environment entity matched via `azp`.
-//
-// The mirror strategy is what the spec's "Related concern" section flags as
-// commonly missing in real configs — including it here means the two-call
-// handshake test actually hits the success path on call 2, which is where
-// the []string -> structpb bug fires.
+// serializationTestConfig builds a claims-provider configuration for both
+// direct ResolveEntities calls and token-created chains. Token chains preserve
+// the phase-1 mapped output and therefore do not need a mirror strategy for a
+// second resolution pass.
 func serializationTestConfig() types.MultiStrategyConfig {
 	return types.MultiStrategyConfig{
 		FailureStrategy: types.FailureStrategyContinue,
@@ -58,19 +49,6 @@ func serializationTestConfig() types.MultiStrategyConfig {
 				OutputMapping: []types.OutputMapping{
 					{SourceClaim: "sub", ClaimName: "username"},
 					{SourceClaim: "email", ClaimName: "email_address"},
-				},
-			},
-			{
-				Name:       "user_mirror_strategy",
-				Provider:   "jwt_claims",
-				EntityType: types.EntityTypeSubject,
-				Conditions: types.StrategyConditions{
-					JWTClaims: []types.JWTClaimCondition{
-						{Claim: "userName", Operator: "exists"},
-					},
-				},
-				OutputMapping: []types.OutputMapping{
-					{SourceClaim: "userName", ClaimName: "username"},
 				},
 			},
 			{
@@ -178,14 +156,11 @@ func TestIntegration_ResolveEntities_ReturnsPopulatedRepresentation(t *testing.T
 	}
 }
 
-// TestIntegration_TwoCallHandshake is spec integration test 2: exact
-// reproduction of the JustInTimePDP.resolveEntitiesFromToken production
-// flow. First call CreateEntityChainsFromTokens with a signed JWT that
-// matches a configured strategy; take the returned chain, feed each
-// entity into a subsequent ResolveEntities call. Every input entity must
-// produce a non-empty representation. Today this silently drops entities
-// and the caller (KAS) can't tell.
-func TestIntegration_TwoCallHandshake(t *testing.T) {
+// TestIntegration_TokenChainPreservesResolvedClaims is spec integration test 2:
+// after CreateEntityChainsFromTokens, the returned chain should already contain
+// the resolved claims needed for downstream authz. This avoids having to route
+// the chain back through ResolveEntities from a lossy identity projection.
+func TestIntegration_TokenChainPreservesResolvedClaims(t *testing.T) {
 	if testing.Short() {
 		t.Skip("Skipping multi-strategy integration tests in short mode")
 	}
@@ -198,14 +173,13 @@ func TestIntegration_TwoCallHandshake(t *testing.T) {
 	jwt := createMockJWTForUser("alice", "alice@example.com")
 
 	chainReq := connect.NewRequest(&entityresolutionV2.CreateEntityChainsFromTokensRequest{
-		Tokens: []*entity.Token{
-			{EphemeralId: "token-alice", Jwt: jwt},
-		},
+		Tokens: []*entity.Token{{EphemeralId: "token-alice", Jwt: jwt}},
 	})
 	chainResp, err := ers.CreateEntityChainsFromTokens(t.Context(), chainReq)
 	if err != nil {
 		t.Fatalf("CreateEntityChainsFromTokens returned error: %v", err)
 	}
+
 	chains := chainResp.Msg.GetEntityChains()
 	if len(chains) != 1 {
 		t.Fatalf("EntityChains length = %d, want 1", len(chains))
@@ -215,50 +189,22 @@ func TestIntegration_TwoCallHandshake(t *testing.T) {
 		t.Fatalf("chain contains no entities")
 	}
 
-	// Second call: feed each resolved chain entity into ResolveEntities,
-	// exactly as JustInTimePDP.resolveEntitiesFromToken does. Chain
-	// entities are typed (UserName / EmailAddress / ClientId), so the
-	// handler takes the default (proto-marshalled) path — the derived
-	// claimsMap contains proto-cased names like "userName", which is
-	// why the config includes a mirror strategy keyed on "userName".
-	resolveReq := connect.NewRequest(&entityresolutionV2.ResolveEntitiesRequest{
-		Entities: chainEntities,
-	})
-	// The claims provider reads from ctx. Populate it with both the
-	// original JWT claims AND the proto-cased entity claim so the
-	// mirror strategy actually resolves (otherwise the second call would
-	// fail with "no matching strategy" and never exercise the success
-	// path where the []string bug lives).
-	resolveResp, err := ers.ResolveEntities(ctxWithClaims(t, types.JWTClaims{
-		"sub":      "alice",
-		"email":    "alice@example.com",
-		"userName": "alice",
-	}), resolveReq)
-	if err != nil {
-		t.Fatalf("ResolveEntities returned error: %v", err)
-	}
+	for i, chained := range chainEntities {
+		claims := chained.GetClaims()
+		if claims == nil {
+			t.Fatalf("entity %d should preserve resolved claims in the chain, got type %T", i, chained.GetEntityType())
+		}
 
-	reps := resolveResp.Msg.GetEntityRepresentations()
-	if len(reps) != len(chainEntities) {
-		t.Fatalf("EntityRepresentations length = %d, want %d (one per chain entity — missing entries mean the handler silently dropped them via structpb.NewStruct failure)", len(reps), len(chainEntities))
-	}
-	for i, rep := range reps {
-		props := rep.GetAdditionalProps()
-		if len(props) == 0 {
-			t.Errorf("rep[%d] AdditionalProps empty; entity %q was not resolved", i, rep.GetOriginalId())
-			continue
+		var claimsStruct structpb.Struct
+		if err := claims.UnmarshalTo(&claimsStruct); err != nil {
+			t.Fatalf("entity %d claims unmarshal failed: %v", i, err)
 		}
-		// The second call should have SUCCEEDED, not returned an error
-		// struct. If we see an error field, either the mirror strategy
-		// isn't wired up or the []string bug silently dropped a real
-		// success and something else populated an error.
-		if _, hasError := props[0].GetFields()["error"]; hasError {
-			t.Errorf("rep[%d] entity %q carries error struct instead of resolved claims: %v", i, rep.GetOriginalId(), props[0].GetFields())
+		asMap := claimsStruct.AsMap()
+		if got := asMap["username"]; got != "alice" {
+			t.Fatalf("entity %d username = %v, want alice", i, got)
 		}
-		// metadata_attempted_strategies must survive serialization — this
-		// is the field that trips the []string bug.
-		if _, ok := props[0].GetFields()["metadata_attempted_strategies"]; !ok {
-			t.Errorf("rep[%d] entity %q missing metadata_attempted_strategies — likely dropped by the structpb failure", i, rep.GetOriginalId())
+		if got := asMap["email_address"]; got != "alice@example.com" {
+			t.Fatalf("entity %d email_address = %v, want alice@example.com", i, got)
 		}
 	}
 }

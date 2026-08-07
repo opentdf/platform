@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net"
+	"strconv"
 	"strings"
 
 	"github.com/cucumber/godog"
@@ -115,6 +117,32 @@ func (s *AuthorizationServiceStepDefinitions) thereIsAClaimsSubjectEntityReferen
 		return ctx, err
 	}
 	scenarioContext.RecordObject(referenceID, entity)
+	return ctx, nil
+}
+
+func (s *AuthorizationServiceStepDefinitions) aUserAccessTokenForStoredAs(ctx context.Context, username, ref string) (context.Context, error) {
+	scenarioContext := GetPlatformScenarioContext(ctx)
+	localPlatformGlue, ok := (*scenarioContext.TestSuiteContext.PlatformGlue).(*LocalDevPlatformGlue)
+	if !ok {
+		return ctx, errors.New("failed to load local platform glue")
+	}
+
+	kcHostPort := net.JoinHostPort(localPlatformGlue.Options.Hostname, strconv.Itoa(localPlatformGlue.Options.keycloakPort))
+	tokenURL := fmt.Sprintf(
+		"http://%s/auth/realms/%s/protocol/openid-connect/token",
+		kcHostPort,
+		scenarioContext.ScenarioOptions.KeycloakRealm,
+	)
+
+	token, err := fetchUserAccessToken(ctx, tokenURL, username)
+	if err != nil {
+		return ctx, fmt.Errorf("fetch access token for user %q: %w", username, err)
+	}
+	if token.AccessToken == "" {
+		return ctx, fmt.Errorf("user token for %q missing access token", username)
+	}
+
+	scenarioContext.RecordObject(ref, token.AccessToken)
 	return ctx, nil
 }
 
@@ -301,6 +329,43 @@ func getAllObligationsFromScenario(scenarioContext *PlatformScenarioContext) []s
 	return obligationFQNs
 }
 
+func (s *AuthorizationServiceStepDefinitions) iSendADecisionRequestForTokenForActionOnResource(ctx context.Context, tokenRef, action, resource string) (context.Context, error) {
+	scenarioContext := GetPlatformScenarioContext(ctx)
+
+	rawToken, ok := scenarioContext.GetObject(tokenRef).(string)
+	if !ok || rawToken == "" {
+		return ctx, fmt.Errorf("no raw token stored under %q", tokenRef)
+	}
+
+	var resourceFQNs []string
+	for r := range strings.SplitSeq(resource, ",") {
+		resourceFQNs = append(resourceFQNs, strings.TrimSpace(r))
+	}
+
+	req := &authzV2.GetDecisionRequest{
+		EntityIdentifier: &authzV2.EntityIdentifier{
+			Identifier: &authzV2.EntityIdentifier_Token{
+				Token: &entity.Token{EphemeralId: tokenRef, Jwt: rawToken},
+			},
+		},
+		Action: &policy.Action{Name: strings.ToLower(action)},
+		Resource: &authzV2.Resource{
+			EphemeralId: "resource1",
+			Resource: &authzV2.Resource_AttributeValues_{
+				AttributeValues: &authzV2.Resource_AttributeValues{Fqns: resourceFQNs},
+			},
+		},
+		FulfillableObligationFqns: getAllObligationsFromScenario(scenarioContext),
+	}
+
+	resp, err := scenarioContext.SDK.AuthorizationV2.GetDecision(ctx, req)
+	if err != nil {
+		return ctx, err
+	}
+	scenarioContext.RecordObject(decisionResponse, resp)
+	return ctx, nil
+}
+
 func buildEntityChainFromIDs(scenarioContext *PlatformScenarioContext, entityChainID string) (*entity.EntityChain, error) {
 	var entities []*entity.Entity
 	for _, entityID := range strings.Split(entityChainID, ",") {
@@ -484,8 +549,10 @@ func RegisterAuthorizationStepDefinitions(ctx *godog.ScenarioContext) {
 	stepDefinitions := AuthorizationServiceStepDefinitions{}
 	ctx.Step(`^there is a "([^"]*)" subject entity with value "([^"]*)" and referenced as "([^"]*)"$`, stepDefinitions.thereIsASubjectEntityWithValueAndReferencedAs)
 	ctx.Step(`^there is a claims subject entity referenced as "([^"]*)" with claims:$`, stepDefinitions.thereIsAClaimsSubjectEntityReferencedAsWithClaims)
+	ctx.Step(`^a user access token for "([^"]*)" stored as "([^"]*)"$`, stepDefinitions.aUserAccessTokenForStoredAs)
 	ctx.Step(`^there is a "([^"]*)" environment entity with value "([^"]*)" and referenced as "([^"]*)"$`, stepDefinitions.thereIsAEnvEntityWithValueAndReferencedAs)
 	ctx.Step(`^I send a decision request for entity chain "([^"]*)" for "([^"]*)" action on resource "([^"]*)"$`, stepDefinitions.iSendADecisionRequestForEntityChainForActionOnResource)
+	ctx.Step(`^I send a decision request for token "([^"]*)" for "([^"]*)" action on resource "([^"]*)"$`, stepDefinitions.iSendADecisionRequestForTokenForActionOnResource)
 	ctx.Step(`^I send a decision request for entity chain "([^"]*)" for "([^"]*)" action on resource "([^"]*)" with fulfillable obligations "([^"]*)"$`, stepDefinitions.iSendADecisionRequestForEntityChainForActionOnResourceWithFulfillableObligations)
 	ctx.Step(`^I send a decision request for entity chain "([^"]*)" for "([^"]*)" action on resource "([^"]*)" with no fulfillable obligations$`, stepDefinitions.iSendADecisionRequestForEntityChainForActionOnResourceWithNoFulfillableObligations)
 	ctx.Step(`^I send a multi-resource decision request for entity chain "([^"]*)" for "([^"]*)" action on resources:$`, stepDefinitions.iSendAMultiResourceDecisionRequestForEntityChainForActionOnResources)

@@ -11,6 +11,7 @@ import (
 	entityresolutionV2 "github.com/opentdf/platform/protocol/go/entityresolution/v2"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/types/known/structpb"
 )
 
 const (
@@ -90,11 +91,12 @@ type EntityValidationRule struct {
 
 // EntityChainValidationRule defines how to validate a returned entity chain
 type EntityChainValidationRule struct {
-	EphemeralID               string   // Expected ephemeral ID
-	EntityCount               int      // Expected number of entities in the chain
-	EntityTypes               []string // Expected entity types in order
-	EntityCategories          []string // Expected entity categories in order (CATEGORY_ENVIRONMENT, CATEGORY_SUBJECT)
-	RequireConsistentOrdering bool     // Whether entity order must be consistent across implementations
+	EphemeralID               string                   // Expected ephemeral ID
+	EntityCount               int                      // Expected number of entities in the chain
+	EntityTypes               []string                 // Expected entity types in order
+	EntityCategories          []string                 // Expected entity categories in order (CATEGORY_ENVIRONMENT, CATEGORY_SUBJECT)
+	EntityRequiredFields      []map[string]interface{} // Required claims fields for each entity, by index
+	RequireConsistentOrdering bool                     // Whether entity order must be consistent across implementations
 }
 
 // ContractTestSuite holds all the contract tests for ERS implementations
@@ -521,9 +523,10 @@ func (suite *ContractTestSuite) validateContractChain(t *testing.T, chains []*en
 	entities := matchingChain.GetEntities()
 	assert.Len(t, entities, validationRule.EntityCount, "Unexpected number of entities in chain")
 
-	// Validate entity types and categories
+	// Validate entity types, categories, and preserved claims context.
 	suite.validateChainEntityTypes(t, entities, validationRule)
 	suite.validateChainEntityCategories(t, entities, validationRule)
+	suite.validateChainEntityRequiredFields(t, entities, validationRule)
 }
 
 // validateChainEntityTypes validates entity types in chain
@@ -553,6 +556,30 @@ func (suite *ContractTestSuite) validateFlexibleEntityType(t *testing.T, entitie
 		}
 	}
 	assert.Fail(t, fmt.Sprintf("Expected entity type %s not found in chain", expectedType))
+}
+
+func (suite *ContractTestSuite) validateChainEntityRequiredFields(t *testing.T, entities []*entity.Entity, validationRule EntityChainValidationRule) {
+	for idx, requiredFields := range validationRule.EntityRequiredFields {
+		if idx >= len(entities) {
+			t.Errorf("Required-fields rule index %d out of bounds (got %d entities)", idx, len(entities))
+			continue
+		}
+		if len(requiredFields) == 0 {
+			continue
+		}
+
+		claims := entities[idx].GetClaims()
+		if claims == nil {
+			t.Errorf("Entity at index %d does not contain claims", idx)
+			continue
+		}
+		var claimsStruct structpb.Struct
+		if err := claims.UnmarshalTo(&claimsStruct); err != nil {
+			t.Errorf("Failed to unpack claims for entity at index %d: %v", idx, err)
+			continue
+		}
+		suite.validateRequiredFields(t, claimsStruct.AsMap(), requiredFields)
+	}
 }
 
 // validateChainEntityCategories validates entity categories in chain

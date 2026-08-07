@@ -10,6 +10,63 @@ import (
 	"google.golang.org/protobuf/types/known/structpb"
 )
 
+func TestResolveEntityWithStrategyExecutesSelectedStrategy(t *testing.T) {
+	config := types.MultiStrategyConfig{
+		Providers: map[string]types.ProviderConfig{
+			"jwt": {Type: "claims", Connection: map[string]interface{}{}},
+		},
+		MappingStrategies: []types.MappingStrategy{
+			{
+				Name:       "username_strategy",
+				Provider:   "jwt",
+				EntityType: types.EntityTypeSubject,
+				OutputMapping: []types.OutputMapping{
+					{SourceClaim: "sub", ClaimName: "username"},
+				},
+			},
+			{
+				Name:       "client_strategy",
+				Provider:   "jwt",
+				EntityType: types.EntityTypeEnvironment,
+				OutputMapping: []types.OutputMapping{
+					{SourceClaim: "azp", ClaimName: "client_id"},
+				},
+			},
+		},
+	}
+
+	service, err := NewService(t.Context(), config, logger.CreateTestLogger())
+	if err != nil {
+		t.Fatalf("NewService() error = %v", err)
+	}
+	defer service.Close()
+
+	claims := types.JWTClaims{"sub": "alice", "azp": "opentdf-sdk"}
+	ctx := context.WithValue(t.Context(), types.JWTClaimsContextKey, claims)
+	selected := &config.MappingStrategies[1]
+
+	result, err := service.ResolveEntityWithStrategy(ctx, "token-alice", claims, selected)
+	if err != nil {
+		t.Fatalf("ResolveEntityWithStrategy() error = %v", err)
+	}
+	if _, exists := result.Claims["username"]; exists {
+		t.Fatalf("selected client strategy unexpectedly returned username: %v", result.Claims)
+	}
+	if got := result.Claims["client_id"]; got != "opentdf-sdk" {
+		t.Fatalf("expected client_id opentdf-sdk, got %v", got)
+	}
+	if got := result.Metadata["strategy_name"]; got != "client_strategy" {
+		t.Fatalf("expected strategy_name client_strategy, got %v", got)
+	}
+	attempted, ok := result.Metadata["attempted_strategies"].([]interface{})
+	if !ok {
+		t.Fatalf("attempted_strategies must be []interface{} for structpb encoding, got %T", result.Metadata["attempted_strategies"])
+	}
+	if len(attempted) != 1 || attempted[0] != "client_strategy" {
+		t.Fatalf("expected attempted_strategies [client_strategy], got %v", attempted)
+	}
+}
+
 func TestMultiStrategyService_JWT_Claims_Provider(t *testing.T) {
 	// Test configuration with JWT claims provider
 	config := types.MultiStrategyConfig{

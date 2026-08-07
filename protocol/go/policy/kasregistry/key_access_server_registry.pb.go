@@ -85,7 +85,7 @@ const (
 	SortKasKeysType_SORT_KAS_KEYS_TYPE_KEY_ID      SortKasKeysType = 1
 	SortKasKeysType_SORT_KAS_KEYS_TYPE_CREATED_AT  SortKasKeysType = 2
 	SortKasKeysType_SORT_KAS_KEYS_TYPE_UPDATED_AT  SortKasKeysType = 3
-	// Orders by policy.KeyStatus numeric value, not status name.
+	// Orders alphabetically by policy.KeyStatus name.
 	SortKasKeysType_SORT_KAS_KEYS_TYPE_KEY_STATUS SortKasKeysType = 4
 )
 

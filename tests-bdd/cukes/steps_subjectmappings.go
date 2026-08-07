@@ -184,6 +184,42 @@ func (s *SubjectMappingsStepDefinitions) aConditionGroup(ctx context.Context, re
 	return ctx, nil
 }
 
+// iSendARequestToCreateSubjectMappingForEveryAttributeValue maps every value of a previously
+// created attribute to a single condition set. Attributes carrying a value count in the thousands,
+// each with its own subject mapping, are the shape that exhausted the v1 GetDecisions message limit
+// (opentdf/platform#3821); they are impractical to enumerate in a table.
+func (s *SubjectMappingsStepDefinitions) iSendARequestToCreateSubjectMappingForEveryAttributeValue(ctx context.Context, attributeRef, conditionSetRef, actions string) (context.Context, error) {
+	scenarioContext := GetPlatformScenarioContext(ctx)
+	scenarioContext.ClearError()
+
+	attr, ok := scenarioContext.GetObject(strings.TrimSpace(attributeRef)).(*policy.Attribute)
+	if !ok {
+		return ctx, fmt.Errorf("unable to get attribute for %s", attributeRef)
+	}
+	scs, ok := scenarioContext.GetObject(strings.TrimSpace(conditionSetRef)).(*policy.SubjectConditionSet)
+	if !ok {
+		return ctx, fmt.Errorf("unable to get condition set for %s", conditionSetRef)
+	}
+	if len(attr.GetValues()) == 0 {
+		return ctx, fmt.Errorf("attribute %s has no values to map", attributeRef)
+	}
+
+	mappingActions := GetActionsFromValues(&actions, nil)
+	for _, v := range attr.GetValues() {
+		_, err := scenarioContext.SDK.SubjectMapping.CreateSubjectMapping(ctx, &subjectmapping.CreateSubjectMappingRequest{
+			AttributeValueId:              v.GetId(),
+			ExistingSubjectConditionSetId: scs.GetId(),
+			Actions:                       mappingActions,
+		})
+		if err != nil {
+			scenarioContext.SetError(err)
+			return ctx, fmt.Errorf("create subject mapping for value %s: %w", v.GetFqn(), err)
+		}
+	}
+
+	return ctx, nil
+}
+
 func RegisterSubjectMappingsStepsDefinitions(ctx *godog.ScenarioContext) {
 	subjectMappingStepDefinitions := &SubjectMappingsStepDefinitions{}
 	ctx.Step(`a condition group referenced as "([^"]*)" with an "([^"]*)" operator with conditions:$`, subjectMappingStepDefinitions.aConditionGroup)
@@ -191,4 +227,5 @@ func RegisterSubjectMappingsStepsDefinitions(ctx *godog.ScenarioContext) {
 	ctx.Step(`^I send a request to create a subject condition set referenced as "([^"]*)" containing subject sets "([^"]*)"$`, subjectMappingStepDefinitions.iSendARequestToCreateSubjectConditionSet)
 	ctx.Step(`^I send a request to create a subject condition set referenced as "([^"]*)" in namespace "([^"]*)" containing subject sets "([^"]*)"$`, subjectMappingStepDefinitions.iSendARequestToCreateSubjectConditionSetInNamespace)
 	ctx.Step(`^I send a request to create a subject mapping with:$`, subjectMappingStepDefinitions.iSendARequestToCreateSubjectMapping)
+	ctx.Step(`^I send a request to create a subject mapping for every value of attribute "([^"]*)" using condition set "([^"]*)" with actions "([^"]*)"$`, subjectMappingStepDefinitions.iSendARequestToCreateSubjectMappingForEveryAttributeValue)
 }

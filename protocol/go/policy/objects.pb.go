@@ -381,7 +381,9 @@ func (Algorithm) EnumDescriptor() ([]byte, []int) {
 	return file_policy_objects_proto_rawDescGZIP(), []int{5}
 }
 
-// The status of the key
+// The status of the key.
+// Adding a value here requires updating the key_status mapping in the listKeys
+// query so SORT_KAS_KEYS_TYPE_KEY_STATUS keeps sorting alphabetically.
 type KeyStatus int32
 
 const (

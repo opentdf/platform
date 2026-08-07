@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.30.0](https://github.com/opentdf/platform/compare/sdk/v0.29.0...sdk/v0.30.0) (2026-08-07)
+
+
+### Features
+
+* **sdk:** DSPX-3848 add DPoP client support with HTTP RoundTripper ([#3581](https://github.com/opentdf/platform/issues/3581)) ([2103736](https://github.com/opentdf/platform/commit/210373696f797348d3b2156ad814e3a3e4185f01))
+
 ## [0.29.0](https://github.com/opentdf/platform/compare/sdk/v0.28.0...sdk/v0.29.0) (2026-08-04)
 
 

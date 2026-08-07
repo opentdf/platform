@@ -107,7 +107,8 @@ func (suite *ResolvedTokenChainContractSuite) assertResolvedTokenChains(
 
 	for _, chain := range resp.Msg.GetEntityChains() {
 		expectation, ok := byTokenID[chain.GetEphemeralId()]
-		require.True(t, ok, "unexpected chain %q", chain.GetEphemeralId())
+		require.True(t, ok, "unexpected or duplicate chain %q", chain.GetEphemeralId())
+		delete(byTokenID, chain.GetEphemeralId())
 		require.Len(t, chain.GetEntities(), len(expectation.Entities))
 
 		for _, expectedEntity := range expectation.Entities {
@@ -129,6 +130,7 @@ func (suite *ResolvedTokenChainContractSuite) assertResolvedTokenChains(
 			require.True(t, matched, "chain %q did not contain category %s with mapped claims %v", chain.GetEphemeralId(), expectedEntity.Category, expectedEntity.ExpectedClaims)
 		}
 	}
+	require.Empty(t, byTokenID, "response omitted one or more requested token chains")
 }
 
 func containsExpectedClaims(actual, expected map[string]interface{}) bool {

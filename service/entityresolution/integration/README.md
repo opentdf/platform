@@ -94,8 +94,9 @@ adapter := NewMultiStrategyTestAdapter()
 #### Multi-strategy provider contract matrix
 
 `internal/resolved_token_chain_contract.go` owns the shared token-chain behavior.
-Provider adapters in `multistrategy_provider_contract_test.go` supply only setup,
-configuration, token fixtures, and expected mapped fields. The suite runs the same
+Provider adapters in `multistrategy_provider_contract_test.go` supply setup,
+teardown, normal and reversed-strategy service construction, configuration, token
+fixtures, and expected mapped fields. The suite runs the same
 multi-entity chain scenarios for claims, SQL, and LDAP with both environment→subject
 and subject→environment strategy order, single and multiple tokens, collection-valued
 context, and fail-closed mixed valid/invalid token batches.

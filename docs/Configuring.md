@@ -116,26 +116,31 @@ The server configuration is used to define how the application runs its server.
 
 Root level key `server`
 
-| Field                   | Description                                                                                                   | Default | Environment Variable                 |
-| ----------------------- | ------------------------------------------------------------------------------------------------------------- | ------- | ------------------------------------ |
-| `auth.audience`         | The audience for the IDP.                                                                                     |         | OPENTDF_SERVER_AUTH_AUDIENCE         |
-| `auth.issuer`           | The issuer for the IDP.                                                                                       |         | OPENTDF_SERVER_AUTH_ISSUER           |
-| `auth.policy`           | The Casbin policy for enforcing authorization on endpoints. Described [below](#casbin-endpoint-authorization) |         |                                      |
-| `auth.cache_refresh`    | Interval in which the IDP jwks should be refreshed                                                            | `15m`   | OPENTDF_SERVER_AUTH_CACHE_REFRESH    |
-| `auth.dpopskew`         | The amount of time drift allowed between when the client generated a dpop proof and the server time.          | `1h`    | OPENTDF_SERVER_AUTH                  |
-| `auth.skew`             | The amount of time drift allowed between a tokens `exp` claim and the server time.                            | `1m`    | OPENTDF_SERVER_AUTH_SKEW             |
-| `auth.public_client_id` | [DEPRECATED] The oidc client id. This is leveraged by otdfctl.                                                |         | OPENTDF_SERVER_AUTH_PUBLIC_CLIENT_ID |
-| `auth.dpop.enforce`     | If true, DPoP bindings on Access Tokens are enforced.                                                         | `false` | OPENTDF_SERVER_AUTH_DPOP_ENFORCE     |
-| `auth.enforceDPoP`      | [DEPRECATED] Use `auth.dpop.enforce`. Still honored: DPoP is enforced when either field is true.              | `false` | OPENTDF_SERVER_AUTH_ENFORCEDPOP      |
-| `cryptoProvider`        | A list of public/private keypairs and their use. Described [below](#crypto-provider)                          | empty   |                                      |
-| `enable_pprof`          | Enable golang performance profiling                                                                           | `false` | OPENTDF_SERVER_ENABLE_PPROF          |
-| `grpc.reflection`       | The configuration for the grpc server.                                                                        | `true`  | OPENTDF_SERVER_GRPC_REFLECTION       |
-| `public_hostname`       | The public facing hostname for the server.                                                                    |         | OPENTDF_SERVER_PUBLIC_HOSTNAME       |
-| `host`                  | The host address for the server.                                                                              | `""`    | OPENTDF_SERVER_HOST                  |
-| `port`                  | The port number for the server.                                                                               | `9000`  | OPENTDF_SERVER_PORT                  |
-| `tls.enabled`           | Enable tls.                                                                                                   | `false` | OPENTDF_SERVER_TLS_ENABLED           |
-| `tls.cert`              | The path to the tls certificate.                                                                              |         | OPENTDF_SERVER_TLS_CERT              |
-| `tls.key`               | The path to the tls key.                                                                                      |         | OPENTDF_SERVER_TLS_KEY               |
+> [!NOTE]
+> `server.auth` configures OpenTDF as an OIDC token consumer, not as the identity provider itself. See [OpenTDF and OpenID Connect (OIDC)](./OIDC.md) for the deployment boundary and end-to-end flow.
+
+| Field                         | Description                                                                                                          | Default | Environment Variable                       |
+| ----------------------------- | -------------------------------------------------------------------------------------------------------------------- | ------- | ------------------------------------------ |
+| `auth.audience`               | Expected `aud` claim for access tokens accepted from the external OIDC issuer.                                      |         | OPENTDF_SERVER_AUTH_AUDIENCE               |
+| `auth.issuer`                 | Base URL of the external OIDC issuer used for discovery and token validation.                                       |         | OPENTDF_SERVER_AUTH_ISSUER                 |
+| `auth.policy`                 | The Casbin policy for enforcing authorization on endpoints. Described [below](#casbin-endpoint-authorization)       |         |                                            |
+| `auth.cache_refresh_interval` | Minimum refresh interval for the external OIDC issuer's JWKS cache.                                                 | `15m`   | OPENTDF_SERVER_AUTH_CACHE_REFRESH_INTERVAL |
+| `auth.dpopskew`               | The amount of time drift allowed between when the client generated a DPoP proof and the server time.               | `1h`    | OPENTDF_SERVER_AUTH_DPOPSKEW               |
+| `auth.skew`                   | The amount of time drift allowed between a token's `exp` claim and the server time.                                 | `1m`    | OPENTDF_SERVER_AUTH_SKEW                   |
+| `auth.public_client_id`       | [DEPRECATED] The OIDC client ID leveraged by otdfctl.                                                               |         | OPENTDF_SERVER_AUTH_PUBLIC_CLIENT_ID       |
+| `auth.dpop.enforce`           | If true, DPoP bindings on access tokens are enforced.                                                               | `false` | OPENTDF_SERVER_AUTH_DPOP_ENFORCE           |
+| `auth.enforceDPoP`            | [DEPRECATED] Use `auth.dpop.enforce`. Still honored: DPoP is enforced when either field is true.                   | `false` | OPENTDF_SERVER_AUTH_ENFORCEDPOP            |
+| `cryptoProvider`              | A list of public/private keypairs and their use. Described [below](#crypto-provider)                                | empty   |                                            |
+| `enable_pprof`                | Enable golang performance profiling.                                                                                | `false` | OPENTDF_SERVER_ENABLE_PPROF                |
+| `grpc.reflection`             | The configuration for the gRPC server.                                                                              | `true`  | OPENTDF_SERVER_GRPC_REFLECTION             |
+| `public_hostname`             | The public-facing hostname for the server.                                                                          |         | OPENTDF_SERVER_PUBLIC_HOSTNAME             |
+| `host`                        | The host address for the server.                                                                                    | `""`    | OPENTDF_SERVER_HOST                        |
+| `port`                        | The port number for the server.                                                                                     | `9000`  | OPENTDF_SERVER_PORT                        |
+| `tls.enabled`                 | Enable TLS.                                                                                                         | `false` | OPENTDF_SERVER_TLS_ENABLED                 |
+| `tls.cert`                    | The path to the TLS certificate.                                                                                    |         | OPENTDF_SERVER_TLS_CERT                    |
+| `tls.key`                     | The path to the TLS key.                                                                                            |         | OPENTDF_SERVER_TLS_KEY                     |
+
+OpenTDF expects the configured `auth.issuer` and the discovery document's `issuer` value to agree. If they differ, the discovery document's issuer value is used for token validation.
 
 Example:
 
@@ -603,7 +608,7 @@ server:
       ## Dot notation is used to access the groups claim
       group_claim: "realm_access.roles"
 
-      # Dot notation is used to access the claim the represents the idP client ID 
+      # Dot notation is used to access the claim that represents the IdP client ID
       client_id_claim: # azp
       
       ## Deprecated: Use standard casbin policy groupings (g, <user/group>, <role>)

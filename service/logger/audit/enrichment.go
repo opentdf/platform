@@ -11,8 +11,11 @@ import (
 	ctxAuth "github.com/opentdf/platform/service/pkg/auth"
 )
 
-func (a *Logger) buildLogEntry(ctx context.Context, event *EventObject) map[string]any {
-	entry := event.emittedPayloadMap()
+func (a *Logger) buildRecordedLogEntry(ctx context.Context, event RecordedEvent) map[string]any {
+	entry, ok := normalizeAuditValue(event).(map[string]any)
+	if !ok {
+		panic("normalized recorded audit payload must be a map")
+	}
 	a.applyJWTClaimEnrichment(ctx, entry)
 	return entry
 }

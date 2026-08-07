@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.37.0](https://github.com/opentdf/platform/compare/otdfctl/v0.36.0...otdfctl/v0.37.0) (2026-08-07)
+
+
+### Features
+
+* **cli:** add streaming list output and man Doc.AddStringFlag helper ([#3805](https://github.com/opentdf/platform/issues/3805)) ([13ea51d](https://github.com/opentdf/platform/commit/13ea51d9dab9daf57e52f459b8f47dfa01f5267e))
+* **sdk:** DSPX-3848 add DPoP client support with HTTP RoundTripper ([#3581](https://github.com/opentdf/platform/issues/3581)) ([2103736](https://github.com/opentdf/platform/commit/210373696f797348d3b2156ad814e3a3e4185f01))
+
 ## [0.36.0](https://github.com/opentdf/platform/compare/otdfctl/v0.35.0...otdfctl/v0.36.0) (2026-08-04)
 
 

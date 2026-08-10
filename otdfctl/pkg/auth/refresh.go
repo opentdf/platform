@@ -119,7 +119,7 @@ func refreshAccessToken(ctx context.Context, profile *profiles.OtdfctlProfileSto
 		return fmt.Errorf("failed to save refreshed credentials: %w", err)
 	}
 
-	slog.Info("access token refreshed and saved")
+	slog.Debug("access token refreshed and saved")
 	return nil
 }
 

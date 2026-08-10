@@ -2502,7 +2502,8 @@ func (s *KasRegistryKeySuite) Test_ListKeys_SortByUpdatedAt_ASC() {
 }
 
 func (s *KasRegistryKeySuite) Test_ListKeys_SortByKeyStatus_ASC() {
-	ids, kasID := s.createSortTestKasKeys([]string{"statusasc-kk-0", "statusasc-kk-1"})
+	// Rotating leaves ids[0] ROTATED and adds an ACTIVE key, one key per status.
+	ids, kasID := s.createSortTestKasKeys([]string{"statusasc-kk-0"})
 	ids = append(ids, s.rotateOneSortTestKey(ids, 0))
 	s.T().Cleanup(func() {
 		s.deleteSortTestKasKeys(ids, kasID)
@@ -2517,12 +2518,13 @@ func (s *KasRegistryKeySuite) Test_ListKeys_SortByKeyStatus_ASC() {
 	s.Require().NoError(err)
 	s.NotNil(list)
 
-	// ACTIVE (1) before ROTATED (2)
-	s.assertKeyStatusesOrdered(list.GetKasKeys(), true)
+	// ACTIVE before ROTATED
+	assertIDsInOrder(s.T(), list.GetKasKeys(), func(k *policy.KasKey) string { return k.GetKey().GetId() }, ids[1], ids[0])
 }
 
 func (s *KasRegistryKeySuite) Test_ListKeys_SortByKeyStatus_DESC() {
-	ids, kasID := s.createSortTestKasKeys([]string{"statusdesc-kk-0", "statusdesc-kk-1"})
+	// Rotating leaves ids[0] ROTATED and adds an ACTIVE key, one key per status.
+	ids, kasID := s.createSortTestKasKeys([]string{"statusdesc-kk-0"})
 	ids = append(ids, s.rotateOneSortTestKey(ids, 0))
 	s.T().Cleanup(func() {
 		s.deleteSortTestKasKeys(ids, kasID)
@@ -2537,8 +2539,8 @@ func (s *KasRegistryKeySuite) Test_ListKeys_SortByKeyStatus_DESC() {
 	s.Require().NoError(err)
 	s.NotNil(list)
 
-	// ROTATED (2) before ACTIVE (1)
-	s.assertKeyStatusesOrdered(list.GetKasKeys(), false)
+	// ROTATED before ACTIVE
+	assertIDsInOrder(s.T(), list.GetKasKeys(), func(k *policy.KasKey) string { return k.GetKey().GetId() }, ids[0], ids[1])
 }
 
 func (s *KasRegistryKeySuite) Test_ListKeys_SortTieBreaker_CreatedAtWithIDFallback() {
@@ -3205,28 +3207,6 @@ func (s *KasRegistryKeySuite) rotateOneSortTestKey(keyIDs []string, idx int) str
 	s.NotNil(rotated)
 
 	return rotated.GetKasKey().GetKey().GetId()
-}
-
-// assertKeyStatusesOrdered asserts the listed statuses are sorted by their
-// numeric enum value in the given direction.
-func (s *KasRegistryKeySuite) assertKeyStatusesOrdered(keys []*policy.KasKey, ascending bool) {
-	s.Require().GreaterOrEqual(len(keys), 2, "need at least two keys to assert ordering")
-
-	statuses := make([]policy.KeyStatus, 0, len(keys))
-	for _, k := range keys {
-		statuses = append(statuses, k.GetKey().GetKeyStatus())
-	}
-
-	for i := 1; i < len(statuses); i++ {
-		if ascending {
-			s.LessOrEqual(statuses[i-1], statuses[i], "statuses not ascending: %v", statuses)
-		} else {
-			s.GreaterOrEqual(statuses[i-1], statuses[i], "statuses not descending: %v", statuses)
-		}
-	}
-
-	// Guard against a vacuous pass if every key shares one status.
-	s.NotEqual(statuses[0], statuses[len(statuses)-1], "expected mixed statuses: %v", statuses)
 }
 
 func (s *KasRegistryKeySuite) createListKeysSearchTestKeys(kids []string) (string, map[string]string) {

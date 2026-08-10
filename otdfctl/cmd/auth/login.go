@@ -39,6 +39,7 @@ func codeLogin(cmd *cobra.Command, args []string) {
 	}); err != nil {
 		c.ExitWithError("failed to set auth credentials", err)
 	}
+
 	c.ExitWithMessage(fmt.Sprintf("Code login complete for profile: [%s]", cp.Name()), cli.ExitCodeSuccess)
 }
 

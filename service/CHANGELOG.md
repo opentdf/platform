@@ -1,5 +1,24 @@
 # Changelog
 
+## [0.25.0](https://github.com/opentdf/platform/compare/service/v0.24.0...service/v0.25.0) (2026-08-11)
+
+
+### Features
+
+* **sdk:** DSPX-3848 add DPoP client support with HTTP RoundTripper ([#3581](https://github.com/opentdf/platform/issues/3581)) ([2103736](https://github.com/opentdf/platform/commit/210373696f797348d3b2156ad814e3a3e4185f01))
+
+
+### Bug Fixes
+
+* **authz:** Point caller to v2 on v1 GetDecisions resource exhaustion ([#3837](https://github.com/opentdf/platform/issues/3837)) ([40bb78e](https://github.com/opentdf/platform/commit/40bb78e0c068da1da2a3d7544a4b219d0ab81f09))
+* **deps:** bump github.com/google/cel-go from 0.26.1 to 0.29.0 in /service ([#3787](https://github.com/opentdf/platform/issues/3787)) ([7d90577](https://github.com/opentdf/platform/commit/7d90577d68dd80edd5064935b42e24dd95bca434))
+* **deps:** bump github.com/opentdf/platform/protocol/go from 0.39.0 to 0.40.0 in /service ([#3848](https://github.com/opentdf/platform/issues/3848)) ([d1833ad](https://github.com/opentdf/platform/commit/d1833addede0003632cf1947c6f54ac1afc4ae43))
+* **deps:** bump github.com/opentdf/platform/sdk from 0.27.0 to 0.29.0 in /service ([#3853](https://github.com/opentdf/platform/issues/3853)) ([240417b](https://github.com/opentdf/platform/commit/240417b5fba90499cf65f313a42c16302c50a2b3))
+* **deps:** bump google.golang.org/grpc from 1.81.1 to 1.82.1 in /service ([#3779](https://github.com/opentdf/platform/issues/3779)) ([b3d5f27](https://github.com/opentdf/platform/commit/b3d5f27d926ea96b5bcc02ec6f5379430893f3a2))
+* **deps:** upgrade sdk to 0.30.0 in service ([#3859](https://github.com/opentdf/platform/issues/3859)) ([3514816](https://github.com/opentdf/platform/commit/3514816788e2a7931316535603b42bf90a767ded))
+* **ers:** pass inline claims through multi-strategy context ([#3794](https://github.com/opentdf/platform/issues/3794)) ([4a98105](https://github.com/opentdf/platform/commit/4a98105aa01f610f7685e56a4f1d8a9386e149d0))
+* **ers:** preserve resolved token-chain context ([#3808](https://github.com/opentdf/platform/issues/3808)) ([f7bf7f0](https://github.com/opentdf/platform/commit/f7bf7f0cc00d91dfca07cefcca3d7f344539cb69))
+
 ## [0.24.0](https://github.com/opentdf/platform/compare/service/v0.23.0...service/v0.24.0) (2026-07-30)
 
 

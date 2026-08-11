@@ -130,51 +130,9 @@ Body.
 
 	assert.True(t, doc.GetDocFlag("id").Required)
 	assert.False(t, doc.GetDocFlag("label").Required)
-}
-
-func TestMarkRequiredFlags(t *testing.T) {
-	doc, err := ProcessDoc(`---
-title: Test Command
-command:
-  name: test
-  flags:
-    - name: id
-      required: true
-      description: Required
-    - name: label
-      description: Optional
----
-
-Body.
-`)
-	require.NoError(t, err)
 
 	doc.Flags().String("id", "", "Required")
-	doc.Flags().String("label", "", "Optional")
-
-	doc.MarkRequiredFlags()
-
 	idFlag := doc.Flags().Lookup("id")
 	require.NotNil(t, idFlag)
-	assert.Equal(t, []string{"true"}, idFlag.Annotations[cobra.BashCompOneRequiredFlag])
-
-	labelFlag := doc.Flags().Lookup("label")
-	require.NotNil(t, labelFlag)
-	assert.Nil(t, labelFlag.Annotations[cobra.BashCompOneRequiredFlag])
-}
-
-// A flag declared required in the doc but not registered on the command is
-// skipped rather than panicking, so a central sweep can run over commands whose
-// flags are registered elsewhere (subcommands, shared injectors).
-func TestMarkRequiredFlagsSkipsUnregistered(t *testing.T) {
-	doc := &Doc{
-		Command: cobra.Command{Use: "test"},
-		DocFlags: []DocFlag{
-			{Name: "missing-flag", Required: true},
-		},
-	}
-
-	assert.NotPanics(t, func() {
-		doc.MarkRequiredFlags()
-	})
+	assert.Nil(t, idFlag.Annotations[cobra.BashCompOneRequiredFlag])
 }

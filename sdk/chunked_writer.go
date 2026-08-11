@@ -123,8 +123,9 @@ type ChunkedWriterConfig struct {
 	// to DefaultSegmentCipherFactory (AES-256-GCM).
 	cipherFactory SegmentCipherFactory
 
-	// clock supplies the current time for manifest metadata.
-	// Defaults to SystemClock.
+	// clock supplies the current time to the writer and the
+	// underlying zipstream. Defaults to SystemClock. Tests inject
+	// FixedClock for deterministic ZIP output.
 	clock Clock
 
 	// initialAttributes are the attribute values used at Finalize
@@ -199,7 +200,9 @@ type chunkedWriter struct {
 	// block is the segment cipher built from the DEK.
 	block SegmentCipher
 
-	// clock is the time source for manifest metadata.
+	// clock is the time source captured at construction; passed to
+	// the archive factory and referenced anywhere the writer stamps
+	// a timestamp.
 	clock Clock
 
 	// dek is the Data Encryption Key. 32 bytes (AES-256).
@@ -268,7 +271,7 @@ func (s SDK) NewChunkedWriter(_ context.Context, opts ...ChunkedWriterOption) (C
 		return nil, fmt.Errorf("build segment cipher: %w", err)
 	}
 	return &chunkedWriter{
-		archiveWriter:             cfg.archiveFactory(),
+		archiveWriter:             cfg.archiveFactory(cfg.clock),
 		block:                     block,
 		clock:                     cfg.clock,
 		dek:                       dek,

@@ -42,15 +42,23 @@ type SegmentMetadata struct {
 	// Order, when set, defines the exact logical order of segments for
 	// completeness checks and CRC computation. Indices may be sparse.
 	Order []int
+	// now is the injected time source used to stamp SegmentEntry.Written.
+	now func() time.Time
 }
 
-// NewSegmentMetadata creates metadata for tracking segments using combine-based CRC.
-func NewSegmentMetadata(expectedCount int) *SegmentMetadata {
+// NewSegmentMetadata creates metadata for tracking segments using
+// combine-based CRC. now stamps SegmentEntry.Written; pass time.Now
+// for production or a pinned clock for deterministic tests.
+func NewSegmentMetadata(expectedCount int, now func() time.Time) *SegmentMetadata {
+	if now == nil {
+		now = time.Now
+	}
 	return &SegmentMetadata{
 		ExpectedCount: expectedCount,
 		Segments:      make(map[int]*SegmentEntry),
 		presentCount:  0,
 		TotalCRC32:    0,
+		now:           now,
 	}
 }
 
@@ -69,7 +77,7 @@ func (sm *SegmentMetadata) AddSegment(index int, originalSize uint64, originalCR
 		Index:   index,
 		Size:    originalSize,
 		CRC32:   originalCRC32,
-		Written: time.Now(),
+		Written: sm.now(),
 	}
 
 	sm.TotalSize += originalSize

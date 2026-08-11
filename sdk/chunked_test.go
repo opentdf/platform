@@ -1,6 +1,7 @@
 package sdk
 
 import (
+	"archive/zip"
 	"bytes"
 	"context"
 	"errors"
@@ -9,6 +10,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"connectrpc.com/connect"
 	"github.com/lestrrat-go/jwx/v2/jwt"
@@ -108,6 +110,231 @@ func TestChunkedFinalizeRejectsAssertions(t *testing.T) {
 		{ID: "a", Type: BaseAssertion, Scope: PayloadScope, AppliesToState: Unencrypted},
 	}))
 	require.ErrorIs(t, err, ErrChunkedAssertionsUnsupported)
+}
+
+// TestChunkedOutOfOrderWrites exercises the core value proposition of
+// ChunkedWriter: segments may be written in any order provided the
+// caller concatenates TDFData in index order before Finalize.Data.
+func TestChunkedOutOfOrderWrites(t *testing.T) {
+	ctx := context.Background()
+	kasBundle := newChunkedFakeKAS(t)
+	defer kasBundle.server.Close()
+
+	s := newChunkedTestSDK(t, kasBundle)
+
+	writer, err := s.NewChunkedWriter(ctx,
+		WithChunkedDefaultKAS(kasBundle.simpleKey()),
+	)
+	require.NoError(t, err)
+
+	chunks := [][]byte{[]byte("aaa-"), []byte("bbb-"), []byte("ccc-"), []byte("ddd!")}
+
+	// Write in scrambled order: 2, 0, 3, 1.
+	segBytes := make([][]byte, len(chunks))
+	for _, idx := range []int{2, 0, 3, 1} {
+		seg, err := writer.WriteSegment(ctx, idx, chunks[idx])
+		require.NoError(t, err)
+		buf, err := io.ReadAll(seg.TDFData)
+		require.NoError(t, err)
+		segBytes[idx] = buf
+	}
+
+	fin, err := writer.Finalize(ctx)
+	require.NoError(t, err)
+	require.Equal(t, 4, fin.TotalSegments)
+
+	// Concat in INDEX order (segment 0 carries the ZIP local header).
+	var body bytes.Buffer
+	for _, buf := range segBytes {
+		body.Write(buf)
+	}
+	body.Write(fin.Data)
+
+	reader, err := s.LoadTDF(bytes.NewReader(body.Bytes()),
+		WithKasAllowlist([]string{kasBundle.url}),
+	)
+	require.NoError(t, err)
+	plain, err := io.ReadAll(reader)
+	require.NoError(t, err)
+	assert.Equal(t, []byte("aaa-bbb-ccc-ddd!"), plain)
+}
+
+// TestChunkedClockThreadedToZipHeaders verifies WithChunkedClock is
+// threaded into the zipstream layer so every ZIP entry ModTime
+// stamps from the injected clock rather than time.Now. This is the
+// invariant that enables byte-deterministic ZIP headers for xtest
+// fixtures (DEK / session-key randomness still varies the payload
+// and KAS-wrap ciphertexts, which is not the scope of this test).
+func TestChunkedClockThreadedToZipHeaders(t *testing.T) {
+	ctx := context.Background()
+	kasBundle := newChunkedFakeKAS(t)
+	defer kasBundle.server.Close()
+
+	// Pick a 2-second-aligned instant so DOS timestamp truncation is
+	// a no-op.
+	pinned := time.Date(2026, 6, 15, 12, 0, 0, 0, time.UTC)
+	s := newChunkedTestSDK(t, kasBundle)
+
+	w, err := s.NewChunkedWriter(ctx,
+		WithChunkedDefaultKAS(kasBundle.simpleKey()),
+		WithChunkedClock(FixedClock{T: pinned}),
+	)
+	require.NoError(t, err)
+
+	body := writeChunkedSegments(ctx, t, w, [][]byte{[]byte("payload-abc")})
+	fin, err := w.Finalize(ctx)
+	require.NoError(t, err)
+
+	tdfBytes := bytes.Join([][]byte{body, fin.Data}, nil)
+	zr, err := zip.NewReader(bytes.NewReader(tdfBytes), int64(len(tdfBytes)))
+	require.NoError(t, err)
+	require.NotEmpty(t, zr.File)
+
+	for _, f := range zr.File {
+		// archive/zip normalises DOS timestamps to the local zone; compare in UTC.
+		assert.Equal(t, pinned, f.Modified.UTC(),
+			"entry %q ModTime must match injected clock", f.Name)
+	}
+}
+
+// TestChunkedDuplicateSegment verifies WriteSegment rejects an index
+// that was already written.
+func TestChunkedDuplicateSegment(t *testing.T) {
+	ctx := context.Background()
+	kasBundle := newChunkedFakeKAS(t)
+	defer kasBundle.server.Close()
+
+	s := newChunkedTestSDK(t, kasBundle)
+	w, err := s.NewChunkedWriter(ctx, WithChunkedDefaultKAS(kasBundle.simpleKey()))
+	require.NoError(t, err)
+
+	_, err = w.WriteSegment(ctx, 0, []byte("first"))
+	require.NoError(t, err)
+	_, err = w.WriteSegment(ctx, 0, []byte("second"))
+	require.ErrorIs(t, err, ErrChunkedSegmentAlreadyWritten)
+}
+
+// TestChunkedNegativeIndex verifies WriteSegment rejects a negative
+// segment index.
+func TestChunkedNegativeIndex(t *testing.T) {
+	ctx := context.Background()
+	kasBundle := newChunkedFakeKAS(t)
+	defer kasBundle.server.Close()
+
+	s := newChunkedTestSDK(t, kasBundle)
+	w, err := s.NewChunkedWriter(ctx, WithChunkedDefaultKAS(kasBundle.simpleKey()))
+	require.NoError(t, err)
+
+	_, err = w.WriteSegment(ctx, -1, []byte("x"))
+	require.ErrorIs(t, err, ErrChunkedInvalidSegmentIndex)
+}
+
+// TestChunkedWriteAfterFinalize verifies WriteSegment fails once the
+// writer has been finalized.
+func TestChunkedWriteAfterFinalize(t *testing.T) {
+	ctx := context.Background()
+	kasBundle := newChunkedFakeKAS(t)
+	defer kasBundle.server.Close()
+
+	s := newChunkedTestSDK(t, kasBundle)
+	w, err := s.NewChunkedWriter(ctx, WithChunkedDefaultKAS(kasBundle.simpleKey()))
+	require.NoError(t, err)
+
+	_, err = w.WriteSegment(ctx, 0, []byte("x"))
+	require.NoError(t, err)
+	_, err = w.Finalize(ctx)
+	require.NoError(t, err)
+
+	_, err = w.WriteSegment(ctx, 1, []byte("late"))
+	require.ErrorIs(t, err, ErrChunkedAlreadyFinalized)
+}
+
+// TestChunkedDoubleFinalize verifies Finalize is not idempotent and
+// returns the sentinel on the second call.
+func TestChunkedDoubleFinalize(t *testing.T) {
+	ctx := context.Background()
+	kasBundle := newChunkedFakeKAS(t)
+	defer kasBundle.server.Close()
+
+	s := newChunkedTestSDK(t, kasBundle)
+	w, err := s.NewChunkedWriter(ctx, WithChunkedDefaultKAS(kasBundle.simpleKey()))
+	require.NoError(t, err)
+
+	_, err = w.WriteSegment(ctx, 0, []byte("x"))
+	require.NoError(t, err)
+	_, err = w.Finalize(ctx)
+	require.NoError(t, err)
+	_, err = w.Finalize(ctx)
+	require.ErrorIs(t, err, ErrChunkedAlreadyFinalized)
+}
+
+// TestChunkedKeepSegmentsNonContiguous verifies WithChunkedSegments
+// rejects a non-contiguous prefix.
+func TestChunkedKeepSegmentsNonContiguous(t *testing.T) {
+	ctx := context.Background()
+	kasBundle := newChunkedFakeKAS(t)
+	defer kasBundle.server.Close()
+
+	s := newChunkedTestSDK(t, kasBundle)
+	w, err := s.NewChunkedWriter(ctx, WithChunkedDefaultKAS(kasBundle.simpleKey()))
+	require.NoError(t, err)
+
+	for i, chunk := range [][]byte{[]byte("a"), []byte("b"), []byte("c")} {
+		_, err = w.WriteSegment(ctx, i, chunk)
+		require.NoError(t, err)
+	}
+	_, err = w.Finalize(ctx, WithChunkedSegments([]int{0, 2}))
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "contiguous prefix")
+}
+
+// TestChunkedKeepSegmentsUnwritten verifies WithChunkedSegments
+// rejects a keep list that names an index the caller never wrote.
+func TestChunkedKeepSegmentsUnwritten(t *testing.T) {
+	ctx := context.Background()
+	kasBundle := newChunkedFakeKAS(t)
+	defer kasBundle.server.Close()
+
+	s := newChunkedTestSDK(t, kasBundle)
+	w, err := s.NewChunkedWriter(ctx, WithChunkedDefaultKAS(kasBundle.simpleKey()))
+	require.NoError(t, err)
+
+	_, err = w.WriteSegment(ctx, 0, []byte("only-zero"))
+	require.NoError(t, err)
+	_, err = w.Finalize(ctx, WithChunkedSegments([]int{0, 1}))
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "not written")
+}
+
+// TestChunkedGetManifestBeforeFinalize verifies GetManifest returns a
+// snapshot of the currently-written segments prior to Finalize and
+// the frozen manifest afterwards.
+func TestChunkedGetManifestBeforeFinalize(t *testing.T) {
+	ctx := context.Background()
+	kasBundle := newChunkedFakeKAS(t)
+	defer kasBundle.server.Close()
+
+	s := newChunkedTestSDK(t, kasBundle)
+	w, err := s.NewChunkedWriter(ctx, WithChunkedDefaultKAS(kasBundle.simpleKey()))
+	require.NoError(t, err)
+
+	_, err = w.WriteSegment(ctx, 0, []byte("first"))
+	require.NoError(t, err)
+	_, err = w.WriteSegment(ctx, 1, []byte("second"))
+	require.NoError(t, err)
+
+	snap, err := w.GetManifest(ctx)
+	require.NoError(t, err)
+	require.NotNil(t, snap)
+	assert.Len(t, snap.Segments, 2)
+
+	fin, err := w.Finalize(ctx)
+	require.NoError(t, err)
+
+	frozen, err := w.GetManifest(ctx)
+	require.NoError(t, err)
+	assert.Equal(t, fin.Manifest.EncryptionInformation.Method.Algorithm, frozen.EncryptionInformation.Method.Algorithm)
+	assert.Len(t, frozen.Segments, 2)
 }
 
 // writeChunkedSegments writes each element of segments as an ordered

@@ -29,7 +29,7 @@ require (
 	github.com/mattn/go-sqlite3 v1.14.48
 	github.com/open-policy-agent/opa v1.5.1
 	github.com/opentdf/platform/lib/fixtures v0.6.0
-	github.com/opentdf/platform/lib/flattening v0.1.3
+	github.com/opentdf/platform/lib/flattening v0.2.0
 	github.com/opentdf/platform/lib/identifier v0.4.0
 	github.com/opentdf/platform/lib/ocrypto v0.14.0
 	github.com/opentdf/platform/protocol/go v0.40.0

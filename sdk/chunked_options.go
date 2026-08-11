@@ -25,7 +25,9 @@ func WithChunkedCipherFactory(f SegmentCipherFactory) ChunkedWriterOption {
 }
 
 // WithChunkedClock overrides the time source used by the chunked
-// Writer.
+// Writer and, through it, by the zipstream layer that stamps ZIP
+// header timestamps. Tests inject FixedClock for deterministic
+// output.
 func WithChunkedClock(clock Clock) ChunkedWriterOption {
 	return func(c *ChunkedWriterConfig) error {
 		c.clock = clock

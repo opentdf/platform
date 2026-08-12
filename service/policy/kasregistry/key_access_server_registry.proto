@@ -79,6 +79,8 @@ enum SortKasKeysType {
   SORT_KAS_KEYS_TYPE_KEY_ID = 1;
   SORT_KAS_KEYS_TYPE_CREATED_AT = 2;
   SORT_KAS_KEYS_TYPE_UPDATED_AT = 3;
+  // Orders alphabetically by policy.KeyStatus name.
+  SORT_KAS_KEYS_TYPE_KEY_STATUS = 4;
 }
 
 message KasKeysSort {

@@ -2501,6 +2501,48 @@ func (s *KasRegistryKeySuite) Test_ListKeys_SortByUpdatedAt_ASC() {
 	assertIDsInOrder(s.T(), list.GetKasKeys(), func(k *policy.KasKey) string { return k.GetKey().GetId() }, ids[0], ids[1], ids[2])
 }
 
+func (s *KasRegistryKeySuite) Test_ListKeys_SortByKeyStatus_ASC() {
+	// Rotating leaves ids[0] ROTATED and adds an ACTIVE key, one key per status.
+	ids, kasID := s.createSortTestKasKeys([]string{"statusasc-kk-0"})
+	ids = append(ids, s.rotateOneSortTestKey(ids, 0))
+	s.T().Cleanup(func() {
+		s.deleteSortTestKasKeys(ids, kasID)
+	})
+
+	list, err := s.db.PolicyClient.ListKeys(s.ctx, &kasregistry.ListKeysRequest{
+		KasFilter: &kasregistry.ListKeysRequest_KasId{KasId: kasID},
+		Sort: []*kasregistry.KasKeysSort{
+			{Field: kasregistry.SortKasKeysType_SORT_KAS_KEYS_TYPE_KEY_STATUS, Direction: policy.SortDirection_SORT_DIRECTION_ASC},
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(list)
+
+	// ACTIVE before ROTATED
+	assertIDsInOrder(s.T(), list.GetKasKeys(), func(k *policy.KasKey) string { return k.GetKey().GetId() }, ids[1], ids[0])
+}
+
+func (s *KasRegistryKeySuite) Test_ListKeys_SortByKeyStatus_DESC() {
+	// Rotating leaves ids[0] ROTATED and adds an ACTIVE key, one key per status.
+	ids, kasID := s.createSortTestKasKeys([]string{"statusdesc-kk-0"})
+	ids = append(ids, s.rotateOneSortTestKey(ids, 0))
+	s.T().Cleanup(func() {
+		s.deleteSortTestKasKeys(ids, kasID)
+	})
+
+	list, err := s.db.PolicyClient.ListKeys(s.ctx, &kasregistry.ListKeysRequest{
+		KasFilter: &kasregistry.ListKeysRequest_KasId{KasId: kasID},
+		Sort: []*kasregistry.KasKeysSort{
+			{Field: kasregistry.SortKasKeysType_SORT_KAS_KEYS_TYPE_KEY_STATUS, Direction: policy.SortDirection_SORT_DIRECTION_DESC},
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(list)
+
+	// ROTATED before ACTIVE
+	assertIDsInOrder(s.T(), list.GetKasKeys(), func(k *policy.KasKey) string { return k.GetKey().GetId() }, ids[0], ids[1])
+}
+
 func (s *KasRegistryKeySuite) Test_ListKeys_SortTieBreaker_CreatedAtWithIDFallback() {
 	kasReq := kasregistry.CreateKeyAccessServerRequest{
 		Name: "tiebreaker-kk-kas-" + uuid.NewString(),
@@ -3141,6 +3183,30 @@ func (s *KasRegistryKeySuite) createSortTestKasKeys(prefixes []string) ([]string
 // deleteSortTestKasKeys cleans up kas keys and their parent KAS created by sort tests.
 func (s *KasRegistryKeySuite) deleteSortTestKasKeys(keyIDs []string, kasID string) {
 	s.cleanupKeys(keyIDs, []string{kasID})
+}
+
+// rotateOneSortTestKey rotates the key at keyIDs[idx] so it becomes ROTATED,
+// returning the ID of the newly created ACTIVE key.
+func (s *KasRegistryKeySuite) rotateOneSortTestKey(keyIDs []string, idx int) string {
+	activeKey, err := s.db.PolicyClient.GetKey(s.ctx, &kasregistry.GetKeyRequest_Id{Id: keyIDs[idx]})
+	s.Require().NoError(err)
+
+	ts := time.Now().UnixNano()
+	rotated, err := s.db.PolicyClient.RotateKey(s.ctx, activeKey, &kasregistry.RotateKeyRequest_NewKey{
+		// key_id is varchar(36), so keep the generated IDs short
+		KeyId:        fmt.Sprintf("rot-%d", ts),
+		Algorithm:    policy.Algorithm_ALGORITHM_RSA_2048,
+		KeyMode:      policy.KeyMode_KEY_MODE_CONFIG_ROOT_KEY,
+		PublicKeyCtx: &policy.PublicKeyCtx{Pem: keyCtx},
+		PrivateKeyCtx: &policy.PrivateKeyCtx{
+			KeyId:      fmt.Sprintf("rot-priv-%d", ts),
+			WrappedKey: keyCtx,
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(rotated)
+
+	return rotated.GetKasKey().GetKey().GetId()
 }
 
 func (s *KasRegistryKeySuite) createListKeysSearchTestKeys(kids []string) (string, map[string]string) {

@@ -29,6 +29,7 @@ const (
 	sortFieldFQN       = "fqn"
 	sortFieldURI       = "uri"
 	sortFieldKeyID     = "key_id"
+	sortFieldKeyStatus = "key_status"
 )
 
 // Gathers request pagination limit/offset or configured default
@@ -517,6 +518,8 @@ func getKasKeysSortField(field kasregistry.SortKasKeysType) string {
 		return sortFieldCreatedAt
 	case kasregistry.SortKasKeysType_SORT_KAS_KEYS_TYPE_UPDATED_AT:
 		return sortFieldUpdatedAt
+	case kasregistry.SortKasKeysType_SORT_KAS_KEYS_TYPE_KEY_STATUS:
+		return sortFieldKeyStatus
 	case kasregistry.SortKasKeysType_SORT_KAS_KEYS_TYPE_UNSPECIFIED:
 		fallthrough
 	default:

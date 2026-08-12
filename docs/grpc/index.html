@@ -4588,7 +4588,7 @@ The corresponding private key is not managed or accessible by this system.</p></
         </table>
       
         <h3 id="policy.KeyStatus">KeyStatus</h3>
-        <p>The status of the key</p>
+        <p>The status of the key.</p><p>Adding a value here requires updating the key_status mapping in the listKeys</p><p>query so SORT_KAS_KEYS_TYPE_KEY_STATUS keeps sorting alphabetically.</p>
         <table class="enum-table">
           <thead>
             <tr><td>Name</td><td>Number</td><td>Description</td></tr>
@@ -13931,6 +13931,12 @@ Common metadata </p></td>
                 <td>SORT_KAS_KEYS_TYPE_UPDATED_AT</td>
                 <td>3</td>
                 <td><p></p></td>
+              </tr>
+            
+              <tr>
+                <td>SORT_KAS_KEYS_TYPE_KEY_STATUS</td>
+                <td>4</td>
+                <td><p>Orders alphabetically by policy.KeyStatus name.</p></td>
               </tr>
             
           </tbody>

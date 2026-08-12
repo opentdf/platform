@@ -138,6 +138,7 @@ func (h Handler) ListKasKeys(
 			"key_id":     kasregistry.SortKasKeysType_SORT_KAS_KEYS_TYPE_KEY_ID,
 			"created_at": kasregistry.SortKasKeysType_SORT_KAS_KEYS_TYPE_CREATED_AT,
 			"updated_at": kasregistry.SortKasKeysType_SORT_KAS_KEYS_TYPE_UPDATED_AT,
+			"key_status": kasregistry.SortKasKeysType_SORT_KAS_KEYS_TYPE_KEY_STATUS,
 		}
 		field, err := sortField("KAS keys", sort, allowedFields)
 		if err != nil {

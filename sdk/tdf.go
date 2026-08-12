@@ -30,7 +30,6 @@ import (
 
 const (
 	keyAccessSchemaVersion = "1.0"
-	maxFileSizeSupported   = 68719476736 // 64gb
 	defaultMimeType        = "application/octet-stream"
 	zip64MagicVal          = int64(^uint32(0))
 	tdfAsZip               = "zip"
@@ -134,7 +133,7 @@ func (t TDFObject) Size() int64 {
 	return t.size
 }
 
-func (s SDK) CreateTDF(writer io.Writer, reader io.ReadSeeker, opts ...TDFOption) (*TDFObject, error) {
+func (s SDK) CreateTDF(writer io.Writer, reader io.Reader, opts ...TDFOption) (*TDFObject, error) {
 	return s.CreateTDFContext(context.Background(), writer, reader, opts...)
 }
 
@@ -162,22 +161,13 @@ func uuidSplitIDGenerator() string {
 //
 // The payload is encrypted one segment at a time through a ChunkedWriter; segments are
 // emitted in order as they are read, so peak memory stays at one segment regardless of
-// input size.
-func (s SDK) CreateTDFContext(ctx context.Context, writer io.Writer, reader io.ReadSeeker, opts ...TDFOption) (*TDFObject, error) {
-	inputSize, err := reader.Seek(0, io.SeekEnd)
-	if err != nil {
-		return nil, fmt.Errorf("readSeeker.Seek failed: %w", err)
-	}
-
-	if inputSize > maxFileSizeSupported {
-		return nil, errFileTooLarge
-	}
-
-	_, err = reader.Seek(0, io.SeekStart)
-	if err != nil {
-		return nil, fmt.Errorf("readSeeker.Seek failed: %w", err)
-	}
-
+// input size. Bytes are consumed from the reader's current position through EOF; there
+// is no upper bound on payload length.
+//
+// Knowing the length up front lets the archive stay in the compact ZIP32 layout when it
+// fits. The length comes from [WithInputSize] if given, otherwise from the reader when
+// it is seekable; a payload that can be measured neither way is written as ZIP64.
+func (s SDK) CreateTDFContext(ctx context.Context, writer io.Writer, reader io.Reader, opts ...TDFOption) (*TDFObject, error) {
 	tdfConfig, err := newTDFConfig(opts...)
 	if err != nil {
 		return nil, fmt.Errorf("NewTDFConfig failed: %w", err)
@@ -194,28 +184,37 @@ func (s SDK) CreateTDFContext(ctx context.Context, writer io.Writer, reader io.R
 	} else if segmentSize < minSegmentSize {
 		return nil, fmt.Errorf("segment size too small: %d", segmentSize)
 	}
-	totalSegments := inputSize / segmentSize
-	if inputSize%segmentSize != 0 {
-		totalSegments++
+
+	inputSize, err := resolveInputSize(tdfConfig, reader)
+	if err != nil {
+		return nil, err
 	}
 
-	// empty payload we still want to create a payload
-	if totalSegments == 0 {
-		totalSegments = 1
+	// A known length doubles as a read limit: overrunning it would invalidate the
+	// ZIP64 choice made from it below. The buffer never shrinks to zero, so a read
+	// that comes back empty always means EOF.
+	readBufSize := segmentSize
+	if inputSize != inputSizeUnknown {
+		reader = io.LimitReader(reader, inputSize)
+		readBufSize = max(1, min(segmentSize, inputSize))
 	}
+	readBuf := make([]byte, readBufSize)
 
-	chunked, err := s.newTDFChunkedWriter(ctx, tdfConfig, inputSize, int(totalSegments))
+	chunked, err := s.newTDFChunkedWriter(ctx, tdfConfig, inputSize, segmentCount(inputSize, segmentSize))
 	if err != nil {
 		return nil, err
 	}
 
 	outputWriter := &countingWriter{writer: writer}
-	readBuf := make([]byte, min(segmentSize, inputSize))
-	var readPos int64
-	for index := 0; int64(index) < totalSegments; index++ {
-		readSize := min(segmentSize, inputSize-readPos)
-		if _, err := io.ReadFull(reader, readBuf[:readSize]); err != nil {
-			return nil, fmt.Errorf("io.ReadSeeker.Read failed: %w", err)
+	for index := 0; ; index++ {
+		readSize, readErr := io.ReadFull(reader, readBuf)
+		if readErr != nil && !errors.Is(readErr, io.EOF) && !errors.Is(readErr, io.ErrUnexpectedEOF) {
+			return nil, fmt.Errorf("io.Reader.Read failed: %w", readErr)
+		}
+		// A payload whose length is a multiple of the segment size reports EOF with
+		// nothing read. An empty payload still gets one empty segment.
+		if readSize == 0 && index > 0 {
+			break
 		}
 
 		segment, err := chunked.WriteSegment(ctx, index, readBuf[:readSize])
@@ -226,7 +225,9 @@ func (s SDK) CreateTDFContext(ctx context.Context, writer io.Writer, reader io.R
 		if _, err := io.Copy(outputWriter, segment.TDFData); err != nil {
 			return nil, fmt.Errorf("io.writer.Write failed: %w", err)
 		}
-		readPos += readSize
+		if readErr != nil {
+			break
+		}
 	}
 
 	finalizeOpts, err := tdfFinalizeOptions(tdfConfig)
@@ -249,9 +250,57 @@ func (s SDK) CreateTDFContext(ctx context.Context, writer io.Writer, reader io.R
 	}, nil
 }
 
+// resolveInputSize reports the payload length in bytes, or inputSizeUnknown when it
+// cannot be established without consuming the reader. An explicit WithInputSize wins
+// over what the reader can report about itself.
+//
+// A reader may satisfy io.Seeker and still refuse to seek — os.Stdin on the end of a
+// pipe is the common case — so a failed probe is treated as an unmeasurable payload
+// rather than an error. Failing to restore the original position is different: the
+// cursor has already moved and the payload can no longer be read in full.
+func resolveInputSize(tdfConfig *TDFConfig, reader io.Reader) (int64, error) {
+	if tdfConfig.inputSize != inputSizeUnknown {
+		return tdfConfig.inputSize, nil
+	}
+
+	seeker, ok := reader.(io.Seeker)
+	if !ok {
+		return inputSizeUnknown, nil
+	}
+	start, err := seeker.Seek(0, io.SeekCurrent)
+	if err != nil {
+		return inputSizeUnknown, nil //nolint:nilerr // a reader that cannot seek is measured by reading it
+	}
+	end, err := seeker.Seek(0, io.SeekEnd)
+	if err != nil {
+		return inputSizeUnknown, nil //nolint:nilerr // a reader that cannot seek is measured by reading it
+	}
+	if _, err := seeker.Seek(start, io.SeekStart); err != nil {
+		return 0, fmt.Errorf("seeker.Seek failed to restore reader position: %w", err)
+	}
+	return end - start, nil
+}
+
+// segmentCount returns the number of segments a payload of inputSize will occupy, or
+// zero when the length is unknown and the count can only be settled by reading.
+func segmentCount(inputSize, segmentSize int64) int {
+	switch inputSize {
+	case inputSizeUnknown:
+		return 0
+	case 0:
+		// An empty payload still gets one empty segment.
+		return 1
+	default:
+		return int((inputSize + segmentSize - 1) / segmentSize)
+	}
+}
+
 // newTDFChunkedWriter builds the chunked writer backing SDK.CreateTDF. Key access is
 // resolved here, before any payload byte is written, so that an unreachable KAS fails
 // the call without leaving a partial TDF on the output writer.
+//
+// inputSize may be inputSizeUnknown and totalSegments zero, for a payload that can only
+// be measured by reading it.
 func (s SDK) newTDFChunkedWriter(ctx context.Context, tdfConfig *TDFConfig, inputSize int64, totalSegments int) (*chunkedWriter, error) {
 	dek := make([]byte, kKeySize)
 	if _, err := io.ReadFull(defaultRand, dek); err != nil {
@@ -263,21 +312,26 @@ func (s SDK) newTDFChunkedWriter(ctx context.Context, tdfConfig *TDFConfig, inpu
 		return nil, fmt.Errorf("fail to create a new split key: %w", err)
 	}
 
-	// The archive is sized to the exact segment count, and only forced into ZIP64 when
-	// the payload cannot be addressed by a 32-bit offset.
+	// The ZIP64 choice is baked into the payload's local file header, which goes out
+	// with segment 0, so it cannot be revisited once the archive has started. Reserve
+	// ZIP64 for payloads that a 32-bit offset cannot address — and for payloads of
+	// unknown length, which might turn out to be one.
 	payloadSize := inputSize + int64(totalSegments)*(gcmIvSize+aesBlockSize)
 	zipMode := zipstream.Zip64Auto
-	if payloadSize >= zip64MagicVal {
+	if inputSize == inputSizeUnknown || payloadSize >= zip64MagicVal {
 		zipMode = zipstream.Zip64Always
 	}
 
 	return newChunkedWriter(ChunkedWriterConfig{
 		archiveFactory: func(clock Clock) zipstream.SegmentWriter {
-			return zipstream.NewSegmentTDFWriter(totalSegments,
+			archiveOpts := []zipstream.Option{
 				zipstream.WithZip64Mode(zipMode),
-				zipstream.WithMaxSegments(totalSegments),
 				zipstream.WithClock(clock.Now),
-			)
+			}
+			if totalSegments > 0 {
+				archiveOpts = append(archiveOpts, zipstream.WithMaxSegments(totalSegments))
+			}
+			return zipstream.NewSegmentTDFWriter(totalSegments, archiveOpts...)
 		},
 		cipherFactory:             DefaultSegmentCipherFactory,
 		clock:                     SystemClock{},

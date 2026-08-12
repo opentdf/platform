@@ -333,7 +333,7 @@ func TestChunkedGetManifestBeforeFinalize(t *testing.T) {
 
 	frozen, err := w.GetManifest(ctx)
 	require.NoError(t, err)
-	assert.Equal(t, fin.Manifest.EncryptionInformation.Method.Algorithm, frozen.EncryptionInformation.Method.Algorithm)
+	assert.Equal(t, fin.Manifest.Method.Algorithm, frozen.Method.Algorithm)
 	assert.Len(t, frozen.Segments, 2)
 }
 

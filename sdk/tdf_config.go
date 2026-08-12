@@ -63,8 +63,6 @@ type TDFOption func(*TDFConfig) error
 type TDFConfig struct {
 	autoconfigure              bool
 	defaultSegmentSize         int64
-	enableEncryption           bool
-	tdfFormat                  TDFFormat
 	metaData                   string
 	mimeType                   string
 	integrityAlgorithm         IntegrityAlgorithm
@@ -85,8 +83,6 @@ func newTDFConfig(opt ...TDFOption) (*TDFConfig, error) {
 	c := &TDFConfig{
 		autoconfigure:             true,
 		defaultSegmentSize:        defaultSegmentSize,
-		enableEncryption:          true,
-		tdfFormat:                 JSONFormat,
 		integrityAlgorithm:        HS256,
 		segmentIntegrityAlgorithm: GMAC,
 		addDefaultAssertion:       false,

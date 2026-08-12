@@ -89,10 +89,9 @@ func TestChunkedKeepSegments(t *testing.T) {
 	assert.Equal(t, []byte("keep-0-keep-1-"), plain)
 }
 
-// TestChunkedFinalizeRejectsAssertions verifies that supplying
-// assertions to Finalize returns the sentinel error until assertion
-// signing is wired.
-func TestChunkedFinalizeRejectsAssertions(t *testing.T) {
+// TestChunkedAssertions verifies Finalize signs assertions with the
+// writer's DEK and that the mainline reader verifies them.
+func TestChunkedAssertions(t *testing.T) {
 	ctx := context.Background()
 	kasBundle := newChunkedFakeKAS(t)
 	defer kasBundle.server.Close()
@@ -103,13 +102,33 @@ func TestChunkedFinalizeRejectsAssertions(t *testing.T) {
 		WithChunkedDefaultKAS(kasBundle.simpleKey()),
 	)
 	require.NoError(t, err)
-	_, err = writer.WriteSegment(ctx, 0, []byte("x"))
+
+	body := writeChunkedSegments(ctx, t, writer, [][]byte{[]byte("assert me")})
+	fin, err := writer.Finalize(ctx, WithChunkedAssertions([]AssertionConfig{{
+		ID:             "assertion-1",
+		Type:           BaseAssertion,
+		Scope:          PayloadScope,
+		AppliesToState: Unencrypted,
+		Statement: Statement{
+			Format: "json",
+			Schema: "urn:example:chunked",
+			Value:  `{"chunked":true}`,
+		},
+	}}))
+	require.NoError(t, err)
+	require.Len(t, fin.Manifest.Assertions, 1)
+	assert.NotEmpty(t, fin.Manifest.Assertions[0].Binding.Signature)
+
+	tdfBytes := bytes.Join([][]byte{body, fin.Data}, nil)
+	reader, err := s.LoadTDF(bytes.NewReader(tdfBytes),
+		WithKasAllowlist([]string{kasBundle.url}),
+	)
 	require.NoError(t, err)
 
-	_, err = writer.Finalize(ctx, WithChunkedAssertions([]AssertionConfig{
-		{ID: "a", Type: BaseAssertion, Scope: PayloadScope, AppliesToState: Unencrypted},
-	}))
-	require.ErrorIs(t, err, ErrChunkedAssertionsUnsupported)
+	// Reading verifies the assertion signature against the payload key.
+	plain, err := io.ReadAll(reader)
+	require.NoError(t, err)
+	assert.Equal(t, []byte("assert me"), plain)
 }
 
 // TestChunkedOutOfOrderWrites exercises the core value proposition of

@@ -12,7 +12,6 @@ import (
 	"sort"
 	"sync"
 
-	"github.com/google/uuid"
 	"github.com/opentdf/platform/lib/ocrypto"
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/sdk/internal/zipstream"
@@ -36,7 +35,6 @@ var (
 	// ErrChunkedSegmentAlreadyWritten is returned when WriteSegment
 	// receives an index that was already written.
 	ErrChunkedSegmentAlreadyWritten = errors.New("chunked: segment already written")
-
 	// ErrChunkedVersionHexMismatch is returned when Finalize is asked
 	// to omit schemaVersion on a writer that was not constructed in
 	// legacy signature mode. Use WithChunkedTargetMode to set both.
@@ -136,11 +134,20 @@ type ChunkedWriterConfig struct {
 	// FixedClock for deterministic ZIP output.
 	clock Clock
 
+	// dek is a pre-generated Data Encryption Key. When nil the writer
+	// draws one from rand. SDK.CreateTDF presets it so that it can
+	// resolve key access before emitting any payload bytes.
+	dek []byte
+
 	// excludeVersion omits the schemaVersion field from the manifest.
 	// Set together with useHex by WithChunkedTargetMode; readers use
 	// the field's absence as the pre-4.3.0 marker, so the two must
 	// agree.
 	excludeVersion bool
+
+	// keyAccess resolves the manifest policy and key access objects.
+	// Defaults to a splitterKeyAccess over splitter.
+	keyAccess keyAccessResolver
 
 	// initialAttributes are the attribute values used at Finalize
 	// when the Finalize call does not supply its own.
@@ -162,10 +169,15 @@ type ChunkedWriterConfig struct {
 	// integrity hashes. Defaults to HS256.
 	segmentIntegrityAlgorithm IntegrityAlgorithm
 
-	// splitter maps attribute values to DEK splits at Finalize time.
-	// Defaults to DefaultKeySplitter (single-KAS only).
-	splitter KeySplitter
+	// segmentSize is the plaintext segment size advertised in the
+	// manifest. Zero means "report the first segment's actual size",
+	// which is right when every segment is the same length.
+	segmentSize int64
 
+	// splitter maps attribute values to DEK splits at Finalize time.
+	// Defaults to DefaultKeySplitter (single-KAS only). Ignored when
+	// keyAccess is set.
+	splitter KeySplitter
 	// useHex hex-encodes segment, root, and assertion signatures
 	// before base64, producing the doubly-encoded form that readers
 	// older than 4.3.0 require. Set by WithChunkedTargetMode.
@@ -247,6 +259,10 @@ type chunkedWriter struct {
 	// integrityAlgorithm is used for the root signature.
 	integrityAlgorithm IntegrityAlgorithm
 
+	// keyAccess resolves the manifest policy and key access objects
+	// for the DEK.
+	keyAccess keyAccessResolver
+
 	// manifest holds the finalized manifest for post-Finalize
 	// GetManifest calls.
 	manifest *Manifest
@@ -263,13 +279,12 @@ type chunkedWriter struct {
 	// segments records per-index Segment metadata (hash + sizes).
 	segments map[int]*Segment
 
-	// splitter converts attributes + DEK into key splits at
-	// Finalize time.
-	splitter KeySplitter
+	// segmentSize is the plaintext segment size to advertise in the
+	// manifest, or zero to infer it from the first segment.
+	segmentSize int64
 
-	// useHex selects the pre-4.3.0 doubly-encoded signature form.
-	// Read by WriteSegment, so it is fixed at construction rather
-	// than at Finalize.
+	// useHex emits hex-encoded integrity signatures for pre-4.3.0
+	// TDF spec versions.
 	useHex bool
 }
 
@@ -305,14 +320,28 @@ func NewChunkedWriter(_ context.Context, opts ...ChunkedWriterOption) (ChunkedWr
 			return nil, err
 		}
 	}
+	return newChunkedWriter(cfg)
+}
 
-	dek := make([]byte, kKeySize)
-	if _, err := io.ReadFull(cfg.rand, dek); err != nil {
-		return nil, fmt.Errorf("generate DEK: %w", err)
+// newChunkedWriter builds the writer from a fully-populated config.
+// SDK.CreateTDF calls this directly with the unexported knobs its
+// legacy behavior needs (preset DEK, hex signatures, fixed segment
+// size) rather than going through the public option set.
+func newChunkedWriter(cfg ChunkedWriterConfig) (*chunkedWriter, error) {
+	dek := cfg.dek
+	if dek == nil {
+		dek = make([]byte, kKeySize)
+		if _, err := io.ReadFull(cfg.rand, dek); err != nil {
+			return nil, fmt.Errorf("generate DEK: %w", err)
+		}
 	}
 	block, err := cfg.cipherFactory(dek)
 	if err != nil {
 		return nil, fmt.Errorf("build segment cipher: %w", err)
+	}
+	keyAccess := cfg.keyAccess
+	if keyAccess == nil {
+		keyAccess = splitterKeyAccess{splitter: cfg.splitter}
 	}
 	return &chunkedWriter{
 		archiveWriter:             cfg.archiveFactory(cfg.clock),
@@ -323,9 +352,10 @@ func NewChunkedWriter(_ context.Context, opts ...ChunkedWriterOption) (ChunkedWr
 		initialAttributes:         cfg.initialAttributes,
 		initialDefaultKAS:         cfg.initialDefaultKAS,
 		integrityAlgorithm:        cfg.integrityAlgorithm,
+		keyAccess:                 keyAccess,
 		segmentIntegrityAlgorithm: cfg.segmentIntegrityAlgorithm,
 		segments:                  make(map[int]*Segment),
-		splitter:                  cfg.splitter,
+		segmentSize:               cfg.segmentSize,
 		useHex:                    cfg.useHex,
 	}, nil
 }
@@ -443,9 +473,7 @@ func (w *chunkedWriter) WriteSegment(ctx context.Context, index int, data []byte
 		release()
 		return nil, fmt.Errorf("encrypt segment %d: %w", index, err)
 	}
-	sealed := make([]byte, 0, len(nonce)+len(ciphertext))
-	sealed = append(sealed, nonce...)
-	sealed = append(sealed, ciphertext...)
+	sealed := joinSealed(nonce, ciphertext)
 	sig, err := calculateSignature(sealed, w.dek, w.segmentIntegrityAlgorithm, w.useHex)
 	if err != nil {
 		release()
@@ -454,16 +482,7 @@ func (w *chunkedWriter) WriteSegment(ctx context.Context, index int, data []byte
 	hash := string(ocrypto.Base64Encode([]byte(sig)))
 	encryptedSize := int64(len(sealed))
 
-	crc := crc32.NewIEEE()
-	if _, err := crc.Write(nonce); err != nil {
-		release()
-		return nil, err
-	}
-	if _, err := crc.Write(ciphertext); err != nil {
-		release()
-		return nil, err
-	}
-	header, err := w.archiveWriter.WriteSegment(ctx, index, uint64(encryptedSize), crc.Sum32())
+	header, err := w.archiveWriter.WriteSegment(ctx, index, uint64(encryptedSize), crc32.ChecksumIEEE(sealed))
 	if err != nil {
 		release()
 		return nil, fmt.Errorf("write segment %d to archive: %w", index, err)
@@ -478,11 +497,9 @@ func (w *chunkedWriter) WriteSegment(ctx context.Context, index int, data []byte
 	seg.Size = int64(len(data))
 	w.mu.Unlock()
 
-	var reader io.Reader
-	if len(header) == 0 {
-		reader = io.MultiReader(bytes.NewReader(nonce), bytes.NewReader(ciphertext))
-	} else {
-		reader = io.MultiReader(bytes.NewReader(header), bytes.NewReader(nonce), bytes.NewReader(ciphertext))
+	var reader io.Reader = bytes.NewReader(sealed)
+	if len(header) > 0 {
+		reader = io.MultiReader(bytes.NewReader(header), reader)
 	}
 	// Reported from the locals rather than from seg, which is shared with
 	// concurrent readers of w.segments once the lock is released.
@@ -502,7 +519,7 @@ func (w *chunkedWriter) applyFinalizeOptions(opts []ChunkedFinalizeOption) (*Chu
 		attributes:        nil,
 		encryptedMetadata: "",
 		excludeVersion:    w.excludeVersion,
-		mimeType:          "application/octet-stream",
+		mimeType:          defaultMimeType,
 	}
 	for _, opt := range opts {
 		if err := opt(cfg); err != nil {
@@ -526,23 +543,16 @@ func (w *chunkedWriter) applyFinalizeOptions(opts []ChunkedFinalizeOption) (*Chu
 	return cfg, nil
 }
 
-// buildManifest composes the manifest from writer state, splits the
-// DEK, wraps splits into KAOs, and computes the root signature.
+// buildManifest composes the manifest from writer state, resolves the
+// key access objects for the DEK, signs any assertions, and computes
+// the root signature.
 func (w *chunkedWriter) buildManifest(ctx context.Context, cfg *ChunkedFinalizeConfig) (*Manifest, int64, int64, error) {
 	order, err := w.segmentOrderLocked(cfg.keepSegments)
 	if err != nil {
 		return nil, 0, 0, err
 	}
 
-	splits, err := w.splitter.Split(ctx, cfg.attributes, w.dek, cfg.defaultKAS)
-	if err != nil {
-		return nil, 0, 0, err
-	}
-	policyBytes, err := buildChunkedPolicy(cfg.attributes)
-	if err != nil {
-		return nil, 0, 0, err
-	}
-	kaos, err := buildChunkedKeyAccessObjects(splits, policyBytes, cfg.encryptedMetadata)
+	base64Policy, kaos, err := w.keyAccess.resolve(ctx, w.dek, cfg)
 	if err != nil {
 		return nil, 0, 0, err
 	}
@@ -550,7 +560,7 @@ func (w *chunkedWriter) buildManifest(ctx context.Context, cfg *ChunkedFinalizeC
 	encInfo := EncryptionInformation{
 		KeyAccessObjs: kaos,
 		KeyAccessType: kSplitKeyType,
-		Policy:        string(ocrypto.Base64Encode(policyBytes)),
+		Policy:        base64Policy,
 		Method: Method{
 			Algorithm:    kGCMCipherAlgorithm,
 			IsStreamable: true,
@@ -580,7 +590,11 @@ func (w *chunkedWriter) buildManifest(ctx context.Context, cfg *ChunkedFinalizeC
 		}
 		aggregate.Write(decoded)
 	}
-	if len(order) > 0 {
+	switch {
+	case w.segmentSize > 0:
+		encInfo.DefaultSegmentSize = w.segmentSize
+		encInfo.DefaultEncryptedSegSize = w.segmentSize + gcmIvSize + aesBlockSize
+	case len(order) > 0:
 		if first, ok := w.segments[order[0]]; ok {
 			encInfo.DefaultEncryptedSegSize = first.EncryptedSize
 			encInfo.DefaultSegmentSize = first.Size
@@ -667,63 +681,6 @@ func (w *chunkedWriter) segmentOrderLocked(keep []int) ([]int, error) {
 	return out, nil
 }
 
-// buildChunkedKeyAccessObjects wraps each split share to each KAS
-// listed by the splitter.
-func buildChunkedKeyAccessObjects(splits *SplitResult, policyBytes []byte, metadata string) ([]KeyAccess, error) {
-	if splits == nil || len(splits.Splits) == 0 {
-		return nil, errors.New("no splits produced")
-	}
-	base64Policy := ocrypto.Base64Encode(policyBytes)
-
-	var out []KeyAccess
-	for _, split := range splits.Splits {
-		// Policy binding and metadata are keyed on the split share, not
-		// on the KAS, so compute them once per split rather than once
-		// per KAS URL in an OR-group.
-		policyBinding := createPolicyBinding(split.Data, base64Policy)
-		var encMeta string
-		if metadata != "" {
-			m, err := encryptMetadata(split.Data, metadata)
-			if err != nil {
-				return nil, fmt.Errorf("encrypt metadata for split %s: %w", split.ID, err)
-			}
-			encMeta = m
-		}
-		for _, url := range split.KASURLs {
-			pk, ok := splits.KASPublicKeys[url]
-			if !ok {
-				continue
-			}
-			if pk.PEM == "" {
-				return nil, fmt.Errorf("splitID:[%s], kas:[%s]: %w", split.ID, url, errKasPubKeyMissing)
-			}
-			kao, err := createKeyAccess(pk.toKASInfo(), split.Data, policyBinding, encMeta, split.ID)
-			if err != nil {
-				return nil, fmt.Errorf("wrap key for %s: %w", url, err)
-			}
-			out = append(out, kao)
-		}
-	}
-	if len(out) == 0 {
-		return nil, errors.New("no valid key access objects generated")
-	}
-	return out, nil
-}
-
-// buildChunkedPolicy composes the TDF Policy document from attribute
-// values.
-func buildChunkedPolicy(values []*policy.Value) ([]byte, error) {
-	p := PolicyObject{UUID: uuid.NewString()}
-	p.Body.DataAttributes = make([]attributeObject, 0, len(values))
-	p.Body.Dissem = make([]string, 0)
-	for _, v := range values {
-		p.Body.DataAttributes = append(p.Body.DataAttributes, attributeObject{
-			Attribute: v.GetFqn(),
-		})
-	}
-	return json.Marshal(p)
-}
-
 // cloneChunkedManifest returns a shallow-deep copy safe to hand out.
 func cloneChunkedManifest(in *Manifest) *Manifest {
 	if in == nil {
@@ -740,4 +697,30 @@ func cloneChunkedManifest(in *Manifest) *Manifest {
 		out.Assertions = slices.Clone(in.Assertions)
 	}
 	return &out
+}
+
+// integrityAlgorithmString maps an IntegrityAlgorithm to its manifest
+// string form.
+func integrityAlgorithmString(a IntegrityAlgorithm) string {
+	switch a {
+	case GMAC:
+		return gmacIntegrityAlgorithm
+	default:
+		return hmacIntegrityAlgorithm
+	}
+}
+
+// joinSealed returns nonce||ciphertext, the on-disk form of a segment.
+// A SegmentCipher backed by crypto/cipher hands back two views of the
+// single buffer Seal allocated, so the common case is free; anything
+// else pays one copy.
+func joinSealed(nonce, ciphertext []byte) []byte {
+	if len(nonce) > 0 && len(ciphertext) > 0 &&
+		cap(nonce) >= len(nonce)+len(ciphertext) &&
+		&nonce[:cap(nonce)][len(nonce)] == &ciphertext[0] {
+		return nonce[:len(nonce)+len(ciphertext)]
+	}
+	sealed := make([]byte, 0, len(nonce)+len(ciphertext))
+	sealed = append(sealed, nonce...)
+	return append(sealed, ciphertext...)
 }

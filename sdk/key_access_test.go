@@ -40,36 +40,36 @@ SQIDAQAB
 	testPolicyJSON = `{"uuid":"test","body":{"dataAttributes":[{"attribute":"test"}],"dissem":[]}}`
 )
 
-// newTestSplitResult builds a single-split, single-KAS SplitResult
-// addressed to a KAS holding pubKey.
-func newTestSplitResult(t *testing.T, pubKey, algorithm string) *SplitResult {
+// testBase64Policy is what a caller hands buildKeyAccessObjects: the
+// policy document already base64-encoded, since that is the form the
+// policy binding is computed over.
+var testBase64Policy = string(ocrypto.Base64Encode([]byte(testPolicyJSON)))
+
+// newTestShares builds a single share addressed to one KAS holding
+// pubKey.
+func newTestShares(t *testing.T, pubKey, algorithm string) []splitShare {
 	t.Helper()
-	splitData := make([]byte, 32)
-	_, err := rand.Read(splitData)
+	shareData := make([]byte, 32)
+	_, err := rand.Read(shareData)
 	require.NoError(t, err)
 
-	return &SplitResult{
-		Splits: []Split{{
-			ID:      "test-split-1",
-			Data:    splitData,
-			KASURLs: []string{testKAS1URL},
+	return []splitShare{{
+		id:   "test-split-1",
+		data: shareData,
+		kases: []KASInfo{{
+			URL:       testKAS1URL,
+			Algorithm: algorithm,
+			KID:       "test-kid-1",
+			PublicKey: pubKey,
 		}},
-		KASPublicKeys: map[string]KASPublicKey{
-			testKAS1URL: {
-				URL:       testKAS1URL,
-				Algorithm: algorithm,
-				KID:       "test-kid-1",
-				PEM:       pubKey,
-			},
-		},
-	}
+	}}
 }
 
-func TestBuildChunkedKeyAccessObjects(t *testing.T) {
+func TestBuildKeyAccessObjects(t *testing.T) {
 	t.Run("RSA public key", func(t *testing.T) {
-		splits := newTestSplitResult(t, testRSAPublicKey, "rsa:2048")
+		shares := newTestShares(t, testRSAPublicKey, "rsa:2048")
 
-		kaos, err := buildChunkedKeyAccessObjects(splits, []byte(testPolicyJSON), testMetadata)
+		kaos, err := buildKeyAccessObjects(shares, testBase64Policy, testMetadata)
 		require.NoError(t, err)
 		require.Len(t, kaos, 1)
 
@@ -91,9 +91,9 @@ func TestBuildChunkedKeyAccessObjects(t *testing.T) {
 		ecPublicKeyPEM, err := ecKeyPair.PublicKeyInPemFormat()
 		require.NoError(t, err)
 
-		splits := newTestSplitResult(t, ecPublicKeyPEM, "ec:secp256r1")
+		shares := newTestShares(t, ecPublicKeyPEM, "ec:secp256r1")
 
-		kaos, err := buildChunkedKeyAccessObjects(splits, []byte(testPolicyJSON), testMetadata)
+		kaos, err := buildKeyAccessObjects(shares, testBase64Policy, testMetadata)
 		require.NoError(t, err)
 		require.Len(t, kaos, 1)
 
@@ -133,9 +133,9 @@ func TestBuildChunkedKeyAccessObjects(t *testing.T) {
 			publicKeyPEM, err := keyPair.PublicKeyInPemFormat()
 			require.NoError(t, err)
 
-			splits := newTestSplitResult(t, publicKeyPEM, string(tc.alg))
+			shares := newTestShares(t, publicKeyPEM, string(tc.alg))
 
-			kaos, err := buildChunkedKeyAccessObjects(splits, []byte(testPolicyJSON), testMetadata)
+			kaos, err := buildKeyAccessObjects(shares, testBase64Policy, testMetadata)
 			require.NoError(t, err)
 			require.Len(t, kaos, 1)
 
@@ -146,100 +146,86 @@ func TestBuildChunkedKeyAccessObjects(t *testing.T) {
 		})
 	}
 
-	t.Run("multiple KAS URLs in one split", func(t *testing.T) {
-		splitData := make([]byte, 32)
-		_, err := rand.Read(splitData)
+	t.Run("multiple KAS in one share", func(t *testing.T) {
+		shareData := make([]byte, 32)
+		_, err := rand.Read(shareData)
 		require.NoError(t, err)
 
-		splits := &SplitResult{
-			Splits: []Split{{
-				ID:      "multi-kas-split",
-				Data:    splitData,
-				KASURLs: []string{testKAS1URL, testKAS2URL},
-			}},
-			KASPublicKeys: map[string]KASPublicKey{
-				testKAS1URL: {URL: testKAS1URL, Algorithm: "rsa:2048", KID: "kid1", PEM: testRSAPublicKey},
-				testKAS2URL: {URL: testKAS2URL, Algorithm: "rsa:2048", KID: "kid2", PEM: testRSAPublicKey},
+		shares := []splitShare{{
+			id:   "multi-kas-split",
+			data: shareData,
+			kases: []KASInfo{
+				{URL: testKAS1URL, Algorithm: "rsa:2048", KID: "kid1", PublicKey: testRSAPublicKey},
+				{URL: testKAS2URL, Algorithm: "rsa:2048", KID: "kid2", PublicKey: testRSAPublicKey},
 			},
-		}
+		}}
 
-		kaos, err := buildChunkedKeyAccessObjects(splits, []byte(testPolicyJSON), "")
+		kaos, err := buildKeyAccessObjects(shares, testBase64Policy, "")
 		require.NoError(t, err)
 		require.Len(t, kaos, 2, "one KAO per KAS in the OR-group")
 		assert.ElementsMatch(t, []string{testKAS1URL, testKAS2URL}, []string{kaos[0].KasURL, kaos[1].KasURL})
 	})
 
-	t.Run("skips KAS URLs with no resolved public key", func(t *testing.T) {
-		splitData := make([]byte, 32)
-		_, err := rand.Read(splitData)
+	// A KAS whose wrapping key never resolved arrives here with an empty
+	// PEM. Dropping it would silently narrow who can unwrap the share --
+	// and, if it was the only KAS, produce a TDF nobody can read -- so it
+	// is an error rather than a skip.
+	t.Run("errors when one KAS in an OR-group has no public key", func(t *testing.T) {
+		shareData := make([]byte, 32)
+		_, err := rand.Read(shareData)
 		require.NoError(t, err)
 
-		splits := &SplitResult{
-			Splits: []Split{{
-				ID:      "missing-key-split",
-				Data:    splitData,
-				KASURLs: []string{testKAS1URL, testKAS2URL},
-			}},
-			KASPublicKeys: map[string]KASPublicKey{
-				testKAS1URL: {URL: testKAS1URL, Algorithm: "rsa:2048", KID: "kid1", PEM: testRSAPublicKey},
-				// testKAS2URL intentionally absent
+		shares := []splitShare{{
+			id:   "missing-key-split",
+			data: shareData,
+			kases: []KASInfo{
+				{URL: testKAS1URL, Algorithm: "rsa:2048", KID: "kid1", PublicKey: testRSAPublicKey},
+				{URL: testKAS2URL, Algorithm: "rsa:2048", KID: "kid2"},
 			},
-		}
+		}}
 
-		kaos, err := buildChunkedKeyAccessObjects(splits, []byte(testPolicyJSON), "")
-		require.NoError(t, err)
-		require.Len(t, kaos, 1)
-		assert.Equal(t, testKAS1URL, kaos[0].KasURL)
+		_, err = buildKeyAccessObjects(shares, testBase64Policy, "")
+		require.ErrorIs(t, err, errKasPubKeyMissing)
+		assert.Contains(t, err.Error(), testKAS2URL, "the error should name the offending KAS")
 	})
 
 	t.Run("errors when a resolved key has an empty PEM", func(t *testing.T) {
-		splits := newTestSplitResult(t, "", "rsa:2048")
+		shares := newTestShares(t, "", "rsa:2048")
 
-		_, err := buildChunkedKeyAccessObjects(splits, []byte(testPolicyJSON), "")
+		_, err := buildKeyAccessObjects(shares, testBase64Policy, "")
 		require.ErrorIs(t, err, errKasPubKeyMissing)
 	})
 
 	t.Run("errors on malformed PEM", func(t *testing.T) {
-		splits := newTestSplitResult(t, "invalid-pem-data", "rsa:2048")
+		shares := newTestShares(t, "invalid-pem-data", "rsa:2048")
 
-		_, err := buildChunkedKeyAccessObjects(splits, []byte(testPolicyJSON), "")
+		_, err := buildKeyAccessObjects(shares, testBase64Policy, "")
 		require.Error(t, err)
 	})
 
 	t.Run("empty metadata produces no encrypted metadata", func(t *testing.T) {
-		splits := newTestSplitResult(t, testRSAPublicKey, "rsa:2048")
+		shares := newTestShares(t, testRSAPublicKey, "rsa:2048")
 
-		kaos, err := buildChunkedKeyAccessObjects(splits, []byte(testPolicyJSON), "")
+		kaos, err := buildKeyAccessObjects(shares, testBase64Policy, "")
 		require.NoError(t, err)
 		require.Len(t, kaos, 1)
 		assert.Empty(t, kaos[0].EncryptedMetadata)
 	})
 
-	t.Run("errors on nil split result", func(t *testing.T) {
-		_, err := buildChunkedKeyAccessObjects(nil, []byte(testPolicyJSON), "")
+	t.Run("errors on no shares", func(t *testing.T) {
+		_, err := buildKeyAccessObjects(nil, testBase64Policy, "")
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "no splits produced")
+		assert.Contains(t, err.Error(), "no key access objects generated")
 	})
 
-	t.Run("errors on empty splits", func(t *testing.T) {
-		_, err := buildChunkedKeyAccessObjects(&SplitResult{}, []byte(testPolicyJSON), "")
-		require.Error(t, err)
-		assert.Contains(t, err.Error(), "no splits produced")
-	})
-
-	t.Run("errors when every KAS lacks a public key", func(t *testing.T) {
-		splitData := make([]byte, 32)
-		_, err := rand.Read(splitData)
+	t.Run("errors on a share with no KAS", func(t *testing.T) {
+		shareData := make([]byte, 32)
+		_, err := rand.Read(shareData)
 		require.NoError(t, err)
 
-		splits := &SplitResult{
-			Splits:        []Split{{ID: "no-keys-split", Data: splitData, KASURLs: []string{testKAS1URL}}},
-			KASPublicKeys: map[string]KASPublicKey{},
-		}
-
-		_, err = buildChunkedKeyAccessObjects(splits, []byte(testPolicyJSON), "")
+		_, err = buildKeyAccessObjects([]splitShare{{id: "no-kas-split", data: shareData}}, testBase64Policy, "")
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "no valid key access objects generated")
+		assert.Contains(t, err.Error(), "no key access objects generated")
 	})
 }
 
@@ -249,7 +235,7 @@ func TestCreatePolicyBinding(t *testing.T) {
 	require.NoError(t, err)
 
 	t.Run("binds with HS256 over base64 policy", func(t *testing.T) {
-		binding := createPolicyBinding(symKey, ocrypto.Base64Encode([]byte(testPolicyJSON)))
+		binding := createPolicyBinding(symKey, testBase64Policy)
 
 		assert.Equal(t, hmacIntegrityAlgorithm, binding.Alg)
 		require.NotEmpty(t, binding.Hash)
@@ -258,8 +244,8 @@ func TestCreatePolicyBinding(t *testing.T) {
 	})
 
 	t.Run("different policies bind differently", func(t *testing.T) {
-		b1 := createPolicyBinding(symKey, ocrypto.Base64Encode([]byte(`{"policy":"test1"}`)))
-		b2 := createPolicyBinding(symKey, ocrypto.Base64Encode([]byte(`{"policy":"test2"}`)))
+		b1 := createPolicyBinding(symKey, string(ocrypto.Base64Encode([]byte(`{"policy":"test1"}`))))
+		b2 := createPolicyBinding(symKey, string(ocrypto.Base64Encode([]byte(`{"policy":"test2"}`))))
 		assert.NotEqual(t, b1.Hash, b2.Hash)
 	})
 
@@ -268,10 +254,9 @@ func TestCreatePolicyBinding(t *testing.T) {
 		_, err := rand.Read(otherKey)
 		require.NoError(t, err)
 
-		policy := ocrypto.Base64Encode([]byte(testPolicyJSON))
 		assert.NotEqual(t,
-			createPolicyBinding(symKey, policy).Hash,
-			createPolicyBinding(otherKey, policy).Hash,
+			createPolicyBinding(symKey, testBase64Policy).Hash,
+			createPolicyBinding(otherKey, testBase64Policy).Hash,
 		)
 	})
 }

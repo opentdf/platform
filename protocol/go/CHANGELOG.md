@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.41.0](https://github.com/opentdf/platform/compare/protocol/go/v0.40.0...protocol/go/v0.41.0) (2026-08-13)
+
+
+### Features
+
+* **policy:** Add sort functionality on key_status ([#3845](https://github.com/opentdf/platform/issues/3845)) ([2ca20ff](https://github.com/opentdf/platform/commit/2ca20ff96048f02c56277455a97d7f2341f55d2d))
+
 ## [0.40.0](https://github.com/opentdf/platform/compare/protocol/go/v0.39.0...protocol/go/v0.40.0) (2026-08-04)
 
 

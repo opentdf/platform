@@ -15,6 +15,7 @@ import (
 	"github.com/go-viper/mapstructure/v2"
 	"github.com/open-policy-agent/opa/v1/ast"
 	"github.com/open-policy-agent/opa/v1/rego"
+	"github.com/opentdf/platform/lib/flattening"
 	"github.com/opentdf/platform/protocol/go/authorization"
 	"github.com/opentdf/platform/protocol/go/authorization/authorizationconnect"
 	"github.com/opentdf/platform/protocol/go/common"
@@ -39,6 +40,8 @@ import (
 )
 
 var ErrEmptyStringAttribute = errors.New("resource attributes must have at least one attribute value fqn")
+
+const maxEntitleableFQNsPerRequest = 250
 
 type AuthorizationService struct { //nolint:revive // AuthorizationService is a valid name for this struct
 	sdk    *otdf.SDK
@@ -284,70 +287,99 @@ func makeScopeMap(scope *authorization.ResourceAttribute) map[string]bool {
 	return scopeMap
 }
 
-func (as *AuthorizationService) GetEntitlements(ctx context.Context, req *connect.Request[authorization.GetEntitlementsRequest]) (*connect.Response[authorization.GetEntitlementsResponse], error) {
-	as.logger.DebugContext(ctx, "getting entitlements")
-
-	ctx, span := as.Start(ctx, "GetEntitlements")
-	defer span.End()
-
+func retrieveFullAttributeMappings(ctx context.Context, scope *authorization.ResourceAttribute, sdk *otdf.SDK) (map[string]*attr.GetAttributeValuesByFqnsResponse_AttributeAndValue, error) {
 	var nextOffset int32
 	attrsList := make([]*policy.Attribute, 0)
 	subjectMappingsList := make([]*policy.SubjectMapping, 0)
 
-	// If quantity of attributes exceeds maximum list pagination, all are needed to determine entitlements
 	for {
-		listed, err := as.sdk.Attributes.ListAttributes(ctx, &attr.ListAttributesRequest{
+		listed, err := sdk.Attributes.ListAttributes(ctx, &attr.ListAttributesRequest{
 			State: common.ActiveStateEnum_ACTIVE_STATE_ENUM_ACTIVE,
 			Pagination: &policy.PageRequest{
 				Offset: nextOffset,
 			},
 		})
 		if err != nil {
-			as.logger.ErrorContext(ctx, "failed to list attributes", slog.String("error", err.Error()))
-			return nil, connect.NewError(connect.CodeInternal, errors.New("failed to list attributes"))
+			return nil, fmt.Errorf("failed to list attributes: %w", err)
 		}
 
 		nextOffset = listed.GetPagination().GetNextOffset()
 		attrsList = append(attrsList, listed.GetAttributes()...)
-
-		// offset becomes zero when list is exhausted
 		if nextOffset <= 0 {
 			break
 		}
 	}
 
-	// If quantity of subject mappings exceeds maximum list pagination, all are needed to determine entitlements
 	nextOffset = 0
 	for {
-		listed, err := as.sdk.SubjectMapping.ListSubjectMappings(ctx, &subjectmapping.ListSubjectMappingsRequest{
+		listed, err := sdk.SubjectMapping.ListSubjectMappings(ctx, &subjectmapping.ListSubjectMappingsRequest{
 			Pagination: &policy.PageRequest{
 				Offset: nextOffset,
 			},
 		})
 		if err != nil {
-			as.logger.ErrorContext(ctx, "failed to list subject mappings", slog.String("error", err.Error()))
-			return nil, connect.NewError(connect.CodeInternal, errors.New("failed to list subject mappings"))
+			return nil, fmt.Errorf("failed to list subject mappings: %w", err)
 		}
 
 		nextOffset = listed.GetPagination().GetNextOffset()
 		subjectMappingsList = append(subjectMappingsList, listed.GetSubjectMappings()...)
-
-		// offset becomes zero when list is exhausted
 		if nextOffset <= 0 {
 			break
 		}
 	}
-	// create a lookup map of attribute value FQNs (based on request scope)
-	scopeMap := makeScopeMap(req.Msg.GetScope())
-	// create a lookup map of subject mappings by attribute value ID
+
+	scopeMap := makeScopeMap(scope)
 	subMapsByVal := makeSubMapsByValLookup(subjectMappingsList)
-	// create a lookup map of attribute values by FQN (for rego query)
-	fqnAttrVals := makeValsByFqnsLookup(attrsList, subMapsByVal, scopeMap)
-	avf := &attr.GetAttributeValuesByFqnsResponse{
-		FqnAttributeValues: fqnAttrVals,
+	return makeValsByFqnsLookup(attrsList, subMapsByVal, scopeMap), nil
+}
+
+func subjectPropertiesFromEntityRepresentations(ersResp *entityresolution.ResolveEntitiesResponse) ([]*policy.SubjectProperty, error) {
+	properties := make([]*policy.SubjectProperty, 0)
+	seen := make(map[string]struct{})
+	for _, entityRepresentation := range ersResp.GetEntityRepresentations() {
+		for _, additionalProps := range entityRepresentation.GetAdditionalProps() {
+			flattened, err := flattening.Flatten(additionalProps.AsMap())
+			if err != nil {
+				return nil, fmt.Errorf("failed to flatten entity representation: %w", err)
+			}
+			for _, item := range flattened.Items {
+				if _, ok := seen[item.Key]; ok {
+					continue
+				}
+				seen[item.Key] = struct{}{}
+				properties = append(properties, &policy.SubjectProperty{ExternalSelectorValue: item.Key})
+			}
+		}
 	}
-	subjectMappings := avf.GetFqnAttributeValues()
-	as.logger.DebugContext(ctx, "retrieved subject mappings", slog.Int("count", len(subjectMappings)))
+	return properties, nil
+}
+
+func matchedAttributeFQNs(mappings []*policy.SubjectMapping, scope *authorization.ResourceAttribute) []string {
+	scopeMap := makeScopeMap(scope)
+	seen := make(map[string]struct{})
+	fqns := make([]string, 0, len(mappings))
+	for _, mapping := range mappings {
+		fqn := strings.ToLower(mapping.GetAttributeValue().GetFqn())
+		if fqn == "" {
+			continue
+		}
+		if scopeMap != nil && !scopeMap[fqn] {
+			continue
+		}
+		if _, ok := seen[fqn]; ok {
+			continue
+		}
+		seen[fqn] = struct{}{}
+		fqns = append(fqns, fqn)
+	}
+	return fqns
+}
+
+func (as *AuthorizationService) GetEntitlements(ctx context.Context, req *connect.Request[authorization.GetEntitlementsRequest]) (*connect.Response[authorization.GetEntitlementsResponse], error) {
+	as.logger.DebugContext(ctx, "getting entitlements")
+
+	ctx, span := as.Start(ctx, "GetEntitlements")
+	defer span.End()
 
 	// TODO: this could probably be moved to proto validation https://github.com/opentdf/platform/issues/1057
 	if req.Msg.Entities == nil {
@@ -364,6 +396,19 @@ func (as *AuthorizationService) GetEntitlements(ctx context.Context, req *connec
 		as.logger.ErrorContext(ctx, "error calling ERS to resolve entities", slog.Any("entities", req.Msg.GetEntities()))
 		return nil, err
 	}
+
+	var subjectMappings map[string]*attr.GetAttributeValuesByFqnsResponse_AttributeAndValue
+	if as.usesCustomRego() {
+		subjectMappings, err = retrieveFullAttributeMappings(ctx, req.Msg.GetScope(), as.sdk)
+	} else {
+		subjectMappings, err = as.retrieveMatchedAttributeMappings(ctx, ersResp, req.Msg.GetScope())
+	}
+	if err != nil {
+		as.logger.ErrorContext(ctx, "failed to retrieve subject mappings", slog.String("error", err.Error()))
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+	as.logger.DebugContext(ctx, "retrieved subject mappings", slog.Int("count", len(subjectMappings)))
+	avf := &attr.GetAttributeValuesByFqnsResponse{FqnAttributeValues: subjectMappings}
 
 	// call rego on all entities
 	in, err := entitlements.OpaInput(subjectMappings, ersResp)
@@ -449,6 +494,30 @@ func (as *AuthorizationService) GetEntitlements(ctx context.Context, req *connec
 	}
 
 	return resp, nil
+}
+
+func (as *AuthorizationService) usesCustomRego() bool {
+	return as.config != nil && as.config.Rego.Path != ""
+}
+
+func (as *AuthorizationService) retrieveMatchedAttributeMappings(ctx context.Context, ersResp *entityresolution.ResolveEntitiesResponse, scope *authorization.ResourceAttribute) (map[string]*attr.GetAttributeValuesByFqnsResponse_AttributeAndValue, error) {
+	properties, err := subjectPropertiesFromEntityRepresentations(ersResp)
+	if err != nil {
+		return nil, err
+	}
+	if len(properties) == 0 {
+		return make(map[string]*attr.GetAttributeValuesByFqnsResponse_AttributeAndValue), nil
+	}
+
+	matched, err := as.sdk.SubjectMapping.MatchSubjectMappings(ctx, &subjectmapping.MatchSubjectMappingsRequest{
+		SubjectProperties: properties,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to match subject mappings: %w", err)
+	}
+
+	fqns := matchedAttributeFQNs(matched.GetSubjectMappings(), scope)
+	return retrieveAttributeDefinitions(ctx, fqns, as.sdk)
 }
 
 func getAttributesFromRas(ras []*authorization.ResourceAttribute) ([]string, error) {
@@ -727,31 +796,68 @@ func (as *AuthorizationService) getDecisions(ctx context.Context, dr *authorizat
 }
 
 func retrieveAttributeDefinitions(ctx context.Context, attrFqns []string, sdk *otdf.SDK) (map[string]*attr.GetAttributeValuesByFqnsResponse_AttributeAndValue, error) {
-	if len(attrFqns) == 0 {
-		return make(map[string]*attr.GetAttributeValuesByFqnsResponse_AttributeAndValue), nil
-	}
-
-	resp, err := sdk.Attributes.GetAttributeValuesByFqns(ctx, &attr.GetAttributeValuesByFqnsRequest{
-		Fqns: attrFqns,
-	})
-	if err != nil {
-		return nil, err
-	}
-	// If `allow_traversal` is true for an attribute definition
-	// it will return an attribute definition for a missing
-	// value. Where before you would receive a 404 error.
-	// Since v1 does not expect direct entitlements
-	// and expects a value, we fail if there is no
-	// value.
-	fqnAttrVals := resp.GetFqnAttributeValues()
+	normalizedFQNs := make([]string, 0, len(attrFqns))
+	seen := make(map[string]struct{}, len(attrFqns))
 	for _, fqn := range attrFqns {
 		normalized := strings.ToLower(fqn)
-		attributeAndValue, ok := fqnAttrVals[normalized]
-		if !ok || attributeAndValue == nil || attributeAndValue.GetValue() == nil {
-			return nil, status.Error(codes.NotFound, db.ErrTextNotFound)
+		if _, ok := seen[normalized]; ok {
+			continue
+		}
+		seen[normalized] = struct{}{}
+		normalizedFQNs = append(normalizedFQNs, normalized)
+	}
+
+	result := make(map[string]*attr.GetAttributeValuesByFqnsResponse_AttributeAndValue, len(normalizedFQNs))
+	for start := 0; start < len(normalizedFQNs); start += maxEntitleableFQNsPerRequest {
+		end := min(start+maxEntitleableFQNsPerRequest, len(normalizedFQNs))
+		batch := normalizedFQNs[start:end]
+		resp, err := sdk.Attributes.GetEntitleableAttributesByFqns(ctx, &attr.GetEntitleableAttributesByFqnsRequest{
+			Fqns: batch,
+		})
+		if err != nil {
+			return nil, err
+		}
+
+		for _, fqn := range batch {
+			entitleable, ok := resp.GetFqnEntitleableAttributes()[fqn]
+			if !ok || entitleable.GetValue().GetValueId() == "" {
+				return nil, status.Error(codes.NotFound, db.ErrTextNotFound)
+			}
+
+			definitionFQN := entitleable.GetDefinitionFqn()
+			definition, ok := resp.GetDefinitions()[definitionFQN]
+			if definitionFQN == "" || !ok || definition == nil {
+				return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("entitleable attribute %q references missing definition %q", fqn, definitionFQN))
+			}
+
+			attribute := &policy.Attribute{
+				Fqn:       definitionFQN,
+				Namespace: definition.GetNamespace(),
+				Rule:      definition.GetRule(),
+			}
+			if definition.GetRule() == policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY {
+				attribute.Values = make([]*policy.Value, 0, len(definition.GetValues()))
+				for _, value := range definition.GetValues() {
+					attribute.Values = append(attribute.Values, &policy.Value{
+						Id:              value.GetValueId(),
+						Fqn:             value.GetFqn(),
+						SubjectMappings: value.GetSubjectMappings(),
+					})
+				}
+			}
+
+			value := entitleable.GetValue()
+			result[fqn] = &attr.GetAttributeValuesByFqnsResponse_AttributeAndValue{
+				Attribute: attribute,
+				Value: &policy.Value{
+					Id:              value.GetValueId(),
+					Fqn:             value.GetFqn(),
+					SubjectMappings: value.GetSubjectMappings(),
+				},
+			}
 		}
 	}
-	return fqnAttrVals, nil
+	return result, nil
 }
 
 func getComprehensiveHierarchy(attributesMap map[string]*policy.Attribute, avf *attr.GetAttributeValuesByFqnsResponse, entitlement string, as *AuthorizationService, entitlements []string) []string {

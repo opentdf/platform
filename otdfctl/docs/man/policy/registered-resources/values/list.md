@@ -8,6 +8,7 @@ command:
     - name: resource
       shorthand: r
       description: Identifier of the associated registered resource (ID or name)
+      required: true
     - name: namespace
       shorthand: s
       description: "Namespace ID or FQN (required when --resource is a name)"

@@ -8,6 +8,7 @@ command:
     - name: id
       description: The ID of the resource mapping group to get.
       default: ''
+      required: true
 ---
 
 For more information about resource mapping groups, see the `resource-mapping-groups` subcommand.

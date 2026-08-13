@@ -11,7 +11,6 @@ command:
     - name: subject-sets
       description: A JSON array of subject sets, containing a list of condition groups, each with one or more conditions
       shorthand: s
-      required: true
       default: ''
     - name: subject-sets-file-json
       description: A JSON file with path from the current working directory containing an array of subject sets

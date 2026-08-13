@@ -10,9 +10,11 @@ command:
     - name: attribute-id
       shorthand: a
       description: The ID of the attribute to create a value for
+      required: true
     - name: value
       shorthand: v
       description: The value to create
+      required: true
     - name: label
       description: "Optional metadata 'labels' in the format: key=value"
       shorthand: l

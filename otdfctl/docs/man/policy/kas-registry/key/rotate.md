@@ -12,7 +12,6 @@ command:
       required: true
     - name: kas
       description: Specify the Key Access Server (KAS) where the key is registered. The KAS can be identified by its ID, URI, or Name.
-      required: true
     
     # Flags for the new key creation (from create.md)
     - name: key-id

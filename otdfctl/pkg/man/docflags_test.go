@@ -109,3 +109,30 @@ func TestAddStringFlagPanicsOnUnknown(t *testing.T) {
 		doc.AddStringFlag(&cobra.Command{Use: "test"}, "missing")
 	})
 }
+
+func TestDocFlagRequiredParsing(t *testing.T) {
+	doc, err := ProcessDoc(`---
+title: Test Command
+command:
+  name: test
+  flags:
+    - name: id
+      required: true
+      description: A required flag
+    - name: label
+      description: An optional flag
+---
+
+Body.
+`)
+	require.NoError(t, err)
+	require.Len(t, doc.DocFlags, 2)
+
+	assert.True(t, doc.GetDocFlag("id").Required)
+	assert.False(t, doc.GetDocFlag("label").Required)
+
+	doc.Flags().String("id", "", "Required")
+	idFlag := doc.Flags().Lookup("id")
+	require.NotNil(t, idFlag)
+	assert.Nil(t, idFlag.Annotations[cobra.BashCompOneRequiredFlag])
+}

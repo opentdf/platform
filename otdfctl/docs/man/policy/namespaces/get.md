@@ -8,6 +8,7 @@ command:
     - name: id
       shorthand: i
       description: ID of the attribute namespace
+      required: true
 ---
 
 For more information, see the `namespaces` subcommand.

@@ -8,11 +8,9 @@ command:
     - name: limit
       shorthand: l
       description: Maximum number of key mappings to return
-      required: true
     - name: offset
       shorthand: o
       description: Offset (page) quantity from start of the list
-      required: true
     - name: id
       shorthand: i
       description: The system ID of the key for which to list mappings.

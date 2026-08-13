@@ -8,6 +8,7 @@ command:
     - name: id
       description: The ID of the resource mapping group to update.
       default: ''
+      required: true
     - name: namespace-id
       description: The ID of the namespace of the group
       default: ''

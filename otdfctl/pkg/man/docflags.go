@@ -19,6 +19,7 @@ type DocFlag struct {
 	Default     string   `yaml:"default"`
 	Enum        []string `yaml:"enum"`
 	Sensitive   bool     `yaml:"sensitive"`
+	Required    bool     `yaml:"required"`
 }
 
 func (d *Doc) GetDocFlag(name string) DocFlag {

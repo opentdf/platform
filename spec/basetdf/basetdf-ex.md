@@ -16,11 +16,10 @@
 2. [Example: RSA-OAEP Key Protection (Legacy Compatibility)](#2-example-rsa-oaep-key-protection-legacy-compatibility)
 3. [Example: ECDH-HKDF Key Protection (Current EC Mode)](#3-example-ecdh-hkdf-key-protection-current-ec-mode)
 4. [Example: ML-KEM-768 Key Protection (Post-Quantum)](#4-example-ml-kem-768-key-protection-post-quantum)
-5. [Example: X-ECDH-ML-KEM-768 Hybrid Key Protection](#5-example-x-ecdh-ml-kem-768-hybrid-key-protection)
-6. [Example: Multi-Split with Mixed Algorithms](#6-example-multi-split-with-mixed-algorithms)
-7. [Example: v4.3.0 Backward Compatibility Reading](#7-example-v430-backward-compatibility-reading)
-8. [Example: Assertion with ML-DSA-44 Signing](#8-example-assertion-with-ml-dsa-44-signing)
-9. [Test Vector Format Notes](#9-test-vector-format-notes)
+5. [Example: Multi-Split with Mixed Algorithms](#5-example-multi-split-with-mixed-algorithms)
+6. [Example: v4.3.0 Backward Compatibility Reading](#6-example-v430-backward-compatibility-reading)
+7. [Example: Assertion with ML-DSA-44 Signing](#7-example-assertion-with-ml-dsa-44-signing)
+8. [Test Vector Format Notes](#8-test-vector-format-notes)
 
 ---
 
@@ -284,8 +283,8 @@ derivation, which is the current recommended classical key protection mode.
 - The HKDF parameters for `ECDH-HKDF` are: salt = `SHA256("TDF")` (a fixed
   32-byte value), info = `""` (empty), output length = 32 bytes.
 - The `protectedKey` is the AES-256-GCM ciphertext of the DEK share encrypted
-  under the HKDF-derived key. For v4.3.0 backward compatibility, XOR wrapping
-  may be encountered instead (see Section 7).
+  under the HKDF-derived key. This wire format is unchanged from v4.3.0; only
+  the field names differ (see Section 6).
 - Both `type: "ec-wrapped"` and `alg: "ECDH-HKDF"` are present. The `alg`
   field takes precedence; `type` is included for older readers.
 - The two `anyOf` attributes share a single split (empty `sid`), meaning any
@@ -318,11 +317,11 @@ for post-quantum key protection.
     "keyAccess": [
       {
         "alg": "ML-KEM-768",
+        "type": "mlkem-wrapped",
         "kas": "https://kas-pqc.example.com",
         "kid": "kas-mlkem768-2025-03",
         "sid": "",
-        "protectedKey": "7fH2cMnJxP0kRr5qTgWvBdLs8+YaZOEiDhNuXw1A9Gp4KjQm6VC3oSU=",
-        "ephemeralKey": "MIIB8gKCAWYAh1YJOSVrLnBqZm9xdGp2eHpiZGZoamxucHJ0dnd4emJkZmhqbG5wcnR2eHpiZGZoamxucHJ0dnd4emJkZmhqbG5wcnR2eHpiZGZoamxucHJ0dnd4emJkZmhqbG5wcnR2eHpiZGZoamxucHJ0dnd4emJkZmhqbG5wcnR2eHpiZGZoamxucHJ0dnd4emJkZmhqbG5wcnR2eHpiZGZoamxucHJ0dnd4emJkZmhqbG5wcnR2eHpiZGZoamxucHJ0dnd4emJkZmhqbG5wcnR2eHpiZGZoamxucHJ0dnd4emJkZmhqbG5wcnR2eHpiZGZoamxucHJ0dnd4emJkZmhqbG5wcnR2eHpiZGZoamxucHJ0dnd4emJkZmhqbG5wcnR2eHpiZGZoamxucHJ0dnd4emJkZmhqbG5wcnR2eHpiZGZoamxucHJ0dnd4emJkZmhqbG5wcnR2eHpiZGZoamxucHJ0dnd4emJkZmhqbG5wcnR2eHpiZGZoamxucHJ0dnd4emJkZmhqbG5wcnR2eHpiZGZoamxucHJ0dnd4emJkZmhqbG5wcnR2eHpiZGZoamxucHJ0dnd4emJkZmhqbG5wcnR2eHpiZGZoamxucHJ0dnd4emJkZmhqbG5wcnR2eHpiZGZoamxucHJ0dnd4emJkZmhqbG5wcnR2eHpiZGZoamxucHJ0dnd4emJkZmhqbG5wcnR2eHpiZGZoamxucHJ0dnd4emJkZmhqbG5wcnR2eHpiZGZoamxucHJ0dnd4eg==",
+        "protectedKey": "MIIEgoCCBEBnFBfBXIO10t99MteIS4HwAHf0cfoGtqEogRnpwwl/AbE3xHCJ6aWZORiZeFBsPgu6Jl886QVhquJ4UbdJTnRZBIfM2b+pKtlgi7zmbbwaiYXSY4W2USdJrOMeA+PBeegn0MtDELLjL1sGQTTFSVwwlT3j61VcxASV1cNfPcxWwQ9hWRdjJoQX3mzbYvLfZ14ertjZJlCb2q21WLpsel3im8X90PC7LTcOsBmUI4iGjPZdQ91Z9Qm2FrYkMuSFJfF8YPIQXa8+BjDUZ39haW8JO++iPAzLGLm5Sb7dj2lOTaSBJrXh4YZCDpbam7aM3JFAWLAThI3pAyP2uo39lmfDWMH19VIOalcfOjGS+sMzJklNcGJlARaDZe2jw+MZy8GGiUR+CFeSaUMNh9CNnGuSVXNl6/lQygoviv/qTtaNA6TBYyMDJlp3BdjJ+hQo2WpsxsvPripYO9fP9GSYYsf675Ey5TewyP18hT4NJu0f0FJ+YfLopahflFkyQ8+J4kENDTuS9/CDuMCw3grV09vJqS98YNx43u2hQB6u+kuJokCXJ2qPJqHq6XutIdBfD/AA0ZhToiGnZseUmQBXbopmP8uOpr61/QWo0OxCLdIvP6GJWFt4PuDx6LkUhkbno8ytS538vwFUufe0P/NBddfRP8Ve8qRwprltMZx5ko0JqHMW4HH4H1w3AiczBPZ/sDm4bV2i9YEIr+vpTOFBpF+jxBLf94ozFtcw15xccyON7j+HZfRJEkMgrKSWXfmfImK/WuehMVmgtLpAwBRwRzL6+OQ7Leos8QVOwDvGSzhuK+46y9M7FUO4V6vaEW/H7kc/Tl7ad83VJu/ASXTO25scbsF3dXDMIYbRDFIm0PXKzrCLnnE5xc2tPfhDirfnPPrVwATniEc8z/ZodqzwhyM5+YkzcKzHv+DYWXKjXDu+HgyjXjANmOnlCmjIIA4tuL1eYHQrpp8MR4J/+3w058+gDA8PeCoVwEQyXjyw/uDJbfzBiapc6K91tr6dm3HUfJmO0ohCuADg619gSXbLPJQIuGBzfQqSU7vRR1+tkBdj0zVycAd4pKwhTnhm8l7Y1yVyek5pdm6sXk1OYXruvvdLy1zIbnwVn8LJkTQ9vaKDu8945POSvMU0JZlsGkFIYmXLddN7U1Q71BqHcE+TmJtJHeGiTDUJqds6C1dJwhnI4LUIDGj8/+7OHVObnU6joBMg18q6n2gXnnrxVjzRwAX+TQwtyLAM4hTlHJtyNHd3yrdgYD/pOC/0n/Gwmr5RSnJfWUvpJHm9X/JQg+DIhfG+NO+DhD8JZjmqjbc/xmugBkESdVTj6cXRyhNB4gqS88suhIVrGGOpwUCMvezC7mI2ojQcbi6Tb0cCaCMUIaa5yD0vpnNbJJB88jlRhKtPgsfFpvZsEcrGvAAqtsAzyPxPVQdn81uZvyz7mIkIS1ENo4E8h5ol3DZcri5nwMFoT0kdjQpB9OQS0T6LpYUXPn7Tyn4Jb456JSX3vzwLQ5nxSXhL/PUZ4WACsNr9ciS3",
         "policyBinding": {
           "alg": "HS256",
           "hash": "NDE2OGMxMDZhNjQ4YTczOTFkY2UxZjI5ZGU5OGM5ZmI="
@@ -355,116 +354,35 @@ for post-quantum key protection.
 
 ### 4.3 Notes
 
-- The `ephemeralKey` field carries the ML-KEM-768 ciphertext (1088 bytes,
-  base64-encoded). This is the output of `ML-KEM.Encapsulate(kas_mlkem_pk)`.
-  The KAS uses `ML-KEM.Decapsulate(kas_mlkem_sk, ct)` to recover the shared
-  secret.
-- No `type` field is present. ML-KEM has no legacy `type` equivalent; the
-  `alg` field is the sole algorithm indicator.
-- The HKDF parameters for ML-KEM key protection are: salt = `""` (empty),
-  info = `"BaseTDF-KEM"`, output length = 32 bytes. The `"BaseTDF-KEM"` info
-  string provides domain separation for KEM-derived keys.
-- The `protectedKey` is the AES-256-GCM ciphertext of the DEK share encrypted
-  under the HKDF-derived key.
+- There is no `ephemeralKey` field. For ML-KEM the KEM ciphertext travels
+  inside `protectedKey`, not in `ephemeralKey`.
+- The `protectedKey` field is the base64 encoding of a DER `MLKEMWrappedKey`
+  structure (BaseTDF-ALG Section 4.3), which decodes to:
+  - `mlkemCiphertext` (`[0]`, 1088 bytes): the output of
+    `ML-KEM.Encapsulate(kas_mlkem_pk)`. The KAS calls
+    `ML-KEM.Decapsulate(kas_mlkem_sk, ct)` to recover the 32-byte shared secret.
+  - `encryptedDEK` (`[1]`, 60 bytes here): a 12-byte GCM nonce, the AES-256-GCM
+    ciphertext of the 32-byte DEK share, and the 16-byte GCM tag. No AAD is
+    used.
+- No KDF is applied. The 32-byte ML-KEM shared secret is used directly as the
+  AES-256 key -- see BaseTDF-ALG Section 4.3.1 for the rationale.
+- The `type` field carries the legacy value `"mlkem-wrapped"` for readers that
+  do not recognize `alg`. Note that `"mlkem-wrapped"` alone does not distinguish
+  ML-KEM-768 from ML-KEM-1024; `alg` is authoritative (BaseTDF-KAO
+  Section 7.1).
 - The `kid` field (`"kas-mlkem768-2025-03"`) identifies the specific ML-KEM-768
   key pair held by the KAS.
 
 ---
 
-## 5. Example: X-ECDH-ML-KEM-768 Hybrid Key Protection
-
-This example shows a manifest using the hybrid `X-ECDH-ML-KEM-768` algorithm,
-which combines classical ECDH (P-256) with post-quantum ML-KEM-768. This is
-the RECOMMENDED algorithm for PQC-ready deployments, providing security as long
-as either the classical or post-quantum component remains unbroken.
-
-### 5.1 Scenario
-
-- **Key protection**: `X-ECDH-ML-KEM-768` (Hybrid: ECDH-P256 + ML-KEM-768)
-- **Single KAS**: `https://kas.example.com`
-- **Policy**: One attribute (`classification/value/top-secret`) with a
-  dissemination list
-- **Integrity**: `HS256` root signature and segment hashes
-- **Payload**: Single segment
-
-### 5.2 Complete Manifest
-
-```json
-{
-  "schemaVersion": "4.4.0",
-  "encryptionInformation": {
-    "type": "split",
-    "policy": "eyJ1dWlkIjoiZjFhMmIzYzQtZDVlNi03Zjg5LWEwYjEtYzJkM2U0ZjVhNmI3IiwiYm9keSI6eyJkYXRhQXR0cmlidXRlcyI6W3siYXR0cmlidXRlIjoiaHR0cHM6Ly9leGFtcGxlLmNvbS9hdHRyL2NsYXNzaWZpY2F0aW9uL3ZhbHVlL3RvcC1zZWNyZXQiLCJkaXNwbGF5TmFtZSI6IkNsYXNzaWZpY2F0aW9uOiBUb3AgU2VjcmV0IiwiaXNEZWZhdWx0IjpmYWxzZSwicHViS2V5IjoiIiwia2FzVVJMIjoiaHR0cHM6Ly9rYXMuZXhhbXBsZS5jb20ifV0sImRpc3NlbSI6WyJhbGljZUBleGFtcGxlLmNvbSJdfX0=",
-    "keyAccess": [
-      {
-        "alg": "X-ECDH-ML-KEM-768",
-        "kas": "https://kas.example.com",
-        "kid": "kas-hybrid-2025-02",
-        "sid": "",
-        "protectedKey": "Kp7mXvQ2dRa9Wn1Yg6BcTf0HjLsOeIuCxZwSt5Mk4JhNqDrEyGbAvFo=",
-        "ephemeralKey": "BAN4cQ9k2p7xLMjZ+hG1sRbTv5Y3wUOeKiDf6qSrXtVuolyHWJmPgCBYAh1YJOSVrLnBqZm9xdGp2eHpiZGZoamxucHJ0dnd4emJkZmhqbG5wcnR2eHpiZGZoamxucHJ0dnd4emJkZmhqbG5wcnR2eHpiZGZoamxucHJ0dnd4emJkZmhqbG5wcnR2eHpiZGZoamxucHJ0dnd4emJkZmhqbG5wcnR2eHpiZGZoamxucHJ0dnd4emJkZmhqbG5wcnR2eHpiZGZoamxucHJ0dnd4emJkZmhqbG5wcnR2eHpiZGZoamxucHJ0dnd4emJkZmhqbG5wcnR2eHpiZGZoamxucHJ0dnd4emJkZmhqbG5wcnR2eHpiZGZoamxucHJ0dnd4emJkZmhqbG5wcnR2eHpiZGZoamxucHJ0dnd4emJkZmhqbG5wcnR2eHpiZGZoamxucHJ0dnd4emJkZmhqbG5wcnR2eHpiZGZoamxucHJ0dnd4emJkZmhqbG5wcnR2eHpiZGZoamxucHJ0dnd4emJkZmhqbG5wcnR2eHpiZGZoamxucHJ0dnd4emJkZmhqbG5wcnR2eHpiZGZoamxucHJ0dnd4emJkZmhqbG5wcnR2eHpiZGZoamxucHJ0dnd4emJkZmhqbG5wcnR2eHpiZGZoamxucHJ0dnd4emJkZmhqbG5wcnR2eHpiZGZoamxucHJ0dnd4emJkZmhqbG5wcnR2eHpiZGZoamxucHJ0dnd4emJkZmhqbG5wcnR2eHpiZGZoamxucHJ0dnd4emJkZmhqbG5wcnR2eA==",
-        "policyBinding": {
-          "alg": "HS256",
-          "hash": "OWEzYjRjNWQ2ZTdmOGExMjM0NTY3ODkwYWJjZGVmMDE="
-        }
-      }
-    ],
-    "method": {
-      "algorithm": "A256GCM"
-    },
-    "integrityInformation": {
-      "rootSignature": {
-        "alg": "HS256",
-        "sig": "ZGQ3MjkxODVmNThhYmMzZDRlNjdmODkwMTIzNGFiY2Q="
-      },
-      "segmentHashAlg": "HS256",
-      "segmentSizeDefault": 1048576,
-      "encryptedSegmentSizeDefault": 1048604,
-      "segments": [
-        {
-          "hash": "OTg3NjU0MzIxMGZlZGNiYQ==",
-          "segmentSize": 2048,
-          "encryptedSegmentSize": 2076
-        }
-      ]
-    }
-  },
-  "assertions": []
-}
-```
-
-### 5.3 Notes
-
-- The `ephemeralKey` field contains 1153 bytes (base64-encoded), structured as:
-  - **Bytes 0--64** (65 bytes): Uncompressed EC P-256 ephemeral public key
-    (`0x04 || x || y`). In this placeholder, the leading `BAN4cQ9k...` prefix
-    represents the `0x04` tag and the x, y coordinates.
-  - **Bytes 65--1152** (1088 bytes): ML-KEM-768 ciphertext. In this
-    placeholder, this is the `Ah1YJOSVrLnBq...` portion through the end.
-- The hybrid combiner parameters (from BaseTDF-ALG Section 4.4) are:
-  - HKDF salt: `SHA256("BaseTDF-Hybrid")` -- a fixed 32-byte value.
-  - HKDF IKM: `ss_classical || ss_pqc` (classical ECDH shared secret
-    concatenated with ML-KEM shared secret).
-  - HKDF info: `"BaseTDF-Hybrid-Key"`.
-  - HKDF output length: 32 bytes.
-- No `type` field is present. Hybrid algorithms have no legacy `type`
-  equivalent.
-- The KAS must hold **both** an EC P-256 key pair and an ML-KEM-768 key pair
-  to process this KAO.
-- The security property: the combined derived key is secure as long as
-  **either** the ECDH or ML-KEM component remains unbroken. This provides
-  defense-in-depth during the post-quantum transition.
-
----
-
-## 6. Example: Multi-Split with Mixed Algorithms
+## 5. Example: Multi-Split with Mixed Algorithms
 
 This example demonstrates key splitting across two KAS instances using different
 algorithms, one classical and one post-quantum. The policy requires access
 authorization from both KAS instances (an `allOf` rule with attributes from
 different authorities).
 
-### 6.1 Scenario
+### 5.1 Scenario
 
 - **Policy**: Two `allOf` attributes from different authorities, each mapping
   to a different KAS
@@ -474,7 +392,7 @@ different authorities).
 - **Split 1** (`sid: "s-1"`): `ML-KEM-768` to KAS-B
 - **Integrity**: `HS256` root signature and segment hashes
 
-### 6.2 Policy Object (Decoded)
+### 5.2 Policy Object (Decoded)
 
 ```json
 {
@@ -501,7 +419,7 @@ different authorities).
 }
 ```
 
-### 6.3 Complete Manifest
+### 5.3 Complete Manifest
 
 ```json
 {
@@ -526,11 +444,11 @@ different authorities).
       },
       {
         "alg": "ML-KEM-768",
+        "type": "mlkem-wrapped",
         "kas": "https://kas-b.example.com",
         "kid": "mlkem768-kas-b-2025",
         "sid": "s-1",
-        "protectedKey": "RkVEQ0JBOTg3NjU0MzIxMGZlZGNiYTk4NzY1NDMyMTBmZWRjYmE5ODc2NTQzMjEw",
-        "ephemeralKey": "TUVNLVJFTS03NjggY2lwaGVydGV4dCAoMTA4OCBieXRlcykgZ2VuZXJhdGVkIGJ5IE1MLUtFTS5FbmNhcHN1bGF0ZShrYXNfYl9tbGtlbV9waykuIFRoaXMgaXMgYSBwbGFjZWhvbGRlciB2YWx1ZSByZXByZXNlbnRpbmcgdGhlIEtFTSBjaXBoZXJ0ZXh0IHNlbnQgdG8gS0FTLUIgZm9yIGRlY2Fwc3VsYXRpb24uIEluIGEgcmVhbCBpbXBsZW1lbnRhdGlvbiB0aGlzIHdvdWxkIGJlIGV4YWN0bHkgMTA4OCBieXRlcyBvZiBiaW5hcnkgZGF0YSwgYmFzZTY0LWVuY29kZWQu",
+        "protectedKey": "MIIEgoCCBEDYogtwz+pWduYpaP6triGbS0fqjj9gG2mZT7RhOLbgtCjA48d2+YumwfA+6/5Yi0PGUCJPhm4w5aqFI/yAgMQdtb9lnzSANdtizfxFqLqrAbJhjUyvYPTa8GSNCMWoGR2mPcoVqPjFmTOdjmGRkDyJhkSa+sGj0hyTtvekXtmGlAYUxuWk9qEj3zHcHEB04n7C0LKupKaALcvJnVSoN84ylHCrd+/ghzQL5+tGwTwDrOpwgizIAex0V7Zpgi+XBQP8PmApbBk1Nmx/f8kuLs56jX+EsYwK1nyqfkwq54A+taMIKkWPFD1LavjsIwqwsPfTcwQjgVjC+nYQeMjmLpOx7MqEqdiuehMQP9vjmr31LqBN3OtaeLvc4pJLP9PI7YESA1kbrJcwIEiCbL8TGQ/KDLCVgjPH1UGl87rHnY3BTw7a908q72RrOi334QHVIT+93BKIgZ7NWfzPdBBvSszYgaD1qhmfoUuKgBPRx0bXOPkt7YZ/0T8/eaNzJvAb7qYstV/UKtSdOYxDxXY5imLL1eM5N/UHflx0wiAF223io8K09u27TnWwLSmxMi88aJsKBKk4HUQe/17f7Uv+gtioJubcizCZ3ZhWALcJMUjg+QpY2rnRvTEnsjQi64j41DBl99ZXEiMzYP6dUWRkHPGnRs4UU2/LkNjkfkEH4UJpFOlrEOytc79WzCmIuRJ0bcRLttb4QUu/P896NaUMegLtv9aMANXAdJ1h9HKEJc6EIfk/8PKYl/1X9ICZxTltf9R3u86PgWFdLZmzTZo3iFExHdJDsNA7ZqOxSKKmKE0C99VCHd3BoN5LnakdzuDiZEA+RnYtbCUH1onzqbIDzI6/SfFN7kJ0x74af5WMe3CD5Mj0cv62nq1eO83i/unLe8zMu5QRnjS5tmPV4Qh9USQgXMq9QU41n+wivVhZaa8a6lhnDcHN4SuJgIWSNvgTITxEL1xXEZX53+fp8sf89/NZ+XGef/8PNV77fnMQWOsxv+oCcZdzDxALsKBkA/7PGxVgGo24G2SoeghBSJCyuUkCvKdKdLQo+WV3unkl4OOVNz90AUozFCQ9t/KKGc2ZKUDJnSkZYOs6jM6fWDSKp8w7/RVJaUXxExAHXdg10FZxy5j01qe/kfpQHiqgmXBcayMjGZLGtKQ2YQy/R/R2WKUVA3ul/H/HCAMgKvKdTW9BhzrJ9GaM7yiAS+jLRPglV92afvKFiX0+3ovY4puTkzYrSCTIDqIuI75vblMTAJ0y3XB9sQoqHjIk33ocUGrYTcYezkmTQMuEAauqzyJhz1ZWa2s5Q1zDTB33QOjbwBwJBVN8Ez3xtIs1g2aZPN7EqXkS4YEz67t+VJi0CylwC2+55j/s6I1vuUTiVPqfkKkC46Ae5bCzzX/gohf7XvDZj/L/gWJSE8UOgGn9oLDwoD0AH+3BnzRi4R7E1WZaoCqAhYE8F4bTfxhSeo8M5/sk5zCv/oTadm7+tzkLKJXmHCobujI95MdO5+nRSraFjjx/enXSEiR/zpWy3juzMWpr",
         "policyBinding": {
           "alg": "HS256",
           "hash": "ZmVkY2JhOTg3NjU0MzIxMGFiY2RlZjAxMjM0NTY3ODk="
@@ -561,7 +479,7 @@ different authorities).
 }
 ```
 
-### 6.4 Key Splitting Explanation
+### 5.4 Key Splitting Explanation
 
 The DEK is split into two shares using XOR-based n-of-n secret sharing
 (BaseTDF-KAO Section 3):
@@ -587,14 +505,14 @@ Both KAS instances must independently authorize the request based on their
 respective attribute evaluations. This provides defense-in-depth: compromising
 one KAS alone reveals nothing about the DEK.
 
-### 6.5 Notes
+### 5.5 Notes
 
 - The two KAOs have **different** `sid` values (`"s-0"` and `"s-1"`),
   indicating they protect different shares of the DEK.
 - The first KAO (`RSA-OAEP-256`) has no `ephemeralKey` because RSA-OAEP is a
   key wrapping algorithm.
-- The second KAO (`ML-KEM-768`) has an `ephemeralKey` carrying the KEM
-  ciphertext.
+- The second KAO (`ML-KEM-768`) also has no `ephemeralKey`: its KEM ciphertext
+  is carried inside the `MLKEMWrappedKey` envelope in `protectedKey`.
 - The `policyBinding` in each KAO is computed over the **same** base64-encoded
   policy string, but with **different** HMAC keys (each KAO uses its own DEK
   share as the HMAC key).
@@ -605,13 +523,13 @@ one KAS alone reveals nothing about the DEK.
 
 ---
 
-## 7. Example: v4.3.0 Backward Compatibility Reading
+## 6. Example: v4.3.0 Backward Compatibility Reading
 
 This section shows a v4.3.0-era manifest and explains how a v4.4.0 reader
 interprets it. The v4.3.0 manifest uses the legacy field names and encoding
 conventions.
 
-### 7.1 Legacy v4.3.0 Manifest
+### 6.1 Legacy v4.3.0 Manifest
 
 ```json
 {
@@ -623,7 +541,7 @@ conventions.
         "type": "ec-wrapped",
         "url": "https://kas.example.com",
         "protocol": "kas",
-        "wrappedKey": "dGhlLXhvci13cmFwcGVkLWRlay1zaGFyZS1ieXRlcw==",
+        "wrappedKey": "cGxhY2Vob2xkZXItYWVzLTI1Ni1nY20td3JhcHBlZC1kZWstc2hhcmU=",
         "ephemeralPublicKey": "-----BEGIN PUBLIC KEY-----\nMFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAELegacyKeyValue0placeholder1\nabcdefghijklmnopqrstuvwxyz012345678ABCDEFGHIJKLMNOPQ==\n-----END PUBLIC KEY-----",
         "policyBinding": "ZjY4MDA2YTg0ZjczYzAyODk5MTJlOWIxNGRhNGIzNWE2OGQ0ZDVjMWI1ZThlOWQxYjk4ZTc1MjY0NzQ4MzAwOA=="
       }
@@ -651,7 +569,7 @@ conventions.
 }
 ```
 
-### 7.2 How a v4.4.0 Reader Interprets This Manifest
+### 6.2 How a v4.4.0 Reader Interprets This Manifest
 
 A conformant v4.4.0 reader applies the backward compatibility rules from
 BaseTDF-KAO Section 7 as follows:
@@ -667,7 +585,7 @@ BaseTDF-KAO Section 7 as follows:
 | `protocol: "kas"` | Informational only; ignored | BaseTDF-KAO 2.3 |
 | `algorithm: "AES-256-GCM"` | Treat as `"A256GCM"` | Legacy algorithm name |
 
-### 7.3 Policy Binding Verification with Legacy Encoding
+### 6.3 Policy Binding Verification with Legacy Encoding
 
 The legacy `policyBinding` value is a bare string (not an object). The v4.4.0
 reader treats it as:
@@ -690,19 +608,15 @@ BaseTDF-KAO Section 5.5:
 4. Compare the result against the locally computed
    `HMAC-SHA256(DEK_share, canonical_policy)` using constant-time comparison.
 
-### 7.4 Key Agreement with Legacy XOR Wrapping
+### 6.4 Key Agreement
 
-Because this is a legacy `ECDH-HKDF` KAO, the `wrappedKey` (treated as
-`protectedKey`) contains the XOR of the derived key and the DEK share, rather
-than an AES-256-GCM ciphertext:
+The `ECDH-HKDF` unwrap procedure is identical to the v4.4.0 procedure in
+Section 3; only the field names differ. The reader derives
+`derived_key = HKDF-SHA256(salt=SHA256("TDF"), ikm=shared_secret, info="", len=32)`
+from `ephemeralPublicKey` and the KAS private key, then AES-256-GCM-decrypts
+`wrappedKey` under it.
 
-```
-DEK_share = derived_key XOR Base64Decode(wrappedKey)
-```
-
-where `derived_key = HKDF-SHA256(salt=SHA256("TDF"), ikm=shared_secret, info="", len=32)`.
-
-### 7.5 Notes
+### 6.5 Notes
 
 - The absence of `schemaVersion` in the manifest is the primary signal that
   this is a legacy TDF.
@@ -713,20 +627,20 @@ where `derived_key = HKDF-SHA256(salt=SHA256("TDF"), ikm=shared_secret, info="",
 
 ---
 
-## 8. Example: Assertion with ML-DSA-44 Signing
+## 7. Example: Assertion with ML-DSA-44 Signing
 
 This example shows a handling assertion signed with the `ML-DSA-44`
 post-quantum signature algorithm (FIPS 204, NIST Level 2). ML-DSA-44 is the
 RECOMMENDED post-quantum algorithm for assertion signing.
 
-### 8.1 Scenario
+### 7.1 Scenario
 
 - **Assertion type**: `"handling"` -- a STANAG 5636 classification marking
 - **Signing algorithm**: `ML-DSA-44` (asymmetric, post-quantum)
 - **ML-DSA-44 signature size**: 2420 bytes
 - **Binding method**: JWS Compact Serialization
 
-### 8.2 Assertion Object
+### 7.2 Assertion Object
 
 ```json
 {
@@ -746,7 +660,7 @@ RECOMMENDED post-quantum algorithm for assertion signing.
 }
 ```
 
-### 8.3 JWS Structure Breakdown
+### 7.3 JWS Structure Breakdown
 
 The JWS Compact Serialization has three parts separated by `.` (period):
 
@@ -788,7 +702,7 @@ signatures:
 | `ML-DSA-44` | 2420 bytes | 3227 characters |
 | `ML-DSA-65` | 3309 bytes | 4412 characters |
 
-### 8.4 Complete Manifest with ML-DSA-44 Assertion
+### 7.4 Complete Manifest with ML-DSA-44 Assertion
 
 ```json
 {
@@ -798,12 +712,12 @@ signatures:
     "policy": "eyJ1dWlkIjoiZDRlNWY2YTctOGIwYy00OWQxLWExZjItM2M0ZDVlNmY3YTg5IiwiYm9keSI6eyJkYXRhQXR0cmlidXRlcyI6W3siYXR0cmlidXRlIjoiaHR0cHM6Ly9leGFtcGxlLmNvbS9hdHRyL2NsYXNzaWZpY2F0aW9uL3ZhbHVlL3NlY3JldCIsImRpc3BsYXlOYW1lIjoiQ2xhc3NpZmljYXRpb246IFNlY3JldCIsImlzRGVmYXVsdCI6ZmFsc2UsInB1YktleSI6IiIsImthc1VSTCI6Imh0dHBzOi8va2FzLmV4YW1wbGUuY29tIn1dLCJkaXNzZW0iOltdfX0=",
     "keyAccess": [
       {
-        "alg": "X-ECDH-ML-KEM-768",
+        "alg": "ML-KEM-1024",
+        "type": "mlkem-wrapped",
         "kas": "https://kas.example.com",
-        "kid": "kas-hybrid-2025-02",
+        "kid": "kas-mlkem1024-2025-02",
         "sid": "",
-        "protectedKey": "Kp7mXvQ2dRa9Wn1Yg6BcTf0HjLsOeIuCxZwSt5Mk4JhNqDrEyGbAvFo=",
-        "ephemeralKey": "BAN4cQ9k2p7xLMjZ+hG1sRbTv5Y3wUOeKiDf6qSrXtVuolyHWJmPgCBYAh1YJOSVrLnBqZm9xdGp2eHpiZGZoamxucHJ0dnd4emJkZmhqbG5wcnR2eHpiZGZoamxucHJ0dnd4emJkZmhqbG5wcnR2eHpiZGZoamxucHJ0dnd4emJkZmhqbG5wcnR2eHpiZGZoamxucHJ0dnd4emJkZmhqbG5wcnR2eHpiZGZoamxucHJ0dnd4emJkZmhqbG5wcnR2eHpiZGZoamxucHJ0dnd4emJkZmhqbG5wcnR2eHpiZGZoamxucHJ0dnd4emJkZmhqbG5wcnR2eHpiZGZoamxucHJ0dnd4emJkZmhqbG5wcnR2eHpiZGZoamxucHJ0dnd4emJkZmhqbG5wcnR2eHpiZGZoamxucHJ0dnd4emJkZmhqbG5wcnR2eHpiZGZoamxucHJ0dnd4emJkZmhqbG5wcnR2eHpiZGZoamxucHJ0dnd4emJkZmhqbG5wcnR2eHpiZGZoamxucHJ0dnd4emJkZmhqbG5wcnR2eHpiZGZoamxucHJ0dnd4emJkZmhqbG5wcnR2eHpiZGZoamxucHJ0dnd4emJkZmhqbG5wcnR2eHpiZGZoamxucHJ0dnd4emJkZmhqbG5wcnR2eHpiZGZoamxucHJ0dnd4emJkZmhqbG5wcnR2eHpiZGZoamxucHJ0dnd4emJkZmhqbG5wcnR2eHpiZGZoamxucHJ0dnd4emJkZmhqbG5wcnR2eHpiZGZoamxucHJ0dnd4emJkZmhqbG5wcnR2eA==",
+        "protectedKey": "MIIGYoCCBiAl5HPnFgYIvUecCXEqxhOxvjPfKzZP/1N3AFqOg8pzJAfScJlmRXuwJAgyPoSaNo4KgQm6El9nGwjrws3l6v0+9Uau+X0WNNSQ9NV+bhaf/PfjrTPRLkw8RNtbaONTgcfzDCI/6LvBw85MbU2VcmKabtf7qGnUDOdjVXxzXDkHHU6/CUA6hypz4cSldd79rYU1oJeJ0x4/La4sPs+sXVlmVhNxKqvJC8aUPQ7O8OJY4Aa1HI4vvGT/Ox5gvx8LKZtmGyjv0zP/Nn+PgdcAQF+QjaGljzsnU6IEOL9rDfSjIhvhyCBtL5aHdlVp1xZa1vybzQA2KR6rFaTfuiBxnIKBBycgbUelohofEauocKfci+tGkqSWgbLDIxBa6woM+N43eWgL+/L9FvKOoxhrDznZzSZWJ7iwm9NFTUQE6eRx3f5R537X2bpXytoBX6snqZSBs01wE7wJMR8ACYh5KQJvEAmYDYYXq//51DtxcM9BTld08HtdiZt/OH43PyoPX8uQ4IC6b8R3rrfQHP/0FCQsi8q22XwrmnJgLqTgEZ4RtEzA6+d2Dhx861uihbch/VMfYGgLdxf12wgVVJ9I79m8q80dM5ZYhAgApyp63Y9D7VUMFUoeaK4r6Dqkj00XLydpoy5pDj0pS0YeRazu8vc0Q97RDJitleeVQi/5/imuJH1JcsetTFVs3eMlqxUHjQ/6jTU4XBMOjnjqtBXYibzDYxBss4PZ6jRtokq8AH9Xwdrn3lA3uW8RHziE/ZozWqVFvhnc85bGa4MLC3lOuyJu+kL/+ycMc+lVfet9xbWLO8N1P8Sll7Vb6ohaJvuYSSk19xLI7BDFsQ5xdC+9JBXa386QwUUSd9zCfwnUBMR4JYkLQ31gwYyvEbsUI4W2ChwDrVmUpfHQcr1RshmjTze4eRA6Iboq4hjkvlBmNtnAfamGpCumFqlbdMEkFvQXFK4qMYN6KokyF9btDl9RI92jeZZRSDCYJRFNQMRandNmyZ0qGRj5c6SghjHwVS0HBSP7LqKQXl2UgeNlMmo4zyS7bEe2Ofgq5JsF+EPPAS53d3fEwC/2c/hyWjZoIdTOQvdP33QANaBNcGuWW9ggD1KUjcyQWjyYGWJHLM9VZfz/QUwwMxf62MGA9ftdzSmzPLaCIMlkV2qUvEd//IBPRxAaXUmagT8jbNqDPNg4lkBICfp4hoDtmVBMZGCb3MamGbx7oMDmnm/CBegm7kofqmq9nZbUKIL2+oNVTzbWB98tTMvZgtdGBShSAyvDImgOxJ6EHDs9Q+kFnEwEAY6yTTJMUqqX2RfNv6XrtfB785oHieaqyAp4oore3TTZquD2HW+HmCDLp0JTv8kl+uIlwSJiPaAxcYpt0B8Srwu9sSDeXYLGNlnaDvadpGhdhEbx5bEUhEhSXrSyGhNq/35Z/0spiNrEuLpiuioEV5dZ/4EVR3aHyMbc62ND7ZvlPQMKkPfRI2d5T8iKHN72ir1QFvwbeb0el1O9Hdvg2vTDJoXZ2XksViknSkIppn/brmKOCDNEVeNvfN/010aJJlFNBTovhWPh8f3fpOtubfUMGMrb4LbgK+nBqIJdxYVYGIxhk1K+t2us0xJaSpoWNnyUgl/6sl4+UBvotuk04h+XHnmKYhA0MU8vjrJ8Jc7RiTGEmt9GcOyWztjlrfGhbaGm4w2f2P2JfQxl+bUkMxGieIhbeyI0y4Y62DhDk/KAXPKwjGFnQ7XD0hPRPROKj7DzpSqi6y0QobZJ6q8Rc718v4MIsxTNzIpTZAfLxnvCz1u3QL/LSvIfHhdnwPGXvTZAhSXafop1ETZelwVt5z/3xPfyjDXGHDXafxqxyiXYxQoxSMoyPZjjwLGwvHCXPvv+09xfFppEB+8NyUhnmlJNqsvTWD80sn7ysdKwvgbEZTo3lH6Feco9iz3UPlfY7Y/Q8UUYxHM1wwAgkvPAKZaCXBwNB7AB/OGLowH0xcqX59L3I+Ggl6CLXpuYbWJ8x4JNzTL321G+Ajr1ryES6Rp6q/lVf/1P6rjMObwDT93YJ7gtED20nmqR83KD9xTwSTq11qhBSaKzGIA4UPSEiaLfl+FrEoE8YnqUCIsEtaYgUWA2pddx7gGN1kQ3vRAawdkPB8FJ/+LZd0SAaEfSa/32yFffc87ZorD1Um7ItNq56lTq",
         "policyBinding": {
           "alg": "HS256",
           "hash": "OWEzYjRjNWQ2ZTdmOGExMjM0NTY3ODkwYWJjZGVmMDE="
@@ -850,7 +764,7 @@ signatures:
 }
 ```
 
-### 8.5 Notes
+### 7.5 Notes
 
 - The JWS `alg` header is `"ML-DSA-44"`, matching the identifier in
   BaseTDF-ALG Section 3.4 and Section 6.5.
@@ -868,16 +782,17 @@ signatures:
   aggregate integrity hash (from segment hashes) and the decoded assertion
   hash bytes. This creates a two-way binding between the assertion and the
   specific TDF payload.
-- The key protection algorithm (`X-ECDH-ML-KEM-768`) and the assertion
-  signing algorithm (`ML-DSA-44`) are independent choices. This example
-  demonstrates a fully post-quantum-ready TDF using hybrid key protection
-  and PQC assertion signing.
+- The key protection algorithm (`ML-KEM-1024`) and the assertion signing
+  algorithm (`ML-DSA-44`) are independent choices. This example demonstrates a
+  fully post-quantum TDF: PQC key encapsulation and PQC assertion signing.
+- The `protectedKey` envelope here carries a 1568-byte `mlkemCiphertext`, the
+  ML-KEM-1024 ciphertext size.
 
 ---
 
-## 9. Test Vector Format Notes
+## 8. Test Vector Format Notes
 
-### 9.1 Placeholder Values
+### 8.1 Placeholder Values
 
 All base64-encoded values in this document are illustrative placeholders. They
 demonstrate the correct structural format and approximate size of real values
@@ -898,7 +813,7 @@ conventions are used:
 - **JWS signatures**: Placeholder compact serialization with descriptive
   text in the signature component.
 
-### 9.2 Real Test Vectors
+### 8.2 Real Test Vectors
 
 Full test vectors with actual computed cryptographic values -- including
 known key pairs, deterministic RNG output, and expected intermediate and
@@ -913,7 +828,7 @@ would include:
 - Expected policy binding HMAC values.
 - Complete JWS tokens with verifiable signatures.
 
-### 9.3 Implementer Guidance
+### 8.3 Implementer Guidance
 
 When implementing against these examples:
 
@@ -923,14 +838,14 @@ When implementing against these examples:
    field names (`alg`, `kas`, `kid`, `sid`, `protectedKey`, `ephemeralKey`)
    and includes deprecated aliases (`type`, `url`, `wrappedKey`) where
    specified for backward compatibility.
-3. **Validate base64 lengths**: Check that the base64-decoded lengths of
-   `ephemeralKey` match the expected sizes for each algorithm (65 bytes for
-   EC P-256 uncompressed point, 1088 bytes for ML-KEM-768 ciphertext,
-   1153 bytes for X-ECDH-ML-KEM-768 combined).
+3. **Validate base64 lengths**: For `ECDH-HKDF`, check that the base64-decoded
+   `ephemeralKey` is a PEM-encoded EC public key (65 bytes for an uncompressed
+   P-256 point). For ML-KEM, decode `protectedKey` as DER and check that
+   `mlkemCiphertext` is 1088 bytes (ML-KEM-768) or 1568 bytes (ML-KEM-1024).
 4. **Validate policy binding**: Verify that your policy binding computation
    uses the base64-encoded policy string (not the decoded JSON) as the HMAC
    message, and the DEK share (not the full DEK) as the HMAC key.
 5. **Test backward compatibility**: Verify that your reader correctly handles
-   the v4.3.0 manifest in Section 7, including `type`-to-`alg` inference,
+   the v4.3.0 manifest in Section 6, including `type`-to-`alg` inference,
    field name aliasing, bare-string policy binding, and hex-then-base64
    decoding.

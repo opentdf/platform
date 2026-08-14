@@ -724,7 +724,7 @@ for CRQC development.
 
 Organizations SHOULD assess their data's confidentiality lifetime against
 current CRQC timelines. Data with confidentiality requirements exceeding 10
-years SHOULD be protected with post-quantum or hybrid algorithms.
+years SHOULD be protected with post-quantum algorithms.
 
 ### 8.2 Quantum-Vulnerable Components
 
@@ -747,30 +747,37 @@ specified security levels:
 | Policy binding | HMAC-SHA256 | Quantum-resistant |
 | Segment hashing | HMAC-SHA256 / GMAC | Quantum-resistant |
 
-### 8.3 Hybrid Transition Strategy
+### 8.3 Direct Post-Quantum Transition Strategy
 
-To mitigate the HNDL threat while maintaining interoperability with existing
-systems, BaseTDF adopts a **hybrid transition strategy** that combines
-classical and post-quantum algorithms.
+To mitigate the HNDL threat, BaseTDF adopts a **direct transition strategy**:
+deployments move from a classical key protection algorithm to a pure ML-KEM
+algorithm, without an intervening hybrid PQ/T step.
 
-In a hybrid KAO, the `wrappedKey` field contains the output of a combined key
-encapsulation mechanism where both a classical and a post-quantum KEM
-contribute to the shared secret. The security of the combined scheme is at
-least as strong as the stronger of the two constituent algorithms: if either
-the classical or the post-quantum algorithm remains unbroken, the DEK share
-remains protected.
+BaseTDF-ALG deliberately defines no hybrid post-quantum/traditional (PQ/T) key
+protection algorithms (BaseTDF-ALG Section 3.2). BaseTDF targets the algorithm
+set supported by existing FIPS 203-compliant hardware security modules, which
+do not currently -- and may never -- support composite PQ/T KEM constructions.
+A hybrid algorithm that cannot be executed inside the HSM would force the KAS
+private key material into software, trading a speculative cryptanalytic risk
+for a concrete key-custody one.
 
-The specific hybrid algorithm constructions are defined in BaseTDF-ALG
-Section 6. This document defines the security properties they MUST satisfy:
+The security consequences of this choice are:
 
-1. **Hybrid binding**: The combined shared secret MUST be derived from both
-   the classical and post-quantum key agreement outputs using a KDF (e.g.,
-   HKDF-SHA256), such that an attacker must break BOTH algorithms to recover
-   the shared secret.
-2. **Independent keys**: The classical and post-quantum key pairs MUST be
-   generated independently.
-3. **Combined ciphertext**: The KAO MUST carry sufficient information for the
-   KAS to perform both the classical and post-quantum decapsulation.
+1. **No classical floor**: A pure ML-KEM KAO derives all of its confidentiality
+   from ML-KEM. A cryptanalytic break of ML-KEM would expose the DEK share with
+   no classical algorithm underneath it. Deployments that judge this risk
+   unacceptable can obtain a comparable property at the manifest layer by
+   splitting the DEK (Section 3 of BaseTDF-KAO) across one ML-KEM KAO and one
+   classical KAO, which requires an attacker to break both.
+2. **No downgrade path**: Because no hybrid identifier exists, an attacker
+   cannot substitute a hybrid KAO for a pure ML-KEM one to force a weaker
+   construction. Unrecognized `alg` values MUST be rejected (SI-6).
+3. **Migration is per-KAS-key**: Transitioning a deployment means provisioning
+   ML-KEM key pairs on the KAS and re-encrypting or re-keying existing TDFs, not
+   negotiating a combined algorithm.
+
+Should HSM support for composite PQ/T KEMs materialize, hybrid algorithms can be
+added to the BaseTDF-ALG registry without structural changes to the manifest.
 
 ### 8.4 Algorithm Agility
 
@@ -789,40 +796,44 @@ silently ignored or downgraded.
 The recommended migration path for key encapsulation algorithms is:
 
 ```
-Phase 1 (Current)          Phase 2 (Hybrid)              Phase 3 (Post-Quantum)
-─────────────────          ────────────────               ──────────────────────
-ECDH + HKDF (P-256+)  →   X-ECDH-ML-KEM-768         →   ML-KEM-768
-RSA-OAEP (2048+)       →   (classical + PQC combined) →   (pure PQC)
+Phase 1 (Classical)        Phase 2 (Post-Quantum)
+───────────────────        ──────────────────────
+ECDH + HKDF (P-256+)   →   ML-KEM-768 / ML-KEM-1024
+RSA-OAEP (2048+)       →   (pure PQC)
 ```
 
-**Phase 1** (current): Classical algorithms as specified in Section 6.2.
+**Phase 1** (classical): Classical algorithms as specified in Section 6.2.
 Suitable for data with confidentiality requirements under 10 years or where
-PQC support is not yet available.
+PQC support is not yet available in the deployment's KAS hardware.
 
-**Phase 2** (hybrid): Combined classical and post-quantum algorithms as
-defined in BaseTDF-ALG Section 6. The hybrid identifier `X-ECDH-ML-KEM-768`
-denotes ECDH (P-256 or P-384) combined with ML-KEM-768. This phase provides
-quantum resistance while maintaining a classical security floor. This is the
-RECOMMENDED configuration for new deployments concerned with HNDL threats.
+**Phase 2** (post-quantum): Pure post-quantum algorithms -- `ML-KEM-768` or
+`ML-KEM-1024`, defined in BaseTDF-ALG Section 5. This is the RECOMMENDED
+configuration for new deployments concerned with HNDL threats. Its timeline
+depends on ML-KEM availability in the KAS key store (including HSM firmware
+support for `CKM_ML_KEM_KEY_DECAP` or equivalent).
 
-**Phase 3** (post-quantum): Pure post-quantum algorithms (e.g., ML-KEM-768,
-ML-KEM-1024) once classical algorithm support is no longer required for
-interoperability. The timeline for this phase depends on ecosystem readiness
-and the deprecation schedule for classical algorithms.
+A deployment MAY run both phases concurrently: the KAS can hold classical and
+ML-KEM key pairs simultaneously, and different TDFs -- or different KAOs within
+one TDF -- can use different algorithms. Splitting a DEK across an ML-KEM KAO
+and a classical KAO under distinct `sid` values yields a manifest-layer
+equivalent of hybrid protection (see Section 8.3).
 
 ### 8.6 Signature Migration
 
 For assertion signatures and DPoP proofs, the migration path is:
 
 ```
-Phase 1 (Current)    Phase 2 (Hybrid)           Phase 3 (Post-Quantum)
-────────────────     ────────────────           ──────────────────────
-ES256 / RS256    →   Composite signatures   →   ML-DSA-65 / ML-DSA-87
+Phase 1 (Classical)    Phase 2 (Post-Quantum)
+───────────────────    ──────────────────────
+ES256 / RS256      →   ML-DSA-44 / ML-DSA-65
 ```
 
 ML-DSA (FIPS 204) is the RECOMMENDED post-quantum signature algorithm for
-BaseTDF. The specific composite signature construction and algorithm
-identifiers are defined in BaseTDF-ALG Section 7.
+BaseTDF. The registered identifiers are `ML-DSA-44` and `ML-DSA-65`
+(BaseTDF-ALG Sections 6.5 and 6.6). As with key protection, BaseTDF-ALG defines
+no composite (hybrid) signature algorithms; a deployment requiring both a
+classical and a post-quantum signature can attach two assertions, each signed
+under a different algorithm.
 
 ### 8.7 Timeline Considerations
 

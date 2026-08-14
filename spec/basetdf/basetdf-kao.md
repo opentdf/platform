@@ -98,8 +98,7 @@ ML-KEM-768 key encapsulation mechanism:
   "kas": "https://kas.example.com",
   "kid": "kas-mlkem-key-2025",
   "sid": "split-0",
-  "protectedKey": "<base64-encoded protected DEK share>",
-  "ephemeralKey": "<base64-encoded KEM ciphertext>",
+  "protectedKey": "<base64-encoded MLKEMWrappedKey DER envelope>",
   "policyBinding": {
     "alg": "HS256",
     "hash": "<base64-encoded HMAC-SHA256 digest>"
@@ -117,7 +116,7 @@ Section 3.2). This field unambiguously identifies the cryptographic mechanism
 used to protect the DEK share.
 
 Valid values include: `RSA-OAEP`, `RSA-OAEP-256`, `ECDH-HKDF`, `ML-KEM-768`,
-`ML-KEM-1024`, `X-ECDH-ML-KEM-768`.
+`ML-KEM-1024`.
 
 Implementations MUST include this field when creating new KAOs. Implementations
 MUST reject KAOs whose `alg` value is not recognized (see SI-6 in BaseTDF-SEC).
@@ -125,7 +124,10 @@ MUST reject KAOs whose `alg` value is not recognized (see SI-6 in BaseTDF-SEC).
 #### `type` (string, DEPRECATED)
 
 Legacy key type field from BaseTDF v4.3.0. Accepted values: `"wrapped"`,
-`"ec-wrapped"`, `"remote"`.
+`"ec-wrapped"`, `"mlkem-wrapped"`, `"remote"`.
+
+Note that `"mlkem-wrapped"` does not distinguish ML-KEM-768 from ML-KEM-1024;
+see Section 7.1 for the resolution rules that apply when `alg` is absent.
 
 When both `alg` and `type` are present, `alg` takes precedence. When only `type`
 is present (legacy KAOs), the algorithm is inferred per the backward
@@ -180,13 +182,11 @@ structure of this field depend on the algorithm identified by `alg`:
 - For key wrapping algorithms (`RSA-OAEP`, `RSA-OAEP-256`): the RSA-OAEP
   ciphertext.
 - For key agreement algorithms (`ECDH-HKDF`): the AES-256-GCM ciphertext of
-  the DEK share encrypted under the derived key (or XOR of DEK share and
-  derived key for legacy TDFs).
-- For key encapsulation algorithms (`ML-KEM-768`, `ML-KEM-1024`): the
-  AES-256-GCM ciphertext of the DEK share encrypted under the HKDF-derived
-  key.
-- For hybrid algorithms (`X-ECDH-ML-KEM-768`): the AES-256-GCM ciphertext of
-  the DEK share encrypted under the combined derived key.
+  the DEK share encrypted under the HKDF-derived key.
+- For key encapsulation algorithms (`ML-KEM-768`, `ML-KEM-1024`): the DER
+  encoding of an `MLKEMWrappedKey` structure, which carries both the KEM
+  ciphertext and the AES-256-GCM ciphertext of the DEK share. See
+  Section 4.3 and BaseTDF-ALG Section 4.3.
 
 #### `wrappedKey` (string, DEPRECATED)
 
@@ -198,9 +198,8 @@ compatibility.
 
 #### `ephemeralKey` (string, CONDITIONAL)
 
-Base64-encoded ephemeral public key or KEM ciphertext. This field is REQUIRED
-for key agreement and key encapsulation algorithms; it is not used for key
-wrapping algorithms.
+Base64-encoded ephemeral public key. This field is REQUIRED for key agreement
+algorithms; it is not used for key wrapping or key encapsulation algorithms.
 
 The contents depend on the algorithm:
 
@@ -208,8 +207,7 @@ The contents depend on the algorithm:
 |:----------|:-----------------------|
 | `RSA-OAEP`, `RSA-OAEP-256` | Not used; SHOULD be omitted |
 | `ECDH-HKDF` | Ephemeral EC public key in PEM format |
-| `ML-KEM-768`, `ML-KEM-1024` | KEM ciphertext (raw bytes, base64-encoded) |
-| `X-ECDH-ML-KEM-768` | Concatenation: EC point (65 bytes) &#124;&#124; ML-KEM-768 ciphertext (1088 bytes), base64-encoded. See BaseTDF-ALG Section 4.4. |
+| `ML-KEM-768`, `ML-KEM-1024` | Not used; SHOULD be omitted. The KEM ciphertext travels inside the `protectedKey` envelope. See Section 4.3. |
 
 Legacy KAOs use the JSON field name `ephemeralPublicKey` instead of
 `ephemeralKey`. Implementations MUST accept both field names when reading.
@@ -419,16 +417,16 @@ then protects the DEK share.
 | Field | Value |
 |:------|:------|
 | `alg` | `"ECDH-HKDF"` |
-| `protectedKey` | Base64-encoded AES-256-GCM ciphertext (or XOR result for legacy) |
+| `protectedKey` | Base64-encoded AES-256-GCM ciphertext |
 | `ephemeralKey` | Ephemeral EC public key in PEM format |
 
 **Implementation note**: The HKDF salt is `SHA256("TDF")` -- the SHA-256 hash
-of the three ASCII bytes `0x54 0x44 0x46`. This is a fixed 32-byte value.
+of the three ASCII bytes `0x54 0x44 0x46`. This is a fixed 32-byte value. The
+info parameter is empty by default.
 
-**Legacy compatibility**: The v4.3.0 implementation uses XOR wrapping
-(`derived_key XOR DEK_share`) in step 4 instead of AES-256-GCM. Implementations
-MUST support XOR-based unwrapping when reading existing TDFs. New TDFs SHOULD
-use AES-256-GCM wrapping. See BaseTDF-ALG Section 4.2 for details.
+**Version compatibility**: The `ECDH-HKDF` wire format is identical in v4.3.0
+and v4.4.0; only the field names differ (`wrappedKey`/`ephemeralPublicKey` in
+v4.3.0). See BaseTDF-ALG Section 4.2 for details.
 
 **Example** (ECDH-HKDF):
 
@@ -449,49 +447,71 @@ use AES-256-GCM wrapping. See BaseTDF-ALG Section 4.2 for details.
 
 ### 4.3 Key Encapsulation (ML-KEM-768, ML-KEM-1024)
 
-Key encapsulation uses a lattice-based KEM to establish a shared secret, which
-is then used to derive a symmetric key protecting the DEK share.
+Key encapsulation uses a lattice-based KEM to establish a 32-byte shared secret,
+which is used directly as the AES-256 key protecting the DEK share. Both the KEM
+ciphertext and the encrypted DEK share travel together in a single DER-encoded
+envelope carried in `protectedKey`; the `ephemeralKey` field is not used.
 
 **Encryption** (TDF creation):
 
 ```
-1. (ct, ss) = ML-KEM.Encapsulate(kas_mlkem_pk)
-2. derived_key = HKDF-SHA256(
-     salt = "",
-     ikm  = ss,
-     info = "BaseTDF-KEM",
-     len  = 32
-   )
-3. protectedKey = Base64(AES-256-GCM(derived_key, DEK_share))
-4. ephemeralKey = Base64(ct)
+1. (ct, ss)     = ML-KEM.Encapsulate(kas_mlkem_pk)
+2. encryptedDEK = AES-256-GCM(key = ss, DEK_share)
+3. protectedKey = Base64(DER(MLKEMWrappedKey {
+                    mlkemCiphertext = ct,
+                    encryptedDEK    = encryptedDEK
+                  }))
 ```
 
 **Decryption** (KAS rewrap):
 
 ```
-1. ss = ML-KEM.Decapsulate(kas_mlkem_sk, Base64Decode(ephemeralKey))
-2. derived_key = HKDF-SHA256(
-     salt = "",
-     ikm  = ss,
-     info = "BaseTDF-KEM",
-     len  = 32
-   )
-3. DEK_share = AES-256-GCM-Decrypt(derived_key, Base64Decode(protectedKey))
+1. env       = DER_parse(Base64Decode(protectedKey)) as MLKEMWrappedKey
+2. ss        = ML-KEM.Decapsulate(kas_mlkem_sk, env.mlkemCiphertext)
+3. DEK_share = AES-256-GCM-Decrypt(key = ss, env.encryptedDEK)
 ```
+
+**Envelope structure**:
+
+```asn1
+MLKEMWrappedKey ::= SEQUENCE {
+    mlkemCiphertext  [0] IMPLICIT OCTET STRING,
+    encryptedDEK     [1] IMPLICIT OCTET STRING
+}
+```
+
+`encryptedDEK` is the AES-256-GCM output with the nonce prepended and the tag
+appended:
+
+| Offset | Length | Contents |
+|:-------|:-------|:---------|
+| 0 | 12 | GCM nonce (randomly generated per wrap) |
+| 12 | n | Ciphertext of the DEK share |
+| 12 + n | 16 | GCM authentication tag |
+
+No additional authenticated data (AAD) is supplied.
 
 **KAO fields**:
 
 | Field | Value |
 |:------|:------|
 | `alg` | `"ML-KEM-768"` or `"ML-KEM-1024"` |
-| `protectedKey` | Base64-encoded AES-256-GCM ciphertext |
-| `ephemeralKey` | Base64-encoded KEM ciphertext (1088 bytes for ML-KEM-768, 1568 bytes for ML-KEM-1024) |
+| `protectedKey` | Base64-encoded `MLKEMWrappedKey` DER envelope |
+| `ephemeralKey` | Not used; SHOULD be omitted |
 
 **Requirements**:
 
-- Implementations MUST use `"BaseTDF-KEM"` as the HKDF info string for domain
-  separation.
 - ML-KEM operations MUST conform to [NIST FIPS 203][FIPS203].
+- The 32-byte shared secret MUST be used directly as the AES-256 key.
+  Implementations MUST NOT apply HKDF or any other KDF. See BaseTDF-ALG
+  Section 4.3.1 for the rationale.
+- Implementations MUST reject a KAO whose `mlkemCiphertext` length does not
+  match the parameter set named by `alg` (1088 bytes for ML-KEM-768, 1568 bytes
+  for ML-KEM-1024).
+- Implementations MUST reject an envelope with trailing bytes after the DER
+  `SEQUENCE`.
+- Implementations MUST NOT use `ephemeralKey` for ML-KEM algorithms. A reader
+  that encounters a populated `ephemeralKey` on an ML-KEM KAO MUST ignore it.
 
 **Example** (ML-KEM-768):
 
@@ -501,101 +521,7 @@ is then used to derive a symmetric key protecting the DEK share.
   "kas": "https://kas.example.com",
   "kid": "kas-mlkem-key-2025",
   "sid": "split-0",
-  "protectedKey": "base64...AES-GCM ciphertext of DEK share...",
-  "ephemeralKey": "base64...1088 bytes of ML-KEM-768 ciphertext...",
-  "policyBinding": {
-    "alg": "HS256",
-    "hash": "base64...HMAC-SHA256 digest..."
-  }
-}
-```
-
-### 4.4 Hybrid (X-ECDH-ML-KEM-768)
-
-Hybrid key protection combines ECDH key agreement with ML-KEM key encapsulation.
-The combined construction is secure as long as either the classical or the
-post-quantum component remains unbroken.
-
-**Encryption** (TDF creation):
-
-```
-// Classical component
-1. ephemeral_ec = generate_ec_keypair(P-256)
-2. ss_classical = ECDH(ephemeral_ec.sk, kas_ec_pk)
-
-// Post-quantum component
-3. (ct_pqc, ss_pqc) = ML-KEM-768.Encapsulate(kas_mlkem_pk)
-
-// Combine shared secrets
-4. combined_ss = HKDF-SHA256(
-     salt = SHA256("BaseTDF-Hybrid"),
-     ikm  = ss_classical || ss_pqc,
-     info = "BaseTDF-Hybrid-Key",
-     len  = 32
-   )
-
-// Protect the DEK share
-5. protectedKey = Base64(AES-256-GCM(combined_ss, DEK_share))
-
-// Encode ephemeral material
-6. ephemeralKey = Base64(ephemeral_ec.pk_uncompressed || ct_pqc)
-```
-
-**Decryption** (KAS rewrap):
-
-```
-// Parse ephemeralKey
-1. raw = Base64Decode(ephemeralKey)
-2. ephemeral_ec_pk = raw[0..65]      // 65 bytes: uncompressed P-256 point
-3. ct_pqc          = raw[65..1153]   // 1088 bytes: ML-KEM-768 ciphertext
-
-// Classical component
-4. ss_classical = ECDH(kas_ec_sk, ephemeral_ec_pk)
-
-// Post-quantum component
-5. ss_pqc = ML-KEM-768.Decapsulate(kas_mlkem_sk, ct_pqc)
-
-// Combine shared secrets
-6. combined_ss = HKDF-SHA256(
-     salt = SHA256("BaseTDF-Hybrid"),
-     ikm  = ss_classical || ss_pqc,
-     info = "BaseTDF-Hybrid-Key",
-     len  = 32
-   )
-
-// Recover the DEK share
-7. DEK_share = AES-256-GCM-Decrypt(combined_ss, Base64Decode(protectedKey))
-```
-
-**KAO fields**:
-
-| Field | Value |
-|:------|:------|
-| `alg` | `"X-ECDH-ML-KEM-768"` |
-| `protectedKey` | Base64-encoded AES-256-GCM ciphertext |
-| `ephemeralKey` | Base64-encoded concatenation: EC point (65 bytes) &#124;&#124; ML-KEM-768 ciphertext (1088 bytes) = 1153 bytes total |
-
-**Requirements**:
-
-- The HKDF salt MUST be `SHA256("BaseTDF-Hybrid")` -- a fixed 32-byte value.
-- The HKDF info string MUST be `"BaseTDF-Hybrid-Key"`.
-- The concatenation order of shared secrets MUST be `ss_classical || ss_pqc`.
-- The classical component MUST use the P-256 curve.
-- The post-quantum component MUST use ML-KEM-768 per [FIPS 203][FIPS203].
-- The KAS MUST hold both an EC P-256 key pair and an ML-KEM-768 key pair.
-
-See BaseTDF-ALG Section 4.4 for the full parameter specification.
-
-**Example** (X-ECDH-ML-KEM-768):
-
-```json
-{
-  "alg": "X-ECDH-ML-KEM-768",
-  "kas": "https://kas.example.com",
-  "kid": "kas-hybrid-2025",
-  "sid": "s-0",
-  "protectedKey": "base64...AES-GCM ciphertext of DEK share...",
-  "ephemeralKey": "base64...1153 bytes: EC point || ML-KEM ciphertext...",
+  "protectedKey": "base64...MLKEMWrappedKey DER: 1088-byte ciphertext + wrapped DEK...",
   "policyBinding": {
     "alg": "HS256",
     "hash": "base64...HMAC-SHA256 digest..."
@@ -757,6 +683,7 @@ MUST apply the following transformations:
 |:----------------------|:----------------------|
 | `type: "wrapped"` | Infer `alg: "RSA-OAEP"` |
 | `type: "ec-wrapped"` | Infer `alg: "ECDH-HKDF"` |
+| `type: "mlkem-wrapped"` | Infer `alg: "ML-KEM-768"` or `alg: "ML-KEM-1024"` (ambiguous -- see below) |
 | `wrappedKey` | Treat as `protectedKey` |
 | `url` | Treat as `kas` |
 | `ephemeralPublicKey` | Treat as `ephemeralKey` |
@@ -767,9 +694,13 @@ When a KAO contains a `type` field but no `alg` field, the type-to-algorithm
 mapping in the table above is the sole mechanism for determining the algorithm.
 These mappings are exhaustive for all v4.3.0 KAOs.
 
-When reading v4.3.0 TDFs, the `ECDH-HKDF` algorithm uses XOR-based wrapping
-(not AES-256-GCM). Implementations MUST support XOR-based unwrapping for
-backward compatibility.
+The `"mlkem-wrapped"` type value is the one exception: it does not distinguish
+ML-KEM-768 from ML-KEM-1024. This is not a practical obstacle, because the KAS
+must resolve `kid` against its key registry in any case in order to select a
+private key, and that lookup yields the parameter set. A reader that has no
+access to the key registry MAY instead infer the parameter set from the length
+of `mlkemCiphertext` in the decoded `protectedKey` envelope (1088 bytes implies
+ML-KEM-768, 1568 bytes implies ML-KEM-1024).
 
 ### 7.2 Writing v4.4.0 KAOs
 
@@ -782,6 +713,7 @@ When creating new KAOs, implementations MUST observe the following:
    with the `alg` value:
    - `alg: "RSA-OAEP"` or `alg: "RSA-OAEP-256"` -> `type: "wrapped"`
    - `alg: "ECDH-HKDF"` -> `type: "ec-wrapped"`
+   - `alg: "ML-KEM-768"` or `alg: "ML-KEM-1024"` -> `type: "mlkem-wrapped"`
    - All other `alg` values have no `type` equivalent; `type` SHOULD be omitted.
 3. MUST use `protectedKey` as the field name. MAY additionally include
    `wrappedKey` as an alias with the same value for backward compatibility.

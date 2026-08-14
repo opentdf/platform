@@ -162,9 +162,11 @@ The KAS MAY additionally support:
 | `rsa:4096` | RSA 4096-bit | OPTIONAL |
 | `ec:secp384r1` | EC P-384 | OPTIONAL |
 | `ec:secp521r1` | EC P-521 | OPTIONAL |
+| `mlkem:768` | ML-KEM-768 | OPTIONAL (PQC) |
+| `mlkem:1024` | ML-KEM-1024 | OPTIONAL (PQC) |
 
-For post-quantum and hybrid algorithms, the KAS MAY support additional key
-types as defined in BaseTDF-ALG Section 5. See Section 9 for algorithm
+ML-KEM public keys are returned as SubjectPublicKeyInfo in PEM format; see
+BaseTDF-ALG Section 5.6 for the encoding. See Section 9 for algorithm
 negotiation during PQC transition.
 
 ### 2.5 Error Responses
@@ -836,32 +838,45 @@ BaseTDF-SEC Section 8), the KAS MUST support the following:
    substitute algorithms.
 
 3. **Key type coexistence**: The KAS MUST maintain key pairs for all supported
-   algorithm families concurrently. For example, during hybrid transition,
-   the KAS needs RSA key pairs (for legacy TDFs), EC key pairs (for ECDH-based
+   algorithm families concurrently. For example, during the PQC transition, the
+   KAS needs RSA key pairs (for legacy TDFs), EC key pairs (for ECDH-based
    TDFs), and ML-KEM key pairs (for post-quantum TDFs).
 
-### 9.3 Hybrid Algorithm Support
+### 9.3 ML-KEM Algorithm Support
 
-For hybrid algorithms (e.g., `X-ECDH-ML-KEM-768`), the KAS MUST hold both the
-classical and post-quantum key pairs required for the combined operation:
+BaseTDF defines no hybrid PQ/T key protection algorithms (BaseTDF-ALG
+Section 3.2), so post-quantum support requires only an ML-KEM key pair -- no
+paired classical key and no combined operation.
 
-- EC P-256 key pair for the ECDH component.
-- ML-KEM-768 key pair for the KEM component.
+A KAS that supports ML-KEM MUST:
 
-The KAS MAY advertise hybrid support through the public key endpoint by
-accepting hybrid algorithm identifiers and returning a key identifier that
-references both key pairs. See BaseTDF-ALG Section 4.4 for the hybrid
-algorithm specification and BaseTDF-KAO Section 4.4 for the hybrid KAO
-processing procedure.
+- Hold an ML-KEM-768 and/or ML-KEM-1024 key pair, each with its own `kid`.
+- Advertise those keys through the public key endpoint under the `mlkem:768`
+  and `mlkem:1024` algorithm identifiers (Section 2.4).
+- Recover the DEK share by decoding the `MLKEMWrappedKey` envelope from
+  `protectedKey`, decapsulating, and decrypting -- see BaseTDF-ALG Section 4.3
+  and BaseTDF-KAO Section 4.3.
+
+The KAS MUST NOT expect an `ephemeralKey` value on an ML-KEM KAO; the KEM
+ciphertext is carried inside `protectedKey`.
+
+A KAS whose ML-KEM private keys live in an HSM performs decapsulation inside
+the module. Because BaseTDF applies no KDF to the ML-KEM shared secret
+(BaseTDF-ALG Section 4.3.1), the decapsulated secret can remain a sensitive,
+non-extractable AES key object for the duration of the unwrap.
 
 ### 9.4 Client Algorithm Selection
 
 Clients SHOULD select algorithms based on the following priority:
 
-1. Hybrid (classical + PQC) if the KAS supports it and the data's
+1. ML-KEM (`ML-KEM-768` or `ML-KEM-1024`) if the KAS supports it and the data's
    confidentiality requirements warrant quantum resistance.
-2. EC-based (ECDH-HKDF) for new TDFs when hybrid is not available.
+2. EC-based (ECDH-HKDF) for new TDFs when ML-KEM is not available.
 3. RSA-based (RSA-OAEP) for maximum backward compatibility.
+
+A client that needs both post-quantum and classical protection SHOULD split the
+DEK across an ML-KEM KAO and a classical KAO under distinct `sid` values, rather
+than seeking a hybrid algorithm (see BaseTDF-SEC Section 8.3).
 
 The client's algorithm choice is recorded in the KAO's `alg` field and the
 request's `algorithm` field, enabling the KAS to select the correct processing

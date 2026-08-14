@@ -113,7 +113,7 @@ manifest. The following is a complete example:
 | `id` | string | REQUIRED | Unique identifier for this assertion within the TDF instance. Implementations SHOULD use UUIDs or other globally unique identifiers. |
 | `type` | string | REQUIRED | The category of the assertion. See [Section 4](#4-assertion-types). |
 | `scope` | string | REQUIRED | What the assertion applies to. MUST be one of `"tdo"` or `"payload"`. See [Section 2.2](#22-scope-values). |
-| `appliesToState` | string | REQUIRED | Whether the statement applies to data in the `"encrypted"` or `"unencrypted"` state. See [Section 2.3](#23-appliesToState-values). |
+| `appliesToState` | string | REQUIRED | Whether the statement applies to data in the `"encrypted"` or `"unencrypted"` state. See [Section 2.3](#23-appliestostate-values). |
 | `statement` | object | REQUIRED | The assertion content. See [Section 3](#3-statement-object). |
 | `binding` | object | OPTIONAL | Cryptographic binding that prevents modification and cross-TDF replay. See [Section 5](#5-binding-mechanism). |
 

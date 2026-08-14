@@ -84,7 +84,6 @@ Identifiers follow these conventions:
 - Classical symmetric algorithms use JWA-style short names (e.g., `A256GCM`, `HS256`).
 - Classical asymmetric algorithms use descriptive names (e.g., `RSA-OAEP-256`, `ECDH-HKDF`).
 - Post-quantum algorithms use their NIST standardized names with security level (e.g., `ML-KEM-768`).
-- Hybrid algorithms use the prefix `X-` followed by the component names (e.g., `X-ECDH-ML-KEM-768`).
 
 Implementations MUST reject any `alg` value that is not recognized. Unknown
 algorithm identifiers MUST NOT be silently ignored.
@@ -123,7 +122,14 @@ Each algorithm belongs to one of the key protection categories defined in
 | `ECDH-HKDF` | ECDH + HKDF-SHA256 | Key Agreement | RECOMMENDED |
 | `ML-KEM-768` | ML-KEM-768 encapsulation | Key Encapsulation | RECOMMENDED |
 | `ML-KEM-1024` | ML-KEM-1024 encapsulation | Key Encapsulation | OPTIONAL |
-| `X-ECDH-ML-KEM-768` | Hybrid: ECDH-P256 + ML-KEM-768 | Hybrid | RECOMMENDED |
+
+**Scope note on hybrid PQ/T algorithms**: This registry deliberately defines no
+hybrid post-quantum/traditional (PQ/T) key protection algorithms. BaseTDF
+targets the algorithm set supported by existing FIPS 203-compliant hardware
+security modules, which do not currently — and may never — support composite
+PQ/T KEM constructions. Should hardware support materialize, hybrid algorithms
+can be added to this registry per the process in [Section 1.3](#13-adding-new-algorithms)
+without structural changes to the manifest.
 
 ### 3.3 Integrity MAC Algorithms
 
@@ -161,7 +167,7 @@ the authenticity of verifiable statements bound to a TDF.
 
 ## 4. Key Protection Categories
 
-Key protection algorithms in Section 3.2 fall into four categories. Each category
+Key protection algorithms in Section 3.2 fall into three categories. Each category
 defines a distinct operational pattern for how a DEK share is protected and
 recovered. These categories replace the legacy `type` field values (`"wrapped"`,
 `"ec-wrapped"`) from BaseTDF v4.3.0 (see [Section 9](#9-backward-compatibility)).
@@ -206,7 +212,7 @@ key that protects the DEK share.
 1. ephemeral_ec = generate_ec_keypair(curve)
 2. shared_secret = ECDH(ephemeral_ec.sk, kas_ec_pk)
 3. derived_key = HKDF-SHA256(
-     salt = "",          // empty by default
+     salt = SHA256("TDF"),
      ikm  = shared_secret,
      info = "",          // empty by default
      len  = 32
@@ -219,7 +225,7 @@ key that protects the DEK share.
 
 ```
 1. shared_secret = ECDH(kas_ec_sk, ephemeralKey)
-2. derived_key = HKDF-SHA256(salt="", shared_secret, info="", 32)
+2. derived_key = HKDF-SHA256(salt=SHA256("TDF"), shared_secret, info="", 32)
 3. DEK_share = AES-256-GCM-Decrypt(derived_key, protectedKey)
 ```
 
@@ -227,12 +233,10 @@ key that protects the DEK share.
 
 - Supported curves: P-256 (secp256r1) is REQUIRED; P-384 (secp384r1) and
   P-521 (secp521r1) are OPTIONAL.
-- Salt: empty by default. Implementations MAY provide a custom salt value.
+- Salt: MUST be `SHA256("TDF")` -- the SHA-256 hash of the three ASCII bytes
+  `0x54 0x44 0x46`. This is a fixed 32-byte value. See BaseTDF-KAO Section 4.2.
 - Info: empty by default. Implementations MAY provide a custom info value.
-- **Backward compatibility**: The OpenTDF v4.3.0 implementation uses XOR wrapping
-  (`derived_key XOR DEK_share`) instead of AES-256-GCM wrapping in step 4.
-  Implementations MUST support XOR wrapping when reading existing TDFs for
-  backward compatibility. New TDFs SHOULD use AES-256-GCM wrapping.
+- Wrapping algorithm: AES-256-GCM, in both v4.3.0 and v4.4.0.
 
 ### 4.3 Key Encapsulation
 
@@ -240,135 +244,101 @@ key that protects the DEK share.
 
 In key encapsulation, the encrypting party uses the KAS public encapsulation key
 to produce a ciphertext and a shared secret in a single operation (KEM). The
-shared secret is then used to derive a symmetric key that protects the DEK share.
+32-byte shared secret is used **directly** as the AES-256-GCM key that protects
+the DEK share. No key derivation function is applied; see
+[Section 4.3.1](#431-rationale-for-omitting-a-kdf).
+
+The KEM ciphertext and the encrypted DEK share travel together inside a single
+ASN.1 DER envelope carried in the KAO `protectedKey` field. The `ephemeralKey`
+field is NOT used by this category.
 
 **Encryption operation**:
 
 ```
-1. (ct, ss) = ML-KEM.Encapsulate(kas_mlkem_pk)
-2. derived_key = HKDF-SHA256(
-     salt = "",
-     ikm  = ss,
-     info = "BaseTDF-KEM",
-     len  = 32
-   )
-3. protectedKey = AES-256-GCM(derived_key, DEK_share)
-4. ephemeralKey = ct   // KEM ciphertext, sent in KAO
+1. (ct, ss)     = ML-KEM.Encapsulate(kas_mlkem_pk)
+2. encryptedDEK = AES-256-GCM(key = ss, DEK_share)
+3. protectedKey = DER(MLKEMWrappedKey {
+                    mlkemCiphertext = ct,
+                    encryptedDEK    = encryptedDEK
+                  })
 ```
 
 **Decryption operation**:
 
 ```
-1. ss = ML-KEM.Decapsulate(kas_mlkem_sk, ephemeralKey)
-2. derived_key = HKDF-SHA256(salt="", ss, info="BaseTDF-KEM", 32)
-3. DEK_share = AES-256-GCM-Decrypt(derived_key, protectedKey)
+1. (ct, encryptedDEK) = DER-Parse(MLKEMWrappedKey, protectedKey)
+2. ss                 = ML-KEM.Decapsulate(kas_mlkem_sk, ct)
+3. DEK_share          = AES-256-GCM-Decrypt(key = ss, encryptedDEK)
 ```
+
+**Envelope**:
+
+```asn1
+MLKEMWrappedKey ::= SEQUENCE {
+    mlkemCiphertext  [0] IMPLICIT OCTET STRING,
+    encryptedDEK     [1] IMPLICIT OCTET STRING
+}
+```
+
+The DER encoding of this SEQUENCE is base64-encoded when stored in the KAO
+`protectedKey` field.
+
+`encryptedDEK` uses the following layout, with no additional authenticated data
+(AAD):
+
+| Offset | Length | Content |
+|:-------|:-------|:--------|
+| 0 | 12 bytes | AES-GCM nonce (random, unique per wrap) |
+| 12 | *n* bytes | AES-256-GCM ciphertext of the DEK share |
+| 12 + *n* | 16 bytes | AES-GCM authentication tag |
 
 **Parameters by algorithm**:
 
-| Algorithm | Ciphertext Size | Shared Secret Size | NIST Security Level |
-|:----------|:----------------|:-------------------|:--------------------|
-| `ML-KEM-768` | 1088 bytes | 32 bytes | Level 3 |
-| `ML-KEM-1024` | 1568 bytes | 32 bytes | Level 5 |
+| Algorithm | Public Key Size | Ciphertext Size | Shared Secret Size | NIST Security Level |
+|:----------|:----------------|:----------------|:-------------------|:--------------------|
+| `ML-KEM-768` | 1184 bytes | 1088 bytes | 32 bytes | Level 3 |
+| `ML-KEM-1024` | 1568 bytes | 1568 bytes | 32 bytes | Level 5 |
 
 **Requirements**:
 
-- Implementations MUST use `"BaseTDF-KEM"` as the HKDF info string for domain
-  separation.
-- The `ephemeralKey` field in the KAO carries the KEM ciphertext, base64-encoded.
+- Implementations MUST use the ML-KEM shared secret directly as the AES-256-GCM
+  key. Implementations MUST NOT apply HKDF or any other KDF to the shared
+  secret.
+- The AES-GCM nonce MUST be freshly generated from a CSPRNG for every wrap
+  operation.
+- `mlkemCiphertext` MUST be exactly the ciphertext size for the algorithm named
+  by `alg` (1088 bytes for `ML-KEM-768`, 1568 bytes for `ML-KEM-1024`).
+  Implementations MUST reject an envelope whose ciphertext length does not
+  match, and MUST reject an envelope with trailing bytes after the SEQUENCE.
+- The `ephemeralKey` field MUST NOT be used and SHOULD be omitted.
 - ML-KEM operations MUST conform to [NIST FIPS 203][fips203].
 
-### 4.4 Hybrid Key Protection
+#### 4.3.1 Rationale for Omitting a KDF
 
-**Used by**: `X-ECDH-ML-KEM-768`
+Applying a KDF to the ML-KEM shared secret would exclude HSM-backed KAS
+deployments. On FIPS 203-compliant hardware in strict-FIPS mode, the
+decapsulation mechanism can only materialize its 32-byte shared secret as a
+sensitive, non-extractable AES key object. Such an HSM will neither run an HMAC
+over the shared secret (blocking HKDF on-HSM) nor release it (blocking HKDF
+off-HSM), so any KDF in the unwrap chain makes the algorithm unimplementable on
+that hardware.
 
-Hybrid key protection combines a classical key agreement mechanism with a
-post-quantum key encapsulation mechanism. The construction is designed so that the
-overall protection is secure as long as **either** the classical or the
-post-quantum component remains unbroken. This provides defense-in-depth during the
-transition to post-quantum cryptography.
+Omitting the KDF costs nothing cryptographically:
 
-**Encryption operation**:
-
-```
-// ---- Classical component ----
-ephemeral_ec = generate_ec_keypair(P-256)
-ss_classical = ECDH(ephemeral_ec.sk, kas_ec_pk)
-
-// ---- Post-quantum component ----
-(ct_pqc, ss_pqc) = ML-KEM-768.Encapsulate(kas_mlkem_pk)
-
-// ---- Combine shared secrets ----
-combined_ss = HKDF-SHA256(
-  salt = SHA256("BaseTDF-Hybrid"),
-  ikm  = ss_classical || ss_pqc,
-  info = "BaseTDF-Hybrid-Key",
-  len  = 32
-)
-
-// ---- Protect the DEK share ----
-protectedKey = AES-256-GCM(combined_ss, DEK_share)
-
-// ---- Encode ephemeral material ----
-ephemeralKey = ephemeral_ec.pk || ct_pqc
-```
-
-**Decryption operation**:
-
-```
-// ---- Parse ephemeralKey ----
-ephemeral_ec_pk = ephemeralKey[0..65]      // 65 bytes: uncompressed P-256 point
-ct_pqc          = ephemeralKey[65..1153]   // 1088 bytes: ML-KEM-768 ciphertext
-
-// ---- Classical component ----
-ss_classical = ECDH(kas_ec_sk, ephemeral_ec_pk)
-
-// ---- Post-quantum component ----
-ss_pqc = ML-KEM-768.Decapsulate(kas_mlkem_sk, ct_pqc)
-
-// ---- Combine shared secrets ----
-combined_ss = HKDF-SHA256(
-  salt = SHA256("BaseTDF-Hybrid"),
-  ikm  = ss_classical || ss_pqc,
-  info = "BaseTDF-Hybrid-Key",
-  len  = 32
-)
-
-// ---- Recover the DEK share ----
-DEK_share = AES-256-GCM-Decrypt(combined_ss, protectedKey)
-```
-
-**ephemeralKey encoding**:
-
-The `ephemeralKey` field contains the concatenation of two components, in order:
-
-| Component | Format | Size |
-|:----------|:-------|:-----|
-| EC ephemeral public key | Uncompressed point (`0x04 \|\| x \|\| y`) | 65 bytes |
-| ML-KEM-768 ciphertext | Raw bytes | 1088 bytes |
-| **Total** | | **1153 bytes** |
-
-The concatenated value is base64-encoded when stored in the KAO `ephemeralKey`
-field.
-
-**Requirements**:
-
-- The classical component MUST use the P-256 curve.
-- The post-quantum component MUST use ML-KEM-768 per [FIPS 203][fips203].
-- The HKDF salt MUST be `SHA256("BaseTDF-Hybrid")` -- a fixed 32-byte value
-  derived by hashing the ASCII string `BaseTDF-Hybrid` (without null terminator)
-  using SHA-256.
-- The HKDF info string MUST be `"BaseTDF-Hybrid-Key"` (ASCII, without null
-  terminator).
-- The concatenation order of shared secrets MUST be `ss_classical || ss_pqc`
-  (classical first, post-quantum second).
-- The KAS MUST hold both an EC P-256 key pair and an ML-KEM-768 key pair. How
-  these keys are provisioned, stored, and advertised is defined in BaseTDF-KAS.
-
-**Security property**: The hybrid construction achieves IND-CCA2 security as long
-as **either** the ECDH or ML-KEM component remains secure. A break of one
-component alone does not compromise the combined shared secret because the
-HKDF combiner mixes both shared secrets with domain-separated parameters.
+1. **Uniformity.** [FIPS 203][fips203] Sections 6.3 and 7.3 specify the Decaps
+   output *K* as a 32-byte value produced through the standard's internal SHA-3
+   family functions. It is already uniformly distributed, so a KDF would only
+   re-mix uniformly random bits into different uniformly random bits.
+2. **Per-wrap independence.** Encapsulation samples fresh randomness on every
+   call, so *K* is independent across wraps by construction. The key-isolation
+   property a KDF conventionally supplies is already present in the input.
+3. **Authenticated unwrap.** AES-256-GCM authenticates the wrapped DEK. FIPS 203
+   implicit rejection returns a pseudorandom *K* for a wrong-key ciphertext
+   rather than an error, and that *K* is uncorrelated with the encryptor's, so
+   the GCM tag check fails as expected.
+4. **Domain separation.** The `alg` identifier and the `MLKEMWrappedKey`
+   envelope themselves provide domain separation, so no `info` string is
+   required to prevent cross-protocol collisions.
 
 ---
 
@@ -413,21 +383,18 @@ TDFs but MUST NOT use it when creating new TDFs in security-sensitive contexts.
 | Identifier | `ECDH-HKDF` |
 | Key agreement | ECDH per [RFC 6090][rfc6090] |
 | KDF | HKDF-SHA256 per [RFC 5869][rfc5869] |
-| Wrapping algorithm | AES-256-GCM (new TDFs); XOR (legacy, read-only) |
+| HKDF salt | `SHA256("TDF")` (fixed 32 bytes) |
+| HKDF info | Empty by default |
+| Wrapping algorithm | AES-256-GCM |
 | REQUIRED curve | P-256 (secp256r1) |
 | OPTIONAL curves | P-384 (secp384r1), P-521 (secp521r1) |
 | Ephemeral key format | Uncompressed EC point (`0x04 \|\| x \|\| y`) or PEM |
 | Status | RECOMMENDED |
 
-**Implementation note**: The current OpenTDF implementation (v4.3.0 and earlier)
-uses XOR wrapping, where `protectedKey = derived_key XOR DEK_share`. This
-approach is acceptable only when the derived key is indistinguishable from random
-and is at least as long as the DEK share. For improved robustness, v4.4.0
-specifies AES-256-GCM wrapping as the default for new TDFs. Implementations:
-
-- MUST support XOR-based unwrapping when reading existing TDFs.
-- SHOULD use AES-256-GCM wrapping when creating new TDFs.
-- MAY indicate the wrapping mode via metadata if disambiguation is needed.
+**Implementation note**: AES-256-GCM is the wrapping algorithm for `ECDH-HKDF`
+in both v4.3.0 and v4.4.0; the wire format for this algorithm is unchanged
+between the two versions. Only the KAO field names differ (see BaseTDF-KAO
+Section 7).
 
 ### 5.4 ML-KEM-768
 
@@ -439,12 +406,13 @@ specifies AES-256-GCM wrapping as the default for new TDFs. Implementations:
 | Ciphertext size | 1088 bytes |
 | Shared secret size | 32 bytes |
 | NIST security level | Level 3 (equivalent to AES-192 security) |
-| Key format | Raw bytes, base64-encoded in KAO fields |
+| KDF | None -- shared secret used directly (see Section 4.3.1) |
+| Wrapping algorithm | AES-256-GCM |
+| Envelope | `MLKEMWrappedKey` DER (see Section 4.3) |
+| Algorithm OID | `2.16.840.1.101.3.4.4.2` |
 | Status | RECOMMENDED |
 
-**Key encoding**: ML-KEM public keys and ciphertexts are encoded as raw byte
-arrays and base64-encoded when stored in JSON fields. There is no PEM wrapper for
-ML-KEM keys in KAO fields; the raw FIPS 203 byte encoding is used directly.
+**Key encoding**: See [Section 5.6](#56-ml-kem-key-encoding).
 
 ### 5.5 ML-KEM-1024
 
@@ -456,31 +424,43 @@ ML-KEM keys in KAO fields; the raw FIPS 203 byte encoding is used directly.
 | Ciphertext size | 1568 bytes |
 | Shared secret size | 32 bytes |
 | NIST security level | Level 5 (equivalent to AES-256 security) |
-| Key format | Raw bytes, base64-encoded in KAO fields |
+| KDF | None -- shared secret used directly (see Section 4.3.1) |
+| Wrapping algorithm | AES-256-GCM |
+| Envelope | `MLKEMWrappedKey` DER (see Section 4.3) |
+| Algorithm OID | `2.16.840.1.101.3.4.4.3` |
 | Status | OPTIONAL |
 
-### 5.6 X-ECDH-ML-KEM-768
+**Key encoding**: See [Section 5.6](#56-ml-kem-key-encoding).
 
-| Parameter | Value |
-|:----------|:------|
-| Identifier | `X-ECDH-ML-KEM-768` |
-| Classical component | ECDH with P-256 |
-| Post-quantum component | ML-KEM-768 per [FIPS 203][fips203] |
-| Combiner | HKDF-SHA256 with domain separation |
-| HKDF salt | `SHA256("BaseTDF-Hybrid")` (fixed 32 bytes) |
-| HKDF info | `"BaseTDF-Hybrid-Key"` (ASCII) |
-| Wrapping algorithm | AES-256-GCM |
-| Status | RECOMMENDED |
+### 5.6 ML-KEM Key Encoding
 
-**ephemeralKey field encoding**:
+ML-KEM keys are encoded differently depending on whether they are being
+distributed by the KAS or embedded in a TDF.
 
-| Offset | Length | Content |
-|:-------|:-------|:--------|
-| 0 | 65 bytes | EC ephemeral public key (uncompressed P-256 point: `0x04 \|\| x \|\| y`) |
-| 65 | 1088 bytes | ML-KEM-768 ciphertext |
-| **Total** | **1153 bytes** | Base64-encoded in the KAO `ephemeralKey` field |
+**KAS public keys (distribution)**: ML-KEM encapsulation keys published by a KAS
+MUST be encoded as [RFC 5280][rfc5280] `SubjectPublicKeyInfo` in DER, wrapped in
+a `PUBLIC KEY` PEM block. The `AlgorithmIdentifier` carries the algorithm OID
+from Sections 5.4 / 5.5 and MUST have absent parameters. The raw FIPS 203
+encapsulation key bytes are the contents of the `subjectPublicKey` BIT STRING,
+which MUST be byte-aligned.
 
-The operational procedure is fully specified in [Section 4.4](#44-hybrid-key-protection).
+```
+SubjectPublicKeyInfo ::= SEQUENCE {
+    algorithm         AlgorithmIdentifier,   -- OID only, no parameters
+    subjectPublicKey  BIT STRING             -- raw FIPS 203 encapsulation key
+}
+```
+
+**KAS private keys (storage)**: ML-KEM decapsulation keys MUST be encoded as
+[RFC 5958][rfc5958] `OneAsymmetricKey` (version 1) in DER, wrapped in a
+`PRIVATE KEY` PEM block. The inner `privateKey` OCTET STRING contains the
+KEM-PrivateKey CHOICE encoded as `[0] IMPLICIT OCTET STRING` holding the 64-byte
+FIPS 203 seed (`d || z`).
+
+**KEM ciphertexts (in the manifest)**: The ML-KEM ciphertext is carried as raw
+FIPS 203 bytes in the `mlkemCiphertext` field of the `MLKEMWrappedKey` envelope
+(Section 4.3). It is not separately base64-encoded and is never PEM-wrapped; the
+envelope as a whole is base64-encoded into the KAO `protectedKey` field.
 
 ---
 
@@ -581,7 +561,6 @@ requirements, see BaseTDF-SEC.
 | `ECDH-HKDF` (P-256) | 128 bits | 0 (Shor's algorithm) | Transition period |
 | `ML-KEM-768` | N/A | 192 bits (NIST Level 3) | Post-quantum |
 | `ML-KEM-1024` | N/A | 256 bits (NIST Level 5) | Post-quantum |
-| `X-ECDH-ML-KEM-768` | 128 bits | 192 bits (NIST Level 3) | Hybrid: secure if either component holds |
 | `HS256` | 256 bits | 128 bits (Grover's bound) | MAC / policy binding |
 | `GMAC` | 128 bits | 64 bits (Grover's bound) | Integrity MAC |
 | `RS256` (2048-bit) | ~112 bits | 0 (Shor's algorithm) | Assertion signing |
@@ -595,10 +574,9 @@ cryptographically relevant quantum computer (CRQC) running Shor's algorithm.
 **Grover's bound** means the symmetric key space is effectively halved by
 Grover's algorithm (e.g., 256-bit key provides 128-bit post-quantum security).
 
-For hybrid algorithms, the combined security level is the **maximum** of the two
-component security levels in each category (classical and post-quantum),
-reflecting the design property that the hybrid is secure as long as either
-component remains unbroken.
+Because this registry defines no hybrid PQ/T algorithms (see Section 3.2), a
+deployment requiring post-quantum confidentiality MUST select a pure ML-KEM
+algorithm; the classical algorithms offer no protection against a CRQC.
 
 ---
 
@@ -624,14 +602,24 @@ The following mapping defines the equivalence:
 | v4.3.0 `type` Value | v4.4.0 `alg` Value | Notes |
 |:---------------------|:---------------------|:------|
 | `"wrapped"` | `"RSA-OAEP"` | SHA-1 variant, for historical compatibility |
-| `"ec-wrapped"` | `"ECDH-HKDF"` | With XOR wrapping (legacy mode) |
+| `"ec-wrapped"` | `"ECDH-HKDF"` | Wire format identical in both versions |
+| `"mlkem-wrapped"` | `"ML-KEM-768"` or `"ML-KEM-1024"` | **Ambiguous** -- see below |
+
+The `"mlkem-wrapped"` type value does not distinguish ML-KEM-768 from
+ML-KEM-1024. A reader that encounters `"mlkem-wrapped"` without an `alg` field
+resolves the algorithm through the KAO's `kid`, which the KAS must look up
+against its key registry regardless in order to select a private key; that
+lookup yields the parameter set. A reader without access to the key registry MAY
+instead infer it from the length of `mlkemCiphertext` in the decoded envelope
+(1088 bytes implies ML-KEM-768, 1568 bytes implies ML-KEM-1024).
 
 ### 9.2 Reading Legacy KAOs
 
 When reading a Key Access Object that contains a `type` field but no `alg` field,
 implementations MUST apply the mapping in Section 9.1 to determine the algorithm.
 The `type` field alone is sufficient to unambiguously identify the algorithm for
-all v4.3.0 TDFs.
+every value except `"mlkem-wrapped"`, which requires the additional resolution
+step described in Section 9.1.
 
 ### 9.3 Writing New KAOs
 
@@ -671,6 +659,12 @@ SHOULD NOT produce conflicting values.
 - <a id="rfc2104"></a>**[RFC 2104]** — Krawczyk, H., Bellare, M., and R. Canetti, "HMAC: Keyed-Hashing for Message Authentication", RFC 2104, February 1997.
   https://www.rfc-editor.org/rfc/rfc2104
 
+- <a id="rfc5280"></a>**[RFC 5280]** — Cooper, D., Santesson, S., Farrell, S., Boeyen, S., Housley, R., and W. Polk, "Internet X.509 Public Key Infrastructure Certificate and Certificate Revocation List (CRL) Profile", RFC 5280, May 2008.
+  https://www.rfc-editor.org/rfc/rfc5280
+
+- <a id="rfc5958"></a>**[RFC 5958]** — Turner, S., "Asymmetric Key Packages", RFC 5958, August 2010.
+  https://www.rfc-editor.org/rfc/rfc5958
+
 - <a id="rfc2119"></a>**[BCP 14 / RFC 2119]** — Bradner, S., "Key words for use in RFCs to Indicate Requirement Levels", BCP 14, RFC 2119, March 1997.
   https://www.rfc-editor.org/rfc/rfc2119
 
@@ -687,5 +681,7 @@ SHOULD NOT produce conflicting values.
 [rfc8017]: https://www.rfc-editor.org/rfc/rfc8017
 [rfc6090]: https://www.rfc-editor.org/rfc/rfc6090
 [rfc2104]: https://www.rfc-editor.org/rfc/rfc2104
+[rfc5280]: https://www.rfc-editor.org/rfc/rfc5280
+[rfc5958]: https://www.rfc-editor.org/rfc/rfc5958
 [rfc2119]: https://www.rfc-editor.org/rfc/rfc2119
 [rfc8174]: https://www.rfc-editor.org/rfc/rfc8174

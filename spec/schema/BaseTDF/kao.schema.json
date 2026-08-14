@@ -13,16 +13,16 @@
         "RSA-OAEP-256",
         "ECDH-HKDF",
         "ML-KEM-768",
-        "ML-KEM-1024",
-        "X-ECDH-ML-KEM-768"
+        "ML-KEM-1024"
       ]
     },
     "type": {
       "type": "string",
-      "description": "DEPRECATED. Legacy key type field from BaseTDF v4.3.0. When both 'alg' and 'type' are present, 'alg' takes precedence.",
+      "description": "DEPRECATED. Legacy key type field from BaseTDF v4.3.0. When both 'alg' and 'type' are present, 'alg' takes precedence. Note that 'mlkem-wrapped' does not distinguish ML-KEM-768 from ML-KEM-1024; see BaseTDF-KAO Section 7.1.",
       "enum": [
         "wrapped",
         "ec-wrapped",
+        "mlkem-wrapped",
         "remote"
       ]
     },
@@ -46,7 +46,7 @@
     },
     "protectedKey": {
       "type": "string",
-      "description": "Base64-encoded algorithm-specific protected DEK share. Contents depend on the algorithm identified by 'alg'."
+      "description": "Base64-encoded algorithm-specific protected DEK share. Contents depend on the algorithm identified by 'alg': the RSA-OAEP ciphertext for key wrapping algorithms; the AES-256-GCM ciphertext of the DEK share for ECDH-HKDF; and the DER encoding of an MLKEMWrappedKey structure (KEM ciphertext plus AES-256-GCM-wrapped DEK share) for ML-KEM-768 and ML-KEM-1024."
     },
     "wrappedKey": {
       "type": "string",
@@ -54,7 +54,7 @@
     },
     "ephemeralKey": {
       "type": "string",
-      "description": "Base64-encoded ephemeral public key or KEM ciphertext. REQUIRED for key agreement and key encapsulation algorithms (ECDH-HKDF, ML-KEM-768, ML-KEM-1024, X-ECDH-ML-KEM-768); not used for key wrapping algorithms (RSA-OAEP, RSA-OAEP-256)."
+      "description": "Base64-encoded ephemeral public key. REQUIRED for key agreement algorithms (ECDH-HKDF); not used for key wrapping algorithms (RSA-OAEP, RSA-OAEP-256) or key encapsulation algorithms (ML-KEM-768, ML-KEM-1024), where the KEM ciphertext is carried inside 'protectedKey'."
     },
     "ephemeralPublicKey": {
       "type": "string",

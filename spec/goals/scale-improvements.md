@@ -106,7 +106,7 @@ explicitly. In scope: **packaging, integrity, and key derivation.**
 | Document | 5.0 status |
 |---|---|
 | BaseTDF-CORE | Refactored — abstract manifest; packaging moves out |
-| BaseTDF-INT | Extended — Merkle, uniform layout, partial verification |
+| BaseTDF-INT | Extended — Merkle, uniform/indexed layouts, partial verification |
 | BaseTDF-SEC | Extended — compartmentalization model, Tenet 1 rewrite |
 | BaseTDF-ALG | Extended — new registry entries only |
 | BaseTDF-ASN | Extended — `scope: "manifest"` |
@@ -155,7 +155,8 @@ Reading `k` bytes at an arbitrary offset in an `L`-byte payload MUST cost
 
 - Cold single-byte read at offset `L/2` of a 1 TiB TDF: ≤ 64 KiB of I/O beyond the
   KAS rewrap round trip and the segment itself.
-- Plaintext-offset → payload-offset is closed-form arithmetic, not a scan.
+- Plaintext-offset → payload-offset is closed-form arithmetic for a uniform layout
+  or an authenticated `O(log N)` lookup for an indexed layout — never a linear scan.
 - Integrity for returned bytes is equivalent to a full sequential read: the segment
   is provably the one the writer placed at that index, in an object whose total
   segment count is authenticated.
@@ -332,7 +333,7 @@ else builds on; B delivers distribution; C delivers detachment.
 | ID | Proposal | Goals | Family |
 |---|---|---|---|
 | P1 | Merkle root signature | G1, G3 | A |
-| P2 | Uniform layout: implicit segment index | G1, G3, G4 | A |
+| P2 | Scalable layouts: uniform and indexed | G1, G3, G4 | A |
 | P3 | Externalized hash tree | G1, G3 | A |
 | P4 | Partition key derivation | G2 | B |
 | P5 | Normative deterministic IV | G2 | B |
@@ -371,34 +372,55 @@ single segment.
 
 New `rootSignature.alg` value: `MERKLE-HS256`.
 
-Leaves preserve the existing segment hash (so GMAC stays free) and add index binding:
+Every tree node is a commitment `C = (H, P, E)`, where `H` is a 32-byte hash and
+`P`/`E` are the total plaintext/encrypted byte counts below the node. Leaves preserve
+the existing segment hash (so GMAC stays free) while binding the index and both sizes:
 
 ```
-L_i = HMAC-SHA256(DEK, 0x00 || u32be(i) || segment_hash_i)
+H_i = HMAC-SHA256(DEK,
+    0x00 || u64be(i) || u64be(P_i) || u64be(E_i) || segment_hash_i)
+C_i = (H_i, P_i, E_i)
 ```
 
 `segment_hash_i` is exactly the value from
 [`basetdf-int.md §4`](../basetdf/basetdf-int.md) — GMAC tag or HMAC — unchanged.
-Index binding prevents transplanting a valid segment to a different position.
+Index binding prevents transplanting a valid segment to a different position; size
+binding makes the offset index part of payload integrity rather than trusted routing
+metadata.
 
-Internal nodes:
-
-```
-N = HMAC-SHA256(DEK, 0x01 || left || right)
-```
-
-All nodes 32 bytes. On an odd level the last node is **promoted** unchanged (not
-duplicated). Promotion is safe only because the leaf count is bound into the root:
+For children `C_L` and `C_R`, an internal node is:
 
 ```
-root_signature = HMAC-SHA256(DEK, 0x02 || u64be(segmentCount) || tree_root)
+P = P_L + P_R
+E = E_L + E_R
+H = HMAC-SHA256(DEK,
+    0x01 || u64be(P_L) || u64be(E_L) || H_L
+         || u64be(P_R) || u64be(E_R) || H_R)
+C = (H, P, E)
 ```
 
-Base64-encoded into `rootSignature.sig` as today. Domain separators
+All additions and offset calculations use checked unsigned 64-bit arithmetic. A
+writer or reader MUST fail on overflow rather than wrap a size or range.
+
+On an odd level the last commitment is **promoted** unchanged (not duplicated).
+The root signature binds the layout, leaf count, and totals:
+
+```
+root_signature = HMAC-SHA256(DEK,
+    0x02 || layoutCode || u64be(segmentCount)
+         || u64be(P_root) || u64be(E_root) || H_root)
+```
+
+`layoutCode` is `0x01` for `uniform` and `0x02` for `indexed`. The result is
+base64-encoded into `rootSignature.sig` as today. Domain separators
 `0x00`/`0x01`/`0x02` prevent leaf/internal/root confusion.
 
-**Inclusion proof:** `ceil(log2(N))` sibling nodes — 20 nodes (640 bytes) for 1 TiB
-at 2 MiB segments.
+**Inclusion proof:** at most `ceil(log2(N))` sibling commitments — 20 siblings for
+1 TiB at 2 MiB segments. Promotion means some paths contain fewer siblings (for
+example, the last leaf of a five-leaf tree has one). Proof position and omitted
+siblings are derived from `(i, segmentCount)`; proof encodings MUST NOT use dummy or
+duplicated siblings. A `uniform` proof carries sibling hashes because sizes are
+derivable. An `indexed` proof carries each sibling's `(H, P, E)` commitment.
 
 **Streaming build:** a stack of at most `ceil(log2(N))` partial internal nodes; fold
 each leaf as produced. Root available at finalize with O(log N) resident state.
@@ -407,24 +429,38 @@ each leaf as produced. Root available at finalize with O(log N) resident state.
 when `alg` is `MERKLE-HS256`):
 
 - *Full read:* recompute leaves, rebuild tree, compare. Same cost as today.
-- *Partial read:* fetch the inclusion proof for segment `i`, recompute `L_i` from
-  fetched ciphertext, fold the proof, bind `segmentCount`, compare. Readers MUST
-  reject if proof length disagrees with the length implied by `segmentCount`
-  accounting for promotions.
+- *Partial read:* fetch the segment and its inclusion proof, recompute `C_i`, fold
+  the proof, bind the layout/count/totals, and compare. Readers MUST reject a proof
+  whose sibling presence, direction, size totals, or length disagrees with the path
+  implied by `(i, segmentCount)`.
 
-#### P2 — Uniform layout: implicit segment index
+#### P2 — Scalable layouts: uniform and indexed
 
-**Problem:** the inline `segments` array is the entire manifest-size problem, and
-under uniform segmentation it is fully derivable.
+**Problem:** the inline `segments` array is the entire manifest-size problem. A
+uniform layout can derive all offsets arithmetically, but append checkpoints can
+leave a short segment that later becomes an interior segment. Supporting arbitrary
+checkpoints requires variable segment sizes without restoring an O(N) manifest.
 
-Add `integrityInformation.layout`: `"explicit"` (default, current behavior) or
-`"uniform"`. When `"uniform"`:
+Add `integrityInformation.layout` with three values:
+
+| Value | Meaning | Offset lookup |
+|---|---|---|
+| `"explicit"` | Current 4.x `segments` array; default when absent | Prefix table or scan |
+| `"uniform"` | Fixed-size interior segments; compact Merkle tree | Closed-form, O(1) |
+| `"indexed"` | Variable-size segments; Merkle sum tree | Authenticated O(log N) |
+
+Both scalable layouts require `segmentCount`, `plaintextSize`, `encryptedSize`, and
+`hashTree`; they MUST omit `segments`. The root commitment's totals MUST equal the
+manifest totals before any plaintext is released.
+
+When `layout` is `"uniform"`:
 
 - Segments `0 … N-2` MUST be exactly `segmentSizeDefault` bytes — upgrade the SHOULD
   at [`basetdf-int.md:340-342`](../basetdf/basetdf-int.md) to MUST for this layout.
-- `segmentCount` and `lastSegmentSize` become REQUIRED.
-- `segments` becomes OPTIONAL and SHOULD be omitted.
-- Segment hashes come from the hash tree (P3).
+- `lastSegmentSize` is REQUIRED and MUST be in `1 … segmentSizeDefault`, except that
+  the single segment representing an empty payload has size zero.
+- All node sizes are derived from `segmentSizeDefault`, `lastSegmentSize`, the
+  per-segment encryption overhead, and node position; only hashes are stored in P3.
 
 The manifest becomes **constant size** regardless of payload:
 
@@ -436,7 +472,9 @@ The manifest becomes **constant size** regardless of payload:
   "encryptedSegmentSizeDefault": 2097180,
   "layout": "uniform",
   "segmentCount": 524288,
-  "lastSegmentSize": 1048576,
+  "lastSegmentSize": 2097152,
+  "plaintextSize": 1099511627776,
+  "encryptedSize": 1099526307840,
   "hashTree": { "nodeSize": 32, "levels": 20, "locator": { "...": "see P9" } }
 }
 ```
@@ -452,8 +490,42 @@ physOffset  = payloadStart + i * encryptedSegmentSizeDefault
 Closed form, O(1). Stating this normatively is what lets a reader skip the segments
 array entirely — the property G3 depends on.
 
+When `layout` is `"indexed"`:
+
+- Any segment MAY be shorter than `segmentSizeDefault`, including interior segments.
+  `segmentSizeDefault` is the writer's target size, not an invariant.
+- `segmentSizeMax` is REQUIRED and no segment may exceed it. Implementations MUST
+  bound `segmentCount` and tree size before allocation; writers SHOULD coalesce tiny
+  segments except where an application explicitly requests a checkpoint.
+- Readers MUST reject `segmentSizeMax` above their configured safety limit and MUST
+  reject a leaf whose authenticated size exceeds either bound.
+- Zero-length segments are prohibited except for the sole segment representing an
+  empty payload.
+- `lastSegmentSize` MUST be omitted; each leaf's authenticated `P_i` and `E_i`
+  supply the sizes.
+- P3 stores the subtree plaintext/encrypted totals next to every hash.
+
+**Authenticated offset lookup (normative for `indexed`).** To locate plaintext
+offset `B`, start at the root with `payloadOffset = 0`. At each non-promoted node,
+fetch and validate the two child records. If `B < P_left`, descend left. Otherwise
+set `B = B - P_left`, add `E_left` to `payloadOffset`, and descend right. A promoted
+node has one child and descends without changing either value. At the leaf,
+`payloadOffset` is the encrypted segment offset and `B` is the intra-segment
+plaintext offset. The reader MUST verify the resulting inclusion proof and root
+signature before releasing plaintext.
+
+Unauthenticated sums MAY direct only bounded reads within the integrity artifact.
+The reader MUST authenticate the selected leaf and path before using the resulting
+offset and size to fetch payload bytes; after fetching, it MUST recompute the leaf
+from the actual ciphertext before decrypting or releasing plaintext.
+
+This is O(log N) metadata I/O and compute. It deliberately relaxes G3's closed-form
+requirement for appendable objects while retaining the no-scan guarantee.
+
 **Writer guidance:** select `explicit` below a configurable threshold (RECOMMENDED
-4,096 segments ≈ 8 GiB), `uniform` above.
+4,096 segments ≈ 8 GiB), `uniform` for immutable or segment-aligned content, and
+`indexed` when arbitrary append checkpoints or application-defined segment boundaries
+are required.
 
 #### P3 — Externalized hash tree
 
@@ -469,42 +541,47 @@ Attached entry order MUST be `0.payload`, `0.integrity`, `0.manifest.json` — p
 first so streaming readers are unaffected; the tree is written at finalize when the
 leaf set is complete.
 
-**Binary format** (little-endian; nodes are opaque 32-byte values):
+**Binary format** (little-endian fields; hashes are opaque 32-byte values):
 
 ```
 offset  size  field
 0       8     magic       "BTDFMT\x01\x00"
 8       4     version     u32 = 1
-12      1     nodeSize    u8 = 32
+12      1     nodeSize    u8 = 32 (uniform) or 48 (indexed)
 13      1     levels      u8 = ceil(log2(leafCount)) + 1
-14      2     reserved    MUST be zero
+14      1     layout      u8 = 1 (uniform) or 2 (indexed)
+15      1     reserved    MUST be zero
 16      8     leafCount   u64
 24      8     nodeCount   u64
 32      ...   nodes       level-order: level 0 (leaves), then level 1, ...
 ```
 
-Level `l` has `ceil(leafCount / 2^l)` nodes; its byte offset is
-`32 + 32 * Σ_{j<l} ceil(leafCount / 2^j)`. Both closed-form, so a reader computes
-any proof node's byte range arithmetically with no index.
+For `uniform`, a node record is its 32-byte hash. For `indexed`, a node record is
+`hash[32] || plaintextTotal(u64) || encryptedTotal(u64)`, making the record 48
+bytes. Level `l` has `ceil(leafCount / 2^l)` nodes; its byte offset is
+`32 + nodeSize * Σ_{j<l} ceil(leafCount / 2^j)`. Both are closed-form, so a reader
+computes any proof or traversal node's byte range arithmetically with no secondary
+index.
 
-**Sizing.** ~`2N` nodes = 64 bytes/segment stored — comparable to today's 89-byte
-JSON entry — but the reader **fetches** only `O(log N)`:
+**Sizing.** A full tree has approximately `2N` nodes: about 64 bytes/segment for
+`uniform`, or 96 bytes/segment for `indexed`. The reader fetches only `O(log N)`:
 
-| Payload | Tree stored | Fetched per random read |
-|---|---|---|
-| 1 GiB | 33 KB | 320 B (10 nodes) |
-| 1 TiB | 34 MB | 640 B (20 nodes) |
-| 1 PiB | 34 GB | 960 B (30 nodes) |
+| Payload | Uniform tree | Indexed tree | Max inclusion proof |
+|---|---:|---:|---:|
+| 1 GiB | 33 KB | 49 KB | 480 B (10 indexed nodes) |
+| 1 TiB | 34 MB | 50 MB | 960 B (20 indexed nodes) |
+| 1 PiB | 34 GB | 52 GB | 1,440 B (30 indexed nodes) |
 
 **Trust.** The tree is unauthenticated on its own — fine, because every node
 consumed folds into a computation checked against `rootSignature.sig`, HMAC'd under
 the DEK. A tampered tree yields a root mismatch. Readers MUST bound reads by the
-header's `nodeCount` and MUST validate `nodeCount` against `leafCount` before
-allocating.
+header's `nodeCount`, MUST validate `nodeCount` against `leafCount` before
+allocating, and MUST require the header layout, node size, leaf count, levels, and
+root totals to match the manifest.
 
-**Streaming write.** Buffer leaf hashes (32 B/segment — 16 MB per TiB) and emit the
-tree at finalize. Per G1 this MAY spill to temporary storage; only the O(log N)
-folding stack must be resident.
+**Streaming write.** Buffer leaf records (32 B/segment for `uniform`, 48 B/segment
+for `indexed`) and emit the tree at finalize. Per G1 this MAY spill to temporary
+storage; only the O(log N) folding stack must be resident.
 
 ---
 
@@ -531,14 +608,21 @@ under `K_p` — still free. With `HS256` the segment HMAC is keyed with `K_p`.
 
 Merkle leaves, internal nodes, and the root signature stay keyed under the **DEK**,
 so integrity remains a whole-object property and no worker can forge a root. A
-worker computes its segments' *hashes* but not their leaves; the reducer, holding
-the DEK, applies `L_i = HMAC-SHA256(DEK, 0x00 || u32be(i) || segment_hash_i)` — one
-HMAC over 20 bytes per segment, ~500k HMACs for 1 TiB, well under a second.
+worker computes its segments' *hashes* and sizes but not their leaf commitments; the
+reducer, holding the DEK, applies the P1 leaf construction — one small HMAC per
+segment, ~500k HMACs for 1 TiB.
 
 **Security property delivered:** a worker assigned partition `p` receives only
-`K_p`, decrypting exactly `partitionSegments × segmentSizeDefault` bytes — its
-assigned range and nothing more. This is what G2 requires. At 512 × 2 MiB = 1 GiB
-per partition, a 1 TiB job is 1,024 workers each holding a 1 GiB-scoped key.
+`K_p`, decrypting its assigned segment range and nothing outside that KDF partition.
+For `uniform`, that is exactly `partitionSegments × segmentSizeDefault` bytes (apart
+from a final short segment). At 512 × 2 MiB = 1 GiB per partition, a 1 TiB job is
+1,024 workers each holding a 1 GiB-scoped key. For `indexed`, the byte count is the
+authenticated sum of the partition's segment sizes.
+
+An append checkpoint created with P4 MUST end on a KDF-partition boundary, or set
+`partitionSegments` to `1`. Otherwise a worker retaining the current partition key
+could decrypt later-appended segments that fall into the same partition, violating
+G2's range-scoping requirement.
 
 Not forward-secret; no protection against a worker that separately obtains the DEK.
 It scopes *distribution*, which is the actual operational risk.
@@ -549,7 +633,8 @@ It scopes *distribution*, which is the actual operational risk.
 writers cannot rely on stateless IV assignment interoperating, and readers cannot
 detect nonce reuse.
 
-Upgrade to MUST for `layout: "uniform"`, using NIST SP 800-38D §8.2.1:
+Upgrade to MUST for `layout: "uniform"` and `layout: "indexed"`, using NIST SP
+800-38D §8.2.1:
 
 ```
 IV_i = noncePrefix (4 bytes) || u64be(i)
@@ -736,26 +821,58 @@ a footnote — it is exactly the mistake a reasonable implementer will make.
 
 #### P11 — Consistency proofs and append-only payloads
 
-With P1's Merkle tree, RFC 6962 §2.2 consistency proofs let a reader verify that
-manifest v2's payload is a strict **extension** of manifest v1's. Combined with
-detachment, that makes live-appended payloads tractable: append segments, publish a
-new manifest with a larger `segmentCount`, and prior manifests still verify against
-the prefix.
+With P1's Merkle tree, the RFC 6962 §2.2 consistency-proof algorithm, instantiated
+with P1's keyed leaf/internal-node constructions, lets a reader verify that manifest
+v2's payload is a strict **segment extension** of manifest v1's. Existing leaves are
+immutable; an extension adds new leaves and publishes a manifest with larger
+authenticated counts and totals.
+
+The two scalable layouts have deliberately different append semantics:
+
+- **Indexed:** arbitrary checkpoints are supported. A short checkpoint tail remains
+  a valid short interior segment after later leaves are appended. No ciphertext is
+  rewritten and offset lookup remains O(log N) through the authenticated sums. If
+  P4 partition derivation is enabled, the checkpoint restriction stated in P4 still
+  applies.
+- **Uniform:** a checkpoint is extendable only when its final segment is exactly
+  `segmentSizeDefault`. Publishing a short final segment seals that payload against
+  strict extension. Writers MAY buffer an uncommitted tail until it fills, or switch
+  to `indexed` before publishing the first checkpoint; layouts MUST NOT change within
+  an extension chain.
 
 ```json
 "extends": {
+  "sequence": 41,
+  "manifestDigestAlg": "SHA-256",
+  "manifestDigest": "<digest of prior canonical manifest>",
   "segmentCount": 262144,
+  "plaintextSize": 549755813888,
+  "encryptedSize": 549763153920,
   "rootSignature": "<base64 of prior root signature>",
-  "consistencyProof": ["<base64 node>", "..."]
+  "consistencyProof": [
+    { "hash": "<base64 node>", "plaintextTotal": 2097152,
+      "encryptedTotal": 2097180 }
+  ]
 }
 ```
 
-Verification requires the DEK (nodes are DEK-keyed), so this proves extension to a
-key holder, not to the public. Sufficient for the intended use — a reader confirming
-the object it read yesterday was not rewritten.
+For `uniform`, proof entries carry only `hash`; their totals are derived. For
+`indexed`, every proof entry carries `(hash, plaintextTotal, encryptedTotal)` and the
+verifier MUST authenticate the old and new roots, counts, and totals. The DEK,
+layout, content-encryption algorithm, `noncePrefix`, segment-size parameters, and
+key-derivation parameters MUST be identical across the chain.
 
-Lowest-priority proposal; include the manifest field in 5.0 so the shape is
-reserved, and defer full writer support to 5.1 if schedule pressure demands.
+Verification requires the DEK (nodes are DEK-keyed), so this proves extension to a
+key holder, not to the public. `sequence` and the signed predecessor-manifest digest
+make rollback and fork evidence explicit, but consistency proofs do not identify the
+canonical latest manifest. A publishing system claiming a single history MUST use
+atomic compare-and-swap publication or an equivalently serialized catalog and MUST
+retain fork evidence.
+
+This remains the lowest-priority proposal. The optional 5.0 append profile MUST NOT
+be published until both layouts, promoted-node consistency proofs, fork negatives,
+and short-interior-segment vectors are complete. Full writer orchestration MAY remain
+a 5.1 SDK feature.
 
 ---
 
@@ -780,6 +897,12 @@ optional.
    the KAOs and hence the path to the DEK, giving a revocation primitive 4.x lacks.
    State its limits: it is not retroactive against a party who already rewrapped.
 6. **Add the SSRF surface** (P9) to the threat model.
+7. **Rewrite SI-5 for partial verification.** Distinguish full-object verification
+   from a segment whose AEAD tag, index/size-bound leaf, inclusion path, counts, and
+   root have been authenticated. The current invariant's blanket prohibition on
+   partial plaintext conflicts with G3.
+8. **Add append-chain rollback and fork risk.** A consistency proof establishes a
+   prefix relationship; it does not establish freshness or select a canonical head.
 
 ### 6.11 Goal coverage
 
@@ -787,12 +910,13 @@ optional.
 |---|---|
 | G1 | P2 caps manifest size; P1 gives O(log N) write state; P3 permits spilling; P6 removes the length requirement |
 | G2 | P4 scopes keys per partition; P5 makes IV assignment stateless; P1 trees are per-partition buildable and mergeable |
-| G3 | P2 gives closed-form offsets; P1+P3 give O(log N) authenticated single-segment reads |
+| G3 | P2 gives O(1) uniform offsets or O(log N) authenticated indexed lookup; P1+P3 give O(log N) authenticated single-segment reads |
 | G4 | P7 defines the profiles; P8 authenticates the manifest; P9 constrains dereferencing; P2 makes manifests small enough to serve |
 | G5 | P7 (standalone manifests) + P10 (semantics) |
 
 **G3 after the change, 1 TiB cold single-byte read:** ~2 KB manifest + 32 B tree
-header + 640 B proof + one 2 MiB segment. Meets the ≤ 64 KiB criterion for
+header + at most 640 B (`uniform`) of proof records or about 1,920 B (`indexed`) for
+the sum-tree traversal plus proof + one segment. Meets the ≤ 64 KiB criterion for
 everything except the segment, which is inherent to segment size.
 
 ---
@@ -810,9 +934,9 @@ write profile (P6); the `0.integrity` entry.
 **BaseTDF-LOC (new)** — locator object, URI schemes, allowlisting, redirect and
 size-bound rules, SSRF threat model (P9).
 
-**BaseTDF-INT** — extended: Merkle construction (P1), `layout` and closed-form
-offsets (P2), hash tree format (P3), partial-verification conformance profile,
-consistency proofs (P11).
+**BaseTDF-INT** — extended: Merkle construction (P1), uniform closed-form offsets
+and indexed authenticated sum traversal (P2), hash tree format (P3),
+partial-verification conformance profile, consistency proofs (P11).
 
 **BaseTDF-SEC** — extended per §6.10.
 
@@ -845,33 +969,56 @@ package merkle
 // Builder folds leaves in streaming order with O(log N) resident state.
 type Builder struct{ /* stack []node; count uint64; dek []byte */ }
 
-func NewBuilder(dek []byte) *Builder
-func (b *Builder) Add(index uint64, segmentHash []byte) error
+type Layout uint8
+
+const (
+    LayoutUniform Layout = 1
+    LayoutIndexed Layout = 2
+)
+
+type Commitment struct {
+    Hash           [32]byte
+    PlaintextTotal uint64
+    EncryptedTotal uint64
+}
+
+type SegmentInput struct {
+    Hash                         []byte
+    PlaintextSize, EncryptedSize uint64
+}
+
+func NewBuilder(dek []byte, layout Layout) *Builder
+func (b *Builder) Add(index, plaintextSize, encryptedSize uint64, segmentHash []byte) error
 func (b *Builder) Count() uint64
-func (b *Builder) Root() ([]byte, error)
-func (b *Builder) RootSignature() ([]byte, error) // HMAC(dek, 0x02||u64be(count)||root)
+func (b *Builder) Root() (Commitment, error)
+func (b *Builder) RootSignature() ([]byte, error)
 
 type Tree struct{ /* levels [][]byte; leafCount uint64 */ }
 
-func BuildTree(dek []byte, segmentHashes [][]byte) (*Tree, error)
+func BuildTree(dek []byte, layout Layout, segments []SegmentInput) (*Tree, error)
 func (t *Tree) WriteTo(w io.Writer) (int64, error)
-func (t *Tree) Proof(index uint64) ([][]byte, error)
+func (t *Tree) Proof(index uint64) ([]Commitment, error)
 
-// ProofReader fetches only the sibling path via ranged reads.
+// ProofReader fetches proof paths and indexed-layout sum traversals via ranged reads.
 type ProofReader struct{ /* ra io.ReaderAt; leafCount uint64; levels uint8 */ }
 
 func OpenProofReader(ra io.ReaderAt) (*ProofReader, error)
-func (p *ProofReader) Proof(index uint64) ([][]byte, error)
+func (p *ProofReader) Proof(index uint64) ([]Commitment, error)
+func (p *ProofReader) Locate(plaintextOffset uint64) (
+    index, intraOffset, encryptedOffset uint64, leaf Commitment,
+    proof []Commitment, err error,
+)
 
-func VerifyInclusion(dek []byte, index, leafCount uint64, segmentHash []byte,
-    proof [][]byte, wantRootSig []byte) error
+func VerifyInclusion(dek []byte, layout Layout, index, leafCount uint64,
+    leaf Commitment, segmentHash []byte, proof []Commitment, wantRootSig []byte) error
 
-func Merge(dek []byte, partitions []*Tree) (*Tree, error)         // reducer
-func ConsistencyProof(t *Tree, oldLeafCount uint64) ([][]byte, error) // P11
+func Merge(dek []byte, partitions []*Tree) (*Tree, error) // reducer
+func ConsistencyProof(t *Tree, oldLeafCount uint64) ([]Commitment, error) // P11
 ```
 
-Node offsets must be closed-form so `ProofReader` issues exactly `levels` ranged
-reads.
+Node offsets must be closed-form. Promotion-aware proofs issue at most `levels - 1`
+sibling reads; indexed lookup may fetch both child records per traversed level and
+SHOULD coalesce adjacent records into one range request.
 
 ### 8.2 `sdk/manifest.go`
 
@@ -883,10 +1030,13 @@ serialization is byte-identical to today:
 ```go
 type IntegrityInformation struct {
     // ... existing ...
-    Layout          string       `json:"layout,omitempty"`
-    SegmentCount    int64        `json:"segmentCount,omitempty"`
-    LastSegmentSize int64        `json:"lastSegmentSize,omitempty"`
-    HashTree        *HashTreeRef `json:"hashTree,omitempty"`
+    Layout          string        `json:"layout,omitempty"`
+    SegmentCount    *int64        `json:"segmentCount,omitempty"`
+    LastSegmentSize *int64        `json:"lastSegmentSize,omitempty"`
+    SegmentSizeMax  *int64        `json:"segmentSizeMax,omitempty"`
+    PlaintextSize   *int64        `json:"plaintextSize,omitempty"`
+    EncryptedSize   *int64        `json:"encryptedSize,omitempty"`
+    HashTree        *HashTreeRef  `json:"hashTree,omitempty"`
 }
 
 type Locator struct {
@@ -902,6 +1052,9 @@ type PayloadPart struct {
     Locators     []Locator `json:"locators"`
 }
 ```
+
+The scalable-layout scalar fields are pointers so an empty payload's required zero
+values remain distinguishable from fields absent on an explicit-layout manifest.
 
 Plus `Packaging string` on `Manifest`; `Locators []Locator` and `Parts []PayloadPart`
 on `Payload`; `KeyDerivation *KeyDerivation` on `EncryptionInformation`;
@@ -919,24 +1072,28 @@ Add accessors that normalize the zero value so call sites never branch on `""`:
 - `CreateTDFContext` (`tdf.go:164`) keeps its signature and behavior; add layout
   selection above the threshold.
 - **New** `CreateTDFStream(ctx, w io.Writer, r io.Reader, opts ...TDFOption)` — no
-  seek, always uniform layout, always the P6 ZIP profile. The G1 entry point. Do not
-  overload `CreateTDFContext`; the size-known path has different optimal behavior
-  and conflating them produces a function nobody can reason about.
+  seek, `uniform` by default, always the P6 ZIP profile. `WithLayout("indexed")`
+  permits application-requested variable boundaries and records their actual sizes.
+  This is the G1 entry point. Do not overload `CreateTDFContext`; the size-known path
+  has different optimal behavior and conflating them produces a function nobody can
+  reason about.
 - Replace the `strings.Builder` aggregate hash (`tdf.go:233-294`) with
-  `merkle.Builder` under uniform layout; keep the existing path for explicit.
+  `merkle.Builder` under both scalable layouts; keep the existing path for explicit.
 - Assertion binding (`tdf.go:362`) concatenates the aggregate hash. Under Merkle,
   substitute the 32-byte tree root. **This changes assertion signatures** — gate on
   layout and cover with a fixture per profile.
 
 ### 8.4 `sdk/tdf.go` — reader
 
-- `Reader.ReadAt` (`tdf.go:994`) — rewrite. Uniform layout: closed-form offsets plus
-  `merkle.ProofReader`, no segments scan. Explicit layout: keep the scan but build a
-  prefix-sum offset table **once** at `LoadTDF` instead of rescanning per call. That
-  fix is independently valuable and lands first (Phase 0).
-- Root validation (`tdf.go:1317-1327`) — under uniform layout there is no segments
-  array to fold; verify lazily per segment via inclusion proof rather than eagerly
-  materializing the tree.
+- `Reader.ReadAt` (`tdf.go:994`) — rewrite. Uniform layout uses closed-form offsets;
+  indexed layout uses `ProofReader.Locate`; neither scans segments. Explicit layout
+  keeps the scan semantics but builds a prefix-sum offset table **once** at `LoadTDF`
+  instead of rescanning per call. That fix is independently valuable and lands first
+  (Phase 0).
+- Root validation (`tdf.go:1317-1327`) — scalable layouts have no segments array to
+  fold; verify lazily per segment via an inclusion proof rather than eagerly
+  materializing the tree. Indexed lookup totals are untrusted until that proof and
+  the root signature validate.
 - Add `Reader.VerifyWhole(ctx) error` for callers wanting today's all-or-nothing
   guarantee explicitly, since partial reads no longer imply it.
 - Derive `K_p` in `buildKey` (`tdf.go:1249`) when `keyDerivation` is present; cache
@@ -948,8 +1105,8 @@ Add accessors that normalize the zero value so call sites never branch on `""`:
 - Reader: accept and validate data descriptors; prefer central directory values.
 - Third entry `0.integrity` with a ranged `ReadIntegrity(offset, length int64)`
   accessor mirroring `ReadPayload`.
-- `manifestMaxSize` stays at 10 MB (`tdf3_reader.go:15`). Under uniform layout it is
-  no longer a payload-size ceiling. **Document it** — the current limit is
+- `manifestMaxSize` stays at 10 MB (`tdf3_reader.go:15`). Under either scalable
+  layout it is no longer a payload-size ceiling. **Document it** — the current limit is
   undocumented and surprising.
 
 ### 8.6 New packages
@@ -989,7 +1146,7 @@ func Plan(spec JobSpec) ([]Partition, error)
 
 type PartitionResult struct {
     Index         int64
-    SegmentHashes [][]byte
+    Segments      []SegmentInput
     CiphertextLen int64
 }
 func EncryptPartition(p Partition, spec JobSpec, r io.Reader, w io.Writer) (*PartitionResult, error)
@@ -1009,33 +1166,45 @@ reduce time.
 ### 8.7 Schema and test vectors
 
 Update [`spec/schema/BaseTDF/manifest.schema.json`](../schema/BaseTDF/manifest.schema.json):
-conditionals on `layout` (uniform requires `segmentCount`/`lastSegmentSize`/
-`hashTree`, forbids `segments`) and on `packaging` (detached/sharded require
-`payload.locators` or `payload.parts` and a manifest signature; forbid
-`payload.url`). Use `if`/`then`/`else`, not `oneOf`, so errors name the actual
-missing field.
+conditionals on `layout`: both scalable layouts require `segmentCount`,
+`plaintextSize`, `encryptedSize`, and `hashTree`, and forbid `segments`; `uniform`
+also requires `lastSegmentSize` and forbids `segmentSizeMax`, while `indexed`
+requires `segmentSizeMax` and forbids `lastSegmentSize`. Packaging conditionals make
+detached/sharded require `payload.locators` or `payload.parts` and a manifest
+signature, and forbid `payload.url`. Use nested `if`/`then`/`else`, not `oneOf`, so
+errors name the actual missing field.
 
 Vectors in [`basetdf-ex.md`](../basetdf/basetdf-ex.md) with fixtures under
 `sdk/testdata/basetdf-v5/`:
 
-1. Merkle trees, N ∈ {1, 2, 3, 5, 8, 1000}, fixed DEK, all nodes shown. N=3 and N=5
-   exercise promotion.
-2. Inclusion proofs for N=1000 at i ∈ {0, 1, 499, 998, 999}.
+1. Uniform and indexed Merkle trees, N ∈ {1, 2, 3, 5, 8, 1000}, fixed DEK, all
+   hashes and totals shown. N=3 and N=5 exercise promotion.
+2. Inclusion proofs for both layouts at N=1000 and i ∈ {0, 1, 499, 998, 999}.
 3. **Promotion-attack negative vector** — a forged tree duplicating the last leaf to
    reach N+1, proving count binding rejects it.
 4. Uniform manifest for a 16 GiB TDF, demonstrating it is under 2 KB.
-5. `0.integrity` fixture, byte-for-byte, with annotated level offsets.
-6. Partition key vectors: DEK → `K_0`, `K_1`, `K_1023` at `partitionSegments: 512`.
-7. Deterministic IV vectors: `noncePrefix` → `IV_0`, `IV_1`, `IV_{2^32}`.
-8. Cross-profile round trip: same plaintext, explicit and uniform, identical output.
-9. Streaming-write ZIP fixture, verified against `unzip`, Go `archive/zip`, and
+5. Indexed manifest with sizes `{2 MiB, 64 KiB, 2 MiB, 1 B}`, demonstrating a short
+   interior segment and a constant-size manifest.
+6. Uniform and indexed `0.integrity` fixtures, byte-for-byte, with annotated level
+   offsets and records.
+7. Indexed offset lookup at the first/last byte of every segment, plus negative
+   vectors for a tampered subtree sum, integer overflow, and a root-total mismatch.
+8. Partition key vectors: DEK → `K_0`, `K_1`, `K_1023` at `partitionSegments: 512`.
+9. Deterministic IV vectors: `noncePrefix` → `IV_0`, `IV_1`, `IV_{2^32}`.
+10. Cross-profile round trip: explicit, uniform, and indexed serialize differently
+    but decrypt to identical plaintext.
+11. Streaming-write ZIP fixture, verified against `unzip`, Go `archive/zip`, and
    Python `zipfile`.
-10. Detached manifest + separate payload object, with a signature vector.
-11. Sharded manifest with 4 parts, including a negative vector for a non-contiguous
+12. Detached manifest + separate payload object, with a signature vector.
+13. Sharded manifest with 4 parts, including a negative vector for a non-contiguous
     `parts` array.
-12. **Locator negative vectors** — off-allowlist origin, non-https scheme,
+14. **Locator negative vectors** — off-allowlist origin, non-https scheme,
     redirect-to-unlisted, oversize response.
-13. Consistency proof: manifest at N=1000 extending N=512.
+15. Consistency proofs: an aligned uniform checkpoint and an indexed checkpoint with
+    a short tail, plus negatives for extending a short-tail uniform checkpoint,
+    changing an existing leaf, changing immutable chain parameters, and forking a
+    predecessor sequence. With P4 enabled, also reject a checkpoint inside a
+    multi-segment KDF partition.
 
 ---
 
@@ -1045,6 +1214,7 @@ Each phase is a separately reviewable change with tests. Phases 1 and 2 are
 independent after Phase 0.
 
 **Phase 0 — Non-breaking prerequisites.** No format change; ship against 4.4.
+
 - Fix the O(N)-per-call scan in `Reader.ReadAt` (`tdf.go:994`) with a prefix-sum
   table built at `LoadTDF`.
 - Document the `manifestMaxSize` ceiling and its payload-size implication; surface
@@ -1055,17 +1225,17 @@ independent after Phase 0.
 **Phase 1 — Merkle core.** `sdk/internal/merkle`, BaseTDF-INT §5.4, ALG rows,
 vectors 1–3. Pure library, no format change.
 
-**Phase 2 — ZIP streaming profile (P6).** BaseTDF-PKG, zipstream changes, vector 9.
+**Phase 2 — ZIP streaming profile (P6).** BaseTDF-PKG, zipstream changes, vector 11.
 
-**Phase 3 — Uniform layout (P2 + P3).** Manifest fields, `0.integrity`, schema,
-closed-form offsets, partial verification. Depends on 1, 2. Vectors 4, 5, 8.
-**Meets G3.**
+**Phase 3 — Scalable layouts (P2 + P3).** Manifest fields, both `0.integrity`
+record forms, schema, uniform closed-form offsets, indexed sum traversal, and partial
+verification. Depends on 1, 2. Vectors 4–7 and 10. **Meets G3.**
 
 **Phase 4 — Streaming writer.** `CreateTDFStream`. Depends on 2, 3. **Meets G1.**
 Acceptance: encrypt from a pipe with no length; assert bounded RSS via
 `runtime.MemStats` across payload sizes spanning three orders of magnitude.
 
-**Phase 5 — Partition keys and IVs (P4 + P5).** Vectors 6, 7.
+**Phase 5 — Partition keys and IVs (P4 + P5).** Vectors 8, 9.
 
 **Phase 6 — Distributed writer.** `sdk/distributed`. Depends on 3, 5. **Meets G2.**
 Acceptance: plan a job, run partitions in separate goroutines holding only their
@@ -1076,15 +1246,16 @@ cannot decrypt partition `p+1`.
 README dependency graph. Spec-only, no code. Can run in parallel with 4–6.
 
 **Phase 8 — Manifest signature (P8).** `sdk/manifestsig`, ASN `scope: "manifest"`,
-vector 10's signature. Depends on 7.
+vector 12's signature. Depends on 7.
 
 **Phase 9 — Detached and sharded packaging (P7 + P9).** `sdk/packaging`,
-`sdk/locator`, schema conditionals, vectors 10–12. Depends on 3, 8. **Meets G4.**
+`sdk/locator`, schema conditionals, vectors 12–14. Depends on 3, 8. **Meets G4.**
 
 **Phase 10 — Multi-manifest (P10).** Largely spec text plus a helper to mint an
 additional manifest against an existing payload. **Meets G5.**
 
-**Phase 11 — Consistency proofs (P11).** Vector 13. Deferrable to 5.1.
+**Phase 11 — Consistency proofs (P11).** Vector 15. The optional wire profile and
+vectors are part of 5.0; full append-writer orchestration is deferrable to 5.1.
 
 **Phase 12 — Interop and release.** Cross-implementation vectors, 4.4→5.0 migration
 guide, explicit statement of 4.x reader behavior on a 5.0 object, SEC changes from
@@ -1098,8 +1269,10 @@ guide, explicit statement of 4.x reader behavior on a 5.0 object, SEC changes fr
 |---|---|
 | **Scope creep** — a major version invites reopening POL, KAS, PQC | The §3.4 charter is normative for the release. Frozen documents republish unchanged. |
 | **PKI dependency** (P8) — signer key distribution, rotation, revocation | Required only for detached/sharded. Attached users never encounter it. |
-| **SSRF** in detached readers | P9 default-deny plus negative vectors 12. Treat a permissive default as a release blocker. |
+| **SSRF** in detached readers | P9 default-deny plus negative vectors 14. Treat a permissive default as a release blocker. |
 | **Multi-manifest misuse** (P10) — implementers assume differentiated access | Numbered SEC consideration, not a footnote. Consider an SDK-level warning when minting a second manifest. |
+| **Indexed-layout amplification** — many tiny segments inflate the tree and range-request count | Signed `segmentSizeMax`/`segmentCount`, reader allocation limits, writer coalescing by default, and tiny-segment negative/load vectors. |
+| **Append rollback or forks** — consistency does not establish the latest canonical head | Signed predecessor digest and sequence, fork detection, and atomic compare-and-swap publication by catalogs claiming a single history. |
 | **Multi-SDK migration** (Go, JS, Java, Python) | Attached+explicit stays byte-identical, so most of the matrix is a version-string change. Gate 5.0 GA on two independent implementations passing the vectors. |
 | **Tenet 1 rewrite** reads as weakening zero trust | Land the SEC rewrite in the same change as the CORE refactor, with the self-description framing argued explicitly. |
 
@@ -1111,10 +1284,11 @@ guide, explicit statement of 4.x reader behavior on a 5.0 object, SEC changes fr
    3 siblings = 30 nodes — worse in bytes, better in round trips if the tree is not
    contiguously fetchable. Since levels are contiguous and range-readable, binary
    looks right. Confirm against real object-store latency before freezing.
-2. **Full tree or leaves only in `0.integrity`?** Full tree is 64 B/segment with
-   O(log N) fetch; leaves only is 32 B/segment but O(N) to reconstruct any internal
-   node. Full tree proposed; revisit if storage cost dominates read latency for a
-   known workload.
+2. **Full tree or leaves only in `0.integrity`?** A full tree is approximately 64
+   B/segment for `uniform` or 96 B/segment for `indexed`, with O(log N) fetch.
+   Leaves-only storage halves that cost but requires O(N) work to reconstruct an
+   internal node. Full tree proposed; revisit if storage dominates read latency for
+   a known workload.
 3. **`contentBinding` default (P7).** Unkeyed digest gives dedup and content
    addressing but is a stable cross-tenant correlation handle. Recommendation: omit
    by default, OPTIONAL for dedup-oriented deployments. **This is a product decision
@@ -1138,6 +1312,9 @@ guide, explicit statement of 4.x reader behavior on a 5.0 object, SEC changes fr
    that a catalog service becomes a de facto dependency.
 9. **Interaction with nano TDF.** Out of scope; confirm nothing here forecloses a
    future shared integrity model.
+10. **Indexed checkpoint granularity.** Arbitrary one-byte checkpoints are valid but
+    expensive. Choose SDK defaults for minimum checkpoint growth and automatic
+    coalescing without turning them into wire-format restrictions.
 
 ---
 
@@ -1147,12 +1324,13 @@ guide, explicit statement of 4.x reader behavior on a 5.0 object, SEC changes fr
 |---|---|
 | `L` | Plaintext payload length in bytes |
 | `S` | `segmentSizeDefault` |
-| `N` | Segment count = `ceil(L / S)` |
+| `N` | Segment count (`ceil(L / S)` for `uniform`; explicitly committed for `indexed`) |
 | `DEK` | Data Encryption Key, 256 bits |
 | `K_p` | Partition key for partition `p` (P4) |
 | `h_i` | Segment hash of segment `i` per [`basetdf-int.md §4`](../basetdf/basetdf-int.md) |
-| `L_i` | Merkle leaf for segment `i` (P1) |
-| `u32be(x)` / `u64be(x)` | Big-endian fixed-width integer encoding |
+| `P_i` / `E_i` | Plaintext/encrypted size of segment `i` |
+| `C_i` | Merkle leaf commitment `(H_i, P_i, E_i)` for segment `i` (P1) |
+| `u64be(x)` | Big-endian 64-bit integer encoding |
 | `‖` | Byte concatenation |
 
 ---

@@ -732,8 +732,19 @@ Implementations MAY use the following heuristics to determine the KAO version:
 
 - Presence of `alg` field: v4.4.0 or later.
 - Presence of `type` field without `alg`: v4.3.0 or earlier.
-- Manifest-level `schemaVersion` field: versions below `"4.3.0"` use
-  hex-then-base64 encoding for integrity hashes and policy bindings.
+- Integrity hashes (segment hashes and the root signature) use hex-then-base64
+  encoding when the manifest-level `schemaVersion` is absent or less than
+  `"4.3.0"`, and raw-bytes-then-base64 otherwise. See BaseTDF-INT Section 8.
+- Policy binding hashes use hex-then-base64 encoding when the manifest-level
+  `schemaVersion` is less than `"4.4.0"` (including absent), and direct Base64
+  otherwise.
+
+Note that these two boundaries differ: the integrity hash encoding changed in
+v4.3.0, the policy binding encoding changes in v4.4.0. A reader that applies
+the integrity hash rule to the policy binding will fail to verify every v4.3.0
+manifest. Readers SHOULD prefer the version-independent length check in
+Section 5.5 over version-based detection for the policy binding, and MUST NOT
+treat a v4.3.0 manifest's hex-then-base64 binding as malformed.
 
 ---
 

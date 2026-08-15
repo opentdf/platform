@@ -576,7 +576,7 @@ BaseTDF-KAO Section 7 as follows:
 
 | Legacy Field / Value | v4.4.0 Interpretation | Reference |
 |:---------------------|:----------------------|:----------|
-| No `schemaVersion` | Legacy TDF; apply hex-then-base64 decoding for policy binding and integrity hashes | BaseTDF-KAO 7.3 |
+| No `schemaVersion` | Legacy TDF; apply hex-then-base64 decoding for both the policy binding and the integrity hashes | BaseTDF-KAO 7.3, BaseTDF-INT 8 |
 | `type: "ec-wrapped"` | Infer `alg: "ECDH-HKDF"` | BaseTDF-KAO 7.1 |
 | `url` | Treat as `kas` | BaseTDF-KAO 7.1 |
 | `wrappedKey` | Treat as `protectedKey` | BaseTDF-KAO 7.1 |
@@ -584,6 +584,12 @@ BaseTDF-KAO Section 7 as follows:
 | `policyBinding` (bare string) | Treat as `{ "alg": "HS256", "hash": "<value>" }` | BaseTDF-KAO 7.1 |
 | `protocol: "kas"` | Informational only; ignored | BaseTDF-KAO 2.3 |
 | `algorithm: "AES-256-GCM"` | Treat as `"A256GCM"` | Legacy algorithm name |
+
+This example has no `schemaVersion` at all, so hex-then-base64 applies to both
+the policy binding and the integrity hashes. Readers MUST NOT generalize from
+that: the two encodings changed at different versions. A manifest declaring
+`schemaVersion: "4.3.0"` carries raw-bytes-then-base64 integrity hashes but a
+hex-then-base64 policy binding. See BaseTDF-KAO Section 7.3.
 
 ### 6.3 Policy Binding Verification with Legacy Encoding
 

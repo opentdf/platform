@@ -23,8 +23,8 @@ import (
 
 func OnConfigUpdate(p *access.Provider) serviceregistry.OnConfigUpdateHook {
 	return func(ctx context.Context, cfg config.ServiceConfig) error {
-		var kasCfg access.KASConfig
-		if err := mapstructure.Decode(cfg, &kasCfg); err != nil {
+		kasCfg, err := decodeKASConfig(cfg, p.Logger)
+		if err != nil {
 			return fmt.Errorf("invalid kas cfg [%v] %w", cfg, err)
 		}
 
@@ -46,8 +46,8 @@ func NewRegistration() *serviceregistry.Service[kasconnect.AccessServiceHandler]
 			ConnectRPCFunc: kasconnect.NewAccessServiceHandler,
 			OnConfigUpdate: onConfigUpdate,
 			RegisterFunc: func(srp serviceregistry.RegistrationParams) (kasconnect.AccessServiceHandler, serviceregistry.HandlerServer) {
-				var kasCfg access.KASConfig
-				if err := mapstructure.Decode(srp.Config, &kasCfg); err != nil {
+				kasCfg, err := decodeKASConfig(srp.Config, srp.Logger)
+				if err != nil {
 					panic(fmt.Errorf("invalid kas cfg [%v] %w", srp.Config, err))
 				}
 
@@ -64,8 +64,8 @@ func NewRegistration() *serviceregistry.Service[kasconnect.AccessServiceHandler]
 
 				var kmgrs []string
 
-				if kasCfg.Preview.KeyManagement {
-					srp.Logger.Info("preview feature: key management is enabled")
+				if kasCfg.KeyManagement {
+					srp.Logger.Info("key management is enabled")
 
 					kasURL, err := determineKASURL(srp, kasCfg)
 					if err != nil {
@@ -126,6 +126,24 @@ func NewRegistration() *serviceregistry.Service[kasconnect.AccessServiceHandler]
 			},
 		},
 	}
+}
+
+func decodeKASConfig(cfg config.ServiceConfig, log *logger.Logger) (access.KASConfig, error) {
+	var kasCfg access.KASConfig
+	if err := mapstructure.Decode(cfg, &kasCfg); err != nil {
+		return kasCfg, err
+	}
+
+	if kasCfg.Preview.KeyManagement { //nolint:staticcheck // Deprecated field is read for backward compatibility.
+		kasCfg.KeyManagement = true
+		log.Warn(
+			"deprecated KAS preview key management setting is configured",
+			slog.String("deprecated_config", "services.kas.preview.key_management"),
+			slog.String("replacement_config", "services.kas.key_management"),
+		)
+	}
+
+	return kasCfg, nil
 }
 
 func determineKASURL(srp serviceregistry.RegistrationParams, kasCfg access.KASConfig) (*url.URL, error) {

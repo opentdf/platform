@@ -10,7 +10,7 @@ require (
 	github.com/gowebpki/jcs v1.0.1
 	github.com/lestrrat-go/jwx/v2 v2.1.7
 	github.com/opentdf/platform/lib/ocrypto v0.14.0
-	github.com/opentdf/platform/protocol/go v0.40.0
+	github.com/opentdf/platform/protocol/go v0.41.0
 	github.com/stretchr/testify v1.11.1
 	github.com/xeipuuv/gojsonschema v1.2.0
 	golang.org/x/oauth2 v0.36.0

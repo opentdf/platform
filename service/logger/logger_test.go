@@ -12,6 +12,7 @@ import (
 	"github.com/opentdf/platform/service/logger/audit"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.opentelemetry.io/otel/trace/noop"
 )
 
 // captureStdout swaps os.Stdout for a pipe and returns the lines written by fn.
@@ -107,6 +108,50 @@ func Test_NewLogger_TraceCorrelationDisabled(t *testing.T) {
 		assert.NotContains(t, entry, TraceIDKey)
 		assert.NotContains(t, entry, SpanIDKey)
 	}
+}
+
+// With tracing disabled the platform installs a noop tracer provider but keeps
+// the W3C propagator, so an inbound traceparent still reaches the logs while
+// self-started spans do not.
+func Test_NewLogger_NoopProviderPreservesInboundTraceContext(t *testing.T) {
+	tracer := noop.NewTracerProvider().Tracer("test")
+
+	t.Run("inbound trace context is kept", func(t *testing.T) {
+		lines := captureStdout(t, func() {
+			lg, err := NewLogger(Config{Level: "info", Output: "stdout", Type: "json"})
+			require.NoError(t, err)
+
+			ctx, span := tracer.Start(tracedContext(t), "rewrap")
+			defer span.End()
+
+			lg.InfoContext(ctx, "handled request")
+			emitAuditEvent(ctx, t, lg)
+		})
+		require.Len(t, lines, 2)
+
+		for _, line := range lines {
+			entry := decodeLine(t, line)
+			assert.Equal(t, testTraceIDHex, entry[TraceIDKey])
+			assert.Equal(t, testSpanIDHex, entry[SpanIDKey])
+		}
+	})
+
+	t.Run("span without inbound context emits nothing", func(t *testing.T) {
+		lines := captureStdout(t, func() {
+			lg, err := NewLogger(Config{Level: "info", Output: "stdout", Type: "json"})
+			require.NoError(t, err)
+
+			ctx, span := tracer.Start(context.Background(), "rewrap")
+			defer span.End()
+
+			lg.InfoContext(ctx, "handled request")
+		})
+		require.Len(t, lines, 1)
+
+		entry := decodeLine(t, lines[0])
+		assert.NotContains(t, entry, TraceIDKey)
+		assert.NotContains(t, entry, SpanIDKey)
+	})
 }
 
 func Test_NewLogger_UntracedRequestHasNoTraceFields(t *testing.T) {

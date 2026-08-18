@@ -111,7 +111,7 @@ logger:
   output: stderr
 ```
 
-`trace_correlation` only has an effect when tracing is enabled; see
+`trace_correlation` emits fields only when the request carries trace context; see
 [Tracing Configuration](#tracing-configuration).
 
 ## Server Configuration

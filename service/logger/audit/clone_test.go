@@ -126,13 +126,14 @@ func TestCloneWithoutParentUsesDefaultAttribution(t *testing.T) {
 	assert.Equal(t, "00000000-0000-0000-0000-000000000000", payloads[0]["requestID"])
 }
 
-func TestLogPolicyCRUDWithoutTransactionEmitsImmediately(t *testing.T) {
+func TestLogPolicyCRUDWithoutDetachedContextDoesNotEmit(t *testing.T) {
 	l, buf := createTestLogger()
 
 	l.LogPolicyCRUD(t.Context(), false, policyCRUDParams)
-	payloads := decodeAuditPayloads(t, buf)
-	require.Len(t, payloads, 1)
-	assert.Equal(t, "error", requireMap(t, payloads[0]["action"])["result"])
+	assert.Empty(t, decodeAuditPayloads(t, buf))
+
+	l.LogPolicyCRUD(createTestContext(t), false, policyCRUDParams)
+	assert.Empty(t, decodeAuditPayloads(t, buf))
 }
 
 func decodeAuditPayloads(t *testing.T, logBuffer *bytes.Buffer) []map[string]any {

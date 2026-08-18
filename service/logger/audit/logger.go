@@ -142,6 +142,12 @@ func (a *Logger) PolicyCRUDFailure(ctx context.Context, eventParams PolicyEventP
 // If you are within a synchronous policy operation you should use: PolicyCRUDSuccess/Failure.
 // ! Use this carefully to avoid duplication of audit events from being recorded.
 func (a *Logger) LogPolicyCRUD(ctx context.Context, isSuccess bool, eventParams PolicyEventParams) {
+	tx, ok := ctx.Value(contextKey{}).(*auditTransaction)
+	if !ok || tx == nil || !tx.detached {
+		a.logger.ErrorContext(ctx, "LogPolicyCRUD requires a detached audit context; use Logger.Clone first")
+		return
+	}
+
 	auditEvent, err := CreatePolicyEvent(ctx, isSuccess, eventParams)
 	if err != nil {
 		a.logger.ErrorContext(ctx, "error creating policy attribute audit event", slog.Any("error", err))

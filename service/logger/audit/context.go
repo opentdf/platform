@@ -13,8 +13,9 @@ type contextKey struct{}
 // auditTransaction holds pending audit events to be logged on completion
 type auditTransaction struct {
 	ContextData
-	events []pendingEvent
-	mu     sync.Mutex
+	events   []pendingEvent
+	mu       sync.Mutex
+	detached bool // true only when created by Clone; required by LogPolicyCRUD
 }
 
 func ContextWithActorID(ctx context.Context, actorID string) context.Context {
@@ -37,11 +38,12 @@ func ContextWithActorID(ctx context.Context, actorID string) context.Context {
 
 // Clone returns a non-canceling context with an independent copy of the current
 // request's audit attribution. It does not copy pending audit events.
-// Should be used by services that require auditting outside of the RPC lifecycle (Ex: asynch job worker)
+// Should be used by services that require auditing outside of the RPC lifecycle (Ex: asynch job worker)
 func (a *Logger) Clone(ctx context.Context) context.Context {
 	tx := &auditTransaction{
 		ContextData: GetAuditDataFromContext(ctx),
 		events:      make([]pendingEvent, 0),
+		detached:    true,
 	}
 
 	return context.WithValue(context.WithoutCancel(ctx), contextKey{}, tx)

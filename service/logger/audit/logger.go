@@ -178,8 +178,11 @@ func (a *Logger) GetDecisionV2(ctx context.Context, eventParams GetDecisionV2Eve
 
 func LogAuditEvent(ctx context.Context, verb Verb, event *EventObject) {
 	tx, ok := ctx.Value(contextKey{}).(*auditTransaction)
-	if !ok {
+	if !ok || tx == nil {
 		panic("audit transaction missing from context")
+	}
+	if tx.detached {
+		panic("cannot buffer an audit event on a detached transaction; use Logger.LogPolicyCRUD")
 	}
 	if event == nil {
 		panic("nil audit event provided")

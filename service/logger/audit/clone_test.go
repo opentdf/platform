@@ -33,10 +33,12 @@ func TestCloneCopiesContextDataAndCreatesIndependentTransaction(t *testing.T) {
 	require.Len(t, parentTx.events, 1)
 	assert.Empty(t, cloneTx.events)
 
-	l.PolicyCRUDFailure(cloned, policyCRUDParams)
+	require.PanicsWithValue(t,
+		"cannot buffer an audit event on a detached transaction; use Logger.LogPolicyCRUD",
+		func() { l.PolicyCRUDFailure(cloned, policyCRUDParams) },
+	)
 	require.Len(t, parentTx.events, 1)
-	require.Len(t, cloneTx.events, 1)
-	assert.NotSame(t, parentTx.events[0].event, cloneTx.events[0].event)
+	assert.Empty(t, cloneTx.events)
 }
 
 func TestLogPolicyCRUDEmitsOnceAndParentCloseDoesNotDuplicate(t *testing.T) {

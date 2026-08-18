@@ -81,7 +81,7 @@ func NewLogger(config Config) (*Logger, error) {
 		return nil, fmt.Errorf("invalid logger type: %s", config.Type)
 	}
 
-	sLogger = slog.New(withTraceCorrelation(&ContextHandler{handler}, config))
+	sLogger = slog.New(newContextAttrsHandler(handler, contextAttrSources(config, requestContextAttrs)...))
 
 	// Audit logger will always log at the AUDIT level and be JSON formatted
 	var auditLoggerHandler slog.Handler = slog.NewJSONHandler(w, &slog.HandlerOptions{
@@ -89,9 +89,9 @@ func NewLogger(config Config) (*Logger, error) {
 		ReplaceAttr: audit.ReplaceAttrAuditLevel,
 	})
 
-	// Audit events skip ContextHandler on purpose: the request metadata it adds
-	// is already inside the audit payload. They still need trace correlation.
-	auditLoggerBase := slog.New(withTraceCorrelation(auditLoggerHandler, config))
+	// Audit events skip requestContextAttrs on purpose: the request metadata it
+	// adds is already inside the audit payload. They still need trace correlation.
+	auditLoggerBase := slog.New(newContextAttrsHandler(auditLoggerHandler, contextAttrSources(config)...))
 	auditLogger := audit.CreateAuditLogger(*auditLoggerBase)
 
 	logger.Logger = sLogger
@@ -108,11 +108,14 @@ func (l *Logger) With(key string, value string) *Logger {
 	}
 }
 
-func withTraceCorrelation(handler slog.Handler, config Config) slog.Handler {
+// contextAttrSources returns the attribute sources for a logger, prepending
+// trace correlation when enabled so trace IDs lead the appended attributes.
+func contextAttrSources(config Config, extra ...contextAttrsFunc) []contextAttrsFunc {
 	if !config.traceCorrelationEnabled() {
-		return handler
+		return extra
 	}
-	return NewTraceHandler(handler)
+
+	return append([]contextAttrsFunc{traceContextAttrs}, extra...)
 }
 
 func getWriter(config Config) (io.Writer, error) {

@@ -9,38 +9,63 @@ import (
 	"github.com/opentdf/platform/service/logger/audit"
 )
 
-// ContextHandler is a custom slog.Handler that adds context attributes to log records from values set to the
-// context by the RPC interceptor. It is used to enrich log records with request-specific metadata such as
-// request ID, user agent, request IP, and actor ID.
-type ContextHandler struct {
+// contextAttrsFunc derives log attributes from a record's context. It returns
+// nil when the context carries nothing to add.
+type contextAttrsFunc func(context.Context) []slog.Attr
+
+// contextAttrsHandler is a slog.Handler that enriches each record with
+// attributes derived from its context, then delegates to the wrapped handler.
+type contextAttrsHandler struct {
 	handler slog.Handler
+	sources []contextAttrsFunc
 }
 
-// Handle overrides the default Handle method to add context values set by RPC interceptor.
-func (h *ContextHandler) Handle(ctx context.Context, r slog.Record) error {
-	contextData := audit.GetAuditDataFromContext(ctx)
+// newContextAttrsHandler wraps handler so each record gains the attributes
+// produced by sources, in order. With no sources, handler is returned as-is.
+func newContextAttrsHandler(handler slog.Handler, sources ...contextAttrsFunc) slog.Handler {
+	if len(sources) == 0 {
+		return handler
+	}
 
-	// Only add context attributes if RequestID is present, indicating this is part of a request
-	if contextData.RequestID != uuid.Nil {
-		r.AddAttrs(
-			slog.String(string(sdkAudit.RequestIDContextKey), contextData.RequestID.String()),
-			slog.String(string(sdkAudit.UserAgentContextKey), contextData.UserAgent),
-			slog.String(string(sdkAudit.RequestIPContextKey), contextData.RequestIP),
-			slog.String(string(sdkAudit.ActorIDContextKey), contextData.ActorID),
-		)
+	return &contextAttrsHandler{handler: handler, sources: sources}
+}
+
+func (h *contextAttrsHandler) Handle(ctx context.Context, r slog.Record) error {
+	for _, source := range h.sources {
+		if attrs := source(ctx); len(attrs) > 0 {
+			r.AddAttrs(attrs...)
+		}
 	}
 
 	return h.handler.Handle(ctx, r)
 }
 
-func (h *ContextHandler) Enabled(ctx context.Context, level slog.Level) bool {
+func (h *contextAttrsHandler) Enabled(ctx context.Context, level slog.Level) bool {
 	return h.handler.Enabled(ctx, level)
 }
 
-func (h *ContextHandler) WithAttrs(attrs []slog.Attr) slog.Handler {
-	return &ContextHandler{handler: h.handler.WithAttrs(attrs)}
+func (h *contextAttrsHandler) WithAttrs(attrs []slog.Attr) slog.Handler {
+	return &contextAttrsHandler{handler: h.handler.WithAttrs(attrs), sources: h.sources}
 }
 
-func (h *ContextHandler) WithGroup(name string) slog.Handler {
-	return &ContextHandler{handler: h.handler.WithGroup(name)}
+func (h *contextAttrsHandler) WithGroup(name string) slog.Handler {
+	return &contextAttrsHandler{handler: h.handler.WithGroup(name), sources: h.sources}
+}
+
+// requestContextAttrs returns the request metadata set on the context by the
+// RPC interceptor: request ID, user agent, request IP, and actor ID.
+func requestContextAttrs(ctx context.Context) []slog.Attr {
+	contextData := audit.GetAuditDataFromContext(ctx)
+
+	// Only add context attributes if RequestID is present, indicating this is part of a request
+	if contextData.RequestID == uuid.Nil {
+		return nil
+	}
+
+	return []slog.Attr{
+		slog.String(string(sdkAudit.RequestIDContextKey), contextData.RequestID.String()),
+		slog.String(string(sdkAudit.UserAgentContextKey), contextData.UserAgent),
+		slog.String(string(sdkAudit.RequestIPContextKey), contextData.RequestIP),
+		slog.String(string(sdkAudit.ActorIDContextKey), contextData.ActorID),
+	}
 }

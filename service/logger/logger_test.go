@@ -81,13 +81,13 @@ func Test_NewLogger_CorrelatesMainAndAuditLogs(t *testing.T) {
 
 	appLog := decodeLine(t, lines[0])
 	assert.Equal(t, "handled request", appLog["msg"])
-	assert.Equal(t, testTraceIDHex, appLog[TraceIDKey])
-	assert.Equal(t, testSpanIDHex, appLog[SpanIDKey])
+	assert.Equal(t, testTraceIDHex, appLog[traceIDKey])
+	assert.Equal(t, testSpanIDHex, appLog[spanIDKey])
 
 	auditLog := decodeLine(t, lines[1])
 	assert.Equal(t, "AUDIT", auditLog["level"])
-	assert.Equal(t, testTraceIDHex, auditLog[TraceIDKey])
-	assert.Equal(t, testSpanIDHex, auditLog[SpanIDKey])
+	assert.Equal(t, testTraceIDHex, auditLog[traceIDKey])
+	assert.Equal(t, testSpanIDHex, auditLog[spanIDKey])
 }
 
 func Test_NewLogger_TraceCorrelationDisabled(t *testing.T) {
@@ -105,9 +105,42 @@ func Test_NewLogger_TraceCorrelationDisabled(t *testing.T) {
 
 	for _, line := range lines {
 		entry := decodeLine(t, line)
-		assert.NotContains(t, entry, TraceIDKey)
-		assert.NotContains(t, entry, SpanIDKey)
+		assert.NotContains(t, entry, traceIDKey)
+		assert.NotContains(t, entry, spanIDKey)
 	}
+}
+
+// The main logger carries request metadata alongside the trace IDs; audit
+// records carry only the trace IDs, since the metadata is already in the payload.
+func Test_NewLogger_RequestMetadataOnlyOnMainLogger(t *testing.T) {
+	ctx := tracedContext(t)
+
+	lines := captureStdout(t, func() {
+		lg, err := NewLogger(Config{Level: "info", Output: "stdout", Type: "json"})
+		require.NoError(t, err)
+
+		next := audit.ContextServerInterceptor(lg.Audit)(
+			func(ctx context.Context, _ connect.AnyRequest) (connect.AnyResponse, error) {
+				lg.InfoContext(ctx, "handled request")
+				audit.LogAuditEvent(ctx, audit.VerbRewrap, &audit.EventObject{})
+				return nil, nil //nolint:nilnil // the interceptor ignores the response in this test
+			},
+		)
+		_, err = next(ctx, connect.NewRequest(&struct{}{}))
+		require.NoError(t, err)
+	})
+	require.Len(t, lines, 2)
+
+	appLog := decodeLine(t, lines[0])
+	assert.Equal(t, testTraceIDHex, appLog[traceIDKey])
+	assert.NotEmpty(t, appLog["request-id"])
+	assert.Contains(t, appLog, "user-agent")
+	assert.Contains(t, appLog, "request-ip")
+	assert.Contains(t, appLog, "actor-id")
+
+	auditLog := decodeLine(t, lines[1])
+	assert.Equal(t, testTraceIDHex, auditLog[traceIDKey])
+	assert.NotContains(t, auditLog, "request-id")
 }
 
 // With tracing disabled the platform installs a noop tracer provider but keeps
@@ -131,8 +164,8 @@ func Test_NewLogger_NoopProviderPreservesInboundTraceContext(t *testing.T) {
 
 		for _, line := range lines {
 			entry := decodeLine(t, line)
-			assert.Equal(t, testTraceIDHex, entry[TraceIDKey])
-			assert.Equal(t, testSpanIDHex, entry[SpanIDKey])
+			assert.Equal(t, testTraceIDHex, entry[traceIDKey])
+			assert.Equal(t, testSpanIDHex, entry[spanIDKey])
 		}
 	})
 
@@ -149,8 +182,8 @@ func Test_NewLogger_NoopProviderPreservesInboundTraceContext(t *testing.T) {
 		require.Len(t, lines, 1)
 
 		entry := decodeLine(t, lines[0])
-		assert.NotContains(t, entry, TraceIDKey)
-		assert.NotContains(t, entry, SpanIDKey)
+		assert.NotContains(t, entry, traceIDKey)
+		assert.NotContains(t, entry, spanIDKey)
 	})
 }
 
@@ -164,6 +197,6 @@ func Test_NewLogger_UntracedRequestHasNoTraceFields(t *testing.T) {
 	require.Len(t, lines, 1)
 
 	entry := decodeLine(t, lines[0])
-	assert.NotContains(t, entry, TraceIDKey)
-	assert.NotContains(t, entry, SpanIDKey)
+	assert.NotContains(t, entry, traceIDKey)
+	assert.NotContains(t, entry, spanIDKey)
 }

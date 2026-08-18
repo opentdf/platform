@@ -51,55 +51,74 @@ func logJSON(ctx context.Context, t *testing.T, buf *bytes.Buffer, handler slog.
 
 func Test_TraceHandler_AddsTraceAndSpanID(t *testing.T) {
 	buf := &bytes.Buffer{}
-	handler := NewTraceHandler(slog.NewJSONHandler(buf, nil))
+	handler := newContextAttrsHandler(slog.NewJSONHandler(buf, nil), traceContextAttrs)
 
 	out := logJSON(tracedContext(t), t, buf, handler)
 
 	// 32- and 16-character lowercase hex, per the OpenTelemetry convention.
-	assert.Equal(t, testTraceIDHex, out[TraceIDKey])
-	assert.Equal(t, testSpanIDHex, out[SpanIDKey])
+	assert.Equal(t, testTraceIDHex, out[traceIDKey])
+	assert.Equal(t, testSpanIDHex, out[spanIDKey])
 }
 
 func Test_TraceHandler_NoSpanOnContext(t *testing.T) {
 	buf := &bytes.Buffer{}
-	handler := NewTraceHandler(slog.NewJSONHandler(buf, nil))
+	handler := newContextAttrsHandler(slog.NewJSONHandler(buf, nil), traceContextAttrs)
 
 	out := logJSON(context.Background(), t, buf, handler)
 
-	assert.NotContains(t, out, TraceIDKey)
-	assert.NotContains(t, out, SpanIDKey)
+	assert.NotContains(t, out, traceIDKey)
+	assert.NotContains(t, out, spanIDKey)
 }
 
 // An invalid (all-zero) span context must not leak placeholder IDs into logs.
 func Test_TraceHandler_InvalidSpanContext(t *testing.T) {
 	buf := &bytes.Buffer{}
-	handler := NewTraceHandler(slog.NewJSONHandler(buf, nil))
+	handler := newContextAttrsHandler(slog.NewJSONHandler(buf, nil), traceContextAttrs)
 	ctx := trace.ContextWithSpanContext(context.Background(), trace.NewSpanContext(trace.SpanContextConfig{}))
 
 	out := logJSON(ctx, t, buf, handler)
 
-	assert.NotContains(t, out, TraceIDKey)
-	assert.NotContains(t, out, SpanIDKey)
+	assert.NotContains(t, out, traceIDKey)
+	assert.NotContains(t, out, spanIDKey)
 }
 
 func Test_TraceHandler_PreservesWrappedHandlerAttrs(t *testing.T) {
 	buf := &bytes.Buffer{}
-	handler := NewTraceHandler(slog.NewJSONHandler(buf, nil)).
+	handler := newContextAttrsHandler(slog.NewJSONHandler(buf, nil), traceContextAttrs).
 		WithAttrs([]slog.Attr{slog.String("service", "kas")})
 
 	out := logJSON(tracedContext(t), t, buf, handler)
 
 	assert.Equal(t, "kas", out["service"])
-	assert.Equal(t, testTraceIDHex, out[TraceIDKey])
-	assert.Equal(t, testSpanIDHex, out[SpanIDKey])
+	assert.Equal(t, testTraceIDHex, out[traceIDKey])
+	assert.Equal(t, testSpanIDHex, out[spanIDKey])
 }
 
 func Test_TraceHandler_EnabledDelegates(t *testing.T) {
 	inner := slog.NewJSONHandler(&bytes.Buffer{}, &slog.HandlerOptions{Level: slog.LevelWarn})
-	handler := NewTraceHandler(inner)
+	handler := newContextAttrsHandler(inner, traceContextAttrs)
 
 	assert.False(t, handler.Enabled(context.Background(), slog.LevelInfo))
 	assert.True(t, handler.Enabled(context.Background(), slog.LevelError))
+}
+
+// Sources are applied in order, so a logger with both trace and request
+// correlation emits the trace IDs ahead of the request metadata.
+func Test_ContextAttrsHandler_AppliesSourcesInOrder(t *testing.T) {
+	buf := &bytes.Buffer{}
+	first := func(context.Context) []slog.Attr { return []slog.Attr{slog.Int("order", 1)} }
+	second := func(context.Context) []slog.Attr { return []slog.Attr{slog.Int("order", 2)} }
+
+	handler := newContextAttrsHandler(slog.NewJSONHandler(buf, nil), first, second)
+	logJSON(context.Background(), t, buf, handler)
+
+	assert.Regexp(t, `"order":1.*"order":2`, buf.String())
+}
+
+func Test_ContextAttrsHandler_NoSourcesIsPassthrough(t *testing.T) {
+	inner := slog.NewJSONHandler(&bytes.Buffer{}, nil)
+
+	assert.Same(t, inner, newContextAttrsHandler(inner))
 }
 
 func Test_Config_TraceCorrelationEnabled(t *testing.T) {
@@ -111,15 +130,16 @@ func Test_Config_TraceCorrelationEnabled(t *testing.T) {
 	assert.False(t, Config{TraceCorrelation: &disabled}.traceCorrelationEnabled())
 }
 
-func Test_WithTraceCorrelation_DisabledIsPassthrough(t *testing.T) {
+func Test_ContextAttrSources_TraceCorrelationDisabled(t *testing.T) {
 	buf := &bytes.Buffer{}
 	inner := slog.NewJSONHandler(buf, nil)
 	disabled := false
 
-	handler := withTraceCorrelation(inner, Config{TraceCorrelation: &disabled})
-	assert.Same(t, inner, handler)
+	sources := contextAttrSources(Config{TraceCorrelation: &disabled})
+	assert.Empty(t, sources, "no sources means the wrapped handler is used directly")
 
+	handler := newContextAttrsHandler(inner, sources...)
 	out := logJSON(tracedContext(t), t, buf, handler)
-	assert.NotContains(t, out, TraceIDKey)
-	assert.NotContains(t, out, SpanIDKey)
+	assert.NotContains(t, out, traceIDKey)
+	assert.NotContains(t, out, spanIDKey)
 }

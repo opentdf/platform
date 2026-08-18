@@ -144,7 +144,7 @@ func (a *Logger) PolicyCRUDFailure(ctx context.Context, eventParams PolicyEventP
 func (a *Logger) LogPolicyCRUD(ctx context.Context, isSuccess bool, eventParams PolicyEventParams) {
 	tx, ok := ctx.Value(contextKey{}).(*auditTransaction)
 	if !ok || tx == nil || !tx.detached {
-		a.logger.ErrorContext(ctx, "immediate policy CRUD audit logging requires a detached audit context; use Logger.Clone first")
+		a.logger.ErrorContext(ctx, "immediate policy CRUD audit logging requires a detached audit context; use Logger.Detach first")
 		return
 	}
 

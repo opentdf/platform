@@ -15,7 +15,7 @@ type auditTransaction struct {
 	ContextData
 	events   []pendingEvent
 	mu       sync.Mutex
-	detached bool // true only when created by Clone; required by LogPolicyCRUD
+	detached bool // true only when created by Detach; required by LogPolicyCRUD
 }
 
 func ContextWithActorID(ctx context.Context, actorID string) context.Context {
@@ -36,15 +36,15 @@ func ContextWithActorID(ctx context.Context, actorID string) context.Context {
 	return ctx
 }
 
-// Clone returns a non-canceling context with an independent copy of the current
-// request's audit attribution. It does not copy pending audit events.
-// Should be used by services that require auditing outside of the RPC lifecycle (Ex: asynch job worker)
-func (a *Logger) Clone(ctx context.Context) context.Context {
+// Detach returns a context with an independent copy of the current request's
+// audit attribution. It does not copy pending audit events or alter the parent
+// context's cancellation behavior.
+func (a *Logger) Detach(ctx context.Context) context.Context {
 	tx := &auditTransaction{
 		ContextData: GetAuditDataFromContext(ctx),
 		events:      make([]pendingEvent, 0),
 		detached:    true,
 	}
 
-	return context.WithValue(context.WithoutCancel(ctx), contextKey{}, tx)
+	return context.WithValue(ctx, contextKey{}, tx)
 }

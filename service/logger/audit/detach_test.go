@@ -13,19 +13,18 @@ import (
 
 type cloneContextValueKey struct{}
 
-func TestCloneCopiesContextDataAndCreatesIndependentTransaction(t *testing.T) {
+func TestDetachCopiesContextDataAndCreatesIndependentTransaction(t *testing.T) {
 	l, _ := createTestLogger()
 	parent := context.WithValue(createTestContext(t), cloneContextValueKey{}, "retained")
 	parent, cancel := context.WithCancel(parent)
 
 	l.PolicyCRUDSuccess(parent, policyCRUDParams)
-	cloned := l.Clone(parent)
+	cloned := l.Detach(parent)
 	cancel()
 
 	assert.Equal(t, GetAuditDataFromContext(parent), GetAuditDataFromContext(cloned))
 	assert.Equal(t, "retained", cloned.Value(cloneContextValueKey{}))
-	assert.Nil(t, cloned.Done())
-	require.NoError(t, cloned.Err())
+	require.ErrorIs(t, cloned.Err(), context.Canceled)
 
 	parentTx := requireAuditTransaction(parent, t)
 	cloneTx := requireAuditTransaction(cloned, t)
@@ -44,7 +43,7 @@ func TestCloneCopiesContextDataAndCreatesIndependentTransaction(t *testing.T) {
 func TestLogPolicyCRUDEmitsOnceAndParentCloseDoesNotDuplicate(t *testing.T) {
 	l, buf := createTestLogger()
 	parent := createTestContext(t)
-	cloned := l.Clone(parent)
+	cloned := l.Detach(parent)
 
 	l.LogPolicyCRUD(cloned, true, policyCRUDParams)
 	payloads := decodeAuditPayloads(t, buf)
@@ -78,7 +77,7 @@ func TestLogPolicyCRUDMatchesBufferedSchema(t *testing.T) {
 			requireAuditTransaction(bufferedCtx, t).logClose(bufferedCtx, bufferedLogger, true, nil)
 
 			immediateLogger, immediateOutput := createTestLogger()
-			immediateCtx := immediateLogger.Clone(createTestContext(t))
+			immediateCtx := immediateLogger.Detach(createTestContext(t))
 			immediateLogger.LogPolicyCRUD(immediateCtx, test.isSuccess, policyCRUDParams)
 
 			bufferedPayloads := decodeAuditPayloads(t, bufferedOutput)
@@ -100,7 +99,7 @@ func TestLogPolicyCRUDUsesJWTEnrichmentFromClonedContext(t *testing.T) {
 	}}))
 	token, rawToken := createTestJWTForAudit(t)
 	parent, cancel := context.WithCancel(ctxAuth.ContextWithAuthNInfo(createTestContext(t), nil, token, rawToken))
-	cloned := l.Clone(parent)
+	cloned := l.Detach(context.WithoutCancel(parent))
 	cancel()
 
 	l.LogPolicyCRUD(cloned, true, policyCRUDParams)
@@ -112,9 +111,9 @@ func TestLogPolicyCRUDUsesJWTEnrichmentFromClonedContext(t *testing.T) {
 	assert.Equal(t, []any{"admin", "user"}, requester["roles"])
 }
 
-func TestCloneWithoutParentUsesDefaultAttribution(t *testing.T) {
+func TestDetachWithoutParentUsesDefaultAttribution(t *testing.T) {
 	l, buf := createTestLogger()
-	cloned := l.Clone(t.Context())
+	cloned := l.Detach(t.Context())
 
 	data := GetAuditDataFromContext(cloned)
 	assert.Equal(t, defaultNone, data.ActorID)

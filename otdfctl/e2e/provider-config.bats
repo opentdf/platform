@@ -35,13 +35,13 @@ delete_pc_by_id() {
 @test "fail to create provider configuration without config" {
     run_otdfctl_key_pc create --name test-value --manager "$TEST_MANAGER"
     assert_failure
-    assert_output --partial "Flag '--config' is required"
+    assert_output --partial 'required flag(s) "config" not set'
 }
 
 @test "fail to create provider configuration without name" {
     run_otdfctl_key_pc create --manager "$TEST_MANAGER" --config '{}'
     assert_failure
-    assert_output --partial "Flag '--name' is required"
+    assert_output --partial 'required flag(s) "name" not set'
 }
 
 @test "fail to create provider configuration with invalid config" {
@@ -156,7 +156,7 @@ delete_pc_by_id() {
 @test "fail to update provider configuration - missing id" {
     run_otdfctl_key_pc update --name test-config
     assert_failure
-    assert_output --partial "Flag '--id' is required"
+    assert_output --partial 'required flag(s) "id" not set'
 }
 
 @test "fail to update provider configuration - no optional flags" {
@@ -191,7 +191,7 @@ delete_pc_by_id() {
 @test "delete provider configuration fail -- no id" {
   run_otdfctl_key_pc delete
   assert_failure
-  assert_output --partial "Flag '--id' is required"
+  assert_output --partial 'required flag(s) "id" not set'
 }
 
 @test "delete provider configuration fail -- no force" {

@@ -5,6 +5,7 @@ import (
 	"os"
 
 	"github.com/opentdf/platform/otdfctl/pkg/cli"
+	"github.com/opentdf/platform/otdfctl/pkg/man"
 	"github.com/spf13/cobra"
 )
 
@@ -36,6 +37,11 @@ func Execute(opts ...ExecuteOptFunc) {
 	for _, opt := range opts {
 		c = opt(c)
 	}
+
+	// Enforce `required: true` doc metadata at the cobra layer now that the whole
+	// command tree is assembled. Done here (rather than in init) so commands added
+	// after otdfctl's own init, including a consumer's, are covered.
+	man.Docs.MarkRequiredFlags()
 
 	if c.mountTo != nil {
 		err := MountRoot(c.mountTo, c.renameCmd)

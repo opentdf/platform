@@ -94,7 +94,7 @@ teardown_file() {
     # id required
     run_otdfctl_rm get
         assert_failure
-        assert_output --partial "is required"
+        assert_output --partial 'required flag(s) "id" not set'
     run_otdfctl_rm get --id "test"
         assert_failure
         assert_output --partial "must be a valid UUID"

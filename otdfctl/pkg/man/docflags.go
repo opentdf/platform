@@ -59,3 +59,26 @@ func (d *Doc) MarkSensitiveFlags() {
 		}
 	}
 }
+
+// MarkRequiredFlags marks every flag the doc metadata declares `required: true`
+// as required on the command, so cobra rejects an invocation that omits it and
+// generated tooling (e.g. the MCP server) can advertise the flag as required.
+//
+// Unlike MarkSensitiveFlags, flags declared required in the doc but not
+// registered on this command are skipped rather than panicking: the registry
+// sweep visits every doc, including parent/index docs and commands that were
+// never built into the active tree, and flags may be registered on a subcommand
+// or via a shared injector. Call after all flags have been registered.
+func (d *Doc) MarkRequiredFlags() {
+	for _, df := range d.DocFlags {
+		if !df.Required {
+			continue
+		}
+		if d.Flags().Lookup(df.Name) == nil {
+			continue
+		}
+		if err := d.MarkFlagRequired(df.Name); err != nil {
+			panic(fmt.Sprintf("failed to mark flag %q as required for command %q: %v", df.Name, d.Use, err))
+		}
+	}
+}

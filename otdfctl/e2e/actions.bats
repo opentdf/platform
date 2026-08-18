@@ -69,7 +69,7 @@ teardown_file() {
   # missing flag
     run_otdfctl_action create --namespace "$ACTION_NAMESPACE"
         assert_failure
-        assert_output --partial "Flag '--name' is required"
+        assert_output --partial 'required flag(s) "name" not set'
 
     # TODO: re-enable when namespace is required
     # run_otdfctl_action create --name no_namespace

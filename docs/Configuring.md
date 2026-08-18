@@ -95,11 +95,12 @@ The logger configuration is used to define how the application logs its output.
 
 Root level key `logger`
 
-| Field    | Description                              | Default  | Environment Variable  |
-| -------- | ---------------------------------------- | -------- | --------------------- |
-| `level`  | The logging level.                       | `info`   | OPENTDF_LOGGER_LEVEL  |
-| `type`   | The format of the log output.            | `json`   | OPENTDF_LOGGER_TYPE   |
-| `output` | Stream output for logs, stderr or stdout | `stdout` | OPENTDF_LOGGER_OUTPUT |
+| Field               | Description                                                | Default  | Environment Variable             |
+| ------------------- | ---------------------------------------------------------- | -------- | -------------------------------- |
+| `level`             | The logging level.                                           | `info`   | OPENTDF_LOGGER_LEVEL             |
+| `type`              | The format of the log output.                                | `json`   | OPENTDF_LOGGER_TYPE              |
+| `output`            | Stream output for logs, stderr or stdout                     | `stdout` | OPENTDF_LOGGER_OUTPUT            |
+| `trace_correlation` | Add the active trace and span IDs to log and audit records   | `true`   | OPENTDF_LOGGER_TRACE_CORRELATION |
 
 Example:
 
@@ -109,6 +110,9 @@ logger:
   type: text
   output: stderr
 ```
+
+`trace_correlation` only has an effect when tracing is enabled; see
+[Tracing Configuration](#tracing-configuration).
 
 ## Server Configuration
 
@@ -318,6 +322,30 @@ server:
         endpoint: "localhost:4317"
         insecure: true
 ```
+
+While tracing is enabled, every log and audit record emitted during a traced
+request also carries the trace context of the active span, so a backend can
+link a span to the logs it produced:
+
+```json
+{
+  "level": "AUDIT",
+  "msg": "rewrap",
+  "trace_id": "4bf92f3577b34da6a3ce929d0e0e4736",
+  "span_id": "00f067aa0ba902b7",
+  "audit": { "...": "..." }
+}
+```
+
+`trace_id` and `span_id` are lowercase hex, 32 and 16 characters respectively,
+following the OpenTelemetry logging convention. Records emitted outside a
+request (startup, background work) have no active span and carry no trace
+fields. Set `logger.trace_correlation` to `false` to disable this; see
+[Logger Configuration](#logger-configuration).
+
+Backends generally also require the log's service tag to match the span's
+`service.name`, which defaults to `opentdf-platform` and can be overridden with
+`OTEL_SERVICE_NAME` or `OTEL_RESOURCE_ATTRIBUTES`.
 
 ## Database Configuration
 

@@ -38,6 +38,13 @@ type Config struct {
 	Level  string `mapstructure:"level" json:"level" default:"info"`
 	Output string `mapstructure:"output" json:"output" default:"stdout"`
 	Type   string `mapstructure:"type" json:"type" default:"json"`
+	// TraceCorrelation adds the active trace and span IDs to log and audit
+	// records. No-op unless tracing is enabled via `server.trace`. Nil means enabled.
+	TraceCorrelation *bool `mapstructure:"trace_correlation" json:"trace_correlation" default:"true"`
+}
+
+func (c Config) traceCorrelationEnabled() bool {
+	return c.TraceCorrelation == nil || *c.TraceCorrelation
 }
 
 const (
@@ -74,15 +81,17 @@ func NewLogger(config Config) (*Logger, error) {
 		return nil, fmt.Errorf("invalid logger type: %s", config.Type)
 	}
 
-	sLogger = slog.New(&ContextHandler{handler})
+	sLogger = slog.New(withTraceCorrelation(&ContextHandler{handler}, config))
 
 	// Audit logger will always log at the AUDIT level and be JSON formatted
-	auditLoggerHandler := slog.NewJSONHandler(w, &slog.HandlerOptions{
+	var auditLoggerHandler slog.Handler = slog.NewJSONHandler(w, &slog.HandlerOptions{
 		Level:       audit.LevelAudit,
 		ReplaceAttr: audit.ReplaceAttrAuditLevel,
 	})
 
-	auditLoggerBase := slog.New(auditLoggerHandler)
+	// Audit events skip ContextHandler on purpose: the request metadata it adds
+	// is already inside the audit payload. They still need trace correlation.
+	auditLoggerBase := slog.New(withTraceCorrelation(auditLoggerHandler, config))
 	auditLogger := audit.CreateAuditLogger(*auditLoggerBase)
 
 	logger.Logger = sLogger
@@ -97,6 +106,13 @@ func (l *Logger) With(key string, value string) *Logger {
 		Logger: l.Logger.With(key, value),
 		Audit:  l.Audit.With(key, value),
 	}
+}
+
+func withTraceCorrelation(handler slog.Handler, config Config) slog.Handler {
+	if !config.traceCorrelationEnabled() {
+		return handler
+	}
+	return NewTraceHandler(handler)
 }
 
 func getWriter(config Config) (io.Writer, error) {

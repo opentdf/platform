@@ -24,7 +24,8 @@ func TestDetachCopiesContextDataAndCreatesIndependentTransaction(t *testing.T) {
 
 	assert.Equal(t, GetAuditDataFromContext(parent), GetAuditDataFromContext(cloned))
 	assert.Equal(t, "retained", cloned.Value(cloneContextValueKey{}))
-	require.ErrorIs(t, cloned.Err(), context.Canceled)
+	assert.Nil(t, cloned.Done())
+	require.NoError(t, cloned.Err())
 
 	parentTx := requireAuditTransaction(parent, t)
 	cloneTx := requireAuditTransaction(cloned, t)
@@ -99,7 +100,7 @@ func TestLogPolicyCRUDUsesJWTEnrichmentFromClonedContext(t *testing.T) {
 	}}))
 	token, rawToken := createTestJWTForAudit(t)
 	parent, cancel := context.WithCancel(ctxAuth.ContextWithAuthNInfo(createTestContext(t), nil, token, rawToken))
-	cloned := l.Detach(context.WithoutCancel(parent))
+	cloned := l.Detach(parent)
 	cancel()
 
 	l.LogPolicyCRUD(cloned, true, policyCRUDParams)

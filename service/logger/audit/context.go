@@ -36,9 +36,11 @@ func ContextWithActorID(ctx context.Context, actorID string) context.Context {
 	return ctx
 }
 
-// Detach returns a context with an independent copy of the current request's
-// audit attribution. It does not copy pending audit events or alter the parent
-// context's cancellation behavior.
+// Detach returns a non-canceling context with an independent copy of the current
+// request's audit attribution. It does not copy pending audit events. Consumers
+// can add cancellation appropriate to the detached work's lifecycle. Detached
+// audit transactions must log policy events with LogPolicyCRUD; buffered audit
+// methods are only valid for interceptor-owned transactions.
 func (a *Logger) Detach(ctx context.Context) context.Context {
 	tx := &auditTransaction{
 		ContextData: GetAuditDataFromContext(ctx),
@@ -46,5 +48,5 @@ func (a *Logger) Detach(ctx context.Context) context.Context {
 		detached:    true,
 	}
 
-	return context.WithValue(ctx, contextKey{}, tx)
+	return context.WithValue(context.WithoutCancel(ctx), contextKey{}, tx)
 }

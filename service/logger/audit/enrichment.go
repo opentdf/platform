@@ -5,6 +5,7 @@ import (
 	"encoding"
 	"encoding/json"
 	"log/slog"
+	"maps"
 	"reflect"
 
 	dotnotation "github.com/opentdf/platform/service/internal/dotnotation"
@@ -116,6 +117,16 @@ func normalizeAuditValue(value any) any {
 		for i := 0; i < structType.NumField(); i++ {
 			field := structType.Field(i)
 			if !field.IsExported() {
+				continue
+			}
+			// Inlined embedded structs are flattened into the parent payload,
+			// matching encoding/json and the audit path schema.
+			if isInlinedEmbeddedField(field) {
+				embedded, ok := normalizeAuditValue(rv.Field(i).Interface()).(map[string]any)
+				if !ok {
+					continue
+				}
+				maps.Copy(normalized, embedded)
 				continue
 			}
 			opts, _ := parseAuditFieldOptions(field)

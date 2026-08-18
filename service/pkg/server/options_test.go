@@ -356,3 +356,29 @@ func TestWithAdditionalAuditTypeRegistrationsDetectsConflicts(t *testing.T) {
 	assert.Equal(t, "custom_object_conflict", conflict.NewName)
 	assert.Equal(t, "custom_object_1", cfg.auditTypeRegistrations.ObjectTypes[audit.ObjectType(testAuditTypeBase)])
 }
+
+func TestFormatAuditTypeRegistrationConflictsIsDeterministic(t *testing.T) {
+	conflicts := []auditTypeRegistrationConflict{
+		{Category: "object_type", Key: 2, ExistingName: "object_two", NewName: "other_object_two"},
+		{Category: "action_type", Key: 5, ExistingName: "action_five", NewName: "other_action_five"},
+		{Category: "object_type", Key: 1, ExistingName: "object_one", NewName: "other_object_one"},
+		{Category: "action_result", Key: 3, ExistingName: "result_three", NewName: "other_result_three"},
+	}
+
+	expected := `action_result 3: "result_three" vs "other_result_three"; ` +
+		`action_type 5: "action_five" vs "other_action_five"; ` +
+		`object_type 1: "object_one" vs "other_object_one"; ` +
+		`object_type 2: "object_two" vs "other_object_two"`
+
+	assert.Equal(t, expected, formatAuditTypeRegistrationConflicts(conflicts))
+
+	// Input order must not change the message, and the input must not be reordered.
+	shuffled := []auditTypeRegistrationConflict{conflicts[3], conflicts[0], conflicts[2], conflicts[1]}
+	assert.Equal(t, expected, formatAuditTypeRegistrationConflicts(shuffled))
+	assert.Equal(t, "object_type", conflicts[0].Category)
+	assert.Equal(t, 2, conflicts[0].Key)
+}
+
+func TestFormatAuditTypeRegistrationConflictsEmpty(t *testing.T) {
+	assert.Empty(t, formatAuditTypeRegistrationConflicts(nil))
+}

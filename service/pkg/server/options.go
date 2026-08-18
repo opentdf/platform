@@ -1,8 +1,10 @@
 package server
 
 import (
+	"cmp"
 	"context"
 	"fmt"
+	"slices"
 	"strings"
 
 	"connectrpc.com/connect"
@@ -69,13 +71,23 @@ type auditTypeRegistrationConflict struct {
 	NewName      string
 }
 
+// formatAuditTypeRegistrationConflicts renders conflicts sorted by (Category, Key)
+// so the reported message is stable regardless of map iteration order.
 func formatAuditTypeRegistrationConflicts(conflicts []auditTypeRegistrationConflict) string {
 	if len(conflicts) == 0 {
 		return ""
 	}
 
-	entries := make([]string, 0, len(conflicts))
-	for _, conflict := range conflicts {
+	sorted := slices.Clone(conflicts)
+	slices.SortFunc(sorted, func(a, b auditTypeRegistrationConflict) int {
+		if categoryCmp := strings.Compare(a.Category, b.Category); categoryCmp != 0 {
+			return categoryCmp
+		}
+		return cmp.Compare(a.Key, b.Key)
+	})
+
+	entries := make([]string, 0, len(sorted))
+	for _, conflict := range sorted {
 		entries = append(entries, fmt.Sprintf("%s %d: %q vs %q", conflict.Category, conflict.Key, conflict.ExistingName, conflict.NewName))
 	}
 	return strings.Join(entries, "; ")

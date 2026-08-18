@@ -12,23 +12,23 @@ func resetAuditTypeRegistrationState(t *testing.T) {
 
 	auditTypeRegistryMu.Lock()
 	// Remove any previously registered test types.
-	for k := range objectTypeNames {
-		if k >= testRegistrationBase {
-			delete(objectTypeNames, k)
-		}
-	}
-	for k := range actionTypeNames {
-		if k >= testRegistrationBase {
-			delete(actionTypeNames, k)
-		}
-	}
-	for k := range actionResultNames {
-		if k >= testRegistrationBase {
-			delete(actionResultNames, k)
-		}
-	}
+	dropTestRegistrations(objectTypeNames)
+	dropTestRegistrations(actionTypeNames)
+	dropTestRegistrations(actionResultNames)
 	typeRegistrationSealed = false
 	auditTypeRegistryMu.Unlock()
+}
+
+// dropTestRegistrations removes registrations made by tests, leaving the
+// built-in names intact. Callers must hold auditTypeRegistryMu.
+func dropTestRegistrations[T ~int](registry *typeNameRegistry[T]) {
+	remaining := make(map[T]string)
+	for key, name := range *registry.names.Load() {
+		if key < testRegistrationBase {
+			remaining[key] = name
+		}
+	}
+	registry.names.Store(&remaining)
 }
 
 const testRegistrationBase = 10000
@@ -80,6 +80,39 @@ func TestRegisterTypeRejectsEmptyName(t *testing.T) {
 	require.ErrorIs(t, errObject, ErrInvalidAuditTypeName)
 	require.ErrorIs(t, errAction, ErrInvalidAuditTypeName)
 	require.ErrorIs(t, errResult, ErrInvalidAuditTypeName)
+}
+
+func TestRegisterTypeRejectsRenamingExistingType(t *testing.T) {
+	resetAuditTypeRegistrationState(t)
+	t.Cleanup(func() { resetAuditTypeRegistrationState(t) })
+
+	const customObjectType ObjectType = testRegistrationBase + 30
+	require.NoError(t, RegisterObjectType(customObjectType, "custom_object_type"))
+
+	// Re-registering the same name is a no-op.
+	require.NoError(t, RegisterObjectType(customObjectType, "custom_object_type"))
+
+	// Renaming an existing registration is rejected.
+	require.ErrorIs(t, RegisterObjectType(customObjectType, "renamed"), ErrAuditTypeAlreadyRegistered)
+	assert.Equal(t, "custom_object_type", customObjectType.String())
+
+	// Built-in types cannot be renamed either.
+	require.ErrorIs(t, RegisterObjectType(ObjectTypeNamespace, "renamed_namespace"), ErrAuditTypeAlreadyRegistered)
+	require.ErrorIs(t, RegisterActionType(ActionTypeRead, "renamed_read"), ErrAuditTypeAlreadyRegistered)
+	require.ErrorIs(t, RegisterActionResult(ActionResultSuccess, "renamed_success"), ErrAuditTypeAlreadyRegistered)
+
+	assert.Equal(t, "namespace", ObjectTypeNamespace.String())
+	assert.Equal(t, "read", ActionTypeRead.String())
+	assert.Equal(t, "success", ActionResultSuccess.String())
+}
+
+func TestUnregisteredTypesFallBackToNumericNames(t *testing.T) {
+	resetAuditTypeRegistrationState(t)
+	t.Cleanup(func() { resetAuditTypeRegistrationState(t) })
+
+	assert.Equal(t, "object_type_10040", ObjectType(testRegistrationBase+40).String())
+	assert.Equal(t, "action_type_10041", ActionType(testRegistrationBase+41).String())
+	assert.Equal(t, "action_result_10042", ActionResult(testRegistrationBase+42).String())
 }
 
 func TestApplyTypeRegistrations(t *testing.T) {

@@ -4,13 +4,76 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"maps"
 	"sync"
+	"sync/atomic"
 )
 
 var (
 	ErrAuditTypeRegistrationSealed = errors.New("audit type registrations are sealed")
 	ErrInvalidAuditTypeName        = errors.New("audit type name must not be empty")
+	ErrAuditTypeAlreadyRegistered  = errors.New("audit type is already registered")
 )
+
+var (
+	// auditTypeRegistryMu guards registration only. Name lookups are lock-free:
+	// each registry holds an immutable map swapped in via copy-on-write, so String()
+	// stays on the hot logging path without contending on a mutex.
+	auditTypeRegistryMu    sync.Mutex
+	typeRegistrationSealed bool
+)
+
+// typeNameRegistry maps audit type values to their emitted names.
+type typeNameRegistry[T ~int] struct {
+	// fallbackPrefix names values that were never registered, e.g. "object_type_42".
+	fallbackPrefix string
+	names          atomic.Pointer[map[T]string]
+}
+
+func newTypeNameRegistry[T ~int](fallbackPrefix string, defaults map[T]string) *typeNameRegistry[T] {
+	r := &typeNameRegistry[T]{fallbackPrefix: fallbackPrefix}
+	r.names.Store(&defaults)
+	return r
+}
+
+func (r *typeNameRegistry[T]) lookup(key T) string {
+	if name, ok := (*r.names.Load())[key]; ok {
+		return name
+	}
+	return fmt.Sprintf("%s_%d", r.fallbackPrefix, key)
+}
+
+// register associates name with key. Registering a key that already has a
+// different name (including a built-in type) is rejected so the emitted audit
+// taxonomy cannot be silently changed out from under existing consumers.
+// Re-registering an identical name is a no-op.
+func (r *typeNameRegistry[T]) register(key T, name string) error {
+	if name == "" {
+		return ErrInvalidAuditTypeName
+	}
+
+	auditTypeRegistryMu.Lock()
+	defer auditTypeRegistryMu.Unlock()
+
+	if typeRegistrationSealed {
+		return ErrAuditTypeRegistrationSealed
+	}
+
+	current := *r.names.Load()
+	if existing, ok := current[key]; ok {
+		if existing == name {
+			return nil
+		}
+		return fmt.Errorf("%w: %s %d is registered as %q, cannot re-register as %q", ErrAuditTypeAlreadyRegistered, r.fallbackPrefix, key, existing, name)
+	}
+
+	updated := make(map[T]string, len(current)+1)
+	maps.Copy(updated, current)
+	updated[key] = name
+	r.names.Store(&updated)
+
+	return nil
+}
 
 type ObjectType int
 
@@ -43,7 +106,7 @@ const (
 	ObjectTypeDynamicValueMapping
 )
 
-var objectTypeNames = map[ObjectType]string{
+var objectTypeNames = newTypeNameRegistry("object_type", map[ObjectType]string{
 	ObjectTypeSubjectMapping:                      "subject_mapping",
 	ObjectTypeResourceMapping:                     "resource_mapping",
 	ObjectTypeAttributeDefinition:                 "attribute_definition",
@@ -70,38 +133,21 @@ var objectTypeNames = map[ObjectType]string{
 	ObjectTypeKasAttributeValueKeyAssignment:      "kas_attribute_value_key_assignment",
 	ObjectTypeKasAttributeNamespaceKeyAssignment:  "kas_attribute_namespace_key_assignment",
 	ObjectTypeDynamicValueMapping:                 "dynamic_value_mapping",
-}
-
-var (
-	auditTypeRegistryMu    sync.RWMutex
-	typeRegistrationSealed bool
-)
+})
 
 func (ot ObjectType) String() string {
-	auditTypeRegistryMu.RLock()
-	name, ok := objectTypeNames[ot]
-	auditTypeRegistryMu.RUnlock()
-	if ok {
-		return name
-	}
-	return fmt.Sprintf("object_type_%d", ot)
+	return objectTypeNames.lookup(ot)
 }
 
 func (ot ObjectType) MarshalJSON() ([]byte, error) {
 	return json.Marshal(ot.String())
 }
 
+// RegisterObjectType registers the emitted name for an additional object type.
+// It must be called before the platform seals registrations during startup, and
+// it cannot rename an already registered type.
 func RegisterObjectType(ot ObjectType, name string) error {
-	if name == "" {
-		return ErrInvalidAuditTypeName
-	}
-	auditTypeRegistryMu.Lock()
-	defer auditTypeRegistryMu.Unlock()
-	if typeRegistrationSealed {
-		return ErrAuditTypeRegistrationSealed
-	}
-	objectTypeNames[ot] = name
-	return nil
+	return objectTypeNames.register(ot, name)
 }
 
 type ActionType int
@@ -115,40 +161,28 @@ const (
 	ActionTypeRotate
 )
 
-var actionTypeNames = map[ActionType]string{
+var actionTypeNames = newTypeNameRegistry("action_type", map[ActionType]string{
 	ActionTypeCreate: "create",
 	ActionTypeRead:   "read",
 	ActionTypeUpdate: "update",
 	ActionTypeDelete: "delete",
 	ActionTypeRewrap: "rewrap",
 	ActionTypeRotate: "rotate",
-}
+})
 
 func (at ActionType) String() string {
-	auditTypeRegistryMu.RLock()
-	name, ok := actionTypeNames[at]
-	auditTypeRegistryMu.RUnlock()
-	if ok {
-		return name
-	}
-	return fmt.Sprintf("action_type_%d", at)
+	return actionTypeNames.lookup(at)
 }
 
 func (at ActionType) MarshalJSON() ([]byte, error) {
 	return json.Marshal(at.String())
 }
 
+// RegisterActionType registers the emitted name for an additional action type.
+// It must be called before the platform seals registrations during startup, and
+// it cannot rename an already registered type.
 func RegisterActionType(at ActionType, name string) error {
-	if name == "" {
-		return ErrInvalidAuditTypeName
-	}
-	auditTypeRegistryMu.Lock()
-	defer auditTypeRegistryMu.Unlock()
-	if typeRegistrationSealed {
-		return ErrAuditTypeRegistrationSealed
-	}
-	actionTypeNames[at] = name
-	return nil
+	return actionTypeNames.register(at, name)
 }
 
 type ActionResult int
@@ -164,7 +198,7 @@ const (
 	ActionResultCancel
 )
 
-var actionResultNames = map[ActionResult]string{
+var actionResultNames = newTypeNameRegistry("action_result", map[ActionResult]string{
 	ActionResultSuccess:  "success",
 	ActionResultFailure:  "failure",
 	ActionResultError:    "error",
@@ -173,33 +207,21 @@ var actionResultNames = map[ActionResult]string{
 	ActionResultIgnore:   "ignore",
 	ActionResultOverride: "override",
 	ActionResultCancel:   "cancel",
-}
+})
 
 func (ar ActionResult) String() string {
-	auditTypeRegistryMu.RLock()
-	name, ok := actionResultNames[ar]
-	auditTypeRegistryMu.RUnlock()
-	if ok {
-		return name
-	}
-	return fmt.Sprintf("action_result_%d", ar)
+	return actionResultNames.lookup(ar)
 }
 
 func (ar ActionResult) MarshalJSON() ([]byte, error) {
 	return json.Marshal(ar.String())
 }
 
+// RegisterActionResult registers the emitted name for an additional action result.
+// It must be called before the platform seals registrations during startup, and
+// it cannot rename an already registered result.
 func RegisterActionResult(ar ActionResult, name string) error {
-	if name == "" {
-		return ErrInvalidAuditTypeName
-	}
-	auditTypeRegistryMu.Lock()
-	defer auditTypeRegistryMu.Unlock()
-	if typeRegistrationSealed {
-		return ErrAuditTypeRegistrationSealed
-	}
-	actionResultNames[ar] = name
-	return nil
+	return actionResultNames.register(ar, name)
 }
 
 type TypeRegistrations struct {
@@ -230,6 +252,8 @@ func ApplyTypeRegistrations(reg TypeRegistrations) error {
 	return nil
 }
 
+// SealTypeRegistrations blocks any further audit type registrations. The
+// platform calls this during startup once all registrations have been applied.
 func SealTypeRegistrations() {
 	auditTypeRegistryMu.Lock()
 	defer auditTypeRegistryMu.Unlock()

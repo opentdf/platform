@@ -22,7 +22,8 @@ type auditEventMetadata = EventMetaData
 
 // --- Public event DTOs (for downstream consumers) ---
 
-type EventObjectObject struct {
+// EventObjectInfo describes the object an audited action was performed on.
+type EventObjectInfo struct {
 	Type       ObjectType            `json:"type"`
 	ID         string                `json:"id"`
 	Name       string                `json:"name,omitempty"`
@@ -52,7 +53,7 @@ type EventClientInfo struct {
 }
 
 type EventObjectParams struct {
-	Object        EventObjectObject
+	Object        EventObjectInfo
 	Action        EventObjectAction
 	Actor         EventObjectActor
 	EventMetaData EventMetaData

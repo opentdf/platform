@@ -612,7 +612,8 @@ format_kas_name_as_uri() {
 @test "kas-keys: get key (failure: only kas, missing key-id or system id)" {
   run_otdfctl_key get --kas "${KAS_REGISTRY_ID}" --json
   assert_failure
-  assert_output --partial 'required flag(s) "key" not set'
+  assert_equal "$(echo "$output" | jq -r .status)" "ERROR"
+  assert_equal "$(echo "$output" | jq -r .message)" 'required flag(s) "key" not set'
 }
 
 @test "kas-keys: get key (not found by system ID)" {
@@ -692,9 +693,10 @@ format_kas_name_as_uri() {
 @test "kas-keys: update key (missing id)" {
   run_otdfctl_key update --json
   assert_failure
-  # Cobra rejects the missing required flag before the handler runs, so the error
-  # is plain text on stderr rather than the handler's JSON envelope.
-  assert_output --partial 'required flag(s) "id" not set'
+  # Cobra rejects the missing required flag before the handler runs; the error is
+  # formatted as the standard JSON envelope because --json is set.
+  assert_equal "$(echo "$output" | jq -r .status)" "ERROR"
+  assert_equal "$(echo "$output" | jq -r .message)" 'required flag(s) "id" not set'
 }
 
 @test "kas-keys: unsafe update key mode remote to public_key" {

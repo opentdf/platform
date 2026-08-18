@@ -14,6 +14,8 @@ command:
     - name: offset
       shorthand: o
       description: Offset (page) quantity from start of the list
+    - name: search
+      description: Search term to filter results
     - name: sort
       description: Sort list results by field
     - name: order
@@ -21,6 +23,14 @@ command:
 ---
 
 For more information about Registered Resources, see the `registered-resources` subcommand.
+
+## Search Fields
+
+The `--search` term is trimmed and matched as a substring against these values:
+
+| Value | Description |
+| --- | --- |
+| Registered resource name | Resource name |
 
 ## Sort Options
 
@@ -53,6 +63,12 @@ otdfctl policy registered-resources list --order asc
 
 ```shell
 otdfctl policy registered-resources list
+```
+
+Search registered resources by name:
+
+```shell
+otdfctl policy registered-resources list --search document
 ```
 
 Sort registered resources by name ascending:

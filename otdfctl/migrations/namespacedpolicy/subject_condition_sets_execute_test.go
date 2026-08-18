@@ -35,15 +35,14 @@ func TestExecuteSubjectConditionSets(t *testing.T) {
 
 	tests := []struct {
 		name    string
-		plan    *Plan
+		plan    *MigrationPlan
 		handler *mockExecutorHandler
-		runID   string
 		wantErr *expectedError
-		assert  func(t *testing.T, err error, executor *Executor, handler *mockExecutorHandler, plan *Plan)
+		assert  func(t *testing.T, err error, executor *MigrationExecutor, handler *mockExecutorHandler, plan *MigrationPlan)
 	}{
 		{
 			name: "handles created and already migrated subject condition set targets",
-			plan: &Plan{
+			plan: &MigrationPlan{
 				Scopes: []Scope{ScopeSubjectConditionSets},
 				SubjectConditionSets: []*SubjectConditionSetPlan{
 					{
@@ -78,8 +77,7 @@ func TestExecuteSubjectConditionSets(t *testing.T) {
 					},
 				},
 			},
-			runID: "run-456",
-			assert: func(t *testing.T, err error, executor *Executor, handler *mockExecutorHandler, plan *Plan) {
+			assert: func(t *testing.T, err error, executor *MigrationExecutor, handler *mockExecutorHandler, plan *MigrationPlan) {
 				t.Helper()
 
 				require.NoError(t, err)
@@ -92,7 +90,6 @@ func TestExecuteSubjectConditionSets(t *testing.T) {
 					"owner":                    "policy-team",
 					"env":                      "dev",
 					migrationLabelMigratedFrom: "scs-1",
-					migrationLabelRun:          "run-456",
 				}, handler.createdSubjectConditions["scs-1"]["ns-1"].Metadata.GetLabels())
 
 				createdTarget := plan.SubjectConditionSets[0].Targets[0]
@@ -101,7 +98,6 @@ func TestExecuteSubjectConditionSets(t *testing.T) {
 				require.NotNil(t, createdTarget.Execution)
 				assert.True(t, createdTarget.Execution.Applied)
 				assert.Equal(t, "created-scs-1", createdTarget.Execution.CreatedTargetID)
-				assert.Equal(t, "run-456", createdTarget.Execution.RunID)
 				assert.Equal(t, "created-scs-1", createdTarget.TargetID())
 
 				migratedTarget := plan.SubjectConditionSets[0].Targets[1]
@@ -114,7 +110,7 @@ func TestExecuteSubjectConditionSets(t *testing.T) {
 		},
 		{
 			name: "ignores unresolved target status",
-			plan: &Plan{
+			plan: &MigrationPlan{
 				Scopes: []Scope{ScopeSubjectConditionSets},
 				SubjectConditionSets: []*SubjectConditionSetPlan{
 					{
@@ -130,7 +126,7 @@ func TestExecuteSubjectConditionSets(t *testing.T) {
 				},
 			},
 			handler: &mockExecutorHandler{},
-			assert: func(t *testing.T, err error, executor *Executor, handler *mockExecutorHandler, _ *Plan) {
+			assert: func(t *testing.T, err error, executor *MigrationExecutor, handler *mockExecutorHandler, _ *MigrationPlan) {
 				t.Helper()
 
 				require.NoError(t, err)
@@ -139,7 +135,7 @@ func TestExecuteSubjectConditionSets(t *testing.T) {
 		},
 		{
 			name: "returns error for missing already migrated target id",
-			plan: &Plan{
+			plan: &MigrationPlan{
 				Scopes: []Scope{ScopeSubjectConditionSets},
 				SubjectConditionSets: []*SubjectConditionSetPlan{
 					{
@@ -155,7 +151,7 @@ func TestExecuteSubjectConditionSets(t *testing.T) {
 			},
 			handler: &mockExecutorHandler{},
 			wantErr: wantError(ErrMissingMigratedTarget, `subject condition set %q target %q`, "scs-1", namespace1.GetFqn()),
-			assert: func(t *testing.T, err error, executor *Executor, handler *mockExecutorHandler, _ *Plan) {
+			assert: func(t *testing.T, err error, executor *MigrationExecutor, handler *mockExecutorHandler, _ *MigrationPlan) {
 				t.Helper()
 
 				require.Error(t, err)
@@ -164,7 +160,7 @@ func TestExecuteSubjectConditionSets(t *testing.T) {
 		},
 		{
 			name: "returns error for missing target namespace",
-			plan: &Plan{
+			plan: &MigrationPlan{
 				Scopes: []Scope{ScopeSubjectConditionSets},
 				SubjectConditionSets: []*SubjectConditionSetPlan{
 					{
@@ -179,7 +175,7 @@ func TestExecuteSubjectConditionSets(t *testing.T) {
 			},
 			handler: &mockExecutorHandler{},
 			wantErr: wantError(ErrTargetNamespaceRequired, `subject condition set %q`, "scs-1"),
-			assert: func(t *testing.T, err error, executor *Executor, handler *mockExecutorHandler, _ *Plan) {
+			assert: func(t *testing.T, err error, executor *MigrationExecutor, handler *mockExecutorHandler, _ *MigrationPlan) {
 				t.Helper()
 
 				require.Error(t, err)
@@ -188,7 +184,7 @@ func TestExecuteSubjectConditionSets(t *testing.T) {
 		},
 		{
 			name: "returns error for missing created target id",
-			plan: &Plan{
+			plan: &MigrationPlan{
 				Scopes: []Scope{ScopeSubjectConditionSets},
 				SubjectConditionSets: []*SubjectConditionSetPlan{
 					{
@@ -210,7 +206,7 @@ func TestExecuteSubjectConditionSets(t *testing.T) {
 				},
 			},
 			wantErr: wantError(ErrMissingCreatedTargetID, `subject condition set %q target %q`, "scs-1", namespace1.GetFqn()),
-			assert: func(t *testing.T, err error, executor *Executor, handler *mockExecutorHandler, plan *Plan) {
+			assert: func(t *testing.T, err error, executor *MigrationExecutor, handler *mockExecutorHandler, plan *MigrationPlan) {
 				t.Helper()
 
 				require.Error(t, err)
@@ -222,7 +218,7 @@ func TestExecuteSubjectConditionSets(t *testing.T) {
 		},
 		{
 			name: "returns error for unsupported target status",
-			plan: &Plan{
+			plan: &MigrationPlan{
 				Scopes: []Scope{ScopeSubjectConditionSets},
 				SubjectConditionSets: []*SubjectConditionSetPlan{
 					{
@@ -244,7 +240,7 @@ func TestExecuteSubjectConditionSets(t *testing.T) {
 				namespace1.GetFqn(),
 				TargetStatus("bogus"),
 			),
-			assert: func(t *testing.T, err error, executor *Executor, handler *mockExecutorHandler, _ *Plan) {
+			assert: func(t *testing.T, err error, executor *MigrationExecutor, handler *mockExecutorHandler, _ *MigrationPlan) {
 				t.Helper()
 
 				require.Error(t, err)
@@ -253,7 +249,7 @@ func TestExecuteSubjectConditionSets(t *testing.T) {
 		},
 		{
 			name: "records create failures on the target",
-			plan: &Plan{
+			plan: &MigrationPlan{
 				Scopes: []Scope{ScopeSubjectConditionSets},
 				SubjectConditionSets: []*SubjectConditionSetPlan{
 					{
@@ -278,7 +274,7 @@ func TestExecuteSubjectConditionSets(t *testing.T) {
 				is:      errBoom,
 				message: `create subject condition set "scs-1" in namespace "https://example.com": boom`,
 			},
-			assert: func(t *testing.T, err error, executor *Executor, handler *mockExecutorHandler, plan *Plan) {
+			assert: func(t *testing.T, err error, executor *MigrationExecutor, handler *mockExecutorHandler, plan *MigrationPlan) {
 				t.Helper()
 
 				require.Error(t, err)
@@ -293,13 +289,10 @@ func TestExecuteSubjectConditionSets(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			executor, err := NewExecutor(tt.handler)
+			executor, err := NewMigrationExecutor(tt.handler)
 			require.NoError(t, err)
-			if tt.runID != "" {
-				executor.runID = tt.runID
-			}
 
-			err = executor.Execute(t.Context(), tt.plan)
+			err = executor.ExecuteMigration(t.Context(), tt.plan)
 			switch {
 			case tt.wantErr != nil:
 				require.Error(t, err)

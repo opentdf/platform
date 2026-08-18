@@ -1,6 +1,7 @@
 package multistrategy
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
@@ -39,7 +40,8 @@ func (om *OutputMapper) MapResult(rawResult *types.RawResult, outputMappings []t
 	}
 
 	// Apply output mappings
-	for _, mapping := range outputMappings {
+	appliedTransformations := make([]string, len(outputMappings))
+	for i, mapping := range outputMappings {
 		if err := om.applyMapping(rawResult, entityResult, mapping); err != nil {
 			return nil, types.WrapMultiStrategyError(
 				types.ErrorTypeMapping,
@@ -52,10 +54,12 @@ func (om *OutputMapper) MapResult(rawResult *types.RawResult, outputMappings []t
 				},
 			)
 		}
+		appliedTransformations[i] = mapping.Transformation
 	}
 
 	// Add mapping metadata
 	entityResult.Metadata["output_mappings_applied"] = len(outputMappings)
+	entityResult.Metadata["output_mappings_applied_transformations"] = strings.Join(appliedTransformations, ",")
 	entityResult.Metadata["claims_mapped"] = len(entityResult.Claims)
 
 	return entityResult, nil
@@ -155,8 +159,53 @@ func (om *OutputMapper) applyTransformation(value interface{}, transformation st
 	case "trim":
 		return om.transformTrim(value)
 
+	case "postgres_object":
+		return om.transformPostgresObject(value)
+
 	default:
 		return nil, fmt.Errorf("unknown transformation: %s", transformation)
+	}
+}
+
+// transformPostgresObject converts a Postgres JSON/JSONB query result into a map[string]any.
+// Postgres drivers may return JSON/JSONB values as []byte, string, or an already-parsed map.
+func (om *OutputMapper) transformPostgresObject(value interface{}) (interface{}, error) {
+	if value == nil {
+		return map[string]any{}, nil
+	}
+
+	switch v := value.(type) {
+	case map[string]any:
+		if v == nil {
+			return map[string]any{}, nil
+		}
+		return v, nil
+	case []byte:
+		if len(v) == 0 {
+			return map[string]any{}, nil
+		}
+		result := map[string]any{}
+		if err := json.Unmarshal(v, &result); err != nil {
+			return nil, fmt.Errorf("postgres_object transformation failed to unmarshal []byte: %w", err)
+		}
+		if result == nil {
+			return map[string]any{}, nil
+		}
+		return result, nil
+	case string:
+		if v == "" {
+			return map[string]any{}, nil
+		}
+		result := map[string]any{}
+		if err := json.Unmarshal([]byte(v), &result); err != nil {
+			return nil, fmt.Errorf("postgres_object transformation failed to unmarshal string: %w", err)
+		}
+		if result == nil {
+			return map[string]any{}, nil
+		}
+		return result, nil
+	default:
+		return nil, fmt.Errorf("postgres_object transformation requires []byte, string, or map[string]any input, got %T", value)
 	}
 }
 

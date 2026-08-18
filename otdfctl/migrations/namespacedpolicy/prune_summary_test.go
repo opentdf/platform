@@ -19,7 +19,7 @@ func TestRenderNamespacedPolicyPruneSummaryDryRunShowsWillDelete(t *testing.T) {
 	t.Parallel()
 
 	plan := &PrunePlan{
-		Scopes: []Scope{ScopeActions},
+		Scope: ScopeActions,
 		Actions: []*PruneActionPlan{
 			{
 				Source: &policy.Action{Id: "action-delete", Name: "archive"},
@@ -67,7 +67,7 @@ func TestRenderNamespacedPolicyPruneSummaryCommitSeparatesDeletedPendingAndFaile
 	t.Parallel()
 
 	plan := &PrunePlan{
-		Scopes: []Scope{ScopeActions},
+		Scope: ScopeActions,
 		Actions: []*PruneActionPlan{
 			{
 				Source:    &policy.Action{Id: "action-deleted", Name: "archive"},
@@ -103,7 +103,7 @@ func TestRenderNamespacedPolicyPruneSummaryCommitShowsSkippedDeletes(t *testing.
 	t.Parallel()
 
 	plan := &PrunePlan{
-		Scopes: []Scope{ScopeActions},
+		Scope: ScopeActions,
 		Actions: []*PruneActionPlan{
 			{
 				Source: &policy.Action{Id: "action-skipped", Name: "archive"},
@@ -129,7 +129,7 @@ func TestRenderNamespacedPolicyPruneSummaryActionsCoversEveryStatus(t *testing.T
 	t.Parallel()
 
 	plan := &PrunePlan{
-		Scopes: []Scope{ScopeActions},
+		Scope: ScopeActions,
 		Actions: []*PruneActionPlan{
 			{
 				Source:    &policy.Action{Id: "action-deleted", Name: "archive"},
@@ -173,7 +173,7 @@ func TestRenderNamespacedPolicyPruneSummarySubjectConditionSetsCoversEveryStatus
 	t.Parallel()
 
 	plan := &PrunePlan{
-		Scopes: []Scope{ScopeSubjectConditionSets},
+		Scope: ScopeSubjectConditionSets,
 		SubjectConditionSets: []*PruneSubjectConditionSetPlan{
 			{
 				Source:    pruneSummarySubjectConditionSet("scs-deleted"),
@@ -217,7 +217,7 @@ func TestRenderNamespacedPolicyPruneSummarySubjectMappingsCoversEveryStatus(t *t
 	t.Parallel()
 
 	plan := &PrunePlan{
-		Scopes: []Scope{ScopeSubjectMappings},
+		Scope: ScopeSubjectMappings,
 		SubjectMappings: []*PruneSubjectMappingPlan{
 			{
 				Source:         pruneSummarySubjectMapping("mapping-deleted", "read"),
@@ -266,7 +266,7 @@ func TestRenderNamespacedPolicyPruneSummaryRegisteredResourcesCoversEveryStatus(
 	t.Parallel()
 
 	plan := &PrunePlan{
-		Scopes: []Scope{ScopeRegisteredResources},
+		Scope: ScopeRegisteredResources,
 		RegisteredResources: []*PruneRegisteredResourcePlan{
 			{
 				Source:         pruneSummaryRegisteredResource("resource-deleted", "dataset-deleted", "read"),
@@ -311,27 +311,18 @@ func TestRenderNamespacedPolicyPruneSummaryRegisteredResourcesCoversEveryStatus(
 	})
 }
 
-func TestRenderNamespacedPolicyPruneSummaryRegisteredResourceMismatchShowsSourceOnly(t *testing.T) {
+func TestRenderNamespacedPolicyPruneSummaryRegisteredResourceManualDeleteReason(t *testing.T) {
 	t.Parallel()
 
-	filteredSource := pruneSummaryRegisteredResource("resource-1", "dataset", "read")
-	fullSource := testRegisteredResource(
-		"resource-1",
-		"dataset",
-		testRegisteredResourceValue("prod", testActionAttributeValue("action-read", "read", pruneSummaryAttributeValue())),
-		testRegisteredResourceValue("dev", testActionAttributeValue("action-write", "write", pruneSummaryAttributeValue())),
-	)
 	plan := &PrunePlan{
-		Scopes: []Scope{ScopeRegisteredResources},
+		Scope: ScopeRegisteredResources,
 		RegisteredResources: []*PruneRegisteredResourcePlan{
 			{
-				Source:         filteredSource,
-				FullSource:     fullSource,
-				Status:         PruneStatusUnresolved,
-				MigratedTarget: pruneSummaryTarget("target-resource-1"),
+				Source: pruneSummaryRegisteredResource("resource-1", "dataset", "read"),
+				Status: PruneStatusBlocked,
 				Reason: newPruneReason(
-					PruneStatusReasonTypeRegisteredResourceSourceMismatch,
-					"source mismatch",
+					PruneStatusReasonTypeMultiNamespaceManualDelete,
+					pruneStatusReasonMessageMultiNamespaceManualDelete,
 				),
 			},
 		},
@@ -339,17 +330,15 @@ func TestRenderNamespacedPolicyPruneSummaryRegisteredResourceMismatchShowsSource
 
 	summary := stripANSI(RenderNamespacedPolicyPruneSummary(plan, false, PruneSummaryResultSuccess))
 
-	assert.Contains(t, summary, `registered resource "dataset" (source_id=resource-1, source=values="prod" (action_bindings="read" -> https://example.com/attr/classification/value/secret), found_migrated_target=id: "target-resource-1" namespace: "https://example.com"): reason=RegisteredResourceSourceMismatch: source mismatch`)
-	assert.NotContains(t, summary, "filtered_source=")
+	assert.Contains(t, summary, `registered resource "dataset" (source_id=resource-1, source=values="prod" (action_bindings="read" -> https://example.com/attr/classification/value/secret), found_migrated_target=(none)): reason=MultiNamespaceManualDelete: registered resource spans multiple target namespaces and was not migrated; must be deleted manually`)
 	assert.NotContains(t, summary, "full_source=")
-	assert.NotContains(t, summary, `"dev"`)
 }
 
 func TestRenderNamespacedPolicyPruneSummaryObligationTriggersCoversEveryStatus(t *testing.T) {
 	t.Parallel()
 
 	plan := &PrunePlan{
-		Scopes: []Scope{ScopeObligationTriggers},
+		Scope: ScopeObligationTriggers,
 		ObligationTriggers: []*PruneObligationTriggerPlan{
 			{
 				Source:         pruneSummaryObligationTrigger("trigger-deleted", "read"),

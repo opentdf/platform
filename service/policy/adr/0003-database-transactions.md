@@ -16,7 +16,7 @@ Due to the complex nature of some operations within the Policy service, we need 
 
 Primary drivers for implementing database transactions:
 - Unsafe operations that update namespace/attribute definition names or attribute values and require FQNs to be updated for consistency
-- Attribute defintion creation with multiple attribute values that must be created atomically
+- Attribute definition creation with multiple attribute values that must be created atomically
 
 > [!NOTE]
 > There are likely to be more as the service matures and more complex operations are required.

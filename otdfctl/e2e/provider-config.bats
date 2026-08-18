@@ -8,6 +8,7 @@ setup_file() {
   export DEBUG_LEVEL="--log-level debug"
   export VALID_CONFIG='{"cached":"key"}'
   export BASE64_CONFIG="eyJjYWNoZWQiOiAia2V5In0="
+  export TEST_MANAGER="opentdf.io/basic"
 }
 
 setup() {
@@ -32,35 +33,36 @@ delete_pc_by_id() {
 # Create Provider Configuration
 #########
 @test "fail to create provider configuration without config" {
-    run_otdfctl_key_pc create --name test-value
+    run_otdfctl_key_pc create --name test-value --manager "$TEST_MANAGER"
     assert_failure
     assert_output --partial "Flag '--config' is required"
 }
 
 @test "fail to create provider configuration without name" {
-    run_otdfctl_key_pc create --config '{}'
+    run_otdfctl_key_pc create --manager "$TEST_MANAGER" --config '{}'
     assert_failure
     assert_output --partial "Flag '--name' is required"
 }
 
 @test "fail to create provider configuration with invalid config" {
-    run_otdfctl_key_pc create --name test-config --config test-value
+    run_otdfctl_key_pc create --name test-config --manager "$TEST_MANAGER" --config test-value
     assert_failure
     assert_output --partial "invalid_argument"
 }
 
 @test "create provider configuration" {
     CONFIG_NAME="test-config"
-    run_otdfctl_key_pc create --name "$CONFIG_NAME" --config '"$VALID_CONFIG"' --json
+    run_otdfctl_key_pc create --name "$CONFIG_NAME" --manager "$TEST_MANAGER" --config '"$VALID_CONFIG"' --json
     assert_success
     assert_equal "$(echo "$output" | jq -r .name)" "$CONFIG_NAME"
+    assert_equal "$(echo "$output" | jq -r .manager)" "$TEST_MANAGER"
     assert_equal "$(echo "$output" | jq -r .config_json)" "$BASE64_CONFIG"
     delete_pc_by_id "$(echo "$output" | jq -r .id)"
 }
 
 @test "get provider configuration by id" {
     CONFIG_NAME="test-config-2"
-    run_otdfctl_key_pc create --name "$CONFIG_NAME" --config '"$VALID_CONFIG"' --json
+    run_otdfctl_key_pc create --name "$CONFIG_NAME" --manager "$TEST_MANAGER" --config '"$VALID_CONFIG"' --json
     assert_success
     ID=$(echo "$output" | jq -r '.id')
     run_otdfctl_key_pc get --id "$ID" --json
@@ -71,16 +73,29 @@ delete_pc_by_id() {
  }
 
 
-@test "get provider configuration by name" {
+@test "get provider configuration by name and manager" {
     CONFIG_NAME="test-config-3"
-    run_otdfctl_key_pc create --name "$CONFIG_NAME" --config '"$VALID_CONFIG"' --json
+    run_otdfctl_key_pc create --name "$CONFIG_NAME" --manager "$TEST_MANAGER" --config '"$VALID_CONFIG"' --json
     assert_success
     NAME=$(echo "$output" | jq -r '.name')
-    run_otdfctl_key_pc get --name "$NAME" --json
+    run_otdfctl_key_pc get --name "$NAME" --manager "$TEST_MANAGER" --json
     assert_success
     assert_equal "$(echo "$output" | jq -r .name)" "$CONFIG_NAME"
+    assert_equal "$(echo "$output" | jq -r .manager)" "$TEST_MANAGER"
     assert_equal "$(echo "$output" | jq -r .config_json)" "$BASE64_CONFIG"
     delete_pc_by_id "$(echo "$output" | jq -r .id)"
+}
+
+@test "fail to get provider configuration - no manager with name" {
+    run_otdfctl_key_pc get --name test-config
+    assert_failure
+    assert_output --partial "missing [manager]"
+}
+
+@test "fail to get provider configuration - no name with manager" {
+    run_otdfctl_key_pc get --manager test-config
+    assert_failure
+    assert_output --partial "missing [name]"
 }
 
 @test "fail to get provider configuration - no required flags" {
@@ -89,13 +104,27 @@ delete_pc_by_id() {
 }
 
 @test "fail to get provider configuration with non-existent name" {
-    run_otdfctl_key_pc get --name non-existent-config
+    run_otdfctl_key_pc get --name non-existent-config --manager "$TEST_MANAGER"
     assert_failure
     assert_output --partial "Failed to get provider config: not_found"
 }
+
+@test "fail to get provider configuration with id, name" {
+    run_otdfctl_key_pc get --id test-id --manager "$TEST_MANAGER" --name "a-name"
+    assert_failure
+    assert_output --partial "if any flags in the group [id name] are set none of the others can be; [id name] were all set"
+}
+
+@test "fail to get provider configuration with empty name and manager" {
+    run_otdfctl_key_pc get --name '""' --manager '""'
+    assert_failure
+    assert_output --partial "name_and_manager.name: must be at least 1 characters [string.min_len]"
+    assert_output --partial "name_and_manager.manager: must be at least 1 characters [string.min_len]"
+}
+
 @test "list provider configurations" {
     NAME="tst-config-4"
-    run_otdfctl_key_pc create --name "$NAME" --config '"$VALID_CONFIG"' --manager "fake-manager" --json
+    run_otdfctl_key_pc create --name "$NAME" --config '"$VALID_CONFIG"' --manager "$TEST_MANAGER" --json
     assert_success
     ID=$(echo "$output" | jq -r '.id')
     run_otdfctl_key_pc list --json
@@ -113,7 +142,7 @@ delete_pc_by_id() {
     UPDATED_NAME="test-config-5-updated"
     UPDATED_CONFIG='{"cached": "key-updated"}'
     BASE64_UPDATED_CONFIG='eyJjYWNoZWQiOiAia2V5LXVwZGF0ZWQifQ=='
-    run_otdfctl_key_pc create --name "$NAME" --config '"$VALID_CONFIG"' --json
+    run_otdfctl_key_pc create --name "$NAME" --manager "$TEST_MANAGER" --config '"$VALID_CONFIG"' --json
     assert_success
     ID=$(echo "$output" | jq -r '.id')
     run_otdfctl_key_pc update --id "$ID" --name "$UPDATED_NAME" --config "'$UPDATED_CONFIG'" --json
@@ -132,7 +161,7 @@ delete_pc_by_id() {
 
 @test "fail to update provider configuration - no optional flags" {
     NAME="test-config-6"
-    run_otdfctl_key_pc create --name "$NAME" --config '"$VALID_CONFIG"' --json
+    run_otdfctl_key_pc create --name "$NAME" --manager "$TEST_MANAGER" --config '"$VALID_CONFIG"' --json
     ID=$(echo "$output" | jq -r '.id')
     run_otdfctl_key_pc update --id "$ID"
     assert_failure
@@ -142,7 +171,7 @@ delete_pc_by_id() {
 
 @test "fail to update provider configuration - invalid config format" {
     NAME="test-config-7"
-    run_otdfctl_key_pc create --name "$NAME" --config '"$VALID_CONFIG"' --json
+    run_otdfctl_key_pc create --name "$NAME" --manager "$TEST_MANAGER" --config '"$VALID_CONFIG"' --json
     assert_success
     ID=$(echo "$output" | jq -r '.id')
     run_otdfctl_key_pc update --id "$ID" --config "{invalid: json}"
@@ -153,7 +182,7 @@ delete_pc_by_id() {
  
 @test "delete provider configuration -- success" {
   NAME="test-config-8"  
-  run_otdfctl_key_pc create --name "$NAME" --config '"$VALID_CONFIG"' --json
+  run_otdfctl_key_pc create --name "$NAME" --manager "$TEST_MANAGER" --config '"$VALID_CONFIG"' --json
   ID=$(echo "$output" | jq -r '.id')
   run_otdfctl_key_pc delete --id "$ID" --force
   assert_success
@@ -167,7 +196,7 @@ delete_pc_by_id() {
 
 @test "delete provider configuration fail -- no force" {
   NAME="test-config-9"
-  run_otdfctl_key_pc create --name "$NAME" --config '"$VALID_CONFIG"' --json
+  run_otdfctl_key_pc create --name "$NAME" --manager "$TEST_MANAGER" --config '"$VALID_CONFIG"' --json
   ID=$(echo "$output" | jq -r '.id')
   run_otdfctl_key_pc delete --id "$ID"
   assert_failure
@@ -177,5 +206,5 @@ delete_pc_by_id() {
 
 teardown_file() {
   # clear out all test env vars
-  unset HOST WITH_CREDS DEBUG_LEVEL VALID_CONFIG BASE64_CONFIG
+  unset HOST WITH_CREDS DEBUG_LEVEL VALID_CONFIG BASE64_CONFIG TEST_MANAGER
 }

@@ -26,22 +26,22 @@ const (
 	migrationPendingSectionLabel = "Will Create"
 )
 
-func RenderNamespacedPolicySummary(plan *Plan, commit bool) string {
+func RenderNamespacedPolicySummary(plan *MigrationPlan, commit bool) string {
 	return renderNamespacedPolicySummary(plan, commit, "success")
 }
 
-func RenderNamespacedPolicySummaryWithResult(plan *Plan, commit bool, result string) string {
+func RenderNamespacedPolicySummaryWithResult(plan *MigrationPlan, commit bool, result string) string {
 	return renderNamespacedPolicySummary(plan, commit, result)
 }
 
-func planScopes(plan *Plan) []Scope {
+func planScopes(plan *MigrationPlan) []Scope {
 	if plan == nil {
 		return nil
 	}
 	return plan.Scopes
 }
 
-func renderNamespacedPolicySummary(plan *Plan, commit bool, result string) string {
+func renderNamespacedPolicySummary(plan *MigrationPlan, commit bool, result string) string {
 	styles := migrations.NewDisplayStyles()
 	return renderSummaryDocument(styles, summaryDocument{
 		plannedTitle:   "Namespaced Policy Migration Plan",
@@ -67,7 +67,7 @@ func appendMigrationSummaryCountParts(parts []string, counts summaryCounts) []st
 	)
 }
 
-func summarizeActions(plan *Plan, commit bool, styles *migrations.DisplayStyles) constructSummary {
+func summarizeActions(plan *MigrationPlan, commit bool, styles *migrations.DisplayStyles) constructSummary {
 	summary := constructSummary{
 		label:   "Actions",
 		include: includesScope(planScopes(plan), ScopeActions),
@@ -98,7 +98,7 @@ func summarizeActions(plan *Plan, commit bool, styles *migrations.DisplayStyles)
 	return summary
 }
 
-func summarizeSubjectConditionSets(plan *Plan, commit bool, styles *migrations.DisplayStyles) constructSummary {
+func summarizeSubjectConditionSets(plan *MigrationPlan, commit bool, styles *migrations.DisplayStyles) constructSummary {
 	summary := constructSummary{
 		label:   "Subject Condition Sets",
 		include: includesScope(planScopes(plan), ScopeSubjectConditionSets),
@@ -129,7 +129,7 @@ func summarizeSubjectConditionSets(plan *Plan, commit bool, styles *migrations.D
 	return summary
 }
 
-func summarizeSubjectMappings(plan *Plan, commit bool, styles *migrations.DisplayStyles) constructSummary {
+func summarizeSubjectMappings(plan *MigrationPlan, commit bool, styles *migrations.DisplayStyles) constructSummary {
 	summary := constructSummary{
 		label:   "Subject Mappings",
 		include: includesScope(planScopes(plan), ScopeSubjectMappings),
@@ -159,7 +159,7 @@ func summarizeSubjectMappings(plan *Plan, commit bool, styles *migrations.Displa
 	return summary
 }
 
-func summarizeRegisteredResources(plan *Plan, commit bool, styles *migrations.DisplayStyles) constructSummary {
+func summarizeRegisteredResources(plan *MigrationPlan, commit bool, styles *migrations.DisplayStyles) constructSummary {
 	summary := constructSummary{
 		label:   "Registered Resources",
 		include: includesScope(planScopes(plan), ScopeRegisteredResources),
@@ -194,7 +194,7 @@ func summarizeRegisteredResources(plan *Plan, commit bool, styles *migrations.Di
 	return summary
 }
 
-func summarizeObligationTriggers(plan *Plan, commit bool, styles *migrations.DisplayStyles) constructSummary {
+func summarizeObligationTriggers(plan *MigrationPlan, commit bool, styles *migrations.DisplayStyles) constructSummary {
 	summary := constructSummary{
 		label:   "Obligation Triggers",
 		include: includesScope(planScopes(plan), ScopeObligationTriggers),
@@ -313,7 +313,7 @@ func formatSubjectConditionSetCreatedLine(styles *migrations.DisplayStyles, scs 
 	)
 }
 
-func formatSubjectMappingCreatedLine(styles *migrations.DisplayStyles, plan *Plan, mapping *SubjectMappingPlan, commit bool) string {
+func formatSubjectMappingCreatedLine(styles *migrations.DisplayStyles, plan *MigrationPlan, mapping *SubjectMappingPlan, commit bool) string {
 	line := formatCreatedLine(styles, subjectMappingKind, mapping.Source.GetId(), mapping.Target.Namespace, mapping.Target.TargetID(), commit)
 	return appendDetails(line,
 		"attribute_value="+styles.Namespace().Render(valueFQN(mapping.Source.GetAttributeValue())),
@@ -322,7 +322,7 @@ func formatSubjectMappingCreatedLine(styles *migrations.DisplayStyles, plan *Pla
 	)
 }
 
-func formatRegisteredResourceCreatedLine(styles *migrations.DisplayStyles, plan *Plan, resource *RegisteredResourcePlan, commit bool) string {
+func formatRegisteredResourceCreatedLine(styles *migrations.DisplayStyles, plan *MigrationPlan, resource *RegisteredResourcePlan, commit bool) string {
 	line := formatCreatedLine(styles, registeredResourceKind, resource.Source.GetName(), resource.Target.Namespace, resource.Target.TargetID(), commit)
 
 	return appendDetails(line,
@@ -339,7 +339,7 @@ func formatRegisteredResourceFailedLine(styles *migrations.DisplayStyles, resour
 	return line
 }
 
-func formatObligationTriggerCreatedLine(styles *migrations.DisplayStyles, plan *Plan, trigger *ObligationTriggerPlan, commit bool) string {
+func formatObligationTriggerCreatedLine(styles *migrations.DisplayStyles, plan *MigrationPlan, trigger *ObligationTriggerPlan, commit bool) string {
 	line := formatCreatedLine(styles, obligationTriggerKind, trigger.Source.GetId(), trigger.Target.Namespace, trigger.Target.TargetID(), commit)
 	return appendDetails(line,
 		"action="+actionNamesSummary(styles, plan, []string{trigger.Target.ActionSourceID}),
@@ -463,7 +463,7 @@ func registeredResourceFailedValue(resource *RegisteredResourcePlan) string {
 	return ""
 }
 
-func registeredResourceActionBindingsSummary(styles *migrations.DisplayStyles, plan *Plan, resource *RegisteredResourcePlan) string {
+func registeredResourceActionBindingsSummary(styles *migrations.DisplayStyles, plan *MigrationPlan, resource *RegisteredResourcePlan) string {
 	bindings := make([]string, 0)
 	seen := make(map[string]struct{})
 	for _, valuePlan := range resource.Target.Values {
@@ -494,7 +494,7 @@ func registeredResourceActionBindingsSummary(styles *migrations.DisplayStyles, p
 	return strings.Join(bindings, ", ")
 }
 
-func actionNamesSummary(styles *migrations.DisplayStyles, plan *Plan, sourceIDs []string) string {
+func actionNamesSummary(styles *migrations.DisplayStyles, plan *MigrationPlan, sourceIDs []string) string {
 	names := make([]string, 0, len(sourceIDs))
 	seen := make(map[string]struct{}, len(sourceIDs))
 	for _, sourceID := range sourceIDs {
@@ -517,7 +517,7 @@ func actionNamesSummary(styles *migrations.DisplayStyles, plan *Plan, sourceIDs 
 	return strings.Join(names, ", ")
 }
 
-func actionNameBySourceID(plan *Plan, sourceID string) string {
+func actionNameBySourceID(plan *MigrationPlan, sourceID string) string {
 	if plan == nil {
 		return ""
 	}

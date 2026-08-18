@@ -329,15 +329,50 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/policy.unsafe.UnsafeDeleteAttributeValueResponse'
+  /policy.unsafe.UnsafeService/UnsafeUpdateKey:
+    post:
+      tags:
+        - policy.unsafe.UnsafeService
+      summary: UnsafeUpdateKey
+      description: |-
+        --------------------------------------*
+         Kas Key RPCs
+        ---------------------------------------
+      operationId: policy.unsafe.UnsafeService.UnsafeUpdateKey
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/policy.unsafe.UnsafeUpdateKeyRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/policy.unsafe.UnsafeUpdateKeyResponse'
   /policy.unsafe.UnsafeService/UnsafeDeleteKasKey:
     post:
       tags:
         - policy.unsafe.UnsafeService
       summary: UnsafeDeleteKasKey
-      description: |-
-        --------------------------------------*
-         Kas Key RPCs
-        ---------------------------------------
       operationId: policy.unsafe.UnsafeService.UnsafeDeleteKasKey
       parameters:
         - name: Connect-Protocol-Version
@@ -387,6 +422,11 @@ components:
         - ALGORITHM_EC_P256
         - ALGORITHM_EC_P384
         - ALGORITHM_EC_P521
+        - ALGORITHM_HPQT_XWING
+        - ALGORITHM_HPQT_SECP256R1_MLKEM768
+        - ALGORITHM_HPQT_SECP384R1_MLKEM1024
+        - ALGORITHM_MLKEM_768
+        - ALGORITHM_MLKEM_1024
       description: Supported key algorithms.
     policy.AttributeRuleTypeEnum:
       type: string
@@ -413,6 +453,11 @@ components:
         - KAS_PUBLIC_KEY_ALG_ENUM_EC_SECP256R1
         - KAS_PUBLIC_KEY_ALG_ENUM_EC_SECP384R1
         - KAS_PUBLIC_KEY_ALG_ENUM_EC_SECP521R1
+        - KAS_PUBLIC_KEY_ALG_ENUM_HPQT_XWING
+        - KAS_PUBLIC_KEY_ALG_ENUM_HPQT_SECP256R1_MLKEM768
+        - KAS_PUBLIC_KEY_ALG_ENUM_HPQT_SECP384R1_MLKEM1024
+        - KAS_PUBLIC_KEY_ALG_ENUM_MLKEM_768
+        - KAS_PUBLIC_KEY_ALG_ENUM_MLKEM_1024
     policy.KeyMode:
       type: string
       title: KeyMode
@@ -430,7 +475,10 @@ components:
         - KEY_STATUS_UNSPECIFIED
         - KEY_STATUS_ACTIVE
         - KEY_STATUS_ROTATED
-      description: The status of the key
+      description: |-
+        The status of the key.
+         Adding a value here requires updating the key_status mapping in the listKeys
+         query so SORT_KAS_KEYS_TYPE_KEY_STATUS keeps sorting alphabetically.
     policy.SourceType:
       type: string
       title: SourceType
@@ -1106,6 +1154,13 @@ components:
         group:
           title: group
           $ref: '#/components/schemas/policy.ResourceMappingGroup'
+        namespace:
+          title: namespace
+          description: |-
+            The namespace that optionally owns this resource mapping. When the mapping
+             belongs to a group, this matches the group's namespace. The mapped
+             attribute value may belong to a different namespace.
+          $ref: '#/components/schemas/policy.Namespace'
       title: ResourceMapping
       required:
         - attributeValue
@@ -1599,6 +1654,50 @@ components:
           title: value
           $ref: '#/components/schemas/policy.Value'
       title: UnsafeUpdateAttributeValueResponse
+      additionalProperties: false
+    policy.unsafe.UnsafeUpdateKeyRequest:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+          format: uuid
+          description: |-
+            Required
+             UUID of the Key
+        targetKeyMode:
+          title: target_key_mode
+          enum:
+            - 0
+            - 3
+            - 4
+          description: |-
+            Optional
+             Target key mode. Only KEY_MODE_REMOTE and KEY_MODE_PUBLIC_KEY_ONLY mode changes are supported.
+             KEY_MODE_UNSPECIFIED with provider_config_id updates only the provider configuration for an existing REMOTE key.
+          $ref: '#/components/schemas/policy.KeyMode'
+        providerConfigId:
+          type: string
+          title: provider_config_id
+          format: uuid
+          description: |-
+            Conditionally Required
+             Configuration ID for the key provider. Required for KEY_MODE_REMOTE and KEY_MODE_UNSPECIFIED; empty for KEY_MODE_PUBLIC_KEY_ONLY.
+      title: UnsafeUpdateKeyRequest
+      additionalProperties: false
+      description: |-
+        WARNING!!
+         Updating a key in place can retroactively alter decryptability for existing TDFs.
+         This support-only operation is limited to switching between REMOTE and PUBLIC_KEY_ONLY
+         key modes, or updating the provider configuration for an existing REMOTE key, while
+         preserving the existing KID, KAS URI, and public key.
+    policy.unsafe.UnsafeUpdateKeyResponse:
+      type: object
+      properties:
+        key:
+          title: key
+          $ref: '#/components/schemas/policy.KasKey'
+      title: UnsafeUpdateKeyResponse
       additionalProperties: false
     policy.unsafe.UnsafeUpdateNamespaceRequest:
       type: object

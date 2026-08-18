@@ -36,19 +36,19 @@ type EventObjectAttributes struct {
 }
 
 type EventObjectAction struct {
-	Type   ActionType   `json:"type"`
-	Result ActionResult `json:"result"`
+	Type   ActionType   `json:"type" audit:"reserved"`
+	Result ActionResult `json:"result" audit:"reserved"`
 }
 
 type EventObjectActor struct {
-	ID         string `json:"id"`
+	ID         string `json:"id" audit:"reserved"`
 	Attributes []any  `json:"attributes"`
 }
 
 type EventClientInfo struct {
-	UserAgent string `json:"userAgent"`
-	Platform  string `json:"platform"`
-	RequestIP string `json:"requestIp"`
+	UserAgent string `json:"userAgent" audit:"reserved"`
+	Platform  string `json:"platform" audit:"reserved"`
+	RequestIP string `json:"requestIP" audit:"reserved"`
 }
 
 type EventObjectParams struct {
@@ -70,13 +70,13 @@ type EventObject struct {
 	Object        auditEventObject   `json:"object"`
 	Action        eventAction        `json:"action"`
 	Actor         auditEventActor    `json:"actor"`
-	EventMetaData auditEventMetadata `json:"eventMetaData"`
+	EventMetaData auditEventMetadata `json:"eventMetaData" audit:"extensible"`
 	ClientInfo    eventClientInfo    `json:"clientInfo"`
 
-	Original  map[string]any `json:"original,omitempty"`
-	Updated   map[string]any `json:"updated,omitempty"`
-	RequestID uuid.UUID      `json:"requestId"`
-	Timestamp string         `json:"timestamp"`
+	Original  map[string]any `json:"original,omitempty" audit:"extensible"`
+	Updated   map[string]any `json:"updated,omitempty" audit:"extensible"`
+	RequestID uuid.UUID      `json:"requestID" audit:"reserved"`
+	Timestamp string         `json:"timestamp" audit:"reserved"`
 }
 
 // NewEvent converts public DTOs into the internal log event type.
@@ -108,21 +108,20 @@ func NewEvent(params EventObjectParams) *EventObject {
 }
 
 func (e EventObject) LogValue() slog.Value {
-	return slog.GroupValue(
-		slog.Any("object", e.Object),
-		slog.Any("action", e.Action),
-		slog.Any("actor", e.Actor),
-		slog.Any("eventMetaData", e.EventMetaData),
-		slog.Any("clientInfo", e.ClientInfo),
-		slog.Any("original", e.Original),
-		slog.Any("updated", e.Updated),
-		slog.String("requestID", e.RequestID.String()),
-		slog.String("timestamp", e.Timestamp))
+	return slog.AnyValue(e.emittedPayloadMap())
+}
+
+func (e EventObject) emittedPayloadMap() map[string]any {
+	entry, ok := normalizeAuditValue(e).(map[string]any)
+	if !ok {
+		panic("normalized audit payload must be a map")
+	}
+	return entry
 }
 
 // event.object
 type auditEventObject struct {
-	Type       ObjectType            `json:"type"`
+	Type       ObjectType            `json:"type" audit:"reserved"`
 	ID         string                `json:"id"`
 	Name       string                `json:"name,omitempty"`
 	Attributes eventObjectAttributes `json:"attributes,omitempty"`

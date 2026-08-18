@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"strconv"
 	"strings"
 
 	"github.com/opentdf/platform/lib/flattening"
@@ -14,7 +15,9 @@ import (
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/subjectmapping"
 	otdfSDK "github.com/opentdf/platform/sdk"
+	ent "github.com/opentdf/platform/service/entity"
 	ctxAuth "github.com/opentdf/platform/service/pkg/auth"
+	"google.golang.org/protobuf/types/known/structpb"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 
 	"github.com/opentdf/platform/service/internal/access/v2/obligations"
@@ -30,7 +33,8 @@ var (
 	ErrResourceDecisionLengthMismatch           = errors.New("access: resource decision length mismatch")
 	ErrResourceDecisionIDMismatch               = errors.New("access: resource decision ID mismatch")
 
-	requestAuthTokenEphemeralID = "with-request-token-auth-entity"
+	errResolvedTokenChainRequiresHydration = errors.New("access: resolved token chain requires ERS hydration")
+	requestAuthTokenEphemeralID            = "with-request-token-auth-entity"
 )
 
 type JustInTimePDP struct {
@@ -50,6 +54,7 @@ func NewJustInTimePDP(
 	sdk *otdfSDK.SDK,
 	store EntitlementPolicyStore,
 	allowDirectEntitlements bool,
+	allowDynamicValueMappings bool,
 	namespacedPolicy bool,
 ) (*JustInTimePDP, error) {
 	var err error
@@ -91,8 +96,16 @@ func NewJustInTimePDP(
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch all obligations: %w", err)
 	}
+	// Experimental: only load dynamic value mappings when the feature is enabled.
+	var allDynamicValueMappings []*policy.DynamicValueMapping
+	if allowDynamicValueMappings {
+		allDynamicValueMappings, err = store.ListAllDynamicValueMappings(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("failed to fetch all dynamic value mappings: %w", err)
+		}
+	}
 
-	pdp, err := NewPolicyDecisionPoint(ctx, log, allAttributes, allSubjectMappings, allRegisteredResources, allowDirectEntitlements, namespacedPolicy)
+	pdp, err := NewPolicyDecisionPoint(ctx, log, allAttributes, allSubjectMappings, allRegisteredResources, allowDirectEntitlements, namespacedPolicy, WithDynamicValueMappings(allDynamicValueMappings, allowDynamicValueMappings))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create new policy decision point: %w", err)
 	}
@@ -352,30 +365,20 @@ func (p *JustInTimePDP) getMatchedSubjectMappings(
 	return rsp.GetSubjectMappings(), nil
 }
 
-// resolveEntitiesFromEntityChain roundtrips to ERS to resolve the provided entity chain
-// and optionally skips environment entities (which is expected behavior in decision flow)
+// resolveEntitiesFromEntityChain roundtrips caller-provided entity chains through ERS.
 func (p *JustInTimePDP) resolveEntitiesFromEntityChain(
 	ctx context.Context,
 	entityChain *entity.EntityChain,
 	skipEnvironmentEntities bool,
 ) ([]*entityresolutionV2.EntityRepresentation, error) {
-	p.logger.DebugContext(ctx,
+	p.logger.DebugContext(
+		ctx,
 		"resolving entities from entity chain",
 		slog.String("entity_chain_id", entityChain.GetEphemeralId()),
 		slog.Bool("skip_environment_entities", skipEnvironmentEntities),
 	)
 
-	var filteredEntities []*entity.Entity
-	if skipEnvironmentEntities {
-		for _, chained := range entityChain.GetEntities() {
-			if chained.GetCategory() == entity.Entity_CATEGORY_ENVIRONMENT {
-				continue
-			}
-			filteredEntities = append(filteredEntities, chained)
-		}
-	} else {
-		filteredEntities = entityChain.GetEntities()
-	}
+	filteredEntities := filterEntityChain(entityChain, skipEnvironmentEntities)
 	if len(filteredEntities) == 0 {
 		return nil, errors.New("no subject entities to resolve - all were environment entities and skipped")
 	}
@@ -386,7 +389,51 @@ func (p *JustInTimePDP) resolveEntitiesFromEntityChain(
 	}
 	entityRepresentations := ersResp.GetEntityRepresentations()
 	if entityRepresentations == nil {
-		return nil, fmt.Errorf("failed to get entity representations: %w", err)
+		return nil, errors.New("failed to get entity representations")
+	}
+	return entityRepresentations, nil
+}
+
+func filterEntityChain(entityChain *entity.EntityChain, skipEnvironmentEntities bool) []*entity.Entity {
+	if !skipEnvironmentEntities {
+		return entityChain.GetEntities()
+	}
+
+	filteredEntities := make([]*entity.Entity, 0, len(entityChain.GetEntities()))
+	for _, chained := range entityChain.GetEntities() {
+		if chained.GetCategory() != entity.Entity_CATEGORY_ENVIRONMENT {
+			filteredEntities = append(filteredEntities, chained)
+		}
+	}
+	return filteredEntities
+}
+
+func entityRepresentationsFromResolvedChain(entityChain *entity.EntityChain, skipEnvironmentEntities bool) ([]*entityresolutionV2.EntityRepresentation, error) {
+	filteredEntities := filterEntityChain(entityChain, skipEnvironmentEntities)
+	if len(filteredEntities) == 0 {
+		return nil, errors.New("no subject entities to resolve - all were environment entities and skipped")
+	}
+
+	entityRepresentations := make([]*entityresolutionV2.EntityRepresentation, 0, len(filteredEntities))
+	for idx, chained := range filteredEntities {
+		claims := chained.GetClaims()
+		if claims == nil {
+			return nil, fmt.Errorf("%w: entity %s does not contain claims", errResolvedTokenChainRequiresHydration, chained.GetEphemeralId())
+		}
+
+		var claimsStruct structpb.Struct
+		if err := claims.UnmarshalTo(&claimsStruct); err != nil {
+			return nil, fmt.Errorf("failed to unpack resolved token chain entity %s: %w", chained.GetEphemeralId(), err)
+		}
+
+		originalID := chained.GetEphemeralId()
+		if originalID == "" {
+			originalID = ent.EntityIDPrefix + strconv.Itoa(idx)
+		}
+		entityRepresentations = append(entityRepresentations, &entityresolutionV2.EntityRepresentation{
+			OriginalId:      originalID,
+			AdditionalProps: []*structpb.Struct{&claimsStruct},
+		})
 	}
 	return entityRepresentations, nil
 }
@@ -409,7 +456,12 @@ func (p *JustInTimePDP) resolveEntitiesFromToken(
 	if len(entityChains) != 1 {
 		return nil, fmt.Errorf("received %d entity chains in ERS response but expected exactly 1", len(entityChains))
 	}
-	return p.resolveEntitiesFromEntityChain(ctx, entityChains[0], skipEnvironmentEntities)
+
+	entityRepresentations, err := entityRepresentationsFromResolvedChain(entityChains[0], skipEnvironmentEntities)
+	if errors.Is(err, errResolvedTokenChainRequiresHydration) {
+		return p.resolveEntitiesFromEntityChain(ctx, entityChains[0], skipEnvironmentEntities)
+	}
+	return entityRepresentations, err
 }
 
 // resolveEntitiesFromRequestToken pulls the request token off the context where it has been set upstream

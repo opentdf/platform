@@ -12,7 +12,6 @@ command:
       required: true
     - name: kas
       description: Specify the Key Access Server (KAS) where the key is registered. The KAS can be identified by its ID, URI, or Name.
-      required: true
     
     # Flags for the new key creation (from create.md)
     - name: key-id
@@ -88,6 +87,11 @@ otdfctl policy kas-registry key rotate --key "public-key-old" --kas "Secondary K
     | `ec:secp256r1` |
     | `ec:secp384r1` |
     | `ec:secp521r1` |
+    | `hpqt:secp256r1-mlkem768` |
+    | `hpqt:secp384r1-mlkem1024` |
+    | `hpqt:xwing`   |
+    | `mlkem:768`    |
+    | `mlkem:1024`   |
 
 2. The `"mode"` specifies where the key that is encrypting TDFs is stored. All keys will be encrypted when stored in Virtru's DB, for modes `"local"` and `"provider"`
 

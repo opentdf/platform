@@ -23,7 +23,7 @@ func logout(cmd *cobra.Command, args []string) {
 			cp.GetEndpoint(),
 			creds.AccessToken.ClientID,
 			creds.AccessToken.RefreshToken,
-			c.FlagHelper.GetOptionalBool("tls-no-verify"),
+			c.Flags.GetOptionalBool("tls-no-verify"),
 		); err != nil {
 			c.ExitWithError("An error occurred while revoking the access token", err)
 		}

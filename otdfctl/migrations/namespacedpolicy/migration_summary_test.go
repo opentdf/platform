@@ -14,7 +14,7 @@ func TestRenderNamespacedPolicySummaryCommitIncludesCountsAndCreatedDetails(t *t
 	otherNamespace := &policy.Namespace{Id: "ns-2", Fqn: "https://example.org"}
 	classificationValue := testAttributeValue("https://example.com/attr/classification/value/secret", namespace)
 
-	plan := &Plan{
+	plan := &MigrationPlan{
 		Scopes: []Scope{
 			ScopeActions,
 			ScopeSubjectConditionSets,
@@ -164,7 +164,7 @@ func TestRenderNamespacedPolicySummaryDryRunUsesToCreateLabel(t *testing.T) {
 	t.Parallel()
 
 	namespace := &policy.Namespace{Id: "ns-1", Fqn: "https://example.com"}
-	plan := &Plan{
+	plan := &MigrationPlan{
 		Scopes: []Scope{ScopeActions},
 		Actions: []*ActionPlan{
 			{
@@ -195,7 +195,7 @@ func TestRenderNamespacedPolicySummaryDryRunUsesToCreateLabel(t *testing.T) {
 func TestRenderNamespacedPolicySummaryIncludesTargetlessUnresolvedEntries(t *testing.T) {
 	t.Parallel()
 
-	plan := &Plan{
+	plan := &MigrationPlan{
 		Scopes: []Scope{
 			ScopeActions,
 			ScopeSubjectConditionSets,
@@ -251,7 +251,7 @@ func TestRenderNamespacedPolicySummaryCommitFailureShowsFailedAndPendingCreates(
 
 	namespace := &policy.Namespace{Id: "ns-1", Fqn: "https://example.com"}
 
-	plan := &Plan{
+	plan := &MigrationPlan{
 		Scopes: []Scope{
 			ScopeActions,
 			ScopeSubjectConditionSets,

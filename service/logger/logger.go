@@ -11,7 +11,7 @@
 
 // 	Original  map[string]interface{} `json:"original,omitempty"`
 // 	Updated   map[string]interface{} `json:"updated,omitempty"`
-// 	RequestID uuid.UUID              `json:"requestId"`
+// 	RequestID uuid.UUID              `json:"requestID"`
 // 	Timestamp string                 `json:"timestamp"`
 // }
 

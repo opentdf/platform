@@ -10,11 +10,17 @@ command:
     - name: attribute-value-id
       description: The ID of the attribute value to map to the resource.
       default: ''
+      required: true
     - name: terms
       description: The synonym terms to match for the resource mapping.
       default: ''
+      required: true
     - name: group-id
       description: The ID of the resource mapping group to assign this mapping to
+      default: ''
+    - name: namespace
+      shorthand: s
+      description: Optional ID or FQN of the namespace that owns this resource mapping. If a group is provided, it must match the group's namespace.
       default: ''
     - name: label
       description: "Optional metadata 'labels' in the format: key=value"

@@ -59,7 +59,7 @@ func newProfilerFromCLI(c *cli.Cli) *osprofiles.Profiler {
 
 func getDriverTypeFromUser(c *cli.Cli) profiles.ProfileDriver {
 	driverTypeStr := string(profiles.ProfileDriverDefault)
-	store := c.FlagHelper.GetOptionalString("store")
+	store := c.Flags.GetOptionalString("store")
 	if len(store) > 0 {
 		driverTypeStr = store
 	}
@@ -90,9 +90,9 @@ var profileCreateCmd = &cobra.Command{
 		profileName := args[0]
 		endpoint := args[1]
 
-		setDefault := c.FlagHelper.GetOptionalBool("set-default")
-		tlsNoVerify := c.FlagHelper.GetOptionalBool("tls-no-verify")
-		outputFormat := c.FlagHelper.GetOptionalString("output-format")
+		setDefault := c.Flags.GetOptionalBool("set-default")
+		tlsNoVerify := c.Flags.GetOptionalBool("tls-no-verify")
+		outputFormat := c.Flags.GetOptionalString("output-format")
 		if !profiles.IsValidOutputFormat(outputFormat) {
 			c.ExitWithError("Output format must be either 'styled' or 'json'", nil)
 		}

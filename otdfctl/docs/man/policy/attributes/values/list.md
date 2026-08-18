@@ -9,6 +9,7 @@ command:
     - name: attribute-id
       shorthand: a
       description: The ID of the attribute to list values for
+      required: true
     - name: state
       shorthand: s
       description: Filter by state

@@ -18,15 +18,12 @@ command:
     - name: attribute-id
       shorthand: a
       description: The ID of the Attribute Definition being assigned a KAS Grant
-      required: true
     - name: value-id
       shorthand: v
       description: The ID of the Value being assigned a KAS Grant
-      required: true
     - name: kas-id
       shorthand: k
       description: The ID of the Key Access Server being assigned to the grant
-      required: true
     - name: label
       description: "Optional metadata 'labels' in the format: key=value"
       shorthand: l

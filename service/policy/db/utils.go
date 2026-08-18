@@ -4,12 +4,14 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/opentdf/platform/protocol/go/common"
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/attributes"
+	"github.com/opentdf/platform/protocol/go/policy/dynamicvaluemapping"
 	"github.com/opentdf/platform/protocol/go/policy/kasregistry"
 	"github.com/opentdf/platform/protocol/go/policy/namespaces"
 	"github.com/opentdf/platform/protocol/go/policy/obligations"
@@ -27,6 +29,7 @@ const (
 	sortFieldFQN       = "fqn"
 	sortFieldURI       = "uri"
 	sortFieldKeyID     = "key_id"
+	sortFieldKeyStatus = "key_status"
 )
 
 // Gathers request pagination limit/offset or configured default
@@ -162,6 +165,26 @@ func GetRegisteredResourcesSortParams(sort []*registeredresources.RegisteredReso
 	return getRegisteredResourcesSortField(sort[0].GetField()), getSortDirection(sort[0].GetDirection())
 }
 
+func pgtypeSubstringSearchPattern(query string) pgtype.Text {
+	query = strings.TrimSpace(query)
+	if query == "" {
+		return pgtype.Text{}
+	}
+	// PostgreSQL docs: Chapter 9 "Functions and Operators", Section 9.7.1 "LIKE".
+	// In LIKE patterns, % and _ are wildcards; ESCAPE '\' makes them literals.
+	// The pattern is passed as a sqlc parameter; escaping here keeps LIKE
+	// wildcard characters from expanding the user-provided search term.
+	return pgtypeText("%" + escapeLikePattern(strings.ToLower(query)) + "%")
+}
+
+func escapeLikePattern(query string) string {
+	return strings.NewReplacer(
+		`\`, `\\`,
+		`%`, `\%`,
+		`_`, `\_`,
+	).Replace(query)
+}
+
 // Returns next page's offset if has not yet reached total, or else returns 0
 func getNextOffset(currentOffset, limit, total int32) int32 {
 	next := currentOffset + limit
@@ -195,6 +218,26 @@ func unmarshalSubjectConditionSet(subjectConditionSetJSON []byte, scs *policy.Su
 			return fmt.Errorf("failed to unmarshal scsJSON [%s]: %w", string(subjectConditionSetJSON), err)
 		}
 	}
+	return nil
+}
+
+func unmarshalSubjectMappingsProto(subjectMappingsJSON []byte, mappings *[]*policy.SubjectMapping) error {
+	var raw []json.RawMessage
+
+	if subjectMappingsJSON != nil {
+		if err := json.Unmarshal(subjectMappingsJSON, &raw); err != nil {
+			return fmt.Errorf("failed to unmarshal subject mappings array [%s]: %w", string(subjectMappingsJSON), err)
+		}
+
+		for _, r := range raw {
+			sm := policy.SubjectMapping{}
+			if err := protojson.Unmarshal(r, &sm); err != nil {
+				return fmt.Errorf("failed to unmarshal subject mapping [%s]: %w", string(r), err)
+			}
+			*mappings = append(*mappings, &sm)
+		}
+	}
+
 	return nil
 }
 
@@ -404,12 +447,33 @@ func GetSubjectMappingsSortParams(sort []*subjectmapping.SubjectMappingsSort) (s
 	return getSubjectMappingsSortField(sort[0].GetField()), getSortDirection(sort[0].GetDirection())
 }
 
+func getDynamicValueMappingsSortField(field dynamicvaluemapping.SortDynamicValueMappingsType) string {
+	switch field {
+	case dynamicvaluemapping.SortDynamicValueMappingsType_SORT_DYNAMIC_VALUE_MAPPINGS_TYPE_CREATED_AT:
+		return sortFieldCreatedAt
+	case dynamicvaluemapping.SortDynamicValueMappingsType_SORT_DYNAMIC_VALUE_MAPPINGS_TYPE_UPDATED_AT:
+		return sortFieldUpdatedAt
+	case dynamicvaluemapping.SortDynamicValueMappingsType_SORT_DYNAMIC_VALUE_MAPPINGS_TYPE_UNSPECIFIED:
+		fallthrough
+	default:
+		return ""
+	}
+}
+
+func GetDynamicValueMappingsSortParams(sort []*dynamicvaluemapping.DynamicValueMappingsSort) (string, string) {
+	if len(sort) == 0 {
+		return "", ""
+	}
+	return getDynamicValueMappingsSortField(sort[0].GetField()), getSortDirection(sort[0].GetDirection())
+}
+
 func UUIDToString(uuid pgtype.UUID) string {
 	if !uuid.Valid {
 		return ""
 	}
 
-	return fmt.Sprintf("%08x-%04x-%04x-%04x-%012x",
+	return fmt.Sprintf(
+		"%08x-%04x-%04x-%04x-%012x",
 		uuid.Bytes[0:4],
 		uuid.Bytes[4:6],
 		uuid.Bytes[6:8],
@@ -454,6 +518,8 @@ func getKasKeysSortField(field kasregistry.SortKasKeysType) string {
 		return sortFieldCreatedAt
 	case kasregistry.SortKasKeysType_SORT_KAS_KEYS_TYPE_UPDATED_AT:
 		return sortFieldUpdatedAt
+	case kasregistry.SortKasKeysType_SORT_KAS_KEYS_TYPE_KEY_STATUS:
+		return sortFieldKeyStatus
 	case kasregistry.SortKasKeysType_SORT_KAS_KEYS_TYPE_UNSPECIFIED:
 		fallthrough
 	default:

@@ -2,6 +2,7 @@ package ocrypto
 
 import (
 	"context"
+	"crypto/aes"
 	"crypto/hmac"
 	"crypto/sha256"
 	"errors"
@@ -48,8 +49,18 @@ func NewAESProtectedKey(rawKey []byte) (*AESProtectedKey, error) {
 
 // DecryptAESGCM decrypts data using AES-GCM with the protected key
 func (k *AESProtectedKey) DecryptAESGCM(iv []byte, body []byte, tagSize int) ([]byte, error) {
+	if len(iv) != GcmStandardNonceSize {
+		return nil, fmt.Errorf("invalid ciphertext or IV: %w", ErrInvalidCiphertext)
+	}
+	if tagSize != aes.BlockSize {
+		return nil, fmt.Errorf("AES-GCM tag size %d is not supported: %w", tagSize, ErrUnsupportedAESGCMConfiguration)
+	}
+
 	// Use the pre-initialized AES-GCM cipher for better performance
-	decryptedData, err := k.aesGcm.DecryptWithIVAndTagSize(iv, body, tagSize)
+	sealed := make([]byte, 0, len(iv)+len(body))
+	sealed = append(sealed, iv...)
+	sealed = append(sealed, body...)
+	decryptedData, err := k.aesGcm.Decrypt(sealed)
 	if err != nil {
 		if errors.Is(err, ErrInvalidCiphertext) {
 			return nil, fmt.Errorf("invalid ciphertext or IV: %w", err)

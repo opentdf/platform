@@ -73,9 +73,18 @@ WITH params AS (
         COALESCE(NULLIF(@sort_field::text, ''), 'created_at') AS resolved_field,
         COALESCE(NULLIF(@sort_direction::text, ''), 'DESC') AS resolved_direction
 ),
+filtered AS (
+    SELECT kas.*
+    FROM key_access_servers AS kas
+    WHERE (
+        sqlc.narg('search')::TEXT IS NULL
+        OR kas.name LIKE sqlc.narg('search')::TEXT ESCAPE '\'
+        OR kas.uri ILIKE sqlc.narg('search')::TEXT ESCAPE '\' -- Use slower case-insensitive matching, URIs can be registered with variable casing.
+    )
+),
 counted AS (
     SELECT COUNT(kas.id) AS total
-    FROM key_access_servers AS kas
+    FROM filtered AS kas
 )
 SELECT kas.id,
     kas.uri,
@@ -85,7 +94,7 @@ SELECT kas.id,
     JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', kas.metadata -> 'labels', 'created_at', kas.created_at, 'updated_at', kas.updated_at)) AS metadata,
     kask_keys.keys,
     counted.total
-FROM key_access_servers AS kas
+FROM filtered AS kas
 CROSS JOIN counted
 CROSS JOIN params p
 LEFT JOIN (
@@ -342,6 +351,13 @@ SET
     metadata = COALESCE(sqlc.narg('metadata'), metadata)
 WHERE id = $1;
 
+-- name: unsafeUpdateKey :execrows
+UPDATE key_access_server_keys
+SET
+    key_mode = COALESCE(sqlc.narg('key_mode'), key_mode),
+    provider_config_id = sqlc.arg('provider_config_id')
+WHERE id = @id;
+
 -- name: keyAccessServerExists :one
 SELECT EXISTS (
     SELECT 1
@@ -398,6 +414,10 @@ LEFT JOIN
 WHERE
     (sqlc.narg('key_algorithm')::integer IS NULL OR kask.key_algorithm = sqlc.narg('key_algorithm')::integer)
     AND (sqlc.narg('legacy')::boolean IS NULL OR kask.legacy = sqlc.narg('legacy')::boolean)
+    AND (
+        sqlc.narg('search')::TEXT IS NULL
+        OR kask.key_id ILIKE sqlc.narg('search')::TEXT ESCAPE '\'
+    )
 ORDER BY
     CASE WHEN p.resolved_field = 'key_id' AND p.resolved_direction = 'ASC' THEN kask.key_id END ASC,
     CASE WHEN p.resolved_field = 'key_id' AND p.resolved_direction = 'DESC' THEN kask.key_id END DESC,
@@ -405,6 +425,13 @@ ORDER BY
     CASE WHEN p.resolved_field = 'created_at' AND p.resolved_direction = 'DESC' THEN kask.created_at END DESC,
     CASE WHEN p.resolved_field = 'updated_at' AND p.resolved_direction = 'ASC' THEN kask.updated_at END ASC,
     CASE WHEN p.resolved_field = 'updated_at' AND p.resolved_direction = 'DESC' THEN kask.updated_at END DESC,
+    -- key_status is stored as an enum ordinal, so map it to a name to sort alphabetically
+    CASE WHEN p.resolved_field = 'key_status' AND p.resolved_direction = 'ASC' THEN
+        CASE kask.key_status WHEN 1 THEN 'ACTIVE' WHEN 2 THEN 'ROTATED' ELSE 'UNSPECIFIED' END
+    END ASC,
+    CASE WHEN p.resolved_field = 'key_status' AND p.resolved_direction = 'DESC' THEN
+        CASE kask.key_status WHEN 1 THEN 'ACTIVE' WHEN 2 THEN 'ROTATED' ELSE 'UNSPECIFIED' END
+    END DESC,
     kask.id ASC
 LIMIT @limit_
 OFFSET @offset_;

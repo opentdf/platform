@@ -8,11 +8,9 @@ command:
     - name: limit
       shorthand: l
       description: Maximum number of keys to return
-      required: true
     - name: offset
       shorthand: o
       description: Number of keys to skip before starting to return results
-      required: true
     - name: algorithm
       shorthand: a
       description: Key Algorithm to filter for
@@ -21,6 +19,8 @@ command:
     - name: legacy
       description: Filter keys by legacy status.
       required: false
+    - name: search
+      description: Search term to filter results
     - name: sort
       description: Sort list results by field
     - name: order
@@ -30,6 +30,14 @@ command:
 This command lists keys registered within a specified Key Access Server (KAS). You must specify the KAS using its ID, URI, or Name.
 
 The list can be filtered by key algorithm. Pagination is supported using `limit` and `offset` flags to manage the number of results returned.
+
+## Search Fields
+
+The `--search` term is trimmed and matched as a substring against these values:
+
+| Value | Description |
+| --- | --- |
+| Key ID | Registered key identifier |
 
 ## Sort Options
 
@@ -64,6 +72,12 @@ List the first 10 keys from a KAS specified by its URI:
 
 ```shell
 otdfctl policy kas-registry key list --kas "https://kas.example.com/kas" --limit 10 --offset 0
+```
+
+Search keys by key ID:
+
+```shell
+otdfctl policy kas-registry key list --kas "https://kas.example.com/kas" --search r1
 ```
 
 List keys from a KAS named "Primary KAS", filtering for keys using the "RSA:2048" algorithm, and output in JSON format:

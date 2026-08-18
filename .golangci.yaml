@@ -210,6 +210,7 @@ linters:
     paths:
       - .*\.pb\.go
       - .*\.pb\.gw.go
+      - sdk/sdkconnect/  # generated connect wrappers; forward deprecated RPCs
       - otdfctl/tui/  # excluded during migration, matching original otdfctl lint config
       - third_party$
       - builtin$
@@ -226,6 +227,7 @@ formatters:
     paths:
       - .*\.pb\.go
       - .*\.pb\.gw.go
+      - sdk/sdkconnect/  # generated connect wrappers; forward deprecated RPCs
       - otdfctl/tui/
       - third_party$
       - builtin$

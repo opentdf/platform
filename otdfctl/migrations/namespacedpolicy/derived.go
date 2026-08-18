@@ -196,7 +196,7 @@ func (d *targetDeriver) deriveRegisteredResource(resource *policy.RegisteredReso
 
 func (d *targetDeriver) deriveObligationTrigger(trigger *policy.ObligationTrigger) (*DerivedObligationTrigger, error) {
 	item := &DerivedObligationTrigger{Source: trigger}
-	namespace, err := d.resolveNamespace(namespaceFromObligationValue(trigger.GetObligationValue()))
+	namespace, err := d.resolveNamespace(namespaceFromAttributeValue(trigger.GetAttributeValue()))
 	if err != nil {
 		return nil, fmt.Errorf("obligation trigger %q: %w", trigger.GetId(), err)
 	}

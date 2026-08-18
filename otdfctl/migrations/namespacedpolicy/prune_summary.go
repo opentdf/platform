@@ -33,10 +33,10 @@ const (
 )
 
 func prunePlanScopes(plan *PrunePlan) []Scope {
-	if plan == nil {
+	if plan == nil || plan.Scope == "" {
 		return nil
 	}
-	return plan.Scopes
+	return []Scope{plan.Scope}
 }
 
 func RenderNamespacedPolicyPruneSummary(plan *PrunePlan, executed bool, result PruneSummaryResult) string {

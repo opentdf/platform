@@ -98,9 +98,11 @@ func (c PolicyDBClient) ListNamespaces(ctx context.Context, r *namespaces.ListNa
 	}
 
 	sortField, sortDirection := GetNamespacesSortParams(r.GetSort())
+	search := pgtypeSubstringSearchPattern(r.GetSearch().GetTerm())
 
 	list, err := c.queries.listNamespaces(ctx, listNamespacesParams{
 		Active:        active,
+		Search:        search,
 		Limit:         limit,
 		Offset:        offset,
 		SortField:     sortField,

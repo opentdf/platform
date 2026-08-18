@@ -209,6 +209,12 @@ func getDPoPAssertion(dpopJWK jwk.Key, method string, endpoint string, nonce str
 		panic(err)
 	}
 
+	slog.Debug(
+		"building dpop assertion",
+		slog.String("htm", method),
+		slog.String("htu", endpoint),
+		slog.Bool("with_nonce", nonce != ""),
+	)
 	tokenBuilder := jwt.NewBuilder().
 		Claim("jti", uuid.NewString()).
 		Claim("htm", method).

@@ -18,15 +18,14 @@ func TestExecuteSubjectMappings(t *testing.T) {
 
 	tests := []struct {
 		name    string
-		plan    *Plan
+		plan    *MigrationPlan
 		handler *mockExecutorHandler
-		runID   string
 		wantErr *expectedError
-		assert  func(t *testing.T, err error, executor *Executor, handler *mockExecutorHandler, plan *Plan)
+		assert  func(t *testing.T, err error, executor *MigrationExecutor, handler *mockExecutorHandler, plan *MigrationPlan)
 	}{
 		{
 			name: "creates subject mappings with migrated action and scs ids",
-			plan: &Plan{
+			plan: &MigrationPlan{
 				Scopes: []Scope{ScopeActions, ScopeSubjectConditionSets, ScopeSubjectMappings},
 				Actions: []*ActionPlan{
 					{
@@ -92,8 +91,7 @@ func TestExecuteSubjectMappings(t *testing.T) {
 					},
 				},
 			},
-			runID: "run-789",
-			assert: func(t *testing.T, err error, _ *Executor, handler *mockExecutorHandler, plan *Plan) {
+			assert: func(t *testing.T, err error, _ *MigrationExecutor, handler *mockExecutorHandler, plan *MigrationPlan) {
 				t.Helper()
 
 				require.NoError(t, err)
@@ -110,7 +108,6 @@ func TestExecuteSubjectMappings(t *testing.T) {
 					"owner":                    "policy-team",
 					"env":                      "dev",
 					migrationLabelMigratedFrom: "mapping-1",
-					migrationLabelRun:          "run-789",
 				}, call.Metadata.GetLabels())
 
 				target := plan.SubjectMappings[0].Target
@@ -119,13 +116,12 @@ func TestExecuteSubjectMappings(t *testing.T) {
 				require.NotNil(t, target.Execution)
 				assert.True(t, target.Execution.Applied)
 				assert.Equal(t, "mapping-target-1", target.Execution.CreatedTargetID)
-				assert.Equal(t, "run-789", target.Execution.RunID)
 				assert.Equal(t, "mapping-target-1", target.TargetID())
 			},
 		},
 		{
 			name: "skips already migrated subject mapping targets",
-			plan: &Plan{
+			plan: &MigrationPlan{
 				Scopes: []Scope{ScopeSubjectMappings},
 				SubjectMappings: []*SubjectMappingPlan{
 					{
@@ -139,7 +135,7 @@ func TestExecuteSubjectMappings(t *testing.T) {
 				},
 			},
 			handler: &mockExecutorHandler{},
-			assert: func(t *testing.T, err error, _ *Executor, handler *mockExecutorHandler, plan *Plan) {
+			assert: func(t *testing.T, err error, _ *MigrationExecutor, handler *mockExecutorHandler, plan *MigrationPlan) {
 				t.Helper()
 
 				require.NoError(t, err)
@@ -150,7 +146,7 @@ func TestExecuteSubjectMappings(t *testing.T) {
 		},
 		{
 			name: "ignores unresolved target status",
-			plan: &Plan{
+			plan: &MigrationPlan{
 				Scopes: []Scope{ScopeSubjectMappings},
 				SubjectMappings: []*SubjectMappingPlan{
 					{
@@ -164,7 +160,7 @@ func TestExecuteSubjectMappings(t *testing.T) {
 				},
 			},
 			handler: &mockExecutorHandler{},
-			assert: func(t *testing.T, err error, _ *Executor, handler *mockExecutorHandler, _ *Plan) {
+			assert: func(t *testing.T, err error, _ *MigrationExecutor, handler *mockExecutorHandler, _ *MigrationPlan) {
 				t.Helper()
 
 				require.NoError(t, err)
@@ -173,7 +169,7 @@ func TestExecuteSubjectMappings(t *testing.T) {
 		},
 		{
 			name: "returns error for missing already migrated target id",
-			plan: &Plan{
+			plan: &MigrationPlan{
 				Scopes: []Scope{ScopeSubjectMappings},
 				SubjectMappings: []*SubjectMappingPlan{
 					{
@@ -187,7 +183,7 @@ func TestExecuteSubjectMappings(t *testing.T) {
 			},
 			handler: &mockExecutorHandler{},
 			wantErr: wantError(ErrMissingMigratedTarget, `subject mapping %q target %q`, "mapping-1", namespace1.GetFqn()),
-			assert: func(t *testing.T, err error, _ *Executor, handler *mockExecutorHandler, _ *Plan) {
+			assert: func(t *testing.T, err error, _ *MigrationExecutor, handler *mockExecutorHandler, _ *MigrationPlan) {
 				t.Helper()
 
 				require.Error(t, err)
@@ -196,7 +192,7 @@ func TestExecuteSubjectMappings(t *testing.T) {
 		},
 		{
 			name: "returns error for missing action target id",
-			plan: &Plan{
+			plan: &MigrationPlan{
 				Scopes: []Scope{ScopeSubjectMappings},
 				SubjectMappings: []*SubjectMappingPlan{
 					{
@@ -217,7 +213,7 @@ func TestExecuteSubjectMappings(t *testing.T) {
 			},
 			handler: &mockExecutorHandler{},
 			wantErr: wantError(ErrMissingActionTarget, `subject mapping %q action %q target %q`, "mapping-1", "action-1", namespace1.GetFqn()),
-			assert: func(t *testing.T, err error, _ *Executor, handler *mockExecutorHandler, _ *Plan) {
+			assert: func(t *testing.T, err error, _ *MigrationExecutor, handler *mockExecutorHandler, _ *MigrationPlan) {
 				t.Helper()
 
 				require.Error(t, err)
@@ -226,7 +222,7 @@ func TestExecuteSubjectMappings(t *testing.T) {
 		},
 		{
 			name: "returns error for missing scs target id",
-			plan: &Plan{
+			plan: &MigrationPlan{
 				Scopes: []Scope{ScopeActions, ScopeSubjectMappings},
 				Actions: []*ActionPlan{
 					{
@@ -259,7 +255,7 @@ func TestExecuteSubjectMappings(t *testing.T) {
 			},
 			handler: &mockExecutorHandler{},
 			wantErr: wantError(ErrMissingSubjectConditionSetTarget, `subject mapping %q subject condition set %q target %q`, "mapping-1", "scs-1", namespace1.GetFqn()),
-			assert: func(t *testing.T, err error, _ *Executor, handler *mockExecutorHandler, _ *Plan) {
+			assert: func(t *testing.T, err error, _ *MigrationExecutor, handler *mockExecutorHandler, _ *MigrationPlan) {
 				t.Helper()
 
 				require.Error(t, err)
@@ -268,7 +264,7 @@ func TestExecuteSubjectMappings(t *testing.T) {
 		},
 		{
 			name: "returns error for missing target namespace",
-			plan: &Plan{
+			plan: &MigrationPlan{
 				Scopes: []Scope{ScopeSubjectMappings},
 				SubjectMappings: []*SubjectMappingPlan{
 					{
@@ -286,7 +282,7 @@ func TestExecuteSubjectMappings(t *testing.T) {
 			},
 			handler: &mockExecutorHandler{},
 			wantErr: wantError(ErrTargetNamespaceRequired, `subject mapping %q`, "mapping-1"),
-			assert: func(t *testing.T, err error, _ *Executor, handler *mockExecutorHandler, _ *Plan) {
+			assert: func(t *testing.T, err error, _ *MigrationExecutor, handler *mockExecutorHandler, _ *MigrationPlan) {
 				t.Helper()
 
 				require.Error(t, err)
@@ -295,7 +291,7 @@ func TestExecuteSubjectMappings(t *testing.T) {
 		},
 		{
 			name: "returns error for missing created target id",
-			plan: &Plan{
+			plan: &MigrationPlan{
 				Scopes: []Scope{ScopeActions, ScopeSubjectConditionSets, ScopeSubjectMappings},
 				Actions: []*ActionPlan{
 					{
@@ -346,7 +342,7 @@ func TestExecuteSubjectMappings(t *testing.T) {
 				},
 			},
 			wantErr: wantError(ErrMissingCreatedTargetID, `subject mapping %q target %q`, "mapping-1", namespace1.GetFqn()),
-			assert: func(t *testing.T, err error, _ *Executor, handler *mockExecutorHandler, plan *Plan) {
+			assert: func(t *testing.T, err error, _ *MigrationExecutor, handler *mockExecutorHandler, plan *MigrationPlan) {
 				t.Helper()
 
 				require.Error(t, err)
@@ -357,7 +353,7 @@ func TestExecuteSubjectMappings(t *testing.T) {
 		},
 		{
 			name: "returns error for unsupported target status",
-			plan: &Plan{
+			plan: &MigrationPlan{
 				Scopes: []Scope{ScopeSubjectMappings},
 				SubjectMappings: []*SubjectMappingPlan{
 					{
@@ -377,7 +373,7 @@ func TestExecuteSubjectMappings(t *testing.T) {
 				namespace1.GetFqn(),
 				TargetStatus("bogus"),
 			),
-			assert: func(t *testing.T, err error, _ *Executor, handler *mockExecutorHandler, _ *Plan) {
+			assert: func(t *testing.T, err error, _ *MigrationExecutor, handler *mockExecutorHandler, _ *MigrationPlan) {
 				t.Helper()
 
 				require.Error(t, err)
@@ -386,7 +382,7 @@ func TestExecuteSubjectMappings(t *testing.T) {
 		},
 		{
 			name: "records create failures on the target",
-			plan: &Plan{
+			plan: &MigrationPlan{
 				Scopes: []Scope{ScopeActions, ScopeSubjectConditionSets, ScopeSubjectMappings},
 				Actions: []*ActionPlan{
 					{
@@ -440,7 +436,7 @@ func TestExecuteSubjectMappings(t *testing.T) {
 				is:      errBoom,
 				message: `create subject mapping "mapping-1" in namespace "https://example.com": boom`,
 			},
-			assert: func(t *testing.T, err error, _ *Executor, handler *mockExecutorHandler, plan *Plan) {
+			assert: func(t *testing.T, err error, _ *MigrationExecutor, handler *mockExecutorHandler, plan *MigrationPlan) {
 				t.Helper()
 
 				require.Error(t, err)
@@ -456,13 +452,10 @@ func TestExecuteSubjectMappings(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			executor, err := NewExecutor(tt.handler)
+			executor, err := NewMigrationExecutor(tt.handler)
 			require.NoError(t, err)
-			if tt.runID != "" {
-				executor.runID = tt.runID
-			}
 
-			err = executor.Execute(t.Context(), tt.plan)
+			err = executor.ExecuteMigration(t.Context(), tt.plan)
 			switch {
 			case tt.wantErr != nil:
 				require.Error(t, err)

@@ -147,11 +147,13 @@ func (c PolicyDBClient) ListAttributes(ctx context.Context, r *attributes.ListAt
 	}
 
 	sortField, sortDirection := GetAttributesSortParams(r.GetSort())
+	search := pgtypeSubstringSearchPattern(r.GetSearch().GetTerm())
 
 	list, err := c.queries.listAttributesDetail(ctx, listAttributesDetailParams{
 		Active:        active,
 		NamespaceID:   pgtypeUUID(namespaceID),
 		NamespaceName: pgtypeText(namespaceName),
+		Search:        search,
 		Limit:         limit,
 		Offset:        offset,
 		SortField:     sortField,
@@ -458,6 +460,20 @@ func (c PolicyDBClient) UnsafeUpdateAttribute(ctx context.Context, r *unsafe.Uns
 			if !found {
 				return nil, fmt.Errorf("values_order can only be updated with current attribute values: %w", db.ErrForeignKeyViolation)
 			}
+		}
+	}
+
+	// Guard the reverse of validateDynamicValueMappingAttribute: a definition
+	// with a dynamic value entitlement mapping cannot be changed to HIERARCHY, which requires
+	// statically ordered values incompatible with pass-through dynamic values.
+	if rule == policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY && before.GetRule() != policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY {
+		dynamicCount, err := c.queries.countDynamicValueMappingsByDefinitionID(ctx, id)
+		if err != nil {
+			return nil, db.WrapIfKnownInvalidQueryErr(err)
+		}
+		if dynamicCount > 0 {
+			return nil, errors.Join(db.ErrRestrictViolation,
+				fmt.Errorf("attribute definition [%s] has a dynamic value mapping; its rule cannot be changed to HIERARCHY", id))
 		}
 	}
 

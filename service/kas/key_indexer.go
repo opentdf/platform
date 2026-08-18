@@ -46,42 +46,6 @@ func NewPlatformKeyIndexer(sdk *sdk.SDK, kasURI string, l *logger.Logger) *KeyIn
 	}
 }
 
-func convertEnumToAlg(alg policy.Algorithm) ocrypto.KeyType {
-	switch alg {
-	case policy.Algorithm_ALGORITHM_RSA_2048:
-		return ocrypto.RSA2048Key
-	case policy.Algorithm_ALGORITHM_RSA_4096:
-		return ocrypto.RSA4096Key
-	case policy.Algorithm_ALGORITHM_EC_P256:
-		return ocrypto.EC256Key
-	case policy.Algorithm_ALGORITHM_EC_P384:
-		return ocrypto.EC384Key
-	case policy.Algorithm_ALGORITHM_EC_P521:
-		return ocrypto.EC521Key
-	case policy.Algorithm_ALGORITHM_UNSPECIFIED:
-		fallthrough
-	default:
-		return ""
-	}
-}
-
-func convertAlgToEnum(alg string) (policy.Algorithm, error) {
-	switch alg {
-	case string(ocrypto.RSA2048Key):
-		return policy.Algorithm_ALGORITHM_RSA_2048, nil
-	case string(ocrypto.RSA4096Key):
-		return policy.Algorithm_ALGORITHM_RSA_4096, nil
-	case string(ocrypto.EC256Key):
-		return policy.Algorithm_ALGORITHM_EC_P256, nil
-	case string(ocrypto.EC384Key):
-		return policy.Algorithm_ALGORITHM_EC_P384, nil
-	case string(ocrypto.EC521Key):
-		return policy.Algorithm_ALGORITHM_EC_P521, nil
-	default:
-		return policy.Algorithm_ALGORITHM_UNSPECIFIED, fmt.Errorf("unsupported algorithm: %s", alg)
-	}
-}
-
 func (p *KeyIndexer) String() string {
 	return fmt.Sprintf("PlatformKeyIndexer[%s]", p.kasURI)
 }
@@ -91,7 +55,11 @@ func (p *KeyIndexer) LogValue() slog.Value {
 }
 
 func (p *KeyIndexer) FindKeyByAlgorithm(ctx context.Context, algorithm string, includeLegacy bool) (trust.KeyDetails, error) {
-	alg, err := convertAlgToEnum(algorithm)
+	kt, err := ocrypto.ParseKeyType(algorithm)
+	if err != nil {
+		return nil, err
+	}
+	alg, err := sdk.KeyTypeToPolicyAlgorithm(kt)
 	if err != nil {
 		return nil, err
 	}
@@ -192,7 +160,13 @@ func (p *KeyAdapter) ID() trust.KeyIdentifier {
 
 // Might need to convert this to a standard format
 func (p *KeyAdapter) Algorithm() ocrypto.KeyType {
-	return convertEnumToAlg(p.key.GetKey().GetKeyAlgorithm())
+	kt, err := sdk.PolicyAlgorithmToKeyType(p.key.GetKey().GetKeyAlgorithm())
+	if err != nil {
+		p.log.Error("unable to format key with alg",
+			slog.String("kid", p.key.GetKey().GetKeyId()),
+			slog.Any("err", err))
+	}
+	return kt
 }
 
 func (p *KeyAdapter) IsLegacy() bool {

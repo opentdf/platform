@@ -13,6 +13,7 @@ import (
 	"github.com/opentdf/platform/protocol/go/entityresolution"
 	"github.com/opentdf/platform/service/entityresolution/multi-strategy/types"
 	"github.com/opentdf/platform/service/logger"
+	"github.com/opentdf/platform/service/pkg/protohelper"
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
 	"go.opentelemetry.io/otel/trace"
 	"google.golang.org/protobuf/encoding/protojson"
@@ -54,6 +55,7 @@ func (ers *ERS) ResolveEntities(
 			continue
 		}
 
+		resolveCtx := ctx
 		var claimsMap types.JWTClaims
 		switch entity.GetEntityType().(type) {
 		case *authorization.Entity_Claims:
@@ -67,6 +69,7 @@ func (ers *ERS) ResolveEntities(
 				}
 				// Convert to map[string]interface{}
 				claimsMap = claimsStruct.AsMap()
+				resolveCtx = context.WithValue(ctx, types.JWTClaimsContextKey, claimsMap)
 			}
 		default:
 			entityBytes, err := protojson.Marshal(entity)
@@ -80,7 +83,7 @@ func (ers *ERS) ResolveEntities(
 		}
 
 		// Resolve entity using multi-strategy service
-		result, err := ers.service.ResolveEntity(ctx, entityID, claimsMap)
+		result, err := ers.service.ResolveEntity(resolveCtx, entityID, claimsMap)
 		if err != nil {
 			ers.logger.Error("failed to resolve entity",
 				slog.String("entity_id", entityID),
@@ -109,12 +112,12 @@ func (ers *ERS) ResolveEntities(
 
 		// Add resolved claims
 		for claimName, claimValue := range result.Claims {
-			resultData[claimName] = claimValue
+			resultData[claimName] = protohelper.StructPBCompatibleValue(claimValue)
 		}
 
 		// Add metadata with "metadata_" prefix
 		for metaKey, metaValue := range result.Metadata {
-			resultData[("metadata_" + metaKey)] = metaValue
+			resultData[("metadata_" + metaKey)] = protohelper.StructPBCompatibleValue(metaValue)
 		}
 
 		// Convert to protobuf struct

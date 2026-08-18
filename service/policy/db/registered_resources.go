@@ -230,10 +230,12 @@ func (c PolicyDBClient) ListRegisteredResources(ctx context.Context, r *register
 	}
 
 	sortField, sortDirection := GetRegisteredResourcesSortParams(r.GetSort())
+	search := pgtypeSubstringSearchPattern(r.GetSearch().GetTerm())
 
 	list, err := c.queries.listRegisteredResources(ctx, listRegisteredResourcesParams{
 		NamespaceID:   parsedID,
 		NamespaceFqn:  pgtypeText(r.GetNamespaceFqn()),
+		Search:        search,
 		Limit:         limit,
 		Offset:        offset,
 		SortField:     sortField,
@@ -441,7 +443,8 @@ func (c PolicyDBClient) GetRegisteredResourceValuesByFQNs(ctx context.Context, r
 			},
 		})
 		if err != nil {
-			c.logger.ErrorContext(ctx,
+			c.logger.ErrorContext(
+				ctx,
 				"registered resource value for FQN not found",
 				slog.String("fqn", fqn),
 				slog.Any("err", err),
@@ -625,6 +628,18 @@ func (c PolicyDBClient) createRegisteredResourceActionAttributeValues(ctx contex
 		err = c.validateRRAAVNamespaceConsistency(ctx, resourceNamespaceID, attributeValueID, actionID)
 		if err != nil {
 			return err
+		}
+
+		// A definition entitled dynamically resolves its values at decision time; those values are
+		// not meaningful as static registered-resource entitlements. Reject them, mirroring the
+		// value-level subject-mapping coexistence rule.
+		definitionID, hasDVM, err := c.definitionHasDynamicValueMapping(ctx, attributeValueID)
+		if err != nil {
+			return err
+		}
+		if hasDVM {
+			return errors.Join(db.ErrRestrictViolation,
+				fmt.Errorf("attribute value [%s] is under attribute definition [%s] which has a dynamic value mapping; it cannot be added to a registered resource's action attribute values", attributeValueID, definitionID))
 		}
 
 		createActionAttributeValueParams[i] = createRegisteredResourceActionAttributeValuesParams{

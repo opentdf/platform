@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"net/http"
 	"net/url"
 	"os"
 	"strconv"
@@ -170,8 +171,7 @@ func GetSDKAuthOptionFromProfile(profile *profiles.OtdfctlProfileStore) (sdk.Opt
 	case profiles.AuthTypeClientCredentials:
 		return sdk.WithClientCredentials(c.ClientID, c.ClientSecret, NormalizeScopes(c.Scopes)), nil
 	case profiles.AuthTypeAccessToken:
-		tokenSource := oauth2.StaticTokenSource(buildToken(&c))
-		return sdk.WithOAuthAccessTokenSource(tokenSource), nil
+		return sdk.WithOAuthAccessTokenSource(newProfileTokenSource(profile)), nil
 	default:
 		return nil, ErrInvalidAuthType
 	}
@@ -184,14 +184,25 @@ func ValidateProfileAuthCredentials(ctx context.Context, profile *profiles.Otdfc
 	case "":
 		return ErrProfileCredentialsNotFound
 	case profiles.AuthTypeClientCredentials:
-		_, err := GetTokenWithClientCreds(ctx, profile.GetEndpoint(), c.ClientID, c.ClientSecret, profile.GetTLSNoVerify(), c.Scopes)
+		// Validation exercises the DPoP-bound path so it succeeds against a
+		// DPoP-enforcing token endpoint; the token is discarded.
+		_, err := GetTokenWithClientCredsDPoP(ctx, profile.GetEndpoint(), c.ClientID, c.ClientSecret, profile.GetTLSNoVerify(), c.Scopes)
 		if err != nil {
 			return err
 		}
 		return nil
 	case profiles.AuthTypeAccessToken:
-		if !buildToken(&c).Valid() {
+		if buildToken(&c).Valid() {
+			return nil
+		}
+		if !HasRefreshToken(profile) {
 			return ErrAccessTokenExpired
+		}
+		if err := RefreshAccessToken(ctx, profile); err != nil {
+			if errors.Is(err, ErrRefreshTokenInvalid) {
+				return err
+			}
+			return errors.Join(ErrAccessTokenExpired, err)
 		}
 	default:
 		return ErrInvalidAuthType
@@ -204,20 +215,49 @@ func GetTokenWithProfile(ctx context.Context, profile *profiles.OtdfctlProfileSt
 
 	switch c.AuthType {
 	case profiles.AuthTypeClientCredentials:
+		// print or reuse path: return a plain bearer token (not DPoP sender-constrained)
+		// so it stays usable outside otdfctl. See DSPX-3998.
 		return GetTokenWithClientCreds(ctx, profile.GetEndpoint(), c.ClientID, c.ClientSecret, profile.GetTLSNoVerify(), c.Scopes)
 	case profiles.AuthTypeAccessToken:
+		if !buildToken(&c).Valid() {
+			if !HasRefreshToken(profile) {
+				return nil, ErrAccessTokenExpired
+			}
+			if err := RefreshAccessToken(ctx, profile); err != nil {
+				return nil, err
+			}
+			c = profile.GetAuthCredentials()
+		}
 		return buildToken(&c), nil
 	default:
 		return nil, ErrInvalidAuthType
 	}
 }
 
-// Uses the OAuth2 client credentials flow to obtain a token.
+// GetTokenWithClientCreds uses the OAuth2 client credentials flow to obtain a
+// bearer token with no sender constraint.
 func GetTokenWithClientCreds(ctx context.Context, endpoint string, clientID string, clientSecret string, tlsNoVerify bool, scopes []string) (*oauth2.Token, error) {
+	return getTokenWithClientCreds(ctx, endpoint, clientID, clientSecret, tlsNoVerify, scopes, false)
+}
+
+// GetTokenWithClientCredsDPoP uses sender-constrained tokens, which are not currently exportable.
+func GetTokenWithClientCredsDPoP(ctx context.Context, endpoint string, clientID string, clientSecret string, tlsNoVerify bool, scopes []string) (*oauth2.Token, error) {
+	return getTokenWithClientCreds(ctx, endpoint, clientID, clientSecret, tlsNoVerify, scopes, true)
+}
+
+func getTokenWithClientCreds(ctx context.Context, endpoint string, clientID string, clientSecret string, tlsNoVerify bool, scopes []string, dpop bool) (*oauth2.Token, error) {
+	httpClient := utils.NewHTTPClient(tlsNoVerify)
+	if dpop {
+		var err error
+		httpClient, err = sdk.NewDPoPValidationHTTPClient(httpClient)
+		if err != nil {
+			return nil, err
+		}
+	}
 	rp, err := newOidcRelyingParty(ctx, endpoint, tlsNoVerify, oidcClientCredentials{
 		clientID:     clientID,
 		clientSecret: clientSecret,
-	})
+	}, httpClient)
 	if err != nil {
 		return nil, err
 	}
@@ -337,14 +377,14 @@ func RevokeAccessToken(ctx context.Context, endpoint, clientID, refreshToken str
 	rp, err := newOidcRelyingParty(ctx, endpoint, tlsNoVerify, oidcClientCredentials{
 		clientID: clientID,
 		isPublic: true,
-	})
+	}, utils.NewHTTPClient(tlsNoVerify))
 	if err != nil {
 		return err
 	}
 	return oidcrp.RevokeToken(ctx, rp, refreshToken, "refresh_token")
 }
 
-func newOidcRelyingParty(ctx context.Context, endpoint string, tlsNoVerify bool, clientCreds oidcClientCredentials) (oidcrp.RelyingParty, error) {
+func newOidcRelyingParty(ctx context.Context, endpoint string, tlsNoVerify bool, clientCreds oidcClientCredentials, httpClient *http.Client) (oidcrp.RelyingParty, error) {
 	if clientCreds.clientID == "" {
 		return nil, errors.New("client ID is required")
 	}
@@ -367,6 +407,6 @@ func newOidcRelyingParty(ctx context.Context, endpoint string, tlsNoVerify bool,
 		clientCreds.clientSecret,
 		"",
 		nil,
-		oidcrp.WithHTTPClient(utils.NewHTTPClient(tlsNoVerify)),
+		oidcrp.WithHTTPClient(httpClient),
 	)
 }

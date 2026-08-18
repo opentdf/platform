@@ -124,6 +124,10 @@ teardown_file() {
 }
 
 @test "List resource mappings" {
+    # a grouped mapping is owned by its group's namespace; used to verify the
+    # owning namespace is surfaced in list output
+    GROUPED_RM_ID=$(./otdfctl $HOST $WITH_CREDS policy resource-mappings create --attribute-value-id "$RM_VAL2_ID" --terms "ns-list-check" --group-id "$RMG1_ID" --json | jq -r '.id')
+
     run_otdfctl_rm list
         assert_success
         assert_output --partial "$RM1_ID"
@@ -138,6 +142,9 @@ teardown_file() {
     found_rm=$(echo "$output" | jq -c --arg id "$RM1_ID" '.resource_mappings as $a | ($a | map(.id) | index($id)) as $i | $a[$i]')
     assert_equal "$(echo "$found_rm" | jq -r '.id')" "$RM1_ID"
     assert_equal "$(echo "$found_rm" | jq -r '.attribute_value.id')" "$RM_VAL1_ID"
+    # a grouped mapping carries its owning namespace
+    found_grouped=$(echo "$output" | jq -c --arg id "$GROUPED_RM_ID" '.resource_mappings[] | select(.id == $id)')
+    assert_equal "$(echo "$found_grouped" | jq -r '.namespace.id')" "$NS_ID"
     [[ "$(echo "$output" | jq -r '.pagination.total')" -ge 1 ]]
     assert_equal "$(echo "$output" | jq -r '.pagination.current_offset')" "null"
     assert_equal "$(echo "$output" | jq -r '.pagination.next_offset')" "null"

@@ -39,7 +39,7 @@ func applyOutputFormatPreference(c *cli.Cli, store *profiles.OtdfctlProfileStore
 // returns the profile and the current profile store
 func InitProfile(c *cli.Cli) *profiles.OtdfctlProfileStore {
 	var err error
-	profileName := c.FlagHelper.GetOptionalString("profile")
+	profileName := c.Flags.GetOptionalString("profile")
 
 	hasKeyringStore, err := osprofiles.HasGlobalStore(config.AppName, osprofiles.WithKeyringStore())
 	if err != nil {
@@ -85,17 +85,24 @@ func InitProfile(c *cli.Cli) *profiles.OtdfctlProfileStore {
 // instantiates a new handler with authentication via client credentials
 // TODO make this a preRun hook
 //
+// NewHandler resolves the current profile from cli flags, validates
+// credentials, and returns a Handler ready for use. Extension points that
+// need to inject SDK options based on the resolved profile — for example,
+// interceptors that a downstream CLI wants attached to every SDK call — can
+// pass one or more handlers.Hook values, which run in order after profile
+// resolution and before the underlying SDK is built.
+//
 //nolint:nestif // separate refactor [https://github.com/opentdf/otdfctl/issues/383]
-func NewHandler(c *cli.Cli) handlers.Handler {
+func NewHandler(c *cli.Cli, hooks ...handlers.Hook) handlers.Handler {
 	// if global flags are set then validate and create a temporary profile in memory
 	var cp *profiles.OtdfctlProfileStore
 
 	// Non-profile flags
-	host := c.FlagHelper.GetOptionalString("host")
-	tlsNoVerify := c.FlagHelper.GetOptionalBool("tls-no-verify")
-	withClientCreds := c.FlagHelper.GetOptionalString("with-client-creds")
-	withClientCredsFile := c.FlagHelper.GetOptionalString("with-client-creds-file")
-	withAccessToken := c.FlagHelper.GetOptionalString("with-access-token")
+	host := c.Flags.GetOptionalString("host")
+	tlsNoVerify := c.Flags.GetOptionalBool("tls-no-verify")
+	withClientCreds := c.Flags.GetOptionalString("with-client-creds")
+	withClientCredsFile := c.Flags.GetOptionalString("with-client-creds-file")
+	withAccessToken := c.Flags.GetOptionalString("with-access-token")
 	var inMemoryProfile bool
 
 	authFlags := []string{"--with-access-token", "--with-client-creds", "--with-client-creds-file"}
@@ -200,8 +207,11 @@ func NewHandler(c *cli.Cli) handlers.Handler {
 			cli.ExitWithWarning("Profile missing credentials. Please login or add client credentials.")
 		}
 
+		if errors.Is(err, auth.ErrRefreshTokenInvalid) {
+			cli.ExitWithWarning("Your session has expired. Please login again.")
+		}
 		if errors.Is(err, auth.ErrAccessTokenExpired) {
-			cli.ExitWithWarning("Access token expired. Please login or add flag-provided credentials.")
+			cli.ExitWithWarning("Access token expired and could not be refreshed. Please login or add flag-provided credentials.")
 		}
 		if errors.Is(err, auth.ErrAccessTokenNotFound) {
 			cli.ExitWithWarning("No access token found. Please login or add flag-provided credentials.")
@@ -209,7 +219,11 @@ func NewHandler(c *cli.Cli) handlers.Handler {
 		cli.ExitWithError("Failed to get access token.", err)
 	}
 
-	h, err := handlers.New(handlers.WithProfile(cp))
+	opts := []handlers.HandlerOption{handlers.WithProfile(cp)}
+	if len(hooks) > 0 {
+		opts = append(opts, handlers.WithHook(hooks...))
+	}
+	h, err := handlers.New(opts...)
 	if err != nil {
 		cli.ExitWithError("Unexpected error", err)
 	}

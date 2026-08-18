@@ -39,6 +39,14 @@ func (*myAttributesClient) GetAttributeValuesByFqns(_ context.Context, _ *attr.G
 	return &getAttributesByValueFqnsResponse, errGetAttributesByValueFqns
 }
 
+func (*myAttributesClient) GetKeyMappingsByFqns(_ context.Context, _ *attr.GetKeyMappingsByFqnsRequest) (*attr.GetKeyMappingsByFqnsResponse, error) {
+	return &attr.GetKeyMappingsByFqnsResponse{}, nil
+}
+
+func (*myAttributesClient) GetEntitleableAttributesByFqns(_ context.Context, _ *attr.GetEntitleableAttributesByFqnsRequest) (*attr.GetEntitleableAttributesByFqnsResponse, error) {
+	return &attr.GetEntitleableAttributesByFqnsResponse{}, nil
+}
+
 func (*myAttributesClient) ListAttributeValues(_ context.Context, _ *attr.ListAttributeValuesRequest) (*attr.ListAttributeValuesResponse, error) {
 	return &attr.ListAttributeValuesResponse{}, nil
 }
@@ -263,6 +271,14 @@ func (*paginatedMockAttributesClient) ListAttributes(_ context.Context, _ *attr.
 
 func (*paginatedMockAttributesClient) GetAttributeValuesByFqns(_ context.Context, _ *attr.GetAttributeValuesByFqnsRequest) (*attr.GetAttributeValuesByFqnsResponse, error) {
 	return &attr.GetAttributeValuesByFqnsResponse{}, nil
+}
+
+func (*paginatedMockAttributesClient) GetKeyMappingsByFqns(_ context.Context, _ *attr.GetKeyMappingsByFqnsRequest) (*attr.GetKeyMappingsByFqnsResponse, error) {
+	return &attr.GetKeyMappingsByFqnsResponse{}, nil
+}
+
+func (*paginatedMockAttributesClient) GetEntitleableAttributesByFqns(_ context.Context, _ *attr.GetEntitleableAttributesByFqnsRequest) (*attr.GetEntitleableAttributesByFqnsResponse, error) {
+	return &attr.GetEntitleableAttributesByFqnsResponse{}, nil
 }
 
 func (*paginatedMockAttributesClient) ListAttributeValues(_ context.Context, _ *attr.ListAttributeValuesRequest) (*attr.ListAttributeValuesResponse, error) {

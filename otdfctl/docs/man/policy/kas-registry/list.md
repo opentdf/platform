@@ -11,6 +11,8 @@ command:
     - name: offset
       shorthand: o
       description: Offset (page) quantity from start of the list
+    - name: search
+      description: Search term to filter results
     - name: sort
       description: Sort list results by field
     - name: order
@@ -18,6 +20,15 @@ command:
 ---
 
 For more information about registration of Key Access Servers, see the manual for `kas-registry`.
+
+## Search Fields
+
+The `--search` term is trimmed and matched as a substring against these values:
+
+| Value | Description |
+| --- | --- |
+| KAS registration name | Registered Key Access Server name |
+| KAS URI | Registered Key Access Server URI |
 
 ## Sort Options
 
@@ -51,6 +62,12 @@ otdfctl policy kas-registry list --order asc
 
 ```shell
 otdfctl policy kas-registry list
+```
+
+Search KAS registrations by name or URI:
+
+```shell
+otdfctl policy kas-registry list --search kas.example.com
 ```
 
 Sort KAS registrations by URI descending:

@@ -2,13 +2,23 @@ openapi: 3.1.0
 info:
   title: entityresolution
 paths:
-  /entityresolution/resolve:
+  /entityresolution.EntityResolutionService/ResolveEntities:
     post:
       tags:
         - entityresolution.EntityResolutionService
       summary: ResolveEntities
       description: 'Deprecated: use v2 ResolveEntities instead'
       operationId: entityresolution.EntityResolutionService.ResolveEntities
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
       requestBody:
         content:
           application/json:
@@ -28,13 +38,23 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/entityresolution.ResolveEntitiesResponse'
-  /entityresolution/entitychain:
+  /entityresolution.EntityResolutionService/CreateEntityChainFromJwt:
     post:
       tags:
         - entityresolution.EntityResolutionService
       summary: CreateEntityChainFromJwt
       description: 'Deprecated: use v2 CreateEntityChainsFromTokens instead'
       operationId: entityresolution.EntityResolutionService.CreateEntityChainFromJwt
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
       requestBody:
         content:
           application/json:

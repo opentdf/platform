@@ -1,10 +1,12 @@
 package namespacedpolicy
 
 import (
+	"encoding/json"
 	"testing"
 
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestTargetRefString(t *testing.T) {
@@ -148,4 +150,16 @@ func TestPrunePlanItemSourceID(t *testing.T) {
 			assert.Equal(t, tc.want, tc.item.sourceID())
 		})
 	}
+}
+
+func TestPrunePlanMarshalsSingleScopeField(t *testing.T) {
+	t.Parallel()
+
+	plan := &PrunePlan{Scope: ScopeActions}
+
+	data, err := json.Marshal(plan)
+	require.NoError(t, err)
+
+	assert.Contains(t, string(data), `"scope":"actions"`)
+	assert.NotContains(t, string(data), `"scopes"`)
 }

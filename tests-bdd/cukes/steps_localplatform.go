@@ -37,6 +37,8 @@ const (
 	debugVersion                       = "DEBUG"
 	platformImageEnvironment           = "PLATFORM_IMAGE"
 	platformImageEnvironmentLocalImage = "platform-cukes:latest"
+	clientID                           = "opentdf"
+	platformClientSecret               = "secret"
 	userContextKey                     = "platform_users"
 )
 
@@ -57,6 +59,7 @@ type platformStartOptions struct {
 	platformProvisionPath  *string
 	kcProvisionPath        *template.Template
 	provisionDefaultPolicy bool
+	ersConfig              *ERSInlineConfig
 }
 
 func (s *LocalPlatformStepDefinitions) aUser(ctx context.Context, username string, email string, attributes *godog.Table) (context.Context, error) {
@@ -123,7 +126,7 @@ func (s *LocalPlatformStepDefinitions) commonLocalPlatform(ctx context.Context, 
 			platformSDK, err := otdf.New(
 				scenarioContext.ScenarioOptions.PlatformEndpoint,
 				otdf.WithInsecureSkipVerifyConn(),
-				otdf.WithClientCredentials("opentdf", "secret", nil),
+				otdf.WithClientCredentials(clientID, platformClientSecret, nil),
 			)
 			if err != nil {
 				return ctx, err
@@ -168,7 +171,7 @@ func (s *LocalPlatformStepDefinitions) commonLocalPlatform(ctx context.Context, 
 	if !exists {
 		version = platformImageEnvironmentLocalImage
 	}
-	platformConfigPath, err := createPlatformConfiguration(localPlatformOptions, scenarioContext.ScenarioOptions, version == debugVersion, options.platformProvisionPath)
+	platformConfigPath, err := createPlatformConfiguration(localPlatformOptions, scenarioContext.ScenarioOptions, version == debugVersion, options.platformProvisionPath, options.ersConfig)
 	if err != nil {
 		return ctx, err
 	}
@@ -237,13 +240,10 @@ func (s *LocalPlatformStepDefinitions) commonLocalPlatform(ctx context.Context, 
 		})
 	}
 
-	const clientID = "opentdf"
-	const clientSecret = "secret"
-
 	platformSDK, err := otdf.New(
 		scenarioContext.ScenarioOptions.PlatformEndpoint,
 		otdf.WithInsecureSkipVerifyConn(),
-		otdf.WithClientCredentials(clientID, clientSecret, nil),
+		otdf.WithClientCredentials(clientID, platformClientSecret, nil),
 	)
 	if err != nil {
 		return ctx, err
@@ -294,6 +294,33 @@ func (s *LocalPlatformStepDefinitions) aDefaultLocalPlatform(ctx context.Context
 		kcProvisionPath:        kt,
 		provisionDefaultPolicy: true,
 	})
+}
+
+func (s *LocalPlatformStepDefinitions) iUseThePlatformAs(ctx context.Context, role string) (context.Context, error) {
+	scenarioContext := GetPlatformScenarioContext(ctx)
+	clientIDByRole := map[string]string{
+		"opentdf-admin":    "opentdf",
+		"opentdf-standard": "opentdf-sdk",
+		"custom-non-admin": "opentdf-custom",
+		"kas-a":            "kas-a",
+		"kas-b":            "kas-b",
+	}
+
+	clientID, ok := clientIDByRole[role]
+	if !ok {
+		return ctx, fmt.Errorf("unknown platform role %q", role)
+	}
+
+	platformSDK, err := otdf.New(
+		scenarioContext.ScenarioOptions.PlatformEndpoint,
+		otdf.WithInsecureSkipVerifyConn(),
+		otdf.WithClientCredentials(clientID, platformClientSecret, nil),
+	)
+	if err != nil {
+		return ctx, err
+	}
+	scenarioContext.SDK = platformSDK
+	return ctx, nil
 }
 
 func (s *LocalPlatformStepDefinitions) aLocalPlatformWithTemplates(ctx context.Context, platformTemplate string, kcTemplate string) (context.Context, error) {
@@ -504,7 +531,7 @@ func createPlatformComposeConfiguration(options *LocalDevOptions) (string, error
 }
 
 // createPlatformConfiguration generates a platform configuration from a go text template for platform option settings
-func createPlatformConfiguration(options *LocalDevOptions, scenarioOptions *LocalDevScenarioOptions, devMode bool, platformTemplatePath *string) (string, error) {
+func createPlatformConfiguration(options *LocalDevOptions, scenarioOptions *LocalDevScenarioOptions, devMode bool, platformTemplatePath *string, ersConfig *ERSInlineConfig) (string, error) {
 	tempFileName := path.Join(options.CukesDir, "opentdf.yaml")
 	platformKeysDir := options.KeysDir
 	pgHost := "localhost"
@@ -531,10 +558,33 @@ func createPlatformConfiguration(options *LocalDevOptions, scenarioOptions *Loca
 		"pgHost":          pgHost,
 		"platformKeysDir": platformKeysDir,
 		"authRealm":       scenarioOptions.KeycloakRealm,
+		"ldapPort":        scenarioOptions.LDAPPort,
 	}); err != nil {
 		return tempFileName, err
 	}
-	err := os.WriteFile(tempFileName, strBuffer.Bytes(), os.FileMode(0o755)) //nolint:mnd // mkdir dir
+
+	renderedBytes := strBuffer.Bytes()
+	if ersConfig != nil {
+		var configMap map[interface{}]interface{}
+		if err := yaml.Unmarshal(renderedBytes, &configMap); err != nil {
+			return tempFileName, fmt.Errorf("failed to parse rendered platform config: %w", err)
+		}
+		services, ok := configMap["services"].(map[interface{}]interface{})
+		if !ok {
+			return tempFileName, errors.New("services section not found in platform config")
+		}
+		ersSection, err := buildEntityResolutionConfig(ersConfig, options.Hostname, scenarioOptions.LDAPPort)
+		if err != nil {
+			return tempFileName, fmt.Errorf("failed to build ERS config: %w", err)
+		}
+		services["entityresolution"] = ersSection
+		renderedBytes, err = yaml.Marshal(configMap)
+		if err != nil {
+			return tempFileName, fmt.Errorf("failed to marshal patched platform config: %w", err)
+		}
+	}
+
+	err := os.WriteFile(tempFileName, renderedBytes, os.FileMode(0o755)) //nolint:mnd // mkdir dir
 	if err != nil {
 		return tempFileName, err
 	}
@@ -548,6 +598,7 @@ func RegisterLocalPlatformStepDefinitions(ctx *godog.ScenarioContext, x *Platfor
 	}
 	ctx.Step(`^an empty local platform$`, platformStepDefinitions.aEmptyLocalPlatform)
 	ctx.Step(`^a default local platform$`, platformStepDefinitions.aDefaultLocalPlatform)
+	ctx.Step(`^I use the platform as "([^"]*)"$`, platformStepDefinitions.iUseThePlatformAs)
 	ctx.Step(`^a user exists with username "([^"]*)" and email "([^"]*)" and the following attributes:$`, platformStepDefinitions.aUser)
 	ctx.Step(`^a local platform with platform template "([^"]*)" and keycloak template "([^"]*)"$`, platformStepDefinitions.aLocalPlatformWithTemplates)
 }

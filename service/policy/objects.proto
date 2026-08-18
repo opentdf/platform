@@ -204,6 +204,70 @@ message SubjectMapping {
   common.Metadata metadata = 100;
 }
 
+/*
+   Dynamic Value Resolver: the dynamic half of a DynamicValueMapping. It resolves a selector
+   against the entity representation, then tests whether any resolved entity value matches the
+   requested resource value segment under the operator. The match is inherently existential over
+   the resolved entity values.
+*/
+message DynamicValueResolver {
+  // a selector for a field value on a flattened Entity Representation (such as from
+  // idP/LDAP), e.g. ".patientAssignments[]"
+  string subject_external_selector_value = 1 [(buf.validate.field).required = true];
+
+  // how the requested resource value segment is compared against each value the selector
+  // resolves from the entity representation. NOT_IN is unsupported because dynamic resolution
+  // is existential over the resolved entity values. IN_CONTAINS is substring-based and
+  // over-matches by design (e.g. "admin" matches "superadmin", "admin-readonly"); prefer IN
+  // unless substring matching is genuinely intended.
+  SubjectMappingOperatorEnum operator = 2 [
+    (buf.validate.field).enum = {
+      defined_only: true
+      not_in: [2]
+    },
+    (buf.validate.field).required = true
+  ];
+}
+
+/*
+   Dynamic Value Mapping: a Policy assigning permitted action(s) to
+   dynamically-requested values under an Attribute Definition. It raises entitlement
+   authority from a concrete Attribute Value to the Attribute Definition: at decision time
+   the value_resolver compares the requested resource value segment against the entity
+   representation, avoiding pre-provisioning a value + subject mapping per discrete value.
+
+   Combination semantics: multiple dynamic value mappings on the same definition are OR-ed (any
+   match entitles); within a mapping, the optional subject_condition_set's subject sets are AND-ed
+   (every set must pass), matching subject mapping evaluation.
+
+   Coexistence: a definition with a dynamic value mapping cannot also carry value-level subject
+   mappings, and values under such a definition cannot be added to a registered resource's action
+   attribute values (those values resolve at decision time, so they are not meaningful as static
+   registered-resource entitlements).
+*/
+message DynamicValueMapping {
+  string id = 1;
+
+  // the Attribute Definition whose values are entitled dynamically
+  Attribute attribute_definition = 2;
+
+  // the dynamic resolver matched against the requested resource value segment
+  DynamicValueResolver value_resolver = 3;
+
+  // optional static pre-gate on the entity, evaluated with normal SubjectConditionSet
+  // semantics (no dynamic overload). When present, both the gate and the resolver must
+  // pass for entitlement.
+  SubjectConditionSet subject_condition_set = 4;
+
+  // the actions permitted by subjects in this mapping
+  repeated Action actions = 5;
+
+  // the namespace containing this mapping
+  Namespace namespace = 6;
+
+  common.Metadata metadata = 100;
+}
+
 /**
    A Condition defines a rule of <the value at the flattened 'selector value'
    location> <operator> <subject external values>
@@ -318,6 +382,11 @@ message ResourceMapping {
   repeated string terms = 4;
 
   ResourceMappingGroup group = 5;
+
+  // The namespace that optionally owns this resource mapping. When the mapping
+  // belongs to a group, this matches the group's namespace. The mapped
+  // attribute value may belong to a different namespace.
+  Namespace namespace = 6;
 }
 
 // Describes whether this kas is managed by the organization or if they imported
@@ -391,6 +460,11 @@ enum KasPublicKeyAlgEnum {
   KAS_PUBLIC_KEY_ALG_ENUM_EC_SECP256R1 = 5;
   KAS_PUBLIC_KEY_ALG_ENUM_EC_SECP384R1 = 6;
   KAS_PUBLIC_KEY_ALG_ENUM_EC_SECP521R1 = 7;
+  KAS_PUBLIC_KEY_ALG_ENUM_HPQT_XWING = 10;
+  KAS_PUBLIC_KEY_ALG_ENUM_HPQT_SECP256R1_MLKEM768 = 11;
+  KAS_PUBLIC_KEY_ALG_ENUM_HPQT_SECP384R1_MLKEM1024 = 12;
+  KAS_PUBLIC_KEY_ALG_ENUM_MLKEM_768 = 20;
+  KAS_PUBLIC_KEY_ALG_ENUM_MLKEM_1024 = 21;
 }
 
 // Deprecated
@@ -561,9 +635,16 @@ enum Algorithm {
   ALGORITHM_EC_P256 = 3;
   ALGORITHM_EC_P384 = 4;
   ALGORITHM_EC_P521 = 5;
+  ALGORITHM_HPQT_XWING = 6;
+  ALGORITHM_HPQT_SECP256R1_MLKEM768 = 7;
+  ALGORITHM_HPQT_SECP384R1_MLKEM1024 = 8;
+  ALGORITHM_MLKEM_768 = 20;
+  ALGORITHM_MLKEM_1024 = 21;
 }
 
-// The status of the key
+// The status of the key.
+// Adding a value here requires updating the key_status mapping in the listKeys
+// query so SORT_KAS_KEYS_TYPE_KEY_STATUS keeps sorting alphabetically.
 enum KeyStatus {
   KEY_STATUS_UNSPECIFIED = 0;
   KEY_STATUS_ACTIVE = 1;

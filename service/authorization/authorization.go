@@ -84,11 +84,10 @@ func NewRegistration() *serviceregistry.Service[authorizationconnect.Authorizati
 
 	return &serviceregistry.Service[authorizationconnect.AuthorizationServiceHandler]{
 		ServiceOptions: serviceregistry.ServiceOptions[authorizationconnect.AuthorizationServiceHandler]{
-			Namespace:       "authorization",
-			ServiceDesc:     &authorization.AuthorizationService_ServiceDesc,
-			ConnectRPCFunc:  authorizationconnect.NewAuthorizationServiceHandler,
-			GRPCGatewayFunc: authorization.RegisterAuthorizationServiceHandler,
-			OnConfigUpdate:  onUpdateConfig,
+			Namespace:      "authorization",
+			ServiceDesc:    &authorization.AuthorizationService_ServiceDesc,
+			ConnectRPCFunc: authorizationconnect.NewAuthorizationServiceHandler,
+			OnConfigUpdate: onUpdateConfig,
 			RegisterFunc: func(srp serviceregistry.RegistrationParams) (authorizationconnect.AuthorizationServiceHandler, serviceregistry.HandlerServer) {
 				authZCfg := new(Config)
 
@@ -516,6 +515,13 @@ func (as *AuthorizationService) getDecisions(ctx context.Context, dr *authorizat
 	allPertinentFQNS.AttributeValueFqns, err = getAttributesFromRas(dr.GetResourceAttributes())
 	if err == nil {
 		dataAttrDefsAndVals, err = retrieveAttributeDefinitions(ctx, allPertinentFQNS.GetAttributeValueFqns(), as.sdk)
+	}
+	// A resource_exhausted here means the attribute definitions for the requested FQNs are too large
+	// for v1 to page; surface the v2 upgrade hint. All other errors keep the generic fallback. (#3821)
+	if err != nil && connect.CodeOf(err) == connect.CodeResourceExhausted {
+		return nil, db.StatusifyError(ctx, as.logger, err,
+			db.ErrTextGetRetrievalFailed+": attribute definitions for the requested FQNs are too large for the v1 authorization API; upgrade to the v2 authorization API (authorization.v2.AuthorizationService)",
+			slog.String("fqns", strings.Join(allPertinentFQNS.GetAttributeValueFqns(), ", ")))
 	}
 	if err != nil {
 		// if attribute an FQN does not exist

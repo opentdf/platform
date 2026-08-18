@@ -1133,6 +1133,21 @@ func Test_ListKeyAccessServersRequest_Sort(t *testing.T) {
 	require.Contains(t, err.Error(), "sort")
 }
 
+func Test_ListKeyAccessServersRequest_Search(t *testing.T) {
+	v := getValidator()
+
+	require.NoError(t, v.Validate(&kasregistry.ListKeyAccessServersRequest{
+		Search: &policy.Search{Term: "kas"},
+	}))
+	require.NoError(t, v.Validate(&kasregistry.ListKeyAccessServersRequest{}))
+
+	err := v.Validate(&kasregistry.ListKeyAccessServersRequest{
+		Search: &policy.Search{},
+	})
+	require.Error(t, err)
+	require.Contains(t, err.Error(), errMessageMinLen)
+}
+
 func Test_ListKeysRequest_Sort(t *testing.T) {
 	v := getValidator()
 

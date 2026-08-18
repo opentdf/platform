@@ -171,6 +171,24 @@ teardown_file() {
   run_otdfctl_nsd unsafe delete --id "$ns_c_id" --force
 }
 
+@test "List namespaces supports search flag" {
+  search_prefix="search-ns-$BATS_TEST_NUMBER-$RANDOM"
+  match_name="$search_prefix-match.test"
+  other_name="$search_prefix-other.test"
+  match_id=$(./otdfctl $HOST $WITH_CREDS policy namespaces create --name "$match_name" --json | jq -r '.id')
+  other_id=$(./otdfctl $HOST $WITH_CREDS policy namespaces create --name "$other_name" --json | jq -r '.id')
+
+  run_otdfctl_nsd list --search "$match_name" --json
+  assert_success
+  assert_equal "$(echo "$output" | jq -r --arg id "$match_id" '[.namespaces[] | select(.id == $id)] | length')" "1"
+  assert_equal "$(echo "$output" | jq -r --arg id "$other_id" '[.namespaces[] | select(.id == $id)] | length')" "0"
+
+  run_otdfctl_nsd unsafe delete --id "$match_id" --force
+  assert_success
+  run_otdfctl_nsd unsafe delete --id "$other_id" --force
+  assert_success
+}
+
 @test "Update namespace - Safe" {
   # extend labels
   run_otdfctl_ns update "$NS_ID_FLAG" -l key=value --label test=true

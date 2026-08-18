@@ -125,7 +125,8 @@ Root level key `server`
 | `auth.dpopskew`         | The amount of time drift allowed between when the client generated a dpop proof and the server time.          | `1h`    | OPENTDF_SERVER_AUTH                  |
 | `auth.skew`             | The amount of time drift allowed between a tokens `exp` claim and the server time.                            | `1m`    | OPENTDF_SERVER_AUTH_SKEW             |
 | `auth.public_client_id` | [DEPRECATED] The oidc client id. This is leveraged by otdfctl.                                                |         | OPENTDF_SERVER_AUTH_PUBLIC_CLIENT_ID |
-| `auth.enforceDPoP`      | If true, DPoP bindings on Access Tokens are enforced.                                                         | `false` | OPENTDF_SERVER_AUTH_ENFORCEDPOP      |
+| `auth.dpop.enforce`     | If true, DPoP bindings on Access Tokens are enforced.                                                         | `false` | OPENTDF_SERVER_AUTH_DPOP_ENFORCE     |
+| `auth.enforceDPoP`      | [DEPRECATED] Use `auth.dpop.enforce`. Still honored: DPoP is enforced when either field is true.              | `false` | OPENTDF_SERVER_AUTH_ENFORCEDPOP      |
 | `cryptoProvider`        | A list of public/private keypairs and their use. Described [below](#crypto-provider)                          | empty   |                                      |
 | `enable_pprof`          | Enable golang performance profiling                                                                           | `false` | OPENTDF_SERVER_ENABLE_PPROF          |
 | `grpc.reflection`       | The configuration for the grpc server.                                                                        | `true`  | OPENTDF_SERVER_GRPC_REFLECTION       |
@@ -445,6 +446,11 @@ Root level key `authorization`
 | ------------------------------------------- | -------------------------------------------------------------- | ------- | --------------------- |
 | `entitlement_policy_cache.enabled`          | Enable the entitlement policy cache                            | `false` |                       |
 | `entitlement_policy_cache.refresh_interval` | How often to refresh the entitlement policy cache (e.g. `30s`) |         |                       |
+| `request_limits.resource_attribute_values_fqns_max` | Maximum attribute value FQNs allowed in Decision Requests | `20` | |
+| `request_limits.entity_identifier_entity_chain_entities_max` | Maximum entities allowed in Decision Request entity chains | `10` | |
+| `request_limits.decision_request_fulfillable_obligation_fqns_max` | Maximum fulfillable obligation FQNs allowed per Decision Request | `50` | |
+| `request_limits.get_decision_multi_resource_resources_max` | Maximum resources allowed in `GetDecisionMultiResourceRequest` | `1000` | |
+| `request_limits.get_decision_bulk_decision_requests_max` | Maximum decision requests allowed in `GetDecisionBulkRequest` | `200` | |
 
 #### Example: Authorization v1
 
@@ -464,6 +470,12 @@ services:
     entitlement_policy_cache:
       enabled: false
       refresh_interval: 30s
+    request_limits:
+      resource_attribute_values_fqns_max: 20
+      entity_identifier_entity_chain_entities_max: 10
+      decision_request_fulfillable_obligation_fqns_max: 50
+      get_decision_multi_resource_resources_max: 1000
+      get_decision_bulk_decision_requests_max: 200
 ```
 
 ### Entity Resolution
@@ -574,7 +586,8 @@ opentdf-example.yaml:
 server:
   auth:
     enabled: true
-    enforceDPoP: false
+    dpop:
+      enforce: false
     # public_client_id: 'opentdf-public' # DEPRECATED
     audience: 'http://localhost:8080'
     issuer: http://keycloak:8888/auth/realms/opentdf

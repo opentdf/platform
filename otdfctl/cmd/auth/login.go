@@ -14,13 +14,13 @@ import (
 func codeLogin(cmd *cobra.Command, args []string) {
 	c := cli.New(cmd, args)
 	cp := common.InitProfile(c)
-	clientID := c.FlagHelper.GetRequiredString("client-id")
-	port := c.FlagHelper.GetOptionalString("port")
+	clientID := c.Flags.GetRequiredString("client-id")
+	port := c.Flags.GetOptionalString("port")
 	tok, err := auth.LoginWithPKCE(
 		cmd.Context(),
 		cp.GetEndpoint(),
 		clientID,
-		c.FlagHelper.GetOptionalBool("tls-no-verify"),
+		c.Flags.GetOptionalBool("tls-no-verify"),
 		port,
 	)
 	if err != nil {
@@ -39,6 +39,7 @@ func codeLogin(cmd *cobra.Command, args []string) {
 	}); err != nil {
 		c.ExitWithError("failed to set auth credentials", err)
 	}
+
 	c.ExitWithMessage(fmt.Sprintf("Code login complete for profile: [%s]", cp.Name()), cli.ExitCodeSuccess)
 }
 

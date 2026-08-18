@@ -5,8 +5,6 @@ modules:
       - service/logger/audit
 deps:
   - buf.build/bufbuild/protovalidate
-  - buf.build/googleapis/googleapis
-  - buf.build/grpc-ecosystem/grpc-gateway
 lint:
   use:
     - STANDARD
@@ -16,8 +14,6 @@ lint:
     - PACKAGE_VERSION_SUFFIX
   ignore_only:
     PACKAGE_VERSION_SUFFIX:
-      - service/google/api/annotations.proto
-      - service/google/api/http.proto
       - service/google/protobuf/wrappers.proto
 breaking:
   use:

@@ -95,7 +95,7 @@ func (r *Retriever) listNamespaces(ctx context.Context) ([]*policy.Namespace, er
 	)
 
 	for {
-		resp, err := r.handler.ListNamespaces(ctx, common.ActiveStateEnum_ACTIVE_STATE_ENUM_ACTIVE, r.pageSize, offset, handlers.SortOption{})
+		resp, err := r.handler.ListNamespaces(ctx, common.ActiveStateEnum_ACTIVE_STATE_ENUM_ACTIVE, r.pageSize, offset, "", handlers.SortOption{})
 		if err != nil {
 			return nil, fmt.Errorf("list namespaces: %w", err)
 		}
@@ -183,7 +183,7 @@ func (r *Retriever) retrieveSubjectMappings(ctx context.Context) ([]*policy.Subj
 	)
 
 	for {
-		resp, err := r.handler.ListSubjectMappings(ctx, r.pageSize, offset, "", handlers.SortOption{})
+		resp, err := r.handler.ListSubjectMappings(ctx, r.pageSize, offset, "", "", handlers.SortOption{})
 		if err != nil {
 			return nil, fmt.Errorf("list subject mappings: %w", err)
 		}
@@ -218,7 +218,7 @@ func (r *Retriever) retrieveSubjectConditionSets(ctx context.Context) ([]*policy
 	var offset int32
 
 	for {
-		resp, err := r.handler.ListSubjectConditionSets(ctx, r.pageSize, offset, "", handlers.SortOption{})
+		resp, err := r.handler.ListSubjectConditionSets(ctx, r.pageSize, offset, "", "", handlers.SortOption{})
 		if err != nil {
 			return nil, fmt.Errorf("list subject condition sets: %w", err)
 		}
@@ -257,7 +257,7 @@ func (r *Retriever) retrieveRegisteredResources(ctx context.Context) ([]*policy.
 	)
 
 	for {
-		resp, err := r.handler.ListRegisteredResources(ctx, r.pageSize, offset, "", handlers.SortOption{})
+		resp, err := r.handler.ListRegisteredResources(ctx, r.pageSize, offset, "", "", handlers.SortOption{})
 		if err != nil {
 			return nil, fmt.Errorf("list registered resources: %w", err)
 		}
@@ -459,7 +459,7 @@ func (r *Retriever) listSubjectConditionSetsForNamespaces(ctx context.Context, n
 	for _, namespace := range dedupeTargetNamespaces(namespaces) {
 		var offset int32
 		for {
-			resp, err := r.handler.ListSubjectConditionSets(ctx, r.pageSize, offset, namespace.GetId(), handlers.SortOption{})
+			resp, err := r.handler.ListSubjectConditionSets(ctx, r.pageSize, offset, namespace.GetId(), "", handlers.SortOption{})
 			if err != nil {
 				return nil, fmt.Errorf("list subject condition sets for namespace %s: %w", namespace.GetId(), err)
 			}
@@ -491,7 +491,7 @@ func (r *Retriever) listSubjectMappingsForNamespaces(ctx context.Context, namesp
 	for _, namespace := range dedupeTargetNamespaces(namespaces) {
 		var offset int32
 		for {
-			resp, err := r.handler.ListSubjectMappings(ctx, r.pageSize, offset, namespace.GetId(), handlers.SortOption{})
+			resp, err := r.handler.ListSubjectMappings(ctx, r.pageSize, offset, namespace.GetId(), "", handlers.SortOption{})
 			if err != nil {
 				return nil, fmt.Errorf("list subject mappings for namespace %s: %w", namespace.GetId(), err)
 			}
@@ -523,7 +523,7 @@ func (r *Retriever) listRegisteredResourcesForNamespaces(ctx context.Context, na
 	for _, namespace := range dedupeTargetNamespaces(namespaces) {
 		var offset int32
 		for {
-			resp, err := r.handler.ListRegisteredResources(ctx, r.pageSize, offset, namespace.GetId(), handlers.SortOption{})
+			resp, err := r.handler.ListRegisteredResources(ctx, r.pageSize, offset, namespace.GetId(), "", handlers.SortOption{})
 			if err != nil {
 				return nil, fmt.Errorf("list registered resources for namespace %s: %w", namespace.GetId(), err)
 			}

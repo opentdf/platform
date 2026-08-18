@@ -60,6 +60,9 @@ const (
 	// UnsafeServiceUnsafeDeleteAttributeValueProcedure is the fully-qualified name of the
 	// UnsafeService's UnsafeDeleteAttributeValue RPC.
 	UnsafeServiceUnsafeDeleteAttributeValueProcedure = "/policy.unsafe.UnsafeService/UnsafeDeleteAttributeValue"
+	// UnsafeServiceUnsafeUpdateKeyProcedure is the fully-qualified name of the UnsafeService's
+	// UnsafeUpdateKey RPC.
+	UnsafeServiceUnsafeUpdateKeyProcedure = "/policy.unsafe.UnsafeService/UnsafeUpdateKey"
 	// UnsafeServiceUnsafeDeleteKasKeyProcedure is the fully-qualified name of the UnsafeService's
 	// UnsafeDeleteKasKey RPC.
 	UnsafeServiceUnsafeDeleteKasKeyProcedure = "/policy.unsafe.UnsafeService/UnsafeDeleteKasKey"
@@ -88,6 +91,7 @@ type UnsafeServiceClient interface {
 	// --------------------------------------*
 	// Kas Key RPCs
 	// ---------------------------------------
+	UnsafeUpdateKey(context.Context, *connect.Request[unsafe.UnsafeUpdateKeyRequest]) (*connect.Response[unsafe.UnsafeUpdateKeyResponse], error)
 	UnsafeDeleteKasKey(context.Context, *connect.Request[unsafe.UnsafeDeleteKasKeyRequest]) (*connect.Response[unsafe.UnsafeDeleteKasKeyResponse], error)
 }
 
@@ -156,6 +160,12 @@ func NewUnsafeServiceClient(httpClient connect.HTTPClient, baseURL string, opts 
 			connect.WithSchema(unsafeServiceMethods.ByName("UnsafeDeleteAttributeValue")),
 			connect.WithClientOptions(opts...),
 		),
+		unsafeUpdateKey: connect.NewClient[unsafe.UnsafeUpdateKeyRequest, unsafe.UnsafeUpdateKeyResponse](
+			httpClient,
+			baseURL+UnsafeServiceUnsafeUpdateKeyProcedure,
+			connect.WithSchema(unsafeServiceMethods.ByName("UnsafeUpdateKey")),
+			connect.WithClientOptions(opts...),
+		),
 		unsafeDeleteKasKey: connect.NewClient[unsafe.UnsafeDeleteKasKeyRequest, unsafe.UnsafeDeleteKasKeyResponse](
 			httpClient,
 			baseURL+UnsafeServiceUnsafeDeleteKasKeyProcedure,
@@ -176,6 +186,7 @@ type unsafeServiceClient struct {
 	unsafeUpdateAttributeValue     *connect.Client[unsafe.UnsafeUpdateAttributeValueRequest, unsafe.UnsafeUpdateAttributeValueResponse]
 	unsafeReactivateAttributeValue *connect.Client[unsafe.UnsafeReactivateAttributeValueRequest, unsafe.UnsafeReactivateAttributeValueResponse]
 	unsafeDeleteAttributeValue     *connect.Client[unsafe.UnsafeDeleteAttributeValueRequest, unsafe.UnsafeDeleteAttributeValueResponse]
+	unsafeUpdateKey                *connect.Client[unsafe.UnsafeUpdateKeyRequest, unsafe.UnsafeUpdateKeyResponse]
 	unsafeDeleteKasKey             *connect.Client[unsafe.UnsafeDeleteKasKeyRequest, unsafe.UnsafeDeleteKasKeyResponse]
 }
 
@@ -224,6 +235,11 @@ func (c *unsafeServiceClient) UnsafeDeleteAttributeValue(ctx context.Context, re
 	return c.unsafeDeleteAttributeValue.CallUnary(ctx, req)
 }
 
+// UnsafeUpdateKey calls policy.unsafe.UnsafeService.UnsafeUpdateKey.
+func (c *unsafeServiceClient) UnsafeUpdateKey(ctx context.Context, req *connect.Request[unsafe.UnsafeUpdateKeyRequest]) (*connect.Response[unsafe.UnsafeUpdateKeyResponse], error) {
+	return c.unsafeUpdateKey.CallUnary(ctx, req)
+}
+
 // UnsafeDeleteKasKey calls policy.unsafe.UnsafeService.UnsafeDeleteKasKey.
 func (c *unsafeServiceClient) UnsafeDeleteKasKey(ctx context.Context, req *connect.Request[unsafe.UnsafeDeleteKasKeyRequest]) (*connect.Response[unsafe.UnsafeDeleteKasKeyResponse], error) {
 	return c.unsafeDeleteKasKey.CallUnary(ctx, req)
@@ -252,6 +268,7 @@ type UnsafeServiceHandler interface {
 	// --------------------------------------*
 	// Kas Key RPCs
 	// ---------------------------------------
+	UnsafeUpdateKey(context.Context, *connect.Request[unsafe.UnsafeUpdateKeyRequest]) (*connect.Response[unsafe.UnsafeUpdateKeyResponse], error)
 	UnsafeDeleteKasKey(context.Context, *connect.Request[unsafe.UnsafeDeleteKasKeyRequest]) (*connect.Response[unsafe.UnsafeDeleteKasKeyResponse], error)
 }
 
@@ -316,6 +333,12 @@ func NewUnsafeServiceHandler(svc UnsafeServiceHandler, opts ...connect.HandlerOp
 		connect.WithSchema(unsafeServiceMethods.ByName("UnsafeDeleteAttributeValue")),
 		connect.WithHandlerOptions(opts...),
 	)
+	unsafeServiceUnsafeUpdateKeyHandler := connect.NewUnaryHandler(
+		UnsafeServiceUnsafeUpdateKeyProcedure,
+		svc.UnsafeUpdateKey,
+		connect.WithSchema(unsafeServiceMethods.ByName("UnsafeUpdateKey")),
+		connect.WithHandlerOptions(opts...),
+	)
 	unsafeServiceUnsafeDeleteKasKeyHandler := connect.NewUnaryHandler(
 		UnsafeServiceUnsafeDeleteKasKeyProcedure,
 		svc.UnsafeDeleteKasKey,
@@ -342,6 +365,8 @@ func NewUnsafeServiceHandler(svc UnsafeServiceHandler, opts ...connect.HandlerOp
 			unsafeServiceUnsafeReactivateAttributeValueHandler.ServeHTTP(w, r)
 		case UnsafeServiceUnsafeDeleteAttributeValueProcedure:
 			unsafeServiceUnsafeDeleteAttributeValueHandler.ServeHTTP(w, r)
+		case UnsafeServiceUnsafeUpdateKeyProcedure:
+			unsafeServiceUnsafeUpdateKeyHandler.ServeHTTP(w, r)
 		case UnsafeServiceUnsafeDeleteKasKeyProcedure:
 			unsafeServiceUnsafeDeleteKasKeyHandler.ServeHTTP(w, r)
 		default:
@@ -387,6 +412,10 @@ func (UnimplementedUnsafeServiceHandler) UnsafeReactivateAttributeValue(context.
 
 func (UnimplementedUnsafeServiceHandler) UnsafeDeleteAttributeValue(context.Context, *connect.Request[unsafe.UnsafeDeleteAttributeValueRequest]) (*connect.Response[unsafe.UnsafeDeleteAttributeValueResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("policy.unsafe.UnsafeService.UnsafeDeleteAttributeValue is not implemented"))
+}
+
+func (UnimplementedUnsafeServiceHandler) UnsafeUpdateKey(context.Context, *connect.Request[unsafe.UnsafeUpdateKeyRequest]) (*connect.Response[unsafe.UnsafeUpdateKeyResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("policy.unsafe.UnsafeService.UnsafeUpdateKey is not implemented"))
 }
 
 func (UnimplementedUnsafeServiceHandler) UnsafeDeleteKasKey(context.Context, *connect.Request[unsafe.UnsafeDeleteKasKeyRequest]) (*connect.Response[unsafe.UnsafeDeleteKasKeyResponse], error) {

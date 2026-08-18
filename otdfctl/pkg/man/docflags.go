@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/opentdf/platform/otdfctl/pkg/cli"
+	"github.com/spf13/cobra"
 )
 
 // SensitiveAnnotationKey is the pflag annotation key used to mark flags whose
@@ -18,6 +19,7 @@ type DocFlag struct {
 	Default     string   `yaml:"default"`
 	Enum        []string `yaml:"enum"`
 	Sensitive   bool     `yaml:"sensitive"`
+	Required    bool     `yaml:"required"`
 }
 
 func (d *Doc) GetDocFlag(name string) DocFlag {
@@ -34,6 +36,15 @@ func (d *Doc) GetDocFlag(name string) DocFlag {
 
 func (f DocFlag) DefaultAsBool() bool {
 	return f.Default == "true"
+}
+
+// AddStringFlag registers a string flag on cmd from the doc's flag definition,
+// wiring the flag's name, shorthand, default, and description in one call. It
+// reduces the boilerplate of reading each field from GetDocFlag by hand, which
+// is useful for commands that register many flags.
+func (d *Doc) AddStringFlag(cmd *cobra.Command, name string) {
+	f := d.GetDocFlag(name)
+	cmd.Flags().StringP(f.Name, f.Shorthand, f.Default, f.Description)
 }
 
 // MarkSensitiveFlags sets pflag annotations on all flags in the command's

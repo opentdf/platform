@@ -16,9 +16,11 @@ import (
 	multistrategy "github.com/opentdf/platform/service/entityresolution/multi-strategy"
 	"github.com/opentdf/platform/service/entityresolution/multi-strategy/types"
 	"github.com/opentdf/platform/service/logger"
+	"github.com/opentdf/platform/service/pkg/protohelper"
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
 	"go.opentelemetry.io/otel/trace"
 	"google.golang.org/protobuf/encoding/protojson"
+	"google.golang.org/protobuf/types/known/anypb"
 	"google.golang.org/protobuf/types/known/structpb"
 )
 
@@ -63,6 +65,7 @@ func (ers *ERSV2) ResolveEntities(
 			ers.logger.Warn("empty entity ID in request; using generated ID", slog.String("entity_id", entityID))
 		}
 
+		resolveCtx := ctx
 		var claimsMap types.JWTClaims
 		switch entityV2.GetEntityType().(type) {
 		case *entity.Entity_Claims:
@@ -76,6 +79,7 @@ func (ers *ERSV2) ResolveEntities(
 				}
 				// Convert to map[string]interface{}
 				claimsMap = claimsStruct.AsMap()
+				resolveCtx = context.WithValue(ctx, types.JWTClaimsContextKey, claimsMap)
 			}
 		default:
 			entityBytes, err := protojson.Marshal(entityV2)
@@ -89,7 +93,7 @@ func (ers *ERSV2) ResolveEntities(
 		}
 
 		// Resolve entity using multi-strategy service
-		result, err := ers.service.ResolveEntity(ctx, entityID, claimsMap)
+		result, err := ers.service.ResolveEntity(resolveCtx, entityID, claimsMap)
 		if err != nil {
 			ers.logger.Error("failed to resolve entity",
 				slog.String("entity_id", entityID),
@@ -112,17 +116,18 @@ func (ers *ERSV2) ResolveEntities(
 			continue
 		}
 
-		// Convert multi-strategy result to v2 protocol format
-		resultData := make(map[string]interface{})
-
-		// Add resolved claims
-		for claimName, claimValue := range result.Claims {
-			resultData[claimName] = claimValue
+		// Convert all resolved claims to protobuf-compatible JSON values at once.
+		resultData, err := claimsToResultData(result.Claims)
+		if err != nil {
+			ers.logger.Error("failed to normalize resolved claims",
+				slog.String("entity_id", entityID),
+				slog.String("error", err.Error()))
+			continue
 		}
 
 		// Add metadata with "metadata_" prefix
 		for metaKey, metaValue := range result.Metadata {
-			resultData[("metadata_" + metaKey)] = metaValue
+			resultData[("metadata_" + metaKey)] = protohelper.StructPBCompatibleValue(metaValue)
 		}
 
 		// Convert to protobuf struct
@@ -239,8 +244,8 @@ func (ers *ERSV2) createEntityChainFromSingleTokenV2(ctx context.Context, token 
 		// Put JWT claims into context for providers to access
 		ctxWithClaims := context.WithValue(ctx, types.JWTClaimsContextKey, jwtClaims)
 
-		// Resolve entity using this strategy
-		entityResult, err := ers.service.ResolveEntity(ctxWithClaims, token.GetEphemeralId(), jwtClaims)
+		// Resolve entity using this already-selected strategy.
+		entityResult, err := ers.service.ResolveEntityWithStrategy(ctxWithClaims, token.GetEphemeralId(), jwtClaims, strategy)
 		if err != nil {
 			lastError = err
 			ers.logger.WarnContext(ctx, "strategy failed for token",
@@ -267,8 +272,20 @@ func (ers *ERSV2) createEntityChainFromSingleTokenV2(ctx context.Context, token 
 			continue
 		}
 
-		// Success! Create entity from result
-		entityV2 := ers.createEntityFromResultV2(ctx, entityResult, strategy, token.GetEphemeralId())
+		// Success! Create entity from result.
+		// If this serialization step fails after strategy resolution succeeded, fail the
+		// token chain immediately regardless of failure strategy to avoid partial chains.
+		entityV2, err := ers.createEntityForTokenChain(
+			ctx,
+			entityResult,
+			strategy,
+			token.GetEphemeralId(),
+			failureStrategy,
+			attemptedStrategies,
+		)
+		if err != nil {
+			return nil, err
+		}
 		entities = append(entities, entityV2)
 
 		ers.logger.DebugContext(ctx, "successfully resolved entity for token",
@@ -307,81 +324,112 @@ func (ers *ERSV2) createEntityChainFromSingleTokenV2(ctx context.Context, token 
 	}, nil
 }
 
-// createEntityFromResultV2 converts a multi-strategy EntityResult to a v2 entity.Entity
-func (ers *ERSV2) createEntityFromResultV2(ctx context.Context, result *types.EntityResult, strategy *types.MappingStrategy, tokenID string) *entity.Entity {
-	// Determine entity category based on strategy configuration
-	category := entity.Entity_CATEGORY_SUBJECT // Default
+// createEntityForTokenChain serializes a successfully resolved strategy result. Serialization
+// failures always fail closed because omitting the result would create a partial identity chain.
+func (ers *ERSV2) createEntityForTokenChain(
+	ctx context.Context,
+	result *types.EntityResult,
+	strategy *types.MappingStrategy,
+	tokenID string,
+	failureStrategy string,
+	attemptedStrategies []string,
+) (*entity.Entity, error) {
+	entityV2, err := ers.createEntityFromResultV2(ctx, result, strategy, tokenID)
+	if err == nil {
+		return entityV2, nil
+	}
+
+	ers.logger.WarnContext(ctx, "failed to serialize resolved entity for token",
+		slog.String("token_id", tokenID),
+		slog.String("strategy", strategy.Name),
+		slog.String("error", err.Error()))
+
+	return nil, types.WrapMultiStrategyError(
+		types.ErrorTypeMapping,
+		"resolved entity serialization failed after successful strategy resolution",
+		err,
+		map[string]interface{}{
+			"token_id":             tokenID,
+			"strategy":             strategy.Name,
+			"failure_strategy":     failureStrategy,
+			"attempted_strategies": attemptedStrategies,
+		},
+	)
+}
+
+// createEntityFromResultV2 converts a multi-strategy EntityResult to a v2 entity.Entity.
+//
+// For token-derived entity chains, preserve the resolved claims directly in the chain so
+// downstream authz can consume the resolved subject/environment context without rehydrating
+// through ERS and re-routing strategy selection from a lossy identity projection.
+//
+// EntityResult.Metadata is intentionally omitted. It describes ERS resolution mechanics and
+// provenance, not the subject or environment entity. Including it in this claims payload would
+// expose it to subject mappings and couple portable ABAC policy to multi-strategy provider names,
+// strategy ordering, and other deployment-specific ERS structure. Resolution metadata belongs
+// in observability or a dedicated out-of-band metadata channel, not in policy input.
+func (ers *ERSV2) createEntityFromResultV2(_ context.Context, result *types.EntityResult, strategy *types.MappingStrategy, tokenID string) (*entity.Entity, error) {
+	category := entity.Entity_CATEGORY_SUBJECT
 	if strategy.EntityType == types.EntityTypeEnvironment {
 		category = entity.Entity_CATEGORY_ENVIRONMENT
 	}
 
-	// Create entity based on available claims
-	// Priority: username > email > client_id > subject
-	var entityV2 *entity.Entity
-
-	if username, exists := result.Claims["username"]; exists {
-		if usernameStr, ok := username.(string); ok && usernameStr != "" {
-			entityV2 = &entity.Entity{
-				EntityType: &entity.Entity_UserName{UserName: usernameStr},
-				Category:   category,
-			}
-		}
+	resultData, err := claimsToResultData(result.Claims)
+	if err != nil {
+		return nil, types.WrapMultiStrategyError(
+			types.ErrorTypeMapping,
+			"failed to normalize resolved claims for entity chain",
+			err,
+			map[string]interface{}{"token_id": tokenID, "strategy": strategy.Name},
+		)
 	}
 
-	if entityV2 == nil {
-		if email, exists := result.Claims["email_address"]; exists {
-			if emailStr, ok := email.(string); ok && emailStr != "" {
-				entityV2 = &entity.Entity{
-					EntityType: &entity.Entity_EmailAddress{EmailAddress: emailStr},
-					Category:   category,
-				}
-			}
-		}
+	claimsStruct, err := structpb.NewStruct(resultData)
+	if err != nil {
+		return nil, types.WrapMultiStrategyError(
+			types.ErrorTypeMapping,
+			"failed to build structpb claims for entity chain",
+			err,
+			map[string]interface{}{"token_id": tokenID, "strategy": strategy.Name},
+		)
 	}
 
-	if entityV2 == nil {
-		if clientID, exists := result.Claims["client_id"]; exists {
-			if clientIDStr, ok := clientID.(string); ok && clientIDStr != "" {
-				entityV2 = &entity.Entity{
-					EntityType: &entity.Entity_ClientId{ClientId: clientIDStr},
-					Category:   category,
-				}
-			}
-		}
+	claimsAny, err := anypb.New(claimsStruct)
+	if err != nil {
+		return nil, types.WrapMultiStrategyError(
+			types.ErrorTypeMapping,
+			"failed to wrap claims payload for entity chain",
+			err,
+			map[string]interface{}{"token_id": tokenID, "strategy": strategy.Name},
+		)
 	}
 
-	if entityV2 == nil {
-		if subject, exists := result.Claims["subject"]; exists {
-			if subjectStr, ok := subject.(string); ok && subjectStr != "" {
-				entityV2 = &entity.Entity{
-					EntityType: &entity.Entity_UserName{UserName: subjectStr},
-					Category:   category,
-				}
-			}
-		}
-	}
-
-	// Fallback: use token ID as username if no suitable claim found
-	if entityV2 == nil {
-		ers.logger.WarnContext(ctx, "no suitable entity type found in claims, using token ID as fallback",
-			slog.String("token_id", tokenID),
-			slog.Any("available_claims", extractClaimNames(types.JWTClaims(result.Claims))))
-		entityV2 = &entity.Entity{
-			EntityType: &entity.Entity_UserName{UserName: tokenID},
-			Category:   category,
-		}
-	}
-
-	// Generate entity ID: strategy-tokenid-type-value
-	entityID := fmt.Sprintf("%s-%s-%s-%s",
+	entityID := fmt.Sprintf("%s-%s-claims-%s",
 		strategy.Name,
 		tokenID,
-		getEntityTypeStringV2(entityV2),
-		getEntityValueV2(entityV2.GetEntityType()))
+		preferredEntityValueFromClaims(result.Claims, tokenID))
 
-	// Set the EphemeralId on the entity
-	entityV2.EphemeralId = entityID
-	return entityV2
+	return &entity.Entity{
+		EphemeralId: entityID,
+		EntityType:  &entity.Entity_Claims{Claims: claimsAny},
+		Category:    category,
+	}, nil
+}
+
+func claimsToResultData(claims map[string]interface{}) (map[string]interface{}, error) {
+	bytes, err := json.Marshal(claims)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal claims: %w", err)
+	}
+
+	resultData := make(map[string]interface{})
+	if err := json.Unmarshal(bytes, &resultData); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal claims: %w", err)
+	}
+	if resultData == nil {
+		resultData = make(map[string]interface{})
+	}
+	return resultData, nil
 }
 
 // Helper functions for v2
@@ -417,22 +465,22 @@ func getEntityTypeStringV2(entityV2 *entity.Entity) string {
 		return "email"
 	case *entity.Entity_ClientId:
 		return "client_id"
+	case *entity.Entity_Claims:
+		return "claims"
 	default:
 		return "unknown"
 	}
 }
 
-func getEntityValueV2(entityType interface{}) string {
-	switch et := entityType.(type) {
-	case *entity.Entity_UserName:
-		return et.UserName
-	case *entity.Entity_EmailAddress:
-		return et.EmailAddress
-	case *entity.Entity_ClientId:
-		return et.ClientId
-	default:
-		return "unknown"
+func preferredEntityValueFromClaims(claims map[string]interface{}, fallback string) string {
+	for _, key := range []string{"username", "email_address", "client_id", "subject"} {
+		if raw, exists := claims[key]; exists {
+			if value, ok := raw.(string); ok && value != "" {
+				return value
+			}
+		}
 	}
+	return fallback
 }
 
 // RegisterMultiStrategyERSV2 registers the v2 multi-strategy ERS service

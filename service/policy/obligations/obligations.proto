@@ -171,6 +171,9 @@ message ListObligationsRequest {
     //   - field UNSPECIFIED defaults to created_at with the specified direction
     //   - both UNSPECIFIED or sort omitted defaults to created_at DESC
     repeated ObligationsSort sort = 11 [(buf.validate.field).repeated.max_items = 1];
+
+    // Optional
+    policy.Search search = 12;
 }
 
 message ListObligationsResponse {
@@ -348,6 +351,7 @@ message ListObligationTriggersRequest {
 
     // Optional
     policy.PageRequest pagination = 10;
+
 }
 
 message ListObligationTriggersResponse {

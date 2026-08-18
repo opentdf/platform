@@ -24,37 +24,6 @@
   [ $(jq -r .kid <<<"${output}") = r1 ]
 }
 
-@test "REST: new public key endpoint (no algorithm)" {
-  run curl -s --show-error --fail-with-body "https://localhost:8080/kas/v2/kas_public_key"
-  echo "output=$output"
-  p=$(jq -r .publicKey <<<"${output}")
-
-  # Is public key
-  [[ "$p" = "-----BEGIN PUBLIC KEY"-----* ]]
-
-  # Is an RSA key
-  printf '%s\n' "$p" | openssl asn1parse | grep rsaEncryption
-
-  # Has expected kid
-  [ $(jq -r .kid <<<"${output}") = r1 ]
-}
-
-@test "REST: new public key endpoint (ec)" {
-  run curl -s --show-error --fail-with-body "https://localhost:8080/kas/v2/kas_public_key?algorithm=ec:secp256r1"
-  echo "$output"
-
-  # Is an EC P256r1 curve
-  echo "$output" | jq -r .publicKey | openssl asn1parse | grep prime256v1
-
-  # Has expected kid
-  [ $(jq -r .kid <<<"${output}") = e1 ]
-}
-
-@test "REST: public key endpoint (unknown algorithm)" {
-  run curl -o /dev/null -s -w "%{http_code}" "https://localhost:8080/kas/v2/kas_public_key?algorithm=invalid"
-  echo "$output"
-  [ $output = 404 ]
-}
 
 @test "gRPC: public key endpoint (unknown algorithm)" {
   run grpcurl -d '{"algorithm":"invalid"}' "localhost:8080" "kas.AccessService/PublicKey" 

@@ -29,14 +29,30 @@ message CreateProviderConfigResponse {
 }
 
 message GetProviderConfigRequest {
+  message NameManager {
+    // The name of the key provider
+    string name = 1 [(buf.validate.field).string.min_len = 1];
+    // The type of key manager.
+    string manager = 2 [(buf.validate.field).string.min_len = 1];
+  }
+
   // Required
   oneof identifier {
     option (buf.validate.oneof).required = true;
     string id = 2 [(buf.validate.field).string.uuid = true];
-    string name = 3 [(buf.validate.field).string.min_len = 1];
+    // DEPRECATED, please use the NameManager and specify manager + name together.
+    string name = 3 [
+      deprecated = true,
+      (buf.validate.field).string.min_len = 1
+    ];
+    // Search by name and manager.
+    NameManager name_manager = 5;
   }
-  // Optional - filter by manager type when searching by name
-  string manager = 4 [(buf.validate.field).required = false];
+  // DEPRECATED, please use the NameManager and specify manager + name together.
+  string manager = 4 [
+    deprecated = true,
+    (buf.validate.field).required = false
+  ];
 }
 message GetProviderConfigResponse {
   KeyProviderConfig provider_config = 1;

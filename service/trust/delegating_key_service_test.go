@@ -4,12 +4,15 @@ import (
 	"context"
 	"crypto/elliptic"
 	"log/slog"
+	"sync/atomic"
 	"testing"
 
 	"github.com/opentdf/platform/lib/ocrypto"
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/service/logger"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -320,4 +323,107 @@ func (suite *DelegatingKeyServiceTestSuite) TestGenerateECSessionKey() {
 
 func TestDelegatingKeyServiceTestSuite(t *testing.T) {
 	suite.Run(t, new(DelegatingKeyServiceTestSuite))
+}
+
+// failIfInvokedFactory returns a factory that fails the test if the
+// DelegatingKeyService ever constructs a manager from it. SupportedAlgorithms
+// must answer from registered metadata alone, never by invoking factories.
+func failIfInvokedFactory(t *testing.T) KeyManagerFactoryCtx {
+	t.Helper()
+	return func(_ context.Context, _ *KeyManagerFactoryOptions) (KeyManager, error) {
+		t.Fatalf("factory must not be invoked by SupportedAlgorithms")
+		return nil, nil
+	}
+}
+
+func TestDelegatingKeyService_SupportedAlgorithms(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name     string
+		register func(t *testing.T, d *DelegatingKeyService)
+		want     []ocrypto.KeyType
+	}{
+		{
+			name:     "no registrations returns empty",
+			register: func(_ *testing.T, _ *DelegatingKeyService) {},
+			want:     []ocrypto.KeyType{},
+		},
+		{
+			name: "single registration",
+			register: func(t *testing.T, d *DelegatingKeyService) {
+				d.RegisterKeyManagerCtxWithAlgorithms("a", failIfInvokedFactory(t), []ocrypto.KeyType{"rsa:2048", "ec:secp256r1"})
+			},
+			want: []ocrypto.KeyType{"ec:secp256r1", "rsa:2048"},
+		},
+		{
+			name: "two registrations, deduped and sorted",
+			register: func(t *testing.T, d *DelegatingKeyService) {
+				d.RegisterKeyManagerCtxWithAlgorithms("a", failIfInvokedFactory(t), []ocrypto.KeyType{"rsa:2048", "hpqt:xwing"})
+				d.RegisterKeyManagerCtxWithAlgorithms("b", failIfInvokedFactory(t), []ocrypto.KeyType{"rsa:2048", "ec:secp256r1"})
+			},
+			want: []ocrypto.KeyType{"ec:secp256r1", "hpqt:xwing", "rsa:2048"},
+		},
+		{
+			name: "registration without algorithms contributes nothing",
+			register: func(t *testing.T, d *DelegatingKeyService) {
+				d.RegisterKeyManagerCtxWithAlgorithms("a", failIfInvokedFactory(t), []ocrypto.KeyType{"rsa:2048"})
+				d.RegisterKeyManagerCtx("b", failIfInvokedFactory(t))
+			},
+			want: []ocrypto.KeyType{"rsa:2048"},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			d := NewDelegatingKeyService(&MockKeyIndex{}, logger.CreateTestLogger(), nil)
+			tc.register(t, d)
+			got := d.SupportedAlgorithms(context.Background())
+			if got == nil {
+				got = []ocrypto.KeyType{}
+			}
+			assert.Equal(t, tc.want, got)
+			// Probing must never instantiate a manager — the cache stays empty.
+			assert.Empty(t, d.managers, "SupportedAlgorithms must not populate the manager cache")
+		})
+	}
+}
+
+// TestDelegatingKeyService_SupportedAlgorithms_DoesNotInvokeFactories asserts
+// the contract directly with a counter (in case the failIfInvokedFactory
+// fast-path is ever bypassed via t.Run nesting).
+func TestDelegatingKeyService_SupportedAlgorithms_DoesNotInvokeFactories(t *testing.T) {
+	t.Parallel()
+
+	var invocations atomic.Int32
+	counting := func(_ context.Context, _ *KeyManagerFactoryOptions) (KeyManager, error) {
+		invocations.Add(1)
+		return &MockKeyManager{}, nil
+	}
+
+	d := NewDelegatingKeyService(&MockKeyIndex{}, logger.CreateTestLogger(), nil)
+	d.RegisterKeyManagerCtxWithAlgorithms("a", counting, []ocrypto.KeyType{"rsa:2048"})
+	d.RegisterKeyManagerCtxWithAlgorithms("b", counting, []ocrypto.KeyType{"ec:secp256r1"})
+
+	_ = d.SupportedAlgorithms(context.Background())
+
+	assert.Zero(t, invocations.Load(), "SupportedAlgorithms must not invoke any registered factory")
+	assert.Empty(t, d.managers, "SupportedAlgorithms must not populate the manager cache")
+}
+
+// TestDelegatingKeyService_RegisterKeyManagerCtxWithAlgorithms_CopiesSlice
+// guards against callers retaining/mutating the slice they pass at registration.
+func TestDelegatingKeyService_RegisterKeyManagerCtxWithAlgorithms_CopiesSlice(t *testing.T) {
+	t.Parallel()
+
+	d := NewDelegatingKeyService(&MockKeyIndex{}, logger.CreateTestLogger(), nil)
+	algs := []ocrypto.KeyType{"rsa:2048", "ec:secp256r1"}
+	d.RegisterKeyManagerCtxWithAlgorithms("a", failIfInvokedFactory(t), algs)
+
+	algs[0] = "tampered"
+
+	got := d.SupportedAlgorithms(context.Background())
+	want := []ocrypto.KeyType{"ec:secp256r1", "rsa:2048"}
+	require.Equal(t, want, got, "registration must copy the algorithm slice")
 }

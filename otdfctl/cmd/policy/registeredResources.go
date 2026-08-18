@@ -103,9 +103,10 @@ func policyListRegisteredResources(cmd *cobra.Command, args []string) {
 	namespace := c.Flags.GetOptionalString("namespace")
 	limit := c.Flags.GetRequiredInt32("limit")
 	offset := c.Flags.GetRequiredInt32("offset")
+	search := c.Flags.GetOptionalString("search")
 	sort := getSortOption(c)
 
-	resp, err := h.ListRegisteredResources(cmd.Context(), limit, offset, namespace, sort)
+	resp, err := h.ListRegisteredResources(cmd.Context(), limit, offset, namespace, search, sort)
 	if err != nil {
 		cli.ExitWithError("Failed to list registered resources", err)
 	}
@@ -461,7 +462,8 @@ func parseActionAttributeValueArgs(args []string) []*registeredresources.ActionA
 func initRegisteredResourcesCommands() {
 	// Registered Resources commands
 
-	getDoc := man.Docs.GetCommand("policy/registered-resources/get",
+	getDoc := man.Docs.GetCommand(
+		"policy/registered-resources/get",
 		man.WithRun(policyGetRegisteredResource),
 	)
 	getDoc.Flags().StringP(
@@ -483,7 +485,8 @@ func initRegisteredResourcesCommands() {
 		getDoc.GetDocFlag("namespace").Description,
 	)
 
-	listDoc := man.Docs.GetCommand("policy/registered-resources/list",
+	listDoc := man.Docs.GetCommand(
+		"policy/registered-resources/list",
 		man.WithRun(policyListRegisteredResources),
 	)
 	listDoc.Flags().StringP(
@@ -493,9 +496,11 @@ func initRegisteredResourcesCommands() {
 		listDoc.GetDocFlag("namespace").Description,
 	)
 	injectListPaginationFlags(listDoc)
+	injectListSearchFlag(listDoc)
 	injectListSortFlags(listDoc)
 
-	createDoc := man.Docs.GetCommand("policy/registered-resources/create",
+	createDoc := man.Docs.GetCommand(
+		"policy/registered-resources/create",
 		man.WithRun(policyCreateRegisteredResource),
 	)
 	createDoc.Flags().StringP(
@@ -519,7 +524,8 @@ func initRegisteredResourcesCommands() {
 	)
 	injectLabelFlags(&createDoc.Command, false)
 
-	updateDoc := man.Docs.GetCommand("policy/registered-resources/update",
+	updateDoc := man.Docs.GetCommand(
+		"policy/registered-resources/update",
 		man.WithRun(policyUpdateRegisteredResource),
 	)
 	updateDoc.Flags().StringP(
@@ -536,7 +542,8 @@ func initRegisteredResourcesCommands() {
 	)
 	injectLabelFlags(&updateDoc.Command, true)
 
-	deleteDoc := man.Docs.GetCommand("policy/registered-resources/delete",
+	deleteDoc := man.Docs.GetCommand(
+		"policy/registered-resources/delete",
 		man.WithRun(policyDeleteRegisteredResource),
 	)
 	deleteDoc.Flags().StringP(
@@ -553,7 +560,8 @@ func initRegisteredResourcesCommands() {
 
 	// Registered Resource Values commands
 
-	getValueDoc := man.Docs.GetCommand("policy/registered-resources/values/get",
+	getValueDoc := man.Docs.GetCommand(
+		"policy/registered-resources/values/get",
 		man.WithRun(policyGetRegisteredResourceValue),
 	)
 	getValueDoc.Flags().StringP(
@@ -569,7 +577,8 @@ func initRegisteredResourcesCommands() {
 		getValueDoc.GetDocFlag("fqn").Description,
 	)
 
-	listValuesDoc := man.Docs.GetCommand("policy/registered-resources/values/list",
+	listValuesDoc := man.Docs.GetCommand(
+		"policy/registered-resources/values/list",
 		man.WithRun(policyListRegisteredResourceValues),
 	)
 	listValuesDoc.Flags().StringP(
@@ -586,7 +595,8 @@ func initRegisteredResourcesCommands() {
 	)
 	injectListPaginationFlags(listValuesDoc)
 
-	createValueDoc := man.Docs.GetCommand("policy/registered-resources/values/create",
+	createValueDoc := man.Docs.GetCommand(
+		"policy/registered-resources/values/create",
 		man.WithRun(policyCreateRegisteredResourceValue),
 	)
 	createValueDoc.Flags().StringP(
@@ -616,7 +626,8 @@ func initRegisteredResourcesCommands() {
 	)
 	injectLabelFlags(&createValueDoc.Command, false)
 
-	updateValueDoc := man.Docs.GetCommand("policy/registered-resources/values/update",
+	updateValueDoc := man.Docs.GetCommand(
+		"policy/registered-resources/values/update",
 		man.WithRun(policyUpdateRegisteredResourceValue),
 	)
 	updateValueDoc.Flags().StringP(
@@ -645,7 +656,8 @@ func initRegisteredResourcesCommands() {
 		updateValueDoc.GetDocFlag("force").Description,
 	)
 
-	deleteValueDoc := man.Docs.GetCommand("policy/registered-resources/values/delete",
+	deleteValueDoc := man.Docs.GetCommand(
+		"policy/registered-resources/values/delete",
 		man.WithRun(policyDeleteRegisteredResourceValue),
 	)
 	deleteValueDoc.Flags().StringP(
@@ -662,7 +674,8 @@ func initRegisteredResourcesCommands() {
 
 	// Add commands to the policy command
 
-	policyRegisteredResourcesDoc := man.Docs.GetCommand("policy/registered-resources",
+	policyRegisteredResourcesDoc := man.Docs.GetCommand(
+		"policy/registered-resources",
 		man.WithSubcommands(
 			getDoc,
 			listDoc,
@@ -672,7 +685,8 @@ func initRegisteredResourcesCommands() {
 		),
 	)
 
-	policyRegisteredResourceValuesDoc := man.Docs.GetCommand("policy/registered-resources/values",
+	policyRegisteredResourceValuesDoc := man.Docs.GetCommand(
+		"policy/registered-resources/values",
 		man.WithSubcommands(
 			getValueDoc,
 			listValuesDoc,

@@ -54,13 +54,16 @@ func (h Handler) GetAttribute(ctx context.Context, identifier string) (*policy.A
 	return resp.GetAttribute(), nil
 }
 
-func (h Handler) ListAttributes(ctx context.Context, state common.ActiveStateEnum, limit, offset int32, sort SortOption) (*attributes.ListAttributesResponse, error) {
+func (h Handler) ListAttributes(ctx context.Context, state common.ActiveStateEnum, limit, offset int32, search string, sort SortOption) (*attributes.ListAttributesResponse, error) {
 	req := &attributes.ListAttributesRequest{
 		State: state,
 		Pagination: &policy.PageRequest{
 			Limit:  limit,
 			Offset: offset,
 		},
+	}
+	if search != "" {
+		req.Search = &policy.Search{Term: search}
 	}
 	if !sort.IsZero() {
 		allowedFields := map[string]attributes.SortAttributesType{

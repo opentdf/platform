@@ -129,6 +129,7 @@ services:
 | Transformation | Input | Output | Use Case |
 |---------------|-------|---------|----------|
 | `postgres_array` | `"{apple,banana,cherry}"` | `["apple", "banana", "cherry"]` | PostgreSQL arrays |
+| `postgres_object` | `[]byte`, `string`, or `map[string]any` holding a JSON object (e.g. `'{"dept":"eng","level":3}'`) | `map[string]any{"dept":"eng","level":3}` | PostgreSQL `json`/`jsonb` columns surfaced as structured claims. `nil`, empty `[]byte`, and empty `string` normalize to `{}`; any other input type is an error. |
 
 ### LDAP-Specific Transformations
 
@@ -485,6 +486,34 @@ services:
 - **"No matching strategies"**: Check JWT claim conditions, not failure_strategy
 - **Immediate failures**: Verify failure_strategy is set to "continue" for failover
 - **Backup never used**: Ensure backup strategies have identical conditions to primary
+
+### Currently Unsupported Failure Policies
+
+Multi-Strategy ERS does not currently support requiring every selected strategy, a
+specific strategy, or a named provider to participate successfully in the resolved
+entity chain.
+
+In particular, there is no current equivalent of:
+
+```yaml
+failure_strategy: require-all
+required_strategies:
+  - corporate_ldap
+```
+
+With `continue`, any strategy execution failure—including a provider outage—may fall
+through to later matching strategies. With `fail-fast`, the first strategy execution
+failure aborts resolution. Failure causes may be distinguished for logging, audit,
+and future policy, but they do not override the configured resolution behavior.
+
+An empty Claims-provider context is a successful empty context, not an unavailable
+entity. It is passed to subject mapping evaluation and normally results in no matching
+entitlements and therefore a deny decision.
+
+Deployments that must prove an authoritative source was available and contributed
+context cannot express that requirement today. Supporting that guarantee requires a
+new failure strategy (for example, `require-all`) or explicit required-strategy/provider
+configuration, with corresponding chain and audit semantics.
 
 ## Configuration Reference
 

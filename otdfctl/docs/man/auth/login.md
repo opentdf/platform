@@ -9,7 +9,7 @@ command:
       shorthand: i
       required: true
     - name: port
-      description: A preferred port number to faciliate the auth flow process.
+      description: A preferred port number to facilitate the auth flow process.
       shorthand: p
       required: false
 ---

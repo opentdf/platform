@@ -10,6 +10,7 @@ import (
 	"github.com/go-playground/validator/v10"
 	"github.com/opentdf/platform/service/internal/server"
 	"github.com/opentdf/platform/service/logger"
+	auditcfg "github.com/opentdf/platform/service/logger/audit"
 	"github.com/opentdf/platform/service/pkg/db"
 	"github.com/spf13/viper"
 )
@@ -24,6 +25,12 @@ type ServicesMap map[string]ServiceConfig
 
 // Config structure holding a single service.
 type ServiceConfig map[string]any
+
+// InterceptorsMap holds freeform configuration for named interceptors.
+type InterceptorsMap map[string]InterceptorConfig
+
+// InterceptorConfig holds freeform configuration for a single named interceptor.
+type InterceptorConfig map[string]any
 
 func (cfg ServiceConfig) String() string {
 	// Create a shallow copy so we don't mutate the original map.
@@ -76,6 +83,9 @@ type Config struct {
 	// Logger represents the configuration settings for the logger.
 	Logger logger.Config `mapstructure:"logger" json:"logger"`
 
+	// Audit represents the configuration settings for audit enrichment.
+	Audit auditcfg.Config `mapstructure:"audit" json:"audit"`
+
 	// Mode specifies which services to run.
 	// By default, it runs all services.
 	Mode []string `mapstructure:"mode" json:"mode" default:"[\"all\"]"`
@@ -88,6 +98,9 @@ type Config struct {
 
 	// Services represents the configuration settings for the services.
 	Services ServicesMap `mapstructure:"services" json:"services"`
+
+	// Interceptors represents configuration settings for named interceptors.
+	Interceptors InterceptorsMap `mapstructure:"interceptors" json:"interceptors"`
 
 	// onConfigChangeHooks is a list of functions to call when the configuration changes.
 	onConfigChangeHooks []ChangeHook
@@ -136,6 +149,7 @@ var (
 func (c *Config) LogValue() slog.Value {
 	return slog.GroupValue(
 		slog.Bool("dev_mode", c.DevMode),
+		slog.Any("audit", c.Audit),
 		slog.Any("db", c.DB),
 		slog.Any("logger", c.Logger),
 		slog.Any("mode", c.Mode),
@@ -292,6 +306,9 @@ func (c *Config) Reload(ctx context.Context) error {
 
 	// Final validation after the configuration has converged.
 	if err := validator.New().Struct(c); err != nil {
+		return errors.Join(err, ErrUnmarshallingConfig)
+	}
+	if err := c.Audit.Validate(); err != nil {
 		return errors.Join(err, ErrUnmarshallingConfig)
 	}
 

@@ -40,6 +40,7 @@ const (
 	ObjectTypeKasAttributeDefinitionKeyAssignment
 	ObjectTypeKasAttributeValueKeyAssignment
 	ObjectTypeKasAttributeNamespaceKeyAssignment
+	ObjectTypeDynamicValueMapping
 )
 
 var objectTypeNames = map[ObjectType]string{
@@ -68,6 +69,7 @@ var objectTypeNames = map[ObjectType]string{
 	ObjectTypeKasAttributeDefinitionKeyAssignment: "kas_attribute_definition_key_assignment",
 	ObjectTypeKasAttributeValueKeyAssignment:      "kas_attribute_value_key_assignment",
 	ObjectTypeKasAttributeNamespaceKeyAssignment:  "kas_attribute_namespace_key_assignment",
+	ObjectTypeDynamicValueMapping:                 "dynamic_value_mapping",
 }
 
 var (

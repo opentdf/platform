@@ -47,8 +47,9 @@ func getProviderConfig(cmd *cobra.Command, args []string) {
 
 	id := c.Flags.GetOptionalID("id")
 	name := c.Flags.GetOptionalString("name")
+	manager := c.Flags.GetOptionalString("manager")
 
-	pc, err := h.GetProviderConfig(c.Context(), id, name)
+	pc, err := h.GetProviderConfig(c.Context(), id, name, manager)
 	if err != nil {
 		cli.ExitWithError("Failed to get provider config", err)
 	}
@@ -156,7 +157,7 @@ func deleteProviderConfig(cmd *cobra.Command, args []string) {
 	force := c.Flags.GetOptionalBool("force")
 
 	// Get provider config.
-	pc, err := h.GetProviderConfig(c.Context(), id, "")
+	pc, err := h.GetProviderConfig(c.Context(), id, "", "")
 	if err != nil {
 		cli.ExitWithError("Failed to get provider config", err)
 	}
@@ -218,8 +219,15 @@ func initKeyManagementProviderCommands() {
 		getDoc.GetDocFlag("name").Default,
 		getDoc.GetDocFlag("name").Description,
 	)
+	getDoc.Flags().StringP(
+		getDoc.GetDocFlag("manager").Name,
+		getDoc.GetDocFlag("manager").Shorthand,
+		getDoc.GetDocFlag("manager").Default,
+		getDoc.GetDocFlag("manager").Description,
+	)
 	getDoc.MarkFlagsOneRequired("id", "name")
 	getDoc.MarkFlagsMutuallyExclusive("id", "name")
+	getDoc.MarkFlagsRequiredTogether("name", "manager")
 
 	// Update Provider Config
 	updateDoc := man.Docs.GetCommand("policy/key-management/provider/update",

@@ -2,8 +2,6 @@ module github.com/opentdf/platform/test/integration
 
 go 1.25.0
 
-toolchain go1.25.9
-
 replace (
 	github.com/opentdf/platform/lib/fixtures => ../../lib/fixtures
 	github.com/opentdf/platform/lib/ocrypto => ../../lib/ocrypto
@@ -13,7 +11,7 @@ replace (
 
 require (
 	github.com/lestrrat-go/jwx/v2 v2.1.6
-	github.com/opentdf/platform/lib/fixtures v0.0.0-00010101000000-000000000000
+	github.com/opentdf/platform/lib/fixtures v0.6.0
 	github.com/opentdf/platform/sdk v0.0.0-00010101000000-000000000000
 	github.com/stretchr/testify v1.11.1
 	github.com/testcontainers/testcontainers-go v0.42.0
@@ -82,8 +80,8 @@ require (
 	go.opentelemetry.io/otel/sdk v1.43.0 // indirect
 	go.opentelemetry.io/otel/sdk/metric v1.43.0 // indirect
 	go.opentelemetry.io/otel/trace v1.43.0 // indirect
-	golang.org/x/crypto v0.49.0 // indirect
-	golang.org/x/net v0.52.0 // indirect
-	golang.org/x/sys v0.42.0 // indirect
+	golang.org/x/crypto v0.52.0 // indirect
+	golang.org/x/net v0.55.0 // indirect
+	golang.org/x/sys v0.45.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )

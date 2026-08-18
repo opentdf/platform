@@ -34,3 +34,15 @@ func ContextWithActorID(ctx context.Context, actorID string) context.Context {
 	tx.ActorID = actorID
 	return ctx
 }
+
+// Clone returns a non-canceling context with an independent copy of the current
+// request's audit attribution. It does not copy pending audit events.
+// Should be used by services that require auditting outside of the RPC lifecycle (Ex: asynch job worker)
+func (a *Logger) Clone(ctx context.Context) context.Context {
+	tx := &auditTransaction{
+		ContextData: GetAuditDataFromContext(ctx),
+		events:      make([]pendingEvent, 0),
+	}
+
+	return context.WithValue(context.WithoutCancel(ctx), contextKey{}, tx)
+}

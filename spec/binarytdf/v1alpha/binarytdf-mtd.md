@@ -7,8 +7,8 @@
 | Source draft | 0.2 |
 | Frame version | 2 |
 | Status | Draft |
-| Depends on | BinaryTDF-CORE, BinaryTDF-ALG |
-| Referenced by | BinaryTDF-KAO, BinaryTDF-PAY, BinaryTDF-KAS, BinaryTDF-CDDL, BinaryTDF-NATO |
+| Depends on | BinaryTDF-SEC, BinaryTDF-ALG |
+| Referenced by | BinaryTDF-KAO, BinaryTDF-PAY, BinaryTDF-KAS, BinaryTDF-SCH, BinaryTDF-CORE, BinaryTDF-NATO |
 
 ## 1. Structure
 

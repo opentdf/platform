@@ -7,10 +7,10 @@
 | Source draft | 0.2 |
 | Frame version | 2 |
 | Status | Draft, optional |
-| Depends on | BinaryTDF-MTD, BinaryTDF-POL, BinaryTDF-CORE |
+| Depends on | BinaryTDF-SEC, BinaryTDF-MTD, BinaryTDF-POL, BinaryTDF-PAY, BinaryTDF-SCH, BinaryTDF-PKG |
 
 This profile carries NATO confidentiality labels and metadata bindings without changing
-core framing, validation, or cryptography.
+BinaryTDF-PKG framing, BinaryTDF-SCH validation, or cryptography.
 
 ## 1. Purpose
 
@@ -51,10 +51,10 @@ Illustrative diagnostic notation using a provisional tag:
 
 Carriage rules:
 
-- Core payload AAD and KAO context authenticate label bytes. Alteration, replacement,
-  or injection invalidates decryption.
-- Core deterministic CBOR rules apply to carried bytes. Semantic validation remains
-  governed by ADatP-4774.
+- BinaryTDF-PAY payload AAD and KAO context authenticate label bytes. Alteration,
+  replacement, or injection invalidates decryption.
+- BinaryTDF-SCH deterministic CBOR rules apply to carried bytes. Semantic validation
+  remains governed by ADatP-4774.
 - A label required before processing MUST be listed in `critical_extensions`; an
   unsupported receiver then fails before rewrap.
 - A label describes data and grants no access by itself.
@@ -74,7 +74,7 @@ It cannot bind ciphertext or complete object bytes because ciphertext depends on
 metadata through payload AAD. Its `data-reference` therefore either:
 
 - hashes plaintext before encryption; or
-- is omitted, leaving the binding to cover metadata while core AEAD binds carriage.
+- is omitted, leaving the binding to cover metadata while payload AEAD binds carriage.
 
 A plaintext hash may enable confirmation attacks for low-entropy payloads. Deployments
 SHOULD omit it or use a salted-digest profile when that matters.

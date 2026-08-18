@@ -7,8 +7,8 @@
 | Source draft | 0.2 |
 | Frame version | 2 |
 | Status | Draft |
-| Depends on | BinaryTDF-CORE, BinaryTDF-MTD, BinaryTDF-REC, BinaryTDF-ALG |
-| Referenced by | BinaryTDF-CDDL, BinaryTDF-EX, BinaryTDF-STREAM, BinaryTDF-KEY-EPOCH |
+| Depends on | BinaryTDF-SEC, BinaryTDF-ALG, BinaryTDF-MTD, BinaryTDF-REC |
+| Referenced by | BinaryTDF-CORE, BinaryTDF-EX, BinaryTDF-STREAM, BinaryTDF-KEY-EPOCH |
 
 ## 1. Suites
 

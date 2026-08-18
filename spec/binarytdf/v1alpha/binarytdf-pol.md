@@ -7,8 +7,8 @@
 | Source draft | 0.2 |
 | Frame version | 2 |
 | Status | Draft |
-| Depends on | BinaryTDF-CORE |
-| Referenced by | BinaryTDF-REC, BinaryTDF-KAO, BinaryTDF-KAS, BinaryTDF-CDDL, BinaryTDF-NATO |
+| Depends on | BinaryTDF-SEC |
+| Referenced by | BinaryTDF-REC, BinaryTDF-KAO, BinaryTDF-KAS, BinaryTDF-SCH, BinaryTDF-CORE, BinaryTDF-NATO |
 
 ## 1. Data model
 

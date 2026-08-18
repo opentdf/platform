@@ -7,8 +7,8 @@
 | Source draft | 0.2 |
 | Frame version | 2 |
 | Status | Draft |
-| Depends on | BinaryTDF-CORE, BinaryTDF-POL, BinaryTDF-KAO, BinaryTDF-ALG |
-| Referenced by | BinaryTDF-KAS, BinaryTDF-CDDL, BinaryTDF-KEY-EPOCH |
+| Depends on | BinaryTDF-SEC, BinaryTDF-ALG, BinaryTDF-POL, BinaryTDF-KAO |
+| Referenced by | BinaryTDF-PAY, BinaryTDF-KAS, BinaryTDF-SCH, BinaryTDF-CORE, BinaryTDF-KEY-EPOCH |
 
 ## 1. Recovery object
 

@@ -7,8 +7,8 @@
 | Source draft | 0.2 |
 | Frame version | 2 |
 | Status | Draft |
-| Depends on | BinaryTDF-CORE, BinaryTDF-MTD, BinaryTDF-POL, BinaryTDF-REC, BinaryTDF-KAO, BinaryTDF-ALG, BinaryTDF-SEC |
-| Referenced by | BinaryTDF-CDDL, BinaryTDF-KEY-EPOCH |
+| Depends on | BinaryTDF-SEC, BinaryTDF-ALG, BinaryTDF-MTD, BinaryTDF-POL, BinaryTDF-REC, BinaryTDF-KAO |
+| Referenced by | BinaryTDF-SCH, BinaryTDF-CORE, BinaryTDF-KEY-EPOCH |
 
 ## 1. Request
 

@@ -1,4 +1,4 @@
-# BinaryTDF-CORE: Frame and End-to-End Processing
+# BinaryTDF-CORE: Object and End-to-End Processing
 
 | | |
 |---|---|
@@ -7,15 +7,16 @@
 | Source draft | 0.2 |
 | Frame version | 2 |
 | Status | Draft |
-| Depends on | BinaryTDF-MTD, BinaryTDF-POL, BinaryTDF-REC, BinaryTDF-KAO, BinaryTDF-PAY, BinaryTDF-KAS, BinaryTDF-SEC |
-| Referenced by | BinaryTDF-CDDL, BinaryTDF-EX, BinaryTDF-MIG |
+| Depends on | BinaryTDF-SEC, BinaryTDF-ALG, BinaryTDF-MTD, BinaryTDF-POL, BinaryTDF-REC, BinaryTDF-KAO, BinaryTDF-PAY, BinaryTDF-KAS, BinaryTDF-SCH, BinaryTDF-PKG |
+| Referenced by | BinaryTDF-EX, BinaryTDF extensions and profiles |
 
 ## 1. Scope
 
-BinaryTDF is a compact, self-contained format for protecting one payload. Each object
-contains deterministic CBOR metadata, information needed to recover its object key,
-and encrypted content. Every byte is fixed at creation, and exact wire bytes are used
-directly by the cryptographic protocol.
+BinaryTDF is a compact, self-contained format for protecting one payload. Each logical
+object contains Protected Metadata, Object Key Recovery, and encrypted content. The
+physical frame is defined by BinaryTDF-PKG and the deterministic encoding and schemas
+are defined by BinaryTDF-SCH. Every byte is fixed at creation, and exact serialized
+bytes are used directly by the cryptographic protocol.
 
 Frame version 2 defines:
 
@@ -109,75 +110,24 @@ This subsection is non-normative; the referenced component requirements are norm
 4. Derive every KAO context, wrap its value, and compute its policy binding.
 5. Derive the payload key and encrypt using the exact metadata and recovery bytes as
    AAD.
-6. Emit the frame in the order defined below.
+6. Serialize the object using BinaryTDF-SCH and BinaryTDF-PKG.
 
 Steps 2 and 3 finish before steps 4 and 5 because their exact bytes are inputs to KAO
 wrapping and payload encryption.
 
-## 3. Binary frame
-
-All integer lengths are unsigned and big-endian.
-
-```text
-+----------------------------+----------------------------------+
-| Field                      | Size                             |
-+----------------------------+----------------------------------+
-| Magic                      | 3 bytes: ASCII "L2L"            |
-| Version                    | 1 byte: 0x02                    |
-| Metadata Length            | 4 bytes                         |
-| Protected Metadata CBOR    | Metadata Length bytes           |
-| Object Key Recovery Length | 4 bytes                         |
-| Object Key Recovery CBOR   | Recovery Length bytes           |
-| Ciphertext Length          | 8 bytes                         |
-| Ciphertext                 | Ciphertext Length bytes         |
-+----------------------------+----------------------------------+
-```
-
-Ciphertext Length includes all suite-specific header, nonce, ciphertext, and tag bytes.
-There MUST be no bytes after the declared Ciphertext section.
-
-The 64-bit ciphertext length permits payloads larger than 4 GiB. It is a framing bound,
-not an allocation instruction. A decoder MUST reject an object before CBOR processing
-when:
-
-- magic or version is unsupported;
-- a length field is truncated;
-- a declared section exceeds remaining input;
-- offset or capacity arithmetic overflows; or
-- the Ciphertext section does not consume remaining input exactly.
-
-Changing frame layout, a cryptographic input construction, or the meaning of an
-existing security-bearing field requires a new frame version.
-
-## 4. CBOR encoding
-
-All CBOR MUST use RFC 8949 Core Deterministic Encoding Requirements. Encoders MUST use
-preferred serialization, deterministic map-key ordering, and definite-length items.
-Optional fields with absent, empty, or zero values are omitted unless specified
-otherwise.
-
-Decoders MUST reject duplicate map keys, indefinite-length items, non-deterministic
-encodings, invalid types, unregistered core keys, and resource-limit violations.
-Implementations MUST impose finite limits on nesting, collection sizes, and section
-lengths.
-
-Core maps use unsigned integer keys. Registry identifiers are unsigned integers without
-a CBOR tag. `encode_deterministic_cbor(value)` denotes this specification operation;
-it is not a separate wire format.
-
-## 5. Opening procedure
+## 3. Opening procedure
 
 A conforming opener performs:
 
-1. frame and exact-length validation;
-2. deterministic CBOR and registered-core-field validation;
+1. BinaryTDF-PKG frame and exact-length validation;
+2. BinaryTDF-SCH deterministic CBOR and registered-core-field validation;
 3. suite, scheme, and critical-extension validation;
 4. local unwrap or KAS rewrap and policy-binding verification for required KAOs;
 5. object-key reconstruction or derivation; and
 6. payload authentication before returning plaintext, subject to a registered
    content-encryption suite's explicit incremental release rules.
 
-## 6. Conformance
+## 4. Conformance
 
 At minimum, interoperability tests SHOULD cover:
 
@@ -196,7 +146,7 @@ At minimum, interoperability tests SHOULD cover:
 Cross-language vectors SHOULD include the complete object, raw sections, policy bytes,
 KAO and session context bytes, payload AAD, derived-key inputs, and expected failure.
 
-## 7. References
+## 5. References
 
 - [BCP 14](https://www.rfc-editor.org/info/bcp14)
 - [RFC 5869: HKDF](https://www.rfc-editor.org/rfc/rfc5869)

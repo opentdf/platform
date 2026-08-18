@@ -1,16 +1,36 @@
-# BinaryTDF-CDDL: Normative Schema
+# BinaryTDF-SCH: Deterministic CBOR Schema
 
 | | |
 |---|---|
-| Document | BinaryTDF-CDDL |
+| Document | BinaryTDF-SCH |
 | Version | 1 Alpha |
 | Source draft | 0.2 |
 | Frame version | 2 |
 | Status | Draft |
-| Depends on | BinaryTDF-CORE, BinaryTDF-ALG, BinaryTDF-MTD, BinaryTDF-POL, BinaryTDF-REC, BinaryTDF-KAO, BinaryTDF-KAS |
+| Depends on | BinaryTDF-ALG, BinaryTDF-MTD, BinaryTDF-POL, BinaryTDF-REC, BinaryTDF-KAO, BinaryTDF-KAS |
+| Referenced by | BinaryTDF-PKG, BinaryTDF-CORE, BinaryTDF-EX, BinaryTDF extensions |
+
+## 1. Deterministic CBOR
+
+All CBOR MUST use RFC 8949 Core Deterministic Encoding Requirements. Encoders MUST use
+preferred serialization, deterministic map-key ordering, and definite-length items.
+Optional fields with absent, empty, or zero values are omitted unless specified
+otherwise.
+
+Decoders MUST reject duplicate map keys, indefinite-length items, non-deterministic
+encodings, invalid types, unregistered core keys, and resource-limit violations.
+Implementations MUST impose finite limits on nesting, collection sizes, and section
+lengths.
+
+Core maps use unsigned integer keys. Registry identifiers are unsigned integers without
+a CBOR tag. `encode_deterministic_cbor(value)` denotes this specification operation; it
+is not a separate wire format.
+
+## 2. Consolidated CDDL
 
 Semantic, suite-specific, scheme-specific, and extension-specific requirements apply
-in addition to this shape.
+in addition to this shape. Component documents repeat relevant fragments near their
+semantic requirements; this section is the consolidated schema.
 
 ```cddl
 content-encryption-suite = &(
@@ -124,6 +144,8 @@ xor-all-recovery-data = xor-all-kao-groups
 $binary-tdf-recovery-scheme-data /= direct-recovery-data
 $binary-tdf-recovery-scheme-data /= xor-all-recovery-data
 ```
+
+## 3. Extension sockets
 
 Extension specifications augment the two `$binary-tdf-*` sockets with `/=`. The
 metadata wildcard permits only unknown non-critical tags; recognized tags use their

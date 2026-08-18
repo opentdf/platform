@@ -7,7 +7,7 @@
 | Source draft | 0.2 |
 | Frame version | 2 |
 | Status | Informational |
-| Depends on | BinaryTDF-CORE, BinaryTDF-CDDL |
+| Depends on | BinaryTDF-CORE, BinaryTDF-PKG, BinaryTDF-SCH |
 
 This example builds a minimal DIRECT object with one authority, one policy attribute,
 and a five-byte payload. CBOR structures and lengths are exact. Cryptographic outputs
@@ -81,7 +81,7 @@ The policy bytes are:
       81 6c 63 6f 6e 66 69 64 65 6e 74 69 61 6c
 ```
 
-## 3. Frame layout
+## 3. BinaryTDF-PKG frame layout
 
 For five plaintext bytes, Ciphertext is `12 + 5 + 16 = 33` bytes. The complete object
 is 283 bytes:

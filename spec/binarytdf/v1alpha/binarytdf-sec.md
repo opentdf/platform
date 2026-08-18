@@ -7,7 +7,7 @@
 | Source draft | 0.2 |
 | Frame version | 2 |
 | Status | Draft |
-| Depends on | BinaryTDF-CORE |
+| Depends on | None |
 | Referenced by | All BinaryTDF components |
 
 ## 1. Parser limits

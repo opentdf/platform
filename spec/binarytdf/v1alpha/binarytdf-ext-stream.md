@@ -8,7 +8,7 @@
 | Frame version | 2 |
 | Registry identifier | `AES_256_GCM_HKDF_SHA256_STREAM = 2` |
 | Status | Draft, optional |
-| Depends on | BinaryTDF-CORE, BinaryTDF-PAY |
+| Depends on | BinaryTDF-SEC, BinaryTDF-PAY, BinaryTDF-SCH, BinaryTDF-PKG |
 
 This suite protects one large payload as independently authenticated segments inside
 the ordinary Ciphertext section. Its key schedule, nonce construction, and segment
@@ -17,7 +17,7 @@ encryption derive from the
 A BinaryTDF header declares ciphertext segment size.
 
 It supports bounded-memory processing and optional random access without changing the
-frame, recovery, KAO wrapping, policy binding, or KAS protocol.
+BinaryTDF-PKG frame, recovery, KAO wrapping, policy binding, or KAS protocol.
 
 ## 1. Core relationship
 
@@ -128,8 +128,8 @@ segment_nonce(i) = nonce_prefix
 
 `final_byte` is `0x01` for the final segment and `0x00` otherwise. Index and final
 marker detect reordering, duplication, truncation, and extension. Segment AES-GCM AAD
-is empty; core `payload_aad` and segment size are bound into the payload key as Tink
-specifies.
+is empty; BinaryTDF-PAY `payload_aad` and segment size are bound into the payload key
+as Tink specifies.
 
 ## 6. Encryption
 
@@ -159,7 +159,8 @@ order.
   completeness still requires authenticating the final segment. Omission-sensitive
   applications MUST NOT act on the payload as complete before then.
 
-Strict frame, CBOR, policy-binding, and key-recovery validation precedes segment work.
+Strict BinaryTDF-PKG frame, BinaryTDF-SCH CBOR, policy-binding, and key-recovery
+validation precedes segment work.
 
 ## 8. Limits
 

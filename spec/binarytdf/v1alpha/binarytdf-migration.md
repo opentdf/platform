@@ -7,7 +7,7 @@
 | Source draft | 0.2 |
 | Target frame version | 2 |
 | Status | Non-normative |
-| Depends on | BinaryTDF-CORE |
+| Depends on | BinaryTDF-CORE, BinaryTDF-PKG, BinaryTDF-SCH |
 
 This guide applies to the original Go SDK frame version 1 prototype. It does not define
 interoperability or change normative requirements.

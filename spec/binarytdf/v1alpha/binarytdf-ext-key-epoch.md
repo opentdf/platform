@@ -8,7 +8,7 @@
 | Frame version | 2 |
 | Registry identifier | `KEY_EPOCH = 3` |
 | Status | Draft, optional |
-| Depends on | BinaryTDF-CORE, BinaryTDF-REC, BinaryTDF-KAO, BinaryTDF-KAS, BinaryTDF-PAY |
+| Depends on | BinaryTDF-SEC, BinaryTDF-REC, BinaryTDF-KAO, BinaryTDF-KAS, BinaryTDF-PAY, BinaryTDF-SCH |
 
 KEY_EPOCH amortizes authority contact across a bounded cryptographic generation while
 retaining a unique object key per BinaryTDF. It is intended for independently framed

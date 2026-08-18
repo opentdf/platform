@@ -7,8 +7,8 @@
 | Source draft | 0.2 |
 | Frame version | 2 |
 | Status | Draft |
-| Depends on | BinaryTDF-CORE |
-| Referenced by | BinaryTDF-MTD, BinaryTDF-REC, BinaryTDF-KAO, BinaryTDF-PAY, BinaryTDF-KAS, BinaryTDF-CDDL |
+| Depends on | BinaryTDF-SEC |
+| Referenced by | BinaryTDF-MTD, BinaryTDF-REC, BinaryTDF-KAO, BinaryTDF-PAY, BinaryTDF-KAS, BinaryTDF-SCH, BinaryTDF-CORE, BinaryTDF extensions |
 
 ## 1. Content-encryption suites
 

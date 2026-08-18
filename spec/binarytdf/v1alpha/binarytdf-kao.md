@@ -7,8 +7,8 @@
 | Source draft | 0.2 |
 | Frame version | 2 |
 | Status | Draft |
-| Depends on | BinaryTDF-CORE, BinaryTDF-ALG, BinaryTDF-POL, BinaryTDF-REC |
-| Referenced by | BinaryTDF-KAS, BinaryTDF-CDDL, BinaryTDF-EX |
+| Depends on | BinaryTDF-SEC, BinaryTDF-ALG, BinaryTDF-MTD, BinaryTDF-POL |
+| Referenced by | BinaryTDF-REC, BinaryTDF-KAS, BinaryTDF-SCH, BinaryTDF-CORE, BinaryTDF-EX |
 
 ## 1. Structure
 

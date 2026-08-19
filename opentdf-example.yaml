@@ -29,6 +29,7 @@ db:
 # mode: all
 services:
   kas:
+    key_management: false
     eccertid: e1
     rsacertid: r1
   entityresolution:

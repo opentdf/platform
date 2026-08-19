@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.25.1](https://github.com/opentdf/platform/compare/service/v0.25.0...service/v0.25.1) (2026-08-19)
+
+
+### Features
+
+* **core:** Expose real-time audit logging [backport to release/service/v0.25] ([#3893](https://github.com/opentdf/platform/issues/3893)) ([4c33365](https://github.com/opentdf/platform/commit/4c3336524f88de45b669df96edda872acbd24f1a))
+* **kas:** Move key_management to stable [backport to release/service/v0.25] ([#3904](https://github.com/opentdf/platform/issues/3904)) ([1e6faed](https://github.com/opentdf/platform/commit/1e6faed85f74141aa7dd946c9f776fdaedc01af7))
+
 ## [0.25.0](https://github.com/opentdf/platform/compare/service/v0.24.0...service/v0.25.0) (2026-08-11)
 
 

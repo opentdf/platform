@@ -589,6 +589,7 @@ Root level key `policy`
 | `list_request_limit_default` | Policy List request limit default when not provided    | 1000    | OPENTDF_SERVICES_POLICY_LIST_REQUEST_LIMIT_DEFAULT |
 | `list_request_limit_max`     | Policy List request limit maximum enforced by services | 2500    | OPENTDF_SERVICES_POLICY_LIST_REQUEST_LIMIT_MAX     |
 | `namespaced_policy`          | When enabled, new actions, subject mappings, subject condition sets, and registered resources require a namespace. When disabled (default), namespace fields are accepted but not enforced — objects may be created without a namespace (legacy behavior). Non-namespaced versions are deprecated and this flag will become the default in a future version. | `false` | OPENTDF_SERVICES_POLICY_NAMESPACED_POLICY          |
+| `object_limits`              | Optional per-namespace limits for policy object creation. Each nested zero value disables that limit. | all disabled | OPENTDF_SERVICES_POLICY_OBJECT_LIMITS_* |
 
 Example:
 
@@ -598,7 +599,19 @@ services:
     list_request_limit_default: 1000
     list_request_limit_max: 2500
     namespaced_policy: false
+    object_limits:
+      attribute_definitions: 0
+      attribute_values_per_definition: 0
+      resource_mapping_groups: 0
+      resource_mappings: 0
+      subject_mappings: 0
+      subject_condition_sets: 0
+      obligation_definitions: 0
+      obligation_values_per_definition: 0
+      obligation_triggers: 0
 ```
+
+Object limits are checked by the service that owns each create operation. Reaching a configured limit returns `RESOURCE_EXHAUSTED`. OpenTDF obtains counts through internal count-only database queries; no public count API or hydrated list response is involved.
 
 ### Casbin Endpoint Authorization
 

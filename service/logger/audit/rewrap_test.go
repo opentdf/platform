@@ -40,7 +40,7 @@ func TestCreateRewrapAuditEventHappyPath(t *testing.T) {
 	}
 
 	expectedEventObject := auditEventObject{
-		Type: ObjectTypeKeyObject,
+		Type: ObjectTypeKeyObject.String(),
 		ID:   kasPolicy.UUID.String(),
 		Attributes: eventObjectAttributes{
 			Assertions:  []string{},
@@ -53,8 +53,8 @@ func TestCreateRewrapAuditEventHappyPath(t *testing.T) {
 	}
 
 	expectedEventAction := eventAction{
-		Type:   ActionTypeRewrap,
-		Result: ActionResultSuccess,
+		Type:   ActionTypeRewrap.String(),
+		Result: ActionResultSuccess.String(),
 	}
 	if !reflect.DeepEqual(event.Action, expectedEventAction) {
 		t.Fatalf("event action did not match expected: got %+v, want %+v", event.Action, expectedEventAction)

@@ -44,7 +44,7 @@ func CreateRewrapAuditEvent(ctx context.Context, params RewrapAuditEventParams) 
 
 	return &EventObject{
 		Object: auditEventObject{
-			Type: ObjectTypeKeyObject,
+			Type: ObjectTypeKeyObject.String(),
 			ID:   params.Policy.UUID.String(),
 			Attributes: eventObjectAttributes{
 				Assertions:  []string{}, // Assertions aren't passed in the rewrap policy body
@@ -53,8 +53,8 @@ func CreateRewrapAuditEvent(ctx context.Context, params RewrapAuditEventParams) 
 			},
 		},
 		Action: eventAction{
-			Type:   ActionTypeRewrap,
-			Result: auditEventActionResult,
+			Type:   ActionTypeRewrap.String(),
+			Result: auditEventActionResult.String(),
 		},
 		Actor: auditEventActor{
 			ID:         auditDataFromContext.ActorID,

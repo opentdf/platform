@@ -3,6 +3,8 @@ package audit
 import (
 	"context"
 	"log/slog"
+	"sync"
+	"time"
 )
 
 // From the Slog docs (https://betterstack.com/community/guides/logging/logging-in-go/#customizing-slog-levels):
@@ -10,8 +12,9 @@ import (
 // associated with an integer value: DEBUG (-4), INFO (0), WARN (4), and ERROR (8).
 const (
 	// Currently setting AUDIT level to 10, a level above ERROR so it is always logged
-	LevelAudit    = slog.Level(10)
-	LevelAuditStr = "AUDIT"
+	LevelAudit           = slog.Level(10)
+	LevelAuditStr        = "AUDIT"
+	defaultRecordTimeout = 5 * time.Second
 )
 
 type Verb string
@@ -33,8 +36,52 @@ var logLevelNames = map[slog.Leveler]string{
 }
 
 type Logger struct {
-	logger *slog.Logger
-	config Config
+	logger        *slog.Logger
+	diagnostics   *slog.Logger
+	encoder       Encoder
+	sink          Sink
+	recordTimeout time.Duration
+	configMu      sync.RWMutex
+	config        Config
+}
+
+// Option configures an audit logger at construction time.
+type Option func(*Logger)
+
+// WithEncoder configures the canonical event encoder.
+func WithEncoder(encoder Encoder) Option {
+	return func(logger *Logger) {
+		if encoder != nil {
+			logger.encoder = encoder
+		}
+	}
+}
+
+// WithSink configures the emission sink. The default sink writes through slog.
+func WithSink(sink Sink) Option {
+	return func(logger *Logger) {
+		if sink != nil {
+			logger.sink = sink
+		}
+	}
+}
+
+// WithDiagnosticLogger routes recorder failures to an operational logger.
+func WithDiagnosticLogger(diagnostics *slog.Logger) Option {
+	return func(logger *Logger) {
+		if diagnostics != nil {
+			logger.diagnostics = diagnostics
+		}
+	}
+}
+
+// WithRecordTimeout bounds encoding and sink handoff after request cancellation.
+func WithRecordTimeout(timeout time.Duration) Option {
+	return func(logger *Logger) {
+		if timeout > 0 {
+			logger.recordTimeout = timeout
+		}
+	}
 }
 
 // Used to support custom log levels showing up with custom labels as well
@@ -56,10 +103,16 @@ func ReplaceAttrAuditLevel(_ []string, a slog.Attr) slog.Attr {
 	return a
 }
 
-func CreateAuditLogger(logger slog.Logger) *Logger {
-	return &Logger{
-		logger: &logger,
+func CreateAuditLogger(logger slog.Logger, options ...Option) *Logger {
+	auditLogger := &Logger{
+		logger:        &logger,
+		diagnostics:   slog.Default(),
+		recordTimeout: defaultRecordTimeout,
 	}
+	for _, option := range options {
+		option(auditLogger)
+	}
+	return auditLogger
 }
 
 func cloneConfig(cfg Config) Config {
@@ -73,16 +126,44 @@ func (a *Logger) ApplyConfig(cfg Config) error {
 	if err := cfg.Validate(); err != nil {
 		return err
 	}
+	a.configMu.Lock()
 	a.config = cloneConfig(cfg)
+	a.configMu.Unlock()
 	return nil
 }
 
+//nolint:funcorder // keep configuration read and write synchronization together
+func (a *Logger) configSnapshot() Config {
+	a.configMu.RLock()
+	defer a.configMu.RUnlock()
+	return cloneConfig(a.config)
+}
+
 func (a *Logger) With(key string, value string) *Logger {
+	diagnostics := a.diagnostics
+	if diagnostics == nil {
+		diagnostics = slog.Default()
+	}
 	return &Logger{
 		//nolint:sloglint // custom logger should support key/value pairs in With attributes
 		logger: a.logger.With(key, value),
-		config: cloneConfig(a.config),
+		//nolint:sloglint // mirror the same scoped attributes on operational diagnostics
+		diagnostics:   diagnostics.With(key, value),
+		encoder:       a.encoder,
+		sink:          a.sink,
+		recordTimeout: a.recordTimeout,
+		config:        a.configSnapshot(),
 	}
+}
+
+// Encoder returns the configured encoder, or nil for the default OpenTDF encoder.
+func (a *Logger) Encoder() Encoder {
+	return a.encoder
+}
+
+// Sink returns the configured sink, or nil for the default slog sink.
+func (a *Logger) Sink() Sink {
+	return a.sink
 }
 
 // addEvent appends a pending audit event to the transaction
@@ -105,7 +186,7 @@ func (tx *auditTransaction) logClose(ctx context.Context, auditLogger *Logger, s
 		auditEvent := event.event
 
 		if !success {
-			auditEvent.Action.Result = ActionResultCancel
+			auditEvent.Action.Result = ActionResultCancel.String()
 		}
 
 		if err != nil {

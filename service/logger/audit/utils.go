@@ -13,15 +13,19 @@ const (
 	defaultNone = "None"
 )
 
-type auditEventMetadata map[string]any
-
-// event
-type EventObject struct {
-	Object        auditEventObject   `json:"object"`
-	Action        eventAction        `json:"action"`
-	Actor         auditEventActor    `json:"actor"`
-	EventMetaData auditEventMetadata `json:"eventMetaData" audit:"extensible"`
-	ClientInfo    eventClientInfo    `json:"clientInfo"`
+// Event is the canonical, externally constructible audit event. Verb, ID,
+// Phase, and Principal are recorder metadata; the compatibility encoder keeps
+// them out of the existing OpenTDF wire payload.
+type Event struct {
+	Verb          Verb              `json:"-"`
+	ID            uuid.UUID         `json:"-"`
+	Phase         Phase             `json:"-"`
+	Principal     ctxAuth.Principal `json:"-"`
+	Object        Object            `json:"object"`
+	Action        Action            `json:"action"`
+	Actor         Actor             `json:"actor"`
+	EventMetaData EventMetadata     `json:"eventMetaData" audit:"extensible"`
+	ClientInfo    ClientInfo        `json:"clientInfo"`
 
 	Original  map[string]any `json:"original,omitempty" audit:"extensible"`
 	Updated   map[string]any `json:"updated,omitempty" audit:"extensible"`
@@ -29,11 +33,16 @@ type EventObject struct {
 	Timestamp string         `json:"timestamp" audit:"reserved"`
 }
 
-func (e EventObject) LogValue() slog.Value {
+// EventObject is retained as an alias for source compatibility.
+//
+// Deprecated: use Event.
+type EventObject = Event
+
+func (e Event) LogValue() slog.Value {
 	return slog.AnyValue(e.emittedPayloadMap())
 }
 
-func (e EventObject) emittedPayloadMap() map[string]any {
+func (e Event) emittedPayloadMap() map[string]any {
 	entry, ok := normalizeAuditValue(e).(map[string]any)
 	if !ok {
 		panic("normalized audit payload must be a map")
@@ -41,73 +50,97 @@ func (e EventObject) emittedPayloadMap() map[string]any {
 	return entry
 }
 
-// event.object
-type auditEventObject struct {
-	Type       ObjectType            `json:"type" audit:"reserved"`
-	ID         string                `json:"id"`
-	Name       string                `json:"name,omitempty"`
-	Attributes eventObjectAttributes `json:"attributes,omitempty"`
+// Object identifies the resource affected by an audit action.
+type Object struct {
+	Type       string           `json:"type" audit:"reserved"`
+	ID         string           `json:"id"`
+	Name       string           `json:"name,omitempty"`
+	Attributes ObjectAttributes `json:"attributes,omitempty"`
 }
 
-func (e auditEventObject) LogValue() slog.Value {
+type auditEventObject = Object
+
+func (e Object) LogValue() slog.Value {
 	return slog.GroupValue(
-		slog.String("type", e.Type.String()),
+		slog.String("type", e.Type),
 		slog.String("id", e.ID),
 		slog.String("name", e.Name),
 		slog.Any("attributes", e.Attributes))
 }
 
-// event.object.attributes
-type eventObjectAttributes struct {
+// ObjectAttributes contains optional policy attributes for a resource.
+type ObjectAttributes struct {
 	Assertions  []string `json:"assertions,omitempty"`
 	Attrs       []string `json:"attrs,omitempty"`
 	Permissions []string `json:"permissions,omitempty"`
 }
 
-func (e eventObjectAttributes) LogValue() slog.Value {
+type eventObjectAttributes = ObjectAttributes
+
+func (e ObjectAttributes) LogValue() slog.Value {
 	return slog.GroupValue(
 		slog.Any("assertions", e.Assertions),
 		slog.Any("attrs", e.Attrs),
 		slog.Any("permissions", e.Permissions))
 }
 
-// event.action
-type eventAction struct {
-	Type   ActionType   `json:"type" audit:"reserved"`
-	Result ActionResult `json:"result" audit:"reserved"`
+// Action describes the operation and its result.
+type Action struct {
+	Type   string `json:"type" audit:"reserved"`
+	Result string `json:"result" audit:"reserved"`
 }
 
-func (e eventAction) LogValue() slog.Value {
+type eventAction = Action
+
+func (e Action) LogValue() slog.Value {
 	return slog.GroupValue(
-		slog.String("type", e.Type.String()),
-		slog.String("result", e.Result.String()))
+		slog.String("type", e.Type),
+		slog.String("result", e.Result))
 }
 
-// event.actor
-type auditEventActor struct {
+// Actor identifies the subject of the audited action. For authorization
+// decisions this may differ from the authenticated requester in Principal.
+type Actor struct {
 	ID         string `json:"id" audit:"reserved"`
 	Attributes []any  `json:"attributes"`
 }
 
-func (e auditEventActor) LogValue() slog.Value {
+type auditEventActor = Actor
+
+func (e Actor) LogValue() slog.Value {
 	return slog.GroupValue(
 		slog.String("id", e.ID),
 		slog.Any("attributes", e.Attributes))
 }
 
-// event.clientInfo
-type eventClientInfo struct {
+// ClientInfo describes the client and service recording the event.
+type ClientInfo struct {
 	UserAgent string `json:"userAgent" audit:"reserved"`
 	Platform  string `json:"platform" audit:"reserved"`
 	RequestIP string `json:"requestIP" audit:"reserved"`
 }
 
-func (e eventClientInfo) LogValue() slog.Value {
+type eventClientInfo = ClientInfo
+
+func (e ClientInfo) LogValue() slog.Value {
 	return slog.GroupValue(
 		slog.String("userAgent", e.UserAgent),
 		slog.String("platform", e.Platform),
 		slog.String("requestIP", e.RequestIP))
 }
+
+// EventMetadata contains service-specific audit details.
+type EventMetadata map[string]any
+
+type auditEventMetadata = EventMetadata
+
+// Phase identifies an append-only event's lifecycle position.
+type Phase string
+
+const (
+	PhaseAttempted Phase = "attempted"
+	PhaseCompleted Phase = "completed"
+)
 
 type ContextData struct {
 	RequestID uuid.UUID

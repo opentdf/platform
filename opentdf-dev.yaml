@@ -2,6 +2,9 @@ logger:
   level: debug
   type: text
   output: stderr
+  # Adds the active OTel trace_id/span_id to log and audit records. Enabled by
+  # default; only emits anything while server.trace.enabled is true.
+  # trace_correlation: true
 audit:
   # Optional JWT claim mappings for audit enrichment.
   # Paths use dot notation over the emitted audit log shape.

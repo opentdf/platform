@@ -5,6 +5,7 @@ import (
 	"log/slog"
 
 	"github.com/google/uuid"
+	ctxAuth "github.com/opentdf/platform/service/pkg/auth"
 )
 
 // Common Strings
@@ -125,14 +126,23 @@ func (c ContextData) LogValue() slog.Value {
 
 // GetAuditDataFromContext gets relevant audit data from the context object
 func GetAuditDataFromContext(ctx context.Context) ContextData {
+	actorID, _ := ctx.Value(actorContextKey{}).(string)
+	if principal, ok := ctxAuth.PrincipalFromContext(ctx); ok {
+		actorID = principal.Subject
+	}
+
 	tx, ok := ctx.Value(contextKey{}).(*auditTransaction)
-	if ok {
-		return tx.ContextData
+	if ok && tx != nil {
+		data := tx.ContextData
+		if actorID != "" {
+			data.ActorID = actorID
+		}
+		return data
 	}
 	return ContextData{
 		RequestID: uuid.Nil,
 		UserAgent: defaultNone,
 		RequestIP: defaultNone,
-		ActorID:   defaultNone,
+		ActorID:   actorID,
 	}
 }

@@ -15,7 +15,10 @@ const (
 	UserAgentHeaderKey RequestHeader = "user-agent"
 	RequestIDHeaderKey RequestHeader = "x-request-id"
 	RequestIPHeaderKey RequestHeader = "x-forwarded-request-ip"
-	ActorIDHeaderKey   RequestHeader = "x-forwarded-actor-id"
+	// ActorIDHeaderKey is retained for source compatibility. OpenTDF no longer
+	// forwards or trusts this unauthenticated header for actor attribution.
+	// Deprecated: actor identity is derived from the verified access token.
+	ActorIDHeaderKey RequestHeader = "x-forwarded-actor-id"
 )
 
 func (r RequestHeader) String() string {

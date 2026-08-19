@@ -115,7 +115,14 @@ func Start(f ...StartOptions) error {
 	}
 
 	slog.Debug("configuring logger")
-	logger, err := logger.NewLogger(cfg.Logger)
+	var loggerOptions []logger.Option
+	if startConfig.auditEncoder != nil {
+		loggerOptions = append(loggerOptions, logger.WithAuditEncoder(startConfig.auditEncoder))
+	}
+	if startConfig.auditSink != nil {
+		loggerOptions = append(loggerOptions, logger.WithAuditSink(startConfig.auditSink))
+	}
+	logger, err := logger.NewLogger(cfg.Logger, loggerOptions...)
 	if err != nil {
 		return fmt.Errorf("could not start logger: %w", err)
 	}

@@ -17,7 +17,7 @@ func TestContextServerInterceptorIgnoresForwardedActorHeader(t *testing.T) {
 	require.NoError(t, err)
 	ctx := ctxAuth.ContextWithAuthNInfo(t.Context(), nil, token, "raw-token")
 	req := connect.NewRequest(&struct{}{})
-	req.Header().Set(sdkAudit.ActorIDHeaderKey.String(), "spoofed-subject")
+	req.Header().Set(sdkAudit.ActorIDHeaderKey.String(), "spoofed-subject") //nolint:staticcheck // regression test for the deprecated spoofable header
 
 	var captured ContextData
 	next := ContextServerInterceptor(createDiscardLogger())(
@@ -34,7 +34,7 @@ func TestContextServerInterceptorIgnoresForwardedActorHeader(t *testing.T) {
 
 func TestContextServerInterceptorDoesNotTreatHeaderAsPrincipal(t *testing.T) {
 	req := connect.NewRequest(&struct{}{})
-	req.Header().Set(sdkAudit.ActorIDHeaderKey.String(), "spoofed-subject")
+	req.Header().Set(sdkAudit.ActorIDHeaderKey.String(), "spoofed-subject") //nolint:staticcheck // regression test for the deprecated spoofable header
 
 	var captured ContextData
 	next := ContextServerInterceptor(createDiscardLogger())(

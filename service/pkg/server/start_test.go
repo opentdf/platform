@@ -620,6 +620,8 @@ func startTestAuditConfigFile(t *testing.T, name string) string {
 	t.Helper()
 
 	discoveryEndpoint := mockKeycloakServer()
+	t.Cleanup(discoveryEndpoint.Close)
+
 	tempFilePath, err := createTempYAMLFileWithNestedChanges(
 		map[string]interface{}{"server.auth.issuer": discoveryEndpoint.URL},
 		"testdata/all-no-config.yaml",

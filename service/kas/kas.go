@@ -137,7 +137,7 @@ func decodeKASConfig(cfg config.ServiceConfig, log *logger.Logger) (access.KASCo
 	if kasCfg.Preview.KeyManagement { //nolint:staticcheck // Deprecated field is read for backward compatibility.
 		kasCfg.KeyManagement = true
 		log.Warn(
-			"deprecated KAS preview key management setting is configured",
+			"services.kas.preview.key_management is deprecated; use services.kas.key_management instead",
 			slog.String("deprecated_config", "services.kas.preview.key_management"),
 			slog.String("replacement_config", "services.kas.key_management"),
 		)

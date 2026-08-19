@@ -193,7 +193,7 @@ func TestDecodeKASConfigKeyManagement(t *testing.T) {
 			name:        "preview setting remains supported",
 			config:      map[string]any{"preview": map[string]any{"key_management": true}},
 			wantEnabled: true,
-			wantWarning: "deprecated KAS preview key management setting is configured",
+			wantWarning: "services.kas.preview.key_management is deprecated; use services.kas.key_management instead",
 		},
 		{
 			name:        "preview false is ignored",
@@ -207,7 +207,7 @@ func TestDecodeKASConfigKeyManagement(t *testing.T) {
 				"preview":        map[string]any{"key_management": true},
 			},
 			wantEnabled: true,
-			wantWarning: "deprecated KAS preview key management setting is configured",
+			wantWarning: "services.kas.preview.key_management is deprecated; use services.kas.key_management instead",
 		},
 		{
 			name: "stable true with preview false does not warn",

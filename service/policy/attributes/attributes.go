@@ -91,6 +91,9 @@ func (s *AttributesService) CreateAttribute(ctx context.Context,
 	}
 
 	err := s.dbClient.RunInTx(ctx, func(txClient *policydb.PolicyDBClient) error {
+		if err := s.enforceCreateAttributeLimits(ctx, txClient, req.Msg); err != nil {
+			return err
+		}
 		item, err := txClient.CreateAttribute(ctx, req.Msg)
 		if err != nil {
 			s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
@@ -107,6 +110,9 @@ func (s *AttributesService) CreateAttribute(ctx context.Context,
 		return nil
 	})
 	if err != nil {
+		if limitErr := policyconfig.ObjectLimitConnectError(err); limitErr != nil {
+			return nil, limitErr
+		}
 		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextCreationFailed, slog.String("attribute", req.Msg.String()))
 	}
 
@@ -293,6 +299,9 @@ func (s *AttributesService) CreateAttributeValue(ctx context.Context, req *conne
 	}
 
 	err := s.dbClient.RunInTx(ctx, func(txClient *policydb.PolicyDBClient) error {
+		if err := s.enforceCreateAttributeValueLimits(ctx, txClient, req.Msg); err != nil {
+			return err
+		}
 		item, err := txClient.CreateAttributeValue(ctx, req.Msg.GetAttributeId(), req.Msg)
 		if err != nil {
 			s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
@@ -329,6 +338,9 @@ func (s *AttributesService) CreateAttributeValue(ctx context.Context, req *conne
 		return nil
 	})
 	if err != nil {
+		if limitErr := policyconfig.ObjectLimitConnectError(err); limitErr != nil {
+			return nil, limitErr
+		}
 		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextCreationFailed, slog.String("value", req.Msg.String()))
 	}
 

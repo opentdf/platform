@@ -97,6 +97,9 @@ func (s SubjectMappingService) CreateSubjectMapping(ctx context.Context,
 
 	// SM Creation may involve action creation or SCS creation, so utilize a transaction
 	err := s.dbClient.RunInTx(ctx, func(txClient *policydb.PolicyDBClient) error {
+		if err := s.enforceCreateSubjectMappingLimits(ctx, txClient, req.Msg); err != nil {
+			return err
+		}
 		subjectMapping, err := txClient.CreateSubjectMapping(ctx, req.Msg)
 		if err != nil {
 			s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
@@ -112,6 +115,9 @@ func (s SubjectMappingService) CreateSubjectMapping(ctx context.Context,
 		return nil
 	})
 	if err != nil {
+		if limitErr := policyconfig.ObjectLimitConnectError(err); limitErr != nil {
+			return nil, limitErr
+		}
 		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextCreationFailed, slog.String("subjectMapping", req.Msg.String()))
 	}
 	return connect.NewResponse(rsp), nil
@@ -278,6 +284,9 @@ func (s SubjectMappingService) CreateSubjectConditionSet(ctx context.Context,
 
 	var conditionSet *policy.SubjectConditionSet
 	err := s.dbClient.RunInTx(ctx, func(txClient *policydb.PolicyDBClient) error {
+		if err := s.enforceCreateSubjectConditionSetLimit(ctx, txClient, req.Msg); err != nil {
+			return err
+		}
 		cs, err := txClient.CreateSubjectConditionSet(ctx, req.Msg.GetSubjectConditionSet(), req.Msg.GetNamespaceId(), req.Msg.GetNamespaceFqn())
 		if err != nil {
 			s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
@@ -288,6 +297,9 @@ func (s SubjectMappingService) CreateSubjectConditionSet(ctx context.Context,
 		return nil
 	})
 	if err != nil {
+		if limitErr := policyconfig.ObjectLimitConnectError(err); limitErr != nil {
+			return nil, limitErr
+		}
 		return nil, err
 	}
 

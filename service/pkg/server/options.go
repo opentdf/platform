@@ -54,6 +54,8 @@ type StartConfig struct {
 
 	authzRoleProvider          authz.RoleProvider
 	authzRoleProviderFactories map[string]authz.RoleProviderFactory
+	auditEncoder               audit.Encoder
+	auditSink                  audit.Sink
 
 	// CORS additive configuration - appended to YAML/env config values
 	additionalCORSHeaders        []string
@@ -91,6 +93,22 @@ func formatAuditTypeRegistrationConflicts(conflicts []auditTypeRegistrationConfl
 		entries = append(entries, fmt.Sprintf("%s %d: %q vs %q", conflict.Category, conflict.Key, conflict.ExistingName, conflict.NewName))
 	}
 	return strings.Join(entries, "; ")
+}
+
+// WithAuditEncoder configures an instance-scoped canonical audit encoder.
+func WithAuditEncoder(encoder audit.Encoder) StartOptions {
+	return func(c StartConfig) StartConfig {
+		c.auditEncoder = encoder
+		return c
+	}
+}
+
+// WithAuditSink configures an instance-scoped audit emission sink.
+func WithAuditSink(sink audit.Sink) StartOptions {
+	return func(c StartConfig) StartConfig {
+		c.auditSink = sink
+		return c
+	}
 }
 
 // Deprecated: Use WithConfigKey

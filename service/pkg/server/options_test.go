@@ -15,6 +15,19 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestWithAuditPipeline(t *testing.T) {
+	encoder := audit.EncoderFunc(func(context.Context, audit.Event) ([]audit.Emission, error) {
+		return []audit.Emission{{Level: audit.LevelAudit, Message: "encoded"}}, nil
+	})
+	sink := audit.SinkFunc(func(context.Context, audit.Emission) error { return nil })
+
+	cfg := WithAuditEncoder(encoder)(StartConfig{})
+	cfg = WithAuditSink(sink)(cfg)
+
+	require.NotNil(t, cfg.auditEncoder)
+	require.NotNil(t, cfg.auditSink)
+}
+
 // noopInterceptor returns a connect.UnaryInterceptorFunc that passes through.
 func noopInterceptor() connect.Interceptor {
 	return connect.UnaryInterceptorFunc(func(next connect.UnaryFunc) connect.UnaryFunc {

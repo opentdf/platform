@@ -390,7 +390,6 @@ Root level key `kas`
 Environment Variables:
 
 ```shell
-OPENTDF_SERVICES_KAS_KEY_MANAGEMENT=true
 OPENTDF_SERVICES_KAS_KEYRING='[{"kid":"k1","alg":"rsa:2048"},{"kid":"k2","alg":"ec:secp256r1"}]'
 ```
 

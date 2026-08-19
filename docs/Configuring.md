@@ -404,7 +404,7 @@ OPENTDF_SERVICES_KAS_KEYRING='[{"kid":"k1","alg":"rsa:2048"},{"kid":"k2","alg":"
 | `preview.key_management` | Deprecated alias for `key_management`.                                          |          |
 | `root_key`               | Key needed when key management uses the built-in basic key manager.             |          |
 
-The deprecated `preview.key_management: true` setting remains supported and logs a warning directing users to `key_management`. A deprecated setting of `false` is ignored without a warning. Setting `preview.key_management: true` will start kas with key_management even if the top-level `key_management` field is `false`.
+The deprecated `preview.key_management` setting remains supported and logs a warning whenever it is configured. A value of `true` enables key management even if the top-level `key_management` field is `false`; a value of `false` does not override the top-level setting.
 
 Example:
 

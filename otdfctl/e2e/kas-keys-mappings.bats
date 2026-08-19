@@ -232,15 +232,18 @@ assert_key_mapping_details() {
 @test "kas-keys-mappings: list key mappings - required together are missing" {
   run_otdfctl_key list-mappings --key-id "nonexistent-key" --json
   assert_failure
-  assert_output --partial "--kas"
+  assert_equal "$(echo "$output" | jq -r .status)" "ERROR"
+  assert_equal "$(echo "$output" | jq -r .message)" "if any flags in the group [key-id kas] are set they must all be set; missing [kas]"
 
   run_otdfctl_key list-mappings --kas "${KAS_NAME}" --json
   assert_failure
-  assert_output --partial "--kas"
+  assert_equal "$(echo "$output" | jq -r .status)" "ERROR"
+  assert_equal "$(echo "$output" | jq -r .message)" "if any flags in the group [key-id kas] are set they must all be set; missing [key-id]"
 }
 
 @test "kas-keys-mappings: list key mappings - mutually exclusive flags" {
   run_otdfctl_key list-mappings --kas "${KAS_NAME}" --key-id "nonexistent-key" --id "${KEY_ID_1}" --json
   assert_failure
-  assert_output --partial "Error: if any flags in the group [kas id] are set none of the others can be; [id kas] were all set"
+  assert_equal "$(echo "$output" | jq -r .status)" "ERROR"
+  assert_equal "$(echo "$output" | jq -r .message)" "if any flags in the group [kas id] are set none of the others can be; [id kas] were all set"
 }

@@ -103,7 +103,7 @@ teardown_file() {
   # missing flags
   run_otdfctl_reg_res create
     assert_failure
-    assert_output --partial "Flag '--name' is required"
+    assert_output --partial 'required flag(s) "name" not set'
 
   # conflict
   run_otdfctl_reg_res create --name test_create_rr_conflict --namespace "$NS_ID"
@@ -292,7 +292,7 @@ teardown_file() {
   # no id
   run_otdfctl_reg_res delete
     assert_failure
-    assert_output --partial "Flag '--id' is required"
+    assert_output --partial 'required flag(s) "id" not set'
 
   # invalid id
   run_otdfctl_reg_res delete --id 'not_a_uuid'
@@ -367,10 +367,10 @@ teardown_file() {
   # missing flag
   run_otdfctl_reg_res_values create
     assert_failure
-    assert_output --partial "Flag '--resource' is required"
+    assert_output --partial 'required flag(s) "resource", "value" not set'
   run_otdfctl_reg_res_values create --resource "$RR_ID"
     assert_failure
-    assert_output --partial "Flag '--value' is required"
+    assert_output --partial 'required flag(s) "value" not set'
 
   # bad action attribute value arg separator (not a semicolon)
   run_otdfctl_reg_res_values create --resource "$RR_ID" --value test_create_rr_val_bad_aav --action-attribute-value "\"$READ_ACTION_ID:$ATTR_VAL_1_ID\""
@@ -545,7 +545,7 @@ teardown_file() {
   # no id
   run_otdfctl_reg_res_values delete
     assert_failure
-    assert_output --partial "Flag '--id' is required"
+    assert_output --partial 'required flag(s) "id" not set'
 
   # invalid id
   run_otdfctl_reg_res_values delete --id 'not_a_uuid'

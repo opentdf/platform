@@ -19,6 +19,7 @@ import (
 	"github.com/opentdf/platform/service/internal/auth"
 	"github.com/opentdf/platform/service/internal/server"
 	"github.com/opentdf/platform/service/logger"
+	"github.com/opentdf/platform/service/logger/audit"
 	"github.com/opentdf/platform/service/pkg/cache"
 	"github.com/opentdf/platform/service/pkg/config"
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
@@ -601,4 +602,112 @@ func (s *StartTestSuite) Test_Start_Mode_Config_Success() {
 			}
 		})
 	}
+}
+
+// startTestAuditTypeBase keeps audit types registered by these tests clear of the
+// built-in ones and of the StartConfig-only types used in options_test.go.
+const startTestAuditTypeBase = 2000
+
+// startTestObjectTypes builds the map with make + assignment rather than a
+// literal so the exhaustive linter does not require every enum key.
+func startTestObjectTypes(objectType audit.ObjectType, name string) map[audit.ObjectType]string {
+	objectTypes := make(map[audit.ObjectType]string)
+	objectTypes[objectType] = name
+	return objectTypes
+}
+
+func startTestAuditConfigFile(t *testing.T, name string) string {
+	t.Helper()
+
+	discoveryEndpoint := mockKeycloakServer()
+	tempFilePath, err := createTempYAMLFileWithNestedChanges(
+		map[string]interface{}{"server.auth.issuer": discoveryEndpoint.URL},
+		"testdata/all-no-config.yaml",
+		name,
+	)
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		if err := os.Remove(tempFilePath); err != nil {
+			t.Errorf("Failed to remove temp file %s: %v", tempFilePath, err)
+		}
+	})
+
+	return tempFilePath
+}
+
+// Test_Start_Applies_And_Seals_Audit_Type_Registrations covers the registration
+// handoff in Start. Sealing is process-wide and has no unseal path, so this must
+// remain the only test that applies audit type registrations through Start.
+func (s *StartTestSuite) Test_Start_Applies_And_Seals_Audit_Type_Registrations() {
+	t := s.T()
+
+	const (
+		customObjectType   = audit.ObjectType(startTestAuditTypeBase)
+		customActionType   = audit.ActionType(startTestAuditTypeBase + 1)
+		customActionResult = audit.ActionResult(startTestAuditTypeBase + 2)
+	)
+
+	tempFilePath := startTestAuditConfigFile(t, "audit-type-registrations-*.yaml")
+
+	actionTypes := make(map[audit.ActionType]string)
+	actionTypes[customActionType] = "start_test_action"
+	actionResults := make(map[audit.ActionResult]string)
+	actionResults[customActionResult] = "start_test_result"
+
+	// Start applies and seals the registrations before the rest of startup, so
+	// the handoff is observable whether or not a database is available here.
+	startErr := Start(
+		WithConfigFile(tempFilePath),
+		WithConfigLoaderOrder([]string{
+			config.LoaderNameEnvironmentValue,
+			config.LoaderNameFile,
+			config.LoaderNameDefaultSettings,
+		}),
+		WithAdditionalAuditTypeRegistrations(audit.TypeRegistrations{
+			ObjectTypes:   startTestObjectTypes(customObjectType, "start_test_object"),
+			ActionTypes:   actionTypes,
+			ActionResults: actionResults,
+		}),
+	)
+
+	assert.Equal(t, "start_test_object", customObjectType.String(), "start error: %v", startErr)
+	assert.Equal(t, "start_test_action", customActionType.String(), "start error: %v", startErr)
+	assert.Equal(t, "start_test_result", customActionResult.String(), "start error: %v", startErr)
+
+	// Registrations are sealed once Start has applied them.
+	err := audit.RegisterObjectType(audit.ObjectType(startTestAuditTypeBase+3), "start_test_too_late")
+	require.ErrorIs(t, err, audit.ErrAuditTypeRegistrationSealed)
+}
+
+func (s *StartTestSuite) Test_Start_Rejects_Conflicting_Audit_Type_Registrations() {
+	t := s.T()
+
+	const conflictingObjectType = audit.ObjectType(startTestAuditTypeBase + 10)
+
+	tempFilePath := startTestAuditConfigFile(t, "audit-type-registration-conflicts-*.yaml")
+
+	err := Start(
+		WithConfigFile(tempFilePath),
+		WithConfigLoaderOrder([]string{
+			config.LoaderNameEnvironmentValue,
+			config.LoaderNameFile,
+			config.LoaderNameDefaultSettings,
+		}),
+		WithAdditionalAuditTypeRegistrations(audit.TypeRegistrations{
+			ObjectTypes: startTestObjectTypes(conflictingObjectType, "start_test_conflict_first"),
+		}),
+		WithAdditionalAuditTypeRegistrations(audit.TypeRegistrations{
+			ObjectTypes: startTestObjectTypes(conflictingObjectType, "start_test_conflict_second"),
+		}),
+	)
+
+	require.Error(t, err)
+	require.ErrorContains(t, err, "conflicting audit type registrations")
+	require.ErrorContains(t, err, fmt.Sprintf(
+		`object_type %d: %q vs %q`,
+		int(conflictingObjectType), "start_test_conflict_first", "start_test_conflict_second",
+	))
+
+	// Conflicts are reported before any registration is applied.
+	assert.Equal(t, fmt.Sprintf("object_type_%d", int(conflictingObjectType)), conflictingObjectType.String())
 }

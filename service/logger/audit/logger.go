@@ -137,6 +137,27 @@ func (a *Logger) PolicyCRUDFailure(ctx context.Context, eventParams PolicyEventP
 	a.policyCrudBase(ctx, false, eventParams)
 }
 
+// LogPolicyCRUD creates and immediately emits a policy CRUD audit event. It is
+// intended for work whose lifetime is not owned by an RPC audit transaction.
+// If you are within a synchronous policy operation you should use: PolicyCRUDSuccess/Failure.
+// ! Use this carefully to avoid duplication of audit events from being recorded.
+func (a *Logger) LogPolicyCRUD(ctx context.Context, isSuccess bool, eventParams PolicyEventParams) {
+	tx, ok := ctx.Value(contextKey{}).(*auditTransaction)
+	if !ok || tx == nil || !tx.detached {
+		a.logger.ErrorContext(ctx, "immediate policy CRUD audit logging requires a detached audit context; use Logger.Detach first")
+		return
+	}
+
+	auditEvent, err := CreatePolicyEvent(ctx, isSuccess, eventParams)
+	if err != nil {
+		a.logger.ErrorContext(ctx, "error creating policy attribute audit event", slog.Any("error", err))
+		return
+	}
+
+	//nolint:sloglint // audit message is always just the verb
+	a.logger.Log(ctx, LevelAudit, string(VerbPolicyCRUD), slog.Any("audit", a.buildLogEntry(ctx, auditEvent)))
+}
+
 func (a *Logger) GetDecision(ctx context.Context, eventParams GetDecisionEventParams) {
 	auditEvent, err := CreateGetDecisionEvent(ctx, eventParams)
 	if err != nil {
@@ -157,8 +178,11 @@ func (a *Logger) GetDecisionV2(ctx context.Context, eventParams GetDecisionV2Eve
 
 func LogAuditEvent(ctx context.Context, verb Verb, event *EventObject) {
 	tx, ok := ctx.Value(contextKey{}).(*auditTransaction)
-	if !ok {
+	if !ok || tx == nil {
 		panic("audit transaction missing from context")
+	}
+	if tx.detached {
+		panic("cannot buffer an audit event on a detached transaction; use Logger.LogPolicyCRUD")
 	}
 	if event == nil {
 		panic("nil audit event provided")

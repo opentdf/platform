@@ -1658,14 +1658,24 @@ func getKasAllowList(ctx context.Context, kasAllowList AllowList, s SDK, ignoreA
 			return nil, errors.New("no KAS allowlist provided and no KeyAccessServerRegistry available")
 		}
 
-		// retrieve the registered kases if not provided
 		platformEndpoint, err := s.PlatformConfiguration.platformEndpoint()
 		if err != nil {
 			return nil, fmt.Errorf("retrieving platformEndpoint failed: %w", err)
 		}
+
+		if s.kasAllowlistCache != nil {
+			if cached := s.kasAllowlistCache.get(platformEndpoint); cached != nil {
+				return cached, nil
+			}
+		}
+
 		allowList, err = allowListFromKASRegistry(ctx, s.logger, s.KeyAccessServerRegistry, platformEndpoint)
 		if err != nil {
 			return nil, fmt.Errorf("allowListFromKASRegistry failed: %w", err)
+		}
+
+		if s.kasAllowlistCache != nil {
+			s.kasAllowlistCache.store(platformEndpoint, allowList)
 		}
 	}
 

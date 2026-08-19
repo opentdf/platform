@@ -65,7 +65,18 @@ func (s *LDAPStepDefinitions) anLDAPDirectoryWithTestUsers(ctx context.Context) 
 				FileMode:          ldapFileMode,
 			},
 		},
-		WaitingFor: wait.ForLog("slapd starting").WithStartupTimeout(ldapStartupTimeout),
+		// The pinned osixia image includes ldapsearch. Verify the seeded entry is
+		// queryable instead of treating a listening port or startup log as ready.
+		WaitingFor: wait.ForAll(
+			wait.ForListeningPort("389/tcp"),
+			wait.ForExec([]string{
+				"sh", "-c",
+				"ldapsearch -LLL -x -H ldap://localhost:389 " +
+					"-D cn=admin,dc=opentdf,dc=test -w admin123 " +
+					"-b ou=users,dc=opentdf,dc=test '(uid=alice)' dn " +
+					"| grep -q '^dn: uid=alice,ou=users,dc=opentdf,dc=test$'",
+			}).WithPollInterval(time.Second),
+		).WithDeadline(ldapStartupTimeout),
 	}
 
 	ldapContainer, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{

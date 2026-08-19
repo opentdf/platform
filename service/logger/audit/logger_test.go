@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"log/slog"
 	"testing"
@@ -93,31 +92,16 @@ func extractLogEntry(t *testing.T, logBuffer *bytes.Buffer) (logEntryStructure, 
 	return entry, entryTime
 }
 
-func doWithLogger(t *testing.T, contextSetup func(context.Context) context.Context, testFunc func(ctx context.Context, l *Logger)) (ls logEntryStructure, lt time.Time) { //nolint:nonamedreturns // Named returns let the deferred recover path populate the extracted audit log.
+func doWithLogger(t *testing.T, contextSetup func(context.Context) context.Context, testFunc func(ctx context.Context, l *Logger)) (logEntryStructure, time.Time) {
 	ctx := createTestContext(t)
 	if contextSetup != nil {
 		ctx = contextSetup(ctx)
 	}
 	l, buf := createTestLogger()
-	tx, ok := ctx.Value(contextKey{}).(*auditTransaction)
-	require.True(t, ok, "audit transaction missing from context")
-
-	defer func() {
-		if r := recover(); r != nil {
-			if err, okerr := r.(error); okerr {
-				tx.logClose(ctx, l, false, err)
-			} else {
-				tx.logClose(ctx, l, false, nil)
-			}
-		} else {
-			tx.logClose(ctx, l, true, nil)
-		}
-		ls, lt = extractLogEntry(t, buf)
-	}()
 
 	testFunc(ctx, l)
 
-	return ls, lt
+	return extractLogEntry(t, buf)
 }
 
 func createTestJWTForAudit(t *testing.T) (jwt.Token, string) {
@@ -541,7 +525,7 @@ func assertReservedAuditPathRejected(t *testing.T, path string) {
 	require.ErrorContains(t, err, "jwt_claim_mappings[0].path")
 }
 
-func TestDeferredRewrapSuccess(t *testing.T) {
+func TestImmediateRewrapSuccess(t *testing.T) {
 	logEntry, logEntryTime := doWithLogger(t, nil, func(ctx context.Context, l *Logger) {
 		l.RewrapSuccess(ctx, rewrapParams)
 	})
@@ -600,69 +584,24 @@ func TestDeferredRewrapSuccess(t *testing.T) {
 	assert.JSONEq(t, expectedAuditLog, loggedMessage)
 }
 
-func TestDeferredRewrapCancelled(t *testing.T) {
-	logEntry, logEntryTime := doWithLogger(t, nil, func(ctx context.Context, l *Logger) {
-		l.RewrapSuccess(ctx, rewrapParams)
-		panic(errors.New("operation failed"))
-	})
+func TestRecordedEventIsNotRewrittenByLaterPanic(t *testing.T) {
+	ctx := createTestContext(t)
+	l, buf := createTestLogger()
+	l.RewrapSuccess(ctx, rewrapParams)
 
-	expectedAuditLog := fmt.Sprintf(
-		`{
-			"object": {
-				"type": "key_object",
-				"id": "%s",
-				"name": "",
-				"attributes": {
-					"assertions": [],
-					"attrs": %s,
-					"permissions": []
-				}
-			},
-			"action": {
-			  "type": "rewrap",
-				"result": "cancel"
-			},
-			"actor": {
-			  "id": "%s",
-				"attributes": []
-			},
-			"eventMetaData": {
-			  "algorithm": "%s",
-				"cancellation_error": "%s",
-				"keyID": "%s",
-				"policyBinding": "%s",
-				"tdfFormat": "%s"
-			},
-			"clientInfo": {
-			  "userAgent": "%s",
-				"platform": "kas",
-				"requestIP": "%s"
-			},
-			"original": null,
-			"updated": null,
-			"requestID": "%s",
-			"timestamp": "%s"
-	  }
-		`,
-		rewrapParams.Policy.UUID.String(),
-		rewrapAttrsJSON,
-		TestActorID,
-		rewrapParams.Algorithm,
-		"operation failed",
-		rewrapParams.KeyID,
-		rewrapParams.PolicyBinding,
-		rewrapParams.TDFFormat,
-		TestUserAgent,
-		TestRequestIP,
-		TestRequestID,
-		logEntryTime.Format(time.RFC3339),
-	)
+	func() {
+		defer func() { _ = recover() }()
+		panic("operation failed")
+	}()
 
-	loggedMessage := string(logEntry.Audit)
-	assert.JSONEq(t, expectedAuditLog, loggedMessage)
+	logEntry, _ := extractLogEntry(t, buf)
+	payload := decodeAuditPayload(t, logEntry.Audit)
+	action := requireMap(t, payload["action"])
+	assert.Equal(t, ActionResultSuccess.String(), action["result"])
+	assert.NotContains(t, requireMap(t, payload["eventMetaData"]), "cancellation_error")
 }
 
-func TestDeferredPolicyCRUDSuccess(t *testing.T) {
+func TestImmediatePolicyCRUDSuccess(t *testing.T) {
 	logEntry, logEntryTime := doWithLogger(t, nil, func(ctx context.Context, l *Logger) {
 		l.PolicyCRUDSuccess(ctx, policyCRUDParams)
 	})

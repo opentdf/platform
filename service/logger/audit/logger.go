@@ -25,12 +25,6 @@ const (
 	VerbRewrap     Verb = "rewrap"
 )
 
-// pendingEvent represents a single audit event waiting to be logged
-type pendingEvent struct {
-	verb  Verb
-	event *EventObject
-}
-
 var logLevelNames = map[slog.Leveler]string{
 	LevelAudit: LevelAuditStr,
 }
@@ -166,41 +160,6 @@ func (a *Logger) Sink() Sink {
 	return a.sink
 }
 
-// addEvent appends a pending audit event to the transaction
-func (tx *auditTransaction) addEvent(verb Verb, event *EventObject) {
-	tx.mu.Lock()
-	defer tx.mu.Unlock()
-	tx.events = append(tx.events, pendingEvent{
-		verb:  verb,
-		event: event,
-	})
-}
-
-// logClose completes an audit transaction and emits all recorded events.
-// If success is false or err is not nil, events are logged as "cancelled" with the error attached.
-// Otherwise, events are logged with their originally recorded success/failure status.
-func (tx *auditTransaction) logClose(ctx context.Context, auditLogger *Logger, success bool, err error) {
-	tx.mu.Lock()
-	defer tx.mu.Unlock()
-	for _, event := range tx.events {
-		auditEvent := event.event
-
-		if !success {
-			auditEvent.Action.Result = ActionResultCancel.String()
-		}
-
-		if err != nil {
-			if auditEvent.EventMetaData == nil {
-				auditEvent.EventMetaData = make(auditEventMetadata)
-			}
-			auditEvent.EventMetaData["cancellation_error"] = err.Error()
-		}
-
-		//nolint:sloglint // audit message is always just the verb
-		auditLogger.logger.Log(ctx, LevelAudit, string(event.verb), slog.Any("audit", auditLogger.buildLogEntry(ctx, auditEvent)))
-	}
-}
-
 func (a *Logger) RewrapSuccess(ctx context.Context, eventParams RewrapAuditEventParams) {
 	eventParams.IsSuccess = true
 	a.rewrapBase(ctx, eventParams)
@@ -218,25 +177,16 @@ func (a *Logger) PolicyCRUDFailure(ctx context.Context, eventParams PolicyEventP
 	a.policyCrudBase(ctx, false, eventParams)
 }
 
-// LogPolicyCRUD creates and immediately emits a policy CRUD audit event. It is
-// intended for work whose lifetime is not owned by an RPC audit transaction.
-// If you are within a synchronous policy operation you should use: PolicyCRUDSuccess/Failure.
-// ! Use this carefully to avoid duplication of audit events from being recorded.
+// LogPolicyCRUD creates and immediately records a policy CRUD audit event.
+//
+// Deprecated: use Record with a canonical Event for new integrations.
 func (a *Logger) LogPolicyCRUD(ctx context.Context, isSuccess bool, eventParams PolicyEventParams) {
-	tx, ok := ctx.Value(contextKey{}).(*auditTransaction)
-	if !ok || tx == nil || !tx.detached {
-		a.logger.ErrorContext(ctx, "immediate policy CRUD audit logging requires a detached audit context; use Logger.Detach first")
-		return
-	}
-
 	auditEvent, err := CreatePolicyEvent(ctx, isSuccess, eventParams)
 	if err != nil {
 		a.logger.ErrorContext(ctx, "error creating policy attribute audit event", slog.Any("error", err))
 		return
 	}
-
-	//nolint:sloglint // audit message is always just the verb
-	a.logger.Log(ctx, LevelAudit, string(VerbPolicyCRUD), slog.Any("audit", a.buildLogEntry(ctx, auditEvent)))
+	a.recordBuiltIn(ctx, VerbPolicyCRUD, auditEvent)
 }
 
 func (a *Logger) GetDecision(ctx context.Context, eventParams GetDecisionEventParams) {
@@ -245,7 +195,7 @@ func (a *Logger) GetDecision(ctx context.Context, eventParams GetDecisionEventPa
 		a.logger.ErrorContext(ctx, "error creating get decision audit event", slog.Any("error", err))
 		return
 	}
-	LogAuditEvent(ctx, VerbDecision, auditEvent)
+	a.recordBuiltIn(ctx, VerbDecision, auditEvent)
 }
 
 func (a *Logger) GetDecisionV2(ctx context.Context, eventParams GetDecisionV2EventParams) {
@@ -254,21 +204,27 @@ func (a *Logger) GetDecisionV2(ctx context.Context, eventParams GetDecisionV2Eve
 		a.logger.ErrorContext(ctx, "error creating v2 get decision audit event", slog.Any("error", err))
 		return
 	}
-	LogAuditEvent(ctx, VerbDecision, event)
+	a.recordBuiltIn(ctx, VerbDecision, event)
 }
 
+// LogAuditEvent immediately records an event through the logger installed by
+// the audit server interceptor. New integrations should retain a Recorder and
+// call Record directly so delivery errors can be handled explicitly.
+//
+// Deprecated: use Recorder.Record.
 func LogAuditEvent(ctx context.Context, verb Verb, event *EventObject) {
-	tx, ok := ctx.Value(contextKey{}).(*auditTransaction)
-	if !ok || tx == nil {
-		panic("audit transaction missing from context")
-	}
-	if tx.detached {
-		panic("cannot buffer an audit event on a detached transaction; use Logger.LogPolicyCRUD")
-	}
 	if event == nil {
 		panic("nil audit event provided")
 	}
-	tx.addEvent(verb, event)
+	auditCtx, ok := ctx.Value(contextKey{}).(auditContext)
+	if !ok || auditCtx.logger == nil {
+		panic("audit logger missing from context")
+	}
+	recorded := *event
+	recorded.Verb = verb
+	if err := auditCtx.logger.Record(ctx, recorded); err != nil {
+		panic(err)
+	}
 }
 
 func (a *Logger) rewrapBase(ctx context.Context, eventParams RewrapAuditEventParams) {
@@ -278,7 +234,7 @@ func (a *Logger) rewrapBase(ctx context.Context, eventParams RewrapAuditEventPar
 		return
 	}
 
-	LogAuditEvent(ctx, VerbRewrap, auditEvent)
+	a.recordBuiltIn(ctx, VerbRewrap, auditEvent)
 }
 
 func (a *Logger) policyCrudBase(ctx context.Context, isSuccess bool, eventParams PolicyEventParams) {
@@ -287,5 +243,12 @@ func (a *Logger) policyCrudBase(ctx context.Context, isSuccess bool, eventParams
 		a.logger.ErrorContext(ctx, "error creating policy attribute audit event", slog.Any("error", err))
 		return
 	}
-	LogAuditEvent(ctx, VerbPolicyCRUD, auditEvent)
+	a.recordBuiltIn(ctx, VerbPolicyCRUD, auditEvent)
+}
+
+func (a *Logger) recordBuiltIn(ctx context.Context, verb Verb, event *Event) {
+	event.Verb = verb
+	if err := a.Record(ctx, *event); err != nil {
+		a.diagnosticLogger().ErrorContext(ctx, "failed to record audit event", slog.Any("error", err))
+	}
 }

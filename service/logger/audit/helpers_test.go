@@ -27,16 +27,15 @@ var TestRequestID = uuid.New()
 func createTestContext(t *testing.T) context.Context {
 	ctx := t.Context()
 
-	tx := auditTransaction{
-		ContextData: ContextData{
+	auditCtx := auditContext{
+		data: ContextData{
 			RequestID: TestRequestID,
 			UserAgent: TestUserAgent,
 			RequestIP: TestRequestIP.String(),
 			ActorID:   TestActorID,
 		},
-		events: make([]pendingEvent, 0),
 	}
-	ctx = context.WithValue(ctx, contextKey{}, &tx)
+	ctx = context.WithValue(ctx, contextKey{}, auditCtx)
 
 	return ctx
 }

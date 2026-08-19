@@ -70,9 +70,9 @@ func (e Object) LogValue() slog.Value {
 
 // ObjectAttributes contains optional policy attributes for a resource.
 type ObjectAttributes struct {
-	Assertions  []string `json:"assertions,omitempty"`
-	Attrs       []string `json:"attrs,omitempty"`
-	Permissions []string `json:"permissions,omitempty"`
+	Assertions  []string `json:"assertions"`
+	Attrs       []string `json:"attrs"`
+	Permissions []string `json:"permissions"`
 }
 
 type eventObjectAttributes = ObjectAttributes
@@ -164,9 +164,9 @@ func GetAuditDataFromContext(ctx context.Context) ContextData {
 		actorID = principal.Subject
 	}
 
-	tx, ok := ctx.Value(contextKey{}).(*auditTransaction)
-	if ok && tx != nil {
-		data := tx.ContextData
+	auditCtx, ok := ctx.Value(contextKey{}).(auditContext)
+	if ok {
+		data := auditCtx.data
 		if actorID != "" {
 			data.ActorID = actorID
 		}

@@ -13,12 +13,10 @@ import (
 
 type cloneContextValueKey struct{}
 
-func TestDetachCopiesContextDataAndCreatesIndependentTransaction(t *testing.T) {
+func TestDetachPreservesValuesAndIgnoresCancellation(t *testing.T) {
 	l, _ := createTestLogger()
 	parent := context.WithValue(createTestContext(t), cloneContextValueKey{}, "retained")
 	parent, cancel := context.WithCancel(parent)
-
-	l.PolicyCRUDSuccess(parent, policyCRUDParams)
 	cloned := l.Detach(parent)
 	cancel()
 
@@ -26,38 +24,18 @@ func TestDetachCopiesContextDataAndCreatesIndependentTransaction(t *testing.T) {
 	assert.Equal(t, "retained", cloned.Value(cloneContextValueKey{}))
 	assert.Nil(t, cloned.Done())
 	require.NoError(t, cloned.Err())
-
-	parentTx := requireAuditTransaction(parent, t)
-	cloneTx := requireAuditTransaction(cloned, t)
-	assert.NotSame(t, parentTx, cloneTx)
-	require.Len(t, parentTx.events, 1)
-	assert.Empty(t, cloneTx.events)
-
-	require.PanicsWithValue(t,
-		"cannot buffer an audit event on a detached transaction; use Logger.LogPolicyCRUD",
-		func() { l.PolicyCRUDFailure(cloned, policyCRUDParams) },
-	)
-	require.Len(t, parentTx.events, 1)
-	assert.Empty(t, cloneTx.events)
 }
 
-func TestLogPolicyCRUDEmitsOnceAndParentCloseDoesNotDuplicate(t *testing.T) {
+func TestLogPolicyCRUDEmitsWithoutDetachedContext(t *testing.T) {
 	l, buf := createTestLogger()
-	parent := createTestContext(t)
-	cloned := l.Detach(parent)
+	l.LogPolicyCRUD(createTestContext(t), true, policyCRUDParams)
 
-	l.LogPolicyCRUD(cloned, true, policyCRUDParams)
 	payloads := decodeAuditPayloads(t, buf)
 	require.Len(t, payloads, 1)
 	assert.Equal(t, "success", requireMap(t, payloads[0]["action"])["result"])
-	assert.Empty(t, requireAuditTransaction(parent, t).events)
-	assert.Empty(t, requireAuditTransaction(cloned, t).events)
-
-	requireAuditTransaction(parent, t).logClose(parent, l, true, nil)
-	require.Len(t, decodeAuditPayloads(t, buf), 1)
 }
 
-func TestLogPolicyCRUDMatchesBufferedSchema(t *testing.T) {
+func TestLogPolicyCRUDMatchesCompatibilityWrapperSchema(t *testing.T) {
 	tests := []struct {
 		name      string
 		isSuccess bool
@@ -68,31 +46,29 @@ func TestLogPolicyCRUDMatchesBufferedSchema(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			bufferedLogger, bufferedOutput := createTestLogger()
-			bufferedCtx := createTestContext(t)
+			wrapperLogger, wrapperOutput := createTestLogger()
+			wrapperCtx := createTestContext(t)
 			if test.isSuccess {
-				bufferedLogger.PolicyCRUDSuccess(bufferedCtx, policyCRUDParams)
+				wrapperLogger.PolicyCRUDSuccess(wrapperCtx, policyCRUDParams)
 			} else {
-				bufferedLogger.PolicyCRUDFailure(bufferedCtx, policyCRUDParams)
+				wrapperLogger.PolicyCRUDFailure(wrapperCtx, policyCRUDParams)
 			}
-			requireAuditTransaction(bufferedCtx, t).logClose(bufferedCtx, bufferedLogger, true, nil)
 
 			immediateLogger, immediateOutput := createTestLogger()
-			immediateCtx := immediateLogger.Detach(createTestContext(t))
-			immediateLogger.LogPolicyCRUD(immediateCtx, test.isSuccess, policyCRUDParams)
+			immediateLogger.LogPolicyCRUD(createTestContext(t), test.isSuccess, policyCRUDParams)
 
-			bufferedPayloads := decodeAuditPayloads(t, bufferedOutput)
+			wrapperPayloads := decodeAuditPayloads(t, wrapperOutput)
 			immediatePayloads := decodeAuditPayloads(t, immediateOutput)
-			require.Len(t, bufferedPayloads, 1)
+			require.Len(t, wrapperPayloads, 1)
 			require.Len(t, immediatePayloads, 1)
-			delete(bufferedPayloads[0], "timestamp")
+			delete(wrapperPayloads[0], "timestamp")
 			delete(immediatePayloads[0], "timestamp")
-			assert.Equal(t, bufferedPayloads[0], immediatePayloads[0])
+			assert.Equal(t, wrapperPayloads[0], immediatePayloads[0])
 		})
 	}
 }
 
-func TestLogPolicyCRUDUsesJWTEnrichmentFromClonedContext(t *testing.T) {
+func TestLogPolicyCRUDUsesJWTEnrichmentAfterCancellation(t *testing.T) {
 	l, buf := createTestLogger()
 	require.NoError(t, l.ApplyConfig(Config{JWTClaimMappings: []JWTClaimMapping{
 		{Claim: "sub", Path: "eventMetaData.requester.sub"},
@@ -100,10 +76,9 @@ func TestLogPolicyCRUDUsesJWTEnrichmentFromClonedContext(t *testing.T) {
 	}}))
 	token, rawToken := createTestJWTForAudit(t)
 	parent, cancel := context.WithCancel(ctxAuth.ContextWithAuthNInfo(createTestContext(t), nil, token, rawToken))
-	cloned := l.Detach(parent)
 	cancel()
 
-	l.LogPolicyCRUD(cloned, true, policyCRUDParams)
+	l.LogPolicyCRUD(parent, true, policyCRUDParams)
 	payloads := decodeAuditPayloads(t, buf)
 	require.Len(t, payloads, 1)
 	eventMetadata := requireMap(t, payloads[0]["eventMetaData"])
@@ -112,30 +87,13 @@ func TestLogPolicyCRUDUsesJWTEnrichmentFromClonedContext(t *testing.T) {
 	assert.Equal(t, []any{"admin", "user"}, requester["roles"])
 }
 
-func TestDetachWithoutParentUsesDefaultAttribution(t *testing.T) {
+func TestLogPolicyCRUDWithoutRequestContextUsesDefaultAttribution(t *testing.T) {
 	l, buf := createTestLogger()
-	cloned := l.Detach(t.Context())
+	l.LogPolicyCRUD(t.Context(), true, policyCRUDParams)
 
-	data := GetAuditDataFromContext(cloned)
-	assert.Empty(t, data.ActorID)
-	assert.Equal(t, defaultNone, data.UserAgent)
-	assert.Equal(t, defaultNone, data.RequestIP)
-	require.NotNil(t, requireAuditTransaction(cloned, t))
-
-	l.LogPolicyCRUD(cloned, true, policyCRUDParams)
 	payloads := decodeAuditPayloads(t, buf)
 	require.Len(t, payloads, 1)
 	assert.Equal(t, "00000000-0000-0000-0000-000000000000", payloads[0]["requestID"])
-}
-
-func TestLogPolicyCRUDWithoutDetachedContextDoesNotEmit(t *testing.T) {
-	l, buf := createTestLogger()
-
-	l.LogPolicyCRUD(t.Context(), false, policyCRUDParams)
-	assert.Empty(t, decodeAuditPayloads(t, buf))
-
-	l.LogPolicyCRUD(createTestContext(t), false, policyCRUDParams)
-	assert.Empty(t, decodeAuditPayloads(t, buf))
 }
 
 func decodeAuditPayloads(t *testing.T, logBuffer *bytes.Buffer) []map[string]any {
@@ -149,14 +107,6 @@ func decodeAuditPayloads(t *testing.T, logBuffer *bytes.Buffer) []map[string]any
 		payloads = append(payloads, decodeAuditPayload(t, entry.Audit))
 	}
 	return payloads
-}
-
-func requireAuditTransaction(ctx context.Context, t *testing.T) *auditTransaction {
-	t.Helper()
-	tx, ok := ctx.Value(contextKey{}).(*auditTransaction)
-	require.True(t, ok)
-	require.NotNil(t, tx)
-	return tx
 }
 
 func requireMap(t *testing.T, value any) map[string]any {

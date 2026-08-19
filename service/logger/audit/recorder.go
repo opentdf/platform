@@ -134,7 +134,7 @@ func (a *Logger) stampEvent(ctx context.Context, event *Event) {
 	if event.Phase == "" {
 		event.Phase = PhaseCompleted
 	}
-	event.Timestamp = time.Now().UTC().Format(time.RFC3339Nano)
+	event.Timestamp = time.Now().Format(time.RFC3339)
 }
 
 func (a *Logger) encode(ctx context.Context, event Event) (emissions []Emission, encodeErr error) { //nolint:nonamedreturns // recovery must replace both values

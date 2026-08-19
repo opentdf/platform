@@ -387,16 +387,23 @@ Root level key `services`
 
 Root level key `kas`
 
-Environment Variable: `OPENTDF_SERVICES_KAS_KEYRING='[{"kid":"k1","alg":"rsa:2048"},{"kid":"k2","alg":"ec:secp256r1"}]'`
+Environment Variables:
+
+```shell
+OPENTDF_SERVICES_KAS_KEYRING='[{"kid":"k1","alg":"rsa:2048"},{"kid":"k2","alg":"ec:secp256r1"}]'
+```
 
 | Field                    | Description                                                                     | Default  |
 | ------------------------ | ------------------------------------------------------------------------------- | -------- |
-| `keyring.*.kid`          | Which key id this is binding                                                    |          |
+| `key_management`         | Whether stable, policy-backed key management is enabled.                        | `false`  |
+| `keyring.*.kid`          | Which static key id this is binding.                                            |          |
 | `keyring.*.alg`          | (Optional) Associated algorithm. (Allows reusing KID with different algorithms) |          |
 | `keyring.*.legacy`       | Indicates this may be used for TDFs with no key ID; default if all unspecified. | inferred |
 | `preview.ec_tdf_enabled` | Whether tdf based ecc support is enabled.                                       | `false`  |
-| `preview.key_management` | Whether new key management features are enabled.                                | `false`  |
-| `root_key`               | Key needed when new key_management functionality is enabled.                    |          |
+| `preview.key_management` | Deprecated alias for `key_management`.                                          |          |
+| `root_key`               | Key needed when key management uses the built-in basic key manager.             |          |
+
+The deprecated `preview.key_management` setting remains supported and logs a warning whenever it is configured. A value of `true` enables key management even if the top-level `key_management` field is `false`; a value of `false` does not override the top-level setting.
 
 Example:
 
@@ -408,6 +415,7 @@ security:
 
 services:
   kas:
+    key_management: false
     keyring:
       - kid: e2
         alg: ec:secp256r1

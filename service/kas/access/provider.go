@@ -36,6 +36,9 @@ type Provider struct {
 }
 
 type KASConfig struct {
+	// KeyManagement enables stable, policy-backed KAS key management.
+	KeyManagement bool `mapstructure:"key_management" json:"key_management"`
+
 	// Which keys are currently the default.
 	Keyring []CurrentKeyFor `mapstructure:"keyring" json:"keyring"`
 	// Deprecated
@@ -72,7 +75,9 @@ type Preview struct {
 	// and (currently) also enables responding with ML-KEM encrypted responses.
 	// This feature is experimental and may be removed or changed in future releases.
 	MLKEMTDFEnabled bool `mapstructure:"mlkem_tdf_enabled" json:"mlkem_tdf_enabled"`
-	KeyManagement   bool `mapstructure:"key_management" json:"key_management"`
+	// Deprecated: retained for backward compatibility with preview configurations.
+	// Use KASConfig.KeyManagement instead.
+	KeyManagement bool `mapstructure:"key_management" json:"key_management"`
 }
 
 // Specifies the preferred/default key for a given algorithm type.
@@ -159,7 +164,8 @@ func (kasCfg KASConfig) String() string {
 	}
 
 	return fmt.Sprintf(
-		"KASConfig{Keyring:%v, ECCertID:%q, RSACertID:%q, RootKey:%s, KeyCacheExpiration:%s,  Preview:%+v, RegisteredKASURI:%q}",
+		"KASConfig{KeyManagement:%t, Keyring:%v, ECCertID:%q, RSACertID:%q, RootKey:%s, KeyCacheExpiration:%s, Preview:%+v, RegisteredKASURI:%q}",
+		kasCfg.KeyManagement,
 		kasCfg.Keyring,
 		kasCfg.ECCertID,
 		kasCfg.RSACertID,
@@ -177,6 +183,7 @@ func (kasCfg KASConfig) LogValue() slog.Value {
 	}
 
 	return slog.GroupValue(
+		slog.Bool("key_management", kasCfg.KeyManagement),
 		slog.Any("keyring", kasCfg.Keyring),
 		slog.String("eccertid", kasCfg.ECCertID),
 		slog.String("rsacertid", kasCfg.RSACertID),

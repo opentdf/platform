@@ -17,6 +17,7 @@ const (
 	RequestIPHeaderKey RequestHeader = "x-forwarded-request-ip"
 	// ActorIDHeaderKey is retained for source compatibility. OpenTDF no longer
 	// forwards or trusts this unauthenticated header for actor attribution.
+	//
 	// Deprecated: actor identity is derived from the verified access token.
 	ActorIDHeaderKey RequestHeader = "x-forwarded-actor-id"
 )

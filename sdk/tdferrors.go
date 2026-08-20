@@ -6,7 +6,6 @@ import (
 )
 
 var (
-	errFileTooLarge     = errors.New("tdf: can't create tdf larger than 64gb")
 	errWriteFailed      = errors.New("tdf: io.writer fail to write all bytes")
 	errInvalidKasInfo   = errors.New("tdf: kas information is missing")
 	errKasPubKeyMissing = errors.New("tdf: kas public key is missing")

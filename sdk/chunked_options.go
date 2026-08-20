@@ -91,10 +91,9 @@ func WithChunkedSegmentIntegrityAlgorithm(algo IntegrityAlgorithm) ChunkedWriter
 }
 
 // WithChunkedAssertions attaches signed assertions to the produced
-// TDF. Not yet supported by ChunkedWriter; Finalize returns
-// ErrChunkedAssertionsUnsupported when the list is non-empty. The
-// option is present so upstream call sites can be written in advance
-// of assertion support.
+// TDF. Each assertion is signed over the payload's aggregate hash
+// with its own SigningKey, or with the writer's DEK under HS256 when
+// the config does not carry one.
 func WithChunkedAssertions(assertions []AssertionConfig) ChunkedFinalizeOption {
 	return func(c *ChunkedFinalizeConfig) error {
 		c.assertions = assertions

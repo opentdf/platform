@@ -8,7 +8,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"hash/crc32"
 	"io"
 	"log/slog"
 	"net/http"
@@ -31,7 +30,6 @@ import (
 
 const (
 	keyAccessSchemaVersion = "1.0"
-	maxFileSizeSupported   = 68719476736 // 64gb
 	defaultMimeType        = "application/octet-stream"
 	zip64MagicVal          = int64(^uint32(0))
 	tdfAsZip               = "zip"
@@ -52,7 +50,6 @@ const (
 	kAssertionSignature    = "assertionSig"
 	kAssertionHash         = "assertionHash"
 	hexSemverThreshold     = "4.3.0"
-	readActionName         = "read"
 )
 
 // Loads and reads ZTDF files
@@ -77,10 +74,8 @@ type RequiredObligations struct {
 }
 
 type TDFObject struct {
-	manifest   Manifest
-	size       int64
-	aesGcm     ocrypto.AesGcm
-	payloadKey [kKeySize]byte
+	manifest Manifest
+	size     int64
 }
 
 type countingWriter struct {
@@ -138,7 +133,7 @@ func (t TDFObject) Size() int64 {
 	return t.size
 }
 
-func (s SDK) CreateTDF(writer io.Writer, reader io.ReadSeeker, opts ...TDFOption) (*TDFObject, error) {
+func (s SDK) CreateTDF(writer io.Writer, reader io.Reader, opts ...TDFOption) (*TDFObject, error) {
 	return s.CreateTDFContext(context.Background(), writer, reader, opts...)
 }
 
@@ -162,22 +157,17 @@ func uuidSplitIDGenerator() string {
 	return uuid.New().String()
 }
 
-// CreateTDFContext reads plain text from the given reader and saves it to the writer, subject to the given options
-func (s SDK) CreateTDFContext(ctx context.Context, writer io.Writer, reader io.ReadSeeker, opts ...TDFOption) (*TDFObject, error) { //nolint:funlen, gocognit, lll // Better readability keeping it as is
-	inputSize, err := reader.Seek(0, io.SeekEnd)
-	if err != nil {
-		return nil, fmt.Errorf("readSeeker.Seek failed: %w", err)
-	}
-
-	if inputSize > maxFileSizeSupported {
-		return nil, errFileTooLarge
-	}
-
-	_, err = reader.Seek(0, io.SeekStart)
-	if err != nil {
-		return nil, fmt.Errorf("readSeeker.Seek failed: %w", err)
-	}
-
+// CreateTDFContext reads plain text from the given reader and saves it to the writer, subject to the given options.
+//
+// The payload is encrypted one segment at a time through a ChunkedWriter; segments are
+// emitted in order as they are read, so peak memory stays at one segment regardless of
+// input size. Bytes are consumed from the reader's current position through EOF; there
+// is no upper bound on payload length.
+//
+// Knowing the length up front lets the archive stay in the compact ZIP32 layout when it
+// fits. The length comes from [WithInputSize] if given, otherwise from the reader when
+// it is seekable; a payload that can be measured neither way is written as ZIP64.
+func (s SDK) CreateTDFContext(ctx context.Context, writer io.Writer, reader io.Reader, opts ...TDFOption) (*TDFObject, error) {
 	tdfConfig, err := newTDFConfig(opts...)
 	if err != nil {
 		return nil, fmt.Errorf("NewTDFConfig failed: %w", err)
@@ -188,229 +178,195 @@ func (s SDK) CreateTDFContext(ctx context.Context, writer io.Writer, reader io.R
 		return nil, err
 	}
 
-	tdfObject := &TDFObject{}
-	err = s.prepareManifest(ctx, tdfObject, *tdfConfig)
-	if err != nil {
-		return nil, fmt.Errorf("fail to create a new split key: %w", err)
-	}
-
 	segmentSize := tdfConfig.defaultSegmentSize
 	if segmentSize > maxSegmentSize {
 		return nil, fmt.Errorf("segment size too large: %d", segmentSize)
 	} else if segmentSize < minSegmentSize {
 		return nil, fmt.Errorf("segment size too small: %d", segmentSize)
 	}
-	totalSegments := inputSize / segmentSize
-	if inputSize%segmentSize != 0 {
-		totalSegments++
+
+	inputSize, err := resolveInputSize(tdfConfig, reader)
+	if err != nil {
+		return nil, err
 	}
 
-	// empty payload we still want to create a payload
-	if totalSegments == 0 {
-		totalSegments = 1
+	// A known length doubles as a read limit: overrunning it would invalidate the
+	// ZIP64 choice made from it below. The buffer never shrinks to zero, so a read
+	// that comes back empty always means EOF.
+	readBufSize := segmentSize
+	if inputSize != inputSizeUnknown {
+		reader = io.LimitReader(reader, inputSize)
+		readBufSize = max(1, min(segmentSize, inputSize))
+	}
+	readBuf := make([]byte, readBufSize)
+
+	chunked, err := s.newTDFChunkedWriter(ctx, tdfConfig, inputSize, segmentCount(inputSize, segmentSize))
+	if err != nil {
+		return nil, err
 	}
 
-	encryptedSegmentSize := segmentSize + gcmIvSize + aesBlockSize
-	payloadSize := inputSize + (totalSegments * (gcmIvSize + aesBlockSize))
+	outputWriter := &countingWriter{writer: writer}
+	for index := 0; ; index++ {
+		readSize, readErr := io.ReadFull(reader, readBuf)
+		if readErr != nil && !errors.Is(readErr, io.EOF) && !errors.Is(readErr, io.ErrUnexpectedEOF) {
+			return nil, fmt.Errorf("io.Reader.Read failed: %w", readErr)
+		}
+		// A payload whose length is a multiple of the segment size reports EOF with
+		// nothing read. An empty payload still gets one empty segment.
+		if readSize == 0 && index > 0 {
+			break
+		}
 
+		segment, err := chunked.WriteSegment(ctx, index, readBuf[:readSize])
+		if err != nil {
+			return nil, err
+		}
+
+		if _, err := io.Copy(outputWriter, segment.TDFData); err != nil {
+			return nil, fmt.Errorf("io.writer.Write failed: %w", err)
+		}
+		if readErr != nil {
+			break
+		}
+	}
+
+	finalizeOpts, err := tdfFinalizeOptions(tdfConfig)
+	if err != nil {
+		return nil, err
+	}
+
+	result, err := chunked.Finalize(ctx, finalizeOpts...)
+	if err != nil {
+		return nil, err
+	}
+
+	if _, err := outputWriter.Write(result.Data); err != nil {
+		return nil, fmt.Errorf("io.writer.Write failed: %w", err)
+	}
+
+	return &TDFObject{
+		manifest: *result.Manifest,
+		size:     outputWriter.written,
+	}, nil
+}
+
+// resolveInputSize reports the payload length in bytes, or inputSizeUnknown when it
+// cannot be established without consuming the reader. An explicit WithInputSize wins
+// over what the reader can report about itself.
+//
+// A reader may satisfy io.Seeker and still refuse to seek — os.Stdin on the end of a
+// pipe is the common case — so a failed probe is treated as an unmeasurable payload
+// rather than an error. Failing to restore the original position is different: the
+// cursor has already moved and the payload can no longer be read in full.
+func resolveInputSize(tdfConfig *TDFConfig, reader io.Reader) (int64, error) {
+	if tdfConfig.inputSize != inputSizeUnknown {
+		return tdfConfig.inputSize, nil
+	}
+
+	seeker, ok := reader.(io.Seeker)
+	if !ok {
+		return inputSizeUnknown, nil
+	}
+	start, err := seeker.Seek(0, io.SeekCurrent)
+	if err != nil {
+		return inputSizeUnknown, nil //nolint:nilerr // a reader that cannot seek is measured by reading it
+	}
+	end, err := seeker.Seek(0, io.SeekEnd)
+	if err != nil {
+		return inputSizeUnknown, nil //nolint:nilerr // a reader that cannot seek is measured by reading it
+	}
+	if _, err := seeker.Seek(start, io.SeekStart); err != nil {
+		return 0, fmt.Errorf("seeker.Seek failed to restore reader position: %w", err)
+	}
+	return end - start, nil
+}
+
+// segmentCount returns the number of segments a payload of inputSize will occupy, or
+// zero when the length is unknown and the count can only be settled by reading.
+func segmentCount(inputSize, segmentSize int64) int {
+	switch inputSize {
+	case inputSizeUnknown:
+		return 0
+	case 0:
+		// An empty payload still gets one empty segment.
+		return 1
+	default:
+		return int((inputSize + segmentSize - 1) / segmentSize)
+	}
+}
+
+// newTDFChunkedWriter builds the chunked writer backing SDK.CreateTDF. Key access is
+// resolved here, before any payload byte is written, so that an unreachable KAS fails
+// the call without leaving a partial TDF on the output writer.
+//
+// inputSize may be inputSizeUnknown and totalSegments zero, for a payload that can only
+// be measured by reading it.
+func (s SDK) newTDFChunkedWriter(ctx context.Context, tdfConfig *TDFConfig, inputSize int64, totalSegments int) (*chunkedWriter, error) {
+	dek := make([]byte, kKeySize)
+	if _, err := io.ReadFull(defaultRand, dek); err != nil {
+		return nil, fmt.Errorf("fail to create a new split key: %w", err)
+	}
+
+	base64Policy, kaos, err := s.resolveKeyAccess(ctx, tdfConfig, dek)
+	if err != nil {
+		return nil, fmt.Errorf("fail to create a new split key: %w", err)
+	}
+
+	// The ZIP64 choice is baked into the payload's local file header, which goes out
+	// with segment 0, so it cannot be revisited once the archive has started. Reserve
+	// ZIP64 for payloads that a 32-bit offset cannot address — and for payloads of
+	// unknown length, which might turn out to be one.
+	payloadSize := inputSize + int64(totalSegments)*(gcmIvSize+aesBlockSize)
 	zipMode := zipstream.Zip64Auto
-	if payloadSize >= zip64MagicVal {
+	if inputSize == inputSizeUnknown || payloadSize >= zip64MagicVal {
 		zipMode = zipstream.Zip64Always
 	}
 
-	expectedSegments := int(totalSegments)
-	if expectedSegments < 1 {
-		expectedSegments = 1
-	}
-
-	archiveWriter := zipstream.NewSegmentTDFWriter(
-		expectedSegments,
-		zipstream.WithZip64Mode(zipMode),
-		zipstream.WithMaxSegments(expectedSegments),
-	)
-
-	outputWriter := &countingWriter{writer: writer}
-
-	var readPos int64
-	var aggregateHashBuilder strings.Builder
-	readBuf := bytes.NewBuffer(make([]byte, 0, tdfConfig.defaultSegmentSize))
-	segmentIndex := 0
-	for totalSegments != 0 { // adjust read size
-		readSize := segmentSize
-		if (inputSize - readPos) < segmentSize {
-			readSize = inputSize - readPos
-		}
-
-		n, err := reader.Read(readBuf.Bytes()[:readSize])
-		if err != nil {
-			return nil, fmt.Errorf("io.ReadSeeker.Read failed: %w", err)
-		}
-
-		if int64(n) != readSize {
-			return nil, errors.New("io.ReadSeeker.Read size mismatch")
-		}
-
-		cipherData, err := tdfObject.aesGcm.Encrypt(readBuf.Bytes()[:readSize])
-		if err != nil {
-			return nil, fmt.Errorf("io.ReadSeeker.Read failed: %w", err)
-		}
-
-		crc := crc32.ChecksumIEEE(cipherData)
-		headerBytes, err := archiveWriter.WriteSegment(ctx, segmentIndex, uint64(len(cipherData)), crc)
-		if err != nil {
-			return nil, fmt.Errorf("zipstream.WriteSegment failed: %w", err)
-		}
-
-		if len(headerBytes) > 0 {
-			_, err = outputWriter.Write(headerBytes)
-			if err != nil {
-				return nil, fmt.Errorf("io.writer.Write failed: %w", err)
+	return newChunkedWriter(ChunkedWriterConfig{
+		archiveFactory: func(clock Clock) zipstream.SegmentWriter {
+			archiveOpts := []zipstream.Option{
+				zipstream.WithZip64Mode(zipMode),
+				zipstream.WithClock(clock.Now),
 			}
-		}
+			if totalSegments > 0 {
+				archiveOpts = append(archiveOpts, zipstream.WithMaxSegments(totalSegments))
+			}
+			return zipstream.NewSegmentTDFWriter(totalSegments, archiveOpts...)
+		},
+		cipherFactory:             DefaultSegmentCipherFactory,
+		clock:                     SystemClock{},
+		dek:                       dek,
+		integrityAlgorithm:        tdfConfig.integrityAlgorithm,
+		keyAccess:                 staticKeyAccess{kaos: kaos, policy: base64Policy},
+		segmentIntegrityAlgorithm: tdfConfig.segmentIntegrityAlgorithm,
+		segmentSize:               tdfConfig.defaultSegmentSize,
+		useHex:                    tdfConfig.useHex,
+	})
+}
 
-		_, err = outputWriter.Write(cipherData)
-		if err != nil {
-			return nil, fmt.Errorf("io.writer.Write failed: %w", err)
-		}
-
-		segmentSig, err := calculateSignature(cipherData, tdfObject.payloadKey[:],
-			tdfConfig.segmentIntegrityAlgorithm, tdfConfig.useHex)
-		if err != nil {
-			return nil, fmt.Errorf("splitKey.GetSignaturefailed: %w", err)
-		}
-
-		aggregateHashBuilder.WriteString(segmentSig)
-		segmentInfo := Segment{
-			Hash:          string(ocrypto.Base64Encode([]byte(segmentSig))),
-			Size:          readSize,
-			EncryptedSize: int64(len(cipherData)),
-		}
-
-		tdfObject.manifest.Segments = append(tdfObject.manifest.Segments, segmentInfo)
-
-		totalSegments--
-		readPos += readSize
-		segmentIndex++
-	}
-
-	rootSignature, err := calculateSignature([]byte(aggregateHashBuilder.String()), tdfObject.payloadKey[:],
-		tdfConfig.integrityAlgorithm, tdfConfig.useHex)
-	if err != nil {
-		return nil, fmt.Errorf("splitKey.GetSignaturefailed: %w", err)
-	}
-
-	sig := string(ocrypto.Base64Encode([]byte(rootSignature)))
-	tdfObject.manifest.Signature = sig
-
-	integrityAlgStr := gmacIntegrityAlgorithm
-	if tdfConfig.integrityAlgorithm == HS256 {
-		integrityAlgStr = hmacIntegrityAlgorithm
-	}
-	tdfObject.manifest.Algorithm = integrityAlgStr
-
-	tdfObject.manifest.DefaultSegmentSize = segmentSize
-	tdfObject.manifest.DefaultEncryptedSegSize = encryptedSegmentSize
-
-	segIntegrityAlgStr := gmacIntegrityAlgorithm
-	if tdfConfig.segmentIntegrityAlgorithm == HS256 {
-		segIntegrityAlgStr = hmacIntegrityAlgorithm
-	}
-
-	tdfObject.manifest.SegmentHashAlgorithm = segIntegrityAlgStr
-	tdfObject.manifest.Method.IsStreamable = true
-
-	// add payload info
-	mimeType := tdfConfig.mimeType
-	if mimeType == "" {
-		mimeType = defaultMimeType
-	}
-	tdfObject.manifest.MimeType = mimeType
-	tdfObject.manifest.Protocol = tdfAsZip
-	tdfObject.manifest.Type = tdfZipReference
-	tdfObject.manifest.URL = zipstream.TDFPayloadFileName
-	tdfObject.manifest.IsEncrypted = true
-
-	var signedAssertion []Assertion
+// tdfFinalizeOptions maps the manifest-shaping parts of a TDFConfig onto the chunked
+// writer's Finalize options.
+func tdfFinalizeOptions(tdfConfig *TDFConfig) ([]ChunkedFinalizeOption, error) {
+	assertions := tdfConfig.assertions
 	if tdfConfig.addDefaultAssertion {
 		systemMeta, err := GetSystemMetadataAssertionConfig()
 		if err != nil {
 			return nil, err
 		}
-		tdfConfig.assertions = append(tdfConfig.assertions, systemMeta)
+		assertions = append(assertions, systemMeta)
 	}
 
-	for _, assertion := range tdfConfig.assertions {
-		// Store a temporary assertion
-		tmpAssertion := Assertion{}
-
-		tmpAssertion.ID = assertion.ID
-		tmpAssertion.Type = assertion.Type
-		tmpAssertion.Scope = assertion.Scope
-		tmpAssertion.Statement = assertion.Statement
-		tmpAssertion.AppliesToState = assertion.AppliesToState
-
-		hashOfAssertionAsHex, err := tmpAssertion.GetHash()
-		if err != nil {
-			return nil, err
-		}
-
-		hashOfAssertion := make([]byte, hex.DecodedLen(len(hashOfAssertionAsHex)))
-		_, err = hex.Decode(hashOfAssertion, hashOfAssertionAsHex)
-		if err != nil {
-			return nil, fmt.Errorf("error decoding hex string: %w", err)
-		}
-
-		var completeHashBuilder strings.Builder
-		completeHashBuilder.WriteString(aggregateHashBuilder.String())
-		if tdfConfig.useHex {
-			completeHashBuilder.Write(hashOfAssertionAsHex)
-		} else {
-			completeHashBuilder.Write(hashOfAssertion)
-		}
-
-		encoded := ocrypto.Base64Encode([]byte(completeHashBuilder.String()))
-
-		assertionSigningKey := AssertionKey{}
-
-		// Set default to HS256 and payload key
-		assertionSigningKey.Alg = AssertionKeyAlgHS256
-		assertionSigningKey.Key = tdfObject.payloadKey[:]
-
-		if !assertion.SigningKey.IsEmpty() {
-			assertionSigningKey = assertion.SigningKey
-		}
-
-		if err := tmpAssertion.Sign(string(hashOfAssertionAsHex), string(encoded), assertionSigningKey); err != nil {
-			return nil, fmt.Errorf("failed to sign assertion: %w", err)
-		}
-
-		signedAssertion = append(signedAssertion, tmpAssertion)
+	opts := []ChunkedFinalizeOption{
+		WithChunkedAssertions(assertions),
+		WithChunkedEncryptedMetadata(tdfConfig.metaData),
 	}
-
-	tdfObject.manifest.Assertions = signedAssertion
-
-	manifestAsStr, err := json.Marshal(tdfObject.manifest)
-	if err != nil {
-		return nil, fmt.Errorf("json.Marshal failed:%w", err)
+	if tdfConfig.mimeType != "" {
+		opts = append(opts, WithChunkedMimeType(tdfConfig.mimeType))
 	}
-
-	finalBytes, err := archiveWriter.Finalize(ctx, manifestAsStr)
-	if err != nil {
-		return nil, fmt.Errorf("zipstream.Finalize failed: %w", err)
+	if tdfConfig.excludeVersionFromManifest {
+		opts = append(opts, WithChunkedExcludeVersion())
 	}
-
-	_, err = outputWriter.Write(finalBytes)
-	if err != nil {
-		return nil, fmt.Errorf("io.writer.Write failed: %w", err)
-	}
-
-	if err := archiveWriter.Close(); err != nil {
-		return nil, fmt.Errorf("zipstream.Close failed: %w", err)
-	}
-
-	tdfObject.size = outputWriter.written
-
-	return tdfObject, nil
+	return opts, nil
 }
 
 // initKAOTemplate initializes the KAO template, from either the split plan, kaoTemplate, or autoconfigure based on tags.
@@ -523,32 +479,29 @@ func (r *Reader) Manifest() Manifest {
 	return r.manifest
 }
 
-// prepare the manifest for TDF
-func (s SDK) prepareManifest(ctx context.Context, t *TDFObject, tdfConfig TDFConfig) error { //nolint:funlen,gocognit // Better readability keeping it as is
-	manifest := Manifest{}
-
-	if !tdfConfig.excludeVersionFromManifest {
-		manifest.TDFVersion = TDFSpecVersion
-	}
-
+// resolveKeyAccess splits dek across the config's KAO template and wraps each share to
+// the KAS servers that template names, returning the base64-encoded policy the shares
+// are bound to along with the resulting key access objects.
+func (s SDK) resolveKeyAccess(ctx context.Context, tdfConfig *TDFConfig, dek []byte) (string, []KeyAccess, error) {
 	if len(tdfConfig.kaoTemplate) == 0 {
-		return fmt.Errorf("no key access template specified or inferred in initKAOTemplate: %w", errInvalidKasInfo)
+		return "", nil, fmt.Errorf("no key access template specified or inferred in initKAOTemplate: %w", errInvalidKasInfo)
 	}
 
-	manifest.KeyAccessType = kSplitKeyType
-
-	policyObj, err := createPolicyObject(tdfConfig.attributes)
+	shares, err := s.templateSplitShares(ctx, tdfConfig, dek)
 	if err != nil {
-		return fmt.Errorf("fail to create policy object:%w", err)
+		return "", nil, err
 	}
 
-	policyObjectAsStr, err := json.Marshal(policyObj)
-	if err != nil {
-		return fmt.Errorf("json.Marshal failed:%w", err)
+	fqns := make([]string, len(tdfConfig.attributes))
+	for i, attribute := range tdfConfig.attributes {
+		fqns[i] = attribute.String()
 	}
+	return resolvePolicyAndKeyAccess(fqns, shares, tdfConfig.metaData)
+}
 
-	base64PolicyObject := ocrypto.Base64Encode(policyObjectAsStr)
-
+// templateSplitShares groups the KAO template by split ID -- fetching any public key the
+// template did not carry -- and splits dek across the resulting groups, one share each.
+func (s SDK) templateSplitShares(ctx context.Context, tdfConfig *TDFConfig, dek []byte) ([]splitShare, error) {
 	conjunction := make(map[string][]KASInfo)
 	var splitIDs []string
 
@@ -567,76 +520,86 @@ func (s SDK) prepareManifest(ctx context.Context, t *TDFObject, tdfConfig TDFCon
 			}
 			k, err := s.getPublicKey(ctx, tpl.KAS, a, tpl.kid)
 			if err != nil {
-				return fmt.Errorf("unable to retrieve public key from KAS at [%s]: %w", tpl.KAS, err)
+				return nil, fmt.Errorf("unable to retrieve public key from KAS at [%s]: %w", tpl.KAS, err)
 			}
 			ki = *k
 		}
-		if _, ok := conjunction[tpl.SplitID]; ok {
-			conjunction[tpl.SplitID] = append(conjunction[tpl.SplitID], ki)
-		} else {
-			conjunction[tpl.SplitID] = []KASInfo{ki}
+		if _, ok := conjunction[tpl.SplitID]; !ok {
 			splitIDs = append(splitIDs, tpl.SplitID)
 		}
+		conjunction[tpl.SplitID] = append(conjunction[tpl.SplitID], ki)
 	}
 
-	symKeys := make([][]byte, 0, len(splitIDs))
-	for _, splitID := range splitIDs {
-		symKey, err := ocrypto.RandomBytes(kKeySize)
-		if err != nil {
-			return fmt.Errorf("ocrypto.RandomBytes failed:%w", err)
-		}
-		symKeys = append(symKeys, symKey)
-
-		// policy binding
-		policyBindingHash := hex.EncodeToString(ocrypto.CalculateSHA256Hmac(symKey, base64PolicyObject))
-		pbstring := string(ocrypto.Base64Encode([]byte(policyBindingHash)))
-		policyBinding := PolicyBinding{
-			Alg:  "HS256",
-			Hash: pbstring,
-		}
-
-		// encrypted metadata
-		// add meta data
-		var encryptedMetadata string
-		if len(tdfConfig.metaData) > 0 {
-			encryptedMetadata, err = encryptMetadata(symKey, tdfConfig.metaData)
-			if err != nil {
-				return err
-			}
-		}
-
-		for _, kasInfo := range conjunction[splitID] {
-			if len(kasInfo.PublicKey) == 0 {
-				return fmt.Errorf("splitID:[%s], kas:[%s]: %w", splitID, kasInfo.URL, errKasPubKeyMissing)
-			}
-
-			keyAccess, err := createKeyAccess(kasInfo, symKey, policyBinding, encryptedMetadata, splitID)
-			if err != nil {
-				return err
-			}
-
-			manifest.KeyAccessObjs = append(manifest.KeyAccessObjs, keyAccess)
-		}
-	}
-
-	manifest.Policy = string(base64PolicyObject)
-	manifest.Method.Algorithm = kGCMCipherAlgorithm
-
-	// create the payload key by XOR all the keys in key access object.
-	for _, symKey := range symKeys {
-		for keyByteIndex, keyByte := range symKey {
-			t.payloadKey[keyByteIndex] ^= keyByte
-		}
-	}
-
-	gcm, err := ocrypto.NewAESGcm(t.payloadKey[:])
+	keys, err := splitDEK(dek, len(splitIDs), defaultRand)
 	if err != nil {
-		return fmt.Errorf(" ocrypto.NewAESGcm failed:%w", err)
+		return nil, err
 	}
 
-	t.manifest = manifest
-	t.aesGcm = gcm
-	return nil
+	shares := make([]splitShare, len(splitIDs))
+	for i, splitID := range splitIDs {
+		shares[i] = splitShare{id: splitID, data: keys[i], kases: conjunction[splitID]}
+	}
+	return shares, nil
+}
+
+// createPolicyBinding binds a key split to the policy it unlocks, keyed on the split
+// itself so that a KAS can verify the policy it is asked to enforce is the one the
+// creator bound.
+func createPolicyBinding(symKey []byte, base64Policy string) PolicyBinding {
+	policyBindingHash := hex.EncodeToString(ocrypto.CalculateSHA256Hmac(symKey, []byte(base64Policy)))
+	return PolicyBinding{
+		Alg:  hmacIntegrityAlgorithm,
+		Hash: string(ocrypto.Base64Encode([]byte(policyBindingHash))),
+	}
+}
+
+// signAssertions signs each assertion config over the payload's aggregate hash, using
+// the config's own signing key or falling back to the payload key under HS256.
+func signAssertions(configs []AssertionConfig, aggregateHash, payloadKey []byte, useHex bool) ([]Assertion, error) {
+	var signed []Assertion
+	for _, assertion := range configs {
+		tmpAssertion := Assertion{
+			ID:             assertion.ID,
+			Type:           assertion.Type,
+			Scope:          assertion.Scope,
+			Statement:      assertion.Statement,
+			AppliesToState: assertion.AppliesToState,
+		}
+
+		hashOfAssertionAsHex, err := tmpAssertion.GetHash()
+		if err != nil {
+			return nil, err
+		}
+
+		hashOfAssertion := make([]byte, hex.DecodedLen(len(hashOfAssertionAsHex)))
+		if _, err := hex.Decode(hashOfAssertion, hashOfAssertionAsHex); err != nil {
+			return nil, fmt.Errorf("error decoding hex string: %w", err)
+		}
+		if useHex {
+			hashOfAssertion = hashOfAssertionAsHex
+		}
+
+		completeHash := make([]byte, 0, len(aggregateHash)+len(hashOfAssertion))
+		completeHash = append(completeHash, aggregateHash...)
+		completeHash = append(completeHash, hashOfAssertion...)
+		encoded := ocrypto.Base64Encode(completeHash)
+
+		// Set default to HS256 and payload key
+		assertionSigningKey := AssertionKey{
+			Alg: AssertionKeyAlgHS256,
+			Key: payloadKey,
+		}
+		if !assertion.SigningKey.IsEmpty() {
+			assertionSigningKey = assertion.SigningKey
+		}
+
+		if err := tmpAssertion.Sign(string(hashOfAssertionAsHex), string(encoded), assertionSigningKey); err != nil {
+			return nil, fmt.Errorf("failed to sign assertion: %w", err)
+		}
+
+		signed = append(signed, tmpAssertion)
+	}
+	return signed, nil
 }
 
 func encryptMetadata(symKey []byte, metaData string) (string, error) {
@@ -786,8 +749,8 @@ func generateWrapKeyWithKEM(ktype ocrypto.KeyType, publicKeyPEM string, symKey [
 	return string(ocrypto.Base64Encode(wrappedDER)), scheme, nil
 }
 
-// create policy object
-func createPolicyObject(attributes []AttributeValueFQN) (PolicyObject, error) {
+// createPolicyObjectFromFQNs builds the TDF policy document from attribute value FQNs.
+func createPolicyObjectFromFQNs(fqns []string) (PolicyObject, error) {
 	uuidObj, err := uuid.NewUUID()
 	if err != nil {
 		return PolicyObject{}, fmt.Errorf("uuid.NewUUID failed: %w", err)
@@ -796,9 +759,9 @@ func createPolicyObject(attributes []AttributeValueFQN) (PolicyObject, error) {
 	policyObj := PolicyObject{}
 	policyObj.UUID = uuidObj.String()
 
-	for _, attribute := range attributes {
+	for _, fqn := range fqns {
 		attributeObj := attributeObject{}
-		attributeObj.Attribute = attribute.String()
+		attributeObj.Attribute = fqn
 		policyObj.Body.DataAttributes = append(policyObj.Body.DataAttributes, attributeObj)
 		policyObj.Body.Dissem = make([]string, 0)
 	}

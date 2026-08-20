@@ -151,6 +151,58 @@ func Test_ClaimsResolveEntityDirectEntitlementsDisabled(t *testing.T) {
 	entityRepresentations := resp.GetEntityRepresentations()
 	require.Len(t, entityRepresentations, 1)
 	assert.Empty(t, entityRepresentations[0].GetDirectEntitlements())
+
+	// The claim is only stripped when it is consumed. With the feature off it was never given
+	// special meaning, so it stays an ordinary claim rather than silently disappearing.
+	additionalProps := entityRepresentations[0].GetAdditionalProps()
+	require.Len(t, additionalProps, 1)
+	assert.Contains(t, additionalProps[0].GetFields(), "direct_entitlements")
+}
+
+// Direct entitlements are consumed onto EntityRepresentation.DirectEntitlements, so the raw claim
+// must not also reach AdditionalProps, which is what subject-mapping selectors evaluate against.
+func Test_ClaimsResolveEntityDirectEntitlementsStrippedFromAdditionalProps(t *testing.T) {
+	for _, claimKey := range []string{"direct_entitlements", "directEntitlements"} {
+		t.Run(claimKey, func(t *testing.T) {
+			customclaims := map[string]interface{}{
+				claimKey: []interface{}{
+					map[string]interface{}{
+						"attribute_value_fqn": "https://example.com/attr/department/value/eng",
+						"actions":             []interface{}{"read"},
+					},
+				},
+				"sub":        "alice",
+				"attributes": map[string]interface{}{"department": []interface{}{"eng"}},
+			}
+			structClaims, err := structpb.NewStruct(customclaims)
+			require.NoError(t, err)
+			anyClaims, err := anypb.New(structClaims)
+			require.NoError(t, err)
+
+			req := entityresolutionV2.ResolveEntitiesRequest{Entities: []*entity.Entity{
+				{EphemeralId: "1234", EntityType: &entity.Entity_Claims{Claims: anyClaims}},
+			}}
+
+			resp, reserr := claims.EntityResolution(t.Context(), &req, logger.CreateTestLogger(), true)
+			require.NoError(t, reserr)
+
+			entityRepresentations := resp.GetEntityRepresentations()
+			require.Len(t, entityRepresentations, 1)
+
+			// Still projected onto the typed field.
+			entitlements := entityRepresentations[0].GetDirectEntitlements()
+			require.Len(t, entitlements, 1)
+			assert.Equal(t, "https://example.com/attr/department/value/eng", entitlements[0].GetAttributeValueFqn())
+
+			additionalProps := entityRepresentations[0].GetAdditionalProps()
+			require.Len(t, additionalProps, 1)
+			fields := additionalProps[0].GetFields()
+			assert.NotContains(t, fields, claimKey)
+			// Only the consumed claim is removed; every other claim still drives subject mappings.
+			assert.Contains(t, fields, "sub")
+			assert.Contains(t, fields, "attributes")
+		})
+	}
 }
 
 func Test_ClaimsResolveEntityDirectEntitlementsFQNNormalized(t *testing.T) {

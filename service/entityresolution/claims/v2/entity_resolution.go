@@ -24,6 +24,13 @@ import (
 	"google.golang.org/protobuf/types/known/structpb"
 )
 
+const (
+	// directEntitlementsClaim and directEntitlementsClaimCamel are the claim names that carry inline
+	// direct entitlements. Keep in sync with directEntitlementClaimKeys in the just-in-time PDP.
+	directEntitlementsClaim      = "direct_entitlements"
+	directEntitlementsClaimCamel = "directEntitlements"
+)
+
 type EntityResolutionServiceV2 struct {
 	entityresolutionV2.UnimplementedEntityResolutionServiceServer
 	logger                  *logger.Logger
@@ -133,13 +140,21 @@ func parseDirectEntitlementsFromClaims(entityStruct *structpb.Struct) ([]*entity
 		return nil, nil
 	}
 	claims := entityStruct.AsMap()
-	rawEntitlements, ok := claims["direct_entitlements"]
+	claimKey := directEntitlementsClaim
+	rawEntitlements, ok := claims[claimKey]
 	if !ok {
-		rawEntitlements, ok = claims["directEntitlements"]
+		claimKey = directEntitlementsClaimCamel
+		rawEntitlements, ok = claims[claimKey]
 	}
 	if !ok {
 		return nil, nil
 	}
+
+	// The claim is consumed here and projected onto EntityRepresentation.DirectEntitlements, so drop
+	// it from the struct that becomes AdditionalProps. Leaving it behind would also feed caller-
+	// supplied entitlement data to subject-mapping evaluation, where a selector could match on it.
+	// claims is an independent copy produced by AsMap, so the parsing below is unaffected.
+	delete(entityStruct.GetFields(), claimKey)
 
 	entitlementList, entitlementsOK := rawEntitlements.([]interface{})
 	if !entitlementsOK {

@@ -12,7 +12,59 @@ const (
 	defaultNone = "None"
 )
 
-type auditEventMetadata map[string]any
+// Public event DTOs are intentionally separate from internal log types.
+// This keeps downstream consumers decoupled from internal logging behavior (e.g. LogValue),
+// while still allowing them to construct events via NewEvent.
+type EventMetaData map[string]any
+
+// Internal log type uses the same shape as public metadata.
+type auditEventMetadata = EventMetaData
+
+// --- Public event DTOs (for downstream consumers) ---
+
+// EventObjectInfo describes the object an audited action was performed on.
+type EventObjectInfo struct {
+	Type       ObjectType            `json:"type"`
+	ID         string                `json:"id"`
+	Name       string                `json:"name,omitempty"`
+	Attributes EventObjectAttributes `json:"attributes,omitempty"`
+}
+
+type EventObjectAttributes struct {
+	Assertions  []string `json:"assertions,omitempty"`
+	Attrs       []string `json:"attrs,omitempty"`
+	Permissions []string `json:"permissions,omitempty"`
+}
+
+type EventObjectAction struct {
+	Type   ActionType   `json:"type" audit:"reserved"`
+	Result ActionResult `json:"result" audit:"reserved"`
+}
+
+type EventObjectActor struct {
+	ID         string `json:"id" audit:"reserved"`
+	Attributes []any  `json:"attributes"`
+}
+
+type EventClientInfo struct {
+	UserAgent string `json:"userAgent" audit:"reserved"`
+	Platform  string `json:"platform" audit:"reserved"`
+	RequestIP string `json:"requestIP" audit:"reserved"`
+}
+
+type EventObjectParams struct {
+	Object        EventObjectInfo
+	Action        EventObjectAction
+	Actor         EventObjectActor
+	EventMetaData EventMetaData
+	ClientInfo    EventClientInfo
+	Original      map[string]any
+	Updated       map[string]any
+	RequestID     uuid.UUID
+	Timestamp     string
+}
+
+// --- Internal log types (used by logger/audit) ---
 
 // event
 type EventObject struct {
@@ -26,6 +78,34 @@ type EventObject struct {
 	Updated   map[string]any `json:"updated,omitempty" audit:"extensible"`
 	RequestID uuid.UUID      `json:"requestID" audit:"reserved"`
 	Timestamp string         `json:"timestamp" audit:"reserved"`
+}
+
+// NewEvent converts public DTOs into the internal log event type.
+func NewEvent(params EventObjectParams) *EventObject {
+	return &EventObject{
+		Object: auditEventObject{
+			Type: params.Object.Type,
+			ID:   params.Object.ID,
+			Name: params.Object.Name,
+			Attributes: eventObjectAttributes{
+				EventObjectAttributes: params.Object.Attributes,
+			},
+		},
+		Action: eventAction{
+			EventObjectAction: params.Action,
+		},
+		Actor: auditEventActor{
+			EventObjectActor: params.Actor,
+		},
+		EventMetaData: params.EventMetaData,
+		ClientInfo: eventClientInfo{
+			EventClientInfo: params.ClientInfo,
+		},
+		Original:  params.Original,
+		Updated:   params.Updated,
+		RequestID: params.RequestID,
+		Timestamp: params.Timestamp,
+	}
 }
 
 func (e EventObject) LogValue() slog.Value {
@@ -58,9 +138,7 @@ func (e auditEventObject) LogValue() slog.Value {
 
 // event.object.attributes
 type eventObjectAttributes struct {
-	Assertions  []string `json:"assertions,omitempty"`
-	Attrs       []string `json:"attrs,omitempty"`
-	Permissions []string `json:"permissions,omitempty"`
+	EventObjectAttributes
 }
 
 func (e eventObjectAttributes) LogValue() slog.Value {
@@ -72,8 +150,7 @@ func (e eventObjectAttributes) LogValue() slog.Value {
 
 // event.action
 type eventAction struct {
-	Type   ActionType   `json:"type" audit:"reserved"`
-	Result ActionResult `json:"result" audit:"reserved"`
+	EventObjectAction
 }
 
 func (e eventAction) LogValue() slog.Value {
@@ -84,8 +161,7 @@ func (e eventAction) LogValue() slog.Value {
 
 // event.actor
 type auditEventActor struct {
-	ID         string `json:"id" audit:"reserved"`
-	Attributes []any  `json:"attributes"`
+	EventObjectActor
 }
 
 func (e auditEventActor) LogValue() slog.Value {
@@ -96,9 +172,7 @@ func (e auditEventActor) LogValue() slog.Value {
 
 // event.clientInfo
 type eventClientInfo struct {
-	UserAgent string `json:"userAgent" audit:"reserved"`
-	Platform  string `json:"platform" audit:"reserved"`
-	RequestIP string `json:"requestIP" audit:"reserved"`
+	EventClientInfo
 }
 
 func (e eventClientInfo) LogValue() slog.Value {

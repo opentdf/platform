@@ -36,12 +36,12 @@ func NewSegmentTDFWriter(expectedSegments int, opts ...Option) SegmentWriter {
 
 	return &segmentWriter{
 		baseWriter: base,
-		metadata:   NewSegmentMetadata(expectedSegments),
+		metadata:   NewSegmentMetadata(expectedSegments, cfg.Now),
 		centralDir: NewCentralDirectory(),
 		payloadEntry: &FileEntry{
 			Name:        TDFPayloadFileName,
 			Offset:      0,
-			ModTime:     time.Now(),
+			ModTime:     cfg.Now(),
 			IsStreaming: true, // Use data descriptor pattern
 		},
 		finalized: false,
@@ -191,7 +191,7 @@ func (sw *segmentWriter) Finalize(ctx context.Context, manifest []byte) ([]byte,
 		Size:           uint64(len(manifest)),
 		CompressedSize: uint64(len(manifest)),
 		CRC32:          crc32.ChecksumIEEE(manifest),
-		ModTime:        time.Now(),
+		ModTime:        sw.config.Now(),
 		IsStreaming:    false,
 	}
 

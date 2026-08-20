@@ -41,7 +41,9 @@ var (
 	ErrCachedTypeNotExpected = errors.New("cached data is not of expected type")
 )
 
-// EntitlementPolicyCache caches attributes and subject mappings with periodic refresh
+// EntitlementPolicyCache caches registered resources, obligations, and (when enabled) dynamic value
+// mappings with periodic refresh. Attributes and subject mappings are fetched per request via
+// GetEntitleableAttributesByFqns and are not cached here.
 type EntitlementPolicyCache struct {
 	logger      *logger.Logger
 	cacheClient *cache.Cache
@@ -177,18 +179,15 @@ func (c *EntitlementPolicyCache) Stop() {
 // Refresh manually refreshes the cache by reaching out to policy services. In the event of an error,
 // the cache is marked as not filled, and the error is returned.
 func (c *EntitlementPolicyCache) Refresh(ctx context.Context) error {
-	// Retrieve fresh data from the policy services
-	attributes, err := c.retriever.ListAllAttributes(ctx)
-	if err != nil {
-		return err
-	}
-	subjectMappings, err := c.retriever.ListAllSubjectMappings(ctx)
-	if err != nil {
-		return err
-	}
+	// Attributes and subject mappings are fetched per request via GetEntitleableAttributesByFqns, so
+	// they are no longer cached here. Registered resources, obligations, and (gated) dynamic value
+	// mappings remain cached because they are still fully loaded at PDP construction.
+	var (
+		dynamicValueMappings []*policy.DynamicValueMapping
+		err                  error
+	)
 	// Only fetch the experimental dynamic value mappings when enabled, so cache readiness does not
 	// depend on that endpoint while the feature is off.
-	var dynamicValueMappings []*policy.DynamicValueMapping
 	if c.allowDynamicValueMappings {
 		dynamicValueMappings, err = c.retriever.ListAllDynamicValueMappings(ctx)
 		if err != nil {
@@ -204,45 +203,28 @@ func (c *EntitlementPolicyCache) Refresh(ctx context.Context) error {
 		return err
 	}
 
-	// If there is an error when Setting with fresh data, mark not filled so IsReady() will re-attempt refresh
-	err = c.cacheClient.Set(ctx, attributesCacheKey, attributes, authzCacheTags)
-	if err != nil {
-		c.isCacheFilled = false
-		return errors.Join(ErrFailedToSet, err)
-	}
-
-	err = c.cacheClient.Set(ctx, subjectMappingsCacheKey, subjectMappings, authzCacheTags)
-	if err != nil {
-		c.isCacheFilled = false
-		return errors.Join(ErrFailedToSet, err)
-	}
-
 	// Only cache dynamic value mappings when the feature is enabled, so a disabled feature does not
 	// store an empty slice (the fetch above is gated the same way).
 	if c.allowDynamicValueMappings {
-		err = c.cacheClient.Set(ctx, dynamicValueMappingsCacheKey, dynamicValueMappings, authzCacheTags)
-		if err != nil {
+		if err = c.cacheClient.Set(ctx, dynamicValueMappingsCacheKey, dynamicValueMappings, authzCacheTags); err != nil {
 			c.isCacheFilled = false
 			return errors.Join(ErrFailedToSet, err)
 		}
 	}
 
-	err = c.cacheClient.Set(ctx, registeredResourcesCacheKey, registeredResources, authzCacheTags)
-	if err != nil {
+	// If there is an error when Setting with fresh data, mark not filled so IsReady() will re-attempt refresh
+	if err = c.cacheClient.Set(ctx, registeredResourcesCacheKey, registeredResources, authzCacheTags); err != nil {
 		c.isCacheFilled = false
 		return errors.Join(ErrFailedToSet, err)
 	}
 
-	err = c.cacheClient.Set(ctx, obligationsCacheKey, obligations, authzCacheTags)
-	if err != nil {
+	if err = c.cacheClient.Set(ctx, obligationsCacheKey, obligations, authzCacheTags); err != nil {
 		c.isCacheFilled = false
 		return errors.Join(ErrFailedToSet, err)
 	}
 
 	c.logger.DebugContext(ctx,
 		"refreshed EntitlementPolicyCache",
-		slog.Int("attributes_count", len(attributes)),
-		slog.Int("subject_mappings_count", len(subjectMappings)),
 		slog.Int("registered_resources_count", len(registeredResources)),
 		slog.Int("obligations_count", len(obligations)),
 	)

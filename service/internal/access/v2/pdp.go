@@ -218,35 +218,9 @@ func NewPolicyDecisionPoint(
 		dynamicMappingsByDefinitionFQN[definitionFQN] = append(dynamicMappingsByDefinitionFQN[definitionFQN], mapping)
 	}
 
-	allRegisteredResourceValuesByFQN := make(map[string]*policy.RegisteredResourceValue)
-	for _, rr := range allRegisteredResources {
-		if err := validateRegisteredResource(rr); err != nil {
-			return nil, fmt.Errorf("invalid registered resource: %w", err)
-		}
-		rrName := rr.GetName()
-
-		for _, v := range rr.GetValues() {
-			if err := validateRegisteredResourceValue(v); err != nil {
-				return nil, fmt.Errorf("invalid registered resource value: %w", err)
-			}
-
-			namespaceName := namespaceNameFromPolicyNamespace(rr.GetNamespace())
-
-			fullyQualifiedValue := identifier.FullyQualifiedRegisteredResourceValue{
-				Namespace: namespaceName,
-				Name:      rrName,
-				Value:     v.GetValue(),
-			}
-			allRegisteredResourceValuesByFQN[fullyQualifiedValue.FQN()] = v
-
-			if !namespacedPolicy {
-				legacyQualifiedValue := identifier.FullyQualifiedRegisteredResourceValue{
-					Name:  rrName,
-					Value: v.GetValue(),
-				}
-				allRegisteredResourceValuesByFQN[legacyQualifiedValue.FQN()] = v
-			}
-		}
+	allRegisteredResourceValuesByFQN, err := buildRegisteredResourceValuesByFQN(allRegisteredResources, namespacedPolicy)
+	if err != nil {
+		return nil, err
 	}
 
 	pdp := &PolicyDecisionPoint{
@@ -281,6 +255,43 @@ func namespaceNameFromPolicyNamespace(ns *policy.Namespace) string {
 	}
 
 	return parsed.Namespace
+}
+
+// buildRegisteredResourceValuesByFQN indexes registered resource values by their fully qualified
+// name. In non-strict mode a legacy (namespace-less) FQN key is also registered. It is shared by
+// NewPolicyDecisionPoint and the JustInTimePDP obligations wiring so both index identically.
+func buildRegisteredResourceValuesByFQN(allRegisteredResources []*policy.RegisteredResource, namespacedPolicy bool) (map[string]*policy.RegisteredResourceValue, error) {
+	allRegisteredResourceValuesByFQN := make(map[string]*policy.RegisteredResourceValue)
+	for _, rr := range allRegisteredResources {
+		if err := validateRegisteredResource(rr); err != nil {
+			return nil, fmt.Errorf("invalid registered resource: %w", err)
+		}
+		rrName := rr.GetName()
+
+		for _, v := range rr.GetValues() {
+			if err := validateRegisteredResourceValue(v); err != nil {
+				return nil, fmt.Errorf("invalid registered resource value: %w", err)
+			}
+
+			namespaceName := namespaceNameFromPolicyNamespace(rr.GetNamespace())
+
+			fullyQualifiedValue := identifier.FullyQualifiedRegisteredResourceValue{
+				Namespace: namespaceName,
+				Name:      rrName,
+				Value:     v.GetValue(),
+			}
+			allRegisteredResourceValuesByFQN[fullyQualifiedValue.FQN()] = v
+
+			if !namespacedPolicy {
+				legacyQualifiedValue := identifier.FullyQualifiedRegisteredResourceValue{
+					Name:  rrName,
+					Value: v.GetValue(),
+				}
+				allRegisteredResourceValuesByFQN[legacyQualifiedValue.FQN()] = v
+			}
+		}
+	}
+	return allRegisteredResourceValuesByFQN, nil
 }
 
 // GetDecision evaluates the action on the resources for the entity and returns a decision along with entitlements.

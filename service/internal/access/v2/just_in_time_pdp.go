@@ -13,6 +13,7 @@ import (
 	"github.com/opentdf/platform/protocol/go/entity"
 	entityresolutionV2 "github.com/opentdf/platform/protocol/go/entityresolution/v2"
 	"github.com/opentdf/platform/protocol/go/policy"
+	attrs "github.com/opentdf/platform/protocol/go/policy/attributes"
 	"github.com/opentdf/platform/protocol/go/policy/subjectmapping"
 	otdfSDK "github.com/opentdf/platform/sdk"
 	ent "github.com/opentdf/platform/service/entity"
@@ -40,10 +41,18 @@ var (
 type JustInTimePDP struct {
 	logger *logger.Logger
 	sdk    *otdfSDK.SDK
-	// embedded entitlement PDP
-	pdp *PolicyDecisionPoint
 	// embedded obligations PDP
 	obligationsPDP *obligations.ObligationsPolicyDecisionPoint
+
+	// Registered resources, obligations, and (gated) dynamic value mappings remain fully loaded at
+	// construction; attribute definitions and subject mappings are fetched per request via
+	// GetEntitleableAttributesByFqns and used to build a request-scoped inner PolicyDecisionPoint.
+	registeredResources           []*policy.RegisteredResource
+	registeredResourceValuesByFQN map[string]*policy.RegisteredResourceValue
+	dynamicValueMappings          []*policy.DynamicValueMapping
+	allowDirectEntitlements       bool
+	allowDynamicValueMappings     bool
+	namespacedPolicy              bool
 }
 
 // NewJustInTimePDP creates a new Policy Decision Point instance with no in-memory policy and a remote connection
@@ -70,8 +79,11 @@ func NewJustInTimePDP(
 	}
 
 	p := &JustInTimePDP{
-		sdk:    sdk,
-		logger: log,
+		sdk:                       sdk,
+		logger:                    log,
+		allowDirectEntitlements:   allowDirectEntitlements,
+		allowDynamicValueMappings: allowDynamicValueMappings,
+		namespacedPolicy:          namespacedPolicy,
 	}
 
 	// If no store is provided, have EntitlementPolicyRetriever fetch from policy services
@@ -80,14 +92,9 @@ func NewJustInTimePDP(
 		store = NewEntitlementPolicyRetriever(sdk)
 	}
 
-	allAttributes, err := store.ListAllAttributes(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("failed to list cached attributes: %w", err)
-	}
-	allSubjectMappings, err := store.ListAllSubjectMappings(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("failed to list cached subject mappings: %w", err)
-	}
+	// Attributes and subject mappings are fetched per request (targeted), so they are no longer
+	// loaded here. Registered resources, obligations, and (gated) dynamic value mappings remain
+	// fully loaded because they are not covered by GetEntitleableAttributesByFqns.
 	allRegisteredResources, err := store.ListAllRegisteredResources(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch all registered resources: %w", err)
@@ -97,25 +104,28 @@ func NewJustInTimePDP(
 		return nil, fmt.Errorf("failed to fetch all obligations: %w", err)
 	}
 	// Experimental: only load dynamic value mappings when the feature is enabled.
-	var allDynamicValueMappings []*policy.DynamicValueMapping
 	if allowDynamicValueMappings {
-		allDynamicValueMappings, err = store.ListAllDynamicValueMappings(ctx)
+		p.dynamicValueMappings, err = store.ListAllDynamicValueMappings(ctx)
 		if err != nil {
 			return nil, fmt.Errorf("failed to fetch all dynamic value mappings: %w", err)
 		}
 	}
+	p.registeredResources = allRegisteredResources
 
-	pdp, err := NewPolicyDecisionPoint(ctx, log, allAttributes, allSubjectMappings, allRegisteredResources, allowDirectEntitlements, namespacedPolicy, WithDynamicValueMappings(allDynamicValueMappings, allowDynamicValueMappings))
+	registeredResourceValuesByFQN, err := buildRegisteredResourceValuesByFQN(allRegisteredResources, namespacedPolicy)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create new policy decision point: %w", err)
+		return nil, fmt.Errorf("failed to index registered resources: %w", err)
 	}
-	p.pdp = pdp
+	p.registeredResourceValuesByFQN = registeredResourceValuesByFQN
 
+	// Obligations are triggered by (action, attribute value FQN, PEP client) against a trigger graph
+	// built from all obligations; the attributes-by-value map is unused by the obligations PDP, so an
+	// empty map is passed.
 	obligationsPDP, err := obligations.NewObligationsPolicyDecisionPoint(
 		ctx,
 		log,
-		pdp.allEntitleableAttributesByValueFQN,
-		pdp.allRegisteredResourceValuesByFQN,
+		make(map[string]*attrs.GetAttributeValuesByFqnsResponse_AttributeAndValue),
+		registeredResourceValuesByFQN,
 		allObligations,
 	)
 	if err != nil {
@@ -187,7 +197,11 @@ func (p *JustInTimePDP) GetDecision(
 	case *authzV2.EntityIdentifier_RegisteredResourceValueFqn:
 		regResValueFQN := strings.ToLower(entityIdentifier.GetRegisteredResourceValueFqn())
 		// Registered resources do not have entity representations, so only one decision is made
-		decision, entitlements, err := p.pdp.GetDecisionRegisteredResource(ctx, regResValueFQN, action, resources)
+		innerPDP, err := p.buildInnerPDP(ctx, p.resourceValueFQNs(resources))
+		if err != nil {
+			return nil, fmt.Errorf("failed to build policy decision point: %w", err)
+		}
+		decision, entitlements, err := innerPDP.GetDecisionRegisteredResource(ctx, regResValueFQN, action, resources)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get decision for registered resource value FQN [%s]: %w", regResValueFQN, err)
 		}
@@ -228,8 +242,14 @@ func (p *JustInTimePDP) GetDecision(
 	var resourceDecisionsAcrossAllEntityReps []ResourceDecision
 	allPermitted := true
 
+	// Build a request-scoped PDP from only the attributes needed to decide these resources.
+	innerPDP, err := p.buildInnerPDP(ctx, p.resourceValueFQNs(resources))
+	if err != nil {
+		return nil, fmt.Errorf("failed to build policy decision point: %w", err)
+	}
+
 	for _, entityRep := range entityRepresentations {
-		entityRepresentationDecision, entitlements, err := p.pdp.GetDecision(ctx, entityRep, action, resources)
+		entityRepresentationDecision, entitlements, err := innerPDP.GetDecision(ctx, entityRep, action, resources)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get decision for entityRepresentation with original id [%s]: %w", entityRep.GetOriginalId(), err)
 		}
@@ -301,7 +321,11 @@ func (p *JustInTimePDP) GetEntitlements(
 		p.logger.DebugContext(ctx, "getting entitlements - resolving registered resource value FQN")
 		regResValueFQN := strings.ToLower(entityIdentifier.GetRegisteredResourceValueFqn())
 		// registered resources do not have entity representations, so we can skip the remaining logic
-		return p.pdp.GetEntitlementsRegisteredResource(ctx, regResValueFQN, withComprehensiveHierarchy)
+		innerPDP, err := p.buildInnerPDP(ctx, p.registeredResourceActionAttributeValueFQNs(regResValueFQN))
+		if err != nil {
+			return nil, fmt.Errorf("failed to build policy decision point: %w", err)
+		}
+		return innerPDP.GetEntitlementsRegisteredResource(ctx, regResValueFQN, withComprehensiveHierarchy)
 
 	case *authzV2.EntityIdentifier_WithRequestToken:
 		entityRepresentations, err = p.resolveEntitiesFromRequestToken(ctx, entityIdentifier.GetWithRequestToken(), skipEnvironmentEntities, []*authzV2.Resource{})
@@ -323,11 +347,87 @@ func (p *JustInTimePDP) GetEntitlements(
 		return nil, nil
 	}
 
-	entitlements, err := p.pdp.GetEntitlements(ctx, entityRepresentations, matchedSubjectMappings, withComprehensiveHierarchy)
+	// Build a request-scoped PDP from only the attributes referenced by the matched subject mappings.
+	innerPDP, err := p.buildInnerPDP(ctx, valueFQNsFromSubjectMappings(matchedSubjectMappings))
+	if err != nil {
+		return nil, fmt.Errorf("failed to build policy decision point: %w", err)
+	}
+
+	entitlements, err := innerPDP.GetEntitlements(ctx, entityRepresentations, matchedSubjectMappings, withComprehensiveHierarchy)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get entitlements: %w", err)
 	}
 	return entitlements, nil
+}
+
+// buildInnerPDP fetches the entitleable attributes for the provided value FQNs and constructs a
+// request-scoped PolicyDecisionPoint from them plus the fully-loaded registered resources and
+// dynamic value mappings.
+func (p *JustInTimePDP) buildInnerPDP(ctx context.Context, valueFQNs []string) (*PolicyDecisionPoint, error) {
+	definitions, subjectMappings, err := fetchEntitleableAttributes(ctx, p.sdk, valueFQNs)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch entitleable attributes: %w", err)
+	}
+	pdp, err := NewPolicyDecisionPoint(
+		ctx,
+		p.logger,
+		definitions,
+		subjectMappings,
+		p.registeredResources,
+		p.allowDirectEntitlements,
+		p.namespacedPolicy,
+		WithDynamicValueMappings(p.dynamicValueMappings, p.allowDynamicValueMappings),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request-scoped policy decision point: %w", err)
+	}
+	return pdp, nil
+}
+
+// resourceValueFQNs collects the lower-cased attribute value FQNs needed to decide the provided
+// resources: attribute-value resources contribute their FQNs directly, and registered-resource
+// resources contribute the attribute value FQNs of their action-attribute-values.
+func (p *JustInTimePDP) resourceValueFQNs(resources []*authzV2.Resource) []string {
+	fqns := make([]string, 0, len(resources))
+	for _, resource := range resources {
+		switch resource.GetResource().(type) {
+		case *authzV2.Resource_AttributeValues_:
+			for _, fqn := range resource.GetAttributeValues().GetFqns() {
+				fqns = append(fqns, strings.ToLower(fqn))
+			}
+		case *authzV2.Resource_RegisteredResourceValueFqn:
+			regResValueFQN := strings.ToLower(resource.GetRegisteredResourceValueFqn())
+			fqns = append(fqns, p.registeredResourceActionAttributeValueFQNs(regResValueFQN)...)
+		}
+	}
+	return fqns
+}
+
+// registeredResourceActionAttributeValueFQNs returns the lower-cased attribute value FQNs entitled
+// by the action-attribute-values of the given registered resource value.
+func (p *JustInTimePDP) registeredResourceActionAttributeValueFQNs(registeredResourceValueFQN string) []string {
+	rrValue, ok := p.registeredResourceValuesByFQN[registeredResourceValueFQN]
+	if !ok {
+		return nil
+	}
+	fqns := make([]string, 0, len(rrValue.GetActionAttributeValues()))
+	for _, aav := range rrValue.GetActionAttributeValues() {
+		fqns = append(fqns, strings.ToLower(aav.GetAttributeValue().GetFqn()))
+	}
+	return fqns
+}
+
+// valueFQNsFromSubjectMappings collects the lower-cased attribute value FQNs referenced by the
+// provided subject mappings.
+func valueFQNsFromSubjectMappings(subjectMappings []*policy.SubjectMapping) []string {
+	fqns := make([]string, 0, len(subjectMappings))
+	for _, sm := range subjectMappings {
+		fqn := strings.ToLower(sm.GetAttributeValue().GetFqn())
+		if fqn != "" {
+			fqns = append(fqns, fqn)
+		}
+	}
+	return fqns
 }
 
 // getMatchedSubjectMappings retrieves the subject mappings for the provided entity representations

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 	"strconv"
+	"strings"
 
 	"connectrpc.com/connect"
 	"github.com/go-viper/mapstructure/v2"
@@ -23,6 +24,20 @@ import (
 	"google.golang.org/protobuf/types/known/anypb"
 	"google.golang.org/protobuf/types/known/structpb"
 )
+
+// preResolvedEntityIDPrefix marks entity-chain entities whose claims are the finished output of a
+// completed strategy resolution. CreateEntityChainsFromTokens stamps it; ResolveEntities honors it
+// by returning the payload as-is instead of running every strategy a second time.
+//
+// The marker is an ephemeral-ID prefix rather than a claim on purpose. Resolution mechanics must
+// not enter the claims payload, where subject mappings would see them and portable ABAC policy
+// would couple to multi-strategy provider names and strategy ordering.
+//
+// Both ends of this contract live in this package: authz asks ERS to resolve every chain it gets,
+// and only the ERS that produced a chain may decide the work is already done. Hoisting this
+// short-circuit into the PDP is what broke direct entitlements - a caller cannot know which fields
+// an ERS projects onto EntityRepresentation.
+const preResolvedEntityIDPrefix = "multistrategy-resolved:"
 
 // ERSV2 implements the EntityResolutionServiceHandler for v2 multi-strategy resolution
 type ERSV2 struct {
@@ -79,6 +94,24 @@ func (ers *ERSV2) ResolveEntities(
 				}
 				// Convert to map[string]interface{}
 				claimsMap = claimsStruct.AsMap()
+
+				// A chain this service built from a token already carries the final strategy
+				// output. Re-resolving would re-run strategy selection against resolved rather
+				// than raw JWT claims - a different and untested input - and repeat every
+				// backend query the first resolution already paid for.
+				//
+				// Resolution metadata is intentionally absent here: createEntityFromResultV2
+				// excludes it from the chain, so these representations carry no metadata_ props.
+				if strings.HasPrefix(entityID, preResolvedEntityIDPrefix) {
+					ers.logger.DebugContext(ctx, "returning pre-resolved token chain entity without re-running strategies",
+						slog.String("entity_id", entityID))
+					resolvedEntities = append(resolvedEntities, &ersV2.EntityRepresentation{
+						OriginalId:      entityID,
+						AdditionalProps: []*structpb.Struct{&claimsStruct},
+					})
+					continue
+				}
+
 				resolveCtx = context.WithValue(ctx, types.JWTClaimsContextKey, claimsMap)
 			}
 		default:
@@ -404,7 +437,10 @@ func (ers *ERSV2) createEntityFromResultV2(_ context.Context, result *types.Enti
 		)
 	}
 
-	entityID := fmt.Sprintf("%s-%s-claims-%s",
+	// Marked pre-resolved so ResolveEntities returns this payload as-is rather than re-running
+	// every strategy against it. See preResolvedEntityIDPrefix.
+	entityID := fmt.Sprintf("%s%s-%s-claims-%s",
+		preResolvedEntityIDPrefix,
 		strategy.Name,
 		tokenID,
 		preferredEntityValueFromClaims(result.Claims, tokenID))

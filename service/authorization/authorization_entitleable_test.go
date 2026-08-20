@@ -198,6 +198,46 @@ func TestRetrieveMatchedAttributeMappingsPropagatesMatchError(t *testing.T) {
 	assert.Empty(t, getEntitleableAttributesRequests)
 }
 
+// TestRetrieveMatchedAttributeMappingsOmitsAbsentNotInSelectors pins the v1
+// consequence of the targeted lookup for NOT_IN subject mappings. The old
+// full-policy load handed every subject mapping to Rego, and a NOT_IN condition
+// passes when its selector is absent from the entity, so a mapping such as
+// ".groups NOT_IN [...]" entitled an entity that carried no ".groups" claim. The
+// targeted path forwards only the selectors the entity actually has to the
+// server-side MatchSubjectMappings prefilter, so a mapping conditioned on an
+// absent selector is never returned and no longer entitles. This matches the v2
+// JustInTimePDP, which uses the same flatten -> MatchSubjectMappings approach.
+func TestRetrieveMatchedAttributeMappingsOmitsAbsentNotInSelectors(t *testing.T) {
+	resetTargetedLookupMocks(t)
+
+	// The entity carries ".clientId" but not ".groups" (the NOT_IN selector).
+	props, err := structpb.NewStruct(map[string]any{"clientId": "abc"})
+	require.NoError(t, err)
+	ersResp := &entityresolution.ResolveEntitiesResponse{EntityRepresentations: []*entityresolution.EntityRepresentation{
+		{OriginalId: "e1", AdditionalProps: []*structpb.Struct{props}},
+	}}
+	as := &AuthorizationService{sdk: &otdf.SDK{Attributes: &myAttributesClient{}, SubjectMapping: &mySubjectMappingClient{}}}
+
+	// getAttributesByValueFqnsResponse is left empty, so the mock
+	// MatchSubjectMappings returns no mappings, mirroring a server that finds no
+	// mapping selector matching ".clientId".
+	mapped, err := as.retrieveMatchedAttributeMappings(t.Context(), ersResp, nil)
+	require.NoError(t, err)
+	assert.Empty(t, mapped)
+
+	// Only the entity's present selector is forwarded; ".groups" is never sent,
+	// so a NOT_IN mapping keyed on it cannot be matched and cannot entitle.
+	require.Len(t, matchSubjectMappingsRequests, 1)
+	selectors := make([]string, 0, len(matchSubjectMappingsRequests[0].GetSubjectProperties()))
+	for _, property := range matchSubjectMappingsRequests[0].GetSubjectProperties() {
+		selectors = append(selectors, property.GetExternalSelectorValue())
+	}
+	assert.Equal(t, []string{".clientId"}, selectors)
+	assert.NotContains(t, selectors, ".groups")
+	// No entitleable lookup happens when no mappings match.
+	assert.Empty(t, getEntitleableAttributesRequests)
+}
+
 func TestGetEntitlementsEvaluatesRegoWithoutMatchedSelectors(t *testing.T) {
 	resetTargetedLookupMocks(t)
 	getAttributesByValueFqnsResponse = attr.GetAttributeValuesByFqnsResponse{}

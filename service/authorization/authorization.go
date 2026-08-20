@@ -41,6 +41,9 @@ import (
 
 var ErrEmptyStringAttribute = errors.New("resource attributes must have at least one attribute value fqn")
 
+// maxEntitleableFQNsPerRequest mirrors the proto max_items limit on
+// GetEntitleableAttributesByFqnsRequest.fqns, so batches never exceed what the
+// server-side request validation accepts.
 const maxEntitleableFQNsPerRequest = 250
 
 type AuthorizationService struct { //nolint:revive // AuthorizationService is a valid name for this struct
@@ -405,7 +408,7 @@ func (as *AuthorizationService) GetEntitlements(ctx context.Context, req *connec
 	}
 	if err != nil {
 		as.logger.ErrorContext(ctx, "failed to retrieve subject mappings", slog.String("error", err.Error()))
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, connect.NewError(connect.CodeInternal, errors.New("failed to retrieve subject mappings"))
 	}
 	as.logger.DebugContext(ctx, "retrieved subject mappings", slog.Int("count", len(subjectMappings)))
 	avf := &attr.GetAttributeValuesByFqnsResponse{FqnAttributeValues: subjectMappings}
@@ -865,7 +868,11 @@ func getComprehensiveHierarchy(attributesMap map[string]*policy.Attribute, avf *
 	if len(attributesMap) == 0 {
 		// Go through all attribute definitions
 		attrDefs := avf.GetFqnAttributeValues()
-		for _, attrDef := range attrDefs {
+		for fqn, attrDef := range attrDefs {
+			// map the requested value FQN directly; non-hierarchy definitions
+			// carry no sibling values, so without this they would miss the map
+			// and log a spurious "no attribute definition found" warning.
+			attributesMap[fqn] = attrDef.GetAttribute()
 			for _, attrVal := range attrDef.GetAttribute().GetValues() {
 				attributesMap[attrVal.GetFqn()] = attrDef.GetAttribute()
 			}

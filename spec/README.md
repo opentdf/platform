@@ -39,6 +39,7 @@ They share BaseTDF's factoring and vocabulary but describe different wire format
 |---|---|---|
 | BinaryTDF v1alpha | CBOR-framed binary objects | [binarytdf/v1alpha/](binarytdf/v1alpha/) |
 | IC-TDF v1alpha | IC XML Trusted Data Format, `2014-DEC-r2017-JUL` | [ictdf/v1alpha/](ictdf/v1alpha/) |
+| NanoTDF v1alpha | Compact ECC binary format, sub-200-byte overhead | [nanotdf/v1alpha/](nanotdf/v1alpha/) |
 
 ## Previous Versions
 

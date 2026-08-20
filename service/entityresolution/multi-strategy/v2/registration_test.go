@@ -2,6 +2,7 @@ package multistrategy
 
 import (
 	"errors"
+	"strings"
 	"testing"
 
 	"connectrpc.com/connect"
@@ -360,4 +361,112 @@ func TestCreateEntityForTokenChainFailsClosedOnSerializationErrorWithContinue(t 
 	require.Equal(t, types.ErrorTypeMapping, inner.Type)
 	require.Equal(t, "token-1", inner.Context["token_id"])
 	require.Equal(t, "bad_subject", inner.Context["strategy"])
+}
+
+// TestCreateEntityFromResultV2MarksChainEntitiesPreResolved pins the producer half of the
+// pre-resolved contract. Without the marker, ResolveEntities cannot tell a finished strategy
+// payload apart from caller-supplied claims and re-runs every strategy against it.
+func TestCreateEntityFromResultV2MarksChainEntitiesPreResolved(t *testing.T) {
+	ers := &ERSV2{logger: logger.CreateTestLogger()}
+	result := &types.EntityResult{
+		Claims: map[string]interface{}{"username": "alice"},
+	}
+	strategy := &types.MappingStrategy{
+		Name:       "sql_subject",
+		EntityType: types.EntityTypeSubject,
+	}
+
+	resolved, err := ers.createEntityFromResultV2(t.Context(), result, strategy, "token-1")
+	require.NoError(t, err)
+	require.True(t,
+		strings.HasPrefix(resolved.GetEphemeralId(), preResolvedEntityIDPrefix),
+		"chain entity %q must be marked pre-resolved", resolved.GetEphemeralId())
+}
+
+// preResolvedTestERS builds an ERS whose only strategy selects on a raw JWT claim ("sub") that a
+// resolved payload no longer carries. Any attempt to re-resolve a pre-resolved entity therefore
+// fails strategy selection and surfaces as an error representation, which makes "did this
+// short-circuit?" directly observable.
+func preResolvedTestERS(t *testing.T) *ERSV2 {
+	t.Helper()
+	ers, err := NewERSV2(t.Context(), types.MultiStrategyConfig{
+		Providers: map[string]types.ProviderConfig{
+			"jwt": {Type: "claims", Connection: map[string]interface{}{}},
+		},
+		MappingStrategies: []types.MappingStrategy{
+			{
+				Name:       "jwt_strategy",
+				Provider:   "jwt",
+				EntityType: types.EntityTypeSubject,
+				Conditions: types.StrategyConditions{
+					JWTClaims: []types.JWTClaimCondition{{Claim: "sub", Operator: "exists"}},
+				},
+				OutputMapping: []types.OutputMapping{{SourceClaim: "sub", ClaimName: "username"}},
+			},
+		},
+	}, logger.CreateTestLogger())
+	require.NoError(t, err)
+	return ers
+}
+
+func resolvedClaimsEntity(t *testing.T, ephemeralID string) *entity.Entity {
+	t.Helper()
+	claimsStruct, err := structpb.NewStruct(map[string]interface{}{
+		"username":   "alice",
+		"department": "engineering",
+	})
+	require.NoError(t, err)
+	claimsAny, err := anypb.New(claimsStruct)
+	require.NoError(t, err)
+	return &entity.Entity{
+		EphemeralId: ephemeralID,
+		EntityType:  &entity.Entity_Claims{Claims: claimsAny},
+		Category:    entity.Entity_CATEGORY_SUBJECT,
+	}
+}
+
+// TestResolveEntitiesReturnsPreResolvedEntityWithoutReResolving is the consumer half. The token
+// flow calls CreateEntityChainsFromTokens then ResolveEntities, so without this short-circuit the
+// authz round-trip re-runs strategy selection against resolved rather than raw claims and repeats
+// every backend query. Keeping the optimization here - rather than in the PDP - is what lets authz
+// always go through ERS, which is what preserves ERS-projected fields like DirectEntitlements.
+func TestResolveEntitiesReturnsPreResolvedEntityWithoutReResolving(t *testing.T) {
+	ers := preResolvedTestERS(t)
+	entityID := preResolvedEntityIDPrefix + "jwt_strategy-token-1-claims-alice"
+
+	resp, err := ers.ResolveEntities(t.Context(), connect.NewRequest(&ersV2.ResolveEntitiesRequest{
+		Entities: []*entity.Entity{resolvedClaimsEntity(t, entityID)},
+	}))
+	require.NoError(t, err)
+
+	reps := resp.Msg.GetEntityRepresentations()
+	require.Len(t, reps, 1)
+	require.Equal(t, entityID, reps[0].GetOriginalId())
+	require.Len(t, reps[0].GetAdditionalProps(), 1)
+
+	fields := reps[0].GetAdditionalProps()[0].AsMap()
+	require.Equal(t, "alice", fields["username"])
+	require.Equal(t, "engineering", fields["department"])
+	require.NotContains(t, fields, "error", "pre-resolved entity must not be re-resolved")
+}
+
+// TestResolveEntitiesStillResolvesUnmarkedClaimsEntity proves the marker is what gates the
+// short-circuit, not merely the presence of claims. Caller-supplied claims entities - the
+// entity-chain decision path - must still go through full strategy resolution.
+func TestResolveEntitiesStillResolvesUnmarkedClaimsEntity(t *testing.T) {
+	ers := preResolvedTestERS(t)
+
+	resp, err := ers.ResolveEntities(t.Context(), connect.NewRequest(&ersV2.ResolveEntitiesRequest{
+		Entities: []*entity.Entity{resolvedClaimsEntity(t, "caller-supplied-entity")},
+	}))
+	require.NoError(t, err)
+
+	reps := resp.Msg.GetEntityRepresentations()
+	require.Len(t, reps, 1)
+	require.Equal(t, "caller-supplied-entity", reps[0].GetOriginalId())
+	require.Len(t, reps[0].GetAdditionalProps(), 1)
+
+	// The strategy selects on "sub", which these claims lack, so resolution runs and fails.
+	// The point of the assertion is that resolution ran at all.
+	require.Contains(t, reps[0].GetAdditionalProps()[0].AsMap(), "error")
 }

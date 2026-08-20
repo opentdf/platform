@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
-	"strconv"
 	"strings"
 
 	"github.com/opentdf/platform/lib/flattening"
@@ -15,9 +14,7 @@ import (
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/subjectmapping"
 	otdfSDK "github.com/opentdf/platform/sdk"
-	ent "github.com/opentdf/platform/service/entity"
 	ctxAuth "github.com/opentdf/platform/service/pkg/auth"
-	"google.golang.org/protobuf/types/known/structpb"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 
 	"github.com/opentdf/platform/service/internal/access/v2/obligations"
@@ -33,8 +30,7 @@ var (
 	ErrResourceDecisionLengthMismatch           = errors.New("access: resource decision length mismatch")
 	ErrResourceDecisionIDMismatch               = errors.New("access: resource decision ID mismatch")
 
-	errResolvedTokenChainRequiresHydration = errors.New("access: resolved token chain requires ERS hydration")
-	requestAuthTokenEphemeralID            = "with-request-token-auth-entity"
+	requestAuthTokenEphemeralID = "with-request-token-auth-entity"
 )
 
 type JustInTimePDP struct {
@@ -408,36 +404,6 @@ func filterEntityChain(entityChain *entity.EntityChain, skipEnvironmentEntities 
 	return filteredEntities
 }
 
-func entityRepresentationsFromResolvedChain(entityChain *entity.EntityChain, skipEnvironmentEntities bool) ([]*entityresolutionV2.EntityRepresentation, error) {
-	filteredEntities := filterEntityChain(entityChain, skipEnvironmentEntities)
-	if len(filteredEntities) == 0 {
-		return nil, errors.New("no subject entities to resolve - all were environment entities and skipped")
-	}
-
-	entityRepresentations := make([]*entityresolutionV2.EntityRepresentation, 0, len(filteredEntities))
-	for idx, chained := range filteredEntities {
-		claims := chained.GetClaims()
-		if claims == nil {
-			return nil, fmt.Errorf("%w: entity %s does not contain claims", errResolvedTokenChainRequiresHydration, chained.GetEphemeralId())
-		}
-
-		var claimsStruct structpb.Struct
-		if err := claims.UnmarshalTo(&claimsStruct); err != nil {
-			return nil, fmt.Errorf("failed to unpack resolved token chain entity %s: %w", chained.GetEphemeralId(), err)
-		}
-
-		originalID := chained.GetEphemeralId()
-		if originalID == "" {
-			originalID = ent.EntityIDPrefix + strconv.Itoa(idx)
-		}
-		entityRepresentations = append(entityRepresentations, &entityresolutionV2.EntityRepresentation{
-			OriginalId:      originalID,
-			AdditionalProps: []*structpb.Struct{&claimsStruct},
-		})
-	}
-	return entityRepresentations, nil
-}
-
 // resolveEntitiesFromToken roundtrips to ERS to resolve the provided token
 // and optionally skips environment entities (which is expected behavior in decision flow)
 func (p *JustInTimePDP) resolveEntitiesFromToken(
@@ -457,11 +423,11 @@ func (p *JustInTimePDP) resolveEntitiesFromToken(
 		return nil, fmt.Errorf("received %d entity chains in ERS response but expected exactly 1", len(entityChains))
 	}
 
-	entityRepresentations, err := entityRepresentationsFromResolvedChain(entityChains[0], skipEnvironmentEntities)
-	if errors.Is(err, errResolvedTokenChainRequiresHydration) {
-		return p.resolveEntitiesFromEntityChain(ctx, entityChains[0], skipEnvironmentEntities)
-	}
-	return entityRepresentations, err
+	// ERS is the single authority for producing EntityRepresentation. Building one here from the
+	// chain would drop every field only ERS can project onto it - DirectEntitlements among them -
+	// silently and without a compile error. Any no-rehydrate optimization belongs inside the ERS
+	// that produced the chain; see the pre-resolved short-circuit in multi-strategy.
+	return p.resolveEntitiesFromEntityChain(ctx, entityChains[0], skipEnvironmentEntities)
 }
 
 // resolveEntitiesFromRequestToken pulls the request token off the context where it has been set upstream

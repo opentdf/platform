@@ -25,8 +25,7 @@ import (
 )
 
 const (
-	// directEntitlementsClaim and directEntitlementsClaimCamel are the claim names that carry inline
-	// direct entitlements. Keep in sync with directEntitlementClaimKeys in the just-in-time PDP.
+	// Claim names carrying inline direct entitlements.
 	directEntitlementsClaim      = "direct_entitlements"
 	directEntitlementsClaimCamel = "directEntitlements"
 )
@@ -150,10 +149,8 @@ func parseDirectEntitlementsFromClaims(entityStruct *structpb.Struct) ([]*entity
 		return nil, nil
 	}
 
-	// The claim is consumed here and projected onto EntityRepresentation.DirectEntitlements, so drop
-	// it from the struct that becomes AdditionalProps. Leaving it behind would also feed caller-
-	// supplied entitlement data to subject-mapping evaluation, where a selector could match on it.
-	// claims is an independent copy produced by AsMap, so the parsing below is unaffected.
+	// Consumed onto DirectEntitlements, so drop it from AdditionalProps rather than also exposing it
+	// to subject-mapping evaluation. claims is an AsMap copy, so parsing below is unaffected.
 	delete(entityStruct.GetFields(), claimKey)
 
 	entitlementList, entitlementsOK := rawEntitlements.([]interface{})

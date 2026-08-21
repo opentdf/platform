@@ -138,6 +138,7 @@ At minimum, interoperability tests SHOULD cover:
 - one-byte changes to version, metadata, recovery, encapsulation, wrapped material,
   and ciphertext;
 - wrong-suite keys, lengths, and encodings;
+- content-encryption per-invocation and volume limits at and just above the boundary;
 - ML-KEM failure without distinguishable error leakage;
 - DIRECT and XOR_ALL paths, alternatives, missing groups, and reconstruction;
 - non-canonical, duplicate, and substituted policies; and
@@ -151,6 +152,10 @@ KAO and session context bytes, payload AAD, derived-key inputs, and expected fai
 - [BCP 14](https://www.rfc-editor.org/info/bcp14)
 - [RFC 5869: HKDF](https://www.rfc-editor.org/rfc/rfc5869)
 - [RFC 8126: Protocol Registries](https://www.rfc-editor.org/rfc/rfc8126)
+- [RFC 8446: TLS 1.3](https://www.rfc-editor.org/rfc/rfc8446)
 - [RFC 8610: CDDL](https://www.rfc-editor.org/rfc/rfc8610)
 - [RFC 8949: CBOR](https://www.rfc-editor.org/rfc/rfc8949)
 - [FIPS 203: ML-KEM](https://csrc.nist.gov/pubs/fips/203/final)
+- [NIST SP 800-38D: GCM and GMAC](https://doi.org/10.6028/NIST.SP.800-38D)
+- [Luykx and Paterson: Limits on Authenticated Encryption Use in TLS](https://www.isg.rhul.ac.uk/~kp/TLS-AEbounds.pdf)
+- [Iwata, Ohashi, and Minematsu: Breaking and Repairing GCM Security Proofs](https://eprint.iacr.org/2012/438)

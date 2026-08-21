@@ -16,13 +16,19 @@
 |---|---:|---|
 | `AES_256_GCM_HKDF_SHA256` | 1 | 32-byte object key, HKDF-SHA256, AES-256-GCM, 12-byte nonce, 16-byte tag |
 | `AES_256_GCM_HKDF_SHA256_STREAM` | 2 | Optional segmented construction defined by BinaryTDF-STREAM |
+| `AES_256_GCM_HKDF_SHA256_STREAM_PART` | 3 | Optional partitioned segmented construction defined by BinaryTDF-STREAM |
 
 Every frame version 2 implementation MUST support suite 1. Unsupported suites are
 rejected as `UNSUPPORTED_CAPABILITY`; there is no fallback.
 
 Each object has a unique 32-byte object key. DIRECT and XOR_ALL generate it uniformly
 at random. A derivation scheme defines byte-exact inputs producing a distinct key for
-each object. Object keys MUST NOT be reused or serialized directly.
+each object. Object keys MUST NOT be reused or serialized directly. The suite 1 payload
+key is a deterministic function of the object key, so reuse places two objects under
+one content-encryption key: protected volume accumulates against the Section 5 limit
+and a 12-byte nonce may repeat under one key. Suites 2 and 3 mix in a fresh stream
+salt, which separates their payload keys but does not relax this requirement.
+BinaryTDF-SEC Section 3.5 quantifies both cases.
 
 ## 2. Baseline key derivation
 
@@ -57,10 +63,40 @@ Suite 1 encrypts the payload with AES-256-GCM and a fresh random 12-byte nonce:
 payload_nonce || encrypted_payload || authentication_tag
 ```
 
-No plaintext may be released until authentication succeeds. The streaming suite may
-refine this rule only as defined by its registered specification.
+No plaintext may be released until authentication succeeds. The streaming suites may
+refine this rule only as defined by their registered specification.
 
-## 5. Security requirements
+The complete payload is one AES-GCM invocation, so it is bounded by the NIST SP
+800-38D Section 5.2.1.1 per-invocation limit. A suite 1 payload MUST NOT exceed
+68719476704 plaintext bytes, that is 2^36 - 32 bytes, or 64 GiB - 32 bytes. With the
+12-byte nonce and 16-byte tag, the corresponding Ciphertext Length is at most
+68719476732 bytes. A producer MUST NOT emit a larger suite 1 object, and an opener
+MUST reject one on the declared Ciphertext Length before decryption. The 8-byte
+Ciphertext Length field of BinaryTDF-PKG frames far more than AES-GCM can protect in
+one invocation; this requirement, not the frame, is the binding limit.
+
+A payload larger than that limit MUST use a segmented suite or several objects with
+independent object keys.
+
+## 5. Volume limits
+
+A single content-encryption key MUST NOT protect more than 2^40 plaintext bytes, that
+is 1099511627776 bytes. BinaryTDF-SEC Section 3 gives the analysis; this section gives
+the per-suite consequence.
+
+| Suite | Content-encryption key | Bound on one object |
+|---:|---|---|
+| 1 | payload key | 68719476704 bytes, from Section 4 |
+| 2 | payload key | 1099511627776 bytes, from BinaryTDF-STREAM Section 8.1 |
+| 3 | partition key `K_p` | 1099511627776 bytes per partition; object bounded by segment count |
+
+Suite 1 cannot reach the volume limit, because its per-invocation limit is smaller by
+a factor of about 16. Suite 2 protects a complete object under one payload key, so the
+volume limit is its object ceiling. Suite 3 derives one key per partition and bounds
+each partition instead, so it is the only suite whose object size is unconstrained by
+this limit.
+
+## 6. Security requirements
 
 AES-GCM nonce reuse under one key is catastrophic. Producers MUST use a cryptographically
 secure random source for object keys, shares, identifiers, and random nonces. Derived

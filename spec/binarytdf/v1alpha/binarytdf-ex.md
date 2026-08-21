@@ -131,3 +131,30 @@ binding     = HMAC-SHA256(binding_key, policy_bytes)
 ```
 
 The approximate fixed overhead is 250 bytes.
+
+## 5. Limit vectors
+
+These items extend the BinaryTDF-CORE Section 4 coverage with the content-encryption
+limits of BinaryTDF-SEC Section 3. Lengths are exact; payload bytes are omitted because
+only the declared lengths and header fields decide each case. Every rejection happens
+before decryption, on frame and header values alone.
+
+1. Suite 1 at the per-invocation limit. A Ciphertext Length of `68719476732` carries
+   68719476704 plaintext bytes with a 12-byte nonce and a 16-byte tag, exactly the
+   BinaryTDF-PAY Section 4 limit, and MUST open. A Ciphertext Length of `68719476733`
+   carries one byte more and MUST be rejected.
+2. Suite 2 at the volume ceiling. With `segment_size` 1048576, a Ciphertext Length of
+   `1099528405308` spans 1048593 segments and 1099511627776 plaintext bytes, exactly
+   the BinaryTDF-STREAM Section 8.1 ceiling, and MUST open. A Ciphertext Length of
+   `1099528405309` carries one plaintext byte more and MUST be rejected.
+3. Suite 3 at a partition boundary. With `segment_size` 1048576 and
+   `partition_segments` 4, segment 3 decrypts under `K_0` and segment 4 under `K_1`,
+   where `K_1` is `HKDF-Expand(payload_key,
+   UTF8("binary-tdf:v2:stream-partition") || 0000000000000001, 32)`. The partition
+   index and the nonce indexes are hexadecimal. Their nonces keep the absolute index:
+   `nonce_prefix || 00000003 || 00` and `nonce_prefix || 00000004 || 00`. Swapping the
+   two ciphertext segments MUST fail authentication.
+4. Suite 3 parameter rejection. With `segment_size` 1048576, `partition_segments`
+   1048592 is the largest conforming value, because `1048592 * 1048560` is
+   1099511627520. The value 1048593 gives 1099512676080 and MUST be rejected by
+   BinaryTDF-STREAM Section 9.4.

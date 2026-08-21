@@ -61,6 +61,12 @@ PKG, CORE, and EX. BinaryTDF-SCH corresponds to the BaseTDF JSON schemas while u
 CDDL for deterministic CBOR. BinaryTDF-MTD makes metadata carriage explicit, and
 BinaryTDF-REC separates recovery topology from protection of one recovery value.
 
+BinaryTDF-STREAM registers both segmented content-encryption suites, identifiers 2 and
+3. Suite 3 matches the BaseTDF 5 partition-key construction: both expand a partition
+key from the content key using HKDF and a big-endian partition index, and both hold one
+content-encryption key to 2^40 plaintext bytes. Labels, encodings, and wire formats
+remain suite-specific.
+
 BinaryTDF-PAY covers the payload-encryption portion of BaseTDF-INT. BinaryTDF has no
 separate INT module because its baseline integrity is supplied by the selected AEAD
 suite. It has no ASN module because signed claims are not a core capability, and no LOC

@@ -1,36 +1,40 @@
-# BinaryTDF-STREAM: AES-256-GCM-HKDF Streaming Suite
+# BinaryTDF-STREAM: AES-256-GCM-HKDF Streaming Suites
 
 | | |
 |---|---|
 | Document | BinaryTDF-STREAM |
-| Extension version | 0.1 |
+| Extension version | 0.2 |
 | Source draft | 0.2 |
 | Frame version | 2 |
-| Registry identifier | `AES_256_GCM_HKDF_SHA256_STREAM = 2` |
+| Registry identifiers | `AES_256_GCM_HKDF_SHA256_STREAM = 2`, `AES_256_GCM_HKDF_SHA256_STREAM_PART = 3` |
 | Status | Draft, optional |
 | Depends on | BinaryTDF-SEC, BinaryTDF-PAY, BinaryTDF-SCH, BinaryTDF-PKG |
 
-This suite protects one large payload as independently authenticated segments inside
-the ordinary Ciphertext section. Its key schedule, nonce construction, and segment
-encryption derive from the
+This document registers two suites that protect one large payload as independently
+authenticated segments inside the ordinary Ciphertext section. Sections 1 through 8
+define suite 2, whose key schedule, nonce construction, and segment encryption derive
+from the
 [Tink AES-GCM-HKDF Streaming AEAD encryption function](https://developers.google.com/tink/streaming-aead/aes_gcm_hkdf_streaming).
-A BinaryTDF header declares ciphertext segment size.
+Section 9 defines suite 3, which adds partition-key derivation to that construction so
+that one object may exceed the volume a single AES-GCM key may protect. A BinaryTDF
+header declares ciphertext segment size.
 
-It supports bounded-memory processing and optional random access without changing the
+Both support bounded-memory processing and optional random access without changing the
 BinaryTDF-PKG frame, recovery, KAO wrapping, policy binding, or KAS protocol.
 
 ## 1. Core relationship
 
-Identifier 2 is reserved for this suite. A compatible revision retains it; an
-incompatible parameter, encoding, derivation, nonce, release, or interpretation change
-requires a new identifier.
+Identifier 2 is reserved for suite 2 and identifier 3 for suite 3. A compatible
+revision retains an identifier; an incompatible parameter, encoding, derivation, nonce,
+release, or interpretation change requires a new identifier.
 
-Support is optional. An implementation MAY claim core conformance without implementing
-this suite. A receiver that does not implement it MUST reject suite 2 as
-`UNSUPPORTED_CAPABILITY` and MUST NOT fall back to another suite. The suite consumes
-the 32-byte object key from any recovery scheme. KEY_EPOCH includes the
-content-encryption identifier in object-key derivation, so selecting this suite
-produces a different object key than suite 1 for the same epoch identity.
+Support is optional and the two suites are independent: an implementation MAY claim
+core conformance without implementing either, and MAY implement one without the other.
+A receiver that does not implement a suite MUST reject it as `UNSUPPORTED_CAPABILITY`
+and MUST NOT fall back to another suite. Each suite consumes the 32-byte object key
+from any recovery scheme. KEY_EPOCH includes the content-encryption identifier in
+object-key derivation, so selecting a suite here produces a different object key than
+suite 1 for the same epoch identity.
 
 This adopts Tink's cryptographic construction, not Tink keysets, Protocol Buffers, or
 byte-exact header. BinaryTDF's object key is Tink `KeyValue`; `segment_size` is
@@ -39,14 +43,25 @@ plus encoded segment size is Tink `AssociatedData`.
 
 ## 2. Applicability
 
-Suite 1 is a single AES-GCM message and is limited to about 64 GiB of plaintext; its
-release rule also requires buffering or double-reading large data. This suite removes
-those limits with independently authenticated segments.
+Suite 1 is a single AES-GCM message, so it cannot carry more than 68719476704
+plaintext bytes: the NIST SP 800-38D Section 5.2.1.1 per-invocation limit, stated
+normatively in BinaryTDF-PAY Section 4. Its release rule also requires buffering or
+double-reading large data. Independently authenticated segments remove both
+constraints, because each segment is a separate bounded invocation that is verified
+and may be released on its own.
 
-It protects one logical payload. It is not a collection container. The frame still
-places Ciphertext Length before bytes, so the producer MUST know final encoded length
-or use seekable output and backpatch it. Open-ended live streams require multiple
-bounded objects or a separate transport/container specification.
+Segmentation removes a per-invocation framing limit; it does not remove the cumulative
+volume bound. The AES-GCM confidentiality bound counts total plaintext blocks under one
+key however those blocks are divided into messages, so splitting a payload into more
+segments does not let one key protect more of it. Segmenting is not rekeying.
+Section 8.1 therefore caps a suite 2 object at 2^40 plaintext bytes, and Section 9
+defines suite 3, which rekeys at partition boundaries to carry larger objects.
+BinaryTDF-SEC Section 3 gives the analysis behind both.
+
+Each suite protects one logical payload; neither is a collection container. The frame
+still places Ciphertext Length before bytes, so the producer MUST know final encoded
+length or use seekable output and backpatch it. Open-ended live streams require
+multiple bounded objects or a separate transport/container specification.
 
 ## 3. Parameters and derivation
 
@@ -170,14 +185,203 @@ validation precedes segment work.
 | Segment 0 plaintext | `segment_size - 60` maximum |
 | Later plaintext segment | `segment_size - 16` maximum |
 | Segment count | at most 2^32 |
+| Total plaintext | at most 1099511627776 bytes, that is 2^40 |
 | Fixed overhead | 44-byte header and 16-byte tag per segment |
 | Working memory | one segment |
 
-Maximum plaintext is constrained by segment count, size, and outer Ciphertext Length.
-Implementations MUST enforce configured total-byte, size, and count limits before
-allocation or cryptographic processing. Profiles MAY set lower limits.
+Maximum plaintext is constrained by segment count, size, outer Ciphertext Length, and
+the volume ceiling below. Implementations MUST enforce configured total-byte, size, and
+count limits before allocation or cryptographic processing. Profiles MAY set lower
+limits.
 
-## 9. Security
+### 8.1 Volume ceiling
+
+One payload key protects every segment of a suite 2 object, so the object as a whole is
+one content-encryption key's worth of plaintext. A suite 2 object MUST NOT protect more
+than 2^40 plaintext bytes, that is 1099511627776 bytes. BinaryTDF-SEC Section 3.1
+states the limit and gives its analysis.
+
+The complete plaintext length follows from the frame before any decryption:
+
+```text
+segment_count   = ceil(Ciphertext Length / segment_size)
+total_plaintext = Ciphertext Length - 44 - 16 * segment_count
+```
+
+A producer MUST NOT emit a suite 2 object whose `total_plaintext` exceeds the ceiling,
+and a decoder MUST reject such an object before allocating a segment buffer or
+authenticating any segment. Choosing a smaller `segment_size` does not raise the
+ceiling, because the bound counts plaintext blocks and not messages.
+
+Suite 2 therefore tops out at 1 TiB of plaintext per object. That is its scale ceiling:
+a larger payload MUST use suite 3, which rekeys per partition, or be divided into
+several objects with independent object keys.
+
+## 9. Partitioned suite 3
+
+Identifier 3, `AES_256_GCM_HKDF_SHA256_STREAM_PART`, is suite 2's segment construction
+with one addition: the payload key encrypts nothing, and every segment is encrypted
+under a partition key expanded from it. Rekeying at partition boundaries keeps each
+content-encryption key inside the BinaryTDF-SEC Section 3.1 volume ceiling while the
+object grows to storage scale.
+
+Sections 3 through 7 apply to suite 3 as written except where this section replaces
+them, and Section 1 governs identifier 3 unchanged. Suite 3 adds no CBOR field: its
+only appearance in CBOR is `content_encryption_suite = 3` in Protected Metadata,
+registered by BinaryTDF-SCH as `aes-256-gcm-hkdf-sha256-stream-part`. Its parameter
+travels in the ciphertext header like every other suite 2 parameter.
+
+### 9.1 Header and partition parameter
+
+`partition_segments` is an unsigned 32-bit count of segments per partition. It is
+appended to the Section 4 header, which grows from 44 to 48 bytes:
+
+```text
+header = 0x30 || uint32_be(segment_size) || stream_salt
+      || nonce_prefix || uint32_be(partition_segments)
+
+0x30                1 byte    declared header length, 48 bytes
+segment_size        4 bytes
+stream_salt        32 bytes
+nonce_prefix        7 bytes
+partition_segments  4 bytes
+```
+
+The parameter is appended rather than inserted, so every field shared with suite 2
+keeps its offset and meaning and the first byte still declares total header length. A
+decoder MUST reject a declared header length other than `0x30`, which also prevents a
+suite 2 reader from consuming a suite 3 header or the reverse.
+
+Capacities and offsets change only by the four added bytes:
+
+```text
+segment 0 plaintext capacity = segment_size - 64
+later plaintext capacity     = segment_size - 16
+
+segment_0_encrypted_offset   = 48
+segment_i_encrypted_offset   = i * segment_size, for i > 0
+```
+
+`segment_size` MUST be greater than 64 and MUST NOT exceed 2147483647. The Ciphertext
+section MUST be at least 64 bytes: the header and one tag for an empty final segment.
+The Section 4 rules on maximum-length non-final segments, the non-empty final segment,
+and rejection of truncated or malformed segments apply unchanged.
+
+### 9.2 Derivation
+
+The payload key is derived as in Section 3 with `partition_segments` appended to the
+info string:
+
+```text
+payload_key = HKDF-SHA256(
+  ikm  = object_key,
+  salt = stream_salt,
+  info = payload_aad || uint32_be(segment_size) || uint32_be(partition_segments),
+  len  = 32
+)
+```
+
+The additional fixed-width suffix binds the partition parameter and separates the two
+suites: one object key, salt, AAD, and segment size yield unrelated payload keys under
+suite 2 and suite 3. In the Section 3 mapping, Tink `AssociatedData` is
+`payload_aad || uint32_be(segment_size) || uint32_be(partition_segments)`; every other
+parameter is unchanged.
+
+`partition_segments` MUST be at least 1. Partition `p` covers segment indexes
+`p * partition_segments` through `p * partition_segments + partition_segments - 1`, so
+segment `i` is encrypted under:
+
+```text
+p   = floor(i / partition_segments)
+
+K_p = HKDF-Expand(
+  prk  = payload_key,
+  info = UTF8("binary-tdf:v2:stream-partition") || uint64_be(p),
+  len  = 32
+)
+```
+
+This is RFC 5869 Expand with the payload key directly as the pseudorandom key and no
+Extract step, because the payload key is already a uniform HKDF output. The partition
+index is encoded in eight bytes even though a 32-bit segment index cannot produce a
+partition index above 2^32 - 1; the label and width match BaseTDF 5 partition
+derivation.
+
+The Section 6 producer step 4 emits
+`AES-256-GCM(K_p, segment_nonce(i), empty_aad, segment_plaintext)`. The payload key
+performs no AES-GCM operation. A producer that distributes segment work MUST hand a
+worker only the partition keys it needs and MUST NOT hand it the payload key.
+
+### 9.3 Nonce
+
+Nonce construction is unchanged from Section 5:
+
+```text
+segment_nonce(i) = nonce_prefix || uint32_be(i) || final_byte
+```
+
+The index is the absolute segment index; it does not restart at a partition boundary.
+Restarting would also be sound, because each partition has its own key, but the
+absolute index is strictly safer: it keeps every key and nonce pair distinct even if a
+partition key were repeated, whether through a repeated payload key or an
+implementation error in Section 9.2. It also keeps random access simple, because the
+nonce of segment `i` depends only on `i`. Segment AES-GCM AAD remains empty.
+
+### 9.4 Volume ceiling
+
+No partition key may protect more than 2^40 plaintext bytes. The header alone bounds
+that quantity, because no segment carries more than `segment_size - 16` plaintext
+bytes:
+
+```text
+partition_segments * (segment_size - 16) <= 1099511627776
+```
+
+A producer MUST select parameters satisfying this inequality, and a decoder MUST reject
+a header that violates it before allocating a segment buffer or authenticating any
+segment. The bound is conservative: segment 0 carries 48 fewer bytes and the final
+segment may be short, so a conforming partition holds at most, and usually less than,
+the ceiling.
+
+At the maximum `segment_size` of 2147483647, `partition_segments` MUST NOT exceed 512,
+because `512 * 2147483631` is 1099511619072 and `513 * 2147483631` is 1101659102703.
+
+### 9.5 Limits and object size
+
+| Quantity | Limit |
+|---|---|
+| Ciphertext segment | 65 through 2147483647 bytes |
+| Segment 0 plaintext | `segment_size - 64` maximum |
+| Later plaintext segment | `segment_size - 16` maximum |
+| Segment count | at most 2^32 |
+| `partition_segments` | 1 through 4294967295, further bounded by Section 9.4 |
+| Partition plaintext | at most 1099511627776 bytes, that is 2^40 |
+| Total plaintext | bounded by segment count and segment size, not by the volume ceiling |
+| Fixed overhead | 48-byte header and 16-byte tag per segment |
+| Working memory | one segment |
+
+Object size is bounded by the segment fields rather than by the volume ceiling:
+
+```text
+max object plaintext = (segment_size - 64) + (2^32 - 1) * (segment_size - 16)
+                     = 9223371963840331728 bytes at segment_size 2147483647
+```
+
+That is 8 EiB, within rounding of 2^63, and its Ciphertext Length of
+9223372032559808512 bytes fits the 8-byte frame field. The partition arithmetic gives
+the same figure: at that segment size a partition holds at most
+`512 * 2147483631 = 1099511619072` bytes, just under 2^40, and `2^32 / 512` is 2^23
+partitions, so partition size times partition count is at most
+`2^23 * 2^40 = 2^63` bytes and exactly `2^23 * 1099511619072 = 9223371963840331776`
+bytes, which is the formula above plus the 48 header bytes segment 0 gives up.
+
+The Amazon S3 single-object maximum of 5 TiB, or 5497558138880 bytes, is about 1.7
+million times smaller than that. Ordinary parameters reach it comfortably: at
+`segment_size` 1048576 and `partition_segments` 1048576, each partition protects at
+most 1099494850560 bytes, 16 MiB inside the ceiling, and a 5 TiB payload occupies
+5242961 segments in six partitions.
+
+## 10. Security
 
 - Prefix authenticity is not completeness. Pipelines need a failure path that retracts
   or abandons partial output.
@@ -188,8 +392,16 @@ allocation or cryptographic processing. Profiles MAY set lower limits.
 - Segments do not transplant across objects or positions because payload derivation,
   index, and final marker differ.
 - Random access may reveal access patterns to storage or transport.
+- Suite 2 has no rekeying mechanism, so the Section 8.1 ceiling is its only protection
+  against AES-GCM volume degradation. Producers of large data SHOULD prefer suite 3
+  rather than approaching that ceiling.
+- `partition_segments` is attacker-controlled until authentication in the same way
+  segment size is. Validate it against Section 9.4 before allocation; its derivation
+  binding detects later change.
+- A disclosed partition key exposes only the segments of its partition. It does not
+  yield the payload key, another partition key, or any other object.
 
-## 10. Conformance
+## 11. Conformance
 
 Vectors MUST include at least three segment sizes including 65536; empty payloads and
 payloads around every boundary; exact headers, keys, offsets, nonces, ciphertext, and
@@ -197,3 +409,11 @@ tags; truncation and removal of final segments; reorder, duplication, and traili
 bytes; invalid sizes and bit corruption in every header and segment component;
 cross-object transplant; late sequential failure after partial release; and interior
 random access with and without final completion.
+
+Vectors MUST additionally include, for the limits of Sections 8.1 and 9.4, a suite 2
+object at exactly the volume ceiling and the next larger object; a suite 3 object whose
+segment indexes cross at least two partition boundaries, with exact `K_p` values and
+absolute-index nonces on both sides of each boundary; a suite 3 header whose
+`partition_segments` and `segment_size` product exceeds the ceiling; and a suite 3
+header presented to a suite 2 reader and the reverse. BinaryTDF-EX Section 5 gives
+worked values for the boundary cases.

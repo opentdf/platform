@@ -36,7 +36,8 @@ semantic requirements; this section is the consolidated schema.
 content-encryption-suite = &(
   unspecified: 0,
   aes-256-gcm-hkdf-sha256: 1,
-  aes-256-gcm-hkdf-sha256-stream-64k: 2
+  aes-256-gcm-hkdf-sha256-stream-64k: 2,
+  aes-256-gcm-hkdf-sha256-stream-part: 3
 )
 
 recovery-scheme = &(

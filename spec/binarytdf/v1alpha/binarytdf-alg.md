@@ -17,10 +17,11 @@
 | `UNSPECIFIED` | 0 | `00` | invalid |
 | `AES_256_GCM_HKDF_SHA256` | 1 | `01` | baseline single-message suite |
 | `AES_256_GCM_HKDF_SHA256_STREAM` | 2 | `02` | streaming suite defined by BinaryTDF-STREAM |
+| `AES_256_GCM_HKDF_SHA256_STREAM_PART` | 3 | `03` | partitioned streaming suite defined by BinaryTDF-STREAM |
 
-Suite 1 is mandatory. Suite 2 is optional. A suite defines the complete payload
-construction inside the opaque Ciphertext section. Registering a suite does not change
-the frame or object-key recovery.
+Suite 1 is mandatory. Suites 2 and 3 are optional and independent of each other. A
+suite defines the complete payload construction inside the opaque Ciphertext section.
+Registering a suite does not change the frame or object-key recovery.
 
 ## 2. Recovery schemes
 
@@ -67,6 +68,9 @@ A suite, scheme, or extension specification MUST define, as applicable:
 - its identifier and encoded bytes or registered CBOR tag;
 - algorithms, parameter sets, key sizes, output sizes, and encodings;
 - KDF inputs, domain-separation strings, and associated data;
+- for a content-encryption suite, the maximum plaintext one key protects and the
+  maximum plaintext one AEAD invocation protects, within the bounds of BinaryTDF-SEC
+  Section 3;
 - producer, opener, and authority validation;
 - malformed-input and cryptographic-failure behavior;
 - whether the capability is normally critical; and

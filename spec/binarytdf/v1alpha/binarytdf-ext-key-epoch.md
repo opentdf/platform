@@ -123,6 +123,19 @@ and does not make existing objects undecryptable. A producer MUST count complete
 plaintext when the byte limit is present. Epoch values MUST increase within a dataset
 and MUST NOT be reused.
 
+Every epoch limit, including `max_total_plaintext_bytes`, is an authorization
+blast-radius and rotation control on a long-lived producer key. It bounds how much data
+one released epoch secret exposes and when the producer must rotate, and it is counted
+across every object in the epoch. It is not an AEAD usage bound. The AEAD bound is
+separate: it applies per content-encryption key per object and is stated by
+BinaryTDF-SEC Section 3.1 and BinaryTDF-PAY Section 5. Every object in an epoch has its
+own object key by the Section 5 derivation below, so an epoch may carry far more
+plaintext than the AEAD bound without any key approaching it. Neither limit relieves
+the other: an epoch byte
+limit of any size leaves a suite 2 object with its own ceiling, and an object that
+respects every partition ceiling still counts its complete plaintext against the epoch
+limit.
+
 ## 4. Epoch-secret recovery
 
 The anchor selects one base topology:

@@ -112,7 +112,7 @@ using any BaseTDF-LOC locator.
 | `type` | string | REQUIRED | MUST be `split`. |
 | `keyAccess` | array | REQUIRED | One or more BaseTDF-KAO objects. |
 | `method` | object | REQUIRED | Content-encryption parameters. |
-| `keyDerivation` | object | OPTIONAL | Partition key derivation. |
+| `keyDerivation` | object | conditional | Partition key derivation; REQUIRED above the Section 4.3 volume limit. |
 | `integrityInformation` | object | REQUIRED | BaseTDF-INT profile. |
 | `policy` | string | REQUIRED | Base64 of the exact BaseTDF-POL JSON string. |
 
@@ -149,6 +149,43 @@ encryption and HS256 segment hashing use `K_p`; Merkle nodes and roots use the D
 Without this object, segments use the DEK as in version 4. Distributed workers MUST
 receive only assigned partition keys. Append checkpoints MUST end at a partition
 boundary unless `partitionSegments` is one.
+
+### 4.3 Volume limits
+
+No content-encryption key may protect more than `MAXKEYBYTES = 2^40` plaintext
+bytes (1099511627776). BaseTDF-SEC Section 6.7 gives the analysis; this section
+gives the manifest constraints. Writers MUST satisfy them and readers MUST reject a
+manifest that violates them.
+
+Let `T` be the total plaintext protected under one DEK: `plaintextSize` for a
+scalable layout, or the checked sum of `segments[].segmentSize` for an explicit
+one. For an append chain, `T` is the cumulative total at the current head
+(Section 7), not the increment.
+
+1. `keyDerivation` is REQUIRED when `T > MAXKEYBYTES`, because otherwise every
+   segment is encrypted under the DEK.
+2. When `keyDerivation` is present, no partition may cover more than
+   `MAXKEYBYTES` plaintext bytes. With `n = min(partitionSegments, segmentCount)`:
+
+```text
+uniform:  n * segmentSizeDefault <= MAXKEYBYTES
+indexed:  n * segmentSizeMax     <= MAXKEYBYTES
+explicit: for every p,
+          sum(segmentSize[i] : floor(i / partitionSegments) = p) <= MAXKEYBYTES
+```
+
+The uniform and indexed forms are conservative upper bounds computable from the
+manifest header alone, because `segmentSizeDefault` and `segmentSizeMax` bound
+every segment in their layouts. The explicit form is exact because every size is
+recorded. An indexed writer whose actual partition bytes fall under the ceiling but
+whose `segmentSizeMax` product does not MUST still lower `partitionSegments`; the
+check is on the manifest, not on the realized sizes.
+
+The DEK itself is unconstrained by `MAXKEYBYTES` when `keyDerivation` is present,
+since it then serves only as the HKDF PRK and the Merkle HMAC key.
+
+Each TDF object MUST use a freshly generated DEK; a DEK MUST NOT be reused across
+objects (BaseTDF-SEC Section 6.7.5).
 
 ## 5. Integrity Dispatch
 
@@ -218,7 +255,8 @@ publishers MUST serialize publication and retain fork evidence.
 A writer MUST:
 
 1. choose and validate packaging and layout;
-2. generate a 256-bit DEK and, for scalable layouts, a four-byte nonce prefix;
+2. generate a fresh 256-bit DEK and, for scalable layouts, a four-byte nonce
+   prefix, and select `keyDerivation` to satisfy Section 4.3;
 3. create policy, splits, and KAOs;
 4. encrypt ordered segments with unique/deterministic IVs and compute hashes;
 5. create the explicit aggregate root or scalable Merkle tree and root;
@@ -239,7 +277,7 @@ A reader MUST:
 3. verify detached/sharded manifest signatures before locators;
 4. validate locators and exact resource sizes;
 5. complete KAS authorization, verify policy bindings, and reconstruct the DEK;
-6. validate algorithms and integrity structure;
+6. validate algorithms, integrity structure, and the Section 4.3 volume limits;
 7. verify requested ciphertext under BaseTDF-INT, including IV, segment hash,
    Merkle path when applicable, sizes, count, root, and AEAD tag; and
 8. release only authenticated plaintext and verify applicable assertions.

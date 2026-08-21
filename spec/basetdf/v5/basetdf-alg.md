@@ -108,7 +108,8 @@ The 96-bit initialization vector (IV, also called nonce) MUST be unique for ever
 encryption operation performed under the same key. Reuse of an IV under the same
 key catastrophically compromises both confidentiality and authenticity. The 128-bit
 authentication tag MUST be appended to each ciphertext segment and verified before
-any plaintext is released.
+any plaintext is released. The plaintext volume protected under one A256GCM key and
+the plaintext size of one invocation are both bounded (see BaseTDF-SEC Section 6.7).
 
 ### 3.2 Key Protection Algorithms
 

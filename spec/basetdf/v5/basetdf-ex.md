@@ -1028,6 +1028,11 @@ wire bytes, expected outputs, and negative outcomes for:
 13. four-part sharding and a non-contiguous-parts negative;
 14. off-allowlist, non-HTTPS, redirect-to-unlisted, and oversized locator failures;
 15. aligned uniform and short-tail indexed consistency proofs, with changed-leaf,
-    immutable-parameter, partition-boundary, rollback, and fork negatives.
+    immutable-parameter, partition-boundary, rollback, and fork negatives;
+16. volume-limit negatives: a manifest above 2^40 plaintext bytes that omits
+    `keyDerivation`, and one whose partition size bound exceeds 2^40 plaintext
+    bytes (BaseTDF-CORE Section 4.3); and
+17. a segment size above the AES-GCM per-invocation limit of 68719476704 bytes,
+    rejected before allocation (BaseTDF-INT Section 2).
 
 Placeholder values in this document MUST NOT be used as conformance vectors.

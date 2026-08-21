@@ -37,6 +37,14 @@ encrypted_segment_i = IV_i || ciphertext_i || tag_i
 AES-256-GCM uses a 12-byte IV and 16-byte tag, so encrypted size is plaintext size
 plus 28. The tag MUST be verified before segment plaintext is released.
 
+One segment is one AEAD invocation, so no segment may exceed the AES-GCM
+per-invocation plaintext limit of `2^36 - 32 = 68719476704` bytes (NIST SP 800-38D
+Section 5.2.1.1). Every `segmentSizeDefault`, `segmentSizeMax`, `lastSegmentSize`,
+and recorded `segmentSize` MUST satisfy that cap, and readers MUST reject a larger
+value before allocating. The cap is absolute; manifest and reader limits are
+normally far below it. The total plaintext under one segment key is limited
+separately by BaseTDF-CORE Section 4.3.
+
 With no key derivation, a segment uses the DEK. Otherwise it uses `K_p` from CORE,
 where `p = floor(i / partitionSegments)`. Merkle nodes and roots always use the DEK.
 
@@ -124,10 +132,10 @@ This closed-form arithmetic is normative. Cross-segment ranges are split.
 ### 5.2 Indexed
 
 `segmentSizeMax` is REQUIRED and `lastSegmentSize` absent. Any non-empty segment may
-be short, including interior segments. Each size MUST not exceed the manifest and
-reader limits. `segmentSizeDefault` is a writer target. Writers SHOULD coalesce tiny
-segments unless an application requests a checkpoint. Authenticated subtree sums
-provide O(log N) lookup (Section 8).
+be short, including interior segments. Each size MUST not exceed `segmentSizeMax`,
+the Section 2 cap, or reader limits. `segmentSizeDefault` is a writer target. Writers
+SHOULD coalesce tiny segments unless an application requests a checkpoint.
+Authenticated subtree sums provide O(log N) lookup (Section 8).
 
 ## 6. Merkle Construction
 
@@ -326,8 +334,11 @@ The tree may live on untrusted storage and is safe only after nodes fold to the
 DEK-keyed root. Headers/reads still require pre-authentication bounds. GMAC segment
 hashes have 128-bit output, while every Merkle hash/root is HMAC-SHA256. Partition
 keys limit worker scope but are not forward-secret. Deterministic uniqueness still
-requires a fresh random nonce prefix for each DEK and no reuse of a
-`(segment key, nonce prefix, index)` tuple.
+requires a fresh DEK and a fresh random nonce prefix for each object, and no reuse
+of a `(segment key, nonce prefix, index)` tuple. Partition keys are also the
+rekeying mechanism for the AEAD volume bound; segment size is not, because that
+bound counts total bytes under a key rather than invocations (BaseTDF-SEC
+Section 6.7).
 
 ## 13. Normative References
 

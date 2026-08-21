@@ -21,6 +21,7 @@
 8. [Post-Quantum Cryptography Migration](#8-post-quantum-cryptography-migration)
 9. [Packaging and Scale Security](#9-packaging-and-scale-security)
 10. [Normative References](#10-normative-references)
+11. [Informative References](#11-informative-references)
 
 ---
 
@@ -635,7 +636,117 @@ For AES-GCM:
   confidentiality and integrity. Implementations MUST ensure uniqueness
   through deterministic construction or verified-random generation.
 
-### 6.7 Minimum Key Sizes
+### 6.7 AEAD Usage Bounds
+
+AES-GCM security degrades with the volume of data protected under one key. Two
+bounds apply, from the analysis of [Iwata, Ohashi, and Minematsu][IOM12] as
+applied to TLS by [Luykx and Paterson][LP17]. [RFC 8446][RFC8446] Section 5.5
+derives its record limits from the same analysis.
+
+**Confidentiality (IND-CPA).** For `sigma` total 16-byte plaintext blocks and `q`
+encryption invocations under one key:
+
+```text
+Adv_IND-CPA <= (sigma + q + 1)^2 / 2^129
+```
+
+**Integrity (INT-CTXT).** For `v` forgery attempts against messages of at most
+`l` blocks, with a `tau`-bit tag:
+
+```text
+Adv_INT-CTXT <= 2 * v * (l + 1) / 2^tau
+```
+
+#### 6.7.1 Volume Limit
+
+`sigma` dominates `q` at every segment size BaseTDF permits, so the
+confidentiality bound is a function of total bytes under one key:
+
+| Total plaintext under one key | IND-CPA advantage |
+|---:|---:|
+| 2^38 B (256 GiB) | 2^-61 |
+| 2^40 B (1 TiB) | 2^-57 |
+| 2^42 B (4 TiB) | 2^-53 |
+| 2^43 B (8 TiB) | 2^-51 |
+| 2^45 B (32 TiB) | 2^-47 |
+
+RFC 8446 Section 5.5 targets an advantage of approximately 2^-57 for AES-GCM; its
+record limit of 2^24.5 records of 2^14 bytes is 2^38.5 bytes, about 389 GB.
+BaseTDF adopts the same margin at the round volume that attains it exactly.
+
+**A single content-encryption key -- the DEK when `keyDerivation` is absent, or an
+individual partition key `K_p` when it is present -- MUST NOT protect more than
+2^40 bytes (1 TiB) of plaintext.**
+
+The limit is cumulative over the life of the key, including every segment added by
+the append extension (BaseTDF-CORE Section 7). BaseTDF-CORE Section 4.3 states the
+manifest constraints that enforce it.
+
+When `keyDerivation` is present the DEK performs no AES-GCM encryption at all: it
+is the HKDF PRK and the Merkle HMAC key, neither of which is subject to this bound.
+
+#### 6.7.2 Segmentation Does Not Improve the Bound
+
+`sigma` counts plaintext blocks regardless of how they are divided into segments,
+and `q` is negligible beside it. At a 2 MiB segment size, 2^40 bytes under one key
+is `sigma = 2^36` blocks and `q = 2^19` invocations, so `q` shifts the bound by
+less than one bit. Halving the segment size doubles `q` and leaves `sigma`
+unchanged; the bound does not move.
+
+Smaller segments therefore do NOT extend the volume a key may protect. Rekeying is
+the only mechanism that does, and in BaseTDF that mechanism is partition key
+derivation (BaseTDF-CORE Section 4.2).
+
+#### 6.7.3 Scale Example
+
+A 5 TiB object -- the Amazon S3 single-object maximum -- placed under one key gives
+`sigma = 5 * 2^36` blocks and an advantage of about 2^-52.4, past the target
+margin. At the 1 TiB ceiling it requires five partition keys, and no `K_p` exceeds
+the limit. Nothing in BaseTDF caps the number of partitions, so this scales
+linearly.
+
+The `partitionSegments: 512` default at a 2 MiB `segmentSizeDefault` places 1 GiB
+under each `K_p`, a factor of 1024 below the ceiling. Reaching the ceiling at that
+segment size requires `partitionSegments` of 2^19 (524288). Default writers are far
+inside the limit at any object size.
+
+#### 6.7.4 Integrity Bound
+
+The integrity bound is not a constraint at BaseTDF parameters. With 128-bit tags
+and 2 MiB segments (`l = 2^17` blocks), 2^32 forgery attempts bound the forgery
+probability by `2 * 2^32 * (2^17 + 1) / 2^128`, approximately 2^-78. Even at the
+largest segment BaseTDF permits (`l = 2^32` blocks, Section 6.7.6) the same
+expression is about 2^-63. Integrity imposes no rekeying requirement.
+
+#### 6.7.5 DEK Uniqueness
+
+**A DEK MUST be freshly generated for each TDF object and MUST NOT be reused across
+objects.**
+
+`noncePrefix` is only 32 bits. Reusing one DEK across `N` objects makes some pair
+of them share a prefix with probability about `N^2 / 2^33`: roughly 0.2% at 4096
+objects and 50% at 2^16 objects. Two objects sharing a DEK and a `noncePrefix`
+repeat the exact `(key, nonce)` pair at every common segment index, which is the
+catastrophic failure Section 6.6 forbids. Partition derivation does not reduce this
+risk: `K_p` is a deterministic function of the DEK alone, so a repeated DEK repeats
+every partition key.
+
+This does not prohibit several manifests over one protected object and one DEK;
+that case is a single object, and its union-policy semantics are in Section 9.3.
+
+#### 6.7.6 Per-Invocation Limit
+
+[NIST SP 800-38D][SP800-38D] Section 5.2.1.1 caps a single GCM invocation at
+2^39 - 256 bits, that is 68,719,476,704 bytes (64 GiB - 32 B). No segment may
+exceed it; BaseTDF-INT Section 2 states the normative segment size cap.
+
+BaseTDF constructs IVs deterministically per SP 800-38D Section 8.2.1, with
+`noncePrefix` as the 32-bit fixed field and `u64be(segmentIndex)` as the 64-bit
+invocation field. The 2^32-invocation cap of SP 800-38D Section 8.3 applies to
+RBG-based IV construction and therefore does not apply here; the invocation field
+admits 2^64 distinct segment indices under one key.
+
+### 6.8 Minimum Key Sizes
 
 | Key Type | Minimum | Recommended | Maximum |
 |---|---|---|---|
@@ -657,6 +768,7 @@ BaseTDF system.
 
 - The DEK MUST be generated using a CSPRNG (Section 6.5).
 - The DEK MUST be at least 256 bits for AES-256-GCM.
+- A fresh DEK MUST be generated for each TDF object (Section 6.7.5).
 - The DEK MUST have full entropy (i.e., generated uniformly at random, not
   derived from low-entropy sources such as passwords).
 
@@ -671,7 +783,7 @@ BaseTDF system.
 **KAS Key Pairs**:
 
 - KAS asymmetric key pairs MUST be generated using a CSPRNG with key sizes
-  meeting the minimums in Section 6.7.
+  meeting the minimums in Section 6.8.
 - Key generation SHOULD occur within an HSM or equivalent trusted key
   management system.
 
@@ -947,6 +1059,16 @@ need freshness require a trusted catalog, checkpoint, or equivalent external sta
 | [RFC 8017][RFC8017] | PKCS #1: RSA Cryptography Specifications Version 2.2 |
 | [RFC 9449][RFC9449] | OAuth 2.0 Demonstrating Proof of Possession (DPoP) |
 | [RFC 3339][RFC3339] | Date and Time on the Internet: Timestamps |
+| [RFC 8446][RFC8446] | The Transport Layer Security (TLS) Protocol Version 1.3 |
+
+---
+
+## 11. Informative References
+
+| Reference | Title |
+|---|---|
+| [Luykx and Paterson 2017][LP17] | Limits on Authenticated Encryption Use in TLS |
+| [Iwata, Ohashi, and Minematsu 2012][IOM12] | Breaking and Repairing GCM Security Proofs (CRYPTO 2012) |
 
 [SP800-207]: https://doi.org/10.6028/NIST.SP.800-207
 [SP800-38D]: https://doi.org/10.6028/NIST.SP.800-38D
@@ -958,3 +1080,6 @@ need freshness require a trusted catalog, checkpoint, or equivalent external sta
 [RFC8017]: https://www.rfc-editor.org/rfc/rfc8017
 [RFC9449]: https://www.rfc-editor.org/rfc/rfc9449
 [RFC3339]: https://www.rfc-editor.org/rfc/rfc3339
+[RFC8446]: https://www.rfc-editor.org/rfc/rfc8446
+[LP17]: https://www.isg.rhul.ac.uk/~kp/TLS-AEbounds.pdf
+[IOM12]: https://eprint.iacr.org/2012/438

@@ -118,6 +118,22 @@ locators, and ordered contiguous non-overlapping ranges covering
 MUST equal payload `size` and authenticated `encryptedSize`; indexed part sizes
 MUST equal authenticated subtree sums. Boundaries SHOULD align with key partitions.
 
+The sharded profile is REQUIRED when a logical BaseTDF exceeds any individual
+storage resource's object-size limit. A storage limit applies to encrypted bytes,
+not plaintext bytes: every AES-GCM segment adds 28 bytes, and attached packaging
+also carries integrity and ZIP metadata. Consequently, a maximum-sized plaintext
+object generally cannot be encrypted into one resource having the same maximum
+size. Writers MUST calculate encrypted sizes before selecting part boundaries and
+MUST NOT assume that a provider's advertised plaintext-scale limit includes AEAD
+overhead.
+
+Scalable implementations MUST support a logical 50 TiB plaintext using sharded
+packaging even when no individual locator can hold the complete encrypted payload.
+Shards MAY contain many key partitions; aligning each shard boundary with both a
+segment boundary and a key-partition boundary is RECOMMENDED. Multipart-upload part
+numbers and retry order are transport details and MUST NOT be used as AES-GCM IVs
+or BaseTDF segment indices.
+
 Top-level payload `locators`, `url`, and `protocol` MUST be absent. Exactly one
 manifest assertion is REQUIRED.
 

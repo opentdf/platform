@@ -638,17 +638,32 @@ For AES-GCM:
 
 ### 6.7 AEAD Usage Bounds
 
-AES-GCM security degrades with the volume of data protected under one key. Two
-bounds apply, from the analysis of [Iwata, Ohashi, and Minematsu][IOM12] as
-applied to TLS by [Luykx and Paterson][LP17]. [RFC 8446][RFC8446] Section 5.5
-derives its record limits from the same analysis.
+AES-GCM security degrades with the volume of data protected under one key and with
+the number and size of forgery attempts. [RFC 8446][RFC8446] Section 5.5 adopted
+an approximately `2^-57` overall AE target using the analysis of [Luykx and
+Paterson][LP17]. BaseTDF adopts `2^-57` as its maximum object-wide confidentiality
+advantage and accounts for integrity separately.
 
-**Confidentiality (IND-CPA).** For `sigma` total 16-byte plaintext blocks and `q`
-encryption invocations under one key:
+**Confidentiality.** [RFC 9001][RFC9001] Appendix B.1 applies the tighter
+multi-user GCM analysis of [Hoang, Tessaro, and Thiruvengadam][HTT18]. For a
+single user with unique nonces, its dominant confidentiality term is
+`2 * (q * l)^2 / 2^128`. Writing `sigma_p` for the total number of plaintext
+blocks protected under content-encryption key `K_p`, and applying a conservative
+hybrid argument across the independently derived partition keys, BaseTDF uses:
 
 ```text
-Adv_IND-CPA <= (sigma + q + 1)^2 / 2^129
+Adv_conf(object) <= 2 * sum(sigma_p^2 for every p) / 2^128
 ```
+
+Therefore an object meets the `2^-57` target when:
+
+```text
+sum(sigma_p^2 for every p) <= 2^70
+```
+
+This mode-level bound assumes AES is a secure pseudorandom permutation, HKDF-SHA256
+produces pseudorandom partition keys, and every nonce is unique under its key. The
+corresponding primitive and KDF advantages are additional negligible terms.
 
 **Integrity (INT-CTXT).** For `v` forgery attempts against messages of at most
 `l` blocks, with a `tau`-bit tag:
@@ -659,39 +674,32 @@ Adv_INT-CTXT <= 2 * v * (l + 1) / 2^tau
 
 #### 6.7.1 Volume Limit
 
-`sigma` dominates `q` at every segment size BaseTDF permits, so the
-confidentiality bound is a function of total bytes under one key:
+For one content-encryption key, the block-square budget implies an absolute
+plaintext ceiling of `2^35` blocks, or `2^39` bytes (512 GiB). Reaching that ceiling
+spends the entire object-wide `2^-57` confidentiality budget on that key, so a
+multi-partition object needs substantially smaller partitions.
 
-| Total plaintext under one key | IND-CPA advantage |
-|---:|---:|
-| 2^38 B (256 GiB) | 2^-61 |
-| 2^40 B (1 TiB) | 2^-57 |
-| 2^42 B (4 TiB) | 2^-53 |
-| 2^43 B (8 TiB) | 2^-51 |
-| 2^45 B (32 TiB) | 2^-47 |
+For an object containing `B` plaintext bytes divided into equal `b`-byte
+partitions, the dominant term simplifies to approximately:
 
-RFC 8446 Section 5.5 targets an advantage of approximately 2^-57 for AES-GCM; its
-record limit of 2^24.5 records of 2^14 bytes is 2^38.5 bytes, about 389 GB.
-BaseTDF adopts the same margin at the round volume that attains it exactly.
+```text
+Adv_conf(object) <= B * b / 2^135
+```
 
-**A single content-encryption key -- the DEK when `keyDerivation` is absent, or an
-individual partition key `K_p` when it is present -- MUST NOT protect more than
-2^40 bytes (1 TiB) of plaintext.**
-
-The limit is cumulative over the life of the key, including every segment added by
-the append extension (BaseTDF-CORE Section 7). BaseTDF-CORE Section 4.3 states the
-manifest constraints that enforce it.
+At 50 TiB this permits partitions no larger than approximately 5.12 GiB. BaseTDF
+RECOMMENDS 1 GiB partitions, which yield an object-wide advantage below `2^-59`
+under this bound. The limit is cumulative over the life of every partition key,
+including segments added by the append extension. BaseTDF-CORE Section 4.3 defines
+the normative, conservatively checkable manifest constraints.
 
 When `keyDerivation` is present the DEK performs no AES-GCM encryption at all: it
 is the HKDF PRK and the Merkle HMAC key, neither of which is subject to this bound.
 
-#### 6.7.2 Segmentation Does Not Improve the Bound
+#### 6.7.2 Segmentation Does Not Improve a Key's Bound
 
-`sigma` counts plaintext blocks regardless of how they are divided into segments,
-and `q` is negligible beside it. At a 2 MiB segment size, 2^40 bytes under one key
-is `sigma = 2^36` blocks and `q = 2^19` invocations, so `q` shifts the bound by
-less than one bit. Halving the segment size doubles `q` and leaves `sigma`
-unchanged; the bound does not move.
+`sigma_p` counts plaintext blocks regardless of how they are divided into segments.
+Halving the segment size while retaining the same partition bytes leaves
+`sigma_p` unchanged and does not improve confidentiality.
 
 Smaller segments therefore do NOT extend the volume a key may protect. Rekeying is
 the only mechanism that does, and in BaseTDF that mechanism is partition key
@@ -699,16 +707,28 @@ derivation (BaseTDF-CORE Section 4.2).
 
 #### 6.7.3 Scale Example
 
-A 5 TiB object -- the Amazon S3 single-object maximum -- placed under one key gives
-`sigma = 5 * 2^36` blocks and an advantage of about 2^-52.4, past the target
-margin. At the 1 TiB ceiling it requires five partition keys, and no `K_p` exceeds
-the limit. Nothing in BaseTDF caps the number of partitions, so this scales
-linearly.
+[Amazon S3 multipart limits][S3LIMITS] specify an advertised 50 TB object, with an
+exact ceiling of 50,000 GiB (approximately 48.83 TiB). BaseTDF's required scalable
+range is 50 TiB so the format also covers that ceiling after allowing
+deployment-specific sharding.
 
-The `partitionSegments: 512` default at a 2 MiB `segmentSizeDefault` places 1 GiB
-under each `K_p`, a factor of 1024 below the ceiling. Reaching the ceiling at that
-segment size requires `partitionSegments` of 2^19 (524288). Default writers are far
-inside the limit at any object size.
+A 50 TiB plaintext encrypted under one key has `sigma = 50 * 2^36` blocks and a
+confidentiality advantage of approximately `2^-43.7`, well past the target. Merely
+using fifty 1 TiB keys would satisfy the former per-key rule but would still give a
+conservative object-wide advantage of approximately `2^-49.4` under the newer
+bound.
+
+At the RECOMMENDED 1 GiB partition size, the same 50 TiB object has 51,200
+partition keys. Each protects `2^26` blocks, and:
+
+```text
+Adv_conf(object) <= 2 * 51,200 * (2^26)^2 / 2^128 < 2^-59
+```
+
+At 4 MiB per segment this is 13,107,200 segments and
+`partitionSegments: 256`; at the 2 MiB default it is 26,214,400 segments and
+`partitionSegments: 512`. Partition keys are derived on demand from one DEK and do
+not enlarge the manifest or require additional KAOs.
 
 #### 6.7.4 Integrity Bound
 
@@ -1060,6 +1080,7 @@ need freshness require a trusted catalog, checkpoint, or equivalent external sta
 | [RFC 9449][RFC9449] | OAuth 2.0 Demonstrating Proof of Possession (DPoP) |
 | [RFC 3339][RFC3339] | Date and Time on the Internet: Timestamps |
 | [RFC 8446][RFC8446] | The Transport Layer Security (TLS) Protocol Version 1.3 |
+| [RFC 9001][RFC9001] | Using TLS to Secure QUIC |
 
 ---
 
@@ -1069,6 +1090,8 @@ need freshness require a trusted catalog, checkpoint, or equivalent external sta
 |---|---|
 | [Luykx and Paterson 2017][LP17] | Limits on Authenticated Encryption Use in TLS |
 | [Iwata, Ohashi, and Minematsu 2012][IOM12] | Breaking and Repairing GCM Security Proofs (CRYPTO 2012) |
+| [Hoang, Tessaro, and Thiruvengadam 2018][HTT18] | The Multi-user Security of GCM, Revisited |
+| [Amazon S3 multipart limits][S3LIMITS] | Multipart upload sizes and part counts |
 
 [SP800-207]: https://doi.org/10.6028/NIST.SP.800-207
 [SP800-38D]: https://doi.org/10.6028/NIST.SP.800-38D
@@ -1081,5 +1104,8 @@ need freshness require a trusted catalog, checkpoint, or equivalent external sta
 [RFC9449]: https://www.rfc-editor.org/rfc/rfc9449
 [RFC3339]: https://www.rfc-editor.org/rfc/rfc3339
 [RFC8446]: https://www.rfc-editor.org/rfc/rfc8446
+[RFC9001]: https://www.rfc-editor.org/rfc/rfc9001
 [LP17]: https://www.isg.rhul.ac.uk/~kp/TLS-AEbounds.pdf
 [IOM12]: https://eprint.iacr.org/2012/438
+[HTT18]: https://eprint.iacr.org/2018/993
+[S3LIMITS]: https://docs.aws.amazon.com/AmazonS3/latest/userguide/qfacts.html

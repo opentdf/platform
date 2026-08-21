@@ -1006,6 +1006,52 @@ segment-aligned parts:
 A gap, overlap, reordered index, non-segment boundary, or incorrect checked size sum
 invalidates the manifest.
 
+### 10.3 Sharded 50 TiB payload
+
+A 50 TiB plaintext with 4 MiB uniform segments and 1 GiB key partitions has the
+following authenticated scale parameters:
+
+```json
+{
+  "keyDerivation":{"alg":"HKDF-SHA256", "partitionSegments":256},
+  "integrityInformation":{
+    "rootSignature":{"alg":"MERKLE-HS256", "sig":"<base64-32-bytes>"},
+    "segmentHashAlg":"GMAC",
+    "segmentSizeDefault":4194304,
+    "encryptedSegmentSizeDefault":4194332,
+    "layout":"uniform",
+    "segmentCount":13107200,
+    "lastSegmentSize":4194304,
+    "plaintextSize":54975581388800,
+    "encryptedSize":54975948390400,
+    "hashTree":{
+      "nodeSize":32,
+      "levels":25,
+      "size":838860896,
+      "locator":{"uri":"https://integrity.example/tree/50tib",
+                 "size":838860896}
+    }
+  }
+}
+```
+
+There are 51,200 derived partition keys. The ciphertext is 367,001,600 bytes
+larger than the plaintext before packaging, so it cannot fit in a storage resource
+whose object limit equals the plaintext size.
+
+One valid sharded representation uses ten equal parts. For each part index `j` in
+`0..9`:
+
+```text
+segmentRange = [j * 1310720, (j + 1) * 1310720)
+size         = 5497594839040
+```
+
+Every part contains 5 TiB of plaintext, 5,120 complete key partitions, and
+1,310,720 segments. The signed manifest's checked part-size sum is
+54,975,948,390,400 bytes. Other shard sizes are valid when their ranges remain
+contiguous and segment-aligned; partition-aligned boundaries are recommended.
+
 ## 11. Version 5 Conformance Vector Set
 
 A release-quality fixture set MUST contain exact keys, inputs, intermediate values,
@@ -1029,10 +1075,13 @@ wire bytes, expected outputs, and negative outcomes for:
 14. off-allowlist, non-HTTPS, redirect-to-unlisted, and oversized locator failures;
 15. aligned uniform and short-tail indexed consistency proofs, with changed-leaf,
     immutable-parameter, partition-boundary, rollback, and fork negatives;
-16. volume-limit negatives: a manifest above 2^40 plaintext bytes that omits
-    `keyDerivation`, and one whose partition size bound exceeds 2^40 plaintext
-    bytes (BaseTDF-CORE Section 4.3); and
-17. a segment size above the AES-GCM per-invocation limit of 68719476704 bytes,
+16. confidentiality-budget vectors: a 50 TiB uniform manifest with 1 GiB
+    partitions accepted; the same object with 8 GiB partitions rejected; a
+    manifest above 2^39 plaintext bytes without `keyDerivation` rejected; and
+    checked-arithmetic overflow rejected (BaseTDF-CORE Section 4.3);
+17. the exact 50 TiB sizes, segment count, tree size, partition count, and ten-part
+    checked sum from Section 10.3; and
+18. a segment size above the AES-GCM per-invocation limit of 68719476704 bytes,
     rejected before allocation (BaseTDF-INT Section 2).
 
 Placeholder values in this document MUST NOT be used as conformance vectors.

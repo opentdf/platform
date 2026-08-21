@@ -152,37 +152,68 @@ boundary unless `partitionSegments` is one.
 
 ### 4.3 Volume limits
 
-No content-encryption key may protect more than `MAXKEYBYTES = 2^40` plaintext
-bytes (1099511627776). BaseTDF-SEC Section 6.7 gives the analysis; this section
-gives the manifest constraints. Writers MUST satisfy them and readers MUST reject a
-manifest that violates them.
-
-Let `T` be the total plaintext protected under one DEK: `plaintextSize` for a
-scalable layout, or the checked sum of `segments[].segmentSize` for an explicit
-one. For an append chain, `T` is the cumulative total at the current head
-(Section 7), not the increment.
-
-1. `keyDerivation` is REQUIRED when `T > MAXKEYBYTES`, because otherwise every
-   segment is encrypted under the DEK.
-2. When `keyDerivation` is present, no partition may cover more than
-   `MAXKEYBYTES` plaintext bytes. With `n = min(partitionSegments, segmentCount)`:
+BaseTDF targets an object-wide AES-GCM confidentiality advantage no greater than
+`2^-57`. BaseTDF-SEC Section 6.7 derives the following block-square budget from
+RFC 9001 Appendix B.1:
 
 ```text
-uniform:  n * segmentSizeDefault <= MAXKEYBYTES
-indexed:  n * segmentSizeMax     <= MAXKEYBYTES
-explicit: for every p,
-          sum(segmentSize[i] : floor(i / partitionSegments) = p) <= MAXKEYBYTES
+CONFIDENTIALITY_BLOCK_BUDGET = 2^70
 ```
 
-The uniform and indexed forms are conservative upper bounds computable from the
-manifest header alone, because `segmentSizeDefault` and `segmentSizeMax` bound
-every segment in their layouts. The explicit form is exact because every size is
-recorded. An indexed writer whose actual partition bytes fall under the ceiling but
-whose `segmentSizeMax` product does not MUST still lower `partitionSegments`; the
-check is on the manifest, not on the realized sizes.
+For each content-encryption key `K_p`, let `sigma_p` be a conservative upper bound
+on the sum of `ceil(segmentSize / 16)` across invocations protected by that key.
+Writers MUST satisfy, and readers MUST verify:
 
-The DEK itself is unconstrained by `MAXKEYBYTES` when `keyDerivation` is present,
-since it then serves only as the HKDF PRK and the Merkle HMAC key.
+```text
+sum(sigma_p * sigma_p for every p) <= 2^70
+```
+
+All multiplication and accumulation for this check MUST use checked arithmetic
+wide enough to represent `2^70`; implementations MUST reject on overflow.
+
+Let `T` be the total plaintext: `plaintextSize` for a scalable layout, or the
+checked sum of `segments[].segmentSize` for an explicit one. For an append chain,
+`T` and every partition total are cumulative at the current head (Section 7), not
+just the latest increment.
+
+Without `keyDerivation`, calculate `sigma_0` across every segment as below and
+apply the same budget. Consequently, `keyDerivation` is always REQUIRED when
+`T > 2^39` bytes (512 GiB), and can be required below that size for layouts with
+many non-block-aligned segments.
+
+With `keyDerivation`, partition `p` covers segment indices
+`[p * partitionSegments, min((p + 1) * partitionSegments, segmentCount))`. Let
+`n_p` be the number of indices in that range and calculate `sigma_p` as follows:
+
+```text
+uniform:  sigma_p = n_p * ceil(segmentSizeDefault / 16)
+indexed:  sigma_p = n_p * ceil(segmentSizeMax / 16)
+explicit: sigma_p = sum(ceil(segmentSize[i] / 16)
+                        for every i in partition p)
+```
+
+The explicit form is exact. The uniform form conservatively charges a full default
+segment for a short final segment, and the indexed form charges `segmentSizeMax`
+for every segment. Both scalable forms are therefore computable from the manifest
+header. A writer whose actual partition blocks satisfy the budget but whose
+conservative bound does not MUST lower `partitionSegments`; the check is on the
+manifest, not on unauthenticated realized sizes.
+
+No individual `sigma_p` can exceed `2^35`, so no content-encryption key can protect
+more than `2^39` bytes (512 GiB). The DEK is not a content-encryption key when
+`keyDerivation` is present; it then serves only as the HKDF PRK and Merkle HMAC key.
+
+The RECOMMENDED partition size is 1 GiB. This is `partitionSegments: 512` at the
+2 MiB default segment size or `partitionSegments: 256` at 4 MiB. For a 50 TiB
+object, 51,200 such partitions keep the conservative object-wide advantage below
+`2^-59`, leaving margin beneath the `2^-57` target.
+
+Scalable-layout writers and readers MUST support `plaintextSize` values through at
+least `50 * 2^40` bytes (54,975,581,388,800 bytes, 50 TiB), plus the corresponding
+AEAD and packaging overhead in encrypted-size fields. This is a minimum required
+range, not a maximum object size. Implementations MAY enforce lower deployment
+resource limits, but MUST distinguish those local limits from format or
+cryptographic invalidity.
 
 Each TDF object MUST use a freshly generated DEK; a DEK MUST NOT be reused across
 objects (BaseTDF-SEC Section 6.7.5).

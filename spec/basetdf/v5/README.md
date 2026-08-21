@@ -3,7 +3,10 @@
 The BaseTDF suite defines the Trusted Data Format (TDF) for data-centric security.
 Version 5 separates the logical TDF manifest from physical packaging and adds
 integrity layouts suitable for very large, streamed, distributed, detached, and
-randomly accessed payloads.
+randomly accessed payloads. Scalable layouts support logical plaintexts of at least
+50 TiB while partition-key derivation preserves the suite's object-wide AES-GCM
+confidentiality target and sharded packaging avoids individual storage-object
+limits.
 
 BaseTDF 5.0 is a breaking wire-format release. Version 4 objects remain readable by
 a 5.0 implementation, but a 4.x reader is expected to reject a 5.0 manifest.

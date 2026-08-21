@@ -19,7 +19,7 @@ require (
 	github.com/opentdf/platform/lib/identifier v0.4.0
 	github.com/opentdf/platform/lib/ocrypto v0.14.0
 	github.com/opentdf/platform/protocol/go v0.41.0
-	github.com/opentdf/platform/sdk v0.29.0
+	github.com/opentdf/platform/sdk v0.30.0
 	github.com/spf13/cobra v1.10.2
 	github.com/stretchr/testify v1.11.1
 	github.com/zitadel/oidc/v3 v3.45.1

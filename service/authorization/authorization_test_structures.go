@@ -2,7 +2,9 @@ package authorization
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/opentdf/platform/protocol/go/entityresolution"
 	"github.com/opentdf/platform/protocol/go/policy"
@@ -10,9 +12,83 @@ import (
 	sm "github.com/opentdf/platform/protocol/go/policy/subjectmapping"
 )
 
+func entitleableResponseFromLegacy(response *attr.GetAttributeValuesByFqnsResponse) *attr.GetEntitleableAttributesByFqnsResponse {
+	entitleable := &attr.GetEntitleableAttributesByFqnsResponse{
+		Definitions:              make(map[string]*attr.GetEntitleableAttributesByFqnsResponse_EntitleableDefinition),
+		FqnEntitleableAttributes: make(map[string]*attr.GetEntitleableAttributesByFqnsResponse_EntitleableAttribute),
+	}
+	for fqn, attributeAndValue := range response.GetFqnAttributeValues() {
+		definitionFQN := attributeAndValue.GetAttribute().GetFqn()
+		if definitionFQN == "" {
+			if valueIndex := strings.LastIndex(fqn, "/value/"); valueIndex >= 0 {
+				definitionFQN = fqn[:valueIndex]
+			}
+		}
+
+		definition := &attr.GetEntitleableAttributesByFqnsResponse_EntitleableDefinition{
+			Rule:      attributeAndValue.GetAttribute().GetRule(),
+			Namespace: attributeAndValue.GetAttribute().GetNamespace(),
+		}
+		if definition.GetRule() == policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY {
+			for _, value := range attributeAndValue.GetAttribute().GetValues() {
+				valueFQN := value.GetFqn()
+				if valueFQN == "" && definitionFQN != "" && value.GetValue() != "" {
+					valueFQN = definitionFQN + "/value/" + value.GetValue()
+				}
+				valueID := value.GetId()
+				if valueID == "" && value != nil {
+					valueID = valueFQN
+				}
+				definition.Values = append(definition.Values, &attr.GetEntitleableAttributesByFqnsResponse_EntitleableValue{
+					Fqn:             valueFQN,
+					ValueId:         valueID,
+					SubjectMappings: value.GetSubjectMappings(),
+				})
+			}
+		}
+		entitleable.Definitions[definitionFQN] = definition
+
+		value := attributeAndValue.GetValue()
+		valueFQN := value.GetFqn()
+		if valueFQN == "" {
+			valueFQN = fqn
+		}
+		valueID := value.GetId()
+		if valueID == "" && value != nil {
+			valueID = valueFQN
+		}
+		entitleable.FqnEntitleableAttributes[strings.ToLower(fqn)] = &attr.GetEntitleableAttributesByFqnsResponse_EntitleableAttribute{
+			DefinitionFqn: definitionFQN,
+			Value: &attr.GetEntitleableAttributesByFqnsResponse_EntitleableValue{
+				Fqn:             valueFQN,
+				ValueId:         valueID,
+				SubjectMappings: value.GetSubjectMappings(),
+			},
+		}
+	}
+	return entitleable
+}
+
+func matchedSubjectMappingsFromLegacy(response *attr.GetAttributeValuesByFqnsResponse) *sm.MatchSubjectMappingsResponse {
+	matched := &sm.MatchSubjectMappingsResponse{}
+	for fqn := range response.GetFqnAttributeValues() {
+		matched.SubjectMappings = append(matched.SubjectMappings, &policy.SubjectMapping{
+			AttributeValue: &policy.Value{Fqn: fqn},
+		})
+	}
+	return matched
+}
+
 var (
 	getAttributesByValueFqnsResponse attr.GetAttributeValuesByFqnsResponse
+	getEntitleableAttributesResponse *attr.GetEntitleableAttributesByFqnsResponse
 	errGetAttributesByValueFqns      error
+	errMatchSubjectMappings          error
+	getEntitleableAttributesRequests []*attr.GetEntitleableAttributesByFqnsRequest
+	matchSubjectMappingsRequests     []*sm.MatchSubjectMappingsRequest
+	listAttributesCallCount          int
+	listSubjectMappingsCallCount     int
+	getAttributeValuesCallCount      int
 	listAttributeResp                attr.ListAttributesResponse
 	errListAttributes                error
 	listSubjectMappings              sm.ListSubjectMappingsResponse
@@ -32,19 +108,25 @@ var (
 type myAttributesClient struct{}
 
 func (*myAttributesClient) ListAttributes(_ context.Context, _ *attr.ListAttributesRequest) (*attr.ListAttributesResponse, error) {
+	listAttributesCallCount++
 	return &listAttributeResp, errListAttributes
 }
 
 func (*myAttributesClient) GetAttributeValuesByFqns(_ context.Context, _ *attr.GetAttributeValuesByFqnsRequest) (*attr.GetAttributeValuesByFqnsResponse, error) {
-	return &getAttributesByValueFqnsResponse, errGetAttributesByValueFqns
+	getAttributeValuesCallCount++
+	return nil, errors.New("deprecated GetAttributeValuesByFqns called")
 }
 
 func (*myAttributesClient) GetKeyMappingsByFqns(_ context.Context, _ *attr.GetKeyMappingsByFqnsRequest) (*attr.GetKeyMappingsByFqnsResponse, error) {
 	return &attr.GetKeyMappingsByFqnsResponse{}, nil
 }
 
-func (*myAttributesClient) GetEntitleableAttributesByFqns(_ context.Context, _ *attr.GetEntitleableAttributesByFqnsRequest) (*attr.GetEntitleableAttributesByFqnsResponse, error) {
-	return &attr.GetEntitleableAttributesByFqnsResponse{}, nil
+func (*myAttributesClient) GetEntitleableAttributesByFqns(_ context.Context, req *attr.GetEntitleableAttributesByFqnsRequest) (*attr.GetEntitleableAttributesByFqnsResponse, error) {
+	getEntitleableAttributesRequests = append(getEntitleableAttributesRequests, req)
+	if getEntitleableAttributesResponse != nil {
+		return getEntitleableAttributesResponse, errGetAttributesByValueFqns
+	}
+	return entitleableResponseFromLegacy(&getAttributesByValueFqnsResponse), errGetAttributesByValueFqns
 }
 
 func (*myAttributesClient) ListAttributeValues(_ context.Context, _ *attr.ListAttributeValuesRequest) (*attr.ListAttributeValuesResponse, error) {
@@ -130,11 +212,13 @@ func (*myERSClient) ResolveEntities(_ context.Context, _ *entityresolution.Resol
 type mySubjectMappingClient struct{}
 
 func (*mySubjectMappingClient) ListSubjectMappings(_ context.Context, _ *sm.ListSubjectMappingsRequest) (*sm.ListSubjectMappingsResponse, error) {
+	listSubjectMappingsCallCount++
 	return &listSubjectMappings, nil
 }
 
-func (*mySubjectMappingClient) MatchSubjectMappings(_ context.Context, _ *sm.MatchSubjectMappingsRequest) (*sm.MatchSubjectMappingsResponse, error) {
-	return &sm.MatchSubjectMappingsResponse{}, nil
+func (*mySubjectMappingClient) MatchSubjectMappings(_ context.Context, req *sm.MatchSubjectMappingsRequest) (*sm.MatchSubjectMappingsResponse, error) {
+	matchSubjectMappingsRequests = append(matchSubjectMappingsRequests, req)
+	return matchedSubjectMappingsFromLegacy(&getAttributesByValueFqnsResponse), errMatchSubjectMappings
 }
 
 func (*mySubjectMappingClient) GetSubjectMapping(_ context.Context, _ *sm.GetSubjectMappingRequest) (*sm.GetSubjectMappingResponse, error) {
@@ -202,7 +286,7 @@ func (*paginatedMockSubjectMappingClient) ListSubjectMappings(_ context.Context,
 }
 
 func (*paginatedMockSubjectMappingClient) MatchSubjectMappings(_ context.Context, _ *sm.MatchSubjectMappingsRequest) (*sm.MatchSubjectMappingsResponse, error) {
-	return &sm.MatchSubjectMappingsResponse{}, nil
+	return matchedSubjectMappingsFromLegacy(&getAttributesByValueFqnsResponse), nil
 }
 
 func (*paginatedMockSubjectMappingClient) GetSubjectMapping(_ context.Context, _ *sm.GetSubjectMappingRequest) (*sm.GetSubjectMappingResponse, error) {
@@ -278,7 +362,7 @@ func (*paginatedMockAttributesClient) GetKeyMappingsByFqns(_ context.Context, _ 
 }
 
 func (*paginatedMockAttributesClient) GetEntitleableAttributesByFqns(_ context.Context, _ *attr.GetEntitleableAttributesByFqnsRequest) (*attr.GetEntitleableAttributesByFqnsResponse, error) {
-	return &attr.GetEntitleableAttributesByFqnsResponse{}, nil
+	return entitleableResponseFromLegacy(&getAttributesByValueFqnsResponse), errGetAttributesByValueFqns
 }
 
 func (*paginatedMockAttributesClient) ListAttributeValues(_ context.Context, _ *attr.ListAttributeValuesRequest) (*attr.ListAttributeValuesResponse, error) {

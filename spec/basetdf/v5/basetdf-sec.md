@@ -1,0 +1,1111 @@
+# BaseTDF-SEC: Security Model and Zero Trust Architecture
+
+| | |
+|---|---|
+| **Document** | BaseTDF-SEC |
+| **Title** | Security Model and Zero Trust Architecture |
+| **Version** | 5.0.0 |
+| **Status** | Standards Track |
+| **Date** | 2026-08 |
+| **Suite** | BaseTDF Specification Suite |
+
+## Table of Contents
+
+1. [Introduction](#1-introduction)
+2. [NIST SP 800-207 Zero Trust Alignment](#2-nist-sp-800-207-zero-trust-alignment)
+3. [Trust Assumptions and Boundaries](#3-trust-assumptions-and-boundaries)
+4. [Threat Model and Attack Analysis](#4-threat-model-and-attack-analysis)
+5. [Security Invariants](#5-security-invariants)
+6. [Cryptographic Requirements](#6-cryptographic-requirements)
+7. [Key Lifecycle](#7-key-lifecycle)
+8. [Post-Quantum Cryptography Migration](#8-post-quantum-cryptography-migration)
+9. [Packaging and Scale Security](#9-packaging-and-scale-security)
+10. [Normative References](#10-normative-references)
+11. [Informative References](#11-informative-references)
+
+---
+
+## 1. Introduction
+
+### 1.1 Purpose
+
+This document defines the security model for the Trusted Data Format (TDF) as
+specified by the BaseTDF suite. It establishes the threat model, trust
+assumptions, security invariants, and cryptographic requirements that all other
+documents in the suite depend upon.
+
+All normative security requirements in the BaseTDF suite trace back to this
+document. Implementers MUST satisfy the security invariants defined herein
+(Section 5) to claim conformance with any BaseTDF specification.
+
+### 1.2 Scope
+
+BaseTDF provides **data-centric zero trust security** for data objects that
+travel through untrusted channels. The security model addresses:
+
+- Protection of data at rest and in transit, independent of network or storage
+  security controls.
+- Cryptographic binding of access policy to encrypted content, such that policy
+  cannot be separated from or substituted on protected data.
+- Authorization decisions enforced at the point of key release, not at the
+  point of data access.
+- Algorithm agility to support migration from classical to post-quantum
+  cryptographic primitives.
+
+The scope explicitly includes data objects that may be copied, forwarded,
+stored on untrusted media, or transmitted over untrusted networks. The security
+model does NOT depend on the trustworthiness of any storage or transport layer.
+
+### 1.3 Relationship to Other BaseTDF Documents
+
+This document is the **foundation layer** of the BaseTDF specification suite.
+All other documents in the suite reference this document for their security
+requirements:
+
+- **BaseTDF-ALG** (Algorithm Registry) implements the cryptographic
+  requirements defined in Section 6 and the algorithm agility framework
+  described in Section 8.
+- **BaseTDF-POL** (Policy and ABAC) defines the policy structures whose
+  integrity is protected by the security invariants in Section 5.
+- **BaseTDF-KAO** (Key Access Object) implements the key protection and policy
+  binding mechanisms analyzed in Section 4.
+- **BaseTDF-KAS** (Key Access Service Protocol) implements the authorization
+  and key release protocol subject to the trust boundaries defined in
+  Section 3.
+- **BaseTDF-INT** (Integrity Verification) provides the payload integrity
+  mechanisms required by SI-5.
+- **BaseTDF-ASN** (Assertions) provides verifiable claims subject to the
+  cryptographic requirements in Section 6.
+- **BaseTDF-LOC** defines the default-deny policy for attacker-influenced
+  external resource locators.
+- **BaseTDF-PKG** defines attached, detached, and sharded storage profiles.
+- **BaseTDF-CORE** (Manifest and End-to-End Processing) defines the structure that
+  carries all security-relevant metadata.
+
+### 1.4 Conventions
+
+The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD",
+"SHOULD NOT", "RECOMMENDED", "NOT RECOMMENDED", "MAY", and "OPTIONAL" in this
+document are to be interpreted as described in [BCP 14][RFC2119] [RFC
+8174][RFC8174] when, and only when, they appear in ALL CAPITALS, as shown here.
+
+---
+
+## 2. NIST SP 800-207 Zero Trust Alignment
+
+BaseTDF implements a data-centric zero trust architecture aligned with NIST SP
+800-207. This section maps BaseTDF components to the NIST reference
+architecture and enumerates how BaseTDF satisfies each zero trust tenet.
+
+### 2.1 Component Mapping
+
+| NIST SP 800-207 Component | BaseTDF Equivalent |
+|---|---|
+| Policy Engine (PE) | KAS authorization logic: attribute evaluation combined with the trust algorithm (see BaseTDF-KAS Section 4) |
+| Policy Administrator (PA) | KAS key release via the rewrap endpoint; issues rewrapped key material only after successful policy evaluation |
+| Policy Enforcement Point (PEP) | Client SDK: performs encrypt and decrypt operations, enforces local integrity checks |
+| Trust Algorithm | ABAC evaluation: attribute rules, entity entitlements, dissemination list checks, and obligation resolution |
+| Subject Identity | Authenticated entity, identified by a DPoP-bound access token (see [RFC 9449][RFC9449]) |
+| Resource | The TDF-protected data object (manifest, encrypted payload, and associated metadata) |
+| Resource Requirements | The policy object embedded in the TDF: `dataAttributes` and `dissem` list (see BaseTDF-POL Section 3) |
+| Session Credentials | Rewrapped key share, scoped to a single rewrap session and bound to the client's ephemeral public key |
+| CDM / Posture Assessment | Entity attribute entitlements, externally provisioned by the identity provider and attribute authority |
+| Control Plane | KAS protocol: key management, policy evaluation, and audit (see BaseTDF-KAS) |
+| Data Plane | Encrypted TDF payload: traverses untrusted channels without requiring control plane availability |
+
+### 2.2 Zero Trust Tenets
+
+The following enumerates the seven zero trust tenets from NIST SP 800-207
+Section 2.1 and describes how BaseTDF satisfies each.
+
+#### Tenet 1: All data sources and computing services are considered resources
+
+Every TDF-protected object is a self-describing resource. Its manifest remains the
+complete authoritative record of what is protected, which policy and key-access
+paths govern it, how integrity is verified, and where protected artifacts reside.
+Version 5 may separate those bytes across storage hosts, but it does not require an
+external policy catalog. Payload discovery from a bare detached object is an
+application concern and does not weaken the manifest's authority.
+
+#### Tenet 2: All communication is secured regardless of network location
+
+BaseTDF separates data-plane security from transport-layer security. The
+encrypted payload is protected by authenticated encryption (AES-256-GCM; see
+Section 6) independent of any network controls. Key shares are protected by
+asymmetric encryption to the KAS public key. The rewrap protocol operates over
+TLS-protected channels, and the rewrapped key material is re-encrypted to the
+client's ephemeral public key, providing end-to-end protection of key material
+even if TLS is terminated at an intermediary.
+
+#### Tenet 3: Access to individual enterprise resources is granted on a per-session basis
+
+Each rewrap request is independently authorized. The KAS evaluates the entity's
+current entitlements against the TDF's policy at the time of each rewrap
+request. There is no session token or cached authorization that permits
+subsequent access without re-evaluation. The rewrapped key share is bound to
+the client's ephemeral public key and MUST NOT be reusable across sessions.
+
+#### Tenet 4: Access to resources is determined by dynamic policy
+
+Policy evaluation occurs at rewrap time, not at creation time. When an entity
+requests access to a TDF, the KAS evaluates the policy embedded in the TDF
+against the entity's **current** attribute entitlements as reported by the
+authorization service. Changes to entity entitlements, attribute definitions, or
+policy rules take effect on the next rewrap request without requiring
+re-encryption of the TDF.
+
+#### Tenet 5: The enterprise monitors and measures the integrity and security posture of all owned and associated assets
+
+The KAS MUST log every rewrap attempt (see SI-8). These audit records include
+the entity identity, policy UUID, algorithm, KAS key identifier, and the
+permit/deny result. These records provide the observability surface required for
+security monitoring, anomaly detection, and compliance reporting.
+
+#### Tenet 6: All resource authentication and authorization are dynamic and strictly enforced before access is allowed
+
+Entity authentication uses DPoP-bound access tokens ([RFC 9449][RFC9449]),
+which provide proof-of-possession binding between the access token and the
+client's cryptographic key. The KAS verifies the DPoP proof, validates the
+access token, evaluates the policy, and only then releases the rewrapped key
+material. The Signed Request Token (SRT) further binds the rewrap request
+payload to the DPoP key, preventing token replay and request substitution.
+
+#### Tenet 7: The enterprise collects as much information as possible about the current state of assets, network infrastructure, and communications and uses it to improve its security posture
+
+Rewrap audit events (SI-8) provide structured data suitable for ingestion into
+SIEM and analytics platforms. Each event captures the entity, the policy, the
+access decision, the algorithm used, and the KAS key involved. Aggregation of
+these events enables detection of anomalous access patterns, policy
+misconfiguration, and credential compromise.
+
+---
+
+## 3. Trust Assumptions and Boundaries
+
+### 3.1 Trusted Components
+
+The following components are assumed to operate in a trusted environment with
+adequate physical, logical, and operational security controls.
+
+#### 3.1.1 Key Access Service (KAS)
+
+The KAS is the root of trust for key release. It holds or has delegated access
+to the private keys corresponding to the KAS public keys used to wrap DEK
+shares. The KAS:
+
+- Operates in a trusted execution environment with access controls on its
+  private key material.
+- Is trusted to correctly evaluate policy and enforce authorization decisions.
+- Is trusted to correctly perform cryptographic operations (unwrap, rewrap,
+  HMAC verification).
+- Is trusted to produce accurate and complete audit logs.
+
+Compromise of the KAS private key material allows an attacker to decrypt any
+TDF whose KAO references that key. Implementations SHOULD use hardware
+security modules (HSMs) or equivalent key protection mechanisms for KAS private
+keys.
+
+#### 3.1.2 Authorization Service
+
+The authorization service (policy decision point) is trusted to:
+
+- Correctly resolve entity attribute entitlements from the identity provider.
+- Correctly evaluate attribute-based access control rules.
+- Return accurate permit/deny decisions to the KAS.
+
+The authorization service operates within the same trust boundary as the KAS
+and communicates with it over authenticated, integrity-protected channels.
+
+#### 3.1.3 Identity Provider
+
+The identity provider is trusted to:
+
+- Correctly authenticate entities.
+- Issue access tokens that accurately represent entity identity and, where
+  applicable, bind to DPoP keys.
+- Maintain the confidentiality of signing keys used for token issuance.
+
+### 3.2 Partially Trusted Components
+
+#### 3.2.1 Client SDK
+
+The client SDK is trusted to:
+
+- Correctly implement encryption and integrity operations during TDF creation.
+- Correctly implement decryption, integrity verification, and policy binding
+  validation during TDF consumption.
+- Enforce local security controls, including withholding or stopping plaintext
+  release on integrity failure per SI-5.
+
+The client SDK is NOT trusted to:
+
+- Hold decrypted key material beyond the duration of a single operation. Key
+  material MUST be securely erased after use (SI-7).
+- Cache or persist authorization decisions. Each access MUST result in a new
+  rewrap request.
+- Make access control decisions independently of the KAS.
+
+### 3.3 Untrusted Components
+
+The following components are considered untrusted. The security model provides
+confidentiality and integrity guarantees even when these components are fully
+compromised.
+
+#### 3.3.1 Storage
+
+TDF objects MAY be stored on any medium, including public cloud storage,
+removable media, email systems, or shared file systems. The storage layer is
+not trusted for confidentiality or integrity. The authenticated encryption of
+the payload and the cryptographic binding of the policy provide these
+guarantees independent of storage.
+
+#### 3.3.2 Network
+
+TDF objects MAY traverse any network, including the public internet, without
+loss of confidentiality or integrity. While TLS SHOULD be used for rewrap
+protocol communications, the security model does not depend solely on transport
+encryption: key material in transit during rewrap is protected by asymmetric
+encryption to the client's public key.
+
+#### 3.3.3 Intermediaries
+
+Any entity that handles, forwards, caches, or indexes TDF objects (e.g., email
+gateways, CDN nodes, search indexers) is untrusted. These intermediaries can
+observe the encrypted payload and the cleartext manifest metadata, but cannot
+access the plaintext content or modify the payload without detection.
+
+### 3.4 Trust Boundaries
+
+```
+                    TRUSTED BOUNDARY
+   ┌─────────────────────────────────────────────┐
+   │                                             │
+   │  ┌──────────┐    ┌────────────────────┐     │
+   │  │   KAS    │◄──►│ Authorization Svc  │     │
+   │  │          │    │ (Policy Decision)  │     │
+   │  └────▲─────┘    └────────────────────┘     │
+   │       │                                     │
+   └───────┼─────────────────────────────────────┘
+           │ Boundary B1: rewrap protocol (TLS + DPoP)
+           │
+   ┌───────┼─────────────────────────────────────┐
+   │       │         PARTIALLY TRUSTED            │
+   │  ┌────▼─────┐                               │
+   │  │  Client  │                               │
+   │  │  SDK     │                               │
+   │  └────┬─────┘                               │
+   └───────┼─────────────────────────────────────┘
+           │ Boundary B2: data plane (no trust required)
+           │
+   ┌───────┼─────────────────────────────────────┐
+   │       ▼              UNTRUSTED              │
+   │  ┌──────────┐  ┌──────────┐  ┌──────────┐  │
+   │  │ Storage  │  │ Network  │  │ Intermed. │  │
+   │  └──────────┘  └──────────┘  └──────────┘  │
+   └─────────────────────────────────────────────┘
+```
+
+**Boundary B1** (Client to KAS): This is the critical trust boundary. The
+rewrap protocol crosses this boundary. Communications MUST be protected by TLS.
+Entity authentication MUST use DPoP-bound access tokens for production
+deployments (SI-4). The SRT binds the request payload to the authenticated
+entity.
+
+**Boundary B2** (Client to Untrusted): TDF objects cross this boundary. No
+trust is required. The encrypted payload and cryptographic policy binding
+provide the necessary security guarantees.
+
+---
+
+## 4. Threat Model and Attack Analysis
+
+### 4.1 Adversary Model
+
+The adversary is assumed to have the following capabilities:
+
+- Full read access to all TDF objects (encrypted payload, manifest, metadata).
+- Full control of the network between the client and any service (active
+  man-in-the-middle), subject to TLS protections.
+- Ability to create, modify, and replay TDF objects and rewrap requests.
+- Access to their own valid credentials and entitlements for the KAS.
+- Computational resources bounded by classical (and, for Section 8,
+  quantum) computing limits.
+
+The adversary does NOT have:
+
+- Access to the KAS private key material.
+- Access to another entity's valid credentials or private keys.
+- The ability to compromise the authorization service's decision logic.
+
+### 4.2 Attacks That Are Mitigated
+
+| Attack | Description | Why It Fails |
+|---|---|---|
+| **Policy tampering** | Attacker modifies the base64-encoded policy object in the manifest to alter access rules. | The policy binding (HMAC of the policy computed with the DEK share as key) detects any modification. KAS verifies the binding before key release (SI-1). The attacker cannot recompute the HMAC without the DEK share, which is encrypted to the KAS public key. |
+| **KAO substitution** | Attacker replaces a KAO with one they created, wrapping a known key to a KAS they control or to the legitimate KAS. | If the attacker wraps to their own KAS, the legitimate KAS will not have the corresponding private key and cannot unwrap. If the attacker wraps to the legitimate KAS, the DEK share they chose will not reconstruct the correct DEK (the other splits remain unknown), and the policy binding will not match the original policy unless the attacker also controls all other splits. |
+| **Split manipulation** | Attacker attempts to recover the DEK by manipulating or observing individual key splits. | XOR-based key splitting is information-theoretically secure: any individual split is uniformly random and independent of the DEK. An attacker must obtain all splits to reconstruct the DEK. Each split is independently encrypted to a different KAS key. |
+| **Cross-TDF replay** | Attacker copies a KAO from one TDF and inserts it into another TDF's manifest to gain unauthorized access. | Each KAO contains a policy binding that is an HMAC computed over the specific policy of the TDF it belongs to, keyed by the DEK share. Since different TDFs have different policies and different DEK shares, the binding will not verify against the target TDF's policy. |
+| **Policy binding forgery** | Attacker attempts to forge a valid policy binding for a modified policy without knowing the DEK share. | The DEK share is protected by IND-CCA2 asymmetric encryption (RSA-OAEP or ECIES). Without the KAS private key, the attacker cannot recover the DEK share and therefore cannot compute a valid HMAC for any policy. |
+| **Algorithm downgrade** | Attacker modifies algorithm identifiers in the manifest to force use of weaker algorithms. | Algorithm fields are validated by the KAS against the algorithm registry (see BaseTDF-ALG). KAS MUST reject KAOs with unrecognized algorithm identifiers (SI-6). For implicit key types (e.g., `wrapped` implies RSA, `ec-wrapped` implies ECDH), the algorithm is determined by the key type and cannot be overridden by manifest fields. |
+| **Rewrap request replay** | Attacker captures a valid rewrap request and replays it to obtain the rewrapped key. | The SRT contains temporal claims (`iat`, `exp`) and is signed with the DPoP key. The KAS validates these claims with a bounded acceptable skew. Replayed requests will fail temporal validation. The rewrapped key is encrypted to the client's ephemeral public key from the original request; even if replay succeeds, the attacker cannot decrypt the response without the corresponding private key. |
+| **Payload modification** | Attacker modifies the encrypted payload (ciphertext, segment data). | AES-GCM authenticated encryption detects any modification of ciphertext or associated data. Segment hashes and the root signature provide additional integrity verification (SI-5). Clients MUST verify integrity before returning decrypted data. |
+
+### 4.3 Attacks with Residual Risk
+
+| Attack | Risk Level | Description | Mitigation |
+|---|---|---|---|
+| **MITM without DPoP** | MEDIUM | If DPoP is not enforced, an attacker who compromises a bearer access token can perform rewrap requests on behalf of the token holder. The attacker obtains the rewrapped key encrypted to their chosen public key. | DPoP MUST be required for production deployments (SI-4). Without DPoP, access tokens are bearer tokens and susceptible to theft via token exfiltration, log leakage, or TLS interception. |
+| **Chosen-policy oracle** | LOW | An attacker with valid credentials creates TDFs with crafted policies and observes whether rewrap succeeds or fails, potentially mapping the attribute entitlements of other entities if the KAS returns distinguishable error responses for policy evaluation failures versus other failures. | KAS SHOULD return uniform error responses for all access denial reasons. Specifically, policy evaluation failures, dissemination check failures, and attribute resolution failures SHOULD produce identical error codes and messages to the client. The KAS MAY log detailed failure reasons internally for audit purposes. |
+| **Encrypted metadata processing** | LOW | The `encryptedMetadata` field in a KAO is encrypted with the DEK share. If a KAS implementation decrypts and processes this metadata before verifying the policy binding, a crafted TDF could exploit parsing vulnerabilities in the metadata processor. | `encryptedMetadata` MUST NOT be decrypted or processed until after successful policy binding verification (SI-1) and authorization (SI-2). Implementations SHOULD treat decrypted metadata as untrusted input subject to validation. |
+| **Timing side channels** | LOW | Timing differences in HMAC comparison or cryptographic operations could leak information about key material or policy binding values. | Policy binding verification MUST use constant-time comparison (SI-1). Implementations SHOULD use constant-time cryptographic primitives throughout the rewrap path. |
+| **Entity attribute enumeration** | LOW | An attacker with valid credentials systematically probes the KAS with TDFs containing different attribute combinations to map which attributes they hold. | KAS SHOULD implement rate limiting on rewrap requests per entity (see Section 4.4). Rewrap audit logs (SI-8) enable detection of enumeration patterns. |
+
+### 4.4 Identified Implementation Gaps
+
+The following gaps represent areas where the specification requires behavior
+that implementations MUST or SHOULD address but where current practice may be
+inconsistent.
+
+| Gap | Severity | Specification Treatment |
+|---|---|---|
+| **Dissemination list not enforced** | CRITICAL | When the policy body contains a non-empty `dissem` list, the KAS MUST verify that the authenticated entity's identity appears in the dissemination list before releasing any key material (SI-3). Implementations that skip this check are non-conformant. See BaseTDF-POL Section 4. |
+| **`policyBinding.alg` not validated** | MEDIUM | When the policy binding is expressed as an object with `alg` and `hash` fields, the KAS MUST validate the `alg` field against the set of supported binding algorithms (currently: `HS256` for HMAC-SHA256). The KAS MUST reject KAOs whose `policyBinding.alg` specifies an unrecognized or unsupported algorithm (SI-6). When the policy binding is a bare string (legacy format), the binding algorithm MUST default to `HS256`. |
+| **No rate limiting on rewrap** | LOW | Implementations SHOULD enforce rate limits on rewrap requests per authenticated entity to mitigate credential abuse and attribute enumeration attacks. The specific rate limits are deployment-dependent and outside the scope of this specification. |
+| **All splits assigned to the same KAS** | LOW | When all KAOs in a split key configuration reference the same KAS URL, the security benefit of key splitting is reduced to a single point of compromise. Implementations SHOULD warn when creating TDFs where all splits are assigned to a single KAS. This does not affect correctness but reduces the defense-in-depth benefit of the split key architecture. |
+| **Legacy KAOs without `kid` field** | MEDIUM | KAOs that omit the `kid` (key identifier) field force the KAS to attempt decryption with multiple legacy keys, increasing computational cost and potential for oracle attacks. New TDF implementations MUST include a `kid` field in all KAOs. KAS implementations MUST support `kid`-less KAOs for backward compatibility but SHOULD log a warning. |
+
+---
+
+## 5. Security Invariants
+
+The following security invariants are normative requirements. Other documents
+in the BaseTDF suite reference these invariants by their identifiers (SI-1
+through SI-8). An implementation MUST satisfy all security invariants to claim
+conformance with this specification.
+
+### SI-1: Policy Binding Integrity
+
+**KAS MUST verify that the policy binding matches the policy before any key
+release.**
+
+Specifically:
+
+1. The KAS MUST compute HMAC-SHA256 over the base64-encoded policy body using
+   the unwrapped DEK share as the HMAC key.
+2. The KAS MUST compare the computed HMAC with the `policyBinding.hash` value
+   from the KAO.
+3. The comparison MUST use a constant-time algorithm (e.g., `hmac.Equal` in Go,
+   `crypto.timingSafeEqual` in Node.js) to prevent timing side-channel attacks.
+4. If the comparison fails, the KAS MUST reject the KAO and MUST NOT return
+   any key material derived from the corresponding DEK share.
+5. The KAS MUST NOT decrypt or process `encryptedMetadata` before successful
+   policy binding verification.
+
+### SI-2: Authorization Before Key Release
+
+**KAS MUST evaluate the policy against the entity's current entitlements
+BEFORE returning any rewrapped key material.**
+
+Specifically:
+
+1. The KAS MUST extract the data attributes from the TDF's policy object.
+2. The KAS MUST submit the data attributes and the entity's token to the
+   authorization service for evaluation.
+3. The KAS MUST receive an explicit permit decision before proceeding with
+   key rewrap.
+4. If the authorization service returns a deny decision or is unavailable,
+   the KAS MUST NOT return any key material.
+5. Authorization evaluation MUST occur for every rewrap request. Caching of
+   authorization decisions across requests is NOT RECOMMENDED, as it defeats
+   the dynamic policy evaluation principle (Section 2.2, Tenet 4).
+
+### SI-3: Dissemination Enforcement
+
+**When the policy body contains a non-empty `dissem` list, the KAS MUST verify
+that the authenticated entity is in the dissemination list.**
+
+Specifically:
+
+1. The KAS MUST extract the `dissem` array from the policy body.
+2. If the `dissem` array is non-empty, the KAS MUST verify that the
+   authenticated entity's identity (as determined from the access token's
+   `sub` claim or equivalent) matches at least one entry in the `dissem` list.
+3. The matching algorithm SHOULD be case-insensitive for email-format
+   identifiers.
+4. If the entity is not in the dissemination list, the KAS MUST deny the
+   rewrap request and MUST NOT return any key material.
+5. Dissemination checks are in addition to, not a replacement for, attribute-
+   based access control evaluation (SI-2).
+
+### SI-4: DPoP Binding
+
+**For production deployments, rewrap requests MUST include DPoP proof binding
+the client's public key to the access token.**
+
+Specifically:
+
+1. The client MUST include a DPoP proof as defined in [RFC 9449][RFC9449] with
+   the rewrap request.
+2. The KAS MUST verify that the DPoP proof is bound to the access token
+   presented with the request.
+3. The KAS MUST verify the DPoP proof signature using the public key embedded
+   in the DPoP proof header.
+4. The Signed Request Token (SRT) MUST be signed with the same key as the DPoP
+   proof, establishing a binding chain: DPoP key -> access token -> SRT ->
+   rewrap request body.
+5. Deployments that do not enforce DPoP MUST document this as a known
+   deviation from the security model and MUST implement compensating controls
+   (e.g., short-lived tokens, network-level access controls).
+
+### SI-5: Payload Integrity Verification
+
+**Clients MUST authenticate every released plaintext segment to the DEK-keyed root.
+They MUST distinguish selected-range verification from whole-object verification.**
+
+Specifically:
+
+1. For an explicit layout, the client MUST authenticate the complete hash table and
+   root before decrypting a segment.
+2. For a scalable layout, a selected segment MUST have its index/size-bound leaf,
+   inclusion path, layout, count, total sizes, and root signature authenticated
+   before its plaintext is released.
+3. The client MUST recompute the segment hash from actual ciphertext, validate the
+   deterministic IV when required, and verify the AEAD tag during decryption.
+4. Whole-object success MUST be reported only after every segment and the complete
+   root have been verified. Selected-range success MUST identify its narrower scope.
+5. Any failure MUST stop further plaintext. A non-streaming operation MUST discard
+   buffered plaintext. A streaming operation MUST signal the failure; already
+   released, previously authenticated segments cannot be recalled.
+6. BaseTDF-INT defines the detailed verification and release order.
+
+### SI-6: Algorithm Validation
+
+**KAS MUST reject KAOs with unrecognized `alg` or `policyBinding.alg` values.**
+
+Specifically:
+
+1. The KAS MUST maintain a set of supported algorithms consistent with the
+   BaseTDF-ALG registry.
+2. When processing a KAO, the KAS MUST validate that the key type (`type`
+   field: `wrapped`, `ec-wrapped`) is recognized and supported.
+3. When the `policyBinding` is an object, the KAS MUST validate that the
+   `alg` field is a recognized policy binding algorithm.
+4. The KAS MUST reject the KAO and return an error if any algorithm field
+   contains an unrecognized value.
+5. The KAS MUST NOT fall back to a default algorithm when an explicitly
+   specified algorithm is unrecognized.
+
+### SI-7: Key Material Hygiene
+
+**Plaintext DEK shares MUST be securely erased from memory after use, on both
+the client and KAS side.**
+
+Specifically:
+
+1. After the KAS has verified the policy binding and re-encrypted the DEK
+   share to the client's public key, the plaintext DEK share MUST be erased
+   from KAS memory.
+2. After the client has reconstructed the DEK from its shares and decrypted
+   the payload, the DEK and all individual shares MUST be erased from client
+   memory.
+3. Secure erasure MUST overwrite the memory occupied by key material with
+   zeros or random data before deallocation.
+4. Implementations SHOULD use language-specific secure erasure facilities
+   (e.g., `crypto/subtle.XORBytes` with zeroing in Go, `SecureZeroMemory` on
+   Windows, `explicit_bzero` on POSIX systems) to prevent compiler
+   optimizations from eliding the erasure.
+5. Key material MUST NOT be written to persistent storage in plaintext, logged,
+   or included in error messages.
+
+### SI-8: Audit Logging
+
+**KAS MUST log every rewrap attempt with sufficient detail for security
+monitoring and forensic analysis.**
+
+Each audit record MUST include at minimum:
+
+1. **Entity identity**: The `sub` claim from the authenticated access token,
+   and the client identifier where available.
+2. **Policy UUID**: The unique identifier of the policy being evaluated.
+3. **Algorithm**: The key access algorithm (e.g., `rsa:2048`, `ec:secp256r1`).
+4. **KAS key identifier**: The `kid` of the KAS key used for unwrapping (or
+   an indication that legacy key lookup was used).
+5. **Policy binding**: The `policyBinding.hash` value from the KAO.
+6. **Access decision**: `permit` or `deny`.
+7. **Timestamp**: The time of the rewrap attempt in [RFC 3339][RFC3339] format.
+8. **Request context**: The requesting client's IP address and user agent,
+   where available.
+
+Audit records for denied requests MUST NOT include any key material. Audit
+records for permitted requests MUST NOT include the plaintext DEK share or the
+rewrapped key.
+
+Audit records SHOULD be emitted as structured data (e.g., JSON) suitable for
+ingestion by SIEM platforms.
+
+---
+
+## 6. Cryptographic Requirements
+
+### 6.1 Symmetric Encryption
+
+The payload MUST be encrypted using an AEAD (Authenticated Encryption with
+Associated Data) algorithm.
+
+| Algorithm | Key Size | Status | Reference |
+|---|---|---|---|
+| AES-256-GCM | 256 bits | REQUIRED | [NIST SP 800-38D][SP800-38D] |
+| AES-128-GCM | 128 bits | NOT RECOMMENDED | [NIST SP 800-38D][SP800-38D] |
+
+Implementations MUST support AES-256-GCM. AES-128-GCM MAY be supported for
+backward compatibility but MUST NOT be used for new TDF creation.
+
+See BaseTDF-ALG Section 3 for the complete algorithm registry.
+
+### 6.2 Asymmetric Key Encapsulation
+
+DEK shares are encapsulated (wrapped) using the KAS public key. The following
+algorithms are defined:
+
+| Algorithm | Minimum Key Size | Status | Reference |
+|---|---|---|---|
+| RSA-OAEP (SHA-1 MGF) | 2048 bits | REQUIRED (legacy) | [RFC 8017][RFC8017] |
+| RSA-OAEP (SHA-256 MGF) | 4096 bits | RECOMMENDED | [RFC 8017][RFC8017] |
+| ECDH + HKDF-SHA256 + AES-256-GCM | P-256 / P-384 / P-521 | RECOMMENDED | [NIST SP 800-56A][SP800-56A] |
+
+- RSA key sizes below 2048 bits MUST NOT be used.
+- RSA-2048 MUST be supported for backward compatibility with existing TDFs.
+- RSA-4096 is RECOMMENDED for new deployments.
+- ECDH with NIST P-256 or stronger curves is RECOMMENDED for new TDF creation.
+- See BaseTDF-ALG Section 4 for algorithm identifiers and detailed parameters.
+
+### 6.3 Policy Binding
+
+| Algorithm | Identifier | Status |
+|---|---|---|
+| HMAC-SHA256 | `HS256` | REQUIRED |
+
+The policy binding MUST be computed as:
+
+```
+HMAC-SHA256(key=DEK_share, message=base64encode(policy))
+```
+
+The result is hex-encoded and then base64-encoded for storage in the
+`policyBinding.hash` field. See BaseTDF-KAO Section 5 for the detailed
+procedure.
+
+### 6.4 Integrity
+
+| Purpose | Algorithm | Status |
+|---|---|---|
+| Segment hashing | GMAC (from AES-GCM) or HMAC-SHA256 | REQUIRED |
+| Explicit root signature | HMAC-SHA256 | REQUIRED |
+| Scalable root signature | `MERKLE-HS256` | REQUIRED |
+| Partition key derivation | `HKDF-SHA256` | REQUIRED when present |
+
+See BaseTDF-INT for the detailed integrity verification scheme.
+
+### 6.5 Random Number Generation
+
+All key generation and nonce/IV generation MUST use a cryptographically secure
+pseudorandom number generator (CSPRNG) seeded from an operating system entropy
+source.
+
+Specifically:
+
+- Go implementations MUST use `crypto/rand`.
+- JavaScript implementations MUST use `crypto.getRandomValues()` or the Node.js
+  `crypto.randomBytes()` API.
+- Implementations MUST NOT use non-cryptographic PRNGs (e.g., `math/rand` in
+  Go, `Math.random()` in JavaScript) for any security-relevant purpose.
+
+### 6.6 IV/Nonce Uniqueness
+
+For AES-GCM:
+
+- The IV/nonce MUST be 96 bits (12 bytes).
+- The IV/nonce MUST be unique for every encryption operation under the same
+  key.
+- For `uniform` and `indexed`, writers MUST use
+  `noncePrefix[4] || u64be(segmentIndex)` and readers MUST verify the prepended IV.
+  `noncePrefix` MUST be generated by a CSPRNG for each TDF.
+- For `explicit`, each segment MUST use a distinct IV; the deterministic scalable
+  construction MAY be used.
+- Nonce reuse under the same key catastrophically compromises both
+  confidentiality and integrity. Implementations MUST ensure uniqueness
+  through deterministic construction or verified-random generation.
+
+### 6.7 AEAD Usage Bounds
+
+AES-GCM security degrades with the volume of data protected under one key and with
+the number and size of forgery attempts. [RFC 8446][RFC8446] Section 5.5 adopted
+an approximately `2^-57` overall AE target using the analysis of [Luykx and
+Paterson][LP17]. BaseTDF adopts `2^-57` as its maximum object-wide confidentiality
+advantage and accounts for integrity separately.
+
+**Confidentiality.** [RFC 9001][RFC9001] Appendix B.1 applies the tighter
+multi-user GCM analysis of [Hoang, Tessaro, and Thiruvengadam][HTT18]. For a
+single user with unique nonces, its dominant confidentiality term is
+`2 * (q * l)^2 / 2^128`. Writing `sigma_p` for the total number of plaintext
+blocks protected under content-encryption key `K_p`, and applying a conservative
+hybrid argument across the independently derived partition keys, BaseTDF uses:
+
+```text
+Adv_conf(object) <= 2 * sum(sigma_p^2 for every p) / 2^128
+```
+
+Therefore an object meets the `2^-57` target when:
+
+```text
+sum(sigma_p^2 for every p) <= 2^70
+```
+
+This mode-level bound assumes AES is a secure pseudorandom permutation, HKDF-SHA256
+produces pseudorandom partition keys, and every nonce is unique under its key. The
+corresponding primitive and KDF advantages are additional negligible terms.
+
+**Integrity (INT-CTXT).** For `v` forgery attempts against messages of at most
+`l` blocks, with a `tau`-bit tag:
+
+```text
+Adv_INT-CTXT <= 2 * v * (l + 1) / 2^tau
+```
+
+#### 6.7.1 Volume Limit
+
+For one content-encryption key, the block-square budget implies an absolute
+plaintext ceiling of `2^35` blocks, or `2^39` bytes (512 GiB). Reaching that ceiling
+spends the entire object-wide `2^-57` confidentiality budget on that key, so a
+multi-partition object needs substantially smaller partitions.
+
+For an object containing `B` plaintext bytes divided into equal `b`-byte
+partitions, the dominant term simplifies to approximately:
+
+```text
+Adv_conf(object) <= B * b / 2^135
+```
+
+At 50 TiB this permits partitions no larger than approximately 5.12 GiB. BaseTDF
+RECOMMENDS 1 GiB partitions, which yield an object-wide advantage below `2^-59`
+under this bound. The limit is cumulative over the life of every partition key,
+including segments added by the append extension. BaseTDF-CORE Section 4.3 defines
+the normative, conservatively checkable manifest constraints.
+
+When `keyDerivation` is present the DEK performs no AES-GCM encryption at all: it
+is the HKDF PRK and the Merkle HMAC key, neither of which is subject to this bound.
+
+#### 6.7.2 Segmentation Does Not Improve a Key's Bound
+
+`sigma_p` counts plaintext blocks regardless of how they are divided into segments.
+Halving the segment size while retaining the same partition bytes leaves
+`sigma_p` unchanged and does not improve confidentiality.
+
+Smaller segments therefore do NOT extend the volume a key may protect. Rekeying is
+the only mechanism that does, and in BaseTDF that mechanism is partition key
+derivation (BaseTDF-CORE Section 4.2).
+
+#### 6.7.3 Scale Example
+
+[Amazon S3 multipart limits][S3LIMITS] specify an advertised 50 TB object, with an
+exact ceiling of 50,000 GiB (approximately 48.83 TiB). BaseTDF's required scalable
+range is 50 TiB so the format also covers that ceiling after allowing
+deployment-specific sharding.
+
+A 50 TiB plaintext encrypted under one key has `sigma = 50 * 2^36` blocks and a
+confidentiality advantage of approximately `2^-43.7`, well past the target. Merely
+using fifty 1 TiB keys would satisfy the former per-key rule but would still give a
+conservative object-wide advantage of approximately `2^-49.4` under the newer
+bound.
+
+At the RECOMMENDED 1 GiB partition size, the same 50 TiB object has 51,200
+partition keys. Each protects `2^26` blocks, and:
+
+```text
+Adv_conf(object) <= 2 * 51,200 * (2^26)^2 / 2^128 < 2^-59
+```
+
+At 4 MiB per segment this is 13,107,200 segments and
+`partitionSegments: 256`; at the 2 MiB default it is 26,214,400 segments and
+`partitionSegments: 512`. Partition keys are derived on demand from one DEK and do
+not enlarge the manifest or require additional KAOs.
+
+#### 6.7.4 Integrity Bound
+
+The integrity bound is not a constraint at BaseTDF parameters. With 128-bit tags
+and 2 MiB segments (`l = 2^17` blocks), 2^32 forgery attempts bound the forgery
+probability by `2 * 2^32 * (2^17 + 1) / 2^128`, approximately 2^-78. Even at the
+largest segment BaseTDF permits (`l = 2^32` blocks, Section 6.7.6) the same
+expression is about 2^-63. Integrity imposes no rekeying requirement.
+
+#### 6.7.5 DEK Uniqueness
+
+**A DEK MUST be freshly generated for each TDF object and MUST NOT be reused across
+objects.**
+
+`noncePrefix` is only 32 bits. Reusing one DEK across `N` objects makes some pair
+of them share a prefix with probability about `N^2 / 2^33`: roughly 0.2% at 4096
+objects and 50% at 2^16 objects. Two objects sharing a DEK and a `noncePrefix`
+repeat the exact `(key, nonce)` pair at every common segment index, which is the
+catastrophic failure Section 6.6 forbids. Partition derivation does not reduce this
+risk: `K_p` is a deterministic function of the DEK alone, so a repeated DEK repeats
+every partition key.
+
+This does not prohibit several manifests over one protected object and one DEK;
+that case is a single object, and its union-policy semantics are in Section 9.3.
+
+#### 6.7.6 Per-Invocation Limit
+
+[NIST SP 800-38D][SP800-38D] Section 5.2.1.1 caps a single GCM invocation at
+2^39 - 256 bits, that is 68,719,476,704 bytes (64 GiB - 32 B). No segment may
+exceed it; BaseTDF-INT Section 2 states the normative segment size cap.
+
+BaseTDF constructs IVs deterministically per SP 800-38D Section 8.2.1, with
+`noncePrefix` as the 32-bit fixed field and `u64be(segmentIndex)` as the 64-bit
+invocation field. The 2^32-invocation cap of SP 800-38D Section 8.3 applies to
+RBG-based IV construction and therefore does not apply here; the invocation field
+admits 2^64 distinct segment indices under one key.
+
+### 6.8 Minimum Key Sizes
+
+| Key Type | Minimum | Recommended | Maximum |
+|---|---|---|---|
+| AES (payload encryption) | 256 bits | 256 bits | 256 bits |
+| RSA (key encapsulation) | 2048 bits | 4096 bits | -- |
+| EC (key encapsulation) | P-256 (256 bits) | P-384 (384 bits) | P-521 (521 bits) |
+| HMAC (policy binding) | 256 bits (from DEK share) | 256 bits | -- |
+
+---
+
+## 7. Key Lifecycle
+
+This section defines the lifecycle stages for cryptographic key material in the
+BaseTDF system.
+
+### 7.1 Generation
+
+**DEK (Data Encryption Key)**:
+
+- The DEK MUST be generated using a CSPRNG (Section 6.5).
+- The DEK MUST be at least 256 bits for AES-256-GCM.
+- A fresh DEK MUST be generated for each TDF object (Section 6.7.5).
+- The DEK MUST have full entropy (i.e., generated uniformly at random, not
+  derived from low-entropy sources such as passwords).
+
+**DEK Shares**:
+
+- When key splitting is used (see BaseTDF-KAO Section 3), the DEK MUST be
+  split into N shares using XOR-based splitting.
+- Each share MUST be the same size as the DEK.
+- All shares except the last MUST be generated independently using a CSPRNG.
+  The last share is computed as the XOR of the DEK and all preceding shares.
+
+**KAS Key Pairs**:
+
+- KAS asymmetric key pairs MUST be generated using a CSPRNG with key sizes
+  meeting the minimums in Section 6.8.
+- Key generation SHOULD occur within an HSM or equivalent trusted key
+  management system.
+
+### 7.2 Wrapping
+
+- Each DEK share MUST be wrapped (encrypted) to the public key of the KAS
+  identified in the KAO's `url` field.
+- The wrapping algorithm is determined by the KAO `type` field: `wrapped` for
+  RSA-OAEP, `ec-wrapped` for ECDH-based key encapsulation.
+- The wrapped key MUST be stored in the KAO's `wrappedKey` field.
+- The wrapping operation MUST use the algorithm parameters specified in
+  BaseTDF-ALG for the indicated key type.
+- A policy binding MUST be computed and stored alongside the wrapped key, as
+  specified in BaseTDF-KAO Section 5.
+
+### 7.3 Storage
+
+- Wrapped DEK shares are stored within the TDF manifest as part of the KAO.
+  They are encrypted and MAY be stored on untrusted media.
+- Plaintext DEK material (the DEK itself and unwrapped shares) MUST NOT be
+  persisted to any storage medium.
+- KAS private keys MUST be stored encrypted at rest when not in active use.
+  HSM-based storage is RECOMMENDED.
+
+### 7.4 Rewrap
+
+- During a rewrap operation, the KAS unwraps the DEK share using its private
+  key, then re-encrypts (rewraps) the share to the client's ephemeral public
+  key.
+- The rewrap operation MUST follow the procedure specified in BaseTDF-KAS.
+- The rewrapped key is scoped to the single rewrap session: it is encrypted
+  to the client's ephemeral public key provided in the rewrap request.
+- The KAS MUST NOT return the plaintext DEK share; it MUST only return the
+  re-encrypted form.
+
+### 7.5 Destruction
+
+- After the KAS completes the rewrap operation, the plaintext DEK share MUST
+  be securely erased from KAS memory (SI-7).
+- After the client reconstructs the DEK and completes decryption, the DEK and
+  all shares MUST be securely erased from client memory (SI-7).
+- When KAS key pairs are rotated or decommissioned, the private key material
+  MUST be securely destroyed after a transition period during which existing
+  TDFs are either re-encrypted to the new key or archived.
+- Key destruction MUST follow the same secure erasure requirements as SI-7.
+
+---
+
+## 8. Post-Quantum Cryptography Migration
+
+### 8.1 Harvest-Now-Decrypt-Later (HNDL) Threat
+
+Adversaries with access to TDF objects today may store the encrypted data and
+the accompanying manifest (including wrapped DEK shares) with the intent of
+decrypting them once a cryptographically relevant quantum computer (CRQC)
+becomes available. This "harvest-now-decrypt-later" (HNDL) threat applies to
+any TDF whose confidentiality requirements extend beyond the expected timeline
+for CRQC development.
+
+Organizations SHOULD assess their data's confidentiality lifetime against
+current CRQC timelines. Data with confidentiality requirements exceeding 10
+years SHOULD be protected with post-quantum algorithms.
+
+### 8.2 Quantum-Vulnerable Components
+
+The following BaseTDF components rely on classical asymmetric cryptography that
+is vulnerable to quantum attacks:
+
+| Component | Classical Algorithm | Quantum Vulnerability |
+|---|---|---|
+| DEK share wrapping (RSA) | RSA-OAEP | Shor's algorithm breaks RSA |
+| DEK share wrapping (EC) | ECDH + HKDF | Shor's algorithm breaks ECDH |
+| DPoP proof signatures | RS256, ES256 | Shor's algorithm breaks RSA/ECDSA |
+| Assertion signatures (JWS) | RS256, ES256 | Shor's algorithm breaks RSA/ECDSA |
+
+The following components are NOT vulnerable to quantum attacks at their
+specified security levels:
+
+| Component | Algorithm | Quantum Security |
+|---|---|---|
+| Payload encryption | AES-256-GCM | Grover's algorithm reduces to 128-bit (sufficient) |
+| Policy binding | HMAC-SHA256 | Quantum-resistant |
+| Segment hashing | HMAC-SHA256 / GMAC | Quantum-resistant |
+
+### 8.3 Direct Post-Quantum Transition Strategy
+
+To mitigate the HNDL threat, BaseTDF adopts a **direct transition strategy**:
+deployments move from a classical key protection algorithm to a pure ML-KEM
+algorithm, without an intervening hybrid PQ/T step.
+
+BaseTDF-ALG deliberately defines no hybrid post-quantum/traditional (PQ/T) key
+protection algorithms (BaseTDF-ALG Section 3.2). BaseTDF targets the algorithm
+set supported by existing FIPS 203-compliant hardware security modules, which
+do not currently -- and may never -- support composite PQ/T KEM constructions.
+A hybrid algorithm that cannot be executed inside the HSM would force the KAS
+private key material into software, trading a speculative cryptanalytic risk
+for a concrete key-custody one.
+
+The security consequences of this choice are:
+
+1. **No classical floor**: A pure ML-KEM KAO derives all of its confidentiality
+   from ML-KEM. A cryptanalytic break of ML-KEM would expose the DEK share with
+   no classical algorithm underneath it. Deployments that judge this risk
+   unacceptable can obtain a comparable property at the manifest layer by
+   splitting the DEK (Section 3 of BaseTDF-KAO) across one ML-KEM KAO and one
+   classical KAO, which requires an attacker to break both.
+2. **No downgrade path**: Because no hybrid identifier exists, an attacker
+   cannot substitute a hybrid KAO for a pure ML-KEM one to force a weaker
+   construction. Unrecognized `alg` values MUST be rejected (SI-6).
+3. **Migration is per-KAS-key**: Transitioning a deployment means provisioning
+   ML-KEM key pairs on the KAS and re-encrypting or re-keying existing TDFs, not
+   negotiating a combined algorithm.
+
+Should HSM support for composite PQ/T KEMs materialize, hybrid algorithms can be
+added to the BaseTDF-ALG registry without structural changes to the manifest.
+
+### 8.4 Algorithm Agility
+
+The BaseTDF-ALG registry provides the algorithm agility framework. New
+algorithms (including post-quantum algorithms) can be added to the registry
+without modifying the core TDF structure. The `type` field of the KAO and the
+`alg` fields throughout the manifest serve as extension points for new
+algorithms.
+
+Implementations MUST be prepared to encounter KAOs with algorithm identifiers
+they do not recognize. Unrecognized algorithms MUST be rejected (SI-6), not
+silently ignored or downgraded.
+
+### 8.5 Recommended Migration Path
+
+The recommended migration path for key encapsulation algorithms is:
+
+```
+Phase 1 (Classical)        Phase 2 (Post-Quantum)
+───────────────────        ──────────────────────
+ECDH + HKDF (P-256+)   →   ML-KEM-768 / ML-KEM-1024
+RSA-OAEP (2048+)       →   (pure PQC)
+```
+
+**Phase 1** (classical): Classical algorithms as specified in Section 6.2.
+Suitable for data with confidentiality requirements under 10 years or where
+PQC support is not yet available in the deployment's KAS hardware.
+
+**Phase 2** (post-quantum): Pure post-quantum algorithms -- `ML-KEM-768` or
+`ML-KEM-1024`, defined in BaseTDF-ALG Section 5. This is the RECOMMENDED
+configuration for new deployments concerned with HNDL threats. Its timeline
+depends on ML-KEM availability in the KAS key store (including HSM firmware
+support for `CKM_ML_KEM_KEY_DECAP` or equivalent).
+
+A deployment MAY run both phases concurrently: the KAS can hold classical and
+ML-KEM key pairs simultaneously, and different TDFs -- or different KAOs within
+one TDF -- can use different algorithms. Splitting a DEK across an ML-KEM KAO
+and a classical KAO under distinct `sid` values yields a manifest-layer
+equivalent of hybrid protection (see Section 8.3).
+
+### 8.6 Signature Migration
+
+For assertion signatures and DPoP proofs, the migration path is:
+
+```
+Phase 1 (Classical)    Phase 2 (Post-Quantum)
+───────────────────    ──────────────────────
+ES256 / RS256      →   ML-DSA-44 / ML-DSA-65
+```
+
+ML-DSA (FIPS 204) is the RECOMMENDED post-quantum signature algorithm for
+BaseTDF. The registered identifiers are `ML-DSA-44` and `ML-DSA-65`
+(BaseTDF-ALG Sections 6.5 and 6.6). As with key protection, BaseTDF-ALG defines
+no composite (hybrid) signature algorithms; a deployment requiring both a
+classical and a post-quantum signature can attach two assertions, each signed
+under a different algorithm.
+
+### 8.7 Timeline Considerations
+
+This specification does not mandate specific migration deadlines. The
+following NIST publications inform timeline planning:
+
+- **FIPS 203** (ML-KEM): Finalized August 2024. Implementations MAY begin
+  adoption.
+- **FIPS 204** (ML-DSA): Finalized August 2024. Implementations MAY begin
+  adoption.
+- **NIST deprecation timeline**: NIST has indicated intent to deprecate
+  112-bit classical security (RSA-2048, P-256) by 2030 and disallow by 2035.
+
+Organizations SHOULD develop PQC migration plans that align with their data
+retention and confidentiality requirements.
+
+---
+
+## 9. Packaging and Scale Security
+
+### 9.1 Compartmentalization
+
+Detachment changes which storage role observes which bytes:
+
+| Role/profile | Attached | Detached or sharded |
+|---|---|---|
+| Attached storage host | Ciphertext plus manifest metadata | Not applicable |
+| Payload host | Not separate | Ciphertext, encrypted sizes, request timing; no policy, KAS URLs, attribute identifiers, assertions, or plaintext MIME type |
+| Manifest host | Not separate | Policy, KAOs, KAS URLs, attribute identifiers, assertions, MIME type, sizes, and payload/tree locators; no ciphertext |
+| Authorized reader | Manifest, ciphertext, and recovered plaintext | Manifest, fetched ciphertext, and recovered plaintext |
+
+By storage role alone, neither detached host has enough material to reconstruct the
+protected object. This is compartmentalization, not metadata confidentiality: the
+manifest host sees cleartext metadata. An actor that also gains authorization,
+credentials, locators, and the missing artifact may cross these boundaries.
+
+### 9.2 Manifest tampering, locators, and SSRF
+
+Detached and sharded manifests require an asymmetric publisher signature before
+locator use. It authenticates provenance and routing fields but does not make a
+publisher-supplied origin safe. Readers MUST additionally apply the default-deny
+scheme/origin, redirect, credential, address, and size rules in BaseTDF-LOC.
+Arbitrary fetches from unauthenticated or merely self-signed manifests are an SSRF
+vulnerability.
+
+The DEK-keyed root, not the publisher signature, binds fetched ciphertext to the
+manifest. Both checks are required.
+
+### 9.3 Multiple manifests
+
+Every manifest over one ciphertext must ultimately recover the same DEK. Therefore
+the effective access set is the union of every policy in every published manifest
+that wraps that DEK. A less restrictive second manifest widens access to the
+original payload; it does not coexist as a separately enforced view. Differentiated
+cryptographic access requires a distinct DEK and re-encryption.
+
+### 9.4 Correlation
+
+Manifest and payload fetches often occur close together and may be relinked through
+timing, client identity, IP address, credentials, or object size. Detachment does not
+prevent traffic analysis. The optional unkeyed `contentBinding` is an additional
+stable correlation handle across tenants and copies; writers SHOULD omit it unless
+deduplication or content addressing justifies the privacy cost.
+
+### 9.5 Crypto-shredding limits
+
+Destroying all copies and backups of a detached manifest removes its stored KAOs
+and can remove the remaining path to the DEK without deleting a very large payload.
+This is useful crypto-shredding, not retroactive revocation. It does not affect a
+party that retained the manifest, recovered DEK, key shares, or plaintext, nor a
+separate manifest wrapping the same DEK.
+
+### 9.6 Distributed writers
+
+Partition derivation limits a worker to assigned segment partitions when it receives
+only `K_p`. It is not forward secrecy and provides no protection if the worker also
+obtains the DEK. `partitionSegments` exposes producer partition granularity and may
+reveal job topology. Checkpoints must respect partition boundaries so retained keys
+cannot decrypt later-appended segments in the same partition.
+
+### 9.7 Append rollback and forks
+
+A consistency proof establishes that one authenticated leaf sequence is a prefix of
+another. It does not prove freshness or identify the canonical latest head. A
+publisher claiming a single history MUST serialize publication, protect the current
+head from rollback, and retain conflicting signed predecessor evidence. Readers that
+need freshness require a trusted catalog, checkpoint, or equivalent external state.
+
+---
+
+## 10. Normative References
+
+| Reference | Title |
+|---|---|
+| [NIST SP 800-207][SP800-207] | Zero Trust Architecture |
+| [NIST SP 800-38D][SP800-38D] | Recommendation for Block Cipher Modes of Operation: Galois/Counter Mode (GCM) and GMAC |
+| [NIST SP 800-56A][SP800-56A] | Recommendation for Pair-Wise Key-Establishment Schemes Using Discrete Logarithm Cryptography |
+| [NIST FIPS 203][FIPS203] | Module-Lattice-Based Key-Encapsulation Mechanism Standard (ML-KEM) |
+| [NIST FIPS 204][FIPS204] | Module-Lattice-Based Digital Signature Standard (ML-DSA) |
+| [RFC 2119][RFC2119] | Key words for use in RFCs to Indicate Requirement Levels |
+| [RFC 8174][RFC8174] | Ambiguity of Uppercase vs Lowercase in RFC 2119 Key Words |
+| [RFC 8017][RFC8017] | PKCS #1: RSA Cryptography Specifications Version 2.2 |
+| [RFC 9449][RFC9449] | OAuth 2.0 Demonstrating Proof of Possession (DPoP) |
+| [RFC 3339][RFC3339] | Date and Time on the Internet: Timestamps |
+| [RFC 8446][RFC8446] | The Transport Layer Security (TLS) Protocol Version 1.3 |
+| [RFC 9001][RFC9001] | Using TLS to Secure QUIC |
+
+---
+
+## 11. Informative References
+
+| Reference | Title |
+|---|---|
+| [Luykx and Paterson 2017][LP17] | Limits on Authenticated Encryption Use in TLS |
+| [Iwata, Ohashi, and Minematsu 2012][IOM12] | Breaking and Repairing GCM Security Proofs (CRYPTO 2012) |
+| [Hoang, Tessaro, and Thiruvengadam 2018][HTT18] | The Multi-user Security of GCM, Revisited |
+| [Amazon S3 multipart limits][S3LIMITS] | Multipart upload sizes and part counts |
+
+[SP800-207]: https://doi.org/10.6028/NIST.SP.800-207
+[SP800-38D]: https://doi.org/10.6028/NIST.SP.800-38D
+[SP800-56A]: https://doi.org/10.6028/NIST.SP.800-56Ar3
+[FIPS203]: https://doi.org/10.6028/NIST.FIPS.203
+[FIPS204]: https://doi.org/10.6028/NIST.FIPS.204
+[RFC2119]: https://www.rfc-editor.org/rfc/rfc2119
+[RFC8174]: https://www.rfc-editor.org/rfc/rfc8174
+[RFC8017]: https://www.rfc-editor.org/rfc/rfc8017
+[RFC9449]: https://www.rfc-editor.org/rfc/rfc9449
+[RFC3339]: https://www.rfc-editor.org/rfc/rfc3339
+[RFC8446]: https://www.rfc-editor.org/rfc/rfc8446
+[RFC9001]: https://www.rfc-editor.org/rfc/rfc9001
+[LP17]: https://www.isg.rhul.ac.uk/~kp/TLS-AEbounds.pdf
+[IOM12]: https://eprint.iacr.org/2012/438
+[HTT18]: https://eprint.iacr.org/2018/993
+[S3LIMITS]: https://docs.aws.amazon.com/AmazonS3/latest/userguide/qfacts.html

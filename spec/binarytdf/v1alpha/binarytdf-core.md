@@ -4,7 +4,7 @@
 |---|---|
 | Document | BinaryTDF-CORE |
 | Version | 1 Alpha |
-| Source draft | 0.2 |
+| Source draft | 0.3 |
 | Frame version | 2 |
 | Status | Draft |
 | Depends on | BinaryTDF-SEC, BinaryTDF-ALG, BinaryTDF-MTD, BinaryTDF-POL, BinaryTDF-REC, BinaryTDF-KAO, BinaryTDF-PAY, BinaryTDF-KAS, BinaryTDF-SCH, BinaryTDF-PKG |
@@ -138,7 +138,8 @@ At minimum, interoperability tests SHOULD cover:
 - one-byte changes to version, metadata, recovery, encapsulation, wrapped material,
   and ciphertext;
 - wrong-suite keys, lengths, and encodings;
-- content-encryption per-invocation and volume limits at and just above the boundary;
+- content-encryption per-invocation and object-wide confidentiality budgets at and
+  just above the boundary;
 - ML-KEM failure without distinguishable error leakage;
 - DIRECT and XOR_ALL paths, alternatives, missing groups, and reconstruction;
 - non-canonical, duplicate, and substituted policies; and
@@ -153,9 +154,12 @@ KAO and session context bytes, payload AAD, derived-key inputs, and expected fai
 - [RFC 5869: HKDF](https://www.rfc-editor.org/rfc/rfc5869)
 - [RFC 8126: Protocol Registries](https://www.rfc-editor.org/rfc/rfc8126)
 - [RFC 8446: TLS 1.3](https://www.rfc-editor.org/rfc/rfc8446)
+- [RFC 9001: Using TLS to Secure QUIC](https://www.rfc-editor.org/rfc/rfc9001)
 - [RFC 8610: CDDL](https://www.rfc-editor.org/rfc/rfc8610)
 - [RFC 8949: CBOR](https://www.rfc-editor.org/rfc/rfc8949)
 - [FIPS 203: ML-KEM](https://csrc.nist.gov/pubs/fips/203/final)
 - [NIST SP 800-38D: GCM and GMAC](https://doi.org/10.6028/NIST.SP.800-38D)
 - [Luykx and Paterson: Limits on Authenticated Encryption Use in TLS](https://www.isg.rhul.ac.uk/~kp/TLS-AEbounds.pdf)
 - [Iwata, Ohashi, and Minematsu: Breaking and Repairing GCM Security Proofs](https://eprint.iacr.org/2012/438)
+- [Hoang, Tessaro, and Thiruvengadam: The Multi-user Security of GCM, Revisited](https://eprint.iacr.org/2018/993)
+- [Amazon S3 multipart upload limits](https://docs.aws.amazon.com/AmazonS3/latest/userguide/qfacts.html)

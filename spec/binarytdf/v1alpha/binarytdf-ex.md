@@ -4,7 +4,7 @@
 |---|---|
 | Document | BinaryTDF-EX |
 | Version | 1 Alpha |
-| Source draft | 0.2 |
+| Source draft | 0.3 |
 | Frame version | 2 |
 | Status | Informational |
 | Depends on | BinaryTDF-CORE, BinaryTDF-PKG, BinaryTDF-SCH |
@@ -143,10 +143,11 @@ before decryption, on frame and header values alone.
    68719476704 plaintext bytes with a 12-byte nonce and a 16-byte tag, exactly the
    BinaryTDF-PAY Section 4 limit, and MUST open. A Ciphertext Length of `68719476733`
    carries one byte more and MUST be rejected.
-2. Suite 2 at the volume ceiling. With `segment_size` 1048576, a Ciphertext Length of
-   `1099528405308` spans 1048593 segments and 1099511627776 plaintext bytes, exactly
-   the BinaryTDF-STREAM Section 8.1 ceiling, and MUST open. A Ciphertext Length of
-   `1099528405309` carries one plaintext byte more and MUST be rejected.
+2. Suite 2 at the block ceiling. With `segment_size` 1048576, a Ciphertext Length of
+   `549764202672` spans 524297 segments and 549755813876 plaintext bytes. Its segment
+   invocations contain exactly `2^35` plaintext blocks, so it MUST open. A Ciphertext
+   Length of `549764202673` makes the final invocation cross into one additional block
+   and MUST be rejected by BinaryTDF-STREAM Section 8.1.
 3. Suite 3 at a partition boundary. With `segment_size` 1048576 and
    `partition_segments` 4, segment 3 decrypts under `K_0` and segment 4 under `K_1`,
    where `K_1` is `HKDF-Expand(payload_key,
@@ -154,7 +155,15 @@ before decryption, on frame and header values alone.
    index and the nonce indexes are hexadecimal. Their nonces keep the absolute index:
    `nonce_prefix || 00000003 || 00` and `nonce_prefix || 00000004 || 00`. Swapping the
    two ciphertext segments MUST fail authentication.
-4. Suite 3 parameter rejection. With `segment_size` 1048576, `partition_segments`
-   1048592 is the largest conforming value, because `1048592 * 1048560` is
-   1099511627520. The value 1048593 gives 1099512676080 and MUST be rejected by
-   BinaryTDF-STREAM Section 9.4.
+4. Suite 3 confidentiality-budget boundary. With `segment_size` 1048576,
+   `partition_segments` 524297, and Ciphertext Length `549764202688`, all 524297
+   segments are in partition 0 and contain exactly `sigma_0 = 2^35` plaintext blocks.
+   Thus `sigma_0^2 = 2^70` and the object MUST open. A Ciphertext Length of
+   `549764202689` adds one block to the final invocation, exceeds the budget, and MUST
+   be rejected by BinaryTDF-STREAM Section 9.4.
+5. Suite 3 at 50 TiB. With `segment_size` 1048576 and `partition_segments` 1024,
+   54975581388800 plaintext bytes produce Ciphertext Length `54976420262464`,
+   52429601 segments, and 51201 partitions. The exact block-square sum is
+   `230580012879620085778`, below `2^70`; the object MUST open. Implementations MUST
+   obtain the same value using checked integer arithmetic without iterating over all
+   segments.

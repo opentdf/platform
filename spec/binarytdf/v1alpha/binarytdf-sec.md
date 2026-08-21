@@ -4,7 +4,7 @@
 |---|---|
 | Document | BinaryTDF-SEC |
 | Version | 1 Alpha |
-| Source draft | 0.2 |
+| Source draft | 0.3 |
 | Frame version | 2 |
 | Status | Draft |
 | Depends on | None |
@@ -45,17 +45,32 @@ following are frame version 2 baselines; profiles MAY set lower limits.
 
 ## 3. AEAD usage bounds
 
-AES-256-GCM security degrades with the volume of data protected under one key. Two
-bounds apply, from the analysis of Iwata, Ohashi, and Minematsu as applied to TLS by
-Luykx and Paterson. RFC 8446 Section 5.5 derives its record limits from the same
-analysis. BinaryTDF-CORE Section 5 lists all three works.
+AES-256-GCM security degrades with the volume of data protected under each key and
+with the number and size of forgery attempts. RFC 8446 Section 5.5 adopted an
+approximately `2^-57` overall AE target using the analysis of Luykx and Paterson.
+BinaryTDF adopts `2^-57` as its maximum object-wide confidentiality advantage and
+accounts for integrity separately. BinaryTDF-CORE Section 5 lists the references.
 
-For `sigma` total 16-byte plaintext blocks and `q` encryption invocations under one
-key, confidentiality is bounded by:
+RFC 9001 Appendix B.1 applies the tighter multi-user GCM analysis of Hoang, Tessaro,
+and Thiruvengadam. For a single user with unique nonces, its dominant confidentiality
+term is `2 * (q * l)^2 / 2^128`. Writing `sigma_p` for the total number of 16-byte
+plaintext blocks protected under content-encryption key `K_p`, and applying a
+conservative hybrid argument across independently derived partition keys, BinaryTDF
+uses:
 
 ```text
-Adv_IND-CPA <= (sigma + q + 1)^2 / 2^129
+Adv_conf(object) <= 2 * sum(sigma_p^2 for every p) / 2^128
 ```
+
+Therefore an object meets the `2^-57` target when:
+
+```text
+sum(sigma_p^2 for every p) <= 2^70
+```
+
+This mode-level bound assumes AES is a secure pseudorandom permutation, HKDF-SHA256
+produces pseudorandom partition keys, and every nonce is unique under its key. The
+corresponding primitive and KDF advantages are additional negligible terms.
 
 For `v` forgery attempts against messages of at most `l` blocks with a `tau`-bit tag,
 integrity is bounded by:
@@ -64,44 +79,41 @@ integrity is bounded by:
 Adv_INT-CTXT <= 2 * v * (l + 1) / 2^tau
 ```
 
-### 3.1 Volume limit
+### 3.1 Object-wide confidentiality budget
 
-`sigma` dominates `q` at every segment size BinaryTDF permits, so the confidentiality
-bound is a function of total plaintext bytes under one key:
+For one content-encryption key, the block-square budget implies an absolute ceiling of
+`2^35` plaintext blocks, or at most `2^39` bytes (512 GiB). Reaching that ceiling
+spends the entire object-wide target on that key, so a multi-partition object needs
+substantially smaller partitions. The limit is cumulative over the life of every key
+and is independent of how plaintext is divided into segments.
 
-| Total plaintext under one key | IND-CPA advantage |
-|---|---:|
-| 2^38 bytes (256 GiB) | 2^-61 |
-| 2^40 bytes (1 TiB) | 2^-57 |
-| 2^42 bytes (4 TiB) | 2^-53 |
-| 2^43 bytes (8 TiB) | 2^-51 |
-| 2^45 bytes (32 TiB) | 2^-47 |
-| 2^63 bytes (8 EiB) | 2^-11 |
+For an object containing `B` plaintext bytes divided into equal `b`-byte partitions,
+the dominant term simplifies to approximately:
 
-RFC 8446 Section 5.5 targets approximately 2^-57 for AES-GCM. Its record limit of
-2^24.5 records of 2^14 bytes is 2^38.5 bytes, about 389 GB, which attains 2^-60.
-BinaryTDF adopts that margin at the round volume reaching it exactly.
+```text
+Adv_conf(object) <= B * b / 2^135
+```
 
-A single content-encryption key MUST NOT protect more than 2^40 bytes
-(1099511627776) of plaintext. The limit is cumulative over the life of the key and is
-independent of how the plaintext is divided.
+At 50 TiB this permits partitions no larger than approximately 5.12 GiB. BinaryTDF
+RECOMMENDS partitions of approximately 1 GiB, which yield an object-wide advantage
+below `2^-59`. BinaryTDF-STREAM Sections 8.1 and 9.4 define the normative checks in
+terms of actual per-invocation block counts.
 
 | Suite | Key bounded by this limit | Effect |
 |---:|---|---|
 | 1 | payload key | unreachable; Section 3.6 binds first at 68719476704 bytes |
-| 2 | payload key | complete object at most 2^40 bytes, BinaryTDF-STREAM Section 8.1 |
-| 3 | partition key `K_p` | each partition at most 2^40 bytes, no ceiling on the object |
+| 2 | payload key | complete object at most 2^35 blocks, BinaryTDF-STREAM Section 8.1 |
+| 3 | partition key `K_p` | sum of squared partition block counts at most 2^70 |
 
 A suite 3 payload key performs no AES-GCM encryption. It is only the pseudorandom key
 from which each `K_p` is expanded, so this bound does not apply to it.
 
 ### 3.2 Segmentation is not rekeying
 
-`sigma` counts plaintext blocks however they are divided into segments, and `q` is
-negligible beside it. At 2^40 bytes under one key with 1 MiB segments, `sigma` is 2^36
-blocks and `q` is about 2^20 invocations, which moves the bound by less than a
-thousandth of a bit. Halving the segment size doubles `q` and leaves `sigma`
-unchanged.
+`sigma_p` counts plaintext blocks however they are divided into segments. Halving the
+segment size while retaining the same partition bytes leaves `sigma_p` essentially
+unchanged; the only difference is conservative rounding of partial final blocks in
+individual invocations.
 
 Smaller segments therefore do not extend the volume one key may protect, and a
 segmented suite does not escape the volume bound that constrains a single-message
@@ -111,13 +123,25 @@ volume bound, and in BinaryTDF that mechanism is suite 3 partition-key derivatio
 
 ### 3.3 Scale example
 
-The Amazon S3 single-object maximum is 5 TiB, or 5497558138880 bytes. Protected under
-one key it gives `sigma = 5 * 2^36` blocks and an advantage of about 2^-52.4, past the
-target margin. Suite 2 therefore tops out at 2^40 bytes, a fifth of such an object.
-Suite 3 places at most 2^40 bytes under each partition key, so the same object needs
-no more than six partition keys and no key exceeds the limit. BinaryTDF-STREAM Section
-9 gives the parameters and the resulting maximum object size, which is about 1.7
-million times the S3 maximum.
+Amazon S3 multipart limits advertise a 50 TB object and specify an exact maximum of
+50,000 GiB, approximately 48.83 TiB. BinaryTDF's scalable range includes a 50 TiB
+logical plaintext so that it also covers that storage limit when encrypted bytes are
+mapped across enough physical storage.
+
+A 50 TiB plaintext encrypted under one key has `sigma = 50 * 2^36` blocks and a
+confidentiality advantage of approximately `2^-43.7`, well past the target. Merely
+using fifty 1 TiB keys would satisfy the former per-key rule but would still give a
+conservative object-wide advantage of approximately `2^-49.4`.
+
+At approximately 1 GiB per partition, the same object uses about 51,200 partition
+keys. Each protects approximately `2^26` blocks, and:
+
+```text
+Adv_conf(object) <= 2 * 51,200 * (2^26)^2 / 2^128 < 2^-59
+```
+
+BinaryTDF-STREAM Section 9.5 gives exact wire parameters and block counts. Partition
+keys are derived on demand from one payload key and do not add KAOs or CBOR metadata.
 
 ### 3.4 Integrity bound
 
@@ -134,8 +158,8 @@ Every object key protects exactly one object. BinaryTDF-PAY Section 1 states tha
 requirement; the AEAD bounds are its reason.
 
 Suite 1 draws a fresh 12-byte nonce for its single message, so one object key means
-one AES-GCM message under one payload key. That is why suite 1 needs no volume rule
-beyond the per-invocation limit.
+one AES-GCM message under one payload key. Its per-invocation limit is safely inside
+the object-wide confidentiality budget.
 
 Suites 2 and 3 derive the payload key from the object key and a fresh 32-byte
 `stream_salt`, and their nonce prefix is only 56 bits. A repeated object key alone

@@ -4,7 +4,7 @@
 |---|---|
 | Document | BinaryTDF-PAY |
 | Version | 1 Alpha |
-| Source draft | 0.2 |
+| Source draft | 0.3 |
 | Frame version | 2 |
 | Status | Draft |
 | Depends on | BinaryTDF-SEC, BinaryTDF-ALG, BinaryTDF-MTD, BinaryTDF-REC |
@@ -78,23 +78,24 @@ one invocation; this requirement, not the frame, is the binding limit.
 A payload larger than that limit MUST use a segmented suite or several objects with
 independent object keys.
 
-## 5. Volume limits
+## 5. Confidentiality budget
 
-A single content-encryption key MUST NOT protect more than 2^40 plaintext bytes, that
-is 1099511627776 bytes. BinaryTDF-SEC Section 3 gives the analysis; this section gives
-the per-suite consequence.
+BinaryTDF-SEC Section 3 limits one object's GCM confidentiality advantage by requiring
+`sum(sigma_p^2) <= 2^70`, where `sigma_p` is the number of 16-byte plaintext blocks
+encrypted under content-encryption key `K_p`. Each AES-GCM invocation contributes
+`ceil(plaintext_length / 16)` blocks. The per-suite consequences are:
 
 | Suite | Content-encryption key | Bound on one object |
 |---:|---|---|
-| 1 | payload key | 68719476704 bytes, from Section 4 |
-| 2 | payload key | 1099511627776 bytes, from BinaryTDF-STREAM Section 8.1 |
-| 3 | partition key `K_p` | 1099511627776 bytes per partition; object bounded by segment count |
+| 1 | payload key | 68719476704 bytes, from the stricter Section 4 invocation limit |
+| 2 | payload key | at most 2^35 plaintext blocks, from BinaryTDF-STREAM Section 8.1 |
+| 3 | partition key `K_p` | sum of squared partition block counts at most 2^70 |
 
-Suite 1 cannot reach the volume limit, because its per-invocation limit is smaller by
-a factor of about 16. Suite 2 protects a complete object under one payload key, so the
-volume limit is its object ceiling. Suite 3 derives one key per partition and bounds
-each partition instead, so it is the only suite whose object size is unconstrained by
-this limit.
+Suite 1 cannot spend the complete confidentiality budget because its single-invocation
+limit binds first. Suite 2 protects the complete object under one payload key, so the
+block budget is its object ceiling. Suite 3 derives one key per partition and applies
+the budget across all partitions, allowing 50 TiB plaintexts with approximately
+1 GiB partitions while retaining the object-wide target.
 
 ## 6. Security requirements
 

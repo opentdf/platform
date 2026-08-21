@@ -2,8 +2,10 @@ package access
 
 import (
 	"context"
+	"errors"
 	"testing"
 
+	"connectrpc.com/connect"
 	authzV2 "github.com/opentdf/platform/protocol/go/authorization/v2"
 	"github.com/opentdf/platform/protocol/go/entity"
 	entityresolutionV2 "github.com/opentdf/platform/protocol/go/entityresolution/v2"
@@ -225,6 +227,72 @@ func TestJITPDP_GetDecision_TargetedDenyOnEntityMismatch(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, decision)
 	assert.False(t, decision.AllPermitted)
+}
+
+func TestJITPDP_GetDecision_NotFoundDegradesToDeny(t *testing.T) {
+	definitionFQN := "https://example.com/attr/classification"
+	valueFQN := definitionFQN + "/value/finance"
+
+	// The attributes service returns NotFound for the requested value (does not exist in policy).
+	attrFake := &fakeAttributesClient{
+		respFunc: func(_ *attrs.GetEntitleableAttributesByFqnsRequest) (*attrs.GetEntitleableAttributesByFqnsResponse, error) {
+			return nil, connect.NewError(connect.CodeNotFound, errors.New("not found"))
+		},
+	}
+	ers := &recordingERSV2Client{resolveResponse: &entityresolutionV2.ResolveEntitiesResponse{
+		EntityRepresentations: []*entityresolutionV2.EntityRepresentation{entityRepWithClientID("abc")},
+	}}
+	p := &JustInTimePDP{
+		logger:                        logger.CreateTestLogger(),
+		sdk:                           &otdfSDK.SDK{Attributes: attrFake, EntityResolutionV2: ers},
+		obligationsPDP:                newTestObligationsPDP(t),
+		registeredResourceValuesByFQN: make(map[string]*policy.RegisteredResourceValue),
+	}
+
+	ctx := audit.ContextWithActorID(context.Background(), "test-actor")
+	decision, err := p.GetDecision(ctx, entityChainIdentifier(), &policy.Action{Name: "read"}, attrValueResource(valueFQN), nil, nil)
+	// A NotFound must degrade to a per-resource deny, not surface as an internal error.
+	require.NoError(t, err)
+	require.NotNil(t, decision)
+	assert.False(t, decision.AllPermitted)
+}
+
+func TestJITPDP_buildInnerPDP_UsesFullPolicyPDPWhenSet(t *testing.T) {
+	// When the full-policy PDP is set (direct entitlements / dynamic value mappings mode),
+	// buildInnerPDP returns it without performing a targeted entitleable fetch.
+	definitionFQN := "https://example.com/attr/classification"
+	valueFQN := definitionFQN + "/value/confidential"
+	fullPDP, err := NewPolicyDecisionPoint(
+		context.Background(),
+		logger.CreateTestLogger(),
+		[]*policy.Attribute{{
+			Fqn:    definitionFQN,
+			Rule:   policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF,
+			Values: []*policy.Value{{Fqn: valueFQN}},
+		}},
+		[]*policy.SubjectMapping{},
+		nil,
+		true,
+		false,
+	)
+	require.NoError(t, err)
+
+	attrFake := &fakeAttributesClient{
+		respFunc: func(_ *attrs.GetEntitleableAttributesByFqnsRequest) (*attrs.GetEntitleableAttributesByFqnsResponse, error) {
+			t.Fatal("targeted fetch should not be called when full-policy PDP is set")
+			return nil, errors.New("unreachable")
+		},
+	}
+	p := &JustInTimePDP{
+		logger:        logger.CreateTestLogger(),
+		sdk:           &otdfSDK.SDK{Attributes: attrFake},
+		fullPolicyPDP: fullPDP,
+	}
+
+	got, err := p.buildInnerPDP(context.Background(), []string{valueFQN})
+	require.NoError(t, err)
+	assert.Same(t, fullPDP, got)
+	assert.Empty(t, attrFake.requests)
 }
 
 func TestJITPDP_GetDecision_TargetedDenyOnUnknownFQN(t *testing.T) {

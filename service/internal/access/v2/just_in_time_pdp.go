@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"strings"
 
+	"connectrpc.com/connect"
 	"github.com/opentdf/platform/lib/flattening"
 	authzV2 "github.com/opentdf/platform/protocol/go/authorization/v2"
 	"github.com/opentdf/platform/protocol/go/entity"
@@ -43,6 +44,11 @@ type JustInTimePDP struct {
 	sdk    *otdfSDK.SDK
 	// embedded obligations PDP
 	obligationsPDP *obligations.ObligationsPolicyDecisionPoint
+
+	// fullPolicyPDP is non-nil only when direct entitlements or dynamic value mappings are enabled.
+	// Those features entitle values that may not exist in policy, which targeted lookups cannot
+	// supply, so the PDP is built once from the full policy load and reused for every request.
+	fullPolicyPDP *PolicyDecisionPoint
 
 	// Registered resources, obligations, and (gated) dynamic value mappings remain fully loaded at
 	// construction; attribute definitions and subject mappings are fetched per request via
@@ -132,6 +138,36 @@ func NewJustInTimePDP(
 		return nil, fmt.Errorf("failed to create new obligations policy decision point: %w", err)
 	}
 	p.obligationsPDP = obligationsPDP
+
+	// Direct entitlements and dynamic value mappings entitle attribute values that may not exist in
+	// policy; synthesizing them requires the full definition set, which targeted
+	// GetEntitleableAttributesByFqns lookups cannot supply (a non-existent value FQN errors). When
+	// either experimental feature is enabled, build the PDP from the full policy load instead.
+	if allowDirectEntitlements || allowDynamicValueMappings {
+		retriever := NewEntitlementPolicyRetriever(sdk)
+		allAttributes, err := retriever.ListAllAttributes(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("failed to list attributes: %w", err)
+		}
+		allSubjectMappings, err := retriever.ListAllSubjectMappings(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("failed to list subject mappings: %w", err)
+		}
+		fullPolicyPDP, err := NewPolicyDecisionPoint(
+			ctx,
+			log,
+			allAttributes,
+			allSubjectMappings,
+			allRegisteredResources,
+			allowDirectEntitlements,
+			namespacedPolicy,
+			WithDynamicValueMappings(p.dynamicValueMappings, allowDynamicValueMappings),
+		)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create full-policy decision point: %w", err)
+		}
+		p.fullPolicyPDP = fullPolicyPDP
+	}
 
 	return p, nil
 }
@@ -364,8 +400,28 @@ func (p *JustInTimePDP) GetEntitlements(
 // request-scoped PolicyDecisionPoint from them plus the fully-loaded registered resources and
 // dynamic value mappings.
 func (p *JustInTimePDP) buildInnerPDP(ctx context.Context, valueFQNs []string) (*PolicyDecisionPoint, error) {
+	// Direct entitlements / dynamic value mappings require the full policy load (see NewJustInTimePDP).
+	if p.fullPolicyPDP != nil {
+		return p.fullPolicyPDP, nil
+	}
 	definitions, subjectMappings, err := fetchEntitleableAttributes(ctx, p.sdk, valueFQNs)
 	if err != nil {
+		// A NotFound means one or more requested value FQNs do not exist in policy. Degrade to an
+		// empty PDP so the decision path denies those resources per-resource rather than failing the
+		// whole request, matching the prior full-policy behavior for unknown FQNs.
+		if connect.CodeOf(err) == connect.CodeNotFound {
+			p.logger.DebugContext(ctx, "entitleable lookup returned NotFound; treating requested values as unentitled", slog.Any("error", err))
+			return NewPolicyDecisionPoint(
+				ctx,
+				p.logger,
+				[]*policy.Attribute{},
+				[]*policy.SubjectMapping{},
+				p.registeredResources,
+				p.allowDirectEntitlements,
+				p.namespacedPolicy,
+				WithDynamicValueMappings(p.dynamicValueMappings, p.allowDynamicValueMappings),
+			)
+		}
 		return nil, fmt.Errorf("failed to fetch entitleable attributes: %w", err)
 	}
 	pdp, err := NewPolicyDecisionPoint(

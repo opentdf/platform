@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.26.0](https://github.com/opentdf/platform/compare/service/v0.25.0...service/v0.26.0) (2026-08-21)
+
+
+### Features
+
+* **core:** add trace-log correlation for otel ([#3888](https://github.com/opentdf/platform/issues/3888)) ([1700732](https://github.com/opentdf/platform/commit/1700732f8dd9bd7cfee7c7c12d65fda10d719c94))
+* **core:** Expose real-time audit logging ([#3889](https://github.com/opentdf/platform/issues/3889)) ([b0f4eb4](https://github.com/opentdf/platform/commit/b0f4eb4399fe38e16d2bd60db4d745697ace2a54))
+* **kas:** Move key_management to stable ([#3896](https://github.com/opentdf/platform/issues/3896)) ([98f4ec6](https://github.com/opentdf/platform/commit/98f4ec63ff0c7ea9c21a6b6c96c81e6fcb82adba))
+* **policy:** Add sort functionality on key_status ([#3845](https://github.com/opentdf/platform/issues/3845)) ([2ca20ff](https://github.com/opentdf/platform/commit/2ca20ff96048f02c56277455a97d7f2341f55d2d))
+
 ## [0.25.0](https://github.com/opentdf/platform/compare/service/v0.24.0...service/v0.25.0) (2026-08-11)
 
 

@@ -49,8 +49,15 @@ This table may be extended in a future point release. Values outside it are unre
 and MUST be rejected.
 
 Because the key length is fixed at 256 bits across every entry, the HKDF output length
-in §3 is 32 bytes for all currently registered ciphers. The short-tag hazard is discussed
-in NanoTDF-SEC §3.
+in §3 is 32 bytes for all currently registered ciphers.
+
+The entries are not interchangeable. The forgery resistance of a tag depends on the
+length of the message it authenticates as well as on the tag itself, and a NanoTDF
+payload can reach 2^20 blocks, which costs 21 bits at every entry in the table. A
+64-bit tag over a maximum-size payload is worth about 43 bits. NanoTDF-SEC §3 tabulates
+the advantage for each entry at each payload size, gives the SP 800-38D Appendix C
+constraints that apply to cipher `0x00`, and states when a producer SHOULD NOT select
+it.
 
 ## 3. Key derivation
 
@@ -88,7 +95,7 @@ the Policy Key Access ephemeral key, and the creator signature's public key. Unc
 and hybrid encodings are not permitted.
 
 A decoder MUST verify that the recovered point lies on the declared curve before using
-it (NanoTDF-SEC §4).
+it (NanoTDF-SEC §5).
 
 ## 5. ECDSA signature encoding
 

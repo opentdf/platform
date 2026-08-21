@@ -60,7 +60,7 @@ NanoTDF-BND §2).
   random source, MUST NOT reuse it across objects, and MUST discard the private key once
   the object is written.
 - A party performing ECDH MUST validate the received public key as a point on the
-  declared curve before use (NanoTDF-SEC §4).
+  declared curve before use (NanoTDF-SEC §5).
 - Both parties MUST use the curve named in the header. The curve is not negotiated, and
   a receiver MUST NOT substitute another.
 

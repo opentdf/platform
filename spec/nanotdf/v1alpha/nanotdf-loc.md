@@ -73,7 +73,7 @@ parsing or validation action.
 - A consumer MUST resolve a locator through trusted local configuration — an allow-list,
   a catalog, or a service registry — rather than by dispatching on the literal body.
 - A consumer MUST NOT infer trust from a locator. Ownership of a name gives uniqueness,
-  not authority; an object may name any locator (NanoTDF-SEC §6).
+  not authority; an object may name any locator (NanoTDF-SEC §7).
 - A consumer MUST bound redirects, response size, and elapsed time, and MUST apply the
   same parser limits to fetched content as to the object itself (NanoTDF-SEC §1).
 

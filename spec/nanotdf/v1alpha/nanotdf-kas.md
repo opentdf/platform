@@ -18,7 +18,7 @@ there is no list, no alternative, and no quorum.
 
 The locator is a name, not a trust anchor. A client MUST resolve it through trusted local
 configuration and MUST NOT dispatch on the literal value or dereference it during parsing
-(NanoTDF-SEC §6).
+(NanoTDF-SEC §7).
 
 The KAS public key used to produce the object is not carried in the header and is not
 identified by any key identifier. Producer and KAS must therefore agree on which key is
@@ -83,10 +83,24 @@ under a default or fallback policy when the named policy is unavailable.
 Header parse failure, curve validation failure, binding verification failure, policy
 resolution failure, and authorization denial MUST be reported to the requester as one
 indistinguishable error class. Distinguishing them turns the KAS into an oracle for
-policy structure, key validity, and object well-formedness (NanoTDF-SEC §8).
+policy structure, key validity, and object well-formedness (NanoTDF-SEC §9).
 
 A KAS MUST NOT return the derived key, the shared secret, or decrypted policy content on
 any failure path, and MUST NOT log them.
+
+Indistinguishable errors limit what a failed request reveals; they do not limit how many
+failed requests a party may make. A KAS verifying a 64-bit GMAC policy binding is an
+online forgery oracle for that binding, bounded only by its own throughput
+(NanoTDF-SEC §3.6). A KAS therefore SHOULD count failed policy-binding verifications per
+ephemeral public key, rate-limit them, and stop verifying for that key once the count
+reaches the limit its deployment enforces under SP 800-38D Appendix C
+(NanoTDF-SEC §3.3). NanoTDF has no rekey: the derived key is a function of the object, so
+refusing further verification is the only response available.
+
+A KAS SHOULD also record the ephemeral public keys it has seen. A repeat identifies an
+object produced from a reused ephemeral key pair, which is the precondition for both the
+nonce-reuse and the volume hazards in NanoTDF-SEC §2.2 and §4, and which NanoTDF-KAO §2.1
+forbids. Rewrap is the only point at which a deployment can observe it.
 
 ## 6. Auditing
 
@@ -103,4 +117,5 @@ MUST NOT contain the derived key.
 - [BCP 14](https://www.rfc-editor.org/info/bcp14)
 - [RFC 5869: HKDF](https://www.rfc-editor.org/rfc/rfc5869)
 - [RFC 8446: TLS 1.3](https://www.rfc-editor.org/rfc/rfc8446)
+- [NIST SP 800-38D: GCM and GMAC](https://csrc.nist.gov/pubs/sp/800/38/d/final)
 - [NIST SP 800-56A: Key Establishment Using Discrete Logarithm Cryptography](https://csrc.nist.gov/pubs/sp/800/56/a/r3/final)

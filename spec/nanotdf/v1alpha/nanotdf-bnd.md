@@ -60,13 +60,20 @@ key. This holds even when Policy Key Access supplies a separate policy key: the 
 exists to tie the policy to *this payload*, and computing it under the policy key would
 sever that tie.
 
+A 64-bit GMAC tag is short, but the message it authenticates is a fixed 32-byte digest,
+so the forgery bound is far better than the same tag length over a long payload: about
+2^-61.42 per attempt, against 2^-43.00 for a maximum-size payload. The exposure is of a
+different kind rather than a different degree, because the verifier here is a network
+service that answers as often as it is asked. NanoTDF-SEC §3.6 gives the numbers and the
+deployment controls, and NanoTDF-KAS §5 states them normatively.
+
 ### 2.3 Verification
 
 A KAS MUST verify the policy binding before evaluating the policy or releasing a key. A
 consumer that receives a key MUST verify the binding before acting on the policy.
 
 Verification failure MUST be reported in the same indistinguishable error class as key
-derivation and authorization failure (NanoTDF-SEC §8).
+derivation and authorization failure (NanoTDF-SEC §9).
 
 ### 2.4 What the binding does not do
 
@@ -129,7 +136,7 @@ private key signed these bytes. It does not establish that:
 The signature is also removable: re-encoding the object with `HAS_SIGNATURE` cleared and
 the section stripped yields a well-formed, openable NanoTDF. Nothing else in the object
 records that a signature was ever present. An application requiring provenance MUST
-reject an unsigned object rather than treating absence as acceptable (NanoTDF-SEC §5).
+reject an unsigned object rather than treating absence as acceptable (NanoTDF-SEC §6).
 
 ## 4. References
 

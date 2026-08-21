@@ -32,6 +32,16 @@ The core does not define a policy language, segmentation, key splitting, multi-K
 access, assertions, metadata carriage, or streaming. Objects needing those capabilities
 use BaseTDF.
 
+That boundary is quantitative, and it is a property of the frame rather than a policy
+choice. The payload Length field is three bytes, so the IV, ciphertext, and MAC of one
+object together cannot exceed 16,777,215 bytes, and the largest ciphertext is
+16,777,204 bytes at the shortest tag (NanoTDF-PAY §2). The Amazon S3 single-object
+maximum is 5 TiB, 5,497,558,138,880 bytes — about 327,680 times a whole NanoTDF payload
+frame. NanoTDF is not an object-storage format and cannot become one within version 1,
+because the ceiling is the width of a length field. Payloads at that scale belong to
+BaseTDF 5, whose partition keys bound the plaintext volume under any one key, or to
+BinaryTDF content-encryption suite 2, the segmented streaming suite.
+
 The key words MUST, MUST NOT, REQUIRED, SHOULD, SHOULD NOT, and MAY are interpreted as
 described by BCP 14 when written in all capitals.
 
@@ -161,6 +171,16 @@ At minimum, interoperability tests SHOULD cover:
 - both binding modes, GMAC and ECDSA, including an object whose Signature ECC Mode names
   a different curve than its Ephemeral ECC Params Enum;
 - all four curves and all six cipher settings, checking derived field lengths;
+- a decrypt vector that pins the three-byte IV to the AES-GCM nonce, distinguishing the
+  24-bit-nonce reading from a twelve-byte nonce zero-padded on either side, and failing
+  the two padded readings explicitly rather than only passing the correct one
+  (NanoTDF-PAY §3);
+- a decrypt vector at cipher `0x00` and one at cipher `0x05`, confirming that the MAC is
+  the leftmost bytes of the full 128-bit tag at both lengths;
+- rejection of an object at cipher `0x05` whose 16-byte MAC has the correct leading
+  eight bytes and incorrect trailing eight, which a verifier comparing only a prefix
+  would wrongly accept, and rejection of an object whose payload Length implies a MAC
+  shorter than the declared cipher requires (NanoTDF-SEC §3.5);
 - signature present, signature absent, and signature stripped from a signed object;
 - all four policy types, including Policy Key Access;
 - a policy body modified by one byte, which must fail binding verification;
@@ -192,6 +212,9 @@ editorial or clarifying; none alters the bytes an implementation produces.
 | 9 | §3.4.2 | Subsection numbering skips §3.4.2.2 | Renumbered contiguously in NanoTDF-POL. |
 | 10 | §3.4.1.1.1 | Describes the Shared Resource Directory protocol `0xff` as experimental but defines no resolution procedure or failure behaviour | Non-normative for version 1; rejected unless the deployment opts in out of band (NanoTDF-LOC §2.1). |
 | 11 | §6.1.6 | The parsing breakdown omits the three-byte payload Length field and nests Payload and Signature beneath the Header heading | Corrected in NanoTDF-EX: Length is shown, and the three sections are siblings. |
+| 12 | Whole document | Does not state how the three-byte payload IV is presented to AES-GCM; a 24-bit nonce and two twelve-byte zero-padded nonces all fit the text and give different ciphertext | The three bytes are the whole nonce and `J0` comes from GHASH, per SP 800-38D §7.1 Algorithm 4 step 2. Both worked examples decrypt only under this reading (NanoTDF-PAY §3, NanoTDF-SEC §2.1). |
+| 13 | Whole document | Registers a 64-bit tag with no guidance coupling tag length to payload length, though the forgery bound and SP 800-38D Appendix C depend on both together | Tabulated in NanoTDF-SEC §3, with the Appendix C Table 2 constraints on 64-bit tags and producer guidance in NanoTDF-SEC §3.5. |
+| 14 | Whole document | States no limit on the plaintext volume one derived key may protect, and no numeric ceiling for the format | At most 2^40 bytes per derived key, which one object cannot approach (NanoTDF-SEC §4); the frame ceiling is quantified in §1 above. |
 
 One figure that looks wrong is correct and has been preserved. The Payload range of
 14–16,777,218 bytes reconciles: the three-byte Length field caps the IV, ciphertext, and
@@ -205,8 +228,12 @@ co-occur (NanoTDF-PAY §2).
 - [RFC 5869: HKDF](https://www.rfc-editor.org/rfc/rfc5869)
 - [RFC 6090: Fundamental Elliptic Curve Cryptography Algorithms](https://www.rfc-editor.org/rfc/rfc6090)
 - [RFC 6637: ECC in OpenPGP](https://www.rfc-editor.org/rfc/rfc6637)
+- [RFC 8446: TLS 1.3](https://www.rfc-editor.org/rfc/rfc8446)
 - [SEC 1: Elliptic Curve Cryptography](https://www.secg.org/sec1-v2.pdf)
 - [FIPS 180-4: Secure Hash Standard](https://csrc.nist.gov/pubs/fips/180-4/upd1/final)
 - [FIPS 186-5: Digital Signature Standard](https://csrc.nist.gov/pubs/fips/186-5/final)
 - [FIPS 197: AES](https://csrc.nist.gov/pubs/fips/197/final)
 - [NIST SP 800-38D: GCM and GMAC](https://csrc.nist.gov/pubs/sp/800/38/d/final)
+- [Luykx and Paterson 2017: Limits on Authenticated Encryption Use in TLS](https://www.isg.rhul.ac.uk/~kp/TLS-AEbounds.pdf)
+- [Iwata, Ohashi, and Minematsu 2012: Breaking and Repairing GCM Security Proofs](https://eprint.iacr.org/2012/438)
+- [Amazon S3 object size limits](https://docs.aws.amazon.com/AmazonS3/latest/userguide/upload-objects.html)

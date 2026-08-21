@@ -1,5 +1,27 @@
 # Changelog
 
+## [0.37.0](https://github.com/opentdf/platform/compare/otdfctl/v0.36.0...otdfctl/v0.37.0) (2026-08-21)
+
+
+### Features
+
+* **cli:** add streaming list output and man Doc.AddStringFlag helper ([#3805](https://github.com/opentdf/platform/issues/3805)) ([13ea51d](https://github.com/opentdf/platform/commit/13ea51d9dab9daf57e52f459b8f47dfa01f5267e))
+* **cli:** enforce required flags from man docs at cobra layer ([#3886](https://github.com/opentdf/platform/issues/3886)) ([d292d58](https://github.com/opentdf/platform/commit/d292d588f6c22088b28fc58d7f2fca76284eed20))
+* **cli:** expose required policy flag metadata ([#3840](https://github.com/opentdf/platform/issues/3840)) ([69070c4](https://github.com/opentdf/platform/commit/69070c43a2b3e3757c34d37e891db438aec66b7e))
+* **cli:** Store refresh tokens to extend sessions in otdfctl ([#3829](https://github.com/opentdf/platform/issues/3829)) ([5c08c7f](https://github.com/opentdf/platform/commit/5c08c7fc06f3594a1121576e382cd83825534d3f))
+* **policy:** Add sort functionality on key_status ([#3845](https://github.com/opentdf/platform/issues/3845)) ([2ca20ff](https://github.com/opentdf/platform/commit/2ca20ff96048f02c56277455a97d7f2341f55d2d))
+* **sdk:** DSPX-3848 add DPoP client support with HTTP RoundTripper ([#3581](https://github.com/opentdf/platform/issues/3581)) ([2103736](https://github.com/opentdf/platform/commit/210373696f797348d3b2156ad814e3a3e4185f01))
+
+
+### Bug Fixes
+
+* **cli:** move noisy refresh log to debug ([#3852](https://github.com/opentdf/platform/issues/3852)) ([50e2f6f](https://github.com/opentdf/platform/commit/50e2f6fa320309c579a755a7676e291655b7ccf6))
+* **deps:** bump github.com/opentdf/platform/protocol/go from 0.39.0 to 0.40.0 in /otdfctl ([#3850](https://github.com/opentdf/platform/issues/3850)) ([215ecd1](https://github.com/opentdf/platform/commit/215ecd1dab00c11eb814157d1b1e06f80503b1c3))
+* **deps:** bump github.com/opentdf/platform/protocol/go from 0.40.0 to 0.41.0 in /otdfctl ([#3883](https://github.com/opentdf/platform/issues/3883)) ([053f7e5](https://github.com/opentdf/platform/commit/053f7e5d753d499de95da941aa3a1ace54617fe7))
+* **deps:** bump github.com/opentdf/platform/sdk from 0.27.0 to 0.29.0 in /otdfctl ([#3855](https://github.com/opentdf/platform/issues/3855)) ([f519960](https://github.com/opentdf/platform/commit/f519960f0a3c6abfd812f57e604c44c79f5cbaf0))
+* **deps:** bump golang.org/x/net from 0.54.0 to 0.55.0 in /otdfctl ([#3713](https://github.com/opentdf/platform/issues/3713)) ([15cbb1d](https://github.com/opentdf/platform/commit/15cbb1de44ed399828fb491c76562437b8d599ae))
+* **deps:** bump google.golang.org/grpc from 1.81.1 to 1.82.1 in /otdfctl ([#3777](https://github.com/opentdf/platform/issues/3777)) ([2f03801](https://github.com/opentdf/platform/commit/2f0380186ee2e9d6f80b1f72d933ec51b104cdca))
+
 ## [0.36.0](https://github.com/opentdf/platform/compare/otdfctl/v0.35.0...otdfctl/v0.36.0) (2026-08-04)
 
 

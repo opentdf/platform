@@ -51,8 +51,8 @@ func decodeLine(t *testing.T, line string) map[string]any {
 	return out
 }
 
-// emitAuditEvent drives an audit event through the interceptor, which owns the
-// transaction lifecycle and flushes pending events on return.
+// emitAuditEvent drives an immediate audit event through the request metadata
+// interceptor.
 func emitAuditEvent(ctx context.Context, t *testing.T, lg *Logger) {
 	t.Helper()
 

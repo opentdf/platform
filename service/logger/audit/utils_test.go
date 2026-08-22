@@ -15,20 +15,19 @@ import (
 func TestGetAuditDataFromContextHappyPath(t *testing.T) {
 	ctx := t.Context()
 
-	tx := auditTransaction{
-		ContextData: ContextData{
+	auditCtx := auditContext{
+		data: ContextData{
 			RequestID: TestRequestID,
 			UserAgent: "test-user-agent",
 			RequestIP: net.ParseIP("192.168.0.1").String(),
 			ActorID:   "test-actor-id",
 		},
-		events: make([]pendingEvent, 0),
 	}
-	ctx = context.WithValue(ctx, contextKey{}, &tx)
+	ctx = context.WithValue(ctx, contextKey{}, auditCtx)
 
 	auditData := GetAuditDataFromContext(ctx)
 
-	assert.Equal(t, tx.RequestID.String(), auditData.RequestID.String())
+	assert.Equal(t, auditCtx.data.RequestID.String(), auditData.RequestID.String())
 	assert.Equal(t, "test-user-agent", auditData.UserAgent)
 	assert.Equal(t, net.ParseIP("192.168.0.1").String(), auditData.RequestIP)
 	assert.Equal(t, "test-actor-id", auditData.ActorID)
@@ -56,15 +55,14 @@ func TestGetAuditDataFromContextWithNoKeys(t *testing.T) {
 
 func TestGetAuditDataFromContextWithPartialKeys(t *testing.T) {
 	ctx := t.Context()
-	tx := auditTransaction{
-		ContextData: ContextData{
+	auditCtx := auditContext{
+		data: ContextData{
 			UserAgent: "partial-user-agent",
 			RequestIP: "None",
 			ActorID:   "partial-actor-id",
 		},
-		events: make([]pendingEvent, 0),
 	}
-	ctx = context.WithValue(ctx, contextKey{}, &tx)
+	ctx = context.WithValue(ctx, contextKey{}, auditCtx)
 
 	auditData := GetAuditDataFromContext(ctx)
 

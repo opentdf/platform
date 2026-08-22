@@ -38,7 +38,7 @@ func TestCreateGetDecisionEventHappyPathSuccess(t *testing.T) {
 	}
 
 	expectedEventObject := auditEventObject{
-		Type: ObjectTypeEntityObject,
+		Type: ObjectTypeEntityObject.String(),
 		ID:   "test-entity-chain-id-test-resource-attribute-id",
 		Attributes: eventObjectAttributes{
 			Attrs: []string{"test-fqn"},
@@ -49,8 +49,8 @@ func TestCreateGetDecisionEventHappyPathSuccess(t *testing.T) {
 	}
 
 	expectedEventAction := eventAction{
-		Type:   ActionTypeRead,
-		Result: ActionResultSuccess,
+		Type:   ActionTypeRead.String(),
+		Result: ActionResultSuccess.String(),
 	}
 	if !reflect.DeepEqual(event.Action, expectedEventAction) {
 		t.Fatalf("event action did not match expected: got %+v, want %+v", event.Action, expectedEventAction)

@@ -47,7 +47,7 @@ func Test_CreatePolicyEvent_HappyPath(t *testing.T) {
 	}
 
 	expectedEventObject := auditEventObject{
-		Type: ObjectTypeKeyObject,
+		Type: ObjectTypeKeyObject.String(),
 		ID:   "test-object-id",
 	}
 	if !reflect.DeepEqual(event.Object, expectedEventObject) {
@@ -55,8 +55,8 @@ func Test_CreatePolicyEvent_HappyPath(t *testing.T) {
 	}
 
 	expectedEventAction := eventAction{
-		Type:   ActionTypeCreate,
-		Result: ActionResultSuccess,
+		Type:   ActionTypeCreate.String(),
+		Result: ActionResultSuccess.String(),
 	}
 	if !reflect.DeepEqual(event.Action, expectedEventAction) {
 		t.Fatalf("event action did not match expected: got %+v, want %+v", event.Action, expectedEventAction)

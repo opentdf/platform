@@ -8,11 +8,25 @@ import (
 	"github.com/go-viper/mapstructure/v2"
 	"github.com/lestrrat-go/jwx/v2/jwt"
 	"github.com/opentdf/platform/service/logger"
+	"github.com/opentdf/platform/service/logger/audit"
 	"github.com/opentdf/platform/service/pkg/authz"
 	"github.com/opentdf/platform/service/pkg/config"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+func TestWithAuditPipeline(t *testing.T) {
+	encoder := audit.EncoderFunc(func(context.Context, audit.Event) ([]audit.Emission, error) {
+		return []audit.Emission{{Level: audit.LevelAudit, Message: "encoded"}}, nil
+	})
+	sink := audit.SinkFunc(func(context.Context, audit.Emission) error { return nil })
+
+	cfg := WithAuditEncoder(encoder)(StartConfig{})
+	cfg = WithAuditSink(sink)(cfg)
+
+	require.NotNil(t, cfg.auditEncoder)
+	require.NotNil(t, cfg.auditSink)
+}
 
 // noopInterceptor returns a connect.UnaryInterceptorFunc that passes through.
 func noopInterceptor() connect.Interceptor {

@@ -65,15 +65,15 @@ func CreateGetDecisionEvent(ctx context.Context, params GetDecisionEventParams) 
 
 	return &EventObject{
 		Object: auditEventObject{
-			Type: ObjectTypeEntityObject,
+			Type: ObjectTypeEntityObject.String(),
 			ID:   fmt.Sprintf("%s-%s", params.EntityChainID, params.ResourceAttributeID),
 			Attributes: eventObjectAttributes{
 				Attrs: params.FQNs,
 			},
 		},
 		Action: eventAction{
-			Type:   ActionTypeRead,
-			Result: result,
+			Type:   ActionTypeRead.String(),
+			Result: result.String(),
 		},
 		Actor: auditEventActor{
 			ID:         params.EntityChainID,
@@ -122,12 +122,12 @@ func CreateV2GetDecisionEvent(ctx context.Context, params GetDecisionV2EventPara
 	return &EventObject{
 		Object: auditEventObject{
 			ID:   params.EntityID + "-" + params.ActionName,
-			Type: ObjectTypeEntityObject,
+			Type: ObjectTypeEntityObject.String(),
 			Name: "decisionRequest-" + params.ActionName,
 		},
 		Action: eventAction{
-			Type:   ActionTypeRead,
-			Result: result,
+			Type:   ActionTypeRead.String(),
+			Result: result.String(),
 		},
 		Actor: auditEventActor{
 			ID:         params.EntityID,

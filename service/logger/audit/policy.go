@@ -37,12 +37,12 @@ func CreatePolicyEvent(ctx context.Context, isSuccess bool, params PolicyEventPa
 
 	auditEvent := &EventObject{
 		Object: auditEventObject{
-			Type: params.ObjectType,
+			Type: params.ObjectType.String(),
 			ID:   params.ObjectID,
 		},
 		Action: eventAction{
-			Type:   params.ActionType,
-			Result: auditEventActionResult,
+			Type:   params.ActionType.String(),
+			Result: auditEventActionResult.String(),
 		},
 		Actor: auditEventActor{
 			ID:         auditDataFromContext.ActorID,

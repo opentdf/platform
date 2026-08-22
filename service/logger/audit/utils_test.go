@@ -6,7 +6,10 @@ import (
 	"testing"
 
 	"github.com/google/uuid"
+	"github.com/lestrrat-go/jwx/v2/jwt"
+	ctxAuth "github.com/opentdf/platform/service/pkg/auth"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestGetAuditDataFromContextHappyPath(t *testing.T) {
@@ -39,7 +42,7 @@ func TestGetAuditDataFromContextDefaultsPath(t *testing.T) {
 	assert.Equal(t, uuid.Nil, auditData.RequestID)
 	assert.Equal(t, defaultNone, auditData.UserAgent)
 	assert.Equal(t, defaultNone, auditData.RequestIP)
-	assert.Equal(t, defaultNone, auditData.ActorID)
+	assert.Empty(t, auditData.ActorID)
 }
 
 func TestGetAuditDataFromContextWithNoKeys(t *testing.T) {
@@ -48,7 +51,7 @@ func TestGetAuditDataFromContextWithNoKeys(t *testing.T) {
 	assert.Equal(t, uuid.Nil, auditData.RequestID)
 	assert.Equal(t, defaultNone, auditData.UserAgent)
 	assert.Equal(t, defaultNone, auditData.RequestIP)
-	assert.Equal(t, defaultNone, auditData.ActorID)
+	assert.Empty(t, auditData.ActorID)
 }
 
 func TestGetAuditDataFromContextWithPartialKeys(t *testing.T) {
@@ -69,4 +72,14 @@ func TestGetAuditDataFromContextWithPartialKeys(t *testing.T) {
 	assert.Equal(t, "partial-user-agent", auditData.UserAgent)
 	assert.Equal(t, "None", auditData.RequestIP)
 	assert.Equal(t, "partial-actor-id", auditData.ActorID)
+}
+
+func TestGetAuditDataFromContextPrefersVerifiedPrincipal(t *testing.T) {
+	token, err := jwt.NewBuilder().Subject("verified-subject").Build()
+	require.NoError(t, err)
+	ctx := ctxAuth.ContextWithAuthNInfo(ContextWithActorID(t.Context(), "context-actor"), nil, token, "raw-token")
+
+	auditData := GetAuditDataFromContext(ctx)
+
+	assert.Equal(t, "verified-subject", auditData.ActorID)
 }

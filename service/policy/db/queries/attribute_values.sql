@@ -3,8 +3,22 @@
 ----------------------------------------------------------------
 
 -- name: getAttributeValue :one
-WITH obligation_triggers_agg AS (
+WITH target_attribute_value AS (
     SELECT
+        av.id,
+        fqns.fqn,
+        ns.id AS namespace_id,
+        ns.name AS namespace_name
+    FROM attribute_values av
+    JOIN attribute_definitions ad ON av.attribute_definition_id = ad.id
+    JOIN attribute_namespaces ns ON ad.namespace_id = ns.id
+    LEFT JOIN attribute_fqns fqns ON av.id = fqns.value_id
+    WHERE (sqlc.narg('id')::uuid IS NULL OR av.id = sqlc.narg('id')::uuid)
+      AND (sqlc.narg('fqn')::text IS NULL OR REGEXP_REPLACE(fqns.fqn, '^https://', '') = REGEXP_REPLACE(sqlc.narg('fqn')::text, '^https://', ''))
+),
+matched_obligation_triggers AS (
+    SELECT
+        ot.attribute_value_id,
         ot.obligation_value_id,
         JSONB_AGG(
             DISTINCT JSONB_BUILD_OBJECT(
@@ -14,13 +28,13 @@ WITH obligation_triggers_agg AS (
                     'name', a.name
                 ),
                 'attribute_value', JSONB_BUILD_OBJECT(
-                    'id', av.id,
-                    'fqn', av_fqns.fqn
+                    'id', tav.id,
+                    'fqn', tav.fqn
                 ),
                 'namespace', JSONB_BUILD_OBJECT(
-                    'id', trigger_ns.id,
-                    'name', trigger_ns.name,
-                    'fqn', CONCAT('https://', trigger_ns.name)
+                    'id', tav.namespace_id,
+                    'name', tav.namespace_name,
+                    'fqn', CONCAT('https://', tav.namespace_name)
                 ),
                 'context', CASE
                     WHEN ot.client_id IS NOT NULL THEN JSONB_BUILD_ARRAY(
@@ -35,34 +49,32 @@ WITH obligation_triggers_agg AS (
             )
         ) AS triggers
     FROM obligation_triggers ot
+    JOIN target_attribute_value tav ON ot.attribute_value_id = tav.id
     JOIN actions a ON ot.action_id = a.id
-    JOIN attribute_values av ON ot.attribute_value_id = av.id
-    JOIN attribute_definitions ad ON av.attribute_definition_id = ad.id
-    JOIN attribute_namespaces trigger_ns ON ad.namespace_id = trigger_ns.id
-    LEFT JOIN attribute_fqns av_fqns ON av.id = av_fqns.value_id
-    GROUP BY ot.obligation_value_id
+    GROUP BY ot.attribute_value_id, ot.obligation_value_id
 ),
-obligation_values_agg AS (
+matched_obligation_values AS (
     SELECT
+        ota.attribute_value_id,
         ov.obligation_definition_id,
         JSONB_AGG(
             DISTINCT JSONB_BUILD_OBJECT(
                 'id', ov.id,
                 'value', ov.value,
                 'fqn', ns_fqns.fqn || '/obl/' || od.name || '/value/' || ov.value,
-                'triggers', COALESCE(ota.triggers, '[]'::JSONB)
+                'triggers', ota.triggers
             )
         ) AS values
-    FROM obligation_values_standard ov
-    LEFT JOIN obligation_triggers_agg ota ON ov.id = ota.obligation_value_id
+    FROM matched_obligation_triggers ota
+    JOIN obligation_values_standard ov ON ota.obligation_value_id = ov.id
     JOIN obligation_definitions od ON ov.obligation_definition_id = od.id
     JOIN attribute_namespaces n ON od.namespace_id = n.id
     LEFT JOIN attribute_fqns ns_fqns ON n.id = ns_fqns.namespace_id AND ns_fqns.attribute_id IS NULL AND ns_fqns.value_id IS NULL
-    GROUP BY ov.obligation_definition_id
+    GROUP BY ota.attribute_value_id, ov.obligation_definition_id
 ),
-attribute_obligations AS (
+matched_obligations AS (
     SELECT
-        ot.attribute_value_id,
+        ova.attribute_value_id,
         JSONB_AGG(
             DISTINCT JSONB_BUILD_OBJECT(
                 'id', od.id,
@@ -73,16 +85,14 @@ attribute_obligations AS (
                     'name', n.name,
                     'fqn', ns_fqns.fqn
                 ),
-                'values', COALESCE(ova.values, '[]'::JSONB)
+                'values', ova.values
             )
         ) AS obligations
-    FROM obligation_triggers ot
-    JOIN obligation_values_standard ov ON ot.obligation_value_id = ov.id
-    JOIN obligation_definitions od ON ov.obligation_definition_id = od.id
+    FROM matched_obligation_values ova
+    JOIN obligation_definitions od ON ova.obligation_definition_id = od.id
     JOIN attribute_namespaces n ON od.namespace_id = n.id
     LEFT JOIN attribute_fqns ns_fqns ON n.id = ns_fqns.namespace_id AND ns_fqns.attribute_id IS NULL AND ns_fqns.value_id IS NULL
-    LEFT JOIN obligation_values_agg ova ON od.id = ova.obligation_definition_id
-    GROUP BY ot.attribute_value_id
+    GROUP BY ova.attribute_value_id
 )
 SELECT
     av.id,
@@ -90,7 +100,7 @@ SELECT
     av.active,
     JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', av.metadata -> 'labels', 'created_at', av.created_at, 'updated_at', av.updated_at)) as metadata,
     av.attribute_definition_id,
-    fqns.fqn,
+    tav.fqn,
     JSONB_AGG(
         DISTINCT JSONB_BUILD_OBJECT(
             'id', kas.id,
@@ -103,7 +113,7 @@ SELECT
     ao.obligations,
     asm.subject_mappings
 FROM attribute_values av
-LEFT JOIN attribute_fqns fqns ON av.id = fqns.value_id
+JOIN target_attribute_value tav ON av.id = tav.id
 LEFT JOIN attribute_value_key_access_grants avkag ON av.id = avkag.attribute_value_id
 LEFT JOIN key_access_servers kas ON avkag.key_access_server_id = kas.id
 LEFT JOIN (
@@ -125,7 +135,7 @@ LEFT JOIN (
     INNER JOIN key_access_servers kas ON kas.id = kask.key_access_server_id
     GROUP BY k.value_id
 ) value_keys ON av.id = value_keys.value_id
-LEFT JOIN attribute_obligations ao ON av.id = ao.attribute_value_id
+LEFT JOIN matched_obligations ao ON av.id = ao.attribute_value_id
 LEFT JOIN LATERAL (
     SELECT
         JSONB_AGG(
@@ -144,7 +154,7 @@ LEFT JOIN LATERAL (
                     'id', av.id,
                     'value', av.value,
                     'active', av.active,
-                    'fqn', fqns.fqn
+                    'fqn', tav.fqn
                 ),
                 'namespace', CASE
                     WHEN sm.namespace_id IS NULL THEN NULL
@@ -179,9 +189,7 @@ LEFT JOIN LATERAL (
     LEFT JOIN attribute_fqns sm_ns_fqns ON sm_ns_fqns.namespace_id = sm_ns.id AND sm_ns_fqns.attribute_id IS NULL AND sm_ns_fqns.value_id IS NULL
     WHERE sm.attribute_value_id = av.id
 ) asm ON TRUE
-WHERE (sqlc.narg('id')::uuid IS NULL OR av.id = sqlc.narg('id')::uuid)
-  AND (sqlc.narg('fqn')::text IS NULL OR REGEXP_REPLACE(fqns.fqn, '^https://', '') = REGEXP_REPLACE(sqlc.narg('fqn')::text, '^https://', ''))
-GROUP BY av.id, fqns.fqn, value_keys.keys, ao.obligations, asm.subject_mappings;
+GROUP BY av.id, tav.fqn, value_keys.keys, ao.obligations, asm.subject_mappings;
 
 -- name: createAttributeValue :one
 INSERT INTO attribute_values (attribute_definition_id, value, metadata)

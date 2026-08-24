@@ -80,11 +80,13 @@ WITH target_attribute_value AS (
         av.id,
         fqns.fqn,
         ns.id AS namespace_id,
-        ns.name AS namespace_name
+        ns.name AS namespace_name,
+        ns_fqns.fqn AS namespace_fqn
     FROM attribute_values av
     JOIN attribute_definitions ad ON av.attribute_definition_id = ad.id
     JOIN attribute_namespaces ns ON ad.namespace_id = ns.id
     LEFT JOIN attribute_fqns fqns ON av.id = fqns.value_id
+    LEFT JOIN attribute_fqns ns_fqns ON ns.id = ns_fqns.namespace_id AND ns_fqns.attribute_id IS NULL AND ns_fqns.value_id IS NULL
     WHERE ($1::uuid IS NULL OR av.id = $1::uuid)
       AND ($2::text IS NULL OR REGEXP_REPLACE(fqns.fqn, '^https://', '') = REGEXP_REPLACE($2::text, '^https://', ''))
 ),
@@ -106,7 +108,7 @@ matched_obligation_triggers AS (
                 'namespace', JSONB_BUILD_OBJECT(
                     'id', tav.namespace_id,
                     'name', tav.namespace_name,
-                    'fqn', CONCAT('https://', tav.namespace_name)
+                    'fqn', tav.namespace_fqn
                 ),
                 'context', CASE
                     WHEN ot.client_id IS NOT NULL THEN JSONB_BUILD_ARRAY(
@@ -291,11 +293,13 @@ type getAttributeValueRow struct {
 //	        av.id,
 //	        fqns.fqn,
 //	        ns.id AS namespace_id,
-//	        ns.name AS namespace_name
+//	        ns.name AS namespace_name,
+//	        ns_fqns.fqn AS namespace_fqn
 //	    FROM attribute_values av
 //	    JOIN attribute_definitions ad ON av.attribute_definition_id = ad.id
 //	    JOIN attribute_namespaces ns ON ad.namespace_id = ns.id
 //	    LEFT JOIN attribute_fqns fqns ON av.id = fqns.value_id
+//	    LEFT JOIN attribute_fqns ns_fqns ON ns.id = ns_fqns.namespace_id AND ns_fqns.attribute_id IS NULL AND ns_fqns.value_id IS NULL
 //	    WHERE ($1::uuid IS NULL OR av.id = $1::uuid)
 //	      AND ($2::text IS NULL OR REGEXP_REPLACE(fqns.fqn, '^https://', '') = REGEXP_REPLACE($2::text, '^https://', ''))
 //	),
@@ -317,7 +321,7 @@ type getAttributeValueRow struct {
 //	                'namespace', JSONB_BUILD_OBJECT(
 //	                    'id', tav.namespace_id,
 //	                    'name', tav.namespace_name,
-//	                    'fqn', CONCAT('https://', tav.namespace_name)
+//	                    'fqn', tav.namespace_fqn
 //	                ),
 //	                'context', CASE
 //	                    WHEN ot.client_id IS NOT NULL THEN JSONB_BUILD_ARRAY(

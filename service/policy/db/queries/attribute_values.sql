@@ -8,7 +8,7 @@ WITH target_attribute_value AS (
         av.id,
         fqns.fqn,
         ns.id AS namespace_id,
-        ns.name AS namespace_name
+        ns.name AS namespace_name,
         ns_fqns.fqn AS namespace_fqn
     FROM attribute_values av
     JOIN attribute_definitions ad ON av.attribute_definition_id = ad.id

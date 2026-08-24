@@ -985,6 +985,7 @@ func (s *AttributeValuesSuite) Test_GetAttributeValue_ScopesObligationsToRequest
 	s.obligations = append(s.obligations, secondObligation)
 
 	readAction := s.getActionByNameInNamespace("read", attributeNamespace.GetId())
+	updateAction := s.getActionByNameInNamespace("update", attributeNamespace.GetId())
 	createObligationValue := func(obligation *policy.Obligation, value string, attributeValues ...*policy.Value) *policy.ObligationValue {
 		triggers := make([]*obligations.ValueTriggerRequest, 0, len(attributeValues))
 		for _, attributeValue := range attributeValues {
@@ -1004,20 +1005,39 @@ func (s *AttributeValuesSuite) Test_GetAttributeValue_ScopesObligationsToRequest
 
 	firstObligationFirstValue := createObligationValue(firstObligation, "first", firstAttrValue)
 	firstObligationSecondValue := createObligationValue(firstObligation, "second", secondAttrValue)
-	secondObligationSharedValue := createObligationValue(secondObligation, "shared", firstAttrValue, secondAttrValue)
+	secondObligationSharedValue, err := s.db.PolicyClient.CreateObligationValue(s.ctx, &obligations.CreateObligationValueRequest{
+		ObligationId: secondObligation.GetId(),
+		Value:        "shared",
+		Triggers: []*obligations.ValueTriggerRequest{
+			{
+				Action:         &common.IdNameIdentifier{Id: readAction.GetId()},
+				AttributeValue: &common.IdFqnIdentifier{Id: firstAttrValue.GetId()},
+			},
+			{
+				Action:         &common.IdNameIdentifier{Id: updateAction.GetId()},
+				AttributeValue: &common.IdFqnIdentifier{Id: firstAttrValue.GetId()},
+			},
+			{
+				Action:         &common.IdNameIdentifier{Id: readAction.GetId()},
+				AttributeValue: &common.IdFqnIdentifier{Id: secondAttrValue.GetId()},
+			},
+		},
+	})
+	s.Require().NoError(err)
 	createObligationValue(secondObligation, "untriggered")
 
-	triggerForAttributeValue := func(attributeValue *policy.Value) *policy.ObligationTrigger {
+	triggerForAttributeValueAndAction := func(attributeValue *policy.Value, action *policy.Action) *policy.ObligationTrigger {
 		for _, trigger := range secondObligationSharedValue.GetTriggers() {
-			if trigger.GetAttributeValue().GetId() == attributeValue.GetId() {
+			if trigger.GetAttributeValue().GetId() == attributeValue.GetId() && trigger.GetAction().GetId() == action.GetId() {
 				return trigger
 			}
 		}
 		s.FailNow("shared obligation value is missing an expected trigger")
 		return nil
 	}
-	firstSharedTrigger := triggerForAttributeValue(firstAttrValue)
-	secondSharedTrigger := triggerForAttributeValue(secondAttrValue)
+	firstSharedReadTrigger := triggerForAttributeValueAndAction(firstAttrValue, readAction)
+	firstSharedUpdateTrigger := triggerForAttributeValueAndAction(firstAttrValue, updateAction)
+	secondSharedTrigger := triggerForAttributeValueAndAction(secondAttrValue, readAction)
 
 	assertScopedObligations := func(attributeValue *policy.Value, firstExpected, secondExpected *policy.ObligationValue) {
 		obligationOne := proto.CloneOf(firstObligation)
@@ -1043,7 +1063,7 @@ func (s *AttributeValuesSuite) Test_GetAttributeValue_ScopesObligationsToRequest
 	})
 	s.Require().NoError(err)
 	assertAttributeValue(firstAttrValue, retrievedFirstValue)
-	secondObligationSharedValue.Triggers = []*policy.ObligationTrigger{firstSharedTrigger}
+	secondObligationSharedValue.Triggers = []*policy.ObligationTrigger{firstSharedReadTrigger, firstSharedUpdateTrigger}
 	assertScopedObligations(retrievedFirstValue, firstObligationFirstValue, secondObligationSharedValue)
 
 	retrievedSecondValue, err := s.db.PolicyClient.GetAttributeValue(s.ctx, secondAttrValue.GetId())

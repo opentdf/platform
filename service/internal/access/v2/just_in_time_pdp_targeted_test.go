@@ -257,6 +257,67 @@ func TestJITPDP_GetDecision_NotFoundDegradesToDeny(t *testing.T) {
 	assert.False(t, decision.AllPermitted)
 }
 
+func TestJITPDP_GetDecision_MixedKnownUnknownFQNsPreservesKnown(t *testing.T) {
+	definitionFQN := "https://example.com/attr/department"
+	knownFQN := definitionFQN + "/value/eng"
+	unknownFQN := definitionFQN + "/value/finance"
+
+	sm := &policy.SubjectMapping{
+		Id:                  "sm-1",
+		AttributeValue:      &policy.Value{Fqn: knownFQN},
+		SubjectConditionSet: clientIDInConditionSet("abc"),
+		Actions:             []*policy.Action{{Name: "read"}},
+	}
+	// The server rejects any batch containing the unknown FQN with NotFound; a per-FQN retry resolves
+	// the known FQN and skips the unknown one.
+	attrFake := &fakeAttributesClient{
+		respFunc: func(req *attrs.GetEntitleableAttributesByFqnsRequest) (*attrs.GetEntitleableAttributesByFqnsResponse, error) {
+			for _, f := range req.GetFqns() {
+				if f == unknownFQN {
+					return nil, connect.NewError(connect.CodeNotFound, errors.New("not found"))
+				}
+			}
+			resp := &attrs.GetEntitleableAttributesByFqnsResponse{
+				Definitions: map[string]*attrs.GetEntitleableAttributesByFqnsResponse_EntitleableDefinition{
+					definitionFQN: {Rule: policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF},
+				},
+				FqnEntitleableAttributes: make(map[string]*attrs.GetEntitleableAttributesByFqnsResponse_EntitleableAttribute),
+			}
+			for _, f := range req.GetFqns() {
+				resp.FqnEntitleableAttributes[f] = &attrs.GetEntitleableAttributesByFqnsResponse_EntitleableAttribute{
+					DefinitionFqn: definitionFQN,
+					Value:         &attrs.GetEntitleableAttributesByFqnsResponse_EntitleableValue{Fqn: f, ValueId: f + "-id", SubjectMappings: []*policy.SubjectMapping{sm}},
+				}
+			}
+			return resp, nil
+		},
+	}
+	ers := &recordingERSV2Client{resolveResponse: &entityresolutionV2.ResolveEntitiesResponse{
+		EntityRepresentations: []*entityresolutionV2.EntityRepresentation{entityRepWithClientID("abc")},
+	}}
+	p := &JustInTimePDP{
+		logger:                        logger.CreateTestLogger(),
+		sdk:                           &otdfSDK.SDK{Attributes: attrFake, EntityResolutionV2: ers},
+		obligationsPDP:                newTestObligationsPDP(t),
+		registeredResourceValuesByFQN: make(map[string]*policy.RegisteredResourceValue),
+	}
+
+	resources := []*authzV2.Resource{
+		{Resource: &authzV2.Resource_AttributeValues_{AttributeValues: &authzV2.Resource_AttributeValues{Fqns: []string{knownFQN}}}},
+		{Resource: &authzV2.Resource_AttributeValues_{AttributeValues: &authzV2.Resource_AttributeValues{Fqns: []string{unknownFQN}}}},
+	}
+
+	ctx := audit.ContextWithActorID(context.Background(), "test-actor")
+	decision, err := p.GetDecision(ctx, entityChainIdentifier(), &policy.Action{Name: "read"}, resources, nil, nil)
+	require.NoError(t, err)
+	require.NotNil(t, decision)
+	require.Len(t, decision.Results, 2)
+	// The known resource is still decided (entitled); only the unknown one is denied.
+	assert.True(t, decision.Results[0].Entitled, "known resource should remain entitled")
+	assert.False(t, decision.Results[1].Entitled, "unknown resource should be denied")
+	assert.False(t, decision.AllPermitted)
+}
+
 func TestJITPDP_buildInnerPDP_UsesFullPolicyPDPWhenSet(t *testing.T) {
 	// When the full-policy PDP is set (direct entitlements / dynamic value mappings mode),
 	// buildInnerPDP returns it without performing a targeted entitleable fetch.

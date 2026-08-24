@@ -8,7 +8,6 @@ import (
 	"strconv"
 	"strings"
 
-	"connectrpc.com/connect"
 	"github.com/opentdf/platform/lib/flattening"
 	authzV2 "github.com/opentdf/platform/protocol/go/authorization/v2"
 	"github.com/opentdf/platform/protocol/go/entity"
@@ -144,12 +143,14 @@ func NewJustInTimePDP(
 	// GetEntitleableAttributesByFqns lookups cannot supply (a non-existent value FQN errors). When
 	// either experimental feature is enabled, build the PDP from the full policy load instead.
 	if allowDirectEntitlements || allowDynamicValueMappings {
-		retriever := NewEntitlementPolicyRetriever(sdk)
-		allAttributes, err := retriever.ListAllAttributes(ctx)
+		// Read attributes and subject mappings from the same store used above (the refresh cache when
+		// ready, otherwise the live retriever), so a cache-enabled deployment does not re-scan both
+		// policy endpoints on every request.
+		allAttributes, err := store.ListAllAttributes(ctx)
 		if err != nil {
 			return nil, fmt.Errorf("failed to list attributes: %w", err)
 		}
-		allSubjectMappings, err := retriever.ListAllSubjectMappings(ctx)
+		allSubjectMappings, err := store.ListAllSubjectMappings(ctx)
 		if err != nil {
 			return nil, fmt.Errorf("failed to list subject mappings: %w", err)
 		}
@@ -404,24 +405,11 @@ func (p *JustInTimePDP) buildInnerPDP(ctx context.Context, valueFQNs []string) (
 	if p.fullPolicyPDP != nil {
 		return p.fullPolicyPDP, nil
 	}
+	// fetchEntitleableAttributes omits value FQNs that do not exist in policy (retrying per FQN on a
+	// batch NotFound), so unknown FQNs are absent from the returned definitions and get denied
+	// per-resource downstream rather than failing the whole request.
 	definitions, subjectMappings, err := fetchEntitleableAttributes(ctx, p.sdk, valueFQNs)
 	if err != nil {
-		// A NotFound means one or more requested value FQNs do not exist in policy. Degrade to an
-		// empty PDP so the decision path denies those resources per-resource rather than failing the
-		// whole request, matching the prior full-policy behavior for unknown FQNs.
-		if connect.CodeOf(err) == connect.CodeNotFound {
-			p.logger.DebugContext(ctx, "entitleable lookup returned NotFound; treating requested values as unentitled", slog.Any("error", err))
-			return NewPolicyDecisionPoint(
-				ctx,
-				p.logger,
-				[]*policy.Attribute{},
-				[]*policy.SubjectMapping{},
-				p.registeredResources,
-				p.allowDirectEntitlements,
-				p.namespacedPolicy,
-				WithDynamicValueMappings(p.dynamicValueMappings, p.allowDynamicValueMappings),
-			)
-		}
 		return nil, fmt.Errorf("failed to fetch entitleable attributes: %w", err)
 	}
 	pdp, err := NewPolicyDecisionPoint(

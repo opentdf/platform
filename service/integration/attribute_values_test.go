@@ -19,6 +19,7 @@ import (
 	"github.com/opentdf/platform/service/internal/fixtures"
 	"github.com/opentdf/platform/service/pkg/db"
 	"github.com/stretchr/testify/suite"
+	"google.golang.org/protobuf/proto"
 )
 
 var absentAttributeValueUUID = "78909865-8888-9999-9999-000000000000"
@@ -1019,10 +1020,12 @@ func (s *AttributeValuesSuite) Test_GetAttributeValue_ScopesObligationsToRequest
 	secondSharedTrigger := triggerForAttributeValue(secondAttrValue)
 
 	assertScopedObligations := func(attributeValue *policy.Value, firstExpected, secondExpected *policy.ObligationValue) {
-		firstObligation.Values = []*policy.ObligationValue{firstExpected}
-		secondObligation.Values = []*policy.ObligationValue{secondExpected}
+		obligationOne := proto.CloneOf(firstObligation)
+		obligationTwo := proto.CloneOf(secondObligation)
+		obligationOne.Values = []*policy.ObligationValue{firstExpected}
+		obligationTwo.Values = []*policy.ObligationValue{secondExpected}
 		s.assertObligations(
-			[]*policy.Obligation{firstObligation, secondObligation},
+			[]*policy.Obligation{obligationOne, obligationTwo},
 			attributeValue.GetObligations(),
 		)
 	}

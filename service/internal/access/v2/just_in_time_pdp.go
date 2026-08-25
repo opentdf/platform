@@ -16,7 +16,6 @@ import (
 	"github.com/opentdf/platform/protocol/go/policy/subjectmapping"
 	otdfSDK "github.com/opentdf/platform/sdk"
 	ent "github.com/opentdf/platform/service/entity"
-	claimsERSV2 "github.com/opentdf/platform/service/entityresolution/claims/v2"
 	ctxAuth "github.com/opentdf/platform/service/pkg/auth"
 	"google.golang.org/protobuf/types/known/structpb"
 	"google.golang.org/protobuf/types/known/wrapperspb"
@@ -412,7 +411,7 @@ func filterEntityChain(entityChain *entity.EntityChain, skipEnvironmentEntities 
 // directEntitlementClaimKey reports whether the resolved claims carry direct
 // entitlements, and under which claim name.
 func directEntitlementClaimKey(claimsStruct *structpb.Struct) (string, bool) {
-	for _, key := range claimsERSV2.DirectEntitlementClaimKeys {
+	for _, key := range ent.DirectEntitlementClaimKeys {
 		if _, ok := claimsStruct.GetFields()[key]; ok {
 			return key, true
 		}

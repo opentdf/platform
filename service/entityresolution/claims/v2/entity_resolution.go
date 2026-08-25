@@ -35,8 +35,6 @@ type Config struct {
 	AllowDirectEntitlements bool `mapstructure:"allow_direct_entitlements" json:"allow_direct_entitlements"`
 }
 
-var DirectEntitlementClaimKeys = []string{"direct_entitlements", "directEntitlements"}
-
 func RegisterClaimsERS(cfg config.ServiceConfig, logger *logger.Logger) (EntityResolutionServiceV2, serviceregistry.HandlerServer) {
 	var inputConfig Config
 	if err := mapstructure.Decode(cfg, &inputConfig); err != nil {
@@ -137,7 +135,7 @@ func parseDirectEntitlementsFromClaims(entityStruct *structpb.Struct) ([]*entity
 	claims := entityStruct.AsMap()
 	var rawEntitlements interface{}
 	found := false
-	for _, key := range DirectEntitlementClaimKeys {
+	for _, key := range ent.DirectEntitlementClaimKeys {
 		if raw, ok := claims[key]; ok {
 			rawEntitlements = raw
 			found = true

@@ -185,6 +185,9 @@ server:
   #   readHeaderTimeout: 10s
   #   idleTimeout: 20s
   #   maxHeaderBytes: 1048576 # 1 MB
+  #   # Forwarding headers are trusted only when the direct peer is in one of these CIDRs.
+  #   trustedProxies:
+  #     - 127.0.0.1/32
   cryptoProvider:
     type: standard
     standard:

@@ -134,9 +134,45 @@ teardown_file(){
   assert_output "0"
 }
 
+# A TDF's manifest is at the end of the archive, so decrypt spools a pipe to disk
+# to get a seekable view. Verify it round-trips and cleans the spool up.
+@test "roundtrip TDF3, decrypt reading the TDF from stdin" {
+  ./otdfctl encrypt -o $OUTFILE_GO_MOD --host $HOST --tls-no-verify $DEBUG_LEVEL $WITH_CREDS $INFILE_GO_MOD
+  ./otdfctl decrypt --host $HOST --tls-no-verify $WITH_CREDS < $OUTFILE_GO_MOD > $RESULTFILE_GO_MOD
+  diff $INFILE_GO_MOD $RESULTFILE_GO_MOD
+  run bash -c "ls ${TMPDIR:-/tmp}/otdfctl-spool-* 2>/dev/null | wc -l"
+  assert_output "0"
+}
+
+@test "decrypt rejects empty stdin" {
+  run bash -c "./otdfctl decrypt --host $HOST --tls-no-verify $WITH_CREDS < /dev/null"
+  assert_failure
+}
+
+@test "decrypt leaves no output behind when it fails" {
+  ./otdfctl encrypt -o $OUTFILE_GO_MOD --host $HOST --tls-no-verify $DEBUG_LEVEL $WITH_CREDS $INFILE_GO_MOD
+  rm -f $RESULTFILE_GO_MOD .$RESULTFILE_GO_MOD.tmp-*
+  # An allowlist with no entry for the platform KAS fails the rewrap.
+  run ./otdfctl decrypt -o $RESULTFILE_GO_MOD --host $HOST --tls-no-verify $WITH_CREDS --kas-allowlist "https://nowhere.example.com" $OUTFILE_GO_MOD
+  assert_failure
+  [ ! -f "$RESULTFILE_GO_MOD" ]
+  run bash -c "ls .$RESULTFILE_GO_MOD.tmp-* 2>/dev/null | wc -l"
+  assert_output "0"
+}
+
+@test "inspect reads a TDF from a file and from stdin" {
+  ./otdfctl encrypt -o $OUTFILE_GO_MOD --host $HOST --tls-no-verify $DEBUG_LEVEL $WITH_CREDS $INFILE_GO_MOD
+  run bash -c "./otdfctl inspect --host $HOST --tls-no-verify $WITH_CREDS $OUTFILE_GO_MOD | jq -r '.manifest.protocol'"
+  assert_success
+  assert_output "zip"
+  run bash -c "./otdfctl inspect --host $HOST --tls-no-verify $WITH_CREDS < $OUTFILE_GO_MOD | jq -r '.manifest.protocol'"
+  assert_success
+  assert_output "zip"
+}
+
 # The point of DSPX-4499: peak RSS is bounded by segment size, not payload size.
 # Needs GNU time for 'Maximum resident set size'; BSD/shell time cannot report it.
-@test "encrypt peak memory stays bounded on a large payload" {
+@test "encrypt and decrypt peak memory stay bounded on a large payload" {
   GNU_TIME=$(command -v gtime || command -v /usr/bin/time)
   if [ -z "$GNU_TIME" ] || ! $GNU_TIME -v true 2>&1 | grep -q "Maximum resident set size"; then
     skip "GNU time not available"
@@ -144,17 +180,23 @@ teardown_file(){
 
   local big=big.bin
   local bigtdf=big.bin.tdf
-  # 1 GiB. The buffered implementation peaked around 3.6x this.
+  local bigout=big.out
+  # 1 GiB. The buffered implementation peaked around 3.6x this for both commands.
   dd if=/dev/zero of=$big bs=1048576 count=1024 status=none
 
-  $GNU_TIME -v -o time.log ./otdfctl encrypt -o $bigtdf --host $HOST --tls-no-verify $WITH_CREDS $big
-  local kb=$(grep "Maximum resident set size" time.log | grep -o '[0-9]*')
-  rm -f $big $bigtdf time.log
+  $GNU_TIME -v -o enc.log ./otdfctl encrypt -o $bigtdf --host $HOST --tls-no-verify $WITH_CREDS $big
+  $GNU_TIME -v -o dec.log ./otdfctl decrypt -o $bigout --host $HOST --tls-no-verify $WITH_CREDS $bigtdf
+  diff $big $bigout
 
-  echo "peak RSS: ${kb} KB"
+  local enc_kb=$(grep "Maximum resident set size" enc.log | grep -o '[0-9]*')
+  local dec_kb=$(grep "Maximum resident set size" dec.log | grep -o '[0-9]*')
+  rm -f $big $bigtdf $bigout enc.log dec.log
+
+  echo "peak RSS: encrypt ${enc_kb} KB, decrypt ${dec_kb} KB"
   # 512 MiB leaves generous headroom over the ~66 MiB a 1 MiB payload used, while
   # still failing loudly on any return to whole-payload buffering.
-  [ "$kb" -lt 524288 ]
+  [ "$enc_kb" -lt 524288 ]
+  [ "$dec_kb" -lt 524288 ]
 }
 
 @test "allow traversal with mapped key uses definition when value missing" {

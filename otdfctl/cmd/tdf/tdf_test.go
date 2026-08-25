@@ -150,6 +150,68 @@ func TestPipeReaderOnTerminalReportsAbsent(t *testing.T) {
 	assert.False(t, ok)
 }
 
+func TestSpoolToTempFileIsSeekableAndComplete(t *testing.T) {
+	// Larger than any plausible internal buffer, so a truncating copy shows up.
+	content := strings.Repeat("xyz", Size1MB)
+
+	f, cleanup, err := spoolToTempFile(strings.NewReader(content))
+	require.NoError(t, err)
+	defer cleanup()
+
+	// The spool must be positioned at the head, not at the end of the copy.
+	pos, err := f.Seek(0, io.SeekCurrent)
+	require.NoError(t, err)
+	assert.Equal(t, int64(0), pos, "spool must be rewound for the caller")
+
+	got, err := io.ReadAll(f)
+	require.NoError(t, err)
+	assert.Len(t, got, len(content))
+
+	// Seeking backwards is the whole reason for spooling: a TDF's manifest is at
+	// the end of the archive, so the reader has to be able to go back.
+	_, err = f.Seek(0, io.SeekStart)
+	require.NoError(t, err)
+	head := make([]byte, 3)
+	_, err = io.ReadFull(f, head)
+	require.NoError(t, err)
+	assert.Equal(t, "xyz", string(head))
+}
+
+func TestSpoolToTempFileCleanupRemovesTheFile(t *testing.T) {
+	f, cleanup, err := spoolToTempFile(strings.NewReader("payload"))
+	require.NoError(t, err)
+
+	name := f.Name()
+	require.FileExists(t, name)
+
+	cleanup()
+	assert.NoFileExists(t, name, "the spool must not outlive the command")
+}
+
+func TestOpenSeekableInputReadsNamedFile(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "in.tdf")
+	require.NoError(t, os.WriteFile(path, []byte("payload"), 0o600))
+
+	in, cleanup, err := openSeekableInput(path)
+	require.NoError(t, err)
+	defer cleanup()
+
+	got, err := io.ReadAll(in)
+	require.NoError(t, err)
+	assert.Equal(t, "payload", string(got))
+
+	// A named file is opened directly, not copied through a spool.
+	assert.Equal(t, path, in.Name())
+}
+
+func TestOpenSeekableInputReportsMissingFile(t *testing.T) {
+	_, _, err := openSeekableInput(filepath.Join(t.TempDir(), "absent.tdf"))
+	require.Error(t, err)
+	// Distinguishable from "you gave me nothing", which callers report differently.
+	require.NotErrorIs(t, err, errNoInput)
+	require.ErrorIs(t, err, os.ErrNotExist)
+}
+
 // tempSiblings returns any leftover temp files newOutputFile would have created
 // for dest in dir.
 func tempSiblings(t *testing.T, dir, dest string) []string {

@@ -103,6 +103,60 @@ teardown_file(){
   ./otdfctl decrypt --host $HOST --tls-no-verify $DEBUG_LEVEL $WITH_CREDS $OUTFILE_TXT | grep "$SECRET_TEXT"
 }
 
+@test "roundtrip TDF3, no attributes, file to stdout" {
+  ./otdfctl encrypt --host $HOST --tls-no-verify $DEBUG_LEVEL $WITH_CREDS $INFILE_GO_MOD > $OUTFILE_GO_MOD
+  ./otdfctl decrypt -o $RESULTFILE_GO_MOD --host $HOST --tls-no-verify $DEBUG_LEVEL $WITH_CREDS $OUTFILE_GO_MOD
+  diff $INFILE_GO_MOD $RESULTFILE_GO_MOD
+}
+
+# The fully piped form is the one documented in docs/man/encrypt/_index.md, and the
+# one that has no seekable input on either end.
+@test "roundtrip TDF3, stdin to stdout, fully piped" {
+  run bash -c "echo '$SECRET_TEXT' | ./otdfctl encrypt --host $HOST --tls-no-verify $WITH_CREDS | ./otdfctl decrypt --host $HOST --tls-no-verify $WITH_CREDS"
+  assert_success
+  assert_output --partial "$SECRET_TEXT"
+}
+
+# An empty redirect is 'no input', not 'a zero-byte payload'.
+@test "encrypt rejects empty stdin" {
+  run bash -c "./otdfctl encrypt --host $HOST --tls-no-verify $WITH_CREDS < /dev/null"
+  assert_failure
+}
+
+# Output is written to a temp sibling and renamed only on success, so a failed run
+# must leave neither a partial .tdf nor the temp file behind.
+@test "encrypt leaves no output behind when it fails" {
+  rm -f $OUTFILE_TXT .$OUTFILE_TXT.tmp-*
+  run bash -c "echo '$SECRET_TEXT' | ./otdfctl encrypt -o $OUT_TXT --host $HOST --tls-no-verify $WITH_CREDS -a 'https://testing-enc-dec.io/attr/attr1/value/does-not-exist'"
+  assert_failure
+  [ ! -f "$OUTFILE_TXT" ]
+  run bash -c "ls .$OUTFILE_TXT.tmp-* 2>/dev/null | wc -l"
+  assert_output "0"
+}
+
+# The point of DSPX-4499: peak RSS is bounded by segment size, not payload size.
+# Needs GNU time for 'Maximum resident set size'; BSD/shell time cannot report it.
+@test "encrypt peak memory stays bounded on a large payload" {
+  GNU_TIME=$(command -v gtime || command -v /usr/bin/time)
+  if [ -z "$GNU_TIME" ] || ! $GNU_TIME -v true 2>&1 | grep -q "Maximum resident set size"; then
+    skip "GNU time not available"
+  fi
+
+  local big=big.bin
+  local bigtdf=big.bin.tdf
+  # 1 GiB. The buffered implementation peaked around 3.6x this.
+  dd if=/dev/zero of=$big bs=1048576 count=1024 status=none
+
+  $GNU_TIME -v -o time.log ./otdfctl encrypt -o $bigtdf --host $HOST --tls-no-verify $WITH_CREDS $big
+  local kb=$(grep "Maximum resident set size" time.log | grep -o '[0-9]*')
+  rm -f $big $bigtdf time.log
+
+  echo "peak RSS: ${kb} KB"
+  # 512 MiB leaves generous headroom over the ~66 MiB a 1 MiB payload used, while
+  # still failing loudly on any return to whole-payload buffering.
+  [ "$kb" -lt 524288 ]
+}
+
 @test "allow traversal with mapped key uses definition when value missing" {
   local attr_name="attr-allow-traversal-${RANDOM}"
   local kas_name="kas-allow-traversal-${RANDOM}"

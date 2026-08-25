@@ -3,6 +3,8 @@ package audit
 import (
 	"context"
 	"sync"
+
+	"github.com/google/uuid"
 )
 
 // Context key type for audit context
@@ -20,6 +22,20 @@ type auditTransaction struct {
 }
 
 func ContextWithActorID(ctx context.Context, actorID string) context.Context {
+	tx, ok := ctx.Value(contextKey{}).(*auditTransaction)
+	if !ok || tx == nil {
+		tx = &auditTransaction{
+			ContextData: ContextData{
+				RequestID: uuid.Nil,
+				UserAgent: defaultNone,
+				RequestIP: defaultNone,
+				ActorID:   actorID,
+			},
+			events: make([]pendingEvent, 0),
+		}
+		ctx = context.WithValue(ctx, contextKey{}, tx)
+	}
+
 	return context.WithValue(ctx, actorContextKey{}, actorID)
 }
 

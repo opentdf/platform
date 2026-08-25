@@ -41,21 +41,16 @@ func ContextServerInterceptor(logger *Logger) connect.UnaryInterceptorFunc {
 				},
 				events: make([]pendingEvent, 0),
 			}
-			requestIPFromMetadata := headers[http.CanonicalHeaderKey(sdkAudit.RequestIPHeaderKey.String())]
-			if len(requestIPFromMetadata) > 0 {
-				tx.RequestIP = requestIPFromMetadata[0]
-			} else {
-				// FIXME AFAICT the RealIPUnaryInterceptor is not being used
-				// If we do use it, make sure it is added *before* this interceptor
-				ip := realip.FromContext(ctx)
-				if ip.String() != "" && ip.String() != "<nil>" {
-					tx.RequestIP = ip.String()
-				}
+			ip := realip.FromContext(ctx)
+			if ip != nil {
+				tx.RequestIP = ip.String()
+				ctx = context.WithValue(ctx, sdkAudit.RequestIPContextKey, tx.RequestIP)
 			}
 			userAgent := headers[http.CanonicalHeaderKey(sdkAudit.UserAgentHeaderKey.String())]
 			if len(userAgent) > 0 {
 				tx.UserAgent = userAgent[0]
 			}
+			ctx = context.WithValue(ctx, sdkAudit.RequestIDContextKey, requestID)
 			ctx = context.WithValue(ctx, contextKey{}, &tx)
 
 			defer func() {

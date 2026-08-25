@@ -187,11 +187,7 @@ func claimsAnyForTest(t *testing.T, claims map[string]interface{}) *anypb.Any {
 	return claimsAny
 }
 
-// TestResolveEntitiesFromTokenPreservesDirectEntitlements is the end-to-end regression
-// for the no-rehydrate shortcut silently dropping direct entitlements. Only ERS can
-// project the inline `direct_entitlements` claim onto
-// EntityRepresentation.DirectEntitlements; building the representation locally leaves
-// the field empty and every direct-entitlement decision denies.
+// end-to-end regression for the no-rehydrate shortcut silently dropping direct entitlements
 func TestResolveEntitiesFromTokenPreservesDirectEntitlements(t *testing.T) {
 	directEntitlements := []*entityresolutionV2.DirectEntitlement{{
 		AttributeValueFqn: "https://example.com/attr/workspace/value/sdk-test",

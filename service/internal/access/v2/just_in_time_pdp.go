@@ -16,6 +16,7 @@ import (
 	"github.com/opentdf/platform/protocol/go/policy/subjectmapping"
 	otdfSDK "github.com/opentdf/platform/sdk"
 	ent "github.com/opentdf/platform/service/entity"
+	claimsERSV2 "github.com/opentdf/platform/service/entityresolution/claims/v2"
 	ctxAuth "github.com/opentdf/platform/service/pkg/auth"
 	"google.golang.org/protobuf/types/known/structpb"
 	"google.golang.org/protobuf/types/known/wrapperspb"
@@ -408,14 +409,10 @@ func filterEntityChain(entityChain *entity.EntityChain, skipEnvironmentEntities 
 	return filteredEntities
 }
 
-// directEntitlementClaimKeys mirrors the claim names the claims ERS recognizes in
-// parseDirectEntitlementsFromClaims. Keep the two in sync.
-var directEntitlementClaimKeys = []string{"direct_entitlements", "directEntitlements"}
-
 // directEntitlementClaimKey reports whether the resolved claims carry direct
 // entitlements, and under which claim name.
 func directEntitlementClaimKey(claimsStruct *structpb.Struct) (string, bool) {
-	for _, key := range directEntitlementClaimKeys {
+	for _, key := range claimsERSV2.DirectEntitlementClaimKeys {
 		if _, ok := claimsStruct.GetFields()[key]; ok {
 			return key, true
 		}
@@ -441,10 +438,8 @@ func entityRepresentationsFromResolvedChain(entityChain *entity.EntityChain, ski
 			return nil, fmt.Errorf("failed to unpack resolved token chain entity %s: %w", chained.GetEphemeralId(), err)
 		}
 
-		// Direct entitlements are carried inline on the claims, but only ERS can project
-		// them onto EntityRepresentation.DirectEntitlements. Taking the no-rehydrate
-		// shortcut here would silently drop them and deny every direct-entitlement
-		// decision, so defer to ERS whenever the claim is present.
+		// Direct entitlements are carried inline on the claims. Taking the no-rehydrate
+		// shortcut here would silently drop them, so defer to ERS whenever the claim is present.
 		if key, ok := directEntitlementClaimKey(&claimsStruct); ok {
 			return nil, fmt.Errorf("%w: entity %s carries %q claims", errResolvedTokenChainRequiresHydration, chained.GetEphemeralId(), key)
 		}

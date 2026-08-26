@@ -46,7 +46,8 @@ func (r *typeNameRegistry[T]) lookup(key T) string {
 // register associates name with key. Registering a key that already has a
 // different name (including a built-in type) is rejected so the emitted audit
 // taxonomy cannot be silently changed out from under existing consumers.
-// Re-registering an identical name is a no-op.
+// Re-registering an identical name is a no-op. Names must also be unique within
+// a registry, so a name already in use by a different key is rejected too.
 func (r *typeNameRegistry[T]) register(key T, name string) error {
 	if name == "" {
 		return ErrInvalidAuditTypeName
@@ -65,6 +66,14 @@ func (r *typeNameRegistry[T]) register(key T, name string) error {
 			return nil
 		}
 		return fmt.Errorf("%w: %s %d is registered as %q, cannot re-register as %q", ErrAuditTypeAlreadyRegistered, r.fallbackPrefix, key, existing, name)
+	}
+
+	// Names are emitted verbatim in the audit log, so two keys sharing a name
+	// would leave consumers unable to tell the two types apart.
+	for existingKey, existingName := range current {
+		if existingName == name {
+			return fmt.Errorf("%w: name %q is registered to %s %d, cannot also register it for %s %d", ErrAuditTypeAlreadyRegistered, name, r.fallbackPrefix, existingKey, r.fallbackPrefix, key)
+		}
 	}
 
 	updated := make(map[T]string, len(current)+1)

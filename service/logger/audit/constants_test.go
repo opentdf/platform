@@ -106,6 +106,34 @@ func TestRegisterTypeRejectsRenamingExistingType(t *testing.T) {
 	assert.Equal(t, "success", ActionResultSuccess.String())
 }
 
+func TestRegisterTypeRejectsDuplicateNames(t *testing.T) {
+	resetAuditTypeRegistrationState(t)
+	t.Cleanup(func() { resetAuditTypeRegistrationState(t) })
+
+	const (
+		firstObjectType  ObjectType = testRegistrationBase + 50
+		secondObjectType ObjectType = testRegistrationBase + 51
+	)
+	require.NoError(t, RegisterObjectType(firstObjectType, "shared_object_name"))
+
+	err := RegisterObjectType(secondObjectType, "shared_object_name")
+	require.ErrorIs(t, err, ErrAuditTypeAlreadyRegistered)
+	require.ErrorContains(t, err, "object_type 10050")
+
+	// The rejected key keeps its fallback name and the original is untouched.
+	assert.Equal(t, "object_type_10051", secondObjectType.String())
+	assert.Equal(t, "shared_object_name", firstObjectType.String())
+
+	// Built-in names are reserved the same way, across every registry.
+	require.ErrorIs(t, RegisterObjectType(ObjectType(testRegistrationBase+52), "namespace"), ErrAuditTypeAlreadyRegistered)
+	require.ErrorIs(t, RegisterActionType(ActionType(testRegistrationBase+53), "read"), ErrAuditTypeAlreadyRegistered)
+	require.ErrorIs(t, RegisterActionResult(ActionResult(testRegistrationBase+54), "success"), ErrAuditTypeAlreadyRegistered)
+
+	// A name taken in one registry stays available in the others.
+	require.NoError(t, RegisterActionType(ActionType(testRegistrationBase+55), "shared_object_name"))
+	require.NoError(t, RegisterActionResult(ActionResult(testRegistrationBase+56), "shared_object_name"))
+}
+
 func TestUnregisteredTypesFallBackToNumericNames(t *testing.T) {
 	resetAuditTypeRegistrationState(t)
 	t.Cleanup(func() { resetAuditTypeRegistrationState(t) })

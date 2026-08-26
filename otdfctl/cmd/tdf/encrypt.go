@@ -1,8 +1,11 @@
 package tdf
 
 import (
+	"bufio"
+	"errors"
 	"io"
 	"log/slog"
+	"mime"
 	"os"
 	"path/filepath"
 	"strings"
@@ -11,8 +14,8 @@ import (
 	"github.com/opentdf/platform/lib/ocrypto"
 	"github.com/opentdf/platform/otdfctl/cmd/common"
 	"github.com/opentdf/platform/otdfctl/pkg/cli"
+	"github.com/opentdf/platform/otdfctl/pkg/handlers"
 	"github.com/opentdf/platform/otdfctl/pkg/man"
-	"github.com/opentdf/platform/otdfctl/pkg/utils"
 	"github.com/spf13/cobra"
 )
 
@@ -23,6 +26,30 @@ var (
 	encryptDoc = man.Docs.GetCommand("encrypt", man.WithRun(encryptRun))
 	EncryptCmd = &encryptDoc.Command
 )
+
+// detectMimeType sniffs at most the first megabyte and returns a reader that
+// still yields the complete payload.
+func detectMimeType(in io.Reader, fileExt string) (string, io.Reader, error) {
+	buffered, ok := in.(*bufio.Reader)
+	if !ok {
+		buffered = bufio.NewReaderSize(in, Size1MB)
+		in = buffered
+	}
+
+	mimetype.SetLimit(Size1MB)
+	head, err := buffered.Peek(Size1MB)
+	if err != nil && !errors.Is(err, io.EOF) && !errors.Is(err, bufio.ErrBufferFull) {
+		return "", in, err
+	}
+
+	detected := mimetype.Detect(head).String()
+	if detected == "application/octet-stream" && fileExt != "" {
+		if byExtension := mime.TypeByExtension("." + strings.TrimPrefix(fileExt, ".")); byExtension != "" {
+			detected = byExtension
+		}
+	}
+	return detected, in, nil
+}
 
 func encryptRun(cmd *cobra.Command, args []string) {
 	c := cli.New(cmd, args, cli.WithPrintJSON())
@@ -57,13 +84,13 @@ func encryptRun(cmd *cobra.Command, args []string) {
 		wrappingKeyAlgorithm = ocrypto.RSA2048Key
 	}
 
-	piped := readPipedStdin()
+	piped, hasPiped := stdinReader()
 
 	inputCount := 0
 	if filePath != "" {
 		inputCount++
 	}
-	if len(piped) > 0 {
+	if hasPiped {
 		inputCount++
 	}
 
@@ -76,71 +103,78 @@ func encryptRun(cmd *cobra.Command, args []string) {
 		cliExit("ONLY ONE")
 	}
 
-	// prefer filepath argument over stdin input
-	bytesSlice := piped
-	var err error
+	var in io.Reader = piped
 	if filePath != "" {
-		bytesSlice, err = utils.ReadBytesFromFile(filePath, MaxFileSize)
+		file, err := os.Open(filePath)
 		if err != nil {
 			cli.ExitWithError("Failed to read file:", err)
 		}
+		defer file.Close()
+		fileInfo, err := file.Stat()
+		if err != nil {
+			cli.ExitWithError("Failed to read file:", err)
+		}
+		if fileInfo.Size() > MaxFileSize {
+			cli.ExitWithError("Failed to read file:", errors.New("file size exceeds the 10 GB limit"))
+		}
+		in = file
 	}
 
 	// auto-detect mime type if not provided
 	if fileMimeType == "" {
 		slog.Debug("detecting mime type of file")
-		// get the mime type of the file
-		mimetype.SetLimit(Size1MB) // limit to 1MB
-		m := mimetype.Detect(bytesSlice)
-		// default to application/octet-stream if no mime type is detected
-		fileMimeType = m.String()
-
-		if fileMimeType == "application/octet-stream" {
-			if fileExt != "" {
-				fileMimeType = mimetype.Lookup(fileExt).String()
-			}
+		var err error
+		fileMimeType, in, err = detectMimeType(in, fileExt)
+		if err != nil {
+			cli.ExitWithError("Failed to read file:", err)
 		}
 	}
 	slog.Debug("encrypting file",
-		slog.Int("file_len", len(bytesSlice)),
 		slog.String("mime_type", fileMimeType),
 	)
 
-	// Do the encryption
-	encrypted, err := h.EncryptBytes(
-		tdfType,
-		bytesSlice,
-		attrValues,
-		fileMimeType,
-		kasURLPath,
-		assertions,
-		wrappingKeyAlgorithm,
-		targetMode,
-	)
-	if err != nil {
-		cli.ExitWithError("Failed to encrypt", err)
-	}
-
-	// Find the destination as the output flag filename or stdout
-	var dest *os.File
+	var dest io.Writer
+	var tdfFile *outputFile
 	if out != "" {
 		// make sure output ends in .tdf extension
 		if !strings.HasSuffix(out, ".tdf") {
 			out += ".tdf"
 		}
-		tdfFile, err := os.Create(out)
+		var err error
+		tdfFile, err = newOutputFile(out)
 		if err != nil {
 			cli.ExitWithError("Failed to write encrypted file "+out, err)
 		}
-		defer tdfFile.Close()
+		defer tdfFile.Cleanup()
 		dest = tdfFile
 	} else {
 		dest = os.Stdout
 	}
 
-	_, e := io.Copy(dest, encrypted)
-	if e != nil {
-		cli.ExitWithError("Failed to write encrypted data to stdout", e)
+	fail := func(message string, err error) {
+		if tdfFile != nil {
+			tdfFile.Cleanup()
+		}
+		cli.ExitWithError(message, err)
+	}
+
+	err := h.Encrypt(c.Context(), dest, in, handlers.EncryptOptions{
+		TDFType:              tdfType,
+		Attributes:           attrValues,
+		MimeType:             fileMimeType,
+		KASURLPath:           kasURLPath,
+		Assertions:           assertions,
+		WrappingKeyAlgorithm: wrappingKeyAlgorithm,
+		TargetMode:           targetMode,
+	})
+	if err != nil {
+		fail("Failed to encrypt", err)
+	}
+
+	if tdfFile != nil {
+		if err := tdfFile.Commit(); err != nil {
+			fail("Failed to write encrypted file "+out, err)
+		}
 	}
 }
 

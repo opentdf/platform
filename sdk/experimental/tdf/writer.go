@@ -163,6 +163,9 @@ func NewWriter(_ context.Context, opts ...Option[*WriterConfig]) (*Writer, error
 	for _, opt := range opts {
 		opt(config)
 	}
+	if config.targetModeError != nil {
+		return nil, config.targetModeError
+	}
 
 	// Initialize archive writer - start with 1 segment and expand dynamically
 	archiveWriter := zipstream.NewSegmentTDFWriter(1, zipstream.WithZip64())
@@ -264,7 +267,7 @@ func (w *Writer) WriteSegment(ctx context.Context, index int, data []byte) (*Seg
 	if err != nil {
 		return nil, err
 	}
-	segmentSig, err := calculateSignature(segmentCipher, w.dek, w.segmentIntegrityAlgorithm, false) // Don't ever hex encode new tdf's
+	segmentSig, err := calculateSignature(segmentCipher, w.dek, w.segmentIntegrityAlgorithm, w.useHex)
 	if err != nil {
 		return nil, err
 	}
@@ -457,7 +460,6 @@ func (w *Writer) getManifest(ctx context.Context, cfg *WriterFinalizeConfig) (*M
 	}
 
 	manifest := &Manifest{
-		TDFVersion: TDFSpecVersion,
 		Payload: Payload{
 			MimeType:    cfg.payloadMimeType,
 			Protocol:    tdfAsZip,
@@ -465,6 +467,9 @@ func (w *Writer) getManifest(ctx context.Context, cfg *WriterFinalizeConfig) (*M
 			URL:         zipstream.TDFPayloadFileName,
 			IsEncrypted: true,
 		},
+	}
+	if !w.excludeVersionFromManifest {
+		manifest.TDFVersion = TDFSpecVersion
 	}
 	// Determine finalize order by collecting all present segment indices and sorting.
 	// This densifies sparse indices automatically and ignores any gaps.
@@ -562,7 +567,7 @@ func (w *Writer) getManifest(ctx context.Context, cfg *WriterFinalizeConfig) (*M
 		return nil, 0, 0, errors.New("empty segment hash")
 	}
 
-	rootSignature, err := calculateSignature(aggregateHash.Bytes(), w.dek, w.integrityAlgorithm, false)
+	rootSignature, err := calculateSignature(aggregateHash.Bytes(), w.dek, w.integrityAlgorithm, w.useHex)
 	if err != nil {
 		return nil, 0, 0, err
 	}
@@ -656,7 +661,11 @@ func (w *Writer) buildAssertions(aggregateHash []byte, assertions []AssertionCon
 
 		var completeHashBuilder bytes.Buffer
 		completeHashBuilder.Write(aggregateHash)
-		completeHashBuilder.Write(hashOfAssertion)
+		if w.useHex {
+			completeHashBuilder.Write(hashOfAssertionAsHex)
+		} else {
+			completeHashBuilder.Write(hashOfAssertion)
+		}
 
 		encoded := ocrypto.Base64Encode(completeHashBuilder.Bytes())
 

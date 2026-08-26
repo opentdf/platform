@@ -2,7 +2,14 @@
 
 package tdf
 
-import "github.com/opentdf/platform/protocol/go/policy"
+import (
+	"fmt"
+
+	"github.com/Masterminds/semver/v3"
+	"github.com/opentdf/platform/protocol/go/policy"
+)
+
+const legacySignatureThreshold = "4.3.0"
 
 // IntegrityAlgorithm specifies the cryptographic algorithm used for integrity verification.
 //
@@ -60,6 +67,13 @@ type WriterConfig struct {
 	// initialDefaultKAS allows callers to provide a default KAS at writer creation time.
 	// This will be used during Finalize() if no default KAS is provided there.
 	initialDefaultKAS *policy.SimpleKasKey
+
+	// useHex selects the legacy pre-4.3 signature representation.
+	useHex bool
+	// excludeVersionFromManifest omits schemaVersion for legacy TDFs.
+	excludeVersionFromManifest bool
+	// targetModeError defers option validation until NewWriter can return it.
+	targetModeError error
 }
 
 // ReaderConfig contains configuration options for TDF Reader creation.
@@ -141,6 +155,32 @@ func WithInitialAttributes(values []*policy.Value) Option[*WriterConfig] {
 func WithDefaultKASForWriter(kas *policy.SimpleKasKey) Option[*WriterConfig] {
 	return func(c *WriterConfig) {
 		c.initialDefaultKAS = kas
+	}
+}
+
+// WithTargetMode configures compatibility with a target TDF schema version.
+// Versions older than 4.3.0 use hex-encoded integrity signatures and omit the
+// schemaVersion field, matching the stable SDK's legacy behavior.
+func WithTargetMode(mode string) Option[*WriterConfig] {
+	return func(c *WriterConfig) {
+		if mode == "" {
+			c.useHex = false
+			c.excludeVersionFromManifest = false
+			return
+		}
+
+		version, err := semver.NewVersion(mode)
+		if err != nil {
+			c.targetModeError = fmt.Errorf("semver.NewVersion failed for version %s: %w", mode, err)
+			return
+		}
+		threshold, err := semver.NewVersion(legacySignatureThreshold)
+		if err != nil {
+			c.targetModeError = err
+			return
+		}
+		c.useHex = version.LessThan(threshold)
+		c.excludeVersionFromManifest = c.useHex
 	}
 }
 

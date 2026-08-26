@@ -17,6 +17,7 @@ func ContextServerInterceptor(logger *Logger) connect.UnaryInterceptorFunc {
 		return connect.UnaryFunc(func(ctx context.Context, req connect.AnyRequest) (connect.AnyResponse, error) {
 			// Get metadata from the context
 			headers := req.Header()
+			auditData := GetAuditDataFromContext(ctx)
 
 			// Add request ID from existing header or create a new one
 			var requestID uuid.UUID
@@ -36,7 +37,7 @@ func ContextServerInterceptor(logger *Logger) connect.UnaryInterceptorFunc {
 					RequestID: requestID,
 					UserAgent: "",
 					RequestIP: "",
-					ActorID:   "",
+					ActorID:   auditData.ActorID,
 				},
 				events: make([]pendingEvent, 0),
 			}
@@ -50,10 +51,6 @@ func ContextServerInterceptor(logger *Logger) connect.UnaryInterceptorFunc {
 				if ip.String() != "" && ip.String() != "<nil>" {
 					tx.RequestIP = ip.String()
 				}
-			}
-			actorIDFromMetadata := headers[http.CanonicalHeaderKey(sdkAudit.ActorIDHeaderKey.String())]
-			if len(actorIDFromMetadata) > 0 {
-				tx.ActorID = actorIDFromMetadata[0]
 			}
 			userAgent := headers[http.CanonicalHeaderKey(sdkAudit.UserAgentHeaderKey.String())]
 			if len(userAgent) > 0 {

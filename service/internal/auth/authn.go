@@ -31,7 +31,6 @@ import (
 	internalauthz "github.com/opentdf/platform/service/internal/auth/authz"
 	_ "github.com/opentdf/platform/service/internal/auth/authz/casbin" // Register casbin authorizer
 	"github.com/opentdf/platform/service/logger"
-	"github.com/opentdf/platform/service/logger/audit"
 	ctxAuth "github.com/opentdf/platform/service/pkg/auth"
 	"github.com/opentdf/platform/service/pkg/authz"
 	"google.golang.org/grpc/metadata"
@@ -1120,14 +1119,6 @@ func (a *Authentication) checkToken(ctx context.Context, authHeader []string, dp
 	accessToken, err := a.tokenVerifier.VerifyAccessToken(ctx, tokenRaw)
 	if err != nil {
 		return nil, nil, err
-	}
-
-	// Get actor ID (sub) from unverified token for audit and add to context
-	// Only set the actor ID if it is not already defined
-	existingActorID := audit.GetAuditDataFromContext(ctx).ActorID
-	if existingActorID == "" {
-		actorID := accessToken.Subject()
-		ctx = audit.ContextWithActorID(ctx, actorID)
 	}
 
 	_, tokenHasCNF := accessToken.Get("cnf")

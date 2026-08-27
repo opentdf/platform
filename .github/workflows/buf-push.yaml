@@ -5,7 +5,7 @@ on:
     branches:
       - main
     tags:
-      - "v*"
+      - "protocol/go/v*"
     paths:
       - ".github/workflows/buf-push.yaml"
       - "buf.lock"
@@ -40,6 +40,9 @@ jobs:
             echo "BUF_TOKEN repository secret is not configured" >&2
             exit 1
           fi
-          buf push --git-metadata
+          label="${GITHUB_REF_NAME##*/}"
+          buf push \
+            --label "${label}" \
+            --source-control-url "${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/commit/${GITHUB_SHA}"
       - name: Verify published module
-        run: buf build "buf.build/opentdf/platform:${GITHUB_REF_NAME}"
+        run: buf build "buf.build/opentdf/platform:${GITHUB_REF_NAME##*/}"

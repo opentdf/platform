@@ -1,0 +1,43 @@
+name: Publish Protobufs to the Buf Schema Registry
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - "v*"
+    paths:
+      - ".github/workflows/buf-push.yaml"
+      - "buf.lock"
+      - "buf.yaml"
+      - "service/**/*.proto"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: buf-push-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  push:
+    name: Publish buf.build/opentdf/platform
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: bufbuild/buf-setup-action@a47c93e0b1648d5651a065437926377d060baa99 # v1.50.0
+        with:
+          github_token: ${{ github.token }}
+          version: "1.70.0"
+      - name: Publish module
+        env:
+          BUF_TOKEN: ${{ secrets.BUF_TOKEN }}
+        run: |
+          if [[ -z "${BUF_TOKEN}" ]]; then
+            echo "BUF_TOKEN repository secret is not configured" >&2
+            exit 1
+          fi
+          buf push --git-metadata

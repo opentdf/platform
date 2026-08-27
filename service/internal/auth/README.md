@@ -77,6 +77,20 @@ The table lists production resolver coverage in this workspace. The v2 authorize
 | `/policy.kasregistry.KeyAccessServerRegistryService/ListKeys` | `kas_uri` |
 | All other RPCs | none (`*`) |
 
+### Streaming and Bidi RPCs
+
+The Connect authN and authz interceptors cover unary, streaming, and bidi RPCs. A
+streaming RPC is authenticated and authorized once, at stream establishment, before the
+handler runs.
+
+Because no request message is available at establishment, resource-dimension resolvers
+cannot run for streams. Streaming authorization is therefore **procedure-level only**: the
+enforcement request always uses wildcard dimensions (`*`). As a result, a dimension-scoped
+v2 policy row (one that requires a concrete dimension such as `kas_uri=...`) never matches
+a stream, so dimension-scoped policy **fails closed** for streaming RPCs. To authorize a
+stream, grant it with a wildcard-dimension rule. This mirrors the raw-HTTP `MuxHandler`
+path, which is likewise procedure-level.
+
 ### KAS URI Policy Encoding
 
 When writing `kas_uri` dimension values in v2 Casbin policy, encode only the characters that conflict with dimension parsing:

@@ -632,178 +632,140 @@ func (a Authentication) MuxHandler(handler http.Handler) http.Handler {
 	})
 }
 
-// ConnectAuthNInterceptor authenticates Connect requests and enriches the
-// request context with configured token claims needed by later middleware.
-func (a Authentication) ConnectAuthNInterceptor() connect.UnaryInterceptorFunc {
-	interceptor := func(next connect.UnaryFunc) connect.UnaryFunc {
-		return connect.UnaryFunc(func(
-			ctx context.Context,
-			req connect.AnyRequest,
-		) (connect.AnyResponse, error) {
-			publicRoute := slices.ContainsFunc(a.publicRoutes, a.isPublicRoute(req.Spec().Procedure)) //nolint:contextcheck // There is no way to pass a context here
-			ctx = ctxAuth.ContextWithPublicRoute(ctx, publicRoute)
-			if publicRoute {
-				return next(ctx, req)
-			}
-
-			log := a.logger
-
-			procedure := req.Spec().Procedure
-			host := req.Header().Get("Host")
-			// Build the acceptable htu values with the same normalization the SDK
-			// applies when signing its proof (lowercased host, default ports
-			// stripped) so the exact-string htu comparison in matchHTU succeeds.
-			// Both schemes are offered because the interceptor cannot observe the
-			// wire scheme here.
-			ri := receiverInfo{
-				u: []string{
-					originFromHost(host, false) + procedure,
-					originFromHost(host, true) + procedure,
-				},
-				m: []string{req.HTTPMethod()},
-			}
-			log.DebugContext(
-				ctx, "dpop receiverInfo set (connect interceptor)",
-				slog.Any("expected_htm", ri.m),
-				slog.Any("expected_htu", ri.u),
-				slog.String("procedure", procedure),
-				slog.String("connect_http_method", req.HTTPMethod()),
-			)
-
-			header := req.Header()["Authorization"]
-			if len(header) < 1 {
-				return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("missing authorization header"))
-			}
-
-			token, ctxWithJWK, err := a.checkToken(
-				ctx,
-				header,
-				ri,
-				req.Header()["Dpop"],
-			)
-			if err != nil {
-				// Check if this is a nonce error requiring a challenge
-				var nonceErr *DPoPNonceError
-				if errors.As(err, &nonceErr) {
-					nonce := a.dpopNonceManager.getCurrentNonce()
-					connectErr := connect.NewError(connect.CodeUnauthenticated, errors.New("unauthenticated"))
-					connectErr.Meta().Set("DPoP-Nonce", nonce)
-					connectErr.Meta().Set("WWW-Authenticate", `DPoP error="use_dpop_nonce"`)
-					return nil, connectErr
-				}
-				// Other DPoP proof failures get an invalid_dpop_proof challenge (RFC 9449 §7.1).
-				var proofErr *DPoPProofError
-				if errors.As(err, &proofErr) {
-					connectErr := connect.NewError(connect.CodeUnauthenticated, errors.New("unauthenticated"))
-					if a.dpopNonceManager.requireNonce {
-						connectErr.Meta().Set("DPoP-Nonce", a.dpopNonceManager.getCurrentNonce())
-					}
-					connectErr.Meta().Set("WWW-Authenticate", `DPoP error="invalid_dpop_proof"`)
-					return nil, connectErr
-				}
-				return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("unauthenticated"))
-			}
-
-			// Always send fresh nonce in successful responses when nonces are enabled.
-			// Wrap next so the DPoP-Nonce header is set on the response, not the outgoing client context.
-			if a.dpopNonceManager.requireNonce {
-				originalNext := next
-				next = func(ctx context.Context, req connect.AnyRequest) (connect.AnyResponse, error) {
-					res, err := originalNext(ctx, req)
-					if err != nil {
-						var connectErr *connect.Error
-						if errors.As(err, &connectErr) {
-							connectErr.Meta().Set("DPoP-Nonce", a.dpopNonceManager.getCurrentNonce())
-						}
-						return nil, err
-					}
-					res.Header().Set("DPoP-Nonce", a.dpopNonceManager.getCurrentNonce())
-					return res, nil
-				}
-			}
-
-			clientID, err := a.subjectExtractor.ClientIDFromToken(ctxWithJWK, token)
-			if err != nil {
-				log.WarnContext(
-					ctxWithJWK,
-					"could not determine client ID from token",
-					slog.Any("err", err),
-				)
-			} else {
-				log = log.
-					With("client_id", clientID).
-					With("configured_client_id_claim_name", a.oidcConfiguration.Policy.ClientIDClaim)
-				ctxWithJWK = ctxAuth.EnrichIncomingContextMetadataWithAuthn(ctxWithJWK, log, clientID)
-				ctxWithJWK = authz.ContextWithClientID(ctxWithJWK, clientID)
-			}
-
-			roleReq, err := roleRequestForConnectProcedure(a.oidcConfiguration.Issuer, req.Spec().Procedure)
-			if err != nil {
-				return nil, connect.NewError(connect.CodeInvalidArgument, err)
-			}
-			ctxWithJWK, err = a.subjectExtractor.ContextWithClaims(ctxWithJWK, token, roleReq)
-			if err != nil {
-				log.WarnContext(ctxWithJWK, "role provider error", slog.Any("error", err))
-				return nil, connect.NewError(connect.CodeInternal, errors.New("role provider error"))
-			}
-			return next(ctxWithJWK, req)
-		})
-	}
-	return connect.UnaryInterceptorFunc(interceptor)
+// connectInterceptor adapts unary and streaming-handler wrap functions into a
+// connect.Interceptor so the same authN/authz applies to unary and
+// streaming/bidi RPCs. Streaming client calls pass through unchanged because
+// these are server-side interceptors.
+//
+// See the Connect protocol for the stream/handler distinction:
+// https://connectrpc.com/docs/protocol/
+type connectInterceptor struct {
+	unary  func(connect.UnaryFunc) connect.UnaryFunc
+	stream func(connect.StreamingHandlerFunc) connect.StreamingHandlerFunc
 }
 
-// ConnectAuthZInterceptor authorizes Connect requests using token and
-// configured claims already stored in the request context.
-func (a Authentication) ConnectAuthZInterceptor() connect.UnaryInterceptorFunc {
-	interceptor := func(next connect.UnaryFunc) connect.UnaryFunc {
-		return connect.UnaryFunc(func(
-			ctx context.Context,
-			req connect.AnyRequest,
-		) (connect.AnyResponse, error) {
-			if publicRoute, ok := ctxAuth.PublicRouteFromContext(ctx); ok && publicRoute {
+func (i connectInterceptor) WrapUnary(next connect.UnaryFunc) connect.UnaryFunc {
+	return i.unary(next)
+}
+
+func (i connectInterceptor) WrapStreamingClient(next connect.StreamingClientFunc) connect.StreamingClientFunc {
+	return next
+}
+
+func (i connectInterceptor) WrapStreamingHandler(next connect.StreamingHandlerFunc) connect.StreamingHandlerFunc {
+	return i.stream(next)
+}
+
+// ConnectAuthNInterceptor authenticates Connect requests and enriches the
+// request context with configured token claims needed by later middleware. It
+// covers unary, streaming, and bidi RPCs; streaming RPCs are authenticated once
+// at stream establishment.
+func (a Authentication) ConnectAuthNInterceptor() connect.Interceptor {
+	return connectInterceptor{
+		unary: func(next connect.UnaryFunc) connect.UnaryFunc {
+			return func(ctx context.Context, req connect.AnyRequest) (connect.AnyResponse, error) {
+				ctx, cerr := a.authenticateConnect(ctx, req.Spec().Procedure, req.HTTPMethod(), req.Header())
+				if cerr != nil {
+					return nil, cerr
+				}
+
+				// Always send a fresh nonce in successful responses when nonces are enabled.
+				// Wrap next so the DPoP-Nonce header is set on the response, not the outgoing client context.
+				if publicRoute, _ := ctxAuth.PublicRouteFromContext(ctx); !publicRoute && a.dpopNonceManager.requireNonce {
+					originalNext := next
+					next = func(ctx context.Context, req connect.AnyRequest) (connect.AnyResponse, error) {
+						res, err := originalNext(ctx, req)
+						if err != nil {
+							var connectErr *connect.Error
+							if errors.As(err, &connectErr) {
+								connectErr.Meta().Set("DPoP-Nonce", a.dpopNonceManager.getCurrentNonce())
+							}
+							return nil, err
+						}
+						res.Header().Set("DPoP-Nonce", a.dpopNonceManager.getCurrentNonce())
+						return res, nil
+					}
+				}
 				return next(ctx, req)
 			}
-
-			token := ctxAuth.GetAccessTokenFromContext(ctx, a.logger)
-			if token == nil {
-				return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("missing access token in context"))
+		},
+		stream: func(next connect.StreamingHandlerFunc) connect.StreamingHandlerFunc {
+			return func(ctx context.Context, conn connect.StreamingHandlerConn) error {
+				// Streaming RPCs are always POST and expose no HTTPMethod on the conn.
+				ctx, cerr := a.authenticateConnect(ctx, conn.Spec().Procedure, http.MethodPost, conn.RequestHeader())
+				if cerr != nil {
+					return cerr
+				}
+				if publicRoute, _ := ctxAuth.PublicRouteFromContext(ctx); !publicRoute && a.dpopNonceManager.requireNonce {
+					conn.ResponseHeader().Set("DPoP-Nonce", a.dpopNonceManager.getCurrentNonce())
+				}
+				return next(ctx, conn)
 			}
-
-			roleReq, err := roleRequestForConnectProcedure(a.oidcConfiguration.Issuer, req.Spec().Procedure)
-			if err != nil {
-				return nil, connect.NewError(connect.CodeInvalidArgument, err)
-			}
-
-			log := a.logger
-			result := a.authorize(ctx, log, token, req, roleReq.Action)
-			if result.err != nil {
-				return nil, connect.NewError(result.errCode, result.err)
-			}
-
-			decision := result.decision
-			if !decision.Allowed {
-				log.WarnContext(
-					ctx, "permission denied",
-					permissionDeniedDecisionLogAttrs(token, decision, nil)...,
-				)
-				return nil, connect.NewError(connect.CodePermissionDenied, errors.New("permission denied"))
-			}
-
-			log.DebugContext(
-				ctx, "authorization granted",
-				slog.String("mode", string(decision.Mode)),
-				slog.String("reason", decision.Reason),
-			)
-
-			handlerCtx := ctx
-			if result.resourceContext != nil {
-				handlerCtx = internalauthz.ContextWithResolverContext(handlerCtx, result.resourceContext)
-			}
-
-			return next(handlerCtx, req)
-		})
+		},
 	}
-	return connect.UnaryInterceptorFunc(interceptor)
+}
+
+// ConnectAuthZInterceptor authorizes Connect requests using the token and
+// configured claims already stored in the request context. It covers unary,
+// streaming, and bidi RPCs; streaming RPCs are authorized once at stream
+// establishment.
+//
+// Streaming RPCs have no request message available at establishment, so
+// resource-dimension resolvers cannot run and authorization is procedure-level
+// only. Dimension-scoped v2 policy therefore fails closed for streams unless the
+// policy explicitly allows wildcard dimensions, mirroring the raw-HTTP MuxHandler.
+func (a Authentication) ConnectAuthZInterceptor() connect.Interceptor {
+	return connectInterceptor{
+		unary: func(next connect.UnaryFunc) connect.UnaryFunc {
+			return func(ctx context.Context, req connect.AnyRequest) (connect.AnyResponse, error) {
+				if publicRoute, ok := ctxAuth.PublicRouteFromContext(ctx); ok && publicRoute {
+					return next(ctx, req)
+				}
+
+				token := ctxAuth.GetAccessTokenFromContext(ctx, a.logger)
+				if token == nil {
+					return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("missing access token in context"))
+				}
+
+				roleReq, err := roleRequestForConnectProcedure(a.oidcConfiguration.Issuer, req.Spec().Procedure)
+				if err != nil {
+					return nil, connect.NewError(connect.CodeInvalidArgument, err)
+				}
+
+				log := a.logger
+				handlerCtx, cerr := a.finalizeAuthzDecision(ctx, log, token, a.authorize(ctx, log, token, req, roleReq.Action))
+				if cerr != nil {
+					return nil, cerr
+				}
+				return next(handlerCtx, req)
+			}
+		},
+		stream: func(next connect.StreamingHandlerFunc) connect.StreamingHandlerFunc {
+			return func(ctx context.Context, conn connect.StreamingHandlerConn) error {
+				if publicRoute, ok := ctxAuth.PublicRouteFromContext(ctx); ok && publicRoute {
+					return next(ctx, conn)
+				}
+
+				token := ctxAuth.GetAccessTokenFromContext(ctx, a.logger)
+				if token == nil {
+					return connect.NewError(connect.CodeUnauthenticated, errors.New("missing access token in context"))
+				}
+
+				procedure := conn.Spec().Procedure
+				roleReq, err := roleRequestForConnectProcedure(a.oidcConfiguration.Issuer, procedure)
+				if err != nil {
+					return connect.NewError(connect.CodeInvalidArgument, err)
+				}
+
+				log := a.logger
+				handlerCtx, cerr := a.finalizeAuthzDecision(ctx, log, token, a.authorizeProcedure(ctx, log, token, procedure, roleReq.Action))
+				if cerr != nil {
+					return cerr
+				}
+				return next(handlerCtx, conn)
+			}
+		},
+	}
 }
 
 func permissionDeniedDecisionLogAttrs(token jwt.Token, decision *internalauthz.Decision, err error) []any {
@@ -972,6 +934,135 @@ type authzResult struct {
 	errCode         connect.Code
 }
 
+// authenticateConnect performs JWT/DPoP authentication for a Connect request
+// given its procedure and headers, returning a context enriched with the
+// configured token claims needed by later middleware. httpMethod is
+// http.MethodPost for streaming RPCs, which have no other method. On failure it
+// returns a *connect.Error carrying any DPoP nonce/proof challenge metadata.
+//
+// Public routes short-circuit: the returned context records the public-route
+// flag (retrievable via ctxAuth.PublicRouteFromContext) and no token is required.
+func (a Authentication) authenticateConnect(ctx context.Context, procedure, httpMethod string, header http.Header) (context.Context, *connect.Error) {
+	publicRoute := slices.ContainsFunc(a.publicRoutes, a.isPublicRoute(procedure))
+	ctx = ctxAuth.ContextWithPublicRoute(ctx, publicRoute)
+	if publicRoute {
+		return ctx, nil
+	}
+
+	log := a.logger
+
+	host := header.Get("Host")
+	// Build the acceptable htu values with the same normalization the SDK
+	// applies when signing its proof (lowercased host, default ports
+	// stripped) so the exact-string htu comparison in matchHTU succeeds.
+	// Both schemes are offered because the interceptor cannot observe the
+	// wire scheme here.
+	ri := receiverInfo{
+		u: []string{
+			originFromHost(host, false) + procedure,
+			originFromHost(host, true) + procedure,
+		},
+		m: []string{httpMethod},
+	}
+	log.DebugContext(
+		ctx, "dpop receiverInfo set (connect interceptor)",
+		slog.Any("expected_htm", ri.m),
+		slog.Any("expected_htu", ri.u),
+		slog.String("procedure", procedure),
+		slog.String("connect_http_method", httpMethod),
+	)
+
+	authHeader := header["Authorization"]
+	if len(authHeader) < 1 {
+		return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("missing authorization header"))
+	}
+
+	token, ctxWithJWK, err := a.checkToken(
+		ctx,
+		authHeader,
+		ri,
+		header["Dpop"],
+	)
+	if err != nil {
+		// Check if this is a nonce error requiring a challenge
+		var nonceErr *DPoPNonceError
+		if errors.As(err, &nonceErr) {
+			nonce := a.dpopNonceManager.getCurrentNonce()
+			connectErr := connect.NewError(connect.CodeUnauthenticated, errors.New("unauthenticated"))
+			connectErr.Meta().Set("DPoP-Nonce", nonce)
+			connectErr.Meta().Set("WWW-Authenticate", `DPoP error="use_dpop_nonce"`)
+			return nil, connectErr
+		}
+		// Other DPoP proof failures get an invalid_dpop_proof challenge (RFC 9449 §7.1).
+		var proofErr *DPoPProofError
+		if errors.As(err, &proofErr) {
+			connectErr := connect.NewError(connect.CodeUnauthenticated, errors.New("unauthenticated"))
+			if a.dpopNonceManager.requireNonce {
+				connectErr.Meta().Set("DPoP-Nonce", a.dpopNonceManager.getCurrentNonce())
+			}
+			connectErr.Meta().Set("WWW-Authenticate", `DPoP error="invalid_dpop_proof"`)
+			return nil, connectErr
+		}
+		return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("unauthenticated"))
+	}
+
+	clientID, err := a.subjectExtractor.ClientIDFromToken(ctxWithJWK, token)
+	if err != nil {
+		log.WarnContext(
+			ctxWithJWK,
+			"could not determine client ID from token",
+			slog.Any("err", err),
+		)
+	} else {
+		log = log.
+			With("client_id", clientID).
+			With("configured_client_id_claim_name", a.oidcConfiguration.Policy.ClientIDClaim)
+		ctxWithJWK = ctxAuth.EnrichIncomingContextMetadataWithAuthn(ctxWithJWK, log, clientID)
+		ctxWithJWK = authz.ContextWithClientID(ctxWithJWK, clientID)
+	}
+
+	roleReq, err := roleRequestForConnectProcedure(a.oidcConfiguration.Issuer, procedure)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+	}
+	ctxWithJWK, err = a.subjectExtractor.ContextWithClaims(ctxWithJWK, token, roleReq)
+	if err != nil {
+		log.WarnContext(ctxWithJWK, "role provider error", slog.Any("error", err))
+		return nil, connect.NewError(connect.CodeInternal, errors.New("role provider error"))
+	}
+	return ctxWithJWK, nil
+}
+
+// finalizeAuthzDecision inspects an authorization result and returns the context
+// to pass to the handler, or a *connect.Error when the check failed or access is
+// denied. On success it attaches any resolved resource context so the handler can
+// reuse it.
+func (a Authentication) finalizeAuthzDecision(ctx context.Context, log *logger.Logger, token jwt.Token, result authzResult) (context.Context, *connect.Error) {
+	if result.err != nil {
+		return nil, connect.NewError(result.errCode, result.err)
+	}
+
+	decision := result.decision
+	if !decision.Allowed {
+		log.WarnContext(
+			ctx, "permission denied",
+			permissionDeniedDecisionLogAttrs(token, decision, nil)...,
+		)
+		return nil, connect.NewError(connect.CodePermissionDenied, errors.New("permission denied"))
+	}
+
+	log.DebugContext(
+		ctx, "authorization granted",
+		slog.String("mode", string(decision.Mode)),
+		slog.String("reason", decision.Reason),
+	)
+
+	if result.resourceContext != nil {
+		ctx = internalauthz.ContextWithResolverContext(ctx, result.resourceContext)
+	}
+	return ctx, nil
+}
+
 // resolveResourceContext attempts to resolve authorization dimensions using a registered resolver.
 // Returns errNoResourceContext if no resolver is registered or if resolvers are not supported.
 func (a *Authentication) resolveResourceContext(
@@ -1002,7 +1093,7 @@ func (a *Authentication) resolveResourceContext(
 	return &resolvedCtx, nil
 }
 
-// authorize performs the full authorization check for a request.
+// authorize performs the full authorization check for a unary request.
 // It builds the authorization request, resolves resource context if applicable,
 // and returns the authorization decision.
 func (a *Authentication) authorize(
@@ -1041,13 +1132,48 @@ func (a *Authentication) authorize(
 		authzReq.ResourceContext = resourceCtx
 	}
 
-	// Perform authorization check
+	result := a.decide(ctx, log, authzReq)
+	if result.err == nil {
+		result.resourceContext = resourceCtx // Pass resolved data to handler for cache reuse
+	}
+	return result
+}
+
+// authorizeProcedure performs procedure-level authorization without resolving
+// resource dimensions. It is used where no request message is available (e.g.
+// streaming RPCs at stream establishment), so dimension-scoped v2 policy fails
+// closed unless the policy explicitly allows wildcard dimensions.
+func (a *Authentication) authorizeProcedure(
+	ctx context.Context,
+	log *logger.Logger,
+	token jwt.Token,
+	procedure, action string,
+) authzResult {
+	// Defensive check: authorizer must be initialized
+	if a.authorizer == nil {
+		log.ErrorContext(ctx, "authorizer not initialized")
+		return authzResult{
+			err:     errors.New("authorization system not configured"),
+			errCode: connect.CodeInternal,
+		}
+	}
+
+	return a.decide(ctx, log, &internalauthz.Request{
+		Token:  token,
+		RPC:    procedure,
+		Action: action,
+	})
+}
+
+// decide runs the authorizer for the given request and normalizes its output
+// (transport errors and nil decisions) into an authzResult.
+func (a *Authentication) decide(ctx context.Context, log *logger.Logger, authzReq *internalauthz.Request) authzResult {
 	decision, authzErr := a.authorizer.Authorize(ctx, authzReq)
 	if authzErr != nil {
 		log.ErrorContext(
 			ctx, "authorization error",
 			slog.Any("error", authzErr),
-			slog.String("procedure", req.Spec().Procedure),
+			slog.String("procedure", authzReq.RPC),
 		)
 		return authzResult{
 			err:     errors.New("authorization system error"),
@@ -1058,7 +1184,7 @@ func (a *Authentication) authorize(
 		log.ErrorContext(
 			ctx, "authorization error",
 			slog.String("error", "authorizer returned nil decision"),
-			slog.String("procedure", req.Spec().Procedure),
+			slog.String("procedure", authzReq.RPC),
 		)
 		return authzResult{
 			err:     errors.New("authorization system error"),
@@ -1066,10 +1192,7 @@ func (a *Authentication) authorize(
 		}
 	}
 
-	return authzResult{
-		decision:        decision,
-		resourceContext: resourceCtx, // Pass resolved data to handler for cache reuse
-	}
+	return authzResult{decision: decision}
 }
 
 // getAction returns the action based on the rpc name

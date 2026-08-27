@@ -3,7 +3,7 @@
 **Status:** Proposed (active implementation)
 **Authors:** Platform Team
 **Created:** 2024-12-30
-**Last Updated:** 2026-03-05
+**Last Updated:** 2026-08-12
 **Record Date:** 2026-01-02 (ADR filename/index date)
 
 ## Problem Statement
@@ -327,6 +327,8 @@ The authorization interceptor orchestrates the authorization flow as a ConnectRP
 ```
 
 This flow describes **v2 mode**. In **v1 mode**, authorization uses the legacy path+action model and does not invoke resource resolvers.
+
+For **streaming and bidi RPCs**, the interceptor authenticates and authorizes once at stream establishment, before the handler runs. No request message is available at that point, so step 2 (resolver invocation) is skipped and enforcement uses wildcard dimensions (`*`). Streaming authorization is therefore procedure-level only, and dimension-scoped v2 policy fails closed for streams — a stream is authorized only by a wildcard-dimension rule. This mirrors the raw-HTTP `MuxHandler` path.
 
 **Key behaviors:**
 - No resolver registered = empty dimensions serialized as `*` (matches wildcard policies)

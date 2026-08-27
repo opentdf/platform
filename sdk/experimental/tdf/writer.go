@@ -3,34 +3,13 @@
 package tdf
 
 import (
-	"bytes"
 	"context"
-	"encoding/hex"
-	"encoding/json"
-	"errors"
-	"fmt"
-	"hash/crc32"
 	"io"
 	"log/slog"
-	"sort"
-	"sync"
+	"sync/atomic"
 
-	"github.com/google/uuid"
-	"github.com/opentdf/platform/lib/ocrypto"
 	"github.com/opentdf/platform/protocol/go/policy"
-	"github.com/opentdf/platform/sdk/experimental/tdf/keysplit"
-	"github.com/opentdf/platform/sdk/internal/zipstream"
-)
-
-const (
-	// kKeySize is the AES key size in bytes (256-bit key)
-	kKeySize = 32
-	// kGCMCipherAlgorithm specifies the encryption algorithm used for TDF payloads
-	kGCMCipherAlgorithm = "AES-256-GCM"
-	// tdfAsZip indicates the TDF uses ZIP as the container format
-	tdfAsZip = "zip"
-	// tdfZipReference indicates the payload is stored as a reference in the ZIP
-	tdfZipReference = "reference"
+	"github.com/opentdf/platform/sdk"
 )
 
 // SegmentResult contains the result of writing a segment
@@ -51,13 +30,16 @@ type FinalizeResult struct {
 	EncryptedSize int64     `json:"encryptedSize"` // Total encrypted size
 }
 
+// These are the stable SDK's error values rather than copies of them,
+// so errors.Is matches whether a caller compares against the
+// experimental or the sdk-scoped name.
 var (
 	// ErrAlreadyFinalized is returned when attempting operations on a finalized writer
-	ErrAlreadyFinalized = errors.New("tdf is already finalized")
+	ErrAlreadyFinalized = sdk.ErrChunkedAlreadyFinalized
 	// ErrInvalidSegmentIndex is returned for negative segment indices
-	ErrInvalidSegmentIndex = errors.New("invalid segment index")
+	ErrInvalidSegmentIndex = sdk.ErrChunkedInvalidSegmentIndex
 	// ErrSegmentAlreadyWritten is returned when trying to write to an existing segment index
-	ErrSegmentAlreadyWritten = errors.New("segment already written")
+	ErrSegmentAlreadyWritten = sdk.ErrChunkedSegmentAlreadyWritten
 )
 
 // Writer provides streaming TDF creation with out-of-order segment support.
@@ -73,9 +55,13 @@ var (
 //   - Cryptographic assertions and integrity verification
 //   - Custom attribute-based access controls
 //
-// Thread safety: Writers require external synchronization for concurrent access.
-// Each WriteSegment call must be serialized, but multiple Writers can operate
-// independently.
+// Thread safety: WriteSegment may be called concurrently for distinct
+// indices, but not twice for the same index.
+//
+// The writing itself is [sdk.ChunkedWriter]; this type adds the
+// multi-KAS ABAC key splitting in [xorSplitter] and this package's
+// option style. Callers that only need a single KAS can use
+// [sdk.NewChunkedWriter] directly.
 //
 // Example usage:
 //
@@ -83,44 +69,23 @@ var (
 //	if err != nil {
 //		return err
 //	}
-//	defer writer.Close()
 //
 //	// Write segments (can be out-of-order)
 //	_, err = writer.WriteSegment(ctx, 1, []byte("second"))
 //	_, err = writer.WriteSegment(ctx, 0, []byte("first"))
 //
 //	// Finalize with attributes
-//	finalBytes, manifest, err := writer.Finalize(ctx, WithAttributeValues(attrs))
+//	result, err := writer.Finalize(ctx, WithAttributeValues(attrs))
 type Writer struct {
 	// WriterConfig embeds configuration options for the TDF writer
 	WriterConfig
 
-	// archiveWriter handles the underlying ZIP archive creation
-	archiveWriter zipstream.SegmentWriter
+	// inner is the stable per-segment writer this type delegates to.
+	inner sdk.ChunkedWriter
 
-	// State management
-	mutex     sync.RWMutex // Protects concurrent access to writer state
-	finalized bool         // Whether Finalize() has been called
-
-	// manifest holds the finalized manifest after Finalize() is called.
-	// Before finalization, GetManifest() will synthesize a stub manifest
-	// from the current writer state. Do not rely on the stub for
-	// verification — it is informational only until Finalize completes.
-	manifest *Manifest
-
-	// segments stores segment metadata using sparse map for memory efficiency
-	// Maps segment index to Segment metadata (hash, size information)
-	segments map[int]*Segment
-	// maxSegmentIndex tracks the highest segment index written
-	maxSegmentIndex int
-
-	// Cryptographic state
-	dek   []byte         // Data Encryption Key (32-byte AES key)
-	block ocrypto.AesGcm // AES-GCM cipher for segment encryption
-
-	// Initial settings provided at Writer creation; used by Finalize if not overridden
-	initialAttributes []*policy.Value
-	initialDefaultKAS *policy.SimpleKasKey
+	// finalized mirrors inner's state so GetManifest can warn that a
+	// pre-finalize manifest is a stub. inner does not expose it.
+	finalized atomic.Bool
 }
 
 // NewWriter creates a new experimental TDF Writer with streaming support.
@@ -134,9 +99,7 @@ type Writer struct {
 // Configuration options can be provided to customize:
 //   - Integrity algorithm selection (HS256, GMAC)
 //   - Segment integrity algorithm (independent of root algorithm)
-//
-// The writer generates a unique Data Encryption Key (DEK) and initializes
-// the underlying archive writer for ZIP structure management.
+//   - Attributes and default KAS to fall back on at Finalize time
 //
 // Returns an error if:
 //   - DEK generation fails (cryptographic entropy issues)
@@ -153,41 +116,28 @@ type Writer struct {
 //		WithIntegrityAlgorithm(GMAC),
 //		WithSegmentIntegrityAlgorithm(HS256),
 //	)
-func NewWriter(_ context.Context, opts ...Option[*WriterConfig]) (*Writer, error) {
-	// Initialize Config
+func NewWriter(ctx context.Context, opts ...Option[*WriterConfig]) (*Writer, error) {
 	config := &WriterConfig{
 		integrityAlgorithm:        HS256,
 		segmentIntegrityAlgorithm: HS256,
 	}
-
 	for _, opt := range opts {
 		opt(config)
 	}
 
-	// Initialize archive writer - start with 1 segment and expand dynamically
-	archiveWriter := zipstream.NewSegmentTDFWriter(1, zipstream.WithZip64())
-
-	// Generate DEK
-	dek, err := ocrypto.RandomBytes(kKeySize)
+	inner, err := sdk.NewChunkedWriter(ctx,
+		sdk.WithChunkedIntegrityAlgorithm(sdk.IntegrityAlgorithm(config.integrityAlgorithm)),
+		sdk.WithChunkedSegmentIntegrityAlgorithm(sdk.IntegrityAlgorithm(config.segmentIntegrityAlgorithm)),
+		sdk.WithChunkedInitialAttributes(config.initialAttributes),
+		sdk.WithChunkedDefaultKAS(config.initialDefaultKAS),
+		sdk.WithChunkedKeySplitter(xorSplitter{}),
+		sdk.WithChunkedTargetMode(config.targetMode),
+	)
 	if err != nil {
 		return nil, err
 	}
 
-	// Initialize AES GCM Provider
-	block, err := ocrypto.NewAESGcm(dek)
-	if err != nil {
-		return nil, err
-	}
-
-	return &Writer{
-		WriterConfig:      *config,
-		archiveWriter:     archiveWriter,
-		dek:               dek,
-		segments:          make(map[int]*Segment), // Initialize sparse storage
-		block:             block,
-		initialAttributes: config.initialAttributes,
-		initialDefaultKAS: config.initialDefaultKAS,
-	}, nil
+	return &Writer{WriterConfig: *config, inner: inner}, nil
 }
 
 // WriteSegment encrypts and writes a data segment at the specified index.
@@ -202,22 +152,13 @@ func NewWriter(_ context.Context, opts ...Option[*WriterConfig]) (*Writer, error
 //   - data: Raw data to encrypt and store in this segment
 //
 // Returns the encrypted segment bytes that should be stored/uploaded, and any error.
-// The returned bytes include ZIP structure elements and can be assembled in any order.
-//
-// The function performs:
-//  1. Input validation (index >= 0, writer not finalized, no duplicate segments)
-//  2. AES-256-GCM encryption of the segment data
-//  3. HMAC signature calculation for integrity verification
-//  4. ZIP archive segment creation through the archive layer
-//
-// Memory optimization: Uses sparse storage to avoid O(n²) memory growth
-// for high or non-contiguous segment indices.
+// The returned bytes include ZIP structure elements. They must be concatenated in
+// ascending index order to form the payload, whatever order they were produced in.
 //
 // Error conditions:
 //   - ErrAlreadyFinalized: Writer has been finalized, no more segments accepted
 //   - ErrInvalidSegmentIndex: Negative index provided
 //   - ErrSegmentAlreadyWritten: Segment index already contains data
-//   - Context cancellation: If ctx.Done() is signaled
 //   - Encryption errors: AES-GCM operation failures
 //   - Archive errors: ZIP structure creation failures
 //
@@ -231,97 +172,25 @@ func NewWriter(_ context.Context, opts ...Option[*WriterConfig]) (*Writer, error
 //	uploadToS3(segment0, "part-000")
 //	uploadToS3(segment1, "part-001")
 func (w *Writer) WriteSegment(ctx context.Context, index int, data []byte) (*SegmentResult, error) {
-	w.mutex.Lock()
-
-	if w.finalized {
-		w.mutex.Unlock()
-		return nil, ErrAlreadyFinalized
-	}
-
-	if index < 0 {
-		w.mutex.Unlock()
-		return nil, ErrInvalidSegmentIndex
-	}
-
-	// Check for duplicate segments using map lookup
-	if _, exists := w.segments[index]; exists {
-		w.mutex.Unlock()
-		return nil, ErrSegmentAlreadyWritten
-	}
-
-	if index > w.maxSegmentIndex {
-		w.maxSegmentIndex = index
-	}
-	seg := &Segment{
-		Size: -1, // indicates not filled yet
-	}
-	w.segments[index] = seg
-
-	w.mutex.Unlock()
-
-	// Encrypt directly without unnecessary copying - the archive layer will handle copying if needed
-	segmentCipher, nonce, err := w.block.EncryptInPlace(data)
+	res, err := w.inner.WriteSegment(ctx, index, data)
 	if err != nil {
 		return nil, err
 	}
-	segmentSig, err := calculateSignature(segmentCipher, w.dek, w.segmentIntegrityAlgorithm, false) // Don't ever hex encode new tdf's
-	if err != nil {
-		return nil, err
-	}
-
-	segmentHash := string(ocrypto.Base64Encode([]byte(segmentSig)))
-	w.mutex.Lock()
-	seg.Size = int64(len(data))
-	seg.EncryptedSize = int64(len(segmentCipher)) + int64(len(nonce))
-	seg.Hash = segmentHash
-	w.mutex.Unlock()
-
-	crc := crc32.NewIEEE()
-	_, err = crc.Write(nonce)
-	if err != nil {
-		return nil, err
-	}
-	_, err = crc.Write(segmentCipher)
-	if err != nil {
-		return nil, err
-	}
-	header, err := w.archiveWriter.WriteSegment(ctx, index, uint64(seg.EncryptedSize), crc.Sum32())
-	if err != nil {
-		return nil, err
-	}
-	var reader io.Reader
-	if len(header) == 0 {
-		reader = io.MultiReader(bytes.NewReader(nonce), bytes.NewReader(segmentCipher))
-	} else {
-		reader = io.MultiReader(bytes.NewReader(header), bytes.NewReader(nonce), bytes.NewReader(segmentCipher))
-	}
-
 	return &SegmentResult{
-		TDFData:       reader,
-		Index:         index,
-		Hash:          seg.Hash,
-		PlaintextSize: seg.Size,
-		EncryptedSize: seg.EncryptedSize,
+		TDFData:       res.TDFData,
+		Index:         res.Index,
+		Hash:          res.Hash,
+		PlaintextSize: res.PlaintextSize,
+		EncryptedSize: res.EncryptedSize,
 	}, nil
 }
 
 // Finalize completes TDF creation and returns the final bytes and manifest.
 //
-// This method must be called after all segments have been written. It performs:
-//  1. Validates all segments are present (no missing indices from 0 to maxSegmentIndex)
-//  2. Generates cryptographic splits for key access controls
-//  3. Builds the TDF policy from provided attributes
-//  4. Creates cryptographic assertions if specified
-//  5. Calculates root integrity signature over all segment hashes
-//  6. Generates the complete TDF manifest
-//  7. Finalizes the ZIP archive structure
-//
-// The finalization process handles:
-//   - Key splitting for attribute-based access controls
-//   - Policy generation from attribute values
-//   - Encrypted metadata storage in key access objects
-//   - Manifest JSON generation and validation
-//   - ZIP central directory and data descriptor creation
+// This method must be called after all segments have been written. It
+// generates the key splits for attribute-based access control, builds the
+// policy, signs any assertions, calculates the root integrity signature over
+// all segment hashes, and closes the ZIP archive.
 //
 // Parameters:
 //   - ctx: Context for cancellation and timeout control
@@ -333,27 +202,22 @@ func (w *Writer) WriteSegment(ctx context.Context, index int, data []byte) (*Seg
 //   - WithPayloadMimeType: Specify payload MIME type
 //   - WithAssertions: Add cryptographic assertions
 //   - WithDefaultKAS: Set default Key Access Server
-//
-// Returns:
-//   - finalBytes: Complete ZIP archive bytes ready for storage/transmission
-//   - manifest: TDF manifest containing encryption and integrity information
-//   - error: Any error during finalization process
+//   - WithSegments: Choose which written segments the manifest describes
 //
 // Error conditions:
 //   - ErrAlreadyFinalized: Finalize already called
-//   - Missing segments: Gaps in segment indices (e.g., segments 0,1,3 written but 2 missing)
+//   - Missing segments: an index named by WithSegments that was never written
 //   - Key splitting failures: Invalid attributes or KAS configuration
 //   - Manifest generation errors: JSON marshaling failures
 //   - Archive finalization errors: ZIP structure generation failures
-//   - Context cancellation: If ctx.Done() is signaled
 //
 // Example:
 //
 //	// Basic finalization
-//	finalBytes, manifest, err := writer.Finalize(ctx)
+//	result, err := writer.Finalize(ctx)
 //
 //	// With attributes and metadata
-//	finalBytes, manifest, err := writer.Finalize(ctx,
+//	result, err := writer.Finalize(ctx,
 //		WithAttributeValues(attrs),
 //		WithEncryptedMetadata("sensitive info"),
 //		WithPayloadMimeType("application/json"),
@@ -361,50 +225,18 @@ func (w *Writer) WriteSegment(ctx context.Context, index int, data []byte) (*Seg
 //
 // Performance note: Finalization is O(n) where n is the number of segments.
 // Memory usage is proportional to manifest size, not total data size.
-
 func (w *Writer) Finalize(ctx context.Context, opts ...Option[*WriterFinalizeConfig]) (*FinalizeResult, error) {
-	w.mutex.Lock()
-	defer w.mutex.Unlock()
-
-	if w.finalized {
-		return nil, ErrAlreadyFinalized
-	}
-
-	cfg := &WriterFinalizeConfig{
-		attributes:        make([]*policy.Value, 0),
-		encryptedMetadata: "",
-		payloadMimeType:   "application/octet-stream",
-	}
-	for _, opt := range opts {
-		opt(cfg)
-	}
-	manifest, totalPlaintextSize, totalEncryptedSize, err := w.getManifest(ctx, cfg)
+	res, err := w.inner.Finalize(ctx, finalizeOptions(opts)...)
 	if err != nil {
 		return nil, err
 	}
-	manifestBytes, err := json.Marshal(manifest)
-	if err != nil {
-		return nil, err
-	}
-
-	finalBytes, err := w.archiveWriter.Finalize(ctx, manifestBytes)
-	if err != nil {
-		return nil, err
-	}
-
-	if err := w.archiveWriter.Close(); err != nil {
-		return nil, err
-	}
-
-	// Persist the final manifest for later retrieval via GetManifest.
-	w.manifest = manifest
-	w.finalized = true
+	w.finalized.Store(true)
 	return &FinalizeResult{
-		Data:          finalBytes,
-		Manifest:      manifest,
-		TotalSegments: len(manifest.Segments),
-		TotalSize:     totalPlaintextSize,
-		EncryptedSize: totalEncryptedSize,
+		Data:          res.Data,
+		Manifest:      res.Manifest,
+		TotalSegments: res.TotalSegments,
+		TotalSize:     res.TotalSize,
+		EncryptedSize: res.EncryptedSize,
 	}, nil
 }
 
@@ -416,13 +248,25 @@ func (w *Writer) Finalize(ctx context.Context, opts ...Option[*WriterFinalizeCon
 //     from the writer's current state (segments present so far, algorithm
 //     selections, and payload defaults). This pre-finalize manifest is not
 //     complete and must not be used for verification; it is provided for
-//     informational or client-side pre-calculation purposes only.
-//
-// No logging is performed; callers should consult this documentation for
-// the caveat about pre-finalize state.
+//     informational or client-side pre-calculation purposes only. A
+//     warning is logged in that case.
 func (w *Writer) GetManifest(ctx context.Context, opts ...Option[*WriterFinalizeConfig]) (*Manifest, error) {
-	w.mutex.RLock()
-	defer w.mutex.RUnlock()
+	if !w.finalized.Load() {
+		slog.Warn("getmanifest called before finalize; returned manifest is a stub and not complete, pre-finalize state may not include all segments or attributes.")
+	}
+	return w.inner.GetManifest(ctx, finalizeOptions(opts)...)
+}
+
+// finalizeOptions translates this package's finalize options into the
+// stable writer's equivalents.
+//
+// The two option sets are applied in sequence rather than mapped
+// one-to-one: this package's Option is a plain mutator over a config
+// struct, so the config is materialized first and then read off. That
+// also preserves the defaults callers have always seen -- notably the
+// "application/octet-stream" MIME type -- independent of whichever
+// defaults the stable writer happens to use.
+func finalizeOptions(opts []Option[*WriterFinalizeConfig]) []sdk.ChunkedFinalizeOption {
 	cfg := &WriterFinalizeConfig{
 		attributes:        make([]*policy.Value, 0),
 		encryptedMetadata: "",
@@ -431,250 +275,12 @@ func (w *Writer) GetManifest(ctx context.Context, opts ...Option[*WriterFinalize
 	for _, opt := range opts {
 		opt(cfg)
 	}
-	if !w.finalized {
-		slog.Warn("getmanifest called before finalize; returned manifest is a stub and not complete, pre-finalize state may not include all segments or attributes.")
+	return []sdk.ChunkedFinalizeOption{
+		sdk.WithChunkedAttributes(cfg.attributes),
+		sdk.WithChunkedDefaultKASForFinalize(cfg.defaultKas),
+		sdk.WithChunkedEncryptedMetadata(cfg.encryptedMetadata),
+		sdk.WithChunkedMimeType(cfg.payloadMimeType),
+		sdk.WithChunkedSegments(cfg.keepSegments),
+		sdk.WithChunkedAssertions(cfg.assertions),
 	}
-
-	manifest, _, _, err := w.getManifest(ctx, cfg)
-	if err != nil {
-		return nil, err
-	}
-	return manifest, nil
-}
-
-func (w *Writer) getManifest(ctx context.Context, cfg *WriterFinalizeConfig) (*Manifest, int64, int64, error) {
-	// If already finalized and we have the final manifest, return a copy.
-	if w.finalized && w.manifest != nil {
-		return cloneManifest(w.manifest), 0, 0, nil
-	}
-	// Archive layer will infer the same order by sorting present indices.
-	// Merge writer-level initial settings if finalize options omitted them.
-	if len(cfg.attributes) == 0 && len(w.initialAttributes) > 0 {
-		cfg.attributes = w.initialAttributes
-	}
-	if cfg.defaultKas == nil && w.initialDefaultKAS != nil {
-		cfg.defaultKas = w.initialDefaultKAS
-	}
-
-	manifest := &Manifest{
-		TDFVersion: TDFSpecVersion,
-		Payload: Payload{
-			MimeType:    cfg.payloadMimeType,
-			Protocol:    tdfAsZip,
-			Type:        tdfZipReference,
-			URL:         zipstream.TDFPayloadFileName,
-			IsEncrypted: true,
-		},
-	}
-	// Determine finalize order by collecting all present segment indices and sorting.
-	// This densifies sparse indices automatically and ignores any gaps.
-	order := make([]int, 0, len(w.segments))
-	for idx := range w.segments {
-		order = append(order, idx)
-	}
-	sort.Ints(order)
-	// If caller provided keepSegments, restrict to that subset and order.
-	if len(cfg.keepSegments) > 0 {
-		subset := make([]int, 0, len(cfg.keepSegments))
-		seen := make(map[int]struct{}, len(cfg.keepSegments))
-		for _, idx := range cfg.keepSegments {
-			if idx < 0 {
-				return nil, 0, 0, fmt.Errorf("WithSegments contains invalid index %d (must be >= 0)", idx)
-			}
-			if _, ok := w.segments[idx]; !ok {
-				return nil, 0, 0, fmt.Errorf("WithSegments references segment %d which was not written", idx)
-			}
-			if _, dup := seen[idx]; dup {
-				return nil, 0, 0, fmt.Errorf("WithSegments contains duplicate index %d", idx)
-			}
-			seen[idx] = struct{}{}
-			subset = append(subset, idx)
-		}
-		order = subset
-	}
-
-	// Generate splits using the splitter
-	splitter := keysplit.NewXORSplitter(keysplit.WithDefaultKAS(cfg.defaultKas))
-	result, err := splitter.GenerateSplits(ctx, cfg.attributes, w.dek)
-	if err != nil {
-		return nil, 0, 0, err
-	}
-
-	// Build key access objects from the splits
-	policyBytes, err := buildPolicy(cfg.attributes)
-	if err != nil {
-		return nil, 0, 0, err
-	}
-
-	encryptInfo := EncryptionInformation{
-		KeyAccessType: kSplitKeyType,
-		Policy:        string(ocrypto.Base64Encode(policyBytes)),
-		Method: Method{
-			Algorithm:    kGCMCipherAlgorithm,
-			IsStreamable: true,
-		},
-		IntegrityInformation: IntegrityInformation{
-			// Copy segments to manifest for integrity verification in finalize order
-			Segments:      make([]Segment, len(order)),
-			RootSignature: RootSignature{},
-		},
-	}
-
-	// Copy segments to manifest in finalize order (pack densely)
-	for i, idx := range order {
-		if segment, exists := w.segments[idx]; exists {
-			encryptInfo.Segments[i] = *segment
-		}
-	}
-
-	// Set default segment sizes for reader compatibility
-	// Use the first segment as the default (streaming TDFs have variable segment sizes)
-	if firstSegment, exists := w.segments[0]; exists {
-		encryptInfo.DefaultSegmentSize = firstSegment.Size
-		encryptInfo.DefaultEncryptedSegSize = firstSegment.EncryptedSize
-	}
-
-	// Set segment hash algorithm
-	encryptInfo.SegmentHashAlgorithm = w.segmentIntegrityAlgorithm.String()
-
-	var aggregateHash bytes.Buffer
-	// Calculate totals and iterate through segments in finalize order
-	var totalPlaintextSize, totalEncryptedSize int64
-	for _, i := range order {
-		segment, exists := w.segments[i]
-		// if size is negative, segment was not written, finalized has been called too early
-		if !exists || w.segments[i].Size < 0 {
-			return nil, 0, 0, fmt.Errorf("segment %d not written; cannot finalize", i)
-		}
-		if segment.Hash != "" {
-			// Accumulate sizes for result
-			totalPlaintextSize += segment.Size
-			totalEncryptedSize += segment.EncryptedSize
-
-			// Decode the base64-encoded segment hash to match reader validation
-			decodedHash, err := ocrypto.Base64Decode([]byte(segment.Hash))
-			if err != nil {
-				return nil, 0, 0, fmt.Errorf("failed to decode segment hash: %w", err)
-			}
-			aggregateHash.Write(decodedHash)
-			continue
-		}
-		return nil, 0, 0, errors.New("empty segment hash")
-	}
-
-	rootSignature, err := calculateSignature(aggregateHash.Bytes(), w.dek, w.integrityAlgorithm, false)
-	if err != nil {
-		return nil, 0, 0, err
-	}
-	encryptInfo.RootSignature = RootSignature{
-		Algorithm: w.integrityAlgorithm.String(),
-		Signature: string(ocrypto.Base64Encode([]byte(rootSignature))),
-	}
-
-	keyAccessList, err := buildKeyAccessObjects(result, policyBytes, cfg.encryptedMetadata)
-	if err != nil {
-		return nil, 0, 0, err
-	}
-
-	encryptInfo.KeyAccessObjs = keyAccessList
-	manifest.EncryptionInformation = encryptInfo
-
-	signedAssertions, err := w.buildAssertions(aggregateHash.Bytes(), cfg.assertions)
-	if err != nil {
-		return nil, 0, 0, err
-	}
-
-	manifest.Assertions = signedAssertions
-	return manifest, totalPlaintextSize, totalEncryptedSize, nil
-}
-
-// cloneManifest makes a shallow-deep copy of a Manifest to avoid callers
-// mutating internal writer state.
-func cloneManifest(in *Manifest) *Manifest {
-	if in == nil {
-		return nil
-	}
-	out := *in // copy by value
-
-	// Copy slices to new backing arrays
-	if in.KeyAccessObjs != nil {
-		out.KeyAccessObjs = append([]KeyAccess(nil), in.KeyAccessObjs...)
-	}
-	if in.Segments != nil {
-		out.Segments = append([]Segment(nil), in.Segments...)
-	}
-	if in.Assertions != nil {
-		out.Assertions = append([]Assertion(nil), in.Assertions...)
-	}
-	return &out
-}
-
-func buildPolicy(values []*policy.Value) ([]byte, error) {
-	policy := &Policy{
-		UUID: uuid.NewString(),
-		Body: PolicyBody{
-			DataAttributes: make([]PolicyAttribute, 0),
-			Dissem:         make([]string, 0),
-		},
-	}
-
-	for _, value := range values {
-		policy.Body.DataAttributes = append(policy.Body.DataAttributes, PolicyAttribute{
-			Attribute: value.GetFqn(),
-		})
-	}
-	policyBytes, err := json.Marshal(policy)
-	if err != nil {
-		return nil, err
-	}
-
-	return policyBytes, nil
-}
-
-func (w *Writer) buildAssertions(aggregateHash []byte, assertions []AssertionConfig) ([]Assertion, error) {
-	signedAssertion := make([]Assertion, 0)
-	for _, assertion := range assertions {
-		// Store a temporary assertion
-		tmpAssertion := Assertion{}
-
-		tmpAssertion.ID = assertion.ID
-		tmpAssertion.Type = assertion.Type
-		tmpAssertion.Scope = assertion.Scope
-		tmpAssertion.Statement = assertion.Statement
-		tmpAssertion.AppliesToState = assertion.AppliesToState
-
-		hashOfAssertionAsHex, err := tmpAssertion.GetHash()
-		if err != nil {
-			return nil, err
-		}
-
-		hashOfAssertion := make([]byte, hex.DecodedLen(len(hashOfAssertionAsHex)))
-		_, err = hex.Decode(hashOfAssertion, hashOfAssertionAsHex)
-		if err != nil {
-			return nil, fmt.Errorf("error decoding hex string: %w", err)
-		}
-
-		var completeHashBuilder bytes.Buffer
-		completeHashBuilder.Write(aggregateHash)
-		completeHashBuilder.Write(hashOfAssertion)
-
-		encoded := ocrypto.Base64Encode(completeHashBuilder.Bytes())
-
-		assertionSigningKey := AssertionKey{}
-
-		// Set default to HS256 and payload key
-		assertionSigningKey.Alg = AssertionKeyAlgHS256
-		assertionSigningKey.Key = w.dek
-
-		if !assertion.SigningKey.IsEmpty() {
-			assertionSigningKey = assertion.SigningKey
-		}
-
-		if err := tmpAssertion.Sign(string(hashOfAssertionAsHex), string(encoded), assertionSigningKey); err != nil {
-			return nil, fmt.Errorf("failed to sign assertion: %w", err)
-		}
-
-		signedAssertion = append(signedAssertion, tmpAssertion)
-	}
-	return signedAssertion, nil
 }

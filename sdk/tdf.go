@@ -321,7 +321,6 @@ func (s SDK) CreateTDFContext(ctx context.Context, writer io.Writer, reader io.R
 	tdfObject.manifest.URL = zipstream.TDFPayloadFileName
 	tdfObject.manifest.IsEncrypted = true
 
-	var signedAssertion []Assertion
 	if tdfConfig.addDefaultAssertion {
 		systemMeta, err := GetSystemMetadataAssertionConfig()
 		if err != nil {
@@ -330,52 +329,14 @@ func (s SDK) CreateTDFContext(ctx context.Context, writer io.Writer, reader io.R
 		tdfConfig.assertions = append(tdfConfig.assertions, systemMeta)
 	}
 
-	for _, assertion := range tdfConfig.assertions {
-		// Store a temporary assertion
-		tmpAssertion := Assertion{}
-
-		tmpAssertion.ID = assertion.ID
-		tmpAssertion.Type = assertion.Type
-		tmpAssertion.Scope = assertion.Scope
-		tmpAssertion.Statement = assertion.Statement
-		tmpAssertion.AppliesToState = assertion.AppliesToState
-
-		hashOfAssertionAsHex, err := tmpAssertion.GetHash()
-		if err != nil {
-			return nil, err
-		}
-
-		hashOfAssertion := make([]byte, hex.DecodedLen(len(hashOfAssertionAsHex)))
-		_, err = hex.Decode(hashOfAssertion, hashOfAssertionAsHex)
-		if err != nil {
-			return nil, fmt.Errorf("error decoding hex string: %w", err)
-		}
-
-		var completeHashBuilder strings.Builder
-		completeHashBuilder.WriteString(aggregateHashBuilder.String())
-		if tdfConfig.useHex {
-			completeHashBuilder.Write(hashOfAssertionAsHex)
-		} else {
-			completeHashBuilder.Write(hashOfAssertion)
-		}
-
-		encoded := ocrypto.Base64Encode([]byte(completeHashBuilder.String()))
-
-		assertionSigningKey := AssertionKey{}
-
-		// Set default to HS256 and payload key
-		assertionSigningKey.Alg = AssertionKeyAlgHS256
-		assertionSigningKey.Key = tdfObject.payloadKey[:]
-
-		if !assertion.SigningKey.IsEmpty() {
-			assertionSigningKey = assertion.SigningKey
-		}
-
-		if err := tmpAssertion.Sign(string(hashOfAssertionAsHex), string(encoded), assertionSigningKey); err != nil {
-			return nil, fmt.Errorf("failed to sign assertion: %w", err)
-		}
-
-		signedAssertion = append(signedAssertion, tmpAssertion)
+	signedAssertion, err := signAssertions(
+		[]byte(aggregateHashBuilder.String()),
+		tdfConfig.assertions,
+		tdfObject.payloadKey[:],
+		tdfConfig.useHex,
+	)
+	if err != nil {
+		return nil, err
 	}
 
 	tdfObject.manifest.Assertions = signedAssertion

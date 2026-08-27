@@ -3,28 +3,7 @@
 package tdf
 
 import (
-	"encoding/hex"
-	"errors"
-
-	"github.com/opentdf/platform/lib/ocrypto"
 	"github.com/opentdf/platform/sdk"
-)
-
-const (
-	kGMACPayloadLength = 16
-	kSplitKeyType      = "split"
-	kPolicyBindingAlg  = "HS256"
-
-	// Key wrap scheme names as they appear in a KeyAccess object's
-	// "type" field. These must match what the KAS rewrap handler
-	// dispatches on; see service/kas/access/rewrap.go.
-	kWrapped       = "wrapped"
-	kECWrapped     = "ec-wrapped"
-	kHybridWrapped = "hybrid-wrapped"
-	kMLKEMWrapped  = "mlkem-wrapped"
-
-	// kKasProtocol is the only protocol value the KAS understands.
-	kKasProtocol = "kas"
 )
 
 // The manifest types below are aliases onto their
@@ -109,22 +88,4 @@ type Policy struct {
 type PolicyBody struct {
 	DataAttributes []PolicyAttribute `json:"dataAttributes"`
 	Dissem         []string          `json:"dissem"`
-}
-
-func calculateSignature(data []byte, secret []byte, alg IntegrityAlgorithm, isLegacyTDF bool) (string, error) {
-	if alg == HS256 {
-		hmac := ocrypto.CalculateSHA256Hmac(secret, data)
-		if isLegacyTDF {
-			return hex.EncodeToString(hmac), nil
-		}
-		return string(hmac), nil
-	}
-	if kGMACPayloadLength > len(data) {
-		return "", errors.New("fail to create gmac signature")
-	}
-
-	if isLegacyTDF {
-		return hex.EncodeToString(data[len(data)-kGMACPayloadLength:]), nil
-	}
-	return string(data[len(data)-kGMACPayloadLength:]), nil
 }

@@ -59,9 +59,9 @@ func TestChunkedRoundTrip(t *testing.T) {
 	assert.Equal(t, []byte("hello, chunked world!"), plain)
 }
 
-// TestChunkedKeepSegments verifies WithChunkedSegments trims the
-// manifest to a contiguous prefix and the mainline reader decrypts
-// only the retained segments.
+// TestChunkedKeepSegments verifies WithChunkedSegments trims trailing
+// segments from the manifest and the mainline reader decrypts only the
+// retained ones.
 func TestChunkedKeepSegments(t *testing.T) {
 	ctx := context.Background()
 	kasBundle := newChunkedFakeKAS(t)
@@ -92,10 +92,10 @@ func TestChunkedKeepSegments(t *testing.T) {
 	assert.Equal(t, []byte("keep-0-keep-1-"), plain)
 }
 
-// TestChunkedFinalizeRejectsAssertions verifies that supplying
-// assertions to Finalize returns the sentinel error until assertion
-// signing is wired.
-func TestChunkedFinalizeRejectsAssertions(t *testing.T) {
+// TestChunkedFinalizeSignsAssertions verifies assertions supplied to
+// Finalize land in the manifest signed with the default HS256-over-DEK
+// key, and that the mainline reader verifies them on the way back out.
+func TestChunkedFinalizeSignsAssertions(t *testing.T) {
 	ctx := context.Background()
 	kasBundle := newChunkedFakeKAS(t)
 	defer kasBundle.server.Close()
@@ -106,13 +106,36 @@ func TestChunkedFinalizeRejectsAssertions(t *testing.T) {
 		WithChunkedDefaultKAS(kasBundle.simpleKey()),
 	)
 	require.NoError(t, err)
-	_, err = writer.WriteSegment(ctx, 0, []byte("x"))
+
+	body := writeChunkedSegments(ctx, t, writer, [][]byte{[]byte("asserted payload")})
+
+	fin, err := writer.Finalize(ctx, WithChunkedAssertions([]AssertionConfig{{
+		ID:             "a",
+		Type:           BaseAssertion,
+		Scope:          PayloadScope,
+		AppliesToState: Unencrypted,
+		Statement:      Statement{Format: "json", Schema: "urn:test", Value: `{"k":"v"}`},
+	}}))
 	require.NoError(t, err)
 
-	_, err = writer.Finalize(ctx, WithChunkedAssertions([]AssertionConfig{
-		{ID: "a", Type: BaseAssertion, Scope: PayloadScope, AppliesToState: Unencrypted},
-	}))
-	require.ErrorIs(t, err, ErrChunkedAssertionsUnsupported)
+	require.Len(t, fin.Manifest.Assertions, 1)
+	got := fin.Manifest.Assertions[0]
+	assert.Equal(t, "a", got.ID)
+	assert.Equal(t, JWS.String(), got.Binding.Method)
+	assert.NotEmpty(t, got.Binding.Signature)
+
+	// The reader recomputes the aggregate hash and re-verifies the
+	// binding, so a round trip is the real check that the assertion was
+	// bound to this payload and not merely well-formed.
+	tdfBytes := bytes.Join([][]byte{body, fin.Data}, nil)
+	reader, err := s.LoadTDF(bytes.NewReader(tdfBytes),
+		WithKasAllowlist([]string{kasBundle.url}),
+	)
+	require.NoError(t, err)
+
+	plain, err := io.ReadAll(reader)
+	require.NoError(t, err)
+	assert.Equal(t, []byte("asserted payload"), plain)
 }
 
 // TestChunkedOutOfOrderWrites exercises the core value proposition of
@@ -271,9 +294,65 @@ func TestChunkedDoubleFinalize(t *testing.T) {
 	require.ErrorIs(t, err, ErrChunkedAlreadyFinalized)
 }
 
-// TestChunkedKeepSegmentsNonContiguous verifies WithChunkedSegments
-// rejects a non-contiguous prefix.
-func TestChunkedKeepSegmentsNonContiguous(t *testing.T) {
+// TestChunkedKeepSegmentsSparse verifies WithChunkedSegments accepts a
+// sparse index set. This is the S3 multipart shape: each upload part
+// reserves a fixed block of indices and fills only the front of it, so
+// the written indices have large gaps but are still emitted in order.
+func TestChunkedKeepSegmentsSparse(t *testing.T) {
+	ctx := context.Background()
+	kasBundle := newChunkedFakeKAS(t)
+	defer kasBundle.server.Close()
+
+	s := newChunkedTestSDK(t, kasBundle)
+	w, err := s.NewChunkedWriter(ctx, WithChunkedDefaultKAS(kasBundle.simpleKey()))
+	require.NoError(t, err)
+
+	const stride = 5000
+	chunks := map[int][]byte{
+		0:          []byte("part1-a-"),
+		1:          []byte("part1-b-"),
+		stride:     []byte("part2-a-"),
+		stride + 1: []byte("part2-b"),
+	}
+	indices := []int{0, 1, stride, stride + 1}
+
+	// Write out of order to prove the index, not the call order,
+	// determines layout.
+	encrypted := make(map[int][]byte, len(indices))
+	for _, idx := range []int{stride, 0, stride + 1, 1} {
+		seg, err := w.WriteSegment(ctx, idx, chunks[idx])
+		require.NoError(t, err)
+		buf, err := io.ReadAll(seg.TDFData)
+		require.NoError(t, err)
+		encrypted[idx] = buf
+	}
+
+	// Concatenate in ascending index order, as the contract requires.
+	var body bytes.Buffer
+	for _, idx := range indices {
+		body.Write(encrypted[idx])
+	}
+
+	fin, err := w.Finalize(ctx, WithChunkedSegments(indices))
+	require.NoError(t, err)
+	require.Len(t, fin.Manifest.Segments, len(indices))
+
+	tdfBytes := bytes.Join([][]byte{body.Bytes(), fin.Data}, nil)
+	reader, err := s.LoadTDF(bytes.NewReader(tdfBytes),
+		WithKasAllowlist([]string{kasBundle.url}),
+	)
+	require.NoError(t, err)
+
+	plain, err := io.ReadAll(reader)
+	require.NoError(t, err)
+	assert.Equal(t, []byte("part1-a-part1-b-part2-a-part2-b"), plain)
+}
+
+// TestChunkedKeepSegmentsSkipsWritten verifies WithChunkedSegments
+// rejects a keep list that omits a written segment with bytes after
+// it. Dropping segment 1 while keeping 2 would shift 2's offset and
+// make the payload unreadable.
+func TestChunkedKeepSegmentsSkipsWritten(t *testing.T) {
 	ctx := context.Background()
 	kasBundle := newChunkedFakeKAS(t)
 	defer kasBundle.server.Close()
@@ -288,7 +367,27 @@ func TestChunkedKeepSegmentsNonContiguous(t *testing.T) {
 	}
 	_, err = w.Finalize(ctx, WithChunkedSegments([]int{0, 2}))
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "contiguous prefix")
+	assert.Contains(t, err.Error(), "ascending index order")
+}
+
+// TestChunkedKeepSegmentsOutOfOrder verifies WithChunkedSegments
+// rejects a descending keep list even though every index was written.
+func TestChunkedKeepSegmentsOutOfOrder(t *testing.T) {
+	ctx := context.Background()
+	kasBundle := newChunkedFakeKAS(t)
+	defer kasBundle.server.Close()
+
+	s := newChunkedTestSDK(t, kasBundle)
+	w, err := s.NewChunkedWriter(ctx, WithChunkedDefaultKAS(kasBundle.simpleKey()))
+	require.NoError(t, err)
+
+	for i, chunk := range [][]byte{[]byte("a"), []byte("b")} {
+		_, err = w.WriteSegment(ctx, i, chunk)
+		require.NoError(t, err)
+	}
+	_, err = w.Finalize(ctx, WithChunkedSegments([]int{1, 0}))
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "ascending index order")
 }
 
 // TestChunkedKeepSegmentsUnwritten verifies WithChunkedSegments
@@ -302,9 +401,71 @@ func TestChunkedKeepSegmentsUnwritten(t *testing.T) {
 	w, err := s.NewChunkedWriter(ctx, WithChunkedDefaultKAS(kasBundle.simpleKey()))
 	require.NoError(t, err)
 
+	_, err = w.WriteSegment(ctx, 0, []byte("zero"))
+	require.NoError(t, err)
+	_, err = w.WriteSegment(ctx, 5, []byte("five"))
+	require.NoError(t, err)
+	_, err = w.Finalize(ctx, WithChunkedSegments([]int{0, 1}))
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "not written")
+}
+
+// TestChunkedKeepSegmentsTooMany verifies WithChunkedSegments rejects a
+// keep list longer than the number of written segments.
+func TestChunkedKeepSegmentsTooMany(t *testing.T) {
+	ctx := context.Background()
+	kasBundle := newChunkedFakeKAS(t)
+	defer kasBundle.server.Close()
+
+	s := newChunkedTestSDK(t, kasBundle)
+	w, err := s.NewChunkedWriter(ctx, WithChunkedDefaultKAS(kasBundle.simpleKey()))
+	require.NoError(t, err)
+
 	_, err = w.WriteSegment(ctx, 0, []byte("only-zero"))
 	require.NoError(t, err)
 	_, err = w.Finalize(ctx, WithChunkedSegments([]int{0, 1}))
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "only 1 were written")
+}
+
+// TestChunkedKeepSegmentsDuplicate verifies WithChunkedSegments rejects a
+// keep list that names the same index twice. A repeat cannot be ascending,
+// so it fails the ordering rule rather than needing its own check.
+func TestChunkedKeepSegmentsDuplicate(t *testing.T) {
+	ctx := context.Background()
+	kasBundle := newChunkedFakeKAS(t)
+	defer kasBundle.server.Close()
+
+	s := newChunkedTestSDK(t, kasBundle)
+	w, err := s.NewChunkedWriter(ctx, WithChunkedDefaultKAS(kasBundle.simpleKey()))
+	require.NoError(t, err)
+
+	for i, chunk := range [][]byte{[]byte("a"), []byte("b")} {
+		_, err = w.WriteSegment(ctx, i, chunk)
+		require.NoError(t, err)
+	}
+	_, err = w.Finalize(ctx, WithChunkedSegments([]int{0, 0}))
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "ascending index order")
+}
+
+// TestChunkedKeepSegmentsNegative verifies WithChunkedSegments rejects a
+// negative index. WriteSegment never accepts one, so it can only ever be
+// reported as unwritten.
+func TestChunkedKeepSegmentsNegative(t *testing.T) {
+	ctx := context.Background()
+	kasBundle := newChunkedFakeKAS(t)
+	defer kasBundle.server.Close()
+
+	s := newChunkedTestSDK(t, kasBundle)
+	w, err := s.NewChunkedWriter(ctx, WithChunkedDefaultKAS(kasBundle.simpleKey()))
+	require.NoError(t, err)
+
+	for i, chunk := range [][]byte{[]byte("a"), []byte("b")} {
+		_, err = w.WriteSegment(ctx, i, chunk)
+		require.NoError(t, err)
+	}
+	_, err = w.Finalize(ctx, WithChunkedSegments([]int{-1, 0}))
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "not written")
 }

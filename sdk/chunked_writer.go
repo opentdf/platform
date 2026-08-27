@@ -35,10 +35,6 @@ var (
 	// to omit schemaVersion on a writer that was not constructed in
 	// legacy signature mode. Use WithChunkedTargetMode to set both.
 	ErrChunkedVersionHexMismatch = errors.New("chunked: excluding schemaVersion requires a pre-4.3.0 target mode; use WithChunkedTargetMode")
-
-	// ErrChunkedAssertionsUnsupported is returned when Finalize
-	// receives assertions but signing them is not yet implemented.
-	ErrChunkedAssertionsUnsupported = errors.New("chunked: assertions not supported by ChunkedWriter; use SDK.CreateTDF")
 )
 
 // ChunkedWriter creates a TDF from segments that may arrive in any
@@ -191,8 +187,9 @@ type ChunkedFinalizeConfig struct {
 	// setting; see WithChunkedTargetMode.
 	excludeVersion bool
 
-	// keepSegments restricts the finalized manifest to a contiguous
-	// prefix [0..K] of the written segments.
+	// keepSegments names the segments the finalized manifest
+	// describes, strictly ascending but not necessarily contiguous.
+	// Empty means every written segment, ascending.
 	keepSegments []int
 
 	// mimeType records the payload MIME type in the manifest.
@@ -270,7 +267,21 @@ type chunkedWriter struct {
 // NewChunkedWriter constructs a per-segment TDF writer. The returned
 // ChunkedWriter is not safe for concurrent WriteSegment calls on the
 // same index but tolerates concurrent writes to distinct indices.
-func (s SDK) NewChunkedWriter(_ context.Context, opts ...ChunkedWriterOption) (ChunkedWriter, error) {
+//
+// This method is equivalent to the package-level [NewChunkedWriter];
+// the writer holds no reference to the SDK.
+func (s SDK) NewChunkedWriter(ctx context.Context, opts ...ChunkedWriterOption) (ChunkedWriter, error) {
+	return NewChunkedWriter(ctx, opts...)
+}
+
+// NewChunkedWriter constructs a per-segment TDF writer. The returned
+// ChunkedWriter is not safe for concurrent WriteSegment calls on the
+// same index but tolerates concurrent writes to distinct indices.
+//
+// No SDK value is needed: everything the writer depends on — the key
+// splitter, the archive and cipher factories, the entropy source — is
+// supplied through options.
+func NewChunkedWriter(_ context.Context, opts ...ChunkedWriterOption) (ChunkedWriter, error) {
 	cfg := ChunkedWriterConfig{
 		archiveFactory:            DefaultArchiveWriterFactory,
 		cipherFactory:             DefaultSegmentCipherFactory,
@@ -322,9 +333,6 @@ func (w *chunkedWriter) Finalize(ctx context.Context, opts ...ChunkedFinalizeOpt
 	cfg, err := w.applyFinalizeOptions(opts)
 	if err != nil {
 		return nil, err
-	}
-	if len(cfg.assertions) > 0 {
-		return nil, ErrChunkedAssertionsUnsupported
 	}
 
 	manifest, totalPlaintext, totalEncrypted, err := w.buildManifest(ctx, cfg)
@@ -541,7 +549,15 @@ func (w *chunkedWriter) buildManifest(ctx context.Context, cfg *ChunkedFinalizeC
 		Signature: string(ocrypto.Base64Encode([]byte(rootSig))),
 	}
 
+	// Assertions bind to the same aggregate hash the root signature
+	// covers, so they can only be signed once every segment is in.
+	assertions, err := signAssertions(aggregate.Bytes(), cfg.assertions, w.dek, w.useHex)
+	if err != nil {
+		return nil, 0, 0, err
+	}
+
 	manifest := &Manifest{
+		Assertions:            assertions,
 		EncryptionInformation: encInfo,
 		Payload: Payload{
 			IsEncrypted: true,
@@ -558,31 +574,43 @@ func (w *chunkedWriter) buildManifest(ctx context.Context, cfg *ChunkedFinalizeC
 }
 
 // segmentOrderLocked returns the emission order given the current
-// writer state and an optional keepSegments prefix. Caller holds mu.
+// writer state and an optional keepSegments subset. Caller holds mu.
+//
+// With no subset, every written segment is emitted in ascending index
+// order. A supplied subset must be a prefix of that same ascending
+// sequence. Note this constrains position, not value: the written
+// indices themselves may be sparse (a caller reserving a block of
+// indices per upload part and filling only part of each block writes
+// e.g. 0,1,5000,5001), and any such set is accepted so long as the
+// subset names its members in order and drops only from the end.
+//
+// Both halves of that rule are forced by the archive layout, which
+// stores segments sorted by index. Reordering would make the manifest
+// disagree with the bytes on disk; dropping a segment that has bytes
+// after it would shift every later segment's offset.
 func (w *chunkedWriter) segmentOrderLocked(keep []int) ([]int, error) {
-	if len(keep) == 0 {
-		order := make([]int, 0, len(w.segments))
-		for idx := range w.segments {
-			order = append(order, idx)
-		}
-		sort.Ints(order)
-		return order, nil
+	written := make([]int, 0, len(w.segments))
+	for idx := range w.segments {
+		written = append(written, idx)
 	}
-	seen := make(map[int]struct{}, len(keep))
+	sort.Ints(written)
+	if len(keep) == 0 {
+		return written, nil
+	}
+	if len(keep) > len(written) {
+		return nil, fmt.Errorf("WithChunkedSegments names %d segments but only %d were written", len(keep), len(written))
+	}
 	for i, idx := range keep {
-		if idx < 0 {
-			return nil, fmt.Errorf("WithChunkedSegments contains invalid index %d (must be >= 0)", idx)
-		}
-		if idx != i {
-			return nil, fmt.Errorf("WithChunkedSegments must form a contiguous prefix [0..K]; got %d at position %d", idx, i)
-		}
-		if _, dup := seen[idx]; dup {
-			return nil, fmt.Errorf("WithChunkedSegments contains duplicate index %d", idx)
+		if idx == written[i] {
+			continue
 		}
 		if _, ok := w.segments[idx]; !ok {
 			return nil, fmt.Errorf("WithChunkedSegments references segment %d which was not written", idx)
 		}
-		seen[idx] = struct{}{}
+		return nil, fmt.Errorf(
+			"WithChunkedSegments must name written segments in ascending index order and may drop only from the end; got %d at position %d where %d was expected",
+			idx, i, written[i],
+		)
 	}
 	out := make([]int, len(keep))
 	copy(out, keep)

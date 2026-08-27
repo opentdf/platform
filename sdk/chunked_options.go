@@ -92,10 +92,9 @@ func WithChunkedSegmentIntegrityAlgorithm(algo IntegrityAlgorithm) ChunkedWriter
 }
 
 // WithChunkedAssertions attaches signed assertions to the produced
-// TDF. Not yet supported by ChunkedWriter; Finalize returns
-// ErrChunkedAssertionsUnsupported when the list is non-empty. The
-// option is present so upstream call sites can be written in advance
-// of assertion support.
+// TDF. Each assertion is bound to the payload's aggregate hash, so
+// they are signed at Finalize once every segment is in. Assertions
+// without their own SigningKey are signed with HS256 over the DEK.
 func WithChunkedAssertions(assertions []AssertionConfig) ChunkedFinalizeOption {
 	return func(c *ChunkedFinalizeConfig) error {
 		c.assertions = assertions
@@ -182,8 +181,22 @@ func WithChunkedMimeType(mimeType string) ChunkedFinalizeOption {
 	}
 }
 
-// WithChunkedSegments restricts the finalized manifest to the given
-// contiguous prefix of segment indices [0..K].
+// WithChunkedSegments sets the segments the finalized manifest
+// describes. Passing no indices emits every written segment in
+// ascending index order, which is what most callers want.
+//
+// The indices need not be contiguous. A caller that reserves a fixed
+// block of indices per upload part -- part N owning
+// [N*stride, (N+1)*stride) -- and fills only part of each block writes
+// a sparse index set by construction; listing it here is fine.
+//
+// What the indices must be is a prefix of the written segments in
+// ascending index order: they may drop from the end, but may not
+// reorder or skip. The archive stores segments sorted by index, so a
+// manifest that reorders them would not describe the bytes on disk,
+// and one that skips a segment with bytes after it would misread every
+// segment that follows. For the same reason the caller must
+// concatenate each segment's TDFData in ascending index order.
 func WithChunkedSegments(indices []int) ChunkedFinalizeOption {
 	return func(c *ChunkedFinalizeConfig) error {
 		c.keepSegments = indices

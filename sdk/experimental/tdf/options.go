@@ -66,6 +66,10 @@ type WriterConfig struct {
 	// initialDefaultKAS allows callers to provide a default KAS at writer creation time.
 	// This will be used during Finalize() if no default KAS is provided there.
 	initialDefaultKAS *policy.SimpleKasKey
+
+	// targetMode is the TDF spec version to write for, as semver.
+	// Empty selects the current format. See WithTargetMode.
+	targetMode string
 }
 
 // ReaderConfig contains configuration options for TDF Reader creation.
@@ -84,7 +88,7 @@ type ReaderConfig struct {
 // Example usage:
 //
 //	writer, err := NewWriter(ctx, WithIntegrityAlgorithm(GMAC))
-//	finalBytes, manifest, err := writer.Finalize(ctx, WithPayloadMimeType("text/plain"))
+//	result, err := writer.Finalize(ctx, WithPayloadMimeType("text/plain"))
 type Option[T any] func(T)
 
 // WithIntegrityAlgorithm sets the algorithm for root integrity signature calculation.
@@ -186,9 +190,9 @@ type WriterFinalizeConfig struct {
 	// Used by readers to determine appropriate content handling.
 	payloadMimeType string
 
-	// keepSegments indicates caller-provided segment indices to keep when finalizing.
-	// Indices must form a contiguous prefix [0..K]. If empty, all written
-	// segments (default behavior) are used.
+	// keepSegments names the segments the manifest should describe,
+	// ascending and possibly sparse. If empty, all written segments
+	// (default behavior) are used.
 	keepSegments []int
 }
 
@@ -204,7 +208,7 @@ type WriterFinalizeConfig struct {
 //
 // Example:
 //
-//	finalBytes, manifest, err := writer.Finalize(ctx,
+//	result, err := writer.Finalize(ctx,
 //		WithEncryptedMetadata("classification: secret"),
 //	)
 func WithEncryptedMetadata(metadata string) Option[*WriterFinalizeConfig] {
@@ -224,7 +228,7 @@ func WithEncryptedMetadata(metadata string) Option[*WriterFinalizeConfig] {
 //
 // Example:
 //
-//	finalBytes, manifest, err := writer.Finalize(ctx,
+//	result, err := writer.Finalize(ctx,
 //		WithPayloadMimeType("application/json"),
 //	)
 func WithPayloadMimeType(mimeType string) Option[*WriterFinalizeConfig] {
@@ -233,10 +237,17 @@ func WithPayloadMimeType(mimeType string) Option[*WriterFinalizeConfig] {
 	}
 }
 
-// WithSegments restricts finalization to the provided segment indices and order.
-// The order provided is used as the logical payload order. Indices may be sparse
-// but must refer to segments that were written. When omitted, all present indices
-// are used in ascending order.
+// WithSegments names the segments the finalized manifest describes.
+// When omitted, all written segments are used in ascending index order.
+//
+// Indices may be sparse -- a caller that reserves a fixed block of
+// indices per upload part and fills only the front of each block writes
+// gaps by construction -- but they must be a prefix of the written
+// segments in ascending index order. They may drop from the end; they
+// may not reorder or skip. The payload is laid out in sorted index
+// order, so a manifest that disagrees would not describe the bytes on
+// disk. For the same reason the caller must concatenate each segment's
+// TDFData in ascending index order.
 func WithSegments(indices []int) Option[*WriterFinalizeConfig] {
 	return func(c *WriterFinalizeConfig) {
 		c.keepSegments = indices
@@ -263,7 +274,7 @@ func WithSegments(indices []int) Option[*WriterFinalizeConfig] {
 //			Pem: kasPublicKeyPEM,
 //		},
 //	}
-//	finalBytes, manifest, err := writer.Finalize(ctx, WithDefaultKAS(kasKey))
+//	result, err := writer.Finalize(ctx, WithDefaultKAS(kasKey))
 func WithDefaultKAS(kas *policy.SimpleKasKey) Option[*WriterFinalizeConfig] {
 	return func(c *WriterFinalizeConfig) {
 		c.defaultKas = kas
@@ -293,31 +304,46 @@ func WithDefaultKAS(kas *policy.SimpleKasKey) Option[*WriterFinalizeConfig] {
 //			Grants: []*policy.KeyAccessServer{kasConfig},
 //		},
 //	}
-//	finalBytes, manifest, err := writer.Finalize(ctx, WithAttributeValues(attributes))
+//	result, err := writer.Finalize(ctx, WithAttributeValues(attributes))
 func WithAttributeValues(values []*policy.Value) Option[*WriterFinalizeConfig] {
 	return func(c *WriterFinalizeConfig) {
 		c.attributes = values
 	}
 }
 
-// WithExcludeVersionFromManifest controls version information in the manifest.
+// WithExcludeVersionFromManifest is a no-op and always has been: the
+// manifest builder never read the flag it sets, so schemaVersion is
+// emitted either way.
 //
-// When set to true, excludes TDF specification version information from
-// the manifest. This may be needed for compatibility with older TDF readers
-// that don't expect version fields.
+// Omitting schemaVersion is not independently useful in any case. A
+// reader treats a missing schemaVersion as "predates 4.3.0" and then
+// expects hex-then-base64 signatures, which are decided per segment at
+// write time -- long before Finalize sees this option. The two must be
+// set together, which is what [WithTargetMode] does.
 //
-// Generally should be left as default (false) unless specific compatibility
-// requirements exist.
-//
-// Example:
-//
-//	// For compatibility with legacy readers
-//	finalBytes, manifest, err := writer.Finalize(ctx,
-//		WithExcludeVersionFromManifest(true),
-//	)
+// Deprecated: use [WithTargetMode] at writer construction.
 func WithExcludeVersionFromManifest(exclude bool) Option[*WriterFinalizeConfig] {
 	return func(c *WriterFinalizeConfig) {
 		c.excludeVersionFromManifest = exclude
+	}
+}
+
+// WithTargetMode targets a specific TDF spec version, given as a semver
+// string such as "4.2.2".
+//
+// Below 4.3.0 the writer emits the legacy wire format: segment, root,
+// and assertion signatures are hex-encoded before base64, and
+// schemaVersion is omitted from the manifest, which is how those
+// readers detect it. The two travel together -- a manifest carrying one
+// without the other cannot be verified by any reader.
+//
+// An empty mode selects the current format.
+//
+// A malformed semver string is reported by NewWriter, not here: this
+// package's Option signature has no error return.
+func WithTargetMode(mode string) Option[*WriterConfig] {
+	return func(c *WriterConfig) {
+		c.targetMode = mode
 	}
 }
 
@@ -349,7 +375,7 @@ func WithExcludeVersionFromManifest(exclude bool) Option[*WriterFinalizeConfig] 
 //			Value: `{"retention_days": 90}`,
 //		},
 //	}
-//	finalBytes, manifest, err := writer.Finalize(ctx, WithAssertions(assertion))
+//	result, err := writer.Finalize(ctx, WithAssertions(assertion))
 func WithAssertions(assertions ...AssertionConfig) Option[*WriterFinalizeConfig] {
 	return func(c *WriterFinalizeConfig) {
 		c.assertions = assertions

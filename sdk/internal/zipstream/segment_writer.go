@@ -303,7 +303,7 @@ func (sw *segmentWriter) getTimeDateInMSDosFormat(t time.Time) (uint16, uint16) 
 	const monthShift = 5
 
 	timeInDos := t.Hour()<<11 | t.Minute()<<5 | t.Second()>>1
-	dateInDos := (t.Year()-zipBaseYear)<<9 | int((t.Month())<<monthShift) | t.Day()
+	dateInDos := (t.Year()-zipBaseYear)<<9 | int(t.Month()<<monthShift) | t.Day()
 
 	return uint16(timeInDos), uint16(dateInDos)
 }

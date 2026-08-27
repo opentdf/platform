@@ -41,3 +41,5 @@ jobs:
             exit 1
           fi
           buf push --git-metadata
+      - name: Verify published module
+        run: buf build "buf.build/opentdf/platform:${GITHUB_REF_NAME}"

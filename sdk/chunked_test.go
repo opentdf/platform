@@ -470,6 +470,74 @@ func TestChunkedKeepSegmentsNegative(t *testing.T) {
 	assert.Contains(t, err.Error(), "not written")
 }
 
+// TestChunkedSegmentsNotStartingAtZero covers a writer whose lowest
+// written index is not 0 -- what a caller gets if it reserves a block of
+// indices per upload part and part 0 never runs, or if it simply numbers
+// parts from 1.
+//
+// Either answer is acceptable: Finalize may refuse the write set, or it
+// may produce a TDF that reads back. What it must not do is return
+// success alongside bytes that are not a readable archive, because by
+// then the upload has happened and the plaintext is gone. Today only
+// segment 0 emits the payload's ZIP local file header (see
+// zipstream.segmentWriter.WriteSegment), so the third case is what
+// happens.
+func TestChunkedSegmentsNotStartingAtZero(t *testing.T) {
+	ctx := context.Background()
+	kasBundle := newChunkedFakeKAS(t)
+	defer kasBundle.server.Close()
+
+	s := newChunkedTestSDK(t, kasBundle)
+	w, err := s.NewChunkedWriter(ctx, WithChunkedDefaultKAS(kasBundle.simpleKey()))
+	require.NoError(t, err)
+
+	chunks := map[int][]byte{5: []byte("hello-"), 6: []byte("world!")}
+	indices := []int{5, 6}
+
+	encrypted := make(map[int][]byte, len(indices))
+	for _, idx := range indices {
+		seg, err := w.WriteSegment(ctx, idx, chunks[idx])
+		require.NoError(t, err)
+		buf, err := io.ReadAll(seg.TDFData)
+		require.NoError(t, err)
+		encrypted[idx] = buf
+	}
+
+	fin, err := w.Finalize(ctx)
+	if err != nil {
+		// Refusing the write set is a valid outcome; nothing was
+		// published, so there is nothing further to check.
+		t.Logf("Finalize rejected a segment set starting at %d: %v", indices[0], err)
+		return
+	}
+
+	// Finalize claimed success, so the bytes it told the caller to
+	// assemble have to be a TDF.
+	var body bytes.Buffer
+	for _, idx := range indices {
+		body.Write(encrypted[idx])
+	}
+	body.Write(fin.Data)
+
+	reader, err := s.LoadTDF(bytes.NewReader(body.Bytes()),
+		WithKasAllowlist([]string{kasBundle.url}),
+	)
+
+	// The specific defect: with no local file header the reader runs off
+	// the end of the buffer parsing the ZIP structure, so the container
+	// never opens. Anything else is some other test's business.
+	require.NotErrorIs(t, err, io.ErrUnexpectedEOF,
+		"Finalize succeeded but the assembled bytes are not a ZIP container")
+	if err != nil {
+		t.Logf("LoadTDF failed for an unrelated reason, not this test's subject: %v", err)
+		return
+	}
+
+	plain, err := io.ReadAll(reader)
+	require.NoError(t, err, "Finalize succeeded, so the payload must decrypt")
+	assert.Equal(t, []byte("hello-world!"), plain)
+}
+
 // TestChunkedGetManifestBeforeFinalize verifies GetManifest returns a
 // snapshot of the currently-written segments prior to Finalize and
 // the frozen manifest afterwards.

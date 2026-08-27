@@ -31,6 +31,11 @@ var (
 	// receives an index that was already written.
 	ErrChunkedSegmentAlreadyWritten = errors.New("chunked: segment already written")
 
+	// ErrChunkedVersionHexMismatch is returned when Finalize is asked
+	// to omit schemaVersion on a writer that was not constructed in
+	// legacy signature mode. Use WithChunkedTargetMode to set both.
+	ErrChunkedVersionHexMismatch = errors.New("chunked: excluding schemaVersion requires a pre-4.3.0 target mode; use WithChunkedTargetMode")
+
 	// ErrChunkedAssertionsUnsupported is returned when Finalize
 	// receives assertions but signing them is not yet implemented.
 	ErrChunkedAssertionsUnsupported = errors.New("chunked: assertions not supported by ChunkedWriter; use SDK.CreateTDF")
@@ -126,6 +131,12 @@ type ChunkedWriterConfig struct {
 	// FixedClock for deterministic ZIP output.
 	clock Clock
 
+	// excludeVersion omits the schemaVersion field from the manifest.
+	// Set together with useHex by WithChunkedTargetMode; readers use
+	// the field's absence as the pre-4.3.0 marker, so the two must
+	// agree.
+	excludeVersion bool
+
 	// initialAttributes are the attribute values used at Finalize
 	// when the Finalize call does not supply its own.
 	initialAttributes []*policy.Value
@@ -149,6 +160,11 @@ type ChunkedWriterConfig struct {
 	// splitter maps attribute values to DEK splits at Finalize time.
 	// Defaults to DefaultKeySplitter (single-KAS only).
 	splitter KeySplitter
+
+	// useHex hex-encodes segment, root, and assertion signatures
+	// before base64, producing the doubly-encoded form that readers
+	// older than 4.3.0 require. Set by WithChunkedTargetMode.
+	useHex bool
 }
 
 // ChunkedFinalizeConfig captures Finalize-time overrides.
@@ -171,7 +187,8 @@ type ChunkedFinalizeConfig struct {
 	encryptedMetadata string
 
 	// excludeVersion omits the schemaVersion field from the manifest
-	// for compatibility with older readers.
+	// for compatibility with older readers. Defaults to the writer's
+	// setting; see WithChunkedTargetMode.
 	excludeVersion bool
 
 	// keepSegments restricts the finalized manifest to a contiguous
@@ -206,6 +223,10 @@ type chunkedWriter struct {
 	// dek is the Data Encryption Key. 32 bytes (AES-256).
 	dek []byte
 
+	// excludeVersion omits schemaVersion from the manifest unless a
+	// Finalize option overrides it.
+	excludeVersion bool
+
 	// finalized is true once Finalize returns successfully.
 	finalized bool
 
@@ -239,6 +260,11 @@ type chunkedWriter struct {
 	// splitter converts attributes + DEK into key splits at
 	// Finalize time.
 	splitter KeySplitter
+
+	// useHex selects the pre-4.3.0 doubly-encoded signature form.
+	// Read by WriteSegment, so it is fixed at construction rather
+	// than at Finalize.
+	useHex bool
 }
 
 // NewChunkedWriter constructs a per-segment TDF writer. The returned
@@ -273,12 +299,14 @@ func (s SDK) NewChunkedWriter(_ context.Context, opts ...ChunkedWriterOption) (C
 		block:                     block,
 		clock:                     cfg.clock,
 		dek:                       dek,
+		excludeVersion:            cfg.excludeVersion,
 		initialAttributes:         cfg.initialAttributes,
 		initialDefaultKAS:         cfg.initialDefaultKAS,
 		integrityAlgorithm:        cfg.integrityAlgorithm,
 		segmentIntegrityAlgorithm: cfg.segmentIntegrityAlgorithm,
 		segments:                  make(map[int]*Segment),
 		splitter:                  cfg.splitter,
+		useHex:                    cfg.useHex,
 	}, nil
 }
 
@@ -374,7 +402,7 @@ func (w *chunkedWriter) WriteSegment(ctx context.Context, index int, data []byte
 	sealed := make([]byte, 0, len(nonce)+len(ciphertext))
 	sealed = append(sealed, nonce...)
 	sealed = append(sealed, ciphertext...)
-	sig, err := calculateSignature(sealed, w.dek, w.segmentIntegrityAlgorithm, false)
+	sig, err := calculateSignature(sealed, w.dek, w.segmentIntegrityAlgorithm, w.useHex)
 	if err != nil {
 		return nil, fmt.Errorf("segment %d signature: %w", index, err)
 	}
@@ -418,12 +446,21 @@ func (w *chunkedWriter) applyFinalizeOptions(opts []ChunkedFinalizeOption) (*Chu
 	cfg := &ChunkedFinalizeConfig{
 		attributes:        nil,
 		encryptedMetadata: "",
+		excludeVersion:    w.excludeVersion,
 		mimeType:          "application/octet-stream",
 	}
 	for _, opt := range opts {
 		if err := opt(cfg); err != nil {
 			return nil, err
 		}
+	}
+	// Omitting schemaVersion is how a reader is told the TDF predates
+	// 4.3.0, and such a reader expects hex-then-base64 signatures. The
+	// segment signatures were already written by then, so the two
+	// settings cannot be reconciled here -- refuse rather than emit a
+	// TDF that no reader can verify.
+	if cfg.excludeVersion && !w.useHex {
+		return nil, ErrChunkedVersionHexMismatch
 	}
 	if len(cfg.attributes) == 0 && len(w.initialAttributes) > 0 {
 		cfg.attributes = w.initialAttributes
@@ -495,7 +532,7 @@ func (w *chunkedWriter) buildManifest(ctx context.Context, cfg *ChunkedFinalizeC
 		}
 	}
 
-	rootSig, err := calculateSignature(aggregate.Bytes(), w.dek, w.integrityAlgorithm, false)
+	rootSig, err := calculateSignature(aggregate.Bytes(), w.dek, w.integrityAlgorithm, w.useHex)
 	if err != nil {
 		return nil, 0, 0, err
 	}

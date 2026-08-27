@@ -570,3 +570,126 @@ func TestChunkedECKeyAccess(t *testing.T) {
 	require.NoError(t, err, "KAS must be able to unwrap the EC-wrapped DEK")
 	assert.Equal(t, dek, unwrapped)
 }
+
+// TestChunkedLegacyTargetMode verifies that a pre-4.3.0 target mode
+// produces the doubly-encoded (hex-then-base64) signatures that legacy
+// readers require, and that the mainline reader -- which infers legacy
+// mode solely from a missing schemaVersion -- still round-trips it.
+func TestChunkedLegacyTargetMode(t *testing.T) {
+	ctx := context.Background()
+	kasBundle := newChunkedFakeKAS(t)
+	defer kasBundle.server.Close()
+
+	s := newChunkedTestSDK(t, kasBundle)
+
+	writer, err := s.NewChunkedWriter(ctx,
+		WithChunkedDefaultKAS(kasBundle.simpleKey()),
+		WithChunkedTargetMode("4.2.2"),
+	)
+	require.NoError(t, err)
+
+	body := writeChunkedSegments(ctx, t, writer, [][]byte{
+		[]byte("legacy "), []byte("hex "), []byte("payload"),
+	})
+	fin, err := writer.Finalize(ctx)
+	require.NoError(t, err)
+
+	// Absence of schemaVersion is the pre-4.3.0 marker readers key on.
+	assert.Empty(t, fin.Manifest.TDFVersion, "legacy manifest must omit schemaVersion")
+
+	// A legacy HS256 signature is base64(hex(hmac)): 32 HMAC bytes
+	// rendered as 64 hex characters. The 4.3.0 form is base64(hmac),
+	// which decodes to 32 bytes.
+	rootSig, err := ocrypto.Base64Decode([]byte(fin.Manifest.Signature))
+	require.NoError(t, err)
+	assert.Len(t, rootSig, 64, "root signature must be hex-encoded before base64")
+
+	for i, seg := range fin.Manifest.Segments {
+		segSig, err := ocrypto.Base64Decode([]byte(seg.Hash))
+		require.NoError(t, err)
+		assert.Lenf(t, segSig, 64, "segment %d hash must be hex-encoded before base64", i)
+	}
+
+	tdfBytes := bytes.Join([][]byte{body, fin.Data}, nil)
+	reader, err := s.LoadTDF(bytes.NewReader(tdfBytes),
+		WithKasAllowlist([]string{kasBundle.url}),
+	)
+	require.NoError(t, err)
+
+	plain, err := io.ReadAll(reader)
+	require.NoError(t, err)
+	assert.Equal(t, []byte("legacy hex payload"), plain)
+}
+
+// TestChunkedCurrentTargetMode pins the 4.3.0-and-later form so a
+// regression in either direction is caught.
+func TestChunkedCurrentTargetMode(t *testing.T) {
+	ctx := context.Background()
+	kasBundle := newChunkedFakeKAS(t)
+	defer kasBundle.server.Close()
+
+	s := newChunkedTestSDK(t, kasBundle)
+
+	writer, err := s.NewChunkedWriter(ctx,
+		WithChunkedDefaultKAS(kasBundle.simpleKey()),
+		WithChunkedTargetMode("4.3.0"),
+	)
+	require.NoError(t, err)
+
+	body := writeChunkedSegments(ctx, t, writer, [][]byte{[]byte("current")})
+	fin, err := writer.Finalize(ctx)
+	require.NoError(t, err)
+
+	assert.Equal(t, TDFSpecVersion, fin.Manifest.TDFVersion)
+
+	rootSig, err := ocrypto.Base64Decode([]byte(fin.Manifest.Signature))
+	require.NoError(t, err)
+	assert.Len(t, rootSig, 32, "root signature must be the raw HMAC, not hex")
+
+	tdfBytes := bytes.Join([][]byte{body, fin.Data}, nil)
+	reader, err := s.LoadTDF(bytes.NewReader(tdfBytes),
+		WithKasAllowlist([]string{kasBundle.url}),
+	)
+	require.NoError(t, err)
+	plain, err := io.ReadAll(reader)
+	require.NoError(t, err)
+	assert.Equal(t, []byte("current"), plain)
+}
+
+// TestChunkedExcludeVersionRequiresLegacyMode verifies that omitting
+// schemaVersion without the matching signature encoding is refused
+// rather than silently producing an unverifiable TDF.
+func TestChunkedExcludeVersionRequiresLegacyMode(t *testing.T) {
+	ctx := context.Background()
+	kasBundle := newChunkedFakeKAS(t)
+	defer kasBundle.server.Close()
+
+	s := newChunkedTestSDK(t, kasBundle)
+
+	writer, err := s.NewChunkedWriter(ctx,
+		WithChunkedDefaultKAS(kasBundle.simpleKey()),
+	)
+	require.NoError(t, err)
+
+	writeChunkedSegments(ctx, t, writer, [][]byte{[]byte("mismatch")})
+
+	_, err = writer.Finalize(ctx, WithChunkedExcludeVersion())
+	require.ErrorIs(t, err, ErrChunkedVersionHexMismatch)
+}
+
+// TestChunkedTargetModeInvalid rejects a non-semver target mode at
+// construction rather than at Finalize.
+func TestChunkedTargetModeInvalid(t *testing.T) {
+	ctx := context.Background()
+	kasBundle := newChunkedFakeKAS(t)
+	defer kasBundle.server.Close()
+
+	s := newChunkedTestSDK(t, kasBundle)
+
+	_, err := s.NewChunkedWriter(ctx,
+		WithChunkedDefaultKAS(kasBundle.simpleKey()),
+		WithChunkedTargetMode("not-a-version"),
+	)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "not-a-version")
+}

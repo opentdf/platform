@@ -60,6 +60,18 @@ type KASPublicKey struct {
 	URL string
 }
 
+// toKASInfo adapts the splitter's wrapping-key descriptor to the
+// KASInfo shape consumed by createKeyAccess. Default is not carried
+// over; it plays no part in building a key access object.
+func (k KASPublicKey) toKASInfo() KASInfo {
+	return KASInfo{
+		URL:       k.URL,
+		PublicKey: k.PEM,
+		KID:       k.KID,
+		Algorithm: k.Algorithm,
+	}
+}
+
 // ErrSplitterRequiresDefaultKAS is returned by the default key
 // splitter when no default KAS was supplied. The default splitter is
 // single-KAS only; multi-attribute splits require injecting a full
@@ -104,9 +116,8 @@ func (s *singleKASSplitter) Split(_ context.Context, _ []*policy.Value, dek []by
 
 // algorithmPolicyToString maps a policy.Algorithm enum to the
 // ocrypto.KeyType string form used when picking a wrap scheme.
-// Unknown enums (including PQ / KEM variants not yet wired through
-// chunkedWrapKeyWithPublicKey) return the empty string; the caller
-// treats that as "unsupported algorithm."
+// Unknown enums return the empty string; createKeyAccess then falls
+// through to its RSA branch, which fails on a non-RSA PEM.
 func algorithmPolicyToString(a policy.Algorithm) string {
 	if kt, err := PolicyAlgorithmToKeyType(a); err == nil {
 		return string(kt)

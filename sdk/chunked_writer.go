@@ -3,8 +3,6 @@ package sdk
 import (
 	"bytes"
 	"context"
-	"crypto/sha256"
-	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -560,38 +558,35 @@ func buildChunkedKeyAccessObjects(splits *SplitResult, policyBytes []byte, metad
 	if splits == nil || len(splits.Splits) == 0 {
 		return nil, errors.New("no splits produced")
 	}
-	base64Policy := string(ocrypto.Base64Encode(policyBytes))
+	base64Policy := ocrypto.Base64Encode(policyBytes)
 
 	var out []KeyAccess
 	for _, split := range splits.Splits {
+		// Policy binding and metadata are keyed on the split share, not
+		// on the KAS, so compute them once per split rather than once
+		// per KAS URL in an OR-group.
+		policyBinding := createPolicyBinding(split.Data, base64Policy)
+		var encMeta string
+		if metadata != "" {
+			m, err := encryptMetadata(split.Data, metadata)
+			if err != nil {
+				return nil, fmt.Errorf("encrypt metadata for split %s: %w", split.ID, err)
+			}
+			encMeta = m
+		}
 		for _, url := range split.KASURLs {
 			pk, ok := splits.KASPublicKeys[url]
 			if !ok {
 				continue
 			}
-			var encMeta string
-			if metadata != "" {
-				m, err := chunkedEncryptMetadata(split.Data, metadata)
-				if err != nil {
-					return nil, fmt.Errorf("encrypt metadata for %s: %w", url, err)
-				}
-				encMeta = m
+			if pk.PEM == "" {
+				return nil, fmt.Errorf("splitID:[%s], kas:[%s]: %w", split.ID, url, errKasPubKeyMissing)
 			}
-			wrappedKey, keyType, ephemeralPub, err := chunkedWrapKeyWithPublicKey(split.Data, pk)
+			kao, err := createKeyAccess(pk.toKASInfo(), split.Data, policyBinding, encMeta, split.ID)
 			if err != nil {
 				return nil, fmt.Errorf("wrap key for %s: %w", url, err)
 			}
-			out = append(out, KeyAccess{
-				EncryptedMetadata:  encMeta,
-				EphemeralPublicKey: ephemeralPub,
-				KasURL:             url,
-				KeyType:            keyType,
-				KID:                pk.KID,
-				PolicyBinding:      chunkedCreatePolicyBinding(split.Data, base64Policy),
-				Protocol:           "kas",
-				SplitID:            split.ID,
-				WrappedKey:         wrappedKey,
-			})
+			out = append(out, kao)
 		}
 	}
 	if len(out) == 0 {
@@ -630,136 +625,4 @@ func cloneChunkedManifest(in *Manifest) *Manifest {
 		out.Assertions = slices.Clone(in.Assertions)
 	}
 	return &out
-}
-
-// integrityAlgorithmString maps an IntegrityAlgorithm to its manifest
-// string form.
-func integrityAlgorithmString(a IntegrityAlgorithm) string {
-	switch a {
-	case GMAC:
-		return gmacIntegrityAlgorithm
-	default:
-		return hmacIntegrityAlgorithm
-	}
-}
-
-// chunkedCreatePolicyBinding produces an HMAC-SHA256 binding value
-// keyed on the split share, over the base64-encoded policy.
-func chunkedCreatePolicyBinding(symKey []byte, base64Policy string) any {
-	mac := ocrypto.CalculateSHA256Hmac(symKey, []byte(base64Policy))
-	hashHex := hex.EncodeToString(mac)
-	return PolicyBinding{
-		Alg:  hmacIntegrityAlgorithm,
-		Hash: string(ocrypto.Base64Encode([]byte(hashHex))),
-	}
-}
-
-// chunkedEncryptMetadata wraps opaque metadata with AES-GCM keyed on
-// the split share, returning a base64-encoded EncryptedMetadata JSON
-// blob suitable for the KAO's encryptedMetadata field.
-func chunkedEncryptMetadata(symKey []byte, metadata string) (string, error) {
-	gcm, err := ocrypto.NewAESGcm(symKey)
-	if err != nil {
-		return "", fmt.Errorf("aes-gcm: %w", err)
-	}
-	sealed, err := gcm.Encrypt([]byte(metadata))
-	if err != nil {
-		return "", fmt.Errorf("encrypt: %w", err)
-	}
-	iv := sealed[:ocrypto.GcmStandardNonceSize]
-	blob, err := json.Marshal(EncryptedMetadata{
-		Cipher: string(ocrypto.Base64Encode(sealed)),
-		Iv:     string(ocrypto.Base64Encode(iv)),
-	})
-	if err != nil {
-		return "", fmt.Errorf("marshal: %w", err)
-	}
-	return string(ocrypto.Base64Encode(blob)), nil
-}
-
-// chunkedWrapKeyWithEC wraps symKey using an ECIES-style envelope:
-// derive a wrapping key from ECDH(ephemeral, kas) via HKDF and
-// XOR-wrap.
-func chunkedWrapKeyWithEC(keyType ocrypto.KeyType, kasPubPEM string, symKey []byte) (string, string, string, error) {
-	mode, err := ocrypto.ECKeyTypeToMode(keyType)
-	if err != nil {
-		return "", "", "", fmt.Errorf("ec key type mode: %w", err)
-	}
-	pair, err := ocrypto.NewECKeyPair(mode)
-	if err != nil {
-		return "", "", "", fmt.Errorf("ec keypair: %w", err)
-	}
-	ephemeralPub, err := pair.PublicKeyInPemFormat()
-	if err != nil {
-		return "", "", "", fmt.Errorf("ephemeral pub: %w", err)
-	}
-	ephemeralPriv, err := pair.PrivateKeyInPemFormat()
-	if err != nil {
-		return "", "", "", fmt.Errorf("ephemeral priv: %w", err)
-	}
-	shared, err := ocrypto.ComputeECDHKey([]byte(ephemeralPriv), []byte(kasPubPEM))
-	if err != nil {
-		return "", "", "", fmt.Errorf("ecdh: %w", err)
-	}
-	salt := sha256.Sum256([]byte("TDF"))
-	wrapKey, err := ocrypto.CalculateHKDF(salt[:], shared)
-	if err != nil {
-		return "", "", "", fmt.Errorf("hkdf: %w", err)
-	}
-	switch {
-	case len(wrapKey) > len(symKey):
-		wrapKey = wrapKey[:len(symKey)]
-	case len(wrapKey) < len(symKey):
-		return "", "", "", fmt.Errorf("wrap key too short: got %d expected %d", len(wrapKey), len(symKey))
-	}
-	sealed := make([]byte, len(symKey))
-	for i := range symKey {
-		sealed[i] = symKey[i] ^ wrapKey[i]
-	}
-	return string(ocrypto.Base64Encode(sealed)), "eccWrapped", ephemeralPub, nil
-}
-
-// chunkedWrapKeyWithKEM wraps a DEK share with any KEM scheme (ML-KEM
-// or hybrid).
-func chunkedWrapKeyWithKEM(keyType ocrypto.KeyType, kasPubPEM string, symKey []byte) (string, string, string, error) {
-	envelope, err := ocrypto.WrapDEK(keyType, kasPubPEM, symKey)
-	if err != nil {
-		return "", "", "", fmt.Errorf("kem wrap: %w", err)
-	}
-	scheme := "hybrid-wrapped"
-	if ocrypto.IsMLKEMKeyType(keyType) {
-		scheme = "mlkem-wrapped"
-	}
-	return string(ocrypto.Base64Encode(envelope)), scheme, "", nil
-}
-
-// chunkedWrapKeyWithRSA wraps symKey using RSA-OAEP against the KAS
-// public key.
-func chunkedWrapKeyWithRSA(kasPubPEM string, symKey []byte) (string, string, string, error) {
-	enc, err := ocrypto.FromPublicPEM(kasPubPEM)
-	if err != nil {
-		return "", "", "", fmt.Errorf("rsa encryptor: %w", err)
-	}
-	sealed, err := enc.Encrypt(symKey)
-	if err != nil {
-		return "", "", "", fmt.Errorf("rsa encrypt: %w", err)
-	}
-	return string(ocrypto.Base64Encode(sealed)), kWrapped, "", nil
-}
-
-// chunkedWrapKeyWithPublicKey dispatches to the right KAS wrapping
-// scheme based on the algorithm advertised by the splitter.
-func chunkedWrapKeyWithPublicKey(symKey []byte, pk KASPublicKey) (string, string, string, error) {
-	if pk.PEM == "" {
-		return "", "", "", fmt.Errorf("public key PEM is empty for kas %s", pk.URL)
-	}
-	ktype := ocrypto.KeyType(pk.Algorithm)
-	switch {
-	case ocrypto.IsKEMKeyType(ktype):
-		return chunkedWrapKeyWithKEM(ktype, pk.PEM, symKey)
-	case ocrypto.IsECKeyType(ktype):
-		return chunkedWrapKeyWithEC(ktype, pk.PEM, symKey)
-	default:
-		return chunkedWrapKeyWithRSA(pk.PEM, symKey)
-	}
 }

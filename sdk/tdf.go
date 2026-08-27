@@ -302,21 +302,12 @@ func (s SDK) CreateTDFContext(ctx context.Context, writer io.Writer, reader io.R
 	sig := string(ocrypto.Base64Encode([]byte(rootSignature)))
 	tdfObject.manifest.Signature = sig
 
-	integrityAlgStr := gmacIntegrityAlgorithm
-	if tdfConfig.integrityAlgorithm == HS256 {
-		integrityAlgStr = hmacIntegrityAlgorithm
-	}
-	tdfObject.manifest.Algorithm = integrityAlgStr
+	tdfObject.manifest.Algorithm = integrityAlgorithmString(tdfConfig.integrityAlgorithm)
 
 	tdfObject.manifest.DefaultSegmentSize = segmentSize
 	tdfObject.manifest.DefaultEncryptedSegSize = encryptedSegmentSize
 
-	segIntegrityAlgStr := gmacIntegrityAlgorithm
-	if tdfConfig.segmentIntegrityAlgorithm == HS256 {
-		segIntegrityAlgStr = hmacIntegrityAlgorithm
-	}
-
-	tdfObject.manifest.SegmentHashAlgorithm = segIntegrityAlgStr
+	tdfObject.manifest.SegmentHashAlgorithm = integrityAlgorithmString(tdfConfig.segmentIntegrityAlgorithm)
 	tdfObject.manifest.Method.IsStreamable = true
 
 	// add payload info
@@ -588,12 +579,7 @@ func (s SDK) prepareManifest(ctx context.Context, t *TDFObject, tdfConfig TDFCon
 		symKeys = append(symKeys, symKey)
 
 		// policy binding
-		policyBindingHash := hex.EncodeToString(ocrypto.CalculateSHA256Hmac(symKey, base64PolicyObject))
-		pbstring := string(ocrypto.Base64Encode([]byte(policyBindingHash)))
-		policyBinding := PolicyBinding{
-			Alg:  "HS256",
-			Hash: pbstring,
-		}
+		policyBinding := createPolicyBinding(symKey, base64PolicyObject)
 
 		// encrypted metadata
 		// add meta data
@@ -637,6 +623,27 @@ func (s SDK) prepareManifest(ctx context.Context, t *TDFObject, tdfConfig TDFCon
 	t.manifest = manifest
 	t.aesGcm = gcm
 	return nil
+}
+
+// integrityAlgorithmString maps an IntegrityAlgorithm to its manifest
+// string form.
+func integrityAlgorithmString(a IntegrityAlgorithm) string {
+	switch a {
+	case GMAC:
+		return gmacIntegrityAlgorithm
+	default:
+		return hmacIntegrityAlgorithm
+	}
+}
+
+// createPolicyBinding produces an HMAC-SHA256 binding value keyed on the
+// symmetric key, over the base64-encoded policy object.
+func createPolicyBinding(symKey []byte, base64PolicyObject []byte) PolicyBinding {
+	policyBindingHash := hex.EncodeToString(ocrypto.CalculateSHA256Hmac(symKey, base64PolicyObject))
+	return PolicyBinding{
+		Alg:  hmacIntegrityAlgorithm,
+		Hash: string(ocrypto.Base64Encode([]byte(policyBindingHash))),
+	}
 }
 
 func encryptMetadata(symKey []byte, metaData string) (string, error) {

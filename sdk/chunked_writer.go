@@ -3,8 +3,6 @@ package sdk
 import (
 	"bytes"
 	"context"
-	"crypto/sha256"
-	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -32,6 +30,11 @@ var (
 	// ErrChunkedSegmentAlreadyWritten is returned when WriteSegment
 	// receives an index that was already written.
 	ErrChunkedSegmentAlreadyWritten = errors.New("chunked: segment already written")
+
+	// ErrChunkedVersionHexMismatch is returned when Finalize is asked
+	// to omit schemaVersion on a writer that was not constructed in
+	// legacy signature mode. Use WithChunkedTargetMode to set both.
+	ErrChunkedVersionHexMismatch = errors.New("chunked: excluding schemaVersion requires a pre-4.3.0 target mode; use WithChunkedTargetMode")
 
 	// ErrChunkedAssertionsUnsupported is returned when Finalize
 	// receives assertions but signing them is not yet implemented.
@@ -128,6 +131,12 @@ type ChunkedWriterConfig struct {
 	// FixedClock for deterministic ZIP output.
 	clock Clock
 
+	// excludeVersion omits the schemaVersion field from the manifest.
+	// Set together with useHex by WithChunkedTargetMode; readers use
+	// the field's absence as the pre-4.3.0 marker, so the two must
+	// agree.
+	excludeVersion bool
+
 	// initialAttributes are the attribute values used at Finalize
 	// when the Finalize call does not supply its own.
 	initialAttributes []*policy.Value
@@ -151,6 +160,11 @@ type ChunkedWriterConfig struct {
 	// splitter maps attribute values to DEK splits at Finalize time.
 	// Defaults to DefaultKeySplitter (single-KAS only).
 	splitter KeySplitter
+
+	// useHex hex-encodes segment, root, and assertion signatures
+	// before base64, producing the doubly-encoded form that readers
+	// older than 4.3.0 require. Set by WithChunkedTargetMode.
+	useHex bool
 }
 
 // ChunkedFinalizeConfig captures Finalize-time overrides.
@@ -173,7 +187,8 @@ type ChunkedFinalizeConfig struct {
 	encryptedMetadata string
 
 	// excludeVersion omits the schemaVersion field from the manifest
-	// for compatibility with older readers.
+	// for compatibility with older readers. Defaults to the writer's
+	// setting; see WithChunkedTargetMode.
 	excludeVersion bool
 
 	// keepSegments restricts the finalized manifest to a contiguous
@@ -208,6 +223,10 @@ type chunkedWriter struct {
 	// dek is the Data Encryption Key. 32 bytes (AES-256).
 	dek []byte
 
+	// excludeVersion omits schemaVersion from the manifest unless a
+	// Finalize option overrides it.
+	excludeVersion bool
+
 	// finalized is true once Finalize returns successfully.
 	finalized bool
 
@@ -241,6 +260,11 @@ type chunkedWriter struct {
 	// splitter converts attributes + DEK into key splits at
 	// Finalize time.
 	splitter KeySplitter
+
+	// useHex selects the pre-4.3.0 doubly-encoded signature form.
+	// Read by WriteSegment, so it is fixed at construction rather
+	// than at Finalize.
+	useHex bool
 }
 
 // NewChunkedWriter constructs a per-segment TDF writer. The returned
@@ -275,12 +299,14 @@ func (s SDK) NewChunkedWriter(_ context.Context, opts ...ChunkedWriterOption) (C
 		block:                     block,
 		clock:                     cfg.clock,
 		dek:                       dek,
+		excludeVersion:            cfg.excludeVersion,
 		initialAttributes:         cfg.initialAttributes,
 		initialDefaultKAS:         cfg.initialDefaultKAS,
 		integrityAlgorithm:        cfg.integrityAlgorithm,
 		segmentIntegrityAlgorithm: cfg.segmentIntegrityAlgorithm,
 		segments:                  make(map[int]*Segment),
 		splitter:                  cfg.splitter,
+		useHex:                    cfg.useHex,
 	}, nil
 }
 
@@ -376,7 +402,7 @@ func (w *chunkedWriter) WriteSegment(ctx context.Context, index int, data []byte
 	sealed := make([]byte, 0, len(nonce)+len(ciphertext))
 	sealed = append(sealed, nonce...)
 	sealed = append(sealed, ciphertext...)
-	sig, err := calculateSignature(sealed, w.dek, w.segmentIntegrityAlgorithm, false)
+	sig, err := calculateSignature(sealed, w.dek, w.segmentIntegrityAlgorithm, w.useHex)
 	if err != nil {
 		return nil, fmt.Errorf("segment %d signature: %w", index, err)
 	}
@@ -420,12 +446,21 @@ func (w *chunkedWriter) applyFinalizeOptions(opts []ChunkedFinalizeOption) (*Chu
 	cfg := &ChunkedFinalizeConfig{
 		attributes:        nil,
 		encryptedMetadata: "",
+		excludeVersion:    w.excludeVersion,
 		mimeType:          "application/octet-stream",
 	}
 	for _, opt := range opts {
 		if err := opt(cfg); err != nil {
 			return nil, err
 		}
+	}
+	// Omitting schemaVersion is how a reader is told the TDF predates
+	// 4.3.0, and such a reader expects hex-then-base64 signatures. The
+	// segment signatures were already written by then, so the two
+	// settings cannot be reconciled here -- refuse rather than emit a
+	// TDF that no reader can verify.
+	if cfg.excludeVersion && !w.useHex {
+		return nil, ErrChunkedVersionHexMismatch
 	}
 	if len(cfg.attributes) == 0 && len(w.initialAttributes) > 0 {
 		cfg.attributes = w.initialAttributes
@@ -497,7 +532,7 @@ func (w *chunkedWriter) buildManifest(ctx context.Context, cfg *ChunkedFinalizeC
 		}
 	}
 
-	rootSig, err := calculateSignature(aggregate.Bytes(), w.dek, w.integrityAlgorithm, false)
+	rootSig, err := calculateSignature(aggregate.Bytes(), w.dek, w.integrityAlgorithm, w.useHex)
 	if err != nil {
 		return nil, 0, 0, err
 	}
@@ -560,38 +595,35 @@ func buildChunkedKeyAccessObjects(splits *SplitResult, policyBytes []byte, metad
 	if splits == nil || len(splits.Splits) == 0 {
 		return nil, errors.New("no splits produced")
 	}
-	base64Policy := string(ocrypto.Base64Encode(policyBytes))
+	base64Policy := ocrypto.Base64Encode(policyBytes)
 
 	var out []KeyAccess
 	for _, split := range splits.Splits {
+		// Policy binding and metadata are keyed on the split share, not
+		// on the KAS, so compute them once per split rather than once
+		// per KAS URL in an OR-group.
+		policyBinding := createPolicyBinding(split.Data, base64Policy)
+		var encMeta string
+		if metadata != "" {
+			m, err := encryptMetadata(split.Data, metadata)
+			if err != nil {
+				return nil, fmt.Errorf("encrypt metadata for split %s: %w", split.ID, err)
+			}
+			encMeta = m
+		}
 		for _, url := range split.KASURLs {
 			pk, ok := splits.KASPublicKeys[url]
 			if !ok {
 				continue
 			}
-			var encMeta string
-			if metadata != "" {
-				m, err := chunkedEncryptMetadata(split.Data, metadata)
-				if err != nil {
-					return nil, fmt.Errorf("encrypt metadata for %s: %w", url, err)
-				}
-				encMeta = m
+			if pk.PEM == "" {
+				return nil, fmt.Errorf("splitID:[%s], kas:[%s]: %w", split.ID, url, errKasPubKeyMissing)
 			}
-			wrappedKey, keyType, ephemeralPub, err := chunkedWrapKeyWithPublicKey(split.Data, pk)
+			kao, err := createKeyAccess(pk.toKASInfo(), split.Data, policyBinding, encMeta, split.ID)
 			if err != nil {
 				return nil, fmt.Errorf("wrap key for %s: %w", url, err)
 			}
-			out = append(out, KeyAccess{
-				EncryptedMetadata:  encMeta,
-				EphemeralPublicKey: ephemeralPub,
-				KasURL:             url,
-				KeyType:            keyType,
-				KID:                pk.KID,
-				PolicyBinding:      chunkedCreatePolicyBinding(split.Data, base64Policy),
-				Protocol:           "kas",
-				SplitID:            split.ID,
-				WrappedKey:         wrappedKey,
-			})
+			out = append(out, kao)
 		}
 	}
 	if len(out) == 0 {
@@ -630,136 +662,4 @@ func cloneChunkedManifest(in *Manifest) *Manifest {
 		out.Assertions = slices.Clone(in.Assertions)
 	}
 	return &out
-}
-
-// integrityAlgorithmString maps an IntegrityAlgorithm to its manifest
-// string form.
-func integrityAlgorithmString(a IntegrityAlgorithm) string {
-	switch a {
-	case GMAC:
-		return gmacIntegrityAlgorithm
-	default:
-		return hmacIntegrityAlgorithm
-	}
-}
-
-// chunkedCreatePolicyBinding produces an HMAC-SHA256 binding value
-// keyed on the split share, over the base64-encoded policy.
-func chunkedCreatePolicyBinding(symKey []byte, base64Policy string) any {
-	mac := ocrypto.CalculateSHA256Hmac(symKey, []byte(base64Policy))
-	hashHex := hex.EncodeToString(mac)
-	return PolicyBinding{
-		Alg:  hmacIntegrityAlgorithm,
-		Hash: string(ocrypto.Base64Encode([]byte(hashHex))),
-	}
-}
-
-// chunkedEncryptMetadata wraps opaque metadata with AES-GCM keyed on
-// the split share, returning a base64-encoded EncryptedMetadata JSON
-// blob suitable for the KAO's encryptedMetadata field.
-func chunkedEncryptMetadata(symKey []byte, metadata string) (string, error) {
-	gcm, err := ocrypto.NewAESGcm(symKey)
-	if err != nil {
-		return "", fmt.Errorf("aes-gcm: %w", err)
-	}
-	sealed, err := gcm.Encrypt([]byte(metadata))
-	if err != nil {
-		return "", fmt.Errorf("encrypt: %w", err)
-	}
-	iv := sealed[:ocrypto.GcmStandardNonceSize]
-	blob, err := json.Marshal(EncryptedMetadata{
-		Cipher: string(ocrypto.Base64Encode(sealed)),
-		Iv:     string(ocrypto.Base64Encode(iv)),
-	})
-	if err != nil {
-		return "", fmt.Errorf("marshal: %w", err)
-	}
-	return string(ocrypto.Base64Encode(blob)), nil
-}
-
-// chunkedWrapKeyWithEC wraps symKey using an ECIES-style envelope:
-// derive a wrapping key from ECDH(ephemeral, kas) via HKDF and
-// XOR-wrap.
-func chunkedWrapKeyWithEC(keyType ocrypto.KeyType, kasPubPEM string, symKey []byte) (string, string, string, error) {
-	mode, err := ocrypto.ECKeyTypeToMode(keyType)
-	if err != nil {
-		return "", "", "", fmt.Errorf("ec key type mode: %w", err)
-	}
-	pair, err := ocrypto.NewECKeyPair(mode)
-	if err != nil {
-		return "", "", "", fmt.Errorf("ec keypair: %w", err)
-	}
-	ephemeralPub, err := pair.PublicKeyInPemFormat()
-	if err != nil {
-		return "", "", "", fmt.Errorf("ephemeral pub: %w", err)
-	}
-	ephemeralPriv, err := pair.PrivateKeyInPemFormat()
-	if err != nil {
-		return "", "", "", fmt.Errorf("ephemeral priv: %w", err)
-	}
-	shared, err := ocrypto.ComputeECDHKey([]byte(ephemeralPriv), []byte(kasPubPEM))
-	if err != nil {
-		return "", "", "", fmt.Errorf("ecdh: %w", err)
-	}
-	salt := sha256.Sum256([]byte("TDF"))
-	wrapKey, err := ocrypto.CalculateHKDF(salt[:], shared)
-	if err != nil {
-		return "", "", "", fmt.Errorf("hkdf: %w", err)
-	}
-	switch {
-	case len(wrapKey) > len(symKey):
-		wrapKey = wrapKey[:len(symKey)]
-	case len(wrapKey) < len(symKey):
-		return "", "", "", fmt.Errorf("wrap key too short: got %d expected %d", len(wrapKey), len(symKey))
-	}
-	sealed := make([]byte, len(symKey))
-	for i := range symKey {
-		sealed[i] = symKey[i] ^ wrapKey[i]
-	}
-	return string(ocrypto.Base64Encode(sealed)), "eccWrapped", ephemeralPub, nil
-}
-
-// chunkedWrapKeyWithKEM wraps a DEK share with any KEM scheme (ML-KEM
-// or hybrid).
-func chunkedWrapKeyWithKEM(keyType ocrypto.KeyType, kasPubPEM string, symKey []byte) (string, string, string, error) {
-	envelope, err := ocrypto.WrapDEK(keyType, kasPubPEM, symKey)
-	if err != nil {
-		return "", "", "", fmt.Errorf("kem wrap: %w", err)
-	}
-	scheme := "hybrid-wrapped"
-	if ocrypto.IsMLKEMKeyType(keyType) {
-		scheme = "mlkem-wrapped"
-	}
-	return string(ocrypto.Base64Encode(envelope)), scheme, "", nil
-}
-
-// chunkedWrapKeyWithRSA wraps symKey using RSA-OAEP against the KAS
-// public key.
-func chunkedWrapKeyWithRSA(kasPubPEM string, symKey []byte) (string, string, string, error) {
-	enc, err := ocrypto.FromPublicPEM(kasPubPEM)
-	if err != nil {
-		return "", "", "", fmt.Errorf("rsa encryptor: %w", err)
-	}
-	sealed, err := enc.Encrypt(symKey)
-	if err != nil {
-		return "", "", "", fmt.Errorf("rsa encrypt: %w", err)
-	}
-	return string(ocrypto.Base64Encode(sealed)), kWrapped, "", nil
-}
-
-// chunkedWrapKeyWithPublicKey dispatches to the right KAS wrapping
-// scheme based on the algorithm advertised by the splitter.
-func chunkedWrapKeyWithPublicKey(symKey []byte, pk KASPublicKey) (string, string, string, error) {
-	if pk.PEM == "" {
-		return "", "", "", fmt.Errorf("public key PEM is empty for kas %s", pk.URL)
-	}
-	ktype := ocrypto.KeyType(pk.Algorithm)
-	switch {
-	case ocrypto.IsKEMKeyType(ktype):
-		return chunkedWrapKeyWithKEM(ktype, pk.PEM, symKey)
-	case ocrypto.IsECKeyType(ktype):
-		return chunkedWrapKeyWithEC(ktype, pk.PEM, symKey)
-	default:
-		return chunkedWrapKeyWithRSA(pk.PEM, symKey)
-	}
 }

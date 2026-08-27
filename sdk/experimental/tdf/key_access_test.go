@@ -3,8 +3,11 @@
 package tdf
 
 import (
+	"crypto/ecdsa"
 	"crypto/rand"
+	"crypto/x509"
 	"encoding/json"
+	"encoding/pem"
 	"strings"
 	"testing"
 
@@ -106,7 +109,7 @@ func TestBuildKeyAccessObjects(t *testing.T) {
 		require.Len(t, keyAccessList, 1, "Should create exactly one key access object")
 
 		keyAccess := keyAccessList[0]
-		assert.Equal(t, "eccWrapped", keyAccess.KeyType, "EC keys should use 'eccWrapped' key type")
+		assert.Equal(t, kECWrapped, keyAccess.KeyType, "EC keys should use the 'ec-wrapped' key type the KAS dispatches on")
 		assert.Equal(t, testKAS1URL, keyAccess.KasURL, "Should preserve KAS URL")
 		assert.NotEmpty(t, keyAccess.EphemeralPublicKey, "EC keys should have ephemeral public key")
 		assert.NotEmpty(t, keyAccess.WrappedKey, "Should contain wrapped key data")
@@ -477,7 +480,7 @@ func TestWrapKeyWithPublicKey(t *testing.T) {
 
 		require.NoError(t, err, "Should wrap key with EC public key")
 		assert.NotEmpty(t, wrappedKey, "Should return wrapped key")
-		assert.Equal(t, "eccWrapped", keyType, "EC keys should use 'eccWrapped' type")
+		assert.Equal(t, kECWrapped, keyType, "EC keys should use the 'ec-wrapped' type the KAS dispatches on")
 		assert.NotEmpty(t, ephemeralPubKey, "EC should generate ephemeral public key")
 
 		// Verify ephemeral key is valid PEM
@@ -485,6 +488,37 @@ func TestWrapKeyWithPublicKey(t *testing.T) {
 			"Ephemeral key should be in PEM format")
 		assert.True(t, strings.HasSuffix(ephemeralPubKey, "-----END PUBLIC KEY-----\n"),
 			"Ephemeral key should end with PEM footer")
+
+		// Unwrap exactly the way service/kas/access/rewrap.go does for
+		// "ec-wrapped". Asserting only on keyType would not have caught
+		// the envelope being a raw XOR instead of AES-GCM.
+		kasPrivPEM, err := ecKeyPair.PrivateKeyInPemFormat()
+		require.NoError(t, err)
+
+		keySize, err := ocrypto.GetECKeySize([]byte(ephemeralPubKey))
+		require.NoError(t, err)
+		mode, err := ocrypto.ECSizeToMode(keySize)
+		require.NoError(t, err)
+
+		block, _ := pem.Decode([]byte(ephemeralPubKey))
+		require.NotNil(t, block)
+		pub, err := x509.ParsePKIXPublicKey(block.Bytes)
+		require.NoError(t, err)
+		ecPub, ok := pub.(*ecdsa.PublicKey)
+		require.True(t, ok)
+		compressed, err := ocrypto.CompressedECPublicKey(mode, *ecPub)
+		require.NoError(t, err)
+
+		priv, err := ocrypto.ECPrivateKeyFromPem([]byte(kasPrivPEM))
+		require.NoError(t, err)
+		dec, err := ocrypto.NewSaltedECDecryptor(priv, tdfSalt(), nil)
+		require.NoError(t, err)
+
+		wrapped, err := ocrypto.Base64Decode([]byte(wrappedKey))
+		require.NoError(t, err)
+		unwrapped, err := dec.DecryptWithEphemeralKey(wrapped, compressed)
+		require.NoError(t, err, "KAS must be able to unwrap the EC-wrapped DEK")
+		assert.Equal(t, symKey, unwrapped, "unwrapped DEK must round-trip")
 	})
 
 	t.Run("wraps key with X-Wing public key", func(t *testing.T) {

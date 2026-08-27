@@ -73,7 +73,7 @@ func buildKeyAccessObjects(result *keysplit.SplitResult, policyBytes []byte, met
 				KeyType:           keyType,
 				KasURL:            kasURL,
 				KID:               pubKeyInfo.KID,
-				Protocol:          "kas",
+				Protocol:          kKasProtocol,
 				SplitID:           split.ID,
 				WrappedKey:        wrappedKey,
 				PolicyBinding:     policyBinding,
@@ -174,7 +174,7 @@ func wrapKeyWithPublicKey(symKey []byte, pubKeyInfo keysplit.KASPublicKey) (stri
 	}
 	// Handle RSA key wrapping
 	wrapped, err := wrapKeyWithRSA(pubKeyInfo.PEM, symKey)
-	return wrapped, "wrapped", "", err
+	return wrapped, kWrapped, "", err
 }
 
 // wrapKeyWithEC encrypts a key using EC public key with ECIES
@@ -209,27 +209,27 @@ func wrapKeyWithEC(keyType ocrypto.KeyType, kasPublicKeyPEM string, symKey []byt
 		return "", "", "", fmt.Errorf("failed to compute ECDH key: %w", err)
 	}
 
-	// Derive wrapping key using HKDF
+	// Derive the session key using HKDF
 	salt := tdfSalt()
-	wrapKey, err := ocrypto.CalculateHKDF(salt, ecdhKey)
+	sessionKey, err := ocrypto.CalculateHKDF(salt, ecdhKey)
 	if err != nil {
 		return "", "", "", fmt.Errorf("failed to derive wrap key: %w", err)
 	}
 
-	// Ensure we have the right length for wrapping, trim if needed, or error if too short
-	if len(wrapKey) > len(symKey) {
-		wrapKey = wrapKey[:len(symKey)]
-	} else if len(wrapKey) < len(symKey) {
-		return "", "", "", fmt.Errorf("wrap key too short: got %d, expected at least %d",
-			len(wrapKey), len(symKey))
+	// AES-GCM-encrypt the DEK under the session key. This is the envelope
+	// the KAS unwrap path expects; a raw XOR of the HKDF output is not
+	// decryptable by it.
+	gcm, err := ocrypto.NewAESGcm(sessionKey)
+	if err != nil {
+		return "", "", "", fmt.Errorf("failed to create AES-GCM: %w", err)
 	}
 
-	wrapped := make([]byte, len(symKey))
-	for i := range symKey {
-		wrapped[i] = symKey[i] ^ wrapKey[i]
+	wrapped, err := gcm.Encrypt(symKey)
+	if err != nil {
+		return "", "", "", fmt.Errorf("failed to wrap key: %w", err)
 	}
 
-	return string(ocrypto.Base64Encode(wrapped)), "eccWrapped", ephemeralPubKey, nil
+	return string(ocrypto.Base64Encode(wrapped)), kECWrapped, ephemeralPubKey, nil
 }
 
 // wrapKeyWithRSA encrypts a key using RSA public key with OAEP padding
@@ -258,9 +258,9 @@ func wrapKeyWithKEM(ktype ocrypto.KeyType, kasPublicKeyPEM string, symKey []byte
 	if err != nil {
 		return "", "", "", fmt.Errorf("kem wrap failed: %w", err)
 	}
-	scheme := "hybrid-wrapped"
+	scheme := kHybridWrapped
 	if ocrypto.IsMLKEMKeyType(ktype) {
-		scheme = "mlkem-wrapped"
+		scheme = kMLKEMWrapped
 	}
 	return string(ocrypto.Base64Encode(wrappedDER)), scheme, "", nil
 }

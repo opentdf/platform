@@ -1,6 +1,7 @@
 package sdk
 
 import (
+	"fmt"
 	"io"
 
 	"github.com/opentdf/platform/protocol/go/policy"
@@ -132,9 +133,43 @@ func WithChunkedEncryptedMetadata(metadata string) ChunkedFinalizeOption {
 
 // WithChunkedExcludeVersion omits the schemaVersion field from the
 // produced manifest for compatibility with older readers.
+//
+// A reader treats a missing schemaVersion as "predates 4.3.0" and so
+// expects hex-then-base64 signatures. Those are written during
+// WriteSegment, before this option is seen, so on its own this option
+// makes Finalize fail with [ErrChunkedVersionHexMismatch]. Pass
+// [WithChunkedTargetMode] at construction instead; it sets both.
 func WithChunkedExcludeVersion() ChunkedFinalizeOption {
 	return func(c *ChunkedFinalizeConfig) error {
 		c.excludeVersion = true
+		return nil
+	}
+}
+
+// WithChunkedTargetMode targets a specific TDF spec version, given as
+// a semver string such as "4.2.2".
+//
+// Below 4.3.0 the writer emits the legacy wire format: segment, root,
+// and assertion signatures are hex-encoded before base64 (yielding the
+// doubly-encoded values pre-4.3.0 readers expect), and schemaVersion is
+// omitted from the manifest, which is how those readers detect it. The
+// two travel together -- a manifest carrying one without the other
+// cannot be verified by any reader.
+//
+// An empty mode selects the current format.
+func WithChunkedTargetMode(mode string) ChunkedWriterOption {
+	return func(c *ChunkedWriterConfig) error {
+		if mode == "" {
+			c.useHex = false
+			c.excludeVersion = false
+			return nil
+		}
+		legacy, err := isLessThanSemver(mode, hexSemverThreshold)
+		if err != nil {
+			return fmt.Errorf("target mode %q: %w", mode, err)
+		}
+		c.useHex = legacy
+		c.excludeVersion = legacy
 		return nil
 	}
 }

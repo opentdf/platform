@@ -637,6 +637,9 @@ func (a Authentication) MuxHandler(handler http.Handler) http.Handler {
 // connect.Interceptor so the same authN/authz applies to unary and
 // streaming/bidi RPCs. Streaming client calls pass through unchanged because
 // these are server-side interceptors.
+//
+// See the Connect protocol for the stream/handler distinction:
+// https://connectrpc.com/docs/protocol/
 type connectInterceptor struct {
 	unary  func(connect.UnaryFunc) connect.UnaryFunc
 	stream func(connect.StreamingHandlerFunc) connect.StreamingHandlerFunc

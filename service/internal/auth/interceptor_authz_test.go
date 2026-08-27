@@ -692,6 +692,57 @@ func (s *InterceptorAuthzSuite) TestStreaming_DimensionScopedPolicyFailsClosed()
 	s.False(resolverCalled, "resolvers must never run for streams; authorization is procedure-level only")
 }
 
+// Streaming authorization is mode-agnostic: the stream path authorizes at the
+// procedure level regardless of authorizer version. These tests exercise the
+// legacy v1 (path+action) authorizer to complement the v2 coverage above.
+
+func (s *InterceptorAuthzSuite) TestStreaming_V1_AllowedRoleInvokesNext() {
+	policyCfg := internalauthz.PolicyConfig{}
+	s.Require().NoError(defaults.Set(&policyCfg))
+
+	authn := &Authentication{
+		logger:     s.logger,
+		authorizer: s.createV1Authorizer(policyCfg),
+	}
+	ctx := ctxAuth.ContextWithAuthNInfo(s.T().Context(), nil, s.newTokenWithRoles("opentdf-admin"), "raw-token")
+
+	called := false
+	next := func(context.Context, connect.StreamingHandlerConn) error {
+		called = true
+		return nil
+	}
+	conn := newFakeStreamingHandlerConn("/policy.attributes.AttributesService/GetAttribute")
+
+	err := authn.ConnectAuthZInterceptor().WrapStreamingHandler(next)(ctx, conn)
+
+	s.Require().NoError(err)
+	s.True(called, "handler should run when the v1 policy allows the RPC")
+}
+
+func (s *InterceptorAuthzSuite) TestStreaming_V1_DeniedReturnsPermissionDenied() {
+	policyCfg := internalauthz.PolicyConfig{}
+	s.Require().NoError(defaults.Set(&policyCfg))
+
+	authn := &Authentication{
+		logger:     s.logger,
+		authorizer: s.createV1Authorizer(policyCfg),
+	}
+	ctx := ctxAuth.ContextWithAuthNInfo(s.T().Context(), nil, s.newTokenWithRoles("unknown-role"), "raw-token")
+
+	called := false
+	next := func(context.Context, connect.StreamingHandlerConn) error {
+		called = true
+		return nil
+	}
+	conn := newFakeStreamingHandlerConn("/policy.attributes.AttributesService/GetAttribute")
+
+	err := authn.ConnectAuthZInterceptor().WrapStreamingHandler(next)(ctx, conn)
+
+	s.Require().Error(err)
+	s.Equal(connect.CodePermissionDenied, connect.CodeOf(err))
+	s.False(called, "handler must not run when the v1 policy denies the stream")
+}
+
 func (s *InterceptorAuthzSuite) TestV2_EmptyToken() {
 	csvPolicy := "p, role:admin, *, *, allow"
 	authorizer := s.createV2Authorizer(csvPolicy)

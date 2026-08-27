@@ -133,11 +133,16 @@ func parseDirectEntitlementsFromClaims(entityStruct *structpb.Struct) ([]*entity
 		return nil, nil
 	}
 	claims := entityStruct.AsMap()
-	rawEntitlements, ok := claims["direct_entitlements"]
-	if !ok {
-		rawEntitlements, ok = claims["directEntitlements"]
+	var rawEntitlements interface{}
+	found := false
+	for _, key := range ent.DirectEntitlementClaimKeys {
+		if raw, ok := claims[key]; ok {
+			rawEntitlements = raw
+			found = true
+			break
+		}
 	}
-	if !ok {
+	if !found {
 		return nil, nil
 	}
 

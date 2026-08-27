@@ -408,6 +408,17 @@ func filterEntityChain(entityChain *entity.EntityChain, skipEnvironmentEntities 
 	return filteredEntities
 }
 
+// directEntitlementClaimKey reports whether the resolved claims carry direct
+// entitlements, and under which claim name.
+func directEntitlementClaimKey(claimsStruct *structpb.Struct) (string, bool) {
+	for _, key := range ent.DirectEntitlementClaimKeys {
+		if _, ok := claimsStruct.GetFields()[key]; ok {
+			return key, true
+		}
+	}
+	return "", false
+}
+
 func entityRepresentationsFromResolvedChain(entityChain *entity.EntityChain, skipEnvironmentEntities bool) ([]*entityresolutionV2.EntityRepresentation, error) {
 	filteredEntities := filterEntityChain(entityChain, skipEnvironmentEntities)
 	if len(filteredEntities) == 0 {
@@ -424,6 +435,12 @@ func entityRepresentationsFromResolvedChain(entityChain *entity.EntityChain, ski
 		var claimsStruct structpb.Struct
 		if err := claims.UnmarshalTo(&claimsStruct); err != nil {
 			return nil, fmt.Errorf("failed to unpack resolved token chain entity %s: %w", chained.GetEphemeralId(), err)
+		}
+
+		// Direct entitlements are carried inline on the claims. Taking the no-rehydrate
+		// shortcut here would silently drop them, so defer to ERS whenever the claim is present.
+		if key, ok := directEntitlementClaimKey(&claimsStruct); ok {
+			return nil, fmt.Errorf("%w: entity %s carries %q claims", errResolvedTokenChainRequiresHydration, chained.GetEphemeralId(), key)
 		}
 
 		originalID := chained.GetEphemeralId()

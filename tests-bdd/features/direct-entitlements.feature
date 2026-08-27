@@ -22,6 +22,25 @@ Feature: Direct entitlements decisioning
     Then the response should be successful
     And I should get a "PERMIT" decision response
 
+  # The token identifier resolves through the claims ERS CreateEntityChainsFromTokens and must
+  # still hydrate the resolved chain into an entity representation carrying the direct
+  # entitlements. Regression coverage for the token path silently dropping them.
+  Scenario: Direct entitlement on a token permits a matching action
+    Given there is a token referenced as "alice_token" with direct entitlements:
+      | attribute_value_fqn                           | actions |
+      | https://example.com/attr/department/value/eng | read    |
+    When I send a decision request for token "alice_token" for "read" action on resource "https://example.com/attr/department/value/eng"
+    Then the response should be successful
+    And I should get a "PERMIT" decision response
+
+  Scenario: Direct entitlement on a token denies an action mismatch
+    Given there is a token referenced as "alice_token" with direct entitlements:
+      | attribute_value_fqn                           | actions |
+      | https://example.com/attr/department/value/eng | read    |
+    When I send a decision request for token "alice_token" for "update" action on resource "https://example.com/attr/department/value/eng"
+    Then the response should be successful
+    And I should get a "DENY" decision response
+
   Scenario: Direct entitlement denies an action mismatch
     Given there is a claims subject entity referenced as "alice" with direct entitlements:
       | attribute_value_fqn                           | actions |

@@ -8,7 +8,10 @@ import (
 )
 
 // Context key type for audit context
-type contextKey struct{}
+type (
+	contextKey      struct{}
+	actorContextKey struct{}
+)
 
 // auditTransaction holds pending audit events to be logged on completion
 type auditTransaction struct {
@@ -26,14 +29,14 @@ func ContextWithActorID(ctx context.Context, actorID string) context.Context {
 				RequestID: uuid.Nil,
 				UserAgent: defaultNone,
 				RequestIP: defaultNone,
+				ActorID:   actorID,
 			},
 			events: make([]pendingEvent, 0),
 		}
 		ctx = context.WithValue(ctx, contextKey{}, tx)
 	}
 
-	tx.ActorID = actorID
-	return ctx
+	return context.WithValue(ctx, actorContextKey{}, actorID)
 }
 
 // Detach returns a non-canceling context with an independent copy of the current

@@ -30,6 +30,15 @@ type authContext struct {
 	key         jwk.Key
 	accessToken jwt.Token
 	rawToken    string
+	principal   Principal
+}
+
+// Principal identifies the authenticated requester established by token
+// verification. It is intentionally separate from audit event subjects, which
+// may describe an entity being evaluated rather than the requester.
+type Principal struct {
+	Subject string
+	Issuer  string
 }
 
 // optionalErrorLogger keeps pkg/auth decoupled from the concrete logger package
@@ -39,11 +48,27 @@ type optionalErrorLogger interface {
 }
 
 func ContextWithAuthNInfo(ctx context.Context, key jwk.Key, accessToken jwt.Token, raw string) context.Context {
+	principal := Principal{}
+	if accessToken != nil {
+		principal.Subject = accessToken.Subject()
+		principal.Issuer = accessToken.Issuer()
+	}
 	return context.WithValue(ctx, authnContextKey, &authContext{
-		key,
-		accessToken,
-		raw,
+		key:         key,
+		accessToken: accessToken,
+		rawToken:    raw,
+		principal:   principal,
 	})
+}
+
+// PrincipalFromContext returns the verified requester identity installed by
+// authentication. Header metadata is never considered a principal source.
+func PrincipalFromContext(ctx context.Context) (Principal, bool) {
+	details := getContextDetails(ctx, nil)
+	if details == nil || details.principal.Subject == "" {
+		return Principal{}, false
+	}
+	return details.principal, true
 }
 
 func getContextDetails(ctx context.Context, l optionalErrorLogger) *authContext {

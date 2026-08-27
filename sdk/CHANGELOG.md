@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.31.0](https://github.com/opentdf/platform/compare/sdk/v0.30.0...sdk/v0.31.0) (2026-08-27)
+
+
+### Bug Fixes
+
+* **core:** establish verified audit principal ([#3900](https://github.com/opentdf/platform/issues/3900)) ([cf2b160](https://github.com/opentdf/platform/commit/cf2b16045c499762829e5a50b4211c4cb11bba7a))
+* **deps:** bump github.com/opentdf/platform/protocol/go from 0.40.0 to 0.41.0 in /sdk ([#3879](https://github.com/opentdf/platform/issues/3879)) ([3246331](https://github.com/opentdf/platform/commit/3246331ce04fceda014106b25bbe8ea23cd9c975))
+
 ## [0.30.0](https://github.com/opentdf/platform/compare/sdk/v0.29.0...sdk/v0.30.0) (2026-08-11)
 
 

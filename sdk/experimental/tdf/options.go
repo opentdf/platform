@@ -11,6 +11,12 @@ import "github.com/opentdf/platform/protocol/go/policy"
 //   - GMAC: Galois Message Authentication Code, faster but requires AES-GCM support
 //
 // The algorithm choice affects both segment-level and root-level integrity verification.
+//
+// Unlike the manifest and assertion types in this package, this is not an
+// alias onto [sdk.IntegrityAlgorithm]: that one is itself an alias for int, so
+// no methods can be attached to it, and aliasing would silently drop String()
+// from this package's public API. The underlying values match, so the two
+// convert freely.
 type IntegrityAlgorithm int
 
 // String returns the string representation of the integrity algorithm.

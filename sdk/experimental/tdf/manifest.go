@@ -7,69 +7,91 @@ import (
 	"errors"
 
 	"github.com/opentdf/platform/lib/ocrypto"
+	"github.com/opentdf/platform/sdk"
 )
 
 const (
 	kGMACPayloadLength = 16
 	kSplitKeyType      = "split"
 	kPolicyBindingAlg  = "HS256"
+
+	// Key wrap scheme names as they appear in a KeyAccess object's
+	// "type" field. These must match what the KAS rewrap handler
+	// dispatches on; see service/kas/access/rewrap.go.
+	kWrapped       = "wrapped"
+	kECWrapped     = "ec-wrapped"
+	kHybridWrapped = "hybrid-wrapped"
+	kMLKEMWrapped  = "mlkem-wrapped"
+
+	// kKasProtocol is the only protocol value the KAS understands.
+	kKasProtocol = "kas"
 )
 
-type RootSignature struct {
-	Algorithm string `json:"alg"`
-	Signature string `json:"sig"`
-}
+// The manifest types below are aliases onto their
+// [github.com/opentdf/platform/sdk] counterparts, which own the definitions.
+// They are kept here so that existing importers of this experimental package
+// continue to compile unchanged, and so a manifest produced here can be
+// handed to the stable SDK without conversion. Prefer the sdk-scoped names in
+// new code.
+type (
+	// RootSignature is the signature over the concatenated segment hashes.
+	//
+	// See [sdk.RootSignature].
+	RootSignature = sdk.RootSignature
 
-type IntegrityInformation struct {
-	RootSignature           `json:"rootSignature"`
-	SegmentHashAlgorithm    string    `json:"segmentHashAlg"`
-	DefaultSegmentSize      int64     `json:"segmentSizeDefault"`
-	DefaultEncryptedSegSize int64     `json:"encryptedSegmentSizeDefault"`
-	Segments                []Segment `json:"segments"`
-}
+	// IntegrityInformation describes segment layout and the hashes that
+	// protect the payload.
+	//
+	// See [sdk.IntegrityInformation].
+	IntegrityInformation = sdk.IntegrityInformation
 
-type KeyAccess struct {
-	KeyType            string      `json:"type"`
-	KasURL             string      `json:"url"`
-	Protocol           string      `json:"protocol"`
-	WrappedKey         string      `json:"wrappedKey"`
-	PolicyBinding      interface{} `json:"policyBinding"`
-	EncryptedMetadata  string      `json:"encryptedMetadata,omitempty"`
-	KID                string      `json:"kid,omitempty"`
-	SplitID            string      `json:"sid,omitempty"`
-	SchemaVersion      string      `json:"schemaVersion,omitempty"`
-	EphemeralPublicKey string      `json:"ephemeralPublicKey,omitempty"`
-}
+	// KeyAccess is one wrapped key share addressed to a single KAS.
+	//
+	// See [sdk.KeyAccess].
+	KeyAccess = sdk.KeyAccess
 
-type Method struct {
-	Algorithm    string `json:"algorithm"`
-	IV           string `json:"iv"`
-	IsStreamable bool   `json:"isStreamable"`
-}
+	// Method describes the payload encryption algorithm and IV.
+	//
+	// See [sdk.Method].
+	Method = sdk.Method
 
-type Payload struct {
-	Type        string `json:"type"`
-	URL         string `json:"url"`
-	Protocol    string `json:"protocol"`
-	MimeType    string `json:"mimeType"`
-	IsEncrypted bool   `json:"isEncrypted"`
-	// IntegrityInformation IntegrityInformation `json:"integrityInformation"`
-}
+	// Payload describes the encrypted payload entry in the archive.
+	//
+	// See [sdk.Payload].
+	Payload = sdk.Payload
 
-type EncryptionInformation struct {
-	KeyAccessType        string      `json:"type"`
-	Policy               string      `json:"policy"`
-	KeyAccessObjs        []KeyAccess `json:"keyAccess"`
-	Method               Method      `json:"method"`
-	IntegrityInformation `json:"integrityInformation"`
-}
+	// EncryptionInformation carries the policy, key access objects, and
+	// integrity information for a TDF.
+	//
+	// See [sdk.EncryptionInformation].
+	EncryptionInformation = sdk.EncryptionInformation
 
-type Manifest struct {
-	EncryptionInformation `json:"encryptionInformation"`
-	Payload               `json:"payload"`
-	Assertions            []Assertion `json:"assertions,omitempty"`
-	TDFVersion            string      `json:"schemaVersion,omitempty"`
-}
+	// Manifest is the TDF manifest written to manifest.json.
+	//
+	// See [sdk.Manifest].
+	Manifest = sdk.Manifest
+
+	// Segment is one encrypted chunk of the payload plus its integrity hash.
+	//
+	// See [sdk.Segment].
+	Segment = sdk.Segment
+
+	// PolicyBinding is the HMAC binding a key share to the policy.
+	//
+	// See [sdk.PolicyBinding].
+	PolicyBinding = sdk.PolicyBinding
+
+	// EncryptedMetadata is the AES-GCM envelope for a key access object's
+	// opaque metadata.
+	//
+	// See [sdk.EncryptedMetadata].
+	EncryptedMetadata = sdk.EncryptedMetadata
+)
+
+// Policy, PolicyBody, and PolicyAttribute are deliberately not aliased onto
+// [sdk.PolicyObject]: the sdk type declares Body as an anonymous struct over
+// an unexported element type, so it has no nameable equivalent for these
+// three. Exporting those in sdk first would make the alias possible.
 
 type PolicyAttribute struct {
 	Attribute   string `json:"attribute"`
@@ -87,20 +109,6 @@ type Policy struct {
 type PolicyBody struct {
 	DataAttributes []PolicyAttribute `json:"dataAttributes"`
 	Dissem         []string          `json:"dissem"`
-}
-
-type Segment struct {
-	Hash          string `json:"hash"`
-	Size          int64  `json:"segmentSize"`
-	EncryptedSize int64  `json:"encryptedSegmentSize"`
-}
-type PolicyBinding struct {
-	Alg  string `json:"alg"`
-	Hash string `json:"hash"`
-}
-type EncryptedMetadata struct {
-	Cipher string `json:"ciphertext"`
-	Iv     string `json:"iv"`
 }
 
 func calculateSignature(data []byte, secret []byte, alg IntegrityAlgorithm, isLegacyTDF bool) (string, error) {

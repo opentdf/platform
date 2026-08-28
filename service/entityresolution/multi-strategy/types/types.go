@@ -156,7 +156,8 @@ type OutputMapping struct {
 	SourceClaim     string `mapstructure:"source_claim"`     // JWT claim name
 	SourceKey       string `mapstructure:"source_key"`       // Redis key name
 
-	// Target claim name (field-agnostic)
+	// Target claim name (field-agnostic). Dot notation nests: "attributes.nationality"
+	// produces {"attributes":{"nationality":...}}, selected by ".attributes.nationality[]".
 	ClaimName string `mapstructure:"claim_name"`
 
 	// Optional transformation

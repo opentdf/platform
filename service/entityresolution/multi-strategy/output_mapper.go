@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/opentdf/platform/service/entityresolution/multi-strategy/types"
+	"github.com/opentdf/platform/service/internal/dotnotation"
 )
 
 var ErrFieldNotFound = errors.New("field not found in raw result")
@@ -97,8 +98,13 @@ func (om *OutputMapper) applyMapping(rawResult *types.RawResult, entityResult *t
 		)
 	}
 
-	// Set the claim value
-	entityResult.Claims[mapping.ClaimName] = transformedValue
+	// Set the claim value; a dotted claim_name nests it
+	if err := dotnotation.Set(entityResult.Claims, mapping.ClaimName, transformedValue); err != nil {
+		return types.NewMappingError("failed to write claim", map[string]interface{}{
+			"claim_name": mapping.ClaimName,
+			"error":      err.Error(),
+		})
+	}
 
 	return nil
 }

@@ -70,36 +70,49 @@ func (om *OutputMapper) MapResult(rawResult *types.RawResult, outputMappings []t
 func (om *OutputMapper) applyMapping(rawResult *types.RawResult, entityResult *types.EntityResult, mapping types.OutputMapping) error {
 	// Get source value based on provider type
 	sourceValue, err := om.getSourceValue(rawResult, mapping)
+	found := true
 	if err != nil {
-		// Skip mapping if field not found
-		if errors.Is(err, ErrFieldNotFound) {
-			return nil
+		if !errors.Is(err, ErrFieldNotFound) {
+			return err
 		}
-		return err
+		found, sourceValue = false, nil
 	}
 
-	// Skip if no source value found
-	if sourceValue == nil {
+	var claimValue interface{}
+
+	switch {
+	// Defaults are emitted as authored, never transformed
+	case mapping.Default != nil && (!found || isEmptyValue(sourceValue)):
+		claimValue = cloneValue(mapping.Default)
+
+	// Skip the mapping when the source is missing and there is no default
+	case !found || sourceValue == nil:
+		return nil
+
+	default:
+		claimValue, err = om.applyTransformation(sourceValue, mapping.Transformation)
+		if err != nil {
+			return types.WrapMultiStrategyError(
+				types.ErrorTypeMapping,
+				"transformation failed",
+				err,
+				map[string]interface{}{
+					"claim_name":     mapping.ClaimName,
+					"transformation": mapping.Transformation,
+					"source_value":   sourceValue,
+				},
+			)
+		}
+	}
+
+	// Drop nulls, which lib/flattening rejects and would fail every entitlement decision
+	claimValue, ok := sanitizeClaimValue(claimValue)
+	if !ok {
 		return nil
 	}
 
-	// Apply transformation if specified
-	transformedValue, err := om.applyTransformation(sourceValue, mapping.Transformation)
-	if err != nil {
-		return types.WrapMultiStrategyError(
-			types.ErrorTypeMapping,
-			"transformation failed",
-			err,
-			map[string]interface{}{
-				"claim_name":     mapping.ClaimName,
-				"transformation": mapping.Transformation,
-				"source_value":   sourceValue,
-			},
-		)
-	}
-
 	// Set the claim value; a dotted claim_name nests it
-	if err := dotnotation.Set(entityResult.Claims, mapping.ClaimName, transformedValue); err != nil {
+	if err := dotnotation.Set(entityResult.Claims, mapping.ClaimName, claimValue); err != nil {
 		return types.NewMappingError("failed to write claim", map[string]interface{}{
 			"claim_name": mapping.ClaimName,
 			"error":      err.Error(),

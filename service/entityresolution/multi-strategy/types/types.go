@@ -161,6 +161,9 @@ type OutputMapping struct {
 	// produces {"attributes":{"nationality":...}}, selected by ".attributes.nationality[]".
 	ClaimName string `mapstructure:"claim_name"`
 
+	// Value emitted verbatim (never transformed) when the source is absent or empty.
+	Default interface{} `mapstructure:"default"`
+
 	// Optional transformation
 	Transformation string `mapstructure:"transformation"` // "array", "csv_to_array", "ldap_dn_to_cn_array", etc.
 }

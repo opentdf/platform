@@ -153,6 +153,20 @@ func (om *OutputMapper) getSourceValue(rawResult *types.RawResult, mapping types
 	return value, nil
 }
 
+// supportedTransformations lists the transformations applyTransformation accepts.
+// Keep in sync with the switch below.
+func supportedTransformations() []string {
+	return []string{
+		"array",
+		"csv_to_array",
+		"ldap_dn_to_cn_array",
+		"lowercase",
+		"uppercase",
+		"trim",
+		"postgres_object",
+	}
+}
+
 // applyTransformation applies the specified transformation to the source value
 func (om *OutputMapper) applyTransformation(value interface{}, transformation string) (interface{}, error) {
 	if transformation == "" {

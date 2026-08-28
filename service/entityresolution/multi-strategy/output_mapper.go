@@ -130,8 +130,8 @@ func (om *OutputMapper) getSourceValue(rawResult *types.RawResult, mapping types
 		})
 	}
 
-	// Get value from raw result data
-	value, exists := rawResult.Data[sourceField]
+	// Get value from raw result data; a dotted source field traverses nested maps
+	value, exists := lookupSourceField(rawResult.Data, sourceField)
 	if !exists {
 		// Field not found - return sentinel error that caller can handle
 		return nil, ErrFieldNotFound

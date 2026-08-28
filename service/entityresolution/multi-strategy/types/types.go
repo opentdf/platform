@@ -150,7 +150,8 @@ type InputMapping struct {
 
 // OutputMapping defines how to map provider results to claims (field-agnostic)
 type OutputMapping struct {
-	// Source field names (provider-specific)
+	// Source field names (provider-specific). Each accepts a flat key or a dotted
+	// path into nested data; an exact flat match always wins.
 	SourceColumn    string `mapstructure:"source_column"`    // SQL column name
 	SourceAttribute string `mapstructure:"source_attribute"` // LDAP attribute name
 	SourceClaim     string `mapstructure:"source_claim"`     // JWT claim name

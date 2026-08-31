@@ -132,6 +132,14 @@ func applyOptions(opts []Option) *Config {
 	for _, opt := range opts {
 		opt(cfg)
 	}
+	// Now is an exported field on an exported Config and Option is a
+	// bare func(*Config), so an option is free to clear it even though
+	// WithClock will not. Restore the default rather than let the
+	// writers panic on the first header stamp; NewSegmentMetadata
+	// already defends the same way.
+	if cfg.Now == nil {
+		cfg.Now = time.Now
+	}
 	return cfg
 }
 

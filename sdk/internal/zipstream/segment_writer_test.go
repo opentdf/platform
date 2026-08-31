@@ -518,3 +518,19 @@ func benchmarkSegmentWriter(b *testing.B, name string, writeOrder []int) {
 		}
 	})
 }
+
+// TestApplyOptionsRestoresNilClock covers an option clearing Config.Now.
+// Now is exported on an exported Config and Option is a bare
+// func(*Config), so nothing stops an option from doing this; without a
+// restore the first header stamp panics in NewSegmentTDFWriter.
+func TestApplyOptionsRestoresNilClock(t *testing.T) {
+	clearClock := func(c *Config) { c.Now = nil }
+
+	cfg := applyOptions([]Option{clearClock})
+	require.NotNil(t, cfg.Now)
+	assert.False(t, cfg.Now().IsZero())
+
+	assert.NotPanics(t, func() {
+		NewSegmentTDFWriter(1, clearClock)
+	})
+}

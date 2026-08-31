@@ -694,6 +694,21 @@ func testErrorConditions(t *testing.T) {
 		require.Error(t, err, "Should reject a segment that was never written")
 		assert.Contains(t, err.Error(), "not written", "Error should name the unwritten segment")
 	})
+
+	t.Run("SegmentZeroMissing", func(t *testing.T) {
+		writer, err := NewWriter(ctx)
+		require.NoError(t, err)
+
+		_, err = writer.WriteSegment(ctx, 1, []byte("second"))
+		require.NoError(t, err)
+
+		attributes := []*policy.Value{
+			createTestAttribute("https://example.com/attr/Test/value/Error", testKAS1, "kid1"),
+		}
+		_, err = writer.Finalize(ctx, WithAttributeValues(attributes))
+		require.ErrorIs(t, err, ErrMissingSegmentZero,
+			"segment 0 carries the payload's ZIP local file header")
+	})
 }
 
 // testXORReconstruction tests that XOR key splitting can be reconstructed correctly

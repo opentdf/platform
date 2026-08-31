@@ -540,6 +540,97 @@ func TestChunkedSegmentsNotStartingAtZero(t *testing.T) {
 	assert.Equal(t, []byte("hello-world!"), plain)
 }
 
+// TestChunkedFinalizeRequiresSegmentZero pins the sentinel Finalize
+// returns for a write set that omits segment 0, and that the rejection
+// leaves the writer usable: the caller's only recovery is to write the
+// missing segment and finalize again.
+func TestChunkedFinalizeRequiresSegmentZero(t *testing.T) {
+	ctx := context.Background()
+	kasBundle := newChunkedFakeKAS(t)
+	defer kasBundle.server.Close()
+
+	s := newChunkedTestSDK(t)
+	w, err := s.NewChunkedWriter(ctx, WithChunkedDefaultKAS(kasBundle.simpleKey()))
+	require.NoError(t, err)
+
+	encrypted := make(map[int][]byte, 3)
+	write := func(index int, chunk string) {
+		t.Helper()
+		seg, err := w.WriteSegment(ctx, index, []byte(chunk))
+		require.NoError(t, err)
+		buf, err := io.ReadAll(seg.TDFData)
+		require.NoError(t, err)
+		encrypted[index] = buf
+	}
+
+	write(5, "hello-")
+	write(6, "world!")
+
+	_, err = w.Finalize(ctx)
+	require.ErrorIs(t, err, ErrChunkedMissingSegmentZero)
+
+	// A rejected Finalize must not consume the writer, or the caller has
+	// no way back: the segments it already encrypted would be stranded.
+	write(0, "zero-")
+	fin, err := w.Finalize(ctx)
+	require.NoError(t, err)
+	require.Len(t, fin.Manifest.Segments, 3)
+
+	var body bytes.Buffer
+	for _, idx := range []int{0, 5, 6} {
+		body.Write(encrypted[idx])
+	}
+	body.Write(fin.Data)
+
+	reader, err := s.LoadTDF(bytes.NewReader(body.Bytes()),
+		WithKasAllowlist([]string{kasBundle.url}),
+	)
+	require.NoError(t, err)
+
+	plain, err := io.ReadAll(reader)
+	require.NoError(t, err)
+	assert.Equal(t, []byte("zero-hello-world!"), plain)
+}
+
+// TestChunkedFinalizeWithNoSegments verifies an untouched writer fails
+// with the same sentinel rather than the archive layer's wrapped
+// "segment missing".
+func TestChunkedFinalizeWithNoSegments(t *testing.T) {
+	ctx := context.Background()
+	kasBundle := newChunkedFakeKAS(t)
+	defer kasBundle.server.Close()
+
+	s := newChunkedTestSDK(t)
+	w, err := s.NewChunkedWriter(ctx, WithChunkedDefaultKAS(kasBundle.simpleKey()))
+	require.NoError(t, err)
+
+	_, err = w.Finalize(ctx)
+	require.ErrorIs(t, err, ErrChunkedMissingSegmentZero)
+}
+
+// TestChunkedGetManifestWithoutSegmentZero guards the placement of the
+// segment-0 check. GetManifest shares buildManifest with Finalize but
+// is a pre-finalize snapshot, so it must keep working while segment 0
+// is still outstanding.
+func TestChunkedGetManifestWithoutSegmentZero(t *testing.T) {
+	ctx := context.Background()
+	kasBundle := newChunkedFakeKAS(t)
+	defer kasBundle.server.Close()
+
+	s := newChunkedTestSDK(t)
+	w, err := s.NewChunkedWriter(ctx, WithChunkedDefaultKAS(kasBundle.simpleKey()))
+	require.NoError(t, err)
+
+	_, err = w.WriteSegment(ctx, 5, []byte("hello-"))
+	require.NoError(t, err)
+	_, err = w.WriteSegment(ctx, 6, []byte("world!"))
+	require.NoError(t, err)
+
+	snap, err := w.GetManifest(ctx)
+	require.NoError(t, err)
+	assert.Len(t, snap.Segments, 2)
+}
+
 // TestChunkedGetManifestBeforeFinalize verifies GetManifest returns a
 // snapshot of the currently-written segments prior to Finalize and
 // the frozen manifest afterwards.

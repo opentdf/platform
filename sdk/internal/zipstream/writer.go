@@ -52,6 +52,7 @@ var (
 	ErrOutOfOrder       = errors.New("segment out of order")
 	ErrDuplicateSegment = errors.New("duplicate segment already written")
 	ErrSegmentMissing   = errors.New("segment missing")
+	ErrNoSegmentZero    = errors.New("segment 0 missing; it carries the payload local file header")
 	ErrInvalidSize      = errors.New("invalid size")
 	ErrZip64Required    = errors.New("ZIP64 required but disabled (Zip64Never)")
 )

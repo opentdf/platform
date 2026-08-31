@@ -38,6 +38,8 @@ var (
 	ErrAlreadyFinalized = sdk.ErrChunkedAlreadyFinalized
 	// ErrInvalidSegmentIndex is returned for negative segment indices
 	ErrInvalidSegmentIndex = sdk.ErrChunkedInvalidSegmentIndex
+	// ErrMissingSegmentZero is returned when Finalize is called without segment 0
+	ErrMissingSegmentZero = sdk.ErrChunkedMissingSegmentZero
 	// ErrSegmentAlreadyWritten is returned when trying to write to an existing segment index
 	ErrSegmentAlreadyWritten = sdk.ErrChunkedSegmentAlreadyWritten
 )
@@ -49,7 +51,7 @@ var (
 // and proper ZIP archive structure generation.
 //
 // Key features:
-//   - Variable-length segments with sparse index support
+//   - Variable-length segments with sparse index support above index 0
 //   - Out-of-order segment writing without buffering payloads
 //   - Memory-efficient handling through segment cleanup
 //   - Cryptographic assertions and integrity verification
@@ -93,7 +95,7 @@ type Writer struct {
 // The writer is initialized with secure defaults:
 //   - HS256 integrity algorithms for both root and segment verification
 //   - AES-256-GCM encryption for all segments
-//   - Dynamic segment expansion supporting sparse indices
+//   - Dynamic segment expansion supporting sparse indices (index 0 always required)
 //   - Memory-efficient segment processing
 //
 // Configuration options can be provided to customize:
@@ -148,7 +150,8 @@ func NewWriter(ctx context.Context, opts ...Option[*WriterConfig]) (*Writer, err
 //
 // Parameters:
 //   - ctx: Context for cancellation and timeout control
-//   - index: Zero-based segment index (must be non-negative, sparse indices supported)
+//   - index: Zero-based segment index (must be non-negative; sparse indices supported,
+//     but index 0 must eventually be written)
 //   - data: Raw data to encrypt and store in this segment
 //
 // Returns the encrypted segment bytes that should be stored/uploaded, and any error.
@@ -206,6 +209,8 @@ func (w *Writer) WriteSegment(ctx context.Context, index int, data []byte) (*Seg
 //
 // Error conditions:
 //   - ErrAlreadyFinalized: Finalize already called
+//   - ErrMissingSegmentZero: segment 0 was never written; it carries the payload's
+//     ZIP local file header
 //   - Missing segments: an index named by WithSegments that was never written
 //   - Key splitting failures: Invalid attributes or KAS configuration
 //   - Manifest generation errors: JSON marshaling failures

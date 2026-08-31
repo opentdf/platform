@@ -27,6 +27,12 @@ var (
 	// receives a negative index.
 	ErrChunkedInvalidSegmentIndex = errors.New("chunked: invalid segment index")
 
+	// ErrChunkedMissingSegmentZero is returned when Finalize is called
+	// on a writer that never wrote segment 0. Only segment 0 emits the
+	// payload's ZIP local file header, and every offset in the manifest
+	// and central directory is measured from it.
+	ErrChunkedMissingSegmentZero = errors.New("chunked: segment 0 was never written; it carries the payload's ZIP local file header")
+
 	// ErrChunkedSegmentAlreadyWritten is returned when WriteSegment
 	// receives an index that was already written.
 	ErrChunkedSegmentAlreadyWritten = errors.New("chunked: segment already written")
@@ -47,7 +53,8 @@ type ChunkedWriter interface {
 	// this Finalize call; writer-level defaults set at NewChunked*
 	// remain otherwise. Returns the closing bytes (central directory
 	// + end-of-central-directory record) that must be appended after
-	// every segment's TDFData.
+	// every segment's TDFData. Returns ErrChunkedMissingSegmentZero if
+	// segment 0 was never written.
 	Finalize(ctx context.Context, opts ...ChunkedFinalizeOption) (*ChunkedFinalizeResult, error)
 
 	// GetManifest returns the manifest for the TDF. Before Finalize
@@ -59,7 +66,9 @@ type ChunkedWriter interface {
 	// ZIP bytes for that segment (local header + nonce + ciphertext).
 	// Callers upload or buffer those bytes; Finalize does not
 	// re-emit them. Indices need not arrive in order and need not be
-	// contiguous.
+	// contiguous, but index 0 is mandatory: it carries the payload's
+	// ZIP local file header, so Finalize refuses a write set without
+	// it.
 	WriteSegment(ctx context.Context, index int, data []byte) (*ChunkedSegmentResult, error)
 }
 
@@ -328,6 +337,17 @@ func (w *chunkedWriter) Finalize(ctx context.Context, opts ...ChunkedFinalizeOpt
 	defer w.mu.Unlock()
 	if w.finalized {
 		return nil, ErrChunkedAlreadyFinalized
+	}
+
+	// Segment 0 is the only one that emits the payload's ZIP local file
+	// header (see zipstream.segmentWriter.WriteSegment), and the archive
+	// measures every offset it records from that header being at the
+	// front of the assembled stream. It cannot be synthesized here: by
+	// Finalize the caller has already encrypted and uploaded the bytes it
+	// would have to precede. Size stays negative until the archive
+	// accepts the write, so a reservation in flight does not count.
+	if seg, ok := w.segments[0]; !ok || seg.Size < 0 {
+		return nil, ErrChunkedMissingSegmentZero
 	}
 
 	cfg, err := w.applyFinalizeOptions(opts)
@@ -610,6 +630,9 @@ func (w *chunkedWriter) buildManifest(ctx context.Context, cfg *ChunkedFinalizeC
 // indices per upload part and filling only part of each block writes
 // e.g. 0,1,5000,5001), and any such set is accepted so long as the
 // subset names its members in order and drops only from the end.
+// Whether index 0 is among them is Finalize's business, not this
+// function's: GetManifest shares this path and legitimately runs
+// before segment 0 has been written.
 //
 // Both halves of that rule are forced by the archive layout, which
 // stores segments sorted by index. Reordering would make the manifest

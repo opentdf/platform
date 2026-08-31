@@ -361,6 +361,47 @@ func TestSegmentWriter_AllowsGapsOnFinalize(t *testing.T) {
 	writer.Close()
 }
 
+func TestSegmentWriter_FinalizeRequiresSegmentZero(t *testing.T) {
+	// Gaps are fine, but the set has to start at 0: only segment 0 emits
+	// the payload local file header, and Finalize sizes every offset it
+	// records as though that header were at the front of the stream.
+	writer := NewSegmentTDFWriter(1)
+	ctx := t.Context()
+
+	_, err := writer.WriteSegment(ctx, 1, 5, crc32.ChecksumIEEE([]byte("first")))
+	require.NoError(t, err)
+
+	_, err = writer.WriteSegment(ctx, 2, 6, crc32.ChecksumIEEE([]byte("second")))
+	require.NoError(t, err)
+
+	_, err = writer.Finalize(ctx, []byte("manifest"))
+	require.ErrorIs(t, err, ErrNoSegmentZero)
+
+	writer.Close()
+}
+
+func TestSegmentWriter_CleanupSegmentZeroBlocksFinalize(t *testing.T) {
+	// Dropping segment 0 after the fact is invisible to IsComplete --
+	// the inferred order becomes [1], which is internally consistent --
+	// so the header check has to stand on its own.
+	writer := NewSegmentTDFWriter(2)
+	ctx := t.Context()
+
+	_, err := writer.WriteSegment(ctx, 0, 5, crc32.ChecksumIEEE([]byte("first")))
+	require.NoError(t, err)
+
+	_, err = writer.WriteSegment(ctx, 1, 6, crc32.ChecksumIEEE([]byte("second")))
+	require.NoError(t, err)
+
+	require.NoError(t, writer.CleanupSegment(0))
+
+	_, err = writer.Finalize(ctx, []byte("manifest"))
+	require.ErrorIs(t, err, ErrNoSegmentZero)
+	require.NotErrorIs(t, err, ErrSegmentMissing, "the remaining segments are complete; only the header is gone")
+
+	writer.Close()
+}
+
 func TestSegmentWriter_CleanupSegment(t *testing.T) {
 	// Test memory cleanup functionality
 	writer := NewSegmentTDFWriter(3)

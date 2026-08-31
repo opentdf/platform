@@ -145,6 +145,15 @@ func (sw *segmentWriter) Finalize(ctx context.Context, manifest []byte) ([]byte,
 		return nil, &Error{Op: "finalize", Type: "segment", Err: ErrSegmentMissing}
 	}
 
+	// Only segment 0 emits the payload's local file header, so its
+	// absence is not something IsComplete can see: Order is derived from
+	// whatever indices arrived. Every offset computed below assumes that
+	// header sits at the front of the assembled stream, so without it the
+	// trailer would point the reader past the end of its own buffer.
+	if _, ok := sw.metadata.Segments[0]; !ok {
+		return nil, &Error{Op: "finalize", Type: "segment", Err: ErrNoSegmentZero}
+	}
+
 	// Compute final CRC32 by combining per-segment CRCs now that all are present
 	sw.metadata.FinalizeCRC()
 

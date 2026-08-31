@@ -21,6 +21,7 @@ import (
 	kaspb "github.com/opentdf/platform/protocol/go/kas"
 	"github.com/opentdf/platform/protocol/go/kas/kasconnect"
 	"github.com/opentdf/platform/protocol/go/policy"
+	"github.com/opentdf/platform/sdk/internal/zipstream"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/encoding/protojson"
@@ -1123,4 +1124,145 @@ func TestChunkedNonUniformSeekReadWriteTo(t *testing.T) {
 			}
 		})
 	}
+}
+
+// errArchiveWriteFailed is the injected archive failure used to drive
+// WriteSegment's error paths.
+var errArchiveWriteFailed = errors.New("archive write failed")
+
+// flakyArchiveWriter fails the first failures writes of one chosen
+// segment index and delegates everything else to a real segment
+// writer, so the archive itself stays consistent.
+type flakyArchiveWriter struct {
+	zipstream.SegmentWriter
+	failIndex int
+	failures  int
+}
+
+func (f *flakyArchiveWriter) WriteSegment(ctx context.Context, index int, size uint64, crc32 uint32) ([]byte, error) {
+	if index == f.failIndex && f.failures > 0 {
+		f.failures--
+		return nil, errArchiveWriteFailed
+	}
+	return f.SegmentWriter.WriteSegment(ctx, index, size, crc32)
+}
+
+// TestChunkedArchiveFailureKeepsManifestHonest checks that a segment
+// whose bytes never reached the archive is not described in the
+// manifest. WriteSegment used to publish the segment metadata before
+// handing the bytes to the archive, so Finalize emitted a manifest
+// covering a payload the archive had rejected and the caller never
+// received: the reader then mapped every later segment at the wrong
+// payload offset.
+//
+// Skipping the index rather than retrying it is legal here — segment
+// indices are ordering keys, not positions, so a sparse set finalizes
+// normally (see segmentOrderLocked). Only index 0 is special, because
+// it carries the ZIP local file header.
+func TestChunkedArchiveFailureKeepsManifestHonest(t *testing.T) {
+	ctx := context.Background()
+	kasBundle := newChunkedFakeKAS(t)
+	defer kasBundle.server.Close()
+	s := newChunkedTestSDK(t, kasBundle)
+
+	writer, err := s.NewChunkedWriter(ctx,
+		WithChunkedDefaultKAS(kasBundle.simpleKey()),
+		WithChunkedArchiveWriterFactory(func(clock Clock) zipstream.SegmentWriter {
+			return &flakyArchiveWriter{
+				SegmentWriter: DefaultArchiveWriterFactory(clock),
+				failIndex:     1,
+				failures:      1,
+			}
+		}),
+	)
+	require.NoError(t, err)
+
+	var body bytes.Buffer
+	write := func(index int, chunk string) error {
+		seg, err := writer.WriteSegment(ctx, index, []byte(chunk))
+		if err != nil {
+			return err
+		}
+		_, err = io.Copy(&body, seg.TDFData)
+		return err
+	}
+
+	require.NoError(t, write(0, "first "))
+
+	// Rejected by the archive, so the caller gets no bytes to append.
+	require.ErrorIs(t, write(1, "second "), errArchiveWriteFailed)
+
+	require.NoError(t, write(2, "third"))
+
+	fin, err := writer.Finalize(ctx)
+	require.NoError(t, err)
+	body.Write(fin.Data)
+
+	require.Len(t, fin.Manifest.Segments, 2,
+		"manifest must not describe the segment the archive rejected")
+
+	reader, err := s.LoadTDF(bytes.NewReader(body.Bytes()),
+		WithKasAllowlist([]string{kasBundle.url}),
+	)
+	require.NoError(t, err)
+
+	plain, err := io.ReadAll(reader)
+	require.NoError(t, err)
+	assert.Equal(t, "first third", string(plain))
+}
+
+// TestChunkedSegmentRetryAfterArchiveFailure checks that a failed write
+// releases its index. WriteSegment used to reserve the index up front
+// and never release it, so a single transient failure made the index
+// permanently unwritable and left the writer unable to finalize.
+func TestChunkedSegmentRetryAfterArchiveFailure(t *testing.T) {
+	ctx := context.Background()
+	kasBundle := newChunkedFakeKAS(t)
+	defer kasBundle.server.Close()
+	s := newChunkedTestSDK(t, kasBundle)
+
+	writer, err := s.NewChunkedWriter(ctx,
+		WithChunkedDefaultKAS(kasBundle.simpleKey()),
+		WithChunkedArchiveWriterFactory(func(clock Clock) zipstream.SegmentWriter {
+			return &flakyArchiveWriter{
+				SegmentWriter: DefaultArchiveWriterFactory(clock),
+				failIndex:     1,
+				failures:      1,
+			}
+		}),
+	)
+	require.NoError(t, err)
+
+	var body bytes.Buffer
+	write := func(index int, chunk string) error {
+		seg, err := writer.WriteSegment(ctx, index, []byte(chunk))
+		if err != nil {
+			return err
+		}
+		_, err = io.Copy(&body, seg.TDFData)
+		require.NoError(t, err)
+		return nil
+	}
+
+	require.NoError(t, write(0, "hello, "))
+
+	err = write(1, "chunked ")
+	require.ErrorIs(t, err, errArchiveWriteFailed)
+
+	// The same index must be usable again.
+	require.NoError(t, write(1, "chunked "), "a failed segment must be retryable")
+	require.NoError(t, write(2, "world!"))
+
+	fin, err := writer.Finalize(ctx)
+	require.NoError(t, err)
+
+	tdfBytes := bytes.Join([][]byte{body.Bytes(), fin.Data}, nil)
+	reader, err := s.LoadTDF(bytes.NewReader(tdfBytes),
+		WithKasAllowlist([]string{kasBundle.url}),
+	)
+	require.NoError(t, err)
+
+	plain, err := io.ReadAll(reader)
+	require.NoError(t, err)
+	assert.Equal(t, []byte("hello, chunked world!"), plain)
 }

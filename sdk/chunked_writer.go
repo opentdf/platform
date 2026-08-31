@@ -399,12 +399,28 @@ func (w *chunkedWriter) WriteSegment(ctx context.Context, index int, data []byte
 	if index > w.maxSegmentIndex {
 		w.maxSegmentIndex = index
 	}
+	// Reserve the index so a concurrent write to the same one is
+	// rejected, but leave Size negative: the segment does not count as
+	// written until its bytes are in the archive.
 	seg := &Segment{Size: -1}
 	w.segments[index] = seg
 	w.mu.Unlock()
 
+	// release drops the reservation so the caller can retry this index
+	// after a failure. It matches on identity and on the placeholder
+	// still being unwritten, so it can never discard a segment some
+	// other call has since completed.
+	release := func() {
+		w.mu.Lock()
+		if cur, ok := w.segments[index]; ok && cur == seg && cur.Size < 0 {
+			delete(w.segments, index)
+		}
+		w.mu.Unlock()
+	}
+
 	ciphertext, nonce, err := w.block.EncryptInPlace(data)
 	if err != nil {
+		release()
 		return nil, fmt.Errorf("encrypt segment %d: %w", index, err)
 	}
 	sealed := make([]byte, 0, len(nonce)+len(ciphertext))
@@ -412,38 +428,49 @@ func (w *chunkedWriter) WriteSegment(ctx context.Context, index int, data []byte
 	sealed = append(sealed, ciphertext...)
 	sig, err := calculateSignature(sealed, w.dek, w.segmentIntegrityAlgorithm, w.useHex)
 	if err != nil {
+		release()
 		return nil, fmt.Errorf("segment %d signature: %w", index, err)
 	}
 	hash := string(ocrypto.Base64Encode([]byte(sig)))
+	encryptedSize := int64(len(sealed))
 
+	crc := crc32.NewIEEE()
+	if _, err := crc.Write(nonce); err != nil {
+		release()
+		return nil, err
+	}
+	if _, err := crc.Write(ciphertext); err != nil {
+		release()
+		return nil, err
+	}
+	header, err := w.archiveWriter.WriteSegment(ctx, index, uint64(encryptedSize), crc.Sum32())
+	if err != nil {
+		release()
+		return nil, fmt.Errorf("write segment %d to archive: %w", index, err)
+	}
+
+	// Commit only once the archive has accepted the segment. Publishing
+	// the metadata earlier would let Finalize emit a manifest that
+	// describes bytes the archive never received.
 	w.mu.Lock()
-	seg.EncryptedSize = int64(len(sealed))
+	seg.EncryptedSize = encryptedSize
 	seg.Hash = hash
 	seg.Size = int64(len(data))
 	w.mu.Unlock()
 
-	crc := crc32.NewIEEE()
-	if _, err := crc.Write(nonce); err != nil {
-		return nil, err
-	}
-	if _, err := crc.Write(ciphertext); err != nil {
-		return nil, err
-	}
-	header, err := w.archiveWriter.WriteSegment(ctx, index, uint64(seg.EncryptedSize), crc.Sum32())
-	if err != nil {
-		return nil, fmt.Errorf("write segment %d to archive: %w", index, err)
-	}
 	var reader io.Reader
 	if len(header) == 0 {
 		reader = io.MultiReader(bytes.NewReader(nonce), bytes.NewReader(ciphertext))
 	} else {
 		reader = io.MultiReader(bytes.NewReader(header), bytes.NewReader(nonce), bytes.NewReader(ciphertext))
 	}
+	// Reported from the locals rather than from seg, which is shared with
+	// concurrent readers of w.segments once the lock is released.
 	return &ChunkedSegmentResult{
-		EncryptedSize: seg.EncryptedSize,
+		EncryptedSize: encryptedSize,
 		Hash:          hash,
 		Index:         index,
-		PlaintextSize: seg.Size,
+		PlaintextSize: int64(len(data)),
 		TDFData:       reader,
 	}, nil
 }

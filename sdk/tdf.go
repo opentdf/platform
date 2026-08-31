@@ -302,21 +302,12 @@ func (s SDK) CreateTDFContext(ctx context.Context, writer io.Writer, reader io.R
 	sig := string(ocrypto.Base64Encode([]byte(rootSignature)))
 	tdfObject.manifest.Signature = sig
 
-	integrityAlgStr := gmacIntegrityAlgorithm
-	if tdfConfig.integrityAlgorithm == HS256 {
-		integrityAlgStr = hmacIntegrityAlgorithm
-	}
-	tdfObject.manifest.Algorithm = integrityAlgStr
+	tdfObject.manifest.Algorithm = integrityAlgorithmString(tdfConfig.integrityAlgorithm)
 
 	tdfObject.manifest.DefaultSegmentSize = segmentSize
 	tdfObject.manifest.DefaultEncryptedSegSize = encryptedSegmentSize
 
-	segIntegrityAlgStr := gmacIntegrityAlgorithm
-	if tdfConfig.segmentIntegrityAlgorithm == HS256 {
-		segIntegrityAlgStr = hmacIntegrityAlgorithm
-	}
-
-	tdfObject.manifest.SegmentHashAlgorithm = segIntegrityAlgStr
+	tdfObject.manifest.SegmentHashAlgorithm = integrityAlgorithmString(tdfConfig.segmentIntegrityAlgorithm)
 	tdfObject.manifest.Method.IsStreamable = true
 
 	// add payload info
@@ -330,7 +321,6 @@ func (s SDK) CreateTDFContext(ctx context.Context, writer io.Writer, reader io.R
 	tdfObject.manifest.URL = zipstream.TDFPayloadFileName
 	tdfObject.manifest.IsEncrypted = true
 
-	var signedAssertion []Assertion
 	if tdfConfig.addDefaultAssertion {
 		systemMeta, err := GetSystemMetadataAssertionConfig()
 		if err != nil {
@@ -339,52 +329,14 @@ func (s SDK) CreateTDFContext(ctx context.Context, writer io.Writer, reader io.R
 		tdfConfig.assertions = append(tdfConfig.assertions, systemMeta)
 	}
 
-	for _, assertion := range tdfConfig.assertions {
-		// Store a temporary assertion
-		tmpAssertion := Assertion{}
-
-		tmpAssertion.ID = assertion.ID
-		tmpAssertion.Type = assertion.Type
-		tmpAssertion.Scope = assertion.Scope
-		tmpAssertion.Statement = assertion.Statement
-		tmpAssertion.AppliesToState = assertion.AppliesToState
-
-		hashOfAssertionAsHex, err := tmpAssertion.GetHash()
-		if err != nil {
-			return nil, err
-		}
-
-		hashOfAssertion := make([]byte, hex.DecodedLen(len(hashOfAssertionAsHex)))
-		_, err = hex.Decode(hashOfAssertion, hashOfAssertionAsHex)
-		if err != nil {
-			return nil, fmt.Errorf("error decoding hex string: %w", err)
-		}
-
-		var completeHashBuilder strings.Builder
-		completeHashBuilder.WriteString(aggregateHashBuilder.String())
-		if tdfConfig.useHex {
-			completeHashBuilder.Write(hashOfAssertionAsHex)
-		} else {
-			completeHashBuilder.Write(hashOfAssertion)
-		}
-
-		encoded := ocrypto.Base64Encode([]byte(completeHashBuilder.String()))
-
-		assertionSigningKey := AssertionKey{}
-
-		// Set default to HS256 and payload key
-		assertionSigningKey.Alg = AssertionKeyAlgHS256
-		assertionSigningKey.Key = tdfObject.payloadKey[:]
-
-		if !assertion.SigningKey.IsEmpty() {
-			assertionSigningKey = assertion.SigningKey
-		}
-
-		if err := tmpAssertion.Sign(string(hashOfAssertionAsHex), string(encoded), assertionSigningKey); err != nil {
-			return nil, fmt.Errorf("failed to sign assertion: %w", err)
-		}
-
-		signedAssertion = append(signedAssertion, tmpAssertion)
+	signedAssertion, err := signAssertions(
+		[]byte(aggregateHashBuilder.String()),
+		tdfConfig.assertions,
+		tdfObject.payloadKey[:],
+		tdfConfig.useHex,
+	)
+	if err != nil {
+		return nil, err
 	}
 
 	tdfObject.manifest.Assertions = signedAssertion
@@ -588,12 +540,7 @@ func (s SDK) prepareManifest(ctx context.Context, t *TDFObject, tdfConfig TDFCon
 		symKeys = append(symKeys, symKey)
 
 		// policy binding
-		policyBindingHash := hex.EncodeToString(ocrypto.CalculateSHA256Hmac(symKey, base64PolicyObject))
-		pbstring := string(ocrypto.Base64Encode([]byte(policyBindingHash)))
-		policyBinding := PolicyBinding{
-			Alg:  "HS256",
-			Hash: pbstring,
-		}
+		policyBinding := createPolicyBinding(symKey, base64PolicyObject)
 
 		// encrypted metadata
 		// add meta data
@@ -637,6 +584,31 @@ func (s SDK) prepareManifest(ctx context.Context, t *TDFObject, tdfConfig TDFCon
 	t.manifest = manifest
 	t.aesGcm = gcm
 	return nil
+}
+
+// integrityAlgorithmString maps an IntegrityAlgorithm to its manifest
+// string form.
+//
+// The dispatch must mirror calculateSignature, which treats anything that is
+// not HS256 as GMAC. IntegrityAlgorithm is an alias for int, so out-of-range
+// values are possible; if the two functions disagree on one, the manifest
+// names an algorithm other than the one its signature was computed with and
+// readers reject the payload as an integrity failure.
+func integrityAlgorithmString(a IntegrityAlgorithm) string {
+	if a == HS256 {
+		return hmacIntegrityAlgorithm
+	}
+	return gmacIntegrityAlgorithm
+}
+
+// createPolicyBinding produces an HMAC-SHA256 binding value keyed on the
+// symmetric key, over the base64-encoded policy object.
+func createPolicyBinding(symKey []byte, base64PolicyObject []byte) PolicyBinding {
+	policyBindingHash := hex.EncodeToString(ocrypto.CalculateSHA256Hmac(symKey, base64PolicyObject))
+	return PolicyBinding{
+		Alg:  hmacIntegrityAlgorithm,
+		Hash: string(ocrypto.Base64Encode([]byte(policyBindingHash))),
+	}
 }
 
 func encryptMetadata(symKey []byte, metaData string) (string, error) {

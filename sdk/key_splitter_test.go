@@ -32,15 +32,17 @@ func TestSingleKASSplitterRejectsUnmappableAlgorithm(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			splitter := DefaultKeySplitter()
-			res, err := splitter.Split(context.Background(), nil, []byte("0123456789abcdef"),
-				&policy.SimpleKasKey{
+			res, err := splitter.Split(context.Background(), SplitRequest{
+				DEK: []byte("0123456789abcdef"),
+				DefaultKAS: []*policy.SimpleKasKey{{
 					KasUri: "https://kas.example.com",
 					PublicKey: &policy.SimpleKasPublicKey{
 						Algorithm: tc.alg,
 						Kid:       "k1",
 						Pem:       splitterTestPEM,
 					},
-				})
+				}},
+			})
 
 			require.ErrorIs(t, err, ErrSplitterUnsupportedAlgorithm)
 			assert.Nil(t, res)
@@ -63,15 +65,17 @@ func TestSingleKASSplitterAcceptsKnownAlgorithms(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			splitter := DefaultKeySplitter()
 			dek := []byte("0123456789abcdef")
-			res, err := splitter.Split(context.Background(), nil, dek,
-				&policy.SimpleKasKey{
+			res, err := splitter.Split(context.Background(), SplitRequest{
+				DEK: dek,
+				DefaultKAS: []*policy.SimpleKasKey{{
 					KasUri: "https://kas.example.com",
 					PublicKey: &policy.SimpleKasPublicKey{
 						Algorithm: tc.alg,
 						Kid:       "k1",
 						Pem:       splitterTestPEM,
 					},
-				})
+				}},
+			})
 
 			require.NoError(t, err)
 			require.Len(t, res.Splits, 1)

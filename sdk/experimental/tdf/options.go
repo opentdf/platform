@@ -63,9 +63,10 @@ type WriterConfig struct {
 	// These will be used during Finalize() if no attributes are provided there.
 	initialAttributes []*policy.Value
 
-	// initialDefaultKAS allows callers to provide a default KAS at writer creation time.
-	// This will be used during Finalize() if no default KAS is provided there.
-	initialDefaultKAS *policy.SimpleKasKey
+	// initialDefaultKAS allows callers to provide default KAS entries at writer
+	// creation time. These will be used during Finalize() if no default KAS is
+	// provided there. Several entries split the DEK across all of them.
+	initialDefaultKAS []*policy.SimpleKasKey
 
 	// targetMode is the TDF spec version to write for, as semver.
 	// Empty selects the current format. See WithTargetMode.
@@ -148,7 +149,10 @@ func WithInitialAttributes(values []*policy.Value) Option[*WriterConfig] {
 //
 // This default KAS is used by Finalize() if no default KAS is provided via
 // Finalize options. Finalize-specified default KAS always takes precedence.
-func WithDefaultKASForWriter(kas *policy.SimpleKasKey) Option[*WriterConfig] {
+//
+// Passing several entries splits the DEK across all of them, so every one is
+// required to reassemble it.
+func WithDefaultKASForWriter(kas ...*policy.SimpleKasKey) Option[*WriterConfig] {
 	return func(c *WriterConfig) {
 		c.initialDefaultKAS = kas
 	}
@@ -165,9 +169,11 @@ func WithDefaultKASForWriter(kas *policy.SimpleKasKey) Option[*WriterConfig] {
 // All fields have sensible defaults and are optional unless specific access
 // controls or metadata are required.
 type WriterFinalizeConfig struct {
-	// defaultKas specifies the default Key Access Server for attribute-based access control.
-	// If not provided, the system will attempt to resolve KAS from attributes.
-	defaultKas *policy.SimpleKasKey
+	// defaultKas specifies the default Key Access Server entries for
+	// attribute-based access control. If not provided, the system will attempt
+	// to resolve KAS from attributes. Several entries split the DEK across all
+	// of them.
+	defaultKas []*policy.SimpleKasKey
 
 	// attributes contains the data attributes that define access policies for this TDF.
 	// Each attribute represents an access requirement (e.g., clearance level, classification).
@@ -275,7 +281,11 @@ func WithSegments(indices []int) Option[*WriterFinalizeConfig] {
 //		},
 //	}
 //	result, err := writer.Finalize(ctx, WithDefaultKAS(kasKey))
-func WithDefaultKAS(kas *policy.SimpleKasKey) Option[*WriterFinalizeConfig] {
+//
+// Passing several entries splits the DEK across all of them, so every one is
+// required to reassemble it. The override replaces any writer-level default
+// KAS wholesale; the two are never merged.
+func WithDefaultKAS(kas ...*policy.SimpleKasKey) Option[*WriterFinalizeConfig] {
 	return func(c *WriterFinalizeConfig) {
 		c.defaultKas = kas
 	}

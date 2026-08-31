@@ -131,7 +131,7 @@ func NewWriter(ctx context.Context, opts ...Option[*WriterConfig]) (*Writer, err
 		sdk.WithChunkedIntegrityAlgorithm(sdk.IntegrityAlgorithm(config.integrityAlgorithm)),
 		sdk.WithChunkedSegmentIntegrityAlgorithm(sdk.IntegrityAlgorithm(config.segmentIntegrityAlgorithm)),
 		sdk.WithChunkedInitialAttributes(config.initialAttributes),
-		sdk.WithChunkedDefaultKAS(config.initialDefaultKAS),
+		sdk.WithChunkedDefaultKAS(config.initialDefaultKAS...),
 		sdk.WithChunkedKeySplitter(xorSplitter{}),
 		sdk.WithChunkedTargetMode(config.targetMode),
 	)
@@ -282,7 +282,7 @@ func finalizeOptions(opts []Option[*WriterFinalizeConfig]) []sdk.ChunkedFinalize
 	}
 	return []sdk.ChunkedFinalizeOption{
 		sdk.WithChunkedAttributes(cfg.attributes),
-		sdk.WithChunkedDefaultKASForFinalize(cfg.defaultKas),
+		sdk.WithChunkedDefaultKASForFinalize(cfg.defaultKas...),
 		sdk.WithChunkedEncryptedMetadata(cfg.encryptedMetadata),
 		sdk.WithChunkedMimeType(cfg.payloadMimeType),
 		sdk.WithChunkedSegments(cfg.keepSegments),

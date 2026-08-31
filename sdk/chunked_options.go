@@ -64,7 +64,10 @@ func WithChunkedInitialAttributes(values []*policy.Value) ChunkedWriterOption {
 
 // WithChunkedDefaultKAS sets the default KAS used by Finalize when
 // the Finalize call does not supply its own.
-func WithChunkedDefaultKAS(kas *policy.SimpleKasKey) ChunkedWriterOption {
+//
+// Passing several entries splits the DEK across all of them, so every
+// one is required to reassemble it.
+func WithChunkedDefaultKAS(kas ...*policy.SimpleKasKey) ChunkedWriterOption {
 	return func(c *ChunkedWriterConfig) error {
 		c.initialDefaultKAS = kas
 		return nil
@@ -136,8 +139,9 @@ func WithChunkedAttributes(values []*policy.Value) ChunkedFinalizeOption {
 }
 
 // WithChunkedDefaultKASForFinalize overrides the writer's initial
-// default KAS for this Finalize call.
-func WithChunkedDefaultKASForFinalize(kas *policy.SimpleKasKey) ChunkedFinalizeOption {
+// default KAS for this Finalize call. The override replaces the
+// writer-level list wholesale; the two are never merged.
+func WithChunkedDefaultKASForFinalize(kas ...*policy.SimpleKasKey) ChunkedFinalizeOption {
 	return func(c *ChunkedFinalizeConfig) error {
 		c.defaultKAS = kas
 		return nil

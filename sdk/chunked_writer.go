@@ -153,9 +153,10 @@ type ChunkedWriterConfig struct {
 	// when the Finalize call does not supply its own.
 	initialAttributes []*policy.Value
 
-	// initialDefaultKAS is the default KAS used at Finalize when the
-	// Finalize call does not supply its own.
-	initialDefaultKAS *policy.SimpleKasKey
+	// initialDefaultKAS are the default KAS entries used at Finalize
+	// when the Finalize call does not supply its own. Several entries
+	// mean the DEK is split across all of them.
+	initialDefaultKAS []*policy.SimpleKasKey
 
 	// integrityAlgorithm is the algorithm used for the root
 	// signature. Defaults to HS256.
@@ -196,8 +197,9 @@ type ChunkedFinalizeConfig struct {
 	attributes []*policy.Value
 
 	// defaultKAS overrides the writer's initialDefaultKAS for this
-	// Finalize call.
-	defaultKAS *policy.SimpleKasKey
+	// Finalize call. The override replaces the writer-level list
+	// wholesale; the two are never merged.
+	defaultKAS []*policy.SimpleKasKey
 
 	// encryptedMetadata is opaque metadata AES-GCM-encrypted on each
 	// KAO with the split share.
@@ -254,7 +256,7 @@ type chunkedWriter struct {
 
 	// initialDefaultKAS captured at construction; used by Finalize
 	// when the caller does not override.
-	initialDefaultKAS *policy.SimpleKasKey
+	initialDefaultKAS []*policy.SimpleKasKey
 
 	// integrityAlgorithm is used for the root signature.
 	integrityAlgorithm IntegrityAlgorithm
@@ -537,7 +539,7 @@ func (w *chunkedWriter) applyFinalizeOptions(opts []ChunkedFinalizeOption) (*Chu
 	if len(cfg.attributes) == 0 && len(w.initialAttributes) > 0 {
 		cfg.attributes = w.initialAttributes
 	}
-	if cfg.defaultKAS == nil && w.initialDefaultKAS != nil {
+	if len(cfg.defaultKAS) == 0 && len(w.initialDefaultKAS) > 0 {
 		cfg.defaultKAS = w.initialDefaultKAS
 	}
 	return cfg, nil

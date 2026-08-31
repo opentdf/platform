@@ -25,14 +25,22 @@ import (
 // splitter is built inside Split rather than held on the adapter.
 type xorSplitter struct{}
 
-// Split evaluates attrs and returns the DEK shares plus the wrapping
-// key for each KAS they are addressed to.
+// Split evaluates the request's attributes and returns the DEK shares
+// plus the wrapping key for each KAS they are addressed to.
 //
 // keysplit's errors (ErrNoDefaultKAS and friends) are returned
 // unwrapped so callers can match on them as before.
-func (xorSplitter) Split(ctx context.Context, attrs []*policy.Value, dek []byte, defaultKAS *policy.SimpleKasKey) (*sdk.SplitResult, error) {
+//
+// keysplit takes a single default KAS, so only the first entry of
+// req.DefaultKAS is honored; it has no notion of splitting the DEK
+// across several defaults.
+func (xorSplitter) Split(ctx context.Context, req sdk.SplitRequest) (*sdk.SplitResult, error) {
+	var defaultKAS *policy.SimpleKasKey
+	if len(req.DefaultKAS) > 0 {
+		defaultKAS = req.DefaultKAS[0]
+	}
 	splitter := keysplit.NewXORSplitter(keysplit.WithDefaultKAS(defaultKAS))
-	res, err := splitter.GenerateSplits(ctx, attrs, dek)
+	res, err := splitter.GenerateSplits(ctx, req.Attributes, req.DEK)
 	if err != nil {
 		return nil, err
 	}

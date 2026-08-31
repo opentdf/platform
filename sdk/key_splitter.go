@@ -16,10 +16,41 @@ import (
 // the chunked Writer so tests can substitute an identity splitter
 // without touching real attribute grants.
 type KeySplitter interface {
-	// Split evaluates the ABAC policy expressed by attrs, produces N
-	// splits of dek per the resulting boolean expression, and returns
-	// each split alongside the KAS public keys it must be wrapped to.
-	Split(ctx context.Context, attrs []*policy.Value, dek []byte, defaultKAS *policy.SimpleKasKey) (*SplitResult, error)
+	// Split evaluates the ABAC policy in req, produces N splits of the
+	// DEK per the resulting boolean expression, and returns each split
+	// alongside the KAS public keys it must be wrapped to.
+	Split(ctx context.Context, req SplitRequest) (*SplitResult, error)
+}
+
+// SplitRequest is the input to [KeySplitter.Split].
+//
+// It is a struct rather than an argument list because the inputs are
+// per-call data that grows over time -- the preferred wrapping
+// algorithm and the split-ID generator joined the attributes and the
+// DEK -- while a splitter's dependencies (key fetcher, cache, logger,
+// entropy) belong on its constructor. A nil or zero field selects the
+// documented default, so adding a field does not break callers.
+type SplitRequest struct {
+	// Attributes are the policy values bound to the payload. Empty
+	// means no ABAC: the whole DEK goes to DefaultKAS.
+	Attributes []*policy.Value
+
+	// DEK is the data encryption key to split.
+	DEK []byte
+
+	// DefaultKAS is the fallback wrapping target, used when Attributes
+	// yield no key assignments at all. One entry means a single unsplit
+	// key access object; several mean the DEK is split across all of
+	// them, so every one is required to reassemble it (AND).
+	DefaultKAS []*policy.SimpleKasKey
+
+	// PreferredWrappingAlgorithm selects which key to use at a KAS that
+	// policy names without naming a key ID. Zero means the KAS default.
+	PreferredWrappingAlgorithm ocrypto.KeyType
+
+	// GenerateSplitID names each split. Nil means random UUIDs; tests
+	// substitute a counter for reproducible manifests.
+	GenerateSplitID func() string
 }
 
 // Split is one XOR share of the DEK bound to one or more KAS
@@ -87,11 +118,15 @@ func DefaultKeySplitter() KeySplitter { return &singleKASSplitter{} }
 // this default's scope.
 type singleKASSplitter struct{}
 
-// Split returns one split covering the full DEK, addressed to
-// defaultKAS. Errors when defaultKAS is nil, has no public key, or
-// names an algorithm this SDK cannot wrap for.
-func (s *singleKASSplitter) Split(_ context.Context, _ []*policy.Value, dek []byte, defaultKAS *policy.SimpleKasKey) (*SplitResult, error) {
-	if defaultKAS == nil || defaultKAS.GetPublicKey() == nil || defaultKAS.GetPublicKey().GetPem() == "" {
+// Split returns one split covering the full DEK, addressed to the
+// first entry of req.DefaultKAS. Errors when that is absent, has no
+// public key, or names an algorithm this SDK cannot wrap for.
+func (s *singleKASSplitter) Split(_ context.Context, req SplitRequest) (*SplitResult, error) {
+	if len(req.DefaultKAS) == 0 {
+		return nil, ErrSplitterRequiresDefaultKAS
+	}
+	defaultKAS := req.DefaultKAS[0]
+	if defaultKAS.GetPublicKey() == nil || defaultKAS.GetPublicKey().GetPem() == "" {
 		return nil, ErrSplitterRequiresDefaultKAS
 	}
 	url := defaultKAS.GetKasUri()
@@ -109,8 +144,8 @@ func (s *singleKASSplitter) Split(_ context.Context, _ []*policy.Value, dek []by
 			ErrSplitterUnsupportedAlgorithm, url, defaultKAS.GetPublicKey().GetAlgorithm())
 	}
 
-	share := make([]byte, len(dek))
-	copy(share, dek)
+	share := make([]byte, len(req.DEK))
+	copy(share, req.DEK)
 	return &SplitResult{
 		Splits: []Split{{
 			Data: share,
@@ -169,7 +204,11 @@ type splitterKeyAccess struct {
 }
 
 func (r splitterKeyAccess) resolve(ctx context.Context, dek []byte, cfg *ChunkedFinalizeConfig) (string, []KeyAccess, error) {
-	splits, err := r.splitter.Split(ctx, cfg.attributes, dek, cfg.defaultKAS)
+	splits, err := r.splitter.Split(ctx, SplitRequest{
+		Attributes: cfg.attributes,
+		DEK:        dek,
+		DefaultKAS: cfg.defaultKAS,
+	})
 	if err != nil {
 		return "", nil, err
 	}

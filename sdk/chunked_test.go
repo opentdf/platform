@@ -1266,3 +1266,37 @@ func TestChunkedSegmentRetryAfterArchiveFailure(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, []byte("hello, chunked world!"), plain)
 }
+
+// TestChunkedOptionsRejectNil checks that the injection-seam options
+// refuse a nil value instead of storing it. A stored nil is
+// indistinguishable from an unset field, so no default gets installed
+// and the nil surfaces as a panic partway through writing -- for the
+// key splitter, not until Finalize, after the caller has already
+// encrypted and uploaded every segment.
+func TestChunkedOptionsRejectNil(t *testing.T) {
+	ctx := context.Background()
+	kasBundle := newChunkedFakeKAS(t)
+	defer kasBundle.server.Close()
+	s := newChunkedTestSDK(t, kasBundle)
+
+	for _, tc := range []struct {
+		name string
+		opt  ChunkedWriterOption
+	}{
+		{"archive writer factory", WithChunkedArchiveWriterFactory(nil)},
+		{"cipher factory", WithChunkedCipherFactory(nil)},
+		{"clock", WithChunkedClock(nil)},
+		{"key splitter", WithChunkedKeySplitter(nil)},
+		{"rand", WithChunkedRand(nil)},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			writer, err := s.NewChunkedWriter(ctx,
+				WithChunkedDefaultKAS(kasBundle.simpleKey()),
+				tc.opt,
+			)
+			require.Error(t, err)
+			assert.Contains(t, err.Error(), "must not be nil")
+			assert.Nil(t, writer)
+		})
+	}
+}

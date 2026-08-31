@@ -1,25 +1,39 @@
 package sdk
 
 import (
+	"errors"
 	"fmt"
 	"io"
 
 	"github.com/opentdf/platform/protocol/go/policy"
 )
 
+// Each injection-seam option below rejects nil rather than storing it.
+// A nil seam is not detectable later: the config field is
+// indistinguishable from "not set", so NewChunkedWriter installs no
+// default and the nil is dereferenced during writing -- for the
+// splitter, not until Finalize, long after the caller has encrypted
+// every segment.
+
 // WithChunkedArchiveWriterFactory overrides the ZIP archive writer
-// factory used by the chunked Writer.
+// factory used by the chunked Writer. The factory must not be nil.
 func WithChunkedArchiveWriterFactory(f ArchiveWriterFactory) ChunkedWriterOption {
 	return func(c *ChunkedWriterConfig) error {
+		if f == nil {
+			return errors.New("chunked: archive writer factory must not be nil")
+		}
 		c.archiveFactory = f
 		return nil
 	}
 }
 
 // WithChunkedCipherFactory overrides the segment cipher factory used
-// by the chunked Writer.
+// by the chunked Writer. The factory must not be nil.
 func WithChunkedCipherFactory(f SegmentCipherFactory) ChunkedWriterOption {
 	return func(c *ChunkedWriterConfig) error {
+		if f == nil {
+			return errors.New("chunked: cipher factory must not be nil")
+		}
 		c.cipherFactory = f
 		return nil
 	}
@@ -28,9 +42,12 @@ func WithChunkedCipherFactory(f SegmentCipherFactory) ChunkedWriterOption {
 // WithChunkedClock overrides the time source used by the chunked
 // Writer and, through it, by the zipstream layer that stamps ZIP
 // header timestamps. Tests inject FixedClock for deterministic
-// output.
+// output. The clock must not be nil.
 func WithChunkedClock(clock Clock) ChunkedWriterOption {
 	return func(c *ChunkedWriterConfig) error {
+		if clock == nil {
+			return errors.New("chunked: clock must not be nil")
+		}
 		c.clock = clock
 		return nil
 	}
@@ -65,18 +82,25 @@ func WithChunkedIntegrityAlgorithm(algo IntegrityAlgorithm) ChunkedWriterOption 
 
 // WithChunkedKeySplitter overrides the key splitter used by the
 // chunked Writer. Callers with multi-KAS attribute grants should
-// inject a splitter that understands their grant model.
+// inject a splitter that understands their grant model. The splitter
+// must not be nil.
 func WithChunkedKeySplitter(splitter KeySplitter) ChunkedWriterOption {
 	return func(c *ChunkedWriterConfig) error {
+		if splitter == nil {
+			return errors.New("chunked: key splitter must not be nil")
+		}
 		c.splitter = splitter
 		return nil
 	}
 }
 
 // WithChunkedRand overrides the entropy source used to generate the
-// DEK.
+// DEK. The reader must not be nil.
 func WithChunkedRand(r io.Reader) ChunkedWriterOption {
 	return func(c *ChunkedWriterConfig) error {
+		if r == nil {
+			return errors.New("chunked: rand must not be nil")
+		}
 		c.rand = r
 		return nil
 	}

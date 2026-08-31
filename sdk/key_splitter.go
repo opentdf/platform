@@ -106,68 +106,23 @@ type KASPublicKey struct {
 	URL string
 }
 
-// ErrSplitterRequiresDefaultKAS is returned by the default key
-// splitter when no default KAS was supplied. The default splitter is
-// single-KAS only; multi-attribute splits require injecting a full
-// splitter via WithChunkedKeySplitter.
-var ErrSplitterRequiresDefaultKAS = errors.New("chunked: default splitter requires a default KAS; supply WithChunkedDefaultKAS or WithChunkedKeySplitter")
+// ErrSplitterRequiresDefaultKAS is returned when a policy names no
+// KAS at all and there is no fallback to bind the DEK to: no default
+// KAS was supplied, and the splitter has no base key to reach for.
+var ErrSplitterRequiresDefaultKAS = errors.New("chunked: policy names no KAS and no fallback is available; supply WithChunkedDefaultKAS or attributes carrying key access")
 
-// ErrSplitterUnsupportedAlgorithm is returned by the default key
-// splitter when the default KAS advertises a key algorithm this SDK
-// has no wrapping scheme for.
+// ErrSplitterUnsupportedAlgorithm is returned when a KAS advertises a
+// key algorithm this SDK has no wrapping scheme for.
 var ErrSplitterUnsupportedAlgorithm = errors.New("chunked: unsupported KAS key algorithm")
 
-// DefaultKeySplitter returns a single-KAS single-split splitter.
-// Attributes are ignored; the entire DEK is bound to the caller's
-// default KAS. Callers with attribute-based key splits requirements
-// should inject their own splitter via WithChunkedKeySplitter.
-func DefaultKeySplitter() KeySplitter { return &singleKASSplitter{} }
-
-// singleKASSplitter binds the full DEK to a single KAS. Attributes
-// are ignored; splitting into multi-KAS OR-of-AND shares is beyond
-// this default's scope.
-type singleKASSplitter struct{}
-
-// Split returns one split covering the full DEK, addressed to the
-// first entry of req.DefaultKAS. Errors when that is absent, has no
-// public key, or names an algorithm this SDK cannot wrap for.
-func (s *singleKASSplitter) Split(_ context.Context, req SplitRequest) (*SplitResult, error) {
-	if len(req.DefaultKAS) == 0 {
-		return nil, ErrSplitterRequiresDefaultKAS
-	}
-	defaultKAS := req.DefaultKAS[0]
-	if defaultKAS.GetPublicKey() == nil || defaultKAS.GetPublicKey().GetPem() == "" {
-		return nil, ErrSplitterRequiresDefaultKAS
-	}
-	url := defaultKAS.GetKasUri()
-
-	// Reject an unmappable algorithm here rather than letting the empty
-	// string reach createKeyAccess. There it selects the RSA branch by
-	// default, and ocrypto.FromPublicPEM sniffs the PEM instead of
-	// honoring that choice: an EC or ML-KEM key parses successfully and
-	// wraps, but the KAO is left claiming keyType "wrapped" with no
-	// ephemeral public key. That produces a TDF nothing can decrypt,
-	// which is far worse to debug than a failure at creation time.
-	alg := algorithmPolicyToString(defaultKAS.GetPublicKey().GetAlgorithm())
-	if alg == "" {
-		return nil, fmt.Errorf("%w: kas %s advertises algorithm %v",
-			ErrSplitterUnsupportedAlgorithm, url, defaultKAS.GetPublicKey().GetAlgorithm())
-	}
-
-	share := make([]byte, len(req.DEK))
-	copy(share, req.DEK)
-	return &SplitResult{
-		Splits: []Split{{
-			Data: share,
-			Keys: []KASPublicKey{{
-				Algorithm: alg,
-				KID:       defaultKAS.GetPublicKey().GetKid(),
-				PEM:       defaultKAS.GetPublicKey().GetPem(),
-				URL:       url,
-			}},
-		}},
-	}, nil
-}
+// DefaultKeySplitter returns the canonical attribute splitter, working
+// entirely offline. It derives splits from the attribute values the
+// caller supplies exactly as SDK.CreateTDF does, but every wrapping
+// key must be carried by those values or by the default KAS.
+//
+// Use [SDK.KeySplitter] instead to resolve keys the policy did not
+// carry against a running platform.
+func DefaultKeySplitter() KeySplitter { return NewAttributeKeySplitter() }
 
 // keyAccessResolver turns a DEK into the two manifest fields that
 // bind it to policy: the base64-encoded policy object and the key

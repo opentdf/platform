@@ -2742,12 +2742,43 @@ func (s *TDFSuite) Test_Autoconfigure() {
 	}
 }
 
-func (s *TDFSuite) Test_PopulateBaseKey_Success() {
-	tdfConfig := &TDFConfig{
-		preferredKeyWrapAlg: ocrypto.RSA2048Key,
-		kasInfoList:         []KASInfo{},
+// Test_BaseKeyFallback_Success pins the base key as the wrapping target
+// of last resort: a policy naming no KAS binds the whole DEK to it, in
+// one key access object carrying no split ID.
+func (s *TDFSuite) Test_BaseKeyFallback_Success() {
+	expectedURL := s.kasTestURLLookup[baseKeyURL]
+	s.Require().NotEmpty(expectedURL, "Expected KAS URL should not be empty")
+
+	baseKey := policy.SimpleKasKey{
+		KasUri: expectedURL,
+		PublicKey: &policy.SimpleKasPublicKey{
+			Algorithm: policy.Algorithm_ALGORITHM_RSA_2048,
+			Kid:       baseKeyKID,
+			Pem:       mockRSAPublicKey1,
+		},
 	}
 
+	tpl, err := fallbackTemplate(
+		s.T().Context(),
+		SplitRequest{PreferredWrappingAlgorithm: ocrypto.RSA2048Key},
+		uuidSplitIDGenerator,
+		nil,
+		staticBaseKey{key: &baseKey},
+		slog.Default(),
+	)
+	s.Require().NoError(err, "the base key should serve as the fallback wrapping target")
+
+	s.Require().Len(tpl, 1, "one fallback target means one key access object")
+	s.Require().Equal(expectedURL, tpl[0].KAS, "KAS URL should match")
+	s.Require().Empty(tpl[0].SplitID, "a single key access object carries no split ID")
+	s.Require().Equal(baseKeyKID, tpl[0].kid, "KAS KID should match")
+	s.Require().Equal(ocrypto.RSA2048Key, tpl[0].algorithm, "Algorithm should match")
+	s.Require().Equal(mockRSAPublicKey1, tpl[0].pem, "Public key should match")
+}
+
+// Test_BaseKeyFallback_LosesToExplicitKAS pins the precedence between
+// the two fallbacks: a caller who named a KAS gets that KAS.
+func (s *TDFSuite) Test_BaseKeyFallback_LosesToExplicitKAS() {
 	baseKey := policy.SimpleKasKey{
 		KasUri: s.kasTestURLLookup[baseKeyURL],
 		PublicKey: &policy.SimpleKasPublicKey{
@@ -2756,21 +2787,26 @@ func (s *TDFSuite) Test_PopulateBaseKey_Success() {
 			Pem:       mockRSAPublicKey1,
 		},
 	}
+	explicit := policy.SimpleKasKey{
+		KasUri: "https://explicit.kas/",
+		PublicKey: &policy.SimpleKasPublicKey{
+			Algorithm: policy.Algorithm_ALGORITHM_RSA_2048,
+			Kid:       "r3",
+			Pem:       mockRSAPublicKey3,
+		},
+	}
 
-	// Call populateBaseKey, should succeed
-	err := populateKasInfoFromBaseKey(&baseKey, tdfConfig)
-	s.Require().NoError(err, "populateBaseKey should succeed with valid base key")
-
-	expectedURL := s.kasTestURLLookup[baseKeyURL]
-	s.Require().NotEmpty(expectedURL, "Expected KAS URL should not be empty")
-
-	// Verify KAS info list has been populated correctly
-	s.Require().Len(tdfConfig.kasInfoList, 1, "KAS info list should have one entry")
-	s.Require().Equal(expectedURL, tdfConfig.kasInfoList[0].URL, "KAS URL should match")
-	s.Require().Equal(baseKeyKID, tdfConfig.kasInfoList[0].KID, "KAS KID should match")
-	s.Require().Equal(string(ocrypto.RSA2048Key), tdfConfig.kasInfoList[0].Algorithm, "Algorithm should match")
-	s.Require().Equal(mockRSAPublicKey1, tdfConfig.kasInfoList[0].PublicKey, "Public key should match")
-	s.Require().Equal(ocrypto.KeyType("rsa:2048"), tdfConfig.preferredKeyWrapAlg, "Key type should be set")
+	tpl, err := fallbackTemplate(
+		s.T().Context(),
+		SplitRequest{DefaultKAS: []*policy.SimpleKasKey{&explicit}},
+		uuidSplitIDGenerator,
+		nil,
+		staticBaseKey{key: &baseKey},
+		slog.Default(),
+	)
+	s.Require().NoError(err)
+	s.Require().Len(tpl, 1)
+	s.Require().Equal("https://explicit.kas/", tpl[0].KAS)
 }
 
 func rotateKey(k *FakeKas, kid, private, public string) func() {

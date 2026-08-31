@@ -1551,36 +1551,6 @@ func isLessThanSemver(version, target string) (bool, error) {
 	return v1.LessThan(v2), nil
 }
 
-func populateKasInfoFromBaseKey(key *policy.SimpleKasKey, tdfConfig *TDFConfig) error {
-	if key == nil {
-		return errors.New("populateKasInfoFromBaseKey failed: key is nil")
-	}
-
-	algoString, err := formatAlg(key.GetPublicKey().GetAlgorithm())
-	if err != nil {
-		return fmt.Errorf("formatAlg failed: %w", err)
-	}
-
-	// ? Maybe we shouldn't overwrite the key type
-	if tdfConfig.preferredKeyWrapAlg != ocrypto.KeyType(algoString) {
-		getLogger().Warn("base key is enabled, setting key type", slog.String("key_type", algoString))
-	}
-	tdfConfig.preferredKeyWrapAlg = ocrypto.KeyType(algoString)
-	tdfConfig.splitPlan = nil
-	if len(tdfConfig.kasInfoList) > 0 {
-		getLogger().Warn("base key is enabled, overwriting kasInfoList with base key info")
-	}
-	tdfConfig.kasInfoList = []KASInfo{
-		{
-			URL:       key.GetKasUri(),
-			PublicKey: key.GetPublicKey().GetPem(),
-			KID:       key.GetPublicKey().GetKid(),
-			Algorithm: algoString,
-		},
-	}
-	return nil
-}
-
 func createKaoTemplateFromKasInfo(kasInfoArr []KASInfo) []kaoTpl {
 	kaoTemplate := make([]kaoTpl, len(kasInfoArr))
 	for i, kasInfo := range kasInfoArr {

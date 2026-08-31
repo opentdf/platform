@@ -227,10 +227,24 @@ func defaultKASTemplate(ctx context.Context, kas *policy.SimpleKasKey, splitID s
 	}
 
 	if pub := kas.GetPublicKey(); pub.GetPem() != "" {
-		// An unrecognized algorithm becomes the empty string rather than an
-		// error: a caller may hand over a bare URL and PEM with no algorithm
-		// at all, and createKeyAccess reads that as RSA, as it always has.
-		return kaoTpl{url, splitID, pub.GetKid(), pub.GetPem(), ocrypto.KeyType(algorithmPolicyToString(pub.GetAlgorithm()))}, nil
+		// An algorithm the SDK cannot map is a misconfiguration worth
+		// failing on: the empty string reaches createKeyAccess, which reads
+		// it as RSA, and ocrypto.FromPublicPEM then sniffs the PEM instead
+		// of honoring that choice. An EC or ML-KEM key wraps successfully
+		// but leaves the KAO claiming keyType "wrapped" with no ephemeral
+		// public key, producing a TDF nothing can decrypt.
+		//
+		// ALGORITHM_UNSPECIFIED is exempt because it is not a claim about
+		// the key: KASInfo.Algorithm is optional, and createKaoTemplateFromKasInfo
+		// has always read a bare URL and PEM as RSA. Keys that came from
+		// policy rather than the caller are checked strictly in
+		// fillTemplateFromPlan.
+		alg := algorithmPolicyToString(pub.GetAlgorithm())
+		if alg == "" && pub.GetAlgorithm() != policy.Algorithm_ALGORITHM_UNSPECIFIED {
+			return kaoTpl{}, fmt.Errorf("%w: kas %s advertises algorithm %v",
+				ErrSplitterUnsupportedAlgorithm, url, pub.GetAlgorithm())
+		}
+		return kaoTpl{url, splitID, pub.GetKid(), pub.GetPem(), ocrypto.KeyType(alg)}, nil
 	}
 
 	if fetcher == nil {

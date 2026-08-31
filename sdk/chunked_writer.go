@@ -294,10 +294,13 @@ type chunkedWriter struct {
 // ChunkedWriter is not safe for concurrent WriteSegment calls on the
 // same index but tolerates concurrent writes to distinct indices.
 //
-// This method is equivalent to the package-level [NewChunkedWriter];
-// the writer holds no reference to the SDK.
+// Unlike the package-level [NewChunkedWriter], the writer defaults to
+// this SDK's key splitter, so attributes naming a KAS without naming a
+// key resolve against the platform and a policy naming no KAS at all
+// falls back to the platform base key. Pass [WithChunkedKeySplitter]
+// to override.
 func (s SDK) NewChunkedWriter(ctx context.Context, opts ...ChunkedWriterOption) (ChunkedWriter, error) {
-	return NewChunkedWriter(ctx, opts...)
+	return NewChunkedWriter(ctx, append([]ChunkedWriterOption{WithChunkedKeySplitter(s.KeySplitter())}, opts...)...)
 }
 
 // NewChunkedWriter constructs a per-segment TDF writer. The returned

@@ -2,7 +2,10 @@
 
 package tdf
 
-import "github.com/opentdf/platform/protocol/go/policy"
+import (
+	"github.com/opentdf/platform/protocol/go/policy"
+	"github.com/opentdf/platform/sdk"
+)
 
 // IntegrityAlgorithm specifies the cryptographic algorithm used for integrity verification.
 //
@@ -71,6 +74,10 @@ type WriterConfig struct {
 	// targetMode is the TDF spec version to write for, as semver.
 	// Empty selects the current format. See WithTargetMode.
 	targetMode string
+
+	// keySplitter decides the key access objects from the attributes.
+	// Nil selects sdk.DefaultKeySplitter. See WithKeySplitter.
+	keySplitter sdk.KeySplitter
 }
 
 // ReaderConfig contains configuration options for TDF Reader creation.
@@ -155,6 +162,19 @@ func WithInitialAttributes(values []*policy.Value) Option[*WriterConfig] {
 func WithDefaultKASForWriter(kas ...*policy.SimpleKasKey) Option[*WriterConfig] {
 	return func(c *WriterConfig) {
 		c.initialDefaultKAS = kas
+	}
+}
+
+// WithKeySplitter overrides how attributes become key access objects.
+//
+// The default, [sdk.DefaultKeySplitter], works entirely offline: every
+// wrapping key must be carried by the attribute values themselves or by
+// the default KAS. Pass [sdk.SDK.KeySplitter] instead to resolve keys the
+// policy did not carry against a running platform and to pick up the
+// platform base key.
+func WithKeySplitter(splitter sdk.KeySplitter) Option[*WriterConfig] {
+	return func(c *WriterConfig) {
+		c.keySplitter = splitter
 	}
 }
 

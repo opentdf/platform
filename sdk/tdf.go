@@ -445,10 +445,14 @@ func (tdfConfig *TDFConfig) initKAOTemplate(ctx context.Context, s SDK) error {
 func (s SDK) newGranter(ctx context.Context, tdfConfig *TDFConfig) (granter, error) {
 	var g granter
 	var err error
+	logger := s.logger
+	if logger == nil {
+		logger = getLogger()
+	}
 	if len(tdfConfig.attributeValues) > 0 {
-		g, err = newGranterFromAttributes(s.logger, s.kasKeyCache, tdfConfig.attributeValues...)
+		g, err = newGranterFromAttributes(logger, s.kasKeyCache, tdfConfig.attributeValues...)
 	} else if len(tdfConfig.attributes) > 0 {
-		g, err = newGranterFromService(ctx, s.logger, s.kasKeyCache, s.Attributes, tdfConfig.attributes...)
+		g, err = newGranterFromService(ctx, logger, s.kasKeyCache, s.Attributes, tdfConfig.attributes...)
 	}
 	if err != nil {
 		return g, err

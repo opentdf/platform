@@ -922,3 +922,205 @@ func TestChunkedTargetModeInvalid(t *testing.T) {
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "not-a-version")
 }
+
+// chunkedSegmentShapes are segment-size sets fed to the chunked writer
+// to exercise the reader's plaintext offset mapping. The non-uniform
+// ones cannot be produced by SDK.CreateTDF, which always emits equal
+// segments with a possibly-short tail.
+func chunkedSegmentShapes() []struct {
+	name  string
+	sizes []int
+} {
+	return []struct {
+		name  string
+		sizes []int
+	}{
+		// Ascending: the manifest default comes from the smallest
+		// segment, so a uniform mapping overshoots and indexes past the
+		// decrypted bytes.
+		{"ascending", []int{3, 5, 7}},
+		// Descending: the default is the largest segment, so a uniform
+		// mapping undershoots and lands inside the wrong segment --
+		// wrong bytes, still in range, no error.
+		{"descending", []int{7, 5, 3}},
+		{"tiny-first", []int{1, 16, 1}},
+		// A zero-length segment pins the boundary comparisons: it must
+		// neither absorb a read that starts at its offset nor be
+		// skipped in a way that shifts the ciphertext cursor.
+		{"empty-middle", []int{4, 0, 4}},
+		// Controls: shapes CreateTDF also produces.
+		{"uniform", []int{5, 5, 5}},
+		{"uniform-short-tail", []int{5, 5, 2}},
+	}
+}
+
+// buildChunkedTDF writes one segment per entry in sizes and returns the
+// assembled TDF bytes alongside the plaintext they encode.
+func buildChunkedTDF(ctx context.Context, t *testing.T, s SDK, kasBundle *chunkedFakeKAS, sizes []int) ([]byte, []byte) {
+	t.Helper()
+
+	writer, err := s.NewChunkedWriter(ctx, WithChunkedDefaultKAS(kasBundle.simpleKey()))
+	require.NoError(t, err)
+
+	total := 0
+	for _, n := range sizes {
+		total += n
+	}
+	plain := make([]byte, total)
+	for i := range plain {
+		plain[i] = byte('a' + i%26)
+	}
+
+	chunks := make([][]byte, 0, len(sizes))
+	at := 0
+	for _, n := range sizes {
+		chunks = append(chunks, append([]byte(nil), plain[at:at+n]...))
+		at += n
+	}
+
+	body := writeChunkedSegments(ctx, t, writer, chunks)
+	fin, err := writer.Finalize(ctx)
+	require.NoError(t, err)
+
+	return bytes.Join([][]byte{body, fin.Data}, nil), plain
+}
+
+// TestChunkedNonUniformReadAtSweep walks every (offset, length) pair
+// against segment sets the chunked writer can emit but CreateTDF
+// cannot. Reader.ReadAt used to map plaintext offsets with a single
+// uniform DefaultSegmentSize, which silently returned wrong bytes for
+// any non-uniform segment other than the last.
+func TestChunkedNonUniformReadAtSweep(t *testing.T) {
+	kasBundle := newChunkedFakeKAS(t)
+	defer kasBundle.server.Close()
+	s := newChunkedTestSDK(t, kasBundle)
+
+	for _, shape := range chunkedSegmentShapes() {
+		t.Run(shape.name, func(t *testing.T) {
+			tdfBytes, plain := buildChunkedTDF(context.Background(), t, s, kasBundle, shape.sizes)
+			size := int64(len(plain))
+
+			reader, err := s.LoadTDF(bytes.NewReader(tdfBytes),
+				WithKasAllowlist([]string{kasBundle.url}),
+			)
+			require.NoError(t, err)
+
+			for offset := int64(0); offset <= size+1; offset++ {
+				for length := 0; length <= len(plain)+3; length++ {
+					buf := make([]byte, length)
+					n, err := reader.ReadAt(buf, offset)
+
+					where := fmt.Sprintf("offset=%d length=%d", offset, length)
+
+					if offset > size {
+						require.ErrorIs(t, err, ErrTDFPayloadReadFail, where)
+						require.Equal(t, 0, n, where)
+						continue
+					}
+
+					want := min(int64(length), size-offset)
+					if offset+int64(length) > size {
+						require.ErrorIs(t, err, io.EOF, where)
+					} else {
+						require.NoError(t, err, where)
+					}
+					require.Equal(t, int(want), n, where)
+					require.Equal(t, plain[offset:offset+want], buf[:want], where)
+				}
+			}
+		})
+	}
+}
+
+// TestChunkedNonUniformReadAtEdges pins the boundary contract on one
+// ascending shape, where every segment edge falls at a different
+// multiple than the manifest default would predict.
+func TestChunkedNonUniformReadAtEdges(t *testing.T) {
+	ctx := context.Background()
+	kasBundle := newChunkedFakeKAS(t)
+	defer kasBundle.server.Close()
+	s := newChunkedTestSDK(t, kasBundle)
+
+	// Segment boundaries at 0, 3, 8, 15.
+	tdfBytes, plain := buildChunkedTDF(ctx, t, s, kasBundle, []int{3, 5, 7})
+	reader, err := s.LoadTDF(bytes.NewReader(tdfBytes),
+		WithKasAllowlist([]string{kasBundle.url}),
+	)
+	require.NoError(t, err)
+
+	// A zero-length read never reports EOF, including at the very end.
+	for _, offset := range []int64{0, 3, 8, 15} {
+		n, err := reader.ReadAt(nil, offset)
+		require.NoError(t, err, "empty read at %d", offset)
+		assert.Equal(t, 0, n)
+	}
+
+	// Reads that start exactly on a segment boundary and cover exactly
+	// that segment.
+	for _, tc := range []struct{ offset, length int64 }{{3, 5}, {8, 7}, {0, 3}} {
+		buf := make([]byte, tc.length)
+		n, err := reader.ReadAt(buf, tc.offset)
+		require.NoError(t, err, "boundary read at %d", tc.offset)
+		assert.Equal(t, int(tc.length), n)
+		assert.Equal(t, plain[tc.offset:tc.offset+tc.length], buf)
+	}
+
+	// A read starting at the end yields nothing and EOF.
+	n, err := reader.ReadAt(make([]byte, 1), 15)
+	require.ErrorIs(t, err, io.EOF)
+	assert.Equal(t, 0, n)
+
+	// Past the end, and negative, are rejected outright.
+	_, err = reader.ReadAt(make([]byte, 1), 16)
+	require.ErrorIs(t, err, ErrTDFPayloadReadFail)
+
+	_, err = reader.ReadAt(make([]byte, 1), -1)
+	require.ErrorIs(t, err, ErrTDFPayloadInvalidOffset)
+}
+
+// TestChunkedNonUniformSeekReadWriteTo checks that Seek, Read (which
+// routes through ReadAt) and WriteTo agree with each other on
+// non-uniform segments. WriteTo already walked cumulative sizes, so a
+// disagreement here means the ReadAt mapping drifted from it.
+func TestChunkedNonUniformSeekReadWriteTo(t *testing.T) {
+	kasBundle := newChunkedFakeKAS(t)
+	defer kasBundle.server.Close()
+	s := newChunkedTestSDK(t, kasBundle)
+
+	for _, shape := range chunkedSegmentShapes() {
+		t.Run(shape.name, func(t *testing.T) {
+			tdfBytes, plain := buildChunkedTDF(context.Background(), t, s, kasBundle, shape.sizes)
+
+			load := func() *Reader {
+				reader, err := s.LoadTDF(bytes.NewReader(tdfBytes),
+					WithKasAllowlist([]string{kasBundle.url}),
+				)
+				require.NoError(t, err)
+				return reader
+			}
+
+			for k := 0; k <= len(plain); k++ {
+				reader := load()
+				pos, err := reader.Seek(int64(k), io.SeekStart)
+				require.NoError(t, err)
+				require.Equal(t, int64(k), pos)
+
+				got, err := io.ReadAll(reader)
+				require.NoError(t, err, "ReadAll from %d", k)
+				assert.Equal(t, plain[k:], got, "ReadAll from %d", k)
+
+				reader = load()
+				_, err = reader.Seek(int64(k), io.SeekStart)
+				require.NoError(t, err)
+
+				var out bytes.Buffer
+				written, err := reader.WriteTo(&out)
+				require.NoError(t, err, "WriteTo from %d", k)
+				// Compared as strings: an empty bytes.Buffer reports a
+				// nil slice, which is not Equal to an empty one.
+				assert.Equal(t, string(plain[k:]), out.String(), "WriteTo from %d", k)
+				assert.Equal(t, int64(len(plain)-k), written, "WriteTo from %d", k)
+			}
+		})
+	}
+}

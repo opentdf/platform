@@ -37,23 +37,27 @@ func (xorSplitter) Split(ctx context.Context, attrs []*policy.Value, dek []byte,
 		return nil, err
 	}
 
-	out := &sdk.SplitResult{
-		KASPublicKeys: make(map[string]sdk.KASPublicKey, len(res.KASPublicKeys)),
-		Splits:        make([]sdk.Split, 0, len(res.Splits)),
-	}
-	for url, key := range res.KASPublicKeys {
-		out.KASPublicKeys[url] = sdk.KASPublicKey{
-			Algorithm: key.Algorithm,
-			KID:       key.KID,
-			PEM:       key.PEM,
-			URL:       key.URL,
-		}
-	}
+	out := &sdk.SplitResult{Splits: make([]sdk.Split, 0, len(res.Splits))}
 	for _, split := range res.Splits {
+		// keysplit reports keys in a result-wide, URL-keyed map, whereas
+		// sdk.Split carries its own key list. Resolve each of the split's
+		// URLs against that map; a URL keysplit left out yields an empty
+		// PEM, which buildKeyAccessObjects rejects -- the same outcome as
+		// before this seam took a key list.
+		keys := make([]sdk.KASPublicKey, 0, len(split.KASURLs))
+		for _, url := range split.KASURLs {
+			key := res.KASPublicKeys[url]
+			keys = append(keys, sdk.KASPublicKey{
+				Algorithm: key.Algorithm,
+				KID:       key.KID,
+				PEM:       key.PEM,
+				URL:       url,
+			})
+		}
 		out.Splits = append(out.Splits, sdk.Split{
-			Data:    split.Data,
-			ID:      split.ID,
-			KASURLs: split.KASURLs,
+			Data: split.Data,
+			ID:   split.ID,
+			Keys: keys,
 		})
 	}
 	return out, nil

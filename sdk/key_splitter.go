@@ -32,19 +32,20 @@ type Split struct {
 	// when the result contains only one split (single-KAO TDF).
 	ID string
 
-	// KASURLs lists every KAS that can unwrap this split. Multiple
-	// URLs mean any one KAS is sufficient (OR semantics).
-	KASURLs []string
+	// Keys are the wrapping targets for this share: one key access
+	// object is emitted per entry, and any one of them can unwrap the
+	// share (OR semantics).
+	//
+	// This is a list rather than a URL-keyed map because one KAS can
+	// legitimately hold several keys for a single split -- different
+	// key IDs, and possibly different algorithms.
+	Keys []KASPublicKey
 }
 
-// SplitResult is what KeySplitter.Split returns: the shares plus the
-// KAS wrapping keys needed to encrypt each share into a KeyAccess
+// SplitResult is what KeySplitter.Split returns: the DEK shares, each
+// carrying the KAS wrapping keys needed to encrypt it into a KeyAccess
 // object.
 type SplitResult struct {
-	// KASPublicKeys maps KAS URL to the wrapping key to use for that
-	// URL. Populated for every URL referenced by any split.
-	KASPublicKeys map[string]KASPublicKey
-
 	// Splits are the DEK shares in emission order.
 	Splits []Split
 }
@@ -111,17 +112,14 @@ func (s *singleKASSplitter) Split(_ context.Context, _ []*policy.Value, dek []by
 	share := make([]byte, len(dek))
 	copy(share, dek)
 	return &SplitResult{
-		KASPublicKeys: map[string]KASPublicKey{
-			url: {
+		Splits: []Split{{
+			Data: share,
+			Keys: []KASPublicKey{{
 				Algorithm: alg,
 				KID:       defaultKAS.GetPublicKey().GetKid(),
 				PEM:       defaultKAS.GetPublicKey().GetPem(),
 				URL:       url,
-			},
-		},
-		Splits: []Split{{
-			Data:    share,
-			KASURLs: []string{url},
+			}},
 		}},
 	}, nil
 }
@@ -182,12 +180,11 @@ func (r splitterKeyAccess) resolve(ctx context.Context, dek []byte, cfg *Chunked
 	shares := make([]splitShare, 0, len(splits.Splits))
 	for _, split := range splits.Splits {
 		share := splitShare{id: split.ID, data: split.Data}
-		for _, url := range split.KASURLs {
-			// A URL the splitter left out of KASPublicKeys yields an
-			// empty PEM, which buildKeyAccessObjects rejects.
-			pk := splits.KASPublicKeys[url]
+		for _, pk := range split.Keys {
+			// A key the splitter left without a PEM yields an empty
+			// public key, which buildKeyAccessObjects rejects.
 			share.kases = append(share.kases, KASInfo{
-				URL:       url,
+				URL:       pk.URL,
 				PublicKey: pk.PEM,
 				KID:       pk.KID,
 				Algorithm: pk.Algorithm,

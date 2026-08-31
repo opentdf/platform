@@ -76,7 +76,9 @@ func TestSingleKASSplitterAcceptsKnownAlgorithms(t *testing.T) {
 			require.NoError(t, err)
 			require.Len(t, res.Splits, 1)
 			assert.Equal(t, dek, res.Splits[0].Data)
-			assert.Equal(t, tc.want, res.KASPublicKeys["https://kas.example.com"].Algorithm)
+			require.Len(t, res.Splits[0].Keys, 1)
+			assert.Equal(t, "https://kas.example.com", res.Splits[0].Keys[0].URL)
+			assert.Equal(t, tc.want, res.Splits[0].Keys[0].Algorithm)
 		})
 	}
 }

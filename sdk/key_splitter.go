@@ -3,6 +3,7 @@ package sdk
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	"github.com/opentdf/platform/protocol/go/policy"
 )
@@ -78,6 +79,11 @@ func (k KASPublicKey) toKASInfo() KASInfo {
 // splitter via WithChunkedKeySplitter.
 var ErrSplitterRequiresDefaultKAS = errors.New("chunked: default splitter requires a default KAS; supply WithChunkedDefaultKAS or WithChunkedKeySplitter")
 
+// ErrSplitterUnsupportedAlgorithm is returned by the default key
+// splitter when the default KAS advertises a key algorithm this SDK
+// has no wrapping scheme for.
+var ErrSplitterUnsupportedAlgorithm = errors.New("chunked: unsupported KAS key algorithm")
+
 // DefaultKeySplitter returns a single-KAS single-split splitter.
 // Attributes are ignored; the entire DEK is bound to the caller's
 // default KAS. Callers with attribute-based key splits requirements
@@ -90,18 +96,33 @@ func DefaultKeySplitter() KeySplitter { return &singleKASSplitter{} }
 type singleKASSplitter struct{}
 
 // Split returns one split covering the full DEK, addressed to
-// defaultKAS. Errors when defaultKAS is nil or has no public key.
+// defaultKAS. Errors when defaultKAS is nil, has no public key, or
+// names an algorithm this SDK cannot wrap for.
 func (s *singleKASSplitter) Split(_ context.Context, _ []*policy.Value, dek []byte, defaultKAS *policy.SimpleKasKey) (*SplitResult, error) {
 	if defaultKAS == nil || defaultKAS.GetPublicKey() == nil || defaultKAS.GetPublicKey().GetPem() == "" {
 		return nil, ErrSplitterRequiresDefaultKAS
 	}
 	url := defaultKAS.GetKasUri()
+
+	// Reject an unmappable algorithm here rather than letting the empty
+	// string reach createKeyAccess. There it selects the RSA branch by
+	// default, and ocrypto.FromPublicPEM sniffs the PEM instead of
+	// honoring that choice: an EC or ML-KEM key parses successfully and
+	// wraps, but the KAO is left claiming keyType "wrapped" with no
+	// ephemeral public key. That produces a TDF nothing can decrypt,
+	// which is far worse to debug than a failure at creation time.
+	alg := algorithmPolicyToString(defaultKAS.GetPublicKey().GetAlgorithm())
+	if alg == "" {
+		return nil, fmt.Errorf("%w: kas %s advertises algorithm %v",
+			ErrSplitterUnsupportedAlgorithm, url, defaultKAS.GetPublicKey().GetAlgorithm())
+	}
+
 	share := make([]byte, len(dek))
 	copy(share, dek)
 	return &SplitResult{
 		KASPublicKeys: map[string]KASPublicKey{
 			url: {
-				Algorithm: algorithmPolicyToString(defaultKAS.GetPublicKey().GetAlgorithm()),
+				Algorithm: alg,
 				KID:       defaultKAS.GetPublicKey().GetKid(),
 				PEM:       defaultKAS.GetPublicKey().GetPem(),
 				URL:       url,
@@ -116,8 +137,10 @@ func (s *singleKASSplitter) Split(_ context.Context, _ []*policy.Value, dek []by
 
 // algorithmPolicyToString maps a policy.Algorithm enum to the
 // ocrypto.KeyType string form used when picking a wrap scheme.
-// Unknown enums return the empty string; createKeyAccess then falls
-// through to its RSA branch, which fails on a non-RSA PEM.
+// Unknown enums, including ALGORITHM_UNSPECIFIED, return the empty
+// string; callers must reject that rather than pass it on, since
+// createKeyAccess reads it as a request for RSA. singleKASSplitter.Split
+// has that guard.
 func algorithmPolicyToString(a policy.Algorithm) string {
 	if kt, err := PolicyAlgorithmToKeyType(a); err == nil {
 		return string(kt)

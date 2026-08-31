@@ -126,6 +126,29 @@ func (sw *segmentWriter) Finalize(ctx context.Context, manifest []byte) ([]byte,
 	default:
 	}
 
+	// Nothing arrived at all: report the general incomplete-input error
+	// rather than the segment-0-specific one below.
+	if len(sw.metadata.Segments) == 0 {
+		return nil, &Error{Op: "finalize", Type: "segment", Err: ErrSegmentMissing}
+	}
+
+	// Only segment 0 emits the payload's local file header, and every offset
+	// recorded below is measured from it: without it the manifest entry, the
+	// central directory, and the EOCD all overshoot by headerSize. The result
+	// is a corrupt archive rather than a clean failure -- under Zip64Always
+	// the trailer points past the end of the buffer, while under Zip64Auto it
+	// lands mid-archive, where some readers parse the manifest happily and
+	// only choke on the payload.
+	//
+	// This has to run before the order derivation below: Order is derived
+	// once and kept, so a caller that supplies segment 0 and retries must not
+	// inherit an order that already excluded it. IsComplete cannot catch the
+	// absence either, since that derived order is self-consistent by
+	// construction.
+	if _, ok := sw.metadata.Segments[0]; !ok {
+		return nil, &Error{Op: "finalize", Type: "segment", Err: ErrNoSegmentZero}
+	}
+
 	// If no explicit order was provided, derive order from present indices (sorted).
 	if len(sw.metadata.Order) == 0 {
 		order := make([]int, 0, len(sw.metadata.Segments))
@@ -223,8 +246,10 @@ func (sw *segmentWriter) Finalize(ctx context.Context, manifest []byte) ([]byte,
 }
 
 // CleanupSegment removes the presence marker for a segment index. Since payload
-// bytes are not retained, this only affects metadata tracking. Calling this
-// before Finalize will cause IsComplete() to fail for that index.
+// bytes are not retained, this only affects metadata tracking. Finalize infers
+// segment order from whichever indices survive, so a cleaned-up index drops out
+// of that order rather than making IsComplete fail; only index 0 is rejected,
+// with ErrNoSegmentZero. Size accounting on payloadEntry is not rolled back.
 func (sw *segmentWriter) CleanupSegment(index int) error {
 	sw.mu.Lock()
 	defer sw.mu.Unlock()

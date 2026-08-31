@@ -36,7 +36,7 @@ func TestChunkedRoundTrip(t *testing.T) {
 	kasBundle := newChunkedFakeKAS(t)
 	defer kasBundle.server.Close()
 
-	s := newChunkedTestSDK(t, kasBundle)
+	s := newChunkedTestSDK(t)
 
 	writer, err := s.NewChunkedWriter(ctx,
 		WithChunkedDefaultKAS(kasBundle.simpleKey()),
@@ -69,7 +69,7 @@ func TestChunkedKeepSegments(t *testing.T) {
 	kasBundle := newChunkedFakeKAS(t)
 	defer kasBundle.server.Close()
 
-	s := newChunkedTestSDK(t, kasBundle)
+	s := newChunkedTestSDK(t)
 
 	writer, err := s.NewChunkedWriter(ctx,
 		WithChunkedDefaultKAS(kasBundle.simpleKey()),
@@ -102,7 +102,7 @@ func TestChunkedFinalizeSignsAssertions(t *testing.T) {
 	kasBundle := newChunkedFakeKAS(t)
 	defer kasBundle.server.Close()
 
-	s := newChunkedTestSDK(t, kasBundle)
+	s := newChunkedTestSDK(t)
 
 	writer, err := s.NewChunkedWriter(ctx,
 		WithChunkedDefaultKAS(kasBundle.simpleKey()),
@@ -148,7 +148,7 @@ func TestChunkedOutOfOrderWrites(t *testing.T) {
 	kasBundle := newChunkedFakeKAS(t)
 	defer kasBundle.server.Close()
 
-	s := newChunkedTestSDK(t, kasBundle)
+	s := newChunkedTestSDK(t)
 
 	writer, err := s.NewChunkedWriter(ctx,
 		WithChunkedDefaultKAS(kasBundle.simpleKey()),
@@ -201,7 +201,7 @@ func TestChunkedClockThreadedToZipHeaders(t *testing.T) {
 	// Pick a 2-second-aligned instant so DOS timestamp truncation is
 	// a no-op.
 	pinned := time.Date(2026, 6, 15, 12, 0, 0, 0, time.UTC)
-	s := newChunkedTestSDK(t, kasBundle)
+	s := newChunkedTestSDK(t)
 
 	w, err := s.NewChunkedWriter(ctx,
 		WithChunkedDefaultKAS(kasBundle.simpleKey()),
@@ -232,7 +232,7 @@ func TestChunkedDuplicateSegment(t *testing.T) {
 	kasBundle := newChunkedFakeKAS(t)
 	defer kasBundle.server.Close()
 
-	s := newChunkedTestSDK(t, kasBundle)
+	s := newChunkedTestSDK(t)
 	w, err := s.NewChunkedWriter(ctx, WithChunkedDefaultKAS(kasBundle.simpleKey()))
 	require.NoError(t, err)
 
@@ -249,7 +249,7 @@ func TestChunkedNegativeIndex(t *testing.T) {
 	kasBundle := newChunkedFakeKAS(t)
 	defer kasBundle.server.Close()
 
-	s := newChunkedTestSDK(t, kasBundle)
+	s := newChunkedTestSDK(t)
 	w, err := s.NewChunkedWriter(ctx, WithChunkedDefaultKAS(kasBundle.simpleKey()))
 	require.NoError(t, err)
 
@@ -264,7 +264,7 @@ func TestChunkedWriteAfterFinalize(t *testing.T) {
 	kasBundle := newChunkedFakeKAS(t)
 	defer kasBundle.server.Close()
 
-	s := newChunkedTestSDK(t, kasBundle)
+	s := newChunkedTestSDK(t)
 	w, err := s.NewChunkedWriter(ctx, WithChunkedDefaultKAS(kasBundle.simpleKey()))
 	require.NoError(t, err)
 
@@ -284,7 +284,7 @@ func TestChunkedDoubleFinalize(t *testing.T) {
 	kasBundle := newChunkedFakeKAS(t)
 	defer kasBundle.server.Close()
 
-	s := newChunkedTestSDK(t, kasBundle)
+	s := newChunkedTestSDK(t)
 	w, err := s.NewChunkedWriter(ctx, WithChunkedDefaultKAS(kasBundle.simpleKey()))
 	require.NoError(t, err)
 
@@ -305,7 +305,7 @@ func TestChunkedKeepSegmentsSparse(t *testing.T) {
 	kasBundle := newChunkedFakeKAS(t)
 	defer kasBundle.server.Close()
 
-	s := newChunkedTestSDK(t, kasBundle)
+	s := newChunkedTestSDK(t)
 	w, err := s.NewChunkedWriter(ctx, WithChunkedDefaultKAS(kasBundle.simpleKey()))
 	require.NoError(t, err)
 
@@ -359,7 +359,7 @@ func TestChunkedKeepSegmentsSkipsWritten(t *testing.T) {
 	kasBundle := newChunkedFakeKAS(t)
 	defer kasBundle.server.Close()
 
-	s := newChunkedTestSDK(t, kasBundle)
+	s := newChunkedTestSDK(t)
 	w, err := s.NewChunkedWriter(ctx, WithChunkedDefaultKAS(kasBundle.simpleKey()))
 	require.NoError(t, err)
 
@@ -379,7 +379,7 @@ func TestChunkedKeepSegmentsOutOfOrder(t *testing.T) {
 	kasBundle := newChunkedFakeKAS(t)
 	defer kasBundle.server.Close()
 
-	s := newChunkedTestSDK(t, kasBundle)
+	s := newChunkedTestSDK(t)
 	w, err := s.NewChunkedWriter(ctx, WithChunkedDefaultKAS(kasBundle.simpleKey()))
 	require.NoError(t, err)
 
@@ -399,7 +399,7 @@ func TestChunkedKeepSegmentsUnwritten(t *testing.T) {
 	kasBundle := newChunkedFakeKAS(t)
 	defer kasBundle.server.Close()
 
-	s := newChunkedTestSDK(t, kasBundle)
+	s := newChunkedTestSDK(t)
 	w, err := s.NewChunkedWriter(ctx, WithChunkedDefaultKAS(kasBundle.simpleKey()))
 	require.NoError(t, err)
 
@@ -419,7 +419,7 @@ func TestChunkedKeepSegmentsTooMany(t *testing.T) {
 	kasBundle := newChunkedFakeKAS(t)
 	defer kasBundle.server.Close()
 
-	s := newChunkedTestSDK(t, kasBundle)
+	s := newChunkedTestSDK(t)
 	w, err := s.NewChunkedWriter(ctx, WithChunkedDefaultKAS(kasBundle.simpleKey()))
 	require.NoError(t, err)
 
@@ -438,7 +438,7 @@ func TestChunkedKeepSegmentsDuplicate(t *testing.T) {
 	kasBundle := newChunkedFakeKAS(t)
 	defer kasBundle.server.Close()
 
-	s := newChunkedTestSDK(t, kasBundle)
+	s := newChunkedTestSDK(t)
 	w, err := s.NewChunkedWriter(ctx, WithChunkedDefaultKAS(kasBundle.simpleKey()))
 	require.NoError(t, err)
 
@@ -459,7 +459,7 @@ func TestChunkedKeepSegmentsNegative(t *testing.T) {
 	kasBundle := newChunkedFakeKAS(t)
 	defer kasBundle.server.Close()
 
-	s := newChunkedTestSDK(t, kasBundle)
+	s := newChunkedTestSDK(t)
 	w, err := s.NewChunkedWriter(ctx, WithChunkedDefaultKAS(kasBundle.simpleKey()))
 	require.NoError(t, err)
 
@@ -489,7 +489,7 @@ func TestChunkedSegmentsNotStartingAtZero(t *testing.T) {
 	kasBundle := newChunkedFakeKAS(t)
 	defer kasBundle.server.Close()
 
-	s := newChunkedTestSDK(t, kasBundle)
+	s := newChunkedTestSDK(t)
 	w, err := s.NewChunkedWriter(ctx, WithChunkedDefaultKAS(kasBundle.simpleKey()))
 	require.NoError(t, err)
 
@@ -548,7 +548,7 @@ func TestChunkedGetManifestBeforeFinalize(t *testing.T) {
 	kasBundle := newChunkedFakeKAS(t)
 	defer kasBundle.server.Close()
 
-	s := newChunkedTestSDK(t, kasBundle)
+	s := newChunkedTestSDK(t)
 	w, err := s.NewChunkedWriter(ctx, WithChunkedDefaultKAS(kasBundle.simpleKey()))
 	require.NoError(t, err)
 
@@ -691,11 +691,17 @@ func (k *chunkedFakeKAS) simpleKey() *policy.SimpleKasKey {
 	}
 }
 
-// newChunkedTestSDK builds a minimal SDK value wired to the fake KAS.
-// The SDK is package-private-field constructed to skip New()'s
-// platform-lookup requirement — LoadTDF only needs conn and
+// newChunkedTestSDK builds a minimal SDK value for these tests. It is
+// constructed from package-private fields to skip New()'s
+// platform-lookup requirement, since LoadTDF only needs conn and
 // tokenSource.
-func newChunkedTestSDK(t *testing.T, _ *chunkedFakeKAS) SDK {
+//
+// Deliberately not wired to the fake KAS: the SDK never learns the KAS
+// address. Each key access object carries its own URL, so the reader
+// reaches the fake through the manifest. Pass the fake's URL to
+// WithChunkedDefaultKAS when writing and WithKasAllowlist when
+// reading.
+func newChunkedTestSDK(t *testing.T) SDK {
 	t.Helper()
 	ats := getTokenSource(t)
 	return SDK{
@@ -712,7 +718,7 @@ func TestChunkedKAOShape(t *testing.T) {
 	kasBundle := newChunkedFakeKAS(t)
 	defer kasBundle.server.Close()
 
-	s := newChunkedTestSDK(t, kasBundle)
+	s := newChunkedTestSDK(t)
 	writer, err := s.NewChunkedWriter(ctx, WithChunkedDefaultKAS(kasBundle.simpleKey()))
 	require.NoError(t, err)
 
@@ -811,7 +817,7 @@ func TestChunkedLegacyTargetMode(t *testing.T) {
 	kasBundle := newChunkedFakeKAS(t)
 	defer kasBundle.server.Close()
 
-	s := newChunkedTestSDK(t, kasBundle)
+	s := newChunkedTestSDK(t)
 
 	writer, err := s.NewChunkedWriter(ctx,
 		WithChunkedDefaultKAS(kasBundle.simpleKey()),
@@ -859,7 +865,7 @@ func TestChunkedCurrentTargetMode(t *testing.T) {
 	kasBundle := newChunkedFakeKAS(t)
 	defer kasBundle.server.Close()
 
-	s := newChunkedTestSDK(t, kasBundle)
+	s := newChunkedTestSDK(t)
 
 	writer, err := s.NewChunkedWriter(ctx,
 		WithChunkedDefaultKAS(kasBundle.simpleKey()),
@@ -895,7 +901,7 @@ func TestChunkedExcludeVersionRequiresLegacyMode(t *testing.T) {
 	kasBundle := newChunkedFakeKAS(t)
 	defer kasBundle.server.Close()
 
-	s := newChunkedTestSDK(t, kasBundle)
+	s := newChunkedTestSDK(t)
 
 	writer, err := s.NewChunkedWriter(ctx,
 		WithChunkedDefaultKAS(kasBundle.simpleKey()),
@@ -915,7 +921,7 @@ func TestChunkedTargetModeInvalid(t *testing.T) {
 	kasBundle := newChunkedFakeKAS(t)
 	defer kasBundle.server.Close()
 
-	s := newChunkedTestSDK(t, kasBundle)
+	s := newChunkedTestSDK(t)
 
 	_, err := s.NewChunkedWriter(ctx,
 		WithChunkedDefaultKAS(kasBundle.simpleKey()),
@@ -995,7 +1001,7 @@ func buildChunkedTDF(ctx context.Context, t *testing.T, s SDK, kasBundle *chunke
 func TestChunkedNonUniformReadAtSweep(t *testing.T) {
 	kasBundle := newChunkedFakeKAS(t)
 	defer kasBundle.server.Close()
-	s := newChunkedTestSDK(t, kasBundle)
+	s := newChunkedTestSDK(t)
 
 	for _, shape := range chunkedSegmentShapes() {
 		t.Run(shape.name, func(t *testing.T) {
@@ -1041,7 +1047,7 @@ func TestChunkedNonUniformReadAtEdges(t *testing.T) {
 	ctx := context.Background()
 	kasBundle := newChunkedFakeKAS(t)
 	defer kasBundle.server.Close()
-	s := newChunkedTestSDK(t, kasBundle)
+	s := newChunkedTestSDK(t)
 
 	// Segment boundaries at 0, 3, 8, 15.
 	tdfBytes, plain := buildChunkedTDF(ctx, t, s, kasBundle, []int{3, 5, 7})
@@ -1087,7 +1093,7 @@ func TestChunkedNonUniformReadAtEdges(t *testing.T) {
 func TestChunkedNonUniformSeekReadWriteTo(t *testing.T) {
 	kasBundle := newChunkedFakeKAS(t)
 	defer kasBundle.server.Close()
-	s := newChunkedTestSDK(t, kasBundle)
+	s := newChunkedTestSDK(t)
 
 	for _, shape := range chunkedSegmentShapes() {
 		t.Run(shape.name, func(t *testing.T) {
@@ -1164,7 +1170,7 @@ func TestChunkedArchiveFailureKeepsManifestHonest(t *testing.T) {
 	ctx := context.Background()
 	kasBundle := newChunkedFakeKAS(t)
 	defer kasBundle.server.Close()
-	s := newChunkedTestSDK(t, kasBundle)
+	s := newChunkedTestSDK(t)
 
 	writer, err := s.NewChunkedWriter(ctx,
 		WithChunkedDefaultKAS(kasBundle.simpleKey()),
@@ -1220,7 +1226,7 @@ func TestChunkedSegmentRetryAfterArchiveFailure(t *testing.T) {
 	ctx := context.Background()
 	kasBundle := newChunkedFakeKAS(t)
 	defer kasBundle.server.Close()
-	s := newChunkedTestSDK(t, kasBundle)
+	s := newChunkedTestSDK(t)
 
 	writer, err := s.NewChunkedWriter(ctx,
 		WithChunkedDefaultKAS(kasBundle.simpleKey()),
@@ -1278,7 +1284,7 @@ func TestChunkedOptionsRejectNil(t *testing.T) {
 	ctx := context.Background()
 	kasBundle := newChunkedFakeKAS(t)
 	defer kasBundle.server.Close()
-	s := newChunkedTestSDK(t, kasBundle)
+	s := newChunkedTestSDK(t)
 
 	for _, tc := range []struct {
 		name string
@@ -1311,7 +1317,7 @@ func TestChunkedConcurrentWrites(t *testing.T) {
 	ctx := context.Background()
 	kasBundle := newChunkedFakeKAS(t)
 	defer kasBundle.server.Close()
-	s := newChunkedTestSDK(t, kasBundle)
+	s := newChunkedTestSDK(t)
 
 	writer, err := s.NewChunkedWriter(ctx,
 		WithChunkedDefaultKAS(kasBundle.simpleKey()),
@@ -1382,7 +1388,7 @@ func TestChunkedConcurrentDuplicateIndex(t *testing.T) {
 	ctx := context.Background()
 	kasBundle := newChunkedFakeKAS(t)
 	defer kasBundle.server.Close()
-	s := newChunkedTestSDK(t, kasBundle)
+	s := newChunkedTestSDK(t)
 
 	writer, err := s.NewChunkedWriter(ctx,
 		WithChunkedDefaultKAS(kasBundle.simpleKey()),

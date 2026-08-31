@@ -1042,11 +1042,20 @@ func (r *Reader) WriteTo(writer io.Writer) (int64, error) {
 	return totalBytes, nil
 }
 
-// ReadAt reads len(p) bytes into p starting at offset off
-// in the underlying input source. It returns the number
-// of bytes read (0 <= n <= len(p)) and any error encountered. It returns an
-// io.EOF error when the stream ends.
-// NOTE: For larger tdf sizes use sdk.GetTDFPayload for better performance
+// ReadAt reads len(buf) bytes into buf starting at plaintext offset offset in
+// the payload. It returns the number of bytes read (0 <= n <= len(buf)) and any
+// error encountered.
+//
+// A read that runs past the end of the payload returns the bytes that were
+// available along with io.EOF; a zero-length read never reports io.EOF, even at
+// the end. An offset beyond the end of the payload returns
+// ErrTDFPayloadReadFail, and a negative one ErrTDFPayloadInvalidOffset.
+//
+// The segment walk below assumes manifest.Segments covers the payload
+// contiguously in ascending plaintext order -- it accumulates each segment's
+// Size to derive that segment's plaintext extent, and stops at the first
+// segment that starts at or after the end of the request. Segments listed out
+// of order would be mapped to the wrong plaintext offsets.
 func (r *Reader) ReadAt(buf []byte, offset int64) (int, error) { //nolint:funlen, gocognit // Better readability keeping it as is for now
 	if r.payloadKey == nil {
 		err := r.doPayloadKeyUnwrap(context.Background())
@@ -1059,32 +1068,54 @@ func (r *Reader) ReadAt(buf []byte, offset int64) (int, error) { //nolint:funlen
 		return 0, ErrTDFPayloadInvalidOffset
 	}
 
-	defaultSegmentSize := r.manifest.DefaultSegmentSize
-	start := offset / defaultSegmentSize
-	end := (offset + int64(len(buf)) + defaultSegmentSize - 1) / defaultSegmentSize // rounds up
-
-	firstSegment := start
-	lastSegment := end
-	if firstSegment > lastSegment {
-		return 0, ErrTDFPayloadReadFail
-	}
-
 	if offset > r.payloadSize {
 		return 0, ErrTDFPayloadReadFail
 	}
 
+	// Exclusive plaintext end of the request. Segment extents come from the
+	// per-segment plaintext sizes rather than DefaultSegmentSize: segments are
+	// not required to be uniformly sized, and a writer that emits varying
+	// sizes would otherwise be mapped onto the wrong segments here.
+	readEnd := offset + int64(len(buf))
+
 	isLegacyTDF := r.manifest.TDFVersion == ""
 	var decryptedBuf bytes.Buffer
-	var payloadReadOffset int64
-	for index, seg := range r.manifest.Segments {
-		// finish segments to decrypt
-		if int64(index) == lastSegment {
+	var payloadReadOffset int64 // ciphertext offset of seg within the payload
+	var segStart int64          // plaintext offset of seg
+	startIndex := int64(-1)     // offset of the request within decryptedBuf
+	for _, seg := range r.manifest.Segments {
+		// Segment.Size positions every plaintext offset derived below --
+		// including for the segments this request skips over -- but nothing
+		// authenticates it: the root signature aggregates only Segment.Hash.
+		// AES-GCM frames each segment with a fixed-size nonce and tag, so the
+		// plaintext size is pinned by the ciphertext size, and ReadPayload
+		// below checks EncryptedSize against the bytes actually present. This
+		// is the per-segment form of the check doPayloadKeyUnwrap already
+		// applies to the manifest defaults. Deriving Size from EncryptedSize
+		// rather than the reverse keeps the arithmetic from overflowing.
+		if seg.EncryptedSize < gcmIvSize+aesBlockSize || seg.Size != seg.EncryptedSize-(gcmIvSize+aesBlockSize) {
+			return 0, fmt.Errorf("%w: segment declares size %d with encrypted size %d",
+				ErrSegSizeMismatch, seg.Size, seg.EncryptedSize)
+		}
+
+		segEnd := segStart + seg.Size
+
+		// Wholly before the request. The comparison is <= rather than < so
+		// that a request starting exactly on a segment boundary, or a
+		// zero-length request, does not pull in the preceding segment.
+		if segEnd <= offset {
+			payloadReadOffset += seg.EncryptedSize
+			segStart = segEnd
+			continue
+		}
+
+		// Wholly at or after the end of the request; nothing left to decrypt.
+		if segStart >= readEnd {
 			break
 		}
 
-		if firstSegment > int64(index) {
-			payloadReadOffset += seg.EncryptedSize
-			continue
+		if startIndex < 0 {
+			startIndex = offset - segStart
 		}
 
 		readBuf, err := r.tdfReader.ReadPayload(payloadReadOffset, seg.EncryptedSize)
@@ -1126,17 +1157,38 @@ func (r *Reader) ReadAt(buf []byte, offset int64) (int, error) { //nolint:funlen
 		}
 
 		payloadReadOffset += seg.EncryptedSize
+		segStart = segEnd
+	}
+
+	if startIndex < 0 {
+		// No segment intersected the request. Since payloadSize is the sum of
+		// the same sizes this loop walks, that can only mean a zero-length read
+		// or a read starting at the very end -- either way bufLen below is 0
+		// and startIndex is never used to index.
+		startIndex = 0
 	}
 
 	var err error
 	bufLen := int64(len(buf))
-	if (offset + int64(len(buf))) > r.payloadSize {
+	if readEnd > r.payloadSize {
+		// LoadTDF derives payloadSize as the sum of every segment's Size, and
+		// the loop above checked each Size against its segment's ciphertext
+		// length, so clamping to payloadSize keeps bufLen within the bytes that
+		// were actually decrypted.
 		bufLen = r.payloadSize - offset
 		err = io.EOF
 	}
 
-	startIndex := offset - (firstSegment * defaultSegmentSize)
-	copy(buf[:bufLen], decryptedBuf.Bytes()[startIndex:startIndex+bufLen])
+	if bufLen > 0 {
+		plaintext := decryptedBuf.Bytes()
+		if startIndex+bufLen > int64(len(plaintext)) {
+			// Unreachable given the per-segment Size check above; kept as a
+			// guard so a future change to the mapping cannot turn into an
+			// out-of-range index.
+			return 0, ErrSegSizeMismatch
+		}
+		copy(buf[:bufLen], plaintext[startIndex:startIndex+bufLen])
+	}
 	return int(bufLen), err
 }
 

@@ -46,6 +46,51 @@ awIDAQAB
 -----END PUBLIC KEY-----`
 )
 
+// splitKASURLs lists the servers a split may be unwrapped at. A split
+// carries keys rather than bare URLs, and one server can appear under
+// several key IDs, so duplicates are collapsed.
+func splitKASURLs(s Split) []string {
+	seen := make(map[string]bool, len(s.Keys))
+	urls := make([]string, 0, len(s.Keys))
+	for _, k := range s.Keys {
+		if !seen[k.URL] {
+			seen[k.URL] = true
+			urls = append(urls, k.URL)
+		}
+	}
+	return urls
+}
+
+// grantWithKey builds a legacy grant carrying its own key. Splitting is
+// offline, so a grant that names only a URL leaves no way to resolve a
+// wrapping key and is now an error rather than a keyless split.
+func grantWithKey(kasURL string) *policy.KeyAccessServer {
+	return &policy.KeyAccessServer{
+		Uri: kasURL,
+		KasKeys: []*policy.SimpleKasKey{{
+			KasUri: kasURL,
+			PublicKey: &policy.SimpleKasPublicKey{
+				Algorithm: policy.Algorithm_ALGORITHM_RSA_2048,
+				Kid:       "r1",
+				Pem:       mockRSAPublicKey1,
+			},
+		}},
+	}
+}
+
+// defaultKASWithKey builds the fallback KAS. It too must carry a key,
+// for the same reason.
+func defaultKASWithKey(kasURL string) *policy.SimpleKasKey {
+	return &policy.SimpleKasKey{
+		KasUri: kasURL,
+		PublicKey: &policy.SimpleKasPublicKey{
+			Algorithm: policy.Algorithm_ALGORITHM_RSA_2048,
+			Kid:       "default-key",
+			Pem:       mockRSAPublicKey1,
+		},
+	}
+}
+
 func createMockValue(fqn, grantKas, kid string, rule policy.AttributeRuleTypeEnum) *policy.Value {
 	// Extract attribute definition FQN from value FQN
 	// https://example.com/attr/Region/value/Europe -> https://example.com/attr/Region
@@ -146,7 +191,7 @@ func TestXORSplitter_GenerateSplits_BasicCases(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			splitter := NewXORSplitter(WithDefaultKAS(&policy.SimpleKasKey{KasUri: kasUs}))
+			splitter := NewXORSplitter(WithDefaultKAS(defaultKASWithKey(kasUs)))
 
 			result, err := splitter.GenerateSplits(t.Context(), tt.attrs, tt.dek)
 
@@ -181,7 +226,7 @@ func TestXORSplitter_AttributeHierarchy(t *testing.T) {
 				v := createMockValue("https://test.com/attr/test/value/test", evenMoreSpecificKas, "r1", policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF)
 				// Add definition-level grants that should be overridden
 				v.Attribute.Grants = []*policy.KeyAccessServer{
-					{Uri: specifiedKas},
+					grantWithKey(specifiedKas),
 				}
 				return v
 			},
@@ -194,7 +239,7 @@ func TestXORSplitter_AttributeHierarchy(t *testing.T) {
 			createValue: func() *policy.Value {
 				v := createMockValue("https://test.com/attr/test/value/test", "", "", policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF)
 				v.Attribute.Grants = []*policy.KeyAccessServer{
-					{Uri: specifiedKas},
+					grantWithKey(specifiedKas),
 				}
 				return v
 			},
@@ -207,7 +252,7 @@ func TestXORSplitter_AttributeHierarchy(t *testing.T) {
 			createValue: func() *policy.Value {
 				v := createMockValue("https://test.com/attr/test/value/test", "", "", policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF)
 				v.Attribute.Namespace.Grants = []*policy.KeyAccessServer{
-					{Uri: lessSpecificKas},
+					grantWithKey(lessSpecificKas),
 				}
 				return v
 			},
@@ -228,7 +273,7 @@ func TestXORSplitter_AttributeHierarchy(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			splitter := NewXORSplitter(WithDefaultKAS(&policy.SimpleKasKey{KasUri: tt.defaultKAS}))
+			splitter := NewXORSplitter(WithDefaultKAS(defaultKASWithKey(tt.defaultKAS)))
 			dek := make([]byte, 32)
 			_, err := rand.Read(dek)
 			require.NoError(t, err)
@@ -244,7 +289,7 @@ func TestXORSplitter_AttributeHierarchy(t *testing.T) {
 			// Check that the expected KAS is used
 			found := false
 			for _, split := range result.Splits {
-				for _, kasURL := range split.KASURLs {
+				for _, kasURL := range splitKASURLs(split) {
 					if kasURL == tt.expectedKAS {
 						found = true
 						break
@@ -282,18 +327,22 @@ func TestXORSplitter_AttributeRules(t *testing.T) {
 			description:    "allOf: each value should get its own split",
 		},
 		{
-			name:           "hierarchy rule - ordered evaluation",
-			rule:           policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY,
-			values:         []string{"value1", "value2"},
-			kasURLs:        []string{kasUs, kasCa},
-			expectedSplits: 1, // hierarchy typically results in single split based on precedence
-			description:    "hierarchy: should result in precedence-based splitting",
+			name:    "hierarchy rule - ordered evaluation",
+			rule:    policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY,
+			values:  []string{"value1", "value2"},
+			kasURLs: []string{kasUs, kasCa},
+			// A hierarchy rule is an AND, as it is in SDK.CreateTDF:
+			// every value in the clause must be satisfied, so each gets
+			// its own share. This package used to treat it as an OR,
+			// which handed out access the policy did not grant.
+			expectedSplits: 2,
+			description:    "hierarchy: each value should get its own split",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			splitter := NewXORSplitter(WithDefaultKAS(&policy.SimpleKasKey{KasUri: kasUs}))
+			splitter := NewXORSplitter(WithDefaultKAS(defaultKASWithKey(kasUs)))
 			dek := make([]byte, 32)
 			_, err := rand.Read(dek)
 			require.NoError(t, err)
@@ -322,7 +371,7 @@ func TestXORSplitter_AttributeRules(t *testing.T) {
 }
 
 func TestXORSplitter_SplitResultContent(t *testing.T) {
-	splitter := NewXORSplitter(WithDefaultKAS(&policy.SimpleKasKey{KasUri: kasUs}))
+	splitter := NewXORSplitter(WithDefaultKAS(defaultKASWithKey(kasUs)))
 	dek := make([]byte, 32)
 	_, err := rand.Read(dek)
 	require.NoError(t, err)
@@ -339,11 +388,12 @@ func TestXORSplitter_SplitResultContent(t *testing.T) {
 	assert.Len(t, result.Splits, 1, "Should have one split")
 	split := result.Splits[0]
 	assert.Equal(t, dek, split.Data, "Single split should contain original DEK")
-	assert.Contains(t, split.KASURLs, kasUs, "Split should reference the KAS URL")
+	assert.Contains(t, splitKASURLs(split), kasUs, "Split should reference the KAS URL")
 
-	// Verify public keys are collected
-	assert.Contains(t, result.KASPublicKeys, kasUs, "Result should contain public key for KAS")
-	pubKey := result.KASPublicKeys[kasUs]
+	// The key rides on the split rather than in a result-wide map, so
+	// one KAS can hold several keys for the same split.
+	require.Len(t, split.Keys, 1)
+	pubKey := split.Keys[0]
 	assert.Equal(t, kasUs, pubKey.URL)
 	assert.Equal(t, "r1", pubKey.KID)
 	assert.NotEmpty(t, pubKey.PEM)
@@ -366,7 +416,7 @@ func TestXORSplitter_ErrorHandling(t *testing.T) {
 		{
 			name: "invalid DEK size",
 			setup: func() (*XORSplitter, []*policy.Value, []byte) {
-				splitter := NewXORSplitter(WithDefaultKAS(&policy.SimpleKasKey{KasUri: kasUs}))
+				splitter := NewXORSplitter(WithDefaultKAS(defaultKASWithKey(kasUs)))
 				return splitter, []*policy.Value{}, make([]byte, 16) // wrong size
 			},
 			wantErr: "invalid DEK",
@@ -374,7 +424,7 @@ func TestXORSplitter_ErrorHandling(t *testing.T) {
 		{
 			name: "empty DEK",
 			setup: func() (*XORSplitter, []*policy.Value, []byte) {
-				splitter := NewXORSplitter(WithDefaultKAS(&policy.SimpleKasKey{KasUri: kasUs}))
+				splitter := NewXORSplitter(WithDefaultKAS(defaultKASWithKey(kasUs)))
 				return splitter, []*policy.Value{}, []byte{}
 			},
 			wantErr: "DEK cannot be empty",
@@ -433,17 +483,17 @@ func TestXORSplitter_ConfigurationOptions(t *testing.T) {
 		require.NotNil(t, result)
 
 		assert.Len(t, result.Splits, 1, "Empty attributes should use default KAS")
-		assert.Contains(t, result.Splits[0].KASURLs, kasUs, "Should use configured default KAS")
-		assert.Contains(t, result.KASPublicKeys, kasUs, "Should include default KAS public key")
+		assert.Contains(t, splitKASURLs(result.Splits[0]), kasUs, "Should use configured default KAS")
 
-		pubKey := result.KASPublicKeys[kasUs]
+		require.Len(t, result.Splits[0].Keys, 1, "Should include default KAS public key")
+		pubKey := result.Splits[0].Keys[0]
 		assert.Equal(t, kasUs, pubKey.URL)
 		assert.Equal(t, "default-key", pubKey.KID)
 		assert.Equal(t, mockRSAPublicKey1, pubKey.PEM)
 	})
 
 	t.Run("split ID generation", func(t *testing.T) {
-		splitter := NewXORSplitter(WithDefaultKAS(&policy.SimpleKasKey{KasUri: kasUs}))
+		splitter := NewXORSplitter(WithDefaultKAS(defaultKASWithKey(kasUs)))
 
 		dek := make([]byte, 32)
 		_, err := rand.Read(dek)
@@ -453,8 +503,11 @@ func TestXORSplitter_ConfigurationOptions(t *testing.T) {
 		require.NoError(t, err)
 		require.NotNil(t, result)
 
+		// An unsplit DEK carries no split ID, matching SDK.CreateTDF.
+		// This package used to stamp a random one on it, which made an
+		// otherwise identical manifest compare unequal.
 		assert.Len(t, result.Splits, 1)
-		assert.NotEmpty(t, result.Splits[0].ID, "Split should have a non-empty ID")
+		assert.Empty(t, result.Splits[0].ID, "A single split needs no ID")
 	})
 
 	t.Run("no options - minimal configuration", func(t *testing.T) {
@@ -473,7 +526,7 @@ func TestXORSplitter_ConfigurationOptions(t *testing.T) {
 
 func TestXORSplitter_ComplexScenarios(t *testing.T) {
 	t.Run("multiple attributes with different KAS", func(t *testing.T) {
-		splitter := NewXORSplitter(WithDefaultKAS(&policy.SimpleKasKey{KasUri: kasUs}))
+		splitter := NewXORSplitter(WithDefaultKAS(defaultKASWithKey(kasUs)))
 		dek := make([]byte, 32)
 		_, err := rand.Read(dek)
 		require.NoError(t, err)
@@ -496,7 +549,7 @@ func TestXORSplitter_ComplexScenarios(t *testing.T) {
 	})
 
 	t.Run("attribute with multiple KAS in grants", func(t *testing.T) {
-		splitter := NewXORSplitter(WithDefaultKAS(&policy.SimpleKasKey{KasUri: kasUs}))
+		splitter := NewXORSplitter(WithDefaultKAS(defaultKASWithKey(kasUs)))
 		dek := make([]byte, 32)
 		_, err := rand.Read(dek)
 		require.NoError(t, err)
@@ -504,9 +557,9 @@ func TestXORSplitter_ComplexScenarios(t *testing.T) {
 		// Create attribute with multiple KAS grants
 		attr := createMockValue("https://test.com/attr/multi/value/test", "", "", policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF)
 		attr.Grants = []*policy.KeyAccessServer{
-			{Uri: kasUs},
-			{Uri: kasUk},
-			{Uri: kasCa},
+			grantWithKey(kasUs),
+			grantWithKey(kasUk),
+			grantWithKey(kasCa),
 		}
 
 		result, err := splitter.GenerateSplits(t.Context(), []*policy.Value{attr}, dek)
@@ -516,11 +569,11 @@ func TestXORSplitter_ComplexScenarios(t *testing.T) {
 		// Should create a split that includes all the KAS URLs
 		found := false
 		for _, split := range result.Splits {
-			if len(split.KASURLs) > 1 {
+			if len(splitKASURLs(split)) > 1 {
 				found = true
-				assert.Contains(t, split.KASURLs, kasUs)
-				assert.Contains(t, split.KASURLs, kasUk)
-				assert.Contains(t, split.KASURLs, kasCa)
+				assert.Contains(t, splitKASURLs(split), kasUs)
+				assert.Contains(t, splitKASURLs(split), kasUk)
+				assert.Contains(t, splitKASURLs(split), kasCa)
 			}
 		}
 		assert.True(t, found, "Should find split with multiple KAS URLs")

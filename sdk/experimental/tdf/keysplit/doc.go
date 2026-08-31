@@ -1,44 +1,30 @@
 // Experimental: This package is EXPERIMENTAL and may change or be removed at any time
-// Package keysplit provides key splitting functionality for TDF (Trusted Data Format) encryption.
+
+// Package keysplit is deprecated. Use [sdk.KeySplitter] instead.
 //
-// This package extracts the key splitting logic from the main SDK granter functionality,
-// providing a clean API for:
-//   - Analyzing policy attributes and their associated KAS (Key Access Server) grants
-//   - Creating cryptographic key splits based on attribute rules (allOf, anyOf, hierarchy)
-//   - Building Key Access Objects (KAOs) that can be embedded in TDF manifests
+// This package used to carry its own implementation of "ABAC attributes
+// to DEK splits". That reasoning now lives in package sdk, where
+// [sdk.SDK.CreateTDF] and the chunked writer share it, and what remains
+// here is an adapter over [sdk.DefaultKeySplitter] kept so dependent
+// code keeps compiling.
 //
-// The package implements XOR-based secret sharing for key splitting, where the original
-// Data Encryption Key (DEK) can be reconstructed by XORing all the split keys together.
+// The replacement:
 //
-// # Attribute Resolution Hierarchy
+//	result, err := sdk.DefaultKeySplitter().Split(ctx, sdk.SplitRequest{
+//		Attributes: attributeValues,
+//		DEK:        dek,
+//		DefaultKAS: []*policy.SimpleKasKey{defaultKAS},
+//	})
 //
-// The package respects the attribute grant hierarchy:
-//  1. Value-level grants (most specific)
-//  2. Definition-level grants
-//  3. Namespace-level grants (least specific)
+// [sdk.DefaultKeySplitter] is offline: every wrapping key must be
+// carried by the attribute values or by the default KAS. Use
+// [sdk.SDK.KeySplitter] to resolve the rest against a running platform.
 //
-// # Attribute Rules
+// Most callers need neither -- [sdk.NewChunkedWriter] and
+// [sdk.SDK.CreateTDF] already split keys this way, and
+// [sdk.WithChunkedKeySplitter] overrides it.
 //
-// Different attribute rule types determine how splits are created:
-//   - allOf: Each value gets its own split (all must be satisfied)
-//   - anyOf: All values share the same split (any can satisfy)
-//   - hierarchy: Ordered evaluation with precedence
-//
-// # Basic Usage
-//
-//	splitter := keysplit.NewXORSplitter(
-//		keysplit.WithDefaultKAS("https://kas.example.com"),
-//	)
-//
-//	// Generate splits from policy attributes and DEK
-//	result, err := splitter.GenerateSplits(ctx, policyValues, dek)
-//	if err != nil {
-//		return err
-//	}
-//
-//	// Build Key Access Objects for TDF manifest
-//	kaos, err := splitter.BuildKeyAccessObjects(result, policyBytes, metadata)
-//	if err != nil {
-//		return err
-//	}
+// Splits produced through this package now follow the sdk semantics,
+// which differ from what it used to decide on its own; see
+// [XORSplitter.GenerateSplits] for the list.
 package keysplit

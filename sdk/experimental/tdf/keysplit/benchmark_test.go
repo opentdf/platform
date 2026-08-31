@@ -108,7 +108,7 @@ func BenchmarkXORSplitter_GenerateSplits(b *testing.B) {
 	for _, bm := range benchmarks {
 		b.Run(bm.name, func(b *testing.B) {
 			// Setup
-			splitter := NewXORSplitter(WithDefaultKAS(&policy.SimpleKasKey{KasUri: kasUs}))
+			splitter := NewXORSplitter(WithDefaultKAS(defaultKASWithKey(kasUs)))
 			attrs := bm.setupAttrs(bm.numAttrs, bm.numValues)
 
 			dek := make([]byte, bm.dekSize)
@@ -167,7 +167,7 @@ func BenchmarkXORSplitter_SplitGeneration(b *testing.B) {
 	for _, bm := range benchmarks {
 		b.Run(bm.name, func(b *testing.B) {
 			// Setup
-			splitter := NewXORSplitter(WithDefaultKAS(&policy.SimpleKasKey{KasUri: kasUs}))
+			splitter := NewXORSplitter(WithDefaultKAS(defaultKASWithKey(kasUs)))
 
 			attrs := make([]*policy.Value, bm.numAttrs)
 			kasUrls := []string{kasUs, kasUk, kasCa, kasNz, kasAu}
@@ -254,17 +254,17 @@ func BenchmarkAttributeResolution(b *testing.B) {
 					attr = createMockValue(fqn, kasUs, "r1", policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF)
 				case "attribute":
 					attr = createMockValue(fqn, "", "", policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF)
-					attr.Attribute.Grants = []*policy.KeyAccessServer{{Uri: kasUk}}
+					attr.Attribute.Grants = []*policy.KeyAccessServer{grantWithKey(kasUk)}
 				case "namespace":
 					attr = createMockValue(fqn, "", "", policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF)
-					attr.Attribute.Namespace.Grants = []*policy.KeyAccessServer{{Uri: kasCa}}
+					attr.Attribute.Namespace.Grants = []*policy.KeyAccessServer{grantWithKey(kasCa)}
 				case "none":
 					attr = createMockValue(fqn, "", "", policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF)
 				}
 				attrs[i] = attr
 			}
 
-			splitter := NewXORSplitter(WithDefaultKAS(&policy.SimpleKasKey{KasUri: kasUs}))
+			splitter := NewXORSplitter(WithDefaultKAS(defaultKASWithKey(kasUs)))
 			dek := make([]byte, 32)
 			_, err := rand.Read(dek)
 			if err != nil {

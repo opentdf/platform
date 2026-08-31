@@ -10,7 +10,6 @@ import (
 	"hash/crc32"
 	"sort"
 	"sync"
-	"time"
 )
 
 // segmentWriter implements the SegmentWriter interface for out-of-order segment writing
@@ -36,12 +35,12 @@ func NewSegmentTDFWriter(expectedSegments int, opts ...Option) SegmentWriter {
 
 	return &segmentWriter{
 		baseWriter: base,
-		metadata:   NewSegmentMetadata(expectedSegments),
+		metadata:   NewSegmentMetadata(expectedSegments, cfg.Now),
 		centralDir: NewCentralDirectory(),
 		payloadEntry: &FileEntry{
 			Name:        TDFPayloadFileName,
 			Offset:      0,
-			ModTime:     time.Now(),
+			ModTime:     cfg.Now(),
 			IsStreaming: true, // Use data descriptor pattern
 		},
 		finalized: false,
@@ -191,7 +190,7 @@ func (sw *segmentWriter) Finalize(ctx context.Context, manifest []byte) ([]byte,
 		Size:           uint64(len(manifest)),
 		CompressedSize: uint64(len(manifest)),
 		CRC32:          crc32.ChecksumIEEE(manifest),
-		ModTime:        time.Now(),
+		ModTime:        sw.config.Now(),
 		IsStreaming:    false,
 	}
 
@@ -264,7 +263,7 @@ func (sw *segmentWriter) writeDataDescriptor(buf *bytes.Buffer, zip64 bool) erro
 
 // writeManifestFile writes the manifest as a complete file entry
 func (sw *segmentWriter) writeManifestFile(buf *bytes.Buffer, manifest []byte, entry FileEntry) error {
-	fileTime, fileDate := sw.getTimeDateInMSDosFormat(entry.ModTime)
+	fileTime, fileDate := msDosTimeDate(entry.ModTime)
 
 	// Write local file header for manifest
 	header := LocalFileHeader{
@@ -298,19 +297,9 @@ func (sw *segmentWriter) writeManifestFile(buf *bytes.Buffer, manifest []byte, e
 	return nil
 }
 
-// getTimeDateInMSDosFormat converts time to MS-DOS format
-func (sw *segmentWriter) getTimeDateInMSDosFormat(t time.Time) (uint16, uint16) {
-	const monthShift = 5
-
-	timeInDos := t.Hour()<<11 | t.Minute()<<5 | t.Second()>>1
-	dateInDos := (t.Year()-zipBaseYear)<<9 | int((t.Month())<<monthShift) | t.Day()
-
-	return uint16(timeInDos), uint16(dateInDos)
-}
-
 // writeLocalFileHeader writes the ZIP local file header for the payload
 func (sw *segmentWriter) writeLocalFileHeader(buf *bytes.Buffer) error {
-	fileTime, fileDate := sw.getTimeDateInMSDosFormat(sw.payloadEntry.ModTime)
+	fileTime, fileDate := msDosTimeDate(sw.payloadEntry.ModTime)
 
 	header := LocalFileHeader{
 		Signature:             fileHeaderSignature,

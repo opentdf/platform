@@ -42,15 +42,23 @@ type SegmentMetadata struct {
 	// Order, when set, defines the exact logical order of segments for
 	// completeness checks and CRC computation. Indices may be sparse.
 	Order []int
+	// now is the injected time source used to stamp SegmentEntry.Written.
+	now func() time.Time
 }
 
-// NewSegmentMetadata creates metadata for tracking segments using combine-based CRC.
-func NewSegmentMetadata(expectedCount int) *SegmentMetadata {
+// NewSegmentMetadata creates metadata for tracking segments using
+// combine-based CRC. now stamps SegmentEntry.Written; pass time.Now
+// for production or a pinned clock for deterministic tests.
+func NewSegmentMetadata(expectedCount int, now func() time.Time) *SegmentMetadata {
+	if now == nil {
+		now = time.Now
+	}
 	return &SegmentMetadata{
 		ExpectedCount: expectedCount,
 		Segments:      make(map[int]*SegmentEntry),
 		presentCount:  0,
 		TotalCRC32:    0,
+		now:           now,
 	}
 }
 
@@ -69,7 +77,7 @@ func (sm *SegmentMetadata) AddSegment(index int, originalSize uint64, originalCR
 		Index:   index,
 		Size:    originalSize,
 		CRC32:   originalCRC32,
-		Written: time.Now(),
+		Written: sm.now(),
 	}
 
 	sm.TotalSize += originalSize
@@ -234,16 +242,49 @@ func (cd *CentralDirectory) GenerateBytes(isZip64 bool) ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
+// msDosTimeDate encodes t as the (time, date) pair ZIP headers carry.
+//
+// The date packs the year as a 7-bit offset from zipBaseYear, so only
+// zipBaseYear..zipMaxYear is representable. An out-of-range year would
+// wrap through the uint16 conversion into a plausible but wrong date --
+// the zero time.Time lands on 2049-01-01 and the Unix epoch on
+// 2098-01-01 -- so clamp to the endpoints instead. time.Now is always in
+// range; a clock injected via WithClock is the only way to get here.
+func msDosTimeDate(t time.Time) (uint16, uint16) {
+	const (
+		hourShift   = 11
+		minuteShift = 5
+		monthShift  = 5
+		yearShift   = 9
+	)
+
+	// Compare on calendar fields, not instants: DOS timestamps are local
+	// wall-clock with no zone, and those fields are what get encoded.
+	switch {
+	case t.Year() < zipBaseYear:
+		t = time.Date(zipBaseYear, time.January, 1, 0, 0, 0, 0, t.Location())
+	case t.Year() > zipMaxYear:
+		t = time.Date(zipMaxYear, time.December, 31, 23, 59, 58, 0, t.Location())
+	}
+
+	timeInDos := t.Hour()<<hourShift | t.Minute()<<minuteShift | t.Second()>>1
+	dateInDos := (t.Year()-zipBaseYear)<<yearShift | int(t.Month())<<monthShift | t.Day()
+
+	return uint16(timeInDos), uint16(dateInDos)
+}
+
 // writeCDFileHeader writes a central directory file header
 func (cd *CentralDirectory) writeCDFileHeader(buf *bytes.Buffer, entry FileEntry, isZip64 bool) error {
+	lastModifiedTime, lastModifiedDate := msDosTimeDate(entry.ModTime)
+
 	header := CDFileHeader{
 		Signature:              centralDirectoryHeaderSignature,
 		VersionCreated:         zipVersion,
 		VersionNeeded:          zipVersion,
 		GeneralPurposeBitFlag:  0,
 		CompressionMethod:      0, // No compression
-		LastModifiedTime:       uint16(entry.ModTime.Hour()<<11 | entry.ModTime.Minute()<<5 | entry.ModTime.Second()>>1),
-		LastModifiedDate:       uint16((entry.ModTime.Year()-zipBaseYear)<<9 | int(entry.ModTime.Month())<<5 | entry.ModTime.Day()),
+		LastModifiedTime:       lastModifiedTime,
+		LastModifiedDate:       lastModifiedDate,
 		Crc32:                  entry.CRC32,
 		CompressedSize:         uint32(entry.CompressedSize),
 		UncompressedSize:       uint32(entry.Size),

@@ -22,6 +22,9 @@ const (
 
 const (
 	zipBaseYear = 1980 // ZIP file format base year for date calculations
+	// zipMaxYear is the newest year an MS-DOS date can hold: the year is a
+	// 7-bit offset from zipBaseYear.
+	zipMaxYear = zipBaseYear + 127
 )
 
 const (

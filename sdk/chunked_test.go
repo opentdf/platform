@@ -12,6 +12,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"sync"
 	"testing"
 	"time"
 
@@ -1299,4 +1300,117 @@ func TestChunkedOptionsRejectNil(t *testing.T) {
 			assert.Nil(t, writer)
 		})
 	}
+}
+
+// TestChunkedConcurrentWrites exercises the contract WriteSegment
+// documents but nothing tested: distinct indices may be written
+// concurrently. Every other out-of-order test drives a single
+// goroutine, so -race never saw the locking around w.mu, and neither
+// the reservation nor the rollback path was observed under contention.
+func TestChunkedConcurrentWrites(t *testing.T) {
+	ctx := context.Background()
+	kasBundle := newChunkedFakeKAS(t)
+	defer kasBundle.server.Close()
+	s := newChunkedTestSDK(t, kasBundle)
+
+	writer, err := s.NewChunkedWriter(ctx,
+		WithChunkedDefaultKAS(kasBundle.simpleKey()),
+	)
+	require.NoError(t, err)
+
+	const segments = 16
+	chunks := make([][]byte, segments)
+	var want bytes.Buffer
+	for i := range chunks {
+		chunks[i] = []byte(fmt.Sprintf("segment-%02d;", i))
+		want.Write(chunks[i])
+	}
+
+	// Index-keyed slices, so the goroutines share no mutable state of
+	// this test's own making and any race -race reports belongs to the
+	// writer.
+	segBytes := make([][]byte, segments)
+	errs := make([]error, segments)
+
+	var wg sync.WaitGroup
+	start := make(chan struct{})
+	for i := range segments {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			<-start // widen the window in which the writes overlap
+			seg, err := writer.WriteSegment(ctx, i, chunks[i])
+			if err != nil {
+				errs[i] = err
+				return
+			}
+			segBytes[i], errs[i] = io.ReadAll(seg.TDFData)
+		}()
+	}
+	close(start)
+	wg.Wait()
+
+	for i, err := range errs {
+		require.NoError(t, err, "segment %d", i)
+	}
+
+	fin, err := writer.Finalize(ctx)
+	require.NoError(t, err)
+	require.Equal(t, segments, fin.TotalSegments)
+
+	// Concatenation is in index order regardless of write order.
+	var body bytes.Buffer
+	for _, buf := range segBytes {
+		body.Write(buf)
+	}
+	body.Write(fin.Data)
+
+	reader, err := s.LoadTDF(bytes.NewReader(body.Bytes()),
+		WithKasAllowlist([]string{kasBundle.url}),
+	)
+	require.NoError(t, err)
+	plain, err := io.ReadAll(reader)
+	require.NoError(t, err)
+	assert.Equal(t, want.String(), string(plain))
+}
+
+// TestChunkedConcurrentDuplicateIndex checks the other half of the
+// contract: when several goroutines race on one index, exactly one
+// wins and the rest are rejected. The reservation is what makes this
+// deterministic, so it is worth pinning under -race.
+func TestChunkedConcurrentDuplicateIndex(t *testing.T) {
+	ctx := context.Background()
+	kasBundle := newChunkedFakeKAS(t)
+	defer kasBundle.server.Close()
+	s := newChunkedTestSDK(t, kasBundle)
+
+	writer, err := s.NewChunkedWriter(ctx,
+		WithChunkedDefaultKAS(kasBundle.simpleKey()),
+	)
+	require.NoError(t, err)
+
+	const racers = 8
+	errs := make([]error, racers)
+	var wg sync.WaitGroup
+	start := make(chan struct{})
+	for i := range racers {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			<-start
+			_, errs[i] = writer.WriteSegment(ctx, 0, []byte("contested"))
+		}()
+	}
+	close(start)
+	wg.Wait()
+
+	var won int
+	for i, err := range errs {
+		if err == nil {
+			won++
+			continue
+		}
+		require.ErrorIs(t, err, ErrChunkedSegmentAlreadyWritten, "racer %d", i)
+	}
+	assert.Equal(t, 1, won, "exactly one writer may claim an index")
 }

@@ -34,174 +34,187 @@ func (n jsonNumber) MarshalJSON() ([]byte, error) {
 	return []byte(n), nil
 }
 
+func quietDiagnostics() Option {
+	return WithDiagnosticLogger(slog.New(slog.DiscardHandler))
+}
+
 func TestRecordUsesBoundedContextAfterRequestCancellation(t *testing.T) {
 	ctx, cancel := context.WithCancel(createTestContext(t))
 	cancel()
 
-	var encoded Event
-	encoder := EncoderFunc(func(ctx context.Context, event Event) ([]Emission, error) {
+	var processed Event
+	processor := ProcessorFunc(func(ctx context.Context, event Event) error {
 		require.NoError(t, ctx.Err())
 		deadline, ok := ctx.Deadline()
 		require.True(t, ok)
 		require.LessOrEqual(t, time.Until(deadline), time.Second)
-		encoded = event
-		return []Emission{{Level: LevelAudit, Message: "encoded"}}, nil
-	})
-	writes := 0
-	sink := SinkFunc(func(ctx context.Context, emission Emission) error {
-		require.NoError(t, ctx.Err())
-		assert.Equal(t, "encoded", emission.Message)
-		writes++
+		processed = event
 		return nil
 	})
-	logger := CreateAuditLogger(*slog.Default(), WithEncoder(encoder), WithSink(sink), WithRecordTimeout(time.Second))
+	logger := CreateAuditLogger(*slog.Default(), WithProcessor(processor), WithRecordTimeout(time.Second))
 
-	err := logger.Record(ctx, canonicalTestEvent())
-
+	require.NoError(t, logger.Record(ctx, canonicalTestEvent()))
+	assert.NotEqual(t, uuid.Nil, processed.ID)
+	assert.Equal(t, PhaseCompleted, processed.Phase)
+	assert.Equal(t, TestRequestID, processed.RequestID)
+	assert.Equal(t, TestActorID, processed.Actor.ID)
+	_, err := time.Parse(time.RFC3339, processed.Timestamp)
 	require.NoError(t, err)
-	assert.Equal(t, 1, writes)
-	assert.NotEqual(t, uuid.Nil, encoded.ID)
-	assert.Equal(t, PhaseCompleted, encoded.Phase)
-	assert.Equal(t, TestRequestID, encoded.RequestID)
-	assert.Equal(t, TestActorID, encoded.Actor.ID)
 }
 
-func TestRecordEncoderFailureFallsBackAndReturnsError(t *testing.T) {
-	encoderErr := errors.New("conversion failed")
-	encoder := EncoderFunc(func(context.Context, Event) ([]Emission, error) {
-		return nil, encoderErr
-	})
-	var captured Emission
-	sink := SinkFunc(func(_ context.Context, emission Emission) error {
-		captured = emission
-		return nil
-	})
-	logger := CreateAuditLogger(*slog.Default(), WithEncoder(encoder), WithSink(sink))
+func TestRecordRejectsInvalidRequiredFieldsBeforeProcessing(t *testing.T) {
+	tests := []struct {
+		name   string
+		mutate func(*Event)
+	}{
+		{name: "verb", mutate: func(event *Event) { event.Verb = " " }},
+		{name: "object type", mutate: func(event *Event) { event.Object.Type = " " }},
+		{name: "action type", mutate: func(event *Event) { event.Action.Type = " " }},
+		{name: "action result", mutate: func(event *Event) { event.Action.Result = " " }},
+		{name: "client platform", mutate: func(event *Event) { event.ClientInfo.Platform = " " }},
+		{name: "phase", mutate: func(event *Event) { event.Phase = Phase("unknown") }},
+	}
 
-	err := logger.Record(createTestContext(t), canonicalTestEvent())
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			event := canonicalTestEvent()
+			test.mutate(&event)
+			calls := 0
+			logger := CreateAuditLogger(*slog.Default(), WithProcessor(ProcessorFunc(
+				func(context.Context, Event) error {
+					calls++
+					return nil
+				},
+			)))
 
-	require.ErrorIs(t, err, ErrEncoding)
-	require.ErrorIs(t, err, encoderErr)
-	assert.Equal(t, "read", captured.Message)
-	require.Len(t, captured.Attrs, 1)
-	assert.Equal(t, "audit", captured.Attrs[0].Key)
+			err := logger.Record(t.Context(), event)
+
+			require.ErrorIs(t, err, ErrInvalidEvent)
+			assert.Zero(t, calls)
+		})
+	}
 }
 
-func TestRecordEncoderCannotMutateFallbackEvent(t *testing.T) {
-	encoder := EncoderFunc(func(_ context.Context, event Event) ([]Emission, error) {
-		event.Object.ID = "mutated"
-		owner, ok := event.EventMetaData["owner"].(map[string]any)
-		require.True(t, ok)
-		owner["id"] = "mutated"
-		return nil, errors.New("conversion failed")
-	})
-	var payload map[string]any
-	sink := SinkFunc(func(_ context.Context, emission Emission) error {
-		var ok bool
-		payload, ok = emission.Attrs[0].Value.Any().(map[string]any)
-		require.True(t, ok)
-		return nil
-	})
-	logger := CreateAuditLogger(*slog.Default(), WithEncoder(encoder), WithSink(sink))
+func TestRecordAllowsOptionalFieldsToBeEmpty(t *testing.T) {
+	event := canonicalTestEvent()
+	event.Object.ID = ""
+	event.Actor = Actor{}
+	event.EventMetaData = nil
+	event.Original = nil
+	event.Updated = nil
 
-	err := logger.Record(createTestContext(t), canonicalTestEvent())
-
-	require.ErrorIs(t, err, ErrEncoding)
-	assert.Equal(t, "document-1", requireMap(t, payload["object"])["id"])
-	assert.Equal(t, "org-1", requireMap(t, requireMap(t, payload["eventMetaData"])["owner"])["id"])
-}
-
-func TestRecordRejectsSilentEncoderDrop(t *testing.T) {
-	encoder := EncoderFunc(func(context.Context, Event) ([]Emission, error) {
-		return nil, nil
-	})
-	writes := 0
-	logger := CreateAuditLogger(*slog.Default(), WithEncoder(encoder), WithSink(SinkFunc(
-		func(context.Context, Emission) error {
-			writes++
+	processed := false
+	logger := CreateAuditLogger(*slog.Default(), WithProcessor(ProcessorFunc(
+		func(_ context.Context, event Event) error {
+			processed = true
+			assert.Empty(t, event.Object.ID)
 			return nil
 		},
 	)))
 
-	err := logger.Record(createTestContext(t), canonicalTestEvent())
-
-	require.ErrorIs(t, err, ErrInvalidEmission)
-	assert.Equal(t, 1, writes, "default fallback must preserve the event")
+	require.NoError(t, logger.Record(t.Context(), event))
+	assert.True(t, processed)
 }
 
-func TestRecordAttemptsEveryEmissionAndReturnsSinkFailures(t *testing.T) {
-	encoder := EncoderFunc(func(context.Context, Event) ([]Emission, error) {
-		return []Emission{
-			{Level: LevelAudit, Message: "partition-1"},
-			{Level: LevelAudit, Message: "partition-2"},
-		}, nil
+func TestRecordReturnsProcessorErrorWithoutFallback(t *testing.T) {
+	processorErr := errors.New("delivery unavailable")
+	logger, buffer := createTestLogger()
+	logger.processor = ProcessorFunc(func(context.Context, Event) error { return processorErr })
+	logger.diagnostics = slog.New(slog.DiscardHandler)
+
+	err := logger.Record(createTestContext(t), canonicalTestEvent())
+
+	require.ErrorIs(t, err, ErrProcessing)
+	require.ErrorIs(t, err, processorErr)
+	assert.Empty(t, buffer.String())
+}
+
+func TestRecordReturnsProcessorPanic(t *testing.T) {
+	logger := CreateAuditLogger(*slog.Default(), WithProcessor(ProcessorFunc(func(context.Context, Event) error {
+		panic("processor panic")
+	})), quietDiagnostics())
+
+	err := logger.Record(createTestContext(t), canonicalTestEvent())
+
+	require.ErrorIs(t, err, ErrProcessing)
+	require.ErrorContains(t, err, "processor panic")
+}
+
+func TestRecordReturnsProcessorDeadline(t *testing.T) {
+	processor := ProcessorFunc(func(ctx context.Context, _ Event) error {
+		<-ctx.Done()
+		return ctx.Err()
 	})
-	var messages []string
-	sink := SinkFunc(func(_ context.Context, emission Emission) error {
-		messages = append(messages, emission.Message)
-		if emission.Message == "partition-1" {
-			return errors.New("first partition unavailable")
-		}
+	logger := CreateAuditLogger(*slog.Default(), WithProcessor(processor), WithRecordTimeout(time.Millisecond), quietDiagnostics())
+
+	err := logger.Record(t.Context(), canonicalTestEvent())
+
+	require.ErrorIs(t, err, ErrProcessing)
+	require.ErrorIs(t, err, context.DeadlineExceeded)
+}
+
+func TestRecordRejectsUnencodableDataBeforeProcessing(t *testing.T) {
+	event := canonicalTestEvent()
+	event.EventMetaData["invalid"] = func() {}
+	calls := 0
+	logger := CreateAuditLogger(*slog.Default(), WithProcessor(ProcessorFunc(func(context.Context, Event) error {
+		calls++
 		return nil
-	})
-	logger := CreateAuditLogger(*slog.Default(), WithEncoder(encoder), WithSink(sink))
-
-	err := logger.Record(createTestContext(t), canonicalTestEvent())
-
-	require.ErrorIs(t, err, ErrSink)
-	assert.Equal(t, []string{"partition-1", "partition-2"}, messages)
-}
-
-func TestRecordReturnsSinkPanic(t *testing.T) {
-	logger := CreateAuditLogger(*slog.Default(), WithSink(SinkFunc(func(context.Context, Emission) error {
-		panic("sink panic")
 	})))
 
-	err := logger.Record(createTestContext(t), canonicalTestEvent())
+	err := logger.Record(t.Context(), event)
 
-	require.ErrorIs(t, err, ErrSink)
-	require.ErrorContains(t, err, "sink panic")
+	require.ErrorIs(t, err, ErrInvalidEvent)
+	assert.Zero(t, calls)
 }
 
 func TestRecordSnapshotsCallerData(t *testing.T) {
 	event := canonicalTestEvent()
-	var captured Event
-	logger := CreateAuditLogger(*slog.Default(), WithEncoder(EncoderFunc(
-		func(_ context.Context, event Event) ([]Emission, error) {
-			captured = event
-			return []Emission{{Level: LevelAudit, Message: "encoded"}}, nil
+	logger := CreateAuditLogger(*slog.Default(), WithProcessor(ProcessorFunc(
+		func(_ context.Context, processed Event) error {
+			processed.Object.ID = "mutated"
+			owner, ok := processed.EventMetaData["owner"].(map[string]any)
+			require.True(t, ok)
+			owner["id"] = "mutated"
+			return nil
 		},
-	)), WithSink(SinkFunc(func(context.Context, Emission) error { return nil })))
+	)))
 
 	require.NoError(t, logger.Record(createTestContext(t), event))
-	event.Object.ID = "mutated"
-	eventOwner, ok := event.EventMetaData["owner"].(map[string]any)
+	assert.Equal(t, "document-1", event.Object.ID)
+	owner, ok := event.EventMetaData["owner"].(map[string]any)
 	require.True(t, ok)
-	eventOwner["id"] = "mutated"
+	assert.Equal(t, "org-1", owner["id"])
+}
 
-	assert.Equal(t, "document-1", captured.Object.ID)
-	capturedOwner, ok := captured.EventMetaData["owner"].(map[string]any)
+func TestRecordPreservesJSONNumbersInSnapshot(t *testing.T) {
+	var processed Event
+	logger := CreateAuditLogger(*slog.Default(), WithProcessor(ProcessorFunc(
+		func(_ context.Context, event Event) error {
+			processed = event
+			return nil
+		},
+	)))
+
+	require.NoError(t, logger.Record(createTestContext(t), canonicalTestEvent()))
+	count, ok := processed.EventMetaData["count"].(json.Number)
 	require.True(t, ok)
-	assert.Equal(t, "org-1", capturedOwner["id"])
-	capturedCount, ok := captured.EventMetaData["count"].(json.Number)
-	require.True(t, ok)
-	assert.Equal(t, "9007199254740993", capturedCount.String())
+	assert.Equal(t, "9007199254740993", count.String())
 }
 
 func TestRecordDoesNotTrustProducerPrincipal(t *testing.T) {
 	event := canonicalTestEvent()
 	event.Principal = ctxAuth.Principal{Subject: "producer-supplied"}
-	var captured Event
-	logger := CreateAuditLogger(*slog.Default(), WithEncoder(EncoderFunc(
-		func(_ context.Context, event Event) ([]Emission, error) {
-			captured = event
-			return []Emission{{Level: LevelAudit, Message: "encoded"}}, nil
+	var processed Event
+	logger := CreateAuditLogger(*slog.Default(), WithProcessor(ProcessorFunc(
+		func(_ context.Context, event Event) error {
+			processed = event
+			return nil
 		},
-	)), WithSink(SinkFunc(func(context.Context, Emission) error { return nil })))
+	)))
 
-	require.NoError(t, logger.Record(createTestContext(t), event))
-
-	assert.Empty(t, captured.Principal)
+	require.NoError(t, logger.Record(t.Context(), event))
+	assert.Empty(t, processed.Principal)
 }
 
 func TestRecordIsSafeForConcurrentUse(t *testing.T) {
@@ -210,13 +223,13 @@ func TestRecordIsSafeForConcurrentUse(t *testing.T) {
 		mu  sync.Mutex
 		ids = make(map[uuid.UUID]struct{}, count)
 	)
-	encoder := EncoderFunc(func(_ context.Context, event Event) ([]Emission, error) {
+	processor := ProcessorFunc(func(_ context.Context, event Event) error {
 		mu.Lock()
 		ids[event.ID] = struct{}{}
 		mu.Unlock()
-		return []Emission{{Level: LevelAudit, Message: "encoded"}}, nil
+		return nil
 	})
-	logger := CreateAuditLogger(*slog.Default(), WithEncoder(encoder), WithSink(SinkFunc(func(context.Context, Emission) error { return nil })))
+	logger := CreateAuditLogger(*slog.Default(), WithProcessor(processor))
 
 	var wg sync.WaitGroup
 	errs := make(chan error, count)
@@ -232,24 +245,19 @@ func TestRecordIsSafeForConcurrentUse(t *testing.T) {
 	for err := range errs {
 		require.NoError(t, err)
 	}
-
 	assert.Len(t, ids, count)
 }
 
-func TestLoggerWithRetainsAuditPipeline(t *testing.T) {
-	encoder := EncoderFunc(func(context.Context, Event) ([]Emission, error) {
-		return []Emission{{Level: LevelAudit, Message: "encoded"}}, nil
-	})
-	sink := SinkFunc(func(context.Context, Emission) error { return nil })
-	logger := CreateAuditLogger(*slog.Default(), WithEncoder(encoder), WithSink(sink))
+func TestLoggerWithRetainsAuditProcessor(t *testing.T) {
+	processor := ProcessorFunc(func(context.Context, Event) error { return nil })
+	logger := CreateAuditLogger(*slog.Default(), WithProcessor(processor))
 
 	child := logger.With("namespace", "extension")
 
-	assert.NotNil(t, child.Encoder())
-	assert.NotNil(t, child.Sink())
+	assert.NotNil(t, child.Processor())
 }
 
-func TestDefaultEncoderPreservesLegacyWireShape(t *testing.T) {
+func TestDefaultProcessorPreservesLegacyWireShape(t *testing.T) {
 	logger, buffer := createTestLogger()
 
 	require.NoError(t, logger.Record(createTestContext(t), canonicalTestEvent()))
@@ -262,4 +270,8 @@ func TestDefaultEncoderPreservesLegacyWireShape(t *testing.T) {
 	assert.Equal(t, "success", requireMap(t, payload["action"])["result"])
 	assert.NotContains(t, payload, "id", "recorder lifecycle ID is not part of the legacy wire payload")
 	assert.NotContains(t, payload, "phase", "recorder phase is not part of the legacy wire payload")
+	timestamp, ok := payload["timestamp"].(string)
+	require.True(t, ok)
+	_, err := time.Parse(time.RFC3339, timestamp)
+	require.NoError(t, err)
 }

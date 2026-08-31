@@ -116,11 +116,8 @@ func Start(f ...StartOptions) error {
 
 	slog.Debug("configuring logger")
 	var loggerOptions []logger.Option
-	if startConfig.auditEncoder != nil {
-		loggerOptions = append(loggerOptions, logger.WithAuditEncoder(startConfig.auditEncoder))
-	}
-	if startConfig.auditSink != nil {
-		loggerOptions = append(loggerOptions, logger.WithAuditSink(startConfig.auditSink))
+	if startConfig.auditProcessor != nil {
+		loggerOptions = append(loggerOptions, logger.WithAuditProcessor(startConfig.auditProcessor))
 	}
 	logger, err := logger.NewLogger(cfg.Logger, loggerOptions...)
 	if err != nil {

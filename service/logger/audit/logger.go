@@ -38,8 +38,7 @@ var logLevelNames = map[slog.Leveler]string{
 type Logger struct {
 	logger        *slog.Logger
 	diagnostics   *slog.Logger
-	encoder       Encoder
-	sink          Sink
+	processor     Processor
 	recordTimeout time.Duration
 	configMu      sync.RWMutex
 	config        Config
@@ -48,20 +47,11 @@ type Logger struct {
 // Option configures an audit logger at construction time.
 type Option func(*Logger)
 
-// WithEncoder configures the canonical event encoder.
-func WithEncoder(encoder Encoder) Option {
+// WithProcessor configures canonical event processing.
+func WithProcessor(processor Processor) Option {
 	return func(logger *Logger) {
-		if encoder != nil {
-			logger.encoder = encoder
-		}
-	}
-}
-
-// WithSink configures the emission sink. The default sink writes through slog.
-func WithSink(sink Sink) Option {
-	return func(logger *Logger) {
-		if sink != nil {
-			logger.sink = sink
+		if processor != nil {
+			logger.processor = processor
 		}
 	}
 }
@@ -75,7 +65,7 @@ func WithDiagnosticLogger(diagnostics *slog.Logger) Option {
 	}
 }
 
-// WithRecordTimeout bounds encoding and sink handoff after request cancellation.
+// WithRecordTimeout bounds processing after request cancellation.
 func WithRecordTimeout(timeout time.Duration) Option {
 	return func(logger *Logger) {
 		if timeout > 0 {
@@ -149,21 +139,15 @@ func (a *Logger) With(key string, value string) *Logger {
 		logger: a.logger.With(key, value),
 		//nolint:sloglint // mirror the same scoped attributes on operational diagnostics
 		diagnostics:   diagnostics.With(key, value),
-		encoder:       a.encoder,
-		sink:          a.sink,
+		processor:     a.processor,
 		recordTimeout: a.recordTimeout,
 		config:        a.configSnapshot(),
 	}
 }
 
-// Encoder returns the configured encoder, or nil for the default OpenTDF encoder.
-func (a *Logger) Encoder() Encoder {
-	return a.encoder
-}
-
-// Sink returns the configured sink, or nil for the default slog sink.
-func (a *Logger) Sink() Sink {
-	return a.sink
+// Processor returns the configured processor, or nil for default OpenTDF processing.
+func (a *Logger) Processor() Processor {
+	return a.processor
 }
 
 // addEvent appends a pending audit event to the transaction

@@ -65,20 +65,25 @@ type TDFOption func(*TDFConfig) error
 
 // TDFConfig Internal config struct for building TDF options.
 type TDFConfig struct {
-	autoconfigure              bool
-	defaultSegmentSize         int64
-	inputSize                  int64
-	metaData                   string
-	mimeType                   string
-	integrityAlgorithm         IntegrityAlgorithm
-	segmentIntegrityAlgorithm  IntegrityAlgorithm
-	assertions                 []AssertionConfig
-	attributes                 []AttributeValueFQN
-	attributeValues            []*policy.Value
-	kasInfoList                []KASInfo
-	kaoTemplate                []kaoTpl
-	splitPlan                  []keySplitStep
-	preferredKeyWrapAlg        ocrypto.KeyType
+	autoconfigure             bool
+	defaultSegmentSize        int64
+	inputSize                 int64
+	metaData                  string
+	mimeType                  string
+	integrityAlgorithm        IntegrityAlgorithm
+	segmentIntegrityAlgorithm IntegrityAlgorithm
+	assertions                []AssertionConfig
+	attributes                []AttributeValueFQN
+	attributeValues           []*policy.Value
+	kasInfoList               []KASInfo
+	kaoTemplate               []kaoTpl
+	splitPlan                 []keySplitStep
+	preferredKeyWrapAlg       ocrypto.KeyType
+	// granter is the resolved attribute plan, set by initKAOTemplate when
+	// autoconfigure is on. Resolving attribute FQNs needs the policy
+	// service, so it happens once here and is handed to the key splitter
+	// rather than resolved again inside it.
+	granter                    *granter
 	useHex                     bool
 	excludeVersionFromManifest bool
 	addDefaultAssertion        bool

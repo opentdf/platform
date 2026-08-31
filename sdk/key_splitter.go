@@ -226,27 +226,11 @@ func (r splitterKeyAccess) resolve(ctx context.Context, dek []byte, cfg *Chunked
 		return "", nil, errors.New("no splits produced")
 	}
 
-	shares := make([]splitShare, 0, len(splits.Splits))
-	for _, split := range splits.Splits {
-		share := splitShare{id: split.ID, data: split.Data}
-		for _, pk := range split.Keys {
-			// A key the splitter left without a PEM yields an empty
-			// public key, which buildKeyAccessObjects rejects.
-			share.kases = append(share.kases, KASInfo{
-				URL:       pk.URL,
-				PublicKey: pk.PEM,
-				KID:       pk.KID,
-				Algorithm: pk.Algorithm,
-			})
-		}
-		shares = append(shares, share)
-	}
-
 	fqns := make([]string, 0, len(cfg.attributes))
 	for _, v := range cfg.attributes {
 		fqns = append(fqns, v.GetFqn())
 	}
-	return resolvePolicyAndKeyAccess(fqns, shares, cfg.encryptedMetadata)
+	return resolvePolicyAndKeyAccess(fqns, sharesFromSplitResult(splits), cfg.encryptedMetadata)
 }
 
 // resolvePolicyAndKeyAccess builds the policy document the DEK is bound to and wraps

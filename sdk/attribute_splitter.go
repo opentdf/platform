@@ -227,11 +227,10 @@ func defaultKASTemplate(ctx context.Context, kas *policy.SimpleKasKey, splitID s
 	}
 
 	if pub := kas.GetPublicKey(); pub.GetPem() != "" {
-		algorithm, err := formatAlg(pub.GetAlgorithm())
-		if err != nil {
-			return kaoTpl{}, fmt.Errorf("invalid algorithm for default KAS [%s]: %w", url, err)
-		}
-		return kaoTpl{url, splitID, pub.GetKid(), pub.GetPem(), ocrypto.KeyType(algorithm)}, nil
+		// An unrecognized algorithm becomes the empty string rather than an
+		// error: a caller may hand over a bare URL and PEM with no algorithm
+		// at all, and createKeyAccess reads that as RSA, as it always has.
+		return kaoTpl{url, splitID, pub.GetKid(), pub.GetPem(), ocrypto.KeyType(algorithmPolicyToString(pub.GetAlgorithm()))}, nil
 	}
 
 	if fetcher == nil {

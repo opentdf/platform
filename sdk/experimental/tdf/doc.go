@@ -126,9 +126,13 @@
 //
 // # Thread Safety
 //
-// Writers are safe for concurrent use with proper external synchronization.
-// Individual WriteSegment calls must be serialized, but multiple writers
-// can operate independently.
+// A Writer is safe for concurrent use. [Writer.WriteSegment] may be called
+// from several goroutines at once so long as each targets a distinct segment
+// index; two concurrent calls for the same index are not allowed, and one of
+// them will fail rather than corrupt the archive.
+//
+// Finalize is terminal and takes an exclusive lock, so it must not overlap
+// with any in-flight WriteSegment call.
 //
 // # Performance Characteristics
 //

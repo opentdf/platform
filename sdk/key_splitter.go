@@ -51,6 +51,16 @@ type SplitRequest struct {
 	// GenerateSplitID names each split. Nil means random UUIDs; tests
 	// substitute a counter for reproducible manifests.
 	GenerateSplitID func() string
+
+	// granter is a pre-resolved attribute plan. Only SDK.CreateTDF
+	// sets it: it resolves attribute FQNs against the policy service
+	// before anything else can proceed, and resolving them again in
+	// the splitter would double the round trips. Nil means the
+	// splitter resolves Attributes itself.
+	//
+	// Unexported deliberately. It also forces keyed composite literals
+	// outside package sdk, so later fields stay non-breaking.
+	granter *granter
 }
 
 // Split is one XOR share of the DEK bound to one or more KAS

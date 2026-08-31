@@ -12,7 +12,7 @@ import (
 func TestExternalServiceCanConstructCanonicalEvent(t *testing.T) {
 	var _ audit.Recorder = audit.CreateAuditLogger(
 		*slog.Default(),
-		audit.WithSink(audit.SinkFunc(func(context.Context, audit.Emission) error { return nil })),
+		audit.WithProcessor(audit.ProcessorFunc(func(context.Context, audit.Event) error { return nil })),
 	)
 
 	event := audit.Event{
@@ -29,6 +29,6 @@ func TestExternalServiceCanConstructCanonicalEvent(t *testing.T) {
 
 	require.NoError(t, audit.CreateAuditLogger(
 		*slog.Default(),
-		audit.WithSink(audit.SinkFunc(func(context.Context, audit.Emission) error { return nil })),
+		audit.WithProcessor(audit.ProcessorFunc(func(context.Context, audit.Event) error { return nil })),
 	).Record(t.Context(), event))
 }

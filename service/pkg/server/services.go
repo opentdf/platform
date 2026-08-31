@@ -291,11 +291,8 @@ func buildNamespaceLogger(baseLogger *logging.Logger, cfg *config.Config, ns, le
 	newLoggerConfig.Level = level
 
 	var loggerOptions []logging.Option
-	if baseLogger.Audit.Encoder() != nil {
-		loggerOptions = append(loggerOptions, logging.WithAuditEncoder(baseLogger.Audit.Encoder()))
-	}
-	if baseLogger.Audit.Sink() != nil {
-		loggerOptions = append(loggerOptions, logging.WithAuditSink(baseLogger.Audit.Sink()))
+	if baseLogger.Audit.Processor() != nil {
+		loggerOptions = append(loggerOptions, logging.WithAuditProcessor(baseLogger.Audit.Processor()))
 	}
 	namespaceLogger, loggerErr := logging.NewLogger(newLoggerConfig, loggerOptions...)
 	if loggerErr != nil {

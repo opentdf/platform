@@ -51,21 +51,13 @@ func (c Config) traceCorrelationEnabled() bool {
 type Option func(*loggerOptions)
 
 type loggerOptions struct {
-	auditEncoder audit.Encoder
-	auditSink    audit.Sink
+	auditProcessor audit.Processor
 }
 
-// WithAuditEncoder configures the encoder used for canonical audit events.
-func WithAuditEncoder(encoder audit.Encoder) Option {
+// WithAuditProcessor configures canonical audit event processing.
+func WithAuditProcessor(processor audit.Processor) Option {
 	return func(options *loggerOptions) {
-		options.auditEncoder = encoder
-	}
-}
-
-// WithAuditSink configures the sink used for encoded audit emissions.
-func WithAuditSink(sink audit.Sink) Option {
-	return func(options *loggerOptions) {
-		options.auditSink = sink
+		options.auditProcessor = processor
 	}
 }
 
@@ -119,11 +111,8 @@ func NewLogger(config Config, options ...Option) (*Logger, error) {
 	// adds is already inside the audit payload. They still need trace correlation.
 	auditLoggerBase := slog.New(newContextAttrsHandler(auditLoggerHandler, contextAttrSources(config)...))
 	auditOptions := []audit.Option{audit.WithDiagnosticLogger(sLogger)}
-	if loggerOpts.auditEncoder != nil {
-		auditOptions = append(auditOptions, audit.WithEncoder(loggerOpts.auditEncoder))
-	}
-	if loggerOpts.auditSink != nil {
-		auditOptions = append(auditOptions, audit.WithSink(loggerOpts.auditSink))
+	if loggerOpts.auditProcessor != nil {
+		auditOptions = append(auditOptions, audit.WithProcessor(loggerOpts.auditProcessor))
 	}
 	auditLogger := audit.CreateAuditLogger(*auditLoggerBase, auditOptions...)
 

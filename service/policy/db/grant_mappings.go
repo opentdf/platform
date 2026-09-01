@@ -2,7 +2,6 @@ package db
 
 import (
 	"errors"
-	"fmt"
 
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/service/logger"
@@ -59,8 +58,12 @@ func mapKasKeysToGrants(keys []*policy.SimpleKasKey, existingGrants []*policy.Ke
 		}
 
 		kasKeyInfo := key.GetPublicKey()
-		if kasKeyInfo == nil {
-			return nil, fmt.Errorf("kas key info is nil for a key with kas uri %s", key.GetKasUri())
+		if kasKeyInfo == nil || kasKeyInfo.GetPem() == "" || kasKeyInfo.GetKid() == "" {
+			l.Warn("skipping key with missing public key material",
+				"kas_uri", key.GetKasUri(),
+				"kas_id", key.GetKasId(),
+			)
+			continue
 		}
 
 		newKasPublicKey := &policy.KasPublicKey{

@@ -79,7 +79,7 @@ Feature: Multiple successful strategies under continue build multi-entity chain
     Then the response should be successful
     And I should get a "PERMIT" decision response
 
-  Scenario: Both strategies succeed — one entity not entitled → DENY (AND semantics)
+  Scenario: Both strategies succeed — user genuinely not entitled in any entity → DENY
     Given I submit a request to create a namespace with name "multi-success-deny.test" and reference id "ns_msd"
     And I send a request to create an attribute with:
       | namespace_id | name       | rule  | values                         |
@@ -138,8 +138,8 @@ Feature: Multiple successful strategies under continue build multi-entity chain
     #   1. Claims entity: {username: alice} — no .department → NOT entitled
     #   2. LDAP entity: {department: engineering, username: alice} → entitled
     # AND semantics: claims entity fails → overall DENY
-    # Expected by design, but surprising for customers using claims as routing-only.
+    # But the customer expects PERMIT — LDAP resolved department=engineering.
     Given a user access token for "alice" stored as "alice_and_token"
     When I send a decision request for token "alice_and_token" for "read" action on resource "https://and-semantics-gap.test/attr/department/value/engineering"
     Then the response should be successful
-    And I should get a "DENY" decision response
+    And I should get a "PERMIT" decision response

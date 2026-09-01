@@ -11,6 +11,7 @@ import (
 	"net/http/pprof"
 	"net/textproto"
 	"regexp"
+	"slices"
 	"strings"
 	"time"
 
@@ -274,7 +275,7 @@ func NewOpenTDFServer(config Config, logger *logger.Logger, cacheManager *cache.
 		if err != nil {
 			return nil, fmt.Errorf("failed to create authentication interceptor: %w", err)
 		}
-		logger.Debug("authentication interceptor enabled")
+		logger.Info("authentication interceptor enabled")
 	} else {
 		logger.Warn("disabling authentication. this is deprecated and will be removed. if you are using an IdP without DPoP set `server.auth.dpop.enforce = false`")
 	}
@@ -349,7 +350,7 @@ func newHTTPServer(c Config, connectRPC http.Handler, extraHTTP http.Handler, a 
 	if c.Auth.Enabled {
 		httpHandler = a.MuxHandler(httpHandler)
 	} else {
-		l.Error("disabling authentication. this is deprecated and will be removed. if you are using an IdP without DPoP set `server.auth.dpop.enforce = false`")
+		l.Warn("disabling authentication. this is deprecated and will be removed. if you are using an IdP without DPoP set `server.auth.dpop.enforce = false`")
 	}
 
 	// CORS
@@ -359,14 +360,18 @@ func newHTTPServer(c Config, connectRPC http.Handler, extraHTTP http.Handler, a 
 		effectiveHeaders := c.CORS.EffectiveHeaders()
 		effectiveExposed := c.CORS.EffectiveExposedHeaders()
 
-		// Log effective CORS config for operator visibility
-		l.Info(
-			"CORS middleware enabled",
+		corsLogFields := []any{
 			slog.Any("allowed_origins", c.CORS.AllowedOrigins),
 			slog.Any("effective_methods", effectiveMethods),
 			slog.Any("effective_headers", effectiveHeaders),
 			slog.Any("effective_exposed_headers", effectiveExposed),
-		)
+			slog.Bool("allow_credentials", c.CORS.AllowCredentials),
+		}
+		if slices.Contains(c.CORS.AllowedOrigins, "*") {
+			l.Warn("CORS middleware enabled with wildcard origin", corsLogFields...)
+		} else {
+			l.Info("CORS middleware enabled", corsLogFields...)
+		}
 
 		corsHandler := cors.New(cors.Options{
 			AllowOriginFunc: func(_ *http.Request, origin string) bool {
@@ -483,7 +488,7 @@ func newConnectRPC(c Config, authInts []connect.Interceptor, ints []connect.Inte
 		}
 		interceptors = append(interceptors, connect.WithInterceptors(authInts...))
 	} else {
-		logger.Error("disabling authentication. this is deprecated and will be removed. if you are using an IdP without DPoP you can set `enforceDpop = false`")
+		logger.Warn("disabling authentication. this is deprecated and will be removed. if you are using an IdP without DPoP you can set `enforceDpop = false`")
 	}
 
 	// Add protovalidate interceptor
@@ -553,7 +558,7 @@ func (s inProcessServer) Conn() *sdk.ConnectRPCConnection {
 
 	// OTel tracing and metrics for outbound IPC Connect RPCs
 	if clientTraceInt, err := tracing.ConnectClientTraceInterceptor(); err != nil {
-		s.logger.Error("failed to create IPC client trace interceptor", slog.String("error", err.Error()))
+		s.logger.Warn("failed to create IPC client trace interceptor", slog.String("error", err.Error()))
 	} else {
 		clientInterceptors = append(clientInterceptors, clientTraceInt)
 	}

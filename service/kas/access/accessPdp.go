@@ -137,7 +137,7 @@ func (p *Provider) checkAttributes(ctx context.Context, resources []*authzV2.Res
 		dr, err := p.SDK.AuthorizationV2.GetDecision(ctx, req)
 		if err != nil {
 			category, _ := classifyAccessError(ctx, err)
-			p.Logger.InfoContext(
+			p.Logger.WarnContext(
 				ctx,
 				"get decision failed",
 				slog.String("category", category),
@@ -170,7 +170,7 @@ func (p *Provider) checkAttributes(ctx context.Context, resources []*authzV2.Res
 	dr, err := p.SDK.AuthorizationV2.GetDecisionMultiResource(ctx, req)
 	if err != nil {
 		category, _ := classifyAccessError(ctx, err)
-		p.Logger.InfoContext(
+		p.Logger.WarnContext(
 			ctx,
 			"get multi-resource decision failed",
 			slog.String("category", category),

@@ -186,7 +186,10 @@ func (c PolicyDBClient) UpdateProviderConfig(ctx context.Context, r *keymanageme
 	if count == 0 {
 		return nil, db.ErrNotFound
 	} else if count > 1 {
-		c.logger.Warn("updateProviderConfig updated more than one row", slog.Int64("count", count))
+		c.logger.ErrorContext(ctx, "updateProviderConfig updated more than one row",
+			slog.String("provider_config_id", id),
+			slog.Int64("count", count),
+		)
 	}
 
 	return c.GetProviderConfig(ctx, &keymanagement.GetProviderConfigRequest{

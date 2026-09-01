@@ -108,7 +108,9 @@ func NewEntitlementPolicyCache(
 	}
 
 	// Only set the instance if Start() succeeds
-	l.DebugContext(ctx, "initialized EntitlementPolicyCache and started periodic refresh")
+	l.InfoContext(ctx, "initialized entitlement policy cache",
+		slog.Duration("refresh_interval", cacheRefreshInterval),
+	)
 	return instance, nil
 }
 
@@ -122,7 +124,7 @@ func (c *EntitlementPolicyCache) IsReady(ctx context.Context) bool {
 	}
 	if !c.isCacheFilled {
 		if err := c.Refresh(ctx); err != nil {
-			c.logger.ErrorContext(ctx, "cache is not ready", slog.Any("error", err))
+			c.logger.WarnContext(ctx, "cache is not ready", slog.Any("error", err))
 			return false
 		}
 	}

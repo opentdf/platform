@@ -3,20 +3,7 @@
 package tdf
 
 import (
-	"encoding/hex"
-	"errors"
-
-	"github.com/opentdf/platform/lib/ocrypto"
 	"github.com/opentdf/platform/sdk"
-)
-
-// These are unchanged copies of what sdk defines unexported. They stay
-// here only while this package still builds manifests itself; the
-// delegation that removes their last callers is a follow-up.
-const (
-	kGMACPayloadLength = 16
-	kSplitKeyType      = "split"
-	kPolicyBindingAlg  = "HS256"
 )
 
 // The manifest types below are aliases onto their
@@ -101,25 +88,4 @@ type Policy struct {
 type PolicyBody struct {
 	DataAttributes []PolicyAttribute `json:"dataAttributes"`
 	Dissem         []string          `json:"dissem"`
-}
-
-// calculateSignature is an unchanged copy of the sdk function of the
-// same name, retained only until this package stops building manifests
-// itself.
-func calculateSignature(data []byte, secret []byte, alg IntegrityAlgorithm, isLegacyTDF bool) (string, error) {
-	if alg == HS256 {
-		hmac := ocrypto.CalculateSHA256Hmac(secret, data)
-		if isLegacyTDF {
-			return hex.EncodeToString(hmac), nil
-		}
-		return string(hmac), nil
-	}
-	if kGMACPayloadLength > len(data) {
-		return "", errors.New("fail to create gmac signature")
-	}
-
-	if isLegacyTDF {
-		return hex.EncodeToString(data[len(data)-kGMACPayloadLength:]), nil
-	}
-	return string(data[len(data)-kGMACPayloadLength:]), nil
 }

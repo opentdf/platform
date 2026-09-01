@@ -247,10 +247,13 @@ type ChunkedWriter interface {
 	// snapshot one segment short is a correct snapshot of that instant
 	// -- which is why, unlike Finalize, it does not refuse them.
 	//
-	// It is safe to call concurrently with WriteSegment, but it is not
-	// free: GetManifest and Finalize both hold the writer lock across
-	// KeySplitter.Split, so a splitter that does I/O stalls concurrent
-	// WriteSegment calls at their commit step for its duration.
+	// It is safe to call concurrently with WriteSegment. The writer lock
+	// is held only long enough to copy segment metadata out; the key
+	// split, which may make network calls to resolve KAS keys, runs
+	// unlocked. That is why the result describes the writer as of the
+	// snapshot rather than as of the return: a segment that lands while
+	// the split is in flight is absent here and present in the next
+	// call. Finalize, being terminal, keeps the lock throughout instead.
 	GetManifest(ctx context.Context, opts ...ChunkedFinalizeOption) (*Manifest, error)
 
 	// WriteSegment encrypts data as segment index and returns the ZIP
@@ -612,7 +615,18 @@ func (w *chunkedWriter) Finalize(ctx context.Context, opts ...ChunkedFinalizeOpt
 		return nil, err
 	}
 
-	manifest, totals, err := w.buildManifest(ctx, cfg)
+	// Finalize keeps the write lock across the split, where GetManifest
+	// releases it. It is terminal -- no later WriteSegment can succeed, and
+	// ErrChunkedWriteInFlight above has already established that none is
+	// outstanding -- so there is no concurrency left to preserve, and dropping
+	// the lock would only reopen the window in which a segment lands in the
+	// archive after the snapshot that determines the manifest.
+	snap, err := w.snapshotLocked(cfg.keepSegments)
+	if err != nil {
+		return nil, err
+	}
+
+	manifest, totals, err := w.buildManifest(ctx, cfg, snap)
 	if err != nil {
 		return nil, err
 	}
@@ -670,30 +684,18 @@ func (w *chunkedWriter) Finalize(ctx context.Context, opts ...ChunkedFinalizeOpt
 
 // GetManifest returns the manifest snapshot.
 func (w *chunkedWriter) GetManifest(ctx context.Context, opts ...ChunkedFinalizeOption) (*Manifest, error) {
-	w.mu.RLock()
-	defer w.mu.RUnlock()
-	if w.unusable != nil {
-		return nil, w.unusable
-	}
-	if w.finalized {
-		if w.manifest == nil {
-			// Unreachable unless Finalize is changed to set finalized without
-			// recording what it wrote. Refuse rather than fall through to the
-			// rebuild below: after finalize the caller is asking what shipped,
-			// and a rebuild does not answer that. It mints a fresh policy UUID
-			// and fresh key splits, so it would hand back a plausible manifest
-			// that does not describe the bytes -- and a caller that stored it
-			// alongside them could not decrypt.
-			return nil, errors.New("chunked: writer is finalized but recorded no manifest")
-		}
-		return cloneChunkedManifest(w.manifest), nil
-	}
-	cfg, err := w.applyFinalizeOptions(opts)
+	written, cfg, snap, err := w.getManifestSnapshot(opts)
 	if err != nil {
 		return nil, err
 	}
-	// No in-flight check here, deliberately: see GetManifest's interface doc.
-	manifest, _, err := w.buildManifest(ctx, cfg)
+	if written != nil {
+		return written, nil
+	}
+	// Built outside the lock. KeySplitter.Split may resolve KAS keys over the
+	// network, and RWMutex bars new readers once a writer is queued, so holding
+	// RLock across it would stall not just every WriteSegment commit but every
+	// other GetManifest behind it, for as long as that I/O takes.
+	manifest, _, err := w.buildManifest(ctx, cfg, snap)
 	if err != nil {
 		return nil, err
 	}
@@ -928,6 +930,78 @@ func (w *chunkedWriter) applyFinalizeOptions(opts []ChunkedFinalizeOption) (*chu
 	return cfg, nil
 }
 
+// chunkedSnapshot is the mutable writer state buildManifest needs, copied out
+// from under the lock so the build itself -- which calls KeySplitter.Split --
+// can run unlocked.
+//
+// Segment values, not the *segmentSlot pointers w.segments holds: WriteSegment
+// mutates a slot in place when the archive accepts its bytes, so reading one
+// after the lock is released would race.
+type chunkedSnapshot struct {
+	// segments are the per-segment metadata records in emission order.
+	segments []Segment
+}
+
+// snapshotLocked resolves the emission order and copies each named segment's
+// metadata out of w.segments. Caller holds mu.
+func (w *chunkedWriter) snapshotLocked(keep []int) (*chunkedSnapshot, error) {
+	order, err := w.segmentOrderLocked(keep)
+	if err != nil {
+		return nil, err
+	}
+	snap := &chunkedSnapshot{segments: make([]Segment, len(order))}
+	for i, idx := range order {
+		// segmentOrderLocked only ever names written slots, whether it
+		// derived the order itself or validated a caller-supplied one.
+		slot, ok := w.segments[idx]
+		if !ok || !slot.written {
+			return nil, fmt.Errorf("segment %d not written; cannot finalize", idx)
+		}
+		if slot.seg.Hash == "" {
+			return nil, fmt.Errorf("segment %d has empty hash", idx)
+		}
+		snap.segments[i] = slot.seg
+	}
+	return snap, nil
+}
+
+// getManifestSnapshot is the locked half of GetManifest: the state checks, the
+// option pass, and the segment copy. Split out so the read lock is released by
+// a defer rather than tracked by hand across the several exits, one of which
+// (the already-finalized clone) returns a manifest and the rest of which return
+// the inputs the unlocked half needs. A non-nil first result means the caller
+// is done and must not build anything.
+func (w *chunkedWriter) getManifestSnapshot(opts []ChunkedFinalizeOption) (*Manifest, *chunkedFinalizeConfig, *chunkedSnapshot, error) {
+	w.mu.RLock()
+	defer w.mu.RUnlock()
+	if w.unusable != nil {
+		return nil, nil, nil, w.unusable
+	}
+	if w.finalized {
+		if w.manifest == nil {
+			// Unreachable unless Finalize is changed to set finalized without
+			// recording what it wrote. Refuse rather than fall through to the
+			// rebuild below: after finalize the caller is asking what shipped,
+			// and a rebuild does not answer that. It mints a fresh policy UUID
+			// and fresh key splits, so it would hand back a plausible manifest
+			// that does not describe the bytes -- and a caller that stored it
+			// alongside them could not decrypt.
+			return nil, nil, nil, errors.New("chunked: writer is finalized but recorded no manifest")
+		}
+		return cloneChunkedManifest(w.manifest), nil, nil, nil
+	}
+	cfg, err := w.applyFinalizeOptions(opts)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	// No in-flight check here, deliberately: see GetManifest's interface doc.
+	snap, err := w.snapshotLocked(cfg.keepSegments)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	return nil, cfg, snap, nil
+}
+
 // chunkedTotals are the byte counts across the segments the manifest
 // describes. They are reported for information only; neither is the number of
 // bytes the caller must append, which is what the TDFData readers yield and
@@ -940,14 +1014,14 @@ type chunkedTotals struct {
 	plaintext int64
 }
 
-// buildManifest composes the manifest from writer state, splits the
-// DEK, wraps splits into KAOs, and computes the root signature.
-func (w *chunkedWriter) buildManifest(ctx context.Context, cfg *chunkedFinalizeConfig) (*Manifest, chunkedTotals, error) {
+// buildManifest composes the manifest from a snapshot, splits the DEK,
+// wraps splits into KAOs, and computes the root signature.
+//
+// It reads no mutable writer state and takes no lock: every other field it
+// touches (dek, splitter, useHex) is fixed at construction. Keep it that way --
+// GetManifest calls it with the read lock released.
+func (w *chunkedWriter) buildManifest(ctx context.Context, cfg *chunkedFinalizeConfig, snap *chunkedSnapshot) (*Manifest, chunkedTotals, error) {
 	var totals chunkedTotals
-	order, err := w.segmentOrderLocked(cfg.keepSegments)
-	if err != nil {
-		return nil, totals, err
-	}
 
 	// Hand the splitter copies of both slices. A splitter that zeroes or
 	// rewrites the DEK it is given -- scrubbing what it thinks is its own
@@ -984,36 +1058,28 @@ func (w *chunkedWriter) buildManifest(ctx context.Context, cfg *chunkedFinalizeC
 		},
 		IntegrityInformation: IntegrityInformation{
 			SegmentHashAlgorithm: SegmentGMAC.String(),
-			Segments:             make([]Segment, len(order)),
+			Segments:             make([]Segment, len(snap.segments)),
 		},
 	}
 
 	var aggregate bytes.Buffer
-	for i, idx := range order {
-		// segmentOrderLocked only ever names written slots, whether it
-		// derived the order itself or validated a caller-supplied one.
-		slot, ok := w.segments[idx]
-		if !ok || !slot.written {
-			return nil, totals, fmt.Errorf("segment %d not written; cannot finalize", idx)
-		}
-		if slot.seg.Hash == "" {
-			return nil, totals, fmt.Errorf("segment %d has empty hash", idx)
-		}
-		encInfo.Segments[i] = slot.seg
-		totals.plaintext += slot.seg.Size
-		totals.encrypted += slot.seg.EncryptedSize
-		decoded, err := ocrypto.Base64Decode([]byte(slot.seg.Hash))
+	for i, seg := range snap.segments {
+		encInfo.Segments[i] = seg
+		totals.plaintext += seg.Size
+		totals.encrypted += seg.EncryptedSize
+		decoded, err := ocrypto.Base64Decode([]byte(seg.Hash))
 		if err != nil {
-			return nil, totals, fmt.Errorf("decode segment %d hash: %w", idx, err)
+			// Position in the emission order, not the segment index: the
+			// snapshot no longer carries the indices, and the two coincide for
+			// the default (untrimmed, contiguous) write set anyway.
+			return nil, totals, fmt.Errorf("decode segment at position %d hash: %w", i, err)
 		}
 		aggregate.Write(decoded)
 	}
 
-	if len(order) > 0 {
-		if first, ok := w.segments[order[0]]; ok {
-			encInfo.DefaultEncryptedSegSize = first.seg.EncryptedSize
-			encInfo.DefaultSegmentSize = first.seg.Size
-		}
+	if len(snap.segments) > 0 {
+		encInfo.DefaultEncryptedSegSize = snap.segments[0].EncryptedSize
+		encInfo.DefaultSegmentSize = snap.segments[0].Size
 	}
 
 	rootSig, err := rootIntegrity(aggregate.Bytes(), w.dek, RootHS256, w.useHex)

@@ -15,11 +15,25 @@ import (
 // the chunked Writer so tests can substitute an identity splitter
 // without touching real attribute grants.
 //
+// Implementations must be safe for concurrent use. The chunked writer calls
+// Split with its lock released, so a caller that runs GetManifest alongside
+// another GetManifest or a Finalize has two Splits in flight on the same
+// splitter at once -- and both are documented as safe to do. A splitter
+// holding per-call state in a field rather than on the stack corrupts one of
+// the two manifests, and the damage is silent: the manifest is well-formed,
+// carries splits that do not reconstruct the DEK, and fails only at decrypt.
+//
 // Experimental: not part of the stable SDK API; may change or be removed.
 type KeySplitter interface {
 	// Split evaluates the ABAC policy expressed by attrs, produces N
 	// splits of dek per the resulting boolean expression, and returns
 	// each split alongside the KAS public keys it must be wrapped to.
+	//
+	// Split must not retain or modify attrs or dek, nor the elements of
+	// attrs. The writer passes copies precisely so a splitter that scribbles
+	// on them cannot desynchronize the DEK from signatures already computed
+	// against it, but it reuses neither across calls, so a splitter that
+	// retains either is reading state its caller has moved on from.
 	Split(ctx context.Context, attrs []*policy.Value, dek []byte, defaultKAS *policy.SimpleKasKey) (*SplitResult, error)
 }
 

@@ -105,3 +105,41 @@ Feature: Multiple successful strategies under continue build multi-entity chain
     When I send a decision request for token "eve_token" for "read" action on resource "https://multi-success-deny.test/attr/department/value/engineering"
     Then the response should be successful
     And I should get a "DENY" decision response
+
+  Scenario: LDAP entity entitled but claims entity lacks attribute → DENY (AND semantics gap)
+    # Demonstrates the AND semantics limitation with a realistic customer scenario:
+    #   A customer uses claims strategy for identity/routing and LDAP for department.
+    #   They create a subject mapping on .department — the attribute only LDAP provides.
+    #   Even though alice's LDAP entity has department=engineering (entitled),
+    #   the claims entity has no department attribute at all, so it fails entitlement.
+    #   AND semantics: both must pass → DENY.
+    #
+    # This is surprising because the customer's intent is "use LDAP for department info"
+    # but the claims entity (which only provides routing) vetoes the decision.
+    # The multi-entity chain was designed for cross-category entities (ENVIRONMENT + SUBJECT),
+    # not for aggregating claims from two SUBJECT strategies.
+    Given I submit a request to create a namespace with name "and-semantics-gap.test" and reference id "ns_asg"
+    And I send a request to create an attribute with:
+      | namespace_id | name       | rule  | values                         |
+      | ns_asg       | department | anyOf | engineering,marketing,security |
+    Then the response should be successful
+    # Subject mapping checks .department — only the LDAP entity outputs this.
+    # The claims entity outputs only {username: alice}, no department.
+    Given a condition group referenced as "cg_asg" with an "or" operator with conditions:
+      | selector_value | operator | values      |
+      | .department    | in       | engineering |
+    And a subject set referenced as "ss_asg" containing the condition groups "cg_asg"
+    And I send a request to create a subject condition set referenced as "scs_asg" containing subject sets "ss_asg"
+    And I send a request to create a subject mapping with:
+      | reference_id | attribute_value                                                  | condition_set_name | standard actions | custom actions |
+      | sm_asg       | https://and-semantics-gap.test/attr/department/value/engineering | scs_asg            | read             |                |
+    Then the response should be successful
+    # Alice's token triggers both strategies under continue:
+    #   1. Claims entity: {username: alice} — no .department → NOT entitled
+    #   2. LDAP entity: {department: engineering, username: alice} → entitled
+    # AND semantics: claims entity fails → overall DENY
+    # Expected by design, but surprising for customers using claims as routing-only.
+    Given a user access token for "alice" stored as "alice_and_token"
+    When I send a decision request for token "alice_and_token" for "read" action on resource "https://and-semantics-gap.test/attr/department/value/engineering"
+    Then the response should be successful
+    And I should get a "DENY" decision response

@@ -7,6 +7,7 @@ import (
 	"github.com/opentdf/platform/otdfctl/pkg/cli"
 	"github.com/opentdf/platform/otdfctl/pkg/handlers"
 	"github.com/opentdf/platform/otdfctl/pkg/man"
+	"github.com/opentdf/platform/otdfctl/pkg/streamio"
 	"github.com/opentdf/platform/sdk"
 	"github.com/spf13/cobra"
 )
@@ -42,16 +43,29 @@ func inspectRun(cmd *cobra.Command, args []string) {
 	h := common.NewHandler(c)
 	defer h.Close()
 
-	data := cli.ReadFromArgsOrPipe(args, nil)
-	if len(data) == 0 {
-		c.ExitWithError("must provide ONE of the following: [file argument, stdin input]", errors.New("no input provided"))
+	var path string
+	if len(args) > 0 {
+		path = args[0]
 	}
+	in, cleanup, err := streamio.OpenSeekable(path)
+	if err != nil {
+		if errors.Is(err, streamio.ErrNoInput) {
+			c.ExitWithError("must provide ONE of the following: [file argument, stdin input]", err)
+		}
+		c.ExitWithError("failed to read input", err)
+	}
+	// cli.ExitWithError calls os.Exit, which does not run deferred functions, so
+	// cleanup is also invoked explicitly before every exit below — including the
+	// successful one, since piped input is spooled to a temporary file.
+	defer cleanup()
 
-	result, errs := h.InspectTDF(data)
+	result, errs := h.InspectTDF(in)
 	for _, err := range errs {
 		if errors.Is(err, handlers.ErrTDFInspectFailNotValidTDF) {
+			cleanup()
 			c.ExitWithError("not a valid TDF", err)
 		} else if errors.Is(err, handlers.ErrTDFInspectFailNotInspectable) {
+			cleanup()
 			c.ExitWithError("failed to inspect TDF", err)
 		}
 	}
@@ -76,8 +90,10 @@ func inspectRun(cmd *cobra.Command, args []string) {
 			Attributes: result.Attributes,
 		}
 
+		cleanup()
 		c.ExitWithJSON(m, cli.ExitCodeSuccess)
 	}
+	cleanup()
 	c.ExitWithError("failed to inspect TDF", nil)
 }
 

@@ -2,14 +2,15 @@ package tdf
 
 import (
 	"errors"
-	"fmt"
+	"io"
 	"os"
 
 	"github.com/opentdf/platform/lib/ocrypto"
 	"github.com/opentdf/platform/otdfctl/cmd/common"
 	"github.com/opentdf/platform/otdfctl/pkg/cli"
+	"github.com/opentdf/platform/otdfctl/pkg/handlers"
 	"github.com/opentdf/platform/otdfctl/pkg/man"
-	"github.com/opentdf/platform/otdfctl/pkg/utils"
+	"github.com/opentdf/platform/otdfctl/pkg/streamio"
 	"github.com/spf13/cobra"
 )
 
@@ -43,55 +44,61 @@ func decryptRun(cmd *cobra.Command, args []string) {
 		sessionKeyAlgorithm = ocrypto.RSA2048Key
 	}
 
-	// check for piped input
-	piped := readPipedStdin()
-
-	// Prefer file argument over piped input over default filename
-	bytesToDecrypt := piped
+	// Prefer the file argument over piped input.
 	var tdfFile string
-	var err error
 	if len(args) > 0 {
 		tdfFile = args[0]
-		bytesToDecrypt, err = utils.ReadBytesFromFile(tdfFile, MaxFileSize)
+	}
+	in, closeIn, err := streamio.OpenSeekable(tdfFile)
+	switch {
+	case errors.Is(err, streamio.ErrNoInput):
+		cli.ExitWithError("Must provide ONE of the following to decrypt: [file argument, stdin input]", err)
+	case err != nil:
+		cli.ExitWithError("Failed to read file:", err)
+	}
+	defer closeIn()
+
+	// Resolve the destination before decrypting, so the plaintext streams
+	// straight to it rather than accumulating in memory first.
+	var dest io.Writer = os.Stdout
+	var outFile *streamio.OutputFile
+	if output != "" {
+		outFile, err = streamio.NewOutputFile(output)
 		if err != nil {
-			cli.ExitWithError("Failed to read file:", err)
+			closeIn()
+			cli.ExitWithError("Failed to write decrypted data to file", err)
 		}
+		defer outFile.Cleanup()
+		dest = outFile
 	}
 
-	if len(bytesToDecrypt) == 0 {
-		cli.ExitWithError("Must provide ONE of the following to decrypt: [file argument, stdin input]", errors.New("no input provided"))
+	// cli.ExitWithError calls os.Exit, which skips deferred functions, so both
+	// the spooled input and the partial output have to be discarded first.
+	fail := func(msg string, err error) {
+		closeIn()
+		if outFile != nil {
+			outFile.Cleanup()
+		}
+		cli.ExitWithError(msg, err)
 	}
 
 	ignoreAllowlist := len(kasAllowList) == 1 && kasAllowList[0] == "*"
 
-	decrypted, err := h.DecryptBytes(
-		c.Context(),
-		bytesToDecrypt,
-		assertionVerification,
-		disableAssertionVerification,
-		sessionKeyAlgorithm,
-		kasAllowList,
-		ignoreAllowlist,
-		nil,
-	)
+	err = h.Decrypt(c.Context(), dest, in, handlers.DecryptOptions{
+		AssertionVerificationKeysFile: assertionVerification,
+		DisableAssertionCheck:         disableAssertionVerification,
+		SessionKeyAlgorithm:           sessionKeyAlgorithm,
+		KASAllowList:                  kasAllowList,
+		IgnoreAllowlist:               ignoreAllowlist,
+	})
 	if err != nil {
-		cli.ExitWithError("Failed to decrypt file", err)
+		fail("Failed to decrypt file", err)
 	}
 
-	if output == "" {
-		//nolint:forbidigo // printing decrypted content to stdout
-		fmt.Print(decrypted.String())
-		return
-	}
-	// Here 'output' is the filename given with -o
-	f, err := os.Create(output)
-	if err != nil {
-		cli.ExitWithError("Failed to write decrypted data to file", err)
-	}
-	defer f.Close()
-	_, err = f.Write(decrypted.Bytes())
-	if err != nil {
-		cli.ExitWithError("Failed to write decrypted data to file", err)
+	if outFile != nil {
+		if err := outFile.Commit(); err != nil {
+			fail("Failed to write decrypted data to file", err)
+		}
 	}
 }
 

@@ -134,12 +134,20 @@ func NewWriter(ctx context.Context, opts ...Option[*WriterConfig]) (*Writer, err
 		return nil, fmt.Errorf("%w: %s", sdk.ErrUnsupportedSegmentIntegrityAlgorithm, config.segmentIntegrityAlg)
 	}
 
-	inner, err := sdk.NewChunkedWriter(ctx,
+	// A nil KAS means "unset" here -- WithDefaultKASForWriter has always
+	// accepted one -- but the stable option rejects nil, so leave it off
+	// rather than forwarding. The splitter reports the missing KAS at
+	// Finalize as ErrNoDefaultKAS, which is what callers already handle.
+	chunkedOpts := []sdk.ChunkedWriterOption{
 		sdk.WithChunkedInitialAttributes(config.initialAttributes),
-		sdk.WithChunkedDefaultKAS(config.initialDefaultKAS),
 		sdk.WithChunkedKeySplitter(xorSplitter{}),
 		sdk.WithChunkedTargetMode(config.targetMode),
-	)
+	}
+	if config.initialDefaultKAS != nil {
+		chunkedOpts = append(chunkedOpts, sdk.WithChunkedDefaultKAS(config.initialDefaultKAS))
+	}
+
+	inner, err := sdk.NewChunkedWriter(ctx, chunkedOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -285,12 +293,17 @@ func finalizeOptions(opts []Option[*WriterFinalizeConfig]) []sdk.ChunkedFinalize
 	for _, opt := range opts {
 		opt(cfg)
 	}
-	return []sdk.ChunkedFinalizeOption{
+	out := []sdk.ChunkedFinalizeOption{
 		sdk.WithChunkedAttributes(cfg.attributes),
-		sdk.WithChunkedDefaultKASForFinalize(cfg.defaultKas),
 		sdk.WithChunkedEncryptedMetadata(cfg.encryptedMetadata),
 		sdk.WithChunkedMimeType(cfg.payloadMimeType),
 		sdk.WithChunkedSegments(cfg.keepSegments),
 		sdk.WithChunkedAssertions(cfg.assertions),
 	}
+	// Omitted rather than forwarded as nil, for the reason given in
+	// NewWriter: the stable option rejects nil, this package's does not.
+	if cfg.defaultKas != nil {
+		out = append(out, sdk.WithChunkedDefaultKASForFinalize(cfg.defaultKas))
+	}
+	return out
 }

@@ -11,6 +11,7 @@ import (
 	"crypto/sha256"
 	"crypto/x509"
 	"encoding/base64"
+	"encoding/binary"
 	"encoding/hex"
 	"encoding/json"
 	"encoding/pem"
@@ -1597,6 +1598,178 @@ func (s *TDFSuite) Test_TDFReader() { //nolint:gocognit // requires for testing 
 				s.Equal(int64(len(buf.Bytes())), n)
 			}
 		}
+	}
+}
+
+// shortReadSeeker hands back at most maxRead bytes per Read, which io.Reader
+// explicitly permits. A *bytes.Reader never does this, so nothing else in the
+// suite covers it.
+type shortReadSeeker struct {
+	io.ReadSeeker
+	maxRead int
+}
+
+func (s *shortReadSeeker) Read(p []byte) (int, error) {
+	if len(p) > s.maxRead {
+		p = p[:s.maxRead]
+	}
+	return s.ReadSeeker.Read(p)
+}
+
+// Test_TDFCreateShortReads pins that CreateTDF fills each segment rather than
+// treating a short read as a fatal size mismatch.
+func (s *TDFSuite) Test_TDFCreateShortReads() {
+	kasInfoList := []KASInfo{
+		{URL: s.kasTestURLLookup["http://localhost:65432/"]},
+	}
+
+	tdfBuf := bytes.Buffer{}
+	_, err := s.sdk.CreateTDF(
+		io.Writer(&tdfBuf),
+		&shortReadSeeker{ReadSeeker: bytes.NewReader([]byte(payload)), maxRead: 3},
+		WithKasInformation(kasInfoList...),
+		WithSegmentSize(7),
+	)
+	s.Require().NoError(err)
+
+	r, err := s.sdk.LoadTDF(bytes.NewReader(tdfBuf.Bytes()))
+	s.Require().NoError(err)
+
+	var out bytes.Buffer
+	_, err = r.WriteTo(&out)
+	s.Require().NoError(err)
+	s.Equal(payload, out.String())
+}
+
+// nonSeekableReader hides the Seek method of the reader it wraps, standing in for a
+// pipe or network stream whose length cannot be measured before it is read.
+type nonSeekableReader struct{ inner io.Reader }
+
+func (r nonSeekableReader) Read(p []byte) (int, error) { return r.inner.Read(p) }
+
+// payloadUsesZip64 reports whether the local file header at the start of a TDF carries
+// the ZIP64 extended information extra field.
+func payloadUsesZip64(tdf []byte) bool {
+	const extraFieldLengthOffset = 28
+	return binary.LittleEndian.Uint16(tdf[extraFieldLengthOffset:]) > 0
+}
+
+func (s *TDFSuite) Test_CreateTDF_StreamingInput() {
+	segmentSize := int64(minSegmentSize)
+
+	for _, test := range []struct {
+		name             string
+		plainText        []byte
+		seekable         bool
+		declareSize      bool
+		expectZip64      bool
+		expectedSegments int
+	}{
+		{name: "seekable", plainText: []byte("Virtru"), seekable: true, expectedSegments: 1},
+		{name: "seekable-empty", seekable: true, expectedSegments: 1},
+		{name: "seekable-partial-final-segment", plainText: bytes.Repeat([]byte("a"), int(segmentSize)+1), seekable: true, expectedSegments: 2},
+		{name: "unmeasurable", plainText: []byte("Virtru"), expectZip64: true, expectedSegments: 1},
+		{name: "unmeasurable-empty", expectZip64: true, expectedSegments: 1},
+		{name: "unmeasurable-segment-multiple", plainText: bytes.Repeat([]byte("b"), int(2*segmentSize)), expectZip64: true, expectedSegments: 2},
+		{name: "unmeasurable-partial-final-segment", plainText: bytes.Repeat([]byte("c"), int(segmentSize)+1), expectZip64: true, expectedSegments: 2},
+		{name: "declared-size", plainText: []byte("Virtru"), declareSize: true, expectedSegments: 1},
+		{name: "declared-size-empty", declareSize: true, expectedSegments: 1},
+		{name: "declared-size-segment-multiple", plainText: bytes.Repeat([]byte("d"), int(2*segmentSize)), declareSize: true, expectedSegments: 2},
+	} {
+		s.Run(test.name, func() {
+			opts := []TDFOption{
+				WithKasInformation(KASInfo{URL: s.kasTestURLLookup["https://a.kas/"]}),
+				WithSegmentSize(segmentSize),
+			}
+			if test.declareSize {
+				opts = append(opts, WithInputSize(int64(len(test.plainText))))
+			}
+			var reader io.Reader = bytes.NewReader(test.plainText)
+			if !test.seekable {
+				reader = nonSeekableReader{reader}
+			}
+
+			var tdf bytes.Buffer
+			_, err := s.sdk.CreateTDF(&tdf, reader, opts...)
+			s.Require().NoError(err)
+			s.Equal(test.expectZip64, payloadUsesZip64(tdf.Bytes()))
+
+			r, err := s.sdk.LoadTDF(bytes.NewReader(tdf.Bytes()),
+				WithKasAllowlist([]string{s.kasTestURLLookup["https://a.kas/"]}))
+			s.Require().NoError(err)
+			s.Len(r.Manifest().Segments, test.expectedSegments)
+
+			var decrypted bytes.Buffer
+			_, err = r.WriteTo(&decrypted)
+			s.Require().NoError(err)
+			s.Equal(string(test.plainText), decrypted.String())
+		})
+	}
+}
+
+func (s *TDFSuite) Test_CreateTDF_InputSizeBounds() {
+	opts := []TDFOption{WithKasInformation(KASInfo{URL: s.kasTestURLLookup["https://a.kas/"]})}
+	readOpts := []TDFReaderOption{WithKasAllowlist([]string{s.kasTestURLLookup["https://a.kas/"]})}
+
+	s.Run("negative size is rejected", func() {
+		_, err := s.sdk.CreateTDF(&bytes.Buffer{}, bytes.NewReader([]byte("Virtru")),
+			append(opts, WithInputSize(-1))...)
+		s.Require().ErrorContains(err, "WithInputSize")
+	})
+
+	s.Run("declared size bounds the read", func() {
+		var tdf bytes.Buffer
+		reader := nonSeekableReader{bytes.NewReader([]byte("Virtru and more"))}
+		_, err := s.sdk.CreateTDF(&tdf, reader, append(opts, WithInputSize(6))...)
+		s.Require().NoError(err)
+
+		r, err := s.sdk.LoadTDF(bytes.NewReader(tdf.Bytes()), readOpts...)
+		s.Require().NoError(err)
+		var decrypted bytes.Buffer
+		_, err = r.WriteTo(&decrypted)
+		s.Require().NoError(err)
+		s.Equal("Virtru", decrypted.String())
+	})
+
+	s.Run("a reader shorter than the declared size is rejected", func() {
+		reader := nonSeekableReader{bytes.NewReader([]byte("Virtru"))}
+		_, err := s.sdk.CreateTDF(&bytes.Buffer{}, reader, append(opts, WithInputSize(64))...)
+		s.Require().ErrorIs(err, errInputShorterThanDeclared)
+	})
+
+	s.Run("a seekable reader is encrypted from its current position", func() {
+		source := bytes.NewReader([]byte("skip-Virtru"))
+		_, err := source.Seek(int64(len("skip-")), io.SeekStart)
+		s.Require().NoError(err)
+
+		var tdf bytes.Buffer
+		_, err = s.sdk.CreateTDF(&tdf, source, opts...)
+		s.Require().NoError(err)
+
+		r, err := s.sdk.LoadTDF(bytes.NewReader(tdf.Bytes()), readOpts...)
+		s.Require().NoError(err)
+		var decrypted bytes.Buffer
+		_, err = r.WriteTo(&decrypted)
+		s.Require().NoError(err)
+		s.Equal("Virtru", decrypted.String())
+	})
+}
+
+func Test_SegmentCount(t *testing.T) {
+	const segmentSize = 1024
+	for _, test := range []struct {
+		inputSize int64
+		expected  int
+	}{
+		{inputSize: inputSizeUnknown, expected: 0},
+		{inputSize: 0, expected: 1},
+		{inputSize: 1, expected: 1},
+		{inputSize: segmentSize, expected: 1},
+		{inputSize: segmentSize + 1, expected: 2},
+		{inputSize: 3 * segmentSize, expected: 3},
+	} {
+		assert.Equal(t, test.expected, segmentCount(test.inputSize, segmentSize),
+			"segmentCount(%d, %d)", test.inputSize, segmentSize)
 	}
 }
 

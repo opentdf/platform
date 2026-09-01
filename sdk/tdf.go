@@ -53,7 +53,6 @@ const (
 	kAssertionSignature    = "assertionSig"
 	kAssertionHash         = "assertionHash"
 	hexSemverThreshold     = "4.3.0"
-	readActionName         = "read"
 
 	// maxPayloadSegments caps the segment count a declared input size may imply.
 	// The archive writer counts segments with an int, so the count has to fit one

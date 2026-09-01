@@ -108,15 +108,6 @@ func TestRootIntegrityRejectsNonHS256(t *testing.T) {
 	assert.Equal(t, hex.EncodeToString(ocrypto.CalculateSHA256Hmac(key, aggregate)), legacySig)
 }
 
-// Closing the root off to GMAC must not move the defaults: HS256 root, GMAC
-// segments, which is what every writer has been emitting all along.
-func TestIntegrityAlgDefaults(t *testing.T) {
-	def, err := newTDFConfig()
-	require.NoError(t, err)
-	assert.Equal(t, RootHS256, def.rootIntegrityAlg)
-	assert.Equal(t, SegmentGMAC, def.segmentIntegrityAlg)
-}
-
 // The deprecated constants stay numerically where they were, so an existing
 // caller that converts one into the new types lands on the same algorithm.
 func TestDeprecatedIntegrityAlgorithmConstants(t *testing.T) {

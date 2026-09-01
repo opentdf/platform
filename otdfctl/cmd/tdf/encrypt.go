@@ -1,6 +1,7 @@
 package tdf
 
 import (
+	"bytes"
 	"errors"
 	"io"
 	"log/slog"
@@ -27,26 +28,37 @@ var (
 	EncryptCmd = &encryptDoc.Command
 )
 
-// detectMimeType sniffs the payload's type from its head and rewinds, so the
-// whole payload still reaches the encoder.
+// detectMimeType sniffs the payload's type from its head and returns a reader
+// that still yields the whole payload.
 //
 // Detection needs only the first megabyte, which is what mimetype is limited to
-// anyway, so this reads a bounded prefix rather than the whole payload.
-func detectMimeType(in io.ReadSeeker, fileExt string) (string, error) {
+// anyway, so this reads a bounded prefix rather than the whole payload. A
+// seekable input is rewound and handed back unchanged, which matters: the SDK
+// measures a seekable payload and keeps the archive in the compact ZIP32
+// layout. A pipe cannot be rewound, so the sniffed prefix is pushed back in
+// front of it instead — a megabyte held in memory at most.
+func detectMimeType(in io.Reader, fileExt string) (string, io.Reader, error) {
 	mimetype.SetLimit(Size1MB) // limit to 1MB
 
 	head := make([]byte, Size1MB)
 	// A payload shorter than the sniff window is the common case, not an error.
 	n, err := io.ReadFull(in, head)
 	if err != nil && !errors.Is(err, io.EOF) && !errors.Is(err, io.ErrUnexpectedEOF) {
-		return "", err
+		return "", nil, err
 	}
-	if _, err := in.Seek(0, io.SeekStart); err != nil {
-		return "", err
+	head = head[:n]
+
+	rest := in
+	if seeker, ok := in.(io.Seeker); ok {
+		if _, err := seeker.Seek(0, io.SeekStart); err != nil {
+			return "", nil, err
+		}
+	} else {
+		rest = io.MultiReader(bytes.NewReader(head), in)
 	}
 
 	// defaults to application/octet-stream if nothing is recognized
-	detected := mimetype.Detect(head[:n]).String()
+	detected := mimetype.Detect(head).String()
 	if detected == "application/octet-stream" && fileExt != "" {
 		// mime.TypeByExtension is the extension lookup. mimetype.Lookup takes a
 		// MIME type string, so passing it a bare extension always returned nil
@@ -57,7 +69,7 @@ func detectMimeType(in io.ReadSeeker, fileExt string) (string, error) {
 			detected = byExt
 		}
 	}
-	return detected, nil
+	return detected, rest, nil
 }
 
 func encryptRun(cmd *cobra.Command, args []string) {
@@ -115,26 +127,21 @@ func encryptRun(cmd *cobra.Command, args []string) {
 		cliExit("ONLY ONE")
 	}
 
-	// The SDK seeks to the end of the payload to size it, so the input has to be
-	// seekable. A file already is; a pipe is spooled to disk, which trades the
-	// temporary file for the memory a whole-payload read used to cost.
-	var in io.ReadSeeker
-	var cleanup func()
+	// The SDK encrypts straight from a reader, so piped input goes to it as-is
+	// rather than through a temporary file. A file is still opened seekably: the
+	// SDK measures a seekable payload and keeps the archive in the compact ZIP32
+	// layout, which a pipe has to give up.
+	var in io.Reader = piped
+	cleanup := func() {}
 	if filePath != "" {
 		f, err := os.Open(filePath)
 		if err != nil {
 			cli.ExitWithError("Failed to read file:", err)
 		}
 		in, cleanup = f, func() { f.Close() }
-	} else {
-		f, spoolCleanup, err := streamio.Spool(piped)
-		if err != nil {
-			cli.ExitWithError("Failed to read stdin:", err)
-		}
-		in, cleanup = f, spoolCleanup
 	}
 	// cli.ExitWithError calls os.Exit, which skips deferred functions, so every
-	// exit below goes through fail() to discard the spool and any partial output.
+	// exit below goes through fail() to discard any partial output.
 	defer cleanup()
 
 	// Resolve the destination before encrypting, so the payload streams straight
@@ -168,7 +175,7 @@ func encryptRun(cmd *cobra.Command, args []string) {
 	// auto-detect mime type if not provided
 	if fileMimeType == "" {
 		slog.Debug("detecting mime type of file")
-		fileMimeType, err = detectMimeType(in, fileExt)
+		fileMimeType, in, err = detectMimeType(in, fileExt)
 		if err != nil {
 			fail("Failed to read file:", err)
 		}

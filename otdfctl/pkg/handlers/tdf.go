@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"bytes"
 	"context"
 	"crypto/rsa"
 	"crypto/x509"
@@ -107,64 +106,76 @@ func (h Handler) Encrypt(ctx context.Context, out io.Writer, in io.ReadSeeker, o
 	}
 }
 
-func (h Handler) DecryptBytes(
-	ctx context.Context,
-	toDecrypt []byte,
-	assertionVerificationKeysFile string,
-	disableAssertionCheck bool,
-	sessionKeyAlgorithm ocrypto.KeyType,
-	kasAllowList []string,
-	ignoreAllowlist bool,
-	fulfillableObligations []string,
-) (*bytes.Buffer, error) {
-	out := &bytes.Buffer{}
-	pt := io.Writer(out)
-	ec := bytes.NewReader(toDecrypt)
-	switch sdk.GetTdfType(ec) {
+// DecryptOptions carries the non-stream inputs to Decrypt.
+type DecryptOptions struct {
+	AssertionVerificationKeysFile string
+	DisableAssertionCheck         bool
+	SessionKeyAlgorithm           ocrypto.KeyType
+	KASAllowList                  []string
+	IgnoreAllowlist               bool
+	FulfillableObligations        []string
+}
+
+// streamingCopy asserts that the SDK reader is copied one segment at a time.
+//
+// io.Copy prefers WriteTo when the source implements it, and sdk.Reader's
+// WriteTo decrypts segment by segment. Without it, io.Copy would fall back to
+// Read, which serves bytes from an internal buffer grown by ReadAt — putting
+// the whole payload back in memory and silently undoing this change with no
+// test failure to show for it.
+var _ io.WriterTo = (*sdk.Reader)(nil)
+
+// Decrypt streams the plaintext of the TDF in in to out. Memory use is bounded
+// by the SDK's segment size rather than by the payload length.
+//
+// in must be seekable because the TDF's manifest lives at the end of the
+// archive; callers with a pipe need to spool it first.
+func (h Handler) Decrypt(ctx context.Context, out io.Writer, in io.ReadSeeker, o DecryptOptions) error {
+	switch sdk.GetTdfType(in) {
 	case sdk.Standard:
 		opts := []sdk.TDFReaderOption{
-			sdk.WithDisableAssertionVerification(disableAssertionCheck),
-			sdk.WithSessionKeyType(sessionKeyAlgorithm),
-			sdk.WithIgnoreAllowlist(ignoreAllowlist),
-			sdk.WithTDFFulfillableObligationFQNs(fulfillableObligations),
+			sdk.WithDisableAssertionVerification(o.DisableAssertionCheck),
+			sdk.WithSessionKeyType(o.SessionKeyAlgorithm),
+			sdk.WithIgnoreAllowlist(o.IgnoreAllowlist),
+			sdk.WithTDFFulfillableObligationFQNs(o.FulfillableObligations),
 		}
-		if kasAllowList != nil {
-			opts = append(opts, sdk.WithKasAllowlist(kasAllowList))
+		if o.KASAllowList != nil {
+			opts = append(opts, sdk.WithKasAllowlist(o.KASAllowList))
 		}
 		var assertionVerificationKeys sdk.AssertionVerificationKeys
-		if assertionVerificationKeysFile != "" {
+		if o.AssertionVerificationKeysFile != "" {
 			// read the file
-			assertionVerificationBytes, err := utils.ReadBytesFromFile(assertionVerificationKeysFile, MaxAssertionsFileSize)
+			assertionVerificationBytes, err := utils.ReadBytesFromFile(o.AssertionVerificationKeysFile, MaxAssertionsFileSize)
 			if err != nil {
-				return nil, fmt.Errorf("unable to read assertions verification keys file: %w", err)
+				return fmt.Errorf("unable to read assertions verification keys file: %w", err)
 			}
 			err = json.Unmarshal(assertionVerificationBytes, &assertionVerificationKeys)
 			if err != nil {
-				return nil, fmt.Errorf("unable to unmarshal assertion verification keys json: %w", err)
+				return fmt.Errorf("unable to unmarshal assertion verification keys json: %w", err)
 			}
 			for assertionName, key := range assertionVerificationKeys.Keys {
 				correctedKey, err := correctKeyType(key, true)
 				if err != nil {
-					return nil, fmt.Errorf("error with assertion signing key: %w", err)
+					return fmt.Errorf("error with assertion signing key: %w", err)
 				}
 				assertionVerificationKeys.Keys[assertionName] = sdk.AssertionKey{Alg: key.Alg, Key: correctedKey}
 			}
 			opts = append(opts, sdk.WithAssertionVerificationKeys(assertionVerificationKeys))
 		}
-		r, err := h.sdk.LoadTDF(ec, opts...)
+		r, err := h.sdk.LoadTDF(in, opts...)
 		if err != nil {
-			return nil, err
+			return err
 		}
 		//nolint:errorlint // callers intended to test error equality directly
-		if _, err = io.Copy(pt, r); err != nil && err != io.EOF {
-			return nil, formatDecryptError(ctx, r.Obligations, err)
+		if _, err = io.Copy(out, r); err != nil && err != io.EOF {
+			return formatDecryptError(ctx, r.Obligations, err)
 		}
 	case sdk.Invalid:
-		return nil, errors.New("invalid TDF")
+		return errors.New("invalid TDF")
 	default:
-		return nil, errors.New("unknown TDF type")
+		return errors.New("unknown TDF type")
 	}
-	return out, nil
+	return nil
 }
 
 // InspectTDF reads the manifest and attributes of a TDF.

@@ -19,6 +19,8 @@ import (
 	policydb "github.com/opentdf/platform/service/policy/db"
 )
 
+const standardActionsPerNamespace = 4
+
 type NamespacesService struct { //nolint:revive // NamespacesService is a valid name
 	dbClient policydb.PolicyDBClient
 	logger   *logger.Logger
@@ -141,6 +143,9 @@ func (ns NamespacesService) CreateNamespace(ctx context.Context, req *connect.Re
 			if err := policyconfig.EnforceObjectLimit(policyconfig.ObjectTypeNamespaces, limit, count, 1); err != nil {
 				return err
 			}
+		}
+		if err := policyconfig.EnforceObjectLimit(policyconfig.ObjectTypeActionsPerNamespace, ns.config.MaxObjectCounts.ActionsPerNamespace, 0, standardActionsPerNamespace); err != nil {
+			return err
 		}
 		n, err := txClient.CreateNamespace(ctx, req.Msg)
 		if err != nil {

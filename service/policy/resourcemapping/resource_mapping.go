@@ -113,6 +113,15 @@ func (s ResourceMappingService) CreateResourceMappingGroup(ctx context.Context, 
 
 	var rmGroup *policy.ResourceMappingGroup
 	err := s.dbClient.RunInTx(ctx, func(txClient *policydb.PolicyDBClient) error {
+		if limit := s.config.MaxObjectCounts.ResourceMappingGroupsPerNamespace; limit > 0 {
+			_, count, err := txClient.GetResourceMappingGroupCount(ctx, req.Msg.GetNamespaceId(), req.Msg.GetNamespaceFqn())
+			if err != nil {
+				return err
+			}
+			if err := policyconfig.EnforceObjectLimit(policyconfig.ObjectTypeResourceMappingGroupsPerNamespace, limit, count, 1); err != nil {
+				return err
+			}
+		}
 		var err error
 		rmGroup, err = txClient.CreateResourceMappingGroup(ctx, req.Msg)
 		if err != nil {
@@ -123,6 +132,9 @@ func (s ResourceMappingService) CreateResourceMappingGroup(ctx context.Context, 
 	})
 	if err != nil {
 		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
+		if limitErr := policyconfig.ObjectLimitConnectError(ctx, s.logger, "create", err); limitErr != nil {
+			return nil, limitErr
+		}
 		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextCreationFailed, slog.String("resourceMappingGroup", req.Msg.String()))
 	}
 
@@ -154,6 +166,17 @@ func (s ResourceMappingService) UpdateResourceMappingGroup(ctx context.Context, 
 		if err != nil {
 			return err
 		}
+		if limit := s.config.MaxObjectCounts.ResourceMappingGroupsPerNamespace; limit > 0 && (req.Msg.GetNamespaceId() != "" || req.Msg.GetNamespaceFqn() != "") {
+			targetNamespaceID, count, err := txClient.GetResourceMappingGroupCount(ctx, req.Msg.GetNamespaceId(), req.Msg.GetNamespaceFqn())
+			if err != nil {
+				return err
+			}
+			if targetNamespaceID != originalRmGroup.GetNamespaceId() {
+				if err := policyconfig.EnforceObjectLimit(policyconfig.ObjectTypeResourceMappingGroupsPerNamespace, limit, count, 1); err != nil {
+					return err
+				}
+			}
+		}
 
 		updatedRmGroup, err = txClient.UpdateResourceMappingGroup(ctx, id, req.Msg)
 		if err != nil {
@@ -164,6 +187,9 @@ func (s ResourceMappingService) UpdateResourceMappingGroup(ctx context.Context, 
 	})
 	if err != nil {
 		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
+		if limitErr := policyconfig.ObjectLimitConnectError(ctx, s.logger, "update", err); limitErr != nil {
+			return nil, limitErr
+		}
 		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextUpdateFailed, slog.String("id", id))
 	}
 
@@ -275,6 +301,15 @@ func (s ResourceMappingService) CreateResourceMapping(ctx context.Context,
 
 	var rm *policy.ResourceMapping
 	err := s.dbClient.RunInTx(ctx, func(txClient *policydb.PolicyDBClient) error {
+		if limit := s.config.MaxObjectCounts.ResourceMappingsPerAttributeValue; limit > 0 {
+			count, err := txClient.CountResourceMappings(ctx, req.Msg.GetAttributeValueId())
+			if err != nil {
+				return err
+			}
+			if err := policyconfig.EnforceObjectLimit(policyconfig.ObjectTypeResourceMappingsPerAttributeValue, limit, count, 1); err != nil {
+				return err
+			}
+		}
 		var err error
 		rm, err = txClient.CreateResourceMapping(ctx, req.Msg)
 		if err != nil {
@@ -285,6 +320,9 @@ func (s ResourceMappingService) CreateResourceMapping(ctx context.Context,
 	})
 	if err != nil {
 		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
+		if limitErr := policyconfig.ObjectLimitConnectError(ctx, s.logger, "create", err); limitErr != nil {
+			return nil, limitErr
+		}
 		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextCreationFailed, slog.String("resourceMapping", req.Msg.String()))
 	}
 
@@ -318,6 +356,17 @@ func (s ResourceMappingService) UpdateResourceMapping(ctx context.Context,
 		if err != nil {
 			return err
 		}
+		targetValueID := req.Msg.GetAttributeValueId()
+		limit := s.config.MaxObjectCounts.ResourceMappingsPerAttributeValue
+		if targetValueID != "" && targetValueID != originalRM.GetAttributeValue().GetId() && limit > 0 {
+			count, err := txClient.CountResourceMappings(ctx, targetValueID)
+			if err != nil {
+				return err
+			}
+			if err := policyconfig.EnforceObjectLimit(policyconfig.ObjectTypeResourceMappingsPerAttributeValue, limit, count, 1); err != nil {
+				return err
+			}
+		}
 
 		updatedRM, err = txClient.UpdateResourceMapping(ctx, resourceMappingID, req.Msg)
 		if err != nil {
@@ -328,6 +377,9 @@ func (s ResourceMappingService) UpdateResourceMapping(ctx context.Context,
 	})
 	if err != nil {
 		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
+		if limitErr := policyconfig.ObjectLimitConnectError(ctx, s.logger, "update", err); limitErr != nil {
+			return nil, limitErr
+		}
 		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextUpdateFailed,
 			slog.String("id", req.Msg.GetId()),
 			slog.String("resourceMapping", req.Msg.String()),

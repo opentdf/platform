@@ -589,6 +589,7 @@ Root level key `policy`
 | `list_request_limit_default` | Policy List request limit default when not provided    | 1000    | OPENTDF_SERVICES_POLICY_LIST_REQUEST_LIMIT_DEFAULT |
 | `list_request_limit_max`     | Policy List request limit maximum enforced by services | 2500    | OPENTDF_SERVICES_POLICY_LIST_REQUEST_LIMIT_MAX     |
 | `namespaced_policy`          | When enabled, new actions, subject mappings, subject condition sets, and registered resources require a namespace. When disabled (default), namespace fields are accepted but not enforced — objects may be created without a namespace (legacy behavior). Non-namespaced versions are deprecated and this flag will become the default in a future version. | `false` | OPENTDF_SERVICES_POLICY_NAMESPACED_POLICY          |
+| `max_object_counts`          | Optional maximum counts for policy objects. Each nested zero value disables that maximum. | all disabled | OPENTDF_SERVICES_POLICY_MAX_OBJECT_COUNTS_* |
 
 Example:
 
@@ -598,7 +599,20 @@ services:
     list_request_limit_default: 1000
     list_request_limit_max: 2500
     namespaced_policy: false
+    max_object_counts:
+      attribute_definitions_per_namespace: 0
+      attribute_values_per_definition: 0
+      resource_mapping_groups_per_namespace: 0
+      resource_mappings_per_attribute_value: 0
+      subject_mappings_per_attribute_value: 0
+      subject_condition_sets_per_namespace: 0
+      obligation_definitions_per_namespace: 0
+      obligation_values_per_definition: 0
+      obligation_triggers_per_attribute_value: 0
+      actions_per_namespace: 0
 ```
+
+Maximum object counts are checked by the service that owns each create operation. Reaching a configured maximum returns `RESOURCE_EXHAUSTED`.
 
 ### Casbin Endpoint Authorization
 

@@ -475,35 +475,15 @@ func (c PolicyDBClient) UpdateSubjectMapping(ctx context.Context, r *subjectmapp
 	}
 
 	if actions != nil {
-		actionIDs := make([]string, 0)
-		actionNames := make([]string, 0)
-		// Check for provided existing Action IDs and existing/new Action Names
-		for idx, a := range actions {
-			switch {
-			case a.GetId() != "":
-				actionIDs = append(actionIDs, a.GetId())
-			case a.GetName() != "":
-				actionNames = append(actionNames, strings.ToLower(a.GetName()))
-			default:
-				return nil, db.WrapIfKnownInvalidQueryErr(
-					errors.Join(db.ErrMissingValue, fmt.Errorf("action at index %d missing required 'id' or 'name' when creating a subject mapping; action details: %+v", idx, a)),
-				)
-			}
-		}
-
-		// Create or list Actions for those provided by name
-		if len(actionNames) > 0 {
-			createdOrListedActions, err := c.queries.createOrListActionsByName(ctx, actionNames)
+		if len(actions) == 0 {
+			updateParams.ActionIds = []string{}
+		} else {
+			actionIDs, err := c.resolveSubjectMappingActions(ctx, actions, pgtypeUUID(before.GetNamespace().GetId()))
 			if err != nil {
-				return nil, db.WrapIfKnownInvalidQueryErr(
-					errors.Join(db.ErrMissingValue, fmt.Errorf("failed to create or list action names [%v]: %w", actionNames, err)),
-				)
+				return nil, err
 			}
-			for _, a := range createdOrListedActions {
-				actionIDs = append(actionIDs, a.ID)
-			}
+			updateParams.ActionIds = actionIDs
 		}
-		updateParams.ActionIds = actionIDs
 	}
 
 	_, err = c.queries.updateSubjectMapping(ctx, updateParams)

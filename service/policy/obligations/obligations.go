@@ -111,6 +111,9 @@ func (s *Service) CreateObligation(ctx context.Context, req *connect.Request[obl
 	s.logger.DebugContext(ctx, "creating obligation", slog.String("name", req.Msg.GetName()))
 
 	err := s.dbClient.RunInTx(ctx, func(txClient *policydb.PolicyDBClient) error {
+		if err := s.enforceCreateObligationLimits(ctx, txClient, req.Msg); err != nil {
+			return err
+		}
 		obl, err := txClient.CreateObligation(ctx, req.Msg)
 		if err != nil {
 			return err
@@ -125,6 +128,9 @@ func (s *Service) CreateObligation(ctx context.Context, req *connect.Request[obl
 	})
 	if err != nil {
 		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
+		if limitErr := policyconfig.ObjectLimitConnectError(ctx, s.logger, "create", err); limitErr != nil {
+			return nil, limitErr
+		}
 		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextCreationFailed, slog.String("obligation", req.Msg.String()))
 	}
 
@@ -230,6 +236,9 @@ func (s *Service) CreateObligationValue(ctx context.Context, req *connect.Reques
 	s.logger.DebugContext(ctx, "creating obligation value", slog.String("value", req.Msg.GetValue()))
 
 	err := s.dbClient.RunInTx(ctx, func(txClient *policydb.PolicyDBClient) error {
+		if err := s.enforceCreateObligationValueLimits(ctx, txClient, req.Msg); err != nil {
+			return err
+		}
 		val, err := txClient.CreateObligationValue(ctx, req.Msg)
 		if err != nil {
 			return err
@@ -244,6 +253,9 @@ func (s *Service) CreateObligationValue(ctx context.Context, req *connect.Reques
 	})
 	if err != nil {
 		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
+		if limitErr := policyconfig.ObjectLimitConnectError(ctx, s.logger, "create", err); limitErr != nil {
+			return nil, limitErr
+		}
 		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextCreationFailed, slog.String("obligation value", req.Msg.String()))
 	}
 
@@ -292,6 +304,9 @@ func (s *Service) UpdateObligationValue(ctx context.Context, req *connect.Reques
 	s.logger.DebugContext(ctx, "updating obligation value", slog.String("id", id))
 
 	err := s.dbClient.RunInTx(ctx, func(txClient *policydb.PolicyDBClient) error {
+		if err := s.enforceUpdateObligationValueLimits(ctx, txClient, req.Msg); err != nil {
+			return err
+		}
 		original, err := txClient.GetObligationValue(ctx, &obligations.GetObligationValueRequest{Id: id})
 		if err != nil {
 			return err
@@ -311,6 +326,9 @@ func (s *Service) UpdateObligationValue(ctx context.Context, req *connect.Reques
 	})
 	if err != nil {
 		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
+		if limitErr := policyconfig.ObjectLimitConnectError(ctx, s.logger, "update", err); limitErr != nil {
+			return nil, limitErr
+		}
 		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextUpdateFailed, slog.String("obligation value", req.Msg.String()))
 	}
 	return connect.NewResponse(rsp), nil
@@ -385,6 +403,9 @@ func (s *Service) AddObligationTrigger(ctx context.Context, req *connect.Request
 	)
 
 	err := s.dbClient.RunInTx(ctx, func(txClient *policydb.PolicyDBClient) error {
+		if err := s.enforceAddObligationTriggerLimit(ctx, txClient, req.Msg); err != nil {
+			return err
+		}
 		trigger, err := txClient.CreateObligationTrigger(ctx, req.Msg)
 		if err != nil {
 			return err
@@ -399,6 +420,9 @@ func (s *Service) AddObligationTrigger(ctx context.Context, req *connect.Request
 	})
 	if err != nil {
 		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
+		if limitErr := policyconfig.ObjectLimitConnectError(ctx, s.logger, "create", err); limitErr != nil {
+			return nil, limitErr
+		}
 		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextCreationFailed, slog.String("obligation trigger", req.Msg.String()))
 	}
 

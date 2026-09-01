@@ -396,7 +396,7 @@ func decrypt(client *sdk.SDK, tdfFile string, plaintext string) error {
 
 	buf := new(strings.Builder)
 	_, err = io.Copy(buf, tdfreader)
-	if err != nil && !(errors.Is(err, io.EOF)) {
+	if err != nil && !errors.Is(err, io.EOF) {
 		return err
 	}
 

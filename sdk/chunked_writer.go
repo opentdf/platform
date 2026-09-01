@@ -13,7 +13,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/opentdf/platform/lib/ocrypto"
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/sdk/internal/zipstream"
@@ -366,6 +365,11 @@ type chunkedWriterConfig struct {
 	// fixedClock for deterministic ZIP output.
 	clock clock
 
+	// dek is a pre-generated Data Encryption Key. When nil the writer
+	// draws one from rand. SDK.CreateTDF presets it so that it can
+	// resolve key access before emitting any payload bytes.
+	dek []byte
+
 	// excludeVersion omits the schemaVersion field from the manifest.
 	// Set together with useHex by WithChunkedTargetMode; readers use
 	// the field's absence as the pre-4.3.0 marker, so the two must
@@ -380,12 +384,22 @@ type chunkedWriterConfig struct {
 	// Finalize call does not supply its own.
 	initialDefaultKAS *policy.SimpleKasKey
 
+	// keyAccess resolves the manifest policy and key access objects.
+	// Defaults to a splitterKeyAccess over splitter.
+	keyAccess keyAccessResolver
+
 	// rand is the entropy source used to generate the DEK. Defaults
 	// to crypto/rand.Reader.
 	rand io.Reader
 
+	// segmentSize is the plaintext segment size advertised in the
+	// manifest. Zero means "report the first segment's actual size",
+	// which is right when every segment is the same length.
+	segmentSize int64
+
 	// splitter maps attribute values to DEK splits at Finalize time.
-	// Defaults to DefaultKeySplitter (single-KAS only).
+	// Defaults to DefaultKeySplitter (single-KAS only). Ignored when
+	// keyAccess is set.
 	splitter KeySplitter
 
 	// useHex hex-encodes segment, root, and assertion signatures
@@ -502,6 +516,10 @@ type chunkedWriter struct {
 	// when the caller does not override.
 	initialDefaultKAS *policy.SimpleKasKey
 
+	// keyAccess resolves the manifest policy and key access objects
+	// for the DEK.
+	keyAccess keyAccessResolver
+
 	// manifest holds the finalized manifest for post-Finalize
 	// GetManifest calls.
 	manifest *Manifest
@@ -512,9 +530,9 @@ type chunkedWriter struct {
 	// segments records per-index slots, reserved and then written.
 	segments map[int]*segmentSlot
 
-	// splitter converts attributes + DEK into key splits at
-	// Finalize time.
-	splitter KeySplitter
+	// segmentSize is the plaintext segment size to advertise in the
+	// manifest, or zero to infer it from the first segment.
+	segmentSize int64
 
 	// useHex selects the pre-4.3.0 doubly-encoded signature form.
 	// Read by WriteSegment, so it is fixed at construction rather
@@ -556,14 +574,29 @@ func NewChunkedWriter(_ context.Context, opts ...ChunkedWriterOption) (ChunkedWr
 			return nil, err
 		}
 	}
+	return newChunkedWriter(cfg)
+}
 
-	dek := make([]byte, kKeySize)
-	if _, err := io.ReadFull(cfg.rand, dek); err != nil {
-		return nil, fmt.Errorf("generate DEK: %w", err)
+// newChunkedWriter builds the writer from a fully-populated config.
+// SDK.CreateTDF calls this directly with the unexported knobs its
+// classic behavior needs — a preset DEK, key access resolved before
+// the first payload byte, a fixed segment size — rather than going
+// through the public option set.
+func newChunkedWriter(cfg chunkedWriterConfig) (*chunkedWriter, error) {
+	dek := cfg.dek
+	if dek == nil {
+		dek = make([]byte, kKeySize)
+		if _, err := io.ReadFull(cfg.rand, dek); err != nil {
+			return nil, fmt.Errorf("generate DEK: %w", err)
+		}
 	}
 	block, err := cfg.cipherFactory(dek)
 	if err != nil {
 		return nil, fmt.Errorf("build segment cipher: %w", err)
+	}
+	keyAccess := cfg.keyAccess
+	if keyAccess == nil {
+		keyAccess = splitterKeyAccess{splitter: cfg.splitter}
 	}
 	return &chunkedWriter{
 		archiveWriter:     cfg.archiveFactory(cfg.clock),
@@ -572,8 +605,9 @@ func NewChunkedWriter(_ context.Context, opts ...ChunkedWriterOption) (ChunkedWr
 		excludeVersion:    cfg.excludeVersion,
 		initialAttributes: cfg.initialAttributes,
 		initialDefaultKAS: cfg.initialDefaultKAS,
+		keyAccess:         keyAccess,
 		segments:          make(map[int]*segmentSlot),
-		splitter:          cfg.splitter,
+		segmentSize:       cfg.segmentSize,
 		useHex:            cfg.useHex,
 	}, nil
 }
@@ -1014,36 +1048,16 @@ type chunkedTotals struct {
 	plaintext int64
 }
 
-// buildManifest composes the manifest from a snapshot, splits the DEK,
-// wraps splits into KAOs, and computes the root signature.
+// buildManifest composes the manifest from a snapshot, resolves the key
+// access objects, and computes the root signature.
 //
 // It reads no mutable writer state and takes no lock: every other field it
-// touches (dek, splitter, useHex) is fixed at construction. Keep it that way --
+// touches (dek, keyAccess, useHex) is fixed at construction. Keep it that way --
 // GetManifest calls it with the read lock released.
 func (w *chunkedWriter) buildManifest(ctx context.Context, cfg *chunkedFinalizeConfig, snap *chunkedSnapshot) (*Manifest, chunkedTotals, error) {
 	var totals chunkedTotals
 
-	// Hand the splitter copies of both slices. A splitter that zeroes or
-	// rewrites the DEK it is given -- scrubbing what it thinks is its own
-	// working buffer, say -- would desynchronize the DEK from the segment
-	// signatures already computed against it and from the root signature
-	// computed below, producing a TDF that fails verification exactly as a
-	// tampered one would.
-	//
-	// The attributes need the same defense for a different reason: on the
-	// fallback path cfg.attributes *is* w.initialAttributes, the writer's own
-	// retained slice, so a splitter that rewrites an element changes the policy
-	// buildChunkedPolicy writes just below -- and every later Finalize and
-	// GetManifest on this writer.
-	splits, err := w.splitter.Split(ctx, slices.Clone(cfg.attributes), slices.Clone(w.dek), cfg.defaultKAS)
-	if err != nil {
-		return nil, totals, err
-	}
-	policyBytes, err := buildChunkedPolicy(cfg.attributes)
-	if err != nil {
-		return nil, totals, err
-	}
-	kaos, err := buildChunkedKeyAccessObjects(splits, w.dek, policyBytes, cfg.encryptedMetadata)
+	base64Policy, kaos, err := w.keyAccess.resolve(ctx, w.dek, cfg)
 	if err != nil {
 		return nil, totals, err
 	}
@@ -1051,7 +1065,7 @@ func (w *chunkedWriter) buildManifest(ctx context.Context, cfg *chunkedFinalizeC
 	encInfo := EncryptionInformation{
 		KeyAccessObjs: kaos,
 		KeyAccessType: kSplitKeyType,
-		Policy:        string(ocrypto.Base64Encode(policyBytes)),
+		Policy:        base64Policy,
 		Method: Method{
 			Algorithm:    kGCMCipherAlgorithm,
 			IsStreamable: true,
@@ -1077,7 +1091,15 @@ func (w *chunkedWriter) buildManifest(ctx context.Context, cfg *chunkedFinalizeC
 		aggregate.Write(decoded)
 	}
 
-	if len(snap.segments) > 0 {
+	// A caller that knows the segment size says so, because the first
+	// segment's actual length is only the right answer when every
+	// segment is full — and the last one usually is not, so a
+	// single-segment TDF would otherwise advertise a short default.
+	switch {
+	case w.segmentSize > 0:
+		encInfo.DefaultSegmentSize = w.segmentSize
+		encInfo.DefaultEncryptedSegSize = w.segmentSize + gcmIvSize + aesBlockSize
+	case len(snap.segments) > 0:
 		encInfo.DefaultEncryptedSegSize = snap.segments[0].EncryptedSize
 		encInfo.DefaultSegmentSize = snap.segments[0].Size
 	}
@@ -1174,78 +1196,6 @@ func (w *chunkedWriter) segmentOrderLocked(keep []int) ([]int, error) {
 	out := make([]int, len(keep))
 	copy(out, keep)
 	return out, nil
-}
-
-// buildChunkedKeyAccessObjects wraps each split share to each KAS
-// listed by the splitter.
-func buildChunkedKeyAccessObjects(splits *SplitResult, dek, policyBytes []byte, metadata string) ([]KeyAccess, error) {
-	// This is the one place caller-supplied split data is turned into
-	// manifest content, so it is where the splitter's contract is
-	// enforced -- for the default splitter and for anything injected
-	// through WithChunkedKeySplitter alike. Validate guarantees every
-	// invariant the loop below relies on: at least one split, every
-	// split naming at least one KAS, every named KAS resolving to a
-	// usable wrapping key, and split ids that the reader can group on.
-	if err := splits.Validate(); err != nil {
-		return nil, err
-	}
-	// Validate first, then this: Validate names the specific structural fault
-	// (no splits, empty share, duplicate id, unresolved KAS), all of which
-	// VerifyReconstruction can only report as a length or value mismatch.
-	if err := splits.VerifyReconstruction(dek); err != nil {
-		return nil, err
-	}
-	base64Policy := ocrypto.Base64Encode(policyBytes)
-
-	out := make([]KeyAccess, 0, len(splits.Splits))
-	for _, split := range splits.Splits {
-		// Policy binding and metadata are keyed on the split share, not
-		// on the KAS, so compute them once per split rather than once
-		// per KAS URL in an OR-group.
-		policyBinding := createPolicyBinding(split.Data, base64Policy)
-		var encMeta string
-		if metadata != "" {
-			m, err := encryptMetadata(split.Data, metadata)
-			if err != nil {
-				return nil, fmt.Errorf("encrypt metadata for split %s: %w", split.ID, err)
-			}
-			encMeta = m
-		}
-		for _, url := range split.KASURLs {
-			// Validate resolved every URL, so the lookup cannot miss.
-			pk := splits.KASPublicKeys[url]
-			kao, err := createKeyAccess(pk.toKASInfo(), split.Data, policyBinding, encMeta, split.ID)
-			if err != nil {
-				return nil, fmt.Errorf("wrap key for %s: %w", url, err)
-			}
-			out = append(out, kao)
-		}
-	}
-	return out, nil
-}
-
-// buildChunkedPolicy composes the TDF Policy document from attribute
-// values.
-func buildChunkedPolicy(values []*policy.Value) ([]byte, error) {
-	p := PolicyObject{UUID: uuid.NewString()}
-	p.Body.DataAttributes = make([]attributeObject, 0, len(values))
-	p.Body.Dissem = make([]string, 0)
-	for i, v := range values {
-		// GetFqn is nil-receiver safe, so a nil element or a value that never
-		// had its FQN populated yields "" rather than panicking. Emitting that
-		// writes {"attribute": ""} into the bound policy: the PDP denies it, so
-		// the TDF fails closed rather than open, but it fails at decrypt with
-		// nothing naming the cause -- and it does so after the caller has
-		// encrypted and uploaded the whole payload.
-		fqn := v.GetFqn()
-		if fqn == "" {
-			return nil, fmt.Errorf("chunked: attribute value at index %d has an empty FQN; the policy it produces names no attribute and no KAS could evaluate it", i)
-		}
-		p.Body.DataAttributes = append(p.Body.DataAttributes, attributeObject{
-			Attribute: fqn,
-		})
-	}
-	return json.Marshal(p)
 }
 
 // cloneChunkedManifest copies the manifest struct and clones its three

@@ -6,6 +6,9 @@ import (
 	"github.com/opentdf/platform/sdk"
 )
 
+// The JWT claim keys sdk writes into an assertion binding. Signing moved to
+// sdk with the aliases below, so these have no caller here beyond the tests
+// that assert against sdk's claim names.
 const (
 	kAssertionSignature = "assertionSig"
 	kAssertionHash      = "assertionHash"

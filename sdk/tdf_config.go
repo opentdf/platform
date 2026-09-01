@@ -27,10 +27,16 @@ const (
 	inputSizeUnknown = -1
 )
 
+// TDFFormat once selected a manifest serialization. Only JSON was ever
+// implemented, and nothing reads this.
+//
+// Deprecated: unused; the manifest is always JSON.
 type TDFFormat = int
 
 const (
+	// Deprecated: unused; the manifest is always JSON.
 	JSONFormat = iota
+	// Deprecated: never implemented.
 	XMLFormat
 )
 
@@ -138,12 +144,8 @@ type TDFConfig struct {
 	autoconfigure              bool
 	defaultSegmentSize         int64
 	inputSize                  int64
-	enableEncryption           bool
-	tdfFormat                  TDFFormat
 	metaData                   string
 	mimeType                   string
-	rootIntegrityAlg           RootIntegrityAlg
-	segmentIntegrityAlg        SegmentIntegrityAlg
 	assertions                 []AssertionConfig
 	attributes                 []AttributeValueFQN
 	attributeValues            []*policy.Value
@@ -161,10 +163,6 @@ func newTDFConfig(opt ...TDFOption) (*TDFConfig, error) {
 		autoconfigure:       true,
 		defaultSegmentSize:  defaultSegmentSize,
 		inputSize:           inputSizeUnknown,
-		enableEncryption:    true,
-		tdfFormat:           JSONFormat,
-		rootIntegrityAlg:    RootHS256,
-		segmentIntegrityAlg: SegmentGMAC,
 		addDefaultAssertion: false,
 	}
 

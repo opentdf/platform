@@ -2912,6 +2912,12 @@ func (s *TDFSuite) testEncrypt(sdk *SDK, encryptOpts []TDFOption, plainTextFilen
 	tdfObj, err := sdk.CreateTDF(fileWriter, readSeeker, encryptOpts...)
 	s.Require().NoError(err)
 
+	// Every TDF this SDK writes carries an HS256 root over the aggregate hash
+	// and GMAC segment hashes. Nothing configures either, so assert it here
+	// rather than in one test: this runs on every encrypt case there is.
+	s.Equal(hmacIntegrityAlgorithm, tdfObj.manifest.Algorithm)
+	s.Equal(gmacIntegrityAlgorithm, tdfObj.manifest.SegmentHashAlgorithm)
+
 	s.InDelta(float64(test.tdfFileSize), float64(tdfObj.size), .04*float64(test.tdfFileSize))
 	return tdfObj
 }

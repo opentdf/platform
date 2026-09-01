@@ -6,10 +6,13 @@ import (
 )
 
 var (
-	errFileTooLarge     = errors.New("tdf: can't create tdf larger than 64gb")
 	errWriteFailed      = errors.New("tdf: io.writer fail to write all bytes")
 	errInvalidKasInfo   = errors.New("tdf: kas information is missing")
 	errKasPubKeyMissing = errors.New("tdf: kas public key is missing")
+
+	// errInputShorterThanDeclared reports a payload reader that hit EOF before
+	// producing the byte count promised by WithInputSize.
+	errInputShorterThanDeclared = errors.New("tdf: payload shorter than the declared input size")
 
 	// Exposed tamper detection errors, Catch all possible tamper errors with errors.Is(ErrTampered)
 	ErrTampered                = errors.New("tamper detected")

@@ -21,6 +21,10 @@ const (
 	ECKeySize256           = 256
 	ECKeySize384           = 384
 	ECKeySize521           = 521
+
+	// inputSizeUnknown marks a payload whose length cannot be established
+	// before it is read.
+	inputSizeUnknown = -1
 )
 
 type TDFFormat = int
@@ -63,6 +67,7 @@ type TDFOption func(*TDFConfig) error
 type TDFConfig struct {
 	autoconfigure              bool
 	defaultSegmentSize         int64
+	inputSize                  int64
 	enableEncryption           bool
 	tdfFormat                  TDFFormat
 	metaData                   string
@@ -85,6 +90,7 @@ func newTDFConfig(opt ...TDFOption) (*TDFConfig, error) {
 	c := &TDFConfig{
 		autoconfigure:             true,
 		defaultSegmentSize:        defaultSegmentSize,
+		inputSize:                 inputSizeUnknown,
 		enableEncryption:          true,
 		tdfFormat:                 JSONFormat,
 		integrityAlgorithm:        HS256,
@@ -190,6 +196,25 @@ func WithSegmentSize(size int64) TDFOption {
 	}
 	return func(c *TDFConfig) error {
 		c.defaultSegmentSize = size
+		return nil
+	}
+}
+
+// WithInputSize declares the payload length, in bytes, for the reader passed to
+// CreateTDF. Supply it when the reader cannot report its own length — a pipe, a
+// network stream — but the length is known anyway: it lets the archive keep the
+// compact ZIP32 layout that an unmeasurable payload has to give up. When the reader
+// is seekable the length is recovered automatically and this option is unnecessary.
+//
+// The declared length is exact, not an upper bound: reading stops after size bytes
+// even if the reader has more to give, and a reader that reaches EOF first fails the
+// call rather than producing a TDF that is silently short of the payload.
+func WithInputSize(size int64) TDFOption {
+	return func(c *TDFConfig) error {
+		if size < 0 {
+			return fmt.Errorf("WithInputSize: size must not be negative, got %d", size)
+		}
+		c.inputSize = size
 		return nil
 	}
 }

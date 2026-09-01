@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"bytes"
 	"context"
 	"crypto/rsa"
 	"crypto/x509"
@@ -38,51 +37,68 @@ type TDFInspect struct {
 	UnencryptedMetadata []byte
 }
 
-func (h Handler) EncryptBytes(
-	tdfType string,
-	unencrypted []byte,
-	attrValues []string,
-	mimeType string,
-	kasURLPath string,
-	assertions string,
-	wrappingKeyAlgorithm ocrypto.KeyType,
-	targetMode string,
-) (*bytes.Buffer, error) {
-	var encrypted []byte
-	enc := bytes.NewBuffer(encrypted)
+// InputSizeUnknown marks a payload whose length cannot be established up front,
+// such as one arriving on a pipe. Encrypt passes it through to the SDK, which
+// then measures the payload by reading it.
+const InputSizeUnknown = int64(-1)
 
-	switch tdfType {
+// EncryptOptions carries the non-stream inputs to Encrypt.
+type EncryptOptions struct {
+	TDFType              string
+	Attributes           []string
+	MimeType             string
+	KASURLPath           string
+	Assertions           string
+	WrappingKeyAlgorithm ocrypto.KeyType
+	TargetMode           string
+
+	// InputSize is the payload length in bytes, or InputSizeUnknown when it
+	// cannot be determined without consuming the reader. Supplying a known
+	// length lets the SDK size the archive up front rather than defaulting to
+	// ZIP64, which keeps output byte-comparable with a seekable reader.
+	InputSize int64
+}
+
+// Encrypt streams the plaintext from in to a TDF written to out. Memory use is
+// bounded by the SDK's segment size rather than by the payload length, so in
+// may be a pipe and the payload may be larger than RAM.
+func (h Handler) Encrypt(ctx context.Context, out io.Writer, in io.Reader, o EncryptOptions) error {
+	switch o.TDFType {
 	// Encrypt the data as a ZTDF
 	case "", tdf.TypeTDF3, tdf.TypeZTDF:
 		opts := []sdk.TDFOption{
-			sdk.WithDataAttributes(attrValues...),
+			sdk.WithDataAttributes(o.Attributes...),
 			sdk.WithKasInformation(sdk.KASInfo{
-				URL: h.platformEndpoint + kasURLPath,
+				URL: h.platformEndpoint + o.KASURLPath,
 			}),
-			sdk.WithMimeType(mimeType),
-			sdk.WithWrappingKeyAlg(wrappingKeyAlgorithm), //nolint:staticcheck // SDK option is deprecated but no replacement is available in this SDK version.
+			sdk.WithMimeType(o.MimeType),
+			sdk.WithWrappingKeyAlg(o.WrappingKeyAlgorithm), //nolint:staticcheck // SDK option is deprecated but no replacement is available in this SDK version.
+		}
+
+		if o.InputSize >= 0 {
+			opts = append(opts, sdk.WithInputSize(o.InputSize))
 		}
 
 		var assertionConfigs []sdk.AssertionConfig
 		//nolint:nestif // nested its mainly for error catching and handling case of string vs file
-		if assertions != "" {
-			err := json.Unmarshal([]byte(assertions), &assertionConfigs)
+		if o.Assertions != "" {
+			err := json.Unmarshal([]byte(o.Assertions), &assertionConfigs)
 			if err != nil {
 				// if unable to marshal to json, interpret as file string and try to read from file
-				assertionBytes, err := utils.ReadBytesFromFile(assertions, MaxAssertionsFileSize)
+				assertionBytes, err := utils.ReadBytesFromFile(o.Assertions, MaxAssertionsFileSize)
 				if err != nil {
-					return nil, fmt.Errorf("unable to read assertions file: %w", err)
+					return fmt.Errorf("unable to read assertions file: %w", err)
 				}
 				err = json.Unmarshal(assertionBytes, &assertionConfigs)
 				if err != nil {
-					return nil, fmt.Errorf("unable to unmarshal assertions json: %w", err)
+					return fmt.Errorf("unable to unmarshal assertions json: %w", err)
 				}
 			}
 			for i, config := range assertionConfigs {
 				if !config.SigningKey.IsEmpty() {
 					correctedKey, err := correctKeyType(config.SigningKey, false)
 					if err != nil {
-						return nil, fmt.Errorf("error with assertion signing key: %w", err)
+						return fmt.Errorf("error with assertion signing key: %w", err)
 					}
 					assertionConfigs[i].SigningKey.Key = correctedKey
 				}
@@ -90,85 +106,103 @@ func (h Handler) EncryptBytes(
 			opts = append(opts, sdk.WithAssertions(assertionConfigs...))
 		}
 
-		if targetMode != "" {
-			opts = append(opts, sdk.WithTargetMode(targetMode))
+		if o.TargetMode != "" {
+			opts = append(opts, sdk.WithTargetMode(o.TargetMode))
 		}
 
-		_, err := h.sdk.CreateTDF(enc, bytes.NewReader(unencrypted), opts...)
-		return enc, err
+		_, err := h.sdk.CreateTDFContext(ctx, out, in, opts...)
+		return err
 	default:
-		return nil, errors.New("unknown TDF type")
+		return errors.New("unknown TDF type")
 	}
 }
 
-func (h Handler) DecryptBytes(
-	ctx context.Context,
-	toDecrypt []byte,
-	assertionVerificationKeysFile string,
-	disableAssertionCheck bool,
-	sessionKeyAlgorithm ocrypto.KeyType,
-	kasAllowList []string,
-	ignoreAllowlist bool,
-	fulfillableObligations []string,
-) (*bytes.Buffer, error) {
-	out := &bytes.Buffer{}
-	pt := io.Writer(out)
-	ec := bytes.NewReader(toDecrypt)
-	switch sdk.GetTdfType(ec) {
+// DecryptOptions carries the non-stream inputs to Decrypt.
+type DecryptOptions struct {
+	AssertionVerificationKeysFile string
+	DisableAssertionCheck         bool
+	SessionKeyAlgorithm           ocrypto.KeyType
+	KASAllowList                  []string
+	IgnoreAllowlist               bool
+	FulfillableObligations        []string
+}
+
+// streamingCopy asserts that the SDK reader is copied one segment at a time.
+//
+// io.Copy prefers WriteTo when the source implements it, and sdk.Reader's
+// WriteTo decrypts segment by segment. Without it, io.Copy would fall back to
+// Read, which serves bytes from an internal buffer grown by ReadAt — putting
+// the whole payload back in memory and silently undoing this change with no
+// test failure to show for it.
+var _ io.WriterTo = (*sdk.Reader)(nil)
+
+// Decrypt streams the plaintext of the TDF in in to out. Memory use is bounded
+// by the SDK's segment size rather than by the payload length.
+//
+// in must be seekable because the TDF's manifest lives at the end of the
+// archive; callers with a pipe need to spool it first.
+func (h Handler) Decrypt(ctx context.Context, out io.Writer, in io.ReadSeeker, o DecryptOptions) error {
+	switch sdk.GetTdfType(in) {
 	case sdk.Standard:
 		opts := []sdk.TDFReaderOption{
-			sdk.WithDisableAssertionVerification(disableAssertionCheck),
-			sdk.WithSessionKeyType(sessionKeyAlgorithm),
-			sdk.WithIgnoreAllowlist(ignoreAllowlist),
-			sdk.WithTDFFulfillableObligationFQNs(fulfillableObligations),
+			sdk.WithDisableAssertionVerification(o.DisableAssertionCheck),
+			sdk.WithSessionKeyType(o.SessionKeyAlgorithm),
+			sdk.WithIgnoreAllowlist(o.IgnoreAllowlist),
+			sdk.WithTDFFulfillableObligationFQNs(o.FulfillableObligations),
 		}
-		if kasAllowList != nil {
-			opts = append(opts, sdk.WithKasAllowlist(kasAllowList))
+		if o.KASAllowList != nil {
+			opts = append(opts, sdk.WithKasAllowlist(o.KASAllowList))
 		}
 		var assertionVerificationKeys sdk.AssertionVerificationKeys
-		if assertionVerificationKeysFile != "" {
+		if o.AssertionVerificationKeysFile != "" {
 			// read the file
-			assertionVerificationBytes, err := utils.ReadBytesFromFile(assertionVerificationKeysFile, MaxAssertionsFileSize)
+			assertionVerificationBytes, err := utils.ReadBytesFromFile(o.AssertionVerificationKeysFile, MaxAssertionsFileSize)
 			if err != nil {
-				return nil, fmt.Errorf("unable to read assertions verification keys file: %w", err)
+				return fmt.Errorf("unable to read assertions verification keys file: %w", err)
 			}
 			err = json.Unmarshal(assertionVerificationBytes, &assertionVerificationKeys)
 			if err != nil {
-				return nil, fmt.Errorf("unable to unmarshal assertion verification keys json: %w", err)
+				return fmt.Errorf("unable to unmarshal assertion verification keys json: %w", err)
 			}
 			for assertionName, key := range assertionVerificationKeys.Keys {
 				correctedKey, err := correctKeyType(key, true)
 				if err != nil {
-					return nil, fmt.Errorf("error with assertion signing key: %w", err)
+					return fmt.Errorf("error with assertion signing key: %w", err)
 				}
 				assertionVerificationKeys.Keys[assertionName] = sdk.AssertionKey{Alg: key.Alg, Key: correctedKey}
 			}
 			opts = append(opts, sdk.WithAssertionVerificationKeys(assertionVerificationKeys))
 		}
-		r, err := h.sdk.LoadTDF(ec, opts...)
+		r, err := h.sdk.LoadTDF(in, opts...)
 		if err != nil {
-			return nil, err
+			return err
 		}
 		//nolint:errorlint // callers intended to test error equality directly
-		if _, err = io.Copy(pt, r); err != nil && err != io.EOF {
-			return nil, formatDecryptError(ctx, r.Obligations, err)
+		if _, err = io.Copy(out, r); err != nil && err != io.EOF {
+			return formatDecryptError(ctx, r.Obligations, err)
 		}
 	case sdk.Invalid:
-		return nil, errors.New("invalid TDF")
+		return errors.New("invalid TDF")
 	default:
-		return nil, errors.New("unknown TDF type")
+		return errors.New("unknown TDF type")
 	}
-	return out, nil
+	return nil
 }
 
-func (h Handler) InspectTDF(toInspect []byte) (TDFInspect, []error) {
-	b := bytes.NewReader(toInspect)
-	switch sdk.GetTdfType(b) {
+// InspectTDF reads a TDF's manifest without materializing its payload.
+func (h Handler) InspectTDF(in io.ReadSeeker) (TDFInspect, []error) {
+	switch sdk.GetTdfType(in) {
 	case sdk.Standard:
 		// grouping errors so we don't impact the piping of the data
 		errs := []error{}
 
-		tdfreader, err := h.sdk.LoadTDF(bytes.NewReader(toInspect))
+		// GetTdfType restores the offset it started from, but LoadTDF expects to
+		// begin at the head of the archive regardless of where the caller was.
+		if _, err := in.Seek(0, io.SeekStart); err != nil {
+			return TDFInspect{}, []error{errors.Join(ErrTDFInspectFailNotInspectable, err)}
+		}
+
+		tdfreader, err := h.sdk.LoadTDF(in)
 		if err != nil {
 			if strings.Contains(err.Error(), "zip: not a valid zip file") {
 				return TDFInspect{}, []error{ErrTDFInspectFailNotInspectable}

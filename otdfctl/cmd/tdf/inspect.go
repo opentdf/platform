@@ -42,17 +42,32 @@ func inspectRun(cmd *cobra.Command, args []string) {
 	h := common.NewHandler(c)
 	defer h.Close()
 
-	data := cli.ReadFromArgsOrPipe(args, nil)
-	if len(data) == 0 {
-		c.ExitWithError("must provide ONE of the following: [file argument, stdin input]", errors.New("no input provided"))
+	// Inspect reads only the manifest, so the TDF is never held in memory even
+	// when the payload dwarfs it.
+	var path string
+	if len(args) > 0 {
+		path = args[0]
+	}
+	in, closeIn, err := openSeekableInput(path)
+	if errors.Is(err, errNoInput) {
+		c.ExitWithError("must provide ONE of the following: [file argument, stdin input]", err)
+	} else if err != nil {
+		c.ExitWithError("failed to read input", err)
+	}
+	// Every exit below goes through os.Exit, which skips deferred functions, so
+	// a spooled pipe has to be discarded explicitly on each path.
+	defer closeIn()
+	fail := func(msg string, err error) {
+		closeIn()
+		c.ExitWithError(msg, err)
 	}
 
-	result, errs := h.InspectTDF(data)
+	result, errs := h.InspectTDF(in)
 	for _, err := range errs {
 		if errors.Is(err, handlers.ErrTDFInspectFailNotValidTDF) {
-			c.ExitWithError("not a valid TDF", err)
+			fail("not a valid TDF", err)
 		} else if errors.Is(err, handlers.ErrTDFInspectFailNotInspectable) {
-			c.ExitWithError("failed to inspect TDF", err)
+			fail("failed to inspect TDF", err)
 		}
 	}
 
@@ -76,9 +91,10 @@ func inspectRun(cmd *cobra.Command, args []string) {
 			Attributes: result.Attributes,
 		}
 
+		closeIn()
 		c.ExitWithJSON(m, cli.ExitCodeSuccess)
 	}
-	c.ExitWithError("failed to inspect TDF", nil)
+	fail("failed to inspect TDF", nil)
 }
 
 func InitInspectCommand() {

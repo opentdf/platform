@@ -200,7 +200,20 @@ func (s SDK) CreateTDFContext(ctx context.Context, writer io.Writer, reader io.R
 	}
 	readBuf := make([]byte, readBufSize)
 
-	chunked, err := s.newTDFChunkedWriter(ctx, tdfConfig, inputSize, segmentCount(inputSize, segmentSize))
+	// Key access is settled before the first segment goes out: a KAS that cannot be
+	// reached must fail the call, not leave a partial TDF on the output writer.
+	dek := make([]byte, kKeySize)
+	if _, err := io.ReadFull(defaultRand, dek); err != nil {
+		return nil, fmt.Errorf("fail to create a new split key: %w", err)
+	}
+	base64Policy, kaos, err := s.resolveKeyAccess(ctx, tdfConfig, dek)
+	if err != nil {
+		return nil, fmt.Errorf("fail to create a new split key: %w", err)
+	}
+
+	chunked, err := newTDFChunkedWriter(tdfConfig, dek,
+		staticKeyAccess{kaos: kaos, policy: base64Policy},
+		inputSize, segmentCount(inputSize, segmentSize))
 	if err != nil {
 		return nil, err
 	}
@@ -295,23 +308,13 @@ func segmentCount(inputSize, segmentSize int64) int {
 	}
 }
 
-// newTDFChunkedWriter builds the chunked writer backing SDK.CreateTDF. Key access is
-// resolved here, before any payload byte is written, so that an unreachable KAS fails
-// the call without leaving a partial TDF on the output writer.
+// newTDFChunkedWriter builds the chunked writer backing SDK.CreateTDF, over a DEK and
+// key access its caller resolved first -- before any payload byte is written, so that
+// an unreachable KAS fails the call without leaving a partial TDF on the output writer.
 //
 // inputSize may be inputSizeUnknown and totalSegments zero, for a payload that can only
 // be measured by reading it.
-func (s SDK) newTDFChunkedWriter(ctx context.Context, tdfConfig *TDFConfig, inputSize int64, totalSegments int) (*chunkedWriter, error) {
-	dek := make([]byte, kKeySize)
-	if _, err := io.ReadFull(defaultRand, dek); err != nil {
-		return nil, fmt.Errorf("fail to create a new split key: %w", err)
-	}
-
-	base64Policy, kaos, err := s.resolveKeyAccess(ctx, tdfConfig, dek)
-	if err != nil {
-		return nil, fmt.Errorf("fail to create a new split key: %w", err)
-	}
-
+func newTDFChunkedWriter(tdfConfig *TDFConfig, dek []byte, keyAccess keyAccessResolver, inputSize int64, totalSegments int) (*chunkedWriter, error) {
 	// The ZIP64 choice is baked into the payload's local file header, which goes out
 	// with segment 0, so it cannot be revisited once the archive has started. Reserve
 	// ZIP64 for payloads that a 32-bit offset cannot address — and for payloads of
@@ -337,7 +340,7 @@ func (s SDK) newTDFChunkedWriter(ctx context.Context, tdfConfig *TDFConfig, inpu
 		clock:                     SystemClock{},
 		dek:                       dek,
 		integrityAlgorithm:        tdfConfig.integrityAlgorithm,
-		keyAccess:                 staticKeyAccess{kaos: kaos, policy: base64Policy},
+		keyAccess:                 keyAccess,
 		segmentIntegrityAlgorithm: tdfConfig.segmentIntegrityAlgorithm,
 		segmentSize:               tdfConfig.defaultSegmentSize,
 		useHex:                    tdfConfig.useHex,
@@ -382,34 +385,17 @@ func (tdfConfig *TDFConfig) initKAOTemplate(ctx context.Context, s SDK) error {
 		return errors.New("cannot set autoconfigure and splitPlan or kaoTemplate")
 	}
 
-	// * Get base key before autoconfigure to condition off of.
+	// Autoconfigure resolves the attribute FQNs here -- that needs the policy
+	// service -- and hands the resulting plan to the canonical key splitter at
+	// resolveKeyAccess time. Everything below is the deprecated, attribute-free
+	// way of naming key access objects.
 	if tdfConfig.autoconfigure {
 		g, err := s.newGranter(ctx, tdfConfig)
 		if err != nil {
-			return err
-		}
-
-		switch g.typ {
-		case mappedFound:
-			tdfConfig.kaoTemplate, err = g.resolveTemplate(ctx, string(tdfConfig.preferredKeyWrapAlg), uuidSplitIDGenerator)
-		case grantsFound:
-			tdfConfig.kaoTemplate = nil
-			tdfConfig.splitPlan, err = g.plan(make([]string, 0), uuidSplitIDGenerator)
-		case noKeysFound:
-			var baseKey *policy.SimpleKasKey
-			baseKey, err = s.GetBaseKey(ctx)
-			if err == nil {
-				err = populateKasInfoFromBaseKey(baseKey, tdfConfig)
-			} else {
-				s.Logger().Debug("cannot getting base key, falling back to default kas", slog.Any("error", err))
-				dk := s.defaultKases(tdfConfig)
-				tdfConfig.kaoTemplate = nil
-				tdfConfig.splitPlan, err = g.plan(dk, uuidSplitIDGenerator)
-			}
-		}
-		if err != nil {
 			return fmt.Errorf("failed generate plan: %w", err)
 		}
+		tdfConfig.granter = &g
+		return nil
 	}
 
 	switch {
@@ -459,10 +445,14 @@ func (tdfConfig *TDFConfig) initKAOTemplate(ctx context.Context, s SDK) error {
 func (s SDK) newGranter(ctx context.Context, tdfConfig *TDFConfig) (granter, error) {
 	var g granter
 	var err error
+	logger := s.logger
+	if logger == nil {
+		logger = getLogger()
+	}
 	if len(tdfConfig.attributeValues) > 0 {
-		g, err = newGranterFromAttributes(s.logger, s.kasKeyCache, tdfConfig.attributeValues...)
+		g, err = newGranterFromAttributes(logger, s.kasKeyCache, tdfConfig.attributeValues...)
 	} else if len(tdfConfig.attributes) > 0 {
-		g, err = newGranterFromService(ctx, s.logger, s.kasKeyCache, s.Attributes, tdfConfig.attributes...)
+		g, err = newGranterFromService(ctx, logger, s.kasKeyCache, s.Attributes, tdfConfig.attributes...)
 	}
 	if err != nil {
 		return g, err
@@ -479,15 +469,17 @@ func (r *Reader) Manifest() Manifest {
 	return r.manifest
 }
 
-// resolveKeyAccess splits dek across the config's KAO template and wraps each share to
-// the KAS servers that template names, returning the base64-encoded policy the shares
-// are bound to along with the resulting key access objects.
+// resolveKeyAccess splits dek across the KAS servers the config's policy calls for and
+// wraps each share to them, returning the base64-encoded policy the shares are bound to
+// along with the resulting key access objects.
+//
+// Where the splits come from depends on how the caller named their key access: with
+// autoconfigure, from the canonical [KeySplitter] reasoning over the resolved
+// attributes; otherwise from the deprecated KAO template the config carries directly.
+// Both converge on the same wrapping tail, so the two produce identical bytes for
+// identical splits.
 func (s SDK) resolveKeyAccess(ctx context.Context, tdfConfig *TDFConfig, dek []byte) (string, []KeyAccess, error) {
-	if len(tdfConfig.kaoTemplate) == 0 {
-		return "", nil, fmt.Errorf("no key access template specified or inferred in initKAOTemplate: %w", errInvalidKasInfo)
-	}
-
-	shares, err := s.templateSplitShares(ctx, tdfConfig, dek)
+	result, err := s.splitDEKForConfig(ctx, tdfConfig, dek)
 	if err != nil {
 		return "", nil, err
 	}
@@ -496,50 +488,104 @@ func (s SDK) resolveKeyAccess(ctx context.Context, tdfConfig *TDFConfig, dek []b
 	for i, attribute := range tdfConfig.attributes {
 		fqns[i] = attribute.String()
 	}
-	return resolvePolicyAndKeyAccess(fqns, shares, tdfConfig.metaData)
+	return resolvePolicyAndKeyAccess(fqns, sharesFromSplitResult(result), tdfConfig.metaData)
 }
 
-// templateSplitShares groups the KAO template by split ID -- fetching any public key the
-// template did not carry -- and splits dek across the resulting groups, one share each.
-func (s SDK) templateSplitShares(ctx context.Context, tdfConfig *TDFConfig, dek []byte) ([]splitShare, error) {
-	conjunction := make(map[string][]KASInfo)
-	var splitIDs []string
-
-	for _, tpl := range tdfConfig.kaoTemplate {
-		// Public key was passed in with kasInfoList
-		ki := KASInfo{
-			URL:       tpl.KAS,
-			KID:       tpl.kid,
-			PublicKey: tpl.pem,
-			Algorithm: string(tpl.algorithm),
-		}
-		if ki.PublicKey == "" {
-			a := ki.Algorithm
-			if a == "" {
-				a = string(tdfConfig.preferredKeyWrapAlg)
-			}
-			k, err := s.getPublicKey(ctx, tpl.KAS, a, tpl.kid)
-			if err != nil {
-				return nil, fmt.Errorf("unable to retrieve public key from KAS at [%s]: %w", tpl.KAS, err)
-			}
-			ki = *k
-		}
-		if _, ok := conjunction[tpl.SplitID]; !ok {
-			splitIDs = append(splitIDs, tpl.SplitID)
-		}
-		conjunction[tpl.SplitID] = append(conjunction[tpl.SplitID], ki)
+// splitDEKForConfig produces the DEK shares and their wrapping targets for a TDFConfig.
+func (s SDK) splitDEKForConfig(ctx context.Context, tdfConfig *TDFConfig, dek []byte) (*SplitResult, error) {
+	if tdfConfig.granter != nil {
+		return s.KeySplitter().Split(ctx, SplitRequest{
+			DEK:                        dek,
+			DefaultKAS:                 s.defaultKASKeys(tdfConfig),
+			PreferredWrappingAlgorithm: tdfConfig.preferredKeyWrapAlg,
+			granter:                    tdfConfig.granter,
+		})
 	}
 
-	keys, err := splitDEK(dek, len(splitIDs), defaultRand)
+	if len(tdfConfig.kaoTemplate) == 0 {
+		return nil, fmt.Errorf("no key access template specified or inferred in initKAOTemplate: %w", errInvalidKasInfo)
+	}
+	tpl, err := s.fillTemplateKeys(ctx, tdfConfig)
 	if err != nil {
 		return nil, err
 	}
+	return splitResultFromTemplate(tpl, dek, defaultRand)
+}
 
-	shares := make([]splitShare, len(splitIDs))
-	for i, splitID := range splitIDs {
-		shares[i] = splitShare{id: splitID, data: keys[i], kases: conjunction[splitID]}
+// fillTemplateKeys resolves any wrapping key the KAO template did not carry against the
+// KAS that template names. Only the deprecated, attribute-free paths need it: the
+// canonical splitter resolves its own keys.
+func (s SDK) fillTemplateKeys(ctx context.Context, tdfConfig *TDFConfig) ([]kaoTpl, error) {
+	filled := make([]kaoTpl, len(tdfConfig.kaoTemplate))
+	for i, tpl := range tdfConfig.kaoTemplate {
+		if tpl.pem != "" {
+			filled[i] = tpl
+			continue
+		}
+		alg := string(tpl.algorithm)
+		if alg == "" {
+			alg = string(tdfConfig.preferredKeyWrapAlg)
+		}
+		k, err := s.getPublicKey(ctx, tpl.KAS, alg, tpl.kid)
+		if err != nil {
+			return nil, fmt.Errorf("unable to retrieve public key from KAS at [%s]: %w", tpl.KAS, err)
+		}
+		filled[i] = kaoTpl{tpl.KAS, tpl.SplitID, k.KID, k.PublicKey, ocrypto.KeyType(k.Algorithm)}
 	}
-	return shares, nil
+	return filled, nil
+}
+
+// defaultKASKeys is defaultKases with the key material the caller supplied alongside
+// each URL, so a KASInfo that already carries a public key does not cause a fetch.
+func (s SDK) defaultKASKeys(c *TDFConfig) []*policy.SimpleKasKey {
+	urls := s.defaultKases(c)
+	byURL := make(map[string]KASInfo, len(c.kasInfoList))
+	for _, k := range c.kasInfoList {
+		if _, seen := byURL[k.URL]; !seen || k.PublicKey != "" {
+			byURL[k.URL] = k
+		}
+	}
+
+	keys := make([]*policy.SimpleKasKey, 0, len(urls))
+	for _, url := range urls {
+		info := byURL[url]
+		// An unparseable or absent algorithm leaves the enum unspecified,
+		// which the splitter renders as the empty algorithm string -- the
+		// same thing createKaoTemplateFromKasInfo does with it.
+		alg, err := getKasKeyAlg(info.Algorithm)
+		if err != nil {
+			alg = policy.Algorithm_ALGORITHM_UNSPECIFIED
+		}
+		keys = append(keys, &policy.SimpleKasKey{
+			KasUri: url,
+			PublicKey: &policy.SimpleKasPublicKey{
+				Algorithm: alg,
+				Kid:       info.KID,
+				Pem:       info.PublicKey,
+			},
+		})
+	}
+	return keys
+}
+
+// sharesFromSplitResult adapts a splitter's output to the wrapping tail's input.
+func sharesFromSplitResult(result *SplitResult) []splitShare {
+	shares := make([]splitShare, 0, len(result.Splits))
+	for _, split := range result.Splits {
+		share := splitShare{id: split.ID, data: split.Data}
+		for _, pk := range split.Keys {
+			// A key the splitter left without a PEM yields an empty public
+			// key, which buildKeyAccessObjects rejects.
+			share.kases = append(share.kases, KASInfo{
+				URL:       pk.URL,
+				PublicKey: pk.PEM,
+				KID:       pk.KID,
+				Algorithm: pk.Algorithm,
+			})
+		}
+		shares = append(shares, share)
+	}
+	return shares
 }
 
 // createPolicyBinding binds a key split to the policy it unlocks, keyed on the split
@@ -1507,36 +1553,6 @@ func isLessThanSemver(version, target string) (bool, error) {
 	}
 	// Check if the provided version is less than the target version based on semantic versioning rules.
 	return v1.LessThan(v2), nil
-}
-
-func populateKasInfoFromBaseKey(key *policy.SimpleKasKey, tdfConfig *TDFConfig) error {
-	if key == nil {
-		return errors.New("populateKasInfoFromBaseKey failed: key is nil")
-	}
-
-	algoString, err := formatAlg(key.GetPublicKey().GetAlgorithm())
-	if err != nil {
-		return fmt.Errorf("formatAlg failed: %w", err)
-	}
-
-	// ? Maybe we shouldn't overwrite the key type
-	if tdfConfig.preferredKeyWrapAlg != ocrypto.KeyType(algoString) {
-		getLogger().Warn("base key is enabled, setting key type", slog.String("key_type", algoString))
-	}
-	tdfConfig.preferredKeyWrapAlg = ocrypto.KeyType(algoString)
-	tdfConfig.splitPlan = nil
-	if len(tdfConfig.kasInfoList) > 0 {
-		getLogger().Warn("base key is enabled, overwriting kasInfoList with base key info")
-	}
-	tdfConfig.kasInfoList = []KASInfo{
-		{
-			URL:       key.GetKasUri(),
-			PublicKey: key.GetPublicKey().GetPem(),
-			KID:       key.GetPublicKey().GetKid(),
-			Algorithm: algoString,
-		},
-	}
-	return nil
 }
 
 func createKaoTemplateFromKasInfo(kasInfoArr []KASInfo) []kaoTpl {

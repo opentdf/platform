@@ -833,6 +833,36 @@ func TestChunkedKAOShape(t *testing.T) {
 	assert.NotEmpty(t, binding.Hash)
 }
 
+// TestChunkedAttributeSplits pins the chunked writer's default
+// splitter as attribute-aware end to end: an anyOf clause ANDed with
+// two allOf values must reach the manifest as three XOR shares and
+// four key access objects, grouped by split ID.
+func TestChunkedAttributeSplits(t *testing.T) {
+	ctx := context.Background()
+	writer, err := NewChunkedWriter(ctx)
+	require.NoError(t, err)
+
+	writeChunkedSegments(ctx, t, writer, [][]byte{[]byte("payload")})
+	fin, err := writer.Finalize(ctx,
+		WithChunkedAttributes(valuesToPolicy(rel2aus, rel2can, n2kHCS, n2kInt)))
+	require.NoError(t, err)
+
+	bySplit := make(map[string][]string)
+	var order []string
+	for _, kao := range fin.Manifest.KeyAccessObjs {
+		if _, seen := bySplit[kao.SplitID]; !seen {
+			order = append(order, kao.SplitID)
+		}
+		bySplit[kao.SplitID] = append(bySplit[kao.SplitID], kao.KasURL)
+	}
+
+	require.Len(t, fin.Manifest.KeyAccessObjs, 4)
+	require.Len(t, order, 3, "three shares: the anyOf pair, then one per allOf value")
+	assert.Equal(t, []string{kasAu, kasCa}, bySplit[order[0]], "either release KAS unwraps the first share")
+	assert.Equal(t, []string{kasUsHCS}, bySplit[order[1]])
+	assert.Equal(t, []string{kasUk}, bySplit[order[2]])
+}
+
 // TestChunkedECKeyAccess covers the EC wrapping path, which the
 // round-trip tests miss because the fake KAS is RSA-only. It asserts
 // the manifest key type is the one the real KAS dispatches on

@@ -24,7 +24,7 @@ func TestKeySplittingIntegration(t *testing.T) {
 		{
 			name:              "empty policy uses default KAS",
 			policy:            []*policy.Value{},
-			defaultKAS:        &policy.SimpleKasKey{KasUri: kasUs},
+			defaultKAS:        defaultKASWithKey(kasUs),
 			expectedSplits:    1,
 			expectedKASInKAOs: []string{kasUs},
 			description:       "Empty policy should result in single split with default KAS",
@@ -34,7 +34,7 @@ func TestKeySplittingIntegration(t *testing.T) {
 			policy: []*policy.Value{
 				createMockValue("https://example.com/attr/Department/value/Engineering", kasUk, "r1", policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY),
 			},
-			defaultKAS:        &policy.SimpleKasKey{KasUri: kasUs},
+			defaultKAS:        defaultKASWithKey(kasUs),
 			expectedSplits:    1,
 			expectedKASInKAOs: []string{kasUk},
 			description:       "Single attribute with grant should use attribute's KAS",
@@ -45,7 +45,7 @@ func TestKeySplittingIntegration(t *testing.T) {
 				createMockValue("https://example.com/attr/Region/value/Europe", kasUk, "r1", policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF),
 				createMockValue("https://example.com/attr/Region/value/Americas", kasUs, "r1", policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF),
 			},
-			defaultKAS:     &policy.SimpleKasKey{KasUri: kasUs},
+			defaultKAS:     defaultKASWithKey(kasUs),
 			expectedSplits: 1, // anyOf means they share a split
 			// Both KAS should be available for the single split
 			expectedKASInKAOs: []string{kasUk, kasUs},
@@ -57,7 +57,7 @@ func TestKeySplittingIntegration(t *testing.T) {
 				createMockValue("https://example.com/attr/Project/value/Alpha", kasUsHCS, "r2", policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF),
 				createMockValue("https://example.com/attr/Project/value/Beta", kasUsSA, "r2", policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF),
 			},
-			defaultKAS:        &policy.SimpleKasKey{KasUri: kasUs},
+			defaultKAS:        defaultKASWithKey(kasUs),
 			expectedSplits:    2, // allOf means each gets its own split
 			expectedKASInKAOs: []string{kasUsHCS, kasUsSA},
 			description:       "Multiple values with allOf should each get their own split",
@@ -68,7 +68,7 @@ func TestKeySplittingIntegration(t *testing.T) {
 				createMockValue("https://example.com/attr/Level/value/Manager", "", "", policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY), // uses default
 				createMockValue("https://example.com/attr/Office/value/Toronto", kasCa, "r1", policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF),
 			},
-			defaultKAS:        &policy.SimpleKasKey{KasUri: kasUs},
+			defaultKAS:        defaultKASWithKey(kasUs),
 			expectedSplits:    1,               // Should merge based on boolean logic
 			expectedKASInKAOs: []string{kasCa}, // Only the specific KAS since it's more specific
 			description:       "Mixed rules should apply boolean logic correctly",
@@ -105,7 +105,7 @@ func TestKeySplittingIntegration(t *testing.T) {
 			// Verify expected KAS are represented in the splits
 			kasInSplits := make(map[string]bool)
 			for _, split := range result.Splits {
-				for _, kasURL := range split.KASURLs {
+				for _, kasURL := range splitKASURLs(split) {
 					kasInSplits[kasURL] = true
 				}
 			}
@@ -115,17 +115,15 @@ func TestKeySplittingIntegration(t *testing.T) {
 				assert.True(t, kasInSplits[expectedKAS], "Expected KAS %s should be found in splits", expectedKAS)
 			}
 
-			// Verify public keys are collected for KAS that have embedded keys in policy
-			// For empty policy case, no public keys should be present
-			if len(tt.policy) == 0 {
-				assert.Empty(t, result.KASPublicKeys, "Empty policy should not have embedded public keys")
-			} else {
-				// For non-empty policies with embedded grants, verify public keys are collected
-				for kasURL := range kasInSplits {
-					if pubKey, exists := result.KASPublicKeys[kasURL]; exists {
-						assert.NotEmpty(t, pubKey.PEM, "Public key PEM should not be empty")
-						assert.NotEmpty(t, pubKey.KID, "Public key KID should not be empty")
-					}
+			// Every split carries the keys it will be wrapped to. A KAS
+			// named by policy but without a resolvable key is now an
+			// error rather than a keyless key access object, so there is
+			// no such thing as a split with no keys.
+			for _, split := range result.Splits {
+				assert.NotEmpty(t, split.Keys, "Split should carry at least one wrapping key")
+				for _, pubKey := range split.Keys {
+					assert.NotEmpty(t, pubKey.PEM, "Public key PEM should not be empty")
+					assert.NotEmpty(t, pubKey.KID, "Public key KID should not be empty")
 				}
 			}
 		})
@@ -146,8 +144,8 @@ func TestKeySplittingSpecificity(t *testing.T) {
 			setupValue: func() *policy.Value {
 				return createMockValue("https://other.com/attr/unspecified/value/unspecked", "", "", policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF)
 			},
-			defaultKAS:  &policy.SimpleKasKey{KasUri: kasUs},
-			expectedKAS: &policy.SimpleKasKey{KasUri: kasUs},
+			defaultKAS:  defaultKASWithKey(kasUs),
+			expectedKAS: defaultKASWithKey(kasUs),
 			description: "No grants at any level should use default KAS",
 		},
 		{
@@ -156,12 +154,12 @@ func TestKeySplittingSpecificity(t *testing.T) {
 				v := createMockValue("https://other.com/attr/specified/value/specked", evenMoreSpecificKas, "r1", policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF)
 				// Add attribute-level grant that should be overridden
 				v.Attribute.Grants = []*policy.KeyAccessServer{
-					{Uri: specifiedKas},
+					grantWithKey(specifiedKas),
 				}
 				return v
 			},
-			defaultKAS:  &policy.SimpleKasKey{KasUri: kasUs},
-			expectedKAS: &policy.SimpleKasKey{KasUri: evenMoreSpecificKas},
+			defaultKAS:  defaultKASWithKey(kasUs),
+			expectedKAS: defaultKASWithKey(evenMoreSpecificKas),
 			description: "Value-level grants should take precedence over attribute-level grants",
 		},
 		{
@@ -169,12 +167,12 @@ func TestKeySplittingSpecificity(t *testing.T) {
 			setupValue: func() *policy.Value {
 				v := createMockValue("https://other.com/attr/specified/value/unspecked", "", "", policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF)
 				v.Attribute.Grants = []*policy.KeyAccessServer{
-					{Uri: specifiedKas},
+					grantWithKey(specifiedKas),
 				}
 				return v
 			},
-			defaultKAS:  &policy.SimpleKasKey{KasUri: kasUs},
-			expectedKAS: &policy.SimpleKasKey{KasUri: specifiedKas},
+			defaultKAS:  defaultKASWithKey(kasUs),
+			expectedKAS: defaultKASWithKey(specifiedKas),
 			description: "Attribute-level grants should be used when no value-level grants",
 		},
 		{
@@ -182,12 +180,12 @@ func TestKeySplittingSpecificity(t *testing.T) {
 			setupValue: func() *policy.Value {
 				v := createMockValue("https://hasgrants.com/attr/unspecified/value/unspecked", "", "", policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF)
 				v.Attribute.Namespace.Grants = []*policy.KeyAccessServer{
-					{Uri: lessSpecificKas},
+					grantWithKey(lessSpecificKas),
 				}
 				return v
 			},
-			defaultKAS:  &policy.SimpleKasKey{KasUri: kasUs},
-			expectedKAS: &policy.SimpleKasKey{KasUri: lessSpecificKas},
+			defaultKAS:  defaultKASWithKey(kasUs),
+			expectedKAS: defaultKASWithKey(lessSpecificKas),
 			description: "Namespace-level grants should be used when no more specific grants",
 		},
 	}
@@ -210,7 +208,7 @@ func TestKeySplittingSpecificity(t *testing.T) {
 			// Find the KAS that was actually used
 			var actualKAS string
 			for _, split := range result.Splits {
-				for _, kasURL := range split.KASURLs {
+				for _, kasURL := range splitKASURLs(split) {
 					if kasURL == tt.expectedKAS.GetKasUri() {
 						actualKAS = kasURL
 						break
@@ -228,7 +226,7 @@ func TestKeySplittingSpecificity(t *testing.T) {
 
 func TestKeySplittingComplexPolicies(t *testing.T) {
 	t.Run("compartmentalized attributes", func(t *testing.T) {
-		splitter := NewXORSplitter(WithDefaultKAS(&policy.SimpleKasKey{KasUri: kasUs}))
+		splitter := NewXORSplitter(WithDefaultKAS(defaultKASWithKey(kasUs)))
 
 		dek := make([]byte, 32)
 		_, err := rand.Read(dek)
@@ -265,7 +263,7 @@ func TestKeySplittingComplexPolicies(t *testing.T) {
 		// Verify that project KAS are present
 		kasInSplits := make(map[string]bool)
 		for _, split := range result.Splits {
-			for _, kasURL := range split.KASURLs {
+			for _, kasURL := range splitKASURLs(split) {
 				kasInSplits[kasURL] = true
 			}
 		}
@@ -274,7 +272,7 @@ func TestKeySplittingComplexPolicies(t *testing.T) {
 	})
 
 	t.Run("key mapping specificity", func(t *testing.T) {
-		splitter := NewXORSplitter(WithDefaultKAS(&policy.SimpleKasKey{KasUri: kasUs}))
+		splitter := NewXORSplitter(WithDefaultKAS(defaultKASWithKey(kasUs)))
 
 		dek := make([]byte, 32)
 		_, err := rand.Read(dek)
@@ -301,7 +299,7 @@ func TestKeySplittingComplexPolicies(t *testing.T) {
 			func() *policy.Value {
 				v := createMockValue("https://example.com/attr/Team/value/Support", "", "", policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF)
 				v.Attribute.Grants = []*policy.KeyAccessServer{
-					{Uri: specifiedKas},
+					grantWithKey(specifiedKas),
 				}
 				return v
 			}(),
@@ -314,7 +312,7 @@ func TestKeySplittingComplexPolicies(t *testing.T) {
 		// Should prioritize value-specific mapping
 		kasInSplits := make(map[string]bool)
 		for _, split := range result.Splits {
-			for _, kasURL := range split.KASURLs {
+			for _, kasURL := range splitKASURLs(split) {
 				kasInSplits[kasURL] = true
 			}
 		}
@@ -325,7 +323,7 @@ func TestKeySplittingComplexPolicies(t *testing.T) {
 
 func TestKeySplittingErrorConditions(t *testing.T) {
 	t.Run("malformed attribute", func(t *testing.T) {
-		splitter := NewXORSplitter(WithDefaultKAS(&policy.SimpleKasKey{KasUri: kasUs}))
+		splitter := NewXORSplitter(WithDefaultKAS(defaultKASWithKey(kasUs)))
 
 		dek := make([]byte, 32)
 		_, err := rand.Read(dek)
@@ -357,7 +355,7 @@ func TestKeySplittingErrorConditions(t *testing.T) {
 	})
 
 	t.Run("missing public key for KAS", func(t *testing.T) {
-		splitter := NewXORSplitter(WithDefaultKAS(&policy.SimpleKasKey{KasUri: kasUs}))
+		splitter := NewXORSplitter(WithDefaultKAS(defaultKASWithKey(kasUs)))
 
 		dek := make([]byte, 32)
 		_, err := rand.Read(dek)
@@ -369,26 +367,12 @@ func TestKeySplittingErrorConditions(t *testing.T) {
 			{Uri: kasUs}, // No KasKeys or PublicKey fields
 		}
 
-		result, err := splitter.GenerateSplits(t.Context(), []*policy.Value{attr}, dek)
-		require.NoError(t, err)
-		require.NotNil(t, result)
-
-		// Verify that splits were generated despite missing public keys
-		assert.NotEmpty(t, result.Splits, "Should generate splits even without public keys")
-
-		// Verify that no public keys were collected (since none were embedded in grants)
-		assert.Empty(t, result.KASPublicKeys, "Should not collect public keys when none are embedded")
-
-		// Verify the split references the KAS URL correctly
-		found := false
-		for _, split := range result.Splits {
-			for _, kasURL := range split.KASURLs {
-				if kasURL == kasUs {
-					found = true
-					break
-				}
-			}
-		}
-		assert.True(t, found, "Should reference KAS URL even without embedded public key")
+		// A grant naming a KAS whose key cannot be resolved is an error.
+		// It used to yield a key access object with no key in it, which
+		// no KAS could ever unwrap, and which the default KAS silently
+		// did not cover.
+		_, err = splitter.GenerateSplits(t.Context(), []*policy.Value{attr}, dek)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), kasUs)
 	})
 }

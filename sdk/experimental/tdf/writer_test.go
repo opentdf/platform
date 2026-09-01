@@ -15,6 +15,7 @@ import (
 
 	"github.com/opentdf/platform/lib/ocrypto"
 	"github.com/opentdf/platform/protocol/go/policy"
+	"github.com/opentdf/platform/sdk"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/xeipuuv/gojsonschema"
@@ -314,6 +315,7 @@ func testBasicTDFCreationFlow(t *testing.T) {
 	assert.Equal(t, testKAS1, keyAccess.KasURL, "KAS URL should match")
 	assert.Equal(t, "kas", keyAccess.Protocol, "Protocol should be kas")
 	assert.NotEmpty(t, keyAccess.WrappedKey, "Wrapped key should not be empty")
+	assert.Empty(t, keyAccess.SplitID, "An unsplit DEK carries no split ID, as SDK.CreateTDF emits it")
 
 	// Verify encryption information
 	assert.Equal(t, "AES-256-GCM", finalizeResult.Manifest.Method.Algorithm, "Algorithm should be AES-256-GCM")
@@ -675,7 +677,7 @@ func testErrorConditions(t *testing.T) {
 		// Try to finalize without KAS or attributes - this should fail in key splitting
 		_, err = writer.Finalize(ctx)
 		require.Error(t, err, "Should fail without KAS or attributes")
-		assert.Contains(t, err.Error(), "no default KAS", "Error should mention missing default KAS")
+		assert.ErrorIs(t, err, sdk.ErrSplitterRequiresDefaultKAS, "Error should report there is nothing to wrap the DEK to")
 	})
 
 	t.Run("SegmentsNamesUnwrittenIndex", func(t *testing.T) {

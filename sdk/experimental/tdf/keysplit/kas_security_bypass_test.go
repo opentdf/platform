@@ -12,6 +12,12 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// The split counts these tests pin are now decided by package sdk --
+// the same reasoning SDK.CreateTDF applies -- rather than by this
+// package. They are kept because a consolidation that widens access is
+// a security bug wherever the decision is made, and because agreeing
+// with the shipped path is the point of the delegation.
+
 // TestKASSecurityBypass tests critical security scenarios where
 // KAS consolidation could create unauthorized access or bypass access controls
 func TestKASSecurityBypass(t *testing.T) {
@@ -100,7 +106,7 @@ func TestKASSecurityBypass(t *testing.T) {
 
 	for _, tt := range securityTests {
 		t.Run(tt.name, func(t *testing.T) {
-			splitter := NewXORSplitter(WithDefaultKAS(&policy.SimpleKasKey{KasUri: kasUs}))
+			splitter := NewXORSplitter(WithDefaultKAS(defaultKASWithKey(kasUs)))
 
 			// Generate random DEK
 			dek := make([]byte, 32)
@@ -122,8 +128,8 @@ func TestKASSecurityBypass(t *testing.T) {
 
 			// Validate that each split has valid KAS assignments
 			for i, split := range result.Splits {
-				assert.NotEmpty(t, split.KASURLs, "SECURITY: Split %d has no KAS URLs - access control failure", i)
-				for _, kasURL := range split.KASURLs {
+				assert.NotEmpty(t, splitKASURLs(split), "SECURITY: Split %d has no KAS URLs - access control failure", i)
+				for _, kasURL := range splitKASURLs(split) {
 					assert.NotEmpty(t, kasURL, "SECURITY: Empty KAS URL in split %d - access control failure", i)
 				}
 			}
@@ -143,7 +149,7 @@ func TestKASSecurityBypass(t *testing.T) {
 // where the KAS-first consolidation could violate intended access control policies
 func TestKASConsolidationAccessControlViolations(t *testing.T) {
 	t.Run("principle_of_least_privilege_violation", func(t *testing.T) {
-		splitter := NewXORSplitter(WithDefaultKAS(&policy.SimpleKasKey{KasUri: kasUs}))
+		splitter := NewXORSplitter(WithDefaultKAS(defaultKASWithKey(kasUs)))
 
 		dek := make([]byte, 32)
 		_, err := rand.Read(dek)
@@ -168,7 +174,7 @@ func TestKASConsolidationAccessControlViolations(t *testing.T) {
 	})
 
 	t.Run("segregation_of_duties_violation", func(t *testing.T) {
-		splitter := NewXORSplitter(WithDefaultKAS(&policy.SimpleKasKey{KasUri: kasUs}))
+		splitter := NewXORSplitter(WithDefaultKAS(defaultKASWithKey(kasUs)))
 
 		dek := make([]byte, 32)
 		_, err := rand.Read(dek)
@@ -192,7 +198,7 @@ func TestKASConsolidationAccessControlViolations(t *testing.T) {
 	})
 
 	t.Run("data_classification_mixing", func(t *testing.T) {
-		splitter := NewXORSplitter(WithDefaultKAS(&policy.SimpleKasKey{KasUri: kasUs}))
+		splitter := NewXORSplitter(WithDefaultKAS(defaultKASWithKey(kasUs)))
 
 		dek := make([]byte, 32)
 		_, err := rand.Read(dek)
@@ -222,7 +228,7 @@ func TestKASConsolidationAccessControlViolations(t *testing.T) {
 // multi-tenant environments where KAS consolidation could break tenant isolation
 func TestMultiTenantSecurityIsolation(t *testing.T) {
 	t.Run("cross_tenant_data_leakage", func(t *testing.T) {
-		splitter := NewXORSplitter(WithDefaultKAS(&policy.SimpleKasKey{KasUri: kasUs}))
+		splitter := NewXORSplitter(WithDefaultKAS(defaultKASWithKey(kasUs)))
 
 		dek := make([]byte, 32)
 		_, err := rand.Read(dek)
@@ -246,7 +252,7 @@ func TestMultiTenantSecurityIsolation(t *testing.T) {
 	})
 
 	t.Run("regulatory_boundary_crossing", func(t *testing.T) {
-		splitter := NewXORSplitter(WithDefaultKAS(&policy.SimpleKasKey{KasUri: kasUs}))
+		splitter := NewXORSplitter(WithDefaultKAS(defaultKASWithKey(kasUs)))
 
 		dek := make([]byte, 32)
 		_, err := rand.Read(dek)
@@ -273,7 +279,7 @@ func TestMultiTenantSecurityIsolation(t *testing.T) {
 // semantics are preserved despite KAS-first consolidation
 func TestAccessControlSemanticPreservation(t *testing.T) {
 	t.Run("allof_and_semantics_with_consolidation", func(t *testing.T) {
-		splitter := NewXORSplitter(WithDefaultKAS(&policy.SimpleKasKey{KasUri: kasUs}))
+		splitter := NewXORSplitter(WithDefaultKAS(defaultKASWithKey(kasUs)))
 
 		dek := make([]byte, 32)
 		_, err := rand.Read(dek)
@@ -295,13 +301,13 @@ func TestAccessControlSemanticPreservation(t *testing.T) {
 
 		// Verify that all KAS are represented in the consolidated split
 		split := result.Splits[0]
-		assert.Contains(t, split.KASURLs, kasUs, "Consolidated split should contain the shared KAS")
+		assert.Contains(t, splitKASURLs(split), kasUs, "Consolidated split should contain the shared KAS")
 
 		t.Logf("SEMANTIC ANALYSIS: AND requirements consolidated - access control logic delegated to policy evaluation")
 	})
 
 	t.Run("anyof_or_semantics_with_different_kas", func(t *testing.T) {
-		splitter := NewXORSplitter(WithDefaultKAS(&policy.SimpleKasKey{KasUri: kasUs}))
+		splitter := NewXORSplitter(WithDefaultKAS(defaultKASWithKey(kasUs)))
 
 		dek := make([]byte, 32)
 		_, err := rand.Read(dek)
@@ -323,7 +329,7 @@ func TestAccessControlSemanticPreservation(t *testing.T) {
 		// Verify both KAS are represented separately
 		kasFound := make(map[string]bool)
 		for _, split := range result.Splits {
-			for _, kasURL := range split.KASURLs {
+			for _, kasURL := range splitKASURLs(split) {
 				kasFound[kasURL] = true
 			}
 		}
@@ -472,7 +478,7 @@ func TestConsolidationSecurityMatrix(t *testing.T) {
 		t.Run("risk_level_"+riskLevel, func(t *testing.T) {
 			for _, tt := range scenarios {
 				t.Run(tt.name, func(t *testing.T) {
-					splitter := NewXORSplitter(WithDefaultKAS(&policy.SimpleKasKey{KasUri: kasUs}))
+					splitter := NewXORSplitter(WithDefaultKAS(defaultKASWithKey(kasUs)))
 
 					dek := make([]byte, 32)
 					_, err := rand.Read(dek)
@@ -517,7 +523,7 @@ func TestConsolidationSecurityMatrix(t *testing.T) {
 // preserves the semantic meaning of boolean expressions in complex scenarios
 func TestKASConsolidationSemanticPreservation(t *testing.T) {
 	t.Run("anyof_consolidation_preserves_or_semantics", func(t *testing.T) {
-		splitter := NewXORSplitter(WithDefaultKAS(&policy.SimpleKasKey{KasUri: kasUs}))
+		splitter := NewXORSplitter(WithDefaultKAS(defaultKASWithKey(kasUs)))
 
 		dek := make([]byte, 32)
 		_, err := rand.Read(dek)
@@ -537,11 +543,11 @@ func TestKASConsolidationSemanticPreservation(t *testing.T) {
 
 		// The consolidated split should have the shared KAS
 		split := result.Splits[0]
-		assert.Contains(t, split.KASURLs, kasUk, "Consolidated split should contain the shared KAS")
+		assert.Contains(t, splitKASURLs(split), kasUk, "Consolidated split should contain the shared KAS")
 	})
 
 	t.Run("allof_separation_preserves_and_semantics", func(t *testing.T) {
-		splitter := NewXORSplitter(WithDefaultKAS(&policy.SimpleKasKey{KasUri: kasUs}))
+		splitter := NewXORSplitter(WithDefaultKAS(defaultKASWithKey(kasUs)))
 
 		dek := make([]byte, 32)
 		_, err := rand.Read(dek)
@@ -561,7 +567,7 @@ func TestKASConsolidationSemanticPreservation(t *testing.T) {
 
 		// Each split should have the KAS
 		for i, split := range result.Splits {
-			assert.Contains(t, split.KASURLs, kasUk, "Split %d should contain the KAS", i)
+			assert.Contains(t, splitKASURLs(split), kasUk, "Split %d should contain the KAS", i)
 		}
 
 		// Verify XOR reconstruction still works
@@ -574,7 +580,7 @@ func TestKASConsolidationSemanticPreservation(t *testing.T) {
 // expose subtle security vulnerabilities
 func TestComplexBooleanKASInteractions(t *testing.T) {
 	t.Run("transitive_kas_consolidation_in_boolean_tree", func(t *testing.T) {
-		splitter := NewXORSplitter(WithDefaultKAS(&policy.SimpleKasKey{KasUri: kasUs}))
+		splitter := NewXORSplitter(WithDefaultKAS(defaultKASWithKey(kasUs)))
 
 		dek := make([]byte, 32)
 		_, err := rand.Read(dek)
@@ -601,7 +607,7 @@ func TestComplexBooleanKASInteractions(t *testing.T) {
 	})
 
 	t.Run("kas_precedence_in_nested_hierarchy", func(t *testing.T) {
-		splitter := NewXORSplitter(WithDefaultKAS(&policy.SimpleKasKey{KasUri: kasUs}))
+		splitter := NewXORSplitter(WithDefaultKAS(defaultKASWithKey(kasUs)))
 
 		dek := make([]byte, 32)
 		_, err := rand.Read(dek)
@@ -631,7 +637,7 @@ func TestComplexBooleanKASInteractions(t *testing.T) {
 		// Verify that value-level grants were used and create separate splits
 		kasFound := make(map[string]bool)
 		for _, split := range result.Splits {
-			for _, kasURL := range split.KASURLs {
+			for _, kasURL := range splitKASURLs(split) {
 				kasFound[kasURL] = true
 			}
 		}

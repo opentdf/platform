@@ -610,7 +610,6 @@ func TestReasonerConstructAttributeBoolean(t *testing.T) {
 	for _, tc := range []struct {
 		n                   string
 		policy              []AttributeValueFQN
-		defaults            []string
 		ats, keyed, reduced string
 		plan                []keySplitStep
 		tpl                 []kaoTpl
@@ -618,7 +617,6 @@ func TestReasonerConstructAttributeBoolean(t *testing.T) {
 		{
 			"one actual with default",
 			[]AttributeValueFQN{clsS, rel2can},
-			[]string{kasUs},
 			"https://virtru.com/attr/Classification/value/Secret&https://virtru.com/attr/Releasable%20To/value/CAN",
 			"[DEFAULT]&(https://kas.ca/)",
 			"(https://kas.ca/)",
@@ -628,37 +626,24 @@ func TestReasonerConstructAttributeBoolean(t *testing.T) {
 		{
 			"one defaulted attr",
 			[]AttributeValueFQN{clsS},
-			[]string{kasUs},
 			"https://virtru.com/attr/Classification/value/Secret",
 			"[DEFAULT]",
 			"",
-			[]keySplitStep{{kasUs, ""}},
+			nil,
 			[]kaoTpl{},
 		},
 		{
 			"empty policy",
 			[]AttributeValueFQN{},
-			[]string{kasUs},
 			"∅",
 			"",
 			"",
-			[]keySplitStep{{kasUs, ""}},
-			[]kaoTpl{},
-		},
-		{
-			"old school splits",
-			[]AttributeValueFQN{},
-			[]string{kasAu, kasCa, kasUs},
-			"∅",
-			"",
-			"",
-			[]keySplitStep{{kasAu, "1"}, {kasCa, "2"}, {kasUs, "3"}},
+			nil,
 			[]kaoTpl{},
 		},
 		{
 			"simple with all three ops",
 			[]AttributeValueFQN{clsS, rel2gbr, n2kInt},
-			[]string{kasUs},
 			"https://virtru.com/attr/Classification/value/Secret&https://virtru.com/attr/Releasable%20To/value/GBR&https://virtru.com/attr/Need%20to%20Know/value/INT",
 			"[DEFAULT]&(https://kas.uk/)&(https://kas.uk/)",
 			"(https://kas.uk/)",
@@ -668,7 +653,6 @@ func TestReasonerConstructAttributeBoolean(t *testing.T) {
 		{
 			"simple with namespace",
 			[]AttributeValueFQN{clsS, spk2uns2uns},
-			[]string{kasUs},
 			"https://virtru.com/attr/Classification/value/Secret&https://hasgrants.com/attr/unspecified/value/unspecked",
 			"[DEFAULT]&(https://namespace.kas.com/)",
 			"(https://namespace.kas.com/)",
@@ -680,7 +664,6 @@ func TestReasonerConstructAttributeBoolean(t *testing.T) {
 		{
 			"compartments",
 			[]AttributeValueFQN{clsS, rel2gbr, rel2usa, n2kHCS, n2kSI},
-			[]string{kasUs},
 			"https://virtru.com/attr/Classification/value/Secret&https://virtru.com/attr/Releasable%20To/value/{GBR,USA}&https://virtru.com/attr/Need%20to%20Know/value/{HCS,SI}",
 			"[DEFAULT]&(https://kas.uk/⋁https://kas.us/)&(https://hcs.kas.us/⋀https://si.kas.us/)",
 			"(https://kas.uk/⋁https://kas.us/)&(https://hcs.kas.us/)&(https://si.kas.us/)",
@@ -695,7 +678,6 @@ func TestReasonerConstructAttributeBoolean(t *testing.T) {
 		{
 			"compartments - case insensitive",
 			[]AttributeValueFQN{messUpV(t, clsS), messUpV(t, rel2gbr), messUpV(t, rel2usa), messUpV(t, n2kHCS), messUpV(t, n2kSI)},
-			[]string{kasUs},
 			"https://virtru.com/attr/Classification/value/Secret&https://virtru.com/attr/Releasable%20To/value/{GBR,USA}&https://virtru.com/attr/Need%20to%20Know/value/{HCS,SI}",
 			"[DEFAULT]&(https://kas.uk/⋁https://kas.us/)&(https://hcs.kas.us/⋀https://si.kas.us/)",
 			"(https://kas.uk/⋁https://kas.us/)&(https://hcs.kas.us/)&(https://si.kas.us/)",
@@ -710,7 +692,6 @@ func TestReasonerConstructAttributeBoolean(t *testing.T) {
 		{
 			"mappings at attr value",
 			[]AttributeValueFQN{mpa, mpb},
-			[]string{emptyTerm},
 			"https://virtru.com/attr/mapped/value/{a,b}",
 			"(https://value.kas.com/⋁https://value.kas.com/)",
 			"(https://value.kas.com/)",
@@ -723,7 +704,6 @@ func TestReasonerConstructAttributeBoolean(t *testing.T) {
 		{
 			"mappings at attr definition",
 			[]AttributeValueFQN{mpu},
-			[]string{emptyTerm},
 			"https://virtru.com/attr/mapped/value/unspecified",
 			"(https://attr.kas.com/)",
 			"(https://attr.kas.com/)",
@@ -735,7 +715,6 @@ func TestReasonerConstructAttributeBoolean(t *testing.T) {
 		{
 			"mappings all",
 			[]AttributeValueFQN{mpa, mpb, mpu},
-			[]string{emptyTerm},
 			"https://virtru.com/attr/mapped/value/{a,b,unspecified}",
 			"(https://value.kas.com/⋁https://value.kas.com/⋁https://attr.kas.com/)",
 			"(https://attr.kas.com/⋁https://value.kas.com/)",
@@ -764,7 +743,7 @@ func TestReasonerConstructAttributeBoolean(t *testing.T) {
 			assert.Equal(t, tc.reduced, r.String())
 
 			i := 0
-			plan, err := reasoner.plan(tc.defaults, func() string {
+			plan, err := reasoner.planSteps(func() string {
 				i++
 				return strconv.Itoa(i)
 			})
@@ -872,7 +851,6 @@ func (*emptyKeyMappingsClient) GetKeyMappingsByFqns(_ context.Context, _ *attrib
 // path, via the GetAttributeValuesByFqns fallback.
 func TestReasonerKeyMappingFallback(t *testing.T) {
 	policy := []AttributeValueFQN{spk2spk} // grant-based value (no mapped keys)
-	defaults := []string{kasUs}
 	want := []keySplitStep{{evenMoreSpecificKas, ""}}
 	noSplit := func() string { return "" }
 
@@ -887,7 +865,7 @@ func TestReasonerKeyMappingFallback(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			reasoner, err := newGranterFromService(t.Context(), slog.Default(), newKasKeyCache(), tc.as, policy...)
 			require.NoError(t, err)
-			plan, err := reasoner.plan(defaults, noSplit)
+			plan, err := reasoner.planSteps(noSplit)
 			require.NoError(t, err)
 			assert.ElementsMatch(t, want, plan)
 		})
@@ -905,7 +883,7 @@ func TestReasonerMixedMappingsAndGrants(t *testing.T) {
 	require.NoError(t, err)
 
 	i := 0
-	plan, err := reasoner.plan([]string{kasUs}, func() string {
+	plan, err := reasoner.planSteps(func() string {
 		i++
 		return strconv.Itoa(i)
 	})
@@ -929,38 +907,36 @@ func TestReasonerMixedMappingsAndGrants(t *testing.T) {
 // Ex: grant.nogrant means that the attribute has a grant associated with it and the value does not
 func TestReasonerSpecificity(t *testing.T) {
 	for _, tc := range []struct {
-		desc     string
-		n        string
-		policy   []AttributeValueFQN
-		defaults []string
-		plan     []keySplitStep
+		desc   string
+		n      string
+		policy []AttributeValueFQN
+		plan   []keySplitStep
 	}{
 		{
-			"no grants on attr or value should result in split step with provided kas",
+			// Nothing grants a KAS, so there are no steps to plan. What
+			// the DEK is bound to instead is the fallback rule, tested in
+			// TestAttributeSplitter_DefaultKASFallback.
+			"no grants on attr or value should result in no split steps",
 			"nogrant.nogrant => default",
 			[]AttributeValueFQN{uns2uns},
-			[]string{kasUs},
-			[]keySplitStep{{kasUs, ""}},
+			nil,
 		},
 		{
 			"no grant on attr, grant on value should result in split step with value kas",
 			"nogrant.grant => valueSpecificKas",
 			[]AttributeValueFQN{uns2spk},
-			[]string{kasUs},
 			[]keySplitStep{{evenMoreSpecificKas, ""}},
 		},
 		{
 			"grant on attr, no grant on value should result in split step with attr kas",
 			"grant.noGrant => attrSpecificKas",
 			[]AttributeValueFQN{spk2uns},
-			[]string{kasUs},
 			[]keySplitStep{{specifiedKas, ""}},
 		},
 		{
 			"grant on attr, grant on value should result in split step with value kas",
 			"grant.grant => valueSpecificKas",
 			[]AttributeValueFQN{spk2spk},
-			[]string{kasUs},
 			[]keySplitStep{{evenMoreSpecificKas, ""}},
 		},
 		{
@@ -968,7 +944,6 @@ func TestReasonerSpecificity(t *testing.T) {
 				"should result in two split steps with same splitid, one with value kas and one with attr kas",
 			"grant.grant, grant.nogrant => valueSpecificKas || attrSpecificKas",
 			[]AttributeValueFQN{spk2spk, spk2uns},
-			[]string{kasUs},
 			[]keySplitStep{{evenMoreSpecificKas, "1"}, {specifiedKas, "1"}},
 		},
 		{
@@ -976,7 +951,6 @@ func TestReasonerSpecificity(t *testing.T) {
 				"should result in two split steps with same splitid, one with value kas and one with attr kas",
 			"grant.nogrant & grant.grant => valueSpecificKas || attrSpecificKas",
 			[]AttributeValueFQN{spk2spk, spk2uns},
-			[]string{kasUs},
 			[]keySplitStep{{specifiedKas, "1"}, {evenMoreSpecificKas, "1"}},
 		},
 		{
@@ -984,7 +958,6 @@ func TestReasonerSpecificity(t *testing.T) {
 				"should result in one split step with value kas",
 			"nogrant.grant & nogrant.nogrant => valueSpecificKas",
 			[]AttributeValueFQN{uns2spk, uns2uns},
-			[]string{kasUs},
 			[]keySplitStep{{evenMoreSpecificKas, ""}},
 		},
 		{
@@ -992,7 +965,6 @@ func TestReasonerSpecificity(t *testing.T) {
 				"should result in one split step with value kas",
 			"nogrant.nogrant & nogrant.grant => valueSpecificKas",
 			[]AttributeValueFQN{uns2spk, uns2uns},
-			[]string{kasUs},
 			[]keySplitStep{{evenMoreSpecificKas, ""}},
 		},
 		{
@@ -1000,7 +972,6 @@ func TestReasonerSpecificity(t *testing.T) {
 				"should result in one split step with value kas",
 			"nogrant.nogrant & grant.grant => valueSpecificKas",
 			[]AttributeValueFQN{uns2spk, uns2uns},
-			[]string{kasUs},
 			[]keySplitStep{{evenMoreSpecificKas, ""}},
 		},
 	} {
@@ -1008,7 +979,7 @@ func TestReasonerSpecificity(t *testing.T) {
 			reasoner, err := newGranterFromService(t.Context(), slog.Default(), newKasKeyCache(), &mockAttributesClient{}, tc.policy...)
 			require.NoError(t, err)
 			i := 0
-			plan, err := reasoner.plan(tc.defaults, func() string {
+			plan, err := reasoner.planSteps(func() string {
 				i++
 				return strconv.Itoa(i)
 			})
@@ -1027,45 +998,42 @@ func TestReasonerSpecificity(t *testing.T) {
 // a grant associated with them and the value does not
 func TestReasonerSpecificityWithNamespaces(t *testing.T) {
 	for _, tc := range []struct {
-		desc     string
-		n        string
-		policy   []AttributeValueFQN
-		defaults []string
-		plan     []keySplitStep
+		desc   string
+		n      string
+		policy []AttributeValueFQN
+		plan   []keySplitStep
 	}{
 		{
+			// Nothing grants a KAS, so there are no steps to plan. What
+			// the DEK is bound to instead is the fallback rule, tested in
+			// TestAttributeSplitter_DefaultKASFallback.
 			"no grants on value, attr, namesapce should result in provided kas",
 			"nogrant.nogrant.nogrant => default",
 			[]AttributeValueFQN{uns2uns},
-			[]string{kasUs},
-			[]keySplitStep{{kasUs, ""}},
+			nil,
 		},
 		{
 			"grant on namesapce with no grant on attr or value should result in only namesapce specfific kas split step",
 			"grant.nogrant.nogrant => nsSpecificKas",
 			[]AttributeValueFQN{spk2uns2uns},
-			[]string{kasUs},
 			[]keySplitStep{{lessSpecificKas, ""}},
 		},
 		{
 			"grant on namespace and value, no attr grant, should result in only value specific kas split step",
 			"grant.nogrant.grant => valueSpecificKas",
 			[]AttributeValueFQN{spk2uns2spk},
-			[]string{kasUs},
 			[]keySplitStep{{evenMoreSpecificKas, ""}},
 		},
 		{
 			"grant on namespace and attribute, no value grant, should result in attr specific kas split step",
 			"grant.grant.nogrant => attrSpecificKas",
 			[]AttributeValueFQN{spk2spk2uns},
-			[]string{kasUs},
 			[]keySplitStep{{specifiedKas, ""}},
 		},
 		{
 			"grant on ns, attr, and value should result in value specific kas split step",
 			"grant.grant.grant => valueSpecificKas",
 			[]AttributeValueFQN{spk2spk},
-			[]string{kasUs},
 			[]keySplitStep{{evenMoreSpecificKas, ""}},
 		},
 		{
@@ -1074,7 +1042,6 @@ func TestReasonerSpecificityWithNamespaces(t *testing.T) {
 				"and one with value kas",
 			"grant.grant.grant & grant.grant.nogrant => valueSpecificKas || attrSpecificKas",
 			[]AttributeValueFQN{spk2spk2spk, spk2spk2uns},
-			[]string{kasUs},
 			[]keySplitStep{{evenMoreSpecificKas, "1"}, {specifiedKas, "1"}},
 		},
 		{
@@ -1083,7 +1050,6 @@ func TestReasonerSpecificityWithNamespaces(t *testing.T) {
 				"and one with value kas",
 			"grant.grant.nogrant & grant.grant.grant => valueSpecificKas || attrSpecificKas",
 			[]AttributeValueFQN{spk2spk2uns, spk2spk2spk},
-			[]string{kasUs},
 			[]keySplitStep{{evenMoreSpecificKas, "1"}, {specifiedKas, "1"}},
 		},
 		{
@@ -1092,7 +1058,6 @@ func TestReasonerSpecificityWithNamespaces(t *testing.T) {
 				"and one with ns kas",
 			"grant.grant.nogrant & grant.nogrant.nogrant => attrSpecificKas && nsSpecificKas",
 			[]AttributeValueFQN{spk2spk2uns, spk2uns2uns},
-			[]string{kasUs},
 			[]keySplitStep{{specifiedKas, "1"}, {lessSpecificKas, "2"}},
 		},
 		{
@@ -1101,7 +1066,6 @@ func TestReasonerSpecificityWithNamespaces(t *testing.T) {
 				"and one with ns kas",
 			"grant.nogrant.nogrant & grant.grant.nogrant => attrSpecificKas && nsSpecificKas",
 			[]AttributeValueFQN{spk2uns2uns, spk2spk2uns},
-			[]string{kasUs},
 			[]keySplitStep{{lessSpecificKas, "1"}, {specifiedKas, "2"}},
 		},
 		{
@@ -1110,7 +1074,6 @@ func TestReasonerSpecificityWithNamespaces(t *testing.T) {
 				"and one with ns kas",
 			"grant.nogrant.grant & grant.nogrant.nogrant => valueSpecificKas || nsSpecificKas",
 			[]AttributeValueFQN{spk2uns2spk, spk2uns2uns},
-			[]string{kasUs},
 			[]keySplitStep{{evenMoreSpecificKas, "1"}, {lessSpecificKas, "1"}},
 		},
 		{
@@ -1119,7 +1082,6 @@ func TestReasonerSpecificityWithNamespaces(t *testing.T) {
 				"and one with ns kas",
 			"grant.nogrant.nogrant & grant.nogrant.grant => valueSpecificKas || nsSpecificKas",
 			[]AttributeValueFQN{spk2uns2uns, spk2uns2spk},
-			[]string{kasUs},
 			[]keySplitStep{{evenMoreSpecificKas, "1"}, {lessSpecificKas, "1"}},
 		},
 		{
@@ -1127,7 +1089,6 @@ func TestReasonerSpecificityWithNamespaces(t *testing.T) {
 				" should result in one split step with the ns kas",
 			"grant.nogrant.nogrant & nogrant.nogrant.nogrant => nsSpecificKas",
 			[]AttributeValueFQN{spk2uns2uns, uns2uns},
-			[]string{kasUs},
 			[]keySplitStep{{lessSpecificKas, ""}},
 		},
 		{
@@ -1135,7 +1096,6 @@ func TestReasonerSpecificityWithNamespaces(t *testing.T) {
 				" should result in one split step with the ns kas",
 			"nogrant.nogrant.nogrant & grant.nogrant.nogrant => nsSpecificKas",
 			[]AttributeValueFQN{uns2uns, spk2uns2uns},
-			[]string{kasUs},
 			[]keySplitStep{{lessSpecificKas, ""}},
 		},
 		{
@@ -1143,7 +1103,6 @@ func TestReasonerSpecificityWithNamespaces(t *testing.T) {
 				" should result in one split step with the value kas",
 			"grant.nogrant.grant & nogrant.nogrant.nogrant => valueSpecificKas",
 			[]AttributeValueFQN{spk2uns2spk, uns2uns},
-			[]string{kasUs},
 			[]keySplitStep{{evenMoreSpecificKas, ""}},
 		},
 		{
@@ -1151,7 +1110,6 @@ func TestReasonerSpecificityWithNamespaces(t *testing.T) {
 				" should result in one split step with the value kas",
 			"grant.grant.grant & nogrant.nogrant.nogrant => valueSpecificKas",
 			[]AttributeValueFQN{spk2spk2spk, uns2uns},
-			[]string{kasUs},
 			[]keySplitStep{{evenMoreSpecificKas, ""}},
 		},
 	} {
@@ -1159,7 +1117,7 @@ func TestReasonerSpecificityWithNamespaces(t *testing.T) {
 			reasoner, err := newGranterFromService(t.Context(), slog.Default(), newKasKeyCache(), &mockAttributesClient{}, tc.policy...)
 			require.NoError(t, err)
 			i := 0
-			plan, err := reasoner.plan(tc.defaults, func() string {
+			plan, err := reasoner.planSteps(func() string {
 				i++
 				return strconv.Itoa(i)
 			})

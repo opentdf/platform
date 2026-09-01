@@ -716,43 +716,6 @@ func (e attributeBooleanExpression) String() string {
 	return sb.String()
 }
 
-func (r granter) plan(defaultKas []string, genSplitID func() string) ([]keySplitStep, error) {
-	b := r.constructAttributeBoolean()
-	k, err := r.insertKeysForAttribute(*b)
-	if err != nil {
-		return nil, err
-	}
-
-	k = k.reduce()
-	l := k.Len()
-	if l == 0 {
-		// default behavior: split key across all default kases
-		switch len(defaultKas) {
-		case 0:
-			return nil, errors.New("no default KAS specified; required for grantless plans")
-		case 1:
-			return []keySplitStep{{KAS: defaultKas[0]}}, nil
-		default:
-			p := make([]keySplitStep, 0, len(defaultKas))
-			for _, kas := range defaultKas {
-				p = append(p, keySplitStep{KAS: kas, SplitID: genSplitID()})
-			}
-			return p, nil
-		}
-	}
-	p := make([]keySplitStep, 0, l)
-	for _, v := range k.values {
-		splitID := ""
-		if l > 1 {
-			splitID = genSplitID()
-		}
-		for _, o := range v.values {
-			p = append(p, keySplitStep{KAS: o.KASURI(), SplitID: splitID})
-		}
-	}
-	return p, nil
-}
-
 func (r granter) resolveTemplate(ctx context.Context, kaoKeyAlg string, genSplitID func() string) ([]kaoTpl, error) {
 	b := r.constructAttributeBoolean()
 	k, err := r.assignKeysTo(*b)

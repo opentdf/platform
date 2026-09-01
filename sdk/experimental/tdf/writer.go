@@ -60,9 +60,10 @@ var (
 // Thread safety: WriteSegment may be called concurrently for distinct
 // indices, but not twice for the same index.
 //
-// The writing itself is [sdk.ChunkedWriter]; this type adds the
-// multi-KAS ABAC key splitting in [xorSplitter] and this package's
-// option style. Callers that only need a single KAS can use
+// The writing itself is [sdk.ChunkedWriter], and the key splitting is
+// [sdk.DefaultKeySplitter] -- the same attribute reasoning
+// [sdk.SDK.CreateTDF] performs. What this type adds is this package's
+// option style; callers happy with the stable option set can use
 // [sdk.NewChunkedWriter] directly.
 //
 // Example usage:
@@ -127,14 +128,18 @@ func NewWriter(ctx context.Context, opts ...Option[*WriterConfig]) (*Writer, err
 		opt(config)
 	}
 
-	inner, err := sdk.NewChunkedWriter(ctx,
+	innerOpts := []sdk.ChunkedWriterOption{
 		sdk.WithChunkedIntegrityAlgorithm(sdk.IntegrityAlgorithm(config.integrityAlgorithm)),
 		sdk.WithChunkedSegmentIntegrityAlgorithm(sdk.IntegrityAlgorithm(config.segmentIntegrityAlgorithm)),
 		sdk.WithChunkedInitialAttributes(config.initialAttributes),
-		sdk.WithChunkedDefaultKAS(config.initialDefaultKAS),
-		sdk.WithChunkedKeySplitter(xorSplitter{}),
+		sdk.WithChunkedDefaultKAS(config.initialDefaultKAS...),
 		sdk.WithChunkedTargetMode(config.targetMode),
-	)
+	}
+	if config.keySplitter != nil {
+		innerOpts = append(innerOpts, sdk.WithChunkedKeySplitter(config.keySplitter))
+	}
+
+	inner, err := sdk.NewChunkedWriter(ctx, innerOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -282,7 +287,7 @@ func finalizeOptions(opts []Option[*WriterFinalizeConfig]) []sdk.ChunkedFinalize
 	}
 	return []sdk.ChunkedFinalizeOption{
 		sdk.WithChunkedAttributes(cfg.attributes),
-		sdk.WithChunkedDefaultKASForFinalize(cfg.defaultKas),
+		sdk.WithChunkedDefaultKASForFinalize(cfg.defaultKas...),
 		sdk.WithChunkedEncryptedMetadata(cfg.encryptedMetadata),
 		sdk.WithChunkedMimeType(cfg.payloadMimeType),
 		sdk.WithChunkedSegments(cfg.keepSegments),

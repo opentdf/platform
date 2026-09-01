@@ -433,3 +433,92 @@ func TestDefaultKeySplitterResultValidates(t *testing.T) {
 	require.NoError(t, err)
 	require.NoError(t, res.Validate())
 }
+
+// TestSingleKASSplitterRejectsAttributeGrants checks that the default splitter
+// refuses attributes naming a KAS of their own rather than binding the key to
+// the default one anyway.
+//
+// This is the failure the guard exists for: the resulting TDF is well-formed
+// at every layer that inspects it -- the policy names the attribute, the
+// manifest names a KAS, the round trip succeeds -- while the key sits at a KAS
+// the attribute never authorized. Nothing downstream compares the grant to the
+// placement, so creation time is the only place it can be caught.
+func TestSingleKASSplitterRejectsAttributeGrants(t *testing.T) {
+	const fqn = "https://example.com/attr/classification/value/secret"
+	grant := []*policy.KeyAccessServer{{Uri: "https://grants.example.com"}}
+	kasKeys := []*policy.SimpleKasKey{{KasUri: "https://grants.example.com"}}
+
+	// A default KAS good enough to succeed on, so a passing case proves the
+	// grant is what was rejected rather than a missing default.
+	defaultKAS := &policy.SimpleKasKey{
+		KasUri: "https://kas.example.com",
+		PublicKey: &policy.SimpleKasPublicKey{
+			Algorithm: policy.Algorithm_ALGORITHM_RSA_2048,
+			Kid:       "k1",
+			Pem:       splitterTestPEM,
+		},
+	}
+
+	for _, tc := range []struct {
+		name  string
+		value *policy.Value
+		want  string
+	}{
+		{
+			"value grant",
+			&policy.Value{Fqn: fqn, Grants: grant},
+			"names its own KAS",
+		},
+		{
+			"value kas keys",
+			&policy.Value{Fqn: fqn, KasKeys: kasKeys},
+			"names its own KAS",
+		},
+		{
+			// Grants are inherited, so a definition-level one reaches the
+			// value even though the value itself declares nothing.
+			"attribute definition grant",
+			&policy.Value{Fqn: fqn, Attribute: &policy.Attribute{Grants: grant}},
+			"attribute definition",
+		},
+		{
+			"attribute definition kas keys",
+			&policy.Value{Fqn: fqn, Attribute: &policy.Attribute{KasKeys: kasKeys}},
+			"attribute definition",
+		},
+		{
+			"namespace grant",
+			&policy.Value{Fqn: fqn, Attribute: &policy.Attribute{
+				Namespace: &policy.Namespace{Grants: grant},
+			}},
+			"namespace",
+		},
+		{
+			"namespace kas keys",
+			&policy.Value{Fqn: fqn, Attribute: &policy.Attribute{
+				Namespace: &policy.Namespace{KasKeys: kasKeys},
+			}},
+			"namespace",
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			res, err := DefaultKeySplitter().Split(context.Background(),
+				[]*policy.Value{tc.value}, []byte("0123456789abcdef"), defaultKAS)
+
+			require.ErrorIs(t, err, ErrSplitterIgnoresGrants)
+			require.ErrorContains(t, err, tc.want, "the error must name which level carried the grant")
+			require.ErrorContains(t, err, fqn)
+			assert.Nil(t, res)
+		})
+	}
+
+	// The control: the same attribute without any grant is exactly what this
+	// splitter is for, and must still work.
+	t.Run("grantless attribute is accepted", func(t *testing.T) {
+		res, err := DefaultKeySplitter().Split(context.Background(),
+			[]*policy.Value{{Fqn: fqn}}, []byte("0123456789abcdef"), defaultKAS)
+		require.NoError(t, err)
+		require.Len(t, res.Splits, 1)
+		assert.Equal(t, []string{"https://kas.example.com"}, res.Splits[0].KASURLs)
+	})
+}

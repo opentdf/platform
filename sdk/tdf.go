@@ -51,7 +51,6 @@ const (
 	kAssertionSignature    = "assertionSig"
 	kAssertionHash         = "assertionHash"
 	hexSemverThreshold     = "4.3.0"
-	readActionName         = "read"
 )
 
 // Loads and reads ZTDF files

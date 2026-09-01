@@ -736,19 +736,17 @@ func TestChunkedECKeyAccess(t *testing.T) {
 	for i := range dek {
 		dek[i] = byte(i)
 	}
-	splits := &SplitResult{
-		KASPublicKeys: map[string]KASPublicKey{
-			kasURL: {
-				Algorithm: ocrypto.EC256Key,
-				KID:       "ec-kid",
-				PEM:       pubPEM,
-				URL:       kasURL,
-			},
-		},
-		Splits: []Split{{Data: dek, KASURLs: []string{kasURL}}},
-	}
+	shares := []splitShare{{
+		data: dek,
+		kases: []KASInfo{{
+			URL:       kasURL,
+			PublicKey: pubPEM,
+			KID:       "ec-kid",
+			Algorithm: string(ocrypto.EC256Key),
+		}},
+	}}
 
-	kaos, err := buildChunkedKeyAccessObjects(splits, dek, []byte(`{"uuid":"test"}`), "")
+	kaos, err := buildKeyAccessObjects(shares, `{"uuid":"test"}`, "")
 	require.NoError(t, err)
 	require.Len(t, kaos, 1)
 
@@ -800,22 +798,21 @@ func TestChunkedKeyAccessRejectsShareWithNoKAS(t *testing.T) {
 
 	const kasURL = "https://kas.example.com"
 	dek := make([]byte, kKeySize)
-	splits := &SplitResult{
-		KASPublicKeys: map[string]KASPublicKey{
-			kasURL: {
-				Algorithm: ocrypto.EC256Key,
-				KID:       "ec-kid",
-				PEM:       pubPEM,
+	shares := []splitShare{
+		{
+			id:   "wrapped",
+			data: dek,
+			kases: []KASInfo{{
 				URL:       kasURL,
-			},
+				PublicKey: pubPEM,
+				KID:       "ec-kid",
+				Algorithm: string(ocrypto.EC256Key),
+			}},
 		},
-		Splits: []Split{
-			{ID: "wrapped", Data: dek, KASURLs: []string{kasURL}},
-			{ID: "orphaned", Data: dek},
-		},
+		{id: "orphaned", data: dek},
 	}
 
-	_, err = buildChunkedKeyAccessObjects(splits, dek, []byte(`{"uuid":"test"}`), "")
+	_, err = buildKeyAccessObjects(shares, `{"uuid":"test"}`, "")
 	require.Error(t, err, "a share with no KAS to unwrap it makes the DEK unrecoverable")
 	assert.Contains(t, err.Error(), "orphaned", "the error must name the split that cannot be recovered")
 }

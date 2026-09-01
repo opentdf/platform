@@ -1,13 +1,35 @@
-// Experimental: This package is EXPERIMENTAL and may change or be removed at any time
-// Package tdf provides experimental streaming TDF (Trusted Data Format) creation capabilities.
+// Package tdf provides streaming TDF (Trusted Data Format) creation capabilities.
 //
-// # Experimental Status
+// Deprecated: this package has graduated into the sdk package itself. Use
+// [github.com/opentdf/platform/sdk.SDK.NewChunkedWriter], or the package-level
+// [github.com/opentdf/platform/sdk.NewChunkedWriter] when there is no platform
+// connection to resolve key access against. This package now forwards to that
+// implementation and will be removed in a future release.
 //
-// This package is EXPERIMENTAL and its API is subject to change in future releases.
-// It is designed for advanced use cases requiring fine-grained control over TDF creation
-// with streaming support for large datasets.
+// # Migration
 //
-// For most use cases, prefer the stable SDK-level TDF creation APIs.
+// Writer options:
+//
+//	tdf.NewWriter(ctx, opts...)          -> sdk.NewChunkedWriter(ctx, opts...)
+//	                                        client.NewChunkedWriter(ctx, opts...)
+//	tdf.WithInitialAttributes(vs)        -> sdk.WithChunkedInitialAttributes(vs)
+//	tdf.WithDefaultKASForWriter(k)       -> sdk.WithChunkedDefaultKAS(k)
+//	tdf.WithIntegrityAlgorithm(a)        -> sdk.WithChunkedIntegrityAlgorithm(a)
+//	tdf.WithSegmentIntegrityAlgorithm(a) -> sdk.WithChunkedSegmentIntegrityAlgorithm(a)
+//	tdf.WithTargetMode(m)                -> sdk.WithChunkedTargetMode(m)
+//
+// Finalize options:
+//
+//	tdf.WithAssertions(as)               -> sdk.WithChunkedAssertions(as)
+//	tdf.WithAttributeValues(vs)          -> sdk.WithChunkedAttributes(vs)
+//	tdf.WithDefaultKAS(k)                -> sdk.WithChunkedDefaultKASForFinalize(k)
+//	tdf.WithEncryptedMetadata(m)         -> sdk.WithChunkedEncryptedMetadata(m)
+//	tdf.WithExcludeVersionFromManifest() -> sdk.WithChunkedExcludeVersion()
+//	tdf.WithPayloadMimeType(m)           -> sdk.WithChunkedMimeType(m)
+//	tdf.WithSegments(ix)                 -> sdk.WithChunkedSegments(ix)
+//
+// The manifest and assertion types this package exports are aliases of the sdk
+// types, so values move across the boundary without conversion.
 //
 // # Overview
 //

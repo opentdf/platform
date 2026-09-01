@@ -807,11 +807,14 @@ func buildChunkedKeyAccessObjects(splits *SplitResult, policyBytes []byte, metad
 			encMeta = m
 		}
 		for _, url := range split.KASURLs {
+			// A KAS named by a split but absent from KASPublicKeys is an
+			// error, not something to skip. Dropping it silently removes
+			// the only KAO that would have let that KAS unwrap this
+			// share; if every URL on the split is missing, the share
+			// becomes unrecoverable and the TDF undecryptable, with
+			// nothing in the output to say why.
 			pk, ok := splits.KASPublicKeys[url]
-			if !ok {
-				continue
-			}
-			if pk.PEM == "" {
+			if !ok || pk.PEM == "" {
 				return nil, fmt.Errorf("splitID:[%s], kas:[%s]: %w", split.ID, url, errKasPubKeyMissing)
 			}
 			kao, err := createKeyAccess(pk.toKASInfo(), split.Data, policyBinding, encMeta, split.ID)

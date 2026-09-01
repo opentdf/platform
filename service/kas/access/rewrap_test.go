@@ -66,8 +66,9 @@ func (f *fakeKeyDetails) ProviderConfig() *policy.KeyProviderConfig {
 }
 
 type fakeKeyIndex struct {
-	keys []trust.KeyDetails
-	err  error
+	keys   []trust.KeyDetails
+	err    error
+	kasURI string
 }
 
 func (f *fakeKeyIndex) String() string {
@@ -88,6 +89,10 @@ func (f *fakeKeyIndex) FindKeyByID(context.Context, trust.KeyIdentifier) (trust.
 	return nil, errors.New("not implemented")
 }
 
+func (f *fakeKeyIndex) FindKeyByIDWithKASURI(context.Context, trust.KeyIdentifier, string) (trust.KeyDetails, error) {
+	return nil, errors.New("not implemented")
+}
+
 func (f *fakeKeyIndex) ListKeys(context.Context) ([]trust.KeyDetails, error) {
 	return f.keys, f.err
 }
@@ -103,6 +108,11 @@ func (f *fakeKeyIndex) ListKeysWith(_ context.Context, opts trust.ListKeyOptions
 		return legacyKeys, f.err
 	}
 	return f.keys, f.err
+}
+
+func (f *fakeKeyIndex) ListKeysWithKASURI(ctx context.Context, opts trust.ListKeyOptions, kasURI string) ([]trust.KeyDetails, error) {
+	f.kasURI = kasURI
+	return f.ListKeysWith(ctx, opts)
 }
 
 func newBufferLogger() (*logger.Logger, *bytes.Buffer) {
@@ -156,7 +166,7 @@ func TestListLegacyKeys_KeyringPopulated(t *testing.T) {
 		},
 	}
 
-	kids := p.listLegacyKeys(t.Context())
+	kids := p.listLegacyKeys(t.Context(), "")
 	assert.ElementsMatch(t, []trust.KeyIdentifier{"legacy1", "legacy2"}, kids)
 }
 
@@ -168,15 +178,18 @@ func TestListLegacyKeys_KeyIndexPopulated(t *testing.T) {
 		&fakeKeyDetails{id: "id3", algorithm: "ec:secp256r1", legacy: true},
 		&fakeKeyDetails{id: "id4", algorithm: "rsa:2048", legacy: true},
 	}
-	delegator := trust.NewDelegatingKeyService(&fakeKeyIndex{
+	index := &fakeKeyIndex{
 		keys: fakeKeys,
-	}, logger.CreateTestLogger(), nil)
+	}
+	delegator := trust.NewDelegatingKeyService(index, logger.CreateTestLogger(), nil)
 	p := &Provider{
 		Logger:       testLogger,
 		KeyDelegator: delegator,
 	}
-	kids := p.listLegacyKeys(t.Context())
+	const kasURI = "https://request-kas.example.com"
+	kids := p.listLegacyKeys(t.Context(), kasURI)
 	assert.ElementsMatch(t, []trust.KeyIdentifier{"id1", "id4"}, kids)
+	assert.Equal(t, kasURI, index.kasURI)
 }
 
 func TestListLegacyKeys_Empty(t *testing.T) {
@@ -186,7 +199,7 @@ func TestListLegacyKeys_Empty(t *testing.T) {
 		Logger:       testLogger,
 		KeyDelegator: delegator,
 	}
-	kids := p.listLegacyKeys(t.Context())
+	kids := p.listLegacyKeys(t.Context(), "")
 	assert.Empty(t, kids)
 }
 
@@ -199,7 +212,7 @@ func TestListLegacyKeys_KeyIndexError(t *testing.T) {
 		Logger:       testLogger,
 		KeyDelegator: delegator,
 	}
-	kids := p.listLegacyKeys(t.Context())
+	kids := p.listLegacyKeys(t.Context(), "")
 	assert.Empty(t, kids)
 }
 

@@ -84,6 +84,14 @@ func (m *MockKeyIndex) FindKeyByID(ctx context.Context, id KeyIdentifier) (KeyDe
 	return &MockKeyDetails{}, args.Error(1)
 }
 
+func (m *MockKeyIndex) FindKeyByIDWithKASURI(ctx context.Context, id KeyIdentifier, kasURI string) (KeyDetails, error) {
+	args := m.Called(ctx, id, kasURI)
+	if a0, ok := args.Get(0).(KeyDetails); ok {
+		return a0, args.Error(1)
+	}
+	return &MockKeyDetails{}, args.Error(1)
+}
+
 func (m *MockKeyIndex) ListKeys(ctx context.Context) ([]KeyDetails, error) {
 	args := m.Called(ctx)
 	if a0, ok := args.Get(0).([]KeyDetails); ok {
@@ -94,6 +102,14 @@ func (m *MockKeyIndex) ListKeys(ctx context.Context) ([]KeyDetails, error) {
 
 func (m *MockKeyIndex) ListKeysWith(ctx context.Context, opts ListKeyOptions) ([]KeyDetails, error) {
 	args := m.Called(ctx, opts)
+	if a0, ok := args.Get(0).([]KeyDetails); ok {
+		return a0, args.Error(1)
+	}
+	return nil, args.Error(1)
+}
+
+func (m *MockKeyIndex) ListKeysWithKASURI(ctx context.Context, opts ListKeyOptions, kasURI string) ([]KeyDetails, error) {
+	args := m.Called(ctx, opts, kasURI)
 	if a0, ok := args.Get(0).([]KeyDetails); ok {
 		return a0, args.Error(1)
 	}
@@ -272,10 +288,11 @@ func (suite *DelegatingKeyServiceTestSuite) TestListKeysWith_Legacy() {
 }
 
 func (suite *DelegatingKeyServiceTestSuite) TestDecrypt() {
+	const kasURI = "https://request-kas.example.com"
 	mockKeyDetails := &MockKeyDetails{}
 	mockKeyDetails.On("ProviderConfig").Return(&policy.KeyProviderConfig{Manager: "mockManager", Name: "mock-01"})
 	mockKeyDetails.On("System").Return("mockManager")
-	suite.mockIndex.On("FindKeyByID", mock.Anything, KeyIdentifier("key1")).Return(mockKeyDetails, nil)
+	suite.mockIndex.On("FindKeyByIDWithKASURI", mock.Anything, KeyIdentifier("key1"), kasURI).Return(mockKeyDetails, nil)
 
 	mockProtectedKey := &MockProtectedKey{}
 	mockProtectedKey.On("DecryptAESGCM", mock.Anything, mock.Anything, mock.Anything).Return([]byte("decrypted"), nil)
@@ -285,7 +302,7 @@ func (suite *DelegatingKeyServiceTestSuite) TestDecrypt() {
 		return suite.mockManagerA, nil
 	})
 
-	protectedKey, err := suite.service.Decrypt(context.Background(), KeyIdentifier("key1"), []byte("ciphertext"), []byte("ephemeralKey"))
+	protectedKey, err := suite.service.Decrypt(context.Background(), KeyIdentifier("key1"), kasURI, []byte("ciphertext"), []byte("ephemeralKey"))
 	suite.Require().NoError(err)
 	suite.NotNil(protectedKey)
 }

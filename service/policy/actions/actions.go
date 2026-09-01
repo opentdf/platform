@@ -126,6 +126,15 @@ func (a *ActionService) CreateAction(ctx context.Context, req *connect.Request[a
 	rsp := &actions.CreateActionResponse{}
 
 	err := a.dbClient.RunInTx(ctx, func(txClient *policydb.PolicyDBClient) error {
+		if limit := a.config.MaxObjectCounts.ActionsPerNamespace; limit > 0 {
+			count, err := txClient.CountActions(ctx, req.Msg.GetNamespaceId(), req.Msg.GetNamespaceFqn())
+			if err != nil {
+				return err
+			}
+			if err := policyconfig.EnforceObjectLimit(policyconfig.ObjectTypeActionsPerNamespace, limit, count, 1); err != nil {
+				return err
+			}
+		}
 		action, err := txClient.CreateAction(ctx, req.Msg)
 		if err != nil {
 			return err
@@ -139,6 +148,9 @@ func (a *ActionService) CreateAction(ctx context.Context, req *connect.Request[a
 	})
 	if err != nil {
 		a.logger.LogPolicyCRUDFailure(ctx, auditParams)
+		if limitErr := policyconfig.ObjectLimitConnectError(ctx, a.logger, "create", err); limitErr != nil {
+			return nil, limitErr
+		}
 		return nil, db.StatusifyError(ctx, a.logger, err, db.ErrTextCreationFailed, slog.String("action", req.Msg.String()))
 	}
 	a.logger.LogPolicyCRUDSuccess(ctx, auditParams)

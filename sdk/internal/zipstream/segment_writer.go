@@ -36,12 +36,12 @@ func NewSegmentTDFWriter(expectedSegments int, opts ...Option) SegmentWriter {
 
 	return &segmentWriter{
 		baseWriter: base,
-		metadata:   NewSegmentMetadata(expectedSegments),
+		metadata:   NewSegmentMetadata(expectedSegments, cfg.Now),
 		centralDir: NewCentralDirectory(),
 		payloadEntry: &FileEntry{
 			Name:        TDFPayloadFileName,
 			Offset:      0,
-			ModTime:     time.Now(),
+			ModTime:     cfg.Now(),
 			IsStreaming: true, // Use data descriptor pattern
 		},
 		finalized: false,
@@ -145,6 +145,15 @@ func (sw *segmentWriter) Finalize(ctx context.Context, manifest []byte) ([]byte,
 		return nil, &Error{Op: "finalize", Type: "segment", Err: ErrSegmentMissing}
 	}
 
+	// Only segment 0 emits the payload's local file header, so its
+	// absence is not something IsComplete can see: Order is derived from
+	// whatever indices arrived. Every offset computed below assumes that
+	// header sits at the front of the assembled stream, so without it the
+	// trailer would point the reader past the end of its own buffer.
+	if _, ok := sw.metadata.Segments[0]; !ok {
+		return nil, &Error{Op: "finalize", Type: "segment", Err: ErrNoSegmentZero}
+	}
+
 	// Compute final CRC32 by combining per-segment CRCs now that all are present
 	sw.metadata.FinalizeCRC()
 
@@ -191,7 +200,7 @@ func (sw *segmentWriter) Finalize(ctx context.Context, manifest []byte) ([]byte,
 		Size:           uint64(len(manifest)),
 		CompressedSize: uint64(len(manifest)),
 		CRC32:          crc32.ChecksumIEEE(manifest),
-		ModTime:        time.Now(),
+		ModTime:        sw.config.Now(),
 		IsStreaming:    false,
 	}
 
@@ -303,7 +312,7 @@ func (sw *segmentWriter) getTimeDateInMSDosFormat(t time.Time) (uint16, uint16) 
 	const monthShift = 5
 
 	timeInDos := t.Hour()<<11 | t.Minute()<<5 | t.Second()>>1
-	dateInDos := (t.Year()-zipBaseYear)<<9 | int((t.Month())<<monthShift) | t.Day()
+	dateInDos := (t.Year()-zipBaseYear)<<9 | int(t.Month()<<monthShift) | t.Day()
 
 	return uint16(timeInDos), uint16(dateInDos)
 }

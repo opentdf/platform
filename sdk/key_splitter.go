@@ -1,0 +1,149 @@
+package sdk
+
+import (
+	"context"
+	"errors"
+	"fmt"
+
+	"github.com/opentdf/platform/protocol/go/policy"
+)
+
+// KeySplitter converts attribute values plus a DEK into one or more
+// key splits, each addressed to one or more KAS servers. Injected on
+// the chunked Writer so tests can substitute an identity splitter
+// without touching real attribute grants.
+type KeySplitter interface {
+	// Split evaluates the ABAC policy expressed by attrs, produces N
+	// splits of dek per the resulting boolean expression, and returns
+	// each split alongside the KAS public keys it must be wrapped to.
+	Split(ctx context.Context, attrs []*policy.Value, dek []byte, defaultKAS *policy.SimpleKasKey) (*SplitResult, error)
+}
+
+// Split is one XOR share of the DEK bound to one or more KAS
+// servers.
+type Split struct {
+	// Data is the split share (XOR of the DEK with the other shares).
+	Data []byte
+
+	// ID uniquely identifies this split within a SplitResult. Empty
+	// when the result contains only one split (single-KAO TDF).
+	ID string
+
+	// KASURLs lists every KAS that can unwrap this split. Multiple
+	// URLs mean any one KAS is sufficient (OR semantics).
+	KASURLs []string
+}
+
+// SplitResult is what KeySplitter.Split returns: the shares plus the
+// KAS wrapping keys needed to encrypt each share into a KeyAccess
+// object.
+type SplitResult struct {
+	// KASPublicKeys maps KAS URL to the wrapping key to use for that
+	// URL. Populated for every URL referenced by any split.
+	KASPublicKeys map[string]KASPublicKey
+
+	// Splits are the DEK shares in emission order.
+	Splits []Split
+}
+
+// KASPublicKey is the wrapping key resolved for one KAS URL.
+type KASPublicKey struct {
+	// Algorithm identifies the wrapping scheme (e.g. "rsa", "ec").
+	Algorithm string
+
+	// KID identifies which key at that KAS to use.
+	KID string
+
+	// PEM is the wrapping key in PEM form.
+	PEM string
+
+	// URL of the KAS.
+	URL string
+}
+
+// toKASInfo adapts the splitter's wrapping-key descriptor to the
+// KASInfo shape consumed by createKeyAccess. Default is not carried
+// over; it plays no part in building a key access object.
+func (k KASPublicKey) toKASInfo() KASInfo {
+	return KASInfo{
+		URL:       k.URL,
+		PublicKey: k.PEM,
+		KID:       k.KID,
+		Algorithm: k.Algorithm,
+	}
+}
+
+// ErrSplitterRequiresDefaultKAS is returned by the default key
+// splitter when no default KAS was supplied. The default splitter is
+// single-KAS only; multi-attribute splits require injecting a full
+// splitter via WithChunkedKeySplitter.
+var ErrSplitterRequiresDefaultKAS = errors.New("chunked: default splitter requires a default KAS; supply WithChunkedDefaultKAS or WithChunkedKeySplitter")
+
+// ErrSplitterUnsupportedAlgorithm is returned by the default key
+// splitter when the default KAS advertises a key algorithm this SDK
+// has no wrapping scheme for.
+var ErrSplitterUnsupportedAlgorithm = errors.New("chunked: unsupported KAS key algorithm")
+
+// DefaultKeySplitter returns a single-KAS single-split splitter.
+// Attributes are ignored; the entire DEK is bound to the caller's
+// default KAS. Callers with attribute-based key splits requirements
+// should inject their own splitter via WithChunkedKeySplitter.
+func DefaultKeySplitter() KeySplitter { return &singleKASSplitter{} }
+
+// singleKASSplitter binds the full DEK to a single KAS. Attributes
+// are ignored; splitting into multi-KAS OR-of-AND shares is beyond
+// this default's scope.
+type singleKASSplitter struct{}
+
+// Split returns one split covering the full DEK, addressed to
+// defaultKAS. Errors when defaultKAS is nil, has no public key, or
+// names an algorithm this SDK cannot wrap for.
+func (s *singleKASSplitter) Split(_ context.Context, _ []*policy.Value, dek []byte, defaultKAS *policy.SimpleKasKey) (*SplitResult, error) {
+	if defaultKAS == nil || defaultKAS.GetPublicKey() == nil || defaultKAS.GetPublicKey().GetPem() == "" {
+		return nil, ErrSplitterRequiresDefaultKAS
+	}
+	url := defaultKAS.GetKasUri()
+
+	// Reject an unmappable algorithm here rather than letting the empty
+	// string reach createKeyAccess. There it selects the RSA branch by
+	// default, and ocrypto.FromPublicPEM sniffs the PEM instead of
+	// honoring that choice: an EC or ML-KEM key parses successfully and
+	// wraps, but the KAO is left claiming keyType "wrapped" with no
+	// ephemeral public key. That produces a TDF nothing can decrypt,
+	// which is far worse to debug than a failure at creation time.
+	alg := algorithmPolicyToString(defaultKAS.GetPublicKey().GetAlgorithm())
+	if alg == "" {
+		return nil, fmt.Errorf("%w: kas %s advertises algorithm %v",
+			ErrSplitterUnsupportedAlgorithm, url, defaultKAS.GetPublicKey().GetAlgorithm())
+	}
+
+	share := make([]byte, len(dek))
+	copy(share, dek)
+	return &SplitResult{
+		KASPublicKeys: map[string]KASPublicKey{
+			url: {
+				Algorithm: alg,
+				KID:       defaultKAS.GetPublicKey().GetKid(),
+				PEM:       defaultKAS.GetPublicKey().GetPem(),
+				URL:       url,
+			},
+		},
+		Splits: []Split{{
+			Data:    share,
+			KASURLs: []string{url},
+		}},
+	}, nil
+}
+
+// algorithmPolicyToString maps a policy.Algorithm enum to the
+// ocrypto.KeyType string form used when picking a wrap scheme.
+// Unknown enums, including ALGORITHM_UNSPECIFIED, return the empty
+// string; callers must reject that rather than pass it on, since
+// createKeyAccess reads it as a request for RSA. singleKASSplitter.Split
+// has that guard.
+func algorithmPolicyToString(a policy.Algorithm) string {
+	if kt, err := PolicyAlgorithmToKeyType(a); err == nil {
+		return string(kt)
+	}
+	return ""
+}

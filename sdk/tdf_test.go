@@ -1600,6 +1600,58 @@ func (s *TDFSuite) Test_TDFReader() { //nolint:gocognit // requires for testing 
 	}
 }
 
+// Test_TDFReaderReadAtSweep exhaustively checks every (offset, length) pair
+// against a set of uniform segment sizes. Reader.ReadAt maps plaintext offsets
+// onto segments, and that mapping is easy to break at segment boundaries, so
+// this pins the full contract: returned bytes, count, and io.EOF/error.
+func (s *TDFSuite) Test_TDFReaderReadAtSweep() {
+	kasInfoList := []KASInfo{
+		{URL: s.kasTestURLLookup["http://localhost:65432/"]},
+	}
+	size := int64(len(payload)) // 62
+
+	// 1 and 2 give many segments per read, 7 leaves a short trailing segment,
+	// 62 is exactly one segment, and 64 is a single segment larger than the
+	// payload.
+	for _, segmentSize := range []int64{1, 2, 7, size, 64} {
+		tdfBuf := bytes.Buffer{}
+		_, err := s.sdk.CreateTDF(
+			io.Writer(&tdfBuf),
+			bytes.NewReader([]byte(payload)),
+			WithKasInformation(kasInfoList...),
+			WithSegmentSize(segmentSize),
+		)
+		s.Require().NoError(err)
+
+		r, err := s.sdk.LoadTDF(bytes.NewReader(tdfBuf.Bytes()))
+		s.Require().NoError(err)
+
+		for offset := int64(0); offset <= size+1; offset++ {
+			for length := 0; length <= len(payload)+3; length++ {
+				buf := make([]byte, length)
+				n, err := r.ReadAt(buf, offset)
+
+				where := fmt.Sprintf("segmentSize=%d offset=%d length=%d", segmentSize, offset, length)
+
+				if offset > size {
+					s.Require().ErrorIs(err, ErrTDFPayloadReadFail, where)
+					s.Require().Equal(0, n, where)
+					continue
+				}
+
+				want := min(int64(length), size-offset)
+				if offset+int64(length) > size {
+					s.Require().ErrorIs(err, io.EOF, where)
+				} else {
+					s.Require().NoError(err, where)
+				}
+				s.Require().Equal(int(want), n, where)
+				s.Require().Equal(payload[offset:offset+want], string(buf[:want]), where)
+			}
+		}
+	}
+}
+
 func (s *TDFSuite) Test_TDFReaderFail() {
 	kasInfoList := []KASInfo{
 		{

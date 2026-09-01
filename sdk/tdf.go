@@ -302,21 +302,12 @@ func (s SDK) CreateTDFContext(ctx context.Context, writer io.Writer, reader io.R
 	sig := string(ocrypto.Base64Encode([]byte(rootSignature)))
 	tdfObject.manifest.Signature = sig
 
-	integrityAlgStr := gmacIntegrityAlgorithm
-	if tdfConfig.integrityAlgorithm == HS256 {
-		integrityAlgStr = hmacIntegrityAlgorithm
-	}
-	tdfObject.manifest.Algorithm = integrityAlgStr
+	tdfObject.manifest.Algorithm = integrityAlgorithmString(tdfConfig.integrityAlgorithm)
 
 	tdfObject.manifest.DefaultSegmentSize = segmentSize
 	tdfObject.manifest.DefaultEncryptedSegSize = encryptedSegmentSize
 
-	segIntegrityAlgStr := gmacIntegrityAlgorithm
-	if tdfConfig.segmentIntegrityAlgorithm == HS256 {
-		segIntegrityAlgStr = hmacIntegrityAlgorithm
-	}
-
-	tdfObject.manifest.SegmentHashAlgorithm = segIntegrityAlgStr
+	tdfObject.manifest.SegmentHashAlgorithm = integrityAlgorithmString(tdfConfig.segmentIntegrityAlgorithm)
 	tdfObject.manifest.Method.IsStreamable = true
 
 	// add payload info
@@ -330,7 +321,6 @@ func (s SDK) CreateTDFContext(ctx context.Context, writer io.Writer, reader io.R
 	tdfObject.manifest.URL = zipstream.TDFPayloadFileName
 	tdfObject.manifest.IsEncrypted = true
 
-	var signedAssertion []Assertion
 	if tdfConfig.addDefaultAssertion {
 		systemMeta, err := GetSystemMetadataAssertionConfig()
 		if err != nil {
@@ -339,52 +329,14 @@ func (s SDK) CreateTDFContext(ctx context.Context, writer io.Writer, reader io.R
 		tdfConfig.assertions = append(tdfConfig.assertions, systemMeta)
 	}
 
-	for _, assertion := range tdfConfig.assertions {
-		// Store a temporary assertion
-		tmpAssertion := Assertion{}
-
-		tmpAssertion.ID = assertion.ID
-		tmpAssertion.Type = assertion.Type
-		tmpAssertion.Scope = assertion.Scope
-		tmpAssertion.Statement = assertion.Statement
-		tmpAssertion.AppliesToState = assertion.AppliesToState
-
-		hashOfAssertionAsHex, err := tmpAssertion.GetHash()
-		if err != nil {
-			return nil, err
-		}
-
-		hashOfAssertion := make([]byte, hex.DecodedLen(len(hashOfAssertionAsHex)))
-		_, err = hex.Decode(hashOfAssertion, hashOfAssertionAsHex)
-		if err != nil {
-			return nil, fmt.Errorf("error decoding hex string: %w", err)
-		}
-
-		var completeHashBuilder strings.Builder
-		completeHashBuilder.WriteString(aggregateHashBuilder.String())
-		if tdfConfig.useHex {
-			completeHashBuilder.Write(hashOfAssertionAsHex)
-		} else {
-			completeHashBuilder.Write(hashOfAssertion)
-		}
-
-		encoded := ocrypto.Base64Encode([]byte(completeHashBuilder.String()))
-
-		assertionSigningKey := AssertionKey{}
-
-		// Set default to HS256 and payload key
-		assertionSigningKey.Alg = AssertionKeyAlgHS256
-		assertionSigningKey.Key = tdfObject.payloadKey[:]
-
-		if !assertion.SigningKey.IsEmpty() {
-			assertionSigningKey = assertion.SigningKey
-		}
-
-		if err := tmpAssertion.Sign(string(hashOfAssertionAsHex), string(encoded), assertionSigningKey); err != nil {
-			return nil, fmt.Errorf("failed to sign assertion: %w", err)
-		}
-
-		signedAssertion = append(signedAssertion, tmpAssertion)
+	signedAssertion, err := signAssertions(
+		[]byte(aggregateHashBuilder.String()),
+		tdfConfig.assertions,
+		tdfObject.payloadKey[:],
+		tdfConfig.useHex,
+	)
+	if err != nil {
+		return nil, err
 	}
 
 	tdfObject.manifest.Assertions = signedAssertion
@@ -588,12 +540,7 @@ func (s SDK) prepareManifest(ctx context.Context, t *TDFObject, tdfConfig TDFCon
 		symKeys = append(symKeys, symKey)
 
 		// policy binding
-		policyBindingHash := hex.EncodeToString(ocrypto.CalculateSHA256Hmac(symKey, base64PolicyObject))
-		pbstring := string(ocrypto.Base64Encode([]byte(policyBindingHash)))
-		policyBinding := PolicyBinding{
-			Alg:  "HS256",
-			Hash: pbstring,
-		}
+		policyBinding := createPolicyBinding(symKey, base64PolicyObject)
 
 		// encrypted metadata
 		// add meta data
@@ -637,6 +584,27 @@ func (s SDK) prepareManifest(ctx context.Context, t *TDFObject, tdfConfig TDFCon
 	t.manifest = manifest
 	t.aesGcm = gcm
 	return nil
+}
+
+// integrityAlgorithmString maps an IntegrityAlgorithm to its manifest
+// string form.
+func integrityAlgorithmString(a IntegrityAlgorithm) string {
+	switch a {
+	case GMAC:
+		return gmacIntegrityAlgorithm
+	default:
+		return hmacIntegrityAlgorithm
+	}
+}
+
+// createPolicyBinding produces an HMAC-SHA256 binding value keyed on the
+// symmetric key, over the base64-encoded policy object.
+func createPolicyBinding(symKey []byte, base64PolicyObject []byte) PolicyBinding {
+	policyBindingHash := hex.EncodeToString(ocrypto.CalculateSHA256Hmac(symKey, base64PolicyObject))
+	return PolicyBinding{
+		Alg:  hmacIntegrityAlgorithm,
+		Hash: string(ocrypto.Base64Encode([]byte(policyBindingHash))),
+	}
 }
 
 func encryptMetadata(symKey []byte, metaData string) (string, error) {
@@ -1059,32 +1027,40 @@ func (r *Reader) ReadAt(buf []byte, offset int64) (int, error) { //nolint:funlen
 		return 0, ErrTDFPayloadInvalidOffset
 	}
 
-	defaultSegmentSize := r.manifest.DefaultSegmentSize
-	start := offset / defaultSegmentSize
-	end := (offset + int64(len(buf)) + defaultSegmentSize - 1) / defaultSegmentSize // rounds up
-
-	firstSegment := start
-	lastSegment := end
-	if firstSegment > lastSegment {
-		return 0, ErrTDFPayloadReadFail
-	}
-
 	if offset > r.payloadSize {
 		return 0, ErrTDFPayloadReadFail
 	}
 
+	// Exclusive plaintext end of the request. Segment extents come from the
+	// per-segment plaintext sizes rather than DefaultSegmentSize: segments are
+	// not required to be uniformly sized, and a writer that emits varying
+	// sizes would otherwise be mapped onto the wrong segments here.
+	readEnd := offset + int64(len(buf))
+
 	isLegacyTDF := r.manifest.TDFVersion == ""
 	var decryptedBuf bytes.Buffer
-	var payloadReadOffset int64
-	for index, seg := range r.manifest.Segments {
-		// finish segments to decrypt
-		if int64(index) == lastSegment {
+	var payloadReadOffset int64 // ciphertext offset of seg within the payload
+	var segStart int64          // plaintext offset of seg
+	startIndex := int64(-1)     // offset of the request within decryptedBuf
+	for _, seg := range r.manifest.Segments {
+		segEnd := segStart + seg.Size
+
+		// Wholly before the request. The comparison is <= rather than < so
+		// that a request starting exactly on a segment boundary, or a
+		// zero-length request, does not pull in the preceding segment.
+		if segEnd <= offset {
+			payloadReadOffset += seg.EncryptedSize
+			segStart = segEnd
+			continue
+		}
+
+		// Wholly at or after the end of the request; nothing left to decrypt.
+		if segStart >= readEnd {
 			break
 		}
 
-		if firstSegment > int64(index) {
-			payloadReadOffset += seg.EncryptedSize
-			continue
+		if startIndex < 0 {
+			startIndex = offset - segStart
 		}
 
 		readBuf, err := r.tdfReader.ReadPayload(payloadReadOffset, seg.EncryptedSize)
@@ -1126,17 +1102,29 @@ func (r *Reader) ReadAt(buf []byte, offset int64) (int, error) { //nolint:funlen
 		}
 
 		payloadReadOffset += seg.EncryptedSize
+		segStart = segEnd
+	}
+
+	if startIndex < 0 {
+		startIndex = 0 // no segment intersected the request; bufLen is 0 below
 	}
 
 	var err error
 	bufLen := int64(len(buf))
-	if (offset + int64(len(buf))) > r.payloadSize {
+	if readEnd > r.payloadSize {
 		bufLen = r.payloadSize - offset
 		err = io.EOF
 	}
 
-	startIndex := offset - (firstSegment * defaultSegmentSize)
-	copy(buf[:bufLen], decryptedBuf.Bytes()[startIndex:startIndex+bufLen])
+	if bufLen > 0 {
+		plaintext := decryptedBuf.Bytes()
+		if startIndex+bufLen > int64(len(plaintext)) {
+			// Only reachable when a segment's declared Size disagrees with the
+			// number of bytes it actually decrypts to.
+			return 0, ErrSegSizeMismatch
+		}
+		copy(buf[:bufLen], plaintext[startIndex:startIndex+bufLen])
+	}
 	return int(bufLen), err
 }
 

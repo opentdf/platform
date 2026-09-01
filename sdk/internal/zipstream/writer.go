@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"sync"
+	"time"
 )
 
 const (
@@ -51,6 +52,7 @@ var (
 	ErrOutOfOrder       = errors.New("segment out of order")
 	ErrDuplicateSegment = errors.New("duplicate segment already written")
 	ErrSegmentMissing   = errors.New("segment missing")
+	ErrNoSegmentZero    = errors.New("segment 0 missing; it carries the payload local file header")
 	ErrInvalidSize      = errors.New("invalid size")
 	ErrZip64Required    = errors.New("ZIP64 required but disabled (Zip64Never)")
 )
@@ -60,6 +62,10 @@ type Config struct {
 	Zip64         Zip64Mode
 	MaxSegments   int
 	EnableLogging bool
+	// Now returns the current time for header/metadata timestamps.
+	// Defaults to time.Now; tests inject a pinned clock for
+	// deterministic ZIP output.
+	Now func() time.Time
 }
 
 // Option is a functional option for configuring writers
@@ -100,12 +106,24 @@ func WithLogging() Option {
 	}
 }
 
+// WithClock overrides the time source used to stamp ZIP headers and
+// segment metadata. Tests inject a pinned clock to make output byte-
+// for-byte deterministic.
+func WithClock(now func() time.Time) Option {
+	return func(c *Config) {
+		if now != nil {
+			c.Now = now
+		}
+	}
+}
+
 // defaultConfig returns default configuration
 func defaultConfig() *Config {
 	return &Config{
 		Zip64:         Zip64Auto,
 		MaxSegments:   defaultMaxSegments,
 		EnableLogging: false,
+		Now:           time.Now,
 	}
 }
 
@@ -114,6 +132,14 @@ func applyOptions(opts []Option) *Config {
 	cfg := defaultConfig()
 	for _, opt := range opts {
 		opt(cfg)
+	}
+	// Now is an exported field on an exported Config and Option is a
+	// bare func(*Config), so an option is free to clear it even though
+	// WithClock will not. Restore the default rather than let the
+	// writers panic on the first header stamp; NewSegmentMetadata
+	// already defends the same way.
+	if cfg.Now == nil {
+		cfg.Now = time.Now
 	}
 	return cfg
 }

@@ -161,13 +161,13 @@ func Start(f ...StartOptions) error {
 
 	// Set allowed public routes when platform is being extended
 	if len(startConfig.PublicRoutes) > 0 {
-		logger.Info("additional public routes added", slog.Any("routes", startConfig.PublicRoutes))
+		logger.Warn("additional public routes added", slog.Any("routes", startConfig.PublicRoutes))
 		cfg.Server.Auth.PublicRoutes = startConfig.PublicRoutes
 	}
 
 	// Set IPC reauthorization routes when platform is being extended
 	if len(startConfig.IPCReauthRoutes) > 0 {
-		logger.Info("additional IPC reauthorization routes added", slog.Any("routes", startConfig.IPCReauthRoutes))
+		logger.Warn("additional IPC reauthorization routes added", slog.Any("routes", startConfig.IPCReauthRoutes))
 		cfg.Server.Auth.IPCReauthRoutes = startConfig.IPCReauthRoutes
 	}
 
@@ -446,7 +446,7 @@ func setupERSConnection(cfg *config.Config, oidcconfig *auth.OIDCConfiguration, 
 
 	// OTel tracing and metrics for outbound ERS Connect RPCs (outermost interceptor)
 	if ersTraceInt, err := tracing.ConnectClientTraceInterceptor(); err != nil {
-		logger.Error("failed to create ERS trace interceptor", slog.String("error", err.Error()))
+		logger.Warn("failed to create ERS trace interceptor", slog.String("error", err.Error()))
 	} else {
 		ersConnectRPCConn.Options = append(ersConnectRPCConn.Options, connect.WithInterceptors(ersTraceInt))
 	}

@@ -981,14 +981,17 @@ func (p *Provider) tdf3Rewrap(ctx context.Context, requests []*kaspb.UnsignedRew
 		category, isInternal := classifyAccessError(ctx, accessErr)
 		// Terse, sensitive-payload-free line for the routine-denial flood case.
 		// Floods read as floods, not as a forest of stack traces.
-		p.Logger.InfoContext(
-			ctx,
-			"tdf3rewrap: access evaluation failed",
+		accessLogFields := []any{
 			slog.String("category", category),
 			slog.Bool("internal", isInternal),
 			slog.Int("policies", len(policies)),
 			slog.Int("requests", len(requests)),
-		)
+		}
+		if isInternal {
+			p.Logger.WarnContext(ctx, "tdf3rewrap: access evaluation failed", accessLogFields...)
+		} else {
+			p.Logger.InfoContext(ctx, "tdf3rewrap: access evaluation failed", accessLogFields...)
+		}
 		// Verbose / sensitive: only read when investigating one specific request.
 		p.Logger.DebugContext(
 			ctx,

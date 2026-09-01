@@ -32,7 +32,7 @@ func NewRegistration() *serviceregistry.Service[grpchealth.Checker] {
 					"endpoint": "/healthz",
 				})
 				if err != nil {
-					srp.Logger.Error("failed to set well-known config", slog.String("error", err.Error()))
+					srp.Logger.Warn("failed to set well-known config", slog.String("error", err.Error()))
 				}
 				hs := HealthService{logger: srp.Logger}
 				return hs, func(_ context.Context, mux *http.ServeMux) error {
@@ -76,7 +76,7 @@ func (s HealthService) Check(ctx context.Context, req *grpchealth.CheckRequest) 
 	case "all":
 		for service, check := range serviceHealthChecks {
 			if err := check(ctx); err != nil {
-				s.logger.ErrorContext(ctx,
+				s.logger.WarnContext(ctx,
 					"service is not ready",
 					slog.String("service", service),
 					slog.Any("error", err),
@@ -89,7 +89,7 @@ func (s HealthService) Check(ctx context.Context, req *grpchealth.CheckRequest) 
 	default:
 		if check, ok := serviceHealthChecks[req.Service]; ok {
 			if err := check(ctx); err != nil {
-				s.logger.ErrorContext(ctx,
+				s.logger.WarnContext(ctx,
 					"service is not ready",
 					slog.String("service", req.Service),
 					slog.Any("error", err),

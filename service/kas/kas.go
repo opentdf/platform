@@ -72,7 +72,7 @@ func NewRegistration() *serviceregistry.Service[kasconnect.AccessServiceHandler]
 						panic(fmt.Errorf("failed to determine KAS URL: %w", err))
 					}
 
-					srp.Logger.Debug("determined KAS URL", slog.String("kas_url", kasURL.String()))
+					srp.Logger.Info("determined KAS URL", slog.String("kas_url", kasURL.String()))
 
 					// Configure new delegation service
 					p.KeyDelegator = trust.NewDelegatingKeyService(NewPlatformKeyIndexer(srp.SDK, kasURL.String(), srp.Logger), srp.Logger, cacheClient)

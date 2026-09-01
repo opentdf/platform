@@ -591,7 +591,10 @@ func (c PolicyDBClient) UnsafeUpdateKey(ctx context.Context, existing *policy.Ka
 	if count == 0 {
 		return nil, db.ErrNotFound
 	} else if count > 1 {
-		c.logger.Warn("unsafeUpdateKey updated more than one row", slog.Int64("count", count))
+		c.logger.ErrorContext(ctx, "unsafeUpdateKey updated more than one row",
+			slog.String("key_id", id),
+			slog.Int64("count", count),
+		)
 	}
 
 	return c.GetKey(ctx, &kasregistry.GetKeyRequest_Id{
@@ -1055,7 +1058,10 @@ func (c PolicyDBClient) updateKeyInternal(ctx context.Context, params updateKeyP
 	if count == 0 {
 		return nil, db.ErrNotFound
 	} else if count > 1 {
-		c.logger.Warn("updateKey updated more than one row", slog.Int64("count", count))
+		c.logger.ErrorContext(ctx, "updateKey updated more than one row",
+			slog.Any("key_id", params.ID),
+			slog.Int64("count", count),
+		)
 	}
 
 	return c.GetKey(ctx, &kasregistry.GetKeyRequest_Id{

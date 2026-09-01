@@ -81,7 +81,7 @@ func NewRegistration() *serviceregistry.Service[authzV2Connect.AuthorizationServ
 				l.Debug("authorization service config", slog.Any("config", authZCfg.LogValue()))
 
 				if !authZCfg.Cache.Enabled {
-					l.Debug("entitlement policy cache is disabled")
+					l.Info("entitlement policy cache is disabled")
 					return as, nil
 				}
 

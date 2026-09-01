@@ -294,7 +294,7 @@ func (d *DelegatingKeyService) getKeyManager(ctx context.Context, cfg *policy.Ke
 	// Factory for 'name' not found.
 	// If 'name' was the defaultMode, _defKM will error if its factory is also missing.
 	// If 'name' was not the defaultMode, we fall back to the default manager.
-	d.l.Debug(
+	d.l.WarnContext(ctx,
 		"key manager factory not found for name, attempting to use/load default",
 		slog.Any("key_managers", allManagers),
 		slog.Any("requested_name", designation),

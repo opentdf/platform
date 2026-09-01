@@ -14,7 +14,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/opentdf/platform/lib/ocrypto"
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/sdk/internal/zipstream"
@@ -215,6 +214,11 @@ type ChunkedWriterConfig struct {
 	// fixedClock for deterministic ZIP output.
 	clock clock
 
+	// dek is a pre-generated Data Encryption Key. When nil the writer
+	// draws one from rand. SDK.CreateTDF presets it so that it can
+	// resolve key access before emitting any payload bytes.
+	dek []byte
+
 	// excludeVersion omits the schemaVersion field from the manifest.
 	// Set together with useHex by WithChunkedTargetMode; readers use
 	// the field's absence as the pre-4.3.0 marker, so the two must
@@ -233,6 +237,10 @@ type ChunkedWriterConfig struct {
 	// signature. Defaults to HS256.
 	integrityAlgorithm IntegrityAlgorithm
 
+	// keyAccess resolves the manifest policy and key access objects.
+	// Defaults to a splitterKeyAccess over splitter.
+	keyAccess keyAccessResolver
+
 	// rand is the entropy source used to generate the DEK. Defaults
 	// to crypto/rand.Reader.
 	rand io.Reader
@@ -241,8 +249,14 @@ type ChunkedWriterConfig struct {
 	// integrity hashes. Defaults to HS256.
 	segmentIntegrityAlgorithm IntegrityAlgorithm
 
+	// segmentSize is the plaintext segment size advertised in the
+	// manifest. Zero means "report the first segment's actual size",
+	// which is right when every segment is the same length.
+	segmentSize int64
+
 	// splitter maps attribute values to DEK splits at Finalize time.
-	// Defaults to DefaultKeySplitter (single-KAS only).
+	// Defaults to DefaultKeySplitter (single-KAS only). Ignored when
+	// keyAccess is set.
 	splitter KeySplitter
 
 	// useHex hex-encodes segment, root, and assertion signatures
@@ -327,6 +341,10 @@ type chunkedWriter struct {
 	// integrityAlgorithm is used for the root signature.
 	integrityAlgorithm IntegrityAlgorithm
 
+	// keyAccess resolves the manifest policy and key access objects
+	// for the DEK.
+	keyAccess keyAccessResolver
+
 	// manifest holds the finalized manifest for post-Finalize
 	// GetManifest calls.
 	manifest *Manifest
@@ -343,9 +361,9 @@ type chunkedWriter struct {
 	// segments records per-index Segment metadata (hash + sizes).
 	segments map[int]*Segment
 
-	// splitter converts attributes + DEK into key splits at
-	// Finalize time.
-	splitter KeySplitter
+	// segmentSize is the plaintext segment size to advertise in the
+	// manifest, or zero to infer it from the first segment.
+	segmentSize int64
 
 	// useHex selects the pre-4.3.0 doubly-encoded signature form.
 	// Read by WriteSegment, so it is fixed at construction rather
@@ -377,14 +395,29 @@ func NewChunkedWriter(_ context.Context, opts ...ChunkedWriterOption) (ChunkedWr
 			return nil, err
 		}
 	}
+	return newChunkedWriter(cfg)
+}
 
-	dek := make([]byte, kKeySize)
-	if _, err := io.ReadFull(cfg.rand, dek); err != nil {
-		return nil, fmt.Errorf("generate DEK: %w", err)
+// newChunkedWriter builds the writer from a fully-populated config.
+// SDK.CreateTDF calls this directly with the unexported knobs its
+// classic behavior needs — a preset DEK, key access resolved before
+// the first payload byte, a fixed segment size — rather than going
+// through the public option set.
+func newChunkedWriter(cfg ChunkedWriterConfig) (*chunkedWriter, error) {
+	dek := cfg.dek
+	if dek == nil {
+		dek = make([]byte, kKeySize)
+		if _, err := io.ReadFull(cfg.rand, dek); err != nil {
+			return nil, fmt.Errorf("generate DEK: %w", err)
+		}
 	}
 	block, err := cfg.cipherFactory(dek)
 	if err != nil {
 		return nil, fmt.Errorf("build segment cipher: %w", err)
+	}
+	keyAccess := cfg.keyAccess
+	if keyAccess == nil {
+		keyAccess = splitterKeyAccess{splitter: cfg.splitter}
 	}
 	return &chunkedWriter{
 		archiveWriter:             cfg.archiveFactory(cfg.clock),
@@ -394,9 +427,10 @@ func NewChunkedWriter(_ context.Context, opts ...ChunkedWriterOption) (ChunkedWr
 		initialAttributes:         cfg.initialAttributes,
 		initialDefaultKAS:         cfg.initialDefaultKAS,
 		integrityAlgorithm:        cfg.integrityAlgorithm,
+		keyAccess:                 keyAccess,
 		segmentIntegrityAlgorithm: cfg.segmentIntegrityAlgorithm,
 		segments:                  make(map[int]*Segment),
-		splitter:                  cfg.splitter,
+		segmentSize:               cfg.segmentSize,
 		useHex:                    cfg.useHex,
 	}, nil
 }
@@ -657,18 +691,10 @@ func (w *chunkedWriter) snapshotLocked(keep []int) (*chunkedSnapshot, error) {
 
 // buildManifest assembles the manifest from a snapshot. It reads no
 // mutable writer state and holds no lock: every other field it touches
-// (dek, splitter, the integrity algorithms, useHex) is fixed at
+// (dek, keyAccess, the integrity algorithms, useHex) is fixed at
 // construction.
 func (w *chunkedWriter) buildManifest(ctx context.Context, cfg *ChunkedFinalizeConfig, snap *chunkedSnapshot) (*Manifest, int64, int64, error) {
-	splits, err := w.splitter.Split(ctx, cfg.attributes, w.dek, cfg.defaultKAS)
-	if err != nil {
-		return nil, 0, 0, err
-	}
-	policyBytes, err := buildChunkedPolicy(cfg.attributes)
-	if err != nil {
-		return nil, 0, 0, err
-	}
-	kaos, err := buildChunkedKeyAccessObjects(splits, policyBytes, cfg.encryptedMetadata)
+	base64Policy, kaos, err := w.keyAccess.resolve(ctx, w.dek, cfg)
 	if err != nil {
 		return nil, 0, 0, err
 	}
@@ -676,7 +702,7 @@ func (w *chunkedWriter) buildManifest(ctx context.Context, cfg *ChunkedFinalizeC
 	encInfo := EncryptionInformation{
 		KeyAccessObjs: kaos,
 		KeyAccessType: kSplitKeyType,
-		Policy:        string(ocrypto.Base64Encode(policyBytes)),
+		Policy:        base64Policy,
 		Method: Method{
 			Algorithm:    kGCMCipherAlgorithm,
 			IsStreamable: true,
@@ -699,7 +725,15 @@ func (w *chunkedWriter) buildManifest(ctx context.Context, cfg *ChunkedFinalizeC
 		}
 		aggregate.Write(decoded)
 	}
-	if len(snap.segments) > 0 {
+	// A caller that knows the segment size says so, because the first
+	// segment's actual length is only the right answer when every
+	// segment is full — and the last one usually is not, so a
+	// single-segment TDF would otherwise advertise a short default.
+	switch {
+	case w.segmentSize > 0:
+		encInfo.DefaultSegmentSize = w.segmentSize
+		encInfo.DefaultEncryptedSegSize = w.segmentSize + gcmIvSize + aesBlockSize
+	case len(snap.segments) > 0:
 		encInfo.DefaultEncryptedSegSize = snap.segments[0].EncryptedSize
 		encInfo.DefaultSegmentSize = snap.segments[0].Size
 	}
@@ -782,66 +816,6 @@ func (w *chunkedWriter) segmentOrderLocked(keep []int) ([]int, error) {
 	out := make([]int, len(keep))
 	copy(out, keep)
 	return out, nil
-}
-
-// buildChunkedKeyAccessObjects wraps each split share to each KAS
-// listed by the splitter.
-func buildChunkedKeyAccessObjects(splits *SplitResult, policyBytes []byte, metadata string) ([]KeyAccess, error) {
-	if splits == nil || len(splits.Splits) == 0 {
-		return nil, errors.New("no splits produced")
-	}
-	base64Policy := ocrypto.Base64Encode(policyBytes)
-
-	var out []KeyAccess
-	for _, split := range splits.Splits {
-		// Policy binding and metadata are keyed on the split share, not
-		// on the KAS, so compute them once per split rather than once
-		// per KAS URL in an OR-group.
-		policyBinding := createPolicyBinding(split.Data, base64Policy)
-		var encMeta string
-		if metadata != "" {
-			m, err := encryptMetadata(split.Data, metadata)
-			if err != nil {
-				return nil, fmt.Errorf("encrypt metadata for split %s: %w", split.ID, err)
-			}
-			encMeta = m
-		}
-		for _, url := range split.KASURLs {
-			// A KAS named by a split but absent from KASPublicKeys is an
-			// error, not something to skip. Dropping it silently removes
-			// the only KAO that would have let that KAS unwrap this
-			// share; if every URL on the split is missing, the share
-			// becomes unrecoverable and the TDF undecryptable, with
-			// nothing in the output to say why.
-			pk, ok := splits.KASPublicKeys[url]
-			if !ok || pk.PEM == "" {
-				return nil, fmt.Errorf("splitID:[%s], kas:[%s]: %w", split.ID, url, errKasPubKeyMissing)
-			}
-			kao, err := createKeyAccess(pk.toKASInfo(), split.Data, policyBinding, encMeta, split.ID)
-			if err != nil {
-				return nil, fmt.Errorf("wrap key for %s: %w", url, err)
-			}
-			out = append(out, kao)
-		}
-	}
-	if len(out) == 0 {
-		return nil, errors.New("no valid key access objects generated")
-	}
-	return out, nil
-}
-
-// buildChunkedPolicy composes the TDF Policy document from attribute
-// values.
-func buildChunkedPolicy(values []*policy.Value) ([]byte, error) {
-	p := PolicyObject{UUID: uuid.NewString()}
-	p.Body.DataAttributes = make([]attributeObject, 0, len(values))
-	p.Body.Dissem = make([]string, 0)
-	for _, v := range values {
-		p.Body.DataAttributes = append(p.Body.DataAttributes, attributeObject{
-			Attribute: v.GetFqn(),
-		})
-	}
-	return json.Marshal(p)
 }
 
 // cloneChunkedManifest returns a shallow-deep copy safe to hand out.

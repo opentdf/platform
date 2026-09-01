@@ -59,7 +59,7 @@ func TestCreatePolicyBinding(t *testing.T) {
 			fixedKey[i] = byte(i)
 		}
 
-		binding := createPolicyBinding(fixedKey, ocrypto.Base64Encode([]byte(`{"uuid":"test"}`)))
+		binding := createPolicyBinding(fixedKey, string(ocrypto.Base64Encode([]byte(`{"uuid":"test"}`))))
 
 		assert.Equal(t,
 			"YzFjZTM3OWQ0Y2FiMTZkNmRhNzJkYjllYWQ2NGQ3Y2I0Y2E5YmRhY2FiOGMwNjg1ZmY5MmUzZjc0YWEyYzEyZA==",
@@ -67,7 +67,7 @@ func TestCreatePolicyBinding(t *testing.T) {
 	})
 
 	t.Run("binds with HS256 over base64 policy", func(t *testing.T) {
-		binding := createPolicyBinding(symKey, ocrypto.Base64Encode([]byte(policyJSON)))
+		binding := createPolicyBinding(symKey, string(ocrypto.Base64Encode([]byte(policyJSON))))
 
 		assert.Equal(t, hmacIntegrityAlgorithm, binding.Alg)
 		require.NotEmpty(t, binding.Hash)
@@ -76,8 +76,8 @@ func TestCreatePolicyBinding(t *testing.T) {
 	})
 
 	t.Run("different policies bind differently", func(t *testing.T) {
-		b1 := createPolicyBinding(symKey, ocrypto.Base64Encode([]byte(`{"policy":"test1"}`)))
-		b2 := createPolicyBinding(symKey, ocrypto.Base64Encode([]byte(`{"policy":"test2"}`)))
+		b1 := createPolicyBinding(symKey, string(ocrypto.Base64Encode([]byte(`{"policy":"test1"}`))))
+		b2 := createPolicyBinding(symKey, string(ocrypto.Base64Encode([]byte(`{"policy":"test2"}`))))
 		assert.NotEqual(t, b1.Hash, b2.Hash)
 	})
 
@@ -86,7 +86,7 @@ func TestCreatePolicyBinding(t *testing.T) {
 		_, err := rand.Read(otherKey)
 		require.NoError(t, err)
 
-		policy := ocrypto.Base64Encode([]byte(policyJSON))
+		policy := string(ocrypto.Base64Encode([]byte(policyJSON)))
 		assert.NotEqual(t,
 			createPolicyBinding(symKey, policy).Hash,
 			createPolicyBinding(otherKey, policy).Hash,

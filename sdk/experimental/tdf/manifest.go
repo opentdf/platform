@@ -15,6 +15,7 @@ import (
 // delegation that removes their last callers is a follow-up.
 const (
 	kGMACPayloadLength = 16
+	kKeySize           = 32
 	kSplitKeyType      = "split"
 	kPolicyBindingAlg  = "HS256"
 )

@@ -25,7 +25,7 @@ func TestTDFWithAssertion(t *testing.T) {
 		Statement: Statement{
 			Format: "json+stanag5636",
 			Schema: "urn:nato:stanag:5636:A:1:elements:json",
-			Value:  "{\"ocl\":{\"pol\":\"62c76c68-d73d-4628-8ccc-4c1e18118c22\",\"cls\":\"SECRET\",\"catl\":[{\"type\":\"P\",\"name\":\"Releasable To\",\"vals\":[\"usa\"]}],\"dcr\":\"2024-10-21T20:47:36Z\"},\"context\":{\"@base\":\"urn:nato:stanag:5636:A:1:elements:json\"}}",
+			Value:  []byte("{\"ocl\":{\"pol\":\"62c76c68-d73d-4628-8ccc-4c1e18118c22\",\"cls\":\"SECRET\",\"catl\":[{\"type\":\"P\",\"name\":\"Releasable To\",\"vals\":[\"usa\"]}],\"dcr\":\"2024-10-21T20:47:36Z\"},\"context\":{\"@base\":\"urn:nato:stanag:5636:A:1:elements:json\"}}"),
 		},
 	}
 
@@ -40,12 +40,12 @@ func TestTDFWithAssertion(t *testing.T) {
 	hashOfAssertion, err := assertion.GetHash()
 	require.NoError(t, err)
 
-	assert.Equal(t, "4a447a13c5a32730d20bdf7feecb9ffe16649bc731914b574d80035a3927f860", string(hashOfAssertion))
+	assert.Equal(t, "cf73d5df901bc81fc697594c4af0e528b859674ffcd34df4ba385f13a3579650", string(hashOfAssertion))
 }
 
 func TestTDFWithAssertionJsonObject(t *testing.T) {
 	// Define the assertion config with a JSON object in the statement value
-	value := `{
+	value := []byte(`{
 		"ocl": {
 			"pol": "2ccf11cb-6c9a-4e49-9746-a7f0a295945d",
 			"cls": "SECRET",
@@ -61,7 +61,7 @@ func TestTDFWithAssertionJsonObject(t *testing.T) {
 		"context": {
 			"@base": "urn:nato:stanag:5636:A:1:elements:json"
 		}
-	}`
+	}`)
 	assertionConfig := AssertionConfig{
 		ID:             "ab43266781e64b51a4c52ffc44d6152c",
 		Type:           "handling",
@@ -99,7 +99,7 @@ func TestTDFWithAssertionJsonObject(t *testing.T) {
 	hashOfAssertion, err := assertion.GetHash()
 	require.NoError(t, err)
 
-	expectedHash := "722dd40a90a0f7ec718fb156207a647e64daa43c0ae1f033033473a172c72aee"
+	expectedHash := "eef5daaa17ec25312f2f254d5471fbc1866fabbf52fbc07d4941cb1bc1f1f373"
 	assert.Equal(t, expectedHash, string(hashOfAssertion))
 }
 
@@ -187,7 +187,7 @@ func TestDeserializingAssertionWithStringInStatementValue(t *testing.T) {
 	err := json.Unmarshal([]byte(assertionVal), &assertion)
 	require.NoError(t, err, "Error deserializing the assertion with a JSON object in the statement value")
 
-	assert.Equal(t, "this is a value", assertion.Statement.Value)
+	assert.Equal(t, json.RawMessage(`"this is a value"`), assertion.Statement.Value)
 }
 
 func TestAssertionSignWithCryptoSigner(t *testing.T) {

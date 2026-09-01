@@ -126,6 +126,35 @@ setup() {
   assert_output "0"
 }
 
+# extra_field_len reads the extra field length from the payload's local file
+# header, at offset 28. A ZIP64 archive carries the extended information extra
+# field there; a ZIP32 one has none. od -tu1 rather than -tu2 because only GNU
+# od can be told the endianness.
+extra_field_len() {
+  local lo hi
+  read -r lo hi <<<"$(od -An -tu1 -j28 -N2 "$1")"
+  echo $((lo + hi * 256))
+}
+
+# Encrypting from a pipe no longer spools to disk, so the payload can no longer
+# be measured, so the archive has to be ZIP64 -- the choice is fixed before the
+# first segment goes out. A file is still measured and stays ZIP32. The layout
+# is what to assert on: both forms round-trip, so a quiet return to spooling
+# would show up nowhere else.
+@test "encrypt measures a file and streams a pipe" {
+  ./otdfctl encrypt -o "$TDF_OUT" $COMMON "$PLAIN"
+  [ "$(extra_field_len "$TDF_OUT")" -eq 0 ]
+
+  local piped_tdf="$BATS_TEST_TMPDIR/piped.tdf"
+  run bash -c "echo '$SECRET_TEXT' | ./otdfctl encrypt $COMMON >'$piped_tdf'"
+  assert_success
+  [ "$(extra_field_len "$piped_tdf")" -gt 0 ]
+
+  ./otdfctl decrypt -o "$RESULT" $COMMON "$piped_tdf"
+  run cat "$RESULT"
+  assert_output "$SECRET_TEXT"
+}
+
 # The point of DSPX-4499: peak RSS is bounded by segment size, not payload size.
 # Needs GNU time for 'Maximum resident set size'; BSD/shell time cannot report it.
 @test "encrypt and decrypt peak memory stay bounded on a large payload" {

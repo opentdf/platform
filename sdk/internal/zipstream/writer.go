@@ -24,9 +24,22 @@ type Writer interface {
 type SegmentWriter interface {
 	Writer
 	WriteSegment(ctx context.Context, index int, size uint64, crc32 uint32) ([]byte, error)
+	// Finalize writes the trailer (data descriptor, manifest, central
+	// directory) for the segments recorded so far. Segment 0 must be among
+	// them: it carries the payload local file header that every recorded
+	// offset is measured from. Finalize returns ErrNoSegmentZero when index 0
+	// was never written or was cleaned up, and ErrSegmentMissing when no
+	// segments remain at all -- none were written, or every one was cleaned
+	// up. Gaps between the remaining indices are accepted; order is inferred
+	// by sorting whichever indices are present.
 	Finalize(ctx context.Context, manifest []byte) ([]byte, error)
-	// CleanupSegment removes the presence marker for a segment index.
-	// Calling this before Finalize will cause IsComplete() to fail for that index.
+	// CleanupSegment drops a segment index, rolling back both its presence
+	// marker and the payload size it contributed. A cleaned-up index becomes
+	// indistinguishable from one that was never written: it falls out of the
+	// order Finalize infers, exactly as a gap in the write set would, and the
+	// caller must leave its bytes out of the assembled archive. Index 0 is the
+	// exception -- Finalize rejects its absence with ErrNoSegmentZero.
+	// Cleaning up an index that was never written is a no-op.
 	CleanupSegment(index int) error
 }
 
@@ -52,6 +65,7 @@ var (
 	ErrOutOfOrder       = errors.New("segment out of order")
 	ErrDuplicateSegment = errors.New("duplicate segment already written")
 	ErrSegmentMissing   = errors.New("segment missing")
+	ErrNoSegmentZero    = errors.New("segment 0 missing; it carries the payload local file header")
 	ErrInvalidSize      = errors.New("invalid size")
 	ErrZip64Required    = errors.New("ZIP64 required but disabled (Zip64Never)")
 )

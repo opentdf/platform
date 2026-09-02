@@ -341,7 +341,10 @@ func (w *Writer) WriteSegment(ctx context.Context, index int, data []byte) (*Seg
 //
 // Error conditions:
 //   - ErrAlreadyFinalized: Finalize already called
-//   - Missing segments: Gaps in segment indices (e.g., segments 0,1,3 written but 2 missing)
+//   - Missing segment 0: Index 0 carries the payload's ZIP local file header, which
+//     every recorded offset is measured from, so a write set that omits it is
+//     rejected. Gaps between the remaining indices are legal (e.g., segments 0,1,3
+//     with 2 missing); order is inferred by sorting whichever indices are present.
 //   - Key splitting failures: Invalid attributes or KAS configuration
 //   - Manifest generation errors: JSON marshaling failures
 //   - Archive finalization errors: ZIP structure generation failures

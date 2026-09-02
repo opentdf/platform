@@ -126,6 +126,29 @@ func (sw *segmentWriter) Finalize(ctx context.Context, manifest []byte) ([]byte,
 	default:
 	}
 
+	// Nothing arrived at all: report the general incomplete-input error
+	// rather than the segment-0-specific one below.
+	if len(sw.metadata.Segments) == 0 {
+		return nil, &Error{Op: "finalize", Type: "segment", Err: ErrSegmentMissing}
+	}
+
+	// Only segment 0 emits the payload's local file header, and every offset
+	// recorded below is measured from it: without it the manifest entry, the
+	// central directory, and the EOCD all overshoot by headerSize. The result
+	// is a corrupt archive rather than a clean failure -- under Zip64Always
+	// the trailer points past the end of the buffer, while under Zip64Auto it
+	// lands mid-archive, where some readers parse the manifest happily and
+	// only choke on the payload.
+	//
+	// This has to run before the order derivation below: Order is derived
+	// once and kept, so a caller that supplies segment 0 and retries must not
+	// inherit an order that already excluded it. IsComplete cannot catch the
+	// absence either, since that derived order is self-consistent by
+	// construction.
+	if _, ok := sw.metadata.Segments[0]; !ok {
+		return nil, &Error{Op: "finalize", Type: "segment", Err: ErrNoSegmentZero}
+	}
+
 	// If no explicit order was provided, derive order from present indices (sorted).
 	if len(sw.metadata.Order) == 0 {
 		order := make([]int, 0, len(sw.metadata.Segments))
@@ -139,7 +162,10 @@ func (sw *segmentWriter) Finalize(ctx context.Context, manifest []byte) ([]byte,
 		}
 	}
 
-	// Verify all segments are present
+	// Verify all segments are present. Unreachable with an order derived
+	// above -- that order is built from the present indices, so it is
+	// complete by construction, and the empty set already returned. Kept for
+	// a future caller that supplies an explicit order.
 	if !sw.metadata.IsComplete() {
 		return nil, &Error{Op: "finalize", Type: "segment", Err: ErrSegmentMissing}
 	}
@@ -222,20 +248,28 @@ func (sw *segmentWriter) Finalize(ctx context.Context, manifest []byte) ([]byte,
 	return buffer.Bytes(), nil
 }
 
-// CleanupSegment removes the presence marker for a segment index. Since payload
-// bytes are not retained, this only affects metadata tracking. Calling this
-// before Finalize will cause IsComplete() to fail for that index.
+// CleanupSegment implements SegmentWriter. Payload bytes are never retained, so
+// this only rolls back the metadata and size accounting the segment contributed.
 func (sw *segmentWriter) CleanupSegment(index int) error {
 	sw.mu.Lock()
 	defer sw.mu.Unlock()
 
-	// Remove segment from unprocessed map (no-op if already processed or not found)
-	if _, ok := sw.metadata.Segments[index]; ok {
-		delete(sw.metadata.Segments, index)
-		if sw.metadata.presentCount > 0 {
-			sw.metadata.presentCount--
-		}
+	// No-op if the index was never written or was already cleaned up.
+	seg, ok := sw.metadata.Segments[index]
+	if !ok {
+		return nil
 	}
+
+	delete(sw.metadata.Segments, index)
+	sw.metadata.presentCount--
+
+	// Undo everything the segment contributed, so that a cleaned-up index is
+	// indistinguishable from one that was never written. Leaving the sizes
+	// behind would make Finalize describe a payload larger than the one the
+	// caller can assemble, and the offsets it records would overshoot.
+	sw.metadata.TotalSize -= seg.Size
+	sw.payloadEntry.Size -= seg.Size
+	sw.payloadEntry.CompressedSize -= seg.Size
 
 	return nil
 }

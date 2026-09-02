@@ -47,11 +47,6 @@ func (m *MockKeyDetails) ID() trust.KeyIdentifier {
 	return ""
 }
 
-func (m *MockKeyDetails) KASURI() string {
-	args := m.Called()
-	return args.String(0)
-}
-
 func (m *MockKeyDetails) Algorithm() ocrypto.KeyType {
 	args := m.Called()
 	return ocrypto.KeyType(args.String(0))

@@ -62,10 +62,6 @@ func (k *KeyDetailsAdapter) ID() trust.KeyIdentifier {
 	return k.id
 }
 
-func (k *KeyDetailsAdapter) KASURI() string {
-	return ""
-}
-
 func (k *KeyDetailsAdapter) Algorithm() ocrypto.KeyType {
 	return k.algorithm
 }

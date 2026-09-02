@@ -40,9 +40,6 @@ type KeyDetails interface {
 	// ID returns the unique identifier for the key
 	ID() KeyIdentifier
 
-	// KASURI returns the URI of the KAS registration associated with the key.
-	KASURI() string
-
 	// Algorithm returns the algorithm used by the key
 	Algorithm() ocrypto.KeyType
 

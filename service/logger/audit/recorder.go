@@ -1,9 +1,7 @@
 package audit
 
 import (
-	"bytes"
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -19,8 +17,8 @@ var (
 	ErrProcessing   = errors.New("audit event processing failed")
 )
 
-// Recorder immediately records an immutable audit event. Implementations must
-// return only after the configured processor has accepted or rejected the event.
+// Recorder immediately records an audit event. Implementations must return only
+// after the configured processor has accepted or rejected the event.
 type Recorder interface {
 	Record(context.Context, Event) error
 }
@@ -30,6 +28,7 @@ type Recorder interface {
 // accepted by the intended destination or a durable recovery path.
 //
 // Implementations may be called concurrently and must honor context cancellation.
+// They must not mutate or retain maps, slices, or other reference data in Event.
 type Processor interface {
 	Process(context.Context, Event) error
 }
@@ -41,15 +40,12 @@ func (f ProcessorFunc) Process(ctx context.Context, event Event) error {
 	return f(ctx, event)
 }
 
-// Record snapshots, stamps, and validates an event before processing it under a
-// bounded context detached from request cancellation.
+// Record stamps and validates an event before processing it under a bounded
+// context detached from request cancellation. Callers must not mutate reference
+// data in event until Record returns.
 func (a *Logger) Record(ctx context.Context, event Event) error {
-	snapshot, err := snapshotEvent(event)
-	if err != nil {
-		return err
-	}
-	a.stampEvent(ctx, &snapshot)
-	if err := validateEvent(snapshot); err != nil {
+	a.stampEvent(ctx, &event)
+	if err := validateEvent(event); err != nil {
 		return err
 	}
 
@@ -60,34 +56,11 @@ func (a *Logger) Record(ctx context.Context, event Event) error {
 	recordCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), timeout)
 	defer cancel()
 
-	if err := a.process(recordCtx, snapshot); err != nil {
+	if err := a.process(recordCtx, event); err != nil {
 		a.diagnosticLogger().Error("audit processor failed", slog.Any("error", err))
 		return err
 	}
 	return nil
-}
-
-func snapshotEvent(event Event) (snapshot Event, snapshotErr error) { //nolint:nonamedreturns // recovery must replace both values
-	defer func() {
-		if recovered := recover(); recovered != nil {
-			snapshotErr = fmt.Errorf("%w: snapshot panic: %v", ErrInvalidEvent, recovered)
-		}
-	}()
-
-	encoded, err := json.Marshal(event)
-	if err != nil {
-		return Event{}, fmt.Errorf("%w: %w", ErrInvalidEvent, err)
-	}
-	decoder := json.NewDecoder(bytes.NewReader(encoded))
-	decoder.UseNumber()
-	if err := decoder.Decode(&snapshot); err != nil {
-		return Event{}, fmt.Errorf("%w: %w", ErrInvalidEvent, err)
-	}
-	snapshot.Verb = event.Verb
-	snapshot.ID = event.ID
-	snapshot.Phase = event.Phase
-	snapshot.Principal = event.Principal
-	return snapshot, nil
 }
 
 func (a *Logger) stampEvent(ctx context.Context, event *Event) {

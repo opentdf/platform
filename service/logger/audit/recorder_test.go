@@ -2,7 +2,6 @@ package audit
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"log/slog"
 	"sync"
@@ -21,17 +20,10 @@ func canonicalTestEvent() Event {
 		Object: Object{Type: "document", ID: "document-1"},
 		Action: Action{Type: "read", Result: "success"},
 		EventMetaData: EventMetadata{
-			"count": jsonNumber("9007199254740993"),
 			"owner": map[string]any{"id": "org-1"},
 		},
 		ClientInfo: ClientInfo{Platform: "test"},
 	}
-}
-
-type jsonNumber string
-
-func (n jsonNumber) MarshalJSON() ([]byte, error) {
-	return []byte(n), nil
 }
 
 func quietDiagnostics() Option {
@@ -60,6 +52,26 @@ func TestRecordUsesBoundedContextAfterRequestCancellation(t *testing.T) {
 	assert.Equal(t, TestActorID, processed.Actor.ID)
 	_, err := time.Parse(time.RFC3339, processed.Timestamp)
 	require.NoError(t, err)
+}
+
+func TestRecordStampsItsEventCopy(t *testing.T) {
+	event := canonicalTestEvent()
+	var processed Event
+	logger := CreateAuditLogger(*slog.Default(), WithProcessor(ProcessorFunc(
+		func(_ context.Context, event Event) error {
+			processed = event
+			return nil
+		},
+	)))
+
+	require.NoError(t, logger.Record(createTestContext(t), event))
+
+	assert.Equal(t, uuid.Nil, event.ID)
+	assert.Empty(t, event.Phase)
+	assert.Empty(t, event.RequestID)
+	assert.Empty(t, event.Timestamp)
+	assert.NotEqual(t, uuid.Nil, processed.ID)
+	assert.Equal(t, PhaseCompleted, processed.Phase)
 }
 
 func TestRecordRejectsInvalidRequiredFieldsBeforeProcessing(t *testing.T) {
@@ -151,55 +163,6 @@ func TestRecordReturnsProcessorDeadline(t *testing.T) {
 
 	require.ErrorIs(t, err, ErrProcessing)
 	require.ErrorIs(t, err, context.DeadlineExceeded)
-}
-
-func TestRecordRejectsUnencodableDataBeforeProcessing(t *testing.T) {
-	event := canonicalTestEvent()
-	event.EventMetaData["invalid"] = func() {}
-	calls := 0
-	logger := CreateAuditLogger(*slog.Default(), WithProcessor(ProcessorFunc(func(context.Context, Event) error {
-		calls++
-		return nil
-	})))
-
-	err := logger.Record(t.Context(), event)
-
-	require.ErrorIs(t, err, ErrInvalidEvent)
-	assert.Zero(t, calls)
-}
-
-func TestRecordSnapshotsCallerData(t *testing.T) {
-	event := canonicalTestEvent()
-	logger := CreateAuditLogger(*slog.Default(), WithProcessor(ProcessorFunc(
-		func(_ context.Context, processed Event) error {
-			processed.Object.ID = "mutated"
-			owner, ok := processed.EventMetaData["owner"].(map[string]any)
-			require.True(t, ok)
-			owner["id"] = "mutated"
-			return nil
-		},
-	)))
-
-	require.NoError(t, logger.Record(createTestContext(t), event))
-	assert.Equal(t, "document-1", event.Object.ID)
-	owner, ok := event.EventMetaData["owner"].(map[string]any)
-	require.True(t, ok)
-	assert.Equal(t, "org-1", owner["id"])
-}
-
-func TestRecordPreservesJSONNumbersInSnapshot(t *testing.T) {
-	var processed Event
-	logger := CreateAuditLogger(*slog.Default(), WithProcessor(ProcessorFunc(
-		func(_ context.Context, event Event) error {
-			processed = event
-			return nil
-		},
-	)))
-
-	require.NoError(t, logger.Record(createTestContext(t), canonicalTestEvent()))
-	count, ok := processed.EventMetaData["count"].(json.Number)
-	require.True(t, ok)
-	assert.Equal(t, "9007199254740993", count.String())
 }
 
 func TestRecordDoesNotTrustProducerPrincipal(t *testing.T) {

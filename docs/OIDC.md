@@ -36,7 +36,7 @@ OpenTDF deployments commonly involve two different discovery documents:
 | `<issuer>/.well-known/openid-configuration` | external OIDC provider | OIDC discovery for issuer metadata such as `issuer`, `token_endpoint`, and `jwks_uri` |
 | `<platform>/.well-known/opentdf-configuration` | OpenTDF | OpenTDF-specific metadata, including the resolved issuer and selected discovered IdP metadata, that clients use to bootstrap authentication |
 
-OpenTDF discovers the configured provider at startup and republishes selected metadata under `idp`, together with `platform_issuer`, in its own well-known configuration. `otdfctl` reads `idp.issuer`, `idp.authorization_endpoint`, and `idp.token_endpoint`, so it needs only the OpenTDF platform endpoint for IdP endpoint discovery instead of separate IdP endpoint configuration. The caller must still supply its client ID and any required credentials, and authentication still happens at the external IdP.
+OpenTDF discovers the configured provider at startup and republishes selected metadata under `idp`, together with `platform_issuer`, in its own well-known configuration. OpenTDF Policy Enforcement Points (PEPs) should use the SDK to read this platform configuration and bootstrap IdP endpoint discovery from only the OpenTDF platform endpoint, rather than requiring separate IdP endpoint configuration. A PEP must still supply its client ID and any required credentials, and authentication still happens at the external IdP.
 
 ## Relevant OIDC concepts in OpenTDF
 

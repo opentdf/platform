@@ -468,6 +468,72 @@ func TestSegmentWriter_FinalizeWithoutAnySegments(t *testing.T) {
 	writer.Close()
 }
 
+func TestSegmentWriter_CleanupOnlySegmentZero(t *testing.T) {
+	// Cleaning up the last remaining segment leaves nothing to finalize, so
+	// this reports the general incomplete-input error rather than the
+	// segment-0-specific one -- "nothing to assemble" is the more useful
+	// diagnosis than "the header is gone".
+	writer := NewSegmentTDFWriter(1)
+	ctx := t.Context()
+
+	_, err := writer.WriteSegment(ctx, 0, 5, crc32.ChecksumIEEE([]byte("first")))
+	require.NoError(t, err)
+
+	require.NoError(t, writer.CleanupSegment(0))
+
+	_, err = writer.Finalize(ctx, []byte("manifest"))
+	require.ErrorIs(t, err, ErrSegmentMissing)
+	require.NotErrorIs(t, err, ErrNoSegmentZero)
+
+	writer.Close()
+}
+
+func TestSegmentWriter_CleanupSegmentRollsBackSizeAccounting(t *testing.T) {
+	// A cleaned-up index has to become indistinguishable from one that was
+	// never written, which sparse write sets already allow. Without the
+	// rollback the recorded sizes still cover the removed segment while the
+	// CRC covers only the survivors, and Finalize emits a trailer describing
+	// a payload the caller cannot produce.
+	writer := NewSegmentTDFWriter(3)
+	ctx := t.Context()
+
+	segments := [][]byte{[]byte("first"), []byte("second"), []byte("third")}
+
+	var archive []byte
+	for index, data := range segments {
+		headerBytes, err := writer.WriteSegment(ctx, index, uint64(len(data)), crc32.ChecksumIEEE(data))
+		require.NoError(t, err)
+		archive = append(archive, headerBytes...)
+		if index != 1 {
+			archive = append(archive, data...)
+		}
+	}
+
+	require.NoError(t, writer.CleanupSegment(1))
+
+	finalBytes, err := writer.Finalize(ctx, []byte("manifest"))
+	require.NoError(t, err)
+	archive = append(archive, finalBytes...)
+
+	zipReader, err := zip.NewReader(bytes.NewReader(archive), int64(len(archive)))
+	require.NoError(t, err, "offsets must describe the payload the caller actually assembled")
+
+	payloadFile := findFileByName(zipReader, TDFPayloadFileName)
+	require.NotNil(t, payloadFile)
+
+	payloadReader, err := payloadFile.Open()
+	require.NoError(t, err)
+	defer payloadReader.Close()
+
+	// Reading through archive/zip validates the recorded CRC against the
+	// bytes present, which is what stale size accounting would break.
+	content, err := io.ReadAll(payloadReader)
+	require.NoError(t, err, "payload CRC must cover exactly the surviving segments")
+	assert.Equal(t, []byte("firstthird"), content)
+
+	writer.Close()
+}
+
 func TestSegmentWriter_CleanupSegment(t *testing.T) {
 	// Test memory cleanup functionality
 	writer := NewSegmentTDFWriter(3)

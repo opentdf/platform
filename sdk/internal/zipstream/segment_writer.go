@@ -162,7 +162,10 @@ func (sw *segmentWriter) Finalize(ctx context.Context, manifest []byte) ([]byte,
 		}
 	}
 
-	// Verify all segments are present
+	// Verify all segments are present. Unreachable with an order derived
+	// above -- that order is built from the present indices, so it is
+	// complete by construction, and the empty set already returned. Kept for
+	// a future caller that supplies an explicit order.
 	if !sw.metadata.IsComplete() {
 		return nil, &Error{Op: "finalize", Type: "segment", Err: ErrSegmentMissing}
 	}
@@ -245,22 +248,28 @@ func (sw *segmentWriter) Finalize(ctx context.Context, manifest []byte) ([]byte,
 	return buffer.Bytes(), nil
 }
 
-// CleanupSegment removes the presence marker for a segment index. Since payload
-// bytes are not retained, this only affects metadata tracking. Finalize infers
-// segment order from whichever indices survive, so a cleaned-up index drops out
-// of that order rather than making IsComplete fail; only index 0 is rejected,
-// with ErrNoSegmentZero. Size accounting on payloadEntry is not rolled back.
+// CleanupSegment implements SegmentWriter. Payload bytes are never retained, so
+// this only rolls back the metadata and size accounting the segment contributed.
 func (sw *segmentWriter) CleanupSegment(index int) error {
 	sw.mu.Lock()
 	defer sw.mu.Unlock()
 
-	// Remove segment from unprocessed map (no-op if already processed or not found)
-	if _, ok := sw.metadata.Segments[index]; ok {
-		delete(sw.metadata.Segments, index)
-		if sw.metadata.presentCount > 0 {
-			sw.metadata.presentCount--
-		}
+	// No-op if the index was never written or was already cleaned up.
+	seg, ok := sw.metadata.Segments[index]
+	if !ok {
+		return nil
 	}
+
+	delete(sw.metadata.Segments, index)
+	sw.metadata.presentCount--
+
+	// Undo everything the segment contributed, so that a cleaned-up index is
+	// indistinguishable from one that was never written. Leaving the sizes
+	// behind would make Finalize describe a payload larger than the one the
+	// caller can assemble, and the offsets it records would overshoot.
+	sw.metadata.TotalSize -= seg.Size
+	sw.payloadEntry.Size -= seg.Size
+	sw.payloadEntry.CompressedSize -= seg.Size
 
 	return nil
 }

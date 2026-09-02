@@ -29,16 +29,17 @@ type SegmentWriter interface {
 	// them: it carries the payload local file header that every recorded
 	// offset is measured from. Finalize returns ErrNoSegmentZero when index 0
 	// was never written or was cleaned up, and ErrSegmentMissing when no
-	// segments were written at all. Gaps between the remaining indices are
-	// accepted; order is inferred by sorting whichever indices are present.
+	// segments remain at all -- none were written, or every one was cleaned
+	// up. Gaps between the remaining indices are accepted; order is inferred
+	// by sorting whichever indices are present.
 	Finalize(ctx context.Context, manifest []byte) ([]byte, error)
-	// CleanupSegment removes the presence marker for a segment index.
-	// Finalize infers segment order from whichever indices survive, so a
-	// cleaned-up index simply drops out of that order rather than making
-	// Finalize report ErrSegmentMissing. Index 0 is the exception: Finalize
-	// rejects its absence with ErrNoSegmentZero. Payload size accounting is
-	// not rolled back, so finalizing after a cleanup declares more payload
-	// bytes than the caller has to assemble.
+	// CleanupSegment drops a segment index, rolling back both its presence
+	// marker and the payload size it contributed. A cleaned-up index becomes
+	// indistinguishable from one that was never written: it falls out of the
+	// order Finalize infers, exactly as a gap in the write set would, and the
+	// caller must leave its bytes out of the assembled archive. Index 0 is the
+	// exception -- Finalize rejects its absence with ErrNoSegmentZero.
+	// Cleaning up an index that was never written is a no-op.
 	CleanupSegment(index int) error
 }
 

@@ -100,11 +100,17 @@ func (p *KeyIndexer) FindKeyByAlgorithm(ctx context.Context, algorithm string, i
 }
 
 func (p *KeyIndexer) FindKeyByID(ctx context.Context, id trust.KeyIdentifier) (trust.KeyDetails, error) {
+	return p.FindKeyByIDWithKASURI(ctx, id, "")
+}
+
+// FindKeyByIDWithKASURI returns a key from the specified KAS registration.
+// If kasURI is empty, the indexer's configured KAS URI is used.
+func (p *KeyIndexer) FindKeyByIDWithKASURI(ctx context.Context, id trust.KeyIdentifier, kasURI string) (trust.KeyDetails, error) {
 	req := &kasregistry.GetKeyRequest{
 		Identifier: &kasregistry.GetKeyRequest_Key{
 			Key: &kasregistry.KasKeyIdentifier{
 				Identifier: &kasregistry.KasKeyIdentifier_Uri{
-					Uri: p.kasURI,
+					Uri: p.kasURIOrDefault(kasURI),
 				},
 				Kid: string(id),
 			},
@@ -123,10 +129,16 @@ func (p *KeyIndexer) FindKeyByID(ctx context.Context, id trust.KeyIdentifier) (t
 }
 
 func (p *KeyIndexer) ListKeys(ctx context.Context) ([]trust.KeyDetails, error) {
-	return p.ListKeysWith(ctx, trust.ListKeyOptions{LegacyOnly: false})
+	return p.ListKeysWithKASURI(ctx, trust.ListKeyOptions{LegacyOnly: false}, "")
 }
 
 func (p *KeyIndexer) ListKeysWith(ctx context.Context, opts trust.ListKeyOptions) ([]trust.KeyDetails, error) {
+	return p.ListKeysWithKASURI(ctx, opts, "")
+}
+
+// ListKeysWithKASURI returns keys from the specified KAS registration.
+// If kasURI is empty, the indexer's configured KAS URI is used.
+func (p *KeyIndexer) ListKeysWithKASURI(ctx context.Context, opts trust.ListKeyOptions, kasURI string) ([]trust.KeyDetails, error) {
 	var legacyOnly *bool
 	if opts.LegacyOnly {
 		legacyOnly = &opts.LegacyOnly
@@ -134,7 +146,7 @@ func (p *KeyIndexer) ListKeysWith(ctx context.Context, opts trust.ListKeyOptions
 
 	req := &kasregistry.ListKeysRequest{
 		KasFilter: &kasregistry.ListKeysRequest_KasUri{
-			KasUri: p.kasURI,
+			KasUri: p.kasURIOrDefault(kasURI),
 		},
 		Legacy: legacyOnly,
 	}
@@ -152,6 +164,13 @@ func (p *KeyIndexer) ListKeysWith(ctx context.Context, opts trust.ListKeyOptions
 	}
 
 	return keys, nil
+}
+
+func (p *KeyIndexer) kasURIOrDefault(kasURI string) string {
+	if kasURI == "" {
+		return p.kasURI
+	}
+	return kasURI
 }
 
 func (p *KeyAdapter) ID() trust.KeyIdentifier {

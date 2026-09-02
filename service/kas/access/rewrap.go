@@ -709,6 +709,7 @@ func (p *Provider) verifyRewrapRequests(ctx context.Context, req *kaspb.Unsigned
 
 		var dek ocrypto.ProtectedKey
 		var err error
+		kasURI := kao.GetKeyAccessObject().GetKasUrl()
 		switch kao.GetKeyAccessObject().GetKeyType() {
 		case "ec-wrapped":
 
@@ -787,7 +788,7 @@ func (p *Provider) verifyRewrapRequests(ctx context.Context, req *kaspb.Unsigned
 			}
 
 			kid := trust.KeyIdentifier(kao.GetKeyAccessObject().GetKid())
-			dek, err = p.KeyDelegator.Decrypt(ctx, kid, kao.GetKeyAccessObject().GetWrappedKey(), compressedKey)
+			dek, err = p.KeyDelegator.Decrypt(ctx, kid, kasURI, kao.GetKeyAccessObject().GetWrappedKey(), compressedKey)
 			if err != nil {
 				p.Logger.WarnContext(ctx, "failed to decrypt EC key", slog.Any("error", err))
 				failedKAORewrap(results, kao, err400("bad request"))
@@ -801,7 +802,7 @@ func (p *Provider) verifyRewrapRequests(ctx context.Context, req *kaspb.Unsigned
 			}
 
 			kid := trust.KeyIdentifier(kao.GetKeyAccessObject().GetKid())
-			dek, err = p.KeyDelegator.Decrypt(ctx, kid, kao.GetKeyAccessObject().GetWrappedKey(), nil)
+			dek, err = p.KeyDelegator.Decrypt(ctx, kid, kasURI, kao.GetKeyAccessObject().GetWrappedKey(), nil)
 			if err != nil {
 				p.Logger.WarnContext(ctx, "failed to decrypt hybrid key", slog.Any("error", err))
 				failedKAORewrap(results, kao, err400("bad request"))
@@ -815,7 +816,7 @@ func (p *Provider) verifyRewrapRequests(ctx context.Context, req *kaspb.Unsigned
 			}
 
 			kid := trust.KeyIdentifier(kao.GetKeyAccessObject().GetKid())
-			dek, err = p.KeyDelegator.Decrypt(ctx, kid, kao.GetKeyAccessObject().GetWrappedKey(), nil)
+			dek, err = p.KeyDelegator.Decrypt(ctx, kid, kasURI, kao.GetKeyAccessObject().GetWrappedKey(), nil)
 			if err != nil {
 				p.Logger.WarnContext(ctx, "failed to decrypt ML-KEM key", slog.Any("error", err))
 				failedKAORewrap(results, kao, err400("bad request"))
@@ -827,7 +828,7 @@ func (p *Provider) verifyRewrapRequests(ctx context.Context, req *kaspb.Unsigned
 				kid := trust.KeyIdentifier(kao.GetKeyAccessObject().GetKid())
 				kidsToCheck = []trust.KeyIdentifier{kid}
 			} else {
-				kidsToCheck = p.listLegacyKeys(ctx)
+				kidsToCheck = p.listLegacyKeys(ctx, kasURI)
 				if len(kidsToCheck) == 0 {
 					p.Logger.WarnContext(ctx, "failure to find legacy kids for rsa")
 					failedKAORewrap(results, kao, err400("no legacy key IDs found"))
@@ -835,13 +836,13 @@ func (p *Provider) verifyRewrapRequests(ctx context.Context, req *kaspb.Unsigned
 				}
 			}
 
-			dek, err = p.KeyDelegator.Decrypt(ctx, kidsToCheck[0], kao.GetKeyAccessObject().GetWrappedKey(), nil)
+			dek, err = p.KeyDelegator.Decrypt(ctx, kidsToCheck[0], kasURI, kao.GetKeyAccessObject().GetWrappedKey(), nil)
 			for _, kid := range kidsToCheck[1:] {
 				p.Logger.WarnContext(ctx, "continue paging through legacy KIDs for kid free kao", slog.Any("error", err))
 				if err == nil {
 					break
 				}
-				dek, err = p.KeyDelegator.Decrypt(ctx, kid, kao.GetKeyAccessObject().GetWrappedKey(), nil)
+				dek, err = p.KeyDelegator.Decrypt(ctx, kid, kasURI, kao.GetKeyAccessObject().GetWrappedKey(), nil)
 			}
 		default:
 			// handle unsupported key types
@@ -911,7 +912,7 @@ func (p *Provider) verifyRewrapRequests(ctx context.Context, req *kaspb.Unsigned
 	return policy, results, nil
 }
 
-func (p *Provider) listLegacyKeys(ctx context.Context) []trust.KeyIdentifier {
+func (p *Provider) listLegacyKeys(ctx context.Context, kasURI string) []trust.KeyIdentifier {
 	var kidsToCheck []trust.KeyIdentifier
 	p.Logger.InfoContext(ctx, "kid free kao")
 	if len(p.Keyring) > 0 {
@@ -924,7 +925,7 @@ func (p *Provider) listLegacyKeys(ctx context.Context) []trust.KeyIdentifier {
 		return kidsToCheck
 	}
 
-	k, err := p.KeyDelegator.ListKeysWith(ctx, trust.ListKeyOptions{LegacyOnly: true})
+	k, err := p.KeyDelegator.ListKeysWithKASURI(ctx, trust.ListKeyOptions{LegacyOnly: true}, kasURI)
 	if err != nil {
 		p.Logger.WarnContext(ctx, "checkpoint KeyIndex.ListKeys failed", slog.Any("error", err))
 	} else {

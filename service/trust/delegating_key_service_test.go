@@ -129,6 +129,11 @@ func (m *MockKeyDetails) ID() KeyIdentifier {
 	return KeyIdentifier("unknown")
 }
 
+func (m *MockKeyDetails) KASURI() string {
+	args := m.Called()
+	return args.String(0)
+}
+
 func (m *MockKeyDetails) Algorithm() ocrypto.KeyType {
 	args := m.Called()
 	return ocrypto.KeyType(args.String(0))

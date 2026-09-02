@@ -102,7 +102,8 @@ type KeyIndexTestSuite struct {
 func (s *KeyIndexTestSuite) SetupTest() {
 	s.rsaKey = &KeyAdapter{
 		key: &policy.KasKey{
-			KasId: "test-kas-id",
+			KasId:  "test-kas-id",
+			KasUri: "https://kas.example.com",
 			Key: &policy.AsymmetricKey{
 				Id:           "test-id",
 				KeyId:        "test-key-id",
@@ -126,6 +127,7 @@ func (s *KeyIndexTestSuite) TearDownTest() {}
 
 func (s *KeyIndexTestSuite) TestKeyDetails() {
 	s.Equal("test-key-id", string(s.rsaKey.ID()))
+	s.Equal("https://kas.example.com", s.rsaKey.KASURI())
 	s.Equal(ocrypto.RSA2048Key, s.rsaKey.Algorithm())
 	s.False(s.rsaKey.IsLegacy())
 	s.Equal("openbao", s.rsaKey.System())

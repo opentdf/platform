@@ -177,6 +177,10 @@ func (p *KeyAdapter) ID() trust.KeyIdentifier {
 	return trust.KeyIdentifier(p.key.GetKey().GetKeyId())
 }
 
+func (p *KeyAdapter) KASURI() string {
+	return p.key.GetKasUri()
+}
+
 // Might need to convert this to a standard format
 func (p *KeyAdapter) Algorithm() ocrypto.KeyType {
 	kt, err := sdk.PolicyAlgorithmToKeyType(p.key.GetKey().GetKeyAlgorithm())

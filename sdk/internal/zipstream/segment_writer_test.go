@@ -10,6 +10,7 @@ import (
 	"hash/crc32"
 	"io"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -517,4 +518,111 @@ func benchmarkSegmentWriter(b *testing.B, name string, writeOrder []int) {
 			writer.Close()
 		}
 	})
+}
+
+// TestApplyOptionsRestoresNilClock covers an option clearing Config.Now.
+// Now is exported on an exported Config and Option is a bare
+// func(*Config), so nothing stops an option from doing this; without a
+// restore the first header stamp panics in NewSegmentTDFWriter.
+func TestApplyOptionsRestoresNilClock(t *testing.T) {
+	clearClock := func(c *Config) { c.Now = nil }
+
+	cfg := applyOptions([]Option{clearClock})
+	require.NotNil(t, cfg.Now)
+	assert.False(t, cfg.Now().IsZero())
+
+	assert.NotPanics(t, func() {
+		NewSegmentTDFWriter(1, clearClock)
+	})
+}
+
+// TestMSDosTimeDateClampsOutOfRangeYears pins the clamping behaviour for
+// years the MS-DOS date cannot hold. The "wraps to" column is what the
+// unclamped encoder produced, and is the reason clamping exists: every
+// one of those is a silently wrong date, not a failure.
+func TestMSDosTimeDateClampsOutOfRangeYears(t *testing.T) {
+	for _, tc := range []struct {
+		name    string
+		in      time.Time
+		want    time.Time
+		wrapsTo string
+	}{
+		{
+			name:    "unix epoch",
+			in:      time.Unix(0, 0).UTC(),
+			want:    time.Date(zipBaseYear, time.January, 1, 0, 0, 0, 0, time.UTC),
+			wrapsTo: "2098-01-01",
+		},
+		{
+			name:    "zero time",
+			in:      time.Time{},
+			want:    time.Date(zipBaseYear, time.January, 1, 0, 0, 0, 0, time.UTC),
+			wrapsTo: "2049-01-01",
+		},
+		{
+			name: "one second before the base year",
+			in:   time.Date(zipBaseYear-1, time.December, 31, 23, 59, 59, 0, time.UTC),
+			want: time.Date(zipBaseYear, time.January, 1, 0, 0, 0, 0, time.UTC),
+		},
+		{
+			name: "past the last representable year",
+			in:   time.Date(zipMaxYear+1, time.January, 1, 0, 0, 0, 0, time.UTC),
+			want: time.Date(zipMaxYear, time.December, 31, 23, 59, 58, 0, time.UTC),
+		},
+		{
+			name: "in range is untouched",
+			in:   time.Date(2024, time.June, 1, 12, 30, 8, 0, time.UTC),
+			want: time.Date(2024, time.June, 1, 12, 30, 8, 0, time.UTC),
+		},
+		{
+			name: "first representable instant",
+			in:   time.Date(zipBaseYear, time.January, 1, 0, 0, 0, 0, time.UTC),
+			want: time.Date(zipBaseYear, time.January, 1, 0, 0, 0, 0, time.UTC),
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			dosTime, dosDate := msDosTimeDate(tc.in)
+
+			wantTime, wantDate := encodeMSDos(tc.want)
+			assert.Equal(t, wantDate, dosDate, "date; unclamped this wrapped to %s", tc.wrapsTo)
+			assert.Equal(t, wantTime, dosTime, "time")
+		})
+	}
+}
+
+// encodeMSDos packs t without any clamping, so the expectations above are
+// derived independently of the code under test.
+func encodeMSDos(t time.Time) (uint16, uint16) {
+	dosTime := t.Hour()<<11 | t.Minute()<<5 | t.Second()>>1
+	dosDate := (t.Year()-zipBaseYear)<<9 | int(t.Month())<<5 | t.Day()
+	return uint16(dosTime), uint16(dosDate)
+}
+
+// TestWriterClampsOutOfRangeClock drives a full archive with an epoch
+// clock and reads the timestamps back through archive/zip, covering the
+// WithClock -> local header -> central directory path end to end.
+func TestWriterClampsOutOfRangeClock(t *testing.T) {
+	ctx := t.Context()
+	writer := NewSegmentTDFWriter(1, WithClock(func() time.Time { return time.Unix(0, 0).UTC() }))
+
+	payload := []byte("payload")
+	segmentBytes, err := writer.WriteSegment(ctx, 0, uint64(len(payload)), crc32.ChecksumIEEE(payload))
+	require.NoError(t, err)
+
+	var allBytes []byte
+	allBytes = append(allBytes, segmentBytes...)
+	allBytes = append(allBytes, payload...)
+
+	finalBytes, err := writer.Finalize(ctx, []byte(`{"manifest":true}`))
+	require.NoError(t, err)
+	allBytes = append(allBytes, finalBytes...)
+
+	zipReader, err := zip.NewReader(bytes.NewReader(allBytes), int64(len(allBytes)))
+	require.NoError(t, err, "epoch clock should still produce a readable ZIP")
+	require.Len(t, zipReader.File, 2)
+
+	for _, f := range zipReader.File {
+		assert.Equal(t, zipBaseYear, f.Modified.Year(),
+			"%s should be clamped to the base year, not wrapped into the future", f.Name)
+	}
 }

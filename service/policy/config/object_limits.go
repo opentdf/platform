@@ -11,6 +11,7 @@ import (
 )
 
 const (
+	ObjectTypeNamespaces                          = "namespaces"
 	ObjectTypeAttributeDefinitionsPerNamespace    = "attribute definitions per namespace"
 	ObjectTypeAttributeValuesPerDefinition        = "attribute values per definition"
 	ObjectTypeResourceMappingGroupsPerNamespace   = "resource mapping groups per namespace"
@@ -29,6 +30,7 @@ var ErrObjectLimitExceeded = errors.New("policy object limit exceeded")
 // MaxObjectCounts configures maximum policy object counts. Zero disables an
 // individual maximum so existing OpenTDF deployments remain unlimited by default.
 type MaxObjectCounts struct {
+	Namespaces                          int64 `mapstructure:"namespaces" default:"0"`
 	AttributeDefinitionsPerNamespace    int64 `mapstructure:"attribute_definitions_per_namespace" default:"0"`
 	AttributeValuesPerDefinition        int64 `mapstructure:"attribute_values_per_definition" default:"0"`
 	ResourceMappingGroupsPerNamespace   int64 `mapstructure:"resource_mapping_groups_per_namespace" default:"0"`
@@ -43,6 +45,7 @@ type MaxObjectCounts struct {
 
 func (l MaxObjectCounts) Validate() error {
 	limits := map[string]int64{
+		"namespaces":                              l.Namespaces,
 		"attribute_definitions_per_namespace":     l.AttributeDefinitionsPerNamespace,
 		"attribute_values_per_definition":         l.AttributeValuesPerDefinition,
 		"resource_mapping_groups_per_namespace":   l.ResourceMappingGroupsPerNamespace,

@@ -34,6 +34,22 @@ func (q *Queries) assignPublicKeyToNamespace(ctx context.Context, arg assignPubl
 	return i, err
 }
 
+const countNamespaces = `-- name: countNamespaces :one
+SELECT COUNT(*)
+FROM attribute_namespaces
+`
+
+// countNamespaces
+//
+//	SELECT COUNT(*)
+//	FROM attribute_namespaces
+func (q *Queries) countNamespaces(ctx context.Context) (int64, error) {
+	row := q.db.QueryRow(ctx, countNamespaces)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const createNamespace = `-- name: createNamespace :one
 INSERT INTO attribute_namespaces (name, metadata)
 VALUES ($1, $2)

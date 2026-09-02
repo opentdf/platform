@@ -12,6 +12,7 @@ func Test_GetSharedPolicyConfig_MaxObjectCountsDecode(t *testing.T) {
 
 	cfg, err := GetSharedPolicyConfig(serviceconfig.ServiceConfig{
 		"max_object_counts": map[string]any{
+			"namespaces":                              11,
 			"attribute_definitions_per_namespace":     1,
 			"attribute_values_per_definition":         2,
 			"resource_mapping_groups_per_namespace":   3,
@@ -26,6 +27,7 @@ func Test_GetSharedPolicyConfig_MaxObjectCountsDecode(t *testing.T) {
 	})
 	require.NoError(t, err)
 	require.Equal(t, MaxObjectCounts{
+		Namespaces:                          11,
 		AttributeDefinitionsPerNamespace:    1,
 		AttributeValuesPerDefinition:        2,
 		ResourceMappingGroupsPerNamespace:   3,

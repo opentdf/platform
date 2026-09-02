@@ -48,6 +48,7 @@ services:
   #   list_request_limit_default: 1000
   #   list_request_limit_max: 2500
   #   max_object_counts:
+  #     namespaces: 0
   #     attribute_definitions_per_namespace: 0
   #     attribute_values_per_definition: 0
   #     resource_mapping_groups_per_namespace: 0

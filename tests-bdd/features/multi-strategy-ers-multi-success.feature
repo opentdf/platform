@@ -1,13 +1,16 @@
 @multi-strategy-ers-multi-success @stateless
-Feature: Multiple successful strategies under continue build multi-entity chain
-  Validate that failure_strategy "continue" keeps evaluating strategies after a
-  successful match, building a richer entity chain via CreateEntityChainsFromTokens.
-  When both claims and LDAP strategies succeed for the same JWT token, the chain
-  contains entities from both strategies. Each entity is evaluated independently
-  for authorization (AND semantics), so both must be entitled for PERMIT.
+Feature: First successful strategy wins under continue (ADR: first-match-wins)
+  Per the multi-strategy ERS ADR, failure_strategy only controls error handling:
+    - "continue": try the next strategy if the current one fails, stop at first success
+    - "fail_fast": stop immediately on any failure
+  In both modes, the first successful strategy returns and no further strategies run.
+  See: adr/decisions/2025-07-31-multi-strategy-entity-resolution-service.md
 
-  This covers Jake's gap analysis row #4: no existing test verifies the resulting
-  multi-entity chain when two strategies both succeed under continue.
+  BUG: The current code (registration.go:297-304) continues running strategies
+  after a success under "continue", building a multi-entity chain. This diverges
+  from the ADR. Scenario 3 is an intentionally-failing test that exposes this bug.
+
+  This covers Jake's gap analysis row #4.
 
   Background:
     Given an LDAP directory with test users
@@ -52,14 +55,14 @@ Feature: Multiple successful strategies under continue build multi-entity chain
       """
     And a local platform with inline ERS configuration
 
-  Scenario: Both strategies succeed — multi-entity chain built, both entities entitled → PERMIT
+  Scenario: First strategy succeeds — user entitled via first-match entity → PERMIT
     Given I submit a request to create a namespace with name "multi-success.test" and reference id "ns_ms"
     And I send a request to create an attribute with:
       | namespace_id | name       | rule  | values                         |
       | ns_ms        | department | anyOf | engineering,marketing,security |
     Then the response should be successful
-    # Subject mapping uses .username which both claims and LDAP entities output.
-    # This ensures both entities in the multi-entity chain are entitled (AND semantics).
+    # Subject mapping uses .username — the claims strategy (listed first) outputs this.
+    # Per ADR, claims succeeds and LDAP should not run. PERMIT from single entity.
     Given a condition group referenced as "cg_ms" with an "or" operator with conditions:
       | selector_value | operator | values |
       | .username      | in       | alice  |
@@ -69,25 +72,20 @@ Feature: Multiple successful strategies under continue build multi-entity chain
       | reference_id | attribute_value                                             | condition_set_name | standard actions | custom actions |
       | sm_ms        | https://multi-success.test/attr/department/value/engineering | scs_ms             | read             |                |
     Then the response should be successful
-    # Alice's token triggers both strategies under continue:
-    #   1. Claims strategy outputs {username: alice}
-    #   2. LDAP strategy finds alice → outputs {department: engineering, username: alice}
-    # Both entities have username=alice → both match subject mapping → PERMIT
-    # This proves continue builds a 2-entity chain (not just the first match).
     Given a user access token for "alice" stored as "alice_token"
     When I send a decision request for token "alice_token" for "read" action on resource "https://multi-success.test/attr/department/value/engineering"
     Then the response should be successful
     And I should get a "PERMIT" decision response
 
-  Scenario: Both strategies succeed — user genuinely not entitled in any entity → DENY
+  Scenario: First strategy succeeds — user not entitled via first-match entity → DENY
     Given I submit a request to create a namespace with name "multi-success-deny.test" and reference id "ns_msd"
     And I send a request to create an attribute with:
       | namespace_id | name       | rule  | values                         |
       | ns_msd       | department | anyOf | engineering,marketing,security |
     Then the response should be successful
-    # Subject mapping requires department=engineering. Claims entity doesn't output
-    # department so it fails entitlement. Even though LDAP entity has department=operations,
-    # both entities must pass (AND) → DENY.
+    # Subject mapping checks .department — claims strategy (first match) does not
+    # output department. Per ADR, claims succeeds and returns, LDAP never runs.
+    # Even though LDAP would provide department=operations for eve, it's irrelevant.
     Given a condition group referenced as "cg_msd" with an "or" operator with conditions:
       | selector_value | operator | values      |
       | .department    | in       | engineering |
@@ -97,34 +95,28 @@ Feature: Multiple successful strategies under continue build multi-entity chain
       | reference_id | attribute_value                                                  | condition_set_name | standard actions | custom actions |
       | sm_msd       | https://multi-success-deny.test/attr/department/value/engineering | scs_msd            | read             |                |
     Then the response should be successful
-    # Eve's token also triggers both strategies:
-    #   1. Claims entity: no department → not entitled
-    #   2. LDAP entity: department=operations (not engineering) → not entitled
-    # Both entities fail → DENY
     Given a user access token for "eve" stored as "eve_token"
     When I send a decision request for token "eve_token" for "read" action on resource "https://multi-success-deny.test/attr/department/value/engineering"
     Then the response should be successful
     And I should get a "DENY" decision response
 
-  Scenario: LDAP entity entitled but claims entity lacks attribute → DENY (AND semantics gap)
-    # Demonstrates the AND semantics limitation with a realistic customer scenario:
-    #   A customer uses claims strategy for identity/routing and LDAP for department.
-    #   They create a subject mapping on .department — the attribute only LDAP provides.
-    #   Even though alice's LDAP entity has department=engineering (entitled),
-    #   the claims entity has no department attribute at all, so it fails entitlement.
-    #   AND semantics: both must pass → DENY.
+  Scenario: BUG — continue runs strategies after first success, building unintended multi-entity chain
+    # Per ADR, continue should stop at first success. But the current code
+    # (registration.go:297-304) keeps running and builds a multi-entity chain.
+    # This causes AND semantics to apply: all entities must be independently entitled.
     #
-    # This is surprising because the customer's intent is "use LDAP for department info"
-    # but the claims entity (which only provides routing) vetoes the decision.
-    # The multi-entity chain was designed for cross-category entities (ENVIRONMENT + SUBJECT),
-    # not for aggregating claims from two SUBJECT strategies.
+    # Customer intent: claims for routing, LDAP for department.
+    # Subject mapping: .department in ["engineering"]
+    # Expected: PERMIT — LDAP has department=engineering for alice.
+    # Actual: DENY — claims entity has no .department, AND semantics vetoes.
+    #
+    # This test asserts PERMIT (the correct ADR behavior) and intentionally fails
+    # against the current buggy implementation.
     Given I submit a request to create a namespace with name "and-semantics-gap.test" and reference id "ns_asg"
     And I send a request to create an attribute with:
       | namespace_id | name       | rule  | values                         |
       | ns_asg       | department | anyOf | engineering,marketing,security |
     Then the response should be successful
-    # Subject mapping checks .department — only the LDAP entity outputs this.
-    # The claims entity outputs only {username: alice}, no department.
     Given a condition group referenced as "cg_asg" with an "or" operator with conditions:
       | selector_value | operator | values      |
       | .department    | in       | engineering |
@@ -134,11 +126,6 @@ Feature: Multiple successful strategies under continue build multi-entity chain
       | reference_id | attribute_value                                                  | condition_set_name | standard actions | custom actions |
       | sm_asg       | https://and-semantics-gap.test/attr/department/value/engineering | scs_asg            | read             |                |
     Then the response should be successful
-    # Alice's token triggers both strategies under continue:
-    #   1. Claims entity: {username: alice} — no .department → NOT entitled
-    #   2. LDAP entity: {department: engineering, username: alice} → entitled
-    # AND semantics: claims entity fails → overall DENY
-    # But the customer expects PERMIT — LDAP resolved department=engineering.
     Given a user access token for "alice" stored as "alice_and_token"
     When I send a decision request for token "alice_and_token" for "read" action on resource "https://and-semantics-gap.test/attr/department/value/engineering"
     Then the response should be successful

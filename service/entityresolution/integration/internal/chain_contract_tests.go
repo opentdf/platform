@@ -13,23 +13,50 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-const (
-	// Test constants for entity chain resolution expectations
-	expectedChainEntityCount = 2
-)
+// ChainShape describes the chain an implementation is expected to build for one token.
+// Entity count and categories are implementation-specific: Keycloak always emits an
+// ENVIRONMENT (client) plus a SUBJECT (user) entity, while multi-strategy ERS is
+// first-match-wins per its ADR and emits exactly one entity from the first matching
+// strategy. Everything else the suite asserts is genuinely implementation-agnostic.
+type ChainShape struct {
+	EntityCount      int
+	EntityCategories []string
+}
 
-// ChainContractTestSuite holds implementation-agnostic multi-entity chain validation tests
+// keycloakChainEntityCount is the ENVIRONMENT (client) plus SUBJECT (user) pair Keycloak
+// emits for every token.
+const keycloakChainEntityCount = 2
+
+// KeycloakChainShape is the two-entity ENVIRONMENT + SUBJECT chain Keycloak produces per token.
+func KeycloakChainShape() ChainShape {
+	return ChainShape{
+		EntityCount:      keycloakChainEntityCount,
+		EntityCategories: []string{"CATEGORY_ENVIRONMENT", "CATEGORY_SUBJECT"},
+	}
+}
+
+// ChainContractTestSuite holds implementation-agnostic entity chain validation tests
 type ChainContractTestSuite struct {
 	TestCases []ContractTestCase
 }
 
-// NewChainContractTestSuite creates a test suite focused on implementation-agnostic multi-entity chain validation
+// NewChainContractTestSuite creates a chain contract suite for an implementation that
+// builds Keycloak-shaped two-entity chains.
 func NewChainContractTestSuite() *ChainContractTestSuite {
+	return NewChainContractTestSuiteWithShape(KeycloakChainShape())
+}
+
+// NewChainContractTestSuiteWithShape creates a chain contract suite that validates chains
+// against the given implementation-specific shape.
+func NewChainContractTestSuiteWithShape(shape ChainShape) *ChainContractTestSuite {
+	expectedChainEntityCount := shape.EntityCount
+	expectedChainCategories := shape.EntityCategories
+
 	return &ChainContractTestSuite{
 		TestCases: []ContractTestCase{
 			{
-				Name:        "CreateMultiEntityChainFromSingleToken",
-				Description: "Should create entity chain with multiple entities and proper categorization",
+				Name:        "CreateEntityChainFromSingleToken",
+				Description: "Should create an entity chain matching the implementation chain shape with proper categorization",
 				Input: ContractInput{
 					Entities: []*entity.Entity{},
 					Tokens: []*entity.Token{
@@ -44,17 +71,17 @@ func NewChainContractTestSuite() *ChainContractTestSuite {
 					ChainValidation: []EntityChainValidationRule{
 						{
 							EphemeralID:               "chain-token-1",
-							EntityCount:               expectedChainEntityCount,                             // Both Keycloak and Multi-Strategy create 2 entities per token
-							EntityTypes:               []string{},                                           // Implementation-agnostic: don't specify entity types
-							EntityCategories:          []string{"CATEGORY_ENVIRONMENT", "CATEGORY_SUBJECT"}, // Both must create these categories
-							RequireConsistentOrdering: false,                                                // Allow flexible ordering between implementations
+							EntityCount:               expectedChainEntityCount,
+							EntityTypes:               []string{}, // Implementation-agnostic: don't specify entity types
+							EntityCategories:          expectedChainCategories,
+							RequireConsistentOrdering: false, // Allow flexible ordering between implementations
 						},
 					},
 				},
 			},
 			{
-				Name:        "CreateMultiEntityChainsFromMultipleTokens",
-				Description: "Should create multiple entity chains with consistent multi-entity behavior",
+				Name:        "CreateEntityChainsFromMultipleTokens",
+				Description: "Should create one entity chain per token with consistent shape",
 				Input: ContractInput{
 					Entities: []*entity.Entity{},
 					Tokens: []*entity.Token{
@@ -70,16 +97,16 @@ func NewChainContractTestSuite() *ChainContractTestSuite {
 					ChainValidation: []EntityChainValidationRule{
 						{
 							EphemeralID:               "chain-token-1",
-							EntityCount:               expectedChainEntityCount, // Both implementations create 2 entities per token
-							EntityTypes:               []string{},               // Implementation-agnostic
-							EntityCategories:          []string{"CATEGORY_ENVIRONMENT", "CATEGORY_SUBJECT"},
+							EntityCount:               expectedChainEntityCount,
+							EntityTypes:               []string{}, // Implementation-agnostic
+							EntityCategories:          expectedChainCategories,
 							RequireConsistentOrdering: false,
 						},
 						{
 							EphemeralID:               "chain-token-2",
-							EntityCount:               expectedChainEntityCount, // Consistent behavior across tokens
-							EntityTypes:               []string{},               // Implementation-agnostic
-							EntityCategories:          []string{"CATEGORY_ENVIRONMENT", "CATEGORY_SUBJECT"},
+							EntityCount:               expectedChainEntityCount,
+							EntityTypes:               []string{}, // Implementation-agnostic
+							EntityCategories:          expectedChainCategories,
 							RequireConsistentOrdering: false,
 						},
 					},
@@ -87,7 +114,7 @@ func NewChainContractTestSuite() *ChainContractTestSuite {
 			},
 			{
 				Name:        "ValidateEntityChainCategoryDifferentiation",
-				Description: "Should create entity chains with distinct ENVIRONMENT and SUBJECT categories",
+				Description: "Should create entity chains carrying the expected entity categories",
 				Input: ContractInput{
 					Entities: []*entity.Entity{},
 					Tokens: []*entity.Token{
@@ -102,17 +129,17 @@ func NewChainContractTestSuite() *ChainContractTestSuite {
 					ChainValidation: []EntityChainValidationRule{
 						{
 							EphemeralID:               "category-test-token",
-							EntityCount:               expectedChainEntityCount,                             // Both implementations create multiple entities
-							EntityTypes:               []string{},                                           // Implementation-agnostic: entity types vary by implementation
-							EntityCategories:          []string{"CATEGORY_ENVIRONMENT", "CATEGORY_SUBJECT"}, // Contract: both categories must exist
-							RequireConsistentOrdering: false,                                                // Allow implementation flexibility
+							EntityCount:               expectedChainEntityCount,
+							EntityTypes:               []string{}, // Implementation-agnostic: entity types vary by implementation
+							EntityCategories:          expectedChainCategories,
+							RequireConsistentOrdering: false, // Allow implementation flexibility
 						},
 					},
 				},
 			},
 			{
-				Name:        "ValidateMultiEntityChainConsistency",
-				Description: "Should create consistent multi-entity chains across multiple invocations",
+				Name:        "ValidateEntityChainConsistency",
+				Description: "Should create consistent entity chains across multiple invocations",
 				Input: ContractInput{
 					Entities: []*entity.Entity{},
 					Tokens: []*entity.Token{
@@ -127,9 +154,9 @@ func NewChainContractTestSuite() *ChainContractTestSuite {
 					ChainValidation: []EntityChainValidationRule{
 						{
 							EphemeralID:               "consistency-token",
-							EntityCount:               expectedChainEntityCount, // Consistent entity count across implementations
-							EntityTypes:               []string{},               // Implementation-specific entity types allowed
-							EntityCategories:          []string{"CATEGORY_ENVIRONMENT", "CATEGORY_SUBJECT"},
+							EntityCount:               expectedChainEntityCount,
+							EntityTypes:               []string{}, // Implementation-specific entity types allowed
+							EntityCategories:          expectedChainCategories,
 							RequireConsistentOrdering: false, // Behavioral contract, not implementation details
 						},
 					},
@@ -139,7 +166,7 @@ func NewChainContractTestSuite() *ChainContractTestSuite {
 	}
 }
 
-// RunChainContractTests executes multi-entity chain tests against an ERS implementation
+// RunChainContractTests executes entity chain tests against an ERS implementation
 func (suite *ChainContractTestSuite) RunChainContractTests(t *testing.T, implementation ERSImplementation, _ string) {
 	for _, testCase := range suite.TestCases {
 		t.Run(testCase.Name, func(t *testing.T) {
@@ -148,7 +175,7 @@ func (suite *ChainContractTestSuite) RunChainContractTests(t *testing.T, impleme
 	}
 }
 
-// runSingleChainTest executes a single multi-entity chain test
+// runSingleChainTest executes a single entity chain test
 func (suite *ChainContractTestSuite) runSingleChainTest(t *testing.T, implementation ERSImplementation, testCase ContractTestCase) {
 	// Test CreateEntityChainsFromTokens if tokens are provided
 	if len(testCase.Input.Tokens) == 0 {

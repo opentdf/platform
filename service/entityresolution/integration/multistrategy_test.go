@@ -430,7 +430,9 @@ func TestMultiStrategyEntityResolutionV2(t *testing.T) {
 	// Create contract test suite
 	suite := internal.NewContractTestSuite()
 
-	// Add specific test case for CreateEntityChainsFromTokens - updated to match actual multi-strategy behavior
+	// Add specific test case for CreateEntityChainsFromTokens - per the ADR, the first
+	// matching strategy wins, so the chain holds exactly that strategy's entity even though
+	// later strategies also match this token.
 	suite.TestCases = append(suite.TestCases, internal.ContractTestCase{
 		Name:        "CreateEntityChainsFromTokens_ExposeStub",
 		Description: "Should create entity chains from JWT tokens using multi-strategy system",
@@ -446,12 +448,10 @@ func TestMultiStrategyEntityResolutionV2(t *testing.T) {
 			ChainValidation: []internal.EntityChainValidationRule{
 				{
 					EphemeralID:      "test-token-1",
-					EntityCount:      3,
-					EntityTypes:      []string{"claims", "claims", "claims"},
-					EntityCategories: []string{"CATEGORY_SUBJECT", "CATEGORY_SUBJECT", "CATEGORY_SUBJECT"},
+					EntityCount:      1,
+					EntityTypes:      []string{"claims"},
+					EntityCategories: []string{"CATEGORY_SUBJECT"},
 					EntityRequiredFields: []map[string]interface{}{
-						{"username": "user123", "email": "user@example.com"},
-						{"client_id": "external-client"},
 						{"username": "user123", "email": "user@example.com"},
 					},
 					RequireConsistentOrdering: true,

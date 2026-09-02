@@ -236,6 +236,13 @@ The failure strategy determines how Multi-Strategy ERS handles failures when exe
 - **Use Case**: When you want resilient failover with multiple fallback options
 - **Result**: Only fails if **all** matching strategies fail
 
+> **First match wins.** Both settings stop at the first strategy that succeeds — the
+> failure strategy only decides what happens when a strategy *fails*. This holds for
+> `CreateEntityChainsFromTokens` too, so a token's entity chain always contains exactly
+> one entity, produced by the first matching strategy. To combine data from several
+> sources into one entity, merge them in a single strategy's `output_mapping` rather
+> than relying on strategy ordering.
+
 ```yaml
 services:
   entityresolution:

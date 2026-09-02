@@ -6,9 +6,9 @@ Feature: First successful strategy wins under continue (ADR: first-match-wins)
   In both modes, the first successful strategy returns and no further strategies run.
   See: adr/decisions/2025-07-31-multi-strategy-entity-resolution-service.md
 
-  BUG: The current code (registration.go:297-304) continues running strategies
-  after a success under "continue", building a multi-entity chain. This diverges
-  from the ADR. Scenario 3 is an intentionally-failing test that exposes this bug.
+  Every scenario below uses failure_strategy "continue" with two strategies whose
+  conditions both match, so the chain must always contain exactly one entity —
+  the one produced by "claims_identity", which is listed first.
 
   This covers Jake's gap analysis row #4.
 
@@ -100,18 +100,20 @@ Feature: First successful strategy wins under continue (ADR: first-match-wins)
     Then the response should be successful
     And I should get a "DENY" decision response
 
-  Scenario: BUG — continue runs strategies after first success, building unintended multi-entity chain
-    # Per ADR, continue should stop at first success. But the current code
-    # (registration.go:297-304) keeps running and builds a multi-entity chain.
-    # This causes AND semantics to apply: all entities must be independently entitled.
+  Scenario: A later strategy that would supply the attribute never runs → DENY
+    # Regression guard for the bug where "continue" kept resolving after a success and
+    # appended a second entity to the chain, which then had to pass entitlement too.
     #
-    # Customer intent: claims for routing, LDAP for department.
-    # Subject mapping: .department in ["engineering"]
-    # Expected: PERMIT — LDAP has department=engineering for alice.
-    # Actual: DENY — claims entity has no .department, AND semantics vetoes.
+    # Customer intent here is claims for routing and LDAP for department, expressed as
+    # two strategies. That intent is NOT supported: "claims_identity" matches first and
+    # ends resolution, so the chain holds a single entity with no .department, and the
+    # subject mapping on .department cannot match — even though LDAP has
+    # department=engineering for alice.
     #
-    # This test asserts PERMIT (the correct ADR behavior) and intentionally fails
-    # against the current buggy implementation.
+    # To get department into the decision, emit it from the strategy that wins: either
+    # put the LDAP strategy first, or narrow the claims strategy's conditions so it does
+    # not match this token. Chaining two strategies to merge their claims is an explicit
+    # "Future Considerations" item in the ADR, not current behavior.
     Given I submit a request to create a namespace with name "and-semantics-gap.test" and reference id "ns_asg"
     And I send a request to create an attribute with:
       | namespace_id | name       | rule  | values                         |
@@ -129,4 +131,4 @@ Feature: First successful strategy wins under continue (ADR: first-match-wins)
     Given a user access token for "alice" stored as "alice_and_token"
     When I send a decision request for token "alice_and_token" for "read" action on resource "https://and-semantics-gap.test/attr/department/value/engineering"
     Then the response should be successful
-    And I should get a "PERMIT" decision response
+    And I should get a "DENY" decision response

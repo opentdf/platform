@@ -19,13 +19,14 @@ func TestUnifiedEntityChainContract(t *testing.T) {
 		t.Skip("Skipping unified contract validation tests in short mode")
 	}
 
-	// Create implementation-agnostic chain contract test suite
-	chainSuite := internal.NewChainContractTestSuite()
-
+	// The suite body is implementation-agnostic; only the expected chain shape differs.
+	// Keycloak always emits ENVIRONMENT + SUBJECT per token, while multi-strategy ERS is
+	// first-match-wins and emits a single entity from the first matching strategy.
 	t.Run("MultiStrategy_Implementation", func(t *testing.T) {
 		// Test Multi-Strategy implementation
 		multiStrategy := createMultiStrategyImplementation(t)
-		chainSuite.RunChainContractTests(t, multiStrategy, "MultiStrategy")
+		internal.NewChainContractTestSuiteWithShape(multiStrategyChainShape).
+			RunChainContractTests(t, multiStrategy, "MultiStrategy")
 	})
 
 	t.Run("Keycloak_Implementation", func(t *testing.T) {
@@ -34,7 +35,8 @@ func TestUnifiedEntityChainContract(t *testing.T) {
 		if keycloakImpl != nil {
 			// Note: Contract test suite will automatically skip if Keycloak server is unavailable
 			// This demonstrates the unified contract approach
-			chainSuite.RunChainContractTests(t, keycloakImpl, "Keycloak")
+			internal.NewChainContractTestSuiteWithShape(internal.KeycloakChainShape()).
+				RunChainContractTests(t, keycloakImpl, "Keycloak")
 		} else {
 			t.Skip("Keycloak implementation unavailable for testing")
 		}
@@ -44,7 +46,7 @@ func TestUnifiedEntityChainContract(t *testing.T) {
 // createMultiStrategyImplementation creates a properly configured Multi-Strategy ERS
 func createMultiStrategyImplementation(t *testing.T) internal.ERSImplementation {
 	config := types.MultiStrategyConfig{
-		FailureStrategy: types.FailureStrategyContinue, // Enable multi-entity chains
+		FailureStrategy: types.FailureStrategyContinue, // Try the next strategy only when one fails
 		Providers: map[string]types.ProviderConfig{
 			"jwt_claims": {
 				Type:       "claims",
@@ -155,16 +157,16 @@ func TestImplementationAgnosticBehavior(t *testing.T) {
 	}
 
 	multiStrategy := createMultiStrategyImplementation(t)
-	chainSuite := internal.NewChainContractTestSuite()
+	chainSuite := internal.NewChainContractTestSuiteWithShape(multiStrategyChainShape)
 
 	t.Log("🎯 Testing Implementation-Agnostic Contract")
-	t.Log("   ✅ Entity count: Both implementations create 2 entities per token")
-	t.Log("   ✅ Categories: Both implementations create ENVIRONMENT + SUBJECT categories")
+	t.Log("   ✅ Chains: Both implementations create one chain per token, keyed by ephemeral ID")
+	t.Log("   ✅ Categories: Every chain entity carries an explicit ENVIRONMENT/SUBJECT category")
 	t.Log("   ✅ Consistency: Both implementations provide consistent behavior")
-	t.Log("   ➡️  Entity types: Implementation-specific (Keycloak vs Multi-Strategy)")
+	t.Log("   ➡️  Entity count and types: Implementation-specific (Keycloak vs Multi-Strategy)")
 
 	// Run tests on Multi-Strategy to demonstrate the contract
 	chainSuite.RunChainContractTests(t, multiStrategy, "ContractDemo")
 
-	t.Log("🚀 Contract satisfied: Multi-entity chains with proper categorization")
+	t.Log("🚀 Contract satisfied: entity chains with proper categorization")
 }

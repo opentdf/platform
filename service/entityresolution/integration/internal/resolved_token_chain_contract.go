@@ -22,9 +22,35 @@ type ResolvedTokenChainEntityExpectation struct {
 }
 
 // ResolvedTokenChainExpectation describes the final mapped context expected for one token.
+// Entities are listed in mapping-strategy order; because chain resolution is first-match-wins
+// the suite only ever expects one of them in a given chain.
 type ResolvedTokenChainExpectation struct {
 	Token    *entity.Token
 	Entities []ResolvedTokenChainEntityExpectation
+}
+
+// firstMatch narrows the expectation to the entity produced by the first matching strategy.
+func (e ResolvedTokenChainExpectation) firstMatch() ResolvedTokenChainExpectation {
+	e.Entities = e.Entities[:1]
+	return e
+}
+
+// lastMatch narrows the expectation to the entity produced by the last configured strategy,
+// which becomes the first match once the strategy list is reversed.
+func (e ResolvedTokenChainExpectation) lastMatch() ResolvedTokenChainExpectation {
+	e.Entities = e.Entities[len(e.Entities)-1:]
+	return e
+}
+
+func narrowExpectations(
+	expectations []ResolvedTokenChainExpectation,
+	narrow func(ResolvedTokenChainExpectation) ResolvedTokenChainExpectation,
+) []ResolvedTokenChainExpectation {
+	narrowed := make([]ResolvedTokenChainExpectation, 0, len(expectations))
+	for _, expectation := range expectations {
+		narrowed = append(narrowed, narrow(expectation))
+	}
+	return narrowed
 }
 
 // ResolvedTokenChainAdapter enrolls an ERS/provider configuration in the shared
@@ -60,19 +86,24 @@ func (suite *ResolvedTokenChainContractSuite) RunWithAdapter(t *testing.T, adapt
 	expectations := adapter.ResolvedTokenChainExpectations(dataSet)
 	require.NotEmpty(t, expectations)
 
-	t.Run(adapter.GetScopeName()+"_EnvironmentThenSubjectPreservesMultiEntityMappedContext", func(t *testing.T) {
-		suite.assertResolvedTokenChains(t, implementation, expectations[:1])
+	// Chain resolution is first-match-wins, so the environment strategy (configured first)
+	// is the only one that runs and the resolved chain carries just its mapped context.
+	t.Run(adapter.GetScopeName()+"_EnvironmentThenSubjectPreservesFirstMatchMappedContext", func(t *testing.T) {
+		suite.assertResolvedTokenChains(t, implementation, narrowExpectations(expectations[:1], ResolvedTokenChainExpectation.firstMatch))
 	})
 
+	// Reversing the strategy list makes the subject strategy the first match, which must be
+	// the only entity in the chain. This is what proves ordering — not failure strategy —
+	// decides which strategy resolves the token.
 	reversedImplementation, err := adapter.CreateERSServiceWithReversedStrategies(ctx)
 	require.NoError(t, err)
-	t.Run(adapter.GetScopeName()+"_SubjectThenEnvironmentPreservesMultiEntityMappedContext", func(t *testing.T) {
-		suite.assertResolvedTokenChains(t, reversedImplementation, expectations[:1])
+	t.Run(adapter.GetScopeName()+"_SubjectThenEnvironmentPreservesFirstMatchMappedContext", func(t *testing.T) {
+		suite.assertResolvedTokenChains(t, reversedImplementation, narrowExpectations(expectations[:1], ResolvedTokenChainExpectation.lastMatch))
 	})
 
 	if len(expectations) > 1 {
-		t.Run(adapter.GetScopeName()+"_MultipleTokensPreserveMultiEntityMappedContext", func(t *testing.T) {
-			suite.assertResolvedTokenChains(t, implementation, expectations)
+		t.Run(adapter.GetScopeName()+"_MultipleTokensPreserveFirstMatchMappedContext", func(t *testing.T) {
+			suite.assertResolvedTokenChains(t, implementation, narrowExpectations(expectations, ResolvedTokenChainExpectation.firstMatch))
 		})
 	}
 

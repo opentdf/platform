@@ -97,9 +97,12 @@ adapter := NewMultiStrategyTestAdapter()
 Provider adapters in `multistrategy_provider_contract_test.go` supply setup,
 teardown, normal and reversed-strategy service construction, configuration, token
 fixtures, and expected mapped fields. The suite runs the same
-multi-entity chain scenarios for claims, SQL, and LDAP with both environment→subject
+token-chain scenarios for claims, SQL, and LDAP with both environment→subject
 and subject→environment strategy order, single and multiple tokens, collection-valued
-context, and fail-closed mixed valid/invalid token batches.
+context, and fail-closed mixed valid/invalid token batches. Chain resolution is
+first-match-wins per the multi-strategy ERS ADR, so each chain carries exactly the
+entity produced by the first matching strategy; reversing the strategy order is what
+changes which entity appears.
 
 When adding a provider, enroll one adapter to receive the existing contract scenarios.
 When adding a provider-independent token-chain behavior, add it once to

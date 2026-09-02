@@ -12,10 +12,10 @@ err := params.Logger.Audit.Record(ctx, audit.Event{
 })
 ```
 
-`Record` snapshots caller-owned data, stamps request attribution, validates the
-generic event fields, and hands the event to the configured processor before
-returning. Processing uses a bounded context detached from request cancellation.
-Callers therefore do not need to detach contexts or create audit transactions.
+`Record` stamps request attribution, validates the generic event fields, and
+hands the event to the configured processor before returning. Processing uses a
+bounded context detached from request cancellation. Callers therefore do not
+need to detach contexts or create audit transactions.
 
 For operations that require evidence before a side effect, generate an event ID
 and record an `attempted` event first, then a separate `completed` event with
@@ -41,6 +41,10 @@ recovery. A nil error means it accepted the event through its intended
 destination or a durable recovery path. Processor errors and panics return to
 the caller; OpenTDF does not retry or emit a second fallback record. The default
 processor preserves `level:"AUDIT"`, `msg:<verb>`, and `audit:{...}`.
+
+`Record` is synchronous. Callers must not mutate maps, slices, or other
+reference data in an event until it returns. Processors must not mutate or
+retain that reference data.
 
 The authenticated request `Principal` is distinct from the event `Actor`; an
 authorization decision may concern a subject other than the requester. JWT

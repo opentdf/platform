@@ -54,12 +54,22 @@ runs:
         # suite while other files still create unnamespaced policy fixtures.
         bats --tap e2e --filter-tags namespaced_policy_migration | tee e2e/bats-results.tap
 
+        # Then the streaming suite, also on its own. It round-trips with no
+        # attributes, which falls back to the platform base key, and
+        # key-base.bats sets one pointing at a KAS that does not resolve and
+        # cannot unset it afterwards -- a base key can be replaced but not
+        # cleared. Anything unattributed scheduled after that file produces an
+        # undecryptable TDF, so this has to run first rather than race for a
+        # slot. Running alone also keeps the 1 GiB peak-RSS case from measuring
+        # itself against three neighbours competing for the same memory.
+        bats --tap e2e --filter-tags payload_streaming | tee -a e2e/bats-results.tap
+
         if command -v parallel >/dev/null 2>&1; then
           echo "GNU parallel found, running remaining tests in parallel"
-          bats --tap e2e --filter-tags '!namespaced_policy_migration' --jobs 4 --no-parallelize-within-files --no-tempdir-cleanup | tee -a e2e/bats-results.tap
+          bats --tap e2e --filter-tags '!namespaced_policy_migration,!payload_streaming' --jobs 4 --no-parallelize-within-files --no-tempdir-cleanup | tee -a e2e/bats-results.tap
         else
           echo "GNU parallel not found, running remaining tests sequentially"
-          bats --tap e2e --filter-tags '!namespaced_policy_migration' | tee -a e2e/bats-results.tap
+          bats --tap e2e --filter-tags '!namespaced_policy_migration,!payload_streaming' | tee -a e2e/bats-results.tap
         fi
       env:
         # Define 'bats' install location in ubuntu

@@ -7,6 +7,7 @@ import (
 	"log/slog"
 
 	"connectrpc.com/connect"
+	"github.com/opentdf/platform/protocol/go/policy"
 	dvm "github.com/opentdf/platform/protocol/go/policy/dynamicvaluemapping"
 	"github.com/opentdf/platform/protocol/go/policy/dynamicvaluemapping/dynamicvaluemappingconnect"
 	"github.com/opentdf/platform/service/logger"
@@ -88,6 +89,18 @@ func (s DynamicValueMappingService) CreateDynamicValueMapping(ctx context.Contex
 
 	// Creation may involve action or SubjectConditionSet creation, so use a transaction.
 	err := s.dbClient.RunInTx(ctx, func(txClient *policydb.PolicyDBClient) error {
+		if limit := s.config.MaxObjectCounts.SubjectConditionSetsPerNamespace; limit > 0 && req.Msg.GetExistingSubjectConditionSetId() == "" && req.Msg.GetNewSubjectConditionSet() != nil {
+			count, err := txClient.CountSubjectConditionSets(ctx, req.Msg.GetNamespaceId(), req.Msg.GetNamespaceFqn())
+			if err != nil {
+				return err
+			}
+			if err := policyconfig.EnforceObjectLimit(policyconfig.ObjectTypeSubjectConditionSetsPerNamespace, limit, count, 1); err != nil {
+				return err
+			}
+		}
+		if err := enforceDynamicActionLimit(ctx, txClient, s.config.MaxObjectCounts.ActionsPerNamespace, req.Msg.GetNamespaceId(), req.Msg.GetNamespaceFqn(), req.Msg.GetActions()); err != nil {
+			return err
+		}
 		mapping, err := txClient.CreateDynamicValueMapping(ctx, req.Msg)
 		if err != nil {
 			s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
@@ -102,6 +115,9 @@ func (s DynamicValueMappingService) CreateDynamicValueMapping(ctx context.Contex
 		return nil
 	})
 	if err != nil {
+		if limitErr := policyconfig.ObjectLimitConnectError(ctx, s.logger, "create", err); limitErr != nil {
+			return nil, limitErr
+		}
 		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextCreationFailed, slog.String("dynamicValueMapping", req.Msg.String()))
 	}
 	return connect.NewResponse(rsp), nil
@@ -152,6 +168,9 @@ func (s DynamicValueMappingService) UpdateDynamicValueMapping(ctx context.Contex
 			s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
 			return err
 		}
+		if err := enforceDynamicActionLimit(ctx, txClient, s.config.MaxObjectCounts.ActionsPerNamespace, original.GetNamespace().GetId(), "", req.Msg.GetActions()); err != nil {
+			return err
+		}
 
 		updated, err := txClient.UpdateDynamicValueMapping(ctx, req.Msg)
 		if err != nil {
@@ -167,10 +186,41 @@ func (s DynamicValueMappingService) UpdateDynamicValueMapping(ctx context.Contex
 		return nil
 	})
 	if err != nil {
+		if limitErr := policyconfig.ObjectLimitConnectError(ctx, s.logger, "update", err); limitErr != nil {
+			return nil, limitErr
+		}
 		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextUpdateFailed, slog.String("id", id), slog.String("dynamicValueMapping", req.Msg.String()))
 	}
 
 	return connect.NewResponse(rsp), nil
+}
+
+func dynamicActionNames(actions []*policy.Action) []string {
+	names := make([]string, 0, len(actions))
+	for _, action := range actions {
+		if action.GetId() == "" && action.GetName() != "" {
+			names = append(names, action.GetName())
+		}
+	}
+	return names
+}
+
+func enforceDynamicActionLimit(ctx context.Context, client *policydb.PolicyDBClient, limit int64, namespaceID, namespaceFQN string, actions []*policy.Action) error {
+	if limit <= 0 {
+		return nil
+	}
+
+	names := dynamicActionNames(actions)
+	if len(names) == 0 {
+		return nil
+	}
+
+	current, missing, err := client.CountActionsWithMissingNames(ctx, namespaceID, namespaceFQN, names)
+	if err != nil {
+		return err
+	}
+
+	return policyconfig.EnforceObjectLimit(policyconfig.ObjectTypeActionsPerNamespace, limit, current, int(missing))
 }
 
 func (s DynamicValueMappingService) DeleteDynamicValueMapping(ctx context.Context,

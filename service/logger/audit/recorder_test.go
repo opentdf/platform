@@ -15,19 +15,16 @@ import (
 )
 
 func canonicalTestEvent() Event {
-	return Event{
-		Verb:   Verb("read"),
-		Object: Object{Type: "document", ID: "document-1"},
-		Action: Action{Type: "read", Result: "success"},
-		EventMetaData: EventMetadata{
+	event := NewEvent(EventObjectParams{
+		Object: EventObjectInfo{Type: ObjectTypeEntityObject, ID: "document-1"},
+		Action: EventObjectAction{Type: ActionTypeRead, Result: ActionResultSuccess},
+		EventMetaData: EventMetaData{
 			"owner": map[string]any{"id": "org-1"},
 		},
-		ClientInfo: ClientInfo{Platform: "test"},
-	}
-}
-
-func quietDiagnostics() Option {
-	return WithDiagnosticLogger(slog.New(slog.DiscardHandler))
+		ClientInfo: EventClientInfo{Platform: "test"},
+	})
+	event.Verb = Verb("read")
+	return *event
 }
 
 func TestRecordUsesBoundedContextAfterRequestCancellation(t *testing.T) {
@@ -43,7 +40,8 @@ func TestRecordUsesBoundedContextAfterRequestCancellation(t *testing.T) {
 		processed = event
 		return nil
 	})
-	logger := CreateAuditLogger(*slog.Default(), WithProcessor(processor), WithRecordTimeout(time.Second))
+	logger := CreateAuditLogger(*slog.Default(), WithProcessor(processor))
+	logger.recordTimeout = time.Second
 
 	require.NoError(t, logger.Record(ctx, canonicalTestEvent()))
 	assert.NotEqual(t, uuid.Nil, processed.ID)
@@ -80,9 +78,6 @@ func TestRecordRejectsInvalidRequiredFieldsBeforeProcessing(t *testing.T) {
 		mutate func(*Event)
 	}{
 		{name: "verb", mutate: func(event *Event) { event.Verb = " " }},
-		{name: "object type", mutate: func(event *Event) { event.Object.Type = " " }},
-		{name: "action type", mutate: func(event *Event) { event.Action.Type = " " }},
-		{name: "action result", mutate: func(event *Event) { event.Action.Result = " " }},
 		{name: "client platform", mutate: func(event *Event) { event.ClientInfo.Platform = " " }},
 		{name: "phase", mutate: func(event *Event) { event.Phase = Phase("unknown") }},
 	}
@@ -110,7 +105,7 @@ func TestRecordRejectsInvalidRequiredFieldsBeforeProcessing(t *testing.T) {
 func TestRecordAllowsOptionalFieldsToBeEmpty(t *testing.T) {
 	event := canonicalTestEvent()
 	event.Object.ID = ""
-	event.Actor = Actor{}
+	event.Actor = auditEventActor{}
 	event.EventMetaData = nil
 	event.Original = nil
 	event.Updated = nil
@@ -132,7 +127,6 @@ func TestRecordReturnsProcessorErrorWithoutFallback(t *testing.T) {
 	processorErr := errors.New("delivery unavailable")
 	logger, buffer := createTestLogger()
 	logger.processor = ProcessorFunc(func(context.Context, Event) error { return processorErr })
-	logger.diagnostics = slog.New(slog.DiscardHandler)
 
 	err := logger.Record(createTestContext(t), canonicalTestEvent())
 
@@ -144,7 +138,7 @@ func TestRecordReturnsProcessorErrorWithoutFallback(t *testing.T) {
 func TestRecordReturnsProcessorPanic(t *testing.T) {
 	logger := CreateAuditLogger(*slog.Default(), WithProcessor(ProcessorFunc(func(context.Context, Event) error {
 		panic("processor panic")
-	})), quietDiagnostics())
+	})))
 
 	err := logger.Record(createTestContext(t), canonicalTestEvent())
 
@@ -157,7 +151,8 @@ func TestRecordReturnsProcessorDeadline(t *testing.T) {
 		<-ctx.Done()
 		return ctx.Err()
 	})
-	logger := CreateAuditLogger(*slog.Default(), WithProcessor(processor), WithRecordTimeout(time.Millisecond), quietDiagnostics())
+	logger := CreateAuditLogger(*slog.Default(), WithProcessor(processor))
+	logger.recordTimeout = time.Millisecond
 
 	err := logger.Record(t.Context(), canonicalTestEvent())
 

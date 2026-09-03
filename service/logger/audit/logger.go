@@ -37,7 +37,6 @@ var logLevelNames = map[slog.Leveler]string{
 
 type Logger struct {
 	logger        *slog.Logger
-	diagnostics   *slog.Logger
 	processor     Processor
 	recordTimeout time.Duration
 	configMu      sync.RWMutex
@@ -52,24 +51,6 @@ func WithProcessor(processor Processor) Option {
 	return func(logger *Logger) {
 		if processor != nil {
 			logger.processor = processor
-		}
-	}
-}
-
-// WithDiagnosticLogger routes recorder failures to an operational logger.
-func WithDiagnosticLogger(diagnostics *slog.Logger) Option {
-	return func(logger *Logger) {
-		if diagnostics != nil {
-			logger.diagnostics = diagnostics
-		}
-	}
-}
-
-// WithRecordTimeout bounds processing after request cancellation.
-func WithRecordTimeout(timeout time.Duration) Option {
-	return func(logger *Logger) {
-		if timeout > 0 {
-			logger.recordTimeout = timeout
 		}
 	}
 }
@@ -96,7 +77,6 @@ func ReplaceAttrAuditLevel(_ []string, a slog.Attr) slog.Attr {
 func CreateAuditLogger(logger slog.Logger, options ...Option) *Logger {
 	auditLogger := &Logger{
 		logger:        &logger,
-		diagnostics:   slog.Default(),
 		recordTimeout: defaultRecordTimeout,
 	}
 	for _, option := range options {
@@ -130,15 +110,9 @@ func (a *Logger) configSnapshot() Config {
 }
 
 func (a *Logger) With(key string, value string) *Logger {
-	diagnostics := a.diagnostics
-	if diagnostics == nil {
-		diagnostics = slog.Default()
-	}
 	return &Logger{
 		//nolint:sloglint // custom logger should support key/value pairs in With attributes
-		logger: a.logger.With(key, value),
-		//nolint:sloglint // mirror the same scoped attributes on operational diagnostics
-		diagnostics:   diagnostics.With(key, value),
+		logger:        a.logger.With(key, value),
 		processor:     a.processor,
 		recordTimeout: a.recordTimeout,
 		config:        a.configSnapshot(),
@@ -170,7 +144,7 @@ func (tx *auditTransaction) logClose(ctx context.Context, auditLogger *Logger, s
 		auditEvent := event.event
 
 		if !success {
-			auditEvent.Action.Result = ActionResultCancel.String()
+			auditEvent.Action.Result = ActionResultCancel
 		}
 
 		if err != nil {

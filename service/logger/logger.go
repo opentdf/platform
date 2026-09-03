@@ -110,7 +110,7 @@ func NewLogger(config Config, options ...Option) (*Logger, error) {
 	// Audit events skip requestContextAttrs on purpose: the request metadata it
 	// adds is already inside the audit payload. They still need trace correlation.
 	auditLoggerBase := slog.New(newContextAttrsHandler(auditLoggerHandler, contextAttrSources(config)...))
-	auditOptions := []audit.Option{audit.WithDiagnosticLogger(sLogger)}
+	var auditOptions []audit.Option
 	if loggerOpts.auditProcessor != nil {
 		auditOptions = append(auditOptions, audit.WithProcessor(loggerOpts.auditProcessor))
 	}

@@ -68,22 +68,30 @@ func CreateGetDecisionEvent(ctx context.Context, params GetDecisionEventParams) 
 			Type: ObjectTypeEntityObject,
 			ID:   fmt.Sprintf("%s-%s", params.EntityChainID, params.ResourceAttributeID),
 			Attributes: eventObjectAttributes{
-				Attrs: params.FQNs,
+				EventObjectAttributes: EventObjectAttributes{
+					Attrs: params.FQNs,
+				},
 			},
 		},
 		Action: eventAction{
-			Type:   ActionTypeRead,
-			Result: result,
+			EventObjectAction: EventObjectAction{
+				Type:   ActionTypeRead,
+				Result: result,
+			},
 		},
 		Actor: auditEventActor{
-			ID:         params.EntityChainID,
-			Attributes: buildActorAttributes(params.EntityChainEntitlements),
+			EventObjectActor: EventObjectActor{
+				ID:         params.EntityChainID,
+				Attributes: buildActorAttributes(params.EntityChainEntitlements),
+			},
 		},
 		EventMetaData: buildEventMetadata(params.EntityDecisions),
 		ClientInfo: eventClientInfo{
-			Platform:  "authorization",
-			UserAgent: auditDataFromContext.UserAgent,
-			RequestIP: auditDataFromContext.RequestIP,
+			EventClientInfo: EventClientInfo{
+				Platform:  "authorization",
+				UserAgent: auditDataFromContext.UserAgent,
+				RequestIP: auditDataFromContext.RequestIP,
+			},
 		},
 		RequestID: auditDataFromContext.RequestID,
 		Timestamp: time.Now().Format(time.RFC3339),
@@ -126,18 +134,24 @@ func CreateV2GetDecisionEvent(ctx context.Context, params GetDecisionV2EventPara
 			Name: "decisionRequest-" + params.ActionName,
 		},
 		Action: eventAction{
-			Type:   ActionTypeRead,
-			Result: result,
+			EventObjectAction: EventObjectAction{
+				Type:   ActionTypeRead,
+				Result: result,
+			},
 		},
 		Actor: auditEventActor{
-			ID:         params.EntityID,
-			Attributes: actorAttributes,
+			EventObjectActor: EventObjectActor{
+				ID:         params.EntityID,
+				Attributes: actorAttributes,
+			},
 		},
 		EventMetaData: eventMetadata,
 		ClientInfo: eventClientInfo{
-			Platform:  "authorization.v2",
-			UserAgent: auditDataFromContext.UserAgent,
-			RequestIP: auditDataFromContext.RequestIP,
+			EventClientInfo: EventClientInfo{
+				Platform:  "authorization.v2",
+				UserAgent: auditDataFromContext.UserAgent,
+				RequestIP: auditDataFromContext.RequestIP,
+			},
 		},
 		RequestID: auditDataFromContext.RequestID,
 		Timestamp: time.Now().Format(time.RFC3339),

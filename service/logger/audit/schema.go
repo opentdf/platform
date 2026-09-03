@@ -64,6 +64,15 @@ func addAuditSchemaFields(parent *auditPathSchema, structType reflect.Type) erro
 			continue
 		}
 
+		// Inlined embedded structs contribute their fields to the parent path,
+		// e.g. eventAction embeds EventObjectAction so "action.type" stays valid.
+		if isInlinedEmbeddedField(field) {
+			if err := addAuditSchemaFields(parent, indirectType(field.Type)); err != nil {
+				return err
+			}
+			continue
+		}
+
 		opts, err := parseAuditFieldOptions(field)
 		if err != nil {
 			return err
@@ -146,6 +155,19 @@ func parseJSONFieldName(field reflect.StructField) string {
 		return field.Name
 	}
 	return name
+}
+
+// isInlinedEmbeddedField reports whether an embedded struct field is flattened
+// into its parent, matching how encoding/json treats embedded structs that carry
+// no explicit JSON name.
+func isInlinedEmbeddedField(field reflect.StructField) bool {
+	if !field.Anonymous {
+		return false
+	}
+	if name, _, _ := strings.Cut(field.Tag.Get("json"), ","); name != "" {
+		return false
+	}
+	return indirectType(field.Type).Kind() == reflect.Struct
 }
 
 func indirectType(t reflect.Type) reflect.Type {

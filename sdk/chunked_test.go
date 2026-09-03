@@ -702,6 +702,15 @@ func newChunkedFakeKAS(t *testing.T) *chunkedFakeKAS {
 
 // Rewrap unwraps every RSA-wrapped KAO under the KAS private key and
 // re-wraps under the caller's session public key.
+// PublicKey serves the wrapping key, so that a caller who names this KAS by URL
+// alone can have its key fetched rather than having to supply the PEM.
+func (k *chunkedFakeKAS) PublicKey(_ context.Context, _ *connect.Request[kaspb.PublicKeyRequest]) (*connect.Response[kaspb.PublicKeyResponse], error) {
+	return connect.NewResponse(&kaspb.PublicKeyResponse{
+		PublicKey: k.publicPEM,
+		Kid:       k.kid,
+	}), nil
+}
+
 func (k *chunkedFakeKAS) Rewrap(_ context.Context, in *connect.Request[kaspb.RewrapRequest]) (*connect.Response[kaspb.RewrapResponse], error) {
 	tok, err := jwt.ParseInsecure([]byte(in.Msg.GetSignedRequestToken()))
 	if err != nil {
@@ -1001,12 +1010,14 @@ func TestChunkedTargetModeInvalid(t *testing.T) {
 	assert.Contains(t, err.Error(), "not-a-version")
 }
 
-// TestChunkedOptionsRejectNil checks that the injection-seam options
-// refuse a nil value instead of storing it. A stored nil is
-// indistinguishable from an unset field, so no default gets installed
-// and the nil surfaces as a panic partway through writing -- for the
-// key splitter, not until Finalize, after the caller has already
-// encrypted and uploaded every segment.
+// TestChunkedOptionsRejectNil checks that every option taking a
+// pointer or an interface refuses a nil value instead of storing it. A
+// stored nil is indistinguishable from an unset field, so no default
+// gets installed and the nil surfaces as a panic partway through
+// writing -- for the key splitter, not until Finalize, after the caller
+// has already encrypted and uploaded every segment. The default KAS
+// fails more quietly still: it does not panic at all, it just sends the
+// data to the platform base key.
 func TestChunkedOptionsRejectNil(t *testing.T) {
 	ctx := context.Background()
 	kasBundle := newChunkedFakeKAS(t)
@@ -1019,6 +1030,7 @@ func TestChunkedOptionsRejectNil(t *testing.T) {
 		{"archive writer factory", withChunkedArchiveWriterFactory(nil)},
 		{"cipher factory", withChunkedCipherFactory(nil)},
 		{"clock", withChunkedClock(nil)},
+		{"default KAS", WithChunkedDefaultKAS(nil)},
 		{"key splitter", WithChunkedKeySplitter(nil)},
 		{"rand", withChunkedRand(nil)},
 	} {
@@ -1032,6 +1044,18 @@ func TestChunkedOptionsRejectNil(t *testing.T) {
 			assert.Nil(t, writer)
 		})
 	}
+
+	t.Run("default KAS for finalize", func(t *testing.T) {
+		writer, err := NewChunkedWriter(ctx, WithChunkedDefaultKAS(kasBundle.simpleKey()))
+		require.NoError(t, err)
+
+		_, err = writer.WriteSegment(ctx, 0, []byte("hello"))
+		require.NoError(t, err)
+
+		_, err = writer.Finalize(ctx, WithChunkedDefaultKASForFinalize(nil))
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "must not be nil")
+	})
 }
 
 // errArchiveWriteFailed is the injected archive failure used to drive
@@ -1434,4 +1458,118 @@ func TestChunkedFinalizeRejectsUnresolvedKAS(t *testing.T) {
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "https://unresolved.example.com")
 	assert.Contains(t, err.Error(), "kas public key is missing")
+}
+
+// TestSDKChunkedWriterResolvesKeyAccess covers SDK.NewChunkedWriter, whose
+// whole point over the package-level constructor is that key access comes from
+// the platform rather than from a KeySplitter the caller had to write. The KAS
+// info here carries no public key, so passing the round trip means the writer
+// went out and fetched it.
+func TestSDKChunkedWriterResolvesKeyAccess(t *testing.T) {
+	ctx := context.Background()
+	kasBundle := newChunkedFakeKAS(t)
+	defer kasBundle.server.Close()
+
+	s := newChunkedTestSDK(t)
+
+	writer, err := s.NewChunkedWriter(ctx, WithChunkedTDFOptions(
+		// Autoconfigure off: this SDK is pointed at a bare KAS, with no policy
+		// service to ask which KAS grants which attribute.
+		WithAutoconfigure(false),
+		WithKasInformation(KASInfo{URL: kasBundle.url}),
+	))
+	require.NoError(t, err)
+
+	body := writeChunkedSegments(ctx, t, writer, [][]byte{[]byte("sdk-"), []byte("chunked")})
+	fin, err := writer.Finalize(ctx)
+	require.NoError(t, err)
+	require.Len(t, fin.Manifest.KeyAccessObjs, 1)
+	assert.Equal(t, kasBundle.url, fin.Manifest.KeyAccessObjs[0].KasURL)
+	assert.Equal(t, kasBundle.kid, fin.Manifest.KeyAccessObjs[0].KID)
+
+	reader, err := s.LoadTDF(bytes.NewReader(append(body, fin.Data...)),
+		WithKasAllowlist([]string{kasBundle.url}),
+	)
+	require.NoError(t, err)
+	plain, err := io.ReadAll(reader)
+	require.NoError(t, err)
+	assert.Equal(t, []byte("sdk-chunked"), plain)
+}
+
+// TestSDKChunkedWriterKeepsAnExplicitSplitter checks that a caller who supplies
+// their own splitter keeps it. The TDF options name a KAS that does not exist,
+// so platform resolution would fail loudly rather than quietly produce the same
+// answer.
+func TestSDKChunkedWriterKeepsAnExplicitSplitter(t *testing.T) {
+	ctx := context.Background()
+	kasBundle := newChunkedFakeKAS(t)
+	defer kasBundle.server.Close()
+
+	s := newChunkedTestSDK(t)
+
+	writer, err := s.NewChunkedWriter(ctx,
+		WithChunkedKeySplitter(DefaultKeySplitter()),
+		WithChunkedDefaultKAS(kasBundle.simpleKey()),
+		WithChunkedTDFOptions(
+			WithAutoconfigure(false),
+			WithKasInformation(KASInfo{URL: "https://kas.invalid"}),
+		),
+	)
+	require.NoError(t, err)
+
+	body := writeChunkedSegments(ctx, t, writer, [][]byte{[]byte("explicit splitter")})
+	fin, err := writer.Finalize(ctx)
+	require.NoError(t, err)
+	require.Len(t, fin.Manifest.KeyAccessObjs, 1)
+	assert.Equal(t, kasBundle.url, fin.Manifest.KeyAccessObjs[0].KasURL)
+
+	reader, err := s.LoadTDF(bytes.NewReader(append(body, fin.Data...)),
+		WithKasAllowlist([]string{kasBundle.url}),
+	)
+	require.NoError(t, err)
+	plain, err := io.ReadAll(reader)
+	require.NoError(t, err)
+	assert.Equal(t, []byte("explicit splitter"), plain)
+}
+
+// TestSDKChunkedWriterFallsBackToBaseKey pins what happens when the caller
+// names no KAS at all: SDK.NewChunkedWriter leaves autoconfigure on, finds no
+// attribute grants, and wraps to the platform base key. Nothing errors, so this
+// is the case that silently sends data somewhere the caller did not choose --
+// which is why WithChunkedDefaultKAS rejects nil rather than treating it as
+// "unset", and why the constructor's doc comment spells the fallback out.
+func TestSDKChunkedWriterFallsBackToBaseKey(t *testing.T) {
+	ctx := context.Background()
+	kasBundle := newChunkedFakeKAS(t)
+	defer kasBundle.server.Close()
+
+	s := newChunkedTestSDK(t)
+	s.wellknownConfiguration = newMockWellKnownService(map[string]interface{}{
+		baseKeyWellKnown: map[string]interface{}{
+			"kas_uri": kasBundle.url,
+			baseKeyPublicKey: map[string]interface{}{
+				baseKeyAlg: "rsa:2048",
+				"kid":      kasBundle.kid,
+				"pem":      kasBundle.publicPEM,
+			},
+		},
+	}, nil)
+
+	writer, err := s.NewChunkedWriter(ctx)
+	require.NoError(t, err)
+
+	body := writeChunkedSegments(ctx, t, writer, [][]byte{[]byte("base key")})
+	fin, err := writer.Finalize(ctx)
+	require.NoError(t, err)
+	require.Len(t, fin.Manifest.KeyAccessObjs, 1)
+	assert.Equal(t, kasBundle.url, fin.Manifest.KeyAccessObjs[0].KasURL)
+	assert.Equal(t, kasBundle.kid, fin.Manifest.KeyAccessObjs[0].KID)
+
+	reader, err := s.LoadTDF(bytes.NewReader(append(body, fin.Data...)),
+		WithKasAllowlist([]string{kasBundle.url}),
+	)
+	require.NoError(t, err)
+	plain, err := io.ReadAll(reader)
+	require.NoError(t, err)
+	assert.Equal(t, []byte("base key"), plain)
 }

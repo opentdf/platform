@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"slices"
 
 	"github.com/opentdf/platform/lib/ocrypto"
 	"github.com/opentdf/platform/protocol/go/policy"
@@ -15,8 +16,6 @@ import (
 // key splits, each addressed to one or more KAS servers. Injected on
 // the chunked Writer so tests can substitute an identity splitter
 // without touching real attribute grants.
-//
-// Experimental: not part of the stable SDK API; may change or be removed.
 type KeySplitter interface {
 	// Split evaluates the ABAC policy expressed by attrs, produces N
 	// splits of dek per the resulting boolean expression, and returns
@@ -26,8 +25,6 @@ type KeySplitter interface {
 
 // Split is one XOR share of the DEK bound to one or more KAS
 // servers.
-//
-// Experimental: not part of the stable SDK API; may change or be removed.
 type Split struct {
 	// Data is the split share (XOR of the DEK with the other shares).
 	Data []byte
@@ -44,8 +41,6 @@ type Split struct {
 // SplitResult is what KeySplitter.Split returns: the shares plus the
 // KAS wrapping keys needed to encrypt each share into a KeyAccess
 // object.
-//
-// Experimental: not part of the stable SDK API; may change or be removed.
 type SplitResult struct {
 	// KASPublicKeys maps KAS URL to the wrapping key to use for that
 	// URL. Populated for every URL referenced by any split.
@@ -56,8 +51,6 @@ type SplitResult struct {
 }
 
 // KASPublicKey is the wrapping key resolved for one KAS URL.
-//
-// Experimental: not part of the stable SDK API; may change or be removed.
 type KASPublicKey struct {
 	// Algorithm identifies the wrapping scheme (e.g. "rsa", "ec").
 	Algorithm string
@@ -87,8 +80,6 @@ var ErrSplitterUnsupportedAlgorithm = errors.New("chunked: unsupported KAS key a
 // Attributes are ignored; the entire DEK is bound to the caller's
 // default KAS. Callers with attribute-based key splits requirements
 // should inject their own splitter via WithChunkedKeySplitter.
-//
-// Experimental: not part of the stable SDK API; may change or be removed.
 func DefaultKeySplitter() KeySplitter { return &singleKASSplitter{} }
 
 // singleKASSplitter binds the full DEK to a single KAS. Attributes
@@ -172,6 +163,52 @@ type staticKeyAccess struct {
 
 func (r staticKeyAccess) resolve(_ context.Context, _ []byte, _ *ChunkedFinalizeConfig) (string, []KeyAccess, error) {
 	return r.policy, r.kaos, nil
+}
+
+// sdkKeyAccess resolves key access through the platform, the way SDK.CreateTDF
+// does: the attributes settled by Finalize are run through autoconfigure to
+// find the KAS servers that grant them, and the DEK is split across the
+// resulting plan.
+//
+// This is what SDK.NewChunkedWriter installs in place of DefaultKeySplitter,
+// which is single-KAS and attribute-blind. Resolution is deferred to Finalize
+// rather than done at construction because a chunked caller may still be adding
+// attributes while segments are in flight.
+type sdkKeyAccess struct {
+	// sdk is the platform connection used to resolve grants and fetch KAS
+	// public keys.
+	sdk SDK
+
+	// opts are the TDFOptions given to SDK.NewChunkedWriter. They are replayed
+	// on each Finalize so that resolution sees the attributes as of that call.
+	opts []TDFOption
+}
+
+func (r sdkKeyAccess) resolve(ctx context.Context, dek []byte, cfg *ChunkedFinalizeConfig) (string, []KeyAccess, error) {
+	opts := r.opts
+	if len(cfg.attributes) > 0 {
+		opts = append(slices.Clone(opts), WithDataAttributeValues(cfg.attributes...))
+	}
+	tdfConfig, err := newTDFConfig(opts...)
+	if err != nil {
+		return "", nil, err
+	}
+	tdfConfig.metaData = cfg.encryptedMetadata
+
+	// A caller-named KAS is a decision, not a hint: honor it instead of asking
+	// the platform which KAS the attributes point at. Autoconfigure has to go
+	// off for that, since initKAOTemplate refuses to run both.
+	if cfg.defaultKAS != nil {
+		tdfConfig.autoconfigure = false
+		if err := populateKasInfoFromBaseKey(cfg.defaultKAS, tdfConfig); err != nil {
+			return "", nil, err
+		}
+	}
+
+	if err := tdfConfig.initKAOTemplate(ctx, r.sdk); err != nil {
+		return "", nil, err
+	}
+	return r.sdk.resolveKeyAccess(ctx, tdfConfig, dek)
 }
 
 // splitterKeyAccess adapts a public KeySplitter to keyAccessResolver.

@@ -185,6 +185,7 @@ type TestUpgradeRewrapRequestV1Suite struct {
 
 func (suite *TestUpgradeRewrapRequestV1Suite) TestUpgradeRewrapRequestV1_Happy() {
 	response := &kaspb.RewrapResponse{
+		//nolint:staticcheck // upgradeRewrapRequestV1 exists to translate this deprecated field, so the test must set it
 		EntityWrappedKey: []byte("wrappedKey"),
 	}
 	requests := []*kaspb.UnsignedRewrapRequest_WithPolicyRequest{

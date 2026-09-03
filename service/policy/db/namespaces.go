@@ -174,6 +174,10 @@ func (c PolicyDBClient) ListAllNamespaces(ctx context.Context) ([]*policy.Namesp
 	return nsList, nil
 }
 
+func (c PolicyDBClient) CountNamespaces(ctx context.Context) (int64, error) {
+	return c.queries.countNamespaces(ctx)
+}
+
 func (c PolicyDBClient) CreateNamespace(ctx context.Context, r *namespaces.CreateNamespaceRequest) (*policy.Namespace, error) {
 	name := strings.ToLower(r.GetName())
 	metadataJSON, _, err := db.MarshalCreateMetadata(r.GetMetadata())

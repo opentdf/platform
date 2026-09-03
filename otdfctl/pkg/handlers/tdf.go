@@ -52,10 +52,11 @@ type EncryptOptions struct {
 // bounded by the SDK's segment size rather than by the payload length, so the
 // payload may be larger than RAM.
 //
-// in must be seekable: the SDK measures the payload by seeking to its end
-// before encrypting, and knowing the length up front is what lets it avoid
-// defaulting to ZIP64. A caller holding a pipe should spool it first.
-func (h Handler) Encrypt(ctx context.Context, out io.Writer, in io.ReadSeeker, o EncryptOptions) error {
+// in need not be seekable, but a seekable input produces a smaller TDF: the SDK
+// measures it by seeking to the end and can then keep the archive in the
+// compact ZIP32 layout. An unmeasurable payload is written as ZIP64, since the
+// choice is fixed before the first segment goes out.
+func (h Handler) Encrypt(ctx context.Context, out io.Writer, in io.Reader, o EncryptOptions) error {
 	switch o.TDFType {
 	// Encrypt the data as a ZTDF
 	case "", tdf.TypeTDF3, tdf.TypeZTDF:

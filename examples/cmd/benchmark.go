@@ -34,7 +34,7 @@ var config BenchmarkConfig
 func init() {
 	benchmarkCmd := &cobra.Command{
 		Use:   "benchmark",
-		Short: "OpenTDF benchmark tool",
+		Short: benchmarkCmdShort,
 		Long:  `A OpenTDF benchmark tool to measure throughput and latency with configurable concurrency.`,
 		RunE:  runBenchmark,
 	}
@@ -68,7 +68,7 @@ func runBenchmark(cmd *cobra.Command, _ []string) error {
 		}
 	}()
 
-	dataAttributes := []string{"https://example.com/attr/attr1/value/value1"}
+	dataAttributes := []string{exampleAttrValueFQN}
 	opts := []sdk.TDFOption{sdk.WithDataAttributes(dataAttributes...), sdk.WithAutoconfigure(false)}
 	if insecurePlaintextConn || strings.HasPrefix(platformEndpoint, "http://") {
 		opts = append(opts, sdk.WithKasInformation(

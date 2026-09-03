@@ -25,7 +25,7 @@ func init() {
 		RunE:  encrypt,
 		Args:  cobra.MinimumNArgs(1),
 	}
-	encryptCmd.Flags().StringSliceVarP(&dataAttributes, "data-attributes", "a", []string{"https://example.com/attr/attr1/value/value1"}, "space separated list of data attributes")
+	encryptCmd.Flags().StringSliceVarP(&dataAttributes, "data-attributes", "a", []string{exampleAttrValueFQN}, "space separated list of data attributes")
 	encryptCmd.Flags().BoolVar(&autoconfigure, "autoconfigure", true, "Use attribute grants to select kases")
 	encryptCmd.Flags().BoolVar(&noKIDInKAO, "no-kid-in-kao", false, "[deprecated] Disable storing key identifiers in TDF KAOs")
 	encryptCmd.Flags().StringVarP(&outputName, "output", "o", "sensitive.txt.tdf", "name or path of output file; - for stdout")

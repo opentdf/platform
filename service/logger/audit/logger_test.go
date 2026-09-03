@@ -62,6 +62,72 @@ func createTestLogger() (*Logger, *bytes.Buffer) {
 	}, &buf
 }
 
+func TestTransactionCloseProcessesBufferedEventAfterCancellation(t *testing.T) {
+	ctx, cancel := context.WithCancel(createTestContext(t))
+	logger, _ := createTestLogger()
+	var processed Event
+	logger.processor = ProcessorFunc(func(ctx context.Context, event Event) error {
+		require.NoError(t, ctx.Err())
+		_, hasDeadline := ctx.Deadline()
+		require.True(t, hasDeadline)
+		processed = event
+		return nil
+	})
+
+	logger.PolicyCRUDSuccess(ctx, policyCRUDParams)
+	cancel()
+	requireAuditTransaction(ctx, t).logClose(ctx, logger, true, nil)
+
+	assert.Equal(t, VerbPolicyCRUD, processed.Verb)
+	assert.Equal(t, ActionResultSuccess, processed.Action.Result)
+	assert.Equal(t, TestRequestID, processed.RequestID)
+}
+
+func TestTransactionCloseUsesOneDeadlineAndPreservesEventTimestamp(t *testing.T) {
+	ctx := createTestContext(t)
+	logger, _ := createTestLogger()
+	timestamp := time.Date(2026, time.August, 25, 12, 0, 0, 0, time.UTC).Format(time.RFC3339)
+	deadlines := make([]time.Time, 0, 2)
+	timestamps := make([]string, 0, 2)
+	logger.processor = ProcessorFunc(func(ctx context.Context, event Event) error {
+		deadline, ok := ctx.Deadline()
+		require.True(t, ok)
+		deadlines = append(deadlines, deadline)
+		timestamps = append(timestamps, event.Timestamp)
+		return nil
+	})
+
+	for range 2 {
+		event := canonicalTestEvent()
+		event.Timestamp = timestamp
+		LogAuditEvent(ctx, VerbPolicyCRUD, &event)
+	}
+	requireAuditTransaction(ctx, t).logClose(ctx, logger, true, nil)
+
+	require.Len(t, deadlines, 2)
+	assert.Equal(t, deadlines[0], deadlines[1])
+	assert.Equal(t, []string{timestamp, timestamp}, timestamps)
+}
+
+func TestTransactionCloseReportsProcessorFailure(t *testing.T) {
+	ctx := createTestContext(t)
+	logger, auditOutput := createTestLogger()
+	var errorOutput bytes.Buffer
+	logger.errorLogger = slog.New(slog.NewJSONHandler(&errorOutput, nil))
+	logger.processor = ProcessorFunc(func(context.Context, Event) error {
+		return errors.New("processor unavailable")
+	})
+
+	logger.PolicyCRUDSuccess(ctx, policyCRUDParams)
+	requireAuditTransaction(ctx, t).logClose(ctx, logger, true, nil)
+
+	assert.Empty(t, auditOutput.String())
+	var logged map[string]any
+	require.NoError(t, json.Unmarshal(errorOutput.Bytes(), &logged))
+	assert.Equal(t, "failed to record audit event", logged["msg"])
+	assert.Contains(t, logged["error"], "processor unavailable")
+}
+
 type logEntryStructure struct {
 	Time  string          `json:"time"`
 	Level string          `json:"level"`

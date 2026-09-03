@@ -67,10 +67,11 @@ func ContextServerInterceptor(logger *Logger) connect.UnaryInterceptorFunc {
 					}
 					panic(r)
 				}
-				tx.logClose(ctx, logger, true, nil)
 			}()
 
-			return next(ctx, req)
+			response, nextErr := next(ctx, req)
+			tx.logClose(ctx, logger, nextErr == nil, nextErr)
+			return response, nextErr
 		})
 	}
 

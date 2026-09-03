@@ -1381,3 +1381,59 @@ func TestChunkedGetManifestDoesNotBlockWriteSegment(t *testing.T) {
 	require.NoError(t, err)
 	assert.Len(t, later.Segments, 2)
 }
+
+// partialSplitter names two KAS URLs on one split but resolves a public
+// key for only the first, the shape a splitter produces when a KAS
+// lookup fails and the failure is swallowed upstream.
+type partialSplitter struct {
+	known *policy.SimpleKasKey
+	// missingURL is listed on the split but absent from KASPublicKeys.
+	missingURL string
+}
+
+func (s partialSplitter) Split(_ context.Context, _ []*policy.Value, dek []byte, _ *policy.SimpleKasKey) (*SplitResult, error) {
+	url := s.known.GetKasUri()
+	share := make([]byte, len(dek))
+	copy(share, dek)
+	return &SplitResult{
+		KASPublicKeys: map[string]KASPublicKey{
+			url: {
+				Algorithm: "rsa:2048",
+				KID:       s.known.GetPublicKey().GetKid(),
+				PEM:       s.known.GetPublicKey().GetPem(),
+				URL:       url,
+			},
+		},
+		Splits: []Split{{
+			Data:    share,
+			KASURLs: []string{url, s.missingURL},
+		}},
+	}, nil
+}
+
+// TestChunkedFinalizeRejectsUnresolvedKAS checks that a split naming a
+// KAS with no resolved public key fails Finalize. Skipping it would
+// emit a TDF whose KAO set silently omits that KAS -- and if every URL
+// on a split were missing, the share would be unrecoverable.
+func TestChunkedFinalizeRejectsUnresolvedKAS(t *testing.T) {
+	ctx := context.Background()
+	kasBundle := newChunkedFakeKAS(t)
+	defer kasBundle.server.Close()
+
+	w, err := NewChunkedWriter(ctx,
+		WithChunkedDefaultKAS(kasBundle.simpleKey()),
+		WithChunkedKeySplitter(partialSplitter{
+			known:      kasBundle.simpleKey(),
+			missingURL: "https://unresolved.example.com",
+		}),
+	)
+	require.NoError(t, err)
+
+	_, err = w.WriteSegment(ctx, 0, []byte("payload"))
+	require.NoError(t, err)
+
+	_, err = w.Finalize(ctx)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "https://unresolved.example.com")
+	assert.Contains(t, err.Error(), "kas public key is missing")
+}

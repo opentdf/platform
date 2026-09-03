@@ -101,8 +101,6 @@ jobs:
       - name: golangci-lint
         uses: golangci/golangci-lint-action@1e7e51e771db61008b38414a730f564565cf7c20 # v9.2.0
         with:
-          # v2.12.0+ embeds the config JSONSchema in the binary; earlier versions fetch it
-          # from golangci-lint.run with a 2s timeout, which flakes `config verify` in CI.
           version: v2.13.2
           working-directory: ${{ matrix.directory }}
           skip-cache: true

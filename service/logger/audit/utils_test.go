@@ -4,10 +4,82 @@ import (
 	"context"
 	"net"
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 )
+
+func TestNewEvent(t *testing.T) {
+	timestamp := time.Now().Format(time.RFC3339)
+	params := EventObjectParams{
+		Object: EventObjectInfo{
+			Type: ObjectTypeAttributeDefinition,
+			ID:   "test-object-id",
+			Name: "test-object-name",
+			Attributes: EventObjectAttributes{
+				Assertions:  []string{"test-assertion"},
+				Attrs:       []string{"test-attr"},
+				Permissions: []string{"test-permission"},
+			},
+		},
+		Action: EventObjectAction{
+			Type:   ActionTypeUpdate,
+			Result: ActionResultSuccess,
+		},
+		Actor: EventObjectActor{
+			ID:         TestActorID,
+			Attributes: []any{map[string]any{"test-actor-attribute": "test-value"}},
+		},
+		EventMetaData: EventMetaData{"test-metadata-key": "test-metadata-value"},
+		ClientInfo: EventClientInfo{
+			UserAgent: TestUserAgent,
+			Platform:  "policy",
+			RequestIP: TestRequestIP.String(),
+		},
+		Original:  map[string]any{"test-field": "original-value"},
+		Updated:   map[string]any{"test-field": "updated-value"},
+		RequestID: TestRequestID,
+		Timestamp: timestamp,
+	}
+
+	event := NewEvent(params)
+	require.NotNil(t, event)
+
+	assert.Equal(t, auditEventObject{
+		Type: ObjectTypeAttributeDefinition,
+		ID:   "test-object-id",
+		Name: "test-object-name",
+		Attributes: eventObjectAttributes{
+			EventObjectAttributes: params.Object.Attributes,
+		},
+	}, event.Object)
+
+	assert.Equal(t, eventAction{EventObjectAction: params.Action}, event.Action)
+	assert.Equal(t, auditEventActor{EventObjectActor: params.Actor}, event.Actor)
+	assert.Equal(t, eventClientInfo{EventClientInfo: params.ClientInfo}, event.ClientInfo)
+
+	assert.Equal(t, params.EventMetaData, event.EventMetaData)
+	assert.Equal(t, params.Original, event.Original)
+	assert.Equal(t, params.Updated, event.Updated)
+	assert.Equal(t, TestRequestID, event.RequestID)
+	assert.Equal(t, timestamp, event.Timestamp)
+}
+
+func TestNewEventWithZeroValueParams(t *testing.T) {
+	event := NewEvent(EventObjectParams{})
+	require.NotNil(t, event)
+
+	assert.Equal(t, auditEventObject{}, event.Object)
+	assert.Equal(t, eventAction{}, event.Action)
+	assert.Equal(t, auditEventActor{}, event.Actor)
+	assert.Equal(t, eventClientInfo{}, event.ClientInfo)
+	assert.Nil(t, event.EventMetaData)
+	assert.Nil(t, event.Original)
+	assert.Nil(t, event.Updated)
+	assert.Equal(t, uuid.Nil, event.RequestID)
+	assert.Empty(t, event.Timestamp)
+}
 
 func TestGetAuditDataFromContextHappyPath(t *testing.T) {
 	ctx := t.Context()

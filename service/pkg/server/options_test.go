@@ -8,6 +8,7 @@ import (
 	"github.com/go-viper/mapstructure/v2"
 	"github.com/lestrrat-go/jwx/v2/jwt"
 	"github.com/opentdf/platform/service/logger"
+	"github.com/opentdf/platform/service/logger/audit"
 	"github.com/opentdf/platform/service/pkg/authz"
 	"github.com/opentdf/platform/service/pkg/config"
 	"github.com/stretchr/testify/assert"
@@ -283,4 +284,134 @@ func TestWithAuthZRoleProviderFactory(t *testing.T) {
 
 	require.NotNil(t, cfg.authzRoleProviderFactories)
 	require.Contains(t, cfg.authzRoleProviderFactories, "mock")
+}
+
+const testAuditTypeBase = 1000
+
+func TestWithAdditionalAuditTypeRegistrations(t *testing.T) {
+	var cfg StartConfig
+
+	objectTypesOne := make(map[audit.ObjectType]string)
+	objectTypesOne[audit.ObjectType(testAuditTypeBase)] = "custom_object_1"
+
+	actionTypes := make(map[audit.ActionType]string)
+	actionTypes[audit.ActionType(testAuditTypeBase+1)] = "custom_action_1"
+
+	cfg = WithAdditionalAuditTypeRegistrations(audit.TypeRegistrations{
+		ObjectTypes: objectTypesOne,
+		ActionTypes: actionTypes,
+	})(cfg)
+
+	objectTypesTwo := make(map[audit.ObjectType]string)
+	objectTypesTwo[audit.ObjectType(testAuditTypeBase+2)] = "custom_object_2"
+
+	actionResults := make(map[audit.ActionResult]string)
+	actionResults[audit.ActionResult(testAuditTypeBase+3)] = "custom_result_1"
+
+	cfg = WithAdditionalAuditTypeRegistrations(audit.TypeRegistrations{
+		ObjectTypes:   objectTypesTwo,
+		ActionResults: actionResults,
+	})(cfg)
+
+	require.Len(t, cfg.auditTypeRegistrations.ObjectTypes, 2)
+	require.Len(t, cfg.auditTypeRegistrations.ActionTypes, 1)
+	require.Len(t, cfg.auditTypeRegistrations.ActionResults, 1)
+	require.Empty(t, cfg.auditTypeRegistrationConflicts)
+	require.Len(t, objectTypesOne, 1)
+	require.Len(t, objectTypesTwo, 1)
+	require.Len(t, actionTypes, 1)
+	require.Len(t, actionResults, 1)
+	assert.Equal(t, "custom_object_1", cfg.auditTypeRegistrations.ObjectTypes[audit.ObjectType(testAuditTypeBase)])
+	assert.Equal(t, "custom_object_2", cfg.auditTypeRegistrations.ObjectTypes[audit.ObjectType(testAuditTypeBase+2)])
+	assert.Equal(t, "custom_action_1", cfg.auditTypeRegistrations.ActionTypes[audit.ActionType(testAuditTypeBase+1)])
+	assert.Equal(t, "custom_result_1", cfg.auditTypeRegistrations.ActionResults[audit.ActionResult(testAuditTypeBase+3)])
+	assert.Equal(t, "custom_object_1", objectTypesOne[audit.ObjectType(testAuditTypeBase)])
+	assert.Equal(t, "custom_object_2", objectTypesTwo[audit.ObjectType(testAuditTypeBase+2)])
+	assert.Equal(t, "custom_action_1", actionTypes[audit.ActionType(testAuditTypeBase+1)])
+	assert.Equal(t, "custom_result_1", actionResults[audit.ActionResult(testAuditTypeBase+3)])
+}
+
+func TestWithAdditionalAuditTypeRegistrationsDetectsConflicts(t *testing.T) {
+	const (
+		conflictingObjectType   = audit.ObjectType(testAuditTypeBase)
+		conflictingActionType   = audit.ActionType(testAuditTypeBase + 1)
+		conflictingActionResult = audit.ActionResult(testAuditTypeBase + 2)
+	)
+
+	// Maps are built with make + assignment rather than literals so the exhaustive
+	// linter does not require every enum key.
+	registrations := func(suffix string) audit.TypeRegistrations {
+		objectTypes := make(map[audit.ObjectType]string)
+		objectTypes[conflictingObjectType] = "custom_object_" + suffix
+		actionTypes := make(map[audit.ActionType]string)
+		actionTypes[conflictingActionType] = "custom_action_" + suffix
+		actionResults := make(map[audit.ActionResult]string)
+		actionResults[conflictingActionResult] = "custom_result_" + suffix
+		return audit.TypeRegistrations{
+			ObjectTypes:   objectTypes,
+			ActionTypes:   actionTypes,
+			ActionResults: actionResults,
+		}
+	}
+
+	var cfg StartConfig
+
+	cfg = WithAdditionalAuditTypeRegistrations(registrations("1"))(cfg)
+	cfg = WithAdditionalAuditTypeRegistrations(registrations("conflict"))(cfg)
+
+	require.Len(t, cfg.auditTypeRegistrationConflicts, 3)
+	conflictsByCategory := make(map[string]auditTypeRegistrationConflict, len(cfg.auditTypeRegistrationConflicts))
+	for _, conflict := range cfg.auditTypeRegistrationConflicts {
+		conflictsByCategory[conflict.Category] = conflict
+	}
+
+	for _, tc := range []struct {
+		category     string
+		key          int
+		existingName string
+		newName      string
+	}{
+		{category: "object_type", key: int(conflictingObjectType), existingName: "custom_object_1", newName: "custom_object_conflict"},
+		{category: "action_type", key: int(conflictingActionType), existingName: "custom_action_1", newName: "custom_action_conflict"},
+		{category: "action_result", key: int(conflictingActionResult), existingName: "custom_result_1", newName: "custom_result_conflict"},
+	} {
+		t.Run(tc.category, func(t *testing.T) {
+			conflict, ok := conflictsByCategory[tc.category]
+			require.True(t, ok, "expected a %s conflict", tc.category)
+			assert.Equal(t, tc.key, conflict.Key)
+			assert.Equal(t, tc.existingName, conflict.ExistingName)
+			assert.Equal(t, tc.newName, conflict.NewName)
+		})
+	}
+
+	// The first registration wins for every category.
+	assert.Equal(t, "custom_object_1", cfg.auditTypeRegistrations.ObjectTypes[conflictingObjectType])
+	assert.Equal(t, "custom_action_1", cfg.auditTypeRegistrations.ActionTypes[conflictingActionType])
+	assert.Equal(t, "custom_result_1", cfg.auditTypeRegistrations.ActionResults[conflictingActionResult])
+}
+
+func TestFormatAuditTypeRegistrationConflictsIsDeterministic(t *testing.T) {
+	conflicts := []auditTypeRegistrationConflict{
+		{Category: "object_type", Key: 2, ExistingName: "object_two", NewName: "other_object_two"},
+		{Category: "action_type", Key: 5, ExistingName: "action_five", NewName: "other_action_five"},
+		{Category: "object_type", Key: 1, ExistingName: "object_one", NewName: "other_object_one"},
+		{Category: "action_result", Key: 3, ExistingName: "result_three", NewName: "other_result_three"},
+	}
+
+	expected := `action_result 3: "result_three" vs "other_result_three"; ` +
+		`action_type 5: "action_five" vs "other_action_five"; ` +
+		`object_type 1: "object_one" vs "other_object_one"; ` +
+		`object_type 2: "object_two" vs "other_object_two"`
+
+	assert.Equal(t, expected, formatAuditTypeRegistrationConflicts(conflicts))
+
+	// Input order must not change the message, and the input must not be reordered.
+	shuffled := []auditTypeRegistrationConflict{conflicts[3], conflicts[0], conflicts[2], conflicts[1]}
+	assert.Equal(t, expected, formatAuditTypeRegistrationConflicts(shuffled))
+	assert.Equal(t, "object_type", conflicts[0].Category)
+	assert.Equal(t, 2, conflicts[0].Key)
+}
+
+func TestFormatAuditTypeRegistrationConflictsEmpty(t *testing.T) {
+	assert.Empty(t, formatAuditTypeRegistrationConflicts(nil))
 }

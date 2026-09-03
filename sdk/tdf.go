@@ -907,7 +907,14 @@ func (s SDK) LoadTDF(reader io.ReadSeeker, opts ...TDFReaderOption) (*Reader, er
 
 	var payloadSize int64
 	for _, seg := range manifestObj.Segments {
-		payloadSize += seg.Size
+		// Sizes the writer left to the manifest-level default have to be
+		// filled in here too: without it the payload looks shorter than it
+		// is, and every read bounded by payloadSize comes up short.
+		size, _, err := manifestObj.resolveSegmentSizes(seg)
+		if err != nil {
+			return nil, err
+		}
+		payloadSize += size
 	}
 
 	return &Reader{
@@ -984,18 +991,23 @@ func (r *Reader) WriteTo(writer io.Writer) (int64, error) {
 	var payloadReadOffset int64
 	var decryptedDataOffset int64
 	for _, seg := range r.manifest.Segments {
-		if decryptedDataOffset+seg.Size < r.cursor {
-			decryptedDataOffset += seg.Size
-			payloadReadOffset += seg.EncryptedSize
+		segSize, encryptedSegSize, err := r.manifest.resolveSegmentSizes(seg)
+		if err != nil {
+			return totalBytes, err
+		}
+
+		if decryptedDataOffset+segSize < r.cursor {
+			decryptedDataOffset += segSize
+			payloadReadOffset += encryptedSegSize
 			continue
 		}
 
-		readBuf, err := r.tdfReader.ReadPayload(payloadReadOffset, seg.EncryptedSize)
+		readBuf, err := r.tdfReader.ReadPayload(payloadReadOffset, encryptedSegSize)
 		if err != nil {
 			return totalBytes, fmt.Errorf("TDFReader.ReadPayload failed: %w", err)
 		}
 
-		if int64(len(readBuf)) != seg.EncryptedSize {
+		if int64(len(readBuf)) != encryptedSegSize {
 			return totalBytes, ErrSegSizeMismatch
 		}
 
@@ -1034,9 +1046,9 @@ func (r *Reader) WriteTo(writer io.Writer) (int64, error) {
 			return totalBytes, errWriteFailed
 		}
 
-		payloadReadOffset += seg.EncryptedSize
+		payloadReadOffset += encryptedSegSize
 		r.cursor += int64(n)
-		decryptedDataOffset += seg.Size
+		decryptedDataOffset += segSize
 	}
 
 	return totalBytes, nil
@@ -1059,7 +1071,14 @@ func (r *Reader) ReadAt(buf []byte, offset int64) (int, error) { //nolint:funlen
 		return 0, ErrTDFPayloadInvalidOffset
 	}
 
+	// segmentSizeDefault is required by the manifest schema, and the index
+	// arithmetic below divides by it; a manifest that omits it would panic
+	// rather than report the malformed input.
 	defaultSegmentSize := r.manifest.DefaultSegmentSize
+	if defaultSegmentSize <= 0 {
+		return 0, fmt.Errorf("%w: segmentSizeDefault=%d", ErrSegSizeUnresolved, defaultSegmentSize)
+	}
+
 	start := offset / defaultSegmentSize
 	end := (offset + int64(len(buf)) + defaultSegmentSize - 1) / defaultSegmentSize // rounds up
 
@@ -1082,17 +1101,22 @@ func (r *Reader) ReadAt(buf []byte, offset int64) (int, error) { //nolint:funlen
 			break
 		}
 
+		_, encryptedSegSize, err := r.manifest.resolveSegmentSizes(seg)
+		if err != nil {
+			return 0, err
+		}
+
 		if firstSegment > int64(index) {
-			payloadReadOffset += seg.EncryptedSize
+			payloadReadOffset += encryptedSegSize
 			continue
 		}
 
-		readBuf, err := r.tdfReader.ReadPayload(payloadReadOffset, seg.EncryptedSize)
+		readBuf, err := r.tdfReader.ReadPayload(payloadReadOffset, encryptedSegSize)
 		if err != nil {
 			return 0, fmt.Errorf("TDFReader.ReadPayload failed: %w", err)
 		}
 
-		if int64(len(readBuf)) != seg.EncryptedSize {
+		if int64(len(readBuf)) != encryptedSegSize {
 			return 0, ErrSegSizeMismatch
 		}
 
@@ -1125,7 +1149,7 @@ func (r *Reader) ReadAt(buf []byte, offset int64) (int, error) { //nolint:funlen
 			return 0, errWriteFailed
 		}
 
-		payloadReadOffset += seg.EncryptedSize
+		payloadReadOffset += encryptedSegSize
 	}
 
 	var err error

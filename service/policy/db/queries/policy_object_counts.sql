@@ -30,6 +30,7 @@ SELECT
 FROM target_namespace
 LEFT JOIN resource_mapping_groups
     ON resource_mapping_groups.namespace_id = target_namespace.id
+WHERE target_namespace.id IS NOT NULL
 GROUP BY target_namespace.id;
 
 -- name: countResourceMappings :one
@@ -57,7 +58,9 @@ WITH target_namespace AS (
 )
 SELECT COUNT(*)
 FROM subject_condition_set
-WHERE namespace_id IS NOT DISTINCT FROM (SELECT id FROM target_namespace);
+WHERE namespace_id IS NOT DISTINCT FROM (SELECT id FROM target_namespace)
+HAVING (SELECT id FROM target_namespace) IS NOT NULL
+    OR (sqlc.narg('namespace_id')::uuid IS NULL AND sqlc.narg('namespace_fqn')::text IS NULL);
 
 -- name: countObligationDefinitions :one
 WITH target_namespace AS (
@@ -127,7 +130,9 @@ WITH target_namespace AS (
 )
 SELECT COUNT(*)
 FROM actions
-WHERE namespace_id IS NOT DISTINCT FROM (SELECT id FROM target_namespace);
+WHERE namespace_id IS NOT DISTINCT FROM (SELECT id FROM target_namespace)
+HAVING (SELECT id FROM target_namespace) IS NOT NULL
+    OR (sqlc.narg('namespace_id')::uuid IS NULL AND sqlc.narg('namespace_fqn')::text IS NULL);
 
 -- name: countActionsWithMissingNames :one
 WITH target_namespace AS (
@@ -162,7 +167,10 @@ SELECT
             WHERE existing.namespace_id IS NOT DISTINCT FROM (SELECT id FROM target_namespace)
               AND LOWER(existing.name) = requested.name
         )
-    ) AS missing_count;
+    ) AS missing_count
+FROM target_namespace
+WHERE target_namespace.id IS NOT NULL
+   OR (sqlc.narg('namespace_id')::uuid IS NULL AND sqlc.narg('namespace_fqn')::text IS NULL);
 
 -- name: getAttributeDefinitionNamespaceID :one
 SELECT namespace_id

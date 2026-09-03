@@ -704,7 +704,7 @@ func (c PolicyDBClient) CreateObligationTrigger(ctx context.Context, r *obligati
 	if err != nil {
 		return nil, fmt.Errorf("failed to get obligation value: %w", err)
 	}
-	triggerNamespaceID, err := c.getAttributeValueNamespaceID(ctx, r.GetAttributeValue())
+	triggerNamespaceID, err := c.GetAttributeValueNamespaceID(ctx, r.GetAttributeValue())
 	if err != nil {
 		return nil, err
 	}
@@ -770,11 +770,6 @@ func (c PolicyDBClient) resolveObligationTriggerActionID(ctx context.Context, ac
 	}
 
 	return createdOrListedActions[0].ID, nil
-}
-
-func (c PolicyDBClient) getAttributeValueNamespaceID(ctx context.Context, attributeValue *common.IdFqnIdentifier) (string, error) {
-	namespaceID, err := c.GetAttributeValueNamespaceID(ctx, attributeValue)
-	return namespaceID, db.WrapIfKnownInvalidQueryErr(err)
 }
 
 // validateObligationTriggerSourceNamespace ensures that the action belongs to the

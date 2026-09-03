@@ -67,6 +67,7 @@ func TestResolveEffectiveKasKeys(t *testing.T) {
 		return &policy.KeyAccessServer{
 			Uri: uri,
 			Id:  id,
+			//nolint:staticcheck // fixture mirrors stored grants, which still carry the deprecated PublicKey
 			PublicKey: &policy.PublicKey{
 				PublicKey: &policy.PublicKey_Cached{
 					Cached: &policy.KasPublicKeySet{Keys: []*policy.KasPublicKey{

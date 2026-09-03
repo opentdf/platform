@@ -9,6 +9,7 @@ const (
 	endOfCentralDirectorySignature  = 0x06054b50
 	zip64EndOfCDLocatorSignature    = 0x07064b50
 	zip64MagicVal                   = 0xFFFFFFFF
+	zip64MagicVal16                 = 0xFFFF // sentinel for the 2-byte EOCD entry counts
 	zip64EndOfCDSignature           = 0x06064b50
 	zip64ExternalID                 = 0x0001
 	zipVersion                      = 0x2D // version 4.5 of the PKZIP specification

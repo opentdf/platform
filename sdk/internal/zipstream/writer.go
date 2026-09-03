@@ -68,6 +68,7 @@ var (
 	ErrNoSegmentZero    = errors.New("segment 0 missing; it carries the payload local file header")
 	ErrInvalidSize      = errors.New("invalid size")
 	ErrZip64Required    = errors.New("ZIP64 required but disabled (Zip64Never)")
+	ErrFieldOverflow    = errors.New("value too large for zip field")
 )
 
 // Config holds configuration options for writers
@@ -79,6 +80,10 @@ type Config struct {
 	// Defaults to time.Now; tests inject a pinned clock for
 	// deterministic ZIP output.
 	Now func() time.Time
+	// MaxNonZip64Value is the largest size or offset written into a 32-bit
+	// zip field before the archive switches to ZIP64. Zero means
+	// maxNonZip64Value (2 GiB - 1). See WithMaxNonZip64Value.
+	MaxNonZip64Value uint64
 }
 
 // Option is a functional option for configuring writers
@@ -130,13 +135,27 @@ func WithClock(now func() time.Time) Option {
 	}
 }
 
+// WithMaxNonZip64Value lowers the point at which the writer switches to
+// ZIP64. This exists as a test seam -- mirroring java-sdk's injectable
+// MAX_NON_ZIP64_VALUE -- so the ZIP64 path can be exercised without
+// materializing a 2 GiB payload. Production callers should leave it alone;
+// zero or a value above the default is ignored.
+func WithMaxNonZip64Value(maxValue uint64) Option {
+	return func(c *Config) {
+		if maxValue > 0 && maxValue <= maxNonZip64Value {
+			c.MaxNonZip64Value = maxValue
+		}
+	}
+}
+
 // defaultConfig returns default configuration
 func defaultConfig() *Config {
 	return &Config{
-		Zip64:         Zip64Auto,
-		MaxSegments:   defaultMaxSegments,
-		EnableLogging: false,
-		Now:           time.Now,
+		Zip64:            Zip64Auto,
+		MaxSegments:      defaultMaxSegments,
+		EnableLogging:    false,
+		Now:              time.Now,
+		MaxNonZip64Value: maxNonZip64Value,
 	}
 }
 
@@ -153,6 +172,12 @@ func applyOptions(opts []Option) *Config {
 	// already defends the same way.
 	if cfg.Now == nil {
 		cfg.Now = time.Now
+	}
+	// Same defence for the ZIP64 switch point: an option is free to zero
+	// the exported field, and zero would mean "switch to ZIP64 for
+	// everything" to the comparisons in Finalize.
+	if cfg.MaxNonZip64Value == 0 {
+		cfg.MaxNonZip64Value = maxNonZip64Value
 	}
 	return cfg
 }

@@ -227,21 +227,24 @@ func TestReaderReadAtNonUniformEdges(t *testing.T) {
 // its own to catch it.
 func TestReaderReadAtDeclaredSizeMismatch(t *testing.T) {
 	for _, tc := range []struct {
-		name   string
-		mutate func(segments []Segment)
+		name    string
+		mutate  func(segments []Segment)
+		wantErr error
 	}{
 		// Understating the first segment shifts every later segment down by
 		// five bytes. The read below starts past that segment, so it is skipped
 		// and never decrypted.
-		{"understated", func(segments []Segment) { segments[0].Size = 5 }},
-		{"overstated", func(segments []Segment) { segments[0].Size = 40 }},
+		{"understated", func(segments []Segment) { segments[0].Size = 5 }, ErrSegSizeMismatch},
+		{"overstated", func(segments []Segment) { segments[0].Size = 40 }, ErrSegSizeMismatch},
 		// Sizes that sum back to something plausible: payloadSize is the sum of
 		// every Size, so a pair that overflows to a small positive total gets
-		// past the range check on offset and reaches the segment walk.
+		// past the range check on offset and reaches the segment walk. A
+		// negative declared Size is caught by resolveSegmentSizes itself,
+		// before the arithmetic consistency check below it ever runs.
 		{"negative", func(segments []Segment) {
 			segments[0].Size = math.MinInt64 + 1
 			segments[1].Size = math.MinInt64 + 7
-		}},
+		}, ErrSegSizeUnresolved},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			reader, _ := newNonUniformReader(t, []int{10, 10, 10})
@@ -258,7 +261,7 @@ func TestReaderReadAtDeclaredSizeMismatch(t *testing.T) {
 			// reader that trusted Size would report a full 20 bytes of shifted
 			// plaintext rather than an error.
 			n, err := reader.ReadAt(make([]byte, 20), 5)
-			require.ErrorIs(t, err, ErrSegSizeMismatch)
+			require.ErrorIs(t, err, tc.wantErr)
 			assert.Zero(t, n)
 		})
 	}

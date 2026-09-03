@@ -1600,6 +1600,46 @@ func (s *TDFSuite) Test_TDFReader() { //nolint:gocognit // requires for testing 
 	}
 }
 
+// shortReadSeeker hands back at most maxRead bytes per Read, which io.Reader
+// explicitly permits. A *bytes.Reader never does this, so nothing else in the
+// suite covers it.
+type shortReadSeeker struct {
+	io.ReadSeeker
+	maxRead int
+}
+
+func (s *shortReadSeeker) Read(p []byte) (int, error) {
+	if len(p) > s.maxRead {
+		p = p[:s.maxRead]
+	}
+	return s.ReadSeeker.Read(p)
+}
+
+// Test_TDFCreateShortReads pins that CreateTDF fills each segment rather than
+// treating a short read as a fatal size mismatch.
+func (s *TDFSuite) Test_TDFCreateShortReads() {
+	kasInfoList := []KASInfo{
+		{URL: s.kasTestURLLookup["http://localhost:65432/"]},
+	}
+
+	tdfBuf := bytes.Buffer{}
+	_, err := s.sdk.CreateTDF(
+		io.Writer(&tdfBuf),
+		&shortReadSeeker{ReadSeeker: bytes.NewReader([]byte(payload)), maxRead: 3},
+		WithKasInformation(kasInfoList...),
+		WithSegmentSize(7),
+	)
+	s.Require().NoError(err)
+
+	r, err := s.sdk.LoadTDF(bytes.NewReader(tdfBuf.Bytes()))
+	s.Require().NoError(err)
+
+	var out bytes.Buffer
+	_, err = r.WriteTo(&out)
+	s.Require().NoError(err)
+	s.Equal(payload, out.String())
+}
+
 func (s *TDFSuite) Test_TDFReaderFail() {
 	kasInfoList := []KASInfo{
 		{

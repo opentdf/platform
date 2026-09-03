@@ -837,19 +837,17 @@ func TestChunkedECKeyAccess(t *testing.T) {
 	for i := range dek {
 		dek[i] = byte(i)
 	}
-	splits := &SplitResult{
-		KASPublicKeys: map[string]KASPublicKey{
-			kasURL: {
-				Algorithm: string(ocrypto.EC256Key),
-				KID:       "ec-kid",
-				PEM:       pubPEM,
-				URL:       kasURL,
-			},
-		},
-		Splits: []Split{{Data: dek, KASURLs: []string{kasURL}}},
-	}
+	shares := []splitShare{{
+		data: dek,
+		kases: []KASInfo{{
+			URL:       kasURL,
+			PublicKey: pubPEM,
+			KID:       "ec-kid",
+			Algorithm: string(ocrypto.EC256Key),
+		}},
+	}}
 
-	kaos, err := buildChunkedKeyAccessObjects(splits, []byte(`{"uuid":"test"}`), "")
+	kaos, err := buildKeyAccessObjects(shares, `{"uuid":"test"}`, "")
 	require.NoError(t, err)
 	require.Len(t, kaos, 1)
 

@@ -56,11 +56,7 @@ func (a *Logger) Record(ctx context.Context, event Event) error {
 	recordCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), timeout)
 	defer cancel()
 
-	if err := a.process(recordCtx, event); err != nil {
-		a.diagnosticLogger().Error("audit processor failed", slog.Any("error", err))
-		return err
-	}
-	return nil
+	return a.process(recordCtx, event)
 }
 
 func (a *Logger) stampEvent(ctx context.Context, event *Event) {
@@ -90,9 +86,6 @@ func validateEvent(event Event) error {
 		value string
 	}{
 		{name: "verb", value: string(event.Verb)},
-		{name: "object type", value: event.Object.Type},
-		{name: "action type", value: event.Action.Type},
-		{name: "action result", value: event.Action.Result},
 		{name: "client platform", value: event.ClientInfo.Platform},
 	}
 	for _, field := range required {
@@ -139,11 +132,4 @@ func (a *Logger) defaultProcess(ctx context.Context, event Event) error {
 		return fmt.Errorf("%w: %w", ErrProcessing, err)
 	}
 	return nil
-}
-
-func (a *Logger) diagnosticLogger() *slog.Logger {
-	if a.diagnostics != nil {
-		return a.diagnostics
-	}
-	return slog.Default()
 }

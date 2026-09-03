@@ -10,25 +10,33 @@ import (
 )
 
 func TestExternalServiceCanConstructCanonicalEvent(t *testing.T) {
+	var processedObjectType string
 	var _ audit.Recorder = audit.CreateAuditLogger(
 		*slog.Default(),
-		audit.WithProcessor(audit.ProcessorFunc(func(context.Context, audit.Event) error { return nil })),
+		audit.WithProcessor(audit.ProcessorFunc(func(_ context.Context, event audit.Event) error {
+			processedObjectType = event.Object.Type.String()
+			return nil
+		})),
 	)
 
-	event := audit.Event{
-		Verb:   audit.Verb("share"),
-		Phase:  audit.PhaseCompleted,
-		Object: audit.Object{Type: "document", ID: "document-1", Attributes: audit.ObjectAttributes{Attrs: []string{"classification"}}},
-		Action: audit.Action{Type: "share", Result: "success"},
-		Actor:  audit.Actor{ID: "subject-1", Attributes: []any{"attribute"}},
-		EventMetaData: audit.EventMetadata{
+	event := audit.NewEvent(audit.EventObjectParams{
+		Object: audit.EventObjectInfo{Type: audit.ObjectTypeRegisteredResource, ID: "document-1", Attributes: audit.EventObjectAttributes{Attrs: []string{"classification"}}},
+		Action: audit.EventObjectAction{Type: audit.ActionTypeRead, Result: audit.ActionResultSuccess},
+		Actor:  audit.EventObjectActor{ID: "subject-1", Attributes: []any{"attribute"}},
+		EventMetaData: audit.EventMetaData{
 			"authoritative_namespace": "https://example.com/attr/organization/value/org-1",
 		},
-		ClientInfo: audit.ClientInfo{Platform: "extension"},
-	}
+		ClientInfo: audit.EventClientInfo{Platform: "extension"},
+	})
+	event.Verb = audit.Verb("share")
+	event.Phase = audit.PhaseCompleted
 
 	require.NoError(t, audit.CreateAuditLogger(
 		*slog.Default(),
-		audit.WithProcessor(audit.ProcessorFunc(func(context.Context, audit.Event) error { return nil })),
-	).Record(t.Context(), event))
+		audit.WithProcessor(audit.ProcessorFunc(func(_ context.Context, event audit.Event) error {
+			processedObjectType = event.Object.Type.String()
+			return nil
+		})),
+	).Record(t.Context(), *event))
+	require.Equal(t, "registered_resource", processedObjectType)
 }

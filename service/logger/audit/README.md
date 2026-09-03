@@ -4,12 +4,13 @@ OpenTDF records one canonical, externally constructible `Event` through an
 immediate `Recorder`:
 
 ```go
-err := params.Logger.Audit.Record(ctx, audit.Event{
-	Verb:   audit.Verb("read"),
-	Object: audit.Object{Type: "document", ID: documentID},
-	Action: audit.Action{Type: "read", Result: "success"},
-	ClientInfo: audit.ClientInfo{Platform: "extension"},
+event := audit.NewEvent(audit.EventObjectParams{
+	Object: audit.EventObjectInfo{Type: audit.ObjectTypeRegisteredResource, ID: documentID},
+	Action: audit.EventObjectAction{Type: audit.ActionTypeRead, Result: audit.ActionResultSuccess},
+	ClientInfo: audit.EventClientInfo{Platform: "extension"},
 })
+event.Verb = audit.Verb("read")
+err := params.Logger.Audit.Record(ctx, *event)
 ```
 
 `Record` stamps request attribution, validates the generic event fields, and

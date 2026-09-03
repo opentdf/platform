@@ -13,15 +13,9 @@ const (
 	defaultNone = "None"
 )
 
-// Public event DTOs are intentionally separate from internal log types.
-// This keeps downstream consumers decoupled from internal logging behavior (e.g. LogValue),
-// while still allowing them to construct events via NewEvent.
 type EventMetaData map[string]any
 
-// Internal log type uses the same shape as public metadata.
 type auditEventMetadata = EventMetaData
-
-// --- Public event DTOs (for downstream consumers) ---
 
 // EventObjectInfo describes the object an audited action was performed on.
 type EventObjectInfo struct {
@@ -65,10 +59,22 @@ type EventObjectParams struct {
 	Timestamp     string
 }
 
-// --- Internal log types (used by logger/audit) ---
+// Phase identifies an event's position in an append-only operation lifecycle.
+type Phase string
 
-// event
-type EventObject struct {
+const (
+	PhaseAttempted Phase = "attempted"
+	PhaseCompleted Phase = "completed"
+)
+
+// Event is the canonical audit event passed to a Processor. Recorder metadata
+// is excluded from the existing OpenTDF log payload.
+type Event struct {
+	Verb      Verb              `json:"-" audit:"-"`
+	ID        uuid.UUID         `json:"-" audit:"-"`
+	Phase     Phase             `json:"-" audit:"-"`
+	Principal ctxAuth.Principal `json:"-" audit:"-"`
+
 	Object        auditEventObject   `json:"object"`
 	Action        eventAction        `json:"action"`
 	Actor         auditEventActor    `json:"actor"`
@@ -80,6 +86,9 @@ type EventObject struct {
 	RequestID uuid.UUID      `json:"requestID" audit:"reserved"`
 	Timestamp string         `json:"timestamp" audit:"reserved"`
 }
+
+// EventObject is retained for compatibility with existing audit constructors.
+type EventObject = Event
 
 // NewEvent converts public DTOs into the internal log event type.
 func NewEvent(params EventObjectParams) *EventObject {
@@ -109,11 +118,11 @@ func NewEvent(params EventObjectParams) *EventObject {
 	}
 }
 
-func (e EventObject) LogValue() slog.Value {
+func (e Event) LogValue() slog.Value {
 	return slog.AnyValue(e.emittedPayloadMap())
 }
 
-func (e EventObject) emittedPayloadMap() map[string]any {
+func (e Event) emittedPayloadMap() map[string]any {
 	entry, ok := normalizeAuditValue(e).(map[string]any)
 	if !ok {
 		panic("normalized audit payload must be a map")
@@ -121,7 +130,6 @@ func (e EventObject) emittedPayloadMap() map[string]any {
 	return entry
 }
 
-// event.object
 type auditEventObject struct {
 	Type       ObjectType            `json:"type" audit:"reserved"`
 	ID         string                `json:"id"`
@@ -137,7 +145,6 @@ func (e auditEventObject) LogValue() slog.Value {
 		slog.Any("attributes", e.Attributes))
 }
 
-// event.object.attributes
 type eventObjectAttributes struct {
 	EventObjectAttributes
 }
@@ -149,7 +156,6 @@ func (e eventObjectAttributes) LogValue() slog.Value {
 		slog.Any("permissions", e.Permissions))
 }
 
-// event.action
 type eventAction struct {
 	EventObjectAction
 }
@@ -160,7 +166,6 @@ func (e eventAction) LogValue() slog.Value {
 		slog.String("result", e.Result.String()))
 }
 
-// event.actor
 type auditEventActor struct {
 	EventObjectActor
 }
@@ -171,7 +176,6 @@ func (e auditEventActor) LogValue() slog.Value {
 		slog.Any("attributes", e.Attributes))
 }
 
-// event.clientInfo
 type eventClientInfo struct {
 	EventClientInfo
 }

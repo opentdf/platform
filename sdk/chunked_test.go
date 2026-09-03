@@ -1288,3 +1288,96 @@ func TestChunkedConcurrentDuplicateIndex(t *testing.T) {
 	}
 	assert.Equal(t, 1, won, "exactly one writer may claim an index")
 }
+
+// blockingSplitter signals when Split is entered and stays there until
+// released, so a test can observe what the writer holds while a split
+// is in flight. Only the first Split blocks; later ones pass straight
+// through.
+type blockingSplitter struct {
+	inner   KeySplitter
+	entered chan struct{}
+	release chan struct{}
+	once    sync.Once
+}
+
+func (s *blockingSplitter) Split(ctx context.Context, attrs []*policy.Value, dek []byte, defaultKAS *policy.SimpleKasKey) (*SplitResult, error) {
+	first := false
+	s.once.Do(func() {
+		first = true
+		close(s.entered)
+	})
+	if first {
+		<-s.release
+	}
+	return s.inner.Split(ctx, attrs, dek, defaultKAS)
+}
+
+// TestChunkedGetManifestDoesNotBlockWriteSegment pins the reason
+// GetManifest snapshots segment state and releases the lock before
+// splitting. A real splitter resolves KAS keys over the network; while
+// GetManifest held RLock across that call, every WriteSegment queued on
+// the write lock for its duration. This test deadlocks on the old
+// shape and passes on the new one.
+func TestChunkedGetManifestDoesNotBlockWriteSegment(t *testing.T) {
+	ctx := context.Background()
+	kasBundle := newChunkedFakeKAS(t)
+	defer kasBundle.server.Close()
+
+	splitter := &blockingSplitter{
+		inner:   DefaultKeySplitter(),
+		entered: make(chan struct{}),
+		release: make(chan struct{}),
+	}
+	w, err := NewChunkedWriter(ctx,
+		WithChunkedDefaultKAS(kasBundle.simpleKey()),
+		WithChunkedKeySplitter(splitter),
+	)
+	require.NoError(t, err)
+
+	_, err = w.WriteSegment(ctx, 0, []byte("first"))
+	require.NoError(t, err)
+
+	type manifestResult struct {
+		manifest *Manifest
+		err      error
+	}
+	manifests := make(chan manifestResult, 1)
+	go func() {
+		m, err := w.GetManifest(ctx)
+		manifests <- manifestResult{manifest: m, err: err}
+	}()
+
+	select {
+	case <-splitter.entered:
+	case <-time.After(10 * time.Second):
+		t.Fatal("GetManifest never reached the splitter")
+	}
+
+	wrote := make(chan error, 1)
+	go func() {
+		_, err := w.WriteSegment(ctx, 1, []byte("second"))
+		wrote <- err
+	}()
+	select {
+	case err := <-wrote:
+		require.NoError(t, err)
+	case <-time.After(10 * time.Second):
+		close(splitter.release)
+		t.Fatal("WriteSegment blocked while GetManifest was splitting")
+	}
+
+	close(splitter.release)
+	got := <-manifests
+	require.NoError(t, got.err)
+
+	// The manifest describes the writer as of the snapshot, not as of
+	// the return. Segment 1 landed after the lock was released, so it
+	// is deliberately absent -- GetManifest is a point-in-time view.
+	assert.Len(t, got.manifest.Segments, 1)
+
+	// The segment written during the split is still committed and shows
+	// up in the next call.
+	later, err := w.GetManifest(ctx)
+	require.NoError(t, err)
+	assert.Len(t, later.Segments, 2)
+}

@@ -426,7 +426,17 @@ func (w *chunkedWriter) Finalize(ctx context.Context, opts ...ChunkedFinalizeOpt
 		return nil, err
 	}
 
-	manifest, totalPlaintext, totalEncrypted, err := w.buildManifest(ctx, cfg)
+	// Finalize keeps the write lock across the split. It is terminal --
+	// no further WriteSegment may succeed after it returns -- so there is
+	// no concurrency to preserve, and releasing the lock to split would
+	// open a window where a segment lands in the archive after the
+	// snapshot that determines the manifest.
+	snap, err := w.snapshotLocked(cfg.keepSegments)
+	if err != nil {
+		return nil, err
+	}
+
+	manifest, totalPlaintext, totalEncrypted, err := w.buildManifest(ctx, cfg, snap)
 	if err != nil {
 		return nil, err
 	}
@@ -454,17 +464,32 @@ func (w *chunkedWriter) Finalize(ctx context.Context, opts ...ChunkedFinalizeOpt
 }
 
 // GetManifest returns the manifest snapshot.
+//
+// The lock is held only long enough to copy segment metadata; the key
+// split -- which may make network calls to resolve KAS keys -- runs
+// unlocked. Holding RLock across it would block every WriteSegment
+// waiting on the write lock for the duration of those calls, and
+// RWMutex bars new readers once a writer is queued, so concurrent
+// GetManifest calls would serialize behind it too.
 func (w *chunkedWriter) GetManifest(ctx context.Context, opts ...ChunkedFinalizeOption) (*Manifest, error) {
 	w.mu.RLock()
-	defer w.mu.RUnlock()
 	if w.finalized && w.manifest != nil {
-		return cloneChunkedManifest(w.manifest), nil
+		manifest := cloneChunkedManifest(w.manifest)
+		w.mu.RUnlock()
+		return manifest, nil
 	}
 	cfg, err := w.applyFinalizeOptions(opts)
 	if err != nil {
+		w.mu.RUnlock()
 		return nil, err
 	}
-	manifest, _, _, err := w.buildManifest(ctx, cfg)
+	snap, err := w.snapshotLocked(cfg.keepSegments)
+	w.mu.RUnlock()
+	if err != nil {
+		return nil, err
+	}
+
+	manifest, _, _, err := w.buildManifest(ctx, cfg, snap)
 	if err != nil {
 		return nil, err
 	}
@@ -599,12 +624,42 @@ func (w *chunkedWriter) applyFinalizeOptions(opts []ChunkedFinalizeOption) (*Chu
 
 // buildManifest composes the manifest from writer state, splits the
 // DEK, wraps splits into KAOs, and computes the root signature.
-func (w *chunkedWriter) buildManifest(ctx context.Context, cfg *ChunkedFinalizeConfig) (*Manifest, int64, int64, error) {
-	order, err := w.segmentOrderLocked(cfg.keepSegments)
-	if err != nil {
-		return nil, 0, 0, err
-	}
+// chunkedSnapshot is the mutable writer state buildManifest needs,
+// copied out from under the lock. Segment values rather than the
+// pointers held in w.segments: WriteSegment mutates those in place when
+// the archive accepts a write, so reading them after the lock is
+// released would race.
+type chunkedSnapshot struct {
+	// segments are the per-segment metadata records in emission order.
+	segments []Segment
+}
 
+// snapshotLocked resolves the emission order and copies each segment's
+// metadata out of w.segments. The caller must hold w.mu for reading.
+func (w *chunkedWriter) snapshotLocked(keep []int) (*chunkedSnapshot, error) {
+	order, err := w.segmentOrderLocked(keep)
+	if err != nil {
+		return nil, err
+	}
+	segments := make([]Segment, len(order))
+	for i, idx := range order {
+		seg, ok := w.segments[idx]
+		if !ok || seg.Size < 0 {
+			return nil, fmt.Errorf("segment %d not written; cannot finalize", idx)
+		}
+		if seg.Hash == "" {
+			return nil, fmt.Errorf("segment %d has empty hash", idx)
+		}
+		segments[i] = *seg
+	}
+	return &chunkedSnapshot{segments: segments}, nil
+}
+
+// buildManifest assembles the manifest from a snapshot. It reads no
+// mutable writer state and holds no lock: every other field it touches
+// (dek, splitter, the integrity algorithms, useHex) is fixed at
+// construction.
+func (w *chunkedWriter) buildManifest(ctx context.Context, cfg *ChunkedFinalizeConfig, snap *chunkedSnapshot) (*Manifest, int64, int64, error) {
 	splits, err := w.splitter.Split(ctx, cfg.attributes, w.dek, cfg.defaultKAS)
 	if err != nil {
 		return nil, 0, 0, err
@@ -628,34 +683,25 @@ func (w *chunkedWriter) buildManifest(ctx context.Context, cfg *ChunkedFinalizeC
 		},
 		IntegrityInformation: IntegrityInformation{
 			SegmentHashAlgorithm: integrityAlgorithmString(w.segmentIntegrityAlgorithm),
-			Segments:             make([]Segment, len(order)),
+			Segments:             make([]Segment, len(snap.segments)),
 		},
 	}
 
 	var aggregate bytes.Buffer
 	var totalPlaintext, totalEncrypted int64
-	for i, idx := range order {
-		seg, ok := w.segments[idx]
-		if !ok || seg.Size < 0 {
-			return nil, 0, 0, fmt.Errorf("segment %d not written; cannot finalize", idx)
-		}
-		if seg.Hash == "" {
-			return nil, 0, 0, fmt.Errorf("segment %d has empty hash", idx)
-		}
-		encInfo.Segments[i] = *seg
+	for i, seg := range snap.segments {
+		encInfo.Segments[i] = seg
 		totalPlaintext += seg.Size
 		totalEncrypted += seg.EncryptedSize
 		decoded, err := ocrypto.Base64Decode([]byte(seg.Hash))
 		if err != nil {
-			return nil, 0, 0, fmt.Errorf("decode segment %d hash: %w", idx, err)
+			return nil, 0, 0, fmt.Errorf("decode segment %d hash: %w", i, err)
 		}
 		aggregate.Write(decoded)
 	}
-	if len(order) > 0 {
-		if first, ok := w.segments[order[0]]; ok {
-			encInfo.DefaultEncryptedSegSize = first.EncryptedSize
-			encInfo.DefaultSegmentSize = first.Size
-		}
+	if len(snap.segments) > 0 {
+		encInfo.DefaultEncryptedSegSize = snap.segments[0].EncryptedSize
+		encInfo.DefaultSegmentSize = snap.segments[0].Size
 	}
 
 	rootSig, err := calculateSignature(aggregate.Bytes(), w.dek, w.integrityAlgorithm, w.useHex)

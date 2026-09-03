@@ -2,6 +2,7 @@ package audit
 
 import (
 	"context"
+	"errors"
 	"testing"
 
 	"connectrpc.com/connect"
@@ -47,6 +48,50 @@ func TestContextServerInterceptorDoesNotTreatHeaderAsPrincipal(t *testing.T) {
 	_, err := next(t.Context(), req)
 	require.NoError(t, err)
 	assert.Empty(t, captured.ActorID)
+}
+
+func TestContextServerInterceptorCancelsBufferedEventsOnReturnedError(t *testing.T) {
+	logger := createDiscardLogger()
+	var processed Event
+	logger.processor = ProcessorFunc(func(_ context.Context, event Event) error {
+		processed = event
+		return nil
+	})
+	requestErr := errors.New("request failed")
+	next := ContextServerInterceptor(logger)(
+		func(ctx context.Context, _ connect.AnyRequest) (connect.AnyResponse, error) {
+			logger.PolicyCRUDSuccess(ctx, policyCRUDParams)
+			return nil, requestErr
+		},
+	)
+
+	_, err := next(t.Context(), connect.NewRequest(&struct{}{}))
+
+	require.ErrorIs(t, err, requestErr)
+	assert.Equal(t, ActionResultCancel, processed.Action.Result)
+	assert.Equal(t, requestErr.Error(), processed.EventMetaData["cancellation_error"])
+}
+
+func TestContextServerInterceptorPreservesBufferedErrorOnReturnedError(t *testing.T) {
+	logger := createDiscardLogger()
+	var processed Event
+	logger.processor = ProcessorFunc(func(_ context.Context, event Event) error {
+		processed = event
+		return nil
+	})
+	requestErr := errors.New("request failed")
+	next := ContextServerInterceptor(logger)(
+		func(ctx context.Context, _ connect.AnyRequest) (connect.AnyResponse, error) {
+			logger.PolicyCRUDFailure(ctx, policyCRUDParams)
+			return nil, requestErr
+		},
+	)
+
+	_, err := next(t.Context(), connect.NewRequest(&struct{}{}))
+
+	require.ErrorIs(t, err, requestErr)
+	assert.Equal(t, ActionResultError, processed.Action.Result)
+	assert.Equal(t, requestErr.Error(), processed.EventMetaData["cancellation_error"])
 }
 
 func createDiscardLogger() *Logger {

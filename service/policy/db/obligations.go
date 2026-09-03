@@ -9,7 +9,6 @@ import (
 	"github.com/opentdf/platform/lib/identifier"
 	"github.com/opentdf/platform/protocol/go/common"
 	"github.com/opentdf/platform/protocol/go/policy"
-	"github.com/opentdf/platform/protocol/go/policy/attributes"
 	"github.com/opentdf/platform/protocol/go/policy/obligations"
 	"github.com/opentdf/platform/service/pkg/db"
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -705,7 +704,7 @@ func (c PolicyDBClient) CreateObligationTrigger(ctx context.Context, r *obligati
 	if err != nil {
 		return nil, fmt.Errorf("failed to get obligation value: %w", err)
 	}
-	triggerNamespaceID, err := c.getAttributeValueNamespaceID(ctx, r.GetAttributeValue())
+	triggerNamespaceID, err := c.GetAttributeValueNamespaceID(ctx, r.GetAttributeValue())
 	if err != nil {
 		return nil, err
 	}
@@ -771,26 +770,6 @@ func (c PolicyDBClient) resolveObligationTriggerActionID(ctx context.Context, ac
 	}
 
 	return createdOrListedActions[0].ID, nil
-}
-
-func (c PolicyDBClient) getAttributeValueNamespaceID(ctx context.Context, attributeValue *common.IdFqnIdentifier) (string, error) {
-	var attributeValueIdentifier any
-	if attributeValue.GetId() != "" {
-		attributeValueIdentifier = &attributes.GetAttributeValueRequest_ValueId{ValueId: attributeValue.GetId()}
-	} else {
-		attributeValueIdentifier = &attributes.GetAttributeValueRequest_Fqn{Fqn: attributeValue.GetFqn()}
-	}
-
-	av, err := c.GetAttributeValue(ctx, attributeValueIdentifier)
-	if err != nil {
-		return "", db.WrapIfKnownInvalidQueryErr(err)
-	}
-	attr, err := c.GetAttribute(ctx, av.GetAttribute().GetId())
-	if err != nil {
-		return "", db.WrapIfKnownInvalidQueryErr(err)
-	}
-
-	return attr.GetNamespace().GetId(), nil
 }
 
 // validateObligationTriggerSourceNamespace ensures that the action belongs to the

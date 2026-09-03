@@ -58,13 +58,21 @@ func emitAuditEvent(ctx context.Context, t *testing.T, lg *Logger) {
 
 	next := audit.ContextServerInterceptor(lg.Audit)(
 		func(ctx context.Context, _ connect.AnyRequest) (connect.AnyResponse, error) {
-			audit.LogAuditEvent(ctx, audit.VerbRewrap, &audit.EventObject{})
+			audit.LogAuditEvent(ctx, audit.VerbRewrap, testAuditEvent())
 			return nil, nil //nolint:nilnil // the interceptor ignores the response in this test
 		},
 	)
 
 	_, err := next(ctx, connect.NewRequest(&struct{}{}))
 	require.NoError(t, err)
+}
+
+func testAuditEvent() *audit.EventObject {
+	return audit.NewEvent(audit.EventObjectParams{
+		Object:     audit.EventObjectInfo{Type: audit.ObjectTypeKeyObject},
+		Action:     audit.EventObjectAction{Type: audit.ActionTypeRewrap, Result: audit.ActionResultSuccess},
+		ClientInfo: audit.EventClientInfo{Platform: "test"},
+	})
 }
 
 func Test_NewLogger_CorrelatesMainAndAuditLogs(t *testing.T) {
@@ -122,7 +130,7 @@ func Test_NewLogger_RequestMetadataOnlyOnMainLogger(t *testing.T) {
 		next := audit.ContextServerInterceptor(lg.Audit)(
 			func(ctx context.Context, _ connect.AnyRequest) (connect.AnyResponse, error) {
 				lg.InfoContext(ctx, "handled request")
-				audit.LogAuditEvent(ctx, audit.VerbRewrap, &audit.EventObject{})
+				audit.LogAuditEvent(ctx, audit.VerbRewrap, testAuditEvent())
 				return nil, nil //nolint:nilnil // the interceptor ignores the response in this test
 			},
 		)

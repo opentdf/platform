@@ -31,7 +31,7 @@ func (a *Logger) applyJWTClaimEnrichment(ctx context.Context, entry map[string]a
 
 	claimsMap, err := token.AsMap(ctx)
 	if err != nil {
-		a.logger.ErrorContext(ctx, "failed to read JWT claims for audit enrichment", slog.Any("error", err))
+		a.reportError(ctx, "failed to read JWT claims for audit enrichment", slog.Any("error", err))
 		return
 	}
 
@@ -50,7 +50,7 @@ func (a *Logger) applyMappedJWTClaims(ctx context.Context, entry map[string]any,
 		}
 
 		if err := dotnotation.Set(entry, mapping.Path, normalizeAuditValue(value)); err != nil {
-			a.logger.ErrorContext(ctx,
+			a.reportError(ctx,
 				"failed to apply JWT claim mapping to audit log",
 				slog.String("claim", mapping.Claim),
 				slog.String("path", mapping.Path),

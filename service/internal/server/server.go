@@ -29,6 +29,7 @@ import (
 	"github.com/opentdf/platform/service/pkg/cache"
 	"github.com/opentdf/platform/service/tracing"
 	"golang.org/x/net/http2"
+	//nolint:staticcheck // h2c is deprecated in favour of http.Server.Protocols, but that requires a Go 1.24+ server rework tracked separately
 	"golang.org/x/net/http2/h2c"
 	"google.golang.org/grpc"
 )
@@ -404,6 +405,7 @@ func newHTTPServer(c Config, connectRPC http.Handler, extraHTTP http.Handler, a 
 
 	var handler http.Handler
 	if !c.TLS.Enabled {
+		//nolint:staticcheck // h2c.NewHandler is deprecated in favour of http.Server.Protocols; migration tracked separately
 		handler = h2c.NewHandler(routeConnectRPCRequests(connectRPC, httpHandler), &http2.Server{})
 	} else {
 		tc, err = loadTLSConfig(c.TLS)

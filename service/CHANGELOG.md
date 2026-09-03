@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.25.2](https://github.com/opentdf/platform/compare/service/v0.25.1...service/v0.25.2) (2026-09-03)
+
+
+### Features
+
+* **core:** Make audit logger types extensible [backport to release/service/v0.25] ([#3966](https://github.com/opentdf/platform/issues/3966)) ([2143cf3](https://github.com/opentdf/platform/commit/2143cf3b1c873042ab019ff5e15ee6d8e4c5b7f0))
+
 ## [0.25.1](https://github.com/opentdf/platform/compare/service/v0.25.0...service/v0.25.1) (2026-08-19)
 
 

@@ -21,6 +21,9 @@ type AuthorizationServiceStepDefinitions struct{}
 
 const (
 	decisionResponse = "decisionResponse"
+	// singleResourceEphemeralID labels the lone resource in single-resource
+	// decision requests; the response is correlated back by this id.
+	singleResourceEphemeralID = "resource1"
 )
 
 func ConvertInterfaceToAny(jsonData []byte) (*anypb.Any, error) {
@@ -293,7 +296,7 @@ func (s *AuthorizationServiceStepDefinitions) sendDecisionRequestV2WithFulfillab
 			Name: strings.ToLower(action),
 		},
 		Resource: &authzV2.Resource{
-			EphemeralId: "resource1",
+			EphemeralId: singleResourceEphemeralID,
 			Resource: &authzV2.Resource_AttributeValues_{
 				AttributeValues: &authzV2.Resource_AttributeValues{
 					Fqns: resourceFQNs,
@@ -350,7 +353,7 @@ func (s *AuthorizationServiceStepDefinitions) iSendADecisionRequestForTokenForAc
 		},
 		Action: &policy.Action{Name: strings.ToLower(action)},
 		Resource: &authzV2.Resource{
-			EphemeralId: "resource1",
+			EphemeralId: singleResourceEphemeralID,
 			Resource: &authzV2.Resource_AttributeValues_{
 				AttributeValues: &authzV2.Resource_AttributeValues{Fqns: resourceFQNs},
 			},

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"log"
 	"log/slog"
 	"net"
@@ -337,8 +338,8 @@ func (l *LocalDevPlatformGlue) Shutdown(platformCukesContext *PlatformTestSuiteC
 	if platformCukesContext.HasFailures || preserveTestDirectory {
 		platformCukesContext.Logger.Warn("preserving cukes directory for debugging",
 			slog.String("directory", l.Options.CukesDir),
-			slog.Bool("hasFailures", platformCukesContext.HasFailures),
-			slog.Bool("preserveOnFailure", preserveTestDirectory))
+			slog.Bool("has_failures", platformCukesContext.HasFailures),
+			slog.Bool("preserve_on_failure", preserveTestDirectory))
 		return nil
 	}
 
@@ -347,20 +348,49 @@ func (l *LocalDevPlatformGlue) Shutdown(platformCukesContext *PlatformTestSuiteC
 	return err
 }
 
+// changePermissions chmods every file below dirPath. The walk is scoped to an
+// os.Root so a symlink planted mid-walk cannot redirect the chmod outside dirPath.
 func changePermissions(dirPath string, mode os.FileMode) error {
-	err := filepath.Walk(dirPath, func(path string, info os.FileInfo, err error) error {
+	root, err := os.OpenRoot(dirPath)
+	if err != nil {
+		return err
+	}
+	defer root.Close()
+	return fs.WalkDir(root.FS(), ".", func(path string, entry fs.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
-		if !info.IsDir() {
-			err = os.Chmod(path, mode)
-			if err != nil {
-				return err
-			}
+		if entry.IsDir() {
+			return nil
 		}
+		return root.Chmod(path, mode)
+	})
+}
+
+// logKeyFiles dumps the generated PEM files so container startup failures can be
+// diagnosed from the test output. Scoped to an os.Root for the same reason as above.
+func logKeyFiles(keysDir string, logger *slog.Logger) error {
+	root, err := os.OpenRoot(keysDir)
+	if err != nil {
+		return err
+	}
+	defer root.Close()
+	return fs.WalkDir(root.FS(), ".", func(path string, _ fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if !strings.HasSuffix(path, ".pem") {
+			return nil
+		}
+		content, err := root.ReadFile(path)
+		if err != nil {
+			return err
+		}
+		logger.Warn("keys content",
+			slog.String("path", filepath.Join(keysDir, path)),
+			slog.String("content", string(content)))
 		return nil
 	})
-	return err
 }
 
 // Setup local platform including cert/key generation and platform and keycloak configuration setup.
@@ -396,7 +426,6 @@ func (l *LocalDevPlatformGlue) Setup(platformCukesContext *PlatformTestSuiteCont
 		return err
 	}
 
-	//nolint:nestif // refactor later - compose is private *dockercompose
 	if err := compose.WithEnv(map[string]string{
 		"POSTGRES_EXPOSE_PORT": strconv.Itoa(l.Options.postgresPort),
 		"KC_EXPOSE_PORT_HTTP":  strconv.Itoa(l.Options.keycloakPort), // Use HTTP port for BDD tests
@@ -405,22 +434,7 @@ func (l *LocalDevPlatformGlue) Setup(platformCukesContext *PlatformTestSuiteCont
 	}).Up(ctx, tc.Wait(true)); err != nil {
 		logger.Error("error standing up containers", slog.String("error", err.Error()))
 		// log key data
-		err := filepath.WalkDir(l.Options.KeysDir, func(path string, _ os.DirEntry, err error) error {
-			if err != nil {
-				return err
-			}
-			if strings.HasSuffix(path, ".pem") {
-				content, err := os.ReadFile(path)
-				if err != nil {
-					return err
-				}
-				logger.Warn("keys content",
-					slog.String("path", path),
-					slog.String("content", string(content)))
-			}
-			return nil
-		})
-		if err != nil {
+		if err := logKeyFiles(l.Options.KeysDir, logger); err != nil {
 			logger.Error("error dumping keys", slog.String("error", err.Error()))
 		}
 		LogComposeServices(compose, logger)

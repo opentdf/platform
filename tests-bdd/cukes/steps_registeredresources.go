@@ -199,7 +199,7 @@ func (s *RegisteredResourcesStepDefinitions) iSendADecisionRequestForEntityChain
 		},
 		Action: &policy.Action{Name: strings.ToLower(action)},
 		Resource: &authzV2.Resource{
-			EphemeralId: "resource1",
+			EphemeralId: singleResourceEphemeralID,
 			Resource: &authzV2.Resource_RegisteredResourceValueFqn{
 				RegisteredResourceValueFqn: resourceValueFQN,
 			},
@@ -238,7 +238,7 @@ func (s *RegisteredResourcesStepDefinitions) iSendADecisionRequestForRegisteredR
 		},
 		Action: &policy.Action{Name: strings.ToLower(action)},
 		Resource: &authzV2.Resource{
-			EphemeralId: "resource1",
+			EphemeralId: singleResourceEphemeralID,
 			Resource: &authzV2.Resource_AttributeValues_{
 				AttributeValues: &authzV2.Resource_AttributeValues{
 					Fqns: resourceFQNs,
@@ -278,7 +278,7 @@ func (s *RegisteredResourcesStepDefinitions) iSendADecisionRequestForRegisteredR
 		},
 		Action: &policy.Action{Name: strings.ToLower(action)},
 		Resource: &authzV2.Resource{
-			EphemeralId: "resource1",
+			EphemeralId: singleResourceEphemeralID,
 			Resource: &authzV2.Resource_RegisteredResourceValueFqn{
 				RegisteredResourceValueFqn: resourceFQN,
 			},

@@ -5,6 +5,7 @@ import (
 
 	"github.com/opentdf/platform/lib/identifier"
 	"github.com/opentdf/platform/protocol/go/common"
+	"github.com/opentdf/platform/service/pkg/db"
 )
 
 func (c PolicyDBClient) CountAttributeDefinitions(ctx context.Context, namespaceID string) (int64, error) {
@@ -20,7 +21,7 @@ func (c PolicyDBClient) GetResourceMappingGroupCount(ctx context.Context, namesp
 		NamespaceID:  pgtypeUUID(namespaceID),
 		NamespaceFqn: pgtypeText(namespaceFQN),
 	})
-	return result.NamespaceID, result.ObjectCount, err
+	return result.NamespaceID, result.ObjectCount, db.WrapIfKnownInvalidQueryErr(err)
 }
 
 func (c PolicyDBClient) CountResourceMappings(ctx context.Context, attributeValueID string) (int64, error) {
@@ -32,10 +33,11 @@ func (c PolicyDBClient) CountSubjectMappings(ctx context.Context, attributeValue
 }
 
 func (c PolicyDBClient) CountSubjectConditionSets(ctx context.Context, namespaceID, namespaceFQN string) (int64, error) {
-	return c.queries.countSubjectConditionSets(ctx, countSubjectConditionSetsParams{
+	count, err := c.queries.countSubjectConditionSets(ctx, countSubjectConditionSetsParams{
 		NamespaceID:  pgtypeUUID(namespaceID),
 		NamespaceFqn: pgtypeText(namespaceFQN),
 	})
+	return count, db.WrapIfKnownInvalidQueryErr(err)
 }
 
 func (c PolicyDBClient) CountObligationDefinitions(ctx context.Context, namespaceID, namespaceFQN string) (int64, error) {
@@ -63,10 +65,11 @@ func (c PolicyDBClient) CountObligationTriggersForAttributeValue(ctx context.Con
 }
 
 func (c PolicyDBClient) CountActions(ctx context.Context, namespaceID, namespaceFQN string) (int64, error) {
-	return c.queries.countActions(ctx, countActionsParams{
+	count, err := c.queries.countActions(ctx, countActionsParams{
 		NamespaceID:  pgtypeUUID(namespaceID),
 		NamespaceFqn: pgtypeText(namespaceFQN),
 	})
+	return count, db.WrapIfKnownInvalidQueryErr(err)
 }
 
 func (c PolicyDBClient) CountActionsWithMissingNames(ctx context.Context, namespaceID, namespaceFQN string, actionNames []string) (int64, int64, error) {
@@ -75,16 +78,18 @@ func (c PolicyDBClient) CountActionsWithMissingNames(ctx context.Context, namesp
 		NamespaceFqn: pgtypeText(namespaceFQN),
 		ActionNames:  actionNames,
 	})
-	return counts.CurrentCount, counts.MissingCount, err
+	return counts.CurrentCount, counts.MissingCount, db.WrapIfKnownInvalidQueryErr(err)
 }
 
 func (c PolicyDBClient) GetAttributeDefinitionNamespaceID(ctx context.Context, attributeDefinitionID string) (string, error) {
-	return c.queries.getAttributeDefinitionNamespaceID(ctx, attributeDefinitionID)
+	namespaceID, err := c.queries.getAttributeDefinitionNamespaceID(ctx, attributeDefinitionID)
+	return namespaceID, db.WrapIfKnownInvalidQueryErr(err)
 }
 
 func (c PolicyDBClient) GetAttributeValueNamespaceID(ctx context.Context, value *common.IdFqnIdentifier) (string, error) {
-	return c.queries.getAttributeValueNamespaceID(ctx, getAttributeValueNamespaceIDParams{
+	namespaceID, err := c.queries.getAttributeValueNamespaceID(ctx, getAttributeValueNamespaceIDParams{
 		AttributeValueID:  pgtypeUUID(value.GetId()),
 		AttributeValueFqn: pgtypeText(value.GetFqn()),
 	})
+	return namespaceID, db.WrapIfKnownInvalidQueryErr(err)
 }

@@ -27,6 +27,8 @@ WITH target_namespace AS (
 SELECT COUNT(*)
 FROM actions
 WHERE namespace_id IS NOT DISTINCT FROM (SELECT id FROM target_namespace)
+HAVING (SELECT id FROM target_namespace) IS NOT NULL
+    OR ($1::uuid IS NULL AND $2::text IS NULL)
 `
 
 type countActionsParams struct {
@@ -51,6 +53,8 @@ type countActionsParams struct {
 //	SELECT COUNT(*)
 //	FROM actions
 //	WHERE namespace_id IS NOT DISTINCT FROM (SELECT id FROM target_namespace)
+//	HAVING (SELECT id FROM target_namespace) IS NOT NULL
+//	    OR ($1::uuid IS NULL AND $2::text IS NULL)
 func (q *Queries) countActions(ctx context.Context, arg countActionsParams) (int64, error) {
 	row := q.db.QueryRow(ctx, countActions, arg.NamespaceID, arg.NamespaceFqn)
 	var count int64
@@ -92,6 +96,9 @@ SELECT
               AND LOWER(existing.name) = requested.name
         )
     ) AS missing_count
+FROM target_namespace
+WHERE target_namespace.id IS NOT NULL
+   OR ($1::uuid IS NULL AND $2::text IS NULL)
 `
 
 type countActionsWithMissingNamesParams struct {
@@ -140,6 +147,9 @@ type countActionsWithMissingNamesRow struct {
 //	              AND LOWER(existing.name) = requested.name
 //	        )
 //	    ) AS missing_count
+//	FROM target_namespace
+//	WHERE target_namespace.id IS NOT NULL
+//	   OR ($1::uuid IS NULL AND $2::text IS NULL)
 func (q *Queries) countActionsWithMissingNames(ctx context.Context, arg countActionsWithMissingNamesParams) (countActionsWithMissingNamesRow, error) {
 	row := q.db.QueryRow(ctx, countActionsWithMissingNames, arg.NamespaceID, arg.NamespaceFqn, arg.ActionNames)
 	var i countActionsWithMissingNamesRow
@@ -366,6 +376,8 @@ WITH target_namespace AS (
 SELECT COUNT(*)
 FROM subject_condition_set
 WHERE namespace_id IS NOT DISTINCT FROM (SELECT id FROM target_namespace)
+HAVING (SELECT id FROM target_namespace) IS NOT NULL
+    OR ($1::uuid IS NULL AND $2::text IS NULL)
 `
 
 type countSubjectConditionSetsParams struct {
@@ -390,6 +402,8 @@ type countSubjectConditionSetsParams struct {
 //	SELECT COUNT(*)
 //	FROM subject_condition_set
 //	WHERE namespace_id IS NOT DISTINCT FROM (SELECT id FROM target_namespace)
+//	HAVING (SELECT id FROM target_namespace) IS NOT NULL
+//	    OR ($1::uuid IS NULL AND $2::text IS NULL)
 func (q *Queries) countSubjectConditionSets(ctx context.Context, arg countSubjectConditionSetsParams) (int64, error) {
 	row := q.db.QueryRow(ctx, countSubjectConditionSets, arg.NamespaceID, arg.NamespaceFqn)
 	var count int64
@@ -483,6 +497,7 @@ SELECT
 FROM target_namespace
 LEFT JOIN resource_mapping_groups
     ON resource_mapping_groups.namespace_id = target_namespace.id
+WHERE target_namespace.id IS NOT NULL
 GROUP BY target_namespace.id
 `
 
@@ -516,6 +531,7 @@ type getResourceMappingGroupCountRow struct {
 //	FROM target_namespace
 //	LEFT JOIN resource_mapping_groups
 //	    ON resource_mapping_groups.namespace_id = target_namespace.id
+//	WHERE target_namespace.id IS NOT NULL
 //	GROUP BY target_namespace.id
 func (q *Queries) getResourceMappingGroupCount(ctx context.Context, arg getResourceMappingGroupCountParams) (getResourceMappingGroupCountRow, error) {
 	row := q.db.QueryRow(ctx, getResourceMappingGroupCount, arg.NamespaceID, arg.NamespaceFqn)

@@ -31,7 +31,6 @@ import (
 
 const (
 	keyAccessSchemaVersion = "1.0"
-	maxFileSizeSupported   = 68719476736 // 64gb
 	defaultMimeType        = "application/octet-stream"
 	zip64MagicVal          = int64(^uint32(0))
 	tdfAsZip               = "zip"
@@ -138,7 +137,7 @@ func (t TDFObject) Size() int64 {
 	return t.size
 }
 
-func (s SDK) CreateTDF(writer io.Writer, reader io.ReadSeeker, opts ...TDFOption) (*TDFObject, error) {
+func (s SDK) CreateTDF(writer io.Writer, reader io.Reader, opts ...TDFOption) (*TDFObject, error) {
 	return s.CreateTDFContext(context.Background(), writer, reader, opts...)
 }
 
@@ -162,22 +161,14 @@ func uuidSplitIDGenerator() string {
 	return uuid.New().String()
 }
 
-// CreateTDFContext reads plain text from the given reader and saves it to the writer, subject to the given options
-func (s SDK) CreateTDFContext(ctx context.Context, writer io.Writer, reader io.ReadSeeker, opts ...TDFOption) (*TDFObject, error) { //nolint:funlen, gocognit, lll // Better readability keeping it as is
-	inputSize, err := reader.Seek(0, io.SeekEnd)
-	if err != nil {
-		return nil, fmt.Errorf("readSeeker.Seek failed: %w", err)
-	}
-
-	if inputSize > maxFileSizeSupported {
-		return nil, errFileTooLarge
-	}
-
-	_, err = reader.Seek(0, io.SeekStart)
-	if err != nil {
-		return nil, fmt.Errorf("readSeeker.Seek failed: %w", err)
-	}
-
+// CreateTDFContext reads plain text from the given reader and saves it to the writer,
+// subject to the given options. Bytes are consumed from the reader's current position
+// through EOF.
+//
+// Knowing the length up front lets the archive stay in the compact ZIP32 layout when it
+// fits. The length comes from [WithInputSize] if given, otherwise from the reader when
+// it is seekable; a payload that can be measured neither way is written as ZIP64.
+func (s SDK) CreateTDFContext(ctx context.Context, writer io.Writer, reader io.Reader, opts ...TDFOption) (*TDFObject, error) { //nolint:funlen, gocognit, lll // Better readability keeping it as is
 	tdfConfig, err := newTDFConfig(opts...)
 	if err != nil {
 		return nil, fmt.Errorf("NewTDFConfig failed: %w", err)
@@ -200,60 +191,67 @@ func (s SDK) CreateTDFContext(ctx context.Context, writer io.Writer, reader io.R
 	} else if segmentSize < minSegmentSize {
 		return nil, fmt.Errorf("segment size too small: %d", segmentSize)
 	}
-	totalSegments := inputSize / segmentSize
-	if inputSize%segmentSize != 0 {
-		totalSegments++
-	}
 
-	// empty payload we still want to create a payload
-	if totalSegments == 0 {
-		totalSegments = 1
+	inputSize, err := resolveInputSize(tdfConfig, reader)
+	if err != nil {
+		return nil, err
 	}
+	totalSegments := segmentCount(inputSize, segmentSize)
 
 	encryptedSegmentSize := segmentSize + gcmIvSize + aesBlockSize
-	payloadSize := inputSize + (totalSegments * (gcmIvSize + aesBlockSize))
 
+	// The ZIP64 choice is baked into the payload's local file header, which goes out
+	// ahead of the first segment, so it cannot be revisited once the archive has
+	// started. Reserve ZIP64 for payloads that a 32-bit offset cannot address — and
+	// for payloads of unknown length, which might turn out to be one.
+	payloadSize := inputSize + int64(totalSegments)*(gcmIvSize+aesBlockSize)
 	zipMode := zipstream.Zip64Auto
-	if payloadSize >= zip64MagicVal {
+	if inputSize == inputSizeUnknown || payloadSize >= zip64MagicVal {
 		zipMode = zipstream.Zip64Always
 	}
 
-	expectedSegments := int(totalSegments)
-	if expectedSegments < 1 {
-		expectedSegments = 1
+	archiveOpts := []zipstream.Option{zipstream.WithZip64Mode(zipMode)}
+	if totalSegments > 0 {
+		archiveOpts = append(archiveOpts, zipstream.WithMaxSegments(totalSegments))
 	}
-
-	archiveWriter := zipstream.NewSegmentTDFWriter(
-		expectedSegments,
-		zipstream.WithZip64Mode(zipMode),
-		zipstream.WithMaxSegments(expectedSegments),
-	)
+	archiveWriter := zipstream.NewSegmentTDFWriter(totalSegments, archiveOpts...)
 
 	outputWriter := &countingWriter{writer: writer}
 
-	var readPos int64
-	var aggregateHashBuilder strings.Builder
-	// Only as large as the payload actually needs: the segment size defaults to
-	// 2 MiB, so sizing on it alone would allocate that much to encrypt a
-	// handful of bytes.
-	readBuf := make([]byte, min(segmentSize, max(inputSize, 1)))
-	segmentIndex := 0
-	for totalSegments != 0 { // adjust read size
-		readSize := segmentSize
-		if (inputSize - readPos) < segmentSize {
-			readSize = inputSize - readPos
-		}
+	// A known length doubles as a read limit: overrunning it would invalidate the
+	// ZIP64 choice made from it above. Only as large as the payload actually needs,
+	// too — the segment size defaults to 2 MiB, so sizing on it alone would allocate
+	// that much to encrypt a handful of bytes. The buffer never shrinks to zero, so a
+	// read that comes back empty always means EOF.
+	readBufSize := segmentSize
+	if inputSize != inputSizeUnknown {
+		reader = io.LimitReader(reader, inputSize)
+		readBufSize = max(1, min(segmentSize, inputSize))
+	}
 
+	var aggregateHashBuilder strings.Builder
+	var bytesRead int64
+	readBuf := make([]byte, readBufSize)
+	for segmentIndex := 0; ; segmentIndex++ {
 		// io.Reader.Read is free to return fewer bytes than asked for without
-		// erroring, so a bare Read would reject perfectly valid readers as a
-		// size mismatch. ReadFull retries until the segment is filled.
-		if _, err := io.ReadFull(reader, readBuf[:readSize]); err != nil {
-			return nil, fmt.Errorf("io.ReadSeeker.Read failed: %w", err)
+		// erroring, so a bare Read would cut segments short at the whim of the
+		// reader. ReadFull retries until the segment is filled or the input runs
+		// out; a short final segment surfaces as io.ErrUnexpectedEOF.
+		n, readErr := io.ReadFull(reader, readBuf)
+		if readErr != nil && !errors.Is(readErr, io.EOF) && !errors.Is(readErr, io.ErrUnexpectedEOF) {
+			return nil, fmt.Errorf("io.Reader.Read failed: %w", readErr)
 		}
+		// A payload whose length is an exact multiple of the segment size reports
+		// EOF with nothing read. An empty payload still gets one empty segment.
+		if n == 0 && segmentIndex > 0 {
+			break
+		}
+		readSize := int64(n)
+		bytesRead += readSize
 
 		cipherData, err := tdfObject.aesGcm.Encrypt(readBuf[:readSize])
 		if err != nil {
-			return nil, fmt.Errorf("io.ReadSeeker.Read failed: %w", err)
+			return nil, fmt.Errorf("ocrypto.AesGcm.Encrypt failed: %w", err)
 		}
 
 		crc := crc32.ChecksumIEEE(cipherData)
@@ -289,9 +287,17 @@ func (s SDK) CreateTDFContext(ctx context.Context, writer io.Writer, reader io.R
 
 		tdfObject.manifest.Segments = append(tdfObject.manifest.Segments, segmentInfo)
 
-		totalSegments--
-		readPos += readSize
-		segmentIndex++
+		if readErr != nil {
+			break
+		}
+	}
+
+	// A reader that ran dry before the declared length would otherwise yield a TDF
+	// that is silently short of the payload the caller asked to encrypt. The archive
+	// is already sized and partly written by now, so there is nothing to salvage —
+	// fail rather than hand back a truncated result that looks complete.
+	if inputSize != inputSizeUnknown && bytesRead != inputSize {
+		return nil, fmt.Errorf("%w: read %d of %d bytes", errInputShorterThanDeclared, bytesRead, inputSize)
 	}
 
 	rootSignature, err := calculateSignature([]byte(aggregateHashBuilder.String()), tdfObject.payloadKey[:],
@@ -412,6 +418,51 @@ func (s SDK) CreateTDFContext(ctx context.Context, writer io.Writer, reader io.R
 	tdfObject.size = outputWriter.written
 
 	return tdfObject, nil
+}
+
+// resolveInputSize reports the payload length in bytes, or inputSizeUnknown when it
+// cannot be established without consuming the reader. An explicit WithInputSize wins
+// over what the reader can report about itself.
+//
+// A reader may satisfy io.Seeker and still refuse to seek — os.Stdin on the end of a
+// pipe is the common case — so a failed probe is treated as an unmeasurable payload
+// rather than an error. Failing to restore the original position is different: the
+// cursor has already moved and the payload can no longer be read in full.
+func resolveInputSize(tdfConfig *TDFConfig, reader io.Reader) (int64, error) {
+	if tdfConfig.inputSize != inputSizeUnknown {
+		return tdfConfig.inputSize, nil
+	}
+
+	seeker, ok := reader.(io.Seeker)
+	if !ok {
+		return inputSizeUnknown, nil
+	}
+	start, err := seeker.Seek(0, io.SeekCurrent)
+	if err != nil {
+		return inputSizeUnknown, nil //nolint:nilerr // a reader that cannot seek is measured by reading it
+	}
+	end, err := seeker.Seek(0, io.SeekEnd)
+	if err != nil {
+		return inputSizeUnknown, nil //nolint:nilerr // a reader that cannot seek is measured by reading it
+	}
+	if _, err := seeker.Seek(start, io.SeekStart); err != nil {
+		return 0, fmt.Errorf("seeker.Seek failed to restore reader position: %w", err)
+	}
+	return end - start, nil
+}
+
+// segmentCount returns the number of segments a payload of inputSize will occupy, or
+// zero when the length is unknown and the count can only be settled by reading.
+func segmentCount(inputSize, segmentSize int64) int {
+	switch inputSize {
+	case inputSizeUnknown:
+		return 0
+	case 0:
+		// An empty payload still gets one empty segment.
+		return 1
+	default:
+		return int((inputSize + segmentSize - 1) / segmentSize)
+	}
 }
 
 // initKAOTemplate initializes the KAO template, from either the split plan, kaoTemplate, or autoconfigure based on tags.

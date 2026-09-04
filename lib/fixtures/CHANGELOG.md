@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.7.0](https://github.com/opentdf/platform/compare/lib/fixtures/v0.6.0...lib/fixtures/v0.7.0) (2026-09-04)
+
+
+### Bug Fixes
+
+* **deps:** bump golang.org/x/net from 0.38.0 to 0.55.0 in /lib/fixtures ([#3710](https://github.com/opentdf/platform/issues/3710)) ([71dce0d](https://github.com/opentdf/platform/commit/71dce0d7fd054a819c5775126e916f412a0a5470))
+
 ## [0.6.0](https://github.com/opentdf/platform/compare/lib/fixtures/v0.5.0...lib/fixtures/v0.6.0) (2026-07-21)
 
 

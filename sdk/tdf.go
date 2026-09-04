@@ -907,7 +907,14 @@ func (s SDK) LoadTDF(reader io.ReadSeeker, opts ...TDFReaderOption) (*Reader, er
 
 	var payloadSize int64
 	for _, seg := range manifestObj.Segments {
-		payloadSize += seg.Size
+		// Sizes the writer left to the manifest-level default have to be
+		// filled in here too: without it the payload looks shorter than it
+		// is, and every read bounded by payloadSize comes up short.
+		size, _, err := manifestObj.resolveSegmentSizes(seg)
+		if err != nil {
+			return nil, err
+		}
+		payloadSize += size
 	}
 
 	return &Reader{
@@ -984,18 +991,23 @@ func (r *Reader) WriteTo(writer io.Writer) (int64, error) {
 	var payloadReadOffset int64
 	var decryptedDataOffset int64
 	for _, seg := range r.manifest.Segments {
-		if decryptedDataOffset+seg.Size < r.cursor {
-			decryptedDataOffset += seg.Size
-			payloadReadOffset += seg.EncryptedSize
+		segSize, encryptedSegSize, err := r.manifest.resolveSegmentSizes(seg)
+		if err != nil {
+			return totalBytes, err
+		}
+
+		if decryptedDataOffset+segSize < r.cursor {
+			decryptedDataOffset += segSize
+			payloadReadOffset += encryptedSegSize
 			continue
 		}
 
-		readBuf, err := r.tdfReader.ReadPayload(payloadReadOffset, seg.EncryptedSize)
+		readBuf, err := r.tdfReader.ReadPayload(payloadReadOffset, encryptedSegSize)
 		if err != nil {
 			return totalBytes, fmt.Errorf("TDFReader.ReadPayload failed: %w", err)
 		}
 
-		if int64(len(readBuf)) != seg.EncryptedSize {
+		if int64(len(readBuf)) != encryptedSegSize {
 			return totalBytes, ErrSegSizeMismatch
 		}
 
@@ -1034,9 +1046,9 @@ func (r *Reader) WriteTo(writer io.Writer) (int64, error) {
 			return totalBytes, errWriteFailed
 		}
 
-		payloadReadOffset += seg.EncryptedSize
+		payloadReadOffset += encryptedSegSize
 		r.cursor += int64(n)
-		decryptedDataOffset += seg.Size
+		decryptedDataOffset += segSize
 	}
 
 	return totalBytes, nil
@@ -1084,6 +1096,11 @@ func (r *Reader) ReadAt(buf []byte, offset int64) (int, error) { //nolint:funlen
 	var segStart int64          // plaintext offset of seg
 	startIndex := int64(-1)     // offset of the request within decryptedBuf
 	for _, seg := range r.manifest.Segments {
+		segSize, encryptedSegSize, err := r.manifest.resolveSegmentSizes(seg)
+		if err != nil {
+			return 0, err
+		}
+
 		// Segment.Size positions every plaintext offset derived below --
 		// including for the segments this request skips over -- but nothing
 		// authenticates it: the root signature aggregates only Segment.Hash.
@@ -1093,18 +1110,18 @@ func (r *Reader) ReadAt(buf []byte, offset int64) (int, error) { //nolint:funlen
 		// is the per-segment form of the check doPayloadKeyUnwrap already
 		// applies to the manifest defaults. Deriving Size from EncryptedSize
 		// rather than the reverse keeps the arithmetic from overflowing.
-		if seg.EncryptedSize < gcmIvSize+aesBlockSize || seg.Size != seg.EncryptedSize-(gcmIvSize+aesBlockSize) {
+		if encryptedSegSize < gcmIvSize+aesBlockSize || segSize != encryptedSegSize-(gcmIvSize+aesBlockSize) {
 			return 0, fmt.Errorf("%w: segment declares size %d with encrypted size %d",
-				ErrSegSizeMismatch, seg.Size, seg.EncryptedSize)
+				ErrSegSizeMismatch, segSize, encryptedSegSize)
 		}
 
-		segEnd := segStart + seg.Size
+		segEnd := segStart + segSize
 
 		// Wholly before the request. The comparison is <= rather than < so
 		// that a request starting exactly on a segment boundary, or a
 		// zero-length request, does not pull in the preceding segment.
 		if segEnd <= offset {
-			payloadReadOffset += seg.EncryptedSize
+			payloadReadOffset += encryptedSegSize
 			segStart = segEnd
 			continue
 		}
@@ -1118,12 +1135,12 @@ func (r *Reader) ReadAt(buf []byte, offset int64) (int, error) { //nolint:funlen
 			startIndex = offset - segStart
 		}
 
-		readBuf, err := r.tdfReader.ReadPayload(payloadReadOffset, seg.EncryptedSize)
+		readBuf, err := r.tdfReader.ReadPayload(payloadReadOffset, encryptedSegSize)
 		if err != nil {
 			return 0, fmt.Errorf("TDFReader.ReadPayload failed: %w", err)
 		}
 
-		if int64(len(readBuf)) != seg.EncryptedSize {
+		if int64(len(readBuf)) != encryptedSegSize {
 			return 0, ErrSegSizeMismatch
 		}
 
@@ -1156,7 +1173,7 @@ func (r *Reader) ReadAt(buf []byte, offset int64) (int, error) { //nolint:funlen
 			return 0, errWriteFailed
 		}
 
-		payloadReadOffset += seg.EncryptedSize
+		payloadReadOffset += encryptedSegSize
 		segStart = segEnd
 	}
 
@@ -1581,7 +1598,7 @@ func calculateSignature(data []byte, secret []byte, alg IntegrityAlgorithm, isLe
 		return string(hmac), nil
 	}
 	if kGMACPayloadLength > len(data) {
-		return "", errors.New("fail to create gmac signature")
+		return "", fmt.Errorf("%w: ciphertext length=%d", ErrGMACSignatureFailed, len(data))
 	}
 
 	if isLegacyTDF {

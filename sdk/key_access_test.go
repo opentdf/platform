@@ -47,6 +47,29 @@ func testSymKey(t *testing.T) []byte {
 	return symKey
 }
 
+func decodeEncryptedMetadata(t *testing.T, encrypted string) []byte {
+	t.Helper()
+
+	decodedJSON, err := ocrypto.Base64Decode([]byte(encrypted))
+	require.NoError(t, err)
+
+	var encMeta EncryptedMetadata
+	require.NoError(t, json.Unmarshal(decodedJSON, &encMeta))
+	require.NotEmpty(t, encMeta.Cipher)
+	require.NotEmpty(t, encMeta.Iv)
+
+	iv, err := ocrypto.Base64Decode([]byte(encMeta.Iv))
+	require.NoError(t, err)
+	require.Len(t, iv, ocrypto.GcmStandardNonceSize)
+
+	ciphertext, err := ocrypto.Base64Decode([]byte(encMeta.Cipher))
+	require.NoError(t, err)
+	require.GreaterOrEqual(t, len(ciphertext), ocrypto.GcmStandardNonceSize)
+	assert.Equal(t, iv, ciphertext[:ocrypto.GcmStandardNonceSize])
+
+	return ciphertext
+}
+
 // TestCreateKeyAccessRSA pins the shape of the default (RSA) wrapping path:
 // which manifest fields are populated and which are deliberately left empty.
 func TestCreateKeyAccessRSA(t *testing.T) {
@@ -65,6 +88,7 @@ func TestCreateKeyAccessRSA(t *testing.T) {
 	assert.Equal(t, "split-1", kao.SplitID)
 	assert.Equal(t, keyAccessSchemaVersion, kao.SchemaVersion)
 	assert.Equal(t, "encrypted-metadata", kao.EncryptedMetadata)
+	assert.Equal(t, PolicyBinding{Alg: "HS256", Hash: "test-binding"}, kao.PolicyBinding)
 	assert.NotEmpty(t, kao.WrappedKey)
 	assert.Empty(t, kao.EphemeralPublicKey, "RSA wrapping emits no ephemeral key")
 }
@@ -142,39 +166,42 @@ func TestCreateKeyAccessECUnwrap(t *testing.T) {
 func TestEncryptMetadata(t *testing.T) {
 	symKey := testSymKey(t)
 
-	t.Run("produces a base64 EncryptedMetadata envelope", func(t *testing.T) {
+	t.Run("round trips a base64 EncryptedMetadata envelope", func(t *testing.T) {
 		encrypted, err := encryptMetadata(symKey, testMetadata)
 		require.NoError(t, err)
 		require.NotEmpty(t, encrypted)
 
-		decodedJSON, err := ocrypto.Base64Decode([]byte(encrypted))
+		ciphertext := decodeEncryptedMetadata(t, encrypted)
+		gcm, err := ocrypto.NewAESGcm(symKey)
 		require.NoError(t, err)
-
-		var encMeta EncryptedMetadata
-		require.NoError(t, json.Unmarshal(decodedJSON, &encMeta))
-		require.NotEmpty(t, encMeta.Cipher)
-		require.NotEmpty(t, encMeta.Iv)
-
-		_, err = ocrypto.Base64Decode([]byte(encMeta.Iv))
+		plaintext, err := gcm.Decrypt(ciphertext)
 		require.NoError(t, err)
-		_, err = ocrypto.Base64Decode([]byte(encMeta.Cipher))
-		require.NoError(t, err)
+		assert.Equal(t, testMetadata, string(plaintext))
 	})
 
-	t.Run("different keys produce different ciphertext", func(t *testing.T) {
+	t.Run("a different key cannot decrypt the ciphertext", func(t *testing.T) {
 		otherKey := testSymKey(t)
 
-		a, err := encryptMetadata(symKey, testMetadata)
+		encrypted, err := encryptMetadata(symKey, testMetadata)
 		require.NoError(t, err)
-		b, err := encryptMetadata(otherKey, testMetadata)
+		ciphertext := decodeEncryptedMetadata(t, encrypted)
+
+		gcm, err := ocrypto.NewAESGcm(otherKey)
 		require.NoError(t, err)
-		assert.NotEqual(t, a, b)
+		_, err = gcm.Decrypt(ciphertext)
+		require.Error(t, err)
 	})
 
-	t.Run("empty metadata still yields an envelope", func(t *testing.T) {
+	t.Run("empty metadata round trips through an envelope", func(t *testing.T) {
 		encrypted, err := encryptMetadata(symKey, "")
 		require.NoError(t, err)
-		assert.NotEmpty(t, encrypted)
+		ciphertext := decodeEncryptedMetadata(t, encrypted)
+
+		gcm, err := ocrypto.NewAESGcm(symKey)
+		require.NoError(t, err)
+		plaintext, err := gcm.Decrypt(ciphertext)
+		require.NoError(t, err)
+		assert.Empty(t, plaintext)
 	})
 
 	t.Run("errors on an unusable key", func(t *testing.T) {

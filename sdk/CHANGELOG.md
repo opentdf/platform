@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.32.0](https://github.com/opentdf/platform/compare/sdk/v0.31.0...sdk/v0.32.0) (2026-09-04)
+
+
+### Features
+
+* **sdk:** make the zipstream clock injectable for deterministic ZIP output ([#3931](https://github.com/opentdf/platform/issues/3931)) ([02d9aea](https://github.com/opentdf/platform/commit/02d9aeae851bfd9c7e34334e14a5f581527ba6b8))
+
+
+### Bug Fixes
+
+* **sdk:** reject a zipstream write set that omits segment 0 ([#3932](https://github.com/opentdf/platform/issues/3932)) ([6ca994b](https://github.com/opentdf/platform/commit/6ca994bc5372a671d5391fa4c3776ee9d49f8dbf))
+
 ## [0.31.0](https://github.com/opentdf/platform/compare/sdk/v0.30.0...sdk/v0.31.0) (2026-08-27)
 
 

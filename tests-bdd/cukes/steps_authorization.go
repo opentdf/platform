@@ -4,9 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"net"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/cucumber/godog"
 	authzV2 "github.com/opentdf/platform/protocol/go/authorization/v2"
@@ -210,6 +212,41 @@ func (s *AuthorizationServiceStepDefinitions) iSendAMultiResourceDecisionRequest
 	scenarioContext.RecordObject(multiDecisionResponseKey, resp)
 	scenarioContext.RecordObject(decisionResponse, resp)
 	scenarioContext.RecordObject("resourceFQNMap", resourceFQNMap)
+
+	return ctx, nil
+}
+
+func (s *AuthorizationServiceStepDefinitions) iSendAMultiResourceDecisionRequestWithin(ctx context.Context, entityChainID, action, maximumDuration string, tbl *godog.Table) (context.Context, error) {
+	limit, err := time.ParseDuration(maximumDuration)
+	if err != nil {
+		return ctx, fmt.Errorf("parse maximum decision duration %q: %w", maximumDuration, err)
+	}
+	if limit <= 0 {
+		return ctx, fmt.Errorf("maximum decision duration must be positive, got %s", limit)
+	}
+
+	requestCtx, cancel := context.WithTimeout(ctx, limit)
+	defer cancel()
+	started := time.Now()
+	_, err = s.iSendAMultiResourceDecisionRequestForEntityChainForActionOnResources(requestCtx, entityChainID, action, tbl)
+	elapsed := time.Since(started)
+
+	scenarioContext := GetPlatformScenarioContext(ctx)
+	scenarioContext.TestSuiteContext.Logger.Info(
+		"authorization v2 multi-resource performance",
+		slog.Duration("duration", elapsed),
+		slog.Duration("maximum_duration", limit),
+		slog.Int("resource_count", len(tbl.Rows)-1),
+	)
+	if err != nil {
+		return ctx, err
+	}
+	if requestErr := scenarioContext.GetError(); requestErr != nil {
+		return ctx, fmt.Errorf("multi-resource decision failed after %s: %w", elapsed, requestErr)
+	}
+	if elapsed > limit {
+		return ctx, fmt.Errorf("multi-resource decision took %s, exceeding the %s limit", elapsed, limit)
+	}
 
 	return ctx, nil
 }
@@ -556,6 +593,7 @@ func RegisterAuthorizationStepDefinitions(ctx *godog.ScenarioContext) {
 	ctx.Step(`^I send a decision request for entity chain "([^"]*)" for "([^"]*)" action on resource "([^"]*)" with fulfillable obligations "([^"]*)"$`, stepDefinitions.iSendADecisionRequestForEntityChainForActionOnResourceWithFulfillableObligations)
 	ctx.Step(`^I send a decision request for entity chain "([^"]*)" for "([^"]*)" action on resource "([^"]*)" with no fulfillable obligations$`, stepDefinitions.iSendADecisionRequestForEntityChainForActionOnResourceWithNoFulfillableObligations)
 	ctx.Step(`^I send a multi-resource decision request for entity chain "([^"]*)" for "([^"]*)" action on resources:$`, stepDefinitions.iSendAMultiResourceDecisionRequestForEntityChainForActionOnResources)
+	ctx.Step(`^I send a multi-resource decision request for entity chain "([^"]*)" for "([^"]*)" action on resources within "([^"]*)":$`, stepDefinitions.iSendAMultiResourceDecisionRequestWithin)
 	ctx.Step(`^I send a multi-resource decision request for entity chain "([^"]*)" for "([^"]*)" action on resources with no fulfillable obligations:$`, stepDefinitions.iSendAMultiResourceDecisionRequestForEntityChainForActionOnResourcesWithNoFulfillableObligations)
 	ctx.Step(`^I send a multi-resource decision request for entity chain "([^"]*)" for "([^"]*)" action on resources with fulfillable obligations "([^"]*)":$`, stepDefinitions.iSendAMultiResourceDecisionRequestForEntityChainForActionOnResourcesWithFulfillableObligations)
 	ctx.Step(`^I should get a "([^"]*)" decision response$`, stepDefinitions.iShouldGetADecisionResponse)

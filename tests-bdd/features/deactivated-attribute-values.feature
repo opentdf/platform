@@ -5,10 +5,12 @@ Feature: Deactivated attribute values deny decrypt
   resource, so a TDF already bound to it stops being decryptable the moment the
   deactivation lands.
 
-  These scenarios run against a platform with allow_direct_entitlements
-  enabled, which makes authorization v2 decide against the full entitlement
-  policy instead of a targeted per-FQN fetch. Deactivated values are present in
-  that full policy load, which is how they remained decryptable.
+  These scenarios reuse the dynamic value mappings platform template purely for
+  its allow_dynamic_value_mappings flag: that flag makes authorization v2 decide
+  against the full entitlement policy instead of a targeted per-FQN fetch.
+  Deactivated values are present in that full policy load, which is how they
+  remained decryptable. The targeted fetch already errors on an inactive value,
+  so on the stock template these scenarios would pass even with the bug.
 
   The demo policy loaded by the default platform is used:
 
@@ -17,15 +19,15 @@ Feature: Deactivated attribute values deny decrypt
 
     demo.com/attr/classification    rule: HIERARCHY  (public < internal < confidential < secret)
 
-  Each scenario deactivates a value, so the feature is deliberately not
-  @stateless — every scenario gets its own platform and policy database.
+  Each scenario deactivates a value, so the feature is deliberately untagged
+  for stateless reuse: every scenario gets its own platform and policy database.
 
   Background:
     Given a user exists with username "alice" and email "alice@demo.com" and the following attributes:
       | name           | value            |
       | department     | ["engineering"]  |
       | classification | ["confidential"] |
-    And a default local platform with platform template "cukes/resources/platform.deactivation.template"
+    And a default local platform with platform template "cukes/resources/platform.dynamic_value_mappings.template"
     And a user token for "alice" stored as "alice_tok"
 
   Scenario: ANY_OF — deactivating the value on the TDF denies decrypt

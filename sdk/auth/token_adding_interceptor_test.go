@@ -201,8 +201,8 @@ type FakeAccessServiceServerConnect struct {
 }
 
 func (f *FakeAccessServiceServerConnect) PublicKey(ctx context.Context, req *connect.Request[kas.PublicKeyRequest]) (*connect.Response[kas.PublicKeyResponse], error) {
-	f.accessToken = []string{req.Header().Get("authorization")}
-	f.dpopToken = []string{req.Header().Get("dpop")}
+	f.accessToken = []string{req.Header().Get("Authorization")}
+	f.dpopToken = []string{req.Header().Get("DPoP")}
 	var ok bool
 	f.dpopKey, ok = ctx.Value("dpop-jwk").(jwk.Key)
 	if !ok {

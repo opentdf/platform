@@ -17,7 +17,7 @@ import (
 
 type SubjectMappingsStepDefinitions struct{}
 
-const policyDatabaseSchema = "otdf"
+const policyDatabaseSchema = "otdf_policy"
 
 func (s *SubjectMappingsStepDefinitions) iSendARequestToCreateSubjectMapping(ctx context.Context, tbl *godog.Table) (context.Context, error) {
 	scenarioContext := GetPlatformScenarioContext(ctx)

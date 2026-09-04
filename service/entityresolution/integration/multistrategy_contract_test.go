@@ -16,12 +16,14 @@ func TestMultiStrategyContractValidation(t *testing.T) {
 		t.Skip("Skipping multi-strategy contract validation tests in short mode")
 	}
 
-	// Create chain-specific contract test suite
-	chainSuite := internal.NewChainContractTestSuite()
+	// Create chain-specific contract test suite. Multi-strategy ERS is first-match-wins,
+	// so the chain carries only the first matching strategy's entity.
+	chainSuite := internal.NewChainContractTestSuiteWithShape(multiStrategyChainShape)
 
-	// Create multi-strategy implementation with enhanced configuration for multi-entity chains
+	// Create multi-strategy implementation with two matching strategies to prove that
+	// only the first one is used, regardless of failure strategy.
 	config := types.MultiStrategyConfig{
-		FailureStrategy: types.FailureStrategyContinue, // Critical: Continue to try all strategies
+		FailureStrategy: types.FailureStrategyContinue, // Only governs error handling, not stopping at first success
 		Providers: map[string]types.ProviderConfig{
 			"jwt_claims": {
 				Type:       "claims",
@@ -92,13 +94,21 @@ func TestMultiStrategyContractValidation(t *testing.T) {
 		logger: logger.CreateTestLogger(),
 	}
 
-	t.Log("Running multi-entity chain contract tests against Multi-Strategy ERS")
+	t.Log("Running entity chain contract tests against Multi-Strategy ERS")
 
 	// Run chain-specific contract tests
 	chainSuite.RunChainContractTests(t, wrapper, "MultiStrategy")
 
-	t.Log("✅ Multi-Strategy ERS multi-entity chain contract validation completed successfully!")
-	t.Log("🎯 All entity chain tests passed - Multi-Strategy now matches Keycloak behavior")
+	t.Log("✅ Multi-Strategy ERS entity chain contract validation completed successfully!")
+	t.Log("🎯 All entity chain tests passed - chains hold the first matching strategy's entity")
+}
+
+// multiStrategyChainShape is the chain multi-strategy ERS builds for the configurations in
+// this package: a single entity from the first matching strategy, which is the ENVIRONMENT
+// (client) strategy in every one of them. See the multi-strategy ERS ADR.
+var multiStrategyChainShape = internal.ChainShape{
+	EntityCount:      1,
+	EntityCategories: []string{"CATEGORY_ENVIRONMENT"},
 }
 
 // TestMultiStrategyChainSpecific runs specific chain validation tests
@@ -108,9 +118,9 @@ func TestMultiStrategyChainSpecific(t *testing.T) {
 	}
 
 	// Use the chain contract test suite
-	chainSuite := internal.NewChainContractTestSuite()
+	chainSuite := internal.NewChainContractTestSuiteWithShape(multiStrategyChainShape)
 
-	// Create ERS configuration for multi-entity chains
+	// Create ERS configuration with two matching strategies; first match wins
 	config := types.MultiStrategyConfig{
 		FailureStrategy: types.FailureStrategyContinue,
 		Providers: map[string]types.ProviderConfig{

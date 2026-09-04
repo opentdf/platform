@@ -294,13 +294,10 @@ func (ers *ERSV2) createEntityChainFromSingleTokenV2(ctx context.Context, token 
 			slog.String("entity_type", getEntityTypeStringV2(entityV2)),
 			slog.String("entity_category", entityV2.GetCategory().String()))
 
-		// ENHANCED: Continue trying additional strategies to build multi-entity chains (like Keycloak)
-		// This allows creating chains with multiple entities (e.g., ENVIRONMENT + SUBJECT)
-		// Only break if FailureStrategy is FailFast and we have at least one successful entity
-		if failureStrategy == types.FailureStrategyFailFast {
-			break
-		}
-		// With FailureStrategyContinue, we continue to try more strategies to build richer chains
+		// First match wins, per the ADR: failure_strategy only governs error handling
+		// ("continue" tries the next strategy on failure, "fail-fast" stops immediately).
+		// Neither mode keeps resolving after a success, so a chain holds exactly one entity.
+		break
 	}
 
 	// If no strategies succeeded

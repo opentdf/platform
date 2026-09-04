@@ -294,6 +294,16 @@ func (s *LocalPlatformStepDefinitions) aEmptyLocalPlatform(ctx context.Context) 
 	return s.commonLocalPlatform(ctx, &platformStartOptions{kcProvisionPath: kt})
 }
 
+func (s *LocalPlatformStepDefinitions) anEmptyLocalPlatformWithPolicyListRequestPageLimit(ctx context.Context, limit int) (context.Context, error) {
+	if limit <= 0 || limit >= 10000 {
+		return ctx, fmt.Errorf("policy list request page limit must be between 1 and 9999, got %d", limit)
+	}
+
+	scenarioContext := GetPlatformScenarioContext(ctx)
+	scenarioContext.ScenarioOptions.PolicyListRequestLimit = limit
+	return s.aEmptyLocalPlatform(ctx)
+}
+
 func (s *LocalPlatformStepDefinitions) aDefaultLocalPlatform(ctx context.Context) (context.Context, error) {
 	kt := template.Must(template.New("kc").Parse(keycloakBaseTemplate))
 	return s.commonLocalPlatform(ctx, &platformStartOptions{
@@ -568,15 +578,16 @@ func createPlatformConfiguration(options *LocalDevOptions, scenarioOptions *Loca
 	t := template.Must(template.New("platform").Parse(templateSource))
 	var strBuffer bytes.Buffer
 	if err := t.Execute(&strBuffer, map[string]any{
-		"hostname":        options.Hostname,
-		"kcPort":          options.keycloakPort,
-		"platformPort":    scenarioOptions.PlatformPort,
-		"pgPort":          options.postgresPort,
-		"pgDatabase":      scenarioOptions.DatabaseName,
-		"pgHost":          pgHost,
-		"platformKeysDir": platformKeysDir,
-		"authRealm":       scenarioOptions.KeycloakRealm,
-		"ldapPort":        scenarioOptions.LDAPPort,
+		"hostname":               options.Hostname,
+		"kcPort":                 options.keycloakPort,
+		"platformPort":           scenarioOptions.PlatformPort,
+		"pgPort":                 options.postgresPort,
+		"pgDatabase":             scenarioOptions.DatabaseName,
+		"pgHost":                 pgHost,
+		"platformKeysDir":        platformKeysDir,
+		"authRealm":              scenarioOptions.KeycloakRealm,
+		"ldapPort":               scenarioOptions.LDAPPort,
+		"policyListRequestLimit": scenarioOptions.PolicyListRequestLimit,
 	}); err != nil {
 		return tempFileName, err
 	}
@@ -615,6 +626,7 @@ func RegisterLocalPlatformStepDefinitions(ctx *godog.ScenarioContext, x *Platfor
 		PlatformCukesContext: x,
 	}
 	ctx.Step(`^an empty local platform$`, platformStepDefinitions.aEmptyLocalPlatform)
+	ctx.Step(`^an empty local platform with policy list request page limit (\d+)$`, platformStepDefinitions.anEmptyLocalPlatformWithPolicyListRequestPageLimit)
 	ctx.Step(`^a default local platform$`, platformStepDefinitions.aDefaultLocalPlatform)
 	ctx.Step(`^a default local platform with platform template "([^"]*)"$`, platformStepDefinitions.aDefaultLocalPlatformWithTemplate)
 	ctx.Step(`^I use the platform as "([^"]*)"$`, platformStepDefinitions.iUseThePlatformAs)

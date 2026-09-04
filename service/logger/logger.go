@@ -47,13 +47,31 @@ func (c Config) traceCorrelationEnabled() bool {
 	return c.TraceCorrelation == nil || *c.TraceCorrelation
 }
 
+// Option configures a Logger at construction time.
+type Option func(*loggerOptions)
+
+type loggerOptions struct {
+	auditProcessor audit.Processor
+}
+
+// WithAuditProcessor configures canonical audit event processing.
+func WithAuditProcessor(processor audit.Processor) Option {
+	return func(options *loggerOptions) {
+		options.auditProcessor = processor
+	}
+}
+
 const (
 	LevelTrace = slog.Level(-8)
 )
 
-func NewLogger(config Config) (*Logger, error) {
+func NewLogger(config Config, options ...Option) (*Logger, error) {
 	var sLogger *slog.Logger
 	logger := new(Logger)
+	loggerOpts := loggerOptions{}
+	for _, option := range options {
+		option(&loggerOpts)
+	}
 
 	w, err := getWriter(config)
 	if err != nil {
@@ -92,7 +110,11 @@ func NewLogger(config Config) (*Logger, error) {
 	// Audit events skip requestContextAttrs on purpose: the request metadata it
 	// adds is already inside the audit payload. They still need trace correlation.
 	auditLoggerBase := slog.New(newContextAttrsHandler(auditLoggerHandler, contextAttrSources(config)...))
-	auditLogger := audit.CreateAuditLogger(*auditLoggerBase)
+	var auditOptions []audit.Option
+	if loggerOpts.auditProcessor != nil {
+		auditOptions = append(auditOptions, audit.WithProcessor(loggerOpts.auditProcessor))
+	}
+	auditLogger := audit.CreateAuditLogger(*auditLoggerBase, auditOptions...)
 
 	logger.Logger = sLogger
 	logger.Audit = auditLogger

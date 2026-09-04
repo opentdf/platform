@@ -54,6 +54,7 @@ type StartConfig struct {
 
 	authzRoleProvider          authz.RoleProvider
 	authzRoleProviderFactories map[string]authz.RoleProviderFactory
+	auditProcessor             audit.Processor
 
 	// CORS additive configuration - appended to YAML/env config values
 	additionalCORSHeaders        []string
@@ -91,6 +92,14 @@ func formatAuditTypeRegistrationConflicts(conflicts []auditTypeRegistrationConfl
 		entries = append(entries, fmt.Sprintf("%s %d: %q vs %q", conflict.Category, conflict.Key, conflict.ExistingName, conflict.NewName))
 	}
 	return strings.Join(entries, "; ")
+}
+
+// WithAuditProcessor configures instance-scoped canonical audit processing.
+func WithAuditProcessor(processor audit.Processor) StartOptions {
+	return func(c StartConfig) StartConfig {
+		c.auditProcessor = processor
+		return c
+	}
 }
 
 // Deprecated: Use WithConfigKey

@@ -15,6 +15,14 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestWithAuditProcessor(t *testing.T) {
+	processor := audit.ProcessorFunc(func(context.Context, audit.Event) error { return nil })
+
+	cfg := WithAuditProcessor(processor)(StartConfig{})
+
+	require.NotNil(t, cfg.auditProcessor)
+}
+
 // noopInterceptor returns a connect.UnaryInterceptorFunc that passes through.
 func noopInterceptor() connect.Interceptor {
 	return connect.UnaryInterceptorFunc(func(next connect.UnaryFunc) connect.UnaryFunc {

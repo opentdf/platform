@@ -290,7 +290,11 @@ func buildNamespaceLogger(baseLogger *logging.Logger, cfg *config.Config, ns, le
 	newLoggerConfig := cfg.Logger
 	newLoggerConfig.Level = level
 
-	namespaceLogger, loggerErr := logging.NewLogger(newLoggerConfig)
+	var loggerOptions []logging.Option
+	if baseLogger.Audit.Processor() != nil {
+		loggerOptions = append(loggerOptions, logging.WithAuditProcessor(baseLogger.Audit.Processor()))
+	}
+	namespaceLogger, loggerErr := logging.NewLogger(newLoggerConfig, loggerOptions...)
 	if loggerErr != nil {
 		return nil, fmt.Errorf("invalid namespace logger config for %s: %w", ns, loggerErr)
 	}

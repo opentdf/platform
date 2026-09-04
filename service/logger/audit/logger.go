@@ -3,6 +3,8 @@ package audit
 import (
 	"context"
 	"log/slog"
+	"sync"
+	"time"
 )
 
 // From the Slog docs (https://betterstack.com/community/guides/logging/logging-in-go/#customizing-slog-levels):
@@ -10,8 +12,9 @@ import (
 // associated with an integer value: DEBUG (-4), INFO (0), WARN (4), and ERROR (8).
 const (
 	// Currently setting AUDIT level to 10, a level above ERROR so it is always logged
-	LevelAudit    = slog.Level(10)
-	LevelAuditStr = "AUDIT"
+	LevelAudit           = slog.Level(10)
+	LevelAuditStr        = "AUDIT"
+	defaultRecordTimeout = 5 * time.Second
 )
 
 type Verb string
@@ -33,8 +36,23 @@ var logLevelNames = map[slog.Leveler]string{
 }
 
 type Logger struct {
-	logger *slog.Logger
-	config Config
+	logger        *slog.Logger
+	processor     Processor
+	recordTimeout time.Duration
+	configMu      sync.RWMutex
+	config        Config
+}
+
+// Option configures an audit logger at construction time.
+type Option func(*Logger)
+
+// WithProcessor configures canonical event processing.
+func WithProcessor(processor Processor) Option {
+	return func(logger *Logger) {
+		if processor != nil {
+			logger.processor = processor
+		}
+	}
 }
 
 // Used to support custom log levels showing up with custom labels as well
@@ -56,10 +74,15 @@ func ReplaceAttrAuditLevel(_ []string, a slog.Attr) slog.Attr {
 	return a
 }
 
-func CreateAuditLogger(logger slog.Logger) *Logger {
-	return &Logger{
-		logger: &logger,
+func CreateAuditLogger(logger slog.Logger, options ...Option) *Logger {
+	auditLogger := &Logger{
+		logger:        &logger,
+		recordTimeout: defaultRecordTimeout,
 	}
+	for _, option := range options {
+		option(auditLogger)
+	}
+	return auditLogger
 }
 
 func cloneConfig(cfg Config) Config {
@@ -73,16 +96,32 @@ func (a *Logger) ApplyConfig(cfg Config) error {
 	if err := cfg.Validate(); err != nil {
 		return err
 	}
+	a.configMu.Lock()
 	a.config = cloneConfig(cfg)
+	a.configMu.Unlock()
 	return nil
+}
+
+//nolint:funcorder // keep configuration read and write synchronization together
+func (a *Logger) configSnapshot() Config {
+	a.configMu.RLock()
+	defer a.configMu.RUnlock()
+	return cloneConfig(a.config)
 }
 
 func (a *Logger) With(key string, value string) *Logger {
 	return &Logger{
 		//nolint:sloglint // custom logger should support key/value pairs in With attributes
-		logger: a.logger.With(key, value),
-		config: cloneConfig(a.config),
+		logger:        a.logger.With(key, value),
+		processor:     a.processor,
+		recordTimeout: a.recordTimeout,
+		config:        a.configSnapshot(),
 	}
+}
+
+// Processor returns the configured processor, or nil for default OpenTDF processing.
+func (a *Logger) Processor() Processor {
+	return a.processor
 }
 
 // addEvent appends a pending audit event to the transaction

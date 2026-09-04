@@ -128,11 +128,58 @@ func (s *AttributesStepDefinitions) iSendARequestToCreateAnAttributeWithGenerate
 	return ctx, nil
 }
 
+// iDeactivateTheAttributeValue resolves the value by FQN and deactivates it. A deactivated value
+// must no longer entitle an entity nor be satisfiable on a resource, so decisions and KAS rewraps
+// touching it must fail closed.
+func (s *AttributesStepDefinitions) iDeactivateTheAttributeValue(ctx context.Context, fqn string) (context.Context, error) {
+	scenarioContext := GetPlatformScenarioContext(ctx)
+	scenarioContext.ClearError()
+
+	value, err := scenarioContext.GetAttributeValue(ctx, strings.TrimSpace(fqn))
+	if err != nil {
+		return ctx, fmt.Errorf("resolve attribute value %s: %w", fqn, err)
+	}
+
+	_, err = scenarioContext.SDK.Attributes.DeactivateAttributeValue(ctx, &attributes.DeactivateAttributeValueRequest{
+		Id: value.GetId(),
+	})
+	if err != nil {
+		return ctx, fmt.Errorf("deactivate attribute value %s: %w", fqn, err)
+	}
+	return ctx, nil
+}
+
+// iDeactivateTheAttributeDefinition resolves the definition by FQN and deactivates it. Deactivating
+// a definition does not cascade to its values in the database, so every decision path must deny on
+// the definition's own state.
+func (s *AttributesStepDefinitions) iDeactivateTheAttributeDefinition(ctx context.Context, fqn string) (context.Context, error) {
+	scenarioContext := GetPlatformScenarioContext(ctx)
+	scenarioContext.ClearError()
+
+	trimmed := strings.TrimSpace(fqn)
+	resp, err := scenarioContext.SDK.Attributes.GetAttribute(ctx, &attributes.GetAttributeRequest{
+		Identifier: &attributes.GetAttributeRequest_Fqn{Fqn: trimmed},
+	})
+	if err != nil {
+		return ctx, fmt.Errorf("resolve attribute definition %s: %w", fqn, err)
+	}
+
+	_, err = scenarioContext.SDK.Attributes.DeactivateAttribute(ctx, &attributes.DeactivateAttributeRequest{
+		Id: resp.GetAttribute().GetId(),
+	})
+	if err != nil {
+		return ctx, fmt.Errorf("deactivate attribute definition %s: %w", fqn, err)
+	}
+	return ctx, nil
+}
+
 func RegisterAttributeStepDefinitions(ctx *godog.ScenarioContext, x *PlatformTestSuiteContext) {
 	stepDefinitions := AttributesStepDefinitions{
 		PlatformCukesContext: x,
 	}
 	ctx.Step(`^a (anyOf|allOf|hierarchy) attribute definition with values: "([^"]*)"$`, stepDefinitions.aAttributeDef)
+	ctx.Step(`^I deactivate the attribute value "([^"]*)"$`, stepDefinitions.iDeactivateTheAttributeValue)
+	ctx.Step(`^I deactivate the attribute definition "([^"]*)"$`, stepDefinitions.iDeactivateTheAttributeDefinition)
 	ctx.Step(`^I send a request to create an attribute with:$`, stepDefinitions.iSendARequestToCreateAnAttributeWith)
 	ctx.Step(`^I send a request to create an attribute referenced as "([^"]*)" in namespace "([^"]*)" named "([^"]*)" with rule "([^"]*)" and (\d+) generated values$`, stepDefinitions.iSendARequestToCreateAnAttributeWithGeneratedValues)
 }

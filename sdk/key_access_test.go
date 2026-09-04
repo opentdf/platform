@@ -4,6 +4,7 @@ import (
 	"crypto/ecdsa"
 	"crypto/rand"
 	"crypto/x509"
+	"encoding/hex"
 	"encoding/json"
 	"encoding/pem"
 	"strings"
@@ -183,9 +184,8 @@ func TestEncryptMetadata(t *testing.T) {
 }
 
 func TestTdfSalt(t *testing.T) {
-	salt1 := tdfSalt()
-	salt2 := tdfSalt()
-
-	assert.Equal(t, salt1, salt2, "tdfSalt must be deterministic")
-	assert.Len(t, salt1, 32, "SHA-256 output")
+	assert.Equal(t,
+		"aa17cf44585fe15fd634c27b9512d842b42af1bac6178d92161edb4e2abf8197",
+		hex.EncodeToString(tdfSalt()),
+	)
 }

@@ -279,7 +279,7 @@ func (s *SubjectMappingsStepDefinitions) seedSubjectAndResourceMappingsAtScale(c
 	var actionID string
 	err = tx.QueryRow(ctx, `
 		SELECT id
-		FROM otdf.actions
+		FROM `+policyDatabaseSchema+`.actions
 		WHERE name = $1 AND (namespace_id = $2 OR namespace_id IS NULL)
 		ORDER BY (namespace_id = $2) DESC
 		LIMIT 1

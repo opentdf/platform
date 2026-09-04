@@ -6,17 +6,15 @@ Feature: First successful strategy wins under continue (ADR: first-match-wins)
   In both modes, the first successful strategy returns and no further strategies run.
   See: adr/decisions/2025-07-31-multi-strategy-entity-resolution-service.md
 
-  Every scenario below uses failure_strategy "continue" with two strategies whose
-  conditions both match, so the chain must always contain exactly one entity —
-  the one produced by "claims_identity", which is listed first.
+  Both scenarios use two strategies whose conditions match, so the chain must hold
+  exactly one entity from "claims_identity". The first asserts the winner's claims
+  reach the decision; the second asserts the loser's claims do not.
 
   This covers Jake's gap analysis row #4.
 
   Background:
     Given an LDAP directory with test users
     And a user exists with username "alice" and email "alice@opentdf.test" and the following attributes:
-      | name | value |
-    And a user exists with username "eve" and email "eve@opentdf.test" and the following attributes:
       | name | value |
     And an ERS configuration with mode "multi-strategy" and failure strategy "continue"
     And an ERS provider "jwt_claims" of type "claims"
@@ -32,6 +30,7 @@ Feature: First successful strategy wins under continue (ADR: first-match-wins)
         - source_claim: preferred_username
           claim_name: username
       """
+    # Emits only "department", never "username" — the asymmetry the scenarios rely on.
     And an ERS mapping strategy "ldap_department" using provider "ldap_directory"
       """
       entity_type: subject
@@ -50,8 +49,6 @@ Feature: First successful strategy wins under continue (ADR: first-match-wins)
       output_mapping:
         - source_attribute: departmentNumber
           claim_name: department
-        - source_attribute: uid
-          claim_name: username
       """
     And a local platform with inline ERS configuration
 
@@ -61,8 +58,8 @@ Feature: First successful strategy wins under continue (ADR: first-match-wins)
       | namespace_id | name       | rule  | values                         |
       | ns_ms        | department | anyOf | engineering,marketing,security |
     Then the response should be successful
-    # Subject mapping uses .username — the claims strategy (listed first) outputs this.
-    # Per ADR, claims succeeds and LDAP should not run. PERMIT from single entity.
+    # Regression guard: only "claims_identity" emits .username. If resolution kept going
+    # after its success, the appended LDAP entity has no .username and AND semantics DENY.
     Given a condition group referenced as "cg_ms" with an "or" operator with conditions:
       | selector_value | operator | values |
       | .username      | in       | alice  |
@@ -77,43 +74,11 @@ Feature: First successful strategy wins under continue (ADR: first-match-wins)
     Then the response should be successful
     And I should get a "PERMIT" decision response
 
-  Scenario: First strategy succeeds — user not entitled via first-match entity → DENY
-    Given I submit a request to create a namespace with name "multi-success-deny.test" and reference id "ns_msd"
-    And I send a request to create an attribute with:
-      | namespace_id | name       | rule  | values                         |
-      | ns_msd       | department | anyOf | engineering,marketing,security |
-    Then the response should be successful
-    # Subject mapping checks .department — claims strategy (first match) does not
-    # output department. Per ADR, claims succeeds and returns, LDAP never runs.
-    # Even though LDAP would provide department=operations for eve, it's irrelevant.
-    Given a condition group referenced as "cg_msd" with an "or" operator with conditions:
-      | selector_value | operator | values      |
-      | .department    | in       | engineering |
-    And a subject set referenced as "ss_msd" containing the condition groups "cg_msd"
-    And I send a request to create a subject condition set referenced as "scs_msd" containing subject sets "ss_msd"
-    And I send a request to create a subject mapping with:
-      | reference_id | attribute_value                                                  | condition_set_name | standard actions | custom actions |
-      | sm_msd       | https://multi-success-deny.test/attr/department/value/engineering | scs_msd            | read             |                |
-    Then the response should be successful
-    Given a user access token for "eve" stored as "eve_token"
-    When I send a decision request for token "eve_token" for "read" action on resource "https://multi-success-deny.test/attr/department/value/engineering"
-    Then the response should be successful
-    And I should get a "DENY" decision response
-
   Scenario: A later strategy that would supply the attribute never runs → DENY
-    # Regression guard for the bug where "continue" kept resolving after a success and
-    # appended a second entity to the chain, which then had to pass entitlement too.
-    #
-    # Customer intent here is claims for routing and LDAP for department, expressed as
-    # two strategies. That intent is NOT supported: "claims_identity" matches first and
-    # ends resolution, so the chain holds a single entity with no .department, and the
-    # subject mapping on .department cannot match — even though LDAP has
-    # department=engineering for alice.
-    #
-    # To get department into the decision, emit it from the strategy that wins: either
-    # put the LDAP strategy first, or narrow the claims strategy's conditions so it does
-    # not match this token. Chaining two strategies to merge their claims is an explicit
-    # "Future Considerations" item in the ADR, not current behavior.
+    # Alice has departmentNumber=engineering in LDAP, but "claims_identity" wins and emits
+    # no .department, so the mapping cannot match. Also catches an implementation that merges
+    # both strategies' claims into one entity — that would wrongly PERMIT here.
+    # Fix in config: order the LDAP strategy first, or emit department from the winner.
     Given I submit a request to create a namespace with name "and-semantics-gap.test" and reference id "ns_asg"
     And I send a request to create an attribute with:
       | namespace_id | name       | rule  | values                         |

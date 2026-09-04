@@ -415,11 +415,11 @@ func hierarchyRule(
 				if isRequestedActionMatch(ctx, l, action, requiredNamespaceFQN, entitledAction, namespacedPolicy) {
 					l.DebugContext(ctx, "hierarchy rule satisfied",
 						slog.Group("entitled_by_value",
-							slog.String("FQN", entitlementFQN),
+							slog.String("fqn", entitlementFQN),
 							slog.Int("index", idx),
 						),
 						slog.Group("resource_highest_hierarchy_value",
-							slog.String("FQN", attrValues[lowestValueFQNIndex].GetFqn()),
+							slog.String("fqn", attrValues[lowestValueFQNIndex].GetFqn()),
 							slog.Int("index", lowestValueFQNIndex),
 						),
 					)

@@ -124,8 +124,8 @@ func (c Config) LogValue() slog.Value {
 			slog.Int("max_connection_idle_seconds", c.Pool.MaxConnIdleTime),
 			slog.Int("health_check_period_seconds", c.Pool.HealthCheckPeriod),
 		),
-		slog.Bool("runMigrations", c.RunMigrations),
-		slog.Bool("verifyConnection", c.VerifyConnection),
+		slog.Bool("run_migrations", c.RunMigrations),
+		slog.Bool("verify_connection", c.VerifyConnection),
 	)
 }
 

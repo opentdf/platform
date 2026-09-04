@@ -599,7 +599,7 @@ func TestNewConnectRPC(t *testing.T) {
 				Auth: auth.Config{Enabled: tt.authEnabled},
 			}
 
-			result, err := newConnectRPC(cfg, tt.authInts, tt.extraInts, testLogger)
+			result, err := newConnectRPC(cfg, tt.authInts, tt.extraInts, noopInterceptor(), testLogger)
 			if tt.wantErr {
 				require.Error(t, err)
 				assert.Nil(t, result)
@@ -661,7 +661,7 @@ func TestNewConnectRPC_InterceptorOrdering(t *testing.T) {
 			callOrder = nil
 
 			cfg := Config{Auth: auth.Config{Enabled: tt.authEnabled}}
-			result, err := newConnectRPC(cfg, tt.authInts, tt.extras, testLogger)
+			result, err := newConnectRPC(cfg, tt.authInts, tt.extras, noopInterceptor(), testLogger)
 			require.NoError(t, err)
 
 			// Register a minimal unary handler to exercise the interceptor chain

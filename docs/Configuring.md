@@ -169,6 +169,30 @@ server:
           cert: kas-ec-cert.pem
 ```
 
+### HTTP Server Configuration
+
+Root level key `server.http`
+
+| Field            | Description                                                | Default | Environment Variable                |
+| ---------------- | ---------------------------------------------------------- | ------- | ----------------------------------- |
+| `trustedProxies` | Proxy CIDRs allowed to supply client-IP forwarding headers | `[]`    | `OPENTDF_SERVER_HTTP_TRUSTEDPROXIES` |
+
+Set the environment variable to a comma-separated CIDR list without spaces.
+
+When `trustedProxies` is empty, Platform ignores `X-Forwarded-For`, `X-Real-IP`,
+and `True-Client-IP` and records the direct socket peer. When the peer matches a
+trusted CIDR, Platform resolves `X-Forwarded-For` from right to left, removing
+trusted proxy hops. Configure only ingress networks that overwrite or append
+forwarding headers; broad private-network ranges weaken audit attribution.
+
+```yaml
+server:
+  http:
+    trustedProxies:
+      - 10.20.0.0/16
+      - 2001:db8:1234::/48
+```
+
 ### CORS Configuration
 
 Root level key `server.cors`

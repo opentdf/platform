@@ -2,42 +2,20 @@ package access
 
 import (
 	"context"
+	"net/http"
+	"net/http/httptest"
 	"testing"
 
 	"connectrpc.com/connect"
 	"github.com/opentdf/platform/protocol/go/entity"
-	entityresolutionV2 "github.com/opentdf/platform/protocol/go/entityresolution/v2"
+	"github.com/opentdf/platform/protocol/go/entityresolution/v2/entityresolutionv2connect"
 	otdfSDK "github.com/opentdf/platform/sdk"
+	"github.com/opentdf/platform/sdk/sdkconnect"
 	"github.com/opentdf/platform/service/entityresolution/multi-strategy/types"
 	multistrategyV2 "github.com/opentdf/platform/service/entityresolution/multi-strategy/v2"
 	"github.com/opentdf/platform/service/logger"
 	"github.com/stretchr/testify/require"
 )
-
-// realERSV2Client adapts the in-process multi-strategy ERS v2 handler to the SDK client
-// interface the PDP consumes, so these tests exercise the real chain-building code rather
-// than a canned response.
-type realERSV2Client struct {
-	ers          *multistrategyV2.ERSV2
-	resolveCalls int
-}
-
-func (c *realERSV2Client) CreateEntityChainsFromTokens(ctx context.Context, req *entityresolutionV2.CreateEntityChainsFromTokensRequest) (*entityresolutionV2.CreateEntityChainsFromTokensResponse, error) {
-	resp, err := c.ers.CreateEntityChainsFromTokens(ctx, connect.NewRequest(req))
-	if err != nil {
-		return nil, err
-	}
-	return resp.Msg, nil
-}
-
-func (c *realERSV2Client) ResolveEntities(ctx context.Context, req *entityresolutionV2.ResolveEntitiesRequest) (*entityresolutionV2.ResolveEntitiesResponse, error) {
-	c.resolveCalls++
-	resp, err := c.ers.ResolveEntities(ctx, connect.NewRequest(req))
-	if err != nil {
-		return nil, err
-	}
-	return resp.Msg, nil
-}
 
 // environmentFirstJWT carries both "azp" and "sub", so both strategies below match it.
 // Payload: {"sub":"alice","azp":"opentdf-sdk","iat":1600000000,"exp":4102444800}
@@ -45,7 +23,26 @@ const environmentFirstJWT = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9." +
 	"eyJzdWIiOiJhbGljZSIsImF6cCI6Im9wZW50ZGYtc2RrIiwiaWF0IjoxNjAwMDAwMDAwLCJleHAiOjQxMDI0NDQ4MDB9." +
 	"dGVzdHNpZ25hdHVyZQ"
 
-func multiStrategyPDP(t *testing.T, strategies ...types.MappingStrategy) (*JustInTimePDP, *realERSV2Client) {
+// procedureCounter tallies the RPCs the PDP actually issues, so tests can assert which
+// procedures were reached without standing in for the client.
+type procedureCounter struct {
+	calls map[string]int
+}
+
+func (p *procedureCounter) interceptor() connect.Interceptor {
+	return connect.UnaryInterceptorFunc(func(next connect.UnaryFunc) connect.UnaryFunc {
+		return func(ctx context.Context, req connect.AnyRequest) (connect.AnyResponse, error) {
+			p.calls[req.Spec().Procedure]++
+			return next(ctx, req)
+		}
+	})
+}
+
+// multiStrategyPDP wires a JustInTimePDP to a multi-strategy ERS over the real transport: the
+// generated Connect handler serves the real ERSV2 implementation, and the PDP reaches it
+// through the same sdkconnect client wrapper the platform builds in sdk.New. Nothing here
+// stands in for production code except the strategy configuration.
+func multiStrategyPDP(t *testing.T, strategies ...types.MappingStrategy) (*JustInTimePDP, *procedureCounter) {
 	t.Helper()
 
 	ers, err := multistrategyV2.NewERSV2(t.Context(), types.MultiStrategyConfig{
@@ -57,11 +54,19 @@ func multiStrategyPDP(t *testing.T, strategies ...types.MappingStrategy) (*JustI
 	}, logger.CreateTestLogger())
 	require.NoError(t, err)
 
-	client := &realERSV2Client{ers: ers}
+	counter := &procedureCounter{calls: make(map[string]int)}
+	mux := http.NewServeMux()
+	mux.Handle(entityresolutionv2connect.NewEntityResolutionServiceHandler(ers, connect.WithInterceptors(counter.interceptor())))
+
+	server := httptest.NewServer(mux)
+	t.Cleanup(server.Close)
+
 	return &JustInTimePDP{
 		logger: logger.CreateTestLogger(),
-		sdk:    &otdfSDK.SDK{EntityResolutionV2: client},
-	}, client
+		sdk: &otdfSDK.SDK{
+			EntityResolutionV2: sdkconnect.NewEntityResolutionServiceClientV2ConnectWrapper(server.Client(), server.URL),
+		},
+	}, counter
 }
 
 func environmentMappingStrategy() types.MappingStrategy {
@@ -131,7 +136,7 @@ func TestResolveEntitiesFromTokenResolvesSubjectWhenSubjectStrategyIsFirst(t *te
 // resolves when environment entities are not filtered. It is the filtering step in the
 // decision flow that leaves nothing to decide on.
 func TestResolveEntitiesFromTokenEnvironmentFirstChainIsWellFormedButEmptyAfterFiltering(t *testing.T) {
-	pdp, client := multiStrategyPDP(t, environmentMappingStrategy(), subjectMappingStrategy())
+	pdp, counter := multiStrategyPDP(t, environmentMappingStrategy(), subjectMappingStrategy())
 	token := &entity.Token{EphemeralId: "alice-token", Jwt: environmentFirstJWT}
 
 	reps, err := pdp.resolveEntitiesFromToken(t.Context(), token, false, nil)
@@ -145,5 +150,7 @@ func TestResolveEntitiesFromTokenEnvironmentFirstChainIsWellFormedButEmptyAfterF
 	_, err = pdp.resolveEntitiesFromToken(t.Context(), token, true, nil)
 	require.ErrorContains(t, err, "no subject entities to resolve - all were environment entities and skipped")
 	require.NotErrorIs(t, err, errResolvedTokenChainRequiresHydration)
-	require.Zero(t, client.resolveCalls, "no ERS re-resolution is attempted")
+	require.Zero(t, counter.calls[entityresolutionv2connect.EntityResolutionServiceResolveEntitiesProcedure],
+		"no ERS re-resolution is attempted")
+	require.Equal(t, 2, counter.calls[entityresolutionv2connect.EntityResolutionServiceCreateEntityChainsFromTokensProcedure])
 }

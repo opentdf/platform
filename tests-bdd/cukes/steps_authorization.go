@@ -237,6 +237,7 @@ func (s *AuthorizationServiceStepDefinitions) iSendAMultiResourceDecisionRequest
 		slog.Duration("duration", elapsed),
 		slog.Duration("maximum_duration", limit),
 		slog.Int("resource_count", len(tbl.Rows)-1),
+		slog.Int("policy_list_request_limit", scenarioContext.ScenarioOptions.PolicyListRequestLimit),
 	)
 	if err != nil {
 		return ctx, err

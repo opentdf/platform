@@ -71,6 +71,7 @@ type LocalDevScenarioOptions struct {
 	DatabaseName           string
 	PlatformPort           int
 	LDAPPort               int
+	PolicyListRequestLimit int
 }
 
 func (d *DockerComposeLogger) Printf(format string, v ...interface{}) {
@@ -137,6 +138,7 @@ func (c *PlatformTestSuiteContext) InitializeScenario(scenarioContext *godog.Sce
 					PlatformEndpoint:       trackedScenarioContext.ScenarioOptions.PlatformEndpoint,
 					InsecureSkipVerifyConn: trackedScenarioContext.ScenarioOptions.InsecureSkipVerifyConn,
 					LDAPPort:               trackedScenarioContext.ScenarioOptions.LDAPPort,
+					PolicyListRequestLimit: trackedScenarioContext.ScenarioOptions.PolicyListRequestLimit,
 				},
 				TestSuiteContext: c,
 			}

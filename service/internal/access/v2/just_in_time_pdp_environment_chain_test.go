@@ -88,28 +88,34 @@ func subjectMappingStrategy() types.MappingStrategy {
 	}
 }
 
-// TestResolveEntitiesFromTokenWithEnvironmentFirstStrategy documents the interaction between
-// first-match-wins chain building and the decision flow's skipEnvironmentEntities=true:
-// when the first matching strategy is entity_type: environment, the chain holds only an
-// ENVIRONMENT entity, the PDP filters it out, and nothing is left to decide on.
-func TestResolveEntitiesFromTokenWithEnvironmentFirstStrategy(t *testing.T) {
-	pdp, client := multiStrategyPDP(t, environmentMappingStrategy(), subjectMappingStrategy())
+// TestResolveEntitiesFromTokenResolvesSubjectWhenEnvironmentStrategyIsFirst is the failing
+// test that describes the bug.
+//
+// A token that matches a subject strategy must yield a decision-usable entity
+// representation. It does not when an entity_type: environment strategy is configured ahead
+// of the subject strategy: first-match-wins chain building stops at the environment strategy,
+// the decision flow filters environment entities out (skipEnvironmentEntities=true), and the
+// request fails outright instead of deciding on alice.
+//
+// This test asserts the required outcome, not a mechanism, so any of the plausible fixes
+// satisfies it: skipping environment-typed strategies when picking the chain winner, keeping
+// the environment entity but continuing to the first subject match, or rejecting the ordering
+// at config load.
+func TestResolveEntitiesFromTokenResolvesSubjectWhenEnvironmentStrategyIsFirst(t *testing.T) {
+	pdp, _ := multiStrategyPDP(t, environmentMappingStrategy(), subjectMappingStrategy())
 	token := &entity.Token{EphemeralId: "alice-token", Jwt: environmentFirstJWT}
 
 	reps, err := pdp.resolveEntitiesFromToken(t.Context(), token, true, nil)
 
-	require.Error(t, err, "environment-only chain should not produce entity representations")
-	require.Nil(t, reps)
-	require.ErrorContains(t, err, "no subject entities to resolve - all were environment entities and skipped")
-	// The hydration fallback does not fire, so there is no second chance to reach the
-	// subject strategy: the whole decision request fails.
-	require.NotErrorIs(t, err, errResolvedTokenChainRequiresHydration)
-	require.Zero(t, client.resolveCalls, "no ERS re-resolution is attempted")
+	require.NoError(t, err, "a token matching a subject strategy must resolve regardless of strategy order")
+	require.Len(t, reps, 1)
+	require.Equal(t, "alice", reps[0].GetAdditionalProps()[0].AsMap()["username"])
 }
 
-// TestResolveEntitiesFromTokenWithSubjectFirstStrategy is the control: the same token and the
-// same two strategies in the opposite order resolve normally.
-func TestResolveEntitiesFromTokenWithSubjectFirstStrategy(t *testing.T) {
+// TestResolveEntitiesFromTokenResolvesSubjectWhenSubjectStrategyIsFirst is the control. Same
+// token, same two strategies, opposite order. It passes today, which is what makes strategy
+// ordering the variable under test.
+func TestResolveEntitiesFromTokenResolvesSubjectWhenSubjectStrategyIsFirst(t *testing.T) {
 	pdp, _ := multiStrategyPDP(t, subjectMappingStrategy(), environmentMappingStrategy())
 	token := &entity.Token{EphemeralId: "alice-token", Jwt: environmentFirstJWT}
 
@@ -120,16 +126,24 @@ func TestResolveEntitiesFromTokenWithSubjectFirstStrategy(t *testing.T) {
 	require.Equal(t, "alice", reps[0].GetAdditionalProps()[0].AsMap()["username"])
 }
 
-// TestResolveEntitiesFromTokenEnvironmentOnlyChainKeepsEnvironmentWhenNotSkipped isolates the
-// cause: the chain itself is well-formed, and the same token resolves fine when environment
-// entities are not filtered. Only the decision flow's skipEnvironmentEntities=true empties it.
-func TestResolveEntitiesFromTokenEnvironmentOnlyChainKeepsEnvironmentWhenNotSkipped(t *testing.T) {
-	pdp, _ := multiStrategyPDP(t, environmentMappingStrategy(), subjectMappingStrategy())
+// TestResolveEntitiesFromTokenEnvironmentFirstChainIsWellFormedButEmptyAfterFiltering pins the
+// mechanism behind the failure above: the chain the ERS builds is valid, and the same token
+// resolves when environment entities are not filtered. It is the filtering step in the
+// decision flow that leaves nothing to decide on.
+func TestResolveEntitiesFromTokenEnvironmentFirstChainIsWellFormedButEmptyAfterFiltering(t *testing.T) {
+	pdp, client := multiStrategyPDP(t, environmentMappingStrategy(), subjectMappingStrategy())
 	token := &entity.Token{EphemeralId: "alice-token", Jwt: environmentFirstJWT}
 
 	reps, err := pdp.resolveEntitiesFromToken(t.Context(), token, false, nil)
-
-	require.NoError(t, err)
+	require.NoError(t, err, "the chain itself is well-formed")
 	require.Len(t, reps, 1)
-	require.Equal(t, "opentdf-sdk", reps[0].GetAdditionalProps()[0].AsMap()["client_id"])
+	require.Equal(t, "opentdf-sdk", reps[0].GetAdditionalProps()[0].AsMap()["client_id"],
+		"the chain holds only the environment entity, so the subject strategy never ran")
+
+	// And nothing recovers it: the failure is not errResolvedTokenChainRequiresHydration, so
+	// resolveEntitiesFromToken's hydration fallback never re-resolves through ERS.
+	_, err = pdp.resolveEntitiesFromToken(t.Context(), token, true, nil)
+	require.ErrorContains(t, err, "no subject entities to resolve - all were environment entities and skipped")
+	require.NotErrorIs(t, err, errResolvedTokenChainRequiresHydration)
+	require.Zero(t, client.resolveCalls, "no ERS re-resolution is attempted")
 }

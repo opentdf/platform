@@ -47,42 +47,38 @@ func keycloakStyleClaims() types.JWTClaims {
 	}
 }
 
-// TestShippedERSConfigSelectsEnvironmentStrategyFirst shows the environment-first ordering is
-// not hypothetical: the config this repo ships and documents lists an entity_type: environment
-// strategy conditioned on "azp exists" ahead of every subject strategy, and "azp" is present on
-// every Keycloak token. Combined with first-match-wins chain building, the chain such a token
-// produces holds only an ENVIRONMENT entity.
-func TestShippedERSConfigSelectsEnvironmentStrategyFirst(t *testing.T) {
+// TestShippedERSConfigResolvesASubjectForKeycloakToken is the second failing test, and it is
+// what makes the bug operator-facing rather than theoretical.
+//
+// Under first-match-wins the strategy that wins is the first one whose conditions match, so a
+// config is only usable for decisions if that winner resolves a subject entity. The config
+// this repo ships and documents (README: `go run ./service start --config
+// opentdf-ers-test.yaml`) fails that: client_environment_sql is entity_type: environment,
+// conditioned on "azp exists", and listed ahead of every subject strategy. Every Keycloak
+// token carries azp, so every token loses its subject entity.
+//
+// Fixable either by reordering the YAML or by making strategy order stop deciding the entity
+// category; this test does not care which.
+func TestShippedERSConfigResolvesASubjectForKeycloakToken(t *testing.T) {
 	config := shippedERSConfig(t)
 	require.Equal(t, types.FailureStrategyContinue, config.FailureStrategy)
 
-	matcher := NewStrategyMatcher(config.MappingStrategies)
-	matched, err := matcher.SelectStrategies(t.Context(), keycloakStyleClaims())
+	matched, err := NewStrategyMatcher(config.MappingStrategies).SelectStrategies(t.Context(), keycloakStyleClaims())
 	require.NoError(t, err)
 	require.NotEmpty(t, matched)
 
-	require.Equal(t, "client_environment_sql", matched[0].Name)
-	require.Equal(t, types.EntityTypeEnvironment, matched[0].EntityType,
-		"first matching strategy resolves an environment entity, so first-match-wins yields an environment-only chain")
-
-	// Subject strategies do match this token; they are just never reached.
-	var subjectNames []string
-	for _, strategy := range matched[1:] {
-		if strategy.EntityType == types.EntityTypeSubject {
-			subjectNames = append(subjectNames, strategy.Name)
-		}
-	}
-	require.NotEmpty(t, subjectNames, "subject strategies match but are skipped after the first success")
+	require.Equal(t, types.EntityTypeSubject, matched[0].EntityType,
+		"winning strategy %q resolves an %s entity, so a Keycloak token produces a chain with no subject; matched order was %v",
+		matched[0].Name, matched[0].EntityType, strategyNames(matched))
 }
 
-// TestShippedERSConfigHasNoOrderingGuard records that nothing in configuration handling
-// prevents this: entity_type is read only when building the entity, never validated, and
-// SelectStrategies preserves configuration order rather than preferring subject strategies.
-func TestShippedERSConfigHasNoOrderingGuard(t *testing.T) {
+// TestShippedERSConfigOrderingIsUnvalidated is the supporting observation, and it passes:
+// nothing rejects or normalizes the ordering. entity_type is never validated, and
+// SelectStrategies preserves configuration order rather than preferring subject strategies,
+// so simply reversing the same strategies changes which entity a token resolves to.
+func TestShippedERSConfigOrderingIsUnvalidated(t *testing.T) {
 	config := shippedERSConfig(t)
 
-	// Reordering the same strategies changes which entity the chain gets, so ordering is
-	// load-bearing configuration with no validation behind it.
 	reversed := make([]types.MappingStrategy, 0, len(config.MappingStrategies))
 	for i := len(config.MappingStrategies) - 1; i >= 0; i-- {
 		reversed = append(reversed, config.MappingStrategies[i])
@@ -90,5 +86,14 @@ func TestShippedERSConfigHasNoOrderingGuard(t *testing.T) {
 
 	matched, err := NewStrategyMatcher(reversed).SelectStrategies(t.Context(), keycloakStyleClaims())
 	require.NoError(t, err)
-	require.Equal(t, types.EntityTypeSubject, matched[0].EntityType)
+	require.Equal(t, types.EntityTypeSubject, matched[0].EntityType,
+		"the same strategies in the opposite order win with a subject entity")
+}
+
+func strategyNames(strategies []*types.MappingStrategy) []string {
+	names := make([]string, 0, len(strategies))
+	for _, strategy := range strategies {
+		names = append(names, strategy.Name+"="+strategy.EntityType)
+	}
+	return names
 }

@@ -4209,13 +4209,14 @@ func (s *PDPTestSuite) Test_GetDecision_DirectEntitlements() {
 			},
 		}
 
-		decision, _, err := pdp.GetDecision(ctx, entityRep, testActionCreate, []*authz.Resource{
+		decision, entitlements, err := pdp.GetDecision(ctx, entityRep, testActionCreate, []*authz.Resource{
 			createAttributeValueResource(attr3InactiveValueFQN, attr3InactiveValueFQN),
 		})
 		s.Require().NoError(err)
 		s.Require().NotNil(decision)
 
 		s.False(decision.AllPermitted, "deactivated attribute value must not be entitled by a direct entitlement")
+		s.NotContains(entitlements, attr3InactiveValueFQN)
 		s.assertAllDecisionResults(decision, map[string]bool{
 			attr3InactiveValueFQN: false,
 		})

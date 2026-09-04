@@ -80,7 +80,7 @@ Feature: Direct entitlements decisioning
   # The full entitlement policy load drops deactivated definitions outright, so the resource FQN
   # is unknown; GetDecision treats an unknown FQN as a per-resource deny rather than a request
   # error, so the response is successful and the decision is DENY.
-  Scenario: Direct entitlement denies a value whose definition is deactivated
+  Scenario: Direct entitlement denies a value whose definition deactivation dropped it from policy
     Given there is a claims subject entity referenced as "alice" with direct entitlements:
       | attribute_value_fqn                           | actions |
       | https://example.com/attr/department/value/eng | read    |

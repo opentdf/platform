@@ -18,9 +18,10 @@ var (
 	testDeactivatedProjectActive   = createAttrValueFQN(deactivatedTestNamespace, "project", "active")
 	testDeactivatedProjectInactive = createAttrValueFQN(deactivatedTestNamespace, "project", "inactive")
 
-	testDeactivatedClearanceFQN          = createAttrFQN(deactivatedTestNamespace, "clearance")
-	testDeactivatedClearanceHighInactive = createAttrValueFQN(deactivatedTestNamespace, "clearance", "high")
-	testDeactivatedClearanceLowActive    = createAttrValueFQN(deactivatedTestNamespace, "clearance", "low")
+	testDeactivatedClearanceFQN            = createAttrFQN(deactivatedTestNamespace, "clearance")
+	testDeactivatedClearanceHighInactive   = createAttrValueFQN(deactivatedTestNamespace, "clearance", "high")
+	testDeactivatedClearanceLowActive      = createAttrValueFQN(deactivatedTestNamespace, "clearance", "low")
+	testDeactivatedClearanceLowestInactive = createAttrValueFQN(deactivatedTestNamespace, "clearance", "lowest")
 
 	testDeactivatedArchivedFQN      = createAttrFQN(deactivatedTestNamespace, "archived")
 	testDeactivatedArchivedValue    = createAttrValueFQN(deactivatedTestNamespace, "archived", "value1")
@@ -40,7 +41,8 @@ func deactivationProjectAttr() *policy.Attribute {
 	}
 }
 
-// deactivationClearanceAttr is a HIERARCHY definition whose highest value is deactivated.
+// deactivationClearanceAttr is a HIERARCHY definition, highest first, with a deactivated value
+// both above and below the active one.
 func deactivationClearanceAttr() *policy.Attribute {
 	return &policy.Attribute{
 		Fqn:       testDeactivatedClearanceFQN,
@@ -49,6 +51,7 @@ func deactivationClearanceAttr() *policy.Attribute {
 		Values: []*policy.Value{
 			{Fqn: testDeactivatedClearanceHighInactive, Value: "high", Active: wrapperspb.Bool(false)},
 			{Fqn: testDeactivatedClearanceLowActive, Value: "low", Active: wrapperspb.Bool(true)},
+			{Fqn: testDeactivatedClearanceLowestInactive, Value: "lowest", Active: wrapperspb.Bool(false)},
 		},
 	}
 }
@@ -194,40 +197,9 @@ func (s *PDPTestSuite) Test_GetDecision_DeactivatedValue_DynamicValueMappings() 
 	})
 }
 
-// Test_GetDecision_DeactivatedValue_DirectEntitlements covers the direct-entitlement path where
-// the entitled value FQN is carried on the entity representation rather than in policy.
-func (s *PDPTestSuite) Test_GetDecision_DeactivatedValue_DirectEntitlements() {
-	ctx := s.T().Context()
-
-	attr := deactivationProjectAttr()
-	pdp, err := NewPolicyDecisionPoint(ctx, s.logger, []*policy.Attribute{attr}, []*policy.SubjectMapping{}, nil, true, false)
-	s.Require().NoError(err)
-
-	entity := &entityresolutionV2.EntityRepresentation{
-		OriginalId: "entity-direct",
-		DirectEntitlements: []*entityresolutionV2.DirectEntitlement{
-			{AttributeValueFqn: testDeactivatedProjectActive, Actions: []string{testActionRead.GetName()}},
-			{AttributeValueFqn: testDeactivatedProjectInactive, Actions: []string{testActionRead.GetName()}},
-		},
-	}
-
-	s.Run("direct entitlement does not entitle the deactivated value", func() {
-		decision, entitlements, err := pdp.GetDecision(ctx, entity, testActionRead, []*authz.Resource{
-			createAttributeValueResource(testDeactivatedProjectInactive, testDeactivatedProjectInactive),
-		})
-		s.Require().NoError(err)
-		s.False(decision.AllPermitted)
-		s.NotContains(entitlements, testDeactivatedProjectInactive)
-	})
-
-	s.Run("direct entitlement still entitles the active value", func() {
-		decision, _, err := pdp.GetDecision(ctx, entity, testActionRead, []*authz.Resource{
-			createAttributeValueResource(testDeactivatedProjectActive, testDeactivatedProjectActive),
-		})
-		s.Require().NoError(err)
-		s.True(decision.AllPermitted)
-	})
-}
+// Deactivated values on the direct-entitlement path are covered by the deactivation subtests of
+// Test_GetDecision_DirectEntitlements in pdp_test.go; only the deactivated-definition case below
+// is unique to this file.
 
 // Test_GetDecision_DeactivatedValue_RegisteredResources covers registered resources on both sides
 // of a decision: as the entity being entitled, and as the resource being accessed.
@@ -426,6 +398,34 @@ func (s *PDPTestSuite) Test_GetDecision_DeactivatedDefinition() {
 		s.Contains(entitlements[0].GetActionsPerAttributeValueFqn(), testDeactivatedProjectActive)
 		s.NotContains(entitlements[0].GetActionsPerAttributeValueFqn(), testDeactivatedArchivedValue)
 	})
+}
+
+// Test_GetEntitlements_ComprehensiveHierarchy_DeactivatedLowerValue asserts the comprehensive
+// hierarchy cascade skips deactivated lower values.
+func (s *PDPTestSuite) Test_GetEntitlements_ComprehensiveHierarchy_DeactivatedLowerValue() {
+	ctx := s.T().Context()
+
+	attr := deactivationClearanceAttr()
+	subjectMappings := []*policy.SubjectMapping{
+		createSimpleSubjectMapping(testDeactivatedClearanceLowActive, "low",
+			[]*policy.Action{testActionRead}, ".properties.clearance", []string{"low"}, nil),
+	}
+
+	pdp, err := NewPolicyDecisionPoint(ctx, s.logger, []*policy.Attribute{attr}, subjectMappings, nil, false, false)
+	s.Require().NoError(err)
+
+	entity := s.createEntityWithProps("entity-low-clearance", map[string]interface{}{
+		"clearance": "low",
+	})
+
+	entitlements, err := pdp.GetEntitlements(ctx, []*entityresolutionV2.EntityRepresentation{entity}, nil, true)
+	s.Require().NoError(err)
+	s.Require().Len(entitlements, 1)
+
+	perValueFQN := entitlements[0].GetActionsPerAttributeValueFqn()
+	s.Contains(perValueFQN, testDeactivatedClearanceLowActive)
+	s.NotContains(perValueFQN, testDeactivatedClearanceLowestInactive,
+		"comprehensive hierarchy must not cascade entitlement into a deactivated lower value")
 }
 
 // Test_GetEntitlements_DeactivatedValue asserts deactivated values never surface as entitlements.

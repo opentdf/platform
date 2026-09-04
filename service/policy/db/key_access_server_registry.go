@@ -172,8 +172,9 @@ func (c PolicyDBClient) GetKeyAccessServer(ctx context.Context, identifier any) 
 	}
 
 	return &policy.KeyAccessServer{
-		Id:         kas.ID,
-		Uri:        kas.Uri,
+		Id:  kas.ID,
+		Uri: kas.Uri,
+		//nolint:staticcheck // responses still populate the deprecated PublicKey for clients that have not moved to multiple key pairs
 		PublicKey:  publicKey,
 		Name:       kas.Name.String,
 		Metadata:   metadata,
@@ -210,8 +211,9 @@ func (c PolicyDBClient) CreateKeyAccessServer(ctx context.Context, r *kasregistr
 	}
 
 	return &policy.KeyAccessServer{
-		Id:         createdID,
-		Uri:        uri,
+		Id:  createdID,
+		Uri: uri,
+		//nolint:staticcheck // responses still populate the deprecated PublicKey for clients that have not moved to multiple key pairs
 		PublicKey:  publicKey,
 		Name:       name,
 		Metadata:   metadata,
@@ -277,9 +279,10 @@ func (c PolicyDBClient) UpdateKeyAccessServer(ctx context.Context, id string, r 
 	}
 
 	return &policy.KeyAccessServer{
-		Id:         id,
-		Uri:        uri,
-		Name:       name,
+		Id:   id,
+		Uri:  uri,
+		Name: name,
+		//nolint:staticcheck // responses still populate the deprecated PublicKey for clients that have not moved to multiple key pairs
 		PublicKey:  publicKey,
 		Metadata:   metadata,
 		SourceType: r.GetSourceType(),
@@ -327,8 +330,9 @@ func (c PolicyDBClient) ListKeyAccessServerGrants(ctx context.Context, r *kasreg
 			return nil, fmt.Errorf("failed to unmarshal KAS public key: %w", err)
 		}
 		kas := &policy.KeyAccessServer{
-			Id:        grant.KasID,
-			Uri:       grant.KasUri,
+			Id:  grant.KasID,
+			Uri: grant.KasUri,
+			//nolint:staticcheck // responses still populate the deprecated PublicKey for clients that have not moved to multiple key pairs
 			PublicKey: pubKey,
 			Name:      grant.KasName.String,
 		}
@@ -358,6 +362,7 @@ func (c PolicyDBClient) ListKeyAccessServerGrants(ctx context.Context, r *kasreg
 		nextOffset = getNextOffset(offset, limit, total)
 	}
 	return &kasregistry.ListKeyAccessServerGrantsResponse{ //nolint:staticcheck // Compatibility path for deprecated RPC.
+		//nolint:staticcheck // compatibility path for the deprecated ListKeyAccessServerGrants RPC
 		Grants: grants,
 		Pagination: &policy.PageResponse{
 			CurrentOffset: params.Offset,

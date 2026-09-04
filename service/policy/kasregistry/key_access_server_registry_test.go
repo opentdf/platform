@@ -174,6 +174,7 @@ func Test_GetKeyAccessServerRequest(t *testing.T) {
 				Identifier: &kasregistry.GetKeyAccessServerRequest_Name{
 					Name: "kas-name",
 				},
+				//nolint:staticcheck // asserts that setting both the deprecated Id and an Identifier is rejected
 				Id: validUUID,
 			},
 			expectError:  true,

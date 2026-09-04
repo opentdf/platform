@@ -96,6 +96,7 @@ func mapKasKeysToGrants(keys []*policy.SimpleKasKey, existingGrants []*policy.Ke
 			grant := &policy.KeyAccessServer{
 				Uri: key.GetKasUri(),
 				Id:  key.GetKasId(),
+				//nolint:staticcheck // grants are mapped back onto the deprecated PublicKey field for clients that have not moved to multiple key pairs
 				PublicKey: &policy.PublicKey{
 					PublicKey: &policy.PublicKey_Cached{
 						Cached: &policy.KasPublicKeySet{Keys: []*policy.KasPublicKey{newKasPublicKey}},

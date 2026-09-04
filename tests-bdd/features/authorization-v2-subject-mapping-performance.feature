@@ -10,7 +10,7 @@ Feature: v2 multi-resource decisions at large policy scale
       | department | ["engineering"] |
     And an empty local platform
     And I submit a request to create a namespace with name "scale.example" and reference id "scale_ns"
-    And I send a request to create an attribute referenced as "scale_attr" in namespace "scale_ns" named "access-level" with rule "anyOf" and 6011 generated values
+    And I send a request to create an attribute referenced as "scale_attr" in namespace "scale_ns" named "access-level" with rule "anyOf" and 6011 generated values in batches of 25
     Then the response should be successful
     And a condition group referenced as "scale_condition" with an "or" operator with conditions:
       | selector_value           | operator | values      |

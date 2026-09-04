@@ -15,6 +15,7 @@ import (
 	"github.com/opentdf/platform/service/internal/access/v2/obligations"
 	"github.com/opentdf/platform/service/internal/subjectmappingbuiltin"
 	"github.com/opentdf/platform/service/logger"
+	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
 var (
@@ -24,6 +25,19 @@ var (
 	ErrInvalidRegisteredResourceValue = errors.New("access: invalid registered resource value")
 	ErrInvalidDynamicValueMapping     = errors.New("access: invalid dynamic value mapping")
 )
+
+// isExplicitlyInactive reports whether an active state was loaded and is false. An unset state is
+// not inactive: targeted lookups, synthetic values, and in-memory fixtures all leave it unset.
+func isExplicitlyInactive(active *wrapperspb.BoolValue) bool {
+	return active != nil && !active.GetValue()
+}
+
+// isDeactivated reports whether an attribute value, or the definition owning it, is deactivated.
+// Deactivated values must neither entitle an entity nor be entitleable on a resource.
+func isDeactivated(attributeAndValue *attrs.GetAttributeValuesByFqnsResponse_AttributeAndValue) bool {
+	return isExplicitlyInactive(attributeAndValue.GetValue().GetActive()) ||
+		isExplicitlyInactive(attributeAndValue.GetAttribute().GetActive())
+}
 
 // getDefinition parses the value FQN and uses it to retrieve the definition from the provided definitions map
 func getDefinition(valueFQN string, allDefinitionsByDefFQN map[string]*policy.Attribute) (*policy.Attribute, error) {
@@ -112,7 +126,7 @@ func populateLowerValuesIfHierarchy(
 		entitledActionsSet[action.GetName()] = action
 	}
 	for _, value := range definition.GetValues() {
-		if lower {
+		if lower && !isExplicitlyInactive(value.GetActive()) {
 			alreadyEntitledActions, exists := entitledActionsPerAttributeValueFqn[value.GetFqn()]
 			if !exists {
 				entitledActionsPerAttributeValueFqn[value.GetFqn()] = entitledActions
@@ -163,6 +177,9 @@ func populateHigherValuesIfHierarchy(
 				"value FQN of hierarchy attribute not found available for lookup, may not have had subject mappings associated or provided",
 				slog.String("value_fqn", value.GetFqn()),
 			)
+			continue
+		}
+		if isDeactivated(fullValue) {
 			continue
 		}
 		decisionableAttributes[value.GetFqn()] = &attrs.GetAttributeValuesByFqnsResponse_AttributeAndValue{
@@ -254,6 +271,15 @@ func getResourceDecisionableAttributes(
 
 		attributeAndValue, ok := entitleableAttributesByValueFQN[attrValueFQN]
 
+		// A deactivated value is left out of the decisionable set so the resource carrying it is
+		// denied downstream, and so it is never synthesized as an ad-hoc value below.
+		if ok && isDeactivated(attributeAndValue) {
+			logger.WarnContext(ctx, "deactivated attribute value on resource - denying access",
+				slog.String("attribute_value_fqn", attrValueFQN),
+			)
+			continue
+		}
+
 		if !ok {
 			// The value FQN is not a concrete policy value. A synthetic value is created
 			// when either direct entitlements are enabled (experimental) OR the parent
@@ -263,6 +289,15 @@ func getResourceDecisionableAttributes(
 			if err != nil {
 				// definition not found: add to not found list and skip
 				notFoundFQNs = append(notFoundFQNs, attrValueFQN)
+				continue
+			}
+
+			// A deactivated definition cannot back a synthetic value, or an ad-hoc value under a
+			// deactivated definition would remain satisfiable.
+			if isExplicitlyInactive(parentDefinition.GetActive()) {
+				logger.WarnContext(ctx, "deactivated attribute definition on resource - denying access",
+					slog.String("attribute_value_fqn", attrValueFQN),
+				)
 				continue
 			}
 

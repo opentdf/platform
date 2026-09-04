@@ -27,6 +27,7 @@ Feature: Deactivated attribute values deny decrypt
       | name           | value            |
       | department     | ["engineering"]  |
       | classification | ["confidential"] |
+    # Borrowed only for allow_dynamic_value_mappings, which forces the full-policy PDP.
     And a default local platform with platform template "cukes/resources/platform.dynamic_value_mappings.template"
     And a user token for "alice" stored as "alice_tok"
 

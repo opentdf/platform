@@ -78,14 +78,16 @@ Feature: Direct entitlements decisioning
 
   # Deactivating a definition does not cascade to its values, so the value is still active here.
   # The full entitlement policy load drops deactivated definitions outright, so the resource FQN
-  # resolves to nothing and the decision fails closed as NOT_FOUND rather than as a DENY.
+  # is unknown; GetDecision treats an unknown FQN as a per-resource deny rather than a request
+  # error, so the response is successful and the decision is DENY.
   Scenario: Direct entitlement denies a value whose definition is deactivated
     Given there is a claims subject entity referenced as "alice" with direct entitlements:
       | attribute_value_fqn                           | actions |
       | https://example.com/attr/department/value/eng | read    |
     And I deactivate the attribute definition "https://example.com/attr/department"
     When I send a decision request for entity chain "alice" for "read" action on resource "https://example.com/attr/department/value/eng"
-    Then the response should be unsuccessful
+    Then the response should be successful
+    And I should get a "DENY" decision response
 
   Scenario: Subject mapping and direct entitlement together satisfy an ALL_OF resource
     Given there is a claims subject entity referenced as "alice" with direct entitlements:

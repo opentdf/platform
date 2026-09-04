@@ -87,37 +87,20 @@ RETURNING id;
 ----------------------------------------------------------------
 
 -- name: listSubjectMappings :many
+-- The requested page of subject mapping IDs is resolved first (filtered_subject_mappings
+-- -> page) so that action aggregation and the row-building joins only touch the current
+-- page rather than every subject mapping in the table. Without the pushdown each page
+-- rebuilds the JSONB action arrays for all mappings, which makes a full paginated walk
+-- quadratic in the number of subject mappings. Because aggregation now runs over a
+-- per-page join, JSONB_AGG is given an explicit ORDER BY so the action arrays do not
+-- depend on the plan chosen for a particular page.
 WITH params AS (
     SELECT
         COALESCE(NULLIF(@sort_field::text, ''), 'created_at') AS resolved_field,
         COALESCE(NULLIF(@sort_direction::text, ''), 'DESC') AS resolved_direction
 ),
-subject_actions AS (
-    SELECT
-        sma.subject_mapping_id,
-        COALESCE(
-            JSONB_AGG(JSONB_BUILD_OBJECT('id', a.id, 'name', a.name,
-                'namespace', CASE WHEN a.namespace_id IS NULL THEN NULL
-                    ELSE JSONB_BUILD_OBJECT('id', ans.id, 'name', ans.name, 'fqn', ans_fqns.fqn)
-                END
-            )) FILTER (WHERE a.is_standard = TRUE),
-            '[]'::JSONB
-        ) AS standard_actions,
-        COALESCE(
-            JSONB_AGG(JSONB_BUILD_OBJECT('id', a.id, 'name', a.name,
-                'namespace', CASE WHEN a.namespace_id IS NULL THEN NULL
-                    ELSE JSONB_BUILD_OBJECT('id', ans.id, 'name', ans.name, 'fqn', ans_fqns.fqn)
-                END
-            )) FILTER (WHERE a.is_standard = FALSE),
-            '[]'::JSONB
-        ) AS custom_actions
-    FROM subject_mapping_actions sma
-    JOIN actions a ON sma.action_id = a.id
-    LEFT JOIN attribute_namespaces ans ON ans.id = a.namespace_id
-    LEFT JOIN attribute_fqns ans_fqns ON ans_fqns.namespace_id = ans.id AND ans_fqns.attribute_id IS NULL AND ans_fqns.value_id IS NULL
-    GROUP BY sma.subject_mapping_id
-), filtered_subject_mappings AS (
-    SELECT DISTINCT sm.id
+filtered_subject_mappings AS (
+    SELECT sm.id, sm.created_at, sm.updated_at
     FROM subject_mappings sm
     LEFT JOIN attribute_values av ON sm.attribute_value_id = av.id
     LEFT JOIN attribute_fqns fqns ON av.id = fqns.value_id
@@ -140,9 +123,47 @@ subject_actions AS (
                 )
             )
         END
+    GROUP BY sm.id
 ), counted AS (
     SELECT COUNT(id) AS total
     FROM filtered_subject_mappings
+), page AS (
+    SELECT fsm.id
+    FROM filtered_subject_mappings fsm
+    CROSS JOIN params p
+    ORDER BY
+        CASE WHEN p.resolved_field = 'created_at' AND p.resolved_direction = 'ASC' THEN fsm.created_at END ASC,
+        CASE WHEN p.resolved_field = 'created_at' AND p.resolved_direction = 'DESC' THEN fsm.created_at END DESC,
+        CASE WHEN p.resolved_field = 'updated_at' AND p.resolved_direction = 'ASC' THEN fsm.updated_at END ASC,
+        CASE WHEN p.resolved_field = 'updated_at' AND p.resolved_direction = 'DESC' THEN fsm.updated_at END DESC,
+        fsm.id ASC
+    LIMIT @limit_
+    OFFSET @offset_
+), subject_actions AS (
+    SELECT
+        sma.subject_mapping_id,
+        COALESCE(
+            JSONB_AGG(JSONB_BUILD_OBJECT('id', a.id, 'name', a.name,
+                'namespace', CASE WHEN a.namespace_id IS NULL THEN NULL
+                    ELSE JSONB_BUILD_OBJECT('id', ans.id, 'name', ans.name, 'fqn', ans_fqns.fqn)
+                END
+            ) ORDER BY a.name, a.id) FILTER (WHERE a.is_standard = TRUE),
+            '[]'::JSONB
+        ) AS standard_actions,
+        COALESCE(
+            JSONB_AGG(JSONB_BUILD_OBJECT('id', a.id, 'name', a.name,
+                'namespace', CASE WHEN a.namespace_id IS NULL THEN NULL
+                    ELSE JSONB_BUILD_OBJECT('id', ans.id, 'name', ans.name, 'fqn', ans_fqns.fqn)
+                END
+            ) ORDER BY a.name, a.id) FILTER (WHERE a.is_standard = FALSE),
+            '[]'::JSONB
+        ) AS custom_actions
+    FROM page pg
+    JOIN subject_mapping_actions sma ON sma.subject_mapping_id = pg.id
+    JOIN actions a ON sma.action_id = a.id
+    LEFT JOIN attribute_namespaces ans ON ans.id = a.namespace_id
+    LEFT JOIN attribute_fqns ans_fqns ON ans_fqns.namespace_id = ans.id AND ans_fqns.attribute_id IS NULL AND ans_fqns.value_id IS NULL
+    GROUP BY sma.subject_mapping_id
 )
 SELECT
     sm.id,
@@ -169,8 +190,8 @@ SELECT
         ELSE JSON_BUILD_OBJECT('id', sm_ns.id, 'name', sm_ns.name, 'fqn', sm_ns_fqns.fqn)
     END AS namespace,
     counted.total
-FROM subject_mappings sm
-JOIN filtered_subject_mappings fsm ON fsm.id = sm.id
+FROM page pg
+JOIN subject_mappings sm ON sm.id = pg.id
 CROSS JOIN counted
 CROSS JOIN params p
 LEFT JOIN subject_actions sa ON sm.id = sa.subject_mapping_id
@@ -198,9 +219,7 @@ ORDER BY
     CASE WHEN p.resolved_field = 'created_at' AND p.resolved_direction = 'DESC' THEN sm.created_at END DESC,
     CASE WHEN p.resolved_field = 'updated_at' AND p.resolved_direction = 'ASC' THEN sm.updated_at END ASC,
     CASE WHEN p.resolved_field = 'updated_at' AND p.resolved_direction = 'DESC' THEN sm.updated_at END DESC,
-    sm.id ASC
-LIMIT @limit_
-OFFSET @offset_;
+    sm.id ASC;
 
 -- name: getSubjectMappingsByValueFqns :many
 -- Returns value-level subject mappings for the provided attribute value FQNs,

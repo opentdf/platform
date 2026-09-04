@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.27.0](https://github.com/opentdf/platform/compare/service/v0.26.0...service/v0.27.0) (2026-09-04)
+
+
+### Features
+
+* **authz:** migrate v2 decisioning to targeted entitleable lookups ([#3912](https://github.com/opentdf/platform/issues/3912)) ([69942fe](https://github.com/opentdf/platform/commit/69942fee97b3728fdedbd5e873454a53207583d7))
+* **policy:** DSPX-3888 add maximum object count configuration ([#3954](https://github.com/opentdf/platform/issues/3954)) ([b44a246](https://github.com/opentdf/platform/commit/b44a24604abdaa4c8990dec9adec8c1c26a339c2))
+
 ## [0.26.0](https://github.com/opentdf/platform/compare/service/v0.25.0...service/v0.26.0) (2026-08-28)
 
 

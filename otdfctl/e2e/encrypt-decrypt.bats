@@ -103,6 +103,32 @@ teardown_file(){
   ./otdfctl decrypt --host $HOST --tls-no-verify $DEBUG_LEVEL $WITH_CREDS $OUTFILE_TXT | grep "$SECRET_TEXT"
 }
 
+@test "roundtrip TDF3, no attributes, file to stdout" {
+  ./otdfctl encrypt --host $HOST --tls-no-verify $DEBUG_LEVEL $WITH_CREDS $INFILE_GO_MOD > $OUTFILE_GO_MOD
+  ./otdfctl decrypt -o $RESULTFILE_GO_MOD --host $HOST --tls-no-verify $DEBUG_LEVEL $WITH_CREDS $OUTFILE_GO_MOD
+  diff $INFILE_GO_MOD $RESULTFILE_GO_MOD
+}
+
+@test "roundtrip TDF3, stdin to stdout, fully piped" {
+  run bash -c "echo '$SECRET_TEXT' | ./otdfctl encrypt --host $HOST --tls-no-verify $WITH_CREDS | ./otdfctl decrypt --host $HOST --tls-no-verify $WITH_CREDS"
+  assert_success
+  assert_output --partial "$SECRET_TEXT"
+}
+
+@test "encrypt rejects empty stdin" {
+  run bash -c "./otdfctl encrypt --host $HOST --tls-no-verify $WITH_CREDS < /dev/null"
+  assert_failure
+}
+
+@test "encrypt leaves no output behind when it fails" {
+  rm -f $OUTFILE_TXT .$OUTFILE_TXT.tmp-*
+  run bash -c "echo '$SECRET_TEXT' | ./otdfctl encrypt -o $OUT_TXT --host $HOST --tls-no-verify $WITH_CREDS -a 'https://testing-enc-dec.io/attr/attr1/value/does-not-exist'"
+  assert_failure
+  [ ! -f "$OUTFILE_TXT" ]
+  run bash -c "ls .$OUTFILE_TXT.tmp-* 2>/dev/null | wc -l"
+  assert_output "0"
+}
+
 @test "allow traversal with mapped key uses definition when value missing" {
   local attr_name="attr-allow-traversal-${RANDOM}"
   local kas_name="kas-allow-traversal-${RANDOM}"

@@ -5,6 +5,7 @@ package tdf
 import (
 	"bytes"
 	"crypto/rand"
+	"encoding/hex"
 	"encoding/json"
 	"os"
 	"path/filepath"
@@ -68,6 +69,64 @@ func TestWriterEndToEnd(t *testing.T) {
 			tc.test(t)
 		})
 	}
+}
+
+func TestWriterTargetMode(t *testing.T) {
+	t.Run("legacy mode omits schema version and uses hex signatures", func(t *testing.T) {
+		writer, err := NewWriter(t.Context(), WithTargetMode("v4.2.2"))
+		require.NoError(t, err)
+
+		_, err = writer.WriteSegment(t.Context(), 0, []byte("legacy payload"))
+		require.NoError(t, err)
+
+		kas := &policy.SimpleKasKey{
+			KasUri: testKAS1,
+			PublicKey: &policy.SimpleKasPublicKey{
+				Algorithm: policy.Algorithm_ALGORITHM_RSA_2048,
+				Kid:       "kid1",
+				Pem:       mockRSAPublicKey1,
+			},
+		}
+		result, err := writer.Finalize(t.Context(), WithDefaultKAS(kas))
+		require.NoError(t, err)
+		assert.Empty(t, result.Manifest.TDFVersion)
+
+		segmentHash, err := ocrypto.Base64Decode([]byte(result.Manifest.Segments[0].Hash))
+		require.NoError(t, err)
+		assert.Len(t, segmentHash, 64)
+		_, err = hex.DecodeString(string(segmentHash))
+		require.NoError(t, err)
+
+		rootHash, err := ocrypto.Base64Decode([]byte(result.Manifest.Signature))
+		require.NoError(t, err)
+		assert.Len(t, rootHash, 64)
+		_, err = hex.DecodeString(string(rootHash))
+		require.NoError(t, err)
+	})
+
+	t.Run("current mode includes schema version", func(t *testing.T) {
+		writer, err := NewWriter(t.Context(), WithTargetMode("4.3.0"))
+		require.NoError(t, err)
+		_, err = writer.WriteSegment(t.Context(), 0, []byte("current payload"))
+		require.NoError(t, err)
+
+		kas := &policy.SimpleKasKey{
+			KasUri: testKAS1,
+			PublicKey: &policy.SimpleKasPublicKey{
+				Algorithm: policy.Algorithm_ALGORITHM_RSA_2048,
+				Kid:       "kid1",
+				Pem:       mockRSAPublicKey1,
+			},
+		}
+		result, err := writer.Finalize(t.Context(), WithDefaultKAS(kas))
+		require.NoError(t, err)
+		assert.Equal(t, TDFSpecVersion, result.Manifest.TDFVersion)
+	})
+
+	t.Run("invalid mode fails construction", func(t *testing.T) {
+		_, err := NewWriter(t.Context(), WithTargetMode("not-semver"))
+		require.Error(t, err)
+	})
 }
 
 // testFinalizeWithSegmentsContiguousPrefix validates successful finalize when

@@ -482,11 +482,20 @@ Root level key `authorization`
 | ------------------------------------------- | -------------------------------------------------------------- | ------- | --------------------- |
 | `entitlement_policy_cache.enabled`          | Enable the entitlement policy cache                            | `false` |                       |
 | `entitlement_policy_cache.refresh_interval` | How often to refresh the entitlement policy cache (e.g. `30s`) |         |                       |
+
 | `request_limits.resource_attribute_values_fqns_max` | Maximum attribute value FQNs allowed in Decision Requests | `20` | |
 | `request_limits.entity_identifier_entity_chain_entities_max` | Maximum entities allowed in Decision Request entity chains | `10` | |
 | `request_limits.decision_request_fulfillable_obligation_fqns_max` | Maximum fulfillable obligation FQNs allowed per Decision Request | `50` | |
 | `request_limits.get_decision_multi_resource_resources_max` | Maximum resources allowed in `GetDecisionMultiResourceRequest` | `1000` | |
 | `request_limits.get_decision_bulk_decision_requests_max` | Maximum decision requests allowed in `GetDecisionBulkRequest` | `200` | |
+
+Authorization v2 compiles registered-resource and obligation indexes once per cache
+refresh and shares the completed snapshot across requests. The first successful
+refresh is shared by concurrent callers. A failed refresh retains the last successful
+snapshot, so policy changes become visible after a successful refresh. Caching remains
+disabled by default. Attributes and subject mappings are refreshed only when direct
+entitlements or dynamic value mappings are enabled; ordinary decisions fetch their
+required attributes directly from the policy service.
 
 #### Example: Authorization v1
 

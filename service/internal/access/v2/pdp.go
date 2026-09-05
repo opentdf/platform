@@ -79,6 +79,8 @@ var (
 
 // pdpOptions holds optional, experimental PolicyDecisionPoint features.
 type pdpOptions struct {
+	registeredResourceValues map[string]*policy.RegisteredResourceValue
+
 	dynamicValueMappings      []*policy.DynamicValueMapping
 	allowDynamicValueMappings bool
 }
@@ -93,6 +95,10 @@ func WithDynamicValueMappings(mappings []*policy.DynamicValueMapping, allow bool
 		o.dynamicValueMappings = mappings
 		o.allowDynamicValueMappings = allow
 	}
+}
+
+func withRegisteredResourceValues(values map[string]*policy.RegisteredResourceValue) PDPOption {
+	return func(options *pdpOptions) { options.registeredResourceValues = values }
 }
 
 // NewPolicyDecisionPoint creates a new Policy Decision Point instance.
@@ -220,9 +226,12 @@ func NewPolicyDecisionPoint(
 		dynamicMappingsByDefinitionFQN[definitionFQN] = append(dynamicMappingsByDefinitionFQN[definitionFQN], mapping)
 	}
 
-	allRegisteredResourceValuesByFQN, err := buildRegisteredResourceValuesByFQN(allRegisteredResources, namespacedPolicy)
-	if err != nil {
-		return nil, err
+	allRegisteredResourceValuesByFQN := options.registeredResourceValues
+	if allRegisteredResourceValuesByFQN == nil {
+		allRegisteredResourceValuesByFQN, err = buildRegisteredResourceValuesByFQN(allRegisteredResources, namespacedPolicy)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	pdp := &PolicyDecisionPoint{

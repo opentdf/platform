@@ -149,37 +149,48 @@ func fetchEntitleableAttributes(
 		return resp, false, nil
 	}
 
-	// processBatch resolves a batch, falling back to per-FQN resolution on a batch NotFound. The
-	// server rejects the whole batch with NotFound if any requested FQN does not exist, so the retry
-	// keeps the values that DO exist and skips the missing ones (denied per-resource downstream). This
-	// preserves valid decisions in a multi-resource request that also references an unknown FQN.
-	processBatch := func(batch []string) error {
-		resp, err := getBatch(batch)
-		if err == nil {
-			return process(resp, batch)
-		}
-		if connect.CodeOf(err) != connect.CodeNotFound {
-			return fmt.Errorf("failed to get entitleable attributes by fqns: %w", err)
-		}
-		for _, fqn := range batch {
-			single, skip, ferr := fetchOne(fqn)
-			if ferr != nil {
-				return ferr
-			}
-			if skip {
-				continue
-			}
-			if perr := process(single, []string{fqn}); perr != nil {
-				return perr
-			}
-		}
-		return nil
-	}
-
+	// Split sparse misses breadth-first so valid subsets are retained in batches.
+	// Bound failed batch probes before reverting to single-value lookups when many
+	// values are missing. This keeps dense misses close to the original call count.
+	const maxFailedBatchProbes = 8
 	for start := 0; start < len(normalizedFQNs); start += maxEntitleableFQNsPerRequest {
 		end := min(start+maxEntitleableFQNsPerRequest, len(normalizedFQNs))
-		if err := processBatch(normalizedFQNs[start:end]); err != nil {
-			return nil, nil, err
+		pending := [][]string{normalizedFQNs[start:end]}
+		failedProbes := 0
+		for len(pending) > 0 {
+			batch := pending[0]
+			pending = pending[1:]
+			if failedProbes >= maxFailedBatchProbes && len(batch) > 1 {
+				for _, fqn := range batch {
+					single, skip, err := fetchOne(fqn)
+					if err != nil {
+						return nil, nil, err
+					}
+					if skip {
+						continue
+					}
+					if err := process(single, []string{fqn}); err != nil {
+						return nil, nil, err
+					}
+				}
+				continue
+			}
+			resp, err := getBatch(batch)
+			if err == nil {
+				if err := process(resp, batch); err != nil {
+					return nil, nil, err
+				}
+				continue
+			}
+			if connect.CodeOf(err) != connect.CodeNotFound {
+				return nil, nil, fmt.Errorf("failed to get entitleable attributes by fqns: %w", err)
+			}
+			if len(batch) == 1 {
+				continue
+			}
+			failedProbes++
+			middle := len(batch) / 2
+			pending = append(pending, batch[:middle], batch[middle:])
 		}
 	}
 

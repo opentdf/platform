@@ -35,7 +35,7 @@ func TestHierarchyEntitlementsRemainDecisionScoped(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, tc.permit, decision.AllPermitted, "%s/%s", tc.client, tc.action)
 		for _, result := range decision.Results {
-				require.Equal(t, tc.permit, result.Entitled)
+			require.Equal(t, tc.permit, result.Entitled)
 		}
 	}
 }

@@ -13,7 +13,6 @@ import (
 	"github.com/opentdf/platform/protocol/go/entity"
 	entityresolutionV2 "github.com/opentdf/platform/protocol/go/entityresolution/v2"
 	"github.com/opentdf/platform/protocol/go/policy"
-	attrs "github.com/opentdf/platform/protocol/go/policy/attributes"
 	"github.com/opentdf/platform/protocol/go/policy/subjectmapping"
 	otdfSDK "github.com/opentdf/platform/sdk"
 	ent "github.com/opentdf/platform/service/entity"
@@ -92,83 +91,30 @@ func NewJustInTimePDP(
 	}
 
 	// If no store is provided, have EntitlementPolicyRetriever fetch from policy services
-	if !store.IsEnabled() || !store.IsReady(ctx) {
+	if store == nil || !store.IsEnabled() || !store.IsReady(ctx) {
 		log.DebugContext(ctx, "no EntitlementPolicyStore provided or not yet ready, will retrieve directly from policy services")
 		store = NewEntitlementPolicyRetriever(sdk)
 	}
 
-	// Attributes and subject mappings are fetched per request (targeted), so they are no longer
-	// loaded here. Registered resources, obligations, and (gated) dynamic value mappings remain
-	// fully loaded because they are not covered by GetEntitleableAttributesByFqns.
-	allRegisteredResources, err := store.ListAllRegisteredResources(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("failed to fetch all registered resources: %w", err)
-	}
-	allObligations, err := store.ListAllObligations(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("failed to fetch all obligations: %w", err)
-	}
-	// Experimental: only load dynamic value mappings when the feature is enabled.
-	if allowDynamicValueMappings {
-		p.dynamicValueMappings, err = store.ListAllDynamicValueMappings(ctx)
+	options := PolicyOptions{allowDirectEntitlements, allowDynamicValueMappings, namespacedPolicy}
+	var prepared *PreparedPolicy
+	if provider, ok := store.(PreparedPolicyStore); ok {
+		prepared, err = provider.PreparedPolicy(ctx)
 		if err != nil {
-			return nil, fmt.Errorf("failed to fetch all dynamic value mappings: %w", err)
+			return nil, err
 		}
 	}
-	p.registeredResources = allRegisteredResources
-
-	registeredResourceValuesByFQN, err := buildRegisteredResourceValuesByFQN(allRegisteredResources, namespacedPolicy)
-	if err != nil {
-		return nil, fmt.Errorf("failed to index registered resources: %w", err)
-	}
-	p.registeredResourceValuesByFQN = registeredResourceValuesByFQN
-
-	// Obligations are triggered by (action, attribute value FQN, PEP client) against a trigger graph
-	// built from all obligations; the attributes-by-value map is unused by the obligations PDP, so an
-	// empty map is passed.
-	obligationsPDP, err := obligations.NewObligationsPolicyDecisionPoint(
-		ctx,
-		log,
-		make(map[string]*attrs.GetAttributeValuesByFqnsResponse_AttributeAndValue),
-		registeredResourceValuesByFQN,
-		allObligations,
-	)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create new obligations policy decision point: %w", err)
-	}
-	p.obligationsPDP = obligationsPDP
-
-	// Direct entitlements and dynamic value mappings entitle attribute values that may not exist in
-	// policy; synthesizing them requires the full definition set, which targeted
-	// GetEntitleableAttributesByFqns lookups cannot supply (a non-existent value FQN errors). When
-	// either experimental feature is enabled, build the PDP from the full policy load instead.
-	if allowDirectEntitlements || allowDynamicValueMappings {
-		// Read attributes and subject mappings from the same store used above (the refresh cache when
-		// ready, otherwise the live retriever), so a cache-enabled deployment does not re-scan both
-		// policy endpoints on every request.
-		allAttributes, err := store.ListAllAttributes(ctx)
+	if prepared == nil || prepared.options != options {
+		prepared, err = NewPreparedPolicy(ctx, log, store, options)
 		if err != nil {
-			return nil, fmt.Errorf("failed to list attributes: %w", err)
+			return nil, err
 		}
-		allSubjectMappings, err := store.ListAllSubjectMappings(ctx)
-		if err != nil {
-			return nil, fmt.Errorf("failed to list subject mappings: %w", err)
-		}
-		fullPolicyPDP, err := NewPolicyDecisionPoint(
-			ctx,
-			log,
-			allAttributes,
-			allSubjectMappings,
-			allRegisteredResources,
-			allowDirectEntitlements,
-			namespacedPolicy,
-			WithDynamicValueMappings(p.dynamicValueMappings, allowDynamicValueMappings),
-		)
-		if err != nil {
-			return nil, fmt.Errorf("failed to create full-policy decision point: %w", err)
-		}
-		p.fullPolicyPDP = fullPolicyPDP
 	}
+	p.registeredResources = prepared.registeredResources
+	p.registeredResourceValuesByFQN = prepared.registeredResourceValuesByFQN
+	p.dynamicValueMappings = prepared.dynamicValueMappings
+	p.obligationsPDP = prepared.obligationsPDP
+	p.fullPolicyPDP = prepared.fullPolicyPDP
 
 	return p, nil
 }
@@ -421,6 +367,7 @@ func (p *JustInTimePDP) buildInnerPDP(ctx context.Context, valueFQNs []string) (
 		p.allowDirectEntitlements,
 		p.namespacedPolicy,
 		WithDynamicValueMappings(p.dynamicValueMappings, p.allowDynamicValueMappings),
+		withRegisteredResourceValues(p.registeredResourceValuesByFQN),
 	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request-scoped policy decision point: %w", err)

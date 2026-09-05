@@ -488,6 +488,14 @@ Root level key `authorization`
 | `request_limits.get_decision_multi_resource_resources_max` | Maximum resources allowed in `GetDecisionMultiResourceRequest` | `1000` | |
 | `request_limits.get_decision_bulk_decision_requests_max` | Maximum decision requests allowed in `GetDecisionBulkRequest` | `200` | |
 
+Authorization v2 compiles registered-resource and obligation indexes once per cache
+refresh and shares the completed snapshot across requests. The first successful
+refresh is shared by concurrent callers. A failed refresh retains the last successful
+snapshot, so policy changes become visible after a successful refresh. Caching remains
+disabled by default. Attributes and subject mappings are refreshed only when direct
+entitlements or dynamic value mappings are enabled; ordinary decisions fetch their
+required attributes directly from the policy service.
+
 #### Example: Authorization v1
 
 ```yaml

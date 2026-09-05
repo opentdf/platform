@@ -1738,6 +1738,47 @@ func (s *AttributesSuite) Test_GetEntitleableAttributesByFqns() {
 	assertValueEntry(fqn2, value2.ID, 1)
 }
 
+func (s *AttributesSuite) Test_GetEntitleableAttributesByFqns_ActiveValuesAndNormalization() {
+	created, err := s.db.PolicyClient.CreateAttribute(s.ctx, &attributes.CreateAttributeRequest{
+		Name: "test__entitleable_active_values", NamespaceId: fixtureNamespaceID,
+		Rule:   policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY,
+		Values: []string{"high", "mid", "low"}, AllowTraversal: wrapperspb.Bool(true),
+	})
+	s.Require().NoError(err)
+	got, err := s.db.PolicyClient.GetAttribute(s.ctx, created.GetId())
+	s.Require().NoError(err)
+	_, err = s.db.PolicyClient.DeactivateAttributeValue(s.ctx, got.GetValues()[1].GetId())
+	s.Require().NoError(err)
+	high, mid, low := got.GetValues()[0].GetFqn(), got.GetValues()[1].GetFqn(), got.GetValues()[2].GetFqn()
+	resp, err := s.db.PolicyClient.GetEntitleableAttributesByFqns(s.ctx, &attributes.GetEntitleableAttributesByFqnsRequest{
+		Fqns: []string{strings.ToUpper(low), low},
+	})
+	s.Require().NoError(err)
+	s.Len(resp.GetFqnEntitleableAttributes(), 1)
+	values := resp.GetDefinitions()[got.GetFqn()].GetValues()
+	s.Require().Len(values, 2)
+	s.Equal(high, values[0].GetFqn())
+	s.Equal(low, values[1].GetFqn())
+	// Traversal must not turn an explicitly inactive value into an unknown value.
+	_, err = s.db.PolicyClient.GetEntitleableAttributesByFqns(s.ctx, &attributes.GetEntitleableAttributesByFqnsRequest{Fqns: []string{low, mid}})
+	s.Require().ErrorIs(err, db.ErrAttributeValueInactive)
+	_, err = s.db.PolicyClient.DeactivateAttribute(s.ctx, created.GetId())
+	s.Require().NoError(err)
+	_, err = s.db.PolicyClient.GetEntitleableAttributesByFqns(s.ctx, &attributes.GetEntitleableAttributesByFqnsRequest{Fqns: []string{low}})
+	s.Require().ErrorIs(err, db.ErrNotFound)
+}
+
+func (s *AttributesSuite) Test_GetEntitleableAttributesByFqns_EmptyAndMixedMissing() {
+	resp, err := s.db.PolicyClient.GetEntitleableAttributesByFqns(s.ctx, &attributes.GetEntitleableAttributesByFqnsRequest{})
+	s.Require().NoError(err)
+	s.Empty(resp.GetDefinitions())
+	s.Empty(resp.GetFqnEntitleableAttributes())
+	_, err = s.db.PolicyClient.GetEntitleableAttributesByFqns(s.ctx, &attributes.GetEntitleableAttributesByFqnsRequest{
+		Fqns: []string{"https://example.com/attr/attr1/value/value1", "https://entitleable-dne.example/attr/nope/value/nope"},
+	})
+	s.Require().ErrorIs(err, db.ErrNotFound)
+}
+
 func (s *AttributesSuite) Test_GetEntitleableAttributesByFqns_NonExistentFqn_Fails() {
 	// Matches GetAttributeValuesByFqns: a requested FQN that does not exist errors
 	// rather than being silently absent.

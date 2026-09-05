@@ -1,6 +1,7 @@
 package access
 
 import (
+	"errors"
 	"fmt"
 	"testing"
 
@@ -22,7 +23,7 @@ func TestEntitleableBatchSplitsSparseMisses(t *testing.T) {
 			fake := &fakeAttributesClient{respFunc: func(req *attrs.GetEntitleableAttributesByFqnsRequest) (*attrs.GetEntitleableAttributesByFqnsResponse, error) {
 				for _, fqn := range req.GetFqns() {
 					if missing == total || (missing >= 0 && fqn == fqns[missing]) {
-						return nil, connect.NewError(connect.CodeNotFound, fmt.Errorf("missing value"))
+						return nil, connect.NewError(connect.CodeNotFound, errors.New("missing value"))
 					}
 				}
 				resp := &attrs.GetEntitleableAttributesByFqnsResponse{
@@ -53,7 +54,7 @@ func TestEntitleableBatchSplitsSparseMisses(t *testing.T) {
 }
 
 func TestEntitleableBatchDoesNotRetryOtherFailures(t *testing.T) {
-	expected := connect.NewError(connect.CodeUnavailable, fmt.Errorf("policy unavailable"))
+	expected := connect.NewError(connect.CodeUnavailable, errors.New("policy unavailable"))
 	fake := &fakeAttributesClient{respFunc: func(*attrs.GetEntitleableAttributesByFqnsRequest) (*attrs.GetEntitleableAttributesByFqnsResponse, error) {
 		return nil, expected
 	}}

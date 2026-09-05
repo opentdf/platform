@@ -58,6 +58,7 @@ type EntitlementFailure struct {
 // PolicyDecisionPoint represents the Policy Decision Point component with all of policy passed in by the caller.
 // All decisions and entitlements are evaluated against the in-memory policy.
 type PolicyDecisionPoint struct {
+	hierarchyRanksByDefinition         map[string]map[string]int
 	logger                             *logger.Logger
 	allEntitleableAttributesByValueFQN map[string]*attrs.GetAttributeValuesByFqnsResponse_AttributeAndValue
 	allRegisteredResourceValuesByFQN   map[string]*policy.RegisteredResourceValue
@@ -137,12 +138,16 @@ func NewPolicyDecisionPoint(
 
 	// Build lookup maps to in-memory policy
 	allAttributesByDefinitionFQN := make(map[string]*policy.Attribute)
+	hierarchyRanksByDefinition := make(map[string]map[string]int)
 	allEntitleableAttributesByValueFQN := make(map[string]*attrs.GetAttributeValuesByFqnsResponse_AttributeAndValue)
 	for _, attr := range allAttributeDefinitions {
 		if err := validateAttribute(attr); err != nil {
 			return nil, fmt.Errorf("invalid attribute definition: %w", err)
 		}
 		allAttributesByDefinitionFQN[attr.GetFqn()] = attr
+		if attr.GetRule() == policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY {
+			hierarchyRanksByDefinition[attr.GetFqn()] = hierarchyRanks(attr)
+		}
 
 		// Not every value may have a subject mapping and be entitleable, but a lookup must still be possible
 		for _, value := range attr.GetValues() {
@@ -235,6 +240,7 @@ func NewPolicyDecisionPoint(
 	}
 
 	pdp := &PolicyDecisionPoint{
+		hierarchyRanksByDefinition:         hierarchyRanksByDefinition,
 		logger:                             l,
 		allEntitleableAttributesByValueFQN: allEntitleableAttributesByValueFQN,
 		allRegisteredResourceValuesByFQN:   allRegisteredResourceValuesByFQN,
@@ -407,8 +413,9 @@ func (p *PolicyDecisionPoint) GetDecision(
 		Results:      make([]ResourceDecision, len(resources)),
 	}
 
+	hierarchies := p.prepareHierarchyEntitlements(ctx, decisionableAttributes, entitledFQNsToActions, action)
 	for idx, resource := range resources {
-		resourceDecision, err := getResourceDecision(ctx, l, decisionableAttributes, p.allRegisteredResourceValuesByFQN, entitledFQNsToActions, action, resource, p.namespacedPolicy)
+		resourceDecision, err := getResourceDecision(ctx, l, decisionableAttributes, p.allRegisteredResourceValuesByFQN, entitledFQNsToActions, action, resource, p.namespacedPolicy, hierarchies)
 		if err != nil || resourceDecision == nil {
 			return nil, nil, fmt.Errorf("error evaluating a decision on resource [%v]: %w", resource, err)
 		}
@@ -507,8 +514,9 @@ func (p *PolicyDecisionPoint) GetDecisionRegisteredResource(
 		Results:      make([]ResourceDecision, len(resources)),
 	}
 
+	hierarchies := p.prepareHierarchyEntitlements(ctx, decisionableAttributes, entitledFQNsToActions, action)
 	for idx, resource := range resources {
-		resourceDecision, err := getResourceDecision(ctx, l, decisionableAttributes, p.allRegisteredResourceValuesByFQN, entitledFQNsToActions, action, resource, p.namespacedPolicy)
+		resourceDecision, err := getResourceDecision(ctx, l, decisionableAttributes, p.allRegisteredResourceValuesByFQN, entitledFQNsToActions, action, resource, p.namespacedPolicy, hierarchies)
 		if err != nil || resourceDecision == nil {
 			return nil, nil, fmt.Errorf("error evaluating a decision on resource [%v]: %w", resource, err)
 		}

@@ -37,6 +37,7 @@ func getResourceDecision(
 	action *policy.Action,
 	resource *authz.Resource,
 	namespacedPolicy bool,
+	hierarchies map[string]*hierarchyEntitlement,
 ) (*ResourceDecision, error) {
 	var (
 		resourceID                 = resource.GetEphemeralId()
@@ -140,7 +141,7 @@ func getResourceDecision(
 		return failure, nil
 	}
 
-	return evaluateResourceAttributeValues(ctx, l, resourceAttributeValues, resourceID, registeredResourceValueFQN, action, entitlements, accessibleAttributeValues, namespacedPolicy)
+	return evaluateResourceAttributeValues(ctx, l, resourceAttributeValues, resourceID, registeredResourceValueFQN, action, entitlements, accessibleAttributeValues, namespacedPolicy, hierarchies)
 }
 
 // evaluateResourceAttributeValues evaluates a list of attribute values against the action and entitlements
@@ -155,6 +156,7 @@ func evaluateResourceAttributeValues(
 	entitlements subjectmappingbuiltin.AttributeValueFQNsToActions,
 	accessibleAttributeValues map[string]*attrs.GetAttributeValuesByFqnsResponse_AttributeAndValue,
 	namespacedPolicy bool,
+	hierarchies map[string]*hierarchyEntitlement,
 ) (*ResourceDecision, error) {
 	// Group value FQNs by parent definition
 	definitionFqnToValueFqns := make(map[string][]string)
@@ -197,7 +199,7 @@ func evaluateResourceAttributeValues(
 			return nil, fmt.Errorf("%w: %s", ErrDefinitionNotFound, defFQN)
 		}
 
-		dataRuleResult, err := evaluateDefinition(ctx, l, entitlements, action, resourceValueFQNs, definition, namespacedPolicy)
+		dataRuleResult, err := evaluateDefinition(ctx, l, entitlements, action, resourceValueFQNs, definition, namespacedPolicy, hierarchies)
 		if err != nil {
 			return nil, errors.Join(ErrFailedEvaluation, err)
 		}
@@ -228,6 +230,7 @@ func evaluateDefinition(
 	resourceValueFQNs []string,
 	attrDefinition *policy.Attribute,
 	namespacedPolicy bool,
+	hierarchies map[string]*hierarchyEntitlement,
 ) (*DataRuleResult, error) {
 	var entitlementFailures []EntitlementFailure
 	namespaceFQN := attrDefinition.GetNamespace().GetFqn()
@@ -249,7 +252,7 @@ func evaluateDefinition(
 		entitlementFailures = anyOfRule(ctx, l, entitlements, action, resourceValueFQNs, namespaceFQN, namespacedPolicy)
 
 	case policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY:
-		entitlementFailures = hierarchyRule(ctx, l, entitlements, action, resourceValueFQNs, attrDefinition, namespaceFQN, namespacedPolicy)
+		entitlementFailures = hierarchyRule(ctx, l, entitlements, action, resourceValueFQNs, attrDefinition, namespaceFQN, namespacedPolicy, hierarchies[attrDefinition.GetFqn()])
 
 	case policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_UNSPECIFIED:
 		return nil, fmt.Errorf("%w: %s, rule: %s", ErrMissingRequiredSpecifiedRule, attrDefinition.GetFqn(), attrDefinition.GetRule().String())
@@ -382,6 +385,7 @@ func hierarchyRule(
 	attrDefinition *policy.Attribute,
 	requiredNamespaceFQN string,
 	namespacedPolicy bool,
+	prepared *hierarchyEntitlement,
 ) []EntitlementFailure {
 	// No resources to check
 	if len(resourceValueFQNs) == 0 {
@@ -391,11 +395,10 @@ func hierarchyRule(
 	actionName := action.GetName()
 	attrValues := attrDefinition.GetValues()
 
-	// Create a lookup map for the attribute value indices - O(n) where n is the number of values in the attribute
-	valueFQNToIndex := make(map[string]int, len(attrValues))
-	for idx, value := range attrValues {
-		valueFQNToIndex[value.GetFqn()] = idx
+	if prepared == nil {
+		prepared = newHierarchyEntitlement(ctx, l, attrDefinition, entitlements, action, requiredNamespaceFQN, namespacedPolicy, nil)
 	}
+	valueFQNToIndex := prepared.ranks
 
 	// Find the lowest indexed value FQN (highest in hierarchy) - O(m) where m is the number of resource values
 	lowestValueFQNIndex := len(attrValues)
@@ -405,28 +408,8 @@ func hierarchyRule(
 		}
 	}
 
-	// Check if the entitlements contain any values with index <= lowestValueFQNIndex
-	// This checks the requested value and any hierarchically higher values in a single pass - O(e) where e is entitlements count
-	for entitlementFQN, entitledActions := range entitlements {
-		// Check if this entitlement FQN has a valid index in the hierarchy
-		if idx, exists := valueFQNToIndex[entitlementFQN]; exists && idx <= lowestValueFQNIndex {
-			// Check if the required action is entitled
-			for _, entitledAction := range entitledActions {
-				if isRequestedActionMatch(ctx, l, action, requiredNamespaceFQN, entitledAction, namespacedPolicy) {
-					l.DebugContext(ctx, "hierarchy rule satisfied",
-						slog.Group("entitled_by_value",
-							slog.String("FQN", entitlementFQN),
-							slog.Int("index", idx),
-						),
-						slog.Group("resource_highest_hierarchy_value",
-							slog.String("FQN", attrValues[lowestValueFQNIndex].GetFqn()),
-							slog.Int("index", lowestValueFQNIndex),
-						),
-					)
-					return nil // Found an entitled action at or above the hierarchy level, no failures
-				}
-			}
-		}
+	if prepared.highest < len(attrValues) && prepared.highest <= lowestValueFQNIndex {
+		return nil
 	}
 
 	// The rule was not satisfied - collect failures - O(m) where m is the number of resource values

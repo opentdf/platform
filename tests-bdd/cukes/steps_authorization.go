@@ -4,15 +4,20 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"net"
+	"sort"
 	"strconv"
 	"strings"
+	"sync"
+	"time"
 
 	"github.com/cucumber/godog"
 	authzV2 "github.com/opentdf/platform/protocol/go/authorization/v2"
 	"github.com/opentdf/platform/protocol/go/entity"
 	"github.com/opentdf/platform/protocol/go/policy"
 	"google.golang.org/protobuf/encoding/protojson"
+	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/anypb"
 	"google.golang.org/protobuf/types/known/structpb"
 )
@@ -211,6 +216,157 @@ func (s *AuthorizationServiceStepDefinitions) iSendAMultiResourceDecisionRequest
 	scenarioContext.RecordObject(decisionResponse, resp)
 	scenarioContext.RecordObject("resourceFQNMap", resourceFQNMap)
 
+	return ctx, nil
+}
+
+func (s *AuthorizationServiceStepDefinitions) iSendAMultiResourceDecisionRequestWithin(ctx context.Context, entityChainID, action, maximumDuration string, tbl *godog.Table) (context.Context, error) {
+	limit, err := time.ParseDuration(maximumDuration)
+	if err != nil {
+		return ctx, fmt.Errorf("parse maximum decision duration %q: %w", maximumDuration, err)
+	}
+	if limit <= 0 {
+		return ctx, fmt.Errorf("maximum decision duration must be positive, got %s", limit)
+	}
+
+	requestCtx, cancel := context.WithTimeout(ctx, limit)
+	defer cancel()
+	started := time.Now()
+	_, err = s.iSendAMultiResourceDecisionRequestForEntityChainForActionOnResources(requestCtx, entityChainID, action, tbl)
+	elapsed := time.Since(started)
+
+	scenarioContext := GetPlatformScenarioContext(ctx)
+	scenarioContext.TestSuiteContext.Logger.Info(
+		"authorization v2 multi-resource performance",
+		slog.Duration("duration", elapsed),
+		slog.Duration("maximum_duration", limit),
+		slog.Int("resource_count", len(tbl.Rows)-1),
+	)
+	if err != nil {
+		return ctx, err
+	}
+	if requestErr := scenarioContext.GetError(); requestErr != nil {
+		return ctx, fmt.Errorf("multi-resource decision failed after %s: %w", elapsed, requestErr)
+	}
+	if elapsed > limit {
+		return ctx, fmt.Errorf("multi-resource decision took %s, exceeding the %s limit", elapsed, limit)
+	}
+
+	return ctx, nil
+}
+
+func (s *AuthorizationServiceStepDefinitions) iSendConcurrentMultiResourceDecisionRequestsWithin(ctx context.Context, concurrency int, entityChainID, action, maximumDuration string, tbl *godog.Table) (context.Context, error) {
+	if concurrency <= 0 {
+		return ctx, fmt.Errorf("concurrency must be positive, got %d", concurrency)
+	}
+
+	limit, err := time.ParseDuration(maximumDuration)
+	if err != nil {
+		return ctx, fmt.Errorf("parse maximum decision duration %q: %w", maximumDuration, err)
+	}
+	if limit <= 0 {
+		return ctx, fmt.Errorf("maximum decision duration must be positive, got %s", limit)
+	}
+
+	scenarioContext := GetPlatformScenarioContext(ctx)
+	scenarioContext.ClearError()
+	entityChain, err := buildEntityChainFromIDs(scenarioContext, entityChainID)
+	if err != nil {
+		return ctx, err
+	}
+	resources, resourceFQNMap, err := buildResourcesFromTable(tbl)
+	if err != nil {
+		return ctx, err
+	}
+
+	req := &authzV2.GetDecisionMultiResourceRequest{
+		EntityIdentifier: &authzV2.EntityIdentifier{
+			Identifier: &authzV2.EntityIdentifier_EntityChain{EntityChain: entityChain},
+		},
+		Action:                    &policy.Action{Name: strings.ToLower(action)},
+		Resources:                 resources,
+		FulfillableObligationFqns: getAllObligationsFromScenario(scenarioContext),
+	}
+
+	requestCtx, cancel := context.WithTimeout(ctx, limit)
+	defer cancel()
+	start := make(chan struct{})
+	responses := make([]*authzV2.GetDecisionMultiResourceResponse, concurrency)
+	requestErrors := make([]error, concurrency)
+	durations := make([]time.Duration, concurrency)
+
+	var wg sync.WaitGroup
+	wg.Add(concurrency)
+	for i := range concurrency {
+		go func() {
+			defer wg.Done()
+			<-start
+			started := time.Now()
+			clonedReq, ok := proto.Clone(req).(*authzV2.GetDecisionMultiResourceRequest)
+			if !ok {
+				requestErrors[i] = errors.New("clone multi-resource decision request")
+				return
+			}
+			responses[i], requestErrors[i] = scenarioContext.SDK.AuthorizationV2.GetDecisionMultiResource(requestCtx, clonedReq)
+			durations[i] = time.Since(started)
+		}()
+	}
+
+	wallStarted := time.Now()
+	close(start)
+	wg.Wait()
+	wallElapsed := time.Since(wallStarted)
+	sortedDurations := append([]time.Duration(nil), durations...)
+	sort.Slice(sortedDurations, func(i, j int) bool { return sortedDurations[i] < sortedDurations[j] })
+	maximumRequestDuration := sortedDurations[len(sortedDurations)-1]
+	medianRequestDuration := sortedDurations[(len(sortedDurations)-1)/2]
+	p95RequestDuration := sortedDurations[(95*len(sortedDurations)-1)/100]
+	failedRequestCount := 0
+	var firstRequestError error
+	for i, requestErr := range requestErrors {
+		if requestErr != nil {
+			failedRequestCount++
+			if firstRequestError == nil {
+				firstRequestError = fmt.Errorf("concurrent multi-resource decision request %d failed after %s: %w", i+1, durations[i], requestErr)
+			}
+			continue
+		}
+		if responses[i] == nil {
+			failedRequestCount++
+			if firstRequestError == nil {
+				firstRequestError = fmt.Errorf("concurrent multi-resource decision request %d returned no response", i+1)
+			}
+			continue
+		}
+		if i > 0 && !proto.Equal(responses[0], responses[i]) {
+			failedRequestCount++
+			if firstRequestError == nil {
+				firstRequestError = fmt.Errorf("concurrent multi-resource decision request %d returned a different response", i+1)
+			}
+		}
+	}
+
+	scenarioContext.TestSuiteContext.Logger.Info(
+		"authorization v2 concurrent multi-resource performance",
+		slog.Int("concurrency", concurrency),
+		slog.Duration("wall_duration", wallElapsed),
+		slog.Duration("median_request_duration", medianRequestDuration),
+		slog.Duration("p95_request_duration", p95RequestDuration),
+		slog.Duration("maximum_request_duration", maximumRequestDuration),
+		slog.Duration("maximum_duration", limit),
+		slog.Int("resource_count", len(resources)),
+		slog.Int("failed_request_count", failedRequestCount),
+	)
+
+	if firstRequestError != nil {
+		return ctx, firstRequestError
+	}
+	if maximumRequestDuration > limit {
+		return ctx, fmt.Errorf("slowest concurrent multi-resource decision took %s, exceeding the %s limit", maximumRequestDuration, limit)
+	}
+
+	scenarioContext.RecordObject(multiDecisionResponseKey, responses[0])
+	scenarioContext.RecordObject(decisionResponse, responses[0])
+	scenarioContext.RecordObject("resourceFQNMap", resourceFQNMap)
 	return ctx, nil
 }
 
@@ -556,6 +712,8 @@ func RegisterAuthorizationStepDefinitions(ctx *godog.ScenarioContext) {
 	ctx.Step(`^I send a decision request for entity chain "([^"]*)" for "([^"]*)" action on resource "([^"]*)" with fulfillable obligations "([^"]*)"$`, stepDefinitions.iSendADecisionRequestForEntityChainForActionOnResourceWithFulfillableObligations)
 	ctx.Step(`^I send a decision request for entity chain "([^"]*)" for "([^"]*)" action on resource "([^"]*)" with no fulfillable obligations$`, stepDefinitions.iSendADecisionRequestForEntityChainForActionOnResourceWithNoFulfillableObligations)
 	ctx.Step(`^I send a multi-resource decision request for entity chain "([^"]*)" for "([^"]*)" action on resources:$`, stepDefinitions.iSendAMultiResourceDecisionRequestForEntityChainForActionOnResources)
+	ctx.Step(`^I send a multi-resource decision request for entity chain "([^"]*)" for "([^"]*)" action on resources within "([^"]*)":$`, stepDefinitions.iSendAMultiResourceDecisionRequestWithin)
+	ctx.Step(`^I send (\d+) concurrent multi-resource decision requests for entity chain "([^"]*)" for "([^"]*)" action on resources each within "([^"]*)":$`, stepDefinitions.iSendConcurrentMultiResourceDecisionRequestsWithin)
 	ctx.Step(`^I send a multi-resource decision request for entity chain "([^"]*)" for "([^"]*)" action on resources with no fulfillable obligations:$`, stepDefinitions.iSendAMultiResourceDecisionRequestForEntityChainForActionOnResourcesWithNoFulfillableObligations)
 	ctx.Step(`^I send a multi-resource decision request for entity chain "([^"]*)" for "([^"]*)" action on resources with fulfillable obligations "([^"]*)":$`, stepDefinitions.iSendAMultiResourceDecisionRequestForEntityChainForActionOnResourcesWithFulfillableObligations)
 	ctx.Step(`^I should get a "([^"]*)" decision response$`, stepDefinitions.iShouldGetADecisionResponse)

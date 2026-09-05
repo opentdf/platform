@@ -4,7 +4,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"strings"
+	"sync"
+	"time"
 
 	"github.com/cucumber/godog"
 	"github.com/opentdf/platform/protocol/go/policy"
@@ -17,6 +20,19 @@ const (
 
 type AttributesStepDefinitions struct {
 	PlatformCukesContext *PlatformTestSuiteContext
+}
+
+func parseAttributeRule(rule string) (policy.AttributeRuleTypeEnum, error) {
+	switch strings.TrimSpace(rule) {
+	case "anyOf":
+		return policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF, nil
+	case "allOf":
+		return policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF, nil
+	case "hierarchy":
+		return policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY, nil
+	default:
+		return policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_UNSPECIFIED, fmt.Errorf("unknown attribute rule type %s", rule)
+	}
 }
 
 func (s *AttributesStepDefinitions) aAttributeDef(ctx context.Context, _ string, _ string) (context.Context, error) {
@@ -98,16 +114,9 @@ func (s *AttributesStepDefinitions) iSendARequestToCreateAnAttributeWithGenerate
 		return ctx, fmt.Errorf("unable to get namespace id for %s", namespaceRef)
 	}
 
-	var ruleType policy.AttributeRuleTypeEnum
-	switch strings.TrimSpace(rule) {
-	case "anyOf":
-		ruleType = policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF
-	case "allOf":
-		ruleType = policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF
-	case "hierarchy":
-		ruleType = policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY
-	default:
-		return ctx, fmt.Errorf("unknown attribute rule type %s", rule)
+	ruleType, err := parseAttributeRule(rule)
+	if err != nil {
+		return ctx, err
 	}
 
 	values := make([]string, 0, valueCount)
@@ -128,6 +137,86 @@ func (s *AttributesStepDefinitions) iSendARequestToCreateAnAttributeWithGenerate
 	return ctx, nil
 }
 
+func (s *AttributesStepDefinitions) iSendARequestToCreateAnAttributeWithBatchedGeneratedValues(ctx context.Context, referenceID, namespaceRef, name, rule string, valueCount, batchSize int) (context.Context, error) {
+	scenarioContext := GetPlatformScenarioContext(ctx)
+	scenarioContext.ClearError()
+	if valueCount < 1 {
+		return ctx, errors.New("generated value count must be positive")
+	}
+	if batchSize < 1 {
+		return ctx, errors.New("generated value batch size must be positive")
+	}
+
+	namespaceID, ok := scenarioContext.GetObject(strings.TrimSpace(namespaceRef)).(string)
+	if !ok {
+		return ctx, fmt.Errorf("unable to get namespace id for %s", namespaceRef)
+	}
+	ruleType, err := parseAttributeRule(rule)
+	if err != nil {
+		return ctx, err
+	}
+
+	created, err := scenarioContext.SDK.Attributes.CreateAttribute(ctx, &attributes.CreateAttributeRequest{
+		NamespaceId: namespaceID,
+		Name:        strings.TrimSpace(name),
+		Rule:        ruleType,
+	})
+	if err != nil {
+		scenarioContext.SetError(err)
+		return ctx, nil
+	}
+	if created.GetAttribute() == nil {
+		return ctx, errors.New("create attribute returned no attribute")
+	}
+
+	started := time.Now()
+	values := make([]*policy.Value, valueCount)
+	for batchStart := 0; batchStart < valueCount; batchStart += batchSize {
+		batchEnd := min(batchStart+batchSize, valueCount)
+		batchCtx, cancel := context.WithCancel(ctx)
+		errCh := make(chan error, batchEnd-batchStart)
+		var wg sync.WaitGroup
+		for i := batchStart; i < batchEnd; i++ {
+			wg.Add(1)
+			go func(index int) {
+				defer wg.Done()
+				resp, createErr := scenarioContext.SDK.Attributes.CreateAttributeValue(batchCtx, &attributes.CreateAttributeValueRequest{
+					AttributeId: created.GetAttribute().GetId(),
+					Value:       fmt.Sprintf("v%04d", index),
+				})
+				if createErr != nil {
+					errCh <- fmt.Errorf("create generated attribute value v%04d: %w", index, createErr)
+					cancel()
+					return
+				}
+				if resp.GetValue() == nil {
+					errCh <- fmt.Errorf("create generated attribute value v%04d returned no value", index)
+					cancel()
+					return
+				}
+				values[index] = resp.GetValue()
+			}(i)
+		}
+		wg.Wait()
+		cancel()
+		close(errCh)
+		if batchErr, hasBatchErr := <-errCh; hasBatchErr {
+			scenarioContext.SetError(batchErr)
+			return ctx, nil
+		}
+	}
+
+	created.GetAttribute().Values = values
+	scenarioContext.RecordObject(strings.TrimSpace(referenceID), created.GetAttribute())
+	scenarioContext.TestSuiteContext.Logger.Info(
+		"created generated attribute values in batches",
+		slog.Int("value_count", valueCount),
+		slog.Int("batch_size", batchSize),
+		slog.Duration("duration", time.Since(started)),
+	)
+	return ctx, nil
+}
+
 func RegisterAttributeStepDefinitions(ctx *godog.ScenarioContext, x *PlatformTestSuiteContext) {
 	stepDefinitions := AttributesStepDefinitions{
 		PlatformCukesContext: x,
@@ -135,4 +224,5 @@ func RegisterAttributeStepDefinitions(ctx *godog.ScenarioContext, x *PlatformTes
 	ctx.Step(`^a (anyOf|allOf|hierarchy) attribute definition with values: "([^"]*)"$`, stepDefinitions.aAttributeDef)
 	ctx.Step(`^I send a request to create an attribute with:$`, stepDefinitions.iSendARequestToCreateAnAttributeWith)
 	ctx.Step(`^I send a request to create an attribute referenced as "([^"]*)" in namespace "([^"]*)" named "([^"]*)" with rule "([^"]*)" and (\d+) generated values$`, stepDefinitions.iSendARequestToCreateAnAttributeWithGeneratedValues)
+	ctx.Step(`^I send a request to create an attribute referenced as "([^"]*)" in namespace "([^"]*)" named "([^"]*)" with rule "([^"]*)" and (\d+) generated values in batches of (\d+)$`, stepDefinitions.iSendARequestToCreateAnAttributeWithBatchedGeneratedValues)
 }

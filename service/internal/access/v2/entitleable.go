@@ -153,6 +153,7 @@ func fetchEntitleableAttributes(
 	// Bound failed batch probes before reverting to single-value lookups when many
 	// values are missing. This keeps dense misses close to the original call count.
 	const maxFailedBatchProbes = 8
+	const splitDivisor = 2
 	for start := 0; start < len(normalizedFQNs); start += maxEntitleableFQNsPerRequest {
 		end := min(start+maxEntitleableFQNsPerRequest, len(normalizedFQNs))
 		pending := [][]string{normalizedFQNs[start:end]}
@@ -189,7 +190,7 @@ func fetchEntitleableAttributes(
 				continue
 			}
 			failedProbes++
-			middle := len(batch) / 2
+			middle := len(batch) / splitDivisor
 			pending = append(pending, batch[:middle], batch[middle:])
 		}
 	}

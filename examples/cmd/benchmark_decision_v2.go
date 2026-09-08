@@ -32,14 +32,13 @@ func runDecisionBenchmarkV2(_ *cobra.Command, _ []string) error {
 	}
 
 	var resources []*authzV2.Resource
-	attrValueFQN := "https://example.com/attr/attr1/value/value1"
 
 	for i := range config.RequestCount {
 		r := &authzV2.Resource{
 			EphemeralId: "resource-%d" + strconv.Itoa(i),
 			Resource: &authzV2.Resource_AttributeValues_{
 				AttributeValues: &authzV2.Resource_AttributeValues{
-					Fqns: []string{attrValueFQN},
+					Fqns: []string{exampleAttrValueFQN},
 				},
 			},
 		}

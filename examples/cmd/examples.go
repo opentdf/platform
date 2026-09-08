@@ -11,6 +11,13 @@ import (
 	"github.com/spf13/cobra"
 )
 
+const (
+	// benchmarkCmdShort is the one-line description shared by the benchmark subcommands.
+	benchmarkCmdShort = "OpenTDF benchmark tool"
+	// exampleAttrValueFQN is the attribute value FQN the examples default to.
+	exampleAttrValueFQN = "https://example.com/attr/attr1/value/value1"
+)
+
 var (
 	platformEndpoint      string
 	clientCredentials     string

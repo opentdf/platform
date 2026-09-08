@@ -173,7 +173,11 @@ func attruuid(ctx context.Context, s *sdk.SDK, nsu, fqn string) (string, error) 
 }
 
 func avuuid(ctx context.Context, s *sdk.SDK, auuid, vs string) (string, error) {
-	resp, err := s.Attributes.GetAttribute(ctx, &attributes.GetAttributeRequest{Id: auuid})
+	req := &attributes.GetAttributeRequest{
+		//nolint:staticcheck // the deprecated Id field is kept here deliberately; migrating to the identifier oneof is tracked separately
+		Id: auuid,
+	}
+	resp, err := s.Attributes.GetAttribute(ctx, req)
 	if err != nil {
 		slog.Error("failed to GetAttribute", slog.Any("error", err))
 		return "", errors.Join(err, ErrInvalidArgument)

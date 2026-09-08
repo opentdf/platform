@@ -18,7 +18,7 @@ import (
 func init() {
 	benchmarkCmd := &cobra.Command{
 		Use:   "benchmark-bulk",
-		Short: "OpenTDF benchmark tool",
+		Short: benchmarkCmdShort,
 		Long:  `A OpenTDF benchmark tool to measure Bulk Rewrap.`,
 		RunE:  runBenchmarkBulk,
 	}
@@ -49,7 +49,7 @@ func runBenchmarkBulk(cmd *cobra.Command, _ []string) error {
 		}
 	}()
 
-	dataAttributes := []string{"https://example.com/attr/attr1/value/value1"}
+	dataAttributes := []string{exampleAttrValueFQN}
 	opts := []sdk.TDFOption{sdk.WithDataAttributes(dataAttributes...), sdk.WithAutoconfigure(false)}
 	if insecurePlaintextConn || strings.HasPrefix(platformEndpoint, "http://") {
 		opts = append(opts, sdk.WithKasInformation(

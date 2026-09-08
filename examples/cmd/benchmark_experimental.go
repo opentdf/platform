@@ -22,7 +22,6 @@ import (
 var (
 	payloadSize  int
 	segmentChunk int
-	testAttr     = "https://example.com/attr/attr1/value/value1"
 )
 
 func init() {
@@ -65,7 +64,7 @@ func runExperimentalWriterBenchmark(_ *cobra.Command, _ []string) error {
 		},
 	}
 
-	attrs = append(attrs, &policy.Value{Fqn: testAttr, KasKeys: []*policy.SimpleKasKey{simpleyKey}, Attribute: &policy.Attribute{Namespace: &policy.Namespace{Name: "example.com"}, Fqn: testAttr}})
+	attrs = append(attrs, &policy.Value{Fqn: exampleAttrValueFQN, KasKeys: []*policy.SimpleKasKey{simpleyKey}, Attribute: &policy.Attribute{Namespace: &policy.Namespace{Name: "example.com"}, Fqn: exampleAttrValueFQN}})
 	writer, err := tdf.NewWriter(context.Background(), tdf.WithDefaultKASForWriter(simpleyKey), tdf.WithInitialAttributes(attrs), tdf.WithSegmentIntegrityAlgorithm(tdf.HS256))
 	if err != nil {
 		return fmt.Errorf("failed to create writer: %w", err)

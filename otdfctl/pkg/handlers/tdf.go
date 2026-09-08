@@ -161,14 +161,19 @@ func (h Handler) DecryptBytes(
 	return out, nil
 }
 
-func (h Handler) InspectTDF(toInspect []byte) (TDFInspect, []error) {
-	b := bytes.NewReader(toInspect)
-	switch sdk.GetTdfType(b) {
+// InspectTDF reads the manifest and attributes of a TDF.
+//
+// It takes an io.ReadSeeker rather than a byte slice because only the manifest
+// at the end of the archive is needed; buffering the whole payload to reach it
+// costs memory proportional to the file. GetTdfType rewinds to the start, so
+// the reader is positioned for LoadTDF.
+func (h Handler) InspectTDF(toInspect io.ReadSeeker) (TDFInspect, []error) {
+	switch sdk.GetTdfType(toInspect) {
 	case sdk.Standard:
 		// grouping errors so we don't impact the piping of the data
 		errs := []error{}
 
-		tdfreader, err := h.sdk.LoadTDF(bytes.NewReader(toInspect))
+		tdfreader, err := h.sdk.LoadTDF(toInspect)
 		if err != nil {
 			if strings.Contains(err.Error(), "zip: not a valid zip file") {
 				return TDFInspect{}, []error{ErrTDFInspectFailNotInspectable}

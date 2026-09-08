@@ -85,8 +85,9 @@ func TestTransactionCloseProcessesBufferedEventAfterCancellation(t *testing.T) {
 }
 
 func TestTransactionCloseUsesOneDeadlineAndPreservesEventTimestamp(t *testing.T) {
+	const timeout = 30 * time.Second
 	ctx := createTestContext(t)
-	logger, _ := createTestLogger()
+	logger := CreateAuditLogger(*slog.Default(), WithRecordTimeout(timeout))
 	timestamp := time.Date(2026, time.August, 25, 12, 0, 0, 0, time.UTC).Format(time.RFC3339)
 	deadlines := make([]time.Time, 0, 2)
 	timestamps := make([]string, 0, 2)
@@ -103,10 +104,13 @@ func TestTransactionCloseUsesOneDeadlineAndPreservesEventTimestamp(t *testing.T)
 		event.Timestamp = timestamp
 		LogAuditEvent(ctx, VerbPolicyCRUD, &event)
 	}
+	before := time.Now()
 	requireAuditTransaction(ctx, t).logClose(ctx, logger, true, nil)
 
 	require.Len(t, deadlines, 2)
 	assert.Equal(t, deadlines[0], deadlines[1])
+	assert.False(t, deadlines[0].Before(before.Add(timeout)))
+	assert.False(t, deadlines[0].After(time.Now().Add(timeout)))
 	assert.Equal(t, []string{timestamp, timestamp}, timestamps)
 }
 

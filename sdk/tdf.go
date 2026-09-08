@@ -233,7 +233,10 @@ func (s SDK) CreateTDFContext(ctx context.Context, writer io.Writer, reader io.R
 
 	var readPos int64
 	var aggregateHashBuilder strings.Builder
-	readBuf := bytes.NewBuffer(make([]byte, 0, tdfConfig.defaultSegmentSize))
+	// Only as large as the payload actually needs: the segment size defaults to
+	// 2 MiB, so sizing on it alone would allocate that much to encrypt a
+	// handful of bytes.
+	readBuf := make([]byte, min(segmentSize, max(inputSize, 1)))
 	segmentIndex := 0
 	for totalSegments != 0 { // adjust read size
 		readSize := segmentSize
@@ -241,16 +244,14 @@ func (s SDK) CreateTDFContext(ctx context.Context, writer io.Writer, reader io.R
 			readSize = inputSize - readPos
 		}
 
-		n, err := reader.Read(readBuf.Bytes()[:readSize])
-		if err != nil {
+		// io.Reader.Read is free to return fewer bytes than asked for without
+		// erroring, so a bare Read would reject perfectly valid readers as a
+		// size mismatch. ReadFull retries until the segment is filled.
+		if _, err := io.ReadFull(reader, readBuf[:readSize]); err != nil {
 			return nil, fmt.Errorf("io.ReadSeeker.Read failed: %w", err)
 		}
 
-		if int64(n) != readSize {
-			return nil, errors.New("io.ReadSeeker.Read size mismatch")
-		}
-
-		cipherData, err := tdfObject.aesGcm.Encrypt(readBuf.Bytes()[:readSize])
+		cipherData, err := tdfObject.aesGcm.Encrypt(readBuf[:readSize])
 		if err != nil {
 			return nil, fmt.Errorf("io.ReadSeeker.Read failed: %w", err)
 		}

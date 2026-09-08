@@ -18,10 +18,8 @@ hands the event to the configured processor before returning. Processing uses a
 bounded context detached from request cancellation. Callers therefore do not
 need to detach contexts or create audit transactions.
 
-For operations that require evidence before a side effect, generate an event ID
-and record an `attempted` event first, then a separate `completed` event with
-that same ID. If the attempted record is rejected, security-sensitive callers
-should fail closed rather than perform the side effect.
+Each call records an independent event. Callers determine when an operation's
+outcome is known and handle recording errors according to their requirements.
 
 ## Processing and delivery
 

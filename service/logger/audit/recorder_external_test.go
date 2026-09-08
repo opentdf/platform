@@ -29,7 +29,6 @@ func TestExternalServiceCanConstructCanonicalEvent(t *testing.T) {
 		ClientInfo: audit.EventClientInfo{Platform: "extension"},
 	})
 	event.Verb = audit.Verb("share")
-	event.Phase = audit.PhaseCompleted
 
 	require.NoError(t, audit.CreateAuditLogger(
 		*slog.Default(),

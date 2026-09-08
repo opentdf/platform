@@ -74,9 +74,6 @@ func (a *Logger) stampEvent(ctx context.Context, event *Event) {
 	if event.ID == uuid.Nil {
 		event.ID = uuid.New()
 	}
-	if event.Phase == "" {
-		event.Phase = PhaseCompleted
-	}
 	event.Timestamp = time.Now().Format(time.RFC3339)
 }
 
@@ -95,9 +92,6 @@ func validateEvent(event Event) error {
 	}
 	if event.ID == uuid.Nil {
 		return fmt.Errorf("%w: id is required", ErrInvalidEvent)
-	}
-	if event.Phase != PhaseAttempted && event.Phase != PhaseCompleted {
-		return fmt.Errorf("%w: invalid phase %q", ErrInvalidEvent, event.Phase)
 	}
 	if _, err := time.Parse(time.RFC3339, event.Timestamp); err != nil {
 		return fmt.Errorf("%w: invalid timestamp: %w", ErrInvalidEvent, err)

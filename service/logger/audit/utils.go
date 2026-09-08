@@ -59,20 +59,11 @@ type EventObjectParams struct {
 	Timestamp     string
 }
 
-// Phase identifies an event's position in an append-only operation lifecycle.
-type Phase string
-
-const (
-	PhaseAttempted Phase = "attempted"
-	PhaseCompleted Phase = "completed"
-)
-
 // Event is the canonical audit event passed to a Processor. Recorder metadata
 // is excluded from the existing OpenTDF log payload.
 type Event struct {
 	Verb      Verb              `json:"-" audit:"-"`
 	ID        uuid.UUID         `json:"-" audit:"-"`
-	Phase     Phase             `json:"-" audit:"-"`
 	Principal ctxAuth.Principal `json:"-" audit:"-"`
 
 	Object        auditEventObject   `json:"object"`

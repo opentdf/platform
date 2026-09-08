@@ -45,7 +45,6 @@ func TestRecordUsesBoundedContextAfterRequestCancellation(t *testing.T) {
 
 	require.NoError(t, logger.Record(ctx, canonicalTestEvent()))
 	assert.NotEqual(t, uuid.Nil, processed.ID)
-	assert.Equal(t, PhaseCompleted, processed.Phase)
 	assert.Equal(t, TestRequestID, processed.RequestID)
 	assert.Equal(t, TestActorID, processed.Actor.ID)
 	_, err := time.Parse(time.RFC3339, processed.Timestamp)
@@ -65,11 +64,9 @@ func TestRecordStampsItsEventCopy(t *testing.T) {
 	require.NoError(t, logger.Record(createTestContext(t), event))
 
 	assert.Equal(t, uuid.Nil, event.ID)
-	assert.Empty(t, event.Phase)
 	assert.Empty(t, event.RequestID)
 	assert.Empty(t, event.Timestamp)
 	assert.NotEqual(t, uuid.Nil, processed.ID)
-	assert.Equal(t, PhaseCompleted, processed.Phase)
 }
 
 func TestRecordRejectsInvalidRequiredFieldsBeforeProcessing(t *testing.T) {
@@ -79,7 +76,6 @@ func TestRecordRejectsInvalidRequiredFieldsBeforeProcessing(t *testing.T) {
 	}{
 		{name: "verb", mutate: func(event *Event) { event.Verb = " " }},
 		{name: "client platform", mutate: func(event *Event) { event.ClientInfo.Platform = " " }},
-		{name: "phase", mutate: func(event *Event) { event.Phase = Phase("unknown") }},
 	}
 
 	for _, test := range tests {
@@ -226,8 +222,7 @@ func TestDefaultProcessorPreservesLegacyWireShape(t *testing.T) {
 	assert.Equal(t, "read", entry.Msg)
 	assert.Equal(t, "document-1", requireMap(t, payload["object"])["id"])
 	assert.Equal(t, "success", requireMap(t, payload["action"])["result"])
-	assert.NotContains(t, payload, "id", "recorder lifecycle ID is not part of the legacy wire payload")
-	assert.NotContains(t, payload, "phase", "recorder phase is not part of the legacy wire payload")
+	assert.NotContains(t, payload, "id", "recorder event ID is not part of the legacy wire payload")
 	timestamp, ok := payload["timestamp"].(string)
 	require.True(t, ok)
 	_, err := time.Parse(time.RFC3339, timestamp)

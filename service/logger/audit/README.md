@@ -16,6 +16,10 @@ err := params.Logger.Audit.Record(ctx, *event)
 synchronously with a deadline detached from request cancellation. Check its
 returned error.
 
+Existing buffered helpers retain the context supplied when each event is queued.
+At request completion, the processor receives those context values with request
+cancellation detached and one shared deadline for the entire flush.
+
 ## Processing and delivery
 
 Register a custom processor at startup:

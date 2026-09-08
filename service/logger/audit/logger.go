@@ -26,6 +26,7 @@ const (
 
 // pendingEvent represents a single audit event waiting to be logged
 type pendingEvent struct {
+	ctx   context.Context //nolint:containedctx // retain producer values until the request flushes this event
 	verb  Verb
 	event *EventObject
 }
@@ -143,10 +144,11 @@ func (a *Logger) RecordTimeout() time.Duration {
 }
 
 // addEvent appends a pending audit event to the transaction
-func (tx *auditTransaction) addEvent(verb Verb, event *EventObject) {
+func (tx *auditTransaction) addEvent(ctx context.Context, verb Verb, event *EventObject) {
 	tx.mu.Lock()
 	defer tx.mu.Unlock()
 	tx.events = append(tx.events, pendingEvent{
+		ctx:   ctx,
 		verb:  verb,
 		event: event,
 	})
@@ -161,6 +163,7 @@ func (tx *auditTransaction) logClose(ctx context.Context, auditLogger *Logger, s
 	tx.mu.Unlock()
 	recordCtx, cancel := auditLogger.recordContext(ctx)
 	defer cancel()
+	deadline, _ := recordCtx.Deadline()
 
 	for _, event := range events {
 		auditEvent := *event.event
@@ -176,7 +179,10 @@ func (tx *auditTransaction) logClose(ctx context.Context, auditLogger *Logger, s
 			auditEvent.EventMetaData["cancellation_error"] = err.Error()
 		}
 
-		auditLogger.recordBuiltInContext(recordCtx, event.verb, &auditEvent)
+		// Preserve producer values without extending the shared flush deadline.
+		eventCtx, eventCancel := context.WithDeadline(context.WithoutCancel(event.ctx), deadline)
+		auditLogger.recordBuiltInContext(eventCtx, event.verb, &auditEvent) //nolint:contextcheck // inherit the event producer's context, not the outer interceptor's
+		eventCancel()
 	}
 }
 
@@ -271,7 +277,7 @@ func LogAuditEvent(ctx context.Context, verb Verb, event *EventObject) {
 	if event == nil {
 		panic("nil audit event provided")
 	}
-	tx.addEvent(verb, event)
+	tx.addEvent(ctx, verb, event)
 }
 
 func (a *Logger) rewrapBase(ctx context.Context, eventParams RewrapAuditEventParams) {

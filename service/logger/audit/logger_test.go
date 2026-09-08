@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"connectrpc.com/connect"
 	"github.com/google/uuid"
 	"github.com/lestrrat-go/jwx/v2/jwt"
 	"github.com/opentdf/platform/protocol/go/authorization"
@@ -107,6 +108,60 @@ func TestTransactionCloseUsesOneDeadlineAndPreservesEventTimestamp(t *testing.T)
 	require.Len(t, deadlines, 2)
 	assert.Equal(t, deadlines[0], deadlines[1])
 	assert.Equal(t, []string{timestamp, timestamp}, timestamps)
+}
+
+func TestBufferedEventsPreserveProducerContext(t *testing.T) {
+	type resourceContextKey struct{}
+	requestErr := errors.New("request failed")
+	tests := []struct {
+		name       string
+		requestErr error
+		panics     bool
+	}{
+		{name: "success"},
+		{name: "returned error", requestErr: requestErr},
+		{name: "panic", panics: true},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			logger, _ := createTestLogger()
+			var resources []any
+			var deadlines []time.Time
+			logger.processor = ProcessorFunc(func(ctx context.Context, _ Event) error {
+				require.NoError(t, ctx.Err())
+				require.NoError(t, context.Cause(ctx))
+				deadline, ok := ctx.Deadline()
+				require.True(t, ok)
+				deadlines = append(deadlines, deadline)
+				resources = append(resources, ctx.Value(resourceContextKey{}))
+				return nil
+			})
+			next := ContextServerInterceptor(logger)(func(ctx context.Context, _ connect.AnyRequest) (connect.AnyResponse, error) {
+				for _, resource := range []string{"resource-A", "resource-B"} {
+					producerCtx, cancel := context.WithCancel(context.WithValue(ctx, resourceContextKey{}, resource))
+					logger.PolicyCRUDSuccess(producerCtx, policyCRUDParams)
+					cancel()
+				}
+				if test.panics {
+					panic("handler panic")
+				}
+				return nil, test.requestErr
+			})
+			ctx, cancel := context.WithCancel(t.Context())
+			cancel()
+			if test.panics {
+				require.PanicsWithValue(t, "handler panic", func() {
+					_, _ = next(ctx, connect.NewRequest(&struct{}{}))
+				})
+			} else {
+				_, err := next(ctx, connect.NewRequest(&struct{}{}))
+				require.ErrorIs(t, err, test.requestErr)
+			}
+			require.Equal(t, []any{"resource-A", "resource-B"}, resources)
+			require.Len(t, deadlines, 2)
+			assert.Equal(t, deadlines[0], deadlines[1])
+		})
+	}
 }
 
 func TestTransactionCloseReportsProcessorFailure(t *testing.T) {

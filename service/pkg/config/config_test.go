@@ -302,6 +302,8 @@ interceptors:
     value2: jkl
 server:
   port: 9999
+  ipc:
+    disable_compression: true
 `
 	if _, err := tempFile.Write([]byte(configContent)); err != nil {
 		t.Fatalf("Failed to write to temp file: %v", err)
@@ -334,6 +336,7 @@ server:
 	assert.Equal(t, "test", config.DB.Password)
 	// server
 	assert.Equal(t, 9999, config.Server.Port)
+	assert.True(t, config.Server.IPC.DisableCompression)
 	// logger
 	assert.Equal(t, "debug", config.Logger.Level)
 	// services
@@ -344,6 +347,21 @@ server:
 	assert.Len(t, config.Interceptors, 1)
 	assert.Equal(t, "ghi", config.Interceptors["interceptor_a"]["value1"])
 	assert.Equal(t, "jkl", config.Interceptors["interceptor_a"]["value2"])
+}
+
+// AutomaticEnv only resolves keys known to Viper. This verifies the production
+// legacy loader registers the IPC key even when the YAML omits ipc entirely.
+func TestLoad_LegacyIPCDisableCompressionEnvironmentWithoutYAML(t *testing.T) {
+	t.Setenv("TEST_SERVER_IPC_DISABLE_COMPRESSION", "true")
+
+	legacyLoader, err := NewLegacyLoader(configKey, writeConfig(t, "server:\n  port: 9090\n"))
+	require.NoError(t, err)
+	defaultsLoader, err := NewDefaultSettingsLoader()
+	require.NoError(t, err)
+
+	cfg, err := Load(t.Context(), legacyLoader, defaultsLoader)
+	require.NoError(t, err)
+	assert.True(t, cfg.Server.IPC.DisableCompression)
 }
 
 // TestLoad_Precedence is a matrix test that verifies the loading order
@@ -382,6 +400,7 @@ func TestLoad_Precedence(t *testing.T) {
 				assert.Equal(t, []string{"all"}, cfg.Mode)
 				assert.Equal(t, "info", cfg.Logger.Level)
 				assert.Equal(t, 8080, cfg.Server.Port)
+				assert.False(t, cfg.Server.IPC.DisableCompression)
 			},
 		},
 		{

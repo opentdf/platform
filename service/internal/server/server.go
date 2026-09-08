@@ -52,6 +52,7 @@ type Config struct {
 	Cache cache.Config `mapstructure:"cache" json:"cache"`
 
 	GRPC GRPCConfig `mapstructure:"grpc" json:"grpc"`
+	IPC  IPCConfig  `mapstructure:"ipc" json:"ipc"`
 	// To Deprecate: Use the WithKey[X]Provider StartOptions to register trust providers.
 	CryptoProvider          security.Config                          `mapstructure:"cryptoProvider" json:"cryptoProvider"`
 	TLS                     TLSConfig                                `mapstructure:"tls" json:"tls"`
@@ -80,6 +81,7 @@ func (c Config) LogValue() slog.Value {
 	group := []slog.Attr{
 		slog.Any("auth_config", c.Auth),
 		slog.Any("grpc", c.GRPC),
+		slog.Any("ipc", c.IPC),
 		slog.Any("tls", c.TLS),
 		slog.Any("cors", c.CORS),
 		slog.Int("port", c.Port),
@@ -93,6 +95,13 @@ func (c Config) LogValue() slog.Value {
 	}
 
 	return slog.GroupValue(group...)
+}
+
+// IPCConfig controls the built-in v1 in-process Connect transport.
+type IPCConfig struct {
+	// DisableCompression opts the built-in IPC client out of Connect response
+	// compression and HTTP/2 transport compression. It is applied at startup.
+	DisableCompression bool `mapstructure:"disable_compression" json:"disable_compression" default:"false"`
 }
 
 // GRPC Server specific configurations
@@ -252,6 +261,7 @@ type inProcessServer struct {
 	logger             *logger.Logger
 	maxCallRecvMsgSize int
 	maxCallSendMsgSize int
+	disableCompression bool
 	*ConnectRPC
 }
 
@@ -318,6 +328,7 @@ func NewOpenTDFServer(config Config, logger *logger.Logger, cacheManager *cache.
 			srv:                memhttp.New(connectRPCIpc.Mux),
 			maxCallRecvMsgSize: config.GRPC.MaxCallRecvMsgSizeBytes,
 			maxCallSendMsgSize: config.GRPC.MaxCallSendMsgSizeBytes,
+			disableCompression: config.IPC.DisableCompression,
 			ConnectRPC:         connectRPCIpc,
 		},
 		logger:         logger,
@@ -564,14 +575,23 @@ func (s inProcessServer) Conn() *sdk.ConnectRPCConnection {
 	// Add IPC metadata transfer interceptor (transfers gRPC metadata to Connect headers)
 	clientInterceptors = append(clientInterceptors, auth.IPCMetadataClientInterceptor(s.logger))
 
+	transport := s.srv.Transport()
+	clientOptions := []connect.ClientOption{
+		connect.WithInterceptors(clientInterceptors...),
+		connect.WithReadMaxBytes(s.maxCallRecvMsgSize),
+		connect.WithSendMaxBytes(s.maxCallSendMsgSize),
+	}
+	if s.disableCompression {
+		// Connect response compression and HTTP transport compression negotiate
+		// independently for unary requests, so both must be disabled.
+		clientOptions = append(clientOptions, connect.WithAcceptCompression("gzip", nil, nil))
+		transport.DisableCompression = true
+	}
+
 	conn := sdk.ConnectRPCConnection{
-		Client:   s.srv.Client(),
+		Client:   &http.Client{Transport: transport},
 		Endpoint: s.srv.Listener.Addr().String(),
-		Options: []connect.ClientOption{
-			connect.WithInterceptors(clientInterceptors...),
-			connect.WithReadMaxBytes(s.maxCallRecvMsgSize),
-			connect.WithSendMaxBytes(s.maxCallSendMsgSize),
-		},
+		Options:  clientOptions,
 	}
 	return &conn
 }

@@ -134,6 +134,7 @@ Root level key `server`
 | `cryptoProvider`        | A list of public/private keypairs and their use. Described [below](#crypto-provider)                          | empty   |                                      |
 | `enable_pprof`          | Enable golang performance profiling                                                                           | `false` | OPENTDF_SERVER_ENABLE_PPROF          |
 | `grpc.reflection`       | The configuration for the grpc server.                                                                        | `true`  | OPENTDF_SERVER_GRPC_REFLECTION       |
+| `ipc.disable_compression` | Disable Connect gzip response negotiation and HTTP/2 automatic compression for the built-in v1 IPC client. | `false` | OPENTDF_SERVER_IPC_DISABLE_COMPRESSION |
 | `public_hostname`       | The public facing hostname for the server.                                                                    |         | OPENTDF_SERVER_PUBLIC_HOSTNAME       |
 | `host`                  | The host address for the server.                                                                              | `""`    | OPENTDF_SERVER_HOST                  |
 | `port`                  | The port number for the server.                                                                               | `9000`  | OPENTDF_SERVER_PORT                  |
@@ -141,10 +142,17 @@ Root level key `server`
 | `tls.cert`              | The path to the tls certificate.                                                                              |         | OPENTDF_SERVER_TLS_CERT              |
 | `tls.key`               | The path to the tls key.                                                                                      |         | OPENTDF_SERVER_TLS_KEY               |
 
+`ipc.disable_compression` is a startup-only opt-in. It affects only the built-in
+in-process v1 Connect connection; remote SDK clients and caller-provided custom
+connections are unchanged. Restart the platform after changing it. To roll back,
+set it to `false` (or remove it) and restart.
+
 Example:
 
 ```yaml
 server:
+  ipc:
+    disable_compression: true
   grpc:
     reflection: true
   port: 8081

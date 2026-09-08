@@ -63,8 +63,9 @@ func New(handler http.Handler, opts ...Option) *Server {
 }
 
 // Transport returns an [http2.Transport] configured to use in-memory pipes
-// rather than TCP, disable automatic compression, trust the server's TLS
-// certificate (if any), and use HTTP/2 (if the server supports it).
+// rather than TCP and use HTTP/2. Like the zero-value HTTP/2 transport, it
+// negotiates automatic gzip compression unless the caller sets
+// [http2.Transport.DisableCompression].
 //
 // Callers may reconfigure the returned Transport without affecting other
 // transports or clients.
@@ -80,8 +81,8 @@ func (s *Server) Transport() *http2.Transport {
 }
 
 // Client returns an [http.Client] configured to use in-memory pipes rather
-// than TCP, disable automatic compression, trust the server's TLS certificate
-// (if any), and use HTTP/2 (if the server supports it).
+// than TCP and use HTTP/2. Its transport negotiates automatic gzip compression
+// by default; callers may reconfigure the transport returned by [Server.Transport].
 //
 // Callers may reconfigure the returned client without affecting other clients.
 func (s *Server) Client() *http.Client {

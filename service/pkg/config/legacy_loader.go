@@ -38,9 +38,10 @@ func NewLegacyLoader(key, file string) (*LegacyLoader, error) {
 	// Default config values (non-zero)
 	v.SetDefault("server.auth.cache_refresh_interval", "15m")
 
-	// Registered so AutomaticEnv can resolve it without the key also being
-	// present in the config file. Must match the struct tag default.
+	// Registered so AutomaticEnv can resolve these without the keys also being
+	// present in the config file. Must match their struct tag defaults.
 	v.SetDefault("logger.trace_correlation", true)
+	v.SetDefault("server.ipc.disable_compression", false)
 
 	// Environment variable settings
 	v.SetEnvPrefix(key)

@@ -248,6 +248,7 @@ func Test_GetAttributeRequest(t *testing.T) {
 		{
 			name: "Valid Deprecated Id",
 			req: &attributes.GetAttributeRequest{
+				//nolint:staticcheck // these cases exist to validate the deprecated Id field, so they must set it
 				Id: validUUID,
 			},
 			expectError: false,
@@ -255,6 +256,7 @@ func Test_GetAttributeRequest(t *testing.T) {
 		{
 			name: "Invalid Deprecated Id (empty string)",
 			req: &attributes.GetAttributeRequest{
+				//nolint:staticcheck // these cases exist to validate the deprecated Id field, so they must set it
 				Id: "",
 			},
 			expectError:  true,
@@ -301,6 +303,7 @@ func Test_GetAttributeRequest(t *testing.T) {
 		{
 			name: "Invalid can't have both Id and Identifier",
 			req: &attributes.GetAttributeRequest{
+				//nolint:staticcheck // these cases exist to validate the deprecated Id field, so they must set it
 				Id: validUUID,
 				Identifier: &attributes.GetAttributeRequest_Fqn{
 					Fqn: "https://example.com/valid_fqn",
@@ -806,6 +809,7 @@ func Test_GetAttributeValueRequest(t *testing.T) {
 		{
 			name: "Valid Deprecated Id",
 			req: &attributes.GetAttributeValueRequest{
+				//nolint:staticcheck // these cases exist to validate the deprecated Id field, so they must set it
 				Id: validUUID,
 			},
 			expectError: false,
@@ -813,6 +817,7 @@ func Test_GetAttributeValueRequest(t *testing.T) {
 		{
 			name: "Invalid Deprecated Id (empty string)",
 			req: &attributes.GetAttributeValueRequest{
+				//nolint:staticcheck // these cases exist to validate the deprecated Id field, so they must set it
 				Id: "",
 			},
 			expectError:  true,
@@ -859,6 +864,7 @@ func Test_GetAttributeValueRequest(t *testing.T) {
 		{
 			name: "Invalid can't have both Id and Identifier",
 			req: &attributes.GetAttributeValueRequest{
+				//nolint:staticcheck // these cases exist to validate the deprecated Id field, so they must set it
 				Id: validUUID,
 				Identifier: &attributes.GetAttributeValueRequest_Fqn{
 					Fqn: "https://example.com/valid_fqn_value",

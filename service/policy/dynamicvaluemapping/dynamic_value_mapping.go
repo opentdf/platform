@@ -102,7 +102,7 @@ func (s DynamicValueMappingService) CreateDynamicValueMapping(ctx context.Contex
 		return nil
 	})
 	if err != nil {
-		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextCreationFailed, slog.String("dynamicValueMapping", req.Msg.String()))
+		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextCreationFailed, slog.String("dynamic_value_mapping", req.Msg.String()))
 	}
 	return connect.NewResponse(rsp), nil
 }
@@ -167,7 +167,7 @@ func (s DynamicValueMappingService) UpdateDynamicValueMapping(ctx context.Contex
 		return nil
 	})
 	if err != nil {
-		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextUpdateFailed, slog.String("id", id), slog.String("dynamicValueMapping", req.Msg.String()))
+		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextUpdateFailed, slog.String("id", id), slog.String("dynamic_value_mapping", req.Msg.String()))
 	}
 
 	return connect.NewResponse(rsp), nil

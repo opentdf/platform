@@ -123,7 +123,7 @@ func (s ResourceMappingService) CreateResourceMappingGroup(ctx context.Context, 
 	})
 	if err != nil {
 		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
-		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextCreationFailed, slog.String("resourceMappingGroup", req.Msg.String()))
+		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextCreationFailed, slog.String("resource_mapping_group", req.Msg.String()))
 	}
 
 	auditParams.ObjectID = rmGroup.GetId()
@@ -285,7 +285,7 @@ func (s ResourceMappingService) CreateResourceMapping(ctx context.Context,
 	})
 	if err != nil {
 		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
-		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextCreationFailed, slog.String("resourceMapping", req.Msg.String()))
+		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextCreationFailed, slog.String("resource_mapping", req.Msg.String()))
 	}
 
 	auditParams.ObjectID = rm.GetId()
@@ -330,7 +330,7 @@ func (s ResourceMappingService) UpdateResourceMapping(ctx context.Context,
 		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
 		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextUpdateFailed,
 			slog.String("id", req.Msg.GetId()),
-			slog.String("resourceMapping", req.Msg.String()),
+			slog.String("resource_mapping", req.Msg.String()),
 		)
 	}
 

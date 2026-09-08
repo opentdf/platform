@@ -123,6 +123,7 @@ func Test_GetProviderConfigRequest(t *testing.T) {
 			name: "Invalid Name (empty) identifier",
 			req: &keymanagement.GetProviderConfigRequest{
 				Identifier: &keymanagement.GetProviderConfigRequest_Name{
+					//nolint:staticcheck // exercises the deprecated Name identifier, which must keep validating until it is removed
 					Name: "",
 				},
 			},
@@ -142,6 +143,7 @@ func Test_GetProviderConfigRequest(t *testing.T) {
 			name: "Valid Name Identifier",
 			req: &keymanagement.GetProviderConfigRequest{
 				Identifier: &keymanagement.GetProviderConfigRequest_Name{
+					//nolint:staticcheck // exercises the deprecated Name identifier, which must keep validating until it is removed
 					Name: validName,
 				},
 			},

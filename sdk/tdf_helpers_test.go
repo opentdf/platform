@@ -43,6 +43,23 @@ func TestIntegrityAlgorithmStringMatchesCalculateSignature(t *testing.T) {
 	}
 }
 
+// GMAC signs by returning the ciphertext's trailing kGMACPayloadLength bytes
+// verbatim; a ciphertext shorter than that has no tag to return and must be
+// rejected rather than silently truncated or padded.
+func TestCalculateSignatureGMACShortCiphertext(t *testing.T) {
+	key := make([]byte, kKeySize)
+	_, err := rand.Read(key)
+	require.NoError(t, err)
+
+	data := make([]byte, kGMACPayloadLength-1)
+	_, err = rand.Read(data)
+	require.NoError(t, err)
+
+	_, err = calculateSignature(data, key, GMAC, false)
+	require.ErrorIs(t, err, ErrGMACSignatureFailed)
+	require.ErrorIs(t, err, ErrTampered)
+}
+
 func TestCreatePolicyBinding(t *testing.T) {
 	symKey := make([]byte, kKeySize)
 	_, err := rand.Read(symKey)

@@ -963,6 +963,11 @@ func (r *Reader) WriteTo(writer io.Writer) (int64, error) {
 	var payloadReadOffset int64
 	var decryptedDataOffset int64
 	for _, seg := range r.manifest.Segments {
+		// resolveSegmentSizes rejects a declared Size that disagrees with
+		// EncryptedSize; without that check here too, decryptedDataOffset
+		// could run ahead of the actual decrypted length, panicking on
+		// writeBuf[offset:] below once a later segment's slice runs shorter
+		// than expected.
 		segSize, encryptedSegSize, err := r.manifest.resolveSegmentSizes(seg)
 		if err != nil {
 			return totalBytes, err
@@ -1068,23 +1073,17 @@ func (r *Reader) ReadAt(buf []byte, offset int64) (int, error) { //nolint:funlen
 	var segStart int64          // plaintext offset of seg
 	startIndex := int64(-1)     // offset of the request within decryptedBuf
 	for _, seg := range r.manifest.Segments {
-		segSize, encryptedSegSize, err := r.manifest.resolveSegmentSizes(seg)
-		if err != nil {
-			return 0, err
-		}
-
 		// Segment.Size positions every plaintext offset derived below --
 		// including for the segments this request skips over -- but nothing
 		// authenticates it: the root signature aggregates only Segment.Hash.
-		// AES-GCM frames each segment with a fixed-size nonce and tag, so the
-		// plaintext size is pinned by the ciphertext size, and ReadPayload
-		// below checks EncryptedSize against the bytes actually present. This
-		// is the per-segment form of the check doPayloadKeyUnwrap already
-		// applies to the manifest defaults. Deriving Size from EncryptedSize
-		// rather than the reverse keeps the arithmetic from overflowing.
-		if encryptedSegSize < gcmIvSize+aesBlockSize || segSize != encryptedSegSize-(gcmIvSize+aesBlockSize) {
-			return 0, fmt.Errorf("%w: segment declares size %d with encrypted size %d",
-				ErrSegSizeMismatch, segSize, encryptedSegSize)
+		// resolveSegmentSizes pins the plaintext size to the ciphertext size
+		// (AES-GCM frames each segment with a fixed-size nonce and tag), and
+		// ReadPayload below checks EncryptedSize against the bytes actually
+		// present. This is the per-segment form of the check
+		// doPayloadKeyUnwrap already applies to the manifest defaults.
+		segSize, encryptedSegSize, err := r.manifest.resolveSegmentSizes(seg)
+		if err != nil {
+			return 0, err
 		}
 
 		segEnd := segStart + segSize

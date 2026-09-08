@@ -3,7 +3,6 @@ package audit
 import (
 	"context"
 	"log/slog"
-	"sync"
 	"time"
 )
 
@@ -39,7 +38,6 @@ type Logger struct {
 	logger        *slog.Logger
 	processor     Processor
 	recordTimeout time.Duration
-	configMu      sync.RWMutex
 	config        Config
 }
 
@@ -91,22 +89,14 @@ func cloneConfig(cfg Config) Config {
 	return cloned
 }
 
-// ApplyConfig validates and stores the latest audit enrichment configuration.
+// ApplyConfig validates and copies audit enrichment configuration.
+// Call only during setup, before the logger is shared with other goroutines.
 func (a *Logger) ApplyConfig(cfg Config) error {
 	if err := cfg.Validate(); err != nil {
 		return err
 	}
-	a.configMu.Lock()
 	a.config = cloneConfig(cfg)
-	a.configMu.Unlock()
 	return nil
-}
-
-//nolint:funcorder // keep configuration read and write synchronization together
-func (a *Logger) configSnapshot() Config {
-	a.configMu.RLock()
-	defer a.configMu.RUnlock()
-	return cloneConfig(a.config)
 }
 
 func (a *Logger) With(key string, value string) *Logger {
@@ -115,7 +105,7 @@ func (a *Logger) With(key string, value string) *Logger {
 		logger:        a.logger.With(key, value),
 		processor:     a.processor,
 		recordTimeout: a.recordTimeout,
-		config:        a.configSnapshot(),
+		config:        cloneConfig(a.config),
 	}
 }
 

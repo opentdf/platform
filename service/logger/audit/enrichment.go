@@ -19,8 +19,7 @@ func (a *Logger) buildLogEntry(ctx context.Context, event *EventObject) map[stri
 }
 
 func (a *Logger) applyJWTClaimEnrichment(ctx context.Context, entry map[string]any) {
-	cfg := a.configSnapshot()
-	if len(cfg.JWTClaimMappings) == 0 {
+	if len(a.config.JWTClaimMappings) == 0 {
 		return
 	}
 
@@ -35,7 +34,7 @@ func (a *Logger) applyJWTClaimEnrichment(ctx context.Context, entry map[string]a
 		return
 	}
 
-	a.applyMappedJWTClaims(ctx, entry, claimsMap, cfg.JWTClaimMappings)
+	a.applyMappedJWTClaims(ctx, entry, claimsMap, a.config.JWTClaimMappings)
 }
 
 func (a *Logger) applyMappedJWTClaims(ctx context.Context, entry map[string]any, claimsMap map[string]any, mappings []JWTClaimMapping) {

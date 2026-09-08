@@ -678,6 +678,23 @@ func testErrorConditions(t *testing.T) {
 		assert.Contains(t, err.Error(), "no default KAS", "Error should mention missing default KAS")
 	})
 
+	// A nil KAS means "unset" in this package, but the stable option it
+	// delegates to rejects nil outright. The writer has to drop the option
+	// rather than forward the nil, or construction and Finalize would fail
+	// with an option error instead of the ErrNoDefaultKAS callers handle.
+	t.Run("ExplicitNilKASStaysUnset", func(t *testing.T) {
+		writer, err := NewWriter(ctx, WithDefaultKASForWriter(nil))
+		require.NoError(t, err, "a nil KAS at construction is not an error here")
+
+		_, err = writer.WriteSegment(ctx, 0, []byte("test"))
+		require.NoError(t, err)
+
+		_, err = writer.Finalize(ctx, WithDefaultKAS(nil))
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "no default KAS",
+			"a nil KAS should surface as the splitter's error, not an option error")
+	})
+
 	t.Run("SegmentsNamesUnwrittenIndex", func(t *testing.T) {
 		writer, err := NewWriter(ctx)
 		require.NoError(t, err)

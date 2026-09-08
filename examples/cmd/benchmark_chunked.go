@@ -14,7 +14,7 @@ import (
 	"github.com/opentdf/platform/protocol/go/kas/kasconnect"
 	"github.com/opentdf/platform/protocol/go/policy"
 
-	"github.com/opentdf/platform/sdk/experimental/tdf"
+	"github.com/opentdf/platform/sdk"
 	"github.com/opentdf/platform/sdk/httputil"
 	"github.com/spf13/cobra"
 )
@@ -27,10 +27,10 @@ var (
 
 func init() {
 	benchmarkCmd := &cobra.Command{
-		Use:   "benchmark-experimental-writer",
-		Short: "Benchmark experimental TDF writer speed",
-		Long:  `Benchmark the experimental TDF writer with configurable payload size.`,
-		RunE:  runExperimentalWriterBenchmark,
+		Use:   "benchmark-chunked-writer",
+		Short: "Benchmark chunked TDF writer speed",
+		Long:  `Benchmark the chunked TDF writer with configurable payload size.`,
+		RunE:  runChunkedWriterBenchmark,
 	}
 	//nolint: mnd // no magic number, this is just default value for payload size
 	benchmarkCmd.Flags().IntVar(&payloadSize, "payload-size", 1024*1024, "Payload size in bytes") // Default 1MB
@@ -39,7 +39,7 @@ func init() {
 	ExamplesCmd.AddCommand(benchmarkCmd)
 }
 
-func runExperimentalWriterBenchmark(_ *cobra.Command, _ []string) error {
+func runChunkedWriterBenchmark(_ *cobra.Command, _ []string) error {
 	payload := make([]byte, payloadSize)
 	_, err := rand.Read(payload)
 	if err != nil {
@@ -53,7 +53,6 @@ func runExperimentalWriterBenchmark(_ *cobra.Command, _ []string) error {
 	if err != nil {
 		return fmt.Errorf("failed to get public key from KAS: %w", err)
 	}
-	var attrs []*policy.Value
 
 	simpleyKey := &policy.SimpleKasKey{
 		KasUri: platformEndpoint,
@@ -65,31 +64,44 @@ func runExperimentalWriterBenchmark(_ *cobra.Command, _ []string) error {
 		},
 	}
 
-	attrs = append(attrs, &policy.Value{Fqn: testAttr, KasKeys: []*policy.SimpleKasKey{simpleyKey}, Attribute: &policy.Attribute{Namespace: &policy.Namespace{Name: "example.com"}, Fqn: testAttr}})
-	writer, err := tdf.NewWriter(context.Background(), tdf.WithDefaultKASForWriter(simpleyKey), tdf.WithInitialAttributes(attrs), tdf.WithSegmentIntegrityAlgorithm(tdf.HS256))
+	attrs := []*policy.Value{{
+		Fqn:       testAttr,
+		KasKeys:   []*policy.SimpleKasKey{simpleyKey},
+		Attribute: &policy.Attribute{Namespace: &policy.Namespace{Name: "example.com"}, Fqn: testAttr},
+	}}
+
+	// The package-level constructor rather than SDK.NewChunkedWriter: this
+	// benchmark talks to one KAS whose key it already fetched, so there is
+	// nothing for the platform to resolve and no reason to pay for a round trip
+	// to it inside the timed section.
+	writer, err := sdk.NewChunkedWriter(context.Background(),
+		sdk.WithChunkedDefaultKAS(simpleyKey),
+		sdk.WithChunkedInitialAttributes(attrs),
+		sdk.WithChunkedSegmentIntegrityAlgorithm(sdk.HS256),
+	)
 	if err != nil {
 		return fmt.Errorf("failed to create writer: %w", err)
 	}
-	i := 0
-	wg := sync.WaitGroup{}
+
 	segs := len(payload) / segmentChunk
+	errs := make([]error, segs)
+	wg := sync.WaitGroup{}
 	wg.Add(segs)
 	start := time.Now()
-	for i < segs {
-		segment := i
+	for segment := range segs {
 		go func() {
-			start := i * segmentChunk
-			end := min(start+segmentChunk, len(payload))
-			_, err = writer.WriteSegment(context.Background(), segment, payload[start:end])
-			if err != nil {
-				fmt.Println(err)
-				panic(err)
-			}
-			wg.Done()
+			defer wg.Done()
+			lo := segment * segmentChunk
+			hi := min(lo+segmentChunk, len(payload))
+			_, errs[segment] = writer.WriteSegment(context.Background(), segment, payload[lo:hi])
 		}()
-		i++
 	}
 	wg.Wait()
+	for i, err := range errs {
+		if err != nil {
+			return fmt.Errorf("failed to write segment %d: %w", i, err)
+		}
+	}
 
 	end := time.Now()
 	result, err := writer.Finalize(context.Background())
@@ -98,7 +110,7 @@ func runExperimentalWriterBenchmark(_ *cobra.Command, _ []string) error {
 	}
 	totalTime := end.Sub(start)
 
-	fmt.Printf("# Benchmark Experimental TDF Writer Results:\n")
+	fmt.Printf("# Benchmark Chunked TDF Writer Results:\n")
 	fmt.Printf("| Metric             | Value         |\n")
 	fmt.Printf("|--------------------|--------------|\n")
 	fmt.Printf("| Payload Size (B)   | %d |\n", payloadSize)

@@ -165,7 +165,6 @@ func setupKeycloakWithConfig(ctx context.Context, kcConnectParams KeycloakConnec
 		if _, err := client.CreateRealm(ctx, token.AccessToken, realm); err != nil {
 			return err
 		}
-		//nolint:sloglint // allow existing emojis
 		slog.Info("✅ realm created", slog.String("realm", kcConnectParams.Realm))
 
 		// update realm users profile via upconfig
@@ -184,10 +183,8 @@ func setupKeycloakWithConfig(ctx context.Context, kcConnectParams KeycloakConnec
 		if err != nil {
 			return err
 		}
-		//nolint:sloglint // allow existing emojis
 		slog.Info("✅ realm users profile updated", slog.String("realm", kcConnectParams.Realm))
 	} else {
-		//nolint:sloglint // allow existing emojis
 		slog.Info("⏭️ realm already exists", slog.String("realm", kcConnectParams.Realm))
 	}
 
@@ -211,13 +208,11 @@ func setupKeycloakWithConfig(ctx context.Context, kcConnectParams KeycloakConnec
 		if err != nil {
 			switch kcErrCode(err) {
 			case http.StatusConflict:
-				//nolint:sloglint // allow existing emojis
 				slog.Warn("⏭️ role already exists", slog.String("role", role))
 			default:
 				return err
 			}
 		} else {
-			//nolint:sloglint // allow existing emojis
 			slog.Info("✅ role created", slog.String("role", role))
 		}
 	}
@@ -233,7 +228,6 @@ func setupKeycloakWithConfig(ctx context.Context, kcConnectParams KeycloakConnec
 		return err
 	}
 
-	//nolint:sloglint // allow existing emojis
 	slog.Info("✅ roles found", slog.Int("count", len(realmRoles)))
 	for _, role := range realmRoles {
 		switch *role.Name {
@@ -277,7 +271,7 @@ func setupKeycloakWithConfig(ctx context.Context, kcConnectParams KeycloakConnec
 			Name:                  gocloak.StringP("testscope"),
 			Description:           gocloak.StringP("a scope for testing"),
 			Protocol:              gocloak.StringP("openid-connect"),
-			ClientScopeAttributes: &gocloak.ClientScopeAttributes{IncludeInTokenScope: gocloak.StringP("true")},
+			ClientScopeAttributes: &gocloak.ClientScopeAttributes{IncludeInTokenScope: gocloak.StringP(keycloakBoolTrue)},
 		}
 
 		testScopeID, err = client.CreateClientScope(ctx, token.AccessToken, kcConnectParams.Realm, *testScope)
@@ -402,8 +396,8 @@ func defaultProtocolMappers(audience string, includeCustomDPoPMapper bool) []goc
 			Config: &map[string]string{
 				"included.client.audience": audience,
 				"included.custom.audience": "custom_audience",
-				"access.token.claim":       "true",
-				"id.token.claim":           "true",
+				"access.token.claim":       keycloakBoolTrue,
+				"id.token.claim":           keycloakBoolTrue,
 			},
 		},
 	}
@@ -414,9 +408,9 @@ func defaultProtocolMappers(audience string, includeCustomDPoPMapper bool) []goc
 			ProtocolMapper: gocloak.StringP("virtru-oidc-protocolmapper"),
 			Config: &map[string]string{
 				"claim.name":         "tdf_claims",
-				"client.dpop":        "true",
-				"tdf_claims.enabled": "true",
-				"access.token.claim": "true",
+				"client.dpop":        keycloakBoolTrue,
+				"tdf_claims.enabled": keycloakBoolTrue,
+				"access.token.claim": keycloakBoolTrue,
 				"client.publickey":   "X-VirtruPubKey",
 			},
 		})
@@ -713,10 +707,8 @@ func createRealmWithTokenManager(ctx context.Context, kcConnectParams KeycloakCo
 		if _, err := client.CreateRealm(ctx, token.AccessToken, realm); err != nil {
 			return err
 		}
-		//nolint:sloglint // allow existing emojis
 		slog.Info("✅ realm created", slog.String("realm", *realm.Realm))
 	} else {
-		//nolint:sloglint // allow existing emojis
 		slog.Info("⏭️ realm already exists", slog.String("realm", *realm.Realm))
 	}
 
@@ -737,7 +729,6 @@ func createRealmWithTokenManager(ctx context.Context, kcConnectParams KeycloakCo
 	if err != nil {
 		return err
 	}
-	//nolint:sloglint // allow existing emojis
 	slog.Info("✅ realm users profile updated", slog.String("realm", *realm.Realm))
 
 	return nil
@@ -759,13 +750,11 @@ func createGroup(ctx context.Context, tm *TokenManager, realmName string, group 
 	if err != nil {
 		kcErr := err.(*gocloak.APIError) //nolint:errcheck,errorlint,forcetypeassert // kc error checked below
 		if kcErr.Code == http.StatusConflict {
-			//nolint:sloglint // allow existing emojis
 			slog.Warn("⏭️ group already exists", slog.String("group", *group.Name))
 		} else {
 			return err
 		}
 	} else {
-		//nolint:sloglint // allow existing emojis
 		slog.Info("✅ group created", slog.String("group", *group.Name))
 	}
 	return nil
@@ -787,13 +776,11 @@ func createRealmRole(ctx context.Context, tm *TokenManager, realmName string, ro
 	if err != nil {
 		kcErr := err.(*gocloak.APIError) //nolint:errcheck,errorlint,forcetypeassert // kc error checked below
 		if kcErr.Code == http.StatusConflict {
-			//nolint:sloglint // allow existing emojis
 			slog.Warn("⏭️ role already exists", slog.String("role", *role.Name))
 		} else {
 			return err
 		}
 	} else {
-		//nolint:sloglint // allow existing emojis
 		slog.Info("✅ role created", slog.String("role", *role.Name))
 	}
 	return nil
@@ -824,7 +811,6 @@ func createClientRole(ctx context.Context, tm *TokenManager, realmName string, c
 	if err != nil {
 		kcErr := err.(*gocloak.APIError) //nolint:errcheck,errorlint,forcetypeassert // kc error checked below
 		if kcErr.Code == http.StatusConflict {
-			//nolint:sloglint // allow existing emojis
 			slog.Warn("⏭️ role already exists for client",
 				slog.String("role", *role.Name),
 				slog.String("client_id", clientID))
@@ -832,7 +818,6 @@ func createClientRole(ctx context.Context, tm *TokenManager, realmName string, c
 			return err
 		}
 	} else {
-		//nolint:sloglint // allow existing emojis
 		slog.Info("✅ client role created",
 			slog.String("client_id", clientID),
 			slog.String("role", *role.Name))
@@ -855,7 +840,6 @@ func createClient(ctx context.Context, tm *TokenManager, connectParams *Keycloak
 	if err != nil {
 		switch kcErrCode(err) {
 		case http.StatusConflict:
-			//nolint:sloglint // allow existing emojis
 			slog.Warn("⏭️ client already exists", slog.String("client_id", clientID))
 			clients, err := client.GetClients(ctx, token.AccessToken, connectParams.Realm, gocloak.GetClientsParams{ClientID: newClient.ClientID})
 			if err != nil {
@@ -874,7 +858,6 @@ func createClient(ctx context.Context, tm *TokenManager, connectParams *Keycloak
 			return "", err
 		}
 	} else {
-		//nolint:sloglint // allow existing emojis
 		slog.Info("✅ client created",
 			slog.String("client_id", clientID),
 			slog.String("client_identifier", longClientID))
@@ -895,7 +878,6 @@ func createClient(ctx context.Context, tm *TokenManager, connectParams *Keycloak
 			slog.String("username", *user.Username))
 
 		if realmRoles != nil {
-			//nolint:sloglint // allow existing emojis
 			slog.Info("⏭️ adding realm roles to client via service account",
 				slog.String("client_id", longClientID),
 				slog.String("username", *user.Username))
@@ -906,14 +888,12 @@ func createClient(ctx context.Context, tm *TokenManager, connectParams *Keycloak
 				return "", err
 			}
 			for _, role := range realmRoles {
-				//nolint:sloglint // allow existing emojis
 				slog.Info("✅ realm role added to client",
 					slog.String("role", *role.Name),
 					slog.String("client_id", longClientID))
 			}
 		}
 		if clientRoles != nil {
-			//nolint:sloglint // allow existing emojis
 			slog.Info("⏭️ adding client roles to client via service account",
 				slog.String("client_id", longClientID),
 				slog.String("username", *user.Username))
@@ -925,7 +905,6 @@ func createClient(ctx context.Context, tm *TokenManager, connectParams *Keycloak
 					return "", err
 				}
 				for _, role := range roles {
-					//nolint:sloglint // allow existing emojis
 					slog.Info("✅ client role added to client",
 						slog.String("role", *role.Name),
 						slog.String("client_id", longClientID))
@@ -971,7 +950,6 @@ func createUser(ctx context.Context, tm *TokenManager, connectParams *KeycloakCo
 			return nil, fmt.Errorf("error, multiple users found with username %s", username)
 		}
 	} else {
-		//nolint:sloglint // allow existing emojis
 		slog.Info("✅ user created",
 			slog.String("username", username),
 			slog.String("user_identifier", longUserID))
@@ -1016,7 +994,6 @@ func createUser(ctx context.Context, tm *TokenManager, connectParams *KeycloakCo
 				return nil, err
 			}
 			for _, role := range clientRoles {
-				//nolint:sloglint // allow existing emojis
 				slog.Info("✅ client role added to user",
 					slog.String("role", *role.Name),
 					slog.String("user_id", longUserID))
@@ -1195,7 +1172,7 @@ func withClientAudienceMapper(client gocloak.Client, audience string) gocloak.Cl
 		ProtocolMapper: gocloak.StringP(oidcAudienceMapper),
 		Config: &map[string]string{
 			"included.client.audience": audience,
-			"access.token.claim":       "true",
+			"access.token.claim":       keycloakBoolTrue,
 		},
 	})
 	client.ProtocolMappers = &mappers
@@ -1235,7 +1212,6 @@ func createCertExchange(ctx context.Context, connectParams *KeycloakConnectParam
 		}); err != nil {
 		switch kcErrCode(err) {
 		case http.StatusConflict:
-			//nolint:sloglint // allow existing emojis
 			slog.Warn("⏭️ authentication flow already exists; skipping remainder of cert exchange creation", slog.String("flow_name", topLevelFlowName))
 			return nil
 		default:
@@ -1340,7 +1316,6 @@ func createCertExchange(ctx context.Context, connectParams *KeycloakConnectParam
 		return err
 	}
 
-	//nolint:sloglint // allow existing emojis
 	slog.Info("✅ created Cert Exchange Authentication",
 		slog.String("flow_id", *flowID),
 	)

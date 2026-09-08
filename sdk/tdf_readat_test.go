@@ -217,49 +217,69 @@ func TestReaderReadAtNonUniformEdges(t *testing.T) {
 
 // TestReaderReadAtDeclaredSizeMismatch checks that a manifest whose declared
 // segment sizes disagree with the AES-GCM framing is rejected rather than
-// trusted.
+// trusted, on both ReadAt and WriteTo.
 //
 // Nothing authenticates Segment.Size: the root signature aggregates only each
-// segment's Hash, and the schema types the size as a bare number. ReadAt derives
-// every plaintext offset from those sizes, so an altered Size shifts the mapping
-// -- and because a segment before the requested offset is skipped rather than
-// decrypted, checking the length that comes back from Decrypt is not enough on
-// its own to catch it.
+// segment's Hash, and the schema types the size as a bare number. ReadAt and
+// WriteTo both derive plaintext offsets from those sizes, so an altered Size
+// shifts the mapping -- and because a segment before the requested offset is
+// skipped rather than decrypted, checking the length that comes back from
+// Decrypt is not enough on its own to catch it. For WriteTo specifically, the
+// same drift would otherwise let decryptedDataOffset run ahead of the actual
+// decrypted length, panicking on writeBuf[offset:] once a later segment's
+// slice comes up short.
 func TestReaderReadAtDeclaredSizeMismatch(t *testing.T) {
 	for _, tc := range []struct {
-		name   string
-		mutate func(segments []Segment)
+		name    string
+		mutate  func(segments []Segment)
+		wantErr error
 	}{
 		// Understating the first segment shifts every later segment down by
 		// five bytes. The read below starts past that segment, so it is skipped
 		// and never decrypted.
-		{"understated", func(segments []Segment) { segments[0].Size = 5 }},
-		{"overstated", func(segments []Segment) { segments[0].Size = 40 }},
+		{"understated", func(segments []Segment) { segments[0].Size = 5 }, ErrSegSizeMismatch},
+		{"overstated", func(segments []Segment) { segments[0].Size = 40 }, ErrSegSizeMismatch},
 		// Sizes that sum back to something plausible: payloadSize is the sum of
 		// every Size, so a pair that overflows to a small positive total gets
-		// past the range check on offset and reaches the segment walk.
+		// past the range check on offset and reaches the segment walk. A
+		// negative declared Size is caught by resolveSegmentSizes itself,
+		// before the arithmetic consistency check below it ever runs.
 		{"negative", func(segments []Segment) {
 			segments[0].Size = math.MinInt64 + 1
 			segments[1].Size = math.MinInt64 + 7
-		}},
+		}, ErrSegSizeUnresolved},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			reader, _ := newNonUniformReader(t, []int{10, 10, 10})
 			tc.mutate(reader.manifest.Segments)
 
-			// Mirror what LoadTDF derives from the tampered manifest.
+			// LoadTDF would itself reject this manifest via resolveSegmentSizes
+			// before a Reader ever exists, so payloadSize is set by hand here to
+			// unit-test ReadAt/WriteTo against the tampered manifest directly,
+			// bypassing that earlier rejection.
 			var payloadSize int64
 			for _, seg := range reader.manifest.Segments {
 				payloadSize += seg.Size
 			}
 			reader.payloadSize = payloadSize
 
-			// The request spans the tampered segment and the one after it, so a
-			// reader that trusted Size would report a full 20 bytes of shifted
-			// plaintext rather than an error.
-			n, err := reader.ReadAt(make([]byte, 20), 5)
-			require.ErrorIs(t, err, ErrSegSizeMismatch)
-			assert.Zero(t, n)
+			t.Run("ReadAt", func(t *testing.T) {
+				// The request spans the tampered segment and the one after it, so a
+				// reader that trusted Size would report a full 20 bytes of shifted
+				// plaintext rather than an error.
+				n, err := reader.ReadAt(make([]byte, 20), 5)
+				require.ErrorIs(t, err, tc.wantErr)
+				assert.Zero(t, n)
+			})
+
+			t.Run("WriteTo", func(t *testing.T) {
+				// The tampered segment is first, so WriteTo hits the same error on
+				// its very first iteration, before writing any bytes.
+				var out bytes.Buffer
+				n, err := reader.WriteTo(&out)
+				require.ErrorIs(t, err, tc.wantErr)
+				assert.Zero(t, n)
+			})
 		})
 	}
 }

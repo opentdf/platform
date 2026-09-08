@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"slices"
 	"strings"
+	"time"
 
 	"connectrpc.com/connect"
 	"github.com/casbin/casbin/v2/persist"
@@ -55,6 +56,7 @@ type StartConfig struct {
 	authzRoleProvider          authz.RoleProvider
 	authzRoleProviderFactories map[string]authz.RoleProviderFactory
 	auditProcessor             audit.Processor
+	auditTimeout               time.Duration
 
 	// CORS additive configuration - appended to YAML/env config values
 	additionalCORSHeaders        []string
@@ -98,6 +100,14 @@ func formatAuditTypeRegistrationConflicts(conflicts []auditTypeRegistrationConfl
 func WithAuditProcessor(processor audit.Processor) StartOptions {
 	return func(c StartConfig) StartConfig {
 		c.auditProcessor = processor
+		return c
+	}
+}
+
+// WithAuditTimeout sets the audit processing budget. Non-positive values use five seconds.
+func WithAuditTimeout(timeout time.Duration) StartOptions {
+	return func(c StartConfig) StartConfig {
+		c.auditTimeout = timeout
 		return c
 	}
 }

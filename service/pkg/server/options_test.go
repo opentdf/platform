@@ -3,6 +3,7 @@ package server
 import (
 	"context"
 	"testing"
+	"time"
 
 	"connectrpc.com/connect"
 	"github.com/go-viper/mapstructure/v2"
@@ -21,6 +22,11 @@ func TestWithAuditProcessor(t *testing.T) {
 	cfg := WithAuditProcessor(processor)(StartConfig{})
 
 	require.NotNil(t, cfg.auditProcessor)
+}
+
+func TestWithAuditTimeout(t *testing.T) {
+	cfg := WithAuditTimeout(30 * time.Second)(StartConfig{})
+	require.Equal(t, 30*time.Second, cfg.auditTimeout)
 }
 
 // noopInterceptor returns a connect.UnaryInterceptorFunc that passes through.

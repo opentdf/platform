@@ -1,7 +1,6 @@
 # Extending audit recording
 
-OpenTDF records one canonical, externally constructible `Event` through an
-immediate `Recorder`:
+Use `Record` to submit an audit event:
 
 ```go
 event := audit.NewEvent(audit.EventObjectParams{
@@ -13,20 +12,17 @@ event.Verb = audit.Verb("read")
 err := params.Logger.Audit.Record(ctx, *event)
 ```
 
-`Record` stamps request attribution, validates the generic event fields, and
-hands the event to the configured processor before returning. Processing uses a
-bounded context detached from request cancellation. Callers therefore do not
-need to detach contexts or create audit transactions.
-
-Each call records an independent event. Callers determine when an operation's
-outcome is known and handle recording errors according to their requirements.
+`Record` adds request attribution, validates the event, and calls the processor
+synchronously with a deadline detached from request cancellation. Check its
+returned error.
 
 ## Processing and delivery
 
-Embedding applications may install one instance-scoped processor:
+Register a custom processor at startup:
 
 ```go
 server.Start(
+	server.WithAuditTimeout(15*time.Second),
 	server.WithAuditProcessor(audit.ProcessorFunc(
 		func(ctx context.Context, event audit.Event) error {
 			return processAuditEvent(ctx, event)
@@ -35,23 +31,23 @@ server.Start(
 )
 ```
 
-A processor owns destination-specific validation, fan-out, delivery, and
-recovery. A nil error means it accepted the event through its intended
-destination or a durable recovery path. Processor errors and panics return to
-the caller; OpenTDF does not retry or emit a second fallback record. The default
-processor preserves `level:"AUDIT"`, `msg:<verb>`, and `audit:{...}`.
+The default processing timeout is five seconds. Zero or negative values use the
+default. Processors must honor the context deadline, including during external
+lookups and delivery.
 
-`Record` is synchronous. Callers must not mutate maps, slices, or other
-reference data in an event until it returns. Processors must not mutate or
-retain that reference data.
+Processors handle conversion, destination validation, delivery, and recovery.
+Return nil after the destination or a durable recovery path accepts the event.
+`Record` returns processor errors and recovered panics. OpenTDF does not retry
+or emit a fallback.
 
-The authenticated request `Principal` is distinct from the event `Actor`; an
-authorization decision may concern a subject other than the requester. JWT
-claim mappings may enrich the legacy payload but must not establish resource
-ownership. Downstream processors must derive ownership from authoritative
-resource identifiers.
+Processors may run concurrently. They can change their local event value, but
+must independently copy any maps, slices, or referenced data they modify or
+retain. Callers must leave shared data unchanged until `Record` returns.
 
-The default processor acknowledges slog handler acceptance only. It does not
-prove that stdout, Fluent Bit, or a remote datastore durably persisted the
-event. Deployments requiring durable audit guarantees must implement that
-handoff, such as a WAL or transactional outbox, in their processor.
+`Principal` identifies the authenticated requester; `Actor` may identify a
+different subject. Derive resource ownership from authoritative resource data,
+not the requester's JWT claims.
+
+Without a custom processor, output remains `level:"AUDIT"`, `msg:<verb>`, and
+`audit:{...}`. Success means the slog handler accepted the record, not that a
+downstream datastore persisted it. Durable delivery belongs in the processor.

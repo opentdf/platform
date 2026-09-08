@@ -53,6 +53,13 @@ func WithProcessor(processor Processor) Option {
 	}
 }
 
+// WithRecordTimeout sets the processing budget. Non-positive values use five seconds.
+func WithRecordTimeout(timeout time.Duration) Option {
+	return func(logger *Logger) {
+		logger.recordTimeout = timeout
+	}
+}
+
 // Used to support custom log levels showing up with custom labels as well
 // see https://betterstack.com/community/guides/logging/logging-in-go/#creating-custom-log-levels
 func ReplaceAttrAuditLevel(_ []string, a slog.Attr) slog.Attr {
@@ -112,6 +119,14 @@ func (a *Logger) With(key string, value string) *Logger {
 // Processor returns the configured processor, or nil for default OpenTDF processing.
 func (a *Logger) Processor() Processor {
 	return a.processor
+}
+
+// RecordTimeout returns the configured processing budget, or the five-second default.
+func (a *Logger) RecordTimeout() time.Duration {
+	if a.recordTimeout <= 0 {
+		return defaultRecordTimeout
+	}
+	return a.recordTimeout
 }
 
 // addEvent appends a pending audit event to the transaction

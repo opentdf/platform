@@ -290,7 +290,7 @@ func buildNamespaceLogger(baseLogger *logging.Logger, cfg *config.Config, ns, le
 	newLoggerConfig := cfg.Logger
 	newLoggerConfig.Level = level
 
-	var loggerOptions []logging.Option
+	loggerOptions := []logging.Option{logging.WithAuditTimeout(baseLogger.Audit.RecordTimeout())}
 	if baseLogger.Audit.Processor() != nil {
 		loggerOptions = append(loggerOptions, logging.WithAuditProcessor(baseLogger.Audit.Processor()))
 	}

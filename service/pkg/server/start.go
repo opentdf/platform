@@ -115,7 +115,7 @@ func Start(f ...StartOptions) error {
 	}
 
 	slog.Debug("configuring logger")
-	var loggerOptions []logger.Option
+	loggerOptions := []logger.Option{logger.WithAuditTimeout(startConfig.auditTimeout)}
 	if startConfig.auditProcessor != nil {
 		loggerOptions = append(loggerOptions, logger.WithAuditProcessor(startConfig.auditProcessor))
 	}

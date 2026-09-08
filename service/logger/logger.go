@@ -25,6 +25,7 @@ import (
 	"io"
 	"log/slog"
 	"os"
+	"time"
 
 	"github.com/opentdf/platform/service/logger/audit"
 )
@@ -52,12 +53,20 @@ type Option func(*loggerOptions)
 
 type loggerOptions struct {
 	auditProcessor audit.Processor
+	auditTimeout   time.Duration
 }
 
 // WithAuditProcessor configures canonical audit event processing.
 func WithAuditProcessor(processor audit.Processor) Option {
 	return func(options *loggerOptions) {
 		options.auditProcessor = processor
+	}
+}
+
+// WithAuditTimeout sets the audit processing budget. Non-positive values use five seconds.
+func WithAuditTimeout(timeout time.Duration) Option {
+	return func(options *loggerOptions) {
+		options.auditTimeout = timeout
 	}
 }
 
@@ -110,7 +119,7 @@ func NewLogger(config Config, options ...Option) (*Logger, error) {
 	// Audit events skip requestContextAttrs on purpose: the request metadata it
 	// adds is already inside the audit payload. They still need trace correlation.
 	auditLoggerBase := slog.New(newContextAttrsHandler(auditLoggerHandler, contextAttrSources(config)...))
-	var auditOptions []audit.Option
+	auditOptions := []audit.Option{audit.WithRecordTimeout(loggerOpts.auditTimeout)}
 	if loggerOpts.auditProcessor != nil {
 		auditOptions = append(auditOptions, audit.WithProcessor(loggerOpts.auditProcessor))
 	}

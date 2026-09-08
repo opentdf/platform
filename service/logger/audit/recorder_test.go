@@ -40,8 +40,7 @@ func TestRecordUsesBoundedContextAfterRequestCancellation(t *testing.T) {
 		processed = event
 		return nil
 	})
-	logger := CreateAuditLogger(*slog.Default(), WithProcessor(processor))
-	logger.recordTimeout = time.Second
+	logger := CreateAuditLogger(*slog.Default(), WithProcessor(processor), WithRecordTimeout(time.Second))
 
 	require.NoError(t, logger.Record(ctx, canonicalTestEvent()))
 	assert.NotEqual(t, uuid.Nil, processed.ID)
@@ -147,13 +146,43 @@ func TestRecordReturnsProcessorDeadline(t *testing.T) {
 		<-ctx.Done()
 		return ctx.Err()
 	})
-	logger := CreateAuditLogger(*slog.Default(), WithProcessor(processor))
-	logger.recordTimeout = time.Millisecond
+	logger := CreateAuditLogger(*slog.Default(), WithProcessor(processor), WithRecordTimeout(time.Millisecond))
 
 	err := logger.Record(t.Context(), canonicalTestEvent())
 
 	require.ErrorIs(t, err, ErrProcessing)
 	require.ErrorIs(t, err, context.DeadlineExceeded)
+}
+
+func TestRecordTimeoutOptions(t *testing.T) {
+	tests := []struct {
+		name    string
+		timeout time.Duration
+		want    time.Duration
+	}{
+		{name: "custom", timeout: 30 * time.Second, want: 30 * time.Second},
+		{name: "zero", want: defaultRecordTimeout},
+		{name: "negative", timeout: -time.Second, want: defaultRecordTimeout},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			var deadline time.Time
+			processor := ProcessorFunc(func(ctx context.Context, _ Event) error {
+				var ok bool
+				deadline, ok = ctx.Deadline()
+				require.True(t, ok)
+				require.NoError(t, ctx.Err())
+				return nil
+			})
+			logger := CreateAuditLogger(*slog.Default(), WithProcessor(processor), WithRecordTimeout(test.timeout)).With("namespace", "test")
+			ctx, cancel := context.WithCancel(t.Context())
+			cancel()
+			before := time.Now()
+			require.NoError(t, logger.Record(ctx, canonicalTestEvent()))
+			assert.False(t, deadline.Before(before.Add(test.want)))
+			assert.False(t, deadline.After(time.Now().Add(test.want)))
+		})
+	}
 }
 
 func TestRecordDoesNotTrustProducerPrincipal(t *testing.T) {

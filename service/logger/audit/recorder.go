@@ -49,11 +49,7 @@ func (a *Logger) Record(ctx context.Context, event Event) error {
 		return err
 	}
 
-	timeout := a.recordTimeout
-	if timeout <= 0 {
-		timeout = defaultRecordTimeout
-	}
-	recordCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), timeout)
+	recordCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), a.RecordTimeout())
 	defer cancel()
 
 	return a.process(recordCtx, event)

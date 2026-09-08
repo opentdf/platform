@@ -103,6 +103,20 @@ teardown_file(){
   ./otdfctl decrypt --host $HOST --tls-no-verify $DEBUG_LEVEL $WITH_CREDS $OUTFILE_TXT | grep "$SECRET_TEXT"
 }
 
+@test "inspect TDF3, one attribute, stdin" {
+  echo $SECRET_TEXT | ./otdfctl encrypt -o $OUT_TXT --host $HOST --tls-no-verify $DEBUG_LEVEL $WITH_CREDS -a $FQN
+
+  inspect_output=$(cat $OUTFILE_TXT | ./otdfctl --host $HOST --tls-no-verify $WITH_CREDS inspect)
+  assert_equal "$(echo "$inspect_output" | jq -r '.manifest.encryptionInformation.keyAccess | length')" "1"
+}
+
+@test "inspect rejects extra positional arguments" {
+  echo $SECRET_TEXT | ./otdfctl encrypt -o $OUT_TXT --host $HOST --tls-no-verify $DEBUG_LEVEL $WITH_CREDS -a $FQN
+
+  run sh -c "./otdfctl --host $HOST --tls-no-verify $WITH_CREDS inspect $OUTFILE_TXT extra-arg"
+  assert_failure
+}
+
 @test "allow traversal with mapped key uses definition when value missing" {
   local attr_name="attr-allow-traversal-${RANDOM}"
   local kas_name="kas-allow-traversal-${RANDOM}"

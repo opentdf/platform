@@ -15,6 +15,7 @@ var (
 	ErrTampered                = errors.New("tamper detected")
 	ErrRootSigValidation       = fmt.Errorf("[%w] tdf: failed integrity check on root signature", ErrTampered)
 	ErrSegSizeMismatch         = fmt.Errorf("[%w] tdf: mismatch encrypted segment size in manifest", ErrTampered)
+	ErrSegSizeUnresolved       = fmt.Errorf("[%w] tdf: segment size missing from manifest with no default to fall back on", ErrTampered)
 	ErrSegSigValidation        = fmt.Errorf("[%w] tdf: failed integrity check on segment hash", ErrTampered)
 	ErrTDFPayloadReadFail      = fmt.Errorf("[%w] tdf: fail to read payload from tdf", ErrTampered)
 	ErrTDFPayloadInvalidOffset = fmt.Errorf("[%w] sdk.Reader.ReadAt: negative offset", ErrTampered)

@@ -1,6 +1,5 @@
 // Package localhttp dispatches unary HTTP requests directly through an HTTP
 // handler while preserving the normal Connect encoding and middleware stack.
-// It is an experimental IPC building block; it is not wired into server startup.
 package localhttp
 
 import (
@@ -10,6 +9,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"runtime/debug"
 	"strings"
 	"sync"
 
@@ -30,6 +30,15 @@ var (
 	errCompressedResponse = errors.New("local HTTP transport does not support compressed response bodies")
 )
 
+// PanicInfo contains bounded server-side diagnostics for a recovered handler
+// panic. It intentionally excludes the panic value and request headers so a
+// panic cannot disclose a token or other request content through this hook.
+type PanicInfo struct {
+	Procedure string
+	PanicType string
+	Stack     []byte
+}
+
 // Transport dispatches requests through Handler without a socket. Each request
 // receives a fresh server context: only cancellation and deadlines are bridged.
 // Request metadata and tracing must cross as HTTP headers and be reconstructed
@@ -38,7 +47,8 @@ var (
 // Transport intentionally implements unary HTTP semantics only. It does not
 // implement http.Flusher, Hijacker, or full-duplex response streaming.
 type Transport struct {
-	Handler http.Handler
+	Handler      http.Handler
+	PanicHandler func(PanicInfo)
 
 	mu      sync.Mutex
 	closing bool
@@ -108,7 +118,12 @@ func (t *Transport) RoundTrip(req *http.Request) (*http.Response, error) {
 
 	go func() {
 		defer func() {
-			if recover() != nil {
+			if recovered := recover(); recovered != nil {
+				t.reportPanic(PanicInfo{
+					Procedure: serverReq.URL.Path,
+					PanicType: fmt.Sprintf("%T", recovered),
+					Stack:     debug.Stack(),
+				})
 				call.writer.fail(errHandlerPanic)
 			}
 			call.closeRequest()
@@ -165,6 +180,16 @@ func (t *Transport) Close() error {
 		call.abort(errTransportClosed)
 	}
 	return nil
+}
+
+func (t *Transport) reportPanic(info PanicInfo) {
+	if t.PanicHandler == nil {
+		return
+	}
+	// Diagnostics must not change the transport failure contract, even if an
+	// embedding logger hook itself panics.
+	defer func() { _ = recover() }()
+	t.PanicHandler(info)
 }
 
 func (t *Transport) addCall(call *localCall) bool {

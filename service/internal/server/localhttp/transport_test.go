@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"connectrpc.com/connect"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -130,6 +131,26 @@ func TestTransportResponseSemantics(t *testing.T) {
 
 func TestTransportPanicFailureClasses(t *testing.T) {
 	t.Run("before commitment", func(t *testing.T) {
+		diagnostics := make(chan PanicInfo, 1)
+		transport := &Transport{
+			Handler:      http.HandlerFunc(func(http.ResponseWriter, *http.Request) { panic("secret-token-value") }),
+			PanicHandler: func(info PanicInfo) { diagnostics <- info },
+		}
+		req, err := http.NewRequestWithContext(t.Context(), http.MethodGet, "http://local.test/action", nil)
+		require.NoError(t, err)
+		resp, err := transport.Client().Do(req)
+		assert.Nil(t, resp)
+		require.Error(t, err)
+		assert.Equal(t, connect.CodeInternal, connect.CodeOf(err))
+		assert.NotContains(t, err.Error(), "secret-token-value")
+		info := <-diagnostics
+		assert.Equal(t, "/action", info.Procedure)
+		assert.Equal(t, "string", info.PanicType)
+		assert.NotEmpty(t, info.Stack)
+		assert.NotContains(t, string(info.Stack), "secret-token-value")
+	})
+
+	t.Run("raw round trip retains internal sentinel", func(t *testing.T) {
 		transport := &Transport{Handler: http.HandlerFunc(func(http.ResponseWriter, *http.Request) { panic("before") })}
 		req, err := http.NewRequestWithContext(t.Context(), http.MethodGet, "http://local.test/action", nil)
 		require.NoError(t, err)

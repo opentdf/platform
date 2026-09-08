@@ -110,6 +110,7 @@ func runTests() int {
 			cukes.RegisterSmokeStepDefinitions(ctx, platformCukesContext)
 			cukes.RegisterAuthorizationStepDefinitions(ctx)
 			cukes.RegisterSubjectMappingsStepsDefinitions(ctx)
+			cukes.RegisterResourceMappingScaleSteps(ctx)
 			cukes.RegisterDynamicValueMappingsStepDefinitions(ctx)
 			cukes.RegisterDirectEntitlementsStepDefinitions(ctx)
 			cukes.RegisterRegisteredResourcesStepDefinitions(ctx)

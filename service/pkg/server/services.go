@@ -8,9 +8,7 @@ import (
 
 	"github.com/go-viper/mapstructure/v2"
 	"github.com/opentdf/platform/sdk"
-	"github.com/opentdf/platform/service/authorization"
 	authorizationV2 "github.com/opentdf/platform/service/authorization/v2"
-	"github.com/opentdf/platform/service/entityresolution"
 	entityresolutionV2 "github.com/opentdf/platform/service/entityresolution/v2"
 	"github.com/opentdf/platform/service/health"
 	authn "github.com/opentdf/platform/service/internal/auth"
@@ -52,7 +50,7 @@ func getServiceConfigurations() []serviceregistry.ServiceConfiguration {
 		{
 			Name:     ServiceAuthorization,
 			Modes:    []serviceregistry.ModeName{serviceregistry.ModeALL, serviceregistry.ModeCore},
-			Services: []serviceregistry.IService{authorization.NewRegistration(), authorizationV2.NewRegistration()},
+			Services: []serviceregistry.IService{authorizationV2.NewRegistration()},
 		},
 		{
 			Name:     ServiceKAS,
@@ -67,7 +65,7 @@ func getServiceConfigurations() []serviceregistry.ServiceConfiguration {
 		{
 			Name:     ServiceEntityResolution,
 			Modes:    []serviceregistry.ModeName{serviceregistry.ModeALL, serviceregistry.ModeERS},
-			Services: []serviceregistry.IService{entityresolution.NewRegistration(), entityresolutionV2.NewRegistration()},
+			Services: []serviceregistry.IService{entityresolutionV2.NewRegistration()},
 		},
 	}
 }

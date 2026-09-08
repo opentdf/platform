@@ -7,7 +7,8 @@ import (
 	"testing"
 
 	"connectrpc.com/connect"
-	"github.com/opentdf/platform/protocol/go/authorization"
+	authorizationv2 "github.com/opentdf/platform/protocol/go/authorization/v2"
+	"github.com/opentdf/platform/protocol/go/entity"
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/attributes"
 	"github.com/opentdf/platform/sdk/sdkconnect"
@@ -38,20 +39,20 @@ func (m *mockDiscoveryAttributesClient) GetAttribute(ctx context.Context, req *a
 
 // mockDiscoveryAuthzClient is a test double for AuthorizationServiceClient.
 type mockDiscoveryAuthzClient struct {
-	sdkconnect.AuthorizationServiceClient
+	sdkconnect.AuthorizationServiceClientV2
 
-	getEntitlementsFunc func(ctx context.Context, req *authorization.GetEntitlementsRequest) (*authorization.GetEntitlementsResponse, error)
+	getEntitlementsFunc func(ctx context.Context, req *authorizationv2.GetEntitlementsRequest) (*authorizationv2.GetEntitlementsResponse, error)
 }
 
-func (m *mockDiscoveryAuthzClient) GetEntitlements(ctx context.Context, req *authorization.GetEntitlementsRequest) (*authorization.GetEntitlementsResponse, error) {
+func (m *mockDiscoveryAuthzClient) GetEntitlements(ctx context.Context, req *authorizationv2.GetEntitlementsRequest) (*authorizationv2.GetEntitlementsResponse, error) {
 	return m.getEntitlementsFunc(ctx, req)
 }
 
 // newDiscoverySDK creates a minimal SDK with mock service clients for discovery tests.
-func newDiscoverySDK(attrClient sdkconnect.AttributesServiceClient, authzClient sdkconnect.AuthorizationServiceClient) SDK {
+func newDiscoverySDK(attrClient sdkconnect.AttributesServiceClient, authzClient sdkconnect.AuthorizationServiceClientV2) SDK {
 	s := SDK{}
 	s.Attributes = attrClient
-	s.Authorization = authzClient
+	s.AuthorizationV2 = authzClient
 	return s
 }
 
@@ -429,95 +430,101 @@ func TestGetEntityAttributes_Found(t *testing.T) {
 		"https://example.com/attr/country/value/us",
 	}
 	authzClient := &mockDiscoveryAuthzClient{
-		getEntitlementsFunc: func(_ context.Context, req *authorization.GetEntitlementsRequest) (*authorization.GetEntitlementsResponse, error) {
-			assert.Len(t, req.GetEntities(), 1)
-			return &authorization.GetEntitlementsResponse{
-				Entitlements: []*authorization.EntityEntitlements{
-					{EntityId: "e1", AttributeValueFqns: expectedFQNs},
+		getEntitlementsFunc: func(_ context.Context, req *authorizationv2.GetEntitlementsRequest) (*authorizationv2.GetEntitlementsResponse, error) {
+			assert.Len(t, req.GetEntityIdentifier().GetEntityChain().GetEntities(), 1)
+			return &authorizationv2.GetEntitlementsResponse{
+				Entitlements: []*authorizationv2.EntityEntitlements{
+					{
+						EphemeralId: "e1",
+						ActionsPerAttributeValueFqn: map[string]*authorizationv2.EntityEntitlements_ActionsList{
+							expectedFQNs[0]: {},
+							expectedFQNs[1]: {},
+						},
+					},
 				},
 			}, nil
 		},
 	}
 	s := newDiscoverySDK(nil, authzClient)
 
-	entity := &authorization.Entity{
-		Id:         "e1",
-		EntityType: &authorization.Entity_EmailAddress{EmailAddress: "alice@example.com"},
+	subject := &entity.Entity{
+		EphemeralId: "e1",
+		EntityType:  &entity.Entity_EmailAddress{EmailAddress: "alice@example.com"},
 	}
-	result, err := s.GetEntityAttributes(t.Context(), entity)
+	result, err := s.GetEntityAttributes(t.Context(), subject)
 	require.NoError(t, err)
 	assert.Equal(t, expectedFQNs, result)
 }
 
 func TestGetEntityAttributes_NoEntitlements(t *testing.T) {
 	authzClient := &mockDiscoveryAuthzClient{
-		getEntitlementsFunc: func(_ context.Context, _ *authorization.GetEntitlementsRequest) (*authorization.GetEntitlementsResponse, error) {
-			return &authorization.GetEntitlementsResponse{}, nil
+		getEntitlementsFunc: func(_ context.Context, _ *authorizationv2.GetEntitlementsRequest) (*authorizationv2.GetEntitlementsResponse, error) {
+			return &authorizationv2.GetEntitlementsResponse{}, nil
 		},
 	}
 	s := newDiscoverySDK(nil, authzClient)
 
-	entity := &authorization.Entity{
-		Id:         "e1",
-		EntityType: &authorization.Entity_ClientId{ClientId: "my-service"},
+	subject := &entity.Entity{
+		EphemeralId: "e1",
+		EntityType:  &entity.Entity_ClientId{ClientId: "my-service"},
 	}
-	result, err := s.GetEntityAttributes(t.Context(), entity)
+	result, err := s.GetEntityAttributes(t.Context(), subject)
 	require.NoError(t, err)
 	assert.Empty(t, result)
 }
 
 func TestGetEntityAttributes_IDMismatch(t *testing.T) {
 	authzClient := &mockDiscoveryAuthzClient{
-		getEntitlementsFunc: func(_ context.Context, _ *authorization.GetEntitlementsRequest) (*authorization.GetEntitlementsResponse, error) {
-			return &authorization.GetEntitlementsResponse{
-				Entitlements: []*authorization.EntityEntitlements{
-					{EntityId: "other-entity", AttributeValueFqns: []string{"https://example.com/attr/a/value/x"}},
+		getEntitlementsFunc: func(_ context.Context, _ *authorizationv2.GetEntitlementsRequest) (*authorizationv2.GetEntitlementsResponse, error) {
+			return &authorizationv2.GetEntitlementsResponse{
+				Entitlements: []*authorizationv2.EntityEntitlements{
+					{EphemeralId: "other-entity", ActionsPerAttributeValueFqn: map[string]*authorizationv2.EntityEntitlements_ActionsList{"https://example.com/attr/a/value/x": {}}},
 				},
 			}, nil
 		},
 	}
 	s := newDiscoverySDK(nil, authzClient)
 
-	entity := &authorization.Entity{
-		Id:         "e1",
-		EntityType: &authorization.Entity_EmailAddress{EmailAddress: "alice@example.com"},
+	subject := &entity.Entity{
+		EphemeralId: "e1",
+		EntityType:  &entity.Entity_EmailAddress{EmailAddress: "alice@example.com"},
 	}
-	result, err := s.GetEntityAttributes(t.Context(), entity)
+	result, err := s.GetEntityAttributes(t.Context(), subject)
 	require.NoError(t, err)
 	assert.Empty(t, result, "should return empty when no entitlement matches the requested entity ID")
 }
 
 func TestGetEntityAttributes_EmptyEntityID(t *testing.T) {
 	authzClient := &mockDiscoveryAuthzClient{
-		getEntitlementsFunc: func(_ context.Context, _ *authorization.GetEntitlementsRequest) (*authorization.GetEntitlementsResponse, error) {
-			return &authorization.GetEntitlementsResponse{
-				Entitlements: []*authorization.EntityEntitlements{
-					{EntityId: "some-entity", AttributeValueFqns: []string{"https://example.com/attr/a/value/x"}},
+		getEntitlementsFunc: func(_ context.Context, _ *authorizationv2.GetEntitlementsRequest) (*authorizationv2.GetEntitlementsResponse, error) {
+			return &authorizationv2.GetEntitlementsResponse{
+				Entitlements: []*authorizationv2.EntityEntitlements{
+					{EphemeralId: "some-entity", ActionsPerAttributeValueFqn: map[string]*authorizationv2.EntityEntitlements_ActionsList{"https://example.com/attr/a/value/x": {}}},
 				},
 			}, nil
 		},
 	}
 	s := newDiscoverySDK(nil, authzClient)
 
-	entity := &authorization.Entity{} // no ID set
-	result, err := s.GetEntityAttributes(t.Context(), entity)
+	subject := &entity.Entity{} // no ID set
+	result, err := s.GetEntityAttributes(t.Context(), subject)
 	require.NoError(t, err)
 	assert.Empty(t, result, "entity with empty ID should not receive entitlements belonging to another entity")
 }
 
 func TestGetEntityAttributes_ServiceError(t *testing.T) {
 	authzClient := &mockDiscoveryAuthzClient{
-		getEntitlementsFunc: func(_ context.Context, _ *authorization.GetEntitlementsRequest) (*authorization.GetEntitlementsResponse, error) {
+		getEntitlementsFunc: func(_ context.Context, _ *authorizationv2.GetEntitlementsRequest) (*authorizationv2.GetEntitlementsResponse, error) {
 			return nil, errors.New("auth service unavailable")
 		},
 	}
 	s := newDiscoverySDK(nil, authzClient)
 
-	entity := &authorization.Entity{
-		Id:         "e1",
-		EntityType: &authorization.Entity_Uuid{Uuid: "550e8400-e29b-41d4-a716-446655440000"},
+	subject := &entity.Entity{
+		EphemeralId: "e1",
+		EntityType:  &entity.Entity_EmailAddress{EmailAddress: "alice@example.com"},
 	}
-	_, err := s.GetEntityAttributes(t.Context(), entity)
+	_, err := s.GetEntityAttributes(t.Context(), subject)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "getting entity attributes")
 	assert.Contains(t, err.Error(), "auth service unavailable")

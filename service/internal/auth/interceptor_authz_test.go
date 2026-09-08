@@ -102,7 +102,7 @@ func (s *InterceptorAuthzSuite) TestV1_StandardUserPermissions() {
 		// Standard user cannot access non-existent resources
 		{"standard non-existent denied", "/non.existent.Service/Method", ActionRead, false},
 		// Standard user can access authorization service
-		{"standard authz decisions", "/authorization.AuthorizationService/GetDecisions", ActionRead, true},
+		{"standard authz decisions", "/authorization.v2.AuthorizationService/GetDecision", ActionRead, true},
 	}
 
 	for _, tc := range tests {
@@ -840,7 +840,7 @@ func (s *InterceptorAuthzSuite) TestV1_GRPCPathCompatibility() {
 	grpcPaths := []string{
 		"/policy.attributes.AttributesService/GetAttribute",
 		"/kas.AccessService/Rewrap",
-		"/authorization.AuthorizationService/GetDecisions",
+		"/authorization.v2.AuthorizationService/GetDecision",
 	}
 
 	for _, path := range grpcPaths {

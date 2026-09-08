@@ -27,7 +27,7 @@ ERS enables the OpenTDF platform to:
 - **Use Case**: Organizations using Keycloak for identity management
 
 ### Multi-Strategy Entity Resolution Service (PREVIEW)
-- **Status**: 🚧 **Preview** (V2 only)
+- **Status**: 🚧 **Preview**
 - **Location**: [`./multi-strategy/`](./multi-strategy/)
 - **Backends**: SQL, LDAP, JWT Claims (all in one service)
 - **Features**: Dynamic strategy selection, data transformations, cross-backend failover
@@ -49,7 +49,7 @@ services:
     mode: claims    # JWT token processing (default, works with any IdP)
     # OR
     mode: keycloak  # Keycloak identity provider
-    # OR (V2 only)
+    # OR
     mode: multi-strategy  # LDAP, SQL, and JWT Claims with intelligent routing
     # Implementation-specific configuration
 ```
@@ -125,8 +125,7 @@ output_mapping:
 ## Architecture
 
 ### Protocol Support
-- **v1 Protocol**: Uses `authorization.Entity` and singular method names
-- **v2 Protocol**: Uses `entity.Entity` and plural method names (`CreateEntityChainsFromTokens`)
+- Uses `entity.Entity` and plural method names (`CreateEntityChainsFromTokens`)
 
 ### Integration Testing
 ERS uses a **contract testing framework** that ensures all implementations behave consistently:
@@ -167,7 +166,7 @@ go test -v
 
 | Feature | Claims ERS | Keycloak ERS | Multi-Strategy ERS |
 |---------|------------|--------------|-------------------|
-| **Status** | ✅ **Stable** | ✅ **Stable** | 🚧 **Preview (V2 only)** |
+| **Status** | ✅ **Stable** | ✅ **Stable** | 🚧 **Preview** |
 | **External Dependencies** | None | Keycloak server | SQL + LDAP + Claims (configurable) |
 | **Connection Management** | Stateless | HTTP client pool | Multiple connection pools |
 | **Security** | JWT signature validation | OAuth2/OIDC | All security types (LDAPS/StartTLS/SSL/TLS) |
@@ -224,7 +223,6 @@ go test -v -run TestKeycloak        # Docker Keycloak (slowest)
 | **External system** | **Keycloak** | Set up Keycloak server, configure Admin API access |
 | **Deprecated LDAP mode** | **Multi-Strategy** | Configure LDAP provider with strategies, enable transformations |
 | **Deprecated SQL mode** | **Multi-Strategy** | Configure SQL provider with strategies, enable transformations |
-| **Any v1** | **Any v2** | Update protocol imports, change `Id` to `EphemeralId` |
 | **Multiple backends** | **Claims** | Consolidate to JWT-based authentication for simplified architecture |
 | **Multiple backends** | **Multi-Strategy** | **Unified service with intelligent routing and cross-backend failover** |
 | **Multiple ERS services** | **Multi-Strategy** | **Single service supporting all backends with strategy-based routing** |

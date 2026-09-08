@@ -776,8 +776,7 @@ func (x *GetDecisionBulkResponse) GetDecisionResponses() []*GetDecisionMultiReso
 
 // What is permitted to the identified entity/entities (actor), broken down as permitted actions on attribute value FQNs?
 //
-// Note: the v1 API parameter 'scope' has been dropped, and it is recommended to use
-// GetDecision if the resource is known
+// Scope is not supported; use GetDecision if the resource is known.
 type GetEntitlementsRequest struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache

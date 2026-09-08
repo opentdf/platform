@@ -22,8 +22,6 @@ p,	role:admin,		*,					*,			allow
 p,	role:standard,		policy.*,																read,			allow
 p,	role:standard,		kasregistry.*,													read,			allow
 p,	role:standard,      kas.AccessService/Rewrap, 			           *,			allow
-p,  role:standard,      authorization.AuthorizationService/GetDecisions,        read, allow
-p,  role:standard,      authorization.AuthorizationService/GetDecisionsByToken, read, allow
 p,  role:standard,      authorization.v2.AuthorizationService/GetDecision, read, allow
 p,  role:standard,      authorization.v2.AuthorizationService/GetDecisionMultiResource, read, allow
 p,  role:standard,      authorization.v2.AuthorizationService/GetDecisionBulk, read, allow

@@ -153,13 +153,7 @@ func (s *AuthnCasbinSuite) Test_Enforcement() {
 		{
 			allowed:  true,
 			roles:    standard,
-			resource: "authorization.AuthorizationService/GetDecisions",
-			action:   "read",
-		},
-		{
-			allowed:  true,
-			roles:    standard,
-			resource: "authorization.AuthorizationService/GetDecisionsByToken",
+			resource: "authorization.v2.AuthorizationService/GetDecision",
 			action:   "read",
 		},
 

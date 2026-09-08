@@ -3,7 +3,7 @@ package integration
 import (
 	"testing"
 
-	"github.com/opentdf/platform/protocol/go/entityresolution"
+	entityresolution "github.com/opentdf/platform/protocol/go/entityresolution/v2"
 	"github.com/opentdf/platform/service/internal/subjectmappingbuiltin"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -45,19 +45,21 @@ func TestClaimsERSSubjectMapping(t *testing.T) {
 		}
 
 		t.Run("string selector matches", func(t *testing.T) {
-			entitlements, err := subjectmappingbuiltin.EvaluateSubjectMappings(
+			entitlements, err := subjectmappingbuiltin.EvaluateSubjectMappingsWithActions(
 				buildAttributeSubjectMapping(attrFQN, ".department", "Finance"),
 				entity,
+				nil,
 			)
 			require.NoError(t, err)
-			assert.Equal(t, []string{attrFQN}, entitlements,
+			assert.Contains(t, entitlements, attrFQN,
 				"selector '.department' should match a string-valued JWT claim")
 		})
 
 		t.Run("array selector does not match", func(t *testing.T) {
-			entitlements, err := subjectmappingbuiltin.EvaluateSubjectMappings(
+			entitlements, err := subjectmappingbuiltin.EvaluateSubjectMappingsWithActions(
 				buildAttributeSubjectMapping(attrFQN, ".department[]", "Finance"),
 				entity,
+				nil,
 			)
 			require.NoError(t, err)
 			assert.Empty(t, entitlements,
@@ -78,19 +80,21 @@ func TestClaimsERSSubjectMapping(t *testing.T) {
 		}
 
 		t.Run("array selector matches", func(t *testing.T) {
-			entitlements, err := subjectmappingbuiltin.EvaluateSubjectMappings(
+			entitlements, err := subjectmappingbuiltin.EvaluateSubjectMappingsWithActions(
 				buildAttributeSubjectMapping(attrFQN, ".department[]", "Finance"),
 				entity,
+				nil,
 			)
 			require.NoError(t, err)
-			assert.Equal(t, []string{attrFQN}, entitlements,
+			assert.Contains(t, entitlements, attrFQN,
 				"selector '.department[]' should match an array-valued JWT claim")
 		})
 
 		t.Run("string selector does not match", func(t *testing.T) {
-			entitlements, err := subjectmappingbuiltin.EvaluateSubjectMappings(
+			entitlements, err := subjectmappingbuiltin.EvaluateSubjectMappingsWithActions(
 				buildAttributeSubjectMapping(attrFQN, ".department", "Finance"),
 				entity,
+				nil,
 			)
 			require.NoError(t, err)
 			assert.Empty(t, entitlements,
@@ -109,9 +113,10 @@ func TestClaimsERSSubjectMapping(t *testing.T) {
 			AdditionalProps: []*structpb.Struct{entityStruct},
 		}
 
-		entitlements, err := subjectmappingbuiltin.EvaluateSubjectMappings(
+		entitlements, err := subjectmappingbuiltin.EvaluateSubjectMappingsWithActions(
 			buildAttributeSubjectMapping(attrFQN, ".attributes.department[]", "Finance"),
 			entity,
+			nil,
 		)
 		require.NoError(t, err)
 		assert.Empty(t, entitlements,

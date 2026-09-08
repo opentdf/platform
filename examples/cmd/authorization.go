@@ -4,7 +4,8 @@ import (
 	"context"
 	"log/slog"
 
-	"github.com/opentdf/platform/protocol/go/authorization"
+	authorizationv2 "github.com/opentdf/platform/protocol/go/authorization/v2"
+	"github.com/opentdf/platform/protocol/go/entity"
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/sdk"
 	"github.com/spf13/cobra"
@@ -27,58 +28,59 @@ func authorizationExamples() error {
 	}
 	defer s.Close()
 
-	// request decision on "read" Action
-	actions := []*policy.Action{{
-		Name: "read",
-	}}
-
-	// model two groups of entities; user bob and user alice
-	entityChains := []*authorization.EntityChain{{
-		Id: "ec1", // ec1 is an arbitrary tracking id to match results to request
-		Entities: []*authorization.Entity{{
-			EntityType: &authorization.Entity_EmailAddress{EmailAddress: "bob@example.org"},
-			Category:   authorization.Entity_CATEGORY_SUBJECT,
-		}},
-	}, {
-		Id: "ec2", // ec2 is an arbitrary tracking id to match results to request
-		Entities: []*authorization.Entity{{
-			EntityType: &authorization.Entity_UserName{UserName: "alice@example.org"},
-			Category:   authorization.Entity_CATEGORY_SUBJECT,
-		}},
-	}}
-
-	tradeSecretAttributeValueFqn := "https://namespace.com/attr/attr_name/value/replaceme" //nolint: gosec // TODO Get attribute value ids
-	openAttributeValueFqn := "https://open.io/attr/attr_name/value/open"
-
-	slog.Info("Getting decision for bob and alice for transmit action on resource set with trade secret and resource" +
-		" set with trade secret + open attribute values")
-	//
-	drs := make([]*authorization.DecisionRequest, 0)
-	drs = append(drs, &authorization.DecisionRequest{
-		Actions:      actions,
-		EntityChains: entityChains,
-		ResourceAttributes: []*authorization.ResourceAttribute{
-			{AttributeValueFqns: []string{tradeSecretAttributeValueFqn, openAttributeValueFqn}},
+	entityChains := []*entity.EntityChain{
+		{
+			EphemeralId: "ec1",
+			Entities: []*entity.Entity{
+				{
+					EphemeralId: "bob",
+					EntityType:  &entity.Entity_EmailAddress{EmailAddress: "bob@example.org"},
+					Category:    entity.Entity_CATEGORY_SUBJECT,
+				},
+			},
 		},
-	})
+		{
+			EphemeralId: "ec2",
+			Entities: []*entity.Entity{
+				{
+					EphemeralId: "alice",
+					EntityType:  &entity.Entity_UserName{UserName: "alice@example.org"},
+					Category:    entity.Entity_CATEGORY_SUBJECT,
+				},
+			},
+		},
+	}
 
-	decisionRequest := &authorization.GetDecisionsRequest{DecisionRequests: drs}
+	tradeSecretAttributeValueFQN := "https://namespace.com/attr/attr_name/value/replaceme" //nolint:gosec // example attribute, not a credential
+	openAttributeValueFQN := "https://open.io/attr/attr_name/value/open"
+	resource := &authorizationv2.Resource{
+		EphemeralId: "resource-1",
+		Resource: &authorizationv2.Resource_AttributeValues_{
+			AttributeValues: &authorizationv2.Resource_AttributeValues{
+				Fqns: []string{tradeSecretAttributeValueFQN, openAttributeValueFQN},
+			},
+		},
+	}
+
+	requests := make([]*authorizationv2.GetDecisionMultiResourceRequest, 0, len(entityChains))
+	for _, entityChain := range entityChains {
+		requests = append(requests, &authorizationv2.GetDecisionMultiResourceRequest{
+			EntityIdentifier: &authorizationv2.EntityIdentifier{
+				Identifier: &authorizationv2.EntityIdentifier_EntityChain{EntityChain: entityChain},
+			},
+			Action:    &policy.Action{Name: "read"},
+			Resources: []*authorizationv2.Resource{resource},
+		})
+	}
+
+	decisionRequest := &authorizationv2.GetDecisionBulkRequest{DecisionRequests: requests}
 	//nolint:sloglint // safe to log request in example code
 	slog.Info("submitting decision", slog.String("request", protojson.Format(decisionRequest)))
-	decisionResponse, err := s.Authorization.GetDecisions(context.Background(), decisionRequest)
+	decisionResponse, err := s.AuthorizationV2.GetDecisionBulk(context.Background(), decisionRequest)
 	if err != nil {
 		return err
 	}
 	slog.Info("received decision response", slog.String("response", protojson.Format(decisionResponse)))
-
-	// map response back to entity chain id
-	decisionsByEntityChain := make(map[string]*authorization.DecisionResponse)
-	for _, dr := range decisionResponse.GetDecisionResponses() {
-		decisionsByEntityChain[dr.GetEntityChainId()] = dr
-	}
-
-	slog.Info("decision for bob", slog.String("decision", protojson.Format(decisionsByEntityChain["ec1"])))
-	slog.Info("decision for alice", slog.String("decision", protojson.Format(decisionsByEntityChain["ec2"])))
 	return nil
 }
 

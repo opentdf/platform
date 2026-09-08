@@ -9,7 +9,7 @@ import (
 
 	"github.com/Nerzal/gocloak/v13"
 	"github.com/opentdf/platform/lib/flattening"
-	"github.com/opentdf/platform/protocol/go/entityresolution"
+	entityresolution "github.com/opentdf/platform/protocol/go/entityresolution/v2"
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/attributes"
 	"github.com/opentdf/platform/service/entityresolution/integration/internal"
@@ -101,19 +101,21 @@ func TestKeycloakUserAttributeSubjectMapping(t *testing.T) {
 	const attrFQN = "https://example.com/attr/department/value/finance"
 
 	t.Run("correct selector matches Keycloak user attribute", func(t *testing.T) {
-		entitlements, err := subjectmappingbuiltin.EvaluateSubjectMappings(
+		entitlements, err := subjectmappingbuiltin.EvaluateSubjectMappingsWithActions(
 			buildAttributeSubjectMapping(attrFQN, ".attributes.department[]", "Finance"),
 			entityRepresentation,
+			nil,
 		)
 		require.NoError(t, err)
-		assert.Equal(t, []string{attrFQN}, entitlements,
+		assert.Contains(t, entitlements, attrFQN,
 			"selector '.attributes.department[]' should match Keycloak user attribute")
 	})
 
 	t.Run("JWT claim name selector does not match Keycloak user object", func(t *testing.T) {
-		entitlements, err := subjectmappingbuiltin.EvaluateSubjectMappings(
+		entitlements, err := subjectmappingbuiltin.EvaluateSubjectMappingsWithActions(
 			buildAttributeSubjectMapping(attrFQN, ".department", "Finance"),
 			entityRepresentation,
+			nil,
 		)
 		require.NoError(t, err)
 		assert.Empty(t, entitlements,

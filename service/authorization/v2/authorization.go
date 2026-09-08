@@ -51,6 +51,9 @@ func NewRegistration() *serviceregistry.Service[authzV2Connect.AuthorizationServ
 			RegisterFunc: func(srp serviceregistry.RegistrationParams) (authzV2Connect.AuthorizationServiceHandler, serviceregistry.HandlerServer) {
 				authZCfg := new(Config)
 				l := srp.Logger
+				if err := srp.RegisterReadinessCheck("authorization", as.IsReady); err != nil {
+					l.Error("failed to register authorization readiness check", slog.String("error", err.Error()))
+				}
 
 				as.sdk = srp.SDK
 				as.logger = l
@@ -104,10 +107,6 @@ func NewRegistration() *serviceregistry.Service[authzV2Connect.AuthorizationServ
 					panic(fmt.Errorf("failed to create entitlement policy cache: %w", err))
 				}
 
-				// if err := srp.RegisterReadinessCheck("authorization", as.IsReady); err != nil {
-				// 	logger.Error("failed to register authorization readiness check", slog.String("error", err.Error()))
-				// }
-
 				if authZCfg.AllowDirectEntitlements {
 					l.Info("direct entitlements are enabled for authorization service")
 				}
@@ -126,11 +125,10 @@ func (as *Service) Close() {
 	}
 }
 
-// TODO: uncomment after v1 is deprecated, as cannot have more than one readiness check under a namespace
-// func (as Service) IsReady(ctx context.Context) error {
-// 	as.logger.TraceContext(ctx, "checking readiness of authorization service")
-// 	return nil
-// }
+func (as Service) IsReady(ctx context.Context) error {
+	as.logger.TraceContext(ctx, "checking readiness of authorization service")
+	return nil
+}
 
 // GetEntitlements for an entity chain
 func (as *Service) GetEntitlements(ctx context.Context, req *connect.Request[authzV2.GetEntitlementsRequest]) (*connect.Response[authzV2.GetEntitlementsResponse], error) {

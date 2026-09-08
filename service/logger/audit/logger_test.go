@@ -12,7 +12,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/lestrrat-go/jwx/v2/jwt"
-	"github.com/opentdf/platform/protocol/go/authorization"
+	"github.com/opentdf/platform/protocol/go/entity"
 	ctxAuth "github.com/opentdf/platform/service/pkg/auth"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -716,7 +716,7 @@ func TestGetDecision(t *testing.T) {
 	params := GetDecisionEventParams{
 		Decision: GetDecisionResultPermit,
 		EntityChainEntitlements: []EntityChainEntitlement{
-			{EntityID: "test-entity-id", EntityCatagory: authorization.Entity_CATEGORY_ENVIRONMENT.String(), AttributeValueReferences: []string{"test-attribute-value-reference"}},
+			{EntityID: "test-entity-id", EntityCatagory: entity.Entity_CATEGORY_ENVIRONMENT.String(), AttributeValueReferences: []string{"test-attribute-value-reference"}},
 		},
 		EntityChainID: "test-entity-chain-id",
 		EntityDecisions: []EntityDecision{

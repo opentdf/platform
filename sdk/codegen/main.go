@@ -20,17 +20,9 @@ var clientsToGenerateList = []runner.ClientsToGenerate{
 	},
 	{
 		GrpcClientInterface: "AuthorizationServiceClient",
-		GrpcPackagePath:     "github.com/opentdf/platform/protocol/go/authorization",
-	},
-	{
-		GrpcClientInterface: "AuthorizationServiceClient",
 		Suffix:              "V2",
 		GrpcPackagePath:     "github.com/opentdf/platform/protocol/go/authorization/v2",
 		PackageNameOverride: "authorizationv2",
-	},
-	{
-		GrpcClientInterface: "EntityResolutionServiceClient",
-		GrpcPackagePath:     "github.com/opentdf/platform/protocol/go/entityresolution",
 	},
 	{
 		GrpcClientInterface: "EntityResolutionServiceClient",

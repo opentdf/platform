@@ -5,7 +5,7 @@ A Docker container with [wiremock](https://wiremock.org/) + [wiremock grpc exten
 WireMock requires service descriptions for the proto spec.  To generate service descriptions:
 
 ```shell
-buf build ../../proto \
+buf build ../../../service \
 -o grpc/service.dsc
 ```
 
@@ -31,11 +31,3 @@ List Attributes
 ```shell
 grpcurl -plaintext -d '{}' -protoset grpc/service.dsc localhost:8080 attributes.AttributesService/ListAttributes
 ```
-
-Get Decision:
-
-```shell
-grpcurl -plaintext -d '{}' -protoset grpc/service.dsc localhost:8080 authorization.AuthorizationService/GetDecisions
-```
-
-

@@ -21,17 +21,9 @@ The platform leverages [viper](https://github.com/spf13/viper) to help load conf
   - [Services Configuration](#services-configuration)
     - [Key Access Server (KAS)](#key-access-server-kas)
     - [Authorization](#authorization)
-      - [Shared Keys (v1 \& v2)](#shared-keys-v1--v2)
-      - [Authorization v1 Only](#authorization-v1-only)
-      - [Authorization v2 Only](#authorization-v2-only)
-      - [Example: Authorization v1](#example-authorization-v1)
-      - [Example: Authorization v2](#example-authorization-v2)
+      - [Example: Authorization](#example-authorization)
     - [Entity Resolution](#entity-resolution)
-      - [Shared Keys (v1 \& v2)](#shared-keys-v1--v2-1)
-      - [Entity Resolution v1 Only](#entity-resolution-v1-only)
-      - [Entity Resolution v2 Only](#entity-resolution-v2-only)
-      - [Example: Entity Resolution v1](#example-entity-resolution-v1)
-      - [Example: Entity Resolution v2](#example-entity-resolution-v2)
+      - [Example: Entity Resolution](#example-entity-resolution)
     - [Policy](#policy)
     - [Casbin Endpoint Authorization](#casbin-endpoint-authorization)
       - [Key Aspects of Authorization Configuration](#key-aspects-of-authorization-configuration)
@@ -461,23 +453,6 @@ services:
 
 Root level key `authorization`
 
-> **Note:** Both Authorization v1 and v2 use the same configuration section, but some keys are version-specific. See below for details.
-
-#### Shared Keys (v1 & v2)
-
-| Field                                             | Description | Default | Environment Variables |
-| ------------------------------------------------- | ----------- | ------- | --------------------- |
-| *(none currently; all keys are version-specific)* |             |         |                       |
-
-#### Authorization v1 Only
-
-| Field        | Description              | Default                                | Environment Variables                     |
-| ------------ | ------------------------ | -------------------------------------- | ----------------------------------------- |
-| `rego.path`  | Path to rego policy file | Leverages embedded rego policy         | OPENTDF_SERVICES_AUTHORIZATION_REGO_PATH  |
-| `rego.query` | Rego query to execute    | `data.opentdf.entitlements.attributes` | OPENTDF_SERVICES_AUTHORIZATION_REGO_QUERY |
-
-#### Authorization v2 Only
-
 | Field                                       | Description                                                    | Default | Environment Variables |
 | ------------------------------------------- | -------------------------------------------------------------- | ------- | --------------------- |
 | `entitlement_policy_cache.enabled`          | Enable the entitlement policy cache                            | `false` |                       |
@@ -488,17 +463,7 @@ Root level key `authorization`
 | `request_limits.get_decision_multi_resource_resources_max` | Maximum resources allowed in `GetDecisionMultiResourceRequest` | `1000` | |
 | `request_limits.get_decision_bulk_decision_requests_max` | Maximum decision requests allowed in `GetDecisionBulkRequest` | `200` | |
 
-#### Example: Authorization v1
-
-```yaml
-services:
-  authorization:
-    rego:
-      path: /path/to/policy.rego
-      query: data.opentdf.entitlements.attributes
-```
-
-#### Example: Authorization v2
+#### Example: Authorization
 
 ```yaml
 services:
@@ -518,10 +483,6 @@ services:
 
 Root level key `entityresolution`
 
-> **Note:** Both Entity Resolution v1 and v2 use the same configuration section. All configuration keys are shared between v1 and v2, except `cache_expiration`, which is only used in v2.
-
-#### Shared Keys (v1 & v2)
-
 | Field                   | Description                                                                                    | Default    | Environment Variable                                    |
 | ----------------------- | ---------------------------------------------------------------------------------------------- | ---------- | ------------------------------------------------------- |
 | `mode`                  | The mode in which to run ERS (`keycloak` or `claims`)                                          | `keycloak` | OPENTDF_SERVICES_ENTITYRESOLUTION_MODE                  |
@@ -533,36 +494,9 @@ Root level key `entityresolution`
 | `inferid.from.email`    | Infer entity IDs from email addresses (specific to `keycloak` mode)                            | `false`    | OPENTDF_SERVICES_ENTITYRESOLUTION_INFERID_FROM_EMAIL    |
 | `inferid.from.username` | Infer entity IDs from usernames (specific to `keycloak` mode)                                  | `false`    | OPENTDF_SERVICES_ENTITYRESOLUTION_INFERID_FROM_USERNAME |
 | `inferid.from.clientid` | Infer entity IDs from client IDs (specific to `keycloak` mode)                                 | `false`    | OPENTDF_SERVICES_ENTITYRESOLUTION_INFERID_FROM_CLIENTID |
-
-#### Entity Resolution v1 Only
-
-| Field              | Description | Default | Environment Variables |
-| ------------------ | ----------- | ------- | --------------------- |
-| *(none currently)* |             |         |                       |
-
-#### Entity Resolution v2 Only
-
-| Field              | Description                                                                                                            | Default  | Environment Variable |
-| ------------------ | ---------------------------------------------------------------------------------------------------------------------- | -------- | -------------------- |
 | `cache_expiration` | Cache duration for entity resolution results (e.g., `30s`). Disabled if not set or zero. (specific to `keycloak` mode) | disabled |                      |
 
-#### Example: Entity Resolution v1
-
-```yaml
-services:
-  entityresolution:
-    url: http://localhost:8888/auth
-    clientid: "tdf-entity-resolution"
-    clientsecret: "secret"
-    realm: "opentdf"
-    legacykeycloak: true
-    inferid:
-      from:
-        email: true
-        username: true
-```
-
-#### Example: Entity Resolution v2
+#### Example: Entity Resolution
 
 ```yaml
 services:
@@ -665,7 +599,7 @@ server:
         p, role:standard, policy:subject-mappings, read, allow
         p, role:standard, policy:resource-mappings, read, allow
         p, role:standard, policy:kas-registry, read, allow
-        p, role:unknown, entityresolution.EntityResolutionService.ResolveEntities, write, allow
+        p, role:unknown, entityresolution.v2.EntityResolutionService.ResolveEntities, write, allow
         p, role:unknown, kas.AccessService/Rewrap, *, allow
 
       ## Custom model (see https://casbin.org/docs/syntax-for-models/)

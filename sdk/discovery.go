@@ -4,10 +4,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sort"
 	"strings"
 
 	"connectrpc.com/connect"
-	"github.com/opentdf/platform/protocol/go/authorization"
+	authorizationv2 "github.com/opentdf/platform/protocol/go/authorization/v2"
+	"github.com/opentdf/platform/protocol/go/entity"
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/attributes"
 )
@@ -179,38 +181,47 @@ func (s SDK) ValidateAttributes(ctx context.Context, fqns ...string) error {
 // The entity parameter identifies the subject. Use the appropriate field for the entity type:
 //
 //	// By email address
-//	entity := &authorization.Entity{Id: "e1", EntityType: &authorization.Entity_EmailAddress{EmailAddress: "user@example.com"}}
+//	entity := &entity.Entity{EphemeralId: "e1", EntityType: &entity.Entity_EmailAddress{EmailAddress: "user@example.com"}}
 //
 //	// By username
-//	entity := &authorization.Entity{Id: "e1", EntityType: &authorization.Entity_UserName{UserName: "alice"}}
+//	entity := &entity.Entity{EphemeralId: "e1", EntityType: &entity.Entity_UserName{UserName: "alice"}}
 //
 //	// By client ID (NPE / service account)
-//	entity := &authorization.Entity{Id: "e1", EntityType: &authorization.Entity_ClientId{ClientId: "my-service"}}
-//
-//	// By UUID
-//	entity := &authorization.Entity{Id: "e1", EntityType: &authorization.Entity_Uuid{Uuid: "550e8400-e29b-41d4-a716-446655440000"}}
+//	entity := &entity.Entity{EphemeralId: "e1", EntityType: &entity.Entity_ClientId{ClientId: "my-service"}}
 //
 // Returns a slice of attribute value FQNs (e.g., "https://example.com/attr/clearance/value/secret").
-func (s SDK) GetEntityAttributes(ctx context.Context, entity *authorization.Entity) ([]string, error) {
-	if entity == nil {
+func (s SDK) GetEntityAttributes(ctx context.Context, entityToInspect *entity.Entity) ([]string, error) {
+	if entityToInspect == nil {
 		return nil, errors.New("entity must not be nil")
 	}
 
-	resp, err := s.Authorization.GetEntitlements(ctx, &authorization.GetEntitlementsRequest{
-		Entities: []*authorization.Entity{entity},
+	resp, err := s.AuthorizationV2.GetEntitlements(ctx, &authorizationv2.GetEntitlementsRequest{
+		EntityIdentifier: &authorizationv2.EntityIdentifier{
+			Identifier: &authorizationv2.EntityIdentifier_EntityChain{
+				EntityChain: &entity.EntityChain{
+					EphemeralId: entityToInspect.GetEphemeralId(),
+					Entities:    []*entity.Entity{entityToInspect},
+				},
+			},
+		},
 	})
 	if err != nil {
 		return nil, fmt.Errorf("getting entity attributes: %w", err)
 	}
 
-	// GetEntitlements returns a slice of EntityEntitlements keyed by entity ID.
+	// GetEntitlements returns a slice of EntityEntitlements keyed by ephemeral entity ID.
 	// Even though we only request one entity, we must match by ID to locate the
 	// correct entry — the response slice position is not guaranteed to correspond
 	// to the request slice position.
-	entityID := entity.GetId()
+	entityID := entityToInspect.GetEphemeralId()
 	for _, e := range resp.GetEntitlements() {
-		if e.GetEntityId() == entityID {
-			return e.GetAttributeValueFqns(), nil
+		if e.GetEphemeralId() == entityID {
+			fqns := make([]string, 0, len(e.GetActionsPerAttributeValueFqn()))
+			for fqn := range e.GetActionsPerAttributeValueFqn() {
+				fqns = append(fqns, fqn)
+			}
+			sort.Strings(fqns)
+			return fqns, nil
 		}
 	}
 	return nil, nil

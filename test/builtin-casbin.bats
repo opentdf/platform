@@ -145,8 +145,6 @@ is_public_endpoint() {
             if ([[ "$service" == policy.* ]] && 
                 [[ "$service" != *"unsafe"* ]] && 
                 is_read_method "$method"]) || 
-               [[ "$service/$method" == "authorization.AuthorizationService/GetDecisions" ]] || 
-               [[ "$service/$method" == "authorization.AuthorizationService/GetDecisionsByToken" ]] || 
                [[ "$service/$method" == "authorization.v2.AuthorizationService/GetDecision" ]] || 
                [[ "$service/$method" == "authorization.v2.AuthorizationService/GetDecisionMultiResource" ]] || 
                [[ "$service/$method" == "authorization.v2.AuthorizationService/GetDecisionBulk" ]]; then

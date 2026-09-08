@@ -30,8 +30,8 @@ type mockTestServiceOptions struct {
 
 const (
 	numExpectedPolicyServices                  = 11
-	numExpectedEntityResolutionServiceVersions = 2
-	numExpectedAuthorizationServiceVersions    = 2
+	numExpectedEntityResolutionServiceVersions = 1
+	numExpectedAuthorizationServiceVersions    = 1
 )
 
 func mockTestServiceRegistry(opts mockTestServiceOptions) (serviceregistry.IService, *spyTestService) {
@@ -111,6 +111,7 @@ func (suite *ServiceTestSuite) Test_RegisterCoreServices_In_Mode_ALL_Expect_All_
 	authz, err := registry.GetNamespace(ServiceAuthorization.String())
 	suite.Require().NoError(err)
 	suite.Len(authz.Services, numExpectedAuthorizationServiceVersions)
+	suite.Equal("v2", authz.Services[0].GetVersion())
 	suite.Equal(serviceregistry.ModeALL.String(), authz.Mode)
 
 	kas, err := registry.GetNamespace(ServiceKAS.String())
@@ -131,6 +132,7 @@ func (suite *ServiceTestSuite) Test_RegisterCoreServices_In_Mode_ALL_Expect_All_
 	ers, err := registry.GetNamespace(ServiceEntityResolution.String())
 	suite.Require().NoError(err)
 	suite.Len(ers.Services, numExpectedEntityResolutionServiceVersions)
+	suite.Equal("v2", ers.Services[0].GetVersion())
 	suite.Equal(serviceregistry.ModeALL.String(), ers.Mode)
 }
 

@@ -49,7 +49,6 @@ p, role:standard, /policy.resourcemapping.ResourceMappingService/Get*, *, allow
 p, role:standard, /policy.resourcemapping.ResourceMappingService/List*, *, allow
 
 # Authorization service
-p, role:standard, /authorization.AuthorizationService/*, *, allow
 p, role:standard, /authorization.v2.AuthorizationService/*, *, allow
 
 # ============================================================================

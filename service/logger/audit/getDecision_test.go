@@ -5,7 +5,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/opentdf/platform/protocol/go/authorization"
+	"github.com/opentdf/platform/protocol/go/entity"
 	"github.com/opentdf/platform/service/internal/subjectmappingbuiltin"
 )
 
@@ -15,12 +15,12 @@ func TestCreateGetDecisionEventHappyPathSuccess(t *testing.T) {
 		EntityChainEntitlements: []EntityChainEntitlement{
 			{
 				EntityID:                 "test-entity-id",
-				EntityCatagory:           authorization.Entity_CATEGORY_ENVIRONMENT.String(),
+				EntityCatagory:           entity.Entity_CATEGORY_ENVIRONMENT.String(),
 				AttributeValueReferences: []string{"test-attribute-value-reference"},
 			},
 			{
 				EntityID:                 "test-entity-id-2",
-				EntityCatagory:           authorization.Entity_CATEGORY_SUBJECT.String(),
+				EntityCatagory:           entity.Entity_CATEGORY_SUBJECT.String(),
 				AttributeValueReferences: []string{"test-attribute-value-reference-2"},
 			},
 		},
@@ -214,12 +214,12 @@ func TestBuildActorAttributes(t *testing.T) {
 	entitlements := []EntityChainEntitlement{
 		{
 			EntityID:                 "test-entity-id",
-			EntityCatagory:           authorization.Entity_CATEGORY_ENVIRONMENT.String(),
+			EntityCatagory:           entity.Entity_CATEGORY_ENVIRONMENT.String(),
 			AttributeValueReferences: []string{"test-attribute-value-reference"},
 		},
 		{
 			EntityID:                 "test-entity-id-2",
-			EntityCatagory:           authorization.Entity_CATEGORY_SUBJECT.String(),
+			EntityCatagory:           entity.Entity_CATEGORY_SUBJECT.String(),
 			AttributeValueReferences: []string{"test-attribute-value-reference-2"},
 		},
 	}

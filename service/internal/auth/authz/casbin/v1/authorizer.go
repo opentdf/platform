@@ -72,7 +72,7 @@ func (a *Authorizer) SupportsResourceAuthorization() bool {
 //
 // Path handling heuristic for v1 policy compatibility:
 // The v1 Casbin policy file (casbin_policy.csv) uses two different path formats:
-//   - gRPC paths WITHOUT leading slash: kas.AccessService/Rewrap, policy.*, authorization.AuthorizationService/GetDecisions
+//   - gRPC paths WITHOUT leading slash: kas.AccessService/Rewrap, policy.*, authorization.v2.AuthorizationService/GetDecision
 //   - HTTP paths WITH leading slash: /kas/v2/rewrap, /attributes*, /namespaces*
 //
 // ConnectRPC always provides paths with a leading slash (e.g., /kas.AccessService/Rewrap).

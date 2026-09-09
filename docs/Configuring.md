@@ -237,6 +237,28 @@ err := server.Start(
 
 All layers are additive. Deduplication is handled automatically (case-insensitive for headers per RFC 7230, case-sensitive for methods per RFC 7231).
 
+### Experimental local IPC transport
+
+The server has a startup-only transport selector for the bounded Action-service IPC pilot:
+
+```yaml
+server:
+  ipc:
+    transport: connect-v1 # default
+    # transport: local-http-v2
+```
+
+The equivalent environment variable is `OPENTDF_SERVER_IPC_TRANSPORT=local-http-v2`. The legacy loader registers this key, so the environment variable works even when the YAML file omits the `ipc` section; an environment value takes precedence over YAML in the default legacy loader.
+
+| Value | Behavior |
+| --- | --- |
+| `connect-v1` | Default. Retains the existing in-memory Connect/HTTP2 binding. |
+| `local-http-v2` | Experimental, identity-encoding-only local HTTP dispatch for `SDK.Actions` in a local IPC deployment mode. |
+
+Selection is validated and recorded once during startup. It does not change on configuration reload and is not selected per request. Roll back by removing the opt-in (or setting `connect-v1`) and restarting the process. Invalid values, deployment modes without local IPC, and configurations where the registered `policy.actions.ActionService` descriptor is missing are rejected before public traffic is served. A failed v2 call is returned to the caller and is never retried through v1.
+
+This is deliberately a mixed binding inventory. Only `SDK.Actions` uses `local-http-v2`; `SDK.Conn()`, every other built-in SDK client, legacy gRPC dialers, remote connections, and custom downstream clients remain on their existing v1/remote connections. The global core connection is not replaced. V2 has no compression setting and supports only the unary Action client. Streaming, unsupported services, custom-client acceleration, and federation capability publication are out of scope.
+
 ### Custom Interceptors
 
 Applications that embed the OpenTDF platform can inject custom [Connect interceptors](https://connectrpc.com/docs/go/interceptors/) into the server at startup. These interceptors run on every RPC after the built-in auth, validation, and audit interceptors.

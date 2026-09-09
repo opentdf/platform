@@ -13,10 +13,12 @@ import (
 
 	"connectrpc.com/connect"
 	"github.com/opentdf/platform/lib/ocrypto"
+	"github.com/opentdf/platform/protocol/go/policy/actions/actionsconnect"
 	"github.com/opentdf/platform/sdk"
 	sdkauth "github.com/opentdf/platform/sdk/auth"
 	"github.com/opentdf/platform/sdk/auth/oauth"
 	"github.com/opentdf/platform/sdk/httputil"
+	"github.com/opentdf/platform/sdk/sdkconnect"
 	"github.com/opentdf/platform/service/internal/auth"
 	"github.com/opentdf/platform/service/internal/auth/authz"
 	"github.com/opentdf/platform/service/internal/server"
@@ -270,6 +272,11 @@ func Start(f ...StartOptions) error {
 
 	logger.Info("registered the following services", slog.Any("services", registeredServices))
 
+	selectedIPCTransport, err := validateIPCTransport(cfg, svcRegistry)
+	if err != nil {
+		return err
+	}
+
 	var (
 		sdkOptions []sdk.Option
 		client     *sdk.SDK
@@ -297,13 +304,14 @@ func Start(f ...StartOptions) error {
 
 	// Configure SDK based on mode
 	if modeRequiresIpc(cfg) {
-		client, err = setupIPCSDK(cfg, oidcconfig, otdf, logger, sdkOptions)
+		client, err = setupIPCSDK(cfg, oidcconfig, otdf, logger, sdkOptions, selectedIPCTransport)
 	} else {
 		client, err = setupExternalSDK(cfg, logger, sdkOptions)
 	}
 	if err != nil {
 		return err
 	}
+	logIPCBindingInventory(logger, selectedIPCTransport, modeRequiresIpc(cfg))
 
 	defer client.Close()
 
@@ -518,8 +526,69 @@ func configureERSAuthentication(cfg *config.Config, oidcconfig *auth.OIDCConfigu
 	return nil
 }
 
-// setupIPCSDK configures and creates SDK client for IPC mode
-func setupIPCSDK(cfg *config.Config, oidcconfig *auth.OIDCConfiguration, otdf *server.OpenTDFServer, logger *logger.Logger, sdkOptions []sdk.Option) (*sdk.SDK, error) {
+func validateIPCTransport(cfg *config.Config, reg *serviceregistry.Registry) (string, error) {
+	transport := cfg.Server.IPC.Transport
+	if transport == "" {
+		transport = server.IPCTransportConnectV1
+	}
+
+	switch transport {
+	case server.IPCTransportConnectV1:
+		return transport, nil
+	case server.IPCTransportLocalHTTPV2:
+		if !modeRequiresIpc(cfg) {
+			return "", fmt.Errorf("server.ipc.transport %q requires a local IPC deployment mode (all, core, or entityresolution); configured modes: %v", transport, cfg.Mode)
+		}
+		for _, nsInfo := range reg.GetNamespaces() {
+			if !nsInfo.Namespace.IsEnabled(cfg.Mode) {
+				continue
+			}
+			for _, svc := range nsInfo.Namespace.Services {
+				if svc.GetServiceDesc() != nil && svc.GetServiceDesc().ServiceName == actionsconnect.ActionServiceName {
+					return transport, nil
+				}
+			}
+		}
+		return "", fmt.Errorf("server.ipc.transport %q requires registered service descriptor %q; enable the policy Action service or use %q", transport, actionsconnect.ActionServiceName, server.IPCTransportConnectV1)
+	default:
+		return "", fmt.Errorf("invalid server.ipc.transport %q: supported values are %q and %q", transport, server.IPCTransportConnectV1, server.IPCTransportLocalHTTPV2)
+	}
+}
+
+func logIPCBindingInventory(log *logger.Logger, transport string, ipcMode bool) {
+	if !ipcMode {
+		log.Info(
+			"IPC transport selected at startup",
+			slog.String("transport", transport),
+			slog.Bool("ipc_active", false),
+			slog.String("sdk_actions_binding", "remote-connect"),
+			slog.String("sdk_conn_binding", "remote-connect"),
+			slog.String("other_sdk_bindings", "remote-connect"),
+		)
+		return
+	}
+
+	actionBinding := server.IPCTransportConnectV1
+	if transport == server.IPCTransportLocalHTTPV2 {
+		actionBinding = server.IPCTransportLocalHTTPV2
+	}
+	log.Info(
+		"IPC transport selected at startup",
+		slog.String("transport", transport),
+		slog.Bool("ipc_active", true),
+		slog.String("sdk_actions_binding", actionBinding),
+		slog.String("sdk_conn_binding", server.IPCTransportConnectV1),
+		slog.String("other_sdk_bindings", server.IPCTransportConnectV1),
+		slog.String("legacy_grpc_dialers", server.IPCTransportConnectV1),
+		slog.String("custom_downstream_clients", "unchanged"),
+		slog.Bool("identity_encoding_only", transport == server.IPCTransportLocalHTTPV2),
+	)
+}
+
+// setupIPCSDK configures and creates SDK client for IPC mode. Only SDK.Actions
+// is rebound for local-http-v2; the core connection and every other SDK client
+// deliberately retain the existing Connect v1 transport.
+func setupIPCSDK(cfg *config.Config, oidcconfig *auth.OIDCConfiguration, otdf *server.OpenTDFServer, logger *logger.Logger, sdkOptions []sdk.Option, selectedIPCTransport string) (*sdk.SDK, error) {
 	// Use IPC for the SDK client
 	sdkOptions = append(sdkOptions, sdk.WithIPC())
 	sdkOptions = append(sdkOptions, sdk.WithCustomCoreConnection(otdf.ConnectRPCInProcess.Conn()))
@@ -540,6 +609,11 @@ func setupIPCSDK(cfg *config.Config, oidcconfig *auth.OIDCConfiguration, otdf *s
 	if err != nil {
 		logger.Error("issue creating sdk client", slog.Any("error", err))
 		return nil, fmt.Errorf("issue creating sdk client: %w", err)
+	}
+
+	if selectedIPCTransport == server.IPCTransportLocalHTTPV2 {
+		localConn := otdf.LocalHTTPIPCConnection()
+		client.Actions = sdkconnect.NewActionServiceClientConnectWrapper(localConn.Client, localConn.Endpoint, localConn.Options...)
 	}
 
 	return client, nil

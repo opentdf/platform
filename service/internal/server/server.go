@@ -12,6 +12,7 @@ import (
 	"net/textproto"
 	"regexp"
 	"strings"
+	"sync"
 	"time"
 
 	"connectrpc.com/connect"
@@ -23,6 +24,7 @@ import (
 	"github.com/opentdf/platform/service/internal/auth"
 	"github.com/opentdf/platform/service/internal/auth/authz"
 	"github.com/opentdf/platform/service/internal/security"
+	"github.com/opentdf/platform/service/internal/server/localhttp"
 	"github.com/opentdf/platform/service/internal/server/memhttp"
 	"github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/logger/audit"
@@ -37,6 +39,10 @@ const (
 	defaultWriteTimeout time.Duration = 10 * time.Second
 	defaultReadTimeout  time.Duration = 10 * time.Second
 	shutdownTimeout     time.Duration = 5 * time.Second
+
+	IPCTransportConnectV1   = "connect-v1"
+	IPCTransportLocalHTTPV2 = "local-http-v2"
+	localHTTPIPEndpoint     = "http://local-http-ipc.invalid"
 )
 
 type Error string
@@ -52,6 +58,7 @@ type Config struct {
 	Cache cache.Config `mapstructure:"cache" json:"cache"`
 
 	GRPC GRPCConfig `mapstructure:"grpc" json:"grpc"`
+	IPC  IPCConfig  `mapstructure:"ipc" json:"ipc"`
 	// To Deprecate: Use the WithKey[X]Provider StartOptions to register trust providers.
 	CryptoProvider          security.Config                          `mapstructure:"cryptoProvider" json:"cryptoProvider"`
 	TLS                     TLSConfig                                `mapstructure:"tls" json:"tls"`
@@ -80,6 +87,7 @@ func (c Config) LogValue() slog.Value {
 	group := []slog.Attr{
 		slog.Any("auth_config", c.Auth),
 		slog.Any("grpc", c.GRPC),
+		slog.Any("ipc", c.IPC),
 		slog.Any("tls", c.TLS),
 		slog.Any("cors", c.CORS),
 		slog.Int("port", c.Port),
@@ -93,6 +101,13 @@ func (c Config) LogValue() slog.Value {
 	}
 
 	return slog.GroupValue(group...)
+}
+
+// IPCConfig selects the startup-only transport used for supported local SDK
+// bindings. An empty value is treated as connect-v1 for compatibility with
+// programmatically constructed Config values.
+type IPCConfig struct {
+	Transport string `mapstructure:"transport" json:"transport" default:"connect-v1" validate:"omitempty,oneof=connect-v1 local-http-v2"`
 }
 
 // GRPC Server specific configurations
@@ -238,6 +253,9 @@ type OpenTDFServer struct {
 
 	logger *logger.Logger
 
+	localIPCMu     sync.Mutex
+	localHTTPIPC   *localhttp.Transport
+	stopOnce       sync.Once
 	PublicHostname string
 }
 
@@ -502,7 +520,7 @@ func newConnectRPC(c Config, authInts []connect.Interceptor, ints []connect.Inte
 	}, nil
 }
 
-func (s OpenTDFServer) Start() error {
+func (s *OpenTDFServer) Start() error {
 	// Add reflection api to connect-rpc
 	reflector := grpcreflect.NewStaticReflector(
 		s.ConnectRPC.ServiceReflection...,
@@ -526,26 +544,84 @@ func (s OpenTDFServer) Start() error {
 	return nil
 }
 
-func (s OpenTDFServer) Stop() {
-	s.logger.Info("shutting down http server")
-	ctx, cancel := context.WithTimeout(context.Background(), shutdownTimeout)
-	defer cancel()
-	if err := s.HTTPServer.Shutdown(ctx); err != nil {
-		s.logger.Error("failed to shutdown http server", slog.String("error", err.Error()))
-		return
-	}
-	// Close the listener
-	if s.Listener != nil {
-		s.Listener.Close()
+func (s *OpenTDFServer) Stop() {
+	s.stopOnce.Do(func() {
+		s.logger.Info("shutting down http server")
+		ctx, cancel := context.WithTimeout(context.Background(), shutdownTimeout)
+		if err := s.HTTPServer.Shutdown(ctx); err != nil {
+			s.logger.Error("failed to shutdown http server", slog.String("error", err.Error()))
+		}
+		cancel()
+
+		// Closing the public server must never prevent cleanup of either local
+		// IPC transport. Each cleanup gets its own bounded context.
+		if s.Listener != nil {
+			if err := s.Listener.Close(); err != nil && !errors.Is(err, net.ErrClosed) {
+				s.logger.Error("failed to close http listener", slog.String("error", err.Error()))
+			}
+		}
+
+		s.logger.Info("shutting down local HTTP IPC transport")
+		ctx, cancel = context.WithTimeout(context.Background(), shutdownTimeout)
+		if err := s.shutdownLocalHTTPIPC(ctx); err != nil {
+			s.logger.Error("failed to gracefully shutdown local HTTP IPC transport; forced owned I/O closed", slog.String("error", err.Error()))
+		}
+		cancel()
+
+		s.logger.Info("shutting down in process connect-rpc server")
+		ctx, cancel = context.WithTimeout(context.Background(), shutdownTimeout)
+		if err := s.ConnectRPCInProcess.srv.Shutdown(ctx); err != nil {
+			s.logger.Error("failed to shutdown in process connect-rpc server", slog.String("error", err.Error()))
+			if closeErr := s.ConnectRPCInProcess.srv.Close(); closeErr != nil {
+				s.logger.Error("failed to force close in process connect-rpc server", slog.String("error", closeErr.Error()))
+			}
+		}
+		cancel()
+
+		s.logger.Info("shutdown complete")
+	})
+}
+
+// LocalHTTPIPCConnection creates the server-owned identity-only local HTTP
+// transport and returns a connection carrying the same client interceptors and
+// message limits as the existing in-process Connect v1 connection.
+func (s *OpenTDFServer) LocalHTTPIPCConnection() *sdk.ConnectRPCConnection {
+	s.localIPCMu.Lock()
+	defer s.localIPCMu.Unlock()
+
+	if s.localHTTPIPC == nil {
+		s.localHTTPIPC = &localhttp.Transport{
+			Handler: s.ConnectRPCInProcess.Mux,
+			PanicHandler: func(info localhttp.PanicInfo) {
+				s.logger.Error(
+					"panic recovered from local HTTP IPC handler",
+					slog.String("procedure", info.Procedure),
+					slog.String("panic_type", info.PanicType),
+					slog.String("stack", string(info.Stack)),
+				)
+			},
+		}
 	}
 
-	s.logger.Info("shutting down in process grpc server")
-	if err := s.ConnectRPCInProcess.srv.Shutdown(ctx); err != nil {
-		s.logger.Error("failed to shutdown in process connect-rpc server", slog.String("error", err.Error()))
-		return
+	v1 := s.ConnectRPCInProcess.Conn()
+	return &sdk.ConnectRPCConnection{
+		Client:   s.localHTTPIPC.Client(),
+		Endpoint: localHTTPIPEndpoint,
+		Options:  append([]connect.ClientOption(nil), v1.Options...),
 	}
+}
 
-	s.logger.Info("shutdown complete")
+func (s *OpenTDFServer) shutdownLocalHTTPIPC(ctx context.Context) error {
+	s.localIPCMu.Lock()
+	transport := s.localHTTPIPC
+	s.localIPCMu.Unlock()
+	if transport == nil {
+		return nil
+	}
+	if err := transport.Shutdown(ctx); err != nil {
+		return errors.Join(err, transport.Close())
+	}
+	return nil
 }
 
 func (s inProcessServer) Conn() *sdk.ConnectRPCConnection {
@@ -586,7 +662,7 @@ func (s *inProcessServer) WithContextDialer() grpc.DialOption {
 	})
 }
 
-func (s OpenTDFServer) openHTTPServerPort(ctx context.Context) (net.Listener, error) {
+func (s *OpenTDFServer) openHTTPServerPort(ctx context.Context) (net.Listener, error) {
 	addr := s.HTTPServer.Addr
 	if addr == "" {
 		if s.HTTPServer.TLSConfig != nil {
@@ -603,7 +679,7 @@ func (s OpenTDFServer) openHTTPServerPort(ctx context.Context) (net.Listener, er
 	return listener, nil
 }
 
-func (s OpenTDFServer) startHTTPServer(ln net.Listener) {
+func (s *OpenTDFServer) startHTTPServer(ln net.Listener) {
 	var err error
 	if s.HTTPServer.TLSConfig != nil {
 		s.logger.Info("starting https server", slog.String("address", s.HTTPServer.Addr))

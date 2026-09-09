@@ -28,12 +28,13 @@ class SummaryTests(unittest.TestCase):
         self.assertIn("130.00 ms | 140.00 ms | 30000.00 ms | 0 | PASS", console)
 
     def test_partial_failure_keeps_rows_without_gating_slow_requests(self):
-        text = self.record(case="denied_user", failures=2) + "\n" + self.record(case="allowed_read", maximum_ns=8000000000)
+        text = self.record(case="denied_user", failures=2, first_error="unavailable: unexpected EOF") + "\n" + self.record(case="allowed_read", maximum_ns=8000000000)
         rendered, errors = summary.render(text, "failure")
         self.assertEqual(errors, 0)
         self.assertIn("BDD step outcome: **failure**", rendered)
         self.assertIn("8000.00 ms | 30000.00 ms | 0 | PASS |", rendered)
         self.assertIn("| 2 | FAIL |", rendered)
+        self.assertIn("unavailable: unexpected EOF", rendered)
         self.assertIn("Latency is report-only", rendered)
         self.assertLess(rendered.index("allowed_read"), rendered.index("denied_user"))
 

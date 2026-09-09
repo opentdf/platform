@@ -9,6 +9,8 @@ Feature: v2 multi-resource decisions at large policy scale
   retain their namespace. This avoids repeatedly validating the entire attribute during setup.
   Latency is reported without a performance gate until a baseline is established.
   Incorrect decisions, request errors, and request timeouts fail the scenario.
+  The server write timeout exceeds the client deadline so slow completed responses
+  can be measured instead of being cut off by the default ten-second write timeout.
 
   Scenario Outline: Varied multi-resource decisions at concurrency <concurrency>
     Given a user exists with username "scale-user" and email "scale-user@example.com" and the following attributes:
@@ -17,7 +19,7 @@ Feature: v2 multi-resource decisions at large policy scale
     And a user exists with username "other-user" and email "other-user@example.com" and the following attributes:
       | name       | value     |
       | department | ["sales"] |
-    And an empty local platform
+    And an empty local platform with HTTP write timeout "35s"
     And I submit a request to create a namespace with name "scale.example" and reference id "scale_ns"
     And I send a request to create an attribute referenced as "scale_attr" in namespace "scale_ns" named "access-level" with rule "anyOf" and 6012 generated values in batches of 25
     Then the response should be successful

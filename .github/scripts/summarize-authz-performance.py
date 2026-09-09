@@ -34,6 +34,8 @@ def read_results(text):
                 raise ValueError("invalid dimensions")
             if result["failures"] > result["concurrency"]:
                 raise ValueError("invalid failure count")
+            if not isinstance(result.get("first_error", ""), str):
+                raise ValueError("invalid error detail")
             results.append(result)
         except (ValueError, TypeError, AttributeError):
             malformed += 1
@@ -49,15 +51,16 @@ def render(text, outcome):
     lines = ["### Authorization v2 concurrency performance", "", f"BDD step outcome: **{outcome}**.", ""]
     if results:
         lines += [
-            "| Case | Concurrency | Resources | Seed | Wall | Median | p95 | Maximum | Timeout | Failures | Requests |",
-            "| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- |",
+            "| Case | Concurrency | Resources | Seed | Wall | Median | p95 | Maximum | Timeout | Failures | Requests | First error |",
+            "| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- | --- |",
         ]
         for row in results:
             case = row["case"].replace("|", "\\|").replace("\n", " ").replace("\r", " ")
             status = "FAIL" if row["failures"] else "PASS"
             cells = [case, str(row["concurrency"]), str(row["resources"]), str(row["seed"])]
             cells += [milliseconds(row[key]) for key in ("wall_ns", "median_ns", "p95_ns", "maximum_ns", "timeout_ns")]
-            cells += [str(row["failures"]), status]
+            error = row.get("first_error", "").replace("|", "\\|").replace("\n", " ").replace("\r", " ")
+            cells += [str(row["failures"]), status, error]
             lines.append("| " + " | ".join(cells) + " |")
         lines += ["", f"Reported {len(results)} completed case batches. Missing measurements are not passes."]
     else:

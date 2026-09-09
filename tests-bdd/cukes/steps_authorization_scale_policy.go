@@ -71,12 +71,7 @@ func createScaleGrants(ctx context.Context, table *godog.Table) (context.Context
 		}
 		response, err := scenario.SDK.SubjectMapping.CreateSubjectMapping(ctx, &subjectmapping.CreateSubjectMappingRequest{
 			AttributeValueId: value.GetId(), Actions: GetActionsFromValues(&row[3], nil),
-			NewSubjectConditionSet: &subjectmapping.SubjectConditionSetCreate{SubjectSets: []*policy.SubjectSet{{
-				ConditionGroups: []*policy.ConditionGroup{{
-					BooleanOperator: policy.ConditionBooleanTypeEnum_CONDITION_BOOLEAN_TYPE_ENUM_OR,
-					Conditions:      []*policy.Condition{{SubjectExternalSelectorValue: row[1], Operator: policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_IN, SubjectExternalValues: strings.Split(row[2], ",")}},
-				}},
-			}}},
+			NewSubjectConditionSet: scaleValueConditions(row[1], strings.Split(row[2], ",")),
 		})
 		if err != nil {
 			return ctx, err

@@ -24,20 +24,24 @@ type authorizationScaleCase struct {
 	resources            []string
 	expected             map[string]authz.Decision
 	request              *authz.GetDecisionMultiResourceRequest
+	variants             []*authz.GetDecisionMultiResourceRequest
 }
 
 type authorizationCaseResult struct {
-	Name       string   `json:"name"`
-	User       string   `json:"user"`
-	Action     string   `json:"action"`
-	Resources  []string `json:"resources"`
-	Expected   []string `json:"expected"`
-	Requests   int      `json:"requests"`
-	Failures   int      `json:"failures"`
-	FirstError string   `json:"first_error,omitempty"`
+	Name         string   `json:"name"`
+	User         string   `json:"user"`
+	Action       string   `json:"action"`
+	Resources    []string `json:"resources"`
+	Expected     []string `json:"expected"`
+	Variants     int      `json:"variants,omitempty"`
+	VariantsUsed int      `json:"variants_used,omitempty"`
+	Requests     int      `json:"requests"`
+	Failures     int      `json:"failures"`
+	FirstError   string   `json:"first_error,omitempty"`
 }
 
 type authorizationPerformanceResult struct {
+	Fixture            string                    `json:"fixture,omitempty"`
 	Seed               int                       `json:"seed"`
 	Concurrency        int                       `json:"concurrency"`
 	Requests           int                       `json:"requests"`
@@ -166,7 +170,15 @@ func exerciseAuthorizationLoad(ctx context.Context, requests, concurrency, seed 
 			})
 		}
 	}
+	return reportAuthorizationLoad(ctx, cases, requests, concurrency, seed, timeout)
+}
+
+func reportAuthorizationLoad(ctx context.Context, cases []authorizationScaleCase, requests, concurrency, seed int, timeout time.Duration) (context.Context, error) {
+	scenario := GetPlatformScenarioContext(ctx)
 	result, runErr := runAuthorizationScaleLoad(ctx, cases, requests, concurrency, seed, timeout, scenario.SDK.AuthorizationV2.GetDecisionMultiResource)
+	if fixture, ok := scenario.GetObject("scale-fixture-description").(string); ok {
+		result.Fixture = fixture
+	}
 	encoded, err := json.Marshal(result)
 	if err != nil {
 		return ctx, err
@@ -191,6 +203,14 @@ type scaleDecisionFunc func(context.Context, *authz.GetDecisionMultiResourceRequ
 func runAuthorizationScaleLoad(ctx context.Context, cases []authorizationScaleCase, requests, concurrency, seed int, timeout time.Duration, decide scaleDecisionFunc) (authorizationPerformanceResult, error) {
 	result := authorizationPerformanceResult{Seed: seed, Concurrency: concurrency, Requests: requests, Timeout: timeout, Cases: make([]authorizationCaseResult, len(cases))}
 	selected := selectAuthorizationCases(len(cases), requests, seed)
+	// Preselect resource variants too, independently of goroutine scheduling.
+	variantRandom := rand.New(rand.NewPCG(uint64(seed), 1)) //nolint:gosec // reproducible test data
+	variants := make([]int, requests)
+	for i, caseIndex := range selected {
+		if count := len(cases[caseIndex].variants); count > 0 {
+			variants[i] = variantRandom.IntN(count)
+		}
+	}
 	durations := make([]time.Duration, requests)
 	requestErrors := make([]error, requests)
 	jobs := make(chan int, requests)
@@ -207,7 +227,11 @@ func runAuthorizationScaleLoad(ctx context.Context, cases []authorizationScaleCa
 			<-start
 			for i := range jobs {
 				item := cases[selected[i]]
-				request := proto.CloneOf(item.request)
+				template := item.request
+				if len(item.variants) > 0 {
+					template = item.variants[variants[i]]
+				}
+				request := proto.CloneOf(template)
 				// Each request gets a fresh deadline, including later work on the same worker.
 				requestCtx, cancel := context.WithTimeout(ctx, timeout)
 				started := time.Now()
@@ -227,18 +251,29 @@ func runAuthorizationScaleLoad(ctx context.Context, cases []authorizationScaleCa
 	workers.Wait()
 	result.Wall = time.Since(started)
 	for i, item := range cases {
-		row := authorizationCaseResult{Name: item.name, User: item.entity, Action: item.action, Resources: item.resources}
+		row := authorizationCaseResult{Name: item.name, User: item.entity, Action: item.action, Resources: item.resources, Variants: len(item.variants)}
 		for j := range item.resources {
 			row.Expected = append(row.Expected, strings.TrimPrefix(item.expected[fmt.Sprintf("resource%d", j)].String(), "DECISION_"))
 		}
 		result.Cases[i] = row
 	}
+	usedVariants := make([]map[int]bool, len(cases))
+	for i := range usedVariants {
+		usedVariants[i] = make(map[int]bool)
+	}
 	var firstError error
 	for i, caseIndex := range selected {
 		row := &result.Cases[caseIndex]
 		row.Requests++
+		if len(cases[caseIndex].variants) > 0 {
+			usedVariants[caseIndex][variants[i]] = true
+			row.VariantsUsed = len(usedVariants[caseIndex])
+		}
 		result.ResourcesRequested += len(row.Resources)
 		if err := requestErrors[i]; err != nil {
+			if len(cases[caseIndex].variants) > 0 {
+				err = fmt.Errorf("variant %d: %w", variants[i], err)
+			}
 			result.Failures++
 			row.Failures++
 			if row.FirstError == "" {

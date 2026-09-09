@@ -64,8 +64,6 @@ type platformStartOptions struct {
 }
 
 func (s *LocalPlatformStepDefinitions) aUser(ctx context.Context, username string, email string, attributes *godog.Table) (context.Context, error) {
-	scenarioContext := GetPlatformScenarioContext(ctx)
-	var users []map[string]any
 	attributeMap := map[string]any{}
 	cellMap := map[string]int{}
 	for ri, row := range attributes.Rows {
@@ -85,6 +83,12 @@ func (s *LocalPlatformStepDefinitions) aUser(ctx context.Context, username strin
 			}
 		}
 	}
+	return registerLocalUser(ctx, username, email, attributeMap)
+}
+
+func registerLocalUser(ctx context.Context, username, email string, attributeMap map[string]any) (context.Context, error) {
+	scenarioContext := GetPlatformScenarioContext(ctx)
+	var users []map[string]any
 	userObj := scenarioContext.GetObject(userContextKey)
 	if userObj != nil {
 		usersObj, ok := scenarioContext.GetObject(userContextKey).([]map[string]any)

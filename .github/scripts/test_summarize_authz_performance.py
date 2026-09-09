@@ -55,6 +55,19 @@ class SummaryTests(unittest.TestCase):
         self.assertIn("| 2/3 |", rendered)
         self.assertIn("not selected | analyst | write | projects | DENY | 0 | 0 |", rendered)
 
+    def test_generated_variants_and_fixture_are_visible(self):
+        record = json.loads(self.record().split(summary.MARKER)[1])
+        record["fixture"] = "6,011 distinct subject mappings; 5 users"
+        record["cases"][0].update(variants=100, variants_used=61)
+        rendered, errors = summary.render(summary.MARKER + json.dumps(record), "success")
+        self.assertEqual(errors, 0)
+        self.assertIn("6,011 distinct subject mappings; 5 users", rendered)
+        self.assertIn("Variants used/available", rendered)
+        self.assertIn("61/100", rendered)
+        record["cases"][0]["variants_used"] = 101
+        _, errors = summary.render(summary.MARKER + json.dumps(record), "success")
+        self.assertEqual(errors, 1)
+
     def test_cli_handles_missing_log_after_setup_failure(self):
         with tempfile.TemporaryDirectory() as directory:
             result = subprocess.run(

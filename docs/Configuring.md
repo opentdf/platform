@@ -120,6 +120,9 @@ The server configuration is used to define how the application runs its server.
 
 Root level key `server`
 
+> [!NOTE]
+> `server.auth` configures OpenTDF as an OIDC token consumer, not as the identity provider itself. See [OpenTDF and OpenID Connect (OIDC)](./OIDC.md) for the deployment boundary and end-to-end flow.
+
 | Field                   | Description                                                                                                   | Default | Environment Variable                 |
 | ----------------------- | ------------------------------------------------------------------------------------------------------------- | ------- | ------------------------------------ |
 | `auth.audience`         | The audience for the IDP.                                                                                     |         | OPENTDF_SERVER_AUTH_AUDIENCE         |
@@ -140,6 +143,8 @@ Root level key `server`
 | `tls.enabled`           | Enable tls.                                                                                                   | `false` | OPENTDF_SERVER_TLS_ENABLED           |
 | `tls.cert`              | The path to the tls certificate.                                                                              |         | OPENTDF_SERVER_TLS_CERT              |
 | `tls.key`               | The path to the tls key.                                                                                      |         | OPENTDF_SERVER_TLS_KEY               |
+
+OpenTDF expects the configured `auth.issuer` and the discovery document's `issuer` value to agree. If they differ, the discovery document's issuer value is used for token validation.
 
 Example:
 
@@ -637,7 +642,7 @@ server:
       username_claim: "email"
 
       ## Dot notation is used to access the groups claim
-      group_claim: "realm_access.roles"
+      groups_claim: "realm_access.roles"
 
       # Dot notation is used to access the claim the represents the idP client ID 
       client_id_claim: # azp

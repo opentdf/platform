@@ -546,6 +546,8 @@ func (s *AuthorizationServiceStepDefinitions) theDecisionResponseForResourceShou
 }
 
 func RegisterAuthorizationStepDefinitions(ctx *godog.ScenarioContext) {
+	ctx.Step(`^representative scale users hold subsets of (\d+) project values with seed (\d+)$`, prepareScaleUsers)
+	ctx.Step(`^I send (\d+) generated authorization requests with concurrency (\d+), seed (\d+), request timeout "([^"]*)", attribute "([^"]*)", and (\d+) documents$`, exerciseGeneratedAuthorizationLoad)
 	ctx.Step(`^the following scale attributes exist in namespace "([^"]*)":$`, createScaleAttributes)
 	ctx.Step(`^the following scale grants exist:$`, createScaleGrants)
 	ctx.Step(`^the following scale resources are defined:$`, defineScaleResources)

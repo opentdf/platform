@@ -20,7 +20,7 @@ func createScaleResourceMappings(ctx context.Context, count int, attributeRef, n
 	err = createScaleMappings(ctx, count, func(ctx context.Context, index int) error {
 		response, err := scenario.SDK.ResourceMapping.CreateResourceMapping(ctx, &resourcemapping.CreateResourceMappingRequest{
 			AttributeValueId: attribute.GetValues()[index].GetId(), NamespaceId: namespace,
-			Terms: []string{fmt.Sprintf("resource-%04d", index)},
+			Terms: scaleResourceTerms(index),
 		})
 		if err != nil {
 			return fmt.Errorf("create resource mapping %d: %w", index, err)
@@ -31,4 +31,13 @@ func createScaleResourceMappings(ctx context.Context, count int, attributeRef, n
 		return nil
 	})
 	return ctx, err
+}
+
+// Two to five aliases per mapping, with distinct public synthetic identifiers.
+func scaleResourceTerms(index int) []string {
+	terms := []string{fmt.Sprintf("resource-%04d", index), fmt.Sprintf("project-v%04d", index)}
+	for alias := range index % 4 {
+		terms = append(terms, fmt.Sprintf("alias-%d-v%04d", alias, index))
+	}
+	return terms
 }

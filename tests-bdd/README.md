@@ -401,3 +401,30 @@ All 3 scenarios should pass (57 steps, 0 failures). You'll see LDAP testcontaine
 - Build out step definitions for platform services
 - Continue to explore AI Agent for scenario generation
 - Build cross version/platform/sdk fixtures
+
+### Authorization policy scale fixture
+
+`features/authorization-v2-subject-mapping-performance.feature` creates 6,000
+project values with `allOf`, four classification levels with `hierarchy`, and
+seven regions with `anyOf`. Each of the 6,011 subject mappings has its own
+condition set: the matching user entitlement OR one of four synthetic approved
+client IDs. The 6,000 resource mappings each have two to five aliases.
+
+Five Keycloak users hold 3, 10, 50, 500, and zero projects. Generated resources
+combine projects, classification, and regions. The initial 1,000 documents contain
+55% single-project, 40% 2-20 projects, and 5% 21-30 projects. Load excludes documents
+exceeding 20 total attribute FQNs. Another 100 documents provide permitted
+examples for the four entitled users; an additional unmapped value tests denial.
+No document files are uploaded: authorization receives their attribute FQNs.
+
+Each of 200 requests selects a case and then a resource variant from that case's
+pool, with replacement. Identical resource combinations are removed from each
+pool. The seed fixes both selections before workers start. Cases vary users, read/write/delete, one or three resources, and expected
+permit/deny combinations. Cases are sampled uniformly to exercise both permits
+and denies; this is not a measured customer traffic distribution. The same
+workload runs at concurrency 1, 10, 25, and 50. Setup is excluded from timings.
+
+The CI summary reports policy dimensions, latency, failures, case selection,
+and distinct variants used/available. Failures include a variant index so the
+seeded request can be reconstructed. Latency remains report-only; request errors,
+incorrect decisions, and the 30-second client deadline fail the test.

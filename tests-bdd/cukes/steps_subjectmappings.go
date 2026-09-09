@@ -222,7 +222,7 @@ func (s *SubjectMappingsStepDefinitions) iSendARequestToCreateSubjectMappingForE
 
 func RegisterSubjectMappingsStepsDefinitions(ctx *godog.ScenarioContext) {
 	subjectMappingStepDefinitions := &SubjectMappingsStepDefinitions{}
-	ctx.Step(`^I create (\d+) subject mappings for attribute "([^"]*)" using condition set "([^"]*)" with action "([^"]*)"$`, subjectMappingStepDefinitions.createScaleSubjectMappings)
+	ctx.Step(`^I create (\d+) subject mappings for attribute "([^"]*)" matching selector "([^"]*)" with action "([^"]*)"$`, subjectMappingStepDefinitions.createScaleSubjectMappings)
 	ctx.Step(`a condition group referenced as "([^"]*)" with an "([^"]*)" operator with conditions:$`, subjectMappingStepDefinitions.aConditionGroup)
 	ctx.Step(`^a subject set referenced as "([^"]*)" containing the condition groups "([^"]*)"$`, subjectMappingStepDefinitions.aSubjectSet)
 	ctx.Step(`^I send a request to create a subject condition set referenced as "([^"]*)" containing subject sets "([^"]*)"$`, subjectMappingStepDefinitions.iSendARequestToCreateSubjectConditionSet)

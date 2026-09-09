@@ -19,6 +19,8 @@ def validate_result(result):
     cases = result.get("cases")
     if not isinstance(cases, list) or not cases:
         raise ValueError("missing case results")
+    if not isinstance(result.get("fixture", ""), str):
+        raise ValueError("invalid fixture description")
     names = set()
     for case in cases:
         if any(not isinstance(case.get(key), str) or not case[key] for key in ("name", "user", "action")):
@@ -30,6 +32,9 @@ def validate_result(result):
             raise ValueError("invalid case counts")
         if case["failures"] > case["requests"] or not isinstance(case.get("first_error", ""), str):
             raise ValueError("invalid case failures")
+        variants, used = case.get("variants", 0), case.get("variants_used", 0)
+        if type(variants) is not int or type(used) is not int or not 0 <= used <= min(variants, case["requests"]):
+            raise ValueError("invalid variant counts")
         resources, expected = case.get("resources"), case.get("expected")
         if not isinstance(resources, list) or not resources or any(not isinstance(r, str) or not r for r in resources):
             raise ValueError("invalid resources")
@@ -76,6 +81,8 @@ def render(text, outcome):
              "**Workload:** workers continuously draw from the entitlement case pool. Each request independently selects a case; users, actions, and resources vary within the same load run.", "",
              "**Performance: REPORT ONLY.** Correctness PASS means all requests completed with the expected resource decisions. Errors and request timeouts fail; no latency baseline is enforced.", ""]
     if results:
+        if results[0].get("fixture"):
+            lines += [cell(results[0]["fixture"]), ""]
         lines += [
             "| Concurrency | Requests | Cases used | Median | p95 | Maximum | Requests/s | Failures | Correctness |",
             "| ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- |",
@@ -87,15 +94,16 @@ def render(text, outcome):
             cells += [milliseconds(row[key]) for key in ("median_ns", "p95_ns", "maximum_ns")]
             cells += [rate, str(row["failures"]), "FAIL" if row["failures"] else "PASS"]
             lines.append("| " + " | ".join(cells) + " |")
-        lines += ["", "Fixture setup is excluded. Latency covers the whole multi-resource request. Throughput includes failed requests; inspect correctness alongside it. Cases selected zero times remain visible below."]
+        lines += ["", "Fixture setup is excluded. Latency covers the whole multi-resource request. Throughput includes failed requests; inspect correctness alongside it. Cases selected zero times remain visible below. For generated cases, resource labels name pools; the variants column shows distinct request variants used/available."]
         for row in results:
             lines += ["", "<details>", f"<summary>Case selection and failures at concurrency {row['concurrency']}</summary>", "",
                       f"Seed: {row['seed']}. Request timeout: {row['timeout_ns'] / 1_000_000_000:g} s. Load duration: {row['wall_ns'] / 1_000_000_000:,.2f} s. Resources requested: {row['resources_requested']:,}.", "",
-                      "| Case | User | Action | Resources | Expected decisions | Selected | Failures | First error |",
-                      "| --- | --- | --- | --- | --- | ---: | ---: | --- |"]
+                      "| Case | User | Action | Resources | Expected decisions | Selected | Failures | First error | Variants used/available |",
+                      "| --- | --- | --- | --- | --- | ---: | ---: | --- | ---: |"]
             for case in row["cases"]:
                 cells = [case["name"], case["user"], case["action"], ", ".join(case["resources"]), ", ".join(case["expected"]),
-                         case["requests"], case["failures"], case.get("first_error", "")]
+                         case["requests"], case["failures"], case.get("first_error", ""),
+                         f"{case.get('variants_used', 0)}/{case['variants']}" if case.get("variants") else "fixed"]
                 lines.append("| " + " | ".join(cell(c) for c in cells) + " |")
             lines += ["", "</details>"]
     else:

@@ -472,6 +472,9 @@ func (p *PolicyDecisionPoint) GetDecisionRegisteredResource(
 		attrVal := aav.GetAttributeValue()
 		attrValFQN := attrVal.GetFqn()
 
+		// A deactivated value is dropped from this entity's entitlements but leaves the rest intact:
+		// the unusable entitlement is simply irrelevant, like being over-entitled. Denying the whole
+		// entity is unnecessary because the value cannot be satisfied on the resource side either.
 		if p.isDeactivatedValueFQN(ctx, attrValFQN) {
 			l.DebugContext(ctx, "skipping registered resource entitlement of deactivated attribute value",
 				slog.String("attribute_value_fqn", attrValFQN),

@@ -212,12 +212,16 @@ func (s *PDPTestSuite) Test_GetDecision_DeactivatedValue_RegisteredResources() {
 	entityRegResValueFQN := createRegisteredResourceValueFQN("", regResName, "entity")
 	betaRegResValueFQN := createRegisteredResourceValueFQN("", regResName, "tagged_beta")
 	alphaRegResValueFQN := createRegisteredResourceValueFQN("", regResName, "tagged_alpha")
+	mixedActionsRegResValueFQN := createRegisteredResourceValueFQN("", regResName, "mixed_actions")
 
-	actionAttributeValue := func(fqn, value string) *policy.RegisteredResourceValue_ActionAttributeValue {
+	actionAttributeValueFor := func(action *policy.Action, fqn, value string) *policy.RegisteredResourceValue_ActionAttributeValue {
 		return &policy.RegisteredResourceValue_ActionAttributeValue{
-			Action:         testActionRead,
+			Action:         action,
 			AttributeValue: &policy.Value{Fqn: fqn, Value: value},
 		}
+	}
+	actionAttributeValue := func(fqn, value string) *policy.RegisteredResourceValue_ActionAttributeValue {
+		return actionAttributeValueFor(testActionRead, fqn, value)
 	}
 
 	regRes := &policy.RegisteredResource{
@@ -237,6 +241,14 @@ func (s *PDPTestSuite) Test_GetDecision_DeactivatedValue_RegisteredResources() {
 			{
 				Value:                 "tagged_alpha",
 				ActionAttributeValues: []*policy.RegisteredResourceValue_ActionAttributeValue{actionAttributeValue(testDeactivatedProjectAlphaActive, "alpha")},
+			},
+			{
+				// The deactivated value is bound to a different action than the one requested below.
+				Value: "mixed_actions",
+				ActionAttributeValues: []*policy.RegisteredResourceValue_ActionAttributeValue{
+					actionAttributeValueFor(testActionRead, testDeactivatedProjectAlphaActive, "alpha"),
+					actionAttributeValueFor(testActionCreate, testDeactivatedProjectBetaInactive, "beta"),
+				},
 			},
 		},
 	}
@@ -276,6 +288,24 @@ func (s *PDPTestSuite) Test_GetDecision_DeactivatedValue_RegisteredResources() {
 		})
 		s.Require().NoError(err)
 		s.True(decision.AllPermitted)
+	})
+
+	s.Run("registered resource is denied as a resource when the deactivated value is on another action", func() {
+		decision, _, err := pdp.GetDecisionRegisteredResource(ctx, entityRegResValueFQN, testActionRead, []*authz.Resource{
+			createRegisteredResource("reg-res-mixed", mixedActionsRegResValueFQN),
+		})
+		s.Require().NoError(err)
+		s.False(decision.AllPermitted,
+			"a deactivated value denies the whole registered resource regardless of the action it is bound to")
+	})
+
+	s.Run("registered resource entity remains entitled when the deactivated value is on another action", func() {
+		decision, _, err := pdp.GetDecisionRegisteredResource(ctx, mixedActionsRegResValueFQN, testActionRead, []*authz.Resource{
+			createAttributeValueResource(testDeactivatedProjectAlphaActive, testDeactivatedProjectAlphaActive),
+		})
+		s.Require().NoError(err)
+		s.True(decision.AllPermitted,
+			"a deactivated value in an entity's action-attribute-values must not strip its other entitlements")
 	})
 
 	s.Run("registered resource entitlements omit the deactivated value", func() {

@@ -20,60 +20,84 @@ import (
 const authorizationPerformanceMarker = "AUTHZ_PERFORMANCE "
 
 type authorizationScaleCase struct {
-	name     string
-	entity   string
-	action   string
-	values   []string
-	expected map[string]authz.Decision
+	name, entity, action string
+	resources            []string
+	expected             map[string]authz.Decision
+	request              *authz.GetDecisionMultiResourceRequest
+}
+
+type authorizationCaseResult struct {
+	Name       string   `json:"name"`
+	User       string   `json:"user"`
+	Action     string   `json:"action"`
+	Resources  []string `json:"resources"`
+	Expected   []string `json:"expected"`
+	Requests   int      `json:"requests"`
+	Failures   int      `json:"failures"`
+	FirstError string   `json:"first_error,omitempty"`
 }
 
 type authorizationPerformanceResult struct {
-	Case        string        `json:"case"`
-	Seed        int           `json:"seed"`
-	Concurrency int           `json:"concurrency"`
-	Resources   int           `json:"resources"`
-	Wall        time.Duration `json:"wall_ns"`
-	Median      time.Duration `json:"median_ns"`
-	P95         time.Duration `json:"p95_ns"`
-	Maximum     time.Duration `json:"maximum_ns"`
-	Timeout     time.Duration `json:"timeout_ns"`
-	Failures    int           `json:"failures"`
-	FirstError  string        `json:"first_error,omitempty"`
+	Seed               int                       `json:"seed"`
+	Concurrency        int                       `json:"concurrency"`
+	Requests           int                       `json:"requests"`
+	ResourcesRequested int                       `json:"resources_requested"`
+	Wall               time.Duration             `json:"wall_ns"`
+	Median             time.Duration             `json:"median_ns"`
+	P95                time.Duration             `json:"p95_ns"`
+	Maximum            time.Duration             `json:"maximum_ns"`
+	Timeout            time.Duration             `json:"timeout_ns"`
+	Failures           int                       `json:"failures"`
+	Cases              []authorizationCaseResult `json:"cases"`
 }
 
-func parseAuthorizationScaleCases(table *godog.Table) ([]authorizationScaleCase, error) {
-	headers := []string{"case", "entity", "action", valuesKey, "expected"}
+func scaleTableRows(table *godog.Table, headers ...string) ([][]string, error) {
 	if table == nil || len(table.Rows) < 2 || len(table.Rows[0].Cells) != len(headers) {
-		return nil, errors.New("authorization case table requires case, entity, action, values, expected columns")
+		return nil, fmt.Errorf("table requires columns: %s", strings.Join(headers, ", "))
 	}
 	for i, header := range headers {
-		if table.Rows[0].Cells[i].Value != header {
+		if strings.TrimSpace(table.Rows[0].Cells[i].Value) != header {
 			return nil, fmt.Errorf("expected column %q", header)
 		}
 	}
-	cases := make([]authorizationScaleCase, 0, len(table.Rows)-1)
-	names := make(map[string]bool)
+	rows := make([][]string, 0, len(table.Rows)-1)
 	for _, row := range table.Rows[1:] {
 		if len(row.Cells) != len(headers) {
-			return nil, errors.New("authorization case row has incorrect column count")
+			return nil, errors.New("incorrect table column count")
 		}
-		item := authorizationScaleCase{
-			name: strings.TrimSpace(row.Cells[0].Value), entity: strings.TrimSpace(row.Cells[1].Value),
-			action: strings.TrimSpace(row.Cells[2].Value), values: strings.Split(row.Cells[3].Value, ","),
-			expected: make(map[string]authz.Decision),
+		cells := make([]string, len(headers))
+		for i, cell := range row.Cells {
+			cells[i] = strings.TrimSpace(cell.Value)
+			if cells[i] == "" {
+				return nil, fmt.Errorf("empty %s cell", headers[i])
+			}
 		}
-		if item.name == "" || names[item.name] || item.entity == "" || item.action == "" {
-			return nil, errors.New("cases require unique names, entities, and actions")
+		rows = append(rows, cells)
+	}
+	return rows, nil
+}
+
+func parseAuthorizationScaleCases(table *godog.Table) ([]authorizationScaleCase, error) {
+	rows, err := scaleTableRows(table, "case", "user", "action", "resources", "expected")
+	if err != nil {
+		return nil, err
+	}
+	cases := make([]authorizationScaleCase, 0, len(rows))
+	names := make(map[string]bool)
+	for _, row := range rows {
+		item := authorizationScaleCase{name: row[0], entity: row[1], action: row[2], resources: strings.Split(row[3], ","), expected: make(map[string]authz.Decision)}
+		if names[item.name] {
+			return nil, fmt.Errorf("duplicate case %q", item.name)
 		}
 		names[item.name] = true
-		expected := strings.Split(row.Cells[4].Value, ",")
-		if len(item.values) != len(expected) {
-			return nil, fmt.Errorf("case %s has mismatched values and expectations", item.name)
+		expected := strings.Split(row[4], ",")
+		if len(item.resources) != len(expected) {
+			return nil, fmt.Errorf("case %s has mismatched resources and expectations", item.name)
 		}
-		for i, value := range item.values {
-			item.values[i] = strings.TrimSpace(value)
-			if item.values[i] == "" {
-				return nil, fmt.Errorf("case %s has an empty value", item.name)
+		for i, resource := range item.resources {
+			item.resources[i] = strings.TrimSpace(resource)
+			if item.resources[i] == "" {
+				return nil, fmt.Errorf("case %s has an empty resource", item.name)
 			}
 			decision, ok := authz.Decision_value["DECISION_"+strings.TrimSpace(expected[i])]
 			if !ok || (authz.Decision(decision) != authz.Decision_DECISION_PERMIT && authz.Decision(decision) != authz.Decision_DECISION_DENY) {
@@ -108,9 +132,9 @@ func validateScaleDecision(response *authz.GetDecisionMultiResourceResponse, exp
 	return nil
 }
 
-func exerciseAuthorizationCases(ctx context.Context, concurrency, seed int, requestTimeout, attributeRef string, table *godog.Table) (context.Context, error) {
-	if concurrency < 1 || seed < 0 {
-		return ctx, errors.New("concurrency must be positive and seed nonnegative")
+func exerciseAuthorizationLoad(ctx context.Context, requests, concurrency, seed int, requestTimeout string, table *godog.Table) (context.Context, error) {
+	if concurrency < 1 || requests < concurrency || seed < 0 {
+		return ctx, errors.New("requests must be at least concurrency, concurrency positive, and seed nonnegative")
 	}
 	timeout, err := time.ParseDuration(requestTimeout)
 	if err != nil || timeout <= 0 {
@@ -121,92 +145,116 @@ func exerciseAuthorizationCases(ctx context.Context, concurrency, seed int, requ
 		return ctx, err
 	}
 	scenario := GetPlatformScenarioContext(ctx)
-	attribute, ok := scenario.GetObject(attributeRef).(*policy.Attribute)
-	if !ok || attribute.GetFqn() == "" {
-		return ctx, fmt.Errorf("missing attribute %q", attributeRef)
-	}
-	// Shuffle all cases rather than sampling, so no expected path is omitted.
-	random := rand.New(rand.NewPCG(uint64(seed), uint64(concurrency))) //nolint:gosec // reproducible test order, not security randomness
-	random.Shuffle(len(cases), func(i, j int) { cases[i], cases[j] = cases[j], cases[i] })
-	var failures []error
-	for _, item := range cases {
+	for i := range cases {
+		item := &cases[i]
 		chain, err := buildEntityChainFromIDs(scenario, item.entity)
 		if err != nil {
 			return ctx, err
 		}
-		request := &authz.GetDecisionMultiResourceRequest{
+		item.request = &authz.GetDecisionMultiResourceRequest{
 			EntityIdentifier: &authz.EntityIdentifier{Identifier: &authz.EntityIdentifier_EntityChain{EntityChain: chain}},
 			Action:           &policy.Action{Name: item.action},
 		}
-		for i, value := range item.values {
-			request.Resources = append(request.Resources, &authz.Resource{
+		for i, name := range item.resources {
+			fqns, ok := scenario.GetObject("scale-resource/" + name).([]string)
+			if !ok || len(fqns) == 0 {
+				return ctx, fmt.Errorf("case %s: missing resource %q", item.name, name)
+			}
+			item.request.Resources = append(item.request.Resources, &authz.Resource{
 				EphemeralId: fmt.Sprintf("resource%d", i),
-				Resource: &authz.Resource_AttributeValues_{AttributeValues: &authz.Resource_AttributeValues{
-					Fqns: []string{attribute.GetFqn() + "/value/" + value},
-				}},
+				Resource:    &authz.Resource_AttributeValues_{AttributeValues: &authz.Resource_AttributeValues{Fqns: fqns}},
 			})
 		}
-		result, err := runAuthorizationScaleCase(ctx, scenario, item, request, concurrency, seed, timeout, random)
-		encoded, encodeErr := json.Marshal(result)
-		if encodeErr != nil {
-			return ctx, encodeErr
-		}
-		// A structured record survives both console and Go test JSON output formats.
-		fmt.Println(authorizationPerformanceMarker + string(encoded)) //nolint:forbidigo // structured CI record, independent of the configured log handler
-		if err != nil {
-			failures = append(failures, fmt.Errorf("case %s: %w", item.name, err))
-		}
 	}
-	return ctx, errors.Join(failures...)
+	result, runErr := runAuthorizationScaleLoad(ctx, cases, requests, concurrency, seed, timeout, scenario.SDK.AuthorizationV2.GetDecisionMultiResource)
+	encoded, err := json.Marshal(result)
+	if err != nil {
+		return ctx, err
+	}
+	fmt.Println(authorizationPerformanceMarker + string(encoded)) //nolint:forbidigo // structured CI record, independent of the configured log handler
+	return ctx, runErr
 }
 
-func runAuthorizationScaleCase(ctx context.Context, scenario *PlatformScenarioContext, item authorizationScaleCase, request *authz.GetDecisionMultiResourceRequest, concurrency, seed int, timeout time.Duration, random *rand.Rand) (authorizationPerformanceResult, error) {
-	result := authorizationPerformanceResult{Case: item.name, Seed: seed, Concurrency: concurrency, Resources: len(item.values), Timeout: timeout}
-	// Bound request completion without treating the timeout as a latency baseline.
-	requestCtx, cancel := context.WithTimeout(ctx, timeout)
-	defer cancel()
-	requests := make([]*authz.GetDecisionMultiResourceRequest, concurrency)
-	for i := range requests {
-		requests[i] = proto.CloneOf(request)
-		resources := requests[i].GetResources()
-		random.Shuffle(len(resources), func(i, j int) { resources[i], resources[j] = resources[j], resources[i] })
+// Preselect uniformly with replacement so scheduling cannot change the workload.
+// The same seed selects the same cases at every concurrency level.
+func selectAuthorizationCases(caseCount, requests, seed int) []int {
+	random := rand.New(rand.NewPCG(uint64(seed), 0)) //nolint:gosec // reproducible workload selection, not security randomness
+	selected := make([]int, requests)
+	for i := range selected {
+		selected[i] = random.IntN(caseCount)
 	}
-	durations := make([]time.Duration, concurrency)
-	requestErrors := make([]error, concurrency)
-	start := make(chan struct{})
-	var workers sync.WaitGroup
+	return selected
+}
+
+type scaleDecisionFunc func(context.Context, *authz.GetDecisionMultiResourceRequest) (*authz.GetDecisionMultiResourceResponse, error)
+
+func runAuthorizationScaleLoad(ctx context.Context, cases []authorizationScaleCase, requests, concurrency, seed int, timeout time.Duration, decide scaleDecisionFunc) (authorizationPerformanceResult, error) {
+	result := authorizationPerformanceResult{Seed: seed, Concurrency: concurrency, Requests: requests, Timeout: timeout, Cases: make([]authorizationCaseResult, len(cases))}
+	selected := selectAuthorizationCases(len(cases), requests, seed)
+	durations := make([]time.Duration, requests)
+	requestErrors := make([]error, requests)
+	jobs := make(chan int, requests)
 	for i := range requests {
+		jobs <- i
+	}
+	close(jobs)
+	start := make(chan struct{})
+	var workers, ready sync.WaitGroup
+	ready.Add(concurrency)
+	for range concurrency {
 		workers.Go(func() {
+			ready.Done()
 			<-start
-			started := time.Now()
-			response, err := scenario.SDK.AuthorizationV2.GetDecisionMultiResource(requestCtx, requests[i])
-			durations[i] = time.Since(started)
-			if err == nil {
-				err = validateScaleDecision(response, item.expected)
+			for i := range jobs {
+				item := cases[selected[i]]
+				request := proto.CloneOf(item.request)
+				// Each request gets a fresh deadline, including later work on the same worker.
+				requestCtx, cancel := context.WithTimeout(ctx, timeout)
+				started := time.Now()
+				response, err := decide(requestCtx, request)
+				durations[i] = time.Since(started)
+				cancel()
+				if err == nil {
+					err = validateScaleDecision(response, item.expected)
+				}
+				requestErrors[i] = err
 			}
-			requestErrors[i] = err
 		})
 	}
+	ready.Wait()
 	started := time.Now()
 	close(start)
 	workers.Wait()
 	result.Wall = time.Since(started)
-	for _, err := range requestErrors {
-		if err != nil {
+	for i, item := range cases {
+		row := authorizationCaseResult{Name: item.name, User: item.entity, Action: item.action, Resources: item.resources}
+		for j := range item.resources {
+			row.Expected = append(row.Expected, strings.TrimPrefix(item.expected[fmt.Sprintf("resource%d", j)].String(), "DECISION_"))
+		}
+		result.Cases[i] = row
+	}
+	var firstError error
+	for i, caseIndex := range selected {
+		row := &result.Cases[caseIndex]
+		row.Requests++
+		result.ResourcesRequested += len(row.Resources)
+		if err := requestErrors[i]; err != nil {
 			result.Failures++
+			row.Failures++
+			if row.FirstError == "" {
+				row.FirstError = err.Error()
+			}
+			if firstError == nil {
+				firstError = fmt.Errorf("case %s: %w", row.Name, err)
+			}
 		}
 	}
 	slices.Sort(durations)
-	result.Median = durations[(concurrency-1)/2]
-	result.P95 = durations[(95*concurrency-1)/100]
-	result.Maximum = durations[concurrency-1]
-	var failure error
-	for _, err := range requestErrors {
-		if err != nil {
-			failure = err
-			result.FirstError = err.Error()
-			break
-		}
+	result.Median = durations[(requests-1)/2]
+	result.P95 = durations[(95*requests-1)/100]
+	result.Maximum = durations[requests-1]
+	if firstError != nil {
+		return result, fmt.Errorf("%d/%d authorization requests failed: %w", result.Failures, requests, firstError)
 	}
-	return result, failure
+	return result, nil
 }

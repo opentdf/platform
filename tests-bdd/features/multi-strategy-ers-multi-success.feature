@@ -1,14 +1,15 @@
 @multi-strategy-ers-multi-success @stateless
-Feature: First successful strategy wins under continue (ADR: first-match-wins)
+Feature: Multi-strategy chains hold one entity per category under continue
   Per the multi-strategy ERS ADR, failure_strategy only controls error handling:
-    - "continue": try the next strategy if the current one fails, stop at first success
+    - "continue": try the next strategy if the current one fails
     - "fail_fast": stop immediately on any failure
-  In both modes, the first successful strategy returns and no further strategies run.
+  Neither mode adds a second entity of a category already resolved, so a chain holds at
+  most one subject and one environment entity.
   See: adr/decisions/2025-07-31-multi-strategy-entity-resolution-service.md
 
-  Both scenarios use two strategies whose conditions match, so the chain must hold
-  exactly one entity from "claims_identity". The first asserts the winner's claims
-  reach the decision; the second asserts the loser's claims do not.
+  All three strategies below match every token, so the chain holds the environment entity
+  from "client_environment" plus one subject entity from "claims_identity" — "ldap_department"
+  is skipped. Authorization discards environment entities, so only the subject's claims count.
 
   This covers Jake's gap analysis row #4.
 
@@ -19,6 +20,21 @@ Feature: First successful strategy wins under continue (ADR: first-match-wins)
     And an ERS configuration with mode "multi-strategy" and failure strategy "continue"
     And an ERS provider "jwt_claims" of type "claims"
     And an ERS provider "ldap_directory" of type "ldap" connected to the LDAP directory
+    # Ordered first on purpose: every Keycloak token carries azp, so an environment strategy
+    # always wins the race. This makes the scenarios below cover environment-first ordering —
+    # resolution that stopped at the first match outright would leave no subject entity and
+    # every decision would error instead of deciding.
+    And an ERS mapping strategy "client_environment" using provider "jwt_claims"
+      """
+      entity_type: environment
+      conditions:
+        jwt_claims:
+          - claim: azp
+            operator: exists
+      output_mapping:
+        - source_claim: azp
+          claim_name: client_id
+      """
     And an ERS mapping strategy "claims_identity" using provider "jwt_claims"
       """
       entity_type: subject
@@ -58,8 +74,9 @@ Feature: First successful strategy wins under continue (ADR: first-match-wins)
       | namespace_id | name       | rule  | values                         |
       | ns_ms        | department | anyOf | engineering,marketing,security |
     Then the response should be successful
-    # Regression guard: only "claims_identity" emits .username. If resolution kept going
-    # after its success, the appended LDAP entity has no .username and AND semantics DENY.
+    # Regression guard: stopping at the first match regardless of category would leave only
+    # the environment entity (authz filters it away), and appending a second subject entity
+    # would add one with no .username for AND semantics to veto.
     Given a condition group referenced as "cg_ms" with an "or" operator with conditions:
       | selector_value | operator | values |
       | .username      | in       | alice  |
@@ -75,9 +92,8 @@ Feature: First successful strategy wins under continue (ADR: first-match-wins)
     And I should get a "PERMIT" decision response
 
   Scenario: A later strategy that would supply the attribute never runs → DENY
-    # Alice has departmentNumber=engineering in LDAP, but "claims_identity" wins and emits
-    # no .department, so the mapping cannot match. Also catches an implementation that merges
-    # both strategies' claims into one entity — that would wrongly PERMIT here.
+    # Alice is departmentNumber=engineering in LDAP, but "claims_identity" owns the subject
+    # entity and emits no .department. Also catches an implementation that merges claims.
     # Fix in config: order the LDAP strategy first, or emit department from the winner.
     Given I submit a request to create a namespace with name "and-semantics-gap.test" and reference id "ns_asg"
     And I send a request to create an attribute with:

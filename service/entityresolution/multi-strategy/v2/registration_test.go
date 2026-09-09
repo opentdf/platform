@@ -429,41 +429,88 @@ func claimsOf(t *testing.T, resolved *entity.Entity) map[string]interface{} {
 	return claimsStruct.AsMap()
 }
 
-// TestCreateEntityChainsFromTokens_FirstMatchingStrategyWins pins the ADR contract: the
-// first strategy that resolves successfully ends the search under every failure strategy,
-// so a chain never accumulates one entity per matching strategy.
-func TestCreateEntityChainsFromTokens_FirstMatchingStrategyWins(t *testing.T) {
+// secondSubjectStrategy is another subject strategy matching the same token, mapping a
+// different claim so tests can tell which of the two produced the chain's subject entity.
+func secondSubjectStrategy() types.MappingStrategy {
+	return types.MappingStrategy{
+		Name:       "user_subject_fallback",
+		Provider:   "jwt",
+		EntityType: types.EntityTypeSubject,
+		Conditions: types.StrategyConditions{
+			JWTClaims: []types.JWTClaimCondition{{Claim: "azp", Operator: "exists"}},
+		},
+		OutputMapping: []types.OutputMapping{{SourceClaim: "azp", ClaimName: "username"}},
+	}
+}
+
+func categoriesOf(chain *entity.EntityChain) []entity.Entity_Category {
+	categories := make([]entity.Entity_Category, 0, len(chain.GetEntities()))
+	for _, e := range chain.GetEntities() {
+		categories = append(categories, e.GetCategory())
+	}
+	return categories
+}
+
+func subjectEntity(t *testing.T, chain *entity.EntityChain) *entity.Entity {
+	t.Helper()
+
+	var found *entity.Entity
+	for _, e := range chain.GetEntities() {
+		if e.GetCategory() == entity.Entity_CATEGORY_SUBJECT {
+			require.Nil(t, found, "chain must not carry more than one subject entity")
+			found = e
+		}
+	}
+	require.NotNil(t, found, "chain must carry a subject entity")
+	return found
+}
+
+// TestCreateEntityChainsFromTokens_AtMostOneEntityPerCategory pins the chain contract: a
+// token yields at most one ENVIRONMENT and one SUBJECT entity, and within a category the
+// first matching strategy wins. Multiple subject entities are what made AND semantics
+// unpredictable; a missing subject entity breaks authz, which discards environment entities.
+func TestCreateEntityChainsFromTokens_AtMostOneEntityPerCategory(t *testing.T) {
 	tests := []struct {
-		name             string
-		failureStrategy  string
-		strategies       []types.MappingStrategy
-		expectedCategory entity.Entity_Category
-		expectedClaim    string
-		expectedValue    string
+		name               string
+		failureStrategy    string
+		strategies         []types.MappingStrategy
+		expectedCategories []entity.Entity_Category
+		expectedUsername   string
 	}{
 		{
-			name:             "continue stops at the first success",
-			failureStrategy:  types.FailureStrategyContinue,
-			strategies:       []types.MappingStrategy{environmentStrategy(), subjectStrategy()},
-			expectedCategory: entity.Entity_CATEGORY_ENVIRONMENT,
-			expectedClaim:    "client_id",
-			expectedValue:    "opentdf-sdk",
+			name:               "competing subject strategies collapse to the first",
+			failureStrategy:    types.FailureStrategyContinue,
+			strategies:         []types.MappingStrategy{subjectStrategy(), secondSubjectStrategy()},
+			expectedCategories: []entity.Entity_Category{entity.Entity_CATEGORY_SUBJECT},
+			expectedUsername:   "alice",
 		},
 		{
-			name:             "fail-fast stops at the first success",
-			failureStrategy:  types.FailureStrategyFailFast,
-			strategies:       []types.MappingStrategy{environmentStrategy(), subjectStrategy()},
-			expectedCategory: entity.Entity_CATEGORY_ENVIRONMENT,
-			expectedClaim:    "client_id",
-			expectedValue:    "opentdf-sdk",
+			name:               "environment and subject strategies each contribute one entity",
+			failureStrategy:    types.FailureStrategyContinue,
+			strategies:         []types.MappingStrategy{environmentStrategy(), subjectStrategy()},
+			expectedCategories: []entity.Entity_Category{entity.Entity_CATEGORY_ENVIRONMENT, entity.Entity_CATEGORY_SUBJECT},
+			expectedUsername:   "alice",
 		},
 		{
-			name:             "strategy order, not failure strategy, picks the winner",
-			failureStrategy:  types.FailureStrategyContinue,
-			strategies:       []types.MappingStrategy{subjectStrategy(), environmentStrategy()},
-			expectedCategory: entity.Entity_CATEGORY_SUBJECT,
-			expectedClaim:    "username",
-			expectedValue:    "alice",
+			name:               "chain follows strategy order",
+			failureStrategy:    types.FailureStrategyContinue,
+			strategies:         []types.MappingStrategy{subjectStrategy(), environmentStrategy()},
+			expectedCategories: []entity.Entity_Category{entity.Entity_CATEGORY_SUBJECT, entity.Entity_CATEGORY_ENVIRONMENT},
+			expectedUsername:   "alice",
+		},
+		{
+			name:               "a redundant subject strategy after a full chain is skipped",
+			failureStrategy:    types.FailureStrategyContinue,
+			strategies:         []types.MappingStrategy{environmentStrategy(), subjectStrategy(), secondSubjectStrategy()},
+			expectedCategories: []entity.Entity_Category{entity.Entity_CATEGORY_ENVIRONMENT, entity.Entity_CATEGORY_SUBJECT},
+			expectedUsername:   "alice",
+		},
+		{
+			name:               "fail-fast produces the same chain shape",
+			failureStrategy:    types.FailureStrategyFailFast,
+			strategies:         []types.MappingStrategy{environmentStrategy(), subjectStrategy()},
+			expectedCategories: []entity.Entity_Category{entity.Entity_CATEGORY_ENVIRONMENT, entity.Entity_CATEGORY_SUBJECT},
+			expectedUsername:   "alice",
 		},
 	}
 
@@ -471,17 +518,26 @@ func TestCreateEntityChainsFromTokens_FirstMatchingStrategyWins(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			chain := chainForTestToken(t, firstMatchWinsConfig(tt.failureStrategy, tt.strategies...))
 
-			require.Len(t, chain.GetEntities(), 1, "chain must hold only the first matching strategy's entity")
-			resolved := chain.GetEntities()[0]
-			require.Equal(t, tt.expectedCategory, resolved.GetCategory())
-			require.Equal(t, tt.expectedValue, claimsOf(t, resolved)[tt.expectedClaim])
+			require.Equal(t, tt.expectedCategories, categoriesOf(chain))
+			require.Equal(t, tt.expectedUsername, claimsOf(t, subjectEntity(t, chain))["username"],
+				"the first matching subject strategy must own the subject entity")
 		})
 	}
 }
 
+// TestCreateEntityChainsFromTokens_EnvironmentFirstStillResolvesSubject guards the ordering
+// regression: authz resolves decisions with skipEnvironmentEntities=true, so a chain built
+// from an environment-first config must still carry a subject or every decision errors out.
+func TestCreateEntityChainsFromTokens_EnvironmentFirstStillResolvesSubject(t *testing.T) {
+	chain := chainForTestToken(t, firstMatchWinsConfig(
+		types.FailureStrategyContinue, environmentStrategy(), subjectStrategy(),
+	))
+
+	require.Equal(t, "alice", claimsOf(t, subjectEntity(t, chain))["username"])
+}
+
 // TestCreateEntityChainsFromTokens_ContinueFallsThroughFailureToNextStrategy shows the one
-// thing "continue" does change: a failing strategy hands off to the next matching one, and
-// the resulting chain still holds exactly one entity.
+// thing "continue" does change: a failing strategy hands off to the next matching one.
 func TestCreateEntityChainsFromTokens_ContinueFallsThroughFailureToNextStrategy(t *testing.T) {
 	failing := environmentStrategy()
 	failing.Name = "missing_provider"
@@ -490,7 +546,5 @@ func TestCreateEntityChainsFromTokens_ContinueFallsThroughFailureToNextStrategy(
 	chain := chainForTestToken(t, firstMatchWinsConfig(types.FailureStrategyContinue, failing, subjectStrategy()))
 
 	require.Len(t, chain.GetEntities(), 1)
-	resolved := chain.GetEntities()[0]
-	require.Equal(t, entity.Entity_CATEGORY_SUBJECT, resolved.GetCategory())
-	require.Equal(t, "alice", claimsOf(t, resolved)["username"])
+	require.Equal(t, "alice", claimsOf(t, subjectEntity(t, chain))["username"])
 }

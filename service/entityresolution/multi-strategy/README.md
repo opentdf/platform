@@ -236,12 +236,20 @@ The failure strategy determines how Multi-Strategy ERS handles failures when exe
 - **Use Case**: When you want resilient failover with multiple fallback options
 - **Result**: Only fails if **all** matching strategies fail
 
-> **First match wins.** Both settings stop at the first strategy that succeeds — the
-> failure strategy only decides what happens when a strategy *fails*. This holds for
-> `CreateEntityChainsFromTokens` too, so a token's entity chain always contains exactly
-> one entity, produced by the first matching strategy. To combine data from several
-> sources into one entity, merge them in a single strategy's `output_mapping` rather
-> than relying on strategy ordering.
+> **First match wins per entity category.** `ResolveEntity` returns the first strategy that
+> succeeds; the failure strategy only decides what happens when a strategy *fails*.
+>
+> `CreateEntityChainsFromTokens` applies the same rule per category, so a token's chain holds
+> at most one `subject` entity and at most one `environment` entity — the first match of each.
+> Later strategies of an already-filled category are skipped and never queried. To combine data
+> from several sources into one entity, merge them in a single strategy's `output_mapping`
+> rather than relying on strategy ordering.
+>
+> Authorization decisions discard `environment` entities, so claims emitted by an
+> `environment` strategy can never satisfy a subject mapping, and a token matching only
+> `environment` strategies produces a chain `GetDecision` rejects outright. Make sure a
+> `subject` strategy matches every token you expect to make decisions for, and emit anything
+> policy needs to match on from that `subject` strategy.
 
 ```yaml
 services:

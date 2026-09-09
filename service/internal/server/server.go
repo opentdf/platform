@@ -231,6 +231,7 @@ type OpenTDFServer struct {
 	ConnectRPCInProcess *inProcessServer
 	ConnectRPC          *ConnectRPC
 	CacheManager        *cache.Manager
+	reflectionEnabled   bool
 
 	// To Deprecate: Use the TrustKeyIndex and TrustKeyManager instead
 	CryptoProvider *security.StandardCrypto
@@ -308,11 +309,12 @@ func NewOpenTDFServer(config Config, logger *logger.Logger, cacheManager *cache.
 	}
 
 	o := OpenTDFServer{
-		AuthN:        authN,
-		HTTPMux:      httpMux,
-		HTTPServer:   httpServer,
-		CacheManager: cacheManager,
-		ConnectRPC:   connectRPC,
+		AuthN:             authN,
+		HTTPMux:           httpMux,
+		HTTPServer:        httpServer,
+		CacheManager:      cacheManager,
+		ConnectRPC:        connectRPC,
+		reflectionEnabled: config.GRPC.ReflectionEnabled,
 		ConnectRPCInProcess: &inProcessServer{
 			logger:             logger.With("ipc_server", "true"),
 			srv:                memhttp.New(connectRPCIpc.Mux),
@@ -503,16 +505,7 @@ func newConnectRPC(c Config, authInts []connect.Interceptor, ints []connect.Inte
 }
 
 func (s OpenTDFServer) Start() error {
-	// Add reflection api to connect-rpc
-	reflector := grpcreflect.NewStaticReflector(
-		s.ConnectRPC.ServiceReflection...,
-	)
-
-	s.ConnectRPC.Mux.Handle(grpcreflect.NewHandlerV1(reflector))
-	s.ConnectRPC.Mux.Handle(grpcreflect.NewHandlerV1Alpha(reflector))
-
-	s.ConnectRPCInProcess.Mux.Handle(grpcreflect.NewHandlerV1(reflector))
-	s.ConnectRPCInProcess.Mux.Handle(grpcreflect.NewHandlerV1Alpha(reflector))
+	s.registerReflectionHandlers()
 
 	ln, err := s.openHTTPServerPort(context.Background())
 	if err != nil {
@@ -546,6 +539,21 @@ func (s OpenTDFServer) Stop() {
 	}
 
 	s.logger.Info("shutdown complete")
+}
+
+func (s OpenTDFServer) registerReflectionHandlers() {
+	// Add reflection api to connect-rpc
+	reflector := grpcreflect.NewStaticReflector(
+		s.ConnectRPC.ServiceReflection...,
+	)
+
+	if s.reflectionEnabled {
+		s.ConnectRPC.Mux.Handle(grpcreflect.NewHandlerV1(reflector))
+		s.ConnectRPC.Mux.Handle(grpcreflect.NewHandlerV1Alpha(reflector))
+	}
+
+	s.ConnectRPCInProcess.Mux.Handle(grpcreflect.NewHandlerV1(reflector))
+	s.ConnectRPCInProcess.Mux.Handle(grpcreflect.NewHandlerV1Alpha(reflector))
 }
 
 func (s inProcessServer) Conn() *sdk.ConnectRPCConnection {

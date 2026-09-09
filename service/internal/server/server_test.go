@@ -80,6 +80,55 @@ func TestMergeStringSlices(t *testing.T) {
 	}
 }
 
+func Test_OpenTDFServer_RegisterReflectionHandlers(t *testing.T) {
+	tests := []struct {
+		name                       string
+		reflectionEnabled          bool
+		expectExternalRegistration bool
+	}{
+		{
+			name:                       "Enabled_RegistersExternalAndInProcessHandlers",
+			reflectionEnabled:          true,
+			expectExternalRegistration: true,
+		},
+		{
+			name:                       "Disabled_RegistersOnlyInProcessHandlers",
+			reflectionEnabled:          false,
+			expectExternalRegistration: false,
+		},
+	}
+
+	reflectionPaths := []string{
+		"/grpc.reflection.v1.ServerReflection/ServerReflectionInfo",
+		"/grpc.reflection.v1alpha.ServerReflection/ServerReflectionInfo",
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			server, err := NewOpenTDFServer(Config{
+				GRPC: GRPCConfig{ReflectionEnabled: tt.reflectionEnabled},
+			}, logger.CreateTestLogger(), nil)
+			require.NoError(t, err)
+
+			server.registerReflectionHandlers()
+
+			for _, path := range reflectionPaths {
+				externalRequest := httptest.NewRequest(http.MethodPost, path, nil)
+				_, externalPattern := server.ConnectRPC.Mux.Handler(externalRequest)
+				if tt.expectExternalRegistration {
+					assert.NotEmpty(t, externalPattern)
+				} else {
+					assert.Empty(t, externalPattern)
+				}
+
+				inProcessRequest := httptest.NewRequest(http.MethodPost, path, nil)
+				_, inProcessPattern := server.ConnectRPCInProcess.Mux.Handler(inProcessRequest)
+				assert.NotEmpty(t, inProcessPattern)
+			}
+		})
+	}
+}
+
 func TestCORSConfig_EffectiveMethods(t *testing.T) {
 	tests := []struct {
 		name string

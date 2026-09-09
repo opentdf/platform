@@ -343,7 +343,7 @@ func (p *PolicyDecisionPoint) GetDecision(
 
 		for _, directEntitlement := range entityRepresentation.GetDirectEntitlements() {
 			fqn := directEntitlement.GetAttributeValueFqn()
-			if p.isDeactivatedValueFQN(fqn) {
+			if p.isDeactivatedValueFQN(ctx, fqn) {
 				l.DebugContext(ctx, "skipping direct entitlement of deactivated attribute value",
 					slog.String("attribute_value_fqn", fqn),
 				)
@@ -392,7 +392,7 @@ func (p *PolicyDecisionPoint) GetDecision(
 			return nil, nil, fmt.Errorf("%w: %w", ErrDynamicValueMappingEvaluation, err)
 		}
 		for fqn, actions := range dynamicEntitledFQNsToActions {
-			if p.isDeactivatedValueFQN(fqn) {
+			if p.isDeactivatedValueFQN(ctx, fqn) {
 				l.DebugContext(ctx, "skipping dynamic value mapping entitlement of deactivated attribute value",
 					slog.String("attribute_value_fqn", fqn),
 				)
@@ -472,7 +472,7 @@ func (p *PolicyDecisionPoint) GetDecisionRegisteredResource(
 		attrVal := aav.GetAttributeValue()
 		attrValFQN := attrVal.GetFqn()
 
-		if p.isDeactivatedValueFQN(attrValFQN) {
+		if p.isDeactivatedValueFQN(ctx, attrValFQN) {
 			l.DebugContext(ctx, "skipping registered resource entitlement of deactivated attribute value",
 				slog.String("attribute_value_fqn", attrValFQN),
 			)
@@ -578,7 +578,7 @@ func (p *PolicyDecisionPoint) GetEntitlements(
 		actionsPerAttributeValueFqn := make(map[string]*authz.EntityEntitlements_ActionsList)
 
 		for valueFQN, actions := range fqnsToActions {
-			if p.isDeactivatedValueFQN(valueFQN) {
+			if p.isDeactivatedValueFQN(ctx, valueFQN) {
 				l.DebugContext(ctx, "skipping entitlement of deactivated attribute value",
 					slog.String("attribute_value_fqn", valueFQN),
 				)
@@ -640,7 +640,7 @@ func (p *PolicyDecisionPoint) GetEntitlementsRegisteredResource(
 		attrVal := aav.GetAttributeValue()
 		attrValFQN := attrVal.GetFqn()
 
-		if p.isDeactivatedValueFQN(attrValFQN) {
+		if p.isDeactivatedValueFQN(ctx, attrValFQN) {
 			l.DebugContext(ctx, "skipping entitlement of deactivated attribute value",
 				slog.String("attribute_value_fqn", attrValFQN),
 			)
@@ -688,9 +688,9 @@ func (p *PolicyDecisionPoint) GetEntitlementsRegisteredResource(
 // isDeactivatedValueFQN reports whether the value FQN, or the definition owning it, is deactivated.
 // An FQN unknown to policy under an active definition is not deactivated: it is either denied or
 // synthesized by the ad-hoc value paths.
-func (p *PolicyDecisionPoint) isDeactivatedValueFQN(valueFQN string) bool {
+func (p *PolicyDecisionPoint) isDeactivatedValueFQN(ctx context.Context, valueFQN string) bool {
 	if attributeAndValue, ok := p.allEntitleableAttributesByValueFQN[valueFQN]; ok {
-		return isDeactivated(attributeAndValue)
+		return isDeactivated(ctx, p.logger, attributeAndValue)
 	}
 	definition, err := getDefinition(valueFQN, p.allAttributesByDefinitionFQN)
 	if err != nil {

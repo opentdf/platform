@@ -47,8 +47,8 @@ Feature: Deactivated attribute values deny decrypt
     And using token "alice_tok", decrypt "tdf_class" stored as "plain_class_after"
     Then the decryption stored as "plain_class_after" should be denied
 
-  # Deactivating a definition does not cascade to its values in the database — each value keeps
-  # active = true — so the deny must come from the definition's own state.
+  # The cascade_deactivation trigger deactivates the definition's values with it, and the
+  # definition drops out of the active policy load entirely.
   Scenario: Deactivating the attribute definition denies decrypt of its values
     When I encrypt plaintext "hello engineering" with attributes "https://demo.com/attr/department/value/engineering" stored as "tdf_defn"
     And using token "alice_tok", decrypt "tdf_defn" stored as "plain_defn_before"

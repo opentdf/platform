@@ -149,9 +149,9 @@ func (s *AttributesStepDefinitions) iDeactivateTheAttributeValue(ctx context.Con
 	return ctx, nil
 }
 
-// iDeactivateTheAttributeDefinition resolves the definition by FQN and deactivates it. Deactivating
-// a definition does not cascade to its values in the database, so every decision path must deny on
-// the definition's own state.
+// iDeactivateTheAttributeDefinition resolves the definition by FQN and deactivates it. The
+// cascade_deactivation trigger deactivates its values too, and the definition itself drops out of
+// the active policy load, so every decision path must deny.
 func (s *AttributesStepDefinitions) iDeactivateTheAttributeDefinition(ctx context.Context, fqn string) (context.Context, error) {
 	scenarioContext := GetPlatformScenarioContext(ctx)
 	scenarioContext.ClearError()

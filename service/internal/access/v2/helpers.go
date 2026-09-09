@@ -33,10 +33,20 @@ func isExplicitlyInactive(active *wrapperspb.BoolValue) bool {
 }
 
 // isDeactivated reports whether an attribute value, or the definition owning it, is deactivated.
-// Deactivated values must neither entitle an entity nor be entitleable on a resource.
-func isDeactivated(attributeAndValue *attrs.GetAttributeValuesByFqnsResponse_AttributeAndValue) bool {
-	return isExplicitlyInactive(attributeAndValue.GetValue().GetActive()) ||
-		isExplicitlyInactive(attributeAndValue.GetAttribute().GetActive())
+// The cascade_deactivation trigger deactivates a definition's values with it, so an active value
+// under a deactivated definition is a bad state: denied defensively, and logged as an error.
+func isDeactivated(ctx context.Context, l *logger.Logger, attributeAndValue *attrs.GetAttributeValuesByFqnsResponse_AttributeAndValue) bool {
+	valueDeactivated := isExplicitlyInactive(attributeAndValue.GetValue().GetActive())
+	definitionDeactivated := isExplicitlyInactive(attributeAndValue.GetAttribute().GetActive())
+
+	if definitionDeactivated && attributeAndValue.GetValue().GetActive().GetValue() {
+		l.ErrorContext(ctx, "bad policy state: active attribute value under a deactivated definition - denying access",
+			slog.String("attribute_value_fqn", attributeAndValue.GetValue().GetFqn()),
+			slog.String("attribute_definition_fqn", attributeAndValue.GetAttribute().GetFqn()),
+		)
+	}
+
+	return valueDeactivated || definitionDeactivated
 }
 
 // getDefinition parses the value FQN and uses it to retrieve the definition from the provided definitions map
@@ -179,7 +189,7 @@ func populateHigherValuesIfHierarchy(
 			)
 			continue
 		}
-		if isDeactivated(fullValue) {
+		if isDeactivated(ctx, l, fullValue) {
 			continue
 		}
 		decisionableAttributes[value.GetFqn()] = &attrs.GetAttributeValuesByFqnsResponse_AttributeAndValue{
@@ -273,7 +283,7 @@ func getResourceDecisionableAttributes(
 
 		// A deactivated value is left out of the decisionable set so the resource carrying it is
 		// denied downstream, and so it is never synthesized as an ad-hoc value below.
-		if ok && isDeactivated(attributeAndValue) {
+		if ok && isDeactivated(ctx, logger, attributeAndValue) {
 			logger.WarnContext(ctx, "deactivated attribute value on resource - denying access",
 				slog.String("attribute_value_fqn", attrValueFQN),
 			)

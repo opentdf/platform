@@ -76,7 +76,6 @@ Feature: Direct entitlements decisioning
     Then the response should be successful
     And I should get a "DENY" decision response
 
-  # Deactivating a definition does not cascade to its values, so the value is still active here.
   # The full entitlement policy load drops deactivated definitions outright, so the resource FQN
   # is unknown; GetDecision treats an unknown FQN as a per-resource deny rather than a request
   # error, so the response is successful and the decision is DENY.

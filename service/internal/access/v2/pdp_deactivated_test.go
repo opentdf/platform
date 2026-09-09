@@ -14,9 +14,9 @@ import (
 const deactivatedTestNamespace = "deactivation.example.com"
 
 var (
-	testDeactivatedProjectFQN      = createAttrFQN(deactivatedTestNamespace, "project")
-	testDeactivatedProjectActive   = createAttrValueFQN(deactivatedTestNamespace, "project", "active")
-	testDeactivatedProjectInactive = createAttrValueFQN(deactivatedTestNamespace, "project", "inactive")
+	testDeactivatedProjectFQN          = createAttrFQN(deactivatedTestNamespace, "project")
+	testDeactivatedProjectAlphaActive  = createAttrValueFQN(deactivatedTestNamespace, "project", "alpha")
+	testDeactivatedProjectBetaInactive = createAttrValueFQN(deactivatedTestNamespace, "project", "beta")
 
 	testDeactivatedClearanceFQN            = createAttrFQN(deactivatedTestNamespace, "clearance")
 	testDeactivatedClearanceHighInactive   = createAttrValueFQN(deactivatedTestNamespace, "clearance", "high")
@@ -28,15 +28,15 @@ var (
 	testDeactivatedArchivedAdHocVal = createAttrValueFQN(deactivatedTestNamespace, "archived", "adhoc")
 )
 
-// deactivationProjectAttr is an ANY_OF definition with one active and one deactivated value.
+// deactivationProjectAttr is an ANY_OF definition: alpha is active, beta is deactivated.
 func deactivationProjectAttr() *policy.Attribute {
 	return &policy.Attribute{
 		Fqn:       testDeactivatedProjectFQN,
 		Rule:      policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF,
 		Namespace: &policy.Namespace{Name: deactivatedTestNamespace, Fqn: "https://" + deactivatedTestNamespace},
 		Values: []*policy.Value{
-			{Fqn: testDeactivatedProjectActive, Value: "active", Active: wrapperspb.Bool(true)},
-			{Fqn: testDeactivatedProjectInactive, Value: "inactive", Active: wrapperspb.Bool(false)},
+			{Fqn: testDeactivatedProjectAlphaActive, Value: "alpha", Active: wrapperspb.Bool(true)},
+			{Fqn: testDeactivatedProjectBetaInactive, Value: "beta", Active: wrapperspb.Bool(false)},
 		},
 	}
 }
@@ -57,7 +57,8 @@ func deactivationClearanceAttr() *policy.Attribute {
 }
 
 // deactivationArchivedAttr is a deactivated ANY_OF definition whose values are all still active.
-// Deactivating a definition must deny its values even though each value is individually active.
+// The cascade_deactivation trigger makes this state unreachable in the database; it exists to
+// cover the defensive definition-state check.
 func deactivationArchivedAttr() *policy.Attribute {
 	return &policy.Attribute{
 		Fqn:       testDeactivatedArchivedFQN,
@@ -77,32 +78,32 @@ func (s *PDPTestSuite) Test_GetDecision_DeactivatedValue_SubjectMappings() {
 
 	attr := deactivationProjectAttr()
 	subjectMappings := []*policy.SubjectMapping{
-		createSimpleSubjectMapping(testDeactivatedProjectActive, "active",
-			[]*policy.Action{testActionRead}, ".properties.project[]", []string{"active"}, nil),
-		createSimpleSubjectMapping(testDeactivatedProjectInactive, "inactive",
-			[]*policy.Action{testActionRead}, ".properties.project[]", []string{"inactive"}, nil),
+		createSimpleSubjectMapping(testDeactivatedProjectAlphaActive, "alpha",
+			[]*policy.Action{testActionRead}, ".properties.project[]", []string{"alpha"}, nil),
+		createSimpleSubjectMapping(testDeactivatedProjectBetaInactive, "beta",
+			[]*policy.Action{testActionRead}, ".properties.project[]", []string{"beta"}, nil),
 	}
 
 	pdp, err := NewPolicyDecisionPoint(ctx, s.logger, []*policy.Attribute{attr}, subjectMappings, nil, false, false)
 	s.Require().NoError(err)
 
 	entity := s.createEntityWithProps("entity-both-projects", map[string]interface{}{
-		"project": []interface{}{"active", "inactive"},
+		"project": []interface{}{"alpha", "beta"},
 	})
 
 	s.Run("resource tagged with the deactivated value is denied", func() {
 		decision, entitlements, err := pdp.GetDecision(ctx, entity, testActionRead, []*authz.Resource{
-			createAttributeValueResource(testDeactivatedProjectInactive, testDeactivatedProjectInactive),
+			createAttributeValueResource(testDeactivatedProjectBetaInactive, testDeactivatedProjectBetaInactive),
 		})
 		s.Require().NoError(err)
 		s.Require().NotNil(decision)
 		s.False(decision.AllPermitted, "subject mapping must not entitle a deactivated value")
-		s.NotContains(entitlements, testDeactivatedProjectInactive)
+		s.NotContains(entitlements, testDeactivatedProjectBetaInactive)
 	})
 
 	s.Run("ANY_OF resource carrying the deactivated value alongside an active one is denied", func() {
 		decision, _, err := pdp.GetDecision(ctx, entity, testActionRead, []*authz.Resource{
-			createAttributeValueResource("mixed-state-resource", testDeactivatedProjectActive, testDeactivatedProjectInactive),
+			createAttributeValueResource("mixed-state-resource", testDeactivatedProjectAlphaActive, testDeactivatedProjectBetaInactive),
 		})
 		s.Require().NoError(err)
 		s.Require().NotNil(decision)
@@ -111,12 +112,12 @@ func (s *PDPTestSuite) Test_GetDecision_DeactivatedValue_SubjectMappings() {
 
 	s.Run("active sibling value is unaffected", func() {
 		decision, entitlements, err := pdp.GetDecision(ctx, entity, testActionRead, []*authz.Resource{
-			createAttributeValueResource(testDeactivatedProjectActive, testDeactivatedProjectActive),
+			createAttributeValueResource(testDeactivatedProjectAlphaActive, testDeactivatedProjectAlphaActive),
 		})
 		s.Require().NoError(err)
 		s.Require().NotNil(decision)
 		s.True(decision.AllPermitted)
-		s.Contains(entitlements, testDeactivatedProjectActive)
+		s.Contains(entitlements, testDeactivatedProjectAlphaActive)
 	})
 }
 
@@ -176,21 +177,21 @@ func (s *PDPTestSuite) Test_GetDecision_DeactivatedValue_DynamicValueMappings() 
 	s.Require().NoError(err)
 
 	entity := s.createEntityWithProps("entity-dynamic", map[string]interface{}{
-		"project": []interface{}{"active", "inactive"},
+		"project": []interface{}{"alpha", "beta"},
 	})
 
 	s.Run("dynamic mapping does not entitle the deactivated value", func() {
 		decision, entitlements, err := pdp.GetDecision(ctx, entity, testActionRead, []*authz.Resource{
-			createAttributeValueResource(testDeactivatedProjectInactive, testDeactivatedProjectInactive),
+			createAttributeValueResource(testDeactivatedProjectBetaInactive, testDeactivatedProjectBetaInactive),
 		})
 		s.Require().NoError(err)
 		s.False(decision.AllPermitted)
-		s.NotContains(entitlements, testDeactivatedProjectInactive)
+		s.NotContains(entitlements, testDeactivatedProjectBetaInactive)
 	})
 
 	s.Run("dynamic mapping still entitles the active value", func() {
 		decision, _, err := pdp.GetDecision(ctx, entity, testActionRead, []*authz.Resource{
-			createAttributeValueResource(testDeactivatedProjectActive, testDeactivatedProjectActive),
+			createAttributeValueResource(testDeactivatedProjectAlphaActive, testDeactivatedProjectAlphaActive),
 		})
 		s.Require().NoError(err)
 		s.True(decision.AllPermitted)
@@ -209,8 +210,8 @@ func (s *PDPTestSuite) Test_GetDecision_DeactivatedValue_RegisteredResources() {
 	attr := deactivationProjectAttr()
 	regResName := "deactivation_service"
 	entityRegResValueFQN := createRegisteredResourceValueFQN("", regResName, "entity")
-	inactiveRegResValueFQN := createRegisteredResourceValueFQN("", regResName, "tagged_inactive")
-	activeRegResValueFQN := createRegisteredResourceValueFQN("", regResName, "tagged_active")
+	betaRegResValueFQN := createRegisteredResourceValueFQN("", regResName, "tagged_beta")
+	alphaRegResValueFQN := createRegisteredResourceValueFQN("", regResName, "tagged_alpha")
 
 	actionAttributeValue := func(fqn, value string) *policy.RegisteredResourceValue_ActionAttributeValue {
 		return &policy.RegisteredResourceValue_ActionAttributeValue{
@@ -225,17 +226,17 @@ func (s *PDPTestSuite) Test_GetDecision_DeactivatedValue_RegisteredResources() {
 			{
 				Value: "entity",
 				ActionAttributeValues: []*policy.RegisteredResourceValue_ActionAttributeValue{
-					actionAttributeValue(testDeactivatedProjectActive, "active"),
-					actionAttributeValue(testDeactivatedProjectInactive, "inactive"),
+					actionAttributeValue(testDeactivatedProjectAlphaActive, "alpha"),
+					actionAttributeValue(testDeactivatedProjectBetaInactive, "beta"),
 				},
 			},
 			{
-				Value:                 "tagged_inactive",
-				ActionAttributeValues: []*policy.RegisteredResourceValue_ActionAttributeValue{actionAttributeValue(testDeactivatedProjectInactive, "inactive")},
+				Value:                 "tagged_beta",
+				ActionAttributeValues: []*policy.RegisteredResourceValue_ActionAttributeValue{actionAttributeValue(testDeactivatedProjectBetaInactive, "beta")},
 			},
 			{
-				Value:                 "tagged_active",
-				ActionAttributeValues: []*policy.RegisteredResourceValue_ActionAttributeValue{actionAttributeValue(testDeactivatedProjectActive, "active")},
+				Value:                 "tagged_alpha",
+				ActionAttributeValues: []*policy.RegisteredResourceValue_ActionAttributeValue{actionAttributeValue(testDeactivatedProjectAlphaActive, "alpha")},
 			},
 		},
 	}
@@ -246,16 +247,16 @@ func (s *PDPTestSuite) Test_GetDecision_DeactivatedValue_RegisteredResources() {
 
 	s.Run("registered resource entity is not entitled to the deactivated value", func() {
 		decision, entitlements, err := pdp.GetDecisionRegisteredResource(ctx, entityRegResValueFQN, testActionRead, []*authz.Resource{
-			createAttributeValueResource(testDeactivatedProjectInactive, testDeactivatedProjectInactive),
+			createAttributeValueResource(testDeactivatedProjectBetaInactive, testDeactivatedProjectBetaInactive),
 		})
 		s.Require().NoError(err)
 		s.False(decision.AllPermitted)
-		s.NotContains(entitlements, testDeactivatedProjectInactive)
+		s.NotContains(entitlements, testDeactivatedProjectBetaInactive)
 	})
 
 	s.Run("registered resource entity remains entitled to the active value", func() {
 		decision, _, err := pdp.GetDecisionRegisteredResource(ctx, entityRegResValueFQN, testActionRead, []*authz.Resource{
-			createAttributeValueResource(testDeactivatedProjectActive, testDeactivatedProjectActive),
+			createAttributeValueResource(testDeactivatedProjectAlphaActive, testDeactivatedProjectAlphaActive),
 		})
 		s.Require().NoError(err)
 		s.True(decision.AllPermitted)
@@ -263,7 +264,7 @@ func (s *PDPTestSuite) Test_GetDecision_DeactivatedValue_RegisteredResources() {
 
 	s.Run("registered resource tagged with the deactivated value is denied as a resource", func() {
 		decision, _, err := pdp.GetDecisionRegisteredResource(ctx, entityRegResValueFQN, testActionRead, []*authz.Resource{
-			createRegisteredResource("reg-res-inactive", inactiveRegResValueFQN),
+			createRegisteredResource("reg-res-inactive", betaRegResValueFQN),
 		})
 		s.Require().NoError(err)
 		s.False(decision.AllPermitted, "a registered resource tagged with a deactivated value must fail closed")
@@ -271,7 +272,7 @@ func (s *PDPTestSuite) Test_GetDecision_DeactivatedValue_RegisteredResources() {
 
 	s.Run("registered resource tagged with the active value is still permitted", func() {
 		decision, _, err := pdp.GetDecisionRegisteredResource(ctx, entityRegResValueFQN, testActionRead, []*authz.Resource{
-			createRegisteredResource("reg-res-active", activeRegResValueFQN),
+			createRegisteredResource("reg-res-active", alphaRegResValueFQN),
 		})
 		s.Require().NoError(err)
 		s.True(decision.AllPermitted)
@@ -281,8 +282,8 @@ func (s *PDPTestSuite) Test_GetDecision_DeactivatedValue_RegisteredResources() {
 		entitlements, err := pdp.GetEntitlementsRegisteredResource(ctx, entityRegResValueFQN, false)
 		s.Require().NoError(err)
 		s.Require().Len(entitlements, 1)
-		s.Contains(entitlements[0].GetActionsPerAttributeValueFqn(), testDeactivatedProjectActive)
-		s.NotContains(entitlements[0].GetActionsPerAttributeValueFqn(), testDeactivatedProjectInactive)
+		s.Contains(entitlements[0].GetActionsPerAttributeValueFqn(), testDeactivatedProjectAlphaActive)
+		s.NotContains(entitlements[0].GetActionsPerAttributeValueFqn(), testDeactivatedProjectBetaInactive)
 	})
 }
 
@@ -301,15 +302,15 @@ func (s *PDPTestSuite) Test_GetDecision_DeactivatedDefinition() {
 		subjectMappings := []*policy.SubjectMapping{
 			createSimpleSubjectMapping(testDeactivatedArchivedValue, "value1",
 				[]*policy.Action{testActionRead}, ".properties.archived[]", []string{"value1"}, nil),
-			createSimpleSubjectMapping(testDeactivatedProjectActive, "active",
-				[]*policy.Action{testActionRead}, ".properties.project[]", []string{"active"}, nil),
+			createSimpleSubjectMapping(testDeactivatedProjectAlphaActive, "alpha",
+				[]*policy.Action{testActionRead}, ".properties.project[]", []string{"alpha"}, nil),
 		}
 		pdp, err := NewPolicyDecisionPoint(ctx, s.logger, allAttrs, subjectMappings, nil, false, false)
 		s.Require().NoError(err)
 
 		entity := s.createEntityWithProps("entity-archived", map[string]interface{}{
 			"archived": []interface{}{"value1"},
-			"project":  []interface{}{"active"},
+			"project":  []interface{}{"alpha"},
 		})
 
 		decision, entitlements, err := pdp.GetDecision(ctx, entity, testActionRead, []*authz.Resource{
@@ -321,7 +322,7 @@ func (s *PDPTestSuite) Test_GetDecision_DeactivatedDefinition() {
 
 		// A value under an active definition is unaffected.
 		decision, _, err = pdp.GetDecision(ctx, entity, testActionRead, []*authz.Resource{
-			createAttributeValueResource(testDeactivatedProjectActive, testDeactivatedProjectActive),
+			createAttributeValueResource(testDeactivatedProjectAlphaActive, testDeactivatedProjectAlphaActive),
 		})
 		s.Require().NoError(err)
 		s.True(decision.AllPermitted)
@@ -381,21 +382,21 @@ func (s *PDPTestSuite) Test_GetDecision_DeactivatedDefinition() {
 		subjectMappings := []*policy.SubjectMapping{
 			createSimpleSubjectMapping(testDeactivatedArchivedValue, "value1",
 				[]*policy.Action{testActionRead}, ".properties.archived[]", []string{"value1"}, nil),
-			createSimpleSubjectMapping(testDeactivatedProjectActive, "active",
-				[]*policy.Action{testActionRead}, ".properties.project[]", []string{"active"}, nil),
+			createSimpleSubjectMapping(testDeactivatedProjectAlphaActive, "alpha",
+				[]*policy.Action{testActionRead}, ".properties.project[]", []string{"alpha"}, nil),
 		}
 		pdp, err := NewPolicyDecisionPoint(ctx, s.logger, allAttrs, subjectMappings, nil, false, false)
 		s.Require().NoError(err)
 
 		entity := s.createEntityWithProps("entity-archived-entitlements", map[string]interface{}{
 			"archived": []interface{}{"value1"},
-			"project":  []interface{}{"active"},
+			"project":  []interface{}{"alpha"},
 		})
 
 		entitlements, err := pdp.GetEntitlements(ctx, []*entityresolutionV2.EntityRepresentation{entity}, nil, false)
 		s.Require().NoError(err)
 		s.Require().Len(entitlements, 1)
-		s.Contains(entitlements[0].GetActionsPerAttributeValueFqn(), testDeactivatedProjectActive)
+		s.Contains(entitlements[0].GetActionsPerAttributeValueFqn(), testDeactivatedProjectAlphaActive)
 		s.NotContains(entitlements[0].GetActionsPerAttributeValueFqn(), testDeactivatedArchivedValue)
 	})
 }
@@ -434,22 +435,22 @@ func (s *PDPTestSuite) Test_GetEntitlements_DeactivatedValue() {
 
 	attr := deactivationProjectAttr()
 	subjectMappings := []*policy.SubjectMapping{
-		createSimpleSubjectMapping(testDeactivatedProjectActive, "active",
-			[]*policy.Action{testActionRead}, ".properties.project[]", []string{"active"}, nil),
-		createSimpleSubjectMapping(testDeactivatedProjectInactive, "inactive",
-			[]*policy.Action{testActionRead}, ".properties.project[]", []string{"inactive"}, nil),
+		createSimpleSubjectMapping(testDeactivatedProjectAlphaActive, "alpha",
+			[]*policy.Action{testActionRead}, ".properties.project[]", []string{"alpha"}, nil),
+		createSimpleSubjectMapping(testDeactivatedProjectBetaInactive, "beta",
+			[]*policy.Action{testActionRead}, ".properties.project[]", []string{"beta"}, nil),
 	}
 
 	pdp, err := NewPolicyDecisionPoint(ctx, s.logger, []*policy.Attribute{attr}, subjectMappings, nil, false, false)
 	s.Require().NoError(err)
 
 	entity := s.createEntityWithProps("entity-both-projects", map[string]interface{}{
-		"project": []interface{}{"active", "inactive"},
+		"project": []interface{}{"alpha", "beta"},
 	})
 
 	entitlements, err := pdp.GetEntitlements(ctx, []*entityresolutionV2.EntityRepresentation{entity}, nil, false)
 	s.Require().NoError(err)
 	s.Require().Len(entitlements, 1)
-	s.Contains(entitlements[0].GetActionsPerAttributeValueFqn(), testDeactivatedProjectActive)
-	s.NotContains(entitlements[0].GetActionsPerAttributeValueFqn(), testDeactivatedProjectInactive)
+	s.Contains(entitlements[0].GetActionsPerAttributeValueFqn(), testDeactivatedProjectAlphaActive)
+	s.NotContains(entitlements[0].GetActionsPerAttributeValueFqn(), testDeactivatedProjectBetaInactive)
 }

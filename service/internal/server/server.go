@@ -542,18 +542,17 @@ func (s OpenTDFServer) Stop() {
 }
 
 func (s OpenTDFServer) registerReflectionHandlers() {
+	if !s.reflectionEnabled {
+		return
+	}
+
 	// Add reflection api to connect-rpc
 	reflector := grpcreflect.NewStaticReflector(
 		s.ConnectRPC.ServiceReflection...,
 	)
 
-	if s.reflectionEnabled {
-		s.ConnectRPC.Mux.Handle(grpcreflect.NewHandlerV1(reflector))
-		s.ConnectRPC.Mux.Handle(grpcreflect.NewHandlerV1Alpha(reflector))
-	}
-
-	s.ConnectRPCInProcess.Mux.Handle(grpcreflect.NewHandlerV1(reflector))
-	s.ConnectRPCInProcess.Mux.Handle(grpcreflect.NewHandlerV1Alpha(reflector))
+	s.ConnectRPC.Mux.Handle(grpcreflect.NewHandlerV1(reflector))
+	s.ConnectRPC.Mux.Handle(grpcreflect.NewHandlerV1Alpha(reflector))
 }
 
 func (s inProcessServer) Conn() *sdk.ConnectRPCConnection {

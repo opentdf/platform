@@ -87,12 +87,12 @@ func Test_OpenTDFServer_RegisterReflectionHandlers(t *testing.T) {
 		expectExternalRegistration bool
 	}{
 		{
-			name:                       "Enabled_RegistersExternalAndInProcessHandlers",
+			name:                       "Enabled_RegistersOnlyExternalHandlers",
 			reflectionEnabled:          true,
 			expectExternalRegistration: true,
 		},
 		{
-			name:                       "Disabled_RegistersOnlyInProcessHandlers",
+			name:                       "Disabled_RegistersNoReflectionHandlers",
 			reflectionEnabled:          false,
 			expectExternalRegistration: false,
 		},
@@ -123,7 +123,7 @@ func Test_OpenTDFServer_RegisterReflectionHandlers(t *testing.T) {
 
 				inProcessRequest := httptest.NewRequest(http.MethodPost, path, nil)
 				_, inProcessPattern := server.ConnectRPCInProcess.Mux.Handler(inProcessRequest)
-				assert.NotEmpty(t, inProcessPattern)
+				assert.Empty(t, inProcessPattern)
 			}
 		})
 	}

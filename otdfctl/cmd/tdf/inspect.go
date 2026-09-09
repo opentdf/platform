@@ -106,6 +106,7 @@ func inspectRun(cmd *cobra.Command, args []string) {
 
 func InitInspectCommand() {
 	inspectDoc.GroupID = TDF
+	inspectDoc.Args = cobra.MaximumNArgs(1)
 
 	inspectDoc.PreRun = func(cmd *cobra.Command, args []string) {
 		// Set the json flag to true since we only support json output

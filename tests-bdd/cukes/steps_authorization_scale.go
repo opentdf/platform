@@ -38,6 +38,7 @@ type authorizationPerformanceResult struct {
 	Maximum     time.Duration `json:"maximum_ns"`
 	Timeout     time.Duration `json:"timeout_ns"`
 	Failures    int           `json:"failures"`
+	FirstError  string        `json:"first_error,omitempty"`
 }
 
 func parseAuthorizationScaleCases(table *godog.Table) ([]authorizationScaleCase, error) {
@@ -203,6 +204,7 @@ func runAuthorizationScaleCase(ctx context.Context, scenario *PlatformScenarioCo
 	for _, err := range requestErrors {
 		if err != nil {
 			failure = err
+			result.FirstError = err.Error()
 			break
 		}
 	}

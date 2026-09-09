@@ -11,8 +11,6 @@ Feature: Multi-strategy chains hold one entity per category under continue
   from "client_environment" plus one subject entity from "claims_identity" — "ldap_department"
   is skipped. Authorization discards environment entities, so only the subject's claims count.
 
-  This covers Jake's gap analysis row #4.
-
   Background:
     Given an LDAP directory with test users
     And a user exists with username "alice" and email "alice@opentdf.test" and the following attributes:

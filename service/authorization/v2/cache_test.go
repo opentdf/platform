@@ -1,142 +1,147 @@
 package authorization
 
 import (
+	"context"
+	"errors"
+	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
 	"github.com/opentdf/platform/protocol/go/policy"
+	"github.com/opentdf/platform/service/internal/access/v2"
 	"github.com/opentdf/platform/service/logger"
-	"github.com/opentdf/platform/service/pkg/cache"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-var (
-	mockCacheExpiry = 5 * time.Minute
-	l               = logger.CreateTestLogger()
-)
-
-func Test_NewEntitlementPolicyCache(t *testing.T) {
-	ctx := t.Context()
-	refreshInterval := 10 * time.Second
-	mockCache, _ := cache.TestCacheClient(mockCacheExpiry)
-
-	c, err := NewEntitlementPolicyCache(ctx, l, nil, mockCache, refreshInterval, false)
-	require.NoError(t, err)
-	assert.NotNil(t, c)
-	assert.Equal(t, refreshInterval, c.configuredRefreshInterval)
-	assert.False(t, c.isCacheFilled)
+type snapshotRetriever struct {
+	EntitlementPolicy
+	attributes atomic.Int32
+	mappings   atomic.Int32
+	resources  atomic.Int32
+	dynamic    atomic.Int32
+	fail       atomic.Bool
 }
 
-func Test_EntitlementPolicyCache_RefreshInterval(t *testing.T) {
-	var refreshInterval time.Duration
-	ctx := t.Context()
-	mockCache, _ := cache.TestCacheClient(mockCacheExpiry)
+func (s *snapshotRetriever) ListAllAttributes(ctx context.Context) ([]*policy.Attribute, error) {
+	s.attributes.Add(1)
+	return s.EntitlementPolicy.ListAllAttributes(ctx)
+}
 
-	_, err := NewEntitlementPolicyCache(ctx, l, nil, mockCache, refreshInterval, false)
+func (s *snapshotRetriever) ListAllSubjectMappings(ctx context.Context) ([]*policy.SubjectMapping, error) {
+	s.mappings.Add(1)
+	return s.EntitlementPolicy.ListAllSubjectMappings(ctx)
+}
+
+func (s *snapshotRetriever) ListAllDynamicValueMappings(ctx context.Context) ([]*policy.DynamicValueMapping, error) {
+	s.dynamic.Add(1)
+	return s.EntitlementPolicy.ListAllDynamicValueMappings(ctx)
+}
+
+func (s *snapshotRetriever) ListAllRegisteredResources(ctx context.Context) ([]*policy.RegisteredResource, error) {
+	s.resources.Add(1)
+	if s.fail.Load() {
+		return nil, errors.New("policy unavailable")
+	}
+	return s.EntitlementPolicy.ListAllRegisteredResources(ctx)
+}
+
+func testSnapshotCache(t *testing.T, retriever access.EntitlementPolicyStore, options access.PolicyOptions) *EntitlementPolicyCache {
+	t.Helper()
+	c, err := NewEntitlementPolicyCache(t.Context(), logger.CreateTestLogger(), retriever, time.Hour, options)
+	require.NoError(t, err)
+	t.Cleanup(c.Stop)
+	return c
+}
+
+func TestPolicyCacheColdRequestsShareOneSnapshot(t *testing.T) {
+	source := &snapshotRetriever{}
+	c := testSnapshotCache(t, source, access.PolicyOptions{})
+	const concurrency = 32
+	ready := make(chan bool, concurrency)
+	var workers sync.WaitGroup
+	for range concurrency {
+		workers.Go(func() { ready <- c.IsReady(t.Context()) })
+	}
+	workers.Wait()
+	close(ready)
+	for ok := range ready {
+		require.True(t, ok)
+	}
+	require.EqualValues(t, 1, source.resources.Load())
+	require.Zero(t, source.attributes.Load())
+	require.Zero(t, source.mappings.Load())
+	require.Zero(t, source.dynamic.Load())
+	first, err := c.PreparedPolicy(t.Context())
+	require.NoError(t, err)
+	second, err := c.PreparedPolicy(t.Context())
+	require.NoError(t, err)
+	require.Same(t, first, second)
+}
+
+func TestPolicyCacheFailedRefreshRetainsCompleteSnapshot(t *testing.T) {
+	source := &snapshotRetriever{EntitlementPolicy: EntitlementPolicy{
+		RegisteredResources: []*policy.RegisteredResource{{Name: "first", Values: []*policy.RegisteredResourceValue{{Value: "value"}}}},
+	}}
+	c := testSnapshotCache(t, source, access.PolicyOptions{})
+	require.True(t, c.IsReady(t.Context()))
+	first, err := c.PreparedPolicy(t.Context())
+	require.NoError(t, err)
+	source.RegisteredResources = []*policy.RegisteredResource{{Name: "second", Values: []*policy.RegisteredResourceValue{{Value: "value"}}}}
+	source.fail.Store(true)
+	require.Error(t, c.Refresh(t.Context()))
+	retained, err := c.PreparedPolicy(t.Context())
+	require.NoError(t, err)
+	require.Same(t, first, retained)
+	resources, err := c.ListAllRegisteredResources(t.Context())
+	require.NoError(t, err)
+	require.Equal(t, "first", resources[0].GetName())
+	source.fail.Store(false)
+	require.NoError(t, c.Refresh(t.Context()))
+	replacement, err := c.PreparedPolicy(t.Context())
+	require.NoError(t, err)
+	require.NotSame(t, first, replacement)
+	resources, err = c.ListAllRegisteredResources(t.Context())
+	require.NoError(t, err)
+	require.Equal(t, "second", resources[0].GetName())
+}
+
+func TestPolicyCacheFeatureSpecificLoads(t *testing.T) {
+	for _, options := range []access.PolicyOptions{
+		{AllowDirectEntitlements: true}, {AllowDynamicValueMappings: true},
+	} {
+		t.Run(fmtPolicyOptions(options), func(t *testing.T) {
+			source := &snapshotRetriever{EntitlementPolicy: EntitlementPolicy{Attributes: []*policy.Attribute{}, SubjectMappings: []*policy.SubjectMapping{}}}
+			c := testSnapshotCache(t, source, options)
+			require.True(t, c.IsReady(t.Context()))
+			require.EqualValues(t, 1, source.attributes.Load())
+			require.EqualValues(t, 1, source.mappings.Load())
+			if options.AllowDynamicValueMappings {
+				require.EqualValues(t, 1, source.dynamic.Load())
+			} else {
+				require.Zero(t, source.dynamic.Load())
+			}
+		})
+	}
+}
+
+func fmtPolicyOptions(options access.PolicyOptions) string {
+	if options.AllowDirectEntitlements {
+		return "direct"
+	}
+	return "dynamic"
+}
+
+func TestPolicyCacheDisabledAndUnavailable(t *testing.T) {
+	var absent *EntitlementPolicyCache
+	require.False(t, absent.IsEnabled())
+	require.False(t, absent.IsReady(t.Context()))
+	c := testSnapshotCache(t, nil, access.PolicyOptions{})
+	require.True(t, c.IsEnabled())
+	require.False(t, c.IsReady(t.Context()))
+	require.Error(t, c.Refresh(t.Context()))
+	_, err := c.PreparedPolicy(t.Context())
+	require.ErrorIs(t, err, ErrFailedToRefreshCache)
+	_, err = NewEntitlementPolicyCache(t.Context(), nil, nil, 0, access.PolicyOptions{})
 	require.ErrorIs(t, err, ErrCacheDisabled)
-
-	refreshInterval = 10 * time.Second
-	c, err := NewEntitlementPolicyCache(ctx, l, nil, mockCache, refreshInterval, false)
-	require.NoError(t, err)
-	assert.NotNil(t, c)
-}
-
-func Test_EntitlementPolicyCache_Enabled(t *testing.T) {
-	var (
-		c               *EntitlementPolicyCache
-		err             error
-		ctx             = t.Context()
-		refreshInterval = 10 * time.Second
-		mockCache, _    = cache.TestCacheClient(mockCacheExpiry)
-	)
-	assert.False(t, c.IsEnabled())
-	assert.False(t, c.IsReady(ctx))
-
-	c, err = NewEntitlementPolicyCache(ctx, l, nil, mockCache, refreshInterval, false)
-	require.NoError(t, err)
-	assert.NotNil(t, c)
-	assert.True(t, c.IsEnabled())
-	// Retriever is nil, so cache is not ready
-	assert.False(t, c.IsReady(ctx))
-}
-
-func Test_EntitlementPolicyCache_CacheMiss(t *testing.T) {
-	ctx := t.Context()
-	mockCache, _ := cache.TestCacheClient(mockCacheExpiry)
-
-	c, err := NewEntitlementPolicyCache(ctx, l, nil, mockCache, 1*time.Hour, false)
-	require.NoError(t, err)
-
-	// No errors, but empty lists on cache misses
-	attrs, err := c.ListAllAttributes(ctx)
-	require.NoError(t, err)
-	assert.Empty(t, attrs)
-
-	subjectMappings, err := c.ListAllSubjectMappings(ctx)
-	require.NoError(t, err)
-	assert.Empty(t, subjectMappings)
-
-	registeredResources, err := c.ListAllRegisteredResources(ctx)
-	require.NoError(t, err)
-	assert.Empty(t, registeredResources)
-}
-
-func Test_EntitlementPolicyCache_CacheHits(t *testing.T) {
-	ctx := t.Context()
-	mockCache, _ := cache.TestCacheClient(mockCacheExpiry)
-
-	attrsList := []*policy.Attribute{{Name: "attr1"}}
-	subjMappingsList := []*policy.SubjectMapping{{Id: "id-123"}}
-	resourcesList := []*policy.RegisteredResource{{Name: "res1"}}
-	_ = mockCache.Set(ctx, attributesCacheKey, attrsList, nil)
-	_ = mockCache.Set(ctx, subjectMappingsCacheKey, subjMappingsList, nil)
-	_ = mockCache.Set(ctx, registeredResourcesCacheKey, resourcesList, nil)
-
-	c, err := NewEntitlementPolicyCache(ctx, l, nil, mockCache, 1*time.Hour, false)
-	require.NoError(t, err)
-
-	// Allow for some concurrency overhead in cache library to prevent flakiness in tests
-	time.Sleep(10 * time.Millisecond)
-
-	attrs, err := c.ListAllAttributes(ctx)
-	require.NoError(t, err)
-	assert.Len(t, attrs, 1)
-	assert.Equal(t, "attr1", attrs[0].GetName())
-
-	subjectMappings, err := c.ListAllSubjectMappings(ctx)
-	require.NoError(t, err)
-	assert.Len(t, subjectMappings, 1)
-	assert.Equal(t, "id-123", subjectMappings[0].GetId())
-
-	registeredResources, err := c.ListAllRegisteredResources(ctx)
-	require.NoError(t, err)
-	assert.Len(t, registeredResources, 1)
-	assert.Equal(t, "res1", registeredResources[0].GetName())
-}
-
-func Test_EntitlementPolicyCache_DynamicValueMappings(t *testing.T) {
-	ctx := t.Context()
-	mockCache, _ := cache.TestCacheClient(mockCacheExpiry)
-
-	c, err := NewEntitlementPolicyCache(ctx, l, nil, mockCache, 1*time.Hour, true)
-	require.NoError(t, err)
-	assert.True(t, c.allowDynamicValueMappings)
-
-	// Cache miss: empty result, no error
-	mappings, err := c.ListAllDynamicValueMappings(ctx)
-	require.NoError(t, err)
-	assert.Empty(t, mappings)
-
-	// Cache hit: returns what was set
-	dvmList := []*policy.DynamicValueMapping{{Id: "dvm-1"}}
-	_ = mockCache.Set(ctx, dynamicValueMappingsCacheKey, dvmList, nil)
-
-	// Allow for some concurrency overhead in cache library to prevent flakiness in tests
-	time.Sleep(10 * time.Millisecond)
-
-	mappings, err = c.ListAllDynamicValueMappings(ctx)
-	require.NoError(t, err)
-	assert.Len(t, mappings, 1)
-	assert.Equal(t, "dvm-1", mappings[0].GetId())
 }

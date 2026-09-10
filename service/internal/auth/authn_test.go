@@ -1012,6 +1012,10 @@ func (s *AuthSuite) Test_MuxHandler_AuthenticationFailure_DoesNotLogDPoPProof() 
 	s.Equal(http.StatusUnauthorized, rec.Code)
 	s.Contains(logs.String(), `"level":"WARN"`)
 	s.Contains(logs.String(), "incorrect `htu` claim in DPoP JWT")
+	s.Contains(logs.String(), `"request_method":"POST"`)
+	s.Contains(logs.String(), `"dpop_proof_count":1`)
+	s.Contains(logs.String(), `"dpop_nonce_required":false`)
+	s.Contains(logs.String(), `"dpop_strict_htu":false`)
 	s.NotContains(logs.String(), "reusable-proof")
 }
 

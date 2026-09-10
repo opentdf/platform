@@ -56,6 +56,11 @@ services:
   #     enabled: false
   #     refresh_interval: 30s
 server:
+{{- if .httpWriteTimeout }}
+  # BDD-specific: allow the scale test's client deadline to control slow requests.
+  http:
+    writeTimeout: {{ .httpWriteTimeout }}
+{{- end }}
   public_hostname: {{ .hostname }}
   tls:
     enabled: false

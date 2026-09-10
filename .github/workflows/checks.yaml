@@ -527,12 +527,22 @@ jobs:
           go-version-file: go.work
           cache: false
 
+      - name: Test authorization summary renderer
+        run: python3 -m unittest discover -s .github/scripts -p 'test_summarize_authz_performance.py'
+
       - name: Build local platform-cukes image for testing
         run: docker build -t platform-cukes .
 
       - name: Run BDD Tests
+        id: bdd
+        shell: bash
         run: |
-          CUKES_LOG_HANDLER=console go test ./tests-bdd -v --tags=cukes --godog.random --godog.format="cucumber:$(pwd)/cukes_platform_report.json,pretty:$(pwd)/cukes_platform_report.log,pretty" ./features
+          CUKES_LOG_HANDLER=console go test ./tests-bdd -v -timeout=20m --tags=cukes --godog.random --godog.format="cucumber:$(pwd)/cukes_platform_report.json,pretty:$(pwd)/cukes_platform_report.log,pretty" ./features 2>&1 | tee cukes_test_output.log
+
+      - name: Summarize authorization performance
+        if: ${{ !cancelled() }}
+        run: |
+          python3 .github/scripts/summarize-authz-performance.py cukes_test_output.log --bdd-outcome "${{ steps.bdd.outcome || 'skipped' }}" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Check for undefined steps
         run: |
@@ -557,6 +567,7 @@ jobs:
           path: |
             cukes_platform_report.json
             cukes_platform_report.log
+            cukes_test_output.log
           retention-days: 1
 
   # test otdfctl CLI e2e against platform PR branch

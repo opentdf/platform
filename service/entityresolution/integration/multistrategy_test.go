@@ -445,13 +445,13 @@ func TestMultiStrategyEntityResolutionV2(t *testing.T) {
 		Expected: internal.ContractExpected{
 			ChainValidation: []internal.EntityChainValidationRule{
 				{
-					EphemeralID:      "test-token-1",
-					EntityCount:      3,
-					EntityTypes:      []string{"claims", "claims", "claims"},
-					EntityCategories: []string{"CATEGORY_SUBJECT", "CATEGORY_SUBJECT", "CATEGORY_SUBJECT"},
+					EphemeralID: "test-token-1",
+					// All three configured strategies are entity_type: subject and all match this
+					// token. Only the first contributes: a chain carries one subject entity.
+					EntityCount:      1,
+					EntityTypes:      []string{"claims"},
+					EntityCategories: []string{"CATEGORY_SUBJECT"},
 					EntityRequiredFields: []map[string]interface{}{
-						{"username": "user123", "email": "user@example.com"},
-						{"client_id": "external-client"},
 						{"username": "user123", "email": "user@example.com"},
 					},
 					RequireConsistentOrdering: true,

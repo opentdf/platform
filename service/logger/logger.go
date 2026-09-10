@@ -25,6 +25,7 @@ import (
 	"io"
 	"log/slog"
 	"os"
+	"time"
 
 	"github.com/opentdf/platform/service/logger/audit"
 )
@@ -41,6 +42,10 @@ type Config struct {
 	// TraceCorrelation adds the active trace and span IDs to log and audit
 	// records. No-op unless tracing is enabled via `server.trace`. Nil means enabled.
 	TraceCorrelation *bool `mapstructure:"trace_correlation" json:"trace_correlation" default:"true"`
+	// AuditTimeout is the audit processing budget. Non-positive values use five seconds.
+	AuditTimeout time.Duration `mapstructure:"audit_timeout" json:"audit_timeout" yaml:"audit_timeout" default:"5s"`
+	// AuditProcessor overrides audit delivery for Go callers and is never serialized.
+	AuditProcessor audit.Processor `mapstructure:"-" json:"-" yaml:"-"`
 }
 
 func (c Config) traceCorrelationEnabled() bool {
@@ -92,7 +97,11 @@ func NewLogger(config Config) (*Logger, error) {
 	// Audit events skip requestContextAttrs on purpose: the request metadata it
 	// adds is already inside the audit payload. They still need trace correlation.
 	auditLoggerBase := slog.New(newContextAttrsHandler(auditLoggerHandler, contextAttrSources(config)...))
-	auditLogger := audit.CreateAuditLogger(*auditLoggerBase)
+	auditOptions := []audit.Option{audit.WithRecordTimeout(config.AuditTimeout)}
+	if config.AuditProcessor != nil {
+		auditOptions = append(auditOptions, audit.WithProcessor(config.AuditProcessor))
+	}
+	auditLogger := audit.CreateAuditLogger(*auditLoggerBase, auditOptions...)
 
 	logger.Logger = sLogger
 	logger.Audit = auditLogger

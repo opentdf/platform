@@ -1039,7 +1039,7 @@ func (s *AuthSuite) Test_ConnectAuthNInterceptor_DPoPNonceError_IssuesUseNonceCh
 	s.NotEmpty(connectErr.Meta().Get("DPoP-Nonce"))
 }
 
-func (s *AuthSuite) Test_CheckToken_When_Authorization_Header_Invalid_Expect_Error() {
+func (s *AuthSuite) Test_CheckToken_When_Authorization_Header_Invalid_Does_Not_Log_Credential() {
 	for _, tc := range []struct {
 		name       string
 		authHeader string

@@ -1044,8 +1044,10 @@ func (s *AuthSuite) Test_CheckToken_When_Authorization_Header_Invalid_Expect_Err
 		name       string
 		authHeader string
 	}{
-		{name: "mixed-case scheme", authHeader: "bearer reusable-credential"},
-		{name: "missing scheme separator", authHeader: "Bearerreusable-credential"},
+		{name: "mixed-case bearer scheme", authHeader: "bearer reusable-credential"},
+		{name: "bearer missing scheme separator", authHeader: "Bearerreusable-credential"},
+		{name: "mixed-case dpop scheme", authHeader: "dpop reusable-credential"},
+		{name: "dpop missing scheme separator", authHeader: "DPoPreusable-credential"},
 	} {
 		s.Run(tc.name, func() {
 			var logs bytes.Buffer

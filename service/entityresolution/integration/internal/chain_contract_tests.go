@@ -18,6 +18,11 @@ const (
 	expectedChainEntityCount = 2
 )
 
+// expectedChainCategories is the chain shape both implementations must produce per token.
+func expectedChainCategories() []string {
+	return []string{"CATEGORY_ENVIRONMENT", "CATEGORY_SUBJECT"}
+}
+
 // ChainContractTestSuite holds implementation-agnostic multi-entity chain validation tests
 type ChainContractTestSuite struct {
 	TestCases []ContractTestCase
@@ -44,10 +49,10 @@ func NewChainContractTestSuite() *ChainContractTestSuite {
 					ChainValidation: []EntityChainValidationRule{
 						{
 							EphemeralID:               "chain-token-1",
-							EntityCount:               expectedChainEntityCount,                             // Both Keycloak and Multi-Strategy create 2 entities per token
-							EntityTypes:               []string{},                                           // Implementation-agnostic: don't specify entity types
-							EntityCategories:          []string{"CATEGORY_ENVIRONMENT", "CATEGORY_SUBJECT"}, // Both must create these categories
-							RequireConsistentOrdering: false,                                                // Allow flexible ordering between implementations
+							EntityCount:               expectedChainEntityCount,  // Both Keycloak and Multi-Strategy create 2 entities per token
+							EntityTypes:               []string{},                // Implementation-agnostic: don't specify entity types
+							EntityCategories:          expectedChainCategories(), // Both must create these categories
+							RequireConsistentOrdering: false,                     // Allow flexible ordering between implementations
 						},
 					},
 				},
@@ -72,14 +77,14 @@ func NewChainContractTestSuite() *ChainContractTestSuite {
 							EphemeralID:               "chain-token-1",
 							EntityCount:               expectedChainEntityCount, // Both implementations create 2 entities per token
 							EntityTypes:               []string{},               // Implementation-agnostic
-							EntityCategories:          []string{"CATEGORY_ENVIRONMENT", "CATEGORY_SUBJECT"},
+							EntityCategories:          expectedChainCategories(),
 							RequireConsistentOrdering: false,
 						},
 						{
 							EphemeralID:               "chain-token-2",
 							EntityCount:               expectedChainEntityCount, // Consistent behavior across tokens
 							EntityTypes:               []string{},               // Implementation-agnostic
-							EntityCategories:          []string{"CATEGORY_ENVIRONMENT", "CATEGORY_SUBJECT"},
+							EntityCategories:          expectedChainCategories(),
 							RequireConsistentOrdering: false,
 						},
 					},
@@ -102,10 +107,10 @@ func NewChainContractTestSuite() *ChainContractTestSuite {
 					ChainValidation: []EntityChainValidationRule{
 						{
 							EphemeralID:               "category-test-token",
-							EntityCount:               expectedChainEntityCount,                             // Both implementations create multiple entities
-							EntityTypes:               []string{},                                           // Implementation-agnostic: entity types vary by implementation
-							EntityCategories:          []string{"CATEGORY_ENVIRONMENT", "CATEGORY_SUBJECT"}, // Contract: both categories must exist
-							RequireConsistentOrdering: false,                                                // Allow implementation flexibility
+							EntityCount:               expectedChainEntityCount,  // Both implementations create multiple entities
+							EntityTypes:               []string{},                // Implementation-agnostic: entity types vary by implementation
+							EntityCategories:          expectedChainCategories(), // Contract: both categories must exist
+							RequireConsistentOrdering: false,                     // Allow implementation flexibility
 						},
 					},
 				},
@@ -129,7 +134,7 @@ func NewChainContractTestSuite() *ChainContractTestSuite {
 							EphemeralID:               "consistency-token",
 							EntityCount:               expectedChainEntityCount, // Consistent entity count across implementations
 							EntityTypes:               []string{},               // Implementation-specific entity types allowed
-							EntityCategories:          []string{"CATEGORY_ENVIRONMENT", "CATEGORY_SUBJECT"},
+							EntityCategories:          expectedChainCategories(),
 							RequireConsistentOrdering: false, // Behavioral contract, not implementation details
 						},
 					},

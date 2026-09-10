@@ -44,15 +44,26 @@ func (f ProcessorFunc) Process(ctx context.Context, event Event) error {
 // context detached from request cancellation. Callers must not mutate reference
 // data in event until Record returns.
 func (a *Logger) Record(ctx context.Context, event Event) error {
+	recordCtx, cancel := a.recordContext(ctx)
+	defer cancel()
+
+	return a.record(recordCtx, event, false)
+}
+
+func (a *Logger) recordContext(ctx context.Context) (context.Context, context.CancelFunc) {
+	return context.WithTimeout(context.WithoutCancel(ctx), a.RecordTimeout())
+}
+
+func (a *Logger) record(ctx context.Context, event Event, preserveTimestamp bool) error {
+	timestamp := event.Timestamp
 	a.stampEvent(ctx, &event)
+	if preserveTimestamp && timestamp != "" {
+		event.Timestamp = timestamp
+	}
 	if err := validateEvent(event); err != nil {
 		return err
 	}
-
-	recordCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), a.RecordTimeout())
-	defer cancel()
-
-	return a.process(recordCtx, event)
+	return a.process(ctx, event)
 }
 
 func (a *Logger) stampEvent(ctx context.Context, event *Event) {

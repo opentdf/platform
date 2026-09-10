@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"connectrpc.com/connect"
 	"github.com/google/uuid"
 	"github.com/lestrrat-go/jwx/v2/jwt"
 	"github.com/opentdf/platform/protocol/go/authorization"
@@ -60,6 +61,130 @@ func createTestLogger() (*Logger, *bytes.Buffer) {
 	return &Logger{
 		logger: logger,
 	}, &buf
+}
+
+func TestTransactionCloseProcessesBufferedEventAfterCancellation(t *testing.T) {
+	ctx, cancel := context.WithCancel(createTestContext(t))
+	logger, _ := createTestLogger()
+	var processed Event
+	logger.processor = ProcessorFunc(func(ctx context.Context, event Event) error {
+		require.NoError(t, ctx.Err())
+		_, hasDeadline := ctx.Deadline()
+		require.True(t, hasDeadline)
+		processed = event
+		return nil
+	})
+
+	logger.PolicyCRUDSuccess(ctx, policyCRUDParams)
+	cancel()
+	requireAuditTransaction(ctx, t).logClose(ctx, logger, true, nil)
+
+	assert.Equal(t, VerbPolicyCRUD, processed.Verb)
+	assert.Equal(t, ActionResultSuccess, processed.Action.Result)
+	assert.Equal(t, TestRequestID, processed.RequestID)
+}
+
+func TestTransactionCloseUsesOneDeadlineAndPreservesEventTimestamp(t *testing.T) {
+	const timeout = 30 * time.Second
+	ctx := createTestContext(t)
+	logger := CreateAuditLogger(*slog.Default(), WithRecordTimeout(timeout))
+	timestamp := time.Date(2026, time.August, 25, 12, 0, 0, 0, time.UTC).Format(time.RFC3339)
+	deadlines := make([]time.Time, 0, 2)
+	timestamps := make([]string, 0, 2)
+	logger.processor = ProcessorFunc(func(ctx context.Context, event Event) error {
+		deadline, ok := ctx.Deadline()
+		require.True(t, ok)
+		deadlines = append(deadlines, deadline)
+		timestamps = append(timestamps, event.Timestamp)
+		return nil
+	})
+
+	for range 2 {
+		event := canonicalTestEvent()
+		event.Timestamp = timestamp
+		LogAuditEvent(ctx, VerbPolicyCRUD, &event)
+	}
+	before := time.Now()
+	requireAuditTransaction(ctx, t).logClose(ctx, logger, true, nil)
+
+	require.Len(t, deadlines, 2)
+	assert.Equal(t, deadlines[0], deadlines[1])
+	assert.False(t, deadlines[0].Before(before.Add(timeout)))
+	assert.False(t, deadlines[0].After(time.Now().Add(timeout)))
+	assert.Equal(t, []string{timestamp, timestamp}, timestamps)
+}
+
+func TestBufferedEventsPreserveProducerContext(t *testing.T) {
+	type resourceContextKey struct{}
+	requestErr := errors.New("request failed")
+	tests := []struct {
+		name       string
+		requestErr error
+		panics     bool
+	}{
+		{name: "success"},
+		{name: "returned error", requestErr: requestErr},
+		{name: "panic", panics: true},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			logger, _ := createTestLogger()
+			var resources []any
+			var deadlines []time.Time
+			logger.processor = ProcessorFunc(func(ctx context.Context, _ Event) error {
+				require.NoError(t, ctx.Err())
+				require.NoError(t, context.Cause(ctx))
+				deadline, ok := ctx.Deadline()
+				require.True(t, ok)
+				deadlines = append(deadlines, deadline)
+				resources = append(resources, ctx.Value(resourceContextKey{}))
+				return nil
+			})
+			next := ContextServerInterceptor(logger)(func(ctx context.Context, _ connect.AnyRequest) (connect.AnyResponse, error) {
+				for _, resource := range []string{"resource-A", "resource-B"} {
+					producerCtx, cancel := context.WithCancel(context.WithValue(ctx, resourceContextKey{}, resource))
+					logger.PolicyCRUDSuccess(producerCtx, policyCRUDParams)
+					cancel()
+				}
+				if test.panics {
+					panic("handler panic")
+				}
+				return nil, test.requestErr
+			})
+			ctx, cancel := context.WithCancel(t.Context())
+			cancel()
+			if test.panics {
+				require.PanicsWithValue(t, "handler panic", func() {
+					_, _ = next(ctx, connect.NewRequest(&struct{}{}))
+				})
+			} else {
+				_, err := next(ctx, connect.NewRequest(&struct{}{}))
+				require.ErrorIs(t, err, test.requestErr)
+			}
+			require.Equal(t, []any{"resource-A", "resource-B"}, resources)
+			require.Len(t, deadlines, 2)
+			assert.Equal(t, deadlines[0], deadlines[1])
+		})
+	}
+}
+
+func TestTransactionCloseReportsProcessorFailure(t *testing.T) {
+	ctx := createTestContext(t)
+	logger, auditOutput := createTestLogger()
+	var errorOutput bytes.Buffer
+	logger.errorLogger = slog.New(slog.NewJSONHandler(&errorOutput, nil))
+	logger.processor = ProcessorFunc(func(context.Context, Event) error {
+		return errors.New("processor unavailable")
+	})
+
+	logger.PolicyCRUDSuccess(ctx, policyCRUDParams)
+	requireAuditTransaction(ctx, t).logClose(ctx, logger, true, nil)
+
+	assert.Empty(t, auditOutput.String())
+	var logged map[string]any
+	require.NoError(t, json.Unmarshal(errorOutput.Bytes(), &logged))
+	assert.Equal(t, "failed to record audit event", logged["msg"])
+	assert.Contains(t, logged["error"], "processor unavailable")
 }
 
 type logEntryStructure struct {

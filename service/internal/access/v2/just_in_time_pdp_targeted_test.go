@@ -382,3 +382,13 @@ func TestJITPDP_GetDecision_TargetedDenyOnUnknownFQN(t *testing.T) {
 	require.NotNil(t, decision)
 	assert.False(t, decision.AllPermitted)
 }
+
+func TestMatchedSubjectMappingsDeduplicatesSelectorsAcrossRepresentations(t *testing.T) {
+	fake := &fakeSubjectMappingClient{resp: &subjectmapping.MatchSubjectMappingsResponse{}}
+	pdp := &JustInTimePDP{sdk: &otdfSDK.SDK{SubjectMapping: fake}}
+	_, err := pdp.getMatchedSubjectMappings(t.Context(), []*entityresolutionV2.EntityRepresentation{entityRepWithClientID("one"), entityRepWithClientID("two")})
+	require.NoError(t, err)
+	require.Len(t, fake.requests, 1)
+	require.Len(t, fake.requests[0].GetSubjectProperties(), 1)
+	require.Equal(t, ".clientId", fake.requests[0].GetSubjectProperties()[0].GetExternalSelectorValue())
+}

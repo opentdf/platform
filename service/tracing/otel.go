@@ -20,7 +20,11 @@ import (
 	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/sdk/resource"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
+<<<<<<< HEAD
 	semconv "go.opentelemetry.io/otel/semconv/v1.26.0"
+=======
+	semconv "go.opentelemetry.io/otel/semconv/v1.41.0"
+>>>>>>> 4a0c41c (fix(core): prevent OpenTelemetry resource schema conflicts (#3769))
 	"go.opentelemetry.io/otel/trace/noop"
 	"google.golang.org/grpc/metadata"
 	"gopkg.in/natefinch/lumberjack.v2"

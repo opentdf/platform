@@ -296,6 +296,18 @@ func (s *LocalPlatformStepDefinitions) aDefaultLocalPlatform(ctx context.Context
 	})
 }
 
+// aDefaultLocalPlatformWithTemplate provisions the demo policy of `a default local platform` on a
+// platform configured from a custom template, for scenarios that need both the demo attributes and
+// non-default service config.
+func (s *LocalPlatformStepDefinitions) aDefaultLocalPlatformWithTemplate(ctx context.Context, platformTemplate string) (context.Context, error) {
+	kt := template.Must(template.New("kc").Parse(keycloakBaseTemplate))
+	return s.commonLocalPlatform(ctx, &platformStartOptions{
+		platformProvisionPath:  &platformTemplate,
+		kcProvisionPath:        kt,
+		provisionDefaultPolicy: true,
+	})
+}
+
 func (s *LocalPlatformStepDefinitions) iUseThePlatformAs(ctx context.Context, role string) (context.Context, error) {
 	scenarioContext := GetPlatformScenarioContext(ctx)
 	clientIDByRole := map[string]string{
@@ -598,6 +610,7 @@ func RegisterLocalPlatformStepDefinitions(ctx *godog.ScenarioContext, x *Platfor
 	}
 	ctx.Step(`^an empty local platform$`, platformStepDefinitions.aEmptyLocalPlatform)
 	ctx.Step(`^a default local platform$`, platformStepDefinitions.aDefaultLocalPlatform)
+	ctx.Step(`^a default local platform with platform template "([^"]*)"$`, platformStepDefinitions.aDefaultLocalPlatformWithTemplate)
 	ctx.Step(`^I use the platform as "([^"]*)"$`, platformStepDefinitions.iUseThePlatformAs)
 	ctx.Step(`^a user exists with username "([^"]*)" and email "([^"]*)" and the following attributes:$`, platformStepDefinitions.aUser)
 	ctx.Step(`^a local platform with platform template "([^"]*)" and keycloak template "([^"]*)"$`, platformStepDefinitions.aLocalPlatformWithTemplates)

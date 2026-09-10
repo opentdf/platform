@@ -1040,16 +1040,19 @@ func (s *AuthSuite) Test_ConnectAuthNInterceptor_DPoPNonceError_IssuesUseNonceCh
 }
 
 func (s *AuthSuite) Test_CheckToken_When_Authorization_Header_Invalid_Expect_Error() {
-	for _, authHeader := range []string{
-		"bearer reusable-credential",
-		"BPOP reusable-credential",
+	for _, tc := range []struct {
+		name       string
+		authHeader string
+	}{
+		{name: "mixed-case scheme", authHeader: "bearer reusable-credential"},
+		{name: "missing scheme separator", authHeader: "Bearerreusable-credential"},
 	} {
-		s.Run(authHeader, func() {
+		s.Run(tc.name, func() {
 			var logs bytes.Buffer
 			auth := *s.auth
 			auth.logger = &logger.Logger{Logger: slog.New(slog.NewJSONHandler(&logs, nil))}
 
-			_, _, err := auth.checkToken(context.Background(), []string{authHeader}, receiverInfo{}, nil)
+			_, _, err := auth.checkToken(context.Background(), []string{tc.authHeader}, receiverInfo{}, nil)
 
 			s.Require().Error(err)
 			s.Equal("not of type bearer or dpop", err.Error())

@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.25.3](https://github.com/opentdf/platform/compare/service/v0.25.2...service/v0.25.3) (2026-09-10)
+
+
+### Bug Fixes
+
+* **authz:** deny decrypt deactivated attribute [backport to release/service/v0.25] ([#4032](https://github.com/opentdf/platform/issues/4032)) ([53b1dde](https://github.com/opentdf/platform/commit/53b1dde990cce753ead16b49203ed10f03b59122))
+* **core:** DSPX-4694 honor reflection configuration [backport to release/service/v0.25] ([#4025](https://github.com/opentdf/platform/issues/4025)) ([52df6b0](https://github.com/opentdf/platform/commit/52df6b07e255fb9a6a1960961356151a83a9f393))
+* **ers:** multi_strat first match wins per category + bdd tests [backport to release/service/v0.25] ([#4031](https://github.com/opentdf/platform/issues/4031)) ([bea3575](https://github.com/opentdf/platform/commit/bea35753cb6d8a3c72e9242e8884e4a974eda28f))
+
 ## [0.25.2](https://github.com/opentdf/platform/compare/service/v0.25.1...service/v0.25.2) (2026-09-03)
 
 

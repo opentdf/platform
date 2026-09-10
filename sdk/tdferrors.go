@@ -23,6 +23,15 @@ var (
 	ErrRootSignatureFailure    = fmt.Errorf("[%w] tdf: issue verifying root signature", ErrTampered)
 	ErrRewrapBadRequest        = fmt.Errorf("[%w] tdf: rewrap request 400", ErrTampered)
 
+	// ErrUnsupportedRootIntegrityAlgorithm rejects any root signature algorithm
+	// other than HS256, on both the write and the read path.
+	ErrUnsupportedRootIntegrityAlgorithm = errors.New("tdf: unsupported root integrity algorithm")
+
+	// ErrUnsupportedSegmentIntegrityAlgorithm rejects a segment algorithm that
+	// is neither HS256 nor GMAC. SegmentIntegrityAlg is int-backed, so this
+	// catches an out-of-range value before it reaches a manifest.
+	ErrUnsupportedSegmentIntegrityAlgorithm = errors.New("tdf: unsupported segment integrity algorithm")
+
 	// kasGenericBadRequest is the substring the SDK looks for in serialized
 	// KAS 400 errors to identify potential tamper. KAS uses the generic message
 	// "bad request" for errors involving secret key material (policy binding,

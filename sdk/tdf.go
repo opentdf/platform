@@ -274,8 +274,8 @@ func (s SDK) CreateTDFContext(ctx context.Context, writer io.Writer, reader io.R
 			return nil, fmt.Errorf("io.writer.Write failed: %w", err)
 		}
 
-		segmentSig, err := calculateSignature(cipherData, tdfObject.payloadKey[:],
-			tdfConfig.segmentIntegrityAlgorithm, tdfConfig.useHex)
+		segmentSig, err := segmentIntegrity(cipherData, tdfObject.payloadKey[:],
+			tdfConfig.segmentIntegrityAlg, tdfConfig.useHex)
 		if err != nil {
 			return nil, fmt.Errorf("splitKey.GetSignaturefailed: %w", err)
 		}
@@ -294,8 +294,8 @@ func (s SDK) CreateTDFContext(ctx context.Context, writer io.Writer, reader io.R
 		segmentIndex++
 	}
 
-	rootSignature, err := calculateSignature([]byte(aggregateHashBuilder.String()), tdfObject.payloadKey[:],
-		tdfConfig.integrityAlgorithm, tdfConfig.useHex)
+	rootSignature, err := rootIntegrity([]byte(aggregateHashBuilder.String()), tdfObject.payloadKey[:],
+		tdfConfig.rootIntegrityAlg, tdfConfig.useHex)
 	if err != nil {
 		return nil, fmt.Errorf("splitKey.GetSignaturefailed: %w", err)
 	}
@@ -303,12 +303,15 @@ func (s SDK) CreateTDFContext(ctx context.Context, writer io.Writer, reader io.R
 	sig := string(ocrypto.Base64Encode([]byte(rootSignature)))
 	tdfObject.manifest.Signature = sig
 
-	tdfObject.manifest.Algorithm = integrityAlgorithmString(tdfConfig.integrityAlgorithm)
+	// Both names are safe to take from the config only because the two
+	// signature helpers above have already refused every value that has no
+	// manifest spelling.
+	tdfObject.manifest.Algorithm = tdfConfig.rootIntegrityAlg.String()
 
 	tdfObject.manifest.DefaultSegmentSize = segmentSize
 	tdfObject.manifest.DefaultEncryptedSegSize = encryptedSegmentSize
 
-	tdfObject.manifest.SegmentHashAlgorithm = integrityAlgorithmString(tdfConfig.segmentIntegrityAlgorithm)
+	tdfObject.manifest.SegmentHashAlgorithm = tdfConfig.segmentIntegrityAlg.String()
 	tdfObject.manifest.Method.IsStreamable = true
 
 	// add payload info
@@ -587,19 +590,20 @@ func (s SDK) prepareManifest(ctx context.Context, t *TDFObject, tdfConfig TDFCon
 	return nil
 }
 
-// integrityAlgorithmString maps an IntegrityAlgorithm to its manifest
-// string form.
+// manifestSegmentIntegrityAlg maps the manifest's segmentHashAlg string onto
+// the algorithm used to verify each segment.
 //
-// The dispatch must mirror calculateSignature, which treats anything that is
-// not HS256 as GMAC. IntegrityAlgorithm is an alias for int, so out-of-range
-// values are possible; if the two functions disagree on one, the manifest
-// names an algorithm other than the one its signature was computed with and
-// readers reject the payload as an integrity failure.
-func integrityAlgorithmString(a IntegrityAlgorithm) string {
-	if a == HS256 {
-		return hmacIntegrityAlgorithm
+// Unlike the root signature this stays permissive: a segment hash is computed
+// over ciphertext the AEAD produced, so both algorithms are real
+// authenticators, and every TDF in the wild declares GMAC here. A manifest that
+// lies about segmentHashAlg gains nothing -- whichever value it names, the
+// resulting segment hashes still have to reproduce the aggregate hash covered
+// by the HS256 root signature.
+func manifestSegmentIntegrityAlg(alg string) SegmentIntegrityAlg {
+	if strings.EqualFold(gmacIntegrityAlgorithm, alg) {
+		return SegmentGMAC
 	}
-	return gmacIntegrityAlgorithm
+	return SegmentHS256
 }
 
 // createPolicyBinding produces an HMAC-SHA256 binding value keyed on the
@@ -989,13 +993,8 @@ func (r *Reader) WriteTo(writer io.Writer) (int64, error) {
 			return totalBytes, ErrSegSizeMismatch
 		}
 
-		segHashAlg := r.manifest.SegmentHashAlgorithm
-		sigAlg := HS256
-		if strings.EqualFold(gmacIntegrityAlgorithm, segHashAlg) {
-			sigAlg = GMAC
-		}
-
-		payloadSig, err := calculateSignature(readBuf, r.payloadKey, sigAlg, isLegacyTDF)
+		sigAlg := manifestSegmentIntegrityAlg(r.manifest.SegmentHashAlgorithm)
+		payloadSig, err := segmentIntegrity(readBuf, r.payloadKey, sigAlg, isLegacyTDF)
 		if err != nil {
 			return totalBytes, fmt.Errorf("splitKey.GetSignaturefailed: %w", err)
 		}
@@ -1116,13 +1115,8 @@ func (r *Reader) ReadAt(buf []byte, offset int64) (int, error) { //nolint:funlen
 			return 0, ErrSegSizeMismatch
 		}
 
-		segHashAlg := r.manifest.SegmentHashAlgorithm
-		sigAlg := HS256
-		if strings.EqualFold(gmacIntegrityAlgorithm, segHashAlg) {
-			sigAlg = GMAC
-		}
-
-		payloadSig, err := calculateSignature(readBuf, r.payloadKey, sigAlg, isLegacyTDF)
+		sigAlg := manifestSegmentIntegrityAlg(r.manifest.SegmentHashAlgorithm)
+		payloadSig, err := segmentIntegrity(readBuf, r.payloadKey, sigAlg, isLegacyTDF)
 		if err != nil {
 			return 0, fmt.Errorf("splitKey.GetSignaturefailed: %w", err)
 		}
@@ -1560,23 +1554,76 @@ func (r *Reader) doPayloadKeyUnwrap(ctx context.Context) error { //nolint:gocogn
 	return r.buildKey(ctx, kaoResults)
 }
 
-// calculateSignature calculate signature of data of the given algorithm.
-func calculateSignature(data []byte, secret []byte, alg IntegrityAlgorithm, isLegacyTDF bool) (string, error) {
-	if alg == HS256 {
-		hmac := ocrypto.CalculateSHA256Hmac(secret, data)
-		if isLegacyTDF {
-			return hex.EncodeToString(hmac), nil
-		}
-		return string(hmac), nil
+// hmacIntegrity computes an HMAC-SHA256 over data, keyed by the payload key.
+//
+// Legacy (pre-4.3.0) TDFs hex-encode the digest before the caller base64s it;
+// isLegacyTDF preserves that wire format.
+func hmacIntegrity(data, key []byte, isLegacyTDF bool) string {
+	hmac := ocrypto.CalculateSHA256Hmac(key, data)
+	if isLegacyTDF {
+		return hex.EncodeToString(hmac)
 	}
-	if kGMACPayloadLength > len(data) {
-		return "", fmt.Errorf("%w: ciphertext length=%d", ErrGMACSignatureFailed, len(data))
+	return string(hmac)
+}
+
+// readAEADTag returns the trailing authentication tag of an AES-GCM ciphertext.
+//
+// PRECONDITION: ciphertext must be exactly the bytes AES-GCM sealed under the
+// payload key. Under that precondition the trailing kGMACPayloadLength bytes
+// are the GHASH-derived tag the cipher already computed over those bytes, so
+// reading them back out is a genuine MAC obtained for free -- the key was used,
+// a moment earlier, by the AEAD.
+//
+// Applied to anything the AEAD never processed the same rule authenticates
+// nothing: it just returns a copy of the input's own last 16 bytes. That is why
+// this helper is unexported and reachable only through segmentIntegrity, whose
+// argument is by construction a segment's ciphertext. rootIntegrity, whose
+// input is the aggregate hash, has no way to call it.
+func readAEADTag(ciphertext []byte, isLegacyTDF bool) (string, error) {
+	if kGMACPayloadLength > len(ciphertext) {
+		return "", fmt.Errorf("%w: ciphertext length=%d", ErrGMACSignatureFailed, len(ciphertext))
 	}
 
+	tag := ciphertext[len(ciphertext)-kGMACPayloadLength:]
 	if isLegacyTDF {
-		return hex.EncodeToString(data[len(data)-kGMACPayloadLength:]), nil
+		return hex.EncodeToString(tag), nil
 	}
-	return string(data[len(data)-kGMACPayloadLength:]), nil
+	return string(tag), nil
+}
+
+// segmentIntegrity computes the integrity value recorded in (and checked
+// against) a segment's manifest entry, over that segment's AES-GCM ciphertext.
+//
+// Both algorithms are legitimate here. GMAC reads out the AEAD tag already
+// computed over exactly these bytes; HS256 recomputes an HMAC over them. GMAC
+// is the default and is what essentially every existing TDF uses.
+//
+// The switch is closed rather than "anything that is not HS256 is GMAC":
+// SegmentIntegrityAlg is int-backed, and silently treating an out-of-range
+// value as GMAC would write a manifest naming an algorithm the signature was
+// not computed with.
+func segmentIntegrity(ciphertext, key []byte, alg SegmentIntegrityAlg, isLegacyTDF bool) (string, error) {
+	switch alg {
+	case SegmentHS256:
+		return hmacIntegrity(ciphertext, key, isLegacyTDF), nil
+	case SegmentGMAC:
+		return readAEADTag(ciphertext, isLegacyTDF)
+	}
+	return "", fmt.Errorf("%w: %s", ErrUnsupportedSegmentIntegrityAlgorithm, alg)
+}
+
+// rootIntegrity computes the root signature over the aggregate hash: the
+// concatenation of every segment's decoded hash, in manifest order.
+//
+// HS256 only. AES-GCM never processed the aggregate hash, so there is no tag to
+// extract and no keyless construction that could authenticate it -- see
+// ErrUnsupportedRootIntegrityAlgorithm. RootIntegrityAlg has no other named
+// value, but it is int-backed, so the check still has to run.
+func rootIntegrity(aggregateHash, key []byte, alg RootIntegrityAlg, isLegacyTDF bool) (string, error) {
+	if alg != RootHS256 {
+		return "", fmt.Errorf("%w: %s", ErrUnsupportedRootIntegrityAlgorithm, alg)
+	}
+	return hmacIntegrity(aggregateHash, key, isLegacyTDF), nil
 }
 
 // validate the root signature
@@ -1585,12 +1632,17 @@ func validateRootSignature(manifest Manifest, aggregateHash, secret []byte) (boo
 	rootSigValue := manifest.Signature
 	isLegacyTDF := manifest.TDFVersion == ""
 
-	sigAlg := HS256
-	if strings.EqualFold(gmacIntegrityAlgorithm, rootSigAlg) {
-		sigAlg = GMAC
+	// Allowlist, not "anything that is not GMAC means HS256". The algorithm
+	// name arrives from the unauthenticated manifest, so an unrecognised value
+	// has to be refused rather than quietly verified as something else --
+	// coercing to HS256 would validate a downgraded file against the wrong
+	// algorithm and hide the substitution. An absent or empty alg keeps its
+	// historical meaning of HS256.
+	if rootSigAlg != "" && !strings.EqualFold(hmacIntegrityAlgorithm, rootSigAlg) {
+		return false, fmt.Errorf("%w: %q", ErrUnsupportedRootIntegrityAlgorithm, rootSigAlg)
 	}
 
-	sig, err := calculateSignature(aggregateHash, secret, sigAlg, isLegacyTDF)
+	sig, err := rootIntegrity(aggregateHash, secret, RootHS256, isLegacyTDF)
 	if err != nil {
 		return false, fmt.Errorf("splitkey.getSignature failed:%w", err)
 	}

@@ -129,7 +129,7 @@
               "type": "object",
               "properties": {
                 "alg": {
-                  "description": "Algorithm used to generate the root signature of the payload",
+                  "description": "Algorithm used to generate the root signature of the payload. Deliberately unconstrained here, unlike the strict schema: Lax backs IsValidTdf, which answers 'is this a TDF at all', and the root algorithm is enforced by validateRootSignature at every validation intensity. Rejecting it here would report ErrInvalidPerSchema instead of ErrRootSignatureFailure and would let a schema setting mask the integrity check.",
                   "type": "string"
                 },
                 "sig": {

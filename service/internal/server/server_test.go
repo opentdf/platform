@@ -80,6 +80,47 @@ func TestMergeStringSlices(t *testing.T) {
 	}
 }
 
+func Test_OpenTDFServer_RegisterReflectionHandlers_Enabled_RegistersOnlyExternalHandlers(t *testing.T) {
+	server := newReflectionTestServer(t, true)
+
+	assertReflectionHandlerRegistration(t, server.ConnectRPC.Mux, true)
+	assertReflectionHandlerRegistration(t, server.ConnectRPCInProcess.Mux, false)
+}
+
+func Test_OpenTDFServer_RegisterReflectionHandlers_Disabled_RegistersNoReflectionHandlers(t *testing.T) {
+	server := newReflectionTestServer(t, false)
+
+	assertReflectionHandlerRegistration(t, server.ConnectRPC.Mux, false)
+	assertReflectionHandlerRegistration(t, server.ConnectRPCInProcess.Mux, false)
+}
+
+func newReflectionTestServer(t *testing.T, reflectionEnabled bool) *OpenTDFServer {
+	t.Helper()
+
+	server, err := NewOpenTDFServer(Config{
+		GRPC: GRPCConfig{ReflectionEnabled: reflectionEnabled},
+	}, logger.CreateTestLogger(), nil)
+	require.NoError(t, err)
+
+	server.registerReflectionHandlers()
+	return server
+}
+
+func assertReflectionHandlerRegistration(t *testing.T, mux *http.ServeMux, wantRegistered bool) {
+	t.Helper()
+
+	reflectionPaths := []string{
+		"/grpc.reflection.v1.ServerReflection/ServerReflectionInfo",
+		"/grpc.reflection.v1alpha.ServerReflection/ServerReflectionInfo",
+	}
+
+	for _, path := range reflectionPaths {
+		request := httptest.NewRequest(http.MethodPost, path, nil)
+		_, pattern := mux.Handler(request)
+		assert.Equal(t, wantRegistered, pattern != "", "unexpected registration for %s", path)
+	}
+}
+
 func TestCORSConfig_EffectiveMethods(t *testing.T) {
 	tests := []struct {
 		name string

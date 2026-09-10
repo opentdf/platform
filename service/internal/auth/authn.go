@@ -1231,7 +1231,7 @@ func (a *Authentication) checkToken(ctx context.Context, authHeader []string, dp
 		tokenRaw = strings.TrimPrefix(authHeader[0], "Bearer ")
 		authScheme = "Bearer"
 	default:
-		a.logger.WarnContext(ctx, "failed to validate authentication header: not of type bearer or dpop", slog.String("header", authHeader[0]))
+		a.logger.WarnContext(ctx, "failed to validate authentication header: not of type bearer or dpop")
 		return nil, nil, errors.New("not of type bearer or dpop")
 	}
 

@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"bytes"
 	"context"
 	"crypto"
 	"crypto/rand"
@@ -1039,9 +1040,23 @@ func (s *AuthSuite) Test_ConnectAuthNInterceptor_DPoPNonceError_IssuesUseNonceCh
 }
 
 func (s *AuthSuite) Test_CheckToken_When_Authorization_Header_Invalid_Expect_Error() {
-	_, _, err := s.auth.checkToken(context.Background(), []string{"BPOP "}, receiverInfo{}, nil)
-	s.Require().Error(err)
-	s.Equal("not of type bearer or dpop", err.Error())
+	for _, authHeader := range []string{
+		"bearer reusable-credential",
+		"BPOP reusable-credential",
+	} {
+		s.Run(authHeader, func() {
+			var logs bytes.Buffer
+			auth := *s.auth
+			auth.logger = &logger.Logger{Logger: slog.New(slog.NewJSONHandler(&logs, nil))}
+
+			_, _, err := auth.checkToken(context.Background(), []string{authHeader}, receiverInfo{}, nil)
+
+			s.Require().Error(err)
+			s.Equal("not of type bearer or dpop", err.Error())
+			s.Contains(logs.String(), "failed to validate authentication header: not of type bearer or dpop")
+			s.NotContains(logs.String(), "reusable-credential")
+		})
+	}
 }
 
 func (s *AuthSuite) Test_CheckToken_When_Missing_Issuer_Expect_Error() {

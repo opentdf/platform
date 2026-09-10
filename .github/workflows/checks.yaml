@@ -532,7 +532,41 @@ jobs:
 
       - name: Run BDD Tests
         run: |
-          CUKES_LOG_HANDLER=console go test ./tests-bdd -v --tags=cukes --godog.random --godog.format="cucumber:$(pwd)/cukes_platform_report.json,pretty:$(pwd)/cukes_platform_report.log,pretty" ./features
+          CUKES_LOG_HANDLER=console go test ./tests-bdd -v --tags=cukes --godog.random --godog.format="cucumber:$(pwd)/cukes_platform_report.json,pretty:$(pwd)/cukes_platform_report.log,pretty" ./features 2>&1 | tee cukes_test_output.log
+
+      - name: Summarize authorization performance
+        if: ${{ !cancelled() }}
+        run: |
+          PERFORMANCE_ROWS=$(awk '
+            /authorization v2 concurrent multi-resource performance/ {
+              delete values
+              for (i = 1; i <= NF; i++) {
+                split($i, pair, "=")
+                values[pair[1]] = pair[2]
+              }
+              printf "%d\t%s\t%s\t%s\t%s\t%d\n",
+                values["concurrency"],
+                values["wall_duration"],
+                values["median_request_duration"],
+                values["p95_request_duration"],
+                values["maximum_request_duration"],
+                values["failed_request_count"]
+            }
+          ' cukes_test_output.log | sort -n | awk -F '\t' '{
+            printf "| %s | `%s` | `%s` | `%s` | `%s` | %s |\n", $1, $2, $3, $4, $5, $6
+          }')
+
+          {
+            echo "### Authorization v2 concurrency performance"
+            echo
+            if [[ -z "$PERFORMANCE_ROWS" ]]; then
+              echo "No authorization performance scenarios completed."
+            else
+              echo "| Concurrency | Wall time | Median request | p95 request | Maximum request | Failures |"
+              echo "| ---: | ---: | ---: | ---: | ---: | ---: |"
+              echo "$PERFORMANCE_ROWS"
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Check for undefined steps
         run: |

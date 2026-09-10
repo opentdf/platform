@@ -9,8 +9,6 @@ Feature: Transformations through the ERS service path
   where OutputMapper is called (service.go:269-271). This catches integration
   issues between transformation output format and subject mapping evaluation.
 
-  This covers Jake's gap analysis row #5.
-
   Background:
     And an ERS configuration with mode "multi-strategy" and failure strategy "continue"
     And an ERS provider "jwt_claims" of type "claims"

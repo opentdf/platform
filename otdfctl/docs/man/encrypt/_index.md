@@ -19,6 +19,20 @@ command:
         - ec:secp384r1
         - ec:secp521r1
       default: rsa:2048  
+    - name: root-integrity-algorithm
+      description: >
+        The algorithm used for the TDF's root signature. Only hs256 is supported; gmac is rejected.
+      enum:
+        - hs256
+        - gmac
+      default: hs256
+    - name: segment-integrity-algorithm
+      description: >
+        The algorithm used to compute each payload segment's integrity hash.
+      enum:
+        - hs256
+        - gmac
+      default: gmac
     - name: mime-type
       description: The MIME type of the input data. If not provided, the MIME type is inferred from the input data.
     - name: tdf-type
@@ -86,6 +100,29 @@ Example
 # Encrypt a file using the ec:secp256r1 algorithm for the wrapping key
 # EXPERIMENTAL
 otdfctl encrypt hello.txt --wrapping-key-algorithm ec:secp256r1 --out hello.txt.tdf
+```
+
+## Integrity Algorithms
+
+A ZTDF carries two kinds of integrity value, and they are not interchangeable.
+
+`--segment-integrity-algorithm` (default `gmac`) selects how each payload
+segment's hash is computed. Both values are supported. `gmac` reads out the
+AES-GCM authentication tag the cipher already produced over that segment's
+ciphertext; `hs256` recomputes an HMAC-SHA256 over the same bytes.
+
+`--root-integrity-algorithm` (default `hs256`) selects how the root signature
+over the aggregate of those segment hashes is computed. **Only `hs256` is
+supported.** The aggregate hash never passes through AES-GCM, so there is no
+tag to read back out and `gmac` would authenticate nothing — it degenerates
+into a copy of the last segment hash, which anyone who can edit the manifest
+can rewrite. Passing `--root-integrity-algorithm gmac` fails with
+`unsupported root integrity algorithm`, and decrypting a TDF whose manifest
+declares a GMAC root is refused for the same reason.
+
+```shell
+# HS256 segment hashes instead of the default GMAC
+otdfctl encrypt hello.txt --out hello.txt.tdf --segment-integrity-algorithm hs256
 ```
 
 ## Attributes

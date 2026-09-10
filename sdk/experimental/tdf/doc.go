@@ -97,7 +97,8 @@
 //
 //   - Custom cryptographic assertions with JWT-based integrity
 //   - Encrypted metadata storage within key access objects
-//   - Multiple integrity algorithm support (HS256, GMAC)
+//   - Multiple segment integrity algorithms (HS256, GMAC); the root signature
+//     is always HS256
 //   - ZIP64 format support for large files
 //   - Memory-optimized segment processing
 //

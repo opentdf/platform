@@ -77,7 +77,7 @@ type ReaderConfig struct {
 //
 // Example usage:
 //
-//	writer, err := NewWriter(ctx, WithIntegrityAlgorithm(GMAC))
+//	writer, err := NewWriter(ctx, WithSegmentIntegrityAlgorithm(GMAC))
 //	finalBytes, manifest, err := writer.Finalize(ctx, WithPayloadMimeType("text/plain"))
 type Option[T any] func(T)
 
@@ -86,13 +86,16 @@ type Option[T any] func(T)
 // The root integrity algorithm is used to generate a signature over all segment hashes,
 // providing verification that the complete TDF has not been tampered with.
 //
-// Algorithm options:
-//   - HS256: HMAC-SHA256 (default) - widely supported, secure
-//   - GMAC: Galois Message Authentication Code - faster with hardware acceleration
+// HS256 (the default) is the only supported value. GMAC is rejected: NewWriter
+// returns ErrUnsupportedRootIntegrityAlgorithm. The root signature covers the
+// aggregate hash, which AES-GCM never processed, so a GMAC root has no tag to
+// read back out -- it degenerates into a copy of the last segment hash and
+// authenticates nothing. Validation happens in NewWriter rather than here
+// because Option cannot return an error.
 //
 // Example:
 //
-//	writer, err := NewWriter(ctx, WithIntegrityAlgorithm(GMAC))
+//	writer, err := NewWriter(ctx, WithIntegrityAlgorithm(HS256))
 func WithIntegrityAlgorithm(algo IntegrityAlgorithm) Option[*WriterConfig] {
 	return func(c *WriterConfig) {
 		c.integrityAlgorithm = algo
@@ -106,17 +109,17 @@ func WithIntegrityAlgorithm(algo IntegrityAlgorithm) Option[*WriterConfig] {
 // complete file. This is particularly useful for streaming scenarios where
 // segments may be processed independently.
 //
-// The segment algorithm can differ from the root algorithm to optimize for
-// different processing patterns:
-//   - Use GMAC for segments if processing many small segments (better performance)
-//   - Use HS256 for root signature for broader compatibility
+// Both HS256 and GMAC are valid here, and the segment algorithm can differ from
+// the root algorithm. GMAC is sound for segments -- unlike at the root, the
+// input is ciphertext AES-GCM produced, so the trailing bytes really are the
+// tag it computed under the DEK.
 //
 // Example:
 //
 //	// Fast segment processing with compatible root signature
 //	writer, err := NewWriter(ctx,
 //		WithSegmentIntegrityAlgorithm(GMAC),  // Fast segment hashing
-//		WithIntegrityAlgorithm(HS256),        // Compatible root signature
+//		WithIntegrityAlgorithm(HS256),        // Only supported root signature
 //	)
 func WithSegmentIntegrityAlgorithm(algo IntegrityAlgorithm) Option[*WriterConfig] {
 	return func(c *WriterConfig) {

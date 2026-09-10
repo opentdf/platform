@@ -1039,6 +1039,12 @@ func (s *AuthSuite) Test_ConnectAuthNInterceptor_DPoPNonceError_IssuesUseNonceCh
 	s.NotEmpty(connectErr.Meta().Get("DPoP-Nonce"))
 }
 
+func (s *AuthSuite) Test_CheckToken_When_Authorization_Header_Invalid_Expect_Error() {
+	_, _, err := s.auth.checkToken(context.Background(), []string{"DPOP "}, receiverInfo{}, nil)
+	s.Require().Error(err)
+	s.Equal("not of type bearer or dpop", err.Error())
+}
+
 func (s *AuthSuite) Test_CheckToken_When_Authorization_Header_Invalid_Does_Not_Log_Credential() {
 	for _, tc := range []struct {
 		name       string

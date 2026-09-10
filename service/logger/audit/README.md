@@ -31,8 +31,9 @@ server.Start(
 )
 ```
 
-The default processing timeout is five seconds. Zero or negative values use the
-default. Processors must honor the context deadline, including during external
+The timeout can also be set with `logger.audit_timeout` in YAML or
+`OPENTDF_LOGGER_AUDIT_TIMEOUT`. An explicit `server.WithAuditTimeout` overrides
+those settings. The default is five seconds; zero or negative values use it. Processors must honor the context deadline, including during external
 lookups and delivery.
 
 Processors handle conversion, destination validation, delivery, and recovery.
@@ -51,3 +52,15 @@ not the requester's JWT claims.
 Without a custom processor, output remains `level:"AUDIT"`, `msg:<verb>`, and
 `audit:{...}`. Success means the slog handler accepted the record, not that a
 downstream datastore persisted it. Durable delivery belongs in the processor.
+
+For a standalone logger, pass audit settings in its config:
+
+```go
+log, err := logger.NewLogger(logger.Config{
+    Level: "info", Output: "stdout", Type: "json",
+    AuditTimeout: 15 * time.Second,
+    AuditProcessor: processor,
+})
+```
+
+`AuditProcessor` is for Go callers and is excluded from serialized configuration.

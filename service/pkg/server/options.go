@@ -56,7 +56,7 @@ type StartConfig struct {
 	authzRoleProvider          authz.RoleProvider
 	authzRoleProviderFactories map[string]authz.RoleProviderFactory
 	auditProcessor             audit.Processor
-	auditTimeout               time.Duration
+	auditTimeout               *time.Duration
 
 	// CORS additive configuration - appended to YAML/env config values
 	additionalCORSHeaders        []string
@@ -107,9 +107,20 @@ func WithAuditProcessor(processor audit.Processor) StartOptions {
 // WithAuditTimeout sets the audit processing budget. Non-positive values use five seconds.
 func WithAuditTimeout(timeout time.Duration) StartOptions {
 	return func(c StartConfig) StartConfig {
-		c.auditTimeout = timeout
+		c.auditTimeout = &timeout
 		return c
 	}
+}
+
+// loggerConfig applies explicit startup overrides after YAML and environment loading.
+func (c StartConfig) loggerConfig(cfg logger.Config) logger.Config {
+	if c.auditProcessor != nil {
+		cfg.AuditProcessor = c.auditProcessor
+	}
+	if c.auditTimeout != nil {
+		cfg.AuditTimeout = *c.auditTimeout
+	}
+	return cfg
 }
 
 // Deprecated: Use WithConfigKey

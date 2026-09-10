@@ -42,45 +42,23 @@ type Config struct {
 	// TraceCorrelation adds the active trace and span IDs to log and audit
 	// records. No-op unless tracing is enabled via `server.trace`. Nil means enabled.
 	TraceCorrelation *bool `mapstructure:"trace_correlation" json:"trace_correlation" default:"true"`
+	// AuditTimeout is the audit processing budget. Non-positive values use five seconds.
+	AuditTimeout time.Duration `mapstructure:"audit_timeout" json:"audit_timeout" yaml:"audit_timeout" default:"5s"`
+	// AuditProcessor overrides audit delivery for Go callers and is never serialized.
+	AuditProcessor audit.Processor `mapstructure:"-" json:"-" yaml:"-"`
 }
 
 func (c Config) traceCorrelationEnabled() bool {
 	return c.TraceCorrelation == nil || *c.TraceCorrelation
 }
 
-// Option configures a Logger at construction time.
-type Option func(*loggerOptions)
-
-type loggerOptions struct {
-	auditProcessor audit.Processor
-	auditTimeout   time.Duration
-}
-
-// WithAuditProcessor configures canonical audit event processing.
-func WithAuditProcessor(processor audit.Processor) Option {
-	return func(options *loggerOptions) {
-		options.auditProcessor = processor
-	}
-}
-
-// WithAuditTimeout sets the audit processing budget. Non-positive values use five seconds.
-func WithAuditTimeout(timeout time.Duration) Option {
-	return func(options *loggerOptions) {
-		options.auditTimeout = timeout
-	}
-}
-
 const (
 	LevelTrace = slog.Level(-8)
 )
 
-func NewLogger(config Config, options ...Option) (*Logger, error) {
+func NewLogger(config Config) (*Logger, error) {
 	var sLogger *slog.Logger
 	logger := new(Logger)
-	loggerOpts := loggerOptions{}
-	for _, option := range options {
-		option(&loggerOpts)
-	}
 
 	w, err := getWriter(config)
 	if err != nil {
@@ -119,9 +97,9 @@ func NewLogger(config Config, options ...Option) (*Logger, error) {
 	// Audit events skip requestContextAttrs on purpose: the request metadata it
 	// adds is already inside the audit payload. They still need trace correlation.
 	auditLoggerBase := slog.New(newContextAttrsHandler(auditLoggerHandler, contextAttrSources(config)...))
-	auditOptions := []audit.Option{audit.WithRecordTimeout(loggerOpts.auditTimeout)}
-	if loggerOpts.auditProcessor != nil {
-		auditOptions = append(auditOptions, audit.WithProcessor(loggerOpts.auditProcessor))
+	auditOptions := []audit.Option{audit.WithRecordTimeout(config.AuditTimeout)}
+	if config.AuditProcessor != nil {
+		auditOptions = append(auditOptions, audit.WithProcessor(config.AuditProcessor))
 	}
 	auditLogger := audit.CreateAuditLogger(*auditLoggerBase, auditOptions...)
 

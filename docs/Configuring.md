@@ -100,6 +100,7 @@ Root level key `logger`
 | `level`             | The logging level.                                           | `info`   | OPENTDF_LOGGER_LEVEL             |
 | `type`              | The format of the log output.                                | `json`   | OPENTDF_LOGGER_TYPE              |
 | `output`            | Stream output for logs, stderr or stdout                     | `stdout` | OPENTDF_LOGGER_OUTPUT            |
+| `audit_timeout` | Audit processing budget; non-positive values use the default | `5s` | OPENTDF_LOGGER_AUDIT_TIMEOUT |
 | `trace_correlation` | Add the active trace and span IDs to log and audit records   | `true`   | OPENTDF_LOGGER_TRACE_CORRELATION |
 
 Example:
@@ -109,6 +110,7 @@ logger:
   level: debug
   type: text
   output: stderr
+  audit_timeout: 5s
 ```
 
 `trace_correlation` emits fields only when the request carries trace context; see

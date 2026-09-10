@@ -244,7 +244,10 @@ func (suite *ServiceTestSuite) TestBuildNamespaceLoggerPreservesAuditTimeout() {
 		suite.Require().True(ok)
 		return nil
 	})
-	base, err := logger.NewLogger(cfg.Logger, logger.WithAuditProcessor(processor), logger.WithAuditTimeout(timeout))
+	baseConfig := cfg.Logger
+	baseConfig.AuditProcessor = processor
+	baseConfig.AuditTimeout = timeout
+	base, err := logger.NewLogger(baseConfig)
 	suite.Require().NoError(err)
 	for _, level := range []string{"info", "debug"} {
 		suite.Run(level, func() {

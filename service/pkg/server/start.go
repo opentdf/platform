@@ -115,11 +115,8 @@ func Start(f ...StartOptions) error {
 	}
 
 	slog.Debug("configuring logger")
-	loggerOptions := []logger.Option{logger.WithAuditTimeout(startConfig.auditTimeout)}
-	if startConfig.auditProcessor != nil {
-		loggerOptions = append(loggerOptions, logger.WithAuditProcessor(startConfig.auditProcessor))
-	}
-	logger, err := logger.NewLogger(cfg.Logger, loggerOptions...)
+	cfg.Logger = startConfig.loggerConfig(cfg.Logger)
+	logger, err := logger.NewLogger(cfg.Logger)
 	if err != nil {
 		return fmt.Errorf("could not start logger: %w", err)
 	}

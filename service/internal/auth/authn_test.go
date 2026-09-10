@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"bytes"
 	"context"
 	"crypto"
 	"crypto/rand"
@@ -1039,9 +1040,34 @@ func (s *AuthSuite) Test_ConnectAuthNInterceptor_DPoPNonceError_IssuesUseNonceCh
 }
 
 func (s *AuthSuite) Test_CheckToken_When_Authorization_Header_Invalid_Expect_Error() {
-	_, _, err := s.auth.checkToken(context.Background(), []string{"BPOP "}, receiverInfo{}, nil)
+	_, _, err := s.auth.checkToken(context.Background(), []string{"DPOP "}, receiverInfo{}, nil)
 	s.Require().Error(err)
 	s.Equal("not of type bearer or dpop", err.Error())
+}
+
+func (s *AuthSuite) Test_CheckToken_When_Authorization_Header_Invalid_Does_Not_Log_Credential() {
+	for _, tc := range []struct {
+		name       string
+		authHeader string
+	}{
+		{name: "mixed-case bearer scheme", authHeader: "bearer reusable-credential"},
+		{name: "bearer missing scheme separator", authHeader: "Bearerreusable-credential"},
+		{name: "mixed-case dpop scheme", authHeader: "dpop reusable-credential"},
+		{name: "dpop missing scheme separator", authHeader: "DPoPreusable-credential"},
+	} {
+		s.Run(tc.name, func() {
+			var logs bytes.Buffer
+			auth := *s.auth
+			auth.logger = &logger.Logger{Logger: slog.New(slog.NewJSONHandler(&logs, nil))}
+
+			_, _, err := auth.checkToken(context.Background(), []string{tc.authHeader}, receiverInfo{}, nil)
+
+			s.Require().Error(err)
+			s.Equal("not of type bearer or dpop", err.Error())
+			s.Contains(logs.String(), "failed to validate authentication header: not of type bearer or dpop")
+			s.NotContains(logs.String(), "reusable-credential")
+		})
+	}
 }
 
 func (s *AuthSuite) Test_CheckToken_When_Missing_Issuer_Expect_Error() {

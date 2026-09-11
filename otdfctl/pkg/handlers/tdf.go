@@ -38,6 +38,74 @@ type TDFInspect struct {
 	UnencryptedMetadata []byte
 }
 
+// IntegrityAlgorithms carries the segment and root integrity algorithm names as
+// they arrived from the CLI, so the flags can be validated before any work is
+// done and mapped onto SDK options in one place.
+type IntegrityAlgorithms struct {
+	Root    string
+	Segment string
+}
+
+// Validate reports whether both algorithm names are usable, without needing a
+// platform connection or any input data.
+//
+// It applies the options to a throwaway config rather than re-stating the rule,
+// so the SDK stays the single source of truth for which algorithms are allowed
+// where.
+func (a IntegrityAlgorithms) Validate() error {
+	opts, err := a.tdfOptions()
+	if err != nil {
+		return err
+	}
+	var cfg sdk.TDFConfig
+	for _, opt := range opts {
+		if err := opt(&cfg); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// tdfOptions maps the requested algorithm names onto SDK options. Names are
+// matched case-insensitively; an empty name leaves the SDK default in place
+// (HS256 root, GMAC segments).
+//
+// The root option is where `gmac` is refused: the SDK returns
+// ErrUnsupportedRootIntegrityAlgorithm, whose message carries the literal
+// "unsupported root integrity algorithm" that callers grep for.
+func (a IntegrityAlgorithms) tdfOptions() ([]sdk.TDFOption, error) {
+	var opts []sdk.TDFOption
+
+	if a.Segment != "" {
+		alg, err := parseIntegrityAlgorithm(a.Segment)
+		if err != nil {
+			return nil, fmt.Errorf("segment integrity algorithm: %w", err)
+		}
+		opts = append(opts, sdk.WithSegmentIntegrityAlgorithm(alg))
+	}
+
+	if a.Root != "" {
+		alg, err := parseIntegrityAlgorithm(a.Root)
+		if err != nil {
+			return nil, fmt.Errorf("root integrity algorithm: %w", err)
+		}
+		opts = append(opts, sdk.WithRootIntegrityAlgorithm(alg))
+	}
+
+	return opts, nil
+}
+
+func parseIntegrityAlgorithm(name string) (sdk.IntegrityAlgorithm, error) {
+	switch strings.ToLower(name) {
+	case "hs256":
+		return sdk.HS256, nil
+	case "gmac":
+		return sdk.GMAC, nil
+	default:
+		return 0, fmt.Errorf("unrecognized algorithm %q, expected one of: hs256, gmac", name)
+	}
+}
+
 func (h Handler) EncryptBytes(
 	tdfType string,
 	unencrypted []byte,
@@ -47,6 +115,7 @@ func (h Handler) EncryptBytes(
 	assertions string,
 	wrappingKeyAlgorithm ocrypto.KeyType,
 	targetMode string,
+	integrityAlgorithms IntegrityAlgorithms,
 ) (*bytes.Buffer, error) {
 	var encrypted []byte
 	enc := bytes.NewBuffer(encrypted)
@@ -62,6 +131,12 @@ func (h Handler) EncryptBytes(
 			sdk.WithMimeType(mimeType),
 			sdk.WithWrappingKeyAlg(wrappingKeyAlgorithm), //nolint:staticcheck // SDK option is deprecated but no replacement is available in this SDK version.
 		}
+
+		integrityOpts, err := integrityAlgorithms.tdfOptions()
+		if err != nil {
+			return nil, err
+		}
+		opts = append(opts, integrityOpts...)
 
 		var assertionConfigs []sdk.AssertionConfig
 		//nolint:nestif // nested its mainly for error catching and handling case of string vs file
@@ -94,7 +169,7 @@ func (h Handler) EncryptBytes(
 			opts = append(opts, sdk.WithTargetMode(targetMode))
 		}
 
-		_, err := h.sdk.CreateTDF(enc, bytes.NewReader(unencrypted), opts...)
+		_, err = h.sdk.CreateTDF(enc, bytes.NewReader(unencrypted), opts...)
 		return enc, err
 	default:
 		return nil, errors.New("unknown TDF type")

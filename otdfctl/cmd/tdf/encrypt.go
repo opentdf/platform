@@ -11,6 +11,7 @@ import (
 	"github.com/opentdf/platform/lib/ocrypto"
 	"github.com/opentdf/platform/otdfctl/cmd/common"
 	"github.com/opentdf/platform/otdfctl/pkg/cli"
+	"github.com/opentdf/platform/otdfctl/pkg/handlers"
 	"github.com/opentdf/platform/otdfctl/pkg/man"
 	"github.com/opentdf/platform/otdfctl/pkg/utils"
 	"github.com/spf13/cobra"
@@ -26,6 +27,17 @@ var (
 
 func encryptRun(cmd *cobra.Command, args []string) {
 	c := cli.New(cmd, args, cli.WithPrintJSON())
+
+	// Validate the integrity cli arguments first, to fail fast and with
+	// helpful comments on invalid configurations or misspellings.
+	integrityAlgorithms := handlers.IntegrityAlgorithms{
+		Root:    c.Flags.GetOptionalString("root-integrity-algorithm"),
+		Segment: c.Flags.GetOptionalString("segment-integrity-algorithm"),
+	}
+	if err := integrityAlgorithms.Validate(); err != nil {
+		cli.ExitWithError("Invalid integrity algorithm", err)
+	}
+
 	h := common.NewHandler(c)
 	defer h.Close()
 
@@ -116,6 +128,7 @@ func encryptRun(cmd *cobra.Command, args []string) {
 		assertions,
 		wrappingKeyAlgorithm,
 		targetMode,
+		integrityAlgorithms,
 	)
 	if err != nil {
 		cli.ExitWithError("Failed to encrypt", err)
@@ -190,6 +203,16 @@ func InitEncryptCommand() {
 		encryptDoc.GetDocFlag("target-mode").Name,
 		encryptDoc.GetDocFlag("target-mode").Default,
 		encryptDoc.GetDocFlag("target-mode").Description,
+	)
+	encryptDoc.Flags().String(
+		encryptDoc.GetDocFlag("root-integrity-algorithm").Name,
+		encryptDoc.GetDocFlag("root-integrity-algorithm").Default,
+		encryptDoc.GetDocFlag("root-integrity-algorithm").Description,
+	)
+	encryptDoc.Flags().String(
+		encryptDoc.GetDocFlag("segment-integrity-algorithm").Name,
+		encryptDoc.GetDocFlag("segment-integrity-algorithm").Default,
+		encryptDoc.GetDocFlag("segment-integrity-algorithm").Description,
 	)
 	encryptDoc.GroupID = TDF
 }

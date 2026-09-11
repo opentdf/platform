@@ -194,6 +194,35 @@ func WithSegmentSize(size int64) TDFOption {
 	}
 }
 
+// WithSegmentIntegrityAlgorithm returns an Option that sets the algorithm used
+// to compute each segment's integrity value. Both HS256 and GMAC are supported;
+// the default is GMAC, which reads out the AES-GCM tag the cipher already
+// produced over that segment's ciphertext.
+func WithSegmentIntegrityAlgorithm(alg IntegrityAlgorithm) TDFOption {
+	return func(c *TDFConfig) error {
+		switch alg {
+		case HS256, GMAC:
+			c.segmentIntegrityAlgorithm = alg
+			return nil
+		default:
+			return fmt.Errorf("unsupported segment integrity algorithm: %d", alg)
+		}
+	}
+}
+
+// WithRootIntegrityAlgorithm returns an Option that sets the algorithm used for
+// the TDF's root signature. HS256 is the only supported value and the default;
+// any other value fails with ErrUnsupportedRootIntegrityAlgorithm.
+func WithRootIntegrityAlgorithm(alg IntegrityAlgorithm) TDFOption {
+	return func(c *TDFConfig) error {
+		if alg != HS256 {
+			return fmt.Errorf("%w: %s", ErrUnsupportedRootIntegrityAlgorithm, integrityAlgorithmString(alg))
+		}
+		c.integrityAlgorithm = alg
+		return nil
+	}
+}
+
 // WithDefaultAssertion returns an Option that adds a default assertion to the TDF.
 func WithSystemMetadataAssertion() TDFOption {
 	return func(c *TDFConfig) error {

@@ -132,13 +132,15 @@ type Writer struct {
 //   - Memory-efficient segment processing
 //
 // Configuration options can be provided to customize:
-//   - Integrity algorithm selection (HS256, GMAC)
-//   - Segment integrity algorithm (independent of root algorithm)
+//   - Segment integrity algorithm (HS256 or GMAC)
+//   - Root integrity algorithm (HS256 only)
 //
 // The writer generates a unique Data Encryption Key (DEK) and initializes
 // the underlying archive writer for ZIP structure management.
 //
 // Returns an error if:
+//   - The requested root integrity algorithm is not HS256
+//     (ErrUnsupportedRootIntegrityAlgorithm)
 //   - DEK generation fails (cryptographic entropy issues)
 //   - AES-GCM cipher initialization fails (invalid key)
 //   - Archive writer creation fails (resource constraints)
@@ -150,8 +152,8 @@ type Writer struct {
 //
 //	// Custom integrity algorithms
 //	writer, err := NewWriter(ctx,
-//		WithIntegrityAlgorithm(GMAC),
-//		WithSegmentIntegrityAlgorithm(HS256),
+//		WithIntegrityAlgorithm(HS256),
+//		WithSegmentIntegrityAlgorithm(GMAC),
 //	)
 func NewWriter(_ context.Context, opts ...Option[*WriterConfig]) (*Writer, error) {
 	// Initialize Config
@@ -162,6 +164,15 @@ func NewWriter(_ context.Context, opts ...Option[*WriterConfig]) (*Writer, error
 
 	for _, opt := range opts {
 		opt(config)
+	}
+
+	if config.integrityAlgorithm != HS256 {
+		return nil, fmt.Errorf("%w: %s", ErrUnsupportedRootIntegrityAlgorithm, config.integrityAlgorithm)
+	}
+	switch config.segmentIntegrityAlgorithm {
+	case HS256, GMAC:
+	default:
+		return nil, fmt.Errorf("tdf: unsupported segment integrity algorithm: %s", config.segmentIntegrityAlgorithm)
 	}
 
 	// Initialize archive writer - start with 1 segment and expand dynamically
@@ -264,7 +275,7 @@ func (w *Writer) WriteSegment(ctx context.Context, index int, data []byte) (*Seg
 	if err != nil {
 		return nil, err
 	}
-	segmentSig, err := calculateSignature(segmentCipher, w.dek, w.segmentIntegrityAlgorithm, false) // Don't ever hex encode new tdf's
+	segmentSig, err := segmentIntegrity(segmentCipher, w.dek, w.segmentIntegrityAlgorithm)
 	if err != nil {
 		return nil, err
 	}
@@ -565,7 +576,7 @@ func (w *Writer) getManifest(ctx context.Context, cfg *WriterFinalizeConfig) (*M
 		return nil, 0, 0, errors.New("empty segment hash")
 	}
 
-	rootSignature, err := calculateSignature(aggregateHash.Bytes(), w.dek, w.integrityAlgorithm, false)
+	rootSignature, err := rootIntegrity(aggregateHash.Bytes(), w.dek, w.integrityAlgorithm)
 	if err != nil {
 		return nil, 0, 0, err
 	}

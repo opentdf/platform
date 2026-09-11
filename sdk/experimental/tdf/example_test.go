@@ -60,8 +60,9 @@ func ExampleWriter() {
 func ExampleWriter_withAttributes() {
 	ctx := context.Background()
 
-	// Create writer with custom integrity algorithm
-	writer, err := tdf.NewWriter(ctx, tdf.WithIntegrityAlgorithm(tdf.GMAC))
+	// Create writer with custom integrity algorithm. GMAC is available for
+	// segments only; the root signature is always HS256.
+	writer, err := tdf.NewWriter(ctx, tdf.WithSegmentIntegrityAlgorithm(tdf.GMAC))
 	if err != nil {
 		log.Println(err)
 		return

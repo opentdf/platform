@@ -33,10 +33,13 @@ func NewSegmentTDFWriter(expectedSegments int, opts ...Option) SegmentWriter {
 
 	base := newBaseWriter(cfg)
 
+	centralDir := NewCentralDirectory()
+	centralDir.MaxNonZip64Value = cfg.MaxNonZip64Value
+
 	return &segmentWriter{
 		baseWriter: base,
 		metadata:   NewSegmentMetadata(expectedSegments, cfg.Now),
-		centralDir: NewCentralDirectory(),
+		centralDir: centralDir,
 		payloadEntry: &FileEntry{
 			Name:        TDFPayloadFileName,
 			Offset:      0,
@@ -191,11 +194,12 @@ func (sw *segmentWriter) Finalize(ctx context.Context, manifest []byte) ([]byte,
 	// Total payload size = header + all data (no data descriptor in this calculation)
 	totalPayloadSize := headerSize + sw.payloadEntry.CompressedSize
 
-	// Decide whether payload descriptor must be ZIP64
-	const max32 = ^uint32(0)
+	// Decide whether payload descriptor must be ZIP64. The switch point is
+	// 2 GiB rather than 4 GiB: see maxNonZip64Value.
+	maxNonZip64 := sw.config.MaxNonZip64Value
 	needZip64ForPayload := sw.config.Zip64 == Zip64Always ||
-		sw.payloadEntry.Size > uint64(max32) ||
-		sw.payloadEntry.CompressedSize > uint64(max32)
+		sw.payloadEntry.Size > maxNonZip64 ||
+		sw.payloadEntry.CompressedSize > maxNonZip64
 
 	// 1. Write data descriptor for payload (fail if Zip64Never but required)
 	if sw.config.Zip64 == Zip64Never && needZip64ForPayload {
@@ -230,7 +234,10 @@ func (sw *segmentWriter) Finalize(ctx context.Context, manifest []byte) ([]byte,
 	// 5. Write central directory
 	sw.centralDir.Offset = totalPayloadSize + uint64(buffer.Len())
 	// Decide if ZIP64 is needed for central directory/EOCD based on offset or forced mode
-	needZip64ForCD := needZip64ForPayload || sw.config.Zip64 == Zip64Always || sw.centralDir.Offset > uint64(max32) || len(sw.centralDir.Entries) > int(^uint16(0))
+	needZip64ForCD := needZip64ForPayload ||
+		sw.config.Zip64 == Zip64Always ||
+		sw.centralDir.Offset > maxNonZip64 ||
+		len(sw.centralDir.Entries) >= zip64MagicVal16
 	if sw.config.Zip64 == Zip64Never && needZip64ForCD {
 		return nil, &Error{Op: "finalize", Type: "segment", Err: ErrZip64Required}
 	}

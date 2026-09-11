@@ -5,6 +5,7 @@ package zipstream
 import (
 	"bytes"
 	"encoding/base64"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -129,6 +130,24 @@ func FuzzReader(f *testing.F) {
 		"HCALoriwCBQAAAgUAAFBLAQItAC0ACAAAAH11LzEke7o5HwAAAB8AAAAJAAAAAAAAAAAAAA" +
 		"AAAAAAAAAwLnBheWxvYWRQSwECLQAtAAgAAAB9dS8xAuiuLAIE///tBQAADwAAAAAAAAAAA" +
 		"AAAAABWAAAAMC5tYW5pZmVzdC5qc29uUEsFBgAAAAACAAIAdAAAAJUFAAAAAA=="))
+
+	// A central directory file comment: the entry after it only parses if
+	// nextCD accounts for FileCommentLength.
+	f.Add(buildRawZip(f, []rawZipEntry{
+		{name: "0.payload", data: []byte("payload bytes"), comment: "central directory file comment"},
+		{name: "0.manifest.json", data: []byte(`{"m":1}`)},
+	}, false))
+
+	// Filename plus extra field plus header size sums to 65646, which wraps
+	// to 110 if the addition happens at uint16 width.
+	f.Add(buildRawZip(f, []rawZipEntry{
+		{
+			name:        strings.Repeat("n", 65000),
+			data:        []byte("payload bytes"),
+			extraPrefix: bytes.Repeat([]byte{0}, 600),
+		},
+		{name: "0.manifest.json", data: []byte(`{"m":1}`)},
+	}, false))
 
 	f.Fuzz(func(t *testing.T, data []byte) {
 		reader, err := NewReader(bytes.NewReader(data))

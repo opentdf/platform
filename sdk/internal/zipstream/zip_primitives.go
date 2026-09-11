@@ -5,8 +5,20 @@ package zipstream
 import (
 	"bytes"
 	"encoding/binary"
+	"fmt"
+	"math"
 	"time"
 )
+
+// maxNonZip64Value is the largest value this writer will place in a 32-bit
+// ZIP field before switching the entry to ZIP64. The fields are unsigned on
+// the wire and would hold up to 0xFFFFFFFF, but readers that widen them with
+// a signed read -- every java-sdk released before opentdf/java-sdk#393, and
+// those stay in the field indefinitely -- see anything above 2 GiB as
+// negative. Switching at Integer.MAX_VALUE instead, matching java-sdk's
+// MAX_NON_ZIP64_VALUE, costs 28 bytes per affected entry and keeps archives
+// in the 2-4 GiB band readable by those clients.
+const maxNonZip64Value = math.MaxInt32
 
 // Note: CRC32 calculation for the payload is performed using a combine
 // approach over per-segment CRCs and sizes to avoid buffering segments.
@@ -196,6 +208,11 @@ type CentralDirectory struct {
 	Entries []FileEntry // File entries in the archive
 	Offset  uint64      // Offset where central directory starts
 	Size    uint64      // Size of central directory
+	// MaxNonZip64Value is the largest value written into a 32-bit field
+	// before the entry switches to ZIP64. Zero means maxNonZip64Value.
+	// Lowering it is a test seam: it exercises the ZIP64 path without
+	// materializing a multi-gigabyte archive.
+	MaxNonZip64Value uint64
 }
 
 // NewCentralDirectory creates a new central directory
@@ -203,6 +220,18 @@ func NewCentralDirectory() *CentralDirectory {
 	return &CentralDirectory{
 		Entries: make([]FileEntry, 0),
 	}
+}
+
+// checkFitsInCentralDirectory guards a narrowing conversion into a 32-bit
+// central directory field. The surrounding ZIP64 conditions already keep
+// these values in range, so a failure here means one of them is wrong;
+// erroring out beats silently emitting a truncated -- and therefore corrupt
+// -- archive.
+func checkFitsInCentralDirectory(field string, value uint64) error {
+	if value >= zip64MagicVal {
+		return fmt.Errorf("%w: %s is %d, which does not fit in a 32-bit zip field", ErrFieldOverflow, field, value)
+	}
+	return nil
 }
 
 // AddFile adds a file entry to the central directory
@@ -218,7 +247,7 @@ func (cd *CentralDirectory) GenerateBytes(isZip64 bool) ([]byte, error) {
 	cdEntriesSize := uint64(0)
 	for _, entry := range cd.Entries {
 		entrySize := cdFileHeaderSize + uint64(len(entry.Name))
-		if isZip64 || entry.Size >= uint64(^uint32(0)) || entry.CompressedSize >= uint64(^uint32(0)) {
+		if isZip64 || cd.entryNeedsZip64(entry) {
 			entrySize += zip64ExtendedInfoExtraFieldSize
 		}
 		cdEntriesSize += entrySize
@@ -240,6 +269,25 @@ func (cd *CentralDirectory) GenerateBytes(isZip64 bool) ([]byte, error) {
 	}
 
 	return buf.Bytes(), nil
+}
+
+// maxNonZip64 resolves the ZIP64 switch point for this directory.
+func (cd *CentralDirectory) maxNonZip64() uint64 {
+	if cd.MaxNonZip64Value == 0 {
+		return maxNonZip64Value
+	}
+	return cd.MaxNonZip64Value
+}
+
+// entryNeedsZip64 reports whether an entry cannot be described by the 32-bit
+// central directory fields alone. Offsets count as well as sizes: an entry
+// starting past the switch point needs the ZIP64 extra field even when the
+// entry itself is small.
+func (cd *CentralDirectory) entryNeedsZip64(entry FileEntry) bool {
+	maxValue := cd.maxNonZip64()
+	return entry.Size > maxValue ||
+		entry.CompressedSize > maxValue ||
+		entry.Offset > maxValue
 }
 
 // msDosTimeDate encodes t as the (time, date) pair ZIP headers carry.
@@ -277,6 +325,24 @@ func msDosTimeDate(t time.Time) (uint16, uint16) {
 func (cd *CentralDirectory) writeCDFileHeader(buf *bytes.Buffer, entry FileEntry, isZip64 bool) error {
 	lastModifiedTime, lastModifiedDate := msDosTimeDate(entry.ModTime)
 
+	useZip64 := isZip64 || cd.entryNeedsZip64(entry)
+	if !useZip64 {
+		// Only the 32-bit path narrows these; the ZIP64 path overwrites
+		// them with the sentinel below.
+		for _, f := range []struct {
+			name  string
+			value uint64
+		}{
+			{"compressed size of " + entry.Name, entry.CompressedSize},
+			{"uncompressed size of " + entry.Name, entry.Size},
+			{"local header offset of " + entry.Name, entry.Offset},
+		} {
+			if err := checkFitsInCentralDirectory(f.name, f.value); err != nil {
+				return err
+			}
+		}
+	}
+
 	header := CDFileHeader{
 		Signature:              centralDirectoryHeaderSignature,
 		VersionCreated:         zipVersion,
@@ -303,7 +369,7 @@ func (cd *CentralDirectory) writeCDFileHeader(buf *bytes.Buffer, entry FileEntry
 	}
 
 	// Handle ZIP64 if needed
-	if isZip64 || entry.Size >= uint64(^uint32(0)) || entry.CompressedSize >= uint64(^uint32(0)) {
+	if useZip64 {
 		header.CompressedSize = zip64MagicVal
 		header.UncompressedSize = zip64MagicVal
 		header.LocalHeaderOffset = zip64MagicVal
@@ -373,6 +439,22 @@ func (cd *CentralDirectory) writeEndOfCDRecord(buf *bytes.Buffer, isZip64 bool) 
 		}
 	}
 
+	if !isZip64 {
+		// The 32-bit EOCD carries these verbatim. Same reasoning as
+		// checkFitsInCentralDirectory: fail loudly rather than emit a
+		// trailer that points somewhere else in the archive.
+		if err := checkFitsInCentralDirectory("central directory size", cd.Size); err != nil {
+			return err
+		}
+		if err := checkFitsInCentralDirectory("central directory offset", cd.Offset); err != nil {
+			return err
+		}
+		if len(cd.Entries) >= zip64MagicVal16 {
+			return fmt.Errorf("%w: entry count is %d, which does not fit in a 16-bit zip field",
+				ErrFieldOverflow, len(cd.Entries))
+		}
+	}
+
 	// Write standard end of central directory record
 	endOfCD := EndOfCDRecord{
 		Signature:               endOfCentralDirectorySignature,
@@ -387,8 +469,8 @@ func (cd *CentralDirectory) writeEndOfCDRecord(buf *bytes.Buffer, isZip64 bool) 
 
 	// Use ZIP64 values if needed
 	if isZip64 {
-		endOfCD.NumberOfCDRecordEntries = 0xFFFF
-		endOfCD.TotalCDRecordEntries = 0xFFFF
+		endOfCD.NumberOfCDRecordEntries = zip64MagicVal16
+		endOfCD.TotalCDRecordEntries = zip64MagicVal16
 		endOfCD.SizeOfCentralDirectory = zip64MagicVal
 		endOfCD.CentralDirectoryOffset = zip64MagicVal
 	}

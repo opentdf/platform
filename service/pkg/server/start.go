@@ -115,6 +115,7 @@ func Start(f ...StartOptions) error {
 	}
 
 	slog.Debug("configuring logger")
+	cfg.Logger = startConfig.loggerConfig(cfg.Logger)
 	logger, err := logger.NewLogger(cfg.Logger)
 	if err != nil {
 		return fmt.Errorf("could not start logger: %w", err)

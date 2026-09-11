@@ -41,6 +41,7 @@ func NewLegacyLoader(key, file string) (*LegacyLoader, error) {
 	// Registered so AutomaticEnv can resolve it without the key also being
 	// present in the config file. Must match the struct tag default.
 	v.SetDefault("logger.trace_correlation", true)
+	v.SetDefault("logger.audit_timeout", "5s")
 
 	// Environment variable settings
 	v.SetEnvPrefix(key)

@@ -112,12 +112,7 @@ ciphertext; `hs256` recomputes an HMAC-SHA256 over the same bytes.
 
 `--root-integrity-algorithm` (default `hs256`) selects how the root signature
 over the aggregate of those segment hashes is computed. **Only `hs256` is
-supported.** The aggregate hash never passes through AES-GCM, so there is no
-tag to read back out and `gmac` would authenticate nothing — it degenerates
-into a copy of the last segment hash, which anyone who can edit the manifest
-can rewrite. Passing `--root-integrity-algorithm gmac` fails with
-`unsupported root integrity algorithm`, and decrypting a TDF whose manifest
-declares a GMAC root is refused for the same reason.
+supported.**```
 
 ```shell
 # HS256 segment hashes instead of the default GMAC

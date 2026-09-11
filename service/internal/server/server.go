@@ -11,6 +11,7 @@ import (
 	"net/http/pprof"
 	"net/textproto"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 
@@ -34,9 +35,10 @@ import (
 )
 
 const (
-	defaultWriteTimeout time.Duration = 10 * time.Second
-	defaultReadTimeout  time.Duration = 10 * time.Second
-	shutdownTimeout     time.Duration = 5 * time.Second
+	defaultWriteTimeout     time.Duration = 10 * time.Second
+	defaultReadTimeout      time.Duration = 10 * time.Second
+	shutdownTimeout         time.Duration = 5 * time.Second
+	maxPprofDurationSeconds               = 30
 )
 
 type Error string
@@ -347,6 +349,16 @@ func newHTTPServer(c Config, connectRPC http.Handler, extraHTTP http.Handler, a 
 
 	httpHandler := extraHTTP
 
+	// Keep profiling behind the same authentication and authorization boundary as
+	// the other HTTP handlers.
+	if c.EnablePprof {
+		httpHandler = pprofHandler(httpHandler)
+		// Need to extend write timeout to collect pprof data.
+		if c.HTTPServerConfig.WriteTimeout < maxPprofDurationSeconds*time.Second {
+			c.HTTPServerConfig.WriteTimeout = maxPprofDurationSeconds * time.Second
+		}
+	}
+
 	// Add authN interceptor to extra handlers.
 	if c.Auth.Enabled {
 		httpHandler = a.MuxHandler(httpHandler)
@@ -395,15 +407,6 @@ func newHTTPServer(c Config, connectRPC http.Handler, extraHTTP http.Handler, a 
 		httpHandler = corsHandler.Handler(httpHandler)
 	}
 
-	// Enable pprof
-	if c.EnablePprof {
-		httpHandler = pprofHandler(httpHandler)
-		// Need to extend write timeout to collect pprof data.
-		if c.HTTPServerConfig.WriteTimeout < 30*time.Second {
-			c.HTTPServerConfig.WriteTimeout = 30 * time.Second //nolint:mnd // easier to read that we are overriding the default
-		}
-	}
-
 	var handler http.Handler
 	if !c.TLS.Enabled {
 		handler = h2c.NewHandler(routeConnectRPCRequests(connectRPC, httpHandler), &http2.Server{})
@@ -447,10 +450,15 @@ func routeConnectRPCRequests(connectRPC http.Handler, httpHandler http.Handler) 
 	})
 }
 
-// ppprof handler
+// pprofHandler routes profiling requests and bounds caller-controlled collection durations.
 func pprofHandler(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if strings.HasPrefix(r.URL.Path, "/debug/pprof/") {
+			if supportsPprofDuration(r.URL.Path) && exceedsMaxPprofDuration(r) {
+				http.Error(w, fmt.Sprintf("pprof duration must not exceed %d seconds", maxPprofDurationSeconds), http.StatusBadRequest)
+				return
+			}
+
 			switch r.URL.Path {
 			case "/debug/pprof/cmdline":
 				pprof.Cmdline(w, r)
@@ -467,6 +475,25 @@ func pprofHandler(h http.Handler) http.Handler {
 			h.ServeHTTP(w, r)
 		}
 	})
+}
+
+func supportsPprofDuration(path string) bool {
+	switch path {
+	case "/debug/pprof/", "/debug/pprof/cmdline", "/debug/pprof/symbol":
+		return false
+	default:
+		return true
+	}
+}
+
+func exceedsMaxPprofDuration(r *http.Request) bool {
+	seconds := r.FormValue("seconds")
+	if seconds == "" {
+		return false
+	}
+
+	duration, err := strconv.ParseFloat(seconds, 64)
+	return err == nil && duration > maxPprofDurationSeconds
 }
 
 func newConnectRPC(c Config, authInts []connect.Interceptor, ints []connect.Interceptor, logger *logger.Logger) (*ConnectRPC, error) {

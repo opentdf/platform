@@ -135,7 +135,7 @@ Root level key `server`
 | `auth.dpop.enforce`     | If true, DPoP bindings on Access Tokens are enforced.                                                         | `false` | OPENTDF_SERVER_AUTH_DPOP_ENFORCE     |
 | `auth.enforceDPoP`      | [DEPRECATED] Use `auth.dpop.enforce`. Still honored: DPoP is enforced when either field is true.              | `false` | OPENTDF_SERVER_AUTH_ENFORCEDPOP      |
 | `cryptoProvider`        | A list of public/private keypairs and their use. Described [below](#crypto-provider)                          | empty   |                                      |
-| `enable_pprof`          | Enable golang performance profiling                                                                           | `false` | OPENTDF_SERVER_ENABLE_PPROF          |
+| `enable_pprof`          | Enable Go performance profiling under `/debug/pprof/`; uses HTTP authentication and authorization when server authentication is enabled, with collection durations capped at 30 seconds | `false` | OPENTDF_SERVER_ENABLE_PPROF          |
 | `grpc.reflection`       | The configuration for the grpc server.                                                                        | `true`  | OPENTDF_SERVER_GRPC_REFLECTION       |
 | `public_hostname`       | The public facing hostname for the server.                                                                    |         | OPENTDF_SERVER_PUBLIC_HOSTNAME       |
 | `host`                  | The host address for the server.                                                                              | `""`    | OPENTDF_SERVER_HOST                  |

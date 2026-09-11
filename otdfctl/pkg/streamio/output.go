@@ -10,12 +10,6 @@ import (
 // OutputFile that had already been committed or discarded.
 var ErrOutputFileFinished = errors.New("streamio: output file already committed or discarded")
 
-// outputFileMode is the permission Commit applies to the destination.
-// os.CreateTemp always creates the temp file with 0600; without an explicit
-// Chmod that would leak onto the destination regardless of the caller's
-// umask, so this matches the common default a plain os.Create would produce.
-const outputFileMode = 0o644
-
 // OutputFile writes to a temporary file alongside the destination and renames
 // it into place only once the write has succeeded, so an interrupted or failed
 // run leaves no partial output where a complete file is expected.
@@ -26,6 +20,7 @@ const outputFileMode = 0o644
 type OutputFile struct {
 	f        *os.File
 	path     string
+	mode     os.FileMode
 	finished bool
 }
 
@@ -33,12 +28,13 @@ type OutputFile struct {
 // A rename is only atomic within a single filesystem, so the temp file must
 // live beside the destination rather than in a shared temp directory —
 // Commit's os.Rename fails outright (EXDEV) if that invariant is broken.
-func NewOutputFile(path string) (*OutputFile, error) {
+// The destination receives mode after a successful commit.
+func NewOutputFile(path string, mode os.FileMode) (*OutputFile, error) {
 	f, err := os.CreateTemp(filepath.Dir(path), "."+filepath.Base(path)+".tmp-*")
 	if err != nil {
 		return nil, err
 	}
-	return &OutputFile{f: f, path: path}, nil
+	return &OutputFile{f: f, path: path, mode: mode}, nil
 }
 
 func (o *OutputFile) Write(p []byte) (int, error) { return o.f.Write(p) }
@@ -58,7 +54,7 @@ func (o *OutputFile) Commit() error {
 	}
 	o.finished = true
 
-	if err := o.f.Chmod(outputFileMode); err != nil {
+	if err := o.f.Chmod(o.mode); err != nil {
 		o.f.Close()
 		os.Remove(o.f.Name())
 		return err

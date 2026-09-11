@@ -1,5 +1,5 @@
 {
-  "lib/fixtures": "0.6.0",
+  "lib/fixtures": "0.7.0",
   "lib/ocrypto": "0.14.0",
   "lib/flattening": "0.2.0",
   "lib/identifier": "0.4.0",

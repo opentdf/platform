@@ -24,7 +24,6 @@ command:
         The algorithm used for the TDF's root signature. Only hs256 is supported; gmac is rejected.
       enum:
         - hs256
-        - gmac
       default: hs256
     - name: segment-integrity-algorithm
       description: >

@@ -39,6 +39,7 @@ const (
 	defaultReadTimeout      time.Duration = 10 * time.Second
 	shutdownTimeout         time.Duration = 5 * time.Second
 	maxPprofDurationSeconds               = 30
+	maxPprofFormBodyBytes   int64         = 1024
 )
 
 type Error string
@@ -454,8 +455,7 @@ func routeConnectRPCRequests(connectRPC http.Handler, httpHandler http.Handler) 
 func pprofHandler(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if strings.HasPrefix(r.URL.Path, "/debug/pprof/") {
-			if supportsPprofDuration(r.URL.Path) && exceedsMaxPprofDuration(r) {
-				http.Error(w, fmt.Sprintf("pprof duration must not exceed %d seconds", maxPprofDurationSeconds), http.StatusBadRequest)
+			if supportsPprofDuration(r.URL.Path) && !validatePprofDuration(w, r) {
 				return
 			}
 
@@ -486,14 +486,40 @@ func supportsPprofDuration(path string) bool {
 	}
 }
 
-func exceedsMaxPprofDuration(r *http.Request) bool {
-	seconds := r.FormValue("seconds")
-	if seconds == "" {
+func validatePprofDuration(w http.ResponseWriter, r *http.Request) bool {
+	r.Body = http.MaxBytesReader(w, r.Body, maxPprofFormBodyBytes)
+	if err := r.ParseForm(); err != nil {
+		writePprofFormError(w, err)
+		return false
+	}
+	//nolint:gosec // MaxBytesReader bounds the complete request body above.
+	if err := r.ParseMultipartForm(maxPprofFormBodyBytes); err != nil && !errors.Is(err, http.ErrNotMultipart) {
+		writePprofFormError(w, err)
 		return false
 	}
 
+	seconds := r.FormValue("seconds")
+	if seconds == "" {
+		return true
+	}
+
 	duration, err := strconv.ParseFloat(seconds, 64)
-	return err == nil && duration > maxPprofDurationSeconds
+	if err == nil && duration > maxPprofDurationSeconds {
+		http.Error(w, fmt.Sprintf("pprof duration must not exceed %d seconds", maxPprofDurationSeconds), http.StatusBadRequest)
+		return false
+	}
+
+	return true
+}
+
+func writePprofFormError(w http.ResponseWriter, err error) {
+	var maxBytesError *http.MaxBytesError
+	if errors.As(err, &maxBytesError) {
+		http.Error(w, "pprof request body too large", http.StatusRequestEntityTooLarge)
+		return
+	}
+
+	http.Error(w, "invalid pprof form body", http.StatusBadRequest)
 }
 
 func newConnectRPC(c Config, authInts []connect.Interceptor, ints []connect.Interceptor, logger *logger.Logger) (*ConnectRPC, error) {

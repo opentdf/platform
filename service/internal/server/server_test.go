@@ -186,6 +186,40 @@ func TestPprofHandlerRejectsBodyDuration(t *testing.T) {
 	})
 }
 
+func TestPprofHandlerRejectsOversizedBody(t *testing.T) {
+	fallback := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusNoContent)
+	})
+	handler := pprofHandler(fallback)
+
+	t.Run("URL encoded", func(t *testing.T) {
+		body := "seconds=1&padding=" + strings.Repeat("x", int(maxPprofFormBodyBytes))
+		request := httptest.NewRequest(http.MethodPost, "/debug/pprof/profile", strings.NewReader(body))
+		request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		recorder := httptest.NewRecorder()
+
+		handler.ServeHTTP(recorder, request)
+
+		assert.Equal(t, http.StatusRequestEntityTooLarge, recorder.Code)
+	})
+
+	t.Run("multipart", func(t *testing.T) {
+		var body bytes.Buffer
+		writer := multipart.NewWriter(&body)
+		require.NoError(t, writer.WriteField("seconds", "1"))
+		require.NoError(t, writer.WriteField("padding", strings.Repeat("x", int(maxPprofFormBodyBytes))))
+		require.NoError(t, writer.Close())
+
+		request := httptest.NewRequest(http.MethodPost, "/debug/pprof/trace", &body)
+		request.Header.Set("Content-Type", writer.FormDataContentType())
+		recorder := httptest.NewRecorder()
+
+		handler.ServeHTTP(recorder, request)
+
+		assert.Equal(t, http.StatusRequestEntityTooLarge, recorder.Code)
+	})
+}
+
 func TestPprofHandlerPreservesSymbolPostBody(t *testing.T) {
 	programCounter := reflect.ValueOf(TestPprofHandlerPreservesSymbolPostBody).Pointer()
 	request := httptest.NewRequest(http.MethodPost, "/debug/pprof/symbol", strings.NewReader(fmt.Sprintf("%#x", programCounter)))

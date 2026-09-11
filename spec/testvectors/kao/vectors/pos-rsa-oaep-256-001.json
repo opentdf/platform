@@ -1,0 +1,46 @@
+{
+  "id": "pos-rsa-oaep-256-001",
+  "description": "Round-trip wrap/unwrap with RSA-OAEP-256 using the rsa-2048-test test key.",
+  "conformance": [
+    "KAO-C-001",
+    "KAO-C-006",
+    "KAO-C-101",
+    "KAO-C-202"
+  ],
+  "category": "positive",
+  "algorithm": "RSA-OAEP-256",
+  "manifestSchemaVersion": "4.4.0",
+  "inputs": {
+    "kao": {
+      "alg": "RSA-OAEP-256",
+      "kas": "https://kas.example.com",
+      "kid": "rsa-2048-test",
+      "sid": "s-0",
+      "protectedKey": "fKbfI4GvKeRxp9i8efys8J5qKcXnnrepFE8m7XsXWzSLn0K3cOWqyR/SHLtABvKrW4MngCtzWt5s9O0y7KP0B4p1BanyrlKppRrlphoqsfP+ojUDX6YhuqRoEh2Gh+w/pYDjuCldToYWXNMtP80IwiA86oIr6cvHC6MsgIOmVtI6fFqWEg7dN4/pXLDB1Kga8oFXnWcP+Qajt6LLOTgyBoocpMqODqFrglUzFRRTZINI6dbSi1aLOZoGE6cemEBIpt8C9SHN/KikNhiKsRD44lzbkpUKtvy+dLg8TWpqQVeznPgwHMI8dQ4SaZp9M1NDhb8hp1CyJvuRFLGr+EI/hg==",
+      "policyBinding": {
+        "alg": "HS256",
+        "hash": "pTejsj6nAGsYTpJuLYsAertyrCY6GWVdDVQNG6D1O7A="
+      }
+    },
+    "policy": "eyJ1dWlkIjoiMTIzNDU2NzgtMTIzNC00MzIxLTk4NzYtMTIzNDU2Nzg5YWJjIiwiYm9keSI6eyJkYXRhQXR0cmlidXRlcyI6W3siYXR0cmlidXRlIjoiaHR0cHM6Ly9leGFtcGxlLmNvbS9hdHRyL0NsYXNzaWZpY2F0aW9uL3ZhbHVlL1B1YmxpYyJ9XSwiZGlzc2VtIjpbXX19",
+    "keys": {
+      "kas": "keys/rsa-2048-test.priv.pem"
+    }
+  },
+  "expected": {
+    "outcome": "accept",
+    "policyBindingValid": true,
+    "recoveredDek": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+    "normalizedKao": {
+      "alg": "RSA-OAEP-256",
+      "kas": "https://kas.example.com",
+      "kid": "rsa-2048-test",
+      "sid": "s-0",
+      "protectedKey": "fKbfI4GvKeRxp9i8efys8J5qKcXnnrepFE8m7XsXWzSLn0K3cOWqyR/SHLtABvKrW4MngCtzWt5s9O0y7KP0B4p1BanyrlKppRrlphoqsfP+ojUDX6YhuqRoEh2Gh+w/pYDjuCldToYWXNMtP80IwiA86oIr6cvHC6MsgIOmVtI6fFqWEg7dN4/pXLDB1Kga8oFXnWcP+Qajt6LLOTgyBoocpMqODqFrglUzFRRTZINI6dbSi1aLOZoGE6cemEBIpt8C9SHN/KikNhiKsRD44lzbkpUKtvy+dLg8TWpqQVeznPgwHMI8dQ4SaZp9M1NDhb8hp1CyJvuRFLGr+EI/hg==",
+      "policyBinding": {
+        "alg": "HS256",
+        "hash": "pTejsj6nAGsYTpJuLYsAertyrCY6GWVdDVQNG6D1O7A="
+      }
+    }
+  }
+}

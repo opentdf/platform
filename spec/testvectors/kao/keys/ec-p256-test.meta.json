@@ -1,0 +1,8 @@
+{
+  "id": "ec-p256-test",
+  "algorithm": "EC-P-256",
+  "publicKey": "ec-p256-test.pub.pem",
+  "privateKey": "ec-p256-test.priv.pem",
+  "provenance": "Deterministic from seed 626173657464662d6b616f2f65632d703235362d746573742d736565642d303031 via HKDF-SHA256 over the curve order (gen_test_keys.py)",
+  "WARNING": "NON-PRODUCTION TEST KEY -- DO NOT USE"
+}

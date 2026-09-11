@@ -1,0 +1,41 @@
+---
+import "../styles/global.css";
+
+interface Props {
+  title?: string;
+  description?: string;
+}
+const { title = "BaseTDF KAO Explorer", description } = Astro.props;
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width" />
+    <title>{title}</title>
+    {description && <meta name="description" content={description} />}
+  </head>
+  <body class="min-h-screen bg-slate-50 text-slate-900 font-sans">
+    <header class="border-b border-slate-200 bg-white">
+      <nav class="mx-auto max-w-6xl px-4 py-3 flex flex-wrap gap-4 text-sm">
+        <a href="/" class="font-semibold">BaseTDF KAO Explorer</a>
+        <a href="/inspector" class="hover:underline">Inspector</a>
+        <a href="/algorithms/RSA-OAEP-256" class="hover:underline">Algorithms</a>
+        <a href="/vectors" class="hover:underline">Vectors</a>
+        <a href="/binding" class="hover:underline">Binding</a>
+        <a href="/errors" class="hover:underline">Error codes</a>
+      </nav>
+    </header>
+    <main class="mx-auto max-w-6xl px-4 py-8">
+      <slot />
+    </main>
+    <footer class="mx-auto max-w-6xl px-4 py-8 text-xs text-slate-500">
+      <p>
+        Static interactive companion to <code>spec/basetdf/basetdf-kao.md</code>{" "}
+        and <code>spec/basetdf/basetdf-kao-conformance.md</code>. Crypto here is
+        for spec verification only — not production.
+      </p>
+    </footer>
+  </body>
+</html>

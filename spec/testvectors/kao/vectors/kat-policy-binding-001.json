@@ -1,0 +1,45 @@
+{
+  "id": "kat-policy-binding-001",
+  "description": "Pins the HMAC-SHA256 digest for a fixed DEK and canonical policy. protectedKey is a placeholder; this vector tests binding only.",
+  "conformance": [
+    "KAO-C-200",
+    "KAO-C-201",
+    "KAO-C-203"
+  ],
+  "category": "kat",
+  "algorithm": "RSA-OAEP",
+  "manifestSchemaVersion": "4.4.0",
+  "inputs": {
+    "kao": {
+      "alg": "RSA-OAEP",
+      "kas": "https://kas.example.com",
+      "kid": "rsa-4096-test",
+      "sid": "s-0",
+      "protectedKey": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+      "policyBinding": {
+        "alg": "HS256",
+        "hash": "iDTdsYU4lhNS04RhzDTZuoA8BufxYzPYDrapVAiKYO0="
+      }
+    },
+    "policy": "eyJ1dWlkIjoiMTIzNDU2NzgtMTIzNC00MzIxLTk4NzYtMTIzNDU2Nzg5YWJjIiwiYm9keSI6eyJkYXRhQXR0cmlidXRlcyI6W3siYXR0cmlidXRlIjoiaHR0cHM6Ly9leGFtcGxlLmNvbS9hdHRyL0NsYXNzaWZpY2F0aW9uL3ZhbHVlL1B1YmxpYyJ9XSwiZGlzc2VtIjpbXX19",
+    "keys": {
+      "kas": "keys/rsa-4096-test.priv.pem"
+    },
+    "dekShare": "0a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20212223242526272829"
+  },
+  "expected": {
+    "outcome": "accept",
+    "policyBindingValid": true,
+    "normalizedKao": {
+      "alg": "RSA-OAEP",
+      "kas": "https://kas.example.com",
+      "kid": "rsa-4096-test",
+      "sid": "s-0",
+      "protectedKey": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+      "policyBinding": {
+        "alg": "HS256",
+        "hash": "iDTdsYU4lhNS04RhzDTZuoA8BufxYzPYDrapVAiKYO0="
+      }
+    }
+  }
+}

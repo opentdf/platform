@@ -1,5 +1,22 @@
 # Changelog
 
+## [0.32.0](https://github.com/opentdf/platform/compare/sdk/v0.31.0...sdk/v0.32.0) (2026-09-11)
+
+
+### Features
+
+* **sdk:** make the zipstream clock injectable for deterministic ZIP output ([#3931](https://github.com/opentdf/platform/issues/3931)) ([02d9aea](https://github.com/opentdf/platform/commit/02d9aeae851bfd9c7e34334e14a5f581527ba6b8))
+
+
+### Bug Fixes
+
+* **deps:** bump google.golang.org/grpc from 1.83.0 to 1.83.1 in /sdk ([#3959](https://github.com/opentdf/platform/issues/3959)) ([06c4934](https://github.com/opentdf/platform/commit/06c49345769ccec09f7cef53b6c2ddde09108874))
+* **sdk:** DSPX-4590 default per-segment sizes when a writer omits them ([#3979](https://github.com/opentdf/platform/issues/3979)) ([9deeee8](https://github.com/opentdf/platform/commit/9deeee89d9a9a49f63228101e8634d91385f6a93))
+* **sdk:** fill each segment with io.ReadFull and size the buffer to the input ([#3936](https://github.com/opentdf/platform/issues/3936)) ([20f59a4](https://github.com/opentdf/platform/commit/20f59a4acc89603258f47e8e32a27837270fd86f))
+* **sdk:** map ReadAt plaintext offsets from cumulative segment sizes ([#3933](https://github.com/opentdf/platform/issues/3933)) ([62cb8e3](https://github.com/opentdf/platform/commit/62cb8e35fa8bab5c5261874d2172d84af0bb1c4e))
+* **sdk:** reject a zipstream write set that omits segment 0 ([#3932](https://github.com/opentdf/platform/issues/3932)) ([6ca994b](https://github.com/opentdf/platform/commit/6ca994bc5372a671d5391fa4c3776ee9d49f8dbf))
+* **sdk:** reject GMAC root signatures (DSPX-4703) ([#4030](https://github.com/opentdf/platform/issues/4030)) ([2bce7d4](https://github.com/opentdf/platform/commit/2bce7d45b1849e5454c227c4a904d7b51ebd8879))
+
 ## [0.31.0](https://github.com/opentdf/platform/compare/sdk/v0.30.0...sdk/v0.31.0) (2026-08-27)
 
 

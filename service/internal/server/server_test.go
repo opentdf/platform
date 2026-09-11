@@ -1,9 +1,13 @@
 package server
 
 import (
+	"bytes"
 	"context"
+	"fmt"
+	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
+	"reflect"
 	"strings"
 	"testing"
 
@@ -78,6 +82,154 @@ func TestMergeStringSlices(t *testing.T) {
 			assert.Equal(t, tt.want, got)
 		})
 	}
+}
+
+func TestNewHTTPServer_PprofRequiresAuthentication(t *testing.T) {
+	server, err := newHTTPServer(Config{
+		Auth:        auth.Config{Enabled: true},
+		EnablePprof: true,
+	}, http.NotFoundHandler(), http.NotFoundHandler(), &auth.Authentication{}, logger.CreateTestLogger())
+	require.NoError(t, err)
+
+	recorder := httptest.NewRecorder()
+	request := httptest.NewRequest(http.MethodGet, "/debug/pprof/", nil)
+	server.Handler.ServeHTTP(recorder, request)
+
+	assert.Equal(t, http.StatusUnauthorized, recorder.Code)
+	assert.Contains(t, recorder.Body.String(), "missing authorization header")
+}
+
+func TestPprofHandler(t *testing.T) {
+	fallback := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusNoContent)
+	})
+	handler := pprofHandler(fallback)
+
+	tests := []struct {
+		name       string
+		target     string
+		wantStatus int
+	}{
+		{
+			name:       "serves profiling index",
+			target:     "/debug/pprof/",
+			wantStatus: http.StatusOK,
+		},
+		{
+			name:       "rejects long CPU profile",
+			target:     "/debug/pprof/profile?seconds=31",
+			wantStatus: http.StatusBadRequest,
+		},
+		{
+			name:       "rejects long trace",
+			target:     "/debug/pprof/trace?seconds=30.1",
+			wantStatus: http.StatusBadRequest,
+		},
+		{
+			name:       "rejects long delta profile",
+			target:     "/debug/pprof/goroutine?seconds=60",
+			wantStatus: http.StatusBadRequest,
+		},
+		{
+			name:       "preserves invalid duration default",
+			target:     "/debug/pprof/?seconds=invalid",
+			wantStatus: http.StatusOK,
+		},
+		{
+			name:       "passes through non-profiling request",
+			target:     "/healthz",
+			wantStatus: http.StatusNoContent,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			recorder := httptest.NewRecorder()
+			request := httptest.NewRequest(http.MethodGet, test.target, nil)
+
+			handler.ServeHTTP(recorder, request)
+
+			assert.Equal(t, test.wantStatus, recorder.Code)
+		})
+	}
+}
+
+func TestPprofHandlerRejectsBodyDuration(t *testing.T) {
+	fallback := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusNoContent)
+	})
+	handler := pprofHandler(fallback)
+
+	t.Run("URL encoded", func(t *testing.T) {
+		request := httptest.NewRequest(http.MethodPost, "/debug/pprof/profile", strings.NewReader("seconds=31"))
+		request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		recorder := httptest.NewRecorder()
+
+		handler.ServeHTTP(recorder, request)
+
+		assert.Equal(t, http.StatusBadRequest, recorder.Code)
+	})
+
+	t.Run("multipart", func(t *testing.T) {
+		var body bytes.Buffer
+		writer := multipart.NewWriter(&body)
+		require.NoError(t, writer.WriteField("seconds", "31"))
+		require.NoError(t, writer.Close())
+
+		request := httptest.NewRequest(http.MethodPost, "/debug/pprof/trace", &body)
+		request.Header.Set("Content-Type", writer.FormDataContentType())
+		recorder := httptest.NewRecorder()
+
+		handler.ServeHTTP(recorder, request)
+
+		assert.Equal(t, http.StatusBadRequest, recorder.Code)
+	})
+}
+
+func TestPprofHandlerRejectsOversizedBody(t *testing.T) {
+	fallback := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusNoContent)
+	})
+	handler := pprofHandler(fallback)
+
+	t.Run("URL encoded", func(t *testing.T) {
+		body := "seconds=1&padding=" + strings.Repeat("x", int(maxPprofFormBodyBytes))
+		request := httptest.NewRequest(http.MethodPost, "/debug/pprof/profile", strings.NewReader(body))
+		request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		recorder := httptest.NewRecorder()
+
+		handler.ServeHTTP(recorder, request)
+
+		assert.Equal(t, http.StatusRequestEntityTooLarge, recorder.Code)
+	})
+
+	t.Run("multipart", func(t *testing.T) {
+		var body bytes.Buffer
+		writer := multipart.NewWriter(&body)
+		require.NoError(t, writer.WriteField("seconds", "1"))
+		require.NoError(t, writer.WriteField("padding", strings.Repeat("x", int(maxPprofFormBodyBytes))))
+		require.NoError(t, writer.Close())
+
+		request := httptest.NewRequest(http.MethodPost, "/debug/pprof/trace", &body)
+		request.Header.Set("Content-Type", writer.FormDataContentType())
+		recorder := httptest.NewRecorder()
+
+		handler.ServeHTTP(recorder, request)
+
+		assert.Equal(t, http.StatusRequestEntityTooLarge, recorder.Code)
+	})
+}
+
+func TestPprofHandlerPreservesSymbolPostBody(t *testing.T) {
+	programCounter := reflect.ValueOf(TestPprofHandlerPreservesSymbolPostBody).Pointer()
+	request := httptest.NewRequest(http.MethodPost, "/debug/pprof/symbol", strings.NewReader(fmt.Sprintf("%#x", programCounter)))
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	recorder := httptest.NewRecorder()
+
+	pprofHandler(http.NotFoundHandler()).ServeHTTP(recorder, request)
+
+	assert.Equal(t, http.StatusOK, recorder.Code)
+	assert.Contains(t, recorder.Body.String(), "TestPprofHandlerPreservesSymbolPostBody")
 }
 
 func Test_OpenTDFServer_RegisterReflectionHandlers_Enabled_RegistersOnlyExternalHandlers(t *testing.T) {

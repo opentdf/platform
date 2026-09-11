@@ -1,16 +1,27 @@
 package server
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
+	"errors"
+	"log/slog"
+	"net/http"
+	"net/http/httptest"
+	"os"
+	"os/exec"
+	"path/filepath"
 	"sync/atomic"
 	"testing"
 
 	"connectrpc.com/connect"
+	"github.com/opentdf/platform/protocol/go/entityresolution"
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/actions"
 	"github.com/opentdf/platform/protocol/go/policy/actions/actionsconnect"
 	"github.com/opentdf/platform/protocol/go/policy/namespaces"
 	"github.com/opentdf/platform/protocol/go/policy/namespaces/namespacesconnect"
+	"github.com/opentdf/platform/sdk"
 	"github.com/opentdf/platform/service/internal/auth"
 	internalserver "github.com/opentdf/platform/service/internal/server"
 	"github.com/opentdf/platform/service/logger"
@@ -103,6 +114,150 @@ func TestValidateIPCTransportAgainstRegisteredDescriptorsAndMode(t *testing.T) {
 			assert.Equal(t, test.want, got)
 		})
 	}
+}
+
+func TestLogIPCBindingInventoryReportsRemoteERSInCoreMode(t *testing.T) {
+	var output bytes.Buffer
+	log := &logger.Logger{Logger: slog.New(slog.NewJSONHandler(&output, nil))}
+	cfg := &config.Config{Mode: []string{serviceregistry.ModeCore.String()}}
+
+	remoteERS := usesRemoteERSBinding(cfg)
+	require.True(t, remoteERS)
+	logIPCBindingInventory(log, internalserver.IPCTransportLocalHTTPV2, true, remoteERS)
+
+	var record map[string]any
+	require.NoError(t, json.Unmarshal(output.Bytes(), &record))
+	assert.Equal(t, internalserver.IPCTransportLocalHTTPV2, record["sdk_actions_binding"])
+	assert.Equal(t, internalserver.IPCTransportConnectV1, record["sdk_conn_binding"])
+	assert.Equal(t, "remote-connect", record["sdk_entity_resolution_binding"])
+	assert.Equal(t, "connect-v1-or-remote", record["other_sdk_bindings"])
+}
+
+func TestSetupIPCSDKRetainsRemoteERSInCoreMode(t *testing.T) {
+	remoteRequests := make(chan string, 1)
+	remoteERS := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		remoteRequests <- req.URL.Path
+		http.Error(w, "remote ERS fixture", http.StatusServiceUnavailable)
+	}))
+	t.Cleanup(remoteERS.Close)
+
+	otdf := newIPCTestServer(t)
+	actionHandler := &ipcActionHandler{peers: make(chan string, 1)}
+	actionPath, actionHTTPHandler := actionsconnect.NewActionServiceHandler(actionHandler, otdf.ConnectRPCInProcess.Interceptors...)
+	otdf.ConnectRPCInProcess.Mux.Handle(actionPath, actionHTTPHandler)
+	namespaceHandler := &ipcNamespaceHandler{peers: make(chan string, 1)}
+	namespacePath, namespaceHTTPHandler := namespacesconnect.NewNamespaceServiceHandler(namespaceHandler, otdf.ConnectRPCInProcess.Interceptors...)
+	otdf.ConnectRPCInProcess.Mux.Handle(namespacePath, namespaceHTTPHandler)
+
+	cfg := &config.Config{Mode: []string{serviceregistry.ModeCore.String()}}
+	cfg.Server.IPC.Transport = internalserver.IPCTransportLocalHTTPV2
+	cfg.SDKConfig.EntityResolutionConnection.Endpoint = remoteERS.URL
+	cfg.SDKConfig.EntityResolutionConnection.Plaintext = true
+	selected, err := validateIPCTransport(cfg, ipcTestRegistry(t, cfg.Mode))
+	require.NoError(t, err)
+	client, err := setupIPCSDK(cfg, nil, otdf, logger.CreateTestLogger(), nil, selected)
+	require.NoError(t, err)
+	t.Cleanup(func() { require.NoError(t, client.Close()) })
+
+	action, err := client.Actions.GetAction(t.Context(), &actions.GetActionRequest{Identifier: &actions.GetActionRequest_Id{Id: ipcTestID}})
+	require.NoError(t, err)
+	assert.Equal(t, "routed", action.GetAction().GetName())
+	assert.Equal(t, "local-http-ipc", <-actionHandler.peers)
+
+	namespace, err := client.Namespaces.GetNamespace(t.Context(), &namespaces.GetNamespaceRequest{Identifier: &namespaces.GetNamespaceRequest_NamespaceId{NamespaceId: ipcTestID}})
+	require.NoError(t, err)
+	assert.Equal(t, "v1", namespace.GetNamespace().GetName())
+	assert.NotEqual(t, "local-http-ipc", <-namespaceHandler.peers)
+
+	_, err = client.EntityResoution.ResolveEntities(t.Context(), &entityresolution.ResolveEntitiesRequest{})
+	require.Error(t, err)
+	assert.Equal(t, "/entityresolution.EntityResolutionService/ResolveEntities", <-remoteRequests)
+	assert.Equal(t, otdf.ConnectRPCInProcess.Conn().Endpoint, client.Conn().Endpoint)
+}
+
+func TestIPCTransportSelectionRemainsStartupOnlyAcrossConfigReload(t *testing.T) {
+	configPath := filepath.Join(t.TempDir(), "ipc-reload.yaml")
+	writeConfig := func(transport string) {
+		require.NoError(t, os.WriteFile(configPath, []byte("mode: all\nserver:\n  ipc:\n    transport: "+transport+"\n"), 0o600))
+	}
+	writeConfig(internalserver.IPCTransportLocalHTTPV2)
+	fileLoader, err := config.NewConfigFileLoader("ipc-reload", configPath)
+	require.NoError(t, err)
+	defaultLoader, err := config.NewDefaultSettingsLoader()
+	require.NoError(t, err)
+	cfg, err := config.Load(t.Context(), fileLoader, defaultLoader)
+	require.NoError(t, err)
+	t.Cleanup(func() { require.NoError(t, cfg.Close(t.Context())) })
+
+	otdf := newIPCTestServer(t)
+	actionHandler := &ipcActionHandler{peers: make(chan string, 2)}
+	actionPath, actionHTTPHandler := actionsconnect.NewActionServiceHandler(actionHandler, otdf.ConnectRPCInProcess.Interceptors...)
+	otdf.ConnectRPCInProcess.Mux.Handle(actionPath, actionHTTPHandler)
+	selected, err := validateIPCTransport(cfg, ipcTestRegistry(t, cfg.Mode))
+	require.NoError(t, err)
+	client, err := setupIPCSDK(cfg, nil, otdf, logger.CreateTestLogger(), nil, selected)
+	require.NoError(t, err)
+	t.Cleanup(func() { require.NoError(t, client.Close()) })
+
+	writeConfig(internalserver.IPCTransportConnectV1)
+	require.NoError(t, cfg.Reload(t.Context()))
+	require.Equal(t, internalserver.IPCTransportConnectV1, cfg.Server.IPC.Transport)
+
+	response, err := client.Actions.GetAction(t.Context(), &actions.GetActionRequest{Identifier: &actions.GetActionRequest_Id{Id: ipcTestID}})
+	require.NoError(t, err)
+	assert.Equal(t, "routed", response.GetAction().GetName())
+	assert.Equal(t, "local-http-ipc", <-actionHandler.peers, "reload must not dynamically rebind a startup-selected SDK client")
+}
+
+func TestStartLaterFailureRunsDeferredIPCResourceCleanup(t *testing.T) {
+	if os.Getenv("OPENTDF_IPC_START_FAILURE_HELPER") == "1" {
+		injected := errors.New("injected failure after SDK and server construction")
+		var capturedClient *sdk.SDK
+		err := Start(
+			WithConfigFile(os.Getenv("OPENTDF_IPC_START_FAILURE_CONFIG")),
+			WithConfigKey("ipc-start-failure"),
+			WithConfigLoaderOrder([]string{config.LoaderNameFile, config.LoaderNameDefaultSettings}),
+			WithExternalInterceptorFactories(InterceptorFactory{
+				Name: "capture-and-fail",
+				Factory: func(params InterceptorParams) (connect.Interceptor, error) {
+					capturedClient = params.SDK
+					return nil, injected
+				},
+			}),
+		)
+		require.ErrorIs(t, err, injected)
+		require.NotNil(t, capturedClient)
+
+		_, actionErr := capturedClient.Actions.GetAction(t.Context(), &actions.GetActionRequest{Identifier: &actions.GetActionRequest_Id{Id: ipcTestID}})
+		require.Error(t, actionErr)
+		require.ErrorContains(t, actionErr, "local HTTP transport is closed")
+		_, namespaceErr := capturedClient.Namespaces.GetNamespace(t.Context(), &namespaces.GetNamespaceRequest{
+			Identifier: &namespaces.GetNamespaceRequest_NamespaceId{NamespaceId: ipcTestID},
+		})
+		require.Error(t, namespaceErr, "the retained v1 server must be closed by Start's deferred cleanup")
+		return
+	}
+
+	configPath := filepath.Join(t.TempDir(), "ipc-start-failure.yaml")
+	require.NoError(t, os.WriteFile(configPath, []byte(`mode: all
+logger:
+  level: info
+  output: stderr
+  type: json
+server:
+  port: 0
+  auth:
+    enabled: false
+  ipc:
+    transport: local-http-v2
+`), 0o600))
+	cmd := exec.Command(os.Args[0], "-test.run=^TestStartLaterFailureRunsDeferredIPCResourceCleanup$", "-test.v")
+	cmd.Env = append(os.Environ(),
+		"OPENTDF_IPC_START_FAILURE_HELPER=1",
+		"OPENTDF_IPC_START_FAILURE_CONFIG="+configPath,
+	)
+	output, err := cmd.CombinedOutput()
+	require.NoError(t, err, "helper output:\n%s", output)
 }
 
 func TestSetupIPCSDKRoutesOnlyActionsToSelectedTransport(t *testing.T) {

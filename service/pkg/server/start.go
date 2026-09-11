@@ -311,7 +311,7 @@ func Start(f ...StartOptions) error {
 	if err != nil {
 		return err
 	}
-	logIPCBindingInventory(logger, selectedIPCTransport, modeRequiresIpc(cfg))
+	logIPCBindingInventory(logger, selectedIPCTransport, modeRequiresIpc(cfg), usesRemoteERSBinding(cfg))
 
 	defer client.Close()
 
@@ -555,7 +555,11 @@ func validateIPCTransport(cfg *config.Config, reg *serviceregistry.Registry) (st
 	}
 }
 
-func logIPCBindingInventory(log *logger.Logger, transport string, ipcMode bool) {
+func usesRemoteERSBinding(cfg *config.Config) bool {
+	return slices.Contains(cfg.Mode, serviceregistry.ModeCore.String()) && !slices.Contains(cfg.Mode, serviceregistry.ModeERS.String())
+}
+
+func logIPCBindingInventory(log *logger.Logger, transport string, ipcMode, remoteERS bool) {
 	if !ipcMode {
 		log.Info(
 			"IPC transport selected at startup",
@@ -563,6 +567,7 @@ func logIPCBindingInventory(log *logger.Logger, transport string, ipcMode bool) 
 			slog.Bool("ipc_active", false),
 			slog.String("sdk_actions_binding", "remote-connect"),
 			slog.String("sdk_conn_binding", "remote-connect"),
+			slog.String("sdk_entity_resolution_binding", "remote-connect"),
 			slog.String("other_sdk_bindings", "remote-connect"),
 		)
 		return
@@ -572,22 +577,30 @@ func logIPCBindingInventory(log *logger.Logger, transport string, ipcMode bool) 
 	if transport == server.IPCTransportLocalHTTPV2 {
 		actionBinding = server.IPCTransportLocalHTTPV2
 	}
+	entityResolutionBinding := server.IPCTransportConnectV1
+	otherBindings := server.IPCTransportConnectV1
+	if remoteERS {
+		entityResolutionBinding = "remote-connect"
+		otherBindings = "connect-v1-or-remote"
+	}
 	log.Info(
 		"IPC transport selected at startup",
 		slog.String("transport", transport),
 		slog.Bool("ipc_active", true),
 		slog.String("sdk_actions_binding", actionBinding),
 		slog.String("sdk_conn_binding", server.IPCTransportConnectV1),
-		slog.String("other_sdk_bindings", server.IPCTransportConnectV1),
+		slog.String("sdk_entity_resolution_binding", entityResolutionBinding),
+		slog.String("other_sdk_bindings", otherBindings),
 		slog.String("legacy_grpc_dialers", server.IPCTransportConnectV1),
 		slog.String("custom_downstream_clients", "unchanged"),
 		slog.Bool("identity_encoding_only", transport == server.IPCTransportLocalHTTPV2),
 	)
 }
 
-// setupIPCSDK configures and creates SDK client for IPC mode. Only SDK.Actions
-// is rebound for local-http-v2; the core connection and every other SDK client
-// deliberately retain the existing Connect v1 transport.
+// setupIPCSDK configures and creates the SDK client for IPC mode. local-http-v2
+// rebinds only SDK.Actions. SDK.Conn and the remaining local built-in clients
+// retain Connect v1, while a core-only deployment retains its configured remote
+// ERS connection.
 func setupIPCSDK(cfg *config.Config, oidcconfig *auth.OIDCConfiguration, otdf *server.OpenTDFServer, logger *logger.Logger, sdkOptions []sdk.Option, selectedIPCTransport string) (*sdk.SDK, error) {
 	// Use IPC for the SDK client
 	sdkOptions = append(sdkOptions, sdk.WithIPC())

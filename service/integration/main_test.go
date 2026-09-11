@@ -48,6 +48,13 @@ func init() {
 }
 
 func TestMain(m *testing.M) {
+	// The startup IPC probe launches this test binary as the platform process.
+	// Its parent already owns the isolated PostgreSQL fixture; the helper must
+	// not create a second testcontainer before running server.Start.
+	if os.Getenv("OPENTDF_IPC_PROBE_HELPER") == "1" {
+		os.Exit(m.Run())
+	}
+
 	ctx := context.Background()
 	conf := Config
 

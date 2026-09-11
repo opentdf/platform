@@ -36,9 +36,9 @@ import (
 )
 
 const (
-	defaultWriteTimeout time.Duration = 10 * time.Second
-	defaultReadTimeout  time.Duration = 10 * time.Second
-	shutdownTimeout     time.Duration = 5 * time.Second
+	defaultWriteTimeout    time.Duration = 10 * time.Second
+	defaultReadTimeout     time.Duration = 10 * time.Second
+	defaultShutdownTimeout time.Duration = 5 * time.Second
 
 	IPCTransportConnectV1   = "connect-v1"
 	IPCTransportLocalHTTPV2 = "local-http-v2"
@@ -253,10 +253,11 @@ type OpenTDFServer struct {
 
 	logger *logger.Logger
 
-	localIPCMu     sync.Mutex
-	localHTTPIPC   *localhttp.Transport
-	stopOnce       sync.Once
-	PublicHostname string
+	localIPCMu      sync.Mutex
+	localHTTPIPC    *localhttp.Transport
+	stopOnce        sync.Once
+	shutdownTimeout time.Duration
+	PublicHostname  string
 }
 
 /*
@@ -338,8 +339,9 @@ func NewOpenTDFServer(config Config, logger *logger.Logger, cacheManager *cache.
 			maxCallSendMsgSize: config.GRPC.MaxCallSendMsgSizeBytes,
 			ConnectRPC:         connectRPCIpc,
 		},
-		logger:         logger,
-		PublicHostname: config.PublicHostname,
+		logger:          logger,
+		shutdownTimeout: defaultShutdownTimeout,
+		PublicHostname:  config.PublicHostname,
 	}
 
 	if !config.CryptoProvider.IsEmpty() {
@@ -547,7 +549,7 @@ func (s *OpenTDFServer) Start() error {
 func (s *OpenTDFServer) Stop() {
 	s.stopOnce.Do(func() {
 		s.logger.Info("shutting down http server")
-		ctx, cancel := context.WithTimeout(context.Background(), shutdownTimeout)
+		ctx, cancel := context.WithTimeout(context.Background(), s.shutdownTimeout)
 		if err := s.HTTPServer.Shutdown(ctx); err != nil {
 			s.logger.Error("failed to shutdown http server", slog.String("error", err.Error()))
 		}
@@ -562,14 +564,14 @@ func (s *OpenTDFServer) Stop() {
 		}
 
 		s.logger.Info("shutting down local HTTP IPC transport")
-		ctx, cancel = context.WithTimeout(context.Background(), shutdownTimeout)
+		ctx, cancel = context.WithTimeout(context.Background(), s.shutdownTimeout)
 		if err := s.shutdownLocalHTTPIPC(ctx); err != nil {
 			s.logger.Error("failed to gracefully shutdown local HTTP IPC transport; forced owned I/O closed", slog.String("error", err.Error()))
 		}
 		cancel()
 
 		s.logger.Info("shutting down in process connect-rpc server")
-		ctx, cancel = context.WithTimeout(context.Background(), shutdownTimeout)
+		ctx, cancel = context.WithTimeout(context.Background(), s.shutdownTimeout)
 		if err := s.ConnectRPCInProcess.srv.Shutdown(ctx); err != nil {
 			s.logger.Error("failed to shutdown in process connect-rpc server", slog.String("error", err.Error()))
 			if closeErr := s.ConnectRPCInProcess.srv.Close(); closeErr != nil {

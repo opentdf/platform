@@ -88,7 +88,7 @@ func newNonUniformReader(t *testing.T, sizes []int) (*Reader, []byte) {
 		body.Write(hdr)
 		body.Write(cipherText)
 
-		sig, err := calculateSignature(cipherText, key, HS256, false)
+		sig, err := segmentIntegrity(cipherText, key, HS256, false)
 		require.NoError(t, err)
 
 		segments = append(segments, Segment{

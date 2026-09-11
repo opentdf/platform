@@ -19,6 +19,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
+const encryptedOutputFileMode = 0o644
+
 var (
 	attrValues []string
 	assertions string
@@ -146,7 +148,7 @@ func encryptRun(cmd *cobra.Command, args []string) {
 		if !strings.HasSuffix(out, ".tdf") {
 			out += ".tdf"
 		}
-		tdfFile, err = streamio.NewOutputFile(out)
+		tdfFile, err = streamio.NewOutputFile(out, encryptedOutputFileMode)
 		if err != nil {
 			cleanup()
 			cli.ExitWithError("Failed to write encrypted file "+out, err)

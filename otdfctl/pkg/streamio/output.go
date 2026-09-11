@@ -13,12 +13,6 @@ import (
 // OutputFile that had already been committed or discarded.
 var ErrOutputFileFinished = errors.New("streamio: output file already committed or discarded")
 
-// outputFileMode is the permission requested for the destination, matching what
-// a plain os.Create would ask for. It is a request rather than a guarantee: the
-// process umask still masks it, so a user who has set a restrictive umask keeps
-// the restriction.
-const outputFileMode = 0o644
-
 // tempFileAttempts bounds the search for an unused temporary name, so a
 // pathological directory cannot spin here forever.
 const tempFileAttempts = 1000
@@ -41,11 +35,10 @@ type OutputFile struct {
 // live beside the destination rather than in a shared temp directory —
 // Commit's os.Rename fails outright (EXDEV) if that invariant is broken.
 //
-// The temp file is created with outputFileMode, and a rename carries that mode
-// onto the destination, so it is what the committed output ends up with — after
-// the umask has been applied, exactly as for a plain os.Create.
-func NewOutputFile(path string) (*OutputFile, error) {
-	f, err := createTemp(filepath.Dir(path), "."+filepath.Base(path)+".tmp-", outputFileMode)
+// The temp file is created with mode, and a rename carries that mode onto the
+// destination after the process umask has been applied.
+func NewOutputFile(path string, mode os.FileMode) (*OutputFile, error) {
+	f, err := createTemp(filepath.Dir(path), "."+filepath.Base(path)+".tmp-", mode)
 	if err != nil {
 		return nil, err
 	}
@@ -90,7 +83,6 @@ func (o *OutputFile) Commit() error {
 		return ErrOutputFileFinished
 	}
 	o.finished = true
-
 	if err := o.f.Close(); err != nil {
 		os.Remove(o.f.Name())
 		return err

@@ -34,7 +34,7 @@ func TestOutputFileCommitHonorsUmask(t *testing.T) {
 			dir := t.TempDir()
 			dest := filepath.Join(dir, "out.tdf")
 
-			o, err := NewOutputFile(dest)
+			o, err := NewOutputFile(dest, testOutputFileMode)
 			require.NoError(t, err)
 			_, err = o.Write([]byte("payload"))
 			require.NoError(t, err)

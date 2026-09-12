@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.42.0](https://github.com/opentdf/platform/compare/protocol/go/v0.41.0...protocol/go/v0.42.0) (2026-09-11)
+
+
+### Bug Fixes
+
+* **deps:** bump google.golang.org/grpc from 1.83.0 to 1.83.1 in /protocol/go ([#3958](https://github.com/opentdf/platform/issues/3958)) ([7270831](https://github.com/opentdf/platform/commit/72708312adc80ed25fffd764afb3ab6109361ca4))
+
 ## [0.41.0](https://github.com/opentdf/platform/compare/protocol/go/v0.40.0...protocol/go/v0.41.0) (2026-08-13)
 
 

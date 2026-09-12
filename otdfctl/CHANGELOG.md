@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.38.0](https://github.com/opentdf/platform/compare/otdfctl/v0.37.0...otdfctl/v0.38.0) (2026-09-11)
+
+
+### Bug Fixes
+
+* **cli:** reject extra inspect args and add stdin BATS coverage ([#4014](https://github.com/opentdf/platform/issues/4014)) ([b3a0c9c](https://github.com/opentdf/platform/commit/b3a0c9c63ccb5ed9db5f25af95104ea92ad373bc))
+* **deps:** bump google.golang.org/grpc from 1.83.0 to 1.83.1 in /otdfctl ([#3962](https://github.com/opentdf/platform/issues/3962)) ([d464ed7](https://github.com/opentdf/platform/commit/d464ed70e6c6994cc35f46cd3025aee75424bcd1))
+
 ## [0.37.0](https://github.com/opentdf/platform/compare/otdfctl/v0.36.0...otdfctl/v0.37.0) (2026-08-24)
 
 

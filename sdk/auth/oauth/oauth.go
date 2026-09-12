@@ -71,7 +71,7 @@ func getAccessTokenRequest(tokenEndpoint, dpopNonce string, scopes []string, cli
 	if err != nil {
 		return nil, err
 	}
-	req.Header.Set("dpop", dpop)
+	req.Header.Set("DPoP", dpop)
 	req.Header.Set("Accept", "application/json")
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 
@@ -163,7 +163,7 @@ func GetAccessToken(client *http.Client, tokenEndpoint string, scopes []string, 
 
 	defer resp.Body.Close()
 
-	if nonceHeader := resp.Header.Get("dpop-nonce"); nonceHeader != "" && resp.StatusCode == http.StatusBadRequest {
+	if nonceHeader := resp.Header.Get("DPoP-Nonce"); nonceHeader != "" && resp.StatusCode == http.StatusBadRequest {
 		nonceReq, err := getAccessTokenRequest(tokenEndpoint, nonceHeader, scopes, clientCredentials, &dpopPrivateKey)
 		if err != nil {
 			return nil, err
@@ -272,7 +272,7 @@ func DoTokenExchange(ctx context.Context, client *http.Client, tokenEndpoint str
 	}
 	defer resp.Body.Close()
 
-	if nonceHeader := resp.Header.Get("dpop-nonce"); nonceHeader != "" && resp.StatusCode == http.StatusBadRequest {
+	if nonceHeader := resp.Header.Get("DPoP-Nonce"); nonceHeader != "" && resp.StatusCode == http.StatusBadRequest {
 		nonceReq, err := getTokenExchangeRequest(ctx, tokenEndpoint, nonceHeader, scopes, clientCredentials, tokenExchange, &key)
 		if err != nil {
 			return nil, err
@@ -321,7 +321,7 @@ func getTokenExchangeRequest(ctx context.Context, tokenEndpoint, dpopNonce strin
 	if err != nil {
 		return nil, err
 	}
-	req.Header.Set("dpop", dpop)
+	req.Header.Set("DPoP", dpop)
 	req.Header.Set("Accept", "application/json")
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	err = setClientAuth(clientCredentials, &data, req, tokenEndpoint)
@@ -371,7 +371,7 @@ func getCertExchangeRequest(ctx context.Context, tokenEndpoint string, clientCre
 	}
 	req.Header.Set("Accept", "application/json")
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	req.Header.Set("dpop", dpop)
+	req.Header.Set("DPoP", dpop)
 	if err = setClientAuth(clientCredentials, &data, req, tokenEndpoint); err != nil {
 		return nil, err
 	}

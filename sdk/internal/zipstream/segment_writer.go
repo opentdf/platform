@@ -12,6 +12,13 @@ import (
 	"sync"
 )
 
+// Error Op and Type values reported by segmentWriter.
+const (
+	opWriteSegment = "write-segment"
+	opFinalize     = "finalize"
+	errTypeSegment = "segment"
+)
+
 // segmentWriter implements the SegmentWriter interface for out-of-order segment writing
 type segmentWriter struct {
 	*baseWriter
@@ -54,27 +61,27 @@ func (sw *segmentWriter) WriteSegment(ctx context.Context, index int, size uint6
 
 	// Check if writer is closed or finalized
 	if err := sw.checkClosed(); err != nil {
-		return nil, &Error{Op: "write-segment", Type: "segment", Err: err}
+		return nil, &Error{Op: opWriteSegment, Type: errTypeSegment, Err: err}
 	}
 
 	if sw.finalized {
-		return nil, &Error{Op: "write-segment", Type: "segment", Err: ErrWriterClosed}
+		return nil, &Error{Op: opWriteSegment, Type: errTypeSegment, Err: ErrWriterClosed}
 	}
 
 	// Validate segment index (allow dynamic expansion for streaming use cases)
 	if index < 0 {
-		return nil, &Error{Op: "write-segment", Type: "segment", Err: ErrInvalidSegment}
+		return nil, &Error{Op: opWriteSegment, Type: errTypeSegment, Err: ErrInvalidSegment}
 	}
 
 	// Check for duplicate segment
 	if _, exists := sw.metadata.Segments[index]; exists {
-		return nil, &Error{Op: "write-segment", Type: "segment", Err: ErrDuplicateSegment}
+		return nil, &Error{Op: opWriteSegment, Type: errTypeSegment, Err: ErrDuplicateSegment}
 	}
 
 	// Check context cancellation
 	select {
 	case <-ctx.Done():
-		return nil, &Error{Op: "write-segment", Type: "segment", Err: ctx.Err()}
+		return nil, &Error{Op: opWriteSegment, Type: errTypeSegment, Err: ctx.Err()}
 	default:
 	}
 
@@ -87,14 +94,14 @@ func (sw *segmentWriter) WriteSegment(ctx context.Context, index int, size uint6
 	if index == 0 {
 		// Segment 0: Write local file header + encrypted data
 		if err := sw.writeLocalFileHeader(buffer); err != nil {
-			return nil, &Error{Op: "write-segment", Type: "segment", Err: err}
+			return nil, &Error{Op: opWriteSegment, Type: errTypeSegment, Err: err}
 		}
 	}
 
 	// Record segment metadata only (no payload retention). Payload bytes are returned
 	// to the caller and may be uploaded; we keep only CRC and size for finalize.
 	if err := sw.metadata.AddSegment(index, size, crc32); err != nil {
-		return nil, &Error{Op: "write-segment", Type: "segment", Err: err}
+		return nil, &Error{Op: opWriteSegment, Type: errTypeSegment, Err: err}
 	}
 
 	// Update payload entry metadata
@@ -112,24 +119,24 @@ func (sw *segmentWriter) Finalize(ctx context.Context, manifest []byte) ([]byte,
 
 	// Check if writer is closed or already finalized
 	if err := sw.checkClosed(); err != nil {
-		return nil, &Error{Op: "finalize", Type: "segment", Err: err}
+		return nil, &Error{Op: opFinalize, Type: errTypeSegment, Err: err}
 	}
 
 	if sw.finalized {
-		return nil, &Error{Op: "finalize", Type: "segment", Err: ErrWriterClosed}
+		return nil, &Error{Op: opFinalize, Type: errTypeSegment, Err: ErrWriterClosed}
 	}
 
 	// Check context cancellation
 	select {
 	case <-ctx.Done():
-		return nil, &Error{Op: "finalize", Type: "segment", Err: ctx.Err()}
+		return nil, &Error{Op: opFinalize, Type: errTypeSegment, Err: ctx.Err()}
 	default:
 	}
 
 	// Nothing arrived at all: report the general incomplete-input error
 	// rather than the segment-0-specific one below.
 	if len(sw.metadata.Segments) == 0 {
-		return nil, &Error{Op: "finalize", Type: "segment", Err: ErrSegmentMissing}
+		return nil, &Error{Op: opFinalize, Type: errTypeSegment, Err: ErrSegmentMissing}
 	}
 
 	// Only segment 0 emits the payload's local file header, and every offset
@@ -146,7 +153,7 @@ func (sw *segmentWriter) Finalize(ctx context.Context, manifest []byte) ([]byte,
 	// absence either, since that derived order is self-consistent by
 	// construction.
 	if _, ok := sw.metadata.Segments[0]; !ok {
-		return nil, &Error{Op: "finalize", Type: "segment", Err: ErrNoSegmentZero}
+		return nil, &Error{Op: opFinalize, Type: errTypeSegment, Err: ErrNoSegmentZero}
 	}
 
 	// If no explicit order was provided, derive order from present indices (sorted).
@@ -158,7 +165,7 @@ func (sw *segmentWriter) Finalize(ctx context.Context, manifest []byte) ([]byte,
 		sort.Ints(order)
 		if err := sw.metadata.SetOrder(order); err != nil {
 			// This should be an unreachable state, but handle it defensively.
-			return nil, &Error{Op: "finalize", Type: "segment", Err: fmt.Errorf("internal error setting segment order: %w", err)}
+			return nil, &Error{Op: opFinalize, Type: errTypeSegment, Err: fmt.Errorf("internal error setting segment order: %w", err)}
 		}
 	}
 
@@ -167,7 +174,7 @@ func (sw *segmentWriter) Finalize(ctx context.Context, manifest []byte) ([]byte,
 	// complete by construction, and the empty set already returned. Kept for
 	// a future caller that supplies an explicit order.
 	if !sw.metadata.IsComplete() {
-		return nil, &Error{Op: "finalize", Type: "segment", Err: ErrSegmentMissing}
+		return nil, &Error{Op: opFinalize, Type: errTypeSegment, Err: ErrSegmentMissing}
 	}
 
 	// Compute final CRC32 by combining per-segment CRCs now that all are present
@@ -199,10 +206,10 @@ func (sw *segmentWriter) Finalize(ctx context.Context, manifest []byte) ([]byte,
 
 	// 1. Write data descriptor for payload (fail if Zip64Never but required)
 	if sw.config.Zip64 == Zip64Never && needZip64ForPayload {
-		return nil, &Error{Op: "finalize", Type: "segment", Err: ErrZip64Required}
+		return nil, &Error{Op: opFinalize, Type: errTypeSegment, Err: ErrZip64Required}
 	}
 	if err := sw.writeDataDescriptor(buffer, needZip64ForPayload); err != nil {
-		return nil, &Error{Op: "finalize", Type: "segment", Err: err}
+		return nil, &Error{Op: opFinalize, Type: errTypeSegment, Err: err}
 	}
 
 	// 2. Update payload entry CRC32 and add to central directory
@@ -221,7 +228,7 @@ func (sw *segmentWriter) Finalize(ctx context.Context, manifest []byte) ([]byte,
 	}
 
 	if err := sw.writeManifestFile(buffer, manifest, manifestEntry); err != nil {
-		return nil, &Error{Op: "finalize", Type: "segment", Err: err}
+		return nil, &Error{Op: opFinalize, Type: errTypeSegment, Err: err}
 	}
 
 	// 4. Add manifest entry to central directory
@@ -232,15 +239,15 @@ func (sw *segmentWriter) Finalize(ctx context.Context, manifest []byte) ([]byte,
 	// Decide if ZIP64 is needed for central directory/EOCD based on offset or forced mode
 	needZip64ForCD := needZip64ForPayload || sw.config.Zip64 == Zip64Always || sw.centralDir.Offset > uint64(max32) || len(sw.centralDir.Entries) > int(^uint16(0))
 	if sw.config.Zip64 == Zip64Never && needZip64ForCD {
-		return nil, &Error{Op: "finalize", Type: "segment", Err: ErrZip64Required}
+		return nil, &Error{Op: opFinalize, Type: errTypeSegment, Err: ErrZip64Required}
 	}
 	cdBytes, err := sw.centralDir.GenerateBytes(needZip64ForCD)
 	if err != nil {
-		return nil, &Error{Op: "finalize", Type: "segment", Err: err}
+		return nil, &Error{Op: opFinalize, Type: errTypeSegment, Err: err}
 	}
 
 	if _, err := buffer.Write(cdBytes); err != nil {
-		return nil, &Error{Op: "finalize", Type: "segment", Err: err}
+		return nil, &Error{Op: opFinalize, Type: errTypeSegment, Err: err}
 	}
 
 	sw.finalized = true

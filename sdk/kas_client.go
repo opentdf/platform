@@ -183,10 +183,14 @@ func (k *KASClient) unwrap(ctx context.Context, requests ...*kas.UnsignedRewrapR
 		return nil, fmt.Errorf("error making rewrap request to kas: %w", err)
 	}
 
-	if ocrypto.IsECKeyType(k.sessionKey.GetKeyType()) {
+	switch {
+	case ocrypto.IsECKeyType(k.sessionKey.GetKeyType()):
 		return k.handleECKeyResponse(response)
+	case ocrypto.IsMLKEMKeyType(k.sessionKey.GetKeyType()):
+		return k.handleKEMKeyResponse(response)
+	default:
+		return k.handleRSAKeyResponse(response)
 	}
-	return k.handleRSAKeyResponse(response)
 }
 
 func (k *KASClient) handleECKeyResponse(response *kas.RewrapResponse) (map[string][]kaoResult, error) {
@@ -293,6 +297,42 @@ func (k *KASClient) processRSAResponse(response *kas.RewrapResponse, asymDecrypt
 			requiredObligationsForKAO := k.retrieveObligationsFromMetadata(kao.GetMetadata())
 			if kao.GetStatus() == statusPermit {
 				key, err := asymDecryption.Decrypt(kao.GetKasWrappedKey())
+				if err != nil {
+					kaoKeys = append(kaoKeys, kaoResult{KeyAccessObjectID: kao.GetKeyAccessObjectId(), Error: err, RequiredObligations: requiredObligationsForKAO})
+				} else {
+					kaoKeys = append(kaoKeys, kaoResult{KeyAccessObjectID: kao.GetKeyAccessObjectId(), SymmetricKey: key, RequiredObligations: requiredObligationsForKAO})
+				}
+			} else {
+				kaoKeys = append(kaoKeys, kaoResult{KeyAccessObjectID: kao.GetKeyAccessObjectId(), Error: errors.New(kao.GetError()), RequiredObligations: requiredObligationsForKAO})
+			}
+		}
+		policyResults[results.GetPolicyId()] = kaoKeys
+	}
+	return policyResults, nil
+}
+
+func (k *KASClient) handleKEMKeyResponse(response *kas.RewrapResponse) (map[string][]kaoResult, error) {
+	clientPrivateKey, err := k.sessionKey.PrivateKeyInPemFormat()
+	if err != nil {
+		return nil, fmt.Errorf("ocrypto.PrivateKeyInPemFormat failed: %w", err)
+	}
+
+	decryptor, err := ocrypto.FromPrivatePEM(clientPrivateKey)
+	if err != nil {
+		return nil, fmt.Errorf("ocrypto.FromPrivatePEM failed: %w", err)
+	}
+
+	return k.processKEMResponse(response, decryptor)
+}
+
+func (k *KASClient) processKEMResponse(response *kas.RewrapResponse, decryptor ocrypto.PrivateKeyDecryptor) (map[string][]kaoResult, error) {
+	policyResults := make(map[string][]kaoResult)
+	for _, results := range response.GetResponses() {
+		var kaoKeys []kaoResult
+		for _, kao := range results.GetResults() {
+			requiredObligationsForKAO := k.retrieveObligationsFromMetadata(kao.GetMetadata())
+			if kao.GetStatus() == statusPermit {
+				key, err := decryptor.Decrypt(kao.GetKasWrappedKey())
 				if err != nil {
 					kaoKeys = append(kaoKeys, kaoResult{KeyAccessObjectID: kao.GetKeyAccessObjectId(), Error: err, RequiredObligations: requiredObligationsForKAO})
 				} else {

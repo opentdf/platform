@@ -30,6 +30,16 @@ focused documents inspired by the JOSE RFC factoring.
 - [`schema/BaseTDF/kao.schema.json`](schema/BaseTDF/kao.schema.json)
 - [`schema/BaseTDF/policy.schema.json`](schema/BaseTDF/policy.schema.json)
 
+## Related Suites
+
+Parallel suites that reorganize other TDF encodings into the same module architecture.
+They share BaseTDF's factoring and vocabulary but describe different wire formats.
+
+| Suite | Encoding | Directory |
+|---|---|---|
+| BinaryTDF v1alpha | CBOR-framed binary objects | [binarytdf/v1alpha/](binarytdf/v1alpha/) |
+| IC-TDF v1alpha | IC XML Trusted Data Format, `2014-DEC-r2017-JUL` | [ictdf/v1alpha/](ictdf/v1alpha/) |
+
 ## Previous Versions
 
 - [v4.3 (legacy)](legacy/v4.3/) — Previous monolithic specification

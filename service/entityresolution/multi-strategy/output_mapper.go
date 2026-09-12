@@ -162,6 +162,9 @@ func (om *OutputMapper) applyTransformation(value interface{}, transformation st
 	case "postgres_object":
 		return om.transformPostgresObject(value)
 
+	case "postgres_object_array":
+		return om.transformPostgresObjectArray(value)
+
 	default:
 		return nil, fmt.Errorf("unknown transformation: %s", transformation)
 	}
@@ -206,6 +209,63 @@ func (om *OutputMapper) transformPostgresObject(value interface{}) (interface{},
 		return result, nil
 	default:
 		return nil, fmt.Errorf("postgres_object transformation requires []byte, string, or map[string]any input, got %T", value)
+	}
+}
+
+// transformPostgresObjectArray converts a Postgres JSON/JSONB array-of-objects query result into a []map[string]any.
+// Postgres drivers may return JSON/JSONB array values as []byte, string, an already-parsed []map[string]any,
+// or a []any whose elements are per-element convertible via transformPostgresObject.
+func (om *OutputMapper) transformPostgresObjectArray(value interface{}) (interface{}, error) {
+	if value == nil {
+		return []map[string]any{}, nil
+	}
+
+	switch v := value.(type) {
+	case []map[string]any:
+		if v == nil {
+			return []map[string]any{}, nil
+		}
+		return v, nil
+	case []any:
+		result := make([]map[string]any, 0, len(v))
+		for i, elem := range v {
+			transformed, err := om.transformPostgresObject(elem)
+			if err != nil {
+				return nil, fmt.Errorf("postgres_object_array transformation failed at index %d: %w", i, err)
+			}
+			m, ok := transformed.(map[string]any)
+			if !ok {
+				return nil, fmt.Errorf("postgres_object_array transformation produced unexpected type at index %d: %T", i, transformed)
+			}
+			result = append(result, m)
+		}
+		return result, nil
+	case []byte:
+		if len(v) == 0 {
+			return []map[string]any{}, nil
+		}
+		result := []map[string]any{}
+		if err := json.Unmarshal(v, &result); err != nil {
+			return nil, fmt.Errorf("postgres_object_array transformation failed to unmarshal []byte: %w", err)
+		}
+		if result == nil {
+			return []map[string]any{}, nil
+		}
+		return result, nil
+	case string:
+		if v == "" {
+			return []map[string]any{}, nil
+		}
+		result := []map[string]any{}
+		if err := json.Unmarshal([]byte(v), &result); err != nil {
+			return nil, fmt.Errorf("postgres_object_array transformation failed to unmarshal string: %w", err)
+		}
+		if result == nil {
+			return []map[string]any{}, nil
+		}
+		return result, nil
+	default:
+		return nil, fmt.Errorf("postgres_object_array transformation requires []byte, string, []any, or []map[string]any input, got %T", value)
 	}
 }
 

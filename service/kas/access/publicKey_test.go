@@ -127,6 +127,10 @@ func (m *MockSecurityProvider) FindKeyByID(_ context.Context, id trust.KeyIdenti
 	return nil, security.ErrCertNotFound
 }
 
+func (m *MockSecurityProvider) FindKeyByIDWithKASURI(ctx context.Context, id trust.KeyIdentifier, _ string) (trust.KeyDetails, error) {
+	return m.FindKeyByID(ctx, id)
+}
+
 func (m *MockSecurityProvider) ListKeys(_ context.Context) ([]trust.KeyDetails, error) {
 	var keys []trust.KeyDetails
 	for _, key := range m.keys {
@@ -144,6 +148,10 @@ func (m *MockSecurityProvider) ListKeysWith(_ context.Context, opts trust.ListKe
 		keys = append(keys, key)
 	}
 	return keys, nil
+}
+
+func (m *MockSecurityProvider) ListKeysWithKASURI(ctx context.Context, opts trust.ListKeyOptions, _ string) ([]trust.KeyDetails, error) {
+	return m.ListKeysWith(ctx, opts)
 }
 
 func (m *MockSecurityProvider) Decrypt(_ context.Context, _ trust.KeyDetails, _, _ []byte) (ocrypto.ProtectedKey, error) {

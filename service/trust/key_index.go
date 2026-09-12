@@ -80,3 +80,13 @@ type KeyIndex interface {
 	// List keys with options
 	ListKeysWith(ctx context.Context, opts ListKeyOptions) ([]KeyDetails, error)
 }
+
+// KASURIKeyIndex optionally extends KeyIndex with KAS-registration-scoped
+// lookups. Callers must fall back to KeyIndex behavior when it is not
+// implemented so existing in-process and external indexes remain compatible.
+type KASURIKeyIndex interface {
+	// ListKeysWithKASURI lists keys from a KAS registration with options
+	ListKeysWithKASURI(ctx context.Context, opts ListKeyOptions, kasURI string) ([]KeyDetails, error)
+	// FindKeyByIDWithKASURI returns a key with the specified ID from a KAS registration
+	FindKeyByIDWithKASURI(ctx context.Context, id KeyIdentifier, kasURI string) (KeyDetails, error)
+}

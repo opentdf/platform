@@ -200,6 +200,10 @@ func (a *InProcessProvider) FindKeyByID(_ context.Context, id trust.KeyIdentifie
 	}, nil
 }
 
+func (a *InProcessProvider) FindKeyByIDWithKASURI(ctx context.Context, id trust.KeyIdentifier, _ string) (trust.KeyDetails, error) {
+	return a.FindKeyByID(ctx, id)
+}
+
 // ListKeys lists all available keys
 func (a *InProcessProvider) ListKeys(ctx context.Context) ([]trust.KeyDetails, error) {
 	return a.ListKeysWith(ctx, trust.ListKeyOptions{LegacyOnly: false})
@@ -236,6 +240,10 @@ func (a *InProcessProvider) ListKeysWith(ctx context.Context, opts trust.ListKey
 	}
 
 	return keys, nil
+}
+
+func (a *InProcessProvider) ListKeysWithKASURI(ctx context.Context, opts trust.ListKeyOptions, _ string) ([]trust.KeyDetails, error) {
+	return a.ListKeysWith(ctx, opts)
 }
 
 // Decrypt implements the unified decryption method for both RSA and EC

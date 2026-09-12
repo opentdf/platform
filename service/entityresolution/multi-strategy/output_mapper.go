@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/opentdf/platform/service/entityresolution/multi-strategy/types"
+	"github.com/opentdf/platform/service/internal/dotnotation"
 )
 
 var ErrFieldNotFound = errors.New("field not found in raw result")
@@ -69,36 +70,54 @@ func (om *OutputMapper) MapResult(rawResult *types.RawResult, outputMappings []t
 func (om *OutputMapper) applyMapping(rawResult *types.RawResult, entityResult *types.EntityResult, mapping types.OutputMapping) error {
 	// Get source value based on provider type
 	sourceValue, err := om.getSourceValue(rawResult, mapping)
+	found := true
 	if err != nil {
-		// Skip mapping if field not found
-		if errors.Is(err, ErrFieldNotFound) {
-			return nil
+		if !errors.Is(err, ErrFieldNotFound) {
+			return err
 		}
-		return err
+		found, sourceValue = false, nil
 	}
 
-	// Skip if no source value found
-	if sourceValue == nil {
+	var claimValue interface{}
+
+	switch {
+	// Defaults are emitted as authored, never transformed
+	case mapping.Default != nil && (!found || isEmptyValue(sourceValue)):
+		claimValue = cloneValue(mapping.Default)
+
+	// Skip the mapping when the source is missing and there is no default
+	case !found || sourceValue == nil:
+		return nil
+
+	default:
+		claimValue, err = om.applyTransformation(sourceValue, mapping.Transformation)
+		if err != nil {
+			return types.WrapMultiStrategyError(
+				types.ErrorTypeMapping,
+				"transformation failed",
+				err,
+				map[string]interface{}{
+					"claim_name":     mapping.ClaimName,
+					"transformation": mapping.Transformation,
+					"source_value":   sourceValue,
+				},
+			)
+		}
+	}
+
+	// Drop nulls, which lib/flattening rejects and would fail every entitlement decision
+	claimValue, ok := sanitizeClaimValue(claimValue)
+	if !ok {
 		return nil
 	}
 
-	// Apply transformation if specified
-	transformedValue, err := om.applyTransformation(sourceValue, mapping.Transformation)
-	if err != nil {
-		return types.WrapMultiStrategyError(
-			types.ErrorTypeMapping,
-			"transformation failed",
-			err,
-			map[string]interface{}{
-				"claim_name":     mapping.ClaimName,
-				"transformation": mapping.Transformation,
-				"source_value":   sourceValue,
-			},
-		)
+	// Set the claim value; a dotted claim_name nests it
+	if err := dotnotation.Set(entityResult.Claims, mapping.ClaimName, claimValue); err != nil {
+		return types.NewMappingError("failed to write claim", map[string]interface{}{
+			"claim_name": mapping.ClaimName,
+			"error":      err.Error(),
+		})
 	}
-
-	// Set the claim value
-	entityResult.Claims[mapping.ClaimName] = transformedValue
 
 	return nil
 }
@@ -124,14 +143,28 @@ func (om *OutputMapper) getSourceValue(rawResult *types.RawResult, mapping types
 		})
 	}
 
-	// Get value from raw result data
-	value, exists := rawResult.Data[sourceField]
+	// Get value from raw result data; a dotted source field traverses nested maps
+	value, exists := lookupSourceField(rawResult.Data, sourceField)
 	if !exists {
 		// Field not found - return sentinel error that caller can handle
 		return nil, ErrFieldNotFound
 	}
 
 	return value, nil
+}
+
+// supportedTransformations lists the transformations applyTransformation accepts.
+// Keep in sync with the switch below.
+func supportedTransformations() []string {
+	return []string{
+		"array",
+		"csv_to_array",
+		"ldap_dn_to_cn_array",
+		"lowercase",
+		"uppercase",
+		"trim",
+		"postgres_object",
+	}
 }
 
 // applyTransformation applies the specified transformation to the source value

@@ -1,5 +1,24 @@
 # Changelog
 
+## [0.27.0](https://github.com/opentdf/platform/compare/service/v0.26.0...service/v0.27.0) (2026-09-11)
+
+
+### Features
+
+* **authz:** migrate v2 decisioning to targeted entitleable lookups ([#3912](https://github.com/opentdf/platform/issues/3912)) ([69942fe](https://github.com/opentdf/platform/commit/69942fee97b3728fdedbd5e873454a53207583d7))
+* **policy:** DSPX-3888 add maximum object count configuration ([#3954](https://github.com/opentdf/platform/issues/3954)) ([b44a246](https://github.com/opentdf/platform/commit/b44a24604abdaa4c8990dec9adec8c1c26a339c2))
+
+
+### Bug Fixes
+
+* **authz:** deny decrypt deactivated attribute ([#3985](https://github.com/opentdf/platform/issues/3985)) ([f982fc9](https://github.com/opentdf/platform/commit/f982fc99e3b350ab4d928f3db1c6ae08e8d11d05))
+* **core:** DSPX-4682 protect pprof endpoints ([#4038](https://github.com/opentdf/platform/issues/4038)) ([9c5030f](https://github.com/opentdf/platform/commit/9c5030f1adf31fd1a0e7a81ecd5c0c654daf36af))
+* **core:** DSPX-4692 omit rejected credentials from logs ([#4023](https://github.com/opentdf/platform/issues/4023)) ([6ac8a31](https://github.com/opentdf/platform/commit/6ac8a318edbaea1aee07fdf649260e000e46306e))
+* **core:** DSPX-4694 honor reflection configuration ([#4021](https://github.com/opentdf/platform/issues/4021)) ([8743070](https://github.com/opentdf/platform/commit/87430700274acfe8f68fd9ea1a24301e664df619))
+* **deps:** bump google.golang.org/grpc from 1.83.0 to 1.83.1 in /service ([#3961](https://github.com/opentdf/platform/issues/3961)) ([2140c7a](https://github.com/opentdf/platform/commit/2140c7af1d9143fe32eb9fce997466809d4578f0))
+* **ers:** multi_strat first match wins per category + bdd tests ([#4028](https://github.com/opentdf/platform/issues/4028)) ([5c5cbf4](https://github.com/opentdf/platform/commit/5c5cbf431bb81f8fcf502017c1498ac30cfbb70b))
+* **policy:** DSPX-4607 clear sloglint and SA1019 lint findings ([#3977](https://github.com/opentdf/platform/issues/3977)) ([a22c2ce](https://github.com/opentdf/platform/commit/a22c2cebbc1a6a4066a95c2b543b40f57f981f8e))
+
 ## [0.26.0](https://github.com/opentdf/platform/compare/service/v0.25.0...service/v0.26.0) (2026-08-28)
 
 

@@ -140,6 +140,7 @@ func (s *KeyManagementSuite) Test_GetProviderConfig_WithId_DeprecatedManager_Suc
 		Identifier: &keymanagement.GetProviderConfigRequest_Id{
 			Id: pc.GetId(),
 		},
+		//nolint:staticcheck // exercises the deprecated Manager field, which must keep validating until it is removed
 		Manager: pc.GetManager(),
 	})
 	s.Require().NoError(err)
@@ -160,6 +161,7 @@ func (s *KeyManagementSuite) Test_GetProviderConfig_WithNameOnlyIdentifier_Fails
 
 	_, err := s.db.PolicyClient.GetProviderConfig(s.ctx, &keymanagement.GetProviderConfigRequest{
 		Identifier: &keymanagement.GetProviderConfigRequest_Name{
+			//nolint:staticcheck // exercises the deprecated Name identifier, which must keep validating until it is removed
 			Name: s.testProvider,
 		},
 	})
@@ -169,6 +171,7 @@ func (s *KeyManagementSuite) Test_GetProviderConfig_WithNameOnlyIdentifier_Fails
 
 func (s *KeyManagementSuite) Test_GetProviderConfig_WithManagerOnly_Fails() {
 	_, err := s.db.PolicyClient.GetProviderConfig(s.ctx, &keymanagement.GetProviderConfigRequest{
+		//nolint:staticcheck // exercises the deprecated Manager field, which must keep validating until it is removed
 		Manager: basicManager,
 	})
 	s.Require().Error(err)

@@ -18,6 +18,9 @@ import (
 	"github.com/opentdf/platform/service/trust"
 )
 
+// pemTypePublicKey is the PEM block type for SubjectPublicKeyInfo-encoded keys.
+const pemTypePublicKey = "PUBLIC KEY"
+
 type StandardConfig struct {
 	Keys []KeyPairInfo `mapstructure:"keys" json:"keys"`
 	// Deprecated
@@ -264,7 +267,7 @@ func loadDeprecatedKeys(rsaKeys map[string]StandardKeyInfo, ecKeys map[string]St
 		slog.Info(
 			"cfg.ECKeys",
 			slog.String("id", id),
-			slog.Any("kasInfo", kasInfo),
+			slog.Any("kas_info", kasInfo),
 		)
 		// private and public EC KAS key
 		privatePemData, err := os.ReadFile(kasInfo.PrivateKeyPath)
@@ -358,7 +361,7 @@ func (s StandardCrypto) ECPublicKey(kid string) (string, error) {
 	}
 
 	pemBlock := &pem.Block{
-		Type:  "PUBLIC KEY",
+		Type:  pemTypePublicKey,
 		Bytes: derBytes,
 	}
 	pemBytes := pem.EncodeToMemory(pemBlock)

@@ -64,7 +64,7 @@ func (m *MockKeyIndex) String() string {
 
 func (m *MockKeyIndex) LogValue() slog.Value {
 	return slog.GroupValue(
-		slog.String("Indexer", m.String()),
+		slog.String("indexer", m.String()),
 	)
 }
 

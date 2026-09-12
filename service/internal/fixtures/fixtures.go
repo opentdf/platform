@@ -423,7 +423,6 @@ func (f *Fixtures) GetRegisteredResourceValueKey(key string) FixtureDataRegister
 	return rv
 }
 
-//nolint:sloglint // preserve emoji usage
 func (f *Fixtures) Provision(ctx context.Context) {
 	slog.Info("📦 running migrations in schema", slog.String("schema", f.db.Schema))
 	_, err := f.db.Client.RunMigrations(ctx, policy.Migrations)
@@ -492,7 +491,6 @@ func (f *Fixtures) Provision(ctx context.Context) {
 	slog.Info("📚 successfully indexed FQNs")
 }
 
-//nolint:sloglint // preserve emoji usage
 func (f *Fixtures) TearDown(ctx context.Context) {
 	slog.Info("🗑  dropping schema", slog.String("schema", f.db.Schema))
 	if err := f.db.DropSchema(ctx); err != nil {
@@ -542,7 +540,6 @@ func (f *Fixtures) provisionAttributeValues(ctx context.Context) int64 {
 	return f.provision(ctx, fixtureData.AttributeValues.Metadata.TableName, fixtureData.AttributeValues.Metadata.Columns, values)
 }
 
-//nolint:sloglint // preserve emoji usage
 func (f *Fixtures) provisionSubjectConditionSet(ctx context.Context) int64 {
 	values := make([][]any, 0, len(fixtureData.SubjectConditionSet.Data))
 	for _, d := range fixtureData.SubjectConditionSet.Data {
@@ -628,7 +625,6 @@ func (f *Fixtures) provisionResourceMappings(ctx context.Context) int64 {
 	return f.provision(ctx, fixtureData.ResourceMappings.Metadata.TableName, fixtureData.ResourceMappings.Metadata.Columns, values)
 }
 
-//nolint:sloglint // preserve emoji usage
 func (f *Fixtures) provisionKasRegistry(ctx context.Context) int64 {
 	values := make([][]any, 0, len(fixtureData.KasRegistries.Data))
 	for _, d := range fixtureData.KasRegistries.Data {
@@ -670,7 +666,6 @@ func (f *Fixtures) provisionAttributeValueKeyAccessServer(ctx context.Context) i
 	return f.provision(ctx, "attribute_value_key_access_grants", []string{"attribute_value_id", "key_access_server_id"}, values)
 }
 
-//nolint:sloglint // preserve emoji usage
 func (f *Fixtures) provisionProviderConfigs(ctx context.Context) int64 {
 	values := make([][]any, 0, len(fixtureData.ProviderConfigs.Data))
 	for _, d := range fixtureData.ProviderConfigs.Data {
@@ -690,7 +685,6 @@ func (f *Fixtures) provisionProviderConfigs(ctx context.Context) int64 {
 	return f.provision(ctx, fixtureData.ProviderConfigs.Metadata.TableName, fixtureData.ProviderConfigs.Metadata.Columns, values)
 }
 
-//nolint:sloglint // preserve emoji usage
 func (f *Fixtures) provisionKasRegistryKeys(ctx context.Context) int64 {
 	values := make([][]any, 0, len(fixtureData.KasRegistryKeys.Data))
 	for _, d := range fixtureData.KasRegistryKeys.Data {
@@ -769,19 +763,25 @@ func (f *Fixtures) provisionRegisteredResourceActionAttributeValues(ctx context.
 	return f.provision(ctx, fixtureData.RegisteredResourceActionAttributeValues.Metadata.TableName, fixtureData.RegisteredResourceActionAttributeValues.Metadata.Columns, values)
 }
 
-//nolint:sloglint // preserve emoji usage
 func (f *Fixtures) provision(ctx context.Context, t string, c []string, v [][]any) int64 {
 	rows, err := f.db.ExecInsert(ctx, t, c, v...)
 	if err != nil {
-		slog.Error("⛔️ 📦 issue with insert into table - check policy_fixtures.yaml for issues", slog.String("table", t), slog.Any("err", err))
+		slog.Error("⛔️ 📦 issue with insert into table - check policy_fixtures.yaml for issues",
+			slog.String("table", t),
+			slog.Any("err", err))
 		panic("issue with insert into table")
 	}
 	if rows == 0 {
-		slog.Error("⛔️ 📦 no rows provisioned - check policy_fixtures.yaml for issues", slog.String("table", t), slog.Int("expected", len(v)))
+		slog.Error("⛔️ 📦 no rows provisioned - check policy_fixtures.yaml for issues",
+			slog.String("table", t),
+			slog.Int("expected", len(v)))
 		panic("no rows provisioned")
 	}
 	if rows != int64(len(v)) {
-		slog.Error("⛔️ 📦 incorrect number of rows provisioned - check policy_fixtures.yaml for issues", slog.String("table", t), slog.Int("expected", len(v)), slog.Int64("actual", rows))
+		slog.Error("⛔️ 📦 incorrect number of rows provisioned - check policy_fixtures.yaml for issues",
+			slog.String("table", t),
+			slog.Int("expected", len(v)),
+			slog.Int64("actual", rows))
 		panic("incorrect number of rows provisioned")
 	}
 	return rows

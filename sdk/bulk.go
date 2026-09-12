@@ -124,13 +124,25 @@ func (s SDK) setupKasAllowlist(ctx context.Context, bulkReq *BulkDecryptRequest)
 			if err != nil {
 				return fmt.Errorf("retrieving platformEndpoint failed: %w", err)
 			}
-			// if no kasAllowlist is set, we get the allowlist from the registry
+
+			if s.kasAllowlistCache != nil {
+				if cached := s.kasAllowlistCache.get(platformEndpoint); cached != nil {
+					bulkReq.kasAllowlist = cached
+					bulkReq.TDF3DecryptOptions = append(bulkReq.TDF3DecryptOptions, withKasAllowlist(cached))
+					return nil
+				}
+			}
+
 			allowlist, err := allowListFromKASRegistry(ctx, s.logger, s.KeyAccessServerRegistry, platformEndpoint)
 			if err != nil {
 				return fmt.Errorf("failed to get allowlist from registry: %w", err)
 			}
 			bulkReq.kasAllowlist = allowlist
 			bulkReq.TDF3DecryptOptions = append(bulkReq.TDF3DecryptOptions, withKasAllowlist(bulkReq.kasAllowlist))
+
+			if s.kasAllowlistCache != nil {
+				s.kasAllowlistCache.store(platformEndpoint, allowlist)
+			}
 		} else {
 			s.Logger().Error("no KAS allowlist provided and no KeyAccessServerRegistry available")
 			return errors.New("no KAS allowlist provided and no KeyAccessServerRegistry available")

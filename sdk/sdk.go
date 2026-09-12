@@ -84,6 +84,7 @@ func setPackageLogger(logger *slog.Logger) {
 type SDK struct {
 	config
 	*kasKeyCache
+	kasAllowlistCache       *kasAllowlistCache
 	conn                    *ConnectRPCConnection
 	tokenSource             auth.AccessTokenSource
 	Actions                 sdkconnect.ActionServiceClient
@@ -241,6 +242,7 @@ func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 	return &SDK{
 		config:                  *cfg,
 		kasKeyCache:             newKasKeyCache(),
+		kasAllowlistCache:       newKasAllowlistCache(),
 		conn:                    &ConnectRPCConnection{Client: platformConn.Client, Endpoint: platformConn.Endpoint, Options: platformConn.Options},
 		tokenSource:             accessTokenSource,
 		Actions:                 sdkconnect.NewActionServiceClientConnectWrapper(platformConn.Client, platformConn.Endpoint, platformConn.Options...),

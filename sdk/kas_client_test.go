@@ -395,6 +395,46 @@ func TestKasKeyCache_Expiration(t *testing.T) {
 	assert.False(t, exists, "Expired key should be removed from cache")
 }
 
+func TestKasAllowlistCache_Basic(t *testing.T) {
+	cache := newKasAllowlistCache()
+	require.NotNil(t, cache)
+
+	al := AllowList{}
+	require.NoError(t, al.Add("https://kas1.example.org"))
+	require.NoError(t, al.Add("https://kas2.example.org"))
+
+	assert.Nil(t, cache.get("https://platform.example.org"), "empty cache should return nil")
+
+	cache.store("https://platform.example.org", al)
+
+	cached := cache.get("https://platform.example.org")
+	require.NotNil(t, cached)
+	assert.Len(t, cached, 2)
+
+	assert.Nil(t, cache.get("https://other.example.org"), "different key should return nil")
+
+	cache.clear()
+	assert.Nil(t, cache.get("https://platform.example.org"), "cleared cache should return nil")
+}
+
+func TestKasAllowlistCache_Expiration(t *testing.T) {
+	cache := newKasAllowlistCache()
+
+	al := AllowList{}
+	require.NoError(t, al.Add("https://kas.example.org"))
+
+	cache.store("https://platform.example.org", al)
+	require.NotNil(t, cache.get("https://platform.example.org"))
+
+	entry := cache.c["https://platform.example.org"]
+	entry.Time = time.Now().Add(-6 * time.Minute)
+	cache.c["https://platform.example.org"] = entry
+
+	assert.Nil(t, cache.get("https://platform.example.org"), "expired entry should not be returned")
+	_, exists := cache.c["https://platform.example.org"]
+	assert.False(t, exists, "expired entry should be removed from cache")
+}
+
 func Test_newConnectRewrapRequest(t *testing.T) {
 	c := newKASClient(nil, nil, nil, nil, []string{"https://example.com/attr/attr1/value/val1"})
 	req, err := c.newConnectRewrapRequest(&kaspb.RewrapRequest{})

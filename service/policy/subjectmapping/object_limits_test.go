@@ -16,15 +16,15 @@ type objectLimitCounterStub struct {
 	actionsMissing  int64
 }
 
-func (s objectLimitCounterStub) CountSubjectMappings(context.Context, string) (int64, error) {
+func (s objectLimitCounterStub) GetCountSubjectMappings(context.Context, string) (int64, error) {
 	return s.subjectMappings, nil
 }
 
-func (objectLimitCounterStub) CountSubjectConditionSets(context.Context, string, string) (int64, error) {
+func (objectLimitCounterStub) GetCountSubjectConditionSets(context.Context, string, string) (int64, error) {
 	return 0, nil
 }
 
-func (s objectLimitCounterStub) CountActionsWithMissingNames(context.Context, string, string, []string) (int64, int64, error) {
+func (s objectLimitCounterStub) GetCountActionsWithMissingNames(context.Context, string, string, []string) (int64, int64, error) {
 	return s.actionsCurrent, s.actionsMissing, nil
 }
 

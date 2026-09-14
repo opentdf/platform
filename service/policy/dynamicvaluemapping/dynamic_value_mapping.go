@@ -90,7 +90,7 @@ func (s DynamicValueMappingService) CreateDynamicValueMapping(ctx context.Contex
 	// Creation may involve action or SubjectConditionSet creation, so use a transaction.
 	err := s.dbClient.RunInTx(ctx, func(txClient *policydb.PolicyDBClient) error {
 		if limit := s.config.MaxObjectCounts.SubjectConditionSetsPerNamespace; limit > 0 && req.Msg.GetExistingSubjectConditionSetId() == "" && req.Msg.GetNewSubjectConditionSet() != nil {
-			count, err := txClient.CountSubjectConditionSets(ctx, req.Msg.GetNamespaceId(), req.Msg.GetNamespaceFqn())
+			count, err := txClient.GetCountSubjectConditionSets(ctx, req.Msg.GetNamespaceId(), req.Msg.GetNamespaceFqn())
 			if err != nil {
 				return err
 			}
@@ -215,7 +215,7 @@ func enforceDynamicActionLimit(ctx context.Context, client *policydb.PolicyDBCli
 		return nil
 	}
 
-	current, missing, err := client.CountActionsWithMissingNames(ctx, namespaceID, namespaceFQN, names)
+	current, missing, err := client.GetCountActionsWithMissingNames(ctx, namespaceID, namespaceFQN, names)
 	if err != nil {
 		return err
 	}

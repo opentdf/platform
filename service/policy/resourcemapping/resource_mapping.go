@@ -114,7 +114,7 @@ func (s ResourceMappingService) CreateResourceMappingGroup(ctx context.Context, 
 	var rmGroup *policy.ResourceMappingGroup
 	err := s.dbClient.RunInTx(ctx, func(txClient *policydb.PolicyDBClient) error {
 		if limit := s.config.MaxObjectCounts.ResourceMappingGroupsPerNamespace; limit > 0 {
-			_, count, err := txClient.GetResourceMappingGroupCount(ctx, req.Msg.GetNamespaceId(), req.Msg.GetNamespaceFqn())
+			_, count, err := txClient.GetCountResourceMappingGroups(ctx, req.Msg.GetNamespaceId(), req.Msg.GetNamespaceFqn())
 			if err != nil {
 				return err
 			}
@@ -167,7 +167,7 @@ func (s ResourceMappingService) UpdateResourceMappingGroup(ctx context.Context, 
 			return err
 		}
 		if limit := s.config.MaxObjectCounts.ResourceMappingGroupsPerNamespace; limit > 0 && (req.Msg.GetNamespaceId() != "" || req.Msg.GetNamespaceFqn() != "") {
-			targetNamespaceID, count, err := txClient.GetResourceMappingGroupCount(ctx, req.Msg.GetNamespaceId(), req.Msg.GetNamespaceFqn())
+			targetNamespaceID, count, err := txClient.GetCountResourceMappingGroups(ctx, req.Msg.GetNamespaceId(), req.Msg.GetNamespaceFqn())
 			if err != nil {
 				return err
 			}
@@ -302,7 +302,7 @@ func (s ResourceMappingService) CreateResourceMapping(ctx context.Context,
 	var rm *policy.ResourceMapping
 	err := s.dbClient.RunInTx(ctx, func(txClient *policydb.PolicyDBClient) error {
 		if limit := s.config.MaxObjectCounts.ResourceMappingsPerAttributeValue; limit > 0 {
-			count, err := txClient.CountResourceMappings(ctx, req.Msg.GetAttributeValueId())
+			count, err := txClient.GetCountResourceMappings(ctx, req.Msg.GetAttributeValueId())
 			if err != nil {
 				return err
 			}
@@ -359,7 +359,7 @@ func (s ResourceMappingService) UpdateResourceMapping(ctx context.Context,
 		targetValueID := req.Msg.GetAttributeValueId()
 		limit := s.config.MaxObjectCounts.ResourceMappingsPerAttributeValue
 		if targetValueID != "" && targetValueID != originalRM.GetAttributeValue().GetId() && limit > 0 {
-			count, err := txClient.CountResourceMappings(ctx, targetValueID)
+			count, err := txClient.GetCountResourceMappings(ctx, targetValueID)
 			if err != nil {
 				return err
 			}

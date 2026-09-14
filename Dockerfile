@@ -2,6 +2,7 @@ FROM cgr.dev/chainguard/go:latest AS builder
 ARG TARGETOS TARGETARCH
 
 WORKDIR /app
+COPY .github/scripts/retry.sh /tmp/retry.sh
 # dependencies, add local,dependant package here
 COPY protocol/ protocol/
 COPY sdk/ sdk/
@@ -12,8 +13,8 @@ COPY examples/ examples/
 COPY tests-bdd/ tests-bdd/
 COPY go.work ./
 RUN cd service \
-    && go mod download \
-    && go mod verify
+    && sh /tmp/retry.sh go mod download \
+    && sh /tmp/retry.sh go mod verify
 RUN GOOS=$TARGETOS GOARCH=$TARGETARCH go build -o opentdf ./service
 
 FROM cgr.dev/chainguard/glibc-dynamic

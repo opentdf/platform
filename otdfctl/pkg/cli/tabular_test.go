@@ -1,0 +1,157 @@
+package cli
+
+import (
+	"testing"
+
+	"github.com/spf13/cobra"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+)
+
+// newTestTree builds a command tree shaped like the real one: a root, a
+// resource group that owns a `get`, and a second group that does not.
+func newTestTree(t *testing.T) *cobra.Command {
+	t.Helper()
+
+	root := &cobra.Command{Use: "otdfctl"}
+	policy := &cobra.Command{Use: "policy"}
+
+	// A group with a `get`, whose Use carries a positional argument the way a
+	// man-doc command does.
+	attributes := &cobra.Command{Use: "attributes"}
+	attributes.AddCommand(
+		&cobra.Command{Use: "get <id>"},
+		&cobra.Command{Use: "create"},
+		&cobra.Command{Use: "update"},
+		&cobra.Command{Use: "delete"},
+		&cobra.Command{Use: "deactivate"},
+		&cobra.Command{Use: "list"},
+	)
+
+	// A group with no `get`, which is what made the hint point at a command
+	// that does not exist.
+	folders := &cobra.Command{Use: "folders"}
+	folders.AddCommand(
+		&cobra.Command{Use: "create"},
+		&cobra.Command{Use: "list"},
+		&cobra.Command{Use: "upload"},
+	)
+
+	policy.AddCommand(attributes, folders)
+	root.AddCommand(policy)
+	return root
+}
+
+func find(t *testing.T, root *cobra.Command, path ...string) *cobra.Command {
+	t.Helper()
+	cmd, _, err := root.Find(path)
+	require.NoError(t, err)
+	require.Equal(t, path[len(path)-1], cmd.Name())
+	return cmd
+}
+
+func TestSuccessMessagesVerbs(t *testing.T) {
+	root := newTestTree(t)
+
+	tests := []struct {
+		name string
+		path []string
+		id   string
+		rows int
+		want string
+	}{
+		{"get", []string{"policy", "attributes", "get"}, "abc", 1, "Found attributes: abc"},
+		{"create", []string{"policy", "attributes", "create"}, "abc", 1, "Created attributes: abc"},
+		{"update", []string{"policy", "attributes", "update"}, "abc", 1, "Updated attributes: abc"},
+		{"delete", []string{"policy", "attributes", "delete"}, "abc", 1, "Deleted attributes: abc"},
+		{"deactivate", []string{"policy", "attributes", "deactivate"}, "abc", 1, "Deactivated attributes: abc"},
+		{"list", []string{"policy", "attributes", "list"}, "", 3, "Found attributes list"},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			verb, _ := successMessages(find(t, root, tc.path...), tc.id, tc.rows)
+			assert.Equal(t, tc.want, verb)
+		})
+	}
+}
+
+// TestSuccessMessagesMatchesCommandWithPositionalArgs pins the reason `get`
+// reported nothing for man-doc commands: their Use is "get <id>", so matching
+// on Use rather than the command name fell through to the empty default.
+func TestSuccessMessagesMatchesCommandWithPositionalArgs(t *testing.T) {
+	cmd := find(t, newTestTree(t), "policy", "attributes", "get")
+	require.Equal(t, "get <id>", cmd.Use, "test premise: Use carries the argument")
+
+	verb, helper := successMessages(cmd, "abc", 1)
+
+	assert.Equal(t, "Found attributes: abc", verb)
+	assert.Contains(t, helper, "otdfctl policy attributes get --id=abc")
+}
+
+// TestSuccessMessagesAlwaysReportsAnOutcome covers verbs outside the known set,
+// which previously produced a SUCCESS bar with no text at all.
+func TestSuccessMessagesAlwaysReportsAnOutcome(t *testing.T) {
+	cmd := find(t, newTestTree(t), "policy", "folders", "upload")
+
+	t.Run("with an id", func(t *testing.T) {
+		verb, _ := successMessages(cmd, "abc", 1)
+		assert.Equal(t, "folders upload: abc", verb)
+		assert.NotEmpty(t, verb)
+	})
+
+	t.Run("without an id", func(t *testing.T) {
+		verb, _ := successMessages(cmd, "", 1)
+		assert.Equal(t, "folders upload", verb)
+		assert.NotEmpty(t, verb)
+	})
+}
+
+// TestSuccessMessagesHintOnlyWhenGetExists pins the hint defect: the footer
+// suggested `<resource> get --id=…` for every group, including those with no
+// `get` subcommand.
+func TestSuccessMessagesHintOnlyWhenGetExists(t *testing.T) {
+	root := newTestTree(t)
+
+	t.Run("group with a get", func(t *testing.T) {
+		_, helper := successMessages(find(t, root, "policy", "attributes", "create"), "abc", 1)
+		assert.Equal(t, "Use 'otdfctl policy attributes get --id=abc --json' to see all properties", helper)
+	})
+
+	t.Run("group without a get", func(t *testing.T) {
+		for _, leaf := range []string{"create", "list", "upload"} {
+			_, helper := successMessages(find(t, root, "policy", "folders", leaf), "abc", 1)
+			assert.Empty(t, helper, "leaf %q must not point at a get that does not exist", leaf)
+		}
+	})
+}
+
+// TestSuccessMessagesKeepsIDPlaceholderLiteral guards the `<id>` placeholder in
+// the list hint against being escaped or substituted.
+func TestSuccessMessagesKeepsIDPlaceholderLiteral(t *testing.T) {
+	_, helper := successMessages(find(t, newTestTree(t), "policy", "attributes", "list"), "", 2)
+
+	assert.Contains(t, helper, "--id=<id>")
+	assert.NotContains(t, helper, "&lt;")
+}
+
+// TestSuccessMessagesEmptyList replaces the header-only table, which read as a
+// failure, with a statement that nothing was found.
+func TestSuccessMessagesEmptyList(t *testing.T) {
+	verb, helper := successMessages(find(t, newTestTree(t), "policy", "attributes", "list"), "", 0)
+
+	assert.Equal(t, "No attributes found", verb)
+	assert.Empty(t, helper, "there is nothing for the hint to point at")
+}
+
+func TestHasSubcommand(t *testing.T) {
+	root := newTestTree(t)
+
+	attributes := find(t, root, "policy", "attributes")
+	assert.True(t, hasSubcommand(attributes, ActionGet))
+	assert.False(t, hasSubcommand(attributes, "upload"))
+
+	folders := find(t, root, "policy", "folders")
+	assert.False(t, hasSubcommand(folders, ActionGet))
+	assert.True(t, hasSubcommand(folders, ActionList))
+}

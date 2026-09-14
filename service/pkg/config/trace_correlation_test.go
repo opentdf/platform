@@ -4,6 +4,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -63,4 +64,20 @@ func Test_LoggerTraceCorrelation_EnvOverride(t *testing.T) {
 
 	require.NotNil(t, cfg.Logger.TraceCorrelation)
 	assert.False(t, *cfg.Logger.TraceCorrelation)
+}
+
+func TestLoggerAuditTimeoutConfig(t *testing.T) {
+	require.Equal(t, 5*time.Second, loadWithDefaults(t, "logger:\n  level: debug\n").Logger.AuditTimeout)
+	require.Equal(t, 17*time.Second, loadWithDefaults(t, "logger:\n  audit_timeout: 17s\n").Logger.AuditTimeout)
+	t.Setenv("TEST_LOGGER_AUDIT_TIMEOUT", "23s")
+	legacy, err := NewLegacyLoader(configKey, writeConfig(t, "logger:\n  level: debug\n"))
+	require.NoError(t, err)
+	defaults, err := NewDefaultSettingsLoader()
+	require.NoError(t, err)
+	cfg, err := Load(t.Context(), legacy, defaults)
+	require.NoError(t, err)
+	require.Equal(t, 23*time.Second, cfg.Logger.AuditTimeout)
+	keys, err := defaults.GetConfigKeys()
+	require.NoError(t, err)
+	require.NotContains(t, keys, "logger.audit_processor")
 }

@@ -7,6 +7,7 @@ import (
 	"os"
 	"strings"
 	"testing"
+	"time"
 
 	"connectrpc.com/connect"
 	"github.com/opentdf/platform/service/logger/audit"
@@ -199,4 +200,36 @@ func Test_NewLogger_UntracedRequestHasNoTraceFields(t *testing.T) {
 	entry := decodeLine(t, lines[0])
 	assert.NotContains(t, entry, traceIDKey)
 	assert.NotContains(t, entry, spanIDKey)
+}
+
+func TestNewLoggerConfiguresAuditProcessorAndTimeout(t *testing.T) {
+	for _, timeout := range []time.Duration{0, -time.Second, 12 * time.Second} {
+		t.Run(timeout.String(), func(t *testing.T) {
+			called := false
+			cfg := Config{
+				Level: "info", Output: "stdout", Type: "json", AuditTimeout: timeout,
+				AuditProcessor: audit.ProcessorFunc(func(ctx context.Context, _ audit.Event) error {
+					called = true
+					_, ok := ctx.Deadline()
+					require.True(t, ok)
+					return nil
+				}),
+			}
+			lg, err := NewLogger(cfg)
+			require.NoError(t, err)
+			expected := timeout
+			if expected <= 0 {
+				expected = 5 * time.Second
+			}
+			require.Equal(t, expected, lg.Audit.RecordTimeout())
+			event := audit.NewEvent(audit.EventObjectParams{ClientInfo: audit.EventClientInfo{Platform: "test"}})
+			event.Verb = audit.Verb("test")
+			require.NoError(t, lg.Audit.Record(t.Context(), *event))
+			require.True(t, called)
+			serialized, err := json.Marshal(cfg)
+			require.NoError(t, err, "the runtime processor must not reach JSON serialization")
+			require.NotContains(t, string(serialized), "AuditProcessor")
+			require.NotContains(t, string(serialized), "audit_processor")
+		})
+	}
 }

@@ -3,6 +3,7 @@ package server
 import (
 	"context"
 	"testing"
+	"time"
 
 	"connectrpc.com/connect"
 	"github.com/go-viper/mapstructure/v2"
@@ -14,6 +15,20 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+func TestWithAuditProcessor(t *testing.T) {
+	processor := audit.ProcessorFunc(func(context.Context, audit.Event) error { return nil })
+
+	cfg := WithAuditProcessor(processor)(StartConfig{})
+
+	require.NotNil(t, cfg.auditProcessor)
+}
+
+func TestWithAuditTimeout(t *testing.T) {
+	cfg := WithAuditTimeout(30 * time.Second)(StartConfig{})
+	require.NotNil(t, cfg.auditTimeout)
+	require.Equal(t, 30*time.Second, *cfg.auditTimeout)
+}
 
 // noopInterceptor returns a connect.UnaryInterceptorFunc that passes through.
 func noopInterceptor() connect.Interceptor {
@@ -414,4 +429,19 @@ func TestFormatAuditTypeRegistrationConflictsIsDeterministic(t *testing.T) {
 
 func TestFormatAuditTypeRegistrationConflictsEmpty(t *testing.T) {
 	assert.Empty(t, formatAuditTypeRegistrationConflicts(nil))
+}
+
+func TestLoggerConfigPreservesFileSettingsUnlessExplicitlyOverridden(t *testing.T) {
+	const fileTimeout = 12 * time.Second
+	fileConfig := logger.Config{Level: "debug", Output: "stderr", Type: "json", AuditTimeout: fileTimeout}
+	require.Equal(t, fileConfig, (StartConfig{}).loggerConfig(fileConfig))
+	for _, timeout := range []time.Duration{30 * time.Second, 0, -time.Second} {
+		cfg := WithAuditTimeout(timeout)(StartConfig{}).loggerConfig(fileConfig)
+		require.Equal(t, timeout, cfg.AuditTimeout)
+		require.Equal(t, fileTimeout, fileConfig.AuditTimeout, "startup overrides must not mutate the input")
+	}
+	processor := audit.ProcessorFunc(func(context.Context, audit.Event) error { return nil })
+	cfg := WithAuditProcessor(processor)(StartConfig{}).loggerConfig(fileConfig)
+	require.NotNil(t, cfg.AuditProcessor)
+	require.Equal(t, fileTimeout, cfg.AuditTimeout)
 }

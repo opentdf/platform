@@ -5,9 +5,11 @@ import (
 	"embed"
 	"net/http"
 	"testing"
+	"time"
 
 	"github.com/opentdf/platform/service/internal/server"
 	"github.com/opentdf/platform/service/logger"
+	"github.com/opentdf/platform/service/logger/audit"
 	"github.com/opentdf/platform/service/pkg/config"
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
 	"github.com/stretchr/testify/suite"
@@ -230,6 +232,35 @@ func (suite *ServiceTestSuite) TestBuildNamespaceLoggerRejectsInvalidOverrideLev
 	suite.Require().Error(err)
 	suite.Nil(namespaceLogger)
 	suite.ErrorContains(err, "invalid namespace logger config for policy")
+}
+
+func (suite *ServiceTestSuite) TestBuildNamespaceLoggerPreservesAuditTimeout() {
+	const timeout = 30 * time.Second
+	cfg := &config.Config{Logger: logger.Config{Output: "stdout", Level: "info", Type: "json"}}
+	var deadline time.Time
+	processor := audit.ProcessorFunc(func(ctx context.Context, _ audit.Event) error {
+		var ok bool
+		deadline, ok = ctx.Deadline()
+		suite.Require().True(ok)
+		return nil
+	})
+	baseConfig := cfg.Logger
+	baseConfig.AuditProcessor = processor
+	baseConfig.AuditTimeout = timeout
+	base, err := logger.NewLogger(baseConfig)
+	suite.Require().NoError(err)
+	for _, level := range []string{"info", "debug"} {
+		suite.Run(level, func() {
+			scoped, err := buildNamespaceLogger(base, cfg, "policy", level)
+			suite.Require().NoError(err)
+			event := audit.NewEvent(audit.EventObjectParams{ClientInfo: audit.EventClientInfo{Platform: "test"}})
+			event.Verb = audit.Verb("test")
+			before := time.Now()
+			suite.Require().NoError(scoped.Audit.Record(suite.T().Context(), *event))
+			suite.False(deadline.Before(before.Add(timeout)))
+			suite.False(deadline.After(time.Now().Add(timeout)))
+		})
+	}
 }
 
 func (suite *ServiceTestSuite) TestStartServicesWithVariousCases() {

@@ -8,17 +8,17 @@ import (
 )
 
 type objectLimitCounter interface {
-	CountAttributeDefinitions(context.Context, string) (int64, error)
-	CountAttributeValues(context.Context, string) (int64, error)
-	CountSubjectConditionSets(context.Context, string, string) (int64, error)
-	CountActionsWithMissingNames(context.Context, string, string, []string) (int64, int64, error)
+	GetCountAttributeDefinitions(context.Context, string) (int64, error)
+	GetCountAttributeValues(context.Context, string) (int64, error)
+	GetCountSubjectConditionSets(context.Context, string, string) (int64, error)
+	GetCountActionsWithMissingNames(context.Context, string, string, []string) (int64, int64, error)
 	GetAttributeDefinitionNamespaceID(context.Context, string) (string, error)
 }
 
 func (s *AttributesService) enforceCreateAttributeLimits(ctx context.Context, client objectLimitCounter, req *attributes.CreateAttributeRequest) error {
 	limits := s.config.MaxObjectCounts
 	if limits.AttributeDefinitionsPerNamespace > 0 {
-		count, err := client.CountAttributeDefinitions(ctx, req.GetNamespaceId())
+		count, err := client.GetCountAttributeDefinitions(ctx, req.GetNamespaceId())
 		if err != nil {
 			return err
 		}
@@ -37,7 +37,7 @@ func (s *AttributesService) enforceCreateAttributeLimits(ctx context.Context, cl
 func (s *AttributesService) enforceCreateAttributeValueLimits(ctx context.Context, client objectLimitCounter, req *attributes.CreateAttributeValueRequest) error {
 	limits := s.config.MaxObjectCounts
 	if limits.AttributeValuesPerDefinition > 0 {
-		count, err := client.CountAttributeValues(ctx, req.GetAttributeId())
+		count, err := client.GetCountAttributeValues(ctx, req.GetAttributeId())
 		if err != nil {
 			return err
 		}
@@ -91,7 +91,7 @@ func (s *AttributesService) enforceCreateAttributeValueLimits(ctx context.Contex
 		return err
 	}
 	if checkConditionSets {
-		count, err := client.CountSubjectConditionSets(ctx, namespaceID, "")
+		count, err := client.GetCountSubjectConditionSets(ctx, namespaceID, "")
 		if err != nil {
 			return err
 		}
@@ -100,7 +100,7 @@ func (s *AttributesService) enforceCreateAttributeValueLimits(ctx context.Contex
 		}
 	}
 	if checkActions {
-		current, missing, err := client.CountActionsWithMissingNames(ctx, namespaceID, "", actionNames)
+		current, missing, err := client.GetCountActionsWithMissingNames(ctx, namespaceID, "", actionNames)
 		if err != nil {
 			return err
 		}

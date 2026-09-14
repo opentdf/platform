@@ -18,19 +18,19 @@ type objectLimitCounterStub struct {
 	actionsMissing       int64
 }
 
-func (s objectLimitCounterStub) CountAttributeDefinitions(context.Context, string) (int64, error) {
+func (s objectLimitCounterStub) GetCountAttributeDefinitions(context.Context, string) (int64, error) {
 	return s.attributeDefinitions, nil
 }
 
-func (objectLimitCounterStub) CountAttributeValues(context.Context, string) (int64, error) {
+func (objectLimitCounterStub) GetCountAttributeValues(context.Context, string) (int64, error) {
 	return 0, nil
 }
 
-func (s objectLimitCounterStub) CountSubjectConditionSets(context.Context, string, string) (int64, error) {
+func (s objectLimitCounterStub) GetCountSubjectConditionSets(context.Context, string, string) (int64, error) {
 	return s.subjectConditionSets, nil
 }
 
-func (s objectLimitCounterStub) CountActionsWithMissingNames(context.Context, string, string, []string) (int64, int64, error) {
+func (s objectLimitCounterStub) GetCountActionsWithMissingNames(context.Context, string, string, []string) (int64, int64, error) {
 	return s.actionsCurrent, s.actionsMissing, nil
 }
 

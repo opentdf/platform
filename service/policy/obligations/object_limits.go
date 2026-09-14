@@ -9,10 +9,10 @@ import (
 )
 
 type objectLimitCounter interface {
-	CountObligationDefinitions(context.Context, string, string) (int64, error)
-	CountObligationValues(context.Context, string, string) (int64, error)
-	CountObligationTriggersForAttributeValue(context.Context, *common.IdFqnIdentifier, string) (int64, error)
-	CountActionsWithMissingNames(context.Context, string, string, []string) (int64, int64, error)
+	GetCountObligationDefinitions(context.Context, string, string) (int64, error)
+	GetCountObligationValues(context.Context, string, string) (int64, error)
+	GetCountObligationTriggersForAttributeValue(context.Context, *common.IdFqnIdentifier, string) (int64, error)
+	GetCountActionsWithMissingNames(context.Context, string, string, []string) (int64, int64, error)
 	GetAttributeValueNamespaceID(context.Context, *common.IdFqnIdentifier) (string, error)
 }
 
@@ -24,7 +24,7 @@ type triggerAddition struct {
 func (s *Service) enforceCreateObligationLimits(ctx context.Context, client objectLimitCounter, req *obligations.CreateObligationRequest) error {
 	limits := s.config.MaxObjectCounts
 	if limits.ObligationDefinitionsPerNamespace > 0 {
-		count, err := client.CountObligationDefinitions(ctx, req.GetNamespaceId(), req.GetNamespaceFqn())
+		count, err := client.GetCountObligationDefinitions(ctx, req.GetNamespaceId(), req.GetNamespaceFqn())
 		if err != nil {
 			return err
 		}
@@ -43,7 +43,7 @@ func (s *Service) enforceCreateObligationLimits(ctx context.Context, client obje
 func (s *Service) enforceCreateObligationValueLimits(ctx context.Context, client objectLimitCounter, req *obligations.CreateObligationValueRequest) error {
 	limits := s.config.MaxObjectCounts
 	if limits.ObligationValuesPerDefinition > 0 {
-		count, err := client.CountObligationValues(ctx, req.GetObligationId(), req.GetObligationFqn())
+		count, err := client.GetCountObligationValues(ctx, req.GetObligationId(), req.GetObligationFqn())
 		if err != nil {
 			return err
 		}
@@ -95,7 +95,7 @@ func (s *Service) enforceObligationTriggerLimits(ctx context.Context, client obj
 	}
 	if limits.ObligationTriggersPerAttributeValue > 0 {
 		for _, item := range triggersByValue {
-			count, err := client.CountObligationTriggersForAttributeValue(ctx, item.value, excludedObligationValueID)
+			count, err := client.GetCountObligationTriggersForAttributeValue(ctx, item.value, excludedObligationValueID)
 			if err != nil {
 				return err
 			}
@@ -130,7 +130,7 @@ func (s *Service) enforceObligationTriggerLimits(ctx context.Context, client obj
 		actionNamesByNamespace[namespaceID] = append(actionNamesByNamespace[namespaceID], added.action.GetName())
 	}
 	for namespaceID, actionNames := range actionNamesByNamespace {
-		current, missing, err := client.CountActionsWithMissingNames(ctx, namespaceID, "", actionNames)
+		current, missing, err := client.GetCountActionsWithMissingNames(ctx, namespaceID, "", actionNames)
 		if err != nil {
 			return err
 		}

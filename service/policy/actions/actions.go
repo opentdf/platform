@@ -127,7 +127,7 @@ func (a *ActionService) CreateAction(ctx context.Context, req *connect.Request[a
 
 	err := a.dbClient.RunInTx(ctx, func(txClient *policydb.PolicyDBClient) error {
 		if limit := a.config.MaxObjectCounts.ActionsPerNamespace; limit > 0 {
-			count, err := txClient.CountActions(ctx, req.Msg.GetNamespaceId(), req.Msg.GetNamespaceFqn())
+			count, err := txClient.GetCountActions(ctx, req.Msg.GetNamespaceId(), req.Msg.GetNamespaceFqn())
 			if err != nil {
 				return err
 			}

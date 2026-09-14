@@ -9,15 +9,15 @@ import (
 )
 
 type objectLimitCounter interface {
-	CountSubjectMappings(context.Context, string) (int64, error)
-	CountSubjectConditionSets(context.Context, string, string) (int64, error)
-	CountActionsWithMissingNames(context.Context, string, string, []string) (int64, int64, error)
+	GetCountSubjectMappings(context.Context, string) (int64, error)
+	GetCountSubjectConditionSets(context.Context, string, string) (int64, error)
+	GetCountActionsWithMissingNames(context.Context, string, string, []string) (int64, int64, error)
 }
 
 func (s SubjectMappingService) enforceCreateSubjectMappingLimits(ctx context.Context, client objectLimitCounter, req *sm.CreateSubjectMappingRequest) error {
 	limits := s.config.MaxObjectCounts
 	if limits.SubjectMappingsPerAttributeValue > 0 {
-		count, err := client.CountSubjectMappings(ctx, req.GetAttributeValueId())
+		count, err := client.GetCountSubjectMappings(ctx, req.GetAttributeValueId())
 		if err != nil {
 			return err
 		}
@@ -26,7 +26,7 @@ func (s SubjectMappingService) enforceCreateSubjectMappingLimits(ctx context.Con
 		}
 	}
 	if limits.SubjectConditionSetsPerNamespace > 0 && req.GetNewSubjectConditionSet() != nil && req.GetExistingSubjectConditionSetId() == "" {
-		count, err := client.CountSubjectConditionSets(ctx, req.GetNamespaceId(), req.GetNamespaceFqn())
+		count, err := client.GetCountSubjectConditionSets(ctx, req.GetNamespaceId(), req.GetNamespaceFqn())
 		if err != nil {
 			return err
 		}
@@ -41,7 +41,7 @@ func enforceActionNamesLimit(ctx context.Context, client objectLimitCounter, lim
 	if limit == 0 || len(names) == 0 {
 		return nil
 	}
-	current, missing, err := client.CountActionsWithMissingNames(ctx, namespaceID, namespaceFQN, names)
+	current, missing, err := client.GetCountActionsWithMissingNames(ctx, namespaceID, namespaceFQN, names)
 	if err != nil {
 		return err
 	}
@@ -63,7 +63,7 @@ func (s SubjectMappingService) enforceCreateSubjectConditionSetLimit(ctx context
 	if limit == 0 {
 		return nil
 	}
-	count, err := client.CountSubjectConditionSets(ctx, req.GetNamespaceId(), req.GetNamespaceFqn())
+	count, err := client.GetCountSubjectConditionSets(ctx, req.GetNamespaceId(), req.GetNamespaceFqn())
 	if err != nil {
 		return err
 	}

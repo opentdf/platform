@@ -38,51 +38,57 @@ type TDFInspect struct {
 	UnencryptedMetadata []byte
 }
 
-func (h Handler) EncryptBytes(
-	tdfType string,
-	unencrypted []byte,
-	attrValues []string,
-	mimeType string,
-	kasURLPath string,
-	assertions string,
-	wrappingKeyAlgorithm ocrypto.KeyType,
-	targetMode string,
-) (*bytes.Buffer, error) {
-	var encrypted []byte
-	enc := bytes.NewBuffer(encrypted)
+// EncryptOptions carries the non-stream inputs to Encrypt.
+type EncryptOptions struct {
+	TDFType              string
+	Attributes           []string
+	MimeType             string
+	KASURLPath           string
+	Assertions           string
+	WrappingKeyAlgorithm ocrypto.KeyType
+	TargetMode           string
+}
 
-	switch tdfType {
+// Encrypt streams the plaintext from in to a TDF written to out. Memory use is
+// bounded by the SDK's segment size rather than by the payload length, so the
+// payload may be larger than RAM.
+//
+// in must be seekable: the SDK measures the payload by seeking to its end
+// before encrypting, and knowing the length up front is what lets it avoid
+// defaulting to ZIP64. A caller holding a pipe should spool it first.
+func (h Handler) Encrypt(ctx context.Context, out io.Writer, in io.ReadSeeker, o EncryptOptions) error {
+	switch o.TDFType {
 	// Encrypt the data as a ZTDF
 	case "", tdf.TypeTDF3, tdf.TypeZTDF:
 		opts := []sdk.TDFOption{
-			sdk.WithDataAttributes(attrValues...),
+			sdk.WithDataAttributes(o.Attributes...),
 			sdk.WithKasInformation(sdk.KASInfo{
-				URL: h.platformEndpoint + kasURLPath,
+				URL: h.platformEndpoint + o.KASURLPath,
 			}),
-			sdk.WithMimeType(mimeType),
-			sdk.WithWrappingKeyAlg(wrappingKeyAlgorithm), //nolint:staticcheck // SDK option is deprecated but no replacement is available in this SDK version.
+			sdk.WithMimeType(o.MimeType),
+			sdk.WithWrappingKeyAlg(o.WrappingKeyAlgorithm), //nolint:staticcheck // SDK option is deprecated but no replacement is available in this SDK version.
 		}
 
 		var assertionConfigs []sdk.AssertionConfig
 		//nolint:nestif // nested its mainly for error catching and handling case of string vs file
-		if assertions != "" {
-			err := json.Unmarshal([]byte(assertions), &assertionConfigs)
+		if o.Assertions != "" {
+			err := json.Unmarshal([]byte(o.Assertions), &assertionConfigs)
 			if err != nil {
 				// if unable to marshal to json, interpret as file string and try to read from file
-				assertionBytes, err := utils.ReadBytesFromFile(assertions, MaxAssertionsFileSize)
+				assertionBytes, err := utils.ReadBytesFromFile(o.Assertions, MaxAssertionsFileSize)
 				if err != nil {
-					return nil, fmt.Errorf("unable to read assertions file: %w", err)
+					return fmt.Errorf("unable to read assertions file: %w", err)
 				}
 				err = json.Unmarshal(assertionBytes, &assertionConfigs)
 				if err != nil {
-					return nil, fmt.Errorf("unable to unmarshal assertions json: %w", err)
+					return fmt.Errorf("unable to unmarshal assertions json: %w", err)
 				}
 			}
 			for i, config := range assertionConfigs {
 				if !config.SigningKey.IsEmpty() {
 					correctedKey, err := correctKeyType(config.SigningKey, false)
 					if err != nil {
-						return nil, fmt.Errorf("error with assertion signing key: %w", err)
+						return fmt.Errorf("error with assertion signing key: %w", err)
 					}
 					assertionConfigs[i].SigningKey.Key = correctedKey
 				}
@@ -90,14 +96,14 @@ func (h Handler) EncryptBytes(
 			opts = append(opts, sdk.WithAssertions(assertionConfigs...))
 		}
 
-		if targetMode != "" {
-			opts = append(opts, sdk.WithTargetMode(targetMode))
+		if o.TargetMode != "" {
+			opts = append(opts, sdk.WithTargetMode(o.TargetMode))
 		}
 
-		_, err := h.sdk.CreateTDF(enc, bytes.NewReader(unencrypted), opts...)
-		return enc, err
+		_, err := h.sdk.CreateTDFContext(ctx, out, in, opts...)
+		return err
 	default:
-		return nil, errors.New("unknown TDF type")
+		return errors.New("unknown TDF type")
 	}
 }
 

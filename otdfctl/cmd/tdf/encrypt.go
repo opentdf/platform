@@ -1,8 +1,10 @@
 package tdf
 
 import (
+	"errors"
 	"io"
 	"log/slog"
+	"mime"
 	"os"
 	"path/filepath"
 	"strings"
@@ -11,8 +13,9 @@ import (
 	"github.com/opentdf/platform/lib/ocrypto"
 	"github.com/opentdf/platform/otdfctl/cmd/common"
 	"github.com/opentdf/platform/otdfctl/pkg/cli"
+	"github.com/opentdf/platform/otdfctl/pkg/handlers"
 	"github.com/opentdf/platform/otdfctl/pkg/man"
-	"github.com/opentdf/platform/otdfctl/pkg/utils"
+	"github.com/opentdf/platform/otdfctl/pkg/streamio"
 	"github.com/spf13/cobra"
 )
 
@@ -23,6 +26,39 @@ var (
 	encryptDoc = man.Docs.GetCommand("encrypt", man.WithRun(encryptRun))
 	EncryptCmd = &encryptDoc.Command
 )
+
+// detectMimeType sniffs the payload's type from its head and rewinds, so the
+// whole payload still reaches the encoder.
+//
+// Detection needs only the first megabyte, which is what mimetype is limited to
+// anyway, so this reads a bounded prefix rather than the whole payload.
+func detectMimeType(in io.ReadSeeker, fileExt string) (string, error) {
+	mimetype.SetLimit(Size1MB) // limit to 1MB
+
+	head := make([]byte, Size1MB)
+	// A payload shorter than the sniff window is the common case, not an error.
+	n, err := io.ReadFull(in, head)
+	if err != nil && !errors.Is(err, io.EOF) && !errors.Is(err, io.ErrUnexpectedEOF) {
+		return "", err
+	}
+	if _, err := in.Seek(0, io.SeekStart); err != nil {
+		return "", err
+	}
+
+	// defaults to application/octet-stream if nothing is recognized
+	detected := mimetype.Detect(head[:n]).String()
+	if detected == "application/octet-stream" && fileExt != "" {
+		// mime.TypeByExtension is the extension lookup. mimetype.Lookup takes a
+		// MIME type string, so passing it a bare extension always returned nil
+		// and dereferencing that panicked — which is what happened for any file
+		// whose contents were unrecognizable and whose name had an extension.
+		// An extension with no known type leaves octet-stream in place.
+		if byExt := mime.TypeByExtension("." + fileExt); byExt != "" {
+			detected = byExt
+		}
+	}
+	return detected, nil
+}
 
 func encryptRun(cmd *cobra.Command, args []string) {
 	c := cli.New(cmd, args, cli.WithPrintJSON())
@@ -57,13 +93,16 @@ func encryptRun(cmd *cobra.Command, args []string) {
 		wrappingKeyAlgorithm = ocrypto.RSA2048Key
 	}
 
-	piped := readPipedStdin()
+	piped, hasPiped, err := streamio.PipeReader(os.Stdin)
+	if err != nil {
+		cli.ExitWithError("failed to scan bytes from stdin", err)
+	}
 
 	inputCount := 0
 	if filePath != "" {
 		inputCount++
 	}
-	if len(piped) > 0 {
+	if hasPiped {
 		inputCount++
 	}
 
@@ -76,71 +115,84 @@ func encryptRun(cmd *cobra.Command, args []string) {
 		cliExit("ONLY ONE")
 	}
 
-	// prefer filepath argument over stdin input
-	bytesSlice := piped
-	var err error
+	// The SDK seeks to the end of the payload to size it, so the input has to be
+	// seekable. A file already is; a pipe is spooled to disk, which trades the
+	// temporary file for the memory a whole-payload read used to cost.
+	var in io.ReadSeeker
+	var cleanup func()
 	if filePath != "" {
-		bytesSlice, err = utils.ReadBytesFromFile(filePath, MaxFileSize)
+		f, err := os.Open(filePath)
 		if err != nil {
 			cli.ExitWithError("Failed to read file:", err)
 		}
-	}
-
-	// auto-detect mime type if not provided
-	if fileMimeType == "" {
-		slog.Debug("detecting mime type of file")
-		// get the mime type of the file
-		mimetype.SetLimit(Size1MB) // limit to 1MB
-		m := mimetype.Detect(bytesSlice)
-		// default to application/octet-stream if no mime type is detected
-		fileMimeType = m.String()
-
-		if fileMimeType == "application/octet-stream" {
-			if fileExt != "" {
-				fileMimeType = mimetype.Lookup(fileExt).String()
-			}
+		in, cleanup = f, func() { f.Close() }
+	} else {
+		f, spoolCleanup, err := streamio.Spool(piped)
+		if err != nil {
+			cli.ExitWithError("Failed to read stdin:", err)
 		}
+		in, cleanup = f, spoolCleanup
 	}
-	slog.Debug("encrypting file",
-		slog.Int("file_len", len(bytesSlice)),
-		slog.String("mime_type", fileMimeType),
-	)
+	// cli.ExitWithError calls os.Exit, which skips deferred functions, so every
+	// exit below goes through fail() to discard the spool and any partial output.
+	defer cleanup()
 
-	// Do the encryption
-	encrypted, err := h.EncryptBytes(
-		tdfType,
-		bytesSlice,
-		attrValues,
-		fileMimeType,
-		kasURLPath,
-		assertions,
-		wrappingKeyAlgorithm,
-		targetMode,
-	)
-	if err != nil {
-		cli.ExitWithError("Failed to encrypt", err)
-	}
-
-	// Find the destination as the output flag filename or stdout
-	var dest *os.File
+	// Resolve the destination before encrypting, so the payload streams straight
+	// to it rather than accumulating in memory first.
+	var dest io.Writer
+	var tdfFile *streamio.OutputFile
 	if out != "" {
 		// make sure output ends in .tdf extension
 		if !strings.HasSuffix(out, ".tdf") {
 			out += ".tdf"
 		}
-		tdfFile, err := os.Create(out)
+		tdfFile, err = streamio.NewOutputFile(out)
 		if err != nil {
+			cleanup()
 			cli.ExitWithError("Failed to write encrypted file "+out, err)
 		}
-		defer tdfFile.Close()
+		defer tdfFile.Cleanup()
 		dest = tdfFile
 	} else {
 		dest = os.Stdout
 	}
 
-	_, e := io.Copy(dest, encrypted)
-	if e != nil {
-		cli.ExitWithError("Failed to write encrypted data to stdout", e)
+	fail := func(msg string, err error) {
+		if tdfFile != nil {
+			tdfFile.Cleanup()
+		}
+		cleanup()
+		cli.ExitWithError(msg, err)
+	}
+
+	// auto-detect mime type if not provided
+	if fileMimeType == "" {
+		slog.Debug("detecting mime type of file")
+		fileMimeType, err = detectMimeType(in, fileExt)
+		if err != nil {
+			fail("Failed to read file:", err)
+		}
+	}
+	slog.Debug("encrypting file", slog.String("mime_type", fileMimeType))
+
+	// Do the encryption
+	err = h.Encrypt(c.Context(), dest, in, handlers.EncryptOptions{
+		TDFType:              tdfType,
+		Attributes:           attrValues,
+		MimeType:             fileMimeType,
+		KASURLPath:           kasURLPath,
+		Assertions:           assertions,
+		WrappingKeyAlgorithm: wrappingKeyAlgorithm,
+		TargetMode:           targetMode,
+	})
+	if err != nil {
+		fail("Failed to encrypt", err)
+	}
+
+	if tdfFile != nil {
+		if err := tdfFile.Commit(); err != nil {
+			fail("Failed to write encrypted file "+out, err)
+		}
 	}
 }
 

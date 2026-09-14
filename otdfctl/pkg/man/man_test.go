@@ -18,6 +18,31 @@ List all namespaces.
 `)
 	require.NoError(t, err)
 	assert.Equal(t, "list", doc.Use)
+	// A doc that declares no arguments rejects them. Leaving Args nil made cobra
+	// accept and silently ignore anything passed.
+	require.NotNil(t, doc.Args)
+	require.NoError(t, doc.Args(&doc.Command, []string{}))
+	require.Error(t, doc.Args(&doc.Command, []string{"unexpected"}))
+}
+
+// TestProcessDocArgsInNameAreNotRejected covers the docs that declare their
+// positional inline, as with `name: encrypt [file]`, rather than through the
+// arguments metadata. Those commands read args[0], so they must not be given
+// cobra.NoArgs.
+func TestProcessDocArgsInNameAreNotRejected(t *testing.T) {
+	doc, err := ProcessDoc(`---
+title: Encrypt a file
+command:
+  name: encrypt [file]
+---
+
+Encrypt a file.
+`)
+	require.NoError(t, err)
+	assert.Equal(t, "encrypt [file]", doc.Use)
+	if doc.Args != nil {
+		require.NoError(t, doc.Args(&doc.Command, []string{"some-file"}))
+	}
 }
 
 func TestProcessDocWithArgs(t *testing.T) {

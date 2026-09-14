@@ -3,6 +3,7 @@ package audit
 import (
 	"context"
 	"log/slog"
+	"maps"
 	"time"
 )
 
@@ -173,6 +174,7 @@ func (tx *auditTransaction) logClose(ctx context.Context, auditLogger *Logger, s
 		}
 
 		if err != nil {
+			auditEvent.EventMetaData = maps.Clone(auditEvent.EventMetaData)
 			if auditEvent.EventMetaData == nil {
 				auditEvent.EventMetaData = make(auditEventMetadata)
 			}

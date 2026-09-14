@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/opentdf/platform/sdk"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -79,6 +80,23 @@ func TestDecryptAssertionVerificationKeyErrors(t *testing.T) {
 			assert.Empty(t, out.Bytes(), "an option failure must not produce output")
 		})
 	}
+}
+
+// An unset SessionKeyAlgorithm must mean "let the SDK choose", not "use the
+// empty algorithm". The empty string is not a valid ocrypto.KeyType, so passing
+// it through to WithSessionKeyType fails config construction before the TDF is
+// ever read — a trap the CLI only avoids because it happens to fill the field
+// in. Reaching the zip reader (rather than a key-type error) is what proves the
+// option was skipped.
+func TestDecryptDefaultsSessionKeyAlgorithm(t *testing.T) {
+	var out bytes.Buffer
+
+	h := Handler{sdk: &sdk.SDK{}}
+	err := h.Decrypt(t.Context(), &out, bytes.NewReader(zipPrefix), DecryptOptions{})
+
+	require.Error(t, err)
+	assert.NotContains(t, err.Error(), "unsupported key type",
+		"an unset session key algorithm must fall through to the SDK default")
 }
 
 func TestInspectTDFRejectsNonTDFInput(t *testing.T) {

@@ -37,16 +37,16 @@ func (s *PolicyObjectCountsSuite) TearDownSuite() {
 func (s *PolicyObjectCountsSuite) Test_NamespaceScopedCounts_UnknownNamespaceFqn_Fails() {
 	const unknownNamespaceFQN = "https://unknown.example.com"
 
-	_, _, err := s.db.PolicyClient.GetResourceMappingGroupCount(s.ctx, "", unknownNamespaceFQN)
+	_, _, err := s.db.PolicyClient.GetCountResourceMappingGroups(s.ctx, "", unknownNamespaceFQN)
 	s.Require().ErrorIs(err, db.ErrNotFound)
 
-	_, err = s.db.PolicyClient.CountSubjectConditionSets(s.ctx, "", unknownNamespaceFQN)
+	_, err = s.db.PolicyClient.GetCountSubjectConditionSets(s.ctx, "", unknownNamespaceFQN)
 	s.Require().ErrorIs(err, db.ErrNotFound)
 
-	_, err = s.db.PolicyClient.CountActions(s.ctx, "", unknownNamespaceFQN)
+	_, err = s.db.PolicyClient.GetCountActions(s.ctx, "", unknownNamespaceFQN)
 	s.Require().ErrorIs(err, db.ErrNotFound)
 
-	_, _, err = s.db.PolicyClient.CountActionsWithMissingNames(s.ctx, "", unknownNamespaceFQN, []string{"read"})
+	_, _, err = s.db.PolicyClient.GetCountActionsWithMissingNames(s.ctx, "", unknownNamespaceFQN, []string{"read"})
 	s.Require().ErrorIs(err, db.ErrNotFound)
 }
 

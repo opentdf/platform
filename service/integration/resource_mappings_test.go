@@ -674,16 +674,16 @@ func (s *ResourceMappingsSuite) Test_CreateResourceMappingGroup_WithNamespaceFqn
 	s.Equal(ns.GetId(), group.GetNamespaceId())
 }
 
-func (s *ResourceMappingsSuite) Test_GetResourceMappingGroupCount_ByNamespaceIdentifier_Succeeds() {
+func (s *ResourceMappingsSuite) Test_GetCountResourceMappingGroups_ByNamespaceIdentifier_Succeeds() {
 	ns, _, cleanup := s.createIsolatedNamespaceAndGroup("rmg-count")
 	defer cleanup()
 
-	resolvedNamespaceID, count, err := s.db.PolicyClient.GetResourceMappingGroupCount(s.ctx, ns.GetId(), "")
+	resolvedNamespaceID, count, err := s.db.PolicyClient.GetCountResourceMappingGroups(s.ctx, ns.GetId(), "")
 	s.Require().NoError(err)
 	s.Equal(ns.GetId(), resolvedNamespaceID)
 	s.Equal(int64(1), count)
 
-	resolvedNamespaceID, count, err = s.db.PolicyClient.GetResourceMappingGroupCount(s.ctx, "", ns.GetFqn())
+	resolvedNamespaceID, count, err = s.db.PolicyClient.GetCountResourceMappingGroups(s.ctx, "", ns.GetFqn())
 	s.Require().NoError(err)
 	s.Equal(ns.GetId(), resolvedNamespaceID)
 	s.Equal(int64(1), count)

@@ -189,7 +189,13 @@ Set the environment variable to a comma-separated CIDR list without spaces.
 When `trustedProxies` is empty, Platform ignores `X-Forwarded-For`, `X-Real-IP`,
 and `True-Client-IP` and records the direct socket peer. When the peer matches a
 trusted CIDR, Platform resolves `X-Forwarded-For` from right to left, removing
-trusted proxy hops. Configure only ingress networks that overwrite or append
+trusted proxy hops. If `X-Forwarded-For` is absent, it uses `X-Real-IP`, then
+`True-Client-IP` if `X-Real-IP` is also absent. These two headers must contain a
+single IP address. If resolution encounters an invalid value, Platform records
+the socket peer rather than trying a lower-priority header. With no forwarding
+headers, it also records the socket peer.
+
+Configure only ingress networks that overwrite or append
 forwarding headers; broad private-network ranges weaken audit attribution.
 
 ```yaml

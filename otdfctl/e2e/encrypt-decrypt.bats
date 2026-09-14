@@ -3,10 +3,6 @@
 # Tests for encrypt decrypt
 
 setup_file() {
-
-  # TODO: Remove this file-level skip once otdfctl passes namespace flags for the namespaced action and subject mapping APIs used by encrypt/decrypt entitlement setup.
-  skip "Temporarily disabled [namespaced-subject-mappings]: encrypt/decrypt BATS setup still depends on pre-namespace subject mapping APIs"
-
   export CREDSFILE=creds.json
   echo -n '{"clientId":"opentdf","clientSecret":"secret"}' > $CREDSFILE
   export WITH_CREDS="--with-client-creds-file $CREDSFILE"

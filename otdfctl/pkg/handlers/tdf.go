@@ -107,6 +107,10 @@ func (h Handler) Encrypt(ctx context.Context, out io.Writer, in io.ReadSeeker, o
 }
 
 // DecryptOptions carries the non-stream inputs to Decrypt.
+//
+// Every field is optional; the zero value means "use the SDK default". That
+// holds for SessionKeyAlgorithm in particular: the empty string is not a valid
+// ocrypto.KeyType, so it is left unset rather than forwarded.
 type DecryptOptions struct {
 	AssertionVerificationKeysFile string
 	DisableAssertionCheck         bool
@@ -136,9 +140,14 @@ func (h Handler) Decrypt(ctx context.Context, out io.Writer, in io.ReadSeeker, o
 	case sdk.Standard:
 		opts := []sdk.TDFReaderOption{
 			sdk.WithDisableAssertionVerification(o.DisableAssertionCheck),
-			sdk.WithSessionKeyType(o.SessionKeyAlgorithm),
 			sdk.WithIgnoreAllowlist(o.IgnoreAllowlist),
 			sdk.WithTDFFulfillableObligationFQNs(o.FulfillableObligations),
+		}
+		// Forwarding an unset algorithm would fail in ocrypto.NewKeyPair before
+		// the TDF is read at all. Omitting the option instead lets the SDK apply
+		// its own RSA-2048 default, which is the algorithm the CLI asks for.
+		if o.SessionKeyAlgorithm != "" {
+			opts = append(opts, sdk.WithSessionKeyType(o.SessionKeyAlgorithm))
 		}
 		if o.KASAllowList != nil {
 			opts = append(opts, sdk.WithKasAllowlist(o.KASAllowList))

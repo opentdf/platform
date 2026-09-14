@@ -577,6 +577,7 @@ jobs:
       - uses: ./test/start-up-with-containers
         with:
           platform-ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          ec-tdf-enabled: "true"
           provision-policy-fixtures: "false"
       - uses: ./otdfctl/e2e
         with:

@@ -3,10 +3,6 @@
 # Tests for encrypt decrypt
 
 setup_file() {
-
-  # TODO: Remove this file-level skip once otdfctl passes namespace flags for the namespaced action and subject mapping APIs used by encrypt/decrypt entitlement setup.
-  skip "Temporarily disabled [namespaced-subject-mappings]: encrypt/decrypt BATS setup still depends on pre-namespace subject mapping APIs"
-
   export CREDSFILE=creds.json
   echo -n '{"clientId":"opentdf","clientSecret":"secret"}' > $CREDSFILE
   export WITH_CREDS="--with-client-creds-file $CREDSFILE"
@@ -78,7 +74,8 @@ teardown() {
 }
 
 teardown_file(){
-    rm -f $SIGNED_ASSERTIONS_HS256 $SIGNED_ASSERTION_VERIFICATON_HS256 $SIGNED_ASSERTIONS_RS256 $SIGNED_ASSERTION_VERIFICATON_RS256
+    ./otdfctl --host "$HOST" $WITH_CREDS $DEBUG_LEVEL policy attributes namespaces unsafe delete --id "$NS_ID" --force
+    rm -f $SIGNED_ASSERTIONS_HS256 $SIGNED_ASSERTION_VERIFICATON_HS256 $SIGNED_ASSERTIONS_RS256 $SIGNED_ASSERTION_VERIFICATON_RS256 $RS_PRIVATE_KEY $RS_PUBLIC_KEY
 }
 
 @test "roundtrip TDF3, no attributes, file" {

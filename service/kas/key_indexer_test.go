@@ -184,55 +184,82 @@ func (s *KeyIndexTestSuite) TestKeyDetails_Legacy() {
 }
 
 func (s *KeyIndexTestSuite) TestListKeysWith() {
-	mockClient := new(MockKeyAccessServerRegistryClient)
-	keyIndexer := &KeyIndexer{
-		sdk: &sdk.SDK{
-			KeyAccessServerRegistry: mockClient,
+	keysByURI := map[string][]*policy.KasKey{
+		defaultKASURI: {
+			{Key: &policy.AsymmetricKey{KeyId: "default-active-key"}},
+			{Key: &policy.AsymmetricKey{KeyId: "default-legacy-key", Legacy: true}},
+		},
+		requestKASURI: {
+			{Key: &policy.AsymmetricKey{KeyId: "request-active-key"}},
+			{Key: &policy.AsymmetricKey{KeyId: "request-legacy-key", Legacy: true}},
 		},
 	}
-
-	// Mock the ListKeys function to return a specific key based on the legacy flag
-	mockClient.On("ListKeys", mock.Anything, mock.MatchedBy(func(req *kasregistry.ListKeysRequest) bool {
-		return req.GetLegacy()
-	})).Return(&kasregistry.ListKeysResponse{
-		KasKeys: []*policy.KasKey{
-			{
-				Key: &policy.AsymmetricKey{
-					KeyId: "legacy-key-id",
-				},
-			},
+	for _, test := range []struct {
+		name        string
+		opts        trust.ListKeyOptions
+		expectedURI string
+		expectedIDs []trust.KeyIdentifier
+	}{
+		{
+			name:        "default URI with legacy filter",
+			opts:        trust.ListKeyOptions{LegacyOnly: true},
+			expectedURI: defaultKASURI,
+			expectedIDs: []trust.KeyIdentifier{"default-legacy-key"},
 		},
-	}, nil)
-
-	mockClient.On("ListKeys", mock.Anything, mock.MatchedBy(func(req *kasregistry.ListKeysRequest) bool {
-		return req.Legacy == nil
-	})).Return(&kasregistry.ListKeysResponse{
-		KasKeys: []*policy.KasKey{
-			{
-				Key: &policy.AsymmetricKey{
-					KeyId: "non-legacy-key-id",
-				},
-			},
-			{
-				Key: &policy.AsymmetricKey{
-					KeyId: "legacy-key-id",
-				},
-			},
+		{
+			name:        "default URI without legacy filter",
+			expectedURI: defaultKASURI,
+			expectedIDs: []trust.KeyIdentifier{"default-active-key", "default-legacy-key"},
 		},
-	}, nil)
+		{
+			name:        "request URI with legacy filter",
+			opts:        trust.ListKeyOptions{KeyOptions: trust.KeyOptions{KASURI: requestKASURI}, LegacyOnly: true},
+			expectedURI: requestKASURI,
+			expectedIDs: []trust.KeyIdentifier{"request-legacy-key"},
+		},
+		{
+			name:        "request URI without legacy filter",
+			opts:        trust.ListKeyOptions{KeyOptions: trust.KeyOptions{KASURI: requestKASURI}},
+			expectedURI: requestKASURI,
+			expectedIDs: []trust.KeyIdentifier{"request-active-key", "request-legacy-key"},
+		},
+	} {
+		s.Run(test.name, func() {
+			mockClient := new(MockKeyAccessServerRegistryClient)
+			keyIndexer := &KeyIndexer{
+				sdk:    &sdk.SDK{KeyAccessServerRegistry: mockClient},
+				kasURI: defaultKASURI,
+			}
 
-	// Test with legacy flag set to true
-	keys, err := keyIndexer.ListKeysWith(context.Background(), trust.ListKeyOptions{LegacyOnly: true})
-	s.Require().NoError(err)
-	s.Len(keys, 1)
-	s.Equal("legacy-key-id", string(keys[0].ID()))
+			response := &kasregistry.ListKeysResponse{}
+			mockClient.On("ListKeys", mock.Anything, mock.MatchedBy(func(req *kasregistry.ListKeysRequest) bool {
+				if req.GetKasUri() != test.expectedURI {
+					return false
+				}
+				if test.opts.LegacyOnly {
+					return req.Legacy != nil && req.GetLegacy()
+				}
+				return req.Legacy == nil
+			})).Run(func(args mock.Arguments) {
+				req, ok := args.Get(1).(*kasregistry.ListKeysRequest)
+				s.Require().True(ok)
+				for _, key := range keysByURI[req.GetKasUri()] {
+					if !req.GetLegacy() || key.GetKey().GetLegacy() {
+						response.KasKeys = append(response.KasKeys, key)
+					}
+				}
+			}).Return(response, nil).Once()
 
-	// Test with legacy flag set to false
-	keys, err = keyIndexer.ListKeysWith(context.Background(), trust.ListKeyOptions{LegacyOnly: false})
-	s.Require().NoError(err)
-	s.Len(keys, 2)
-	s.Equal("non-legacy-key-id", string(keys[0].ID()))
-	s.Equal("legacy-key-id", string(keys[1].ID()))
+			keys, err := keyIndexer.ListKeysWith(s.T().Context(), test.opts)
+			s.Require().NoError(err)
+			ids := make([]trust.KeyIdentifier, len(keys))
+			for i, key := range keys {
+				ids[i] = key.ID()
+			}
+			s.Equal(test.expectedIDs, ids)
+			mockClient.AssertExpectations(s.T())
+		})
+	}
 }
 
 func (s *KeyIndexTestSuite) TestListKeys() {
@@ -286,37 +313,6 @@ func (s *KeyIndexTestSuite) TestFindKeyWith() {
 			key, err := keyIndexer.FindKeyWith(s.T().Context(), trust.KeyIdentifier(testKeyID), trust.FindKeyOptions{KeyOptions: trust.KeyOptions{KASURI: test.kasURI}})
 			s.Require().NoError(err)
 			s.Equal(testKeyID, string(key.ID()))
-			mockClient.AssertExpectations(s.T())
-		})
-	}
-}
-
-func (s *KeyIndexTestSuite) TestListKeysWithOptions() {
-	for _, test := range []struct {
-		name        string
-		kasURI      string
-		expectedURI string
-	}{
-		{name: "uses request KAS URI", kasURI: requestKASURI, expectedURI: requestKASURI},
-		{name: "defaults empty KAS URI", kasURI: "", expectedURI: defaultKASURI},
-	} {
-		s.Run(test.name, func() {
-			mockClient := new(MockKeyAccessServerRegistryClient)
-			keyIndexer := &KeyIndexer{
-				sdk:    &sdk.SDK{KeyAccessServerRegistry: mockClient},
-				kasURI: defaultKASURI,
-			}
-
-			mockClient.On("ListKeys", mock.Anything, mock.MatchedBy(func(req *kasregistry.ListKeysRequest) bool {
-				return req.GetKasUri() == test.expectedURI && req.GetLegacy()
-			})).Return(&kasregistry.ListKeysResponse{KasKeys: []*policy.KasKey{
-				{Key: &policy.AsymmetricKey{KeyId: testKeyID, Legacy: true}},
-			}}, nil).Once()
-
-			keys, err := keyIndexer.ListKeysWith(s.T().Context(), trust.ListKeyOptions{KeyOptions: trust.KeyOptions{KASURI: test.kasURI}, LegacyOnly: true})
-			s.Require().NoError(err)
-			s.Len(keys, 1)
-			s.Equal(testKeyID, string(keys[0].ID()))
 			mockClient.AssertExpectations(s.T())
 		})
 	}

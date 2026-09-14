@@ -73,22 +73,28 @@ func NewLogger(config Config) (*Logger, error) {
 	}
 
 	var handler slog.Handler
+	var errorHandler slog.Handler
+	// Audit failures must remain visible even when regular logging is audit-only.
+	errorOptions := &slog.HandlerOptions{Level: slog.LevelError, ReplaceAttr: logger.replaceAttrChain}
 	switch config.Type {
 	case "json":
 		handler = slog.NewJSONHandler(w, &slog.HandlerOptions{
 			Level:       level,
 			ReplaceAttr: logger.replaceAttrChain,
 		})
+		errorHandler = slog.NewJSONHandler(w, errorOptions)
 	case "text":
 		handler = slog.NewTextHandler(w, &slog.HandlerOptions{
 			Level:       level,
 			ReplaceAttr: logger.replaceAttrChain,
 		})
+		errorHandler = slog.NewTextHandler(w, errorOptions)
 	default:
 		return nil, fmt.Errorf("invalid logger type: %s", config.Type)
 	}
 
 	sLogger = slog.New(newContextAttrsHandler(handler, contextAttrSources(config, requestContextAttrs)...))
+	errorLogger := slog.New(newContextAttrsHandler(errorHandler, contextAttrSources(config, requestContextAttrs)...))
 
 	// Audit logger will always log at the AUDIT level and be JSON formatted
 	var auditLoggerHandler slog.Handler = slog.NewJSONHandler(w, &slog.HandlerOptions{
@@ -99,7 +105,7 @@ func NewLogger(config Config) (*Logger, error) {
 	// Audit events skip requestContextAttrs on purpose: the request metadata it
 	// adds is already inside the audit payload. They still need trace correlation.
 	auditLoggerBase := slog.New(newContextAttrsHandler(auditLoggerHandler, contextAttrSources(config)...))
-	auditOptions := []audit.Option{audit.WithErrorLogger(sLogger), audit.WithRecordTimeout(config.AuditTimeout)}
+	auditOptions := []audit.Option{audit.WithErrorLogger(errorLogger), audit.WithRecordTimeout(config.AuditTimeout)}
 	if config.AuditProcessor != nil {
 		auditOptions = append(auditOptions, audit.WithProcessor(config.AuditProcessor))
 	}

@@ -114,6 +114,35 @@ func TestTransactionCloseUsesOneDeadlineAndPreservesEventTimestamp(t *testing.T)
 	assert.Equal(t, []string{timestamp, timestamp}, timestamps)
 }
 
+func TestTransactionClosePreservesCallerMetadata(t *testing.T) {
+	for _, metadata := range []auditEventMetadata{nil, {"existing": "value"}} {
+		t.Run(fmt.Sprint(metadata), func(t *testing.T) {
+			ctx := createTestContext(t)
+			logger, _ := createTestLogger()
+			var processed []Event
+			logger.processor = ProcessorFunc(func(_ context.Context, event Event) error {
+				processed = append(processed, event)
+				return nil
+			})
+			event := canonicalTestEvent()
+			event.EventMetaData = metadata
+			LogAuditEvent(ctx, VerbPolicyCRUD, &event)
+			requireAuditTransaction(ctx, t).logClose(ctx, logger, false, errors.New("commit failed"))
+			require.Len(t, processed, 1)
+			assert.Equal(t, "commit failed", processed[0].EventMetaData["cancellation_error"])
+			assert.NotContains(t, event.EventMetaData, "cancellation_error")
+			if metadata == nil {
+				assert.Nil(t, event.EventMetaData)
+			} else {
+				assert.Equal(t, "value", processed[0].EventMetaData["existing"])
+			}
+			require.NoError(t, logger.Record(ctx, event))
+			require.Len(t, processed, 2)
+			assert.NotContains(t, processed[1].EventMetaData, "cancellation_error")
+		})
+	}
+}
+
 func TestBufferedEventsPreserveProducerContext(t *testing.T) {
 	type resourceContextKey struct{}
 	requestErr := errors.New("request failed")

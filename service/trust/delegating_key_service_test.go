@@ -16,6 +16,14 @@ import (
 	"github.com/stretchr/testify/suite"
 )
 
+const testKeyID KeyIdentifier = "key1"
+
+const (
+	testManagerName         = "mockManager"
+	testManagerInstanceName = "mock-01"
+	testEphemeralPublicKey  = "ephemeralKey"
+)
+
 type MockKeyManager struct {
 	mock.Mock
 }
@@ -84,8 +92,8 @@ func (m *MockKeyIndex) FindKeyByID(ctx context.Context, id KeyIdentifier) (KeyDe
 	return &MockKeyDetails{}, args.Error(1)
 }
 
-func (m *MockKeyIndex) FindKeyByIDWithKASURI(ctx context.Context, id KeyIdentifier, kasURI string) (KeyDetails, error) {
-	args := m.Called(ctx, id, kasURI)
+func (m *MockKeyIndex) FindKeyWith(ctx context.Context, id KeyIdentifier, opts FindKeyOptions) (KeyDetails, error) {
+	args := m.Called(ctx, id, opts)
 	if a0, ok := args.Get(0).(KeyDetails); ok {
 		return a0, args.Error(1)
 	}
@@ -102,14 +110,6 @@ func (m *MockKeyIndex) ListKeys(ctx context.Context) ([]KeyDetails, error) {
 
 func (m *MockKeyIndex) ListKeysWith(ctx context.Context, opts ListKeyOptions) ([]KeyDetails, error) {
 	args := m.Called(ctx, opts)
-	if a0, ok := args.Get(0).([]KeyDetails); ok {
-		return a0, args.Error(1)
-	}
-	return nil, args.Error(1)
-}
-
-func (m *MockKeyIndex) ListKeysWithKASURI(ctx context.Context, opts ListKeyOptions, kasURI string) ([]KeyDetails, error) {
-	args := m.Called(ctx, opts, kasURI)
 	if a0, ok := args.Get(0).([]KeyDetails); ok {
 		return a0, args.Error(1)
 	}
@@ -257,9 +257,9 @@ func (suite *DelegatingKeyServiceTestSuite) TestFindKeyByAlgorithm() {
 }
 
 func (suite *DelegatingKeyServiceTestSuite) TestFindKeyByID() {
-	suite.mockIndex.On("FindKeyByID", mock.Anything, KeyIdentifier("key1")).Return(&MockKeyDetails{}, nil)
+	suite.mockIndex.On("FindKeyByID", mock.Anything, testKeyID).Return(&MockKeyDetails{}, nil)
 
-	keyDetails, err := suite.service.FindKeyByID(context.Background(), KeyIdentifier("key1"))
+	keyDetails, err := suite.service.FindKeyByID(suite.T().Context(), testKeyID)
 	suite.Require().NoError(err)
 	suite.NotNil(keyDetails)
 }
@@ -288,40 +288,43 @@ func (suite *DelegatingKeyServiceTestSuite) TestListKeysWith_Legacy() {
 }
 
 func (suite *DelegatingKeyServiceTestSuite) TestDecrypt() {
-	const kasURI = "https://request-kas.example.com"
+	const (
+		kasURI     = "https://request-kas.example.com"
+		ciphertext = "ciphertext"
+	)
 	mockKeyDetails := &MockKeyDetails{}
-	mockKeyDetails.On("ProviderConfig").Return(&policy.KeyProviderConfig{Manager: "mockManager", Name: "mock-01"})
-	mockKeyDetails.On("System").Return("mockManager")
-	suite.mockIndex.On("FindKeyByIDWithKASURI", mock.Anything, KeyIdentifier("key1"), kasURI).Return(mockKeyDetails, nil)
+	mockKeyDetails.On("ProviderConfig").Return(&policy.KeyProviderConfig{Manager: testManagerName, Name: testManagerInstanceName})
+	mockKeyDetails.On("System").Return(testManagerName)
+	suite.mockIndex.On("FindKeyWith", mock.Anything, testKeyID, FindKeyOptions{KeyOptions: KeyOptions{KASURI: kasURI}}).Return(mockKeyDetails, nil)
 
 	mockProtectedKey := &MockProtectedKey{}
 	mockProtectedKey.On("DecryptAESGCM", mock.Anything, mock.Anything, mock.Anything).Return([]byte("decrypted"), nil)
-	suite.mockManagerA.On("Decrypt", mock.Anything, mockKeyDetails, []byte("ciphertext"), []byte("ephemeralKey")).Return(mockProtectedKey, nil)
+	suite.mockManagerA.On("Decrypt", mock.Anything, mockKeyDetails, []byte(ciphertext), []byte(testEphemeralPublicKey)).Return(mockProtectedKey, nil)
 
-	suite.service.RegisterKeyManagerCtx("mockManager", func(_ context.Context, _ *KeyManagerFactoryOptions) (KeyManager, error) {
+	suite.service.RegisterKeyManagerCtx(testManagerName, func(_ context.Context, _ *KeyManagerFactoryOptions) (KeyManager, error) {
 		return suite.mockManagerA, nil
 	})
 
-	protectedKey, err := suite.service.Decrypt(context.Background(), KeyIdentifier("key1"), kasURI, []byte("ciphertext"), []byte("ephemeralKey"))
+	protectedKey, err := suite.service.Decrypt(suite.T().Context(), testKeyID, kasURI, []byte(ciphertext), []byte(testEphemeralPublicKey))
 	suite.Require().NoError(err)
 	suite.NotNil(protectedKey)
 }
 
 func (suite *DelegatingKeyServiceTestSuite) TestDeriveKey() {
 	mockKeyDetails := &MockKeyDetails{}
-	mockKeyDetails.On("ProviderConfig").Return(&policy.KeyProviderConfig{Manager: "mockManager", Name: "mock-01"})
-	mockKeyDetails.On("System").Return("mockManager")
-	suite.mockIndex.On("FindKeyByID", mock.Anything, KeyIdentifier("key1")).Return(mockKeyDetails, nil)
+	mockKeyDetails.On("ProviderConfig").Return(&policy.KeyProviderConfig{Manager: testManagerName, Name: testManagerInstanceName})
+	mockKeyDetails.On("System").Return(testManagerName)
+	suite.mockIndex.On("FindKeyByID", mock.Anything, testKeyID).Return(mockKeyDetails, nil)
 
 	mockProtectedKey := &MockProtectedKey{}
 	mockProtectedKey.On("Export", mock.Anything).Return([]byte("exported"), nil)
-	suite.mockManagerA.On("DeriveKey", mock.Anything, mockKeyDetails, []byte("ephemeralKey"), elliptic.P256()).Return(mockProtectedKey, nil)
+	suite.mockManagerA.On("DeriveKey", mock.Anything, mockKeyDetails, []byte(testEphemeralPublicKey), elliptic.P256()).Return(mockProtectedKey, nil)
 
-	suite.service.RegisterKeyManagerCtx("mockManager", func(_ context.Context, _ *KeyManagerFactoryOptions) (KeyManager, error) {
+	suite.service.RegisterKeyManagerCtx(testManagerName, func(_ context.Context, _ *KeyManagerFactoryOptions) (KeyManager, error) {
 		return suite.mockManagerA, nil
 	})
 
-	protectedKey, err := suite.service.DeriveKey(context.Background(), KeyIdentifier("key1"), []byte("ephemeralKey"), elliptic.P256())
+	protectedKey, err := suite.service.DeriveKey(suite.T().Context(), testKeyID, []byte(testEphemeralPublicKey), elliptic.P256())
 	suite.Require().NoError(err)
 	suite.NotNil(protectedKey)
 }

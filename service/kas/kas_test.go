@@ -153,15 +153,11 @@ func (stubKeyIndex) FindKeyByID(_ context.Context, _ trust.KeyIdentifier) (trust
 	return nil, errors.New("not implemented")
 }
 
-func (stubKeyIndex) FindKeyByIDWithKASURI(_ context.Context, _ trust.KeyIdentifier, _ string) (trust.KeyDetails, error) {
+func (stubKeyIndex) FindKeyWith(_ context.Context, _ trust.KeyIdentifier, _ trust.FindKeyOptions) (trust.KeyDetails, error) {
 	return nil, errors.New("not implemented")
 }
 func (stubKeyIndex) ListKeys(_ context.Context) ([]trust.KeyDetails, error) { return nil, nil }
 func (stubKeyIndex) ListKeysWith(_ context.Context, _ trust.ListKeyOptions) ([]trust.KeyDetails, error) {
-	return nil, nil
-}
-
-func (stubKeyIndex) ListKeysWithKASURI(_ context.Context, _ trust.ListKeyOptions, _ string) ([]trust.KeyDetails, error) {
 	return nil, nil
 }
 

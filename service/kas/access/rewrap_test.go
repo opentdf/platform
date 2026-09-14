@@ -89,7 +89,7 @@ func (f *fakeKeyIndex) FindKeyByID(context.Context, trust.KeyIdentifier) (trust.
 	return nil, errors.New("not implemented")
 }
 
-func (f *fakeKeyIndex) FindKeyByIDWithKASURI(context.Context, trust.KeyIdentifier, string) (trust.KeyDetails, error) {
+func (f *fakeKeyIndex) FindKeyWith(context.Context, trust.KeyIdentifier, trust.FindKeyOptions) (trust.KeyDetails, error) {
 	return nil, errors.New("not implemented")
 }
 
@@ -98,6 +98,7 @@ func (f *fakeKeyIndex) ListKeys(context.Context) ([]trust.KeyDetails, error) {
 }
 
 func (f *fakeKeyIndex) ListKeysWith(_ context.Context, opts trust.ListKeyOptions) ([]trust.KeyDetails, error) {
+	f.kasURI = opts.KASURI
 	if opts.LegacyOnly {
 		var legacyKeys []trust.KeyDetails
 		for _, key := range f.keys {
@@ -108,11 +109,6 @@ func (f *fakeKeyIndex) ListKeysWith(_ context.Context, opts trust.ListKeyOptions
 		return legacyKeys, f.err
 	}
 	return f.keys, f.err
-}
-
-func (f *fakeKeyIndex) ListKeysWithKASURI(ctx context.Context, opts trust.ListKeyOptions, kasURI string) ([]trust.KeyDetails, error) {
-	f.kasURI = kasURI
-	return f.ListKeysWith(ctx, opts)
 }
 
 func newBufferLogger() (*logger.Logger, *bytes.Buffer) {

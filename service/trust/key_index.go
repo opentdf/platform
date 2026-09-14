@@ -12,9 +12,19 @@ import (
 // KeyType represents the format in which a key can be exported
 type KeyType int
 
-// Key Options to pass into ListKeysWith
-// when filtering keys
+// KeyOptions configures behavior common to key lookup and listing operations.
+type KeyOptions struct {
+	KASURI string
+}
+
+// FindKeyOptions configures a key lookup.
+type FindKeyOptions struct {
+	KeyOptions
+}
+
+// ListKeyOptions configures key listing and filtering.
 type ListKeyOptions struct {
+	KeyOptions
 	LegacyOnly bool
 }
 
@@ -74,19 +84,12 @@ type KeyIndex interface {
 	// FindKeyByID returns a key with the specified ID
 	FindKeyByID(ctx context.Context, id KeyIdentifier) (KeyDetails, error)
 
+	// FindKeyWith returns a key with the specified ID and options.
+	FindKeyWith(ctx context.Context, id KeyIdentifier, opts FindKeyOptions) (KeyDetails, error)
+
 	// ListKeys returns all available keys
 	ListKeys(ctx context.Context) ([]KeyDetails, error)
 
 	// List keys with options
 	ListKeysWith(ctx context.Context, opts ListKeyOptions) ([]KeyDetails, error)
-}
-
-// KASURIKeyIndex optionally extends KeyIndex with KAS-registration-scoped
-// lookups. Callers must fall back to KeyIndex behavior when it is not
-// implemented so existing in-process and external indexes remain compatible.
-type KASURIKeyIndex interface {
-	// ListKeysWithKASURI lists keys from a KAS registration with options
-	ListKeysWithKASURI(ctx context.Context, opts ListKeyOptions, kasURI string) ([]KeyDetails, error)
-	// FindKeyByIDWithKASURI returns a key with the specified ID from a KAS registration
-	FindKeyByIDWithKASURI(ctx context.Context, id KeyIdentifier, kasURI string) (KeyDetails, error)
 }

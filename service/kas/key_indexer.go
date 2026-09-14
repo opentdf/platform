@@ -100,17 +100,17 @@ func (p *KeyIndexer) FindKeyByAlgorithm(ctx context.Context, algorithm string, i
 }
 
 func (p *KeyIndexer) FindKeyByID(ctx context.Context, id trust.KeyIdentifier) (trust.KeyDetails, error) {
-	return p.FindKeyByIDWithKASURI(ctx, id, "")
+	return p.FindKeyWith(ctx, id, trust.FindKeyOptions{})
 }
 
-// FindKeyByIDWithKASURI returns a key from the specified KAS registration.
-// If kasURI is empty, the indexer's configured KAS URI is used.
-func (p *KeyIndexer) FindKeyByIDWithKASURI(ctx context.Context, id trust.KeyIdentifier, kasURI string) (trust.KeyDetails, error) {
+// FindKeyWith returns a key using the requested options.
+// If opts.KASURI is empty, the indexer's configured KAS URI is used.
+func (p *KeyIndexer) FindKeyWith(ctx context.Context, id trust.KeyIdentifier, opts trust.FindKeyOptions) (trust.KeyDetails, error) {
 	req := &kasregistry.GetKeyRequest{
 		Identifier: &kasregistry.GetKeyRequest_Key{
 			Key: &kasregistry.KasKeyIdentifier{
 				Identifier: &kasregistry.KasKeyIdentifier_Uri{
-					Uri: p.kasURIOrDefault(kasURI),
+					Uri: p.kasURIOrDefault(opts.KASURI),
 				},
 				Kid: string(id),
 			},
@@ -129,16 +129,12 @@ func (p *KeyIndexer) FindKeyByIDWithKASURI(ctx context.Context, id trust.KeyIden
 }
 
 func (p *KeyIndexer) ListKeys(ctx context.Context) ([]trust.KeyDetails, error) {
-	return p.ListKeysWithKASURI(ctx, trust.ListKeyOptions{LegacyOnly: false}, "")
+	return p.ListKeysWith(ctx, trust.ListKeyOptions{})
 }
 
+// ListKeysWith returns keys using the requested options.
+// If opts.KASURI is empty, the indexer's configured KAS URI is used.
 func (p *KeyIndexer) ListKeysWith(ctx context.Context, opts trust.ListKeyOptions) ([]trust.KeyDetails, error) {
-	return p.ListKeysWithKASURI(ctx, opts, "")
-}
-
-// ListKeysWithKASURI returns keys from the specified KAS registration.
-// If kasURI is empty, the indexer's configured KAS URI is used.
-func (p *KeyIndexer) ListKeysWithKASURI(ctx context.Context, opts trust.ListKeyOptions, kasURI string) ([]trust.KeyDetails, error) {
 	var legacyOnly *bool
 	if opts.LegacyOnly {
 		legacyOnly = &opts.LegacyOnly
@@ -146,7 +142,7 @@ func (p *KeyIndexer) ListKeysWithKASURI(ctx context.Context, opts trust.ListKeyO
 
 	req := &kasregistry.ListKeysRequest{
 		KasFilter: &kasregistry.ListKeysRequest_KasUri{
-			KasUri: p.kasURIOrDefault(kasURI),
+			KasUri: p.kasURIOrDefault(opts.KASURI),
 		},
 		Legacy: legacyOnly,
 	}

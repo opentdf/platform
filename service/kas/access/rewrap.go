@@ -925,7 +925,7 @@ func (p *Provider) listLegacyKeys(ctx context.Context, kasURI string) []trust.Ke
 		return kidsToCheck
 	}
 
-	k, err := p.KeyDelegator.ListKeysWithKASURI(ctx, trust.ListKeyOptions{LegacyOnly: true}, kasURI)
+	k, err := p.KeyDelegator.ListKeysWith(ctx, trust.ListKeyOptions{KeyOptions: trust.KeyOptions{KASURI: kasURI}, LegacyOnly: true})
 	if err != nil {
 		p.Logger.WarnContext(ctx, "checkpoint KeyIndex.ListKeys failed", slog.Any("error", err))
 	} else {

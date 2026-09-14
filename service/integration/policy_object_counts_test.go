@@ -16,12 +16,12 @@ import (
 	"github.com/opentdf/platform/protocol/go/policy/subjectmapping"
 	"github.com/opentdf/platform/service/internal/fixtures"
 	"github.com/opentdf/platform/service/pkg/db"
+	policyservice "github.com/opentdf/platform/service/policy"
 	"github.com/stretchr/testify/suite"
 )
 
 type PolicyObjectCountsSuite struct {
 	suite.Suite
-	f   fixtures.Fixtures
 	db  fixtures.DBInterface
 	ctx context.Context //nolint:containedctx // context is used in the test suite
 
@@ -45,14 +45,14 @@ func (s *PolicyObjectCountsSuite) SetupSuite() {
 	c := *Config
 	c.DB.Schema = "test_opentdf_policy_object_counts"
 	s.db = fixtures.NewDBInterface(s.ctx, c)
-	s.f = fixtures.NewFixture(s.db)
-	s.f.Provision(s.ctx)
+	_, err := s.db.Client.RunMigrations(s.ctx, policyservice.Migrations)
+	s.Require().NoError(err)
 	s.provisionCountScenario()
 }
 
 func (s *PolicyObjectCountsSuite) TearDownSuite() {
 	slog.Info("tearing down db.PolicyObjectCounts test suite")
-	s.f.TearDown(s.ctx)
+	s.Require().NoError(s.db.DropSchema(s.ctx))
 }
 
 func (s *PolicyObjectCountsSuite) Test_ParentScopedCounts_ReturnExactCounts_Succeeds() {

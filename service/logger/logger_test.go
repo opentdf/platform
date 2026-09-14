@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"context"
 	"encoding/json"
+	"errors"
 	"os"
 	"strings"
 	"testing"
@@ -74,6 +75,33 @@ func testAuditEvent() *audit.EventObject {
 		Action:     audit.EventObjectAction{Type: audit.ActionTypeRewrap, Result: audit.ActionResultSuccess},
 		ClientInfo: audit.EventClientInfo{Platform: "test"},
 	})
+}
+
+func TestBufferedAuditFailureAtAuditLogLevel(t *testing.T) {
+	for _, format := range []string{"json", "text"} {
+		t.Run(format, func(t *testing.T) {
+			lines := captureStdout(t, func() {
+				lg, err := NewLogger(Config{
+					Level: "audit", Output: "stdout", Type: format,
+					AuditProcessor: audit.ProcessorFunc(func(context.Context, audit.Event) error {
+						return errors.New("audit delivery failed")
+					}),
+				})
+				require.NoError(t, err)
+				lg = lg.With("namespace", "policy")
+				ctx := tracedContext(t)
+				lg.ErrorContext(ctx, "regular error stays filtered")
+				emitAuditEvent(ctx, t, lg)
+			})
+			require.Len(t, lines, 1)
+			assert.Contains(t, lines[0], "failed to record audit event")
+			assert.Contains(t, lines[0], "audit delivery failed")
+			assert.Contains(t, lines[0], "ERROR")
+			assert.Contains(t, lines[0], "policy")
+			assert.Contains(t, lines[0], testTraceIDHex)
+			assert.Contains(t, lines[0], testSpanIDHex)
+		})
+	}
 }
 
 func Test_NewLogger_CorrelatesMainAndAuditLogs(t *testing.T) {

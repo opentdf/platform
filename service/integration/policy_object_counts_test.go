@@ -47,7 +47,110 @@ func (s *PolicyObjectCountsSuite) SetupSuite() {
 	s.db = fixtures.NewDBInterface(s.ctx, c)
 	_, err := s.db.Client.RunMigrations(s.ctx, policyservice.Migrations)
 	s.Require().NoError(err)
-	s.provisionCountScenario()
+
+	s.namespace, err = s.db.PolicyClient.CreateNamespace(s.ctx, &namespaces.CreateNamespaceRequest{
+		Name: "policy-object-counts.example.com",
+	})
+	s.Require().NoError(err)
+	s.emptyNamespace, err = s.db.PolicyClient.CreateNamespace(s.ctx, &namespaces.CreateNamespaceRequest{
+		Name: "empty-policy-object-counts.example.com",
+	})
+	s.Require().NoError(err)
+	s.initialActionCount, err = s.db.PolicyClient.GetCountActions(s.ctx, s.namespace.GetId(), "")
+	s.Require().NoError(err)
+	s.emptyNamespaceActionCount, err = s.db.PolicyClient.GetCountActions(s.ctx, s.emptyNamespace.GetId(), "")
+	s.Require().NoError(err)
+
+	s.attribute, err = s.db.PolicyClient.CreateAttribute(s.ctx, &attributes.CreateAttributeRequest{
+		Name:        "count-attribute",
+		NamespaceId: s.namespace.GetId(),
+		Rule:        policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
+	})
+	s.Require().NoError(err)
+	s.emptyAttribute, err = s.db.PolicyClient.CreateAttribute(s.ctx, &attributes.CreateAttributeRequest{
+		Name:        "empty-count-attribute",
+		NamespaceId: s.namespace.GetId(),
+		Rule:        policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
+	})
+	s.Require().NoError(err)
+
+	s.attributeValue, err = s.db.PolicyClient.CreateAttributeValue(s.ctx, s.attribute.GetId(), &attributes.CreateAttributeValueRequest{
+		Value:       "count-value",
+		AttributeId: s.attribute.GetId(),
+	})
+	s.Require().NoError(err)
+	s.emptyAttributeValue, err = s.db.PolicyClient.CreateAttributeValue(s.ctx, s.attribute.GetId(), &attributes.CreateAttributeValueRequest{
+		Value:       "empty-count-value",
+		AttributeId: s.attribute.GetId(),
+	})
+	s.Require().NoError(err)
+
+	group, err := s.db.PolicyClient.CreateResourceMappingGroup(s.ctx, &resourcemapping.CreateResourceMappingGroupRequest{
+		Name:        "count-group",
+		NamespaceId: s.namespace.GetId(),
+	})
+	s.Require().NoError(err)
+	for _, term := range []string{"count-term-one", "count-term-two"} {
+		_, err := s.db.PolicyClient.CreateResourceMapping(s.ctx, &resourcemapping.CreateResourceMappingRequest{
+			AttributeValueId: s.attributeValue.GetId(),
+			Terms:            []string{term},
+			GroupId:          group.GetId(),
+		})
+		s.Require().NoError(err)
+	}
+
+	s.action, err = s.db.PolicyClient.CreateAction(s.ctx, &actions.CreateActionRequest{
+		Name:        "count-action-one",
+		NamespaceId: s.namespace.GetId(),
+	})
+	s.Require().NoError(err)
+	_, err = s.db.PolicyClient.CreateAction(s.ctx, &actions.CreateActionRequest{
+		Name:        "count-action-two",
+		NamespaceId: s.namespace.GetId(),
+	})
+	s.Require().NoError(err)
+
+	for range 2 {
+		scs, err := s.db.PolicyClient.CreateSubjectConditionSet(
+			s.ctx,
+			newCountSubjectConditionSet(),
+			s.namespace.GetId(),
+			"",
+		)
+		s.Require().NoError(err)
+		_, err = s.db.PolicyClient.CreateSubjectMapping(s.ctx, &subjectmapping.CreateSubjectMappingRequest{
+			AttributeValueId:              s.attributeValue.GetId(),
+			ExistingSubjectConditionSetId: scs.GetId(),
+			Actions:                       []*policy.Action{{Id: s.action.GetId()}},
+			NamespaceId:                   s.namespace.GetId(),
+		})
+		s.Require().NoError(err)
+	}
+
+	s.obligation, err = s.db.PolicyClient.CreateObligation(s.ctx, &obligations.CreateObligationRequest{
+		Name:        "count-obligation",
+		NamespaceId: s.namespace.GetId(),
+		Values:      []string{"count-obligation-value-one", "count-obligation-value-two"},
+	})
+	s.Require().NoError(err)
+	s.Require().Len(s.obligation.GetValues(), 2)
+	s.emptyObligation, err = s.db.PolicyClient.CreateObligation(s.ctx, &obligations.CreateObligationRequest{
+		Name:        "empty-count-obligation",
+		NamespaceId: s.namespace.GetId(),
+	})
+	s.Require().NoError(err)
+
+	for i, value := range s.obligation.GetValues() {
+		if i == 0 {
+			s.excludedObligationValueID = value.GetId()
+		}
+		_, err := s.db.PolicyClient.CreateObligationTrigger(s.ctx, &obligations.AddObligationTriggerRequest{
+			ObligationValue: &common.IdFqnIdentifier{Id: value.GetId()},
+			AttributeValue:  &common.IdFqnIdentifier{Id: s.attributeValue.GetId()},
+			Action:          &common.IdNameIdentifier{Id: s.action.GetId()},
+		})
+		s.Require().NoError(err)
+	}
 }
 
 func (s *PolicyObjectCountsSuite) TearDownSuite() {
@@ -296,113 +399,6 @@ func TestPolicyObjectCountsSuite(t *testing.T) {
 		t.Skip("skipping policy object counts integration tests")
 	}
 	suite.Run(t, new(PolicyObjectCountsSuite))
-}
-
-func (s *PolicyObjectCountsSuite) provisionCountScenario() {
-	var err error
-	s.namespace, err = s.db.PolicyClient.CreateNamespace(s.ctx, &namespaces.CreateNamespaceRequest{
-		Name: "policy-object-counts.example.com",
-	})
-	s.Require().NoError(err)
-	s.emptyNamespace, err = s.db.PolicyClient.CreateNamespace(s.ctx, &namespaces.CreateNamespaceRequest{
-		Name: "empty-policy-object-counts.example.com",
-	})
-	s.Require().NoError(err)
-	s.initialActionCount, err = s.db.PolicyClient.GetCountActions(s.ctx, s.namespace.GetId(), "")
-	s.Require().NoError(err)
-	s.emptyNamespaceActionCount, err = s.db.PolicyClient.GetCountActions(s.ctx, s.emptyNamespace.GetId(), "")
-	s.Require().NoError(err)
-
-	s.attribute, err = s.db.PolicyClient.CreateAttribute(s.ctx, &attributes.CreateAttributeRequest{
-		Name:        "count-attribute",
-		NamespaceId: s.namespace.GetId(),
-		Rule:        policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
-	})
-	s.Require().NoError(err)
-	s.emptyAttribute, err = s.db.PolicyClient.CreateAttribute(s.ctx, &attributes.CreateAttributeRequest{
-		Name:        "empty-count-attribute",
-		NamespaceId: s.namespace.GetId(),
-		Rule:        policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
-	})
-	s.Require().NoError(err)
-
-	s.attributeValue, err = s.db.PolicyClient.CreateAttributeValue(s.ctx, s.attribute.GetId(), &attributes.CreateAttributeValueRequest{
-		Value:       "count-value",
-		AttributeId: s.attribute.GetId(),
-	})
-	s.Require().NoError(err)
-	s.emptyAttributeValue, err = s.db.PolicyClient.CreateAttributeValue(s.ctx, s.attribute.GetId(), &attributes.CreateAttributeValueRequest{
-		Value:       "empty-count-value",
-		AttributeId: s.attribute.GetId(),
-	})
-	s.Require().NoError(err)
-
-	group, err := s.db.PolicyClient.CreateResourceMappingGroup(s.ctx, &resourcemapping.CreateResourceMappingGroupRequest{
-		Name:        "count-group",
-		NamespaceId: s.namespace.GetId(),
-	})
-	s.Require().NoError(err)
-	for _, term := range []string{"count-term-one", "count-term-two"} {
-		_, err := s.db.PolicyClient.CreateResourceMapping(s.ctx, &resourcemapping.CreateResourceMappingRequest{
-			AttributeValueId: s.attributeValue.GetId(),
-			Terms:            []string{term},
-			GroupId:          group.GetId(),
-		})
-		s.Require().NoError(err)
-	}
-
-	s.action, err = s.db.PolicyClient.CreateAction(s.ctx, &actions.CreateActionRequest{
-		Name:        "count-action-one",
-		NamespaceId: s.namespace.GetId(),
-	})
-	s.Require().NoError(err)
-	_, err = s.db.PolicyClient.CreateAction(s.ctx, &actions.CreateActionRequest{
-		Name:        "count-action-two",
-		NamespaceId: s.namespace.GetId(),
-	})
-	s.Require().NoError(err)
-
-	for range 2 {
-		scs, err := s.db.PolicyClient.CreateSubjectConditionSet(
-			s.ctx,
-			newCountSubjectConditionSet(),
-			s.namespace.GetId(),
-			"",
-		)
-		s.Require().NoError(err)
-		_, err = s.db.PolicyClient.CreateSubjectMapping(s.ctx, &subjectmapping.CreateSubjectMappingRequest{
-			AttributeValueId:              s.attributeValue.GetId(),
-			ExistingSubjectConditionSetId: scs.GetId(),
-			Actions:                       []*policy.Action{{Id: s.action.GetId()}},
-			NamespaceId:                   s.namespace.GetId(),
-		})
-		s.Require().NoError(err)
-	}
-
-	s.obligation, err = s.db.PolicyClient.CreateObligation(s.ctx, &obligations.CreateObligationRequest{
-		Name:        "count-obligation",
-		NamespaceId: s.namespace.GetId(),
-		Values:      []string{"count-obligation-value-one", "count-obligation-value-two"},
-	})
-	s.Require().NoError(err)
-	s.Require().Len(s.obligation.GetValues(), 2)
-	s.emptyObligation, err = s.db.PolicyClient.CreateObligation(s.ctx, &obligations.CreateObligationRequest{
-		Name:        "empty-count-obligation",
-		NamespaceId: s.namespace.GetId(),
-	})
-	s.Require().NoError(err)
-
-	for i, value := range s.obligation.GetValues() {
-		if i == 0 {
-			s.excludedObligationValueID = value.GetId()
-		}
-		_, err := s.db.PolicyClient.CreateObligationTrigger(s.ctx, &obligations.AddObligationTriggerRequest{
-			ObligationValue: &common.IdFqnIdentifier{Id: value.GetId()},
-			AttributeValue:  &common.IdFqnIdentifier{Id: s.attributeValue.GetId()},
-			Action:          &common.IdNameIdentifier{Id: s.action.GetId()},
-		})
-		s.Require().NoError(err)
-	}
 }
 
 func newCountSubjectConditionSet() *subjectmapping.SubjectConditionSetCreate {

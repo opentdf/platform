@@ -925,7 +925,13 @@ func (p *Provider) listLegacyKeys(ctx context.Context, kasURI string) []trust.Ke
 		return kidsToCheck
 	}
 
-	k, err := p.KeyDelegator.ListKeysWith(ctx, trust.ListKeyOptions{KeyOptions: trust.KeyOptions{KASURI: kasURI}, LegacyOnly: true})
+	// During migration, legacy keys may exist under both the old KAO URI and
+	// the default registration, even when the old URI still has keys.
+	k, err := p.KeyDelegator.ListKeysWith(ctx, trust.ListKeyOptions{
+		KeyOptions:        trust.KeyOptions{KASURI: kasURI},
+		LegacyOnly:        true,
+		IncludeDefaultKAS: true,
+	})
 	if err != nil {
 		p.Logger.WarnContext(ctx, "checkpoint KeyIndex.ListKeys failed", slog.Any("error", err))
 	} else {

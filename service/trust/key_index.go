@@ -26,6 +26,9 @@ type FindKeyOptions struct {
 type ListKeyOptions struct {
 	KeyOptions
 	LegacyOnly bool
+	// IncludeDefaultKAS also lists the index's default registration when KASURI
+	// selects another registration. Indexes without URI scoping ignore this.
+	IncludeDefaultKAS bool
 }
 
 const (

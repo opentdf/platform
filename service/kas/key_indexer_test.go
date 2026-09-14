@@ -3,6 +3,7 @@ package kas
 import (
 	"context"
 	"errors"
+	"fmt"
 	"testing"
 
 	"github.com/lestrrat-go/jwx/v2/jwk"
@@ -10,8 +11,10 @@ import (
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/kasregistry"
 	"github.com/opentdf/platform/sdk"
+	"github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/trust"
 	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -102,10 +105,12 @@ func (m *MockKeyAccessServerRegistryClient) ListKeyMappings(context.Context, *ka
 
 type KeyIndexTestSuite struct {
 	suite.Suite
-	rsaKey trust.KeyDetails
+	rsaKey   trust.KeyDetails
+	fixtures keyIndexFixtures
 }
 
 func (s *KeyIndexTestSuite) SetupTest() {
+	s.fixtures = newKeyIndexFixtures()
 	s.rsaKey = &KeyAdapter{
 		key: &policy.KasKey{
 			KasId: "test-kas-id",
@@ -184,136 +189,242 @@ func (s *KeyIndexTestSuite) TestKeyDetails_Legacy() {
 }
 
 func (s *KeyIndexTestSuite) TestListKeysWith() {
-	keysByURI := map[string][]*policy.KasKey{
-		defaultKASURI: {
-			{Key: &policy.AsymmetricKey{KeyId: "default-active-key"}},
-			{Key: &policy.AsymmetricKey{KeyId: "default-legacy-key", Legacy: true}},
-		},
-		requestKASURI: {
-			{Key: &policy.AsymmetricKey{KeyId: "request-active-key"}},
-			{Key: &policy.AsymmetricKey{KeyId: "request-legacy-key", Legacy: true}},
-		},
-	}
-	for _, test := range []struct {
-		name        string
-		opts        trust.ListKeyOptions
-		expectedURI string
-		expectedIDs []trust.KeyIdentifier
+	f := s.fixtures
+	for _, tc := range []struct {
+		name           string
+		uri            string
+		includeDefault bool
+		wantKeys       []*policy.KasKey
+		wantLegacyKeys []*policy.KasKey
+		wantURIs       []string
 	}{
 		{
-			name:        "default URI with legacy filter",
-			opts:        trust.ListKeyOptions{LegacyOnly: true},
-			expectedURI: defaultKASURI,
-			expectedIDs: []trust.KeyIdentifier{"default-legacy-key"},
+			name:           "requested registration",
+			uri:            requestKASURI,
+			wantKeys:       []*policy.KasKey{f.requestShared, f.requestLegacy, f.requestNonLegacy},
+			wantLegacyKeys: []*policy.KasKey{f.requestShared, f.requestLegacy},
+			wantURIs:       []string{requestKASURI},
 		},
 		{
-			name:        "default URI without legacy filter",
-			expectedURI: defaultKASURI,
-			expectedIDs: []trust.KeyIdentifier{"default-active-key", "default-legacy-key"},
+			name:           "default registration",
+			uri:            defaultKASURI,
+			wantKeys:       []*policy.KasKey{f.defaultShared, f.defaultLegacy, f.defaultNonLegacy},
+			wantLegacyKeys: []*policy.KasKey{f.defaultShared, f.defaultLegacy},
+			wantURIs:       []string{defaultKASURI},
 		},
 		{
-			name:        "request URI with legacy filter",
-			opts:        trust.ListKeyOptions{KeyOptions: trust.KeyOptions{KASURI: requestKASURI}, LegacyOnly: true},
-			expectedURI: requestKASURI,
-			expectedIDs: []trust.KeyIdentifier{"request-legacy-key"},
+			name:           "implicit default",
+			wantKeys:       []*policy.KasKey{f.defaultShared, f.defaultLegacy, f.defaultNonLegacy},
+			wantLegacyKeys: []*policy.KasKey{f.defaultShared, f.defaultLegacy},
+			wantURIs:       []string{defaultKASURI},
 		},
 		{
-			name:        "request URI without legacy filter",
-			opts:        trust.ListKeyOptions{KeyOptions: trust.KeyOptions{KASURI: requestKASURI}},
-			expectedURI: requestKASURI,
-			expectedIDs: []trust.KeyIdentifier{"request-active-key", "request-legacy-key"},
+			name:     "empty registration",
+			uri:      emptyKASURI,
+			wantURIs: []string{emptyKASURI},
+		},
+		{
+			name:           "preserve shared KIDs with requested keys first",
+			uri:            requestKASURI,
+			includeDefault: true,
+			wantKeys:       []*policy.KasKey{f.requestShared, f.requestLegacy, f.requestNonLegacy, f.defaultShared, f.defaultLegacy, f.defaultNonLegacy},
+			wantLegacyKeys: []*policy.KasKey{f.requestShared, f.requestLegacy, f.defaultShared, f.defaultLegacy},
+			wantURIs:       []string{requestKASURI, defaultKASURI},
+		},
+		{
+			name:           "empty registration includes defaults",
+			uri:            emptyKASURI,
+			includeDefault: true,
+			wantKeys:       []*policy.KasKey{f.defaultShared, f.defaultLegacy, f.defaultNonLegacy},
+			wantLegacyKeys: []*policy.KasKey{f.defaultShared, f.defaultLegacy},
+			wantURIs:       []string{emptyKASURI, defaultKASURI},
+		},
+		{
+			name:           "empty URI lists default once",
+			includeDefault: true,
+			wantKeys:       []*policy.KasKey{f.defaultShared, f.defaultLegacy, f.defaultNonLegacy},
+			wantLegacyKeys: []*policy.KasKey{f.defaultShared, f.defaultLegacy},
+			wantURIs:       []string{defaultKASURI},
+		},
+		{
+			name:           "explicit default lists once",
+			uri:            defaultKASURI,
+			includeDefault: true,
+			wantKeys:       []*policy.KasKey{f.defaultShared, f.defaultLegacy, f.defaultNonLegacy},
+			wantLegacyKeys: []*policy.KasKey{f.defaultShared, f.defaultLegacy},
+			wantURIs:       []string{defaultKASURI},
 		},
 	} {
-		s.Run(test.name, func() {
-			mockClient := new(MockKeyAccessServerRegistryClient)
-			keyIndexer := &KeyIndexer{
-				sdk:    &sdk.SDK{KeyAccessServerRegistry: mockClient},
-				kasURI: defaultKASURI,
-			}
+		for _, legacy := range []bool{false, true} {
+			s.Run(fmt.Sprintf("%s/legacy=%t", tc.name, legacy), func() {
+				t := s.T()
+				client := &testKeyRegistry{keysByURI: f.keysByURI}
+				index := NewPlatformKeyIndexer(&sdk.SDK{KeyAccessServerRegistry: client}, defaultKASURI, logger.CreateTestLogger())
+				keys, err := index.ListKeysWith(t.Context(), trust.ListKeyOptions{
+					KeyOptions: trust.KeyOptions{KASURI: tc.uri},
+					LegacyOnly: legacy, IncludeDefaultKAS: tc.includeDefault,
+				})
+				require.NoError(t, err)
+				wantKeys := tc.wantKeys
+				if legacy {
+					wantKeys = tc.wantLegacyKeys
+				}
+				assertRegistryKeys(t, wantKeys, keys)
+				client.assertListRequests(t, legacy, tc.wantURIs)
+			})
+		}
+	}
+}
 
-			response := &kasregistry.ListKeysResponse{}
-			mockClient.On("ListKeys", mock.Anything, mock.MatchedBy(func(req *kasregistry.ListKeysRequest) bool {
-				if req.GetKasUri() != test.expectedURI {
-					return false
-				}
-				if test.opts.LegacyOnly {
-					return req.Legacy != nil && req.GetLegacy()
-				}
-				return req.Legacy == nil
-			})).Run(func(args mock.Arguments) {
-				req, ok := args.Get(1).(*kasregistry.ListKeysRequest)
-				s.Require().True(ok)
-				for _, key := range keysByURI[req.GetKasUri()] {
-					if !req.GetLegacy() || key.GetKey().GetLegacy() {
-						response.KasKeys = append(response.KasKeys, key)
+func (s *KeyIndexTestSuite) TestListKeysWithErrors() {
+	f := s.fixtures
+	for _, tc := range []struct {
+		name           string
+		uri            string
+		includeDefault bool
+		errorsByURI    map[string]error
+		wantKeys       []*policy.KasKey
+		wantLegacyKeys []*policy.KasKey
+		wantURIs       []string
+		wantErrors     []error
+	}{
+		{
+			name:        "requested registration failure",
+			uri:         requestKASURI,
+			errorsByURI: map[string]error{requestKASURI: errRegistryUnavailable},
+			wantURIs:    []string{requestKASURI},
+			wantErrors:  []error{errRegistryUnavailable},
+		},
+		{
+			name:        "default registration failure",
+			uri:         defaultKASURI,
+			errorsByURI: map[string]error{defaultKASURI: errRegistryUnavailable},
+			wantURIs:    []string{defaultKASURI},
+			wantErrors:  []error{errRegistryUnavailable},
+		},
+		{
+			name:        "implicit default failure",
+			errorsByURI: map[string]error{defaultKASURI: errRegistryUnavailable},
+			wantURIs:    []string{defaultKASURI},
+			wantErrors:  []error{errRegistryUnavailable},
+		},
+		{
+			name:        "empty registration failure",
+			uri:         emptyKASURI,
+			errorsByURI: map[string]error{emptyKASURI: errRegistryUnavailable},
+			wantURIs:    []string{emptyKASURI},
+			wantErrors:  []error{errRegistryUnavailable},
+		},
+		{
+			name:           "preserve defaults on scoped error",
+			uri:            requestKASURI,
+			includeDefault: true,
+			errorsByURI:    map[string]error{requestKASURI: errRegistryScoped},
+			wantKeys:       []*policy.KasKey{f.defaultShared, f.defaultLegacy, f.defaultNonLegacy},
+			wantLegacyKeys: []*policy.KasKey{f.defaultShared, f.defaultLegacy},
+			wantURIs:       []string{requestKASURI, defaultKASURI},
+		},
+		{
+			name:           "preserve scoped on default error",
+			uri:            requestKASURI,
+			includeDefault: true,
+			errorsByURI:    map[string]error{defaultKASURI: errRegistryDefault},
+			wantKeys:       []*policy.KasKey{f.requestShared, f.requestLegacy, f.requestNonLegacy},
+			wantLegacyKeys: []*policy.KasKey{f.requestShared, f.requestLegacy},
+			wantURIs:       []string{requestKASURI, defaultKASURI},
+		},
+		{
+			name:           "both fail",
+			uri:            requestKASURI,
+			includeDefault: true,
+			errorsByURI:    map[string]error{requestKASURI: errRegistryScoped, defaultKASURI: errRegistryDefault},
+			wantURIs:       []string{requestKASURI, defaultKASURI},
+			wantErrors:     []error{errRegistryScoped, errRegistryDefault},
+		},
+		{
+			name:           "default error does not relist",
+			uri:            defaultKASURI,
+			includeDefault: true,
+			errorsByURI:    map[string]error{defaultKASURI: errRegistryDefault},
+			wantURIs:       []string{defaultKASURI},
+			wantErrors:     []error{errRegistryDefault},
+		},
+	} {
+		for _, legacy := range []bool{false, true} {
+			s.Run(fmt.Sprintf("%s/legacy=%t", tc.name, legacy), func() {
+				t := s.T()
+				client := &testKeyRegistry{keysByURI: f.keysByURI, errorsByURI: tc.errorsByURI}
+				index := NewPlatformKeyIndexer(&sdk.SDK{KeyAccessServerRegistry: client}, defaultKASURI, logger.CreateTestLogger())
+				keys, err := index.ListKeysWith(t.Context(), trust.ListKeyOptions{
+					KeyOptions: trust.KeyOptions{KASURI: tc.uri},
+					LegacyOnly: legacy, IncludeDefaultKAS: tc.includeDefault,
+				})
+				if len(tc.wantErrors) == 0 {
+					require.NoError(t, err)
+				} else {
+					for _, wantErr := range tc.wantErrors {
+						require.ErrorIs(t, err, wantErr)
+					}
+					for uri := range tc.errorsByURI {
+						require.ErrorContains(t, err, uri)
 					}
 				}
-			}).Return(response, nil).Once()
-
-			keys, err := keyIndexer.ListKeysWith(s.T().Context(), test.opts)
-			s.Require().NoError(err)
-			ids := make([]trust.KeyIdentifier, len(keys))
-			for i, key := range keys {
-				ids[i] = key.ID()
-			}
-			s.Equal(test.expectedIDs, ids)
-			mockClient.AssertExpectations(s.T())
-		})
+				wantKeys := tc.wantKeys
+				if legacy {
+					wantKeys = tc.wantLegacyKeys
+				}
+				assertRegistryKeys(t, wantKeys, keys)
+				client.assertListRequests(t, legacy, tc.wantURIs)
+			})
+		}
 	}
 }
 
 func (s *KeyIndexTestSuite) TestListKeys() {
-	mockClient := new(MockKeyAccessServerRegistryClient)
-	keyIndexer := &KeyIndexer{
-		sdk: &sdk.SDK{
-			KeyAccessServerRegistry: mockClient,
-		},
-	}
-
-	mockClient.On("ListKeys", mock.Anything, mock.MatchedBy(func(req *kasregistry.ListKeysRequest) bool {
-		return !req.GetLegacy()
-	})).Return(&kasregistry.ListKeysResponse{
-		KasKeys: []*policy.KasKey{
-			{
-				Key: &policy.AsymmetricKey{
-					KeyId: testKeyID,
-				},
-			},
-		},
-	}, nil)
-
-	keys, err := keyIndexer.ListKeys(context.Background())
+	client := &testKeyRegistry{keysByURI: s.fixtures.keysByURI}
+	index := NewPlatformKeyIndexer(&sdk.SDK{KeyAccessServerRegistry: client}, defaultKASURI, logger.CreateTestLogger())
+	keys, err := index.ListKeys(s.T().Context())
 	s.Require().NoError(err)
-	s.Len(keys, 1)
-	s.Equal(testKeyID, string(keys[0].ID()))
+	assertRegistryKeys(s.T(), s.fixtures.keysByURI[defaultKASURI], keys)
+	client.assertListRequests(s.T(), false, []string{defaultKASURI})
 }
 
 func (s *KeyIndexTestSuite) TestFindKeyWith() {
-	for _, test := range []struct {
+	f := s.fixtures
+	for _, tc := range []struct {
 		name        string
-		kasURI      string
-		expectedURI string
+		uri         string
+		kid         trust.KeyIdentifier
+		errorsByURI map[string]error
+		wantKey     *policy.KasKey
+		wantURIs    []string
+		wantErr     error
 	}{
-		{name: "uses request KAS URI", kasURI: requestKASURI, expectedURI: requestKASURI},
-		{name: "defaults empty KAS URI", kasURI: "", expectedURI: defaultKASURI},
+		{name: "requested key wins", uri: requestKASURI, kid: trust.KeyIdentifier(f.requestShared.GetKey().GetKeyId()), wantKey: f.requestShared, wantURIs: []string{requestKASURI}},
+		{name: "missing requested key falls back", uri: requestKASURI, kid: trust.KeyIdentifier(f.defaultLegacy.GetKey().GetKeyId()), wantKey: f.defaultLegacy, wantURIs: []string{requestKASURI, defaultKASURI}},
+		{name: "wrapped NotFound retries default", uri: requestKASURI, kid: trust.KeyIdentifier(f.requestShared.GetKey().GetKeyId()), errorsByURI: map[string]error{requestKASURI: fmt.Errorf("lookup: %w", errRegistryKeyNotFound)}, wantKey: f.defaultShared, wantURIs: []string{requestKASURI, defaultKASURI}},
+		{name: "both missing", uri: requestKASURI, kid: "missing", wantURIs: []string{requestKASURI, defaultKASURI}, wantErr: errRegistryKeyNotFound},
+		{name: "default failure returned", uri: requestKASURI, kid: trust.KeyIdentifier(f.defaultLegacy.GetKey().GetKeyId()), errorsByURI: map[string]error{defaultKASURI: errRegistryDenied}, wantURIs: []string{requestKASURI, defaultKASURI}, wantErr: errRegistryDenied},
+		{name: "denied does not retry", uri: requestKASURI, kid: trust.KeyIdentifier(f.requestShared.GetKey().GetKeyId()), errorsByURI: map[string]error{requestKASURI: errRegistryDenied}, wantURIs: []string{requestKASURI}, wantErr: errRegistryDenied},
+		{name: "transport error does not retry", uri: requestKASURI, kid: trust.KeyIdentifier(f.requestShared.GetKey().GetKeyId()), errorsByURI: map[string]error{requestKASURI: errRegistryUnavailable}, wantURIs: []string{requestKASURI}, wantErr: errRegistryUnavailable},
+		{name: "internal error does not retry", uri: requestKASURI, kid: trust.KeyIdentifier(f.requestShared.GetKey().GetKeyId()), errorsByURI: map[string]error{requestKASURI: errRegistryInternal}, wantURIs: []string{requestKASURI}, wantErr: errRegistryInternal},
+		{name: "empty URI uses default once", kid: trust.KeyIdentifier(f.defaultShared.GetKey().GetKeyId()), wantKey: f.defaultShared, wantURIs: []string{defaultKASURI}},
+		{name: "empty URI miss", kid: "missing", wantURIs: []string{defaultKASURI}, wantErr: errRegistryKeyNotFound},
+		{name: "explicit default miss", uri: defaultKASURI, kid: "missing", wantURIs: []string{defaultKASURI}, wantErr: errRegistryKeyNotFound},
 	} {
-		s.Run(test.name, func() {
-			mockClient := new(MockKeyAccessServerRegistryClient)
-			keyIndexer := &KeyIndexer{
-				sdk:    &sdk.SDK{KeyAccessServerRegistry: mockClient},
-				kasURI: defaultKASURI,
+		s.Run(tc.name, func() {
+			t := s.T()
+			client := &testKeyRegistry{keysByURI: f.keysByURI, errorsByURI: tc.errorsByURI}
+			index := NewPlatformKeyIndexer(&sdk.SDK{KeyAccessServerRegistry: client}, defaultKASURI, logger.CreateTestLogger())
+			key, err := index.FindKeyWith(t.Context(), tc.kid, trust.FindKeyOptions{KeyOptions: trust.KeyOptions{KASURI: tc.uri}})
+			if tc.wantErr != nil {
+				require.ErrorIs(t, err, tc.wantErr)
+				require.Nil(t, key)
+			} else {
+				require.NoError(t, err)
+				assertRegistryKeys(t, []*policy.KasKey{tc.wantKey}, []trust.KeyDetails{key})
 			}
-
-			mockClient.On("GetKey", mock.Anything, mock.MatchedBy(func(req *kasregistry.GetKeyRequest) bool {
-				return req.GetKey().GetUri() == test.expectedURI && req.GetKey().GetKid() == testKeyID
-			})).Return(&kasregistry.GetKeyResponse{KasKey: &policy.KasKey{
-				Key: &policy.AsymmetricKey{KeyId: testKeyID},
-			}}, nil).Once()
-
-			key, err := keyIndexer.FindKeyWith(s.T().Context(), trust.KeyIdentifier(testKeyID), trust.FindKeyOptions{KeyOptions: trust.KeyOptions{KASURI: test.kasURI}})
-			s.Require().NoError(err)
-			s.Equal(testKeyID, string(key.ID()))
-			mockClient.AssertExpectations(s.T())
+			client.assertGetRequests(t, tc.kid, tc.wantURIs)
 		})
 	}
 }

@@ -66,9 +66,10 @@ func (f *fakeKeyDetails) ProviderConfig() *policy.KeyProviderConfig {
 }
 
 type fakeKeyIndex struct {
-	keys   []trust.KeyDetails
-	err    error
-	kasURI string
+	keys              []trust.KeyDetails
+	err               error
+	kasURI            string
+	includeDefaultKAS bool
 }
 
 func (f *fakeKeyIndex) String() string {
@@ -99,6 +100,7 @@ func (f *fakeKeyIndex) ListKeys(context.Context) ([]trust.KeyDetails, error) {
 
 func (f *fakeKeyIndex) ListKeysWith(_ context.Context, opts trust.ListKeyOptions) ([]trust.KeyDetails, error) {
 	f.kasURI = opts.KASURI
+	f.includeDefaultKAS = opts.IncludeDefaultKAS
 	if opts.LegacyOnly {
 		var legacyKeys []trust.KeyDetails
 		for _, key := range f.keys {
@@ -186,6 +188,7 @@ func TestListLegacyKeys_KeyIndexPopulated(t *testing.T) {
 	kids := p.listLegacyKeys(t.Context(), kasURI)
 	assert.ElementsMatch(t, []trust.KeyIdentifier{"id1", "id4"}, kids)
 	assert.Equal(t, kasURI, index.kasURI)
+	assert.True(t, index.includeDefaultKAS)
 }
 
 func TestListLegacyKeys_Empty(t *testing.T) {

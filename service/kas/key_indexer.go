@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"log/slog"
 
+	"connectrpc.com/connect"
 	"github.com/lestrrat-go/jwx/v2/jwk"
 	"github.com/opentdf/platform/lib/ocrypto"
 	"github.com/opentdf/platform/protocol/go/policy"
@@ -105,12 +106,58 @@ func (p *KeyIndexer) FindKeyByID(ctx context.Context, id trust.KeyIdentifier) (t
 
 // FindKeyWith returns a key using the requested options.
 // If opts.KASURI is empty, the indexer's configured KAS URI is used.
+// Missing keys at another registration are retried against the default URI.
 func (p *KeyIndexer) FindKeyWith(ctx context.Context, id trust.KeyIdentifier, opts trust.FindKeyOptions) (trust.KeyDetails, error) {
+	kasURI := p.kasURIOrDefault(opts.KASURI)
+	key, err := p.findKeyAtURI(ctx, id, kasURI)
+	if kasURI != p.kasURI && connect.CodeOf(err) == connect.CodeNotFound {
+		p.log.DebugContext(ctx, "key not found at requested KAS URI; retrying default",
+			slog.String("kid", string(id)),
+			slog.String("requested_kas_uri", kasURI),
+			slog.String("default_kas_uri", p.kasURI))
+		return p.findKeyAtURI(ctx, id, p.kasURI)
+	}
+	return key, err
+}
+
+func (p *KeyIndexer) ListKeys(ctx context.Context) ([]trust.KeyDetails, error) {
+	return p.ListKeysWith(ctx, trust.ListKeyOptions{})
+}
+
+// ListKeysWith returns keys using the requested options.
+// An empty KASURI selects the default registration. IncludeDefaultKAS merges
+// the default registration when a different URI is requested, preserving keys
+// with the same KID from both registrations and keeping requested keys first.
+func (p *KeyIndexer) ListKeysWith(ctx context.Context, opts trust.ListKeyOptions) ([]trust.KeyDetails, error) {
+	kasURI := p.kasURIOrDefault(opts.KASURI)
+	keys, err := p.listKeysAtURI(ctx, opts, kasURI)
+	if !opts.IncludeDefaultKAS || kasURI == p.kasURI {
+		return keys, err
+	}
+
+	// Apply the same filters to both registrations.
+	defaultKeys, defaultErr := p.listKeysAtURI(ctx, opts, p.kasURI)
+	if err != nil && defaultErr != nil {
+		return nil, errors.Join(err, defaultErr)
+	}
+	// Preserve usable candidates when only one registration can be listed.
+	if err != nil {
+		p.log.WarnContext(ctx, "requested KAS key listing failed", slog.Any("error", err))
+		return defaultKeys, nil
+	}
+	if defaultErr != nil {
+		p.log.WarnContext(ctx, "default KAS key listing failed", slog.Any("error", defaultErr))
+		return keys, nil
+	}
+	return append(keys, defaultKeys...), nil
+}
+
+func (p *KeyIndexer) findKeyAtURI(ctx context.Context, id trust.KeyIdentifier, kasURI string) (trust.KeyDetails, error) {
 	req := &kasregistry.GetKeyRequest{
 		Identifier: &kasregistry.GetKeyRequest_Key{
 			Key: &kasregistry.KasKeyIdentifier{
 				Identifier: &kasregistry.KasKeyIdentifier_Uri{
-					Uri: p.kasURIOrDefault(opts.KASURI),
+					Uri: kasURI,
 				},
 				Kid: string(id),
 			},
@@ -128,13 +175,7 @@ func (p *KeyIndexer) FindKeyWith(ctx context.Context, id trust.KeyIdentifier, op
 	}, nil
 }
 
-func (p *KeyIndexer) ListKeys(ctx context.Context) ([]trust.KeyDetails, error) {
-	return p.ListKeysWith(ctx, trust.ListKeyOptions{})
-}
-
-// ListKeysWith returns keys using the requested options.
-// If opts.KASURI is empty, the indexer's configured KAS URI is used.
-func (p *KeyIndexer) ListKeysWith(ctx context.Context, opts trust.ListKeyOptions) ([]trust.KeyDetails, error) {
+func (p *KeyIndexer) listKeysAtURI(ctx context.Context, opts trust.ListKeyOptions, kasURI string) ([]trust.KeyDetails, error) {
 	var legacyOnly *bool
 	if opts.LegacyOnly {
 		legacyOnly = &opts.LegacyOnly
@@ -142,13 +183,13 @@ func (p *KeyIndexer) ListKeysWith(ctx context.Context, opts trust.ListKeyOptions
 
 	req := &kasregistry.ListKeysRequest{
 		KasFilter: &kasregistry.ListKeysRequest_KasUri{
-			KasUri: p.kasURIOrDefault(opts.KASURI),
+			KasUri: kasURI,
 		},
 		Legacy: legacyOnly,
 	}
 	resp, err := p.sdk.KeyAccessServerRegistry.ListKeys(ctx, req)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("list keys for KAS URI %q: %w", kasURI, err)
 	}
 
 	keys := make([]trust.KeyDetails, len(resp.GetKasKeys()))

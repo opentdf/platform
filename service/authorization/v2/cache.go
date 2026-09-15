@@ -5,395 +5,210 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/service/internal/access/v2"
 	"github.com/opentdf/platform/service/logger"
-	"github.com/opentdf/platform/service/pkg/cache"
-)
-
-const (
-	attributesCacheKey           = "attributes_cache_key"
-	subjectMappingsCacheKey      = "subject_mappings_cache_key"
-	dynamicValueMappingsCacheKey = "dynamic_value_mappings_cache_key"
-	registeredResourcesCacheKey  = "registered_resources_cache_key"
-	obligationsCacheKey          = "obligations_cache_key"
 )
 
 var (
-	// Cache tags for authorization-related data set in the cache
-	authzCacheTags = []string{"authorization", "policy", "entitlements"}
-
-	// stopTimeout is the maximum time to wait for the periodic refresh goroutine to stop
-	stopTimeout = 5 * time.Second
-
-	// valid minimum refresh interval for the cache (too frequently may overload policy services)
-	minRefreshInterval = 15 * time.Second
-	maxRefreshInterval = 1 * time.Hour
-
-	ErrInvalidCacheConfig    = errors.New("invalid cache configuration")
-	ErrFailedToStartCache    = errors.New("failed to start EntitlementPolicyCache")
-	ErrFailedToRefreshCache  = errors.New("failed to refresh EntitlementPolicyCache")
-	ErrFailedToSet           = errors.New("failed to set cache with fresh entitlement policy")
-	ErrFailedToGet           = errors.New("failed to get cached entitlement policy")
-	ErrCacheDisabled         = errors.New("EntitlementPolicyCache is disabled (refresh interval is 0 seconds)")
-	ErrCachedTypeNotExpected = errors.New("cached data is not of expected type")
+	stopTimeout             = 5 * time.Second
+	minRefreshInterval      = 15 * time.Second
+	maxRefreshInterval      = 1 * time.Hour
+	ErrInvalidCacheConfig   = errors.New("invalid cache configuration")
+	ErrCacheDisabled        = errors.New("EntitlementPolicyCache is disabled (refresh interval is 0 seconds)")
+	ErrFailedToRefreshCache = errors.New("failed to refresh EntitlementPolicyCache")
 )
 
-// EntitlementPolicyCache caches attributes, subject mappings, registered resources, obligations, and
-// (when enabled) dynamic value mappings with periodic refresh. The default decision path fetches
-// attributes and subject mappings per request via GetEntitleableAttributesByFqns; the cached copies
-// back the full-policy fallback used when direct entitlements or dynamic value mappings are enabled.
+// EntitlementPolicyCache publishes one complete immutable snapshot per refresh.
+// Readers keep their snapshot while a replacement is fetched and compiled.
 type EntitlementPolicyCache struct {
-	logger      *logger.Logger
-	cacheClient *cache.Cache
-
-	// SDK-connected retriever to fetch fresh data from policy services
-	retriever *access.EntitlementPolicyRetriever
-
-	// allowDynamicValueMappings gates fetching the experimental dynamic value mappings, so cache
-	// health does not depend on that endpoint when the feature is disabled.
-	allowDynamicValueMappings bool
-
-	// Refresh state
+	logger                    *logger.Logger
+	retriever                 access.EntitlementPolicyStore
+	options                   access.PolicyOptions
+	snapshot                  atomic.Pointer[EntitlementPolicy]
+	refreshMu                 sync.Mutex
 	configuredRefreshInterval time.Duration
 	stopRefresh               chan struct{}
 	refreshCompleted          chan struct{}
-
-	// isCacheFilled indicates if the cache has been filled
-	isCacheFilled bool
+	stopOnce                  sync.Once
 }
 
-// The EntitlementPolicy struct holds all the cached entitlement policy, as generics allow one
-// data type per service cache instance.
+// EntitlementPolicy holds the raw policy and its compiled evaluation indexes.
 type EntitlementPolicy struct {
 	Attributes           []*policy.Attribute
 	SubjectMappings      []*policy.SubjectMapping
 	DynamicValueMappings []*policy.DynamicValueMapping
 	RegisteredResources  []*policy.RegisteredResource
 	Obligations          []*policy.Obligation
+	prepared             *access.PreparedPolicy
 }
 
-// NewEntitlementPolicyCache holds a platform-provided cache client and manages a periodic refresh of
-// cached entitlement policy data, fetching fresh data from the policy services at configured interval.
-func NewEntitlementPolicyCache(
-	ctx context.Context,
-	l *logger.Logger,
-	retriever *access.EntitlementPolicyRetriever,
-	cacheClient *cache.Cache,
-	cacheRefreshInterval time.Duration,
-	allowDynamicValueMappings bool,
-) (*EntitlementPolicyCache, error) {
-	if cacheRefreshInterval == 0 {
+func NewEntitlementPolicyCache(ctx context.Context, l *logger.Logger, retriever access.EntitlementPolicyStore, interval time.Duration, options access.PolicyOptions) (*EntitlementPolicyCache, error) {
+	if interval <= 0 {
 		return nil, ErrCacheDisabled
 	}
-	l = l.With("component", "EntitlementPolicyCache")
-
-	l.DebugContext(ctx, "initializing cache")
-
-	instance := &EntitlementPolicyCache{
-		logger:                    l,
-		cacheClient:               cacheClient,
-		retriever:                 retriever,
-		allowDynamicValueMappings: allowDynamicValueMappings,
-		configuredRefreshInterval: cacheRefreshInterval,
-		stopRefresh:               make(chan struct{}),
-		refreshCompleted:          make(chan struct{}),
+	c := &EntitlementPolicyCache{
+		logger: l.With("component", "EntitlementPolicyCache"), retriever: retriever, options: options,
+		configuredRefreshInterval: interval, stopRefresh: make(chan struct{}), refreshCompleted: make(chan struct{}),
 	}
-
-	// Try to start the cache
-	if err := instance.Start(ctx); err != nil {
-		return nil, errors.Join(ErrFailedToStartCache, err)
-	}
-
-	// Only set the instance if Start() succeeds
-	l.DebugContext(ctx, "initialized EntitlementPolicyCache and started periodic refresh")
-	return instance, nil
+	go c.periodicRefresh(ctx)
+	return c, nil
 }
 
-func (c *EntitlementPolicyCache) IsEnabled() bool {
-	return c != nil
-}
+func (c *EntitlementPolicyCache) IsEnabled() bool { return c != nil }
 
 func (c *EntitlementPolicyCache) IsReady(ctx context.Context) bool {
-	if !c.IsEnabled() || c.retriever == nil {
+	if c == nil || c.retriever == nil {
 		return false
 	}
-	if !c.isCacheFilled {
-		if err := c.Refresh(ctx); err != nil {
-			c.logger.ErrorContext(ctx, "cache is not ready", slog.Any("error", err))
-			return false
-		}
+	if c.snapshot.Load() != nil {
+		return true
+	}
+	c.refreshMu.Lock()
+	defer c.refreshMu.Unlock()
+	// A concurrent request may have completed the first refresh while we waited.
+	if c.snapshot.Load() != nil {
+		return true
+	}
+	if err := c.refresh(ctx); err != nil {
+		c.logger.ErrorContext(ctx, "cache is not ready", slog.Any("error", err))
+		return false
 	}
 	return true
 }
 
-// Start initiates the cache and begins periodic refresh
-func (c *EntitlementPolicyCache) Start(ctx context.Context) error {
-	// Reset channels in case Start is called multiple times
-	// Only reset if stopRefresh is closed or nil
-	select {
-	case <-c.stopRefresh:
-		// Channel was closed, recreate it
-		c.stopRefresh = make(chan struct{})
-		c.refreshCompleted = make(chan struct{})
-	default:
-		// Channel is still open, do nothing
+func (c *EntitlementPolicyCache) PreparedPolicy(_ context.Context) (*access.PreparedPolicy, error) {
+	if snapshot := c.snapshot.Load(); snapshot != nil {
+		return snapshot.prepared, nil
 	}
-
-	c.logger.DebugContext(ctx,
-		"starting periodic cache refresh",
-		slog.Float64("seconds", c.configuredRefreshInterval.Seconds()),
-	)
-	go c.periodicRefresh(ctx)
-
-	return nil
+	return nil, ErrFailedToRefreshCache
 }
 
-// Stop stops the periodic refresh goroutine if it's running
-func (c *EntitlementPolicyCache) Stop() {
-	// Only attempt to stop the refresh goroutine if an interval was set
-	if c.configuredRefreshInterval > 0 {
-		// Check if stopRefresh is already closed
-		select {
-		case <-c.stopRefresh:
-			// Channel is already closed, nothing to do
-			c.logger.Debug("stop called on already stopped cache")
-			return
-		default:
-			// Channel is still open, proceed with closing
-			// Signal the goroutine to stop
-			close(c.stopRefresh)
-			// Wait with a timeout for the refresh goroutine to complete
-			select {
-			case <-c.refreshCompleted:
-				// Goroutine completed successfully
-			case <-time.After(stopTimeout):
-				// Timeout as a safety mechanism in case the goroutine is stuck
-				c.logger.Warn("timed out waiting for refresh goroutine to complete")
-			}
-		}
-	}
-}
-
-// Refresh manually refreshes the cache by reaching out to policy services. In the event of an error,
-// the cache is marked as not filled, and the error is returned.
+// Refresh retains the last successful snapshot if retrieval or compilation fails.
+// Policy visibility still follows the configured refresh interval; caching remains opt-in.
 func (c *EntitlementPolicyCache) Refresh(ctx context.Context) error {
-	// Retrieve fresh data from the policy services. Attributes and subject mappings are cached so the
-	// full-policy fallback (direct entitlements / dynamic value mappings) can read them from the cache
-	// rather than re-scanning both endpoints on every request.
-	attributes, err := c.retriever.ListAllAttributes(ctx)
-	if err != nil {
-		return err
+	c.refreshMu.Lock()
+	defer c.refreshMu.Unlock()
+	return c.refresh(ctx)
+}
+
+func (c *EntitlementPolicyCache) Stop() {
+	c.stopOnce.Do(func() { close(c.stopRefresh) })
+	select {
+	case <-c.refreshCompleted:
+	case <-time.After(stopTimeout):
+		c.logger.Warn("timed out waiting for refresh goroutine to complete")
 	}
-	subjectMappings, err := c.retriever.ListAllSubjectMappings(ctx)
-	if err != nil {
-		return err
+}
+
+func (p *EntitlementPolicy) IsEnabled() bool              { return p != nil }
+func (p *EntitlementPolicy) IsReady(context.Context) bool { return p != nil }
+func (p *EntitlementPolicy) ListAllAttributes(context.Context) ([]*policy.Attribute, error) {
+	return p.Attributes, nil
+}
+
+func (p *EntitlementPolicy) ListAllSubjectMappings(context.Context) ([]*policy.SubjectMapping, error) {
+	return p.SubjectMappings, nil
+}
+
+func (p *EntitlementPolicy) ListAllDynamicValueMappings(context.Context) ([]*policy.DynamicValueMapping, error) {
+	return p.DynamicValueMappings, nil
+}
+
+func (p *EntitlementPolicy) ListAllRegisteredResources(context.Context) ([]*policy.RegisteredResource, error) {
+	return p.RegisteredResources, nil
+}
+
+func (p *EntitlementPolicy) ListAllObligations(context.Context) ([]*policy.Obligation, error) {
+	return p.Obligations, nil
+}
+
+func (c *EntitlementPolicyCache) ListAllAttributes(ctx context.Context) ([]*policy.Attribute, error) {
+	return c.current().ListAllAttributes(ctx)
+}
+
+func (c *EntitlementPolicyCache) ListAllSubjectMappings(ctx context.Context) ([]*policy.SubjectMapping, error) {
+	return c.current().ListAllSubjectMappings(ctx)
+}
+
+func (c *EntitlementPolicyCache) ListAllDynamicValueMappings(ctx context.Context) ([]*policy.DynamicValueMapping, error) {
+	return c.current().ListAllDynamicValueMappings(ctx)
+}
+
+func (c *EntitlementPolicyCache) ListAllRegisteredResources(ctx context.Context) ([]*policy.RegisteredResource, error) {
+	return c.current().ListAllRegisteredResources(ctx)
+}
+
+func (c *EntitlementPolicyCache) ListAllObligations(ctx context.Context) ([]*policy.Obligation, error) {
+	return c.current().ListAllObligations(ctx)
+}
+
+func (c *EntitlementPolicyCache) refresh(ctx context.Context) error {
+	if c.retriever == nil {
+		return ErrFailedToRefreshCache
 	}
-	// Only fetch the experimental dynamic value mappings when enabled, so cache readiness does not
-	// depend on that endpoint while the feature is off.
-	var dynamicValueMappings []*policy.DynamicValueMapping
-	if c.allowDynamicValueMappings {
-		dynamicValueMappings, err = c.retriever.ListAllDynamicValueMappings(ctx)
+	next := &EntitlementPolicy{}
+	var err error
+	if c.options.AllowDirectEntitlements || c.options.AllowDynamicValueMappings {
+		next.Attributes, err = c.retriever.ListAllAttributes(ctx)
+		if err != nil {
+			return err
+		}
+		next.SubjectMappings, err = c.retriever.ListAllSubjectMappings(ctx)
 		if err != nil {
 			return err
 		}
 	}
-	registeredResources, err := c.retriever.ListAllRegisteredResources(ctx)
-	if err != nil {
-		return err
-	}
-	obligations, err := c.retriever.ListAllObligations(ctx)
-	if err != nil {
-		return err
-	}
-
-	// If there is an error when Setting with fresh data, mark not filled so IsReady() will re-attempt refresh
-	err = c.cacheClient.Set(ctx, attributesCacheKey, attributes, authzCacheTags)
-	if err != nil {
-		c.isCacheFilled = false
-		return errors.Join(ErrFailedToSet, err)
-	}
-
-	err = c.cacheClient.Set(ctx, subjectMappingsCacheKey, subjectMappings, authzCacheTags)
-	if err != nil {
-		c.isCacheFilled = false
-		return errors.Join(ErrFailedToSet, err)
-	}
-
-	// Only cache dynamic value mappings when the feature is enabled, so a disabled feature does not
-	// store an empty slice (the fetch above is gated the same way).
-	if c.allowDynamicValueMappings {
-		err = c.cacheClient.Set(ctx, dynamicValueMappingsCacheKey, dynamicValueMappings, authzCacheTags)
+	if c.options.AllowDynamicValueMappings {
+		next.DynamicValueMappings, err = c.retriever.ListAllDynamicValueMappings(ctx)
 		if err != nil {
-			c.isCacheFilled = false
-			return errors.Join(ErrFailedToSet, err)
+			return err
 		}
 	}
-
-	err = c.cacheClient.Set(ctx, registeredResourcesCacheKey, registeredResources, authzCacheTags)
+	next.RegisteredResources, err = c.retriever.ListAllRegisteredResources(ctx)
 	if err != nil {
-		c.isCacheFilled = false
-		return errors.Join(ErrFailedToSet, err)
+		return err
 	}
-
-	err = c.cacheClient.Set(ctx, obligationsCacheKey, obligations, authzCacheTags)
+	next.Obligations, err = c.retriever.ListAllObligations(ctx)
 	if err != nil {
-		c.isCacheFilled = false
-		return errors.Join(ErrFailedToSet, err)
+		return err
 	}
-
-	c.logger.DebugContext(ctx,
-		"refreshed EntitlementPolicyCache",
-		slog.Int("attributes_count", len(attributes)),
-		slog.Int("subject_mappings_count", len(subjectMappings)),
-		slog.Int("registered_resources_count", len(registeredResources)),
-		slog.Int("obligations_count", len(obligations)),
-	)
-
-	// Mark the cache as filled after a successful refresh
-	c.isCacheFilled = true
-
+	next.prepared, err = access.NewPreparedPolicy(ctx, c.logger, next, c.options)
+	if err != nil {
+		return fmt.Errorf("compile entitlement policy: %w", err)
+	}
+	c.snapshot.Store(next)
 	return nil
 }
 
-// ListAllAttributes returns the cached attributes
-func (c *EntitlementPolicyCache) ListAllAttributes(ctx context.Context) ([]*policy.Attribute, error) {
-	var (
-		attributes []*policy.Attribute
-		ok         bool
-	)
-
-	cached, err := c.cacheClient.Get(ctx, attributesCacheKey)
-	if err != nil {
-		if errors.Is(err, cache.ErrCacheMiss) {
-			return attributes, nil
-		}
-		return nil, fmt.Errorf("%w, attributes: %w", ErrFailedToGet, err)
-	}
-
-	attributes, ok = cached.([]*policy.Attribute)
-	if !ok {
-		return nil, fmt.Errorf("%w: %T", ErrCachedTypeNotExpected, attributes)
-	}
-	return attributes, nil
-}
-
-// ListAllSubjectMappings returns the cached subject mappings
-func (c *EntitlementPolicyCache) ListAllSubjectMappings(ctx context.Context) ([]*policy.SubjectMapping, error) {
-	var (
-		subjectMappings []*policy.SubjectMapping
-		ok              bool
-	)
-
-	cached, err := c.cacheClient.Get(ctx, subjectMappingsCacheKey)
-	if err != nil {
-		if errors.Is(err, cache.ErrCacheMiss) {
-			return subjectMappings, nil
-		}
-		return nil, fmt.Errorf("%w, subject mappings: %w", ErrFailedToGet, err)
-	}
-
-	subjectMappings, ok = cached.([]*policy.SubjectMapping)
-	if !ok {
-		return nil, fmt.Errorf("%w: %T", ErrCachedTypeNotExpected, subjectMappings)
-	}
-	return subjectMappings, nil
-}
-
-// ListAllDynamicValueMappings returns the cached dynamic value entitlement mappings, or none on a cache miss
-func (c *EntitlementPolicyCache) ListAllDynamicValueMappings(ctx context.Context) ([]*policy.DynamicValueMapping, error) {
-	var (
-		mappings []*policy.DynamicValueMapping
-		ok       bool
-	)
-
-	cached, err := c.cacheClient.Get(ctx, dynamicValueMappingsCacheKey)
-	if err != nil {
-		if errors.Is(err, cache.ErrCacheMiss) {
-			return mappings, nil
-		}
-		return nil, fmt.Errorf("%w, dynamic value mappings: %w", ErrFailedToGet, err)
-	}
-
-	mappings, ok = cached.([]*policy.DynamicValueMapping)
-	if !ok {
-		return nil, fmt.Errorf("%w: %T", ErrCachedTypeNotExpected, cached)
-	}
-	return mappings, nil
-}
-
-// ListAllRegisteredResources returns the cached registered resources, or none in the event of a cache miss
-func (c *EntitlementPolicyCache) ListAllRegisteredResources(ctx context.Context) ([]*policy.RegisteredResource, error) {
-	var (
-		registeredResources []*policy.RegisteredResource
-		ok                  bool
-	)
-
-	cached, err := c.cacheClient.Get(ctx, registeredResourcesCacheKey)
-	if err != nil {
-		if errors.Is(err, cache.ErrCacheMiss) {
-			return registeredResources, nil
-		}
-		return nil, fmt.Errorf("%w, registered resources: %w", ErrFailedToGet, err)
-	}
-
-	registeredResources, ok = cached.([]*policy.RegisteredResource)
-	if !ok {
-		return nil, fmt.Errorf("%w: %T", ErrCachedTypeNotExpected, registeredResources)
-	}
-	return registeredResources, nil
-}
-
-// ListAllObligations returns the cached obligations, or none in the event of a cache miss
-func (c *EntitlementPolicyCache) ListAllObligations(ctx context.Context) ([]*policy.Obligation, error) {
-	var (
-		obligations []*policy.Obligation
-		ok          bool
-	)
-
-	cached, err := c.cacheClient.Get(ctx, obligationsCacheKey)
-	if err != nil {
-		if errors.Is(err, cache.ErrCacheMiss) {
-			return obligations, nil
-		}
-		return nil, fmt.Errorf("%w, obligations: %w", ErrFailedToGet, err)
-	}
-
-	obligations, ok = cached.([]*policy.Obligation)
-	if !ok {
-		return nil, fmt.Errorf("%w: %T", ErrCachedTypeNotExpected, obligations)
-	}
-	return obligations, nil
-}
-
-// periodicRefresh refreshes the cache at the specified interval
 func (c *EntitlementPolicyCache) periodicRefresh(ctx context.Context) {
-	waitTimeout := c.configuredRefreshInterval
-
 	ticker := time.NewTicker(c.configuredRefreshInterval)
-	defer func() {
-		ticker.Stop()
-		// Always signal completion, regardless of how we exit
-		close(c.refreshCompleted)
-	}()
-
+	defer ticker.Stop()
+	defer close(c.refreshCompleted)
 	for {
 		select {
 		case <-ticker.C:
-			// Create a child context that can be canceled if refresh takes too long
-			refreshCtx, cancel := context.WithTimeout(ctx, waitTimeout)
+			refreshCtx, cancel := context.WithTimeout(ctx, c.configuredRefreshInterval)
 			err := c.Refresh(refreshCtx)
-			cancel() // Always cancel the context to prevent leaks
+			cancel()
 			if err != nil {
 				c.logger.ErrorContext(ctx, "failed to refresh cache", slog.Any("error", err))
 			}
 		case <-c.stopRefresh:
 			return
 		case <-ctx.Done():
-			c.logger.DebugContext(ctx, "context canceled, stopping periodic refresh")
 			return
 		}
 	}
+}
+
+func (c *EntitlementPolicyCache) current() *EntitlementPolicy {
+	if p := c.snapshot.Load(); p != nil {
+		return p
+	}
+	return &EntitlementPolicy{}
 }

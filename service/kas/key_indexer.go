@@ -76,6 +76,10 @@ func (p *KeyIndexer) FindKeyByAlgorithm(ctx context.Context, algorithm string, i
 		},
 		Legacy: legacy,
 	}
+	p.log.DebugContext(ctx, "finding KAS key by algorithm",
+		slog.String("kas_uri", req.GetKasUri()),
+		slog.String("algorithm", algorithm),
+		slog.Bool("include_legacy", includeLegacy))
 	resp, err := p.sdk.KeyAccessServerRegistry.ListKeys(ctx, req)
 	if err != nil {
 		return nil, err
@@ -117,6 +121,10 @@ func (p *KeyIndexer) FindKeyWith(ctx context.Context, opts trust.FindKeyOptions)
 		},
 	}
 
+	p.log.DebugContext(ctx, "finding KAS key",
+		slog.String("kas_uri", req.GetKey().GetUri()),
+		slog.String("requested_kas_uri", opts.KASURI),
+		slog.String("key_id", req.GetKey().GetKid()))
 	resp, err := p.sdk.KeyAccessServerRegistry.GetKey(ctx, req)
 	if err != nil {
 		return nil, err
@@ -146,6 +154,10 @@ func (p *KeyIndexer) ListKeysWith(ctx context.Context, opts trust.ListKeyOptions
 		},
 		Legacy: legacyOnly,
 	}
+	p.log.DebugContext(ctx, "listing KAS keys",
+		slog.String("kas_uri", req.GetKasUri()),
+		slog.String("requested_kas_uri", opts.KASURI),
+		slog.Bool("legacy_only", opts.LegacyOnly))
 	resp, err := p.sdk.KeyAccessServerRegistry.ListKeys(ctx, req)
 	if err != nil {
 		return nil, err

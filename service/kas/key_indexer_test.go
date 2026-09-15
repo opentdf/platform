@@ -230,6 +230,7 @@ func (s *KeyIndexTestSuite) TestListKeysWith() {
 				sdk:    &sdk.SDK{KeyAccessServerRegistry: mockClient},
 				kasURI: defaultKASURI,
 			}
+			keyIndexer.log, _ = newBufferLogger()
 
 			response := &kasregistry.ListKeysResponse{}
 			mockClient.On("ListKeys", mock.Anything, mock.MatchedBy(func(req *kasregistry.ListKeysRequest) bool {
@@ -269,6 +270,7 @@ func (s *KeyIndexTestSuite) TestListKeys() {
 			KeyAccessServerRegistry: mockClient,
 		},
 	}
+	keyIndexer.log, _ = newBufferLogger()
 
 	mockClient.On("ListKeys", mock.Anything, mock.MatchedBy(func(req *kasregistry.ListKeysRequest) bool {
 		return !req.GetLegacy()
@@ -303,6 +305,7 @@ func (s *KeyIndexTestSuite) TestFindKeyWith() {
 				sdk:    &sdk.SDK{KeyAccessServerRegistry: mockClient},
 				kasURI: defaultKASURI,
 			}
+			keyIndexer.log, _ = newBufferLogger()
 
 			mockClient.On("GetKey", mock.Anything, mock.MatchedBy(func(req *kasregistry.GetKeyRequest) bool {
 				return req.GetKey().GetUri() == test.expectedURI && req.GetKey().GetKid() == testKeyID
@@ -325,6 +328,7 @@ func (s *KeyIndexTestSuite) TestFindKeyByAlgorithm() {
 			KeyAccessServerRegistry: mockClient,
 		},
 	}
+	keyIndexer.log, _ = newBufferLogger()
 
 	mockClient.On("ListKeys", mock.Anything, mock.MatchedBy(func(req *kasregistry.ListKeysRequest) bool {
 		return req.GetKeyAlgorithm() == policy.Algorithm_ALGORITHM_RSA_2048 && (req.Legacy != nil && req.GetLegacy() == false)

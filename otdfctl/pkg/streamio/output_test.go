@@ -94,8 +94,24 @@ func TestOutputFileCommitSetsReadableMode(t *testing.T) {
 
 	info, err := os.Stat(dest)
 	require.NoError(t, err)
-	assert.Equal(t, os.FileMode(outputFileMode), info.Mode().Perm(),
-		"os.CreateTemp defaults to 0600; Commit must not leak that onto the destination")
+	assert.Equal(t, plainCreateMode(t, dir, outputFileMode), info.Mode().Perm(),
+		"the temp file is an implementation detail; its mode must not leak onto the destination")
+}
+
+func TestOutputFileTempNamesDoNotCollide(t *testing.T) {
+	dir := t.TempDir()
+	dest := filepath.Join(dir, "out.tdf")
+
+	const concurrent = 16
+	names := make(map[string]bool, concurrent)
+	for range concurrent {
+		o, err := NewOutputFile(dest)
+		require.NoError(t, err)
+		defer o.Cleanup()
+
+		require.False(t, names[o.Name()], "temp names must be unique: %s reused", o.Name())
+		names[o.Name()] = true
+	}
 }
 
 func TestOutputFileCommitAfterCommitReturnsError(t *testing.T) {
@@ -129,6 +145,24 @@ func TestOutputFileCommitAfterCleanupReturnsError(t *testing.T) {
 
 	_, err = os.Stat(dest)
 	require.ErrorIs(t, err, os.ErrNotExist, "Commit after Cleanup must not create the destination")
+}
+
+// plainCreateMode reports the permissions a plain create with mode produces in
+// dir under whatever umask the test process happens to be running with, which
+// is what a committed OutputFile is expected to match. Probing beats hardcoding
+// the mode: the tests then assert the umask is honored rather than assuming the
+// developer or CI runner set a particular one.
+func plainCreateMode(t *testing.T, dir string, mode os.FileMode) os.FileMode {
+	t.Helper()
+	probe := filepath.Join(dir, "umask-probe")
+	f, err := os.OpenFile(probe, os.O_RDWR|os.O_CREATE|os.O_EXCL, mode)
+	require.NoError(t, err)
+	require.NoError(t, f.Close())
+	defer os.Remove(probe)
+
+	info, err := os.Stat(probe)
+	require.NoError(t, err)
+	return info.Mode().Perm()
 }
 
 // tempSiblings returns any leftover temp files NewOutputFile would have created

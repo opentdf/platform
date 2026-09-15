@@ -35,6 +35,27 @@ type rawZipEntry struct {
 	// zip64 emits the 0xFFFFFFFF sentinels plus a ZIP64 extended
 	// information extra field for this entry.
 	zip64 bool
+	// zip64CompressedSize overrides the stored size declared in the ZIP64
+	// extra field, letting a fixture lie about how much data it holds. Zero
+	// means len(data).
+	zip64CompressedSize uint64
+	// zip64LocalHeaderOffset overrides the header offset declared in the
+	// ZIP64 extra field. Zero means the entry's real offset.
+	zip64LocalHeaderOffset uint64
+}
+
+func (e rawZipEntry) zip64Compressed() uint64 {
+	if e.zip64CompressedSize != 0 {
+		return e.zip64CompressedSize
+	}
+	return uint64(len(e.data))
+}
+
+func (e rawZipEntry) zip64Offset(actual uint64) uint64 {
+	if e.zip64LocalHeaderOffset != 0 {
+		return e.zip64LocalHeaderOffset
+	}
+	return actual
 }
 
 func (e rawZipEntry) uncompressed() uint64 {
@@ -100,8 +121,8 @@ func buildRawZip(t testing.TB, entries []rawZipEntry, zip64EOCD bool) []byte {
 				Signature:             zip64ExternalID,
 				Size:                  zip64ExtendedInfoExtraFieldSize - extraFieldHeaderSize,
 				OriginalSize:          e.uncompressed(),
-				CompressedSize:        uint64(len(e.data)),
-				LocalFileHeaderOffset: offsets[i],
+				CompressedSize:        e.zip64Compressed(),
+				LocalFileHeaderOffset: e.zip64Offset(offsets[i]),
 			}))
 		}
 		cdh.ExtraFieldLength = uint16(extra.Len())
@@ -303,6 +324,125 @@ func TestReaderMalformedExtraFieldRejected(t *testing.T) {
 	_, err := parseZip64ExtraField([]byte{0x01, 0x00, 0xFF, 0xFF}, CDFileHeader{
 		CompressedSize: zip64MagicVal,
 	})
+	require.ErrorIs(t, err, errZipFormat)
+}
+
+// beyondInt64 narrows to a negative int64; beyondEOF stays positive but is
+// far larger than any fixture archive. The reader has to refuse both, and for
+// different reasons -- the first corrupts a seek or an allocation outright,
+// the second merely addresses bytes that are not there.
+const (
+	beyondInt64 = uint64(1) << 63
+	beyondEOF   = uint64(1) << 40
+)
+
+// overwrite re-encodes v over the region of data starting at off, which must
+// already hold a record of the same width.
+func overwrite(t *testing.T, data []byte, off int, v any) []byte {
+	t.Helper()
+
+	buf := &bytes.Buffer{}
+	require.NoError(t, binary.Write(buf, binary.LittleEndian, v))
+
+	out := make([]byte, 0, len(data))
+	out = append(out, data[:off]...)
+	out = append(out, buf.Bytes()...)
+	return append(out, data[off+buf.Len():]...)
+}
+
+// locatorOf decodes the ZIP64 end of central directory locator and returns it
+// with its offset in data.
+func locatorOf(t *testing.T, data []byte) (Zip64EndOfCDRecordLocator, int) {
+	t.Helper()
+
+	off := len(data) - endOfCDRecordSize - zip64EndOfCDRecordLocatorSize
+	locator := Zip64EndOfCDRecordLocator{}
+	require.NoError(t, binary.Read(bytes.NewReader(data[off:]), binary.LittleEndian, &locator))
+	require.Equal(t, uint32(zip64EndOfCDLocatorSignature), locator.Signature)
+	return locator, off
+}
+
+// TestReaderRejectsZip64ValuesBeyondArchive covers the ZIP64 extra field,
+// whose sizes and offsets are raw uint64 read straight off disk and so are
+// attacker-controlled in any TDF. The stored-size case is the regression test
+// for a reachable panic: 1<<63 narrowed to a negative length, which slipped
+// past the signed guard in ReadAllFileData and blew up in make([]byte, size).
+func TestReaderRejectsZip64ValuesBeyondArchive(t *testing.T) {
+	for _, tc := range []struct {
+		name  string
+		entry rawZipEntry
+	}{
+		{"stored size above MaxInt64", rawZipEntry{zip64CompressedSize: beyondInt64}},
+		{"stored size past EOF", rawZipEntry{zip64CompressedSize: beyondEOF}},
+		{"header offset above MaxInt64", rawZipEntry{zip64LocalHeaderOffset: beyondInt64}},
+		{"header offset past EOF", rawZipEntry{zip64LocalHeaderOffset: beyondEOF}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			entry := tc.entry
+			entry.name = "0.payload"
+			entry.data = []byte("payload bytes")
+			entry.zip64 = true
+
+			_, err := NewReader(bytes.NewReader(buildRawZip(t, []rawZipEntry{entry}, false)))
+			require.ErrorIs(t, err, errZipFormat)
+		})
+	}
+}
+
+// TestReaderAcceptsEntryEndingAtArchiveBoundary pins the off-by-one. The
+// bound is inclusive: an entry whose last byte is the archive's last byte is
+// in range, and exactly one byte more is not.
+func TestReaderAcceptsEntryEndingAtArchiveBoundary(t *testing.T) {
+	entry := rawZipEntry{name: "0.payload", data: []byte("payload bytes"), zip64: true}
+	data := buildRawZip(t, []rawZipEntry{entry}, false)
+
+	reader, err := NewReader(bytes.NewReader(data))
+	require.NoError(t, err)
+
+	// Claim every byte from where the data starts to the end of the archive.
+	// The override changes only the declared size, so the layout -- and
+	// therefore the archive length -- is unchanged.
+	entry.zip64CompressedSize = uint64(len(data)) - uint64(reader.fileEntries[entry.name].index)
+	exact := buildRawZip(t, []rawZipEntry{entry}, false)
+	require.Len(t, exact, len(data))
+
+	_, err = NewReader(bytes.NewReader(exact))
+	require.NoError(t, err, "an entry ending on the last byte is in bounds")
+
+	entry.zip64CompressedSize++
+	_, err = NewReader(bytes.NewReader(buildRawZip(t, []rawZipEntry{entry}, false)))
+	require.ErrorIs(t, err, errZipFormat, "one byte further is not")
+}
+
+// TestReaderRejectsZip64LocatorOffsetBeyondArchive covers the one 64-bit
+// offset that is read before any entry: the locator's pointer to the ZIP64
+// end of central directory record.
+func TestReaderRejectsZip64LocatorOffsetBeyondArchive(t *testing.T) {
+	data := buildRawZip(t, []rawZipEntry{{name: "0.payload", data: []byte("payload bytes")}}, true)
+
+	locator, off := locatorOf(t, data)
+	locator.CDOffset = beyondInt64
+
+	_, err := NewReader(bytes.NewReader(overwrite(t, data, off, locator)))
+	require.ErrorIs(t, err, errZipFormat)
+}
+
+// TestReaderRejectsEntryCountBeyondArchive checks the ZIP64 entry count is
+// bounded by the room the archive actually has. Each central directory record
+// is at least cdFileHeaderSize bytes, so a uint64 count is self-evidently a
+// lie long before the loop discovers it one failed seek at a time.
+func TestReaderRejectsEntryCountBeyondArchive(t *testing.T) {
+	data := buildRawZip(t, []rawZipEntry{{name: "0.payload", data: []byte("payload bytes")}}, true)
+
+	locator, _ := locatorOf(t, data)
+	record := Zip64EndOfCDRecord{}
+	require.NoError(t, binary.Read(bytes.NewReader(data[locator.CDOffset:]), binary.LittleEndian, &record))
+	require.Equal(t, uint32(zip64EndOfCDSignature), record.Signature)
+
+	record.NumberOfCDRecordEntries = math.MaxUint64
+	record.TotalCDRecordEntries = math.MaxUint64
+
+	_, err := NewReader(bytes.NewReader(overwrite(t, data, int(locator.CDOffset), record)))
 	require.ErrorIs(t, err, errZipFormat)
 }
 

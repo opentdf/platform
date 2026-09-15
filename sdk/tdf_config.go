@@ -343,6 +343,7 @@ type TDFReaderConfig struct {
 	ignoreAllowList           bool      // If true, the kasAllowlist will be ignored, and all KAS URLs will be allowed
 	fulfillableObligationFQNs []string
 	maxManifestSize           int64
+	requireSpecManifestName   bool
 }
 
 type AllowList map[string]bool
@@ -462,6 +463,19 @@ func WithAssertionVerificationKeys(keys AssertionVerificationKeys) TDFReaderOpti
 func WithSchemaValidation(intensity SchemaValidationIntensity) TDFReaderOption {
 	return func(c *TDFReaderConfig) error {
 		c.schemaValidationIntensity = intensity
+		return nil
+	}
+}
+
+// WithRequireSpecManifestName rejects a TDF whose manifest entry is named
+// 0.manifest.json instead of the spec's manifest.json, rather than reading it.
+// Off by default, so archives written by earlier releases keep working.
+//
+// This is separate from WithSchemaValidation, which inspects the manifest
+// document. The entry name is archive layout and never reaches the schema.
+func WithRequireSpecManifestName() TDFReaderOption {
+	return func(c *TDFReaderConfig) error {
+		c.requireSpecManifestName = true
 		return nil
 	}
 }

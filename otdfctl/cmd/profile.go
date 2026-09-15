@@ -47,6 +47,8 @@ type profileGetOutput struct {
 	ClientID     string `json:"client_id,omitempty"`
 }
 
+const storeFlagUsage = "Profile store to use: filesystem or keyring"
+
 func newProfilerFromCLI(c *cli.Cli) *osprofiles.Profiler {
 	driverType := getDriverTypeFromUser(c)
 	profiler, err := profiles.NewProfiler(string(driverType))
@@ -251,6 +253,16 @@ var profileSetDefaultCmd = &cobra.Command{
 		if err := osprofiles.SetDefaultProfile(profiler, profileName); err != nil {
 			c.ExitWithError("Failed to set default profile", err)
 		}
+
+		// Confirm the change reached the store before reporting success. Reading
+		// it back through the same profiler would only echo the value it just set
+		// in memory, so build a fresh one, which reloads the global config.
+		verifier := newProfilerFromCLI(c)
+		if got := osprofiles.GetGlobalConfig(verifier).GetDefaultProfile(); got != profileName {
+			c.ExitWithError("Failed to set default profile", fmt.Errorf(
+				"default profile is %q after setting it to %q", got, profileName))
+		}
+
 		c.ExitWithMessage(fmt.Sprintf("Set profile %s as default", profileName), cli.ExitCodeSuccess)
 	},
 }
@@ -356,10 +368,21 @@ func InitProfileCommands() {
 	profileCreateCmd.Flags().Bool("tls-no-verify", false, "Disable TLS verification")
 	profileCreateCmd.Flags().String("output-format", profiles.OutputStyled, "Preferred output format: styled or json")
 
-	profileListCmd.Flags().String("store", "filesystem", "Profile store to use: filesystem or keyring")
-	profileGetCmd.Flags().String("store", "filesystem", "Profile store to use: filesystem or keyring")
-	profileDeleteCmd.Flags().String("store", "filesystem", "Profile store to use: filesystem or keyring")
-	profileDeleteAllCmd.Flags().String("store", "filesystem", "Profile store to use: filesystem or keyring")
+	// Every command that resolves a profiler through newProfilerFromCLI reads
+	// --store, so every one of them has to register it. set-default and
+	// set-endpoint did not, which left their store selection unreachable: the
+	// lookup returned "" for the unregistered flag and they always used the
+	// default driver, while passing --store was rejected as an unknown flag.
+	for _, cmd := range []*cobra.Command{
+		profileListCmd,
+		profileGetCmd,
+		profileDeleteCmd,
+		profileDeleteAllCmd,
+		profileSetDefaultCmd,
+		profileSetEndpointCmd,
+	} {
+		cmd.Flags().String("store", "filesystem", storeFlagUsage)
+	}
 	profileDeleteAllCmd.Flags().Bool("force", false, "Skip confirmation prompt")
 
 	profileSetEndpointCmd.Flags().Bool("tls-no-verify", false, "Disable TLS verification")

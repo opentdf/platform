@@ -247,6 +247,8 @@ func ProcessDoc(doc string) (*Doc, error) {
 
 	long := "# " + matter.Title + "\n\n" + strings.TrimSpace(string(rest))
 
+	use := buildUseString(c.Name, c.Args, c.ArbitraryArgs)
+
 	var args cobra.PositionalArgs
 	switch {
 	case len(c.Args) > 0 && len(c.ArbitraryArgs) > 0:
@@ -255,11 +257,21 @@ func ProcessDoc(doc string) (*Doc, error) {
 		args = cobra.ExactArgs(len(c.Args))
 	case len(c.ArbitraryArgs) > 0:
 		args = cobra.ArbitraryArgs
+	case len(strings.Fields(use)) == 1:
+		// The doc declares no positional arguments, so reject any that are
+		// passed rather than silently ignoring them. Leaving Args nil made cobra
+		// fall back to accepting anything, which turned a mistyped subcommand
+		// into a no-op that still exited 0.
+		//
+		// Gated on the assembled Use string, not just c.Args/c.ArbitraryArgs: a
+		// few docs declare their argument inline in the name instead, as with
+		// `name: encrypt [file]`.
+		args = cobra.NoArgs
 	}
 
 	d := Doc{
 		cobra.Command{
-			Use:     buildUseString(c.Name, c.Args, c.ArbitraryArgs),
+			Use:     use,
 			Args:    args,
 			Hidden:  c.Hidden,
 			Aliases: c.Aliases,

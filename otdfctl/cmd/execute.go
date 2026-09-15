@@ -43,6 +43,11 @@ func Execute(opts ...ExecuteOptFunc) {
 	// after otdfctl's own init, including a consumer's, are covered.
 	man.Docs.MarkRequiredFlags()
 
+	// Reject unknown subcommands rather than printing help and exiting 0. Also
+	// applied here so it covers groups built by hand (policy, profile) as well as
+	// those built from docs, plus anything a consumer has mounted.
+	cli.EnforceSubcommandArgs(RootCmd)
+
 	if c.mountTo != nil {
 		err := MountRoot(c.mountTo, c.renameCmd)
 		if err != nil {

@@ -35,9 +35,16 @@ type Provider struct {
 	trace.Tracer
 }
 
+// KASURIFromKAOKey is the configuration key for KAO-based rewrap lookups.
+const KASURIFromKAOKey = "kas_uri_from_kao"
+
 type KASConfig struct {
 	// KeyManagement enables stable, policy-backed KAS key management.
 	KeyManagement bool `mapstructure:"key_management" json:"key_management"`
+
+	// KASURIFromKAO uses the KAO URI for rewrap key lookups. Defaults to true.
+	// An empty KAO URI always selects the indexer's default registration.
+	KASURIFromKAO bool `mapstructure:"kas_uri_from_kao" json:"kas_uri_from_kao"`
 
 	// Which keys are currently the default.
 	Keyring []CurrentKeyFor `mapstructure:"keyring" json:"keyring"`
@@ -164,8 +171,9 @@ func (kasCfg KASConfig) String() string {
 	}
 
 	return fmt.Sprintf(
-		"KASConfig{KeyManagement:%t, Keyring:%v, ECCertID:%q, RSACertID:%q, RootKey:%s, KeyCacheExpiration:%s, Preview:%+v, RegisteredKASURI:%q}",
+		"KASConfig{KeyManagement:%t, KASURIFromKAO:%t, Keyring:%v, ECCertID:%q, RSACertID:%q, RootKey:%s, KeyCacheExpiration:%s, Preview:%+v, RegisteredKASURI:%q}",
 		kasCfg.KeyManagement,
+		kasCfg.KASURIFromKAO,
 		kasCfg.Keyring,
 		kasCfg.ECCertID,
 		kasCfg.RSACertID,
@@ -184,6 +192,7 @@ func (kasCfg KASConfig) LogValue() slog.Value {
 
 	return slog.GroupValue(
 		slog.Bool("key_management", kasCfg.KeyManagement),
+		slog.Bool(KASURIFromKAOKey, kasCfg.KASURIFromKAO),
 		slog.Any("keyring", kasCfg.Keyring),
 		slog.String("eccertid", kasCfg.ECCertID),
 		slog.String("rsacertid", kasCfg.RSACertID),

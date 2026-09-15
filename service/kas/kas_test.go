@@ -7,6 +7,8 @@ import (
 	"encoding/json"
 	"errors"
 	"log/slog"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -14,6 +16,7 @@ import (
 	"github.com/opentdf/platform/service/kas/access"
 	"github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/logger/audit"
+	"github.com/opentdf/platform/service/pkg/config"
 	"github.com/opentdf/platform/service/trust"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -169,6 +172,78 @@ func newBufferLogger() (*logger.Logger, *bytes.Buffer) {
 		Logger: slog.New(handler),
 		Audit:  audit.CreateAuditLogger(*auditBase),
 	}, buf
+}
+
+func TestDecodeKASConfigKASURIFromKAO(t *testing.T) {
+	for _, tc := range []struct {
+		name    string
+		config  map[string]any
+		want    bool
+		wantLog bool
+	}{
+		{name: "omitted defaults to true", config: map[string]any{}, want: true},
+		{name: "explicit false", config: map[string]any{access.KASURIFromKAOKey: false}},
+		{name: "explicit true", config: map[string]any{access.KASURIFromKAOKey: true}, want: true},
+		{name: "string false", config: map[string]any{access.KASURIFromKAOKey: "false"}},
+		{name: "string true", config: map[string]any{access.KASURIFromKAOKey: "true"}, want: true},
+		{
+			name:    "key management logs registration override",
+			config:  map[string]any{"key_management": true, access.KASURIFromKAOKey: false},
+			wantLog: true,
+		},
+		{
+			name:   "key management with KAO lookup does not log override",
+			config: map[string]any{"key_management": true, access.KASURIFromKAOKey: true},
+			want:   true,
+		},
+		{
+			name:   "disabled key management does not log override",
+			config: map[string]any{"key_management": false, access.KASURIFromKAOKey: false},
+		},
+		{
+			name: "preview key management logs registration override",
+			config: map[string]any{
+				"key_management":        false,
+				"preview":               map[string]any{"key_management": true},
+				access.KASURIFromKAOKey: false,
+			},
+			wantLog: true,
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			log, buf := newBufferLogger()
+			got, err := decodeKASConfig(tc.config, log)
+			require.NoError(t, err)
+			assert.Equal(t, tc.want, got.KASURIFromKAO)
+			if tc.wantLog {
+				assert.Contains(t, buf.String(), kasURIFromKAODisabledLogMessage)
+			} else {
+				assert.NotContains(t, buf.String(), kasURIFromKAODisabledLogMessage)
+			}
+		})
+	}
+}
+
+func TestDecodeKASConfigInvalidKASURIFromKAO(t *testing.T) {
+	log, _ := newBufferLogger()
+	_, err := decodeKASConfig(map[string]any{access.KASURIFromKAOKey: "invalid"}, log)
+	require.ErrorIs(t, err, access.ErrConfig)
+}
+
+func TestKASURIFromKAOEnvironmentOverride(t *testing.T) {
+	t.Setenv("TEST_SERVICES_KAS_KAS_URI_FROM_KAO", "false")
+	path := filepath.Join(t.TempDir(), "config.yaml")
+	require.NoError(t, os.WriteFile(path, []byte("services:\n  kas:\n    key_management: false\n"), 0o600))
+	loader, err := config.NewLegacyLoader("test", path)
+	require.NoError(t, err)
+	defaults, err := config.NewDefaultSettingsLoader()
+	require.NoError(t, err)
+	cfg, err := config.Load(t.Context(), loader, defaults)
+	require.NoError(t, err)
+	log, _ := newBufferLogger()
+	kasCfg, err := decodeKASConfig(cfg.Services["kas"], log)
+	require.NoError(t, err)
+	require.False(t, kasCfg.KASURIFromKAO)
 }
 
 func TestDecodeKASConfigKeyManagement(t *testing.T) {

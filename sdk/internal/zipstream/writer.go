@@ -40,6 +40,10 @@ type SegmentWriter interface {
 	// caller must leave its bytes out of the assembled archive. Index 0 is the
 	// exception -- Finalize rejects its absence with ErrNoSegmentZero.
 	// Cleaning up an index that was never written is a no-op.
+	//
+	// A closed or already-finalized writer returns ErrWriterClosed: its
+	// trailer bytes are already in the caller's hands, so there is nothing
+	// left that a rollback could affect and reporting success would be a lie.
 	CleanupSegment(index int) error
 }
 
@@ -83,6 +87,12 @@ var (
 	ErrInvalidSize      = errors.New("invalid size")
 	ErrZip64Required    = errors.New("ZIP64 required but disabled (Zip64Never)")
 	ErrFieldOverflow    = errors.New("value too large for zip field")
+	// ErrAccountingCorrupt reports that a writer's running size counters no
+	// longer agree with the segments they were accumulated from, so the
+	// rollback a cleanup would perform is not representable. It signals a bug
+	// in this package rather than caller misuse; there is no retry that fixes
+	// it, and the writer should be discarded.
+	ErrAccountingCorrupt = errors.New("segment size accounting is inconsistent")
 )
 
 // Config holds configuration options for writers

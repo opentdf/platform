@@ -10,7 +10,6 @@ import (
 	"hash/crc32"
 	"io"
 	"slices"
-	"sort"
 	"sync"
 	"time"
 
@@ -22,10 +21,13 @@ import (
 
 // The injection seams below — the clock, the segment cipher, the archive
 // writer and the entropy source — are unexported on purpose. Each exists so
-// in-package tests can pin non-deterministic behavior; none is usable from
-// outside. archiveWriterFactory in particular returns a
-// zipstream.SegmentWriter, which lives under internal/, so no external package
-// could implement it even if the type were exported.
+// in-package tests can pin non-deterministic behavior; none is reachable from
+// outside. For archiveWriterFactory it is the signature that closes the seam,
+// not the return type's implementability: a struct declared anywhere with the
+// right method set satisfies zipstream.SegmentWriter, but no code outside this
+// package can spell `func(clock) zipstream.SegmentWriter` — clock is
+// unexported and zipstream lives under internal/ — so a factory value cannot
+// be constructed to pass in.
 
 // clock supplies the current time to the chunked writer and, through it, to
 // the zipstream layer that stamps ZIP header timestamps. Injected so tests can
@@ -57,8 +59,18 @@ var defaultRand io.Reader = rand.Reader
 
 // segmentCipher encrypts a single payload segment. Implementations must be
 // safe for concurrent use by segment writers.
+//
+// The output must be AEAD in the shape the TDF reader expects: a fresh nonce
+// per call, and a ciphertext ending in a 16-byte authentication tag.
+// WriteSegment concatenates nonce+ciphertext and hands the result to
+// segmentIntegrity, which under SegmentGMAC reads the tag straight off the
+// tail; a cipher that omits the tag or returns a repeated nonce produces a
+// manifest that verifies against nothing.
 type segmentCipher interface {
-	// EncryptInPlace returns (ciphertext, nonce, error).
+	// EncryptInPlace returns (ciphertext, nonce, error). Despite the name --
+	// inherited from ocrypto.AesGcm -- nothing is encrypted in place: the
+	// implementation must allocate its output and must neither retain nor
+	// modify data, which WriteSegment passes through from its caller.
 	EncryptInPlace(data []byte) ([]byte, []byte, error)
 }
 
@@ -76,9 +88,15 @@ func defaultSegmentCipherFactory(dek []byte) (segmentCipher, error) {
 // end-to-end.
 type archiveWriterFactory func(c clock) zipstream.SegmentWriter
 
-// defaultArchiveWriterFactory returns a ZIP64-enabled segment writer sized for
-// a single starting segment (it grows as more segments arrive), with its clock
-// plumbed to the caller-supplied clock.
+// defaultArchiveWriterFactory returns a ZIP64-enabled segment writer with its
+// clock plumbed to the caller-supplied clock.
+//
+// The 1 is expectedSegments, which reads like a capacity hint but is not:
+// nothing raises it, so a writer that goes on to accept five hundred segments
+// still reports ExpectedCount 1. It is harmless only because that count is
+// consulted solely when no explicit segment order has been set, and
+// zipstream's Finalize always derives an order from the segments actually
+// present before it checks completeness.
 func defaultArchiveWriterFactory(c clock) zipstream.SegmentWriter {
 	return zipstream.NewSegmentTDFWriter(1,
 		zipstream.WithZip64(),
@@ -99,7 +117,23 @@ var (
 	// finalized internally at that point regardless, so the writer is
 	// unusable: every subsequent call returns this same error rather
 	// than retrying against an archive that can only fail again.
+	//
+	// Unreachable with the default archive writer, whose Close cannot
+	// fail; it is the injected-factory case this guards.
 	ErrChunkedCloseFailed = errors.New("chunked: archive close failed after finalize; writer is unusable")
+
+	// ErrChunkedFinalizeFailed is returned when the archive's Finalize
+	// fails, and by every later call on that writer. Unlike a failure
+	// before the archive was touched, this one is not retryable: the
+	// archive mutates as it finalizes -- zipstream appends the payload
+	// entry to the central directory partway through, then can still
+	// fail on the manifest entry, on a ZIP64 requirement, or on
+	// generating the directory bytes -- and it does not roll that back
+	// or mark itself finalized. A second attempt would append the
+	// payload entry again, yielding a central directory with two
+	// entries for one payload: an archive some readers accept and
+	// silently misread. Failing fast is the only safe answer.
+	ErrChunkedFinalizeFailed = errors.New("chunked: archive finalize failed; writer is unusable")
 
 	// ErrChunkedInvalidSegmentIndex is returned when WriteSegment
 	// receives a negative index.
@@ -136,14 +170,38 @@ type ChunkedWriter interface {
 	// directory + end-of-central-directory record) that must be
 	// appended after every segment's TDFData. Returns
 	// ErrChunkedMissingSegmentZero if segment 0 was never written, or
-	// ErrChunkedCloseFailed if the archive's Close fails after its
-	// Finalize already succeeded -- the writer is unusable at that
-	// point and every subsequent call returns the same error.
+	// ErrChunkedMissingSegmentZero if segment 0 was never written.
+	//
+	// A failure from the archive itself -- ErrChunkedFinalizeFailed, or
+	// ErrChunkedCloseFailed if only the Close after it failed -- leaves
+	// the writer unusable, and every subsequent call on it returns that
+	// same error rather than retrying.
+	//
+	// Finalize must happen-after every WriteSegment call returns.
+	// Calling it while a write is still in flight is not an error and
+	// does not block: the writer simply finalizes without that segment,
+	// since a segment counts only once the archive has accepted its
+	// bytes. Sequencing that is the caller's job -- wait on the
+	// errgroup, close the channel, join the pool -- and getting it wrong
+	// costs you the segment silently.
 	Finalize(ctx context.Context, opts ...ChunkedFinalizeOption) (*ChunkedFinalizeResult, error)
 
-	// GetManifest returns the manifest for the TDF. Before Finalize
-	// this is a snapshot built from currently-written segments; after
-	// Finalize it is the manifest that was written.
+	// GetManifest returns the manifest for the TDF. After Finalize it
+	// is exactly the manifest that was written.
+	//
+	// Before Finalize it is a preview of the manifest's *shape* --
+	// segment count, sizes, hashes, which KASes appear -- and nothing
+	// more. It is not byte-stable and is not what Finalize will
+	// produce: each call re-runs the whole manifest build, minting a
+	// fresh policy UUID, re-splitting the DEK (so ephemeral wrapping
+	// keys, and therefore every key access object, differ), and
+	// re-signing any assertions. Two back-to-back calls with identical
+	// options disagree, and so will Finalize. Use it to inspect
+	// progress, never to predict or cache the final manifest.
+	//
+	// It reflects only segments the archive has already accepted;
+	// writes still in flight are skipped, which is what lets it run
+	// concurrently with them.
 	GetManifest(ctx context.Context, opts ...ChunkedFinalizeOption) (*Manifest, error)
 
 	// WriteSegment encrypts data as segment index and returns the ZIP
@@ -153,6 +211,9 @@ type ChunkedWriter interface {
 	// re-emit them. Indices need not arrive in order and need not be
 	// contiguous, but index 0 is mandatory: it carries that local file
 	// header, so Finalize refuses a write set without it.
+	//
+	// data is neither retained nor modified; the caller may reuse the
+	// buffer as soon as the call returns.
 	WriteSegment(ctx context.Context, index int, data []byte) (*ChunkedSegmentResult, error)
 }
 
@@ -162,7 +223,12 @@ type ChunkedWriter interface {
 // Experimental: not part of the stable SDK API; may change or be removed.
 type ChunkedSegmentResult struct {
 	// EncryptedSize is the ciphertext byte length including nonce and
-	// GCM tag.
+	// GCM tag. It is the size the manifest records for this segment,
+	// which for segment 0 is *not* the number of bytes TDFData yields:
+	// that reader is prefixed with the payload's ZIP local file header,
+	// which the manifest does not count. Size an upload from TDFData
+	// itself (or from len(header)+EncryptedSize), never from
+	// EncryptedSize alone.
 	EncryptedSize int64
 
 	// Hash is the base64-encoded segment integrity hash.
@@ -214,11 +280,11 @@ type ChunkedFinalizeResult struct {
 	TotalSize int64
 }
 
-// ChunkedWriterConfig captures the settings supplied at
+// chunkedWriterConfig captures the settings supplied at
 // NewChunkedWriter time. Fields are unexported; use options.
 //
 // Experimental: not part of the stable SDK API; may change or be removed.
-type ChunkedWriterConfig struct {
+type chunkedWriterConfig struct {
 	// archiveFactory builds the ZIP archive writer that lays out the
 	// TDF. Defaults to defaultArchiveWriterFactory.
 	archiveFactory archiveWriterFactory
@@ -260,10 +326,10 @@ type ChunkedWriterConfig struct {
 	useHex bool
 }
 
-// ChunkedFinalizeConfig captures Finalize-time overrides.
+// chunkedFinalizeConfig captures Finalize-time overrides.
 //
 // Experimental: not part of the stable SDK API; may change or be removed.
-type ChunkedFinalizeConfig struct {
+type chunkedFinalizeConfig struct {
 	// assertions to sign and attach to the produced TDF. Each
 	// AssertionConfig must carry a SigningKey (or the writer's DEK
 	// will be used with HS256).
@@ -301,12 +367,32 @@ type ChunkedFinalizeConfig struct {
 // time.
 //
 // Experimental: not part of the stable SDK API; may change or be removed.
-type ChunkedWriterOption func(*ChunkedWriterConfig) error
+type ChunkedWriterOption func(*chunkedWriterConfig) error
 
 // ChunkedFinalizeOption configures a single Finalize call.
 //
 // Experimental: not part of the stable SDK API; may change or be removed.
-type ChunkedFinalizeOption func(*ChunkedFinalizeConfig) error
+type ChunkedFinalizeOption func(*chunkedFinalizeConfig) error
+
+// segmentSlot is one entry in the writer's segment table. The slot
+// appears the moment WriteSegment reserves an index, which is what
+// makes a second write to that index fail, but written stays false
+// until the archive has durably accepted the bytes. Only a written
+// slot is visible to the manifest: a reservation describes bytes that
+// may yet never exist.
+//
+// The two are separate fields rather than a sentinel in seg.Size
+// because zero-length segments are legal, so no size value is free to
+// mean "not yet".
+type segmentSlot struct {
+	// seg is the manifest metadata for this segment. Meaningful only
+	// once written is true.
+	seg Segment
+
+	// written is true once the archive has accepted the segment's
+	// bytes and seg has been filled in.
+	written bool
+}
 
 // chunkedWriter is the concrete ChunkedWriter.
 type chunkedWriter struct {
@@ -323,12 +409,15 @@ type chunkedWriter struct {
 	// Finalize option overrides it.
 	excludeVersion bool
 
-	// closeFailed is true once archiveWriter.Close has failed after
-	// archiveWriter.Finalize already succeeded. The archive itself is
-	// terminally finalized at that point even though w.finalized was
-	// never set, so every method must refuse to proceed rather than
-	// retry against an archive that can only ever fail again.
-	closeFailed bool
+	// unusable is non-nil once a Finalize attempt has left the archive
+	// in a state no later call can recover from: either the archive's
+	// Finalize failed partway through its own mutations, or its Close
+	// failed after Finalize had succeeded. In both cases w.finalized
+	// stays false -- nothing usable was produced -- yet the archive
+	// cannot be finalized again, so every method returns this error
+	// instead of retrying. It holds the wrapped original, so callers
+	// see both the sentinel and the underlying cause.
+	unusable error
 
 	// finalized is true once Finalize returns successfully.
 	finalized bool
@@ -348,8 +437,8 @@ type chunkedWriter struct {
 	// mu guards writer state that spans WriteSegment and Finalize.
 	mu sync.RWMutex
 
-	// segments records per-index Segment metadata (hash + sizes).
-	segments map[int]*Segment
+	// segments records per-index slots, reserved and then written.
+	segments map[int]*segmentSlot
 
 	// splitter converts attributes + DEK into key splits at
 	// Finalize time.
@@ -367,13 +456,21 @@ type chunkedWriter struct {
 // index are not allowed, and one of them will fail with
 // ErrChunkedSegmentAlreadyWritten rather than corrupt the archive.
 //
+// The one ordering constraint the writer cannot enforce is that
+// Finalize must happen-after every WriteSegment returns. Finalize does
+// not wait for in-flight writes and does not report them: it takes the
+// segments the archive has accepted by the time it acquires the lock,
+// and a write still running is simply absent from the result. The
+// produced TDF is well-formed, just short — so join your goroutines
+// before finalizing.
+//
 // No SDK value is needed: everything the writer depends on — the key
 // splitter, the archive and cipher factories, the entropy source — is
 // supplied through options.
 //
 // Experimental: not part of the stable SDK API; may change or be removed.
 func NewChunkedWriter(_ context.Context, opts ...ChunkedWriterOption) (ChunkedWriter, error) {
-	cfg := ChunkedWriterConfig{
+	cfg := chunkedWriterConfig{
 		archiveFactory: defaultArchiveWriterFactory,
 		cipherFactory:  defaultSegmentCipherFactory,
 		clock:          systemClock{},
@@ -401,7 +498,7 @@ func NewChunkedWriter(_ context.Context, opts ...ChunkedWriterOption) (ChunkedWr
 		excludeVersion:    cfg.excludeVersion,
 		initialAttributes: cfg.initialAttributes,
 		initialDefaultKAS: cfg.initialDefaultKAS,
-		segments:          make(map[int]*Segment),
+		segments:          make(map[int]*segmentSlot),
 		splitter:          cfg.splitter,
 		useHex:            cfg.useHex,
 	}, nil
@@ -412,8 +509,8 @@ func NewChunkedWriter(_ context.Context, opts ...ChunkedWriterOption) (ChunkedWr
 func (w *chunkedWriter) Finalize(ctx context.Context, opts ...ChunkedFinalizeOption) (*ChunkedFinalizeResult, error) {
 	w.mu.Lock()
 	defer w.mu.Unlock()
-	if w.closeFailed {
-		return nil, ErrChunkedCloseFailed
+	if w.unusable != nil {
+		return nil, w.unusable
 	}
 	if w.finalized {
 		return nil, ErrChunkedAlreadyFinalized
@@ -424,9 +521,9 @@ func (w *chunkedWriter) Finalize(ctx context.Context, opts ...ChunkedFinalizeOpt
 	// measures every offset it records from that header being at the
 	// front of the assembled stream. It cannot be synthesized here: by
 	// Finalize the caller has already encrypted and uploaded the bytes it
-	// would have to precede. Size stays negative until the archive
+	// would have to precede. A slot stays unwritten until the archive
 	// accepts the write, so a reservation in flight does not count.
-	if seg, ok := w.segments[0]; !ok || seg.Size < 0 {
+	if slot, ok := w.segments[0]; !ok || !slot.written {
 		return nil, ErrChunkedMissingSegmentZero
 	}
 
@@ -445,15 +542,19 @@ func (w *chunkedWriter) Finalize(ctx context.Context, opts ...ChunkedFinalizeOpt
 	}
 	finalBytes, err := w.archiveWriter.Finalize(ctx, manifestBytes)
 	if err != nil {
-		return nil, fmt.Errorf("finalize archive: %w", err)
+		// A failure here means the archive got partway through
+		// finalizing and stopped, having already mutated itself without
+		// marking itself done. Retrying would compound that rather than
+		// recover from it -- see ErrChunkedFinalizeFailed -- so fence
+		// the writer instead of leaving it looking retryable.
+		w.unusable = fmt.Errorf("%w: %w", ErrChunkedFinalizeFailed, err)
+		return nil, w.unusable
 	}
 	if err := w.archiveWriter.Close(); err != nil {
 		// The archive is terminally finalized internally regardless of
 		// this error, so a retry can only ever hit the same failure.
-		// Mark the writer unusable rather than leaving it looking
-		// retryable.
-		w.closeFailed = true
-		return nil, fmt.Errorf("%w: %w", ErrChunkedCloseFailed, err)
+		w.unusable = fmt.Errorf("%w: %w", ErrChunkedCloseFailed, err)
+		return nil, w.unusable
 	}
 
 	w.finalized = true
@@ -461,7 +562,11 @@ func (w *chunkedWriter) Finalize(ctx context.Context, opts ...ChunkedFinalizeOpt
 	return &ChunkedFinalizeResult{
 		Data:          finalBytes,
 		EncryptedSize: totalEncrypted,
-		Manifest:      manifest,
+		// Cloned for the same reason GetManifest clones: w.manifest is
+		// the writer's own record of what the archive bytes say, and
+		// handing out that pointer would let a caller edit it and see
+		// the edit come back from a later GetManifest, or race one.
+		Manifest:      cloneChunkedManifest(manifest),
 		TotalSegments: len(manifest.Segments),
 		TotalSize:     totalPlaintext,
 	}, nil
@@ -471,8 +576,8 @@ func (w *chunkedWriter) Finalize(ctx context.Context, opts ...ChunkedFinalizeOpt
 func (w *chunkedWriter) GetManifest(ctx context.Context, opts ...ChunkedFinalizeOption) (*Manifest, error) {
 	w.mu.RLock()
 	defer w.mu.RUnlock()
-	if w.closeFailed {
-		return nil, ErrChunkedCloseFailed
+	if w.unusable != nil {
+		return nil, w.unusable
 	}
 	if w.finalized && w.manifest != nil {
 		return cloneChunkedManifest(w.manifest), nil
@@ -492,9 +597,10 @@ func (w *chunkedWriter) GetManifest(ctx context.Context, opts ...ChunkedFinalize
 // bytes for that segment.
 func (w *chunkedWriter) WriteSegment(ctx context.Context, index int, data []byte) (*ChunkedSegmentResult, error) {
 	w.mu.Lock()
-	if w.closeFailed {
+	if w.unusable != nil {
+		err := w.unusable
 		w.mu.Unlock()
-		return nil, ErrChunkedCloseFailed
+		return nil, err
 	}
 	if w.finalized {
 		w.mu.Unlock()
@@ -509,10 +615,10 @@ func (w *chunkedWriter) WriteSegment(ctx context.Context, index int, data []byte
 		return nil, ErrChunkedSegmentAlreadyWritten
 	}
 	// Reserve the index so a concurrent write to the same one is
-	// rejected, but leave Size negative: the segment does not count as
-	// written until its bytes are in the archive.
-	seg := &Segment{Size: -1}
-	w.segments[index] = seg
+	// rejected, but leave the slot unwritten: the segment does not
+	// count as written until its bytes are in the archive.
+	slot := &segmentSlot{}
+	w.segments[index] = slot
 	w.mu.Unlock()
 
 	// release drops the reservation so the caller can retry this index
@@ -521,7 +627,7 @@ func (w *chunkedWriter) WriteSegment(ctx context.Context, index int, data []byte
 	// other call has since completed.
 	release := func() {
 		w.mu.Lock()
-		if cur, ok := w.segments[index]; ok && cur == seg && cur.Size < 0 {
+		if cur, ok := w.segments[index]; ok && cur == slot && !cur.written {
 			delete(w.segments, index)
 		}
 		w.mu.Unlock()
@@ -539,7 +645,6 @@ func (w *chunkedWriter) WriteSegment(ctx context.Context, index int, data []byte
 		if committed {
 			return
 		}
-		release()
 		if archiveWriteAttempted {
 			// The archive may have partially recorded the write before
 			// failing; CleanupSegment undoes that so a retry starts
@@ -548,8 +653,19 @@ func (w *chunkedWriter) WriteSegment(ctx context.Context, index int, data []byte
 			// concrete writer's CleanupSegment cannot itself fail; a
 			// custom archiveWriterFactory's failure here is best-effort
 			// and does not change what this call returns.
+			//
+			// This must precede release(): the reservation is the only
+			// thing keeping another goroutine out of this index, and
+			// CleanupSegment addresses the index rather than a
+			// particular attempt at it. Releasing first lets a racing
+			// write claim the index and get its bytes accepted by the
+			// archive, whereupon this call deletes that attempt's
+			// record and rolls back its size accounting -- leaving the
+			// winner to publish segment metadata for bytes the archive
+			// no longer knows about.
 			_ = w.archiveWriter.CleanupSegment(index)
 		}
+		release()
 	}()
 
 	ciphertext, nonce, err := w.block.EncryptInPlace(data)
@@ -585,9 +701,12 @@ func (w *chunkedWriter) WriteSegment(ctx context.Context, index int, data []byte
 	// the metadata earlier would let Finalize emit a manifest that
 	// describes bytes the archive never received.
 	w.mu.Lock()
-	seg.EncryptedSize = encryptedSize
-	seg.Hash = hash
-	seg.Size = int64(len(data))
+	slot.seg = Segment{
+		EncryptedSize: encryptedSize,
+		Hash:          hash,
+		Size:          int64(len(data)),
+	}
+	slot.written = true
 	w.mu.Unlock()
 	committed = true
 
@@ -608,10 +727,10 @@ func (w *chunkedWriter) WriteSegment(ctx context.Context, index int, data []byte
 	}, nil
 }
 
-// applyFinalizeOptions builds a ChunkedFinalizeConfig with defaults
+// applyFinalizeOptions builds a chunkedFinalizeConfig with defaults
 // then applies each option in order.
-func (w *chunkedWriter) applyFinalizeOptions(opts []ChunkedFinalizeOption) (*ChunkedFinalizeConfig, error) {
-	cfg := &ChunkedFinalizeConfig{
+func (w *chunkedWriter) applyFinalizeOptions(opts []ChunkedFinalizeOption) (*chunkedFinalizeConfig, error) {
+	cfg := &chunkedFinalizeConfig{
 		attributes:        nil,
 		encryptedMetadata: "",
 		excludeVersion:    w.excludeVersion,
@@ -641,7 +760,7 @@ func (w *chunkedWriter) applyFinalizeOptions(opts []ChunkedFinalizeOption) (*Chu
 
 // buildManifest composes the manifest from writer state, splits the
 // DEK, wraps splits into KAOs, and computes the root signature.
-func (w *chunkedWriter) buildManifest(ctx context.Context, cfg *ChunkedFinalizeConfig) (*Manifest, int64, int64, error) {
+func (w *chunkedWriter) buildManifest(ctx context.Context, cfg *chunkedFinalizeConfig) (*Manifest, int64, int64, error) {
 	order, err := w.segmentOrderLocked(cfg.keepSegments)
 	if err != nil {
 		return nil, 0, 0, err
@@ -677,17 +796,19 @@ func (w *chunkedWriter) buildManifest(ctx context.Context, cfg *ChunkedFinalizeC
 	var aggregate bytes.Buffer
 	var totalPlaintext, totalEncrypted int64
 	for i, idx := range order {
-		seg, ok := w.segments[idx]
-		if !ok || seg.Size < 0 {
+		// segmentOrderLocked only ever names written slots, whether it
+		// derived the order itself or validated a caller-supplied one.
+		slot, ok := w.segments[idx]
+		if !ok || !slot.written {
 			return nil, 0, 0, fmt.Errorf("segment %d not written; cannot finalize", idx)
 		}
-		if seg.Hash == "" {
+		if slot.seg.Hash == "" {
 			return nil, 0, 0, fmt.Errorf("segment %d has empty hash", idx)
 		}
-		encInfo.Segments[i] = *seg
-		totalPlaintext += seg.Size
-		totalEncrypted += seg.EncryptedSize
-		decoded, err := ocrypto.Base64Decode([]byte(seg.Hash))
+		encInfo.Segments[i] = slot.seg
+		totalPlaintext += slot.seg.Size
+		totalEncrypted += slot.seg.EncryptedSize
+		decoded, err := ocrypto.Base64Decode([]byte(slot.seg.Hash))
 		if err != nil {
 			return nil, 0, 0, fmt.Errorf("decode segment %d hash: %w", idx, err)
 		}
@@ -695,8 +816,8 @@ func (w *chunkedWriter) buildManifest(ctx context.Context, cfg *ChunkedFinalizeC
 	}
 	if len(order) > 0 {
 		if first, ok := w.segments[order[0]]; ok {
-			encInfo.DefaultEncryptedSegSize = first.EncryptedSize
-			encInfo.DefaultSegmentSize = first.Size
+			encInfo.DefaultEncryptedSegSize = first.seg.EncryptedSize
+			encInfo.DefaultSegmentSize = first.seg.Size
 		}
 	}
 
@@ -737,15 +858,23 @@ func (w *chunkedWriter) buildManifest(ctx context.Context, cfg *ChunkedFinalizeC
 // writer state and an optional keepSegments subset. Caller holds mu.
 //
 // With no subset, every written segment is emitted in ascending index
-// order. A supplied subset must be a prefix of that same ascending
-// sequence. Note this constrains position, not value: the written
-// indices themselves may be sparse (a caller reserving a block of
-// indices per upload part and filling only part of each block writes
-// e.g. 0,1,5000,5001), and any such set is accepted so long as the
-// subset names its members in order and drops only from the end.
-// Whether index 0 is among them is Finalize's business, not this
-// function's: GetManifest shares this path and legitimately runs
-// before segment 0 has been written.
+// order. Indices that are merely reserved -- WriteSegment has claimed
+// them but the archive has not accepted their bytes yet -- are not
+// written and are skipped. That is what lets GetManifest run
+// concurrently with in-flight writes, which is its whole purpose: a
+// reservation describes bytes that may never exist, so including one
+// would make every such call fail on a segment that is not late, just
+// unfinished.
+//
+// A supplied subset must be a prefix of that same ascending sequence.
+// Note this constrains position, not value: the written indices
+// themselves may be sparse (a caller reserving a block of indices per
+// upload part and filling only part of each block writes e.g.
+// 0,1,5000,5001), and any such set is accepted so long as the subset
+// names its members in order and drops only from the end. Whether
+// index 0 is among them is Finalize's business, not this function's:
+// GetManifest shares this path and legitimately runs before segment 0
+// has been written.
 //
 // Both halves of that rule are forced by the archive layout, which
 // stores segments sorted by index. Reordering would make the manifest
@@ -753,10 +882,13 @@ func (w *chunkedWriter) buildManifest(ctx context.Context, cfg *ChunkedFinalizeC
 // after it would shift every later segment's offset.
 func (w *chunkedWriter) segmentOrderLocked(keep []int) ([]int, error) {
 	written := make([]int, 0, len(w.segments))
-	for idx := range w.segments {
+	for idx, slot := range w.segments {
+		if !slot.written {
+			continue
+		}
 		written = append(written, idx)
 	}
-	sort.Ints(written)
+	slices.Sort(written)
 	if len(keep) == 0 {
 		return written, nil
 	}
@@ -767,7 +899,10 @@ func (w *chunkedWriter) segmentOrderLocked(keep []int) ([]int, error) {
 		if idx == written[i] {
 			continue
 		}
-		if _, ok := w.segments[idx]; !ok {
+		// A reserved-but-unwritten index reads as "not written" here,
+		// the same as one never claimed at all: naming it in the
+		// manifest would describe bytes the archive has not accepted.
+		if slot, ok := w.segments[idx]; !ok || !slot.written {
 			return nil, fmt.Errorf("WithChunkedSegments references segment %d which was not written", idx)
 		}
 		return nil, fmt.Errorf(
@@ -783,12 +918,19 @@ func (w *chunkedWriter) segmentOrderLocked(keep []int) ([]int, error) {
 // buildChunkedKeyAccessObjects wraps each split share to each KAS
 // listed by the splitter.
 func buildChunkedKeyAccessObjects(splits *SplitResult, policyBytes []byte, metadata string) ([]KeyAccess, error) {
-	if splits == nil || len(splits.Splits) == 0 {
-		return nil, errors.New("no splits produced")
+	// This is the one place caller-supplied split data is turned into
+	// manifest content, so it is where the splitter's contract is
+	// enforced -- for the default splitter and for anything injected
+	// through WithChunkedKeySplitter alike. Validate guarantees every
+	// invariant the loop below relies on: at least one split, every
+	// split naming at least one KAS, every named KAS resolving to a
+	// usable wrapping key, and split ids that the reader can group on.
+	if err := splits.Validate(); err != nil {
+		return nil, err
 	}
 	base64Policy := ocrypto.Base64Encode(policyBytes)
 
-	var out []KeyAccess
+	out := make([]KeyAccess, 0, len(splits.Splits))
 	for _, split := range splits.Splits {
 		// Policy binding and metadata are keyed on the split share, not
 		// on the KAS, so compute them once per split rather than once
@@ -803,22 +945,14 @@ func buildChunkedKeyAccessObjects(splits *SplitResult, policyBytes []byte, metad
 			encMeta = m
 		}
 		for _, url := range split.KASURLs {
-			pk, ok := splits.KASPublicKeys[url]
-			if !ok {
-				continue
-			}
-			if pk.PEM == "" {
-				return nil, fmt.Errorf("splitID:[%s], kas:[%s]: %w", split.ID, url, errKasPubKeyMissing)
-			}
+			// Validate resolved every URL, so the lookup cannot miss.
+			pk := splits.KASPublicKeys[url]
 			kao, err := createKeyAccess(pk.toKASInfo(), split.Data, policyBinding, encMeta, split.ID)
 			if err != nil {
 				return nil, fmt.Errorf("wrap key for %s: %w", url, err)
 			}
 			out = append(out, kao)
 		}
-	}
-	if len(out) == 0 {
-		return nil, errors.New("no valid key access objects generated")
 	}
 	return out, nil
 }
@@ -837,7 +971,14 @@ func buildChunkedPolicy(values []*policy.Value) ([]byte, error) {
 	return json.Marshal(p)
 }
 
-// cloneChunkedManifest returns a shallow-deep copy safe to hand out.
+// cloneChunkedManifest copies the manifest struct and clones its three
+// slices, which is what makes the result safe to hand to a caller: it
+// can append to or overwrite elements of Segments, KeyAccessObjs and
+// Assertions without the writer's copy changing. The clones are
+// shallow, so a caller reaching into a pointer or map inside an
+// element -- an Assertion's binding, a KeyAccess's policy binding --
+// still shares that state. Nothing in this package hands out a
+// manifest a caller has any reason to mutate that deeply.
 func cloneChunkedManifest(in *Manifest) *Manifest {
 	if in == nil {
 		return nil

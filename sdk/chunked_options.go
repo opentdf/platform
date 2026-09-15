@@ -18,7 +18,7 @@ import (
 // withChunkedArchiveWriterFactory overrides the ZIP archive writer
 // factory used by the chunked Writer. The factory must not be nil.
 func withChunkedArchiveWriterFactory(f archiveWriterFactory) ChunkedWriterOption {
-	return func(c *ChunkedWriterConfig) error {
+	return func(c *chunkedWriterConfig) error {
 		if f == nil {
 			return errors.New("chunked: archive writer factory must not be nil")
 		}
@@ -30,7 +30,7 @@ func withChunkedArchiveWriterFactory(f archiveWriterFactory) ChunkedWriterOption
 // withChunkedCipherFactory overrides the segment cipher factory used
 // by the chunked Writer. The factory must not be nil.
 func withChunkedCipherFactory(f segmentCipherFactory) ChunkedWriterOption {
-	return func(c *ChunkedWriterConfig) error {
+	return func(c *chunkedWriterConfig) error {
 		if f == nil {
 			return errors.New("chunked: cipher factory must not be nil")
 		}
@@ -44,7 +44,7 @@ func withChunkedCipherFactory(f segmentCipherFactory) ChunkedWriterOption {
 // header timestamps. Tests inject fixedClock for deterministic
 // output. The clock must not be nil.
 func withChunkedClock(clock clock) ChunkedWriterOption {
-	return func(c *ChunkedWriterConfig) error {
+	return func(c *chunkedWriterConfig) error {
 		if clock == nil {
 			return errors.New("chunked: clock must not be nil")
 		}
@@ -58,7 +58,7 @@ func withChunkedClock(clock clock) ChunkedWriterOption {
 //
 // Experimental: not part of the stable SDK API; may change or be removed.
 func WithChunkedInitialAttributes(values []*policy.Value) ChunkedWriterOption {
-	return func(c *ChunkedWriterConfig) error {
+	return func(c *chunkedWriterConfig) error {
 		c.initialAttributes = values
 		return nil
 	}
@@ -69,7 +69,7 @@ func WithChunkedInitialAttributes(values []*policy.Value) ChunkedWriterOption {
 //
 // Experimental: not part of the stable SDK API; may change or be removed.
 func WithChunkedDefaultKAS(kas *policy.SimpleKasKey) ChunkedWriterOption {
-	return func(c *ChunkedWriterConfig) error {
+	return func(c *chunkedWriterConfig) error {
 		c.initialDefaultKAS = kas
 		return nil
 	}
@@ -82,7 +82,7 @@ func WithChunkedDefaultKAS(kas *policy.SimpleKasKey) ChunkedWriterOption {
 //
 // Experimental: not part of the stable SDK API; may change or be removed.
 func WithChunkedKeySplitter(splitter KeySplitter) ChunkedWriterOption {
-	return func(c *ChunkedWriterConfig) error {
+	return func(c *chunkedWriterConfig) error {
 		if splitter == nil {
 			return errors.New("chunked: key splitter must not be nil")
 		}
@@ -94,7 +94,7 @@ func WithChunkedKeySplitter(splitter KeySplitter) ChunkedWriterOption {
 // withChunkedRand overrides the entropy source used to generate the
 // DEK. The reader must not be nil.
 func withChunkedRand(r io.Reader) ChunkedWriterOption {
-	return func(c *ChunkedWriterConfig) error {
+	return func(c *chunkedWriterConfig) error {
 		if r == nil {
 			return errors.New("chunked: rand must not be nil")
 		}
@@ -110,7 +110,7 @@ func withChunkedRand(r io.Reader) ChunkedWriterOption {
 //
 // Experimental: not part of the stable SDK API; may change or be removed.
 func WithChunkedAssertions(assertions []AssertionConfig) ChunkedFinalizeOption {
-	return func(c *ChunkedFinalizeConfig) error {
+	return func(c *chunkedFinalizeConfig) error {
 		c.assertions = assertions
 		return nil
 	}
@@ -119,9 +119,17 @@ func WithChunkedAssertions(assertions []AssertionConfig) ChunkedFinalizeOption {
 // WithChunkedAttributes overrides the writer's initial attributes for
 // this Finalize call.
 //
+// An empty or nil slice does not clear the writer's initial
+// attributes -- it reads as "not specified" and the initial ones still
+// apply. There is deliberately no way to finalize with no attributes
+// once the writer was constructed with some: dropping attributes
+// silently would loosen the policy on the data, which is the one
+// mistake here that cannot be detected after the fact. Construct a
+// writer without WithChunkedInitialAttributes instead.
+//
 // Experimental: not part of the stable SDK API; may change or be removed.
 func WithChunkedAttributes(values []*policy.Value) ChunkedFinalizeOption {
-	return func(c *ChunkedFinalizeConfig) error {
+	return func(c *chunkedFinalizeConfig) error {
 		c.attributes = values
 		return nil
 	}
@@ -130,9 +138,12 @@ func WithChunkedAttributes(values []*policy.Value) ChunkedFinalizeOption {
 // WithChunkedDefaultKASForFinalize overrides the writer's initial
 // default KAS for this Finalize call.
 //
+// A nil argument reads as "not specified", so the writer's initial
+// default KAS still applies; there is no way to unset it for one call.
+//
 // Experimental: not part of the stable SDK API; may change or be removed.
 func WithChunkedDefaultKASForFinalize(kas *policy.SimpleKasKey) ChunkedFinalizeOption {
-	return func(c *ChunkedFinalizeConfig) error {
+	return func(c *chunkedFinalizeConfig) error {
 		c.defaultKAS = kas
 		return nil
 	}
@@ -144,7 +155,7 @@ func WithChunkedDefaultKASForFinalize(kas *policy.SimpleKasKey) ChunkedFinalizeO
 //
 // Experimental: not part of the stable SDK API; may change or be removed.
 func WithChunkedEncryptedMetadata(metadata string) ChunkedFinalizeOption {
-	return func(c *ChunkedFinalizeConfig) error {
+	return func(c *chunkedFinalizeConfig) error {
 		c.encryptedMetadata = metadata
 		return nil
 	}
@@ -161,7 +172,7 @@ func WithChunkedEncryptedMetadata(metadata string) ChunkedFinalizeOption {
 //
 // Experimental: not part of the stable SDK API; may change or be removed.
 func WithChunkedExcludeVersion() ChunkedFinalizeOption {
-	return func(c *ChunkedFinalizeConfig) error {
+	return func(c *chunkedFinalizeConfig) error {
 		c.excludeVersion = true
 		return nil
 	}
@@ -181,7 +192,7 @@ func WithChunkedExcludeVersion() ChunkedFinalizeOption {
 //
 // Experimental: not part of the stable SDK API; may change or be removed.
 func WithChunkedTargetMode(mode string) ChunkedWriterOption {
-	return func(c *ChunkedWriterConfig) error {
+	return func(c *chunkedWriterConfig) error {
 		if mode == "" {
 			c.useHex = false
 			c.excludeVersion = false
@@ -201,7 +212,7 @@ func WithChunkedTargetMode(mode string) ChunkedWriterOption {
 //
 // Experimental: not part of the stable SDK API; may change or be removed.
 func WithChunkedMimeType(mimeType string) ChunkedFinalizeOption {
-	return func(c *ChunkedFinalizeConfig) error {
+	return func(c *chunkedFinalizeConfig) error {
 		c.mimeType = mimeType
 		return nil
 	}
@@ -234,7 +245,7 @@ func WithChunkedMimeType(mimeType string) ChunkedFinalizeOption {
 //
 // Experimental: not part of the stable SDK API; may change or be removed.
 func WithChunkedSegments(indices []int) ChunkedFinalizeOption {
-	return func(c *ChunkedFinalizeConfig) error {
+	return func(c *chunkedFinalizeConfig) error {
 		c.keepSegments = indices
 		return nil
 	}

@@ -5,7 +5,9 @@ import (
 	"bytes"
 	"context"
 	"crypto/ecdsa"
+	"crypto/rand"
 	"crypto/x509"
+	"encoding/json"
 	"encoding/pem"
 	"errors"
 	"fmt"
@@ -384,74 +386,18 @@ func TestChunkedKeepSegmentsRejects(t *testing.T) {
 	}
 }
 
-// TestChunkedSegmentsNotStartingAtZero covers a writer whose lowest
-// written index is not 0 -- what a caller gets if it reserves a block of
-// indices per upload part and part 0 never runs, or if it simply numbers
-// parts from 1.
-//
-// Either answer is acceptable: Finalize may refuse the write set, or it
-// may produce a TDF that reads back. What it must not do is return
-// success alongside bytes that are not a readable archive, because by
-// then the upload has happened and the plaintext is gone. Today only
-// segment 0 emits the payload's ZIP local file header (see
-// zipstream.segmentWriter.WriteSegment), so the third case is what
-// happens.
-func TestChunkedSegmentsNotStartingAtZero(t *testing.T) {
-	ctx := context.Background()
-	s := newChunkedTestSDK(t)
-	w, kasBundle := newChunkedWriterForTest(ctx, t)
-
-	chunks := map[int][]byte{5: []byte("hello-"), 6: []byte("world!")}
-	indices := []int{5, 6}
-
-	encrypted := make(map[int][]byte, len(indices))
-	for _, idx := range indices {
-		seg, err := w.WriteSegment(ctx, idx, chunks[idx])
-		require.NoError(t, err)
-		buf, err := io.ReadAll(seg.TDFData)
-		require.NoError(t, err)
-		encrypted[idx] = buf
-	}
-
-	fin, err := w.Finalize(ctx)
-	if err != nil {
-		// Refusing the write set is a valid outcome; nothing was
-		// published, so there is nothing further to check.
-		t.Logf("Finalize rejected a segment set starting at %d: %v", indices[0], err)
-		return
-	}
-
-	// Finalize claimed success, so the bytes it told the caller to
-	// assemble have to be a TDF.
-	var body bytes.Buffer
-	for _, idx := range indices {
-		body.Write(encrypted[idx])
-	}
-	body.Write(fin.Data)
-
-	reader, err := s.LoadTDF(bytes.NewReader(body.Bytes()),
-		WithKasAllowlist([]string{kasBundle.url}),
-	)
-
-	// The specific defect: with no local file header the reader runs off
-	// the end of the buffer parsing the ZIP structure, so the container
-	// never opens. Anything else is some other test's business.
-	require.NotErrorIs(t, err, io.ErrUnexpectedEOF,
-		"Finalize succeeded but the assembled bytes are not a ZIP container")
-	if err != nil {
-		t.Logf("LoadTDF failed for an unrelated reason, not this test's subject: %v", err)
-		return
-	}
-
-	plain, err := io.ReadAll(reader)
-	require.NoError(t, err, "Finalize succeeded, so the payload must decrypt")
-	assert.Equal(t, []byte("hello-world!"), plain)
-}
-
 // TestChunkedFinalizeRequiresSegmentZero pins the sentinel Finalize
 // returns for a write set that omits segment 0, and that the rejection
 // leaves the writer usable: the caller's only recovery is to write the
 // missing segment and finalize again.
+//
+// The write set here -- indices 5 and 6, nothing lower -- is what a
+// caller gets if it reserves a block of indices per upload part and
+// part 0 never runs, or if it simply numbers parts from 1. Only
+// segment 0 emits the payload's ZIP local file header (see
+// zipstream.segmentWriter.WriteSegment), so the assembled bytes would
+// not be a ZIP container at all; refusing is the only safe answer,
+// since by Finalize the caller has already uploaded what it encrypted.
 func TestChunkedFinalizeRequiresSegmentZero(t *testing.T) {
 	ctx := context.Background()
 	s := newChunkedTestSDK(t)
@@ -756,7 +702,7 @@ func TestChunkedECKeyAccess(t *testing.T) {
 	splits := &SplitResult{
 		KASPublicKeys: map[string]KASPublicKey{
 			kasURL: {
-				Algorithm: string(ocrypto.EC256Key),
+				Algorithm: ocrypto.EC256Key,
 				KID:       "ec-kid",
 				PEM:       pubPEM,
 				URL:       kasURL,
@@ -798,6 +744,69 @@ func TestChunkedECKeyAccess(t *testing.T) {
 	unwrapped, err := dec.DecryptWithEphemeralKey(wrapped, compressed)
 	require.NoError(t, err, "KAS must be able to unwrap the EC-wrapped DEK")
 	assert.Equal(t, dek, unwrapped)
+}
+
+// TestChunkedKeyAccessRejectsShareWithNoKAS pins the per-split
+// invariant. Each split is one XOR share of the DEK, so a share that
+// gets no key access object of its own is unrecoverable -- and the
+// reader cannot tell: it builds its split set from the KAOs actually
+// present in the manifest, so the missing share passes the
+// completeness check, the DEK reconstructs wrong, and the failure
+// surfaces as ErrRootSignatureFailure, which reads as tampering.
+// Failing at creation is the only point where the cause is still
+// visible.
+func TestChunkedKeyAccessRejectsShareWithNoKAS(t *testing.T) {
+	pair, err := ocrypto.NewECKeyPair(ocrypto.ECCModeSecp256r1)
+	require.NoError(t, err)
+	pubPEM, err := pair.PublicKeyInPemFormat()
+	require.NoError(t, err)
+
+	const kasURL = "https://kas.example.com"
+	dek := make([]byte, kKeySize)
+	splits := &SplitResult{
+		KASPublicKeys: map[string]KASPublicKey{
+			kasURL: {
+				Algorithm: ocrypto.EC256Key,
+				KID:       "ec-kid",
+				PEM:       pubPEM,
+				URL:       kasURL,
+			},
+		},
+		Splits: []Split{
+			{ID: "wrapped", Data: dek, KASURLs: []string{kasURL}},
+			{ID: "orphaned", Data: dek},
+		},
+	}
+
+	_, err = buildChunkedKeyAccessObjects(splits, []byte(`{"uuid":"test"}`), "")
+	require.Error(t, err, "a share with no KAS to unwrap it makes the DEK unrecoverable")
+	assert.Contains(t, err.Error(), "orphaned", "the error must name the split that cannot be recovered")
+}
+
+// TestChunkedFinalizeManifestIsIndependent checks that the manifest
+// Finalize hands back is not the one the writer keeps. GetManifest
+// clones for this reason; returning the original from Finalize would
+// let a caller's edit come back out of a later GetManifest, or race
+// one.
+func TestChunkedFinalizeManifestIsIndependent(t *testing.T) {
+	ctx := context.Background()
+	writer, _ := newChunkedWriterForTest(ctx, t)
+
+	_, err := writer.WriteSegment(ctx, 0, []byte("payload"))
+	require.NoError(t, err)
+	fin, err := writer.Finalize(ctx)
+	require.NoError(t, err)
+	require.NotEmpty(t, fin.Manifest.Segments)
+
+	wantVersion := fin.Manifest.TDFVersion
+	wantHash := fin.Manifest.Segments[0].Hash
+	fin.Manifest.TDFVersion = "mutated"
+	fin.Manifest.Segments[0].Hash = "mutated"
+
+	got, err := writer.GetManifest(ctx)
+	require.NoError(t, err)
+	assert.Equal(t, wantVersion, got.TDFVersion)
+	assert.Equal(t, wantHash, got.Segments[0].Hash)
 }
 
 // TestChunkedLegacyTargetMode verifies that a pre-4.3.0 target mode
@@ -1097,6 +1106,12 @@ type postWriteFailArchiveWriter struct {
 	failIndex int
 	failures  int
 	cleanedUp []int
+
+	// writer, when set, lets CleanupSegment observe the sdk-level
+	// reservation for the index it is rolling back. Each cleanup call
+	// appends what it saw to reservedDuringCleanup.
+	writer                *chunkedWriter
+	reservedDuringCleanup []bool
 }
 
 func (f *postWriteFailArchiveWriter) WriteSegment(ctx context.Context, index int, size uint64, crc32 uint32) ([]byte, error) {
@@ -1113,6 +1128,12 @@ func (f *postWriteFailArchiveWriter) WriteSegment(ctx context.Context, index int
 
 func (f *postWriteFailArchiveWriter) CleanupSegment(index int) error {
 	f.cleanedUp = append(f.cleanedUp, index)
+	if f.writer != nil {
+		f.writer.mu.RLock()
+		_, held := f.writer.segments[index]
+		f.writer.mu.RUnlock()
+		f.reservedDuringCleanup = append(f.reservedDuringCleanup, held)
+	}
 	return f.SegmentWriter.CleanupSegment(index)
 }
 
@@ -1123,20 +1144,85 @@ func (f *postWriteFailArchiveWriter) CleanupSegment(index int) error {
 // reservation map. Without this, a retry sees the archive's own
 // bookkeeping for the index still present and fails a second time
 // with an unrelated duplicate-segment error instead of succeeding.
+//
+// The rollback has to undo the archive's size and CRC accounting too,
+// not just its record of the index, so the test carries on to a real
+// TDF: the failed attempt's bytes were never handed to the caller, and
+// if the archive still counted them every offset after segment 1 would
+// be wrong. Only reading the payload back proves it does not.
 func TestChunkedWriteSegmentCleansUpArchiveOnFailure(t *testing.T) {
+	ctx := context.Background()
+	s := newChunkedTestSDK(t)
+	archive := &postWriteFailArchiveWriter{failIndex: 1, failures: 1}
+	writer, kasBundle := newChunkedWriterForTest(ctx, t, withChunkedArchiveWriterFactory(func(c clock) zipstream.SegmentWriter {
+		archive.SegmentWriter = defaultArchiveWriterFactory(c)
+		return archive
+	}))
+
+	var body bytes.Buffer
+	write := func(index int, chunk string) error {
+		seg, err := writer.WriteSegment(ctx, index, []byte(chunk))
+		if err != nil {
+			return err
+		}
+		_, err = io.Copy(&body, seg.TDFData)
+		require.NoError(t, err)
+		return nil
+	}
+
+	require.NoError(t, write(0, "hello, "))
+
+	require.ErrorIs(t, write(1, "doomed"), errArchiveWriteFailed)
+	assert.Equal(t, []int{1}, archive.cleanedUp)
+
+	// Deliberately a different length from the failed attempt: if the
+	// archive kept the doomed write's size, the mismatch shows up as a
+	// corrupt payload rather than being masked by identical accounting.
+	require.NoError(t, write(1, "chunked "),
+		"the archive's own record of the failed attempt must be rolled back, not just the sdk-level reservation")
+	require.NoError(t, write(2, "world!"))
+
+	fin, err := writer.Finalize(ctx)
+	require.NoError(t, err)
+	require.Len(t, fin.Manifest.Segments, 3)
+	body.Write(fin.Data)
+
+	reader, err := s.LoadTDF(bytes.NewReader(body.Bytes()),
+		WithKasAllowlist([]string{kasBundle.url}),
+	)
+	require.NoError(t, err)
+	plain, err := io.ReadAll(reader)
+	require.NoError(t, err)
+	assert.Equal(t, []byte("hello, chunked world!"), plain)
+}
+
+// TestChunkedCleanupRunsBeforeReleasingIndex pins the ordering of the
+// two halves of the rollback. CleanupSegment addresses an index, not a
+// particular attempt at it, so the reservation has to outlive it: if
+// the index were released first, a racing write could claim it and get
+// its bytes accepted by the archive, only for the losing attempt's
+// cleanup to delete that record and roll back its size accounting.
+// The winner would then publish segment metadata for bytes the archive
+// no longer knows about.
+//
+// Observing the reservation from inside CleanupSegment pins the
+// ordering directly, without needing a goroutine to lose the race
+// often enough to be reliable.
+func TestChunkedCleanupRunsBeforeReleasingIndex(t *testing.T) {
 	ctx := context.Background()
 	archive := &postWriteFailArchiveWriter{failIndex: 1, failures: 1}
 	writer, _ := newChunkedWriterForTest(ctx, t, withChunkedArchiveWriterFactory(func(c clock) zipstream.SegmentWriter {
 		archive.SegmentWriter = defaultArchiveWriterFactory(c)
 		return archive
 	}))
+	inner, ok := writer.(*chunkedWriter)
+	require.True(t, ok)
+	archive.writer = inner
 
 	_, err := writer.WriteSegment(ctx, 1, []byte("doomed"))
 	require.ErrorIs(t, err, errArchiveWriteFailed)
-	assert.Equal(t, []int{1}, archive.cleanedUp)
-
-	_, err = writer.WriteSegment(ctx, 1, []byte("retry"))
-	require.NoError(t, err, "the archive's own record of the failed attempt must be rolled back, not just the sdk-level reservation")
+	assert.Equal(t, []bool{true}, archive.reservedDuringCleanup,
+		"the index must stay reserved until the archive rollback has finished")
 }
 
 // TestChunkedConcurrentWrites exercises the contract WriteSegment
@@ -1237,4 +1323,526 @@ func TestChunkedConcurrentDuplicateIndex(t *testing.T) {
 		require.ErrorIs(t, err, ErrChunkedSegmentAlreadyWritten, "racer %d", i)
 	}
 	assert.Equal(t, 1, won, "exactly one writer may claim an index")
+}
+
+// errArchiveFinalizeFailed and errArchiveCloseFailed are the injected
+// trailer-time failures used to drive Finalize's fencing paths.
+var (
+	errArchiveFinalizeFailed = errors.New("archive finalize failed")
+	errArchiveCloseFailed    = errors.New("archive close failed")
+)
+
+// trailerFailArchiveWriter delegates to a real segment writer and then
+// reports failure from Finalize or Close. Delegating first is the
+// point: it reproduces the state the sdk cannot recover from, where the
+// archive has already mutated itself -- appended the payload entry to
+// its central directory, written the manifest -- and only then failed.
+type trailerFailArchiveWriter struct {
+	zipstream.SegmentWriter
+	failFinalize bool
+	failClose    bool
+}
+
+func (f *trailerFailArchiveWriter) Finalize(ctx context.Context, manifest []byte) ([]byte, error) {
+	out, err := f.SegmentWriter.Finalize(ctx, manifest)
+	if err != nil {
+		return out, err
+	}
+	if f.failFinalize {
+		return nil, errArchiveFinalizeFailed
+	}
+	return out, nil
+}
+
+func (f *trailerFailArchiveWriter) Close() error {
+	if err := f.SegmentWriter.Close(); err != nil {
+		return err
+	}
+	if f.failClose {
+		return errArchiveCloseFailed
+	}
+	return nil
+}
+
+// TestChunkedTrailerFailureFencesWriter pins that a failure from the
+// archive's Finalize or from the Close after it leaves the writer
+// permanently unusable, with every later call returning the same
+// sentinel and the underlying cause still wrapped inside it.
+//
+// Neither is retryable. zipstream's Finalize appends the payload entry
+// to its central directory partway through and can still fail
+// afterwards without marking itself finalized, so a second attempt
+// would append that entry twice; and an archive whose Finalize
+// succeeded is terminally finalized regardless of what Close returned.
+// The writer must therefore say so rather than look retryable -- the
+// alternative is a caller looping on an operation that can only
+// produce a corrupt archive or the same error forever.
+func TestChunkedTrailerFailureFencesWriter(t *testing.T) {
+	for _, tc := range []struct {
+		name     string
+		finalize bool
+		close    bool
+		want     error
+		cause    error
+	}{
+		{"finalize", true, false, ErrChunkedFinalizeFailed, errArchiveFinalizeFailed},
+		{"close after finalize", false, true, ErrChunkedCloseFailed, errArchiveCloseFailed},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx := context.Background()
+			writer, _ := newChunkedWriterForTest(ctx, t, withChunkedArchiveWriterFactory(func(c clock) zipstream.SegmentWriter {
+				return &trailerFailArchiveWriter{
+					SegmentWriter: defaultArchiveWriterFactory(c),
+					failFinalize:  tc.finalize,
+					failClose:     tc.close,
+				}
+			}))
+
+			_, err := writer.WriteSegment(ctx, 0, []byte("payload"))
+			require.NoError(t, err)
+
+			_, err = writer.Finalize(ctx)
+			require.ErrorIs(t, err, tc.want)
+			require.ErrorIs(t, err, tc.cause, "the sentinel must not swallow the archive's own error")
+
+			// Every door is closed, and closed with the same error: a
+			// caller that kept a handle to the writer learns why rather
+			// than getting ErrChunkedAlreadyFinalized, which would be a
+			// lie -- nothing was finalized.
+			_, err = writer.Finalize(ctx)
+			require.ErrorIs(t, err, tc.want)
+			require.NotErrorIs(t, err, ErrChunkedAlreadyFinalized)
+
+			_, err = writer.WriteSegment(ctx, 1, []byte("more"))
+			require.ErrorIs(t, err, tc.want)
+
+			_, err = writer.GetManifest(ctx)
+			require.ErrorIs(t, err, tc.want)
+		})
+	}
+}
+
+// errCipherFailed is the injected cipher failure.
+var errCipherFailed = errors.New("cipher failed")
+
+// failingCipher fails or panics on every call, depending on how it is
+// built. Segment encryption is the one step before the archive is
+// touched, so it exercises the reservation-rollback path with
+// archiveWriteAttempted still false.
+type failingCipher struct {
+	panics bool
+}
+
+func (c failingCipher) EncryptInPlace(_ []byte) ([]byte, []byte, error) {
+	if c.panics {
+		panic("cipher exploded")
+	}
+	return nil, nil, errCipherFailed
+}
+
+// TestChunkedCipherFailureReleasesIndex checks the reservation is
+// released when encryption fails before the archive is involved, so the
+// index stays writable. A wedged index is unrecoverable for the caller:
+// every retry returns ErrChunkedSegmentAlreadyWritten for a segment
+// that was never written.
+func TestChunkedCipherFailureReleasesIndex(t *testing.T) {
+	ctx := context.Background()
+	writer, _ := newChunkedWriterForTest(ctx, t, withChunkedCipherFactory(func([]byte) (segmentCipher, error) {
+		return failingCipher{}, nil
+	}))
+
+	_, err := writer.WriteSegment(ctx, 0, []byte("doomed"))
+	require.ErrorIs(t, err, errCipherFailed)
+
+	inner, ok := writer.(*chunkedWriter)
+	require.True(t, ok)
+	inner.mu.RLock()
+	_, held := inner.segments[0]
+	inner.mu.RUnlock()
+	assert.False(t, held, "a failed encrypt must leave the index free to retry")
+}
+
+// TestChunkedCipherPanicReleasesIndex covers the same rollback for a
+// panic rather than an error. The release runs from a defer precisely
+// so an injected cipher that panics -- or any future panic between the
+// reservation and the commit -- cannot strand the index; a caller that
+// recovers and retries has to find it free.
+func TestChunkedCipherPanicReleasesIndex(t *testing.T) {
+	ctx := context.Background()
+	writer, _ := newChunkedWriterForTest(ctx, t, withChunkedCipherFactory(func([]byte) (segmentCipher, error) {
+		return failingCipher{panics: true}, nil
+	}))
+
+	func() {
+		defer func() {
+			assert.NotNil(t, recover(), "the cipher was supposed to panic")
+		}()
+		_, _ = writer.WriteSegment(ctx, 0, []byte("doomed"))
+	}()
+
+	inner, ok := writer.(*chunkedWriter)
+	require.True(t, ok)
+	inner.mu.RLock()
+	_, held := inner.segments[0]
+	inner.mu.RUnlock()
+	assert.False(t, held, "a panic between reservation and commit must still release the index")
+}
+
+// xorSplitter splits the DEK into one share per KAS: n-1 random shares
+// plus a final share chosen so the XOR of all of them is the DEK. This
+// is the multi-KAS AND shape DefaultKeySplitter does not produce and
+// that no other test covers -- every other case has one split, so the
+// reader's XOR loop runs over a single operand and the split-id
+// grouping is never exercised.
+type xorSplitter struct {
+	kases []*policy.SimpleKasKey
+}
+
+func (s *xorSplitter) Split(_ context.Context, _ []*policy.Value, dek []byte, _ *policy.SimpleKasKey) (*SplitResult, error) {
+	out := &SplitResult{KASPublicKeys: make(map[string]KASPublicKey, len(s.kases))}
+	accum := make([]byte, len(dek))
+	for i, kas := range s.kases {
+		share := make([]byte, len(dek))
+		if i == len(s.kases)-1 {
+			// Last share closes the XOR back onto the DEK.
+			for j := range share {
+				share[j] = dek[j] ^ accum[j]
+			}
+		} else {
+			if _, err := io.ReadFull(rand.Reader, share); err != nil {
+				return nil, err
+			}
+			for j := range share {
+				accum[j] ^= share[j]
+			}
+		}
+		url := kas.GetKasUri()
+		alg, err := PolicyAlgorithmToKeyType(kas.GetPublicKey().GetAlgorithm())
+		if err != nil {
+			return nil, err
+		}
+		out.KASPublicKeys[url] = KASPublicKey{
+			Algorithm: alg,
+			KID:       kas.GetPublicKey().GetKid(),
+			PEM:       kas.GetPublicKey().GetPem(),
+			URL:       url,
+		}
+		out.Splits = append(out.Splits, Split{
+			Data:    share,
+			ID:      fmt.Sprintf("split-%d", i),
+			KASURLs: []string{url},
+		})
+	}
+	return out, nil
+}
+
+// TestChunkedMultiSplitRoundTrip drives two splits against two
+// independent KASes end to end. It is the only test in which the reader
+// has to collect more than one share, group the key access objects by
+// sid, and XOR the results -- and the only one that would catch a
+// writer-side change that emitted the right number of KAOs with the
+// wrong sids, since that fails nowhere until decryption.
+func TestChunkedMultiSplitRoundTrip(t *testing.T) {
+	ctx := context.Background()
+	s := newChunkedTestSDK(t)
+
+	kasA := newChunkedFakeKAS(t)
+	t.Cleanup(kasA.server.Close)
+	kasB := newChunkedFakeKAS(t)
+	t.Cleanup(kasB.server.Close)
+
+	writer, err := NewChunkedWriter(ctx,
+		WithChunkedKeySplitter(&xorSplitter{kases: []*policy.SimpleKasKey{kasA.simpleKey(), kasB.simpleKey()}}),
+	)
+	require.NoError(t, err)
+
+	body := writeChunkedSegments(ctx, t, writer, [][]byte{
+		[]byte("two "), []byte("kas "), []byte("split"),
+	})
+	fin, err := writer.Finalize(ctx)
+	require.NoError(t, err)
+
+	require.Len(t, fin.Manifest.KeyAccessObjs, 2)
+	sids := make(map[string]string, 2)
+	for _, kao := range fin.Manifest.KeyAccessObjs {
+		sids[kao.SplitID] = kao.KasURL
+	}
+	assert.Equal(t, map[string]string{
+		"split-0": kasA.url,
+		"split-1": kasB.url,
+	}, sids, "each share must be wrapped to its own KAS under its own sid")
+
+	tdfBytes := bytes.Join([][]byte{body, fin.Data}, nil)
+	reader, err := s.LoadTDF(bytes.NewReader(tdfBytes),
+		WithKasAllowlist([]string{kasA.url, kasB.url}),
+	)
+	require.NoError(t, err)
+
+	plain, err := io.ReadAll(reader)
+	require.NoError(t, err)
+	assert.Equal(t, []byte("two kas split"), plain)
+}
+
+// TestChunkedAttributes covers the three attribute/KAS options no test
+// touched: the writer-level default, the Finalize-level override, and
+// the Finalize-level KAS. They reach the manifest by two different
+// routes -- attributes become the policy body, the KAS decides which
+// endpoint each key access object names -- so a regression in the
+// override precedence is invisible without checking both.
+func TestChunkedAttributes(t *testing.T) {
+	ctx := context.Background()
+
+	initial := []*policy.Value{{Fqn: "https://example.com/attr/initial/value/one"}}
+	override := []*policy.Value{
+		{Fqn: "https://example.com/attr/override/value/a"},
+		{Fqn: "https://example.com/attr/override/value/b"},
+	}
+
+	// policyFQNs decodes the base64 policy the manifest carries and
+	// returns the attribute FQNs inside it.
+	policyFQNs := func(t *testing.T, m *Manifest) []string {
+		t.Helper()
+		raw, err := ocrypto.Base64Decode([]byte(m.Policy))
+		require.NoError(t, err)
+		var p PolicyObject
+		require.NoError(t, json.Unmarshal(raw, &p))
+		out := make([]string, 0, len(p.Body.DataAttributes))
+		for _, a := range p.Body.DataAttributes {
+			out = append(out, a.Attribute)
+		}
+		return out
+	}
+
+	t.Run("initial attributes reach the policy", func(t *testing.T) {
+		writer, _ := newChunkedWriterForTest(ctx, t, WithChunkedInitialAttributes(initial))
+		writeChunkedSegments(ctx, t, writer, [][]byte{[]byte("payload")})
+		fin, err := writer.Finalize(ctx)
+		require.NoError(t, err)
+		assert.Equal(t, []string{initial[0].GetFqn()}, policyFQNs(t, fin.Manifest))
+	})
+
+	t.Run("finalize attributes replace them", func(t *testing.T) {
+		writer, _ := newChunkedWriterForTest(ctx, t, WithChunkedInitialAttributes(initial))
+		writeChunkedSegments(ctx, t, writer, [][]byte{[]byte("payload")})
+		fin, err := writer.Finalize(ctx, WithChunkedAttributes(override))
+		require.NoError(t, err)
+		// Replace, not merge: the initial set must be gone entirely.
+		assert.Equal(t, []string{override[0].GetFqn(), override[1].GetFqn()}, policyFQNs(t, fin.Manifest))
+	})
+
+	// An empty override reads as "not specified", so the initial set
+	// survives. Documented on WithChunkedAttributes, and pinned here
+	// because the alternative -- letting an empty slice win -- would
+	// silently loosen the policy on the data, and nothing downstream
+	// could tell that from a writer that never had attributes.
+	for _, tc := range []struct {
+		name   string
+		values []*policy.Value
+	}{
+		{"nil finalize attributes keep the initial set", nil},
+		{"empty finalize attributes keep the initial set", []*policy.Value{}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			writer, _ := newChunkedWriterForTest(ctx, t, WithChunkedInitialAttributes(initial))
+			writeChunkedSegments(ctx, t, writer, [][]byte{[]byte("payload")})
+			fin, err := writer.Finalize(ctx, WithChunkedAttributes(tc.values))
+			require.NoError(t, err)
+			assert.Equal(t, []string{initial[0].GetFqn()}, policyFQNs(t, fin.Manifest))
+		})
+	}
+
+	t.Run("finalize default KAS overrides the writer's", func(t *testing.T) {
+		writer, initialKAS := newChunkedWriterForTest(ctx, t)
+		lateKAS := newChunkedFakeKAS(t)
+		t.Cleanup(lateKAS.server.Close)
+
+		writeChunkedSegments(ctx, t, writer, [][]byte{[]byte("payload")})
+		fin, err := writer.Finalize(ctx, WithChunkedDefaultKASForFinalize(lateKAS.simpleKey()))
+		require.NoError(t, err)
+
+		require.Len(t, fin.Manifest.KeyAccessObjs, 1)
+		assert.Equal(t, lateKAS.url, fin.Manifest.KeyAccessObjs[0].KasURL)
+		assert.NotEqual(t, initialKAS.url, fin.Manifest.KeyAccessObjs[0].KasURL)
+	})
+}
+
+// blockingCipher lets a test hold one WriteSegment inside encryption
+// while it inspects writer state from another goroutine. started fires
+// once the call is inside; release unblocks it.
+type blockingCipher struct {
+	inner   segmentCipher
+	target  int
+	calls   int
+	mu      sync.Mutex
+	started chan struct{}
+	release chan struct{}
+}
+
+func (c *blockingCipher) EncryptInPlace(data []byte) ([]byte, []byte, error) {
+	c.mu.Lock()
+	n := c.calls
+	c.calls++
+	c.mu.Unlock()
+	if n == c.target {
+		close(c.started)
+		<-c.release
+	}
+	return c.inner.EncryptInPlace(data)
+}
+
+// TestChunkedGetManifestDuringInFlightWrite pins that a reserved but
+// not-yet-written index is invisible to the manifest. The reservation
+// exists from the moment WriteSegment claims the index, well before the
+// archive has accepted anything, so a manifest built in that window
+// would otherwise either describe a segment with no hash and no size or
+// fail outright -- and GetManifest running alongside in-flight writes is
+// the whole point of the snapshot.
+func TestChunkedGetManifestDuringInFlightWrite(t *testing.T) {
+	ctx := context.Background()
+	cipher := &blockingCipher{
+		// Segments 0 and 2 go through; the third call -- index 1 -- is
+		// held. Leaving a written index above the blocked one is what
+		// lets the keepSegments check below reach its per-index branch
+		// rather than stopping at the count.
+		target:  2,
+		started: make(chan struct{}),
+		release: make(chan struct{}),
+	}
+	writer, _ := newChunkedWriterForTest(ctx, t, withChunkedCipherFactory(func(dek []byte) (segmentCipher, error) {
+		inner, err := defaultSegmentCipherFactory(dek)
+		if err != nil {
+			return nil, err
+		}
+		cipher.inner = inner
+		return cipher, nil
+	}))
+
+	_, err := writer.WriteSegment(ctx, 0, []byte("first"))
+	require.NoError(t, err)
+	_, err = writer.WriteSegment(ctx, 2, []byte("third"))
+	require.NoError(t, err)
+
+	done := make(chan error, 1)
+	go func() {
+		_, err := writer.WriteSegment(ctx, 1, []byte("second"))
+		done <- err
+	}()
+	<-cipher.started
+
+	snap, err := writer.GetManifest(ctx)
+	require.NoError(t, err, "a reservation in flight must not fail the snapshot")
+	assert.Len(t, snap.Segments, 2, "the snapshot must describe only segments the archive has accepted")
+
+	// The same index must also be refused as a keepSegments member while
+	// it is merely reserved, for the same reason: naming it would put a
+	// segment in the manifest that has no bytes behind it.
+	_, err = writer.GetManifest(ctx, WithChunkedSegments([]int{0, 1}))
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "references segment 1 which was not written")
+
+	close(cipher.release)
+	require.NoError(t, <-done)
+
+	snap, err = writer.GetManifest(ctx)
+	require.NoError(t, err)
+	assert.Len(t, snap.Segments, 3, "the segment appears once the archive has it")
+}
+
+// TestChunkedRealisticSegmentSizes runs the default 2 MiB segment size
+// rather than the handful of bytes every other test uses. Segment
+// sizing is where the ZIP64 thresholds, the CRC combine over full-size
+// segments, and the offset arithmetic actually get exercised; a
+// three-byte payload passes all of them trivially.
+func TestChunkedRealisticSegmentSizes(t *testing.T) {
+	if testing.Short() {
+		t.Skip("allocates ~6 MiB and encrypts it")
+	}
+	ctx := context.Background()
+	s := newChunkedTestSDK(t)
+	writer, kasBundle := newChunkedWriterForTest(ctx, t)
+
+	const segSize = 2 * 1024 * 1024
+	chunks := make([][]byte, 3)
+	var want bytes.Buffer
+	for i := range chunks {
+		chunk := make([]byte, segSize)
+		// Varied, reproducible content: a constant fill would hide a
+		// segment written at the wrong offset.
+		for j := range chunk {
+			chunk[j] = byte(i*7 + j)
+		}
+		chunks[i] = chunk
+		want.Write(chunk)
+	}
+
+	body := writeChunkedSegments(ctx, t, writer, chunks)
+	fin, err := writer.Finalize(ctx)
+	require.NoError(t, err)
+	assert.Equal(t, int64(3*segSize), fin.TotalSize)
+	assert.Equal(t, int64(segSize), fin.Manifest.DefaultSegmentSize)
+
+	tdfBytes := bytes.Join([][]byte{body, fin.Data}, nil)
+	reader, err := s.LoadTDF(bytes.NewReader(tdfBytes),
+		WithKasAllowlist([]string{kasBundle.url}),
+	)
+	require.NoError(t, err)
+
+	plain, err := io.ReadAll(reader)
+	require.NoError(t, err)
+	assert.Equal(t, want.Bytes(), plain)
+}
+
+// partialSplitter names two KAS URLs on one split but resolves a public
+// key for only the first, the shape a splitter produces when a KAS
+// lookup fails and the failure is swallowed upstream.
+type partialSplitter struct {
+	known *policy.SimpleKasKey
+	// missingURL is listed on the split but absent from KASPublicKeys.
+	missingURL string
+}
+
+func (s partialSplitter) Split(_ context.Context, _ []*policy.Value, dek []byte, _ *policy.SimpleKasKey) (*SplitResult, error) {
+	url := s.known.GetKasUri()
+	share := make([]byte, len(dek))
+	copy(share, dek)
+	return &SplitResult{
+		KASPublicKeys: map[string]KASPublicKey{
+			url: {
+				Algorithm: ocrypto.RSA2048Key,
+				KID:       s.known.GetPublicKey().GetKid(),
+				PEM:       s.known.GetPublicKey().GetPem(),
+				URL:       url,
+			},
+		},
+		Splits: []Split{{
+			Data:    share,
+			KASURLs: []string{url, s.missingURL},
+		}},
+	}, nil
+}
+
+// TestChunkedFinalizeRejectsUnresolvedKAS checks that a split naming a
+// KAS with no resolved public key fails Finalize. Skipping it would
+// emit a TDF whose KAO set silently omits that KAS -- and if every URL
+// on a split were missing, the share would be unrecoverable.
+func TestChunkedFinalizeRejectsUnresolvedKAS(t *testing.T) {
+	ctx := context.Background()
+	kasBundle := newChunkedFakeKAS(t)
+	defer kasBundle.server.Close()
+
+	w, err := NewChunkedWriter(ctx,
+		WithChunkedDefaultKAS(kasBundle.simpleKey()),
+		WithChunkedKeySplitter(partialSplitter{
+			known:      kasBundle.simpleKey(),
+			missingURL: "https://unresolved.example.com",
+		}),
+	)
+	require.NoError(t, err)
+
+	_, err = w.WriteSegment(ctx, 0, []byte("payload"))
+	require.NoError(t, err)
+
+	_, err = w.Finalize(ctx)
+	require.ErrorIs(t, err, errKasPubKeyMissing)
+	assert.Contains(t, err.Error(), "https://unresolved.example.com")
 }

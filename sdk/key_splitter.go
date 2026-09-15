@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/opentdf/platform/lib/ocrypto"
 	"github.com/opentdf/platform/protocol/go/policy"
 )
 
@@ -52,16 +53,83 @@ type SplitResult struct {
 	Splits []Split
 }
 
+// Validate reports whether the result can be turned into a key access
+// array that a reader can actually reconstruct the DEK from. The
+// chunked writer calls it before wrapping anything, and third-party
+// KeySplitter implementations can call it as a self-check.
+//
+// Every rule here exists because breaking it produces a TDF that is
+// accepted at creation and fails later in a way that does not name the
+// cause. The reader derives the set of splits it must collect from the
+// key access objects present in the manifest, so a share that never
+// reached the manifest is invisible to its completeness check: it XORs
+// what it has, reconstructs the wrong DEK, and reports a root
+// signature failure, which reads as tampering. By then the plaintext
+// is gone.
+//
+// Experimental: not part of the stable SDK API; may change or be removed.
+func (r *SplitResult) Validate() error {
+	if r == nil || len(r.Splits) == 0 {
+		return errors.New("chunked: splitter returned no splits")
+	}
+
+	ids := make(map[string]struct{}, len(r.Splits))
+	shareLen := len(r.Splits[0].Data)
+	for i, split := range r.Splits {
+		// A share is one XOR operand. A short or empty one silently
+		// leaves part of the DEK unmasked, since the reader XORs only
+		// as many bytes as the share carries.
+		if len(split.Data) == 0 {
+			return fmt.Errorf("chunked: split %d (id %q) has no share data", i, split.ID)
+		}
+		if len(split.Data) != shareLen {
+			return fmt.Errorf("chunked: split %d (id %q) has a %d-byte share; split 0 has %d and all shares must agree",
+				i, split.ID, len(split.Data), shareLen)
+		}
+
+		// A single split carries no sid, because there is nothing to
+		// distinguish it from. With more than one, sid is what the
+		// reader groups on: an empty or duplicated id collapses two
+		// shares into one group, and the second is never XOR'd in.
+		if len(r.Splits) > 1 && split.ID == "" {
+			return fmt.Errorf("chunked: split %d has an empty id; ids are required when there is more than one split", i)
+		}
+		if _, dup := ids[split.ID]; dup {
+			return fmt.Errorf("chunked: split id %q is used by more than one split", split.ID)
+		}
+		ids[split.ID] = struct{}{}
+
+		if len(split.KASURLs) == 0 {
+			return fmt.Errorf("chunked: split %d (id %q) names no KAS; its share could never be unwrapped", i, split.ID)
+		}
+		for _, url := range split.KASURLs {
+			pk, ok := r.KASPublicKeys[url]
+			if !ok {
+				// The same sentinel the mainline writer uses for an
+				// unresolved KAS, so callers can match one error whichever
+				// path produced it.
+				return fmt.Errorf("chunked: splitID:[%s], kas:[%s]: no entry in KASPublicKeys: %w", split.ID, url, errKasPubKeyMissing)
+			}
+			if err := pk.validate(url); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
 // KASPublicKey is the wrapping key resolved for one KAS URL.
 //
 // Experimental: not part of the stable SDK API; may change or be removed.
 type KASPublicKey struct {
-	// Algorithm identifies the wrapping scheme as an exact
-	// ocrypto.KeyType string, e.g. "rsa:2048" or "ec:secp256r1" -- use
-	// PolicyAlgorithmToKeyType to derive it from a policy.Algorithm.
-	// A bare or unrecognized value falls through createKeyAccess's RSA
-	// default and can produce a KAO that cannot be decrypted.
-	Algorithm string
+	// Algorithm identifies the wrapping scheme. It must be one of the
+	// values ocrypto.ParseKeyType accepts, e.g. ocrypto.RSA2048Key or
+	// ocrypto.EC256Key -- use PolicyAlgorithmToKeyType to derive it
+	// from a policy.Algorithm. An unrecognized value falls through
+	// createKeyAccess's RSA default, which sniffs the PEM rather than
+	// honoring the declared scheme, and produces a KAO that cannot be
+	// decrypted; SplitResult.Validate rejects it first.
+	Algorithm ocrypto.KeyType
 
 	// KID identifies which key at that KAS to use.
 	KID string
@@ -73,6 +141,27 @@ type KASPublicKey struct {
 	URL string
 }
 
+// validate checks one resolved wrapping key. mapKey is the
+// KASPublicKeys key it was found under, which is reported in errors
+// and must match URL: the KAO is built from URL, so the two
+// disagreeing means the split names one KAS and the manifest points a
+// reader at another.
+func (k KASPublicKey) validate(mapKey string) error {
+	if k.PEM == "" {
+		return fmt.Errorf("chunked: kas:[%s]: %w", mapKey, errKasPubKeyMissing)
+	}
+	if k.URL == "" {
+		return fmt.Errorf("chunked: kas %q has an empty URL field; every key access object built from it would name no endpoint", mapKey)
+	}
+	if k.URL != mapKey {
+		return fmt.Errorf("chunked: kas %q is keyed under %q but carries URL %q; key access objects are built from the URL field", mapKey, mapKey, k.URL)
+	}
+	if _, err := ocrypto.ParseKeyType(string(k.Algorithm)); err != nil {
+		return fmt.Errorf("chunked: kas %q: %w", mapKey, err)
+	}
+	return nil
+}
+
 // toKASInfo adapts the splitter's wrapping-key descriptor to the
 // KASInfo shape consumed by createKeyAccess. Default is not carried
 // over; it plays no part in building a key access object.
@@ -81,7 +170,7 @@ func (k KASPublicKey) toKASInfo() KASInfo {
 		URL:       k.URL,
 		PublicKey: k.PEM,
 		KID:       k.KID,
-		Algorithm: k.Algorithm,
+		Algorithm: string(k.Algorithm),
 	}
 }
 
@@ -132,7 +221,12 @@ func (s *singleKASSplitter) Split(_ context.Context, _ []*policy.Value, dek []by
 	// keyType "wrapped" with no ephemeral public key. That produces a
 	// TDF nothing can decrypt, which is far worse to debug than a
 	// failure at creation time.
-	alg, err := formatAlg(defaultKAS.GetPublicKey().GetAlgorithm())
+	//
+	// SplitResult.Validate enforces the same rule for every splitter,
+	// including injected ones. Keeping the check here too lets the
+	// error name ErrSplitterUnsupportedAlgorithm and the offending
+	// policy.Algorithm, which the generic check cannot see.
+	alg, err := PolicyAlgorithmToKeyType(defaultKAS.GetPublicKey().GetAlgorithm())
 	if err != nil {
 		return nil, fmt.Errorf("%w: kas %s: %w", ErrSplitterUnsupportedAlgorithm, url, err)
 	}

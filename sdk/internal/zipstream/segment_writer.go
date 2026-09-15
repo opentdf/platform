@@ -12,6 +12,11 @@ import (
 	"sync"
 )
 
+// opCleanupSegment is the Error.Op every CleanupSegment failure carries. It is
+// a constant only because the literal would otherwise repeat three times in the
+// one function; the sibling ops are still written inline.
+const opCleanupSegment = "cleanup-segment"
+
 // segmentWriter implements the SegmentWriter interface for out-of-order segment writing
 type segmentWriter struct {
 	*baseWriter
@@ -261,14 +266,48 @@ func (sw *segmentWriter) CleanupSegment(index int) error {
 	sw.mu.Lock()
 	defer sw.mu.Unlock()
 
+	// A closed or finalized writer has nothing left to roll back: its data
+	// descriptor and central directory already name this segment's bytes and
+	// are already in the caller's hands. Mutating the counters afterwards
+	// changes only state no one reads again, so returning nil would report an
+	// undo that did not happen. Refuse, the way WriteSegment and Finalize do.
+	if err := sw.checkClosed(); err != nil {
+		return &Error{Op: opCleanupSegment, Type: "segment", Err: err}
+	}
+
+	if sw.finalized {
+		return &Error{Op: opCleanupSegment, Type: "segment", Err: ErrWriterClosed}
+	}
+
 	// No-op if the index was never written or was already cleaned up.
 	seg, ok := sw.metadata.Segments[index]
 	if !ok {
 		return nil
 	}
 
+	// The three counters below move in lockstep -- AddSegment adds the segment
+	// size to TotalSize and WriteSegment adds the same value to both payload
+	// fields, with no error path in between -- so a counter shorter than the
+	// segment means the accounting has already diverged. Subtracting anyway
+	// wraps to near 2^64 and Finalize goes on to emit a data descriptor
+	// claiming an exabyte-scale payload: a corrupt archive in place of an
+	// error. Checked before anything is touched so the refusal is inert.
+	if seg.Size > sw.metadata.TotalSize ||
+		seg.Size > sw.payloadEntry.Size ||
+		seg.Size > sw.payloadEntry.CompressedSize {
+		return &Error{Op: opCleanupSegment, Type: "segment", Err: ErrAccountingCorrupt}
+	}
+
 	delete(sw.metadata.Segments, index)
 	sw.metadata.presentCount--
+
+	// A Finalize that failed past its mutation boundary keeps the order it
+	// derived, and that order still names this index. Dropping the segment
+	// without dropping it from the order leaves IsComplete walking a list with
+	// a hole in it, so every later Finalize fails with ErrSegmentMissing --
+	// the opposite of making the index indistinguishable from one that was
+	// never written.
+	sw.metadata.removeFromOrder(index)
 
 	// Undo everything the segment contributed, so that a cleaned-up index is
 	// indistinguishable from one that was never written. Leaving the sizes

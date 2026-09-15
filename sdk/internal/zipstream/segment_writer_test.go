@@ -562,6 +562,159 @@ func TestSegmentWriter_CleanupSegment(t *testing.T) {
 	writer.Close()
 }
 
+func TestSegmentWriter_CleanupSegmentRefusedAfterFinalize(t *testing.T) {
+	// Once Finalize has handed back the trailer, the segment's size is baked
+	// into the data descriptor and central directory the caller already holds.
+	// Rolling the counters back at that point undoes nothing observable, so
+	// reporting success would tell the caller an undo happened that did not.
+	writer := NewSegmentTDFWriter(2)
+	ctx := t.Context()
+
+	for index, data := range [][]byte{[]byte("first"), []byte("second")} {
+		_, err := writer.WriteSegment(ctx, index, uint64(len(data)), crc32.ChecksumIEEE(data))
+		require.NoError(t, err)
+	}
+
+	_, err := writer.Finalize(ctx, []byte("manifest"))
+	require.NoError(t, err)
+
+	segWriter, ok := writer.(*segmentWriter)
+	require.True(t, ok, "writer should be a segmentWriter")
+	sizeBefore := segWriter.payloadEntry.Size
+
+	err = writer.CleanupSegment(1)
+	require.ErrorIs(t, err, ErrWriterClosed)
+
+	var archiveErr *Error
+	require.ErrorAs(t, err, &archiveErr)
+	assert.Equal(t, "cleanup-segment", archiveErr.Op)
+	assert.Equal(t, "segment", archiveErr.Type)
+
+	// The refusal has to be inert: a caller that ignores the error must not
+	// find the writer in a state the emitted bytes no longer describe.
+	_, exists := segWriter.metadata.Segments[1]
+	assert.True(t, exists, "refused cleanup must leave the segment recorded")
+	assert.Equal(t, sizeBefore, segWriter.payloadEntry.Size, "refused cleanup must not roll back sizes")
+
+	writer.Close()
+}
+
+func TestSegmentWriter_CleanupSegmentRefusedAfterClose(t *testing.T) {
+	// Same reasoning as the finalized case, via the other terminal state.
+	// WriteSegment and Finalize both reject a closed writer; CleanupSegment
+	// has no reason to be the one that silently accepts it.
+	writer := NewSegmentTDFWriter(1)
+	ctx := t.Context()
+
+	data := []byte("only")
+	_, err := writer.WriteSegment(ctx, 0, uint64(len(data)), crc32.ChecksumIEEE(data))
+	require.NoError(t, err)
+
+	require.NoError(t, writer.Close())
+
+	err = writer.CleanupSegment(0)
+	require.ErrorIs(t, err, ErrWriterClosed)
+
+	segWriter, ok := writer.(*segmentWriter)
+	require.True(t, ok, "writer should be a segmentWriter")
+	_, exists := segWriter.metadata.Segments[0]
+	assert.True(t, exists, "refused cleanup must leave the segment recorded")
+}
+
+func TestSegmentWriter_CleanupSegmentDropsIndexFromRetainedOrder(t *testing.T) {
+	// A Finalize that fails past its mutation boundary keeps the order it
+	// derived, so the order outlives the failure. Cleaning up a segment named
+	// by that order has to remove it from both places: leave it in Order and
+	// IsComplete walks a list with a hole in it, and every later Finalize
+	// fails with ErrSegmentMissing even though the surviving segments are a
+	// perfectly finalizable set.
+	//
+	// The failure here is the natural one. Zip64Never with a lowered threshold
+	// rejects the oversized segment 1 after the order is already derived;
+	// dropping that segment brings the payload back under the limit, so the
+	// retry is expected to succeed on the merits.
+	const threshold = 400
+	writer := NewSegmentTDFWriter(2,
+		WithZip64Mode(Zip64Never),
+		WithMaxNonZip64Value(threshold),
+	)
+	ctx := t.Context()
+
+	small := []byte("first")
+	oversized := bytes.Repeat([]byte("x"), 5000)
+
+	header, err := writer.WriteSegment(ctx, 0, uint64(len(small)), crc32.ChecksumIEEE(small))
+	require.NoError(t, err)
+	_, err = writer.WriteSegment(ctx, 1, uint64(len(oversized)), crc32.ChecksumIEEE(oversized))
+	require.NoError(t, err)
+
+	_, err = writer.Finalize(ctx, []byte("manifest"))
+	require.ErrorIs(t, err, ErrZip64Required, "oversized payload must be rejected under Zip64Never")
+
+	segWriter, ok := writer.(*segmentWriter)
+	require.True(t, ok, "writer should be a segmentWriter")
+	require.Contains(t, segWriter.metadata.Order, 1, "the failed Finalize is expected to retain its derived order")
+
+	require.NoError(t, writer.CleanupSegment(1))
+	assert.NotContains(t, segWriter.metadata.Order, 1, "cleanup must drop the index from the retained order")
+
+	// The surviving set is segment 0 alone, which fits: the retry must reach
+	// the trailer rather than tripping over the order left behind.
+	finalBytes, err := writer.Finalize(ctx, []byte("manifest"))
+	require.NoError(t, err, "cleanup must leave the writer finalizable, not wedged on ErrSegmentMissing")
+
+	archive := append(append([]byte{}, header...), small...)
+	archive = append(archive, finalBytes...)
+
+	zipReader, err := zip.NewReader(bytes.NewReader(archive), int64(len(archive)))
+	require.NoError(t, err)
+
+	payloadFile := findFileByName(zipReader, TDFPayloadFileName)
+	require.NotNil(t, payloadFile)
+
+	payloadReader, err := payloadFile.Open()
+	require.NoError(t, err)
+	defer payloadReader.Close()
+
+	content, err := io.ReadAll(payloadReader)
+	require.NoError(t, err, "payload CRC must cover exactly the surviving segment")
+	assert.Equal(t, small, content)
+
+	writer.Close()
+}
+
+func TestSegmentWriter_CleanupSegmentRejectsInconsistentAccounting(t *testing.T) {
+	// The three size counters are incremented in lockstep and nothing in this
+	// package can separate them, so this state is not reachable through the
+	// public API -- it is reproduced here by reaching into the writer. The
+	// check earns its place on the consequence of being wrong: an unchecked
+	// subtraction wraps uint64 to near 2^64 and Finalize goes on to emit a
+	// data descriptor claiming an exabyte-scale payload, turning a bug in this
+	// package into a silently corrupt archive.
+	writer := NewSegmentTDFWriter(2)
+	ctx := t.Context()
+
+	for index, data := range [][]byte{[]byte("first"), []byte("second")} {
+		_, err := writer.WriteSegment(ctx, index, uint64(len(data)), crc32.ChecksumIEEE(data))
+		require.NoError(t, err)
+	}
+
+	segWriter, ok := writer.(*segmentWriter)
+	require.True(t, ok, "writer should be a segmentWriter")
+	segWriter.payloadEntry.CompressedSize = 0
+
+	err := writer.CleanupSegment(1)
+	require.ErrorIs(t, err, ErrAccountingCorrupt)
+
+	// Refusing before touching anything keeps the damage to the counter that
+	// was already wrong, rather than spreading it across the other two.
+	_, exists := segWriter.metadata.Segments[1]
+	assert.True(t, exists, "refused cleanup must leave the segment recorded")
+	assert.Equal(t, uint64(0), segWriter.payloadEntry.CompressedSize, "refused cleanup must not subtract")
+
+	writer.Close()
+}
+
 func TestSegmentWriter_ContextCancellation(t *testing.T) {
 	// Test context cancellation handling
 	writer := NewSegmentTDFWriter(3)

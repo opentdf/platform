@@ -277,6 +277,8 @@ func (as *Service) GetDecisionBulk(ctx context.Context, req *connect.Request[aut
 		return nil, statusifyError(ctx, as.logger, errors.Join(ErrFailedToInitPDP, err))
 	}
 
+	pdp = pdp.WithRequestReuse()
+
 	multiRequests := req.Msg.GetDecisionRequests()
 	decisionResponses := make([]*authzV2.GetDecisionMultiResourceResponse, len(multiRequests))
 
@@ -285,8 +287,6 @@ func (as *Service) GetDecisionBulk(ctx context.Context, req *connect.Request[aut
 		return nil, statusifyError(ctx, as.logger, err)
 	}
 
-	// TODO: revisit performance of this loop after introduction of caching and registered resource values within decisioning,
-	// as the same entity in multiple requests should only be resolved JIT once, not once per request if the same in each.
 	for idx, request := range multiRequests {
 		entityIdentifier := request.GetEntityIdentifier()
 		action := request.GetAction()

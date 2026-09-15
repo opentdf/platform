@@ -31,19 +31,21 @@ const webSDKSegmentSize = 1024 * 1024
 func (s *TDFSuite) rewriteManifest(tdfBytes []byte, mutate func(integrityInfo map[string]any)) []byte {
 	s.T().Helper()
 
-	zipReader, err := zipstream.NewReader(bytes.NewReader(tdfBytes))
+	// Read through TDFReader rather than naming the manifest entry here, so
+	// this helper keeps working whichever name the writer emits.
+	zipReader, err := zipstream.NewTDFReader(bytes.NewReader(tdfBytes), zipstream.WithTDFManifestMaxSize(10*oneMB))
 	s.Require().NoError(err)
 
-	manifestBytes, err := zipReader.ReadAllFileData(zipstream.TDFManifestFileName, 10*oneMB)
+	manifestBytes, err := zipReader.Manifest()
 	s.Require().NoError(err)
 
-	payloadSize, err := zipReader.ReadFileSize(zipstream.TDFPayloadFileName)
+	payloadSize, err := zipReader.PayloadSize()
 	s.Require().NoError(err)
-	payload, err := zipReader.ReadFileData(zipstream.TDFPayloadFileName, 0, payloadSize)
+	payload, err := zipReader.ReadPayload(0, payloadSize)
 	s.Require().NoError(err)
 
 	var manifest map[string]any
-	s.Require().NoError(json.Unmarshal(manifestBytes, &manifest))
+	s.Require().NoError(json.Unmarshal([]byte(manifestBytes), &manifest))
 
 	encryptionInfo, ok := manifest["encryptionInformation"].(map[string]any)
 	s.Require().True(ok)

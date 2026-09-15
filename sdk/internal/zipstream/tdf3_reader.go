@@ -8,9 +8,18 @@ import (
 	"io"
 )
 
+// ErrOffspecManifestName reports an archive whose manifest is filed under the
+// off-spec name, read by a caller that asked for spec names only. It is
+// distinct from a missing manifest: the manifest is there, it is just not
+// where the spec says to put it.
+var ErrOffspecManifestName = errors.New("tdf: manifest entry is named " +
+	TDFManifestFileNameOffspec + ", not " + TDFManifestFileName)
+
 type TDFReader struct {
 	archiveReader   Reader
 	manifestMaxSize int64
+	// requireSpecManifestName suppresses the off-spec fallback in Manifest.
+	requireSpecManifestName bool
 }
 
 const (
@@ -22,6 +31,15 @@ type TDFReaderOptions func(*TDFReader)
 func WithTDFManifestMaxSize(size int64) TDFReaderOptions {
 	return func(tdfReader *TDFReader) {
 		tdfReader.manifestMaxSize = size
+	}
+}
+
+// WithRequireSpecManifestName rejects an archive whose manifest is filed under
+// the off-spec name rather than reading it. Off by default: the reader accepts
+// both names so archives written by earlier releases keep working.
+func WithRequireSpecManifestName() TDFReaderOptions {
+	return func(tdfReader *TDFReader) {
+		tdfReader.requireSpecManifestName = true
 	}
 }
 
@@ -48,12 +66,19 @@ func NewTDFReader(readSeeker io.ReadSeeker, opt ...TDFReaderOptions) (TDFReader,
 // large is a size failure, and retrying under the other name would both report
 // the wrong reason and, in an archive holding both, hand back the superseded
 // manifest.
+//
+// WithRequireSpecManifestName drops the fallback. The off-spec entry is still
+// looked up in that mode, so an archive that has one is told apart from an
+// archive that has no manifest at all.
 func (tdfReader TDFReader) Manifest() (string, error) {
 	fileContent, err := tdfReader.archiveReader.ReadAllFileData(TDFManifestFileName, tdfReader.manifestMaxSize)
 	if errors.Is(err, errZipFileNotFound) {
 		fileContent, err = tdfReader.archiveReader.ReadAllFileData(TDFManifestFileNameOffspec, tdfReader.manifestMaxSize)
-		if errors.Is(err, errZipFileNotFound) {
+		switch {
+		case errors.Is(err, errZipFileNotFound):
 			return "", fmt.Errorf("no %s or %s entry: %w", TDFManifestFileName, TDFManifestFileNameOffspec, err)
+		case err == nil && tdfReader.requireSpecManifestName:
+			return "", ErrOffspecManifestName
 		}
 	}
 	if err != nil {

@@ -200,8 +200,8 @@ func (a *InProcessProvider) FindKeyByID(_ context.Context, id trust.KeyIdentifie
 	}, nil
 }
 
-func (a *InProcessProvider) FindKeyWith(ctx context.Context, id trust.KeyIdentifier, _ trust.FindKeyOptions) (trust.KeyDetails, error) {
-	return a.FindKeyByID(ctx, id)
+func (a *InProcessProvider) FindKeyWith(ctx context.Context, opts trust.FindKeyOptions) (trust.KeyDetails, error) {
+	return a.FindKeyByID(ctx, opts.ID)
 }
 
 // ListKeys lists all available keys

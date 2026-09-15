@@ -14,6 +14,8 @@ type KeyType int
 
 // KeyOptions configures behavior common to key lookup and listing operations.
 type KeyOptions struct {
+	// ID identifies the key to find.
+	ID     KeyIdentifier
 	KASURI string
 }
 
@@ -84,8 +86,8 @@ type KeyIndex interface {
 	// FindKeyByID returns a key with the specified ID
 	FindKeyByID(ctx context.Context, id KeyIdentifier) (KeyDetails, error)
 
-	// FindKeyWith returns a key with the specified ID and options.
-	FindKeyWith(ctx context.Context, id KeyIdentifier, opts FindKeyOptions) (KeyDetails, error)
+	// FindKeyWith returns a key using the specified options.
+	FindKeyWith(ctx context.Context, opts FindKeyOptions) (KeyDetails, error)
 
 	// ListKeys returns all available keys
 	ListKeys(ctx context.Context) ([]KeyDetails, error)

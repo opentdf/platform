@@ -89,7 +89,7 @@ func (f *fakeKeyIndex) FindKeyByID(context.Context, trust.KeyIdentifier) (trust.
 	return nil, errors.New("not implemented")
 }
 
-func (f *fakeKeyIndex) FindKeyWith(context.Context, trust.KeyIdentifier, trust.FindKeyOptions) (trust.KeyDetails, error) {
+func (f *fakeKeyIndex) FindKeyWith(context.Context, trust.FindKeyOptions) (trust.KeyDetails, error) {
 	return nil, errors.New("not implemented")
 }
 

@@ -92,8 +92,8 @@ func (m *MockKeyIndex) FindKeyByID(ctx context.Context, id KeyIdentifier) (KeyDe
 	return &MockKeyDetails{}, args.Error(1)
 }
 
-func (m *MockKeyIndex) FindKeyWith(ctx context.Context, id KeyIdentifier, opts FindKeyOptions) (KeyDetails, error) {
-	args := m.Called(ctx, id, opts)
+func (m *MockKeyIndex) FindKeyWith(ctx context.Context, opts FindKeyOptions) (KeyDetails, error) {
+	args := m.Called(ctx, opts)
 	if a0, ok := args.Get(0).(KeyDetails); ok {
 		return a0, args.Error(1)
 	}
@@ -295,7 +295,7 @@ func (suite *DelegatingKeyServiceTestSuite) TestDecrypt() {
 	mockKeyDetails := &MockKeyDetails{}
 	mockKeyDetails.On("ProviderConfig").Return(&policy.KeyProviderConfig{Manager: testManagerName, Name: testManagerInstanceName})
 	mockKeyDetails.On("System").Return(testManagerName)
-	suite.mockIndex.On("FindKeyWith", mock.Anything, testKeyID, FindKeyOptions{KeyOptions: KeyOptions{KASURI: kasURI}}).Return(mockKeyDetails, nil)
+	suite.mockIndex.On("FindKeyWith", mock.Anything, FindKeyOptions{KeyOptions: KeyOptions{ID: testKeyID, KASURI: kasURI}}).Return(mockKeyDetails, nil)
 
 	mockProtectedKey := &MockProtectedKey{}
 	mockProtectedKey.On("DecryptAESGCM", mock.Anything, mock.Anything, mock.Anything).Return([]byte("decrypted"), nil)

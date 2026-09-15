@@ -310,7 +310,7 @@ func (s *KeyIndexTestSuite) TestFindKeyWith() {
 				Key: &policy.AsymmetricKey{KeyId: testKeyID},
 			}}, nil).Once()
 
-			key, err := keyIndexer.FindKeyWith(s.T().Context(), trust.KeyIdentifier(testKeyID), trust.FindKeyOptions{KeyOptions: trust.KeyOptions{KASURI: test.kasURI}})
+			key, err := keyIndexer.FindKeyWith(s.T().Context(), trust.FindKeyOptions{KeyOptions: trust.KeyOptions{ID: trust.KeyIdentifier(testKeyID), KASURI: test.kasURI}})
 			s.Require().NoError(err)
 			s.Equal(testKeyID, string(key.ID()))
 			mockClient.AssertExpectations(s.T())

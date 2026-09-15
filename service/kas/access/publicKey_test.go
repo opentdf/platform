@@ -127,8 +127,8 @@ func (m *MockSecurityProvider) FindKeyByID(_ context.Context, id trust.KeyIdenti
 	return nil, security.ErrCertNotFound
 }
 
-func (m *MockSecurityProvider) FindKeyWith(ctx context.Context, id trust.KeyIdentifier, _ trust.FindKeyOptions) (trust.KeyDetails, error) {
-	return m.FindKeyByID(ctx, id)
+func (m *MockSecurityProvider) FindKeyWith(ctx context.Context, opts trust.FindKeyOptions) (trust.KeyDetails, error) {
+	return m.FindKeyByID(ctx, opts.ID)
 }
 
 func (m *MockSecurityProvider) ListKeys(_ context.Context) ([]trust.KeyDetails, error) {

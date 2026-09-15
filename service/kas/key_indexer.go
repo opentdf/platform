@@ -100,19 +100,19 @@ func (p *KeyIndexer) FindKeyByAlgorithm(ctx context.Context, algorithm string, i
 }
 
 func (p *KeyIndexer) FindKeyByID(ctx context.Context, id trust.KeyIdentifier) (trust.KeyDetails, error) {
-	return p.FindKeyWith(ctx, id, trust.FindKeyOptions{})
+	return p.FindKeyWith(ctx, trust.FindKeyOptions{KeyOptions: trust.KeyOptions{ID: id}})
 }
 
 // FindKeyWith returns a key using the requested options.
 // If opts.KASURI is empty, the indexer's configured KAS URI is used.
-func (p *KeyIndexer) FindKeyWith(ctx context.Context, id trust.KeyIdentifier, opts trust.FindKeyOptions) (trust.KeyDetails, error) {
+func (p *KeyIndexer) FindKeyWith(ctx context.Context, opts trust.FindKeyOptions) (trust.KeyDetails, error) {
 	req := &kasregistry.GetKeyRequest{
 		Identifier: &kasregistry.GetKeyRequest_Key{
 			Key: &kasregistry.KasKeyIdentifier{
 				Identifier: &kasregistry.KasKeyIdentifier_Uri{
 					Uri: p.kasURIOrDefault(opts.KASURI),
 				},
-				Kid: string(id),
+				Kid: string(opts.ID),
 			},
 		},
 	}

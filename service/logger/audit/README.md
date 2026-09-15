@@ -14,7 +14,9 @@ err := params.Logger.Audit.Record(ctx, *event)
 
 `Record` adds request attribution, validates the event, and calls the processor
 synchronously with a deadline detached from request cancellation. Check its
-returned error.
+returned error. Existing buffered helpers call the processor when the request
+finishes, preserving each producer's context values. The configured timeout
+covers the entire flush, not each individual event.
 
 ## Processing and delivery
 
@@ -38,8 +40,8 @@ lookups and delivery.
 
 Processors handle conversion, destination validation, delivery, and recovery.
 Return nil after the destination or a durable recovery path accepts the event.
-`Record` returns processor errors and recovered panics. OpenTDF does not retry
-or emit a fallback.
+`Record` returns processor errors and recovered panics; buffered helpers report
+them through the operational logger. OpenTDF does not retry or emit a fallback.
 
 Processors may run concurrently. They can change their local event value, but
 must independently copy any maps, slices, or referenced data they modify or

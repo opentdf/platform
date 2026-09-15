@@ -226,11 +226,8 @@ func (s *KeyIndexTestSuite) TestListKeysWith() {
 	} {
 		s.Run(test.name, func() {
 			mockClient := new(MockKeyAccessServerRegistryClient)
-			keyIndexer := &KeyIndexer{
-				sdk:    &sdk.SDK{KeyAccessServerRegistry: mockClient},
-				kasURI: defaultKASURI,
-			}
-			keyIndexer.log, _ = newBufferLogger()
+			log, _ := newBufferLogger()
+			keyIndexer := NewPlatformKeyIndexer(&sdk.SDK{KeyAccessServerRegistry: mockClient}, defaultKASURI, log)
 
 			response := &kasregistry.ListKeysResponse{}
 			mockClient.On("ListKeys", mock.Anything, mock.MatchedBy(func(req *kasregistry.ListKeysRequest) bool {
@@ -265,12 +262,8 @@ func (s *KeyIndexTestSuite) TestListKeysWith() {
 
 func (s *KeyIndexTestSuite) TestListKeys() {
 	mockClient := new(MockKeyAccessServerRegistryClient)
-	keyIndexer := &KeyIndexer{
-		sdk: &sdk.SDK{
-			KeyAccessServerRegistry: mockClient,
-		},
-	}
-	keyIndexer.log, _ = newBufferLogger()
+	log, _ := newBufferLogger()
+	keyIndexer := NewPlatformKeyIndexer(&sdk.SDK{KeyAccessServerRegistry: mockClient}, "", log)
 
 	mockClient.On("ListKeys", mock.Anything, mock.MatchedBy(func(req *kasregistry.ListKeysRequest) bool {
 		return !req.GetLegacy()
@@ -301,11 +294,8 @@ func (s *KeyIndexTestSuite) TestFindKeyWith() {
 	} {
 		s.Run(test.name, func() {
 			mockClient := new(MockKeyAccessServerRegistryClient)
-			keyIndexer := &KeyIndexer{
-				sdk:    &sdk.SDK{KeyAccessServerRegistry: mockClient},
-				kasURI: defaultKASURI,
-			}
-			keyIndexer.log, _ = newBufferLogger()
+			log, _ := newBufferLogger()
+			keyIndexer := NewPlatformKeyIndexer(&sdk.SDK{KeyAccessServerRegistry: mockClient}, defaultKASURI, log)
 
 			mockClient.On("GetKey", mock.Anything, mock.MatchedBy(func(req *kasregistry.GetKeyRequest) bool {
 				return req.GetKey().GetUri() == test.expectedURI && req.GetKey().GetKid() == testKeyID
@@ -323,12 +313,8 @@ func (s *KeyIndexTestSuite) TestFindKeyWith() {
 
 func (s *KeyIndexTestSuite) TestFindKeyByAlgorithm() {
 	mockClient := new(MockKeyAccessServerRegistryClient)
-	keyIndexer := &KeyIndexer{
-		sdk: &sdk.SDK{
-			KeyAccessServerRegistry: mockClient,
-		},
-	}
-	keyIndexer.log, _ = newBufferLogger()
+	log, _ := newBufferLogger()
+	keyIndexer := NewPlatformKeyIndexer(&sdk.SDK{KeyAccessServerRegistry: mockClient}, "", log)
 
 	mockClient.On("ListKeys", mock.Anything, mock.MatchedBy(func(req *kasregistry.ListKeysRequest) bool {
 		return req.GetKeyAlgorithm() == policy.Algorithm_ALGORITHM_RSA_2048 && (req.Legacy != nil && req.GetLegacy() == false)

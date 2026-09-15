@@ -10,11 +10,13 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+const testOutputFileMode = 0o644
+
 func TestOutputFileCommitRenamesIntoPlace(t *testing.T) {
 	dir := t.TempDir()
 	dest := filepath.Join(dir, "out.tdf")
 
-	o, err := NewOutputFile(dest)
+	o, err := NewOutputFile(dest, testOutputFileMode)
 	require.NoError(t, err)
 
 	_, err = o.Write([]byte("payload"))
@@ -36,7 +38,7 @@ func TestOutputFileCleanupLeavesNoPartialOutput(t *testing.T) {
 	dir := t.TempDir()
 	dest := filepath.Join(dir, "out.tdf")
 
-	o, err := NewOutputFile(dest)
+	o, err := NewOutputFile(dest, testOutputFileMode)
 	require.NoError(t, err)
 	_, err = o.Write([]byte("partial"))
 	require.NoError(t, err)
@@ -53,7 +55,7 @@ func TestOutputFileCleanupAfterCommitIsNoop(t *testing.T) {
 	dir := t.TempDir()
 	dest := filepath.Join(dir, "out.tdf")
 
-	o, err := NewOutputFile(dest)
+	o, err := NewOutputFile(dest, testOutputFileMode)
 	require.NoError(t, err)
 	_, err = o.Write([]byte("payload"))
 	require.NoError(t, err)
@@ -72,7 +74,7 @@ func TestOutputFileTempIsSiblingOfDestination(t *testing.T) {
 	dir := t.TempDir()
 	dest := filepath.Join(dir, "out.tdf")
 
-	o, err := NewOutputFile(dest)
+	o, err := NewOutputFile(dest, testOutputFileMode)
 	require.NoError(t, err)
 	defer o.Cleanup()
 
@@ -86,7 +88,7 @@ func TestOutputFileCommitSetsReadableMode(t *testing.T) {
 	dir := t.TempDir()
 	dest := filepath.Join(dir, "out.tdf")
 
-	o, err := NewOutputFile(dest)
+	o, err := NewOutputFile(dest, testOutputFileMode)
 	require.NoError(t, err)
 	_, err = o.Write([]byte("payload"))
 	require.NoError(t, err)
@@ -94,15 +96,67 @@ func TestOutputFileCommitSetsReadableMode(t *testing.T) {
 
 	info, err := os.Stat(dest)
 	require.NoError(t, err)
-	assert.Equal(t, os.FileMode(outputFileMode), info.Mode().Perm(),
+	assert.Equal(t, os.FileMode(testOutputFileMode), info.Mode().Perm(),
 		"os.CreateTemp defaults to 0600; Commit must not leak that onto the destination")
+}
+
+func TestOutputFileCommitSetsRequestedMode(t *testing.T) {
+	dir := t.TempDir()
+	dest := filepath.Join(dir, "plaintext.txt")
+
+	o, err := NewOutputFile(dest, 0o600)
+	require.NoError(t, err)
+	_, err = o.Write([]byte("plaintext"))
+	require.NoError(t, err)
+	require.NoError(t, o.Commit())
+
+	info, err := os.Stat(dest)
+	require.NoError(t, err)
+	assert.Equal(t, os.FileMode(0o600), info.Mode().Perm())
+}
+
+func TestOutputFileCommitReplacesExistingFileWithRequestedMode(t *testing.T) {
+	dir := t.TempDir()
+	dest := filepath.Join(dir, "plaintext.txt")
+	require.NoError(t, os.WriteFile(dest, []byte("old"), 0o644))
+
+	o, err := NewOutputFile(dest, 0o600)
+	require.NoError(t, err)
+	_, err = o.Write([]byte("new"))
+	require.NoError(t, err)
+	require.NoError(t, o.Commit())
+
+	got, err := os.ReadFile(dest)
+	require.NoError(t, err)
+	assert.Equal(t, "new", string(got))
+	info, err := os.Stat(dest)
+	require.NoError(t, err)
+	assert.Equal(t, os.FileMode(0o600), info.Mode().Perm())
+	assert.Empty(t, tempSiblings(t, dir, "plaintext.txt"))
+}
+
+func TestOutputFileCleanupPreservesExistingFile(t *testing.T) {
+	dir := t.TempDir()
+	dest := filepath.Join(dir, "plaintext.txt")
+	require.NoError(t, os.WriteFile(dest, []byte("original"), 0o600))
+
+	o, err := NewOutputFile(dest, 0o600)
+	require.NoError(t, err)
+	_, err = o.Write([]byte("partial"))
+	require.NoError(t, err)
+	o.Cleanup()
+
+	got, err := os.ReadFile(dest)
+	require.NoError(t, err)
+	assert.Equal(t, "original", string(got))
+	assert.Empty(t, tempSiblings(t, dir, "plaintext.txt"))
 }
 
 func TestOutputFileCommitAfterCommitReturnsError(t *testing.T) {
 	dir := t.TempDir()
 	dest := filepath.Join(dir, "out.tdf")
 
-	o, err := NewOutputFile(dest)
+	o, err := NewOutputFile(dest, testOutputFileMode)
 	require.NoError(t, err)
 	_, err = o.Write([]byte("payload"))
 	require.NoError(t, err)
@@ -119,7 +173,7 @@ func TestOutputFileCommitAfterCleanupReturnsError(t *testing.T) {
 	dir := t.TempDir()
 	dest := filepath.Join(dir, "out.tdf")
 
-	o, err := NewOutputFile(dest)
+	o, err := NewOutputFile(dest, testOutputFileMode)
 	require.NoError(t, err)
 	_, err = o.Write([]byte("payload"))
 	require.NoError(t, err)

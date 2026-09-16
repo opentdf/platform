@@ -15,7 +15,7 @@ type objectLimitCounterStub struct {
 	attributeDefinitions int64
 	subjectConditionSets int64
 	actionsCurrent       int64
-	actionsMissing       int64
+	actionAdditions      int64
 }
 
 func (s objectLimitCounterStub) GetCountAttributeDefinitions(context.Context, string) (int64, error) {
@@ -30,8 +30,8 @@ func (s objectLimitCounterStub) GetCountSubjectConditionSets(context.Context, st
 	return s.subjectConditionSets, nil
 }
 
-func (s objectLimitCounterStub) GetCountActionsWithMissingNames(context.Context, string, string, []string) (int64, int64, error) {
-	return s.actionsCurrent, s.actionsMissing, nil
+func (s objectLimitCounterStub) GetCountActionsWithNewAdditions(context.Context, string, string, []string) (int64, int64, error) {
+	return s.actionsCurrent, s.actionAdditions, nil
 }
 
 func (objectLimitCounterStub) GetAttributeDefinitionNamespaceID(context.Context, string) (string, error) {
@@ -73,7 +73,7 @@ func Test_EnforceCreateAttributeValueLimits_NestedActionsExceedLimit_Fails(t *te
 	t.Parallel()
 
 	service := &AttributesService{config: &policyconfig.Config{MaxObjectCounts: policyconfig.MaxObjectCounts{ActionsPerNamespace: 5}}}
-	err := service.enforceCreateAttributeValueLimits(t.Context(), objectLimitCounterStub{actionsCurrent: 4, actionsMissing: 2}, &attributes.CreateAttributeValueRequest{
+	err := service.enforceCreateAttributeValueLimits(t.Context(), objectLimitCounterStub{actionsCurrent: 4, actionAdditions: 2}, &attributes.CreateAttributeValueRequest{
 		AttributeId: "attribute-id",
 		SubjectMappings: []*attributes.AttributeValueSubjectMappingRequest{{
 			Actions: []*policy.Action{{Name: "one"}, {Name: "two"}},

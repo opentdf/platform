@@ -12,7 +12,7 @@ type objectLimitCounter interface {
 	GetCountObligationDefinitions(context.Context, string, string) (int64, error)
 	GetCountObligationValues(context.Context, string, string) (int64, error)
 	GetCountObligationTriggersForAttributeValue(context.Context, *common.IdFqnIdentifier, string) (int64, error)
-	GetCountActionsWithMissingNames(context.Context, string, string, []string) (int64, int64, error)
+	GetCountActionsWithNewAdditions(context.Context, string, string, []string) (int64, int64, error)
 	GetAttributeValueNamespaceID(context.Context, *common.IdFqnIdentifier) (string, error)
 }
 
@@ -130,11 +130,11 @@ func (s *Service) enforceObligationTriggerLimits(ctx context.Context, client obj
 		actionNamesByNamespace[namespaceID] = append(actionNamesByNamespace[namespaceID], added.action.GetName())
 	}
 	for namespaceID, actionNames := range actionNamesByNamespace {
-		current, missing, err := client.GetCountActionsWithMissingNames(ctx, namespaceID, "", actionNames)
+		current, additions, err := client.GetCountActionsWithNewAdditions(ctx, namespaceID, "", actionNames)
 		if err != nil {
 			return err
 		}
-		if err := policyconfig.EnforceObjectLimit(policyconfig.ObjectTypeActionsPerNamespace, limits.ActionsPerNamespace, current, int(missing)); err != nil {
+		if err := policyconfig.EnforceObjectLimit(policyconfig.ObjectTypeActionsPerNamespace, limits.ActionsPerNamespace, current, int(additions)); err != nil {
 			return err
 		}
 	}

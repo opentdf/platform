@@ -3,6 +3,7 @@
 package tdf
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 
@@ -69,6 +70,73 @@ type Manifest struct {
 	Payload               `json:"payload"`
 	Assertions            []Assertion `json:"assertions,omitempty"`
 	TDFVersion            string      `json:"schemaVersion,omitempty"`
+}
+
+// manifestJSON mirrors Manifest but has no UnmarshalJSON method of its own, so
+// the default decoder can be reused from Manifest.UnmarshalJSON without
+// recursing back into it.
+type manifestJSON Manifest
+
+// offSpecSpecVersion locates tdf_spec_version, an off-spec name for the spec
+// version field.
+//
+// schemaVersion is and has always been the correct name. tdf_spec_version is
+// not a former spelling that was later renamed -- it is an error that leaked
+// into some specification drafts and some older OpenTDF documentation, and into
+// the writers built from them. We read it so those files remain usable; we
+// never write it, and it is not on a deprecation path because it was never
+// correct to begin with.
+//
+// Writers that made the mistake disagree on placement: some put it at the
+// manifest root, while the schemas bundled with this SDK
+// (sdk/schema/manifest*.schema.json) reproduce it under payload. Both locations
+// are probed.
+//
+// The values are typed as any rather than string because the lax schema permits
+// tdf_spec_version to be null, and an off-spec type must not fail the whole
+// decode -- reporting malformed manifests is schema validation's job, not the
+// decoder's.
+type offSpecSpecVersion struct {
+	TDFSpecVersion any `json:"tdf_spec_version"`
+	Payload        struct {
+		TDFSpecVersion any `json:"tdf_spec_version"`
+	} `json:"payload"`
+}
+
+// UnmarshalJSON decodes a TDF manifest, reading an off-spec tdf_spec_version as
+// the spec version when the correct schemaVersion is absent, so that files
+// written against the erroneous name stay readable.
+//
+// schemaVersion always wins when both names are present; between the two
+// off-spec locations, the manifest root wins over payload. Nothing is written
+// back under the off-spec name -- re-marshalling a manifest always emits
+// schemaVersion only.
+//
+// This mirrors sdk.Manifest.UnmarshalJSON; the two manifest definitions are
+// deliberate duplicates and must not drift.
+func (m *Manifest) UnmarshalJSON(data []byte) error {
+	var base manifestJSON
+	if err := json.Unmarshal(data, &base); err != nil {
+		return err
+	}
+	*m = Manifest(base)
+
+	if m.TDFVersion != "" {
+		return nil
+	}
+
+	var offSpec offSpecSpecVersion
+	if err := json.Unmarshal(data, &offSpec); err != nil {
+		return err
+	}
+	if v, ok := offSpec.TDFSpecVersion.(string); ok && v != "" {
+		m.TDFVersion = v
+		return nil
+	}
+	if v, ok := offSpec.Payload.TDFSpecVersion.(string); ok && v != "" {
+		m.TDFVersion = v
+	}
+	return nil
 }
 
 type PolicyAttribute struct {

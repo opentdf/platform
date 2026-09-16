@@ -101,11 +101,12 @@ WHERE obligation_definition_id = (SELECT id FROM target_obligation);
 
 -- name: countObligationTriggersForAttributeValue :one
 WITH target_attribute_value AS (
-    SELECT COALESCE(
+    SELECT id
+    FROM attribute_values
+    WHERE id = COALESCE(
         sqlc.narg('attribute_value_id')::uuid,
-        (SELECT value_id FROM attribute_fqns WHERE fqn = sqlc.narg('attribute_value_fqn')::text),
-        '00000000-0000-0000-0000-000000000000'::uuid
-    ) AS id
+        (SELECT value_id FROM attribute_fqns WHERE fqn = sqlc.narg('attribute_value_fqn')::text)
+    )
 )
 SELECT
     target_attribute_value.id::text AS attribute_value_id,

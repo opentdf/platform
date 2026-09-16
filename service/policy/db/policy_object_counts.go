@@ -65,7 +65,7 @@ func (c PolicyDBClient) GetCountObligationTriggersForAttributeValue(ctx context.
 		AttributeValueFqn:         pgtypeText(value.GetFqn()),
 		ExcludedObligationValueID: pgtypeUUID(excludedObligationValueID),
 	})
-	return result.AttributeValueID, result.ObjectCount, err
+	return result.AttributeValueID, result.ObjectCount, db.WrapIfKnownInvalidQueryErr(err)
 }
 
 func (c PolicyDBClient) GetCountActions(ctx context.Context, namespaceID, namespaceFQN string) (int64, error) {

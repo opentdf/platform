@@ -424,6 +424,7 @@ OPENTDF_SERVICES_KAS_KEYRING='[{"kid":"k1","alg":"rsa:2048"},{"kid":"k2","alg":"
 | Field                    | Description                                                                     | Default  |
 | ------------------------ | ------------------------------------------------------------------------------- | -------- |
 | `key_management`         | Whether stable, policy-backed key management is enabled.                        | `false`  |
+| `kas_uri_from_kao`       | Use the key access object's KAS URI for rewrap key lookups instead of the indexer's default registration. | `false` |
 | `keyring.*.kid`          | Which static key id this is binding.                                            |          |
 | `keyring.*.alg`          | (Optional) Associated algorithm. (Allows reusing KID with different algorithms) |          |
 | `keyring.*.legacy`       | Indicates this may be used for TDFs with no key ID; default if all unspecified. | inferred |
@@ -432,6 +433,12 @@ OPENTDF_SERVICES_KAS_KEYRING='[{"kid":"k1","alg":"rsa:2048"},{"kid":"k2","alg":"
 | `root_key`               | Key needed when key management uses the built-in basic key manager.             |          |
 
 The deprecated `preview.key_management` setting remains supported and logs a warning whenever it is configured. A value of `true` enables key management even if the top-level `key_management` field is `false`; a value of `false` does not override the top-level setting.
+
+By default, rewrap looks up keys using the key indexer's default registration, normally selected by `registered_kas_uri` (or the service's KAS URL when unset). This also supports deployments where old KAS URLs are proxied to a replacement KAS whose keys are registered under its new URI.
+
+Set `kas_uri_from_kao: true` to look up keys using the KAS URI in the key access object (KAO), allowing a KAS to serve keys split across multiple registrations. If that URI is absent or empty, it uses the indexer's default registration. A failed lookup does not retry another registration.
+
+The public-key endpoint is unaffected, and in-process key indexes ignore the URI.
 
 Example:
 

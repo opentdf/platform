@@ -962,7 +962,7 @@ func (r *Reader) WriteTo(writer io.Writer) (int64, error) {
 		}
 	}
 
-	isLegacyTDF := manifestUsesHexDigests(r.manifest.TDFVersion)
+	isLegacyTDF := r.manifest.TDFVersion == ""
 
 	var totalBytes int64
 	var payloadReadOffset int64
@@ -1067,7 +1067,7 @@ func (r *Reader) ReadAt(buf []byte, offset int64) (int, error) { //nolint:funlen
 	// sizes would otherwise be mapped onto the wrong segments here.
 	readEnd := offset + int64(len(buf))
 
-	isLegacyTDF := manifestUsesHexDigests(r.manifest.TDFVersion)
+	isLegacyTDF := r.manifest.TDFVersion == ""
 	var decryptedBuf bytes.Buffer
 	var payloadReadOffset int64 // ciphertext offset of seg within the payload
 	var segStart int64          // plaintext offset of seg
@@ -1475,7 +1475,8 @@ func (r *Reader) buildKey(_ context.Context, results []kaoResult) error {
 			return fmt.Errorf("error decoding hex string: %w", err)
 		}
 
-		if manifestUsesHexDigests(r.manifest.TDFVersion) {
+		isLegacyTDF := r.manifest.TDFVersion == ""
+		if isLegacyTDF {
 			hashOfAssertion = hashOfAssertionAsHex
 		}
 
@@ -1625,35 +1626,11 @@ func rootIntegrity(aggregateHash, key []byte, alg RootIntegrityAlg, isLegacyTDF 
 	return hmacIntegrity(aggregateHash, key, isLegacyTDF), nil
 }
 
-// manifestUsesHexDigests reports whether a manifest's integrity digests are
-// hex-encoded before being base64'd, the pre-4.3.0 wire format.
-//
-// The spec version is the only signal a file carries for this, so the reader
-// has to consult it. The test used to be "no version at all", which reads the
-// field too narrowly: our own writer omits the version and hex-encodes together
-// (WithTargetMode sets excludeVersionFromManifest and useHex from one boolean),
-// but a writer that records a version below 4.3.0 is stating the same thing
-// outright. Such a manifest -- 4.2.0, say -- was verified as though it used raw
-// digests and rejected.
-//
-// A version that is present but unparseable is read as modern, which is how any
-// non-empty value was read before.
-func manifestUsesHexDigests(version string) bool {
-	if version == "" {
-		return true
-	}
-	usesHex, err := isLessThanSemver(version, hexSemverThreshold)
-	if err != nil {
-		return false
-	}
-	return usesHex
-}
-
 // validate the root signature
 func validateRootSignature(manifest Manifest, aggregateHash, secret []byte) (bool, error) {
 	rootSigAlg := manifest.Algorithm
 	rootSigValue := manifest.Signature
-	isLegacyTDF := manifestUsesHexDigests(manifest.TDFVersion)
+	isLegacyTDF := manifest.TDFVersion == ""
 
 	// Allowlist, not "anything that is not GMAC means HS256". The algorithm
 	// name arrives from the unauthenticated manifest, so an unrecognised value

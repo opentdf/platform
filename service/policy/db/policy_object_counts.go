@@ -72,6 +72,8 @@ func (c PolicyDBClient) GetCountActions(ctx context.Context, namespaceID, namesp
 	return count, db.WrapIfKnownInvalidQueryErr(err)
 }
 
+// GetCountActionsWithNewAdditions returns the current action count and the number of
+// distinct supplied names that would create actions in the target namespace.
 func (c PolicyDBClient) GetCountActionsWithNewAdditions(ctx context.Context, namespaceID, namespaceFQN string, actionNames []string) (int64, int64, error) {
 	counts, err := c.queries.countActionsWithMissingNames(ctx, countActionsWithMissingNamesParams{
 		NamespaceID:  pgtypeUUID(namespaceID),

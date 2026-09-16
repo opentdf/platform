@@ -72,7 +72,7 @@ func (c PolicyDBClient) GetCountActions(ctx context.Context, namespaceID, namesp
 	return count, db.WrapIfKnownInvalidQueryErr(err)
 }
 
-func (c PolicyDBClient) GetCountActionsWithMissingNames(ctx context.Context, namespaceID, namespaceFQN string, actionNames []string) (int64, int64, error) {
+func (c PolicyDBClient) GetCountActionsWithNewAdditions(ctx context.Context, namespaceID, namespaceFQN string, actionNames []string) (int64, int64, error) {
 	counts, err := c.queries.countActionsWithMissingNames(ctx, countActionsWithMissingNamesParams{
 		NamespaceID:  pgtypeUUID(namespaceID),
 		NamespaceFqn: pgtypeText(namespaceFQN),

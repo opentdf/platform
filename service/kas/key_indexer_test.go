@@ -12,8 +12,40 @@ import (
 	"github.com/opentdf/platform/sdk"
 	"github.com/opentdf/platform/service/trust"
 	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
+
+func TestKeyAdapterCacheKey(t *testing.T) {
+	seen := make(map[string]bool)
+	for _, tc := range []struct {
+		registryID string
+		keyID      string
+	}{
+		{registryID: "registry-a", keyID: "shared-key"},
+		{registryID: "registry-b", keyID: "shared-key"},
+		{registryID: "registry-a", keyID: "other-key"},
+		{registryID: "registry:a", keyID: "b"},
+		{registryID: "registry", keyID: "a:b"},
+		{registryID: `registry:"a`, keyID: `b\\c`},
+		{registryID: `registry`, keyID: `"a:b\\c`},
+	} {
+		key := &KeyAdapter{key: &policy.KasKey{
+			KasId:  tc.registryID,
+			KasUri: defaultKASURI,
+			Key:    &policy.AsymmetricKey{KeyId: tc.keyID},
+		}}
+		require.Equal(t, trust.KeyIdentifier(tc.keyID), key.ID())
+		cacheKey := key.CacheKey()
+		require.NotEmpty(t, cacheKey)
+		require.False(t, seen[cacheKey], "cache key collision for registry %q, key %q", tc.registryID, tc.keyID)
+		seen[cacheKey] = true
+
+		// Updating the URI of the same registry preserves the cache key.
+		key.key.KasUri = requestKASURI
+		require.Equal(t, cacheKey, key.CacheKey())
+	}
+}
 
 const (
 	testKeyID     = "test-key-id"

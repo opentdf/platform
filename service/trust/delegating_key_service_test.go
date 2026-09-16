@@ -121,6 +121,10 @@ type MockKeyDetails struct {
 	mock.Mock
 }
 
+func (m *MockKeyDetails) CacheKey() string {
+	return m.Called().String(0)
+}
+
 func (m *MockKeyDetails) ID() KeyIdentifier {
 	args := m.Called()
 	if a0, ok := args.Get(0).(KeyIdentifier); ok {

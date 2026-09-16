@@ -184,6 +184,10 @@ func (p *KeyAdapter) ID() trust.KeyIdentifier {
 	return trust.KeyIdentifier(p.key.GetKey().GetKeyId())
 }
 
+func (p *KeyAdapter) CacheKey() string {
+	return fmt.Sprintf("kas:%q:%q", p.key.GetKasId(), p.ID())
+}
+
 // Might need to convert this to a standard format
 func (p *KeyAdapter) Algorithm() ocrypto.KeyType {
 	kt, err := sdk.PolicyAlgorithmToKeyType(p.key.GetKey().GetKeyAlgorithm())

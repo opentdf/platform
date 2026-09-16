@@ -37,7 +37,7 @@ const (
 	KeyTypePKCS8
 )
 
-// KeyIdentifier uniquely identifies a key
+// KeyIdentifier identifies a key within its source's scope, not necessarily globally.
 type KeyIdentifier string
 
 type PrivateKey struct {
@@ -49,8 +49,16 @@ type PrivateKey struct {
 
 // KeyDetails provides information about a specific key
 type KeyDetails interface {
-	// ID returns the unique identifier for the key
+	// ID returns the key's identifier within its source's scope.
+	// For a KasKey, uniqueness requires both this ID and its KAS registry.
+	// Prefer using the CacheKey() method which should always return a unique
+	// string for backing keys
 	ID() KeyIdentifier
+
+	// CacheKey returns an opaque, stable identifier that distinguishes this key
+	// from keys in other registries or providers sharing a cache.
+	// Use ID for key lookups amonst key providers and CacheKey for caching key material.
+	CacheKey() string
 
 	// Algorithm returns the algorithm used by the key
 	Algorithm() ocrypto.KeyType

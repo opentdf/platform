@@ -11,7 +11,7 @@ import (
 type objectLimitCounter interface {
 	GetCountObligationDefinitions(context.Context, string, string) (int64, error)
 	GetCountObligationValues(context.Context, string, string) (int64, error)
-	GetCountObligationTriggersForAttributeValue(context.Context, *common.IdFqnIdentifier, string) (int64, error)
+	GetCountObligationTriggersForAttributeValue(context.Context, *common.IdFqnIdentifier, string) (string, int64, error)
 	GetCountActionsWithNewAdditions(context.Context, string, string, []string) (int64, int64, error)
 	GetAttributeValueNamespaceID(context.Context, *common.IdFqnIdentifier) (string, error)
 }
@@ -94,12 +94,23 @@ func (s *Service) enforceObligationTriggerLimits(ctx context.Context, client obj
 		triggersByValue[key] = item
 	}
 	if limits.ObligationTriggersPerAttributeValue > 0 {
+		type triggerCount struct {
+			current   int64
+			additions int
+		}
+		countsByAttributeValue := make(map[string]triggerCount, len(triggersByValue))
 		for _, item := range triggersByValue {
-			count, err := client.GetCountObligationTriggersForAttributeValue(ctx, item.value, excludedObligationValueID)
+			attributeValueID, count, err := client.GetCountObligationTriggersForAttributeValue(ctx, item.value, excludedObligationValueID)
 			if err != nil {
 				return err
 			}
-			if err := policyconfig.EnforceObjectLimit(policyconfig.ObjectTypeObligationTriggersPerAttributeValue, limits.ObligationTriggersPerAttributeValue, count, item.count); err != nil {
+			combined := countsByAttributeValue[attributeValueID]
+			combined.current = count
+			combined.additions += item.count
+			countsByAttributeValue[attributeValueID] = combined
+		}
+		for _, count := range countsByAttributeValue {
+			if err := policyconfig.EnforceObjectLimit(policyconfig.ObjectTypeObligationTriggersPerAttributeValue, limits.ObligationTriggersPerAttributeValue, count.current, count.additions); err != nil {
 				return err
 			}
 		}

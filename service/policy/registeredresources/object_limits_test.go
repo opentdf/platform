@@ -4,7 +4,9 @@ import (
 	"context"
 	"testing"
 
+	"connectrpc.com/connect"
 	"github.com/opentdf/platform/protocol/go/policy/registeredresources"
+	"github.com/opentdf/platform/service/logger"
 	policyconfig "github.com/opentdf/platform/service/policy/config"
 	"github.com/stretchr/testify/require"
 )
@@ -44,6 +46,23 @@ func Test_EnforceActionAdditionLimit_ExistingActionsAtLimit_Succeeds(t *testing.
 		[]string{"existing"},
 	)
 	require.NoError(t, err)
+}
+
+func Test_EnforceActionAdditionLimit_AtRPCBoundary_ReturnsResourceExhausted(t *testing.T) {
+	t.Parallel()
+
+	err := enforceActionAdditionLimit(
+		t.Context(),
+		actionAdditionCounterStub{current: 4, additions: 2},
+		5,
+		"namespace-id",
+		"",
+		[]string{"one", "two"},
+	)
+	err = policyconfig.ObjectLimitConnectError(t.Context(), logger.CreateTestLogger(), "create", err)
+
+	require.Equal(t, connect.CodeResourceExhausted, connect.CodeOf(err))
+	require.ErrorIs(t, err, policyconfig.ErrObjectLimitExceeded)
 }
 
 func Test_RegisteredResourceActionNames_ActionIDsIgnored_Succeeds(t *testing.T) {

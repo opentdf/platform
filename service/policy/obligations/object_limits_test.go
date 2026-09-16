@@ -25,8 +25,8 @@ func (objectLimitCounterStub) GetCountObligationValues(context.Context, string, 
 	return 0, nil
 }
 
-func (s objectLimitCounterStub) GetCountObligationTriggersForAttributeValue(context.Context, *common.IdFqnIdentifier, string) (int64, error) {
-	return s.obligationTriggers, nil
+func (s objectLimitCounterStub) GetCountObligationTriggersForAttributeValue(context.Context, *common.IdFqnIdentifier, string) (string, int64, error) {
+	return "attribute-value-id", s.obligationTriggers, nil
 }
 
 func (s objectLimitCounterStub) GetCountActionsWithNewAdditions(context.Context, string, string, []string) (int64, int64, error) {
@@ -67,6 +67,19 @@ func Test_EnforceCreateObligationValueLimits_TriggersPerAttributeValueExceedLimi
 		Triggers: []*obligations.ValueTriggerRequest{
 			{AttributeValue: attributeValue},
 			{AttributeValue: attributeValue},
+		},
+	})
+	require.ErrorIs(t, err, policyconfig.ErrObjectLimitExceeded)
+}
+
+func Test_EnforceCreateObligationValueLimits_MixedIdentifiersForAttributeValueExceedLimit_Fails(t *testing.T) {
+	t.Parallel()
+
+	service := &Service{config: &policyconfig.Config{MaxObjectCounts: policyconfig.MaxObjectCounts{ObligationTriggersPerAttributeValue: 5}}}
+	err := service.enforceCreateObligationValueLimits(t.Context(), objectLimitCounterStub{obligationTriggers: 4}, &obligations.CreateObligationValueRequest{
+		Triggers: []*obligations.ValueTriggerRequest{
+			{AttributeValue: &common.IdFqnIdentifier{Id: "attribute-value-id"}},
+			{AttributeValue: &common.IdFqnIdentifier{Fqn: "https://example.com/attr/definition/value/value"}},
 		},
 	})
 	require.ErrorIs(t, err, policyconfig.ErrObjectLimitExceeded)

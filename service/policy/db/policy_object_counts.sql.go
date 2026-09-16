@@ -250,19 +250,28 @@ WITH target_attribute_value AS (
         '00000000-0000-0000-0000-000000000000'::uuid
     ) AS id
 )
-SELECT COUNT(*)
-FROM obligation_triggers
-WHERE attribute_value_id = (SELECT id FROM target_attribute_value)
-  AND (
-      $1::uuid IS NULL
-      OR obligation_value_id != $1::uuid
-  )
+SELECT
+    target_attribute_value.id::text AS attribute_value_id,
+    COUNT(obligation_triggers.id) AS object_count
+FROM target_attribute_value
+LEFT JOIN obligation_triggers
+    ON obligation_triggers.attribute_value_id = target_attribute_value.id
+    AND (
+        $1::uuid IS NULL
+        OR obligation_triggers.obligation_value_id != $1::uuid
+    )
+GROUP BY target_attribute_value.id
 `
 
 type countObligationTriggersForAttributeValueParams struct {
 	ExcludedObligationValueID pgtype.UUID `json:"excluded_obligation_value_id"`
 	AttributeValueID          pgtype.UUID `json:"attribute_value_id"`
 	AttributeValueFqn         pgtype.Text `json:"attribute_value_fqn"`
+}
+
+type countObligationTriggersForAttributeValueRow struct {
+	AttributeValueID string `json:"attribute_value_id"`
+	ObjectCount      int64  `json:"object_count"`
 }
 
 // countObligationTriggersForAttributeValue
@@ -274,18 +283,22 @@ type countObligationTriggersForAttributeValueParams struct {
 //	        '00000000-0000-0000-0000-000000000000'::uuid
 //	    ) AS id
 //	)
-//	SELECT COUNT(*)
-//	FROM obligation_triggers
-//	WHERE attribute_value_id = (SELECT id FROM target_attribute_value)
-//	  AND (
-//	      $1::uuid IS NULL
-//	      OR obligation_value_id != $1::uuid
-//	  )
-func (q *Queries) countObligationTriggersForAttributeValue(ctx context.Context, arg countObligationTriggersForAttributeValueParams) (int64, error) {
+//	SELECT
+//	    target_attribute_value.id::text AS attribute_value_id,
+//	    COUNT(obligation_triggers.id) AS object_count
+//	FROM target_attribute_value
+//	LEFT JOIN obligation_triggers
+//	    ON obligation_triggers.attribute_value_id = target_attribute_value.id
+//	    AND (
+//	        $1::uuid IS NULL
+//	        OR obligation_triggers.obligation_value_id != $1::uuid
+//	    )
+//	GROUP BY target_attribute_value.id
+func (q *Queries) countObligationTriggersForAttributeValue(ctx context.Context, arg countObligationTriggersForAttributeValueParams) (countObligationTriggersForAttributeValueRow, error) {
 	row := q.db.QueryRow(ctx, countObligationTriggersForAttributeValue, arg.ExcludedObligationValueID, arg.AttributeValueID, arg.AttributeValueFqn)
-	var count int64
-	err := row.Scan(&count)
-	return count, err
+	var i countObligationTriggersForAttributeValueRow
+	err := row.Scan(&i.AttributeValueID, &i.ObjectCount)
+	return i, err
 }
 
 const countObligationValues = `-- name: countObligationValues :one

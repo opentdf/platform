@@ -278,36 +278,40 @@ func (s *PolicyObjectCountsSuite) Test_GetCountActionsWithNewAdditions_Normalize
 }
 
 func (s *PolicyObjectCountsSuite) Test_GetCountObligationTriggersForAttributeValue_ByIdentifierAndExclusion_Succeeds() {
-	count, err := s.db.PolicyClient.GetCountObligationTriggersForAttributeValue(
+	resolvedAttributeValueID, count, err := s.db.PolicyClient.GetCountObligationTriggersForAttributeValue(
 		s.ctx,
 		&common.IdFqnIdentifier{Id: s.attributeValue.GetId()},
 		"",
 	)
 	s.Require().NoError(err)
+	s.Equal(s.attributeValue.GetId(), resolvedAttributeValueID)
 	s.Equal(int64(3), count)
 
-	count, err = s.db.PolicyClient.GetCountObligationTriggersForAttributeValue(
+	resolvedAttributeValueID, count, err = s.db.PolicyClient.GetCountObligationTriggersForAttributeValue(
 		s.ctx,
 		&common.IdFqnIdentifier{Fqn: s.attributeValue.GetFqn()},
 		"",
 	)
 	s.Require().NoError(err)
+	s.Equal(s.attributeValue.GetId(), resolvedAttributeValueID)
 	s.Equal(int64(3), count)
 
-	count, err = s.db.PolicyClient.GetCountObligationTriggersForAttributeValue(
+	resolvedAttributeValueID, count, err = s.db.PolicyClient.GetCountObligationTriggersForAttributeValue(
 		s.ctx,
 		&common.IdFqnIdentifier{Id: s.attributeValue.GetId()},
 		s.excludedObligationValueID,
 	)
 	s.Require().NoError(err)
+	s.Equal(s.attributeValue.GetId(), resolvedAttributeValueID)
 	s.Equal(int64(2), count)
 
-	count, err = s.db.PolicyClient.GetCountObligationTriggersForAttributeValue(
+	resolvedAttributeValueID, count, err = s.db.PolicyClient.GetCountObligationTriggersForAttributeValue(
 		s.ctx,
 		&common.IdFqnIdentifier{Id: s.emptyAttributeValue.GetId()},
 		"",
 	)
 	s.Require().NoError(err)
+	s.Equal(s.emptyAttributeValue.GetId(), resolvedAttributeValueID)
 	s.Zero(count)
 }
 

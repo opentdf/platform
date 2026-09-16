@@ -107,13 +107,17 @@ WITH target_attribute_value AS (
         '00000000-0000-0000-0000-000000000000'::uuid
     ) AS id
 )
-SELECT COUNT(*)
-FROM obligation_triggers
-WHERE attribute_value_id = (SELECT id FROM target_attribute_value)
-  AND (
-      sqlc.narg('excluded_obligation_value_id')::uuid IS NULL
-      OR obligation_value_id != sqlc.narg('excluded_obligation_value_id')::uuid
-  );
+SELECT
+    target_attribute_value.id::text AS attribute_value_id,
+    COUNT(obligation_triggers.id) AS object_count
+FROM target_attribute_value
+LEFT JOIN obligation_triggers
+    ON obligation_triggers.attribute_value_id = target_attribute_value.id
+    AND (
+        sqlc.narg('excluded_obligation_value_id')::uuid IS NULL
+        OR obligation_triggers.obligation_value_id != sqlc.narg('excluded_obligation_value_id')::uuid
+    )
+GROUP BY target_attribute_value.id;
 
 -- name: countActions :one
 WITH target_namespace AS (

@@ -42,9 +42,6 @@ func NewLegacyLoader(key, file string) (*LegacyLoader, error) {
 	// present in the config file. Must match the struct tag default.
 	v.SetDefault("logger.trace_correlation", true)
 
-	// Register the KAS override so environment-only configuration is recognized.
-	v.SetDefault("services.kas.kas_uri_from_kao", false)
-
 	// Environment variable settings
 	v.SetEnvPrefix(key)
 	v.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))

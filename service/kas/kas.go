@@ -4,10 +4,8 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
-	"maps"
 	"net"
 	"net/url"
-	"strconv"
 	"strings"
 
 	"github.com/go-viper/mapstructure/v2"
@@ -22,8 +20,6 @@ import (
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
 	"github.com/opentdf/platform/service/trust"
 )
-
-const kasURIFromKAODisabledLogMessage = "KAS URI from KAO disabled; rewrap uses the indexer's configured registration"
 
 func OnConfigUpdate(p *access.Provider) serviceregistry.OnConfigUpdateHook {
 	return func(ctx context.Context, cfg config.ServiceConfig) error {
@@ -134,15 +130,6 @@ func NewRegistration() *serviceregistry.Service[kasconnect.AccessServiceHandler]
 
 func decodeKASConfig(cfg config.ServiceConfig, log *logger.Logger) (access.KASConfig, error) {
 	var kasCfg access.KASConfig
-	// Service configuration values supplied by the environment arrive as strings.
-	if value, ok := cfg[access.KASURIFromKAOKey].(string); ok {
-		enabled, err := strconv.ParseBool(value)
-		if err != nil {
-			return kasCfg, fmt.Errorf("%w: invalid %s: %w", access.ErrConfig, access.KASURIFromKAOKey, err)
-		}
-		cfg = maps.Clone(cfg)
-		cfg[access.KASURIFromKAOKey] = enabled
-	}
 	if err := mapstructure.Decode(cfg, &kasCfg); err != nil {
 		return kasCfg, err
 	}
@@ -158,11 +145,6 @@ func decodeKASConfig(cfg config.ServiceConfig, log *logger.Logger) (access.KASCo
 			slog.String("deprecated_config", "services.kas.preview.key_management"),
 			slog.String("replacement_config", "services.kas.key_management"),
 		)
-	}
-
-	if kasCfg.KeyManagement && !kasCfg.KASURIFromKAO {
-		log.Info(kasURIFromKAODisabledLogMessage,
-			slog.Bool(access.KASURIFromKAOKey, false))
 	}
 
 	return kasCfg, nil

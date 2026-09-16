@@ -438,9 +438,7 @@ By default, rewrap looks up keys using the key indexer's default registration, n
 
 Set `kas_uri_from_kao: true` to look up keys using the KAS URI in the key access object (KAO), allowing a KAS to serve keys split across multiple registrations. If that URI is absent or empty, it uses the indexer's default registration. A failed lookup does not retry another registration.
 
-When this setting is `false`, KAS emits an informational startup log only when key management is enabled. The public-key endpoint is unaffected, and in-process key indexes ignore the URI.
-
-The environment variable is `OPENTDF_SERVICES_KAS_KAS_URI_FROM_KAO`.
+The public-key endpoint is unaffected, and in-process key indexes ignore the URI.
 
 Example:
 

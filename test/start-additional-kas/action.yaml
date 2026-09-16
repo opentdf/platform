@@ -23,6 +23,10 @@ inputs:
   key-management:
     default: "false"
     description: 'Whether or not key_management is enabled for this KAS'
+  kas-uri-from-kao:
+    default: "false"
+    description: 'Whether to select registry keys using the KAO URI (sets services.kas.kas_uri_from_kao)'
+    required: false
   root-key:
     default: ''
     description: 'The root key to be used with key_management'
@@ -59,6 +63,7 @@ runs:
         EC_TDF_ENABLED: ${{ inputs.ec-tdf-enabled }}
         PQC_ENABLED: ${{ inputs.pqc-enabled }}
         KEY_MANAGEMENT: ${{ inputs.key-management }}
+        KAS_URI_FROM_KAO: ${{ inputs.kas-uri-from-kao }}
         ROOT_KEY: ${{ inputs.root-key }}
         LOG_LEVEL: ${{ inputs.log-level }}
         LOG_TYPE: ${{ inputs.log-type }}
@@ -103,6 +108,16 @@ runs:
             ;;
           *)
             echo "Error: key-management must be 'true' or 'false'."
+            exit 1
+            ;;
+        esac
+
+        # Validate kas-uri-from-kao (must be true or false)
+        case "${KAS_URI_FROM_KAO}" in
+          true|false)
+            ;;
+          *)
+            echo "Error: kas-uri-from-kao must be 'true' or 'false'."
             exit 1
             ;;
         esac
@@ -170,6 +185,7 @@ runs:
         EC_TDF_ENABLED: ${{ inputs.ec-tdf-enabled }}
         PQC_ENABLED: ${{ inputs.pqc-enabled }}
         KEY_MANAGEMENT: ${{ inputs.key-management }}
+        KAS_URI_FROM_KAO: ${{ inputs.kas-uri-from-kao }}
         ROOT_KEY: ${{ inputs.root-key }}
         LOG_LEVEL: ${{ inputs.log-level }}
         LOG_TYPE: ${{ inputs.log-type }}
@@ -193,6 +209,7 @@ runs:
               )
             | (.services.kas.key_management = (env(KEY_MANAGEMENT) == "true"))
             | (.services.kas.preview.key_management = (env(KEY_MANAGEMENT) == "true"))
+            | (.services.kas.kas_uri_from_kao = (env(KAS_URI_FROM_KAO) == "true"))
             | (.services.kas.registered_kas_uri = "http://localhost:" + env(KAS_PORT))
             | del(.services.kas.root_key)
             | (.logger.level = env(LOG_LEVEL))

@@ -5,6 +5,7 @@ package tdf
 import (
 	"bytes"
 	"crypto/rand"
+	"encoding/hex"
 	"encoding/json"
 	"os"
 	"path/filepath"
@@ -270,21 +271,20 @@ func testBasicTDFCreationFlow(t *testing.T) {
 	assert.NotNil(t, writer, "Writer should not be nil")
 
 	// Verify initial state
-	assert.False(t, writer.finalized, "Writer should not be finalized initially")
-	assert.Empty(t, writer.segments, "Segments should be empty initially")
-	assert.Len(t, writer.dek, 32, "DEK should be 32 bytes")
+	assert.False(t, writer.finalized.Load(), "Writer should not be finalized initially")
 
 	// Write a single segment
 	testData := []byte("Hello, TDF World!")
-	zipBytes, err := writer.WriteSegment(ctx, 0, testData)
+	segResult, err := writer.WriteSegment(ctx, 0, testData)
 	require.NoError(t, err, "Failed to write segment")
-	assert.NotEmpty(t, zipBytes, "Zip bytes should not be empty")
+	require.NotNil(t, segResult, "Segment result should not be nil")
+	assert.NotNil(t, segResult.TDFData, "Zip bytes should not be empty")
 
 	// Verify segment was recorded
-	assert.Len(t, writer.segments, 1, "Should have one segment")
-	assert.Equal(t, int64(len(testData)), writer.segments[0].Size, "Segment size should match input data")
-	assert.NotEmpty(t, writer.segments[0].Hash, "Segment hash should be set")
-	assert.Greater(t, writer.segments[0].EncryptedSize, writer.segments[0].Size, "Encrypted size should be larger due to GCM overhead")
+	assert.Equal(t, 0, segResult.Index, "Segment index should match")
+	assert.Equal(t, int64(len(testData)), segResult.PlaintextSize, "Segment size should match input data")
+	assert.NotEmpty(t, segResult.Hash, "Segment hash should be set")
+	assert.Greater(t, segResult.EncryptedSize, segResult.PlaintextSize, "Encrypted size should be larger due to GCM overhead")
 
 	// Finalize with attributes that have proper KAS setup
 	attributes := []*policy.Value{
@@ -299,7 +299,7 @@ func testBasicTDFCreationFlow(t *testing.T) {
 	validateManifestSchema(t, finalizeResult.Manifest)
 
 	// Verify finalized state
-	assert.True(t, writer.finalized, "Writer should be finalized")
+	assert.True(t, writer.finalized.Load(), "Writer should be finalized")
 
 	// Verify manifest structure
 	assert.Equal(t, TDFSpecVersion, finalizeResult.Manifest.TDFVersion, "TDF version should match expected")
@@ -316,7 +316,7 @@ func testBasicTDFCreationFlow(t *testing.T) {
 	assert.NotEmpty(t, keyAccess.WrappedKey, "Wrapped key should not be empty")
 
 	// Verify encryption information
-	assert.Equal(t, kGCMCipherAlgorithm, finalizeResult.Manifest.Method.Algorithm, "Algorithm should be AES-256-GCM")
+	assert.Equal(t, "AES-256-GCM", finalizeResult.Manifest.Method.Algorithm, "Algorithm should be AES-256-GCM")
 	assert.True(t, finalizeResult.Manifest.Method.IsStreamable, "Should be marked as streamable")
 	assert.NotEmpty(t, finalizeResult.Manifest.Policy, "Policy should not be empty")
 }
@@ -385,19 +385,18 @@ func testMultiSegmentFlow(t *testing.T) {
 	}
 
 	// Write segments in order
+	results := make([]*SegmentResult, len(segments))
 	for i, data := range segments {
-		_, err := writer.WriteSegment(ctx, i, data)
+		res, err := writer.WriteSegment(ctx, i, data)
 		require.NoError(t, err, "Failed to write segment %d", i)
+		results[i] = res
 	}
-
-	// Verify all segments were recorded
-	assert.Len(t, writer.segments, 3, "Should have three segments")
-	assert.Equal(t, 2, writer.maxSegmentIndex, "Max segment index should be 2")
 
 	// Verify each segment
 	for i, data := range segments {
-		assert.Equal(t, int64(len(data)), writer.segments[i].Size, "Segment %d size should match", i)
-		assert.NotEmpty(t, writer.segments[i].Hash, "Segment %d hash should be set", i)
+		assert.Equal(t, i, results[i].Index, "Segment %d index should match", i)
+		assert.Equal(t, int64(len(data)), results[i].PlaintextSize, "Segment %d size should match", i)
+		assert.NotEmpty(t, results[i].Hash, "Segment %d hash should be set", i)
 	}
 
 	// Finalize with attributes for proper key access setup
@@ -409,6 +408,13 @@ func testMultiSegmentFlow(t *testing.T) {
 
 	// Validate manifest against schema
 	validateManifestSchema(t, finalizeResult.Manifest)
+
+	// Verify all segments were recorded
+	assert.Equal(t, 3, finalizeResult.TotalSegments, "Should have three segments")
+	require.Len(t, finalizeResult.Manifest.Segments, 3, "Manifest should describe three segments")
+	for i, data := range segments {
+		assert.Equal(t, int64(len(data)), finalizeResult.Manifest.Segments[i].Size, "Segment %d size should match", i)
+	}
 
 	// Verify root signature was calculated from all segments
 	assert.NotEmpty(t, finalizeResult.Manifest.Signature, "Root signature should be set")
@@ -435,9 +441,6 @@ func testKeySplittingWithMultipleAttributes(t *testing.T) {
 	}
 
 	// Finalize with multiple attributes
-	originalDEK := make([]byte, len(writer.dek))
-	copy(originalDEK, writer.dek)
-
 	finalizeResult, err := writer.Finalize(ctx, WithAttributeValues(attributes))
 	require.NoError(t, err, "Failed to finalize TDF with multiple attributes")
 
@@ -463,9 +466,13 @@ func testKeySplittingWithMultipleAttributes(t *testing.T) {
 		}
 	}
 
-	// Test that we can theoretically reconstruct the key from splits
-	// (This verifies the XOR splitting logic worked correctly)
-	assert.Len(t, originalDEK, 32, "Original DEK should be 32 bytes")
+	// Three allOf attributes on distinct KAS must XOR-split into three shares,
+	// each carrying its own split ID; a share is useless on its own.
+	splitIDs := make(map[string]bool, len(keyAccessObjs))
+	for _, keyAccess := range keyAccessObjs {
+		splitIDs[keyAccess.SplitID] = true
+	}
+	assert.Len(t, splitIDs, 3, "Each of the three allOf KAS should get its own split")
 }
 
 // testManifestGeneration tests detailed manifest structure and content
@@ -511,7 +518,7 @@ func testManifestGeneration(t *testing.T) {
 
 	// Verify encryption information
 	encInfo := finalizeResult.Manifest.EncryptionInformation
-	assert.Equal(t, kGCMCipherAlgorithm, encInfo.Method.Algorithm, "Algorithm should be AES-256-GCM")
+	assert.Equal(t, "AES-256-GCM", encInfo.Method.Algorithm, "Algorithm should be AES-256-GCM")
 	assert.True(t, encInfo.Method.IsStreamable, "Should be streamable")
 	assert.NotEmpty(t, encInfo.Policy, "Policy should not be empty")
 
@@ -671,20 +678,36 @@ func testErrorConditions(t *testing.T) {
 		assert.Contains(t, err.Error(), "no default KAS", "Error should mention missing default KAS")
 	})
 
-	t.Run("EmptySegmentHash", func(t *testing.T) {
+	t.Run("SegmentsNamesUnwrittenIndex", func(t *testing.T) {
 		writer, err := NewWriter(ctx)
 		require.NoError(t, err)
 
-		// Manually corrupt segment hash to test error handling
-		writer.segments[0] = &Segment{Hash: "", Size: 10, EncryptedSize: 26}
-		writer.maxSegmentIndex = 0
+		_, err = writer.WriteSegment(ctx, 0, []byte("first"))
+		require.NoError(t, err)
+		_, err = writer.WriteSegment(ctx, 5, []byte("sixth"))
+		require.NoError(t, err)
+
+		attributes := []*policy.Value{
+			createTestAttribute("https://example.com/attr/Test/value/Error", testKAS1, "kid1"),
+		}
+		_, err = writer.Finalize(ctx, WithAttributeValues(attributes), WithSegments([]int{0, 1}))
+		require.Error(t, err, "Should reject a segment that was never written")
+		assert.Contains(t, err.Error(), "not written", "Error should name the unwritten segment")
+	})
+
+	t.Run("SegmentZeroMissing", func(t *testing.T) {
+		writer, err := NewWriter(ctx)
+		require.NoError(t, err)
+
+		_, err = writer.WriteSegment(ctx, 1, []byte("second"))
+		require.NoError(t, err)
 
 		attributes := []*policy.Value{
 			createTestAttribute("https://example.com/attr/Test/value/Error", testKAS1, "kid1"),
 		}
 		_, err = writer.Finalize(ctx, WithAttributeValues(attributes))
-		require.Error(t, err, "Should detect empty segment hash")
-		assert.Contains(t, err.Error(), "empty segment hash", "Error message should mention empty segment hash")
+		require.ErrorIs(t, err, ErrMissingSegmentZero,
+			"segment 0 carries the payload's ZIP local file header")
 	})
 }
 
@@ -694,10 +717,6 @@ func testXORReconstruction(t *testing.T) {
 
 	writer, err := NewWriter(ctx)
 	require.NoError(t, err)
-
-	// Store original DEK for comparison
-	originalDEK := make([]byte, len(writer.dek))
-	copy(originalDEK, writer.dek)
 
 	// Write test data
 	_, err = writer.WriteSegment(ctx, 0, []byte("XOR test data"))
@@ -731,9 +750,6 @@ func testXORReconstruction(t *testing.T) {
 		require.NoError(t, err, "Should be able to decode wrapped key")
 		assert.NotEmpty(t, wrappedKeyBytes, "Decoded wrapped key should not be empty")
 	}
-
-	// Verify the original DEK is the expected size
-	assert.Len(t, originalDEK, 32, "Original DEK should be 32 bytes")
 }
 
 // testDifferentAttributeRules tests TDF creation with different attribute rule types
@@ -796,22 +812,23 @@ func testOutOfOrderSegments(t *testing.T) {
 		require.NoError(t, err, "Failed to write segment %d", idx)
 	}
 
-	// Verify all segments are present and in correct positions
-	assert.Len(t, writer.segments, 3, "Should have three segments")
-	assert.Equal(t, 2, writer.maxSegmentIndex, "Max segment index should be 2")
-
-	for i := 0; i < 3; i++ {
-		assert.Equal(t, int64(len(segments[i])), writer.segments[i].Size, "Segment %d size should match", i)
-		assert.NotEmpty(t, writer.segments[i].Hash, "Segment %d should have hash", i)
-	}
-
 	// Finalize with attributes
 	attributes := []*policy.Value{
 		createTestAttribute("https://example.com/attr/Order/value/Test", testKAS1, "kid1"),
 	}
 	finalizeResult, err := writer.Finalize(ctx, WithAttributeValues(attributes))
 	require.NoError(t, err, "Should finalize successfully with out-of-order segments")
-	assert.NotNil(t, finalizeResult.Manifest, "Manifest should be created")
+	require.NotNil(t, finalizeResult.Manifest, "Manifest should be created")
+
+	// Whatever order they were written in, the manifest must describe the
+	// segments in ascending index order -- that is the order a reader
+	// concatenates the payload in.
+	assert.Equal(t, 3, finalizeResult.TotalSegments, "Should have three segments")
+	require.Len(t, finalizeResult.Manifest.Segments, 3, "Manifest should describe three segments")
+	for i := range 3 {
+		assert.Equal(t, int64(len(segments[i])), finalizeResult.Manifest.Segments[i].Size, "Segment %d size should match", i)
+		assert.NotEmpty(t, finalizeResult.Manifest.Segments[i].Hash, "Segment %d should have hash", i)
+	}
 
 	// Validate manifest against schema
 	validateManifestSchema(t, finalizeResult.Manifest)
@@ -894,12 +911,18 @@ func createTestAttributeWithAlgorithm(t *testing.T, fqn, kasURL, kid string, alg
 	return value
 }
 
-// hybridUnwrapForTest base64-decodes the wrappedKey from a manifest KAO and
-// unwraps it with the matching hybrid private key, asserting the recovered DEK
-// exactly matches the writer DEK.
-func hybridUnwrapForTest(t *testing.T, ktype ocrypto.KeyType, privatePEM, wrappedKeyB64 string, expectedDEK []byte) {
+// hybridUnwrapForTest unwraps a manifest KAO's wrappedKey with the matching
+// hybrid private key and asserts the recovered key really is the DEK the
+// writer used.
+//
+// The writer does not expose its DEK, so the check goes through the policy
+// binding instead: it is an HMAC-SHA256 over the base64 policy keyed by the
+// split's key, and a single-KAS TDF has exactly one split holding the whole
+// DEK. Reproducing the manifest's binding from the recovered bytes therefore
+// proves they match.
+func hybridUnwrapForTest(t *testing.T, ktype ocrypto.KeyType, privatePEM string, manifest *Manifest, keyAccess KeyAccess) {
 	t.Helper()
-	wrappedDER, err := ocrypto.Base64Decode([]byte(wrappedKeyB64))
+	wrappedDER, err := ocrypto.Base64Decode([]byte(keyAccess.WrappedKey))
 	require.NoError(t, err, "Base64Decode wrapped key")
 
 	dec, err := ocrypto.FromPrivatePEM(privatePEM)
@@ -914,7 +937,14 @@ func hybridUnwrapForTest(t *testing.T, ktype ocrypto.KeyType, privatePEM, wrappe
 
 	dek, err := dec.Decrypt(wrappedDER)
 	require.NoError(t, err, "hybrid Decrypt")
-	assert.Equal(t, expectedDEK, dek, "%s recovered DEK", ktype)
+	require.Len(t, dek, 32, "%s recovered DEK should be 32 bytes", ktype)
+
+	hash := hex.EncodeToString(ocrypto.CalculateSHA256Hmac(dek, []byte(manifest.Policy)))
+	expected := string(ocrypto.Base64Encode([]byte(hash)))
+
+	binding, ok := keyAccess.PolicyBinding.(PolicyBinding)
+	require.True(t, ok, "policy binding should be a PolicyBinding, got %T", keyAccess.PolicyBinding)
+	assert.Equal(t, expected, binding.Hash, "%s recovered DEK should reproduce the policy binding", ktype)
 }
 
 func testHybridXWingFlow(t *testing.T) {
@@ -929,7 +959,6 @@ func testHybridXWingFlow(t *testing.T) {
 
 	writer, err := NewWriter(ctx)
 	require.NoError(t, err)
-	expectedDEK := append([]byte(nil), writer.dek...)
 
 	_, err = writer.WriteSegment(ctx, 0, []byte("hybrid xwing test data"))
 	require.NoError(t, err)
@@ -951,7 +980,7 @@ func testHybridXWingFlow(t *testing.T) {
 	assert.NotEmpty(t, keyAccess.WrappedKey)
 
 	validateManifestSchema(t, result.Manifest)
-	hybridUnwrapForTest(t, ocrypto.HybridXWingKey, privPEM, keyAccess.WrappedKey, expectedDEK)
+	hybridUnwrapForTest(t, ocrypto.HybridXWingKey, privPEM, result.Manifest, keyAccess)
 }
 
 func testHybridP256MLKEM768Flow(t *testing.T) {
@@ -966,7 +995,6 @@ func testHybridP256MLKEM768Flow(t *testing.T) {
 
 	writer, err := NewWriter(ctx)
 	require.NoError(t, err)
-	expectedDEK := append([]byte(nil), writer.dek...)
 
 	_, err = writer.WriteSegment(ctx, 0, []byte("hybrid p256 mlkem768 test data"))
 	require.NoError(t, err)
@@ -988,7 +1016,7 @@ func testHybridP256MLKEM768Flow(t *testing.T) {
 	assert.NotEmpty(t, keyAccess.WrappedKey)
 
 	validateManifestSchema(t, result.Manifest)
-	hybridUnwrapForTest(t, ocrypto.HybridSecp256r1MLKEM768Key, privPEM, keyAccess.WrappedKey, expectedDEK)
+	hybridUnwrapForTest(t, ocrypto.HybridSecp256r1MLKEM768Key, privPEM, result.Manifest, keyAccess)
 }
 
 func testHybridP384MLKEM1024Flow(t *testing.T) {
@@ -1003,7 +1031,6 @@ func testHybridP384MLKEM1024Flow(t *testing.T) {
 
 	writer, err := NewWriter(ctx)
 	require.NoError(t, err)
-	expectedDEK := append([]byte(nil), writer.dek...)
 
 	_, err = writer.WriteSegment(ctx, 0, []byte("hybrid p384 mlkem1024 test data"))
 	require.NoError(t, err)
@@ -1025,7 +1052,7 @@ func testHybridP384MLKEM1024Flow(t *testing.T) {
 	assert.NotEmpty(t, keyAccess.WrappedKey)
 
 	validateManifestSchema(t, result.Manifest)
-	hybridUnwrapForTest(t, ocrypto.HybridSecp384r1MLKEM1024Key, privPEM, keyAccess.WrappedKey, expectedDEK)
+	hybridUnwrapForTest(t, ocrypto.HybridSecp384r1MLKEM1024Key, privPEM, result.Manifest, keyAccess)
 }
 
 // validateManifestSchema validates a TDF manifest against the JSON schema
@@ -1161,8 +1188,8 @@ func testGetManifestBeforeAndAfterFinalize(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, m0)
 	assert.Equal(t, TDFSpecVersion, m0.TDFVersion)
-	assert.Equal(t, tdfAsZip, m0.Protocol)
-	assert.Equal(t, tdfZipReference, m0.Type)
+	assert.Equal(t, "zip", m0.Protocol)
+	assert.Equal(t, "reference", m0.Type)
 	assert.True(t, m0.IsEncrypted)
 	// No segments yet
 	assert.Empty(t, m0.Segments)

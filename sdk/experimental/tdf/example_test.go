@@ -241,9 +241,11 @@ func ExampleWriter_outOfOrder() {
 func ExampleWriter_largeFile() {
 	ctx := context.Background()
 
-	// Configure for large file processing
+	// Configure for large file processing. GMAC is the default and the only
+	// supported segment algorithm; naming it costs nothing per segment because
+	// the tag is read out of ciphertext the cipher already produced.
 	writer, err := tdf.NewWriter(ctx,
-		tdf.WithSegmentIntegrityAlgorithm(tdf.SegmentGMAC), // Faster for many segments
+		tdf.WithSegmentIntegrityAlgorithm(tdf.SegmentGMAC),
 	)
 	if err != nil {
 		log.Println(err)

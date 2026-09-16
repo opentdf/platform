@@ -56,12 +56,16 @@ func (c PolicyDBClient) GetCountObligationValues(ctx context.Context, obligation
 	})
 }
 
-func (c PolicyDBClient) GetCountObligationTriggersForAttributeValue(ctx context.Context, value *common.IdFqnIdentifier, excludedObligationValueID string) (int64, error) {
-	return c.queries.countObligationTriggersForAttributeValue(ctx, countObligationTriggersForAttributeValueParams{
+// GetCountObligationTriggersForAttributeValue returns the canonical attribute value ID
+// with its trigger count so callers can combine additions that identify the same value
+// by different identifier forms.
+func (c PolicyDBClient) GetCountObligationTriggersForAttributeValue(ctx context.Context, value *common.IdFqnIdentifier, excludedObligationValueID string) (string, int64, error) {
+	result, err := c.queries.countObligationTriggersForAttributeValue(ctx, countObligationTriggersForAttributeValueParams{
 		AttributeValueID:          pgtypeUUID(value.GetId()),
 		AttributeValueFqn:         pgtypeText(value.GetFqn()),
 		ExcludedObligationValueID: pgtypeUUID(excludedObligationValueID),
 	})
+	return result.AttributeValueID, result.ObjectCount, err
 }
 
 func (c PolicyDBClient) GetCountActions(ctx context.Context, namespaceID, namespaceFQN string) (int64, error) {

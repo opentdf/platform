@@ -89,14 +89,8 @@ func (s DynamicValueMappingService) CreateDynamicValueMapping(ctx context.Contex
 
 	// Creation may involve action or SubjectConditionSet creation, so use a transaction.
 	err := s.dbClient.RunInTx(ctx, func(txClient *policydb.PolicyDBClient) error {
-		if limit := s.config.MaxObjectCounts.SubjectConditionSetsPerNamespace; limit > 0 && req.Msg.GetExistingSubjectConditionSetId() == "" && req.Msg.GetNewSubjectConditionSet() != nil {
-			count, err := txClient.GetCountSubjectConditionSets(ctx, req.Msg.GetNamespaceId(), req.Msg.GetNamespaceFqn())
-			if err != nil {
-				return err
-			}
-			if err := policyconfig.EnforceObjectLimit(policyconfig.ObjectTypeSubjectConditionSetsPerNamespace, limit, count, 1); err != nil {
-				return err
-			}
+		if err := enforceDynamicSubjectConditionSetLimit(ctx, txClient, s.config.MaxObjectCounts.SubjectConditionSetsPerNamespace, req.Msg); err != nil {
+			return err
 		}
 		if err := enforceDynamicActionLimit(ctx, txClient, s.config.MaxObjectCounts.ActionsPerNamespace, req.Msg.GetNamespaceId(), req.Msg.GetNamespaceFqn(), req.Msg.GetActions()); err != nil {
 			return err
@@ -207,6 +201,22 @@ func dynamicActionNames(actions []*policy.Action) []string {
 
 type actionAdditionCounter interface {
 	GetCountActionsWithNewAdditions(context.Context, string, string, []string) (int64, int64, error)
+}
+
+type subjectConditionSetCounter interface {
+	GetCountSubjectConditionSets(context.Context, string, string) (int64, error)
+}
+
+func enforceDynamicSubjectConditionSetLimit(ctx context.Context, client subjectConditionSetCounter, limit int64, req *dvm.CreateDynamicValueMappingRequest) error {
+	if limit <= 0 || req.GetExistingSubjectConditionSetId() != "" || req.GetNewSubjectConditionSet() == nil {
+		return nil
+	}
+
+	current, err := client.GetCountSubjectConditionSets(ctx, req.GetNamespaceId(), req.GetNamespaceFqn())
+	if err != nil {
+		return err
+	}
+	return policyconfig.EnforceObjectLimit(policyconfig.ObjectTypeSubjectConditionSetsPerNamespace, limit, current, 1)
 }
 
 func enforceDynamicActionLimit(ctx context.Context, client actionAdditionCounter, limit int64, namespaceID, namespaceFQN string, actions []*policy.Action) error {

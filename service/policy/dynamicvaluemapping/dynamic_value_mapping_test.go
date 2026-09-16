@@ -5,6 +5,8 @@ import (
 	"testing"
 
 	"github.com/opentdf/platform/protocol/go/policy"
+	"github.com/opentdf/platform/protocol/go/policy/dynamicvaluemapping"
+	"github.com/opentdf/platform/protocol/go/policy/subjectmapping"
 	policyconfig "github.com/opentdf/platform/service/policy/config"
 	"github.com/stretchr/testify/require"
 )
@@ -18,6 +20,14 @@ func (s actionAdditionCounterStub) GetCountActionsWithNewAdditions(context.Conte
 	return s.current, s.additions, nil
 }
 
+type subjectConditionSetCounterStub struct {
+	current int64
+}
+
+func (s subjectConditionSetCounterStub) GetCountSubjectConditionSets(context.Context, string, string) (int64, error) {
+	return s.current, nil
+}
+
 func Test_EnforceDynamicActionLimit_NewActionsExceedLimit_Fails(t *testing.T) {
 	t.Parallel()
 
@@ -28,6 +38,21 @@ func Test_EnforceDynamicActionLimit_NewActionsExceedLimit_Fails(t *testing.T) {
 		"namespace-id",
 		"",
 		[]*policy.Action{{Name: "one"}, {Name: "two"}},
+	)
+	require.ErrorIs(t, err, policyconfig.ErrObjectLimitExceeded)
+}
+
+func Test_EnforceDynamicSubjectConditionSetLimit_NewConditionSetExceedsLimit_Fails(t *testing.T) {
+	t.Parallel()
+
+	err := enforceDynamicSubjectConditionSetLimit(
+		t.Context(),
+		subjectConditionSetCounterStub{current: 5},
+		5,
+		&dynamicvaluemapping.CreateDynamicValueMappingRequest{
+			NamespaceId:            "namespace-id",
+			NewSubjectConditionSet: &subjectmapping.SubjectConditionSetCreate{},
+		},
 	)
 	require.ErrorIs(t, err, policyconfig.ErrObjectLimitExceeded)
 }

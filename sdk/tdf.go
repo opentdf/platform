@@ -922,7 +922,7 @@ func (r *Reader) WriteTo(writer io.Writer) (int64, error) {
 		}
 	}
 
-	isLegacyTDF := r.manifest.TDFVersion == ""
+	isLegacyTDF := r.manifest.EffectiveTDFVersion() == ""
 
 	var totalBytes int64
 	var payloadReadOffset int64
@@ -1017,7 +1017,7 @@ func (r *Reader) ReadAt(buf []byte, offset int64) (int, error) { //nolint:funlen
 		return 0, ErrTDFPayloadReadFail
 	}
 
-	isLegacyTDF := r.manifest.TDFVersion == ""
+	isLegacyTDF := r.manifest.EffectiveTDFVersion() == ""
 	var decryptedBuf bytes.Buffer
 	var payloadReadOffset int64
 	for index, seg := range r.manifest.Segments {
@@ -1384,7 +1384,7 @@ func (r *Reader) buildKey(_ context.Context, results []kaoResult) error {
 			return fmt.Errorf("error decoding hex string: %w", err)
 		}
 
-		isLegacyTDF := r.manifest.TDFVersion == ""
+		isLegacyTDF := r.manifest.EffectiveTDFVersion() == ""
 		if isLegacyTDF {
 			hashOfAssertion = hashOfAssertionAsHex
 		}
@@ -1486,7 +1486,7 @@ func calculateSignature(data []byte, secret []byte, alg IntegrityAlgorithm, isLe
 func validateRootSignature(manifest Manifest, aggregateHash, secret []byte) (bool, error) {
 	rootSigAlg := manifest.Algorithm
 	rootSigValue := manifest.Signature
-	isLegacyTDF := manifest.TDFVersion == ""
+	isLegacyTDF := manifest.EffectiveTDFVersion() == ""
 
 	sigAlg := HS256
 	if strings.EqualFold(gmacIntegrityAlgorithm, rootSigAlg) {

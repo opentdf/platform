@@ -49,6 +49,9 @@ type Payload struct {
 	Protocol    string `json:"protocol"`
 	MimeType    string `json:"mimeType"`
 	IsEncrypted bool   `json:"isEncrypted"`
+	// TDFSpecVersion is where the spec's JSON schema places the version. Read
+	// only; the SDK never sets it. See Manifest.EffectiveTDFVersion.
+	TDFSpecVersion string `json:"tdf_spec_version,omitempty"`
 	// IntegrityInformation IntegrityInformation `json:"integrityInformation"`
 }
 
@@ -65,6 +68,23 @@ type Manifest struct {
 	Payload               `json:"payload"`
 	Assertions            []Assertion `json:"assertions,omitempty"`
 	TDFVersion            string      `json:"schemaVersion,omitempty"`
+	// TDFSpecVersion is where the spec prose places the version. Read only;
+	// the SDK never sets it. See EffectiveTDFVersion.
+	TDFSpecVersion string `json:"tdf_spec_version,omitempty"`
+}
+
+// EffectiveTDFVersion resolves the spec version a writer recorded, in priority
+// order: root schemaVersion (what every SDK writes), root tdf_spec_version
+// (spec prose), then payload.tdf_spec_version (spec JSON schema). Empty means
+// a legacy (pre-4.3.0) TDF.
+func (m Manifest) EffectiveTDFVersion() string {
+	if m.TDFVersion != "" {
+		return m.TDFVersion
+	}
+	if m.TDFSpecVersion != "" {
+		return m.TDFSpecVersion
+	}
+	return m.Payload.TDFSpecVersion
 }
 
 type attributeObject struct {

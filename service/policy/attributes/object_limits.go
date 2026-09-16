@@ -62,6 +62,7 @@ func (s *AttributesService) enforceCreateAttributeValueLimits(ctx context.Contex
 		return err
 	}
 
+	// Nested mappings and triggers may create condition sets and actions with the value.
 	newConditionSets := 0
 	actionNames := make([]string, 0)
 	for _, mapping := range req.GetSubjectMappings() {

@@ -62,6 +62,10 @@ func (k *KeyDetailsAdapter) ID() trust.KeyIdentifier {
 	return k.id
 }
 
+func (k *KeyDetailsAdapter) CacheKey() string {
+	return fmt.Sprintf("%s:%q", inProcessSystemName, k.id)
+}
+
 func (k *KeyDetailsAdapter) Algorithm() ocrypto.KeyType {
 	return k.algorithm
 }

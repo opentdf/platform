@@ -72,7 +72,8 @@ func assertManifestBodyDecoded(t *testing.T, m Manifest) {
 // off-spec name for the spec version that leaked into some specification drafts
 // and some older OpenTDF documentation. schemaVersion is the correct name and
 // always wins; tdf_spec_version is read only so that files written against the
-// erroneous name stay usable.
+// erroneous name stay usable, and only under payload, where the bundled schemas
+// declare it.
 func TestManifest_UnmarshalJSON_SpecVersion(t *testing.T) {
 	tests := []struct {
 		name         string
@@ -86,20 +87,17 @@ func TestManifest_UnmarshalJSON_SpecVersion(t *testing.T) {
 			want:      "4.3.0",
 		},
 		{
-			name:      "off-spec tdf_spec_version at root",
-			rootExtra: `,"tdf_spec_version":"4.3.0"`,
-			want:      "4.3.0",
-		},
-		{
-			// Where the bundled schemas reproduce the mistake.
+			// Where the bundled schemas declare it.
 			name:         "off-spec tdf_spec_version under payload",
 			payloadExtra: `,"tdf_spec_version":"4.3.0"`,
 			want:         "4.3.0",
 		},
 		{
-			name:      "schemaVersion wins over root tdf_spec_version",
-			rootExtra: `,"schemaVersion":"4.3.0","tdf_spec_version":"4.2.0"`,
-			want:      "4.3.0",
+			// The root is not a placement any schema defines, so a copy there is
+			// not a spec version -- it is just an unknown key.
+			name:      "off-spec tdf_spec_version at root is ignored",
+			rootExtra: `,"tdf_spec_version":"4.3.0"`,
+			want:      "",
 		},
 		{
 			name:         "schemaVersion wins over payload tdf_spec_version",
@@ -108,16 +106,19 @@ func TestManifest_UnmarshalJSON_SpecVersion(t *testing.T) {
 			want:         "4.3.0",
 		},
 		{
-			name:         "root tdf_spec_version wins over payload tdf_spec_version",
-			payloadExtra: `,"tdf_spec_version":"4.2.0"`,
-			rootExtra:    `,"tdf_spec_version":"4.3.0"`,
+			// Only the payload copy is read, so it decides even when the ignored
+			// root copy disagrees.
+			name:         "payload tdf_spec_version is read past a root copy",
+			payloadExtra: `,"tdf_spec_version":"4.3.0"`,
+			rootExtra:    `,"tdf_spec_version":"4.2.0"`,
 			want:         "4.3.0",
 		},
 		{
 			// An empty schemaVersion is not a value, so the fallback still applies.
-			name:      "empty schemaVersion falls back to tdf_spec_version",
-			rootExtra: `,"schemaVersion":"","tdf_spec_version":"4.3.0"`,
-			want:      "4.3.0",
+			name:         "empty schemaVersion falls back to tdf_spec_version",
+			payloadExtra: `,"tdf_spec_version":"4.3.0"`,
+			rootExtra:    `,"schemaVersion":""`,
+			want:         "4.3.0",
 		},
 		{
 			name: "no version at all",
@@ -126,16 +127,16 @@ func TestManifest_UnmarshalJSON_SpecVersion(t *testing.T) {
 		{
 			// The lax schema permits a null tdf_spec_version, so decoding has to
 			// tolerate it rather than failing the whole manifest.
-			name:      "null tdf_spec_version is ignored",
-			rootExtra: `,"tdf_spec_version":null`,
-			want:      "",
+			name:         "null tdf_spec_version is ignored",
+			payloadExtra: `,"tdf_spec_version":null`,
+			want:         "",
 		},
 		{
 			// Off-spec types are schema validation's problem to report, not the
 			// decoder's to choke on.
-			name:      "numeric tdf_spec_version is ignored",
-			rootExtra: `,"tdf_spec_version":430`,
-			want:      "",
+			name:         "numeric tdf_spec_version is ignored",
+			payloadExtra: `,"tdf_spec_version":430`,
+			want:         "",
 		},
 		{
 			name:         "object tdf_spec_version is ignored",
@@ -181,30 +182,19 @@ func TestManifest_Marshal_EmitsSchemaVersionOnly(t *testing.T) {
 // schemaVersion, so the error is not propagated by anything that re-emits a
 // manifest it read.
 func TestManifest_RoundTripNormalizesSpecVersion(t *testing.T) {
-	for _, tc := range []struct {
-		name         string
-		payloadExtra string
-		rootExtra    string
-	}{
-		{name: "root", rootExtra: `,"tdf_spec_version":"4.3.0"`},
-		{name: "payload", payloadExtra: `,"tdf_spec_version":"4.3.0"`},
-	} {
-		t.Run(tc.name, func(t *testing.T) {
-			var m Manifest
-			require.NoError(t, json.Unmarshal([]byte(testManifestJSON(tc.payloadExtra, tc.rootExtra)), &m))
-			require.Equal(t, "4.3.0", m.TDFVersion)
+	var m Manifest
+	require.NoError(t, json.Unmarshal([]byte(testManifestJSON(`,"tdf_spec_version":"4.3.0"`, "")), &m))
+	require.Equal(t, "4.3.0", m.TDFVersion)
 
-			data, err := json.Marshal(m)
-			require.NoError(t, err)
+	data, err := json.Marshal(m)
+	require.NoError(t, err)
 
-			var got map[string]any
-			require.NoError(t, json.Unmarshal(data, &got))
-			assert.Equal(t, "4.3.0", got["schemaVersion"])
-			assert.NotContains(t, got, "tdf_spec_version")
+	var got map[string]any
+	require.NoError(t, json.Unmarshal(data, &got))
+	assert.Equal(t, "4.3.0", got["schemaVersion"])
+	assert.NotContains(t, got, "tdf_spec_version")
 
-			payload, ok := got["payload"].(map[string]any)
-			require.True(t, ok, "payload should be an object")
-			assert.NotContains(t, payload, "tdf_spec_version")
-		})
-	}
+	payload, ok := got["payload"].(map[string]any)
+	require.True(t, ok, "payload should be an object")
+	assert.NotContains(t, payload, "tdf_spec_version")
 }

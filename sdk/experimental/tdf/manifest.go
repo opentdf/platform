@@ -77,8 +77,8 @@ type Manifest struct {
 // recursing back into it.
 type manifestJSON Manifest
 
-// offSpecSpecVersion locates tdf_spec_version, an off-spec name for the spec
-// version field.
+// offSpecSpecVersion locates tdf_spec_version under payload, an off-spec name
+// for the spec version field.
 //
 // schemaVersion is and has always been the correct name. tdf_spec_version is
 // not a former spelling that was later renamed -- it is an error that leaked
@@ -87,18 +87,17 @@ type manifestJSON Manifest
 // never write it, and it is not on a deprecation path because it was never
 // correct to begin with.
 //
-// Writers that made the mistake disagree on placement: some put it at the
-// manifest root, while the schemas bundled with this SDK
-// (sdk/schema/manifest*.schema.json) reproduce it under payload. Both locations
-// are probed.
+// Only payload is probed, because that is the one placement with a definition
+// to point at: the schemas bundled with this SDK
+// (sdk/schema/manifest*.schema.json) declare tdf_spec_version under payload and
+// nowhere else. A copy at the manifest root is not read.
 //
-// The values are typed as any rather than string because the lax schema permits
+// The value is typed as any rather than string because the lax schema permits
 // tdf_spec_version to be null, and an off-spec type must not fail the whole
 // decode -- reporting malformed manifests is schema validation's job, not the
 // decoder's.
 type offSpecSpecVersion struct {
-	TDFSpecVersion any `json:"tdf_spec_version"`
-	Payload        struct {
+	Payload struct {
 		TDFSpecVersion any `json:"tdf_spec_version"`
 	} `json:"payload"`
 }
@@ -107,8 +106,7 @@ type offSpecSpecVersion struct {
 // the spec version when the correct schemaVersion is absent, so that files
 // written against the erroneous name stay readable.
 //
-// schemaVersion always wins when both names are present; between the two
-// off-spec locations, the manifest root wins over payload. Nothing is written
+// schemaVersion always wins when both names are present. Nothing is written
 // back under the off-spec name -- re-marshalling a manifest always emits
 // schemaVersion only.
 //
@@ -129,11 +127,7 @@ func (m *Manifest) UnmarshalJSON(data []byte) error {
 	if err := json.Unmarshal(data, &offSpec); err != nil {
 		return err
 	}
-	if v, ok := offSpec.TDFSpecVersion.(string); ok && v != "" {
-		m.TDFVersion = v
-		return nil
-	}
-	if v, ok := offSpec.Payload.TDFSpecVersion.(string); ok && v != "" {
+	if v, ok := offSpec.Payload.TDFSpecVersion.(string); ok {
 		m.TDFVersion = v
 	}
 	return nil

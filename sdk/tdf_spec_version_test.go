@@ -16,8 +16,8 @@ import (
 // read. Two kinds of file broke:
 //
 //   - raw digests with the version named tdf_spec_version (the off-spec name
-//     from some specification drafts and some older OpenTDF docs, at the root in
-//     some writers and under payload in others), or with no version at all
+//     from some specification drafts and some older OpenTDF docs), or with no
+//     version at all
 //   - hex digests with any version field present, which a version-trusting
 //     reader would verify as raw
 //
@@ -79,18 +79,20 @@ func (s *TDFSuite) Test_SpecVersionDoesNotAffectVerification() {
 		})
 		decrypts(asWritten, TDFSpecVersion)
 
-		s.Run("version renamed to tdf_spec_version at root", func() {
-			decrypts(rewrite(func(manifest map[string]any) {
-				manifest["tdf_spec_version"] = manifest["schemaVersion"]
-				delete(manifest, "schemaVersion")
-			}), TDFSpecVersion)
-		})
-
 		s.Run("version renamed to tdf_spec_version under payload", func() {
 			decrypts(rewrite(func(manifest map[string]any) {
 				setPayloadKey(manifest, "tdf_spec_version", manifest["schemaVersion"])
 				delete(manifest, "schemaVersion")
 			}), TDFSpecVersion)
+		})
+
+		// A root copy is not a placement any schema defines, so it reads as no
+		// version at all -- which still must not stop the container decrypting.
+		s.Run("version renamed to tdf_spec_version at root", func() {
+			decrypts(rewrite(func(manifest map[string]any) {
+				manifest["tdf_spec_version"] = manifest["schemaVersion"]
+				delete(manifest, "schemaVersion")
+			}), "")
 		})
 
 		s.Run("version removed entirely", func() {
@@ -113,16 +115,16 @@ func (s *TDFSuite) Test_SpecVersionDoesNotAffectVerification() {
 		// carries a version field. A reader that inferred "version present means
 		// raw digests" would verify these with the wrong encoding and reject
 		// them outright.
-		s.Run("with off-spec tdf_spec_version at root", func() {
-			decrypts(rewrite(func(manifest map[string]any) {
-				manifest["tdf_spec_version"] = "4.2.2"
-			}), "4.2.2")
-		})
-
 		s.Run("with off-spec tdf_spec_version under payload", func() {
 			decrypts(rewrite(func(manifest map[string]any) {
 				setPayloadKey(manifest, "tdf_spec_version", "4.2.2")
 			}), "4.2.2")
+		})
+
+		s.Run("with off-spec tdf_spec_version at root", func() {
+			decrypts(rewrite(func(manifest map[string]any) {
+				manifest["tdf_spec_version"] = "4.2.2"
+			}), "")
 		})
 
 		// A version that contradicts the digests outright. Nothing authenticates

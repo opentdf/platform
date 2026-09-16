@@ -962,8 +962,6 @@ func (r *Reader) WriteTo(writer io.Writer) (int64, error) {
 		}
 	}
 
-	isLegacyTDF := r.manifest.TDFVersion == ""
-
 	var totalBytes int64
 	var payloadReadOffset int64
 	var decryptedDataOffset int64
@@ -994,12 +992,12 @@ func (r *Reader) WriteTo(writer io.Writer) (int64, error) {
 		}
 
 		sigAlg := manifestSegmentIntegrityAlg(r.manifest.SegmentHashAlgorithm)
-		payloadSig, err := segmentIntegrity(readBuf, r.payloadKey, sigAlg, isLegacyTDF)
+		payloadSig, err := segmentIntegrity(readBuf, r.payloadKey, sigAlg, false)
 		if err != nil {
 			return totalBytes, fmt.Errorf("splitKey.GetSignaturefailed: %w", err)
 		}
 
-		if seg.Hash != string(ocrypto.Base64Encode([]byte(payloadSig))) {
+		if !digestMatchesRecorded(seg.Hash, payloadSig) {
 			return totalBytes, ErrSegSigValidation
 		}
 
@@ -1067,7 +1065,6 @@ func (r *Reader) ReadAt(buf []byte, offset int64) (int, error) { //nolint:funlen
 	// sizes would otherwise be mapped onto the wrong segments here.
 	readEnd := offset + int64(len(buf))
 
-	isLegacyTDF := r.manifest.TDFVersion == ""
 	var decryptedBuf bytes.Buffer
 	var payloadReadOffset int64 // ciphertext offset of seg within the payload
 	var segStart int64          // plaintext offset of seg
@@ -1116,12 +1113,12 @@ func (r *Reader) ReadAt(buf []byte, offset int64) (int, error) { //nolint:funlen
 		}
 
 		sigAlg := manifestSegmentIntegrityAlg(r.manifest.SegmentHashAlgorithm)
-		payloadSig, err := segmentIntegrity(readBuf, r.payloadKey, sigAlg, isLegacyTDF)
+		payloadSig, err := segmentIntegrity(readBuf, r.payloadKey, sigAlg, false)
 		if err != nil {
 			return 0, fmt.Errorf("splitKey.GetSignaturefailed: %w", err)
 		}
 
-		if seg.Hash != string(ocrypto.Base64Encode([]byte(payloadSig))) {
+		if !digestMatchesRecorded(seg.Hash, payloadSig) {
 			return 0, ErrSegSigValidation
 		}
 
@@ -1475,22 +1472,25 @@ func (r *Reader) buildKey(_ context.Context, results []kaoResult) error {
 			return fmt.Errorf("error decoding hex string: %w", err)
 		}
 
-		isLegacyTDF := r.manifest.TDFVersion == ""
-		if isLegacyTDF {
-			hashOfAssertion = hashOfAssertionAsHex
-		}
-
-		var completeHashBuilder bytes.Buffer
-		completeHashBuilder.Write(aggregateHash.Bytes())
-		completeHashBuilder.Write(hashOfAssertion)
-
-		base64Hash := ocrypto.Base64Encode(completeHashBuilder.Bytes())
-
 		if string(hashOfAssertionAsHex) != assertionHash {
 			return fmt.Errorf("%w: assertion hash missmatch", ErrAssertionFailure{ID: assertion.ID})
 		}
 
-		if assertionSig != string(base64Hash) {
+		// The same two spellings as the segment and root digests, for the same
+		// reasons given on digestMatchesRecorded. Unlike those, this one cannot
+		// be read off the file by length: the assertion hash is concatenated
+		// into a larger buffer before signing, so its encoding leaves no
+		// distinguishable trace. Both candidates are built instead, and either
+		// may match -- which is sound on the same grounds, since both are
+		// derived from a signature already verified under assertionKey.
+		signedOver := func(hashBytes []byte) string {
+			var completeHashBuilder bytes.Buffer
+			completeHashBuilder.Write(aggregateHash.Bytes())
+			completeHashBuilder.Write(hashBytes)
+			return string(ocrypto.Base64Encode(completeHashBuilder.Bytes()))
+		}
+
+		if assertionSig != signedOver(hashOfAssertion) && assertionSig != signedOver(hashOfAssertionAsHex) {
 			return fmt.Errorf("%w: failed integrity check on assertion signature", ErrAssertionFailure{ID: assertion.ID})
 		}
 	}
@@ -1556,11 +1556,12 @@ func (r *Reader) doPayloadKeyUnwrap(ctx context.Context) error { //nolint:gocogn
 
 // hmacIntegrity computes an HMAC-SHA256 over data, keyed by the payload key.
 //
-// Legacy (pre-4.3.0) TDFs hex-encode the digest before the caller base64s it;
-// isLegacyTDF preserves that wire format.
-func hmacIntegrity(data, key []byte, isLegacyTDF bool) string {
+// useHex selects the pre-4.3.0 wire format, in which the digest is hex-encoded
+// before the caller base64s it. Writers pick it from the target mode. Readers
+// pass false and compare via digestMatchesRecorded, which accepts either form.
+func hmacIntegrity(data, key []byte, useHex bool) string {
 	hmac := ocrypto.CalculateSHA256Hmac(key, data)
-	if isLegacyTDF {
+	if useHex {
 		return hex.EncodeToString(hmac)
 	}
 	return string(hmac)
@@ -1579,13 +1580,13 @@ func hmacIntegrity(data, key []byte, isLegacyTDF bool) string {
 // this helper is unexported and reachable only through segmentIntegrity, whose
 // argument is by construction a segment's ciphertext. rootIntegrity, whose
 // input is the aggregate hash, has no way to call it.
-func readAEADTag(ciphertext []byte, isLegacyTDF bool) (string, error) {
+func readAEADTag(ciphertext []byte, useHex bool) (string, error) {
 	if kGMACPayloadLength > len(ciphertext) {
 		return "", fmt.Errorf("%w: ciphertext length=%d", ErrGMACSignatureFailed, len(ciphertext))
 	}
 
 	tag := ciphertext[len(ciphertext)-kGMACPayloadLength:]
-	if isLegacyTDF {
+	if useHex {
 		return hex.EncodeToString(tag), nil
 	}
 	return string(tag), nil
@@ -1602,12 +1603,12 @@ func readAEADTag(ciphertext []byte, isLegacyTDF bool) (string, error) {
 // SegmentIntegrityAlg is int-backed, and silently treating an out-of-range
 // value as GMAC would write a manifest naming an algorithm the signature was
 // not computed with.
-func segmentIntegrity(ciphertext, key []byte, alg SegmentIntegrityAlg, isLegacyTDF bool) (string, error) {
+func segmentIntegrity(ciphertext, key []byte, alg SegmentIntegrityAlg, useHex bool) (string, error) {
 	switch alg {
 	case SegmentHS256:
-		return hmacIntegrity(ciphertext, key, isLegacyTDF), nil
+		return hmacIntegrity(ciphertext, key, useHex), nil
 	case SegmentGMAC:
-		return readAEADTag(ciphertext, isLegacyTDF)
+		return readAEADTag(ciphertext, useHex)
 	}
 	return "", fmt.Errorf("%w: %s", ErrUnsupportedSegmentIntegrityAlgorithm, alg)
 }
@@ -1619,18 +1620,41 @@ func segmentIntegrity(ciphertext, key []byte, alg SegmentIntegrityAlg, isLegacyT
 // extract and no keyless construction that could authenticate it -- see
 // ErrUnsupportedRootIntegrityAlgorithm. RootIntegrityAlg has no other named
 // value, but it is int-backed, so the check still has to run.
-func rootIntegrity(aggregateHash, key []byte, alg RootIntegrityAlg, isLegacyTDF bool) (string, error) {
+func rootIntegrity(aggregateHash, key []byte, alg RootIntegrityAlg, useHex bool) (string, error) {
 	if alg != RootHS256 {
 		return "", fmt.Errorf("%w: %s", ErrUnsupportedRootIntegrityAlgorithm, alg)
 	}
-	return hmacIntegrity(aggregateHash, key, isLegacyTDF), nil
+	return hmacIntegrity(aggregateHash, key, useHex), nil
+}
+
+// digestMatchesRecorded reports whether the value a manifest records for an
+// integrity check matches digest, the raw (non-hex) form recomputed from the
+// file's own bytes.
+//
+// The recorded value is base64 over one of two spellings of the same keyed
+// digest: the raw bytes (TDF spec >= 4.3.0) or their hex (pre-4.3.0). Which
+// spelling a file used is read off the file, never off the manifest's
+// spec-version field. That field is unauthenticated, and it only ever tracked
+// the encoding because our own writer happens to set useHex and
+// excludeVersionFromManifest from one boolean -- writers that decoupled them,
+// including every writer that produced the off-spec tdf_spec_version name,
+// break the correspondence and would be misread as using the other encoding.
+//
+// Accepting both spellings weakens nothing. Hex is an invertible encoding of
+// the same HMAC, so producing either form requires the payload key exactly as
+// much as producing the other; there is no forgery that the strict form would
+// have rejected.
+func digestMatchesRecorded(recorded, digest string) bool {
+	if recorded == string(ocrypto.Base64Encode([]byte(digest))) {
+		return true
+	}
+	return recorded == string(ocrypto.Base64Encode([]byte(hex.EncodeToString([]byte(digest)))))
 }
 
 // validate the root signature
 func validateRootSignature(manifest Manifest, aggregateHash, secret []byte) (bool, error) {
 	rootSigAlg := manifest.Algorithm
 	rootSigValue := manifest.Signature
-	isLegacyTDF := manifest.TDFVersion == ""
 
 	// Allowlist, not "anything that is not GMAC means HS256". The algorithm
 	// name arrives from the unauthenticated manifest, so an unrecognised value
@@ -1642,16 +1666,12 @@ func validateRootSignature(manifest Manifest, aggregateHash, secret []byte) (boo
 		return false, fmt.Errorf("%w: %q", ErrUnsupportedRootIntegrityAlgorithm, rootSigAlg)
 	}
 
-	sig, err := rootIntegrity(aggregateHash, secret, RootHS256, isLegacyTDF)
+	sig, err := rootIntegrity(aggregateHash, secret, RootHS256, false)
 	if err != nil {
 		return false, fmt.Errorf("splitkey.getSignature failed:%w", err)
 	}
 
-	if rootSigValue == string(ocrypto.Base64Encode([]byte(sig))) {
-		return true, nil
-	}
-
-	return false, nil
+	return digestMatchesRecorded(rootSigValue, sig), nil
 }
 
 // check if the provided semver is less than the target

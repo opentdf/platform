@@ -31,6 +31,22 @@ const webSDKSegmentSize = 1024 * 1024
 func (s *TDFSuite) rewriteManifest(tdfBytes []byte, mutate func(integrityInfo map[string]any)) []byte {
 	s.T().Helper()
 
+	return s.rewriteManifestRoot(tdfBytes, func(manifest map[string]any) {
+		encryptionInfo, ok := manifest["encryptionInformation"].(map[string]any)
+		s.Require().True(ok)
+		integrityInfo, ok := encryptionInfo["integrityInformation"].(map[string]any)
+		s.Require().True(ok)
+
+		mutate(integrityInfo)
+	})
+}
+
+// rewriteManifestRoot is rewriteManifest with the whole manifest object handed
+// to mutate, for rewrites that reach outside integrityInformation. The same
+// re-serialize-but-never-re-sign caveat applies.
+func (s *TDFSuite) rewriteManifestRoot(tdfBytes []byte, mutate func(manifest map[string]any)) []byte {
+	s.T().Helper()
+
 	zipReader, err := zipstream.NewReader(bytes.NewReader(tdfBytes))
 	s.Require().NoError(err)
 
@@ -45,12 +61,7 @@ func (s *TDFSuite) rewriteManifest(tdfBytes []byte, mutate func(integrityInfo ma
 	var manifest map[string]any
 	s.Require().NoError(json.Unmarshal(manifestBytes, &manifest))
 
-	encryptionInfo, ok := manifest["encryptionInformation"].(map[string]any)
-	s.Require().True(ok)
-	integrityInfo, ok := encryptionInfo["integrityInformation"].(map[string]any)
-	s.Require().True(ok)
-
-	mutate(integrityInfo)
+	mutate(manifest)
 
 	rewritten, err := json.Marshal(manifest)
 	s.Require().NoError(err)

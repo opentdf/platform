@@ -85,6 +85,10 @@ func TestManifest_MissingUnderEitherName(t *testing.T) {
 	})
 
 	require.ErrorIs(t, err, errZipFileNotFound)
+	// The error has to name both candidates: a bare "file not found" gives no
+	// hint that a second name was tried.
+	require.ErrorContains(t, err, TDFManifestFileNameSpec)
+	require.ErrorContains(t, err, TDFManifestFileName)
 }
 
 // An oversized manifest under the spec name is a size failure, not a missing

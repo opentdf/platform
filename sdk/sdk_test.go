@@ -146,7 +146,16 @@ func TestIsValidTdf_AcceptsSpecManifestName(t *testing.T) {
 	decoded, err := base64.StdEncoding.DecodeString(specNamedManifestTdf)
 	require.NoError(t, err)
 
-	isValid, err := sdk.IsValidTdf(bytes.NewReader(decoded))
+	in := bytes.NewReader(decoded)
+	isValid, err := sdk.IsValidTdf(in)
+	require.NoError(t, err)
+	assert.True(t, isValid)
+
+	// Try again to see if the reader has been reset. This matters more on the
+	// spec name than on the off-spec one: Manifest() may issue two reads
+	// against the shared seeker, so anything that leaves the stream parked
+	// after the first lookup breaks only here.
+	isValid, err = sdk.IsValidTdf(in)
 	require.NoError(t, err)
 	assert.True(t, isValid)
 }

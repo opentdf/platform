@@ -101,6 +101,18 @@ func TestManifest_UnmarshalJSON_SpecVersion(t *testing.T) {
 			payloadExtra: `,"tdf_spec_version":430`,
 			want:         "",
 		},
+		{
+			// The decoder gates its off-spec pass on a substring scan for the
+			// literal key, so a key spelled with JSON escapes is not found. The
+			// fallback declines to fire rather than misreading anything, which
+			// is the same "no version" this returned before the name was read
+			// at all. Pinned because it is a deliberate limit, not an accident.
+			name: "escaped tdf_spec_version key is not read",
+			// The escape is "v": a decoder reading this sees the key
+			// tdf_spec_version, but the raw bytes do not contain it.
+			payloadExtra: `,"tdf_spec_\u0076ersion":"4.3.0"`,
+			want:         "",
+		},
 	}
 
 	for _, tt := range tests {

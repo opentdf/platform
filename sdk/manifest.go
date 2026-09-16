@@ -1,6 +1,7 @@
 package sdk
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 )
@@ -154,6 +155,17 @@ type offSpecSpecVersion struct {
 	} `json:"payload"`
 }
 
+// offSpecSpecVersionKey gates the second decode pass below. Almost every
+// manifest without a schemaVersion has no off-spec copy either -- a pre-4.3.0
+// container written by this SDK carries neither -- and a substring scan is far
+// cheaper than tokenizing the document again to discover that.
+//
+// A key spelled with JSON escapes ("tdf_spec_version") would not match and
+// its version would not be read. No writer emits that, and the result is
+// exactly the pre-existing behavior of reporting no version, so the fallback
+// simply does not fire rather than misreading anything.
+var offSpecSpecVersionKey = []byte(`"tdf_spec_version"`)
+
 // UnmarshalJSON decodes a TDF manifest, reading an off-spec tdf_spec_version as
 // the spec version when the correct schemaVersion is absent, so that files
 // written against the erroneous name stay readable.
@@ -168,7 +180,7 @@ func (m *Manifest) UnmarshalJSON(data []byte) error {
 	}
 	*m = Manifest(base)
 
-	if m.TDFVersion != "" {
+	if m.TDFVersion != "" || !bytes.Contains(data, offSpecSpecVersionKey) {
 		return nil
 	}
 

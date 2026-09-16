@@ -15,10 +15,9 @@ import (
 // the same value recorded as tdf_spec_version under payload. It returns the
 // rewritten archive and the version it moved.
 //
-// The manifest is re-serialized but never re-signed, which is sound here
-// because the root signature covers the segment hashes rather than the JSON
-// encoding -- moving a metadata field leaves a container that is still
-// internally consistent on the wire, which is the whole point of the fixture.
+// Re-serializing the manifest without re-signing leaves a container that is
+// still internally consistent, since the root signature covers the segment
+// hashes rather than the JSON encoding.
 func (s *TDFSuite) renameSpecVersionToOffSpec(tdfBytes []byte) ([]byte, string) {
 	s.T().Helper()
 

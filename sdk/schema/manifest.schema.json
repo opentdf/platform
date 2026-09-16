@@ -5,6 +5,10 @@
     "description": "TDF manifest in JSON",
     "type": "object",
     "properties": {
+      "tdf_spec_version": {
+        "description": "Semver version number of the TDF spec (spec prose placement). Read only.",
+        "type": "string"
+      },
       "payload": {
         "type": "object",
         "description": "An object which contains information describing the payload.",

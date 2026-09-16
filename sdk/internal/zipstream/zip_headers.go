@@ -16,8 +16,16 @@ const (
 )
 
 const (
-	TDFManifestFileName = "0.manifest.json"
-	TDFPayloadFileName  = "0.payload"
+	// TDFManifestFileName is the manifest member name required by the OpenTDF
+	// spec (schema/OpenTDF/README.md): manifest.json at the archive root.
+	TDFManifestFileName = "manifest.json"
+	// LegacyTDFManifestFileName is what every SDK wrote before spec
+	// compliance. Readers accept it forever.
+	LegacyTDFManifestFileName = "0.manifest.json"
+	// TDFPayloadFileName is the payload member name the writer uses and
+	// records in manifest.payload.url. Readers only fall back to it when the
+	// manifest's payload.url is empty.
+	TDFPayloadFileName = "0.payload"
 )
 
 const (

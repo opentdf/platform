@@ -64,6 +64,7 @@ func TestSegmentWriter_SequentialOrder(t *testing.T) {
 	zipReader, err := zip.NewReader(bytes.NewReader(allBytes), int64(len(allBytes)))
 	require.NoError(t, err, "Should create valid ZIP")
 	assert.Len(t, zipReader.File, 2, "Should have 2 files: payload and manifest")
+	require.NotNil(t, findFileByName(zipReader, TDFManifestFileName), "Should have manifest.json")
 
 	// Verify payload content
 	payloadFile := findFileByName(zipReader, "0.payload")

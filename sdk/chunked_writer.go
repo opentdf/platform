@@ -792,6 +792,10 @@ func (w *chunkedWriter) WriteSegment(ctx context.Context, index int, data []byte
 	if err != nil {
 		return nil, fmt.Errorf("encrypt segment %d: %w", index, err)
 	}
+	// SegmentGMAC reads the trailing AEAD tag, so hashing ciphertext alone is
+	// equivalent to hashing nonce||ciphertext -- which is why there is no
+	// concatenation here. An algorithm that MACs the whole segment (HS256)
+	// would need the nonce prepended back.
 	sig, err := segmentIntegrity(ciphertext, w.dek, SegmentGMAC, w.useHex)
 	if err != nil {
 		return nil, fmt.Errorf("segment %d signature: %w", index, err)

@@ -257,6 +257,7 @@ SELECT
 FROM target_attribute_value
 LEFT JOIN obligation_triggers
     ON obligation_triggers.attribute_value_id = target_attribute_value.id
+    -- An obligation value update replaces its full trigger set, so omit that old set.
     AND (
         $1::uuid IS NULL
         OR obligation_triggers.obligation_value_id != $1::uuid
@@ -265,9 +266,9 @@ GROUP BY target_attribute_value.id
 `
 
 type countObligationTriggersForAttributeValueParams struct {
-	ExcludedObligationValueID pgtype.UUID `json:"excluded_obligation_value_id"`
-	AttributeValueID          pgtype.UUID `json:"attribute_value_id"`
-	AttributeValueFqn         pgtype.Text `json:"attribute_value_fqn"`
+	ReplacingTriggersForObligationValueID pgtype.UUID `json:"replacing_triggers_for_obligation_value_id"`
+	AttributeValueID                      pgtype.UUID `json:"attribute_value_id"`
+	AttributeValueFqn                     pgtype.Text `json:"attribute_value_fqn"`
 }
 
 type countObligationTriggersForAttributeValueRow struct {
@@ -291,13 +292,14 @@ type countObligationTriggersForAttributeValueRow struct {
 //	FROM target_attribute_value
 //	LEFT JOIN obligation_triggers
 //	    ON obligation_triggers.attribute_value_id = target_attribute_value.id
+//	    -- An obligation value update replaces its full trigger set, so omit that old set.
 //	    AND (
 //	        $1::uuid IS NULL
 //	        OR obligation_triggers.obligation_value_id != $1::uuid
 //	    )
 //	GROUP BY target_attribute_value.id
 func (q *Queries) countObligationTriggersForAttributeValue(ctx context.Context, arg countObligationTriggersForAttributeValueParams) (countObligationTriggersForAttributeValueRow, error) {
-	row := q.db.QueryRow(ctx, countObligationTriggersForAttributeValue, arg.ExcludedObligationValueID, arg.AttributeValueID, arg.AttributeValueFqn)
+	row := q.db.QueryRow(ctx, countObligationTriggersForAttributeValue, arg.ReplacingTriggersForObligationValueID, arg.AttributeValueID, arg.AttributeValueFqn)
 	var i countObligationTriggersForAttributeValueRow
 	err := row.Scan(&i.AttributeValueID, &i.ObjectCount)
 	return i, err

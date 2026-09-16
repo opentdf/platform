@@ -58,12 +58,13 @@ func (c PolicyDBClient) GetCountObligationValues(ctx context.Context, obligation
 
 // GetCountObligationTriggersForAttributeValue returns the canonical attribute value ID
 // with its trigger count so callers can combine additions that identify the same value
-// by different identifier forms.
-func (c PolicyDBClient) GetCountObligationTriggersForAttributeValue(ctx context.Context, value *common.IdFqnIdentifier, excludedObligationValueID string) (string, int64, error) {
+// by different identifier forms. When replacing a value's full trigger set, its old
+// triggers are omitted from the count.
+func (c PolicyDBClient) GetCountObligationTriggersForAttributeValue(ctx context.Context, value *common.IdFqnIdentifier, replacingTriggersForObligationValueID string) (string, int64, error) {
 	result, err := c.queries.countObligationTriggersForAttributeValue(ctx, countObligationTriggersForAttributeValueParams{
-		AttributeValueID:          pgtypeUUID(value.GetId()),
-		AttributeValueFqn:         pgtypeText(value.GetFqn()),
-		ExcludedObligationValueID: pgtypeUUID(excludedObligationValueID),
+		AttributeValueID:                      pgtypeUUID(value.GetId()),
+		AttributeValueFqn:                     pgtypeText(value.GetFqn()),
+		ReplacingTriggersForObligationValueID: pgtypeUUID(replacingTriggersForObligationValueID),
 	})
 	return result.AttributeValueID, result.ObjectCount, db.WrapIfKnownInvalidQueryErr(err)
 }

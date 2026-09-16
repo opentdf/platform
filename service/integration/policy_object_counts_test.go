@@ -25,18 +25,18 @@ type PolicyObjectCountsSuite struct {
 	db  fixtures.DBInterface
 	ctx context.Context //nolint:containedctx // context is used in the test suite
 
-	namespace                 *policy.Namespace
-	emptyNamespace            *policy.Namespace
-	attribute                 *policy.Attribute
-	emptyAttribute            *policy.Attribute
-	attributeValue            *policy.Value
-	emptyAttributeValue       *policy.Value
-	action                    *policy.Action
-	initialActionCount        int64
-	emptyNamespaceActionCount int64
-	obligation                *policy.Obligation
-	emptyObligation           *policy.Obligation
-	excludedObligationValueID string
+	namespace                             *policy.Namespace
+	emptyNamespace                        *policy.Namespace
+	attribute                             *policy.Attribute
+	emptyAttribute                        *policy.Attribute
+	attributeValue                        *policy.Value
+	emptyAttributeValue                   *policy.Value
+	action                                *policy.Action
+	initialActionCount                    int64
+	emptyNamespaceActionCount             int64
+	obligation                            *policy.Obligation
+	emptyObligation                       *policy.Obligation
+	replacingTriggersForObligationValueID string
 }
 
 func (s *PolicyObjectCountsSuite) SetupSuite() {
@@ -144,7 +144,7 @@ func (s *PolicyObjectCountsSuite) SetupSuite() {
 
 	for i, value := range s.obligation.GetValues() {
 		if i == 0 {
-			s.excludedObligationValueID = value.GetId()
+			s.replacingTriggersForObligationValueID = value.GetId()
 		}
 		_, err := s.db.PolicyClient.CreateObligationTrigger(s.ctx, &obligations.AddObligationTriggerRequest{
 			ObligationValue: &common.IdFqnIdentifier{Id: value.GetId()},
@@ -299,7 +299,7 @@ func (s *PolicyObjectCountsSuite) Test_GetCountObligationTriggersForAttributeVal
 	resolvedAttributeValueID, count, err = s.db.PolicyClient.GetCountObligationTriggersForAttributeValue(
 		s.ctx,
 		&common.IdFqnIdentifier{Id: s.attributeValue.GetId()},
-		s.excludedObligationValueID,
+		s.replacingTriggersForObligationValueID,
 	)
 	s.Require().NoError(err)
 	s.Equal(s.attributeValue.GetId(), resolvedAttributeValueID)

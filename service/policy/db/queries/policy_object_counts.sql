@@ -114,9 +114,10 @@ SELECT
 FROM target_attribute_value
 LEFT JOIN obligation_triggers
     ON obligation_triggers.attribute_value_id = target_attribute_value.id
+    -- An obligation value update replaces its full trigger set, so omit that old set.
     AND (
-        sqlc.narg('excluded_obligation_value_id')::uuid IS NULL
-        OR obligation_triggers.obligation_value_id != sqlc.narg('excluded_obligation_value_id')::uuid
+        sqlc.narg('replacing_triggers_for_obligation_value_id')::uuid IS NULL
+        OR obligation_triggers.obligation_value_id != sqlc.narg('replacing_triggers_for_obligation_value_id')::uuid
     )
 GROUP BY target_attribute_value.id;
 

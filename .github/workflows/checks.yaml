@@ -459,11 +459,23 @@ jobs:
       packages: read
       pull-requests: write
       checks: write
-    uses: opentdf/tests/.github/workflows/xtest.yml@main
+    # Keep release/service/v0.11 on the xtest contract used by its last fully
+    # green backport instead of continuously adopting main-only API assertions.
+    # Green run: https://github.com/opentdf/platform/actions/runs/19509956999
+    # Pinned revision: https://github.com/opentdf/tests/commit/4120b2315162bed876878efdb6f4fb0ce1979005
+    uses: opentdf/tests/.github/workflows/xtest.yml@4120b2315162bed876878efdb6f4fb0ce1979005
     with:
       focus-sdk: go
       # use commit instead of ref so we can "go get" specific sdk version
       platform-ref: ${{ github.event.pull_request.head.sha || github.sha }} lts
+      # These client releases were current for the v0.11 service line. Pinning
+      # their commits prevents newer SDK source from requiring post-v0.11 protos.
+      # https://github.com/opentdf/otdfctl/releases/tag/v0.26.2
+      otdfctl-ref: 208a49e0b1c8601e83c335bffbf56ef0a00cfd48
+      # https://github.com/opentdf/java-sdk/releases/tag/v0.10.0
+      java-ref: 7644e235f8f845d62720ed8395103a94b210fbb8
+      # https://github.com/opentdf/web-sdk/releases/tag/sdk-v0.6.0
+      js-ref: 2b23c8197836921a14494a7d859d9d5c7e3b873b
 
   tests-bdd:
     name: Cucumber BDD Tests
@@ -534,12 +546,17 @@ jobs:
         run: |
           sudo apt update
           sudo apt install -y parallel
-      - uses: opentdf/platform/test/start-up-with-containers@main
+      # Freeze the startup action revision already validated on this backport.
+      # https://github.com/opentdf/platform/commit/cb0813e9dceb4e1c0308cc943e089ddc166c2698
+      - uses: opentdf/platform/test/start-up-with-containers@cb0813e9dceb4e1c0308cc943e089ddc166c2698
         with:
           platform-ref: ${{ github.event.pull_request.head.sha || github.sha }}
-      - uses: opentdf/otdfctl/e2e@main
+      # Run the CLI and E2E contract released alongside the v0.11 service line;
+      # later tests assert policy APIs that this maintained release never exposed.
+      # https://github.com/opentdf/otdfctl/releases/tag/v0.26.2
+      - uses: opentdf/otdfctl/e2e@208a49e0b1c8601e83c335bffbf56ef0a00cfd48
         with:
-          otdfctl-ref: "main"
+          otdfctl-ref: "208a49e0b1c8601e83c335bffbf56ef0a00cfd48"
         env:
           TESTRAIL_USER: ${{ secrets.TESTRAIL_USER }}
           TESTRAIL_PASS: ${{ secrets.TESTRAIL_PASS }}

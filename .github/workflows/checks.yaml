@@ -459,11 +459,10 @@ jobs:
       packages: read
       pull-requests: write
       checks: write
-    # Keep release/service/v0.11 on the xtest contract used by its last fully
-    # green backport instead of continuously adopting main-only API assertions.
-    # Green run: https://github.com/opentdf/platform/actions/runs/19509956999
-    # Pinned revision: https://github.com/opentdf/tests/commit/4120b2315162bed876878efdb6f4fb0ce1979005
-    uses: opentdf/tests/.github/workflows/xtest.yml@4120b2315162bed876878efdb6f4fb0ce1979005
+    # Freeze the current xtest workflow definition while using release-compatible
+    # clients below instead of continuously adopting main-only SDK APIs.
+    # https://github.com/opentdf/tests/commit/9cf66a9a7e66429d12a98252512b3db50e00d6be
+    uses: opentdf/tests/.github/workflows/xtest.yml@9cf66a9a7e66429d12a98252512b3db50e00d6be
     with:
       focus-sdk: go
       # use commit instead of ref so we can "go get" specific sdk version

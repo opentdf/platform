@@ -76,12 +76,13 @@ func (s *Service) enforceUpdateObligationValueLimits(ctx context.Context, client
 	return s.enforceObligationTriggerLimits(ctx, client, additions, req.GetId())
 }
 
-func (s *Service) enforceObligationTriggerLimits(ctx context.Context, client objectLimitCounter, additions []triggerAddition, excludedObligationValueID string) error {
+func (s *Service) enforceObligationTriggerLimits(ctx context.Context, client objectLimitCounter, additions []triggerAddition, replacingTriggersForObligationValueID string) error {
 	limits := s.config.MaxObjectCounts
 	type addition struct {
 		value *common.IdFqnIdentifier
 		count int
 	}
+	// Collapse repeated request identifiers before resolving them through the database.
 	triggersByValue := make(map[string]addition, len(additions))
 	for _, added := range additions {
 		key := added.value.GetId()
@@ -98,9 +99,10 @@ func (s *Service) enforceObligationTriggerLimits(ctx context.Context, client obj
 			current   int64
 			additions int
 		}
+		// ID and FQN forms may resolve to the same value, so enforce on the canonical ID.
 		countsByAttributeValue := make(map[string]triggerCount, len(triggersByValue))
 		for _, item := range triggersByValue {
-			attributeValueID, count, err := client.GetCountObligationTriggersForAttributeValue(ctx, item.value, excludedObligationValueID)
+			attributeValueID, count, err := client.GetCountObligationTriggersForAttributeValue(ctx, item.value, replacingTriggersForObligationValueID)
 			if err != nil {
 				return err
 			}
@@ -119,6 +121,7 @@ func (s *Service) enforceObligationTriggerLimits(ctx context.Context, client obj
 	if limits.ActionsPerNamespace == 0 {
 		return nil
 	}
+	// Name-based trigger actions are created in the target attribute value's namespace.
 	actionNamesByNamespace := make(map[string][]string)
 	valueNamespaces := make(map[string]string, len(triggersByValue))
 	for _, added := range additions {

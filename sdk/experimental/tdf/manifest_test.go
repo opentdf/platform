@@ -108,11 +108,11 @@ func TestManifest_UnmarshalJSON_SpecVersion(t *testing.T) {
 			assert.Equal(t, tt.want, m.TDFVersion)
 
 			// The custom decoder must not drop anything else.
-			assert.Equal(t, "reference", m.Payload.Type)
-			assert.Equal(t, "0.payload", m.Payload.URL)
-			assert.Equal(t, "split", m.EncryptionInformation.KeyAccessType)
-			assert.Equal(t, "GMAC", m.EncryptionInformation.IntegrityInformation.SegmentHashAlgorithm)
-			assert.Equal(t, "cm9vdHNpZw==", m.EncryptionInformation.IntegrityInformation.RootSignature.Signature)
+			assert.Equal(t, "reference", m.Type)
+			assert.Equal(t, "0.payload", m.URL)
+			assert.Equal(t, "split", m.KeyAccessType)
+			assert.Equal(t, "GMAC", m.SegmentHashAlgorithm)
+			assert.Equal(t, "cm9vdHNpZw==", m.Signature)
 		})
 	}
 }

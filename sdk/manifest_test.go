@@ -54,18 +54,18 @@ func testManifestJSON(payloadExtra, rootExtra string) string {
 func assertManifestBodyDecoded(t *testing.T, m Manifest) {
 	t.Helper()
 
-	assert.Equal(t, "reference", m.Payload.Type)
-	assert.Equal(t, "0.payload", m.Payload.URL)
-	assert.Equal(t, "zip", m.Payload.Protocol)
-	assert.Equal(t, "application/octet-stream", m.Payload.MimeType)
-	assert.True(t, m.Payload.IsEncrypted)
+	assert.Equal(t, "reference", m.Type)
+	assert.Equal(t, "0.payload", m.URL)
+	assert.Equal(t, "zip", m.Protocol)
+	assert.Equal(t, "application/octet-stream", m.MimeType)
+	assert.True(t, m.IsEncrypted)
 
-	assert.Equal(t, "split", m.EncryptionInformation.KeyAccessType)
-	assert.Equal(t, "eyJ1dWlkIjogIjEifQ==", m.EncryptionInformation.Policy)
-	assert.Equal(t, "AES-256-GCM", m.EncryptionInformation.Method.Algorithm)
-	assert.Equal(t, "GMAC", m.EncryptionInformation.IntegrityInformation.SegmentHashAlgorithm)
-	assert.Equal(t, int64(2097152), m.EncryptionInformation.IntegrityInformation.DefaultSegmentSize)
-	assert.Equal(t, "cm9vdHNpZw==", m.EncryptionInformation.IntegrityInformation.RootSignature.Signature)
+	assert.Equal(t, "split", m.KeyAccessType)
+	assert.Equal(t, "eyJ1dWlkIjogIjEifQ==", m.Policy)
+	assert.Equal(t, "AES-256-GCM", m.Method.Algorithm)
+	assert.Equal(t, "GMAC", m.SegmentHashAlgorithm)
+	assert.Equal(t, int64(2097152), m.DefaultSegmentSize)
+	assert.Equal(t, "cm9vdHNpZw==", m.Signature)
 }
 
 // TestManifest_UnmarshalJSON_SpecVersion covers reading tdf_spec_version, an

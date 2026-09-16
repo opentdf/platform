@@ -1556,12 +1556,11 @@ func (r *Reader) doPayloadKeyUnwrap(ctx context.Context) error { //nolint:gocogn
 
 // hmacIntegrity computes an HMAC-SHA256 over data, keyed by the payload key.
 //
-// useHex selects the pre-4.3.0 wire format, in which the digest is hex-encoded
-// before the caller base64s it. Writers pick it from the target mode. Readers
-// pass false and compare via digestMatchesRecorded, which accepts either form.
-func hmacIntegrity(data, key []byte, useHex bool) string {
+// Legacy (pre-4.3.0) TDFs hex-encode the digest before the caller base64s it;
+// isLegacyTDF preserves that wire format.
+func hmacIntegrity(data, key []byte, isLegacyTDF bool) string {
 	hmac := ocrypto.CalculateSHA256Hmac(key, data)
-	if useHex {
+	if isLegacyTDF {
 		return hex.EncodeToString(hmac)
 	}
 	return string(hmac)
@@ -1580,13 +1579,13 @@ func hmacIntegrity(data, key []byte, useHex bool) string {
 // this helper is unexported and reachable only through segmentIntegrity, whose
 // argument is by construction a segment's ciphertext. rootIntegrity, whose
 // input is the aggregate hash, has no way to call it.
-func readAEADTag(ciphertext []byte, useHex bool) (string, error) {
+func readAEADTag(ciphertext []byte, isLegacyTDF bool) (string, error) {
 	if kGMACPayloadLength > len(ciphertext) {
 		return "", fmt.Errorf("%w: ciphertext length=%d", ErrGMACSignatureFailed, len(ciphertext))
 	}
 
 	tag := ciphertext[len(ciphertext)-kGMACPayloadLength:]
-	if useHex {
+	if isLegacyTDF {
 		return hex.EncodeToString(tag), nil
 	}
 	return string(tag), nil
@@ -1603,12 +1602,12 @@ func readAEADTag(ciphertext []byte, useHex bool) (string, error) {
 // SegmentIntegrityAlg is int-backed, and silently treating an out-of-range
 // value as GMAC would write a manifest naming an algorithm the signature was
 // not computed with.
-func segmentIntegrity(ciphertext, key []byte, alg SegmentIntegrityAlg, useHex bool) (string, error) {
+func segmentIntegrity(ciphertext, key []byte, alg SegmentIntegrityAlg, isLegacyTDF bool) (string, error) {
 	switch alg {
 	case SegmentHS256:
-		return hmacIntegrity(ciphertext, key, useHex), nil
+		return hmacIntegrity(ciphertext, key, isLegacyTDF), nil
 	case SegmentGMAC:
-		return readAEADTag(ciphertext, useHex)
+		return readAEADTag(ciphertext, isLegacyTDF)
 	}
 	return "", fmt.Errorf("%w: %s", ErrUnsupportedSegmentIntegrityAlgorithm, alg)
 }
@@ -1620,11 +1619,11 @@ func segmentIntegrity(ciphertext, key []byte, alg SegmentIntegrityAlg, useHex bo
 // extract and no keyless construction that could authenticate it -- see
 // ErrUnsupportedRootIntegrityAlgorithm. RootIntegrityAlg has no other named
 // value, but it is int-backed, so the check still has to run.
-func rootIntegrity(aggregateHash, key []byte, alg RootIntegrityAlg, useHex bool) (string, error) {
+func rootIntegrity(aggregateHash, key []byte, alg RootIntegrityAlg, isLegacyTDF bool) (string, error) {
 	if alg != RootHS256 {
 		return "", fmt.Errorf("%w: %s", ErrUnsupportedRootIntegrityAlgorithm, alg)
 	}
-	return hmacIntegrity(aggregateHash, key, useHex), nil
+	return hmacIntegrity(aggregateHash, key, isLegacyTDF), nil
 }
 
 // digestMatchesRecorded reports whether the value a manifest records for an

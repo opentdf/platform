@@ -798,3 +798,216 @@ func TestWriterClampsOutOfRangeClock(t *testing.T) {
 			"%s should be clamped to the base year, not wrapped into the future", f.Name)
 	}
 }
+
+// TestSegmentWriterErrorMutated pins Error.Mutated across every refusal a
+// caller can provoke through the public surface.
+//
+// The flag is the entire basis on which a wrapping writer decides between
+// retrying and fencing, and it is not recoverable from anything else in the
+// error: ErrSegmentMissing and ErrZip64Required are each returned from both
+// sides of the mutation boundary, so matching on the sentinel classifies
+// nothing. Getting it backwards is silent in both directions -- false when it
+// should be true lets a retry append a second payload entry to the central
+// directory, yielding an archive some readers accept and misread; true when it
+// should be false discards an already-encrypted, already-uploaded payload over
+// a refusal that changed nothing.
+func TestSegmentWriterErrorMutated(t *testing.T) {
+	// A segment whose recorded size alone crosses the ZIP64 threshold. Only
+	// the size is recorded, not the bytes, so the threshold can be crossed
+	// without allocating anything.
+	const smallSegment = 4
+
+	for _, tc := range []struct {
+		name string
+		// provoke returns the error to classify, having driven the writer
+		// into the state that produces it.
+		provoke     func(t *testing.T, ctx context.Context) error
+		wantErr     error
+		wantMutated bool
+	}{
+		{
+			name: "closed writer",
+			provoke: func(t *testing.T, ctx context.Context) error {
+				w := NewSegmentTDFWriter(1)
+				require.NoError(t, w.Close())
+				_, err := w.Finalize(ctx, []byte(`{}`))
+				return err
+			},
+			wantErr:     ErrWriterClosed,
+			wantMutated: false,
+		},
+		{
+			name: "already finalized",
+			provoke: func(t *testing.T, ctx context.Context) error {
+				w := NewSegmentTDFWriter(1)
+				_, err := w.WriteSegment(ctx, 0, smallSegment, 0)
+				require.NoError(t, err)
+				_, err = w.Finalize(ctx, []byte(`{}`))
+				require.NoError(t, err)
+				_, err = w.Finalize(ctx, []byte(`{}`))
+				return err
+			},
+			wantErr:     ErrWriterClosed,
+			wantMutated: false,
+		},
+		{
+			name: "cancelled context",
+			provoke: func(t *testing.T, ctx context.Context) error {
+				w := NewSegmentTDFWriter(1)
+				_, err := w.WriteSegment(ctx, 0, smallSegment, 0)
+				require.NoError(t, err)
+				cancelled, cancel := context.WithCancel(ctx)
+				cancel()
+				_, err = w.Finalize(cancelled, []byte(`{}`))
+				return err
+			},
+			wantErr:     context.Canceled,
+			wantMutated: false,
+		},
+		{
+			name: "no segments at all",
+			provoke: func(_ *testing.T, ctx context.Context) error {
+				_, err := NewSegmentTDFWriter(1).Finalize(ctx, []byte(`{}`))
+				return err
+			},
+			wantErr:     ErrSegmentMissing,
+			wantMutated: false,
+		},
+		{
+			// The companion to the mutated ErrSegmentMissing below: same
+			// sentinel, opposite verdict, which is why the flag exists.
+			name: "missing segment zero",
+			provoke: func(t *testing.T, ctx context.Context) error {
+				w := NewSegmentTDFWriter(2)
+				_, err := w.WriteSegment(ctx, 1, smallSegment, 0)
+				require.NoError(t, err)
+				_, err = w.Finalize(ctx, []byte(`{}`))
+				return err
+			},
+			wantErr:     ErrNoSegmentZero,
+			wantMutated: false,
+		},
+		{
+			// Past SetOrder: the derived order is retained, so a retry that
+			// supplied the missing bytes would finalize against an order
+			// computed before they arrived.
+			name: "payload needs zip64 under Zip64Never",
+			provoke: func(t *testing.T, ctx context.Context) error {
+				w := NewSegmentTDFWriter(1,
+					WithZip64Mode(Zip64Never),
+					WithMaxNonZip64Value(smallSegment-1))
+				_, err := w.WriteSegment(ctx, 0, smallSegment, 0)
+				require.NoError(t, err)
+				_, err = w.Finalize(ctx, []byte(`{}`))
+				return err
+			},
+			wantErr:     ErrZip64Required,
+			wantMutated: true,
+		},
+		{
+			// Past the second boundary: the payload entry is already in the
+			// central directory, so a retry adds a duplicate. The payload
+			// itself fits under the threshold here; only the directory's
+			// offset, which the local file header pushes past it, does not.
+			name: "central directory offset needs zip64 under Zip64Never",
+			provoke: func(t *testing.T, ctx context.Context) error {
+				w := NewSegmentTDFWriter(1,
+					WithZip64Mode(Zip64Never),
+					WithMaxNonZip64Value(smallSegment+1))
+				_, err := w.WriteSegment(ctx, 0, smallSegment, 0)
+				require.NoError(t, err)
+				_, err = w.Finalize(ctx, []byte(`{}`))
+				return err
+			},
+			wantErr:     ErrZip64Required,
+			wantMutated: true,
+		},
+		{
+			name: "write segment on a closed writer",
+			provoke: func(t *testing.T, ctx context.Context) error {
+				w := NewSegmentTDFWriter(1)
+				require.NoError(t, w.Close())
+				_, err := w.WriteSegment(ctx, 0, smallSegment, 0)
+				return err
+			},
+			wantErr:     ErrWriterClosed,
+			wantMutated: false,
+		},
+		{
+			name: "duplicate segment",
+			provoke: func(t *testing.T, ctx context.Context) error {
+				w := NewSegmentTDFWriter(1)
+				_, err := w.WriteSegment(ctx, 0, smallSegment, 0)
+				require.NoError(t, err)
+				_, err = w.WriteSegment(ctx, 0, smallSegment, 0)
+				return err
+			},
+			wantErr:     ErrDuplicateSegment,
+			wantMutated: false,
+		},
+		{
+			name: "negative segment index",
+			provoke: func(_ *testing.T, ctx context.Context) error {
+				_, err := NewSegmentTDFWriter(1).WriteSegment(ctx, -1, smallSegment, 0)
+				return err
+			},
+			wantErr:     ErrInvalidSegment,
+			wantMutated: false,
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			err := tc.provoke(t, t.Context())
+			require.ErrorIs(t, err, tc.wantErr)
+
+			// Asserted as a typed *Error, not via any interface: a caller can
+			// only read the flag if the concrete type survives wrapping.
+			var zerr *Error
+			require.ErrorAs(t, err, &zerr)
+			assert.Equal(t, writerTypeSegment, zerr.Type)
+			assert.Equal(t, tc.wantMutated, zerr.Mutated,
+				"Mutated decides retry vs. fence; %q is on the %s side of the boundary",
+				tc.name, map[bool]string{true: "mutated", false: "untouched"}[tc.wantMutated])
+		})
+	}
+}
+
+// TestSegmentWriterNonMutatingFinalizeIsRetryable checks the promise Mutated
+// false actually makes. Asserting the flag alone would pass just as well if
+// the writer were quietly wrecked, so this drives a refused Finalize through
+// to a successful one and reads the archive back.
+func TestSegmentWriterNonMutatingFinalizeIsRetryable(t *testing.T) {
+	ctx := t.Context()
+	w := NewSegmentTDFWriter(2)
+
+	payload := []byte("second segment arrives late")
+	tail, err := w.WriteSegment(ctx, 1, uint64(len(payload)), crc32.ChecksumIEEE(payload))
+	require.NoError(t, err)
+
+	_, err = w.Finalize(ctx, []byte(`{"manifest":true}`))
+	require.ErrorIs(t, err, ErrNoSegmentZero)
+	var zerr *Error
+	require.ErrorAs(t, err, &zerr)
+	require.False(t, zerr.Mutated)
+
+	// Segment 0 arrives afterwards. Had the refused Finalize retained a
+	// derived order, this segment would be absent from it and the archive
+	// below would be short one entry or fail outright.
+	head := []byte("first ")
+	header, err := w.WriteSegment(ctx, 0, uint64(len(head)), crc32.ChecksumIEEE(head))
+	require.NoError(t, err)
+
+	final, err := w.Finalize(ctx, []byte(`{"manifest":true}`))
+	require.NoError(t, err)
+
+	all := bytes.Join([][]byte{header, head, tail, payload, final}, nil)
+	zipReader, err := zip.NewReader(bytes.NewReader(all), int64(len(all)))
+	require.NoError(t, err, "the retried finalize must produce a readable archive")
+	require.Len(t, zipReader.File, 2)
+
+	f, err := zipReader.Open(TDFPayloadFileName)
+	require.NoError(t, err)
+	t.Cleanup(func() { assert.NoError(t, f.Close()) })
+	got, err := io.ReadAll(f)
+	require.NoError(t, err)
+	assert.Equal(t, append(append([]byte{}, head...), payload...), got)
+}

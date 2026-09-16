@@ -90,7 +90,7 @@ func (s *PolicyObjectCountsSuite) SetupSuite() {
 		NamespaceId: s.namespace.GetId(),
 	})
 	s.Require().NoError(err)
-	for _, term := range []string{"count-term-one", "count-term-two"} {
+	for _, term := range []string{"count-term-one", "count-term-two", "count-term-three"} {
 		_, err := s.db.PolicyClient.CreateResourceMapping(s.ctx, &resourcemapping.CreateResourceMappingRequest{
 			AttributeValueId: s.attributeValue.GetId(),
 			Terms:            []string{term},
@@ -110,6 +110,7 @@ func (s *PolicyObjectCountsSuite) SetupSuite() {
 	})
 	s.Require().NoError(err)
 
+	var subjectConditionSetID string
 	for range 2 {
 		scs, err := s.db.PolicyClient.CreateSubjectConditionSet(
 			s.ctx,
@@ -118,22 +119,23 @@ func (s *PolicyObjectCountsSuite) SetupSuite() {
 			"",
 		)
 		s.Require().NoError(err)
-		_, err = s.db.PolicyClient.CreateSubjectMapping(s.ctx, &subjectmapping.CreateSubjectMappingRequest{
-			AttributeValueId:              s.attributeValue.GetId(),
-			ExistingSubjectConditionSetId: scs.GetId(),
-			Actions:                       []*policy.Action{{Id: s.action.GetId()}},
-			NamespaceId:                   s.namespace.GetId(),
-		})
-		s.Require().NoError(err)
+		subjectConditionSetID = scs.GetId()
 	}
+	_, err = s.db.PolicyClient.CreateSubjectMapping(s.ctx, &subjectmapping.CreateSubjectMappingRequest{
+		AttributeValueId:              s.attributeValue.GetId(),
+		ExistingSubjectConditionSetId: subjectConditionSetID,
+		Actions:                       []*policy.Action{{Id: s.action.GetId()}},
+		NamespaceId:                   s.namespace.GetId(),
+	})
+	s.Require().NoError(err)
 
 	s.obligation, err = s.db.PolicyClient.CreateObligation(s.ctx, &obligations.CreateObligationRequest{
 		Name:        "count-obligation",
 		NamespaceId: s.namespace.GetId(),
-		Values:      []string{"count-obligation-value-one", "count-obligation-value-two"},
+		Values:      []string{"count-obligation-value-one", "count-obligation-value-two", "count-obligation-value-three"},
 	})
 	s.Require().NoError(err)
-	s.Require().Len(s.obligation.GetValues(), 2)
+	s.Require().Len(s.obligation.GetValues(), 3)
 	s.emptyObligation, err = s.db.PolicyClient.CreateObligation(s.ctx, &obligations.CreateObligationRequest{
 		Name:        "empty-count-obligation",
 		NamespaceId: s.namespace.GetId(),
@@ -176,7 +178,7 @@ func (s *PolicyObjectCountsSuite) Test_ParentScopedCounts_ReturnExactCounts_Succ
 
 	count, err = s.db.PolicyClient.GetCountResourceMappings(s.ctx, s.attributeValue.GetId())
 	s.Require().NoError(err)
-	s.Equal(int64(2), count)
+	s.Equal(int64(3), count)
 
 	count, err = s.db.PolicyClient.GetCountResourceMappings(s.ctx, s.emptyAttributeValue.GetId())
 	s.Require().NoError(err)
@@ -184,7 +186,7 @@ func (s *PolicyObjectCountsSuite) Test_ParentScopedCounts_ReturnExactCounts_Succ
 
 	count, err = s.db.PolicyClient.GetCountSubjectMappings(s.ctx, s.attributeValue.GetId())
 	s.Require().NoError(err)
-	s.Equal(int64(2), count)
+	s.Equal(int64(1), count)
 
 	count, err = s.db.PolicyClient.GetCountSubjectMappings(s.ctx, s.emptyAttributeValue.GetId())
 	s.Require().NoError(err)
@@ -192,11 +194,11 @@ func (s *PolicyObjectCountsSuite) Test_ParentScopedCounts_ReturnExactCounts_Succ
 
 	count, err = s.db.PolicyClient.GetCountObligationValues(s.ctx, s.obligation.GetId(), "")
 	s.Require().NoError(err)
-	s.Equal(int64(2), count)
+	s.Equal(int64(3), count)
 
 	count, err = s.db.PolicyClient.GetCountObligationValues(s.ctx, "", s.obligation.GetFqn())
 	s.Require().NoError(err)
-	s.Equal(int64(2), count)
+	s.Equal(int64(3), count)
 
 	count, err = s.db.PolicyClient.GetCountObligationValues(s.ctx, s.emptyObligation.GetId(), "")
 	s.Require().NoError(err)
@@ -282,7 +284,7 @@ func (s *PolicyObjectCountsSuite) Test_GetCountObligationTriggersForAttributeVal
 		"",
 	)
 	s.Require().NoError(err)
-	s.Equal(int64(2), count)
+	s.Equal(int64(3), count)
 
 	count, err = s.db.PolicyClient.GetCountObligationTriggersForAttributeValue(
 		s.ctx,
@@ -290,7 +292,7 @@ func (s *PolicyObjectCountsSuite) Test_GetCountObligationTriggersForAttributeVal
 		"",
 	)
 	s.Require().NoError(err)
-	s.Equal(int64(2), count)
+	s.Equal(int64(3), count)
 
 	count, err = s.db.PolicyClient.GetCountObligationTriggersForAttributeValue(
 		s.ctx,
@@ -298,7 +300,7 @@ func (s *PolicyObjectCountsSuite) Test_GetCountObligationTriggersForAttributeVal
 		s.excludedObligationValueID,
 	)
 	s.Require().NoError(err)
-	s.Equal(int64(1), count)
+	s.Equal(int64(2), count)
 
 	count, err = s.db.PolicyClient.GetCountObligationTriggersForAttributeValue(
 		s.ctx,

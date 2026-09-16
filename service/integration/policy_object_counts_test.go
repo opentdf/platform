@@ -255,8 +255,8 @@ func (s *PolicyObjectCountsSuite) Test_NamespaceScopedCounts_ByIDAndFQN_Succeeds
 	s.Zero(count)
 }
 
-func (s *PolicyObjectCountsSuite) Test_GetCountActionsWithMissingNames_NormalizesNames_Succeeds() {
-	currentCount, missingCount, err := s.db.PolicyClient.GetCountActionsWithMissingNames(
+func (s *PolicyObjectCountsSuite) Test_GetCountActionsWithNewAdditions_NormalizesNames_Succeeds() {
+	currentCount, newAdditions, err := s.db.PolicyClient.GetCountActionsWithNewAdditions(
 		s.ctx,
 		s.namespace.GetId(),
 		"",
@@ -264,9 +264,9 @@ func (s *PolicyObjectCountsSuite) Test_GetCountActionsWithMissingNames_Normalize
 	)
 	s.Require().NoError(err)
 	s.Equal(s.initialActionCount+2, currentCount)
-	s.Equal(int64(1), missingCount)
+	s.Equal(int64(1), newAdditions)
 
-	countByFQN, missingByFQN, err := s.db.PolicyClient.GetCountActionsWithMissingNames(
+	countByFQN, additionsByFQN, err := s.db.PolicyClient.GetCountActionsWithNewAdditions(
 		s.ctx,
 		"",
 		s.namespace.GetFqn(),
@@ -274,7 +274,7 @@ func (s *PolicyObjectCountsSuite) Test_GetCountActionsWithMissingNames_Normalize
 	)
 	s.Require().NoError(err)
 	s.Equal(currentCount, countByFQN)
-	s.Equal(missingCount, missingByFQN)
+	s.Equal(newAdditions, additionsByFQN)
 }
 
 func (s *PolicyObjectCountsSuite) Test_GetCountObligationTriggersForAttributeValue_ByIdentifierAndExclusion_Succeeds() {
@@ -339,7 +339,7 @@ func (s *PolicyObjectCountsSuite) Test_GlobalCounts_WithoutNamespaceIdentifier_S
 	s.Require().NoError(err)
 	s.Equal(scsCount+1, count)
 
-	currentCount, missingCount, err := s.db.PolicyClient.GetCountActionsWithMissingNames(
+	currentCount, newAdditions, err := s.db.PolicyClient.GetCountActionsWithNewAdditions(
 		s.ctx,
 		"",
 		"",
@@ -347,7 +347,7 @@ func (s *PolicyObjectCountsSuite) Test_GlobalCounts_WithoutNamespaceIdentifier_S
 	)
 	s.Require().NoError(err)
 	s.Equal(actionCount+1, currentCount)
-	s.Equal(int64(1), missingCount)
+	s.Equal(int64(1), newAdditions)
 }
 
 func (s *PolicyObjectCountsSuite) Test_ParentNamespaceLookups_ByIDAndFQN_Succeeds() {
@@ -382,7 +382,7 @@ func (s *PolicyObjectCountsSuite) Test_NamespaceScopedCounts_UnknownNamespaceFqn
 	_, err = s.db.PolicyClient.GetCountActions(s.ctx, "", unknownNamespaceFQN)
 	s.Require().ErrorIs(err, db.ErrNotFound)
 
-	_, _, err = s.db.PolicyClient.GetCountActionsWithMissingNames(s.ctx, "", unknownNamespaceFQN, []string{"read"})
+	_, _, err = s.db.PolicyClient.GetCountActionsWithNewAdditions(s.ctx, "", unknownNamespaceFQN, []string{"read"})
 	s.Require().ErrorIs(err, db.ErrNotFound)
 }
 

@@ -572,7 +572,7 @@ func (c PolicyDBClient) GetMatchedSubjectMappings(ctx context.Context, propertie
 }
 
 // resolveSubjectMappingActions parses the action list from a CreateSubjectMappingRequest,
-// resolving actions by name within the given namespace and collecting existing action IDs.
+// implicitly creating missing name-based actions and collecting existing action IDs.
 func (c PolicyDBClient) resolveSubjectMappingActions(ctx context.Context, actions []*policy.Action, parsedNamespaceID pgtype.UUID) ([]string, error) {
 	if len(actions) == 0 {
 		return nil, db.WrapIfKnownInvalidQueryErr(
@@ -699,7 +699,7 @@ func (c PolicyDBClient) validateSubjectMappingNamespaceConsistency(
 	return nil
 }
 
-// resolveActionNameIDs creates or fetches action IDs for the given action names.
+// resolveActionNameIDs creates or fetches action IDs for the given normalized action names.
 // When namespaced is true, actions are created/fetched within the given namespace;
 // otherwise the legacy global (unnamespaced) path is used.
 func (c PolicyDBClient) resolveActionNameIDs(ctx context.Context, actionNames []string, namespaceID pgtype.UUID) ([]string, error) {

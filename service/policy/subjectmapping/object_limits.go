@@ -11,7 +11,7 @@ import (
 type objectLimitCounter interface {
 	GetCountSubjectMappings(context.Context, string) (int64, error)
 	GetCountSubjectConditionSets(context.Context, string, string) (int64, error)
-	GetCountActionsWithMissingNames(context.Context, string, string, []string) (int64, int64, error)
+	GetCountActionsWithNewAdditions(context.Context, string, string, []string) (int64, int64, error)
 }
 
 func (s SubjectMappingService) enforceCreateSubjectMappingLimits(ctx context.Context, client objectLimitCounter, req *sm.CreateSubjectMappingRequest) error {
@@ -41,11 +41,11 @@ func enforceActionNamesLimit(ctx context.Context, client objectLimitCounter, lim
 	if limit == 0 || len(names) == 0 {
 		return nil
 	}
-	current, missing, err := client.GetCountActionsWithMissingNames(ctx, namespaceID, namespaceFQN, names)
+	current, additions, err := client.GetCountActionsWithNewAdditions(ctx, namespaceID, namespaceFQN, names)
 	if err != nil {
 		return err
 	}
-	return policyconfig.EnforceObjectLimit(policyconfig.ObjectTypeActionsPerNamespace, limit, current, int(missing))
+	return policyconfig.EnforceObjectLimit(policyconfig.ObjectTypeActionsPerNamespace, limit, current, int(additions))
 }
 
 func actionNames(actions []*policy.Action) []string {

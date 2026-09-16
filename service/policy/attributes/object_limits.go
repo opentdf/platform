@@ -11,7 +11,7 @@ type objectLimitCounter interface {
 	GetCountAttributeDefinitions(context.Context, string) (int64, error)
 	GetCountAttributeValues(context.Context, string) (int64, error)
 	GetCountSubjectConditionSets(context.Context, string, string) (int64, error)
-	GetCountActionsWithMissingNames(context.Context, string, string, []string) (int64, int64, error)
+	GetCountActionsWithNewAdditions(context.Context, string, string, []string) (int64, int64, error)
 	GetAttributeDefinitionNamespaceID(context.Context, string) (string, error)
 }
 
@@ -100,11 +100,11 @@ func (s *AttributesService) enforceCreateAttributeValueLimits(ctx context.Contex
 		}
 	}
 	if checkActions {
-		current, missing, err := client.GetCountActionsWithMissingNames(ctx, namespaceID, "", actionNames)
+		current, additions, err := client.GetCountActionsWithNewAdditions(ctx, namespaceID, "", actionNames)
 		if err != nil {
 			return err
 		}
-		return policyconfig.EnforceObjectLimit(policyconfig.ObjectTypeActionsPerNamespace, limits.ActionsPerNamespace, current, int(missing))
+		return policyconfig.EnforceObjectLimit(policyconfig.ObjectTypeActionsPerNamespace, limits.ActionsPerNamespace, current, int(additions))
 	}
 	return nil
 }

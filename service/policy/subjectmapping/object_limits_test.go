@@ -13,7 +13,7 @@ import (
 type objectLimitCounterStub struct {
 	subjectMappings int64
 	actionsCurrent  int64
-	actionsMissing  int64
+	actionAdditions int64
 }
 
 func (s objectLimitCounterStub) GetCountSubjectMappings(context.Context, string) (int64, error) {
@@ -24,8 +24,8 @@ func (objectLimitCounterStub) GetCountSubjectConditionSets(context.Context, stri
 	return 0, nil
 }
 
-func (s objectLimitCounterStub) GetCountActionsWithMissingNames(context.Context, string, string, []string) (int64, int64, error) {
-	return s.actionsCurrent, s.actionsMissing, nil
+func (s objectLimitCounterStub) GetCountActionsWithNewAdditions(context.Context, string, string, []string) (int64, int64, error) {
+	return s.actionsCurrent, s.actionAdditions, nil
 }
 
 func Test_EnforceCreateSubjectMappingLimits_SubjectMappingAtLimit_Fails(t *testing.T) {
@@ -40,7 +40,7 @@ func Test_EnforceCreateSubjectMappingLimits_ImplicitActionsExceedLimit_Fails(t *
 	t.Parallel()
 
 	service := SubjectMappingService{config: &policyconfig.Config{MaxObjectCounts: policyconfig.MaxObjectCounts{ActionsPerNamespace: 5}}}
-	err := service.enforceCreateSubjectMappingLimits(t.Context(), objectLimitCounterStub{actionsCurrent: 4, actionsMissing: 2}, &sm.CreateSubjectMappingRequest{
+	err := service.enforceCreateSubjectMappingLimits(t.Context(), objectLimitCounterStub{actionsCurrent: 4, actionAdditions: 2}, &sm.CreateSubjectMappingRequest{
 		Actions: []*policy.Action{{Name: "one"}, {Name: "two"}},
 	})
 	require.ErrorIs(t, err, policyconfig.ErrObjectLimitExceeded)

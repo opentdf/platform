@@ -14,7 +14,7 @@ type objectLimitCounterStub struct {
 	obligationDefinitions int64
 	obligationTriggers    int64
 	actionsCurrent        int64
-	actionsMissing        int64
+	actionAdditions       int64
 }
 
 func (s objectLimitCounterStub) GetCountObligationDefinitions(context.Context, string, string) (int64, error) {
@@ -29,8 +29,8 @@ func (s objectLimitCounterStub) GetCountObligationTriggersForAttributeValue(cont
 	return s.obligationTriggers, nil
 }
 
-func (s objectLimitCounterStub) GetCountActionsWithMissingNames(context.Context, string, string, []string) (int64, int64, error) {
-	return s.actionsCurrent, s.actionsMissing, nil
+func (s objectLimitCounterStub) GetCountActionsWithNewAdditions(context.Context, string, string, []string) (int64, int64, error) {
+	return s.actionsCurrent, s.actionAdditions, nil
 }
 
 func (objectLimitCounterStub) GetAttributeValueNamespaceID(context.Context, *common.IdFqnIdentifier) (string, error) {
@@ -49,7 +49,7 @@ func Test_EnforceCreateObligationValueLimits_ImplicitActionsAcrossValuesExceedLi
 	t.Parallel()
 
 	service := &Service{config: &policyconfig.Config{MaxObjectCounts: policyconfig.MaxObjectCounts{ActionsPerNamespace: 5}}}
-	err := service.enforceCreateObligationValueLimits(t.Context(), objectLimitCounterStub{actionsCurrent: 4, actionsMissing: 2}, &obligations.CreateObligationValueRequest{
+	err := service.enforceCreateObligationValueLimits(t.Context(), objectLimitCounterStub{actionsCurrent: 4, actionAdditions: 2}, &obligations.CreateObligationValueRequest{
 		Triggers: []*obligations.ValueTriggerRequest{
 			{Action: &common.IdNameIdentifier{Name: "one"}, AttributeValue: &common.IdFqnIdentifier{Id: "value-one"}},
 			{Action: &common.IdNameIdentifier{Name: "two"}, AttributeValue: &common.IdFqnIdentifier{Id: "value-two"}},

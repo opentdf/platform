@@ -205,7 +205,11 @@ func dynamicActionNames(actions []*policy.Action) []string {
 	return names
 }
 
-func enforceDynamicActionLimit(ctx context.Context, client *policydb.PolicyDBClient, limit int64, namespaceID, namespaceFQN string, actions []*policy.Action) error {
+type actionAdditionCounter interface {
+	GetCountActionsWithNewAdditions(context.Context, string, string, []string) (int64, int64, error)
+}
+
+func enforceDynamicActionLimit(ctx context.Context, client actionAdditionCounter, limit int64, namespaceID, namespaceFQN string, actions []*policy.Action) error {
 	if limit <= 0 {
 		return nil
 	}
@@ -215,12 +219,12 @@ func enforceDynamicActionLimit(ctx context.Context, client *policydb.PolicyDBCli
 		return nil
 	}
 
-	current, missing, err := client.GetCountActionsWithMissingNames(ctx, namespaceID, namespaceFQN, names)
+	current, additions, err := client.GetCountActionsWithNewAdditions(ctx, namespaceID, namespaceFQN, names)
 	if err != nil {
 		return err
 	}
 
-	return policyconfig.EnforceObjectLimit(policyconfig.ObjectTypeActionsPerNamespace, limit, current, int(missing))
+	return policyconfig.EnforceObjectLimit(policyconfig.ObjectTypeActionsPerNamespace, limit, current, int(additions))
 }
 
 func (s DynamicValueMappingService) DeleteDynamicValueMapping(ctx context.Context,

@@ -315,6 +315,22 @@ func (s *PolicyObjectCountsSuite) Test_GetCountObligationTriggersForAttributeVal
 	s.Zero(count)
 }
 
+func (s *PolicyObjectCountsSuite) Test_GetCountObligationTriggersForAttributeValue_UnknownIdentifier_Fails() {
+	_, _, err := s.db.PolicyClient.GetCountObligationTriggersForAttributeValue(
+		s.ctx,
+		&common.IdFqnIdentifier{Id: uuid.NewString()},
+		"",
+	)
+	s.Require().ErrorIs(err, db.ErrNotFound)
+
+	_, _, err = s.db.PolicyClient.GetCountObligationTriggersForAttributeValue(
+		s.ctx,
+		&common.IdFqnIdentifier{Fqn: "https://unknown.example.com/attr/unknown/value/unknown"},
+		"",
+	)
+	s.Require().ErrorIs(err, db.ErrNotFound)
+}
+
 func (s *PolicyObjectCountsSuite) Test_GlobalCounts_WithoutNamespaceIdentifier_Succeeds() {
 	actionCount, err := s.db.PolicyClient.GetCountActions(s.ctx, "", "")
 	s.Require().NoError(err)

@@ -244,11 +244,12 @@ func (q *Queries) countObligationDefinitions(ctx context.Context, arg countOblig
 
 const countObligationTriggersForAttributeValue = `-- name: countObligationTriggersForAttributeValue :one
 WITH target_attribute_value AS (
-    SELECT COALESCE(
+    SELECT id
+    FROM attribute_values
+    WHERE id = COALESCE(
         $2::uuid,
-        (SELECT value_id FROM attribute_fqns WHERE fqn = $3::text),
-        '00000000-0000-0000-0000-000000000000'::uuid
-    ) AS id
+        (SELECT value_id FROM attribute_fqns WHERE fqn = $3::text)
+    )
 )
 SELECT
     target_attribute_value.id::text AS attribute_value_id,
@@ -277,11 +278,12 @@ type countObligationTriggersForAttributeValueRow struct {
 // countObligationTriggersForAttributeValue
 //
 //	WITH target_attribute_value AS (
-//	    SELECT COALESCE(
+//	    SELECT id
+//	    FROM attribute_values
+//	    WHERE id = COALESCE(
 //	        $2::uuid,
-//	        (SELECT value_id FROM attribute_fqns WHERE fqn = $3::text),
-//	        '00000000-0000-0000-0000-000000000000'::uuid
-//	    ) AS id
+//	        (SELECT value_id FROM attribute_fqns WHERE fqn = $3::text)
+//	    )
 //	)
 //	SELECT
 //	    target_attribute_value.id::text AS attribute_value_id,

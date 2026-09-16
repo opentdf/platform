@@ -187,7 +187,7 @@ func TestMultiStrategy_SQLOnly(t *testing.T) {
 				Connection: map[string]interface{}{
 					"driver":   "postgres",
 					"host":     host,
-					"port":     mappedPort.Int(),
+					"port":     int(mappedPort.Num()),
 					"database": "testdb",
 					"username": "testuser",
 					"password": "testpass",
@@ -319,7 +319,7 @@ func TestMultiStrategy_LDAPOnly(t *testing.T) {
 				Type: "ldap",
 				Connection: map[string]interface{}{
 					"host":          host,
-					"port":          mappedPort.Int(),
+					"port":          int(mappedPort.Num()),
 					"use_tls":       false,
 					"bind_dn":       "cn=admin,dc=test,dc=local",
 					"bind_password": "admin123",

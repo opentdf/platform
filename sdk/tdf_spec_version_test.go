@@ -5,25 +5,24 @@ import (
 	"io"
 )
 
-// Test_SpecVersionDoesNotAffectVerification asserts the property that makes the
-// spec-version field safe to be wrong: it is metadata. A container decrypts
-// whatever the field is called, whatever value it holds, and whether or not it
-// is present at all.
+// Test_SpecVersionSelectsDigestEncoding covers how a reader decides whether a
+// container's integrity digests are hex-encoded (pre-4.3.0) or raw: from the
+// manifest's spec version, the only signal a file carries for it.
 //
-// This did not hold until digestMatchesRecorded landed. The reader used to take
-// an absent version to mean "pre-4.3.0" and verify integrity with hex digests,
-// so the field's spelling and value decided whether a well-formed file could be
-// read. Two kinds of file broke:
+// The check used to be "no version at all means hex", which reads the field too
+// narrowly. Our writer omits the version and hex-encodes together, so absence
+// does imply hex -- but a manifest that records a version below 4.3.0 states
+// the same thing outright, and was verified as raw and rejected. That now
+// includes versions written under the off-spec tdf_spec_version name, which
+// this branch reads: before, such a container decoded to no version at all and
+// happened to verify; reading the name without widening the check would have
+// flipped it to raw and broken it.
 //
-//   - raw digests with the version named tdf_spec_version (the off-spec name
-//     from some specification drafts and some older OpenTDF docs), or with no
-//     version at all
-//   - hex digests with any version field present, which a version-trusting
-//     reader would verify as raw
-//
-// Both are covered below. The encoding is now read off the file, so neither the
-// name nor the value can make a verifiable container unreadable.
-func (s *TDFSuite) Test_SpecVersionDoesNotAffectVerification() {
+// Trusting the field has limits, and the cases below write them down rather
+// than leave them implied. Nothing authenticates the spec version, so where it
+// disagrees with the digests, or sits somewhere the reader does not look, the
+// container does not read.
+func (s *TDFSuite) Test_SpecVersionSelectsDigestEncoding() {
 	plaintext := make([]byte, 4242)
 	for i := range plaintext {
 		plaintext[i] = byte(i % 251)
@@ -62,6 +61,18 @@ func (s *TDFSuite) Test_SpecVersionDoesNotAffectVerification() {
 		s.Require().Equal(plaintext, decrypted.Bytes())
 	}
 
+	// rejected covers the containers the reader verifies with the wrong digest
+	// encoding. The manifest still parses and the key still unwraps; the file
+	// fails on the integrity check.
+	rejected := func(tdfBytes []byte, wantVersion string) {
+		r, err := s.sdk.LoadTDF(bytes.NewReader(tdfBytes))
+		s.Require().NoError(err)
+		s.Require().Equal(wantVersion, r.Manifest().TDFVersion)
+
+		_, err = io.Copy(&bytes.Buffer{}, r)
+		s.Require().Error(err)
+	}
+
 	setPayloadKey := func(manifest map[string]any, key string, value any) {
 		payload, ok := manifest["payload"].(map[string]any)
 		s.Require().True(ok)
@@ -86,17 +97,17 @@ func (s *TDFSuite) Test_SpecVersionDoesNotAffectVerification() {
 			}), TDFSpecVersion)
 		})
 
-		// A root copy is not a placement any schema defines, so it reads as no
-		// version at all -- which still must not stop the container decrypting.
+		// The root is not a placement any schema defines, so the version reads
+		// as absent and the reader falls back to hex.
 		s.Run("version renamed to tdf_spec_version at root", func() {
-			decrypts(rewrite(func(manifest map[string]any) {
+			rejected(rewrite(func(manifest map[string]any) {
 				manifest["tdf_spec_version"] = manifest["schemaVersion"]
 				delete(manifest, "schemaVersion")
 			}), "")
 		})
 
 		s.Run("version removed entirely", func() {
-			decrypts(rewrite(func(manifest map[string]any) {
+			rejected(rewrite(func(manifest map[string]any) {
 				delete(manifest, "schemaVersion")
 			}), "")
 		})
@@ -111,10 +122,18 @@ func (s *TDFSuite) Test_SpecVersionDoesNotAffectVerification() {
 		})
 		decrypts(asWritten, "")
 
-		// The regression this guards: a hex-digest container that nonetheless
-		// carries a version field. A reader that inferred "version present means
-		// raw digests" would verify these with the wrong encoding and reject
-		// them outright.
+		// The case the narrow check got wrong on the canonical path: a version
+		// recorded under the correct name, below the 4.3.0 threshold, saying
+		// the digests are hex. "Present" was read as "raw" and the container
+		// was rejected.
+		s.Run("with schemaVersion below the hex threshold", func() {
+			decrypts(rewrite(func(manifest map[string]any) {
+				manifest["schemaVersion"] = "4.2.2"
+			}), "4.2.2")
+		})
+
+		// The same statement under the off-spec name. Reading tdf_spec_version
+		// without widening the check would have turned this into a rejection.
 		s.Run("with off-spec tdf_spec_version under payload", func() {
 			decrypts(rewrite(func(manifest map[string]any) {
 				setPayloadKey(manifest, "tdf_spec_version", "4.2.2")
@@ -127,10 +146,11 @@ func (s *TDFSuite) Test_SpecVersionDoesNotAffectVerification() {
 			}), "")
 		})
 
-		// A version that contradicts the digests outright. Nothing authenticates
-		// the field, so a reader must not let it decide the encoding.
+		// A version that contradicts the digests outright. Nothing
+		// authenticates the field, so a reader that trusts it verifies with the
+		// wrong encoding -- the cost of taking the encoding from metadata.
 		s.Run("with a schemaVersion that contradicts the digests", func() {
-			decrypts(rewrite(func(manifest map[string]any) {
+			rejected(rewrite(func(manifest map[string]any) {
 				manifest["schemaVersion"] = TDFSpecVersion
 			}), TDFSpecVersion)
 		})

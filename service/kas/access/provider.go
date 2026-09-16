@@ -42,7 +42,7 @@ type KASConfig struct {
 	// KeyManagement enables stable, policy-backed KAS key management.
 	KeyManagement bool `mapstructure:"key_management" json:"key_management"`
 
-	// KASURIFromKAO uses the KAO URI for rewrap key lookups. Defaults to true.
+	// KASURIFromKAO uses the KAO URI for rewrap key lookups. Defaults to false.
 	// An empty KAO URI always selects the indexer's default registration.
 	KASURIFromKAO bool `mapstructure:"kas_uri_from_kao" json:"kas_uri_from_kao"`
 

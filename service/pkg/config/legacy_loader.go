@@ -43,7 +43,7 @@ func NewLegacyLoader(key, file string) (*LegacyLoader, error) {
 	v.SetDefault("logger.trace_correlation", true)
 
 	// Register the KAS override so environment-only configuration is recognized.
-	v.SetDefault("services.kas.kas_uri_from_kao", true)
+	v.SetDefault("services.kas.kas_uri_from_kao", false)
 
 	// Environment variable settings
 	v.SetEnvPrefix(key)

@@ -133,7 +133,7 @@ func NewRegistration() *serviceregistry.Service[kasconnect.AccessServiceHandler]
 }
 
 func decodeKASConfig(cfg config.ServiceConfig, log *logger.Logger) (access.KASConfig, error) {
-	kasCfg := access.KASConfig{KASURIFromKAO: true}
+	var kasCfg access.KASConfig
 	// Service configuration values supplied by the environment arrive as strings.
 	if value, ok := cfg[access.KASURIFromKAOKey].(string); ok {
 		enabled, err := strconv.ParseBool(value)

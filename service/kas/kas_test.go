@@ -181,11 +181,16 @@ func TestDecodeKASConfigKASURIFromKAO(t *testing.T) {
 		want    bool
 		wantLog bool
 	}{
-		{name: "omitted defaults to true", config: map[string]any{}, want: true},
+		{name: "omitted defaults to false", config: map[string]any{}},
 		{name: "explicit false", config: map[string]any{access.KASURIFromKAOKey: false}},
 		{name: "explicit true", config: map[string]any{access.KASURIFromKAOKey: true}, want: true},
 		{name: "string false", config: map[string]any{access.KASURIFromKAOKey: "false"}},
 		{name: "string true", config: map[string]any{access.KASURIFromKAOKey: "true"}, want: true},
+		{
+			name:    "key management defaults to configured registration",
+			config:  map[string]any{"key_management": true},
+			wantLog: true,
+		},
 		{
 			name:    "key management logs registration override",
 			config:  map[string]any{"key_management": true, access.KASURIFromKAOKey: false},
@@ -231,19 +236,31 @@ func TestDecodeKASConfigInvalidKASURIFromKAO(t *testing.T) {
 }
 
 func TestKASURIFromKAOEnvironmentOverride(t *testing.T) {
-	t.Setenv("TEST_SERVICES_KAS_KAS_URI_FROM_KAO", "false")
-	path := filepath.Join(t.TempDir(), "config.yaml")
-	require.NoError(t, os.WriteFile(path, []byte("services:\n  kas:\n    key_management: false\n"), 0o600))
-	loader, err := config.NewLegacyLoader("test", path)
-	require.NoError(t, err)
-	defaults, err := config.NewDefaultSettingsLoader()
-	require.NoError(t, err)
-	cfg, err := config.Load(t.Context(), loader, defaults)
-	require.NoError(t, err)
-	log, _ := newBufferLogger()
-	kasCfg, err := decodeKASConfig(cfg.Services["kas"], log)
-	require.NoError(t, err)
-	require.False(t, kasCfg.KASURIFromKAO)
+	for _, tc := range []struct {
+		name string
+		env  string
+		want bool
+	}{
+		{name: "omitted defaults to false"},
+		{name: "environment enables KAO lookup", env: "true", want: true},
+		{name: "environment disables KAO lookup", env: "false"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Setenv("TEST_SERVICES_KAS_KAS_URI_FROM_KAO", tc.env)
+			path := filepath.Join(t.TempDir(), "config.yaml")
+			require.NoError(t, os.WriteFile(path, []byte("services:\n  kas:\n    key_management: false\n"), 0o600))
+			loader, err := config.NewLegacyLoader("test", path)
+			require.NoError(t, err)
+			defaults, err := config.NewDefaultSettingsLoader()
+			require.NoError(t, err)
+			cfg, err := config.Load(t.Context(), loader, defaults)
+			require.NoError(t, err)
+			log, _ := newBufferLogger()
+			kasCfg, err := decodeKASConfig(cfg.Services["kas"], log)
+			require.NoError(t, err)
+			require.Equal(t, tc.want, kasCfg.KASURIFromKAO)
+		})
+	}
 }
 
 func TestDecodeKASConfigKeyManagement(t *testing.T) {
@@ -307,7 +324,7 @@ func TestDecodeKASConfigKeyManagement(t *testing.T) {
 			require.NoError(t, err)
 			assert.Equal(t, tc.wantEnabled, got.KeyManagement)
 			if tc.wantWarning == "" {
-				assert.Empty(t, buf.String())
+				assert.NotContains(t, buf.String(), `"level":"WARN"`)
 			} else {
 				assert.Contains(t, buf.String(), tc.wantWarning)
 				assert.Contains(t, buf.String(), `"level":"WARN"`)

@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/evertras/bubble-table/table"
+	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -186,6 +187,21 @@ func TestPrintSuccessTableOmitsEmptyTable(t *testing.T) {
 		assert.Contains(t, out, "No attributes found")
 		assert.NotContains(t, out, "ID", "the header-only table must not be rendered")
 		assert.NotContains(t, out, "│", "no table borders should reach stdout")
+	})
+
+	// A list command attaches its pagination counts as a static footer, which
+	// only reaches stdout through the table's own View. Suppressing the whole
+	// view for an empty result took the counts with it, so an over-shot --offset
+	// reported "none found" and gave no hint that the collection was not empty.
+	t.Run("no rows but a pagination footer", func(t *testing.T) {
+		paged := WithListPaginationFooter(empty, &policy.PageResponse{Total: 10, CurrentOffset: 999})
+
+		out := captureStdout(t, func() { PrintSuccessTable(cmd, "", paged) })
+
+		assert.Contains(t, out, "No attributes found")
+		assert.Contains(t, out, "Total: 10", "the pagination counts must survive an empty page")
+		assert.Contains(t, out, "Current Offset: 999")
+		assert.NotContains(t, out, "ID", "the column header is still suppressed")
 	})
 
 	t.Run("with rows", func(t *testing.T) {

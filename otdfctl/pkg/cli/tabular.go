@@ -137,12 +137,14 @@ func PrintSuccessTable(cmd *cobra.Command, id string, t table.Model) {
 	jsonDirections := FooterMessage(helper)
 
 	ts := t.View()
-	// An empty result set renders as a header-only table, which reads like the
-	// command failed; the message already reports that nothing was found.
 	if rows == 0 {
-		ts = ""
+		// Column headers over no rows read as a failure, but a static footer
+		// carries the pagination counts, which are the only way to tell an empty
+		// collection from an over-shot offset. Hiding the header renders the
+		// footer alone, and renders nothing at all when there is no footer.
+		ts = t.WithHeaderVisibility(false).View()
 	}
-	if ts == "" {
+	if strings.TrimSpace(ts) == "" {
 		fmt.Println(lipgloss.JoinVertical(lipgloss.Top, successMessage, jsonDirections))
 		return
 	}

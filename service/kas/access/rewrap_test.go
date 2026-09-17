@@ -5,8 +5,10 @@ import (
 	"context"
 	"crypto/ecdsa"
 	"crypto/elliptic"
+	"crypto/hmac"
 	"crypto/rand"
 	"crypto/rsa"
+	"crypto/sha256"
 	"crypto/x509"
 	"encoding/base64"
 	"encoding/hex"
@@ -1537,4 +1539,62 @@ func TestVerifySRTSignature(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestDecodePolicyBinding(t *testing.T) {
+	rawHMAC := bytes.Repeat([]byte{0xab}, sha256.Size)
+
+	tests := []struct {
+		name    string
+		input   string
+		want    []byte
+		wantErr bool
+	}{
+		{
+			name:  "spec-compliant raw HMAC, Base64(HMAC)",
+			input: base64.StdEncoding.EncodeToString(rawHMAC),
+			want:  rawHMAC,
+		},
+		{
+			name:  "legacy hex HMAC, Base64(hex(HMAC))",
+			input: base64.StdEncoding.EncodeToString([]byte(hex.EncodeToString(rawHMAC))),
+			want:  rawHMAC,
+		},
+		{
+			name:    "invalid base64",
+			input:   "not!valid!base64",
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := decodePolicyBinding(tt.input)
+			if tt.wantErr {
+				require.Error(t, err)
+				return
+			}
+			require.NoError(t, err)
+			assert.Equal(t, tt.want, got)
+		})
+	}
+}
+
+// TestDecodePolicyBindingIsTrimmed pins the defect that made raw bindings
+// unusable. base64.DecodedLen over-allocates, so a 44-character binding
+// decodes 32 bytes into a 33-byte buffer; the old code returned that buffer
+// untrimmed and VerifyBinding compares with hmac.Equal, which is
+// length-sensitive. Asserting the length is the regression test -- the bytes
+// were always correct, so comparing contents alone passes against the bug.
+func TestDecodePolicyBindingIsTrimmed(t *testing.T) {
+	rawHMAC := bytes.Repeat([]byte{0xcd}, sha256.Size)
+	encoded := base64.StdEncoding.EncodeToString(rawHMAC)
+
+	require.Equal(t, 33, base64.StdEncoding.DecodedLen(len(encoded)),
+		"precondition: DecodedLen over-allocates for a 32-byte HMAC")
+
+	got, err := decodePolicyBinding(encoded)
+	require.NoError(t, err)
+	assert.Len(t, got, sha256.Size, "must be trimmed to the bytes actually decoded")
+	assert.True(t, hmac.Equal(rawHMAC, got), "an untrimmed buffer fails hmac.Equal")
 }

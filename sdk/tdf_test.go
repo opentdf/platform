@@ -678,12 +678,23 @@ func (s *TDFSuite) Test_SimpleTDF() {
 				s.Require().True(ok, "expected PolicyBinding.hash to be a string")
 				decodedPB, err := ocrypto.Base64Decode([]byte(pbHash))
 				s.Require().NoError(err)
+				rawPB := decodedPB
 				if config.useHex {
 					s.Len(decodedPB, hex.EncodedLen(sha256.Size), "legacy policy binding should be hex-encoded HMAC")
-					_, err = hex.DecodeString(string(decodedPB))
+					rawPB, err = hex.DecodeString(string(decodedPB))
 					s.Require().NoError(err)
 				} else {
 					s.Len(decodedPB, sha256.Size, "spec-compliant policy binding should be raw HMAC bytes")
+				}
+				// Shape alone would pass on a binding keyed on the wrong thing, so
+				// pin the value too. The payload key is the KAO key only when the
+				// DEK was not split; with splits each KAO is keyed on its own share.
+				if len(r.Manifest().KeyAccessObjs) == 1 {
+					s.Equal(
+						ocrypto.CalculateSHA256Hmac(payloadKey, []byte(r.Manifest().Policy)),
+						rawPB,
+						"policy binding should be HMAC(payload key, base64 policy)",
+					)
 				}
 
 				// check version is present if usehex is false

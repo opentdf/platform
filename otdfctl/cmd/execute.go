@@ -9,6 +9,18 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// enforceArgs rejects unknown subcommands on the root cobra will execute, once
+// the tree is whole, so it covers hand-built groups (policy, profile) as well as
+// doc-built ones and anything a consumer mounted.
+//
+// ExecuteC adds `help` and `completion` itself, too late to be enforced on.
+// Both calls are guarded against adding twice, so doing it here is free.
+func enforceArgs(root *cobra.Command) {
+	root.InitDefaultHelpCmd()
+	root.InitDefaultCompletionCmd()
+	cli.EnforceSubcommandArgs(root)
+}
+
 type ExecuteConfig struct {
 	mountTo   *cobra.Command
 	renameCmd *cobra.Command
@@ -43,20 +55,16 @@ func Execute(opts ...ExecuteOptFunc) {
 	// after otdfctl's own init, including a consumer's, are covered.
 	man.Docs.MarkRequiredFlags()
 
-	// Reject unknown subcommands rather than printing help and exiting 0. Applied
-	// to whichever root cobra will actually execute, once the tree is whole, so
-	// it covers groups built by hand (policy, profile) as well as those built
-	// from docs, plus anything a consumer has added on either side of the mount.
 	if c.mountTo != nil {
 		err := MountRoot(c.mountTo, c.renameCmd)
 		if err != nil {
 			os.Exit(cli.ExitCodeError)
 		}
-		cli.EnforceSubcommandArgs(c.mountTo)
+		enforceArgs(c.mountTo)
 		return
 	}
 
-	cli.EnforceSubcommandArgs(RootCmd)
+	enforceArgs(RootCmd)
 
 	// Take over error printing so cobra-level failures (e.g. required or
 	// mutually-exclusive flag validation, which run before the command

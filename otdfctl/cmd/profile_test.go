@@ -3,7 +3,7 @@ package cmd
 import (
 	"testing"
 
-	"github.com/spf13/cobra"
+	"github.com/opentdf/platform/otdfctl/pkg/profiles"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -16,22 +16,13 @@ import (
 //
 // InitProfileCommands runs from cmd's init, so the flags are already in place.
 func TestProfileStoreFlagRegisteredWhereItIsRead(t *testing.T) {
-	// Every command that resolves its driver from --store, whether through
-	// newProfilerFromCLI or getDriverTypeFromUser directly.
-	readsStoreFlag := []*cobra.Command{
-		profileListCmd,
-		profileGetCmd,
-		profileDeleteCmd,
-		profileDeleteAllCmd,
-		profileSetDefaultCmd,
-		profileSetEndpointCmd,
-	}
-
-	for _, cmd := range readsStoreFlag {
+	// Shared with the registration site, so a command added there is covered
+	// here without a second list to keep in step.
+	for _, cmd := range storeFlagCommands() {
 		t.Run(cmd.Name(), func(t *testing.T) {
 			f := cmd.Flags().Lookup("store")
 			require.NotNil(t, f, "%q resolves its driver from --store, so it must register the flag", cmd.Name())
-			assert.Equal(t, "filesystem", f.DefValue)
+			assert.Equal(t, string(profiles.ProfileDriverDefault), f.DefValue)
 		})
 	}
 }

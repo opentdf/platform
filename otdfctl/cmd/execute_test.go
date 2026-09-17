@@ -98,7 +98,7 @@ func mountForTest(t *testing.T) (*cobra.Command, string) {
 	consumerRoot.AddCommand(consumerGroup)
 
 	require.NoError(t, MountRoot(consumerRoot, nil))
-	cli.EnforceSubcommandArgs(consumerRoot)
+	enforceArgs(consumerRoot)
 
 	t.Cleanup(func() { consumerRoot.RemoveCommand(RootCmd) })
 
@@ -177,7 +177,9 @@ func TestEveryRunnableCommandDeclaresItsArgs(t *testing.T) {
 }
 
 // TestMountedRootKeepsValidInvocations guards against the validation above
-// rejecting the arguments a mounted otdfctl is supposed to accept.
+// rejecting the arguments a mounted otdfctl is supposed to accept. Validating
+// nil alone would prove nothing, since every validator accepts it, so each
+// group is checked against a stray operand too.
 func TestMountedRootKeepsValidInvocations(t *testing.T) {
 	root, mounted := mountForTest(t)
 
@@ -185,13 +187,28 @@ func TestMountedRootKeepsValidInvocations(t *testing.T) {
 	for _, args := range [][]string{
 		{mounted},
 		{mounted, "policy"},
-		{mounted, "profile", "list"},
-		{"widgets", "list"},
+		{mounted, "profile"},
+		{"widgets"},
 	} {
 		cmd, _, err := root.Find(args)
 		if !assert.NoError(t, err, "%v should resolve", args) {
 			continue
 		}
-		assert.NoError(t, cmd.ValidateArgs(nil), "%v should accept no positional arguments", args)
+		assert.NoError(t, cmd.ValidateArgs(nil), "%v is a valid bare invocation", args)
+		assert.Error(t, cmd.ValidateArgs([]string{"bogus"}), "%v takes no operand, so a stray one must fail", args)
 	}
+
+	// A leaf that declares an operand still takes it.
+	del, _, err := root.Find([]string{mounted, "profile", "delete"})
+	require.NoError(t, err)
+	assert.NoError(t, del.ValidateArgs([]string{"my-profile"}))
+
+	// `completion` is added by cobra inside ExecuteC, too late for the sweep
+	// unless enforceArgs materializes it first. Cobra puts it on the true root,
+	// which is the consumer's when otdfctl is mounted.
+	comp, _, err := root.Find([]string{"completion"})
+	require.NoError(t, err)
+	require.Equal(t, "completion", comp.Name(), "cobra's completion command must be in the tree")
+	assert.Error(t, comp.ValidateArgs([]string{"bogus"}))
+	assert.True(t, comp.Runnable(), "NoArgs is only consulted once the group is runnable")
 }

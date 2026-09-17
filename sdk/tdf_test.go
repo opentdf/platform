@@ -1782,6 +1782,40 @@ func (s *TDFSuite) Test_ValidateSchema() {
 			err:    ErrInvalidPerSchema,
 			failOn: Strict,
 		},
+		{
+			// tdf_spec_version at the manifest root is a deprecated name for
+			// schemaVersion that archival TDFs carry; the reader accepts it.
+			// Neither bundled schema declares it there, but neither sets
+			// additionalProperties either, so every intensity accepts it too.
+			// Pinned so that adding additionalProperties cannot quietly put
+			// schema validation at odds with the reader.
+			n: "deprecated root spec version name",
+			changer: func(_ *testing.T, dst io.Writer, f *zip.File) error {
+				rc, err := f.Open()
+				if err != nil {
+					return err
+				}
+
+				if f.Name != "0.manifest.json" {
+					_, err = io.Copy(dst, rc)
+					return err
+				}
+				// Read file from json as a map
+				var data map[string]interface{}
+				err = json.NewDecoder(rc).Decode(&data)
+				if err != nil {
+					return err
+				}
+
+				delete(data, "schemaVersion")
+				data["tdf_spec_version"] = TDFSpecVersion
+
+				err = json.NewEncoder(dst).Encode(data)
+				return err
+			},
+			err:    nil,
+			failOn: unreasonable,
+		},
 	} {
 		s.Run(test.n, func() {
 			// create .txt file

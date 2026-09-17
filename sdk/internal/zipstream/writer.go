@@ -48,6 +48,20 @@ type Error struct {
 	Op   string // Operation that failed
 	Type string // Writer type: "sequential", "streaming", "segment"
 	Err  error  // Underlying error
+
+	// Mutated reports whether the writer had already changed its own state
+	// when the operation failed. False means the writer is byte-for-byte as it
+	// was before the call and the caller may retry; true means the partial
+	// change is not rolled back and a retry compounds it rather than
+	// recovering from it.
+	//
+	// Only Finalize sets it. WriteSegment validates everything before it
+	// mutates anything, so every error it returns is Mutated false.
+	//
+	// An implementation that wraps a zipstream writer must not pass the
+	// delegate's error through unchanged if it performed mutations of its own:
+	// the flag describes the whole operation, not one layer of it.
+	Mutated bool
 }
 
 func (e *Error) Error() string {

@@ -127,7 +127,13 @@ func contextAttrSources(config Config, extra ...ContextAttrFunc) []ContextAttrFu
 	if config.traceCorrelationEnabled() {
 		sources = append(sources, traceContextAttrs)
 	}
-	sources = append(sources, config.ContextAttrs...)
+	// Drop nil entries: the handler calls every source on every record, so one
+	// would panic inside the logging path rather than at configuration time.
+	for _, fn := range config.ContextAttrs {
+		if fn != nil {
+			sources = append(sources, fn)
+		}
+	}
 
 	return append(sources, extra...)
 }

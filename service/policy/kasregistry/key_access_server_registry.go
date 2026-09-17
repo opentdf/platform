@@ -358,7 +358,13 @@ func (s KeyAccessServerRegistry) GetKey(ctx context.Context, r *connect.Request[
 		}
 	}
 
-	auditParams.ObjectID = key.GetKey().GetKeyId()
+	auditParams.ObjectID = key.GetKey().GetId()
+	auditParams.Original = &policy.KasKey{
+		KasUri: key.GetKasUri(),
+		Key: &policy.AsymmetricKey{
+			KeyId: key.GetKey().GetKeyId(),
+		},
+	}
 	s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
 
 	rsp.KasKey = key

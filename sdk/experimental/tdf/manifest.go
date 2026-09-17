@@ -78,27 +78,29 @@ type Manifest struct {
 // recursing back into it.
 type manifestJSON Manifest
 
-// offSpecSpecVersion locates tdf_spec_version under payload, an off-spec name
-// for the spec version field.
+// offSpecSpecVersion locates tdf_spec_version, a deprecated name for the spec
+// version field, at the manifest root and under payload.
 //
-// schemaVersion is and has always been the correct name. tdf_spec_version is
-// not a former spelling that was later renamed -- it is an error that leaked
-// into some specification drafts and some older OpenTDF documentation, and into
-// the writers built from them. We read it so those files remain usable; we
-// never write it, and it is not on a deprecation path because it was never
-// correct to begin with.
+// schemaVersion is the canonical name. tdf_spec_version is not a former
+// spelling that was renamed on a schedule -- it entered some specification
+// drafts and some older OpenTDF documentation in error, and writers built from
+// those drafts emitted it. We read it so those files stay usable; we never
+// write it.
 //
-// Only payload is probed, because that is the one placement with a definition
-// to point at: the schemas bundled with this SDK
-// (sdk/schema/manifest*.schema.json) declare tdf_spec_version under payload and
-// nowhere else. A copy at the manifest root is not read.
+// Both placements are probed because both occur in archival files, for two
+// different reasons. The root is where the spec's own manifest.md has always
+// documented the field, and where web-sdk both wrote it and still reads it
+// (lib/tdf3/src/tdf.ts). Under payload is where revisions of the JSON schema
+// declared it in error, which led at least one writer to emit the key there
+// with a null value. The root is preferred when both carry a string.
 //
-// The value is typed as any rather than string because the lax schema permits
-// tdf_spec_version to be null, and an off-spec type must not fail the whole
-// decode -- reporting malformed manifests is schema validation's job, not the
-// decoder's.
+// Values are typed as any rather than string because the key is known to
+// appear with a null value, and because an off-spec type must not fail the
+// whole decode -- reporting malformed manifests is schema validation's job,
+// not the decoder's.
 type offSpecSpecVersion struct {
-	Payload struct {
+	TDFSpecVersion any `json:"tdf_spec_version"`
+	Payload        struct {
 		TDFSpecVersion any `json:"tdf_spec_version"`
 	} `json:"payload"`
 }
@@ -114,13 +116,18 @@ type offSpecSpecVersion struct {
 // simply does not fire rather than misreading anything.
 var offSpecSpecVersionKey = []byte(`"tdf_spec_version"`)
 
-// UnmarshalJSON decodes a TDF manifest, reading an off-spec tdf_spec_version as
-// the spec version when the correct schemaVersion is absent, so that files
-// written against the erroneous name stay readable.
+// UnmarshalJSON decodes a TDF manifest, reading a deprecated tdf_spec_version
+// as the spec version when the canonical schemaVersion is absent, so that
+// files written against the deprecated name stay readable.
 //
-// schemaVersion always wins when both names are present. Nothing is written
-// back under the off-spec name -- re-marshalling a manifest always emits
-// schemaVersion only.
+// Precedence is schemaVersion, then tdf_spec_version at the root, then
+// tdf_spec_version under payload. Nothing is written back under the deprecated
+// name -- re-marshalling a manifest always emits schemaVersion only, so a
+// round trip normalizes the name rather than propagating it.
+//
+// The decoded version is metadata. It does not decide whether a container
+// verifies: integrity digests are read off the file rather than off this
+// field.
 //
 // This mirrors sdk.Manifest.UnmarshalJSON; the two manifest definitions are
 // deliberate duplicates and must not drift.
@@ -139,8 +146,11 @@ func (m *Manifest) UnmarshalJSON(data []byte) error {
 	if err := json.Unmarshal(data, &offSpec); err != nil {
 		return err
 	}
-	if v, ok := offSpec.Payload.TDFSpecVersion.(string); ok {
-		m.TDFVersion = v
+	for _, candidate := range []any{offSpec.TDFSpecVersion, offSpec.Payload.TDFSpecVersion} {
+		if v, ok := candidate.(string); ok && v != "" {
+			m.TDFVersion = v
+			return nil
+		}
 	}
 	return nil
 }

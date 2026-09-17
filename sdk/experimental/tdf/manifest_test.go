@@ -49,10 +49,10 @@ func testManifestJSON(payloadExtra, rootExtra string) string {
 }
 
 // TestManifest_UnmarshalJSON_SpecVersion mirrors the stable SDK's test of the
-// same name. tdf_spec_version is an off-spec name for the spec version that
-// leaked into some specification drafts and some older OpenTDF documentation;
-// schemaVersion is correct and always wins. Only the payload copy is read,
-// matching where the bundled schemas declare it.
+// same name. tdf_spec_version is a deprecated name for the spec version that
+// entered some specification drafts and some older OpenTDF documentation in
+// error; schemaVersion is canonical and always wins. Both placements are read,
+// the root ahead of payload.
 func TestManifest_UnmarshalJSON_SpecVersion(t *testing.T) {
 	tests := []struct {
 		name         string
@@ -66,14 +66,14 @@ func TestManifest_UnmarshalJSON_SpecVersion(t *testing.T) {
 			want:      "4.3.0",
 		},
 		{
-			name:         "off-spec tdf_spec_version under payload",
-			payloadExtra: `,"tdf_spec_version":"4.3.0"`,
-			want:         "4.3.0",
+			name:      "deprecated tdf_spec_version at root",
+			rootExtra: `,"tdf_spec_version":"4.3.0"`,
+			want:      "4.3.0",
 		},
 		{
-			name:      "off-spec tdf_spec_version at root is ignored",
-			rootExtra: `,"tdf_spec_version":"4.3.0"`,
-			want:      "",
+			name:         "deprecated tdf_spec_version under payload",
+			payloadExtra: `,"tdf_spec_version":"4.3.0"`,
+			want:         "4.3.0",
 		},
 		{
 			name:         "schemaVersion wins over payload tdf_spec_version",
@@ -82,9 +82,20 @@ func TestManifest_UnmarshalJSON_SpecVersion(t *testing.T) {
 			want:         "4.3.0",
 		},
 		{
-			name:         "payload tdf_spec_version is read past a root copy",
+			name:      "schemaVersion wins over root tdf_spec_version",
+			rootExtra: `,"schemaVersion":"4.3.0","tdf_spec_version":"4.2.0"`,
+			want:      "4.3.0",
+		},
+		{
+			name:         "root tdf_spec_version wins over the payload copy",
+			payloadExtra: `,"tdf_spec_version":"4.2.0"`,
+			rootExtra:    `,"tdf_spec_version":"4.3.0"`,
+			want:         "4.3.0",
+		},
+		{
+			name:         "null root tdf_spec_version falls through to payload",
 			payloadExtra: `,"tdf_spec_version":"4.3.0"`,
-			rootExtra:    `,"tdf_spec_version":"4.2.0"`,
+			rootExtra:    `,"tdf_spec_version":null`,
 			want:         "4.3.0",
 		},
 		{

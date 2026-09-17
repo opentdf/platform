@@ -68,12 +68,13 @@ func assertManifestBodyDecoded(t *testing.T, m Manifest) {
 	assert.Equal(t, "cm9vdHNpZw==", m.Signature)
 }
 
-// TestManifest_UnmarshalJSON_SpecVersion covers reading tdf_spec_version, an
-// off-spec name for the spec version that leaked into some specification drafts
-// and some older OpenTDF documentation. schemaVersion is the correct name and
-// always wins; tdf_spec_version is read only so that files written against the
-// erroneous name stay usable, and only under payload, where the bundled schemas
-// declare it.
+// TestManifest_UnmarshalJSON_SpecVersion covers reading tdf_spec_version, a
+// deprecated name for the spec version that entered some specification drafts
+// and some older OpenTDF documentation in error. schemaVersion is the canonical
+// name and always wins; tdf_spec_version is read only so that files written
+// against the deprecated name stay usable. Both placements it occurs in are
+// read -- the root, which the spec prose documents and web-sdk writes, then
+// payload, which revisions of the JSON schema declared in error.
 func TestManifest_UnmarshalJSON_SpecVersion(t *testing.T) {
 	tests := []struct {
 		name         string
@@ -87,17 +88,16 @@ func TestManifest_UnmarshalJSON_SpecVersion(t *testing.T) {
 			want:      "4.3.0",
 		},
 		{
-			// Where the bundled schemas declare it.
-			name:         "off-spec tdf_spec_version under payload",
-			payloadExtra: `,"tdf_spec_version":"4.3.0"`,
-			want:         "4.3.0",
+			// Where the spec prose documents it, and where web-sdk writes it.
+			name:      "deprecated tdf_spec_version at root",
+			rootExtra: `,"tdf_spec_version":"4.3.0"`,
+			want:      "4.3.0",
 		},
 		{
-			// The root is not a placement any schema defines, so a copy there is
-			// not a spec version -- it is just an unknown key.
-			name:      "off-spec tdf_spec_version at root is ignored",
-			rootExtra: `,"tdf_spec_version":"4.3.0"`,
-			want:      "",
+			// Where revisions of the JSON schema declared it in error.
+			name:         "deprecated tdf_spec_version under payload",
+			payloadExtra: `,"tdf_spec_version":"4.3.0"`,
+			want:         "4.3.0",
 		},
 		{
 			name:         "schemaVersion wins over payload tdf_spec_version",
@@ -106,11 +106,23 @@ func TestManifest_UnmarshalJSON_SpecVersion(t *testing.T) {
 			want:         "4.3.0",
 		},
 		{
-			// Only the payload copy is read, so it decides even when the ignored
-			// root copy disagrees.
-			name:         "payload tdf_spec_version is read past a root copy",
+			name:      "schemaVersion wins over root tdf_spec_version",
+			rootExtra: `,"schemaVersion":"4.3.0","tdf_spec_version":"4.2.0"`,
+			want:      "4.3.0",
+		},
+		{
+			// The root is the placement with the better provenance, so it decides
+			// when the two copies disagree.
+			name:         "root tdf_spec_version wins over the payload copy",
+			payloadExtra: `,"tdf_spec_version":"4.2.0"`,
+			rootExtra:    `,"tdf_spec_version":"4.3.0"`,
+			want:         "4.3.0",
+		},
+		{
+			// A null root copy is not a value, so the payload copy still applies.
+			name:         "null root tdf_spec_version falls through to payload",
 			payloadExtra: `,"tdf_spec_version":"4.3.0"`,
-			rootExtra:    `,"tdf_spec_version":"4.2.0"`,
+			rootExtra:    `,"tdf_spec_version":null`,
 			want:         "4.3.0",
 		},
 		{

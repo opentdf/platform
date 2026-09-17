@@ -149,6 +149,33 @@ func TestMountedRootRejectsUnknownSubcommand(t *testing.T) {
 	}
 }
 
+// TestEveryRunnableCommandDeclaresItsArgs closes the gap EnforceSubcommandArgs
+// leaves open by design. It only makes groups reject operands; a command with a
+// Run of its own is skipped, because otdfctl cannot tell from the outside
+// whether that Run consumes positional arguments. Cobra then falls back to
+// accepting any number of them, so an undeclared operand on a leaf is silently
+// ignored rather than reported.
+//
+// Forcing NoArgs on those leaves is not the answer: it would reject every valid
+// `profile delete <profile>`. Each command has to say what it takes instead.
+// Docs-built commands get that from ProcessDoc, hand-built ones declare it here.
+func TestEveryRunnableCommandDeclaresItsArgs(t *testing.T) {
+	cli.EnforceSubcommandArgs(RootCmd)
+
+	var walk func(c *cobra.Command)
+	walk = func(c *cobra.Command) {
+		if c.Runnable() {
+			assert.NotNil(t, c.Args,
+				"%q runs a handler, so it must declare the operands it takes (use cobra.NoArgs for none)",
+				c.CommandPath())
+		}
+		for _, sub := range c.Commands() {
+			walk(sub)
+		}
+	}
+	walk(RootCmd)
+}
+
 // TestMountedRootKeepsValidInvocations guards against the validation above
 // rejecting the arguments a mounted otdfctl is supposed to accept.
 func TestMountedRootKeepsValidInvocations(t *testing.T) {

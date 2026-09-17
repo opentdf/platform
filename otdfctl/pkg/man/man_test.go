@@ -194,7 +194,8 @@ func TestEveryDocDeclaresOperandsWhereProcessDocReadsThem(t *testing.T) {
 			Command map[string]any `yaml:"command"`
 		}
 		if _, perr := frontmatter.Parse(strings.NewReader(string(b)), &raw); perr != nil {
-			return nil // ProcessDoc's own tests cover malformed frontmatter
+			//nolint:nilerr // skipping the doc is the point: ProcessDoc's own tests cover malformed frontmatter
+			return nil
 		}
 		for key := range raw.Command {
 			assert.True(t, knownCommandKeys[key],

@@ -116,6 +116,7 @@ var profileCreateCmd = &cobra.Command{
 var profileListCmd = &cobra.Command{
 	Use:   "list",
 	Short: "List profiles",
+	Args:  cobra.NoArgs,
 	Run: func(cmd *cobra.Command, args []string) {
 		c := cli.New(cmd, args)
 		driverType := getDriverTypeFromUser(c)
@@ -197,6 +198,10 @@ var profileGetCmd = &cobra.Command{
 var profileDeleteCmd = &cobra.Command{
 	Use:   "delete <profile>",
 	Short: "Delete a profile",
+	// The Use string has always promised one operand and the handler indexes
+	// args[0], but nothing enforced it: `profile delete` with no arguments
+	// panicked on the missing index.
+	Args: cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		c := cli.New(cmd, args)
 		profileName := args[0]

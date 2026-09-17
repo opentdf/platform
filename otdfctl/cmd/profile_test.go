@@ -36,6 +36,18 @@ func TestProfileStoreFlagRegisteredWhereItIsRead(t *testing.T) {
 	}
 }
 
+// TestProfileDeleteRequiresAProfile pins the operand count for a command that
+// declared none. Its Run reads args[0], so `profile delete` with nothing after
+// it panicked on the missing index instead of reporting the usage error.
+func TestProfileDeleteRequiresAProfile(t *testing.T) {
+	require.NotNil(t, profileDeleteCmd.Args, "the command must declare its operands")
+
+	require.Error(t, profileDeleteCmd.Args(profileDeleteCmd, nil),
+		"no profile named: the handler would index args[0] on an empty slice")
+	require.NoError(t, profileDeleteCmd.Args(profileDeleteCmd, []string{"my-profile"}))
+	require.Error(t, profileDeleteCmd.Args(profileDeleteCmd, []string{"my-profile", "extra"}))
+}
+
 // TestProfileSetDefaultAcceptsStoreFlag is the end-to-end form: parsing the
 // flag used to fail outright on this command.
 func TestProfileSetDefaultAcceptsStoreFlag(t *testing.T) {

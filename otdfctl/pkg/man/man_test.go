@@ -1,8 +1,12 @@
 package man
 
 import (
+	"io/fs"
+	"strings"
 	"testing"
 
+	"github.com/adrg/frontmatter"
+	docsEmbed "github.com/opentdf/platform/otdfctl/docs"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -155,6 +159,65 @@ func TestBuildUseString(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			got := buildUseString(tt.cmdName, tt.args, tt.arbitraryArgs)
 			assert.Equal(t, tt.want, got)
+		})
+	}
+}
+
+// knownCommandKeys are the keys ProcessDoc reads out of a doc's `command`
+// mapping. "description" is listed because four docs set it and nothing reads
+// it; it is inert rather than dangerous, unlike a misspelled operand key.
+var knownCommandKeys = map[string]bool{
+	"name":          true,
+	"arguments":     true,
+	"arbitraryArgs": true,
+	"hidden":        true,
+	"aliases":       true,
+	"flags":         true,
+	"description":   true,
+}
+
+// ProcessDoc gives a doc that declares no operands cobra.NoArgs, so a doc that
+// declares them under a key ProcessDoc does not read has its operands rejected
+// at runtime with nothing reported at parse time. auth/client-credentials.md
+// wrote `args:` and `arbitrary_args:` against `arguments:` and `arbitraryArgs:`,
+// which left its two operands invisible while its handler went on indexing them.
+func TestEveryDocDeclaresOperandsWhereProcessDocReadsThem(t *testing.T) {
+	checked := 0
+	err := fs.WalkDir(docsEmbed.ManFiles, ".", func(path string, d fs.DirEntry, err error) error {
+		if err != nil || d.IsDir() || !strings.HasSuffix(path, ".md") {
+			return err
+		}
+		b, readErr := docsEmbed.ManFiles.ReadFile(path)
+		require.NoError(t, readErr, path)
+
+		var raw struct {
+			Command map[string]any `yaml:"command"`
+		}
+		if _, perr := frontmatter.Parse(strings.NewReader(string(b)), &raw); perr != nil {
+			return nil // ProcessDoc's own tests cover malformed frontmatter
+		}
+		for key := range raw.Command {
+			assert.True(t, knownCommandKeys[key],
+				"%s: `command.%s` is not read by ProcessDoc, so its value is silently dropped", path, key)
+		}
+		checked++
+		return nil
+	})
+	require.NoError(t, err)
+	assert.Positive(t, checked, "no docs were checked")
+}
+
+// The four commands whose handlers index args, read from the shipped docs
+// rather than from synthetic ones, since the defect above was a mismatch
+// between what the tests declared and what the docs actually said.
+func TestShippedDocsKeepTheirOperands(t *testing.T) {
+	for _, key := range []string{"encrypt", "decrypt", "inspect", "auth/client-credentials"} {
+		t.Run(key, func(t *testing.T) {
+			doc := Docs.En[key]
+			require.NotNil(t, doc, "doc not found in the registry")
+			require.NotNil(t, doc.Args)
+			assert.NoError(t, doc.Args(&doc.Command, []string{"operand"}),
+				"the handler indexes args, so the operand has to reach it")
 		})
 	}
 }

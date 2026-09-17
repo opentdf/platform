@@ -256,23 +256,12 @@ func ProcessDoc(doc string) (*Doc, error) {
 	case len(c.ArbitraryArgs) > 0:
 		args = cobra.ArbitraryArgs
 	case strings.ContainsAny(c.Name, "[<"):
-		// Older docs wrote the operand into the name instead, as `encrypt
-		// [file]`. The arguments metadata is the supported form and the docs
-		// here use it, but a doc that has not been migrated must not have its
-		// operands rejected, so accept them without saying how many.
+		// Compat: older docs wrote the operand into the name, as `encrypt [file]`.
 		args = cobra.ArbitraryArgs
 	default:
-		// The doc declares no operands, so reject any that are passed rather
-		// than silently ignoring them. Leaving Args nil made cobra fall back to
-		// accepting anything, which turned a mistyped subcommand into a no-op
-		// that still exited 0.
-		//
-		// The cost is that a command which does take operands, but declares them
-		// nowhere this switch reads, is given NoArgs and stops accepting them.
-		// auth/client-credentials.md spelled the keys `args` and
-		// `arbitrary_args` and would have lost both of its operands that way.
-		// TestEveryDocDeclaresOperandsWhereProcessDocReadsThem rejects a doc
-		// whose `command` mapping carries a key ProcessDoc does not read.
+		// Nil Args means cobra accepts anything, so a mistyped subcommand became
+		// a silent no-op. Note a doc that misspells an operand key lands here and
+		// loses its operands; man_test.go guards the shipped docs against that.
 		args = cobra.NoArgs
 	}
 

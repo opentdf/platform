@@ -15,17 +15,15 @@ var (
 	termWidthWide    = 120
 )
 
-// plainOutput reports whether help should be rendered without colour: stdout is
-// not a terminal, or NO_COLOR is set.
-//
-// Docs are styled during package initialization, long before any flag is
-// parsed, so this reads os.Stdout directly rather than a command's configured
-// output writer.
+// stdoutIsTerminal is a variable so the styled branch is reachable from a test;
+// a test binary's stdout is never a terminal.
+var stdoutIsTerminal = func() bool { return term.IsTerminal(int(os.Stdout.Fd())) }
+
+// plainOutput reports whether help should render without colour. Docs are
+// styled during package initialization, long before a flag is parsed, so this
+// reads os.Stdout rather than a command's configured writer.
 func plainOutput() bool {
-	if os.Getenv("NO_COLOR") != "" {
-		return true
-	}
-	return !term.IsTerminal(int(os.Stdout.Fd()))
+	return os.Getenv("NO_COLOR") != "" || !stdoutIsTerminal()
 }
 
 func styleDoc(doc string) string {
@@ -40,17 +38,12 @@ func styleDoc(doc string) string {
 		w = termWidthWide
 	}
 
-	// Set up a new glamour instance with some options.
-	//
-	// NewTermRenderer has no terminal detection of its own and defaults to a
-	// TrueColor profile, so `otdfctl <cmd> --help | less` emitted a wall of
-	// escape sequences. Render from the ASCII style when there is no terminal to
-	// colour for; the layout below is applied either way.
+	// NewTermRenderer has no terminal detection and defaults to TrueColor, so
+	// piping --help emitted raw escapes. The ASCII style carries no colour and
+	// already prefixes headings, so it needs no override; the margins below
+	// apply either way.
 	ds := styles.DarkStyleConfig
 	if plainOutput() {
-		// The ASCII style carries no colour anywhere and already prefixes
-		// headings with "# ", so it needs none of the dark-style header override
-		// below. Only the shared margins apply.
 		ds = styles.NoTTYStyleConfig
 	} else {
 		// Capitalize headers

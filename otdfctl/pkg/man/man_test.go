@@ -44,9 +44,9 @@ Encrypt a file.
 `)
 	require.NoError(t, err)
 	assert.Equal(t, "encrypt [file]", doc.Use)
-	if doc.Args != nil {
-		require.NoError(t, doc.Args(&doc.Command, []string{"some-file"}))
-	}
+	// Not `if doc.Args != nil`: nil is the pre-fix state and would pass silently.
+	require.NotNil(t, doc.Args)
+	require.NoError(t, doc.Args(&doc.Command, []string{"some-file"}))
 }
 
 func TestProcessDocWithArgs(t *testing.T) {

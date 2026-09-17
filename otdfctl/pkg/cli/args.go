@@ -4,10 +4,12 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// AnnotationHelpOnly marks a command whose Run exists only to print help.
-// EnforceSubcommandArgs adds it to every group it makes runnable, so tooling
-// that walks the command tree can tell a real command from a help stub.
+// AnnotationHelpOnly marks a command whose Run exists only to print help, so a
+// consumer walking the tree can tell a stub from a real command. tructl's MCP
+// tool generator reads it to keep groups out of the exposed tool set.
 const AnnotationHelpOnly = "help-only"
+
+const annotationTrue = "true"
 
 // helpOnlyRun prints a group command's help.
 func helpOnlyRun(cmd *cobra.Command, _ []string) error {
@@ -15,18 +17,10 @@ func helpOnlyRun(cmd *cobra.Command, _ []string) error {
 }
 
 // EnforceSubcommandArgs makes an unknown subcommand fail instead of quietly
-// succeeding.
-//
-// Two cobra behaviors combine to hide the mistake. A command that has
-// subcommands but no Run returns flag.ErrHelp, and ExecuteC swallows that
-// error, so `otdfctl policy bogus` prints help and exits 0. The Runnable check
-// also runs ahead of argument validation, so marking a group cobra.NoArgs on
-// its own changes nothing. Giving each group a help-printing Run makes it
-// runnable, at which point NoArgs reports the unknown subcommand the way a
-// mistyped top-level command already does.
-//
-// Commands with a Run of their own are left untouched, as are the arguments of
-// any command that already declares them.
+// succeeding. Cobra checks Runnable() before it validates arguments, so NoArgs
+// alone does nothing on a group; giving it a help-printing Run makes NoArgs
+// apply. Commands with a Run of their own are left alone, as are any arguments
+// already declared.
 func EnforceSubcommandArgs(cmd *cobra.Command) {
 	for _, sub := range cmd.Commands() {
 		EnforceSubcommandArgs(sub)
@@ -34,16 +28,16 @@ func EnforceSubcommandArgs(cmd *cobra.Command) {
 	if cmd.Runnable() || !cmd.HasSubCommands() {
 		return
 	}
-	// A group runs nothing, so it can never consume a positional argument.
+	// A help stub takes no operands.
 	cmd.Args = cobra.NoArgs
 	if cmd.Annotations == nil {
 		cmd.Annotations = map[string]string{}
 	}
-	cmd.Annotations[AnnotationHelpOnly] = "true"
+	cmd.Annotations[AnnotationHelpOnly] = annotationTrue
 	cmd.RunE = helpOnlyRun
 }
 
 // IsHelpOnly reports whether cmd is a group whose Run only prints help.
 func IsHelpOnly(cmd *cobra.Command) bool {
-	return cmd.Annotations[AnnotationHelpOnly] == "true"
+	return cmd.Annotations[AnnotationHelpOnly] == annotationTrue
 }

@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"log/slog"
 	"testing"
 	"time"
 
@@ -444,4 +445,28 @@ func TestLoggerConfigPreservesFileSettingsUnlessExplicitlyOverridden(t *testing.
 	cfg := WithAuditProcessor(processor)(StartConfig{}).loggerConfig(fileConfig)
 	require.NotNil(t, cfg.AuditProcessor)
 	require.Equal(t, fileTimeout, cfg.AuditTimeout)
+}
+
+func TestWithLoggerContextAttrs(t *testing.T) {
+	attrs := func(context.Context) []slog.Attr { return nil }
+
+	t.Run("reaches the logger config", func(t *testing.T) {
+		cfg := WithLoggerContextAttrs(attrs)(StartConfig{}).loggerConfig(logger.Config{Level: "info"})
+		require.Len(t, cfg.ContextAttrs, 1)
+	})
+
+	t.Run("repeat calls accumulate", func(t *testing.T) {
+		start := WithLoggerContextAttrs(attrs)(StartConfig{})
+		start = WithLoggerContextAttrs(attrs, attrs)(start)
+		require.Len(t, start.loggerConfig(logger.Config{Level: "info"}).ContextAttrs, 3)
+	})
+
+	t.Run("appends to attrs already on the config", func(t *testing.T) {
+		fileConfig := logger.Config{Level: "info", ContextAttrs: []logger.ContextAttrFunc{attrs}}
+
+		cfg := WithLoggerContextAttrs(attrs)(StartConfig{}).loggerConfig(fileConfig)
+
+		require.Len(t, cfg.ContextAttrs, 2)
+		require.Len(t, fileConfig.ContextAttrs, 1, "startup overrides must not mutate the input")
+	})
 }

@@ -46,6 +46,8 @@ type Config struct {
 	AuditTimeout time.Duration `mapstructure:"audit_timeout" json:"audit_timeout" yaml:"audit_timeout" default:"5s"`
 	// AuditProcessor overrides audit delivery for Go callers and is never serialized.
 	AuditProcessor audit.Processor `mapstructure:"-" json:"-" yaml:"-"`
+	// ContextAttrs derive attributes from each record's context. Go callers only.
+	ContextAttrs []ContextAttrFunc `mapstructure:"-" json:"-" yaml:"-"`
 }
 
 func (c Config) traceCorrelationEnabled() bool {
@@ -117,14 +119,17 @@ func (l *Logger) With(key string, value string) *Logger {
 	}
 }
 
-// contextAttrSources returns the attribute sources for a logger, prepending
-// trace correlation when enabled so trace IDs lead the appended attributes.
-func contextAttrSources(config Config, extra ...contextAttrsFunc) []contextAttrsFunc {
-	if !config.traceCorrelationEnabled() {
-		return extra
+// contextAttrSources returns the attribute sources for a logger: trace
+// correlation first when enabled, then any caller-registered sources, then the
+// logger-specific extras.
+func contextAttrSources(config Config, extra ...ContextAttrFunc) []ContextAttrFunc {
+	sources := make([]ContextAttrFunc, 0, 1+len(config.ContextAttrs)+len(extra))
+	if config.traceCorrelationEnabled() {
+		sources = append(sources, traceContextAttrs)
 	}
+	sources = append(sources, config.ContextAttrs...)
 
-	return append([]contextAttrsFunc{traceContextAttrs}, extra...)
+	return append(sources, extra...)
 }
 
 func getWriter(config Config) (io.Writer, error) {

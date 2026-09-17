@@ -43,27 +43,30 @@ func Execute(opts ...ExecuteOptFunc) {
 	// after otdfctl's own init, including a consumer's, are covered.
 	man.Docs.MarkRequiredFlags()
 
-	// Reject unknown subcommands rather than printing help and exiting 0. Also
-	// applied here so it covers groups built by hand (policy, profile) as well as
-	// those built from docs, plus anything a consumer has mounted.
-	cli.EnforceSubcommandArgs(RootCmd)
-
+	// Reject unknown subcommands rather than printing help and exiting 0. Applied
+	// to whichever root cobra will actually execute, once the tree is whole, so
+	// it covers groups built by hand (policy, profile) as well as those built
+	// from docs, plus anything a consumer has added on either side of the mount.
 	if c.mountTo != nil {
 		err := MountRoot(c.mountTo, c.renameCmd)
 		if err != nil {
 			os.Exit(cli.ExitCodeError)
 		}
-	} else {
-		// Take over error printing so cobra-level failures (e.g. required or
-		// mutually-exclusive flag validation, which run before the command
-		// handler) still honor --json. Cobra would otherwise print plain text
-		// and usage, producing invalid JSON for automation.
-		RootCmd.SilenceErrors = true
-		RootCmd.SilenceUsage = true
-		cmd, err := RootCmd.ExecuteC()
-		if err != nil {
-			handleExecuteError(cmd, err)
-		}
+		cli.EnforceSubcommandArgs(c.mountTo)
+		return
+	}
+
+	cli.EnforceSubcommandArgs(RootCmd)
+
+	// Take over error printing so cobra-level failures (e.g. required or
+	// mutually-exclusive flag validation, which run before the command
+	// handler) still honor --json. Cobra would otherwise print plain text
+	// and usage, producing invalid JSON for automation.
+	RootCmd.SilenceErrors = true
+	RootCmd.SilenceUsage = true
+	cmd, err := RootCmd.ExecuteC()
+	if err != nil {
+		handleExecuteError(cmd, err)
 	}
 }
 

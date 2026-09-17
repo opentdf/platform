@@ -16,9 +16,11 @@ import (
 //
 // InitProfileCommands runs from cmd's init, so the flags are already in place.
 func TestProfileStoreFlagRegisteredWhereItIsRead(t *testing.T) {
-	// Every command whose Run calls newProfilerFromCLI.
+	// Every command that resolves its driver from --store, whether through
+	// newProfilerFromCLI or getDriverTypeFromUser directly.
 	readsStoreFlag := []*cobra.Command{
 		profileListCmd,
+		profileGetCmd,
 		profileDeleteCmd,
 		profileDeleteAllCmd,
 		profileSetDefaultCmd,

@@ -1,8 +1,12 @@
 package cli
 
 import (
+	"bytes"
+	"io"
+	"os"
 	"testing"
 
+	"github.com/evertras/bubble-table/table"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -142,6 +146,58 @@ func TestSuccessMessagesEmptyList(t *testing.T) {
 
 	assert.Equal(t, "No attributes found", verb)
 	assert.Empty(t, helper, "there is nothing for the hint to point at")
+}
+
+// captureStdout collects what fn writes to os.Stdout. PrintSuccessTable prints
+// there directly, so this is the only way to assert on what it renders.
+func captureStdout(t *testing.T, fn func()) string {
+	t.Helper()
+
+	r, w, err := os.Pipe()
+	require.NoError(t, err)
+
+	orig := os.Stdout
+	os.Stdout = w
+	defer func() { os.Stdout = orig }()
+
+	out := make(chan string, 1)
+	go func() {
+		var buf bytes.Buffer
+		_, _ = io.Copy(&buf, r)
+		out <- buf.String()
+	}()
+
+	fn()
+
+	require.NoError(t, w.Close())
+	return <-out
+}
+
+// TestPrintSuccessTableOmitsEmptyTable is the output-level half of
+// TestSuccessMessagesEmptyList: a zero-row result must report that nothing was
+// found and print no table, because a header-only table reads as a failure.
+func TestPrintSuccessTableOmitsEmptyTable(t *testing.T) {
+	cmd := find(t, newTestTree(t), "policy", "attributes", "list")
+	empty := NewTable(table.NewFlexColumn("id", "ID", FlexColumnWidthFive))
+
+	t.Run("no rows", func(t *testing.T) {
+		out := captureStdout(t, func() { PrintSuccessTable(cmd, "", empty) })
+
+		assert.Contains(t, out, "No attributes found")
+		assert.NotContains(t, out, "ID", "the header-only table must not be rendered")
+		assert.NotContains(t, out, "│", "no table borders should reach stdout")
+	})
+
+	t.Run("with rows", func(t *testing.T) {
+		populated := empty.WithRows([]table.Row{
+			table.NewRow(table.RowData{"id": "abc-123"}),
+		})
+
+		out := captureStdout(t, func() { PrintSuccessTable(cmd, "", populated) })
+
+		assert.Contains(t, out, "Found attributes list")
+		assert.Contains(t, out, "abc-123", "test premise: a populated table still renders")
+	})
 }
 
 func TestHasSubcommand(t *testing.T) {

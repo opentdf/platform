@@ -33,6 +33,12 @@ func newTestTree(t *testing.T) *cobra.Command {
 		&cobra.Command{Use: "list"},
 	)
 
+	// `unsafe` holds destructive variants and owns no `list` of its own, so its
+	// hint has to name the parent's.
+	unsafe := &cobra.Command{Use: "unsafe"}
+	unsafe.AddCommand(&cobra.Command{Use: "delete"})
+	attributes.AddCommand(unsafe)
+
 	// A group with no `get`, which is what made the hint point at a command
 	// that does not exist.
 	folders := &cobra.Command{Use: "folders"}
@@ -42,7 +48,14 @@ func newTestTree(t *testing.T) *cobra.Command {
 		&cobra.Command{Use: "upload"},
 	)
 
-	policy.AddCommand(attributes, folders)
+	// A group with neither, to catch a hint naming a `list` that is not there.
+	keys := &cobra.Command{Use: "keys"}
+	keys.AddCommand(
+		&cobra.Command{Use: "delete"},
+		&cobra.Command{Use: "deactivate"},
+	)
+
+	policy.AddCommand(attributes, folders, keys)
 	root.AddCommand(policy)
 	return root
 }
@@ -128,6 +141,44 @@ func TestSuccessMessagesHintOnlyWhenGetExists(t *testing.T) {
 			_, helper := successMessages(find(t, root, "policy", "folders", leaf), "abc", 1)
 			assert.Empty(t, helper, "leaf %q must not point at a get that does not exist", leaf)
 		}
+	})
+}
+
+// delete and deactivate point at a `list` rather than a `get`, and had the same
+// defect: the hint was emitted whether or not that command existed.
+func TestSuccessMessagesListHintOnlyWhenListExists(t *testing.T) {
+	root := newTestTree(t)
+
+	t.Run("group with a list", func(t *testing.T) {
+		for _, leaf := range []string{"delete", "deactivate"} {
+			_, helper := successMessages(find(t, root, "policy", "attributes", leaf), "abc", 1)
+			assert.Equal(t, "Use 'otdfctl policy attributes list --json' to see all properties", helper, leaf)
+		}
+	})
+
+	t.Run("group without a list", func(t *testing.T) {
+		for _, leaf := range []string{"delete", "deactivate"} {
+			_, helper := successMessages(find(t, root, "policy", "keys", leaf), "abc", 1)
+			assert.Empty(t, helper, "leaf %q must not point at a list that does not exist", leaf)
+		}
+	})
+
+	// `unsafe` owns no list, so the hint names the parent's and drops the
+	// segment from the path.
+	t.Run("under unsafe", func(t *testing.T) {
+		_, helper := successMessages(find(t, root, "policy", "attributes", "unsafe", "delete"), "abc", 1)
+		assert.Equal(t, "Use 'otdfctl policy attributes list --json' to see all properties", helper)
+	})
+}
+
+// A root command has no parent to name the resource from.
+func TestSuccessMessagesOnRootCommand(t *testing.T) {
+	root := newTestTree(t)
+
+	require.NotPanics(t, func() {
+		verb, helper := successMessages(root, "", 0)
+		assert.Equal(t, "otdfctl", verb)
+		assert.Empty(t, helper)
 	})
 }
 

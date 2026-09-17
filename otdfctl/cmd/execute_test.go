@@ -195,7 +195,7 @@ func TestMountedRootKeepsValidInvocations(t *testing.T) {
 			continue
 		}
 		assert.NoError(t, cmd.ValidateArgs(nil), "%v is a valid bare invocation", args)
-		assert.Error(t, cmd.ValidateArgs([]string{"bogus"}), "%v takes no operand, so a stray one must fail", args)
+		require.Error(t, cmd.ValidateArgs([]string{"bogus"}), "%v takes no operand, so a stray one must fail", args)
 	}
 
 	// A leaf that declares an operand still takes it.
@@ -209,6 +209,6 @@ func TestMountedRootKeepsValidInvocations(t *testing.T) {
 	comp, _, err := root.Find([]string{"completion"})
 	require.NoError(t, err)
 	require.Equal(t, "completion", comp.Name(), "cobra's completion command must be in the tree")
-	assert.Error(t, comp.ValidateArgs([]string{"bogus"}))
+	require.Error(t, comp.ValidateArgs([]string{"bogus"}))
 	assert.True(t, comp.Runnable(), "NoArgs is only consulted once the group is runnable")
 }

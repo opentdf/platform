@@ -29,7 +29,7 @@ inputs:
     required: false
   key-cache-expiration:
     default: ''
-    description: 'Private-key cache expiration as a Go duration (e.g. 5m); 0 disables caching; empty inherits the platform configuration'
+    description: 'Private-key cache expiration in nanoseconds (e.g. 300000000000 for 5 minutes); 0 disables caching; empty inherits the platform configuration'
     required: false
   root-key:
     default: ''
@@ -68,6 +68,7 @@ runs:
         PQC_ENABLED: ${{ inputs.pqc-enabled }}
         KEY_MANAGEMENT: ${{ inputs.key-management }}
         KAS_URI_FROM_KAO: ${{ inputs.kas-uri-from-kao }}
+        KEY_CACHE_EXPIRATION: ${{ inputs.key-cache-expiration }}
         ROOT_KEY: ${{ inputs.root-key }}
         LOG_LEVEL: ${{ inputs.log-level }}
         LOG_TYPE: ${{ inputs.log-type }}
@@ -125,6 +126,12 @@ runs:
             exit 1
             ;;
         esac
+
+        # KAS decodes time.Duration from an integer number of nanoseconds.
+        if [[ -n "${KEY_CACHE_EXPIRATION}" && ! "${KEY_CACHE_EXPIRATION}" =~ ^(0|[1-9][0-9]*)$ ]]; then
+          echo "Error: key-cache-expiration must be a nonnegative integer number of nanoseconds, or empty to inherit."
+          exit 1
+        fi
 
         # Validate key-management and root-key combination
         if [[ "${KEY_MANAGEMENT}" == "true" && -z "${ROOT_KEY}" ]]; then
@@ -215,7 +222,7 @@ runs:
             | (.services.kas.key_management = (env(KEY_MANAGEMENT) == "true"))
             | (.services.kas.preview.key_management = (env(KEY_MANAGEMENT) == "true"))
             | (.services.kas.kas_uri_from_kao = (env(KAS_URI_FROM_KAO) == "true"))
-            | with(select(strenv(KEY_CACHE_EXPIRATION) != ""); .services.kas.key_cache_expiration = strenv(KEY_CACHE_EXPIRATION))
+            | with(select(strenv(KEY_CACHE_EXPIRATION) != ""); .services.kas.key_cache_expiration = env(KEY_CACHE_EXPIRATION))
             | (.services.kas.registered_kas_uri = "http://localhost:" + env(KAS_PORT))
             | del(.services.kas.root_key)
             | (.logger.level = env(LOG_LEVEL))

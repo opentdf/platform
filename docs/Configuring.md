@@ -141,6 +141,7 @@ Root level key `server`
 | `grpc.reflection`       | The configuration for the grpc server.                                                                        | `true`  | OPENTDF_SERVER_GRPC_REFLECTION       |
 | `public_hostname`       | The public facing hostname for the server.                                                                    |         | OPENTDF_SERVER_PUBLIC_HOSTNAME       |
 | `host`                  | The host address for the server.                                                                              | `""`    | OPENTDF_SERVER_HOST                  |
+| `http.trustedProxies`   | Proxy CIDRs allowed to supply client-IP forwarding headers.                                                   | `[]`    | OPENTDF_SERVER_HTTP_TRUSTEDPROXIES   |
 | `port`                  | The port number for the server.                                                                               | `9000`  | OPENTDF_SERVER_PORT                  |
 | `tls.enabled`           | Enable tls.                                                                                                   | `false` | OPENTDF_SERVER_TLS_ENABLED           |
 | `tls.cert`              | The path to the tls certificate.                                                                              |         | OPENTDF_SERVER_TLS_CERT              |
@@ -176,17 +177,9 @@ server:
           cert: kas-ec-cert.pem
 ```
 
-### HTTP Server Configuration
+Set `OPENTDF_SERVER_HTTP_TRUSTEDPROXIES` to a comma-separated CIDR list without spaces.
 
-Root level key `server.http`
-
-| Field            | Description                                                | Default | Environment Variable                |
-| ---------------- | ---------------------------------------------------------- | ------- | ----------------------------------- |
-| `trustedProxies` | Proxy CIDRs allowed to supply client-IP forwarding headers | `[]`    | `OPENTDF_SERVER_HTTP_TRUSTEDPROXIES` |
-
-Set the environment variable to a comma-separated CIDR list without spaces.
-
-When `trustedProxies` is empty, Platform ignores `X-Forwarded-For`, `X-Real-IP`,
+When `server.http.trustedProxies` is empty, Platform ignores `X-Forwarded-For`, `X-Real-IP`,
 and `True-Client-IP` and records the direct socket peer. When the peer matches a
 trusted CIDR, Platform resolves `X-Forwarded-For` from right to left, removing
 trusted proxy hops. If `X-Forwarded-For` is absent, it uses `X-Real-IP`, then

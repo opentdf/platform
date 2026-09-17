@@ -8,6 +8,7 @@ import (
 
 	"github.com/opentdf/platform/lib/ocrypto"
 	"github.com/opentdf/platform/protocol/go/policy"
+	"github.com/opentdf/platform/sdk"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -87,13 +88,25 @@ func TestRootIntegrityRejectsNonHS256(t *testing.T) {
 	assert.Equal(t, string(ocrypto.CalculateSHA256Hmac(key, aggregate)), sig)
 }
 
-// Option cannot return an error, so Finalize is the only place an illegal root
-// algorithm can be caught -- and it must be, or the writer produces a file no
-// conforming reader will accept.
-func TestFinalizeRejectsGMACRoot(t *testing.T) {
+// Option cannot return an error, so NewWriter is where an algorithm the
+// delegate cannot produce has to be caught -- silently substituting one would
+// write a manifest that disagrees with what the caller asked for.
+func TestNewWriterRejectsUnproducibleAlgorithms(t *testing.T) {
 	ctx := t.Context()
 
-	writer, err := NewWriter(ctx, WithIntegrityAlgorithm(RootIntegrityAlg(GMAC)))
+	_, err := NewWriter(ctx, WithIntegrityAlgorithm(RootIntegrityAlg(GMAC)))
+	require.ErrorIs(t, err, sdk.ErrUnsupportedRootIntegrityAlgorithm)
+
+	_, err = NewWriter(ctx, WithSegmentIntegrityAlgorithm(SegmentHS256))
+	require.ErrorIs(t, err, sdk.ErrUnsupportedSegmentIntegrityAlgorithm)
+}
+
+// The defaults are the only algorithms the writer emits, so a manifest names
+// them whether or not the caller asked.
+func TestFinalizeNamesWhatItSigned(t *testing.T) {
+	ctx := t.Context()
+
+	writer, err := NewWriter(ctx)
 	require.NoError(t, err)
 
 	_, err = writer.WriteSegment(ctx, 0, []byte("Confidential business information"))
@@ -102,39 +115,10 @@ func TestFinalizeRejectsGMACRoot(t *testing.T) {
 	attributes := []*policy.Value{
 		createTestAttribute("https://example.com/attr/Category/value/Financial", testKAS1, "kid1"),
 	}
-	_, err = writer.Finalize(ctx, WithAttributeValues(attributes))
-	require.ErrorIs(t, err, ErrUnsupportedRootIntegrityAlgorithm)
-}
+	result, err := writer.Finalize(ctx, WithAttributeValues(attributes))
+	require.NoError(t, err)
 
-// Both segment algorithms round-trip through Finalize, and neither disturbs the
-// root, which stays HS256 whatever the segments declare.
-func TestFinalizeSegmentAlgNamesWhatItSigned(t *testing.T) {
-	for _, tc := range []struct {
-		name string
-		alg  SegmentIntegrityAlg
-		want string
-	}{
-		{"hs256", SegmentHS256, algHS256},
-		{"gmac", SegmentGMAC, algGMAC},
-	} {
-		t.Run(tc.name, func(t *testing.T) {
-			ctx := t.Context()
-
-			writer, err := NewWriter(ctx, WithSegmentIntegrityAlgorithm(tc.alg))
-			require.NoError(t, err)
-
-			_, err = writer.WriteSegment(ctx, 0, []byte("Confidential business information"))
-			require.NoError(t, err)
-
-			attributes := []*policy.Value{
-				createTestAttribute("https://example.com/attr/Category/value/Financial", testKAS1, "kid1"),
-			}
-			result, err := writer.Finalize(ctx, WithAttributeValues(attributes))
-			require.NoError(t, err)
-
-			intInfo := result.Manifest.IntegrityInformation
-			assert.Equal(t, tc.want, intInfo.SegmentHashAlgorithm)
-			assert.Equal(t, algHS256, intInfo.Algorithm, "root stays HS256 regardless of the segment algorithm")
-		})
-	}
+	intInfo := result.Manifest.IntegrityInformation
+	assert.Equal(t, algGMAC, intInfo.SegmentHashAlgorithm)
+	assert.Equal(t, algHS256, intInfo.Algorithm)
 }

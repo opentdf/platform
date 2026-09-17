@@ -333,7 +333,9 @@ func (s KeyAccessServerRegistry) GetKey(ctx context.Context, r *connect.Request[
 	case *kasr.GetKeyRequest_Id:
 		s.logger.DebugContext(ctx, "getting keyAccessServer key by ID", slog.String("id", i.Id))
 	case *kasr.GetKeyRequest_Key:
-		s.logger.DebugContext(ctx, "getting keyAccessServer by Key", slog.String("key_id", i.Key.GetKid()))
+		s.logger.DebugContext(ctx, "getting keyAccessServer by Key",
+			slog.String("key_id", i.Key.GetKid()),
+			slog.String("kas_uri", i.Key.GetUri()))
 	default:
 		return nil, connect.NewError(connect.CodeInvalidArgument, nil)
 	}
@@ -356,7 +358,7 @@ func (s KeyAccessServerRegistry) GetKey(ctx context.Context, r *connect.Request[
 		}
 	}
 
-	auditParams.ObjectID = key.GetKey().GetKeyId()
+	auditParams.ObjectID = fmt.Sprintf("%s:%s", key.GetKey().GetKeyId(), key.GetKasId())
 	s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
 
 	rsp.KasKey = key

@@ -713,6 +713,10 @@ func (p *Provider) verifyRewrapRequests(ctx context.Context, req *kaspb.Unsigned
 		var kasURI string
 		if p.KASURIFromKAO {
 			kasURI = kao.GetKeyAccessObject().GetKasUrl()
+			p.Logger.DebugContext(ctx, "reading KAS URI from KAO for rewrap",
+				slog.String("kao_id", kao.GetKeyAccessObjectId()),
+				slog.String("key_id", kao.GetKeyAccessObject().GetKid()),
+				slog.String("kas_uri", kasURI))
 		}
 		switch kao.GetKeyAccessObject().GetKeyType() {
 		case "ec-wrapped":

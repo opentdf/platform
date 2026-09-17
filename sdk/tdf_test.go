@@ -2701,6 +2701,41 @@ func (s *TDFSuite) Test_LargeManifest_WithMaxManifest() {
 	s.Require().ErrorContains(err, "size too large")
 }
 
+// WithRequireSpecManifestName lets a caller refuse archives the spec does not
+// describe. Without it the same archive still reads, which is what keeps the
+// option opt-in. See https://github.com/opentdf/platform/issues/3513.
+func (s *TDFSuite) Test_LoadTDF_RequireSpecManifestName() {
+	tdfOptions := []TDFOption{
+		WithKasInformation(KASInfo{URL: s.kasTestURLLookup["https://a.kas/"], PublicKey: ""}),
+	}
+	readOptions := []TDFReaderOption{
+		WithKasAllowlist([]string{s.kasTestURLLookup["https://a.kas/"]}),
+	}
+
+	var buf bytes.Buffer
+	_, err := s.sdk.CreateTDF(&buf, bytes.NewReader([]byte("Test Data")), tdfOptions...)
+	s.Require().NoError(err)
+
+	offspec := s.repackManifestEntryAs(buf.Bytes(), zipstream.TDFManifestFileNameOffspec)
+
+	s.Run("rejects the off-spec name when required", func() {
+		_, err := s.sdk.LoadTDF(bytes.NewReader(offspec), append(readOptions, WithRequireSpecManifestName())...)
+		s.Require().ErrorIs(err, ErrOffspecManifestName)
+	})
+
+	s.Run("reads the off-spec name by default", func() {
+		r, err := s.sdk.LoadTDF(bytes.NewReader(offspec), readOptions...)
+		s.Require().NoError(err)
+		s.Require().Equal("0.payload", r.Manifest().URL)
+	})
+
+	s.Run("reads the spec name when required", func() {
+		r, err := s.sdk.LoadTDF(bytes.NewReader(buf.Bytes()), append(readOptions, WithRequireSpecManifestName())...)
+		s.Require().NoError(err)
+		s.Require().Equal("0.payload", r.Manifest().URL)
+	})
+}
+
 // create tdf
 func (s *TDFSuite) testEncrypt(sdk *SDK, encryptOpts []TDFOption, plainTextFilename, tdfFileName string, test tdfTest) *TDFObject {
 	// create a plain text file
@@ -3444,4 +3479,35 @@ func TestGetKasErrorToReturn(t *testing.T) {
 		result := getKasErrorToReturn(inputError, defaultError)
 		require.Equal(t, defaultError, result)
 	})
+}
+
+// repackManifestEntryAs rewrites a TDF so its manifest is filed under
+// manifestName, standing in for an archive written by an older SDK release.
+// Entries are STORED: the zipstream reader does not inflate.
+func (s *TDFSuite) repackManifestEntryAs(tdf []byte, manifestName string) []byte {
+	s.T().Helper()
+
+	src, err := zip.NewReader(bytes.NewReader(tdf), int64(len(tdf)))
+	s.Require().NoError(err)
+
+	buf := &bytes.Buffer{}
+	dst := zip.NewWriter(buf)
+	for _, entry := range src.File {
+		name := entry.Name
+		if name == zipstream.TDFManifestFileName {
+			name = manifestName
+		}
+
+		w, err := dst.CreateHeader(&zip.FileHeader{Name: name, Method: zip.Store})
+		s.Require().NoError(err)
+
+		rc, err := entry.Open()
+		s.Require().NoError(err)
+		_, err = io.Copy(w, rc)
+		s.Require().NoError(err)
+		s.Require().NoError(rc.Close())
+	}
+	s.Require().NoError(dst.Close())
+
+	return buf.Bytes()
 }

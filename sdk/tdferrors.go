@@ -3,6 +3,8 @@ package sdk
 import (
 	"errors"
 	"fmt"
+
+	"github.com/opentdf/platform/sdk/internal/zipstream"
 )
 
 var (
@@ -10,6 +12,11 @@ var (
 	errWriteFailed      = errors.New("tdf: io.writer fail to write all bytes")
 	errInvalidKasInfo   = errors.New("tdf: kas information is missing")
 	errKasPubKeyMissing = errors.New("tdf: kas public key is missing")
+
+	// ErrOffspecManifestName reports a TDF whose manifest entry is named
+	// 0.manifest.json rather than the spec's manifest.json, read with
+	// WithRequireSpecManifestName.
+	ErrOffspecManifestName = zipstream.ErrOffspecManifestName
 
 	// Exposed tamper detection errors, Catch all possible tamper errors with errors.Is(ErrTampered)
 	ErrTampered                = errors.New("tamper detected")

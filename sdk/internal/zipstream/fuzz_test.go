@@ -149,6 +149,19 @@ func FuzzReader(f *testing.F) {
 		{name: "0.manifest.json", data: []byte(`{"m":1}`)},
 	}, false))
 
+	// A ZIP64 extra field declaring a stored size of 1<<63. Narrowed to an
+	// int64 that is negative, which used to slip past the signed guard in
+	// ReadAllFileData and panic in make([]byte, size).
+	f.Add(buildRawZip(f, []rawZipEntry{
+		{
+			name:                "0.payload",
+			data:                []byte("payload bytes"),
+			zip64:               true,
+			zip64CompressedSize: beyondInt64,
+		},
+		{name: "0.manifest.json", data: []byte(`{"m":1}`)},
+	}, false))
+
 	f.Fuzz(func(t *testing.T, data []byte) {
 		reader, err := NewReader(bytes.NewReader(data))
 		if err != nil {

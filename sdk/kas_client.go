@@ -10,6 +10,7 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"sync"
 	"time"
 
 	"connectrpc.com/connect"
@@ -383,18 +384,25 @@ type timeStampedKASInfo struct {
 
 // Caches the most recent key info for a given KAS URL and algorithm
 type kasKeyCache struct {
-	c map[kasKeyRequest]timeStampedKASInfo
+	c  map[kasKeyRequest]timeStampedKASInfo
+	mu sync.Mutex
 }
 
 func newKasKeyCache() *kasKeyCache {
-	return &kasKeyCache{make(map[kasKeyRequest]timeStampedKASInfo)}
+	return &kasKeyCache{c: make(map[kasKeyRequest]timeStampedKASInfo)}
 }
 
 func (c *kasKeyCache) clear() {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
 	c.c = make(map[kasKeyRequest]timeStampedKASInfo)
 }
 
 func (c *kasKeyCache) get(url, algorithm, kid string) *KASInfo {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
 	cacheKey := kasKeyRequest{url, algorithm, kid}
 	now := time.Now()
 	cv, ok := c.c[cacheKey]
@@ -419,6 +427,9 @@ func (c *kasKeyCache) get(url, algorithm, kid string) *KASInfo {
 }
 
 func (c *kasKeyCache) store(ki KASInfo) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
 	cacheKey := kasKeyRequest{ki.URL, ki.Algorithm, ki.KID}
 	c.c[cacheKey] = timeStampedKASInfo{ki, time.Now()}
 }

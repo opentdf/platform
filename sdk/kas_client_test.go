@@ -6,6 +6,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"net/http"
+	"sync"
 	"testing"
 	"time"
 
@@ -393,6 +394,37 @@ func TestKasKeyCache_Expiration(t *testing.T) {
 	// Verify the entry was actually removed from the cache
 	_, exists := cache.c[cacheKey]
 	assert.False(t, exists, "Expired key should be removed from cache")
+}
+
+func TestKasKeyCache_ConcurrentAccess(t *testing.T) {
+	cache := newKasKeyCache()
+	keyInfo := KASInfo{
+		URL:       "https://kas.example.org",
+		Algorithm: "ec:secp256r1",
+		KID:       "test-kid",
+		PublicKey: "test-public-key",
+	}
+
+	var wg sync.WaitGroup
+	for range 100 {
+		wg.Add(3)
+		go func() {
+			defer wg.Done()
+			cache.store(keyInfo)
+		}()
+		go func() {
+			defer wg.Done()
+			_ = cache.get(keyInfo.URL, keyInfo.Algorithm, keyInfo.KID)
+		}()
+		go func() {
+			defer wg.Done()
+			cache.clear()
+		}()
+	}
+	wg.Wait()
+
+	cache.store(keyInfo)
+	assert.Equal(t, &keyInfo, cache.get(keyInfo.URL, keyInfo.Algorithm, keyInfo.KID))
 }
 
 func Test_newConnectRewrapRequest(t *testing.T) {

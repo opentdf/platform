@@ -5,6 +5,7 @@ import (
 	"crypto/tls"
 	"log/slog"
 	"net/http"
+	"time"
 
 	"connectrpc.com/connect"
 	"github.com/lestrrat-go/jwx/v2/jwk"
@@ -61,6 +62,7 @@ type config struct {
 	shouldValidatePlatformConnectivity bool
 	fulfillableObligationFQNs          []string
 	logger                             *slog.Logger
+	kasAllowlistCacheTTL               *time.Duration
 }
 
 // Options specific to TDF protocol features
@@ -243,6 +245,14 @@ func WithFulfillableObligationFQNs(fqns []string) Option {
 func WithLogger(logger *slog.Logger) Option {
 	return func(c *config) {
 		c.logger = logger
+	}
+}
+
+// WithKASAllowlistCache enables the SDK's KAS allowlist cache with the given TTL.
+// The cache is disabled when this option is not provided.
+func WithKASAllowlistCache(ttl time.Duration) Option {
+	return func(c *config) {
+		c.kasAllowlistCacheTTL = &ttl
 	}
 }
 

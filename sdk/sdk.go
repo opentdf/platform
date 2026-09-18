@@ -123,6 +123,9 @@ func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 	for _, opt := range opts {
 		opt(cfg)
 	}
+	if cfg.kasAllowlistCacheTTL != nil && *cfg.kasAllowlistCacheTTL <= 0 {
+		return nil, errors.New("KAS allowlist cache TTL must be greater than zero")
+	}
 
 	// Set default logger if none provided
 	if cfg.logger == nil {
@@ -239,10 +242,15 @@ func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 		ersConn = platformConn
 	}
 
+	var allowlistCache *kasAllowlistCache
+	if cfg.kasAllowlistCacheTTL != nil {
+		allowlistCache = newKasAllowlistCache(*cfg.kasAllowlistCacheTTL)
+	}
+
 	return &SDK{
 		config:                  *cfg,
 		kasKeyCache:             newKasKeyCache(),
-		kasAllowlistCache:       newKasAllowlistCache(),
+		kasAllowlistCache:       allowlistCache,
 		conn:                    &ConnectRPCConnection{Client: platformConn.Client, Endpoint: platformConn.Endpoint, Options: platformConn.Options},
 		tokenSource:             accessTokenSource,
 		Actions:                 sdkconnect.NewActionServiceClientConnectWrapper(platformConn.Client, platformConn.Endpoint, platformConn.Options...),

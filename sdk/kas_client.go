@@ -373,7 +373,8 @@ func (k *KASClient) getRewrapRequest(reqs []*kas.UnsignedRewrapRequest_WithPolic
 }
 
 type kasAllowlistCache struct {
-	c map[string]timeStampedAllowList
+	c   map[string]timeStampedAllowList
+	ttl time.Duration
 }
 
 type timeStampedAllowList struct {
@@ -381,8 +382,11 @@ type timeStampedAllowList struct {
 	time.Time
 }
 
-func newKasAllowlistCache() *kasAllowlistCache {
-	return &kasAllowlistCache{make(map[string]timeStampedAllowList)}
+func newKasAllowlistCache(ttl time.Duration) *kasAllowlistCache {
+	return &kasAllowlistCache{
+		c:   make(map[string]timeStampedAllowList),
+		ttl: ttl,
+	}
 }
 
 func (c *kasAllowlistCache) clear() {
@@ -394,7 +398,7 @@ func (c *kasAllowlistCache) get(platformURL string) AllowList {
 	if !ok {
 		return nil
 	}
-	if time.Now().Add(-5 * time.Minute).After(cv.Time) {
+	if time.Now().Add(-c.ttl).After(cv.Time) {
 		delete(c.c, platformURL)
 		return nil
 	}

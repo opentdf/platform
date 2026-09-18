@@ -396,7 +396,7 @@ func TestKasKeyCache_Expiration(t *testing.T) {
 }
 
 func TestKasAllowlistCache_Basic(t *testing.T) {
-	cache := newKasAllowlistCache()
+	cache := newKasAllowlistCache(5 * time.Minute)
 	require.NotNil(t, cache)
 
 	al := AllowList{}
@@ -418,7 +418,7 @@ func TestKasAllowlistCache_Basic(t *testing.T) {
 }
 
 func TestKasAllowlistCache_Expiration(t *testing.T) {
-	cache := newKasAllowlistCache()
+	cache := newKasAllowlistCache(30 * time.Second)
 
 	al := AllowList{}
 	require.NoError(t, al.Add("https://kas.example.org"))
@@ -427,12 +427,45 @@ func TestKasAllowlistCache_Expiration(t *testing.T) {
 	require.NotNil(t, cache.get("https://platform.example.org"))
 
 	entry := cache.c["https://platform.example.org"]
-	entry.Time = time.Now().Add(-6 * time.Minute)
+	entry.Time = time.Now().Add(-31 * time.Second)
 	cache.c["https://platform.example.org"] = entry
 
 	assert.Nil(t, cache.get("https://platform.example.org"), "expired entry should not be returned")
 	_, exists := cache.c["https://platform.example.org"]
 	assert.False(t, exists, "expired entry should be removed from cache")
+}
+
+func TestKasAllowlistCache_Configuration(t *testing.T) {
+	platformConfiguration := WithPlatformConfiguration(PlatformConfiguration{})
+
+	t.Run("disabled by default", func(t *testing.T) {
+		s, err := New("https://platform.example.org", platformConfiguration)
+		require.NoError(t, err)
+		assert.Nil(t, s.kasAllowlistCache)
+	})
+
+	t.Run("enabled with configured TTL", func(t *testing.T) {
+		s, err := New(
+			"https://platform.example.org",
+			platformConfiguration,
+			WithKASAllowlistCache(2*time.Minute),
+		)
+		require.NoError(t, err)
+		require.NotNil(t, s.kasAllowlistCache)
+		assert.Equal(t, 2*time.Minute, s.kasAllowlistCache.ttl)
+	})
+
+	for _, ttl := range []time.Duration{0, -time.Second} {
+		t.Run("rejects non-positive TTL", func(t *testing.T) {
+			s, err := New(
+				"https://platform.example.org",
+				platformConfiguration,
+				WithKASAllowlistCache(ttl),
+			)
+			require.ErrorContains(t, err, "KAS allowlist cache TTL must be greater than zero")
+			assert.Nil(t, s)
+		})
+	}
 }
 
 func Test_newConnectRewrapRequest(t *testing.T) {

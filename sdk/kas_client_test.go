@@ -5,7 +5,11 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
+	"log/slog"
 	"net/http"
+	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -16,7 +20,9 @@ import (
 	"github.com/opentdf/platform/lib/ocrypto"
 	kaspb "github.com/opentdf/platform/protocol/go/kas"
 	"github.com/opentdf/platform/protocol/go/policy"
+	"github.com/opentdf/platform/protocol/go/policy/kasregistry"
 	"github.com/opentdf/platform/sdk/auth"
+	"github.com/opentdf/platform/sdk/sdkconnect"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
@@ -393,6 +399,188 @@ func TestKasKeyCache_Expiration(t *testing.T) {
 	// Verify the entry was actually removed from the cache
 	_, exists := cache.c[cacheKey]
 	assert.False(t, exists, "Expired key should be removed from cache")
+}
+
+func TestKasAllowlistCache_Basic(t *testing.T) {
+	cache := newKasAllowlistCache(5 * time.Minute)
+	require.NotNil(t, cache)
+
+	al := AllowList{}
+	require.NoError(t, al.Add("https://kas1.example.org"))
+	require.NoError(t, al.Add("https://kas2.example.org"))
+
+	assert.Nil(t, cache.get("https://platform.example.org"), "empty cache should return nil")
+
+	cache.store("https://platform.example.org", al)
+
+	cached := cache.get("https://platform.example.org")
+	require.NotNil(t, cached)
+	assert.Len(t, cached, 2)
+
+	assert.Nil(t, cache.get("https://other.example.org"), "different key should return nil")
+
+	cache.clear()
+	assert.Nil(t, cache.get("https://platform.example.org"), "cleared cache should return nil")
+}
+
+func TestKasAllowlistCache_Expiration(t *testing.T) {
+	cache := newKasAllowlistCache(30 * time.Second)
+
+	al := AllowList{}
+	require.NoError(t, al.Add("https://kas.example.org"))
+
+	cache.store("https://platform.example.org", al)
+	require.NotNil(t, cache.get("https://platform.example.org"))
+
+	entry := cache.entries["https://platform.example.org"]
+	entry.Time = time.Now().Add(-31 * time.Second)
+	cache.entries["https://platform.example.org"] = entry
+
+	assert.Nil(t, cache.get("https://platform.example.org"), "expired entry should not be returned")
+	_, exists := cache.entries["https://platform.example.org"]
+	assert.False(t, exists, "expired entry should be removed from cache")
+}
+
+func TestKasAllowlistCache_Configuration(t *testing.T) {
+	platformConfiguration := WithPlatformConfiguration(PlatformConfiguration{})
+
+	t.Run("disabled by default", func(t *testing.T) {
+		s, err := New("https://platform.example.org", platformConfiguration)
+		require.NoError(t, err)
+		assert.Nil(t, s.kasAllowlistCache)
+	})
+
+	t.Run("enabled with configured TTL", func(t *testing.T) {
+		s, err := New(
+			"https://platform.example.org",
+			platformConfiguration,
+			WithKASAllowlistCache(2*time.Minute),
+		)
+		require.NoError(t, err)
+		require.NotNil(t, s.kasAllowlistCache)
+		assert.Equal(t, 2*time.Minute, s.kasAllowlistCache.ttl)
+	})
+
+	for _, ttl := range []time.Duration{0, -time.Second} {
+		t.Run("rejects non-positive TTL", func(t *testing.T) {
+			s, err := New(
+				"https://platform.example.org",
+				platformConfiguration,
+				WithKASAllowlistCache(ttl),
+			)
+			require.ErrorContains(t, err, "KAS allowlist cache TTL must be greater than zero")
+			assert.Nil(t, s)
+		})
+	}
+}
+
+func TestKasAllowlistCache_ConcurrentAccess(t *testing.T) {
+	cache := newKasAllowlistCache(time.Minute)
+	allowlist := AllowList{"https://kas.example.org": true}
+
+	var wg sync.WaitGroup
+	for range 100 {
+		wg.Add(3)
+		go func() {
+			defer wg.Done()
+			cache.store("https://platform.example.org", allowlist)
+		}()
+		go func() {
+			defer wg.Done()
+			_ = cache.get("https://platform.example.org")
+		}()
+		go func() {
+			defer wg.Done()
+			cache.clear()
+		}()
+	}
+	wg.Wait()
+
+	cache.store("https://platform.example.org", allowlist)
+	assert.Equal(t, allowlist, cache.get("https://platform.example.org"))
+}
+
+type countingKASRegistry struct {
+	sdkconnect.KeyAccessServerRegistryServiceClient
+	callCount atomic.Int32
+	started   chan struct{}
+	release   chan struct{}
+	startOnce sync.Once
+}
+
+func (r *countingKASRegistry) ListKeyAccessServers(ctx context.Context, _ *kasregistry.ListKeyAccessServersRequest) (*kasregistry.ListKeyAccessServersResponse, error) {
+	r.callCount.Add(1)
+	r.startOnce.Do(func() { close(r.started) })
+	select {
+	case <-r.release:
+		return &kasregistry.ListKeyAccessServersResponse{}, nil
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	}
+}
+
+func TestKasAllowlistCache_ConcurrentMiss(t *testing.T) {
+	registry := &countingKASRegistry{
+		started: make(chan struct{}),
+		release: make(chan struct{}),
+	}
+	s := SDK{
+		config:                  config{logger: slog.Default()},
+		kasAllowlistCache:       newKasAllowlistCache(time.Minute),
+		KeyAccessServerRegistry: registry,
+	}
+
+	const callers = 100
+	errs := make(chan error, callers)
+	start := make(chan struct{})
+	var wg sync.WaitGroup
+	var ready sync.WaitGroup
+	ready.Add(callers)
+	for range callers {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			ready.Done()
+			<-start
+			_, err := s.loadKasAllowlist(context.Background(), "https://platform.example.org")
+			errs <- err
+		}()
+	}
+
+	ready.Wait()
+	close(start)
+	<-registry.started
+	assert.Never(t, func() bool {
+		return registry.callCount.Load() > 1
+	}, 100*time.Millisecond, 10*time.Millisecond)
+	close(registry.release)
+	wg.Wait()
+	close(errs)
+
+	assert.Equal(t, int32(1), registry.callCount.Load())
+	for err := range errs {
+		require.NoError(t, err)
+	}
+}
+
+func TestKasAllowlistCache_FailedLoadNotCached(t *testing.T) {
+	cache := newKasAllowlistCache(time.Minute)
+	allowlist := AllowList{"https://kas.example.org": true}
+	loadCount := 0
+
+	_, err := cache.getOrLoad("https://platform.example.org", func() (AllowList, error) {
+		loadCount++
+		return nil, errors.New("load failed")
+	})
+	require.ErrorContains(t, err, "load failed")
+
+	result, err := cache.getOrLoad("https://platform.example.org", func() (AllowList, error) {
+		loadCount++
+		return allowlist, nil
+	})
+	require.NoError(t, err)
+	assert.Equal(t, allowlist, result)
+	assert.Equal(t, 2, loadCount)
 }
 
 func Test_newConnectRewrapRequest(t *testing.T) {

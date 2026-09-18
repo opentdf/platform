@@ -10,6 +10,7 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"sync"
 	"time"
 
 	"connectrpc.com/connect"
@@ -22,6 +23,7 @@ import (
 	"github.com/opentdf/platform/protocol/go/kas"
 	"github.com/opentdf/platform/protocol/go/kas/kasconnect"
 	"github.com/opentdf/platform/sdk/auth"
+	"golang.org/x/sync/singleflight"
 )
 
 const (
@@ -370,6 +372,92 @@ func (k *KASClient) getRewrapRequest(reqs []*kas.UnsignedRewrapRequest_WithPolic
 		SignedRequestToken: string(signedToken),
 	}
 	return &rewrapRequest, nil
+}
+
+type kasAllowlistCache struct {
+	entries map[string]timeStampedAllowList
+	ttl     time.Duration
+	mu      sync.Mutex
+	loads   singleflight.Group
+}
+
+type timeStampedAllowList struct {
+	AllowList
+	time.Time
+}
+
+func newKasAllowlistCache(ttl time.Duration) *kasAllowlistCache {
+	return &kasAllowlistCache{
+		entries: make(map[string]timeStampedAllowList),
+		ttl:     ttl,
+	}
+}
+
+func (c *kasAllowlistCache) clear() {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	c.entries = make(map[string]timeStampedAllowList)
+}
+
+func (c *kasAllowlistCache) get(platformURL string) AllowList {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	cv, ok := c.entries[platformURL]
+	if !ok {
+		return nil
+	}
+	if time.Now().Add(-c.ttl).After(cv.Time) {
+		delete(c.entries, platformURL)
+		return nil
+	}
+	return cv.AllowList
+}
+
+func (c *kasAllowlistCache) store(platformURL string, al AllowList) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	c.entries[platformURL] = timeStampedAllowList{al, time.Now()}
+}
+
+func (c *kasAllowlistCache) getOrLoad(platformURL string, load func() (AllowList, error)) (AllowList, error) {
+	if cached := c.get(platformURL); cached != nil {
+		return cached, nil
+	}
+
+	value, err, _ := c.loads.Do(platformURL, func() (any, error) {
+		if cached := c.get(platformURL); cached != nil {
+			return cached, nil
+		}
+
+		allowlist, err := load()
+		if err != nil {
+			return nil, err
+		}
+		c.store(platformURL, allowlist)
+		return allowlist, nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	allowlist, ok := value.(AllowList)
+	if !ok {
+		return nil, fmt.Errorf("unexpected KAS allowlist cache value type %T", value)
+	}
+	return allowlist, nil
+}
+
+func (s SDK) loadKasAllowlist(ctx context.Context, platformURL string) (AllowList, error) {
+	load := func() (AllowList, error) {
+		return allowListFromKASRegistry(ctx, s.logger, s.KeyAccessServerRegistry, platformURL)
+	}
+	if s.kasAllowlistCache == nil {
+		return load()
+	}
+	return s.kasAllowlistCache.getOrLoad(platformURL, load)
 }
 
 type kasKeyRequest struct {

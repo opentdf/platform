@@ -9,12 +9,16 @@ import (
 	"github.com/opentdf/platform/protocol/go/policy"
 )
 
-// Each injection-seam option below rejects nil rather than storing it.
-// A nil seam is not detectable later: the config field is
-// indistinguishable from "not set", so NewChunkedWriter installs no
-// default and the nil is dereferenced during writing -- for the
-// splitter, not until Finalize, long after the caller has encrypted
-// every segment.
+// Every option below that takes a pointer or an interface rejects nil
+// rather than storing it. A stored nil is not detectable later: the
+// config field is indistinguishable from "not set". For an injection
+// seam that means NewChunkedWriter installs no default and the nil is
+// dereferenced during writing -- for the splitter, not until Finalize,
+// long after the caller has encrypted every segment. For the default
+// KAS it is worse than a panic, because nothing fails: key access
+// silently falls back to the platform base key, and the caller learns
+// their data went to a KAS they never named only when a reader cannot
+// unwrap it.
 
 // The slice-valued options below clone what they are given. Each is retained
 // for the lifetime of the writer or of one Finalize call, and each determines
@@ -72,8 +76,6 @@ func withChunkedClock(clock clock) ChunkedWriterOption {
 
 // WithChunkedInitialAttributes sets attribute values used by Finalize
 // when the Finalize call does not supply its own.
-//
-// Experimental: not part of the stable SDK API; may change or be removed.
 func WithChunkedInitialAttributes(values []*policy.Value) ChunkedWriterOption {
 	return func(c *chunkedWriterConfig) error {
 		c.initialAttributes = slices.Clone(values)
@@ -82,11 +84,13 @@ func WithChunkedInitialAttributes(values []*policy.Value) ChunkedWriterOption {
 }
 
 // WithChunkedDefaultKAS sets the default KAS used by Finalize when
-// the Finalize call does not supply its own.
-//
-// Experimental: not part of the stable SDK API; may change or be removed.
+// the Finalize call does not supply its own. The KAS must not be nil:
+// omit the option to leave key access to be resolved some other way.
 func WithChunkedDefaultKAS(kas *policy.SimpleKasKey) ChunkedWriterOption {
 	return func(c *chunkedWriterConfig) error {
+		if kas == nil {
+			return errors.New("chunked: default KAS must not be nil")
+		}
 		c.initialDefaultKAS = kas
 		return nil
 	}
@@ -96,14 +100,13 @@ func WithChunkedDefaultKAS(kas *policy.SimpleKasKey) ChunkedWriterOption {
 // [ChunkedWriter]. Callers with multi-KAS attribute grants should
 // inject a splitter that understands their grant model. The splitter
 // must not be nil.
-//
-// Experimental: not part of the stable SDK API; may change or be removed.
 func WithChunkedKeySplitter(splitter KeySplitter) ChunkedWriterOption {
 	return func(c *chunkedWriterConfig) error {
 		if splitter == nil {
 			return errors.New("chunked: key splitter must not be nil")
 		}
 		c.splitter = splitter
+		c.splitterSet = true
 		return nil
 	}
 }
@@ -120,12 +123,22 @@ func withChunkedRand(r io.Reader) ChunkedWriterOption {
 	}
 }
 
+// WithChunkedTDFOptions supplies the key access options — attributes, KAS
+// information, preferred wrapping algorithm — that SDK.NewChunkedWriter
+// resolves against the platform at Finalize. It has no effect on the
+// package-level NewChunkedWriter, which has no platform to resolve against;
+// use WithChunkedKeySplitter there.
+func WithChunkedTDFOptions(opts ...TDFOption) ChunkedWriterOption {
+	return func(c *chunkedWriterConfig) error {
+		c.tdfOptions = append(c.tdfOptions, opts...)
+		return nil
+	}
+}
+
 // WithChunkedAssertions attaches signed assertions to the produced
 // TDF. Each assertion is bound to the payload's aggregate hash, so
 // they are signed at Finalize once every segment is in. Assertions
 // without their own SigningKey are signed with HS256 over the DEK.
-//
-// Experimental: not part of the stable SDK API; may change or be removed.
 func WithChunkedAssertions(assertions []AssertionConfig) ChunkedFinalizeOption {
 	return func(c *chunkedFinalizeConfig) error {
 		c.assertions = slices.Clone(assertions)
@@ -143,8 +156,6 @@ func WithChunkedAssertions(assertions []AssertionConfig) ChunkedFinalizeOption {
 // silently would loosen the policy on the data, which is the one
 // mistake here that cannot be detected after the fact. Construct a
 // writer without WithChunkedInitialAttributes instead.
-//
-// Experimental: not part of the stable SDK API; may change or be removed.
 func WithChunkedAttributes(values []*policy.Value) ChunkedFinalizeOption {
 	return func(c *chunkedFinalizeConfig) error {
 		c.attributes = slices.Clone(values)
@@ -153,14 +164,13 @@ func WithChunkedAttributes(values []*policy.Value) ChunkedFinalizeOption {
 }
 
 // WithChunkedDefaultKASForFinalize overrides the writer's initial
-// default KAS for this Finalize call.
-//
-// A nil argument reads as "not specified", so the writer's initial
-// default KAS still applies; there is no way to unset it for one call.
-//
-// Experimental: not part of the stable SDK API; may change or be removed.
+// default KAS for this Finalize call. The KAS must not be nil: omit
+// the option to keep whatever WithChunkedDefaultKAS set.
 func WithChunkedDefaultKASForFinalize(kas *policy.SimpleKasKey) ChunkedFinalizeOption {
 	return func(c *chunkedFinalizeConfig) error {
+		if kas == nil {
+			return errors.New("chunked: default KAS must not be nil")
+		}
 		c.defaultKAS = kas
 		return nil
 	}
@@ -169,8 +179,6 @@ func WithChunkedDefaultKASForFinalize(kas *policy.SimpleKasKey) ChunkedFinalizeO
 // WithChunkedEncryptedMetadata attaches AES-GCM-encrypted metadata to
 // every KAO in the TDF. The metadata is keyed on the split share and
 // only decryptable by a reader that has been granted access.
-//
-// Experimental: not part of the stable SDK API; may change or be removed.
 func WithChunkedEncryptedMetadata(metadata string) ChunkedFinalizeOption {
 	return func(c *chunkedFinalizeConfig) error {
 		c.encryptedMetadata = metadata
@@ -181,8 +189,6 @@ func WithChunkedEncryptedMetadata(metadata string) ChunkedFinalizeOption {
 // WithChunkedTargetMode targets a specific TDF spec version, given as
 // a semver string such as "4.2.2". An empty mode selects the most
 // recently available target version (4.3.0).
-//
-// Experimental: not part of the stable SDK API; may change or be removed.
 func WithChunkedTargetMode(mode string) ChunkedWriterOption {
 	return func(c *chunkedWriterConfig) error {
 		if mode == "" {
@@ -201,8 +207,6 @@ func WithChunkedTargetMode(mode string) ChunkedWriterOption {
 }
 
 // WithChunkedMimeType records the payload MIME type in the manifest.
-//
-// Experimental: not part of the stable SDK API; may change or be removed.
 func WithChunkedMimeType(mimeType string) ChunkedFinalizeOption {
 	return func(c *chunkedFinalizeConfig) error {
 		c.mimeType = mimeType
@@ -234,8 +238,6 @@ func WithChunkedMimeType(mimeType string) ChunkedFinalizeOption {
 // excludes from the manifest -- must still be appended by the caller
 // when assembling the final file. Skipping a dropped segment's bytes
 // produces an archive whose central directory offsets overshoot.
-//
-// Experimental: not part of the stable SDK API; may change or be removed.
 func WithChunkedSegments(indices []int) ChunkedFinalizeOption {
 	return func(c *chunkedFinalizeConfig) error {
 		// Cloned because segmentOrderLocked validates the live slice before

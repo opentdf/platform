@@ -9,20 +9,20 @@ import (
 	"github.com/opentdf/platform/service/logger/audit"
 )
 
-// contextAttrsFunc derives log attributes from a record's context. It returns
+// ContextAttrFunc derives log attributes from a record's context. It returns
 // nil when the context carries nothing to add.
-type contextAttrsFunc func(context.Context) []slog.Attr
+type ContextAttrFunc func(context.Context) []slog.Attr
 
 // contextAttrsHandler is a slog.Handler that enriches each record with
 // attributes derived from its context, then delegates to the wrapped handler.
 type contextAttrsHandler struct {
 	handler slog.Handler
-	sources []contextAttrsFunc
+	sources []ContextAttrFunc
 }
 
 // newContextAttrsHandler wraps handler so each record gains the attributes
 // produced by sources, in order. With no sources, handler is returned as-is.
-func newContextAttrsHandler(handler slog.Handler, sources ...contextAttrsFunc) slog.Handler {
+func newContextAttrsHandler(handler slog.Handler, sources ...ContextAttrFunc) slog.Handler {
 	if len(sources) == 0 {
 		return handler
 	}

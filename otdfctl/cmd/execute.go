@@ -3,6 +3,8 @@ package cmd
 import (
 	"errors"
 	"os"
+	"strconv"
+	"strings"
 
 	"github.com/opentdf/platform/otdfctl/pkg/cli"
 	"github.com/opentdf/platform/otdfctl/pkg/man"
@@ -62,10 +64,50 @@ func Execute(opts ...ExecuteOptFunc) {
 	// Format Cobra validation failures through the selected output mode.
 	RootCmd.SilenceErrors = true
 	RootCmd.SilenceUsage = true
+	preserveJSONFlagOnError(RootCmd, os.Args[1:])
 	cmd, err := RootCmd.ExecuteC()
 	if err != nil {
 		handleExecuteError(cmd, err)
 	}
+}
+
+// preserveJSONFlagOnError preserves JSON mode when pflag stops at an earlier error.
+func preserveJSONFlagOnError(root *cobra.Command, args []string) {
+	jsonOut, requested := requestedBoolFlag(args, "json")
+	if !requested {
+		return
+	}
+
+	handleFlagError := root.FlagErrorFunc()
+	root.SetFlagErrorFunc(func(cmd *cobra.Command, flagErr error) error {
+		if err := root.PersistentFlags().Set("json", strconv.FormatBool(jsonOut)); err != nil {
+			return errors.Join(flagErr, err)
+		}
+		return handleFlagError(cmd, flagErr)
+	})
+}
+
+func requestedBoolFlag(args []string, name string) (bool, bool) {
+	flag := "--" + name
+	var value, found bool
+	for _, arg := range args {
+		if arg == "--" {
+			break
+		}
+		if arg == flag {
+			value, found = true, true
+			continue
+		}
+		raw, ok := strings.CutPrefix(arg, flag+"=")
+		if !ok {
+			continue
+		}
+		parsed, err := strconv.ParseBool(raw)
+		if err == nil {
+			value, found = parsed, true
+		}
+	}
+	return value, found
 }
 
 // handleExecuteError formats a Cobra error and exits with a nonzero status.

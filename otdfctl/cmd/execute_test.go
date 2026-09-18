@@ -183,3 +183,32 @@ func TestMountedRootKeepsValidInvocations(t *testing.T) {
 	require.Error(t, comp.ValidateArgs([]string{"bogus"}))
 	assert.True(t, comp.Runnable(), "NoArgs is only consulted once the group is runnable")
 }
+
+func TestPreserveJSONFlagOnError(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		args []string
+		want bool
+	}{
+		{name: "after invalid flag", args: []string{"list", "--badarg", "--json"}, want: true},
+		{name: "explicit true", args: []string{"list", "--badarg", "--json=true"}, want: true},
+		{name: "last true", args: []string{"list", "--json=false", "--badarg", "--json"}, want: true},
+		{name: "last false", args: []string{"list", "--json", "--badarg", "--json=false"}},
+		{name: "after separator", args: []string{"list", "--badarg", "--", "--json"}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			root := &cobra.Command{Use: "root", SilenceErrors: true, SilenceUsage: true}
+			root.PersistentFlags().Bool("json", false, "")
+			root.AddCommand(&cobra.Command{Use: "list", Run: func(*cobra.Command, []string) {}})
+			preserveJSONFlagOnError(root, tc.args)
+			root.SetArgs(tc.args)
+
+			cmd, err := root.ExecuteC()
+
+			require.Error(t, err)
+			jsonOut, flagErr := cmd.Flags().GetBool("json")
+			require.NoError(t, flagErr)
+			assert.Equal(t, tc.want, jsonOut)
+		})
+	}
+}

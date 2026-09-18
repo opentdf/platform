@@ -5,8 +5,11 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
+	"log/slog"
 	"net/http"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -17,7 +20,9 @@ import (
 	"github.com/opentdf/platform/lib/ocrypto"
 	kaspb "github.com/opentdf/platform/protocol/go/kas"
 	"github.com/opentdf/platform/protocol/go/policy"
+	"github.com/opentdf/platform/protocol/go/policy/kasregistry"
 	"github.com/opentdf/platform/sdk/auth"
+	"github.com/opentdf/platform/sdk/sdkconnect"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
@@ -493,6 +498,89 @@ func TestKasAllowlistCache_ConcurrentAccess(t *testing.T) {
 
 	cache.store("https://platform.example.org", allowlist)
 	assert.Equal(t, allowlist, cache.get("https://platform.example.org"))
+}
+
+type countingKASRegistry struct {
+	sdkconnect.KeyAccessServerRegistryServiceClient
+	callCount atomic.Int32
+	started   chan struct{}
+	release   chan struct{}
+	startOnce sync.Once
+}
+
+func (r *countingKASRegistry) ListKeyAccessServers(ctx context.Context, _ *kasregistry.ListKeyAccessServersRequest) (*kasregistry.ListKeyAccessServersResponse, error) {
+	r.callCount.Add(1)
+	r.startOnce.Do(func() { close(r.started) })
+	select {
+	case <-r.release:
+		return &kasregistry.ListKeyAccessServersResponse{}, nil
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	}
+}
+
+func TestKasAllowlistCache_ConcurrentMiss(t *testing.T) {
+	registry := &countingKASRegistry{
+		started: make(chan struct{}),
+		release: make(chan struct{}),
+	}
+	s := SDK{
+		config:                  config{logger: slog.Default()},
+		kasAllowlistCache:       newKasAllowlistCache(time.Minute),
+		KeyAccessServerRegistry: registry,
+	}
+
+	const callers = 100
+	errs := make(chan error, callers)
+	start := make(chan struct{})
+	var wg sync.WaitGroup
+	var ready sync.WaitGroup
+	ready.Add(callers)
+	for range callers {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			ready.Done()
+			<-start
+			_, err := s.loadKasAllowlist(context.Background(), "https://platform.example.org")
+			errs <- err
+		}()
+	}
+
+	ready.Wait()
+	close(start)
+	<-registry.started
+	assert.Never(t, func() bool {
+		return registry.callCount.Load() > 1
+	}, 100*time.Millisecond, 10*time.Millisecond)
+	close(registry.release)
+	wg.Wait()
+	close(errs)
+
+	assert.Equal(t, int32(1), registry.callCount.Load())
+	for err := range errs {
+		require.NoError(t, err)
+	}
+}
+
+func TestKasAllowlistCache_FailedLoadNotCached(t *testing.T) {
+	cache := newKasAllowlistCache(time.Minute)
+	allowlist := AllowList{"https://kas.example.org": true}
+	loadCount := 0
+
+	_, err := cache.getOrLoad("https://platform.example.org", func() (AllowList, error) {
+		loadCount++
+		return nil, errors.New("load failed")
+	})
+	require.ErrorContains(t, err, "load failed")
+
+	result, err := cache.getOrLoad("https://platform.example.org", func() (AllowList, error) {
+		loadCount++
+		return allowlist, nil
+	})
+	require.NoError(t, err)
+	assert.Equal(t, allowlist, result)
+	assert.Equal(t, 2, loadCount)
 }
 
 func Test_newConnectRewrapRequest(t *testing.T) {

@@ -1663,19 +1663,9 @@ func getKasAllowList(ctx context.Context, kasAllowList AllowList, s SDK, ignoreA
 			return nil, fmt.Errorf("retrieving platformEndpoint failed: %w", err)
 		}
 
-		if s.kasAllowlistCache != nil {
-			if cached := s.kasAllowlistCache.get(platformEndpoint); cached != nil {
-				return cached, nil
-			}
-		}
-
-		allowList, err = allowListFromKASRegistry(ctx, s.logger, s.KeyAccessServerRegistry, platformEndpoint)
+		allowList, err = s.loadKasAllowlist(ctx, platformEndpoint)
 		if err != nil {
 			return nil, fmt.Errorf("allowListFromKASRegistry failed: %w", err)
-		}
-
-		if s.kasAllowlistCache != nil {
-			s.kasAllowlistCache.store(platformEndpoint, allowList)
 		}
 	}
 

@@ -23,6 +23,7 @@ import (
 	"github.com/opentdf/platform/protocol/go/kas"
 	"github.com/opentdf/platform/protocol/go/kas/kasconnect"
 	"github.com/opentdf/platform/sdk/auth"
+	"golang.org/x/sync/singleflight"
 )
 
 const (
@@ -377,6 +378,7 @@ type kasAllowlistCache struct {
 	entries map[string]timeStampedAllowList
 	ttl     time.Duration
 	mu      sync.Mutex
+	loads   singleflight.Group
 }
 
 type timeStampedAllowList struct {
@@ -418,6 +420,44 @@ func (c *kasAllowlistCache) store(platformURL string, al AllowList) {
 	defer c.mu.Unlock()
 
 	c.entries[platformURL] = timeStampedAllowList{al, time.Now()}
+}
+
+func (c *kasAllowlistCache) getOrLoad(platformURL string, load func() (AllowList, error)) (AllowList, error) {
+	if cached := c.get(platformURL); cached != nil {
+		return cached, nil
+	}
+
+	value, err, _ := c.loads.Do(platformURL, func() (any, error) {
+		if cached := c.get(platformURL); cached != nil {
+			return cached, nil
+		}
+
+		allowlist, err := load()
+		if err != nil {
+			return nil, err
+		}
+		c.store(platformURL, allowlist)
+		return allowlist, nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	allowlist, ok := value.(AllowList)
+	if !ok {
+		return nil, fmt.Errorf("unexpected KAS allowlist cache value type %T", value)
+	}
+	return allowlist, nil
+}
+
+func (s SDK) loadKasAllowlist(ctx context.Context, platformURL string) (AllowList, error) {
+	load := func() (AllowList, error) {
+		return allowListFromKASRegistry(ctx, s.logger, s.KeyAccessServerRegistry, platformURL)
+	}
+	if s.kasAllowlistCache == nil {
+		return load()
+	}
+	return s.kasAllowlistCache.getOrLoad(platformURL, load)
 }
 
 type kasKeyRequest struct {

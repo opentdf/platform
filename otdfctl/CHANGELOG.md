@@ -1,5 +1,23 @@
 # Changelog
 
+## [0.38.0](https://github.com/opentdf/platform/compare/otdfctl/v0.37.0...otdfctl/v0.38.0) (2026-09-18)
+
+
+### Features
+
+* **cli:** Unskip tests ([#4042](https://github.com/opentdf/platform/issues/4042)) ([f093b43](https://github.com/opentdf/platform/commit/f093b431beb6dfda4597f836602c7a10831f6845))
+
+
+### Bug Fixes
+
+* **cli:** honor output modes and restrict decrypted files ([#4046](https://github.com/opentdf/platform/issues/4046)) ([cc2dbbd](https://github.com/opentdf/platform/commit/cc2dbbd10da73a54a13909e0db100b2fbed22e61))
+* **cli:** reject extra inspect args and add stdin BATS coverage ([#4014](https://github.com/opentdf/platform/issues/4014)) ([b3a0c9c](https://github.com/opentdf/platform/commit/b3a0c9c63ccb5ed9db5f25af95104ea92ad373bc))
+* **cli:** stream encrypt instead of buffering the whole payload ([#3938](https://github.com/opentdf/platform/issues/3938)) ([eaf2b81](https://github.com/opentdf/platform/commit/eaf2b816025c762bf6991b9ba3a58d7fc4b010ca))
+* **deps:** bump github.com/opentdf/platform/sdk from 0.29.0 to 0.31.0 in /otdfctl ([#3928](https://github.com/opentdf/platform/issues/3928)) ([df05aab](https://github.com/opentdf/platform/commit/df05aabc338a04b458a245d53ebdcb0d5ef73c67))
+* **deps:** bump google.golang.org/grpc from 1.83.0 to 1.83.1 in /otdfctl ([#3962](https://github.com/opentdf/platform/issues/3962)) ([d464ed7](https://github.com/opentdf/platform/commit/d464ed70e6c6994cc35f46cd3025aee75424bcd1))
+* **deps:** bump google.golang.org/grpc from 1.83.1 to 1.83.2 in /otdfctl ([#4016](https://github.com/opentdf/platform/issues/4016)) ([bfa01ae](https://github.com/opentdf/platform/commit/bfa01ae80edcb6001443f5437468ceea8c7f3d5a))
+* **deps:** bump SDK from v0.31.0 to v0.32.0 in /otdfctl ([#4082](https://github.com/opentdf/platform/issues/4082)) ([b8fb478](https://github.com/opentdf/platform/commit/b8fb47844089454634734fbef82c82ef34dc7cb2))
+
 ## [0.37.0](https://github.com/opentdf/platform/compare/otdfctl/v0.36.0...otdfctl/v0.37.0) (2026-08-24)
 
 

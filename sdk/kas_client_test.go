@@ -442,12 +442,18 @@ func TestKasKeyCache_ConcurrentMiss(t *testing.T) {
 	var loadCount atomic.Int32
 	loadStarted := make(chan struct{})
 	releaseLoad := make(chan struct{})
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	loader := func() (*KASInfo, error) {
 		if loadCount.Add(1) == 1 {
 			close(loadStarted)
 		}
-		<-releaseLoad
-		return &keyInfo, nil
+		select {
+		case <-releaseLoad:
+			return &keyInfo, nil
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		}
 	}
 
 	const callers = 100

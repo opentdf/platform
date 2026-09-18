@@ -378,6 +378,10 @@ type kasKeyRequest struct {
 	url, algorithm, kid string
 }
 
+func (k kasKeyRequest) singleflightKey() string {
+	return fmt.Sprintf("%d:%s%d:%s%d:%s", len(k.url), k.url, len(k.algorithm), k.algorithm, len(k.kid), k.kid)
+}
+
 type timeStampedKASInfo struct {
 	KASInfo
 	time.Time
@@ -441,7 +445,7 @@ func (c *kasKeyCache) getOrLoad(cacheKey kasKeyRequest, load func() (*KASInfo, e
 		return cached, nil
 	}
 
-	value, err, _ := c.loads.Do(cacheKey.url+"\x00"+cacheKey.algorithm+"\x00"+cacheKey.kid, func() (any, error) {
+	value, err, _ := c.loads.Do(cacheKey.singleflightKey(), func() (any, error) {
 		if cached := c.get(cacheKey.url, cacheKey.algorithm, cacheKey.kid); cached != nil {
 			return cached, nil
 		}
@@ -474,7 +478,7 @@ func (s SDK) getPublicKey(ctx context.Context, kasurl, algorithm, kidToFind stri
 	}
 
 	cacheKey := kasKeyRequest{url: kasurl, algorithm: algorithm, kid: kidToFind}
-	return s.kasKeyCache.getOrLoad(cacheKey, func() (*KASInfo, error) {
+	return s.getOrLoad(cacheKey, func() (*KASInfo, error) {
 		return s.fetchPublicKey(ctx, kasurl, algorithm)
 	})
 }

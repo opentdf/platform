@@ -3,15 +3,17 @@ package tdf
 import (
 	"errors"
 	"fmt"
-	"os"
 
 	"github.com/opentdf/platform/lib/ocrypto"
 	"github.com/opentdf/platform/otdfctl/cmd/common"
 	"github.com/opentdf/platform/otdfctl/pkg/cli"
 	"github.com/opentdf/platform/otdfctl/pkg/man"
+	"github.com/opentdf/platform/otdfctl/pkg/streamio"
 	"github.com/opentdf/platform/otdfctl/pkg/utils"
 	"github.com/spf13/cobra"
 )
+
+const decryptedOutputFileMode = 0o600
 
 var (
 	assertionVerification string
@@ -84,13 +86,18 @@ func decryptRun(cmd *cobra.Command, args []string) {
 		return
 	}
 	// Here 'output' is the filename given with -o
-	f, err := os.Create(output)
+	f, err := streamio.NewOutputFile(output, decryptedOutputFileMode)
 	if err != nil {
 		cli.ExitWithError("Failed to write decrypted data to file", err)
 	}
-	defer f.Close()
+	defer f.Cleanup()
 	_, err = f.Write(decrypted.Bytes())
 	if err != nil {
+		f.Cleanup()
+		cli.ExitWithError("Failed to write decrypted data to file", err)
+	}
+	if err := f.Commit(); err != nil {
+		f.Cleanup()
 		cli.ExitWithError("Failed to write decrypted data to file", err)
 	}
 }

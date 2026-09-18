@@ -6,6 +6,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"net/http"
+	"sync"
 	"testing"
 	"time"
 
@@ -466,6 +467,32 @@ func TestKasAllowlistCache_Configuration(t *testing.T) {
 			assert.Nil(t, s)
 		})
 	}
+}
+
+func TestKasAllowlistCache_ConcurrentAccess(t *testing.T) {
+	cache := newKasAllowlistCache(time.Minute)
+	allowlist := AllowList{"https://kas.example.org": true}
+
+	var wg sync.WaitGroup
+	for range 100 {
+		wg.Add(3)
+		go func() {
+			defer wg.Done()
+			cache.store("https://platform.example.org", allowlist)
+		}()
+		go func() {
+			defer wg.Done()
+			_ = cache.get("https://platform.example.org")
+		}()
+		go func() {
+			defer wg.Done()
+			cache.clear()
+		}()
+	}
+	wg.Wait()
+
+	cache.store("https://platform.example.org", allowlist)
+	assert.Equal(t, allowlist, cache.get("https://platform.example.org"))
 }
 
 func Test_newConnectRewrapRequest(t *testing.T) {

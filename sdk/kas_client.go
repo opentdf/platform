@@ -10,6 +10,7 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"sync"
 	"time"
 
 	"connectrpc.com/connect"
@@ -375,6 +376,7 @@ func (k *KASClient) getRewrapRequest(reqs []*kas.UnsignedRewrapRequest_WithPolic
 type kasAllowlistCache struct {
 	entries map[string]timeStampedAllowList
 	ttl     time.Duration
+	mu      sync.Mutex
 }
 
 type timeStampedAllowList struct {
@@ -390,10 +392,16 @@ func newKasAllowlistCache(ttl time.Duration) *kasAllowlistCache {
 }
 
 func (c *kasAllowlistCache) clear() {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
 	c.entries = make(map[string]timeStampedAllowList)
 }
 
 func (c *kasAllowlistCache) get(platformURL string) AllowList {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
 	cv, ok := c.entries[platformURL]
 	if !ok {
 		return nil
@@ -406,6 +414,9 @@ func (c *kasAllowlistCache) get(platformURL string) AllowList {
 }
 
 func (c *kasAllowlistCache) store(platformURL string, al AllowList) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
 	c.entries[platformURL] = timeStampedAllowList{al, time.Now()}
 }
 

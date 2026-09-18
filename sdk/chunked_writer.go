@@ -958,7 +958,7 @@ func (w *chunkedWriter) buildManifest(ctx context.Context, cfg *chunkedFinalizeC
 	if err != nil {
 		return nil, totals, err
 	}
-	kaos, err := buildChunkedKeyAccessObjects(splits, w.dek, policyBytes, cfg.encryptedMetadata)
+	kaos, err := buildChunkedKeyAccessObjects(splits, w.dek, policyBytes, cfg.encryptedMetadata, w.useHex)
 	if err != nil {
 		return nil, totals, err
 	}
@@ -1101,7 +1101,7 @@ func (w *chunkedWriter) segmentOrderLocked(keep []int) ([]int, error) {
 
 // buildChunkedKeyAccessObjects wraps each split share to each KAS
 // listed by the splitter.
-func buildChunkedKeyAccessObjects(splits *SplitResult, dek, policyBytes []byte, metadata string) ([]KeyAccess, error) {
+func buildChunkedKeyAccessObjects(splits *SplitResult, dek, policyBytes []byte, metadata string, useHex bool) ([]KeyAccess, error) {
 	// This is the one place caller-supplied split data is turned into
 	// manifest content, so it is where the splitter's contract is
 	// enforced -- for the default splitter and for anything injected
@@ -1125,7 +1125,7 @@ func buildChunkedKeyAccessObjects(splits *SplitResult, dek, policyBytes []byte, 
 		// Policy binding and metadata are keyed on the split share, not
 		// on the KAS, so compute them once per split rather than once
 		// per KAS URL in an OR-group.
-		policyBinding := createPolicyBinding(split.Data, base64Policy)
+		policyBinding := createPolicyBinding(split.Data, base64Policy, useHex)
 		var encMeta string
 		if metadata != "" {
 			m, err := encryptMetadata(split.Data, metadata)

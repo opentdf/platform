@@ -114,33 +114,39 @@ func (s *LocalPlatformStepDefinitions) aUser(ctx context.Context, username strin
 	return ctx, nil
 }
 
+// reattachSharedPlatform prepares a scenario that reuses a platform an earlier
+// @stateless scenario already stood up. Each godog scenario gets its own
+// PlatformScenarioContext with a nil SDK, so the SDK has to be re-attached to the
+// shared endpoint before step definitions (and the Background) can use it.
+func reattachSharedPlatform(ctx context.Context, scenarioContext *PlatformScenarioContext, options *platformStartOptions) error {
+	if scenarioContext.SDK == nil {
+		//nolint:contextcheck // otdf.New takes no context parameter
+		platformSDK, err := otdf.New(
+			scenarioContext.ScenarioOptions.PlatformEndpoint,
+			otdf.WithInsecureSkipVerifyConn(),
+			otdf.WithClientCredentials(clientID, platformClientSecret, nil),
+		)
+		if err != nil {
+			return err
+		}
+		scenarioContext.SDK = platformSDK
+	}
+	dbName := scenarioContext.ScenarioOptions.DatabaseName
+	if options.provisionDefaultPolicy && !scenarioContext.TestSuiteContext.defaultPolicyDBs[dbName] {
+		if err := provisionDefaultPolicy(ctx, scenarioContext.SDK); err != nil {
+			return fmt.Errorf("provision default policy: %w", err)
+		}
+		scenarioContext.TestSuiteContext.defaultPolicyDBs[dbName] = true
+	}
+	return nil
+}
+
 func (s *LocalPlatformStepDefinitions) commonLocalPlatform(ctx context.Context, options *platformStartOptions) (context.Context, error) {
 	scenarioContext := GetPlatformScenarioContext(ctx)
 	logger := scenarioContext.TestSuiteContext.Logger
 	if !scenarioContext.FirstScenario && scenarioContext.Stateless {
-		// Platform is already up (shared across @stateless scenarios), but
-		// each godog scenario gets its own PlatformScenarioContext with a
-		// nil SDK. Re-attach the SDK to the shared endpoint so step
-		// definitions (and the Background) keep working.
-		if scenarioContext.SDK == nil {
-			platformSDK, err := otdf.New(
-				scenarioContext.ScenarioOptions.PlatformEndpoint,
-				otdf.WithInsecureSkipVerifyConn(),
-				otdf.WithClientCredentials(clientID, platformClientSecret, nil),
-			)
-			if err != nil {
-				return ctx, err
-			}
-			scenarioContext.SDK = platformSDK
-		}
-		dbName := scenarioContext.ScenarioOptions.DatabaseName
-		if options.provisionDefaultPolicy && !scenarioContext.TestSuiteContext.defaultPolicyDBs[dbName] {
-			if err := provisionDefaultPolicy(ctx, scenarioContext.SDK); err != nil {
-				return ctx, fmt.Errorf("provision default policy: %w", err)
-			}
-			scenarioContext.TestSuiteContext.defaultPolicyDBs[dbName] = true
-		}
-		return ctx, nil
+		// Platform is already up (shared across @stateless scenarios).
+		return ctx, reattachSharedPlatform(ctx, scenarioContext, options)
 	}
 	localPlatformGlue, ok := (*scenarioContext.TestSuiteContext.PlatformGlue).(*LocalDevPlatformGlue)
 	if !ok {

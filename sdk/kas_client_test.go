@@ -426,12 +426,12 @@ func TestKasAllowlistCache_Expiration(t *testing.T) {
 	cache.store("https://platform.example.org", al)
 	require.NotNil(t, cache.get("https://platform.example.org"))
 
-	entry := cache.c["https://platform.example.org"]
+	entry := cache.entries["https://platform.example.org"]
 	entry.Time = time.Now().Add(-31 * time.Second)
-	cache.c["https://platform.example.org"] = entry
+	cache.entries["https://platform.example.org"] = entry
 
 	assert.Nil(t, cache.get("https://platform.example.org"), "expired entry should not be returned")
-	_, exists := cache.c["https://platform.example.org"]
+	_, exists := cache.entries["https://platform.example.org"]
 	assert.False(t, exists, "expired entry should be removed from cache")
 }
 

@@ -23,6 +23,7 @@ const escape = "\x1b"
 
 func TestStyleDocIsPlainWithNoColor(t *testing.T) {
 	t.Setenv("NO_COLOR", "1")
+	setTerminal(t, true)
 
 	out := styleDoc(styledDoc)
 
@@ -34,7 +35,7 @@ func TestStyleDocIsPlainWithNoColor(t *testing.T) {
 
 func TestStyleDocIsPlainWithoutTerminal(t *testing.T) {
 	t.Setenv("NO_COLOR", "")
-	require.True(t, plainOutput())
+	setTerminal(t, false)
 
 	out := styleDoc(styledDoc)
 
@@ -45,23 +46,23 @@ func TestStyleDocIsPlainWithoutTerminal(t *testing.T) {
 	assert.Contains(t, out, "two")
 }
 
-// onTerminal pretends stdout is a terminal, which a test binary's never is.
-func onTerminal(t *testing.T) {
+func setTerminal(t *testing.T, terminal bool) {
 	t.Helper()
 	prev := stdoutIsTerminal
-	stdoutIsTerminal = func() bool { return true }
+	stdoutIsTerminal = func() bool { return terminal }
 	t.Cleanup(func() { stdoutIsTerminal = prev })
 }
 
 func TestPlainOutput(t *testing.T) {
 	t.Run("no terminal forces plain", func(t *testing.T) {
 		t.Setenv("NO_COLOR", "")
+		setTerminal(t, false)
 		assert.True(t, plainOutput())
 	})
 
 	t.Run("NO_COLOR forces plain on a terminal", func(t *testing.T) {
 		t.Setenv("NO_COLOR", "")
-		onTerminal(t)
+		setTerminal(t, true)
 		require.False(t, plainOutput())
 
 		t.Setenv("NO_COLOR", "1")
@@ -71,14 +72,17 @@ func TestPlainOutput(t *testing.T) {
 
 func TestStyleDocPreservesMarkdownStructure(t *testing.T) {
 	t.Run("without a terminal", func(t *testing.T) {
+		t.Setenv("NO_COLOR", "")
+		setTerminal(t, false)
 		assert.Contains(t, styleDoc(styledDoc), "# Title", "H1 keeps its '# ' prefix")
 	})
 
 	t.Run("on a terminal", func(t *testing.T) {
+		t.Setenv("NO_COLOR", "")
+		setTerminal(t, false)
 		plain := styleDoc(styledDoc)
 
-		onTerminal(t)
-		t.Setenv("NO_COLOR", "")
+		setTerminal(t, true)
 		styled := styleDoc(styledDoc)
 
 		assert.NotEqual(t, plain, styled, "the styled branch must not render as the plain one")

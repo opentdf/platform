@@ -141,6 +141,7 @@ Root level key `server`
 | `grpc.reflection`       | The configuration for the grpc server.                                                                        | `true`  | OPENTDF_SERVER_GRPC_REFLECTION       |
 | `public_hostname`       | The public facing hostname for the server.                                                                    |         | OPENTDF_SERVER_PUBLIC_HOSTNAME       |
 | `host`                  | The host address for the server.                                                                              | `""`    | OPENTDF_SERVER_HOST                  |
+| `http.trustedProxies`   | Proxy CIDRs allowed to supply client-IP forwarding headers.                                                   | `[]`    | OPENTDF_SERVER_HTTP_TRUSTEDPROXIES   |
 | `port`                  | The port number for the server.                                                                               | `9000`  | OPENTDF_SERVER_PORT                  |
 | `tls.enabled`           | Enable tls.                                                                                                   | `false` | OPENTDF_SERVER_TLS_ENABLED           |
 | `tls.cert`              | The path to the tls certificate.                                                                              |         | OPENTDF_SERVER_TLS_CERT              |
@@ -174,6 +175,28 @@ server:
           alg: ec:secp256r1
           private: kas-ec-private.pem
           cert: kas-ec-cert.pem
+```
+
+Set `OPENTDF_SERVER_HTTP_TRUSTEDPROXIES` to a comma-separated CIDR list without spaces.
+
+When `server.http.trustedProxies` is empty, Platform ignores `X-Forwarded-For`, `X-Real-IP`,
+and `True-Client-IP` and records the direct socket peer. When the peer matches a
+trusted CIDR, Platform resolves `X-Forwarded-For` from right to left, removing
+trusted proxy hops. If `X-Forwarded-For` is absent, it uses `X-Real-IP`, then
+`True-Client-IP` if `X-Real-IP` is also absent. These two headers must contain a
+single IP address. If resolution encounters an invalid value, Platform records
+the socket peer rather than trying a lower-priority header. With no forwarding
+headers, it also records the socket peer.
+
+Configure only ingress networks that overwrite or append
+forwarding headers; broad private-network ranges weaken audit attribution.
+
+```yaml
+server:
+  http:
+    trustedProxies:
+      - 10.20.0.0/16
+      - 2001:db8:1234::/48
 ```
 
 ### CORS Configuration

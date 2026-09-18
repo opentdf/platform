@@ -45,8 +45,6 @@ func TestEnforceSubcommandArgs(t *testing.T) {
 	})
 }
 
-// TestEnforceSubcommandArgsIsIdempotent covers being called more than once, for
-// example by a consumer that assembles its tree in stages.
 func TestEnforceSubcommandArgsIsIdempotent(t *testing.T) {
 	root := &cobra.Command{Use: "otdfctl"}
 	group := &cobra.Command{Use: "policy"}
@@ -61,9 +59,6 @@ func TestEnforceSubcommandArgsIsIdempotent(t *testing.T) {
 	assert.Error(t, group.Args(group, []string{"bogus"}))
 }
 
-// TestEnforceSubcommandArgsRejectsUnknownNestedCommand drives cobra end to end,
-// which is where the defect actually showed: Execute returned nil and the
-// process exited 0 on a typo.
 func TestEnforceSubcommandArgsRejectsUnknownNestedCommand(t *testing.T) {
 	newTree := func() *cobra.Command {
 		root := &cobra.Command{Use: "otdfctl", SilenceErrors: true, SilenceUsage: true}
@@ -78,7 +73,7 @@ func TestEnforceSubcommandArgsRejectsUnknownNestedCommand(t *testing.T) {
 		root.SetArgs([]string{"policy", "bogus"})
 		root.SetOut(&nopWriter{})
 		err := root.Execute()
-		require.NoError(t, err, "test premise: cobra swallows flag.ErrHelp and reports success")
+		require.NoError(t, err)
 	})
 
 	t.Run("after", func(t *testing.T) {

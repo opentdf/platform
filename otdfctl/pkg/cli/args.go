@@ -4,9 +4,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// AnnotationHelpOnly marks a command whose Run exists only to print help, so a
-// consumer walking the tree can tell a stub from a real command. tructl's MCP
-// tool generator reads it to keep groups out of the exposed tool set.
+// AnnotationHelpOnly marks a command whose Run only prints help.
 const AnnotationHelpOnly = "help-only"
 
 const annotationTrue = "true"
@@ -16,11 +14,7 @@ func helpOnlyRun(cmd *cobra.Command, _ []string) error {
 	return cmd.Help()
 }
 
-// EnforceSubcommandArgs makes an unknown subcommand fail instead of quietly
-// succeeding. Cobra checks Runnable() before it validates arguments, so NoArgs
-// alone does nothing on a group; giving it a help-printing Run makes NoArgs
-// apply. Commands with a Run of their own are left alone, as are any arguments
-// already declared.
+// EnforceSubcommandArgs makes unknown group subcommands fail validation.
 func EnforceSubcommandArgs(cmd *cobra.Command) {
 	for _, sub := range cmd.Commands() {
 		EnforceSubcommandArgs(sub)
@@ -28,7 +22,6 @@ func EnforceSubcommandArgs(cmd *cobra.Command) {
 	if cmd.Runnable() || !cmd.HasSubCommands() {
 		return
 	}
-	// A help stub takes no operands.
 	cmd.Args = cobra.NoArgs
 	if cmd.Annotations == nil {
 		cmd.Annotations = map[string]string{}

@@ -84,11 +84,7 @@ func Test_MountRootError(t *testing.T) {
 	}))
 }
 
-// mountForTest assembles a consumer root the way Execute does when WithMountTo
-// is supplied: mount otdfctl under it, then validate the whole tree. The
-// consumer owns a group of its own so both sides of the mount are covered.
-// RootCmd is package state, so the mount is undone afterwards, and the mounted
-// name is read back rather than assumed (Test_MountRootWithRename renames it).
+// mountForTest assembles and later removes a mounted consumer tree.
 func mountForTest(t *testing.T) (*cobra.Command, string) {
 	t.Helper()
 
@@ -107,12 +103,6 @@ func mountForTest(t *testing.T) (*cobra.Command, string) {
 	return consumerRoot, RootCmd.Name()
 }
 
-// TestMountedRootRejectsUnknownSubcommand covers the mounted form of the
-// defect, where cobra's own safeguards do the least work. Cobra rejects an
-// unknown subcommand only at the true root, and mounting makes otdfctl's root a
-// subcommand, so every level here depends on this change: the otdfctl root on
-// the NoArgs that ProcessDoc now assigns, and both groups on
-// EnforceSubcommandArgs, which has to run against the assembled tree.
 func TestMountedRootRejectsUnknownSubcommand(t *testing.T) {
 	tests := []struct {
 		name string
@@ -149,16 +139,6 @@ func TestMountedRootRejectsUnknownSubcommand(t *testing.T) {
 	}
 }
 
-// TestEveryRunnableCommandDeclaresItsArgs closes the gap EnforceSubcommandArgs
-// leaves open by design. It only makes groups reject operands; a command with a
-// Run of its own is skipped, because otdfctl cannot tell from the outside
-// whether that Run consumes positional arguments. Cobra then falls back to
-// accepting any number of them, so an undeclared operand on a leaf is silently
-// ignored rather than reported.
-//
-// Forcing NoArgs on those leaves is not the answer: it would reject every valid
-// `profile delete <profile>`. Each command has to say what it takes instead.
-// Docs-built commands get that from ProcessDoc, hand-built ones declare it here.
 func TestEveryRunnableCommandDeclaresItsArgs(t *testing.T) {
 	cli.EnforceSubcommandArgs(RootCmd)
 
@@ -176,14 +156,9 @@ func TestEveryRunnableCommandDeclaresItsArgs(t *testing.T) {
 	walk(RootCmd)
 }
 
-// TestMountedRootKeepsValidInvocations guards against the validation above
-// rejecting the arguments a mounted otdfctl is supposed to accept. Validating
-// nil alone would prove nothing, since every validator accepts it, so each
-// group is checked against a stray operand too.
 func TestMountedRootKeepsValidInvocations(t *testing.T) {
 	root, mounted := mountForTest(t)
 
-	// Resolution only. Running these would reach real command handlers.
 	for _, args := range [][]string{
 		{mounted},
 		{mounted, "policy"},
@@ -198,14 +173,10 @@ func TestMountedRootKeepsValidInvocations(t *testing.T) {
 		require.Error(t, cmd.ValidateArgs([]string{"bogus"}), "%v takes no operand, so a stray one must fail", args)
 	}
 
-	// A leaf that declares an operand still takes it.
 	del, _, err := root.Find([]string{mounted, "profile", "delete"})
 	require.NoError(t, err)
 	assert.NoError(t, del.ValidateArgs([]string{"my-profile"}))
 
-	// `completion` is added by cobra inside ExecuteC, too late for the sweep
-	// unless enforceArgs materializes it first. Cobra puts it on the true root,
-	// which is the consumer's when otdfctl is mounted.
 	comp, _, err := root.Find([]string{"completion"})
 	require.NoError(t, err)
 	require.Equal(t, "completion", comp.Name(), "cobra's completion command must be in the tree")

@@ -106,12 +106,7 @@ func (m Manual) GetDoc(cmd string) *Doc {
 	return m.En[cmd]
 }
 
-// MarkRequiredFlags enforces `required: true` doc metadata across every command
-// in the registry by marking each such flag required on its cobra command. It is
-// the single entry point callers invoke (once, at Execute time, after the command
-// tree is fully assembled) so that any command, current or added later, is
-// enforced without per-command wiring. Consumers that embed this registry (e.g.
-// tructl) call it the same way before executing their own root command.
+// MarkRequiredFlags applies required flag metadata to every registered command.
 func (m Manual) MarkRequiredFlags() {
 	for _, doc := range m.En {
 		doc.MarkRequiredFlags()
@@ -256,12 +251,9 @@ func ProcessDoc(doc string) (*Doc, error) {
 	case len(c.ArbitraryArgs) > 0:
 		args = cobra.ArbitraryArgs
 	case strings.ContainsAny(c.Name, "[<"):
-		// Compat: older docs wrote the operand into the name, as `encrypt [file]`.
+		// Preserve docs that declare operands in the command name.
 		args = cobra.ArbitraryArgs
 	default:
-		// Nil Args means cobra accepts anything, so a mistyped subcommand became
-		// a silent no-op. Note a doc that misspells an operand key lands here and
-		// loses its operands; man_test.go guards the shipped docs against that.
 		args = cobra.NoArgs
 	}
 

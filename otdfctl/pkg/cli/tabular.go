@@ -47,7 +47,6 @@ func getJSONHelper(command string) string {
 	return fmt.Sprintf("Use '%s --json' to see all properties", command)
 }
 
-// unsafeCmdName is the group holding destructive variants; it owns no `list`.
 const unsafeCmdName = "unsafe"
 
 // hasSubcommand reports whether parent owns a subcommand under the given name
@@ -61,25 +60,20 @@ func hasSubcommand(parent *cobra.Command, name string) bool {
 	return false
 }
 
-// successMessages builds the success line and the footer hint for a completed
-// command, in that order.
+// successMessages builds the success line and optional footer hint.
 func successMessages(cmd *cobra.Command, id string, rows int) (string, string) {
 	parent := cmd.Parent()
 	if parent == nil {
-		// A root command names no resource and has no sibling to point at.
 		return cmd.Name(), ""
 	}
-	// Names, not Use: a command built from a man doc carries its operands there
-	// ("get <id>"), which never matched the actions below and left the line blank.
+	// Name excludes operands embedded in Use.
 	resourceShort := parent.Name()
 	resource := parent.Name()
 	for p := parent; p.Parent() != nil; p = p.Parent() {
 		resource = p.Parent().Name() + " " + resource
 	}
 
-	// Offer a hint only where the command it names exists. Groups such as
-	// `folders` and `users` have no `get`, and the hint sent readers to a
-	// command that errors out.
+	// Emit hints only for commands present in the tree.
 	hint := func(owner *cobra.Command, path, action, suffix string) string {
 		if !hasSubcommand(owner, action) {
 			return ""
@@ -93,7 +87,6 @@ func successMessages(cmd *cobra.Command, id string, rows int) (string, string) {
 		}
 		return hint(parent, resource, ActionGet, " --id="+target)
 	}
-	// `unsafe` holds no `list`; its parent does, and that is the path to name.
 	listOwner, listPath := parent, resource
 	if parent.Name() == unsafeCmdName && parent.Parent() != nil {
 		listOwner, listPath = parent.Parent(), strings.ReplaceAll(resource, " "+unsafeCmdName, "")
@@ -123,17 +116,12 @@ func successMessages(cmd *cobra.Command, id string, rows int) (string, string) {
 		msg.helper = listHint()
 	case ActionList:
 		if rows == 0 {
-			// A header-only table reads like the command failed, so say so
-			// plainly and skip the table below.
 			msg.verb = fmt.Sprintf("No %s found", resourceShort)
 		} else {
 			msg.verb = fmt.Sprintf("Found %s list", resourceShort)
 			msg.helper = getHint()
 		}
 	default:
-		// Every command reports its outcome. Returning an empty message here
-		// printed a bare SUCCESS bar with no text for any verb outside the list
-		// above, such as `upload`, `download`, or `add`.
 		msg.verb = fmt.Sprintf("%s %s", resourceShort, cmd.Name())
 		if id != "" {
 			msg.verb += ": " + id
@@ -153,10 +141,7 @@ func PrintSuccessTable(cmd *cobra.Command, id string, t table.Model) {
 
 	ts := t.View()
 	if rows == 0 {
-		// Column headers over no rows read as a failure, but a static footer
-		// carries the pagination counts, which are the only way to tell an empty
-		// collection from an over-shot offset. Hiding the header renders the
-		// footer alone, and renders nothing at all when there is no footer.
+		// Preserve pagination footers while suppressing empty table headers.
 		ts = t.WithHeaderVisibility(false).View()
 	}
 	if strings.TrimSpace(ts) == "" {

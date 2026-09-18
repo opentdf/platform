@@ -22,17 +22,11 @@ List all namespaces.
 `)
 	require.NoError(t, err)
 	assert.Equal(t, "list", doc.Use)
-	// A doc that declares no arguments rejects them. Leaving Args nil made cobra
-	// accept and silently ignore anything passed.
 	require.NotNil(t, doc.Args)
 	require.NoError(t, doc.Args(&doc.Command, []string{}))
 	require.Error(t, doc.Args(&doc.Command, []string{"unexpected"}))
 }
 
-// TestProcessDocArgsInNameAreNotRejected covers the docs that declare their
-// positional inline, as with `name: encrypt [file]`, rather than through the
-// arguments metadata. Those commands read args[0], so they must not be given
-// cobra.NoArgs.
 func TestProcessDocArgsInNameAreNotRejected(t *testing.T) {
 	doc, err := ProcessDoc(`---
 title: Encrypt a file
@@ -44,7 +38,6 @@ Encrypt a file.
 `)
 	require.NoError(t, err)
 	assert.Equal(t, "encrypt [file]", doc.Use)
-	// Not `if doc.Args != nil`: nil is the pre-fix state and would pass silently.
 	require.NotNil(t, doc.Args)
 	require.NoError(t, doc.Args(&doc.Command, []string{"some-file"}))
 }
@@ -163,9 +156,7 @@ func TestBuildUseString(t *testing.T) {
 	}
 }
 
-// knownCommandKeys are the keys ProcessDoc reads out of a doc's `command`
-// mapping. "description" is listed because four docs set it and nothing reads
-// it; it is inert rather than dangerous, unlike a misspelled operand key.
+// knownCommandKeys lists supported command frontmatter fields.
 var knownCommandKeys = map[string]bool{
 	"name":          true,
 	"arguments":     true,
@@ -176,11 +167,6 @@ var knownCommandKeys = map[string]bool{
 	"description":   true,
 }
 
-// ProcessDoc gives a doc that declares no operands cobra.NoArgs, so a doc that
-// declares them under a key ProcessDoc does not read has its operands rejected
-// at runtime with nothing reported at parse time. auth/client-credentials.md
-// wrote `args:` and `arbitrary_args:` against `arguments:` and `arbitraryArgs:`,
-// which left its two operands invisible while its handler went on indexing them.
 func TestEveryDocDeclaresOperandsWhereProcessDocReadsThem(t *testing.T) {
 	checked := 0
 	err := fs.WalkDir(docsEmbed.ManFiles, ".", func(path string, d fs.DirEntry, err error) error {
@@ -208,9 +194,6 @@ func TestEveryDocDeclaresOperandsWhereProcessDocReadsThem(t *testing.T) {
 	assert.Positive(t, checked, "no docs were checked")
 }
 
-// The four commands whose handlers index args, read from the shipped docs
-// rather than from synthetic ones, since the defect above was a mismatch
-// between what the tests declared and what the docs actually said.
 func TestShippedDocsKeepTheirOperands(t *testing.T) {
 	for _, key := range []string{"encrypt", "decrypt", "inspect", "auth/client-credentials"} {
 		t.Run(key, func(t *testing.T) {

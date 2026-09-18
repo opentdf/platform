@@ -17,12 +17,7 @@ var (
 	Cmd = &authCmd.Command
 )
 
-// keyringUnavailable reports whether cmd is about to touch keyring storage on a
-// platform that has none.
-//
-// `otdfctl auth` itself only prints help. It reaches this hook at all because
-// EnforceSubcommandArgs gives groups a Run so an unknown subcommand fails, and
-// warning there would turn plain help into a non-zero exit.
+// keyringUnavailable excludes the help-only auth group from the Linux warning.
 func keyringUnavailable(cmd *cobra.Command, goos string) bool {
 	return cmd != Cmd && goos == "linux"
 }

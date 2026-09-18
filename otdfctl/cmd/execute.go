@@ -9,12 +9,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// enforceArgs rejects unknown subcommands on the root cobra will execute, once
-// the tree is whole, so it covers hand-built groups (policy, profile) as well as
-// doc-built ones and anything a consumer mounted.
-//
-// ExecuteC adds `help` and `completion` itself, too late to be enforced on.
-// Both calls are guarded against adding twice, so doing it here is free.
+// enforceArgs validates the complete command tree, including Cobra defaults.
 func enforceArgs(root *cobra.Command) {
 	root.InitDefaultHelpCmd()
 	root.InitDefaultCompletionCmd()
@@ -50,9 +45,7 @@ func Execute(opts ...ExecuteOptFunc) {
 		c = opt(c)
 	}
 
-	// Enforce `required: true` doc metadata at the cobra layer now that the whole
-	// command tree is assembled. Done here (rather than in init) so commands added
-	// after otdfctl's own init, including a consumer's, are covered.
+	// Apply doc metadata after consumers finish assembling the command tree.
 	man.Docs.MarkRequiredFlags()
 
 	if c.mountTo != nil {
@@ -66,10 +59,7 @@ func Execute(opts ...ExecuteOptFunc) {
 
 	enforceArgs(RootCmd)
 
-	// Take over error printing so cobra-level failures (e.g. required or
-	// mutually-exclusive flag validation, which run before the command
-	// handler) still honor --json. Cobra would otherwise print plain text
-	// and usage, producing invalid JSON for automation.
+	// Format Cobra validation failures through the selected output mode.
 	RootCmd.SilenceErrors = true
 	RootCmd.SilenceUsage = true
 	cmd, err := RootCmd.ExecuteC()
@@ -78,17 +68,12 @@ func Execute(opts ...ExecuteOptFunc) {
 	}
 }
 
-// handleExecuteError formats an error returned from cobra's Execute. In --json
-// mode it emits the standard JSON error envelope via cli.ExitWithError; otherwise
-// it reproduces cobra's default output (the error followed by usage) on stderr.
-// Either way it exits with a non-zero status.
+// handleExecuteError formats a Cobra error and exits with a nonzero status.
 func handleExecuteError(cmd *cobra.Command, err error) {
 	if cmd == nil {
 		cmd = RootCmd
 	}
 
-	// --json is a persistent flag on the root command, so it is inherited by the
-	// executed command and parsed by the time Execute returns.
 	if jsonOut, _ := cmd.Flags().GetBool("json"); jsonOut {
 		cli.New(cmd, os.Args).ExitWithError(err.Error(), nil)
 		return

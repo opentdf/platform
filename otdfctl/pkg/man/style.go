@@ -15,21 +15,16 @@ var (
 	termWidthWide    = 120
 )
 
-// stdoutIsTerminal is a variable so the styled branch is reachable from a test;
-// a test binary's stdout is never a terminal.
+// stdoutIsTerminal is replaceable in tests.
 var stdoutIsTerminal = func() bool { return term.IsTerminal(int(os.Stdout.Fd())) }
 
-// plainOutput reports whether help should render without colour. Docs are
-// styled during package initialization, long before a flag is parsed, so this
-// reads os.Stdout rather than a command's configured writer.
+// plainOutput reports whether help should render without colour.
 func plainOutput() bool {
 	return os.Getenv("NO_COLOR") != "" || !stdoutIsTerminal()
 }
 
 func styleDoc(doc string) string {
-	// Measure stdout, the stream the help is written to. Reading fd 0 sized the
-	// wrap against stdin, which is the wrong stream whenever either one is
-	// redirected.
+	// Size wrapping for the stream that receives help output.
 	w, _, err := term.GetSize(int(os.Stdout.Fd()))
 	if err != nil {
 		w = termWidthDefault
@@ -38,10 +33,7 @@ func styleDoc(doc string) string {
 		w = termWidthWide
 	}
 
-	// NewTermRenderer has no terminal detection and defaults to TrueColor, so
-	// piping --help emitted raw escapes. The ASCII style carries no colour and
-	// already prefixes headings, so it needs no override; the margins below
-	// apply either way.
+	// NewTermRenderer requires an explicit plain style for redirected output.
 	ds := styles.DarkStyleConfig
 	if plainOutput() {
 		ds = styles.NoTTYStyleConfig

@@ -7,8 +7,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// The keyring warning exits non-zero, so it must not fire for the bare group,
-// which EnforceSubcommandArgs made runnable purely so that `auth bogus` fails.
 func TestKeyringUnavailable(t *testing.T) {
 	InitCommands()
 	login, _, err := Cmd.Find([]string{"login"})

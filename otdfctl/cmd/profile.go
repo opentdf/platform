@@ -49,8 +49,7 @@ type profileGetOutput struct {
 
 const storeFlagUsage = "Profile store to use: filesystem or keyring"
 
-// storeFlagCommands are the commands that resolve a driver from --store. Shared
-// with the test so a seventh command cannot be added without being covered.
+// storeFlagCommands lists commands that resolve a driver from --store.
 func storeFlagCommands() []*cobra.Command {
 	return []*cobra.Command{
 		profileListCmd,
@@ -211,10 +210,7 @@ var profileGetCmd = &cobra.Command{
 var profileDeleteCmd = &cobra.Command{
 	Use:   "delete <profile>",
 	Short: "Delete a profile",
-	// The Use string has always promised one operand and the handler indexes
-	// args[0], but nothing enforced it: `profile delete` with no arguments
-	// panicked on the missing index.
-	Args: cobra.ExactArgs(1),
+	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		c := cli.New(cmd, args)
 		profileName := args[0]
@@ -272,8 +268,7 @@ var profileSetDefaultCmd = &cobra.Command{
 			c.ExitWithError("Failed to set default profile", err)
 		}
 
-		// A fresh profiler, because reading back through the one that just wrote
-		// would echo its own in-memory value rather than the store's.
+		// Read through a fresh profiler to verify the persisted value.
 		verifier := newProfilerFromCLI(c)
 		if got := osprofiles.GetGlobalConfig(verifier).GetDefaultProfile(); got != profileName {
 			c.ExitWithError("Default profile did not persist", fmt.Errorf(

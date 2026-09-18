@@ -13,16 +13,12 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// newTestTree builds a command tree shaped like the real one: a root, a
-// resource group that owns a `get`, and a second group that does not.
 func newTestTree(t *testing.T) *cobra.Command {
 	t.Helper()
 
 	root := &cobra.Command{Use: "otdfctl"}
 	policy := &cobra.Command{Use: "policy"}
 
-	// A group with a `get`, whose Use carries a positional argument the way a
-	// man-doc command does.
 	attributes := &cobra.Command{Use: "attributes"}
 	attributes.AddCommand(
 		&cobra.Command{Use: "get <id>"},
@@ -33,14 +29,10 @@ func newTestTree(t *testing.T) *cobra.Command {
 		&cobra.Command{Use: "list"},
 	)
 
-	// `unsafe` holds destructive variants and owns no `list` of its own, so its
-	// hint has to name the parent's.
 	unsafe := &cobra.Command{Use: "unsafe"}
 	unsafe.AddCommand(&cobra.Command{Use: "delete"})
 	attributes.AddCommand(unsafe)
 
-	// A group with no `get`, which is what made the hint point at a command
-	// that does not exist.
 	folders := &cobra.Command{Use: "folders"}
 	folders.AddCommand(
 		&cobra.Command{Use: "create"},
@@ -48,7 +40,6 @@ func newTestTree(t *testing.T) *cobra.Command {
 		&cobra.Command{Use: "upload"},
 	)
 
-	// A group with neither, to catch a hint naming a `list` that is not there.
 	keys := &cobra.Command{Use: "keys"}
 	keys.AddCommand(
 		&cobra.Command{Use: "delete"},
@@ -94,12 +85,9 @@ func TestSuccessMessagesVerbs(t *testing.T) {
 	}
 }
 
-// TestSuccessMessagesMatchesCommandWithPositionalArgs pins the reason `get`
-// reported nothing for man-doc commands: their Use is "get <id>", so matching
-// on Use rather than the command name fell through to the empty default.
 func TestSuccessMessagesMatchesCommandWithPositionalArgs(t *testing.T) {
 	cmd := find(t, newTestTree(t), "policy", "attributes", "get")
-	require.Equal(t, "get <id>", cmd.Use, "test premise: Use carries the argument")
+	require.Equal(t, "get <id>", cmd.Use)
 
 	verb, helper := successMessages(cmd, "abc", 1)
 
@@ -107,8 +95,6 @@ func TestSuccessMessagesMatchesCommandWithPositionalArgs(t *testing.T) {
 	assert.Contains(t, helper, "otdfctl policy attributes get --id=abc")
 }
 
-// TestSuccessMessagesAlwaysReportsAnOutcome covers verbs outside the known set,
-// which previously produced a SUCCESS bar with no text at all.
 func TestSuccessMessagesAlwaysReportsAnOutcome(t *testing.T) {
 	cmd := find(t, newTestTree(t), "policy", "folders", "upload")
 
@@ -125,9 +111,6 @@ func TestSuccessMessagesAlwaysReportsAnOutcome(t *testing.T) {
 	})
 }
 
-// TestSuccessMessagesHintOnlyWhenGetExists pins the hint defect: the footer
-// suggested `<resource> get --id=…` for every group, including those with no
-// `get` subcommand.
 func TestSuccessMessagesHintOnlyWhenGetExists(t *testing.T) {
 	root := newTestTree(t)
 
@@ -144,8 +127,6 @@ func TestSuccessMessagesHintOnlyWhenGetExists(t *testing.T) {
 	})
 }
 
-// delete and deactivate point at a `list` rather than a `get`, and had the same
-// defect: the hint was emitted whether or not that command existed.
 func TestSuccessMessagesListHintOnlyWhenListExists(t *testing.T) {
 	root := newTestTree(t)
 
@@ -163,15 +144,12 @@ func TestSuccessMessagesListHintOnlyWhenListExists(t *testing.T) {
 		}
 	})
 
-	// `unsafe` owns no list, so the hint names the parent's and drops the
-	// segment from the path.
 	t.Run("under unsafe", func(t *testing.T) {
 		_, helper := successMessages(find(t, root, "policy", "attributes", "unsafe", "delete"), "abc", 1)
 		assert.Equal(t, "Use 'otdfctl policy attributes list --json' to see all properties", helper)
 	})
 }
 
-// A root command has no parent to name the resource from.
 func TestSuccessMessagesOnRootCommand(t *testing.T) {
 	root := newTestTree(t)
 
@@ -182,8 +160,6 @@ func TestSuccessMessagesOnRootCommand(t *testing.T) {
 	})
 }
 
-// TestSuccessMessagesKeepsIDPlaceholderLiteral guards the `<id>` placeholder in
-// the list hint against being escaped or substituted.
 func TestSuccessMessagesKeepsIDPlaceholderLiteral(t *testing.T) {
 	_, helper := successMessages(find(t, newTestTree(t), "policy", "attributes", "list"), "", 2)
 
@@ -191,8 +167,6 @@ func TestSuccessMessagesKeepsIDPlaceholderLiteral(t *testing.T) {
 	assert.NotContains(t, helper, "&lt;")
 }
 
-// TestSuccessMessagesEmptyList replaces the header-only table, which read as a
-// failure, with a statement that nothing was found.
 func TestSuccessMessagesEmptyList(t *testing.T) {
 	verb, helper := successMessages(find(t, newTestTree(t), "policy", "attributes", "list"), "", 0)
 
@@ -200,8 +174,7 @@ func TestSuccessMessagesEmptyList(t *testing.T) {
 	assert.Empty(t, helper, "there is nothing for the hint to point at")
 }
 
-// captureStdout collects what fn writes to os.Stdout. PrintSuccessTable prints
-// there directly, so this is the only way to assert on what it renders.
+// captureStdout captures direct writes to os.Stdout.
 func captureStdout(t *testing.T, fn func()) string {
 	t.Helper()
 
@@ -225,9 +198,6 @@ func captureStdout(t *testing.T, fn func()) string {
 	return <-out
 }
 
-// TestPrintSuccessTableOmitsEmptyTable is the output-level half of
-// TestSuccessMessagesEmptyList: a zero-row result must report that nothing was
-// found and print no table, because a header-only table reads as a failure.
 func TestPrintSuccessTableOmitsEmptyTable(t *testing.T) {
 	cmd := find(t, newTestTree(t), "policy", "attributes", "list")
 	empty := NewTable(table.NewFlexColumn("id", "ID", FlexColumnWidthFive))
@@ -240,10 +210,6 @@ func TestPrintSuccessTableOmitsEmptyTable(t *testing.T) {
 		assert.NotContains(t, out, "│", "no table borders should reach stdout")
 	})
 
-	// A list command attaches its pagination counts as a static footer, which
-	// only reaches stdout through the table's own View. Suppressing the whole
-	// view for an empty result took the counts with it, so an over-shot --offset
-	// reported "none found" and gave no hint that the collection was not empty.
 	t.Run("no rows but a pagination footer", func(t *testing.T) {
 		paged := WithListPaginationFooter(empty, &policy.PageResponse{Total: 10, CurrentOffset: 999})
 
@@ -263,7 +229,7 @@ func TestPrintSuccessTableOmitsEmptyTable(t *testing.T) {
 		out := captureStdout(t, func() { PrintSuccessTable(cmd, "", populated) })
 
 		assert.Contains(t, out, "Found attributes list")
-		assert.Contains(t, out, "abc-123", "test premise: a populated table still renders")
+		assert.Contains(t, out, "abc-123")
 	})
 }
 

@@ -21,8 +21,8 @@ setup() {
 
     # As above, but each argument survives the sh -c re-split intact. $* joins on
     # spaces, so a value containing one arrives as two words: `--uri "https ://x"`
-    # reached the binary as `--uri https` plus a stray `://x`, which cobra used to
-    # discard, leaving the test asserting against a different URI than it named.
+    # reaches the binary as `--uri https` plus a stray `://x`, which cobra
+    # discards, leaving the test asserting against a different URI than it named.
     run_otdfctl_kasr_quoted() {
         local quoted=""
         for arg in "$@"; do

@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.33.0](https://github.com/opentdf/platform/compare/sdk/v0.32.0...sdk/v0.33.0) (2026-09-18)
+
+
+### Features
+
+* **sdk:** add a chunked segment writer (experimental) ([#3940](https://github.com/opentdf/platform/issues/3940)) ([69cb391](https://github.com/opentdf/platform/commit/69cb391e96d08b90c3ee827545bc9b15f2d0c006))
+
 ## [0.32.0](https://github.com/opentdf/platform/compare/sdk/v0.31.0...sdk/v0.32.0) (2026-09-16)
 
 

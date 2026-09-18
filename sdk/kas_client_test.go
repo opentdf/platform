@@ -5,8 +5,10 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -425,6 +427,92 @@ func TestKasKeyCache_ConcurrentAccess(t *testing.T) {
 
 	cache.store(keyInfo)
 	assert.Equal(t, &keyInfo, cache.get(keyInfo.URL, keyInfo.Algorithm, keyInfo.KID))
+}
+
+func TestKasKeyCache_ConcurrentMiss(t *testing.T) {
+	cache := newKasKeyCache()
+	keyInfo := KASInfo{
+		URL:       "https://kas.example.org",
+		Algorithm: "ec:secp256r1",
+		KID:       "test-kid",
+		PublicKey: "test-public-key",
+	}
+	cacheKey := kasKeyRequest{url: keyInfo.URL, algorithm: keyInfo.Algorithm, kid: keyInfo.KID}
+
+	var loadCount atomic.Int32
+	loadStarted := make(chan struct{})
+	releaseLoad := make(chan struct{})
+	loader := func() (*KASInfo, error) {
+		if loadCount.Add(1) == 1 {
+			close(loadStarted)
+		}
+		<-releaseLoad
+		return &keyInfo, nil
+	}
+
+	const callers = 100
+	results := make(chan *KASInfo, callers)
+	errs := make(chan error, callers)
+	start := make(chan struct{})
+	var wg sync.WaitGroup
+	var ready sync.WaitGroup
+	ready.Add(callers)
+	for range callers {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			ready.Done()
+			<-start
+			result, err := cache.getOrLoad(cacheKey, loader)
+			results <- result
+			errs <- err
+		}()
+	}
+
+	ready.Wait()
+	close(start)
+	<-loadStarted
+	assert.Never(t, func() bool {
+		return loadCount.Load() > 1
+	}, 100*time.Millisecond, 10*time.Millisecond)
+	close(releaseLoad)
+	wg.Wait()
+	close(results)
+	close(errs)
+
+	assert.Equal(t, int32(1), loadCount.Load())
+	for err := range errs {
+		require.NoError(t, err)
+	}
+	for result := range results {
+		assert.Equal(t, &keyInfo, result)
+	}
+}
+
+func TestKasKeyCache_FailedLoadNotCached(t *testing.T) {
+	cache := newKasKeyCache()
+	keyInfo := KASInfo{
+		URL:       "https://kas.example.org",
+		Algorithm: "ec:secp256r1",
+		KID:       "test-kid",
+		PublicKey: "test-public-key",
+	}
+	cacheKey := kasKeyRequest{url: keyInfo.URL, algorithm: keyInfo.Algorithm, kid: keyInfo.KID}
+
+	loadCount := 0
+	_, err := cache.getOrLoad(cacheKey, func() (*KASInfo, error) {
+		loadCount++
+		return nil, errors.New("load failed")
+	})
+	require.ErrorContains(t, err, "load failed")
+
+	result, err := cache.getOrLoad(cacheKey, func() (*KASInfo, error) {
+		loadCount++
+		return &keyInfo, nil
+	})
+	require.NoError(t, err)
+	assert.Equal(t, &keyInfo, result)
+	assert.Equal(t, 2, loadCount)
 }
 
 func Test_newConnectRewrapRequest(t *testing.T) {

@@ -37,7 +37,7 @@ teardown() {
         "localhost"
         "http://example.com:abc"
         "https ://example.com"
-        "https://exam'ple.com"
+        "https ://exam'ple.com"
     )
 
     for URI in "${BAD_URIS[@]}"; do
@@ -110,6 +110,7 @@ teardown() {
         "localhost"
         "http://example.com:abc"
         "https ://example.com"
+        "https ://exam'ple.com"
     )
 
     for URI in "${BAD_URIS[@]}"; do

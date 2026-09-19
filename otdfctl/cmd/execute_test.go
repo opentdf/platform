@@ -194,12 +194,16 @@ func TestPreserveJSONFlagOnError(t *testing.T) {
 		{name: "explicit true", args: []string{"list", "--badarg", "--json=true"}, want: true},
 		{name: "last true", args: []string{"list", "--json=false", "--badarg", "--json"}, want: true},
 		{name: "last false", args: []string{"list", "--json", "--badarg", "--json=false"}},
+		{name: "long flag value", args: []string{"list", "--filename", "--json", "--badarg"}},
+		{name: "short flag value", args: []string{"list", "-f", "--json", "--badarg"}},
 		{name: "after separator", args: []string{"list", "--badarg", "--", "--json"}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			root := &cobra.Command{Use: "root", SilenceErrors: true, SilenceUsage: true}
 			root.PersistentFlags().Bool("json", false, "")
-			root.AddCommand(&cobra.Command{Use: "list", Run: func(*cobra.Command, []string) {}})
+			list := &cobra.Command{Use: "list", Run: func(*cobra.Command, []string) {}}
+			list.Flags().StringP("filename", "f", "", "")
+			root.AddCommand(list)
 			preserveJSONFlagOnError(root, tc.args)
 			root.SetArgs(tc.args)
 

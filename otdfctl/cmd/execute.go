@@ -73,24 +73,26 @@ func Execute(opts ...ExecuteOptFunc) {
 
 // preserveJSONFlagOnError preserves JSON mode when pflag stops at an earlier error.
 func preserveJSONFlagOnError(root *cobra.Command, args []string) {
-	jsonOut, requested := requestedBoolFlag(args, "json")
-	if !requested {
-		return
-	}
-
 	handleFlagError := root.FlagErrorFunc()
 	root.SetFlagErrorFunc(func(cmd *cobra.Command, flagErr error) error {
-		if err := root.PersistentFlags().Set("json", strconv.FormatBool(jsonOut)); err != nil {
-			return errors.Join(flagErr, err)
+		if jsonOut, requested := requestedBoolFlag(cmd, args, "json"); requested {
+			if err := root.PersistentFlags().Set("json", strconv.FormatBool(jsonOut)); err != nil {
+				return errors.Join(flagErr, err)
+			}
 		}
 		return handleFlagError(cmd, flagErr)
 	})
 }
 
-func requestedBoolFlag(args []string, name string) (bool, bool) {
+func requestedBoolFlag(cmd *cobra.Command, args []string, name string) (bool, bool) {
 	flag := "--" + name
 	var value, found bool
+	var consumeNext bool
 	for _, arg := range args {
+		if consumeNext {
+			consumeNext = false
+			continue
+		}
 		if arg == "--" {
 			break
 		}
@@ -100,6 +102,7 @@ func requestedBoolFlag(args []string, name string) (bool, bool) {
 		}
 		raw, ok := strings.CutPrefix(arg, flag+"=")
 		if !ok {
+			consumeNext = flagConsumesNext(cmd, arg)
 			continue
 		}
 		parsed, err := strconv.ParseBool(raw)
@@ -108,6 +111,31 @@ func requestedBoolFlag(args []string, name string) (bool, bool) {
 		}
 	}
 	return value, found
+}
+
+func flagConsumesNext(cmd *cobra.Command, arg string) bool {
+	if name, ok := strings.CutPrefix(arg, "--"); ok {
+		if strings.ContainsRune(name, '=') {
+			return false
+		}
+		flag := cmd.Flag(name)
+		return flag != nil && flag.NoOptDefVal == ""
+	}
+	if !strings.HasPrefix(arg, "-") || len(arg) < 2 {
+		return false
+	}
+
+	flags := cmd.Flags()
+	for i := 1; i < len(arg); i++ {
+		flag := flags.ShorthandLookup(arg[i : i+1])
+		if flag == nil {
+			return false
+		}
+		if flag.NoOptDefVal == "" {
+			return i == len(arg)-1
+		}
+	}
+	return false
 }
 
 // handleExecuteError formats a Cobra error and exits with a nonzero status.

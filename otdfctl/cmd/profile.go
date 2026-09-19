@@ -47,6 +47,20 @@ type profileGetOutput struct {
 	ClientID     string `json:"client_id,omitempty"`
 }
 
+const storeFlagUsage = "Profile store to use: filesystem or keyring"
+
+// storeFlagCommands lists commands that resolve a driver from --store.
+func storeFlagCommands() []*cobra.Command {
+	return []*cobra.Command{
+		profileListCmd,
+		profileGetCmd,
+		profileDeleteCmd,
+		profileDeleteAllCmd,
+		profileSetDefaultCmd,
+		profileSetEndpointCmd,
+	}
+}
+
 func newProfilerFromCLI(c *cli.Cli) *osprofiles.Profiler {
 	driverType := getDriverTypeFromUser(c)
 	profiler, err := profiles.NewProfiler(string(driverType))
@@ -114,6 +128,7 @@ var profileCreateCmd = &cobra.Command{
 var profileListCmd = &cobra.Command{
 	Use:   "list",
 	Short: "List profiles",
+	Args:  cobra.NoArgs,
 	Run: func(cmd *cobra.Command, args []string) {
 		c := cli.New(cmd, args)
 		driverType := getDriverTypeFromUser(c)
@@ -195,6 +210,7 @@ var profileGetCmd = &cobra.Command{
 var profileDeleteCmd = &cobra.Command{
 	Use:   "delete <profile>",
 	Short: "Delete a profile",
+	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		c := cli.New(cmd, args)
 		profileName := args[0]
@@ -251,6 +267,14 @@ var profileSetDefaultCmd = &cobra.Command{
 		if err := osprofiles.SetDefaultProfile(profiler, profileName); err != nil {
 			c.ExitWithError("Failed to set default profile", err)
 		}
+
+		// Read through a fresh profiler to verify the persisted value.
+		verifier := newProfilerFromCLI(c)
+		if got := osprofiles.GetGlobalConfig(verifier).GetDefaultProfile(); got != profileName {
+			c.ExitWithError("Default profile did not persist", fmt.Errorf(
+				"default profile is %q after setting it to %q", got, profileName))
+		}
+
 		c.ExitWithMessage(fmt.Sprintf("Set profile %s as default", profileName), cli.ExitCodeSuccess)
 	},
 }
@@ -356,10 +380,12 @@ func InitProfileCommands() {
 	profileCreateCmd.Flags().Bool("tls-no-verify", false, "Disable TLS verification")
 	profileCreateCmd.Flags().String("output-format", profiles.OutputStyled, "Preferred output format: styled or json")
 
-	profileListCmd.Flags().String("store", "filesystem", "Profile store to use: filesystem or keyring")
-	profileGetCmd.Flags().String("store", "filesystem", "Profile store to use: filesystem or keyring")
-	profileDeleteCmd.Flags().String("store", "filesystem", "Profile store to use: filesystem or keyring")
-	profileDeleteAllCmd.Flags().String("store", "filesystem", "Profile store to use: filesystem or keyring")
+	// Every command resolving a driver through getDriverTypeFromUser must
+	// register --store; an unregistered lookup returns "" and silently falls
+	// back to the default while rejecting the flag as unknown.
+	for _, cmd := range storeFlagCommands() {
+		cmd.Flags().String("store", string(profiles.ProfileDriverDefault), storeFlagUsage)
+	}
 	profileDeleteAllCmd.Flags().Bool("force", false, "Skip confirmation prompt")
 
 	profileSetEndpointCmd.Flags().Bool("tls-no-verify", false, "Disable TLS verification")

@@ -1,8 +1,12 @@
 package man
 
 import (
+	"io/fs"
+	"strings"
 	"testing"
 
+	"github.com/adrg/frontmatter"
+	docsEmbed "github.com/opentdf/platform/otdfctl/docs"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -18,6 +22,24 @@ List all namespaces.
 `)
 	require.NoError(t, err)
 	assert.Equal(t, "list", doc.Use)
+	require.NotNil(t, doc.Args)
+	require.NoError(t, doc.Args(&doc.Command, []string{}))
+	require.Error(t, doc.Args(&doc.Command, []string{"unexpected"}))
+}
+
+func TestProcessDocArgsInNameAreNotRejected(t *testing.T) {
+	doc, err := ProcessDoc(`---
+title: Encrypt a file
+command:
+  name: encrypt [file]
+---
+
+Encrypt a file.
+`)
+	require.NoError(t, err)
+	assert.Equal(t, "encrypt [file]", doc.Use)
+	require.NotNil(t, doc.Args)
+	require.NoError(t, doc.Args(&doc.Command, []string{"some-file"}))
 }
 
 func TestProcessDocWithArgs(t *testing.T) {
@@ -130,6 +152,56 @@ func TestBuildUseString(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			got := buildUseString(tt.cmdName, tt.args, tt.arbitraryArgs)
 			assert.Equal(t, tt.want, got)
+		})
+	}
+}
+
+// knownCommandKeys lists supported command frontmatter fields.
+var knownCommandKeys = map[string]bool{
+	"name":          true,
+	"arguments":     true,
+	"arbitraryArgs": true,
+	"hidden":        true,
+	"aliases":       true,
+	"flags":         true,
+	"description":   true,
+}
+
+func TestEveryDocDeclaresOperandsWhereProcessDocReadsThem(t *testing.T) {
+	checked := 0
+	err := fs.WalkDir(docsEmbed.ManFiles, ".", func(path string, d fs.DirEntry, err error) error {
+		if err != nil || d.IsDir() || !strings.HasSuffix(path, ".md") {
+			return err
+		}
+		b, readErr := docsEmbed.ManFiles.ReadFile(path)
+		require.NoError(t, readErr, path)
+
+		var raw struct {
+			Command map[string]any `yaml:"command"`
+		}
+		if _, perr := frontmatter.Parse(strings.NewReader(string(b)), &raw); perr != nil {
+			//nolint:nilerr // skipping the doc is the point: ProcessDoc's own tests cover malformed frontmatter
+			return nil
+		}
+		for key := range raw.Command {
+			assert.True(t, knownCommandKeys[key],
+				"%s: `command.%s` is not read by ProcessDoc, so its value is silently dropped", path, key)
+		}
+		checked++
+		return nil
+	})
+	require.NoError(t, err)
+	assert.Positive(t, checked, "no docs were checked")
+}
+
+func TestShippedDocsKeepTheirOperands(t *testing.T) {
+	for _, key := range []string{"encrypt", "decrypt", "inspect", "auth/client-credentials"} {
+		t.Run(key, func(t *testing.T) {
+			doc := Docs.En[key]
+			require.NotNil(t, doc, "doc not found in the registry")
+			require.NotNil(t, doc.Args)
+			assert.NoError(t, doc.Args(&doc.Command, []string{"operand"}),
+				"the handler indexes args, so the operand has to reach it")
 		})
 	}
 }

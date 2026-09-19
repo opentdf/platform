@@ -16,7 +16,7 @@ setup() {
 
     # invoke binary with credentials
     run_otdfctl_kasr() {
-        run sh -c "./otdfctl policy kas-registry $HOST $WITH_CREDS $*"
+        run ./otdfctl policy kas-registry $HOST $WITH_CREDS "$@"
     }
 }
 
@@ -37,6 +37,7 @@ teardown() {
         "localhost"
         "http://example.com:abc"
         "https ://example.com"
+        "https ://exam'ple.com"
     )
 
     for URI in "${BAD_URIS[@]}"; do
@@ -109,6 +110,7 @@ teardown() {
         "localhost"
         "http://example.com:abc"
         "https ://example.com"
+        "https ://exam'ple.com"
     )
 
     for URI in "${BAD_URIS[@]}"; do

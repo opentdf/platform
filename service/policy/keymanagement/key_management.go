@@ -124,7 +124,6 @@ func (ksvc Service) CreateProviderConfig(ctx context.Context, req *connect.Reque
 	err := ksvc.dbClient.RunInTx(ctx, func(txClient *policydb.PolicyDBClient) error {
 		pc, err := txClient.CreateProviderConfig(ctx, req.Msg)
 		if err != nil {
-			ksvc.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
 			return err
 		}
 
@@ -135,14 +134,15 @@ func (ksvc Service) CreateProviderConfig(ctx context.Context, req *connect.Reque
 			Manager:  pc.GetManager(),
 			Metadata: pc.GetMetadata(),
 		}
-		ksvc.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
 
 		rsp.ProviderConfig = pc
 		return nil
 	})
 	if err != nil {
+		ksvc.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
 		return nil, db.StatusifyError(ctx, ksvc.logger, err, db.ErrTextCreationFailed, slog.String("key_management_service", req.Msg.GetName()))
 	}
+	ksvc.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
 
 	return connect.NewResponse(rsp), nil
 }
@@ -203,7 +203,6 @@ func (ksvc Service) UpdateProviderConfig(ctx context.Context, req *connect.Reque
 	err = ksvc.dbClient.RunInTx(ctx, func(txClient *policydb.PolicyDBClient) error {
 		pc, err := txClient.UpdateProviderConfig(ctx, req.Msg)
 		if err != nil {
-			ksvc.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
 			return err
 		}
 
@@ -221,14 +220,15 @@ func (ksvc Service) UpdateProviderConfig(ctx context.Context, req *connect.Reque
 			Manager:  pc.GetManager(),
 			Metadata: pc.GetMetadata(),
 		}
-		ksvc.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
 		rsp.ProviderConfig = pc
 
 		return nil
 	})
 	if err != nil {
+		ksvc.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
 		return nil, db.StatusifyError(ctx, ksvc.logger, err, db.ErrTextUpdateFailed, slog.String("key_management_service", req.Msg.GetId()))
 	}
+	ksvc.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
 
 	return connect.NewResponse(rsp), nil
 }

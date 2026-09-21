@@ -90,20 +90,20 @@ func (s DynamicValueMappingService) CreateDynamicValueMapping(ctx context.Contex
 	err := s.dbClient.RunInTx(ctx, func(txClient *policydb.PolicyDBClient) error {
 		mapping, err := txClient.CreateDynamicValueMapping(ctx, req.Msg)
 		if err != nil {
-			s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
 			return err
 		}
 
 		auditParams.ObjectID = mapping.GetId()
 		auditParams.Original = mapping
-		s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
 
 		rsp.DynamicValueMapping = mapping
 		return nil
 	})
 	if err != nil {
+		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
 		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextCreationFailed, slog.String("dynamic_value_mapping", req.Msg.String()))
 	}
+	s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
 	return connect.NewResponse(rsp), nil
 }
 
@@ -144,31 +144,29 @@ func (s DynamicValueMappingService) UpdateDynamicValueMapping(ctx context.Contex
 		ObjectID:   id,
 	}
 
-	// Get-then-update and the success audit run in a transaction so the audited "original" is
-	// consistent with the applied update.
+	// Read and update in one transaction so the audited original matches the applied update.
 	err := s.dbClient.RunInTx(ctx, func(txClient *policydb.PolicyDBClient) error {
 		original, err := txClient.GetDynamicValueMapping(ctx, id)
 		if err != nil {
-			s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
 			return err
 		}
 
 		updated, err := txClient.UpdateDynamicValueMapping(ctx, req.Msg)
 		if err != nil {
-			s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
 			return err
 		}
 
 		auditParams.Original = original
 		auditParams.Updated = updated
-		s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
 
 		rsp.DynamicValueMapping = updated
 		return nil
 	})
 	if err != nil {
+		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
 		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextUpdateFailed, slog.String("id", id), slog.String("dynamic_value_mapping", req.Msg.String()))
 	}
+	s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
 
 	return connect.NewResponse(rsp), nil
 }

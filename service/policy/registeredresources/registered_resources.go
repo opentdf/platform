@@ -112,7 +112,6 @@ func (s *RegisteredResourcesService) CreateRegisteredResource(ctx context.Contex
 
 		auditParams.ObjectID = resource.GetId()
 		auditParams.Original = resource
-		s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
 
 		rsp.Resource = resource
 		return nil
@@ -121,6 +120,7 @@ func (s *RegisteredResourcesService) CreateRegisteredResource(ctx context.Contex
 		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
 		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextCreationFailed, slog.String("registered_resource", req.Msg.String()))
 	}
+	s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
 
 	return connect.NewResponse(rsp), nil
 }
@@ -180,7 +180,6 @@ func (s *RegisteredResourcesService) UpdateRegisteredResource(ctx context.Contex
 
 		auditParams.Original = original
 		auditParams.Updated = updated
-		s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
 
 		rsp.Resource = updated
 		return nil
@@ -189,6 +188,7 @@ func (s *RegisteredResourcesService) UpdateRegisteredResource(ctx context.Contex
 		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
 		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextUpdateFailed, slog.String("registered_resource", req.Msg.String()))
 	}
+	s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
 
 	return connect.NewResponse(rsp), nil
 }
@@ -239,7 +239,6 @@ func (s *RegisteredResourcesService) CreateRegisteredResourceValue(ctx context.C
 
 		auditParams.ObjectID = value.GetId()
 		auditParams.Original = value
-		s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
 
 		rsp.Value = value
 		return nil
@@ -248,6 +247,7 @@ func (s *RegisteredResourcesService) CreateRegisteredResourceValue(ctx context.C
 		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
 		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextCreationFailed, slog.String("registered_resource_value", req.Msg.String()))
 	}
+	s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
 
 	return connect.NewResponse(rsp), nil
 }
@@ -323,7 +323,6 @@ func (s *RegisteredResourcesService) UpdateRegisteredResourceValue(ctx context.C
 
 		auditParams.Original = original
 		auditParams.Updated = updated
-		s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
 
 		rsp.Value = updated
 
@@ -333,6 +332,7 @@ func (s *RegisteredResourcesService) UpdateRegisteredResourceValue(ctx context.C
 		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
 		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextUpdateFailed, slog.String("registered_resource_value", req.Msg.String()))
 	}
+	s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
 
 	return connect.NewResponse(rsp), nil
 }

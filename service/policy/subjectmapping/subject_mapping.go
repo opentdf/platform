@@ -99,21 +99,21 @@ func (s SubjectMappingService) CreateSubjectMapping(ctx context.Context,
 	err := s.dbClient.RunInTx(ctx, func(txClient *policydb.PolicyDBClient) error {
 		subjectMapping, err := txClient.CreateSubjectMapping(ctx, req.Msg)
 		if err != nil {
-			s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
 			return err
 		}
 
 		auditParams.ObjectID = subjectMapping.GetId()
 		auditParams.Original = subjectMapping
-		s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
 
 		rsp.SubjectMapping = subjectMapping
 
 		return nil
 	})
 	if err != nil {
+		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
 		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextCreationFailed, slog.String("subject_mapping", req.Msg.String()))
 	}
+	s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
 	return connect.NewResponse(rsp), nil
 }
 
@@ -163,19 +163,16 @@ func (s SubjectMappingService) UpdateSubjectMapping(ctx context.Context,
 	err := s.dbClient.RunInTx(ctx, func(txClient *policydb.PolicyDBClient) error {
 		original, err := txClient.GetSubjectMapping(ctx, subjectMappingID)
 		if err != nil {
-			s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
 			return db.StatusifyError(ctx, s.logger, err, db.ErrTextGetRetrievalFailed, slog.String("id", subjectMappingID))
 		}
 
 		updated, err := txClient.UpdateSubjectMapping(ctx, req.Msg)
 		if err != nil {
-			s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
 			return db.StatusifyError(ctx, s.logger, err, db.ErrTextUpdateFailed, slog.String("id", req.Msg.GetId()), slog.String("subject_mapping_fields", req.Msg.String()))
 		}
 
 		auditParams.Original = original
 		auditParams.Updated = updated
-		s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
 
 		rsp.SubjectMapping = &policy.SubjectMapping{
 			Id: subjectMappingID,
@@ -183,8 +180,10 @@ func (s SubjectMappingService) UpdateSubjectMapping(ctx context.Context,
 		return nil
 	})
 	if err != nil {
+		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
 		return nil, err
 	}
+	s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
 	return connect.NewResponse(rsp), nil
 }
 
@@ -280,7 +279,6 @@ func (s SubjectMappingService) CreateSubjectConditionSet(ctx context.Context,
 	err := s.dbClient.RunInTx(ctx, func(txClient *policydb.PolicyDBClient) error {
 		cs, err := txClient.CreateSubjectConditionSet(ctx, req.Msg.GetSubjectConditionSet(), req.Msg.GetNamespaceId(), req.Msg.GetNamespaceFqn())
 		if err != nil {
-			s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
 			return db.StatusifyError(ctx, s.logger, err, db.ErrTextCreationFailed, slog.String("subject_condition_set", req.Msg.String()))
 		}
 
@@ -288,6 +286,7 @@ func (s SubjectMappingService) CreateSubjectConditionSet(ctx context.Context,
 		return nil
 	})
 	if err != nil {
+		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
 		return nil, err
 	}
 
@@ -317,13 +316,11 @@ func (s SubjectMappingService) UpdateSubjectConditionSet(ctx context.Context,
 	err := s.dbClient.RunInTx(ctx, func(txClient *policydb.PolicyDBClient) error {
 		orig, err := txClient.GetSubjectConditionSet(ctx, subjectConditionSetID)
 		if err != nil {
-			s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
 			return db.StatusifyError(ctx, s.logger, err, db.ErrTextGetRetrievalFailed, slog.String("id", subjectConditionSetID))
 		}
 
 		upd, err := txClient.UpdateSubjectConditionSet(ctx, req.Msg)
 		if err != nil {
-			s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
 			return db.StatusifyError(ctx, s.logger, err, db.ErrTextUpdateFailed, slog.String("id", req.Msg.GetId()), slog.String("subject_condition_set_fields", req.Msg.String()))
 		}
 
@@ -336,6 +333,7 @@ func (s SubjectMappingService) UpdateSubjectConditionSet(ctx context.Context,
 		return nil
 	})
 	if err != nil {
+		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
 		return nil, err
 	}
 

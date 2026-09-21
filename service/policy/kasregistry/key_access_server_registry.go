@@ -244,7 +244,6 @@ func (s KeyAccessServerRegistry) CreateKey(ctx context.Context, r *connect.Reque
 		var err error
 		resp, err = txClient.CreateKey(ctx, r.Msg)
 		if err != nil {
-			s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
 			return err
 		}
 
@@ -267,13 +266,14 @@ func (s KeyAccessServerRegistry) CreateKey(ctx context.Context, r *connect.Reque
 				Metadata: resp.GetKasKey().GetKey().GetMetadata(),
 			},
 		}
-		s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
 
 		return nil
 	})
 	if err != nil {
+		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
 		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextCreationFailed, slog.String("key_access_server_keys", r.Msg.GetKasId()), slog.String("key_id", r.Msg.GetKeyId()))
 	}
+	s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
 
 	return connect.NewResponse(resp), nil
 }
@@ -299,7 +299,6 @@ func (s KeyAccessServerRegistry) UpdateKey(ctx context.Context, req *connect.Req
 	err = s.dbClient.RunInTx(ctx, func(txClient *policydb.PolicyDBClient) error {
 		updated, err := txClient.UpdateKey(ctx, req.Msg)
 		if err != nil {
-			s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
 			return err
 		}
 
@@ -314,14 +313,15 @@ func (s KeyAccessServerRegistry) UpdateKey(ctx context.Context, req *connect.Req
 			KeyStatus: updated.GetKey().GetKeyStatus(),
 			Metadata:  updated.GetKey().GetMetadata(),
 		}
-		s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
 
 		rsp.KasKey = updated
 		return nil
 	})
 	if err != nil {
+		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
 		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextUpdateFailed, slog.String("key_access_server_keys", req.Msg.GetId()))
 	}
+	s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
 
 	return connect.NewResponse(rsp), nil
 }
@@ -429,7 +429,6 @@ func (s KeyAccessServerRegistry) RotateKey(ctx context.Context, r *connect.Reque
 	err = s.dbClient.RunInTx(ctx, func(txClient *policydb.PolicyDBClient) error {
 		resp, err = txClient.RotateKey(ctx, original, r.Msg.GetNewKey())
 		if err != nil {
-			s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
 			return err
 		}
 
@@ -454,13 +453,14 @@ func (s KeyAccessServerRegistry) RotateKey(ctx context.Context, r *connect.Reque
 				},
 			},
 		}
-		s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
 
 		return nil
 	})
 	if err != nil {
+		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
 		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextKeyRotationFailed, slog.String("active_key_id", objectID), slog.String("new_key_id", r.Msg.GetNewKey().GetKeyId()))
 	}
+	s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
 
 	// Implementation for RotateKey
 	return connect.NewResponse(resp), nil
@@ -492,19 +492,19 @@ func (s KeyAccessServerRegistry) SetBaseKey(ctx context.Context, r *connect.Requ
 		resp, err = txClient.SetBaseKey(ctx, r.Msg)
 		if err != nil {
 			s.logger.ErrorContext(ctx, "failed to set default key", slog.String("error", err.Error()))
-			s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
 			return err
 		}
 
 		auditParams.Original = resp.GetPreviousBaseKey()
 		auditParams.Updated = resp.GetNewBaseKey()
-		s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
 
 		return nil
 	})
 	if err != nil {
+		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
 		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextUpdateFailed, slog.String("set_default_key", r.Msg.GetId()))
 	}
+	s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
 
 	return connect.NewResponse(resp), nil
 }

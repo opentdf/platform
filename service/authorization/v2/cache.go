@@ -41,7 +41,10 @@ var (
 	ErrCachedTypeNotExpected = errors.New("cached data is not of expected type")
 )
 
-// EntitlementPolicyCache caches attributes and subject mappings with periodic refresh
+// EntitlementPolicyCache caches attributes, subject mappings, registered resources, obligations, and
+// (when enabled) dynamic value mappings with periodic refresh. The default decision path fetches
+// attributes and subject mappings per request via GetEntitleableAttributesByFqns; the cached copies
+// back the full-policy fallback used when direct entitlements or dynamic value mappings are enabled.
 type EntitlementPolicyCache struct {
 	logger      *logger.Logger
 	cacheClient *cache.Cache
@@ -177,7 +180,9 @@ func (c *EntitlementPolicyCache) Stop() {
 // Refresh manually refreshes the cache by reaching out to policy services. In the event of an error,
 // the cache is marked as not filled, and the error is returned.
 func (c *EntitlementPolicyCache) Refresh(ctx context.Context) error {
-	// Retrieve fresh data from the policy services
+	// Retrieve fresh data from the policy services. Attributes and subject mappings are cached so the
+	// full-policy fallback (direct entitlements / dynamic value mappings) can read them from the cache
+	// rather than re-scanning both endpoints on every request.
 	attributes, err := c.retriever.ListAllAttributes(ctx)
 	if err != nil {
 		return err

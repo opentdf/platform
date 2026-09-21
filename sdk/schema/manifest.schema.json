@@ -129,8 +129,9 @@
                 "type": "object",
                 "properties": {
                   "alg": {
-                    "description": "Algorithm used to generate the root signature of the payload",
-                    "type": "string"
+                    "description": "Algorithm used to generate the root signature of the payload. HS256 only: the root signature covers the aggregate hash, which AES-GCM never processes, so a GMAC root has no authentication tag to read back out. An absent alg means HS256.",
+                    "type": "string",
+                    "enum": ["HS256"]
                   },
                   "sig": {
                     "description": "The payload signature",

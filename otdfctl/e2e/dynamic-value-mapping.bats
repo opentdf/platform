@@ -93,17 +93,17 @@ teardown_file() {
     # operator is required
     run_otdfctl_dvm create --attribute "$DVM_ATTR_ID" --selector "$SELECTOR" --action "$ACTION_READ_NAME"
         assert_failure
-        assert_output --partial "resolver operator [--operator] is required"
+        assert_output --partial 'required flag(s) "operator" not set'
 
     # an attribute definition reference is required
     run_otdfctl_dvm create --selector "$SELECTOR" --operator IN --action "$ACTION_READ_NAME"
         assert_failure
-        assert_output --partial "Attribute Definition reference [--attribute] is required"
+        assert_output --partial 'required flag(s) "attribute" not set'
 
     # an action is required
     run_otdfctl_dvm create --attribute "$DVM_ATTR_ID" --selector "$SELECTOR" --operator IN
         assert_failure
-        assert_output --partial "At least one Action [--action] is required"
+        assert_output --partial 'required flag(s) "action" not set'
 }
 
 @test "Create dynamic value mapping rejects a HIERARCHY definition" {

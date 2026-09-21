@@ -15,6 +15,7 @@ import (
 	"github.com/opentdf/platform/service/internal/access/v2/obligations"
 	"github.com/opentdf/platform/service/internal/subjectmappingbuiltin"
 	"github.com/opentdf/platform/service/logger"
+	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
 var (
@@ -24,6 +25,29 @@ var (
 	ErrInvalidRegisteredResourceValue = errors.New("access: invalid registered resource value")
 	ErrInvalidDynamicValueMapping     = errors.New("access: invalid dynamic value mapping")
 )
+
+// isExplicitlyInactive reports whether an active state was loaded and is false. An unset state is
+// not inactive: targeted lookups, synthetic values, and in-memory fixtures all leave it unset.
+func isExplicitlyInactive(active *wrapperspb.BoolValue) bool {
+	return active != nil && !active.GetValue()
+}
+
+// isDeactivated reports whether an attribute value, or the definition owning it, is deactivated.
+// The cascade_deactivation trigger deactivates a definition's values with it, so an active value
+// under a deactivated definition is a bad state: denied defensively, and logged as an error.
+func isDeactivated(ctx context.Context, l *logger.Logger, attributeAndValue *attrs.GetAttributeValuesByFqnsResponse_AttributeAndValue) bool {
+	valueDeactivated := isExplicitlyInactive(attributeAndValue.GetValue().GetActive())
+	definitionDeactivated := isExplicitlyInactive(attributeAndValue.GetAttribute().GetActive())
+
+	if definitionDeactivated && attributeAndValue.GetValue().GetActive().GetValue() {
+		l.ErrorContext(ctx, "bad policy state: active attribute value under a deactivated definition - denying access",
+			slog.String("attribute_value_fqn", attributeAndValue.GetValue().GetFqn()),
+			slog.String("attribute_definition_fqn", attributeAndValue.GetAttribute().GetFqn()),
+		)
+	}
+
+	return valueDeactivated || definitionDeactivated
+}
 
 // getDefinition parses the value FQN and uses it to retrieve the definition from the provided definitions map
 func getDefinition(valueFQN string, allDefinitionsByDefFQN map[string]*policy.Attribute) (*policy.Attribute, error) {
@@ -112,7 +136,7 @@ func populateLowerValuesIfHierarchy(
 		entitledActionsSet[action.GetName()] = action
 	}
 	for _, value := range definition.GetValues() {
-		if lower {
+		if lower && !isExplicitlyInactive(value.GetActive()) {
 			alreadyEntitledActions, exists := entitledActionsPerAttributeValueFqn[value.GetFqn()]
 			if !exists {
 				entitledActionsPerAttributeValueFqn[value.GetFqn()] = entitledActions
@@ -163,6 +187,9 @@ func populateHigherValuesIfHierarchy(
 				"value FQN of hierarchy attribute not found available for lookup, may not have had subject mappings associated or provided",
 				slog.String("value_fqn", value.GetFqn()),
 			)
+			continue
+		}
+		if isDeactivated(ctx, l, fullValue) {
 			continue
 		}
 		decisionableAttributes[value.GetFqn()] = &attrs.GetAttributeValuesByFqnsResponse_AttributeAndValue{
@@ -254,6 +281,15 @@ func getResourceDecisionableAttributes(
 
 		attributeAndValue, ok := entitleableAttributesByValueFQN[attrValueFQN]
 
+		// A deactivated value is left out of the decisionable set so the resource carrying it is
+		// denied downstream, and so it is never synthesized as an ad-hoc value below.
+		if ok && isDeactivated(ctx, logger, attributeAndValue) {
+			logger.WarnContext(ctx, "deactivated attribute value on resource - denying access",
+				slog.String("attribute_value_fqn", attrValueFQN),
+			)
+			continue
+		}
+
 		if !ok {
 			// The value FQN is not a concrete policy value. A synthetic value is created
 			// when either direct entitlements are enabled (experimental) OR the parent
@@ -263,6 +299,15 @@ func getResourceDecisionableAttributes(
 			if err != nil {
 				// definition not found: add to not found list and skip
 				notFoundFQNs = append(notFoundFQNs, attrValueFQN)
+				continue
+			}
+
+			// A deactivated definition cannot back a synthetic value, or an ad-hoc value under a
+			// deactivated definition would remain satisfiable.
+			if isExplicitlyInactive(parentDefinition.GetActive()) {
+				logger.WarnContext(ctx, "deactivated attribute definition on resource - denying access",
+					slog.String("attribute_value_fqn", attrValueFQN),
+				)
 				continue
 			}
 

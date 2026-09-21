@@ -5,6 +5,7 @@ import (
 	"encoding"
 	"encoding/json"
 	"log/slog"
+	"maps"
 	"reflect"
 
 	dotnotation "github.com/opentdf/platform/service/internal/dotnotation"
@@ -33,11 +34,11 @@ func (a *Logger) applyJWTClaimEnrichment(ctx context.Context, entry map[string]a
 		return
 	}
 
-	a.applyMappedJWTClaims(ctx, entry, claimsMap)
+	a.applyMappedJWTClaims(ctx, entry, claimsMap, a.config.JWTClaimMappings)
 }
 
-func (a *Logger) applyMappedJWTClaims(ctx context.Context, entry map[string]any, claimsMap map[string]any) {
-	for _, mapping := range a.config.JWTClaimMappings {
+func (a *Logger) applyMappedJWTClaims(ctx context.Context, entry map[string]any, claimsMap map[string]any, mappings []JWTClaimMapping) {
+	for _, mapping := range mappings {
 		if mapping.Claim == "" || mapping.Path == "" {
 			continue
 		}
@@ -116,6 +117,16 @@ func normalizeAuditValue(value any) any {
 		for i := 0; i < structType.NumField(); i++ {
 			field := structType.Field(i)
 			if !field.IsExported() {
+				continue
+			}
+			// Inlined embedded structs are flattened into the parent payload,
+			// matching encoding/json and the audit path schema.
+			if isInlinedEmbeddedField(field) {
+				embedded, ok := normalizeAuditValue(rv.Field(i).Interface()).(map[string]any)
+				if !ok {
+					continue
+				}
+				maps.Copy(normalized, embedded)
 				continue
 			}
 			opts, _ := parseAuditFieldOptions(field)

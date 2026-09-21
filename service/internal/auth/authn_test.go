@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"bytes"
 	"context"
 	"crypto"
 	"crypto/rand"
@@ -727,7 +728,7 @@ func (s *AuthSuite) Test_ConnectAuthNInterceptor_RoleProviderErrorReturnsInterna
 		procedure: "/kas.AccessService/Rewrap",
 	}
 	req.Header().Set("Authorization", "Bearer "+string(signedTok))
-	_, err = interceptor(next)(s.T().Context(), req)
+	_, err = interceptor.WrapUnary(next)(s.T().Context(), req)
 	s.Require().Error(err)
 	s.Equal(connect.CodeInternal, connect.CodeOf(err))
 	s.False(called)
@@ -756,6 +757,127 @@ func (r *authnTestRequest) HTTPMethod() string {
 		return http.MethodPost
 	}
 	return r.httpMethod
+}
+
+// fakeStreamingHandlerConn is a minimal connect.StreamingHandlerConn used to
+// drive the streaming auth interceptors without a live stream.
+type fakeStreamingHandlerConn struct {
+	spec        connect.Spec
+	reqHeader   http.Header
+	respHeader  http.Header
+	respTrailer http.Header
+}
+
+func newFakeStreamingHandlerConn(procedure string) *fakeStreamingHandlerConn {
+	return &fakeStreamingHandlerConn{
+		spec:        connect.Spec{Procedure: procedure, StreamType: connect.StreamTypeBidi},
+		reqHeader:   http.Header{},
+		respHeader:  http.Header{},
+		respTrailer: http.Header{},
+	}
+}
+
+func (c *fakeStreamingHandlerConn) Spec() connect.Spec           { return c.spec }
+func (c *fakeStreamingHandlerConn) Peer() connect.Peer           { return connect.Peer{} }
+func (c *fakeStreamingHandlerConn) Receive(any) error            { return nil }
+func (c *fakeStreamingHandlerConn) RequestHeader() http.Header   { return c.reqHeader }
+func (c *fakeStreamingHandlerConn) Send(any) error               { return nil }
+func (c *fakeStreamingHandlerConn) ResponseHeader() http.Header  { return c.respHeader }
+func (c *fakeStreamingHandlerConn) ResponseTrailer() http.Header { return c.respTrailer }
+
+func (s *AuthSuite) Test_ConnectAuthNInterceptor_Streaming_MissingAuthHeaderExpectError() {
+	interceptor := s.auth.ConnectAuthNInterceptor()
+	called := false
+	next := func(context.Context, connect.StreamingHandlerConn) error {
+		called = true
+		return nil
+	}
+	conn := newFakeStreamingHandlerConn("/kas.AccessService/Rewrap")
+
+	err := interceptor.WrapStreamingHandler(next)(s.T().Context(), conn)
+
+	s.Require().Error(err)
+	s.Equal(connect.CodeUnauthenticated, connect.CodeOf(err))
+	s.False(called, "handler must not run when stream authentication fails")
+}
+
+func (s *AuthSuite) Test_ConnectAuthNInterceptor_Streaming_ValidTokenEnrichesContext() {
+	tok := jwt.New()
+	s.Require().NoError(tok.Set(jwt.ExpirationKey, time.Now().Add(time.Hour)))
+	s.Require().NoError(tok.Set("iss", s.server.URL))
+	s.Require().NoError(tok.Set("aud", "test"))
+	s.Require().NoError(tok.Set("azp", "client-stream"))
+	s.Require().NoError(tok.Set("realm_access", map[string][]string{"roles": {"opentdf-standard"}}))
+
+	// Stub checkToken to bypass DPoP validation and enrich the context the way the
+	// real implementation does, so the handler can read the authenticated token.
+	s.auth._testCheckTokenFunc = func(ctx context.Context, _ []string, _ receiverInfo, _ []string) (jwt.Token, context.Context, error) {
+		return tok, ctxAuth.ContextWithAuthNInfo(ctx, nil, tok, "raw-token"), nil
+	}
+	s.T().Cleanup(func() { s.auth._testCheckTokenFunc = nil })
+
+	interceptor := s.auth.ConnectAuthNInterceptor()
+	var handlerToken jwt.Token
+	next := func(ctx context.Context, _ connect.StreamingHandlerConn) error {
+		handlerToken = ctxAuth.GetAccessTokenFromContext(ctx, s.auth.logger)
+		return nil
+	}
+	conn := newFakeStreamingHandlerConn("/kas.AccessService/Rewrap")
+	conn.RequestHeader().Set("Authorization", "DPoP token")
+
+	err := interceptor.WrapStreamingHandler(next)(s.T().Context(), conn)
+
+	s.Require().NoError(err)
+	s.Require().NotNil(handlerToken, "authenticated token should reach the handler context")
+	s.Equal("client-stream", handlerToken.PrivateClaims()["azp"])
+}
+
+func (s *AuthSuite) Test_ConnectAuthNInterceptor_Streaming_SetsNonceHeaderWhenRequired() {
+	auth := s.newAuthDPoP(true)
+
+	tok := jwt.New()
+	s.Require().NoError(tok.Set(jwt.ExpirationKey, time.Now().Add(time.Hour)))
+	s.Require().NoError(tok.Set("iss", s.server.URL))
+	s.Require().NoError(tok.Set("aud", "test"))
+
+	// Bypass DPoP proof validation; on success the interceptor still issues a
+	// fresh nonce on the stream response for the client's next request.
+	auth._testCheckTokenFunc = func(ctx context.Context, _ []string, _ receiverInfo, _ []string) (jwt.Token, context.Context, error) {
+		return tok, ctxAuth.ContextWithAuthNInfo(ctx, nil, tok, "raw-token"), nil
+	}
+
+	interceptor := auth.ConnectAuthNInterceptor()
+	called := false
+	next := func(context.Context, connect.StreamingHandlerConn) error {
+		called = true
+		return nil
+	}
+	conn := newFakeStreamingHandlerConn(dpopChallengeRoute)
+	conn.RequestHeader().Set("Authorization", "DPoP token")
+	conn.RequestHeader().Set("DPoP", "proof")
+
+	err := interceptor.WrapStreamingHandler(next)(s.T().Context(), conn)
+
+	s.Require().NoError(err)
+	s.True(called, "handler should run once the stream is authenticated")
+	s.NotEmpty(conn.ResponseHeader().Get("DPoP-Nonce"), "a fresh nonce should be set on the stream response when RequireNonce is enabled")
+}
+
+func (s *AuthSuite) Test_ConnectAuthNInterceptor_Streaming_PublicRouteBypassesAuth() {
+	interceptor := s.auth.ConnectAuthNInterceptor()
+	var publicRoute, publicRouteSet bool
+	next := func(ctx context.Context, _ connect.StreamingHandlerConn) error {
+		publicRoute, publicRouteSet = ctxAuth.PublicRouteFromContext(ctx)
+		return nil
+	}
+	// No Authorization header set: a public route must still succeed.
+	conn := newFakeStreamingHandlerConn("/public")
+
+	err := interceptor.WrapStreamingHandler(next)(s.T().Context(), conn)
+
+	s.Require().NoError(err, "public routes should bypass stream authentication")
+	s.True(publicRouteSet)
+	s.True(publicRoute)
 }
 
 func (s *AuthSuite) Test_ConnectAuthNInterceptor_SetsPublicRouteContextForChainedMiddleware() {
@@ -833,7 +955,7 @@ func (s *AuthSuite) Test_ConnectAuthNInterceptor_When_Authorization_Header_Missi
 	// Create a request
 	req := connect.NewRequest[string](nil)
 
-	_, err := interceptor(func(ctx context.Context, req connect.AnyRequest) (connect.AnyResponse, error) {
+	_, err := interceptor.WrapUnary(func(ctx context.Context, req connect.AnyRequest) (connect.AnyResponse, error) {
 		return next(ctx, req)
 	})(context.Background(), req)
 
@@ -854,7 +976,7 @@ func (s *AuthSuite) Test_ConnectAuthNInterceptor_RequiresHeaderWithExistingConte
 	req := connect.NewRequest[string](nil)
 	ctx := ctxAuth.ContextWithAuthNInfo(s.T().Context(), nil, jwt.New(), "raw-token")
 
-	_, err := interceptor(next)(ctx, req)
+	_, err := interceptor.WrapUnary(next)(ctx, req)
 
 	s.Require().Error(err)
 
@@ -918,9 +1040,34 @@ func (s *AuthSuite) Test_ConnectAuthNInterceptor_DPoPNonceError_IssuesUseNonceCh
 }
 
 func (s *AuthSuite) Test_CheckToken_When_Authorization_Header_Invalid_Expect_Error() {
-	_, _, err := s.auth.checkToken(context.Background(), []string{"BPOP "}, receiverInfo{}, nil)
+	_, _, err := s.auth.checkToken(context.Background(), []string{"DPOP "}, receiverInfo{}, nil)
 	s.Require().Error(err)
 	s.Equal("not of type bearer or dpop", err.Error())
+}
+
+func (s *AuthSuite) Test_CheckToken_When_Authorization_Header_Invalid_Does_Not_Log_Credential() {
+	for _, tc := range []struct {
+		name       string
+		authHeader string
+	}{
+		{name: "mixed-case bearer scheme", authHeader: "bearer reusable-credential"},
+		{name: "bearer missing scheme separator", authHeader: "Bearerreusable-credential"},
+		{name: "mixed-case dpop scheme", authHeader: "dpop reusable-credential"},
+		{name: "dpop missing scheme separator", authHeader: "DPoPreusable-credential"},
+	} {
+		s.Run(tc.name, func() {
+			var logs bytes.Buffer
+			auth := *s.auth
+			auth.logger = &logger.Logger{Logger: slog.New(slog.NewJSONHandler(&logs, nil))}
+
+			_, _, err := auth.checkToken(context.Background(), []string{tc.authHeader}, receiverInfo{}, nil)
+
+			s.Require().Error(err)
+			s.Equal("not of type bearer or dpop", err.Error())
+			s.Contains(logs.String(), "failed to validate authentication header: not of type bearer or dpop")
+			s.NotContains(logs.String(), "reusable-credential")
+		})
+	}
 }
 
 func (s *AuthSuite) Test_CheckToken_When_Missing_Issuer_Expect_Error() {
@@ -1222,7 +1369,7 @@ func (s *AuthSuite) Test_ConnectAuthNInterceptor_PropagatesHTTPMethod() {
 			}
 			req.Header().Set("Authorization", "DPoP "+string(signedTok))
 
-			_, err := interceptor(next)(s.T().Context(), req)
+			_, err := interceptor.WrapUnary(next)(s.T().Context(), req)
 			s.Require().NoError(err)
 			s.True(called)
 			s.Equal([]string{method}, capturedMethods)
@@ -1259,7 +1406,7 @@ func (s *AuthSuite) Test_ConnectAuthNInterceptor_NormalizesHostForHTU() {
 	req.Header().Set("Authorization", "DPoP test")
 	req.Header().Set("Host", "EXAMPLE.com:443")
 
-	_, err := interceptor(next)(s.T().Context(), req)
+	_, err := interceptor.WrapUnary(next)(s.T().Context(), req)
 	s.Require().NoError(err)
 	s.True(called)
 	// Host lowercased; :443 stripped for https (default) but kept for http (non-default).
@@ -1596,7 +1743,7 @@ func (s *AuthSuite) connectAuthError(auth *Authentication, retErr error) *connec
 	}
 	req.Header().Set("Authorization", "DPoP token")
 	req.Header().Set("DPoP", "proof")
-	_, err := interceptor(next)(s.T().Context(), req)
+	_, err := interceptor.WrapUnary(next)(s.T().Context(), req)
 	s.Require().Error(err)
 	var connectErr *connect.Error
 	s.Require().ErrorAs(err, &connectErr)

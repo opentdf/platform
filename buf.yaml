@@ -1,6 +1,7 @@
 version: v2
 modules:
   - path: service
+    name: buf.build/opentdf/platform
     excludes:
       - service/logger/audit
 deps:

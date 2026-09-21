@@ -10,6 +10,7 @@ import (
 	"hash/crc32"
 	"io"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -361,6 +362,178 @@ func TestSegmentWriter_AllowsGapsOnFinalize(t *testing.T) {
 	writer.Close()
 }
 
+func TestSegmentWriter_FinalizeRequiresSegmentZero(t *testing.T) {
+	// Gaps are fine, but the set has to start at 0: only segment 0 emits
+	// the payload local file header, and Finalize sizes every offset it
+	// records as though that header were at the front of the stream.
+	writer := NewSegmentTDFWriter(1)
+	ctx := t.Context()
+
+	_, err := writer.WriteSegment(ctx, 1, 5, crc32.ChecksumIEEE([]byte("first")))
+	require.NoError(t, err)
+
+	_, err = writer.WriteSegment(ctx, 2, 6, crc32.ChecksumIEEE([]byte("second")))
+	require.NoError(t, err)
+
+	_, err = writer.Finalize(ctx, []byte("manifest"))
+	require.ErrorIs(t, err, ErrNoSegmentZero)
+
+	writer.Close()
+}
+
+func TestSegmentWriter_CleanupSegmentZeroBlocksFinalize(t *testing.T) {
+	// Dropping segment 0 after the fact is invisible to IsComplete --
+	// the inferred order becomes [1], which is internally consistent --
+	// so the header check has to stand on its own.
+	writer := NewSegmentTDFWriter(2)
+	ctx := t.Context()
+
+	_, err := writer.WriteSegment(ctx, 0, 5, crc32.ChecksumIEEE([]byte("first")))
+	require.NoError(t, err)
+
+	_, err = writer.WriteSegment(ctx, 1, 6, crc32.ChecksumIEEE([]byte("second")))
+	require.NoError(t, err)
+
+	require.NoError(t, writer.CleanupSegment(0))
+
+	_, err = writer.Finalize(ctx, []byte("manifest"))
+	require.ErrorIs(t, err, ErrNoSegmentZero)
+	require.NotErrorIs(t, err, ErrSegmentMissing, "the remaining segments are complete; only the header is gone")
+
+	writer.Close()
+}
+
+func TestSegmentWriter_FinalizeAfterSupplyingSegmentZero(t *testing.T) {
+	// ErrNoSegmentZero invites the caller to write segment 0 and try again,
+	// so the retry has to produce a correct archive. Finalize derives the
+	// segment order once and keeps it: if the check ran after that
+	// derivation, this second Finalize would succeed against an order that
+	// still omitted 0, combining a CRC over two of the three segments.
+	writer := NewSegmentTDFWriter(3)
+	ctx := t.Context()
+
+	segments := [][]byte{[]byte("first"), []byte("second"), []byte("third")}
+
+	for _, index := range []int{1, 2} {
+		data := segments[index]
+		_, err := writer.WriteSegment(ctx, index, uint64(len(data)), crc32.ChecksumIEEE(data))
+		require.NoError(t, err)
+	}
+
+	_, err := writer.Finalize(ctx, []byte("manifest"))
+	require.ErrorIs(t, err, ErrNoSegmentZero)
+
+	headerBytes, err := writer.WriteSegment(ctx, 0, uint64(len(segments[0])), crc32.ChecksumIEEE(segments[0]))
+	require.NoError(t, err, "the writer stays usable after ErrNoSegmentZero")
+	require.NotEmpty(t, headerBytes, "segment 0 carries the payload local file header")
+
+	var archive []byte
+	archive = append(archive, headerBytes...)
+	for _, data := range segments {
+		archive = append(archive, data...)
+	}
+
+	finalBytes, err := writer.Finalize(ctx, []byte("manifest"))
+	require.NoError(t, err, "Finalize should succeed once segment 0 arrives")
+	archive = append(archive, finalBytes...)
+
+	zipReader, err := zip.NewReader(bytes.NewReader(archive), int64(len(archive)))
+	require.NoError(t, err, "retry should produce a readable ZIP")
+
+	payloadFile := findFileByName(zipReader, TDFPayloadFileName)
+	require.NotNil(t, payloadFile)
+
+	payloadReader, err := payloadFile.Open()
+	require.NoError(t, err)
+	defer payloadReader.Close()
+
+	// Reading through archive/zip validates the recorded CRC against the
+	// bytes actually present, which is what a stale order would break.
+	content, err := io.ReadAll(payloadReader)
+	require.NoError(t, err, "payload CRC must cover every segment, including 0")
+	assert.Equal(t, bytes.Join(segments, nil), content)
+
+	writer.Close()
+}
+
+func TestSegmentWriter_FinalizeWithoutAnySegments(t *testing.T) {
+	// No segments at all is incomplete input, not a missing-header problem:
+	// the general error stays reachable and keeps its distinct meaning.
+	writer := NewSegmentTDFWriter(2)
+
+	_, err := writer.Finalize(t.Context(), []byte("manifest"))
+	require.ErrorIs(t, err, ErrSegmentMissing)
+	require.NotErrorIs(t, err, ErrNoSegmentZero)
+
+	writer.Close()
+}
+
+func TestSegmentWriter_CleanupOnlySegmentZero(t *testing.T) {
+	// Cleaning up the last remaining segment leaves nothing to finalize, so
+	// this reports the general incomplete-input error rather than the
+	// segment-0-specific one -- "nothing to assemble" is the more useful
+	// diagnosis than "the header is gone".
+	writer := NewSegmentTDFWriter(1)
+	ctx := t.Context()
+
+	_, err := writer.WriteSegment(ctx, 0, 5, crc32.ChecksumIEEE([]byte("first")))
+	require.NoError(t, err)
+
+	require.NoError(t, writer.CleanupSegment(0))
+
+	_, err = writer.Finalize(ctx, []byte("manifest"))
+	require.ErrorIs(t, err, ErrSegmentMissing)
+	require.NotErrorIs(t, err, ErrNoSegmentZero)
+
+	writer.Close()
+}
+
+func TestSegmentWriter_CleanupSegmentRollsBackSizeAccounting(t *testing.T) {
+	// A cleaned-up index has to become indistinguishable from one that was
+	// never written, which sparse write sets already allow. Without the
+	// rollback the recorded sizes still cover the removed segment while the
+	// CRC covers only the survivors, and Finalize emits a trailer describing
+	// a payload the caller cannot produce.
+	writer := NewSegmentTDFWriter(3)
+	ctx := t.Context()
+
+	segments := [][]byte{[]byte("first"), []byte("second"), []byte("third")}
+
+	var archive []byte
+	for index, data := range segments {
+		headerBytes, err := writer.WriteSegment(ctx, index, uint64(len(data)), crc32.ChecksumIEEE(data))
+		require.NoError(t, err)
+		archive = append(archive, headerBytes...)
+		if index != 1 {
+			archive = append(archive, data...)
+		}
+	}
+
+	require.NoError(t, writer.CleanupSegment(1))
+
+	finalBytes, err := writer.Finalize(ctx, []byte("manifest"))
+	require.NoError(t, err)
+	archive = append(archive, finalBytes...)
+
+	zipReader, err := zip.NewReader(bytes.NewReader(archive), int64(len(archive)))
+	require.NoError(t, err, "offsets must describe the payload the caller actually assembled")
+
+	payloadFile := findFileByName(zipReader, TDFPayloadFileName)
+	require.NotNil(t, payloadFile)
+
+	payloadReader, err := payloadFile.Open()
+	require.NoError(t, err)
+	defer payloadReader.Close()
+
+	// Reading through archive/zip validates the recorded CRC against the
+	// bytes present, which is what stale size accounting would break.
+	content, err := io.ReadAll(payloadReader)
+	require.NoError(t, err, "payload CRC must cover exactly the surviving segments")
+	assert.Equal(t, []byte("firstthird"), content)
+
+	writer.Close()
+}
+
 func TestSegmentWriter_CleanupSegment(t *testing.T) {
 	// Test memory cleanup functionality
 	writer := NewSegmentTDFWriter(3)
@@ -517,4 +690,324 @@ func benchmarkSegmentWriter(b *testing.B, name string, writeOrder []int) {
 			writer.Close()
 		}
 	})
+}
+
+// TestApplyOptionsRestoresNilClock covers an option clearing Config.Now.
+// Now is exported on an exported Config and Option is a bare
+// func(*Config), so nothing stops an option from doing this; without a
+// restore the first header stamp panics in NewSegmentTDFWriter.
+func TestApplyOptionsRestoresNilClock(t *testing.T) {
+	clearClock := func(c *Config) { c.Now = nil }
+
+	cfg := applyOptions([]Option{clearClock})
+	require.NotNil(t, cfg.Now)
+	assert.False(t, cfg.Now().IsZero())
+
+	assert.NotPanics(t, func() {
+		NewSegmentTDFWriter(1, clearClock)
+	})
+}
+
+// TestMSDosTimeDateClampsOutOfRangeYears pins the clamping behaviour for
+// years the MS-DOS date cannot hold. The "wraps to" column is what the
+// unclamped encoder produced, and is the reason clamping exists: every
+// one of those is a silently wrong date, not a failure.
+func TestMSDosTimeDateClampsOutOfRangeYears(t *testing.T) {
+	for _, tc := range []struct {
+		name    string
+		in      time.Time
+		want    time.Time
+		wrapsTo string
+	}{
+		{
+			name:    "unix epoch",
+			in:      time.Unix(0, 0).UTC(),
+			want:    time.Date(zipBaseYear, time.January, 1, 0, 0, 0, 0, time.UTC),
+			wrapsTo: "2098-01-01",
+		},
+		{
+			name:    "zero time",
+			in:      time.Time{},
+			want:    time.Date(zipBaseYear, time.January, 1, 0, 0, 0, 0, time.UTC),
+			wrapsTo: "2049-01-01",
+		},
+		{
+			name: "one second before the base year",
+			in:   time.Date(zipBaseYear-1, time.December, 31, 23, 59, 59, 0, time.UTC),
+			want: time.Date(zipBaseYear, time.January, 1, 0, 0, 0, 0, time.UTC),
+		},
+		{
+			name: "past the last representable year",
+			in:   time.Date(zipMaxYear+1, time.January, 1, 0, 0, 0, 0, time.UTC),
+			want: time.Date(zipMaxYear, time.December, 31, 23, 59, 58, 0, time.UTC),
+		},
+		{
+			name: "in range is untouched",
+			in:   time.Date(2024, time.June, 1, 12, 30, 8, 0, time.UTC),
+			want: time.Date(2024, time.June, 1, 12, 30, 8, 0, time.UTC),
+		},
+		{
+			name: "first representable instant",
+			in:   time.Date(zipBaseYear, time.January, 1, 0, 0, 0, 0, time.UTC),
+			want: time.Date(zipBaseYear, time.January, 1, 0, 0, 0, 0, time.UTC),
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			dosTime, dosDate := msDosTimeDate(tc.in)
+
+			wantTime, wantDate := encodeMSDos(tc.want)
+			assert.Equal(t, wantDate, dosDate, "date; unclamped this wrapped to %s", tc.wrapsTo)
+			assert.Equal(t, wantTime, dosTime, "time")
+		})
+	}
+}
+
+// encodeMSDos packs t without any clamping, so the expectations above are
+// derived independently of the code under test.
+func encodeMSDos(t time.Time) (uint16, uint16) {
+	dosTime := t.Hour()<<11 | t.Minute()<<5 | t.Second()>>1
+	dosDate := (t.Year()-zipBaseYear)<<9 | int(t.Month())<<5 | t.Day()
+	return uint16(dosTime), uint16(dosDate)
+}
+
+// TestWriterClampsOutOfRangeClock drives a full archive with an epoch
+// clock and reads the timestamps back through archive/zip, covering the
+// WithClock -> local header -> central directory path end to end.
+func TestWriterClampsOutOfRangeClock(t *testing.T) {
+	ctx := t.Context()
+	writer := NewSegmentTDFWriter(1, WithClock(func() time.Time { return time.Unix(0, 0).UTC() }))
+
+	payload := []byte("payload")
+	segmentBytes, err := writer.WriteSegment(ctx, 0, uint64(len(payload)), crc32.ChecksumIEEE(payload))
+	require.NoError(t, err)
+
+	var allBytes []byte
+	allBytes = append(allBytes, segmentBytes...)
+	allBytes = append(allBytes, payload...)
+
+	finalBytes, err := writer.Finalize(ctx, []byte(`{"manifest":true}`))
+	require.NoError(t, err)
+	allBytes = append(allBytes, finalBytes...)
+
+	zipReader, err := zip.NewReader(bytes.NewReader(allBytes), int64(len(allBytes)))
+	require.NoError(t, err, "epoch clock should still produce a readable ZIP")
+	require.Len(t, zipReader.File, 2)
+
+	for _, f := range zipReader.File {
+		assert.Equal(t, zipBaseYear, f.Modified.Year(),
+			"%s should be clamped to the base year, not wrapped into the future", f.Name)
+	}
+}
+
+// TestSegmentWriterErrorMutated pins Error.Mutated across every refusal a
+// caller can provoke through the public surface.
+//
+// The flag is the entire basis on which a wrapping writer decides between
+// retrying and fencing, and it is not recoverable from anything else in the
+// error: ErrSegmentMissing and ErrZip64Required are each returned from both
+// sides of the mutation boundary, so matching on the sentinel classifies
+// nothing. Getting it backwards is silent in both directions -- false when it
+// should be true lets a retry append a second payload entry to the central
+// directory, yielding an archive some readers accept and misread; true when it
+// should be false discards an already-encrypted, already-uploaded payload over
+// a refusal that changed nothing.
+func TestSegmentWriterErrorMutated(t *testing.T) {
+	// A segment whose recorded size alone crosses the ZIP64 threshold. Only
+	// the size is recorded, not the bytes, so the threshold can be crossed
+	// without allocating anything.
+	const smallSegment = 4
+
+	for _, tc := range []struct {
+		name string
+		// provoke returns the error to classify, having driven the writer
+		// into the state that produces it.
+		provoke     func(t *testing.T, ctx context.Context) error
+		wantErr     error
+		wantMutated bool
+	}{
+		{
+			name: "closed writer",
+			provoke: func(t *testing.T, ctx context.Context) error {
+				w := NewSegmentTDFWriter(1)
+				require.NoError(t, w.Close())
+				_, err := w.Finalize(ctx, []byte(`{}`))
+				return err
+			},
+			wantErr:     ErrWriterClosed,
+			wantMutated: false,
+		},
+		{
+			name: "already finalized",
+			provoke: func(t *testing.T, ctx context.Context) error {
+				w := NewSegmentTDFWriter(1)
+				_, err := w.WriteSegment(ctx, 0, smallSegment, 0)
+				require.NoError(t, err)
+				_, err = w.Finalize(ctx, []byte(`{}`))
+				require.NoError(t, err)
+				_, err = w.Finalize(ctx, []byte(`{}`))
+				return err
+			},
+			wantErr:     ErrWriterClosed,
+			wantMutated: false,
+		},
+		{
+			name: "cancelled context",
+			provoke: func(t *testing.T, ctx context.Context) error {
+				w := NewSegmentTDFWriter(1)
+				_, err := w.WriteSegment(ctx, 0, smallSegment, 0)
+				require.NoError(t, err)
+				cancelled, cancel := context.WithCancel(ctx)
+				cancel()
+				_, err = w.Finalize(cancelled, []byte(`{}`))
+				return err
+			},
+			wantErr:     context.Canceled,
+			wantMutated: false,
+		},
+		{
+			name: "no segments at all",
+			provoke: func(_ *testing.T, ctx context.Context) error {
+				_, err := NewSegmentTDFWriter(1).Finalize(ctx, []byte(`{}`))
+				return err
+			},
+			wantErr:     ErrSegmentMissing,
+			wantMutated: false,
+		},
+		{
+			// The companion to the mutated ErrSegmentMissing below: same
+			// sentinel, opposite verdict, which is why the flag exists.
+			name: "missing segment zero",
+			provoke: func(t *testing.T, ctx context.Context) error {
+				w := NewSegmentTDFWriter(2)
+				_, err := w.WriteSegment(ctx, 1, smallSegment, 0)
+				require.NoError(t, err)
+				_, err = w.Finalize(ctx, []byte(`{}`))
+				return err
+			},
+			wantErr:     ErrNoSegmentZero,
+			wantMutated: false,
+		},
+		{
+			// Past SetOrder: the derived order is retained, so a retry that
+			// supplied the missing bytes would finalize against an order
+			// computed before they arrived.
+			name: "payload needs zip64 under Zip64Never",
+			provoke: func(t *testing.T, ctx context.Context) error {
+				w := NewSegmentTDFWriter(1,
+					WithZip64Mode(Zip64Never),
+					WithMaxNonZip64Value(smallSegment-1))
+				_, err := w.WriteSegment(ctx, 0, smallSegment, 0)
+				require.NoError(t, err)
+				_, err = w.Finalize(ctx, []byte(`{}`))
+				return err
+			},
+			wantErr:     ErrZip64Required,
+			wantMutated: true,
+		},
+		{
+			// Past the second boundary: the payload entry is already in the
+			// central directory, so a retry adds a duplicate. The payload
+			// itself fits under the threshold here; only the directory's
+			// offset, which the local file header pushes past it, does not.
+			name: "central directory offset needs zip64 under Zip64Never",
+			provoke: func(t *testing.T, ctx context.Context) error {
+				w := NewSegmentTDFWriter(1,
+					WithZip64Mode(Zip64Never),
+					WithMaxNonZip64Value(smallSegment+1))
+				_, err := w.WriteSegment(ctx, 0, smallSegment, 0)
+				require.NoError(t, err)
+				_, err = w.Finalize(ctx, []byte(`{}`))
+				return err
+			},
+			wantErr:     ErrZip64Required,
+			wantMutated: true,
+		},
+		{
+			name: "write segment on a closed writer",
+			provoke: func(t *testing.T, ctx context.Context) error {
+				w := NewSegmentTDFWriter(1)
+				require.NoError(t, w.Close())
+				_, err := w.WriteSegment(ctx, 0, smallSegment, 0)
+				return err
+			},
+			wantErr:     ErrWriterClosed,
+			wantMutated: false,
+		},
+		{
+			name: "duplicate segment",
+			provoke: func(t *testing.T, ctx context.Context) error {
+				w := NewSegmentTDFWriter(1)
+				_, err := w.WriteSegment(ctx, 0, smallSegment, 0)
+				require.NoError(t, err)
+				_, err = w.WriteSegment(ctx, 0, smallSegment, 0)
+				return err
+			},
+			wantErr:     ErrDuplicateSegment,
+			wantMutated: false,
+		},
+		{
+			name: "negative segment index",
+			provoke: func(_ *testing.T, ctx context.Context) error {
+				_, err := NewSegmentTDFWriter(1).WriteSegment(ctx, -1, smallSegment, 0)
+				return err
+			},
+			wantErr:     ErrInvalidSegment,
+			wantMutated: false,
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			err := tc.provoke(t, t.Context())
+			require.ErrorIs(t, err, tc.wantErr)
+
+			// Asserted as a typed *Error, not via any interface: a caller can
+			// only read the flag if the concrete type survives wrapping.
+			var zerr *Error
+			require.ErrorAs(t, err, &zerr)
+			assert.Equal(t, writerTypeSegment, zerr.Type)
+			assert.Equal(t, tc.wantMutated, zerr.Mutated,
+				"Mutated decides retry vs. fence; %q is on the %s side of the boundary",
+				tc.name, map[bool]string{true: "mutated", false: "untouched"}[tc.wantMutated])
+		})
+	}
+}
+
+// TestSegmentWriterNonMutatingFinalizeIsRetryable checks the promise Mutated
+// false actually makes. Asserting the flag alone would pass just as well if
+// the writer were quietly wrecked, so this drives a refused Finalize through
+// to a successful one and reads the archive back.
+func TestSegmentWriterNonMutatingFinalizeIsRetryable(t *testing.T) {
+	ctx := t.Context()
+	w := NewSegmentTDFWriter(2)
+
+	payload := []byte("second segment arrives late")
+	tail, err := w.WriteSegment(ctx, 1, uint64(len(payload)), crc32.ChecksumIEEE(payload))
+	require.NoError(t, err)
+
+	_, err = w.Finalize(ctx, []byte(`{"manifest":true}`))
+	require.ErrorIs(t, err, ErrNoSegmentZero)
+	var zerr *Error
+	require.ErrorAs(t, err, &zerr)
+	require.False(t, zerr.Mutated)
+
+	// Segment 0 arrives afterwards. Had the refused Finalize retained a
+	// derived order, this segment would be absent from it and the archive
+	// below would be short one entry or fail outright.
+	head := []byte("first ")
+	header, err := w.WriteSegment(ctx, 0, uint64(len(head)), crc32.ChecksumIEEE(head))
+	require.NoError(t, err)
+
+	final, err := w.Finalize(ctx, []byte(`{"manifest":true}`))
+	require.NoError(t, err)
+
+	all := bytes.Join([][]byte{header, head, tail, payload, final}, nil)
+	zipReader, err := zip.NewReader(bytes.NewReader(all), int64(len(all)))
+	require.NoError(t, err, "the retried finalize must produce a readable archive")
+	require.Len(t, zipReader.File, 2)
+
+	f, err := zipReader.Open(TDFPayloadFileName)
+	require.NoError(t, err)
+	t.Cleanup(func() { assert.NoError(t, f.Close()) })
+	got, err := io.ReadAll(f)
+	require.NoError(t, err)
+	assert.Equal(t, append(append([]byte{}, head...), payload...), got)
 }

@@ -65,7 +65,7 @@ teardown_file() {
     # name is required
     run_otdfctl_rmg create --namespace-id "$NS_ID"
     assert_failure
-    assert_output --partial "Flag '--name' is required"
+    assert_output --partial 'required flag(s) "name" not set'
 }
 
 @test "Get resource mapping group" {
@@ -87,7 +87,7 @@ teardown_file() {
     # id required
     run_otdfctl_rmg get
         assert_failure
-        assert_output --partial "is required"
+        assert_output --partial 'required flag(s) "id" not set'
     run_otdfctl_rmg get --id "test"
         assert_failure
         assert_output --partial "must be a valid UUID"

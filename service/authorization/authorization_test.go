@@ -737,6 +737,10 @@ func Test_GetEntitlementsFqnCasing(t *testing.T) {
 
 func Test_GetEntitlements_HandlesPagination(t *testing.T) {
 	logger := logger.CreateTestLogger()
+	smPaginationOffset = 3
+	smListCallCount = 0
+	attrPaginationOffset = 3
+	attrListCallCount = 0
 
 	listAttributeResp = attr.ListAttributesResponse{}
 	attrDef := policy.Attribute{
@@ -784,6 +788,7 @@ func Test_GetEntitlements_HandlesPagination(t *testing.T) {
 	require.NoError(t, err)
 
 	as := AuthorizationService{
+		config: &Config{Rego: CustomRego{Path: "custom.rego"}},
 		logger: logger,
 		sdk: &otdf.SDK{
 			SubjectMapping:  &paginatedMockSubjectMappingClient{},

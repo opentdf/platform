@@ -106,6 +106,18 @@ func (m Manual) GetDoc(cmd string) *Doc {
 	return m.En[cmd]
 }
 
+// MarkRequiredFlags enforces `required: true` doc metadata across every command
+// in the registry by marking each such flag required on its cobra command. It is
+// the single entry point callers invoke (once, at Execute time, after the command
+// tree is fully assembled) so that any command, current or added later, is
+// enforced without per-command wiring. Consumers that embed this registry (e.g.
+// tructl) call it the same way before executing their own root command.
+func (m Manual) MarkRequiredFlags() {
+	for _, doc := range m.En {
+		doc.MarkRequiredFlags()
+	}
+}
+
 func (m Manual) GetCommand(cmd string, opts ...CommandOpts) *Doc {
 	d := m.GetDoc(cmd)
 

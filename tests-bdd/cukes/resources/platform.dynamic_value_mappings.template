@@ -18,9 +18,9 @@ services:
     allow_dynamic_value_mappings: true
   kas:
     registered_kas_uri: http://{{ .hostname }}:{{ .platformPort }}
+    key_management: false
     preview:
       ec_tdf_enabled: false
-      key_management: false
     root_key: a8c4824daafcfa38ed0d13002e92b08720e6c4fcee67d52e954c1a6e045907d1 # For local development testing only
     keyring:
       - kid: e1

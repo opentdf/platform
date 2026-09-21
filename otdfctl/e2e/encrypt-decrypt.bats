@@ -1,12 +1,17 @@
 #!/usr/bin/env bats
 
+# bats file_tags=unattributed_encrypt
+
 # Tests for encrypt decrypt
+#
+# Tagged so action.yaml runs this file before the parallel batch. Several cases
+# here encrypt with no attributes, which falls back to the platform base key,
+# and key-base.bats sets one pointing at a KAS that does not resolve and cannot
+# unset it afterwards -- a base key can be replaced but not cleared. Scheduled
+# into the parallel batch this file would eventually land after key-base.bats
+# and fail on an undecryptable TDF. See the header of streaming.bats.
 
 setup_file() {
-
-  # TODO: Remove this file-level skip once otdfctl passes namespace flags for the namespaced action and subject mapping APIs used by encrypt/decrypt entitlement setup.
-  skip "Temporarily disabled [namespaced-subject-mappings]: encrypt/decrypt BATS setup still depends on pre-namespace subject mapping APIs"
-
   export CREDSFILE=creds.json
   echo -n '{"clientId":"opentdf","clientSecret":"secret"}' > $CREDSFILE
   export WITH_CREDS="--with-client-creds-file $CREDSFILE"
@@ -78,7 +83,8 @@ teardown() {
 }
 
 teardown_file(){
-    rm -f $SIGNED_ASSERTIONS_HS256 $SIGNED_ASSERTION_VERIFICATON_HS256 $SIGNED_ASSERTIONS_RS256 $SIGNED_ASSERTION_VERIFICATON_RS256
+    ./otdfctl --host "$HOST" $WITH_CREDS $DEBUG_LEVEL policy attributes namespaces unsafe delete --id "$NS_ID" --force
+    rm -f $SIGNED_ASSERTIONS_HS256 $SIGNED_ASSERTION_VERIFICATON_HS256 $SIGNED_ASSERTIONS_RS256 $SIGNED_ASSERTION_VERIFICATON_RS256 $RS_PRIVATE_KEY $RS_PUBLIC_KEY
 }
 
 @test "roundtrip TDF3, no attributes, file" {
@@ -101,6 +107,20 @@ teardown_file(){
 @test "roundtrip TDF3, one attribute, mixed case FQN, stdin" {
   echo $SECRET_TEXT | ./otdfctl encrypt -o $OUT_TXT --host $HOST --tls-no-verify $DEBUG_LEVEL $WITH_CREDS -a $MIXED_CASE_FQN
   ./otdfctl decrypt --host $HOST --tls-no-verify $DEBUG_LEVEL $WITH_CREDS $OUTFILE_TXT | grep "$SECRET_TEXT"
+}
+
+@test "inspect TDF3, one attribute, stdin" {
+  echo $SECRET_TEXT | ./otdfctl encrypt -o $OUT_TXT --host $HOST --tls-no-verify $DEBUG_LEVEL $WITH_CREDS -a $FQN
+
+  inspect_output=$(cat $OUTFILE_TXT | ./otdfctl --host $HOST --tls-no-verify $WITH_CREDS inspect)
+  assert_equal "$(echo "$inspect_output" | jq -r '.manifest.encryptionInformation.keyAccess | length')" "1"
+}
+
+@test "inspect rejects extra positional arguments" {
+  echo $SECRET_TEXT | ./otdfctl encrypt -o $OUT_TXT --host $HOST --tls-no-verify $DEBUG_LEVEL $WITH_CREDS -a $FQN
+
+  run sh -c "./otdfctl --host $HOST --tls-no-verify $WITH_CREDS inspect $OUTFILE_TXT extra-arg"
+  assert_failure
 }
 
 @test "allow traversal with mapped key uses definition when value missing" {

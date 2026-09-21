@@ -3,13 +3,19 @@ package server
 import (
 	"context"
 	"embed"
+	"encoding/json"
+	"log/slog"
 	"net/http"
+	"os"
 	"testing"
+	"time"
 
 	"github.com/opentdf/platform/service/internal/server"
 	"github.com/opentdf/platform/service/logger"
+	"github.com/opentdf/platform/service/logger/audit"
 	"github.com/opentdf/platform/service/pkg/config"
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
+	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 	"google.golang.org/grpc"
 )
@@ -230,6 +236,76 @@ func (suite *ServiceTestSuite) TestBuildNamespaceLoggerRejectsInvalidOverrideLev
 	suite.Require().Error(err)
 	suite.Nil(namespaceLogger)
 	suite.ErrorContains(err, "invalid namespace logger config for policy")
+}
+
+func (suite *ServiceTestSuite) TestBuildNamespaceLoggerPreservesAuditTimeout() {
+	const timeout = 30 * time.Second
+	cfg := &config.Config{Logger: logger.Config{Output: "stdout", Level: "info", Type: "json"}}
+	var deadline time.Time
+	processor := audit.ProcessorFunc(func(ctx context.Context, _ audit.Event) error {
+		var ok bool
+		deadline, ok = ctx.Deadline()
+		suite.Require().True(ok)
+		return nil
+	})
+	baseConfig := cfg.Logger
+	baseConfig.AuditProcessor = processor
+	baseConfig.AuditTimeout = timeout
+	base, err := logger.NewLogger(baseConfig)
+	suite.Require().NoError(err)
+	for _, level := range []string{"info", "debug"} {
+		suite.Run(level, func() {
+			scoped, err := buildNamespaceLogger(base, cfg, "policy", level)
+			suite.Require().NoError(err)
+			event := audit.NewEvent(audit.EventObjectParams{ClientInfo: audit.EventClientInfo{Platform: "test"}})
+			event.Verb = audit.Verb("test")
+			before := time.Now()
+			suite.Require().NoError(scoped.Audit.Record(suite.T().Context(), *event))
+			suite.False(deadline.Before(before.Add(timeout)))
+			suite.False(deadline.After(time.Now().Add(timeout)))
+		})
+	}
+}
+
+// A service with a per-service log_level override gets a rebuilt logger, which
+// must keep the embedder's context attrs or that service silently loses them.
+func (suite *ServiceTestSuite) TestBuildNamespaceLoggerPreservesContextAttrs() {
+	cfg := &config.Config{Logger: logger.Config{
+		Output: "stdout", Level: "info", Type: "json",
+		ContextAttrs: []logger.ContextAttrFunc{
+			func(context.Context) []slog.Attr { return []slog.Attr{slog.String("caller", "caller-1")} },
+		},
+	}}
+	// The logger binds os.Stdout at construction, so build it inside the capture.
+	out := captureStdoutLine(suite.T(), func() {
+		base, err := logger.NewLogger(cfg.Logger)
+		suite.Require().NoError(err)
+
+		scoped, err := buildNamespaceLogger(base, cfg, "policy", "debug")
+		suite.Require().NoError(err)
+
+		scoped.InfoContext(suite.T().Context(), "handled request")
+	})
+	suite.Equal("caller-1", out["caller"])
+	suite.Equal("policy", out["namespace"])
+}
+
+// captureStdoutLine runs fn and decodes the single JSON log line it emits.
+func captureStdoutLine(t *testing.T, fn func()) map[string]any {
+	t.Helper()
+
+	orig := os.Stdout
+	r, w, err := os.Pipe()
+	require.NoError(t, err)
+	os.Stdout = w
+	defer func() { os.Stdout = orig }()
+
+	fn()
+	require.NoError(t, w.Close())
+
+	decoded := make(map[string]any)
+	require.NoError(t, json.NewDecoder(r).Decode(&decoded))
+	return decoded
 }
 
 func (suite *ServiceTestSuite) TestStartServicesWithVariousCases() {

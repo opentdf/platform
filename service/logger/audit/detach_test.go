@@ -117,7 +117,7 @@ func TestDetachWithoutParentUsesDefaultAttribution(t *testing.T) {
 	cloned := l.Detach(t.Context())
 
 	data := GetAuditDataFromContext(cloned)
-	assert.Equal(t, defaultNone, data.ActorID)
+	assert.Empty(t, data.ActorID)
 	assert.Equal(t, defaultNone, data.UserAgent)
 	assert.Equal(t, defaultNone, data.RequestIP)
 	require.NotNil(t, requireAuditTransaction(cloned, t))

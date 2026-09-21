@@ -5,6 +5,7 @@ logger:
   output: stderr
 services:
   kas:
+    key_management: false
     keyring:
       - kid: e1
         alg: ec:secp256r1

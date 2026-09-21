@@ -17,13 +17,15 @@ type Config struct {
 	ListRequestLimitMax int `mapstructure:"list_request_limit_max" default:"2500"`
 	// Enable support for namespaced policies. If false, namespace fields are ignored and treated as null.
 	NamespacedPolicy bool `mapstructure:"namespaced_policy" default:"false"`
+	// Optional maximum policy object counts. A zero value disables an individual maximum.
+	MaxObjectCounts MaxObjectCounts `mapstructure:"max_object_counts"`
 }
 
 func (c Config) Validate() error {
 	if c.ListRequestLimitMax <= c.ListRequestLimitDefault {
 		return fmt.Errorf("policy svc config request limit maximum [%d] must be greater than request limit default [%d]", c.ListRequestLimitMax, c.ListRequestLimitDefault)
 	}
-	return nil
+	return c.MaxObjectCounts.Validate()
 }
 
 // GetSharedPolicyConfig retrieves the shared policy configuration, applying defaults and validating it.

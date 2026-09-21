@@ -28,7 +28,7 @@ linters:
     # - gochecknoinits
     - goconst
     - gocritic
-    - gomodguard
+    - gomodguard_v2
     - goprintffuncname
     - gosec
     - govet
@@ -79,27 +79,30 @@ linters:
       check:
         - switch
         - map
+    goconst:
+      # Map/composite-literal keys repeat by nature (log attribute names, test
+      # tables); they are not extractable constants.
+      ignore-map-keys: true
     gocritic:
       settings:
         captLocal:
           paramsOnly: false
         underef:
           skipRecvDeref: false
-    gomodguard:
+    gomodguard_v2:
       blocked:
-        modules:
-          - github.com/golang/protobuf:
-              recommendations:
-                - google.golang.org/protobuf
-              reason: see https://developers.google.com/protocol-buffers/docs/reference/go/faq#modules
-          - github.com/satori/go.uuid:
-              recommendations:
-                - github.com/google/uuid
-              reason: satori's package is not maintained
-          - github.com/gofrs/uuid:
-              recommendations:
-                - github.com/google/uuid
-              reason: gofrs' package is not go module
+        - module: github.com/golang/protobuf
+          recommendations:
+            - google.golang.org/protobuf
+          reason: see https://developers.google.com/protocol-buffers/docs/reference/go/faq#modules
+        - module: github.com/satori/go.uuid
+          recommendations:
+            - github.com/google/uuid
+          reason: satori's package is not maintained
+        - module: github.com/gofrs/uuid
+          recommendations:
+            - github.com/google/uuid
+          reason: gofrs' package is not go module
     gosec:
       excludes:
         - G115
@@ -207,6 +210,15 @@ linters:
         linters:
           - nolintlint
         text: "exhaustive"
+      # goconst: CLI table-column headers and other presentation strings
+      - path: otdfctl/
+        linters:
+          - goconst
+      # goconst: integration-test fixtures that escape the _test.go rule above
+      # only because of their filenames
+      - path: service/entityresolution/integration/
+        linters:
+          - goconst
     paths:
       - .*\.pb\.go
       - .*\.pb\.gw.go

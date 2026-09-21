@@ -51,6 +51,10 @@ https://github.com/opentdf/platform/blob/main/service/go.mod#L3
    ```shell
    go run ./service provision keycloak
    ```
+
+   > [!NOTE]
+   > In this local quickstart, Keycloak is the external OIDC provider. OpenTDF uses the resulting access tokens and claims for authentication and authorization, but OpenTDF is not itself an IdP. See [OpenTDF and OpenID Connect (OIDC)](./OIDC.md).
+
 4. **Add Sample Attributes and Metadata**
    ```shell
    go run ./service provision fixtures

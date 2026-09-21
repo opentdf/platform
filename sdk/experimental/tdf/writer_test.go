@@ -472,7 +472,7 @@ func testKeySplittingWithMultipleAttributes(t *testing.T) {
 func testManifestGeneration(t *testing.T) {
 	ctx := t.Context()
 
-	writer, err := NewWriter(ctx, WithIntegrityAlgorithm(HS256))
+	writer, err := NewWriter(ctx, WithIntegrityAlgorithm(RootHS256))
 	require.NoError(t, err, "Failed to create TDF writer")
 
 	// Write test data
@@ -1179,7 +1179,7 @@ func testGetManifestBeforeAndAfterFinalize(t *testing.T) {
 	assert.Len(t, m1.Segments, 1)
 	assert.Equal(t, int64(len(data)), m1.DefaultSegmentSize)
 	assert.Greater(t, m1.DefaultEncryptedSegSize, int64(len(data)))
-	assert.Equal(t, writer.segmentIntegrityAlgorithm.String(), m1.SegmentHashAlgorithm)
+	assert.Equal(t, writer.segmentIntegrityAlg.String(), m1.SegmentHashAlgorithm)
 
 	// Finalize and GetManifest should return the final one (with key access, root signature)
 	attrs := []*policy.Value{createTestAttribute("https://example.com/attr/Test/value/Basic", testKAS1, "kid1")}

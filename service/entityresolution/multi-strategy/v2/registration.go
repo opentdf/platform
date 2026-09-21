@@ -24,6 +24,10 @@ import (
 	"google.golang.org/protobuf/types/known/structpb"
 )
 
+// chainCategoryCount is the number of entity categories a token chain can carry:
+// ENVIRONMENT and SUBJECT, one entity each.
+const chainCategoryCount = 2
+
 // ERSV2 implements the EntityResolutionServiceHandler for v2 multi-strategy resolution
 type ERSV2 struct {
 	ersV2.UnimplementedEntityResolutionServiceServer
@@ -228,7 +232,8 @@ func (ers *ERSV2) createEntityChainFromSingleTokenV2(ctx context.Context, token 
 		)
 	}
 
-	entities := make([]*entity.Entity, 0)
+	entities := make([]*entity.Entity, 0, chainCategoryCount)
+	resolvedCategories := make(map[entity.Entity_Category]bool, chainCategoryCount)
 	var lastError error
 	var attemptedStrategies []string
 
@@ -239,6 +244,18 @@ func (ers *ERSV2) createEntityChainFromSingleTokenV2(ctx context.Context, token 
 	}
 
 	for _, strategy := range strategies {
+		// First match wins per category: at most one ENVIRONMENT and one SUBJECT, like Keycloak.
+		// Avoids the multi-subject chains that make AND semantics unpredictable, without
+		// dropping the subject when an environment strategy is ordered first.
+		category := categoryForStrategy(strategy)
+		if resolvedCategories[category] {
+			ers.logger.DebugContext(ctx, "skipping strategy, category already resolved for token",
+				slog.String("token_id", token.GetEphemeralId()),
+				slog.String("strategy", strategy.Name),
+				slog.String("entity_category", category.String()))
+			continue
+		}
+
 		attemptedStrategies = append(attemptedStrategies, strategy.Name)
 
 		// Put JWT claims into context for providers to access
@@ -287,6 +304,7 @@ func (ers *ERSV2) createEntityChainFromSingleTokenV2(ctx context.Context, token 
 			return nil, err
 		}
 		entities = append(entities, entityV2)
+		resolvedCategories[category] = true
 
 		ers.logger.DebugContext(ctx, "successfully resolved entity for token",
 			slog.String("token_id", token.GetEphemeralId()),
@@ -294,13 +312,10 @@ func (ers *ERSV2) createEntityChainFromSingleTokenV2(ctx context.Context, token 
 			slog.String("entity_type", getEntityTypeStringV2(entityV2)),
 			slog.String("entity_category", entityV2.GetCategory().String()))
 
-		// ENHANCED: Continue trying additional strategies to build multi-entity chains (like Keycloak)
-		// This allows creating chains with multiple entities (e.g., ENVIRONMENT + SUBJECT)
-		// Only break if FailureStrategy is FailFast and we have at least one successful entity
-		if failureStrategy == types.FailureStrategyFailFast {
+		// Every category is filled, so no remaining strategy can contribute.
+		if len(resolvedCategories) == chainCategoryCount {
 			break
 		}
-		// With FailureStrategyContinue, we continue to try more strategies to build richer chains
 	}
 
 	// If no strategies succeeded
@@ -357,6 +372,15 @@ func (ers *ERSV2) createEntityForTokenChain(
 	)
 }
 
+// categoryForStrategy maps a strategy's configured entity_type onto the entity category it
+// produces. Only "environment" yields an ENVIRONMENT entity; everything else is a SUBJECT.
+func categoryForStrategy(strategy *types.MappingStrategy) entity.Entity_Category {
+	if strategy.EntityType == types.EntityTypeEnvironment {
+		return entity.Entity_CATEGORY_ENVIRONMENT
+	}
+	return entity.Entity_CATEGORY_SUBJECT
+}
+
 // createEntityFromResultV2 converts a multi-strategy EntityResult to a v2 entity.Entity.
 //
 // For token-derived entity chains, preserve the resolved claims directly in the chain so
@@ -369,10 +393,7 @@ func (ers *ERSV2) createEntityForTokenChain(
 // strategy ordering, and other deployment-specific ERS structure. Resolution metadata belongs
 // in observability or a dedicated out-of-band metadata channel, not in policy input.
 func (ers *ERSV2) createEntityFromResultV2(_ context.Context, result *types.EntityResult, strategy *types.MappingStrategy, tokenID string) (*entity.Entity, error) {
-	category := entity.Entity_CATEGORY_SUBJECT
-	if strategy.EntityType == types.EntityTypeEnvironment {
-		category = entity.Entity_CATEGORY_ENVIRONMENT
-	}
+	category := categoryForStrategy(strategy)
 
 	resultData, err := claimsToResultData(result.Claims)
 	if err != nil {

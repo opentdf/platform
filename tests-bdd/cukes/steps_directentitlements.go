@@ -6,8 +6,11 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/cucumber/godog"
+	"github.com/lestrrat-go/jwx/v2/jwa"
+	"github.com/lestrrat-go/jwx/v2/jwt"
 	"github.com/opentdf/platform/protocol/go/entity"
 	"google.golang.org/protobuf/types/known/anypb"
 	"google.golang.org/protobuf/types/known/structpb"
@@ -18,6 +21,7 @@ type DirectEntitlementsStepDefinitions struct{}
 const (
 	directEntitlementColumnAttributeFQN = "attribute_value_fqn"
 	directEntitlementColumnActions      = "actions"
+	directEntitlementsClaimKey          = "direct_entitlements"
 )
 
 // thereIsAClaimsSubjectEntityReferencedAsWithDirectEntitlements records a claims subject entity
@@ -31,7 +35,7 @@ func (s *DirectEntitlementsStepDefinitions) thereIsAClaimsSubjectEntityReference
 	}
 
 	claims := map[string]interface{}{
-		"direct_entitlements": directEntitlements,
+		directEntitlementsClaimKey: directEntitlements,
 	}
 	structClaims, err := structpb.NewStruct(claims)
 	if err != nil {
@@ -49,6 +53,51 @@ func (s *DirectEntitlementsStepDefinitions) thereIsAClaimsSubjectEntityReference
 	}
 	scenarioContext.RecordObject(referenceID, subjectEntity)
 	return ctx, nil
+}
+
+// thereIsATokenReferencedAsWithDirectEntitlements records a raw JWT whose claims carry
+// direct_entitlements, exercising the EntityIdentifier_Token decision path. That path resolves the
+// token through the claims ERS CreateEntityChainsFromTokens and must still hydrate the chain into an
+// entity representation carrying DirectEntitlements — building the representation locally from the
+// chain drops them and denies every direct-entitlement decision.
+func (s *DirectEntitlementsStepDefinitions) thereIsATokenReferencedAsWithDirectEntitlements(ctx context.Context, referenceID string, tbl *godog.Table) (context.Context, error) {
+	scenarioContext := GetPlatformScenarioContext(ctx)
+	directEntitlements, err := parseDirectEntitlementsTable(tbl)
+	if err != nil {
+		return ctx, err
+	}
+
+	rawToken, err := mintDirectEntitlementsToken(referenceID, directEntitlements)
+	if err != nil {
+		return ctx, err
+	}
+	scenarioContext.RecordObject(referenceID, rawToken)
+	return ctx, nil
+}
+
+// directEntitlementsTokenSigningKey signs the subject tokens minted for these scenarios. The claims
+// ERS parses subject tokens with jwt.WithVerify(false) — the JWT is decision *input*, not the
+// caller's credential — so the key only has to produce a well-formed JWS.
+var directEntitlementsTokenSigningKey = []byte("cukes-direct-entitlements-signing-key")
+
+func mintDirectEntitlementsToken(subject string, directEntitlements []interface{}) (string, error) {
+	now := time.Now()
+	token, err := jwt.NewBuilder().
+		Subject(subject).
+		Issuer("cukes-direct-entitlements").
+		IssuedAt(now).
+		Expiration(now.Add(time.Hour)).
+		Claim(directEntitlementsClaimKey, directEntitlements).
+		Build()
+	if err != nil {
+		return "", fmt.Errorf("building direct entitlements token for %s: %w", subject, err)
+	}
+
+	signed, err := jwt.Sign(token, jwt.WithKey(jwa.HS256, directEntitlementsTokenSigningKey))
+	if err != nil {
+		return "", fmt.Errorf("signing direct entitlements token for %s: %w", subject, err)
+	}
+	return string(signed), nil
 }
 
 // iAddClaimsToSubjectEntityWith merges additional claims into an existing claims subject entity so a
@@ -197,5 +246,6 @@ func parseClaimsTable(tbl *godog.Table) (map[string]interface{}, error) {
 func RegisterDirectEntitlementsStepDefinitions(ctx *godog.ScenarioContext) {
 	stepDefinitions := &DirectEntitlementsStepDefinitions{}
 	ctx.Step(`^there is a claims subject entity referenced as "([^"]*)" with direct entitlements:$`, stepDefinitions.thereIsAClaimsSubjectEntityReferencedAsWithDirectEntitlements)
+	ctx.Step(`^there is a token referenced as "([^"]*)" with direct entitlements:$`, stepDefinitions.thereIsATokenReferencedAsWithDirectEntitlements)
 	ctx.Step(`^I add claims to subject entity "([^"]*)" with:$`, stepDefinitions.iAddClaimsToSubjectEntityWith)
 }

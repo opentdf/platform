@@ -25,6 +25,7 @@ import (
 	"io"
 	"log/slog"
 	"os"
+	"time"
 
 	"github.com/opentdf/platform/service/logger/audit"
 )
@@ -38,6 +39,19 @@ type Config struct {
 	Level  string `mapstructure:"level" json:"level" default:"info"`
 	Output string `mapstructure:"output" json:"output" default:"stdout"`
 	Type   string `mapstructure:"type" json:"type" default:"json"`
+	// TraceCorrelation adds the active trace and span IDs to log and audit
+	// records. No-op unless tracing is enabled via `server.trace`. Nil means enabled.
+	TraceCorrelation *bool `mapstructure:"trace_correlation" json:"trace_correlation" default:"true"`
+	// AuditTimeout is the audit processing budget. Non-positive values use five seconds.
+	AuditTimeout time.Duration `mapstructure:"audit_timeout" json:"audit_timeout" yaml:"audit_timeout" default:"5s"`
+	// AuditProcessor overrides audit delivery for Go callers and is never serialized.
+	AuditProcessor audit.Processor `mapstructure:"-" json:"-" yaml:"-"`
+	// ContextAttrs derive attributes from each record's context. Go callers only.
+	ContextAttrs []ContextAttrFunc `mapstructure:"-" json:"-" yaml:"-"`
+}
+
+func (c Config) traceCorrelationEnabled() bool {
+	return c.TraceCorrelation == nil || *c.TraceCorrelation
 }
 
 const (
@@ -74,16 +88,22 @@ func NewLogger(config Config) (*Logger, error) {
 		return nil, fmt.Errorf("invalid logger type: %s", config.Type)
 	}
 
-	sLogger = slog.New(&ContextHandler{handler})
+	sLogger = slog.New(newContextAttrsHandler(handler, contextAttrSources(config, requestContextAttrs)...))
 
 	// Audit logger will always log at the AUDIT level and be JSON formatted
-	auditLoggerHandler := slog.NewJSONHandler(w, &slog.HandlerOptions{
+	var auditLoggerHandler slog.Handler = slog.NewJSONHandler(w, &slog.HandlerOptions{
 		Level:       audit.LevelAudit,
 		ReplaceAttr: audit.ReplaceAttrAuditLevel,
 	})
 
-	auditLoggerBase := slog.New(auditLoggerHandler)
-	auditLogger := audit.CreateAuditLogger(*auditLoggerBase)
+	// Audit events skip requestContextAttrs on purpose: the request metadata it
+	// adds is already inside the audit payload. They still need trace correlation.
+	auditLoggerBase := slog.New(newContextAttrsHandler(auditLoggerHandler, contextAttrSources(config)...))
+	auditOptions := []audit.Option{audit.WithRecordTimeout(config.AuditTimeout)}
+	if config.AuditProcessor != nil {
+		auditOptions = append(auditOptions, audit.WithProcessor(config.AuditProcessor))
+	}
+	auditLogger := audit.CreateAuditLogger(*auditLoggerBase, auditOptions...)
 
 	logger.Logger = sLogger
 	logger.Audit = auditLogger
@@ -97,6 +117,25 @@ func (l *Logger) With(key string, value string) *Logger {
 		Logger: l.Logger.With(key, value),
 		Audit:  l.Audit.With(key, value),
 	}
+}
+
+// contextAttrSources returns the attribute sources for a logger: trace
+// correlation first when enabled, then any caller-registered sources, then the
+// logger-specific extras.
+func contextAttrSources(config Config, extra ...ContextAttrFunc) []ContextAttrFunc {
+	sources := make([]ContextAttrFunc, 0, 1+len(config.ContextAttrs)+len(extra))
+	if config.traceCorrelationEnabled() {
+		sources = append(sources, traceContextAttrs)
+	}
+	// Drop nil entries: the handler calls every source on every record, so one
+	// would panic inside the logging path rather than at configuration time.
+	for _, fn := range config.ContextAttrs {
+		if fn != nil {
+			sources = append(sources, fn)
+		}
+	}
+
+	return append(sources, extra...)
 }
 
 func getWriter(config Config) (io.Writer, error) {

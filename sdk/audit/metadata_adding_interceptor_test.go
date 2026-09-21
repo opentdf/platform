@@ -45,16 +45,15 @@ func TestAddingAuditMetadataToOutgoingRequest(t *testing.T) {
 	defer stopC()
 
 	contextRequestID := uuid.New()
-	contextActorID := "actorID"
 	ctx := t.Context()
 	ctx = context.WithValue(ctx, RequestIDContextKey, contextRequestID)
-	ctx = context.WithValue(ctx, ActorIDContextKey, contextActorID)
+	ctx = context.WithValue(ctx, ActorIDContextKey, "untrusted-actor")
 
 	_, err := clientConnect.PublicKey(ctx, connect.NewRequest(&kas.PublicKeyRequest{}))
 	require.NoError(t, err)
 
 	assert.Equal(t, contextRequestID, serverConnect.requestID, "request ID did not match")
-	assert.Equal(t, contextActorID, serverConnect.actorID, "actor ID did not match")
+	assert.Empty(t, serverConnect.actorID, "actor ID header must not be forwarded")
 }
 
 func TestIsOKWithNoContextValues(t *testing.T) {

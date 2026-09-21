@@ -186,3 +186,70 @@ func claimsAnyForTest(t *testing.T, claims map[string]interface{}) *anypb.Any {
 	require.NoError(t, err)
 	return claimsAny
 }
+
+// end-to-end regression for the no-rehydrate shortcut silently dropping direct entitlements
+func TestResolveEntitiesFromTokenPreservesDirectEntitlements(t *testing.T) {
+	directEntitlements := []*entityresolutionV2.DirectEntitlement{{
+		AttributeValueFqn: "https://example.com/attr/workspace/value/sdk-test",
+		Actions:           []string{"read", "view"},
+	}}
+	claimsAny := claimsAnyForTest(t, map[string]interface{}{
+		"username": "alice",
+		"direct_entitlements": []interface{}{
+			map[string]interface{}{
+				"attribute_value_fqn": "https://example.com/attr/workspace/value/sdk-test",
+				"actions":             []interface{}{"read", "view"},
+			},
+		},
+	})
+	client := &recordingERSV2Client{
+		createResponse: &entityresolutionV2.CreateEntityChainsFromTokensResponse{
+			EntityChains: []*entity.EntityChain{{Entities: []*entity.Entity{{
+				EphemeralId: "jwtentity-claims",
+				EntityType:  &entity.Entity_Claims{Claims: claimsAny},
+				Category:    entity.Entity_CATEGORY_SUBJECT,
+			}}}},
+		},
+		resolveResponse: &entityresolutionV2.ResolveEntitiesResponse{
+			EntityRepresentations: []*entityresolutionV2.EntityRepresentation{{
+				OriginalId:         "jwtentity-claims",
+				DirectEntitlements: directEntitlements,
+			}},
+		},
+	}
+	pdp := testJITPDP(client)
+
+	reps, err := pdp.resolveEntitiesFromToken(t.Context(), &entity.Token{EphemeralId: "alice-token", Jwt: "token"}, true, nil)
+	require.NoError(t, err)
+	require.Len(t, reps, 1)
+
+	// Must defer to ERS so the claim is projected onto the representation.
+	require.Equal(t, 1, client.resolveCalls, "direct entitlements require ERS hydration")
+	require.Len(t, reps[0].GetDirectEntitlements(), 1, "direct entitlements must survive token resolution")
+	require.Equal(t, "https://example.com/attr/workspace/value/sdk-test", reps[0].GetDirectEntitlements()[0].GetAttributeValueFqn())
+	require.ElementsMatch(t, []string{"read", "view"}, reps[0].GetDirectEntitlements()[0].GetActions())
+}
+
+func TestEntityRepresentationsFromResolvedChainRequiresHydrationForDirectEntitlements(t *testing.T) {
+	for _, claimKey := range []string{"direct_entitlements", "directEntitlements"} {
+		t.Run(claimKey, func(t *testing.T) {
+			claimsAny := claimsAnyForTest(t, map[string]interface{}{
+				"username": "alice",
+				claimKey: []interface{}{
+					map[string]interface{}{
+						"attribute_value_fqn": "https://example.com/attr/workspace/value/sdk-test",
+						"actions":             []interface{}{"read"},
+					},
+				},
+			})
+			chain := &entity.EntityChain{Entities: []*entity.Entity{{
+				EphemeralId: "jwtentity-claims",
+				EntityType:  &entity.Entity_Claims{Claims: claimsAny},
+				Category:    entity.Entity_CATEGORY_SUBJECT,
+			}}}
+
+			_, err := entityRepresentationsFromResolvedChain(chain, true)
+			require.ErrorIs(t, err, errResolvedTokenChainRequiresHydration)
+		})
+	}
+}

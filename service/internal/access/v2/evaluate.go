@@ -120,6 +120,20 @@ func getResourceDecision(
 			}
 		}
 
+		// Any deactivated attribute value denies the whole registered resource, aligning with TDF
+		// behavior. Every action-attribute-value is checked, not just those matching the requested
+		// action, because the deny is a property of the resource. Active values are always placed in
+		// the decisionable set upstream, so absence here means deactivated or otherwise unresolvable.
+		for _, aav := range regResValue.GetActionAttributeValues() {
+			aavAttrValueFQN := aav.GetAttributeValue().GetFqn()
+			if _, ok := accessibleAttributeValues[aavAttrValueFQN]; !ok {
+				l.WarnContext(ctx, "registered resource value assigned a deactivated attribute value - denying access",
+					slog.String("attribute_value_fqn", aavAttrValueFQN),
+				)
+				return failure, nil
+			}
+		}
+
 		// if no relevant attributes from action-attribute-values with the requested action,
 		// indicates a failure before attribute definition rule evaluation
 		if len(resourceAttributeValues.GetFqns()) == 0 {

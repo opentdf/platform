@@ -73,7 +73,7 @@ teardown_file() {
   # missing flag
   run_otdfctl_ns create
   assert_failure
-  assert_output --partial "Flag '--name' is required"
+  assert_output --partial 'required flag(s) "name" not set'
 
   # conflict
   run_otdfctl_ns create -n "$NS_NAME"
@@ -96,7 +96,7 @@ teardown_file() {
 @test "Get a namespace - Bad" {
   run_otdfctl_ns get
   assert_failure
-  assert_output --partial "Flag '--id' is required"
+  assert_output --partial 'required flag(s) "id" not set'
 
   run_otdfctl_ns get --id 'example.com'
   assert_failure
@@ -280,11 +280,11 @@ teardown_file() {
   # Test with missing required flags
   run_otdfctl_ns key assign --namespace "$NS_ID"
   assert_failure
-  assert_output --partial "Flag '--key-id' is required"
+  assert_output --partial 'required flag(s) "key-id" not set'
 
   run_otdfctl_ns key assign --key-id "$KAS_KEY_SYSTEM_ID"
   assert_failure
-  assert_output --partial "Flag '--namespace' is required"
+  assert_output --partial 'required flag(s) "namespace" not set'
 }
 
 @test "Deactivate namespace" {

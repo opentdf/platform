@@ -2,25 +2,29 @@
 
 package tdf
 
-import "github.com/opentdf/platform/protocol/go/policy"
+import (
+	"fmt"
 
-// IntegrityAlgorithm specifies the cryptographic algorithm used for integrity verification.
+	"github.com/opentdf/platform/protocol/go/policy"
+)
+
+// IntegrityAlgorithm specified an integrity algorithm without saying what it
+// was allowed to protect.
 //
-// Different algorithms provide different security and performance characteristics:
-//   - HS256: HMAC-SHA256, widely supported, good balance of security and performance
-//   - GMAC: Galois Message Authentication Code, faster but requires AES-GCM support
-//
-// The algorithm choice affects both segment-level and root-level integrity verification.
+// Deprecated: the root signature and the segment hashes accept different sets
+// of algorithms, which one type cannot express. Use [RootIntegrityAlg] or
+// [SegmentIntegrityAlg].
 type IntegrityAlgorithm int
 
 // String returns the string representation of the integrity algorithm.
-// Used for manifest generation and protocol compatibility.
+//
+// Deprecated: use [RootIntegrityAlg.String] or [SegmentIntegrityAlg.String].
 func (i IntegrityAlgorithm) String() string {
 	switch i {
 	case HS256:
-		return "HS256"
+		return algHS256
 	case GMAC:
-		return "GMAC"
+		return algGMAC
 	default:
 		return "unknown"
 	}
@@ -28,12 +32,75 @@ func (i IntegrityAlgorithm) String() string {
 
 const (
 	// HS256 uses HMAC-SHA256 for integrity verification.
-	// This is the default and most widely supported algorithm.
+	//
+	// Deprecated: use [RootHS256] or [SegmentHS256].
 	HS256 = iota
 	// GMAC uses Galois Message Authentication Code for integrity verification.
-	// Provides better performance with AES-GCM but requires hardware support for optimal speed.
+	//
+	// Deprecated: use [SegmentGMAC]. GMAC is not a legal root algorithm.
 	GMAC
 )
+
+// Manifest spellings of the two algorithms.
+const (
+	algHS256 = "HS256"
+	algGMAC  = "GMAC"
+)
+
+// RootIntegrityAlg is the algorithm that signs the aggregate hash -- the
+// concatenation of every segment hash, in manifest order. The root signature is
+// the only thing that authenticates the manifest's description of the payload,
+// so a segment list that has been truncated, reordered, or duplicated is caught
+// here or not at all.
+//
+// HS256 is the only value, and this type exists to say so at compile time. The
+// aggregate hash is manifest data that never passed through the AEAD, so tag
+// extraction has nothing to extract: a "GMAC" root signature is just a copy of
+// the last segment hash, producible by an attacker with no key.
+type RootIntegrityAlg int
+
+// RootHS256 is an HMAC-SHA256 over the aggregate hash, keyed by the DEK. It is
+// the default and the only supported value.
+const RootHS256 RootIntegrityAlg = iota
+
+// SegmentIntegrityAlg is the algorithm that authenticates a single segment's
+// bytes. Unlike the root, both values are genuine authenticators, because the
+// input is data the cipher itself produced.
+type SegmentIntegrityAlg int
+
+const (
+	// SegmentHS256 is an HMAC-SHA256 over the segment's bytes, keyed by the
+	// DEK. It is the only meaningful choice when those bytes are not AEAD
+	// output -- a plaintext segment has no tag to read out -- and it is this
+	// writer's default.
+	SegmentHS256 SegmentIntegrityAlg = iota
+	// SegmentGMAC reads out the AES-GCM tag the cipher already computed over
+	// exactly this segment's ciphertext.
+	SegmentGMAC
+)
+
+// String returns the manifest spelling of the algorithm. Out-of-range values
+// have no spelling: the type is int-backed, so they are representable, and
+// naming one "HS256" in a manifest would claim a signature that was never
+// computed.
+func (a RootIntegrityAlg) String() string {
+	if a == RootHS256 {
+		return algHS256
+	}
+	return fmt.Sprintf("RootIntegrityAlg(%d)", int(a))
+}
+
+// String returns the manifest spelling of the algorithm. See
+// [RootIntegrityAlg.String] on out-of-range values.
+func (a SegmentIntegrityAlg) String() string {
+	switch a {
+	case SegmentHS256:
+		return algHS256
+	case SegmentGMAC:
+		return algGMAC
+	}
+	return fmt.Sprintf("SegmentIntegrityAlg(%d)", int(a))
+}
 
 // BaseConfig provides common configuration foundation for TDF operations.
 // Currently empty but reserved for future common configuration options.
@@ -42,16 +109,17 @@ type BaseConfig struct{}
 // WriterConfig contains configuration options for TDF Writer creation.
 //
 // The configuration controls cryptographic algorithms and processing behavior:
-//   - integrityAlgorithm: Algorithm for root integrity signature calculation
-//   - segmentIntegrityAlgorithm: Algorithm for individual segment hash calculation
+//   - rootIntegrityAlg: Algorithm for root integrity signature calculation
+//   - segmentIntegrityAlg: Algorithm for individual segment hash calculation
 //
-// These can be set independently to optimize for different security/performance requirements.
+// These are set independently, and their legal values differ: see
+// [RootIntegrityAlg] and [SegmentIntegrityAlg].
 type WriterConfig struct {
 	BaseConfig
-	// integrityAlgorithm specifies the algorithm for root integrity verification
-	integrityAlgorithm IntegrityAlgorithm
-	// segmentIntegrityAlgorithm specifies the algorithm for segment-level integrity
-	segmentIntegrityAlgorithm IntegrityAlgorithm
+	// rootIntegrityAlg specifies the algorithm for root integrity verification
+	rootIntegrityAlg RootIntegrityAlg
+	// segmentIntegrityAlg specifies the algorithm for segment-level integrity
+	segmentIntegrityAlg SegmentIntegrityAlg
 
 	// initialAttributes allows callers to provide attribute values at writer creation time.
 	// These will be used during Finalize() if no attributes are provided there.
@@ -77,7 +145,7 @@ type ReaderConfig struct {
 //
 // Example usage:
 //
-//	writer, err := NewWriter(ctx, WithIntegrityAlgorithm(GMAC))
+//	writer, err := NewWriter(ctx, WithSegmentIntegrityAlgorithm(SegmentGMAC))
 //	finalBytes, manifest, err := writer.Finalize(ctx, WithPayloadMimeType("text/plain"))
 type Option[T any] func(T)
 
@@ -86,16 +154,15 @@ type Option[T any] func(T)
 // The root integrity algorithm is used to generate a signature over all segment hashes,
 // providing verification that the complete TDF has not been tampered with.
 //
-// Algorithm options:
-//   - HS256: HMAC-SHA256 (default) - widely supported, secure
-//   - GMAC: Galois Message Authentication Code - faster with hardware acceleration
+// [RootHS256] is the only supported value, and the default. Options cannot
+// return an error, so anything else is refused by Finalize.
 //
 // Example:
 //
-//	writer, err := NewWriter(ctx, WithIntegrityAlgorithm(GMAC))
-func WithIntegrityAlgorithm(algo IntegrityAlgorithm) Option[*WriterConfig] {
+//	writer, err := NewWriter(ctx, WithIntegrityAlgorithm(RootHS256))
+func WithIntegrityAlgorithm(algo RootIntegrityAlg) Option[*WriterConfig] {
 	return func(c *WriterConfig) {
-		c.integrityAlgorithm = algo
+		c.rootIntegrityAlg = algo
 	}
 }
 
@@ -106,21 +173,23 @@ func WithIntegrityAlgorithm(algo IntegrityAlgorithm) Option[*WriterConfig] {
 // complete file. This is particularly useful for streaming scenarios where
 // segments may be processed independently.
 //
-// The segment algorithm can differ from the root algorithm to optimize for
-// different processing patterns:
-//   - Use GMAC for segments if processing many small segments (better performance)
-//   - Use HS256 for root signature for broader compatibility
+// Both [SegmentHS256] and [SegmentGMAC] are supported, and the choice is
+// independent of the root:
+//   - SegmentGMAC reads out the AES-GCM tag the cipher already computed, so it
+//     costs nothing extra per segment
+//   - SegmentHS256 is the default, and the only option for bytes the AEAD did
+//     not produce
 //
 // Example:
 //
 //	// Fast segment processing with compatible root signature
 //	writer, err := NewWriter(ctx,
-//		WithSegmentIntegrityAlgorithm(GMAC),  // Fast segment hashing
-//		WithIntegrityAlgorithm(HS256),        // Compatible root signature
+//		WithSegmentIntegrityAlgorithm(SegmentGMAC),  // Fast segment hashing
+//		WithIntegrityAlgorithm(RootHS256),           // Compatible root signature
 //	)
-func WithSegmentIntegrityAlgorithm(algo IntegrityAlgorithm) Option[*WriterConfig] {
+func WithSegmentIntegrityAlgorithm(algo SegmentIntegrityAlg) Option[*WriterConfig] {
 	return func(c *WriterConfig) {
-		c.segmentIntegrityAlgorithm = algo
+		c.segmentIntegrityAlg = algo
 	}
 }
 

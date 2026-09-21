@@ -468,11 +468,11 @@ teardown_file() {
   # Test with missing required flags
   run_otdfctl_attr key assign --attribute "$ATTR_ID"
   assert_failure
-  assert_output --partial "Flag '--key-id' is required"
+  assert_output --partial 'required flag(s) "key-id" not set'
 
   run_otdfctl_attr key assign --key-id "$KAS_KEY_SYSTEM_ID"
   assert_failure
-  assert_output --partial "Flag '--attribute' is required"
+  assert_output --partial 'required flag(s) "attribute" not set'
 }
 
 @test "KAS key assignment error handling - attribute value" {
@@ -484,11 +484,11 @@ teardown_file() {
   # Test with missing required flags
   run_otdfctl_attr values key assign --key-id "$KAS_KEY_SYSTEM_ID"
   assert_failure
-  assert_output --partial "Flag '--value' is required"
+  assert_output --partial 'required flag(s) "value" not set'
 
   run_otdfctl_attr values key assign --value "00000000-0000-0000-0000-000000000000"
   assert_failure
-  assert_output --partial "Flag '--key-id' is required"
+  assert_output --partial 'required flag(s) "key-id" not set'
 }
 
 @test "List attribute values - Good" {
@@ -557,7 +557,7 @@ teardown_file() {
   # Test with missing required flag
   run_otdfctl_attr values list
   assert_failure
-  assert_output --partial "Flag '--attribute-id' is required"
+  assert_output --partial 'required flag(s) "attribute-id" not set'
 
   # Test with invalid attribute ID format
   run_otdfctl_attr values list --attribute-id "invalid-id"

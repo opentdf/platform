@@ -10,8 +10,44 @@ import (
 	"hash/crc32"
 	"sort"
 	"sync"
-	"time"
 )
+
+// The three constructors below exist so the mutation boundary inside
+// segmentWriter.Finalize is greppable rather than inferred. Finalize's first
+// irreversible change is SetOrder, which is retained and skips re-derivation on
+// a later call; its first archive-corrupting change is adding the payload entry
+// to the central directory. The reviewable rule they buy is: every return at or
+// below the SetOrder call uses finalizeErrMutated.
+//
+// The sentinels cannot substitute for the flag -- ErrSegmentMissing and
+// ErrZip64Required are each returned from both sides of the boundary, so
+// matching on them classifies nothing.
+
+// writerTypeSegment is the Error.Type every error from this file carries.
+const writerTypeSegment = "segment"
+
+// finalizeErr reports a Finalize failure that left the writer untouched. Every
+// return site lexically above the SetOrder call uses this one.
+func finalizeErr(err error) *Error {
+	return &Error{Op: "finalize", Type: writerTypeSegment, Err: err}
+}
+
+// finalizeErrMutated reports a Finalize failure that occurred after the writer
+// had already changed its own state -- the derived segment order is retained,
+// or the payload entry is already in the central directory. Retrying compounds
+// the change; a caller that fences on this is doing the right thing.
+func finalizeErrMutated(err error) *Error {
+	return &Error{Op: "finalize", Type: writerTypeSegment, Err: err, Mutated: true}
+}
+
+// writeSegmentErr reports a WriteSegment failure. There is deliberately no
+// mutated variant: AddSegment validates before it records, and the payload size
+// accounting runs only after it has returned, so no path out of WriteSegment
+// leaves the writer half-changed. A future mutation added above a return site
+// must add one.
+func writeSegmentErr(err error) *Error {
+	return &Error{Op: "write-segment", Type: writerTypeSegment, Err: err}
+}
 
 // segmentWriter implements the SegmentWriter interface for out-of-order segment writing
 type segmentWriter struct {
@@ -34,14 +70,17 @@ func NewSegmentTDFWriter(expectedSegments int, opts ...Option) SegmentWriter {
 
 	base := newBaseWriter(cfg)
 
+	centralDir := NewCentralDirectory()
+	centralDir.MaxNonZip64Value = cfg.MaxNonZip64Value
+
 	return &segmentWriter{
 		baseWriter: base,
-		metadata:   NewSegmentMetadata(expectedSegments),
-		centralDir: NewCentralDirectory(),
+		metadata:   NewSegmentMetadata(expectedSegments, cfg.Now),
+		centralDir: centralDir,
 		payloadEntry: &FileEntry{
 			Name:        TDFPayloadFileName,
 			Offset:      0,
-			ModTime:     time.Now(),
+			ModTime:     cfg.Now(),
 			IsStreaming: true, // Use data descriptor pattern
 		},
 		finalized: false,
@@ -55,27 +94,27 @@ func (sw *segmentWriter) WriteSegment(ctx context.Context, index int, size uint6
 
 	// Check if writer is closed or finalized
 	if err := sw.checkClosed(); err != nil {
-		return nil, &Error{Op: "write-segment", Type: "segment", Err: err}
+		return nil, writeSegmentErr(err)
 	}
 
 	if sw.finalized {
-		return nil, &Error{Op: "write-segment", Type: "segment", Err: ErrWriterClosed}
+		return nil, writeSegmentErr(ErrWriterClosed)
 	}
 
 	// Validate segment index (allow dynamic expansion for streaming use cases)
 	if index < 0 {
-		return nil, &Error{Op: "write-segment", Type: "segment", Err: ErrInvalidSegment}
+		return nil, writeSegmentErr(ErrInvalidSegment)
 	}
 
 	// Check for duplicate segment
 	if _, exists := sw.metadata.Segments[index]; exists {
-		return nil, &Error{Op: "write-segment", Type: "segment", Err: ErrDuplicateSegment}
+		return nil, writeSegmentErr(ErrDuplicateSegment)
 	}
 
 	// Check context cancellation
 	select {
 	case <-ctx.Done():
-		return nil, &Error{Op: "write-segment", Type: "segment", Err: ctx.Err()}
+		return nil, writeSegmentErr(ctx.Err())
 	default:
 	}
 
@@ -88,14 +127,14 @@ func (sw *segmentWriter) WriteSegment(ctx context.Context, index int, size uint6
 	if index == 0 {
 		// Segment 0: Write local file header + encrypted data
 		if err := sw.writeLocalFileHeader(buffer); err != nil {
-			return nil, &Error{Op: "write-segment", Type: "segment", Err: err}
+			return nil, writeSegmentErr(err)
 		}
 	}
 
 	// Record segment metadata only (no payload retention). Payload bytes are returned
 	// to the caller and may be uploaded; we keep only CRC and size for finalize.
 	if err := sw.metadata.AddSegment(index, size, crc32); err != nil {
-		return nil, &Error{Op: "write-segment", Type: "segment", Err: err}
+		return nil, writeSegmentErr(err)
 	}
 
 	// Update payload entry metadata
@@ -111,21 +150,52 @@ func (sw *segmentWriter) Finalize(ctx context.Context, manifest []byte) ([]byte,
 	sw.mu.Lock()
 	defer sw.mu.Unlock()
 
+	// Every return from here down to the SetOrder call is finalizeErr: these
+	// are all pure reads, so the writer is untouched and the caller may retry.
+
 	// Check if writer is closed or already finalized
 	if err := sw.checkClosed(); err != nil {
-		return nil, &Error{Op: "finalize", Type: "segment", Err: err}
+		return nil, finalizeErr(err)
 	}
 
 	if sw.finalized {
-		return nil, &Error{Op: "finalize", Type: "segment", Err: ErrWriterClosed}
+		return nil, finalizeErr(ErrWriterClosed)
 	}
 
 	// Check context cancellation
 	select {
 	case <-ctx.Done():
-		return nil, &Error{Op: "finalize", Type: "segment", Err: ctx.Err()}
+		return nil, finalizeErr(ctx.Err())
 	default:
 	}
+
+	// Nothing arrived at all: report the general incomplete-input error
+	// rather than the segment-0-specific one below.
+	if len(sw.metadata.Segments) == 0 {
+		return nil, finalizeErr(ErrSegmentMissing)
+	}
+
+	// Only segment 0 emits the payload's local file header, and every offset
+	// recorded below is measured from it: without it the manifest entry, the
+	// central directory, and the EOCD all overshoot by headerSize. The result
+	// is a corrupt archive rather than a clean failure -- under Zip64Always
+	// the trailer points past the end of the buffer, while under Zip64Auto it
+	// lands mid-archive, where some readers parse the manifest happily and
+	// only choke on the payload.
+	//
+	// This has to run before the order derivation below: Order is derived
+	// once and kept, so a caller that supplies segment 0 and retries must not
+	// inherit an order that already excluded it. IsComplete cannot catch the
+	// absence either, since that derived order is self-consistent by
+	// construction.
+	if _, ok := sw.metadata.Segments[0]; !ok {
+		return nil, finalizeErr(ErrNoSegmentZero)
+	}
+
+	// SetOrder is the mutation boundary: from here down, every return is
+	// finalizeErrMutated. Order is retained and the check above skips
+	// re-derivation on a later call, so a retry inherits an order that predates
+	// any segment added since.
 
 	// If no explicit order was provided, derive order from present indices (sorted).
 	if len(sw.metadata.Order) == 0 {
@@ -135,14 +205,21 @@ func (sw *segmentWriter) Finalize(ctx context.Context, manifest []byte) ([]byte,
 		}
 		sort.Ints(order)
 		if err := sw.metadata.SetOrder(order); err != nil {
-			// This should be an unreachable state, but handle it defensively.
-			return nil, &Error{Op: "finalize", Type: "segment", Err: fmt.Errorf("internal error setting segment order: %w", err)}
+			// Mutated, even though SetOrder validates the whole order before
+			// assigning and so leaves Order nil on failure. Marking it true
+			// keeps the positional rule exception-free at no cost: the site is
+			// unreachable (the order is derived sorted and deduplicated) and
+			// true is the fail-safe direction. Do not "correct" this.
+			return nil, finalizeErrMutated(fmt.Errorf("internal error setting segment order: %w", err))
 		}
 	}
 
-	// Verify all segments are present
+	// Verify all segments are present. Unreachable with an order derived
+	// above -- that order is built from the present indices, so it is
+	// complete by construction, and the empty set already returned. Kept for
+	// a future caller that supplies an explicit order.
 	if !sw.metadata.IsComplete() {
-		return nil, &Error{Op: "finalize", Type: "segment", Err: ErrSegmentMissing}
+		return nil, finalizeErrMutated(ErrSegmentMissing)
 	}
 
 	// Compute final CRC32 by combining per-segment CRCs now that all are present
@@ -166,21 +243,26 @@ func (sw *segmentWriter) Finalize(ctx context.Context, manifest []byte) ([]byte,
 	// Total payload size = header + all data (no data descriptor in this calculation)
 	totalPayloadSize := headerSize + sw.payloadEntry.CompressedSize
 
-	// Decide whether payload descriptor must be ZIP64
-	const max32 = ^uint32(0)
+	// Decide whether payload descriptor must be ZIP64. The switch point is
+	// 2 GiB rather than 4 GiB: see maxNonZip64Value.
+	maxNonZip64 := sw.config.MaxNonZip64Value
 	needZip64ForPayload := sw.config.Zip64 == Zip64Always ||
-		sw.payloadEntry.Size > uint64(max32) ||
-		sw.payloadEntry.CompressedSize > uint64(max32)
+		sw.payloadEntry.Size > maxNonZip64 ||
+		sw.payloadEntry.CompressedSize > maxNonZip64
 
 	// 1. Write data descriptor for payload (fail if Zip64Never but required)
 	if sw.config.Zip64 == Zip64Never && needZip64ForPayload {
-		return nil, &Error{Op: "finalize", Type: "segment", Err: ErrZip64Required}
+		return nil, finalizeErrMutated(ErrZip64Required)
 	}
 	if err := sw.writeDataDescriptor(buffer, needZip64ForPayload); err != nil {
-		return nil, &Error{Op: "finalize", Type: "segment", Err: err}
+		return nil, finalizeErrMutated(err)
 	}
 
-	// 2. Update payload entry CRC32 and add to central directory
+	// 2. Update payload entry CRC32 and add to central directory.
+	//
+	// Second boundary: below this, a retry calls AddFile again and produces a
+	// central directory with two entries for one payload -- an archive some
+	// readers accept and silently misread.
 	sw.payloadEntry.CRC32 = sw.metadata.TotalCRC32
 	sw.centralDir.AddFile(*sw.payloadEntry)
 
@@ -191,12 +273,12 @@ func (sw *segmentWriter) Finalize(ctx context.Context, manifest []byte) ([]byte,
 		Size:           uint64(len(manifest)),
 		CompressedSize: uint64(len(manifest)),
 		CRC32:          crc32.ChecksumIEEE(manifest),
-		ModTime:        time.Now(),
+		ModTime:        sw.config.Now(),
 		IsStreaming:    false,
 	}
 
 	if err := sw.writeManifestFile(buffer, manifest, manifestEntry); err != nil {
-		return nil, &Error{Op: "finalize", Type: "segment", Err: err}
+		return nil, finalizeErrMutated(err)
 	}
 
 	// 4. Add manifest entry to central directory
@@ -205,17 +287,20 @@ func (sw *segmentWriter) Finalize(ctx context.Context, manifest []byte) ([]byte,
 	// 5. Write central directory
 	sw.centralDir.Offset = totalPayloadSize + uint64(buffer.Len())
 	// Decide if ZIP64 is needed for central directory/EOCD based on offset or forced mode
-	needZip64ForCD := needZip64ForPayload || sw.config.Zip64 == Zip64Always || sw.centralDir.Offset > uint64(max32) || len(sw.centralDir.Entries) > int(^uint16(0))
+	needZip64ForCD := needZip64ForPayload ||
+		sw.config.Zip64 == Zip64Always ||
+		sw.centralDir.Offset > maxNonZip64 ||
+		len(sw.centralDir.Entries) >= zip64MagicVal16
 	if sw.config.Zip64 == Zip64Never && needZip64ForCD {
-		return nil, &Error{Op: "finalize", Type: "segment", Err: ErrZip64Required}
+		return nil, finalizeErrMutated(ErrZip64Required)
 	}
 	cdBytes, err := sw.centralDir.GenerateBytes(needZip64ForCD)
 	if err != nil {
-		return nil, &Error{Op: "finalize", Type: "segment", Err: err}
+		return nil, finalizeErrMutated(err)
 	}
 
 	if _, err := buffer.Write(cdBytes); err != nil {
-		return nil, &Error{Op: "finalize", Type: "segment", Err: err}
+		return nil, finalizeErrMutated(err)
 	}
 
 	sw.finalized = true
@@ -223,20 +308,28 @@ func (sw *segmentWriter) Finalize(ctx context.Context, manifest []byte) ([]byte,
 	return buffer.Bytes(), nil
 }
 
-// CleanupSegment removes the presence marker for a segment index. Since payload
-// bytes are not retained, this only affects metadata tracking. Calling this
-// before Finalize will cause IsComplete() to fail for that index.
+// CleanupSegment implements SegmentWriter. Payload bytes are never retained, so
+// this only rolls back the metadata and size accounting the segment contributed.
 func (sw *segmentWriter) CleanupSegment(index int) error {
 	sw.mu.Lock()
 	defer sw.mu.Unlock()
 
-	// Remove segment from unprocessed map (no-op if already processed or not found)
-	if _, ok := sw.metadata.Segments[index]; ok {
-		delete(sw.metadata.Segments, index)
-		if sw.metadata.presentCount > 0 {
-			sw.metadata.presentCount--
-		}
+	// No-op if the index was never written or was already cleaned up.
+	seg, ok := sw.metadata.Segments[index]
+	if !ok {
+		return nil
 	}
+
+	delete(sw.metadata.Segments, index)
+	sw.metadata.presentCount--
+
+	// Undo everything the segment contributed, so that a cleaned-up index is
+	// indistinguishable from one that was never written. Leaving the sizes
+	// behind would make Finalize describe a payload larger than the one the
+	// caller can assemble, and the offsets it records would overshoot.
+	sw.metadata.TotalSize -= seg.Size
+	sw.payloadEntry.Size -= seg.Size
+	sw.payloadEntry.CompressedSize -= seg.Size
 
 	return nil
 }
@@ -264,7 +357,7 @@ func (sw *segmentWriter) writeDataDescriptor(buf *bytes.Buffer, zip64 bool) erro
 
 // writeManifestFile writes the manifest as a complete file entry
 func (sw *segmentWriter) writeManifestFile(buf *bytes.Buffer, manifest []byte, entry FileEntry) error {
-	fileTime, fileDate := sw.getTimeDateInMSDosFormat(entry.ModTime)
+	fileTime, fileDate := msDosTimeDate(entry.ModTime)
 
 	// Write local file header for manifest
 	header := LocalFileHeader{
@@ -298,19 +391,9 @@ func (sw *segmentWriter) writeManifestFile(buf *bytes.Buffer, manifest []byte, e
 	return nil
 }
 
-// getTimeDateInMSDosFormat converts time to MS-DOS format
-func (sw *segmentWriter) getTimeDateInMSDosFormat(t time.Time) (uint16, uint16) {
-	const monthShift = 5
-
-	timeInDos := t.Hour()<<11 | t.Minute()<<5 | t.Second()>>1
-	dateInDos := (t.Year()-zipBaseYear)<<9 | int((t.Month())<<monthShift) | t.Day()
-
-	return uint16(timeInDos), uint16(dateInDos)
-}
-
 // writeLocalFileHeader writes the ZIP local file header for the payload
 func (sw *segmentWriter) writeLocalFileHeader(buf *bytes.Buffer) error {
-	fileTime, fileDate := sw.getTimeDateInMSDosFormat(sw.payloadEntry.ModTime)
+	fileTime, fileDate := msDosTimeDate(sw.payloadEntry.ModTime)
 
 	header := LocalFileHeader{
 		Signature:             fileHeaderSignature,

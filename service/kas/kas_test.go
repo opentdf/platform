@@ -167,6 +167,76 @@ func newBufferLogger() (*logger.Logger, *bytes.Buffer) {
 	}, buf
 }
 
+func TestDecodeKASConfigKeyManagement(t *testing.T) {
+	tests := []struct {
+		name        string
+		config      map[string]any
+		wantEnabled bool
+		wantWarning string
+	}{
+		{
+			name:        "key management remains disabled when not configured",
+			config:      map[string]any{},
+			wantEnabled: false,
+		},
+		{
+			name:        "stable setting enables key management",
+			config:      map[string]any{"key_management": true},
+			wantEnabled: true,
+		},
+		{
+			name:        "stable setting disables key management",
+			config:      map[string]any{"key_management": false},
+			wantEnabled: false,
+		},
+		{
+			name:        "preview setting remains supported",
+			config:      map[string]any{"preview": map[string]any{"key_management": true}},
+			wantEnabled: true,
+			wantWarning: "services.kas.preview.key_management is deprecated; use services.kas.key_management instead",
+		},
+		{
+			name:        "preview false remains disabled and warns",
+			config:      map[string]any{"preview": map[string]any{"key_management": false}},
+			wantEnabled: false,
+			wantWarning: "services.kas.preview.key_management is deprecated; use services.kas.key_management instead",
+		},
+		{
+			name: "preview true enables key management and warns",
+			config: map[string]any{
+				"key_management": false,
+				"preview":        map[string]any{"key_management": true},
+			},
+			wantEnabled: true,
+			wantWarning: "services.kas.preview.key_management is deprecated; use services.kas.key_management instead",
+		},
+		{
+			name: "stable true with preview false warns",
+			config: map[string]any{
+				"key_management": true,
+				"preview":        map[string]any{"key_management": false},
+			},
+			wantEnabled: true,
+			wantWarning: "services.kas.preview.key_management is deprecated; use services.kas.key_management instead",
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			log, buf := newBufferLogger()
+			got, err := decodeKASConfig(tc.config, log)
+			require.NoError(t, err)
+			assert.Equal(t, tc.wantEnabled, got.KeyManagement)
+			if tc.wantWarning == "" {
+				assert.Empty(t, buf.String())
+			} else {
+				assert.Contains(t, buf.String(), tc.wantWarning)
+				assert.Contains(t, buf.String(), `"level":"WARN"`)
+			}
+		})
+	}
+}
+
 func TestLogSupportedMechanisms_EmitsInfoLine(t *testing.T) {
 	l, buf := newBufferLogger()
 

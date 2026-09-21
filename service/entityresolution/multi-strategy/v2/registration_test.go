@@ -361,3 +361,190 @@ func TestCreateEntityForTokenChainFailsClosedOnSerializationErrorWithContinue(t 
 	require.Equal(t, "token-1", inner.Context["token_id"])
 	require.Equal(t, "bad_subject", inner.Context["strategy"])
 }
+
+// firstMatchWinsConfig builds a config with two strategies that both match the test token:
+// an ENVIRONMENT strategy on "azp" followed by a SUBJECT strategy on "sub".
+func firstMatchWinsConfig(failureStrategy string, strategies ...types.MappingStrategy) types.MultiStrategyConfig {
+	return types.MultiStrategyConfig{
+		FailureStrategy: failureStrategy,
+		Providers: map[string]types.ProviderConfig{
+			"jwt": {Type: "claims", Connection: map[string]interface{}{}},
+		},
+		MappingStrategies: strategies,
+	}
+}
+
+func environmentStrategy() types.MappingStrategy {
+	return types.MappingStrategy{
+		Name:       "client_environment",
+		Provider:   "jwt",
+		EntityType: types.EntityTypeEnvironment,
+		Conditions: types.StrategyConditions{
+			JWTClaims: []types.JWTClaimCondition{{Claim: "azp", Operator: "exists"}},
+		},
+		OutputMapping: []types.OutputMapping{{SourceClaim: "azp", ClaimName: "client_id"}},
+	}
+}
+
+func subjectStrategy() types.MappingStrategy {
+	return types.MappingStrategy{
+		Name:       "user_subject",
+		Provider:   "jwt",
+		EntityType: types.EntityTypeSubject,
+		Conditions: types.StrategyConditions{
+			JWTClaims: []types.JWTClaimCondition{{Claim: "sub", Operator: "exists"}},
+		},
+		OutputMapping: []types.OutputMapping{{SourceClaim: "sub", ClaimName: "username"}},
+	}
+}
+
+// testTokenJWT is an unsigned-but-well-formed JWT carrying both "azp" and "sub", so every
+// strategy in firstMatchWinsConfig matches it.
+// Payload: {"sub":"alice","azp":"opentdf-sdk","iat":1600000000,"exp":4102444800}
+const testTokenJWT = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9." +
+	"eyJzdWIiOiJhbGljZSIsImF6cCI6Im9wZW50ZGYtc2RrIiwiaWF0IjoxNjAwMDAwMDAwLCJleHAiOjQxMDI0NDQ4MDB9." +
+	"dGVzdHNpZ25hdHVyZQ"
+
+func chainForTestToken(t *testing.T, config types.MultiStrategyConfig) *entity.EntityChain {
+	t.Helper()
+
+	erService, err := NewERSV2(t.Context(), config, logger.CreateTestLogger())
+	require.NoError(t, err)
+
+	resp, err := erService.CreateEntityChainsFromTokens(t.Context(), connect.NewRequest(&ersV2.CreateEntityChainsFromTokensRequest{
+		Tokens: []*entity.Token{{EphemeralId: "token-1", Jwt: testTokenJWT}},
+	}))
+	require.NoError(t, err)
+	require.Len(t, resp.Msg.GetEntityChains(), 1)
+
+	return resp.Msg.GetEntityChains()[0]
+}
+
+func claimsOf(t *testing.T, resolved *entity.Entity) map[string]interface{} {
+	t.Helper()
+
+	require.NotNil(t, resolved.GetClaims())
+	var claimsStruct structpb.Struct
+	require.NoError(t, resolved.GetClaims().UnmarshalTo(&claimsStruct))
+	return claimsStruct.AsMap()
+}
+
+// secondSubjectStrategy is another subject strategy matching the same token, mapping a
+// different claim so tests can tell which of the two produced the chain's subject entity.
+func secondSubjectStrategy() types.MappingStrategy {
+	return types.MappingStrategy{
+		Name:       "user_subject_fallback",
+		Provider:   "jwt",
+		EntityType: types.EntityTypeSubject,
+		Conditions: types.StrategyConditions{
+			JWTClaims: []types.JWTClaimCondition{{Claim: "azp", Operator: "exists"}},
+		},
+		OutputMapping: []types.OutputMapping{{SourceClaim: "azp", ClaimName: "username"}},
+	}
+}
+
+func categoriesOf(chain *entity.EntityChain) []entity.Entity_Category {
+	categories := make([]entity.Entity_Category, 0, len(chain.GetEntities()))
+	for _, e := range chain.GetEntities() {
+		categories = append(categories, e.GetCategory())
+	}
+	return categories
+}
+
+func subjectEntity(t *testing.T, chain *entity.EntityChain) *entity.Entity {
+	t.Helper()
+
+	var found *entity.Entity
+	for _, e := range chain.GetEntities() {
+		if e.GetCategory() == entity.Entity_CATEGORY_SUBJECT {
+			require.Nil(t, found, "chain must not carry more than one subject entity")
+			found = e
+		}
+	}
+	require.NotNil(t, found, "chain must carry a subject entity")
+	return found
+}
+
+// TestCreateEntityChainsFromTokens_AtMostOneEntityPerCategory pins the chain contract: a
+// token yields at most one ENVIRONMENT and one SUBJECT entity, and within a category the
+// first matching strategy wins. Multiple subject entities are what made AND semantics
+// unpredictable; a missing subject entity breaks authz, which discards environment entities.
+func TestCreateEntityChainsFromTokens_AtMostOneEntityPerCategory(t *testing.T) {
+	tests := []struct {
+		name               string
+		failureStrategy    string
+		strategies         []types.MappingStrategy
+		expectedCategories []entity.Entity_Category
+		expectedUsername   string
+	}{
+		{
+			name:               "competing subject strategies collapse to the first",
+			failureStrategy:    types.FailureStrategyContinue,
+			strategies:         []types.MappingStrategy{subjectStrategy(), secondSubjectStrategy()},
+			expectedCategories: []entity.Entity_Category{entity.Entity_CATEGORY_SUBJECT},
+			expectedUsername:   "alice",
+		},
+		{
+			name:               "environment and subject strategies each contribute one entity",
+			failureStrategy:    types.FailureStrategyContinue,
+			strategies:         []types.MappingStrategy{environmentStrategy(), subjectStrategy()},
+			expectedCategories: []entity.Entity_Category{entity.Entity_CATEGORY_ENVIRONMENT, entity.Entity_CATEGORY_SUBJECT},
+			expectedUsername:   "alice",
+		},
+		{
+			name:               "chain follows strategy order",
+			failureStrategy:    types.FailureStrategyContinue,
+			strategies:         []types.MappingStrategy{subjectStrategy(), environmentStrategy()},
+			expectedCategories: []entity.Entity_Category{entity.Entity_CATEGORY_SUBJECT, entity.Entity_CATEGORY_ENVIRONMENT},
+			expectedUsername:   "alice",
+		},
+		{
+			name:               "a redundant subject strategy after a full chain is skipped",
+			failureStrategy:    types.FailureStrategyContinue,
+			strategies:         []types.MappingStrategy{environmentStrategy(), subjectStrategy(), secondSubjectStrategy()},
+			expectedCategories: []entity.Entity_Category{entity.Entity_CATEGORY_ENVIRONMENT, entity.Entity_CATEGORY_SUBJECT},
+			expectedUsername:   "alice",
+		},
+		{
+			name:               "fail-fast produces the same chain shape",
+			failureStrategy:    types.FailureStrategyFailFast,
+			strategies:         []types.MappingStrategy{environmentStrategy(), subjectStrategy()},
+			expectedCategories: []entity.Entity_Category{entity.Entity_CATEGORY_ENVIRONMENT, entity.Entity_CATEGORY_SUBJECT},
+			expectedUsername:   "alice",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			chain := chainForTestToken(t, firstMatchWinsConfig(tt.failureStrategy, tt.strategies...))
+
+			require.Equal(t, tt.expectedCategories, categoriesOf(chain))
+			require.Equal(t, tt.expectedUsername, claimsOf(t, subjectEntity(t, chain))["username"],
+				"the first matching subject strategy must own the subject entity")
+		})
+	}
+}
+
+// TestCreateEntityChainsFromTokens_EnvironmentFirstStillResolvesSubject guards the ordering
+// regression: authz resolves decisions with skipEnvironmentEntities=true, so a chain built
+// from an environment-first config must still carry a subject or every decision errors out.
+func TestCreateEntityChainsFromTokens_EnvironmentFirstStillResolvesSubject(t *testing.T) {
+	chain := chainForTestToken(t, firstMatchWinsConfig(
+		types.FailureStrategyContinue, environmentStrategy(), subjectStrategy(),
+	))
+
+	require.Equal(t, "alice", claimsOf(t, subjectEntity(t, chain))["username"])
+}
+
+// TestCreateEntityChainsFromTokens_ContinueFallsThroughFailureToNextStrategy shows the one
+// thing "continue" does change: a failing strategy hands off to the next matching one.
+func TestCreateEntityChainsFromTokens_ContinueFallsThroughFailureToNextStrategy(t *testing.T) {
+	failing := environmentStrategy()
+	failing.Name = "missing_provider"
+	failing.Provider = "not-registered"
+
+	chain := chainForTestToken(t, firstMatchWinsConfig(types.FailureStrategyContinue, failing, subjectStrategy()))
+
+	require.Len(t, chain.GetEntities(), 1)
+	require.Equal(t, "alice", claimsOf(t, subjectEntity(t, chain))["username"])
+}

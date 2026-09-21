@@ -133,6 +133,15 @@ func (ns NamespacesService) CreateNamespace(ctx context.Context, req *connect.Re
 	rsp := &namespaces.CreateNamespaceResponse{}
 
 	err := ns.dbClient.RunInTx(ctx, func(txClient *policydb.PolicyDBClient) error {
+		if limit := ns.config.MaxObjectCounts.Namespaces; limit > 0 {
+			count, err := txClient.CountNamespaces(ctx)
+			if err != nil {
+				return err
+			}
+			if err := policyconfig.EnforceObjectLimit(policyconfig.ObjectTypeNamespaces, limit, count, 1); err != nil {
+				return err
+			}
+		}
 		n, err := txClient.CreateNamespace(ctx, req.Msg)
 		if err != nil {
 			ns.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
@@ -149,6 +158,9 @@ func (ns NamespacesService) CreateNamespace(ctx context.Context, req *connect.Re
 		return nil
 	})
 	if err != nil {
+		if limitErr := policyconfig.ObjectLimitConnectError(ctx, ns.logger, "create", err); limitErr != nil {
+			return nil, limitErr
+		}
 		return nil, db.StatusifyError(ctx, ns.logger, err, db.ErrTextCreationFailed, slog.String("namespace", req.Msg.String()))
 	}
 
@@ -239,7 +251,7 @@ func (ns NamespacesService) RemoveKeyAccessServerFromNamespace(ctx context.Conte
 	namespaceKas, err := ns.dbClient.RemoveKeyAccessServerFromNamespace(ctx, grant)
 	if err != nil {
 		ns.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
-		return nil, db.StatusifyError(ctx, ns.logger, err, db.ErrTextDeletionFailed, slog.String("namespaceKas", grant.String()))
+		return nil, db.StatusifyError(ctx, ns.logger, err, db.ErrTextDeletionFailed, slog.String("namespace_kas", grant.String()))
 	}
 	ns.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
 
@@ -261,7 +273,7 @@ func (ns NamespacesService) AssignPublicKeyToNamespace(ctx context.Context, r *c
 	namespaceKey, err := ns.dbClient.AssignPublicKeyToNamespace(ctx, key)
 	if err != nil {
 		ns.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
-		return nil, db.StatusifyError(ctx, ns.logger, err, db.ErrTextCreationFailed, slog.String("namespaceKey", key.String()))
+		return nil, db.StatusifyError(ctx, ns.logger, err, db.ErrTextCreationFailed, slog.String("namespace_key", key.String()))
 	}
 	ns.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
 
@@ -283,7 +295,7 @@ func (ns NamespacesService) RemovePublicKeyFromNamespace(ctx context.Context, r 
 	_, err := ns.dbClient.RemovePublicKeyFromNamespace(ctx, key)
 	if err != nil {
 		ns.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
-		return nil, db.StatusifyError(ctx, ns.logger, err, db.ErrTextDeletionFailed, slog.String("namespaceKey", key.String()))
+		return nil, db.StatusifyError(ctx, ns.logger, err, db.ErrTextDeletionFailed, slog.String("namespace_key", key.String()))
 	}
 	ns.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
 

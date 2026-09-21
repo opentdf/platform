@@ -1,5 +1,26 @@
 # Changelog
 
+## [0.26.0](https://github.com/opentdf/platform/compare/service/v0.25.0...service/v0.26.0) (2026-08-28)
+
+
+### Features
+
+* **authz:** wrap streaming/bidi handlers in Connect authN/authz interceptors ([#3867](https://github.com/opentdf/platform/issues/3867)) ([f515dda](https://github.com/opentdf/platform/commit/f515dda3fbf72dff2c2e80fb2a543acac82beb17))
+* **core:** add trace-log correlation for otel ([#3888](https://github.com/opentdf/platform/issues/3888)) ([1700732](https://github.com/opentdf/platform/commit/1700732f8dd9bd7cfee7c7c12d65fda10d719c94))
+* **core:** Expose real-time audit logging ([#3889](https://github.com/opentdf/platform/issues/3889)) ([b0f4eb4](https://github.com/opentdf/platform/commit/b0f4eb4399fe38e16d2bd60db4d745697ace2a54))
+* **core:** Make audit logger types extensible ([#3089](https://github.com/opentdf/platform/issues/3089)) ([ce97a2d](https://github.com/opentdf/platform/commit/ce97a2d73d9bffed22505e0d731b77d7dd439053))
+* **kas:** Move key_management to stable ([#3896](https://github.com/opentdf/platform/issues/3896)) ([98f4ec6](https://github.com/opentdf/platform/commit/98f4ec63ff0c7ea9c21a6b6c96c81e6fcb82adba))
+* **policy:** Add sort functionality on key_status ([#3845](https://github.com/opentdf/platform/issues/3845)) ([2ca20ff](https://github.com/opentdf/platform/commit/2ca20ff96048f02c56277455a97d7f2341f55d2d))
+
+
+### Bug Fixes
+
+* **core:** establish verified audit principal ([#3900](https://github.com/opentdf/platform/issues/3900)) ([cf2b160](https://github.com/opentdf/platform/commit/cf2b16045c499762829e5a50b4211c4cb11bba7a))
+* **deps:** bump github.com/moby/go-archive from 0.2.0 to 0.3.0 in /service ([#3892](https://github.com/opentdf/platform/issues/3892)) ([d610fd8](https://github.com/opentdf/platform/commit/d610fd8378e005bd7c36c10c7a13ed88e3c582e5))
+* **deps:** upgrade sdk and protocol/go in service ([#3927](https://github.com/opentdf/platform/issues/3927)) ([d7553ab](https://github.com/opentdf/platform/commit/d7553ab0e90ac0f95265ac4f20beb9acc4b04669))
+* **ers:** fix direct entitlements silently dropped on token-identifier decisions ([#3908](https://github.com/opentdf/platform/issues/3908)) ([ec88620](https://github.com/opentdf/platform/commit/ec88620fb3dec0999c6b9c93f3c22d4e44341128))
+* **policy:** GetAttrVal only expose connected obligations. ([#3913](https://github.com/opentdf/platform/issues/3913)) ([66849a0](https://github.com/opentdf/platform/commit/66849a061d794e44a9af42a80af8619f6362bac3))
+
 ## [0.25.0](https://github.com/opentdf/platform/compare/service/v0.24.0...service/v0.25.0) (2026-08-11)
 
 

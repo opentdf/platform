@@ -1,6 +1,7 @@
 package sdk
 
 import (
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -41,6 +42,64 @@ type Assertion struct {
 }
 
 var errAssertionVerifyKeyFailure = errors.New("assertion: failed to verify with provided key")
+
+// signAssertions builds and signs the manifest assertion list.
+//
+// Each assertion is bound to the payload by signing the aggregate hash of all
+// segment hashes followed by the assertion's own hash. Pre-4.3.0 writers append
+// the hex form of the assertion hash rather than its raw bytes, so useHex
+// selects between the two encodings.
+//
+// Assertions are signed with HS256 over defaultKey unless the config supplies
+// its own signing key. Returns nil when there are no assertions to sign.
+func signAssertions(aggregateHash []byte, configs []AssertionConfig, defaultKey []byte, useHex bool) ([]Assertion, error) {
+	var signed []Assertion
+	for _, assertion := range configs {
+		tmpAssertion := Assertion{
+			ID:             assertion.ID,
+			Type:           assertion.Type,
+			Scope:          assertion.Scope,
+			Statement:      assertion.Statement,
+			AppliesToState: assertion.AppliesToState,
+		}
+
+		hashOfAssertionAsHex, err := tmpAssertion.GetHash()
+		if err != nil {
+			return nil, err
+		}
+
+		hashOfAssertion := make([]byte, hex.DecodedLen(len(hashOfAssertionAsHex)))
+		if _, err := hex.Decode(hashOfAssertion, hashOfAssertionAsHex); err != nil {
+			return nil, fmt.Errorf("error decoding hex string: %w", err)
+		}
+
+		completeHash := make([]byte, 0, len(aggregateHash)+len(hashOfAssertionAsHex))
+		completeHash = append(completeHash, aggregateHash...)
+		if useHex {
+			completeHash = append(completeHash, hashOfAssertionAsHex...)
+		} else {
+			completeHash = append(completeHash, hashOfAssertion...)
+		}
+
+		encoded := ocrypto.Base64Encode(completeHash)
+
+		// Default to HS256 over the payload key unless the caller supplied a key.
+		assertionSigningKey := AssertionKey{
+			Alg: AssertionKeyAlgHS256,
+			Key: defaultKey,
+		}
+		if !assertion.SigningKey.IsEmpty() {
+			assertionSigningKey = assertion.SigningKey
+		}
+
+		if err := tmpAssertion.Sign(string(hashOfAssertionAsHex), string(encoded), assertionSigningKey); err != nil {
+			return nil, fmt.Errorf("failed to sign assertion: %w", err)
+		}
+
+		signed = append(signed, tmpAssertion)
+	}
+	return signed, nil
+}
 
 // Sign signs the assertion with the given hash and signature using the key.
 // It returns an error if the signing fails.

@@ -15,11 +15,22 @@ var (
 	ErrTampered                = errors.New("tamper detected")
 	ErrRootSigValidation       = fmt.Errorf("[%w] tdf: failed integrity check on root signature", ErrTampered)
 	ErrSegSizeMismatch         = fmt.Errorf("[%w] tdf: mismatch encrypted segment size in manifest", ErrTampered)
+	ErrSegSizeUnresolved       = fmt.Errorf("[%w] tdf: segment size invalid or missing from manifest, with no default to fall back on", ErrTampered)
 	ErrSegSigValidation        = fmt.Errorf("[%w] tdf: failed integrity check on segment hash", ErrTampered)
+	ErrGMACSignatureFailed     = fmt.Errorf("[%w] tdf: ciphertext too short for a gmac signature", ErrTampered)
 	ErrTDFPayloadReadFail      = fmt.Errorf("[%w] tdf: fail to read payload from tdf", ErrTampered)
 	ErrTDFPayloadInvalidOffset = fmt.Errorf("[%w] sdk.Reader.ReadAt: negative offset", ErrTampered)
 	ErrRootSignatureFailure    = fmt.Errorf("[%w] tdf: issue verifying root signature", ErrTampered)
 	ErrRewrapBadRequest        = fmt.Errorf("[%w] tdf: rewrap request 400", ErrTampered)
+
+	// ErrUnsupportedRootIntegrityAlgorithm rejects any root signature algorithm
+	// other than HS256, on both the write and the read path.
+	ErrUnsupportedRootIntegrityAlgorithm = errors.New("tdf: unsupported root integrity algorithm")
+
+	// ErrUnsupportedSegmentIntegrityAlgorithm rejects a segment algorithm that
+	// is neither HS256 nor GMAC. SegmentIntegrityAlg is int-backed, so this
+	// catches an out-of-range value before it reaches a manifest.
+	ErrUnsupportedSegmentIntegrityAlgorithm = errors.New("tdf: unsupported segment integrity algorithm")
 
 	// kasGenericBadRequest is the substring the SDK looks for in serialized
 	// KAS 400 errors to identify potential tamper. KAS uses the generic message

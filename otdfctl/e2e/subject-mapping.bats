@@ -59,7 +59,7 @@ teardown_file() {
     # action is required
     run_otdfctl_sm create -a "$SM_VAL1_ID" --subject-condition-set-new "$SCS_2"
     assert_failure
-    assert_output --partial "At least one Action [--action] is required"
+    assert_output --partial 'required flag(s) "action" not set'
 }
 
 @test "Match subject mapping" {

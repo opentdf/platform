@@ -79,7 +79,7 @@ var (
 //
 // Example usage:
 //
-//	writer, err := NewWriter(ctx, WithIntegrityAlgorithm(HS256))
+//	writer, err := NewWriter(ctx, WithIntegrityAlgorithm(RootHS256))
 //	if err != nil {
 //		return err
 //	}
@@ -132,8 +132,8 @@ type Writer struct {
 //   - Memory-efficient segment processing
 //
 // Configuration options can be provided to customize:
-//   - Integrity algorithm selection (HS256, GMAC)
-//   - Segment integrity algorithm (independent of root algorithm)
+//   - Segment integrity algorithm (SegmentHS256, SegmentGMAC)
+//   - Root integrity algorithm, which accepts RootHS256 and nothing else
 //
 // The writer generates a unique Data Encryption Key (DEK) and initializes
 // the underlying archive writer for ZIP structure management.
@@ -150,14 +150,14 @@ type Writer struct {
 //
 //	// Custom integrity algorithms
 //	writer, err := NewWriter(ctx,
-//		WithIntegrityAlgorithm(GMAC),
-//		WithSegmentIntegrityAlgorithm(HS256),
+//		WithIntegrityAlgorithm(RootHS256),
+//		WithSegmentIntegrityAlgorithm(SegmentGMAC),
 //	)
 func NewWriter(_ context.Context, opts ...Option[*WriterConfig]) (*Writer, error) {
 	// Initialize Config
 	config := &WriterConfig{
-		integrityAlgorithm:        HS256,
-		segmentIntegrityAlgorithm: HS256,
+		rootIntegrityAlg:    RootHS256,
+		segmentIntegrityAlg: SegmentHS256,
 	}
 
 	for _, opt := range opts {
@@ -264,7 +264,7 @@ func (w *Writer) WriteSegment(ctx context.Context, index int, data []byte) (*Seg
 	if err != nil {
 		return nil, err
 	}
-	segmentSig, err := calculateSignature(segmentCipher, w.dek, w.segmentIntegrityAlgorithm, false) // Don't ever hex encode new tdf's
+	segmentSig, err := segmentIntegrity(segmentCipher, w.dek, w.segmentIntegrityAlg)
 	if err != nil {
 		return nil, err
 	}
@@ -341,7 +341,10 @@ func (w *Writer) WriteSegment(ctx context.Context, index int, data []byte) (*Seg
 //
 // Error conditions:
 //   - ErrAlreadyFinalized: Finalize already called
-//   - Missing segments: Gaps in segment indices (e.g., segments 0,1,3 written but 2 missing)
+//   - Missing segment 0: Index 0 carries the payload's ZIP local file header, which
+//     every recorded offset is measured from, so a write set that omits it is
+//     rejected. Gaps between the remaining indices are legal (e.g., segments 0,1,3
+//     with 2 missing); order is inferred by sorting whichever indices are present.
 //   - Key splitting failures: Invalid attributes or KAS configuration
 //   - Manifest generation errors: JSON marshaling failures
 //   - Archive finalization errors: ZIP structure generation failures
@@ -535,7 +538,9 @@ func (w *Writer) getManifest(ctx context.Context, cfg *WriterFinalizeConfig) (*M
 	}
 
 	// Set segment hash algorithm
-	encryptInfo.SegmentHashAlgorithm = w.segmentIntegrityAlgorithm.String()
+	// Safe to take the name from the config: an algorithm with no manifest
+	// spelling would already have failed every segmentIntegrity call above.
+	encryptInfo.SegmentHashAlgorithm = w.segmentIntegrityAlg.String()
 
 	var aggregateHash bytes.Buffer
 	// Calculate totals and iterate through segments in finalize order
@@ -562,12 +567,12 @@ func (w *Writer) getManifest(ctx context.Context, cfg *WriterFinalizeConfig) (*M
 		return nil, 0, 0, errors.New("empty segment hash")
 	}
 
-	rootSignature, err := calculateSignature(aggregateHash.Bytes(), w.dek, w.integrityAlgorithm, false)
+	rootSignature, err := rootIntegrity(aggregateHash.Bytes(), w.dek, w.rootIntegrityAlg)
 	if err != nil {
 		return nil, 0, 0, err
 	}
 	encryptInfo.RootSignature = RootSignature{
-		Algorithm: w.integrityAlgorithm.String(),
+		Algorithm: w.rootIntegrityAlg.String(),
 		Signature: string(ocrypto.Base64Encode([]byte(rootSignature))),
 	}
 

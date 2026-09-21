@@ -1,12 +1,18 @@
 package server
 
 import (
+	"cmp"
 	"context"
+	"fmt"
+	"slices"
+	"strings"
+	"time"
 
 	"connectrpc.com/connect"
 	"github.com/casbin/casbin/v2/persist"
 	"github.com/opentdf/platform/sdk"
 	"github.com/opentdf/platform/service/logger"
+	"github.com/opentdf/platform/service/logger/audit"
 	"github.com/opentdf/platform/service/pkg/authz"
 	"github.com/opentdf/platform/service/pkg/config"
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
@@ -49,11 +55,86 @@ type StartConfig struct {
 
 	authzRoleProvider          authz.RoleProvider
 	authzRoleProviderFactories map[string]authz.RoleProviderFactory
+	auditProcessor             audit.Processor
+	auditTimeout               *time.Duration
+	loggerContextAttrs         []logger.ContextAttrFunc
 
 	// CORS additive configuration - appended to YAML/env config values
 	additionalCORSHeaders        []string
 	additionalCORSMethods        []string
 	additionalCORSExposedHeaders []string
+
+	auditTypeRegistrations         audit.TypeRegistrations
+	auditTypeRegistrationConflicts []auditTypeRegistrationConflict
+}
+
+type auditTypeRegistrationConflict struct {
+	Category     string
+	Key          int
+	ExistingName string
+	NewName      string
+}
+
+// formatAuditTypeRegistrationConflicts renders conflicts sorted by (Category, Key)
+// so the reported message is stable regardless of map iteration order.
+func formatAuditTypeRegistrationConflicts(conflicts []auditTypeRegistrationConflict) string {
+	if len(conflicts) == 0 {
+		return ""
+	}
+
+	sorted := slices.Clone(conflicts)
+	slices.SortFunc(sorted, func(a, b auditTypeRegistrationConflict) int {
+		if categoryCmp := strings.Compare(a.Category, b.Category); categoryCmp != 0 {
+			return categoryCmp
+		}
+		return cmp.Compare(a.Key, b.Key)
+	})
+
+	entries := make([]string, 0, len(sorted))
+	for _, conflict := range sorted {
+		entries = append(entries, fmt.Sprintf("%s %d: %q vs %q", conflict.Category, conflict.Key, conflict.ExistingName, conflict.NewName))
+	}
+	return strings.Join(entries, "; ")
+}
+
+// WithAuditProcessor configures instance-scoped canonical audit processing.
+func WithAuditProcessor(processor audit.Processor) StartOptions {
+	return func(c StartConfig) StartConfig {
+		c.auditProcessor = processor
+		return c
+	}
+}
+
+// WithAuditTimeout sets the audit processing budget. Non-positive values use five seconds.
+func WithAuditTimeout(timeout time.Duration) StartOptions {
+	return func(c StartConfig) StartConfig {
+		c.auditTimeout = &timeout
+		return c
+	}
+}
+
+// WithLoggerContextAttrs registers functions that derive attributes from each
+// log record's context. This configures the logger, not a mux: the attrs apply
+// to every record a service emits, on both the external and in-process paths.
+func WithLoggerContextAttrs(fns ...logger.ContextAttrFunc) StartOptions {
+	return func(c StartConfig) StartConfig {
+		c.loggerContextAttrs = append(c.loggerContextAttrs, fns...)
+		return c
+	}
+}
+
+// loggerConfig applies explicit startup overrides after YAML and environment loading.
+func (c StartConfig) loggerConfig(cfg logger.Config) logger.Config {
+	if c.auditProcessor != nil {
+		cfg.AuditProcessor = c.auditProcessor
+	}
+	if c.auditTimeout != nil {
+		cfg.AuditTimeout = *c.auditTimeout
+	}
+	if len(c.loggerContextAttrs) > 0 {
+		cfg.ContextAttrs = append(slices.Clone(cfg.ContextAttrs), c.loggerContextAttrs...)
+	}
+	return cfg
 }
 
 // Deprecated: Use WithConfigKey
@@ -284,6 +365,82 @@ func WithAdditionalCORSMethods(methods ...string) StartOptions {
 func WithAdditionalCORSExposedHeaders(headers ...string) StartOptions {
 	return func(c StartConfig) StartConfig {
 		c.additionalCORSExposedHeaders = append(c.additionalCORSExposedHeaders, headers...)
+		return c
+	}
+}
+
+// WithAdditionalAuditTypeRegistrations centrally registers additional audit object/action/action result types
+// and seals the registration registry during startup to block runtime modifications.
+func WithAdditionalAuditTypeRegistrations(registrations audit.TypeRegistrations) StartOptions {
+	return func(c StartConfig) StartConfig {
+		mergedRegistrations := audit.TypeRegistrations{}
+		conflicts := c.auditTypeRegistrationConflicts
+
+		if len(c.auditTypeRegistrations.ObjectTypes) > 0 || len(registrations.ObjectTypes) > 0 {
+			mergedRegistrations.ObjectTypes = make(map[audit.ObjectType]string)
+			for objectType, name := range c.auditTypeRegistrations.ObjectTypes {
+				mergedRegistrations.ObjectTypes[objectType] = name
+			}
+			for objectType, name := range registrations.ObjectTypes {
+				if existingName, ok := mergedRegistrations.ObjectTypes[objectType]; ok {
+					if existingName != name {
+						conflicts = append(conflicts, auditTypeRegistrationConflict{
+							Category:     "object_type",
+							Key:          int(objectType),
+							ExistingName: existingName,
+							NewName:      name,
+						})
+					}
+					continue
+				}
+				mergedRegistrations.ObjectTypes[objectType] = name
+			}
+		}
+
+		if len(c.auditTypeRegistrations.ActionTypes) > 0 || len(registrations.ActionTypes) > 0 {
+			mergedRegistrations.ActionTypes = make(map[audit.ActionType]string)
+			for actionType, name := range c.auditTypeRegistrations.ActionTypes {
+				mergedRegistrations.ActionTypes[actionType] = name
+			}
+			for actionType, name := range registrations.ActionTypes {
+				if existingName, ok := mergedRegistrations.ActionTypes[actionType]; ok {
+					if existingName != name {
+						conflicts = append(conflicts, auditTypeRegistrationConflict{
+							Category:     "action_type",
+							Key:          int(actionType),
+							ExistingName: existingName,
+							NewName:      name,
+						})
+					}
+					continue
+				}
+				mergedRegistrations.ActionTypes[actionType] = name
+			}
+		}
+
+		if len(c.auditTypeRegistrations.ActionResults) > 0 || len(registrations.ActionResults) > 0 {
+			mergedRegistrations.ActionResults = make(map[audit.ActionResult]string)
+			for actionResult, name := range c.auditTypeRegistrations.ActionResults {
+				mergedRegistrations.ActionResults[actionResult] = name
+			}
+			for actionResult, name := range registrations.ActionResults {
+				if existingName, ok := mergedRegistrations.ActionResults[actionResult]; ok {
+					if existingName != name {
+						conflicts = append(conflicts, auditTypeRegistrationConflict{
+							Category:     "action_result",
+							Key:          int(actionResult),
+							ExistingName: existingName,
+							NewName:      name,
+						})
+					}
+					continue
+				}
+				mergedRegistrations.ActionResults[actionResult] = name
+			}
+		}
+
+		c.auditTypeRegistrations = mergedRegistrations
+		c.auditTypeRegistrationConflicts = conflicts
 		return c
 	}
 }

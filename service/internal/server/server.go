@@ -11,6 +11,7 @@ import (
 	"net/http/pprof"
 	"net/textproto"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 
@@ -34,9 +35,11 @@ import (
 )
 
 const (
-	defaultWriteTimeout time.Duration = 10 * time.Second
-	defaultReadTimeout  time.Duration = 10 * time.Second
-	shutdownTimeout     time.Duration = 5 * time.Second
+	defaultWriteTimeout     time.Duration = 10 * time.Second
+	defaultReadTimeout      time.Duration = 10 * time.Second
+	shutdownTimeout         time.Duration = 5 * time.Second
+	maxPprofDurationSeconds               = 30
+	maxPprofFormBodyBytes   int64         = 1024
 )
 
 type Error string
@@ -231,6 +234,7 @@ type OpenTDFServer struct {
 	ConnectRPCInProcess *inProcessServer
 	ConnectRPC          *ConnectRPC
 	CacheManager        *cache.Manager
+	reflectionEnabled   bool
 
 	// To Deprecate: Use the TrustKeyIndex and TrustKeyManager instead
 	CryptoProvider *security.StandardCrypto
@@ -308,11 +312,12 @@ func NewOpenTDFServer(config Config, logger *logger.Logger, cacheManager *cache.
 	}
 
 	o := OpenTDFServer{
-		AuthN:        authN,
-		HTTPMux:      httpMux,
-		HTTPServer:   httpServer,
-		CacheManager: cacheManager,
-		ConnectRPC:   connectRPC,
+		AuthN:             authN,
+		HTTPMux:           httpMux,
+		HTTPServer:        httpServer,
+		CacheManager:      cacheManager,
+		ConnectRPC:        connectRPC,
+		reflectionEnabled: config.GRPC.ReflectionEnabled,
 		ConnectRPCInProcess: &inProcessServer{
 			logger:             logger.With("ipc_server", "true"),
 			srv:                memhttp.New(connectRPCIpc.Mux),
@@ -344,6 +349,16 @@ func newHTTPServer(c Config, connectRPC http.Handler, extraHTTP http.Handler, a 
 	)
 
 	httpHandler := extraHTTP
+
+	// Keep profiling behind the same authentication and authorization boundary as
+	// the other HTTP handlers.
+	if c.EnablePprof {
+		httpHandler = pprofHandler(httpHandler)
+		// Need to extend write timeout to collect pprof data.
+		if c.HTTPServerConfig.WriteTimeout < maxPprofDurationSeconds*time.Second {
+			c.HTTPServerConfig.WriteTimeout = maxPprofDurationSeconds * time.Second
+		}
+	}
 
 	// Add authN interceptor to extra handlers.
 	if c.Auth.Enabled {
@@ -393,15 +408,6 @@ func newHTTPServer(c Config, connectRPC http.Handler, extraHTTP http.Handler, a 
 		httpHandler = corsHandler.Handler(httpHandler)
 	}
 
-	// Enable pprof
-	if c.EnablePprof {
-		httpHandler = pprofHandler(httpHandler)
-		// Need to extend write timeout to collect pprof data.
-		if c.HTTPServerConfig.WriteTimeout < 30*time.Second {
-			c.HTTPServerConfig.WriteTimeout = 30 * time.Second //nolint:mnd // easier to read that we are overriding the default
-		}
-	}
-
 	var handler http.Handler
 	if !c.TLS.Enabled {
 		handler = h2c.NewHandler(routeConnectRPCRequests(connectRPC, httpHandler), &http2.Server{})
@@ -445,10 +451,14 @@ func routeConnectRPCRequests(connectRPC http.Handler, httpHandler http.Handler) 
 	})
 }
 
-// ppprof handler
+// pprofHandler routes profiling requests and bounds caller-controlled collection durations.
 func pprofHandler(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if strings.HasPrefix(r.URL.Path, "/debug/pprof/") {
+			if supportsPprofDuration(r.URL.Path) && !validatePprofDuration(w, r) {
+				return
+			}
+
 			switch r.URL.Path {
 			case "/debug/pprof/cmdline":
 				pprof.Cmdline(w, r)
@@ -465,6 +475,51 @@ func pprofHandler(h http.Handler) http.Handler {
 			h.ServeHTTP(w, r)
 		}
 	})
+}
+
+func supportsPprofDuration(path string) bool {
+	switch path {
+	case "/debug/pprof/", "/debug/pprof/cmdline", "/debug/pprof/symbol":
+		return false
+	default:
+		return true
+	}
+}
+
+func validatePprofDuration(w http.ResponseWriter, r *http.Request) bool {
+	r.Body = http.MaxBytesReader(w, r.Body, maxPprofFormBodyBytes)
+	if err := r.ParseForm(); err != nil {
+		writePprofFormError(w, err)
+		return false
+	}
+	//nolint:gosec // MaxBytesReader bounds the complete request body above.
+	if err := r.ParseMultipartForm(maxPprofFormBodyBytes); err != nil && !errors.Is(err, http.ErrNotMultipart) {
+		writePprofFormError(w, err)
+		return false
+	}
+
+	seconds := r.FormValue("seconds")
+	if seconds == "" {
+		return true
+	}
+
+	duration, err := strconv.ParseFloat(seconds, 64)
+	if err == nil && duration > maxPprofDurationSeconds {
+		http.Error(w, fmt.Sprintf("pprof duration must not exceed %d seconds", maxPprofDurationSeconds), http.StatusBadRequest)
+		return false
+	}
+
+	return true
+}
+
+func writePprofFormError(w http.ResponseWriter, err error) {
+	var maxBytesError *http.MaxBytesError
+	if errors.As(err, &maxBytesError) {
+		http.Error(w, "pprof request body too large", http.StatusRequestEntityTooLarge)
+		return
+	}
+
+	http.Error(w, "invalid pprof form body", http.StatusBadRequest)
 }
 
 func newConnectRPC(c Config, authInts []connect.Interceptor, ints []connect.Interceptor, logger *logger.Logger) (*ConnectRPC, error) {
@@ -503,16 +558,7 @@ func newConnectRPC(c Config, authInts []connect.Interceptor, ints []connect.Inte
 }
 
 func (s OpenTDFServer) Start() error {
-	// Add reflection api to connect-rpc
-	reflector := grpcreflect.NewStaticReflector(
-		s.ConnectRPC.ServiceReflection...,
-	)
-
-	s.ConnectRPC.Mux.Handle(grpcreflect.NewHandlerV1(reflector))
-	s.ConnectRPC.Mux.Handle(grpcreflect.NewHandlerV1Alpha(reflector))
-
-	s.ConnectRPCInProcess.Mux.Handle(grpcreflect.NewHandlerV1(reflector))
-	s.ConnectRPCInProcess.Mux.Handle(grpcreflect.NewHandlerV1Alpha(reflector))
+	s.registerReflectionHandlers()
 
 	ln, err := s.openHTTPServerPort(context.Background())
 	if err != nil {
@@ -546,6 +592,20 @@ func (s OpenTDFServer) Stop() {
 	}
 
 	s.logger.Info("shutdown complete")
+}
+
+func (s OpenTDFServer) registerReflectionHandlers() {
+	if !s.reflectionEnabled {
+		return
+	}
+
+	// Add reflection api to connect-rpc
+	reflector := grpcreflect.NewStaticReflector(
+		s.ConnectRPC.ServiceReflection...,
+	)
+
+	s.ConnectRPC.Mux.Handle(grpcreflect.NewHandlerV1(reflector))
+	s.ConnectRPC.Mux.Handle(grpcreflect.NewHandlerV1Alpha(reflector))
 }
 
 func (s inProcessServer) Conn() *sdk.ConnectRPCConnection {

@@ -218,35 +218,9 @@ func NewPolicyDecisionPoint(
 		dynamicMappingsByDefinitionFQN[definitionFQN] = append(dynamicMappingsByDefinitionFQN[definitionFQN], mapping)
 	}
 
-	allRegisteredResourceValuesByFQN := make(map[string]*policy.RegisteredResourceValue)
-	for _, rr := range allRegisteredResources {
-		if err := validateRegisteredResource(rr); err != nil {
-			return nil, fmt.Errorf("invalid registered resource: %w", err)
-		}
-		rrName := rr.GetName()
-
-		for _, v := range rr.GetValues() {
-			if err := validateRegisteredResourceValue(v); err != nil {
-				return nil, fmt.Errorf("invalid registered resource value: %w", err)
-			}
-
-			namespaceName := namespaceNameFromPolicyNamespace(rr.GetNamespace())
-
-			fullyQualifiedValue := identifier.FullyQualifiedRegisteredResourceValue{
-				Namespace: namespaceName,
-				Name:      rrName,
-				Value:     v.GetValue(),
-			}
-			allRegisteredResourceValuesByFQN[fullyQualifiedValue.FQN()] = v
-
-			if !namespacedPolicy {
-				legacyQualifiedValue := identifier.FullyQualifiedRegisteredResourceValue{
-					Name:  rrName,
-					Value: v.GetValue(),
-				}
-				allRegisteredResourceValuesByFQN[legacyQualifiedValue.FQN()] = v
-			}
-		}
+	allRegisteredResourceValuesByFQN, err := buildRegisteredResourceValuesByFQN(allRegisteredResources, namespacedPolicy)
+	if err != nil {
+		return nil, err
 	}
 
 	pdp := &PolicyDecisionPoint{
@@ -281,6 +255,43 @@ func namespaceNameFromPolicyNamespace(ns *policy.Namespace) string {
 	}
 
 	return parsed.Namespace
+}
+
+// buildRegisteredResourceValuesByFQN indexes registered resource values by their fully qualified
+// name. In non-strict mode a legacy (namespace-less) FQN key is also registered. It is shared by
+// NewPolicyDecisionPoint and the JustInTimePDP obligations wiring so both index identically.
+func buildRegisteredResourceValuesByFQN(allRegisteredResources []*policy.RegisteredResource, namespacedPolicy bool) (map[string]*policy.RegisteredResourceValue, error) {
+	allRegisteredResourceValuesByFQN := make(map[string]*policy.RegisteredResourceValue)
+	for _, rr := range allRegisteredResources {
+		if err := validateRegisteredResource(rr); err != nil {
+			return nil, fmt.Errorf("invalid registered resource: %w", err)
+		}
+		rrName := rr.GetName()
+
+		for _, v := range rr.GetValues() {
+			if err := validateRegisteredResourceValue(v); err != nil {
+				return nil, fmt.Errorf("invalid registered resource value: %w", err)
+			}
+
+			namespaceName := namespaceNameFromPolicyNamespace(rr.GetNamespace())
+
+			fullyQualifiedValue := identifier.FullyQualifiedRegisteredResourceValue{
+				Namespace: namespaceName,
+				Name:      rrName,
+				Value:     v.GetValue(),
+			}
+			allRegisteredResourceValuesByFQN[fullyQualifiedValue.FQN()] = v
+
+			if !namespacedPolicy {
+				legacyQualifiedValue := identifier.FullyQualifiedRegisteredResourceValue{
+					Name:  rrName,
+					Value: v.GetValue(),
+				}
+				allRegisteredResourceValuesByFQN[legacyQualifiedValue.FQN()] = v
+			}
+		}
+	}
+	return allRegisteredResourceValuesByFQN, nil
 }
 
 // GetDecision evaluates the action on the resources for the entity and returns a decision along with entitlements.
@@ -332,6 +343,12 @@ func (p *PolicyDecisionPoint) GetDecision(
 
 		for _, directEntitlement := range entityRepresentation.GetDirectEntitlements() {
 			fqn := directEntitlement.GetAttributeValueFqn()
+			if p.isDeactivatedValueFQN(ctx, fqn) {
+				l.DebugContext(ctx, "skipping direct entitlement of deactivated attribute value",
+					slog.String("attribute_value_fqn", fqn),
+				)
+				continue
+			}
 			actionNames := directEntitlement.GetActions()
 			// In strict namespaced-policy mode, direct-entitlement actions must carry
 			// the same namespace context as the entitled attribute value so they can
@@ -375,6 +392,12 @@ func (p *PolicyDecisionPoint) GetDecision(
 			return nil, nil, fmt.Errorf("%w: %w", ErrDynamicValueMappingEvaluation, err)
 		}
 		for fqn, actions := range dynamicEntitledFQNsToActions {
+			if p.isDeactivatedValueFQN(ctx, fqn) {
+				l.DebugContext(ctx, "skipping dynamic value mapping entitlement of deactivated attribute value",
+					slog.String("attribute_value_fqn", fqn),
+				)
+				continue
+			}
 			entitledFQNsToActions[fqn] = append(entitledFQNsToActions[fqn], actions...)
 		}
 		l.DebugContext(ctx, "evaluated dynamic value mappings", slog.Any("dynamic_entitled_value_fqns_to_actions", dynamicEntitledFQNsToActions))
@@ -448,6 +471,16 @@ func (p *PolicyDecisionPoint) GetDecisionRegisteredResource(
 		aavAction := aav.GetAction()
 		attrVal := aav.GetAttributeValue()
 		attrValFQN := attrVal.GetFqn()
+
+		// A deactivated value is dropped from this entity's entitlements but leaves the rest intact:
+		// the unusable entitlement is simply irrelevant, like being over-entitled. Denying the whole
+		// entity is unnecessary because the value cannot be satisfied on the resource side either.
+		if p.isDeactivatedValueFQN(ctx, attrValFQN) {
+			l.DebugContext(ctx, "skipping registered resource entitlement of deactivated attribute value",
+				slog.String("attribute_value_fqn", attrValFQN),
+			)
+			continue
+		}
 
 		requiredNamespaceFQN := ""
 		if attrAndValue, ok2 := decisionableAttributes[attrValFQN]; ok2 {
@@ -548,6 +581,12 @@ func (p *PolicyDecisionPoint) GetEntitlements(
 		actionsPerAttributeValueFqn := make(map[string]*authz.EntityEntitlements_ActionsList)
 
 		for valueFQN, actions := range fqnsToActions {
+			if p.isDeactivatedValueFQN(ctx, valueFQN) {
+				l.DebugContext(ctx, "skipping entitlement of deactivated attribute value",
+					slog.String("attribute_value_fqn", valueFQN),
+				)
+				continue
+			}
 			// If already entitled (such as via a higher entitled comprehensive hierarchy attr value), merge with existing
 			if alreadyEntitled, ok := actionsPerAttributeValueFqn[valueFQN]; ok {
 				actions = mergeDeduplicatedActions(make(map[string]*policy.Action), actions, alreadyEntitled.GetActions())
@@ -604,6 +643,13 @@ func (p *PolicyDecisionPoint) GetEntitlementsRegisteredResource(
 		attrVal := aav.GetAttributeValue()
 		attrValFQN := attrVal.GetFqn()
 
+		if p.isDeactivatedValueFQN(ctx, attrValFQN) {
+			l.DebugContext(ctx, "skipping entitlement of deactivated attribute value",
+				slog.String("attribute_value_fqn", attrValFQN),
+			)
+			continue
+		}
+
 		actionsList, actionsAreOK := actionsPerAttributeValueFqn[attrValFQN]
 		if !actionsAreOK {
 			actionsList = &authz.EntityEntitlements_ActionsList{
@@ -640,4 +686,18 @@ func (p *PolicyDecisionPoint) GetEntitlementsRegisteredResource(
 	)
 
 	return result, nil
+}
+
+// isDeactivatedValueFQN reports whether the value FQN, or the definition owning it, is deactivated.
+// An FQN unknown to policy under an active definition is not deactivated: it is either denied or
+// synthesized by the ad-hoc value paths.
+func (p *PolicyDecisionPoint) isDeactivatedValueFQN(ctx context.Context, valueFQN string) bool {
+	if attributeAndValue, ok := p.allEntitleableAttributesByValueFQN[valueFQN]; ok {
+		return isDeactivated(ctx, p.logger, attributeAndValue)
+	}
+	definition, err := getDefinition(valueFQN, p.allAttributesByDefinitionFQN)
+	if err != nil {
+		return false
+	}
+	return isExplicitlyInactive(definition.GetActive())
 }

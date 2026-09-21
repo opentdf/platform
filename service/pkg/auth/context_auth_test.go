@@ -31,6 +31,27 @@ func TestContextWithAuthNInfo(t *testing.T) {
 	assert.Equal(t, rawToken, testAuthContext.rawToken, "Raw token should match")
 }
 
+func TestPrincipalFromContext(t *testing.T) {
+	token, err := jwt.NewBuilder().Subject("verified-subject").Issuer("https://issuer.example").Build()
+	require.NoError(t, err)
+
+	ctx := ContextWithAuthNInfo(t.Context(), nil, token, "raw-token")
+	principal, ok := PrincipalFromContext(ctx)
+
+	require.True(t, ok)
+	assert.Equal(t, "verified-subject", principal.Subject)
+	assert.Equal(t, "https://issuer.example", principal.Issuer)
+}
+
+func TestPrincipalFromContextRequiresSubject(t *testing.T) {
+	ctx := ContextWithAuthNInfo(t.Context(), nil, jwt.New(), "raw-token")
+
+	principal, ok := PrincipalFromContext(ctx)
+
+	assert.False(t, ok)
+	assert.Empty(t, principal)
+}
+
 func TestGetJWKFromContext(t *testing.T) {
 	// Create mock context with JWK
 	mockJWK, _ := jwk.FromRaw([]byte("mockKey"))

@@ -136,3 +136,96 @@ Body.
 	require.NotNil(t, idFlag)
 	assert.Nil(t, idFlag.Annotations[cobra.BashCompOneRequiredFlag])
 }
+
+func TestMarkRequiredFlags(t *testing.T) {
+	doc, err := ProcessDoc(`---
+title: Test Command
+command:
+  name: test
+  flags:
+    - name: id
+      required: true
+      description: Required
+    - name: label
+      description: Optional
+---
+
+Body.
+`)
+	require.NoError(t, err)
+
+	doc.Flags().String("id", "", "Required")
+	doc.Flags().String("label", "", "Optional")
+
+	doc.MarkRequiredFlags()
+
+	idFlag := doc.Flags().Lookup("id")
+	require.NotNil(t, idFlag)
+	assert.Equal(t, []string{"true"}, idFlag.Annotations[cobra.BashCompOneRequiredFlag])
+
+	labelFlag := doc.Flags().Lookup("label")
+	require.NotNil(t, labelFlag)
+	assert.Nil(t, labelFlag.Annotations[cobra.BashCompOneRequiredFlag])
+}
+
+// Unlike MarkSensitiveFlags, a required flag declared in the doc but not
+// registered on the command is skipped rather than panicking, so the registry
+// sweep can safely visit parent/index docs and unbuilt commands.
+func TestMarkRequiredFlagsSkipsUnregistered(t *testing.T) {
+	doc := &Doc{
+		Command: cobra.Command{Use: "test"},
+		DocFlags: []DocFlag{
+			{Name: "missing-flag", Required: true},
+		},
+	}
+
+	assert.NotPanics(t, func() {
+		doc.MarkRequiredFlags()
+	})
+}
+
+func TestManualMarkRequiredFlags(t *testing.T) {
+	withReq, err := ProcessDoc(`---
+title: With Required
+command:
+  name: with-required
+  flags:
+    - name: id
+      required: true
+      description: Required
+---
+
+Body.
+`)
+	require.NoError(t, err)
+	withReq.Flags().String("id", "", "Required")
+
+	withoutReq, err := ProcessDoc(`---
+title: Without Required
+command:
+  name: without-required
+  flags:
+    - name: label
+      description: Optional
+---
+
+Body.
+`)
+	require.NoError(t, err)
+	withoutReq.Flags().String("label", "", "Optional")
+
+	m := Manual{En: map[string]*Doc{
+		"with-required":    withReq,
+		"without-required": withoutReq,
+	}}
+
+	m.MarkRequiredFlags()
+
+	idFlag := withReq.Flags().Lookup("id")
+	require.NotNil(t, idFlag)
+	assert.Equal(t, []string{"true"}, idFlag.Annotations[cobra.BashCompOneRequiredFlag])
+
+	labelFlag := withoutReq.Flags().Lookup("label")
+	require.NotNil(t, labelFlag)
+	assert.Nil(t, labelFlag.Annotations[cobra.BashCompOneRequiredFlag])
+}

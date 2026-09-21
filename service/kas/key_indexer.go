@@ -107,8 +107,6 @@ func (p *KeyIndexer) FindKeyByID(ctx context.Context, id trust.KeyIdentifier) (t
 }
 
 // FindKeyWith returns a key using the requested options.
-// The requested KAS URI is used only when KAO URI selection is enabled and the URI
-// is nonempty. Otherwise, the indexer's configured KAS URI is used.
 func (p *KeyIndexer) FindKeyWith(ctx context.Context, opts trust.FindKeyOptions) (trust.KeyDetails, error) {
 	req := &kasregistry.GetKeyRequest{
 		Identifier: &kasregistry.GetKeyRequest_Key{
@@ -137,8 +135,6 @@ func (p *KeyIndexer) ListKeys(ctx context.Context) ([]trust.KeyDetails, error) {
 }
 
 // ListKeysWith returns keys using the requested options.
-// The requested KAS URI is used only when KAO URI selection is enabled and the URI
-// is nonempty. Otherwise, the indexer's configured KAS URI is used.
 func (p *KeyIndexer) ListKeysWith(ctx context.Context, opts trust.ListKeyOptions) ([]trust.KeyDetails, error) {
 	var legacyOnly *bool
 	if opts.LegacyOnly {

@@ -33,8 +33,8 @@ services:
   kas:
     registered_kas_uri: http://localhost:8080 # Should match what you have registered for *this* KAS in the policy db.
     key_management: false
-    kas_uri_from_kao: false
     preview:
+      kas_uri_from_kao: false
       ec_tdf_enabled: false
       hybrid_tdf_enabled: false
     root_key: a8c4824daafcfa38ed0d13002e92b08720e6c4fcee67d52e954c1a6e045907d1 # For local development testing only

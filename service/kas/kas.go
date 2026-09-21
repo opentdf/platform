@@ -75,7 +75,7 @@ func NewRegistration() *serviceregistry.Service[kasconnect.AccessServiceHandler]
 					srp.Logger.Debug("determined KAS URL", slog.String("kas_url", kasURL.String()))
 
 					// Configure new delegation service
-					p.KeyDelegator = trust.NewDelegatingKeyService(NewPlatformKeyIndexer(srp.SDK, kasURL.String(), srp.Logger), srp.Logger, cacheClient)
+					p.KeyDelegator = trust.NewDelegatingKeyService(NewPlatformKeyIndexer(srp.SDK, kasURL.String(), kasCfg.Preview.KASURIFromKAO, srp.Logger), srp.Logger, cacheClient)
 					for _, manager := range srp.KeyManagerCtxFactories {
 						p.KeyDelegator.RegisterKeyManagerCtxWithAlgorithms(manager.Name, manager.Factory, manager.SupportedAlgorithms)
 						kmgrs = append(kmgrs, manager.Name)

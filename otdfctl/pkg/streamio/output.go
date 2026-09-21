@@ -13,9 +13,23 @@ import (
 // OutputFile that had already been committed or discarded.
 var ErrOutputFileFinished = errors.New("streamio: output file already committed or discarded")
 
+// ErrOutputAliasesInput reports that the destination resolves to the file being
+// read. Opening it would truncate the input before it has been read.
+var ErrOutputAliasesInput = errors.New("streamio: output would overwrite the input")
+
 // tempFileAttempts bounds the search for an unused temporary name, so a
 // pathological directory cannot spin here forever.
 const tempFileAttempts = 1000
+
+// tempFilePrefix names the temporary files created beside a destination.
+//
+// Deliberately fixed rather than derived from the destination: a component name
+// is capped (255 bytes on most filesystems), and a prefix carrying the
+// destination's own basename overflows that cap for a destination whose name is
+// itself valid, failing the open before a single byte has been read. The random
+// suffix is what distinguishes concurrent writers; the prefix only has to be
+// recognizable enough to sweep up after a crash.
+const tempFilePrefix = ".otdfctl.tmp-"
 
 // OutputFile writes to a temporary file alongside the destination and renames
 // it into place only once the write has succeeded, so an interrupted or failed
@@ -50,12 +64,29 @@ type OutputFile struct {
 // destination after the process umask has been applied. A destination written
 // through directly is opened with mode, which the umask likewise applies to,
 // and which has no effect at all on a destination that already exists.
-func NewOutputFile(path string, mode os.FileMode) (*OutputFile, error) {
+//
+// input is the file the caller is reading, already open, and is what the
+// destination is checked against — pass nil when there is none. Callers open
+// their input before their output precisely so a failure to read costs nothing;
+// without this the write-through open would undo that.
+func NewOutputFile(path string, mode os.FileMode, input *os.File) (*OutputFile, error) {
 	direct, err := isDirectDestination(path)
 	if err != nil {
 		return nil, err
 	}
 	if direct {
+		// Only the write-through open is destructive. An ordinary destination
+		// naming the input goes to a temp sibling and is renamed over it once
+		// the read has finished, which is in-place decryption working as asked
+		// rather than a footgun.
+		alias, err := aliasesInput(path, input)
+		if err != nil {
+			return nil, err
+		}
+		if alias {
+			return nil, fmt.Errorf("%w: %s", ErrOutputAliasesInput, path)
+		}
+
 		f, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, mode)
 		if err != nil {
 			return nil, err
@@ -63,11 +94,36 @@ func NewOutputFile(path string, mode os.FileMode) (*OutputFile, error) {
 		return &OutputFile{f: f, path: path, direct: true}, nil
 	}
 
-	f, err := createTemp(filepath.Dir(path), "."+filepath.Base(path)+".tmp-", mode)
+	f, err := createTemp(filepath.Dir(path), tempFilePrefix, mode)
 	if err != nil {
 		return nil, err
 	}
 	return &OutputFile{f: f, path: path}, nil
+}
+
+// aliasesInput reports whether a write-through open of path would land on
+// input.
+//
+// os.Stat, not os.Lstat: a symlink destination is the case that matters, since
+// the open follows it, and the link's own identity is never what gets written.
+// A dangling symlink resolves to nothing and aliases nothing — the open creates
+// the target.
+func aliasesInput(path string, input *os.File) (bool, error) {
+	if input == nil {
+		return false, nil
+	}
+	inputInfo, err := input.Stat()
+	if err != nil {
+		return false, err
+	}
+	destInfo, err := os.Stat(path)
+	if errors.Is(err, os.ErrNotExist) {
+		return false, nil
+	}
+	if err != nil {
+		return false, err
+	}
+	return os.SameFile(inputInfo, destInfo), nil
 }
 
 // createTemp is os.CreateTemp with a caller-chosen mode. os.CreateTemp hardcodes

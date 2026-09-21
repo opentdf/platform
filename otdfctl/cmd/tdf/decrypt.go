@@ -76,7 +76,7 @@ func decryptRun(cmd *cobra.Command, args []string) {
 	// straight to it rather than accumulating in memory first.
 	var dest io.Writer = os.Stdout
 	if output != "" {
-		outFile, err = streamio.NewOutputFile(output, decryptedOutputFileMode)
+		outFile, err = streamio.NewOutputFile(output, decryptedOutputFileMode, in)
 		if err != nil {
 			fail("Failed to write decrypted data to file", err)
 		}

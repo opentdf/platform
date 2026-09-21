@@ -124,7 +124,7 @@ assert_no_leftovers() {
   assert_failure
   [ ! -f "$TDF_OUT" ]
 
-  assert_no_leftovers "$BATS_TEST_TMPDIR/.payload.txt.tdf.tmp-*"
+  assert_no_leftovers "$BATS_TEST_TMPDIR/.otdfctl.tmp-*"
 }
 
 @test "decrypt leaves no output behind when it fails" {
@@ -135,7 +135,7 @@ assert_no_leftovers() {
   assert_failure
   [ ! -f "$RESULT" ]
 
-  assert_no_leftovers "$BATS_TEST_TMPDIR/.payload.out.tmp-*"
+  assert_no_leftovers "$BATS_TEST_TMPDIR/.otdfctl.tmp-*"
 }
 
 # The payoff of writing to a temp sibling: a failed decrypt over an existing
@@ -161,6 +161,33 @@ assert_no_leftovers() {
   run ./otdfctl decrypt -o /dev/null $COMMON "$TDF_OUT"
   assert_success
   [ -c /dev/null ]
+}
+
+# The other side of writing through: -o at a symlink resolving to the input
+# would truncate the input at open, before it has been read. Both commands open
+# their input first, so both could destroy a file they were only asked to read.
+@test "decrypt refuses an output symlink pointing at its input" {
+  ./otdfctl encrypt -o "$TDF_OUT" $COMMON "$PLAIN"
+  ln -s "$TDF_OUT" "$BATS_TEST_TMPDIR/alias.tdf"
+
+  run ./otdfctl decrypt -o "$BATS_TEST_TMPDIR/alias.tdf" $COMMON "$TDF_OUT"
+  assert_failure
+  assert_output --partial "output would overwrite the input"
+
+  # The TDF is still a TDF, not a zero-byte file.
+  ./otdfctl decrypt -o "$RESULT" $COMMON "$TDF_OUT"
+  diff "$PLAIN" "$RESULT"
+}
+
+@test "encrypt refuses an output symlink pointing at its input" {
+  ln -s "$PLAIN" "$BATS_TEST_TMPDIR/alias.tdf"
+
+  run ./otdfctl encrypt -o "$BATS_TEST_TMPDIR/alias.tdf" $COMMON "$PLAIN"
+  assert_failure
+  assert_output --partial "output would overwrite the input"
+
+  run cat "$PLAIN"
+  assert_output "$SECRET_TEXT"
 }
 
 # The point of DSPX-4499: peak RSS is bounded by segment size, not payload size.

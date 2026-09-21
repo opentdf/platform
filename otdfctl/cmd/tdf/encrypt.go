@@ -120,7 +120,9 @@ func encryptRun(cmd *cobra.Command, args []string) {
 	// The SDK seeks to the end of the payload to size it, so the input has to be
 	// seekable. A file already is; a pipe is spooled to disk, which trades the
 	// temporary file for the memory a whole-payload read used to cost.
-	var in io.ReadSeeker
+	// Held as *os.File rather than io.ReadSeeker so NewOutputFile can check the
+	// destination against it.
+	var in *os.File
 	var cleanup func()
 	if filePath != "" {
 		f, err := os.Open(filePath)
@@ -148,7 +150,7 @@ func encryptRun(cmd *cobra.Command, args []string) {
 		if !strings.HasSuffix(out, ".tdf") {
 			out += ".tdf"
 		}
-		tdfFile, err = streamio.NewOutputFile(out, encryptedOutputFileMode)
+		tdfFile, err = streamio.NewOutputFile(out, encryptedOutputFileMode, in)
 		if err != nil {
 			cleanup()
 			cli.ExitWithError("Failed to write encrypted file "+out, err)

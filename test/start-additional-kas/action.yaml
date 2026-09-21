@@ -221,7 +221,6 @@ runs:
               )
             | (.services.kas.key_management = (env(KEY_MANAGEMENT) == "true"))
             | (.services.kas.preview.key_management = (env(KEY_MANAGEMENT) == "true"))
-            | (.services.kas.kas_uri_from_kao = (env(KAS_URI_FROM_KAO) == "true"))
             | (.services.kas.preview.kas_uri_from_kao = (env(KAS_URI_FROM_KAO) == "true"))
             | with(select(strenv(KEY_CACHE_EXPIRATION) != ""); .services.kas.key_cache_expiration = env(KEY_CACHE_EXPIRATION))
             | (.services.kas.registered_kas_uri = "http://localhost:" + env(KAS_PORT))

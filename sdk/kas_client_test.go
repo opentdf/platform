@@ -477,8 +477,8 @@ func TestKasKeyCache_ConcurrentExpiryEviction(t *testing.T) {
 		entries = 64
 	)
 
-	// Seed entries that are already past the 5 minute TTL, so every get() below
-	// takes the eviction branch.
+	// Seed entries that are already past the TTL, so every get() below takes
+	// the eviction branch.
 	keys := make([]kasKeyRequest, 0, entries)
 	for i := range entries {
 		ki := KASInfo{
@@ -490,7 +490,7 @@ func TestKasKeyCache_ConcurrentExpiryEviction(t *testing.T) {
 		cache.store(ki)
 		cacheKey := kasKeyRequest{ki.URL, ki.Algorithm, ki.KID}
 		expired := cache.c[cacheKey]
-		expired.Time = time.Now().Add(-6 * time.Minute)
+		expired.Time = time.Now().Add(-kasKeyCacheTTL - time.Minute)
 		cache.c[cacheKey] = expired
 		keys = append(keys, cacheKey)
 	}

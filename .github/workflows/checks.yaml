@@ -638,6 +638,35 @@ jobs:
       - name: Check that make proto-generate and connect-wrapper-generate have run before PR submission; see above for error details
         run: git diff-files --quiet --ignore-submodules
 
+  schema-sync:
+    permissions:
+      contents: read
+    name: Manifest schema agrees with opentdf/spec
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+      - name: Check out the normative schema
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          repository: opentdf/spec
+          path: opentdf-spec
+          persist-credentials: false
+      - uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5 # v5.5.0
+        with:
+          go-version-file: go.work
+          check-latest: false
+          cache-dependency-path: sdk/go.sum
+      # The bundled schemas and the normative one have drifted apart before,
+      # and it surfaced as a TDF one implementation writes being rejected by
+      # another. TestSchemaMatchesSpec compares the constraints and fails on
+      # any divergence not recorded, with its reason, in specDivergences.
+      - run: go test ./... -run 'TestSchemaMatchesSpec|TestSchemaLaxRelaxesStrictDeliberately' -v
+        working-directory: sdk
+        env:
+          OPENTDF_SPEC_DIR: ${{ github.workspace }}/opentdf-spec
+
   ci:
     permissions: {}
     needs:
@@ -648,6 +677,7 @@ jobs:
       - benchmark
       - license
       - platform-xtest
+      - schema-sync
       - tests-bdd
       - otdfctl-test
     runs-on: ubuntu-22.04

@@ -25,6 +25,7 @@ import (
 	"github.com/opentdf/platform/service/internal/auth/authz"
 	"github.com/opentdf/platform/service/internal/security"
 	"github.com/opentdf/platform/service/internal/server/memhttp"
+	"github.com/opentdf/platform/service/internal/server/realip"
 	"github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/logger/audit"
 	"github.com/opentdf/platform/service/pkg/cache"
@@ -123,6 +124,7 @@ type HTTPServerConfig struct {
 	WriteTimeout      time.Duration `mapstructure:"writeTimeout" json:"writeTimeout"`
 	IdleTimeout       time.Duration `mapstructure:"idleTimeout" json:"idleTimeout"`
 	MaxHeaderBytes    int           `mapstructure:"maxHeaderBytes" json:"maxHeaderBytes"`
+	TrustedProxies    []string      `mapstructure:"trustedProxies" json:"trustedProxies"`
 }
 
 // CORS Configuration for the server
@@ -293,12 +295,17 @@ func NewOpenTDFServer(config Config, logger *logger.Logger, cacheManager *cache.
 		}
 	}
 
-	connectRPCIpc, err := newConnectRPC(config, ipcAuthInts, config.ExtraIPCInterceptors, logger)
+	ipcRequestIPInterceptor := realip.ConnectTrustedRequestIPUnaryInterceptor(sdkAudit.RequestIPHeaderKey.String())
+	connectRPCIpc, err := newConnectRPC(config, ipcAuthInts, config.ExtraIPCInterceptors, ipcRequestIPInterceptor, logger)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create connect rpc ipc server: %w", err)
 	}
 
-	connectRPC, err := newConnectRPC(config, connectAuthInts, config.ExtraConnectInterceptors, logger)
+	requestIPInterceptor, err := realip.ConnectRealIPUnaryInterceptor(config.HTTPServerConfig.TrustedProxies)
+	if err != nil {
+		return nil, fmt.Errorf("failed to configure trusted proxies: %w", err)
+	}
+	connectRPC, err := newConnectRPC(config, connectAuthInts, config.ExtraConnectInterceptors, requestIPInterceptor, logger)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create connect rpc server: %w", err)
 	}
@@ -522,7 +529,7 @@ func writePprofFormError(w http.ResponseWriter, err error) {
 	http.Error(w, "invalid pprof form body", http.StatusBadRequest)
 }
 
-func newConnectRPC(c Config, authInts []connect.Interceptor, ints []connect.Interceptor, logger *logger.Logger) (*ConnectRPC, error) {
+func newConnectRPC(c Config, authInts []connect.Interceptor, ints []connect.Interceptor, requestIPInterceptor connect.Interceptor, logger *logger.Logger) (*ConnectRPC, error) {
 	interceptors := make([]connect.HandlerOption, 0)
 
 	// OTel tracing and metrics for incoming Connect requests, before all other interceptors
@@ -544,7 +551,7 @@ func newConnectRPC(c Config, authInts []connect.Interceptor, ints []connect.Inte
 	// Add protovalidate interceptor
 	validationInterceptor := validate.NewInterceptor()
 
-	interceptors = append(interceptors, connect.WithInterceptors(validationInterceptor, audit.ContextServerInterceptor(logger.Audit)))
+	interceptors = append(interceptors, connect.WithInterceptors(requestIPInterceptor, validationInterceptor, audit.ContextServerInterceptor(logger.Audit)))
 
 	// Add any additional interceptors provided programmatically AFTER the default ones, so they have access needed context
 	if len(ints) > 0 {

@@ -141,6 +141,7 @@ Root level key `server`
 | `grpc.reflection`       | The configuration for the grpc server.                                                                        | `true`  | OPENTDF_SERVER_GRPC_REFLECTION       |
 | `public_hostname`       | The public facing hostname for the server.                                                                    |         | OPENTDF_SERVER_PUBLIC_HOSTNAME       |
 | `host`                  | The host address for the server.                                                                              | `""`    | OPENTDF_SERVER_HOST                  |
+| `http.trustedProxies`   | Proxy CIDRs allowed to supply client-IP forwarding headers.                                                   | `[]`    | OPENTDF_SERVER_HTTP_TRUSTEDPROXIES   |
 | `port`                  | The port number for the server.                                                                               | `9000`  | OPENTDF_SERVER_PORT                  |
 | `tls.enabled`           | Enable tls.                                                                                                   | `false` | OPENTDF_SERVER_TLS_ENABLED           |
 | `tls.cert`              | The path to the tls certificate.                                                                              |         | OPENTDF_SERVER_TLS_CERT              |
@@ -174,6 +175,32 @@ server:
           alg: ec:secp256r1
           private: kas-ec-private.pem
           cert: kas-ec-cert.pem
+```
+
+Set `OPENTDF_SERVER_HTTP_TRUSTEDPROXIES` to a comma-separated CIDR list.
+Surrounding whitespace and empty entries are ignored; invalid nonempty CIDRs prevent startup.
+
+With no trusted proxies, Platform records the direct socket peer. When the peer
+matches a trusted CIDR, it scans `X-Forwarded-For` from right to left, skipping
+trusted hops. Entries can be bare IPs, `IPv4:port`, or `[IPv6]:port`. An absent
+header or an invalid entry encountered during the scan falls back to the socket
+peer. `X-Real-IP` and `True-Client-IP` are not used.
+
+Trust only proxies that overwrite XFF or append their observed client address,
+not proxies that merely preserve client-supplied headers. For [AWS ALB](https://docs.aws.amazon.com/elasticloadbalancing/latest/application/x-forwarded-headers.html), use XFF
+`append` mode. Broad private-network ranges weaken audit attribution.
+
+[Google Application Load Balancers](https://docs.cloud.google.com/load-balancing/docs/https#x-forwarded-for_header) append `client-ip,frontend-ip`. Include the
+specific frontend IP as a `/32` or `/128`, along with the connecting proxy ranges,
+or the scan will stop at the frontend IP. For CDN/proxy chains, configure every
+trusted hop between Platform and the client.
+
+```yaml
+server:
+  http:
+    trustedProxies:
+      - 10.20.0.0/24 # Example connecting proxy subnet; replace for your deployment
+      - 192.0.2.20/32 # Example Google frontend IP, if applicable
 ```
 
 ### CORS Configuration

@@ -41,12 +41,13 @@ type KeyAdapter struct {
 }
 
 func NewPlatformKeyIndexer(sdk *sdk.SDK, kasURI string, kasURIFromKAO bool, l *logger.Logger) *KeyIndexer {
-	return &KeyIndexer{
+	p := &KeyIndexer{
 		sdk:           sdk,
 		kasURI:        kasURI,
 		kasURIFromKAO: kasURIFromKAO,
-		log:           l,
 	}
+	p.log = l.With("key_indexer", p.String())
+	return p
 }
 
 func (p *KeyIndexer) String() string {
@@ -79,6 +80,10 @@ func (p *KeyIndexer) FindKeyByAlgorithm(ctx context.Context, algorithm string, i
 		},
 		Legacy: legacy,
 	}
+	p.log.DebugContext(ctx, "finding KAS key by algorithm",
+		slog.String("kas_uri", req.GetKasUri()),
+		slog.String("algorithm", algorithm),
+		slog.Bool("include_legacy", includeLegacy))
 	resp, err := p.sdk.KeyAccessServerRegistry.ListKeys(ctx, req)
 	if err != nil {
 		return nil, err
@@ -119,6 +124,9 @@ func (p *KeyIndexer) FindKeyWith(ctx context.Context, opts trust.FindKeyOptions)
 		},
 	}
 
+	p.log.DebugContext(ctx, "finding KAS key",
+		slog.String("kas_uri", req.GetKey().GetUri()),
+		slog.String("key_id", req.GetKey().GetKid()))
 	resp, err := p.sdk.KeyAccessServerRegistry.GetKey(ctx, req)
 	if err != nil {
 		return nil, err
@@ -147,6 +155,9 @@ func (p *KeyIndexer) ListKeysWith(ctx context.Context, opts trust.ListKeyOptions
 		},
 		Legacy: legacyOnly,
 	}
+	p.log.DebugContext(ctx, "listing KAS keys",
+		slog.String("kas_uri", req.GetKasUri()),
+		slog.Bool("legacy_only", opts.LegacyOnly))
 	resp, err := p.sdk.KeyAccessServerRegistry.ListKeys(ctx, req)
 	if err != nil {
 		return nil, err

@@ -2,6 +2,7 @@ package kas
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"testing"
 
@@ -242,7 +243,8 @@ func (s *KeyIndexTestSuite) TestListKeysWith() {
 	} {
 		s.Run(test.name, func() {
 			mockClient := new(MockKeyAccessServerRegistryClient)
-			keyIndexer := NewPlatformKeyIndexer(&sdk.SDK{KeyAccessServerRegistry: mockClient}, defaultKASURI, test.fromKAO, nil)
+			log, buf := newBufferLogger()
+			keyIndexer := NewPlatformKeyIndexer(&sdk.SDK{KeyAccessServerRegistry: mockClient}, defaultKASURI, test.fromKAO, log)
 
 			response := &kasregistry.ListKeysResponse{}
 			mockClient.On("ListKeys", mock.Anything, mock.MatchedBy(func(req *kasregistry.ListKeysRequest) bool {
@@ -270,6 +272,7 @@ func (s *KeyIndexTestSuite) TestListKeysWith() {
 				ids[i] = key.ID()
 			}
 			s.Equal(test.expectedIDs, ids)
+			s.assertKeyIndexerLog(buf.Bytes(), test.expectedURI, keyIndexer)
 			mockClient.AssertExpectations(s.T())
 		})
 	}
@@ -277,11 +280,8 @@ func (s *KeyIndexTestSuite) TestListKeysWith() {
 
 func (s *KeyIndexTestSuite) TestListKeys() {
 	mockClient := new(MockKeyAccessServerRegistryClient)
-	keyIndexer := &KeyIndexer{
-		sdk: &sdk.SDK{
-			KeyAccessServerRegistry: mockClient,
-		},
-	}
+	log, _ := newBufferLogger()
+	keyIndexer := NewPlatformKeyIndexer(&sdk.SDK{KeyAccessServerRegistry: mockClient}, "", false, log)
 
 	mockClient.On("ListKeys", mock.Anything, mock.MatchedBy(func(req *kasregistry.ListKeysRequest) bool {
 		return !req.GetLegacy()
@@ -315,7 +315,8 @@ func (s *KeyIndexTestSuite) TestFindKeyWith() {
 	} {
 		s.Run(test.name, func() {
 			mockClient := new(MockKeyAccessServerRegistryClient)
-			keyIndexer := NewPlatformKeyIndexer(&sdk.SDK{KeyAccessServerRegistry: mockClient}, defaultKASURI, test.fromKAO, nil)
+			log, buf := newBufferLogger()
+			keyIndexer := NewPlatformKeyIndexer(&sdk.SDK{KeyAccessServerRegistry: mockClient}, defaultKASURI, test.fromKAO, log)
 
 			response := &kasregistry.GetKeyResponse{}
 			mockClient.On("GetKey", mock.Anything, mock.MatchedBy(func(req *kasregistry.GetKeyRequest) bool {
@@ -335,6 +336,7 @@ func (s *KeyIndexTestSuite) TestFindKeyWith() {
 			adapter, ok := key.(*KeyAdapter)
 			s.Require().True(ok)
 			s.Equal(test.expectedURI, adapter.key.GetKasUri())
+			s.assertKeyIndexerLog(buf.Bytes(), test.expectedURI, keyIndexer)
 			mockClient.AssertExpectations(s.T())
 		})
 	}
@@ -342,7 +344,8 @@ func (s *KeyIndexTestSuite) TestFindKeyWith() {
 
 func (s *KeyIndexTestSuite) TestFindKeyByIDUsesConfiguredURI() {
 	mockClient := new(MockKeyAccessServerRegistryClient)
-	keyIndexer := NewPlatformKeyIndexer(&sdk.SDK{KeyAccessServerRegistry: mockClient}, defaultKASURI, true, nil)
+	log, _ := newBufferLogger()
+	keyIndexer := NewPlatformKeyIndexer(&sdk.SDK{KeyAccessServerRegistry: mockClient}, defaultKASURI, true, log)
 	mockClient.On("GetKey", mock.Anything, mock.MatchedBy(func(req *kasregistry.GetKeyRequest) bool {
 		return req.GetKey().GetUri() == defaultKASURI && req.GetKey().GetKid() == testKeyID
 	})).Return(&kasregistry.GetKeyResponse{KasKey: &policy.KasKey{
@@ -357,7 +360,8 @@ func (s *KeyIndexTestSuite) TestFindKeyByIDUsesConfiguredURI() {
 
 func (s *KeyIndexTestSuite) TestFindKeyByAlgorithm() {
 	mockClient := new(MockKeyAccessServerRegistryClient)
-	keyIndexer := NewPlatformKeyIndexer(&sdk.SDK{KeyAccessServerRegistry: mockClient}, defaultKASURI, true, nil)
+	log, _ := newBufferLogger()
+	keyIndexer := NewPlatformKeyIndexer(&sdk.SDK{KeyAccessServerRegistry: mockClient}, defaultKASURI, true, log)
 
 	mockClient.On("ListKeys", mock.Anything, mock.MatchedBy(func(req *kasregistry.ListKeysRequest) bool {
 		return req.GetKasUri() == defaultKASURI && req.GetKeyAlgorithm() == policy.Algorithm_ALGORITHM_RSA_2048 && (req.Legacy != nil && req.GetLegacy() == false)
@@ -403,6 +407,14 @@ func (s *KeyIndexTestSuite) TestFindKeyByAlgorithm() {
 	s.Require().NoError(err)
 	s.NotNil(key)
 	s.Equal("test-legacy-key-id", string(key.ID()))
+}
+
+func (s *KeyIndexTestSuite) assertKeyIndexerLog(data []byte, expectedURI string, keyIndexer *KeyIndexer) {
+	s.T().Helper()
+	var record map[string]any
+	s.Require().NoError(json.Unmarshal(data, &record))
+	s.Equal(expectedURI, record["kas_uri"])
+	s.Equal(keyIndexer.String(), record["key_indexer"])
 }
 
 func TestNewPlatformKeyIndexTestSuite(t *testing.T) {

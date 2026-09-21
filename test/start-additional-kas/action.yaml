@@ -25,7 +25,7 @@ inputs:
     description: 'Whether or not key_management is enabled for this KAS'
   kas-uri-from-kao:
     default: "false"
-    description: 'Whether to select registry keys using the KAO URI (supports stable and preview configuration)'
+    description: 'Whether to enable preview KAO URI selection for rewrap key lookups'
     required: false
   key-cache-expiration:
     default: ''

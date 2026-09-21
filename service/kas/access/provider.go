@@ -42,10 +42,6 @@ type KASConfig struct {
 	// KeyManagement enables stable, policy-backed KAS key management.
 	KeyManagement bool `mapstructure:"key_management" json:"key_management"`
 
-	// KASURIFromKAO uses the KAO URI for rewrap key lookups. Defaults to false.
-	// An empty KAO URI always selects the indexer's default registration.
-	KASURIFromKAO bool `mapstructure:"kas_uri_from_kao" json:"kas_uri_from_kao"`
-
 	// Which keys are currently the default.
 	Keyring []CurrentKeyFor `mapstructure:"keyring" json:"keyring"`
 	// Deprecated
@@ -69,6 +65,10 @@ type KASConfig struct {
 }
 
 type Preview struct {
+	// KASURIFromKAO uses the KAO URI for rewrap key lookups. Defaults to false.
+	// An empty KAO URI always selects the indexer's default registration.
+	KASURIFromKAO bool `mapstructure:"kas_uri_from_kao" json:"kas_uri_from_kao"`
+
 	ECTDFEnabled bool `mapstructure:"ec_tdf_enabled" json:"ec_tdf_enabled"`
 	// HybridTDFEnabled is a preview feature that enables support for hybrid rewrap in TDFs.
 	// Enabling is required to parse KAOs with the `hybrid-wrapped` type,
@@ -171,9 +171,8 @@ func (kasCfg KASConfig) String() string {
 	}
 
 	return fmt.Sprintf(
-		"KASConfig{KeyManagement:%t, KASURIFromKAO:%t, Keyring:%v, ECCertID:%q, RSACertID:%q, RootKey:%s, KeyCacheExpiration:%s, Preview:%+v, RegisteredKASURI:%q}",
+		"KASConfig{KeyManagement:%t, Keyring:%v, ECCertID:%q, RSACertID:%q, RootKey:%s, KeyCacheExpiration:%s, Preview:%+v, RegisteredKASURI:%q}",
 		kasCfg.KeyManagement,
-		kasCfg.KASURIFromKAO,
 		kasCfg.Keyring,
 		kasCfg.ECCertID,
 		kasCfg.RSACertID,
@@ -192,7 +191,6 @@ func (kasCfg KASConfig) LogValue() slog.Value {
 
 	return slog.GroupValue(
 		slog.Bool("key_management", kasCfg.KeyManagement),
-		slog.Bool(KASURIFromKAOKey, kasCfg.KASURIFromKAO),
 		slog.Any("keyring", kasCfg.Keyring),
 		slog.String("eccertid", kasCfg.ECCertID),
 		slog.String("rsacertid", kasCfg.RSACertID),

@@ -178,17 +178,18 @@ func TestDecodeKASConfigKASURIFromKAO(t *testing.T) {
 		want   bool
 	}{
 		{name: "omitted defaults to false", config: map[string]any{}},
-		{name: "explicit false", config: map[string]any{access.KASURIFromKAOKey: false}},
-		{name: "explicit true", config: map[string]any{access.KASURIFromKAOKey: true}, want: true},
+		{name: "top-level setting does not enable preview", config: map[string]any{access.KASURIFromKAOKey: true}},
+		{name: "explicit false", config: map[string]any{"preview": map[string]any{access.KASURIFromKAOKey: false}}},
+		{name: "explicit true", config: map[string]any{"preview": map[string]any{access.KASURIFromKAOKey: true}}, want: true},
 		{name: "key management defaults to false", config: map[string]any{"key_management": true}},
-		{name: "key management with explicit false", config: map[string]any{"key_management": true, access.KASURIFromKAOKey: false}},
-		{name: "key management with explicit true", config: map[string]any{"key_management": true, access.KASURIFromKAOKey: true}, want: true},
+		{name: "key management with explicit false", config: map[string]any{"key_management": true, "preview": map[string]any{access.KASURIFromKAOKey: false}}},
+		{name: "key management with explicit true", config: map[string]any{"key_management": true, "preview": map[string]any{access.KASURIFromKAOKey: true}}, want: true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			log, buf := newBufferLogger()
 			got, err := decodeKASConfig(tc.config, log)
 			require.NoError(t, err)
-			assert.Equal(t, tc.want, got.KASURIFromKAO)
+			assert.Equal(t, tc.want, got.Preview.KASURIFromKAO)
 			assert.Empty(t, buf.String())
 		})
 	}

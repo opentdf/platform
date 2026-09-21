@@ -185,7 +185,7 @@ func TestVerifyRewrapRequestsKASURIFromKAO(t *testing.T) {
 				}
 				p := &Provider{Logger: log, KeyDelegator: trust.NewDelegatingKeyService(index, log, nil)}
 				p.ApplyConfig(KASConfig{
-					KASURIFromKAO:    tc.fromKAO,
+					Preview:          Preview{KASURIFromKAO: tc.fromKAO},
 					RegisteredKASURI: defaultURI,
 				}, nil)
 				_, results, err := p.verifyRewrapRequests(t.Context(), &kaspb.UnsignedRewrapRequest_WithPolicyRequest{

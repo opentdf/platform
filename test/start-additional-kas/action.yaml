@@ -25,7 +25,7 @@ inputs:
     description: 'Whether or not key_management is enabled for this KAS'
   kas-uri-from-kao:
     default: "false"
-    description: 'Whether to select registry keys using the KAO URI (sets services.kas.kas_uri_from_kao)'
+    description: 'Whether to enable preview KAO URI selection for rewrap key lookups'
     required: false
   key-cache-expiration:
     default: ''
@@ -221,7 +221,7 @@ runs:
               )
             | (.services.kas.key_management = (env(KEY_MANAGEMENT) == "true"))
             | (.services.kas.preview.key_management = (env(KEY_MANAGEMENT) == "true"))
-            | (.services.kas.kas_uri_from_kao = (env(KAS_URI_FROM_KAO) == "true"))
+            | (.services.kas.preview.kas_uri_from_kao = (env(KAS_URI_FROM_KAO) == "true"))
             | with(select(strenv(KEY_CACHE_EXPIRATION) != ""); .services.kas.key_cache_expiration = env(KEY_CACHE_EXPIRATION))
             | (.services.kas.registered_kas_uri = "http://localhost:" + env(KAS_PORT))
             | del(.services.kas.root_key)

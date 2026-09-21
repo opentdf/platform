@@ -9,6 +9,7 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"sync"
 	"testing"
 
 	"connectrpc.com/connect"
@@ -1167,4 +1168,40 @@ func TestReasonerSpecificityWithNamespaces(t *testing.T) {
 			assert.ElementsMatch(t, tc.plan, plan)
 		})
 	}
+}
+
+// Every CreateTDF with attributes builds a granter against the SDK's shared
+// kasKeyCache, and storeKeysToCache writes to it once per mapped key -- on
+// every call, not just the first. Two concurrent encrypts on one SDK instance
+// therefore write the same map at the same time.
+func TestGranterConcurrentBuildsShareKeyCache(t *testing.T) {
+	const (
+		workers    = 8
+		iterations = 25
+	)
+
+	shared := newKasKeyCache()
+	as := &mockAttributesClient{}
+	fqns := []AttributeValueFQN{mpa, mpb, mpc, mpd}
+
+	// Guard against the mocks silently resolving to no mapped keys, which would
+	// leave the cache untouched and make this test vacuous.
+	_, err := newGranterFromService(t.Context(), slog.Default(), shared, as, fqns...)
+	require.NoError(t, err)
+	require.NotEmpty(t, shared.c, "granter build should populate the shared key cache")
+
+	var wg sync.WaitGroup
+	for range workers {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for range iterations {
+				if _, err := newGranterFromService(t.Context(), slog.Default(), shared, as, fqns...); err != nil {
+					t.Error(err)
+					return
+				}
+			}
+		}()
+	}
+	wg.Wait()
 }

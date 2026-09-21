@@ -5,7 +5,9 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/json"
+	"fmt"
 	"net/http"
+	"sync"
 	"testing"
 	"time"
 
@@ -393,6 +395,39 @@ func TestKasKeyCache_Expiration(t *testing.T) {
 	// Verify the entry was actually removed from the cache
 	_, exists := cache.c[cacheKey]
 	assert.False(t, exists, "Expired key should be removed from cache")
+}
+
+// The cache hangs off the SDK struct, so every operation on a single SDK
+// instance shares it. Concurrent use must not race: an unsynchronized map is a
+// fatal runtime error ("concurrent map writes"), which no caller can recover
+// from. Note that concurrent reads are not safe either, because get() deletes
+// expired entries.
+func TestKasKeyCache_ConcurrentAccess(t *testing.T) {
+	cache := newKasKeyCache()
+	require.NotNil(t, cache, "Failed to create KAS key cache")
+
+	const (
+		workers    = 8
+		iterations = 200
+	)
+
+	var wg sync.WaitGroup
+	for i := range workers {
+		wg.Add(1)
+		go func(worker int) {
+			defer wg.Done()
+			for j := range iterations {
+				cache.store(KASInfo{
+					URL:       fmt.Sprintf("https://kas%d.example.org", j%4),
+					Algorithm: "ec:secp256r1",
+					KID:       fmt.Sprintf("kid-%d", worker),
+					PublicKey: "test-public-key",
+				})
+				cache.get(fmt.Sprintf("https://kas%d.example.org", j%4), "ec:secp256r1", "")
+			}
+		}(i)
+	}
+	wg.Wait()
 }
 
 func Test_newConnectRewrapRequest(t *testing.T) {

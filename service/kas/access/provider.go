@@ -64,6 +64,7 @@ type KASConfig struct {
 type Preview struct {
 	// KASURIFromKAO uses the KAO URI for rewrap key lookups. Defaults to false.
 	// An empty KAO URI always selects the indexer's default registration.
+	// This feature is experimental and may be removed or changed in future releases.
 	KASURIFromKAO bool `mapstructure:"kas_uri_from_kao" json:"kas_uri_from_kao"`
 
 	ECTDFEnabled bool `mapstructure:"ec_tdf_enabled" json:"ec_tdf_enabled"`

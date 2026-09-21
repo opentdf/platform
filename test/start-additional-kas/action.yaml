@@ -23,6 +23,10 @@ inputs:
   key-management:
     default: "false"
     description: 'Whether or not key_management is enabled for this KAS'
+  kas-uri-from-kao:
+    default: "false"
+    description: "Whether to enable preview KAO URI selection for rewrap key lookups"
+    required: false
   root-key:
     default: ''
     description: 'The root key to be used with key_management'
@@ -59,6 +63,7 @@ runs:
         EC_TDF_ENABLED: ${{ inputs.ec-tdf-enabled }}
         PQC_ENABLED: ${{ inputs.pqc-enabled }}
         KEY_MANAGEMENT: ${{ inputs.key-management }}
+        KAS_URI_FROM_KAO: ${{ inputs.kas-uri-from-kao }}
         ROOT_KEY: ${{ inputs.root-key }}
         LOG_LEVEL: ${{ inputs.log-level }}
         LOG_TYPE: ${{ inputs.log-type }}
@@ -83,6 +88,16 @@ runs:
             ;;
           *)
             echo "Error: ec-tdf-enabled must be 'true' or 'false'."
+            exit 1
+            ;;
+        esac
+
+        # Validate kas-uri-from-kao (must be true or false)
+        case "${KAS_URI_FROM_KAO}" in
+          true|false)
+            ;;
+          *)
+            echo "Error: kas-uri-from-kao must be 'true' or 'false'."
             exit 1
             ;;
         esac
@@ -170,6 +185,7 @@ runs:
         EC_TDF_ENABLED: ${{ inputs.ec-tdf-enabled }}
         PQC_ENABLED: ${{ inputs.pqc-enabled }}
         KEY_MANAGEMENT: ${{ inputs.key-management }}
+        KAS_URI_FROM_KAO: ${{ inputs.kas-uri-from-kao }}
         ROOT_KEY: ${{ inputs.root-key }}
         LOG_LEVEL: ${{ inputs.log-level }}
         LOG_TYPE: ${{ inputs.log-type }}
@@ -185,6 +201,7 @@ runs:
           yq e '
             (.server.port = env(KAS_PORT))
             | (.mode = ["kas"])
+            | (.services.kas.preview.kas_uri_from_kao = (env(KAS_URI_FROM_KAO) == "true"))
             | (.services.kas.preview.ec_tdf_enabled = (env(EC_TDF_ENABLED) == "true"))
             | (.services.kas.preview.hybrid_tdf_enabled = (env(PQC_ENABLED) == "true"))
             | with(select(env(PQC_ENABLED) == "true");

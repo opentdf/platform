@@ -424,6 +424,7 @@ OPENTDF_SERVICES_KAS_KEYRING='[{"kid":"k1","alg":"rsa:2048"},{"kid":"k2","alg":"
 | Field                    | Description                                                                     | Default  |
 | ------------------------ | ------------------------------------------------------------------------------- | -------- |
 | `key_management`         | Whether stable, policy-backed key management is enabled.                        | `false`  |
+| `preview.kas_uri_from_kao`       | Use the key access object's KAS URI for rewrap key lookups instead of the indexer's default registration. | `false` |
 | `keyring.*.kid`          | Which static key id this is binding.                                            |          |
 | `keyring.*.alg`          | (Optional) Associated algorithm. (Allows reusing KID with different algorithms) |          |
 | `keyring.*.legacy`       | Indicates this may be used for TDFs with no key ID; default if all unspecified. | inferred |

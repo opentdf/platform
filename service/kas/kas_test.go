@@ -171,6 +171,15 @@ func newBufferLogger() (*logger.Logger, *bytes.Buffer) {
 	}, buf
 }
 
+func TestDecodeKASConfigKASURIFromKAO(t *testing.T) {
+	log, _ := newBufferLogger()
+	got, err := decodeKASConfig(map[string]any{
+		"preview": map[string]any{"kas_uri_from_kao": true},
+	}, log)
+	require.NoError(t, err)
+	assert.True(t, got.Preview.KASURIFromKAO)
+}
+
 func TestDecodeKASConfigKeyManagement(t *testing.T) {
 	tests := []struct {
 		name        string

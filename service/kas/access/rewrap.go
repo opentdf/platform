@@ -709,11 +709,8 @@ func (p *Provider) verifyRewrapRequests(ctx context.Context, req *kaspb.Unsigned
 
 		var dek ocrypto.ProtectedKey
 		var err error
-		// An empty URI lets the indexer select its configured registration.
-		var kasURI string
-		if p.Preview.KASURIFromKAO {
-			kasURI = kao.GetKeyAccessObject().GetKasUrl()
-		}
+		// The indexer decides whether to use the KAO URI or its configured registration.
+		kasURI := kao.GetKeyAccessObject().GetKasUrl()
 		switch kao.GetKeyAccessObject().GetKeyType() {
 		case "ec-wrapped":
 

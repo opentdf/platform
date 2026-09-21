@@ -156,13 +156,17 @@ func (ns NamespacesService) CreateNamespace(ctx context.Context, req *connect.Re
 		return nil
 	})
 	if err != nil {
-		ns.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
+		if auditErr := ns.logger.Audit.PolicyCRUDFailure(ctx, auditParams); auditErr != nil {
+			ns.logger.ErrorContext(context.WithoutCancel(ctx), "failed to record policy audit event", slog.Any("error", auditErr))
+		}
 		if limitErr := policyconfig.ObjectLimitConnectError(ctx, ns.logger, "create", err); limitErr != nil {
 			return nil, limitErr
 		}
 		return nil, db.StatusifyError(ctx, ns.logger, err, db.ErrTextCreationFailed, slog.String("namespace", req.Msg.String()))
 	}
-	ns.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
+	if auditErr := ns.logger.Audit.PolicyCRUDSuccess(ctx, auditParams); auditErr != nil {
+		ns.logger.ErrorContext(context.WithoutCancel(ctx), "failed to record policy audit event", slog.Any("error", auditErr))
+	}
 
 	return connect.NewResponse(rsp), nil
 }
@@ -180,20 +184,26 @@ func (ns NamespacesService) UpdateNamespace(ctx context.Context, req *connect.Re
 
 	original, err := ns.dbClient.GetNamespace(ctx, namespaceID)
 	if err != nil {
-		ns.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
+		if auditErr := ns.logger.Audit.PolicyCRUDFailure(ctx, auditParams); auditErr != nil {
+			ns.logger.ErrorContext(context.WithoutCancel(ctx), "failed to record policy audit event", slog.Any("error", auditErr))
+		}
 		return nil, db.StatusifyError(ctx, ns.logger, err, db.ErrTextGetRetrievalFailed, slog.String("id", namespaceID))
 	}
 
 	updated, err := ns.dbClient.UpdateNamespace(ctx, namespaceID, req.Msg)
 	if err != nil {
-		ns.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
+		if auditErr := ns.logger.Audit.PolicyCRUDFailure(ctx, auditParams); auditErr != nil {
+			ns.logger.ErrorContext(context.WithoutCancel(ctx), "failed to record policy audit event", slog.Any("error", auditErr))
+		}
 		return nil, db.StatusifyError(ctx, ns.logger, err, db.ErrTextUpdateFailed, slog.String("id", namespaceID))
 	}
 
 	auditParams.Original = original
 	auditParams.Updated = updated
 
-	ns.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
+	if auditErr := ns.logger.Audit.PolicyCRUDSuccess(ctx, auditParams); auditErr != nil {
+		ns.logger.ErrorContext(context.WithoutCancel(ctx), "failed to record policy audit event", slog.Any("error", auditErr))
+	}
 	ns.logger.DebugContext(ctx, "updated namespace", slog.String("id", namespaceID))
 
 	rsp.Namespace = &policy.Namespace{
@@ -216,19 +226,25 @@ func (ns NamespacesService) DeactivateNamespace(ctx context.Context, req *connec
 
 	original, err := ns.dbClient.GetNamespace(ctx, namespaceID)
 	if err != nil {
-		ns.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
+		if auditErr := ns.logger.Audit.PolicyCRUDFailure(ctx, auditParams); auditErr != nil {
+			ns.logger.ErrorContext(context.WithoutCancel(ctx), "failed to record policy audit event", slog.Any("error", auditErr))
+		}
 		return nil, db.StatusifyError(ctx, ns.logger, err, db.ErrTextGetRetrievalFailed, slog.String("id", namespaceID))
 	}
 
 	updated, err := ns.dbClient.DeactivateNamespace(ctx, namespaceID)
 	if err != nil {
-		ns.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
+		if auditErr := ns.logger.Audit.PolicyCRUDFailure(ctx, auditParams); auditErr != nil {
+			ns.logger.ErrorContext(context.WithoutCancel(ctx), "failed to record policy audit event", slog.Any("error", auditErr))
+		}
 		return nil, db.StatusifyError(ctx, ns.logger, err, db.ErrTextDeletionFailed, slog.String("id", namespaceID))
 	}
 
 	auditParams.Original = original
 	auditParams.Updated = updated
-	ns.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
+	if auditErr := ns.logger.Audit.PolicyCRUDSuccess(ctx, auditParams); auditErr != nil {
+		ns.logger.ErrorContext(context.WithoutCancel(ctx), "failed to record policy audit event", slog.Any("error", auditErr))
+	}
 	ns.logger.DebugContext(ctx, "soft-deleted namespace", slog.String("id", namespaceID))
 
 	return connect.NewResponse(rsp), nil
@@ -250,10 +266,14 @@ func (ns NamespacesService) RemoveKeyAccessServerFromNamespace(ctx context.Conte
 
 	namespaceKas, err := ns.dbClient.RemoveKeyAccessServerFromNamespace(ctx, grant)
 	if err != nil {
-		ns.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
+		if auditErr := ns.logger.Audit.PolicyCRUDFailure(ctx, auditParams); auditErr != nil {
+			ns.logger.ErrorContext(context.WithoutCancel(ctx), "failed to record policy audit event", slog.Any("error", auditErr))
+		}
 		return nil, db.StatusifyError(ctx, ns.logger, err, db.ErrTextDeletionFailed, slog.String("namespace_kas", grant.String()))
 	}
-	ns.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
+	if auditErr := ns.logger.Audit.PolicyCRUDSuccess(ctx, auditParams); auditErr != nil {
+		ns.logger.ErrorContext(context.WithoutCancel(ctx), "failed to record policy audit event", slog.Any("error", auditErr))
+	}
 
 	rsp.NamespaceKeyAccessServer = namespaceKas
 
@@ -272,10 +292,14 @@ func (ns NamespacesService) AssignPublicKeyToNamespace(ctx context.Context, r *c
 
 	namespaceKey, err := ns.dbClient.AssignPublicKeyToNamespace(ctx, key)
 	if err != nil {
-		ns.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
+		if auditErr := ns.logger.Audit.PolicyCRUDFailure(ctx, auditParams); auditErr != nil {
+			ns.logger.ErrorContext(context.WithoutCancel(ctx), "failed to record policy audit event", slog.Any("error", auditErr))
+		}
 		return nil, db.StatusifyError(ctx, ns.logger, err, db.ErrTextCreationFailed, slog.String("namespace_key", key.String()))
 	}
-	ns.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
+	if auditErr := ns.logger.Audit.PolicyCRUDSuccess(ctx, auditParams); auditErr != nil {
+		ns.logger.ErrorContext(context.WithoutCancel(ctx), "failed to record policy audit event", slog.Any("error", auditErr))
+	}
 
 	rsp.NamespaceKey = namespaceKey
 
@@ -294,10 +318,14 @@ func (ns NamespacesService) RemovePublicKeyFromNamespace(ctx context.Context, r 
 
 	_, err := ns.dbClient.RemovePublicKeyFromNamespace(ctx, key)
 	if err != nil {
-		ns.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
+		if auditErr := ns.logger.Audit.PolicyCRUDFailure(ctx, auditParams); auditErr != nil {
+			ns.logger.ErrorContext(context.WithoutCancel(ctx), "failed to record policy audit event", slog.Any("error", auditErr))
+		}
 		return nil, db.StatusifyError(ctx, ns.logger, err, db.ErrTextDeletionFailed, slog.String("namespace_key", key.String()))
 	}
-	ns.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
+	if auditErr := ns.logger.Audit.PolicyCRUDSuccess(ctx, auditParams); auditErr != nil {
+		ns.logger.ErrorContext(context.WithoutCancel(ctx), "failed to record policy audit event", slog.Any("error", auditErr))
+	}
 
 	return connect.NewResponse(rsp), nil
 }

@@ -52,20 +52,29 @@ func decodeLine(t *testing.T, line string) map[string]any {
 	return out
 }
 
-// emitAuditEvent drives an audit event through the interceptor, which owns the
-// transaction lifecycle and flushes pending events on return.
+// emitAuditEvent records an event with request metadata from the interceptor.
 func emitAuditEvent(ctx context.Context, t *testing.T, lg *Logger) {
 	t.Helper()
 
-	next := audit.ContextServerInterceptor(lg.Audit)(
+	next := audit.ContextServerInterceptor()(
 		func(ctx context.Context, _ connect.AnyRequest) (connect.AnyResponse, error) {
-			audit.LogAuditEvent(ctx, audit.VerbRewrap, &audit.EventObject{})
+			require.NoError(t, lg.Audit.Record(ctx, testAuditEvent()))
 			return nil, nil //nolint:nilnil // the interceptor ignores the response in this test
 		},
 	)
 
 	_, err := next(ctx, connect.NewRequest(&struct{}{}))
 	require.NoError(t, err)
+}
+
+func testAuditEvent() audit.Event {
+	event := audit.NewEvent(audit.EventObjectParams{
+		Object:     audit.EventObjectInfo{Type: audit.ObjectTypeKeyObject},
+		Action:     audit.EventObjectAction{Type: audit.ActionTypeRewrap, Result: audit.ActionResultSuccess},
+		ClientInfo: audit.EventClientInfo{Platform: "test"},
+	})
+	event.Verb = audit.VerbRewrap
+	return *event
 }
 
 func Test_NewLogger_CorrelatesMainAndAuditLogs(t *testing.T) {
@@ -120,10 +129,10 @@ func Test_NewLogger_RequestMetadataOnlyOnMainLogger(t *testing.T) {
 		lg, err := NewLogger(Config{Level: "info", Output: "stdout", Type: "json"})
 		require.NoError(t, err)
 
-		next := audit.ContextServerInterceptor(lg.Audit)(
+		next := audit.ContextServerInterceptor()(
 			func(ctx context.Context, _ connect.AnyRequest) (connect.AnyResponse, error) {
 				lg.InfoContext(ctx, "handled request")
-				audit.LogAuditEvent(ctx, audit.VerbRewrap, &audit.EventObject{})
+				require.NoError(t, lg.Audit.Record(ctx, testAuditEvent()))
 				return nil, nil //nolint:nilnil // the interceptor ignores the response in this test
 			},
 		)

@@ -30,6 +30,7 @@ func TestCreateNamespaceAuditsTransactionOutcome(t *testing.T) {
 		beginErr     error
 		writeErr     error
 		commitErr    error
+		auditErr     error
 		wantResult   audit.ActionResult
 		wantCommit   bool
 		wantRollback bool
@@ -38,14 +39,25 @@ func TestCreateNamespaceAuditsTransactionOutcome(t *testing.T) {
 		{name: "write failure", writeErr: failure, wantResult: audit.ActionResultError, wantRollback: true},
 		{name: "commit failure", commitErr: failure, wantResult: audit.ActionResultError, wantCommit: true},
 		{name: "committed", wantResult: audit.ActionResultSuccess, wantCommit: true},
+		{name: "committed with audit failure", auditErr: failure, wantResult: audit.ActionResultSuccess, wantCommit: true},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			var output bytes.Buffer
+			var diagnostics bytes.Buffer
+			var options []audit.Option
+			attempts := 0
+			if tt.auditErr != nil {
+				options = append(options, audit.WithProcessor(audit.ProcessorFunc(func(_ context.Context, event audit.Event) error {
+					attempts++
+					require.Equal(t, audit.ActionResultSuccess, event.Action.Result)
+					return tt.auditErr
+				})))
+			}
 			auditLogger := audit.CreateAuditLogger(*slog.New(slog.NewJSONHandler(&output, &slog.HandlerOptions{
 				Level: audit.LevelAudit, ReplaceAttr: audit.ReplaceAttrAuditLevel,
-			})))
+			})), options...)
 			serviceLogger := &logger.Logger{
-				Logger: slog.New(slog.DiscardHandler),
+				Logger: slog.New(slog.NewJSONHandler(&diagnostics, nil)),
 				Audit:  auditLogger,
 			}
 			tx := &namespaceAuditTx{
@@ -58,7 +70,7 @@ func TestCreateNamespaceAuditsTransactionOutcome(t *testing.T) {
 				logger:   serviceLogger,
 				config:   &policyconfig.Config{},
 			}
-			handler := audit.ContextServerInterceptor(auditLogger)(func(ctx context.Context, _ connect.AnyRequest) (connect.AnyResponse, error) {
+			handler := audit.ContextServerInterceptor()(func(ctx context.Context, _ connect.AnyRequest) (connect.AnyResponse, error) {
 				return svc.CreateNamespace(ctx, connect.NewRequest(&namespaces.CreateNamespaceRequest{Name: "audit.example"}))
 			})
 			_, err := handler(t.Context(), connect.NewRequest(&namespaces.CreateNamespaceRequest{}))
@@ -69,6 +81,12 @@ func TestCreateNamespaceAuditsTransactionOutcome(t *testing.T) {
 			}
 			require.Equal(t, tt.wantCommit, tx.committed)
 			require.Equal(t, tt.wantRollback, tx.rolledBack)
+			if tt.auditErr != nil {
+				require.Equal(t, 1, attempts)
+				require.Empty(t, output.String())
+				require.Contains(t, diagnostics.String(), tt.auditErr.Error())
+				return
+			}
 
 			var event struct {
 				Audit struct {

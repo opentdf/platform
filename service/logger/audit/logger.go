@@ -24,12 +24,6 @@ const (
 	VerbRewrap     Verb = "rewrap"
 )
 
-// pendingEvent represents a single audit event waiting to be logged
-type pendingEvent struct {
-	verb  Verb
-	event *EventObject
-}
-
 var logLevelNames = map[slog.Leveler]string{
 	LevelAudit: LevelAuditStr,
 }
@@ -129,126 +123,60 @@ func (a *Logger) RecordTimeout() time.Duration {
 	return a.recordTimeout
 }
 
-// addEvent appends a pending audit event to the transaction
-func (tx *auditTransaction) addEvent(verb Verb, event *EventObject) {
-	tx.mu.Lock()
-	defer tx.mu.Unlock()
-	tx.events = append(tx.events, pendingEvent{
-		verb:  verb,
-		event: event,
-	})
+// RewrapSuccess records a completed rewrap and returns any recording error.
+func (a *Logger) RewrapSuccess(ctx context.Context, params RewrapAuditEventParams) error {
+	params.IsSuccess = true
+	return a.rewrapBase(ctx, params)
 }
 
-// logClose completes an audit transaction and emits all recorded events.
-// If success is false or err is not nil, events are logged as "cancelled" with the error attached.
-// Otherwise, events are logged with their originally recorded success/failure status.
-func (tx *auditTransaction) logClose(ctx context.Context, auditLogger *Logger, success bool, err error) {
-	tx.mu.Lock()
-	defer tx.mu.Unlock()
-	for _, event := range tx.events {
-		auditEvent := event.event
-
-		if !success {
-			auditEvent.Action.Result = ActionResultCancel
-		}
-
-		if err != nil {
-			if auditEvent.EventMetaData == nil {
-				auditEvent.EventMetaData = make(auditEventMetadata)
-			}
-			auditEvent.EventMetaData["cancellation_error"] = err.Error()
-		}
-
-		//nolint:sloglint // audit message is always just the verb
-		auditLogger.logger.Log(ctx, LevelAudit, string(event.verb), slog.Any("audit", auditLogger.buildLogEntry(ctx, auditEvent)))
-	}
+// RewrapFailure records a failed rewrap and returns any recording error.
+func (a *Logger) RewrapFailure(ctx context.Context, params RewrapAuditEventParams) error {
+	params.IsSuccess = false
+	return a.rewrapBase(ctx, params)
 }
 
-func (a *Logger) RewrapSuccess(ctx context.Context, eventParams RewrapAuditEventParams) {
-	eventParams.IsSuccess = true
-	a.rewrapBase(ctx, eventParams)
+// PolicyCRUDSuccess records a successful operation after its database commit.
+func (a *Logger) PolicyCRUDSuccess(ctx context.Context, params PolicyEventParams) error {
+	return a.policyCrudBase(ctx, true, params)
 }
 
-func (a *Logger) RewrapFailure(ctx context.Context, eventParams RewrapAuditEventParams) {
-	a.rewrapBase(ctx, eventParams)
+// PolicyCRUDFailure records a failed policy operation.
+func (a *Logger) PolicyCRUDFailure(ctx context.Context, params PolicyEventParams) error {
+	return a.policyCrudBase(ctx, false, params)
 }
 
-func (a *Logger) PolicyCRUDSuccess(ctx context.Context, eventParams PolicyEventParams) {
-	a.policyCrudBase(ctx, true, eventParams)
-}
-
-func (a *Logger) PolicyCRUDFailure(ctx context.Context, eventParams PolicyEventParams) {
-	a.policyCrudBase(ctx, false, eventParams)
-}
-
-// LogPolicyCRUD creates and immediately emits a policy CRUD audit event. It is
-// intended for work whose lifetime is not owned by an RPC audit transaction.
-// If you are within a synchronous policy operation you should use: PolicyCRUDSuccess/Failure.
-// ! Use this carefully to avoid duplication of audit events from being recorded.
-func (a *Logger) LogPolicyCRUD(ctx context.Context, isSuccess bool, eventParams PolicyEventParams) {
-	tx, ok := ctx.Value(contextKey{}).(*auditTransaction)
-	if !ok || tx == nil || !tx.detached {
-		a.logger.ErrorContext(ctx, "immediate policy CRUD audit logging requires a detached audit context; use Logger.Detach first")
-		return
-	}
-
-	auditEvent, err := CreatePolicyEvent(ctx, isSuccess, eventParams)
+func (a *Logger) GetDecision(ctx context.Context, params GetDecisionEventParams) error {
+	event, err := CreateGetDecisionEvent(ctx, params)
 	if err != nil {
-		a.logger.ErrorContext(ctx, "error creating policy attribute audit event", slog.Any("error", err))
-		return
+		return err
 	}
-
-	//nolint:sloglint // audit message is always just the verb
-	a.logger.Log(ctx, LevelAudit, string(VerbPolicyCRUD), slog.Any("audit", a.buildLogEntry(ctx, auditEvent)))
+	event.Verb = VerbDecision
+	return a.Record(ctx, *event)
 }
 
-func (a *Logger) GetDecision(ctx context.Context, eventParams GetDecisionEventParams) {
-	auditEvent, err := CreateGetDecisionEvent(ctx, eventParams)
+func (a *Logger) GetDecisionV2(ctx context.Context, params GetDecisionV2EventParams) error {
+	event, err := CreateV2GetDecisionEvent(ctx, params)
 	if err != nil {
-		a.logger.ErrorContext(ctx, "error creating get decision audit event", slog.Any("error", err))
-		return
+		return err
 	}
-	LogAuditEvent(ctx, VerbDecision, auditEvent)
+	event.Verb = VerbDecision
+	return a.Record(ctx, *event)
 }
 
-func (a *Logger) GetDecisionV2(ctx context.Context, eventParams GetDecisionV2EventParams) {
-	event, err := CreateV2GetDecisionEvent(ctx, eventParams)
+func (a *Logger) rewrapBase(ctx context.Context, params RewrapAuditEventParams) error {
+	event, err := CreateRewrapAuditEvent(ctx, params)
 	if err != nil {
-		a.logger.ErrorContext(ctx, "error creating v2 get decision audit event", slog.Any("error", err))
-		return
+		return err
 	}
-	LogAuditEvent(ctx, VerbDecision, event)
+	event.Verb = VerbRewrap
+	return a.Record(ctx, *event)
 }
 
-func LogAuditEvent(ctx context.Context, verb Verb, event *EventObject) {
-	tx, ok := ctx.Value(contextKey{}).(*auditTransaction)
-	if !ok || tx == nil {
-		panic("audit transaction missing from context")
-	}
-	if tx.detached {
-		panic("cannot buffer an audit event on a detached transaction; use Logger.LogPolicyCRUD")
-	}
-	if event == nil {
-		panic("nil audit event provided")
-	}
-	tx.addEvent(verb, event)
-}
-
-func (a *Logger) rewrapBase(ctx context.Context, eventParams RewrapAuditEventParams) {
-	auditEvent, err := CreateRewrapAuditEvent(ctx, eventParams)
+func (a *Logger) policyCrudBase(ctx context.Context, success bool, params PolicyEventParams) error {
+	event, err := CreatePolicyEvent(ctx, success, params)
 	if err != nil {
-		a.logger.ErrorContext(ctx, "error creating rewrap audit event", slog.Any("error", err))
-		return
+		return err
 	}
-
-	LogAuditEvent(ctx, VerbRewrap, auditEvent)
-}
-
-func (a *Logger) policyCrudBase(ctx context.Context, isSuccess bool, eventParams PolicyEventParams) {
-	auditEvent, err := CreatePolicyEvent(ctx, isSuccess, eventParams)
-	if err != nil {
-		a.logger.ErrorContext(ctx, "error creating policy attribute audit event", slog.Any("error", err))
-		return
-	}
-	LogAuditEvent(ctx, VerbPolicyCRUD, auditEvent)
+	event.Verb = VerbPolicyCRUD
+	return a.Record(ctx, *event)
 }

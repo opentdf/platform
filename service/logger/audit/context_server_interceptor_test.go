@@ -25,7 +25,7 @@ func TestContextServerInterceptorUsesResolvedIP(t *testing.T) {
 	var captured ContextData
 	var propagatedIP string
 	var propagatedRequestID uuid.UUID
-	next := ContextServerInterceptor(createDiscardLogger())(
+	next := ContextServerInterceptor()(
 		func(ctx context.Context, _ connect.AnyRequest) (connect.AnyResponse, error) {
 			captured = GetAuditDataFromContext(ctx)
 			propagatedIP, _ = ctx.Value(sdkAudit.RequestIPContextKey).(string)
@@ -49,7 +49,7 @@ func TestContextServerInterceptorIgnoresForwardedActorHeader(t *testing.T) {
 	req.Header().Set(sdkAudit.ActorIDHeaderKey.String(), "spoofed-subject") //nolint:staticcheck // regression test for the deprecated spoofable header
 
 	var captured ContextData
-	next := ContextServerInterceptor(createDiscardLogger())(
+	next := ContextServerInterceptor()(
 		func(ctx context.Context, _ connect.AnyRequest) (connect.AnyResponse, error) {
 			captured = GetAuditDataFromContext(ctx)
 			return nil, nil //nolint:nilnil // response is irrelevant to context propagation
@@ -66,7 +66,7 @@ func TestContextServerInterceptorDoesNotTreatHeaderAsPrincipal(t *testing.T) {
 	req.Header().Set(sdkAudit.ActorIDHeaderKey.String(), "spoofed-subject") //nolint:staticcheck // regression test for the deprecated spoofable header
 
 	var captured ContextData
-	next := ContextServerInterceptor(createDiscardLogger())(
+	next := ContextServerInterceptor()(
 		func(ctx context.Context, _ connect.AnyRequest) (connect.AnyResponse, error) {
 			captured = GetAuditDataFromContext(ctx)
 			return nil, nil //nolint:nilnil // response is irrelevant to context propagation
@@ -76,9 +76,4 @@ func TestContextServerInterceptorDoesNotTreatHeaderAsPrincipal(t *testing.T) {
 	_, err := next(t.Context(), req)
 	require.NoError(t, err)
 	assert.Empty(t, captured.ActorID)
-}
-
-func createDiscardLogger() *Logger {
-	logger, _ := createTestLogger()
-	return logger
 }

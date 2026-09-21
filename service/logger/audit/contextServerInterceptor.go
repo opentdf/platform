@@ -10,9 +10,8 @@ import (
 	"github.com/opentdf/platform/service/internal/server/realip"
 )
 
-// ContextServerInterceptor allows audit events to track request state.
-// This is required for audit logging.
-func ContextServerInterceptor(logger *Logger) connect.UnaryInterceptorFunc {
+// ContextServerInterceptor adds request attribution without owning audit delivery.
+func ContextServerInterceptor() connect.UnaryInterceptorFunc {
 	interceptor := func(next connect.UnaryFunc) connect.UnaryFunc {
 		return connect.UnaryFunc(func(ctx context.Context, req connect.AnyRequest) (connect.AnyResponse, error) {
 			// Get metadata from the context
@@ -32,38 +31,21 @@ func ContextServerInterceptor(logger *Logger) connect.UnaryInterceptorFunc {
 			} else {
 				requestID = uuid.New()
 			}
-			tx := auditTransaction{
-				ContextData: ContextData{
-					RequestID: requestID,
-					UserAgent: "",
-					RequestIP: "",
-					ActorID:   auditData.ActorID,
-				},
-				events: make([]pendingEvent, 0),
+			data := ContextData{
+				RequestID: requestID,
+				ActorID:   auditData.ActorID,
 			}
 			ip := realip.FromContext(ctx)
 			if ip != nil {
-				tx.RequestIP = ip.String()
-				ctx = context.WithValue(ctx, sdkAudit.RequestIPContextKey, tx.RequestIP)
+				data.RequestIP = ip.String()
+				ctx = context.WithValue(ctx, sdkAudit.RequestIPContextKey, data.RequestIP)
 			}
 			userAgent := headers[http.CanonicalHeaderKey(sdkAudit.UserAgentHeaderKey.String())]
 			if len(userAgent) > 0 {
-				tx.UserAgent = userAgent[0]
+				data.UserAgent = userAgent[0]
 			}
 			ctx = context.WithValue(ctx, sdkAudit.RequestIDContextKey, requestID)
-			ctx = context.WithValue(ctx, contextKey{}, &tx)
-
-			defer func() {
-				if r := recover(); r != nil {
-					if err, ok := r.(error); ok {
-						tx.logClose(ctx, logger, false, err)
-					} else {
-						tx.logClose(ctx, logger, false, nil)
-					}
-					panic(r)
-				}
-				tx.logClose(ctx, logger, true, nil)
-			}()
+			ctx = context.WithValue(ctx, contextKey{}, data)
 
 			return next(ctx, req)
 		})

@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"log/slog"
 	"testing"
@@ -93,31 +92,15 @@ func extractLogEntry(t *testing.T, logBuffer *bytes.Buffer) (logEntryStructure, 
 	return entry, entryTime
 }
 
-func doWithLogger(t *testing.T, contextSetup func(context.Context) context.Context, testFunc func(ctx context.Context, l *Logger)) (ls logEntryStructure, lt time.Time) { //nolint:nonamedreturns // Named returns let the deferred recover path populate the extracted audit log.
+func doWithLogger(t *testing.T, contextSetup func(context.Context) context.Context, testFunc func(ctx context.Context, l *Logger)) (logEntryStructure, time.Time) {
+	t.Helper()
 	ctx := createTestContext(t)
 	if contextSetup != nil {
 		ctx = contextSetup(ctx)
 	}
 	l, buf := createTestLogger()
-	tx, ok := ctx.Value(contextKey{}).(*auditTransaction)
-	require.True(t, ok, "audit transaction missing from context")
-
-	defer func() {
-		if r := recover(); r != nil {
-			if err, okerr := r.(error); okerr {
-				tx.logClose(ctx, l, false, err)
-			} else {
-				tx.logClose(ctx, l, false, nil)
-			}
-		} else {
-			tx.logClose(ctx, l, true, nil)
-		}
-		ls, lt = extractLogEntry(t, buf)
-	}()
-
 	testFunc(ctx, l)
-
-	return ls, lt
+	return extractLogEntry(t, buf)
 }
 
 func createTestJWTForAudit(t *testing.T) (jwt.Token, string) {
@@ -146,7 +129,7 @@ func decodeAuditPayload(t *testing.T, payload json.RawMessage) map[string]any {
 
 func TestAuditRewrapSuccess(t *testing.T) {
 	logEntry, logEntryTime := doWithLogger(t, nil, func(ctx context.Context, l *Logger) {
-		l.RewrapSuccess(ctx, rewrapParams)
+		require.NoError(t, l.RewrapSuccess(ctx, rewrapParams))
 	})
 
 	expectedAuditLog := fmt.Sprintf(
@@ -205,7 +188,7 @@ func TestAuditRewrapSuccess(t *testing.T) {
 
 func TestAuditRewrapFailure(t *testing.T) {
 	logEntry, logEntryTime := doWithLogger(t, nil, func(ctx context.Context, l *Logger) {
-		l.RewrapFailure(ctx, rewrapParams)
+		require.NoError(t, l.RewrapFailure(ctx, rewrapParams))
 	})
 
 	expectedAuditLog := fmt.Sprintf(
@@ -264,7 +247,7 @@ func TestAuditRewrapFailure(t *testing.T) {
 
 func TestPolicyCRUDSuccess(t *testing.T) {
 	logEntry, logEntryTime := doWithLogger(t, nil, func(ctx context.Context, l *Logger) {
-		l.PolicyCRUDSuccess(ctx, policyCRUDParams)
+		require.NoError(t, l.PolicyCRUDSuccess(ctx, policyCRUDParams))
 	})
 
 	expectedAuditLog := fmt.Sprintf(
@@ -314,7 +297,7 @@ func TestPolicyCRUDSuccess(t *testing.T) {
 
 func TestPolicyCrudFailure(t *testing.T) {
 	logEntry, logEntryTime := doWithLogger(t, nil, func(ctx context.Context, l *Logger) {
-		l.PolicyCRUDFailure(ctx, policyCRUDParams)
+		require.NoError(t, l.PolicyCRUDFailure(ctx, policyCRUDParams))
 	})
 
 	expectedAuditLog := fmt.Sprintf(
@@ -375,7 +358,7 @@ func TestAuditJWTClaimMappingsApplyToPolicyAudit(t *testing.T) {
 				{Claim: "email_verified", Path: "eventMetaData.requester.emailVerified"},
 			},
 		}))
-		l.PolicyCRUDSuccess(ctx, policyCRUDParams)
+		require.NoError(t, l.PolicyCRUDSuccess(ctx, policyCRUDParams))
 	})
 
 	payload := decodeAuditPayload(t, logEntry.Audit)
@@ -401,7 +384,7 @@ func TestAuditJWTClaimMappingsCanWriteToEntityMetadata(t *testing.T) {
 				{Claim: "email_verified", Path: "eventMetaData.entityMetadata.emailVerified"},
 			},
 		}))
-		l.PolicyCRUDSuccess(ctx, policyCRUDParams)
+		require.NoError(t, l.PolicyCRUDSuccess(ctx, policyCRUDParams))
 	})
 
 	payload := decodeAuditPayload(t, logEntry.Audit)
@@ -429,7 +412,7 @@ func TestAuditJWTClaimMappingsCoverNamedAndUnnamedPaths(t *testing.T) {
 				{Claim: "email_verified", Path: "kiwi.requester.emailVerified"},
 			},
 		}))
-		l.PolicyCRUDSuccess(ctx, policyCRUDParams)
+		require.NoError(t, l.PolicyCRUDSuccess(ctx, policyCRUDParams))
 	})
 
 	payload := decodeAuditPayload(t, logEntry.Audit)
@@ -470,7 +453,7 @@ func TestAuditJWTClaimMappingsLeaveReservedFieldsUntouched(t *testing.T) {
 				{Claim: "sub", Path: "eventMetaData.requester.sub"},
 			},
 		}))
-		l.PolicyCRUDSuccess(ctx, policyCRUDParams)
+		require.NoError(t, l.PolicyCRUDSuccess(ctx, policyCRUDParams))
 	})
 
 	payload := decodeAuditPayload(t, logEntry.Audit)
@@ -541,177 +524,6 @@ func assertReservedAuditPathRejected(t *testing.T, path string) {
 	require.ErrorContains(t, err, "jwt_claim_mappings[0].path")
 }
 
-func TestDeferredRewrapSuccess(t *testing.T) {
-	logEntry, logEntryTime := doWithLogger(t, nil, func(ctx context.Context, l *Logger) {
-		l.RewrapSuccess(ctx, rewrapParams)
-	})
-
-	expectedAuditLog := fmt.Sprintf(
-		`{
-			"object": {
-				"type": "key_object",
-				"id": "%s",
-				"name": "",
-				"attributes": {
-					"assertions": [],
-					"attrs": %s,
-					"permissions": []
-				}
-			},
-			"action": {
-			  "type": "rewrap",
-				"result": "success"
-			},
-			"actor": {
-			  "id": "%s",
-				"attributes": []
-			},
-			"eventMetaData": {
-			  "algorithm": "%s",
-				"keyID": "%s",
-				"policyBinding": "%s",
-				"tdfFormat": "%s"
-			},
-			"clientInfo": {
-			  "userAgent": "%s",
-				"platform": "kas",
-				"requestIP": "%s"
-			},
-			"original": null,
-			"updated": null,
-			"requestID": "%s",
-			"timestamp": "%s"
-	  }
-		`,
-		rewrapParams.Policy.UUID.String(),
-		rewrapAttrsJSON,
-		TestActorID,
-		rewrapParams.Algorithm,
-		rewrapParams.KeyID,
-		rewrapParams.PolicyBinding,
-		rewrapParams.TDFFormat,
-		TestUserAgent,
-		TestRequestIP,
-		TestRequestID,
-		logEntryTime.Format(time.RFC3339),
-	)
-
-	loggedMessage := string(logEntry.Audit)
-	assert.JSONEq(t, expectedAuditLog, loggedMessage)
-}
-
-func TestDeferredRewrapCancelled(t *testing.T) {
-	logEntry, logEntryTime := doWithLogger(t, nil, func(ctx context.Context, l *Logger) {
-		l.RewrapSuccess(ctx, rewrapParams)
-		panic(errors.New("operation failed"))
-	})
-
-	expectedAuditLog := fmt.Sprintf(
-		`{
-			"object": {
-				"type": "key_object",
-				"id": "%s",
-				"name": "",
-				"attributes": {
-					"assertions": [],
-					"attrs": %s,
-					"permissions": []
-				}
-			},
-			"action": {
-			  "type": "rewrap",
-				"result": "cancel"
-			},
-			"actor": {
-			  "id": "%s",
-				"attributes": []
-			},
-			"eventMetaData": {
-			  "algorithm": "%s",
-				"cancellation_error": "%s",
-				"keyID": "%s",
-				"policyBinding": "%s",
-				"tdfFormat": "%s"
-			},
-			"clientInfo": {
-			  "userAgent": "%s",
-				"platform": "kas",
-				"requestIP": "%s"
-			},
-			"original": null,
-			"updated": null,
-			"requestID": "%s",
-			"timestamp": "%s"
-	  }
-		`,
-		rewrapParams.Policy.UUID.String(),
-		rewrapAttrsJSON,
-		TestActorID,
-		rewrapParams.Algorithm,
-		"operation failed",
-		rewrapParams.KeyID,
-		rewrapParams.PolicyBinding,
-		rewrapParams.TDFFormat,
-		TestUserAgent,
-		TestRequestIP,
-		TestRequestID,
-		logEntryTime.Format(time.RFC3339),
-	)
-
-	loggedMessage := string(logEntry.Audit)
-	assert.JSONEq(t, expectedAuditLog, loggedMessage)
-}
-
-func TestDeferredPolicyCRUDSuccess(t *testing.T) {
-	logEntry, logEntryTime := doWithLogger(t, nil, func(ctx context.Context, l *Logger) {
-		l.PolicyCRUDSuccess(ctx, policyCRUDParams)
-	})
-
-	expectedAuditLog := fmt.Sprintf(
-		`{
-		  "object": {
-			  "type": "%s",
-				"id": "%s",
-				"name": "",
-				"attributes": {
-					"assertions": null,
-					"attrs": null,
-					"permissions": null
-				}
-			},
-			"action": {
-			  "type": "%s",
-				"result": "success"
-			},
-			"actor": {
-				"id": "%s",
-				"attributes": []
-			},
-			"eventMetaData": null,
-			"clientInfo": {
-				"userAgent": "%s",
-				"platform": "policy",
-				"requestIP": "%s"
-			},
-			"original": null,
-			"updated": null,
-			"requestID": "%s",
-			"timestamp": "%s"
-		}`,
-		ObjectTypeKeyObject.String(),
-		policyCRUDParams.ObjectID,
-		ActionTypeUpdate.String(),
-		TestActorID,
-		TestUserAgent,
-		TestRequestIP,
-		TestRequestID,
-		logEntryTime.Format(time.RFC3339),
-	)
-
-	loggedMessage := string(logEntry.Audit)
-	assert.JSONEq(t, expectedAuditLog, loggedMessage)
-}
-
 func TestGetDecision(t *testing.T) {
 	params := GetDecisionEventParams{
 		Decision: GetDecisionResultPermit,
@@ -727,7 +539,7 @@ func TestGetDecision(t *testing.T) {
 	}
 
 	logEntry, logEntryTime := doWithLogger(t, nil, func(ctx context.Context, l *Logger) {
-		l.GetDecision(ctx, params)
+		require.NoError(t, l.GetDecision(ctx, params))
 	})
 	expectedAuditLog := fmt.Sprintf(
 		`{

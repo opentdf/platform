@@ -138,10 +138,14 @@ func (a *ActionService) CreateAction(ctx context.Context, req *connect.Request[a
 		return nil
 	})
 	if err != nil {
-		a.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
+		if auditErr := a.logger.Audit.PolicyCRUDFailure(ctx, auditParams); auditErr != nil {
+			a.logger.ErrorContext(context.WithoutCancel(ctx), "failed to record policy audit event", slog.Any("error", auditErr))
+		}
 		return nil, db.StatusifyError(ctx, a.logger, err, db.ErrTextCreationFailed, slog.String("action", req.Msg.String()))
 	}
-	a.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
+	if auditErr := a.logger.Audit.PolicyCRUDSuccess(ctx, auditParams); auditErr != nil {
+		a.logger.ErrorContext(context.WithoutCancel(ctx), "failed to record policy audit event", slog.Any("error", auditErr))
+	}
 	return connect.NewResponse(rsp), nil
 }
 
@@ -178,10 +182,14 @@ func (a *ActionService) UpdateAction(ctx context.Context, req *connect.Request[a
 		return nil
 	})
 	if err != nil {
-		a.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
+		if auditErr := a.logger.Audit.PolicyCRUDFailure(ctx, auditParams); auditErr != nil {
+			a.logger.ErrorContext(context.WithoutCancel(ctx), "failed to record policy audit event", slog.Any("error", auditErr))
+		}
 		return nil, db.StatusifyError(ctx, a.logger, err, db.ErrTextUpdateFailed, slog.String("action", req.Msg.String()))
 	}
-	a.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
+	if auditErr := a.logger.Audit.PolicyCRUDSuccess(ctx, auditParams); auditErr != nil {
+		a.logger.ErrorContext(context.WithoutCancel(ctx), "failed to record policy audit event", slog.Any("error", auditErr))
+	}
 
 	return connect.NewResponse(rsp), nil
 }
@@ -199,11 +207,15 @@ func (a *ActionService) DeleteAction(ctx context.Context, req *connect.Request[a
 
 	deleted, err := a.dbClient.DeleteAction(ctx, req.Msg)
 	if err != nil {
-		a.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
+		if auditErr := a.logger.Audit.PolicyCRUDFailure(ctx, auditParams); auditErr != nil {
+			a.logger.ErrorContext(context.WithoutCancel(ctx), "failed to record policy audit event", slog.Any("error", auditErr))
+		}
 		return nil, db.StatusifyError(ctx, a.logger, err, db.ErrTextDeletionFailed, slog.String("action", req.Msg.String()))
 	}
 
-	a.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
+	if auditErr := a.logger.Audit.PolicyCRUDSuccess(ctx, auditParams); auditErr != nil {
+		a.logger.ErrorContext(context.WithoutCancel(ctx), "failed to record policy audit event", slog.Any("error", auditErr))
+	}
 	rsp.Action = deleted
 
 	return connect.NewResponse(rsp), nil

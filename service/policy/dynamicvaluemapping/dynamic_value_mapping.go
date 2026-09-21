@@ -100,10 +100,14 @@ func (s DynamicValueMappingService) CreateDynamicValueMapping(ctx context.Contex
 		return nil
 	})
 	if err != nil {
-		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
+		if auditErr := s.logger.Audit.PolicyCRUDFailure(ctx, auditParams); auditErr != nil {
+			s.logger.ErrorContext(context.WithoutCancel(ctx), "failed to record policy audit event", slog.Any("error", auditErr))
+		}
 		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextCreationFailed, slog.String("dynamic_value_mapping", req.Msg.String()))
 	}
-	s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
+	if auditErr := s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams); auditErr != nil {
+		s.logger.ErrorContext(context.WithoutCancel(ctx), "failed to record policy audit event", slog.Any("error", auditErr))
+	}
 	return connect.NewResponse(rsp), nil
 }
 
@@ -163,10 +167,14 @@ func (s DynamicValueMappingService) UpdateDynamicValueMapping(ctx context.Contex
 		return nil
 	})
 	if err != nil {
-		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
+		if auditErr := s.logger.Audit.PolicyCRUDFailure(ctx, auditParams); auditErr != nil {
+			s.logger.ErrorContext(context.WithoutCancel(ctx), "failed to record policy audit event", slog.Any("error", auditErr))
+		}
 		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextUpdateFailed, slog.String("id", id), slog.String("dynamic_value_mapping", req.Msg.String()))
 	}
-	s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
+	if auditErr := s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams); auditErr != nil {
+		s.logger.ErrorContext(context.WithoutCancel(ctx), "failed to record policy audit event", slog.Any("error", auditErr))
+	}
 
 	return connect.NewResponse(rsp), nil
 }
@@ -186,11 +194,15 @@ func (s DynamicValueMappingService) DeleteDynamicValueMapping(ctx context.Contex
 
 	deleted, err := s.dbClient.DeleteDynamicValueMapping(ctx, id)
 	if err != nil {
-		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
+		if auditErr := s.logger.Audit.PolicyCRUDFailure(ctx, auditParams); auditErr != nil {
+			s.logger.ErrorContext(context.WithoutCancel(ctx), "failed to record policy audit event", slog.Any("error", auditErr))
+		}
 		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextDeletionFailed, slog.String("id", id))
 	}
 
-	s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
+	if auditErr := s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams); auditErr != nil {
+		s.logger.ErrorContext(context.WithoutCancel(ctx), "failed to record policy audit event", slog.Any("error", auditErr))
+	}
 	rsp.DynamicValueMapping = deleted
 	return connect.NewResponse(rsp), nil
 }

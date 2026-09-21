@@ -35,9 +35,6 @@ type Provider struct {
 	trace.Tracer
 }
 
-// KASURIFromKAOKey is the configuration key for KAO-based rewrap lookups.
-const KASURIFromKAOKey = "kas_uri_from_kao"
-
 type KASConfig struct {
 	// KeyManagement enables stable, policy-backed KAS key management.
 	KeyManagement bool `mapstructure:"key_management" json:"key_management"`

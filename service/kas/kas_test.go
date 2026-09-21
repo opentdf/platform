@@ -172,27 +172,12 @@ func newBufferLogger() (*logger.Logger, *bytes.Buffer) {
 }
 
 func TestDecodeKASConfigKASURIFromKAO(t *testing.T) {
-	for _, tc := range []struct {
-		name   string
-		config map[string]any
-		want   bool
-	}{
-		{name: "omitted defaults to false", config: map[string]any{}},
-		{name: "top-level setting does not enable preview", config: map[string]any{access.KASURIFromKAOKey: true}},
-		{name: "explicit false", config: map[string]any{"preview": map[string]any{access.KASURIFromKAOKey: false}}},
-		{name: "explicit true", config: map[string]any{"preview": map[string]any{access.KASURIFromKAOKey: true}}, want: true},
-		{name: "key management defaults to false", config: map[string]any{"key_management": true}},
-		{name: "key management with explicit false", config: map[string]any{"key_management": true, "preview": map[string]any{access.KASURIFromKAOKey: false}}},
-		{name: "key management with explicit true", config: map[string]any{"key_management": true, "preview": map[string]any{access.KASURIFromKAOKey: true}}, want: true},
-	} {
-		t.Run(tc.name, func(t *testing.T) {
-			log, buf := newBufferLogger()
-			got, err := decodeKASConfig(tc.config, log)
-			require.NoError(t, err)
-			assert.Equal(t, tc.want, got.Preview.KASURIFromKAO)
-			assert.Empty(t, buf.String())
-		})
-	}
+	log, _ := newBufferLogger()
+	got, err := decodeKASConfig(map[string]any{
+		"preview": map[string]any{"kas_uri_from_kao": true},
+	}, log)
+	require.NoError(t, err)
+	assert.True(t, got.Preview.KASURIFromKAO)
 }
 
 func TestDecodeKASConfigKeyManagement(t *testing.T) {

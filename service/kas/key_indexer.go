@@ -186,7 +186,7 @@ func (p *KeyAdapter) ID() trust.KeyIdentifier {
 }
 
 func (p *KeyAdapter) CacheKey() string {
-	return fmt.Sprintf("kas:%q:%q", p.key.GetKasId(), p.ID())
+	return fmt.Sprintf("kas:%q:%q", p.key.GetKasUri(), p.ID())
 }
 
 // Might need to convert this to a standard format

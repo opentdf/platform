@@ -20,31 +20,30 @@ import (
 func TestKeyAdapterCacheKey(t *testing.T) {
 	seen := make(map[string]bool)
 	for _, tc := range []struct {
-		registryID string
-		keyID      string
+		kasURI string
+		keyID  string
 	}{
-		{registryID: "registry-a", keyID: "shared-key"},
-		{registryID: "registry-b", keyID: "shared-key"},
-		{registryID: "registry-a", keyID: "other-key"},
-		{registryID: "registry:a", keyID: "b"},
-		{registryID: "registry", keyID: "a:b"},
-		{registryID: `registry:"a`, keyID: `b\\c`},
-		{registryID: `registry`, keyID: `"a:b\\c`},
+		{kasURI: defaultKASURI, keyID: "shared-key"},
+		{kasURI: requestKASURI, keyID: "shared-key"},
+		{kasURI: defaultKASURI, keyID: "other-key"},
+		{kasURI: "https://kas.example.com/a:b", keyID: "c"},
+		{kasURI: "https://kas.example.com/a", keyID: "b:c"},
+		{kasURI: `https://kas.example.com/a:"b`, keyID: `c\\d`},
+		{kasURI: `https://kas.example.com/a`, keyID: `"b:c\\d`},
 	} {
 		key := &KeyAdapter{key: &policy.KasKey{
-			KasId:  tc.registryID,
-			KasUri: defaultKASURI,
+			KasUri: tc.kasURI,
 			Key:    &policy.AsymmetricKey{KeyId: tc.keyID},
 		}}
 		require.Equal(t, trust.KeyIdentifier(tc.keyID), key.ID())
 		cacheKey := key.CacheKey()
 		require.NotEmpty(t, cacheKey)
-		require.False(t, seen[cacheKey], "cache key collision for registry %q, key %q", tc.registryID, tc.keyID)
+		require.False(t, seen[cacheKey], "cache key collision for URI %q, key %q", tc.kasURI, tc.keyID)
 		seen[cacheKey] = true
 
-		// Updating the URI of the same registry preserves the cache key.
-		key.key.KasUri = requestKASURI
-		require.Equal(t, cacheKey, key.CacheKey())
+		// Updating the URI changes the cache key.
+		key.key.KasUri = "https://updated-kas.example.com"
+		require.NotEqual(t, cacheKey, key.CacheKey())
 	}
 }
 

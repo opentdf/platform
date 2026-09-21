@@ -76,7 +76,7 @@ func TestKeyDetailsAdapterCacheKey(t *testing.T) {
 	require.NotEmpty(t, key.CacheKey())
 	require.Equal(t, key.CacheKey(), sameKey.CacheKey())
 	require.NotEqual(t, key.CacheKey(), otherKey.CacheKey())
-	require.Contains(t, key.CacheKey(), inProcessSystemName)
+	require.Equal(t, "shared-key", key.CacheKey())
 }
 
 func TestInProcessProviderMetadata(t *testing.T) {

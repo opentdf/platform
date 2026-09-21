@@ -364,22 +364,22 @@ func (reader Reader) ReadFileSize(filename string) (int64, error) {
 	return fileNameEntry.length, nil
 }
 
-// Read bytes reads up to size from input providers
-// and return the buffer with the read bytes.
+// readBytes reads exactly size bytes at index, or fails.
+// Unlike most golang io read methods, this function leaves
+// the byte array empty on error states to simplify reader logic.
 func readBytes(readerSeeker io.ReadSeeker, index, size int64) ([]byte, error) {
-	_, err := readerSeeker.Seek(index, 0)
-	if err != nil {
+	if _, err := readerSeeker.Seek(index, io.SeekStart); err != nil {
 		return nil, fmt.Errorf("readerSeeker.Seek failed: %w", err)
 	}
 
 	buf := make([]byte, size)
-	n, err := readerSeeker.Read(buf)
-	if errors.Is(err, io.EOF) {
-		return buf[:n], io.EOF
-	}
-
-	if err != nil {
-		return buf[:n], fmt.Errorf("readerSeeker.Read failed: %w", err)
+	if _, err := io.ReadFull(readerSeeker, buf); err != nil {
+		// Promote io.EOF to io.ErrUnexpectedEOF
+		// due to short (e.g. incorrect CD) archive files.
+		if errors.Is(err, io.EOF) {
+			err = io.ErrUnexpectedEOF
+		}
+		return nil, fmt.Errorf("reading %d bytes at %d failed: %w", size, index, err)
 	}
 
 	return buf, nil

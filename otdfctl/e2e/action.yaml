@@ -34,7 +34,11 @@ runs:
       shell: bash
       run: |
         sudo apt-get update
-        sudo apt-get install -y gnome-keyring
+        # 'time' is GNU time, which reports 'Maximum resident set size'. The
+        # streaming suite's peak-RSS case needs it and would otherwise skip
+        # itself silently -- and that case is the only proof that encrypt and
+        # decrypt have not gone back to buffering the whole payload.
+        sudo apt-get install -y gnome-keyring time
       working-directory: otdfctl
     - name: Setup Bats and bats libs
       uses: bats-core/bats-action@2.0.0
@@ -54,12 +58,23 @@ runs:
         # suite while other files still create unnamespaced policy fixtures.
         bats --tap e2e --filter-tags namespaced_policy_migration | tee e2e/bats-results.tap
 
+        # Then every file that encrypts without attributes, also on its own.
+        # Unattributed encrypts fall back to the platform base key, and
+        # key-base.bats sets one pointing at a KAS that does not resolve and
+        # cannot unset it afterwards -- a base key can be replaced but not
+        # cleared. Anything unattributed scheduled after that file produces an
+        # undecryptable TDF, so these have to run first rather than race for a
+        # slot. Running alone also keeps streaming.bats' 1 GiB peak-RSS case
+        # from measuring itself against three neighbours competing for the same
+        # memory.
+        bats --tap e2e --filter-tags unattributed_encrypt | tee -a e2e/bats-results.tap
+
         if command -v parallel >/dev/null 2>&1; then
           echo "GNU parallel found, running remaining tests in parallel"
-          bats --tap e2e --filter-tags '!namespaced_policy_migration' --jobs 4 --no-parallelize-within-files --no-tempdir-cleanup | tee -a e2e/bats-results.tap
+          bats --tap e2e --filter-tags '!namespaced_policy_migration,!unattributed_encrypt' --jobs 4 --no-parallelize-within-files --no-tempdir-cleanup | tee -a e2e/bats-results.tap
         else
           echo "GNU parallel not found, running remaining tests sequentially"
-          bats --tap e2e --filter-tags '!namespaced_policy_migration' | tee -a e2e/bats-results.tap
+          bats --tap e2e --filter-tags '!namespaced_policy_migration,!unattributed_encrypt' | tee -a e2e/bats-results.tap
         fi
       env:
         # Define 'bats' install location in ubuntu

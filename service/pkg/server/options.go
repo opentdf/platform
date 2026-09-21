@@ -57,6 +57,7 @@ type StartConfig struct {
 	authzRoleProviderFactories map[string]authz.RoleProviderFactory
 	auditProcessor             audit.Processor
 	auditTimeout               *time.Duration
+	loggerContextAttrs         []logger.ContextAttrFunc
 
 	// CORS additive configuration - appended to YAML/env config values
 	additionalCORSHeaders        []string
@@ -112,6 +113,16 @@ func WithAuditTimeout(timeout time.Duration) StartOptions {
 	}
 }
 
+// WithLoggerContextAttrs registers functions that derive attributes from each
+// log record's context. This configures the logger, not a mux: the attrs apply
+// to every record a service emits, on both the external and in-process paths.
+func WithLoggerContextAttrs(fns ...logger.ContextAttrFunc) StartOptions {
+	return func(c StartConfig) StartConfig {
+		c.loggerContextAttrs = append(c.loggerContextAttrs, fns...)
+		return c
+	}
+}
+
 // loggerConfig applies explicit startup overrides after YAML and environment loading.
 func (c StartConfig) loggerConfig(cfg logger.Config) logger.Config {
 	if c.auditProcessor != nil {
@@ -119,6 +130,9 @@ func (c StartConfig) loggerConfig(cfg logger.Config) logger.Config {
 	}
 	if c.auditTimeout != nil {
 		cfg.AuditTimeout = *c.auditTimeout
+	}
+	if len(c.loggerContextAttrs) > 0 {
+		cfg.ContextAttrs = append(slices.Clone(cfg.ContextAttrs), c.loggerContextAttrs...)
 	}
 	return cfg
 }

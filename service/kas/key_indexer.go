@@ -28,6 +28,8 @@ type KeyIndexer struct {
 	sdk *sdk.SDK
 	// KasURI
 	kasURI string
+	// Whether request KAS URIs override the configured registration. Set at startup.
+	kasURIFromKAO bool
 	// Logger is the logger instance used for logging
 	log *logger.Logger
 }
@@ -38,10 +40,11 @@ type KeyAdapter struct {
 	log *logger.Logger
 }
 
-func NewPlatformKeyIndexer(sdk *sdk.SDK, kasURI string, l *logger.Logger) *KeyIndexer {
+func NewPlatformKeyIndexer(sdk *sdk.SDK, kasURI string, kasURIFromKAO bool, l *logger.Logger) *KeyIndexer {
 	p := &KeyIndexer{
-		sdk:    sdk,
-		kasURI: kasURI,
+		sdk:           sdk,
+		kasURI:        kasURI,
+		kasURIFromKAO: kasURIFromKAO,
 	}
 	p.log = l.With("key_indexer", p.String())
 	return p
@@ -109,7 +112,6 @@ func (p *KeyIndexer) FindKeyByID(ctx context.Context, id trust.KeyIdentifier) (t
 }
 
 // FindKeyWith returns a key using the requested options.
-// If opts.KASURI is empty, the indexer's configured KAS URI is used.
 func (p *KeyIndexer) FindKeyWith(ctx context.Context, opts trust.FindKeyOptions) (trust.KeyDetails, error) {
 	req := &kasregistry.GetKeyRequest{
 		Identifier: &kasregistry.GetKeyRequest_Key{
@@ -141,7 +143,6 @@ func (p *KeyIndexer) ListKeys(ctx context.Context) ([]trust.KeyDetails, error) {
 }
 
 // ListKeysWith returns keys using the requested options.
-// If opts.KASURI is empty, the indexer's configured KAS URI is used.
 func (p *KeyIndexer) ListKeysWith(ctx context.Context, opts trust.ListKeyOptions) ([]trust.KeyDetails, error) {
 	var legacyOnly *bool
 	if opts.LegacyOnly {
@@ -174,7 +175,7 @@ func (p *KeyIndexer) ListKeysWith(ctx context.Context, opts trust.ListKeyOptions
 }
 
 func (p *KeyIndexer) kasURIOrDefault(kasURI string) string {
-	if kasURI == "" {
+	if !p.kasURIFromKAO || kasURI == "" {
 		return p.kasURI
 	}
 	return kasURI

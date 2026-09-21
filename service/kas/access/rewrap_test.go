@@ -66,12 +66,11 @@ func (f *fakeKeyDetails) ProviderConfig() *policy.KeyProviderConfig {
 }
 
 type fakeKeyIndex struct {
-	keys          []trust.KeyDetails
-	err           error
-	kasURI        string
-	defaultKASURI string
-	findURIs      []string
-	listURIs      []string
+	keys     []trust.KeyDetails
+	err      error
+	kasURI   string
+	findURIs []string
+	listURIs []string
 }
 
 func (f *fakeKeyIndex) String() string {
@@ -93,9 +92,6 @@ func (f *fakeKeyIndex) FindKeyByID(context.Context, trust.KeyIdentifier) (trust.
 }
 
 func (f *fakeKeyIndex) FindKeyWith(_ context.Context, opts trust.FindKeyOptions) (trust.KeyDetails, error) {
-	if opts.KASURI == "" {
-		opts.KASURI = f.defaultKASURI
-	}
 	f.findURIs = append(f.findURIs, opts.KASURI)
 	return nil, errors.New("not implemented")
 }
@@ -105,9 +101,6 @@ func (f *fakeKeyIndex) ListKeys(context.Context) ([]trust.KeyDetails, error) {
 }
 
 func (f *fakeKeyIndex) ListKeysWith(_ context.Context, opts trust.ListKeyOptions) ([]trust.KeyDetails, error) {
-	if opts.KASURI == "" {
-		opts.KASURI = f.defaultKASURI
-	}
 	f.kasURI = opts.KASURI
 	f.listURIs = append(f.listURIs, opts.KASURI)
 	if opts.LegacyOnly {
@@ -158,34 +151,28 @@ func toStringSlice(t *testing.T, raw any) []string {
 	return result
 }
 
-func TestVerifyRewrapRequestsKASURIFromKAO(t *testing.T) {
+func TestVerifyRewrapRequestsForwardsKASURI(t *testing.T) {
 	const (
 		requestURI = "https://old-kas.example.com"
 		defaultURI = "https://configured-kas.example.com"
 	)
 	for _, tc := range []struct {
-		name    string
-		fromKAO bool
-		kaoURI  string
-		wantURI string
+		name   string
+		kaoURI string
 	}{
-		{name: "enabled uses KAO registration", fromKAO: true, kaoURI: requestURI, wantURI: requestURI},
-		{name: "disabled uses indexer registration", kaoURI: requestURI, wantURI: defaultURI},
-		{name: "enabled with empty KAO URI uses indexer registration", fromKAO: true, wantURI: defaultURI},
-		{name: "disabled with empty KAO URI uses indexer registration", wantURI: defaultURI},
+		{name: "forwards KAO URI", kaoURI: requestURI},
+		{name: "forwards empty KAO URI"},
 	} {
 		for _, kid := range []string{"key-id", ""} {
 			t.Run(tc.name+"/kid="+kid, func(t *testing.T) {
 				log := logger.CreateTestLogger()
 				index := &fakeKeyIndex{
-					defaultKASURI: defaultURI,
 					keys: []trust.KeyDetails{
 						&fakeKeyDetails{id: "key-id", algorithm: "rsa:2048", legacy: true},
 					},
 				}
 				p := &Provider{Logger: log, KeyDelegator: trust.NewDelegatingKeyService(index, log, nil)}
 				p.ApplyConfig(KASConfig{
-					KASURIFromKAO:    tc.fromKAO,
 					RegisteredKASURI: defaultURI,
 				}, nil)
 				_, results, err := p.verifyRewrapRequests(t.Context(), &kaspb.UnsignedRewrapRequest_WithPolicyRequest{
@@ -197,12 +184,12 @@ func TestVerifyRewrapRequestsKASURIFromKAO(t *testing.T) {
 						},
 					}},
 				})
-				// The fake stops at lookup; verify the selected URI without requiring a crypto provider.
+				// The fake stops at lookup; verify the forwarded URI without requiring a crypto provider.
 				require.Error(t, err)
 				require.Error(t, results["kao"].Error)
-				require.Equal(t, []string{tc.wantURI}, index.findURIs)
+				require.Equal(t, []string{tc.kaoURI}, index.findURIs)
 				if kid == "" {
-					require.Equal(t, []string{tc.wantURI}, index.listURIs)
+					require.Equal(t, []string{tc.kaoURI}, index.listURIs)
 				} else {
 					require.Empty(t, index.listURIs)
 				}

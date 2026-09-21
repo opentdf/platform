@@ -364,22 +364,41 @@ func (reader Reader) ReadFileSize(filename string) (int64, error) {
 	return fileNameEntry.length, nil
 }
 
-// Read bytes reads up to size from input providers
-// and return the buffer with the read bytes.
+// readBytes reads exactly size bytes at index, or fails.
+//
+// io.Reader is entitled to return a short read with a nil error, and a single
+// Read takes that liberty. The io.ReadSeeker here is caller-supplied, and the
+// implementations that read short in practice -- HTTP range requests, network
+// filesystems -- are the ones large archives get served from. Returning the
+// untouched tail of buf would hand back zeros that never came from the
+// archive, reported as success; the ErrSegSizeMismatch guard in tdf.go cannot
+// catch it, because make() already gave the buffer the length that check is
+// looking for. io.ReadFull turns that into io.ErrUnexpectedEOF.
+//
+// Nothing is returned alongside an error. A caller that ignores the error --
+// or one that sees the io.EOF a bare Read used to surface and treats it as a
+// normal end of stream -- would otherwise decrypt a silently truncated
+// payload.
 func readBytes(readerSeeker io.ReadSeeker, index, size int64) ([]byte, error) {
-	_, err := readerSeeker.Seek(index, 0)
-	if err != nil {
+	if _, err := readerSeeker.Seek(index, io.SeekStart); err != nil {
 		return nil, fmt.Errorf("readerSeeker.Seek failed: %w", err)
 	}
 
 	buf := make([]byte, size)
-	n, err := readerSeeker.Read(buf)
-	if errors.Is(err, io.EOF) {
-		return buf[:n], io.EOF
-	}
-
-	if err != nil {
-		return buf[:n], fmt.Errorf("readerSeeker.Read failed: %w", err)
+	if _, err := io.ReadFull(readerSeeker, buf); err != nil {
+		// io.ReadFull reports io.EOF when it read nothing at all and
+		// io.ErrUnexpectedEOF when it read some but not enough. The caller
+		// asked for a specific count taken from the central directory, so
+		// both mean the same thing here: the archive is shorter than it
+		// claims. Letting the bare io.EOF out reintroduces the trap this
+		// function exists to close, since errors.Is(err, io.EOF) reads as a
+		// normal end of stream and a caller acting on that accepts a
+		// truncated entry. A zero-length read is unaffected -- io.ReadFull
+		// returns a nil error for it even at EOF.
+		if errors.Is(err, io.EOF) {
+			err = io.ErrUnexpectedEOF
+		}
+		return nil, fmt.Errorf("reading %d bytes at %d failed: %w", size, index, err)
 	}
 
 	return buf, nil

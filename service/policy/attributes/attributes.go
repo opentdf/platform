@@ -93,7 +93,6 @@ func (s *AttributesService) CreateAttribute(ctx context.Context,
 	err := s.dbClient.RunInTx(ctx, func(txClient *policydb.PolicyDBClient) error {
 		item, err := txClient.CreateAttribute(ctx, req.Msg)
 		if err != nil {
-			s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
 			return err
 		}
 
@@ -101,14 +100,14 @@ func (s *AttributesService) CreateAttribute(ctx context.Context,
 
 		auditParams.ObjectID = item.GetId()
 		auditParams.Original = item
-		s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
-
 		rsp.Attribute = item
 		return nil
 	})
 	if err != nil {
+		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
 		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextCreationFailed, slog.String("attribute", req.Msg.String()))
 	}
+	s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
 
 	return connect.NewResponse(rsp), nil
 }
@@ -295,41 +294,39 @@ func (s *AttributesService) CreateAttributeValue(ctx context.Context, req *conne
 	err := s.dbClient.RunInTx(ctx, func(txClient *policydb.PolicyDBClient) error {
 		item, err := txClient.CreateAttributeValue(ctx, req.Msg.GetAttributeId(), req.Msg)
 		if err != nil {
-			s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
-			if len(req.Msg.GetSubjectMappings()) > 0 {
-				s.logger.Audit.PolicyCRUDFailure(ctx, subjectMappingAuditParams)
-			}
-			if len(req.Msg.GetObligationTriggers()) > 0 {
-				s.logger.Audit.PolicyCRUDFailure(ctx, obligationTriggerAuditParams)
-			}
 			return err
 		}
 
 		auditParams.ObjectID = item.GetId()
 		auditParams.Original = item
-		s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
-
-		for _, mapping := range item.GetSubjectMappings() {
-			subjectMappingAuditParams.ObjectID = mapping.GetId()
-			subjectMappingAuditParams.Original = mapping
-			s.logger.Audit.PolicyCRUDSuccess(ctx, subjectMappingAuditParams)
-		}
-		for _, obligation := range item.GetObligations() {
-			for _, value := range obligation.GetValues() {
-				for _, trigger := range value.GetTriggers() {
-					obligationTriggerAuditParams.ObjectID = trigger.GetId()
-					obligationTriggerAuditParams.Original = trigger
-					s.logger.Audit.PolicyCRUDSuccess(ctx, obligationTriggerAuditParams)
-				}
-			}
-		}
-
 		rsp.Value = item
 
 		return nil
 	})
 	if err != nil {
+		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
+		if len(req.Msg.GetSubjectMappings()) > 0 {
+			s.logger.Audit.PolicyCRUDFailure(ctx, subjectMappingAuditParams)
+		}
+		if len(req.Msg.GetObligationTriggers()) > 0 {
+			s.logger.Audit.PolicyCRUDFailure(ctx, obligationTriggerAuditParams)
+		}
 		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextCreationFailed, slog.String("value", req.Msg.String()))
+	}
+	s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
+	for _, mapping := range rsp.GetValue().GetSubjectMappings() {
+		subjectMappingAuditParams.ObjectID = mapping.GetId()
+		subjectMappingAuditParams.Original = mapping
+		s.logger.Audit.PolicyCRUDSuccess(ctx, subjectMappingAuditParams)
+	}
+	for _, obligation := range rsp.GetValue().GetObligations() {
+		for _, value := range obligation.GetValues() {
+			for _, trigger := range value.GetTriggers() {
+				obligationTriggerAuditParams.ObjectID = trigger.GetId()
+				obligationTriggerAuditParams.Original = trigger
+				s.logger.Audit.PolicyCRUDSuccess(ctx, obligationTriggerAuditParams)
+			}
+		}
 	}
 
 	return connect.NewResponse(rsp), nil

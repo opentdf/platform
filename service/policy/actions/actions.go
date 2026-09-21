@@ -133,7 +133,6 @@ func (a *ActionService) CreateAction(ctx context.Context, req *connect.Request[a
 
 		auditParams.ObjectID = action.GetId()
 		auditParams.Original = action
-		a.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
 
 		rsp.Action = action
 		return nil
@@ -142,6 +141,7 @@ func (a *ActionService) CreateAction(ctx context.Context, req *connect.Request[a
 		a.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
 		return nil, db.StatusifyError(ctx, a.logger, err, db.ErrTextCreationFailed, slog.String("action", req.Msg.String()))
 	}
+	a.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
 	return connect.NewResponse(rsp), nil
 }
 
@@ -173,7 +173,6 @@ func (a *ActionService) UpdateAction(ctx context.Context, req *connect.Request[a
 
 		auditParams.Original = original
 		auditParams.Updated = updated
-		a.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
 
 		rsp.Action = updated
 		return nil
@@ -182,6 +181,7 @@ func (a *ActionService) UpdateAction(ctx context.Context, req *connect.Request[a
 		a.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
 		return nil, db.StatusifyError(ctx, a.logger, err, db.ErrTextUpdateFailed, slog.String("action", req.Msg.String()))
 	}
+	a.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
 
 	return connect.NewResponse(rsp), nil
 }

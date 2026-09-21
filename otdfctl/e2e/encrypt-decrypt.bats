@@ -1,6 +1,15 @@
 #!/usr/bin/env bats
 
+# bats file_tags=unattributed_encrypt
+
 # Tests for encrypt decrypt
+#
+# Tagged so action.yaml runs this file before the parallel batch. Several cases
+# here encrypt with no attributes, which falls back to the platform base key,
+# and key-base.bats sets one pointing at a KAS that does not resolve and cannot
+# unset it afterwards -- a base key can be replaced but not cleared. Scheduled
+# into the parallel batch this file would eventually land after key-base.bats
+# and fail on an undecryptable TDF. See the header of streaming.bats.
 
 setup_file() {
   export CREDSFILE=creds.json

@@ -293,6 +293,39 @@ func TestBasicManager_unwrap(t *testing.T) {
 		assert.Equal(t, samplePrivateKey, unwrapped)
 	})
 
+	t.Run("cache hits isolate the same key ID across KAS URIs", func(t *testing.T) {
+		keys := []struct {
+			cacheKey   string
+			privateKey []byte
+		}{
+			{`"https://kas-a.example.com":"shared-kid"`, []byte("private key A")},
+			{`"https://kas-b.example.com":"shared-kid"`, []byte("private key B")},
+		}
+		for _, key := range keys {
+			wrapped, err := wrapKeyWithAESGCM(key.privateKey, rootKey)
+			require.NoError(t, err)
+			unwrapped, err := bm.unwrap(t.Context(), key.cacheKey, wrapped)
+			require.NoError(t, err)
+			require.Equal(t, key.privateKey, unwrapped)
+		}
+
+		// Wait for both asynchronous cache writes before exercising cache hits.
+		require.EventuallyWithT(t, func(collect *assert.CollectT) {
+			for _, key := range keys {
+				cached, err := bm.cache.Get(t.Context(), key.cacheKey)
+				assert.NoError(collect, err)
+				assert.Equal(collect, key.privateKey, cached)
+			}
+		}, time.Second, time.Millisecond)
+
+		for _, key := range keys {
+			// Invalid wrapped material ensures success requires a cache hit.
+			unwrapped, err := bm.unwrap(t.Context(), key.cacheKey, "invalid-wrapped-key")
+			require.NoError(t, err)
+			assert.Equal(t, key.privateKey, unwrapped)
+		}
+	})
+
 	t.Run("invalid base64 wrapped key", func(t *testing.T) {
 		err := bm.cache.Delete(t.Context(), "kid-invalid-b64")
 		require.NoError(t, err, "failed to delete from cache during setup")

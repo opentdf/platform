@@ -358,7 +358,7 @@ func (s KeyAccessServerRegistry) GetKey(ctx context.Context, r *connect.Request[
 		}
 	}
 
-	auditParams.ObjectID = fmt.Sprintf("%s:%s", key.GetKey().GetKeyId(), key.GetKasId())
+	auditParams.ObjectID = fmt.Sprintf("%s:%s", key.GetKasUri(), key.GetKey().GetKeyId())
 	s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
 
 	rsp.KasKey = key

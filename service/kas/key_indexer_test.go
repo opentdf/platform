@@ -272,10 +272,7 @@ func (s *KeyIndexTestSuite) TestListKeysWith() {
 				ids[i] = key.ID()
 			}
 			s.Equal(test.expectedIDs, ids)
-			var record map[string]any
-			s.Require().NoError(json.Unmarshal(buf.Bytes(), &record))
-			s.Equal(test.expectedURI, record["kas_uri"])
-			s.Equal(keyIndexer.String(), record["key_indexer"])
+			s.assertKeyIndexerLog(buf.Bytes(), test.expectedURI, keyIndexer)
 			mockClient.AssertExpectations(s.T())
 		})
 	}
@@ -339,10 +336,7 @@ func (s *KeyIndexTestSuite) TestFindKeyWith() {
 			adapter, ok := key.(*KeyAdapter)
 			s.Require().True(ok)
 			s.Equal(test.expectedURI, adapter.key.GetKasUri())
-			var record map[string]any
-			s.Require().NoError(json.Unmarshal(buf.Bytes(), &record))
-			s.Equal(test.expectedURI, record["kas_uri"])
-			s.Equal(keyIndexer.String(), record["key_indexer"])
+			s.assertKeyIndexerLog(buf.Bytes(), test.expectedURI, keyIndexer)
 			mockClient.AssertExpectations(s.T())
 		})
 	}
@@ -413,6 +407,14 @@ func (s *KeyIndexTestSuite) TestFindKeyByAlgorithm() {
 	s.Require().NoError(err)
 	s.NotNil(key)
 	s.Equal("test-legacy-key-id", string(key.ID()))
+}
+
+func (s *KeyIndexTestSuite) assertKeyIndexerLog(data []byte, expectedURI string, keyIndexer *KeyIndexer) {
+	s.T().Helper()
+	var record map[string]any
+	s.Require().NoError(json.Unmarshal(data, &record))
+	s.Equal(expectedURI, record["kas_uri"])
+	s.Equal(keyIndexer.String(), record["key_indexer"])
 }
 
 func TestNewPlatformKeyIndexTestSuite(t *testing.T) {

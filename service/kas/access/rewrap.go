@@ -711,10 +711,6 @@ func (p *Provider) verifyRewrapRequests(ctx context.Context, req *kaspb.Unsigned
 		var err error
 		// The indexer decides whether to use the KAO URI or its configured registration.
 		kasURI := kao.GetKeyAccessObject().GetKasUrl()
-		p.Logger.DebugContext(ctx, "forwarding KAO KAS URI for rewrap",
-			slog.String("kao_id", kao.GetKeyAccessObjectId()),
-			slog.String("key_id", kao.GetKeyAccessObject().GetKid()),
-			slog.String("kao_kas_uri", kasURI))
 		switch kao.GetKeyAccessObject().GetKeyType() {
 		case "ec-wrapped":
 

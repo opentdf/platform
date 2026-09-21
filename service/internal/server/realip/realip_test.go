@@ -11,8 +11,19 @@ import (
 )
 
 func TestNewResolverRejectsInvalidCIDR(t *testing.T) {
-	_, err := newResolver([]string{"not-a-cidr"})
+	_, err := newResolver([]string{"", "not-a-cidr"})
 	require.ErrorContains(t, err, "invalid trusted proxy CIDR")
+}
+
+func TestNewResolverIgnoresBlankEntries(t *testing.T) {
+	r, err := newResolver([]string{"", " 10.0.0.0/8 ", " \t"})
+	require.NoError(t, err)
+	require.Len(t, r.trustedProxies, 1)
+	assert.Equal(t, "10.0.0.0/8", r.trustedProxies[0].String())
+
+	r, err = newResolver([]string{"", " "})
+	require.NoError(t, err)
+	assert.Empty(t, r.trustedProxies)
 }
 
 func TestResolver(t *testing.T) {
@@ -53,6 +64,48 @@ func TestResolver(t *testing.T) {
 			trustedProxies: []string{"10.0.0.0/8"},
 			peer:           "10.0.0.3:1234",
 			headers:        http.Header{XForwardedFor: []string{"203.0.113.10"}},
+			want:           "203.0.113.10",
+		},
+		{
+			name:           "trusted peer accepts IPv4 with port",
+			trustedProxies: []string{"10.0.0.0/8"},
+			peer:           "10.0.0.3:1234",
+			headers:        http.Header{XForwardedFor: []string{"203.0.113.10:5555"}},
+			want:           "203.0.113.10",
+		},
+		{
+			name:           "trusted peer accepts IPv6 with port",
+			trustedProxies: []string{"10.0.0.0/8"},
+			peer:           "10.0.0.3:1234",
+			headers:        http.Header{XForwardedFor: []string{"[2001:db8::1]:5555"}},
+			want:           "2001:db8::1",
+		},
+		{
+			name:           "invalid forwarded port falls back to peer",
+			trustedProxies: []string{"10.0.0.0/8"},
+			peer:           "10.0.0.3:1234",
+			headers:        http.Header{XForwardedFor: []string{"203.0.113.10:65536"}},
+			want:           "10.0.0.3",
+		},
+		{
+			name:           "trusted chain with ports ignores spoofed prefix",
+			trustedProxies: []string{"10.0.0.0/8"},
+			peer:           "10.0.0.3:1234",
+			headers:        http.Header{XForwardedFor: []string{"unknown, 203.0.113.10:5555, 10.0.0.2:443"}},
+			want:           "203.0.113.10",
+		},
+		{
+			name:           "Google frontend address must also be trusted",
+			trustedProxies: []string{"10.0.0.0/8"},
+			peer:           "10.0.0.3:1234",
+			headers:        http.Header{XForwardedFor: []string{"203.0.113.10, 192.0.2.20"}},
+			want:           "192.0.2.20",
+		},
+		{
+			name:           "Google chain skips configured frontend address",
+			trustedProxies: []string{"10.0.0.0/8", "192.0.2.20/32"},
+			peer:           "10.0.0.3:1234",
+			headers:        http.Header{XForwardedFor: []string{"unknown, 203.0.113.10, 192.0.2.20"}},
 			want:           "203.0.113.10",
 		},
 		{
@@ -101,17 +154,20 @@ func TestResolver(t *testing.T) {
 			want: "10.0.0.3",
 		},
 		{
-			name:           "trusted peer accepts real IP fallback",
+			name:           "trusted peer does not trust alternate client IP headers",
 			trustedProxies: []string{"10.0.0.0/8"},
 			peer:           "10.0.0.3:1234",
-			headers:        http.Header{XRealIP: []string{"203.0.113.10"}},
-			want:           "203.0.113.10",
+			headers: http.Header{
+				XRealIP:      []string{"203.0.113.10"},
+				TrueClientIP: []string{"203.0.113.11"},
+			},
+			want: "10.0.0.3",
 		},
 		{
-			name:           "duplicate single-IP header falls back to peer",
+			name:           "trusted peer does not trust True-Client-IP alone",
 			trustedProxies: []string{"10.0.0.0/8"},
 			peer:           "10.0.0.3:1234",
-			headers:        http.Header{XRealIP: []string{"203.0.113.10", "203.0.113.11"}},
+			headers:        http.Header{TrueClientIP: []string{"203.0.113.10"}},
 			want:           "10.0.0.3",
 		},
 		{
@@ -133,6 +189,25 @@ func TestResolver(t *testing.T) {
 			}
 			assert.Equal(t, tt.want, resolver.resolve(connect.Peer{Addr: tt.peer}, headers).String())
 		})
+	}
+}
+
+func TestParseForwardedIP(t *testing.T) {
+	for _, value := range []string{"2001:db8::1", " [2001:db8::1]:5555 "} {
+		ip, ok := parseForwardedIP(value)
+		require.True(t, ok, value)
+		assert.Equal(t, "2001:db8::1", ip.String())
+	}
+	ip, ok := parseForwardedIP("[::ffff:203.0.113.10]:5555")
+	require.True(t, ok)
+	assert.Equal(t, "203.0.113.10", ip.String())
+
+	for _, value := range []string{
+		"203.0.113.10:65536", "203.0.113.10:http", "203.0.113.10:",
+		"example.com:443", "[fe80::1%eth0]:5555", "fe80::1%eth0", "",
+	} {
+		_, valid := parseForwardedIP(value)
+		assert.False(t, valid, value)
 	}
 }
 

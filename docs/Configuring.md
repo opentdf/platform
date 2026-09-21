@@ -177,26 +177,30 @@ server:
           cert: kas-ec-cert.pem
 ```
 
-Set `OPENTDF_SERVER_HTTP_TRUSTEDPROXIES` to a comma-separated CIDR list without spaces.
+Set `OPENTDF_SERVER_HTTP_TRUSTEDPROXIES` to a comma-separated CIDR list.
+Surrounding whitespace and empty entries are ignored; invalid nonempty CIDRs prevent startup.
 
-When `server.http.trustedProxies` is empty, Platform ignores `X-Forwarded-For`, `X-Real-IP`,
-and `True-Client-IP` and records the direct socket peer. When the peer matches a
-trusted CIDR, Platform resolves `X-Forwarded-For` from right to left, removing
-trusted proxy hops. If `X-Forwarded-For` is absent, it uses `X-Real-IP`, then
-`True-Client-IP` if `X-Real-IP` is also absent. These two headers must contain a
-single IP address. If resolution encounters an invalid value, Platform records
-the socket peer rather than trying a lower-priority header. With no forwarding
-headers, it also records the socket peer.
+With no trusted proxies, Platform records the direct socket peer. When the peer
+matches a trusted CIDR, it scans `X-Forwarded-For` from right to left, skipping
+trusted hops. Entries can be bare IPs, `IPv4:port`, or `[IPv6]:port`. An absent
+header or an invalid entry encountered during the scan falls back to the socket
+peer. `X-Real-IP` and `True-Client-IP` are not used.
 
-Configure only ingress networks that overwrite or append
-forwarding headers; broad private-network ranges weaken audit attribution.
+Trust only proxies that overwrite XFF or append their observed client address,
+not proxies that merely preserve client-supplied headers. For [AWS ALB](https://docs.aws.amazon.com/elasticloadbalancing/latest/application/x-forwarded-headers.html), use XFF
+`append` mode. Broad private-network ranges weaken audit attribution.
+
+[Google Application Load Balancers](https://docs.cloud.google.com/load-balancing/docs/https#x-forwarded-for_header) append `client-ip,frontend-ip`. Include the
+specific frontend IP as a `/32` or `/128`, along with the connecting proxy ranges,
+or the scan will stop at the frontend IP. For CDN/proxy chains, configure every
+trusted hop between Platform and the client.
 
 ```yaml
 server:
   http:
     trustedProxies:
-      - 10.20.0.0/16
-      - 2001:db8:1234::/48
+      - 10.20.0.0/24 # Example connecting proxy subnet; replace for your deployment
+      - 192.0.2.20/32 # Example Google frontend IP, if applicable
 ```
 
 ### CORS Configuration

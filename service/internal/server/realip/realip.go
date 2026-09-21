@@ -24,7 +24,7 @@ type resolver struct {
 }
 
 // ConnectRealIPUnaryInterceptor resolves the client IP from the socket peer and,
-// only when that peer is trusted, proxy forwarding headers.
+// only when that peer is trusted, X-Forwarded-For.
 func ConnectRealIPUnaryInterceptor(trustedProxyCIDRs []string) (connect.UnaryInterceptorFunc, error) {
 	resolver, err := newResolver(trustedProxyCIDRs)
 	if err != nil {
@@ -69,7 +69,11 @@ func ConnectTrustedRequestIPUnaryInterceptor(header string) connect.UnaryInterce
 func newResolver(trustedProxyCIDRs []string) (*resolver, error) {
 	trustedProxies := make([]netip.Prefix, 0, len(trustedProxyCIDRs))
 	for _, cidr := range trustedProxyCIDRs {
-		prefix, err := netip.ParsePrefix(strings.TrimSpace(cidr))
+		cidr = strings.TrimSpace(cidr)
+		if cidr == "" {
+			continue
+		}
+		prefix, err := netip.ParsePrefix(cidr)
 		if err != nil {
 			return nil, fmt.Errorf("invalid trusted proxy CIDR %q: %w", cidr, err)
 		}
@@ -91,7 +95,7 @@ func (r *resolver) resolve(peer connect.Peer, headers http.Header) net.IP {
 		parts := strings.Split(strings.Join(values, ","), ",")
 		var leftmost netip.Addr
 		for i := len(parts) - 1; i >= 0; i-- {
-			ip, ok := parseIP(parts[i])
+			ip, ok := parseForwardedIP(parts[i])
 			if !ok {
 				return peerAddr.AsSlice()
 			}
@@ -101,19 +105,6 @@ func (r *resolver) resolve(peer connect.Peer, headers http.Header) net.IP {
 			leftmost = ip
 		}
 		return leftmost.AsSlice()
-	}
-
-	for _, header := range []string{XRealIP, TrueClientIP} {
-		if values := headers.Values(header); len(values) > 0 {
-			if len(values) != 1 {
-				return peerAddr.AsSlice()
-			}
-			ip, ok := parseIP(values[0])
-			if !ok {
-				return peerAddr.AsSlice()
-			}
-			return ip.AsSlice()
-		}
 	}
 
 	return peerAddr.AsSlice()
@@ -126,6 +117,17 @@ func (r *resolver) isTrusted(ip netip.Addr) bool {
 		}
 	}
 	return false
+}
+
+func parseForwardedIP(value string) (netip.Addr, bool) {
+	if ip, ok := parseIP(value); ok {
+		return ip, true
+	}
+	addrPort, err := netip.ParseAddrPort(strings.TrimSpace(value))
+	if err != nil || addrPort.Addr().Zone() != "" {
+		return netip.Addr{}, false
+	}
+	return addrPort.Addr().Unmap(), true
 }
 
 func parseIP(value string) (netip.Addr, bool) {

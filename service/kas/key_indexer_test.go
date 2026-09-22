@@ -13,8 +13,39 @@ import (
 	"github.com/opentdf/platform/sdk"
 	"github.com/opentdf/platform/service/trust"
 	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
+
+func TestKeyAdapterScopedKeyID(t *testing.T) {
+	seen := make(map[string]bool)
+	for _, tc := range []struct {
+		kasURI string
+		keyID  string
+	}{
+		{kasURI: defaultKASURI, keyID: "shared-key"},
+		{kasURI: requestKASURI, keyID: "shared-key"},
+		{kasURI: defaultKASURI, keyID: "other-key"},
+		{kasURI: "https://kas.example.com/a:b", keyID: "c"},
+		{kasURI: "https://kas.example.com/a", keyID: "b:c"},
+		{kasURI: `https://kas.example.com/a:"b`, keyID: `c\\d`},
+		{kasURI: `https://kas.example.com/a`, keyID: `"b:c\\d`},
+	} {
+		key := &KeyAdapter{key: &policy.KasKey{
+			KasUri: tc.kasURI,
+			Key:    &policy.AsymmetricKey{KeyId: tc.keyID},
+		}}
+		require.Equal(t, trust.KeyIdentifier(tc.keyID), key.ID())
+		cacheKey := key.ScopedKeyID()
+		require.NotEmpty(t, cacheKey)
+		require.False(t, seen[cacheKey], "cache key collision for URI %q, key %q", tc.kasURI, tc.keyID)
+		seen[cacheKey] = true
+
+		// Updating the URI changes the cache key.
+		key.key.KasUri = "https://updated-kas.example.com"
+		require.NotEqual(t, cacheKey, key.ScopedKeyID())
+	}
+}
 
 const (
 	testKeyID     = "test-key-id"

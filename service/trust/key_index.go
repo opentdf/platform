@@ -37,7 +37,7 @@ const (
 	KeyTypePKCS8
 )
 
-// KeyIdentifier uniquely identifies a key
+// KeyIdentifier identifies a key within the backing key adapter's scope, not necessarily globally.
 type KeyIdentifier string
 
 type PrivateKey struct {
@@ -49,7 +49,10 @@ type PrivateKey struct {
 
 // KeyDetails provides information about a specific key
 type KeyDetails interface {
-	// ID returns the unique identifier for the key
+	// ID returns the key's identifier within its source's scope.
+	// Managers must use this ID when requesting keys from their providers.
+	// For a KasKey, uniqueness requires both this ID and its KAS URI.
+	// For identity across key sources, use ScopedKeyIdentifier when implemented.
 	ID() KeyIdentifier
 
 	// Algorithm returns the algorithm used by the key
@@ -73,6 +76,17 @@ type KeyDetails interface {
 
 	// Get the provider configutaiton for the key
 	ProviderConfig() *policy.KeyProviderConfig
+}
+
+// ScopedKeyIdentifier optionally provides an identity that distinguishes keys
+// across key sources, where KeyDetails.ID() alone may not be unique.
+// Use it for caching or comparing keys across sources. Provider requests and
+// provider-scoped lookups must continue to use KeyDetails.ID().
+type ScopedKeyIdentifier interface {
+	// ScopedKeyID returns an opaque, stable identifier that includes the key's source
+	// scope. For KAS keys, this scope is the KAS URI, so registrations sharing a
+	// key ID remain distinct.
+	ScopedKeyID() string
 }
 
 // KeyIndex provides methods to locate keys by various criteria

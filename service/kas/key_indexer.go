@@ -185,6 +185,13 @@ func (p *KeyAdapter) ID() trust.KeyIdentifier {
 	return trust.KeyIdentifier(p.key.GetKey().GetKeyId())
 }
 
+// ScopedKeyID includes the KAS URI because different registrations can share a key ID.
+// This matters when kas_uri_from_kao allows keys from multiple registrations.
+// Always include the URI so identity does not depend on that flag's value.
+func (p *KeyAdapter) ScopedKeyID() string {
+	return fmt.Sprintf("%q:%q", p.key.GetKasUri(), p.ID())
+}
+
 // Might need to convert this to a standard format
 func (p *KeyAdapter) Algorithm() ocrypto.KeyType {
 	kt, err := sdk.PolicyAlgorithmToKeyType(p.key.GetKey().GetKeyAlgorithm())

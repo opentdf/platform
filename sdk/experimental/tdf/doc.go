@@ -140,6 +140,17 @@
 //   - Standard ZIP tools (for archive structure inspection)
 //   - TDF specification version 4.3.0
 //
+// # Relationship to the Stable SDK
+//
+// The manifest and assertion types this package exports are aliases onto
+// [github.com/opentdf/platform/sdk], which owns the definitions. A manifest
+// produced here is therefore the same Go type the stable SDK produces and
+// needs no conversion at the boundary. The aliases exist so existing importers
+// compile unchanged; prefer the sdk-scoped names in new code.
+//
+// Policy, PolicyBody, and PolicyAttribute are the exception: they remain
+// local. See their declarations in manifest.go for why.
+//
 // # Error Handling
 //
 // The package uses structured error reporting with operation context:

@@ -48,7 +48,6 @@ type fakeKeyDetails struct {
 }
 
 func (f *fakeKeyDetails) ID() trust.KeyIdentifier { return f.id }
-func (f *fakeKeyDetails) CacheKey() string        { return "fake:" + string(f.id) }
 func (f *fakeKeyDetails) Algorithm() ocrypto.KeyType {
 	return ocrypto.KeyType(f.algorithm)
 }

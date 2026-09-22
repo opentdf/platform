@@ -74,7 +74,8 @@ func (b *BasicManager) Decrypt(ctx context.Context, keyDetails trust.KeyDetails,
 		return nil, fmt.Errorf("failed to get private key: %w", err)
 	}
 
-	privKey, err := b.unwrap(ctx, keyDetails.CacheKey(), privateKeyCtx.WrappedKey)
+	scopedKeyID := getScopedID(keyDetails)
+	privKey, err := b.unwrap(ctx, scopedKeyID, privateKeyCtx.WrappedKey)
 	if err != nil {
 		return nil, fmt.Errorf("failed to unwrap private key: %w", err)
 	}
@@ -116,7 +117,7 @@ func (b *BasicManager) Decrypt(ctx context.Context, keyDetails trust.KeyDetails,
 		// check the routed decryptor against the algorithm the key record claims;
 		// a mismatch means the stored PEM does not match its metadata.
 		if kt, ok := decrypter.(interface{ KeyType() ocrypto.KeyType }); !ok || kt.KeyType() != alg {
-			return nil, fmt.Errorf("KEM key %s algorithm mismatch: PEM dispatched away from %s", keyDetails.ID(), alg)
+			return nil, fmt.Errorf("KEM key %s algorithm mismatch: PEM dispatched away from %s", scopedKeyID, alg)
 		}
 		plaintext, err := decrypter.Decrypt(ciphertext)
 		if err != nil {
@@ -135,7 +136,7 @@ func (b *BasicManager) DeriveKey(ctx context.Context, keyDetails trust.KeyDetail
 		return nil, fmt.Errorf("failed to get private key: %w", err)
 	}
 
-	privKey, err := b.unwrap(ctx, keyDetails.CacheKey(), privateKeyCtx.WrappedKey)
+	privKey, err := b.unwrap(ctx, getScopedID(keyDetails), privateKeyCtx.WrappedKey)
 	if err != nil {
 		return nil, fmt.Errorf("failed to unwrap private key: %w", err)
 	}
@@ -201,25 +202,34 @@ func (b *BasicManager) Close() {
 	b.rootKey = nil
 }
 
-func (b *BasicManager) unwrap(ctx context.Context, cacheKey string, wrappedKey string) ([]byte, error) {
+// getScopedID uses source-scoped identity when available and falls back to ID
+// for KeyDetails implementations without ScopedKeyIdentifier.
+func getScopedID(keyDetails trust.KeyDetails) string {
+	if identifier, ok := keyDetails.(trust.ScopedKeyIdentifier); ok {
+		return identifier.ScopedKeyID()
+	}
+	return string(keyDetails.ID())
+}
+
+func (b *BasicManager) unwrap(ctx context.Context, scopedKeyID string, wrappedKey string) ([]byte, error) {
 	cacheEnabled := b.cache != nil
 	if cacheEnabled {
-		if privKey, err := b.cache.Get(ctx, cacheKey); err == nil {
-			b.l.DebugContext(ctx, "found private key in cache", slog.String("cache_key", cacheKey))
+		if privKey, err := b.cache.Get(ctx, scopedKeyID); err == nil {
+			b.l.DebugContext(ctx, "found private key in cache", slog.String("scoped_key_id", scopedKeyID))
 			if privKeyBytes, ok := privKey.([]byte); ok {
 				return privKeyBytes, nil
 			}
 			b.l.ErrorContext(
 				ctx,
 				"private key in cache is not of type []byte",
-				slog.String("cache_key", cacheKey),
+				slog.String("scoped_key_id", scopedKeyID),
 				slog.Any("type", fmt.Sprintf("%T", privKey)),
 			)
 			return nil, errors.New("private key in cache is not of type []byte")
 		}
-		b.l.DebugContext(ctx, "private key not found in cache", slog.String("cache_key", cacheKey))
+		b.l.DebugContext(ctx, "private key not found in cache", slog.String("scoped_key_id", scopedKeyID))
 	} else {
-		b.l.DebugContext(ctx, "cache not configured, skipping cache lookup", slog.String("cache_key", cacheKey))
+		b.l.DebugContext(ctx, "cache not configured, skipping cache lookup", slog.String("scoped_key_id", scopedKeyID))
 	}
 
 	// base64 decode
@@ -245,11 +255,11 @@ func (b *BasicManager) unwrap(ctx context.Context, cacheKey string, wrappedKey s
 	}
 
 	if cacheEnabled {
-		if err := b.cache.Set(ctx, cacheKey, privKey, nil); err != nil {
+		if err := b.cache.Set(ctx, scopedKeyID, privKey, nil); err != nil {
 			b.l.ErrorContext(
 				ctx,
 				"failed to cache private key",
-				slog.String("cache_key", cacheKey),
+				slog.String("scoped_key_id", scopedKeyID),
 				slog.Any("error", err),
 			)
 		}

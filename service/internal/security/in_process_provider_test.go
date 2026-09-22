@@ -67,18 +67,6 @@ func TestKeyDetailsAdapter(t *testing.T) {
 	assert.Equal(t, "static", cfg.GetName())
 }
 
-func TestKeyDetailsAdapterCacheKey(t *testing.T) {
-	key := &KeyDetailsAdapter{id: "shared-key"}
-	sameKey := &KeyDetailsAdapter{id: "shared-key"}
-	otherKey := &KeyDetailsAdapter{id: "other-key"}
-
-	require.Equal(t, trust.KeyIdentifier("shared-key"), key.ID())
-	require.NotEmpty(t, key.CacheKey())
-	require.Equal(t, key.CacheKey(), sameKey.CacheKey())
-	require.NotEqual(t, key.CacheKey(), otherKey.CacheKey())
-	require.Equal(t, "shared-key", key.CacheKey())
-}
-
 func TestInProcessProviderMetadata(t *testing.T) {
 	cryptoProvider, _ := newStandardCryptoForTest(t, true, false)
 	providerIface := NewSecurityProviderAdapter(cryptoProvider, nil, nil)

@@ -25,6 +25,11 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// legacyKeyDetails exposes only the original interface, without ScopedKeyID.
+type legacyKeyDetails struct {
+	trust.KeyDetails
+}
+
 // MockKeyDetails for testing
 type MockKeyDetails struct {
 	mock.Mock
@@ -33,7 +38,7 @@ type MockKeyDetails struct {
 	MPrivateKey *policy.PrivateKeyCtx // Wrapped key
 }
 
-func (m *MockKeyDetails) CacheKey() string {
+func (m *MockKeyDetails) ScopedKeyID() string {
 	return m.Called().String(0)
 }
 
@@ -379,35 +384,63 @@ func TestBasicManager_Decrypt(t *testing.T) {
 
 	samplePayload := []byte("secret payload16") // 16 bytes for valid AES key
 
-	t.Run("successful RSA decryption", func(t *testing.T) {
-		mockDetails := new(MockKeyDetails)
-		mockDetails.MID = "rsa-kid-decrypt"
-		mockDetails.MAlgorithm = AlgorithmRSA2048
-		mockDetails.MPrivateKey = &policy.PrivateKeyCtx{WrappedKey: wrappedRSAPrivKeyStr}
+	for _, withScopedKeyID := range []bool{true, false} {
+		t.Run(fmt.Sprintf("successful RSA decryption/scoped_key_id=%t", withScopedKeyID), func(t *testing.T) {
+			mockDetails := new(MockKeyDetails)
+			mockDetails.MID = t.Name()
+			mockDetails.MAlgorithm = AlgorithmRSA2048
+			mockDetails.MPrivateKey = &policy.PrivateKeyCtx{WrappedKey: wrappedRSAPrivKeyStr}
 
-		// Set up mock expectations
-		mockDetails.On("ID").Return(trust.KeyIdentifier(mockDetails.MID))
-		mockDetails.On("CacheKey").Return("mock:" + mockDetails.MID)
-		mockDetails.On("Algorithm").Return(mockDetails.MAlgorithm)
-		mockDetails.On("ExportPrivateKey").Return(&trust.PrivateKey{WrappingKeyID: trust.KeyIdentifier(mockDetails.MPrivateKey.GetKeyId()), WrappedKey: mockDetails.MPrivateKey.GetWrappedKey()}, nil)
+			// Set up mock expectations
+			mockDetails.On("ID").Return(trust.KeyIdentifier(mockDetails.MID))
+			var details trust.KeyDetails = legacyKeyDetails{KeyDetails: mockDetails}
+			keyCacheID := mockDetails.MID
+			if withScopedKeyID {
+				details = mockDetails
+				keyCacheID = "mock:" + mockDetails.MID
+				mockDetails.On("ScopedKeyID").Return(keyCacheID)
+			}
+			mockDetails.On("Algorithm").Return(mockDetails.MAlgorithm)
+			mockDetails.On("ExportPrivateKey").Return(&trust.PrivateKey{WrappingKeyID: trust.KeyIdentifier(mockDetails.MPrivateKey.GetKeyId()), WrappedKey: mockDetails.MPrivateKey.GetWrappedKey()}, nil)
 
-		rsaEncryptor, err := ocrypto.FromPublicPEM(rsaPubKey)
-		require.NoError(t, err)
-		ciphertext, err := rsaEncryptor.Encrypt(samplePayload)
-		require.NoError(t, err)
+			rsaEncryptor, err := ocrypto.FromPublicPEM(rsaPubKey)
+			require.NoError(t, err)
+			ciphertext, err := rsaEncryptor.Encrypt(samplePayload)
+			require.NoError(t, err)
 
-		protectedKey, err := bm.Decrypt(t.Context(), mockDetails, ciphertext, nil)
-		require.NoError(t, err)
-		mockDetails.AssertNumberOfCalls(t, "CacheKey", 1)
-		require.NotNil(t, protectedKey)
+			protectedKey, err := bm.Decrypt(t.Context(), details, ciphertext, nil)
+			require.NoError(t, err)
+			if withScopedKeyID {
+				mockDetails.AssertNumberOfCalls(t, "ScopedKeyID", 1)
+				mockDetails.AssertNotCalled(t, "ID")
+			} else {
+				mockDetails.AssertNumberOfCalls(t, "ID", 1)
+				mockDetails.AssertNotCalled(t, "ScopedKeyID")
+			}
+			require.NotNil(t, protectedKey)
 
-		// Use noOpEncapsulator to get raw key data for testing
-		noOpEnc := &noOpEncapsulator{}
-		//nolint:staticcheck // Export is used in tests until ProtectedKey deprecation is removed upstream.
-		decryptedPayload, err := protectedKey.Export(noOpEnc)
-		require.NoError(t, err)
-		assert.Equal(t, samplePayload, decryptedPayload)
-	})
+			// Use noOpEncapsulator to get raw key data for testing
+			noOpEnc := &noOpEncapsulator{}
+			//nolint:staticcheck // Export is used in tests until ProtectedKey deprecation is removed upstream.
+			decryptedPayload, err := protectedKey.Export(noOpEnc)
+			require.NoError(t, err)
+			assert.Equal(t, samplePayload, decryptedPayload)
+
+			// Confirm the selected identity is used for both cache writes and reads.
+			require.EventuallyWithT(t, func(collect *assert.CollectT) {
+				cached, err := bm.cache.Get(t.Context(), keyCacheID)
+				assert.NoError(collect, err)
+				assert.Equal(collect, []byte(rsaPrivKey), cached)
+			}, time.Second, time.Millisecond)
+			mockDetails.On("ExportPrivateKey").Unset()
+			mockDetails.On("ExportPrivateKey").Return(&trust.PrivateKey{WrappedKey: "invalid-wrapped-key"}, nil)
+			key, err := bm.Decrypt(t.Context(), details, ciphertext, nil)
+			require.NoError(t, err)
+			cachedPayload, err := noOpEnc.Encapsulate(key)
+			require.NoError(t, err)
+			assert.Equal(t, samplePayload, cachedPayload)
+		})
+	}
 
 	t.Run("successful EC decryption", func(t *testing.T) {
 		mockDetails := new(MockKeyDetails)
@@ -417,7 +450,7 @@ func TestBasicManager_Decrypt(t *testing.T) {
 
 		// Set up mock expectations
 		mockDetails.On("ID").Return(trust.KeyIdentifier(mockDetails.MID))
-		mockDetails.On("CacheKey").Return("mock:" + mockDetails.MID)
+		mockDetails.On("ScopedKeyID").Return("mock:" + mockDetails.MID)
 		mockDetails.On("Algorithm").Return(mockDetails.MAlgorithm)
 		mockDetails.On("ExportPrivateKey").Return(&trust.PrivateKey{WrappingKeyID: trust.KeyIdentifier(mockDetails.MPrivateKey.GetKeyId()), WrappedKey: mockDetails.MPrivateKey.GetWrappedKey()}, nil)
 
@@ -475,7 +508,7 @@ func TestBasicManager_Decrypt(t *testing.T) {
 			mockDetails.MPrivateKey = &policy.PrivateKeyCtx{WrappedKey: wrappedCurvePrivKeyStr}
 
 			mockDetails.On("ID").Return(trust.KeyIdentifier(mockDetails.MID))
-			mockDetails.On("CacheKey").Return("mock:" + mockDetails.MID)
+			mockDetails.On("ScopedKeyID").Return("mock:" + mockDetails.MID)
 			mockDetails.On("Algorithm").Return(mockDetails.MAlgorithm)
 			mockDetails.On("ExportPrivateKey").Return(&trust.PrivateKey{WrappingKeyID: trust.KeyIdentifier(mockDetails.MPrivateKey.GetKeyId()), WrappedKey: mockDetails.MPrivateKey.GetWrappedKey()}, nil)
 
@@ -515,7 +548,7 @@ func TestBasicManager_Decrypt(t *testing.T) {
 		// Set up mock expectations for ExportPrivateKey to return a valid wrapped key
 		// so that the unwrap logic can then fail as intended by this test.
 		mockDetails.On("ID").Return(trust.KeyIdentifier(mockDetails.MID))
-		mockDetails.On("CacheKey").Return("mock:" + mockDetails.MID)
+		mockDetails.On("ScopedKeyID").Return("mock:" + mockDetails.MID)
 		mockDetails.On("Algorithm").Return(mockDetails.MAlgorithm)
 		mockDetails.On("ExportPrivateKey").Return(&trust.PrivateKey{WrappingKeyID: trust.KeyIdentifier(mockDetails.MPrivateKey.GetKeyId()), WrappedKey: mockDetails.MPrivateKey.GetWrappedKey()}, nil)
 
@@ -532,7 +565,7 @@ func TestBasicManager_Decrypt(t *testing.T) {
 		mockDetails.MPrivateKey = &policy.PrivateKeyCtx{WrappedKey: invalidPEMWrapped}
 
 		mockDetails.On("ID").Return(trust.KeyIdentifier(mockDetails.MID))
-		mockDetails.On("CacheKey").Return("mock:" + mockDetails.MID)
+		mockDetails.On("ScopedKeyID").Return("mock:" + mockDetails.MID)
 		mockDetails.On("Algorithm").Return(mockDetails.MAlgorithm)
 		mockDetails.On("ExportPrivateKey").Return(&trust.PrivateKey{WrappingKeyID: trust.KeyIdentifier(mockDetails.MPrivateKey.GetKeyId()), WrappedKey: mockDetails.MPrivateKey.GetWrappedKey()}, nil) // Ensure this mock is correctly set up
 		_, err = bm.Decrypt(t.Context(), mockDetails, []byte("ct"), nil)
@@ -547,7 +580,7 @@ func TestBasicManager_Decrypt(t *testing.T) {
 		mockDetails.MPrivateKey = &policy.PrivateKeyCtx{WrappedKey: wrappedRSAPrivKeyStr}
 
 		mockDetails.On("ID").Return(trust.KeyIdentifier(mockDetails.MID))
-		mockDetails.On("CacheKey").Return("mock:" + mockDetails.MID)
+		mockDetails.On("ScopedKeyID").Return("mock:" + mockDetails.MID)
 		mockDetails.On("Algorithm").Return(mockDetails.MAlgorithm)                                                                                                                                     // Corrected: require.NoError
 		mockDetails.On("ExportPrivateKey").Return(&trust.PrivateKey{WrappingKeyID: trust.KeyIdentifier(mockDetails.MPrivateKey.GetKeyId()), WrappedKey: mockDetails.MPrivateKey.GetWrappedKey()}, nil) // Ensure this mock is correctly set up
 		_, err = bm.Decrypt(t.Context(), mockDetails, []byte("ct"), nil)
@@ -586,44 +619,72 @@ func TestBasicManager_DeriveKey(t *testing.T) {
 	clientEphemeralPublicKeyBytes, err := ocrypto.CompressedECPublicKey(ocrypto.ECCModeSecp256r1, *clientECDSAKey)
 	require.NoError(t, err)
 
-	t.Run("successful key derivation", func(t *testing.T) {
-		mockDetails := new(MockKeyDetails)
-		mockDetails.MID = "ec-kid-derive"
-		mockDetails.MAlgorithm = AlgorithmECP256R1
-		mockDetails.MPrivateKey = &policy.PrivateKeyCtx{WrappedKey: wrappedECPrivKeyStr}
+	for _, withScopedKeyID := range []bool{true, false} {
+		t.Run(fmt.Sprintf("successful key derivation/scoped_key_id=%t", withScopedKeyID), func(t *testing.T) {
+			mockDetails := new(MockKeyDetails)
+			mockDetails.MID = t.Name()
+			mockDetails.MAlgorithm = AlgorithmECP256R1
+			mockDetails.MPrivateKey = &policy.PrivateKeyCtx{WrappedKey: wrappedECPrivKeyStr}
 
-		// Set up mock expectations
-		mockDetails.On("ID").Return(trust.KeyIdentifier(mockDetails.MID))
-		mockDetails.On("CacheKey").Return("mock:" + mockDetails.MID)
-		mockDetails.On("Algorithm").Return(mockDetails.MAlgorithm)
-		mockDetails.On("ExportPrivateKey").Return(&trust.PrivateKey{WrappingKeyID: trust.KeyIdentifier(mockDetails.MPrivateKey.GetKeyId()), WrappedKey: mockDetails.MPrivateKey.GetWrappedKey()}, nil)
+			// Set up mock expectations
+			mockDetails.On("ID").Return(trust.KeyIdentifier(mockDetails.MID))
+			var details trust.KeyDetails = legacyKeyDetails{KeyDetails: mockDetails}
+			cacheKey := mockDetails.MID
+			if withScopedKeyID {
+				details = mockDetails
+				cacheKey = "mock:" + mockDetails.MID
+				mockDetails.On("ScopedKeyID").Return(cacheKey)
+			}
+			mockDetails.On("Algorithm").Return(mockDetails.MAlgorithm)
+			mockDetails.On("ExportPrivateKey").Return(&trust.PrivateKey{WrappingKeyID: trust.KeyIdentifier(mockDetails.MPrivateKey.GetKeyId()), WrappedKey: mockDetails.MPrivateKey.GetWrappedKey()}, nil)
 
-		protectedKey, err := bm.DeriveKey(t.Context(), mockDetails, clientEphemeralPublicKeyBytes, elliptic.P256())
-		require.NoError(t, err)
-		mockDetails.AssertNumberOfCalls(t, "CacheKey", 1)
-		require.NotNil(t, protectedKey)
+			protectedKey, err := bm.DeriveKey(t.Context(), details, clientEphemeralPublicKeyBytes, elliptic.P256())
+			require.NoError(t, err)
+			if withScopedKeyID {
+				mockDetails.AssertNumberOfCalls(t, "ScopedKeyID", 1)
+				mockDetails.AssertNotCalled(t, "ID")
+			} else {
+				mockDetails.AssertNumberOfCalls(t, "ID", 1)
+				mockDetails.AssertNotCalled(t, "ScopedKeyID")
+			}
+			require.NotNil(t, protectedKey)
 
-		ecdhPrivKey, err := ocrypto.ECPrivateKeyFromPem([]byte(ecPrivKey)) // ECDH private key
-		require.NoError(t, err)
+			ecdhPrivKey, err := ocrypto.ECPrivateKeyFromPem([]byte(ecPrivKey)) // ECDH private key
+			require.NoError(t, err)
 
-		// We need to compute the shared secret using the private key and the client ephemeral public key
-		clientEphemeralECDSAPubKey, err := ocrypto.UncompressECPubKey(elliptic.P256(), clientEphemeralPublicKeyBytes)
-		require.NoError(t, err)
-		clientECDHPublicKey, err := ocrypto.ConvertToECDHPublicKey(clientEphemeralECDSAPubKey)
-		require.NoError(t, err)
+			// We need to compute the shared secret using the private key and the client ephemeral public key
+			clientEphemeralECDSAPubKey, err := ocrypto.UncompressECPubKey(elliptic.P256(), clientEphemeralPublicKeyBytes)
+			require.NoError(t, err)
+			clientECDHPublicKey, err := ocrypto.ConvertToECDHPublicKey(clientEphemeralECDSAPubKey)
+			require.NoError(t, err)
 
-		expectedSharedSecret, err := ocrypto.ComputeECDHKeyFromECDHKeys(clientECDHPublicKey, ecdhPrivKey)
-		require.NoError(t, err)
-		expectedDerivedKey, err := ocrypto.CalculateHKDF(TDFSalt(), expectedSharedSecret)
-		require.NoError(t, err)
+			expectedSharedSecret, err := ocrypto.ComputeECDHKeyFromECDHKeys(clientECDHPublicKey, ecdhPrivKey)
+			require.NoError(t, err)
+			expectedDerivedKey, err := ocrypto.CalculateHKDF(TDFSalt(), expectedSharedSecret)
+			require.NoError(t, err)
 
-		// Use noOpEncapsulator to get raw key data for testing
-		noOpEnc := &noOpEncapsulator{}
-		//nolint:staticcheck // Export is used in tests until ProtectedKey deprecation is removed upstream.
-		actualDerivedKey, err := protectedKey.Export(noOpEnc)
-		require.NoError(t, err)
-		assert.Equal(t, expectedDerivedKey, actualDerivedKey)
-	})
+			// Use noOpEncapsulator to get raw key data for testing
+			noOpEnc := &noOpEncapsulator{}
+			//nolint:staticcheck // Export is used in tests until ProtectedKey deprecation is removed upstream.
+			actualDerivedKey, err := protectedKey.Export(noOpEnc)
+			require.NoError(t, err)
+			assert.Equal(t, expectedDerivedKey, actualDerivedKey)
+
+			// Confirm the selected identity is used for both cache writes and reads.
+			require.EventuallyWithT(t, func(collect *assert.CollectT) {
+				cached, err := bm.cache.Get(t.Context(), cacheKey)
+				assert.NoError(collect, err)
+				assert.Equal(collect, []byte(ecPrivKey), cached)
+			}, time.Second, time.Millisecond)
+			mockDetails.On("ExportPrivateKey").Unset()
+			mockDetails.On("ExportPrivateKey").Return(&trust.PrivateKey{WrappedKey: "invalid-wrapped-key"}, nil)
+			cachedKey, err := bm.DeriveKey(t.Context(), details, clientEphemeralPublicKeyBytes, elliptic.P256())
+			require.NoError(t, err)
+			cachedPayload, err := noOpEnc.Encapsulate(cachedKey)
+			require.NoError(t, err)
+			assert.Equal(t, expectedDerivedKey, cachedPayload)
+		})
+	}
 
 	t.Run("fail ExportPrivateKey for DeriveKey", func(t *testing.T) {
 		mockDetails := new(MockKeyDetails)

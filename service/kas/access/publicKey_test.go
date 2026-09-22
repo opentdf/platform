@@ -46,10 +46,6 @@ func (m *MockKeyDetails) ID() trust.KeyIdentifier {
 	return m.id
 }
 
-func (m *MockKeyDetails) CacheKey() string {
-	return "mock:" + string(m.id)
-}
-
 func (m *MockKeyDetails) Algorithm() ocrypto.KeyType {
 	return ocrypto.KeyType(m.algorithm)
 }

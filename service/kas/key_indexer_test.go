@@ -17,7 +17,7 @@ import (
 	"github.com/stretchr/testify/suite"
 )
 
-func TestKeyAdapterCacheKey(t *testing.T) {
+func TestKeyAdapterScopedKeyID(t *testing.T) {
 	seen := make(map[string]bool)
 	for _, tc := range []struct {
 		kasURI string
@@ -36,14 +36,14 @@ func TestKeyAdapterCacheKey(t *testing.T) {
 			Key:    &policy.AsymmetricKey{KeyId: tc.keyID},
 		}}
 		require.Equal(t, trust.KeyIdentifier(tc.keyID), key.ID())
-		cacheKey := key.CacheKey()
+		cacheKey := key.ScopedKeyID()
 		require.NotEmpty(t, cacheKey)
 		require.False(t, seen[cacheKey], "cache key collision for URI %q, key %q", tc.kasURI, tc.keyID)
 		seen[cacheKey] = true
 
 		// Updating the URI changes the cache key.
 		key.key.KasUri = "https://updated-kas.example.com"
-		require.NotEqual(t, cacheKey, key.CacheKey())
+		require.NotEqual(t, cacheKey, key.ScopedKeyID())
 	}
 }
 

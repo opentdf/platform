@@ -185,7 +185,10 @@ func (p *KeyAdapter) ID() trust.KeyIdentifier {
 	return trust.KeyIdentifier(p.key.GetKey().GetKeyId())
 }
 
-func (p *KeyAdapter) CacheKey() string {
+// ScopedKeyID includes the KAS URI because different registrations can share a key ID.
+// This matters when kas_uri_from_kao allows keys from multiple registrations.
+// Always include the URI so identity does not depend on that flag's value.
+func (p *KeyAdapter) ScopedKeyID() string {
 	return fmt.Sprintf("%q:%q", p.key.GetKasUri(), p.ID())
 }
 

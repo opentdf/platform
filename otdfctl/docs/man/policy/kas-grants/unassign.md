@@ -6,7 +6,6 @@ command:
   aliases:
     - delete
     - remove
-  description: Remove a grant assignment of a KAS to an Attribute Definition or Value
   flags:
     - name: namespace-id
       shorthand: n

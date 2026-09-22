@@ -17,10 +17,14 @@ var (
 	Cmd = &authCmd.Command
 )
 
+// keyringUnavailable excludes the help-only auth group from the Linux warning.
+func keyringUnavailable(cmd *cobra.Command, goos string) bool {
+	return cmd != Cmd && goos == "linux"
+}
+
 func InitCommands() {
 	authCmd.PersistentPreRun = func(cmd *cobra.Command, args []string) {
-		// not supported on linux
-		if runtime.GOOS == "linux" {
+		if keyringUnavailable(cmd, runtime.GOOS) {
 			cli.ExitWithWarning(
 				"Warning: Keyring storage is not available on Linux. Please use the `--with-client-creds` flag or the" +
 					"`--with-client-creds-file` flag to provide client credentials securely.",

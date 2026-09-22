@@ -1,7 +1,9 @@
 ---
 title: Encrypt file or stdin as a TDF
 command:
-  name: encrypt [file]
+  name: encrypt
+  arbitraryArgs:
+    - file
   flags:
     - name: out
       shorthand: o

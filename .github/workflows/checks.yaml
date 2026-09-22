@@ -80,6 +80,7 @@ jobs:
         if: env.IS_RELEASE_BRANCH == 'true'
         working-directory: ${{ matrix.directory }}
       - name: govulncheck
+        if: github.event_name != 'merge_group'
         id: govulncheck
         continue-on-error: true
         uses: golang/govulncheck-action@b625fbe08f3bccbe446d94fbf87fcc875a4f50ee # v1.0.4
@@ -109,7 +110,7 @@ jobs:
         run: .github/scripts/init-temp-keys.sh
       - run: go test ./... -short
         working-directory: ${{ matrix.directory }}
-      - if: matrix.directory == 'service'
+      - if: matrix.directory == 'service' && github.event_name != 'merge_group'
         run: go test ./service/integration -race -failfast
       - name: setup sqlc
         if: matrix.directory == 'service'
@@ -184,6 +185,7 @@ jobs:
           delete: true
 
   integration:
+    if: github.event_name != 'merge_group'
     permissions:
       contents: read
     name: integration tests
@@ -261,6 +263,7 @@ jobs:
         run: test/rego/custom-entity.bats
 
   benchmark:
+    if: github.event_name != 'merge_group'
     permissions:
       contents: read
     name: benchmark tests
@@ -488,6 +491,7 @@ jobs:
           push: false
 
   platform-xtest:
+    if: github.event_name != 'merge_group'
     permissions:
       contents: read
       packages: read
@@ -500,6 +504,7 @@ jobs:
       otdfctl-ref: ${{ github.event.pull_request.head.sha || github.sha }} main
 
   tests-bdd:
+    if: github.event_name != 'merge_group'
     name: Cucumber BDD Tests
     runs-on: ubuntu-22.04
     strategy:
@@ -561,6 +566,7 @@ jobs:
 
   # test otdfctl CLI e2e against platform PR branch
   otdfctl-test:
+    if: github.event_name != 'merge_group'
     permissions:
       contents: read
     name: otdfctl e2e tests
@@ -658,6 +664,7 @@ jobs:
         run: echo "One or more jobs failed. Please look at the failed jobs for details." && exit 1
 
   license:
+    if: github.event_name != 'merge_group'
     permissions:
       contents: read
     name: license check

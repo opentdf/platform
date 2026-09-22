@@ -3,11 +3,20 @@ package cmd
 import (
 	"errors"
 	"os"
+	"strconv"
+	"strings"
 
 	"github.com/opentdf/platform/otdfctl/pkg/cli"
 	"github.com/opentdf/platform/otdfctl/pkg/man"
 	"github.com/spf13/cobra"
 )
+
+// enforceArgs validates the complete command tree, including Cobra defaults.
+func enforceArgs(root *cobra.Command) {
+	root.InitDefaultHelpCmd()
+	root.InitDefaultCompletionCmd()
+	cli.EnforceSubcommandArgs(root)
+}
 
 type ExecuteConfig struct {
 	mountTo   *cobra.Command
@@ -38,9 +47,7 @@ func Execute(opts ...ExecuteOptFunc) {
 		c = opt(c)
 	}
 
-	// Enforce `required: true` doc metadata at the cobra layer now that the whole
-	// command tree is assembled. Done here (rather than in init) so commands added
-	// after otdfctl's own init, including a consumer's, are covered.
+	// Apply doc metadata after consumers finish assembling the command tree.
 	man.Docs.MarkRequiredFlags()
 
 	if c.mountTo != nil {
@@ -48,31 +55,95 @@ func Execute(opts ...ExecuteOptFunc) {
 		if err != nil {
 			os.Exit(cli.ExitCodeError)
 		}
-	} else {
-		// Take over error printing so cobra-level failures (e.g. required or
-		// mutually-exclusive flag validation, which run before the command
-		// handler) still honor --json. Cobra would otherwise print plain text
-		// and usage, producing invalid JSON for automation.
-		RootCmd.SilenceErrors = true
-		RootCmd.SilenceUsage = true
-		cmd, err := RootCmd.ExecuteC()
-		if err != nil {
-			handleExecuteError(cmd, err)
-		}
+		enforceArgs(c.mountTo)
+		return
+	}
+
+	enforceArgs(RootCmd)
+
+	// Format Cobra validation failures through the selected output mode.
+	RootCmd.SilenceErrors = true
+	RootCmd.SilenceUsage = true
+	preserveJSONFlagOnError(RootCmd, os.Args[1:])
+	cmd, err := RootCmd.ExecuteC()
+	if err != nil {
+		handleExecuteError(cmd, err)
 	}
 }
 
-// handleExecuteError formats an error returned from cobra's Execute. In --json
-// mode it emits the standard JSON error envelope via cli.ExitWithError; otherwise
-// it reproduces cobra's default output (the error followed by usage) on stderr.
-// Either way it exits with a non-zero status.
+// preserveJSONFlagOnError preserves JSON mode when pflag stops at an earlier error.
+func preserveJSONFlagOnError(root *cobra.Command, args []string) {
+	handleFlagError := root.FlagErrorFunc()
+	root.SetFlagErrorFunc(func(cmd *cobra.Command, flagErr error) error {
+		if jsonOut, requested := requestedBoolFlag(cmd, args, "json"); requested {
+			if err := root.PersistentFlags().Set("json", strconv.FormatBool(jsonOut)); err != nil {
+				return errors.Join(flagErr, err)
+			}
+		}
+		return handleFlagError(cmd, flagErr)
+	})
+}
+
+func requestedBoolFlag(cmd *cobra.Command, args []string, name string) (bool, bool) {
+	flag := "--" + name
+	var value, found bool
+	var consumeNext bool
+	for _, arg := range args {
+		if consumeNext {
+			consumeNext = false
+			continue
+		}
+		if arg == "--" {
+			break
+		}
+		if arg == flag {
+			value, found = true, true
+			continue
+		}
+		raw, ok := strings.CutPrefix(arg, flag+"=")
+		if !ok {
+			consumeNext = flagConsumesNext(cmd, arg)
+			continue
+		}
+		parsed, err := strconv.ParseBool(raw)
+		if err == nil {
+			value, found = parsed, true
+		}
+	}
+	return value, found
+}
+
+func flagConsumesNext(cmd *cobra.Command, arg string) bool {
+	if name, ok := strings.CutPrefix(arg, "--"); ok {
+		if strings.ContainsRune(name, '=') {
+			return false
+		}
+		flag := cmd.Flag(name)
+		return flag != nil && flag.NoOptDefVal == ""
+	}
+	if !strings.HasPrefix(arg, "-") || len(arg) < 2 {
+		return false
+	}
+
+	flags := cmd.Flags()
+	for i := 1; i < len(arg); i++ {
+		flag := flags.ShorthandLookup(arg[i : i+1])
+		if flag == nil {
+			return false
+		}
+		if flag.NoOptDefVal == "" {
+			return i == len(arg)-1
+		}
+	}
+	return false
+}
+
+// handleExecuteError formats a Cobra error and exits with a nonzero status.
 func handleExecuteError(cmd *cobra.Command, err error) {
 	if cmd == nil {
 		cmd = RootCmd
 	}
 
-	// --json is a persistent flag on the root command, so it is inherited by the
-	// executed command and parsed by the time Execute returns.
 	if jsonOut, _ := cmd.Flags().GetBool("json"); jsonOut {
 		cli.New(cmd, os.Args).ExitWithError(err.Error(), nil)
 		return

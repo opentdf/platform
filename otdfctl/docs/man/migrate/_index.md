@@ -5,7 +5,6 @@ command:
   name: migrate
   aliases:
     - migration
-  description: Migrate policy resources
   flags:
     - name: commit
       shorthand: c

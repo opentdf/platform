@@ -496,6 +496,7 @@ jobs:
     uses: opentdf/tests/.github/workflows/xtest.yml@main
     with:
       focus-sdk: go
+      force-platform-supports: kas_uri_from_kao
       platform-ref: ${{ github.event.pull_request.head.sha || github.sha }} lts main
       otdfctl-ref: ${{ github.event.pull_request.head.sha || github.sha }} main
 

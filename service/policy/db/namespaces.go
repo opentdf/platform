@@ -174,7 +174,7 @@ func (c PolicyDBClient) ListAllNamespaces(ctx context.Context) ([]*policy.Namesp
 	return nsList, nil
 }
 
-func (c PolicyDBClient) CountNamespaces(ctx context.Context) (int64, error) {
+func (c PolicyDBClient) GetCountNamespaces(ctx context.Context) (int64, error) {
 	return c.queries.countNamespaces(ctx)
 }
 

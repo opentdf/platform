@@ -475,35 +475,15 @@ func (c PolicyDBClient) UpdateSubjectMapping(ctx context.Context, r *subjectmapp
 	}
 
 	if actions != nil {
-		actionIDs := make([]string, 0)
-		actionNames := make([]string, 0)
-		// Check for provided existing Action IDs and existing/new Action Names
-		for idx, a := range actions {
-			switch {
-			case a.GetId() != "":
-				actionIDs = append(actionIDs, a.GetId())
-			case a.GetName() != "":
-				actionNames = append(actionNames, strings.ToLower(a.GetName()))
-			default:
-				return nil, db.WrapIfKnownInvalidQueryErr(
-					errors.Join(db.ErrMissingValue, fmt.Errorf("action at index %d missing required 'id' or 'name' when creating a subject mapping; action details: %+v", idx, a)),
-				)
-			}
-		}
-
-		// Create or list Actions for those provided by name
-		if len(actionNames) > 0 {
-			createdOrListedActions, err := c.queries.createOrListActionsByName(ctx, actionNames)
+		if len(actions) == 0 {
+			updateParams.ActionIds = []string{}
+		} else {
+			actionIDs, err := c.resolveSubjectMappingActions(ctx, actions, pgtypeUUID(before.GetNamespace().GetId()))
 			if err != nil {
-				return nil, db.WrapIfKnownInvalidQueryErr(
-					errors.Join(db.ErrMissingValue, fmt.Errorf("failed to create or list action names [%v]: %w", actionNames, err)),
-				)
+				return nil, err
 			}
-			for _, a := range createdOrListedActions {
-				actionIDs = append(actionIDs, a.ID)
-			}
+			updateParams.ActionIds = actionIDs
 		}
-		updateParams.ActionIds = actionIDs
 	}
 
 	_, err = c.queries.updateSubjectMapping(ctx, updateParams)
@@ -592,7 +572,7 @@ func (c PolicyDBClient) GetMatchedSubjectMappings(ctx context.Context, propertie
 }
 
 // resolveSubjectMappingActions parses the action list from a CreateSubjectMappingRequest,
-// resolving actions by name within the given namespace and collecting existing action IDs.
+// implicitly creating missing name-based actions and collecting existing action IDs.
 func (c PolicyDBClient) resolveSubjectMappingActions(ctx context.Context, actions []*policy.Action, parsedNamespaceID pgtype.UUID) ([]string, error) {
 	if len(actions) == 0 {
 		return nil, db.WrapIfKnownInvalidQueryErr(
@@ -719,7 +699,7 @@ func (c PolicyDBClient) validateSubjectMappingNamespaceConsistency(
 	return nil
 }
 
-// resolveActionNameIDs creates or fetches action IDs for the given action names.
+// resolveActionNameIDs creates or fetches action IDs for the given normalized action names.
 // When namespaced is true, actions are created/fetched within the given namespace;
 // otherwise the legacy global (unnamespaced) path is used.
 func (c PolicyDBClient) resolveActionNameIDs(ctx context.Context, actionNames []string, namespaceID pgtype.UUID) ([]string, error) {

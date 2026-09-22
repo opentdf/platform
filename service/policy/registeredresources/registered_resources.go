@@ -232,6 +232,19 @@ func (s *RegisteredResourcesService) CreateRegisteredResourceValue(ctx context.C
 	s.logger.DebugContext(ctx, "creating registered resource value", slog.String("value", req.Msg.GetValue()))
 
 	err := s.dbClient.RunInTx(ctx, func(txClient *policydb.PolicyDBClient) error {
+		actionNames := registeredResourceActionNames(req.Msg.GetActionAttributeValues())
+		if limit := s.config.MaxObjectCounts.ActionsPerNamespace; limit > 0 && len(actionNames) > 0 {
+			resource, err := txClient.GetRegisteredResource(ctx, &registeredresources.GetRegisteredResourceRequest{
+				Identifier: &registeredresources.GetRegisteredResourceRequest_Id{Id: req.Msg.GetResourceId()},
+			})
+			if err != nil {
+				return err
+			}
+			namespace := resource.GetNamespace()
+			if err := enforceActionAdditionLimit(ctx, txClient, limit, namespace.GetId(), namespace.GetFqn(), actionNames); err != nil {
+				return err
+			}
+		}
 		value, err := txClient.CreateRegisteredResourceValue(ctx, req.Msg)
 		if err != nil {
 			return err
@@ -246,6 +259,9 @@ func (s *RegisteredResourcesService) CreateRegisteredResourceValue(ctx context.C
 	})
 	if err != nil {
 		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
+		if limitErr := policyconfig.ObjectLimitConnectError(ctx, s.logger, "create", err); limitErr != nil {
+			return nil, limitErr
+		}
 		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextCreationFailed, slog.String("registered_resource_value", req.Msg.String()))
 	}
 
@@ -315,6 +331,10 @@ func (s *RegisteredResourcesService) UpdateRegisteredResourceValue(ctx context.C
 		if err != nil {
 			return err
 		}
+		namespace := original.GetResource().GetNamespace()
+		if err := enforceActionAdditionLimit(ctx, txClient, s.config.MaxObjectCounts.ActionsPerNamespace, namespace.GetId(), namespace.GetFqn(), registeredResourceActionNames(req.Msg.GetActionAttributeValues())); err != nil {
+			return err
+		}
 
 		updated, err := txClient.UpdateRegisteredResourceValue(ctx, req.Msg)
 		if err != nil {
@@ -331,6 +351,9 @@ func (s *RegisteredResourcesService) UpdateRegisteredResourceValue(ctx context.C
 	})
 	if err != nil {
 		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
+		if limitErr := policyconfig.ObjectLimitConnectError(ctx, s.logger, "update", err); limitErr != nil {
+			return nil, limitErr
+		}
 		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextUpdateFailed, slog.String("registered_resource_value", req.Msg.String()))
 	}
 

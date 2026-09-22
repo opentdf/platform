@@ -92,20 +92,16 @@ func (s *UnsafeService) UnsafeUpdateNamespace(ctx context.Context, req *connect.
 	err := s.dbClient.RunInTx(ctx, func(txClient *policydb.PolicyDBClient) error {
 		original, err := txClient.GetNamespace(ctx, id)
 		if err != nil {
-			s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
 			return err
 		}
 
 		updated, err := txClient.UnsafeUpdateNamespace(ctx, id, name)
 		if err != nil {
-			s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
 			return err
 		}
 
 		auditParams.Original = original
 		auditParams.Updated = updated
-
-		s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
 
 		rsp.Namespace = &policy.Namespace{
 			Id: id,
@@ -114,8 +110,10 @@ func (s *UnsafeService) UnsafeUpdateNamespace(ctx context.Context, req *connect.
 		return nil
 	})
 	if err != nil {
+		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
 		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextUpdateFailed, slog.String("namespace", req.Msg.String()))
 	}
+	s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
 
 	return connect.NewResponse(rsp), nil
 }
@@ -205,20 +203,16 @@ func (s *UnsafeService) UnsafeUpdateAttribute(ctx context.Context, req *connect.
 	err := s.dbClient.RunInTx(ctx, func(txClient *policydb.PolicyDBClient) error {
 		original, err := txClient.GetAttribute(ctx, id)
 		if err != nil {
-			s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
 			return err
 		}
 
 		updated, err := txClient.UnsafeUpdateAttribute(ctx, req.Msg)
 		if err != nil {
-			s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
 			return err
 		}
 
 		auditParams.Original = original
 		auditParams.Updated = updated
-
-		s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
 
 		rsp.Attribute = &policy.Attribute{
 			Id: id,
@@ -227,8 +221,10 @@ func (s *UnsafeService) UnsafeUpdateAttribute(ctx context.Context, req *connect.
 		return nil
 	})
 	if err != nil {
+		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
 		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextUpdateFailed, slog.String("attribute", req.Msg.String()))
 	}
+	s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
 
 	return connect.NewResponse(rsp), nil
 }
@@ -318,20 +314,16 @@ func (s *UnsafeService) UnsafeUpdateAttributeValue(ctx context.Context, req *con
 	err := s.dbClient.RunInTx(ctx, func(txClient *policydb.PolicyDBClient) error {
 		original, err := txClient.GetAttributeValue(ctx, id)
 		if err != nil {
-			s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
 			return err
 		}
 
 		updated, err := txClient.UnsafeUpdateAttributeValue(ctx, req.Msg)
 		if err != nil {
-			s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
 			return err
 		}
 
 		auditParams.Original = original
 		auditParams.Updated = updated
-
-		s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
 
 		rsp.Value = &policy.Value{
 			Id: id,
@@ -340,8 +332,10 @@ func (s *UnsafeService) UnsafeUpdateAttributeValue(ctx context.Context, req *con
 		return nil
 	})
 	if err != nil {
+		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
 		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextUpdateFailed, slog.String("value", req.Msg.String()))
 	}
+	s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
 
 	return connect.NewResponse(rsp), nil
 }
@@ -425,7 +419,6 @@ func (s *UnsafeService) UnsafeUpdateKey(ctx context.Context, req *connect.Reques
 	err := s.dbClient.RunInTx(ctx, func(txClient *policydb.PolicyDBClient) error {
 		existing, err := txClient.GetKey(ctx, &kasregistry.GetKeyRequest_Id{Id: id})
 		if err != nil {
-			s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
 			return db.StatusifyError(ctx, s.logger, err, db.ErrTextGetRetrievalFailed, slog.String("id", id))
 		}
 
@@ -433,19 +426,19 @@ func (s *UnsafeService) UnsafeUpdateKey(ctx context.Context, req *connect.Reques
 
 		updated, err := txClient.UnsafeUpdateKey(ctx, existing, req.Msg)
 		if err != nil {
-			s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
 			return db.StatusifyError(ctx, s.logger, err, db.ErrTextUpdateFailed, slog.String("id", id))
 		}
 
 		auditParams.Updated = unsafeUpdateKeyAuditValue(updated)
-		s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
 
 		rsp.Key = updated
 		return nil
 	})
 	if err != nil {
+		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
 		return nil, err
 	}
+	s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
 
 	return connect.NewResponse(rsp), nil
 }
@@ -491,7 +484,6 @@ func (s *UnsafeService) UnsafeDeleteKasKey(ctx context.Context, req *connect.Req
 	err := s.dbClient.RunInTx(ctx, func(txClient *policydb.PolicyDBClient) error {
 		existing, err := txClient.GetKey(ctx, &kasregistry.GetKeyRequest_Id{Id: id})
 		if err != nil {
-			s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
 			return db.StatusifyError(ctx, s.logger, err, db.ErrTextGetRetrievalFailed, slog.String("id", id))
 		}
 
@@ -505,11 +497,9 @@ func (s *UnsafeService) UnsafeDeleteKasKey(ctx context.Context, req *connect.Req
 
 		_, err = txClient.UnsafeDeleteKey(ctx, existing, req.Msg)
 		if err != nil {
-			s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
 			return db.StatusifyError(ctx, s.logger, err, db.ErrTextDeletionFailed, slog.String("id", id))
 		}
 
-		s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
 		rsp.Key = &policy.KasKey{
 			KasUri: existing.GetKasUri(),
 			Key: &policy.AsymmetricKey{
@@ -520,8 +510,10 @@ func (s *UnsafeService) UnsafeDeleteKasKey(ctx context.Context, req *connect.Req
 		return nil
 	})
 	if err != nil {
+		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
 		return nil, err
 	}
+	s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
 
 	return connect.NewResponse(rsp), nil
 }

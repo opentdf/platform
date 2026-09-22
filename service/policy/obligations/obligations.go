@@ -118,7 +118,6 @@ func (s *Service) CreateObligation(ctx context.Context, req *connect.Request[obl
 
 		auditParams.ObjectID = obl.GetId()
 		auditParams.Original = obl
-		s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
 
 		rsp.Obligation = obl
 		return nil
@@ -127,6 +126,7 @@ func (s *Service) CreateObligation(ctx context.Context, req *connect.Request[obl
 		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
 		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextCreationFailed, slog.String("obligation", req.Msg.String()))
 	}
+	s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
 
 	return connect.NewResponse(rsp), nil
 }
@@ -184,7 +184,6 @@ func (s *Service) UpdateObligation(ctx context.Context, req *connect.Request[obl
 
 		auditParams.Original = original
 		auditParams.Updated = updated
-		s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
 
 		rsp.Obligation = updated
 		return nil
@@ -193,6 +192,7 @@ func (s *Service) UpdateObligation(ctx context.Context, req *connect.Request[obl
 		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
 		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextUpdateFailed, slog.String("obligation", req.Msg.String()))
 	}
+	s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
 	return connect.NewResponse(rsp), nil
 }
 
@@ -237,7 +237,6 @@ func (s *Service) CreateObligationValue(ctx context.Context, req *connect.Reques
 
 		auditParams.ObjectID = val.GetId()
 		auditParams.Original = val
-		s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
 
 		rsp.Value = val
 		return nil
@@ -246,6 +245,7 @@ func (s *Service) CreateObligationValue(ctx context.Context, req *connect.Reques
 		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
 		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextCreationFailed, slog.String("obligation_value", req.Msg.String()))
 	}
+	s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
 
 	return connect.NewResponse(rsp), nil
 }
@@ -304,7 +304,6 @@ func (s *Service) UpdateObligationValue(ctx context.Context, req *connect.Reques
 
 		auditParams.Original = original
 		auditParams.Updated = updated
-		s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
 
 		rsp.Value = updated
 		return nil
@@ -313,6 +312,7 @@ func (s *Service) UpdateObligationValue(ctx context.Context, req *connect.Reques
 		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
 		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextUpdateFailed, slog.String("obligation_value", req.Msg.String()))
 	}
+	s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
 	return connect.NewResponse(rsp), nil
 }
 
@@ -392,7 +392,6 @@ func (s *Service) AddObligationTrigger(ctx context.Context, req *connect.Request
 
 		auditParams.ObjectID = trigger.GetId()
 		auditParams.Original = trigger
-		s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
 
 		rsp.Trigger = trigger
 		return nil
@@ -401,6 +400,7 @@ func (s *Service) AddObligationTrigger(ctx context.Context, req *connect.Request
 		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
 		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextCreationFailed, slog.String("obligation_trigger", req.Msg.String()))
 	}
+	s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
 
 	return connect.NewResponse(rsp), nil
 }

@@ -144,13 +144,11 @@ func (ns NamespacesService) CreateNamespace(ctx context.Context, req *connect.Re
 		}
 		n, err := txClient.CreateNamespace(ctx, req.Msg)
 		if err != nil {
-			ns.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
 			return err
 		}
 
 		auditParams.ObjectID = n.GetId()
 		auditParams.Original = n
-		ns.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
 
 		ns.logger.DebugContext(ctx, "created new namespace", slog.String("name", req.Msg.GetName()))
 		rsp.Namespace = n
@@ -158,11 +156,13 @@ func (ns NamespacesService) CreateNamespace(ctx context.Context, req *connect.Re
 		return nil
 	})
 	if err != nil {
+		ns.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
 		if limitErr := policyconfig.ObjectLimitConnectError(ctx, ns.logger, "create", err); limitErr != nil {
 			return nil, limitErr
 		}
 		return nil, db.StatusifyError(ctx, ns.logger, err, db.ErrTextCreationFailed, slog.String("namespace", req.Msg.String()))
 	}
+	ns.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
 
 	return connect.NewResponse(rsp), nil
 }

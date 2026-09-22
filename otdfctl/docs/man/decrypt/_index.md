@@ -1,7 +1,9 @@
 ---
 title: Decrypt a TDF file
 command:
-  name: decrypt [file]
+  name: decrypt
+  arbitraryArgs:
+    - file
   flags:
     - name: out
       shorthand: o

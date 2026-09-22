@@ -3,9 +3,8 @@ title: Authenticate to the platform with the client-credentials flow
 
 command:
   name: client-credentials
-  args: 
+  arbitraryArgs:
     - client-id
-  arbitrary_args:
     - client-secret
   flags:
     - name: scopes

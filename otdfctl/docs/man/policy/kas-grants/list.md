@@ -5,7 +5,6 @@ command:
   name: list
   aliases:
     - l
-  description: List the Grants of KASes to Attribute Namespaces, Definitions, and Values
   flags:
     - name: kas
       shorthand: k

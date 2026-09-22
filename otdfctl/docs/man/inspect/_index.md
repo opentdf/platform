@@ -1,7 +1,9 @@
 ---
 title: Inspect a TDF file
 command:
-  name: inspect [file]
+  name: inspect
+  arbitraryArgs:
+    - file
   flags:
 ---
 

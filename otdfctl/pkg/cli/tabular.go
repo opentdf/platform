@@ -139,11 +139,11 @@ func PrintSuccessTable(cmd *cobra.Command, id string, t table.Model) {
 	successMessage := SuccessMessage(verb)
 	jsonDirections := FooterMessage(helper)
 
-	ts := t.View()
 	if rows == 0 {
 		// Preserve pagination footers while suppressing empty table headers.
-		ts = t.WithHeaderVisibility(false).View()
+		t = t.WithHeaderVisibility(false)
 	}
+	ts := t.View()
 	if strings.TrimSpace(ts) == "" {
 		fmt.Println(lipgloss.JoinVertical(lipgloss.Top, successMessage, jsonDirections))
 		return

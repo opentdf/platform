@@ -164,10 +164,9 @@ var knownCommandKeys = map[string]bool{
 	"hidden":        true,
 	"aliases":       true,
 	"flags":         true,
-	"description":   true,
 }
 
-func TestEveryDocDeclaresOperandsWhereProcessDocReadsThem(t *testing.T) {
+func TestEveryDocUsesSupportedCommandFields(t *testing.T) {
 	checked := 0
 	err := fs.WalkDir(docsEmbed.ManFiles, ".", func(path string, d fs.DirEntry, err error) error {
 		if err != nil || d.IsDir() || !strings.HasSuffix(path, ".md") {

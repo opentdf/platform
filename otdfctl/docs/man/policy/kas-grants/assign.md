@@ -10,7 +10,6 @@ command:
     - add
     - new
     - upsert
-  description: Assign a grant of a KAS to an Attribute Definition or Value
   flags:
     - name: namespace-id
       shorthand: n

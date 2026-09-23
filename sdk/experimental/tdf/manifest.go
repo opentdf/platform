@@ -110,6 +110,5 @@ var (
 	// algorithm other than HS256.
 	ErrUnsupportedRootIntegrityAlgorithm = sdk.ErrUnsupportedRootIntegrityAlgorithm
 	// ErrUnsupportedSegmentIntegrityAlgorithm rejects a segment algorithm that
-	// is neither HS256 nor GMAC.
 	ErrUnsupportedSegmentIntegrityAlgorithm = sdk.ErrUnsupportedSegmentIntegrityAlgorithm
 )

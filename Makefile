@@ -1,7 +1,7 @@
 # make
 # To run all lint checks: `LINT_OPTIONS= make lint`
 
-.PHONY: all buf-check build clean connect-wrapper-generate docker-build fix fmt go-lint license lint otdfctl/otdfctl policy-sql-gen proto-generate proto-helper-generate proto-lint sdk/sdk sqlc-check test tidy toolcheck
+.PHONY: all buf-check build clean connect-wrapper-generate docker-build fix fmt fuzz go-lint license lint otdfctl/otdfctl policy-sql-gen proto-generate proto-helper-generate proto-lint sdk/sdk sqlc-check test tidy toolcheck
 
 MODS=protocol/go lib/ocrypto lib/fixtures lib/flattening lib/identifier sdk service examples otdfctl tests-bdd
 HAND_MODS=lib/ocrypto lib/fixtures lib/flattening lib/identifier sdk service examples otdfctl tests-bdd
@@ -115,8 +115,37 @@ policy-erd-gen:
 test:
 	for m in $(HAND_MODS); do (cd $$m && go test ./... -race) || exit 1; done
 
+# Budget per fuzz target, not for the run as a whole: `make fuzz` costs roughly
+# FUZZTIME multiplied by the number of targets. Override for a longer soak, e.g.
+# `make fuzz FUZZTIME=10m`.
+FUZZTIME?=30s
+
+# `go test -fuzz` mutates input only when -fuzz is passed; without it a FuzzXxx
+# function is an ordinary test that replays its seed corpus and -fuzztime is
+# ignored. It also accepts exactly one package and one target per invocation
+# (`go test ./... -fuzz=...` is rejected), so the nested loop is required rather
+# than stylistic.
+#
+# Targets are discovered instead of listed so a new FuzzXxx is picked up without
+# editing this file. The grep narrows to candidate packages first because
+# `go test -list` has to build a test binary per package and most packages here
+# have no fuzz targets.
+#
+# A crasher gets written to testdata/fuzz/<Target>/<hash> and is replayed as a
+# seed by every later `go test`, so it turns the suite red until the underlying
+# bug is fixed. Keep a crasher in the same commit as its fix.
 fuzz:
-	cd sdk && go test ./... -fuzztime=2m
+	@for m in $(HAND_MODS); do \
+		(cd $$m && \
+		dirs=$$(grep -rl --include='*_test.go' '^func Fuzz' . 2>/dev/null \
+			| while read -r f; do dirname "$$f"; done | sort -u); \
+		for d in $$dirs; do \
+			for fn in $$(go test -list '^Fuzz' "$$d" 2>/dev/null | grep '^Fuzz'); do \
+				echo "==> $$m $$d $$fn ($(FUZZTIME))"; \
+				go test -run '^$$' -fuzz "^$$fn$$" -fuzztime=$(FUZZTIME) "$$d" || exit 1; \
+			done; \
+		done) || exit 1; \
+	done
 
 bench:
 	for m in $(HAND_MODS); do (cd $$m && go test -bench ./... -benchmem) || exit 1; done

@@ -61,7 +61,15 @@ type segmentWriter struct {
 	centralDir   *CentralDirectory
 	payloadEntry *FileEntry
 	finalized    bool
-	mu           sync.RWMutex
+
+	// cdMutated records that Finalize reached its second mutation boundary and
+	// appended the payload entry to the central directory. finalized cannot
+	// stand in for it: finalized is set only once Finalize runs to completion,
+	// so every failure between the AddFile call and that assignment leaves the
+	// entry in the central directory with finalized still false.
+	cdMutated bool
+
+	mu sync.RWMutex
 }
 
 // NewSegmentTDFWriter creates a new SegmentWriter for out-of-order segment writing
@@ -270,6 +278,9 @@ func (sw *segmentWriter) Finalize(ctx context.Context, manifest []byte) ([]byte,
 	// readers accept and silently misread.
 	sw.payloadEntry.CRC32 = sw.metadata.TotalCRC32
 	sw.centralDir.AddFile(*sw.payloadEntry)
+	// Record the crossing for CleanupSegment, which must refuse from here on:
+	// the sizes it would roll back are already frozen into the entry above.
+	sw.cdMutated = true
 
 	// 3. Write manifest file (local header + data)
 	manifestEntry := FileEntry{
@@ -319,6 +330,18 @@ func (sw *segmentWriter) CleanupSegment(index int) error {
 	sw.mu.Lock()
 	defer sw.mu.Unlock()
 
+	// The absence check comes before the state checks, and deliberately: an
+	// index that is not present contributed nothing to any counter, so there is
+	// no rollback for a later state to have invalidated. nil is the honest
+	// answer in every state, and it is the one the interface promises. Ordering
+	// the state checks first would instead make "clean up an index we may never
+	// have written" -- how the chunked writer's unwind path calls this -- report
+	// a failure on a writer the caller had already closed.
+	seg, ok := sw.metadata.Segments[index]
+	if !ok {
+		return nil
+	}
+
 	// A closed or finalized writer has nothing left to roll back: its data
 	// descriptor and central directory already name this segment's bytes and
 	// are already in the caller's hands. Mutating the counters afterwards
@@ -332,10 +355,16 @@ func (sw *segmentWriter) CleanupSegment(index int) error {
 		return &Error{Op: opCleanupSegment, Type: writerTypeSegment, Err: ErrWriterClosed}
 	}
 
-	// No-op if the index was never written or was already cleaned up.
-	seg, ok := sw.metadata.Segments[index]
-	if !ok {
-		return nil
+	// Same reasoning one step earlier, for the Finalize that failed between its
+	// AddFile call and the finalized assignment. The central directory already
+	// holds a payload entry built from the current sizes; rolling those sizes
+	// back now would leave that entry describing a payload larger than the one
+	// the caller can assemble, and every offset past it short by seg.Size. The
+	// writer is not recoverable from here -- a retried Finalize appends a second
+	// payload entry regardless -- but silently corrupting the first one is worse
+	// than saying so.
+	if sw.cdMutated {
+		return &Error{Op: opCleanupSegment, Type: writerTypeSegment, Err: ErrCentralDirectoryCommitted}
 	}
 
 	// The three counters below move in lockstep -- AddSegment adds the segment

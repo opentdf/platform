@@ -715,6 +715,80 @@ func TestSegmentWriter_CleanupSegmentRejectsInconsistentAccounting(t *testing.T)
 	writer.Close()
 }
 
+func TestSegmentWriter_CleanupSegmentRefusedAfterCentralDirectoryCommitted(t *testing.T) {
+	// finalized is set only when Finalize runs to completion, so it does not
+	// cover the window between the AddFile call that commits the payload entry
+	// and that assignment. A Finalize failing inside that window leaves a
+	// central directory entry built from the current sizes with finalized still
+	// false -- and a cleanup permitted there rolls the sizes back underneath an
+	// entry that keeps the old ones, shortening every offset past the payload
+	// by the cleaned-up segment's size. Readers that trust the central
+	// directory read the wrong bytes without complaint.
+	//
+	// Landing in that window takes a Finalize that clears the payload's ZIP64
+	// check and then fails the central directory's. Two 500-byte segments put
+	// the payload at exactly the threshold -- not over it -- while the payload
+	// local file header pushes the central directory's offset past it.
+	const threshold = 1000
+	const segmentSize = threshold / 2
+	writer := NewSegmentTDFWriter(2,
+		WithZip64Mode(Zip64Never),
+		WithMaxNonZip64Value(threshold),
+	)
+	ctx := t.Context()
+
+	data := bytes.Repeat([]byte("x"), segmentSize)
+	for index := range 2 {
+		_, err := writer.WriteSegment(ctx, index, uint64(len(data)), crc32.ChecksumIEEE(data))
+		require.NoError(t, err)
+	}
+
+	_, err := writer.Finalize(ctx, []byte("manifest"))
+	require.ErrorIs(t, err, ErrZip64Required)
+
+	segWriter, ok := writer.(*segmentWriter)
+	require.True(t, ok, "writer should be a segmentWriter")
+	require.False(t, segWriter.finalized, "this test is only meaningful if Finalize failed short of completing")
+	require.NotEmpty(t, segWriter.centralDir.Entries, "the failure must land after the payload entry is committed")
+	require.Equal(t, TDFPayloadFileName, segWriter.centralDir.Entries[0].Name)
+	require.Equal(t, uint64(2*segmentSize), segWriter.centralDir.Entries[0].Size,
+		"the committed entry is what a rollback would strand")
+	sizeBefore := segWriter.payloadEntry.Size
+
+	err = writer.CleanupSegment(1)
+	require.ErrorIs(t, err, ErrCentralDirectoryCommitted)
+
+	var archiveErr *Error
+	require.ErrorAs(t, err, &archiveErr)
+	assert.Equal(t, "cleanup-segment", archiveErr.Op)
+	assert.Equal(t, "segment", archiveErr.Type)
+
+	_, exists := segWriter.metadata.Segments[1]
+	assert.True(t, exists, "refused cleanup must leave the segment recorded")
+	assert.Equal(t, sizeBefore, segWriter.payloadEntry.Size, "refused cleanup must not roll back sizes")
+
+	writer.Close()
+}
+
+func TestSegmentWriter_CleanupSegmentAbsentIndexIsNoOpEvenWhenClosed(t *testing.T) {
+	// An index that was never written contributed nothing to the counters, so
+	// there is no rollback for the closed state to have invalidated and nil is
+	// accurate rather than merely lenient. This is the shape the chunked
+	// writer's unwind path calls with -- it cleans up an index whose write may
+	// never have reached the archive -- and reporting ErrWriterClosed there
+	// would fence a writer over an undo that was never needed.
+	writer := NewSegmentTDFWriter(2)
+	ctx := t.Context()
+
+	data := []byte("only")
+	_, err := writer.WriteSegment(ctx, 0, uint64(len(data)), crc32.ChecksumIEEE(data))
+	require.NoError(t, err)
+
+	require.NoError(t, writer.CleanupSegment(1), "never-written index is a no-op on an open writer")
+	require.NoError(t, writer.Close())
+	assert.NoError(t, writer.CleanupSegment(1), "and stays a no-op once the writer is closed")
+}
+
 func TestSegmentWriter_ContextCancellation(t *testing.T) {
 	// Test context cancellation handling
 	writer := NewSegmentTDFWriter(3)

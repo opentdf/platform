@@ -20,6 +20,7 @@ Prefer `make` targets at repo root:
 - `make build`: regenerates protos/codegen and builds `opentdf` + `sdk` + `examples`.
 - `make lint`: runs `buf lint`, `golangci-lint`, and `govulncheck` across modules.
 - `make test`: runs `go test ./... -race` across core modules (does **not** include `tests-bdd/`).
+- `make fuzz`: fuzzes every `FuzzXxx` target across modules. Not part of `make test` or CI; run it deliberately.
 - `docker compose up`: brings up local infra (Postgres + Keycloak). See `docs/Contributing.md`.
 
 ## Coding Style & Naming Conventions
@@ -55,6 +56,7 @@ Prefer `make` targets at repo root:
 - **BDD tests**: run `cd tests-bdd && go test ./...` (requires Docker; feature files are `tests-bdd/features/*.feature`).
 - **Integration tests** may require the compose stack; follow module README(s) under `service/`.
 - **README tests**: verify code examples in documentation compile and work correctly.
+- **Fuzz tests**: `FuzzXxx` functions in `*_test.go`; run `make fuzz` (override the per-target budget with `make fuzz FUZZTIME=10m`). A plain `make test` only replays their seed corpus — it does not fuzz. When a run finds a crasher, Go writes it to `testdata/fuzz/<Target>/<hash>`, and every later `go test` replays it as a seed; commit that file together with the fix, never ahead of it.
 - **Cross-SDK e2e (xtest)**: the `opentdf/tests` repo runs the platform against the go/java/js SDKs. Use it to validate cross-language behavior (e.g. DPoP, TDF interop) that unit tests can't cover.
 
 ### Running xtest on a branch

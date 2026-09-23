@@ -325,11 +325,11 @@ func (sw *segmentWriter) CleanupSegment(index int) error {
 	// changes only state no one reads again, so returning nil would report an
 	// undo that did not happen. Refuse, the way WriteSegment and Finalize do.
 	if err := sw.checkClosed(); err != nil {
-		return &Error{Op: opCleanupSegment, Type: "segment", Err: err}
+		return &Error{Op: opCleanupSegment, Type: writerTypeSegment, Err: err}
 	}
 
 	if sw.finalized {
-		return &Error{Op: opCleanupSegment, Type: "segment", Err: ErrWriterClosed}
+		return &Error{Op: opCleanupSegment, Type: writerTypeSegment, Err: ErrWriterClosed}
 	}
 
 	// No-op if the index was never written or was already cleaned up.
@@ -348,7 +348,7 @@ func (sw *segmentWriter) CleanupSegment(index int) error {
 	if seg.Size > sw.metadata.TotalSize ||
 		seg.Size > sw.payloadEntry.Size ||
 		seg.Size > sw.payloadEntry.CompressedSize {
-		return &Error{Op: opCleanupSegment, Type: "segment", Err: ErrAccountingCorrupt}
+		return &Error{Op: opCleanupSegment, Type: writerTypeSegment, Err: ErrAccountingCorrupt}
 	}
 
 	delete(sw.metadata.Segments, index)

@@ -1714,7 +1714,7 @@ func (s *TDFSuite) Test_ValidateSchema() {
 					return err
 				}
 
-				if f.Name == "0.manifest.json" {
+				if f.Name == zipstream.TDFManifestFileName {
 					_, err = dst.Write([]byte("{}"))
 				} else {
 					_, err = io.Copy(dst, rc)
@@ -1733,7 +1733,7 @@ func (s *TDFSuite) Test_ValidateSchema() {
 				}
 
 				// Validate json changer code
-				if f.Name != "0.manifest.json" {
+				if f.Name != zipstream.TDFManifestFileName {
 					_, err = io.Copy(dst, rc)
 					return err
 				}
@@ -1759,7 +1759,7 @@ func (s *TDFSuite) Test_ValidateSchema() {
 					return err
 				}
 
-				if f.Name != "0.manifest.json" {
+				if f.Name != zipstream.TDFManifestFileName {
 					_, err = io.Copy(dst, rc)
 					return err
 				}

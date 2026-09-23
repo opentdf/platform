@@ -13,11 +13,11 @@ import (
 // 0.manifest.json. Readers accept either.
 // See https://github.com/opentdf/platform/issues/3513.
 
-// manifestJSON builds a manifest carrying the fields the TDF manifest schema
-// requires, so the fixtures below are manifests rather than arbitrary JSON.
-// This package treats the manifest as opaque bytes and never parses it, so the
-// literal is spelled out here: importing the sdk package for its Manifest type
-// would be an import cycle, since sdk imports this one.
+// manifestJSON builds representative JSON with the top-level manifest fields.
+// It is deliberately incomplete: these tests exercise ZIP entry selection,
+// and this package treats the manifest as opaque bytes. A fully valid manifest
+// would add fields unrelated to the behavior under test. The literal is spelled
+// out here because importing the sdk Manifest type would create an import cycle.
 func manifestJSON(mimeType string) string {
 	return `{"payload":{"type":"reference","url":"` + TDFPayloadFileName +
 		`","protocol":"zip","isEncrypted":true,"mimeType":"` + mimeType +

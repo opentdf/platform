@@ -185,7 +185,7 @@ type TestUpgradeRewrapRequestV1Suite struct {
 
 func (suite *TestUpgradeRewrapRequestV1Suite) TestUpgradeRewrapRequestV1_Happy() {
 	response := &kaspb.RewrapResponse{
-		EntityWrappedKey: []byte("wrappedKey"),
+		EntityWrappedKey: []byte("wrappedKey"), //nolint:staticcheck // SA1019: exercising legacy compatibility path
 	}
 	requests := []*kaspb.UnsignedRewrapRequest_WithPolicyRequest{
 		{

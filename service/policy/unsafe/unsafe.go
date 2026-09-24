@@ -110,14 +110,10 @@ func (s *UnsafeService) UnsafeUpdateNamespace(ctx context.Context, req *connect.
 		return nil
 	})
 	if err != nil {
-		if auditErr := s.logger.Audit.PolicyCRUDFailure(ctx, auditParams); auditErr != nil {
-			s.logger.ErrorContext(context.WithoutCancel(ctx), "failed to record policy audit event", slog.Any("error", auditErr))
-		}
+		s.logger.LogPolicyCRUDFailure(ctx, auditParams)
 		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextUpdateFailed, slog.String("namespace", req.Msg.String()))
 	}
-	if auditErr := s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams); auditErr != nil {
-		s.logger.ErrorContext(context.WithoutCancel(ctx), "failed to record policy audit event", slog.Any("error", auditErr))
-	}
+	s.logger.LogPolicyCRUDSuccess(ctx, auditParams)
 
 	return connect.NewResponse(rsp), nil
 }
@@ -135,26 +131,20 @@ func (s *UnsafeService) UnsafeReactivateNamespace(ctx context.Context, req *conn
 
 	original, err := s.dbClient.GetNamespace(ctx, id)
 	if err != nil {
-		if auditErr := s.logger.Audit.PolicyCRUDFailure(ctx, auditParams); auditErr != nil {
-			s.logger.ErrorContext(context.WithoutCancel(ctx), "failed to record policy audit event", slog.Any("error", auditErr))
-		}
+		s.logger.LogPolicyCRUDFailure(ctx, auditParams)
 		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextGetRetrievalFailed, slog.String("id", id))
 	}
 
 	updated, err := s.dbClient.UnsafeReactivateNamespace(ctx, id)
 	if err != nil {
-		if auditErr := s.logger.Audit.PolicyCRUDFailure(ctx, auditParams); auditErr != nil {
-			s.logger.ErrorContext(context.WithoutCancel(ctx), "failed to record policy audit event", slog.Any("error", auditErr))
-		}
+		s.logger.LogPolicyCRUDFailure(ctx, auditParams)
 		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextUpdateFailed, slog.String("id", id))
 	}
 
 	auditParams.Original = original
 	auditParams.Updated = updated
 
-	if auditErr := s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams); auditErr != nil {
-		s.logger.ErrorContext(context.WithoutCancel(ctx), "failed to record policy audit event", slog.Any("error", auditErr))
-	}
+	s.logger.LogPolicyCRUDSuccess(ctx, auditParams)
 
 	rsp.Namespace = &policy.Namespace{
 		Id: id,
@@ -176,23 +166,17 @@ func (s *UnsafeService) UnsafeDeleteNamespace(ctx context.Context, req *connect.
 
 	existing, err := s.dbClient.GetNamespace(ctx, id)
 	if err != nil {
-		if auditErr := s.logger.Audit.PolicyCRUDFailure(ctx, auditParams); auditErr != nil {
-			s.logger.ErrorContext(context.WithoutCancel(ctx), "failed to record policy audit event", slog.Any("error", auditErr))
-		}
+		s.logger.LogPolicyCRUDFailure(ctx, auditParams)
 		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextGetRetrievalFailed, slog.String("id", id))
 	}
 
 	_, err = s.dbClient.UnsafeDeleteNamespace(ctx, existing, req.Msg.GetFqn())
 	if err != nil {
-		if auditErr := s.logger.Audit.PolicyCRUDFailure(ctx, auditParams); auditErr != nil {
-			s.logger.ErrorContext(context.WithoutCancel(ctx), "failed to record policy audit event", slog.Any("error", auditErr))
-		}
+		s.logger.LogPolicyCRUDFailure(ctx, auditParams)
 		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextDeletionFailed, slog.String("id", id))
 	}
 
-	if auditErr := s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams); auditErr != nil {
-		s.logger.ErrorContext(context.WithoutCancel(ctx), "failed to record policy audit event", slog.Any("error", auditErr))
-	}
+	s.logger.LogPolicyCRUDSuccess(ctx, auditParams)
 
 	rsp.Namespace = &policy.Namespace{
 		Id: id,
@@ -237,14 +221,10 @@ func (s *UnsafeService) UnsafeUpdateAttribute(ctx context.Context, req *connect.
 		return nil
 	})
 	if err != nil {
-		if auditErr := s.logger.Audit.PolicyCRUDFailure(ctx, auditParams); auditErr != nil {
-			s.logger.ErrorContext(context.WithoutCancel(ctx), "failed to record policy audit event", slog.Any("error", auditErr))
-		}
+		s.logger.LogPolicyCRUDFailure(ctx, auditParams)
 		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextUpdateFailed, slog.String("attribute", req.Msg.String()))
 	}
-	if auditErr := s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams); auditErr != nil {
-		s.logger.ErrorContext(context.WithoutCancel(ctx), "failed to record policy audit event", slog.Any("error", auditErr))
-	}
+	s.logger.LogPolicyCRUDSuccess(ctx, auditParams)
 
 	return connect.NewResponse(rsp), nil
 }
@@ -262,26 +242,20 @@ func (s *UnsafeService) UnsafeReactivateAttribute(ctx context.Context, req *conn
 
 	original, err := s.dbClient.GetAttribute(ctx, id)
 	if err != nil {
-		if auditErr := s.logger.Audit.PolicyCRUDFailure(ctx, auditParams); auditErr != nil {
-			s.logger.ErrorContext(context.WithoutCancel(ctx), "failed to record policy audit event", slog.Any("error", auditErr))
-		}
+		s.logger.LogPolicyCRUDFailure(ctx, auditParams)
 		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextGetRetrievalFailed, slog.String("id", id))
 	}
 
 	updated, err := s.dbClient.UnsafeReactivateAttribute(ctx, id)
 	if err != nil {
-		if auditErr := s.logger.Audit.PolicyCRUDFailure(ctx, auditParams); auditErr != nil {
-			s.logger.ErrorContext(context.WithoutCancel(ctx), "failed to record policy audit event", slog.Any("error", auditErr))
-		}
+		s.logger.LogPolicyCRUDFailure(ctx, auditParams)
 		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextUpdateFailed, slog.String("id", id))
 	}
 
 	auditParams.Original = original
 	auditParams.Updated = updated
 
-	if auditErr := s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams); auditErr != nil {
-		s.logger.ErrorContext(context.WithoutCancel(ctx), "failed to record policy audit event", slog.Any("error", auditErr))
-	}
+	s.logger.LogPolicyCRUDSuccess(ctx, auditParams)
 
 	rsp.Attribute = &policy.Attribute{
 		Id: id,
@@ -303,23 +277,17 @@ func (s *UnsafeService) UnsafeDeleteAttribute(ctx context.Context, req *connect.
 
 	existing, err := s.dbClient.GetAttribute(ctx, id)
 	if err != nil {
-		if auditErr := s.logger.Audit.PolicyCRUDFailure(ctx, auditParams); auditErr != nil {
-			s.logger.ErrorContext(context.WithoutCancel(ctx), "failed to record policy audit event", slog.Any("error", auditErr))
-		}
+		s.logger.LogPolicyCRUDFailure(ctx, auditParams)
 		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextGetRetrievalFailed, slog.String("id", id))
 	}
 
 	_, err = s.dbClient.UnsafeDeleteAttribute(ctx, existing, req.Msg.GetFqn())
 	if err != nil {
-		if auditErr := s.logger.Audit.PolicyCRUDFailure(ctx, auditParams); auditErr != nil {
-			s.logger.ErrorContext(context.WithoutCancel(ctx), "failed to record policy audit event", slog.Any("error", auditErr))
-		}
+		s.logger.LogPolicyCRUDFailure(ctx, auditParams)
 		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextDeletionFailed, slog.String("id", id))
 	}
 
-	if auditErr := s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams); auditErr != nil {
-		s.logger.ErrorContext(context.WithoutCancel(ctx), "failed to record policy audit event", slog.Any("error", auditErr))
-	}
+	s.logger.LogPolicyCRUDSuccess(ctx, auditParams)
 
 	rsp.Attribute = &policy.Attribute{
 		Id: id,
@@ -364,14 +332,10 @@ func (s *UnsafeService) UnsafeUpdateAttributeValue(ctx context.Context, req *con
 		return nil
 	})
 	if err != nil {
-		if auditErr := s.logger.Audit.PolicyCRUDFailure(ctx, auditParams); auditErr != nil {
-			s.logger.ErrorContext(context.WithoutCancel(ctx), "failed to record policy audit event", slog.Any("error", auditErr))
-		}
+		s.logger.LogPolicyCRUDFailure(ctx, auditParams)
 		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextUpdateFailed, slog.String("value", req.Msg.String()))
 	}
-	if auditErr := s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams); auditErr != nil {
-		s.logger.ErrorContext(context.WithoutCancel(ctx), "failed to record policy audit event", slog.Any("error", auditErr))
-	}
+	s.logger.LogPolicyCRUDSuccess(ctx, auditParams)
 
 	return connect.NewResponse(rsp), nil
 }
@@ -389,26 +353,20 @@ func (s *UnsafeService) UnsafeReactivateAttributeValue(ctx context.Context, req 
 
 	original, err := s.dbClient.GetAttributeValue(ctx, id)
 	if err != nil {
-		if auditErr := s.logger.Audit.PolicyCRUDFailure(ctx, auditParams); auditErr != nil {
-			s.logger.ErrorContext(context.WithoutCancel(ctx), "failed to record policy audit event", slog.Any("error", auditErr))
-		}
+		s.logger.LogPolicyCRUDFailure(ctx, auditParams)
 		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextGetRetrievalFailed, slog.String("id", id))
 	}
 
 	updated, err := s.dbClient.UnsafeReactivateAttributeValue(ctx, id)
 	if err != nil {
-		if auditErr := s.logger.Audit.PolicyCRUDFailure(ctx, auditParams); auditErr != nil {
-			s.logger.ErrorContext(context.WithoutCancel(ctx), "failed to record policy audit event", slog.Any("error", auditErr))
-		}
+		s.logger.LogPolicyCRUDFailure(ctx, auditParams)
 		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextUpdateFailed, slog.String("id", id))
 	}
 
 	auditParams.Original = original
 	auditParams.Updated = updated
 
-	if auditErr := s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams); auditErr != nil {
-		s.logger.ErrorContext(context.WithoutCancel(ctx), "failed to record policy audit event", slog.Any("error", auditErr))
-	}
+	s.logger.LogPolicyCRUDSuccess(ctx, auditParams)
 
 	rsp.Value = &policy.Value{
 		Id: id,
@@ -429,23 +387,17 @@ func (s *UnsafeService) UnsafeDeleteAttributeValue(ctx context.Context, req *con
 
 	existing, err := s.dbClient.GetAttributeValue(ctx, id)
 	if err != nil {
-		if auditErr := s.logger.Audit.PolicyCRUDFailure(ctx, auditParams); auditErr != nil {
-			s.logger.ErrorContext(context.WithoutCancel(ctx), "failed to record policy audit event", slog.Any("error", auditErr))
-		}
+		s.logger.LogPolicyCRUDFailure(ctx, auditParams)
 		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextGetRetrievalFailed, slog.String("id", id))
 	}
 
 	_, err = s.dbClient.UnsafeDeleteAttributeValue(ctx, existing, req.Msg)
 	if err != nil {
-		if auditErr := s.logger.Audit.PolicyCRUDFailure(ctx, auditParams); auditErr != nil {
-			s.logger.ErrorContext(context.WithoutCancel(ctx), "failed to record policy audit event", slog.Any("error", auditErr))
-		}
+		s.logger.LogPolicyCRUDFailure(ctx, auditParams)
 		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextDeletionFailed, slog.String("id", id))
 	}
 
-	if auditErr := s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams); auditErr != nil {
-		s.logger.ErrorContext(context.WithoutCancel(ctx), "failed to record policy audit event", slog.Any("error", auditErr))
-	}
+	s.logger.LogPolicyCRUDSuccess(ctx, auditParams)
 
 	rsp.Value = &policy.Value{
 		Id: id,
@@ -483,14 +435,10 @@ func (s *UnsafeService) UnsafeUpdateKey(ctx context.Context, req *connect.Reques
 		return nil
 	})
 	if err != nil {
-		if auditErr := s.logger.Audit.PolicyCRUDFailure(ctx, auditParams); auditErr != nil {
-			s.logger.ErrorContext(context.WithoutCancel(ctx), "failed to record policy audit event", slog.Any("error", auditErr))
-		}
+		s.logger.LogPolicyCRUDFailure(ctx, auditParams)
 		return nil, err
 	}
-	if auditErr := s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams); auditErr != nil {
-		s.logger.ErrorContext(context.WithoutCancel(ctx), "failed to record policy audit event", slog.Any("error", auditErr))
-	}
+	s.logger.LogPolicyCRUDSuccess(ctx, auditParams)
 
 	return connect.NewResponse(rsp), nil
 }
@@ -562,14 +510,10 @@ func (s *UnsafeService) UnsafeDeleteKasKey(ctx context.Context, req *connect.Req
 		return nil
 	})
 	if err != nil {
-		if auditErr := s.logger.Audit.PolicyCRUDFailure(ctx, auditParams); auditErr != nil {
-			s.logger.ErrorContext(context.WithoutCancel(ctx), "failed to record policy audit event", slog.Any("error", auditErr))
-		}
+		s.logger.LogPolicyCRUDFailure(ctx, auditParams)
 		return nil, err
 	}
-	if auditErr := s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams); auditErr != nil {
-		s.logger.ErrorContext(context.WithoutCancel(ctx), "failed to record policy audit event", slog.Any("error", auditErr))
-	}
+	s.logger.LogPolicyCRUDSuccess(ctx, auditParams)
 
 	return connect.NewResponse(rsp), nil
 }

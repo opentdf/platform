@@ -1072,6 +1072,8 @@ func (p *Provider) tdf3Rewrap(ctx context.Context, requests []*kaspb.UnsignedRew
 				if auditErr := p.Logger.Audit.RewrapFailure(ctx, auditEventParams); auditErr != nil {
 					p.Logger.ErrorContext(context.WithoutCancel(ctx), "failed to record rewrap audit event",
 						slog.String("kao_id", kaoID),
+						slog.String("policy_id", policy.UUID.String()),
+						slog.String("rewrap_outcome", "denied"),
 						slog.Any("error", auditErr))
 				}
 				failedKAORewrapWithObligations(kaoResults, kao, err403("forbidden"), requiredObligationsForPolicy)
@@ -1087,6 +1089,8 @@ func (p *Provider) tdf3Rewrap(ctx context.Context, requests []*kaspb.UnsignedRew
 				if auditErr := p.Logger.Audit.RewrapFailure(ctx, auditEventParams); auditErr != nil {
 					p.Logger.ErrorContext(context.WithoutCancel(ctx), "failed to record rewrap audit event",
 						slog.String("kao_id", kaoID),
+						slog.String("policy_id", policy.UUID.String()),
+						slog.String("rewrap_outcome", "failed"),
 						slog.Any("error", auditErr))
 				}
 				failedKAORewrap(kaoResults, kao, err400("bad key for rewrap"))
@@ -1102,6 +1106,8 @@ func (p *Provider) tdf3Rewrap(ctx context.Context, requests []*kaspb.UnsignedRew
 			if auditErr := p.Logger.Audit.RewrapSuccess(ctx, auditEventParams); auditErr != nil {
 				p.Logger.ErrorContext(context.WithoutCancel(ctx), "failed to record rewrap audit event",
 					slog.String("kao_id", kaoID),
+					slog.String("policy_id", policy.UUID.String()),
+					slog.String("rewrap_outcome", "success"),
 					slog.Any("error", auditErr))
 			}
 		}

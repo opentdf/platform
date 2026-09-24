@@ -111,17 +111,13 @@ func (s KeyAccessServerRegistry) CreateKeyAccessServer(ctx context.Context,
 
 	ks, err := s.dbClient.CreateKeyAccessServer(ctx, req.Msg)
 	if err != nil {
-		if auditErr := s.logger.Audit.PolicyCRUDFailure(ctx, auditParams); auditErr != nil {
-			s.logger.ErrorContext(context.WithoutCancel(ctx), "failed to record policy audit event", slog.Any("error", auditErr))
-		}
+		s.logger.LogPolicyCRUDFailure(ctx, auditParams)
 		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextCreationFailed, slog.String("key_access_server", req.Msg.String()))
 	}
 
 	auditParams.ObjectID = ks.GetId()
 	auditParams.Original = ks
-	if auditErr := s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams); auditErr != nil {
-		s.logger.ErrorContext(context.WithoutCancel(ctx), "failed to record policy audit event", slog.Any("error", auditErr))
-	}
+	s.logger.LogPolicyCRUDSuccess(ctx, auditParams)
 
 	rsp.KeyAccessServer = ks
 
@@ -177,25 +173,19 @@ func (s KeyAccessServerRegistry) UpdateKeyAccessServer(ctx context.Context,
 
 	original, err := s.dbClient.GetKeyAccessServer(ctx, kasID)
 	if err != nil {
-		if auditErr := s.logger.Audit.PolicyCRUDFailure(ctx, auditParams); auditErr != nil {
-			s.logger.ErrorContext(context.WithoutCancel(ctx), "failed to record policy audit event", slog.Any("error", auditErr))
-		}
+		s.logger.LogPolicyCRUDFailure(ctx, auditParams)
 		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextGetRetrievalFailed, slog.String("id", kasID))
 	}
 
 	updated, err := s.dbClient.UpdateKeyAccessServer(ctx, kasID, req.Msg)
 	if err != nil {
-		if auditErr := s.logger.Audit.PolicyCRUDFailure(ctx, auditParams); auditErr != nil {
-			s.logger.ErrorContext(context.WithoutCancel(ctx), "failed to record policy audit event", slog.Any("error", auditErr))
-		}
+		s.logger.LogPolicyCRUDFailure(ctx, auditParams)
 		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextUpdateFailed, slog.String("id", kasID), slog.String("key_access_server", req.Msg.String()))
 	}
 
 	auditParams.Original = original
 	auditParams.Updated = updated
-	if auditErr := s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams); auditErr != nil {
-		s.logger.ErrorContext(context.WithoutCancel(ctx), "failed to record policy audit event", slog.Any("error", auditErr))
-	}
+	s.logger.LogPolicyCRUDSuccess(ctx, auditParams)
 
 	rsp.KeyAccessServer = &policy.KeyAccessServer{
 		Id: kasID,
@@ -218,14 +208,10 @@ func (s KeyAccessServerRegistry) DeleteKeyAccessServer(ctx context.Context,
 
 	_, err := s.dbClient.DeleteKeyAccessServer(ctx, req.Msg.GetId())
 	if err != nil {
-		if auditErr := s.logger.Audit.PolicyCRUDFailure(ctx, auditParams); auditErr != nil {
-			s.logger.ErrorContext(context.WithoutCancel(ctx), "failed to record policy audit event", slog.Any("error", auditErr))
-		}
+		s.logger.LogPolicyCRUDFailure(ctx, auditParams)
 		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextDeletionFailed, slog.String("id", req.Msg.GetId()))
 	}
-	if auditErr := s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams); auditErr != nil {
-		s.logger.ErrorContext(context.WithoutCancel(ctx), "failed to record policy audit event", slog.Any("error", auditErr))
-	}
+	s.logger.LogPolicyCRUDSuccess(ctx, auditParams)
 
 	rsp.KeyAccessServer = &policy.KeyAccessServer{
 		Id: kasID,
@@ -284,14 +270,10 @@ func (s KeyAccessServerRegistry) CreateKey(ctx context.Context, r *connect.Reque
 		return nil
 	})
 	if err != nil {
-		if auditErr := s.logger.Audit.PolicyCRUDFailure(ctx, auditParams); auditErr != nil {
-			s.logger.ErrorContext(context.WithoutCancel(ctx), "failed to record policy audit event", slog.Any("error", auditErr))
-		}
+		s.logger.LogPolicyCRUDFailure(ctx, auditParams)
 		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextCreationFailed, slog.String("key_access_server_keys", r.Msg.GetKasId()), slog.String("key_id", r.Msg.GetKeyId()))
 	}
-	if auditErr := s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams); auditErr != nil {
-		s.logger.ErrorContext(context.WithoutCancel(ctx), "failed to record policy audit event", slog.Any("error", auditErr))
-	}
+	s.logger.LogPolicyCRUDSuccess(ctx, auditParams)
 
 	return connect.NewResponse(resp), nil
 }
@@ -310,9 +292,7 @@ func (s KeyAccessServerRegistry) UpdateKey(ctx context.Context, req *connect.Req
 		Id: req.Msg.GetId(),
 	})
 	if err != nil {
-		if auditErr := s.logger.Audit.PolicyCRUDFailure(ctx, auditParams); auditErr != nil {
-			s.logger.ErrorContext(context.WithoutCancel(ctx), "failed to record policy audit event", slog.Any("error", auditErr))
-		}
+		s.logger.LogPolicyCRUDFailure(ctx, auditParams)
 		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextGetRetrievalFailed, slog.String("key_access_server_keys", req.Msg.GetId()))
 	}
 
@@ -338,14 +318,10 @@ func (s KeyAccessServerRegistry) UpdateKey(ctx context.Context, req *connect.Req
 		return nil
 	})
 	if err != nil {
-		if auditErr := s.logger.Audit.PolicyCRUDFailure(ctx, auditParams); auditErr != nil {
-			s.logger.ErrorContext(context.WithoutCancel(ctx), "failed to record policy audit event", slog.Any("error", auditErr))
-		}
+		s.logger.LogPolicyCRUDFailure(ctx, auditParams)
 		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextUpdateFailed, slog.String("key_access_server_keys", req.Msg.GetId()))
 	}
-	if auditErr := s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams); auditErr != nil {
-		s.logger.ErrorContext(context.WithoutCancel(ctx), "failed to record policy audit event", slog.Any("error", auditErr))
-	}
+	s.logger.LogPolicyCRUDSuccess(ctx, auditParams)
 
 	return connect.NewResponse(rsp), nil
 }
@@ -375,17 +351,13 @@ func (s KeyAccessServerRegistry) GetKey(ctx context.Context, r *connect.Request[
 		var err error
 		key, err = s.dbClient.GetKey(ctx, r.Msg.GetIdentifier())
 		if err != nil {
-			if auditErr := s.logger.Audit.PolicyCRUDFailure(ctx, auditParams); auditErr != nil {
-				s.logger.ErrorContext(context.WithoutCancel(ctx), "failed to record policy audit event", slog.Any("error", auditErr))
-			}
+			s.logger.LogPolicyCRUDFailure(ctx, auditParams)
 			return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextGetRetrievalFailed, slog.String("key_access_server_keys", r.Msg.String()))
 		}
 	}
 
 	auditParams.ObjectID = key.GetKey().GetKeyId()
-	if auditErr := s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams); auditErr != nil {
-		s.logger.ErrorContext(context.WithoutCancel(ctx), "failed to record policy audit event", slog.Any("error", auditErr))
-	}
+	s.logger.LogPolicyCRUDSuccess(ctx, auditParams)
 
 	rsp.KasKey = key
 
@@ -442,9 +414,7 @@ func (s KeyAccessServerRegistry) RotateKey(ctx context.Context, r *connect.Reque
 
 	original, err := s.dbClient.GetKey(ctx, identifier)
 	if err != nil {
-		if auditErr := s.logger.Audit.PolicyCRUDFailure(ctx, auditParams); auditErr != nil {
-			s.logger.ErrorContext(context.WithoutCancel(ctx), "failed to record policy audit event", slog.Any("error", auditErr))
-		}
+		s.logger.LogPolicyCRUDFailure(ctx, auditParams)
 		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextGetRetrievalFailed, slog.String("key_access_server_keys", objectID))
 	}
 
@@ -487,14 +457,10 @@ func (s KeyAccessServerRegistry) RotateKey(ctx context.Context, r *connect.Reque
 		return nil
 	})
 	if err != nil {
-		if auditErr := s.logger.Audit.PolicyCRUDFailure(ctx, auditParams); auditErr != nil {
-			s.logger.ErrorContext(context.WithoutCancel(ctx), "failed to record policy audit event", slog.Any("error", auditErr))
-		}
+		s.logger.LogPolicyCRUDFailure(ctx, auditParams)
 		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextKeyRotationFailed, slog.String("active_key_id", objectID), slog.String("new_key_id", r.Msg.GetNewKey().GetKeyId()))
 	}
-	if auditErr := s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams); auditErr != nil {
-		s.logger.ErrorContext(context.WithoutCancel(ctx), "failed to record policy audit event", slog.Any("error", auditErr))
-	}
+	s.logger.LogPolicyCRUDSuccess(ctx, auditParams)
 
 	// Implementation for RotateKey
 	return connect.NewResponse(resp), nil
@@ -535,14 +501,10 @@ func (s KeyAccessServerRegistry) SetBaseKey(ctx context.Context, r *connect.Requ
 		return nil
 	})
 	if err != nil {
-		if auditErr := s.logger.Audit.PolicyCRUDFailure(ctx, auditParams); auditErr != nil {
-			s.logger.ErrorContext(context.WithoutCancel(ctx), "failed to record policy audit event", slog.Any("error", auditErr))
-		}
+		s.logger.LogPolicyCRUDFailure(ctx, auditParams)
 		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextUpdateFailed, slog.String("set_default_key", r.Msg.GetId()))
 	}
-	if auditErr := s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams); auditErr != nil {
-		s.logger.ErrorContext(context.WithoutCancel(ctx), "failed to record policy audit event", slog.Any("error", auditErr))
-	}
+	s.logger.LogPolicyCRUDSuccess(ctx, auditParams)
 
 	return connect.NewResponse(resp), nil
 }

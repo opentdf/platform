@@ -111,6 +111,20 @@ func NewLogger(config Config) (*Logger, error) {
 	return logger, nil
 }
 
+// LogPolicyCRUDSuccess records a successful policy operation and logs any audit error.
+func (l *Logger) LogPolicyCRUDSuccess(ctx context.Context, params audit.PolicyEventParams) {
+	if err := l.Audit.PolicyCRUDSuccess(ctx, params); err != nil {
+		l.ErrorContext(context.WithoutCancel(ctx), "failed to record policy audit event", slog.Any("error", err))
+	}
+}
+
+// LogPolicyCRUDFailure records a failed policy operation and logs any audit error.
+func (l *Logger) LogPolicyCRUDFailure(ctx context.Context, params audit.PolicyEventParams) {
+	if err := l.Audit.PolicyCRUDFailure(ctx, params); err != nil {
+		l.ErrorContext(context.WithoutCancel(ctx), "failed to record policy audit event", slog.Any("error", err))
+	}
+}
+
 //nolint:sloglint // explicitly add key/value pairs to propagate to both loggers
 func (l *Logger) With(key string, value string) *Logger {
 	return &Logger{

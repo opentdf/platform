@@ -4,6 +4,8 @@ import (
 	"bufio"
 	"context"
 	"encoding/json"
+	"errors"
+	"log/slog"
 	"os"
 	"strings"
 	"testing"
@@ -75,6 +77,65 @@ func testAuditEvent() audit.Event {
 	})
 	event.Verb = audit.VerbRewrap
 	return *event
+}
+
+func TestLogPolicyCRUD(t *testing.T) {
+	for _, tt := range []struct {
+		name   string
+		result audit.ActionResult
+		record func(*Logger, context.Context, audit.PolicyEventParams)
+	}{
+		{"success", audit.ActionResultSuccess, (*Logger).LogPolicyCRUDSuccess},
+		{"failure", audit.ActionResultError, (*Logger).LogPolicyCRUDFailure},
+	} {
+		for _, processorFails := range []bool{false, true} {
+			name := tt.name
+			if processorFails {
+				name += "/audit_error"
+			}
+			t.Run(name, func(t *testing.T) {
+				ctx, cancel := context.WithCancel(tracedContext(t))
+				cancel()
+				calls := 0
+				lines := captureStdout(t, func() {
+					lg, err := NewLogger(Config{
+						Level: "info", Output: "stdout", Type: "json",
+						AuditProcessor: audit.ProcessorFunc(func(ctx context.Context, event audit.Event) error {
+							calls++
+							require.NoError(t, ctx.Err())
+							assert.Equal(t, tt.result, event.Action.Result)
+							assert.Equal(t, "action-id", event.Object.ID)
+							if processorFails {
+								return errors.New("audit destination unavailable")
+							}
+							return nil
+						}),
+						ContextAttrs: []ContextAttrFunc{func(ctx context.Context) []slog.Attr {
+							require.NoError(t, ctx.Err())
+							return nil
+						}},
+					})
+					require.NoError(t, err)
+					tt.record(lg, ctx, audit.PolicyEventParams{
+						ActionType: audit.ActionTypeCreate,
+						ObjectType: audit.ObjectTypeAction,
+						ObjectID:   "action-id",
+					})
+				})
+				require.Equal(t, 1, calls)
+				if !processorFails {
+					require.Empty(t, lines)
+					return
+				}
+				require.Len(t, lines, 1)
+				entry := decodeLine(t, lines[0])
+				assert.Equal(t, "ERROR", entry["level"])
+				assert.Equal(t, "failed to record policy audit event", entry["msg"])
+				assert.Contains(t, entry["error"], "audit destination unavailable")
+				assert.Equal(t, testTraceIDHex, entry[traceIDKey])
+			})
+		}
+	}
 }
 
 func Test_NewLogger_CorrelatesMainAndAuditLogs(t *testing.T) {

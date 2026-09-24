@@ -5,7 +5,9 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/json"
+	"fmt"
 	"net/http"
+	"sync"
 	"testing"
 	"time"
 
@@ -393,6 +395,119 @@ func TestKasKeyCache_Expiration(t *testing.T) {
 	// Verify the entry was actually removed from the cache
 	_, exists := cache.c[cacheKey]
 	assert.False(t, exists, "Expired key should be removed from cache")
+}
+
+// The cache hangs off the SDK struct, so every operation on a single SDK
+// instance shares it. Concurrent use must not race: an unsynchronized map is a
+// fatal runtime error ("concurrent map writes"), which no caller can recover
+// from. Note that concurrent reads are not safe either, because get() deletes
+// expired entries.
+func TestKasKeyCache_ConcurrentAccess(t *testing.T) {
+	cache := newKasKeyCache()
+	require.NotNil(t, cache, "Failed to create KAS key cache")
+
+	const (
+		workers    = 8
+		iterations = 200
+	)
+
+	var wg sync.WaitGroup
+	for i := range workers {
+		wg.Add(1)
+		go func(worker int) {
+			defer wg.Done()
+			for j := range iterations {
+				cache.store(KASInfo{
+					URL:       fmt.Sprintf("https://kas%d.example.org", j%4),
+					Algorithm: "ec:secp256r1",
+					KID:       fmt.Sprintf("kid-%d", worker),
+					PublicKey: "test-public-key",
+				})
+				cache.get(fmt.Sprintf("https://kas%d.example.org", j%4), "ec:secp256r1", "")
+			}
+		}(i)
+	}
+	wg.Wait()
+}
+
+// clear() swaps the map wholesale rather than mutating it, so it races against
+// concurrent get/store as a plain field write. The Go runtime's "concurrent map
+// writes" check does not catch a pointer swap -- only the race detector does.
+func TestKasKeyCache_ConcurrentClear(t *testing.T) {
+	cache := newKasKeyCache()
+	require.NotNil(t, cache, "Failed to create KAS key cache")
+
+	const (
+		workers    = 8
+		iterations = 200
+	)
+
+	var wg sync.WaitGroup
+	for i := range workers {
+		wg.Add(1)
+		go func(worker int) {
+			defer wg.Done()
+			for j := range iterations {
+				// One worker invalidates while the others keep using the cache.
+				if worker == 0 {
+					cache.clear()
+					continue
+				}
+				cache.store(KASInfo{
+					URL:       "https://kas.example.org",
+					Algorithm: "ec:secp256r1",
+					KID:       fmt.Sprintf("kid-%d", j%4),
+					PublicKey: "test-public-key",
+				})
+				cache.get("https://kas.example.org", "ec:secp256r1", fmt.Sprintf("kid-%d", j%4))
+			}
+		}(i)
+	}
+	wg.Wait()
+}
+
+// get() evicts expired entries, so readers mutate the map too. Concurrent
+// readers alone -- no store() in sight -- must still be safe.
+func TestKasKeyCache_ConcurrentExpiryEviction(t *testing.T) {
+	cache := newKasKeyCache()
+	require.NotNil(t, cache, "Failed to create KAS key cache")
+
+	const (
+		workers = 8
+		entries = 64
+	)
+
+	// Seed entries that are already past the TTL, so every get() below takes
+	// the eviction branch.
+	keys := make([]kasKeyRequest, 0, entries)
+	for i := range entries {
+		ki := KASInfo{
+			URL:       fmt.Sprintf("https://kas%d.example.org", i),
+			Algorithm: "ec:secp256r1",
+			KID:       "expired-kid",
+			PublicKey: "test-public-key",
+		}
+		cache.store(ki)
+		cacheKey := kasKeyRequest{ki.URL, ki.Algorithm, ki.KID}
+		expired := cache.c[cacheKey]
+		expired.Time = time.Now().Add(-kasKeyCacheTTL - time.Minute)
+		cache.c[cacheKey] = expired
+		keys = append(keys, cacheKey)
+	}
+
+	var wg sync.WaitGroup
+	for range workers {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for _, k := range keys {
+				assert.Nil(t, cache.get(k.url, k.algorithm, k.kid), "Expired key should not be returned")
+			}
+		}()
+	}
+	wg.Wait()
+
+	assert.Empty(t, cache.c, "Expired entries should have been evicted")
 }
 
 func Test_newConnectRewrapRequest(t *testing.T) {

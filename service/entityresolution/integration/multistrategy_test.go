@@ -85,12 +85,10 @@ func NewMultiStrategyTestAdapter() *MultiStrategyTestAdapter {
 				},
 				InputMapping: []types.InputMapping{},
 				OutputMapping: []types.OutputMapping{
+					// azp is covered by azp_jwt_strategy below; mapping it here too
+					// would just clobber client_id
 					{
 						SourceClaim: "client_id",
-						ClaimName:   "client_id",
-					},
-					{
-						SourceClaim: "azp",
 						ClaimName:   "client_id",
 					},
 				},

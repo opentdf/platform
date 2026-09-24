@@ -122,8 +122,11 @@ var (
 	// an archive that assembles cleanly and fails at decrypt. Fencing
 	// the writer surfaces it at the next call instead.
 	//
-	// Unreachable with the default archive writer, whose CleanupSegment
-	// cannot fail; it is the injected-factory case this guards.
+	// The default archive writer reaches this only from states the
+	// chunked writer does not otherwise produce -- inconsistent size
+	// accounting, or a Finalize that failed partway through the central
+	// directory -- so in practice this mostly guards the
+	// injected-factory case.
 	ErrChunkedCleanupFailed = errors.New("chunked: segment cleanup failed after a failed write; writer is unusable")
 
 	// ErrChunkedCloseFailed is returned when the archive's Close fails
@@ -761,13 +764,15 @@ func (w *chunkedWriter) WriteSegment(ctx context.Context, index int, data []byte
 			// The archive may have partially recorded the write before
 			// failing; CleanupSegment undoes that so a retry starts
 			// from a state indistinguishable from never having been
-			// attempted (see zipstream.SegmentWriter's contract). The
-			// concrete writer's CleanupSegment cannot itself fail; a
-			// custom archiveWriterFactory that does fail here leaves
-			// the archive in a state this code cannot characterize, so
-			// release() fences the writer. It does not change what this
-			// call returns -- the original write error is the cause,
-			// and reporting the rollback instead would hide it.
+			// attempted (see zipstream.SegmentWriter's contract). If it
+			// fails -- whether from the concrete writer, which refuses
+			// once its accounting is inconsistent or its central
+			// directory is committed, or from a custom
+			// archiveWriterFactory -- the archive is left in a state this
+			// code cannot characterize, so release() fences the writer.
+			// It does not change what this call returns: the original
+			// write error is the cause, and reporting the rollback
+			// instead would hide it.
 			//
 			// This must precede release(): the reservation is the only
 			// thing keeping another goroutine out of this index, and

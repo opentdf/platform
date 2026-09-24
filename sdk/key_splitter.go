@@ -337,7 +337,7 @@ type splitShare struct {
 	kases []KASInfo
 }
 
-// staticKeyAccess returns key access objects resolved ahead of time.
+// staticKeyAccess returns key access objects resolved ahead of time
 type staticKeyAccess struct {
 	// kaos are the pre-built key access objects.
 	kaos []KeyAccess

@@ -3,8 +3,11 @@ package sdk
 import (
 	"context"
 	"crypto/subtle"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
+	"slices"
 
 	"github.com/opentdf/platform/lib/ocrypto"
 	"github.com/opentdf/platform/protocol/go/policy"
@@ -234,18 +237,6 @@ func (k KASPublicKey) validate(mapKey string) error {
 	return nil
 }
 
-// toKASInfo adapts the splitter's wrapping-key descriptor to the
-// KASInfo shape consumed by createKeyAccess. Default is not carried
-// over; it plays no part in building a key access object.
-func (k KASPublicKey) toKASInfo() KASInfo {
-	return KASInfo{
-		URL:       k.URL,
-		PublicKey: k.PEM,
-		KID:       k.KID,
-		Algorithm: string(k.Algorithm),
-	}
-}
-
 // ErrSplitterRequiresDefaultKAS is returned by the default key
 // splitter when no default KAS was supplied. The default splitter is
 // single-KAS only; multi-attribute splits require injecting a full
@@ -319,4 +310,198 @@ func (s *singleKASSplitter) Split(_ context.Context, _ []*policy.Value, dek []by
 			KASURLs: []string{url},
 		}},
 	}, nil
+}
+
+// keyAccessResolver turns a DEK into the two manifest fields that
+// bind it to policy: the base64-encoded policy object and the key
+// access objects wrapping the DEK to each KAS. The writer holds one;
+// SDK.CreateTDF resolves its key access up front and supplies a
+// staticKeyAccess, while the chunked path defers to a KeySplitter at
+// Finalize time.
+type keyAccessResolver interface {
+	resolve(ctx context.Context, dek []byte, cfg *chunkedFinalizeConfig) (string, []KeyAccess, error)
+}
+
+// splitShare is one XOR share of the DEK together with every KAS able
+// to unwrap it. Several KAS entries on one share mean any of them
+// suffices (OR semantics); several shares mean all are required (AND).
+type splitShare struct {
+	// id names the share in the manifest ("sid"). Empty when the TDF
+	// has a single share.
+	id string
+
+	// data is the share itself.
+	data []byte
+
+	// kases are the wrapping targets for this share.
+	kases []KASInfo
+}
+
+// staticKeyAccess returns key access objects resolved ahead of time
+type staticKeyAccess struct {
+	// kaos are the pre-built key access objects.
+	kaos []KeyAccess
+
+	// policy is the base64-encoded policy object the kaos are bound to.
+	policy string
+}
+
+func (r staticKeyAccess) resolve(_ context.Context, _ []byte, _ *chunkedFinalizeConfig) (string, []KeyAccess, error) {
+	return r.policy, r.kaos, nil
+}
+
+// splitterKeyAccess adapts a public KeySplitter to keyAccessResolver.
+type splitterKeyAccess struct {
+	// splitter maps attributes plus the DEK onto KAS-addressed shares.
+	splitter KeySplitter
+}
+
+func (r splitterKeyAccess) resolve(ctx context.Context, dek []byte, cfg *chunkedFinalizeConfig) (string, []KeyAccess, error) {
+	// Hand the splitter copies of both slices. A splitter that zeroes or
+	// rewrites the DEK it is given -- scrubbing what it thinks is its own
+	// working buffer, say -- would desynchronize the DEK from the segment
+	// signatures already computed against it and from the root signature still
+	// to come, producing a TDF that fails verification exactly as a tampered
+	// one would.
+	//
+	// The attributes need the same defense for a different reason: on the
+	// fallback path cfg.attributes *is* the writer's retained initialAttributes
+	// slice, so a splitter that rewrites an element changes the policy built
+	// from it just below -- and every later Finalize and GetManifest on that
+	// writer.
+	splits, err := r.splitter.Split(ctx, slices.Clone(cfg.attributes), slices.Clone(dek), cfg.defaultKAS)
+	if err != nil {
+		return "", nil, err
+	}
+	// This is the one place caller-supplied split data is turned into
+	// manifest content, so it is where the splitter's contract is
+	// enforced -- for the default splitter and for anything injected
+	// through WithChunkedKeySplitter alike. Validate guarantees every
+	// invariant the loop below relies on: at least one split, every
+	// split naming at least one KAS, every named KAS resolving to a
+	// usable wrapping key, and split ids that the reader can group on.
+	if err := splits.Validate(); err != nil {
+		return "", nil, err
+	}
+	// Validate first, then this: Validate names the specific structural fault
+	// (no splits, empty share, duplicate id, unresolved KAS), all of which
+	// VerifyReconstruction can only report as a length or value mismatch.
+	if err := splits.VerifyReconstruction(dek); err != nil {
+		return "", nil, err
+	}
+
+	shares := make([]splitShare, 0, len(splits.Splits))
+	for _, split := range splits.Splits {
+		share := splitShare{id: split.ID, data: split.Data}
+		for _, url := range split.KASURLs {
+			// Validate resolved every URL, so the lookup cannot miss.
+			pk := splits.KASPublicKeys[url]
+			share.kases = append(share.kases, KASInfo{
+				URL:       url,
+				PublicKey: pk.PEM,
+				KID:       pk.KID,
+				Algorithm: string(pk.Algorithm),
+			})
+		}
+		shares = append(shares, share)
+	}
+
+	fqns := make([]string, 0, len(cfg.attributes))
+	for _, v := range cfg.attributes {
+		fqns = append(fqns, v.GetFqn())
+	}
+	return resolvePolicyAndKeyAccess(fqns, shares, cfg.encryptedMetadata)
+}
+
+// resolvePolicyAndKeyAccess builds the policy document the DEK is bound to and wraps
+// every share to its KAS targets, returning the two manifest fields that bind a DEK to
+// policy. Shared by SDK.CreateTDF's KAO template path and the chunked writer's
+// KeySplitter path, so both emit byte-identical policy for the same attributes.
+func resolvePolicyAndKeyAccess(fqns []string, shares []splitShare, metadata string) (string, []KeyAccess, error) {
+	policyObj, err := createPolicyObjectFromFQNs(fqns)
+	if err != nil {
+		return "", nil, fmt.Errorf("fail to create policy object:%w", err)
+	}
+	policyObjectAsStr, err := json.Marshal(policyObj)
+	if err != nil {
+		return "", nil, fmt.Errorf("json.Marshal failed:%w", err)
+	}
+	base64Policy := string(ocrypto.Base64Encode(policyObjectAsStr))
+
+	kaos, err := buildKeyAccessObjects(shares, base64Policy, metadata)
+	if err != nil {
+		return "", nil, err
+	}
+	return base64Policy, kaos, nil
+}
+
+// buildKeyAccessObjects wraps every share to each of its KAS targets,
+// emitting the manifest's keyAccess array in share order.
+func buildKeyAccessObjects(shares []splitShare, base64Policy, metadata string) ([]KeyAccess, error) {
+	var kaos []KeyAccess
+	for _, share := range shares {
+		// A share with no KAS target contributes no key access object,
+		// so nothing in the manifest ever hands its bytes back. The
+		// reader derives the shares it must collect from the key access
+		// objects present, so it never learns one is missing: it XORs
+		// what it has, reconstructs the wrong DEK, and reports a root
+		// signature failure, which reads as tampering. The aggregate
+		// check below cannot catch this -- it passes as soon as any
+		// other share produced a KAO.
+		if len(share.kases) == 0 {
+			return nil, fmt.Errorf("splitID:[%s]: share names no KAS; its bytes could never be unwrapped", share.id)
+		}
+
+		// Policy binding and metadata are keyed on the split share, not
+		// on the KAS, so compute them once per share rather than once
+		// per KAS URL in an OR-group.
+		policyBinding := createPolicyBinding(share.data, base64Policy)
+
+		var encryptedMetadata string
+		if metadata != "" {
+			var err error
+			encryptedMetadata, err = encryptMetadata(share.data, metadata)
+			if err != nil {
+				return nil, err
+			}
+		}
+
+		for _, kasInfo := range share.kases {
+			if kasInfo.PublicKey == "" {
+				return nil, fmt.Errorf("splitID:[%s], kas:[%s]: %w", share.id, kasInfo.URL, errKasPubKeyMissing)
+			}
+			keyAccess, err := createKeyAccess(kasInfo, share.data, policyBinding, encryptedMetadata, share.id)
+			if err != nil {
+				return nil, err
+			}
+			kaos = append(kaos, keyAccess)
+		}
+	}
+	if len(kaos) == 0 {
+		return nil, errors.New("no key access objects generated")
+	}
+	return kaos, nil
+}
+
+// splitDEK returns count XOR shares of dek. Every share but the last
+// is random; the last absorbs the parity so the shares XOR back to dek.
+func splitDEK(dek []byte, count int, rand io.Reader) ([][]byte, error) {
+	if count <= 0 {
+		return nil, errors.New("no key splits requested")
+	}
+	shares := make([][]byte, count)
+	parity := make([]byte, len(dek))
+	copy(parity, dek)
+	for i := range count - 1 {
+		share := make([]byte, len(dek))
+		if _, err := io.ReadFull(rand, share); err != nil {
+			return nil, fmt.Errorf("generate key split failed: %w", err)
+		}
+		for j, b := range share {
+			parity[j] ^= b
+		}
+		shares[i] = share
+	}
+	shares[count-1] = parity
+	return shares, nil
 }

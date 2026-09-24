@@ -605,6 +605,7 @@ func (as *AuthorizationService) getDecisions(ctx context.Context, dr *authorizat
 						Decision:      authorization.DecisionResponse_DECISION_DENY,
 						EntityChainId: ec.GetId(),
 						Action: &policy.Action{
+							//nolint:staticcheck // the v1 authorization API still returns the deprecated Action.Value oneof for clients that have not moved to Action.Name
 							Value: &policy.Action_Standard{
 								Standard: policy.Action_STANDARD_ACTION_TRANSMIT,
 							},
@@ -769,6 +770,7 @@ func (as *AuthorizationService) getDecisions(ctx context.Context, dr *authorizat
 				Decision:      decision,
 				EntityChainId: ec.GetId(),
 				Action: &policy.Action{
+					//nolint:staticcheck // the v1 authorization API still returns the deprecated Action.Value oneof for clients that have not moved to Action.Name
 					Value: &policy.Action_Standard{
 						Standard: policy.Action_STANDARD_ACTION_TRANSMIT,
 					},

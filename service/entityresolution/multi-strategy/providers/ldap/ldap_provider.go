@@ -9,6 +9,9 @@ import (
 	"github.com/opentdf/platform/service/entityresolution/multi-strategy/types"
 )
 
+// providerTypeLDAP is the registry name for this entity-resolution provider.
+const providerTypeLDAP = "ldap"
+
 // Provider implements the Provider interface for LDAP directories
 type Provider struct {
 	name    string
@@ -61,7 +64,7 @@ func (p *Provider) Name() string {
 
 // Type returns the provider type
 func (p *Provider) Type() string {
-	return "ldap"
+	return providerTypeLDAP
 }
 
 // ResolveEntity executes LDAP search to resolve entity information
@@ -194,7 +197,7 @@ func (p *Provider) ResolveEntity(ctx context.Context, strategy types.MappingStra
 	}
 
 	// Add metadata
-	result.Metadata["provider_type"] = "ldap"
+	result.Metadata["provider_type"] = providerTypeLDAP
 	result.Metadata["provider_name"] = p.name
 	result.Metadata["base_dn"] = strategy.LDAPSearch.BaseDN
 	result.Metadata["search_filter"] = searchFilter

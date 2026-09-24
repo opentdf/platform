@@ -373,7 +373,7 @@ func expandGroup(ctx context.Context, groupID string, kcConnector *Connector, kc
 			logger.DebugContext(ctx,
 				"adding members",
 				slog.Int("amount", len(grpMembers)),
-				slog.String("from group", *grp.Name),
+				slog.String("from_group", *grp.Name),
 			)
 			for i := 0; i < len(grpMembers); i++ {
 				user := grpMembers[i]

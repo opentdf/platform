@@ -6,6 +6,9 @@ import (
 	"github.com/opentdf/platform/service/entityresolution/multi-strategy/types"
 )
 
+// providerTypeClaims is the registry name for this entity-resolution provider.
+const providerTypeClaims = "claims"
+
 // Provider implements the Provider interface for JWT claims
 type Provider struct {
 	name   string
@@ -29,7 +32,7 @@ func (p *Provider) Name() string {
 
 // Type returns the provider type
 func (p *Provider) Type() string {
-	return "claims"
+	return providerTypeClaims
 }
 
 // ResolveEntity extracts claims directly from JWT (passed via context)
@@ -55,7 +58,7 @@ func (p *Provider) ResolveEntity(ctx context.Context, strategy types.MappingStra
 	}
 
 	// Add metadata about the source
-	result.Metadata["provider_type"] = "claims"
+	result.Metadata["provider_type"] = providerTypeClaims
 	result.Metadata["provider_name"] = p.name
 	result.Metadata["source"] = "jwt_claims"
 	result.Metadata["claim_count"] = len(claims)

@@ -141,19 +141,19 @@ func (om *OutputMapper) applyTransformation(value interface{}, transformation st
 	}
 
 	switch strings.ToLower(transformation) {
-	case "array":
+	case transformationArray:
 		return om.transformToArray(value)
 
-	case "csv_to_array":
+	case transformationCSVToArray:
 		return om.transformCSVToArray(value)
 
 	case "ldap_dn_to_cn_array":
 		return om.transformLDAPDNToCNArray(value)
 
-	case "lowercase":
+	case transformationLowercase:
 		return om.transformToLowercase(value)
 
-	case "uppercase":
+	case transformationUppercase:
 		return om.transformToUppercase(value)
 
 	case "trim":

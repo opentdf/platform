@@ -97,7 +97,6 @@ func TestMain(m *testing.M) {
 		Started: true,
 	}
 
-	//nolint:sloglint // emoji
 	slog.Info("📀 starting postgres container")
 	postgres, err := tc.GenericContainer(context.Background(), req)
 	if err != nil {
@@ -125,7 +124,6 @@ func TestMain(m *testing.M) {
 
 	conf.DB.Port = int(port.Num())
 
-	//nolint:sloglint // emoji
 	slog.Info("🏠 loading fixtures")
 	fixtures.LoadFixtureData("../internal/fixtures/policy_fixtures.yaml")
 

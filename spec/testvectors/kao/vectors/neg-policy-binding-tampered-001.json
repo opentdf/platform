@@ -1,0 +1,34 @@
+{
+  "id": "neg-policy-binding-tampered-001",
+  "description": "Policy binding hash is computed under a different DEK; HMAC verify fails.",
+  "conformance": [
+    "KAO-C-206",
+    "KAO-C-350"
+  ],
+  "category": "negative",
+  "algorithm": "RSA-OAEP-256",
+  "manifestSchemaVersion": "4.4.0",
+  "inputs": {
+    "kao": {
+      "alg": "RSA-OAEP-256",
+      "kas": "https://kas.example.com",
+      "kid": "rsa-2048-test",
+      "sid": "s-0",
+      "protectedKey": "DhkZM+5lVY0ILW3TgY3tNjK1FJT7IKlJsOo/Kr9lVwETfQyjzlfvwifa1LiIitiio+YX6yKbv7aI00to73nJlrwg6DslY/cH4g9M2DPLgk26xwk8DaL52a8AQWun/MdyTN5WBEJ/6OoKjpi8ZM+6YMd0eDJ6Ds/Z/cIfK+1PLXy4hGVbcJ0BHUaVppLoPjIfSCCUVncFWIUSC3Dze9gXLNriHShwfxGthLtqFTvohlqY/ekJW03qxgdWvjPVterKH10ctBp44uXZeILYZHHL7J5xrgwGj/znShqsiv6mFSSP6y/z0DPggomqZt/Hn3/XC8CVHKso5s37RflFPGeMIg==",
+      "policyBinding": {
+        "alg": "HS256",
+        "hash": "C2hRxNamp1u0NXJ8y4YqNibGqozwCmfF0tLt0ETS7oo="
+      }
+    },
+    "policy": "eyJ1dWlkIjoiMTIzNDU2NzgtMTIzNC00MzIxLTk4NzYtMTIzNDU2Nzg5YWJjIiwiYm9keSI6eyJkYXRhQXR0cmlidXRlcyI6W3siYXR0cmlidXRlIjoiaHR0cHM6Ly9leGFtcGxlLmNvbS9hdHRyL0NsYXNzaWZpY2F0aW9uL3ZhbHVlL1B1YmxpYyJ9XSwiZGlzc2VtIjpbXX19",
+    "keys": {
+      "kas": "keys/rsa-2048-test.priv.pem"
+    },
+    "dekShare": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f"
+  },
+  "expected": {
+    "outcome": "reject",
+    "errorCode": "kao.policy_binding_mismatch",
+    "policyBindingValid": false
+  }
+}

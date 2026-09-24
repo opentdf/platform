@@ -1,0 +1,29 @@
+---
+import Layout from "@/layouts/Layout.astro";
+import { ERROR_CODES, ERROR_DOCS } from "@/data/errors";
+---
+
+<Layout title="KAO error codes" description="Canonical KAO error taxonomy">
+  <h1 class="text-2xl font-bold mb-4">KAO error codes</h1>
+  <p class="text-sm text-slate-600 mb-6">
+    Stable codes from BaseTDF-KAO-CONF §3. Both the Python reference validator
+    and the browser-side validator emit these codes; CI verifies parity
+    against the markdown table.
+  </p>
+  <table class="w-full text-sm">
+    <thead class="text-left text-slate-500 border-b">
+      <tr>
+        <th class="py-2 pr-4">Code</th>
+        <th class="py-2">Returned when</th>
+      </tr>
+    </thead>
+    <tbody>
+      {ERROR_CODES.map((code) => (
+        <tr class="border-b align-top">
+          <td class="py-2 pr-4 font-mono whitespace-nowrap">{code}</td>
+          <td class="py-2">{ERROR_DOCS[code]}</td>
+        </tr>
+      ))}
+    </tbody>
+  </table>
+</Layout>

@@ -1,0 +1,49 @@
+{
+  "id": "pos-mlkem-1024-001",
+  "description": "ML-KEM-1024 encapsulation + AES-GCM wrap with deterministic DRBG seed.",
+  "conformance": [
+    "KAO-C-001",
+    "KAO-C-030",
+    "KAO-C-140",
+    "KAO-C-142",
+    "KAO-C-143"
+  ],
+  "category": "positive",
+  "algorithm": "ML-KEM-1024",
+  "manifestSchemaVersion": "4.4.0",
+  "inputs": {
+    "kao": {
+      "alg": "ML-KEM-1024",
+      "kas": "https://kas.example.com",
+      "kid": "ml-kem-1024-test",
+      "sid": "s-0",
+      "protectedKey": "AAECAwQFBgcICQoL/eVAB8Ex3v4dwGWC4uyH37N7j5oEGWMXwr47NqmBbFGqukeXe9ETCpdaht57fYin",
+      "ephemeralKey": "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",
+      "policyBinding": {
+        "alg": "HS256",
+        "hash": "pTejsj6nAGsYTpJuLYsAertyrCY6GWVdDVQNG6D1O7A="
+      }
+    },
+    "policy": "eyJ1dWlkIjoiMTIzNDU2NzgtMTIzNC00MzIxLTk4NzYtMTIzNDU2Nzg5YWJjIiwiYm9keSI6eyJkYXRhQXR0cmlidXRlcyI6W3siYXR0cmlidXRlIjoiaHR0cHM6Ly9leGFtcGxlLmNvbS9hdHRyL0NsYXNzaWZpY2F0aW9uL3ZhbHVlL1B1YmxpYyJ9XSwiZGlzc2VtIjpbXX19",
+    "keys": {
+      "kas": "keys/ml-kem-1024-test.json"
+    }
+  },
+  "expected": {
+    "outcome": "accept",
+    "policyBindingValid": true,
+    "recoveredDek": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+    "normalizedKao": {
+      "alg": "ML-KEM-1024",
+      "kas": "https://kas.example.com",
+      "kid": "ml-kem-1024-test",
+      "sid": "s-0",
+      "protectedKey": "AAECAwQFBgcICQoL/eVAB8Ex3v4dwGWC4uyH37N7j5oEGWMXwr47NqmBbFGqukeXe9ETCpdaht57fYin",
+      "ephemeralKey": "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",
+      "policyBinding": {
+        "alg": "HS256",
+        "hash": "pTejsj6nAGsYTpJuLYsAertyrCY6GWVdDVQNG6D1O7A="
+      }
+    }
+  }
+}

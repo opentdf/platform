@@ -1,0 +1,130 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://opentdf.io/spec/schema/BaseTDF/kao.schema.json",
+  "title": "Key Access Object (KAO)",
+  "description": "Key Access Object schema for BaseTDF v4.4.0. Defines the structure used to protect and transport DEK shares within a TDF manifest. Supports both v4.4.0 canonical fields and v4.3.0 backward-compatible aliases.",
+  "type": "object",
+  "properties": {
+    "alg": {
+      "type": "string",
+      "description": "Algorithm identifier from the BaseTDF-ALG key protection registry. Unambiguously identifies the cryptographic mechanism used to protect the DEK share. REQUIRED in v4.4.0; absent in legacy KAOs where 'type' is used instead.",
+      "enum": [
+        "RSA-OAEP",
+        "RSA-OAEP-256",
+        "ECDH-HKDF",
+        "ML-KEM-768",
+        "ML-KEM-1024",
+        "X-ECDH-ML-KEM-768"
+      ]
+    },
+    "type": {
+      "type": "string",
+      "description": "DEPRECATED. Legacy key type field from BaseTDF v4.3.0. When both 'alg' and 'type' are present, 'alg' takes precedence.",
+      "enum": [
+        "wrapped",
+        "ec-wrapped",
+        "remote"
+      ]
+    },
+    "kas": {
+      "type": "string",
+      "description": "Fully qualified URL of the Key Access Service that holds the private key corresponding to the public key used to protect the DEK share. This is the v4.4.0 canonical name for the KAS URL.",
+      "format": "uri"
+    },
+    "url": {
+      "type": "string",
+      "description": "DEPRECATED. Legacy name for the 'kas' field. When both are present, 'kas' takes precedence.",
+      "format": "uri"
+    },
+    "kid": {
+      "type": "string",
+      "description": "Key identifier for the KAS key pair used to protect the DEK share. The KAS uses this value to select the correct private key for decapsulation or unwrapping."
+    },
+    "sid": {
+      "type": "string",
+      "description": "Split identifier. Groups KAOs that protect the same DEK share within a key splitting configuration. All KAOs with the same sid value protect the same DEK share and represent alternative paths to recover that share."
+    },
+    "protectedKey": {
+      "type": "string",
+      "description": "Base64-encoded algorithm-specific protected DEK share. Contents depend on the algorithm identified by 'alg'."
+    },
+    "wrappedKey": {
+      "type": "string",
+      "description": "DEPRECATED. Legacy name for the 'protectedKey' field. When both are present, 'protectedKey' takes precedence."
+    },
+    "ephemeralKey": {
+      "type": "string",
+      "description": "Base64-encoded ephemeral public key or KEM ciphertext. REQUIRED for key agreement and key encapsulation algorithms (ECDH-HKDF, ML-KEM-768, ML-KEM-1024, X-ECDH-ML-KEM-768); not used for key wrapping algorithms (RSA-OAEP, RSA-OAEP-256)."
+    },
+    "ephemeralPublicKey": {
+      "type": "string",
+      "description": "DEPRECATED. Legacy name for the 'ephemeralKey' field. Implementations MUST accept both field names when reading."
+    },
+    "policyBinding": {
+      "description": "Policy binding verification data. Cryptographically binds the KAO to the policy embedded in the TDF manifest. In v4.4.0 this is an object with 'alg' and 'hash' fields. In legacy KAOs it may be a bare string (the hash value alone, with HS256 assumed).",
+      "oneOf": [
+        {
+          "type": "object",
+          "description": "Structured policy binding with explicit algorithm and hash.",
+          "properties": {
+            "alg": {
+              "type": "string",
+              "description": "The MAC algorithm used for the binding. MUST be 'HS256' (HMAC-SHA256)."
+            },
+            "hash": {
+              "type": "string",
+              "description": "Base64-encoded MAC digest of the canonical policy string."
+            }
+          },
+          "required": ["alg", "hash"],
+          "additionalProperties": false
+        },
+        {
+          "type": "string",
+          "description": "Legacy bare-string policy binding (hash value only). Algorithm defaults to HS256."
+        }
+      ]
+    },
+    "encryptedMetadata": {
+      "type": "string",
+      "description": "Base64-encoded encrypted metadata. When present, contains metadata encrypted with the DEK share using AES-256-GCM. The value is a base64-encoded JSON structure with 'ciphertext' and 'iv' fields."
+    },
+    "protocol": {
+      "type": "string",
+      "description": "Legacy field, value 'kas'. Informational only.",
+      "enum": ["kas"]
+    },
+    "schemaVersion": {
+      "type": "string",
+      "description": "Legacy field indicating the KAO schema version (e.g., '1.0'). The TDF manifest-level schemaVersion field is the authoritative version indicator in v4.4.0."
+    }
+  },
+  "allOf": [
+    {
+      "description": "A KAO must have either 'alg' or 'type' to identify the key protection algorithm.",
+      "anyOf": [
+        { "required": ["alg"] },
+        { "required": ["type"] }
+      ]
+    },
+    {
+      "description": "A KAO must have either 'kas' or 'url' to identify the Key Access Service.",
+      "anyOf": [
+        { "required": ["kas"] },
+        { "required": ["url"] }
+      ]
+    },
+    {
+      "description": "A KAO must have either 'protectedKey' or 'wrappedKey' to carry the encrypted DEK share.",
+      "anyOf": [
+        { "required": ["protectedKey"] },
+        { "required": ["wrappedKey"] }
+      ]
+    },
+    {
+      "description": "A KAO must have a policyBinding.",
+      "required": ["policyBinding"]
+    }
+  ],
+  "additionalProperties": false
+}

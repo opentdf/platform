@@ -1,0 +1,376 @@
+{
+  "$schema": "vector.schema.json",
+  "version": "1.0.0",
+  "description": "Index of BaseTDF KAO conformance test vectors. Each entry summarizes one vector file under vectors/. The full list of conformance assertions is in spec/basetdf/basetdf-kao-conformance.md.",
+  "specVersion": "4.4.0",
+  "vectors": [
+    {
+      "id": "pos-rsa-oaep-sha1-001",
+      "file": "vectors/pos-rsa-oaep-sha1-001.json",
+      "category": "positive",
+      "algorithm": "RSA-OAEP",
+      "conformance": ["KAO-C-001", "KAO-C-100", "KAO-C-102"],
+      "summary": "Round-trip wrap/unwrap with RSA-OAEP (SHA-1 MGF), all v4.4 fields present."
+    },
+    {
+      "id": "pos-rsa-oaep-256-001",
+      "file": "vectors/pos-rsa-oaep-256-001.json",
+      "category": "positive",
+      "algorithm": "RSA-OAEP-256",
+      "conformance": ["KAO-C-001", "KAO-C-006", "KAO-C-101", "KAO-C-102", "KAO-C-202", "KAO-C-203", "KAO-C-204"],
+      "summary": "Round-trip wrap/unwrap with RSA-OAEP-256, structured policy binding, encrypted metadata absent."
+    },
+    {
+      "id": "pos-ecdh-hkdf-aesgcm-001",
+      "file": "vectors/pos-ecdh-hkdf-aesgcm-001.json",
+      "category": "positive",
+      "algorithm": "ECDH-HKDF",
+      "conformance": ["KAO-C-001", "KAO-C-030", "KAO-C-120", "KAO-C-122"],
+      "summary": "Round-trip with v4.4 ECDH-HKDF AES-GCM wrapping (not legacy XOR)."
+    },
+    {
+      "id": "pos-mlkem-768-001",
+      "file": "vectors/pos-mlkem-768-001.json",
+      "category": "positive",
+      "algorithm": "ML-KEM-768",
+      "conformance": ["KAO-C-001", "KAO-C-030", "KAO-C-140", "KAO-C-142", "KAO-C-143"],
+      "summary": "ML-KEM-768 encap/decap + AES-GCM wrap of DEK share."
+    },
+    {
+      "id": "pos-mlkem-1024-001",
+      "file": "vectors/pos-mlkem-1024-001.json",
+      "category": "positive",
+      "algorithm": "ML-KEM-1024",
+      "conformance": ["KAO-C-001", "KAO-C-030", "KAO-C-140", "KAO-C-142", "KAO-C-143"],
+      "summary": "ML-KEM-1024 round-trip; ephemeralKey is 1568 bytes."
+    },
+    {
+      "id": "pos-hybrid-x-ecdh-mlkem-768-001",
+      "file": "vectors/pos-hybrid-x-ecdh-mlkem-768-001.json",
+      "category": "positive",
+      "algorithm": "X-ECDH-ML-KEM-768",
+      "conformance": ["KAO-C-001", "KAO-C-030", "KAO-C-160", "KAO-C-161", "KAO-C-163"],
+      "summary": "Hybrid round-trip; ephemeralKey is 65 + 1088 = 1153 bytes."
+    },
+    {
+      "id": "pos-multi-split-2of2-001",
+      "file": "vectors/pos-multi-split-2of2-001.json",
+      "category": "positive",
+      "algorithm": "mixed",
+      "conformance": ["KAO-C-007", "KAO-C-275", "KAO-C-276"],
+      "summary": "Two-share XOR split: one RSA-OAEP-256 KAO, one ML-KEM-768 KAO; reconstruction yields the full DEK."
+    },
+    {
+      "id": "pos-encrypted-metadata-001",
+      "file": "vectors/pos-encrypted-metadata-001.json",
+      "category": "positive",
+      "algorithm": "RSA-OAEP-256",
+      "conformance": ["KAO-C-032", "KAO-C-250", "KAO-C-251", "KAO-C-252"],
+      "summary": "Decrypts encryptedMetadata with the recovered DEK share; recoveredMetadata is asserted."
+    },
+    {
+      "id": "pos-alias-precedence-alg-over-type-001",
+      "file": "vectors/pos-alias-precedence-alg-over-type-001.json",
+      "category": "positive",
+      "algorithm": "RSA-OAEP-256",
+      "conformance": ["KAO-C-020"],
+      "summary": "Both alg and type present and AGREE; implementation resolves to alg without warning."
+    },
+    {
+      "id": "pos-dual-aliases-equal-001",
+      "file": "vectors/pos-dual-aliases-equal-001.json",
+      "category": "positive",
+      "algorithm": "RSA-OAEP-256",
+      "conformance": ["KAO-C-304"],
+      "summary": "v4.4 KAO with both kas/url and protectedKey/wrappedKey present and byte-identical."
+    },
+    {
+      "id": "pos-rsa-with-extraneous-ephemeral-warn-001",
+      "file": "vectors/pos-rsa-with-extraneous-ephemeral-warn-001.json",
+      "category": "positive",
+      "algorithm": "RSA-OAEP-256",
+      "conformance": ["KAO-C-031"],
+      "summary": "RSA KAO carrying an ephemeralKey; non-fatal mode accepts with a warning."
+    },
+    {
+      "id": "pos-same-kas-split-warn-001",
+      "file": "vectors/pos-same-kas-split-warn-001.json",
+      "category": "positive",
+      "algorithm": "RSA-OAEP-256",
+      "conformance": ["KAO-C-278"],
+      "summary": "All splits resolve to the same KAS URL; SHOULD-warn assertion."
+    },
+    {
+      "id": "kat-ecdh-hkdf-salt-001",
+      "file": "vectors/kat-ecdh-hkdf-salt-001.json",
+      "category": "kat",
+      "algorithm": "ECDH-HKDF",
+      "conformance": ["KAO-C-121"],
+      "summary": "Pins HKDF salt = SHA256('TDF') for ECDH-HKDF."
+    },
+    {
+      "id": "kat-mlkem-hkdf-info-001",
+      "file": "vectors/kat-mlkem-hkdf-info-001.json",
+      "category": "kat",
+      "algorithm": "ML-KEM-768",
+      "conformance": ["KAO-C-141"],
+      "summary": "Pins HKDF info = 'BaseTDF-KEM' for ML-KEM."
+    },
+    {
+      "id": "kat-hybrid-hkdf-001",
+      "file": "vectors/kat-hybrid-hkdf-001.json",
+      "category": "kat",
+      "algorithm": "X-ECDH-ML-KEM-768",
+      "conformance": ["KAO-C-162"],
+      "summary": "Pins HKDF salt = SHA256('BaseTDF-Hybrid') and info = 'BaseTDF-Hybrid-Key' for hybrid."
+    },
+    {
+      "id": "kat-policy-binding-001",
+      "file": "vectors/kat-policy-binding-001.json",
+      "category": "kat",
+      "algorithm": "RSA-OAEP",
+      "conformance": ["KAO-C-200", "KAO-C-201", "KAO-C-203"],
+      "summary": "Fixed DEK share + canonical policy bytes; pins the expected HMAC-SHA256 digest."
+    },
+    {
+      "id": "legacy-type-wrapped-001",
+      "file": "vectors/legacy-type-wrapped-001.json",
+      "category": "legacy",
+      "algorithm": "RSA-OAEP",
+      "conformance": ["KAO-C-300", "KAO-C-302"],
+      "summary": "v4.3 KAO with type='wrapped' and no alg; reader infers RSA-OAEP."
+    },
+    {
+      "id": "legacy-type-ec-wrapped-xor-001",
+      "file": "vectors/legacy-type-ec-wrapped-xor-001.json",
+      "category": "legacy",
+      "algorithm": "ECDH-HKDF",
+      "conformance": ["KAO-C-123", "KAO-C-301"],
+      "summary": "v4.3 ec-wrapped KAO using XOR-based wrapping (legacy mode)."
+    },
+    {
+      "id": "legacy-binding-hex-001",
+      "file": "vectors/legacy-binding-hex-001.json",
+      "category": "legacy",
+      "algorithm": "RSA-OAEP",
+      "conformance": ["KAO-C-220"],
+      "summary": "Object-form policyBinding whose hash decodes to 64 hex ASCII bytes; reader hex-decodes once more."
+    },
+    {
+      "id": "legacy-binding-hex-002",
+      "file": "vectors/legacy-binding-hex-002.json",
+      "category": "legacy",
+      "algorithm": "RSA-OAEP",
+      "conformance": ["KAO-C-220"],
+      "summary": "Bare-string policyBinding using hex-then-base64 encoding."
+    },
+    {
+      "id": "legacy-binding-bare-string-001",
+      "file": "vectors/legacy-binding-bare-string-001.json",
+      "category": "legacy",
+      "algorithm": "RSA-OAEP",
+      "conformance": ["KAO-C-221"],
+      "summary": "Bare-string policyBinding with raw 32-byte digest base64-encoded; HS256 implied."
+    },
+    {
+      "id": "legacy-aliases-all-001",
+      "file": "vectors/legacy-aliases-all-001.json",
+      "category": "legacy",
+      "algorithm": "RSA-OAEP",
+      "conformance": ["KAO-C-302"],
+      "summary": "Legacy KAO using only v4.3 aliases (type, url, wrappedKey, ephemeralPublicKey)."
+    },
+    {
+      "id": "neg-missing-alg-and-type-001",
+      "file": "vectors/neg-missing-alg-and-type-001.json",
+      "category": "negative",
+      "algorithm": "n/a",
+      "conformance": ["KAO-C-002"],
+      "summary": "KAO with neither alg nor type; expected reject."
+    },
+    {
+      "id": "neg-missing-kas-and-url-001",
+      "file": "vectors/neg-missing-kas-and-url-001.json",
+      "category": "negative",
+      "algorithm": "n/a",
+      "conformance": ["KAO-C-003"],
+      "summary": "KAO with neither kas nor url; expected reject."
+    },
+    {
+      "id": "neg-missing-protected-and-wrapped-001",
+      "file": "vectors/neg-missing-protected-and-wrapped-001.json",
+      "category": "negative",
+      "algorithm": "n/a",
+      "conformance": ["KAO-C-004"],
+      "summary": "KAO with neither protectedKey nor wrappedKey; expected reject."
+    },
+    {
+      "id": "neg-missing-policy-binding-001",
+      "file": "vectors/neg-missing-policy-binding-001.json",
+      "category": "negative",
+      "algorithm": "n/a",
+      "conformance": ["KAO-C-005"],
+      "summary": "KAO with no policyBinding; expected reject."
+    },
+    {
+      "id": "neg-unknown-alg-001",
+      "file": "vectors/neg-unknown-alg-001.json",
+      "category": "negative",
+      "algorithm": "n/a",
+      "conformance": ["KAO-C-010", "KAO-C-352"],
+      "summary": "alg value not in the registered enum; expected reject."
+    },
+    {
+      "id": "neg-unknown-type-001",
+      "file": "vectors/neg-unknown-type-001.json",
+      "category": "negative",
+      "algorithm": "n/a",
+      "conformance": ["KAO-C-011"],
+      "summary": "type value not in the registered enum; expected reject."
+    },
+    {
+      "id": "neg-kas-not-uri-001",
+      "file": "vectors/neg-kas-not-uri-001.json",
+      "category": "negative",
+      "algorithm": "n/a",
+      "conformance": ["KAO-C-012"],
+      "summary": "kas value is not a valid URI; expected schema rejection."
+    },
+    {
+      "id": "neg-additional-properties-001",
+      "file": "vectors/neg-additional-properties-001.json",
+      "category": "negative",
+      "algorithm": "n/a",
+      "conformance": ["KAO-C-013"],
+      "summary": "KAO contains an unknown top-level property; expected reject."
+    },
+    {
+      "id": "neg-policy-binding-extra-prop-001",
+      "file": "vectors/neg-policy-binding-extra-prop-001.json",
+      "category": "negative",
+      "algorithm": "n/a",
+      "conformance": ["KAO-C-014"],
+      "summary": "policyBinding object carries a property other than alg/hash; expected reject."
+    },
+    {
+      "id": "neg-alg-type-conflict-001",
+      "file": "vectors/neg-alg-type-conflict-001.json",
+      "category": "negative",
+      "algorithm": "n/a",
+      "conformance": ["KAO-C-020", "KAO-C-353"],
+      "summary": "alg='ML-KEM-768' and type='wrapped' disagree; fatal-mode reject."
+    },
+    {
+      "id": "neg-alias-conflict-kas-url-001",
+      "file": "vectors/neg-alias-conflict-kas-url-001.json",
+      "category": "negative",
+      "algorithm": "n/a",
+      "conformance": ["KAO-C-021"],
+      "summary": "kas and url both present with different values; expected reject."
+    },
+    {
+      "id": "neg-alias-conflict-protected-wrapped-001",
+      "file": "vectors/neg-alias-conflict-protected-wrapped-001.json",
+      "category": "negative",
+      "algorithm": "n/a",
+      "conformance": ["KAO-C-022"],
+      "summary": "protectedKey and wrappedKey both present with different values; expected reject."
+    },
+    {
+      "id": "neg-alias-conflict-ephemeral-001",
+      "file": "vectors/neg-alias-conflict-ephemeral-001.json",
+      "category": "negative",
+      "algorithm": "n/a",
+      "conformance": ["KAO-C-023"],
+      "summary": "ephemeralKey and ephemeralPublicKey both present with different values; expected reject."
+    },
+    {
+      "id": "neg-ephemeral-key-required-mlkem-001",
+      "file": "vectors/neg-ephemeral-key-required-mlkem-001.json",
+      "category": "negative",
+      "algorithm": "ML-KEM-768",
+      "conformance": ["KAO-C-030"],
+      "summary": "alg='ML-KEM-768' but ephemeralKey absent; expected reject."
+    },
+    {
+      "id": "neg-ephemeral-key-required-ecdh-001",
+      "file": "vectors/neg-ephemeral-key-required-ecdh-001.json",
+      "category": "negative",
+      "algorithm": "ECDH-HKDF",
+      "conformance": ["KAO-C-030"],
+      "summary": "alg='ECDH-HKDF' but ephemeralKey absent; expected reject."
+    },
+    {
+      "id": "neg-ephemeral-key-required-hybrid-001",
+      "file": "vectors/neg-ephemeral-key-required-hybrid-001.json",
+      "category": "negative",
+      "algorithm": "X-ECDH-ML-KEM-768",
+      "conformance": ["KAO-C-030"],
+      "summary": "alg='X-ECDH-ML-KEM-768' but ephemeralKey absent; expected reject."
+    },
+    {
+      "id": "neg-policy-binding-tampered-001",
+      "file": "vectors/neg-policy-binding-tampered-001.json",
+      "category": "negative",
+      "algorithm": "RSA-OAEP-256",
+      "conformance": ["KAO-C-206", "KAO-C-350"],
+      "summary": "Policy bytes modified after binding; HMAC verify fails."
+    },
+    {
+      "id": "neg-policy-binding-alg-unsupported-001",
+      "file": "vectors/neg-policy-binding-alg-unsupported-001.json",
+      "category": "negative",
+      "algorithm": "RSA-OAEP-256",
+      "conformance": ["KAO-C-202", "KAO-C-351"],
+      "summary": "policyBinding.alg='HS512'; expected reject."
+    },
+    {
+      "id": "neg-aead-tag-failure-001",
+      "file": "vectors/neg-aead-tag-failure-001.json",
+      "category": "negative",
+      "algorithm": "ECDH-HKDF",
+      "conformance": ["KAO-C-354"],
+      "summary": "AES-GCM ciphertext byte flipped; tag verification fails."
+    },
+    {
+      "id": "neg-mlkem-decap-failure-001",
+      "file": "vectors/neg-mlkem-decap-failure-001.json",
+      "category": "negative",
+      "algorithm": "ML-KEM-768",
+      "conformance": ["KAO-C-143", "KAO-C-355"],
+      "summary": "ML-KEM ciphertext corrupted; decapsulation rejects."
+    },
+    {
+      "id": "neg-split-reconstruction-failure-001",
+      "file": "vectors/neg-split-reconstruction-failure-001.json",
+      "category": "negative",
+      "algorithm": "mixed",
+      "conformance": ["KAO-C-276", "KAO-C-356"],
+      "summary": "Two-share split with one share dropped; reconstruction MUST fail."
+    },
+    {
+      "id": "neg-duplicate-sid-001",
+      "file": "vectors/neg-duplicate-sid-001.json",
+      "category": "negative",
+      "algorithm": "mixed",
+      "conformance": ["KAO-C-275"],
+      "summary": "Two distinct splits sharing the same sid; expected reject."
+    },
+    {
+      "id": "neg-metadata-decrypt-failure-001",
+      "file": "vectors/neg-metadata-decrypt-failure-001.json",
+      "category": "negative",
+      "algorithm": "RSA-OAEP-256",
+      "conformance": ["KAO-C-252"],
+      "summary": "encryptedMetadata ciphertext byte flipped; AES-GCM tag failure."
+    },
+    {
+      "id": "neg-metadata-format-invalid-001",
+      "file": "vectors/neg-metadata-format-invalid-001.json",
+      "category": "negative",
+      "algorithm": "RSA-OAEP-256",
+      "conformance": ["KAO-C-250"],
+      "summary": "Decrypted encryptedMetadata is not a valid ciphertext+iv JSON object."
+    }
+  ]
+}

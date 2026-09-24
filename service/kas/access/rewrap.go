@@ -447,6 +447,15 @@ func (p *Provider) extractSRTBody(ctx context.Context, headers http.Header, in *
 		return nil, isV1, err400("clientPublicKey failure")
 	}
 
+	// Pure ML-KEM client session keys are SPKI-wrapped under the NIST ML-KEM
+	// OIDs (FIPS 203), which x509.ParsePKIXPublicKey does not recognize and
+	// would otherwise reject as a parse failure. Accept them here; whether
+	// ML-KEM rewrap is actually enabled is checked later in tdf3Rewrap.
+	if oid, _, kemErr := ocrypto.ParseKEMPublicSPKI(block.Bytes); kemErr == nil &&
+		(oid.Equal(ocrypto.OIDMLKEM768) || oid.Equal(ocrypto.OIDMLKEM1024)) {
+		return &requestBody, isV1, nil
+	}
+
 	// Try to parse the clientPublicKey
 	clientPublicKey, err := x509.ParsePKIXPublicKey(block.Bytes)
 	if err != nil {
@@ -1029,6 +1038,11 @@ func (p *Provider) tdf3Rewrap(ctx context.Context, requests []*kaspb.UnsignedRew
 			return "", results, nil
 		}
 	}
+	if ocrypto.IsMLKEMKeyType(asymEncrypt.KeyType()) && !p.Preview.MLKEMTDFEnabled {
+		p.Logger.ErrorContext(ctx, "ml-kem session key rewrap not enabled")
+		failAllKaos(requests, results, err400("invalid request"))
+		return "", results, nil
+	}
 
 	for _, pdpAccess := range pdpAccessResults {
 		policy := pdpAccess.Policy
@@ -1060,12 +1074,13 @@ func (p *Provider) tdf3Rewrap(ctx context.Context, requests []*kaspb.UnsignedRew
 
 			policyBinding := kao.GetKeyAccessObject().GetPolicyBinding().GetHash()
 			auditEventParams := audit.RewrapAuditEventParams{
-				Policy:        kasPolicy,
-				IsSuccess:     access,
-				TDFFormat:     "tdf3",
-				Algorithm:     req.GetAlgorithm(),
-				PolicyBinding: policyBinding,
-				KeyID:         kao.GetKeyAccessObject().GetKid(),
+				Policy:         kasPolicy,
+				IsSuccess:      access,
+				TDFFormat:      "tdf3",
+				Algorithm:      req.GetAlgorithm(),
+				PolicyBinding:  policyBinding,
+				KeyID:          kao.GetKeyAccessObject().GetKid(),
+				SessionKeyType: string(asymEncrypt.KeyType()),
 			}
 
 			if !access {

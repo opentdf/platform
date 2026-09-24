@@ -36,10 +36,11 @@ var rewrapParams = RewrapAuditEventParams{
 			},
 		},
 	},
-	TDFFormat:     "test-tdf-format",
-	Algorithm:     "test-algorithm",
-	PolicyBinding: "test-policy-binding",
-	KeyID:         "r1",
+	TDFFormat:      "test-tdf-format",
+	Algorithm:      "test-algorithm",
+	PolicyBinding:  "test-policy-binding",
+	KeyID:          "r1",
+	SessionKeyType: "test-session-key-type",
 }
 
 var policyCRUDParams = PolicyEventParams{
@@ -171,6 +172,7 @@ func TestAuditRewrapSuccess(t *testing.T) {
 			},
 			"eventMetaData": {
 			  "algorithm": "%s",
+				"sessionKeyType": "%s",
 				"keyID": "%s",
 				"policyBinding": "%s",
 				"tdfFormat": "%s"
@@ -190,6 +192,7 @@ func TestAuditRewrapSuccess(t *testing.T) {
 		rewrapAttrsJSON,
 		TestActorID,
 		rewrapParams.Algorithm,
+		rewrapParams.SessionKeyType,
 		rewrapParams.KeyID,
 		rewrapParams.PolicyBinding,
 		rewrapParams.TDFFormat,
@@ -230,6 +233,7 @@ func TestAuditRewrapFailure(t *testing.T) {
 			},
 			"eventMetaData": {
 			  "algorithm": "%s",
+				"sessionKeyType": "%s",
 				"keyID": "%s",
 				"policyBinding": "%s",
 				"tdfFormat": "%s"
@@ -249,6 +253,7 @@ func TestAuditRewrapFailure(t *testing.T) {
 		rewrapAttrsJSON,
 		TestActorID,
 		rewrapParams.Algorithm,
+		rewrapParams.SessionKeyType,
 		rewrapParams.KeyID,
 		rewrapParams.PolicyBinding,
 		rewrapParams.TDFFormat,
@@ -568,6 +573,7 @@ func TestDeferredRewrapSuccess(t *testing.T) {
 			},
 			"eventMetaData": {
 			  "algorithm": "%s",
+				"sessionKeyType": "%s",
 				"keyID": "%s",
 				"policyBinding": "%s",
 				"tdfFormat": "%s"
@@ -587,6 +593,7 @@ func TestDeferredRewrapSuccess(t *testing.T) {
 		rewrapAttrsJSON,
 		TestActorID,
 		rewrapParams.Algorithm,
+		rewrapParams.SessionKeyType,
 		rewrapParams.KeyID,
 		rewrapParams.PolicyBinding,
 		rewrapParams.TDFFormat,
@@ -628,6 +635,7 @@ func TestDeferredRewrapCancelled(t *testing.T) {
 			},
 			"eventMetaData": {
 			  "algorithm": "%s",
+				"sessionKeyType": "%s",
 				"cancellation_error": "%s",
 				"keyID": "%s",
 				"policyBinding": "%s",
@@ -648,6 +656,7 @@ func TestDeferredRewrapCancelled(t *testing.T) {
 		rewrapAttrsJSON,
 		TestActorID,
 		rewrapParams.Algorithm,
+		rewrapParams.SessionKeyType,
 		"operation failed",
 		rewrapParams.KeyID,
 		rewrapParams.PolicyBinding,

@@ -149,6 +149,27 @@ func FuzzReader(f *testing.F) {
 		{name: "0.manifest.json", data: []byte(`{"m":1}`)},
 	}, false))
 
+	// A ZIP64 extra field declaring a stored size of 1<<63. Narrowed to an
+	// int64 that is negative, which nothing downstream rejected before
+	// make([]byte, size) panicked. This is the seed that covers that panic;
+	// the reader-side precondition is pinned by
+	// TestReaderRejectsZip64ValuesBeyondArchive.
+	f.Add(buildRawZip(f, []rawZipEntry{
+		{
+			name:                "0.payload",
+			data:                []byte("payload bytes"),
+			zip64:               true,
+			zip64CompressedSize: beyondInt64,
+		},
+		{name: "0.manifest.json", data: []byte(`{"m":1}`)},
+	}, false))
+
+	// A stored size that stays inside the archive but reaches past the central
+	// directory, which would serve ZIP metadata back as file content. The size
+	// is derived rather than hard-coded so a fixture change cannot quietly
+	// bring it back in bounds and turn the seed into a no-op.
+	f.Add(overrunningCentralDirectorySeed(f))
+
 	f.Fuzz(func(t *testing.T, data []byte) {
 		reader, err := NewReader(bytes.NewReader(data))
 		if err != nil {
@@ -159,6 +180,44 @@ func FuzzReader(f *testing.F) {
 			if err != nil {
 				assert.Empty(t, b)
 			}
+
+			// Drive the index bound too. Sizes come from the archive, so a
+			// forged one reaches ReadFileData the way a hostile manifest's
+			// accumulated segment offsets would.
+			size, err := reader.ReadFileSize(k)
+			if err != nil {
+				continue
+			}
+			for _, r := range [][2]int64{{0, size}, {size / 2, size / 2}, {size - 1, 1}, {size, 1}} {
+				got, err := reader.ReadFileData(k, r[0], r[1])
+				if err == nil {
+					assert.Len(t, got, int(r[1]))
+				}
+			}
 		}
 	})
+}
+
+// overrunningCentralDirectorySeed builds a two-entry archive whose first entry
+// declares a stored size reaching from its data to the last byte before the
+// EOCD -- inside the archive, but well past the central directory.
+func overrunningCentralDirectorySeed(f *testing.F) []byte {
+	f.Helper()
+
+	payload := rawZipEntry{name: "0.payload", data: []byte("payload bytes"), zip64: true}
+	manifest := rawZipEntry{name: "0.manifest.json", data: []byte(`{"m":1}`)}
+
+	honest := buildRawZip(f, []rawZipEntry{payload, manifest}, false)
+	reader, err := NewReader(bytes.NewReader(honest))
+	if err != nil {
+		f.Fatalf("seed fixture must parse: %v", err)
+	}
+
+	dataStart := uint64(reader.fileEntries[payload.name].index)
+	payload.zip64CompressedSize = uint64(len(honest)) - endOfCDRecordSize - dataStart
+	if dataStart+payload.zip64CompressedSize <= cdStartOf(f, honest) {
+		f.Fatal("seed no longer reaches past the central directory")
+	}
+
+	return buildRawZip(f, []rawZipEntry{payload, manifest}, false)
 }

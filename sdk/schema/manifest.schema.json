@@ -1,6 +1,6 @@
 {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
-    "$id": "https://example.com/manifest.schema.json",
+    "$id": "urn:opentdf:schema:manifest:4.3.0:strict:r1",
     "title": "manifest",
     "description": "TDF manifest in JSON",
     "type": "object",

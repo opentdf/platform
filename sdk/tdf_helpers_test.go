@@ -2,6 +2,7 @@ package sdk
 
 import (
 	"crypto/rand"
+	"crypto/sha256"
 	"encoding/hex"
 	"testing"
 
@@ -132,34 +133,50 @@ func TestCreatePolicyBinding(t *testing.T) {
 
 	policyJSON := `{"uuid":"test","body":{"dataAttributes":[{"attribute":"test"}],"dissem":[]}}`
 
-	// The wire format is base64(hex(hmac)), and KAS decodes in that order. The
-	// hex layer is easy to drop in a rewrite: every property below still holds
-	// without it, but every KAS would reject the result. Pin it to a vector.
+	// Two wire formats, selected by useHex (see WithTargetMode). Spec >= 4.3.0 is
+	// base64(hmac); pre-4.3.0 is base64(hex(hmac)). Either layer is easy to drop or
+	// re-add in a rewrite -- every property below still holds, but the result would
+	// no longer match what KAS decodes for that target mode. Pin both to vectors.
 	t.Run("known answer", func(t *testing.T) {
 		fixedKey := make([]byte, kKeySize)
 		for i := range fixedKey {
 			fixedKey[i] = byte(i)
 		}
+		policy := ocrypto.Base64Encode([]byte(`{"uuid":"test"}`))
 
-		binding := createPolicyBinding(fixedKey, ocrypto.Base64Encode([]byte(`{"uuid":"test"}`)))
+		assert.Equal(t,
+			"wc43nUyrFtbactuerWTXy0ypvayrjAaF/5Lj90qiwS0=",
+			createPolicyBinding(fixedKey, policy, false).Hash,
+			"spec >= 4.3.0 binding should be base64(hmac)")
 
 		assert.Equal(t,
 			"YzFjZTM3OWQ0Y2FiMTZkNmRhNzJkYjllYWQ2NGQ3Y2I0Y2E5YmRhY2FiOGMwNjg1ZmY5MmUzZjc0YWEyYzEyZA==",
-			binding.Hash)
+			createPolicyBinding(fixedKey, policy, true).Hash,
+			"pre-4.3.0 binding should be base64(hex(hmac))")
 	})
 
 	t.Run("binds with HS256 over base64 policy", func(t *testing.T) {
-		binding := createPolicyBinding(symKey, ocrypto.Base64Encode([]byte(policyJSON)))
+		for _, useHex := range []bool{false, true} {
+			binding := createPolicyBinding(symKey, ocrypto.Base64Encode([]byte(policyJSON)), useHex)
 
-		assert.Equal(t, hmacIntegrityAlgorithm, binding.Alg)
-		require.NotEmpty(t, binding.Hash)
-		_, err := ocrypto.Base64Decode([]byte(binding.Hash))
-		require.NoError(t, err, "hash should be base64")
+			assert.Equal(t, hmacIntegrityAlgorithm, binding.Alg)
+			require.NotEmpty(t, binding.Hash)
+			decoded, err := ocrypto.Base64Decode([]byte(binding.Hash))
+			require.NoError(t, err, "hash should be base64")
+
+			// The two encodings are distinguishable by length alone, which is how
+			// KAS dual-accepts them without a version signal.
+			if useHex {
+				assert.Len(t, decoded, hex.EncodedLen(sha256.Size))
+			} else {
+				assert.Len(t, decoded, sha256.Size)
+			}
+		}
 	})
 
 	t.Run("different policies bind differently", func(t *testing.T) {
-		b1 := createPolicyBinding(symKey, ocrypto.Base64Encode([]byte(`{"policy":"test1"}`)))
-		b2 := createPolicyBinding(symKey, ocrypto.Base64Encode([]byte(`{"policy":"test2"}`)))
+		b1 := createPolicyBinding(symKey, ocrypto.Base64Encode([]byte(`{"policy":"test1"}`)), false)
+		b2 := createPolicyBinding(symKey, ocrypto.Base64Encode([]byte(`{"policy":"test2"}`)), false)
 		assert.NotEqual(t, b1.Hash, b2.Hash)
 	})
 
@@ -170,8 +187,8 @@ func TestCreatePolicyBinding(t *testing.T) {
 
 		policy := ocrypto.Base64Encode([]byte(policyJSON))
 		assert.NotEqual(t,
-			createPolicyBinding(symKey, policy).Hash,
-			createPolicyBinding(otherKey, policy).Hash,
+			createPolicyBinding(symKey, policy, false).Hash,
+			createPolicyBinding(otherKey, policy, false).Hash,
 		)
 	})
 }

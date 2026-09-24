@@ -6,6 +6,7 @@ import (
 	"context"
 	"crypto/ecdsa"
 	"crypto/rand"
+	"crypto/sha256"
 	"crypto/subtle"
 	"crypto/x509"
 	"encoding/hex"
@@ -650,10 +651,23 @@ func verifyChunkedPolicyBinding(binding *kaspb.PolicyBinding, share []byte, base
 	if binding.GetAlgorithm() != hmacIntegrityAlgorithm {
 		return fmt.Errorf("unsupported policy binding algorithm %q", binding.GetAlgorithm())
 	}
-	want := string(ocrypto.Base64Encode([]byte(
-		hex.EncodeToString(ocrypto.CalculateSHA256Hmac(share, []byte(base64Policy))),
-	)))
-	if subtle.ConstantTimeCompare([]byte(want), []byte(binding.GetHash())) != 1 {
+	// Mirror the real KAS (service/kas/access.decodePolicyBinding): decode to raw
+	// HMAC bytes, accepting both the spec >= 4.3.0 base64(hmac) form and the
+	// pre-4.3.0 base64(hex(hmac)) form. The two are unambiguous by length, so a
+	// KAS dual-accepts without needing a version signal. A fake that only took
+	// hex would pass while every real KAS rejected the output, and vice versa.
+	got, err := ocrypto.Base64Decode([]byte(binding.GetHash()))
+	if err != nil {
+		return fmt.Errorf("policy binding is not base64: %w", err)
+	}
+	if len(got) == hex.EncodedLen(sha256.Size) {
+		dehexed := make([]byte, hex.DecodedLen(len(got)))
+		if _, err := hex.Decode(dehexed, got); err == nil {
+			got = dehexed
+		}
+	}
+	want := ocrypto.CalculateSHA256Hmac(share, []byte(base64Policy))
+	if subtle.ConstantTimeCompare(want, got) != 1 {
 		return errors.New("policy binding does not match the policy")
 	}
 	return nil
@@ -748,7 +762,7 @@ func TestChunkedECKeyAccess(t *testing.T) {
 		Splits: []Split{{Data: dek, KASURLs: []string{kasURL}}},
 	}
 
-	kaos, err := buildChunkedKeyAccessObjects(splits, dek, []byte(`{"uuid":"test"}`), "")
+	kaos, err := buildChunkedKeyAccessObjects(splits, dek, []byte(`{"uuid":"test"}`), "", false)
 	require.NoError(t, err)
 	require.Len(t, kaos, 1)
 
@@ -815,7 +829,7 @@ func TestChunkedKeyAccessRejectsShareWithNoKAS(t *testing.T) {
 		},
 	}
 
-	_, err = buildChunkedKeyAccessObjects(splits, dek, []byte(`{"uuid":"test"}`), "")
+	_, err = buildChunkedKeyAccessObjects(splits, dek, []byte(`{"uuid":"test"}`), "", false)
 	require.Error(t, err, "a share with no KAS to unwrap it makes the DEK unrecoverable")
 	assert.Contains(t, err.Error(), "orphaned", "the error must name the split that cannot be recovered")
 }
@@ -844,6 +858,20 @@ func TestChunkedFinalizeManifestIsIndependent(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, wantVersion, got.TDFVersion)
 	assert.Equal(t, wantHash, got.Segments[0].Hash)
+}
+
+// chunkedPolicyBindingBytes base64-decodes the first KAO's policy binding
+// hash. The length of the result is what distinguishes the two wire forms:
+// sha256.Size for the 4.3.0 raw HMAC, twice that for the pre-4.3.0 hex.
+func chunkedPolicyBindingBytes(t *testing.T, m *Manifest) []byte {
+	t.Helper()
+	require.NotNil(t, m)
+	require.NotEmpty(t, m.KeyAccessObjs)
+	binding, ok := m.KeyAccessObjs[0].PolicyBinding.(PolicyBinding)
+	require.True(t, ok, "policy binding should be a PolicyBinding, got %T", m.KeyAccessObjs[0].PolicyBinding)
+	decoded, err := ocrypto.Base64Decode([]byte(binding.Hash))
+	require.NoError(t, err, "policy binding hash should be base64")
+	return decoded
 }
 
 // TestChunkedLegacyTargetMode verifies that a pre-4.3.0 target mode
@@ -877,6 +905,10 @@ func TestChunkedLegacyTargetMode(t *testing.T) {
 		assert.Lenf(t, segSig, 2*kGMACPayloadLength, "segment %d hash must be hex-encoded before base64", i)
 	}
 
+	// The policy binding follows the same threshold as the signatures above.
+	assert.Len(t, chunkedPolicyBindingBytes(t, fin.Manifest), hex.EncodedLen(sha256.Size),
+		"legacy policy binding must be hex-encoded before base64")
+
 	tdfBytes := bytes.Join([][]byte{body, fin.Data}, nil)
 	reader, err := s.LoadTDF(bytes.NewReader(tdfBytes),
 		WithKasAllowlist([]string{kasBundle.url}),
@@ -904,6 +936,10 @@ func TestChunkedCurrentTargetMode(t *testing.T) {
 	rootSig, err := ocrypto.Base64Decode([]byte(fin.Manifest.Signature))
 	require.NoError(t, err)
 	assert.Len(t, rootSig, 32, "root signature must be the raw HMAC, not hex")
+
+	// The policy binding follows the same threshold as the signature above.
+	assert.Len(t, chunkedPolicyBindingBytes(t, fin.Manifest), sha256.Size,
+		"policy binding must be the raw HMAC, not hex")
 
 	tdfBytes := bytes.Join([][]byte{body, fin.Data}, nil)
 	reader, err := s.LoadTDF(bytes.NewReader(tdfBytes),

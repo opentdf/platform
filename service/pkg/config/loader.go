@@ -26,11 +26,19 @@ type Loader interface {
 	// Load is called to load/refresh the configuration from its source
 	Load(mostRecentConfig Config) error
 	// Watch starts watching for configuration changes and invokes an onChange callback.
-	// It receives information about the registered namespaces and services to determine
-	// if watching is required for this loader.
-	Watch(ctx context.Context, cfg *Config, onChange func(context.Context) error, namespaces []NamespaceInfo) error
+	Watch(ctx context.Context, cfg *Config, onChange func(context.Context) error) error
 	// Close closes the configuration loader
 	Close() error
 	// Name returns the name of the configuration loader
 	Name() string
+}
+
+// NamespaceAwareLoader extends Loader with namespace-aware watching.
+// Loaders that need information about registered namespaces and services
+// should implement this interface.
+type NamespaceAwareLoader interface {
+	Loader
+	// WatchWithNamespaces starts watching for configuration changes with
+	// information about the registered namespaces and services.
+	WatchWithNamespaces(ctx context.Context, cfg *Config, onChange func(context.Context) error, namespaces []NamespaceInfo) error
 }

@@ -124,8 +124,8 @@ func (s SDK) setupKasAllowlist(ctx context.Context, bulkReq *BulkDecryptRequest)
 			if err != nil {
 				return fmt.Errorf("retrieving platformEndpoint failed: %w", err)
 			}
-			// if no kasAllowlist is set, we get the allowlist from the registry
-			allowlist, err := allowListFromKASRegistry(ctx, s.logger, s.KeyAccessServerRegistry, platformEndpoint)
+
+			allowlist, err := s.loadKasAllowlist(ctx, platformEndpoint)
 			if err != nil {
 				return fmt.Errorf("failed to get allowlist from registry: %w", err)
 			}

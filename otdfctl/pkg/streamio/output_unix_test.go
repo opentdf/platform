@@ -3,6 +3,7 @@
 package streamio
 
 import (
+	"io"
 	"os"
 	"path/filepath"
 	"testing"
@@ -15,7 +16,7 @@ import (
 // device node. `-o /dev/null` is a routine way to benchmark or smoke-test a
 // decrypt, and worked before the switch to atomic output.
 func TestOutputFileWritesThroughDevNull(t *testing.T) {
-	o, err := NewOutputFile(os.DevNull, testOutputFileMode)
+	o, err := NewOutputFile(os.DevNull, testOutputFileMode, nil)
 	require.NoError(t, err)
 
 	_, err = o.Write([]byte("payload"))
@@ -30,7 +31,7 @@ func TestOutputFileWritesThroughDevNull(t *testing.T) {
 // Cleanup removes the temp file it created; it must not remove a destination it
 // was only writing through, which is not its to delete.
 func TestOutputFileCleanupLeavesDirectDestination(t *testing.T) {
-	o, err := NewOutputFile(os.DevNull, testOutputFileMode)
+	o, err := NewOutputFile(os.DevNull, testOutputFileMode, nil)
 	require.NoError(t, err)
 
 	_, err = o.Write([]byte("partial"))
@@ -53,7 +54,7 @@ func TestOutputFileWritesThroughSymlink(t *testing.T) {
 	require.NoError(t, os.WriteFile(target, []byte("stale"), 0o600))
 	require.NoError(t, os.Symlink(target, link))
 
-	o, err := NewOutputFile(link, testOutputFileMode)
+	o, err := NewOutputFile(link, testOutputFileMode, nil)
 	require.NoError(t, err)
 	_, err = o.Write([]byte("payload"))
 	require.NoError(t, err)
@@ -66,6 +67,84 @@ func TestOutputFileWritesThroughSymlink(t *testing.T) {
 	got, err := os.ReadFile(target)
 	require.NoError(t, err)
 	assert.Equal(t, "payload", string(got), "the write must land on the symlink's target")
+}
+
+// The cost of writing through a symlink: the O_TRUNC open follows it, so a link
+// resolving to the input empties the input before it has been read. The caller
+// opened the input first precisely so that a failure costs nothing, and this is
+// the one open that can undo that, so it must not happen.
+func TestOutputFileRejectsSymlinkToInput(t *testing.T) {
+	dir := t.TempDir()
+	source := filepath.Join(dir, "source.tdf")
+	link := filepath.Join(dir, "link.tdf")
+
+	require.NoError(t, os.WriteFile(source, []byte("ciphertext"), 0o600))
+	require.NoError(t, os.Symlink(source, link))
+
+	input, err := os.Open(source)
+	require.NoError(t, err)
+	defer input.Close()
+
+	_, err = NewOutputFile(link, testOutputFileMode, input)
+	require.ErrorIs(t, err, ErrOutputAliasesInput)
+
+	got, err := io.ReadAll(input)
+	require.NoError(t, err)
+	assert.Equal(t, "ciphertext", string(got), "the input must still be readable after a rejected destination")
+}
+
+// The guard has to be narrow enough to leave the case it was added beside
+// working: a symlink to some other file is still written through.
+func TestOutputFileWritesThroughSymlinkToOtherFile(t *testing.T) {
+	dir := t.TempDir()
+	source := filepath.Join(dir, "source.tdf")
+	target := filepath.Join(dir, "target.txt")
+	link := filepath.Join(dir, "link.txt")
+
+	require.NoError(t, os.WriteFile(source, []byte("ciphertext"), 0o600))
+	require.NoError(t, os.WriteFile(target, []byte("stale"), 0o600))
+	require.NoError(t, os.Symlink(target, link))
+
+	input, err := os.Open(source)
+	require.NoError(t, err)
+	defer input.Close()
+
+	o, err := NewOutputFile(link, testOutputFileMode, input)
+	require.NoError(t, err)
+	_, err = o.Write([]byte("payload"))
+	require.NoError(t, err)
+	require.NoError(t, o.Commit())
+
+	got, err := os.ReadFile(target)
+	require.NoError(t, err)
+	assert.Equal(t, "payload", string(got))
+}
+
+// A dangling link resolves to nothing, so it aliases nothing and the open
+// creates the target. Worth pinning: the alias check stats through the link,
+// and a missing target must read as "no alias" rather than as an error.
+func TestOutputFileWritesThroughDanglingSymlink(t *testing.T) {
+	dir := t.TempDir()
+	source := filepath.Join(dir, "source.tdf")
+	target := filepath.Join(dir, "not-yet.txt")
+	link := filepath.Join(dir, "link.txt")
+
+	require.NoError(t, os.WriteFile(source, []byte("ciphertext"), 0o600))
+	require.NoError(t, os.Symlink(target, link))
+
+	input, err := os.Open(source)
+	require.NoError(t, err)
+	defer input.Close()
+
+	o, err := NewOutputFile(link, testOutputFileMode, input)
+	require.NoError(t, err)
+	_, err = o.Write([]byte("payload"))
+	require.NoError(t, err)
+	require.NoError(t, o.Commit())
+
+	got, err := os.ReadFile(target)
+	require.NoError(t, err)
+	assert.Equal(t, "payload", string(got))
 }
 
 // A fifo has no seekable identity to rename over either, and opening one for
@@ -98,6 +177,6 @@ func TestDirectDestinationDetection(t *testing.T) {
 // A directory reaches the direct path and then fails to open, which is a better
 // outcome than os.CreateTemp succeeding inside it and the rename failing later.
 func TestOutputFileRejectsDirectoryDestination(t *testing.T) {
-	_, err := NewOutputFile(t.TempDir(), testOutputFileMode)
+	_, err := NewOutputFile(t.TempDir(), testOutputFileMode, nil)
 	require.Error(t, err)
 }

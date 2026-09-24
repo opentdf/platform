@@ -1,6 +1,7 @@
 package streamio
 
 import (
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -16,7 +17,7 @@ func TestOutputFileCommitRenamesIntoPlace(t *testing.T) {
 	dir := t.TempDir()
 	dest := filepath.Join(dir, "out.tdf")
 
-	o, err := NewOutputFile(dest, testOutputFileMode)
+	o, err := NewOutputFile(dest, testOutputFileMode, nil)
 	require.NoError(t, err)
 
 	_, err = o.Write([]byte("payload"))
@@ -31,14 +32,14 @@ func TestOutputFileCommitRenamesIntoPlace(t *testing.T) {
 	got, err := os.ReadFile(dest)
 	require.NoError(t, err)
 	assert.Equal(t, "payload", string(got))
-	assert.Empty(t, tempSiblings(t, dir, "out.tdf"), "temp file should be gone after Commit")
+	assert.Empty(t, tempSiblings(t, dir), "temp file should be gone after Commit")
 }
 
 func TestOutputFileCleanupLeavesNoPartialOutput(t *testing.T) {
 	dir := t.TempDir()
 	dest := filepath.Join(dir, "out.tdf")
 
-	o, err := NewOutputFile(dest, testOutputFileMode)
+	o, err := NewOutputFile(dest, testOutputFileMode, nil)
 	require.NoError(t, err)
 	_, err = o.Write([]byte("partial"))
 	require.NoError(t, err)
@@ -48,14 +49,14 @@ func TestOutputFileCleanupLeavesNoPartialOutput(t *testing.T) {
 
 	_, err = os.Stat(dest)
 	require.ErrorIs(t, err, os.ErrNotExist, "a failed run must not leave a partial file")
-	assert.Empty(t, tempSiblings(t, dir, "out.tdf"), "a failed run must not leave a temp file")
+	assert.Empty(t, tempSiblings(t, dir), "a failed run must not leave a temp file")
 }
 
 func TestOutputFileCleanupAfterCommitIsNoop(t *testing.T) {
 	dir := t.TempDir()
 	dest := filepath.Join(dir, "out.tdf")
 
-	o, err := NewOutputFile(dest, testOutputFileMode)
+	o, err := NewOutputFile(dest, testOutputFileMode, nil)
 	require.NoError(t, err)
 	_, err = o.Write([]byte("payload"))
 	require.NoError(t, err)
@@ -74,7 +75,7 @@ func TestOutputFileTempIsSiblingOfDestination(t *testing.T) {
 	dir := t.TempDir()
 	dest := filepath.Join(dir, "out.tdf")
 
-	o, err := NewOutputFile(dest, testOutputFileMode)
+	o, err := NewOutputFile(dest, testOutputFileMode, nil)
 	require.NoError(t, err)
 	defer o.Cleanup()
 
@@ -88,7 +89,7 @@ func TestOutputFileCommitSetsReadableMode(t *testing.T) {
 	dir := t.TempDir()
 	dest := filepath.Join(dir, "out.tdf")
 
-	o, err := NewOutputFile(dest, testOutputFileMode)
+	o, err := NewOutputFile(dest, testOutputFileMode, nil)
 	require.NoError(t, err)
 	_, err = o.Write([]byte("payload"))
 	require.NoError(t, err)
@@ -107,7 +108,7 @@ func TestOutputFileTempNamesDoNotCollide(t *testing.T) {
 	const concurrent = 16
 	names := make(map[string]bool, concurrent)
 	for range concurrent {
-		o, err := NewOutputFile(dest, testOutputFileMode)
+		o, err := NewOutputFile(dest, testOutputFileMode, nil)
 		require.NoError(t, err)
 		defer o.Cleanup()
 
@@ -120,7 +121,7 @@ func TestOutputFileCommitSetsRequestedMode(t *testing.T) {
 	dir := t.TempDir()
 	dest := filepath.Join(dir, "plaintext.txt")
 
-	o, err := NewOutputFile(dest, 0o600)
+	o, err := NewOutputFile(dest, 0o600, nil)
 	require.NoError(t, err)
 	_, err = o.Write([]byte("plaintext"))
 	require.NoError(t, err)
@@ -136,7 +137,7 @@ func TestOutputFileCommitReplacesExistingFileWithRequestedMode(t *testing.T) {
 	dest := filepath.Join(dir, "plaintext.txt")
 	require.NoError(t, os.WriteFile(dest, []byte("old"), 0o644))
 
-	o, err := NewOutputFile(dest, 0o600)
+	o, err := NewOutputFile(dest, 0o600, nil)
 	require.NoError(t, err)
 	_, err = o.Write([]byte("new"))
 	require.NoError(t, err)
@@ -148,7 +149,7 @@ func TestOutputFileCommitReplacesExistingFileWithRequestedMode(t *testing.T) {
 	info, err := os.Stat(dest)
 	require.NoError(t, err)
 	assert.Equal(t, plainCreateMode(t, dir, 0o600), info.Mode().Perm())
-	assert.Empty(t, tempSiblings(t, dir, "plaintext.txt"))
+	assert.Empty(t, tempSiblings(t, dir))
 }
 
 func TestOutputFileCleanupPreservesExistingFile(t *testing.T) {
@@ -156,7 +157,7 @@ func TestOutputFileCleanupPreservesExistingFile(t *testing.T) {
 	dest := filepath.Join(dir, "plaintext.txt")
 	require.NoError(t, os.WriteFile(dest, []byte("original"), 0o600))
 
-	o, err := NewOutputFile(dest, 0o600)
+	o, err := NewOutputFile(dest, 0o600, nil)
 	require.NoError(t, err)
 	_, err = o.Write([]byte("partial"))
 	require.NoError(t, err)
@@ -165,14 +166,14 @@ func TestOutputFileCleanupPreservesExistingFile(t *testing.T) {
 	got, err := os.ReadFile(dest)
 	require.NoError(t, err)
 	assert.Equal(t, "original", string(got))
-	assert.Empty(t, tempSiblings(t, dir, "plaintext.txt"))
+	assert.Empty(t, tempSiblings(t, dir))
 }
 
 func TestOutputFileCommitAfterCommitReturnsError(t *testing.T) {
 	dir := t.TempDir()
 	dest := filepath.Join(dir, "out.tdf")
 
-	o, err := NewOutputFile(dest, testOutputFileMode)
+	o, err := NewOutputFile(dest, testOutputFileMode, nil)
 	require.NoError(t, err)
 	_, err = o.Write([]byte("payload"))
 	require.NoError(t, err)
@@ -189,7 +190,7 @@ func TestOutputFileCommitAfterCleanupReturnsError(t *testing.T) {
 	dir := t.TempDir()
 	dest := filepath.Join(dir, "out.tdf")
 
-	o, err := NewOutputFile(dest, testOutputFileMode)
+	o, err := NewOutputFile(dest, testOutputFileMode, nil)
 	require.NoError(t, err)
 	_, err = o.Write([]byte("payload"))
 	require.NoError(t, err)
@@ -199,6 +200,65 @@ func TestOutputFileCommitAfterCleanupReturnsError(t *testing.T) {
 
 	_, err = os.Stat(dest)
 	require.ErrorIs(t, err, os.ErrNotExist, "Commit after Cleanup must not create the destination")
+}
+
+// An ordinary destination that happens to be the input is not the destructive
+// case: the payload goes to a temp sibling and is renamed over the input only
+// once the read has finished. Decrypting a file in place is a reasonable thing
+// to ask for, so the guard must not reject it.
+func TestOutputFileAllowsRegularDestinationNamingInput(t *testing.T) {
+	dir := t.TempDir()
+	dest := filepath.Join(dir, "in-place.txt")
+	require.NoError(t, os.WriteFile(dest, []byte("ciphertext"), 0o600))
+
+	input, err := os.Open(dest)
+	require.NoError(t, err)
+	defer input.Close()
+
+	o, err := NewOutputFile(dest, testOutputFileMode, input)
+	require.NoError(t, err)
+
+	// The input stays readable while the output is open, which is what makes
+	// the temp-and-rename route safe here.
+	got, err := io.ReadAll(input)
+	require.NoError(t, err)
+	assert.Equal(t, "ciphertext", string(got))
+
+	_, err = o.Write([]byte("plaintext"))
+	require.NoError(t, err)
+	require.NoError(t, o.Commit())
+
+	final, err := os.ReadFile(dest)
+	require.NoError(t, err)
+	assert.Equal(t, "plaintext", string(final))
+}
+
+// The temporary name is bounded by the fixed prefix, not by the destination's,
+// so a destination whose own name is as long as the filesystem allows still
+// opens. Deriving the prefix from the basename overflowed NAME_MAX here and
+// failed before a byte had been read.
+func TestOutputFileAcceptsMaximumLengthDestinationName(t *testing.T) {
+	dir := t.TempDir()
+	dest := filepath.Join(dir, strings.Repeat("n", 255))
+
+	// Not every filesystem allows a 255-byte component; probe rather than
+	// assume, so this reports the temp-name bug and nothing else.
+	probe, err := os.OpenFile(dest, os.O_RDWR|os.O_CREATE|os.O_EXCL, 0o600)
+	if err != nil {
+		t.Skipf("filesystem will not hold a 255-byte name: %v", err)
+	}
+	require.NoError(t, probe.Close())
+	require.NoError(t, os.Remove(dest))
+
+	o, err := NewOutputFile(dest, testOutputFileMode, nil)
+	require.NoError(t, err)
+	_, err = o.Write([]byte("payload"))
+	require.NoError(t, err)
+	require.NoError(t, o.Commit())
+
+	got, err := os.ReadFile(dest)
+	require.NoError(t, err)
+	assert.Equal(t, "payload", string(got))
 }
 
 // plainCreateMode reports the permissions a plain create with mode produces in
@@ -220,15 +280,16 @@ func plainCreateMode(t *testing.T, dir string, mode os.FileMode) os.FileMode {
 }
 
 // tempSiblings returns any leftover temp files NewOutputFile would have created
-// for dest in dir.
-func tempSiblings(t *testing.T, dir, dest string) []string {
+// in dir. The prefix carries no destination name, so this cannot be narrowed to
+// one destination — which is fine, since every caller wants dir swept clean.
+func tempSiblings(t *testing.T, dir string) []string {
 	t.Helper()
 	entries, err := os.ReadDir(dir)
 	require.NoError(t, err)
 
 	var found []string
 	for _, e := range entries {
-		if strings.HasPrefix(e.Name(), "."+dest+".tmp-") {
+		if strings.HasPrefix(e.Name(), tempFilePrefix) {
 			found = append(found, e.Name())
 		}
 	}

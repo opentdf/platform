@@ -6,6 +6,8 @@ import (
 	"github.com/opentdf/platform/sdk"
 )
 
+// These claim names have no caller here beyond the tests that assert
+// against sdk's claim names.
 const (
 	kAssertionSignature = "assertionSig"
 	kAssertionHash      = "assertionHash"

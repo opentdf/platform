@@ -3,23 +3,7 @@
 package tdf
 
 import (
-	"errors"
-	"fmt"
-
-	"github.com/opentdf/platform/lib/ocrypto"
 	"github.com/opentdf/platform/sdk"
-)
-
-// kGMACPayloadLength and kSplitKeyType copy sdk's identically-named unexported
-// constants; kPolicyBindingAlg has no sdk counterpart, but matches the value
-// sdk writes there via hmacIntegrityAlgorithm. All three stay only while this
-// package still builds manifests itself. The follow-up that delegates manifest
-// construction must delete them along with their callers, or they become
-// unused.
-const (
-	kGMACPayloadLength = 16
-	kSplitKeyType      = "split"
-	kPolicyBindingAlg  = "HS256"
 )
 
 // Aliases onto [github.com/opentdf/platform/sdk], which owns the definitions.
@@ -118,61 +102,13 @@ type PolicyBody struct {
 	Dissem         []string          `json:"dissem"`
 }
 
+// These are the stable SDK's error values rather than copies of them, so
+// errors.Is matches whether a caller compares against the experimental or the
+// sdk-scoped name. See [Writer]'s error vars for the same pattern.
 var (
 	// ErrUnsupportedRootIntegrityAlgorithm rejects any root signature
 	// algorithm other than HS256.
-	ErrUnsupportedRootIntegrityAlgorithm = errors.New("tdf: unsupported root integrity algorithm")
+	ErrUnsupportedRootIntegrityAlgorithm = sdk.ErrUnsupportedRootIntegrityAlgorithm
 	// ErrUnsupportedSegmentIntegrityAlgorithm rejects a segment algorithm that
-	// is neither HS256 nor GMAC. SegmentIntegrityAlg is int-backed, so this
-	// catches an out-of-range value before it reaches a manifest.
-	ErrUnsupportedSegmentIntegrityAlgorithm = errors.New("tdf: unsupported segment integrity algorithm")
+	ErrUnsupportedSegmentIntegrityAlgorithm = sdk.ErrUnsupportedSegmentIntegrityAlgorithm
 )
-
-// None of these helpers take the hex-encoding flag the stable SDK carries for
-// 4.2.2 files: this package only ever writes current-spec TDFs.
-
-// hmacIntegrity is the HMAC-SHA256 primitive both signature paths share. It
-// takes no algorithm argument, so it cannot be pointed at the wrong branch.
-func hmacIntegrity(data, secret []byte) string {
-	return string(ocrypto.CalculateSHA256Hmac(secret, data))
-}
-
-// readAEADTag returns the trailing AES-GCM tag of a segment's ciphertext.
-//
-// This is only an authenticator because the cipher computed that tag over
-// exactly these bytes. Applied to anything the AEAD did not produce it
-// authenticates nothing: it just returns a copy of the input's own last 16
-// bytes. Hence unexported, and reachable only through segmentIntegrity.
-func readAEADTag(ciphertext []byte) (string, error) {
-	if kGMACPayloadLength > len(ciphertext) {
-		return "", errors.New("fail to create gmac signature")
-	}
-	return string(ciphertext[len(ciphertext)-kGMACPayloadLength:]), nil
-}
-
-// segmentIntegrity computes the integrity value recorded in a segment's
-// manifest entry. Both algorithms are legitimate here: the input is data the
-// cipher produced.
-func segmentIntegrity(ciphertext, key []byte, alg SegmentIntegrityAlg) (string, error) {
-	switch alg {
-	case SegmentHS256:
-		return hmacIntegrity(ciphertext, key), nil
-	case SegmentGMAC:
-		return readAEADTag(ciphertext)
-	}
-	return "", fmt.Errorf("%w: %s", ErrUnsupportedSegmentIntegrityAlgorithm, alg)
-}
-
-// rootIntegrity computes the root signature over the aggregate hash: the
-// concatenation of every segment's hash, in manifest order.
-//
-// HS256 only. AES-GCM never processed the aggregate hash, so there is no tag to
-// extract and no keyless construction that could authenticate it.
-// RootIntegrityAlg has no other named value, but it is int-backed, so the check
-// still has to run.
-func rootIntegrity(aggregateHash, key []byte, alg RootIntegrityAlg) (string, error) {
-	if alg != RootHS256 {
-		return "", fmt.Errorf("%w: %s", ErrUnsupportedRootIntegrityAlgorithm, alg)
-	}
-	return hmacIntegrity(aggregateHash, key), nil
-}

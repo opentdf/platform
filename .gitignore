@@ -57,6 +57,9 @@ traces/
 # Claude AI files
 .claude/
 
+# Dora local index artifacts
+/.dora/
+
 # otdfctl specific ignores
 # =========================
 otdfctl/bin/.DS_Store

@@ -139,10 +139,14 @@ func EvaluateSubjectMappings(attributeMappings map[string]*attributes.GetAttribu
 }
 
 func EvaluateSubjectSet(subjectSet *policy.SubjectSet, entity flattening.Flattened) (bool, error) {
+	return evaluateSubjectSet(subjectSet, func(selector string) []interface{} { return flattening.GetFromFlattened(entity, selector) })
+}
+
+func evaluateSubjectSet(subjectSet *policy.SubjectSet, lookup func(string) []interface{}) (bool, error) {
 	// condition groups anded together
 	subjectSetConditionResult := true
 	for _, conditionGroup := range subjectSet.GetConditionGroups() {
-		conditionGroupResult, err := EvaluateConditionGroup(conditionGroup, entity)
+		conditionGroupResult, err := evaluateConditionGroup(conditionGroup, lookup)
 		if err != nil {
 			return false, err
 		}
@@ -158,6 +162,10 @@ func EvaluateSubjectSet(subjectSet *policy.SubjectSet, entity flattening.Flatten
 }
 
 func EvaluateConditionGroup(conditionGroup *policy.ConditionGroup, entity flattening.Flattened) (bool, error) {
+	return evaluateConditionGroup(conditionGroup, func(selector string) []interface{} { return flattening.GetFromFlattened(entity, selector) })
+}
+
+func evaluateConditionGroup(conditionGroup *policy.ConditionGroup, lookup func(string) []interface{}) (bool, error) {
 	// get boolean operator for condition group
 	var conditionGroupResult bool
 	switch conditionGroup.GetBooleanOperator() {
@@ -174,7 +182,7 @@ func EvaluateConditionGroup(conditionGroup *policy.ConditionGroup, entity flatte
 
 ConditionEval:
 	for _, condition := range conditionGroup.GetConditions() {
-		conditionResult, err := EvaluateCondition(condition, entity)
+		conditionResult, err := evaluateCondition(condition, lookup(condition.GetSubjectExternalSelectorValue()))
 		if err != nil {
 			return false, err
 		}
@@ -204,7 +212,10 @@ ConditionEval:
 }
 
 func EvaluateCondition(condition *policy.Condition, entity flattening.Flattened) (bool, error) {
-	mappedValues := flattening.GetFromFlattened(entity, condition.GetSubjectExternalSelectorValue())
+	return evaluateCondition(condition, flattening.GetFromFlattened(entity, condition.GetSubjectExternalSelectorValue()))
+}
+
+func evaluateCondition(condition *policy.Condition, mappedValues []interface{}) (bool, error) {
 	// slog.Debug("mapped values", "", mappedValues)
 	result := false
 	switch condition.GetOperator() {

@@ -649,7 +649,7 @@ func (s *EvaluateTestSuite) TestHierarchyRule() {
 	for _, tc := range tests {
 		s.Run(tc.name, func() {
 			// Execute
-			failures := hierarchyRule(s.T().Context(), s.logger, tc.entitlements, s.action, tc.resourceValueFQNs, s.hierarchicalClassAttr, "", false)
+			failures := hierarchyRule(s.T().Context(), s.logger, tc.entitlements, s.action, tc.resourceValueFQNs, s.hierarchicalClassAttr, "", false, nil)
 
 			// Assert
 			if tc.expectedFailures {
@@ -729,7 +729,7 @@ func (s *EvaluateTestSuite) TestEvaluateDefinition() {
 
 	for _, tc := range tests {
 		s.Run(tc.name, func() {
-			result, err := evaluateDefinition(s.T().Context(), s.logger, tc.entitlements, s.action, tc.resourceValues, tc.definition, false)
+			result, err := evaluateDefinition(s.T().Context(), s.logger, tc.entitlements, s.action, tc.resourceValues, tc.definition, false, nil)
 
 			if tc.expectError {
 				s.Require().Error(err)
@@ -913,7 +913,7 @@ func (s *EvaluateTestSuite) TestEvaluateDefinition_NamespacedPolicy() {
 
 	for _, tc := range tests {
 		s.Run(tc.name, func() {
-			result, err := evaluateDefinition(s.T().Context(), s.logger, tc.entitlements, tc.requested, tc.resourceFQNs, tc.definition, tc.namespaced)
+			result, err := evaluateDefinition(s.T().Context(), s.logger, tc.entitlements, tc.requested, tc.resourceFQNs, tc.definition, tc.namespaced, nil)
 
 			if tc.expectErr != nil {
 				s.Require().Error(err)
@@ -1010,7 +1010,7 @@ func (s *EvaluateTestSuite) TestEvaluateResourceAttributeValues() {
 				s.action,
 				tc.entitlements,
 				s.accessibleAttrValues,
-				false,
+				false, nil,
 			)
 
 			if tc.expectError {
@@ -1266,7 +1266,7 @@ func (s *EvaluateTestSuite) TestGetResourceDecision() {
 				tc.entitlements,
 				s.action,
 				tc.resource,
-				tc.namespaced,
+				tc.namespaced, nil,
 			)
 
 			if tc.expectError {
@@ -1339,7 +1339,7 @@ func (s *EvaluateTestSuite) Test_getResourceDecision_MultiResources_GranularDeni
 				entitlements,
 				s.action,
 				tc.resource,
-				false,
+				false, nil,
 			)
 
 			s.Require().NoError(err, "Should not error for resource: %s", tc.name)
@@ -1376,7 +1376,7 @@ func (s *EvaluateTestSuite) Test_getResourceDecision_StrictMode_DeniesOnActionNa
 		entitlements,
 		actionRead,
 		resource,
-		true,
+		true, nil,
 	)
 
 	s.Require().NoError(err)
@@ -1430,7 +1430,7 @@ func (s *EvaluateTestSuite) Test_getResourceDecision_StrictMode_RegisteredResour
 		entitlements,
 		actionRead,
 		resource,
-		true,
+		true, nil,
 	)
 
 	s.Require().NoError(err)
@@ -1464,7 +1464,7 @@ func (s *EvaluateTestSuite) Test_getResourceDecision_RequestActionIDPrecedence()
 		entitlements,
 		&policy.Action{Id: "different-id", Name: actions.ActionNameRead},
 		resource,
-		true,
+		true, nil,
 	)
 
 	s.Require().NoError(err)
@@ -1528,7 +1528,7 @@ func (s *EvaluateTestSuite) Test_getResourceDecision_StrictMode_ErrorsOnAAVNames
 		entitlements,
 		actionRead,
 		resource,
-		true,
+		true, nil,
 	)
 
 	s.Require().Error(err)

@@ -49,12 +49,13 @@ func EvaluateSubjectMappingsWithActions(
 			return nil, fmt.Errorf("failure to flatten entity in subject mapping builtin: %w", err)
 		}
 
+		selectors := indexSelectors(flattenedEntity)
 		for valueFQN, attributeAndValue := range resolveableAttributes {
 			// subject mapping results or-ed together
 			for _, subjectMapping := range attributeAndValue.GetValue().GetSubjectMappings() {
 				subjectMappingResult := true
 				for _, subjectSet := range subjectMapping.GetSubjectConditionSet().GetSubjectSets() {
-					subjectSetConditionResult, err := EvaluateSubjectSet(subjectSet, flattenedEntity)
+					subjectSetConditionResult, err := evaluateSubjectSet(subjectSet, selectors.lookup)
 					if err != nil {
 						return nil, err
 					}

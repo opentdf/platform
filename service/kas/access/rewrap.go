@@ -598,6 +598,22 @@ func (p *Provider) Rewrap(ctx context.Context, req *connect.Request[kaspb.Rewrap
 		return nil, err
 	}
 
+	var tdf3Reqs []*kaspb.UnsignedRewrapRequest_WithPolicyRequest
+	for _, policyReq := range body.GetRequests() {
+		if policyReq.GetAlgorithm() == "" {
+			policyReq.Algorithm = kTDF3Algorithm
+		}
+		tdf3Reqs = append(tdf3Reqs, policyReq)
+	}
+
+	// Register one audit lifecycle per key access object before any cancellable
+	// or security-sensitive work, so a disconnect, a slow backend, or a
+	// rejection further down still leaves evidence that the rewrap was
+	// attempted. Closing them records a terminal event for every attempt that
+	// did not report an explicit outcome.
+	lifecycles := p.beginRewrapLifecycles(ctx, tdf3Reqs)
+	defer p.closeRewrapLifecycles(ctx, lifecycles)
+
 	entityInfo, err := getEntityInfo(ctx, p.Logger)
 	if err != nil {
 		p.Logger.DebugContext(ctx, "no entity info", slog.Any("error", err))
@@ -606,23 +622,13 @@ func (p *Provider) Rewrap(ctx context.Context, req *connect.Request[kaspb.Rewrap
 
 	resp := &kaspb.RewrapResponse{}
 
-	var tdf3Reqs []*kaspb.UnsignedRewrapRequest_WithPolicyRequest
-	for _, req := range body.GetRequests() {
-		switch {
-		case req.GetAlgorithm() == "":
-			req.Algorithm = kTDF3Algorithm
-			tdf3Reqs = append(tdf3Reqs, req)
-		default:
-			tdf3Reqs = append(tdf3Reqs, req)
-		}
-	}
 	var results policyKAOResults
 	additionalRewrapContext, err := getAdditionalRewrapContext(req.Header())
 	if err != nil {
 		p.Logger.WarnContext(ctx, "failed to get additional rewrap context", slog.Any("error", err))
 		return nil, err400("failed to get additional rewrap context")
 	}
-	resp.SessionPublicKey, results, err = p.tdf3Rewrap(ctx, tdf3Reqs, body.GetClientPublicKey(), entityInfo, additionalRewrapContext)
+	resp.SessionPublicKey, results, err = p.tdf3Rewrap(ctx, tdf3Reqs, body.GetClientPublicKey(), entityInfo, additionalRewrapContext, lifecycles)
 	if err != nil {
 		p.Logger.WarnContext(ctx, "status 400, tdf3 rewrap failure", slog.Any("error", err))
 		return nil, err
@@ -937,7 +943,84 @@ func (p *Provider) listLegacyKeys(ctx context.Context) []trust.KeyIdentifier {
 	return kidsToCheck
 }
 
-func (p *Provider) tdf3Rewrap(ctx context.Context, requests []*kaspb.UnsignedRewrapRequest_WithPolicyRequest, clientPublicKey string, entityInfo *entityInfo, additionalRewrapContext *AdditionalRewrapContext) (string, policyKAOResults, error) {
+// rewrapLifecycles holds the audit lifecycle of every key access object in a
+// rewrap request, grouped by the policy request that carried it and indexed by
+// the object's position within that request. Position is used rather than the
+// key access object id because those ids may be duplicated or absent, and
+// colliding on them would merge two objects into one audit record.
+type rewrapLifecycles map[*kaspb.UnsignedRewrapRequest_WithPolicyRequest][]*audit.RewrapLifecycle
+
+// at returns the lifecycle for one key access object, or nil when none was
+// registered. A nil lifecycle is safe to call, so callers need not check.
+func (l rewrapLifecycles) at(req *kaspb.UnsignedRewrapRequest_WithPolicyRequest, index int) *audit.RewrapLifecycle {
+	perRequest, ok := l[req]
+	if !ok || index < 0 || index >= len(perRequest) {
+		return nil
+	}
+	return perRequest[index]
+}
+
+// beginRewrapLifecycles records an attempted audit event for every key access
+// object in the request. The policy is not known yet, so these records are
+// intentionally partial; tdf3Rewrap enriches them once it resolves one.
+func (p *Provider) beginRewrapLifecycles(ctx context.Context, requests []*kaspb.UnsignedRewrapRequest_WithPolicyRequest) rewrapLifecycles {
+	lifecycles := make(rewrapLifecycles, len(requests))
+	slot := 0
+	for _, req := range requests {
+		if req == nil {
+			continue
+		}
+		kaos := req.GetKeyAccessObjects()
+		perRequest := make([]*audit.RewrapLifecycle, len(kaos))
+		for i, kao := range kaos {
+			lifecycle, err := p.Logger.Audit.BeginRewrap(ctx, slot, audit.RewrapAuditEventParams{
+				TDFFormat:     "tdf3",
+				Algorithm:     req.GetAlgorithm(),
+				PolicyBinding: kao.GetKeyAccessObject().GetPolicyBinding().GetHash(),
+				KeyID:         kao.GetKeyAccessObject().GetKid(),
+			})
+			if err != nil {
+				p.Logger.ErrorContext(context.WithoutCancel(ctx), "failed to record attempted rewrap audit event",
+					slog.String("kao_id", kao.GetKeyAccessObjectId()),
+					slog.Int("slot", slot),
+					slog.Any("error", err))
+			}
+			perRequest[i] = lifecycle
+			slot++
+		}
+		lifecycles[req] = perRequest
+	}
+	return lifecycles
+}
+
+// closeRewrapLifecycles records a terminal audit event for every attempt that
+// did not already report one. Lifecycles that completed normally are untouched.
+func (p *Provider) closeRewrapLifecycles(ctx context.Context, lifecycles rewrapLifecycles) {
+	for _, perRequest := range lifecycles {
+		for _, lifecycle := range perRequest {
+			if err := lifecycle.Close(ctx); err != nil {
+				p.Logger.ErrorContext(context.WithoutCancel(ctx), "failed to record terminal rewrap audit event",
+					slog.String("lifecycle_id", lifecycle.ID().String()),
+					slog.Any("error", err))
+			}
+		}
+	}
+}
+
+// logRewrapAuditError reports a failure to record a rewrap audit event. Audit
+// delivery problems are made visible but never change the rewrap result.
+func (p *Provider) logRewrapAuditError(ctx context.Context, err error, kaoID, policyID, outcome string) {
+	if err == nil {
+		return
+	}
+	p.Logger.ErrorContext(context.WithoutCancel(ctx), "failed to record rewrap audit event",
+		slog.String("kao_id", kaoID),
+		slog.String("policy_id", policyID),
+		slog.String("rewrap_outcome", outcome),
+		slog.Any("error", err))
+}
+
+func (p *Provider) tdf3Rewrap(ctx context.Context, requests []*kaspb.UnsignedRewrapRequest_WithPolicyRequest, clientPublicKey string, entityInfo *entityInfo, additionalRewrapContext *AdditionalRewrapContext, lifecycles rewrapLifecycles) (string, policyKAOResults, error) {
 	if p.Tracer != nil {
 		var span trace.Span
 		ctx, span = p.Start(ctx, "rewrap-tdf3")
@@ -1051,31 +1134,22 @@ func (p *Provider) tdf3Rewrap(ctx context.Context, requests []*kaspb.UnsignedRew
 		// Audit the TDF3 Rewrap
 		kasPolicy := ConvertToAuditKasPolicy(*policy)
 
-		for _, kao := range req.GetKeyAccessObjects() {
+		policyID := policy.UUID.String()
+		for kaoIndex, kao := range req.GetKeyAccessObjects() {
 			kaoID := kao.GetKeyAccessObjectId()
+			lifecycle := lifecycles.at(req, kaoIndex)
+			lifecycle.SetPolicy(kasPolicy)
+
 			kaoRes := kaoResults[kaoID]
 			if kaoRes.Error != nil {
+				// Verification already rejected this object. Record its outcome
+				// rather than leaving the attempt without a terminal record.
+				p.logRewrapAuditError(ctx, lifecycle.Failure(ctx), kaoID, policyID, "failed")
 				continue
 			}
 
-			policyBinding := kao.GetKeyAccessObject().GetPolicyBinding().GetHash()
-			auditEventParams := audit.RewrapAuditEventParams{
-				Policy:        kasPolicy,
-				IsSuccess:     access,
-				TDFFormat:     "tdf3",
-				Algorithm:     req.GetAlgorithm(),
-				PolicyBinding: policyBinding,
-				KeyID:         kao.GetKeyAccessObject().GetKid(),
-			}
-
 			if !access {
-				if auditErr := p.Logger.Audit.RewrapFailure(ctx, auditEventParams); auditErr != nil {
-					p.Logger.ErrorContext(context.WithoutCancel(ctx), "failed to record rewrap audit event",
-						slog.String("kao_id", kaoID),
-						slog.String("policy_id", policy.UUID.String()),
-						slog.String("rewrap_outcome", "denied"),
-						slog.Any("error", auditErr))
-				}
+				p.logRewrapAuditError(ctx, lifecycle.Failure(ctx), kaoID, policyID, "denied")
 				failedKAORewrapWithObligations(kaoResults, kao, err403("forbidden"), requiredObligationsForPolicy)
 				continue
 			}
@@ -1085,14 +1159,7 @@ func (p *Provider) tdf3Rewrap(ctx context.Context, requests []*kaspb.UnsignedRew
 			if err != nil {
 				//nolint:sloglint // reference to camelcase key is intentional
 				p.Logger.WarnContext(ctx, "rewrap: Export with encryptor failed", slog.String("clientPublicKey", clientPublicKey), slog.Any("error", err))
-				auditEventParams.IsSuccess = false
-				if auditErr := p.Logger.Audit.RewrapFailure(ctx, auditEventParams); auditErr != nil {
-					p.Logger.ErrorContext(context.WithoutCancel(ctx), "failed to record rewrap audit event",
-						slog.String("kao_id", kaoID),
-						slog.String("policy_id", policy.UUID.String()),
-						slog.String("rewrap_outcome", "failed"),
-						slog.Any("error", auditErr))
-				}
+				p.logRewrapAuditError(ctx, lifecycle.Failure(ctx), kaoID, policyID, "failed")
 				failedKAORewrap(kaoResults, kao, err400("bad key for rewrap"))
 				continue
 			}
@@ -1103,13 +1170,7 @@ func (p *Provider) tdf3Rewrap(ctx context.Context, requests []*kaspb.UnsignedRew
 				RequiredObligations: requiredObligationsForPolicy,
 			}
 
-			if auditErr := p.Logger.Audit.RewrapSuccess(ctx, auditEventParams); auditErr != nil {
-				p.Logger.ErrorContext(context.WithoutCancel(ctx), "failed to record rewrap audit event",
-					slog.String("kao_id", kaoID),
-					slog.String("policy_id", policy.UUID.String()),
-					slog.String("rewrap_outcome", "success"),
-					slog.Any("error", auditErr))
-			}
+			p.logRewrapAuditError(ctx, lifecycle.Success(ctx), kaoID, policyID, "success")
 		}
 	}
 	return sessionKey, results, nil

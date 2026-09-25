@@ -1069,7 +1069,13 @@ func (p *Provider) tdf3Rewrap(ctx context.Context, requests []*kaspb.UnsignedRew
 			}
 
 			if !access {
-				p.Logger.Audit.RewrapFailure(ctx, auditEventParams)
+				if auditErr := p.Logger.Audit.RewrapFailure(ctx, auditEventParams); auditErr != nil {
+					p.Logger.ErrorContext(context.WithoutCancel(ctx), "failed to record rewrap audit event",
+						slog.String("kao_id", kaoID),
+						slog.String("policy_id", policy.UUID.String()),
+						slog.String("rewrap_outcome", "denied"),
+						slog.Any("error", auditErr))
+				}
 				failedKAORewrapWithObligations(kaoResults, kao, err403("forbidden"), requiredObligationsForPolicy)
 				continue
 			}
@@ -1079,7 +1085,14 @@ func (p *Provider) tdf3Rewrap(ctx context.Context, requests []*kaspb.UnsignedRew
 			if err != nil {
 				//nolint:sloglint // reference to camelcase key is intentional
 				p.Logger.WarnContext(ctx, "rewrap: Export with encryptor failed", slog.String("clientPublicKey", clientPublicKey), slog.Any("error", err))
-				p.Logger.Audit.RewrapFailure(ctx, auditEventParams)
+				auditEventParams.IsSuccess = false
+				if auditErr := p.Logger.Audit.RewrapFailure(ctx, auditEventParams); auditErr != nil {
+					p.Logger.ErrorContext(context.WithoutCancel(ctx), "failed to record rewrap audit event",
+						slog.String("kao_id", kaoID),
+						slog.String("policy_id", policy.UUID.String()),
+						slog.String("rewrap_outcome", "failed"),
+						slog.Any("error", auditErr))
+				}
 				failedKAORewrap(kaoResults, kao, err400("bad key for rewrap"))
 				continue
 			}
@@ -1090,7 +1103,13 @@ func (p *Provider) tdf3Rewrap(ctx context.Context, requests []*kaspb.UnsignedRew
 				RequiredObligations: requiredObligationsForPolicy,
 			}
 
-			p.Logger.Audit.RewrapSuccess(ctx, auditEventParams)
+			if auditErr := p.Logger.Audit.RewrapSuccess(ctx, auditEventParams); auditErr != nil {
+				p.Logger.ErrorContext(context.WithoutCancel(ctx), "failed to record rewrap audit event",
+					slog.String("kao_id", kaoID),
+					slog.String("policy_id", policy.UUID.String()),
+					slog.String("rewrap_outcome", "success"),
+					slog.Any("error", auditErr))
+			}
 		}
 	}
 	return sessionKey, results, nil

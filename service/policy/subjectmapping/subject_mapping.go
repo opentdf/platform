@@ -110,10 +110,10 @@ func (s SubjectMappingService) CreateSubjectMapping(ctx context.Context,
 		return nil
 	})
 	if err != nil {
-		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
+		s.logger.LogPolicyCRUDFailure(ctx, auditParams)
 		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextCreationFailed, slog.String("subject_mapping", req.Msg.String()))
 	}
-	s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
+	s.logger.LogPolicyCRUDSuccess(ctx, auditParams)
 	return connect.NewResponse(rsp), nil
 }
 
@@ -180,10 +180,10 @@ func (s SubjectMappingService) UpdateSubjectMapping(ctx context.Context,
 		return nil
 	})
 	if err != nil {
-		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
+		s.logger.LogPolicyCRUDFailure(ctx, auditParams)
 		return nil, err
 	}
-	s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
+	s.logger.LogPolicyCRUDSuccess(ctx, auditParams)
 	return connect.NewResponse(rsp), nil
 }
 
@@ -202,11 +202,11 @@ func (s SubjectMappingService) DeleteSubjectMapping(ctx context.Context,
 
 	_, err := s.dbClient.DeleteSubjectMapping(ctx, subjectMappingID)
 	if err != nil {
-		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
+		s.logger.LogPolicyCRUDFailure(ctx, auditParams)
 		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextDeletionFailed, slog.String("id", subjectMappingID))
 	}
 
-	s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
+	s.logger.LogPolicyCRUDSuccess(ctx, auditParams)
 
 	rsp.SubjectMapping = &policy.SubjectMapping{
 		Id: subjectMappingID,
@@ -286,13 +286,13 @@ func (s SubjectMappingService) CreateSubjectConditionSet(ctx context.Context,
 		return nil
 	})
 	if err != nil {
-		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
+		s.logger.LogPolicyCRUDFailure(ctx, auditParams)
 		return nil, err
 	}
 
 	auditParams.ObjectID = conditionSet.GetId()
 	auditParams.Original = conditionSet
-	s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
+	s.logger.LogPolicyCRUDSuccess(ctx, auditParams)
 
 	rsp.SubjectConditionSet = conditionSet
 
@@ -333,13 +333,13 @@ func (s SubjectMappingService) UpdateSubjectConditionSet(ctx context.Context,
 		return nil
 	})
 	if err != nil {
-		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
+		s.logger.LogPolicyCRUDFailure(ctx, auditParams)
 		return nil, err
 	}
 
 	auditParams.Original = original
 	auditParams.Updated = updated
-	s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
+	s.logger.LogPolicyCRUDSuccess(ctx, auditParams)
 
 	return connect.NewResponse(rsp), nil
 }
@@ -359,11 +359,11 @@ func (s SubjectMappingService) DeleteSubjectConditionSet(ctx context.Context,
 
 	_, err := s.dbClient.DeleteSubjectConditionSet(ctx, conditionSetID)
 	if err != nil {
-		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
+		s.logger.LogPolicyCRUDFailure(ctx, auditParams)
 		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextDeletionFailed, slog.String("id", conditionSetID))
 	}
 
-	s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
+	s.logger.LogPolicyCRUDSuccess(ctx, auditParams)
 
 	rsp.SubjectConditionSet = &policy.SubjectConditionSet{
 		Id: conditionSetID,
@@ -384,14 +384,14 @@ func (s SubjectMappingService) DeleteAllUnmappedSubjectConditionSets(ctx context
 
 	deleted, err := s.dbClient.DeleteAllUnmappedSubjectConditionSets(ctx)
 	if err != nil {
-		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
+		s.logger.LogPolicyCRUDFailure(ctx, auditParams)
 		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextDeletionFailed)
 	}
 
 	// Log each pruned subject condition set to audit
 	for _, scs := range deleted {
 		auditParams.ObjectID = scs.GetId()
-		s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
+		s.logger.LogPolicyCRUDSuccess(ctx, auditParams)
 	}
 
 	rsp.SubjectConditionSets = deleted

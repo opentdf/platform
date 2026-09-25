@@ -14,7 +14,13 @@ err := params.Logger.Audit.Record(ctx, *event)
 
 `Record` adds request attribution, validates the event, and calls the processor
 synchronously with a deadline detached from request cancellation. Check its
-returned error.
+returned error. Request context values remain available to the processor.
+
+The built-in `RewrapSuccess`, `RewrapFailure`, `PolicyCRUDSuccess`,
+`PolicyCRUDFailure`, `GetDecision`, and `GetDecisionV2` helpers construct an event
+and call `Record`. They also return errors; callers must handle them. Record
+policy success only after the database transaction commits. An audit failure
+after a commit does not undo the operation.
 
 ## Processing and delivery
 
@@ -34,7 +40,8 @@ server.Start(
 The timeout can also be set with `logger.audit_timeout` in YAML or
 `OPENTDF_LOGGER_AUDIT_TIMEOUT`. An explicit `server.WithAuditTimeout` overrides
 those settings. The default is five seconds; zero or negative values use it. Processors must honor the context deadline, including during external
-lookups and delivery.
+lookups and delivery. The budget applies to each event, not the whole request;
+a request that records several events can spend several processing budgets.
 
 Processors handle conversion, destination validation, delivery, and recovery.
 Return nil after the destination or a durable recovery path accepts the event.
@@ -64,3 +71,16 @@ log, err := logger.NewLogger(logger.Config{
 ```
 
 `AuditProcessor` is for Go callers and is excluded from serialized configuration.
+
+## Migration from buffered recording
+
+Events are processed when recorded, without waiting for an interceptor flush.
+A later RPC error or panic does not change an already-recorded outcome.
+Decision and rewrap events describe completed sub-operations, not proof that
+the client received the final response.
+
+`ContextServerInterceptor()` now only adds request metadata and takes no logger.
+`LogAuditEvent`, `Logger.Detach`, and `Logger.LogPolicyCRUD` have been removed.
+Use `Record` or the error-returning event helpers without an audit transaction.
+Background work can retain its own context lifecycle; recording itself detaches
+request cancellation and applies the configured timeout.

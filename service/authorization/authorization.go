@@ -784,14 +784,18 @@ func (as *AuthorizationService) getDecisions(ctx context.Context, dr *authorizat
 			if decision == authorization.DecisionResponse_DECISION_PERMIT {
 				auditDecision = audit.GetDecisionResultPermit
 			}
-			as.logger.Audit.GetDecision(ctx, audit.GetDecisionEventParams{
+			if auditErr := as.logger.Audit.GetDecision(ctx, audit.GetDecisionEventParams{
 				Decision:                auditDecision,
 				EntityChainEntitlements: auditECEntitlements,
 				EntityChainID:           decisionResp.GetEntityChainId(),
 				EntityDecisions:         auditEntityDecisions,
 				FQNs:                    fqns,
 				ResourceAttributeID:     decisionResp.GetResourceAttributesId(),
-			})
+			}); auditErr != nil {
+				as.logger.ErrorContext(context.WithoutCancel(ctx), "failed to record authorization audit event",
+					slog.String("entity_chain_id", decisionResp.GetEntityChainId()),
+					slog.Any("error", auditErr))
+			}
 			response[responseIdx] = decisionResp
 		}
 	}

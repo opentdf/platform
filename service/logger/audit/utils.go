@@ -200,9 +200,8 @@ func GetAuditDataFromContext(ctx context.Context) ContextData {
 		actorID = principal.Subject
 	}
 
-	tx, ok := ctx.Value(contextKey{}).(*auditTransaction)
-	if ok && tx != nil {
-		data := tx.ContextData
+	data, ok := ctx.Value(contextKey{}).(ContextData)
+	if ok {
 		if actorID != "" {
 			data.ActorID = actorID
 		}

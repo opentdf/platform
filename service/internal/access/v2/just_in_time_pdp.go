@@ -667,7 +667,7 @@ func (p *JustInTimePDP) auditDecision(
 		auditDecision = audit.GetDecisionResultPermit
 	}
 
-	p.logger.Audit.GetDecisionV2(ctx, audit.GetDecisionV2EventParams{
+	if err := p.logger.Audit.GetDecisionV2(ctx, audit.GetDecisionV2EventParams{
 		EntityID:                       entityID,
 		ActionName:                     action.GetName(),
 		Decision:                       auditDecision,
@@ -675,5 +675,9 @@ func (p *JustInTimePDP) auditDecision(
 		FulfillableObligationValueFQNs: fulfillableObligationValueFQNs,
 		ObligationsSatisfied:           obligationDecision.AllObligationsSatisfied,
 		ResourceDecisions:              auditResourceDecisions,
-	})
+	}); err != nil {
+		p.logger.ErrorContext(context.WithoutCancel(ctx), "failed to record authorization audit event",
+			slog.String("entity_id", entityID),
+			slog.Any("error", err))
+	}
 }

@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.39.0](https://github.com/opentdf/platform/compare/otdfctl/v0.38.0...otdfctl/v0.39.0) (2026-09-25)
+
+
+### Bug Fixes
+
+* **cli:** drop the encrypt-side stdin spool ([#3948](https://github.com/opentdf/platform/issues/3948)) ([5603c2e](https://github.com/opentdf/platform/commit/5603c2eca9a445eb58b974df393b64adb4d36635))
+
 ## [0.38.0](https://github.com/opentdf/platform/compare/otdfctl/v0.37.0...otdfctl/v0.38.0) (2026-09-22)
 
 

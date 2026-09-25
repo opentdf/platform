@@ -61,7 +61,9 @@ func decryptRun(cmd *cobra.Command, args []string) {
 	defer closeIn()
 
 	// cli.ExitWithError calls os.Exit, which skips deferred functions, so both
-	// the spooled input and the partial output have to be discarded first.
+	// the input and the partial output have to be discarded first. closeIn is
+	// what removes the spool, when there is one -- a piped TDF is spooled to get
+	// a seekable view of it, while a file argument or a redirect is not.
 	// Declared before the destination exists so every exit below can use it.
 	var outFile *streamio.OutputFile
 	fail := func(msg string, err error) {

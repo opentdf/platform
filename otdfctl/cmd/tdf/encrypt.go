@@ -115,28 +115,6 @@ func encryptRun(cmd *cobra.Command, args []string) {
 		wrappingKeyAlgorithm = ocrypto.RSA2048Key
 	}
 
-	piped, hasPiped, err := streamio.PipeReader(os.Stdin)
-	if err != nil {
-		cli.ExitWithError("failed to scan bytes from stdin", err)
-	}
-
-	inputCount := 0
-	if filePath != "" {
-		inputCount++
-	}
-	if hasPiped {
-		inputCount++
-	}
-
-	cliExit := func(s string) {
-		cli.ExitWithError("Must provide "+s+" of the following to encrypt: [file argument, stdin input]", nil)
-	}
-	if inputCount == 0 {
-		cliExit("ONE")
-	} else if inputCount > 1 {
-		cliExit("ONLY ONE")
-	}
-
 	inputName := "stdin"
 	if filePath != "" {
 		inputName = filePath
@@ -144,12 +122,14 @@ func encryptRun(cmd *cobra.Command, args []string) {
 
 	// Whichever source it is, it goes to the SDK as-is rather than through a
 	// temporary file, since CreateTDF takes a plain io.Reader.
-	in, cleanup := piped, func() {}
-	if filePath != "" {
-		in, cleanup, err = streamio.OpenFile(filePath)
-		if err != nil {
-			cli.ExitWithError("Failed to read "+inputName+":", err)
-		}
+	in, cleanup, err := streamio.OpenExclusive(filePath)
+	switch {
+	case errors.Is(err, streamio.ErrNoInput):
+		cli.ExitWithError("Must provide ONE of the following to encrypt: [file argument, stdin input]", err)
+	case errors.Is(err, streamio.ErrTwoInputs):
+		cli.ExitWithError("Must provide ONLY ONE of the following to encrypt: [file argument, stdin input]", err)
+	case err != nil:
+		cli.ExitWithError("Failed to read "+inputName+":", err)
 	}
 	// cli.ExitWithError calls os.Exit, which skips deferred functions, so every
 	// exit below goes through fail() instead of relying on this.

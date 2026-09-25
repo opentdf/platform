@@ -14,14 +14,20 @@ import (
 	"os"
 )
 
-// PipeBufferSize is the window PipeReader buffers over a pipe — generous
-// enough that a typical CLI payload is served from a single read.
+// PipeBufferSize is the window Piped buffers over a pipe — generous enough that
+// a typical CLI payload is served from a single read.
 const PipeBufferSize = 1024 * 1024
 
-// ErrNoInput reports that a command was given neither a file argument nor a
-// non-empty pipe. It is distinct from a failure to open a named file, which
-// callers report differently.
-var ErrNoInput = errors.New("no input provided")
+var (
+	// ErrNoInput reports that a command was given neither a file argument nor a
+	// non-empty pipe. It is distinct from a failure to open a named file, which
+	// callers report differently.
+	ErrNoInput = errors.New("no input provided")
+
+	// ErrTwoInputs reports that a command which takes one payload was given two.
+	// Only OpenExclusive returns it; Open prefers the file argument instead.
+	ErrTwoInputs = errors.New("file argument and stdin input both provided")
+)
 
 // Seekable reports r's current position, and whether it could be asked for one.
 //
@@ -52,7 +58,7 @@ func Measurable(r io.Reader) bool {
 // the payload by reading it instead.
 type unmeasurable struct{ io.Reader }
 
-// OpenFile opens path for reading, ready to hand to the SDK as-is.
+// openFile opens path for reading, ready to hand to the SDK as-is.
 //
 // The file stays measurable, except when its stat cannot be trusted: a procfs or
 // sysfs file is a regular file that reports zero bytes and then reads out
@@ -62,7 +68,7 @@ type unmeasurable struct{ io.Reader }
 // beats an archive missing the payload.
 //
 // cleanup is always non-nil, including on the error return.
-func OpenFile(path string) (io.Reader, func(), error) {
+func openFile(path string) (io.Reader, func(), error) {
 	f, err := os.Open(path)
 	if err != nil {
 		return nil, func() {}, err
@@ -79,15 +85,16 @@ func OpenFile(path string) (io.Reader, func(), error) {
 	return f, cleanup, nil
 }
 
-// PipeReader reports whether in carries at least one byte of payload, and
-// returns a reader over it. A terminal, or an empty redirect such as
-// `otdfctl encrypt < /dev/null`, reports false.
+// Piped reports whether in carries at least one byte of payload, and returns a
+// reader over it. A terminal, or an empty redirect such as
+// `otdfctl encrypt < /dev/null`, reports false. It is named for the usual case
+// but takes redirects too, which is the harder half.
 //
 // A redirect from a regular file — `otdfctl encrypt < payload.txt` — is handed
 // back as the *os.File itself, so the payload stays measurable. Wrapping it
 // would throw that away for nothing: it is the same fd either way. Everything
 // else is a stream, and gets a buffered reader.
-func PipeReader(in *os.File) (io.Reader, bool, error) {
+func Piped(in *os.File) (io.Reader, bool, error) {
 	stat, err := in.Stat()
 	if err != nil {
 		return nil, false, err
@@ -102,7 +109,7 @@ func PipeReader(in *os.File) (io.Reader, bool, error) {
 	// mid-file, and what remains is the payload.
 	//
 	// Only a stat that counts bytes ahead of the offset gets to decide, since a
-	// zero-byte procfs file reads out content anyway (see OpenFile). Everything
+	// zero-byte procfs file reads out content anyway (see openFile). Everything
 	// else falls through to the Peek, which asks the file instead of the stat and
 	// still answers absent for a genuinely empty or already-consumed one.
 	if stat.Mode().IsRegular() {
@@ -119,6 +126,49 @@ func PipeReader(in *os.File) (io.Reader, bool, error) {
 		return nil, false, err
 	}
 	return r, true, nil
+}
+
+// Open resolves a command's payload: the named file when one is given,
+// otherwise stdin. It returns ErrNoInput when there is neither.
+//
+// Nothing is copied, so a measurable source reaches the caller measurable; see
+// Measurable. A file argument wins outright and stdin is not even looked at,
+// since a command run inside `while read f; do ... done < list` inherits a stdin
+// that is the loop's, not a payload — and looking costs a peek that would eat it.
+//
+// cleanup is always non-nil, including on the error return. For a piped payload
+// it does nothing: closing stdin is not ours to do.
+func Open(path string) (io.Reader, func(), error) {
+	if path != "" {
+		return openFile(path)
+	}
+	piped, ok, err := Piped(os.Stdin)
+	switch {
+	case err != nil:
+		return nil, func() {}, err
+	case !ok:
+		return nil, func() {}, ErrNoInput
+	}
+	return piped, func() {}, nil
+}
+
+// OpenExclusive is Open for a command that refuses to choose: being handed both
+// a file argument and a payload on stdin is ErrTwoInputs rather than a silent
+// preference. Telling them apart means inspecting stdin even when the file
+// argument would have decided it, which for a pipe consumes what it peeked.
+func OpenExclusive(path string) (io.Reader, func(), error) {
+	piped, hasPiped, err := Piped(os.Stdin)
+	switch {
+	case err != nil:
+		return nil, func() {}, err
+	case path != "" && hasPiped:
+		return nil, func() {}, ErrTwoInputs
+	case path != "":
+		return openFile(path)
+	case hasPiped:
+		return piped, func() {}, nil
+	}
+	return nil, func() {}, ErrNoInput
 }
 
 // Spool copies r into a temporary file and rewinds it, giving a seekable view
@@ -151,44 +201,25 @@ func Spool(r io.Reader) (*os.File, func(), error) {
 	return f, cleanup, nil
 }
 
-// OpenSeekable resolves a command's input to something seekable: the named file
-// when one is given, otherwise stdin. It returns ErrNoInput for the same
-// "nothing to read" condition whether the file argument was absent or the pipe
-// was empty.
+// OpenSeekable is Open for a command that has to seek its input — reading a
+// TDF, whose manifest sits at the end of the archive.
 //
-// Only what cannot seek is spooled to disk. A named file or a redirect from one
-// already seeks, and copying it would need a TMPDIR with room for the whole TDF
-// to buy nothing.
+// Only what cannot seek is spooled to disk: a named file or a redirect from one
+// seeks already, and copying it would need a TMPDIR with room for the whole TDF
+// to hand back a view no better than the one it had.
 //
 // The returned cleanup must run on every path, per Spool.
 func OpenSeekable(path string) (*os.File, func(), error) {
-	if path != "" {
-		in, cleanup, err := OpenFile(path)
-		if err != nil {
-			return nil, func() {}, err
-		}
-		if f, ok := in.(*os.File); ok && Measurable(f) {
-			return f, cleanup, nil
-		}
-		// A FIFO, /dev/fd/N, or a file OpenFile would not vouch for: spool it
-		// like piped stdin so callers still get something they can seek.
-		spooled, spoolCleanup, err := Spool(in)
-		cleanup()
-		return spooled, spoolCleanup, err
-	}
-
-	piped, ok, err := PipeReader(os.Stdin)
+	in, cleanup, err := Open(path)
 	if err != nil {
 		return nil, func() {}, err
 	}
-	if !ok {
-		return nil, func() {}, ErrNoInput
+	if f, ok := in.(*os.File); ok && Measurable(f) {
+		return f, cleanup, nil
 	}
-	if f, isFile := piped.(*os.File); isFile {
-		// PipeReader only hands back the file for a regular-file redirect, which
-		// is seekable already. The cleanup stays empty on purpose: this is
-		// os.Stdin, and closing it out from under the process is not ours to do.
-		return f, func() {}, nil
-	}
-	return Spool(piped)
+	// A pipe, a FIFO, /dev/fd/N, or a file whose stat openFile would not vouch
+	// for. Spooling closes over the original, so let go of it either way.
+	spooled, spoolCleanup, err := Spool(in)
+	cleanup()
+	return spooled, spoolCleanup, err
 }

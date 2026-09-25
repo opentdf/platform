@@ -205,17 +205,23 @@ const (
 	ActionResultIgnore
 	ActionResultOverride
 	ActionResultCancel
+	// ActionResultAttempted marks the intentionally partial record written
+	// before an operation's cancellable work begins. Only the attempted phase
+	// of an audit lifecycle uses it; every terminal record carries a real
+	// outcome.
+	ActionResultAttempted
 )
 
 var actionResultNames = newTypeNameRegistry("action_result", map[ActionResult]string{
-	ActionResultSuccess:  "success",
-	ActionResultFailure:  "failure",
-	ActionResultError:    "error",
-	ActionResultEncrypt:  "encrypt",
-	ActionResultBlock:    "block",
-	ActionResultIgnore:   "ignore",
-	ActionResultOverride: "override",
-	ActionResultCancel:   "cancel",
+	ActionResultSuccess:   "success",
+	ActionResultFailure:   "failure",
+	ActionResultError:     "error",
+	ActionResultEncrypt:   "encrypt",
+	ActionResultBlock:     "block",
+	ActionResultIgnore:    "ignore",
+	ActionResultOverride:  "override",
+	ActionResultCancel:    "cancel",
+	ActionResultAttempted: "attempted",
 })
 
 func (ar ActionResult) String() string {

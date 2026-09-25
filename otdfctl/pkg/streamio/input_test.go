@@ -13,7 +13,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestPipeReader(t *testing.T) {
+func TestPiped(t *testing.T) {
 	for _, tc := range []struct {
 		name    string
 		content string
@@ -32,7 +32,7 @@ func TestPipeReader(t *testing.T) {
 				_, _ = io.WriteString(w, tc.content)
 			}()
 
-			got, ok, err := PipeReader(r)
+			got, ok, err := Piped(r)
 			require.NoError(t, err)
 			require.Equal(t, tc.wantOK, ok)
 			if !tc.wantOK {
@@ -47,7 +47,7 @@ func TestPipeReader(t *testing.T) {
 	}
 }
 
-func TestPipeReaderPreservesPayloadLargerThanBuffer(t *testing.T) {
+func TestPipedPreservesPayloadLargerThanBuffer(t *testing.T) {
 	content := strings.Repeat("a", PipeBufferSize*2+7)
 
 	r, w, err := os.Pipe()
@@ -59,7 +59,7 @@ func TestPipeReaderPreservesPayloadLargerThanBuffer(t *testing.T) {
 		_, _ = io.WriteString(w, content)
 	}()
 
-	got, ok, err := PipeReader(r)
+	got, ok, err := Piped(r)
 	require.NoError(t, err)
 	require.True(t, ok)
 
@@ -68,7 +68,7 @@ func TestPipeReaderPreservesPayloadLargerThanBuffer(t *testing.T) {
 	assert.Len(t, all, len(content))
 }
 
-func TestPipeReaderOnTerminalReportsAbsent(t *testing.T) {
+func TestPipedOnTerminalReportsAbsent(t *testing.T) {
 	// A regular file is not a char device, so use os.Stdin's actual mode only
 	// when it is one; otherwise this assertion is vacuous and we skip.
 	stat, err := os.Stdin.Stat()
@@ -76,31 +76,63 @@ func TestPipeReaderOnTerminalReportsAbsent(t *testing.T) {
 	if (stat.Mode() & os.ModeCharDevice) == 0 {
 		t.Skip("stdin is not a terminal under this test runner")
 	}
-	_, ok, err := PipeReader(os.Stdin)
+	_, ok, err := Piped(os.Stdin)
 	require.NoError(t, err)
 	assert.False(t, ok)
 }
 
-// openRegularStdin stands in for `otdfctl encrypt < payload.txt`: a redirect
-// from a regular file is not a pipe, and PipeReader has to notice.
-func openRegularStdin(t *testing.T, content string) *os.File {
+// tempFile writes content to a file that lasts as long as the test.
+func tempFile(t *testing.T, content string) string {
 	t.Helper()
 
 	path := filepath.Join(t.TempDir(), "payload.txt")
 	require.NoError(t, os.WriteFile(path, []byte(content), 0o600))
-	f, err := os.Open(path)
+	return path
+}
+
+// openRegularStdin stands in for `otdfctl encrypt < payload.txt`: a redirect
+// from a regular file is not a pipe, and Piped has to notice.
+func openRegularStdin(t *testing.T, content string) *os.File {
+	t.Helper()
+
+	f, err := os.Open(tempFile(t, content))
 	require.NoError(t, err)
 	t.Cleanup(func() { f.Close() })
 	return f
 }
 
+// useStdin makes f stdin for the duration of the test.
+func useStdin(t *testing.T, f *os.File) {
+	t.Helper()
+
+	orig := os.Stdin
+	os.Stdin = f
+	t.Cleanup(func() { os.Stdin = orig })
+}
+
+// stdinPipe makes a pipe carrying content stdin. An empty content is a producer
+// that writes nothing and hangs up, the same "nothing to read" a caller gets
+// from `otdfctl encrypt < /dev/null`.
+func stdinPipe(t *testing.T, content string) {
+	t.Helper()
+
+	r, w, err := os.Pipe()
+	require.NoError(t, err)
+	t.Cleanup(func() { r.Close() })
+	go func() {
+		defer w.Close()
+		_, _ = io.WriteString(w, content)
+	}()
+	useStdin(t, r)
+}
+
 // A regular-file redirect must come back as the file itself. Wrapping it would
 // cost the payload its length for nothing -- it is the same fd either way.
-func TestPipeReaderRegularFileStaysSeekable(t *testing.T) {
+func TestPipedRegularFileStaysSeekable(t *testing.T) {
 	const content = "hello from a redirect\n"
 	f := openRegularStdin(t, content)
 
-	got, ok, err := PipeReader(f)
+	got, ok, err := Piped(f)
 	require.NoError(t, err)
 	require.True(t, ok)
 
@@ -118,8 +150,8 @@ func TestPipeReaderRegularFileStaysSeekable(t *testing.T) {
 
 // An empty redirect is "no input", not "a zero-byte payload" -- the same answer
 // the Peek gives for an empty pipe.
-func TestPipeReaderEmptyRegularFileReportsAbsent(t *testing.T) {
-	got, ok, err := PipeReader(openRegularStdin(t, ""))
+func TestPipedEmptyRegularFileReportsAbsent(t *testing.T) {
+	got, ok, err := Piped(openRegularStdin(t, ""))
 	require.NoError(t, err)
 	assert.False(t, ok)
 	assert.Nil(t, got)
@@ -128,13 +160,13 @@ func TestPipeReaderEmptyRegularFileReportsAbsent(t *testing.T) {
 // Presence is measured from the current offset, not from zero:
 // `{ read -r hdr; otdfctl encrypt; } < f` leaves stdin mid-file, and what
 // remains is the payload.
-func TestPipeReaderRegularFileAtNonZeroOffset(t *testing.T) {
+func TestPipedRegularFileAtNonZeroOffset(t *testing.T) {
 	const header, payload = "header line\n", "the actual payload\n"
 	f := openRegularStdin(t, header+payload)
 	_, err := f.Seek(int64(len(header)), io.SeekStart)
 	require.NoError(t, err)
 
-	got, ok, err := PipeReader(f)
+	got, ok, err := Piped(f)
 	require.NoError(t, err)
 	require.True(t, ok)
 
@@ -145,13 +177,13 @@ func TestPipeReaderRegularFileAtNonZeroOffset(t *testing.T) {
 
 // A file consumed to its end has nothing left to encrypt, so it reports absent
 // even though the file itself is not empty.
-func TestPipeReaderRegularFileAtEOFReportsAbsent(t *testing.T) {
+func TestPipedRegularFileAtEOFReportsAbsent(t *testing.T) {
 	const content = "already read\n"
 	f := openRegularStdin(t, content)
 	_, err := f.Seek(int64(len(content)), io.SeekStart)
 	require.NoError(t, err)
 
-	_, ok, err := PipeReader(f)
+	_, ok, err := Piped(f)
 	require.NoError(t, err)
 	assert.False(t, ok)
 }
@@ -159,12 +191,12 @@ func TestPipeReaderRegularFileAtEOFReportsAbsent(t *testing.T) {
 // A procfs file is a readable regular file that stats as zero bytes, so the
 // stat cannot be the one to say whether a payload is there. Deciding on it alone
 // turned `otdfctl encrypt < /proc/cpuinfo` into "no input".
-func TestPipeReaderZeroSizedRegularFileWithContent(t *testing.T) {
+func TestPipedZeroSizedRegularFileWithContent(t *testing.T) {
 	f, err := os.Open(zeroSizedFileWithContent(t))
 	require.NoError(t, err)
 	defer f.Close()
 
-	got, ok, err := PipeReader(f)
+	got, ok, err := Piped(f)
 	require.NoError(t, err)
 	require.True(t, ok, "a file that stats as empty may still have content")
 
@@ -197,7 +229,7 @@ func TestOpenFileStaysMeasurable(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "payload.txt")
 	require.NoError(t, os.WriteFile(path, []byte(content), 0o600))
 
-	in, cleanup, err := OpenFile(path)
+	in, cleanup, err := openFile(path)
 	require.NoError(t, err)
 	defer cleanup()
 
@@ -215,7 +247,7 @@ func TestOpenFileDoesNotMeasureAZeroSizedFile(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "empty.txt")
 	require.NoError(t, os.WriteFile(path, nil, 0o600))
 
-	in, cleanup, err := OpenFile(path)
+	in, cleanup, err := openFile(path)
 	require.NoError(t, err)
 	defer cleanup()
 
@@ -226,7 +258,7 @@ func TestOpenFileDoesNotMeasureAZeroSizedFile(t *testing.T) {
 // content. Both halves matter -- io.ReadAll drains the file either way, and it is
 // the SDK's io.LimitReader, sized from the measurement, that would stop at zero.
 func TestOpenFileReadsAZeroSizedFileWhole(t *testing.T) {
-	in, cleanup, err := OpenFile(zeroSizedFileWithContent(t))
+	in, cleanup, err := openFile(zeroSizedFileWithContent(t))
 	require.NoError(t, err)
 	defer cleanup()
 
@@ -238,10 +270,92 @@ func TestOpenFileReadsAZeroSizedFileWhole(t *testing.T) {
 }
 
 func TestOpenFileReportsAMissingFile(t *testing.T) {
-	_, cleanup, err := OpenFile(filepath.Join(t.TempDir(), "absent.txt"))
+	_, cleanup, err := openFile(filepath.Join(t.TempDir(), "absent.txt"))
 	require.ErrorIs(t, err, os.ErrNotExist)
 
 	// cleanup is non-nil even here, so a caller may defer it without a nil guard.
+	require.NotNil(t, cleanup)
+	cleanup()
+}
+
+// Open and OpenExclusive part company only over being handed both sources at
+// once, so every other case is asserted of both.
+func TestResolveInput(t *testing.T) {
+	for _, resolver := range []struct {
+		name string
+		open func(string) (io.Reader, func(), error)
+	}{
+		{name: "Open", open: Open},
+		{name: "OpenExclusive", open: OpenExclusive},
+	} {
+		t.Run(resolver.name, func(t *testing.T) {
+			for _, tc := range []struct {
+				name, inFile, onStdin string
+				wantMeasurable        bool
+				wantErr               error
+			}{
+				// A file argument reaches the SDK measurable. A pipe must not:
+				// encrypting one would then need a TMPDIR to spool it.
+				{name: "file argument", inFile: "the payload\n", wantMeasurable: true},
+				{name: "stdin", onStdin: "piped payload\n"},
+				{name: "neither", wantErr: ErrNoInput},
+			} {
+				t.Run(tc.name, func(t *testing.T) {
+					stdinPipe(t, tc.onStdin)
+					path := ""
+					if tc.inFile != "" {
+						path = tempFile(t, tc.inFile)
+					}
+
+					in, cleanup, err := resolver.open(path)
+					// cleanup is non-nil even on the error return, so a caller
+					// may defer it without a nil guard.
+					require.NotNil(t, cleanup)
+					defer cleanup()
+
+					if tc.wantErr != nil {
+						require.ErrorIs(t, err, tc.wantErr)
+						return
+					}
+					require.NoError(t, err)
+					assert.Equal(t, tc.wantMeasurable, Measurable(in))
+
+					got, err := io.ReadAll(in)
+					require.NoError(t, err)
+					assert.Equal(t, tc.inFile+tc.onStdin, string(got)) // exactly one is set
+				})
+			}
+		})
+	}
+}
+
+// Given both, Open takes the file argument and leaves stdin not just unused but
+// unread: `while read f; do otdfctl … "$f"; done < list` loses a line for every
+// byte peeked out from under the loop.
+func TestOpenPrefersTheFileArgument(t *testing.T) {
+	const onStdin, inFile = "the loop's list\n", "the payload\n"
+	stdinPipe(t, onStdin)
+
+	in, cleanup, err := Open(tempFile(t, inFile))
+	require.NoError(t, err)
+	defer cleanup()
+
+	got, err := io.ReadAll(in)
+	require.NoError(t, err)
+	assert.Equal(t, inFile, string(got))
+
+	rest, err := io.ReadAll(os.Stdin)
+	require.NoError(t, err)
+	assert.Equal(t, onStdin, string(rest), "stdin must survive a call that never wanted it")
+}
+
+// OpenExclusive refuses to pick, rather than silently dropping one of the two
+// payloads it was handed.
+func TestOpenExclusiveRejectsTwoInputs(t *testing.T) {
+	stdinPipe(t, "a piped payload\n")
+
+	_, cleanup, err := OpenExclusive(tempFile(t, "a file payload\n"))
+	require.ErrorIs(t, err, ErrTwoInputs)
 	require.NotNil(t, cleanup)
 	cleanup()
 }
@@ -339,18 +453,8 @@ func TestOpenSeekableSpoolsNonSeekableNamedFile(t *testing.T) {
 }
 
 func TestOpenSeekableReadsFromStdinPipe(t *testing.T) {
-	r, w, err := os.Pipe()
-	require.NoError(t, err)
-
-	origStdin := os.Stdin
-	os.Stdin = r
-	defer func() { os.Stdin = origStdin }()
-
-	content := "piped stdin, spooled to disk"
-	go func() {
-		defer w.Close()
-		_, _ = io.WriteString(w, content)
-	}()
+	const content = "piped stdin, spooled to disk"
+	stdinPipe(t, content)
 
 	in, cleanup, err := OpenSeekable("")
 	require.NoError(t, err)
@@ -368,9 +472,7 @@ func TestOpenSeekableReadsFromStdinPipe(t *testing.T) {
 func TestOpenSeekableDoesNotSpoolARegularFileStdin(t *testing.T) {
 	const content = "redirected stdin, read in place\n"
 
-	origStdin := os.Stdin
-	os.Stdin = openRegularStdin(t, content)
-	defer func() { os.Stdin = origStdin }()
+	useStdin(t, openRegularStdin(t, content))
 
 	in, cleanup, err := OpenSeekable("")
 	require.NoError(t, err)
@@ -389,14 +491,8 @@ func TestOpenSeekableDoesNotSpoolARegularFileStdin(t *testing.T) {
 }
 
 func TestOpenSeekableReturnsErrNoInputForEmptyStdinPipe(t *testing.T) {
-	r, w, err := os.Pipe()
-	require.NoError(t, err)
-	require.NoError(t, w.Close())
+	stdinPipe(t, "")
 
-	origStdin := os.Stdin
-	os.Stdin = r
-	defer func() { os.Stdin = origStdin }()
-
-	_, _, err = OpenSeekable("")
+	_, _, err := OpenSeekable("")
 	require.ErrorIs(t, err, ErrNoInput)
 }

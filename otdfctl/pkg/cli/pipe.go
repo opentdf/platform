@@ -30,10 +30,10 @@ func ReadFromArgsOrPipe(args []string, pipe *os.File) []byte {
 }
 
 // Deprecated: reads the entire pipe into memory and terminates the process on
-// failure. Use streamio.PipeReader, which reports whether input is present
-// without consuming it, paired with io.ReadAll for the equivalent []byte.
+// failure. Use streamio.Piped, which reports whether input is present without
+// consuming it, paired with io.ReadAll for the equivalent []byte.
 func ReadFromPipe(in *os.File) []byte {
-	r, ok, err := streamio.PipeReader(in)
+	r, ok, err := streamio.Piped(in)
 	if err != nil {
 		ExitWithError("failed to read stat from stdin", err)
 	}

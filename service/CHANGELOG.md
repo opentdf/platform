@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.28.0](https://github.com/opentdf/platform/compare/service/v0.27.0...service/v0.28.0) (2026-09-25)
+
+
+### Bug Fixes
+
+* **deps:** bump otel to v1.45.0 and align semconv schema to v1.43.0 ([#4097](https://github.com/opentdf/platform/issues/4097)) ([e5ee699](https://github.com/opentdf/platform/commit/e5ee6991dca1efa13bdb972f030090d638dffca9))
+* **policy:** record audit outcomes after transaction completion ([#4091](https://github.com/opentdf/platform/issues/4091)) ([8eefa1b](https://github.com/opentdf/platform/commit/8eefa1b2bdd7a93f29f08f9056ed9126c515c452))
+
 ## [0.27.0](https://github.com/opentdf/platform/compare/service/v0.26.0...service/v0.27.0) (2026-09-22)
 
 

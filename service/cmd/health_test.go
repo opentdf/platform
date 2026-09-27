@@ -75,3 +75,22 @@ func TestHealthAsksForTheRequestedService(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, "service=all", *query)
 }
+
+func TestHealthChecksLivenessUnlessAServiceIsRequested(t *testing.T) {
+	server, query := healthServer(t, http.StatusOK, `{"status":"SERVING"}`)
+
+	_, err := runHealth(t, "--url", server.URL+"/healthz?service=all")
+
+	require.NoError(t, err)
+	require.Empty(t, *query)
+}
+
+func TestHealthDoesNotFollowRedirects(t *testing.T) {
+	serving, _ := healthServer(t, http.StatusOK, `{"status":"SERVING"}`)
+	redirecting := httptest.NewServer(http.RedirectHandler(serving.URL+"/healthz", http.StatusFound))
+	t.Cleanup(redirecting.Close)
+
+	_, err := runHealth(t, "--url", redirecting.URL+"/healthz")
+
+	require.ErrorContains(t, err, "HTTP 302")
+}

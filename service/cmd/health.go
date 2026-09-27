@@ -21,6 +21,14 @@ const (
 	servingStatus        = "SERVING"
 )
 
+// healthClient does not follow redirects: only the configured endpoint may
+// report the platform as serving.
+var healthClient = &http.Client{
+	CheckRedirect: func(*http.Request, []*http.Request) error {
+		return http.ErrUseLastResponse
+	},
+}
+
 func init() {
 	rootCmd.AddCommand(newHealthCommand())
 }
@@ -74,11 +82,15 @@ func checkHealth(ctx context.Context, endpoint, service string, timeout time.Dur
 	if err != nil {
 		return "", fmt.Errorf("invalid health endpoint %q: %w", endpoint, err)
 	}
+	// The flag decides the check, whatever the endpoint's query says: without
+	// a service, liveness.
+	query := target.Query()
 	if service != "" {
-		query := target.Query()
 		query.Set("service", service)
-		target.RawQuery = query.Encode()
+	} else {
+		query.Del("service")
 	}
+	target.RawQuery = query.Encode()
 
 	ctx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
@@ -86,7 +98,7 @@ func checkHealth(ctx context.Context, endpoint, service string, timeout time.Dur
 	if err != nil {
 		return "", fmt.Errorf("invalid health request: %w", err)
 	}
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := healthClient.Do(req)
 	if err != nil {
 		return "", fmt.Errorf("health check failed: %w", err)
 	}

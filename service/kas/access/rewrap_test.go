@@ -1538,3 +1538,58 @@ func TestVerifySRTSignature(t *testing.T) {
 		})
 	}
 }
+
+// A request with no policy Id is skipped before verification and so has no
+// result map. When tdf3Rewrap then fails every KAO (here, because the client
+// public key does not parse), it must not write into that missing map.
+func TestTDF3Rewrap_EmptyPolicyIDWithFailAllKaos(t *testing.T) {
+	kao := func(id string) []*kaspb.UnsignedRewrapRequest_WithKeyAccessObject {
+		return []*kaspb.UnsignedRewrapRequest_WithKeyAccessObject{
+			{KeyAccessObjectId: id, KeyAccessObject: &kaspb.KeyAccess{}},
+		}
+	}
+	tests := []struct {
+		name     string
+		requests []*kaspb.UnsignedRewrapRequest_WithPolicyRequest
+		wantIDs  []string
+	}{
+		{
+			name: "empty policy id",
+			requests: []*kaspb.UnsignedRewrapRequest_WithPolicyRequest{
+				{Policy: &kaspb.UnsignedRewrapRequest_WithPolicy{Body: string(emptyPolicyBytes())}, KeyAccessObjects: kao("kao-1")},
+			},
+		},
+		{
+			name: "nil policy",
+			requests: []*kaspb.UnsignedRewrapRequest_WithPolicyRequest{
+				{KeyAccessObjects: kao("kao-1")},
+			},
+		},
+		{
+			name: "empty policy id alongside a valid one",
+			requests: []*kaspb.UnsignedRewrapRequest_WithPolicyRequest{
+				{Policy: &kaspb.UnsignedRewrapRequest_WithPolicy{Body: string(emptyPolicyBytes())}, KeyAccessObjects: kao("kao-1")},
+				{Policy: &kaspb.UnsignedRewrapRequest_WithPolicy{Id: "policy-1", Body: string(emptyPolicyBytes())}, KeyAccessObjects: kao("kao-2")},
+			},
+			wantIDs: []string{"policy-1"},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			p := &Provider{Logger: logger.CreateTestLogger()}
+			var results policyKAOResults
+			require.NotPanics(t, func() {
+				_, results, _ = p.tdf3Rewrap(t.Context(), tt.requests, "not a pem", &entityInfo{}, &AdditionalRewrapContext{})
+			})
+			assert.NotContains(t, results, "")
+			assert.Len(t, results, len(tt.wantIDs))
+			for _, id := range tt.wantIDs {
+				require.Contains(t, results, id)
+				for kaoID, r := range results[id] {
+					require.Error(t, r.Error, kaoID)
+					assert.Contains(t, r.Error.Error(), "invalid request", kaoID)
+				}
+			}
+		})
+	}
+}

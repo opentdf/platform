@@ -1098,8 +1098,13 @@ func (p *Provider) tdf3Rewrap(ctx context.Context, requests []*kaspb.UnsignedRew
 
 func failAllKaos(reqs []*kaspb.UnsignedRewrapRequest_WithPolicyRequest, results policyKAOResults, err error) {
 	for _, req := range reqs {
+		kaoResults, ok := results[req.GetPolicy().GetId()]
+		if !ok {
+			// Skipped by tdf3Rewrap (nil request or policy, or empty policy Id)
+			continue
+		}
 		for _, kao := range req.GetKeyAccessObjects() {
-			failedKAORewrap(results[req.GetPolicy().GetId()], kao, err)
+			failedKAORewrap(kaoResults, kao, err)
 		}
 	}
 }

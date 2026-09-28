@@ -10,6 +10,7 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"sync"
 	"time"
 
 	"connectrpc.com/connect"
@@ -381,22 +382,35 @@ type timeStampedKASInfo struct {
 	time.Time
 }
 
-// Caches the most recent key info for a given KAS URL and algorithm
+// How long a cached KAS key stays usable before get() evicts it.
+const kasKeyCacheTTL = 5 * time.Minute
+
+// Caches the most recent key info for a given KAS URL and algorithm.
+//
+// A single cache is shared by every operation on an SDK instance (see the
+// embedded field on SDK), so all access must hold cacheMu. Lookups dominate, hence
+// RWMutex: an exclusive lock here serializes every concurrent TDF operation on
+// one mutex and gets slower as cores are added.
 type kasKeyCache struct {
-	c map[kasKeyRequest]timeStampedKASInfo
+	cacheMu sync.RWMutex
+	c       map[kasKeyRequest]timeStampedKASInfo
 }
 
 func newKasKeyCache() *kasKeyCache {
-	return &kasKeyCache{make(map[kasKeyRequest]timeStampedKASInfo)}
+	return &kasKeyCache{c: make(map[kasKeyRequest]timeStampedKASInfo)}
 }
 
 func (c *kasKeyCache) clear() {
+	c.cacheMu.Lock()
+	defer c.cacheMu.Unlock()
 	c.c = make(map[kasKeyRequest]timeStampedKASInfo)
 }
 
 func (c *kasKeyCache) get(url, algorithm, kid string) *KASInfo {
 	cacheKey := kasKeyRequest{url, algorithm, kid}
 	now := time.Now()
+
+	c.cacheMu.RLock()
 	cv, ok := c.c[cacheKey]
 	if !ok && kid == "" {
 		for k, v := range c.c {
@@ -407,19 +421,35 @@ func (c *kasKeyCache) get(url, algorithm, kid string) *KASInfo {
 			}
 		}
 	}
+	c.cacheMu.RUnlock()
+
 	if !ok {
 		return nil
 	}
-	ago := now.Add(-5 * time.Minute)
+	ago := now.Add(-kasKeyCacheTTL)
 	if ago.After(cv.Time) {
-		delete(c.c, cacheKey)
+		c.evictIfUnchanged(cacheKey, cv.Time)
 		return nil
 	}
+	// cv is a copy, so this pointer is not shared with any other caller.
 	return &cv.KASInfo
+}
+
+// evictIfUnchanged drops an expired entry, unless another goroutine refreshed
+// it after the read lock was released. Go has no lock upgrade, so the entry has
+// to be re-read under the write lock rather than assumed still stale.
+func (c *kasKeyCache) evictIfUnchanged(cacheKey kasKeyRequest, staleAt time.Time) {
+	c.cacheMu.Lock()
+	defer c.cacheMu.Unlock()
+	if current, ok := c.c[cacheKey]; ok && current.Equal(staleAt) {
+		delete(c.c, cacheKey)
+	}
 }
 
 func (c *kasKeyCache) store(ki KASInfo) {
 	cacheKey := kasKeyRequest{ki.URL, ki.Algorithm, ki.KID}
+	c.cacheMu.Lock()
+	defer c.cacheMu.Unlock()
 	c.c[cacheKey] = timeStampedKASInfo{ki, time.Now()}
 }
 

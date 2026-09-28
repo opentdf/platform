@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.38.1](https://github.com/opentdf/platform/compare/otdfctl/v0.38.0...otdfctl/v0.38.1) (2026-09-28)
+
+
+### Bug Fixes
+
+* **cli:** drop the encrypt-side stdin spool [backport to release/otdfctl/v0.38] ([#4108](https://github.com/opentdf/platform/issues/4108)) ([12f8ed6](https://github.com/opentdf/platform/commit/12f8ed60a3c0e95c8afd3eb9f5da410e6f13d3d7))
+* **deps:** bump SDK from v0.32.0 to v0.33.0 in /otdfctl [backport to release/otdfctl/v0.38] ([#4111](https://github.com/opentdf/platform/issues/4111)) ([8d66131](https://github.com/opentdf/platform/commit/8d661316d45f9e3944b3aef7d767cd74ff012bc9))
+
 ## [0.38.0](https://github.com/opentdf/platform/compare/otdfctl/v0.37.0...otdfctl/v0.38.0) (2026-09-22)
 
 

@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.33.0](https://github.com/opentdf/platform/compare/sdk/v0.32.0...sdk/v0.33.0) (2026-09-25)
+
+
+### Features
+
+* **sdk:** accept io.Reader in CreateTDF and drop the 64 GB payload cap ([#3945](https://github.com/opentdf/platform/issues/3945)) ([20ff505](https://github.com/opentdf/platform/commit/20ff50584bc0fb45833e598b7a705818e087c8b2))
+* **sdk:** add a chunked segment writer (experimental) ([#3940](https://github.com/opentdf/platform/issues/3940)) ([69cb391](https://github.com/opentdf/platform/commit/69cb391e96d08b90c3ee827545bc9b15f2d0c006))
+
+
+### Bug Fixes
+
+* **deps:** bump google.golang.org/grpc from 1.83.1 to 1.83.2 in /sdk ([#4018](https://github.com/opentdf/platform/issues/4018)) ([d1d4bd6](https://github.com/opentdf/platform/commit/d1d4bd64c94028242bfd52f9ab7baa91d21a4cfd))
+* **sdk:** emit spec-compliant key access in experimental/tdf and delegate Writer ([#3944](https://github.com/opentdf/platform/issues/3944)) ([3e8d88a](https://github.com/opentdf/platform/commit/3e8d88a93aa51f27058ccd860ee59451514d0968))
+* **sdk:** read zip entry bytes with io.ReadFull (DSPX-4590) ([#4087](https://github.com/opentdf/platform/issues/4087)) ([40fa788](https://github.com/opentdf/platform/commit/40fa7888f8c90b9169657021641ab802fb19d09d))
+* **sdk:** stop GetManifest from splitting the key under the lock ([#3941](https://github.com/opentdf/platform/issues/3941)) ([cf1b083](https://github.com/opentdf/platform/commit/cf1b083427df3c762eb236da934c9bdd90a64356))
+
 ## [0.32.0](https://github.com/opentdf/platform/compare/sdk/v0.31.0...sdk/v0.32.0) (2026-09-16)
 
 

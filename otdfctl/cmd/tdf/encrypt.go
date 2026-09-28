@@ -1,6 +1,7 @@
 package tdf
 
 import (
+	"bytes"
 	"errors"
 	"io"
 	"log/slog"
@@ -29,26 +30,34 @@ var (
 	EncryptCmd = &encryptDoc.Command
 )
 
-// detectMimeType sniffs the payload's type from its head and rewinds, so the
-// whole payload still reaches the encoder.
+// detectMimeType sniffs the payload's type from its head and returns a reader
+// that still yields the whole payload.
 //
 // Detection needs only the first megabyte, which is what mimetype is limited to
-// anyway, so this reads a bounded prefix rather than the whole payload.
-func detectMimeType(in io.ReadSeeker, fileExt string) (string, error) {
+// anyway, so this reads a bounded prefix rather than the whole payload. An input
+// that can be rewound is handed back unchanged, keeping it measurable; anything
+// else gets the sniffed prefix pushed back in front of it, a megabyte in memory
+// at most.
+//
+// On error the returned reader is nil, and the payload has been partly consumed.
+func detectMimeType(in io.Reader, fileExt string) (string, io.Reader, error) {
 	mimetype.SetLimit(Size1MB) // limit to 1MB
+
+	// The rewind below restores where the payload started rather than seeking to
+	// zero: stdin can arrive part-consumed — `{ read -r header; otdfctl encrypt; }
+	// < payload.txt` leaves it mid-file — and the payload is what remains.
+	seeker, start, _ := streamio.Seekable(in)
 
 	head := make([]byte, Size1MB)
 	// A payload shorter than the sniff window is the common case, not an error.
 	n, err := io.ReadFull(in, head)
 	if err != nil && !errors.Is(err, io.EOF) && !errors.Is(err, io.ErrUnexpectedEOF) {
-		return "", err
+		return "", nil, err
 	}
-	if _, err := in.Seek(0, io.SeekStart); err != nil {
-		return "", err
-	}
+	head = head[:n]
 
 	// defaults to application/octet-stream if nothing is recognized
-	detected := mimetype.Detect(head[:n]).String()
+	detected := mimetype.Detect(head).String()
 	if detected == "application/octet-stream" && fileExt != "" {
 		// mime.TypeByExtension is the extension lookup. mimetype.Lookup takes a
 		// MIME type string, so passing it a bare extension always returned nil
@@ -59,7 +68,18 @@ func detectMimeType(in io.ReadSeeker, fileExt string) (string, error) {
 			detected = byExt
 		}
 	}
-	return detected, nil
+
+	// Rewinding keeps the payload measurable; replaying the prefix is always
+	// correct, since a failed lseek(2) leaves the offset untouched. So a refused
+	// seek is a fallback, not an error — the SDK draws the same line when it
+	// sizes the payload.
+	if seeker != nil {
+		if _, err := seeker.Seek(start, io.SeekStart); err == nil {
+			return detected, in, nil
+		}
+		slog.Debug("payload rewind failed after its position probe succeeded; replaying the sniffed prefix instead")
+	}
+	return detected, io.MultiReader(bytes.NewReader(head), in), nil
 }
 
 func encryptRun(cmd *cobra.Command, args []string) {
@@ -117,48 +137,30 @@ func encryptRun(cmd *cobra.Command, args []string) {
 		cliExit("ONLY ONE")
 	}
 
-	// The SDK seeks to the end of the payload to size it, so the input has to be
-	// seekable. A file already is; a pipe is spooled to disk, which trades the
-	// temporary file for the memory a whole-payload read used to cost.
-	var in io.ReadSeeker
-	var cleanup func()
+	inputName := "stdin"
 	if filePath != "" {
-		f, err := os.Open(filePath)
+		inputName = filePath
+	}
+
+	// Whichever source it is, it goes to the SDK as-is rather than through a
+	// temporary file, since CreateTDF takes a plain io.Reader.
+	in, cleanup := piped, func() {}
+	if filePath != "" {
+		in, cleanup, err = streamio.OpenFile(filePath)
 		if err != nil {
-			cli.ExitWithError("Failed to read file:", err)
+			cli.ExitWithError("Failed to read "+inputName+":", err)
 		}
-		in, cleanup = f, func() { f.Close() }
-	} else {
-		f, spoolCleanup, err := streamio.Spool(piped)
-		if err != nil {
-			cli.ExitWithError("Failed to read stdin:", err)
-		}
-		in, cleanup = f, spoolCleanup
 	}
 	// cli.ExitWithError calls os.Exit, which skips deferred functions, so every
-	// exit below goes through fail() to discard the spool and any partial output.
+	// exit below goes through fail() instead of relying on this.
 	defer cleanup()
 
-	// Resolve the destination before encrypting, so the payload streams straight
-	// to it rather than accumulating in memory first.
-	var dest io.Writer
+	// fail does not return -- cli.ExitWithError ends in os.Exit -- but call sites
+	// return immediately afterwards so encryptRun reads top to bottom. With -o it
+	// discards the partial TDF, the no-partial-output guarantee streamio.OutputFile
+	// exists to provide; a stdout destination cannot be given one, since the bytes
+	// are already gone. Declared before tdfFile exists, which is why the nil guard.
 	var tdfFile *streamio.OutputFile
-	if out != "" {
-		// make sure output ends in .tdf extension
-		if !strings.HasSuffix(out, ".tdf") {
-			out += ".tdf"
-		}
-		tdfFile, err = streamio.NewOutputFile(out, encryptedOutputFileMode)
-		if err != nil {
-			cleanup()
-			cli.ExitWithError("Failed to write encrypted file "+out, err)
-		}
-		defer tdfFile.Cleanup()
-		dest = tdfFile
-	} else {
-		dest = os.Stdout
-	}
-
 	fail := func(msg string, err error) {
 		if tdfFile != nil {
 			tdfFile.Cleanup()
@@ -167,15 +169,45 @@ func encryptRun(cmd *cobra.Command, args []string) {
 		cli.ExitWithError(msg, err)
 	}
 
+	// Resolve the destination before encrypting, so the payload streams straight
+	// to it rather than accumulating in memory first.
+	var dest io.Writer
+	if out != "" {
+		// make sure output ends in .tdf extension
+		if !strings.HasSuffix(out, ".tdf") {
+			out += ".tdf"
+		}
+		tdfFile, err = streamio.NewOutputFile(out, encryptedOutputFileMode)
+		if err != nil {
+			fail("Failed to write encrypted file "+out, err)
+			return
+		}
+		defer tdfFile.Cleanup()
+		dest = tdfFile
+	} else {
+		dest = os.Stdout
+	}
+
 	// auto-detect mime type if not provided
 	if fileMimeType == "" {
 		slog.Debug("detecting mime type of file")
-		fileMimeType, err = detectMimeType(in, fileExt)
+		// Assigned through temporaries rather than straight into fileMimeType and
+		// in: on error detectMimeType returns a nil reader, and writing that into
+		// in would arm a nil dereference for anyone who later drops the return.
+		mimeType, rest, err := detectMimeType(in, fileExt)
 		if err != nil {
-			fail("Failed to read file:", err)
+			fail("Failed to read "+inputName+" to detect its type (pass --mime-type to skip detection):", err)
+			return
 		}
+		fileMimeType, in = mimeType, rest
 	}
 	slog.Debug("encrypting file", slog.String("mime_type", fileMimeType))
+	// Worth a breadcrumb: the same bytes encrypt to a slightly larger TDF this
+	// way, and nothing else tells the user why. Asked here rather than inside
+	// detectMimeType so --mime-type, which skips detection entirely, still logs.
+	if !streamio.Measurable(in) {
+		slog.Debug("payload length is not knowable up front; writing a ZIP64 archive")
+	}
 
 	// Do the encryption
 	err = h.Encrypt(c.Context(), dest, in, handlers.EncryptOptions{
@@ -188,12 +220,17 @@ func encryptRun(cmd *cobra.Command, args []string) {
 		TargetMode:           targetMode,
 	})
 	if err != nil {
+		// The return matters: the Commit below would otherwise rename a
+		// partially-written TDF into place, which is the exact outcome
+		// streamio.OutputFile exists to prevent.
 		fail("Failed to encrypt", err)
+		return
 	}
 
 	if tdfFile != nil {
 		if err := tdfFile.Commit(); err != nil {
 			fail("Failed to write encrypted file "+out, err)
+			return
 		}
 	}
 }

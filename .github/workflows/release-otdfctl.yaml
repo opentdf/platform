@@ -32,6 +32,10 @@ jobs:
       - name: Build cross-platform binaries
         working-directory: otdfctl
         env:
+          # Build strictly from otdfctl/go.mod, not the monorepo go.work, so the
+          # published binaries use the pinned (released) sdk/protocol/lib versions
+          # rather than whatever is in-tree on this branch.
+          GOWORK: "off"
           SEM_VER: ${{ steps.version.outputs.version }}
           COMMIT_SHA: ${{ github.sha }}
         run: make build

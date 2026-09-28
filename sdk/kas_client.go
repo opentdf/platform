@@ -10,6 +10,7 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"sync"
 	"time"
 
 	"connectrpc.com/connect"
@@ -22,6 +23,7 @@ import (
 	"github.com/opentdf/platform/protocol/go/kas"
 	"github.com/opentdf/platform/protocol/go/kas/kasconnect"
 	"github.com/opentdf/platform/sdk/auth"
+	"golang.org/x/sync/singleflight"
 )
 
 const (
@@ -376,6 +378,10 @@ type kasKeyRequest struct {
 	url, algorithm, kid string
 }
 
+func (k kasKeyRequest) singleflightKey() string {
+	return fmt.Sprintf("%d:%s%d:%s%d:%s", len(k.url), k.url, len(k.algorithm), k.algorithm, len(k.kid), k.kid)
+}
+
 type timeStampedKASInfo struct {
 	KASInfo
 	time.Time
@@ -383,18 +389,26 @@ type timeStampedKASInfo struct {
 
 // Caches the most recent key info for a given KAS URL and algorithm
 type kasKeyCache struct {
-	c map[kasKeyRequest]timeStampedKASInfo
+	c     map[kasKeyRequest]timeStampedKASInfo
+	mu    sync.Mutex
+	loads singleflight.Group
 }
 
 func newKasKeyCache() *kasKeyCache {
-	return &kasKeyCache{make(map[kasKeyRequest]timeStampedKASInfo)}
+	return &kasKeyCache{c: make(map[kasKeyRequest]timeStampedKASInfo)}
 }
 
 func (c *kasKeyCache) clear() {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
 	c.c = make(map[kasKeyRequest]timeStampedKASInfo)
 }
 
 func (c *kasKeyCache) get(url, algorithm, kid string) *KASInfo {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
 	cacheKey := kasKeyRequest{url, algorithm, kid}
 	now := time.Now()
 	cv, ok := c.c[cacheKey]
@@ -419,8 +433,39 @@ func (c *kasKeyCache) get(url, algorithm, kid string) *KASInfo {
 }
 
 func (c *kasKeyCache) store(ki KASInfo) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
 	cacheKey := kasKeyRequest{ki.URL, ki.Algorithm, ki.KID}
 	c.c[cacheKey] = timeStampedKASInfo{ki, time.Now()}
+}
+
+func (c *kasKeyCache) getOrLoad(cacheKey kasKeyRequest, load func() (*KASInfo, error)) (*KASInfo, error) {
+	if cached := c.get(cacheKey.url, cacheKey.algorithm, cacheKey.kid); cached != nil {
+		return cached, nil
+	}
+
+	value, err, _ := c.loads.Do(cacheKey.singleflightKey(), func() (any, error) {
+		if cached := c.get(cacheKey.url, cacheKey.algorithm, cacheKey.kid); cached != nil {
+			return cached, nil
+		}
+
+		keyInfo, err := load()
+		if err != nil {
+			return nil, err
+		}
+		c.store(*keyInfo)
+		return keyInfo, nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	keyInfo, ok := value.(*KASInfo)
+	if !ok {
+		return nil, fmt.Errorf("unexpected KAS key cache value type %T", value)
+	}
+	return keyInfo, nil
 }
 
 type KASKeyFetcher interface {
@@ -428,11 +473,17 @@ type KASKeyFetcher interface {
 }
 
 func (s SDK) getPublicKey(ctx context.Context, kasurl, algorithm, kidToFind string) (*KASInfo, error) {
-	if s.kasKeyCache != nil {
-		if cachedValue := s.get(kasurl, algorithm, kidToFind); nil != cachedValue {
-			return cachedValue, nil
-		}
+	if s.kasKeyCache == nil {
+		return s.fetchPublicKey(ctx, kasurl, algorithm)
 	}
+
+	cacheKey := kasKeyRequest{url: kasurl, algorithm: algorithm, kid: kidToFind}
+	return s.getOrLoad(cacheKey, func() (*KASInfo, error) {
+		return s.fetchPublicKey(ctx, kasurl, algorithm)
+	})
+}
+
+func (s SDK) fetchPublicKey(ctx context.Context, kasurl, algorithm string) (*KASInfo, error) {
 	parsedURL, err := parseBaseURL(kasurl)
 	if err != nil {
 		return nil, fmt.Errorf("cannot parse kas url(%s): %w", kasurl, err)
@@ -461,9 +512,6 @@ func (s SDK) getPublicKey(ctx context.Context, kasurl, algorithm, kidToFind stri
 		Algorithm: algorithm,
 		KID:       kid,
 		PublicKey: resp.Msg.GetPublicKey(),
-	}
-	if s.kasKeyCache != nil {
-		s.store(ki)
 	}
 	return &ki, nil
 }

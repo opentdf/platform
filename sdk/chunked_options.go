@@ -44,14 +44,14 @@ func withChunkedArchiveWriterFactory(f archiveWriterFactory) ChunkedWriterOption
 	}
 }
 
-// withChunkedCipherFactory overrides the segment cipher factory used
+// withChunkedSealerFactory overrides the segment sealer factory used
 // by the [ChunkedWriter]. The factory must not be nil.
-func withChunkedCipherFactory(f segmentCipherFactory) ChunkedWriterOption {
+func withChunkedSealerFactory(f segmentSealerFactory) ChunkedWriterOption {
 	return func(c *chunkedWriterConfig) error {
 		if f == nil {
-			return errors.New("chunked: cipher factory must not be nil")
+			return errors.New("chunked: sealer factory must not be nil")
 		}
-		c.cipherFactory = f
+		c.sealerFactory = f
 		return nil
 	}
 }

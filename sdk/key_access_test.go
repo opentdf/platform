@@ -18,8 +18,8 @@ import (
 // These cover createKeyAccess and its helpers directly, without going through
 // CreateTDF. TDFSuite exercises the same code but only asserts that a round
 // trip succeeds against its own fake KAS, so it cannot pin the KAO field shape
-// or the error paths, and encryptMetadata and tdfSalt have no direct coverage
-// at all.
+// or the error paths, and the metadata sealer and tdfSalt have no direct
+// coverage at all.
 
 const (
 	testKAS1URL = "https://kas1.example.com/"
@@ -45,6 +45,17 @@ func testSymKey(t *testing.T) []byte {
 	_, err := rand.Read(symKey)
 	require.NoError(t, err)
 	return symKey
+}
+
+// testMetadataSealer builds a metadata sealer over a fresh message ID and its
+// own sealer registry, the way newTDFChunkedWriter does for a real TDF. Each
+// call gets its own registry, so the once-only metadata cache does not leak
+// between subtests.
+func testMetadataSealer(t *testing.T) metadataSealer {
+	t.Helper()
+	id, err := ocrypto.NewMessageID(rand.Reader)
+	require.NoError(t, err)
+	return newMetadataSealer(newMessageSealers(id, defaultSegmentSealerFactory))
 }
 
 func decodeEncryptedMetadata(t *testing.T, encrypted string) []byte {
@@ -163,11 +174,11 @@ func TestCreateKeyAccessECUnwrap(t *testing.T) {
 // The three hybrid KEM schemes are round-tripped in tdf_hybrid_test.go and are
 // deliberately not repeated here.
 
-func TestEncryptMetadata(t *testing.T) {
+func TestMetadataSealer(t *testing.T) {
 	symKey := testSymKey(t)
 
 	t.Run("round trips a base64 EncryptedMetadata envelope", func(t *testing.T) {
-		encrypted, err := encryptMetadata(symKey, testMetadata)
+		encrypted, err := testMetadataSealer(t)(symKey, testMetadata)
 		require.NoError(t, err)
 		require.NotEmpty(t, encrypted)
 
@@ -182,7 +193,7 @@ func TestEncryptMetadata(t *testing.T) {
 	t.Run("a different key cannot decrypt the ciphertext", func(t *testing.T) {
 		otherKey := testSymKey(t)
 
-		encrypted, err := encryptMetadata(symKey, testMetadata)
+		encrypted, err := testMetadataSealer(t)(symKey, testMetadata)
 		require.NoError(t, err)
 		ciphertext := decodeEncryptedMetadata(t, encrypted)
 
@@ -193,7 +204,7 @@ func TestEncryptMetadata(t *testing.T) {
 	})
 
 	t.Run("empty metadata round trips through an envelope", func(t *testing.T) {
-		encrypted, err := encryptMetadata(symKey, "")
+		encrypted, err := testMetadataSealer(t)(symKey, "")
 		require.NoError(t, err)
 		ciphertext := decodeEncryptedMetadata(t, encrypted)
 
@@ -204,9 +215,37 @@ func TestEncryptMetadata(t *testing.T) {
 		assert.Empty(t, plaintext)
 	})
 
+	// A part number is spent on the first plaintext, so the same key must
+	// never seal a second one. The cache is what makes a repeated manifest
+	// build -- which re-resolves key access every time -- an idempotent read
+	// rather than a same-key, same-IV re-encryption.
+	t.Run("seals a key at most once", func(t *testing.T) {
+		seal := testMetadataSealer(t)
+
+		first, err := seal(symKey, testMetadata)
+		require.NoError(t, err)
+		second, err := seal(symKey, testMetadata)
+		require.NoError(t, err)
+		assert.Equal(t, first, second)
+	})
+
+	// Two shares of one split, each sealed under its own key, still share the
+	// message ID -- so the part number is the only thing keeping their IVs
+	// apart, and it is the same part number. The keys must differ, and here
+	// they do by construction; this pins that the envelopes do too.
+	t.Run("different keys seal to different envelopes", func(t *testing.T) {
+		seal := testMetadataSealer(t)
+
+		first, err := seal(symKey, testMetadata)
+		require.NoError(t, err)
+		second, err := seal(testSymKey(t), testMetadata)
+		require.NoError(t, err)
+		assert.NotEqual(t, first, second)
+	})
+
 	t.Run("errors on an unusable key", func(t *testing.T) {
-		_, err := encryptMetadata([]byte{}, testMetadata)
-		require.Error(t, err)
+		_, err := testMetadataSealer(t)([]byte{}, testMetadata)
+		require.ErrorIs(t, err, errSealerKeySize)
 	})
 }
 

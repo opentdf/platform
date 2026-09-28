@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.34.0](https://github.com/opentdf/platform/compare/sdk/v0.33.0...sdk/v0.34.0) (2026-09-28)
+
+
+### Bug Fixes
+
+* **sdk:** synchronize the shared KAS key cache ([#4090](https://github.com/opentdf/platform/issues/4090)) ([53af08e](https://github.com/opentdf/platform/commit/53af08e8ac851b99f13430b787bccce3c0868590))
+
 ## [0.33.0](https://github.com/opentdf/platform/compare/sdk/v0.32.0...sdk/v0.33.0) (2026-09-25)
 
 

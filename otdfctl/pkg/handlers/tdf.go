@@ -52,10 +52,17 @@ type EncryptOptions struct {
 // bounded by the SDK's segment size rather than by the payload length, so the
 // payload may be larger than RAM.
 //
-// in must be seekable: the SDK measures the payload by seeking to its end
-// before encrypting, and knowing the length up front is what lets it avoid
-// defaulting to ZIP64. A caller holding a pipe should spool it first.
-func (h Handler) Encrypt(ctx context.Context, out io.Writer, in io.ReadSeeker, o EncryptOptions) error {
+// in need not be seekable, but a seekable one is measurable, and the SDK gives a
+// measured payload two things an unmeasurable one cannot have. It gets the
+// compact ZIP32 layout below ~2 GiB, where an unmeasurable payload pays a few
+// dozen bytes for ZIP64 — a choice fixed before the first segment goes out. And
+// it gets a length check, so a reader that runs dry early fails instead of
+// yielding a complete-looking TDF holding a truncated payload.
+//
+// Neither is worth spooling a stream to disk for: needing a writable temp
+// directory to encrypt a pipe costs more than it buys. This is what the rest of
+// otdfctl means by "keeping the payload measurable"; see streamio.Measurable.
+func (h Handler) Encrypt(ctx context.Context, out io.Writer, in io.Reader, o EncryptOptions) error {
 	switch o.TDFType {
 	// Encrypt the data as a ZTDF
 	case "", tdf.TypeTDF3, tdf.TypeZTDF:

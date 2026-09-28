@@ -57,7 +57,8 @@ func inspectRun(cmd *cobra.Command, args []string) {
 	}
 	// cli.ExitWithError calls os.Exit, which does not run deferred functions, so
 	// cleanup is also invoked explicitly before every exit below — including the
-	// successful one, since piped input is spooled to a temporary file.
+	// successful one, since a piped TDF is spooled to a temporary file. A file
+	// argument or a redirect from one is seekable already and is not spooled.
 	defer cleanup()
 
 	result, errs := h.InspectTDF(in)

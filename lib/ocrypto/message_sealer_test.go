@@ -5,7 +5,6 @@ import (
 	"crypto/rand"
 	"encoding/binary"
 	"encoding/hex"
-	"math"
 	"strings"
 	"sync"
 	"testing"
@@ -24,104 +23,94 @@ func requireDeterministic(t *testing.T) {
 	}
 }
 
-func testMessageID(t *testing.T, hexID string) MessageID {
+func testFixedField(t *testing.T, hexFixed string) [fixedFieldSize]byte {
 	t.Helper()
-	b, err := hex.DecodeString(hexID)
+	b, err := hex.DecodeString(hexFixed)
 	require.NoError(t, err)
-	id, err := MessageIDFromBytes(b)
-	require.NoError(t, err)
-	return id
+	require.Len(t, b, fixedFieldSize)
+	var fixed [fixedFieldSize]byte
+	copy(fixed[:], b)
+	return fixed
 }
 
-func TestMessageIDSizeFillsTheNonce(t *testing.T) {
-	assert.Equal(t, GcmStandardNonceSize, MessageIDSize+messagePartSize)
+func TestFixedFieldAndCounterFillTheNonce(t *testing.T) {
+	assert.Equal(t, GcmStandardNonceSize, fixedFieldSize+sealCounterSize)
 }
 
-func TestMessageIDFromBytesRejectsWrongLength(t *testing.T) {
-	for _, n := range []int{0, 1, 7, 9, 12, 16} {
-		_, err := MessageIDFromBytes(make([]byte, n))
-		require.ErrorIs(t, err, ErrInvalidMessageID, "length %d", n)
-	}
-}
-
-func TestMessageIDFromBytesCopies(t *testing.T) {
-	buf := []byte{1, 2, 3, 4, 5, 6, 7, 8}
-	id, err := MessageIDFromBytes(buf)
-	require.NoError(t, err)
-
-	// A caller reusing its randomness buffer must not change the ID.
-	for i := range buf {
-		buf[i] = 0xFF
-	}
-	assert.Equal(t, []byte{1, 2, 3, 4, 5, 6, 7, 8}, id.Bytes())
-
-	// Nor may a caller mutate it through Bytes.
-	out := id.Bytes()
-	out[0] = 0x00
-	assert.Equal(t, byte(1), id.Bytes()[0])
-}
-
-func TestNewMessageID(t *testing.T) {
-	id, err := NewMessageID(rand.Reader)
-	require.NoError(t, err)
-	assert.Len(t, id.Bytes(), MessageIDSize)
-
-	other, err := NewMessageID(rand.Reader)
-	require.NoError(t, err)
-	assert.NotEqual(t, id.Bytes(), other.Bytes())
-
-	_, err = NewMessageID(strings.NewReader("short"))
-	require.Error(t, err)
-}
-
-func TestMaxMessagePartsMatchesMode(t *testing.T) {
+func TestMaxSealsMatchesMode(t *testing.T) {
 	if deterministicIVs() {
-		assert.Equal(t, maxDeterministicParts, MaxMessageParts())
+		assert.Equal(t, maxDeterministicSeals, MaxSeals())
 	} else {
-		assert.Equal(t, maxRandomNonceParts, MaxMessageParts())
+		assert.Equal(t, maxRandomNonceSeals, MaxSeals())
 	}
 }
 
-// TestAesGcmSealerHeaderLayout pins the exact IV bytes: the message ID
-// verbatim, then the part number big-endian.
+// TestAesGcmSealerHeaderLayout pins the exact IV bytes: the fixed field
+// verbatim, then the invocation counter big-endian, starting at zero.
 func TestAesGcmSealerHeaderLayout(t *testing.T) {
 	requireDeterministic(t)
 
-	id := testMessageID(t, "0011223344556677")
-	sealer, err := NewAESGcmSealer(make([]byte, 32), id)
+	fixed := testFixedField(t, "0011223344556677")
+	sealer, err := newAESGcmSealer(make([]byte, 32), fixed, false, maxDeterministicSeals)
 	require.NoError(t, err)
 
-	for _, part := range []uint32{0, 1, 2, 0x01020304, maxDeterministicParts - 1} {
-		header, _, err := sealer.Seal(part, []byte("payload"))
-		require.NoError(t, err, "part %d", part)
+	for n := range uint32(4) {
+		header, _, err := sealer.Seal([]byte("payload"))
+		require.NoError(t, err, "seal %d", n)
 
-		want := append(id.Bytes(), 0, 0, 0, 0)
-		binary.BigEndian.PutUint32(want[MessageIDSize:], part)
-		assert.Equal(t, want, header, "part %d", part)
+		want := append(fixed[:], 0, 0, 0, 0)
+		binary.BigEndian.PutUint32(want[fixedFieldSize:], n)
+		assert.Equal(t, want, header, "seal %d", n)
 	}
+
+	// And the last value below the ceiling.
+	sealer.next.Store(uint64(maxDeterministicSeals - 1))
+	header, _, err := sealer.Seal([]byte("payload"))
+	require.NoError(t, err)
+	assert.Equal(t, []byte{0xff, 0xff, 0xff, 0xfe}, header[fixedFieldSize:])
 }
 
-func TestAesGcmSealerHeadersAreDistinctPerPart(t *testing.T) {
+func TestAesGcmSealerRepeatedPlaintextGetsFreshHeader(t *testing.T) {
 	requireDeterministic(t)
 
-	id, err := NewMessageID(rand.Reader)
-	require.NoError(t, err)
-	sealer, err := NewAESGcmSealer(make([]byte, 32), id)
+	sealer, err := NewAESGcmSealer(make([]byte, 32))
 	require.NoError(t, err)
 
-	seen := make(map[string]bool)
-	for part := range uint32(64) {
-		header, _, err := sealer.Seal(part, []byte("payload"))
-		require.NoError(t, err)
-		require.False(t, seen[string(header)], "header repeated at part %d", part)
-		seen[string(header)] = true
-	}
+	h1, c1, err := sealer.Seal([]byte("same plaintext"))
+	require.NoError(t, err)
+	h2, c2, err := sealer.Seal([]byte("same plaintext"))
+	require.NoError(t, err)
+
+	// What makes a retry safe: the second call never reuses the first's IV.
+	assert.Equal(t, h1[:fixedFieldSize], h2[:fixedFieldSize])
+	assert.NotEqual(t, h1, h2)
+	assert.NotEqual(t, c1, c2)
+}
+
+func TestAesGcmSealersOverOneKeyDrawDistinctFixedFields(t *testing.T) {
+	requireDeterministic(t)
+
+	key := make([]byte, 32)
+	a, err := NewAESGcmSealer(key)
+	require.NoError(t, err)
+	b, err := NewAESGcmSealer(key)
+	require.NoError(t, err)
+
+	ha, _, err := a.Seal([]byte("payload"))
+	require.NoError(t, err)
+	hb, _, err := b.Seal([]byte("payload"))
+	require.NoError(t, err)
+
+	// Both at counter 0; only the fixed field keeps them apart.
+	assert.Equal(t, ha[fixedFieldSize:], hb[fixedFieldSize:])
+	assert.NotEqual(t, ha[:fixedFieldSize], hb[:fixedFieldSize])
 }
 
 // TestAesGcmSealerKnownAnswers pins the construction against fixed vectors
 // rather than against itself. The IVs are the decrypt vectors from
-// aes_gcm_test.go, split at MessageIDSize into a message ID and a part number:
-// sealing that part under that ID must reproduce the IV *and* the ciphertext.
+// aes_gcm_test.go, split at fixedFieldSize into a fixed field and a counter:
+// sealing at that counter under that fixed field must reproduce the IV *and*
+// the ciphertext.
 func TestAesGcmSealerKnownAnswers(t *testing.T) {
 	requireDeterministic(t)
 
@@ -164,14 +153,15 @@ widely adopted for its performance`,
 		wantCipher, err := hex.DecodeString(strings.ReplaceAll(test.cipherText, "\n", ""))
 		require.NoError(t, err)
 
-		id, err := MessageIDFromBytes(iv[:MessageIDSize])
-		require.NoError(t, err)
-		part := binary.BigEndian.Uint32(iv[MessageIDSize:])
+		var fixed [fixedFieldSize]byte
+		copy(fixed[:], iv[:fixedFieldSize])
+		counter := binary.BigEndian.Uint32(iv[fixedFieldSize:])
 
-		sealer, err := NewAESGcmSealer(key, id)
+		sealer, err := newAESGcmSealer(key, fixed, false, maxDeterministicSeals)
 		require.NoError(t, err)
+		sealer.next.Store(uint64(counter))
 
-		header, ciphertext, err := sealer.Seal(part, []byte(test.plainText))
+		header, ciphertext, err := sealer.Seal([]byte(test.plainText))
 		require.NoError(t, err)
 		assert.Equal(t, iv, header)
 		assert.Equal(t, wantCipher, ciphertext)
@@ -185,97 +175,74 @@ widely adopted for its performance`,
 	}
 }
 
-func TestAesGcmSealerIsDeterministic(t *testing.T) {
+func TestAesGcmSealerExhaustsWithoutWrapping(t *testing.T) {
 	requireDeterministic(t)
 
-	id, err := NewMessageID(rand.Reader)
-	require.NoError(t, err)
-	key := make([]byte, 32)
-	_, err = rand.Read(key)
+	const limit = 3
+	sealer, err := newAESGcmSealer(make([]byte, 32), testFixedField(t, "0011223344556677"), false, limit)
 	require.NoError(t, err)
 
-	sealer, err := NewAESGcmSealer(key, id)
-	require.NoError(t, err)
-
-	h1, c1, err := sealer.Seal(7, []byte("same plaintext"))
-	require.NoError(t, err)
-	h2, c2, err := sealer.Seal(7, []byte("same plaintext"))
-	require.NoError(t, err)
-
-	assert.Equal(t, h1, h2)
-	assert.Equal(t, c1, c2)
-
-	// A second sealer over the same key and ID agrees, which is what makes a
-	// retry of a failed part safe.
-	other, err := NewAESGcmSealer(key, id)
-	require.NoError(t, err)
-	h3, c3, err := other.Seal(7, []byte("same plaintext"))
-	require.NoError(t, err)
-	assert.Equal(t, h1, h3)
-	assert.Equal(t, c1, c3)
-}
-
-func TestAesGcmSealerRejectsExhaustedParts(t *testing.T) {
-	id, err := NewMessageID(rand.Reader)
-	require.NoError(t, err)
-	sealer, err := NewAESGcmSealer(make([]byte, 32), id)
-	require.NoError(t, err)
-
-	maxParts := MaxMessageParts()
-	_, _, err = sealer.Seal(maxParts-1, []byte("payload"))
-	require.NoError(t, err)
-
-	parts := []uint32{maxParts}
-	if maxParts < math.MaxUint32 {
-		parts = append(parts, maxParts+1, math.MaxUint32)
+	for n := range limit {
+		_, _, err = sealer.Seal([]byte("payload"))
+		require.NoError(t, err, "seal %d", n)
 	}
-	for _, part := range parts {
-		_, _, err = sealer.Seal(part, []byte("payload"))
-		require.ErrorIs(t, err, ErrMessagePartsExhausted, "part %d", part)
+	// Every later call fails; none wraps back to counter 0.
+	for range 3 {
+		header, ciphertext, err := sealer.Seal([]byte("payload"))
+		require.ErrorIs(t, err, ErrSealerExhausted)
+		assert.Nil(t, header)
+		assert.Nil(t, ciphertext)
 	}
 }
 
 func TestAesGcmSealerRejectsBadKey(t *testing.T) {
-	id, err := NewMessageID(rand.Reader)
-	require.NoError(t, err)
-
-	_, err = NewAESGcmSealer(nil, id)
+	_, err := NewAESGcmSealer(nil)
 	require.ErrorIs(t, err, ErrInvalidKeyData)
 
-	_, err = NewAESGcmSealer(make([]byte, 7), id)
+	_, err = NewAESGcmSealer(make([]byte, 7))
 	require.ErrorIs(t, err, ErrInvalidKeyData)
 }
 
 func TestAesGcmSealerZeroValueFails(t *testing.T) {
 	var sealer AesGcmSealer
-	_, _, err := sealer.Seal(1, []byte("payload"))
+	_, _, err := sealer.Seal([]byte("payload"))
+	require.ErrorIs(t, err, ErrInvalidKeyData)
+
+	var nilSealer *AesGcmSealer
+	_, _, err = nilSealer.Seal([]byte("payload"))
 	require.ErrorIs(t, err, ErrInvalidKeyData)
 }
 
+// TestAesGcmSealerConcurrentSeal: racing callers take exactly the counters
+// 0..n-1, each once.
 func TestAesGcmSealerConcurrentSeal(t *testing.T) {
-	id, err := NewMessageID(rand.Reader)
-	require.NoError(t, err)
-	sealer, err := NewAESGcmSealer(make([]byte, 32), id)
+	requireDeterministic(t)
+
+	fixed := testFixedField(t, "8899aabbccddeeff")
+	sealer, err := newAESGcmSealer(make([]byte, 32), fixed, false, maxDeterministicSeals)
 	require.NoError(t, err)
 
-	const parts = 128
-	headers := make([][]byte, parts)
+	const seals = 128
+	headers := make([][]byte, seals)
 
 	var wg sync.WaitGroup
-	for part := range uint32(parts) {
+	for i := range seals {
 		wg.Go(func() {
-			header, _, err := sealer.Seal(part, []byte("payload"))
+			header, _, err := sealer.Seal([]byte("payload"))
 			assert.NoError(t, err)
-			headers[part] = header
+			headers[i] = header
 		})
 	}
 	wg.Wait()
 
-	seen := make(map[string]bool, parts)
-	for part, header := range headers {
-		require.Len(t, header, GcmStandardNonceSize, "part %d", part)
-		require.False(t, seen[string(header)], "header repeated at part %d", part)
-		seen[string(header)] = true
+	seen := make(map[uint32]bool, seals)
+	for i, header := range headers {
+		require.Len(t, header, GcmStandardNonceSize, "seal %d", i)
+		require.Equal(t, fixed[:], header[:fixedFieldSize])
+		n := binary.BigEndian.Uint32(header[fixedFieldSize:])
+		require.Less(t, n, uint32(seals))
+		require.False(t, seen[n], "counter %d repeated", n)
+		seen[n] = true
 	}
 }
 
@@ -285,32 +252,31 @@ func TestAesGcmSealerConcurrentSeal(t *testing.T) {
 // by constructing the sealer through the injectable form.
 
 func TestRandomFallbackProducesDistinctHeaders(t *testing.T) {
-	id, err := NewMessageID(rand.Reader)
-	require.NoError(t, err)
 	key := make([]byte, 32)
-	_, err = rand.Read(key)
+	_, err := rand.Read(key)
 	require.NoError(t, err)
+	fixed := testFixedField(t, "0011223344556677")
 
-	sealer, err := newAESGcmSealer(key, id, true, maxRandomNonceParts)
+	sealer, err := newAESGcmSealer(key, fixed, true, maxRandomNonceSeals)
 	require.NoError(t, err)
 
 	aesGcm, err := NewAESGcm(key)
 	require.NoError(t, err)
 
 	seen := make(map[string]bool)
-	for part := range uint32(32) {
-		header, ciphertext, err := sealer.Seal(part, []byte("payload"))
+	for i := range 32 {
+		header, ciphertext, err := sealer.Seal([]byte("payload"))
 		require.NoError(t, err)
 
-		// Same shape as the deterministic path: a 12-byte header the reader
-		// takes as the part prefix, and a ciphertext ending in the tag.
+		// Same shape as the counter path: a 12-byte header the reader takes as
+		// the prefix, and a ciphertext ending in the tag.
 		require.Len(t, header, GcmStandardNonceSize)
-		require.False(t, seen[string(header)], "random header repeated at part %d", part)
+		require.False(t, seen[string(header)], "random header repeated at seal %d", i)
 		seen[string(header)] = true
 
-		// The header is *not* derived from the ID and part here -- that is the
+		// The header is *not* built from the fixed field here -- that is the
 		// whole difference -- but the wire bytes still round-trip.
-		assert.False(t, bytes.HasPrefix(header, id.Bytes()))
+		assert.False(t, bytes.HasPrefix(header, fixed[:]))
 
 		plain, err := aesGcm.Decrypt(append(header, ciphertext...))
 		require.NoError(t, err)
@@ -318,63 +284,10 @@ func TestRandomFallbackProducesDistinctHeaders(t *testing.T) {
 	}
 }
 
-func TestRandomFallbackRejectsExhaustedParts(t *testing.T) {
-	id, err := NewMessageID(rand.Reader)
-	require.NoError(t, err)
-	sealer, err := newAESGcmSealer(make([]byte, 32), id, true, maxRandomNonceParts)
-	require.NoError(t, err)
-
-	_, _, err = sealer.Seal(maxRandomNonceParts, []byte("payload"))
-	require.ErrorIs(t, err, ErrMessagePartsExhausted)
-}
-
-// TestRandomFallbackBudgetCountsAttempts is the difference between the two
-// exhaustion errors: on this path re-sealing one part still spends budget,
-// because each call draws a fresh IV.
-func TestRandomFallbackBudgetCountsAttempts(t *testing.T) {
-	id, err := NewMessageID(rand.Reader)
-	require.NoError(t, err)
-
-	const budget = 4
-	sealer, err := newAESGcmSealer(make([]byte, 32), id, true, budget)
-	require.NoError(t, err)
-
-	for i := range budget {
-		_, _, err = sealer.Seal(0, []byte("payload"))
-		require.NoError(t, err, "attempt %d", i)
-	}
-
-	// Part 0 is well inside the ordinal limit; it is the budget that is gone.
-	_, _, err = sealer.Seal(0, []byte("payload"))
-	require.ErrorIs(t, err, ErrMessageInvocationsExhausted)
-	require.NotErrorIs(t, err, ErrMessagePartsExhausted)
-}
-
-func TestRandomFallbackBudgetIsSharedByCopies(t *testing.T) {
-	id, err := NewMessageID(rand.Reader)
-	require.NoError(t, err)
-
-	const budget = 2
-	sealer, err := newAESGcmSealer(make([]byte, 32), id, true, budget)
-	require.NoError(t, err)
-	copied := sealer
-
-	_, _, err = sealer.Seal(0, []byte("payload"))
-	require.NoError(t, err)
-	_, _, err = copied.Seal(1, []byte("payload"))
-	require.NoError(t, err)
-
-	_, _, err = copied.Seal(0, []byte("payload"))
-	require.ErrorIs(t, err, ErrMessageInvocationsExhausted)
-}
-
 func TestRandomFallbackBudgetIsConcurrencySafe(t *testing.T) {
-	id, err := NewMessageID(rand.Reader)
-	require.NoError(t, err)
-
 	const budget = 64
 	const attempts = 256
-	sealer, err := newAESGcmSealer(make([]byte, 32), id, true, budget)
+	sealer, err := newAESGcmSealer(make([]byte, 32), [fixedFieldSize]byte{}, true, budget)
 	require.NoError(t, err)
 
 	var mu sync.Mutex
@@ -383,16 +296,18 @@ func TestRandomFallbackBudgetIsConcurrencySafe(t *testing.T) {
 	var wg sync.WaitGroup
 	for range attempts {
 		wg.Go(func() {
-			if _, _, err := sealer.Seal(0, []byte("payload")); err == nil {
+			_, _, err := sealer.Seal([]byte("payload"))
+			if err == nil {
 				mu.Lock()
 				sealed++
 				mu.Unlock()
+				return
 			}
+			assert.ErrorIs(t, err, ErrSealerExhausted)
 		})
 	}
 	wg.Wait()
 
-	// Saturating, never wrapping: exactly the budget gets through no matter
-	// how many callers race for it.
+	// Exactly the budget gets through no matter how many callers race for it.
 	assert.Equal(t, budget, sealed)
 }

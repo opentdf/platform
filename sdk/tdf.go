@@ -53,54 +53,29 @@ const (
 	kAssertionSignature    = "assertionSig"
 	kAssertionHash         = "assertionHash"
 	hexSemverThreshold     = "4.3.0"
-
-	// metadataPart is the message part number reserved for key access object
-	// metadata, so payload segment i takes part i+1 (see [segmentPart]).
-	//
-	// Reserving it is load-bearing, not cosmetic. [splitDEK] randomizes all but
-	// the last share, so a single-split TDF's only share *is* the DEK verbatim
-	// and its metadata is sealed under the payload key. Without this reservation
-	// the metadata and segment 0 would share an IV under that key, which leaks
-	// the XOR of the two plaintexts and the GHASH subkey. Every OpenTDF SDK
-	// reserves the same value; see DSPX-4495 and DSPX-4496.
-	metadataPart uint32 = 0
 )
 
 // maxPayloadSegments caps the segment count a declared input size may imply.
 // The archive writer counts segments with an int, so the count has to fit one
-// on every platform the SDK builds for, and one part number is spent on
-// [metadataPart], so this is the smaller of those two ceilings and
-// [ocrypto.MaxMessageParts].
+// on every platform the SDK builds for, and every segment spends one seal of
+// the DEK's sealer, so this is the smaller of those two ceilings and
+// [ocrypto.MaxSeals].
 //
 // It is therefore not a constant. Under FIPS 140-3 the IV must come from an
 // RBG, which makes uniqueness probabilistic rather than structural, and
-// MaxMessageParts drops far enough to bind here; [defaultSegmentSize] grows to
+// MaxSeals drops far enough to bind here; [defaultSegmentSize] grows to
 // compensate. A payload needing more segments than this is better refused than
 // silently mis-sized.
+//
+// It counts segments, not seals: a retried segment spends a second seal, so a
+// payload at exactly this many segments has no headroom for retries, and the
+// sealer's own ceiling ([ocrypto.ErrSealerExhausted]) is the backstop.
 //
 // This bounds only a payload whose length resolves, declared through
 // [WithInputSize] or recovered from a seekable reader. A stream that can be
 // measured neither way is read to EOF with no segment ceiling; DSPX-4905 tracks
 // giving it one.
-var maxPayloadSegments = min(int64(ocrypto.MaxMessageParts()-1), int64(math.MaxInt32))
-
-// segmentPart maps a payload segment index onto the message part number whose
-// IV encrypts it. Pure, so a retried segment re-derives the same part rather
-// than consuming a new one, and so out-of-order and sparse writes stay
-// correct -- neither of which a stateful counter could offer.
-//
-// This is where the ordinal ceiling is enforced for the payload. It is a
-// capacity limit, not a bug report: on the RBG fallback it is reachable in
-// normal use, at 1 TiB with the minimum segment size.
-func segmentPart(index int) (uint32, error) {
-	if index < 0 {
-		return 0, ErrChunkedInvalidSegmentIndex
-	}
-	if int64(index) >= maxPayloadSegments {
-		return 0, fmt.Errorf("%w: segment %d, limit is %d", ErrChunkedSegmentIndexExhausted, index, maxPayloadSegments)
-	}
-	return uint32(index) + 1, nil
-}
+var maxPayloadSegments = min(int64(ocrypto.MaxSeals()), int64(math.MaxInt32))
 
 // Loads and reads ZTDF files
 type Reader struct {
@@ -376,19 +351,7 @@ func (s SDK) newTDFChunkedWriter(ctx context.Context, tdfConfig *TDFConfig, zipM
 		return nil, fmt.Errorf("fail to create a new split key: %w", err)
 	}
 
-	// One message ID and one sealer registry for the whole TDF, drawn before
-	// key access so the metadata sealed here and the payload sealed later
-	// share them. Handing the same registry to the writer below is what keeps
-	// the single-split case honest: there the sole share *is* the DEK, so
-	// metadata and payload seal under one key and must come from one sealer,
-	// numbered [metadataPart] and 1, 2, 3....
-	id, err := ocrypto.NewMessageID(rand.Reader)
-	if err != nil {
-		return nil, fmt.Errorf("fail to create a message id: %w", err)
-	}
-	sealers := newMessageSealers(id, defaultSegmentSealerFactory)
-
-	base64Policy, kaos, err := s.resolveKeyAccess(ctx, tdfConfig, dek, newMetadataSealer(sealers))
+	base64Policy, kaos, err := s.resolveKeyAccess(ctx, tdfConfig, dek)
 	if err != nil {
 		return nil, fmt.Errorf("fail to create a new split key: %w", err)
 	}
@@ -404,9 +367,9 @@ func (s SDK) newTDFChunkedWriter(ctx context.Context, tdfConfig *TDFConfig, zipM
 			}
 			return zipstream.NewSegmentTDFWriter(declaredSegments, archiveOpts...)
 		},
-		clock:   systemClock{},
-		dek:     dek,
-		sealers: sealers,
+		clock:         systemClock{},
+		dek:           dek,
+		sealerFactory: defaultSegmentSealerFactory,
 		// Set together, at construction, because they have to be: hex-then-base64
 		// signatures are written during WriteSegment, long before any Finalize
 		// option is seen, and a manifest carrying one setting without the other
@@ -608,7 +571,7 @@ func (r *Reader) Manifest() Manifest {
 // classic CreateTDF path: the base64-encoded policy object and the key access objects.
 // The KAO template says which KAS servers hold which split; the DEK is divided among
 // those splits and each share wrapped to the KAS servers assigned to it.
-func (s SDK) resolveKeyAccess(ctx context.Context, tdfConfig *TDFConfig, dek []byte, seal metadataSealer) (string, []KeyAccess, error) {
+func (s SDK) resolveKeyAccess(ctx context.Context, tdfConfig *TDFConfig, dek []byte) (string, []KeyAccess, error) {
 	shares, err := s.templateSplitShares(ctx, tdfConfig, dek)
 	if err != nil {
 		return "", nil, err
@@ -618,7 +581,7 @@ func (s SDK) resolveKeyAccess(ctx context.Context, tdfConfig *TDFConfig, dek []b
 	for _, attribute := range tdfConfig.attributes {
 		fqns = append(fqns, attribute.String())
 	}
-	return resolvePolicyAndKeyAccess(fqns, shares, tdfConfig.metaData, seal)
+	return resolvePolicyAndKeyAccess(fqns, shares, tdfConfig.metaData)
 }
 
 // templateSplitShares groups the KAO template by split ID and divides the DEK across
@@ -697,51 +660,24 @@ func createPolicyBinding(symKey []byte, base64Policy string) PolicyBinding {
 	}
 }
 
-// newMetadataSealer returns the closure that seals key access object metadata
-// under a split share, drawing the share's sealer from sealers.
+// encryptMetadata seals key access object metadata under a split share.
 //
-// A capability rather than a value, deliberately. Handing the key access
-// resolvers a [ocrypto.MessageID] would let one ask for part 7 and collide
-// with payload segment 6; a closure already bound to [metadataPart] leaves no
-// such choice.
-//
-// The result is cached per key and sealed at most once. Part numbers are not
-// reusable, so a second value under the same key would have to reuse
-// metadataPart's IV; the cache turns that into a silently consistent answer,
-// and the writer's metadata pin rejects the changed input outright. On the RBG
-// fallback the cache also keeps repeated manifest builds from spending the
-// key's encryption budget.
-//
-// The registry lock is held across the whole miss -- construct, seal, encode
-// -- so that concurrent misses for one key perform a single encryption. All of
-// that is local work; no KAS call happens under it.
-func newMetadataSealer(sealers *messageSealers) metadataSealer {
-	return func(key []byte, plaintext string) (string, error) {
-		sealers.mu.Lock()
-		defer sealers.mu.Unlock()
-
-		entry, err := sealers.entryLocked(key)
-		if err != nil {
-			return "", err
-		}
-		if entry.metadataSealed {
-			return entry.metadata, nil
-		}
-
-		// A failure here leaves the entry in place, budget and all: it is the
-		// key that is spent, not the cache that is stale.
-		header, ciphertext, err := entry.sealer.Seal(metadataPart, []byte(plaintext))
-		if err != nil {
-			return "", fmt.Errorf("encrypt key access metadata: %w", err)
-		}
-
-		encoded, err := encodeEncryptedMetadata(header, ciphertext)
-		if err != nil {
-			return "", err
-		}
-		entry.metadata, entry.metadataSealed = encoded, true
-		return encoded, nil
+// The sealer is built for this one encryption and discarded, so the header is
+// a fresh random fixed field and counter 0. In a single-split TDF the share is
+// the DEK itself, which the payload sealer also counts under; the two are kept
+// apart only by their independently drawn fixed fields (a 2^-64 chance of
+// collision), not by sharing a counter.
+func encryptMetadata(symKey []byte, metaData string) (string, error) {
+	sealer, err := ocrypto.NewAESGcmSealer(symKey)
+	if err != nil {
+		return "", fmt.Errorf("ocrypto.NewAESGcmSealer failed:%w", err)
 	}
+
+	header, ciphertext, err := sealer.Seal([]byte(metaData))
+	if err != nil {
+		return "", fmt.Errorf("encrypt key access metadata: %w", err)
+	}
+	return encodeEncryptedMetadata(header, ciphertext)
 }
 
 // encodeEncryptedMetadata renders a sealed metadata blob as the manifest's

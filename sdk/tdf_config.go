@@ -30,7 +30,7 @@ const (
 	// sized to reach: 256 TiB, less one segment for the rounding in
 	// [segmentCount]. It is the parent epic's 50 TiB target with room to
 	// spare, and it is what makes the segment size grow rather than the
-	// reachable payload shrink when [ocrypto.MaxMessageParts] drops.
+	// reachable payload shrink when [ocrypto.MaxSeals] drops.
 	targetPayloadCapacity = 256*1024*1024*1024*1024 - maxSegmentSize
 )
 
@@ -38,7 +38,7 @@ const (
 // set one with [WithSegmentSize].
 //
 // It is derived, not fixed, because the number of segments one key may encrypt
-// is not fixed: see [ocrypto.MaxMessageParts] and [maxPayloadSegments]. Where
+// is not fixed: see [ocrypto.MaxSeals] and [maxPayloadSegments]. Where
 // that ceiling drops -- under FIPS 140-3, where the IV must come from an RBG
 // and so is only probabilistically unique -- this grows to keep the reachable
 // payload at targetPayloadCapacity instead. Together with maxPayloadSegments

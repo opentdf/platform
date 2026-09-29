@@ -319,17 +319,8 @@ func (s *singleKASSplitter) Split(_ context.Context, _ []*policy.Value, dek []by
 // staticKeyAccess, while the chunked path defers to a KeySplitter at
 // Finalize time.
 type keyAccessResolver interface {
-	resolve(ctx context.Context, dek []byte, seal metadataSealer, cfg *chunkedFinalizeConfig) (string, []KeyAccess, error)
+	resolve(ctx context.Context, dek []byte, cfg *chunkedFinalizeConfig) (string, []KeyAccess, error)
 }
-
-// metadataSealer encrypts a key access object's metadata under one split
-// share, returning the manifest's encoded EncryptedMetadata.
-//
-// The share, not the DEK: metadata is keyed on whatever bytes that KAS will
-// hand back. Built by [newMetadataSealer], which binds it to [metadataPart]
-// and to the message's sealer registry, so a resolver cannot choose a part
-// number and cannot seal twice under one key.
-type metadataSealer func(key []byte, plaintext string) (string, error)
 
 // splitShare is one XOR share of the DEK together with every KAS able
 // to unwrap it. Several KAS entries on one share mean any of them
@@ -355,11 +346,7 @@ type staticKeyAccess struct {
 	policy string
 }
 
-// resolve ignores both the DEK and the metadata sealer: the key access objects
-// it returns were built up front, with their metadata already sealed at
-// [metadataPart]. Sealing again here would be a second encryption under that
-// part number.
-func (r staticKeyAccess) resolve(_ context.Context, _ []byte, _ metadataSealer, _ *chunkedFinalizeConfig) (string, []KeyAccess, error) {
+func (r staticKeyAccess) resolve(_ context.Context, _ []byte, _ *chunkedFinalizeConfig) (string, []KeyAccess, error) {
 	return r.policy, r.kaos, nil
 }
 
@@ -369,7 +356,7 @@ type splitterKeyAccess struct {
 	splitter KeySplitter
 }
 
-func (r splitterKeyAccess) resolve(ctx context.Context, dek []byte, seal metadataSealer, cfg *chunkedFinalizeConfig) (string, []KeyAccess, error) {
+func (r splitterKeyAccess) resolve(ctx context.Context, dek []byte, cfg *chunkedFinalizeConfig) (string, []KeyAccess, error) {
 	// Hand the splitter copies of both slices. A splitter that zeroes or
 	// rewrites the DEK it is given -- scrubbing what it thinks is its own
 	// working buffer, say -- would desynchronize the DEK from the segment
@@ -423,14 +410,14 @@ func (r splitterKeyAccess) resolve(ctx context.Context, dek []byte, seal metadat
 	for _, v := range cfg.attributes {
 		fqns = append(fqns, v.GetFqn())
 	}
-	return resolvePolicyAndKeyAccess(fqns, shares, cfg.encryptedMetadata, seal)
+	return resolvePolicyAndKeyAccess(fqns, shares, cfg.encryptedMetadata)
 }
 
 // resolvePolicyAndKeyAccess builds the policy document the DEK is bound to and wraps
 // every share to its KAS targets, returning the two manifest fields that bind a DEK to
 // policy. Shared by SDK.CreateTDF's KAO template path and the chunked writer's
 // KeySplitter path, so both emit byte-identical policy for the same attributes.
-func resolvePolicyAndKeyAccess(fqns []string, shares []splitShare, metadata string, seal metadataSealer) (string, []KeyAccess, error) {
+func resolvePolicyAndKeyAccess(fqns []string, shares []splitShare, metadata string) (string, []KeyAccess, error) {
 	policyObj, err := createPolicyObjectFromFQNs(fqns)
 	if err != nil {
 		return "", nil, fmt.Errorf("fail to create policy object:%w", err)
@@ -441,7 +428,7 @@ func resolvePolicyAndKeyAccess(fqns []string, shares []splitShare, metadata stri
 	}
 	base64Policy := string(ocrypto.Base64Encode(policyObjectAsStr))
 
-	kaos, err := buildKeyAccessObjects(shares, base64Policy, metadata, seal)
+	kaos, err := buildKeyAccessObjects(shares, base64Policy, metadata)
 	if err != nil {
 		return "", nil, err
 	}
@@ -449,9 +436,8 @@ func resolvePolicyAndKeyAccess(fqns []string, shares []splitShare, metadata stri
 }
 
 // buildKeyAccessObjects wraps every share to each of its KAS targets,
-// emitting the manifest's keyAccess array in share order. seal encrypts the
-// metadata under each share; it is only consulted when metadata is non-empty.
-func buildKeyAccessObjects(shares []splitShare, base64Policy, metadata string, seal metadataSealer) ([]KeyAccess, error) {
+// emitting the manifest's keyAccess array in share order.
+func buildKeyAccessObjects(shares []splitShare, base64Policy, metadata string) ([]KeyAccess, error) {
 	var kaos []KeyAccess
 	for _, share := range shares {
 		// A share with no KAS target contributes no key access object,
@@ -474,7 +460,7 @@ func buildKeyAccessObjects(shares []splitShare, base64Policy, metadata string, s
 		var encryptedMetadata string
 		if metadata != "" {
 			var err error
-			encryptedMetadata, err = seal(share.data, metadata)
+			encryptedMetadata, err = encryptMetadata(share.data, metadata)
 			if err != nil {
 				return nil, err
 			}

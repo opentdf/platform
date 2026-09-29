@@ -746,7 +746,7 @@ func TestChunkedECKeyAccess(t *testing.T) {
 		}},
 	}}
 
-	kaos, err := buildKeyAccessObjects(shares, `{"uuid":"test"}`, "", testMetadataSealer(t))
+	kaos, err := buildKeyAccessObjects(shares, `{"uuid":"test"}`, "")
 	require.NoError(t, err)
 	require.Len(t, kaos, 1)
 
@@ -812,7 +812,7 @@ func TestChunkedKeyAccessRejectsShareWithNoKAS(t *testing.T) {
 		{id: "orphaned", data: dek},
 	}
 
-	_, err = buildKeyAccessObjects(shares, `{"uuid":"test"}`, "", testMetadataSealer(t))
+	_, err = buildKeyAccessObjects(shares, `{"uuid":"test"}`, "")
 	require.Error(t, err, "a share with no KAS to unwrap it makes the DEK unrecoverable")
 	assert.Contains(t, err.Error(), "orphaned", "the error must name the split that cannot be recovered")
 }
@@ -1602,7 +1602,7 @@ type failingSealer struct {
 	panics bool
 }
 
-func (c failingSealer) Seal(_ uint32, _ []byte) ([]byte, []byte, error) {
+func (c failingSealer) Seal(_ []byte) ([]byte, []byte, error) {
 	if c.panics {
 		panic("cipher exploded")
 	}
@@ -1616,7 +1616,7 @@ func (c failingSealer) Seal(_ uint32, _ []byte) ([]byte, []byte, error) {
 // that was never written.
 func TestChunkedCipherFailureReleasesIndex(t *testing.T) {
 	ctx := context.Background()
-	writer, _ := newChunkedWriterForTest(ctx, t, withChunkedSealerFactory(func([]byte, ocrypto.MessageID) (segmentSealer, error) {
+	writer, _ := newChunkedWriterForTest(ctx, t, withChunkedSealerFactory(func([]byte) (segmentSealer, error) {
 		return failingSealer{}, nil
 	}))
 
@@ -1638,7 +1638,7 @@ func TestChunkedCipherFailureReleasesIndex(t *testing.T) {
 // recovers and retries has to find it free.
 func TestChunkedCipherPanicReleasesIndex(t *testing.T) {
 	ctx := context.Background()
-	writer, _ := newChunkedWriterForTest(ctx, t, withChunkedSealerFactory(func([]byte, ocrypto.MessageID) (segmentSealer, error) {
+	writer, _ := newChunkedWriterForTest(ctx, t, withChunkedSealerFactory(func([]byte) (segmentSealer, error) {
 		return failingSealer{panics: true}, nil
 	}))
 
@@ -1835,9 +1835,7 @@ func TestChunkedAttributes(t *testing.T) {
 
 // blockingSealer lets a test hold one WriteSegment inside encryption
 // while it inspects writer state from another goroutine. started fires
-// once the call is inside; release unblocks it. The part number is
-// forwarded untouched, so the segment it releases is sealed exactly as
-// the real sealer would have sealed it.
+// once the call is inside; release unblocks it.
 type blockingSealer struct {
 	inner   segmentSealer
 	target  int
@@ -1847,7 +1845,7 @@ type blockingSealer struct {
 	release chan struct{}
 }
 
-func (c *blockingSealer) Seal(part uint32, data []byte) ([]byte, []byte, error) {
+func (c *blockingSealer) Seal(data []byte) ([]byte, []byte, error) {
 	c.mu.Lock()
 	n := c.calls
 	c.calls++
@@ -1856,7 +1854,7 @@ func (c *blockingSealer) Seal(part uint32, data []byte) ([]byte, []byte, error) 
 		close(c.started)
 		<-c.release
 	}
-	return c.inner.Seal(part, data)
+	return c.inner.Seal(data)
 }
 
 // TestChunkedGetManifestDuringInFlightWrite pins that a reserved but
@@ -1877,8 +1875,8 @@ func TestChunkedGetManifestDuringInFlightWrite(t *testing.T) {
 		started: make(chan struct{}),
 		release: make(chan struct{}),
 	}
-	writer, _ := newChunkedWriterForTest(ctx, t, withChunkedSealerFactory(func(dek []byte, id ocrypto.MessageID) (segmentSealer, error) {
-		inner, err := defaultSegmentSealerFactory(dek, id)
+	writer, _ := newChunkedWriterForTest(ctx, t, withChunkedSealerFactory(func(dek []byte) (segmentSealer, error) {
+		inner, err := defaultSegmentSealerFactory(dek)
 		if err != nil {
 			return nil, err
 		}
@@ -1934,8 +1932,8 @@ func TestChunkedFinalizeRejectsInFlightWrite(t *testing.T) {
 		started: make(chan struct{}),
 		release: make(chan struct{}),
 	}
-	writer, kasBundle := newChunkedWriterForTest(ctx, t, withChunkedSealerFactory(func(dek []byte, id ocrypto.MessageID) (segmentSealer, error) {
-		inner, err := defaultSegmentSealerFactory(dek, id)
+	writer, kasBundle := newChunkedWriterForTest(ctx, t, withChunkedSealerFactory(func(dek []byte) (segmentSealer, error) {
+		inner, err := defaultSegmentSealerFactory(dek)
 		if err != nil {
 			return nil, err
 		}

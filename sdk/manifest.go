@@ -146,27 +146,18 @@ type manifestJSON Manifest
 // declared it in error, which led at least one writer to emit the key there
 // with a null value. The root is preferred when both carry a string.
 //
-// Values are typed as any rather than string because the key is known to
-// appear with a null value, and because a non-aligned type must not fail the
-// whole decode -- reporting malformed manifests is schema validation's job,
-// not the decoder's.
+// Values are kept as raw JSON and only string values are decoded, because the
+// key is known to appear with a null value, and because a non-aligned type
+// must not fail the whole decode -- reporting malformed manifests is schema
+// validation's job, not the decoder's. Decoding into any would not be enough:
+// a number too large for float64 (1e400) fails there, and would stop the
+// payload placement from being read.
 type offSpecSpecVersion struct {
-	TDFSpecVersion any `json:"tdf_spec_version"`
+	TDFSpecVersion json.RawMessage `json:"tdf_spec_version"`
 	Payload        struct {
-		TDFSpecVersion any `json:"tdf_spec_version"`
+		TDFSpecVersion json.RawMessage `json:"tdf_spec_version"`
 	} `json:"payload"`
 }
-
-// offSpecSpecVersionKey gates the second decode pass below. Almost every
-// manifest without a schemaVersion has no non-aligned copy either -- a pre-4.3.0
-// container written by this SDK carries neither -- and a substring scan is far
-// cheaper than tokenizing the document again to discover that.
-//
-// A key spelled with JSON escapes ("tdf_spec_version") would not match and
-// its version would not be read. No writer emits that, and the result is
-// exactly the pre-existing behavior of reporting no version, so the fallback
-// simply does not fire rather than misreading anything.
-var offSpecSpecVersionKey = []byte(`"tdf_spec_version"`)
 
 // UnmarshalJSON decodes a TDF manifest, reading a deprecated tdf_spec_version
 // as the spec version when the canonical schemaVersion is absent, so that
@@ -188,7 +179,11 @@ func (m *Manifest) UnmarshalJSON(data []byte) error {
 	}
 	*m = Manifest(base)
 
-	if m.TDFVersion != "" || !bytes.Contains(data, offSpecSpecVersionKey) {
+	// The second pass runs whenever schemaVersion is absent. It is not gated on
+	// a substring scan for the key, since JSON allows the key to be spelled
+	// with escapes ("tdf_spec_\u0076ersion") and the decoder matches it after
+	// unescaping.
+	if m.TDFVersion != "" {
 		return nil
 	}
 
@@ -196,13 +191,27 @@ func (m *Manifest) UnmarshalJSON(data []byte) error {
 	if err := json.Unmarshal(data, &offSpec); err != nil {
 		return err
 	}
-	for _, candidate := range []any{offSpec.TDFSpecVersion, offSpec.Payload.TDFSpecVersion} {
-		if v, ok := candidate.(string); ok && v != "" {
+	for _, candidate := range []json.RawMessage{offSpec.TDFSpecVersion, offSpec.Payload.TDFSpecVersion} {
+		if v := jsonStringOrEmpty(candidate); v != "" {
 			m.TDFVersion = v
 			return nil
 		}
 	}
 	return nil
+}
+
+// jsonStringOrEmpty returns raw decoded as a string if it is a JSON string,
+// and "" for anything else: absent, null, a number, an object, an array.
+func jsonStringOrEmpty(raw json.RawMessage) string {
+	trimmed := bytes.TrimSpace(raw)
+	if len(trimmed) == 0 || trimmed[0] != '"' {
+		return ""
+	}
+	var v string
+	if err := json.Unmarshal(trimmed, &v); err != nil {
+		return ""
+	}
+	return v
 }
 
 type attributeObject struct {

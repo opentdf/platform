@@ -156,16 +156,25 @@ func TestManifest_UnmarshalJSON_SpecVersion(t *testing.T) {
 			want:         "",
 		},
 		{
-			// The decoder gates its non-aligned pass on a substring scan for the
-			// literal key, so a key spelled with JSON escapes is not found. The
-			// fallback declines to fire rather than misreading anything, which
-			// is the same "no version" this returned before the name was read
-			// at all. Pinned because it is a deliberate limit, not an accident.
-			name: "escaped tdf_spec_version key is not read",
-			// The escape is "v": a decoder reading this sees the key
-			// tdf_spec_version, but the raw bytes do not contain it.
+			// JSON allows a key to be spelled with escapes, and the decoder
+			// matches keys after unescaping, so this is the same key.
+			name:         "escaped tdf_spec_version key is read",
 			payloadExtra: `,"tdf_spec_\u0076ersion":"4.3.0"`,
-			want:         "",
+			want:         "4.3.0",
+		},
+		{
+			// 1e400 overflows float64. It must be skipped, not fail the decode
+			// before the payload placement is read.
+			name:         "overflowing number at root falls through to payload",
+			rootExtra:    `,"tdf_spec_version":1e400`,
+			payloadExtra: `,"tdf_spec_version":"4.3.0"`,
+			want:         "4.3.0",
+		},
+		{
+			name:         "array holding an overflowing number at root falls through to payload",
+			rootExtra:    `,"tdf_spec_version":[1e400]`,
+			payloadExtra: `,"tdf_spec_version":"4.3.0"`,
+			want:         "4.3.0",
 		},
 	}
 

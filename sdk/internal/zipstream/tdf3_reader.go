@@ -43,7 +43,7 @@ func NewTDFReader(readSeeker io.ReadSeeker, opt ...TDFReaderOptions) (TDFReader,
 
 // Manifest Return the manifest of the tdf.
 //
-// The spec name wins over the off-spec one when an archive carries both. Only a
+// The spec name wins over the non-aligned one when an archive carries both. Only a
 // missing entry triggers the fallback: a manifest that is present but too
 // large is a size failure, and retrying under the other name would both report
 // the wrong reason and, in an archive holding both, hand back the superseded

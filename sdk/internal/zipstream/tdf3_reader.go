@@ -9,7 +9,7 @@ import (
 )
 
 // ErrOffspecManifestName reports an archive whose manifest is filed under the
-// off-spec name, read by a caller that asked for spec names only. It is
+// non-aligned name, read by a caller that asked for spec names only. It is
 // distinct from a missing manifest: the manifest is there, it is just not
 // where the spec says to put it.
 var ErrOffspecManifestName = errors.New("tdf: manifest entry is named " +
@@ -18,7 +18,7 @@ var ErrOffspecManifestName = errors.New("tdf: manifest entry is named " +
 type TDFReader struct {
 	archiveReader   Reader
 	manifestMaxSize int64
-	// requireSpecManifestName suppresses the off-spec fallback in Manifest.
+	// requireSpecManifestName suppresses the non-aligned fallback in Manifest.
 	requireSpecManifestName bool
 }
 
@@ -35,7 +35,7 @@ func WithTDFManifestMaxSize(size int64) TDFReaderOptions {
 }
 
 // WithRequireSpecManifestName rejects an archive whose manifest is filed under
-// the off-spec name rather than reading it. Off by default: the reader accepts
+// the non-aligned name rather than reading it. Off by default: the reader accepts
 // both names so archives written by earlier releases keep working.
 func WithRequireSpecManifestName() TDFReaderOptions {
 	return func(tdfReader *TDFReader) {
@@ -61,13 +61,13 @@ func NewTDFReader(readSeeker io.ReadSeeker, opt ...TDFReaderOptions) (TDFReader,
 
 // Manifest Return the manifest of the tdf.
 //
-// The spec name wins over the off-spec one when an archive carries both. Only a
+// The spec name wins over the non-aligned one when an archive carries both. Only a
 // missing entry triggers the fallback: a manifest that is present but too
 // large is a size failure, and retrying under the other name would both report
 // the wrong reason and, in an archive holding both, hand back the superseded
 // manifest.
 //
-// WithRequireSpecManifestName drops the fallback. The off-spec entry is still
+// WithRequireSpecManifestName drops the fallback. The non-aligned entry is still
 // looked up in that mode, so an archive that has one is told apart from an
 // archive that has no manifest at all.
 func (tdfReader TDFReader) Manifest() (string, error) {

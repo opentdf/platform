@@ -2718,12 +2718,12 @@ func (s *TDFSuite) Test_LoadTDF_RequireSpecManifestName() {
 
 	offspec := s.repackManifestEntryAs(buf.Bytes(), zipstream.TDFManifestFileNameOffspec)
 
-	s.Run("rejects the off-spec name when required", func() {
+	s.Run("rejects the non-aligned name when required", func() {
 		_, err := s.sdk.LoadTDF(bytes.NewReader(offspec), append(readOptions, WithRequireSpecManifestName())...)
 		s.Require().ErrorIs(err, ErrOffspecManifestName)
 	})
 
-	s.Run("reads the off-spec name by default", func() {
+	s.Run("reads the non-aligned name by default", func() {
 		r, err := s.sdk.LoadTDF(bytes.NewReader(offspec), readOptions...)
 		s.Require().NoError(err)
 		s.Require().Equal("0.payload", r.Manifest().URL)

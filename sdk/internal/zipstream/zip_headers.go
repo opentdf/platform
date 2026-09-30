@@ -17,8 +17,17 @@ const (
 )
 
 const (
-	TDFManifestFileName = "0.manifest.json"
-	TDFPayloadFileName  = "0.payload"
+	// TDFManifestFileName is the manifest entry name given by the OpenTDF
+	// spec: https://opentdf.io/spec#tdf-structure.
+	TDFManifestFileName = "manifest.json"
+	// TDFManifestFileNameOffspec is the manifest entry name this SDK wrote
+	// before the spec alignment. The 0. prefix is a holdover from an early
+	// design that anticipated several payload/manifest pairs per archive and
+	// never shipped. Readers still accept it; the writer no longer emits it.
+	// See https://github.com/opentdf/platform/issues/3513.
+	TDFManifestFileNameOffspec = "0.manifest.json"
+
+	TDFPayloadFileName = "0.payload"
 )
 
 const (

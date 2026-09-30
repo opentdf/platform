@@ -117,10 +117,10 @@ func (s *RegisteredResourcesService) CreateRegisteredResource(ctx context.Contex
 		return nil
 	})
 	if err != nil {
-		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
+		s.logger.LogPolicyCRUDFailure(ctx, auditParams)
 		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextCreationFailed, slog.String("registered_resource", req.Msg.String()))
 	}
-	s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
+	s.logger.LogPolicyCRUDSuccess(ctx, auditParams)
 
 	return connect.NewResponse(rsp), nil
 }
@@ -185,10 +185,10 @@ func (s *RegisteredResourcesService) UpdateRegisteredResource(ctx context.Contex
 		return nil
 	})
 	if err != nil {
-		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
+		s.logger.LogPolicyCRUDFailure(ctx, auditParams)
 		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextUpdateFailed, slog.String("registered_resource", req.Msg.String()))
 	}
-	s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
+	s.logger.LogPolicyCRUDSuccess(ctx, auditParams)
 
 	return connect.NewResponse(rsp), nil
 }
@@ -208,11 +208,11 @@ func (s *RegisteredResourcesService) DeleteRegisteredResource(ctx context.Contex
 
 	deleted, err := s.dbClient.DeleteRegisteredResource(ctx, resourceID)
 	if err != nil {
-		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
+		s.logger.LogPolicyCRUDFailure(ctx, auditParams)
 		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextDeletionFailed, slog.String("registered_resource", req.Msg.String()))
 	}
 
-	s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
+	s.logger.LogPolicyCRUDSuccess(ctx, auditParams)
 
 	rsp.Resource = deleted
 
@@ -244,10 +244,10 @@ func (s *RegisteredResourcesService) CreateRegisteredResourceValue(ctx context.C
 		return nil
 	})
 	if err != nil {
-		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
+		s.logger.LogPolicyCRUDFailure(ctx, auditParams)
 		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextCreationFailed, slog.String("registered_resource_value", req.Msg.String()))
 	}
-	s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
+	s.logger.LogPolicyCRUDSuccess(ctx, auditParams)
 
 	return connect.NewResponse(rsp), nil
 }
@@ -329,10 +329,10 @@ func (s *RegisteredResourcesService) UpdateRegisteredResourceValue(ctx context.C
 		return nil
 	})
 	if err != nil {
-		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
+		s.logger.LogPolicyCRUDFailure(ctx, auditParams)
 		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextUpdateFailed, slog.String("registered_resource_value", req.Msg.String()))
 	}
-	s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
+	s.logger.LogPolicyCRUDSuccess(ctx, auditParams)
 
 	return connect.NewResponse(rsp), nil
 }
@@ -357,11 +357,11 @@ func (s *RegisteredResourcesService) DeleteRegisteredResourceValue(ctx context.C
 		return err
 	})
 	if err != nil {
-		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
+		s.logger.LogPolicyCRUDFailure(ctx, auditParams)
 		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextDeletionFailed, slog.String("registered_resource_value", req.Msg.String()))
 	}
 
-	s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
+	s.logger.LogPolicyCRUDSuccess(ctx, auditParams)
 
 	rsp.Value = deleted
 

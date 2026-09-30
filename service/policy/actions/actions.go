@@ -138,10 +138,10 @@ func (a *ActionService) CreateAction(ctx context.Context, req *connect.Request[a
 		return nil
 	})
 	if err != nil {
-		a.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
+		a.logger.LogPolicyCRUDFailure(ctx, auditParams)
 		return nil, db.StatusifyError(ctx, a.logger, err, db.ErrTextCreationFailed, slog.String("action", req.Msg.String()))
 	}
-	a.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
+	a.logger.LogPolicyCRUDSuccess(ctx, auditParams)
 	return connect.NewResponse(rsp), nil
 }
 
@@ -178,10 +178,10 @@ func (a *ActionService) UpdateAction(ctx context.Context, req *connect.Request[a
 		return nil
 	})
 	if err != nil {
-		a.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
+		a.logger.LogPolicyCRUDFailure(ctx, auditParams)
 		return nil, db.StatusifyError(ctx, a.logger, err, db.ErrTextUpdateFailed, slog.String("action", req.Msg.String()))
 	}
-	a.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
+	a.logger.LogPolicyCRUDSuccess(ctx, auditParams)
 
 	return connect.NewResponse(rsp), nil
 }
@@ -199,11 +199,11 @@ func (a *ActionService) DeleteAction(ctx context.Context, req *connect.Request[a
 
 	deleted, err := a.dbClient.DeleteAction(ctx, req.Msg)
 	if err != nil {
-		a.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
+		a.logger.LogPolicyCRUDFailure(ctx, auditParams)
 		return nil, db.StatusifyError(ctx, a.logger, err, db.ErrTextDeletionFailed, slog.String("action", req.Msg.String()))
 	}
 
-	a.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
+	a.logger.LogPolicyCRUDSuccess(ctx, auditParams)
 	rsp.Action = deleted
 
 	return connect.NewResponse(rsp), nil

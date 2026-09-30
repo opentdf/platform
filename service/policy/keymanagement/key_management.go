@@ -139,10 +139,10 @@ func (ksvc Service) CreateProviderConfig(ctx context.Context, req *connect.Reque
 		return nil
 	})
 	if err != nil {
-		ksvc.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
+		ksvc.logger.LogPolicyCRUDFailure(ctx, auditParams)
 		return nil, db.StatusifyError(ctx, ksvc.logger, err, db.ErrTextCreationFailed, slog.String("key_management_service", req.Msg.GetName()))
 	}
-	ksvc.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
+	ksvc.logger.LogPolicyCRUDSuccess(ctx, auditParams)
 
 	return connect.NewResponse(rsp), nil
 }
@@ -196,7 +196,7 @@ func (ksvc Service) UpdateProviderConfig(ctx context.Context, req *connect.Reque
 		},
 	})
 	if err != nil {
-		ksvc.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
+		ksvc.logger.LogPolicyCRUDFailure(ctx, auditParams)
 		return nil, db.StatusifyError(ctx, ksvc.logger, err, db.ErrTextGetRetrievalFailed, slog.String("id", providerConfigID))
 	}
 
@@ -225,10 +225,10 @@ func (ksvc Service) UpdateProviderConfig(ctx context.Context, req *connect.Reque
 		return nil
 	})
 	if err != nil {
-		ksvc.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
+		ksvc.logger.LogPolicyCRUDFailure(ctx, auditParams)
 		return nil, db.StatusifyError(ctx, ksvc.logger, err, db.ErrTextUpdateFailed, slog.String("key_management_service", req.Msg.GetId()))
 	}
-	ksvc.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
+	ksvc.logger.LogPolicyCRUDSuccess(ctx, auditParams)
 
 	return connect.NewResponse(rsp), nil
 }
@@ -245,7 +245,7 @@ func (ksvc Service) DeleteProviderConfig(ctx context.Context, req *connect.Reque
 
 	pc, err := ksvc.dbClient.DeleteProviderConfig(ctx, req.Msg.GetId())
 	if err != nil {
-		ksvc.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
+		ksvc.logger.LogPolicyCRUDFailure(ctx, auditParams)
 		return nil, db.StatusifyError(ctx, ksvc.logger, err, db.ErrTextDeletionFailed, slog.String("key_management_service", req.Msg.GetId()))
 	}
 
@@ -256,7 +256,7 @@ func (ksvc Service) DeleteProviderConfig(ctx context.Context, req *connect.Reque
 		Manager:  pc.GetManager(),
 		Metadata: pc.GetMetadata(),
 	}
-	ksvc.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
+	ksvc.logger.LogPolicyCRUDSuccess(ctx, auditParams)
 
 	rsp.ProviderConfig = pc
 

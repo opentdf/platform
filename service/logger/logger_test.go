@@ -4,6 +4,8 @@ import (
 	"bufio"
 	"context"
 	"encoding/json"
+	"errors"
+	"log/slog"
 	"os"
 	"strings"
 	"testing"
@@ -52,20 +54,88 @@ func decodeLine(t *testing.T, line string) map[string]any {
 	return out
 }
 
-// emitAuditEvent drives an audit event through the interceptor, which owns the
-// transaction lifecycle and flushes pending events on return.
+// emitAuditEvent records an event with request metadata from the interceptor.
 func emitAuditEvent(ctx context.Context, t *testing.T, lg *Logger) {
 	t.Helper()
 
-	next := audit.ContextServerInterceptor(lg.Audit)(
+	next := audit.ContextServerInterceptor()(
 		func(ctx context.Context, _ connect.AnyRequest) (connect.AnyResponse, error) {
-			audit.LogAuditEvent(ctx, audit.VerbRewrap, &audit.EventObject{})
+			require.NoError(t, lg.Audit.Record(ctx, testAuditEvent()))
 			return nil, nil //nolint:nilnil // the interceptor ignores the response in this test
 		},
 	)
 
 	_, err := next(ctx, connect.NewRequest(&struct{}{}))
 	require.NoError(t, err)
+}
+
+func testAuditEvent() audit.Event {
+	event := audit.NewEvent(audit.EventObjectParams{
+		Object:     audit.EventObjectInfo{Type: audit.ObjectTypeKeyObject},
+		Action:     audit.EventObjectAction{Type: audit.ActionTypeRewrap, Result: audit.ActionResultSuccess},
+		ClientInfo: audit.EventClientInfo{Platform: "test"},
+	})
+	event.Verb = audit.VerbRewrap
+	return *event
+}
+
+func TestLogPolicyCRUD(t *testing.T) {
+	for _, tt := range []struct {
+		name   string
+		result audit.ActionResult
+		record func(*Logger, context.Context, audit.PolicyEventParams)
+	}{
+		{"success", audit.ActionResultSuccess, (*Logger).LogPolicyCRUDSuccess},
+		{"failure", audit.ActionResultError, (*Logger).LogPolicyCRUDFailure},
+	} {
+		for _, processorFails := range []bool{false, true} {
+			name := tt.name
+			if processorFails {
+				name += "/audit_error"
+			}
+			t.Run(name, func(t *testing.T) {
+				ctx, cancel := context.WithCancel(tracedContext(t))
+				cancel()
+				calls := 0
+				lines := captureStdout(t, func() {
+					lg, err := NewLogger(Config{
+						Level: "info", Output: "stdout", Type: "json",
+						AuditProcessor: audit.ProcessorFunc(func(ctx context.Context, event audit.Event) error {
+							calls++
+							require.NoError(t, ctx.Err())
+							assert.Equal(t, tt.result, event.Action.Result)
+							assert.Equal(t, "action-id", event.Object.ID)
+							if processorFails {
+								return errors.New("audit destination unavailable")
+							}
+							return nil
+						}),
+						ContextAttrs: []ContextAttrFunc{func(ctx context.Context) []slog.Attr {
+							require.NoError(t, ctx.Err())
+							return nil
+						}},
+					})
+					require.NoError(t, err)
+					tt.record(lg, ctx, audit.PolicyEventParams{
+						ActionType: audit.ActionTypeCreate,
+						ObjectType: audit.ObjectTypeAction,
+						ObjectID:   "action-id",
+					})
+				})
+				require.Equal(t, 1, calls)
+				if !processorFails {
+					require.Empty(t, lines)
+					return
+				}
+				require.Len(t, lines, 1)
+				entry := decodeLine(t, lines[0])
+				assert.Equal(t, "ERROR", entry["level"])
+				assert.Equal(t, "failed to record policy audit event", entry["msg"])
+				assert.Contains(t, entry["error"], "audit destination unavailable")
+				assert.Equal(t, testTraceIDHex, entry[traceIDKey])
+			})
+		}
+	}
 }
 
 func Test_NewLogger_CorrelatesMainAndAuditLogs(t *testing.T) {
@@ -120,10 +190,10 @@ func Test_NewLogger_RequestMetadataOnlyOnMainLogger(t *testing.T) {
 		lg, err := NewLogger(Config{Level: "info", Output: "stdout", Type: "json"})
 		require.NoError(t, err)
 
-		next := audit.ContextServerInterceptor(lg.Audit)(
+		next := audit.ContextServerInterceptor()(
 			func(ctx context.Context, _ connect.AnyRequest) (connect.AnyResponse, error) {
 				lg.InfoContext(ctx, "handled request")
-				audit.LogAuditEvent(ctx, audit.VerbRewrap, &audit.EventObject{})
+				require.NoError(t, lg.Audit.Record(ctx, testAuditEvent()))
 				return nil, nil //nolint:nilnil // the interceptor ignores the response in this test
 			},
 		)

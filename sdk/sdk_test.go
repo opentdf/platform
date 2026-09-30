@@ -152,7 +152,7 @@ func TestIsValidTdf_AcceptsSpecManifestName(t *testing.T) {
 	assert.True(t, isValid)
 
 	// Try again to see if the reader has been reset. This matters more on the
-	// spec name than on the off-spec one: Manifest() may issue two reads
+	// spec name than on the non-aligned one: Manifest() may issue two reads
 	// against the shared seeker, so anything that leaves the stream parked
 	// after the first lookup breaks only here.
 	isValid, err = sdk.IsValidTdf(in)

@@ -93,7 +93,7 @@ func TestManifest_MissingUnderEitherName(t *testing.T) {
 
 // An oversized manifest under the spec name is a size failure, not a missing
 // entry. A reader that fell back on any error would quietly hand back the
-// superseded off-spec manifest here, so the size limit is set between the two
+// superseded non-aligned manifest here, so the size limit is set between the two
 // entries: only the spec one exceeds it.
 func TestManifest_OversizedSpecNameDoesNotFallBack(t *testing.T) {
 	require.Greater(t, len(testManifest), len(otherManifest))

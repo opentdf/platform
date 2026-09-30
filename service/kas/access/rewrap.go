@@ -492,6 +492,32 @@ func verifyPolicyBinding(ctx context.Context, policy []byte, kao *kaspb.Unsigned
 	return nil
 }
 
+// decodePolicyBinding decodes a policy binding hash to the raw HMAC bytes used
+// for comparison. It accepts both the spec-compliant Base64(HMAC) form and the
+// legacy Base64(hex(HMAC)) emitted by older writers; the two are unambiguous by
+// length after the base64 decode, so no version signal is needed.
+//
+// The result is trimmed to the bytes actually decoded. base64.DecodedLen
+// over-allocates -- a 44-character binding decodes 32 bytes into a 33-byte
+// buffer -- and callers compare with hmac.Equal, which is length-sensitive.
+// Returning the untrimmed buffer makes every raw binding fail to verify.
+func decodePolicyBinding(b64Hash string) ([]byte, error) {
+	decoded := make([]byte, base64.StdEncoding.DecodedLen(len(b64Hash)))
+	n, err := base64.StdEncoding.Decode(decoded, []byte(b64Hash))
+	if err != nil {
+		return nil, err
+	}
+	decoded = decoded[:n]
+
+	if n == hex.EncodedLen(sha256.Size) {
+		dehexed := make([]byte, hex.DecodedLen(n))
+		if _, decErr := hex.Decode(dehexed, decoded); decErr == nil {
+			return dehexed, nil
+		}
+	}
+	return decoded, nil
+}
+
 func extractPolicyBinding(policyBinding interface{}) (string, error) {
 	switch v := policyBinding.(type) {
 	case string:
@@ -866,22 +892,11 @@ func (p *Provider) verifyRewrapRequests(ctx context.Context, req *kaspb.Unsigned
 		}
 
 		// Store policy binding in context for verification
-		policyBindingB64Encoded := kao.GetKeyAccessObject().GetPolicyBinding().GetHash()
-		policyBinding := make([]byte, base64.StdEncoding.DecodedLen(len(policyBindingB64Encoded)))
-		n, err := base64.StdEncoding.Decode(policyBinding, []byte(policyBindingB64Encoded))
+		policyBinding, err := decodePolicyBinding(kao.GetKeyAccessObject().GetPolicyBinding().GetHash())
 		if err != nil {
 			p.Logger.WarnContext(ctx, "invalid policy binding encoding", slog.Any("error", err))
 			failedKAORewrap(results, kao, err400("bad request")) // Generic: malformed binding may indicate tamper
 			continue
-		}
-		if n == 64 { //nolint:mnd // 32 bytes of hex encoded data = 256 bit sha-2
-			// Sometimes the policy binding is a b64 encoded hex encoded string
-			// Decode it again if so.
-			dehexed := make([]byte, hex.DecodedLen(n))
-			_, err = hex.Decode(dehexed, policyBinding[:n])
-			if err == nil {
-				policyBinding = dehexed
-			}
 		}
 
 		// Verify policy binding using the UnwrappedKeyData interface

@@ -11,6 +11,7 @@ import (
 
 const getEntitleableAttributeValues = `-- name: getEntitleableAttributeValues :many
 WITH definitions AS (
+    -- Resolve only active definitions and namespaces referenced by the requested FQNs.
     SELECT ad.id, ad.namespace_id, ad.rule, ad.allow_traversal, ad.values_order,
         df.fqn AS definition_fqn
     FROM attribute_definitions ad
@@ -18,12 +19,16 @@ WITH definitions AS (
     JOIN attribute_namespaces ns ON ns.id = ad.namespace_id AND ns.active = TRUE
     WHERE df.fqn = ANY($1::text[]) AND ad.active = TRUE
 ), requested_values AS (
+    -- Keep inactive requested values so the caller rejects them instead of treating
+    -- them as missing values eligible for allow_traversal.
     SELECT av.id, av.attribute_definition_id, av.active, vf.fqn
     FROM attribute_fqns vf
     JOIN attribute_values av ON av.id = vf.value_id
     JOIN definitions d ON d.id = av.attribute_definition_id
     WHERE vf.fqn = ANY($2::text[])
 ), selected_values AS (
+    -- Add active hierarchy siblings for entitlement propagation, without repeating
+    -- requested values. The final ORDER BY preserves the definition's policy order.
     SELECT id, attribute_definition_id, active, fqn FROM requested_values
     UNION ALL
     SELECT av.id, av.attribute_definition_id, av.active, vf.fqn
@@ -64,8 +69,10 @@ type getEntitleableAttributeValuesRow struct {
 
 // Authorization needs value identity and rule context, not grants, keys, or resource
 // mappings. Only hierarchy definitions need their other active values, in policy order.
+// Keep definition context even when no value matches; the caller checks allow_traversal.
 //
 //	WITH definitions AS (
+//	    -- Resolve only active definitions and namespaces referenced by the requested FQNs.
 //	    SELECT ad.id, ad.namespace_id, ad.rule, ad.allow_traversal, ad.values_order,
 //	        df.fqn AS definition_fqn
 //	    FROM attribute_definitions ad
@@ -73,12 +80,16 @@ type getEntitleableAttributeValuesRow struct {
 //	    JOIN attribute_namespaces ns ON ns.id = ad.namespace_id AND ns.active = TRUE
 //	    WHERE df.fqn = ANY($1::text[]) AND ad.active = TRUE
 //	), requested_values AS (
+//	    -- Keep inactive requested values so the caller rejects them instead of treating
+//	    -- them as missing values eligible for allow_traversal.
 //	    SELECT av.id, av.attribute_definition_id, av.active, vf.fqn
 //	    FROM attribute_fqns vf
 //	    JOIN attribute_values av ON av.id = vf.value_id
 //	    JOIN definitions d ON d.id = av.attribute_definition_id
 //	    WHERE vf.fqn = ANY($2::text[])
 //	), selected_values AS (
+//	    -- Add active hierarchy siblings for entitlement propagation, without repeating
+//	    -- requested values. The final ORDER BY preserves the definition's policy order.
 //	    SELECT id, attribute_definition_id, active, fqn FROM requested_values
 //	    UNION ALL
 //	    SELECT av.id, av.attribute_definition_id, av.active, vf.fqn

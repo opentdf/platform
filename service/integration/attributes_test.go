@@ -1789,43 +1789,54 @@ func (s *AttributesSuite) Test_GetEntitleableAttributesByFqns_NonExistentFqn_Fai
 	s.Require().ErrorIs(err, db.ErrNotFound)
 }
 
-func (s *AttributesSuite) Test_GetEntitleableAttributesByFqns_MissingValueAllowTraversal_Succeeds() {
-	// allow_traversal lets a not-yet-created value fall back to its definition, so
-	// this API returns the definition context plus an entry with an empty value
-	// identity (no value_id, no subject mappings) rather than erroring.
+func (s *AttributesSuite) Test_GetEntitleableAttributesByFqns_MissingValueAllowTraversal() {
 	ns, err := s.db.PolicyClient.CreateNamespace(s.ctx, &namespaces.CreateNamespaceRequest{Name: "entitleable-traversal.example"})
 	s.Require().NoError(err)
-	created, err := s.db.PolicyClient.CreateAttribute(s.ctx, &attributes.CreateAttributeRequest{
-		Name:           "test__entitleable_traversal",
-		NamespaceId:    ns.GetId(),
-		Rule:           policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF,
-		Values:         []string{"alpha"},
-		AllowTraversal: &wrapperspb.BoolValue{Value: true},
-	})
-	s.Require().NoError(err)
+	for _, tc := range []struct {
+		name           string
+		allowTraversal bool
+	}{
+		{name: "enabled", allowTraversal: true},
+		{name: "disabled", allowTraversal: false},
+	} {
+		s.Run(tc.name, func() {
+			created, err := s.db.PolicyClient.CreateAttribute(s.ctx, &attributes.CreateAttributeRequest{
+				Name:           "test__entitleable_traversal_" + tc.name,
+				NamespaceId:    ns.GetId(),
+				Rule:           policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF,
+				Values:         []string{"alpha"},
+				AllowTraversal: wrapperspb.Bool(tc.allowTraversal),
+			})
+			s.Require().NoError(err)
 
-	missingFqn := fqnBuilder(ns.GetName(), created.GetName(), "missing_value")
-	resp, err := s.db.PolicyClient.GetEntitleableAttributesByFqns(s.ctx, &attributes.GetEntitleableAttributesByFqnsRequest{
-		Fqns: []string{missingFqn},
-	})
-	s.Require().NoError(err)
+			missingFqn := fqnBuilder(ns.GetName(), created.GetName(), "missing_value")
+			resp, err := s.db.PolicyClient.GetEntitleableAttributesByFqns(s.ctx, &attributes.GetEntitleableAttributesByFqnsRequest{
+				Fqns: []string{missingFqn},
+			})
+			if !tc.allowTraversal {
+				s.Require().ErrorIs(err, db.ErrNotFound)
+				return
+			}
+			s.Require().NoError(err)
 
-	got, err := s.db.PolicyClient.GetAttribute(s.ctx, created.GetId())
-	s.Require().NoError(err)
-	defFqn := got.GetFqn()
-	def := resp.GetDefinitions()[defFqn]
-	s.Require().NotNil(def)
-	s.Equal(policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF, def.GetRule())
-	// The definition (and its namespace) still resolves under allow_traversal.
-	s.Equal(ns.GetId(), def.GetNamespace().GetId())
-	s.Equal(got.GetNamespace().GetFqn(), def.GetNamespace().GetFqn())
+			got, err := s.db.PolicyClient.GetAttribute(s.ctx, created.GetId())
+			s.Require().NoError(err)
+			defFqn := got.GetFqn()
+			def := resp.GetDefinitions()[defFqn]
+			s.Require().NotNil(def)
+			s.Equal(policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF, def.GetRule())
+			s.Equal(ns.GetId(), def.GetNamespace().GetId())
+			s.Equal(got.GetNamespace().GetFqn(), def.GetNamespace().GetFqn())
 
-	e := resp.GetFqnEntitleableAttributes()[missingFqn]
-	s.Require().NotNil(e)
-	s.Equal(defFqn, e.GetDefinitionFqn())
-	s.Equal(missingFqn, e.GetValue().GetFqn())
-	s.Empty(e.GetValue().GetValueId())
-	s.Empty(e.GetValue().GetSubjectMappings())
+			// Traversal returns definition context with no persisted value or mappings.
+			e := resp.GetFqnEntitleableAttributes()[missingFqn]
+			s.Require().NotNil(e)
+			s.Equal(defFqn, e.GetDefinitionFqn())
+			s.Equal(missingFqn, e.GetValue().GetFqn())
+			s.Empty(e.GetValue().GetValueId())
+			s.Empty(e.GetValue().GetSubjectMappings())
+		})
+	}
 }
 
 func (s *AttributesSuite) Test_GetEntitleableAttributesByFqns_Hierarchy() {

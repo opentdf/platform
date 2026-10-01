@@ -60,11 +60,10 @@ type platformStartOptions struct {
 	kcProvisionPath        *template.Template
 	provisionDefaultPolicy bool
 	ersConfig              *ERSInlineConfig
+	httpWriteTimeout       time.Duration
 }
 
 func (s *LocalPlatformStepDefinitions) aUser(ctx context.Context, username string, email string, attributes *godog.Table) (context.Context, error) {
-	scenarioContext := GetPlatformScenarioContext(ctx)
-	var users []map[string]any
 	attributeMap := map[string]any{}
 	cellMap := map[string]int{}
 	for ri, row := range attributes.Rows {
@@ -84,6 +83,12 @@ func (s *LocalPlatformStepDefinitions) aUser(ctx context.Context, username strin
 			}
 		}
 	}
+	return registerLocalUser(ctx, username, email, attributeMap)
+}
+
+func registerLocalUser(ctx context.Context, username, email string, attributeMap map[string]any) (context.Context, error) {
+	scenarioContext := GetPlatformScenarioContext(ctx)
+	var users []map[string]any
 	userObj := scenarioContext.GetObject(userContextKey)
 	if userObj != nil {
 		usersObj, ok := scenarioContext.GetObject(userContextKey).([]map[string]any)
@@ -177,7 +182,7 @@ func (s *LocalPlatformStepDefinitions) commonLocalPlatform(ctx context.Context, 
 	if !exists {
 		version = platformImageEnvironmentLocalImage
 	}
-	platformConfigPath, err := createPlatformConfiguration(localPlatformOptions, scenarioContext.ScenarioOptions, version == debugVersion, options.platformProvisionPath, options.ersConfig)
+	platformConfigPath, err := createPlatformConfiguration(localPlatformOptions, scenarioContext.ScenarioOptions, version == debugVersion, options.platformProvisionPath, options.ersConfig, options.httpWriteTimeout)
 	if err != nil {
 		return ctx, err
 	}
@@ -292,6 +297,15 @@ func attachPlatformServiceLogs(ctx context.Context, scenarioContext *PlatformSce
 func (s *LocalPlatformStepDefinitions) aEmptyLocalPlatform(ctx context.Context) (context.Context, error) {
 	kt := template.Must(template.New("kc").Parse(keycloakBaseTemplate))
 	return s.commonLocalPlatform(ctx, &platformStartOptions{kcProvisionPath: kt})
+}
+
+func (s *LocalPlatformStepDefinitions) aEmptyLocalPlatformWithHTTPWriteTimeout(ctx context.Context, duration string) (context.Context, error) {
+	timeout, err := time.ParseDuration(duration)
+	if err != nil || timeout <= 0 {
+		return ctx, fmt.Errorf("invalid HTTP write timeout %q", duration)
+	}
+	kt := template.Must(template.New("kc").Parse(keycloakBaseTemplate))
+	return s.commonLocalPlatform(ctx, &platformStartOptions{kcProvisionPath: kt, httpWriteTimeout: timeout})
 }
 
 func (s *LocalPlatformStepDefinitions) aDefaultLocalPlatform(ctx context.Context) (context.Context, error) {
@@ -549,7 +563,7 @@ func createPlatformComposeConfiguration(options *LocalDevOptions) (string, error
 }
 
 // createPlatformConfiguration generates a platform configuration from a go text template for platform option settings
-func createPlatformConfiguration(options *LocalDevOptions, scenarioOptions *LocalDevScenarioOptions, devMode bool, platformTemplatePath *string, ersConfig *ERSInlineConfig) (string, error) {
+func createPlatformConfiguration(options *LocalDevOptions, scenarioOptions *LocalDevScenarioOptions, devMode bool, platformTemplatePath *string, ersConfig *ERSInlineConfig, httpWriteTimeout time.Duration) (string, error) {
 	tempFileName := path.Join(options.CukesDir, "opentdf.yaml")
 	platformKeysDir := options.KeysDir
 	pgHost := "localhost"
@@ -568,15 +582,16 @@ func createPlatformConfiguration(options *LocalDevOptions, scenarioOptions *Loca
 	t := template.Must(template.New("platform").Parse(templateSource))
 	var strBuffer bytes.Buffer
 	if err := t.Execute(&strBuffer, map[string]any{
-		"hostname":        options.Hostname,
-		"kcPort":          options.keycloakPort,
-		"platformPort":    scenarioOptions.PlatformPort,
-		"pgPort":          options.postgresPort,
-		"pgDatabase":      scenarioOptions.DatabaseName,
-		"pgHost":          pgHost,
-		"platformKeysDir": platformKeysDir,
-		"authRealm":       scenarioOptions.KeycloakRealm,
-		"ldapPort":        scenarioOptions.LDAPPort,
+		"hostname":         options.Hostname,
+		"kcPort":           options.keycloakPort,
+		"platformPort":     scenarioOptions.PlatformPort,
+		"pgPort":           options.postgresPort,
+		"pgDatabase":       scenarioOptions.DatabaseName,
+		"pgHost":           pgHost,
+		"platformKeysDir":  platformKeysDir,
+		"authRealm":        scenarioOptions.KeycloakRealm,
+		"ldapPort":         scenarioOptions.LDAPPort,
+		"httpWriteTimeout": httpWriteTimeout,
 	}); err != nil {
 		return tempFileName, err
 	}
@@ -615,6 +630,7 @@ func RegisterLocalPlatformStepDefinitions(ctx *godog.ScenarioContext, x *Platfor
 		PlatformCukesContext: x,
 	}
 	ctx.Step(`^an empty local platform$`, platformStepDefinitions.aEmptyLocalPlatform)
+	ctx.Step(`^an empty local platform with HTTP write timeout "([^"]*)"$`, platformStepDefinitions.aEmptyLocalPlatformWithHTTPWriteTimeout)
 	ctx.Step(`^a default local platform$`, platformStepDefinitions.aDefaultLocalPlatform)
 	ctx.Step(`^a default local platform with platform template "([^"]*)"$`, platformStepDefinitions.aDefaultLocalPlatformWithTemplate)
 	ctx.Step(`^I use the platform as "([^"]*)"$`, platformStepDefinitions.iUseThePlatformAs)

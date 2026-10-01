@@ -29,7 +29,7 @@ func (s *SubjectMappingsStepDefinitions) iSendARequestToCreateSubjectMapping(ctx
 				cellIndexMap[ci] = c.Value
 			} else {
 				switch cellIndexMap[ci] {
-				case "namespace_id":
+				case namespaceIDKey:
 					nsID, ok := scenarioContext.GetObject(strings.TrimSpace(c.Value)).(string)
 					if !ok {
 						return ctx, fmt.Errorf("unable to get namespace id for %s", c.Value)
@@ -222,6 +222,7 @@ func (s *SubjectMappingsStepDefinitions) iSendARequestToCreateSubjectMappingForE
 
 func RegisterSubjectMappingsStepsDefinitions(ctx *godog.ScenarioContext) {
 	subjectMappingStepDefinitions := &SubjectMappingsStepDefinitions{}
+	ctx.Step(`^I create (\d+) subject mappings for attribute "([^"]*)" matching selector "([^"]*)" with action "([^"]*)"$`, subjectMappingStepDefinitions.createScaleSubjectMappings)
 	ctx.Step(`a condition group referenced as "([^"]*)" with an "([^"]*)" operator with conditions:$`, subjectMappingStepDefinitions.aConditionGroup)
 	ctx.Step(`^a subject set referenced as "([^"]*)" containing the condition groups "([^"]*)"$`, subjectMappingStepDefinitions.aSubjectSet)
 	ctx.Step(`^I send a request to create a subject condition set referenced as "([^"]*)" containing subject sets "([^"]*)"$`, subjectMappingStepDefinitions.iSendARequestToCreateSubjectConditionSet)

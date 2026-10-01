@@ -36,12 +36,12 @@ func NewOtdfctlProfileStore(storeType ProfileDriver, cfg *ProfileConfig, setDefa
 		return nil, ErrProfileConfigEmpty
 	}
 
-	profiler, err := CreateProfiler(storeType)
+	u, err := utils.NormalizeEndpoint(cfg.Endpoint)
 	if err != nil {
 		return nil, err
 	}
 
-	u, err := utils.NormalizeEndpoint(cfg.Endpoint)
+	profiler, err := CreateProfiler(storeType)
 	if err != nil {
 		return nil, err
 	}

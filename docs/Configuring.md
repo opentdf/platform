@@ -343,6 +343,12 @@ For OTLP provider:
 - `server.trace.provider.otlp.insecure`: Whether to use an insecure connection
 - `server.trace.provider.otlp.headers`: Headers to include in OTLP requests
 
+Tracing covers incoming Connect RPCs, outbound IPC/ERS/external-core RPCs,
+and PostgreSQL queries and connection-pool acquisition under recorded requests.
+Database spans include SQL statements but do not include bind parameter values.
+Query duration includes reading the result rows, not just database execution.
+Setting `server.trace.enabled` to `false` disables span export for these paths.
+
 Example:
 
 ```yaml

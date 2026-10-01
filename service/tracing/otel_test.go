@@ -2,10 +2,12 @@ package tracing
 
 import (
 	"context"
+	"os"
 	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/require"
+	"go.opentelemetry.io/otel"
 )
 
 func Test_InitTracer_CompatibleResourceSchemas_Succeeds(t *testing.T) {
@@ -25,4 +27,35 @@ func Test_InitTracer_CompatibleResourceSchemas_Succeeds(t *testing.T) {
 	require.NotNil(t, shutdown)
 
 	shutdown()
+}
+
+func Test_InitTracer_ShutdownFlushesAfterContextCancellation(t *testing.T) {
+	previousProvider := otel.GetTracerProvider()
+	previousPropagator := otel.GetTextMapPropagator()
+	t.Cleanup(func() {
+		otel.SetTracerProvider(previousProvider)
+		otel.SetTextMapPropagator(previousPropagator)
+	})
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	path := filepath.Join(t.TempDir(), "traces.json")
+	shutdown, err := InitTracer(ctx, Config{
+		Enabled: true,
+		Provider: ProviderConfig{
+			Name: ProviderFile,
+			File: &FileConfig{Path: path},
+		},
+	})
+	require.NoError(t, err)
+	t.Cleanup(shutdown)
+
+	_, span := otel.Tracer(ServiceName).Start(ctx, "pending-at-shutdown")
+	span.End()
+	cancel()
+	shutdown()
+
+	data, err := os.ReadFile(path)
+	require.NoError(t, err)
+	require.Contains(t, string(data), `"Name":"pending-at-shutdown"`)
 }

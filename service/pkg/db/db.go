@@ -12,6 +12,7 @@ import (
 	"time"
 
 	sq "github.com/Masterminds/squirrel"
+	"github.com/exaring/otelpgx"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -183,6 +184,9 @@ func New(ctx context.Context, config Config, logCfg logger.Config, tracer *trace
 	dbConfig, err := config.buildConfig()
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse pgx config: %w", err)
+	}
+	if c.Tracer != nil {
+		dbConfig.ConnConfig.Tracer = otelpgx.NewTracer()
 	}
 
 	dbConfig.ConnConfig.OnNotice = func(_ *pgconn.PgConn, n *pgconn.Notice) {

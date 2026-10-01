@@ -548,6 +548,12 @@ func setupIPCSDK(cfg *config.Config, oidcconfig *auth.OIDCConfiguration, otdf *s
 
 // setupExternalSDK configures and creates SDK client for external mode
 func setupExternalSDK(cfg *config.Config, logger *logger.Logger, sdkOptions []sdk.Option) (*sdk.SDK, error) {
+	clientTraceInt, err := tracing.ConnectClientTraceInterceptor()
+	if err != nil {
+		return nil, fmt.Errorf("failed to create external SDK trace interceptor: %w", err)
+	}
+	sdkOptions = append(sdkOptions, sdk.WithExtraClientOptions(connect.WithInterceptors(clientTraceInt)))
+
 	// Use the provided SDK config
 	if cfg.SDKConfig.CorePlatformConnection.Insecure {
 		sdkOptions = append(sdkOptions, sdk.WithInsecureSkipVerifyConn())

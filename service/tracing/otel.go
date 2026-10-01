@@ -182,8 +182,8 @@ func InitTracer(ctx context.Context, cfg Config) (func(), error) {
 	// 6. Return Shutdown Function
 	return func() {
 		logger.InfoContext(ctx, "shutting down tracing...")
-		// Use a separate context for shutdown, typically context.Background() or a context with a timeout
-		shutdownCtx, cancel := context.WithTimeout(ctx, ShutdownTimeout) // Example timeout
+		// Flush queued spans even if the initialization context was canceled.
+		shutdownCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), ShutdownTimeout)
 		defer cancel()
 
 		if err := tp.Shutdown(shutdownCtx); err != nil {

@@ -134,7 +134,7 @@ func (ns NamespacesService) CreateNamespace(ctx context.Context, req *connect.Re
 
 	err := ns.dbClient.RunInTx(ctx, func(txClient *policydb.PolicyDBClient) error {
 		if limit := ns.config.MaxObjectCounts.Namespaces; limit > 0 {
-			count, err := txClient.CountNamespaces(ctx)
+			count, err := txClient.GetCountNamespaces(ctx)
 			if err != nil {
 				return err
 			}

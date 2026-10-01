@@ -13,7 +13,6 @@ import (
 
 	"github.com/cucumber/godog"
 	authz "github.com/opentdf/platform/protocol/go/authorization/v2"
-	"github.com/opentdf/platform/protocol/go/policy"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -81,44 +80,12 @@ func scaleTableRows(table *godog.Table, headers ...string) ([][]string, error) {
 	return rows, nil
 }
 
-func parseAuthorizationScaleCases(table *godog.Table) ([]authorizationScaleCase, error) {
-	rows, err := scaleTableRows(table, "case", "user", "action", "resources", "expected")
-	if err != nil {
-		return nil, err
-	}
-	cases := make([]authorizationScaleCase, 0, len(rows))
-	names := make(map[string]bool)
-	for _, row := range rows {
-		item := authorizationScaleCase{name: row[0], entity: row[1], action: row[2], resources: strings.Split(row[3], ","), expected: make(map[string]authz.Decision)}
-		if names[item.name] {
-			return nil, fmt.Errorf("duplicate case %q", item.name)
-		}
-		names[item.name] = true
-		expected := strings.Split(row[4], ",")
-		if len(item.resources) != len(expected) {
-			return nil, fmt.Errorf("case %s has mismatched resources and expectations", item.name)
-		}
-		for i, resource := range item.resources {
-			item.resources[i] = strings.TrimSpace(resource)
-			if item.resources[i] == "" {
-				return nil, fmt.Errorf("case %s has an empty resource", item.name)
-			}
-			decision, ok := authz.Decision_value["DECISION_"+strings.TrimSpace(expected[i])]
-			if !ok || (authz.Decision(decision) != authz.Decision_DECISION_PERMIT && authz.Decision(decision) != authz.Decision_DECISION_DENY) {
-				return nil, fmt.Errorf("case %s requires explicit PERMIT or DENY expectations", item.name)
-			}
-			item.expected[fmt.Sprintf("resource%d", i)] = authz.Decision(decision)
-		}
-		cases = append(cases, item)
-	}
-	return cases, nil
-}
-
 func validateScaleDecision(response *authz.GetDecisionMultiResourceResponse, expected map[string]authz.Decision) error {
 	if response == nil || len(response.GetResourceDecisions()) != len(expected) {
 		return errors.New("unexpected resource decision count")
 	}
 	seen := make(map[string]bool, len(expected))
+	allPermitted := true
 	for _, decision := range response.GetResourceDecisions() {
 		id := decision.GetEphemeralResourceId()
 		want, ok := expected[id]
@@ -126,6 +93,7 @@ func validateScaleDecision(response *authz.GetDecisionMultiResourceResponse, exp
 			return fmt.Errorf("unexpected or duplicate resource decision %q", id)
 		}
 		seen[id] = true
+		allPermitted = allPermitted && want == authz.Decision_DECISION_PERMIT
 		if decision.GetDecision() != want {
 			return fmt.Errorf("resource %s: expected %s, got %s", id, want, decision.GetDecision())
 		}
@@ -133,44 +101,13 @@ func validateScaleDecision(response *authz.GetDecisionMultiResourceResponse, exp
 			return fmt.Errorf("resource %s returned unexpected obligations", id)
 		}
 	}
+	if response.GetAllPermitted() == nil {
+		return errors.New("missing all_permitted decision")
+	}
+	if got := response.GetAllPermitted().GetValue(); got != allPermitted {
+		return fmt.Errorf("expected all_permitted %t, got %t", allPermitted, got)
+	}
 	return nil
-}
-
-func exerciseAuthorizationLoad(ctx context.Context, requests, concurrency, seed int, requestTimeout string, table *godog.Table) (context.Context, error) {
-	if concurrency < 1 || requests < concurrency || seed < 0 {
-		return ctx, errors.New("requests must be at least concurrency, concurrency positive, and seed nonnegative")
-	}
-	timeout, err := time.ParseDuration(requestTimeout)
-	if err != nil || timeout <= 0 {
-		return ctx, fmt.Errorf("invalid duration %q", requestTimeout)
-	}
-	cases, err := parseAuthorizationScaleCases(table)
-	if err != nil {
-		return ctx, err
-	}
-	scenario := GetPlatformScenarioContext(ctx)
-	for i := range cases {
-		item := &cases[i]
-		chain, err := buildEntityChainFromIDs(scenario, item.entity)
-		if err != nil {
-			return ctx, err
-		}
-		item.request = &authz.GetDecisionMultiResourceRequest{
-			EntityIdentifier: &authz.EntityIdentifier{Identifier: &authz.EntityIdentifier_EntityChain{EntityChain: chain}},
-			Action:           &policy.Action{Name: item.action},
-		}
-		for i, name := range item.resources {
-			fqns, ok := scenario.GetObject("scale-resource/" + name).([]string)
-			if !ok || len(fqns) == 0 {
-				return ctx, fmt.Errorf("case %s: missing resource %q", item.name, name)
-			}
-			item.request.Resources = append(item.request.Resources, &authz.Resource{
-				EphemeralId: fmt.Sprintf("resource%d", i),
-				Resource:    &authz.Resource_AttributeValues_{AttributeValues: &authz.Resource_AttributeValues{Fqns: fqns}},
-			})
-		}
-	}
-	return reportAuthorizationLoad(ctx, cases, requests, concurrency, seed, timeout)
 }
 
 func reportAuthorizationLoad(ctx context.Context, cases []authorizationScaleCase, requests, concurrency, seed int, timeout time.Duration) (context.Context, error) {

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"slices"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -142,17 +143,24 @@ func TestScaleLoadSelectsResourceVariants(t *testing.T) {
 	for i := range 50 {
 		item.variants = append(item.variants, loadTestCase(fmt.Sprintf("document-%d", i)).request)
 	}
-	var previous authorizationPerformanceResult
-	for _, concurrency := range []int{1, 10} {
+	var previousRequests map[string]int
+	for _, concurrency := range []int{1, 10, 25, 50} {
+		sent := make(map[string]int)
+		var lock sync.Mutex
 		result, err := runAuthorizationScaleLoad(t.Context(), []authorizationScaleCase{item}, 200, concurrency, 4625, time.Second,
 			func(_ context.Context, request *authz.GetDecisionMultiResourceRequest) (*authz.GetDecisionMultiResourceResponse, error) {
+				fqn := request.GetResources()[0].GetAttributeValues().GetFqns()[0]
+				lock.Lock()
+				sent[fqn]++
+				lock.Unlock()
 				return permittedLoadResponse(request), nil
 			})
 		require.NoError(t, err)
-		require.Greater(t, result.Cases[0].VariantsUsed, 40)
-		if concurrency > 1 {
-			require.Equal(t, previous.Cases, result.Cases, "scheduling must not alter selected variants")
+		require.Greater(t, len(sent), 40, "workers must send distinct resource variants")
+		require.Equal(t, len(sent), result.Cases[0].VariantsUsed, "reported variants must match actual requests")
+		if previousRequests != nil {
+			require.Equal(t, previousRequests, sent, "scheduling must not alter the request population")
 		}
-		previous = result
+		previousRequests = sent
 	}
 }

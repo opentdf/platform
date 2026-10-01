@@ -11,14 +11,18 @@ import (
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
 func TestScaleDecisionValidatesEachResourceRegardlessOfOrder(t *testing.T) {
 	expected := map[string]authz.Decision{"resource0": authz.Decision_DECISION_PERMIT, "resource1": authz.Decision_DECISION_DENY}
-	valid := &authz.GetDecisionMultiResourceResponse{ResourceDecisions: []*authz.ResourceDecision{
-		{EphemeralResourceId: "resource1", Decision: authz.Decision_DECISION_DENY},
-		{EphemeralResourceId: "resource0", Decision: authz.Decision_DECISION_PERMIT},
-	}}
+	valid := &authz.GetDecisionMultiResourceResponse{
+		AllPermitted: wrapperspb.Bool(false),
+		ResourceDecisions: []*authz.ResourceDecision{
+			{EphemeralResourceId: "resource1", Decision: authz.Decision_DECISION_DENY},
+			{EphemeralResourceId: "resource0", Decision: authz.Decision_DECISION_PERMIT},
+		},
+	}
 	require.NoError(t, validateScaleDecision(valid, expected))
 	tests := []struct {
 		name   string
@@ -34,6 +38,8 @@ func TestScaleDecisionValidatesEachResourceRegardlessOfOrder(t *testing.T) {
 			r.GetResourceDecisions()[0].EphemeralResourceId = "unknown"
 		}},
 		{"missing resource", func(r *authz.GetDecisionMultiResourceResponse) { r.ResourceDecisions = r.GetResourceDecisions()[:1] }},
+		{"missing aggregate", func(r *authz.GetDecisionMultiResourceResponse) { r.AllPermitted = nil }},
+		{"incorrect aggregate permit", func(r *authz.GetDecisionMultiResourceResponse) { r.AllPermitted = wrapperspb.Bool(true) }},
 		{"unexpected obligations", func(r *authz.GetDecisionMultiResourceResponse) {
 			r.GetResourceDecisions()[1].RequiredObligations = []string{"unexpected"}
 		}},
@@ -46,11 +52,14 @@ func TestScaleDecisionValidatesEachResourceRegardlessOfOrder(t *testing.T) {
 		})
 	}
 	require.Error(t, validateScaleDecision(nil, expected))
-}
-
-func TestScaleCasesRejectMissingTable(t *testing.T) {
-	_, err := parseAuthorizationScaleCases(nil)
-	require.Error(t, err)
+	allPermit := &authz.GetDecisionMultiResourceResponse{
+		AllPermitted:      wrapperspb.Bool(true),
+		ResourceDecisions: []*authz.ResourceDecision{{EphemeralResourceId: "resource0", Decision: authz.Decision_DECISION_PERMIT}},
+	}
+	expectedPermit := map[string]authz.Decision{"resource0": authz.Decision_DECISION_PERMIT}
+	require.NoError(t, validateScaleDecision(allPermit, expectedPermit))
+	allPermit.AllPermitted = wrapperspb.Bool(false)
+	require.ErrorContains(t, validateScaleDecision(allPermit, expectedPermit), "all_permitted")
 }
 
 func TestScaleLoadSamplesDifferentCasesReproducibly(t *testing.T) {
@@ -63,7 +72,7 @@ func TestScaleLoadSamplesDifferentCasesReproducibly(t *testing.T) {
 		require.GreaterOrEqual(t, index, 0)
 		seen[index] = true
 	}
-	require.Len(t, seen, 24, "the checked-in seed should exercise the complete current case pool")
+	require.Len(t, seen, 24, "the checked-in seed should exercise this synthetic case pool")
 	require.Greater(t, len(slices.Compact(slices.Clone(selected))), 24, "cases must be interleaved rather than grouped into homogeneous batches")
 }
 
@@ -78,7 +87,13 @@ func loadTestCase(name string) authorizationScaleCase {
 }
 
 func permittedLoadResponse(request *authz.GetDecisionMultiResourceRequest) *authz.GetDecisionMultiResourceResponse {
-	return &authz.GetDecisionMultiResourceResponse{ResourceDecisions: []*authz.ResourceDecision{{EphemeralResourceId: request.GetResources()[0].GetEphemeralId(), Decision: authz.Decision_DECISION_PERMIT}}}
+	return &authz.GetDecisionMultiResourceResponse{
+		AllPermitted: wrapperspb.Bool(true),
+		ResourceDecisions: []*authz.ResourceDecision{{
+			EphemeralResourceId: request.GetResources()[0].GetEphemeralId(),
+			Decision:            authz.Decision_DECISION_PERMIT,
+		}},
+	}
 }
 
 func TestScaleLoadMixesRequestsAcrossBoundedWorkers(t *testing.T) {

@@ -553,8 +553,6 @@ func RegisterAuthorizationStepDefinitions(ctx *godog.ScenarioContext) {
 	ctx.Step(`^I send (\d+) generated authorization requests at these concurrency levels with seed (\d+), request timeout "([^"]*)", attribute "([^"]*)", and (\d+) documents:$`, exerciseGeneratedAuthorizationLoad)
 	ctx.Step(`^the following scale attributes exist in namespace "([^"]*)":$`, createScaleAttributes)
 	ctx.Step(`^the following scale grants exist:$`, createScaleGrants)
-	ctx.Step(`^the following scale resources are defined:$`, defineScaleResources)
-	ctx.Step(`^I send (\d+) randomly selected authorization requests with concurrency (\d+), seed (\d+), and request timeout "([^"]*)":$`, exerciseAuthorizationLoad)
 	stepDefinitions := AuthorizationServiceStepDefinitions{}
 	ctx.Step(`^there is a "([^"]*)" subject entity with value "([^"]*)" and referenced as "([^"]*)"$`, stepDefinitions.thereIsASubjectEntityWithValueAndReferencedAs)
 	ctx.Step(`^there is a claims subject entity referenced as "([^"]*)" with claims:$`, stepDefinitions.thereIsAClaimsSubjectEntityReferencedAsWithClaims)

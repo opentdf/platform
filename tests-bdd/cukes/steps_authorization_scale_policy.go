@@ -42,20 +42,20 @@ func createScaleAttributes(ctx context.Context, namespaceRef string, table *godo
 	return ctx, nil
 }
 
-func scaleAttributeValue(scenario *PlatformScenarioContext, reference string) (*policy.Value, string, error) {
+func scaleAttributeValue(scenario *PlatformScenarioContext, reference string) (*policy.Value, error) {
 	attributeRef, valueName, ok := strings.Cut(strings.TrimSpace(reference), "/")
 	if !ok {
-		return nil, "", fmt.Errorf("expected attribute/value, got %q", reference)
+		return nil, fmt.Errorf("expected attribute/value, got %q", reference)
 	}
 	attribute, ok := scenario.GetObject(attributeRef).(*policy.Attribute)
 	if ok && attribute.GetFqn() != "" {
 		for _, value := range attribute.GetValues() {
 			if value.GetValue() == valueName {
-				return value, attribute.GetFqn() + "/value/" + valueName, nil
+				return value, nil
 			}
 		}
 	}
-	return nil, "", fmt.Errorf("unknown attribute value %q", reference)
+	return nil, fmt.Errorf("unknown attribute value %q", reference)
 }
 
 func createScaleGrants(ctx context.Context, table *godog.Table) (context.Context, error) {
@@ -65,7 +65,7 @@ func createScaleGrants(ctx context.Context, table *godog.Table) (context.Context
 	}
 	scenario := GetPlatformScenarioContext(ctx)
 	for _, row := range rows {
-		value, _, err := scaleAttributeValue(scenario, row[0])
+		value, err := scaleAttributeValue(scenario, row[0])
 		if err != nil {
 			return ctx, err
 		}
@@ -82,31 +82,6 @@ func createScaleGrants(ctx context.Context, table *godog.Table) (context.Context
 		if err := validateScaleMappingActions(response.GetSubjectMapping().GetActions(), row[3]); err != nil {
 			return ctx, fmt.Errorf("grant for %s: %w", row[0], err)
 		}
-	}
-	return ctx, nil
-}
-
-func defineScaleResources(ctx context.Context, table *godog.Table) (context.Context, error) {
-	rows, err := scaleTableRows(table, "resource", "attributes")
-	if err != nil {
-		return ctx, err
-	}
-	scenario := GetPlatformScenarioContext(ctx)
-	names := make(map[string]bool)
-	for _, row := range rows {
-		if names[row[0]] {
-			return ctx, fmt.Errorf("duplicate resource %q", row[0])
-		}
-		names[row[0]] = true
-		var fqns []string
-		for _, reference := range strings.Split(row[1], ",") {
-			_, fqn, err := scaleAttributeValue(scenario, reference)
-			if err != nil {
-				return ctx, err
-			}
-			fqns = append(fqns, fqn)
-		}
-		scenario.RecordObject("scale-resource/"+row[0], fqns)
 	}
 	return ctx, nil
 }

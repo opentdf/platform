@@ -39,6 +39,10 @@ ORDER BY
 LIMIT @limit_
 OFFSET @offset_;
 
+-- name: countNamespaces :one
+SELECT COUNT(*)
+FROM attribute_namespaces;
+
 -- name: getNamespace :one
 SELECT
     ns.id,

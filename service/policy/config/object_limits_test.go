@@ -3,6 +3,8 @@ package config
 import (
 	"testing"
 
+	"connectrpc.com/connect"
+	"github.com/opentdf/platform/service/logger"
 	serviceconfig "github.com/opentdf/platform/service/pkg/config"
 	"github.com/stretchr/testify/require"
 )
@@ -52,4 +54,14 @@ func Test_EnforceObjectLimit_ZeroLimit_Succeeds(t *testing.T) {
 	t.Parallel()
 
 	require.NoError(t, EnforceObjectLimit(ObjectTypeAttributeDefinitionsPerNamespace, 0, 100, 1))
+}
+
+func Test_ObjectLimitConnectError_ExceededLimit_ReturnsResourceExhausted(t *testing.T) {
+	t.Parallel()
+
+	limitErr := EnforceObjectLimit(ObjectTypeAttributeDefinitionsPerNamespace, 5, 4, 2)
+	err := ObjectLimitConnectError(t.Context(), logger.CreateTestLogger(), "create", limitErr)
+
+	require.Equal(t, connect.CodeResourceExhausted, connect.CodeOf(err))
+	require.ErrorIs(t, err, ErrObjectLimitExceeded)
 }

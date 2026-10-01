@@ -739,6 +739,8 @@ func (c PolicyDBClient) CreateObligationTrigger(ctx context.Context, r *obligati
 	return hydrateObligationTrigger(row.Trigger, row.Metadata)
 }
 
+// resolveObligationTriggerActionID returns an explicit action ID or implicitly creates
+// a missing name-based action in the attribute value's namespace.
 func (c PolicyDBClient) resolveObligationTriggerActionID(ctx context.Context, action *common.IdNameIdentifier, actionNamespaceID string) (string, error) {
 	actionID := action.GetId()
 	if actionID != "" {

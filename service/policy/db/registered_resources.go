@@ -678,8 +678,8 @@ func (c PolicyDBClient) createRegisteredResourceActionAttributeValues(ctx contex
 	return nil
 }
 
-// resolveRegResAAV parses the action from a createRegisteredResourceActionAttributeValues input
-// resolving actions by name within the given namespace and collecting existing action ID.
+// resolveRegResAAV resolves explicit action IDs and implicitly creates missing
+// name-based actions in the registered resource's namespace.
 func (c PolicyDBClient) resolveRegResAAV(ctx context.Context, aav *registeredresources.ActionAttributeValue, parsedNamespaceID pgtype.UUID) (string, string, error) {
 	var actionID, attributeValueID string
 	switch ident := aav.GetActionIdentifier().(type) {

@@ -129,7 +129,11 @@ FUZZTIME?=30s
 # Targets are discovered instead of listed so a new FuzzXxx is picked up without
 # editing this file. The grep narrows to candidate packages first because
 # `go test -list` has to build a test binary per package and most packages here
-# have no fuzz targets.
+# have no fuzz targets. testdata and vendor are skipped since they hold corpus
+# files and third-party code, never targets. A failing `go test -list` (e.g. a
+# package that does not compile) aborts the run with its errors visible rather
+# than being treated as "no targets", which would let `make fuzz` pass having
+# fuzzed nothing.
 #
 # A crasher gets written to testdata/fuzz/<Target>/<hash> and is replayed as a
 # seed by every later `go test`, so it turns the suite red until the underlying
@@ -137,10 +141,11 @@ FUZZTIME?=30s
 fuzz:
 	@for m in $(HAND_MODS); do \
 		(cd $$m && \
-		dirs=$$(grep -rl --include='*_test.go' '^func Fuzz' . 2>/dev/null \
+		dirs=$$(grep -rl --include='*_test.go' --exclude-dir=testdata --exclude-dir=vendor '^func Fuzz' . \
 			| while read -r f; do dirname "$$f"; done | sort -u); \
 		for d in $$dirs; do \
-			for fn in $$(go test -list '^Fuzz' "$$d" 2>/dev/null | grep '^Fuzz'); do \
+			listing=$$(go test -list '^Fuzz' "$$d") || { echo "go test -list failed in $$m $$d" >&2; exit 1; }; \
+			for fn in $$(echo "$$listing" | grep '^Fuzz'); do \
 				echo "==> $$m $$d $$fn ($(FUZZTIME))"; \
 				go test -run '^$$' -fuzz "^$$fn$$" -fuzztime=$(FUZZTIME) "$$d" || exit 1; \
 			done; \

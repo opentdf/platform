@@ -430,3 +430,10 @@ The CI summary reports policy dimensions, latency, failures, case selection,
 and distinct variants used/available. Failures include a variant index so the
 seeded request can be reconstructed. Latency remains report-only; request errors,
 incorrect decisions, and the 30-second client deadline fail the test.
+
+CI runs this scenario in the separate `Authorization scale (report only)` job.
+Failures make that job red and remain visible in its summary and
+`authorization-scale-report` artifact, but do not fail the required `ci` check.
+The required BDD job excludes `@scale`; functional scenarios and the scale helper
+unit tests remain required. Run functional scenarios locally with
+`--godog.tags='~@scale'`.

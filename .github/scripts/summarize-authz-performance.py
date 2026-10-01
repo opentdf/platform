@@ -79,7 +79,7 @@ def render(text, outcome):
     results, malformed = read_results(text)
     lines = ["### Authorization v2 concurrency performance", "", f"BDD step outcome: **{outcome}**.", "",
              "**Workload:** workers continuously draw from the entitlement case pool. Each request independently selects a case; users, actions, and resources vary within the same load run.", "",
-             "**Performance: REPORT ONLY.** Correctness PASS means all requests completed with the expected resource decisions. Errors and request timeouts fail; no latency baseline is enforced.", ""]
+             "**Performance: REPORT ONLY.** Correctness PASS means all requests completed with the expected resource and aggregate decisions. Errors and request timeouts fail this advisory job; its failures do not block PR merges. No latency baseline is enforced.", ""]
     if results:
         if results[0].get("fixture"):
             lines += [cell(results[0]["fixture"]), ""]

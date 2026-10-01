@@ -422,7 +422,9 @@ pool, with replacement. Identical resource combinations are removed from each
 pool. The seed fixes both selections before workers start. Cases vary users, read/write/delete, one or three resources, and expected
 permit/deny combinations. Cases are sampled uniformly to exercise both permits
 and denies; this is not a measured customer traffic distribution. The same
-workload runs at concurrency 1, 10, 25, and 50. Setup is excluded from timings.
+workload runs at concurrency 1, 10, 25, and 50 against one fixture in a single
+scenario. All levels run even if an earlier level fails. Setup is excluded from
+timings. Run just this scenario with `--godog.tags=@scale`.
 
 The CI summary reports policy dimensions, latency, failures, case selection,
 and distinct variants used/available. Failures include a variant index so the

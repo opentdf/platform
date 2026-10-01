@@ -73,7 +73,7 @@ func scaleTableRows(table *godog.Table, headers ...string) ([][]string, error) {
 		for i, cell := range row.Cells {
 			cells[i] = strings.TrimSpace(cell.Value)
 			if cells[i] == "" {
-				return nil, fmt.Errorf("empty %s cell", headers[i])
+				return nil, fmt.Errorf("empty table cell in column %d", i+1)
 			}
 		}
 		rows = append(rows, cells)

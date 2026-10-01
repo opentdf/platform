@@ -13,7 +13,7 @@ Feature: Mixed authorization traffic at large policy scale
   The seed reproduces both selections at every concurrency level. Setup is excluded.
   Latency is report-only; incorrect decisions, errors, and 30-second timeouts fail.
 
-  Scenario Outline: Random entitlement requests at concurrency <concurrency>
+  Scenario: Random entitlement requests across concurrency levels
     Given representative scale users hold subsets of 6000 project values with seed 4625
     And an empty local platform with HTTP write timeout "35s"
     And I submit a request to create a namespace with name "scale.example" and reference id "scale_ns"
@@ -38,24 +38,9 @@ Feature: Mixed authorization traffic at large policy scale
       | region/region-e         | .attributes.regions[]   | region-e  | read,write |
       | region/region-f         | .attributes.regions[]   | region-f  | read,write |
       | region/region-g         | .attributes.regions[]   | region-g  | read,write |
-    When I send 200 generated authorization requests with concurrency <concurrency>, seed 4625, request timeout "30s", attribute "projects", and 1000 documents
-
-    @concurrency-1
-    Examples: One worker
+    When I send 200 generated authorization requests at these concurrency levels with seed 4625, request timeout "30s", attribute "projects", and 1000 documents:
       | concurrency |
       | 1           |
-
-    @concurrency-10
-    Examples: Ten workers
-      | concurrency |
       | 10          |
-
-    @concurrency-25
-    Examples: Twenty-five workers
-      | concurrency |
       | 25          |
-
-    @concurrency-50
-    Examples: Fifty workers
-      | concurrency |
       | 50          |

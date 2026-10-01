@@ -6,8 +6,11 @@ import (
 	"fmt"
 	"math/rand/v2"
 	"slices"
+	"strconv"
 	"strings"
 	"time"
+
+	"github.com/cucumber/godog"
 
 	authz "github.com/opentdf/platform/protocol/go/authorization/v2"
 	"github.com/opentdf/platform/protocol/go/policy"
@@ -253,14 +256,34 @@ func buildGeneratedScaleCases(ctx context.Context, attributeRef string, count, s
 	return cases, nil
 }
 
-func exerciseGeneratedAuthorizationLoad(ctx context.Context, requests, concurrency, seed int, requestTimeout, attributeRef string, documents int) (context.Context, error) {
+func exerciseGeneratedAuthorizationLoad(ctx context.Context, requests, seed int, requestTimeout, attributeRef string, documents int, table *godog.Table) (context.Context, error) {
 	timeout, err := time.ParseDuration(requestTimeout)
-	if err != nil || timeout <= 0 || concurrency < 1 || requests < concurrency || seed < 0 || documents < 100 {
+	if err != nil || timeout <= 0 || requests < 1 || seed < 0 || documents < 100 {
 		return ctx, errors.New("invalid generated load dimensions or timeout")
+	}
+	rows, err := scaleTableRows(table, "concurrency")
+	if err != nil {
+		return ctx, err
+	}
+	levels := make([]int, len(rows))
+	for i, row := range rows {
+		level, err := strconv.Atoi(row[0])
+		if err != nil || level < 1 || level > requests {
+			return ctx, fmt.Errorf("concurrency %q must be between 1 and %d", row[0], requests)
+		}
+		levels[i] = level
 	}
 	cases, err := buildGeneratedScaleCases(ctx, attributeRef, documents, seed)
 	if err != nil {
 		return ctx, err
 	}
-	return reportAuthorizationLoad(ctx, cases, requests, concurrency, seed, timeout)
+	var failures []error
+	for _, level := range levels {
+		// Report every level even when an earlier load returns incorrect decisions.
+		_, err := reportAuthorizationLoad(ctx, cases, requests, level, seed, timeout)
+		if err != nil {
+			failures = append(failures, fmt.Errorf("concurrency %d: %w", level, err))
+		}
+	}
+	return ctx, errors.Join(failures...)
 }

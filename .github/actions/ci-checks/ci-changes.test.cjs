@@ -10,12 +10,13 @@ const classify = env => classifyChanges(env).workflow_only;
 const prEnv = { EVENT_NAME: 'pull_request', REPOSITORY: 'opentdf/platform',
   WORKFLOW_REF: 'opentdf/platform/.github/workflows/checks.yaml@refs/pull/123/merge' };
 
-test('JSON allowlist covers only this PR and the bounded ci-checks directory', () => {
+test('JSON allowlist preserves bounded policy exemptions and fails closed on mixed paths', () => {
   const config = require('../../ignore-checks-workflow-policy-paths.json');
-  assert.deepEqual(config.paths, [
-    '.github/ignore-checks-workflow-policy-paths.json',
-    '.github/workflows/checks.yaml', '.github/workflows/ci-unit-tests.yaml',
-  ]);
+  assert.equal(validatePolicy(config), config);
+  assert.ok(config.paths.includes('.github/ignore-checks-workflow-policy-paths.json'),
+    'the policy config remains self-allowlisted');
+  assert.ok(!config.paths.includes('.github/workflows/checks.yaml'),
+    'the broad QA workflow must not be exempted');
   assert.deepEqual(config.prefixes, ['.github/actions/ci-checks/']);
   const allowed = [...config.paths, ...fs.readdirSync(__dirname)
     .filter(file => file !== 'node_modules').map(file => `.github/actions/ci-checks/${file}`)];
@@ -23,7 +24,8 @@ test('JSON allowlist covers only this PR and the bounded ci-checks directory', (
   assert.equal(workflowPolicyOnly([]), false);
   for (const unknown of ['service/main.go', 'sdk/go.mod', 'go.work', 'go.work.sum', 'LICENSE',
     'AGENTS.md', '.policy.yml', 'CODEOWNERS', 'README.md', 'docs/example.md', 'Dockerfile', 'Makefile', 'buf.yaml',
-    '.github/workflows/driver-review.yaml', '.github/workflows/actions-unit-tests.yaml',
+    '.github/workflows/checks.yaml', '.github/workflows/driver-review.yaml',
+    '.github/workflows/actions-unit-tests.yaml',
     '.github/workflows/policy-review-unit-tests.yaml', '.github/actions/driver-review.js',
     '.github/actions/driver-review.test.cjs', '.github/actions/driver-review-workflow.test.cjs',
     '.github/tests/policy-review.test.cjs', '.github/tests/package.json', '.github/tests/package-lock.json',
@@ -87,6 +89,7 @@ test('git classifier includes deleted files, both rename sides, and unusual file
     git('init', '-q');
     write('service/main.go');
     write('.github/workflows/checks.yaml');
+    write('.github/workflows/ci-unit-tests.yaml');
     const base = snapshot();
     process.chdir(directory);
     const check = head => classify({ ...prEnv, BASE_SHA: base, HEAD_SHA: head });
@@ -104,17 +107,23 @@ test('git classifier includes deleted files, both rename sides, and unusual file
     });
     assert.notEqual(failed.status, 0, 'classification failure fails the step');
     assert.equal(fs.readFileSync(output, 'utf8'), '', 'failure never emits skip-authorizing outputs');
-    fs.unlinkSync(path.join(directory, '.github/workflows/checks.yaml'));
+    fs.unlinkSync(path.join(directory, '.github/workflows/ci-unit-tests.yaml'));
     assert.equal(check(snapshot(base)), true, 'allowlisted deletion');
+    git('read-tree', '--reset', '-u', base);
+    fs.appendFileSync(path.join(directory, '.github/workflows/checks.yaml'), 'changed\n');
+    assert.equal(check(snapshot(base)), false, 'broad QA workflow modification runs full QA');
+    git('read-tree', '--reset', '-u', base);
+    fs.unlinkSync(path.join(directory, '.github/workflows/checks.yaml'));
+    assert.equal(check(snapshot(base)), false, 'broad QA workflow deletion runs full QA');
     git('read-tree', '--reset', '-u', base);
     fs.mkdirSync(path.join(directory, '.github/actions/ci-checks'), { recursive: true });
     git('mv', 'service/main.go', '.github/actions/ci-checks/ci-changes.cjs');
     assert.equal(check(snapshot(base)), false, 'old code path prevents skip');
     git('read-tree', '--reset', '-u', base);
-    git('mv', '.github/workflows/checks.yaml', 'CODEOWNERS');
+    git('mv', '.github/workflows/ci-unit-tests.yaml', 'CODEOWNERS');
     assert.equal(check(snapshot(base)), false, 'new special path prevents skip');
     git('read-tree', '--reset', '-u', base);
-    write('.github/workflows/checks.yaml\nservice.go');
+    write('.github/workflows/ci-unit-tests.yaml\nservice.go');
     assert.equal(check(snapshot(base)), false, 'NUL delimiters preserve unusual paths');
     git('read-tree', '--reset', '-u', base);
     write('.github/ignore-checks-workflow-policy-paths.json');

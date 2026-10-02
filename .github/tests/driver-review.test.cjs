@@ -1,16 +1,11 @@
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
-const vm = require('node:vm');
+const { run: runDriverReview } = require('../actions/driver-review.js');
 const { test } = require('node:test');
-
-const workflow = fs.readFileSync('.github/workflows/driver-review.yaml', 'utf8');
-const script = workflow.split('          script: |\n')[1]
-  .split('\n').map(line => line.startsWith('            ') ? line.slice(12) : line).join('\n');
-assert.ok(script.includes('createCommitStatus'), 'could not extract workflow script');
 
 async function run({ eventName = 'issue_comment', action, after, commentUser = { id: 1, type: 'User' },
   author = { id: 1, type: 'User' }, head = 'abc', currentHead = head, body = '/reviewed',
-  headRepoId = 10, baseRepoId = 10 } = {}) {
+  headRepoId = 10, baseRepoId = 10, existingTracking = false } = {}) {
   const statuses = [];
   const writes = [];
   const pr = { user: author, head: { sha: head, repo: headRepoId === null ? null : { id: headRepoId } },
@@ -26,21 +21,38 @@ async function run({ eventName = 'issue_comment', action, after, commentUser = {
       },
       repos: { createCommitStatus: async args => { statuses.push(args); } },
     },
-    paginate: async () => [],
+    paginate: async () => existingTracking ? [{ id: 42, user: { login: 'github-actions[bot]' },
+      body: '<!-- driver-review-attestation -->' }] : [],
   };
   const context = {
     repo: { owner: 'opentdf', repo: 'platform' }, issue: { number: 5 }, eventName,
     payload: { action, after, comment: { body, user: commentUser } },
   };
-  await vm.runInNewContext(`(async () => {\n${script}\n})()`, { github, context });
+  await runDriverReview({ github, context });
   return { statuses, writes };
 }
+
+test('privileged events execute only the checked-out default-branch helper, never PR code', () => {
+  const workflow = fs.readFileSync('.github/workflows/driver-review.yaml', 'utf8');
+  assert.match(workflow, /ref: \$\{\{ github\.event\.repository\.default_branch \}\}/);
+  assert.match(workflow, /persist-credentials: false/);
+  assert.match(workflow, /require\('\.\/\.github\/actions\/driver-review\.js'\)/);
+  assert.doesNotMatch(workflow, /github\.event\.pull_request\.head|refs\/pull\/|eval\(/);
+  assert.doesNotMatch(runDriverReview.toString(), /\beval\(|new Function\(/);
+});
 
 test('human PR author attests fetched head', async () => {
   const { statuses, writes } = await run();
   assert.equal(statuses[0].state, 'success');
   assert.equal(statuses[0].sha, 'abc');
   assert.match(writes[0].body, /attested for head `abc`/);
+});
+
+test('same-repo comment updates existing bot tracking comment', async () => {
+  const { statuses, writes } = await run({ existingTracking: true });
+  assert.equal(statuses[0].state, 'success');
+  assert.equal(writes[0].comment_id, 42);
+  assert.equal(writes[0].issue_number, undefined);
 });
 
 test('new push leaves pending status and author instructions', async () => {

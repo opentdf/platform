@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"reflect"
 	"regexp"
 
@@ -17,6 +16,7 @@ var (
 	ErrExtensionNotRegistered    = errors.New("extension not registered for scope")
 	ErrExtensionTypeMismatch     = errors.New("extension type does not match registration")
 	ErrExtensionDecode           = errors.New("cannot decode extension")
+	ErrExtensionEncode           = errors.New("cannot encode extension")
 	ErrExtensionUnsafeUpdate     = errors.New("extension update would discard unrecognized data")
 )
 
@@ -53,11 +53,13 @@ func registerExtension[T any](scope extensionScope, namespace string) ExtensionO
 }
 
 // WithGlobalExtension declares the JSON shape owned by namespace in global settings.
+// Typed writes fully replace this namespace; fields omitted from a replacement are not retained.
 func WithGlobalExtension[T any](namespace string) ExtensionOption {
 	return registerExtension[T](globalExtension, namespace)
 }
 
 // WithProfileExtension declares the JSON shape owned by namespace in each profile.
+// Typed writes fully replace this namespace; fields omitted from a replacement are not retained.
 func WithProfileExtension[T any](namespace string) ExtensionOption {
 	return registerExtension[T](profileExtension, namespace)
 }
@@ -155,10 +157,11 @@ func prepareExtensionWrite[T any](config *ExtensionConfig, scope extensionScope,
 	}
 	payload, err := json.Marshal(value)
 	if err != nil {
-		return nil, nil, fmt.Errorf("encode extension: %w", err)
+		// MarshalJSON errors can contain secrets from the value being encoded.
+		return nil, nil, ErrExtensionEncode
 	}
 	check := func(current json.RawMessage, present bool) error {
-		if !present {
+		if !present || bytes.Equal(bytes.TrimSpace(current), []byte("null")) {
 			return nil
 		}
 		decoded, err := decodeExtension[T](current)
@@ -174,7 +177,9 @@ func prepareExtensionWrite[T any](config *ExtensionConfig, scope extensionScope,
 	return payload, check, nil
 }
 
-// WriteGlobalExtension rejects updates that would discard JSON the registered shape cannot represent.
+// WriteGlobalExtension fully replaces one global namespace with value; omitted fields
+// are not retained. It rejects existing non-null payloads whose typed round trip changes
+// compact JSON, but this guard does not make typed writes lossless.
 func WriteGlobalExtension[T any](config *ExtensionConfig, namespace string, value T) error {
 	payload, check, err := prepareExtensionWrite(config, globalExtension, namespace, value)
 	if err != nil {
@@ -183,7 +188,9 @@ func WriteGlobalExtension[T any](config *ExtensionConfig, namespace string, valu
 	return osprofiles.GetGlobalConfig(config.profiler).SetExtensionChecked(namespace, payload, check)
 }
 
-// WriteProfileExtension has the same non-destructive update contract for a named profile.
+// WriteProfileExtension fully replaces one namespace in an existing named profile;
+// omitted fields are not retained. Like WriteGlobalExtension, it rejects existing
+// non-null payloads that fail the typed round-trip guard, not all lossy writes.
 func WriteProfileExtension[T any](config *ExtensionConfig, profileName, namespace string, value T) error {
 	payload, check, err := prepareExtensionWrite(config, profileExtension, namespace, value)
 	if err != nil {

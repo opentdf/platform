@@ -21,6 +21,98 @@ type consumerProfile struct {
 	Label string `json:"label"`
 }
 
+type secretMarshalValue struct{}
+
+var errSecretMarshal = errors.New("private-token from MarshalJSON")
+
+func (secretMarshalValue) MarshalJSON() ([]byte, error) {
+	return nil, errSecretMarshal
+}
+
+func TestTypedExtensionSanitizesMarshalError(t *testing.T) {
+	profiler, err := CreateProfiler(ProfileDriverMemory)
+	if err != nil {
+		t.Fatal(err)
+	}
+	cfg, err := NewExtensionConfig(profiler, WithGlobalExtension[secretMarshalValue]("alpha"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := osprofiles.GetGlobalConfig(profiler).SetExtension("alpha", json.RawMessage(`{"existing":true}`)); err != nil {
+		t.Fatal(err)
+	}
+	if err := WriteGlobalExtension(cfg, "alpha", secretMarshalValue{}); !errors.Is(err, ErrExtensionEncode) || errors.Is(err, errSecretMarshal) || strings.Contains(err.Error(), "private-token") {
+		t.Fatalf("unsafe marshal error: %v", err)
+	}
+	got, present, err := osprofiles.GetGlobalConfig(profiler).Extension("alpha")
+	if err != nil || !present || string(got) != `{"existing":true}` {
+		t.Fatalf("changed after failed marshal: %s %v %v", got, present, err)
+	}
+}
+
+func TestTypedExtensionWriteReplacesNamespaceWithoutMerging(t *testing.T) {
+	type settings struct {
+		Enabled bool   `json:"enabled"`
+		Note    string `json:"note,omitempty"`
+	}
+	profiler, err := CreateProfiler(ProfileDriverMemory)
+	if err != nil {
+		t.Fatal(err)
+	}
+	cfg, err := NewExtensionConfig(profiler, WithGlobalExtension[settings]("alpha"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := WriteGlobalExtension(cfg, "alpha", settings{Note: "old"}); err != nil {
+		t.Fatal(err)
+	}
+	if err := WriteGlobalExtension(cfg, "alpha", settings{Enabled: true}); err != nil {
+		t.Fatal(err)
+	}
+	got, present, err := osprofiles.GetGlobalConfig(profiler).Extension("alpha")
+	if err != nil || !present || string(got) != `{"enabled":true}` {
+		t.Fatalf("typed write merged omitted field: %s %v %v", got, present, err)
+	}
+}
+
+func TestTypedExtensionReplacesStoredNull(t *testing.T) {
+	keyring.MockInit()
+	profiler, err := CreateProfiler(ProfileDriverKeyring)
+	if err != nil {
+		t.Fatal(err)
+	}
+	cfg, err := NewExtensionConfig(profiler, WithGlobalExtension[consumerGlobal]("alpha"), WithProfileExtension[consumerProfile]("alpha"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := profiler.AddProfile(&ProfileConfig{Name: "fixture"}, false); err != nil {
+		t.Fatal(err)
+	}
+	global := osprofiles.GetGlobalConfig(profiler)
+	profile, err := osprofiles.GetProfile[*ProfileConfig](profiler, "fixture")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := global.SetExtension("alpha", json.RawMessage("null")); err != nil {
+		t.Fatal(err)
+	}
+	if err := profile.SetExtension("alpha", json.RawMessage("null")); err != nil {
+		t.Fatal(err)
+	}
+	if err := WriteGlobalExtension(cfg, "alpha", consumerGlobal{true}); err != nil {
+		t.Fatal(err)
+	}
+	if err := WriteProfileExtension(cfg, "fixture", "alpha", consumerProfile{"new"}); err != nil {
+		t.Fatal(err)
+	}
+	if got, present, err := ReadGlobalExtension[consumerGlobal](cfg, "alpha"); err != nil || !present || !got.Enabled {
+		t.Fatalf("global replacement: %+v %v %v", got, present, err)
+	}
+	if got, present, err := ReadProfileExtension[consumerProfile](cfg, "fixture", "alpha"); err != nil || !present || got.Label != "new" {
+		t.Fatalf("profile replacement: %+v %v %v", got, present, err)
+	}
+}
+
 func TestTypedExtensionIndependentConsumersAndScopes(t *testing.T) {
 	profiler, err := CreateProfiler(ProfileDriverMemory)
 	if err != nil {

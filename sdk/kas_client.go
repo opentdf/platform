@@ -184,6 +184,12 @@ func (k *KASClient) unwrap(ctx context.Context, requests ...*kas.UnsignedRewrapR
 		return nil, fmt.Errorf("error making rewrap request to kas: %w", err)
 	}
 
+	return k.handleKeyResponse(response)
+}
+
+// handleKeyResponse unwraps a rewrap response with the handler matching the
+// session key type.
+func (k *KASClient) handleKeyResponse(response *kas.RewrapResponse) (map[string][]kaoResult, error) {
 	switch {
 	case ocrypto.IsECKeyType(k.sessionKey.GetKeyType()):
 		return k.handleECKeyResponse(response)

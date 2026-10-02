@@ -21,7 +21,7 @@ policy:
 
 approval_rules:
   - name: default
-    description: "Always require at least 1 maintainer approval"
+    description: "Always require at least 1 maintainer approval and author review attestation"
     options:
       invalidate_on_push: true
       ignore_edited_comments: true
@@ -29,6 +29,11 @@ approval_rules:
       count: 1
       conditions:
         has_valid_signatures: true
+        has_status:
+          conclusions:
+            - success
+          statuses:
+            - driver-review
       teams:
         - "opentdf/maintainers"
 

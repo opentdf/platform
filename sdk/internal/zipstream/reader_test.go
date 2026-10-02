@@ -8,7 +8,11 @@ import (
 	"io"
 	"os"
 	"strconv"
+	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 const (
@@ -241,4 +245,82 @@ func customUnzip(t *testing.T) {
 			t.Fatalf("Fail to remove zip file :%s archive %v", zipFileName, err)
 		}
 	}
+}
+
+// chunkedSeeker serves at most maxChunk bytes per Read and reports no error
+// for the short ones. That is within the io.Reader contract and is what an
+// HTTP range-backed or network-filesystem ReadSeeker does in practice -- the
+// kind a caller hands NewReader for an archive too large to hold in memory.
+// bytes.Reader never reads short, so it cannot stand in for one.
+type chunkedSeeker struct {
+	*bytes.Reader
+	maxChunk int
+}
+
+func (c chunkedSeeker) Read(p []byte) (int, error) {
+	if len(p) > c.maxChunk {
+		p = p[:c.maxChunk]
+	}
+	return c.Reader.Read(p)
+}
+
+// TestReadBytesAssemblesShortReads asserts a short read is retried rather
+// than padded out. A single Read leaves the tail of the buffer at its make()
+// zeros and reports success, so the failure this pins is silent: the caller
+// gets a full-length buffer whose contents are partly invented.
+func TestReadBytesAssemblesShortReads(t *testing.T) {
+	want := []byte("payload delivered a byte at a time")
+
+	got, err := readBytes(chunkedSeeker{Reader: bytes.NewReader(want), maxChunk: 1}, 0, int64(len(want)))
+	require.NoError(t, err)
+	assert.Equal(t, want, got)
+}
+
+// TestReadBytesRejectsTruncatedRead asserts a genuinely short archive is an
+// error rather than zero padding, and that no partial buffer accompanies it.
+func TestReadBytesRejectsTruncatedRead(t *testing.T) {
+	got, err := readBytes(bytes.NewReader([]byte("eleven byte")), 4, 32)
+
+	require.ErrorIs(t, err, io.ErrUnexpectedEOF)
+	assert.Nil(t, got, "no data may accompany a read error")
+}
+
+// TestReadBytesRejectsReadStartingAtEOF asserts the sentinel does not depend
+// on how much of the request was satisfiable. io.ReadFull reports a bare
+// io.EOF when it reads nothing at all, which is the one error a caller is
+// most likely to mistake for a normal end of stream -- so an entry whose data
+// is missing outright must not be distinguishable from one cut off partway.
+func TestReadBytesRejectsReadStartingAtEOF(t *testing.T) {
+	got, err := readBytes(bytes.NewReader([]byte("abc")), 3, 1)
+
+	require.ErrorIs(t, err, io.ErrUnexpectedEOF)
+	require.NotErrorIs(t, err, io.EOF, "io.EOF reads as a clean end of stream")
+	assert.Nil(t, got, "no data may accompany a read error")
+}
+
+// TestReadBytesZeroLengthAtEOF asserts an empty entry stored last in the
+// archive reads back as an empty success. bytes.Reader reports io.EOF for any
+// Read once exhausted, including a zero-length one, so a single Read turned
+// a legitimately empty payload into a failure.
+func TestReadBytesZeroLengthAtEOF(t *testing.T) {
+	got, err := readBytes(bytes.NewReader([]byte("abc")), 3, 0)
+
+	require.NoError(t, err)
+	assert.Empty(t, got)
+}
+
+// TestReadAllFileDataOverChunkedSeeker drives the same short read through the
+// exported path, where the consequence is concrete: this is the manifest
+// arriving with its tail zeroed and no error to say so, which surfaces much
+// later as a JSON parse failure or a segment that will not authenticate.
+func TestReadAllFileDataOverChunkedSeeker(t *testing.T) {
+	payload := []byte(strings.Repeat("chunked payload ", 64))
+	data := buildRawZip(t, []rawZipEntry{{name: "chunky.bin", data: payload}}, false)
+
+	reader, err := NewReader(chunkedSeeker{Reader: bytes.NewReader(data), maxChunk: 7})
+	require.NoError(t, err)
+
+	got, err := reader.ReadAllFileData("chunky.bin", oneMB)
+	require.NoError(t, err)
+	assert.Equal(t, payload, got)
 }

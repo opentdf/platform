@@ -2,25 +2,35 @@
 
 package tdf
 
-import "github.com/opentdf/platform/protocol/go/policy"
+import (
+	"fmt"
 
-// IntegrityAlgorithm specifies the cryptographic algorithm used for integrity verification.
+	"github.com/opentdf/platform/protocol/go/policy"
+)
+
+// IntegrityAlgorithm specified an integrity algorithm without saying what it
+// was allowed to protect.
 //
-// Different algorithms provide different security and performance characteristics:
-//   - HS256: HMAC-SHA256, widely supported, good balance of security and performance
-//   - GMAC: Galois Message Authentication Code, faster but requires AES-GCM support
+// Deprecated: the root signature and the segment hashes accept different sets
+// of algorithms, which one type cannot express. Use [RootIntegrityAlg] or
+// [SegmentIntegrityAlg].
 //
-// The algorithm choice affects both segment-level and root-level integrity verification.
+// Unlike the manifest and assertion types in this package, this is not an
+// alias onto [sdk.IntegrityAlgorithm]: that one is itself an alias for int, so
+// no methods can be attached to it, and aliasing would silently drop String()
+// from this package's public API. The underlying values match, so the two
+// convert freely.
 type IntegrityAlgorithm int
 
 // String returns the string representation of the integrity algorithm.
-// Used for manifest generation and protocol compatibility.
+//
+// Deprecated: use [RootIntegrityAlg.String] or [SegmentIntegrityAlg.String].
 func (i IntegrityAlgorithm) String() string {
 	switch i {
 	case HS256:
-		return "HS256"
+		return algHS256
 	case GMAC:
-		return "GMAC"
+		return algGMAC
 	default:
 		return "unknown"
 	}
@@ -28,12 +38,76 @@ func (i IntegrityAlgorithm) String() string {
 
 const (
 	// HS256 uses HMAC-SHA256 for integrity verification.
-	// This is the default and most widely supported algorithm.
+	//
+	// Deprecated: use [RootHS256] or [SegmentHS256].
 	HS256 = iota
 	// GMAC uses Galois Message Authentication Code for integrity verification.
-	// Provides better performance with AES-GCM but requires hardware support for optimal speed.
+	//
+	// Deprecated: use [SegmentGMAC]. GMAC is not a legal root algorithm.
 	GMAC
 )
+
+// Manifest spellings of the two algorithms.
+const (
+	algHS256 = "HS256"
+	algGMAC  = "GMAC"
+)
+
+// RootIntegrityAlg is the algorithm that signs the aggregate hash -- the
+// concatenation of every segment hash, in manifest order. The root signature is
+// the only thing that authenticates the manifest's description of the payload,
+// so a segment list that has been truncated, reordered, or duplicated is caught
+// here or not at all.
+//
+// HS256 is the only value, and this type exists to say so at compile time. The
+// aggregate hash is manifest data that never passed through the AEAD, so tag
+// extraction has nothing to extract: a "GMAC" root signature is just a copy of
+// the last segment hash, producible by an attacker with no key.
+type RootIntegrityAlg int
+
+// RootHS256 is an HMAC-SHA256 over the aggregate hash, keyed by the DEK. It is
+// the default and the only supported value.
+const RootHS256 RootIntegrityAlg = iota
+
+// SegmentIntegrityAlg is the algorithm that authenticates a single segment's
+// bytes. Unlike the root, both values are genuine authenticators, because the
+// input is data the cipher itself produced.
+type SegmentIntegrityAlg int
+
+const (
+	// SegmentHS256 is an HMAC-SHA256 over the segment's bytes, keyed by the
+	// DEK. It is the only meaningful choice when those bytes are not AEAD
+	// output -- a plaintext segment has no tag to read out. No writer in this
+	// SDK produces one, so [NewWriter] refuses it.
+	SegmentHS256 SegmentIntegrityAlg = iota
+	// SegmentGMAC reads out the AES-GCM tag the cipher already computed over
+	// exactly this segment's ciphertext. It is this writer's default and the
+	// only value it accepts.
+	SegmentGMAC
+)
+
+// String returns the manifest spelling of the algorithm. Out-of-range values
+// have no spelling: the type is int-backed, so they are representable, and
+// naming one "HS256" in a manifest would claim a signature that was never
+// computed.
+func (a RootIntegrityAlg) String() string {
+	if a == RootHS256 {
+		return algHS256
+	}
+	return fmt.Sprintf("RootIntegrityAlg(%d)", int(a))
+}
+
+// String returns the manifest spelling of the algorithm. See
+// [RootIntegrityAlg.String] on out-of-range values.
+func (a SegmentIntegrityAlg) String() string {
+	switch a {
+	case SegmentHS256:
+		return algHS256
+	case SegmentGMAC:
+		return algGMAC
+	}
+	return fmt.Sprintf("SegmentIntegrityAlg(%d)", int(a))
+}
 
 // BaseConfig provides common configuration foundation for TDF operations.
 // Currently empty but reserved for future common configuration options.
@@ -42,16 +116,17 @@ type BaseConfig struct{}
 // WriterConfig contains configuration options for TDF Writer creation.
 //
 // The configuration controls cryptographic algorithms and processing behavior:
-//   - integrityAlgorithm: Algorithm for root integrity signature calculation
-//   - segmentIntegrityAlgorithm: Algorithm for individual segment hash calculation
+//   - rootIntegrityAlg: Algorithm for root integrity signature calculation
+//   - segmentIntegrityAlg: Algorithm for individual segment hash calculation
 //
-// These can be set independently to optimize for different security/performance requirements.
+// These are set independently, and their legal values differ: see
+// [RootIntegrityAlg] and [SegmentIntegrityAlg].
 type WriterConfig struct {
 	BaseConfig
-	// integrityAlgorithm specifies the algorithm for root integrity verification
-	integrityAlgorithm IntegrityAlgorithm
-	// segmentIntegrityAlgorithm specifies the algorithm for segment-level integrity
-	segmentIntegrityAlgorithm IntegrityAlgorithm
+	// rootIntegrityAlg specifies the algorithm for root integrity verification
+	rootIntegrityAlg RootIntegrityAlg
+	// segmentIntegrityAlg specifies the algorithm for segment-level integrity
+	segmentIntegrityAlg SegmentIntegrityAlg
 
 	// initialAttributes allows callers to provide attribute values at writer creation time.
 	// These will be used during Finalize() if no attributes are provided there.
@@ -60,6 +135,10 @@ type WriterConfig struct {
 	// initialDefaultKAS allows callers to provide a default KAS at writer creation time.
 	// This will be used during Finalize() if no default KAS is provided there.
 	initialDefaultKAS *policy.SimpleKasKey
+
+	// targetMode is the TDF spec version to write for, as semver.
+	// Empty selects the current format. See WithTargetMode.
+	targetMode string
 }
 
 // ReaderConfig contains configuration options for TDF Reader creation.
@@ -77,8 +156,8 @@ type ReaderConfig struct {
 //
 // Example usage:
 //
-//	writer, err := NewWriter(ctx, WithIntegrityAlgorithm(GMAC))
-//	finalBytes, manifest, err := writer.Finalize(ctx, WithPayloadMimeType("text/plain"))
+//	writer, err := NewWriter(ctx, WithSegmentIntegrityAlgorithm(SegmentGMAC))
+//	result, err := writer.Finalize(ctx, WithPayloadMimeType("text/plain"))
 type Option[T any] func(T)
 
 // WithIntegrityAlgorithm sets the algorithm for root integrity signature calculation.
@@ -86,16 +165,15 @@ type Option[T any] func(T)
 // The root integrity algorithm is used to generate a signature over all segment hashes,
 // providing verification that the complete TDF has not been tampered with.
 //
-// Algorithm options:
-//   - HS256: HMAC-SHA256 (default) - widely supported, secure
-//   - GMAC: Galois Message Authentication Code - faster with hardware acceleration
+// [RootHS256] is the only supported value, and the default. Options cannot
+// return an error, so anything else is refused by NewWriter.
 //
 // Example:
 //
-//	writer, err := NewWriter(ctx, WithIntegrityAlgorithm(GMAC))
-func WithIntegrityAlgorithm(algo IntegrityAlgorithm) Option[*WriterConfig] {
+//	writer, err := NewWriter(ctx, WithIntegrityAlgorithm(RootHS256))
+func WithIntegrityAlgorithm(algo RootIntegrityAlg) Option[*WriterConfig] {
 	return func(c *WriterConfig) {
-		c.integrityAlgorithm = algo
+		c.rootIntegrityAlg = algo
 	}
 }
 
@@ -106,21 +184,17 @@ func WithIntegrityAlgorithm(algo IntegrityAlgorithm) Option[*WriterConfig] {
 // complete file. This is particularly useful for streaming scenarios where
 // segments may be processed independently.
 //
-// The segment algorithm can differ from the root algorithm to optimize for
-// different processing patterns:
-//   - Use GMAC for segments if processing many small segments (better performance)
-//   - Use HS256 for root signature for broader compatibility
+// [SegmentGMAC] is the only supported value, and the default: every segment
+// this writer emits is AES-GCM output, so the tag the cipher already computed
+// is the hash. Options cannot return an error, so [SegmentHS256] is refused by
+// NewWriter.
 //
 // Example:
 //
-//	// Fast segment processing with compatible root signature
-//	writer, err := NewWriter(ctx,
-//		WithSegmentIntegrityAlgorithm(GMAC),  // Fast segment hashing
-//		WithIntegrityAlgorithm(HS256),        // Compatible root signature
-//	)
-func WithSegmentIntegrityAlgorithm(algo IntegrityAlgorithm) Option[*WriterConfig] {
+//	writer, err := NewWriter(ctx, WithSegmentIntegrityAlgorithm(SegmentGMAC))
+func WithSegmentIntegrityAlgorithm(algo SegmentIntegrityAlg) Option[*WriterConfig] {
 	return func(c *WriterConfig) {
-		c.segmentIntegrityAlgorithm = algo
+		c.segmentIntegrityAlg = algo
 	}
 }
 
@@ -167,10 +241,6 @@ type WriterFinalizeConfig struct {
 	// or handling instructions for the TDF.
 	assertions []AssertionConfig
 
-	// excludeVersionFromManifest controls whether to exclude version information
-	// from the TDF manifest (for compatibility with older readers).
-	excludeVersionFromManifest bool
-
 	// encryptedMetadata contains sensitive metadata encrypted within the TDF.
 	// This metadata is stored in key access objects and only accessible after
 	// successful attribute-based access control validation.
@@ -180,9 +250,9 @@ type WriterFinalizeConfig struct {
 	// Used by readers to determine appropriate content handling.
 	payloadMimeType string
 
-	// keepSegments indicates caller-provided segment indices to keep when finalizing.
-	// Indices must form a contiguous prefix [0..K]. If empty, all written
-	// segments (default behavior) are used.
+	// keepSegments names the segments the manifest should describe,
+	// ascending and possibly sparse. If empty, all written segments
+	// (default behavior) are used.
 	keepSegments []int
 }
 
@@ -198,7 +268,7 @@ type WriterFinalizeConfig struct {
 //
 // Example:
 //
-//	finalBytes, manifest, err := writer.Finalize(ctx,
+//	result, err := writer.Finalize(ctx,
 //		WithEncryptedMetadata("classification: secret"),
 //	)
 func WithEncryptedMetadata(metadata string) Option[*WriterFinalizeConfig] {
@@ -218,7 +288,7 @@ func WithEncryptedMetadata(metadata string) Option[*WriterFinalizeConfig] {
 //
 // Example:
 //
-//	finalBytes, manifest, err := writer.Finalize(ctx,
+//	result, err := writer.Finalize(ctx,
 //		WithPayloadMimeType("application/json"),
 //	)
 func WithPayloadMimeType(mimeType string) Option[*WriterFinalizeConfig] {
@@ -227,10 +297,25 @@ func WithPayloadMimeType(mimeType string) Option[*WriterFinalizeConfig] {
 	}
 }
 
-// WithSegments restricts finalization to the provided segment indices and order.
-// The order provided is used as the logical payload order. Indices may be sparse
-// but must refer to segments that were written. When omitted, all present indices
-// are used in ascending order.
+// WithSegments names the segments the finalized manifest describes.
+// When omitted, all written segments are used in ascending index order.
+//
+// Indices need not be contiguous -- a caller that reserves a fixed block
+// of indices per upload part and fills only the front of each block
+// leaves gaps by construction -- but the list must name written segments
+// in ascending index order and may drop only from the end. The payload is
+// laid out in sorted index order, so dropping a segment from the middle
+// would shift every later segment's offset and produce a manifest that
+// does not describe the bytes on disk. For the same reason the caller
+// must concatenate each segment's TDFData in ascending index order.
+//
+// Dropping a segment from the manifest does not shrink the archive: the
+// underlying writer never rolls back a completed segment's contribution to
+// the payload's recorded size and CRC, so every segment that was actually
+// written -- including ones this option excludes from the manifest -- must
+// still be appended by the caller when assembling the final file. Skipping a
+// dropped segment's bytes produces an archive whose central directory
+// offsets overshoot.
 func WithSegments(indices []int) Option[*WriterFinalizeConfig] {
 	return func(c *WriterFinalizeConfig) {
 		c.keepSegments = indices
@@ -257,7 +342,7 @@ func WithSegments(indices []int) Option[*WriterFinalizeConfig] {
 //			Pem: kasPublicKeyPEM,
 //		},
 //	}
-//	finalBytes, manifest, err := writer.Finalize(ctx, WithDefaultKAS(kasKey))
+//	result, err := writer.Finalize(ctx, WithDefaultKAS(kasKey))
 func WithDefaultKAS(kas *policy.SimpleKasKey) Option[*WriterFinalizeConfig] {
 	return func(c *WriterFinalizeConfig) {
 		c.defaultKas = kas
@@ -287,31 +372,44 @@ func WithDefaultKAS(kas *policy.SimpleKasKey) Option[*WriterFinalizeConfig] {
 //			Grants: []*policy.KeyAccessServer{kasConfig},
 //		},
 //	}
-//	finalBytes, manifest, err := writer.Finalize(ctx, WithAttributeValues(attributes))
+//	result, err := writer.Finalize(ctx, WithAttributeValues(attributes))
 func WithAttributeValues(values []*policy.Value) Option[*WriterFinalizeConfig] {
 	return func(c *WriterFinalizeConfig) {
 		c.attributes = values
 	}
 }
 
-// WithExcludeVersionFromManifest controls version information in the manifest.
+// WithExcludeVersionFromManifest is a no-op and always has been: the
+// manifest builder never read the flag it sets, so schemaVersion is
+// emitted either way.
 //
-// When set to true, excludes TDF specification version information from
-// the manifest. This may be needed for compatibility with older TDF readers
-// that don't expect version fields.
+// Omitting schemaVersion is not independently useful in any case. A
+// reader treats a missing schemaVersion as "predates 4.3.0" and then
+// expects hex-then-base64 signatures, which are decided per segment at
+// write time -- long before Finalize sees this option. The two must be
+// set together, which is what [WithTargetMode] does.
 //
-// Generally should be left as default (false) unless specific compatibility
-// requirements exist.
+// Deprecated: use [WithTargetMode] at writer construction.
+func WithExcludeVersionFromManifest(_ bool) Option[*WriterFinalizeConfig] {
+	return func(_ *WriterFinalizeConfig) {}
+}
+
+// WithTargetMode targets a specific TDF spec version, given as a semver
+// string such as "4.2.2".
 //
-// Example:
+// Below 4.3.0 the writer emits the legacy wire format: segment, root,
+// and assertion signatures are hex-encoded before base64, and
+// schemaVersion is omitted from the manifest, which is how those
+// readers detect it. The two travel together -- a manifest carrying one
+// without the other cannot be verified by any reader.
 //
-//	// For compatibility with legacy readers
-//	finalBytes, manifest, err := writer.Finalize(ctx,
-//		WithExcludeVersionFromManifest(true),
-//	)
-func WithExcludeVersionFromManifest(exclude bool) Option[*WriterFinalizeConfig] {
-	return func(c *WriterFinalizeConfig) {
-		c.excludeVersionFromManifest = exclude
+// An empty mode selects the current format.
+//
+// A malformed semver string is reported by NewWriter, not here: this
+// package's Option signature has no error return.
+func WithTargetMode(mode string) Option[*WriterConfig] {
+	return func(c *WriterConfig) {
+		c.targetMode = mode
 	}
 }
 
@@ -343,7 +441,7 @@ func WithExcludeVersionFromManifest(exclude bool) Option[*WriterFinalizeConfig] 
 //			Value: `{"retention_days": 90}`,
 //		},
 //	}
-//	finalBytes, manifest, err := writer.Finalize(ctx, WithAssertions(assertion))
+//	result, err := writer.Finalize(ctx, WithAssertions(assertion))
 func WithAssertions(assertions ...AssertionConfig) Option[*WriterFinalizeConfig] {
 	return func(c *WriterFinalizeConfig) {
 		c.assertions = assertions

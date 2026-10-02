@@ -33,21 +33,50 @@ func NewIDPTokenExchangeTokenSource(logger *slog.Logger, exchangeInfo oauth.Toke
 }
 
 func (i *IDPTokenExchangeTokenSource) AccessToken(ctx context.Context, client *http.Client) (auth.AccessToken, error) {
+	credential, err := i.AccessTokenCredential(ctx, client)
+	return credential.Token, err
+}
+
+// AccessTokenCredential returns the cached exchanged token and its DPoP status atomically.
+func (i *IDPTokenExchangeTokenSource) AccessTokenCredential(ctx context.Context, client *http.Client) (auth.AccessTokenCredential, error) {
 	i.tokenMutex.Lock()
 	defer i.tokenMutex.Unlock()
 
 	if i.token == nil || i.token.Expired() {
 		tok, err := oauth.DoTokenExchange(ctx, client, i.idpTokenEndpoint.String(), i.scopes, i.credentials, i.TokenExchangeInfo, i.dpopKey)
 		if err != nil {
-			return "", err
+			return auth.AccessTokenCredential{}, err
 		}
 
 		i.token = tok
 	}
 
-	return auth.AccessToken(i.token.AccessToken), nil
+	return auth.AccessTokenCredential{
+		Token: auth.AccessToken(i.token.AccessToken),
+		Type:  auth.TokenTypeFromOAuthTokenType(i.token.TokenType),
+	}, nil
 }
 
 func (i *IDPTokenExchangeTokenSource) MakeToken(keyMaker func(jwk.Key) ([]byte, error)) ([]byte, error) {
 	return i.IDPAccessTokenSource.MakeToken(keyMaker)
+}
+
+// newIDPTokenExchangeTokenSourceFromJWK creates an IDPTokenExchangeTokenSource using a pre-built JWK key.
+func newIDPTokenExchangeTokenSourceFromJWK(
+	logger *slog.Logger,
+	exchangeInfo oauth.TokenExchangeInfo,
+	credentials oauth.ClientCredentials,
+	idpTokenEndpoint string,
+	scopes []string,
+	key jwk.Key,
+) (*IDPTokenExchangeTokenSource, error) {
+	idpSource, err := newIDPAccessTokenSourceFromJWK(credentials, idpTokenEndpoint, scopes, key)
+	if err != nil {
+		return nil, err
+	}
+	return &IDPTokenExchangeTokenSource{
+		logger:               logger,
+		IDPAccessTokenSource: *idpSource,
+		TokenExchangeInfo:    exchangeInfo,
+	}, nil
 }

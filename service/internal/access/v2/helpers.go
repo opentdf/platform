@@ -13,7 +13,9 @@ import (
 	"github.com/opentdf/platform/protocol/go/policy"
 	attrs "github.com/opentdf/platform/protocol/go/policy/attributes"
 	"github.com/opentdf/platform/service/internal/access/v2/obligations"
+	"github.com/opentdf/platform/service/internal/subjectmappingbuiltin"
 	"github.com/opentdf/platform/service/logger"
+	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
 var (
@@ -21,7 +23,31 @@ var (
 	ErrInvalidAttributeDefinition     = errors.New("access: invalid attribute definition")
 	ErrInvalidRegisteredResource      = errors.New("access: invalid registered resource")
 	ErrInvalidRegisteredResourceValue = errors.New("access: invalid registered resource value")
+	ErrInvalidDynamicValueMapping     = errors.New("access: invalid dynamic value mapping")
 )
+
+// isExplicitlyInactive reports whether an active state was loaded and is false. An unset state is
+// not inactive: targeted lookups, synthetic values, and in-memory fixtures all leave it unset.
+func isExplicitlyInactive(active *wrapperspb.BoolValue) bool {
+	return active != nil && !active.GetValue()
+}
+
+// isDeactivated reports whether an attribute value, or the definition owning it, is deactivated.
+// The cascade_deactivation trigger deactivates a definition's values with it, so an active value
+// under a deactivated definition is a bad state: denied defensively, and logged as an error.
+func isDeactivated(ctx context.Context, l *logger.Logger, attributeAndValue *attrs.GetAttributeValuesByFqnsResponse_AttributeAndValue) bool {
+	valueDeactivated := isExplicitlyInactive(attributeAndValue.GetValue().GetActive())
+	definitionDeactivated := isExplicitlyInactive(attributeAndValue.GetAttribute().GetActive())
+
+	if definitionDeactivated && attributeAndValue.GetValue().GetActive().GetValue() {
+		l.ErrorContext(ctx, "bad policy state: active attribute value under a deactivated definition - denying access",
+			slog.String("attribute_value_fqn", attributeAndValue.GetValue().GetFqn()),
+			slog.String("attribute_definition_fqn", attributeAndValue.GetAttribute().GetFqn()),
+		)
+	}
+
+	return valueDeactivated || definitionDeactivated
+}
 
 // getDefinition parses the value FQN and uses it to retrieve the definition from the provided definitions map
 func getDefinition(valueFQN string, allDefinitionsByDefFQN map[string]*policy.Attribute) (*policy.Attribute, error) {
@@ -110,7 +136,7 @@ func populateLowerValuesIfHierarchy(
 		entitledActionsSet[action.GetName()] = action
 	}
 	for _, value := range definition.GetValues() {
-		if lower {
+		if lower && !isExplicitlyInactive(value.GetActive()) {
 			alreadyEntitledActions, exists := entitledActionsPerAttributeValueFqn[value.GetFqn()]
 			if !exists {
 				entitledActionsPerAttributeValueFqn[value.GetFqn()] = entitledActions
@@ -163,6 +189,9 @@ func populateHigherValuesIfHierarchy(
 			)
 			continue
 		}
+		if isDeactivated(ctx, l, fullValue) {
+			continue
+		}
 		decisionableAttributes[value.GetFqn()] = &attrs.GetAttributeValuesByFqnsResponse_AttributeAndValue{
 			Value:     fullValue.GetValue(),
 			Attribute: definition,
@@ -197,6 +226,8 @@ func getResourceDecisionableAttributes(
 	entitleableAttributesByValueFQN map[string]*attrs.GetAttributeValuesByFqnsResponse_AttributeAndValue,
 	// this is needed to support direct entitlement ad-hoc attribute values
 	entitleableAttributesByDefinitionFQN map[string]*policy.Attribute,
+	// definitions carrying a dynamic value entitlement mapping also support synthetic values
+	dynamicMappingsByDefinitionFQN subjectmappingbuiltin.DynamicValueMappingsByDefinitionFQN,
 	// action *policy.Action,
 	resources []*authz.Resource,
 	allowDirectEntitlements bool,
@@ -250,24 +281,47 @@ func getResourceDecisionableAttributes(
 
 		attributeAndValue, ok := entitleableAttributesByValueFQN[attrValueFQN]
 
+		// A deactivated value is left out of the decisionable set so the resource carrying it is
+		// denied downstream, and so it is never synthesized as an ad-hoc value below.
+		if ok && isDeactivated(ctx, logger, attributeAndValue) {
+			logger.WarnContext(ctx, "deactivated attribute value on resource - denying access",
+				slog.String("attribute_value_fqn", attrValueFQN),
+			)
+			continue
+		}
+
 		if !ok {
-			// if the attribute value FQN is not found, then check if direct entitlements with synthetic values are enabled (experimental)
-			if !allowDirectEntitlements {
-				// if disabled, add to not found list and skip to next attribute value FQN
-				notFoundFQNs = append(notFoundFQNs, attrValueFQN)
-				continue
-			}
-
-			// now process direct entitlement that only exists at attribute definition level
-			logger.DebugContext(ctx, "processing direct entitlement for resource decisionable attribute value", slog.String("attribute_value_fqn", attrValueFQN))
-
-			// try to find the definition by extracting partial FQN from direct entitlement synthetic value FQN
+			// The value FQN is not a concrete policy value. A synthetic value is created
+			// when either direct entitlements are enabled (experimental) OR the parent
+			// definition carries a dynamic value entitlement mapping, since
+			// dynamic mappings entitle values that are not pre-provisioned in policy.
 			parentDefinition, err := getDefinition(attrValueFQN, entitleableAttributesByDefinitionFQN)
 			if err != nil {
-				// if definition not found, add to not found list and skip to next attribute value FQN
+				// definition not found: add to not found list and skip
 				notFoundFQNs = append(notFoundFQNs, attrValueFQN)
 				continue
 			}
+
+			// A deactivated definition cannot back a synthetic value, or an ad-hoc value under a
+			// deactivated definition would remain satisfiable.
+			if isExplicitlyInactive(parentDefinition.GetActive()) {
+				logger.WarnContext(ctx, "deactivated attribute definition on resource - denying access",
+					slog.String("attribute_value_fqn", attrValueFQN),
+				)
+				continue
+			}
+
+			_, hasDynamicMapping := dynamicMappingsByDefinitionFQN[parentDefinition.GetFqn()]
+			if !allowDirectEntitlements && !hasDynamicMapping {
+				// neither path enabled for this value: add to not found list and skip
+				notFoundFQNs = append(notFoundFQNs, attrValueFQN)
+				continue
+			}
+
+			logger.DebugContext(ctx, "processing synthetic value for resource decisionable attribute value",
+				slog.String("attribute_value_fqn", attrValueFQN),
+				slog.Bool("has_dynamic_mapping", hasDynamicMapping),
+			)
 
 			// Extract the value part from the FQN
 			// FQN format: https://<namespace>/attr/<name>/value/<value>

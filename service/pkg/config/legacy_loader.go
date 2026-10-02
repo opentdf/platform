@@ -38,6 +38,11 @@ func NewLegacyLoader(key, file string) (*LegacyLoader, error) {
 	// Default config values (non-zero)
 	v.SetDefault("server.auth.cache_refresh_interval", "15m")
 
+	// Register keys that AutomaticEnv must resolve without a file entry.
+	v.SetDefault("logger.trace_correlation", true)
+	v.SetDefault("logger.audit_timeout", "5s")
+	v.SetDefault("server.http.trustedProxies", []string{})
+
 	// Environment variable settings
 	v.SetEnvPrefix(key)
 	v.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))

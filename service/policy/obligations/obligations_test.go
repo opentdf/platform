@@ -24,6 +24,7 @@ const (
 	errMessageUUID        = "string.uuid"
 	errMessageUUIDEmpty   = "string.uuid_empty"
 	errMessageURI         = "string.uri"
+	errMessageMinLen      = "string.min_len"
 	errMessageMinItems    = "repeated.min_items"
 	errMessageUnique      = "repeated.unique"
 	errMessageOneOf       = "message.oneof"
@@ -1328,4 +1329,19 @@ func Test_ListObligationsRequest_Sort(t *testing.T) {
 	err := v.Validate(req)
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "sort")
+}
+
+func Test_ListObligationsRequest_Search(t *testing.T) {
+	v := getValidator()
+
+	require.NoError(t, v.Validate(&obligations.ListObligationsRequest{
+		Search: &policy.Search{Term: "obligation"},
+	}))
+	require.NoError(t, v.Validate(&obligations.ListObligationsRequest{}))
+
+	err := v.Validate(&obligations.ListObligationsRequest{
+		Search: &policy.Search{},
+	})
+	require.Error(t, err)
+	require.Contains(t, err.Error(), errMessageMinLen)
 }

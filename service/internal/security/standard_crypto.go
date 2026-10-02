@@ -67,6 +67,16 @@ type StandardECCrypto struct {
 	sk *ecdh.PrivateKey
 }
 
+// StandardKEMCrypto holds any KEM-based key (X-Wing, NIST hybrid PQ/T,
+// or pure ML-KEM). The decryptor is created at load time so per-call
+// dispatch reduces to decryptor.Decrypt(ciphertext).
+type StandardKEMCrypto struct {
+	KeyPairInfo
+	privateKeyPem string
+	publicKeyPem  string
+	decryptor     ocrypto.PrivateKeyDecryptor
+}
+
 // List of keys by identifier
 type keylist map[string]any
 
@@ -108,7 +118,8 @@ func loadKeys(ks []KeyPairInfo) (*StandardCrypto, error) {
 	keysByAlg := make(map[string]keylist)
 	keysByID := make(keylist)
 	for _, k := range ks {
-		slog.Info("crypto cfg loading",
+		slog.Info(
+			"crypto cfg loading",
 			slog.Any("id", k.KID),
 			slog.Any("alg", k.Algorithm),
 		)
@@ -150,10 +161,33 @@ func loadKey(k KeyPairInfo) (any, error) {
 			ecPrivateKeyPem:  string(privatePEM),
 			ecCertificatePEM: string(certPEM),
 		}, nil
-	case AlgorithmRSA2048, AlgorithmRSA4096:
-		asymDecryption, err := ocrypto.NewAsymDecryption(string(privatePEM))
+	case AlgorithmHPQTXWing,
+		AlgorithmHPQTSecp256r1MLKEM768, AlgorithmHPQTSecp384r1MLKEM1024,
+		AlgorithmMLKEM768, AlgorithmMLKEM1024:
+		decryptor, err := ocrypto.FromPrivatePEM(string(privatePEM))
 		if err != nil {
-			return nil, fmt.Errorf("ocrypto.NewAsymDecryption failed: %w", err)
+			return nil, fmt.Errorf("ocrypto.FromPrivatePEM (%s) failed: %w", k.Algorithm, err)
+		}
+		// Confirm the PEM dispatched to the scheme this KAS key claims, so a
+		// mislabeled key fails fast at load instead of producing garbage on
+		// unwrap. Covers both the hybrid PQ/T and pure ML-KEM decryptors.
+		if err := assertDecryptorAlgorithm(decryptor, k.Algorithm, k.KID); err != nil {
+			return nil, err
+		}
+		return StandardKEMCrypto{
+			KeyPairInfo:   k,
+			privateKeyPem: string(privatePEM),
+			publicKeyPem:  string(certPEM),
+			decryptor:     decryptor,
+		}, nil
+	case AlgorithmRSA2048, AlgorithmRSA4096:
+		decryptor, err := ocrypto.FromPrivatePEM(string(privatePEM))
+		if err != nil {
+			return nil, fmt.Errorf("ocrypto.FromPrivatePEM failed: %w", err)
+		}
+		asymDecryption, ok := decryptor.(ocrypto.AsymDecryption)
+		if !ok {
+			return nil, fmt.Errorf("unexpected private key decryptor type: %T", decryptor)
 		}
 		publicKeyEncryptor, err := ocrypto.FromPublicPEM(string(certPEM))
 		if err != nil {
@@ -190,9 +224,13 @@ func loadDeprecatedKeys(rsaKeys map[string]StandardKeyInfo, ecKeys map[string]St
 			return nil, fmt.Errorf("failed to rsa private key file: %w", err)
 		}
 
-		asymDecryption, err := ocrypto.NewAsymDecryption(string(privatePemData))
+		decryptor, err := ocrypto.FromPrivatePEM(string(privatePemData))
 		if err != nil {
-			return nil, fmt.Errorf("ocrypto.NewAsymDecryption failed: %w", err)
+			return nil, fmt.Errorf("ocrypto.FromPrivatePEM failed: %w", err)
+		}
+		asymDecryption, ok := decryptor.(ocrypto.AsymDecryption)
+		if !ok {
+			return nil, fmt.Errorf("unexpected private key decryptor type: %T", decryptor)
 		}
 
 		publicPemData, err := os.ReadFile(kasInfo.PublicKeyPath)
@@ -223,7 +261,8 @@ func loadDeprecatedKeys(rsaKeys map[string]StandardKeyInfo, ecKeys map[string]St
 		keysByID[id] = k
 	}
 	for id, kasInfo := range ecKeys {
-		slog.Info("cfg.ECKeys",
+		slog.Info(
+			"cfg.ECKeys",
 			slog.String("id", id),
 			slog.Any("kasInfo", kasInfo),
 		)
@@ -327,6 +366,23 @@ func (s StandardCrypto) ECPublicKey(kid string) (string, error) {
 		return "", fmt.Errorf("failed to encode public key to PEM: %s", kid)
 	}
 	return string(pemBytes), nil
+}
+
+// KEMPublicKey returns the public-key PEM for any KEM-based key
+// (X-Wing, NIST hybrid PQ/T, or pure ML-KEM).
+func (s StandardCrypto) KEMPublicKey(kid string) (string, error) {
+	k, ok := s.keysByID[kid]
+	if !ok {
+		return "", fmt.Errorf("no key with id [%s]: %w", kid, ErrCertNotFound)
+	}
+	kem, ok := k.(StandardKEMCrypto)
+	if !ok {
+		return "", fmt.Errorf("key with id [%s] is not a KEM key: %w", kid, ErrCertNotFound)
+	}
+	if kem.publicKeyPem == "" {
+		return "", fmt.Errorf("no public key with id [%s]: %w", kid, ErrCertNotFound)
+	}
+	return kem.publicKeyPem, nil
 }
 
 func (s StandardCrypto) RSADecrypt(_ crypto.Hash, kid string, _ string, ciphertext []byte) ([]byte, error) {
@@ -439,9 +495,32 @@ func (s *StandardCrypto) Decrypt(_ context.Context, keyID trust.KeyIdentifier, c
 			return nil, fmt.Errorf("error decrypting data: %w", err)
 		}
 
+	case StandardKEMCrypto:
+		if len(ephemeralPublicKey) > 0 {
+			return nil, fmt.Errorf("ephemeral public key should not be provided for %s decryption", key.Algorithm)
+		}
+
+		rawKey, err = key.decryptor.Decrypt(ciphertext)
+		if err != nil {
+			return nil, fmt.Errorf("failed to decrypt with %s: %w", key.Algorithm, err)
+		}
+
 	default:
 		return nil, fmt.Errorf("unsupported key type for key ID [%s]", kid)
 	}
 
 	return ocrypto.NewAESProtectedKey(rawKey)
+}
+
+// assertDecryptorAlgorithm cross-checks an OID-routed decryptor (from
+// ocrypto.FromPrivatePEM) against the algorithm the key record claims. Hybrid
+// decryptors expose a KeyType() method; if the routed decryptor lacks that
+// method or reports a different scheme, the stored PEM does not match its
+// metadata and we must refuse to decrypt under the asserted algorithm.
+func assertDecryptorAlgorithm(dec ocrypto.PrivateKeyDecryptor, expected, kid string) error {
+	kt, ok := dec.(interface{ KeyType() ocrypto.KeyType })
+	if !ok || string(kt.KeyType()) != expected {
+		return fmt.Errorf("hybrid key %s algorithm mismatch: PEM dispatched away from %s", kid, expected)
+	}
+	return nil
 }

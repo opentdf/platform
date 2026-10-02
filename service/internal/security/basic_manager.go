@@ -26,6 +26,22 @@ const (
 	ristrettoCacheTTL    = 30
 )
 
+// BasicManagerSupportedAlgorithms is the canonical set of algorithms the
+// BasicManager knows how to serve when a key has been provisioned. Keep in
+// sync with the switch in Decrypt.
+var BasicManagerSupportedAlgorithms = []ocrypto.KeyType{
+	ocrypto.RSA2048Key,
+	ocrypto.RSA4096Key,
+	ocrypto.EC256Key,
+	ocrypto.EC384Key,
+	ocrypto.EC521Key,
+	ocrypto.HybridXWingKey,
+	ocrypto.HybridSecp256r1MLKEM768Key,
+	ocrypto.HybridSecp384r1MLKEM1024Key,
+	ocrypto.MLKEM768Key,
+	ocrypto.MLKEM1024Key,
+}
+
 type BasicManager struct {
 	l       *logger.Logger
 	rootKey []byte
@@ -68,17 +84,14 @@ func (b *BasicManager) Decrypt(ctx context.Context, keyDetails trust.KeyDetails,
 		return nil, fmt.Errorf("failed to create decryptor from private PEM: %w", err)
 	}
 
-	switch keyDetails.Algorithm() {
+	alg := keyDetails.Algorithm()
+	switch alg { //nolint:exhaustive // KEM key types are handled by the IsKEMKeyType branch below
 	case ocrypto.RSA2048Key, ocrypto.RSA4096Key:
 		plaintext, err := decrypter.Decrypt(ciphertext)
 		if err != nil {
 			return nil, fmt.Errorf("failed to decrypt with RSA: %w", err)
 		}
-		protectedKey, err := ocrypto.NewAESProtectedKey(plaintext)
-		if err != nil {
-			return nil, fmt.Errorf("failed to create protected key: %w", err)
-		}
-		return protectedKey, nil
+		return ocrypto.NewAESProtectedKey(plaintext)
 	case ocrypto.EC256Key, ocrypto.EC384Key, ocrypto.EC521Key:
 		ecPrivKey, err := ocrypto.ECPrivateKeyFromPem(privKey)
 		if err != nil {
@@ -92,14 +105,27 @@ func (b *BasicManager) Decrypt(ctx context.Context, keyDetails trust.KeyDetails,
 		if err != nil {
 			return nil, fmt.Errorf("failed to decrypt with ephemeral key: %w", err)
 		}
-		protectedKey, err := ocrypto.NewAESProtectedKey(plaintext)
-		if err != nil {
-			return nil, fmt.Errorf("failed to create protected key: %w", err)
-		}
-		return protectedKey, nil
+		return ocrypto.NewAESProtectedKey(plaintext)
 	}
 
-	return nil, fmt.Errorf("unsupported algorithm: %s", keyDetails.Algorithm())
+	if ocrypto.IsKEMKeyType(alg) {
+		if len(ephemeralPublicKey) > 0 {
+			return nil, fmt.Errorf("ephemeral public key should not be provided for %s decryption", alg)
+		}
+		// FromPrivatePEM routes by the OID inside the SPKI/PKCS#8 envelope. Cross-
+		// check the routed decryptor against the algorithm the key record claims;
+		// a mismatch means the stored PEM does not match its metadata.
+		if kt, ok := decrypter.(interface{ KeyType() ocrypto.KeyType }); !ok || kt.KeyType() != alg {
+			return nil, fmt.Errorf("KEM key %s algorithm mismatch: PEM dispatched away from %s", keyDetails.ID(), alg)
+		}
+		plaintext, err := decrypter.Decrypt(ciphertext)
+		if err != nil {
+			return nil, fmt.Errorf("failed to decrypt with %s: %w", alg, err)
+		}
+		return ocrypto.NewAESProtectedKey(plaintext)
+	}
+
+	return nil, fmt.Errorf("unsupported algorithm: %s", alg)
 }
 
 func (b *BasicManager) DeriveKey(ctx context.Context, keyDetails trust.KeyDetails, ephemeralPublicKeyBytes []byte, curve elliptic.Curve) (ocrypto.ProtectedKey, error) {
@@ -183,7 +209,8 @@ func (b *BasicManager) unwrap(ctx context.Context, kid string, wrappedKey string
 			if privKeyBytes, ok := privKey.([]byte); ok {
 				return privKeyBytes, nil
 			}
-			b.l.ErrorContext(ctx,
+			b.l.ErrorContext(
+				ctx,
 				"private key in cache is not of type []byte",
 				slog.String("kid", kid),
 				slog.Any("type", fmt.Sprintf("%T", privKey)),
@@ -219,7 +246,8 @@ func (b *BasicManager) unwrap(ctx context.Context, kid string, wrappedKey string
 
 	if cacheEnabled {
 		if err := b.cache.Set(ctx, kid, privKey, nil); err != nil {
-			b.l.ErrorContext(ctx,
+			b.l.ErrorContext(
+				ctx,
 				"failed to cache private key",
 				slog.String("kid", kid),
 				slog.Any("error", err),

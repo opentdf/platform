@@ -575,3 +575,73 @@ func TestMigrationData_ActionsNamespaceDownRemapsAndDedupes(t *testing.T) {
 	require.NoError(t, row.Scan(&count))
 	require.Equal(t, 0, count)
 }
+
+// TestMigrationData_ResourceMappingNamespaceBackfill verifies that
+// 20260605000000_backfill_resource_mapping_namespace backfills namespace_id on
+// existing grouped resource mappings from their group, while leaving ungrouped
+// mappings global (NULL).
+func TestMigrationData_ResourceMappingNamespaceBackfill(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping data migration test")
+	}
+
+	h := newMigrationTestHarness(t, "test_opentdf_rm_namespace_backfill")
+
+	const (
+		addNamespaceMigration int64 = 20260604000000
+		backfillMigration     int64 = 20260605000000
+
+		namespaceID        = "11111111-1111-1111-1111-111111111111"
+		attributeDefID     = "22222222-2222-2222-2222-222222222222"
+		attributeValueID   = "33333333-3333-3333-3333-333333333333"
+		groupID            = "44444444-4444-4444-4444-444444444444"
+		groupedMappingID   = "55555555-5555-5555-5555-555555555555"
+		ungroupedMappingID = "66666666-6666-6666-6666-666666666666"
+	)
+
+	// Migrate to just after the namespace_id column is added, before the backfill.
+	h.upTo(addNamespaceMigration)
+
+	// Seed the minimal dependency graph and legacy mappings (namespace_id NULL).
+	h.exec(`INSERT INTO attribute_namespaces (id, name, active) VALUES ($1, 'rm-backfill.example', true)`, namespaceID)
+	h.exec(`
+		INSERT INTO attribute_definitions (id, namespace_id, name, rule, active)
+		VALUES ($1, $2, 'department', 'ALL_OF', true)
+	`, attributeDefID, namespaceID)
+	h.exec(`
+		INSERT INTO attribute_values (id, attribute_definition_id, value, active)
+		VALUES ($1, $2, 'engineering', true)
+	`, attributeValueID, attributeDefID)
+	h.exec(`
+		INSERT INTO resource_mapping_groups (id, namespace_id, name)
+		VALUES ($1, $2, 'backfill-group')
+	`, groupID, namespaceID)
+	// Grouped legacy mapping with no owning namespace yet.
+	h.exec(`
+		INSERT INTO resource_mappings (id, attribute_value_id, terms, group_id)
+		VALUES ($1, $2, ARRAY['grouped-term'], $3)
+	`, groupedMappingID, attributeValueID, groupID)
+	// Ungrouped legacy mapping (no group, no namespace).
+	h.exec(`
+		INSERT INTO resource_mappings (id, attribute_value_id, terms)
+		VALUES ($1, $2, ARRAY['ungrouped-term'])
+	`, ungroupedMappingID, attributeValueID)
+
+	// Precondition: both mappings start with a NULL namespace_id.
+	var preNamespace *string
+	require.NoError(t, h.queryRow(`SELECT namespace_id FROM resource_mappings WHERE id = $1`, groupedMappingID).Scan(&preNamespace))
+	require.Nil(t, preNamespace, "grouped mapping namespace_id should be NULL before backfill")
+
+	// Apply the backfill migration.
+	h.upTo(backfillMigration)
+
+	// Grouped mapping is backfilled with its group's namespace.
+	var groupedNamespace string
+	require.NoError(t, h.queryRow(`SELECT namespace_id FROM resource_mappings WHERE id = $1`, groupedMappingID).Scan(&groupedNamespace))
+	require.Equal(t, namespaceID, groupedNamespace, "grouped mapping should be backfilled from its group's namespace")
+
+	// Ungrouped mapping has no group to derive from and stays global (NULL).
+	var ungroupedNamespace *string
+	require.NoError(t, h.queryRow(`SELECT namespace_id FROM resource_mappings WHERE id = $1`, ungroupedMappingID).Scan(&ungroupedNamespace))
+	require.Nil(t, ungroupedNamespace, "ungrouped mapping should remain global after backfill")
+}

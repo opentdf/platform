@@ -7,7 +7,9 @@ version: 2
 updates:
   # Dependabot for CI
   - package-ecosystem: github-actions
-    directory: /
+    directories:
+      - "/"
+      - "/otdfctl/e2e"
     schedule:
       interval: monthly
     commit-message:
@@ -27,54 +29,40 @@ updates:
       external:
         exclude-patterns:
           - "github.com/opentdf/*"
+    # Internal bumps fan out across directories and overflow the default of 5.
+    open-pull-requests-limit: 15
     schedule:
       interval: daily
 
-  # lib/* modules grouped together
+  # Published and deployed modules: version updates only for internal
+  # (github.com/opentdf/*) deps. External deps are left alone to avoid raising
+  # the minimum versions seen by downstream consumers.
   - package-ecosystem: gomod
     directories:
       - "/lib/fixtures"
       - "/lib/flattening"
       - "/lib/identifier"
       - "/lib/ocrypto"
+      - "/sdk"
+      - "/service"
+      - "/otdfctl"
+      - "/protocol/go"
     commit-message:
       prefix: "fix(deps)"
-    groups:
-      external:
-        exclude-patterns:
-          - "github.com/opentdf/*"
-    schedule:
-      interval: daily
-
-  - package-ecosystem: gomod
-    directory: "/sdk"
-    commit-message:
-      prefix: "fix(deps)"
-    groups:
-      external:
-        exclude-patterns:
-          - "github.com/opentdf/*"
-    schedule:
-      interval: daily
-
-  - package-ecosystem: gomod
-    directory: "/service"
-    commit-message:
-      prefix: "fix(deps)"
-    groups:
-      external:
-        exclude-patterns:
-          - "github.com/opentdf/*"
-    schedule:
-      interval: daily
-
-  - package-ecosystem: gomod
-    directory: "/protocol/go"
-    commit-message:
-      prefix: "fix(deps)"
-    groups:
-      external:
-        exclude-patterns:
-          - "github.com/opentdf/*"
+    allow:
+      - dependency-name: "github.com/opentdf/*"
+      # An `allow` name also filters security updates, so this rule matches
+      # every dep to keep security PRs for vulnerable external deps. Its
+      # update-types only applies to version updates, limiting external deps
+      # to major bumps, which Go modules rarely get without a path change.
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
+    # Offer our own releases on the next run instead of after the default
+    # 3-day cooldown.
+    cooldown:
+      exclude:
+        - "github.com/opentdf/*"
+    # Internal bumps fan out across directories and overflow the default of 5.
+    open-pull-requests-limit: 15
     schedule:
       interval: daily

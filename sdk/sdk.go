@@ -16,6 +16,7 @@ import (
 	"sync"
 
 	"connectrpc.com/connect"
+	"github.com/lestrrat-go/jwx/v2/jwk"
 	"github.com/opentdf/platform/lib/ocrypto"
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/wellknownconfiguration"
@@ -32,9 +33,12 @@ import (
 const (
 	// Failure while connecting to a service.
 	// Check your configuration and/or retry.
-	ErrGrpcDialFailed                = Error("failed to dial grpc endpoint")
-	ErrShutdownFailed                = Error("failed to shutdown sdk")
-	ErrPlatformUnreachable           = Error("platform unreachable or not responding")
+	ErrGrpcDialFailed      = Error("failed to dial grpc endpoint")
+	ErrShutdownFailed      = Error("failed to shutdown sdk")
+	ErrPlatformUnreachable = Error("platform unreachable or not responding")
+	// ErrHealthCheckUnsupported is returned by SDK.IsHealthy when the SDK is configured
+	// in IPC mode, which does not support the gRPC Health protocol.
+	ErrHealthCheckUnsupported        = Error("health check not supported in IPC mode")
 	ErrPlatformConfigFailed          = Error("failed to retrieve platform configuration")
 	ErrPlatformEndpointMalformed     = Error("platform endpoint is malformed")
 	ErrPlatformIssuerNotFound        = Error("issuer not found in well-known idp configuration")
@@ -42,6 +46,7 @@ const (
 	ErrPlatformTokenEndpointNotFound = Error("token_endpoint not found in well-known idp configuration")
 	ErrPlatformEndpointNotFound      = Error("platform_endpoint not found in well-known configuration")
 	ErrAccessTokenInvalid            = Error("access token is invalid")
+	ErrNoAccessTokenSource           = Error("no access token source configured; SDK was created without credentials")
 	ErrWellKnowConfigEmpty           = Error("well-known configuration is empty")
 	ErrAttributeNotFound             = Error("attribute not found")
 )
@@ -93,6 +98,7 @@ type SDK struct {
 	RegisteredResources     sdkconnect.RegisteredResourcesServiceClient
 	ResourceMapping         sdkconnect.ResourceMappingServiceClient
 	SubjectMapping          sdkconnect.SubjectMappingServiceClient
+	DynamicValueMapping     sdkconnect.DynamicValueMappingServiceClient
 	Unsafe                  sdkconnect.UnsafeServiceClient
 	KeyManagement           sdkconnect.KeyManagementServiceClient
 	wellknownConfiguration  sdkconnect.WellKnownServiceClient
@@ -192,12 +198,30 @@ func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 	// Add request ID interceptor
 	uci = append(uci, audit.MetadataAddingConnectInterceptor())
 
-	accessTokenSource, err := buildIDPTokenSource(cfg)
+	accessTokenSource, dpopKey, err := buildIDPTokenSource(cfg)
 	if err != nil {
 		return nil, err
 	}
-	if accessTokenSource != nil {
-		interceptor := auth.NewTokenAddingInterceptorWithClient(accessTokenSource, cfg.httpClient)
+
+	// Wrap HTTP client with DPoP transport for resource requests. The DPoP key is
+	// resolved once in buildIDPTokenSource and returned here so the transport signs
+	// proofs with the same key the token source binds tokens to.
+	httpClient := cfg.httpClient
+	dpopHandledByTransport := false
+	if accessTokenSource != nil && dpopKey != nil {
+		httpClient, err = auth.NewDPoPHTTPClient(cfg.httpClient, dpopKey, accessTokenSource, cfg.tokenEndpoint)
+		if err != nil {
+			return nil, err
+		}
+		dpopHandledByTransport = true
+	}
+
+	// When the DPoP transport is active it sets both the Authorization and DPoP
+	// headers (with a correctly normalized htu) and handles DPoP-Nonce retries, so
+	// the credential interceptor would only overwrite those headers with a weaker
+	// proof. Add the interceptor only when the transport is not handling DPoP.
+	if accessTokenSource != nil && !dpopHandledByTransport {
+		interceptor := auth.NewTokenAddingInterceptorWithClient(accessTokenSource, httpClient)
 		uci = append(uci, interceptor.AddCredentialsConnect())
 	}
 
@@ -205,7 +229,7 @@ func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 	if cfg.coreConn != nil {
 		platformConn = cfg.coreConn
 	} else {
-		platformConn = &ConnectRPCConnection{Endpoint: platformEndpoint, Client: cfg.httpClient, Options: append(cfg.extraClientOptions, connect.WithInterceptors(uci...))}
+		platformConn = &ConnectRPCConnection{Endpoint: platformEndpoint, Client: httpClient, Options: append(cfg.extraClientOptions, connect.WithInterceptors(uci...))}
 	}
 
 	if cfg.entityResolutionConn != nil {
@@ -226,6 +250,7 @@ func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 		RegisteredResources:     sdkconnect.NewRegisteredResourcesServiceClientConnectWrapper(platformConn.Client, platformConn.Endpoint, platformConn.Options...),
 		ResourceMapping:         sdkconnect.NewResourceMappingServiceClientConnectWrapper(platformConn.Client, platformConn.Endpoint, platformConn.Options...),
 		SubjectMapping:          sdkconnect.NewSubjectMappingServiceClientConnectWrapper(platformConn.Client, platformConn.Endpoint, platformConn.Options...),
+		DynamicValueMapping:     sdkconnect.NewDynamicValueMappingServiceClientConnectWrapper(platformConn.Client, platformConn.Endpoint, platformConn.Options...),
 		Unsafe:                  sdkconnect.NewUnsafeServiceClientConnectWrapper(platformConn.Client, platformConn.Endpoint, platformConn.Options...),
 		KeyAccessServerRegistry: sdkconnect.NewKeyAccessServerRegistryServiceClientConnectWrapper(platformConn.Client, platformConn.Endpoint, platformConn.Options...),
 		Authorization:           sdkconnect.NewAuthorizationServiceClientConnectWrapper(platformConn.Client, platformConn.Endpoint, platformConn.Options...),
@@ -245,55 +270,118 @@ func IsPlatformEndpointMalformed(e string) bool {
 	return false
 }
 
-func buildIDPTokenSource(c *config) (auth.AccessTokenSource, error) {
+func getDPoPJWK(dpopKey *ocrypto.RsaKeyPair) (jwk.Key, error) {
+	dpopPrivateKeyPEM, err := dpopKey.PrivateKeyInPemFormat()
+	if err != nil {
+		return nil, fmt.Errorf("error getting dpop private key: %w", err)
+	}
+
+	key, err := jwk.ParseKey([]byte(dpopPrivateKeyPEM), jwk.WithPEM(true))
+	if err != nil {
+		return nil, fmt.Errorf("error creating JWK: %w", err)
+	}
+
+	if err := key.Set(jwk.AlgorithmKey, "RS256"); err != nil {
+		return nil, fmt.Errorf("error setting key algorithm: %w", err)
+	}
+
+	return key, nil
+}
+
+// NewDPoPValidationHTTPClient wraps base so its requests carry a DPoP proof signed
+// with the key resolved from opts (the same WithDPoP* options passed to New). It is
+// intended for token-endpoint calls made outside the SDK's own connection (e.g. a
+// CLI pre-flight credential check): the proof binds the request via htu but carries
+// no ath claim or Authorization header, and DPoP-Nonce challenges are retried.
+//
+// When no DPoP key is configured in opts a fresh ephemeral ES256 key is generated,
+// mirroring the default the real SDK client applies in buildIDPTokenSource. This
+// keeps the pre-flight validation token request consistent with the credentialed
+// client so a DPoP-enforcing token endpoint accepts both; the throwaway validation
+// token is never reused, so an ephemeral key is fine.
+func NewDPoPValidationHTTPClient(base *http.Client, opts ...Option) (*http.Client, error) {
+	c := &config{}
+	for _, o := range opts {
+		o(c)
+	}
+	key, err := resolveDPoPKey(c)
+	if err != nil {
+		return nil, fmt.Errorf("failed to resolve DPoP key: %w", err)
+	}
+	if key == nil {
+		key, err = generateDPoPKeyForAlg(ES256)
+		if err != nil {
+			return nil, fmt.Errorf("failed to generate default DPoP key: %w", err)
+		}
+	}
+	return auth.NewDPoPHTTPClient(base, key, nil, "")
+}
+
+// buildIDPTokenSource builds the access token source and resolves the DPoP key
+// once, returning it so the caller can give the DPoP transport the same key the
+// token source binds to. The returned key is nil when DPoP is not in effect
+// (no credentials, or no key configured for a custom token source).
+func buildIDPTokenSource(c *config) (auth.AccessTokenSource, jwk.Key, error) {
 	if c.customAccessTokenSource != nil {
-		return c.customAccessTokenSource, nil
+		// A custom token source manages its own credentials, but a configured DPoP
+		// key still drives the resource-request transport.
+		dpopKey, err := resolveDPoPKey(c)
+		if err != nil {
+			return nil, nil, fmt.Errorf("failed to resolve DPoP key: %w", err)
+		}
+		return c.customAccessTokenSource, dpopKey, nil
+	}
+
+	// Surface a conflicting exchange configuration before the uncredentialed
+	// fast-path below, so the misconfiguration is reported instead of silently
+	// producing a nil (uncredentialed) token source.
+	if c.certExchange != nil && c.tokenExchange != nil {
+		return nil, nil, errors.New("cannot do both token exchange and certificate exchange")
 	}
 
 	// There are uses for uncredentialed clients (i.e. consuming the well-known configuration).
 	if c.clientCredentials == nil && c.oauthAccessTokenSource == nil {
-		return nil, nil //nolint:nilnil // not having credentials is not an error
-	}
-
-	if c.certExchange != nil && c.tokenExchange != nil {
-		return nil, errors.New("cannot do both token exchange and certificate exchange")
-	}
-
-	if c.dpopKey == nil {
-		rsaKeyPair, err := ocrypto.NewRSAKeyPair(dpopKeySize)
-		if err != nil {
-			return nil, fmt.Errorf("could not generate RSA Key: %w", err)
+		// DPoP only takes effect once requests are credentialed. If the caller
+		// explicitly configured a DPoP key but supplied no credentials, fail loudly
+		// rather than silently returning an unbound client and downgrading the
+		// caller's expected security posture.
+		if c.dpopJWK != nil || len(c.dpopKeyPEM) > 0 || c.dpopAlgorithm != "" || c.dpopKey != nil {
+			return nil, nil, errors.New("DPoP configured (WithDPoP*) but no client credentials or OAuth token source supplied")
 		}
-		c.dpopKey = &rsaKeyPair
+		return nil, nil, nil
 	}
 
-	var ts auth.AccessTokenSource
-	var err error
+	dpopKey, err := resolveDPoPKey(c)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to resolve DPoP key: %w", err)
+	}
 
+	// No DPoP key configured: auto-generate a default ephemeral ES256/P-256 key.
+	if dpopKey == nil {
+		dpopKey, err = generateDPoPKeyForAlg(ES256)
+		if err != nil {
+			return nil, nil, fmt.Errorf("failed to generate default DPoP key: %w", err)
+		}
+	}
+
+	ts, err := buildIDPTokenSourceFromJWK(c, dpopKey)
+	if err != nil {
+		return nil, nil, err
+	}
+	return ts, dpopKey, nil
+}
+
+func buildIDPTokenSourceFromJWK(c *config, key jwk.Key) (auth.AccessTokenSource, error) {
 	switch {
 	case c.oauthAccessTokenSource != nil:
-		ts, err = NewOAuthAccessTokenSource(c.oauthAccessTokenSource, c.scopes, c.dpopKey)
+		return newOAuthAccessTokenSourceFromJWK(c.oauthAccessTokenSource, c.scopes, key), nil
 	case c.certExchange != nil:
-		ts, err = NewCertExchangeTokenSource(c.logger, *c.certExchange, *c.clientCredentials, c.tokenEndpoint, c.dpopKey)
+		return newCertExchangeTokenSourceFromJWK(c.logger, *c.certExchange, *c.clientCredentials, c.tokenEndpoint, key)
 	case c.tokenExchange != nil:
-		ts, err = NewIDPTokenExchangeTokenSource(
-			c.logger,
-			*c.tokenExchange,
-			*c.clientCredentials,
-			c.tokenEndpoint,
-			c.scopes,
-			c.dpopKey,
-		)
+		return newIDPTokenExchangeTokenSourceFromJWK(c.logger, *c.tokenExchange, *c.clientCredentials, c.tokenEndpoint, c.scopes, key)
 	default:
-		ts, err = NewIDPAccessTokenSource(
-			*c.clientCredentials,
-			c.tokenEndpoint,
-			c.scopes,
-			c.dpopKey,
-		)
+		return newIDPAccessTokenSourceFromJWK(*c.clientCredentials, c.tokenEndpoint, c.scopes, key)
 	}
-
-	return ts, err
 }
 
 func (s SDK) Close() error {
@@ -308,6 +396,26 @@ func (s SDK) Logger() *slog.Logger {
 // Conn returns the underlying http connection
 func (s SDK) Conn() *ConnectRPCConnection {
 	return s.conn
+}
+
+// IsHealthy reports whether the platform's gRPC Health v1 endpoint is reachable and SERVING.
+// The check honors ctx for deadline and cancellation; OTEL tracing works automatically when
+// otelconnect.NewInterceptor is registered via WithExtraClientOptions at SDK construction.
+//
+// Returns:
+//   - (true, nil) when the platform reports SERVING.
+//   - (false, nil) when the platform is reachable but reports NOT_SERVING or UNKNOWN.
+//   - (false, ErrHealthCheckUnsupported) when the SDK is configured in IPC mode.
+//   - (false, error) wrapping ErrPlatformUnreachable on transport failure or ctx errors.
+func (s SDK) IsHealthy(ctx context.Context) (bool, error) {
+	if s.ipc || s.conn == nil {
+		return false, ErrHealthCheckUnsupported
+	}
+	healthy, err := checkPlatformHealth(ctx, s.conn.Endpoint, s.conn.Client, s.conn.Options)
+	if err != nil {
+		return false, errors.Join(ErrPlatformUnreachable, err)
+	}
+	return healthy, nil
 }
 
 type TdfType string
@@ -413,21 +521,42 @@ func isValidManifest(manifest string, intensity SchemaValidationIntensity) (bool
 	return true, nil
 }
 
-// Test connectability to the platform and validate a healthy status
-func validateHealthyPlatformConnection(platformEndpoint string, httpClient *http.Client, options []connect.ClientOption) error {
+// checkPlatformHealth issues a single gRPC Health v1 Check against the platform endpoint and
+// reports whether the response is SERVING. ctx controls deadline, cancellation, and trace-context.
+func checkPlatformHealth(
+	ctx context.Context,
+	endpoint string,
+	httpClient *http.Client,
+	options []connect.ClientOption,
+) (bool, error) {
+	checkURL, err := url.JoinPath(endpoint, "grpc.health.v1.Health", "Check")
+	if err != nil {
+		return false, err
+	}
 	healthClient := connect.NewClient[healthpb.HealthCheckRequest, healthpb.HealthCheckResponse](
 		httpClient,
-		platformEndpoint+"/grpc.health.v1.Health/Check",
+		checkURL,
 		options...,
 	)
-	res, err := healthClient.CallUnary(
-		context.Background(),
-		connect.NewRequest(&healthpb.HealthCheckRequest{}),
-	)
-	if err != nil || res.Msg.GetStatus() != healthpb.HealthCheckResponse_SERVING {
+	res, err := healthClient.CallUnary(ctx, connect.NewRequest(&healthpb.HealthCheckRequest{}))
+	if err != nil {
+		return false, err
+	}
+	return res.Msg.GetStatus() == healthpb.HealthCheckResponse_SERVING, nil
+}
+
+// validateHealthyPlatformConnection is the construction-time reachability gate used by New when
+// WithConnectionValidation is set. Callers pass cfg.extraClientOptions (pre-auth) because the
+// auth and audit interceptors are assembled after this gate fires; the runtime SDK.IsHealthy
+// method uses the post-interceptor s.conn.Options instead.
+func validateHealthyPlatformConnection(platformEndpoint string, httpClient *http.Client, options []connect.ClientOption) error {
+	healthy, err := checkPlatformHealth(context.Background(), platformEndpoint, httpClient, options)
+	if err != nil {
 		return errors.Join(ErrPlatformUnreachable, err)
 	}
-
+	if !healthy {
+		return ErrPlatformUnreachable
+	}
 	return nil
 }
 

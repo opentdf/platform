@@ -129,6 +129,7 @@ services:
 | Transformation | Input | Output | Use Case |
 |---------------|-------|---------|----------|
 | `postgres_array` | `"{apple,banana,cherry}"` | `["apple", "banana", "cherry"]` | PostgreSQL arrays |
+| `postgres_object` | `[]byte`, `string`, or `map[string]any` holding a JSON object (e.g. `'{"dept":"eng","level":3}'`) | `map[string]any{"dept":"eng","level":3}` | PostgreSQL `json`/`jsonb` columns surfaced as structured claims. `nil`, empty `[]byte`, and empty `string` normalize to `{}`; any other input type is an error. |
 
 ### LDAP-Specific Transformations
 
@@ -234,6 +235,21 @@ The failure strategy determines how Multi-Strategy ERS handles failures when exe
 - **Behavior**: Try **all matching strategies** until one succeeds
 - **Use Case**: When you want resilient failover with multiple fallback options
 - **Result**: Only fails if **all** matching strategies fail
+
+> **First match wins per entity category.** `ResolveEntity` returns the first strategy that
+> succeeds; the failure strategy only decides what happens when a strategy *fails*.
+>
+> `CreateEntityChainsFromTokens` applies the same rule per category, so a token's chain holds
+> at most one `subject` entity and at most one `environment` entity — the first match of each.
+> Later strategies of an already-filled category are skipped and never queried. To combine data
+> from several sources into one entity, merge them in a single strategy's `output_mapping`
+> rather than relying on strategy ordering.
+>
+> Authorization decisions discard `environment` entities, so claims emitted by an
+> `environment` strategy can never satisfy a subject mapping, and a token matching only
+> `environment` strategies produces a chain `GetDecision` rejects outright. Make sure a
+> `subject` strategy matches every token you expect to make decisions for, and emit anything
+> policy needs to match on from that `subject` strategy.
 
 ```yaml
 services:
@@ -485,6 +501,34 @@ services:
 - **"No matching strategies"**: Check JWT claim conditions, not failure_strategy
 - **Immediate failures**: Verify failure_strategy is set to "continue" for failover
 - **Backup never used**: Ensure backup strategies have identical conditions to primary
+
+### Currently Unsupported Failure Policies
+
+Multi-Strategy ERS does not currently support requiring every selected strategy, a
+specific strategy, or a named provider to participate successfully in the resolved
+entity chain.
+
+In particular, there is no current equivalent of:
+
+```yaml
+failure_strategy: require-all
+required_strategies:
+  - corporate_ldap
+```
+
+With `continue`, any strategy execution failure—including a provider outage—may fall
+through to later matching strategies. With `fail-fast`, the first strategy execution
+failure aborts resolution. Failure causes may be distinguished for logging, audit,
+and future policy, but they do not override the configured resolution behavior.
+
+An empty Claims-provider context is a successful empty context, not an unavailable
+entity. It is passed to subject mapping evaluation and normally results in no matching
+entitlements and therefore a deny decision.
+
+Deployments that must prove an authoritative source was available and contributed
+context cannot express that requirement today. Supporting that guarantee requires a
+new failure strategy (for example, `require-all`) or explicit required-strategy/provider
+configuration, with corresponding chain and audit semantics.
 
 ## Configuration Reference
 

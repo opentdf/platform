@@ -3,6 +3,7 @@ package audit
 import (
 	"context"
 	"log/slog"
+	"time"
 )
 
 // From the Slog docs (https://betterstack.com/community/guides/logging/logging-in-go/#customizing-slog-levels):
@@ -10,8 +11,9 @@ import (
 // associated with an integer value: DEBUG (-4), INFO (0), WARN (4), and ERROR (8).
 const (
 	// Currently setting AUDIT level to 10, a level above ERROR so it is always logged
-	LevelAudit    = slog.Level(10)
-	LevelAuditStr = "AUDIT"
+	LevelAudit           = slog.Level(10)
+	LevelAuditStr        = "AUDIT"
+	defaultRecordTimeout = 5 * time.Second
 )
 
 type Verb string
@@ -22,18 +24,34 @@ const (
 	VerbRewrap     Verb = "rewrap"
 )
 
-// pendingEvent represents a single audit event waiting to be logged
-type pendingEvent struct {
-	verb  Verb
-	event *EventObject
-}
-
 var logLevelNames = map[slog.Leveler]string{
 	LevelAudit: LevelAuditStr,
 }
 
 type Logger struct {
-	logger *slog.Logger
+	logger        *slog.Logger
+	processor     Processor
+	recordTimeout time.Duration
+	config        Config
+}
+
+// Option configures an audit logger at construction time.
+type Option func(*Logger)
+
+// WithProcessor configures canonical event processing.
+func WithProcessor(processor Processor) Option {
+	return func(logger *Logger) {
+		if processor != nil {
+			logger.processor = processor
+		}
+	}
+}
+
+// WithRecordTimeout sets the processing budget. Non-positive values use five seconds.
+func WithRecordTimeout(timeout time.Duration) Option {
+	return func(logger *Logger) {
+		logger.recordTimeout = timeout
+	}
 }
 
 // Used to support custom log levels showing up with custom labels as well
@@ -55,115 +73,110 @@ func ReplaceAttrAuditLevel(_ []string, a slog.Attr) slog.Attr {
 	return a
 }
 
-func CreateAuditLogger(logger slog.Logger) *Logger {
-	return &Logger{
-		logger: &logger,
+func CreateAuditLogger(logger slog.Logger, options ...Option) *Logger {
+	auditLogger := &Logger{
+		logger:        &logger,
+		recordTimeout: defaultRecordTimeout,
 	}
+	for _, option := range options {
+		option(auditLogger)
+	}
+	return auditLogger
+}
+
+func cloneConfig(cfg Config) Config {
+	cloned := cfg
+	cloned.JWTClaimMappings = append([]JWTClaimMapping(nil), cfg.JWTClaimMappings...)
+	return cloned
+}
+
+// ApplyConfig validates and copies audit enrichment configuration.
+// Call only during setup, before the logger is shared with other goroutines.
+func (a *Logger) ApplyConfig(cfg Config) error {
+	if err := cfg.Validate(); err != nil {
+		return err
+	}
+	a.config = cloneConfig(cfg)
+	return nil
 }
 
 func (a *Logger) With(key string, value string) *Logger {
 	return &Logger{
 		//nolint:sloglint // custom logger should support key/value pairs in With attributes
-		logger: a.logger.With(key, value),
+		logger:        a.logger.With(key, value),
+		processor:     a.processor,
+		recordTimeout: a.recordTimeout,
+		config:        cloneConfig(a.config),
 	}
 }
 
-// addEvent appends a pending audit event to the transaction
-func (tx *auditTransaction) addEvent(verb Verb, event *EventObject) {
-	tx.mu.Lock()
-	defer tx.mu.Unlock()
-	tx.events = append(tx.events, pendingEvent{
-		verb:  verb,
-		event: event,
-	})
+// Processor returns the configured processor, or nil for default OpenTDF processing.
+func (a *Logger) Processor() Processor {
+	return a.processor
 }
 
-// logClose completes an audit transaction and emits all recorded events.
-// If success is false or err is not nil, events are logged as "cancelled" with the error attached.
-// Otherwise, events are logged with their originally recorded success/failure status.
-func (tx *auditTransaction) logClose(ctx context.Context, logger *slog.Logger, success bool, err error) {
-	tx.mu.Lock()
-	defer tx.mu.Unlock()
-	for _, event := range tx.events {
-		auditEvent := event.event
-
-		if !success {
-			auditEvent.Action.Result = ActionResultCancel
-		}
-
-		if err != nil {
-			if auditEvent.EventMetaData == nil {
-				auditEvent.EventMetaData = make(auditEventMetadata)
-			}
-			auditEvent.EventMetaData["cancellation_error"] = err.Error()
-		}
-
-		//nolint:sloglint // audit message is always just the verb
-		logger.Log(ctx, LevelAudit, string(event.verb), slog.Any("audit", *auditEvent))
+// RecordTimeout returns the configured processing budget, or the five-second default.
+func (a *Logger) RecordTimeout() time.Duration {
+	if a.recordTimeout <= 0 {
+		return defaultRecordTimeout
 	}
+	return a.recordTimeout
 }
 
-func (a *Logger) RewrapSuccess(ctx context.Context, eventParams RewrapAuditEventParams) {
-	eventParams.IsSuccess = true
-	a.rewrapBase(ctx, eventParams)
+// RewrapSuccess records a completed rewrap and returns any recording error.
+func (a *Logger) RewrapSuccess(ctx context.Context, params RewrapAuditEventParams) error {
+	params.IsSuccess = true
+	return a.rewrapBase(ctx, params)
 }
 
-func (a *Logger) RewrapFailure(ctx context.Context, eventParams RewrapAuditEventParams) {
-	a.rewrapBase(ctx, eventParams)
+// RewrapFailure records a failed rewrap and returns any recording error.
+func (a *Logger) RewrapFailure(ctx context.Context, params RewrapAuditEventParams) error {
+	params.IsSuccess = false
+	return a.rewrapBase(ctx, params)
 }
 
-func (a *Logger) PolicyCRUDSuccess(ctx context.Context, eventParams PolicyEventParams) {
-	a.policyCrudBase(ctx, true, eventParams)
+// PolicyCRUDSuccess records a successful operation after its database commit.
+func (a *Logger) PolicyCRUDSuccess(ctx context.Context, params PolicyEventParams) error {
+	return a.policyCrudBase(ctx, true, params)
 }
 
-func (a *Logger) PolicyCRUDFailure(ctx context.Context, eventParams PolicyEventParams) {
-	a.policyCrudBase(ctx, false, eventParams)
+// PolicyCRUDFailure records a failed policy operation.
+func (a *Logger) PolicyCRUDFailure(ctx context.Context, params PolicyEventParams) error {
+	return a.policyCrudBase(ctx, false, params)
 }
 
-func (a *Logger) GetDecision(ctx context.Context, eventParams GetDecisionEventParams) {
-	auditEvent, err := CreateGetDecisionEvent(ctx, eventParams)
+func (a *Logger) GetDecision(ctx context.Context, params GetDecisionEventParams) error {
+	event, err := CreateGetDecisionEvent(ctx, params)
 	if err != nil {
-		a.logger.ErrorContext(ctx, "error creating get decision audit event", slog.Any("error", err))
-		return
+		return err
 	}
-	LogAuditEvent(ctx, VerbDecision, auditEvent)
+	event.Verb = VerbDecision
+	return a.Record(ctx, *event)
 }
 
-func (a *Logger) GetDecisionV2(ctx context.Context, eventParams GetDecisionV2EventParams) {
-	event, err := CreateV2GetDecisionEvent(ctx, eventParams)
+func (a *Logger) GetDecisionV2(ctx context.Context, params GetDecisionV2EventParams) error {
+	event, err := CreateV2GetDecisionEvent(ctx, params)
 	if err != nil {
-		a.logger.ErrorContext(ctx, "error creating v2 get decision audit event", slog.Any("error", err))
-		return
+		return err
 	}
-	LogAuditEvent(ctx, VerbDecision, event)
+	event.Verb = VerbDecision
+	return a.Record(ctx, *event)
 }
 
-func LogAuditEvent(ctx context.Context, verb Verb, event *EventObject) {
-	tx, ok := ctx.Value(contextKey{}).(*auditTransaction)
-	if !ok {
-		panic("audit transaction missing from context")
-	}
-	if event == nil {
-		panic("nil audit event provided")
-	}
-	tx.addEvent(verb, event)
-}
-
-func (a *Logger) rewrapBase(ctx context.Context, eventParams RewrapAuditEventParams) {
-	auditEvent, err := CreateRewrapAuditEvent(ctx, eventParams)
+func (a *Logger) rewrapBase(ctx context.Context, params RewrapAuditEventParams) error {
+	event, err := CreateRewrapAuditEvent(ctx, params)
 	if err != nil {
-		a.logger.ErrorContext(ctx, "error creating rewrap audit event", slog.Any("error", err))
-		return
+		return err
 	}
-
-	LogAuditEvent(ctx, VerbRewrap, auditEvent)
+	event.Verb = VerbRewrap
+	return a.Record(ctx, *event)
 }
 
-func (a *Logger) policyCrudBase(ctx context.Context, isSuccess bool, eventParams PolicyEventParams) {
-	auditEvent, err := CreatePolicyEvent(ctx, isSuccess, eventParams)
+func (a *Logger) policyCrudBase(ctx context.Context, success bool, params PolicyEventParams) error {
+	event, err := CreatePolicyEvent(ctx, success, params)
 	if err != nil {
-		a.logger.ErrorContext(ctx, "error creating policy attribute audit event", slog.Any("error", err))
-		return
+		return err
 	}
-	LogAuditEvent(ctx, VerbPolicyCRUD, auditEvent)
+	event.Verb = VerbPolicyCRUD
+	return a.Record(ctx, *event)
 }

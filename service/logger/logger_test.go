@@ -1,0 +1,305 @@
+package logger
+
+import (
+	"bufio"
+	"context"
+	"encoding/json"
+	"errors"
+	"log/slog"
+	"os"
+	"strings"
+	"testing"
+	"time"
+
+	"connectrpc.com/connect"
+	"github.com/opentdf/platform/service/logger/audit"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"go.opentelemetry.io/otel/trace/noop"
+)
+
+// captureStdout swaps os.Stdout for a pipe and returns the lines written by fn.
+func captureStdout(t *testing.T, fn func()) []string {
+	t.Helper()
+
+	orig := os.Stdout
+	r, w, err := os.Pipe()
+	require.NoError(t, err)
+	os.Stdout = w
+
+	defer func() {
+		os.Stdout = orig
+	}()
+
+	fn()
+	require.NoError(t, w.Close())
+
+	var lines []string
+	scanner := bufio.NewScanner(r)
+	for scanner.Scan() {
+		if line := strings.TrimSpace(scanner.Text()); line != "" {
+			lines = append(lines, line)
+		}
+	}
+	require.NoError(t, scanner.Err())
+
+	return lines
+}
+
+func decodeLine(t *testing.T, line string) map[string]any {
+	t.Helper()
+
+	var out map[string]any
+	require.NoError(t, json.Unmarshal([]byte(line), &out))
+	return out
+}
+
+// emitAuditEvent records an event with request metadata from the interceptor.
+func emitAuditEvent(ctx context.Context, t *testing.T, lg *Logger) {
+	t.Helper()
+
+	next := audit.ContextServerInterceptor()(
+		func(ctx context.Context, _ connect.AnyRequest) (connect.AnyResponse, error) {
+			require.NoError(t, lg.Audit.Record(ctx, testAuditEvent()))
+			return nil, nil //nolint:nilnil // the interceptor ignores the response in this test
+		},
+	)
+
+	_, err := next(ctx, connect.NewRequest(&struct{}{}))
+	require.NoError(t, err)
+}
+
+func testAuditEvent() audit.Event {
+	event := audit.NewEvent(audit.EventObjectParams{
+		Object:     audit.EventObjectInfo{Type: audit.ObjectTypeKeyObject},
+		Action:     audit.EventObjectAction{Type: audit.ActionTypeRewrap, Result: audit.ActionResultSuccess},
+		ClientInfo: audit.EventClientInfo{Platform: "test"},
+	})
+	event.Verb = audit.VerbRewrap
+	return *event
+}
+
+func TestLogPolicyCRUD(t *testing.T) {
+	for _, tt := range []struct {
+		name   string
+		result audit.ActionResult
+		record func(*Logger, context.Context, audit.PolicyEventParams)
+	}{
+		{"success", audit.ActionResultSuccess, (*Logger).LogPolicyCRUDSuccess},
+		{"failure", audit.ActionResultError, (*Logger).LogPolicyCRUDFailure},
+	} {
+		for _, processorFails := range []bool{false, true} {
+			name := tt.name
+			if processorFails {
+				name += "/audit_error"
+			}
+			t.Run(name, func(t *testing.T) {
+				ctx, cancel := context.WithCancel(tracedContext(t))
+				cancel()
+				calls := 0
+				lines := captureStdout(t, func() {
+					lg, err := NewLogger(Config{
+						Level: "info", Output: "stdout", Type: "json",
+						AuditProcessor: audit.ProcessorFunc(func(ctx context.Context, event audit.Event) error {
+							calls++
+							require.NoError(t, ctx.Err())
+							assert.Equal(t, tt.result, event.Action.Result)
+							assert.Equal(t, "action-id", event.Object.ID)
+							if processorFails {
+								return errors.New("audit destination unavailable")
+							}
+							return nil
+						}),
+						ContextAttrs: []ContextAttrFunc{func(ctx context.Context) []slog.Attr {
+							require.NoError(t, ctx.Err())
+							return nil
+						}},
+					})
+					require.NoError(t, err)
+					tt.record(lg, ctx, audit.PolicyEventParams{
+						ActionType: audit.ActionTypeCreate,
+						ObjectType: audit.ObjectTypeAction,
+						ObjectID:   "action-id",
+					})
+				})
+				require.Equal(t, 1, calls)
+				if !processorFails {
+					require.Empty(t, lines)
+					return
+				}
+				require.Len(t, lines, 1)
+				entry := decodeLine(t, lines[0])
+				assert.Equal(t, "ERROR", entry["level"])
+				assert.Equal(t, "failed to record policy audit event", entry["msg"])
+				assert.Contains(t, entry["error"], "audit destination unavailable")
+				assert.Equal(t, testTraceIDHex, entry[traceIDKey])
+			})
+		}
+	}
+}
+
+func Test_NewLogger_CorrelatesMainAndAuditLogs(t *testing.T) {
+	ctx := tracedContext(t)
+
+	lines := captureStdout(t, func() {
+		lg, err := NewLogger(Config{Level: "info", Output: "stdout", Type: "json"})
+		require.NoError(t, err)
+
+		lg.InfoContext(ctx, "handled request")
+		emitAuditEvent(ctx, t, lg)
+	})
+	require.Len(t, lines, 2, "expected one application log and one audit log")
+
+	appLog := decodeLine(t, lines[0])
+	assert.Equal(t, "handled request", appLog["msg"])
+	assert.Equal(t, testTraceIDHex, appLog[traceIDKey])
+	assert.Equal(t, testSpanIDHex, appLog[spanIDKey])
+
+	auditLog := decodeLine(t, lines[1])
+	assert.Equal(t, "AUDIT", auditLog["level"])
+	assert.Equal(t, testTraceIDHex, auditLog[traceIDKey])
+	assert.Equal(t, testSpanIDHex, auditLog[spanIDKey])
+}
+
+func Test_NewLogger_TraceCorrelationDisabled(t *testing.T) {
+	ctx := tracedContext(t)
+	disabled := false
+
+	lines := captureStdout(t, func() {
+		lg, err := NewLogger(Config{Level: "info", Output: "stdout", Type: "json", TraceCorrelation: &disabled})
+		require.NoError(t, err)
+
+		lg.InfoContext(ctx, "handled request")
+		emitAuditEvent(ctx, t, lg)
+	})
+	require.Len(t, lines, 2)
+
+	for _, line := range lines {
+		entry := decodeLine(t, line)
+		assert.NotContains(t, entry, traceIDKey)
+		assert.NotContains(t, entry, spanIDKey)
+	}
+}
+
+// The main logger carries request metadata alongside the trace IDs; audit
+// records carry only the trace IDs, since the metadata is already in the payload.
+func Test_NewLogger_RequestMetadataOnlyOnMainLogger(t *testing.T) {
+	ctx := tracedContext(t)
+
+	lines := captureStdout(t, func() {
+		lg, err := NewLogger(Config{Level: "info", Output: "stdout", Type: "json"})
+		require.NoError(t, err)
+
+		next := audit.ContextServerInterceptor()(
+			func(ctx context.Context, _ connect.AnyRequest) (connect.AnyResponse, error) {
+				lg.InfoContext(ctx, "handled request")
+				require.NoError(t, lg.Audit.Record(ctx, testAuditEvent()))
+				return nil, nil //nolint:nilnil // the interceptor ignores the response in this test
+			},
+		)
+		_, err = next(ctx, connect.NewRequest(&struct{}{}))
+		require.NoError(t, err)
+	})
+	require.Len(t, lines, 2)
+
+	appLog := decodeLine(t, lines[0])
+	assert.Equal(t, testTraceIDHex, appLog[traceIDKey])
+	assert.NotEmpty(t, appLog["request-id"])
+	assert.Contains(t, appLog, "user-agent")
+	assert.Contains(t, appLog, "request-ip")
+	assert.Contains(t, appLog, "actor-id")
+
+	auditLog := decodeLine(t, lines[1])
+	assert.Equal(t, testTraceIDHex, auditLog[traceIDKey])
+	assert.NotContains(t, auditLog, "request-id")
+}
+
+// With tracing disabled the platform installs a noop tracer provider but keeps
+// the W3C propagator, so an inbound traceparent still reaches the logs while
+// self-started spans do not.
+func Test_NewLogger_NoopProviderPreservesInboundTraceContext(t *testing.T) {
+	tracer := noop.NewTracerProvider().Tracer("test")
+
+	t.Run("inbound trace context is kept", func(t *testing.T) {
+		lines := captureStdout(t, func() {
+			lg, err := NewLogger(Config{Level: "info", Output: "stdout", Type: "json"})
+			require.NoError(t, err)
+
+			ctx, span := tracer.Start(tracedContext(t), "rewrap")
+			defer span.End()
+
+			lg.InfoContext(ctx, "handled request")
+			emitAuditEvent(ctx, t, lg)
+		})
+		require.Len(t, lines, 2)
+
+		for _, line := range lines {
+			entry := decodeLine(t, line)
+			assert.Equal(t, testTraceIDHex, entry[traceIDKey])
+			assert.Equal(t, testSpanIDHex, entry[spanIDKey])
+		}
+	})
+
+	t.Run("span without inbound context emits nothing", func(t *testing.T) {
+		lines := captureStdout(t, func() {
+			lg, err := NewLogger(Config{Level: "info", Output: "stdout", Type: "json"})
+			require.NoError(t, err)
+
+			ctx, span := tracer.Start(context.Background(), "rewrap")
+			defer span.End()
+
+			lg.InfoContext(ctx, "handled request")
+		})
+		require.Len(t, lines, 1)
+
+		entry := decodeLine(t, lines[0])
+		assert.NotContains(t, entry, traceIDKey)
+		assert.NotContains(t, entry, spanIDKey)
+	})
+}
+
+func Test_NewLogger_UntracedRequestHasNoTraceFields(t *testing.T) {
+	lines := captureStdout(t, func() {
+		lg, err := NewLogger(Config{Level: "info", Output: "stdout", Type: "json"})
+		require.NoError(t, err)
+
+		lg.InfoContext(context.Background(), "startup")
+	})
+	require.Len(t, lines, 1)
+
+	entry := decodeLine(t, lines[0])
+	assert.NotContains(t, entry, traceIDKey)
+	assert.NotContains(t, entry, spanIDKey)
+}
+
+func TestNewLoggerConfiguresAuditProcessorAndTimeout(t *testing.T) {
+	for _, timeout := range []time.Duration{0, -time.Second, 12 * time.Second} {
+		t.Run(timeout.String(), func(t *testing.T) {
+			called := false
+			cfg := Config{
+				Level: "info", Output: "stdout", Type: "json", AuditTimeout: timeout,
+				AuditProcessor: audit.ProcessorFunc(func(ctx context.Context, _ audit.Event) error {
+					called = true
+					_, ok := ctx.Deadline()
+					require.True(t, ok)
+					return nil
+				}),
+			}
+			lg, err := NewLogger(cfg)
+			require.NoError(t, err)
+			expected := timeout
+			if expected <= 0 {
+				expected = 5 * time.Second
+			}
+			require.Equal(t, expected, lg.Audit.RecordTimeout())
+			event := audit.NewEvent(audit.EventObjectParams{ClientInfo: audit.EventClientInfo{Platform: "test"}})
+			event.Verb = audit.Verb("test")
+			require.NoError(t, lg.Audit.Record(t.Context(), *event))
+			require.True(t, called)
+			serialized, err := json.Marshal(cfg)
+			require.NoError(t, err, "the runtime processor must not reach JSON serialization")
+			require.NotContains(t, string(serialized), "AuditProcessor")
+			require.NotContains(t, string(serialized), "audit_processor")
+		})
+	}
+}

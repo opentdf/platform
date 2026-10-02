@@ -11,7 +11,7 @@ import (
 	"golang.org/x/oauth2"
 )
 
-// OAuthAccessTokenSource allow connecting to an IDP and obtain a DPoP bound access token
+// OAuthAccessTokenSource allows connecting to an IDP and obtaining an access token.
 type OAuthAccessTokenSource struct {
 	source         oauth2.TokenSource
 	scopes         []string
@@ -29,7 +29,7 @@ func NewOAuthAccessTokenSource(
 	}
 
 	tokenSource := OAuthAccessTokenSource{
-		source:         source,
+		source:         cachingTokenSource(source),
 		scopes:         scopes,
 		asymDecryption: *asymDecryption,
 		dpopKey:        dpopKey,
@@ -39,22 +39,49 @@ func NewOAuthAccessTokenSource(
 	return &tokenSource, nil
 }
 
+// cachingTokenSource wraps a token source so that a valid token is reused across
+// calls instead of being re-fetched. AccessToken is on the request hot path
+// (once per gRPC/Connect call, plus once more to compute the DPoP ath claim), so
+// an uncached source would risk an IdP round-trip on every request. Wrapping an
+// already-caching source is harmless.
+func cachingTokenSource(source oauth2.TokenSource) oauth2.TokenSource {
+	return oauth2.ReuseTokenSource(nil, source)
+}
+
 // AccessToken use a pointer receiver so that the token state is shared
-func (t *OAuthAccessTokenSource) AccessToken(_ context.Context, _ *http.Client) (auth.AccessToken, error) { // must satisfy auth.AccessTokenSource interface
+func (t *OAuthAccessTokenSource) AccessToken(ctx context.Context, client *http.Client) (auth.AccessToken, error) {
+	credential, err := t.AccessTokenCredential(ctx, client)
+	return credential.Token, err
+}
+
+// AccessTokenCredential returns an access token and its DPoP status from the same token response.
+func (t *OAuthAccessTokenSource) AccessTokenCredential(_ context.Context, _ *http.Client) (auth.AccessTokenCredential, error) {
 	tok, err := t.source.Token()
 	if err != nil {
-		return "", fmt.Errorf("error getting access token: %w", err)
+		return auth.AccessTokenCredential{}, fmt.Errorf("error getting access token: %w", err)
 	}
 
 	// Non-nil with AccessToken and not Expired
 	if !tok.Valid() {
-		return "", ErrAccessTokenInvalid
+		return auth.AccessTokenCredential{}, ErrAccessTokenInvalid
 		// TODO: refresh tokens if expired?
 	}
 
-	return auth.AccessToken(tok.AccessToken), nil
+	return auth.AccessTokenCredential{
+		Token: auth.AccessToken(tok.AccessToken),
+		Type:  auth.TokenTypeFromOAuthTokenType(tok.Type()),
+	}, nil
 }
 
 func (t *OAuthAccessTokenSource) MakeToken(tokenMaker func(jwk.Key) ([]byte, error)) ([]byte, error) {
 	return tokenMaker(t.dpopKey)
+}
+
+// newOAuthAccessTokenSourceFromJWK creates an OAuthAccessTokenSource using a pre-built JWK key.
+func newOAuthAccessTokenSourceFromJWK(source oauth2.TokenSource, scopes []string, key jwk.Key) *OAuthAccessTokenSource {
+	return &OAuthAccessTokenSource{
+		source:  cachingTokenSource(source),
+		scopes:  scopes,
+		dpopKey: key,
+	}
 }

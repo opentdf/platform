@@ -63,7 +63,7 @@ func (m *mockWellKnownService) GetWellKnownConfiguration(
 }
 
 func TestGetKasKeyAlg(t *testing.T) {
-	tests := []struct {
+	for _, test := range []struct {
 		name     string
 		algStr   string
 		expected policy.Algorithm
@@ -94,21 +94,45 @@ func TestGetKasKeyAlg(t *testing.T) {
 			expected: policy.Algorithm_ALGORITHM_EC_P521,
 		},
 		{
-			name:     "unsupported algorithm",
-			algStr:   "unsupported",
-			expected: policy.Algorithm_ALGORITHM_UNSPECIFIED,
+			name:     "hybrid xwing",
+			algStr:   string(ocrypto.HybridXWingKey),
+			expected: policy.Algorithm_ALGORITHM_HPQT_XWING,
 		},
 		{
-			name:     "empty string",
-			algStr:   "",
-			expected: policy.Algorithm_ALGORITHM_UNSPECIFIED,
+			name:     "hybrid p256 mlkem768",
+			algStr:   string(ocrypto.HybridSecp256r1MLKEM768Key),
+			expected: policy.Algorithm_ALGORITHM_HPQT_SECP256R1_MLKEM768,
 		},
+		{
+			name:     "hybrid p384 mlkem1024",
+			algStr:   string(ocrypto.HybridSecp384r1MLKEM1024Key),
+			expected: policy.Algorithm_ALGORITHM_HPQT_SECP384R1_MLKEM1024,
+		},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			result, err := getKasKeyAlg(test.algStr)
+			require.NoError(t, err)
+			assert.Equal(t, test.expected, result, "Algorithm enum mismatch")
+		})
 	}
 
-	for _, test := range tests {
+	for _, test := range []struct {
+		name   string
+		algStr string
+	}{
+		{
+			name:   "unsupported algorithm",
+			algStr: "unsupported",
+		},
+		{
+			name:   "empty string",
+			algStr: "",
+		},
+	} {
 		t.Run(test.name, func(t *testing.T) {
-			result := getKasKeyAlg(test.algStr)
-			assert.Equal(t, test.expected, result, "Algorithm enum mismatch")
+			result, err := getKasKeyAlg(test.algStr)
+			require.Error(t, err)
+			assert.Equal(t, policy.Algorithm_ALGORITHM_UNSPECIFIED, result, "Algorithm enum mismatch")
 		})
 	}
 }
@@ -148,6 +172,24 @@ func TestFormatAlg(t *testing.T) {
 			name:        "EC P521",
 			alg:         policy.Algorithm_ALGORITHM_EC_P521,
 			expected:    string(ocrypto.EC521Key), // Note: This matches the implementation
+			expectError: false,
+		},
+		{
+			name:        "Hybrid X-Wing",
+			alg:         policy.Algorithm_ALGORITHM_HPQT_XWING,
+			expected:    string(ocrypto.HybridXWingKey),
+			expectError: false,
+		},
+		{
+			name:        "Hybrid P256+ML-KEM-768",
+			alg:         policy.Algorithm_ALGORITHM_HPQT_SECP256R1_MLKEM768,
+			expected:    string(ocrypto.HybridSecp256r1MLKEM768Key),
+			expectError: false,
+		},
+		{
+			name:        "Hybrid P384+ML-KEM-1024",
+			alg:         policy.Algorithm_ALGORITHM_HPQT_SECP384R1_MLKEM1024,
+			expected:    string(ocrypto.HybridSecp384r1MLKEM1024Key),
 			expectError: false,
 		},
 		{
@@ -324,6 +366,9 @@ func TestFormatAlg_GetKasKeyAlg_RoundTrip(t *testing.T) {
 		{"EC-P256", policy.Algorithm_ALGORITHM_EC_P256},
 		{"EC-P384", policy.Algorithm_ALGORITHM_EC_P384},
 		{"EC-P521", policy.Algorithm_ALGORITHM_EC_P521},
+		{"HPQT-XWing", policy.Algorithm_ALGORITHM_HPQT_XWING},
+		{"HPQT-P256-MLKEM768", policy.Algorithm_ALGORITHM_HPQT_SECP256R1_MLKEM768},
+		{"HPQT-P384-MLKEM1024", policy.Algorithm_ALGORITHM_HPQT_SECP384R1_MLKEM1024},
 	}
 
 	for _, tc := range supportedAlgs {
@@ -331,7 +376,8 @@ func TestFormatAlg_GetKasKeyAlg_RoundTrip(t *testing.T) {
 			formatted, err := formatAlg(tc.alg)
 			require.NoError(t, err, "formatAlg should not error for %s", tc.name)
 
-			roundTripped := getKasKeyAlg(formatted)
+			roundTripped, err := getKasKeyAlg(formatted)
+			require.NoError(t, err)
 			assert.Equal(t, tc.alg, roundTripped,
 				"round-trip mismatch: formatAlg(%s) = %q → getKasKeyAlg returned %s, want %s",
 				tc.name, formatted, roundTripped, tc.alg)

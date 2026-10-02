@@ -16,10 +16,6 @@ import (
 	"github.com/lestrrat-go/jwx/v2/jws"
 	"github.com/lestrrat-go/jwx/v2/jwt"
 	"github.com/opentdf/platform/sdk/httputil"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/metadata"
-	"google.golang.org/grpc/status"
 )
 
 const (
@@ -47,59 +43,40 @@ func NewTokenAddingInterceptorWithClient(t AccessTokenSource, c *http.Client) To
 	}
 }
 
-func (i TokenAddingInterceptor) AddCredentials(
-	ctx context.Context,
-	method string,
-	req, reply any,
-	cc *grpc.ClientConn,
-	invoker grpc.UnaryInvoker,
-	opts ...grpc.CallOption,
-) error {
-	newMetadata := make([]string, 0)
-	accessToken, err := i.tokenSource.AccessToken(ctx, i.httpClient)
-	if err == nil {
-		newMetadata = append(newMetadata, "Authorization", fmt.Sprintf("DPoP %s", accessToken))
-	} else {
-		slog.ErrorContext(ctx, "error getting access token", slog.Any("error", err))
-		return status.Error(codes.Unauthenticated, err.Error())
-	}
-
-	dpopTok, err := i.GetDPoPToken(method, http.MethodPost, string(accessToken))
-	if err == nil {
-		newMetadata = append(newMetadata, "DPoP", dpopTok)
-	} else {
-		// since we don't have a setting about whether DPoP is in use on the client and this request _could_ succeed if
-		// they are talking to a server where DPoP is not required we will just let this through. this method is extremely
-		// unlikely to fail so hopefully this isn't confusing
-		slog.ErrorContext(ctx, "error getting DPoP token for outgoing request. Request will not have DPoP token", slog.Any("error", err))
-	}
-
-	newCtx := metadata.AppendToOutgoingContext(ctx, newMetadata...)
-
-	err = invoker(newCtx, method, req, reply, cc, opts...)
-
-	// this is the error from the RPC service. we can determine when the current token is no longer valid
-	// by inspecting this error
-	return err
-}
-
 func (i TokenAddingInterceptor) AddCredentialsConnect() connect.UnaryInterceptorFunc {
 	return connect.UnaryInterceptorFunc(func(next connect.UnaryFunc) connect.UnaryFunc {
 		return func(
 			ctx context.Context,
 			req connect.AnyRequest,
 		) (connect.AnyResponse, error) {
-			accessToken, err := i.tokenSource.AccessToken(ctx, i.httpClient)
+			credential := AccessTokenCredential{Type: TokenTypeDPoP}
+			var err error
+			if credentialSource, ok := i.tokenSource.(AccessTokenCredentialSource); ok {
+				credential, err = credentialSource.AccessTokenCredential(ctx, i.httpClient)
+			} else {
+				credential.Token, err = i.tokenSource.AccessToken(ctx, i.httpClient)
+			}
 			if err != nil {
 				slog.ErrorContext(ctx, "error getting access token", slog.Any("error", err))
 				return nil, connect.NewError(connect.CodeUnauthenticated, err)
 			}
 
+			if credential.Type != TokenTypeDPoP {
+				req.Header().Set("Authorization", fmt.Sprintf("Bearer %s", credential.Token))
+				return next(ctx, req)
+			}
+
 			// Add Authorization header
-			req.Header().Set("Authorization", fmt.Sprintf("DPoP %s", accessToken))
+			req.Header().Set("Authorization", fmt.Sprintf("DPoP %s", credential.Token))
 
 			// Add DPoP header if possible
-			dpopTok, err := i.GetDPoPToken(req.Spec().Procedure, http.MethodPost, string(accessToken))
+			slog.DebugContext(
+				ctx, "preparing dpop for connect request",
+				slog.String("procedure", req.Spec().Procedure),
+				slog.String("dpop_htm", http.MethodPost),
+				slog.Any("stream_type", req.Spec().StreamType),
+			)
+			dpopTok, err := i.GetDPoPToken(req.Spec().Procedure, http.MethodPost, string(credential.Token))
 			if err == nil {
 				req.Header().Set("DPoP", dpopTok)
 			} else {
@@ -146,6 +123,11 @@ func (i TokenAddingInterceptor) GetDPoPToken(path, method, accessToken string) (
 		h.Write([]byte(accessToken))
 		ath := h.Sum(nil)
 
+		slog.Debug(
+			"building dpop token",
+			slog.String("htm", method),
+			slog.String("htu", path),
+		)
 		dpopTok, err := jwt.NewBuilder().
 			Claim("htu", path).
 			Claim("htm", method).

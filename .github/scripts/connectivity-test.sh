@@ -22,8 +22,8 @@ while true; do
         # Introduce random delay before each execution (between 1 and 4 seconds)
         sleep $((RANDOM % 4 + 1))
         
-        echo "Running randomly selected command './otdfctl policy $random_subcommand list...'"
-        result=$(./otdfctl policy $random_subcommand list --with-client-creds '{"clientId":"opentdf","clientSecret":"secret"}' --host http://localhost:8080 | grep -i "success")
+        echo "Running randomly selected command './bin/otdfctl policy $random_subcommand list...'"
+        result=$(./bin/otdfctl policy $random_subcommand list --with-client-creds '{"clientId":"opentdf","clientSecret":"secret"}' --host http://localhost:8080 | grep -i "success")
         echo $result
         if [ -z "$result" ]; then
         echo "Failure: 'success' not found in output; CLI failed."

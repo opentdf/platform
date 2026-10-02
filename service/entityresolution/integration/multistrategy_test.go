@@ -446,8 +446,15 @@ func TestMultiStrategyEntityResolutionV2(t *testing.T) {
 			ChainValidation: []internal.EntityChainValidationRule{
 				{
 					EphemeralID: "test-token-1",
-					EntityCount: 3,                                            // Multi-strategy with FailureStrategyContinue creates multiple entities from all matching strategies
-					EntityTypes: []string{"username", "username", "username"}, // All strategies create username entities
+					// All three configured strategies are entity_type: subject and all match this
+					// token. Only the first contributes: a chain carries one subject entity.
+					EntityCount:      1,
+					EntityTypes:      []string{"claims"},
+					EntityCategories: []string{"CATEGORY_SUBJECT"},
+					EntityRequiredFields: []map[string]interface{}{
+						{"username": "user123", "email": "user@example.com"},
+					},
+					RequireConsistentOrdering: true,
 				},
 			},
 		},

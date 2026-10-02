@@ -3,6 +3,9 @@ package access
 import (
 	"bytes"
 	"context"
+	"crypto/ecdsa"
+	"crypto/elliptic"
+	"crypto/rand"
 	"crypto/rsa"
 	"crypto/x509"
 	"encoding/base64"
@@ -1427,6 +1430,110 @@ func TestVerifyRewrapRequests(t *testing.T) {
 				require.NoError(t, err, "Unexpected error: "+tt.name)
 				assert.NotNil(t, policy, "Policy should not be nil on success")
 				assert.NotNil(t, results, "Results should not be nil on success")
+			}
+		})
+	}
+}
+
+func TestVerifySRTSignature(t *testing.T) {
+	p := &Provider{}
+
+	makeSRTAndKey := func(t *testing.T, alg jwa.SignatureAlgorithm, privKey, pubKey any) (string, jwk.Key) {
+		t.Helper()
+		tok := jwt.New()
+		s, err := jwt.Sign(tok, jwt.WithKey(alg, privKey))
+		require.NoError(t, err)
+		dpopKey, err := jwk.FromRaw(pubKey)
+		require.NoError(t, err)
+		return string(s), dpopKey
+	}
+
+	ecKey := func(t *testing.T, curve elliptic.Curve) (*ecdsa.PrivateKey, *ecdsa.PublicKey) {
+		t.Helper()
+		priv, err := ecdsa.GenerateKey(curve, rand.Reader)
+		require.NoError(t, err)
+		return priv, &priv.PublicKey
+	}
+
+	tests := []struct {
+		name      string
+		build     func(t *testing.T) (srt string, dpopKey jwk.Key)
+		wantError bool
+	}{
+		{
+			name: "RS256",
+			build: func(t *testing.T) (string, jwk.Key) {
+				priv := entityPrivateKey(t)
+				return makeSRTAndKey(t, jwa.RS256, priv, &priv.PublicKey)
+			},
+		},
+		{
+			name: "PS256",
+			build: func(t *testing.T) (string, jwk.Key) {
+				priv := entityPrivateKey(t)
+				return makeSRTAndKey(t, jwa.PS256, priv, &priv.PublicKey)
+			},
+		},
+		{
+			name: "PS384",
+			build: func(t *testing.T) (string, jwk.Key) {
+				priv := entityPrivateKey(t)
+				return makeSRTAndKey(t, jwa.PS384, priv, &priv.PublicKey)
+			},
+		},
+		{
+			name: "PS512",
+			build: func(t *testing.T) (string, jwk.Key) {
+				// entityPrivateKey is 1024-bit, too small for PS512 (needs 2048+).
+				priv, err := rsa.GenerateKey(rand.Reader, 2048)
+				require.NoError(t, err)
+				return makeSRTAndKey(t, jwa.PS512, priv, &priv.PublicKey)
+			},
+		},
+		{
+			name: "ES256",
+			build: func(t *testing.T) (string, jwk.Key) {
+				priv, pub := ecKey(t, elliptic.P256())
+				return makeSRTAndKey(t, jwa.ES256, priv, pub)
+			},
+		},
+		{
+			name: "ES384",
+			build: func(t *testing.T) (string, jwk.Key) {
+				priv, pub := ecKey(t, elliptic.P384())
+				return makeSRTAndKey(t, jwa.ES384, priv, pub)
+			},
+		},
+		{
+			name: "ES512",
+			build: func(t *testing.T) (string, jwk.Key) {
+				priv, pub := ecKey(t, elliptic.P521())
+				return makeSRTAndKey(t, jwa.ES512, priv, pub)
+			},
+		},
+		{
+			name:      "HS256 rejected",
+			wantError: true,
+			build: func(t *testing.T) (string, jwk.Key) {
+				secret := []byte("symmetric-secret")
+				tok := jwt.New()
+				s, err := jwt.Sign(tok, jwt.WithKey(jwa.HS256, secret))
+				require.NoError(t, err)
+				dpopKey, err := jwk.FromRaw(secret)
+				require.NoError(t, err)
+				return string(s), dpopKey
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			srt, dpopKey := tt.build(t)
+			err := p.verifySRTSignature(t.Context(), srt, dpopKey)
+			if tt.wantError {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
 			}
 		})
 	}

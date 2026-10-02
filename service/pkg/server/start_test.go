@@ -15,10 +15,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
+	"github.com/opentdf/platform/lib/ocrypto"
 	"github.com/opentdf/platform/service/internal/auth"
 	"github.com/opentdf/platform/service/internal/server"
 	"github.com/opentdf/platform/service/logger"
+	"github.com/opentdf/platform/service/logger/audit"
 	"github.com/opentdf/platform/service/pkg/cache"
 	"github.com/opentdf/platform/service/pkg/config"
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
@@ -135,17 +136,13 @@ func mockKeycloakServer() *httptest.Server {
 }
 
 func mockOpenTDFServer() (*server.OpenTDFServer, error) {
-	discoveryEndpoint := mockKeycloakServer()
 	// Create new opentdf server
 	return server.NewOpenTDFServer(server.Config{
 		WellKnownConfigRegister: func(_ string, _ any) error {
 			return nil
 		},
 		Auth: auth.Config{
-			AuthNConfig: auth.AuthNConfig{
-				Issuer:   discoveryEndpoint.URL,
-				Audience: "test",
-			},
+			Enabled:      false,
 			PublicRoutes: []string{"/testpath/*"},
 		},
 		Port: 43481,
@@ -228,12 +225,31 @@ func TestStartTestSuite(t *testing.T) {
 }
 
 func (s *StartTestSuite) SetupSuite() {
-	// Create dummy KAS key files in testdata
+	// Generate fresh KAS key material for every run so nothing is committed
+	// alongside the source tree. all-no-config.yaml expects all of these paths
+	// to resolve, including the hybrid PQ key pairs added in PR #3276.
 	keyFiles := map[string]string{
 		"kas-private.pem":    dummyRsaPrivate,
 		"kas-cert.pem":       dummyRsaPublic, // Using public key as cert for dummy purposes
 		"kas-ec-private.pem": dummyEcPrivate,
 		"kas-ec-cert.pem":    dummyEcCert,
+	}
+
+	hybridPairs := []struct {
+		name    string
+		newPair func() (priv, pub string, err error)
+		priv    string
+		pub     string
+	}{
+		{"X-Wing", testXWingPair, "kas-xwing-private.pem", "kas-xwing-public.pem"},
+		{"P-256+ML-KEM-768", testP256MLKEM768Pair, "kas-p256mlkem768-private.pem", "kas-p256mlkem768-public.pem"},
+		{"P-384+ML-KEM-1024", testP384MLKEM1024Pair, "kas-p384mlkem1024-private.pem", "kas-p384mlkem1024-public.pem"},
+	}
+	for _, p := range hybridPairs {
+		priv, pub, err := p.newPair()
+		s.Require().NoErrorf(err, "Failed to generate %s key pair", p.name)
+		keyFiles[p.priv] = priv
+		keyFiles[p.pub] = pub
 	}
 
 	for filename, content := range keyFiles {
@@ -250,7 +266,7 @@ func (s *StartTestSuite) TearDownSuite() {
 	s.Require().NoError(err, "Failed to read testdata directory")
 
 	for _, entry := range entries {
-		if !entry.IsDir() {
+		if entry.IsDir() {
 			continue
 		}
 		if entry.Name() == ignoreFile {
@@ -259,6 +275,47 @@ func (s *StartTestSuite) TearDownSuite() {
 		err = os.Remove("testdata/" + entry.Name())
 		s.Require().NoError(err, "Failed to remove testdata file: %s", entry.Name())
 	}
+}
+
+func testXWingPair() (string, string, error) {
+	kp, err := ocrypto.NewXWingKeyPair()
+	if err != nil {
+		return "", "", err
+	}
+	return testHybridPEMs(kp)
+}
+
+func testP256MLKEM768Pair() (string, string, error) {
+	kp, err := ocrypto.NewP256MLKEM768KeyPair()
+	if err != nil {
+		return "", "", err
+	}
+	return testHybridPEMs(kp)
+}
+
+func testP384MLKEM1024Pair() (string, string, error) {
+	kp, err := ocrypto.NewP384MLKEM1024KeyPair()
+	if err != nil {
+		return "", "", err
+	}
+	return testHybridPEMs(kp)
+}
+
+type pemKeyPair interface {
+	PrivateKeyInPemFormat() (string, error)
+	PublicKeyInPemFormat() (string, error)
+}
+
+func testHybridPEMs(kp pemKeyPair) (string, string, error) {
+	priv, err := kp.PrivateKeyInPemFormat()
+	if err != nil {
+		return "", "", err
+	}
+	pub, err := kp.PublicKeyInPemFormat()
+	if err != nil {
+		return "", "", err
+	}
+	return priv, pub, nil
 }
 
 func (s *StartTestSuite) Test_Start_When_Extra_Service_Registered() {
@@ -278,7 +335,7 @@ func (s *StartTestSuite) Test_Start_When_Extra_Service_Registered() {
 			name:         "And_Mode_Core",
 			mode:         []string{"core"},
 			status:       http.StatusNotFound,
-			responseBody: "{\"code\":5,\"message\":\"Not Found\",\"details\":[]}",
+			responseBody: "404 page not found\n",
 		},
 		{
 			name:         "And_Mode_Core_Plus_Test",
@@ -296,7 +353,7 @@ func (s *StartTestSuite) Test_Start_When_Extra_Service_Registered() {
 			name:         "And_Mode_Kas",
 			mode:         []string{"kas"},
 			status:       http.StatusNotFound,
-			responseBody: "{\"code\":5,\"message\":\"Not Found\",\"details\":[]}",
+			responseBody: "404 page not found\n",
 		},
 		{
 			name:         "And_Mode_Kas_Plus_Test",
@@ -308,7 +365,7 @@ func (s *StartTestSuite) Test_Start_When_Extra_Service_Registered() {
 			name:         "And_Mode_EntityResolution",
 			mode:         []string{"entityresolution"},
 			status:       http.StatusNotFound,
-			responseBody: "{\"code\":5,\"message\":\"Not Found\",\"details\":[]}",
+			responseBody: "404 page not found\n",
 		},
 		{
 			name:         "And_Mode_EntityResolution_Plus_Test",
@@ -320,7 +377,7 @@ func (s *StartTestSuite) Test_Start_When_Extra_Service_Registered() {
 			name:         "And_Mode_Unknown",
 			mode:         []string{"unknown"},
 			status:       http.StatusNotFound,
-			responseBody: "{\"code\":5,\"message\":\"Not Found\",\"details\":[]}",
+			responseBody: "404 page not found\n",
 		},
 		{
 			name:         "And_Mode_Unknown_Plus_Test",
@@ -343,8 +400,11 @@ func (s *StartTestSuite) Test_Start_When_Extra_Service_Registered() {
 			ts := TestService{}
 			registerTestService, _ := mockTestServiceRegistry(mockTestServiceOptions{
 				serviceObject: ts,
-				serviceHandler: func(_ context.Context, mux *runtime.ServeMux) error {
-					return mux.HandlePath(http.MethodGet, "/healthz", ts.TestHandler)
+				serviceHandler: func(_ context.Context, mux *http.ServeMux) error {
+					mux.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) {
+						ts.TestHandler(w, r, nil)
+					})
+					return nil
 				},
 			})
 
@@ -353,7 +413,7 @@ func (s *StartTestSuite) Test_Start_When_Extra_Service_Registered() {
 			require.NoError(t, err)
 
 			// Start services with test service
-			cleanup, err := startServices(context.Background(), startServicesParams{
+			err = startServices(context.Background(), startServicesParams{
 				cfg: &config.Config{
 					Mode: tc.mode,
 					Services: map[string]config.ServiceConfig{
@@ -368,7 +428,6 @@ func (s *StartTestSuite) Test_Start_When_Extra_Service_Registered() {
 				cacheManager:           &cache.Manager{},
 			})
 			require.NoError(t, err)
-			defer cleanup()
 
 			require.NoError(t, s.Start())
 			defer s.Stop()
@@ -485,14 +544,14 @@ func (s *StartTestSuite) Test_Start_Mode_Config_Success() {
 		{
 			"core,entityresolution without sdk_config",
 			map[string]interface{}{
-				"mode": "core,entityresolution", "server.auth.issuer": discoveryEndpoint.URL,
+				"mode": []string{"core", "entityresolution"}, "server.auth.issuer": discoveryEndpoint.URL,
 			},
 			"all-no-config-*.yaml",
 		},
 		{
 			"core,entityresolution,kas without sdk_config",
 			map[string]interface{}{
-				"mode": "core,entityresolution,kas", "server.auth.issuer": discoveryEndpoint.URL,
+				"mode": []string{"core", "entityresolution", "kas"}, "server.auth.issuer": discoveryEndpoint.URL,
 			},
 			"all-no-config-*.yaml",
 		},
@@ -543,4 +602,114 @@ func (s *StartTestSuite) Test_Start_Mode_Config_Success() {
 			}
 		})
 	}
+}
+
+// startTestAuditTypeBase keeps audit types registered by these tests clear of the
+// built-in ones and of the StartConfig-only types used in options_test.go.
+const startTestAuditTypeBase = 2000
+
+// startTestObjectTypes builds the map with make + assignment rather than a
+// literal so the exhaustive linter does not require every enum key.
+func startTestObjectTypes(objectType audit.ObjectType, name string) map[audit.ObjectType]string {
+	objectTypes := make(map[audit.ObjectType]string)
+	objectTypes[objectType] = name
+	return objectTypes
+}
+
+func startTestAuditConfigFile(t *testing.T, name string) string {
+	t.Helper()
+
+	discoveryEndpoint := mockKeycloakServer()
+	t.Cleanup(discoveryEndpoint.Close)
+
+	tempFilePath, err := createTempYAMLFileWithNestedChanges(
+		map[string]interface{}{"server.auth.issuer": discoveryEndpoint.URL},
+		"testdata/all-no-config.yaml",
+		name,
+	)
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		if err := os.Remove(tempFilePath); err != nil {
+			t.Errorf("Failed to remove temp file %s: %v", tempFilePath, err)
+		}
+	})
+
+	return tempFilePath
+}
+
+// Test_Start_Applies_And_Seals_Audit_Type_Registrations covers the registration
+// handoff in Start. Sealing is process-wide and has no unseal path, so this must
+// remain the only test that applies audit type registrations through Start.
+func (s *StartTestSuite) Test_Start_Applies_And_Seals_Audit_Type_Registrations() {
+	t := s.T()
+
+	const (
+		customObjectType   = audit.ObjectType(startTestAuditTypeBase)
+		customActionType   = audit.ActionType(startTestAuditTypeBase + 1)
+		customActionResult = audit.ActionResult(startTestAuditTypeBase + 2)
+	)
+
+	tempFilePath := startTestAuditConfigFile(t, "audit-type-registrations-*.yaml")
+
+	actionTypes := make(map[audit.ActionType]string)
+	actionTypes[customActionType] = "start_test_action"
+	actionResults := make(map[audit.ActionResult]string)
+	actionResults[customActionResult] = "start_test_result"
+
+	// Start applies and seals the registrations before the rest of startup, so
+	// the handoff is observable whether or not a database is available here.
+	startErr := Start(
+		WithConfigFile(tempFilePath),
+		WithConfigLoaderOrder([]string{
+			config.LoaderNameEnvironmentValue,
+			config.LoaderNameFile,
+			config.LoaderNameDefaultSettings,
+		}),
+		WithAdditionalAuditTypeRegistrations(audit.TypeRegistrations{
+			ObjectTypes:   startTestObjectTypes(customObjectType, "start_test_object"),
+			ActionTypes:   actionTypes,
+			ActionResults: actionResults,
+		}),
+	)
+
+	assert.Equal(t, "start_test_object", customObjectType.String(), "start error: %v", startErr)
+	assert.Equal(t, "start_test_action", customActionType.String(), "start error: %v", startErr)
+	assert.Equal(t, "start_test_result", customActionResult.String(), "start error: %v", startErr)
+
+	// Registrations are sealed once Start has applied them.
+	err := audit.RegisterObjectType(audit.ObjectType(startTestAuditTypeBase+3), "start_test_too_late")
+	require.ErrorIs(t, err, audit.ErrAuditTypeRegistrationSealed)
+}
+
+func (s *StartTestSuite) Test_Start_Rejects_Conflicting_Audit_Type_Registrations() {
+	t := s.T()
+
+	const conflictingObjectType = audit.ObjectType(startTestAuditTypeBase + 10)
+
+	tempFilePath := startTestAuditConfigFile(t, "audit-type-registration-conflicts-*.yaml")
+
+	err := Start(
+		WithConfigFile(tempFilePath),
+		WithConfigLoaderOrder([]string{
+			config.LoaderNameEnvironmentValue,
+			config.LoaderNameFile,
+			config.LoaderNameDefaultSettings,
+		}),
+		WithAdditionalAuditTypeRegistrations(audit.TypeRegistrations{
+			ObjectTypes: startTestObjectTypes(conflictingObjectType, "start_test_conflict_first"),
+		}),
+		WithAdditionalAuditTypeRegistrations(audit.TypeRegistrations{
+			ObjectTypes: startTestObjectTypes(conflictingObjectType, "start_test_conflict_second"),
+		}),
+	)
+
+	require.Error(t, err)
+	require.ErrorContains(t, err, "conflicting audit type registrations")
+	require.ErrorContains(t, err, fmt.Sprintf(
+		`object_type %d: %q vs %q`,
+		int(conflictingObjectType), "start_test_conflict_first", "start_test_conflict_second",
+	))
+
+	// Conflicts are reported before any registration is applied.
+	assert.Equal(t, fmt.Sprintf("object_type_%d", int(conflictingObjectType)), conflictingObjectType.String())
 }

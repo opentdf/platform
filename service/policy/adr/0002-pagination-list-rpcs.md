@@ -119,7 +119,7 @@ message ListRequest {
 }
 
 message ListResponse {
-    // ...existing fields and response data ommitted
+    // ...existing fields and response data omitted
     // cursors are encoded by the server as base64'd 'created_at' timestamps
     string previous_cursor = 4;
     string next_cursor = 4;

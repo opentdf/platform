@@ -2,10 +2,15 @@ package sdk_test
 
 import (
 	"bytes"
+	"context"
 	"encoding/base64"
+	"net/http"
+	"net/http/httptest"
 	"reflect"
 	"testing"
+	"time"
 
+	"connectrpc.com/grpchealth"
 	"github.com/opentdf/platform/protocol/go/policy/attributes/attributesconnect"
 	"github.com/opentdf/platform/protocol/go/policy/kasregistry/kasregistryconnect"
 	"github.com/opentdf/platform/protocol/go/policy/resourcemapping/resourcemappingconnect"
@@ -127,6 +132,31 @@ func TestNew_ShouldValidateStandardTdf(t *testing.T) {
 	isValid, err = sdk.IsValidTdf(in)
 	require.NoError(t, err)
 
+	assert.True(t, isValid)
+}
+
+// The OpenTDF spec names the manifest entry manifest.json. Validation is the
+// first thing a third-party TDF meets, so it has to accept the spec name.
+// See https://github.com/opentdf/platform/issues/3513.
+func TestIsValidTdf_AcceptsSpecManifestName(t *testing.T) {
+	// The same TDF as TestNew_ShouldValidateStandardTdf, re-zipped with its
+	// manifest stored under the spec entry name instead of 0.manifest.json.
+	specNamedManifestTdf := "UEsDBBQACAAAAAAAAAAAAAAAAAAAAAAAAAAJAAAAMC5wYXlsb2Fktu4m+vdwl0mtjhY3U5e7TG2o1s8ifK+RAhFNjRjGTLJ7V3w5UEsHCGiY7skkAAAAJAAAAFBLAwQUAAgAAAAAAAAAAAAAAAAAAAAAAAAADQAAAG1hbmlmZXN0Lmpzb257ImVuY3J5cHRpb25JbmZvcm1hdGlvbiI6eyJ0eXBlIjoic3BsaXQiLCJwb2xpY3kiOiJleUoxZFdsa0lqb2lNR00xTkRrMlpUWXRORGM0WmkweE1XVm1MV0l5TmpFdFlqSTFZelJoTkRNeE4yRTNJaXdpWW05a2VTSTZleUprWVhSaFFYUjBjbWxpZFhSbGN5STZXM3NpWVhSMGNtbGlkWFJsSWpvaWFIUjBjSE02THk5bGVHRnRjR3hsTG1OdmJTOWhkSFJ5TDJGMGRISXhMM1poYkhWbEwzWmhiSFZsTVNJc0ltUnBjM0JzWVhsT1lXMWxJam9pSWl3aWFYTkVaV1poZFd4MElqcG1ZV3h6WlN3aWNIVmlTMlY1SWpvaUlpd2lhMkZ6VlZKTUlqb2lJbjFkTENKa2FYTnpaVzBpT2x0ZGZYMD0iLCJrZXlBY2Nlc3MiOlt7InR5cGUiOiJ3cmFwcGVkIiwidXJsIjoiaHR0cDovL2xvY2FsaG9zdDo4MDgwIiwicHJvdG9jb2wiOiJrYXMiLCJ3cmFwcGVkS2V5IjoidFVTL1BPU2lQbThlejhoci9nTFRjemNZTk9La3FDRHJWYkEwVnR2Z2tvUGxwdDNQQ2VaU3QzZ3Z5UDVWSmVwTTJjanVQYVFiSVBpcjI5VnVSdk9UV2ZkM0VIdSs4MlQrRTRFWWxKQTNuVWw3RkE0TFBmYVBLV1pNc0xMR1JCSVVMWU9FYTFiZmtTL1JvV29BMCtvN1pRRVZDYWJnSTdiRUQySldkNmhtcmptYlJzNndJcDlRVzVLOEN3SVo2VWY5RjFxMEQ1Yk5pa2xsR2grYmlSbFdTbnBMMWxwT2hXb2tYMXVCbFNFUUgzbzNibVVxUzVVWlI0ZmFMbk1ucThkdG0vMGJyY041MGhTYitMU05WZHdnWkxLM000R05sRHhnc3A5MWNFbmI2aGZLS3pnUmNFQktLTEExdW9wVzR3QkRvQWphbllqZUJWVU92QWRCOXpOOU93PT0iLCJwb2xpY3lCaW5kaW5nIjp7ImFsZyI6IkhTMjU2IiwiaGFzaCI6IlpqQXpNR1l5WXpJeFpUQm1Nek5tTWpoaE1qRmpaakkyWkROaFpUazJOREUzWkRCaFpUazNOREkyTURBMU56VTFNVFUxTVdGaU0yUmpPRFExWm1NMllnPT0ifSwia2lkIjoicjEifV0sIm1ldGhvZCI6eyJhbGdvcml0aG0iOiJBRVMtMjU2LUdDTSIsIml2IjoiIiwiaXNTdHJlYW1hYmxlIjp0cnVlfSwiaW50ZWdyaXR5SW5mb3JtYXRpb24iOnsicm9vdFNpZ25hdHVyZSI6eyJhbGciOiJIUzI1NiIsInNpZyI6IlpHVmhZbUZrTURobE1EQm1NVFZtWXpCbU1XRTBNMkpoTmpoa05qQTFaVGsxTVRkbVpqaGtaRE5rTXpJNE5XWmtNV1F4TlRWbFl6YzBNRFV4T0RNd05nPT0ifSwic2VnbWVudEhhc2hBbGciOiJHTUFDIiwic2VnbWVudFNpemVEZWZhdWx0IjoyMDk3MTUyLCJlbmNyeXB0ZWRTZWdtZW50U2l6ZURlZmF1bHQiOjIwOTcxODAsInNlZ21lbnRzIjpbeyJoYXNoIjoiTWpJM1kyRm1PVEV3TWpFeE5HUTRaREU0WXpZMFkySXlOMkkxTnpkak16az0iLCJzZWdtZW50U2l6ZSI6OCwiZW5jcnlwdGVkU2VnbWVudFNpemUiOjM2fV19fSwicGF5bG9hZCI6eyJ0eXBlIjoicmVmZXJlbmNlIiwidXJsIjoiMC5wYXlsb2FkIiwicHJvdG9jb2wiOiJ6aXAiLCJtaW1lVHlwZSI6ImFwcGxpY2F0aW9uL29jdGV0LXN0cmVhbSIsImlzRW5jcnlwdGVkIjp0cnVlfX1QSwcIMKRTpa8FAACvBQAAUEsBAhQAFAAIAAAAAAAAAGiY7skkAAAAJAAAAAkAAAAAAAAAAAAAAAAAAAAAADAucGF5bG9hZFBLAQIUABQACAAAAAAAAAAwpFOlrwUAAK8FAAANAAAAAAAAAAAAAAAAAFsAAABtYW5pZmVzdC5qc29uUEsFBgAAAAACAAIAcgAAAEUGAAAAAA=="
+
+	decoded, err := base64.StdEncoding.DecodeString(specNamedManifestTdf)
+	require.NoError(t, err)
+
+	in := bytes.NewReader(decoded)
+	isValid, err := sdk.IsValidTdf(in)
+	require.NoError(t, err)
+	assert.True(t, isValid)
+
+	// Try again to see if the reader has been reset. This matters more on the
+	// spec name than on the non-aligned one: Manifest() may issue two reads
+	// against the shared seeker, so anything that leaves the stream parked
+	// after the first lookup breaks only here.
+	isValid, err = sdk.IsValidTdf(in)
+	require.NoError(t, err)
 	assert.True(t, isValid)
 }
 
@@ -312,4 +342,199 @@ func Test_GetType_Invalid2Bytes(t *testing.T) {
 	tdfType := sdk.GetTdfType(in)
 
 	assert.Equal(t, sdk.Invalid, tdfType)
+}
+
+func TestErrHealthCheckUnsupported_Distinct(t *testing.T) {
+	assert.NotEqual(t, sdk.ErrHealthCheckUnsupported, sdk.ErrPlatformUnreachable)
+	assert.Equal(t, "health check not supported in IPC mode", sdk.ErrHealthCheckUnsupported.Error())
+}
+
+// newHealthTestServer starts an httptest.Server serving grpc.health.v1.Health with the
+// configured status for the empty service name (the SDK's reachability probe).
+func newHealthTestServer(t *testing.T, status grpchealth.Status) *httptest.Server {
+	t.Helper()
+	checker := grpchealth.NewStaticChecker()
+	checker.SetStatus("", status)
+	mux := http.NewServeMux()
+	path, handler := grpchealth.NewHandler(checker)
+	mux.Handle(path, handler)
+	return httptest.NewServer(mux)
+}
+
+func TestSDK_IsHealthy_IPCMode_ReturnsErrHealthCheckUnsupported(t *testing.T) {
+	// IPC mode requires a coreConn; provide a dummy one to satisfy sdk.New.
+	dummyConn := &sdk.ConnectRPCConnection{
+		Endpoint: "http://localhost:0",
+		Client:   http.DefaultClient,
+	}
+	s, err := sdk.New("",
+		sdk.WithIPC(),
+		sdk.WithCustomCoreConnection(dummyConn),
+		sdk.WithPlatformConfiguration(sdk.PlatformConfiguration{
+			"idp": map[string]interface{}{
+				"issuer":                 "https://example.org",
+				"authorization_endpoint": "https://example.org/auth",
+				"token_endpoint":         "https://example.org/token",
+			},
+		}),
+	)
+	require.NoError(t, err)
+	require.NotNil(t, s)
+
+	healthy, err := s.IsHealthy(context.Background())
+	assert.False(t, healthy)
+	require.ErrorIs(t, err, sdk.ErrHealthCheckUnsupported)
+}
+
+func TestSDK_IsHealthy_Unreachable_ReturnsErrPlatformUnreachable(t *testing.T) {
+	s, err := sdk.New(badPlatformEndpoint,
+		sdk.WithPlatformConfiguration(sdk.PlatformConfiguration{
+			"idp": map[string]interface{}{
+				"issuer":                 "https://example.org",
+				"authorization_endpoint": "https://example.org/auth",
+				"token_endpoint":         "https://example.org/token",
+			},
+		}),
+	)
+	require.NoError(t, err)
+	require.NotNil(t, s)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	start := time.Now()
+	healthy, err := s.IsHealthy(ctx)
+	elapsed := time.Since(start)
+
+	assert.False(t, healthy)
+	require.ErrorIs(t, err, sdk.ErrPlatformUnreachable)
+	assert.Less(t, elapsed, 2*time.Second, "health check should return promptly against a closed port, not wait for the ctx deadline")
+}
+
+func TestSDK_IsHealthy_ContextCanceled_ReturnsQuickly(t *testing.T) {
+	s, err := sdk.New(badPlatformEndpoint,
+		sdk.WithPlatformConfiguration(sdk.PlatformConfiguration{
+			"idp": map[string]interface{}{
+				"issuer":                 "https://example.org",
+				"authorization_endpoint": "https://example.org/auth",
+				"token_endpoint":         "https://example.org/token",
+			},
+		}),
+	)
+	require.NoError(t, err)
+	require.NotNil(t, s)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel() // canceled before the call
+
+	start := time.Now()
+	healthy, err := s.IsHealthy(ctx)
+	elapsed := time.Since(start)
+
+	assert.False(t, healthy)
+	require.Error(t, err)
+	require.ErrorIs(t, err, sdk.ErrPlatformUnreachable)
+	require.ErrorIs(t, err, context.Canceled)
+	assert.Less(t, elapsed, 500*time.Millisecond, "pre-canceled ctx should short-circuit")
+}
+
+func TestSDK_IsHealthy_Serving(t *testing.T) {
+	ts := newHealthTestServer(t, grpchealth.StatusServing)
+	defer ts.Close()
+
+	s, err := sdk.New(ts.URL,
+		sdk.WithPlatformConfiguration(sdk.PlatformConfiguration{
+			"idp": map[string]interface{}{
+				"issuer":                 "https://example.org",
+				"authorization_endpoint": "https://example.org/auth",
+				"token_endpoint":         "https://example.org/token",
+			},
+		}),
+	)
+	require.NoError(t, err)
+	require.NotNil(t, s)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+
+	healthy, err := s.IsHealthy(ctx)
+	require.NoError(t, err)
+	assert.True(t, healthy)
+}
+
+func TestSDK_IsHealthy_NotServing(t *testing.T) {
+	ts := newHealthTestServer(t, grpchealth.StatusNotServing)
+	defer ts.Close()
+
+	s, err := sdk.New(ts.URL,
+		sdk.WithPlatformConfiguration(sdk.PlatformConfiguration{
+			"idp": map[string]interface{}{
+				"issuer":                 "https://example.org",
+				"authorization_endpoint": "https://example.org/auth",
+				"token_endpoint":         "https://example.org/token",
+			},
+		}),
+	)
+	require.NoError(t, err)
+	require.NotNil(t, s)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+
+	healthy, err := s.IsHealthy(ctx)
+	require.NoError(t, err)
+	assert.False(t, healthy)
+}
+
+// TestSDK_IsHealthy_Unknown locks the contract that an UNKNOWN status from a reachable
+// platform returns (false, nil) — distinct from transport errors which wrap ErrPlatformUnreachable.
+func TestSDK_IsHealthy_Unknown(t *testing.T) {
+	ts := newHealthTestServer(t, grpchealth.StatusUnknown)
+	defer ts.Close()
+
+	s, err := sdk.New(ts.URL,
+		sdk.WithPlatformConfiguration(sdk.PlatformConfiguration{
+			"idp": map[string]interface{}{
+				"issuer":                 "https://example.org",
+				"authorization_endpoint": "https://example.org/auth",
+				"token_endpoint":         "https://example.org/token",
+			},
+		}),
+	)
+	require.NoError(t, err)
+	require.NotNil(t, s)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+
+	healthy, err := s.IsHealthy(ctx)
+	require.NoError(t, err)
+	assert.False(t, healthy)
+}
+
+// TestSDK_IsHealthy_TrailingSlashEndpoint verifies that a platform endpoint
+// with a trailing slash does not produce a double-slash in the request URL,
+// which strict HTTP routers can reject.
+func TestSDK_IsHealthy_TrailingSlashEndpoint(t *testing.T) {
+	ts := newHealthTestServer(t, grpchealth.StatusServing)
+	defer ts.Close()
+
+	s, err := sdk.New(ts.URL+"/",
+		sdk.WithPlatformConfiguration(sdk.PlatformConfiguration{
+			"idp": map[string]interface{}{
+				"issuer":                 "https://example.org",
+				"authorization_endpoint": "https://example.org/auth",
+				"token_endpoint":         "https://example.org/token",
+			},
+		}),
+	)
+	require.NoError(t, err)
+	require.NotNil(t, s)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+
+	healthy, err := s.IsHealthy(ctx)
+	require.NoError(t, err)
+	assert.True(t, healthy)
 }

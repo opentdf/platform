@@ -14,6 +14,7 @@ import (
 	"github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/policy/actions"
 	"google.golang.org/protobuf/types/known/structpb"
+	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
 // Constants for test namespaces
@@ -4074,13 +4075,32 @@ func (s *PDPTestSuite) Test_GetDecision_DirectEntitlements() {
 	}
 	attr2ValueFQN := attr2.GetValues()[0].GetFqn()
 
+	attr3 := &policy.Attribute{
+		Fqn:  "https://demo.com/attr/adhoc_3",
+		Rule: policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
+		Values: []*policy.Value{
+			{
+				Fqn:    "https://demo.com/attr/adhoc_3/value/active_value",
+				Value:  "active_value",
+				Active: wrapperspb.Bool(true),
+			},
+			{
+				Fqn:    "https://demo.com/attr/adhoc_3/value/inactive_value",
+				Value:  "inactive_value",
+				Active: wrapperspb.Bool(false),
+			},
+		},
+	}
+	attr3ActiveValueFQN := attr3.GetValues()[0].GetFqn()
+	attr3InactiveValueFQN := attr3.GetValues()[1].GetFqn()
+
 	resAttr1ValueFqn := createAttributeValueResource(attr1ValueFQN, attr1ValueFQN)
 	resAttr2ValueFqn := createAttributeValueResource(attr2ValueFQN, attr2ValueFQN)
 
 	pdp, err := NewPolicyDecisionPoint(
 		ctx,
 		s.logger,
-		[]*policy.Attribute{attr1, attr2},
+		[]*policy.Attribute{attr1, attr2, attr3},
 		[]*policy.SubjectMapping{},
 		[]*policy.RegisteredResource{},
 		true, // Allow direct entitlements
@@ -4176,6 +4196,77 @@ func (s *PDPTestSuite) Test_GetDecision_DirectEntitlements() {
 			attr1ValueFQN: false,
 			// not entitled to FQN
 			attr2ValueFQN: false,
+		})
+	})
+
+	s.Run("not entitled to a deactivated value", func() {
+		entityRep := &entityresolutionV2.EntityRepresentation{
+			DirectEntitlements: []*entityresolutionV2.DirectEntitlement{
+				{
+					AttributeValueFqn: attr3InactiveValueFQN,
+					Actions:           []string{actions.ActionNameCreate},
+				},
+			},
+		}
+
+		decision, entitlements, err := pdp.GetDecision(ctx, entityRep, testActionCreate, []*authz.Resource{
+			createAttributeValueResource(attr3InactiveValueFQN, attr3InactiveValueFQN),
+		})
+		s.Require().NoError(err)
+		s.Require().NotNil(decision)
+
+		s.False(decision.AllPermitted, "deactivated attribute value must not be entitled by a direct entitlement")
+		s.NotContains(entitlements, attr3InactiveValueFQN)
+		s.assertAllDecisionResults(decision, map[string]bool{
+			attr3InactiveValueFQN: false,
+		})
+	})
+
+	s.Run("not entitled to a resource carrying both an active and a deactivated value", func() {
+		entityRep := &entityresolutionV2.EntityRepresentation{
+			DirectEntitlements: []*entityresolutionV2.DirectEntitlement{
+				{
+					AttributeValueFqn: attr3ActiveValueFQN,
+					Actions:           []string{actions.ActionNameCreate},
+				},
+				{
+					AttributeValueFqn: attr3InactiveValueFQN,
+					Actions:           []string{actions.ActionNameCreate},
+				},
+			},
+		}
+
+		decision, _, err := pdp.GetDecision(ctx, entityRep, testActionCreate, []*authz.Resource{
+			createAttributeValueResource("mixed-active-state-resource", attr3ActiveValueFQN, attr3InactiveValueFQN),
+		})
+		s.Require().NoError(err)
+		s.Require().NotNil(decision)
+
+		s.False(decision.AllPermitted, "a resource carrying a deactivated value must not be entitled")
+		s.assertAllDecisionResults(decision, map[string]bool{
+			"mixed-active-state-resource": false,
+		})
+	})
+
+	s.Run("entitled to the active sibling of a deactivated value", func() {
+		entityRep := &entityresolutionV2.EntityRepresentation{
+			DirectEntitlements: []*entityresolutionV2.DirectEntitlement{
+				{
+					AttributeValueFqn: attr3ActiveValueFQN,
+					Actions:           []string{actions.ActionNameCreate},
+				},
+			},
+		}
+
+		decision, _, err := pdp.GetDecision(ctx, entityRep, testActionCreate, []*authz.Resource{
+			createAttributeValueResource(attr3ActiveValueFQN, attr3ActiveValueFQN),
+		})
+		s.Require().NoError(err)
+		s.Require().NotNil(decision)
+
+		s.True(decision.AllPermitted, "deactivation of a sibling value must not affect the active value")
+		s.assertAllDecisionResults(decision, map[string]bool{
+			attr3ActiveValueFQN: true,
 		})
 	})
 }

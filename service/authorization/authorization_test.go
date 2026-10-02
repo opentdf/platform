@@ -737,6 +737,10 @@ func Test_GetEntitlementsFqnCasing(t *testing.T) {
 
 func Test_GetEntitlements_HandlesPagination(t *testing.T) {
 	logger := logger.CreateTestLogger()
+	smPaginationOffset = 3
+	smListCallCount = 0
+	attrPaginationOffset = 3
+	attrListCallCount = 0
 
 	listAttributeResp = attr.ListAttributesResponse{}
 	attrDef := policy.Attribute{
@@ -784,6 +788,7 @@ func Test_GetEntitlements_HandlesPagination(t *testing.T) {
 	require.NoError(t, err)
 
 	as := AuthorizationService{
+		config: &Config{Rego: CustomRego{Path: "custom.rego"}},
 		logger: logger,
 		sdk: &otdf.SDK{
 			SubjectMapping:  &paginatedMockSubjectMappingClient{},
@@ -1281,6 +1286,73 @@ func Test_GetDecisions_RA_FQN_Edge_Cases(t *testing.T) {
 
 	assert.Len(t, resp.Msg.GetDecisionResponses(), 1)
 	assert.Equal(t, authorization.DecisionResponse_DECISION_PERMIT, resp.Msg.GetDecisionResponses()[0].GetDecision())
+}
+
+// When the attribute-definition load fails with resource_exhausted (an attribute with a very
+// large number of values, #3821), the v1 GetDecisions error should tell the caller to upgrade
+// to v2, while preserving the resource_exhausted code and the underlying message.
+func Test_GetDecisions_ResourceExhausted_HintsV2(t *testing.T) {
+	logger := logger.CreateTestLogger()
+
+	listAttributeResp = attr.ListAttributesResponse{}
+	resolveEntitiesResp = entityresolution.ResolveEntitiesResponse{
+		EntityRepresentations: []*entityresolution.EntityRepresentation{{OriginalId: "e1"}},
+	}
+
+	testrego := rego.New(
+		rego.SetRegoVersion(ast.RegoV0),
+		rego.Query("data.example.p"),
+		rego.Module("example.rego",
+			`package example
+			p = {"e1":[]} { true }`,
+		))
+	prepared, err := testrego.PrepareForEval(t.Context())
+	require.NoError(t, err)
+
+	as := AuthorizationService{
+		logger: logger,
+		sdk: &otdf.SDK{
+			SubjectMapping:  &mySubjectMappingClient{},
+			Attributes:      &myAttributesClient{},
+			EntityResoution: &myERSClient{},
+		},
+		eval:   prepared,
+		Tracer: noop.NewTracerProvider().Tracer(""),
+	}
+
+	getAttributesByValueFqnsResponse = attr.GetAttributeValuesByFqnsResponse{}
+	errGetAttributesByValueFqns = connect.NewError(connect.CodeResourceExhausted, errors.New("message size 8205724 is larger than configured max 4194304"))
+	// Reset the shared mock error even if an assertion below aborts the test.
+	t.Cleanup(func() { errGetAttributesByValueFqns = nil })
+
+	req := connect.Request[authorization.GetDecisionsRequest]{
+		Msg: &authorization.GetDecisionsRequest{
+			DecisionRequests: []*authorization.DecisionRequest{
+				{
+					Actions: []*policy.Action{},
+					EntityChains: []*authorization.EntityChain{
+						{
+							Id: "ec1",
+							Entities: []*authorization.Entity{
+								{Id: "e1", EntityType: &authorization.Entity_UserName{UserName: "bob.smith"}, Category: authorization.Entity_CATEGORY_SUBJECT},
+							},
+						},
+					},
+					ResourceAttributes: []*authorization.ResourceAttribute{
+						{AttributeValueFqns: []string{"https://example.com/attr/foo/value/value1"}},
+					},
+				},
+			},
+		},
+	}
+
+	ctx := audit.ContextWithActorID(t.Context(), "test-actor-id")
+	resp, err := as.GetDecisions(ctx, &req)
+
+	require.Error(t, err)
+	assert.Nil(t, resp)
+	assert.Equal(t, connect.CodeInternal, connect.CodeOf(err), "resource_exhausted is surfaced as internal")
+	assert.Contains(t, err.Error(), "v2", "error should point the caller to the v2 authorization API")
 }
 
 func Test_GetDecisionsAllOf_Pass_EC_RA_Length_Mismatch(t *testing.T) {

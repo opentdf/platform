@@ -2,7 +2,6 @@ package audit
 
 import (
 	"context"
-	"log/slog"
 	"net/http"
 
 	"connectrpc.com/connect"
@@ -11,13 +10,13 @@ import (
 	"github.com/opentdf/platform/service/internal/server/realip"
 )
 
-// ContextServerInterceptor allows audit events to track request state.
-// This is required for audit logging.
-func ContextServerInterceptor(logger *slog.Logger) connect.UnaryInterceptorFunc {
+// ContextServerInterceptor adds request attribution without owning audit delivery.
+func ContextServerInterceptor() connect.UnaryInterceptorFunc {
 	interceptor := func(next connect.UnaryFunc) connect.UnaryFunc {
 		return connect.UnaryFunc(func(ctx context.Context, req connect.AnyRequest) (connect.AnyResponse, error) {
 			// Get metadata from the context
 			headers := req.Header()
+			auditData := GetAuditDataFromContext(ctx)
 
 			// Add request ID from existing header or create a new one
 			var requestID uuid.UUID
@@ -32,47 +31,21 @@ func ContextServerInterceptor(logger *slog.Logger) connect.UnaryInterceptorFunc 
 			} else {
 				requestID = uuid.New()
 			}
-			tx := auditTransaction{
-				ContextData: ContextData{
-					RequestID: requestID,
-					UserAgent: "",
-					RequestIP: "",
-					ActorID:   "",
-				},
-				events: make([]pendingEvent, 0),
+			data := ContextData{
+				RequestID: requestID,
+				ActorID:   auditData.ActorID,
 			}
-			requestIPFromMetadata := headers[http.CanonicalHeaderKey(sdkAudit.RequestIPHeaderKey.String())]
-			if len(requestIPFromMetadata) > 0 {
-				tx.RequestIP = requestIPFromMetadata[0]
-			} else {
-				// FIXME AFAICT the RealIPUnaryInterceptor is not being used
-				// If we do use it, make sure it is added *before* this interceptor
-				ip := realip.FromContext(ctx)
-				if ip.String() != "" && ip.String() != "<nil>" {
-					tx.RequestIP = ip.String()
-				}
-			}
-			actorIDFromMetadata := headers[http.CanonicalHeaderKey(sdkAudit.ActorIDHeaderKey.String())]
-			if len(actorIDFromMetadata) > 0 {
-				tx.ActorID = actorIDFromMetadata[0]
+			ip := realip.FromContext(ctx)
+			if ip != nil {
+				data.RequestIP = ip.String()
+				ctx = context.WithValue(ctx, sdkAudit.RequestIPContextKey, data.RequestIP)
 			}
 			userAgent := headers[http.CanonicalHeaderKey(sdkAudit.UserAgentHeaderKey.String())]
 			if len(userAgent) > 0 {
-				tx.UserAgent = userAgent[0]
+				data.UserAgent = userAgent[0]
 			}
-			ctx = context.WithValue(ctx, contextKey{}, &tx)
-
-			defer func() {
-				if r := recover(); r != nil {
-					if err, ok := r.(error); ok {
-						tx.logClose(ctx, logger, false, err)
-					} else {
-						tx.logClose(ctx, logger, false, nil)
-					}
-					panic(r)
-				}
-				tx.logClose(ctx, logger, true, nil)
-			}()
+			ctx = context.WithValue(ctx, sdkAudit.RequestIDContextKey, requestID)
+			ctx = context.WithValue(ctx, contextKey{}, data)
 
 			return next(ctx, req)
 		})

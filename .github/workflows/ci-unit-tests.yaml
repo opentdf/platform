@@ -1,0 +1,35 @@
+name: CI unit tests
+
+on:
+  pull_request:
+    paths:
+      - '.github/actions/ci-checks/**'
+      - '.github/ignore-checks-workflow-policy-paths.json'
+      - '.github/workflows/checks.yaml'
+      - '.github/workflows/ci-unit-tests.yaml'
+  push:
+    branches: [main]
+    paths:
+      - '.github/actions/ci-checks/**'
+      - '.github/ignore-checks-workflow-policy-paths.json'
+      - '.github/workflows/checks.yaml'
+      - '.github/workflows/ci-unit-tests.yaml'
+
+permissions: {}
+
+jobs:
+  test:
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
+        with:
+          node-version: '24'
+      - run: npm ci --ignore-scripts
+        working-directory: .github/actions/ci-checks
+      - run: npm test
+        working-directory: .github/actions/ci-checks

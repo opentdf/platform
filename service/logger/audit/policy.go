@@ -41,17 +41,23 @@ func CreatePolicyEvent(ctx context.Context, isSuccess bool, params PolicyEventPa
 			ID:   params.ObjectID,
 		},
 		Action: eventAction{
-			Type:   params.ActionType,
-			Result: auditEventActionResult,
+			EventObjectAction: EventObjectAction{
+				Type:   params.ActionType,
+				Result: auditEventActionResult,
+			},
 		},
 		Actor: auditEventActor{
-			ID:         auditDataFromContext.ActorID,
-			Attributes: make([]interface{}, 0),
+			EventObjectActor: EventObjectActor{
+				ID:         auditDataFromContext.ActorID,
+				Attributes: make([]interface{}, 0),
+			},
 		},
 		ClientInfo: eventClientInfo{
-			Platform:  "policy",
-			UserAgent: auditDataFromContext.UserAgent,
-			RequestIP: auditDataFromContext.RequestIP,
+			EventClientInfo: EventClientInfo{
+				Platform:  "policy",
+				UserAgent: auditDataFromContext.UserAgent,
+				RequestIP: auditDataFromContext.RequestIP,
+			},
 		},
 		RequestID: auditDataFromContext.RequestID,
 		Timestamp: time.Now().Format(time.RFC3339),

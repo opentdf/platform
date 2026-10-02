@@ -5,9 +5,12 @@ import (
 	"testing"
 
 	"buf.build/go/protovalidate"
+	"connectrpc.com/connect"
 	"github.com/opentdf/platform/protocol/go/common"
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/actions"
+	"github.com/opentdf/platform/service/logger"
+	policyconfig "github.com/opentdf/platform/service/policy/config"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -56,6 +59,21 @@ func (s *ActionSuite) SetupSuite() {
 
 func TestActionServiceProtos(t *testing.T) {
 	suite.Run(t, new(ActionSuite))
+}
+
+func (s *ActionSuite) Test_CreateAction_NamespacedPolicyRequiresNamespace() {
+	service := &ActionService{
+		logger: logger.CreateTestLogger(),
+		config: &policyconfig.Config{NamespacedPolicy: true},
+	}
+
+	_, err := service.CreateAction(s.T().Context(), connect.NewRequest(&actions.CreateActionRequest{
+		Name: "valid_name",
+	}))
+
+	s.Require().Error(err)
+	s.Require().Equal(connect.CodeInvalidArgument, connect.CodeOf(err))
+	s.Require().ErrorIs(err, errNamespacedPolicyNamespaceRequired)
 }
 
 func (s *ActionSuite) Test_CreateActionRequest_Fails() {

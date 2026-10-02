@@ -60,8 +60,10 @@ func ExampleWriter() {
 func ExampleWriter_withAttributes() {
 	ctx := context.Background()
 
-	// Create writer with custom integrity algorithm
-	writer, err := tdf.NewWriter(ctx, tdf.WithIntegrityAlgorithm(tdf.GMAC))
+	// Create writer with an explicit root integrity algorithm. HS256 is the
+	// only legal value -- the root signs the aggregate hash, which never went
+	// through the AEAD, so there is no tag for GMAC to read out.
+	writer, err := tdf.NewWriter(ctx, tdf.WithIntegrityAlgorithm(tdf.RootHS256))
 	if err != nil {
 		log.Println(err)
 		return
@@ -239,9 +241,11 @@ func ExampleWriter_outOfOrder() {
 func ExampleWriter_largeFile() {
 	ctx := context.Background()
 
-	// Configure for large file processing
+	// Configure for large file processing. GMAC is the default and the only
+	// supported segment algorithm; naming it costs nothing per segment because
+	// the tag is read out of ciphertext the cipher already produced.
 	writer, err := tdf.NewWriter(ctx,
-		tdf.WithSegmentIntegrityAlgorithm(tdf.GMAC), // Faster for many segments
+		tdf.WithSegmentIntegrityAlgorithm(tdf.SegmentGMAC),
 	)
 	if err != nil {
 		log.Println(err)

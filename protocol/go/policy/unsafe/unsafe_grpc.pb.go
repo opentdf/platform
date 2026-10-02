@@ -28,6 +28,7 @@ const (
 	UnsafeService_UnsafeUpdateAttributeValue_FullMethodName     = "/policy.unsafe.UnsafeService/UnsafeUpdateAttributeValue"
 	UnsafeService_UnsafeReactivateAttributeValue_FullMethodName = "/policy.unsafe.UnsafeService/UnsafeReactivateAttributeValue"
 	UnsafeService_UnsafeDeleteAttributeValue_FullMethodName     = "/policy.unsafe.UnsafeService/UnsafeDeleteAttributeValue"
+	UnsafeService_UnsafeUpdateKey_FullMethodName                = "/policy.unsafe.UnsafeService/UnsafeUpdateKey"
 	UnsafeService_UnsafeDeleteKasKey_FullMethodName             = "/policy.unsafe.UnsafeService/UnsafeDeleteKasKey"
 )
 
@@ -56,6 +57,7 @@ type UnsafeServiceClient interface {
 	// --------------------------------------*
 	// Kas Key RPCs
 	// ---------------------------------------
+	UnsafeUpdateKey(ctx context.Context, in *UnsafeUpdateKeyRequest, opts ...grpc.CallOption) (*UnsafeUpdateKeyResponse, error)
 	UnsafeDeleteKasKey(ctx context.Context, in *UnsafeDeleteKasKeyRequest, opts ...grpc.CallOption) (*UnsafeDeleteKasKeyResponse, error)
 }
 
@@ -148,6 +150,15 @@ func (c *unsafeServiceClient) UnsafeDeleteAttributeValue(ctx context.Context, in
 	return out, nil
 }
 
+func (c *unsafeServiceClient) UnsafeUpdateKey(ctx context.Context, in *UnsafeUpdateKeyRequest, opts ...grpc.CallOption) (*UnsafeUpdateKeyResponse, error) {
+	out := new(UnsafeUpdateKeyResponse)
+	err := c.cc.Invoke(ctx, UnsafeService_UnsafeUpdateKey_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *unsafeServiceClient) UnsafeDeleteKasKey(ctx context.Context, in *UnsafeDeleteKasKeyRequest, opts ...grpc.CallOption) (*UnsafeDeleteKasKeyResponse, error) {
 	out := new(UnsafeDeleteKasKeyResponse)
 	err := c.cc.Invoke(ctx, UnsafeService_UnsafeDeleteKasKey_FullMethodName, in, out, opts...)
@@ -182,6 +193,7 @@ type UnsafeServiceServer interface {
 	// --------------------------------------*
 	// Kas Key RPCs
 	// ---------------------------------------
+	UnsafeUpdateKey(context.Context, *UnsafeUpdateKeyRequest) (*UnsafeUpdateKeyResponse, error)
 	UnsafeDeleteKasKey(context.Context, *UnsafeDeleteKasKeyRequest) (*UnsafeDeleteKasKeyResponse, error)
 	mustEmbedUnimplementedUnsafeServiceServer()
 }
@@ -216,6 +228,9 @@ func (UnimplementedUnsafeServiceServer) UnsafeReactivateAttributeValue(context.C
 }
 func (UnimplementedUnsafeServiceServer) UnsafeDeleteAttributeValue(context.Context, *UnsafeDeleteAttributeValueRequest) (*UnsafeDeleteAttributeValueResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method UnsafeDeleteAttributeValue not implemented")
+}
+func (UnimplementedUnsafeServiceServer) UnsafeUpdateKey(context.Context, *UnsafeUpdateKeyRequest) (*UnsafeUpdateKeyResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method UnsafeUpdateKey not implemented")
 }
 func (UnimplementedUnsafeServiceServer) UnsafeDeleteKasKey(context.Context, *UnsafeDeleteKasKeyRequest) (*UnsafeDeleteKasKeyResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method UnsafeDeleteKasKey not implemented")
@@ -395,6 +410,24 @@ func _UnsafeService_UnsafeDeleteAttributeValue_Handler(srv interface{}, ctx cont
 	return interceptor(ctx, in, info, handler)
 }
 
+func _UnsafeService_UnsafeUpdateKey_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UnsafeUpdateKeyRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UnsafeServiceServer).UnsafeUpdateKey(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UnsafeService_UnsafeUpdateKey_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UnsafeServiceServer).UnsafeUpdateKey(ctx, req.(*UnsafeUpdateKeyRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _UnsafeService_UnsafeDeleteKasKey_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(UnsafeDeleteKasKeyRequest)
 	if err := dec(in); err != nil {
@@ -455,6 +488,10 @@ var UnsafeService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "UnsafeDeleteAttributeValue",
 			Handler:    _UnsafeService_UnsafeDeleteAttributeValue_Handler,
+		},
+		{
+			MethodName: "UnsafeUpdateKey",
+			Handler:    _UnsafeService_UnsafeUpdateKey_Handler,
 		},
 		{
 			MethodName: "UnsafeDeleteKasKey",

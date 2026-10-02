@@ -37,6 +37,8 @@ type ActionService struct {
 	config   *policyconfig.Config
 }
 
+var errNamespacedPolicyNamespaceRequired = errors.New("either namespace_id or namespace_fqn must be provided")
+
 func OnConfigUpdate(actionsSvc *ActionService) serviceregistry.OnConfigUpdateHook {
 	return func(_ context.Context, cfg config.ServiceConfig) error {
 		sharedCfg, err := policyconfig.GetSharedPolicyConfig(cfg)
@@ -114,7 +116,7 @@ func (a *ActionService) ListActions(ctx context.Context, req *connect.Request[ac
 func (a *ActionService) CreateAction(ctx context.Context, req *connect.Request[actions.CreateActionRequest]) (*connect.Response[actions.CreateActionResponse], error) {
 	a.logger.DebugContext(ctx, "creating action", slog.String("name", req.Msg.GetName()))
 	if a.config.NamespacedPolicy && req.Msg.GetNamespaceId() == "" && req.Msg.GetNamespaceFqn() == "" {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("either namespace_id or namespace_fqn must be provided"))
+		return nil, connect.NewError(connect.CodeInvalidArgument, errNamespacedPolicyNamespaceRequired)
 	}
 
 	auditParams := audit.PolicyEventParams{
@@ -131,15 +133,15 @@ func (a *ActionService) CreateAction(ctx context.Context, req *connect.Request[a
 
 		auditParams.ObjectID = action.GetId()
 		auditParams.Original = action
-		a.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
 
 		rsp.Action = action
 		return nil
 	})
 	if err != nil {
-		a.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
+		a.logger.LogPolicyCRUDFailure(ctx, auditParams)
 		return nil, db.StatusifyError(ctx, a.logger, err, db.ErrTextCreationFailed, slog.String("action", req.Msg.String()))
 	}
+	a.logger.LogPolicyCRUDSuccess(ctx, auditParams)
 	return connect.NewResponse(rsp), nil
 }
 
@@ -171,15 +173,15 @@ func (a *ActionService) UpdateAction(ctx context.Context, req *connect.Request[a
 
 		auditParams.Original = original
 		auditParams.Updated = updated
-		a.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
 
 		rsp.Action = updated
 		return nil
 	})
 	if err != nil {
-		a.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
+		a.logger.LogPolicyCRUDFailure(ctx, auditParams)
 		return nil, db.StatusifyError(ctx, a.logger, err, db.ErrTextUpdateFailed, slog.String("action", req.Msg.String()))
 	}
+	a.logger.LogPolicyCRUDSuccess(ctx, auditParams)
 
 	return connect.NewResponse(rsp), nil
 }
@@ -197,11 +199,11 @@ func (a *ActionService) DeleteAction(ctx context.Context, req *connect.Request[a
 
 	deleted, err := a.dbClient.DeleteAction(ctx, req.Msg)
 	if err != nil {
-		a.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
+		a.logger.LogPolicyCRUDFailure(ctx, auditParams)
 		return nil, db.StatusifyError(ctx, a.logger, err, db.ErrTextDeletionFailed, slog.String("action", req.Msg.String()))
 	}
 
-	a.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
+	a.logger.LogPolicyCRUDSuccess(ctx, auditParams)
 	rsp.Action = deleted
 
 	return connect.NewResponse(rsp), nil

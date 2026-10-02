@@ -51,6 +51,10 @@ https://github.com/opentdf/platform/blob/main/service/go.mod#L3
    ```shell
    go run ./service provision keycloak
    ```
+
+   > [!NOTE]
+   > In this local quickstart, Keycloak is the external OIDC provider. OpenTDF uses the resulting access tokens and claims for authentication and authorization, but OpenTDF is not itself an IdP. See [OpenTDF and OpenID Connect (OIDC)](./OIDC.md).
+
 4. **Add Sample Attributes and Metadata**
    ```shell
    go run ./service provision fixtures
@@ -65,7 +69,7 @@ https://github.com/opentdf/platform/blob/main/service/go.mod#L3
 You can now access platform services at http://localhost:8080/ , and Keycloak at http://localhost:8888/auth/ .
 
 ##  Next steps
-* Try out our CLI (`otdfctl`): https://github.com/opentdf/otdfctl
+* Try out our CLI (`otdfctl`): https://github.com/opentdf/platform/otdfctl
    ```sh
    otdfctl auth client-credentials --host http://localhost:8080 --client-id opentdf --client-secret secret
    ```

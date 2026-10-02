@@ -68,44 +68,47 @@ func EvaluateSubjectMappingsWithActions(
 
 				// each subject mapping that is true should permit the actions on the mapped value
 				if subjectMappingResult {
-					// add value FQN to the entitlements set
 					if _, ok := entitlementsSet[valueFQN]; !ok {
 						entitlementsSet[valueFQN] = make([]*policy.Action, 0)
 					}
-					actions := subjectMapping.GetActions()
-
-					// Cache each action by name to deduplicate.
-					// In normal operation, same-name conflicting actions should be prevented
-					// earlier by policy service create/update validation, which enforces
-					// namespace consistency between subject mappings and referenced actions.
-					// This extra conflict check is defensive for unexpected or mixed legacy
-					// states in-memory; if encountered, keep deterministic behavior and log.
-					m := make(map[string]*policy.Action, len(actions))
-					for _, action := range actions {
-						key := strings.ToLower(action.GetName())
-						if existing, ok := m[key]; ok {
-							if actionsConflict(existing, action) {
-								if l != nil {
-									l.Warn(
-										"subject mapping action name collision with conflicting identity; using deterministic preference",
-										slog.String("action_name", key),
-										slog.Any("existing_action", existing),
-										slog.Any("candidate_action", action),
-									)
-								}
-							}
-							m[key] = preferAction(existing, action)
-							continue
-						}
-						m[key] = action
-					}
-					entitlementsSet[valueFQN] = append(entitlementsSet[valueFQN], slices.Collect(maps.Values(m))...)
+					entitlementsSet[valueFQN] = append(
+						entitlementsSet[valueFQN],
+						dedupeSubjectMappingActions(subjectMapping.GetActions(), l)...,
+					)
 				}
 			}
 		}
 	}
 
 	return entitlementsSet, nil
+}
+
+// dedupeSubjectMappingActions caches actions by lowercased name and returns
+// the deduplicated set. In normal operation, same-name conflicting actions
+// should be prevented earlier by policy service create/update validation,
+// which enforces namespace consistency between subject mappings and referenced
+// actions. This extra conflict check is defensive for unexpected or mixed
+// legacy states in-memory; if encountered, keep deterministic behavior and log.
+func dedupeSubjectMappingActions(actions []*policy.Action, l *slog.Logger) []*policy.Action {
+	m := make(map[string]*policy.Action, len(actions))
+	for _, action := range actions {
+		key := strings.ToLower(action.GetName())
+		existing, ok := m[key]
+		if !ok {
+			m[key] = action
+			continue
+		}
+		if actionsConflict(existing, action) && l != nil {
+			l.Warn(
+				"subject mapping action name collision with conflicting identity; using deterministic preference",
+				slog.String("action_name", key),
+				slog.Any("existing_action", existing),
+				slog.Any("candidate_action", action),
+			)
+		}
+		m[key] = preferAction(existing, action)
+	}
+	return slices.Collect(maps.Values(m))
 }
 
 func actionsConflict(existing *policy.Action, candidate *policy.Action) bool {

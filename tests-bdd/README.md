@@ -116,11 +116,12 @@ that their tests are not sharing state.
 
 [Local Platform Step Definitions](cukes/steps_localplatform.go) handle the provisioning of keycloak, bootstrapping
 of the platform and provisioning of the platform.  This is handled in the following modes:
-- default local platform: TBD
-- empty local platform: stands up platform without provisioning any platform policy and uses a [keycloak profile with no users](cukes/resources/keycloak_base.template)
+- `Given an empty local platform`: stands up platform without provisioning any platform policy and uses a [keycloak profile with no users](cukes/resources/keycloak_base.template)
   - add users and their attributes as part of step defs
   - add policy as part of step defs
-- local platform with a parameterized path to platform policy (optional) and keycloak template. See [example keycloak template](cukes/resources/keycloak_base.template) 
+- `Given a default local platform`: stands up the platform and loads the default demo policy from [`cukes/resources/policy_default.yaml`](cukes/resources/policy_default.yaml) (namespace `demo.com` with `department` ANY_OF + `classification` HIERARCHY attributes, plus subject mappings keyed on `.attributes.department[]` and `.attributes.classification[]`). Use this when your scenario wants ABAC primitives ready to go.
+- `Given a local platform with policy "<path>"`: same as default, but loads the fixture YAML at `<path>` (absolute, or relative to the project root) instead of `policy_default.yaml`. Useful for scenarios that need a custom seed policy.
+- `Given a local platform with platform template "<pt>" and keycloak template "<kc>"`: stands up the platform with explicit platform and keycloak templates. See the [default keycloak template](cukes/resources/keycloak_base.template).
 
 ## Test Feature Authoring
 
@@ -301,9 +302,138 @@ The extension uses the configuration in `.vscode/settings.json` to locate your f
 - After installing the extension, you may need to reload VSCode or the extension for autocompletion to work.
 - If autocompletion is not working for specific steps, make sure that the steps are defined properly. Run the tests locally and ensure that no undefined steps are found.
 
+### Multi-Strategy ERS Testing (Claims + LDAP)
+
+The `@multi-strategy-ers` scenarios validate that multi-strategy entity resolution works end-to-end through the full gRPC stack: **SDK → Connect RPC → platform server → ERS → LDAP**.
+
+These tests exist because direct-call Go integration tests (in `service/entityresolution/integration/`) bypass the gRPC/Connect RPC serialization layer. Bugs like structpb coercion (#3645) and pgx driver issues (#3672) only manifest at the serialization boundary — invisible to unit tests but caught by these BDD tests.
+
+#### What's tested
+
+| Scenario | User | LDAP department | Resource | Expected |
+|----------|------|----------------|----------|----------|
+| 1 | alice | engineering | engineering | PERMIT |
+| 2 | bob | marketing | engineering | DENY |
+| 3 | charlie | security | security | PERMIT |
+
+Each scenario creates its own namespace, attribute definitions, and subject mappings, then issues an authorization decision request. The ERS resolves the `user_name` entity against LDAP to retrieve department claims, which are then evaluated against subject mapping conditions.
+
+#### Architecture
+
+```text
+┌──────────┐    ┌─────────────┐    ┌──────────┐    ┌─────────────────┐    ┌──────────┐
+│  SDK     │───▶│ Connect RPC │───▶│ Platform │───▶│ Multi-Strategy  │───▶│  LDAP    │
+│ (client) │    │  (gRPC)     │    │ (server) │    │ ERS (Claims +   │    │ (osixia/ │
+│          │◀───│             │◀───│          │◀───│  LDAP providers)│◀───│ openldap)│
+└──────────┘    └─────────────┘    └──────────┘    └─────────────────┘    └──────────┘
+```
+
+The multi-strategy ERS config uses two providers:
+- **claims_passthrough** — passes through JWT claims (e.g. `userName`)
+- **ldap_by_username** — looks up the user in LDAP by `uid`, returns `departmentNumber`, `mail`, `uid`
+
+#### Getting started
+
+**Prerequisites:**
+- Docker (via Colima or Docker Desktop)
+- Go 1.25+
+- JDK (`keytool` required for Keycloak truststore generation)
+
+  ```bash
+  brew install openjdk
+  ```
+
+**1. Set environment variables** (Colima users):
+
+```bash
+export DOCKER_HOST="unix://$HOME/.colima/default/docker.sock"
+export TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE=/var/run/docker.sock
+export TESTCONTAINERS_RYUK_DISABLED=true
+export PLATFORM_IMAGE=DEBUG
+```
+
+Add `keytool` to PATH if using brew-installed OpenJDK:
+
+```bash
+export PATH="/opt/homebrew/opt/openjdk/bin:$PATH"
+```
+
+**2. Run the multi-strategy ERS tests:**
+
+```bash
+go test ./tests-bdd/ -v --tags=cukes --godog.tags=@multi-strategy-ers --count=1
+```
+
+With console logging for debugging:
+
+```bash
+CUKES_LOG_HANDLER=console go test ./tests-bdd/ -v --tags=cukes \
+  --godog.tags=@multi-strategy-ers --godog.format=pretty --count=1
+```
+
+**3. Verify output:**
+All 3 scenarios should pass (57 steps, 0 failures). You'll see LDAP testcontainer startup, platform service registration, and authorization decision logs.
+
+#### Key files
+
+| File | Purpose |
+|------|---------|
+| [`features/multi-strategy-ers.feature`](features/multi-strategy-ers.feature) | Gherkin scenarios (3 scenarios, `@stateless`) |
+| [`cukes/steps_ldap.go`](cukes/steps_ldap.go) | LDAP testcontainer step definition |
+| [`cukes/steps_ers.go`](cukes/steps_ers.go) | Inline ERS configuration step definitions (DocString-based) |
+
+#### How it works
+
+1. **LDAP testcontainer** starts `osixia/openldap:1.5.0` with LDIF fixtures from `service/entityresolution/integration/ldap_test_data/` (8 test users with distinct department values)
+2. **Inline ERS configuration** in the feature file's Background defines providers (Claims + LDAP) and mapping strategies with DocString YAML, making the full config visible without referencing external template files
+3. **Each scenario** creates a namespace, department attribute (anyOf rule), subject mapping with `.department` selector, and then issues an authorization decision for a `user_name` entity
+4. The platform resolves the entity through ERS → LDAP, gets department claims, evaluates subject mappings, and returns PERMIT or DENY
+
+#### Notes
+
+- The feature uses `@stateless` so the platform instance and LDAP container are shared across all scenarios within the feature. Each scenario uses a unique namespace to avoid data conflicts.
+- LDAP test data lives in `service/entityresolution/integration/ldap_test_data/` and is shared with the Go integration tests.
+- The `--copy-service` flag is used with the LDAP container to avoid macOS `sed -i` compatibility issues with bind mounts.
+
 ## TODO
 - Improve execution time for platform testing
   - Remove keycloak with wiremock/mock or mock
 - Build out step definitions for platform services
 - Continue to explore AI Agent for scenario generation
 - Build cross version/platform/sdk fixtures
+
+### Authorization policy scale fixture
+
+`features/authorization-v2-subject-mapping-performance.feature` creates 6,000
+project values with `allOf`, four classification levels with `hierarchy`, and
+seven regions with `anyOf`. Each of the 6,011 subject mappings has its own
+condition set: the matching user entitlement OR one of four synthetic approved
+client IDs. The 6,000 resource mappings each have two to five aliases.
+
+Five Keycloak users hold 3, 10, 50, 500, and zero projects. Generated resources
+combine projects, classification, and regions. The initial 1,000 documents contain
+55% single-project, 40% 2-20 projects, and 5% 21-30 projects. Load excludes documents
+exceeding 20 total attribute FQNs. Another 100 documents provide permitted
+examples for the four entitled users; an additional unmapped value tests denial.
+No document files are uploaded: authorization receives their attribute FQNs.
+
+Each of 200 requests selects a case and then a resource variant from that case's
+pool, with replacement. Identical resource combinations are removed from each
+pool. The seed fixes both selections before workers start. Cases vary users, read/write/delete, one or three resources, and expected
+permit/deny combinations. Cases are sampled uniformly to exercise both permits
+and denies; this is not a measured customer traffic distribution. The same
+workload runs at concurrency 1, 10, 25, and 50 against one fixture in a single
+scenario. All levels run even if an earlier level fails. Setup is excluded from
+timings. Run just this scenario with `--godog.tags=@scale`.
+
+The CI summary reports policy dimensions, latency, failures, case selection,
+and distinct variants used/available. Failures include a variant index so the
+seeded request can be reconstructed. Latency remains report-only; request errors,
+incorrect decisions, and the 30-second client deadline fail the test.
+
+CI runs this scenario in the separate `Authorization scale (report only)` job.
+Failures make that job red and remain visible in its summary and
+`authorization-scale-report` artifact, but do not fail the required `ci` check.
+The required BDD job excludes `@scale`; functional scenarios and the scale helper
+unit tests remain required. Run functional scenarios locally with
+`--godog.tags='~@scale'`.

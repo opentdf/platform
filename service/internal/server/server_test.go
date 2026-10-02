@@ -1,9 +1,13 @@
 package server
 
 import (
+	"bytes"
 	"context"
+	"fmt"
+	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
+	"reflect"
 	"strings"
 	"testing"
 
@@ -77,6 +81,195 @@ func TestMergeStringSlices(t *testing.T) {
 			got := mergeStringSlices(tt.base, tt.additional)
 			assert.Equal(t, tt.want, got)
 		})
+	}
+}
+
+func TestNewHTTPServer_PprofRequiresAuthentication(t *testing.T) {
+	server, err := newHTTPServer(Config{
+		Auth:        auth.Config{Enabled: true},
+		EnablePprof: true,
+	}, http.NotFoundHandler(), http.NotFoundHandler(), &auth.Authentication{}, logger.CreateTestLogger())
+	require.NoError(t, err)
+
+	recorder := httptest.NewRecorder()
+	request := httptest.NewRequest(http.MethodGet, "/debug/pprof/", nil)
+	server.Handler.ServeHTTP(recorder, request)
+
+	assert.Equal(t, http.StatusUnauthorized, recorder.Code)
+	assert.Contains(t, recorder.Body.String(), "missing authorization header")
+}
+
+func TestPprofHandler(t *testing.T) {
+	fallback := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusNoContent)
+	})
+	handler := pprofHandler(fallback)
+
+	tests := []struct {
+		name       string
+		target     string
+		wantStatus int
+	}{
+		{
+			name:       "serves profiling index",
+			target:     "/debug/pprof/",
+			wantStatus: http.StatusOK,
+		},
+		{
+			name:       "rejects long CPU profile",
+			target:     "/debug/pprof/profile?seconds=31",
+			wantStatus: http.StatusBadRequest,
+		},
+		{
+			name:       "rejects long trace",
+			target:     "/debug/pprof/trace?seconds=30.1",
+			wantStatus: http.StatusBadRequest,
+		},
+		{
+			name:       "rejects long delta profile",
+			target:     "/debug/pprof/goroutine?seconds=60",
+			wantStatus: http.StatusBadRequest,
+		},
+		{
+			name:       "preserves invalid duration default",
+			target:     "/debug/pprof/?seconds=invalid",
+			wantStatus: http.StatusOK,
+		},
+		{
+			name:       "passes through non-profiling request",
+			target:     "/healthz",
+			wantStatus: http.StatusNoContent,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			recorder := httptest.NewRecorder()
+			request := httptest.NewRequest(http.MethodGet, test.target, nil)
+
+			handler.ServeHTTP(recorder, request)
+
+			assert.Equal(t, test.wantStatus, recorder.Code)
+		})
+	}
+}
+
+func TestPprofHandlerRejectsBodyDuration(t *testing.T) {
+	fallback := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusNoContent)
+	})
+	handler := pprofHandler(fallback)
+
+	t.Run("URL encoded", func(t *testing.T) {
+		request := httptest.NewRequest(http.MethodPost, "/debug/pprof/profile", strings.NewReader("seconds=31"))
+		request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		recorder := httptest.NewRecorder()
+
+		handler.ServeHTTP(recorder, request)
+
+		assert.Equal(t, http.StatusBadRequest, recorder.Code)
+	})
+
+	t.Run("multipart", func(t *testing.T) {
+		var body bytes.Buffer
+		writer := multipart.NewWriter(&body)
+		require.NoError(t, writer.WriteField("seconds", "31"))
+		require.NoError(t, writer.Close())
+
+		request := httptest.NewRequest(http.MethodPost, "/debug/pprof/trace", &body)
+		request.Header.Set("Content-Type", writer.FormDataContentType())
+		recorder := httptest.NewRecorder()
+
+		handler.ServeHTTP(recorder, request)
+
+		assert.Equal(t, http.StatusBadRequest, recorder.Code)
+	})
+}
+
+func TestPprofHandlerRejectsOversizedBody(t *testing.T) {
+	fallback := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusNoContent)
+	})
+	handler := pprofHandler(fallback)
+
+	t.Run("URL encoded", func(t *testing.T) {
+		body := "seconds=1&padding=" + strings.Repeat("x", int(maxPprofFormBodyBytes))
+		request := httptest.NewRequest(http.MethodPost, "/debug/pprof/profile", strings.NewReader(body))
+		request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		recorder := httptest.NewRecorder()
+
+		handler.ServeHTTP(recorder, request)
+
+		assert.Equal(t, http.StatusRequestEntityTooLarge, recorder.Code)
+	})
+
+	t.Run("multipart", func(t *testing.T) {
+		var body bytes.Buffer
+		writer := multipart.NewWriter(&body)
+		require.NoError(t, writer.WriteField("seconds", "1"))
+		require.NoError(t, writer.WriteField("padding", strings.Repeat("x", int(maxPprofFormBodyBytes))))
+		require.NoError(t, writer.Close())
+
+		request := httptest.NewRequest(http.MethodPost, "/debug/pprof/trace", &body)
+		request.Header.Set("Content-Type", writer.FormDataContentType())
+		recorder := httptest.NewRecorder()
+
+		handler.ServeHTTP(recorder, request)
+
+		assert.Equal(t, http.StatusRequestEntityTooLarge, recorder.Code)
+	})
+}
+
+func TestPprofHandlerPreservesSymbolPostBody(t *testing.T) {
+	programCounter := reflect.ValueOf(TestPprofHandlerPreservesSymbolPostBody).Pointer()
+	request := httptest.NewRequest(http.MethodPost, "/debug/pprof/symbol", strings.NewReader(fmt.Sprintf("%#x", programCounter)))
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	recorder := httptest.NewRecorder()
+
+	pprofHandler(http.NotFoundHandler()).ServeHTTP(recorder, request)
+
+	assert.Equal(t, http.StatusOK, recorder.Code)
+	assert.Contains(t, recorder.Body.String(), "TestPprofHandlerPreservesSymbolPostBody")
+}
+
+func Test_OpenTDFServer_RegisterReflectionHandlers_Enabled_RegistersOnlyExternalHandlers(t *testing.T) {
+	server := newReflectionTestServer(t, true)
+
+	assertReflectionHandlerRegistration(t, server.ConnectRPC.Mux, true)
+	assertReflectionHandlerRegistration(t, server.ConnectRPCInProcess.Mux, false)
+}
+
+func Test_OpenTDFServer_RegisterReflectionHandlers_Disabled_RegistersNoReflectionHandlers(t *testing.T) {
+	server := newReflectionTestServer(t, false)
+
+	assertReflectionHandlerRegistration(t, server.ConnectRPC.Mux, false)
+	assertReflectionHandlerRegistration(t, server.ConnectRPCInProcess.Mux, false)
+}
+
+func newReflectionTestServer(t *testing.T, reflectionEnabled bool) *OpenTDFServer {
+	t.Helper()
+
+	server, err := NewOpenTDFServer(Config{
+		GRPC: GRPCConfig{ReflectionEnabled: reflectionEnabled},
+	}, logger.CreateTestLogger(), nil)
+	require.NoError(t, err)
+
+	server.registerReflectionHandlers()
+	return server
+}
+
+func assertReflectionHandlerRegistration(t *testing.T, mux *http.ServeMux, wantRegistered bool) {
+	t.Helper()
+
+	reflectionPaths := []string{
+		"/grpc.reflection.v1.ServerReflection/ServerReflectionInfo",
+		"/grpc.reflection.v1alpha.ServerReflection/ServerReflectionInfo",
+	}
+
+	for _, path := range reflectionPaths {
+		request := httptest.NewRequest(http.MethodPost, path, nil)
+		_, pattern := mux.Handler(request)
+		assert.Equal(t, wantRegistered, pattern != "", "unexpected registration for %s", path)
 	}
 }
 
@@ -543,7 +736,7 @@ func TestNewConnectRPC(t *testing.T) {
 	tests := []struct {
 		name            string
 		authEnabled     bool
-		authInt         connect.Interceptor
+		authInts        []connect.Interceptor
 		extraInts       []connect.Interceptor
 		wantErr         bool
 		wantIntLen      int
@@ -552,23 +745,22 @@ func TestNewConnectRPC(t *testing.T) {
 		{
 			name:            "auth enabled with extras",
 			authEnabled:     true,
-			authInt:         noopInterceptor(),
+			authInts:        []connect.Interceptor{noopInterceptor(), noopInterceptor()},
 			extraInts:       []connect.Interceptor{noopInterceptor(), noopInterceptor()},
 			wantIntLen:      4,
-			wantDescription: "1 trace + 1 auth + 1 extras + 1 validation/audit",
+			wantDescription: "1 trace + 1 auth group + 1 validation/audit + 1 extras",
 		},
 		{
 			name:            "auth enabled no extras",
 			authEnabled:     true,
-			authInt:         noopInterceptor(),
+			authInts:        []connect.Interceptor{noopInterceptor(), noopInterceptor()},
 			extraInts:       nil,
 			wantIntLen:      3,
-			wantDescription: "1 trace + 1 auth + 1 validation/audit",
+			wantDescription: "1 trace + 1 auth group + 1 validation/audit",
 		},
 		{
 			name:            "auth disabled no extras",
 			authEnabled:     false,
-			authInt:         nil,
 			extraInts:       nil,
 			wantIntLen:      2,
 			wantDescription: "1 trace + 1 validation/audit only",
@@ -576,22 +768,19 @@ func TestNewConnectRPC(t *testing.T) {
 		{
 			name:            "auth disabled with extras",
 			authEnabled:     false,
-			authInt:         nil,
 			extraInts:       []connect.Interceptor{noopInterceptor()},
 			wantIntLen:      3,
 			wantDescription: "1 trace + 1 extras + 1 validation/audit",
 		},
 		{
-			name:        "auth enabled but nil authInt returns error",
+			name:        "auth enabled but no auth interceptors returns error",
 			authEnabled: true,
-			authInt:     nil,
 			extraInts:   nil,
 			wantErr:     true,
 		},
 		{
-			name:        "auth enabled nil authInt with extras returns error",
+			name:        "auth enabled with extras but no auth interceptors returns error",
 			authEnabled: true,
-			authInt:     nil,
 			extraInts:   []connect.Interceptor{noopInterceptor()},
 			wantErr:     true,
 		},
@@ -603,7 +792,7 @@ func TestNewConnectRPC(t *testing.T) {
 				Auth: auth.Config{Enabled: tt.authEnabled},
 			}
 
-			result, err := newConnectRPC(cfg, tt.authInt, tt.extraInts, testLogger)
+			result, err := newConnectRPC(cfg, tt.authInts, tt.extraInts, noopInterceptor(), testLogger)
 			if tt.wantErr {
 				require.Error(t, err)
 				assert.Nil(t, result)
@@ -634,16 +823,16 @@ func TestNewConnectRPC_InterceptorOrdering(t *testing.T) {
 	tests := []struct {
 		name        string
 		authEnabled bool
-		authInt     connect.Interceptor
+		authInts    []connect.Interceptor
 		extras      []connect.Interceptor
 		wantOrder   []string
 	}{
 		{
-			name:        "extras run after auth interceptor",
+			name:        "extras run after auth interceptors",
 			authEnabled: true,
-			authInt:     makeInterceptor("auth"),
+			authInts:    []connect.Interceptor{makeInterceptor("auth1"), makeInterceptor("auth2")},
 			extras:      []connect.Interceptor{makeInterceptor("extra1"), makeInterceptor("extra2")},
-			wantOrder:   []string{"auth", "extra1", "extra2"},
+			wantOrder:   []string{"auth1", "auth2", "extra1", "extra2"},
 		},
 		{
 			name:        "extras run after defaults without auth",
@@ -654,9 +843,9 @@ func TestNewConnectRPC_InterceptorOrdering(t *testing.T) {
 		{
 			name:        "single extra runs after auth",
 			authEnabled: true,
-			authInt:     makeInterceptor("auth"),
+			authInts:    []connect.Interceptor{makeInterceptor("auth1"), makeInterceptor("auth2")},
 			extras:      []connect.Interceptor{makeInterceptor("extra1")},
-			wantOrder:   []string{"auth", "extra1"},
+			wantOrder:   []string{"auth1", "auth2", "extra1"},
 		},
 	}
 
@@ -665,7 +854,7 @@ func TestNewConnectRPC_InterceptorOrdering(t *testing.T) {
 			callOrder = nil
 
 			cfg := Config{Auth: auth.Config{Enabled: tt.authEnabled}}
-			result, err := newConnectRPC(cfg, tt.authInt, tt.extras, testLogger)
+			result, err := newConnectRPC(cfg, tt.authInts, tt.extras, noopInterceptor(), testLogger)
 			require.NoError(t, err)
 
 			// Register a minimal unary handler to exercise the interceptor chain

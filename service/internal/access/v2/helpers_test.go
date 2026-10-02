@@ -1147,6 +1147,7 @@ func Test_getResourceDecisionableAttributes(t *testing.T) {
 			nil, // registered resources are not used by direct entitlements
 			nil, // direct entitlements will not be in entitleableAttributesByValueFQN map, due to synthetic values
 			entitleableAttributesByDefinitionFQN,
+			nil, // no definition value entitlement mappings
 			resources,
 			true, // allow direct entitlements
 		)
@@ -1173,6 +1174,7 @@ func Test_getResourceDecisionableAttributes(t *testing.T) {
 			nil, // registered resources are not used by direct entitlements
 			nil, // direct entitlements will not be in entitleableAttributesByValueFQN map, due to synthetic values
 			entitleableAttributesByDefinitionFQN,
+			nil, // no definition value entitlement mappings
 			resources,
 			true, // allow direct entitlements
 		)
@@ -1195,6 +1197,7 @@ func Test_getResourceDecisionableAttributes(t *testing.T) {
 			nil, // registered resources are not used by direct entitlements
 			nil, // direct entitlements will not be in entitleableAttributesByValueFQN map, due to synthetic values
 			entitleableAttributesByDefinitionFQN,
+			nil, // no definition value entitlement mappings
 			resources,
 			false, // disable direct entitlements
 		)

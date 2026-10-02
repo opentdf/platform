@@ -67,6 +67,10 @@ var clientsToGenerateList = []runner.ClientsToGenerate{
 		GrpcPackagePath:     "github.com/opentdf/platform/protocol/go/policy/subjectmapping",
 	},
 	{
+		GrpcClientInterface: "DynamicValueMappingServiceClient",
+		GrpcPackagePath:     "github.com/opentdf/platform/protocol/go/policy/dynamicvaluemapping",
+	},
+	{
 		GrpcClientInterface: "UnsafeServiceClient",
 		GrpcPackagePath:     "github.com/opentdf/platform/protocol/go/policy/unsafe",
 	},

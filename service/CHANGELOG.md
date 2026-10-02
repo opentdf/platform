@@ -1,5 +1,354 @@
 # Changelog
 
+## [0.28.0](https://github.com/opentdf/platform/compare/service/v0.27.0...service/v0.28.0) (2026-10-02)
+
+
+### ⚠ BREAKING CHANGES
+
+* **core:** replace buffered audit with immediate recording ([#4092](https://github.com/opentdf/platform/issues/4092))
+
+### Features
+
+* **core:** DSPX-4995 capture User-Agent on Connect server spans ([#4140](https://github.com/opentdf/platform/issues/4140)) ([5014566](https://github.com/opentdf/platform/commit/50145663b759248791541e1c0351a48c87dbb5b6))
+
+
+### Bug Fixes
+
+* **core:** DSPX-4999 restore database and external-core tracing ([#4122](https://github.com/opentdf/platform/issues/4122)) ([8232392](https://github.com/opentdf/platform/commit/8232392be894ce6d79aa4f35075d4b47c60330c6))
+* **deps:** bump otel to v1.45.0 and align semconv schema to v1.43.0 ([#4097](https://github.com/opentdf/platform/issues/4097)) ([e5ee699](https://github.com/opentdf/platform/commit/e5ee6991dca1efa13bdb972f030090d638dffca9))
+* **deps:** bump SDK to v0.33.0 in /service and /examples ([#4109](https://github.com/opentdf/platform/issues/4109)) ([5e9e4f5](https://github.com/opentdf/platform/commit/5e9e4f5c770ca23c7963ba787949b8c3998958b2))
+* **policy:** narrow authorization attribute lookups ([#3986](https://github.com/opentdf/platform/issues/3986)) ([52f2ece](https://github.com/opentdf/platform/commit/52f2ece0baf513d649d547895739de6348cb0168))
+* **policy:** record audit outcomes after transaction completion ([#4091](https://github.com/opentdf/platform/issues/4091)) ([8eefa1b](https://github.com/opentdf/platform/commit/8eefa1b2bdd7a93f29f08f9056ed9126c515c452))
+
+
+### Reverts
+
+* **policy:** DSPX-3888 remove object limit configuration ([#4125](https://github.com/opentdf/platform/issues/4125)) ([8e99f5b](https://github.com/opentdf/platform/commit/8e99f5b389a83b991dbc97705652a1cc94c7e91d))
+
+
+### Code Refactoring
+
+* **core:** replace buffered audit with immediate recording ([#4092](https://github.com/opentdf/platform/issues/4092)) ([d784e4f](https://github.com/opentdf/platform/commit/d784e4f0e0476f233de695a75a895d84eddb9486))
+
+## [0.27.0](https://github.com/opentdf/platform/compare/service/v0.26.0...service/v0.27.0) (2026-09-22)
+
+
+### Features
+
+* **authz:** migrate v2 decisioning to targeted entitleable lookups ([#3912](https://github.com/opentdf/platform/issues/3912)) ([69942fe](https://github.com/opentdf/platform/commit/69942fee97b3728fdedbd5e873454a53207583d7))
+* **core:** ability to set log attrs from ctx attrs ([#4069](https://github.com/opentdf/platform/issues/4069)) ([9784667](https://github.com/opentdf/platform/commit/9784667c95b67c6708253a455afa684f161eedb6))
+* **core:** add canonical audit recorder ([#3901](https://github.com/opentdf/platform/issues/3901)) ([ef9ca64](https://github.com/opentdf/platform/commit/ef9ca643f0bd5fe6e1e094bf2ad2bdcf1d67f106))
+* **policy:** DSPX-3888 add maximum object count configuration ([#3954](https://github.com/opentdf/platform/issues/3954)) ([b44a246](https://github.com/opentdf/platform/commit/b44a24604abdaa4c8990dec9adec8c1c26a339c2))
+
+
+### Bug Fixes
+
+* **authz:** deny decrypt deactivated attribute ([#3985](https://github.com/opentdf/platform/issues/3985)) ([f982fc9](https://github.com/opentdf/platform/commit/f982fc99e3b350ab4d928f3db1c6ae08e8d11d05))
+* **core:** DSPX-4682 protect pprof endpoints ([#4038](https://github.com/opentdf/platform/issues/4038)) ([9c5030f](https://github.com/opentdf/platform/commit/9c5030f1adf31fd1a0e7a81ecd5c0c654daf36af))
+* **core:** DSPX-4692 omit rejected credentials from logs ([#4023](https://github.com/opentdf/platform/issues/4023)) ([6ac8a31](https://github.com/opentdf/platform/commit/6ac8a318edbaea1aee07fdf649260e000e46306e))
+* **core:** DSPX-4694 honor reflection configuration ([#4021](https://github.com/opentdf/platform/issues/4021)) ([8743070](https://github.com/opentdf/platform/commit/87430700274acfe8f68fd9ea1a24301e664df619))
+* **core:** resolve audit IP through trusted proxies ([#3920](https://github.com/opentdf/platform/issues/3920)) ([baca716](https://github.com/opentdf/platform/commit/baca716a9e293b62c713ffd5cdabf28592964a17))
+* **deps:** bump google.golang.org/grpc from 1.83.0 to 1.83.1 in /service ([#3961](https://github.com/opentdf/platform/issues/3961)) ([2140c7a](https://github.com/opentdf/platform/commit/2140c7af1d9143fe32eb9fce997466809d4578f0))
+* **deps:** bump google.golang.org/grpc from 1.83.1 to 1.83.2 in /service ([#4019](https://github.com/opentdf/platform/issues/4019)) ([37138fe](https://github.com/opentdf/platform/commit/37138febf32adb65f70fd8d64108a0c817f7dd72))
+* **ers:** multi_strat first match wins per category + bdd tests ([#4028](https://github.com/opentdf/platform/issues/4028)) ([5c5cbf4](https://github.com/opentdf/platform/commit/5c5cbf431bb81f8fcf502017c1498ac30cfbb70b))
+* **policy:** DSPX-4607 clear sloglint and SA1019 lint findings ([#3977](https://github.com/opentdf/platform/issues/3977)) ([a22c2ce](https://github.com/opentdf/platform/commit/a22c2cebbc1a6a4066a95c2b543b40f57f981f8e))
+
+## [0.26.0](https://github.com/opentdf/platform/compare/service/v0.25.0...service/v0.26.0) (2026-08-28)
+
+
+### Features
+
+* **authz:** wrap streaming/bidi handlers in Connect authN/authz interceptors ([#3867](https://github.com/opentdf/platform/issues/3867)) ([f515dda](https://github.com/opentdf/platform/commit/f515dda3fbf72dff2c2e80fb2a543acac82beb17))
+* **core:** add trace-log correlation for otel ([#3888](https://github.com/opentdf/platform/issues/3888)) ([1700732](https://github.com/opentdf/platform/commit/1700732f8dd9bd7cfee7c7c12d65fda10d719c94))
+* **core:** Expose real-time audit logging ([#3889](https://github.com/opentdf/platform/issues/3889)) ([b0f4eb4](https://github.com/opentdf/platform/commit/b0f4eb4399fe38e16d2bd60db4d745697ace2a54))
+* **core:** Make audit logger types extensible ([#3089](https://github.com/opentdf/platform/issues/3089)) ([ce97a2d](https://github.com/opentdf/platform/commit/ce97a2d73d9bffed22505e0d731b77d7dd439053))
+* **kas:** Move key_management to stable ([#3896](https://github.com/opentdf/platform/issues/3896)) ([98f4ec6](https://github.com/opentdf/platform/commit/98f4ec63ff0c7ea9c21a6b6c96c81e6fcb82adba))
+* **policy:** Add sort functionality on key_status ([#3845](https://github.com/opentdf/platform/issues/3845)) ([2ca20ff](https://github.com/opentdf/platform/commit/2ca20ff96048f02c56277455a97d7f2341f55d2d))
+
+
+### Bug Fixes
+
+* **core:** establish verified audit principal ([#3900](https://github.com/opentdf/platform/issues/3900)) ([cf2b160](https://github.com/opentdf/platform/commit/cf2b16045c499762829e5a50b4211c4cb11bba7a))
+* **deps:** bump github.com/moby/go-archive from 0.2.0 to 0.3.0 in /service ([#3892](https://github.com/opentdf/platform/issues/3892)) ([d610fd8](https://github.com/opentdf/platform/commit/d610fd8378e005bd7c36c10c7a13ed88e3c582e5))
+* **deps:** upgrade sdk and protocol/go in service ([#3927](https://github.com/opentdf/platform/issues/3927)) ([d7553ab](https://github.com/opentdf/platform/commit/d7553ab0e90ac0f95265ac4f20beb9acc4b04669))
+* **ers:** fix direct entitlements silently dropped on token-identifier decisions ([#3908](https://github.com/opentdf/platform/issues/3908)) ([ec88620](https://github.com/opentdf/platform/commit/ec88620fb3dec0999c6b9c93f3c22d4e44341128))
+* **policy:** GetAttrVal only expose connected obligations. ([#3913](https://github.com/opentdf/platform/issues/3913)) ([66849a0](https://github.com/opentdf/platform/commit/66849a061d794e44a9af42a80af8619f6362bac3))
+
+## [0.25.0](https://github.com/opentdf/platform/compare/service/v0.24.0...service/v0.25.0) (2026-08-11)
+
+
+### Features
+
+* **sdk:** DSPX-3848 add DPoP client support with HTTP RoundTripper ([#3581](https://github.com/opentdf/platform/issues/3581)) ([2103736](https://github.com/opentdf/platform/commit/210373696f797348d3b2156ad814e3a3e4185f01))
+
+
+### Bug Fixes
+
+* **authz:** Point caller to v2 on v1 GetDecisions resource exhaustion ([#3837](https://github.com/opentdf/platform/issues/3837)) ([40bb78e](https://github.com/opentdf/platform/commit/40bb78e0c068da1da2a3d7544a4b219d0ab81f09))
+* **deps:** bump github.com/google/cel-go from 0.26.1 to 0.29.0 in /service ([#3787](https://github.com/opentdf/platform/issues/3787)) ([7d90577](https://github.com/opentdf/platform/commit/7d90577d68dd80edd5064935b42e24dd95bca434))
+* **deps:** bump github.com/opentdf/platform/protocol/go from 0.39.0 to 0.40.0 in /service ([#3848](https://github.com/opentdf/platform/issues/3848)) ([d1833ad](https://github.com/opentdf/platform/commit/d1833addede0003632cf1947c6f54ac1afc4ae43))
+* **deps:** bump github.com/opentdf/platform/sdk from 0.27.0 to 0.29.0 in /service ([#3853](https://github.com/opentdf/platform/issues/3853)) ([240417b](https://github.com/opentdf/platform/commit/240417b5fba90499cf65f313a42c16302c50a2b3))
+* **deps:** bump google.golang.org/grpc from 1.81.1 to 1.82.1 in /service ([#3779](https://github.com/opentdf/platform/issues/3779)) ([b3d5f27](https://github.com/opentdf/platform/commit/b3d5f27d926ea96b5bcc02ec6f5379430893f3a2))
+* **deps:** upgrade sdk to 0.30.0 in service ([#3859](https://github.com/opentdf/platform/issues/3859)) ([3514816](https://github.com/opentdf/platform/commit/3514816788e2a7931316535603b42bf90a767ded))
+* **ers:** pass inline claims through multi-strategy context ([#3794](https://github.com/opentdf/platform/issues/3794)) ([4a98105](https://github.com/opentdf/platform/commit/4a98105aa01f610f7685e56a4f1d8a9386e149d0))
+* **ers:** preserve resolved token-chain context ([#3808](https://github.com/opentdf/platform/issues/3808)) ([f7bf7f0](https://github.com/opentdf/platform/commit/f7bf7f0cc00d91dfca07cefcca3d7f344539cb69))
+
+## [0.24.0](https://github.com/opentdf/platform/compare/service/v0.23.0...service/v0.24.0) (2026-07-30)
+
+
+### Features
+
+* **authz:** dynamic value mapping and direct entitlement e2e coverage ([#3774](https://github.com/opentdf/platform/issues/3774)) ([49c80a0](https://github.com/opentdf/platform/commit/49c80a0755908178cc695fc62ae3c40a635d655d))
+
+
+### Bug Fixes
+
+* **ers:** Add postgres_object output transformation for JSON/JSONB results ([#3800](https://github.com/opentdf/platform/issues/3800)) ([4618439](https://github.com/opentdf/platform/commit/46184390756f87b15fab3dd3f6dcdefd4dc3b925))
+
+## [0.23.0](https://github.com/opentdf/platform/compare/service/v0.22.0...service/v0.23.0) (2026-07-28)
+
+
+### Bug Fixes
+
+* **ers:** use pgx database/sql driver in SQL ERS provider ([#3543](https://github.com/opentdf/platform/issues/3543)) ([fa19bfa](https://github.com/opentdf/platform/commit/fa19bfac88553ce97154245a1a32093726bfa7ce))
+
+## [0.22.0](https://github.com/opentdf/platform/compare/service/v0.21.0...service/v0.22.0) (2026-07-27)
+
+
+### Bug Fixes
+
+* **ers:** marshal/unmarshal metadata correctly. ([#3672](https://github.com/opentdf/platform/issues/3672)) ([225f7ab](https://github.com/opentdf/platform/commit/225f7ab7337063e2fae658167806386acdc230a6))
+
+## [0.21.0](https://github.com/opentdf/platform/compare/service/v0.20.0...service/v0.21.0) (2026-07-22)
+
+
+### ⚠ BREAKING CHANGES
+
+* **policy:** GetPC does not respect manager field. ([#3752](https://github.com/opentdf/platform/issues/3752))
+
+### Features
+
+* **core:** Update fixtures ([#3766](https://github.com/opentdf/platform/issues/3766)) ([9ac1640](https://github.com/opentdf/platform/commit/9ac1640df7d8447cdaaa540d0eacc98daa3c832d))
+* **policy:** add entitleable namespace field and narrow-read-API doc corrections ([#3727](https://github.com/opentdf/platform/issues/3727)) ([0fc2f01](https://github.com/opentdf/platform/commit/0fc2f01fbb0d75b04d2a5dcb94e5acdea9f62b6f))
+* **policy:** Add name and manager lookup ([#3753](https://github.com/opentdf/platform/issues/3753)) ([bfbc65d](https://github.com/opentdf/platform/commit/bfbc65d6f56a7d28144379f535bd82ce61e62bdd))
+* **policy:** Add UnsafeUpdateKey implementation ([#3731](https://github.com/opentdf/platform/issues/3731)) ([cd47518](https://github.com/opentdf/platform/commit/cd475182d1e4bc90673d71234d7a175b7aeed3d8))
+* **policy:** Add UnsafeUpdateKey rpc. ([#3728](https://github.com/opentdf/platform/issues/3728)) ([c89b193](https://github.com/opentdf/platform/commit/c89b1933e3931bc1984711f2268c8adedd786db4))
+* **policy:** create subject mappings with attribute values ([#3741](https://github.com/opentdf/platform/issues/3741)) ([718320b](https://github.com/opentdf/platform/commit/718320b2bbe1a03041ed70bb3b20eb3c30cf64fa))
+* **policy:** deprecate GetAttributeValuesByFqns in favor of narrow read APIs ([#3745](https://github.com/opentdf/platform/issues/3745)) ([baba709](https://github.com/opentdf/platform/commit/baba70913cfe615448ab05b465ecdaf037791889))
+* **policy:** dynamic attribute value entitlement mappings ([#3568](https://github.com/opentdf/platform/issues/3568)) ([21e95e0](https://github.com/opentdf/platform/commit/21e95e04c9f5903dc4c437d12ea790bbbf20bbb1))
+* **policy:** populate entitleable definition namespace ([#3737](https://github.com/opentdf/platform/issues/3737)) ([3f32839](https://github.com/opentdf/platform/commit/3f32839689e257338babb91903298b3b0256385c))
+
+
+### Bug Fixes
+
+* **authz:** use standard Keycloak token exchange ([#3754](https://github.com/opentdf/platform/issues/3754)) ([de9ae0d](https://github.com/opentdf/platform/commit/de9ae0dde552267470b44c4e09854034cbc70e84))
+* **core:** Pass the platform logger to the authz role provider factory ([#3732](https://github.com/opentdf/platform/issues/3732)) ([9c32554](https://github.com/opentdf/platform/commit/9c32554958aef3572728c0465a047c7779a06d95))
+* **core:** prevent OpenTelemetry resource schema conflicts ([#3769](https://github.com/opentdf/platform/issues/3769)) ([4a0c41c](https://github.com/opentdf/platform/commit/4a0c41c9e7ca14291b4bed4e02a0a0cae59f2444))
+* **deps:** bump github.com/opentdf/platform/protocol/go from 0.38.0 to 0.39.0 in /service ([#3764](https://github.com/opentdf/platform/issues/3764)) ([8d430f5](https://github.com/opentdf/platform/commit/8d430f5f1944c754c74b055b1366351ab43fa72b))
+* **ers:** coerce attempted_strategies []string to []interface{} for structpb ([#3645](https://github.com/opentdf/platform/issues/3645)) ([71d6e90](https://github.com/opentdf/platform/commit/71d6e906ef46409f64b032230c0081e9c6337ce8))
+* **policy:** GetPC does not respect manager field. ([#3752](https://github.com/opentdf/platform/issues/3752)) ([0d3c0a0](https://github.com/opentdf/platform/commit/0d3c0a0e49de669b0c4bb691d51ff0abef787693))
+
+## [0.20.0](https://github.com/opentdf/platform/compare/service/v0.19.0...service/v0.20.0) (2026-07-07)
+
+
+### ⚠ BREAKING CHANGES
+
+* **policy:** undo subject mapping operator decomposition ([#3685](https://github.com/opentdf/platform/issues/3685))
+
+### Features
+
+* **policy:** add narrow attribute read API protos and generated code ([#3634](https://github.com/opentdf/platform/issues/3634)) ([5726720](https://github.com/opentdf/platform/commit/572672007abd7e0a3598f8303661487cfb0d2db5))
+* **policy:** implement narrow attribute read APIs ([#3697](https://github.com/opentdf/platform/issues/3697)) ([eaee9b2](https://github.com/opentdf/platform/commit/eaee9b2da0191129e0d7a0413e6ea7294cad5b63))
+* **policy:** undo subject mapping operator decomposition ([#3685](https://github.com/opentdf/platform/issues/3685)) ([84f3b92](https://github.com/opentdf/platform/commit/84f3b92a4f82dd527ef93de3361ec22990eae479))
+
+
+### Bug Fixes
+
+* **deps:** bump protocol/go to 0.37.0 and sdk to 0.26.0 in /service ([#3721](https://github.com/opentdf/platform/issues/3721)) ([95d7aa4](https://github.com/opentdf/platform/commit/95d7aa445a9cdec149ab17a9a62f56577688136c))
+* **policy:** include attribute value fqn in subject mapping lookup ([#3720](https://github.com/opentdf/platform/issues/3720)) ([8b63934](https://github.com/opentdf/platform/commit/8b6393436568b7dc2874479b5c3bd6d53109e658))
+
+## [0.19.0](https://github.com/opentdf/platform/compare/service/v0.18.0...service/v0.19.0) (2026-06-30)
+
+
+### Features
+
+* **authz:** Authz-v2 docs ([#3670](https://github.com/opentdf/platform/issues/3670)) ([4ab7fe8](https://github.com/opentdf/platform/commit/4ab7fe88c97c8bffdd168a92759b1dbdd1874f20))
+* **authz:** move DPoP enforcement into dpop.enforce config (DSPX-3397) ([#3666](https://github.com/opentdf/platform/issues/3666)) ([daebade](https://github.com/opentdf/platform/commit/daebadeaa8401fcd14a7faabfa6dd6aaca22aea8))
+* **core:** add global audit config and add configured JWT claims to audit logs ([#3429](https://github.com/opentdf/platform/issues/3429)) ([03021fa](https://github.com/opentdf/platform/commit/03021fab10cf80da56d6e58274081cf32c39a689))
+* **kas:** Adds FIPS-203 wrap with ML-KEM-768/1024 ([#3652](https://github.com/opentdf/platform/issues/3652)) ([06f30ef](https://github.com/opentdf/platform/commit/06f30ef7f2eb6a5dce587efa906d4bd70b7cd8dc))
+* **policy:** Add kas_uri dimenstion to ListKeys. ([#3663](https://github.com/opentdf/platform/issues/3663)) ([41cee41](https://github.com/opentdf/platform/commit/41cee41ac9cee8c6d0730ca7c165ac9c22242ac4))
+
+
+### Bug Fixes
+
+* **authz:** Add default role for every req. ([#3664](https://github.com/opentdf/platform/issues/3664)) ([2a7095a](https://github.com/opentdf/platform/commit/2a7095afb8bb55eb07b2ab877ace12389eeeba97))
+* **authz:** emit WWW-Authenticate DPoP on all proof rejections (DSPX-3397) ([#3665](https://github.com/opentdf/platform/issues/3665)) ([d7caacd](https://github.com/opentdf/platform/commit/d7caacdc8e2d459baeee3af81ecf8a7cf6fea727))
+* **deps:** bump github.com/opentdf/platform/sdk from 0.24.0 to 0.25.0 in /service ([#3687](https://github.com/opentdf/platform/issues/3687)) ([0b7f77a](https://github.com/opentdf/platform/commit/0b7f77aabff010a95b97e8c087f2475cd7c11003))
+* **kas:** verify rewrap SRT with its actual JWS algorithm ([#3691](https://github.com/opentdf/platform/issues/3691)) ([1f073b6](https://github.com/opentdf/platform/commit/1f073b6a8fac4d0628253f4835e7b2dcaf40a4e8))
+* **policy:** undo Condition.operator deprecation ([#3668](https://github.com/opentdf/platform/issues/3668)) ([917f66a](https://github.com/opentdf/platform/commit/917f66a3dc3fa4df63d9b1a901ff75d88234d3f2))
+
+## [0.18.0](https://github.com/opentdf/platform/compare/service/v0.17.0...service/v0.18.0) (2026-06-23)
+
+
+### ⚠ BREAKING CHANGES
+
+* **core:** conform hybrid PQ/T key formats to IETF drafts ([#3563](https://github.com/opentdf/platform/issues/3563))
+* **core:** Add min_len to search term. ([#3604](https://github.com/opentdf/platform/issues/3604))
+
+### Features
+
+* **authz:** enrich casbin authorization ([#3614](https://github.com/opentdf/platform/issues/3614)) ([8702ac1](https://github.com/opentdf/platform/commit/8702ac1760ba0952f3e6876dd733d7a20c9438cc))
+* **core:** Add search term information to protos. ([#3547](https://github.com/opentdf/platform/issues/3547)) ([40f35df](https://github.com/opentdf/platform/commit/40f35df8b9ed6299498f03821475f88526d9a5eb))
+* **core:** Add statement timeout parameter. ([#3544](https://github.com/opentdf/platform/issues/3544)) ([0ec99ee](https://github.com/opentdf/platform/commit/0ec99ee84a44bb2798038d421cfd9167f73036bd))
+* **core:** Adds comprehensive DPoP (RFC 9449) support ([#3582](https://github.com/opentdf/platform/issues/3582)) ([8a00646](https://github.com/opentdf/platform/commit/8a006469dc6e55455a2ce4715415671d39670ef6))
+* **core:** conform hybrid PQ/T key formats to IETF drafts ([#3563](https://github.com/opentdf/platform/issues/3563)) ([dc18568](https://github.com/opentdf/platform/commit/dc1856831383de1c5880121518c0fb83c429a5a5))
+* **policy:** Add the ability to do substring search ([#3551](https://github.com/opentdf/platform/issues/3551)) ([33b6fd7](https://github.com/opentdf/platform/commit/33b6fd7823bdcb1391d1bd4fb0211dfe1de704e6))
+* **policy:** DSPX-2754 DynamicValueMapping protos + generated code ([#3580](https://github.com/opentdf/platform/issues/3580)) ([090c0f6](https://github.com/opentdf/platform/commit/090c0f65508058502d17a850691957b7beaee785))
+* **policy:** DSPX-2998 optionally namespace resource mappings ([#3567](https://github.com/opentdf/platform/issues/3567)) ([2b6d54c](https://github.com/opentdf/platform/commit/2b6d54c1149f538ee1df3bdf17fb5e872b337b30))
+
+
+### Bug Fixes
+
+* **core:** Add min_len to search term. ([#3604](https://github.com/opentdf/platform/issues/3604)) ([09e22dc](https://github.com/opentdf/platform/commit/09e22dc6df01de211ca15d9f7c8dd54e7eec2abd))
+* **core:** log at debug instead of error for expected IPC missing client id state ([#3636](https://github.com/opentdf/platform/issues/3636)) ([fe7f787](https://github.com/opentdf/platform/commit/fe7f787944c774d16a03ecbfe92aa7c0e22575f4))
+* **deps:** bump github.com/opentdf/platform/sdk from 0.21.0 to 0.22.0 in /service ([#3618](https://github.com/opentdf/platform/issues/3618)) ([23b639a](https://github.com/opentdf/platform/commit/23b639afe1a1207d6fd69f0d876ffcc783990c27))
+* **deps:** Update to latest sdk, protos, ocrypto. ([#3658](https://github.com/opentdf/platform/issues/3658)) ([a47b3f1](https://github.com/opentdf/platform/commit/a47b3f1b9888e4cb0d4d1dacafa4e19ef1f0ca54))
+
+## [0.17.0](https://github.com/opentdf/platform/compare/service/v0.16.0...service/v0.17.0) (2026-06-11)
+
+
+### ⚠ BREAKING CHANGES
+
+* **policy:** DSPX-2998 add namespace fields to resource mapping protos ([#3565](https://github.com/opentdf/platform/issues/3565))
+
+### Features
+
+* **authz:** make v2 request limits configurable ([#3508](https://github.com/opentdf/platform/issues/3508)) ([9d16f80](https://github.com/opentdf/platform/commit/9d16f8062e6164748a6a27c497272209b743339f))
+* **authz:** split connect token claims and enforcement ([#3592](https://github.com/opentdf/platform/issues/3592)) ([2e82aa0](https://github.com/opentdf/platform/commit/2e82aa077515204f7538c9264b40586df69b4baa))
+* **kas:** emit INFO log of supported mechanisms at startup (DSPX-3456) ([#3564](https://github.com/opentdf/platform/issues/3564)) ([c2b4816](https://github.com/opentdf/platform/commit/c2b48167a45c37870ebd8e37c3cbb3d83174336c))
+* **policy:** DSPX-2998 add namespace fields to resource mapping protos ([#3565](https://github.com/opentdf/platform/issues/3565)) ([e4a04ed](https://github.com/opentdf/platform/commit/e4a04ed6ee04a346a00a49d3c1f381295f9e9443))
+
+
+### Bug Fixes
+
+* **authz:** log casbin subject groups on denial ([#3572](https://github.com/opentdf/platform/issues/3572)) ([0de01df](https://github.com/opentdf/platform/commit/0de01df00caad86d2cb8a4fb9204a0e665ba7163))
+* **ci:** Prefer go.work for toolchain info ([#3285](https://github.com/opentdf/platform/issues/3285)) ([3c05b22](https://github.com/opentdf/platform/commit/3c05b22ecac41380c7d8d80e9d487bb3001cd25d))
+
+## [0.16.0](https://github.com/opentdf/platform/compare/service/v0.15.0...service/v0.16.0) (2026-06-01)
+
+
+### Features
+
+* **core:** add hybrid NIST EC + ML-KEM key wrapping support ([#3276](https://github.com/opentdf/platform/issues/3276)) ([1209acc](https://github.com/opentdf/platform/commit/1209acc2f8ae24af121f6a2892817c20ebb14d25))
+* **policy:** Add FQN to RegisteredResourceValues ([#3446](https://github.com/opentdf/platform/issues/3446)) ([3199583](https://github.com/opentdf/platform/commit/3199583c4a6454ac7eabe1260a142e5c5ff067ad))
+* **policy:** Add resource mapping group FQNs ([#3447](https://github.com/opentdf/platform/issues/3447)) ([6a0b3c6](https://github.com/opentdf/platform/commit/6a0b3c63795cf79b4d87d561464101c7cd2cf351))
+
+
+### Bug Fixes
+
+* **core:** remove deprecated grpc-gateway ([#3479](https://github.com/opentdf/platform/issues/3479)) ([a4230a2](https://github.com/opentdf/platform/commit/a4230a215db71ff369d49216f0f9f61fdb6c042e))
+* **deps:** bump github.com/opentdf/platform/lib/ocrypto from 0.10.0 to 0.12.0 in /service ([#3524](https://github.com/opentdf/platform/issues/3524)) ([9836404](https://github.com/opentdf/platform/commit/9836404c6732a1e7eab20ed182ff0d8eb5820462))
+* **deps:** bump github.com/opentdf/platform/protocol/go from 0.30.0 to 0.31.0 in /service ([#3497](https://github.com/opentdf/platform/issues/3497)) ([a29f108](https://github.com/opentdf/platform/commit/a29f10878bafaa78cf8ec8a68b1b84ab2c298721))
+* **deps:** bump github.com/opentdf/platform/protocol/go from 0.31.0 to 0.32.0 in /service ([#3523](https://github.com/opentdf/platform/issues/3523)) ([5f316f0](https://github.com/opentdf/platform/commit/5f316f0c149097383a6c96ab902e44d7ee209cd1))
+* **deps:** bump github.com/opentdf/platform/sdk from 0.19.0 to 0.20.0 in /service ([#3467](https://github.com/opentdf/platform/issues/3467)) ([7045d6e](https://github.com/opentdf/platform/commit/7045d6ed2d5ec9e9748111afecd52cb2f02ca5a0))
+* **deps:** bump github.com/opentdf/platform/sdk from 0.20.0 to 0.21.0 in /service ([#3548](https://github.com/opentdf/platform/issues/3548)) ([09fff7f](https://github.com/opentdf/platform/commit/09fff7f4c016f510841989dd86fbe32388b77d7e))
+* **deps:** bump module protocol/go to v0.30.0 throughout ([#3459](https://github.com/opentdf/platform/issues/3459)) ([8eaa502](https://github.com/opentdf/platform/commit/8eaa502b0f949ddbe18a5a1dac0931b92eec2351))
+* **policy:** include action_attribute_values in GetRegisteredResource response ([#3472](https://github.com/opentdf/platform/issues/3472)) ([29eff55](https://github.com/opentdf/platform/commit/29eff55c5470e948088d768274a03da06e092a6e))
+
+## [0.15.0](https://github.com/opentdf/platform/compare/service/v0.14.0...service/v0.15.0) (2026-05-06)
+
+
+### Features
+
+* **core:** pass access token verifier down to registered services ([#3428](https://github.com/opentdf/platform/issues/3428)) ([b8abf17](https://github.com/opentdf/platform/commit/b8abf17a0b71b29468b10ae397c688dca0081149))
+* **policy:** add sort support to listkaskeys ([#3344](https://github.com/opentdf/platform/issues/3344)) ([de1fe92](https://github.com/opentdf/platform/commit/de1fe926e306a15ff50fa0042b4fee988b3be1e6))
+* **policy:** support inline obligation triggers on attribute value create ([#3432](https://github.com/opentdf/platform/issues/3432)) ([876f512](https://github.com/opentdf/platform/commit/876f512f9ff944cebd3b6d65c7937446a74ace87))
+
+
+### Bug Fixes
+
+* **core:** infer JWT algorithms for JWKS keys without alg ([#3434](https://github.com/opentdf/platform/issues/3434)) ([83285e7](https://github.com/opentdf/platform/commit/83285e74c4602ebd8b485c91e32985a9bbc985a2))
+* **deps:** bump github.com/Azure/go-ntlmssp from 0.0.0-20221128193559-754e69321358 to 0.1.1 in /service ([#3388](https://github.com/opentdf/platform/issues/3388)) ([ef79989](https://github.com/opentdf/platform/commit/ef79989261b287e4500ea81e8581ed3469fb993c))
+* **deps:** bump github.com/jackc/pgx/v5 from 5.9.0 to 5.9.2 in /service ([#3371](https://github.com/opentdf/platform/issues/3371)) ([ab0974b](https://github.com/opentdf/platform/commit/ab0974b99b8d03608ec603aa391cea506954225b))
+* **deps:** bump github.com/opentdf/platform/lib/identifier from 0.3.0 to 0.4.0 in /service ([#3366](https://github.com/opentdf/platform/issues/3366)) ([4650e9b](https://github.com/opentdf/platform/commit/4650e9b69a3e656df3a191603a5b2bbd0ae640d0))
+* **deps:** bump github.com/opentdf/platform/protocol/go from 0.25.0 to 0.26.0 in /service ([#3381](https://github.com/opentdf/platform/issues/3381)) ([ebc65f6](https://github.com/opentdf/platform/commit/ebc65f6778b5faafaa7e893a72ab967577efce5c))
+* **deps:** bump github.com/opentdf/platform/protocol/go from 0.26.0 to 0.27.0 in /service ([#3392](https://github.com/opentdf/platform/issues/3392)) ([0c36cfa](https://github.com/opentdf/platform/commit/0c36cfaaaa8f658ff94c778e6ea45939dfeb3c0d))
+* **deps:** bump github.com/opentdf/platform/protocol/go from 0.27.0 to 0.28.0 in /service ([#3416](https://github.com/opentdf/platform/issues/3416)) ([bc137f6](https://github.com/opentdf/platform/commit/bc137f67b666b429306e0d63f37b7fe9b0673058))
+* **deps:** bump github.com/opentdf/platform/sdk from 0.16.0 to 0.17.0 in /service ([#3395](https://github.com/opentdf/platform/issues/3395)) ([0382742](https://github.com/opentdf/platform/commit/0382742ec7a6d501d41a0f7fd7e4441e70f5136a))
+* **deps:** bump github.com/opentdf/platform/sdk from 0.17.0 to 0.19.0 in /service ([#3423](https://github.com/opentdf/platform/issues/3423)) ([969ac33](https://github.com/opentdf/platform/commit/969ac339aafd859789683a32860f8e4092b563d5))
+
+## [0.14.0](https://github.com/opentdf/platform/compare/service/v0.13.0...service/v0.14.0) (2026-04-21)
+
+
+### ⚠ BREAKING CHANGES
+
+* **sdk:** reclassify KAS 400 errors — distinguish tamper from misconfiguration ([#3166](https://github.com/opentdf/platform/issues/3166))
+* **policy:** optional namespace for RRs ([#3165](https://github.com/opentdf/platform/issues/3165))
+* **policy:** Namespace subject mappings and subject condition sets. ([#3143](https://github.com/opentdf/platform/issues/3143))
+* **policy:** Optional namespace on actions protos, NamespacedPolicy feature flag ([#3155](https://github.com/opentdf/platform/issues/3155))
+* **policy:** add namespaced actions schema and namespace-aware action queries ([#3154](https://github.com/opentdf/platform/issues/3154))
+* **policy:** only require namespace on GetAction if no id provided ([#3144](https://github.com/opentdf/platform/issues/3144))
+* **policy:** add namespace field to Actions proto ([#3130](https://github.com/opentdf/platform/issues/3130))
+* **policy:** namespace Registered Resources ([#3111](https://github.com/opentdf/platform/issues/3111))
+* **policy:** add namespace field to RegisteredResource proto ([#3110](https://github.com/opentdf/platform/issues/3110))
+
+### Features
+
+* **authz:** Namespaced policy in decisioning ([#3226](https://github.com/opentdf/platform/issues/3226)) ([0355934](https://github.com/opentdf/platform/commit/03559346f5da4b69671a9c4fbfd56058186102bd))
+* **cli:** migrate otdfctl into platform monorepo ([#3205](https://github.com/opentdf/platform/issues/3205)) ([5177bec](https://github.com/opentdf/platform/commit/5177bec0a2f67aa1395e45a1b8a72570910f6208))
+* fix tracing ([#3242](https://github.com/opentdf/platform/issues/3242)) ([57e5680](https://github.com/opentdf/platform/commit/57e5680f994df948d2bea8e803b69b394ab28d16))
+* **policy:** add GetObligationTrigger RPC ([#3318](https://github.com/opentdf/platform/issues/3318)) ([d68e39d](https://github.com/opentdf/platform/commit/d68e39d950d94dcbb98a2f16982ea57f28d9c550))
+* **policy:** add namespace field to Actions proto ([#3130](https://github.com/opentdf/platform/issues/3130)) ([bedc9b3](https://github.com/opentdf/platform/commit/bedc9b35366104460c5fa5965819578232a3cb01))
+* **policy:** add namespace field to RegisteredResource proto ([#3110](https://github.com/opentdf/platform/issues/3110)) ([04fd85d](https://github.com/opentdf/platform/commit/04fd85d4b69b320f4dad9d21905864fba6708956))
+* **policy:** add namespaced actions schema and namespace-aware action queries ([#3154](https://github.com/opentdf/platform/issues/3154)) ([c0443f1](https://github.com/opentdf/platform/commit/c0443f1a031c7daff41eace6d6506f663a6856c3))
+* **policy:** add sort ListSubjectMappings API ([#3255](https://github.com/opentdf/platform/issues/3255)) ([9d5d757](https://github.com/opentdf/platform/commit/9d5d7570e22c6227409b01292f03c0d0624c1ce7))
+* **policy:** Add sort support listregisteredresources api ([#3312](https://github.com/opentdf/platform/issues/3312)) ([91a3ff3](https://github.com/opentdf/platform/commit/91a3ff3686512353669e35e4884fde807d73d9b0))
+* **policy:** add sort support to ListAttributes API  ([#3223](https://github.com/opentdf/platform/issues/3223)) ([ec3312f](https://github.com/opentdf/platform/commit/ec3312f622dec7ed18ffa6033c86b248b47a420a))
+* **policy:** add sort support to ListKeyAccessServer ([#3287](https://github.com/opentdf/platform/issues/3287)) ([7fae2d7](https://github.com/opentdf/platform/commit/7fae2d701f3967b5ea743d4dc5ce0d41eb4d5413))
+* **policy:** Add sort support to ListNamespaces API ([#3192](https://github.com/opentdf/platform/issues/3192)) ([aac86cd](https://github.com/opentdf/platform/commit/aac86cdfbfc422149b62f85bbd752260b3a3dcd0))
+* **policy:** add sort support to listobligations api ([#3300](https://github.com/opentdf/platform/issues/3300)) ([9221cac](https://github.com/opentdf/platform/commit/9221cac2f0a0c82847f0e7973b044f78a30450d8))
+* **policy:** add sort support to ListSubjectConditionSets API ([#3272](https://github.com/opentdf/platform/issues/3272)) ([9010f12](https://github.com/opentdf/platform/commit/9010f125eef244be2ac34906c59e68319d3b8f95))
+* **policy:** add SortField proto and update PageRequest for sort support   ([#3187](https://github.com/opentdf/platform/issues/3187)) ([6cf1862](https://github.com/opentdf/platform/commit/6cf1862438c7e62fa676aa74160cfa533a1f6315))
+* **policy:** Enforce same namespace when actions referenced downstream ([#3206](https://github.com/opentdf/platform/issues/3206)) ([4b5463a](https://github.com/opentdf/platform/commit/4b5463adca2dd9c0a2c14928ed6bd2c82895e0bd))
+* **policy:** namespace Registered Resources ([#3111](https://github.com/opentdf/platform/issues/3111)) ([6db1883](https://github.com/opentdf/platform/commit/6db188380d3c44f578b6170f123cb9cb1597f4d8))
+* **policy:** Namespace subject mappings and condition sets ([#3172](https://github.com/opentdf/platform/issues/3172)) ([6deed50](https://github.com/opentdf/platform/commit/6deed5086eedc959cce674a7e17d7fa406371b10))
+* **policy:** Namespace subject mappings and subject condition sets. ([#3143](https://github.com/opentdf/platform/issues/3143)) ([3006780](https://github.com/opentdf/platform/commit/3006780fea56f85b36223c134ae63a8afe109908))
+* **policy:** optional namespace for RRs ([#3165](https://github.com/opentdf/platform/issues/3165)) ([8948018](https://github.com/opentdf/platform/commit/89480186006085d2f59ebaeca6be6582db0e67d9))
+* **policy:** rollback migration strategy for namespaced actions ([#3235](https://github.com/opentdf/platform/issues/3235)) ([f7e5e01](https://github.com/opentdf/platform/commit/f7e5e01655b34852131ff6e4ad48fed1cf30e95d))
+* **policy:** Seed existing namespaces with standard actions ([#3228](https://github.com/opentdf/platform/issues/3228)) ([12136b0](https://github.com/opentdf/platform/commit/12136b0e241f5cec9101d721734568728fd2d6f3))
+* **policy:** Seed namespaces with standard actions on creation + namespaced actions for obligation triggers ([#3161](https://github.com/opentdf/platform/issues/3161)) ([984d76b](https://github.com/opentdf/platform/commit/984d76bcbf645655b691cc3749b761ba1bb02f16))
+
+
+### Bug Fixes
+
+* **ci:** Upgrade toolchain version to 1.25.8 ([#3116](https://github.com/opentdf/platform/issues/3116)) ([e1b7882](https://github.com/opentdf/platform/commit/e1b78822c0380a106e6eec05af78dc1fc9e5701f))
+* **core:** do not concat slashes directly in url/file paths ([#3290](https://github.com/opentdf/platform/issues/3290)) ([114c2a7](https://github.com/opentdf/platform/commit/114c2a7523235d68ee1afeb8883d478541e11834))
+* **deps:** bump github.com/jackc/pgx/v5 from 5.7.5 to 5.9.0 in /service ([#3316](https://github.com/opentdf/platform/issues/3316)) ([017362e](https://github.com/opentdf/platform/commit/017362edefab1df25315d68e9dae3c1cf3cad0db))
+* **deps:** bump github.com/opentdf/platform/lib/identifier from 0.2.0 to 0.3.0 in /service ([#3162](https://github.com/opentdf/platform/issues/3162)) ([8bc5dcd](https://github.com/opentdf/platform/commit/8bc5dcd21b8b2948ffa91d060710c60da9eb0e8d))
+* **deps:** bump github.com/opentdf/platform/protocol/go from 0.16.0 to 0.17.0 in /service ([#3125](https://github.com/opentdf/platform/issues/3125)) ([29fec61](https://github.com/opentdf/platform/commit/29fec6125c36c33c1f7a8b97d249a3203e241840))
+* **deps:** bump github.com/opentdf/platform/protocol/go from 0.17.0 to 0.21.0 in /service ([#3220](https://github.com/opentdf/platform/issues/3220)) ([e63add2](https://github.com/opentdf/platform/commit/e63add24a548285569c3cd7accd01438be25b14e))
+* **deps:** bump github.com/opentdf/platform/protocol/go from 0.21.0 to 0.22.0 in /service ([#3248](https://github.com/opentdf/platform/issues/3248)) ([1ebce73](https://github.com/opentdf/platform/commit/1ebce737e092552fa23d25ae3e0f88a7b47fcb45))
+* **deps:** bump github.com/opentdf/platform/protocol/go from 0.22.0 to 0.23.0 in /service ([#3271](https://github.com/opentdf/platform/issues/3271)) ([3338b8e](https://github.com/opentdf/platform/commit/3338b8e3028c4db2eb2b6e4a3a5741ede4f210ff))
+* **deps:** bump github.com/opentdf/platform/protocol/go from 0.23.0 to 0.24.0 in /service ([#3321](https://github.com/opentdf/platform/issues/3321)) ([78e6022](https://github.com/opentdf/platform/commit/78e60224652cd9351f705e50ea3a843620b814f4))
+* **deps:** bump github.com/opentdf/platform/protocol/go from 0.24.0 to 0.25.0 in /service ([#3333](https://github.com/opentdf/platform/issues/3333)) ([3940bf8](https://github.com/opentdf/platform/commit/3940bf897027ec01359eea1f9759fe59a3005208))
+* **deps:** bump github.com/opentdf/platform/sdk from 0.13.0 to 0.16.0 in /service ([#3356](https://github.com/opentdf/platform/issues/3356)) ([5617077](https://github.com/opentdf/platform/commit/5617077462b96b3b13f7d2f4c834710df0b42096))
+* **deps:** bump go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp from 1.42.0 to 1.43.0 in /service ([#3282](https://github.com/opentdf/platform/issues/3282)) ([046374a](https://github.com/opentdf/platform/commit/046374a37a442bf0bb106ec31a80183c396bec7d))
+* **deps:** bump go.opentelemetry.io/otel/sdk from 1.42.0 to 1.43.0 in /service ([#3281](https://github.com/opentdf/platform/issues/3281)) ([56b33f2](https://github.com/opentdf/platform/commit/56b33f208c0de26fe6c02b502d462024883e0215))
+* **deps:** bump google.golang.org/grpc from 1.77.0 to 1.79.3 in /service ([#3176](https://github.com/opentdf/platform/issues/3176)) ([3289502](https://github.com/opentdf/platform/commit/3289502cd2b7048bce28634137c9e903e93a824b))
+* **deps:** remove direct github.com/docker/docker dependency ([#3229](https://github.com/opentdf/platform/issues/3229)) ([2becb27](https://github.com/opentdf/platform/commit/2becb27c63d7ef34dbbc631e657e26386700e345))
+* **deps:** upgrade testcontainers-go to resolve vulns ([#3299](https://github.com/opentdf/platform/issues/3299)) ([72c6f9b](https://github.com/opentdf/platform/commit/72c6f9bd8d3612163a3ed38795e51a4d58cfc76d))
+* **ers:** include standard JWT claims in claims mode entity resolution ([#3196](https://github.com/opentdf/platform/issues/3196)) ([6d50da1](https://github.com/opentdf/platform/commit/6d50da1a3aff0d99476a8ce02bfc4e4931b08d78))
+* **ers:** ldap multi-strategy ers ([#3117](https://github.com/opentdf/platform/issues/3117)) ([d3aaf1a](https://github.com/opentdf/platform/commit/d3aaf1a6bfafab2e4447a5f34b3b089f68dea14e))
+* **policy:** deprecate ListAttributeValues in favor of existing GetAttribute ([#3108](https://github.com/opentdf/platform/issues/3108)) ([7e17c2d](https://github.com/opentdf/platform/commit/7e17c2d5ade62fb3b13265d17d663f928ced2df5))
+* **policy:** make obligation trigger uniqueness client-aware ([#3114](https://github.com/opentdf/platform/issues/3114)) ([9265bc3](https://github.com/opentdf/platform/commit/9265bc3f2790cfc0f5ac1d33bc51bca95c522bcc))
+* **policy:** omit empty attribute values from create responses ([#3193](https://github.com/opentdf/platform/issues/3193)) ([d298378](https://github.com/opentdf/platform/commit/d2983786ff04c3fec673c518593ebbc6b96cd853))
+* **policy:** only require namespace on GetAction if no id provided ([#3144](https://github.com/opentdf/platform/issues/3144)) ([10d0c0f](https://github.com/opentdf/platform/commit/10d0c0f88cd7eff3620011bd75b6c2389aa4dfb8))
+* **policy:** Optional namespace on actions protos, NamespacedPolicy feature flag ([#3155](https://github.com/opentdf/platform/issues/3155)) ([c20f039](https://github.com/opentdf/platform/commit/c20f039c6dc72bb7627075cf3cb330a6f03f2fec))
+* **policy:** order List* results by created_at ([#3088](https://github.com/opentdf/platform/issues/3088)) ([ea90ac2](https://github.com/opentdf/platform/commit/ea90ac279abbdf796d1cbe8efd8bac9c8c62de85))
+* **sdk:** normalize issuer URL before OIDC discovery ([#3261](https://github.com/opentdf/platform/issues/3261)) ([61f98c9](https://github.com/opentdf/platform/commit/61f98c94deb9a1b88e62436b6598735479db6e63))
+* **sdk:** reclassify KAS 400 errors — distinguish tamper from misconfiguration ([#3166](https://github.com/opentdf/platform/issues/3166)) ([f04a385](https://github.com/opentdf/platform/commit/f04a3856f004f68df0bcf7e355867971c8df7fdc))
+* **sdk:** remove testcontainers from consumer dependency graph ([#3129](https://github.com/opentdf/platform/issues/3129)) ([f17dcdd](https://github.com/opentdf/platform/commit/f17dcdd77a0096eb3cfd9f7d15033e4f2074cc16))
+
 ## [0.13.0](https://github.com/opentdf/platform/compare/service/v0.12.0...service/v0.13.0) (2026-02-18)
 
 

@@ -21,12 +21,22 @@ const (
 	ECKeySize256           = 256
 	ECKeySize384           = 384
 	ECKeySize521           = 521
+
+	// inputSizeUnknown marks a payload whose length cannot be established
+	// before it is read.
+	inputSizeUnknown = -1
 )
 
+// TDFFormat once selected a manifest serialization. Only JSON was ever
+// implemented, and nothing reads this.
+//
+// Deprecated: unused; the manifest is always JSON.
 type TDFFormat = int
 
 const (
+	// Deprecated: unused; the manifest is always JSON.
 	JSONFormat = iota
+	// Deprecated: never implemented.
 	XMLFormat
 )
 
@@ -35,12 +45,82 @@ const (
 	schemeSeperator = "://"
 )
 
+// IntegrityAlgorithm named an integrity algorithm without saying what it was
+// allowed to protect.
+//
+// Deprecated: the root signature and the segment hashes accept different sets
+// of algorithms, which one type cannot express. Use [RootIntegrityAlg] or
+// [SegmentIntegrityAlg].
 type IntegrityAlgorithm = int
 
 const (
+	// HS256 selects HMAC-SHA256.
+	//
+	// Deprecated: use [RootHS256] or [SegmentHS256].
 	HS256 = iota
+	// GMAC selects AES-GCM tag extraction.
+	//
+	// Deprecated: use [SegmentGMAC]. GMAC is not a legal root algorithm.
 	GMAC
 )
+
+// RootIntegrityAlg is the algorithm that signs a TDF's aggregate hash -- the
+// concatenation of every segment hash, in manifest order. The root signature is
+// the only thing that authenticates the manifest's description of the payload,
+// so a segment list that has been truncated, reordered, or duplicated is caught
+// here or not at all.
+//
+// HS256 is the only value, and this type exists to say so at compile time. The
+// aggregate hash is manifest data that never passed through the AEAD, so
+// tag extraction has nothing to extract: a "GMAC" root signature is just a copy
+// of the last segment hash, producible by an attacker with no key.
+type RootIntegrityAlg int
+
+// RootHS256 is an HMAC-SHA256 over the aggregate hash, keyed by the payload
+// key. It is the default, the only supported value, and what every TDF in the
+// wild already declares.
+const RootHS256 RootIntegrityAlg = iota
+
+// SegmentIntegrityAlg is the algorithm that authenticates a single segment's
+// bytes. Unlike the root, both values are genuine authenticators, because the
+// input is data the cipher itself produced.
+type SegmentIntegrityAlg int
+
+const (
+	// SegmentHS256 is an HMAC-SHA256 over the segment's bytes, keyed by the
+	// payload key. It is the only meaningful choice when those bytes are not
+	// AEAD output -- a plaintext segment has no tag to read out -- which the
+	// experimental writer can produce and the stable one cannot. Readers must
+	// keep accepting it either way.
+	SegmentHS256 SegmentIntegrityAlg = iota
+	// SegmentGMAC reads out the AES-GCM tag the cipher already computed over
+	// exactly this segment's ciphertext. It is the default, and what
+	// essentially every existing TDF declares.
+	SegmentGMAC
+)
+
+// String returns the manifest spelling of the algorithm. Out-of-range values
+// have no spelling: the type is int-backed, so they are representable, and
+// naming one "HS256" in a manifest would claim a signature that was never
+// computed.
+func (a RootIntegrityAlg) String() string {
+	if a == RootHS256 {
+		return hmacIntegrityAlgorithm
+	}
+	return fmt.Sprintf("RootIntegrityAlg(%d)", int(a))
+}
+
+// String returns the manifest spelling of the algorithm. See
+// [RootIntegrityAlg.String] on out-of-range values.
+func (a SegmentIntegrityAlg) String() string {
+	switch a {
+	case SegmentHS256:
+		return hmacIntegrityAlgorithm
+	case SegmentGMAC:
+		return gmacIntegrityAlgorithm
+	}
+	return fmt.Sprintf("SegmentIntegrityAlg(%d)", int(a))
+}
 
 // KASInfo contains Key Access Server information.
 type KASInfo struct {
@@ -63,12 +143,9 @@ type TDFOption func(*TDFConfig) error
 type TDFConfig struct {
 	autoconfigure              bool
 	defaultSegmentSize         int64
-	enableEncryption           bool
-	tdfFormat                  TDFFormat
+	inputSize                  int64
 	metaData                   string
 	mimeType                   string
-	integrityAlgorithm         IntegrityAlgorithm
-	segmentIntegrityAlgorithm  IntegrityAlgorithm
 	assertions                 []AssertionConfig
 	attributes                 []AttributeValueFQN
 	attributeValues            []*policy.Value
@@ -83,13 +160,10 @@ type TDFConfig struct {
 
 func newTDFConfig(opt ...TDFOption) (*TDFConfig, error) {
 	c := &TDFConfig{
-		autoconfigure:             true,
-		defaultSegmentSize:        defaultSegmentSize,
-		enableEncryption:          true,
-		tdfFormat:                 JSONFormat,
-		integrityAlgorithm:        HS256,
-		segmentIntegrityAlgorithm: GMAC,
-		addDefaultAssertion:       false,
+		autoconfigure:       true,
+		defaultSegmentSize:  defaultSegmentSize,
+		inputSize:           inputSizeUnknown,
+		addDefaultAssertion: false,
 	}
 
 	for _, o := range opt {
@@ -190,6 +264,25 @@ func WithSegmentSize(size int64) TDFOption {
 	}
 	return func(c *TDFConfig) error {
 		c.defaultSegmentSize = size
+		return nil
+	}
+}
+
+// WithInputSize declares the payload length, in bytes, for the reader passed to
+// CreateTDF. Supply it when the reader cannot report its own length — a pipe, a
+// network stream — but the length is known anyway: it lets the archive keep the
+// compact ZIP32 layout that an unmeasurable payload has to give up. When the reader
+// is seekable the length is recovered automatically and this option is unnecessary.
+//
+// The declared length is exact, not an upper bound: reading stops after size bytes
+// even if the reader has more to give, and a reader that reaches EOF first fails the
+// call rather than producing a TDF that is silently short of the payload.
+func WithInputSize(size int64) TDFOption {
+	return func(c *TDFConfig) error {
+		if size < 0 {
+			return fmt.Errorf("WithInputSize: size must not be negative, got %d", size)
+		}
+		c.inputSize = size
 		return nil
 	}
 }

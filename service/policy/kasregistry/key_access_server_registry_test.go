@@ -174,6 +174,7 @@ func Test_GetKeyAccessServerRequest(t *testing.T) {
 				Identifier: &kasregistry.GetKeyAccessServerRequest_Name{
 					Name: "kas-name",
 				},
+				//nolint:staticcheck // asserts that setting both the deprecated Id and an Identifier is rejected
 				Id: validUUID,
 			},
 			expectError:  true,
@@ -1124,6 +1125,57 @@ func Test_ListKeyAccessServersRequest_Sort(t *testing.T) {
 			},
 			{
 				Field:     kasregistry.SortKeyAccessServersType_SORT_KEY_ACCESS_SERVERS_TYPE_NAME,
+				Direction: policy.SortDirection_SORT_DIRECTION_DESC,
+			},
+		},
+	}
+	err := v.Validate(req)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "sort")
+}
+
+func Test_ListKeyAccessServersRequest_Search(t *testing.T) {
+	v := getValidator()
+
+	require.NoError(t, v.Validate(&kasregistry.ListKeyAccessServersRequest{
+		Search: &policy.Search{Term: "kas"},
+	}))
+	require.NoError(t, v.Validate(&kasregistry.ListKeyAccessServersRequest{}))
+
+	err := v.Validate(&kasregistry.ListKeyAccessServersRequest{
+		Search: &policy.Search{},
+	})
+	require.Error(t, err)
+	require.Contains(t, err.Error(), errMessageMinLen)
+}
+
+func Test_ListKeysRequest_Sort(t *testing.T) {
+	v := getValidator()
+
+	// no sort — valid
+	req := &kasregistry.ListKeysRequest{}
+	require.NoError(t, v.Validate(req))
+
+	// one sort item — valid
+	req = &kasregistry.ListKeysRequest{
+		Sort: []*kasregistry.KasKeysSort{
+			{
+				Field:     kasregistry.SortKasKeysType_SORT_KAS_KEYS_TYPE_CREATED_AT,
+				Direction: policy.SortDirection_SORT_DIRECTION_ASC,
+			},
+		},
+	}
+	require.NoError(t, v.Validate(req))
+
+	// two sort items — exceeds max_items = 1
+	req = &kasregistry.ListKeysRequest{
+		Sort: []*kasregistry.KasKeysSort{
+			{
+				Field:     kasregistry.SortKasKeysType_SORT_KAS_KEYS_TYPE_CREATED_AT,
+				Direction: policy.SortDirection_SORT_DIRECTION_ASC,
+			},
+			{
+				Field:     kasregistry.SortKasKeysType_SORT_KAS_KEYS_TYPE_KEY_ID,
 				Direction: policy.SortDirection_SORT_DIRECTION_DESC,
 			},
 		},

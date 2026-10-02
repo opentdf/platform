@@ -33,8 +33,8 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"fmt"
-	"io"
 	"log"
 	"os"
 	"strings"
@@ -80,30 +80,86 @@ func main() {
 
 	fmt.Printf("Ciphertext is %d bytes long\n", ciphertext.Len())
 
-	// Decrypt the TDF
-	// LoadTDF contacts the Key Access Service (KAS) to verify that this client
-	// has been granted access to the data attributes, then decrypts the TDF.
+	// Decrypt the TDF and write the plaintext to a file.
+	// DecryptTo contacts the Key Access Service (KAS) to verify that this
+	// client has been granted access to the data attributes, then decrypts
+	// the TDF and writes the plaintext directly to the given writer.
 	// Note: The client must have entitlements configured on the platform first.
-	r, err := s.LoadTDF(bytes.NewReader(ciphertext.Bytes()))
-	if err != nil {
-		log.Fatalf("Failed to load TDF: %v", err)
-	}
-
-	// Write the decrypted plaintext to a file
 	f, err := os.Create("output.txt")
 	if err != nil {
 		log.Fatalf("Failed to create output file: %v", err)
 	}
 	defer f.Close()
 
-	_, err = io.Copy(f, r)
-	if err != nil {
-		log.Fatalf("Failed to write decrypted content: %v", err)
+	if err := s.DecryptTo(context.Background(), f, ciphertext.Bytes()); err != nil {
+		log.Fatalf("Failed to decrypt TDF: %v", err)
 	}
 
 	fmt.Println("Successfully created and decrypted TDF")
 }
 ```
+
+`DecryptTo` is one of three decrypt convenience helpers, each a thin wrapper
+over `LoadTDF` + `Reader.WriteTo` for the common decrypt-to-plaintext case —
+pick whichever shape fits. Each takes a `ctx context.Context` that governs
+its KAS rewrap request.
+
+**`DecryptBytes`** — decrypt ciphertext bytes to plaintext bytes:
+
+Before:
+
+```go
+reader, err := s.LoadTDF(bytes.NewReader(ciphertext))
+if err != nil {
+    return err
+}
+var buf bytes.Buffer
+_, err = reader.WriteTo(&buf)
+plaintext := buf.Bytes()
+```
+
+After:
+
+```go
+plaintext, err := s.DecryptBytes(ctx, ciphertext)
+```
+
+**`DecryptTo`** — decrypt ciphertext bytes to any `io.Writer`:
+
+Before:
+
+```go
+reader, err := s.LoadTDF(bytes.NewReader(ciphertext))
+if err != nil {
+    return err
+}
+_, err = reader.WriteTo(os.Stdout)
+```
+
+After:
+
+```go
+err := s.DecryptTo(ctx, os.Stdout, ciphertext)
+```
+
+**`DecryptFile`** — decrypt a TDF file to an output file:
+
+Before (elided — open input, `LoadTDF`, create output, `WriteTo`, close both, handle errors at each step):
+
+```text
+in, err := os.Open("secret.tdf")
+// ... LoadTDF, os.Create("secret.txt"), WriteTo, close both, handle errors at each step
+```
+
+After:
+
+```go
+err := s.DecryptFile(ctx, "secret.tdf", "secret.txt")
+```
+
+Call `LoadTDF` directly instead when streaming very large payloads, or when
+you need to read manifest data (attributes, assertions) between load and
+write.
 
 ### Configuration Values
 

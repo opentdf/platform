@@ -6,8 +6,10 @@ import (
 	"testing"
 
 	"buf.build/go/protovalidate"
+	"github.com/opentdf/platform/protocol/go/common"
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/attributes"
+	"github.com/opentdf/platform/protocol/go/policy/subjectmapping"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
@@ -246,6 +248,7 @@ func Test_GetAttributeRequest(t *testing.T) {
 		{
 			name: "Valid Deprecated Id",
 			req: &attributes.GetAttributeRequest{
+				//nolint:staticcheck // these cases exist to validate the deprecated Id field, so they must set it
 				Id: validUUID,
 			},
 			expectError: false,
@@ -253,6 +256,7 @@ func Test_GetAttributeRequest(t *testing.T) {
 		{
 			name: "Invalid Deprecated Id (empty string)",
 			req: &attributes.GetAttributeRequest{
+				//nolint:staticcheck // these cases exist to validate the deprecated Id field, so they must set it
 				Id: "",
 			},
 			expectError:  true,
@@ -299,6 +303,7 @@ func Test_GetAttributeRequest(t *testing.T) {
 		{
 			name: "Invalid can't have both Id and Identifier",
 			req: &attributes.GetAttributeRequest{
+				//nolint:staticcheck // these cases exist to validate the deprecated Id field, so they must set it
 				Id: validUUID,
 				Identifier: &attributes.GetAttributeRequest_Fqn{
 					Fqn: "https://example.com/valid_fqn",
@@ -368,6 +373,336 @@ func TestCreateAttributeValue_Valid_Succeeds(t *testing.T) {
 	err := v.Validate(req)
 
 	require.NoError(t, err)
+}
+
+func TestCreateAttributeValue_WithObligationTriggers_Request(t *testing.T) {
+	validFQN := "https://example.com/obl/test/value/value1"
+	validRequestContext := &policy.RequestContext{
+		Pep: &policy.PolicyEnforcementPoint{
+			ClientId: "client-id",
+		},
+	}
+
+	testCases := []struct {
+		name         string
+		req          *attributes.CreateAttributeValueRequest
+		expectError  bool
+		errorMessage string
+	}{
+		{
+			name: "valid with obligation trigger ids",
+			req: &attributes.CreateAttributeValueRequest{
+				AttributeId: validUUID,
+				Value:       validValue1,
+				ObligationTriggers: []*attributes.AttributeValueObligationTriggerRequest{
+					{
+						ObligationValue: &common.IdFqnIdentifier{Id: validUUID},
+						Action:          &common.IdNameIdentifier{Id: validUUID},
+						Context:         validRequestContext,
+						Metadata: &common.MetadataMutable{
+							Labels: map[string]string{"source": "inline"},
+						},
+					},
+				},
+			},
+			expectError: false,
+		},
+		{
+			name: "valid with obligation trigger fqn and action name",
+			req: &attributes.CreateAttributeValueRequest{
+				AttributeId: validUUID,
+				Value:       validValue1,
+				ObligationTriggers: []*attributes.AttributeValueObligationTriggerRequest{
+					{
+						ObligationValue: &common.IdFqnIdentifier{Fqn: validFQN},
+						Action:          &common.IdNameIdentifier{Name: "read"},
+					},
+				},
+			},
+			expectError: false,
+		},
+		{
+			name: "invalid trigger with invalid obligation value id",
+			req: &attributes.CreateAttributeValueRequest{
+				AttributeId: validUUID,
+				Value:       validValue1,
+				ObligationTriggers: []*attributes.AttributeValueObligationTriggerRequest{
+					{
+						ObligationValue: &common.IdFqnIdentifier{Id: "invalid-uuid"},
+						Action:          &common.IdNameIdentifier{Id: validUUID},
+					},
+				},
+			},
+			expectError:  true,
+			errorMessage: "obligation_value.id",
+		},
+		{
+			name: "invalid trigger with missing obligation value",
+			req: &attributes.CreateAttributeValueRequest{
+				AttributeId: validUUID,
+				Value:       validValue1,
+				ObligationTriggers: []*attributes.AttributeValueObligationTriggerRequest{
+					{
+						Action: &common.IdNameIdentifier{Id: validUUID},
+					},
+				},
+			},
+			expectError:  true,
+			errorMessage: "obligation_value",
+		},
+		{
+			name: "invalid trigger with invalid action id",
+			req: &attributes.CreateAttributeValueRequest{
+				AttributeId: validUUID,
+				Value:       validValue1,
+				ObligationTriggers: []*attributes.AttributeValueObligationTriggerRequest{
+					{
+						ObligationValue: &common.IdFqnIdentifier{Id: validUUID},
+						Action:          &common.IdNameIdentifier{Id: "invalid-uuid"},
+					},
+				},
+			},
+			expectError:  true,
+			errorMessage: "action.id",
+		},
+		{
+			name: "invalid trigger with missing action",
+			req: &attributes.CreateAttributeValueRequest{
+				AttributeId: validUUID,
+				Value:       validValue1,
+				ObligationTriggers: []*attributes.AttributeValueObligationTriggerRequest{
+					{
+						ObligationValue: &common.IdFqnIdentifier{Id: validUUID},
+					},
+				},
+			},
+			expectError:  true,
+			errorMessage: "action",
+		},
+	}
+
+	v := getValidator()
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			err := v.Validate(tc.req)
+			if tc.expectError {
+				require.Error(t, err)
+				require.Contains(t, err.Error(), tc.errorMessage)
+			} else {
+				require.NoError(t, err)
+			}
+		})
+	}
+}
+
+func TestCreateAttributeValue_WithSubjectMappings_Request(t *testing.T) {
+	validFQN := "https://example.com"
+	validSubjectConditionSet := &subjectmapping.SubjectConditionSetCreate{
+		SubjectSets: []*policy.SubjectSet{
+			{
+				ConditionGroups: []*policy.ConditionGroup{
+					{
+						BooleanOperator: policy.ConditionBooleanTypeEnum_CONDITION_BOOLEAN_TYPE_ENUM_AND,
+						Conditions: []*policy.Condition{
+							{
+								SubjectExternalSelectorValue: ".email",
+								Operator:                     policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_IN,
+								SubjectExternalValues:        []string{"user@example.com"},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+	tooManySubjectMappings := make([]*attributes.AttributeValueSubjectMappingRequest, 251)
+	for i := range tooManySubjectMappings {
+		tooManySubjectMappings[i] = &attributes.AttributeValueSubjectMappingRequest{
+			Actions:                []*policy.Action{{Id: validUUID}},
+			NewSubjectConditionSet: validSubjectConditionSet,
+			NamespaceId:            validUUID,
+		}
+	}
+
+	testCases := []struct {
+		name         string
+		req          *attributes.CreateAttributeValueRequest
+		errorMessage string
+	}{
+		{
+			name: "valid with new subject condition set",
+			req: &attributes.CreateAttributeValueRequest{
+				AttributeId: validUUID,
+				Value:       validValue1,
+				SubjectMappings: []*attributes.AttributeValueSubjectMappingRequest{
+					{
+						Actions:                []*policy.Action{{Name: "read"}},
+						NewSubjectConditionSet: validSubjectConditionSet,
+						NamespaceId:            validUUID,
+						Metadata: &common.MetadataMutable{
+							Labels: map[string]string{"source": "inline"},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "valid with existing subject condition set and namespace fqn",
+			req: &attributes.CreateAttributeValueRequest{
+				AttributeId: validUUID,
+				Value:       validValue1,
+				SubjectMappings: []*attributes.AttributeValueSubjectMappingRequest{
+					{
+						Actions:                       []*policy.Action{{Id: validUUID}},
+						ExistingSubjectConditionSetId: validUUID,
+						NamespaceFqn:                  validFQN,
+					},
+				},
+			},
+		},
+		{
+			name: "valid without namespace",
+			req: &attributes.CreateAttributeValueRequest{
+				AttributeId: validUUID,
+				Value:       validValue1,
+				SubjectMappings: []*attributes.AttributeValueSubjectMappingRequest{
+					{
+						Actions:                []*policy.Action{{Id: validUUID}},
+						NewSubjectConditionSet: validSubjectConditionSet,
+					},
+				},
+			},
+		},
+		{
+			name: "invalid with missing action",
+			req: &attributes.CreateAttributeValueRequest{
+				AttributeId: validUUID,
+				Value:       validValue1,
+				SubjectMappings: []*attributes.AttributeValueSubjectMappingRequest{
+					{
+						NewSubjectConditionSet: validSubjectConditionSet,
+						NamespaceId:            validUUID,
+					},
+				},
+			},
+			errorMessage: "actions",
+		},
+		{
+			name: "invalid with empty action identifier",
+			req: &attributes.CreateAttributeValueRequest{
+				AttributeId: validUUID,
+				Value:       validValue1,
+				SubjectMappings: []*attributes.AttributeValueSubjectMappingRequest{
+					{
+						Actions:                []*policy.Action{{}},
+						NewSubjectConditionSet: validSubjectConditionSet,
+						NamespaceId:            validUUID,
+					},
+				},
+			},
+			errorMessage: "action_name_or_id_not_empty",
+		},
+		{
+			name: "invalid existing subject condition set id",
+			req: &attributes.CreateAttributeValueRequest{
+				AttributeId: validUUID,
+				Value:       validValue1,
+				SubjectMappings: []*attributes.AttributeValueSubjectMappingRequest{
+					{
+						Actions:                       []*policy.Action{{Id: validUUID}},
+						ExistingSubjectConditionSetId: "invalid-uuid",
+						NamespaceId:                   validUUID,
+					},
+				},
+			},
+			errorMessage: "string.uuid",
+		},
+		{
+			name: "invalid without subject condition set source",
+			req: &attributes.CreateAttributeValueRequest{
+				AttributeId: validUUID,
+				Value:       validValue1,
+				SubjectMappings: []*attributes.AttributeValueSubjectMappingRequest{
+					{
+						Actions:     []*policy.Action{{Id: validUUID}},
+						NamespaceId: validUUID,
+					},
+				},
+			},
+			errorMessage: "subject_condition_set_source",
+		},
+		{
+			name: "invalid with both subject condition set sources",
+			req: &attributes.CreateAttributeValueRequest{
+				AttributeId: validUUID,
+				Value:       validValue1,
+				SubjectMappings: []*attributes.AttributeValueSubjectMappingRequest{
+					{
+						Actions:                       []*policy.Action{{Id: validUUID}},
+						ExistingSubjectConditionSetId: validUUID,
+						NewSubjectConditionSet:        validSubjectConditionSet,
+						NamespaceId:                   validUUID,
+					},
+				},
+			},
+			errorMessage: "subject_condition_set_source",
+		},
+		{
+			name: "invalid namespace fqn",
+			req: &attributes.CreateAttributeValueRequest{
+				AttributeId: validUUID,
+				Value:       validValue1,
+				SubjectMappings: []*attributes.AttributeValueSubjectMappingRequest{
+					{
+						Actions:                []*policy.Action{{Id: validUUID}},
+						NewSubjectConditionSet: validSubjectConditionSet,
+						NamespaceFqn:           "not-a-uri",
+					},
+				},
+			},
+			errorMessage: errMessageURI,
+		},
+		{
+			name: "invalid namespace id and fqn together",
+			req: &attributes.CreateAttributeValueRequest{
+				AttributeId: validUUID,
+				Value:       validValue1,
+				SubjectMappings: []*attributes.AttributeValueSubjectMappingRequest{
+					{
+						Actions:                []*policy.Action{{Id: validUUID}},
+						NewSubjectConditionSet: validSubjectConditionSet,
+						NamespaceId:            validUUID,
+						NamespaceFqn:           validFQN,
+					},
+				},
+			},
+			errorMessage: "message.oneof",
+		},
+		{
+			name: "invalid too many subject mappings",
+			req: &attributes.CreateAttributeValueRequest{
+				AttributeId:     validUUID,
+				Value:           validValue1,
+				SubjectMappings: tooManySubjectMappings,
+			},
+			errorMessage: "max_items",
+		},
+	}
+
+	v := getValidator()
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			err := v.Validate(tc.req)
+			if tc.errorMessage != "" {
+				require.Error(t, err)
+				require.Contains(t, err.Error(), tc.errorMessage)
+			} else {
+				require.NoError(t, err)
+			}
+		})
+	}
 }
 
 func TestCreateAttributeValue_ValueTooLong_Fails(t *testing.T) {
@@ -474,6 +809,7 @@ func Test_GetAttributeValueRequest(t *testing.T) {
 		{
 			name: "Valid Deprecated Id",
 			req: &attributes.GetAttributeValueRequest{
+				//nolint:staticcheck // these cases exist to validate the deprecated Id field, so they must set it
 				Id: validUUID,
 			},
 			expectError: false,
@@ -481,6 +817,7 @@ func Test_GetAttributeValueRequest(t *testing.T) {
 		{
 			name: "Invalid Deprecated Id (empty string)",
 			req: &attributes.GetAttributeValueRequest{
+				//nolint:staticcheck // these cases exist to validate the deprecated Id field, so they must set it
 				Id: "",
 			},
 			expectError:  true,
@@ -527,6 +864,7 @@ func Test_GetAttributeValueRequest(t *testing.T) {
 		{
 			name: "Invalid can't have both Id and Identifier",
 			req: &attributes.GetAttributeValueRequest{
+				//nolint:staticcheck // these cases exist to validate the deprecated Id field, so they must set it
 				Id: validUUID,
 				Identifier: &attributes.GetAttributeValueRequest_Fqn{
 					Fqn: "https://example.com/valid_fqn_value",
@@ -928,4 +1266,19 @@ func Test_ListAttributesRequest_Sort(t *testing.T) {
 	err := v.Validate(req)
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "sort")
+}
+
+func Test_ListAttributesRequest_Search(t *testing.T) {
+	v := getValidator()
+
+	require.NoError(t, v.Validate(&attributes.ListAttributesRequest{
+		Search: &policy.Search{Term: "attribute"},
+	}))
+	require.NoError(t, v.Validate(&attributes.ListAttributesRequest{}))
+
+	err := v.Validate(&attributes.ListAttributesRequest{
+		Search: &policy.Search{},
+	})
+	require.Error(t, err)
+	require.Contains(t, err.Error(), errMessageMinLen)
 }

@@ -9,7 +9,8 @@
 ## Documentation
 
 - [Configuration](./docs/Configuring.md)
-- [Multi-Strategy Entity Resolution Service](./ERS_TESTING.md)
+- [OpenID Connect (OIDC)](./docs/OIDC.md)
+- [Multi-Strategy Entity Resolution Service](./service/entityresolution/multi-strategy/README.md)
 - [Development](#for-contributors)
 - [Policy Config Schema](./service/policy/db/schema_erd.md)
 - [Policy Config Testing Diagram](./service/integration/testing_diagram.png)
@@ -101,7 +102,7 @@ go test ./service/entityresolution/integration -run TestMultiStrategy -v
 #### Configuration Options
 
 - **`opentdf-ers-test.yaml`** - Complete OpenTDF platform with multi-strategy ERS
-- **`ERS_TESTING.md`** - Comprehensive documentation and examples
+- [**`service/entityresolution/multi-strategy/README.md`**](./service/entityresolution/multi-strategy/README.md) - Comprehensive documentation and examples
 
 The multi-strategy ERS (preview) provides enterprise-grade identity resolution with failover, multiple provider support, and flexible mapping strategies.
 
@@ -234,7 +235,7 @@ service follows a modular binary architecture, while the sub-services are gRPC s
 
 **Policy** is the set of rules that govern access to the platform.
 
-**OIDC** is the OpenID Connect protocol used solely for authentication within the OpenTDF platform.
+**OIDC** is the OpenID Connect protocol OpenTDF uses for authentication plus trusted identity claims that feed authorization and policy decisions. See [OpenTDF and OpenID Connect (OIDC)](./docs/OIDC.md).
 
 - **IdP** - Identity Provider. This is the service that authenticates the user.
 - **Keycloak** is the turn-key OIDC provider used within the platform for proof-of-value, but should be replaced with a

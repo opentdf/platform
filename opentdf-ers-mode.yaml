@@ -5,6 +5,14 @@ logger:
   level: debug
   type: text
   output: stderr
+audit:
+  # Optional JWT claim mappings for audit enrichment.
+  # Paths use dot notation over the emitted audit log shape.
+  # jwt_claim_mappings:
+  #   - claim: sub
+  #     path: eventMetaData.requester.sub
+  #   - claim: realm_access.roles
+  #     path: eventMetaData.requester.roles
 services:
   entityresolution:
     log_level: info
@@ -20,7 +28,8 @@ services:
 server:
   auth:
     enabled: true
-    enforceDPoP: false
+    dpop:
+      enforce: false
     audience: "http://localhost:8080"
     issuer: http://localhost:8888/auth/realms/opentdf
     policy:

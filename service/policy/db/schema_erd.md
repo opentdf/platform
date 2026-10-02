@@ -100,6 +100,23 @@ erDiagram
         uuid key_access_server_key_id FK 
     }
 
+    dynamic_value_mapping_actions {
+        uuid action_id PK,FK 
+        uuid dynamic_value_mapping_id PK,FK 
+    }
+
+    dynamic_value_mappings {
+        uuid attribute_definition_id FK 
+        timestamp_with_time_zone created_at 
+        uuid id PK 
+        jsonb metadata 
+        uuid namespace_id FK 
+        smallint operator "policy.SubjectMappingOperatorEnum value"
+        uuid subject_condition_set_id FK 
+        text subject_external_selector_value "Selector resolved against the entity representation, compared to the requested resource value segment"
+        timestamp_with_time_zone updated_at 
+    }
+
     goose_db_version {
         integer id PK 
         boolean is_applied 
@@ -225,6 +242,7 @@ erDiagram
         uuid group_id FK "Foreign key to the parent group of the resource mapping (optional, a resource mapping may not be in a group)"
         uuid id PK "Primary key for the table"
         jsonb metadata "Metadata for the resource mapping (see protos for structure)"
+        uuid namespace_id FK "Optional owning namespace of the resource mapping. If the mapping belongs to a group, it matches the group namespace. The mapped attribute value may belong to a different namespace."
         ARRAY terms "Terms to match against resource data (i.e. translations #quot;roi#quot;, #quot;rey#quot;, or #quot;kung#quot; in a terms list could map to the value #quot;/attr/card/value/king#quot;)"
         timestamp_with_time_zone updated_at 
     }
@@ -269,6 +287,7 @@ erDiagram
     }
 
     actions }o--|| attribute_namespaces : "namespace_id"
+    dynamic_value_mapping_actions }o--|| actions : "action_id"
     obligation_triggers }o--|| actions : "action_id"
     registered_resource_action_attribute_values }o--|| actions : "action_id"
     subject_mapping_actions }o--|| actions : "action_id"
@@ -280,15 +299,18 @@ erDiagram
     attribute_definitions }o--|| attribute_namespaces : "namespace_id"
     attribute_fqns }o--|| attribute_definitions : "attribute_id"
     attribute_values }o--|| attribute_definitions : "attribute_definition_id"
+    dynamic_value_mappings }o--|| attribute_definitions : "attribute_definition_id"
     attribute_fqns }o--|| attribute_namespaces : "namespace_id"
     attribute_fqns }o--|| attribute_values : "value_id"
     attribute_namespace_key_access_grants }o--|| attribute_namespaces : "namespace_id"
     attribute_namespace_key_access_grants }o--|| key_access_servers : "key_access_server_id"
     attribute_namespace_public_key_map }o--|| attribute_namespaces : "namespace_id"
     attribute_namespace_public_key_map }o--|| key_access_server_keys : "key_access_server_key_id"
+    dynamic_value_mappings }o--|| attribute_namespaces : "namespace_id"
     obligation_definitions }o--|| attribute_namespaces : "namespace_id"
     registered_resources }o--|| attribute_namespaces : "namespace_id"
     resource_mapping_groups }o--|| attribute_namespaces : "namespace_id"
+    resource_mappings }o--|| attribute_namespaces : "namespace_id"
     subject_condition_set }o--|| attribute_namespaces : "namespace_id"
     subject_mappings }o--|| attribute_namespaces : "namespace_id"
     attribute_value_key_access_grants }o--|| attribute_values : "attribute_value_id"
@@ -300,6 +322,8 @@ erDiagram
     resource_mappings }o--|| attribute_values : "attribute_value_id"
     subject_mappings }o--|| attribute_values : "attribute_value_id"
     base_keys }o--|| key_access_server_keys : "key_access_server_key_id"
+    dynamic_value_mapping_actions }o--|| dynamic_value_mappings : "dynamic_value_mapping_id"
+    dynamic_value_mappings }o--|| subject_condition_set : "subject_condition_set_id"
     key_access_server_keys }o--|| key_access_servers : "key_access_server_id"
     key_access_server_keys }o--|| provider_config : "provider_config_id"
     obligation_values_standard }o--|| obligation_definitions : "obligation_definition_id"

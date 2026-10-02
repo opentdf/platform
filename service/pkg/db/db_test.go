@@ -9,8 +9,9 @@ import (
 
 func Test_BuildConfig_ConnString(t *testing.T) {
 	tests := []struct {
-		config *Config
-		want   string
+		config            *Config
+		want              string
+		wantRuntimeParams map[string]string
 	}{
 		{
 			config: &Config{
@@ -63,6 +64,36 @@ func Test_BuildConfig_ConnString(t *testing.T) {
 			},
 			want: "postgres://myuser:mypassword@myhost:1234/mydb?sslmode=require",
 		},
+		// Statement timeout should not be added as a runtime parameter unless configured.
+		{
+			config: &Config{
+				Host:     "localhost",
+				Port:     5432,
+				Database: "opentdf",
+				User:     "postgres",
+				Password: "changeme",
+				SSLMode:  "prefer",
+			},
+			want: "postgres://postgres:changeme@localhost:5432/opentdf?sslmode=prefer",
+			wantRuntimeParams: map[string]string{
+				"statement_timeout": "",
+			},
+		},
+		{
+			config: &Config{
+				Host:             "localhost",
+				Port:             5432,
+				Database:         "opentdf",
+				User:             "postgres",
+				Password:         "changeme",
+				SSLMode:          "prefer",
+				StatementTimeout: 30,
+			},
+			want: "postgres://postgres:changeme@localhost:5432/opentdf?sslmode=prefer",
+			wantRuntimeParams: map[string]string{
+				"statement_timeout": "30s",
+			},
+		},
 	}
 
 	for _, test := range tests {
@@ -71,5 +102,65 @@ func Test_BuildConfig_ConnString(t *testing.T) {
 		assert.Equal(t, test.want, cfg.ConnString())
 		// AfterConnect hook was defined when building
 		assert.NotNil(t, cfg.AfterConnect)
+
+		for key, value := range test.wantRuntimeParams {
+			if value == "" {
+				assert.NotContains(t, cfg.ConnConfig.RuntimeParams, key)
+				continue
+			}
+			assert.Equal(t, value, cfg.ConnConfig.RuntimeParams[key])
+		}
+	}
+}
+
+func Test_BuildMigrationConfig_OverridesForMigration(t *testing.T) {
+	tests := []struct {
+		name string
+		cfg  Config
+	}{
+		{
+			name: "disables statement timeout when statement timeout is configured",
+			cfg: Config{
+				Host:             "localhost",
+				Port:             5432,
+				Database:         "opentdf",
+				User:             "postgres",
+				Password:         "changeme",
+				SSLMode:          "prefer",
+				StatementTimeout: 30,
+				Pool: PoolConfig{
+					MaxConns:     10,
+					MinConns:     2,
+					MinIdleConns: 2,
+				},
+			},
+		},
+		{
+			name: "disables statement timeout when statement timeout is not configured",
+			cfg: Config{
+				Host:     "localhost",
+				Port:     5432,
+				Database: "opentdf",
+				User:     "postgres",
+				Password: "changeme",
+				SSLMode:  "prefer",
+				Pool: PoolConfig{
+					MaxConns:     10,
+					MinConns:     2,
+					MinIdleConns: 2,
+				},
+			},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			cfg, err := test.cfg.buildMigrationConfig()
+			require.NoError(t, err)
+			assert.Equal(t, "0", cfg.ConnConfig.RuntimeParams["statement_timeout"])
+			assert.EqualValues(t, 1, cfg.MaxConns)
+			assert.EqualValues(t, 0, cfg.MinConns)
+			assert.EqualValues(t, 0, cfg.MinIdleConns)
+		})
 	}
 }

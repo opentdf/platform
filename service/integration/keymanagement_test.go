@@ -20,6 +20,8 @@ import (
 	"golang.org/x/text/language"
 )
 
+const basicManager = "opentdf.io/basic"
+
 var (
 	validProviderConfig   = []byte(`{"key": "value"}`)
 	validProviderConfig2  = []byte(`{"key2": "value2"}`)
@@ -58,12 +60,12 @@ func (s *KeyManagementSuite) TearDownSuite() {
 
 func (s *KeyManagementSuite) Test_CreateProviderConfig_NoMetada_Succeeds() {
 	pcIDs := make([]string, 0)
-	s.deleteTestProviderConfigs(append(pcIDs, s.createTestProviderConfig(s.testProvider, validProviderConfig, nil).GetId()))
+	s.deleteTestProviderConfigs(append(pcIDs, s.createTestProviderConfig(s.testProvider, basicManager, validProviderConfig, nil).GetId()))
 }
 
 func (s *KeyManagementSuite) Test_CreateProviderConfig_Metadata_Succeeds() {
 	pcIDs := make([]string, 0)
-	s.deleteTestProviderConfigs(append(pcIDs, s.createTestProviderConfig(s.testProvider, validProviderConfig, &common.MetadataMutable{
+	s.deleteTestProviderConfigs(append(pcIDs, s.createTestProviderConfig(s.testProvider, basicManager, validProviderConfig, &common.MetadataMutable{
 		Labels: validLabels,
 	}).GetId()))
 }
@@ -87,12 +89,12 @@ func (s *KeyManagementSuite) Test_CreateProviderConfig_InvalidConfig_Fails() {
 	s.Nil(pc)
 }
 
-func (s *KeyManagementSuite) Test_CreateProviderConfig_DuplicateName_Fails() {
+func (s *KeyManagementSuite) Test_CreateProviderConfig_DuplicateNameAndManager_Fails() {
 	pcIDs := make([]string, 0)
 	defer func() {
 		s.deleteTestProviderConfigs(pcIDs)
 	}()
-	pc := s.createTestProviderConfig(s.testProvider, validProviderConfig, nil)
+	pc := s.createTestProviderConfig(s.testProvider, basicManager, validProviderConfig, nil)
 	pcIDs = append(pcIDs, pc.GetId())
 
 	pc, err := s.db.PolicyClient.CreateProviderConfig(s.ctx, &keymanagement.CreateProviderConfigRequest{
@@ -101,7 +103,7 @@ func (s *KeyManagementSuite) Test_CreateProviderConfig_DuplicateName_Fails() {
 		ConfigJson: validProviderConfig,
 	})
 	s.Require().Error(err)
-	s.Require().ErrorContains(err, db.ErrUniqueConstraintViolation.Error())
+	s.Require().ErrorIs(err, db.ErrUniqueConstraintViolation)
 	s.Nil(pc)
 }
 
@@ -112,50 +114,94 @@ func (s *KeyManagementSuite) Test_CreateProviderConfig_CapitalizedName_Succeeds(
 	}()
 
 	providerName := strings.ToUpper(s.testProvider)
-	pc := s.createTestProviderConfig(providerName, validProviderConfig, nil)
+	pc := s.createTestProviderConfig(providerName, basicManager, validProviderConfig, nil)
 	pcIDs = append(pcIDs, pc.GetId())
 
-	pcGet, err := s.db.PolicyClient.GetProviderConfig(s.ctx, &keymanagement.GetProviderConfigRequest_Name{
-		Name: s.testProvider,
+	pcGet, err := s.db.PolicyClient.GetProviderConfig(s.ctx, &keymanagement.GetProviderConfigRequest{
+		Identifier: s.providerConfigNameIdentifier(s.testProvider, pc.GetManager()),
 	})
 	s.Require().NoError(err)
 	s.NotNil(pcGet)
 	s.Equal(s.testProvider, pcGet.GetName()) // Expect name to be lowercased
 	s.Equal(validProviderConfig, pcGet.GetConfigJson())
+	s.Equal(basicManager, pcGet.GetManager())
 }
 
-func (s *KeyManagementSuite) Test_GetProviderConfig_WithId_Succeeds() {
+func (s *KeyManagementSuite) Test_GetProviderConfig_WithId_DeprecatedManager_Succeeds() {
 	pcIDs := make([]string, 0)
 	defer func() {
 		s.deleteTestProviderConfigs(pcIDs)
 	}()
 
-	pc := s.createTestProviderConfig(s.testProvider, validProviderConfig, nil)
+	pc := s.createTestProviderConfig(s.testProvider, "test-manager", validProviderConfig, nil)
 	pcIDs = append(pcIDs, pc.GetId())
 
-	pc, err := s.db.PolicyClient.GetProviderConfig(s.ctx, &keymanagement.GetProviderConfigRequest_Id{
-		Id: pc.GetId(),
+	pcGet, err := s.db.PolicyClient.GetProviderConfig(s.ctx, &keymanagement.GetProviderConfigRequest{
+		Identifier: &keymanagement.GetProviderConfigRequest_Id{
+			Id: pc.GetId(),
+		},
+		Manager: pc.GetManager(),
 	})
 	s.Require().NoError(err)
-	s.NotNil(pc)
+	s.Require().NotNil(pcGet)
+	s.Equal(s.testProvider, pcGet.GetName())
+	s.Equal(validProviderConfig, pcGet.GetConfigJson())
+	s.Equal("test-manager", pcGet.GetManager())
 }
 
-func (s *KeyManagementSuite) Test_GetProviderConfig_WithName_Succeeds() {
+func (s *KeyManagementSuite) Test_GetProviderConfig_WithNameOnlyIdentifier_Fails() {
 	pcIDs := make([]string, 0)
 	defer func() {
 		s.deleteTestProviderConfigs(pcIDs)
 	}()
 
-	pc := s.createTestProviderConfig(s.testProvider, validProviderConfig, nil)
+	pc := s.createTestProviderConfig(s.testProvider, basicManager, validProviderConfig, nil)
 	pcIDs = append(pcIDs, pc.GetId())
 
-	pc, err := s.db.PolicyClient.GetProviderConfig(s.ctx, &keymanagement.GetProviderConfigRequest_Name{
-		Name: s.testProvider,
+	_, err := s.db.PolicyClient.GetProviderConfig(s.ctx, &keymanagement.GetProviderConfigRequest{
+		Identifier: &keymanagement.GetProviderConfigRequest_Name{
+			Name: s.testProvider,
+		},
+	})
+	s.Require().Error(err)
+	s.Require().ErrorIs(err, db.ErrIdentifierDeprecated)
+}
+
+func (s *KeyManagementSuite) Test_GetProviderConfig_WithManagerOnly_Fails() {
+	_, err := s.db.PolicyClient.GetProviderConfig(s.ctx, &keymanagement.GetProviderConfigRequest{
+		Manager: basicManager,
+	})
+	s.Require().Error(err)
+	s.Require().ErrorIs(err, db.ErrUnknownSelectIdentifier)
+}
+
+func (s *KeyManagementSuite) Test_GetProviderConfig_WithNameAndManager_Succeeds() {
+	pcIDs := make([]string, 0)
+	defer func() {
+		s.deleteTestProviderConfigs(pcIDs)
+	}()
+
+	pc1 := s.createTestProviderConfig(s.testProvider, basicManager, validProviderConfig, nil)
+	pcIDs = append(pcIDs, pc1.GetId())
+
+	pc2, err := s.db.PolicyClient.CreateProviderConfig(s.ctx, &keymanagement.CreateProviderConfigRequest{
+		Name:       s.testProvider,
+		Manager:    "test-manager",
+		ConfigJson: validProviderConfig2,
+	})
+	s.Require().NoError(err)
+	s.NotNil(pc2)
+	pcIDs = append(pcIDs, pc2.GetId())
+
+	pc, err := s.db.PolicyClient.GetProviderConfig(s.ctx, &keymanagement.GetProviderConfigRequest{
+		Identifier: s.providerConfigNameIdentifier(s.testProvider, "test-manager"),
 	})
 	s.Require().NoError(err)
 	s.NotNil(pc)
+	s.Equal(pc2.GetId(), pc.GetId())
 	s.Equal(s.testProvider, pc.GetName())
-	s.Equal(validProviderConfig, pc.GetConfigJson())
+	s.Equal("test-manager", pc.GetManager())
+	s.Equal(validProviderConfig2, pc.GetConfigJson())
 }
 
 func (s *KeyManagementSuite) Test_GetProviderConfig_MixedCaseName_Succeeds() {
@@ -165,11 +211,11 @@ func (s *KeyManagementSuite) Test_GetProviderConfig_MixedCaseName_Succeeds() {
 	}()
 
 	mixedCaseName := cases.Title(language.English).String(s.testProvider) // "Test-provider"
-	pc := s.createTestProviderConfig(mixedCaseName, validProviderConfig, nil)
+	pc := s.createTestProviderConfig(mixedCaseName, basicManager, validProviderConfig, nil)
 	pcIDs = append(pcIDs, pc.GetId())
 
-	pcGet, err := s.db.PolicyClient.GetProviderConfig(s.ctx, &keymanagement.GetProviderConfigRequest_Name{
-		Name: s.testProvider, // search with lowercase name
+	pcGet, err := s.db.PolicyClient.GetProviderConfig(s.ctx, &keymanagement.GetProviderConfigRequest{
+		Identifier: s.providerConfigNameIdentifier(s.testProvider, pc.GetManager()), // search with lowercase name
 	})
 	s.Require().NoError(err)
 	s.NotNil(pcGet)
@@ -178,7 +224,7 @@ func (s *KeyManagementSuite) Test_GetProviderConfig_MixedCaseName_Succeeds() {
 }
 
 func (s *KeyManagementSuite) Test_GetProviderConfig_InvalidIdentifier_Fails() {
-	pc, err := s.db.PolicyClient.GetProviderConfig(s.ctx, &map[string]string{})
+	pc, err := s.db.PolicyClient.GetProviderConfig(s.ctx, &keymanagement.GetProviderConfigRequest{})
 	s.Require().Error(err)
 	s.Nil(pc)
 }
@@ -190,7 +236,7 @@ func (s *KeyManagementSuite) Test_ListProviderConfig_No_Pagination_Succeeds() {
 		s.deleteTestProviderConfigs(pcIDs)
 	}()
 
-	pc := s.createTestProviderConfig(s.testProvider, validProviderConfig, nil)
+	pc := s.createTestProviderConfig(s.testProvider, basicManager, validProviderConfig, nil)
 	pcIDs = append(pcIDs, pc.GetId())
 
 	resp, err := s.db.PolicyClient.ListProviderConfigs(s.ctx, &policy.PageRequest{})
@@ -205,13 +251,13 @@ func (s *KeyManagementSuite) Test_ListProviderConfig_OrdersByCreatedAt_Succeeds(
 		s.deleteTestProviderConfigs(pcIDs)
 	}()
 
-	pc1 := s.createTestProviderConfig(s.getUniqueProviderName("order-test-provider-1"), validProviderConfig, nil)
+	pc1 := s.createTestProviderConfig(s.getUniqueProviderName("order-test-provider-1"), basicManager, validProviderConfig, nil)
 	pcIDs = append(pcIDs, pc1.GetId())
 	time.Sleep(5 * time.Millisecond)
-	pc2 := s.createTestProviderConfig(s.getUniqueProviderName("order-test-provider-2"), validProviderConfig, nil)
+	pc2 := s.createTestProviderConfig(s.getUniqueProviderName("order-test-provider-2"), basicManager, validProviderConfig, nil)
 	pcIDs = append(pcIDs, pc2.GetId())
 	time.Sleep(5 * time.Millisecond)
-	pc3 := s.createTestProviderConfig(s.getUniqueProviderName("order-test-provider-3"), validProviderConfig, nil)
+	pc3 := s.createTestProviderConfig(s.getUniqueProviderName("order-test-provider-3"), basicManager, validProviderConfig, nil)
 	pcIDs = append(pcIDs, pc3.GetId())
 
 	resp, err := s.db.PolicyClient.ListProviderConfigs(s.ctx, &policy.PageRequest{})
@@ -229,10 +275,10 @@ func (s *KeyManagementSuite) Test_ListProviderConfig_PaginationLimit_Succeeds() 
 
 	testProvider2 := s.getUniqueProviderName("test-provider-2")
 
-	pc := s.createTestProviderConfig(s.testProvider, validProviderConfig, nil)
+	pc := s.createTestProviderConfig(s.testProvider, basicManager, validProviderConfig, nil)
 	pcIDs = append(pcIDs, pc.GetId())
 
-	pc2 := s.createTestProviderConfig(testProvider2, validProviderConfig, nil)
+	pc2 := s.createTestProviderConfig(testProvider2, basicManager, validProviderConfig, nil)
 	pcIDs = append(pcIDs, pc2.GetId())
 
 	respOne, err := s.db.PolicyClient.ListProviderConfigs(s.ctx, &policy.PageRequest{
@@ -271,7 +317,7 @@ func (s *KeyManagementSuite) Test_UpdateProviderConfig_ExtendsMetadata_Succeeds(
 	}()
 
 	testProvider2 := s.getUniqueProviderName("test-provider-2")
-	pc := s.createTestProviderConfig(s.testProvider, validProviderConfig, &common.MetadataMutable{
+	pc := s.createTestProviderConfig(s.testProvider, basicManager, validProviderConfig, &common.MetadataMutable{
 		Labels: validLabels,
 	})
 	pcIDs = append(pcIDs, pc.GetId())
@@ -311,7 +357,7 @@ func (s *KeyManagementSuite) Test_UpdateProviderConfig_ReplaceMetadata_Succeeds(
 	}()
 
 	testProvider2 := s.getUniqueProviderName("test-provider-2")
-	pc := s.createTestProviderConfig(s.testProvider, validProviderConfig, &common.MetadataMutable{
+	pc := s.createTestProviderConfig(s.testProvider, basicManager, validProviderConfig, &common.MetadataMutable{
 		Labels: validLabels,
 	})
 	pcIDs = append(pcIDs, pc.GetId())
@@ -384,7 +430,7 @@ func (s *KeyManagementSuite) Test_UpdateProviderConfig_UpdatesConfigJson_And_Nam
 	}()
 
 	testProvider2 := s.getUniqueProviderName("test-provider-2")
-	pc := s.createTestProviderConfig(s.testProvider, validProviderConfig, nil)
+	pc := s.createTestProviderConfig(s.testProvider, basicManager, validProviderConfig, nil)
 	pcIDs = append(pcIDs, pc.GetId())
 	s.NotNil(pc)
 	s.Equal(s.testProvider, pc.GetName())
@@ -408,7 +454,7 @@ func (s *KeyManagementSuite) Test_UpdateProviderConfig_UpdatesConfigName_Succeed
 	}()
 
 	testProvider2 := s.getUniqueProviderName("test-provider-2")
-	pc := s.createTestProviderConfig(s.testProvider, validProviderConfig, nil)
+	pc := s.createTestProviderConfig(s.testProvider, basicManager, validProviderConfig, nil)
 	pcIDs = append(pcIDs, pc.GetId())
 	s.NotNil(pc)
 	s.Equal(s.testProvider, pc.GetName())
@@ -425,7 +471,7 @@ func (s *KeyManagementSuite) Test_UpdateProviderConfig_UpdatesConfigName_Succeed
 }
 
 func (s *KeyManagementSuite) Test_DeleteProviderConfig_Succeeds() {
-	pc := s.createTestProviderConfig(s.testProvider, validProviderConfig, nil)
+	pc := s.createTestProviderConfig(s.testProvider, basicManager, validProviderConfig, nil)
 	s.NotNil(pc)
 	pc, err := s.db.PolicyClient.DeleteProviderConfig(s.ctx, pc.GetId())
 	s.Require().NoError(err)
@@ -453,7 +499,7 @@ func (s *KeyManagementSuite) Test_DeleteProviderConfig_InUse_Fails() {
 
 		s.deleteTestProviderConfigs(pcIDs)
 	}()
-	pc := s.createTestProviderConfig(s.testProvider, validProviderConfig, nil)
+	pc := s.createTestProviderConfig(s.testProvider, basicManager, validProviderConfig, nil)
 	s.NotNil(pc)
 	pcIDs = append(pcIDs, pc.GetId())
 
@@ -514,10 +560,10 @@ func (s *KeyManagementSuite) Test_CreateProviderConfig_ValidManager_Succeeds() {
 	}()
 
 	// Test with valid manager 'opentdf.io/basic'
-	pc := s.createTestProviderConfigWithManager(s.testProvider, validProviderConfig, nil)
+	pc := s.createTestProviderConfig(s.testProvider, basicManager, validProviderConfig, nil)
 	pcIDs = append(pcIDs, pc.GetId())
 
-	s.Equal("opentdf.io/basic", pc.GetManager())
+	s.Equal(basicManager, pc.GetManager())
 	s.Equal(s.testProvider, pc.GetName())
 }
 
@@ -560,18 +606,18 @@ func (s *KeyManagementSuite) Test_CreateProviderConfig_SameNameDifferentManager_
 	}()
 
 	// Create first provider config with 'opentdf.io/basic' manager
-	pc1 := s.createTestProviderConfigWithManager(s.testProvider, validProviderConfig, nil)
+	pc1 := s.createTestProviderConfig(s.testProvider, basicManager, validProviderConfig, nil)
 	pcIDs = append(pcIDs, pc1.GetId())
 
 	// Create second provider config with same name but different manager
 	// Note: This test assumes there's another valid manager type available in the test environment
 	// For now, we'll test that the constraint allows different combinations
-	pc2 := s.createTestProviderConfigWithManager(s.testProvider+"2", validProviderConfig2, nil)
+	pc2 := s.createTestProviderConfig(s.testProvider+"2", basicManager, validProviderConfig2, nil)
 	pcIDs = append(pcIDs, pc2.GetId())
 
 	s.NotEqual(pc1.GetId(), pc2.GetId())
-	s.Equal("opentdf.io/basic", pc1.GetManager())
-	s.Equal("opentdf.io/basic", pc2.GetManager())
+	s.Equal(basicManager, pc1.GetManager())
+	s.Equal(basicManager, pc2.GetManager())
 	s.NotEqual(pc1.GetName(), pc2.GetName())
 }
 
@@ -582,13 +628,13 @@ func (s *KeyManagementSuite) Test_CreateProviderConfig_SameNameSameManager_Fails
 	}()
 
 	// Create first provider config
-	pc1 := s.createTestProviderConfigWithManager(s.testProvider, validProviderConfig, nil)
+	pc1 := s.createTestProviderConfig(s.testProvider, basicManager, validProviderConfig, nil)
 	pcIDs = append(pcIDs, pc1.GetId())
 
 	// Try to create second provider config with same name and same manager
 	pc2, err := s.db.PolicyClient.CreateProviderConfig(s.ctx, &keymanagement.CreateProviderConfigRequest{
 		Name:       s.testProvider,
-		Manager:    "opentdf.io/basic",
+		Manager:    basicManager,
 		ConfigJson: validProviderConfig2,
 	})
 	s.Require().Error(err)
@@ -605,20 +651,20 @@ func (s *KeyManagementSuite) Test_UpdateProviderConfig_ChangeManager_Succeeds() 
 	}()
 
 	// Create provider config with 'opentdf.io/basic' manager
-	pc := s.createTestProviderConfigWithManager(s.testProvider, validProviderConfig, nil)
+	pc := s.createTestProviderConfig(s.testProvider, basicManager, validProviderConfig, nil)
 	pcIDs = append(pcIDs, pc.GetId())
 
-	s.Equal("opentdf.io/basic", pc.GetManager())
+	s.Equal(basicManager, pc.GetManager())
 
 	// Update to keep the same manager (this should work)
 	updatedPc, err := s.db.PolicyClient.UpdateProviderConfig(s.ctx, &keymanagement.UpdateProviderConfigRequest{
 		Id:         pc.GetId(),
-		Manager:    "opentdf.io/basic",
+		Manager:    basicManager,
 		ConfigJson: validProviderConfig2,
 	})
 	s.Require().NoError(err)
 	s.NotNil(updatedPc)
-	s.Equal("opentdf.io/basic", updatedPc.GetManager())
+	s.Equal(basicManager, updatedPc.GetManager())
 	s.Equal(validProviderConfig2, updatedPc.GetConfigJson())
 }
 
@@ -634,11 +680,11 @@ func (s *KeyManagementSuite) Test_CreateProviderConfig_DefaultManager_BackwardCo
 		s.deleteTestProviderConfigs(pcIDs)
 	}()
 
-	pc := s.createTestProviderConfig(s.testProvider, validProviderConfig, nil)
+	pc := s.createTestProviderConfig(s.testProvider, basicManager, validProviderConfig, nil)
 	pcIDs = append(pcIDs, pc.GetId())
 
 	// Verify that the default manager is 'local'
-	s.Equal("opentdf.io/basic", pc.GetManager())
+	s.Equal(basicManager, pc.GetManager())
 }
 
 // Manager field inclusion tests
@@ -649,24 +695,26 @@ func (s *KeyManagementSuite) Test_GetProviderConfig_IncludesManagerField() {
 		s.deleteTestProviderConfigs(pcIDs)
 	}()
 
-	pc := s.createTestProviderConfigWithManager(s.testProvider, validProviderConfig, nil)
+	pc := s.createTestProviderConfig(s.testProvider, basicManager, validProviderConfig, nil)
 	pcIDs = append(pcIDs, pc.GetId())
 
 	// Get by ID
-	retrievedByID, err := s.db.PolicyClient.GetProviderConfig(s.ctx, &keymanagement.GetProviderConfigRequest_Id{
-		Id: pc.GetId(),
+	retrievedByID, err := s.db.PolicyClient.GetProviderConfig(s.ctx, &keymanagement.GetProviderConfigRequest{
+		Identifier: &keymanagement.GetProviderConfigRequest_Id{
+			Id: pc.GetId(),
+		},
 	})
 	s.Require().NoError(err)
 	s.NotNil(retrievedByID)
-	s.Equal("opentdf.io/basic", retrievedByID.GetManager())
+	s.Equal(basicManager, retrievedByID.GetManager())
 
 	// Get by Name
-	retrievedByName, err := s.db.PolicyClient.GetProviderConfig(s.ctx, &keymanagement.GetProviderConfigRequest_Name{
-		Name: s.testProvider,
+	retrievedByName, err := s.db.PolicyClient.GetProviderConfig(s.ctx, &keymanagement.GetProviderConfigRequest{
+		Identifier: s.providerConfigNameIdentifier(s.testProvider, pc.GetManager()),
 	})
 	s.Require().NoError(err)
 	s.NotNil(retrievedByName)
-	s.Equal("opentdf.io/basic", retrievedByName.GetManager())
+	s.Equal(basicManager, retrievedByName.GetManager())
 }
 
 func (s *KeyManagementSuite) Test_ListProviderConfigs_IncludesManagerField() {
@@ -676,9 +724,9 @@ func (s *KeyManagementSuite) Test_ListProviderConfigs_IncludesManagerField() {
 		s.deleteTestProviderConfigs(pcIDs)
 	}()
 
-	pc1 := s.createTestProviderConfigWithManager(s.testProvider, validProviderConfig, nil)
+	pc1 := s.createTestProviderConfig(s.testProvider, basicManager, validProviderConfig, nil)
 	pcIDs = append(pcIDs, pc1.GetId())
-	pc2 := s.createTestProviderConfigWithManager(testProvider2, validProviderConfig2, nil)
+	pc2 := s.createTestProviderConfig(testProvider2, basicManager, validProviderConfig2, nil)
 	pcIDs = append(pcIDs, pc2.GetId())
 
 	resp, err := s.db.PolicyClient.ListProviderConfigs(s.ctx, &policy.PageRequest{})
@@ -690,21 +738,17 @@ func (s *KeyManagementSuite) Test_ListProviderConfigs_IncludesManagerField() {
 	found := 0
 	for _, pc := range resp.GetProviderConfigs() {
 		if pc.GetName() == s.testProvider || pc.GetName() == testProvider2 {
-			s.Equal("opentdf.io/basic", pc.GetManager())
+			s.Equal(basicManager, pc.GetManager())
 			found++
 		}
 	}
 	s.Equal(2, found, "Should find both test provider configs")
 }
 
-func (s *KeyManagementSuite) createTestProviderConfig(providerName string, config []byte, metadata *common.MetadataMutable) *policy.KeyProviderConfig {
-	return s.createTestProviderConfigWithManager(providerName, config, metadata)
-}
-
-func (s *KeyManagementSuite) createTestProviderConfigWithManager(providerName string, config []byte, metadata *common.MetadataMutable) *policy.KeyProviderConfig {
+func (s *KeyManagementSuite) createTestProviderConfig(providerName, manager string, config []byte, metadata *common.MetadataMutable) *policy.KeyProviderConfig {
 	pc, err := s.db.PolicyClient.CreateProviderConfig(s.ctx, &keymanagement.CreateProviderConfigRequest{
 		Name:       providerName,
-		Manager:    "opentdf.io/basic",
+		Manager:    manager,
 		ConfigJson: config,
 		Metadata:   metadata,
 	})
@@ -723,6 +767,15 @@ func (s *KeyManagementSuite) deleteTestProviderConfigs(ids []string) {
 
 func (s *KeyManagementSuite) getUniqueProviderName(baseName string) string {
 	return baseName + "-" + uuid.NewString()[:8]
+}
+
+func (s *KeyManagementSuite) providerConfigNameIdentifier(name, manager string) *keymanagement.GetProviderConfigRequest_NameManager_ {
+	return &keymanagement.GetProviderConfigRequest_NameManager_{
+		NameManager: &keymanagement.GetProviderConfigRequest_NameManager{
+			Name:    name,
+			Manager: manager,
+		},
+	}
 }
 
 func TestKeyManagementSuite(t *testing.T) {

@@ -3,6 +3,8 @@
 package zipstream
 
 import (
+	"errors"
+	"fmt"
 	"io"
 )
 
@@ -40,8 +42,20 @@ func NewTDFReader(readSeeker io.ReadSeeker, opt ...TDFReaderOptions) (TDFReader,
 }
 
 // Manifest Return the manifest of the tdf.
+//
+// The spec name wins over the name this SDK writes when an archive carries
+// both. Only a missing entry triggers the fallback: a manifest that is present
+// but too large is a size failure, and retrying under the other name would
+// both report the wrong reason and, in an archive holding both, hand back the
+// superseded manifest.
 func (tdfReader TDFReader) Manifest() (string, error) {
-	fileContent, err := tdfReader.archiveReader.ReadAllFileData(TDFManifestFileName, tdfReader.manifestMaxSize)
+	fileContent, err := tdfReader.archiveReader.ReadAllFileData(TDFManifestFileNameSpec, tdfReader.manifestMaxSize)
+	if errors.Is(err, errZipFileNotFound) {
+		fileContent, err = tdfReader.archiveReader.ReadAllFileData(TDFManifestFileName, tdfReader.manifestMaxSize)
+		if errors.Is(err, errZipFileNotFound) {
+			return "", fmt.Errorf("no %s or %s entry: %w", TDFManifestFileNameSpec, TDFManifestFileName, err)
+		}
+	}
 	if err != nil {
 		return "", err
 	}

@@ -7,7 +7,7 @@ import (
 	"github.com/zalando/go-keyring"
 )
 
-type EmbeddedProfileCore struct {
+type embeddedProfileCore struct {
 	Name string `json:"profile"`
 	Info struct {
 		Value string `json:"value"`
@@ -15,20 +15,20 @@ type EmbeddedProfileCore struct {
 }
 
 type embeddedNamedProfile struct {
-	EmbeddedProfileCore
+	embeddedProfileCore
 	Label string `json:"label,omitempty"`
 }
 
 func (p *embeddedNamedProfile) GetName() string { return p.Name }
 
-func TestEmbeddedNamedProfileCreateUpdateAndCopy(t *testing.T) {
+func TestUnexportedEmbeddedNamedProfileCreateUpdateAndCopy(t *testing.T) {
 	keyring.MockInit()
 	const ns = "embedded_named_profile"
 	source, err := New(ns, WithKeyringStore())
 	if err != nil {
 		t.Fatal(err)
 	}
-	initial := &embeddedNamedProfile{EmbeddedProfileCore: EmbeddedProfileCore{Name: "alpha"}}
+	initial := &embeddedNamedProfile{embeddedProfileCore: embeddedProfileCore{Name: "alpha"}}
 	initial.Info.Value = "created"
 	if err := source.AddProfile(initial, true); err != nil {
 		t.Fatal(err)
@@ -101,7 +101,12 @@ func TestEmbeddedNamedProfileCreateUpdateAndCopy(t *testing.T) {
 	if err := loaded.Save(); err != nil {
 		t.Fatal(err)
 	}
-	if result.Info.Value != "updated" || string(loaded.UnknownFields()["futureTop"]) != `42` {
+	final, err := GetProfile[*embeddedNamedProfile](destination, "alpha")
+	if err != nil {
+		t.Fatal(err)
+	}
+	finalCore, ok := final.Profile.(*embeddedNamedProfile)
+	if !ok || finalCore.Info.Value != "updated" || string(final.UnknownFields()["futureTop"]) != `42` {
 		t.Fatal("embedded update lost unknown field")
 	}
 }

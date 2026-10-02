@@ -41,6 +41,39 @@ func TestMergeCoreEmbeddedFields(t *testing.T) {
 	}
 }
 
+type unexportedCore struct {
+	Name   string `json:"profile"`
+	Hidden string `json:"-"`
+}
+
+type pointerEmbeddedProfile struct {
+	*unexportedCore
+	private string
+}
+
+func TestUnexportedAnonymousPointerCoreFields(t *testing.T) {
+	core := pointerEmbeddedProfile{unexportedCore: &unexportedCore{Name: "alpha", Hidden: "not stored"}, private: "private"}
+	old := map[string]json.RawMessage{
+		"profile":    json.RawMessage(`"old"`),
+		core.private: json.RawMessage(`"opaque"`),
+		"future":     json.RawMessage(`42`),
+	}
+	merged, err := MergeCore(old, core)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(merged["profile"]) != `"alpha"` || string(merged["private"]) != `"opaque"` || string(merged["future"]) != `42` {
+		t.Fatalf("pointer core or opaque fields lost: %v", merged)
+	}
+	unknown := UnknownFields(merged, core)
+	if len(unknown) != 2 || string(unknown["private"]) != `"opaque"` || string(unknown["future"]) != `42` {
+		t.Fatalf("wrong pointer core ownership: %v", unknown)
+	}
+	if err := CheckOpaqueConflicts(merged, map[string]json.RawMessage{"profile": json.RawMessage(`"destination"`), "private": json.RawMessage(`"opaque"`), "future": json.RawMessage(`42`)}, core); err != nil {
+		t.Fatalf("migration treated pointer core as opaque: %v", err)
+	}
+}
+
 func TestCheckOpaqueConflicts(t *testing.T) {
 	core := EmbeddedProfile{}
 	for _, tc := range []struct {

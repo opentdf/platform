@@ -86,9 +86,6 @@ func mergeStructFields(target, fields map[string]json.RawMessage, typ reflect.Ty
 	}
 	for i := range typ.NumField() {
 		field := typ.Field(i)
-		if !field.IsExported() {
-			continue
-		}
 		name := strings.Split(field.Tag.Get("json"), ",")[0]
 		if name == "-" {
 			continue
@@ -97,6 +94,9 @@ func mergeStructFields(target, fields map[string]json.RawMessage, typ reflect.Ty
 			if err := mergeStructFields(target, fields, field.Type); err != nil {
 				return err
 			}
+			continue
+		}
+		if !field.IsExported() {
 			continue
 		}
 		if name == "" {
@@ -164,15 +164,15 @@ func deleteOwnedFields(fields map[string]json.RawMessage, typ reflect.Type) {
 	typ = embeddedStruct(typ)
 	for i := range typ.NumField() {
 		field := typ.Field(i)
-		if !field.IsExported() {
-			continue
-		}
 		name := strings.Split(field.Tag.Get("json"), ",")[0]
 		if name == "-" {
 			continue
 		}
 		if name == "" && field.Anonymous && embeddedStruct(field.Type) != nil {
 			deleteOwnedFields(fields, field.Type)
+			continue
+		}
+		if !field.IsExported() {
 			continue
 		}
 		if name == "" {

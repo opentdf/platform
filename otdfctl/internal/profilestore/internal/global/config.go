@@ -228,7 +228,18 @@ func (p *Store) remove(profileName string) error {
 }
 
 func (p *Store) save() error {
-	object, err := store.MergeCore(p.object, p.config)
+	latest := p.object
+	if p.store.Exists() {
+		data, err := p.store.Get()
+		if err != nil {
+			return err
+		}
+		latest, err = store.DecodeObject(data)
+		if err != nil {
+			return err
+		}
+	}
+	object, err := store.MergeCore(latest, p.config)
 	if err != nil {
 		return err
 	}

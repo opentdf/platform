@@ -217,6 +217,47 @@ func TestMigratePreservesUnknownTopLevelFields(t *testing.T) {
 	assertUnknownMigratedFields(t, false)
 }
 
+func TestMigratePreservesUnknownNestedCredentials(t *testing.T) {
+	if runtime.GOOS != "darwin" && runtime.GOOS != "linux" {
+		t.Skip("filesystem location not asserted on this OS")
+	}
+	keyring.MockInit()
+	t.Setenv("HOME", t.TempDir())
+	const global = `{"version":"1.0","profiles":["alpha"],"defaultProfile":"alpha"}`
+	const profile = `{"profile":"alpha","endpoint":"https://example.invalid","authCredentials":{"authType":"access-token","clientId":"id","futureAuth":{"flag":true},"accessToken":{"clientId":"id","accessToken":"token","refreshToken":"refresh","expiration":10,"futureToken":[1,2]}}}`
+	if err := keyring.Set(config.AppName, "global", global); err != nil {
+		t.Fatal(err)
+	}
+	if err := keyring.Set(config.AppName, "profile-alpha", profile); err != nil {
+		t.Fatal(err)
+	}
+	if err := Migrate(ProfileDriverFileSystem, ProfileDriverKeyring); err != nil {
+		t.Fatal(err)
+	}
+	if err := Migrate(ProfileDriverKeyring, ProfileDriverFileSystem); err != nil {
+		t.Fatal(err)
+	}
+	data, err := keyring.Get(config.AppName, "profile-alpha")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Contains([]byte(data), []byte(`"futureAuth":{"flag":true}`)) || !bytes.Contains([]byte(data), []byte(`"futureToken":[1,2]`)) {
+		t.Fatalf("nested unknown lost across file/keyring migration: %s", data)
+	}
+	profiler, err := CreateProfiler(ProfileDriverKeyring)
+	if err != nil {
+		t.Fatal(err)
+	}
+	stored, err := osprofiles.GetProfile[*ProfileConfig](profiler, "alpha")
+	if err != nil {
+		t.Fatal(err)
+	}
+	core, ok := stored.Profile.(*ProfileConfig)
+	if !ok || core.Endpoint != "https://example.invalid" || core.AuthCredentials.ClientID != "id" {
+		t.Fatalf("known core changed: %+v", stored.Profile)
+	}
+}
+
 func TestMigrateGlobalOnlyUnknownWithoutExtensions(t *testing.T) {
 	if runtime.GOOS != "darwin" && runtime.GOOS != "linux" {
 		t.Skip("filesystem location not asserted on this OS")

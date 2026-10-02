@@ -46,6 +46,43 @@ func TestMigrateGlobalOnlyConflictBeforeCleanup(t *testing.T) {
 	}
 }
 
+func TestMigrateNestedUnknownConflictBeforeWriting(t *testing.T) {
+	if runtime.GOOS != "darwin" && runtime.GOOS != "linux" {
+		t.Skip("filesystem location not asserted on this OS")
+	}
+	keyring.MockInit()
+	t.Setenv("HOME", t.TempDir())
+	const global = `{"version":"1.0","profiles":["alpha"],"defaultProfile":"alpha"}`
+	const destinationProfile = `{"profile":"alpha","endpoint":"https://example.invalid","authCredentials":{"futureAuth":1,"accessToken":{"futureToken":1}}}`
+	if err := keyring.Set(config.AppName, "global", global); err != nil {
+		t.Fatal(err)
+	}
+	if err := keyring.Set(config.AppName, "profile-alpha", destinationProfile); err != nil {
+		t.Fatal(err)
+	}
+	if err := Migrate(ProfileDriverFileSystem, ProfileDriverKeyring); err != nil {
+		t.Fatal(err)
+	}
+	for _, change := range []string{
+		`{"profile":"alpha","endpoint":"https://example.invalid","authCredentials":{"futureAuth":2,"accessToken":{"futureToken":1}}}`,
+		`{"profile":"alpha","endpoint":"https://example.invalid","authCredentials":{"futureAuth":1,"accessToken":{"futureToken":2}}}`,
+	} {
+		if err := keyring.Set(config.AppName, "global", global); err != nil {
+			t.Fatal(err)
+		}
+		if err := keyring.Set(config.AppName, "profile-alpha", change); err != nil {
+			t.Fatal(err)
+		}
+		if err := Migrate(ProfileDriverFileSystem, ProfileDriverKeyring); !errors.Is(err, store.ErrOpaqueConflict) {
+			t.Fatalf("nested unknown conflict not reported: %v", err)
+		}
+		got, err := keyring.Get(config.AppName, "profile-alpha")
+		if err != nil || got != change {
+			t.Fatalf("source changed on conflict: %s %v", got, err)
+		}
+	}
+}
+
 func TestMigrateProfileNamespaceConflictBeforeWriting(t *testing.T) {
 	if runtime.GOOS != "darwin" && runtime.GOOS != "linux" {
 		t.Skip("filesystem location not asserted on this OS")

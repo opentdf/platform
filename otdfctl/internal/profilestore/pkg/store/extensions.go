@@ -202,6 +202,71 @@ func CheckOpaqueConflicts(source, destination map[string]json.RawMessage, core a
 			return fmt.Errorf("%w: extension %q", ErrOpaqueConflict, namespace)
 		}
 	}
+	_, err = MergeUnknownNested(source, destination, core)
+	return err
+}
+
+// MergeUnknownNested transfers unknown members at core struct boundaries without
+// replacing destination-owned core values. It rejects differing opaque members.
+func MergeUnknownNested(source, destination map[string]json.RawMessage, core any) (map[string]json.RawMessage, error) {
+	merged := make(map[string]json.RawMessage, len(destination))
+	for key, value := range destination {
+		merged[key] = value
+	}
+	if err := mergeUnknownStructFields(source, merged, reflect.TypeOf(core), ""); err != nil {
+		return nil, err
+	}
+	return merged, nil
+}
+
+func mergeUnknownStructFields(source, destination map[string]json.RawMessage, typ reflect.Type, path string) error {
+	typ = embeddedStruct(typ)
+	if typ == nil {
+		return nil
+	}
+	for i := range typ.NumField() {
+		field := typ.Field(i)
+		name := strings.Split(field.Tag.Get("json"), ",")[0]
+		if name == "-" {
+			continue
+		}
+		if name == "" && field.Anonymous && embeddedStruct(field.Type) != nil {
+			if err := mergeUnknownStructFields(source, destination, field.Type, path); err != nil {
+				return err
+			}
+			continue
+		}
+		if !field.IsExported() || embeddedStruct(field.Type) == nil {
+			continue
+		}
+		if name == "" {
+			name = field.Name
+		}
+		var sourceFields, destinationFields map[string]json.RawMessage
+		if json.Unmarshal(source[name], &sourceFields) != nil || sourceFields == nil ||
+			json.Unmarshal(destination[name], &destinationFields) != nil || destinationFields == nil {
+			continue
+		}
+		unknown := make(map[string]json.RawMessage, len(sourceFields))
+		for key, value := range sourceFields {
+			unknown[key] = value
+		}
+		deleteOwnedFields(unknown, field.Type)
+		for key, value := range unknown {
+			if existing, ok := destinationFields[key]; ok && !sameJSON(value, existing) {
+				return fmt.Errorf("%w: field %q", ErrOpaqueConflict, path+name+"."+key)
+			}
+			destinationFields[key] = value
+		}
+		if err := mergeUnknownStructFields(sourceFields, destinationFields, field.Type, path+name+"."); err != nil {
+			return err
+		}
+		encoded, err := json.Marshal(destinationFields)
+		if err != nil {
+			return err
+		}
+		destination[name] = encoded
+	}
 	return nil
 }
 

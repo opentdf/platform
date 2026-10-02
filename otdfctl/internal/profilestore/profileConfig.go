@@ -2,6 +2,7 @@ package profilestore
 
 import (
 	"encoding/json"
+	"reflect"
 
 	"github.com/opentdf/platform/otdfctl/internal/profilestore/internal/global"
 	"github.com/opentdf/platform/otdfctl/internal/profilestore/pkg/store"
@@ -95,7 +96,18 @@ func GetStoredProfile[T NamedProfile](profileStore *ProfileStore) (T, error) {
 
 // Save the current profile data to the store
 func (p *ProfileStore) Save() error {
-	object, err := store.MergeCore(p.object, p.Profile)
+	latest := p.object
+	if p.store.Exists() {
+		data, err := p.store.Get()
+		if err != nil {
+			return err
+		}
+		latest, err = store.DecodeObject(data)
+		if err != nil {
+			return err
+		}
+	}
+	object, err := store.MergeCore(latest, p.Profile)
 	if err != nil {
 		return err
 	}
@@ -131,12 +143,12 @@ func (p *ProfileStore) CopyUnknownTo(destination *ProfileStore) error {
 		return err
 	}
 	unknown := p.UnknownFields()
-	if len(unknown) == 0 {
-		return nil
+	object, err := store.MergeUnknownNested(p.object, destination.object, p.Profile)
+	if err != nil {
+		return err
 	}
-	object := make(map[string]json.RawMessage, len(destination.object))
-	for key, value := range destination.object {
-		object[key] = value
+	if len(unknown) == 0 && reflect.DeepEqual(object, destination.object) {
+		return nil
 	}
 	for key, value := range unknown {
 		object[key] = value

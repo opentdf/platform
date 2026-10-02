@@ -53,19 +53,29 @@ const (
 	kAssertionSignature    = "assertionSig"
 	kAssertionHash         = "assertionHash"
 	hexSemverThreshold     = "4.3.0"
-
-	// maxPayloadSegments caps the segment count a declared input size may imply.
-	// The archive writer counts segments with an int, so the count has to fit one
-	// on every platform the SDK builds for. A payload that needs more segments than
-	// this — 4 PiB at the default segment size — is beyond what CreateTDF can write
-	// anyway, and is better refused than silently mis-sized.
-	//
-	// This bounds only a payload whose length resolves, declared through
-	// [WithInputSize] or recovered from a seekable reader. A stream that can be
-	// measured neither way is read to EOF with no segment ceiling; DSPX-4905 tracks
-	// giving it one.
-	maxPayloadSegments = math.MaxInt32
 )
+
+// maxPayloadSegments caps the segment count a declared input size may imply.
+// The archive writer counts segments with an int, so the count has to fit one
+// on every platform the SDK builds for, and every segment spends one seal of
+// the DEK's sealer, so this is the smaller of those two ceilings and
+// [ocrypto.MaxSeals].
+//
+// It is therefore not a constant. Under FIPS 140-3 the IV must come from an
+// RBG, which makes uniqueness probabilistic rather than structural, and
+// MaxSeals drops far enough to bind here; [defaultSegmentSize] grows to
+// compensate. A payload needing more segments than this is better refused than
+// silently mis-sized.
+//
+// It counts segments, not seals: a retried segment spends a second seal, so a
+// payload at exactly this many segments has no headroom for retries, and the
+// sealer's own ceiling ([ocrypto.ErrSealerExhausted]) is the backstop.
+//
+// This bounds only a payload whose length resolves, declared through
+// [WithInputSize] or recovered from a seekable reader. A stream that can be
+// measured neither way is read to EOF with no segment ceiling; DSPX-4905 tracks
+// giving it one.
+var maxPayloadSegments = min(int64(ocrypto.MaxSeals()), int64(math.MaxInt32))
 
 // Loads and reads ZTDF files
 type Reader struct {
@@ -357,9 +367,9 @@ func (s SDK) newTDFChunkedWriter(ctx context.Context, tdfConfig *TDFConfig, zipM
 			}
 			return zipstream.NewSegmentTDFWriter(declaredSegments, archiveOpts...)
 		},
-		cipherFactory: defaultSegmentCipherFactory,
 		clock:         systemClock{},
 		dek:           dek,
+		sealerFactory: defaultSegmentSealerFactory,
 		// Set together, at construction, because they have to be: hex-then-base64
 		// signatures are written during WriteSegment, long before any Finalize
 		// option is seen, and a manifest carrying one setting without the other
@@ -650,24 +660,42 @@ func createPolicyBinding(symKey []byte, base64Policy string) PolicyBinding {
 	}
 }
 
+// encryptMetadata seals key access object metadata under a split share.
+//
+// The sealer is built for this one encryption and discarded, so the header is
+// a fresh random fixed field and counter 0. In a single-split TDF the share is
+// the DEK itself, which the payload sealer also counts under; the two are kept
+// apart only by their independently drawn fixed fields (a 2^-64 chance of
+// collision), not by sharing a counter.
 func encryptMetadata(symKey []byte, metaData string) (string, error) {
-	gcm, err := ocrypto.NewAESGcm(symKey)
+	sealer, err := ocrypto.NewAESGcmSealer(symKey)
 	if err != nil {
-		return "", fmt.Errorf("ocrypto.NewAESGcm failed:%w", err)
+		return "", fmt.Errorf("ocrypto.NewAESGcmSealer failed:%w", err)
 	}
 
-	emb, err := gcm.Encrypt([]byte(metaData))
+	header, ciphertext, err := sealer.Seal([]byte(metaData))
 	if err != nil {
-		return "", fmt.Errorf("ocrypto.AesGcm.encrypt failed:%w", err)
+		return "", fmt.Errorf("encrypt key access metadata: %w", err)
 	}
+	return encodeEncryptedMetadata(header, ciphertext)
+}
 
-	iv := emb[:ocrypto.GcmStandardNonceSize]
-	metadata := EncryptedMetadata{
+// encodeEncryptedMetadata renders a sealed metadata blob as the manifest's
+// base64(JSON) EncryptedMetadata.
+//
+// Cipher is header||ciphertext and Iv is the header, so the Iv == Cipher[:12]
+// relationship that readers assume -- ours ignores Iv entirely and feeds the
+// whole blob to Decrypt -- now holds by construction rather than by the
+// coincidence of a random nonce prefix. The wire shape is unchanged.
+func encodeEncryptedMetadata(header, ciphertext []byte) (string, error) {
+	emb := make([]byte, 0, len(header)+len(ciphertext))
+	emb = append(emb, header...)
+	emb = append(emb, ciphertext...)
+
+	metadataJSON, err := json.Marshal(EncryptedMetadata{
 		Cipher: string(ocrypto.Base64Encode(emb)),
-		Iv:     string(ocrypto.Base64Encode(iv)),
-	}
-
-	metadataJSON, err := json.Marshal(metadata)
+		Iv:     string(ocrypto.Base64Encode(header)),
+	})
 	if err != nil {
 		return "", fmt.Errorf(" json.Marshal failed:%w", err)
 	}

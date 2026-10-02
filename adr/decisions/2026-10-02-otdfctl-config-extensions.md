@@ -21,7 +21,7 @@ tags:
 
 ## Decision Outcome
 
-Choose **opaque storage beneath a typed VFO API**. The copied engine stores global and per-profile extension payloads alongside existing filesystem/keyring configuration without interpreting consumer schemas. Reads, core or extension writes, and driver migration preserve unknown namespaces and fields; a typed write must not silently erase data it cannot understand. Global settings work without any profile or default profile, including global-only migration. Existing configuration remains readable without registration.
+Choose **opaque storage beneath a typed VFO API**. The copied engine stores global and per-profile extension payloads alongside existing filesystem/keyring configuration without interpreting consumer schemas. Core saves and driver migration preserve unknown namespaces and opaque fields. An explicit typed `Write*Extension` fully replaces its namespace and may drop fields absent from the replacement; API comments/docs must warn callers. Other namespaces remain intact. Global settings work without any profile or default profile, including global-only migration. Existing configuration remains readable without registration.
 
 In `otdfctl`, consumers register a namespace and value shape for global or profile scope using variadic functional options, then read/write typed values. Reject invalid or conflicting registrations and return explicit absence or decoding errors without destructive writes. Namespace owners handle any validation or payload version evolution they need; do not mandate a central schema registry or automatic versions. Extension payloads and credentials are never included automatically in output, logs, or diagnostics.
 
@@ -39,4 +39,4 @@ OpenTDF /otdfctl maintainers own this independent in-tree fork, including future
 
 ## Validation
 
-The copy PR must read pre-copy filesystem and keyring fixtures (including encrypted data) after relocation and check core create/load/update, default selection, authentication, and migration without changing persisted identities. The later storage/API PR must rerun those gates and test global-only operation and migration with zero profiles, typed round trips across drivers, multiple namespaces, unknown-field preservation, errors without mutation, and no implicit payload disclosure.
+The copy PR must read pre-copy filesystem and keyring fixtures (including encrypted data) after relocation and check core create/load/update, default selection, authentication, and migration without changing persisted identities. The later storage/API PR must rerun those gates and test global-only operation and migration with zero profiles, typed round trips across drivers, multiple namespaces, unknown-field preservation on core saves/migration, full typed namespace replacement (including dropped omitted fields), errors without mutation, and no implicit payload disclosure.

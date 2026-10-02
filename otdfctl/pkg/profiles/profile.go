@@ -85,6 +85,10 @@ func Migrate(to ProfileDriver, from ProfileDriver) error {
 	}
 
 	profilesToMigrate := osprofiles.ListProfiles(fromProfiler)
+	// Preserve the previous no-op for an empty store when both drivers are identical.
+	if to == from && len(profilesToMigrate) == 0 {
+		return nil
+	}
 	sourceGlobal := osprofiles.GetGlobalConfig(fromProfiler)
 	globalExtensions, err := sourceGlobal.Extensions()
 	if err != nil {

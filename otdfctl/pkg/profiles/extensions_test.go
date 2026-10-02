@@ -320,6 +320,7 @@ func TestTypedExtensionUsesLatestStoredConfiguration(t *testing.T) {
 func TestTypedExtensionAcrossDriversAndNoCredentialDisclosure(t *testing.T) {
 	keyring.MockInit()
 	t.Setenv("HOME", t.TempDir())
+	t.Setenv("LOCALAPPDATA", t.TempDir())
 	for _, driver := range []ProfileDriver{ProfileDriverFileSystem, ProfileDriverKeyring} {
 		t.Run(string(driver), func(t *testing.T) {
 			profiler, err := CreateProfiler(driver)

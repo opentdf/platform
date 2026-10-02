@@ -59,7 +59,7 @@ func MergeCore(object map[string]json.RawMessage, core any) (map[string]json.Raw
 	if err := json.Unmarshal(data, &fields); err != nil {
 		return nil, err
 	}
-	merged := make(map[string]json.RawMessage, len(object)+len(fields))
+	merged := make(map[string]json.RawMessage, len(object))
 	for key, value := range object {
 		merged[key] = value
 	}
@@ -69,8 +69,9 @@ func MergeCore(object map[string]json.RawMessage, core any) (map[string]json.Raw
 	return merged, nil
 }
 
-// mergeStructFields replaces core-owned members (including omitted members),
-// but retains unknown members at every nested struct boundary.
+// mergeStructFields canonicalizes the case-insensitive core keys accepted by
+// encoding/json, including omitted members. Unknown nested members are retained;
+// differing opaque values across aliases are rejected rather than choosing one.
 func mergeStructFields(target, fields map[string]json.RawMessage, typ reflect.Type) error {
 	if typ == nil {
 		return nil
@@ -103,22 +104,22 @@ func mergeStructFields(target, fields map[string]json.RawMessage, typ reflect.Ty
 			name = field.Name
 		}
 		value, present := fields[name]
-		if !present {
-			delete(target, name)
-			continue
-		}
-		fieldType := field.Type
-		for fieldType.Kind() == reflect.Pointer {
-			fieldType = fieldType.Elem()
-		}
-		if fieldType.Kind() == reflect.Struct {
-			var err error
-			value, err = mergeNestedStruct(target[name], value, fieldType)
-			if err != nil {
-				return err
+		for key, old := range target {
+			if !strings.EqualFold(key, name) {
+				continue
 			}
+			if present && embeddedStruct(field.Type) != nil {
+				var err error
+				value, err = mergeNestedStruct(old, value, field.Type)
+				if err != nil {
+					return err
+				}
+			}
+			delete(target, key)
 		}
-		target[name] = value
+		if present {
+			target[name] = value
+		}
 	}
 	return nil
 }
@@ -126,10 +127,10 @@ func mergeStructFields(target, fields map[string]json.RawMessage, typ reflect.Ty
 func mergeNestedStruct(old, updated json.RawMessage, typ reflect.Type) (json.RawMessage, error) {
 	var oldFields, newFields map[string]json.RawMessage
 	if json.Unmarshal(old, &oldFields) == nil && oldFields != nil && json.Unmarshal(updated, &newFields) == nil && newFields != nil {
-		if err := mergeStructFields(oldFields, newFields, typ); err != nil {
+		if err := mergeUnknownObjectFields(oldFields, newFields, typ, ""); err != nil {
 			return nil, err
 		}
-		return json.Marshal(oldFields)
+		return json.Marshal(newFields)
 	}
 	return updated, nil
 }
@@ -178,7 +179,11 @@ func deleteOwnedFields(fields map[string]json.RawMessage, typ reflect.Type) {
 		if name == "" {
 			name = field.Name
 		}
-		delete(fields, name)
+		for key := range fields {
+			if strings.EqualFold(key, name) {
+				delete(fields, key)
+			}
+		}
 	}
 }
 
@@ -242,32 +247,49 @@ func mergeUnknownStructFields(source, destination map[string]json.RawMessage, ty
 		if name == "" {
 			name = field.Name
 		}
-		var sourceFields, destinationFields map[string]json.RawMessage
-		if json.Unmarshal(source[name], &sourceFields) != nil || sourceFields == nil ||
-			json.Unmarshal(destination[name], &destinationFields) != nil || destinationFields == nil {
-			continue
-		}
-		unknown := make(map[string]json.RawMessage, len(sourceFields))
-		for key, value := range sourceFields {
-			unknown[key] = value
-		}
-		deleteOwnedFields(unknown, field.Type)
-		for key, value := range unknown {
-			if existing, ok := destinationFields[key]; ok && !sameJSON(value, existing) {
-				return fmt.Errorf("%w: field %q", ErrOpaqueConflict, path+name+"."+key)
+		for sourceKey, sourceValue := range source {
+			if !strings.EqualFold(sourceKey, name) {
+				continue
 			}
-			destinationFields[key] = value
+			var sourceFields map[string]json.RawMessage
+			if json.Unmarshal(sourceValue, &sourceFields) != nil || sourceFields == nil {
+				continue
+			}
+			for destinationKey, destinationValue := range destination {
+				if !strings.EqualFold(destinationKey, name) {
+					continue
+				}
+				var destinationFields map[string]json.RawMessage
+				if json.Unmarshal(destinationValue, &destinationFields) != nil || destinationFields == nil {
+					continue
+				}
+				if err := mergeUnknownObjectFields(sourceFields, destinationFields, field.Type, path+name+"."); err != nil {
+					return err
+				}
+				encoded, err := json.Marshal(destinationFields)
+				if err != nil {
+					return err
+				}
+				destination[destinationKey] = encoded
+			}
 		}
-		if err := mergeUnknownStructFields(sourceFields, destinationFields, field.Type, path+name+"."); err != nil {
-			return err
-		}
-		encoded, err := json.Marshal(destinationFields)
-		if err != nil {
-			return err
-		}
-		destination[name] = encoded
 	}
 	return nil
+}
+
+func mergeUnknownObjectFields(source, destination map[string]json.RawMessage, typ reflect.Type, path string) error {
+	unknown := make(map[string]json.RawMessage, len(source))
+	for key, value := range source {
+		unknown[key] = value
+	}
+	deleteOwnedFields(unknown, typ)
+	for key, value := range unknown {
+		if existing, ok := destination[key]; ok && !sameJSON(value, existing) {
+			return fmt.Errorf("%w: field %q", ErrOpaqueConflict, path+key)
+		}
+		destination[key] = value
+	}
+	return mergeUnknownStructFields(source, destination, typ, path)
 }
 
 func sameJSON(a, b json.RawMessage) bool {
@@ -293,7 +315,7 @@ func PutExtension(object map[string]json.RawMessage, namespace string, payload j
 	if err != nil {
 		return nil, err
 	}
-	result := make(map[string]json.RawMessage, len(object)+1)
+	result := make(map[string]json.RawMessage, len(object))
 	for key, value := range object {
 		result[key] = value
 	}

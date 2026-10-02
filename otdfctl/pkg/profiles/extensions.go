@@ -106,8 +106,9 @@ func checkExtensionType[T any](config *ExtensionConfig, scope extensionScope, na
 func decodeExtension[T any](raw json.RawMessage) (T, error) {
 	var value T
 	if err := json.Unmarshal(raw, &value); err != nil {
-		// Do not include the raw value: an extension may contain credentials.
-		return value, ErrExtensionDecode
+		// Do not return a partial value or raw error: an extension may contain credentials.
+		var zero T
+		return zero, ErrExtensionDecode
 	}
 	return value, nil
 }

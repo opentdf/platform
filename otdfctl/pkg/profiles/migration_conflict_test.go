@@ -12,6 +12,21 @@ import (
 	"github.com/zalando/go-keyring"
 )
 
+func TestMigrateGlobalOnlySameDriverPreservesSource(t *testing.T) {
+	keyring.MockInit()
+	const original = `{"version":"1.0","profiles":[],"defaultProfile":"","futureGlobal":1,"extensions":{"alpha":{"enabled":true}}}`
+	if err := keyring.Set(config.AppName, "global", original); err != nil {
+		t.Fatal(err)
+	}
+	if err := Migrate(ProfileDriverKeyring, ProfileDriverKeyring); err != nil {
+		t.Fatal(err)
+	}
+	got, err := keyring.Get(config.AppName, "global")
+	if err != nil || got != original {
+		t.Fatal("same-driver migration changed or deleted the global-only source")
+	}
+}
+
 func TestMigrateGlobalOnlyConflictBeforeCleanup(t *testing.T) {
 	if runtime.GOOS != "darwin" && runtime.GOOS != "linux" {
 		t.Skip("filesystem location not asserted on this OS")

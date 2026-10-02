@@ -52,30 +52,139 @@ type fixedClock struct {
 // Now returns the pinned time.
 func (c fixedClock) Now() time.Time { return c.T }
 
-// segmentCipher encrypts a single payload segment. Implementations must be
-// safe for concurrent use by segment writers.
+// segmentSealer encrypts one numbered part of a single message under a single
+// key. Implementations must be safe for concurrent use by segment writers.
 //
-// The output must be AEAD in the shape the TDF reader expects: a fresh nonce
-// per call, and a ciphertext ending in a 16-byte authentication tag.
-// WriteSegment concatenates nonce+ciphertext and hands the result to
-// segmentIntegrity, which under SegmentGMAC reads the tag straight off the
-// tail; a cipher that omits the tag or returns a repeated nonce produces a
-// manifest that verifies against nothing.
-type segmentCipher interface {
-	// EncryptInPlace returns (ciphertext, nonce, error). Despite the name --
-	// inherited from ocrypto.AesGcm -- nothing is encrypted in place: the
-	// implementation must allocate its output and must neither retain nor
-	// modify data, which WriteSegment passes through from its caller.
-	EncryptInPlace(data []byte) ([]byte, []byte, error)
+// The output must be AEAD in the shape the TDF reader expects: a 12-byte
+// header, which is the part's IV, and a ciphertext ending in a 16-byte
+// authentication tag. WriteSegment prepends the header to the ciphertext on
+// the wire but hands segmentIntegrity the ciphertext alone, which under
+// SegmentGMAC reads the tag straight off the tail; an implementation that
+// omits the tag produces a manifest that verifies against nothing.
+//
+// Uniqueness is the caller's to supply and the implementation's to honor.
+// Distinct parts must produce distinct headers, and an implementation that
+// invents its own header instead of deriving one from the part breaks that
+// *silently*: the segment still decrypts, because the reader takes whatever
+// header the writer prepended. What is lost is the guarantee that no two
+// segments under one key ever share an IV.
+type segmentSealer interface {
+	// Seal returns (header, ciphertext, error) for part. It must allocate its
+	// output and must neither retain nor modify data, which WriteSegment
+	// passes through from its caller.
+	Seal(part uint32, data []byte) ([]byte, []byte, error)
 }
 
-// segmentCipherFactory builds a segmentCipher from the writer-generated DEK.
-// Tests inject deterministic ciphers for reproducible fixtures.
-type segmentCipherFactory func(dek []byte) (segmentCipher, error)
+// segmentSealerFactory builds a segmentSealer from a key and the message ID
+// shared by every part of the message. Tests inject failing and blocking
+// sealers; production uses defaultSegmentSealerFactory.
+//
+// Taking both at once is the point: it leaves no way to hold a key and a
+// message ID as two values that a later refactor can desynchronize, which
+// would pair one message's ID with another message's key -- cross-file IV
+// reuse, the failure this construction exists to remove.
+type segmentSealerFactory func(dek []byte, id ocrypto.MessageID) (segmentSealer, error)
 
-// defaultSegmentCipherFactory wraps ocrypto.NewAESGcm (AES-256-GCM).
-func defaultSegmentCipherFactory(dek []byte) (segmentCipher, error) {
-	return ocrypto.NewAESGcm(dek)
+// defaultSegmentSealerFactory wraps ocrypto.NewAESGcmSealer (AES-256-GCM with
+// a deterministic per-part IV).
+func defaultSegmentSealerFactory(dek []byte, id ocrypto.MessageID) (segmentSealer, error) {
+	sealer, err := ocrypto.NewAESGcmSealer(dek, id)
+	if err != nil {
+		return nil, err
+	}
+	return sealer, nil
+}
+
+// messageSealerEntry is the per-key half of a messageSealers registry: the
+// sealer itself plus whatever key access metadata has been sealed under that
+// key, which must be sealed exactly once because it spends [metadataPart].
+type messageSealerEntry struct {
+	// sealer encrypts every part -- payload and metadata -- under this key.
+	sealer segmentSealer
+
+	// metadata is the encoded EncryptedMetadata sealed at metadataPart.
+	// metadataSealed distinguishes a cached empty result from an absent one.
+	metadata       string
+	metadataSealed bool
+}
+
+// messageSealers is the set of sealers one message uses, one per distinct key,
+// all sharing the message's single ID.
+//
+// The registry exists because a TDF seals under more than one key: the DEK for
+// the payload, and each XOR share for that share's key access metadata. Those
+// keys may coincide -- with a single split the sole share is the DEK verbatim
+// -- and when they do, both uses must reach the *same* sealer, or the metadata
+// and segment 0 would be numbered independently under one key.
+//
+// Entries are keyed by a copy of the key bytes, never by split ID or KAS URL,
+// which can change while the underlying key does not. They live as long as the
+// writer: dropping one and rebuilding it would reset that key's encryption
+// budget on the RBG fallback. Repeated splits mint fresh share keys and so add
+// entries, which is a bounded but real memory cost on a writer that finalizes
+// many times.
+//
+// The keys are secret material. Do not log them, expose them, or put them in
+// an error message.
+type messageSealers struct {
+	// id is the message ID every entry's sealer derives its IVs from. Fixed at
+	// construction; one message, one ID.
+	id ocrypto.MessageID
+
+	// factory builds an entry's sealer on first use of its key.
+	factory segmentSealerFactory
+
+	// mu guards entries and the fields of every entry in it. Held only across
+	// local work -- sealer construction, one encryption, encoding -- never
+	// across KAS resolution or any other network call.
+	mu sync.Mutex
+
+	// entries maps a copied key to its sealer and cached metadata.
+	entries map[[kKeySize]byte]*messageSealerEntry
+}
+
+// newMessageSealers returns an empty registry over id. A nil factory means
+// defaultSegmentSealerFactory.
+func newMessageSealers(id ocrypto.MessageID, factory segmentSealerFactory) *messageSealers {
+	if factory == nil {
+		factory = defaultSegmentSealerFactory
+	}
+	return &messageSealers{
+		id:      id,
+		factory: factory,
+		entries: make(map[[kKeySize]byte]*messageSealerEntry),
+	}
+}
+
+// sealerFor returns the sealer for key, building it on first use.
+func (s *messageSealers) sealerFor(key []byte) (segmentSealer, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	entry, err := s.entryLocked(key)
+	if err != nil {
+		return nil, err
+	}
+	return entry.sealer, nil
+}
+
+// entryLocked finds or creates the entry for key. Caller holds s.mu.
+func (s *messageSealers) entryLocked(key []byte) (*messageSealerEntry, error) {
+	if len(key) != kKeySize {
+		// The length, never the key.
+		return nil, fmt.Errorf("%w: got %d bytes, want %d", errSealerKeySize, len(key), kKeySize)
+	}
+	var k [kKeySize]byte
+	copy(k[:], key)
+	if entry, ok := s.entries[k]; ok {
+		return entry, nil
+	}
+	sealer, err := s.factory(key, s.id)
+	if err != nil {
+		return nil, fmt.Errorf("build segment sealer: %w", err)
+	}
+	entry := &messageSealerEntry{sealer: sealer}
+	s.entries[k] = entry
+	return entry, nil
 }
 
 // archiveWriterFactory builds a zipstream.SegmentWriter for a new TDF. It
@@ -162,6 +271,26 @@ var (
 	// receives a negative index.
 	ErrChunkedInvalidSegmentIndex = errors.New("chunked: invalid segment index")
 
+	// ErrChunkedMetadataChanged is returned by GetManifest and Finalize
+	// when they are given encrypted metadata that differs from what an
+	// earlier manifest build already sealed.
+	//
+	// Both re-resolve key access on every call, each with that call's own
+	// WithChunkedEncryptedMetadata. Metadata is sealed at [metadataPart],
+	// one part number, spent on the first value -- and for a single-split
+	// TDF the share the metadata is sealed under is the DEK itself, so a
+	// second value would be a second plaintext under the payload key and
+	// the metadata part's IV. That is the IV reuse this construction
+	// exists to make impossible, so the second value is refused rather
+	// than silently ignored or silently reused.
+	//
+	// The pin is set even for empty metadata, and it survives a failed
+	// build: what is spent is the part number, not the manifest. Build
+	// again with the metadata you first passed, or start a new writer.
+	//
+	// Nothing was written and the writer is not fenced.
+	ErrChunkedMetadataChanged = errors.New("chunked: encrypted metadata differs from an earlier manifest build")
+
 	// ErrChunkedMissingSegmentZero is returned when Finalize is called
 	// on a writer that never wrote segment 0. Only segment 0 emits the
 	// payload's ZIP local file header, and every offset in the manifest
@@ -171,6 +300,23 @@ var (
 	// ErrChunkedSegmentAlreadyWritten is returned when WriteSegment
 	// receives an index that was already written.
 	ErrChunkedSegmentAlreadyWritten = errors.New("chunked: segment already written")
+
+	// ErrChunkedSegmentIndexExhausted is returned when WriteSegment
+	// receives an index past [maxPayloadSegments], the number of
+	// segments one key may encrypt.
+	//
+	// Distinct from ErrChunkedInvalidSegmentIndex on purpose: a
+	// negative index is a bug in the caller, while this is a capacity
+	// limit the caller can act on, and the remedy is named in the
+	// message. It is reachable in normal use where the IV must come
+	// from an RBG -- 1 TiB at the minimum segment size -- because
+	// uniqueness is only probabilistic there and the ceiling drops to
+	// hold the collision probability down. See
+	// [ocrypto.MaxMessageParts].
+	//
+	// Nothing was written and the writer is not fenced; the index
+	// never entered the segment table.
+	ErrChunkedSegmentIndexExhausted = errors.New("chunked: too many segments for one key; use a larger segment size")
 
 	// ErrChunkedWriteInFlight is returned by Finalize when a
 	// WriteSegment has reserved an index but the archive has not yet
@@ -235,6 +381,11 @@ type ChunkedWriter interface {
 	// re-signing any assertions. Two back-to-back calls with identical
 	// options disagree, and so will Finalize. Use it to inspect
 	// progress, never to predict or cache the final manifest.
+	//
+	// The one thing that may not vary across builds is the encrypted
+	// metadata: the first build pins it, and any later build offering
+	// a different value fails with ErrChunkedMetadataChanged. See that
+	// error for why one value is all there is.
 	//
 	// It reflects only segments the archive has already accepted;
 	// writes still in flight are skipped rather than waited on or
@@ -352,9 +503,19 @@ type chunkedWriterConfig struct {
 	// TDF. Defaults to defaultArchiveWriterFactory.
 	archiveFactory archiveWriterFactory
 
-	// cipherFactory builds the segment cipher from the DEK. Defaults
-	// to defaultSegmentCipherFactory (AES-256-GCM).
-	cipherFactory segmentCipherFactory
+	// sealerFactory builds a segment sealer from a key and the message
+	// ID. Defaults to defaultSegmentSealerFactory (AES-256-GCM).
+	// Ignored when sealers is set, which brings its own.
+	sealerFactory segmentSealerFactory
+
+	// sealers is the message's sealer registry. When nil the writer
+	// draws a message ID from rand -- after the DEK, so that
+	// withChunkedRand stays a deterministic 32-then-8-byte draw -- and
+	// builds one. SDK.CreateTDF presets the registry it already used to
+	// seal key access metadata, so that path's metadata and payload
+	// share one message ID, one sealer per key, and one encryption
+	// budget.
+	sealers *messageSealers
 
 	// clock supplies the current time to the writer and the
 	// underlying zipstream. Defaults to systemClock. Tests inject
@@ -475,8 +636,21 @@ type chunkedWriter struct {
 	// archiveWriter handles the underlying ZIP archive creation.
 	archiveWriter zipstream.SegmentWriter
 
-	// block is the segment cipher built from the DEK.
-	block segmentCipher
+	// stream seals payload segments. It is the DEK's entry in sealers,
+	// resolved once at construction so the payload hot path never takes the
+	// registry lock.
+	stream segmentSealer
+
+	// sealers holds one sealer per key this message is sealed under, all
+	// sharing one message ID. Retained past construction because key access
+	// metadata is sealed under the split shares, whose keys are not known
+	// until Finalize.
+	sealers *messageSealers
+
+	// sealMetadata seals key access object metadata at [metadataPart] through
+	// sealers. Built once, because the registry it closes over carries the
+	// per-key encryption budget and the once-only metadata cache.
+	sealMetadata metadataSealer
 
 	// dek is the Data Encryption Key. 32 bytes (AES-256).
 	dek []byte
@@ -520,6 +694,15 @@ type chunkedWriter struct {
 	// GetManifest calls.
 	manifest *Manifest
 
+	// metadataMu guards metadataPin. Separate from mu because buildManifest
+	// deliberately runs with mu released.
+	metadataMu sync.Mutex
+
+	// metadataPin is the encrypted metadata the first manifest build used,
+	// nil until then. A later build offering a different value is refused
+	// with ErrChunkedMetadataChanged. See pinMetadata.
+	metadataPin *string
+
 	// mu guards writer state that spans WriteSegment and Finalize.
 	mu sync.RWMutex
 
@@ -553,14 +736,14 @@ type chunkedWriter struct {
 // No SDK value is needed. The key splitter (WithChunkedKeySplitter)
 // and the attribute and KAS defaults (WithChunkedInitialAttributes,
 // WithChunkedDefaultKAS) are supplied through options; the clock,
-// cipher, archive-writer and entropy seams are unexported test seams
+// sealer, archive-writer and entropy seams are unexported test seams
 // and are not reachable from outside this package.
 //
 // Experimental: not part of the stable SDK API; may change or be removed.
 func NewChunkedWriter(_ context.Context, opts ...ChunkedWriterOption) (ChunkedWriter, error) {
 	cfg := chunkedWriterConfig{
 		archiveFactory: defaultArchiveWriterFactory,
-		cipherFactory:  defaultSegmentCipherFactory,
+		sealerFactory:  defaultSegmentSealerFactory,
 		clock:          systemClock{},
 		rand:           rand.Reader,
 		splitter:       DefaultKeySplitter(),
@@ -586,9 +769,19 @@ func newChunkedWriter(cfg chunkedWriterConfig) (*chunkedWriter, error) {
 			return nil, fmt.Errorf("generate DEK: %w", err)
 		}
 	}
-	block, err := cfg.cipherFactory(dek)
+	// Drawn after the DEK, so an injected rand stays a deterministic
+	// 32-then-8-byte draw and existing fixtures keep their DEK.
+	sealers := cfg.sealers
+	if sealers == nil {
+		id, err := ocrypto.NewMessageID(cfg.rand)
+		if err != nil {
+			return nil, fmt.Errorf("generate message id: %w", err)
+		}
+		sealers = newMessageSealers(id, cfg.sealerFactory)
+	}
+	stream, err := sealers.sealerFor(dek)
 	if err != nil {
-		return nil, fmt.Errorf("build segment cipher: %w", err)
+		return nil, fmt.Errorf("build segment sealer: %w", err)
 	}
 	keyAccess := cfg.keyAccess
 	if keyAccess == nil {
@@ -596,14 +789,16 @@ func newChunkedWriter(cfg chunkedWriterConfig) (*chunkedWriter, error) {
 	}
 	return &chunkedWriter{
 		archiveWriter:     cfg.archiveFactory(cfg.clock),
-		block:             block,
 		dek:               dek,
 		excludeVersion:    cfg.excludeVersion,
 		initialAttributes: cfg.initialAttributes,
 		initialDefaultKAS: cfg.initialDefaultKAS,
 		keyAccess:         keyAccess,
+		sealMetadata:      newMetadataSealer(sealers),
+		sealers:           sealers,
 		segments:          make(map[int]*segmentSlot),
 		segmentSize:       cfg.segmentSize,
+		stream:            stream,
 		useHex:            cfg.useHex,
 	}, nil
 }
@@ -745,9 +940,13 @@ func (w *chunkedWriter) WriteSegment(ctx context.Context, index int, data []byte
 		w.mu.Unlock()
 		return nil, ErrChunkedAlreadyFinalized
 	}
-	if index < 0 {
+	// Resolved here, alongside the other index checks and before the
+	// reservation below, so an index this writer can never seal is rejected
+	// without ever entering w.segments.
+	part, err := segmentPart(index)
+	if err != nil {
 		w.mu.Unlock()
-		return nil, ErrChunkedInvalidSegmentIndex
+		return nil, err
 	}
 	if _, ok := w.segments[index]; ok {
 		w.mu.Unlock()
@@ -824,28 +1023,50 @@ func (w *chunkedWriter) WriteSegment(ctx context.Context, index int, data []byte
 		release(cleanupErr)
 	}()
 
-	ciphertext, nonce, err := w.block.EncryptInPlace(data)
+	// Retry analysis, because the IV is now a pure function of the index.
+	// Retrying a failed index re-derives the same IV, so a retry carrying
+	// *different* bytes would be a second encryption under one key and IV --
+	// which leaks the XOR of the two plaintexts and the GHASH subkey.
+	//
+	// That cannot happen as this function is written today. Every failure path
+	// from here to the archive write is a bare `return nil, err` that
+	// constructs no ChunkedSegmentResult; the archive is handed a length and a
+	// CRC, never bytes; the deferred CleanupSegment rolls even that back or
+	// else fences the writer; and an index the archive did accept can never be
+	// retried (ErrChunkedSegmentAlreadyWritten, above). At most one ciphertext
+	// per (key, IV) ever leaves this function.
+	//
+	// That is a property of this error handling, not of the IV construction,
+	// and one refactor away from being false. Anything added below that can
+	// emit segment bytes on a path that later fails has to preserve it.
+	//
+	// On the RBG fallback the same retry is harmless -- a fresh IV is drawn --
+	// but not free: the attempt is charged against the key's encryption budget
+	// whether or not the archive goes on to accept it. Cleanup releases the
+	// index, never the budget. Failures before this call, an invalid part
+	// among them, cost nothing.
+	header, ciphertext, err := w.stream.Seal(part, data)
 	if err != nil {
 		return nil, fmt.Errorf("encrypt segment %d: %w", index, err)
 	}
 	// SegmentGMAC reads the trailing AEAD tag, so hashing ciphertext alone is
-	// equivalent to hashing nonce||ciphertext -- which is why there is no
+	// equivalent to hashing header||ciphertext -- which is why there is no
 	// concatenation here. An algorithm that MACs the whole segment (HS256)
-	// would need the nonce prepended back.
+	// would need the header prepended back.
 	sig, err := segmentIntegrity(ciphertext, w.dek, SegmentGMAC, w.useHex)
 	if err != nil {
 		return nil, fmt.Errorf("segment %d signature: %w", index, err)
 	}
 	hash := string(ocrypto.Base64Encode([]byte(sig)))
-	encryptedSize := int64(len(nonce) + len(ciphertext))
+	encryptedSize := int64(len(header) + len(ciphertext))
 
-	crc := crc32.Update(crc32.ChecksumIEEE(nonce), crc32.IEEETable, ciphertext)
+	crc := crc32.Update(crc32.ChecksumIEEE(header), crc32.IEEETable, ciphertext)
 	// Deliberately outside w.mu. Finalize's ErrChunkedWriteInFlight exists
 	// because this call is unsynchronized against it; holding w.mu here would
 	// close that window by serializing every segment write, which is the one
 	// thing this writer exists not to do.
 	archiveWriteAttempted = true
-	header, err := w.archiveWriter.WriteSegment(ctx, index, uint64(encryptedSize), crc)
+	zipHeader, err := w.archiveWriter.WriteSegment(ctx, index, uint64(encryptedSize), crc)
 	if err != nil {
 		return nil, fmt.Errorf("write segment %d to archive: %w", index, err)
 	}
@@ -868,11 +1089,14 @@ func (w *chunkedWriter) WriteSegment(ctx context.Context, index int, data []byte
 	committed = true
 	w.mu.Unlock()
 
+	// Two distinct prefixes: zipHeader is the segment's ZIP local file header,
+	// emitted only for segment 0, and header is the part's 12-byte AES-GCM IV,
+	// which every segment carries.
 	var reader io.Reader
-	if len(header) == 0 {
-		reader = io.MultiReader(bytes.NewReader(nonce), bytes.NewReader(ciphertext))
+	if len(zipHeader) == 0 {
+		reader = io.MultiReader(bytes.NewReader(header), bytes.NewReader(ciphertext))
 	} else {
-		reader = io.MultiReader(bytes.NewReader(header), bytes.NewReader(nonce), bytes.NewReader(ciphertext))
+		reader = io.MultiReader(bytes.NewReader(zipHeader), bytes.NewReader(header), bytes.NewReader(ciphertext))
 	}
 	// Reported from the locals rather than from seg, which is shared with
 	// concurrent readers of w.segments once the lock is released.
@@ -1037,16 +1261,45 @@ type chunkedTotals struct {
 	plaintext int64
 }
 
+// pinMetadata records the encrypted metadata of the first manifest build and
+// refuses any later build that offers a different value, returning
+// ErrChunkedMetadataChanged. See that error for why one value is all there is.
+//
+// The check and the set are one critical section so that two concurrent first
+// builds cannot both pass; the lock is released before the resolver runs,
+// which may call a KAS. The pin is never cleared: a failed build has already
+// spent the part number, and the point is to bound what is sealed under it,
+// not what is published.
+func (w *chunkedWriter) pinMetadata(metadata string) error {
+	w.metadataMu.Lock()
+	defer w.metadataMu.Unlock()
+
+	if w.metadataPin == nil {
+		w.metadataPin = &metadata
+		return nil
+	}
+	if *w.metadataPin != metadata {
+		return ErrChunkedMetadataChanged
+	}
+	return nil
+}
+
 // buildManifest composes the manifest from a snapshot, resolves the key
 // access objects, and computes the root signature.
 //
-// It reads no mutable writer state and takes no lock: every other field it
-// touches (dek, keyAccess, useHex) is fixed at construction. Keep it that way --
-// GetManifest calls it with the read lock released.
+// Apart from the metadata pin -- which has its own lock, precisely because of
+// this -- it reads no mutable writer state and takes no lock: every other
+// field it touches (dek, keyAccess, sealMetadata, useHex) is fixed at
+// construction. Keep it that way: GetManifest calls it with the read lock
+// released.
 func (w *chunkedWriter) buildManifest(ctx context.Context, cfg *chunkedFinalizeConfig, snap *chunkedSnapshot) (*Manifest, chunkedTotals, error) {
 	var totals chunkedTotals
 
-	base64Policy, kaos, err := w.keyAccess.resolve(ctx, w.dek, cfg)
+	if err := w.pinMetadata(cfg.encryptedMetadata); err != nil {
+		return nil, totals, err
+	}
+
+	base64Policy, kaos, err := w.keyAccess.resolve(ctx, w.dek, w.sealMetadata, cfg)
 	if err != nil {
 		return nil, totals, err
 	}

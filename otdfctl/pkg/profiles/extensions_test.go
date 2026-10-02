@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"reflect"
 	"strings"
 	"testing"
 
@@ -173,17 +172,17 @@ func TestTypedExtensionRegistrationErrors(t *testing.T) {
 	}
 }
 
-func TestTypedExtensionRejectsMalformedAndUnknownWithoutMutation(t *testing.T) {
+func TestTypedExtensionReplacesExistingPayload(t *testing.T) {
 	keyring.MockInit()
 	profiler, err := CreateProfiler(ProfileDriverKeyring)
 	if err != nil {
 		t.Fatal(err)
 	}
-	settings, err := NewExtensionConfig(profiler, WithGlobalExtension[consumerGlobal]("alpha"), WithProfileExtension[consumerProfile]("alpha"))
+	cfg, err := NewExtensionConfig(profiler, WithGlobalExtension[consumerGlobal]("alpha"), WithProfileExtension[consumerProfile]("alpha"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := profiler.AddProfile(&ProfileConfig{Name: "first"}, true); err != nil {
+	if err := profiler.AddProfile(&ProfileConfig{Name: "first", Endpoint: "https://example.invalid"}, true); err != nil {
 		t.Fatal(err)
 	}
 	profile, err := osprofiles.GetProfile[*ProfileConfig](profiler, "first")
@@ -191,56 +190,79 @@ func TestTypedExtensionRejectsMalformedAndUnknownWithoutMutation(t *testing.T) {
 		t.Fatal(err)
 	}
 	global := osprofiles.GetGlobalConfig(profiler)
+	getProfileExtension := func(namespace string) (json.RawMessage, bool, error) {
+		latest, err := osprofiles.GetProfile[*ProfileConfig](profiler, "first")
+		if err != nil {
+			return nil, false, err
+		}
+		return latest.Extension(namespace)
+	}
+	if err := global.SetExtension("beta", json.RawMessage(`{"other":true}`)); err != nil {
+		t.Fatal(err)
+	}
+	if err := profile.SetExtension("beta", json.RawMessage(`{"other":true}`)); err != nil {
+		t.Fatal(err)
+	}
 	for _, test := range []struct {
-		name  string
-		raw   string
-		err   error
-		set   func(json.RawMessage) error
-		read  func() (bool, error)
-		write func() error
-		get   func(string) (json.RawMessage, bool, error)
+		name, before, after string
+		set                 func(json.RawMessage) error
+		read                func() (bool, error)
+		write               func() error
+		get                 func(string) (json.RawMessage, bool, error)
+		decodeError         bool
 	}{
-		{"global unknown", `{"enabled":true,"future":{"nested":99}}`, ErrExtensionUnsafeUpdate, func(raw json.RawMessage) error { return global.SetExtension("alpha", raw) }, func() (bool, error) {
-			_, ok, err := ReadGlobalExtension[consumerGlobal](settings, "alpha")
+		{"global unknown", `{"enabled":true,"future":{"nested":99}}`, `{"enabled":false}`, func(raw json.RawMessage) error { return global.SetExtension("alpha", raw) }, func() (bool, error) { _, ok, err := ReadGlobalExtension[consumerGlobal](cfg, "alpha"); return ok, err }, func() error { return WriteGlobalExtension(cfg, "alpha", consumerGlobal{false}) }, global.Extension, false},
+		{"profile unknown", `{"label":"old","future":42}`, `{"label":"new"}`, func(raw json.RawMessage) error { return profile.SetExtension("alpha", raw) }, func() (bool, error) {
+			_, ok, err := ReadProfileExtension[consumerProfile](cfg, "first", "alpha")
 			return ok, err
-		}, func() error { return WriteGlobalExtension(settings, "alpha", consumerGlobal{false}) }, global.Extension},
-		{"profile unknown", `{"label":"old","future":42}`, ErrExtensionUnsafeUpdate, func(raw json.RawMessage) error { return profile.SetExtension("alpha", raw) }, func() (bool, error) {
-			_, ok, err := ReadProfileExtension[consumerProfile](settings, "first", "alpha")
+		}, func() error { return WriteProfileExtension(cfg, "first", "alpha", consumerProfile{"new"}) }, getProfileExtension, false},
+		{"global duplicate key", `{"enabled":true,"enabled":false}`, `{"enabled":false}`, func(raw json.RawMessage) error { return global.SetExtension("alpha", raw) }, func() (bool, error) { _, ok, err := ReadGlobalExtension[consumerGlobal](cfg, "alpha"); return ok, err }, func() error { return WriteGlobalExtension(cfg, "alpha", consumerGlobal{false}) }, global.Extension, false},
+		{"global incompatible", `{"enabled":"private-token"}`, `{"enabled":false}`, func(raw json.RawMessage) error { return global.SetExtension("alpha", raw) }, func() (bool, error) { _, ok, err := ReadGlobalExtension[consumerGlobal](cfg, "alpha"); return ok, err }, func() error { return WriteGlobalExtension(cfg, "alpha", consumerGlobal{false}) }, global.Extension, true},
+		{"profile incompatible", `{"label":42}`, `{"label":"new"}`, func(raw json.RawMessage) error { return profile.SetExtension("alpha", raw) }, func() (bool, error) {
+			_, ok, err := ReadProfileExtension[consumerProfile](cfg, "first", "alpha")
 			return ok, err
-		}, func() error { return WriteProfileExtension(settings, "first", "alpha", consumerProfile{"new"}) }, profile.Extension},
-		{"global duplicate key", `{"enabled":true,"enabled":false}`, ErrExtensionUnsafeUpdate, func(raw json.RawMessage) error { return global.SetExtension("alpha", raw) }, func() (bool, error) {
-			_, ok, err := ReadGlobalExtension[consumerGlobal](settings, "alpha")
+		}, func() error { return WriteProfileExtension(cfg, "first", "alpha", consumerProfile{"new"}) }, getProfileExtension, true},
+		{"global null", `null`, `{"enabled":false}`, func(raw json.RawMessage) error { return global.SetExtension("alpha", raw) }, func() (bool, error) { _, ok, err := ReadGlobalExtension[consumerGlobal](cfg, "alpha"); return ok, err }, func() error { return WriteGlobalExtension(cfg, "alpha", consumerGlobal{false}) }, global.Extension, false},
+		{"profile null", `null`, `{"label":"new"}`, func(raw json.RawMessage) error { return profile.SetExtension("alpha", raw) }, func() (bool, error) {
+			_, ok, err := ReadProfileExtension[consumerProfile](cfg, "first", "alpha")
 			return ok, err
-		}, func() error { return WriteGlobalExtension(settings, "alpha", consumerGlobal{false}) }, global.Extension},
-		{"global malformed", `{"enabled":"private-token"}`, ErrExtensionDecode, func(raw json.RawMessage) error { return global.SetExtension("alpha", raw) }, func() (bool, error) {
-			_, ok, err := ReadGlobalExtension[consumerGlobal](settings, "alpha")
-			return ok, err
-		}, func() error { return WriteGlobalExtension(settings, "alpha", consumerGlobal{false}) }, global.Extension},
-		{"profile malformed", `{"label":42}`, ErrExtensionDecode, func(raw json.RawMessage) error { return profile.SetExtension("alpha", raw) }, func() (bool, error) {
-			_, ok, err := ReadProfileExtension[consumerProfile](settings, "first", "alpha")
-			return ok, err
-		}, func() error { return WriteProfileExtension(settings, "first", "alpha", consumerProfile{"new"}) }, profile.Extension},
+		}, func() error { return WriteProfileExtension(cfg, "first", "alpha", consumerProfile{"new"}) }, getProfileExtension, false},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			if err := test.set(json.RawMessage(test.raw)); err != nil {
+			if err := test.set(json.RawMessage(test.before)); err != nil {
 				t.Fatal(err)
 			}
 			present, err := test.read()
-			if !present || (errors.Is(test.err, ErrExtensionDecode) && !errors.Is(err, test.err)) || (errors.Is(test.err, ErrExtensionUnsafeUpdate) && err != nil) {
+			if !present || (test.decodeError && !errors.Is(err, ErrExtensionDecode)) || (!test.decodeError && err != nil) || (err != nil && strings.Contains(err.Error(), "private-token")) {
 				t.Fatalf("read: %v %v", present, err)
 			}
-			if err := test.write(); !errors.Is(err, test.err) || strings.Contains(err.Error(), "private-token") {
+			if err := test.write(); err != nil {
 				t.Fatalf("write: %v", err)
 			}
 			got, present, err := test.get("alpha")
-			if err != nil || !present || !reflect.DeepEqual(got, json.RawMessage(test.raw)) {
-				t.Fatalf("changed after failed write: %s %v %v", got, present, err)
+			if err != nil || !present || string(got) != test.after {
+				t.Fatalf("replacement: %s %v %v", got, present, err)
+			}
+			other, present, err := test.get("beta")
+			if err != nil || !present || string(other) != `{"other":true}` {
+				t.Fatalf("other namespace: %s %v %v", other, present, err)
 			}
 		})
 	}
+	if got := global.GetDefaultProfile(); got != "first" {
+		t.Fatalf("default changed: %q", got)
+	}
+	latest, err := osprofiles.GetProfile[*ProfileConfig](profiler, "first")
+	if err != nil {
+		t.Fatal(err)
+	}
+	core, ok := latest.Profile.(*ProfileConfig)
+	if !ok || core.Endpoint != "https://example.invalid" {
+		t.Fatalf("core changed: %+v", latest.Profile)
+	}
 }
 
-func TestTypedExtensionChecksLatestStoredPayload(t *testing.T) {
+func TestTypedExtensionUsesLatestStoredConfiguration(t *testing.T) {
 	keyring.MockInit()
 	first, err := CreateProfiler(ProfileDriverKeyring)
 	if err != nil {
@@ -257,35 +279,41 @@ func TestTypedExtensionChecksLatestStoredPayload(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := osprofiles.GetGlobalConfig(other).SetExtension("alpha", json.RawMessage(`{"enabled":true,"newField":1}`)); err != nil {
+	if err := osprofiles.GetGlobalConfig(other).SetExtension("beta", json.RawMessage(`{"keep":1}`)); err != nil {
 		t.Fatal(err)
 	}
 	profile, err := osprofiles.GetProfile[*ProfileConfig](other, "fixture")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := profile.SetExtension("alpha", json.RawMessage(`{"label":"old","newField":2}`)); err != nil {
+	if err := profile.SetExtension("beta", json.RawMessage(`{"keep":2}`)); err != nil {
 		t.Fatal(err)
 	}
-	if err := WriteGlobalExtension(stale, "alpha", consumerGlobal{false}); !errors.Is(err, ErrExtensionUnsafeUpdate) {
-		t.Fatalf("stale global: %v", err)
+	if err := WriteGlobalExtension(stale, "alpha", consumerGlobal{true}); err != nil {
+		t.Fatal(err)
 	}
-	if err := WriteProfileExtension(stale, "fixture", "alpha", consumerProfile{"new"}); !errors.Is(err, ErrExtensionUnsafeUpdate) {
-		t.Fatalf("stale profile: %v", err)
+	if err := WriteProfileExtension(stale, "fixture", "alpha", consumerProfile{"new"}); err != nil {
+		t.Fatal(err)
 	}
 	fresh, err := CreateProfiler(ProfileDriverKeyring)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got, _, err := osprofiles.GetGlobalConfig(fresh).Extension("alpha"); err != nil || string(got) != `{"enabled":true,"newField":1}` {
-		t.Fatalf("global changed: %s %v", got, err)
+	if got, ok, err := osprofiles.GetGlobalConfig(fresh).Extension("alpha"); err != nil || !ok || string(got) != `{"enabled":true}` {
+		t.Fatalf("global replacement: %s %v %v", got, ok, err)
+	}
+	if got, ok, err := osprofiles.GetGlobalConfig(fresh).Extension("beta"); err != nil || !ok || string(got) != `{"keep":1}` {
+		t.Fatalf("global other namespace: %s %v %v", got, ok, err)
 	}
 	loaded, err := osprofiles.GetProfile[*ProfileConfig](fresh, "fixture")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got, _, err := loaded.Extension("alpha"); err != nil || string(got) != `{"label":"old","newField":2}` {
-		t.Fatalf("profile changed: %s %v", got, err)
+	if got, ok, err := loaded.Extension("alpha"); err != nil || !ok || string(got) != `{"label":"new"}` {
+		t.Fatalf("profile replacement: %s %v %v", got, ok, err)
+	}
+	if got, ok, err := loaded.Extension("beta"); err != nil || !ok || string(got) != `{"keep":2}` {
+		t.Fatalf("profile other namespace: %s %v %v", got, ok, err)
 	}
 }
 

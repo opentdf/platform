@@ -1,7 +1,6 @@
 package profiles
 
 import (
-	"bytes"
 	"encoding/json"
 	"errors"
 	"reflect"
@@ -17,7 +16,6 @@ var (
 	ErrExtensionTypeMismatch     = errors.New("extension type does not match registration")
 	ErrExtensionDecode           = errors.New("cannot decode extension")
 	ErrExtensionEncode           = errors.New("cannot encode extension")
-	ErrExtensionUnsafeUpdate     = errors.New("extension update would discard unrecognized data")
 )
 
 var extensionNamespace = regexp.MustCompile(`^[a-z][a-z0-9]*(?:[.-][a-z0-9]+)*$`)
@@ -53,13 +51,15 @@ func registerExtension[T any](scope extensionScope, namespace string) ExtensionO
 }
 
 // WithGlobalExtension declares the JSON shape owned by namespace in global settings.
-// Typed writes fully replace this namespace; fields omitted from a replacement are not retained.
+// The extender owns compatibility, unknown-field retention, validation, and versioning
+// for its payload; typed writes replace this namespace without retaining omitted fields.
 func WithGlobalExtension[T any](namespace string) ExtensionOption {
 	return registerExtension[T](globalExtension, namespace)
 }
 
 // WithProfileExtension declares the JSON shape owned by namespace in each profile.
-// Typed writes fully replace this namespace; fields omitted from a replacement are not retained.
+// The extender owns compatibility, unknown-field retention, validation, and versioning
+// for its payload; typed writes replace this namespace without retaining omitted fields.
 func WithProfileExtension[T any](namespace string) ExtensionOption {
 	return registerExtension[T](profileExtension, namespace)
 }
@@ -144,55 +144,34 @@ func ReadProfileExtension[T any](config *ExtensionConfig, profileName, namespace
 	return value, true, err
 }
 
-// sameJSON deliberately compares more strictly than semantic JSON equality:
-// duplicate object keys and alternate number spellings must not disappear.
-func sameJSON(a, b []byte) bool {
-	var left, right bytes.Buffer
-	return json.Compact(&left, a) == nil && json.Compact(&right, b) == nil && bytes.Equal(left.Bytes(), right.Bytes())
-}
-
-func prepareExtensionWrite[T any](config *ExtensionConfig, scope extensionScope, namespace string, value T) (json.RawMessage, func(json.RawMessage, bool) error, error) {
+func prepareExtensionWrite[T any](config *ExtensionConfig, scope extensionScope, namespace string, value T) (json.RawMessage, error) {
 	if err := checkExtensionType[T](config, scope, namespace); err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 	payload, err := json.Marshal(value)
 	if err != nil {
 		// MarshalJSON errors can contain secrets from the value being encoded.
-		return nil, nil, ErrExtensionEncode
+		return nil, ErrExtensionEncode
 	}
-	check := func(current json.RawMessage, present bool) error {
-		if !present || bytes.Equal(bytes.TrimSpace(current), []byte("null")) {
-			return nil
-		}
-		decoded, err := decodeExtension[T](current)
-		if err != nil {
-			return err
-		}
-		reencoded, err := json.Marshal(decoded)
-		if err != nil || !sameJSON(current, reencoded) {
-			return ErrExtensionUnsafeUpdate
-		}
-		return nil
-	}
-	return payload, check, nil
+	return payload, nil
 }
 
-// WriteGlobalExtension fully replaces one global namespace with value; omitted fields
-// are not retained. It rejects existing non-null payloads whose typed round trip changes
-// compact JSON, but this guard does not make typed writes lossless.
+// WriteGlobalExtension fully replaces one global namespace with value, without
+// retaining omitted payload fields. The extender owns compatibility, unknown-field
+// retention, validation, and versioning for its replacement payload.
 func WriteGlobalExtension[T any](config *ExtensionConfig, namespace string, value T) error {
-	payload, check, err := prepareExtensionWrite(config, globalExtension, namespace, value)
+	payload, err := prepareExtensionWrite(config, globalExtension, namespace, value)
 	if err != nil {
 		return err
 	}
-	return osprofiles.GetGlobalConfig(config.profiler).SetExtensionChecked(namespace, payload, check)
+	return osprofiles.GetGlobalConfig(config.profiler).SetExtension(namespace, payload)
 }
 
-// WriteProfileExtension fully replaces one namespace in an existing named profile;
-// omitted fields are not retained. Like WriteGlobalExtension, it rejects existing
-// non-null payloads that fail the typed round-trip guard, not all lossy writes.
+// WriteProfileExtension fully replaces one namespace in an existing named profile,
+// without retaining omitted payload fields. The extender owns compatibility,
+// unknown-field retention, validation, and versioning for its replacement payload.
 func WriteProfileExtension[T any](config *ExtensionConfig, profileName, namespace string, value T) error {
-	payload, check, err := prepareExtensionWrite(config, profileExtension, namespace, value)
+	payload, err := prepareExtensionWrite(config, profileExtension, namespace, value)
 	if err != nil {
 		return err
 	}
@@ -200,5 +179,5 @@ func WriteProfileExtension[T any](config *ExtensionConfig, profileName, namespac
 	if err != nil {
 		return err
 	}
-	return profile.SetExtensionChecked(namespace, payload, check)
+	return profile.SetExtension(namespace, payload)
 }

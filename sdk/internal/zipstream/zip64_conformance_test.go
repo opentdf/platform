@@ -38,9 +38,8 @@ type rawZipEntry struct {
 	zip64 bool
 	// zip64CompressedSize overrides the stored size declared in the ZIP64
 	// extra field, letting a fixture lie about how much data it holds. Zero
-	// means len(data), so a fixture cannot declare a stored size of zero --
-	// a computed override that came out zero would silently revert to the
-	// honest size, so callers that compute one must check it is nonzero.
+	// means len(data); a computed override must be checked nonzero, or it
+	// silently reverts to the honest size.
 	zip64CompressedSize uint64
 	// zip64LocalHeaderOffset overrides the header offset declared in the
 	// ZIP64 extra field. Zero means the entry's real offset, and carries the
@@ -367,23 +366,19 @@ func locatorOf(t testing.TB, data []byte) (Zip64EndOfCDRecordLocator, int) {
 }
 
 // TestReaderRejectsZip64ValuesBeyondArchive covers the ZIP64 extra field,
-// whose sizes and offsets are raw uint64 read straight off disk and so are
-// attacker-controlled in any TDF. The stored-size case pins the precondition
-// that made a panic reachable -- 1<<63 narrowed to a negative length, which
-// nothing downstream rejected before make([]byte, size) blew up. The panic
-// itself is covered by the fuzz seed in fuzz_test.go.
+// whose sizes and offsets are attacker-controlled in any TDF. A stored size of
+// 1<<63 is negative as an int64 and used to panic in make([]byte, size).
 //
-// Each case names the check expected to reject it. Seven guards wrap
-// errZipFormat, so asserting the sentinel alone would stay green if a
-// different one happened to catch the fixture.
+// Several guards return errZipFormat, so each case also asserts the field
+// name to pin which one fired.
 func TestReaderRejectsZip64ValuesBeyondArchive(t *testing.T) {
 	for _, tc := range []struct {
 		name  string
 		entry rawZipEntry
 		field string
 	}{
-		{"stored size above MaxInt64", rawZipEntry{zip64CompressedSize: beyondInt64}, "file data"},
-		{"stored size past EOF", rawZipEntry{zip64CompressedSize: beyondEOF}, "file data"},
+		{"stored size above MaxInt64", rawZipEntry{zip64CompressedSize: beyondInt64}, "file data at"},
+		{"stored size past EOF", rawZipEntry{zip64CompressedSize: beyondEOF}, "file data at"},
 		{"header offset above MaxInt64", rawZipEntry{zip64LocalHeaderOffset: beyondInt64}, "local file header"},
 		{"header offset past EOF", rawZipEntry{zip64LocalHeaderOffset: beyondEOF}, "local file header"},
 	} {
@@ -403,8 +398,8 @@ func TestReaderRejectsZip64ValuesBeyondArchive(t *testing.T) {
 // twoEntryFixture is the shape the entry-bound tests need: a second entry
 // after the one under test, so the central directory sits well past the first
 // entry's data and a forged size has somewhere to reach. With a single entry
-// the bound and the honest data length coincide and the accepted case below
-// would assert nothing.
+// the bound and the honest data length coincide and the in-bounds case in
+// TestReaderEntryBoundaryIsCentralDirectory would assert nothing.
 func twoEntryFixture() (rawZipEntry, rawZipEntry) {
 	return rawZipEntry{name: "0.payload", data: []byte("payload bytes"), zip64: true},
 		rawZipEntry{name: "0.manifest.json", data: []byte(`{"m":1}`)}
@@ -458,8 +453,8 @@ func TestReaderRejectsEntryOverrunningCentralDirectory(t *testing.T) {
 	cdStart := cdStartOf(t, data)
 	dataStart := uint64(reader.fileEntries[payload.name].index)
 
-	// Reach to the last byte before the EOCD. Bounding against the archive
-	// accepted this; bounding against the central directory does not.
+	// Reach to the last byte before the EOCD. An archive-length bound would
+	// accept this; the central directory bound must not.
 	payload.zip64CompressedSize = uint64(len(data)) - endOfCDRecordSize - dataStart
 	require.Greater(t, dataStart+payload.zip64CompressedSize, cdStart)
 
@@ -649,9 +644,9 @@ func cdHeaderOf(t *testing.T, data []byte, off int) CDFileHeader {
 	return cdh
 }
 
-// TestReaderRejectsCentralDirectoryWalkBeyondArchive reaches the entry-offset
-// check with a nonzero accumulated offset, which every other fixture leaves at
-// zero. A forged comment length on the first record sends the walk to a second
+// TestReaderRejectsCentralDirectoryWalkBeyondArchive is the only fixture that
+// fails the entry-offset check with a nonzero accumulated offset. A forged
+// comment length on the first record sends the walk to a second
 // record that lies outside the archive.
 func TestReaderRejectsCentralDirectoryWalkBeyondArchive(t *testing.T) {
 	first, second := twoEntryFixture()
@@ -668,9 +663,8 @@ func TestReaderRejectsCentralDirectoryWalkBeyondArchive(t *testing.T) {
 
 // TestReaderBoundsLocalHeaderByCentralDirectory pins which limit the local
 // header offset is measured against. The forged offset is inside the archive
-// but inside the central directory, so only the tighter bound rejects it --
-// widening the limit to the archive length would let the seek land on central
-// directory bytes and fail later, and differently.
+// but past the start of the central directory, so only the cdStart bound
+// rejects it; an archive-length bound would fail later, at the signature check.
 func TestReaderBoundsLocalHeaderByCentralDirectory(t *testing.T) {
 	payload, manifest := twoEntryFixture()
 	data := buildRawZip(t, []rawZipEntry{payload, manifest}, false)
@@ -722,9 +716,8 @@ func (h hostileSeeker) Read(p []byte) (int, error)     { return h.inner.Read(p) 
 func (h hostileSeeker) Seek(int64, int) (int64, error) { return h.pos, nil }
 
 // TestReaderRejectsImplausibleSeekPosition covers the guard on the archive
-// length itself. Every other bound is derived from it, so a position that
-// cannot be widened to a uint64 and back has to be refused before any of them
-// is built.
+// length itself. Every other bound is derived from it, so a negative position,
+// or one whose EOCD end would exceed MaxInt64, must be refused first.
 func TestReaderRejectsImplausibleSeekPosition(t *testing.T) {
 	data := buildRawZip(t, []rawZipEntry{{name: "0.payload", data: []byte("payload bytes")}}, false)
 

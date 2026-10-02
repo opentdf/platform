@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func unverifiedBase64Bytes(str string) []byte {
@@ -149,11 +150,8 @@ func FuzzReader(f *testing.F) {
 		{name: "0.manifest.json", data: []byte(`{"m":1}`)},
 	}, false))
 
-	// A ZIP64 extra field declaring a stored size of 1<<63. Narrowed to an
-	// int64 that is negative, which nothing downstream rejected before
-	// make([]byte, size) panicked. This is the seed that covers that panic;
-	// the reader-side precondition is pinned by
-	// TestReaderRejectsZip64ValuesBeyondArchive.
+	// ZIP64 stored size 1<<63, negative as an int64: regression seed for a
+	// make([]byte, size) panic. See TestReaderRejectsZip64ValuesBeyondArchive.
 	f.Add(buildRawZip(f, []rawZipEntry{
 		{
 			name:                "0.payload",
@@ -164,10 +162,9 @@ func FuzzReader(f *testing.F) {
 		{name: "0.manifest.json", data: []byte(`{"m":1}`)},
 	}, false))
 
-	// A stored size that stays inside the archive but reaches past the central
-	// directory, which would serve ZIP metadata back as file content. The size
-	// is derived rather than hard-coded so a fixture change cannot quietly
-	// bring it back in bounds and turn the seed into a no-op.
+	// A stored size inside the archive but past the central directory. It is
+	// derived rather than hard-coded so a fixture change cannot quietly bring
+	// it back in bounds.
 	f.Add(overrunningCentralDirectorySeed(f))
 
 	f.Fuzz(func(t *testing.T, data []byte) {
@@ -175,25 +172,30 @@ func FuzzReader(f *testing.F) {
 		if err != nil {
 			return
 		}
-		for k := range reader.fileEntries {
+		cdStart := cdStartOf(t, data)
+		for k, entry := range reader.fileEntries {
+			// The invariant this package's bounds exist for: entry data never
+			// reaches into the central directory.
+			require.GreaterOrEqual(t, entry.index, int64(0))
+			require.GreaterOrEqual(t, entry.length, int64(0))
+			require.LessOrEqual(t, uint64(entry.index+entry.length), cdStart)
+
 			b, err := reader.ReadAllFileData(k, 1024*1024*20 /* 20MB Limit */)
 			if err != nil {
 				assert.Empty(t, b)
 			}
 
-			// Drive the index bound too. Sizes come from the archive, so a
-			// forged one reaches ReadFileData the way a hostile manifest's
-			// accumulated segment offsets would.
+			// NewReader placed the entry inside the archive, so in-range reads
+			// must succeed and a read just past the end must fail.
 			size, err := reader.ReadFileSize(k)
-			if err != nil {
-				continue
-			}
-			for _, r := range [][2]int64{{0, size}, {size / 2, size / 2}, {size - 1, 1}, {size, 1}} {
+			require.NoError(t, err)
+			for _, r := range [][2]int64{{0, size}, {size / 2, size / 2}, {size, 0}} {
 				got, err := reader.ReadFileData(k, r[0], r[1])
-				if err == nil {
-					assert.Len(t, got, int(r[1]))
-				}
+				require.NoError(t, err)
+				assert.Len(t, got, int(r[1]))
 			}
+			_, err = reader.ReadFileData(k, size, 1)
+			require.ErrorIs(t, err, errZipFileSizeError)
 		}
 	})
 }

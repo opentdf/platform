@@ -116,6 +116,10 @@ func TestTypedExtensionRejectsMalformedAndUnknownWithoutMutation(t *testing.T) {
 			_, ok, err := ReadProfileExtension[consumerProfile](settings, "first", "alpha")
 			return ok, err
 		}, func() error { return WriteProfileExtension(settings, "first", "alpha", consumerProfile{"new"}) }, profile.Extension},
+		{"global duplicate key", `{"enabled":true,"enabled":false}`, ErrExtensionUnsafeUpdate, func(raw json.RawMessage) error { return global.SetExtension("alpha", raw) }, func() (bool, error) {
+			_, ok, err := ReadGlobalExtension[consumerGlobal](settings, "alpha")
+			return ok, err
+		}, func() error { return WriteGlobalExtension(settings, "alpha", consumerGlobal{false}) }, global.Extension},
 		{"global malformed", `{"enabled":"private-token"}`, ErrExtensionDecode, func(raw json.RawMessage) error { return global.SetExtension("alpha", raw) }, func() (bool, error) {
 			_, ok, err := ReadGlobalExtension[consumerGlobal](settings, "alpha")
 			return ok, err

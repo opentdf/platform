@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"reflect"
 	"regexp"
 
@@ -143,26 +142,11 @@ func ReadProfileExtension[T any](config *ExtensionConfig, profileName, namespace
 	return value, true, err
 }
 
-// sameJSON compares JSON values without converting large numbers to float64.
+// sameJSON deliberately compares more strictly than semantic JSON equality:
+// duplicate object keys and alternate number spellings must not disappear.
 func sameJSON(a, b []byte) bool {
-	decode := func(raw []byte) (any, error) {
-		decoder := json.NewDecoder(bytes.NewReader(raw))
-		decoder.UseNumber()
-		var value any
-		if err := decoder.Decode(&value); err != nil {
-			return nil, err
-		}
-		if _, err := decoder.Token(); err != io.EOF {
-			return nil, errors.New("extra JSON data")
-		}
-		return value, nil
-	}
-	left, err := decode(a)
-	if err != nil {
-		return false
-	}
-	right, err := decode(b)
-	return err == nil && reflect.DeepEqual(left, right)
+	var left, right bytes.Buffer
+	return json.Compact(&left, a) == nil && json.Compact(&right, b) == nil && bytes.Equal(left.Bytes(), right.Bytes())
 }
 
 func prepareExtensionWrite[T any](config *ExtensionConfig, scope extensionScope, namespace string, value T) (json.RawMessage, func(json.RawMessage, bool) error, error) {

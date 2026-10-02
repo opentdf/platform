@@ -144,6 +144,11 @@ func (p *Store) CopyUnknownTo(destination *Store) error {
 
 // SetExtension persists one namespace without changing the remaining configuration.
 func (p *Store) SetExtension(namespace string, payload json.RawMessage) error {
+	return p.SetExtensionChecked(namespace, payload, nil)
+}
+
+// SetExtensionChecked checks the latest persisted namespace before replacing it.
+func (p *Store) SetExtensionChecked(namespace string, payload json.RawMessage, check func(json.RawMessage, bool) error) error {
 	if namespace == "" || len(payload) == 0 || !json.Valid(payload) {
 		return store.ErrInvalidExtensions
 	}
@@ -154,6 +159,15 @@ func (p *Store) SetExtension(namespace string, payload json.RawMessage) error {
 	latest, err := store.DecodeObject(data)
 	if err != nil {
 		return err
+	}
+	if check != nil {
+		current, present, err := store.Extension(latest, namespace)
+		if err != nil {
+			return err
+		}
+		if err := check(current, present); err != nil {
+			return err
+		}
 	}
 	object, err := store.PutExtension(latest, namespace, payload)
 	if err != nil {

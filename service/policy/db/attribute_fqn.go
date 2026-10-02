@@ -281,7 +281,7 @@ func (c *PolicyDBClient) GetEntitleableAttributesByFqns(ctx context.Context, r *
 			FqnEntitleableAttributes: map[string]*attributes.GetEntitleableAttributesByFqnsResponse_EntitleableAttribute{},
 		}, nil
 	}
-	normalized, pairs, err := c.resolveValueFqns(ctx, fqns)
+	normalized, pairs, err := c.resolveEntitleableValueFqns(ctx, fqns)
 	if err != nil {
 		return nil, err
 	}

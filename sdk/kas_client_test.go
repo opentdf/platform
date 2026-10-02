@@ -640,12 +640,7 @@ func Test_processAsymResponse(t *testing.T) {
 				},
 			}
 
-			var policyResults map[string][]kaoResult
-			if ocrypto.IsMLKEMKeyType(kt) {
-				policyResults, err = c.handleKEMKeyResponse(response)
-			} else {
-				policyResults, err = c.handleRSAKeyResponse(response)
-			}
+			policyResults, err := c.handleKeyResponse(response)
 			require.NoError(t, err)
 			assert.Len(t, policyResults, 2)
 

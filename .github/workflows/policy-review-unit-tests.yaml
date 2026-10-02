@@ -5,9 +5,6 @@ on:
     paths:
       - '.policy.yml'
       - '.github/tests/policy-review.test.cjs'
-      - '.github/tests/ci-checks.test.cjs'
-      - '.github/actions/ci-changes.cjs'
-      - '.github/workflows/checks.yaml'
       - '.github/tests/package.json'
       - '.github/tests/package-lock.json'
       - '.github/workflows/policy-review-unit-tests.yaml'

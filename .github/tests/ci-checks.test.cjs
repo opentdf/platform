@@ -53,11 +53,13 @@ test('git classifier includes deleted files, both rename sides, and unusual file
     fs.mkdirSync(path.dirname(path.join(directory, file)), { recursive: true });
     fs.writeFileSync(path.join(directory, file), 'test\n');
   }
-  // Tree snapshots exercise git diff without creating commits or requiring CI
-  // signing credentials. Production still validates the event's commit SHAs.
-  function snapshot() {
+  // Synthetic fixture commits are never published. commit-tree requires no
+  // working branch or changes to the user's signing configuration.
+  function snapshot(parent) {
     git('add', '-A');
-    return git('write-tree');
+    const tree = git('write-tree');
+    return git('-c', 'user.name=CI Test', '-c', 'user.email=ci@example.invalid',
+      'commit-tree', tree, ...(parent ? ['-p', parent] : []), '-m', 'test fixture');
   }
   try {
     git('init', '-q');
@@ -68,19 +70,29 @@ test('git classifier includes deleted files, both rename sides, and unusual file
     const check = head => classify({ ...prEnv, BASE_SHA: base, HEAD_SHA: head });
     assert.equal(check(base), false, 'empty diff is conservative');
     fs.unlinkSync(path.join(directory, 'AGENTS.md'));
-    assert.equal(check(snapshot()), true, 'allowlisted deletion');
+    assert.equal(check(snapshot(base)), true, 'allowlisted deletion');
     git('read-tree', '--reset', '-u', base);
     git('mv', 'service/main.go', '.policy.yml');
-    assert.equal(check(snapshot()), false, 'old code path prevents skip');
+    assert.equal(check(snapshot(base)), false, 'old code path prevents skip');
     git('read-tree', '--reset', '-u', base);
     git('mv', 'AGENTS.md', 'CODEOWNERS');
-    assert.equal(check(snapshot()), false, 'new special path prevents skip');
+    assert.equal(check(snapshot(base)), false, 'new special path prevents skip');
     git('read-tree', '--reset', '-u', base);
     write('.github/workflows/checks.yaml\nservice.go');
-    assert.equal(check(snapshot()), false, 'NUL delimiters preserve unusual paths');
+    assert.equal(check(snapshot(base)), false, 'NUL delimiters preserve unusual paths');
     git('read-tree', '--reset', '-u', base);
     write('.policy.yml');
-    assert.equal(check(snapshot()), true);
+    const workflowHead = snapshot(base);
+    assert.equal(check(workflowHead), true);
+    git('read-tree', '--reset', '-u', base);
+    write('sdk/go.mod');
+    const advancedBase = snapshot(base);
+    assert.equal(classify({ ...prEnv, BASE_SHA: advancedBase, HEAD_SHA: workflowHead }), true,
+      'upstream-only code/dependency changes are not PR changes');
+    git('read-tree', '--reset', '-u', workflowHead);
+    write('sdk/go.mod');
+    assert.equal(classify({ ...prEnv, BASE_SHA: advancedBase, HEAD_SHA: snapshot(workflowHead) }), false,
+      'mixed-path PR still runs full QA even when base also changes dependencies');
   } finally {
     process.chdir(original);
     fs.rmSync(directory, { recursive: true, force: true });

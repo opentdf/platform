@@ -38,8 +38,10 @@ function classify(env) {
   // NUL delimiters preserve unusual filenames. Disabling rename detection
   // includes BOTH old and new paths, including moves out of a protected path.
   // Any git failure/truncation fails the changes job, never authorizes skipping.
+  // Match GitHub's PR diff: upstream-only changes since the common ancestor
+  // are not PR changes. Failure to find a merge base also fails closed.
   const diff = execFileSync('git', [
-    'diff', '--name-only', '-z', '--no-renames', env.BASE_SHA, env.HEAD_SHA, '--',
+    'diff', '--name-only', '-z', '--no-renames', `${env.BASE_SHA}...${env.HEAD_SHA}`, '--',
   ], { maxBuffer: 64 * 1024 * 1024 }).toString('utf8');
   if (diff && !diff.endsWith('\0')) throw new Error('Incomplete changed-path list');
   return workflowPolicyOnly(diff ? diff.slice(0, -1).split('\0') : []);

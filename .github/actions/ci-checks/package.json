@@ -1,0 +1,10 @@
+{
+  "name": "platform-ci-tests",
+  "private": true,
+  "scripts": {
+    "test": "node --test ci-changes.test.cjs ci-results.test.cjs ci-workflow.test.cjs"
+  },
+  "devDependencies": {
+    "yaml": "2.9.1"
+  }
+}

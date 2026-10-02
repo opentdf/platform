@@ -32,6 +32,8 @@ permissions: {}
 
 jobs:
   go:
+    needs: changes
+    if: needs.changes.outputs.workflow_only != 'true'
     runs-on: ubuntu-22.04
     permissions:
       checks: write
@@ -133,7 +135,7 @@ jobs:
         if: env.IS_RELEASE_BRANCH == 'false'
 
   comment-govulncheck:
-    if: github.event_name == 'pull_request' && !github.event.pull_request.head.repo.fork && !cancelled()
+    if: github.event_name == 'pull_request' && !github.event.pull_request.head.repo.fork && !cancelled() && needs.go.result != 'skipped'
     permissions:
       contents: read
       pull-requests: write
@@ -185,7 +187,8 @@ jobs:
           delete: true
 
   integration:
-    if: github.event_name != 'merge_group'
+    needs: changes
+    if: github.event_name != 'merge_group' && needs.changes.outputs.workflow_only != 'true'
     permissions:
       contents: read
     name: integration tests
@@ -263,7 +266,8 @@ jobs:
         run: test/rego/custom-entity.bats
 
   benchmark:
-    if: github.event_name != 'merge_group'
+    needs: changes
+    if: github.event_name != 'merge_group' && needs.changes.outputs.workflow_only != 'true'
     permissions:
       contents: read
     name: benchmark tests
@@ -451,28 +455,26 @@ jobs:
       contents: read
     runs-on: ubuntu-22.04
     outputs:
-      proto: ${{ steps.check.outputs.proto }}
+      proto: ${{ steps.scope.outputs.proto }}
+      workflow_only: ${{ steps.scope.outputs.workflow_only }}
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           fetch-depth: 0
           persist-credentials: false
-      - name: Check for proto file changes
-        id: check
-        run: |
-          if [ "${{ github.event_name }}" = "pull_request" ]; then
-            BASE_SHA="${{ github.event.pull_request.base.sha }}"
-            if git diff --name-only "$BASE_SHA" HEAD | grep -qE '\.proto$|^Makefile$|^buf\.|^protocol/codegen/|^protocol/go/internal/|^sdk/codegen/'; then
-              echo "proto=true" >> "$GITHUB_OUTPUT"
-            else
-              echo "proto=false" >> "$GITHUB_OUTPUT"
-            fi
-          else
-            # For non-PR events (push, merge_group), always run
-            echo "proto=true" >> "$GITHUB_OUTPUT"
-          fi
+      - name: Classify workflow and policy support changes
+        id: scope
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          WORKFLOW_REF: ${{ github.workflow_ref }}
+          REPOSITORY: ${{ github.repository }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: node .github/actions/ci-checks/ci-changes.cjs
 
   image:
+    needs: changes
+    if: needs.changes.outputs.workflow_only != 'true'
     permissions:
       contents: read
     name: image build
@@ -491,7 +493,8 @@ jobs:
           push: false
 
   platform-xtest:
-    if: github.event_name != 'merge_group'
+    needs: changes
+    if: github.event_name != 'merge_group' && needs.changes.outputs.workflow_only != 'true'
     permissions:
       contents: read
       packages: read
@@ -504,7 +507,8 @@ jobs:
       otdfctl-ref: ${{ github.event.pull_request.head.sha || github.sha }} main
 
   tests-bdd:
-    if: github.event_name != 'merge_group'
+    needs: changes
+    if: github.event_name != 'merge_group' && needs.changes.outputs.workflow_only != 'true'
     name: Cucumber BDD Tests
     runs-on: ubuntu-22.04
     strategy:
@@ -572,7 +576,8 @@ jobs:
 
   # Characterize the baseline independently of the required ci check.
   authorization-scale:
-    if: github.event_name != 'merge_group'
+    needs: changes
+    if: github.event_name != 'merge_group' && needs.changes.outputs.workflow_only != 'true'
     name: Authorization scale (report only)
     runs-on: ubuntu-22.04
     timeout-minutes: 60
@@ -635,7 +640,8 @@ jobs:
 
   # test otdfctl CLI e2e against platform PR branch
   otdfctl-test:
-    if: github.event_name != 'merge_group'
+    needs: changes
+    if: github.event_name != 'merge_group' && needs.changes.outputs.workflow_only != 'true'
     permissions:
       contents: read
     name: otdfctl e2e tests
@@ -714,8 +720,10 @@ jobs:
         run: git diff-files --quiet --ignore-submodules
 
   ci:
-    permissions: {}
+    permissions:
+      contents: read
     needs:
+      - changes
       - buflint
       - go
       - image
@@ -726,14 +734,27 @@ jobs:
       - tests-bdd
       - otdfctl-test
     runs-on: ubuntu-22.04
-    if: ${{ !cancelled() }}
+    # Report even when classification fails or a dependency is cancelled/skipped.
+    if: ${{ always() }}
     steps:
-      - if: contains(needs.*.result, 'failure')
-        name: Check for failed jobs
-        run: echo "One or more jobs failed. Please look at the failed jobs for details." && exit 1
+      # Load the same revision as this workflow, not an arbitrary PR head.
+      # PR-controlled helper code runs without secrets or write permissions.
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+      - name: Check required job results
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          NEEDS_JSON: ${{ toJSON(needs) }}
+          EVENT_NAME: ${{ github.event_name }}
+        with:
+          script: |
+            const checkResults = require('./.github/actions/ci-checks/ci-results.js');
+            checkResults({ core });
 
   license:
-    if: github.event_name != 'merge_group'
+    needs: changes
+    if: github.event_name != 'merge_group' && needs.changes.outputs.workflow_only != 'true'
     permissions:
       contents: read
     name: license check

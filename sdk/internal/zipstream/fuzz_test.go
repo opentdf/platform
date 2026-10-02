@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func unverifiedBase64Bytes(str string) []byte {
@@ -149,16 +150,76 @@ func FuzzReader(f *testing.F) {
 		{name: "0.manifest.json", data: []byte(`{"m":1}`)},
 	}, false))
 
+	// ZIP64 stored size 1<<63, negative as an int64: regression seed for a
+	// make([]byte, size) panic. See TestReaderRejectsZip64ValuesBeyondArchive.
+	f.Add(buildRawZip(f, []rawZipEntry{
+		{
+			name:                "0.payload",
+			data:                []byte("payload bytes"),
+			zip64:               true,
+			zip64CompressedSize: beyondInt64,
+		},
+		{name: "0.manifest.json", data: []byte(`{"m":1}`)},
+	}, false))
+
+	// A stored size inside the archive but past the central directory. It is
+	// derived rather than hard-coded so a fixture change cannot quietly bring
+	// it back in bounds.
+	f.Add(overrunningCentralDirectorySeed(f))
+
 	f.Fuzz(func(t *testing.T, data []byte) {
 		reader, err := NewReader(bytes.NewReader(data))
 		if err != nil {
 			return
 		}
-		for k := range reader.fileEntries {
+		cdStart := cdStartOf(t, data)
+		for k, entry := range reader.fileEntries {
+			// The invariant this package's bounds exist for: entry data never
+			// reaches into the central directory.
+			require.GreaterOrEqual(t, entry.index, int64(0))
+			require.GreaterOrEqual(t, entry.length, int64(0))
+			require.LessOrEqual(t, uint64(entry.index+entry.length), cdStart)
+
 			b, err := reader.ReadAllFileData(k, 1024*1024*20 /* 20MB Limit */)
 			if err != nil {
 				assert.Empty(t, b)
 			}
+
+			// NewReader placed the entry inside the archive, so in-range reads
+			// must succeed and a read just past the end must fail.
+			size, err := reader.ReadFileSize(k)
+			require.NoError(t, err)
+			for _, r := range [][2]int64{{0, size}, {size / 2, size / 2}, {size, 0}} {
+				got, err := reader.ReadFileData(k, r[0], r[1])
+				require.NoError(t, err)
+				assert.Len(t, got, int(r[1]))
+			}
+			_, err = reader.ReadFileData(k, size, 1)
+			require.ErrorIs(t, err, errZipFileSizeError)
 		}
 	})
+}
+
+// overrunningCentralDirectorySeed builds a two-entry archive whose first entry
+// declares a stored size reaching from its data to the last byte before the
+// EOCD -- inside the archive, but well past the central directory.
+func overrunningCentralDirectorySeed(f *testing.F) []byte {
+	f.Helper()
+
+	payload := rawZipEntry{name: "0.payload", data: []byte("payload bytes"), zip64: true}
+	manifest := rawZipEntry{name: "0.manifest.json", data: []byte(`{"m":1}`)}
+
+	honest := buildRawZip(f, []rawZipEntry{payload, manifest}, false)
+	reader, err := NewReader(bytes.NewReader(honest))
+	if err != nil {
+		f.Fatalf("seed fixture must parse: %v", err)
+	}
+
+	dataStart := uint64(reader.fileEntries[payload.name].index)
+	payload.zip64CompressedSize = uint64(len(honest)) - endOfCDRecordSize - dataStart
+	if dataStart+payload.zip64CompressedSize <= cdStartOf(f, honest) {
+		f.Fatal("seed no longer reaches past the central directory")
+	}
+
+	return buildRawZip(f, []rawZipEntry{payload, manifest}, false)
 }

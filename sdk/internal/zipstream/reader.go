@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math"
 )
 
 // https://pkware.cachefly.net/webdocs/casestudies/APPNOTE.TXT
@@ -39,25 +40,33 @@ var (
 	errZipFormatFileHeader = errors.New("zip: unable to read local file header")
 )
 
-type ZipFileEntry struct {
+// zipFileEntry locates one entry's stored bytes. NewReader guarantees index
+// and length are non-negative and index+length is at most the start of the
+// central directory.
+type zipFileEntry struct {
 	index  int64
 	length int64
 }
 
 type Reader struct {
 	readSeeker  io.ReadSeeker
-	fileEntries map[string]ZipFileEntry
+	fileEntries map[string]zipFileEntry
 }
 
 // NewReader Create archive reader instance.
 func NewReader(readSeeker io.ReadSeeker) (Reader, error) {
 	reader := Reader{}
-	reader.fileEntries = make(map[string]ZipFileEntry)
+	reader.fileEntries = make(map[string]zipFileEntry)
 
-	// read end of central directory record
-	_, err := readSeeker.Seek(-endOfCDRecordSize, io.SeekEnd)
+	// The EOCD seek also reports the archive length, which bounds every offset
+	// read below.
+	eocdStart, err := readSeeker.Seek(-endOfCDRecordSize, io.SeekEnd)
 	if err != nil {
 		return reader, fmt.Errorf("readSeeker.Seek failed: %w", err)
+	}
+	archive, err := archiveBound(eocdStart)
+	if err != nil {
+		return reader, err
 	}
 
 	endOfCDRecord := EndOfCDRecord{}
@@ -101,8 +110,15 @@ func NewReader(readSeeker io.ReadSeeker) (Reader, error) {
 			return reader, errZipFormat
 		}
 
-		// read zip64 end of central directory record
-		_, err = readSeeker.Seek(int64(zip64EndOfCDRecordLocator.CDOffset), io.SeekStart)
+		// read zip64 end of central directory record. It follows the central
+		// directory, so it is bounded by the archive rather than cdStart.
+		zip64EndOfCD, err := archive.offset("zip64 end of central directory record",
+			zip64EndOfCDRecordLocator.CDOffset, 0)
+		if err != nil {
+			return reader, err
+		}
+
+		_, err = readSeeker.Seek(zip64EndOfCD, io.SeekStart)
 		if err != nil {
 			return reader, fmt.Errorf("readSeeker.Seek failed: %w", err)
 		}
@@ -121,13 +137,34 @@ func NewReader(readSeeker io.ReadSeeker) (Reader, error) {
 		centralDirectoryStart = zip64EndOfCDRecord.StartingDiskCentralDirectoryOffset
 	}
 
+	// Local file headers and file data precede the central directory, so its
+	// start is their bound. It is read off disk too, so check it first.
+	cdStart, err := archive.narrow(boundCDStart, centralDirectoryStart)
+	if err != nil {
+		return reader, err
+	}
+
+	// Each central directory record is at least cdFileHeaderSize bytes, so a
+	// larger count is impossible. This is an early-out, not what makes the loop
+	// safe; the per-entry offset and signature checks already stop the walk.
+	if maxEntries := archive.limit / cdFileHeaderSize; entryCount > maxEntries {
+		return reader, fmt.Errorf(
+			"%w: %d central directory entries declared, but a %d byte archive has room for at most %d",
+			errZipFormat, entryCount, archive.limit, maxEntries)
+	}
+
 	nextCD := uint64(0)
 	cdFileHeader := CDFileHeader{}
 
 	reader.readSeeker = readSeeker
 	for i := uint64(0); i < entryCount; i++ {
 		// read central directory header of index(i)
-		_, err = readSeeker.Seek(int64(nextCD+centralDirectoryStart), io.SeekStart)
+		cdEntryStart, err := archive.offset("central directory entry", centralDirectoryStart, nextCD)
+		if err != nil {
+			return reader, err
+		}
+
+		_, err = readSeeker.Seek(cdEntryStart, io.SeekStart)
 		if err != nil {
 			return reader, fmt.Errorf("readSeeker.Seek failed: %w", err)
 		}
@@ -156,25 +193,45 @@ func NewReader(readSeeker io.ReadSeeker) (Reader, error) {
 
 		// Read each file
 		localFileHeader := LocalFileHeader{}
-		_, err = readSeeker.Seek(int64(offset), io.SeekStart)
+		localHeaderStart, err := cdStart.offset("local file header", offset, 0)
+		if err != nil {
+			return reader, err
+		}
+
+		_, err = readSeeker.Seek(localHeaderStart, io.SeekStart)
 		if err != nil {
 			return reader, fmt.Errorf("readSeeker.Seek failed: %w", err)
 		}
 		err = binary.Read(readSeeker, binary.LittleEndian, &localFileHeader)
 		if err != nil {
-			return reader, fmt.Errorf("readSeeker.Seek failed: %w", err)
+			return reader, fmt.Errorf("binary.Read failed: %w", err)
 		}
 
 		if localFileHeader.Signature != fileHeaderSignature {
 			return reader, errZipFormatFileHeader
 		}
 
-		zipFileEntry := ZipFileEntry{}
-		zipFileEntry.length = int64(bytesToRead)
-		zipFileEntry.index = int64(offset) + localFileHeaderSize +
-			int64(localFileHeader.FilenameLength) + int64(localFileHeader.ExtraFieldLength)
+		// The local header's own filename and extra-field lengths are
+		// authoritative here; the central directory copies may differ.
+		dataStart, err := cdStart.offset("file data start", offset,
+			localFileHeaderSize+uint64(localFileHeader.FilenameLength)+uint64(localFileHeader.ExtraFieldLength))
+		if err != nil {
+			return reader, err
+		}
 
-		reader.fileEntries[string(fileNameByteArray)] = zipFileEntry
+		// bytesToRead is untrusted. Bound it by the central directory, not EOF:
+		// an EOF bound would let a forged size cover the central directory,
+		// which ReadAllFileData would return as file content. Taking length as
+		// the difference of two bounded positions keeps it non-negative.
+		dataEnd, err := cdStart.offset("file data", uint64(dataStart), bytesToRead)
+		if err != nil {
+			return reader, err
+		}
+
+		reader.fileEntries[string(fileNameByteArray)] = zipFileEntry{
+			index:  dataStart,
+			length: dataEnd - dataStart,
+		}
 
 		// Widen every term before summing: all three header lengths are
 		// uint16, so adding them at their declared width wraps at 65536 and
@@ -188,6 +245,59 @@ func NewReader(readSeeker io.ReadSeeker) (Reader, error) {
 	}
 
 	return reader, nil
+}
+
+// Names of the limits offsets are measured against, for error messages.
+const (
+	boundArchiveEnd = "end of the archive"
+	boundCDStart    = "start of the central directory"
+)
+
+// bound is a named limit inside the archive. Construct one only via
+// archiveBound or narrow; offset also rejects a limit above MaxInt64, so a
+// stray literal cannot make its int64 conversion unsafe.
+type bound struct {
+	name  string
+	limit uint64
+}
+
+// archiveBound derives the outermost bound from the offset of the end of
+// central directory record. The guard is against an io.ReadSeeker reporting a
+// negative position or one whose record end would exceed MaxInt64.
+func archiveBound(eocdStart int64) (bound, error) {
+	if eocdStart < 0 || eocdStart > math.MaxInt64-endOfCDRecordSize {
+		return bound{}, fmt.Errorf(
+			"%w: readSeeker reported an implausible end of central directory offset %d",
+			errZipFormat, eocdStart)
+	}
+	return bound{name: boundArchiveEnd, limit: uint64(eocdStart) + endOfCDRecordSize}, nil
+}
+
+// narrow returns a bound named name at limit, refusing one past b.
+func (b bound) narrow(name string, limit uint64) (bound, error) {
+	if limit > b.limit {
+		return bound{}, fmt.Errorf("%w: %s at %d lies past the %s at %d",
+			errZipFormat, name, limit, b.name, b.limit)
+	}
+	return bound{name: name, limit: limit}, nil
+}
+
+// offset returns base+delta as an int64 if it lies within b; field names what
+// is being located, for the error message. With b.limit <= MaxInt64, passing
+// the check guarantees a non-negative int64, and the subtraction keeps the
+// addition from wrapping before it is checked.
+//
+// The comparison is inclusive because the last entry's data legitimately ends
+// exactly at the central directory (see TestWriterManifestEndsAtCentralDirectory).
+// Only the start position is checked, so callers reading a record there rely on
+// the following binary.Read and signature check to reject a truncated or
+// misplaced one.
+func (b bound) offset(field string, base, delta uint64) (int64, error) {
+	if b.limit > math.MaxInt64 || base > b.limit || delta > b.limit-base {
+		return 0, fmt.Errorf("%w: %s at %d+%d runs past the %s at %d",
+			errZipFormat, field, base, delta, b.name, b.limit)
+	}
+	return int64(base + delta), nil
 }
 
 // resolveEntryLocation returns the local header offset and the number of
@@ -333,8 +443,13 @@ func (reader Reader) ReadFileData(filename string, index int64, length int64) ([
 		return nil, errZipFileNotFound
 	}
 
-	if length < 0 || length > fileNameEntry.length {
-		return nil, errZipFileSizeError
+	// index comes from manifest segment sizes, so it must be bounded as well as
+	// length. The length clauses run first, so the subtraction cannot go
+	// negative.
+	if length < 0 || length > fileNameEntry.length ||
+		index < 0 || index > fileNameEntry.length-length {
+		return nil, fmt.Errorf("%w: %s: read of %d bytes at %d does not fit an entry of %d bytes",
+			errZipFileSizeError, filename, length, index, fileNameEntry.length)
 	}
 
 	return readBytes(reader.readSeeker, fileNameEntry.index+index, length)

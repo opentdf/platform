@@ -182,8 +182,8 @@ github.com/opentdf/platform/lib/ocrypto v0.14.0 h1:qAIOFpz72/QDhYC0oLRXgA5uEnyv1
 github.com/opentdf/platform/lib/ocrypto v0.14.0/go.mod h1:TLaMvVE1aTqrgW8AZz0ZuxX/ZpI7l5IQOHyX99fdKl0=
 github.com/opentdf/platform/protocol/go v0.41.0 h1:QsORhjrPkOPLEvQvQZOSa6wzQuDxPDc2X80tjXMpp58=
 github.com/opentdf/platform/protocol/go v0.41.0/go.mod h1:Gx14oxCvqD/QPzrODvPcwRucQzZOKDVP4/Zy/1SBsxY=
-github.com/opentdf/platform/sdk v0.33.0 h1:NPcslxtJgckYIk51YSweZIqGzi1Qf+W7AWz3ftR3eSM=
-github.com/opentdf/platform/sdk v0.33.0/go.mod h1:ieNswskyS3ENqMa6RXSDxRXgeaxMlkDxxuBGxYYahtw=
+github.com/opentdf/platform/sdk v0.34.0 h1:MW74ittMVmL4IfgvJShcGsVDes1I9DbfG6XrGe6aGmI=
+github.com/opentdf/platform/sdk v0.34.0/go.mod h1:ieNswskyS3ENqMa6RXSDxRXgeaxMlkDxxuBGxYYahtw=
 github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
 github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 h1:Jamvg5psRIccs7FGNTlIRMkT8wgtp5eCXdBlqhYGL6U=
 github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=

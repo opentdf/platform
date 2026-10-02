@@ -119,4 +119,3 @@ test('git classifier includes deleted files, both rename sides, and unusual file
     fs.rmSync(directory, { recursive: true, force: true });
   }
 });
-

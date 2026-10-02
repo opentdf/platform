@@ -492,9 +492,13 @@ func makeRewrapRequests(t *testing.T, policy []byte, bindingAsString bool) []*ka
 }
 
 func makeRewrapBody(t *testing.T, policy []byte, policyBindingAsString bool) []byte {
+	return makeRewrapBodyWithKey(t, policy, policyBindingAsString, rsaPublicAlt)
+}
+
+func makeRewrapBodyWithKey(t *testing.T, policy []byte, policyBindingAsString bool, clientPublicKey string) []byte {
 	mockBody := &kaspb.UnsignedRewrapRequest{
 		Requests:        makeRewrapRequests(t, policy, policyBindingAsString),
-		ClientPublicKey: rsaPublicAlt,
+		ClientPublicKey: clientPublicKey,
 	}
 	bodyData, err := protojson.Marshal(mockBody)
 
@@ -512,6 +516,15 @@ func TestParseAndVerifyRequest(t *testing.T) {
 	srt := makeRewrapBody(t, fauxPolicyBytes(t), false)
 	srt2 := makeRewrapBody(t, fauxPolicyBytes(t), true)
 	badPolicySrt := makeRewrapBody(t, emptyPolicyBytes(), true)
+	srtWithKey := func(kt ocrypto.KeyType) []byte {
+		kp, err := ocrypto.NewKeyPair(kt)
+		require.NoError(t, err)
+		pem, err := kp.PublicKeyInPemFormat()
+		require.NoError(t, err)
+		return makeRewrapBodyWithKey(t, fauxPolicyBytes(t), false, pem)
+	}
+	srtGarbageKey := makeRewrapBodyWithKey(t, fauxPolicyBytes(t), false, "not a pem")
+	mlkemEnabled := Preview{MLKEMTDFEnabled: true}
 
 	tests := []struct {
 		name        string
@@ -519,12 +532,20 @@ func TestParseAndVerifyRequest(t *testing.T) {
 		goodDPoP    bool
 		shouldError bool
 		addDPoP     bool
+		preview     Preview
+		badKey      bool // the client public key is rejected up front
 	}{
-		{"good w/ string policy binding", srt, true, false, true},
-		{"good w/ object policy binding", srt2, true, false, true},
-		{"different policy", badPolicySrt, true, true, true},
-		{"no dpop token included", srt, true, false, false},
-		{"wrong dpop token included", srt, false, false, true},
+		{"good w/ string policy binding", srt, true, false, true, Preview{}, false},
+		{"good w/ object policy binding", srt2, true, false, true, Preview{}, false},
+		{"different policy", badPolicySrt, true, true, true, Preview{}, false},
+		{"no dpop token included", srt, true, false, false, Preview{}, false},
+		{"wrong dpop token included", srt, false, false, true, Preview{}, false},
+		{"ec client key", srtWithKey(ocrypto.EC256Key), true, false, true, Preview{}, false},
+		{"mlkem:768 client key", srtWithKey(ocrypto.MLKEM768Key), true, false, true, mlkemEnabled, false},
+		{"mlkem:1024 client key", srtWithKey(ocrypto.MLKEM1024Key), true, false, true, mlkemEnabled, false},
+		{"mlkem:768 client key w/ mlkem disabled", srtWithKey(ocrypto.MLKEM768Key), true, false, true, Preview{}, true},
+		{"mlkem:1024 client key w/ mlkem disabled", srtWithKey(ocrypto.MLKEM1024Key), true, false, true, Preview{}, true},
+		{"garbage client key", srtGarbageKey, true, false, true, Preview{}, true},
 	}
 	// The execution loop
 	for _, tt := range tests {
@@ -552,6 +573,7 @@ func TestParseAndVerifyRequest(t *testing.T) {
 			p := &Provider{
 				Logger: testLogger,
 			}
+			p.Preview = tt.preview
 
 			verified, _, err := p.extractSRTBody(
 				ctx,
@@ -560,6 +582,11 @@ func TestParseAndVerifyRequest(t *testing.T) {
 					SignedRequestToken: string(tt.body),
 				},
 			)
+			if tt.badKey {
+				require.Error(t, err)
+				assert.Nil(t, verified)
+				return
+			}
 			if tt.goodDPoP {
 				require.NoError(t, err, "failed to parse srt=[%s], tok=[%s]", tt.body, bearer)
 				require.NotNil(t, verified, "unable to load request body")

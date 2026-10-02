@@ -10,24 +10,33 @@ const classify = env => classifyChanges(env).workflow_only;
 const prEnv = { EVENT_NAME: 'pull_request', REPOSITORY: 'opentdf/platform',
   WORKFLOW_REF: 'opentdf/platform/.github/workflows/checks.yaml@refs/pull/123/merge' };
 
-test('JSON allowlist covers exact support paths and the dedicated CI-filter directory', () => {
-  const config = require('../ignore-checks-workflow-policy-paths.json');
-  // Seven legacy entries permit both rename sides during this relocation only;
-  // removing them later is a separately reviewed policy change.
-  assert.equal(config.paths.filter(file => file.startsWith('.github/actions/ci-') ||
-    file === '.github/actions/package.json' || file === '.github/actions/package-lock.json').length, 7);
-  const allowed = [...config.paths, '.github/ci-policy-filter/ci-changes.cjs',
-    '.github/ci-policy-filter/future-helper.cjs', '.github/ci-policy-filter/fixtures/example.json'];
+test('JSON allowlist covers only this PR and the bounded ci-checks directory', () => {
+  const config = require('../../ignore-checks-workflow-policy-paths.json');
+  assert.deepEqual(config.paths, [
+    '.github/ignore-checks-workflow-policy-paths.json',
+    '.github/workflows/checks.yaml', '.github/workflows/ci-unit-tests.yaml',
+  ]);
+  assert.deepEqual(config.prefixes, ['.github/actions/ci-checks/']);
+  const allowed = [...config.paths, ...fs.readdirSync(__dirname)
+    .filter(file => file !== 'node_modules').map(file => `.github/actions/ci-checks/${file}`)];
   assert.equal(workflowPolicyOnly(allowed), true);
   assert.equal(workflowPolicyOnly([]), false);
   for (const unknown of ['service/main.go', 'sdk/go.mod', 'go.work', 'go.work.sum', 'LICENSE',
-    'CODEOWNERS', 'README.md', 'docs/example.md', 'Dockerfile', 'Makefile', 'buf.yaml',
+    'AGENTS.md', '.policy.yml', 'CODEOWNERS', 'README.md', 'docs/example.md', 'Dockerfile', 'Makefile', 'buf.yaml',
+    '.github/workflows/driver-review.yaml', '.github/workflows/actions-unit-tests.yaml',
+    '.github/workflows/policy-review-unit-tests.yaml', '.github/actions/driver-review.js',
+    '.github/actions/driver-review.test.cjs', '.github/actions/driver-review-workflow.test.cjs',
+    '.github/tests/policy-review.test.cjs', '.github/tests/package.json', '.github/tests/package-lock.json',
+    '.github/actions/ci-changes.cjs', '.github/actions/ci-changes.test.cjs',
+    '.github/actions/ci-results.js', '.github/actions/ci-results.test.cjs',
+    '.github/actions/ci-workflow.test.cjs', '.github/actions/package.json', '.github/actions/package-lock.json',
     'protocol/test.proto', '.github/scripts/work-init.sh', '.github/dependabot.yml',
     '.github/workflows/unknown.yaml', '.github/actions/unknown.js', '.github/tests/unknown.cjs',
     '.github/tests/go.mod', '.github/tests/../../service/main.go', '.policy.yml\nservice/main.go',
-    '.github/ci-policy-filter-elsewhere/helper.cjs', '.github/ci-policy-filter/../actions/unknown.js',
-    '.github/ci-policy-filter//unknown.cjs', '.github/ci-policy-filter/../../service/main.go',
-    '.github/ci-policy-filter/unknown.cjs\nservice/main.go', 'AGENTS.md ', 'agents.md']) {
+    '.github/actions/ci-checks-elsewhere/helper.cjs', '.github/actions/ci-checks/../actions/unknown.js',
+    '.github/actions/ci-checks//unknown.cjs', '.github/actions/ci-checks/../../service/main.go',
+    '.github/actions/ci-checks/unknown.cjs\nservice/main.go', 'AGENTS.md ', 'agents.md']) {
+    assert.equal(workflowPolicyOnly([unknown]), false, unknown);
     assert.equal(workflowPolicyOnly([...allowed, unknown]), false, unknown);
   }
 });
@@ -35,11 +44,11 @@ test('JSON allowlist covers exact support paths and the dedicated CI-filter dire
 test('policy configuration rejects malformed paths and broad prefixes', () => {
   assert.throws(() => validatePolicy(null), /Invalid/);
   for (const paths of [null, ['service/**'], ['../service/main.go'], ['/service/main.go'],
-    ['.github/ci-policy-filter/../main.go'], ['AGENTS.md\nservice/main.go']]) {
+    ['.github/actions/ci-checks/../main.go'], ['AGENTS.md\nservice/main.go']]) {
     assert.throws(() => validatePolicy({ paths, prefixes: [] }), /Invalid/);
   }
   for (const prefixes of [null, ['.github/'], ['.github/actions/'], ['.github/workflows/'],
-    ['.github/ci-policy-filter'], ['.github/ci-policy-filter/**']]) {
+    ['.github/ci-policy-filter/'], ['.github/actions/ci-checks'], ['.github/actions/ci-checks/**']]) {
     assert.throws(() => validatePolicy({ paths: [], prefixes }), /Invalid/);
   }
   assert.throws(() => validatePolicy({ paths: [], prefixes: [], glob: '**' }), /Invalid/);
@@ -77,7 +86,7 @@ test('git classifier includes deleted files, both rename sides, and unusual file
   try {
     git('init', '-q');
     write('service/main.go');
-    write('AGENTS.md');
+    write('.github/workflows/checks.yaml');
     const base = snapshot();
     process.chdir(directory);
     const check = head => classify({ ...prEnv, BASE_SHA: base, HEAD_SHA: head });
@@ -95,21 +104,21 @@ test('git classifier includes deleted files, both rename sides, and unusual file
     });
     assert.notEqual(failed.status, 0, 'classification failure fails the step');
     assert.equal(fs.readFileSync(output, 'utf8'), '', 'failure never emits skip-authorizing outputs');
-    fs.unlinkSync(path.join(directory, 'AGENTS.md'));
+    fs.unlinkSync(path.join(directory, '.github/workflows/checks.yaml'));
     assert.equal(check(snapshot(base)), true, 'allowlisted deletion');
     git('read-tree', '--reset', '-u', base);
-    git('mv', 'service/main.go', '.policy.yml');
+    fs.mkdirSync(path.join(directory, '.github/actions/ci-checks'), { recursive: true });
+    git('mv', 'service/main.go', '.github/actions/ci-checks/ci-changes.cjs');
     assert.equal(check(snapshot(base)), false, 'old code path prevents skip');
     git('read-tree', '--reset', '-u', base);
-    git('mv', 'AGENTS.md', 'CODEOWNERS');
+    git('mv', '.github/workflows/checks.yaml', 'CODEOWNERS');
     assert.equal(check(snapshot(base)), false, 'new special path prevents skip');
     git('read-tree', '--reset', '-u', base);
     write('.github/workflows/checks.yaml\nservice.go');
     assert.equal(check(snapshot(base)), false, 'NUL delimiters preserve unusual paths');
     git('read-tree', '--reset', '-u', base);
-    write('.policy.yml');
     write('.github/ignore-checks-workflow-policy-paths.json');
-    write('.github/ci-policy-filter/future-helper.cjs');
+    write('.github/actions/ci-checks/ci-changes.cjs');
     const workflowHead = snapshot(base);
     assert.equal(check(workflowHead), true);
     assert.equal(classifyChanges({ ...prEnv, BASE_SHA: base, HEAD_SHA: workflowHead }).proto, false);

@@ -3,14 +3,14 @@ name: CI unit tests
 on:
   pull_request:
     paths:
-      - '.github/ci-policy-filter/**'
+      - '.github/actions/ci-checks/**'
       - '.github/ignore-checks-workflow-policy-paths.json'
       - '.github/workflows/checks.yaml'
       - '.github/workflows/ci-unit-tests.yaml'
   push:
     branches: [main]
     paths:
-      - '.github/ci-policy-filter/**'
+      - '.github/actions/ci-checks/**'
       - '.github/ignore-checks-workflow-policy-paths.json'
       - '.github/workflows/checks.yaml'
       - '.github/workflows/ci-unit-tests.yaml'
@@ -30,6 +30,6 @@ jobs:
         with:
           node-version: '24'
       - run: npm ci --ignore-scripts
-        working-directory: .github/ci-policy-filter
+        working-directory: .github/actions/ci-checks
       - run: npm test
-        working-directory: .github/ci-policy-filter
+        working-directory: .github/actions/ci-checks

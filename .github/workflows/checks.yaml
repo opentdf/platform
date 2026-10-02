@@ -470,7 +470,7 @@ jobs:
           REPOSITORY: ${{ github.repository }}
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
-        run: node .github/ci-policy-filter/ci-changes.cjs
+        run: node .github/actions/ci-checks/ci-changes.cjs
 
   image:
     needs: changes
@@ -749,7 +749,7 @@ jobs:
           EVENT_NAME: ${{ github.event_name }}
         with:
           script: |
-            const checkResults = require('./.github/ci-policy-filter/ci-results.js');
+            const checkResults = require('./.github/actions/ci-checks/ci-results.js');
             checkResults({ core });
 
   license:

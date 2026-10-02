@@ -4,7 +4,7 @@ const fs = require('node:fs');
 // This is review-owned policy input, not an anti-tamper boundary: the PR also
 // controls this helper and its workflow. CODEOWNERS review must approve changes
 // to QA exemptions, including the config itself. JSON needs no runtime parser.
-const policy = require('../ignore-checks-workflow-policy-paths.json');
+const policy = require('../../ignore-checks-workflow-policy-paths.json');
 
 function canonicalPath(path) {
   return typeof path === 'string' && path.length > 0 &&
@@ -17,7 +17,7 @@ function validatePolicy(config) {
       !Array.isArray(config.paths) || !Array.isArray(config.prefixes) ||
       !config.paths.every(canonicalPath) ||
       // No generic glob matcher or broad .github/workflows/actions exemption.
-      !config.prefixes.every(prefix => prefix === '.github/ci-policy-filter/')) {
+      !config.prefixes.every(prefix => prefix === '.github/actions/ci-checks/')) {
     throw new Error('Invalid workflow/policy path configuration');
   }
   return config;

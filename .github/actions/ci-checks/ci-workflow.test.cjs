@@ -3,7 +3,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const YAML = require('yaml');
-const root = path.join(__dirname, '../..');
+const root = path.join(__dirname, '../../..');
 const readWorkflow = file => YAML.parse(fs.readFileSync(path.join(root, '.github/workflows', file), 'utf8'));
 const workflow = readWorkflow('checks.yaml');
 const gated = ['go', 'image', 'integration', 'benchmark', 'license',
@@ -39,7 +39,7 @@ test('ci-results uses pinned github-script v9 with read-only PR merge checkout a
     NEEDS_JSON: '${{ toJSON(needs) }}', EVENT_NAME: '${{ github.event_name }}',
   });
   assert.equal(results.with.script,
-    "const checkResults = require('./.github/ci-policy-filter/ci-results.js');\ncheckResults({ core });\n");
+    "const checkResults = require('./.github/actions/ci-checks/ci-results.js');\ncheckResults({ core });\n");
   assert.ok(!JSON.stringify(ci).includes('secrets.'));
   assert.ok(!results.with.script.includes('${{'));
 });
@@ -52,7 +52,7 @@ test('classifier writes both outputs from the PR three-dot diff without expressi
   });
   assert.equal(changes.steps[0].with['fetch-depth'], 0);
   const classifier = changes.steps.find(step => step.id === 'scope');
-  assert.equal(classifier.run, 'node .github/ci-policy-filter/ci-changes.cjs');
+  assert.equal(classifier.run, 'node .github/actions/ci-checks/ci-changes.cjs');
   assert.equal(classifier.env.BASE_SHA, '${{ github.event.pull_request.base.sha }}');
   assert.equal(classifier.env.HEAD_SHA, '${{ github.event.pull_request.head.sha }}');
 });
@@ -61,7 +61,7 @@ test('focused workflow covers all helper, test, manifest and checks edits indepe
   const tests = readWorkflow('ci-unit-tests.yaml');
   for (const event of ['pull_request', 'push']) {
     assert.deepEqual(tests.on[event].paths, [
-      '.github/ci-policy-filter/**', '.github/ignore-checks-workflow-policy-paths.json',
+      '.github/actions/ci-checks/**', '.github/ignore-checks-workflow-policy-paths.json',
       '.github/workflows/checks.yaml', '.github/workflows/ci-unit-tests.yaml',
     ]);
   }
@@ -72,6 +72,6 @@ test('focused workflow covers all helper, test, manifest and checks edits indepe
   assert.deepEqual(tests.jobs.test.permissions, { contents: 'read' });
   for (const run of ['npm ci --ignore-scripts', 'npm test']) {
     assert.equal(tests.jobs.test.steps.find(step => step.run === run)['working-directory'],
-      '.github/ci-policy-filter');
+      '.github/actions/ci-checks');
   }
 });

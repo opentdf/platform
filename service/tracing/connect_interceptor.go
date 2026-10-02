@@ -16,7 +16,8 @@ func ConnectClientTraceInterceptor() (connect.Interceptor, error) {
 
 // ConnectServerTraceInterceptor returns a Connect interceptor backed by
 // otelconnect that extracts OpenTelemetry trace context from incoming requests
-// and creates per-RPC spans and metrics.
+// and creates per-RPC spans and metrics. Server spans include the incoming
+// User-Agent header as request metadata.
 //
 // WithTrustRemote makes server spans children of the incoming trace rather
 // than linked root spans. WithoutServerPeerAttributes reduces cardinality.
@@ -25,5 +26,6 @@ func ConnectServerTraceInterceptor() (connect.Interceptor, error) {
 		otelconnect.WithTrustRemote(),
 		otelconnect.WithoutServerPeerAttributes(),
 		otelconnect.WithoutTraceEvents(),
+		otelconnect.WithTraceRequestHeader("User-Agent"),
 	)
 }

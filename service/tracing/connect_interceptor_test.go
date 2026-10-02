@@ -233,3 +233,45 @@ func TestTraceContextPropagation_NoTraceContext(t *testing.T) {
 	assert.NotEqual(t, clientTraceID, serverTraceID,
 		"server should have a different trace ID when no propagator is configured")
 }
+
+func Test_ConnectServerTraceInterceptor_RecordsUserAgent(t *testing.T) {
+	recorder := tracetest.NewSpanRecorder()
+	provider := sdktrace.NewTracerProvider(sdktrace.WithSpanProcessor(recorder))
+	previous := otel.GetTracerProvider()
+	otel.SetTracerProvider(provider)
+	t.Cleanup(func() {
+		otel.SetTracerProvider(previous)
+		require.NoError(t, provider.Shutdown(context.Background()))
+	})
+
+	serverInterceptor, err := tracing.ConnectServerTraceInterceptor()
+	require.NoError(t, err)
+	handler := connect.NewUnaryHandler(
+		"/test.v1.TestService/Ping",
+		func(_ context.Context, _ *connect.Request[emptypb.Empty]) (*connect.Response[emptypb.Empty], error) {
+			return connect.NewResponse(&emptypb.Empty{}), nil
+		},
+		connect.WithInterceptors(serverInterceptor),
+	)
+	server := httptest.NewServer(handler)
+	t.Cleanup(server.Close)
+
+	client := connect.NewClient[emptypb.Empty, emptypb.Empty](
+		server.Client(),
+		server.URL+"/test.v1.TestService/Ping",
+	)
+	request := connect.NewRequest(&emptypb.Empty{})
+	request.Header().Set("User-Agent", "virtru-sdk-go/0.9.1 tructl/v0.0.0")
+	_, err = client.CallUnary(t.Context(), request)
+	require.NoError(t, err)
+
+	require.Len(t, recorder.Ended(), 1)
+	attributes := recorder.Ended()[0].Attributes()
+	for _, attr := range attributes {
+		if attr.Key == "rpc.connect_rpc.request.metadata.user_agent" {
+			assert.Equal(t, []string{"virtru-sdk-go/0.9.1 tructl/v0.0.0"}, attr.Value.AsStringSlice())
+			return
+		}
+	}
+	t.Fatal("server span is missing the User-Agent request metadata")
+}

@@ -3,7 +3,9 @@ policy:
   approval:
     - or:
         - and:
-            - default
+            - or:
+                - same_repo_attestation
+                - two_maintainers
             - github_actions
             - lib_ocrypto
             - go_mod
@@ -20,8 +22,13 @@ policy:
         - "opentdf/architecture"
 
 approval_rules:
-  - name: default
-    description: "Always require at least 1 maintainer approval and author review attestation"
+  # Policy Bot's from_branch is "owner:branch" for forks and just "branch" for
+  # same-repository PRs: https://github.com/palantir/policy-bot#policyyml-specification
+  - name: same_repo_attestation
+    description: "Same-repository PR: 1 independent maintainer approval plus author attestation"
+    if:
+      from_branch:
+        pattern: '^[^:]+$'
     options:
       invalidate_on_push: true
       ignore_edited_comments: true
@@ -34,6 +41,21 @@ approval_rules:
             - success
           statuses:
             - driver-review
+      teams:
+        - "opentdf/maintainers"
+
+  - name: two_maintainers
+    description: "Two distinct maintainer review approvals (also the only default path for forks)"
+    options:
+      invalidate_on_push: true
+      ignore_edited_comments: true
+      methods:
+        comments: []
+        github_review: true
+    requires:
+      count: 2
+      conditions:
+        has_valid_signatures: true
       teams:
         - "opentdf/maintainers"
 

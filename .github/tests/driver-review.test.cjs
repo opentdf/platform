@@ -9,14 +9,16 @@ const script = workflow.split('          script: |\n')[1]
 assert.ok(script.includes('createCommitStatus'), 'could not extract workflow script');
 
 async function run({ eventName = 'issue_comment', action, after, commentUser = { id: 1, type: 'User' },
-  author = { id: 1, type: 'User' }, head = 'abc', currentHead = head, body = '/reviewed' } = {}) {
+  author = { id: 1, type: 'User' }, head = 'abc', currentHead = head, body = '/reviewed',
+  headRepoId = 10, baseRepoId = 10 } = {}) {
   const statuses = [];
   const writes = [];
-  const pr = { user: author, head: { sha: head }, state: 'open' };
+  const pr = { user: author, head: { sha: head, repo: headRepoId === null ? null : { id: headRepoId } },
+    base: { repo: { id: baseRepoId } }, state: 'open' };
   let fetches = 0;
   const github = {
     rest: {
-      pulls: { get: async () => ({ data: { ...pr, head: { sha: ++fetches === 1 ? head : currentHead } } }) },
+      pulls: { get: async () => ({ data: { ...pr, head: { ...pr.head, sha: ++fetches === 1 ? head : currentHead } } }) },
       issues: {
         listComments: () => {},
         createComment: async args => { writes.push(args); return { data: { html_url: 'https://example.test/comment' } }; },
@@ -45,6 +47,17 @@ test('new push leaves pending status and author instructions', async () => {
   const { statuses, writes } = await run({ eventName: 'pull_request_target', action: 'synchronize', after: 'abc' });
   assert.equal(statuses[0].state, 'pending');
   assert.match(writes[0].body, /awaiting author review/);
+  assert.match(writes[0].body, /two distinct maintainer approvals/);
+});
+
+test('fork and unavailable head repo never receive tracking comments or statuses', async () => {
+  for (const eventName of ['issue_comment', 'pull_request_target']) {
+    for (const headRepoId of [11, null]) {
+      const { statuses, writes } = await run({ eventName, headRepoId });
+      assert.equal(statuses.length, 0);
+      assert.equal(writes.length, 0);
+    }
+  }
 });
 
 test('different user, bot author, and non-exact command cannot attest', async () => {

@@ -1,6 +1,10 @@
 package sdk
 
-import "fmt"
+import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+)
 
 // Segment describes one chunk of the payload.
 //
@@ -119,6 +123,95 @@ type Manifest struct {
 	Payload               `json:"payload"`
 	Assertions            []Assertion `json:"assertions,omitempty"`
 	TDFVersion            string      `json:"schemaVersion,omitempty"`
+}
+
+// manifestJSON mirrors Manifest but has no UnmarshalJSON method of its own, so
+// the default decoder can be reused from Manifest.UnmarshalJSON without
+// recursing back into it.
+type manifestJSON Manifest
+
+// offSpecSpecVersion locates tdf_spec_version, a deprecated name for the spec
+// version field, at the manifest root and under payload.
+//
+// schemaVersion is the canonical name. tdf_spec_version is not a former
+// spelling that was renamed on a schedule -- it entered some specification
+// drafts and some older OpenTDF documentation in error, and writers built from
+// those drafts emitted it. We read it so those files stay usable; we never
+// write it.
+//
+// Both placements are probed because both occur in archival files, for two
+// different reasons. The root is where the spec's own manifest.md has always
+// documented the field, and where web-sdk both wrote it and still reads it
+// (lib/tdf3/src/tdf.ts). Under payload is where revisions of the JSON schema
+// declared it in error, which led at least one writer to emit the key there
+// with a null value. The root is preferred when both carry a string.
+//
+// Values are kept as raw JSON and only string values are decoded, because the
+// key is known to appear with a null value, and because a non-aligned type
+// must not fail the whole decode -- reporting malformed manifests is schema
+// validation's job, not the decoder's. Decoding into any would not be enough:
+// a number too large for float64 (1e400) fails there, and would stop the
+// payload placement from being read.
+type offSpecSpecVersion struct {
+	TDFSpecVersion json.RawMessage `json:"tdf_spec_version"`
+	Payload        struct {
+		TDFSpecVersion json.RawMessage `json:"tdf_spec_version"`
+	} `json:"payload"`
+}
+
+// UnmarshalJSON decodes a TDF manifest, reading a deprecated tdf_spec_version
+// as the spec version when the canonical schemaVersion is absent, so that
+// files written against the deprecated name stay readable.
+//
+// Precedence is schemaVersion, then tdf_spec_version at the root, then
+// tdf_spec_version under payload. Nothing is written back under the deprecated
+// name -- re-marshalling a manifest always emits schemaVersion only, so a
+// round trip normalizes the name rather than propagating it.
+//
+// The reader uses the decoded version to choose the integrity digest encoding:
+// hex when no version is recorded (pre-4.3.0), raw bytes otherwise. So a
+// container whose version is recorded only under the deprecated name is read
+// with the encoding its writer used.
+func (m *Manifest) UnmarshalJSON(data []byte) error {
+	var base manifestJSON
+	if err := json.Unmarshal(data, &base); err != nil {
+		return err
+	}
+	*m = Manifest(base)
+
+	// The second pass runs whenever schemaVersion is absent. It is not gated on
+	// a substring scan for the key, since JSON allows the key to be spelled
+	// with escapes ("tdf_spec_\u0076ersion") and the decoder matches it after
+	// unescaping.
+	if m.TDFVersion != "" {
+		return nil
+	}
+
+	var offSpec offSpecSpecVersion
+	if err := json.Unmarshal(data, &offSpec); err != nil {
+		return err
+	}
+	for _, candidate := range []json.RawMessage{offSpec.TDFSpecVersion, offSpec.Payload.TDFSpecVersion} {
+		if v := jsonStringOrEmpty(candidate); v != "" {
+			m.TDFVersion = v
+			return nil
+		}
+	}
+	return nil
+}
+
+// jsonStringOrEmpty returns raw decoded as a string if it is a JSON string,
+// and "" for anything else: absent, null, a number, an object, an array.
+func jsonStringOrEmpty(raw json.RawMessage) string {
+	trimmed := bytes.TrimSpace(raw)
+	if len(trimmed) == 0 || trimmed[0] != '"' {
+		return ""
+	}
+	var v string
+	if err := json.Unmarshal(trimmed, &v); err != nil {
+		return ""
+	}
+	return v
 }
 
 type attributeObject struct {

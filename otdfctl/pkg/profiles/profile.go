@@ -85,11 +85,24 @@ func Migrate(to ProfileDriver, from ProfileDriver) error {
 	}
 
 	profilesToMigrate := osprofiles.ListProfiles(fromProfiler)
-	if len(profilesToMigrate) == 0 {
+	globalExtensions, err := osprofiles.GetGlobalConfig(fromProfiler).Extensions()
+	if err != nil {
+		return err
+	}
+	if len(profilesToMigrate) == 0 && len(globalExtensions) == 0 {
 		return nil
 	}
 
 	defaultProfileBeingMigrated := osprofiles.GetGlobalConfig(fromProfiler).GetDefaultProfile()
+	// Read and validate every source entry before writing to the destination.
+	profileStores := make([]*osprofiles.ProfileStore, 0, len(profilesToMigrate))
+	for _, name := range profilesToMigrate {
+		profileStore, err := osprofiles.GetProfile[*ProfileConfig](fromProfiler, name)
+		if err != nil {
+			return err
+		}
+		profileStores = append(profileStores, profileStore)
+	}
 
 	slog.Debug("migrating profiles",
 		slog.Any("count", len(profilesToMigrate)),
@@ -97,11 +110,8 @@ func Migrate(to ProfileDriver, from ProfileDriver) error {
 		slog.Any("to", string(to)),
 	)
 
-	for _, profileName := range profilesToMigrate {
-		store, err := osprofiles.GetProfile[*ProfileConfig](fromProfiler, profileName)
-		if err != nil {
-			return err
-		}
+	for i, profileName := range profilesToMigrate {
+		store := profileStores[i]
 
 		p, ok := store.Profile.(*ProfileConfig)
 		if !ok || p == nil {
@@ -113,11 +123,30 @@ func Migrate(to ProfileDriver, from ProfileDriver) error {
 		if err := toProfiler.AddProfile(p, setDefault); err != nil {
 			return err
 		}
+		destination, err := osprofiles.GetCurrentProfile(toProfiler)
+		if err != nil {
+			return err
+		}
+		values, err := store.Extensions()
+		if err != nil {
+			return err
+		}
+		for namespace, payload := range values {
+			if err := destination.SetExtension(namespace, payload); err != nil {
+				return err
+			}
+		}
 
 		slog.Debug("migrated profile",
 			slog.String("profile", profileName),
 			slog.Bool("set_default", setDefault),
 		)
+	}
+
+	for namespace, payload := range globalExtensions {
+		if err := osprofiles.GetGlobalConfig(toProfiler).SetExtension(namespace, payload); err != nil {
+			return err
+		}
 	}
 
 	slog.Debug("removing profiles",

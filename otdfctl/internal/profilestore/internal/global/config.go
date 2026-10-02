@@ -30,6 +30,7 @@ const PROFILES_VERSION_LATEST = PROFILES_VERSION_v1_0
 type Store struct {
 	store  store.Interface
 	config Config
+	object map[string]json.RawMessage
 }
 
 type Config struct {
@@ -41,13 +42,13 @@ type Config struct {
 // LoadGlobalConfig loads the global configuration from the store for the given name of the configuration being stored.
 // (i.e. if storing a config for example_app, then the configName should be "example_app")
 func LoadGlobalConfig(configName string, newStore store.NewStoreInterface, driverOpts ...store.DriverOpt) (*Store, error) {
-	store, err := newStore(configName, STORE_KEY_GLOBAL, driverOpts...)
+	underlyingStore, err := newStore(configName, STORE_KEY_GLOBAL, driverOpts...)
 	if err != nil {
 		return nil, err
 	}
 
 	p := &Store{
-		store: store,
+		store: underlyingStore,
 
 		config: Config{
 			Profiles:       make([]string, 0),
@@ -58,7 +59,7 @@ func LoadGlobalConfig(configName string, newStore store.NewStoreInterface, drive
 	if !p.store.Exists() {
 		// set the version of the profiles to the latest version
 		p.config.ProfilesVersion = PROFILES_VERSION_LATEST
-		err = p.store.Set(p.config)
+		err = p.save()
 		return p, err
 	}
 
@@ -66,8 +67,11 @@ func LoadGlobalConfig(configName string, newStore store.NewStoreInterface, drive
 	if err != nil {
 		return nil, err
 	}
-	err = json.Unmarshal(data, &p.config)
+	p.object, err = store.DecodeObject(data)
 	if err != nil {
+		return nil, err
+	}
+	if err := json.Unmarshal(data, &p.config); err != nil {
 		return nil, err
 	}
 
@@ -77,7 +81,7 @@ func LoadGlobalConfig(configName string, newStore store.NewStoreInterface, drive
 		// currently, there is no migration needed
 		// so we just set the version to the latest version
 		p.config.ProfilesVersion = PROFILES_VERSION_LATEST
-		err = p.store.Set(p.config)
+		err = p.save()
 		if err != nil {
 			return nil, err
 		}
@@ -95,6 +99,29 @@ func HasGlobalStore(configName string, newStore store.NewStoreInterface, driverO
 	return store.Exists(), nil
 }
 
+// Extensions returns opaque payloads; a missing member yields an empty map.
+func (p *Store) Extensions() (map[string]json.RawMessage, error) {
+	return store.Extensions(p.object)
+}
+
+// Extension returns a payload and its presence (including JSON null).
+func (p *Store) Extension(namespace string) (json.RawMessage, bool, error) {
+	return store.Extension(p.object, namespace)
+}
+
+// SetExtension persists one namespace without changing the remaining configuration.
+func (p *Store) SetExtension(namespace string, payload json.RawMessage) error {
+	object, err := store.PutExtension(p.object, namespace, payload)
+	if err != nil {
+		return err
+	}
+	if err := p.store.Set(object); err != nil {
+		return err
+	}
+	p.object = object
+	return nil
+}
+
 func (p *Store) ProfileExists(profileName string) bool {
 	for _, profile := range p.config.Profiles {
 		if profile == profileName {
@@ -106,7 +133,7 @@ func (p *Store) ProfileExists(profileName string) bool {
 
 func (p *Store) AddProfile(profileName string) error {
 	p.config.Profiles = append(p.config.Profiles, profileName)
-	return p.store.Set(p.config)
+	return p.save()
 }
 
 func (p *Store) ListProfiles() []string {
@@ -133,7 +160,7 @@ func (p *Store) RemoveProfileForce(profileName string) error {
 
 func (p *Store) SetDefaultProfile(profileName string) error {
 	p.config.DefaultProfile = profileName
-	return p.store.Set(p.config)
+	return p.save()
 }
 
 func (p *Store) GetDefaultProfile() string {
@@ -149,9 +176,21 @@ func (p *Store) remove(profileName string) error {
 	for i, profile := range p.config.Profiles {
 		if profile == profileName {
 			p.config.Profiles = append(p.config.Profiles[:i], p.config.Profiles[i+1:]...)
-			return p.store.Set(p.config)
+			return p.save()
 		}
 	}
 
+	return nil
+}
+
+func (p *Store) save() error {
+	object, err := store.MergeCore(p.object, p.config)
+	if err != nil {
+		return err
+	}
+	if err := p.store.Set(object); err != nil {
+		return err
+	}
+	p.object = object
 	return nil
 }

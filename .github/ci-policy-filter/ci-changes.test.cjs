@@ -4,18 +4,20 @@ const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 const { execFileSync, spawnSync } = require('node:child_process');
-const { classify: classifyChanges, workflowPolicyOnly } = require('./ci-changes.cjs');
+const { classify: classifyChanges, workflowPolicyOnly, validatePolicy } = require('./ci-changes.cjs');
 const classify = env => classifyChanges(env).workflow_only;
 
 const prEnv = { EVENT_NAME: 'pull_request', REPOSITORY: 'opentdf/platform',
   WORKFLOW_REF: 'opentdf/platform/.github/workflows/checks.yaml@refs/pull/123/merge' };
 
-test('allowlist covers only explicit workflow/policy support paths for this PR', () => {
-  const allowed = ['AGENTS.md', '.policy.yml', '.github/workflows/checks.yaml',
-    '.github/workflows/ci-unit-tests.yaml', '.github/actions/ci-changes.cjs',
-    '.github/actions/ci-changes.test.cjs', '.github/actions/ci-results.js',
-    '.github/actions/ci-results.test.cjs', '.github/actions/ci-workflow.test.cjs',
-    '.github/actions/package.json', '.github/actions/package-lock.json'];
+test('JSON allowlist covers exact support paths and the dedicated CI-filter directory', () => {
+  const config = require('../ignore-checks-workflow-policy-paths.json');
+  // Seven legacy entries permit both rename sides during this relocation only;
+  // removing them later is a separately reviewed policy change.
+  assert.equal(config.paths.filter(file => file.startsWith('.github/actions/ci-') ||
+    file === '.github/actions/package.json' || file === '.github/actions/package-lock.json').length, 7);
+  const allowed = [...config.paths, '.github/ci-policy-filter/ci-changes.cjs',
+    '.github/ci-policy-filter/future-helper.cjs', '.github/ci-policy-filter/fixtures/example.json'];
   assert.equal(workflowPolicyOnly(allowed), true);
   assert.equal(workflowPolicyOnly([]), false);
   for (const unknown of ['service/main.go', 'sdk/go.mod', 'go.work', 'go.work.sum', 'LICENSE',
@@ -23,9 +25,24 @@ test('allowlist covers only explicit workflow/policy support paths for this PR',
     'protocol/test.proto', '.github/scripts/work-init.sh', '.github/dependabot.yml',
     '.github/workflows/unknown.yaml', '.github/actions/unknown.js', '.github/tests/unknown.cjs',
     '.github/tests/go.mod', '.github/tests/../../service/main.go', '.policy.yml\nservice/main.go',
-    'AGENTS.md ', 'agents.md']) {
+    '.github/ci-policy-filter-elsewhere/helper.cjs', '.github/ci-policy-filter/../actions/unknown.js',
+    '.github/ci-policy-filter//unknown.cjs', '.github/ci-policy-filter/../../service/main.go',
+    '.github/ci-policy-filter/unknown.cjs\nservice/main.go', 'AGENTS.md ', 'agents.md']) {
     assert.equal(workflowPolicyOnly([...allowed, unknown]), false, unknown);
   }
+});
+
+test('policy configuration rejects malformed paths and broad prefixes', () => {
+  assert.throws(() => validatePolicy(null), /Invalid/);
+  for (const paths of [null, ['service/**'], ['../service/main.go'], ['/service/main.go'],
+    ['.github/ci-policy-filter/../main.go'], ['AGENTS.md\nservice/main.go']]) {
+    assert.throws(() => validatePolicy({ paths, prefixes: [] }), /Invalid/);
+  }
+  for (const prefixes of [null, ['.github/'], ['.github/actions/'], ['.github/workflows/'],
+    ['.github/ci-policy-filter'], ['.github/ci-policy-filter/**']]) {
+    assert.throws(() => validatePolicy({ paths: [], prefixes }), /Invalid/);
+  }
+  assert.throws(() => validatePolicy({ paths: [], prefixes: [], glob: '**' }), /Invalid/);
 });
 
 test('push, merge_group, workflow_call and PR-triggered reusable callers run full QA', () => {
@@ -91,6 +108,8 @@ test('git classifier includes deleted files, both rename sides, and unusual file
     assert.equal(check(snapshot(base)), false, 'NUL delimiters preserve unusual paths');
     git('read-tree', '--reset', '-u', base);
     write('.policy.yml');
+    write('.github/ignore-checks-workflow-policy-paths.json');
+    write('.github/ci-policy-filter/future-helper.cjs');
     const workflowHead = snapshot(base);
     assert.equal(check(workflowHead), true);
     assert.equal(classifyChanges({ ...prEnv, BASE_SHA: base, HEAD_SHA: workflowHead }).proto, false);

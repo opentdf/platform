@@ -1,25 +1,34 @@
 const { execFileSync } = require('node:child_process');
 const fs = require('node:fs');
 
-// Only explicit workflow/policy support files qualify. In particular, do not
-// expand this to all Markdown, .github, scripts, CODEOWNERS, or dependencies.
-const workflowPolicyPaths = new Set([
-  'AGENTS.md',
-  '.policy.yml',
-  '.github/workflows/checks.yaml',
-  '.github/workflows/ci-unit-tests.yaml',
-  '.github/actions/ci-changes.cjs',
-  '.github/actions/ci-changes.test.cjs',
-  '.github/actions/ci-results.js',
-  '.github/actions/ci-results.test.cjs',
-  '.github/actions/ci-workflow.test.cjs',
-  // Dependencies are confined to CI workflow tests, not Go code.
-  '.github/actions/package.json',
-  '.github/actions/package-lock.json',
-]);
+// This is review-owned policy input, not an anti-tamper boundary: the PR also
+// controls this helper and its workflow. CODEOWNERS review must approve changes
+// to QA exemptions, including the config itself. JSON needs no runtime parser.
+const policy = require('../ignore-checks-workflow-policy-paths.json');
+
+function canonicalPath(path) {
+  return typeof path === 'string' && path.length > 0 &&
+    !/[\\\x00-\x20\x7f*?\[\]{}]/.test(path) &&
+    path.split('/').every(part => part !== '' && part !== '.' && part !== '..');
+}
+
+function validatePolicy(config) {
+  if (!config || Object.keys(config).sort().join(',') !== 'paths,prefixes' ||
+      !Array.isArray(config.paths) || !Array.isArray(config.prefixes) ||
+      !config.paths.every(canonicalPath) ||
+      // No generic glob matcher or broad .github/workflows/actions exemption.
+      !config.prefixes.every(prefix => prefix === '.github/ci-policy-filter/')) {
+    throw new Error('Invalid workflow/policy path configuration');
+  }
+  return config;
+}
+
+validatePolicy(policy);
+const workflowPolicyPaths = new Set(policy.paths);
 
 function workflowPolicyOnly(paths) {
-  return paths.length > 0 && paths.every(path => workflowPolicyPaths.has(path));
+  return paths.length > 0 && paths.every(path => canonicalPath(path) &&
+    (workflowPolicyPaths.has(path) || policy.prefixes.some(prefix => path.startsWith(prefix))));
 }
 
 function classify(env) {
@@ -54,4 +63,4 @@ if (require.main === module) {
     `workflow_only=${outputs.workflow_only}\nproto=${outputs.proto}\n`);
 }
 
-module.exports = { workflowPolicyOnly, classify };
+module.exports = { workflowPolicyOnly, classify, validatePolicy };

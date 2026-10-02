@@ -3,21 +3,15 @@ name: CI unit tests
 on:
   pull_request:
     paths:
-      - '.github/actions/ci-changes.cjs'
-      - '.github/actions/ci-changes.test.cjs'
-      - '.github/actions/ci-results.js'
-      - '.github/actions/ci-results.test.cjs'
-      - '.github/actions/ci-workflow.test.cjs'
-      - '.github/actions/package.json'
-      - '.github/actions/package-lock.json'
+      - '.github/ci-policy-filter/**'
+      - '.github/ignore-checks-workflow-policy-paths.json'
       - '.github/workflows/checks.yaml'
       - '.github/workflows/ci-unit-tests.yaml'
   push:
     branches: [main]
     paths:
-      - '.github/actions/ci-*'
-      - '.github/actions/package.json'
-      - '.github/actions/package-lock.json'
+      - '.github/ci-policy-filter/**'
+      - '.github/ignore-checks-workflow-policy-paths.json'
       - '.github/workflows/checks.yaml'
       - '.github/workflows/ci-unit-tests.yaml'
 
@@ -36,6 +30,6 @@ jobs:
         with:
           node-version: '24'
       - run: npm ci --ignore-scripts
-        working-directory: .github/actions
+        working-directory: .github/ci-policy-filter
       - run: npm test
-        working-directory: .github/actions
+        working-directory: .github/ci-policy-filter

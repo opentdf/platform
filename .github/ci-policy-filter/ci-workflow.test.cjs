@@ -39,7 +39,7 @@ test('ci-results uses pinned github-script v9 with read-only PR merge checkout a
     NEEDS_JSON: '${{ toJSON(needs) }}', EVENT_NAME: '${{ github.event_name }}',
   });
   assert.equal(results.with.script,
-    "const checkResults = require('./.github/actions/ci-results.js');\ncheckResults({ core });\n");
+    "const checkResults = require('./.github/ci-policy-filter/ci-results.js');\ncheckResults({ core });\n");
   assert.ok(!JSON.stringify(ci).includes('secrets.'));
   assert.ok(!results.with.script.includes('${{'));
 });
@@ -52,22 +52,26 @@ test('classifier writes both outputs from the PR three-dot diff without expressi
   });
   assert.equal(changes.steps[0].with['fetch-depth'], 0);
   const classifier = changes.steps.find(step => step.id === 'scope');
-  assert.equal(classifier.run, 'node .github/actions/ci-changes.cjs');
+  assert.equal(classifier.run, 'node .github/ci-policy-filter/ci-changes.cjs');
   assert.equal(classifier.env.BASE_SHA, '${{ github.event.pull_request.base.sha }}');
   assert.equal(classifier.env.HEAD_SHA, '${{ github.event.pull_request.head.sha }}');
 });
 
 test('focused workflow covers all helper, test, manifest and checks edits independently of PR 4137', () => {
   const tests = readWorkflow('ci-unit-tests.yaml');
+  for (const event of ['pull_request', 'push']) {
+    assert.deepEqual(tests.on[event].paths, [
+      '.github/ci-policy-filter/**', '.github/ignore-checks-workflow-policy-paths.json',
+      '.github/workflows/checks.yaml', '.github/workflows/ci-unit-tests.yaml',
+    ]);
+  }
   for (const file of ['ci-changes.cjs', 'ci-changes.test.cjs', 'ci-results.js',
     'ci-results.test.cjs', 'ci-workflow.test.cjs', 'package.json', 'package-lock.json']) {
-    assert.ok(tests.on.pull_request.paths.includes(`.github/actions/${file}`), file);
     assert.ok(fs.existsSync(path.join(__dirname, file)), file);
   }
-  for (const file of ['checks.yaml', 'ci-unit-tests.yaml']) {
-    assert.ok(tests.on.pull_request.paths.includes(`.github/workflows/${file}`), file);
-  }
   assert.deepEqual(tests.jobs.test.permissions, { contents: 'read' });
-  assert.ok(tests.jobs.test.steps.some(step => step.run === 'npm ci --ignore-scripts'));
-  assert.ok(tests.jobs.test.steps.some(step => step.run === 'npm test'));
+  for (const run of ['npm ci --ignore-scripts', 'npm test']) {
+    assert.equal(tests.jobs.test.steps.find(step => step.run === run)['working-directory'],
+      '.github/ci-policy-filter');
+  }
 });

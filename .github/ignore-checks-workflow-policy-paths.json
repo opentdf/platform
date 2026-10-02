@@ -1,0 +1,28 @@
+{
+  "paths": [
+    "AGENTS.md",
+    ".policy.yml",
+    ".github/ignore-checks-workflow-policy-paths.json",
+    ".github/workflows/checks.yaml",
+    ".github/workflows/ci-unit-tests.yaml",
+    ".github/workflows/driver-review.yaml",
+    ".github/workflows/actions-unit-tests.yaml",
+    ".github/workflows/policy-review-unit-tests.yaml",
+    ".github/actions/driver-review.js",
+    ".github/actions/driver-review.test.cjs",
+    ".github/actions/driver-review-workflow.test.cjs",
+    ".github/tests/policy-review.test.cjs",
+    ".github/tests/package.json",
+    ".github/tests/package-lock.json",
+    ".github/actions/ci-changes.cjs",
+    ".github/actions/ci-changes.test.cjs",
+    ".github/actions/ci-results.js",
+    ".github/actions/ci-results.test.cjs",
+    ".github/actions/ci-workflow.test.cjs",
+    ".github/actions/package.json",
+    ".github/actions/package-lock.json"
+  ],
+  "prefixes": [
+    ".github/ci-policy-filter/"
+  ]
+}

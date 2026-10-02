@@ -19,7 +19,7 @@ type profileConfig struct {
 type Profiler struct {
 	config profileConfig
 
-	globalStore         *global.GlobalStore
+	globalStore         *global.Store
 	currentProfileStore *ProfileStore
 }
 
@@ -126,7 +126,7 @@ func HasGlobalStore(configName string, opts ...profileConfigVariadicFunc) (bool,
 }
 
 // GetGlobalConfig returns the global configuration
-func GetGlobalConfig(p *Profiler) *global.GlobalStore {
+func GetGlobalConfig(p *Profiler) *global.Store {
 	return p.globalStore
 }
 
@@ -249,7 +249,6 @@ func DeleteProfile[T NamedProfile](p *Profiler, profileName string) error {
 		}
 
 		return err
-
 	}
 
 	return profile.Delete()

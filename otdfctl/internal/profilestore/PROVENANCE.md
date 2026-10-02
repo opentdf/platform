@@ -7,8 +7,11 @@ Copied mechanically from `github.com/jrschumacher/go-osprofiles` at commit
 Original source: https://github.com/jrschumacher/go-osprofiles/tree/3d077c5481e5
 
 The original MIT copyright and permission notice is reproduced in `LICENSE`.
-Only Go package names and internal import paths were changed; persisted store
-paths, JSON, encryption-key derivation, and keyring identities were not changed.
+The initial copy changed only Go package names, internal import paths, and
+formatting. A follow-up lint pass renamed internal Go types, reordered two
+methods, simplified one global-load conditional without changing its branches,
+and removed one blank line. Persisted store paths, JSON, encryption-key
+derivation, and keyring identities were not changed.
 The encrypted filesystem fixture files in `testdata/original-files` were generated
 by calling the pinned original module's `New("otdfctl_fixture",
 WithFileStore(dir))` and `AddProfile` for synthetic `alpha` and `beta` profiles,

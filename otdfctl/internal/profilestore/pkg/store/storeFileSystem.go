@@ -57,7 +57,7 @@ func BuildNamespaceURN(serviceNamespace, version string) string {
 }
 
 // NewFileStore is the constructor function for fileStore, setting the file path based on executable directory or environment variable and hashed filename
-var NewFileStore NewStoreInterface = func(serviceNamespace, key string, driverOpts ...DriverOpt) (StoreInterface, error) {
+var NewFileStore NewStoreInterface = func(serviceNamespace, key string, driverOpts ...DriverOpt) (Interface, error) {
 	if err := ValidateNamespaceKey(serviceNamespace, key); err != nil {
 		return nil, err
 	}
@@ -159,28 +159,6 @@ func (f *fileStore) Delete() error {
 	return os.Remove(metadataFilePath)
 }
 
-// getEncryptionKey retrieves the encryption key from the keyring or generates it if absent
-func (f *fileStore) getEncryptionKey() ([]byte, error) {
-	// Try retrieving the key as a string from the keyring
-	keyStr, err := keyring.Get(f.namespaceVersionURN, f.key)
-	if errors.Is(err, keyring.ErrNotFound) {
-		// Generate a new key if not found
-		key := make([]byte, aes256KeyLength)
-		if _, err := rand.Read(key); err != nil {
-			return nil, err
-		}
-		// Convert key to string for storage in the keyring
-		if err := keyring.Set(f.namespaceVersionURN, f.key, string(key)); err != nil {
-			return nil, err
-		}
-		return key, nil
-	} else if err != nil {
-		return nil, err
-	}
-	// Convert the stored string key back to []byte for use
-	return []byte(keyStr), nil
-}
-
 // encryptData encrypts data using AES-GCM
 func encryptData(key, data []byte) ([]byte, error) {
 	block, err := aes.NewCipher(key)
@@ -250,4 +228,26 @@ func (f *fileStore) LoadMetadata() (*fileMetadata, error) {
 		return nil, err
 	}
 	return &metadata, nil
+}
+
+// getEncryptionKey retrieves the encryption key from the keyring or generates it if absent
+func (f *fileStore) getEncryptionKey() ([]byte, error) {
+	// Try retrieving the key as a string from the keyring
+	keyStr, err := keyring.Get(f.namespaceVersionURN, f.key)
+	if errors.Is(err, keyring.ErrNotFound) {
+		// Generate a new key if not found
+		key := make([]byte, aes256KeyLength)
+		if _, err := rand.Read(key); err != nil {
+			return nil, err
+		}
+		// Convert key to string for storage in the keyring
+		if err := keyring.Set(f.namespaceVersionURN, f.key, string(key)); err != nil {
+			return nil, err
+		}
+		return key, nil
+	} else if err != nil {
+		return nil, err
+	}
+	// Convert the stored string key back to []byte for use
+	return []byte(keyStr), nil
 }

@@ -10,18 +10,18 @@ import (
 // apply any side effects/hooks necessary for the driver.
 type DriverOpt func() error
 
-// StoreInterface is an interface for a store of a single key and value under a namespace.
+// Interface is an interface for a store of a single key and value under a namespace.
 // The key is unique within the namespace, and the stored value is a JSON-serialized struct.
 //
 // In a CLI 'example_cli' consuming this store to save user profiles, the namespace would be 'example_cli',
 // and the key would be the specific CLI user's profile name.
-type NewStoreInterface func(serviceNamespace, key string, driverOpt ...DriverOpt) (StoreInterface, error)
+type NewStoreInterface func(serviceNamespace, key string, driverOpt ...DriverOpt) (Interface, error)
 
 // TODO: should we reconfigure this abstraction so we have a more traditional key-value store?
 // Would need to be a v2 concern as would definitely be breaking.
 
-// StoreInterface is a reusable interface that varied drivers can share to implement a store.
-type StoreInterface interface {
+// Interface is a reusable interface that varied drivers can share to implement a store.
+type Interface interface {
 	// Exists returns true if the value exists in the store.
 	Exists() bool
 	// Get retrieves the entry bytes from the store.

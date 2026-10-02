@@ -12,6 +12,9 @@ import (
 )
 
 func TestProfileCreateAuthAndMigrateFileToKeyring(t *testing.T) {
+	if runtime.GOOS != "darwin" && runtime.GOOS != "linux" {
+		t.Skip("filesystem location not asserted on this OS")
+	}
 	keyring.MockInit()
 	t.Setenv("HOME", t.TempDir())
 	original, err := NewOtdfctlProfileStore(ProfileDriverFileSystem, &ProfileConfig{Name: "synthetic", Endpoint: "https://example.invalid", OutputFormat: OutputJSON}, true)
@@ -34,8 +37,6 @@ func TestProfileCreateAuthAndMigrateFileToKeyring(t *testing.T) {
 		dir = filepath.Join(os.Getenv("HOME"), "Library", "Application Support", config.ServicePublisher, config.AppName)
 	case "linux":
 		dir = filepath.Join(os.Getenv("HOME"), ".config", config.ServicePublisher, config.AppName)
-	default:
-		t.Skip("filesystem location not asserted on this OS")
 	}
 	for _, key := range []string{"global", "profile-synthetic"} {
 		name := "urn.goosprofiles.otdfctl.profile.v1." + key

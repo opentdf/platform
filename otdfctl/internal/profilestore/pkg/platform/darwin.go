@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 )
 
-type PlatformDarwin struct {
+type Darwin struct {
 	username         string
 	serviceNamespace string
 	servicePublisher string
@@ -18,7 +18,7 @@ const (
 	darwinAppSupport = "Application Support"
 )
 
-func NewPlatformDarwin(servicePublisher, serviceNamespace string) (*PlatformDarwin, error) {
+func NewPlatformDarwin(servicePublisher, serviceNamespace string) (*Darwin, error) {
 	usr, err := user.Current()
 	if err != nil {
 		return nil, ErrGettingUserOS
@@ -29,23 +29,23 @@ func NewPlatformDarwin(servicePublisher, serviceNamespace string) (*PlatformDarw
 		return nil, ErrGettingUserOS
 	}
 
-	return &PlatformDarwin{usr.Username, serviceNamespace, servicePublisher, usrHomeDir}, nil
+	return &Darwin{usr.Username, serviceNamespace, servicePublisher, usrHomeDir}, nil
 }
 
 // GetUsername returns the username for macOS.
-func (p PlatformDarwin) GetUsername() string {
+func (p Darwin) GetUsername() string {
 	return p.username
 }
 
 // UserHomeDir returns the user's home directory on macOS.
-func (p PlatformDarwin) UserHomeDir() string {
+func (p Darwin) UserHomeDir() string {
 	return p.userHomeDir
 }
 
 // UserAppDataDirectory returns the namespaced user-level data directory for macOS.
 // ~/Library/Application Support/<servicePublisher>/<serviceNamespace>
 // ~/Library/Application Support/<serviceNamespace> (if no pubisher)
-func (p PlatformDarwin) UserAppDataDirectory() string {
+func (p Darwin) UserAppDataDirectory() string {
 	path := filepath.Join(p.userHomeDir, darwinLibrary, darwinAppSupport)
 	if p.servicePublisher != "" {
 		path = filepath.Join(path, p.servicePublisher)
@@ -56,7 +56,7 @@ func (p PlatformDarwin) UserAppDataDirectory() string {
 // UserAppConfigDirectory returns the namespaced user-level config directory for macOS.
 // ~/Library/Application Support/<servicePublisher>/<serviceNamespace>
 // ~/Library/Application Support/<serviceNamespace> (if no publisher)
-func (p PlatformDarwin) UserAppConfigDirectory() string {
+func (p Darwin) UserAppConfigDirectory() string {
 	path := filepath.Join(p.userHomeDir, darwinLibrary, darwinAppSupport)
 	if p.servicePublisher != "" {
 		path = filepath.Join(path, p.servicePublisher)
@@ -67,7 +67,7 @@ func (p PlatformDarwin) UserAppConfigDirectory() string {
 // SystemAppDataDirectory returns the namespaced system-level data directory for macOS.
 // /Library/Application Support/<servicePublisher>/<serviceNamespace>
 // /Library/Application Support/<serviceNamespace> (if no publisher)
-func (p PlatformDarwin) SystemAppDataDirectory() string {
+func (p Darwin) SystemAppDataDirectory() string {
 	path := filepath.Join("/", darwinLibrary, darwinAppSupport)
 	if p.servicePublisher != "" {
 		path = filepath.Join(path, p.servicePublisher)
@@ -78,7 +78,7 @@ func (p PlatformDarwin) SystemAppDataDirectory() string {
 // SystemAppConfigDirectory returns the namespaced system-level config directory for macOS.
 // /Library/Application Support/<servicePublisher>/<serviceNamespace>
 // /Library/Application Support/<serviceNamespace> (if no publisher)
-func (p PlatformDarwin) SystemAppConfigDirectory() string {
+func (p Darwin) SystemAppConfigDirectory() string {
 	path := filepath.Join("/", darwinLibrary, darwinAppSupport)
 	if p.servicePublisher != "" {
 		path = filepath.Join(path, p.servicePublisher)

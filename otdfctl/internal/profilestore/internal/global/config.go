@@ -27,12 +27,12 @@ const PROFILES_VERSION_v1_0 = "1.0"
 
 const PROFILES_VERSION_LATEST = PROFILES_VERSION_v1_0
 
-type GlobalStore struct {
-	store  store.StoreInterface
-	config GlobalConfig
+type Store struct {
+	store  store.Interface
+	config Config
 }
 
-type GlobalConfig struct {
+type Config struct {
 	ProfilesVersion string   `json:"version"`
 	Profiles        []string `json:"profiles"`
 	DefaultProfile  string   `json:"defaultProfile"`
@@ -40,49 +40,49 @@ type GlobalConfig struct {
 
 // LoadGlobalConfig loads the global configuration from the store for the given name of the configuration being stored.
 // (i.e. if storing a config for example_app, then the configName should be "example_app")
-func LoadGlobalConfig(configName string, newStore store.NewStoreInterface, driverOpts ...store.DriverOpt) (*GlobalStore, error) {
+func LoadGlobalConfig(configName string, newStore store.NewStoreInterface, driverOpts ...store.DriverOpt) (*Store, error) {
 	store, err := newStore(configName, STORE_KEY_GLOBAL, driverOpts...)
 	if err != nil {
 		return nil, err
 	}
 
-	p := &GlobalStore{
+	p := &Store{
 		store: store,
 
-		config: GlobalConfig{
+		config: Config{
 			Profiles:       make([]string, 0),
 			DefaultProfile: "",
 		},
 	}
 
-	if p.store.Exists() {
-		data, err := p.store.Get()
-		if err != nil {
-			return nil, err
-		}
-		err = json.Unmarshal(data, &p.config)
-		if err != nil {
-			return nil, err
-		}
-
-		// check the version of the profiles
-		if p.config.ProfilesVersion != PROFILES_VERSION_LATEST {
-			// handle migration of the profiles
-			// currently, there is no migration needed
-			// so we just set the version to the latest version
-			p.config.ProfilesVersion = PROFILES_VERSION_LATEST
-			err = p.store.Set(p.config)
-			if err != nil {
-				return nil, err
-			}
-		}
-
+	if !p.store.Exists() {
+		// set the version of the profiles to the latest version
+		p.config.ProfilesVersion = PROFILES_VERSION_LATEST
+		err = p.store.Set(p.config)
 		return p, err
 	}
 
-	// set the version of the profiles to the latest version
-	p.config.ProfilesVersion = PROFILES_VERSION_LATEST
-	err = p.store.Set(p.config)
+	data, err := p.store.Get()
+	if err != nil {
+		return nil, err
+	}
+	err = json.Unmarshal(data, &p.config)
+	if err != nil {
+		return nil, err
+	}
+
+	// check the version of the profiles
+	if p.config.ProfilesVersion != PROFILES_VERSION_LATEST {
+		// handle migration of the profiles
+		// currently, there is no migration needed
+		// so we just set the version to the latest version
+		p.config.ProfilesVersion = PROFILES_VERSION_LATEST
+		err = p.store.Set(p.config)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	return p, err
 }
 
@@ -95,7 +95,7 @@ func HasGlobalStore(configName string, newStore store.NewStoreInterface, driverO
 	return store.Exists(), nil
 }
 
-func (p *GlobalStore) ProfileExists(profileName string) bool {
+func (p *Store) ProfileExists(profileName string) bool {
 	for _, profile := range p.config.Profiles {
 		if profile == profileName {
 			return true
@@ -104,16 +104,16 @@ func (p *GlobalStore) ProfileExists(profileName string) bool {
 	return false
 }
 
-func (p *GlobalStore) AddProfile(profileName string) error {
+func (p *Store) AddProfile(profileName string) error {
 	p.config.Profiles = append(p.config.Profiles, profileName)
 	return p.store.Set(p.config)
 }
 
-func (p *GlobalStore) ListProfiles() []string {
+func (p *Store) ListProfiles() []string {
 	return p.config.Profiles
 }
 
-func (p *GlobalStore) RemoveProfile(profileName string) error {
+func (p *Store) RemoveProfile(profileName string) error {
 	if profileName == p.config.DefaultProfile {
 		return ErrDeletingDefaultProfile
 	}
@@ -123,7 +123,7 @@ func (p *GlobalStore) RemoveProfile(profileName string) error {
 // RemoveProfileForce removes a profile from the global configuration without
 // enforcing the default profile protection. This is intended for bulk delete operations
 // where all profiles are being removed (e.g. DeleteAllProfiles).
-func (p *GlobalStore) RemoveProfileForce(profileName string) error {
+func (p *Store) RemoveProfileForce(profileName string) error {
 	if profileName == p.config.DefaultProfile {
 		p.config.DefaultProfile = ""
 	}
@@ -131,7 +131,21 @@ func (p *GlobalStore) RemoveProfileForce(profileName string) error {
 	return p.remove(profileName)
 }
 
-func (p *GlobalStore) remove(profileName string) error {
+func (p *Store) SetDefaultProfile(profileName string) error {
+	p.config.DefaultProfile = profileName
+	return p.store.Set(p.config)
+}
+
+func (p *Store) GetDefaultProfile() string {
+	return p.config.DefaultProfile
+}
+
+// DeleteStore removes the persisted global configuration from the underlying store.
+func (p *Store) DeleteStore() error {
+	return p.store.Delete()
+}
+
+func (p *Store) remove(profileName string) error {
 	for i, profile := range p.config.Profiles {
 		if profile == profileName {
 			p.config.Profiles = append(p.config.Profiles[:i], p.config.Profiles[i+1:]...)
@@ -140,18 +154,4 @@ func (p *GlobalStore) remove(profileName string) error {
 	}
 
 	return nil
-}
-
-func (p *GlobalStore) SetDefaultProfile(profileName string) error {
-	p.config.DefaultProfile = profileName
-	return p.store.Set(p.config)
-}
-
-func (p *GlobalStore) GetDefaultProfile() string {
-	return p.config.DefaultProfile
-}
-
-// DeleteStore removes the persisted global configuration from the underlying store.
-func (p *GlobalStore) DeleteStore() error {
-	return p.store.Delete()
 }

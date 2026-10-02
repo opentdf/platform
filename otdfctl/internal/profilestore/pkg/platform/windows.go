@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 )
 
-type PlatformWindows struct {
+type Windows struct {
 	username         string
 	serviceNamespace string
 	servicePublisher string
@@ -24,7 +24,7 @@ const (
 	envKeyUsername     = "USERNAME"
 )
 
-func NewPlatformWindows(servicePublisher, serviceNamespace string) (*PlatformWindows, error) {
+func NewPlatformWindows(servicePublisher, serviceNamespace string) (*Windows, error) {
 	// On Windows, use user.Current() if available, else fallback to environment variable
 	usr, err := user.Current()
 	if err != nil {
@@ -53,7 +53,7 @@ func NewPlatformWindows(servicePublisher, serviceNamespace string) (*PlatformWin
 		return nil, fmt.Errorf("failed to detect %%%s%% in environment: %w", envKeyLocalAppData, ErrGettingUserOS)
 	}
 
-	return &PlatformWindows{
+	return &Windows{
 		username:         usr.Username,
 		serviceNamespace: serviceNamespace,
 		servicePublisher: servicePublisher,
@@ -65,19 +65,19 @@ func NewPlatformWindows(servicePublisher, serviceNamespace string) (*PlatformWin
 }
 
 // GetUsername returns the username for Windows.
-func (p PlatformWindows) GetUsername() string {
+func (p Windows) GetUsername() string {
 	return p.username
 }
 
 // UserHomeDir returns the user's home directory on Windows.
-func (p PlatformWindows) UserHomeDir() string {
+func (p Windows) UserHomeDir() string {
 	return p.userHomeDir
 }
 
 // UserAppDataDirectory returns the namespaced user-level data directory for Windows.
 // %LocalAppData%\<servicePublisher>\<serviceNamespace>
 // %LocalAppData%\<serviceNamespace> (if no publisher)
-func (p PlatformWindows) UserAppDataDirectory() string {
+func (p Windows) UserAppDataDirectory() string {
 	path := p.localAppData
 	if p.servicePublisher != "" {
 		path = filepath.Join(path, p.servicePublisher)
@@ -88,7 +88,7 @@ func (p PlatformWindows) UserAppDataDirectory() string {
 // UserAppConfigDirectory returns the namespaced user-level config directory for Windows.
 // %LocalAppData%\<servicePublisher>\<serviceNamespace>
 // %LocalAppData%\<serviceNamespace> (if no publisher)
-func (p PlatformWindows) UserAppConfigDirectory() string {
+func (p Windows) UserAppConfigDirectory() string {
 	path := p.localAppData
 	if p.servicePublisher != "" {
 		path = filepath.Join(path, p.servicePublisher)
@@ -99,7 +99,7 @@ func (p PlatformWindows) UserAppConfigDirectory() string {
 // SystemAppDataDirectory returns the namespaced system-level data directory for Windows.
 // %ProgramData%\<servicePublisher>\<serviceNamespace>
 // %ProgramData%\<serviceNamespace> (if no publisher)
-func (p PlatformWindows) SystemAppDataDirectory() string {
+func (p Windows) SystemAppDataDirectory() string {
 	path := p.programData
 	if p.servicePublisher != "" {
 		path = filepath.Join(path, p.servicePublisher)
@@ -110,7 +110,7 @@ func (p PlatformWindows) SystemAppDataDirectory() string {
 // SystemAppConfigDirectory returns the namespaced system-level config directory for Windows.
 // %ProgramFiles%\<servicePublisher>\<serviceNamespace>
 // %ProgramFiles%\<serviceNamespace> (if no publisher)
-func (p PlatformWindows) SystemAppConfigDirectory() string {
+func (p Windows) SystemAppConfigDirectory() string {
 	path := p.programFiles
 	if p.servicePublisher != "" {
 		path = filepath.Join(path, p.servicePublisher)

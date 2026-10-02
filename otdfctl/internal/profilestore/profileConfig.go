@@ -8,8 +8,8 @@ import (
 )
 
 type ProfileStore struct {
-	// Store is the specific initialized driver that satisfies the StoreInterface.
-	store store.StoreInterface
+	// Store is the specific initialized driver that satisfies the Interface.
+	store store.Interface
 	// Profile is the struct that holds the profile data and satisfies the NamedProfile interface.
 	// Exported to allow write/read access to the profile data being stored.
 	Profile NamedProfile

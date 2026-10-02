@@ -1,5 +1,5 @@
-buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go v1.36.11-20260415201107-50325440f8f2.1 h1:s6hzCXtND/ICdGPTMGk7C+/BFlr2Jg5GyH0NKf4XGXg=
-buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go v1.36.11-20260415201107-50325440f8f2.1/go.mod h1:tvtbpgaVXZX4g6Pn+AnzFycuRK3MOz5HJfEGeEllXYM=
+buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go v1.36.11-20260709200747-435963d16310.1 h1:fXh8CsdNpjRr8R5vFdqtIxPt/Lno2IIJlYOdZBIZn0w=
+buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go v1.36.11-20260709200747-435963d16310.1/go.mod h1:tvtbpgaVXZX4g6Pn+AnzFycuRK3MOz5HJfEGeEllXYM=
 buf.build/go/protovalidate v0.13.1 h1:6loHDTWdY/1qmqmt1MijBIKeN4T9Eajrqb9isT1W1s8=
 buf.build/go/protovalidate v0.13.1/go.mod h1:C/QcOn/CjXRn5udUwYBiLs8y1TGy7RS+GOSKqjS77aU=
 cel.dev/expr v0.25.2 h1:K6j46C81hXtZQfuX60cVWQFBJahKSE2gfRbNuvr5bFs=
@@ -462,8 +462,8 @@ github.com/opentdf/platform/lib/identifier v0.0.2 h1:h3zR+IZ/4/X5UOYUp/aTA0OcX1Q
 github.com/opentdf/platform/lib/identifier v0.0.2/go.mod h1:/tHnLlSVOq3qmbIYSvKrtuZchQfagenv4wG5twl4oRs=
 github.com/opentdf/platform/lib/ocrypto v0.14.0 h1:qAIOFpz72/QDhYC0oLRXgA5uEnyv1xqkc7kvWQSRFcY=
 github.com/opentdf/platform/lib/ocrypto v0.14.0/go.mod h1:TLaMvVE1aTqrgW8AZz0ZuxX/ZpI7l5IQOHyX99fdKl0=
-github.com/opentdf/platform/protocol/go v0.37.0 h1:gA4zlfxbswhEadlK/0L/UYpRjiT166EClbcJQEdYcZ0=
-github.com/opentdf/platform/protocol/go v0.37.0/go.mod h1:6A0vQJ5D4ZTLReWAp8Y/7jTFzlYCmL/IfMJWDHZS6M0=
+github.com/opentdf/platform/protocol/go v0.41.0 h1:QsORhjrPkOPLEvQvQZOSa6wzQuDxPDc2X80tjXMpp58=
+github.com/opentdf/platform/protocol/go v0.41.0/go.mod h1:Gx14oxCvqD/QPzrODvPcwRucQzZOKDVP4/Zy/1SBsxY=
 github.com/opentdf/platform/sdk v0.25.0 h1:SuHHgdFzaklDCx8zP3p9d06tDgeCbCuNhU/cUKjFd6w=
 github.com/opentdf/platform/sdk v0.25.0/go.mod h1:kl4a4PoV3YoumaL5LTJzdB+SZINyCo4A9IdnLZN9aM4=
 github.com/opentdf/platform/service v0.7.2 h1:GICI2R8yFxiQu10vsS/1c69vN3CLJpkchk9pCLv9vs4=

@@ -9,7 +9,8 @@ on:
 permissions: {}
 
 concurrency:
-  group: driver-review-${{ github.event.issue.number || github.event.pull_request.number }}
+  # Skipped comment runs must not replace a pending attestation or push reset.
+  group: driver-review-${{ github.event.issue.number || github.event.pull_request.number }}-${{ github.event_name == 'pull_request_target' || (github.event.issue.pull_request && github.event.comment.body == '/reviewed') }}
   cancel-in-progress: false
 
 jobs:

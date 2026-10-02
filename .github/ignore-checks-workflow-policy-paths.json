@@ -1,5 +1,7 @@
 {
   "paths": [
+    ".github/actions/driver-review-preview.cjs",
+    ".github/actions/driver-review-preview.test.cjs",
     ".github/actions/driver-review-workflow.test.cjs",
     ".github/actions/driver-review.js",
     ".github/actions/driver-review.test.cjs",
@@ -9,6 +11,7 @@
     ".github/tests/policy-review.test.cjs",
     ".github/workflows/actions-unit-tests.yaml",
     ".github/workflows/ci-unit-tests.yaml",
+    ".github/workflows/driver-review-preview.yaml",
     ".github/workflows/driver-review.yaml",
     ".github/workflows/policy-review-unit-tests.yaml",
     ".policy.yml",

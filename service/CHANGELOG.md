@@ -1,5 +1,35 @@
 # Changelog
 
+## [0.28.0](https://github.com/opentdf/platform/compare/service/v0.27.0...service/v0.28.0) (2026-10-02)
+
+
+### ⚠ BREAKING CHANGES
+
+* **core:** replace buffered audit with immediate recording ([#4092](https://github.com/opentdf/platform/issues/4092))
+
+### Features
+
+* **core:** DSPX-4995 capture User-Agent on Connect server spans ([#4140](https://github.com/opentdf/platform/issues/4140)) ([5014566](https://github.com/opentdf/platform/commit/50145663b759248791541e1c0351a48c87dbb5b6))
+
+
+### Bug Fixes
+
+* **core:** DSPX-4999 restore database and external-core tracing ([#4122](https://github.com/opentdf/platform/issues/4122)) ([8232392](https://github.com/opentdf/platform/commit/8232392be894ce6d79aa4f35075d4b47c60330c6))
+* **deps:** bump otel to v1.45.0 and align semconv schema to v1.43.0 ([#4097](https://github.com/opentdf/platform/issues/4097)) ([e5ee699](https://github.com/opentdf/platform/commit/e5ee6991dca1efa13bdb972f030090d638dffca9))
+* **deps:** bump SDK to v0.33.0 in /service and /examples ([#4109](https://github.com/opentdf/platform/issues/4109)) ([5e9e4f5](https://github.com/opentdf/platform/commit/5e9e4f5c770ca23c7963ba787949b8c3998958b2))
+* **policy:** narrow authorization attribute lookups ([#3986](https://github.com/opentdf/platform/issues/3986)) ([52f2ece](https://github.com/opentdf/platform/commit/52f2ece0baf513d649d547895739de6348cb0168))
+* **policy:** record audit outcomes after transaction completion ([#4091](https://github.com/opentdf/platform/issues/4091)) ([8eefa1b](https://github.com/opentdf/platform/commit/8eefa1b2bdd7a93f29f08f9056ed9126c515c452))
+
+
+### Reverts
+
+* **policy:** DSPX-3888 remove object limit configuration ([#4125](https://github.com/opentdf/platform/issues/4125)) ([8e99f5b](https://github.com/opentdf/platform/commit/8e99f5b389a83b991dbc97705652a1cc94c7e91d))
+
+
+### Code Refactoring
+
+* **core:** replace buffered audit with immediate recording ([#4092](https://github.com/opentdf/platform/issues/4092)) ([d784e4f](https://github.com/opentdf/platform/commit/d784e4f0e0476f233de695a75a895d84eddb9486))
+
 ## [0.27.0](https://github.com/opentdf/platform/compare/service/v0.26.0...service/v0.27.0) (2026-09-22)
 
 

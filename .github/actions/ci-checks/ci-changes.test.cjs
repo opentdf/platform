@@ -10,36 +10,52 @@ const classify = env => classifyChanges(env).workflow_only;
 const prEnv = { EVENT_NAME: 'pull_request', REPOSITORY: 'opentdf/platform',
   WORKFLOW_REF: 'opentdf/platform/.github/workflows/checks.yaml@refs/pull/123/merge' };
 
-test('JSON allowlist preserves bounded policy exemptions and fails closed on mixed paths', () => {
-  const config = require('../../ignore-checks-workflow-policy-paths.json');
+const config = require('../../ignore-checks-workflow-policy-paths.json');
+const allowed = [...config.paths, ...fs.readdirSync(__dirname)
+  .filter(file => file !== 'node_modules').map(file => `.github/actions/ci-checks/${file}`)];
+
+test('review-owned JSON policy allows each exact path without allowing lookalikes', () => {
   assert.equal(validatePolicy(config), config);
   assert.ok(config.paths.includes('.github/ignore-checks-workflow-policy-paths.json'),
     'the policy config remains self-allowlisted');
   assert.ok(!config.paths.includes('.github/workflows/checks.yaml'),
     'the broad QA workflow must not be exempted');
   assert.deepEqual(config.prefixes, ['.github/actions/ci-checks/']);
-  const allowed = [...config.paths, ...fs.readdirSync(__dirname)
-    .filter(file => file !== 'node_modules').map(file => `.github/actions/ci-checks/${file}`)];
+  // Exercise the reviewed configuration, not a second copied allowlist that
+  // would need to change whenever owners approve another exact support path.
+  for (const file of config.paths) {
+    assert.equal(workflowPolicyOnly([file]), true, file);
+    for (const lookalike of [`${file}.unknown`, `${file}/unknown`, `${file} `, `${file}\nservice/main.go`]) {
+      assert.equal(workflowPolicyOnly([lookalike]), false, lookalike);
+      assert.equal(workflowPolicyOnly([...allowed, lookalike]), false, lookalike);
+    }
+  }
   assert.equal(workflowPolicyOnly(allowed), true);
+});
+
+test('canonicalization and unknown paths fail closed independently of reviewed support paths', () => {
   assert.equal(workflowPolicyOnly([]), false);
-  for (const unknown of ['service/main.go', 'sdk/go.mod', 'go.work', 'go.work.sum', 'LICENSE',
-    'AGENTS.md', '.policy.yml', 'CODEOWNERS', 'README.md', 'docs/example.md', 'Dockerfile', 'Makefile', 'buf.yaml',
-    '.github/workflows/checks.yaml', '.github/workflows/driver-review.yaml',
-    '.github/workflows/actions-unit-tests.yaml',
-    '.github/workflows/policy-review-unit-tests.yaml', '.github/actions/driver-review.js',
-    '.github/actions/driver-review.test.cjs', '.github/actions/driver-review-workflow.test.cjs',
-    '.github/tests/policy-review.test.cjs', '.github/tests/package.json', '.github/tests/package-lock.json',
+  for (const unknown of ['CODEOWNERS', 'LICENSE', 'README.md', 'docs/example.md',
+    '.github/workflows/checks.yaml',
     '.github/actions/ci-changes.cjs', '.github/actions/ci-changes.test.cjs',
     '.github/actions/ci-results.js', '.github/actions/ci-results.test.cjs',
     '.github/actions/ci-workflow.test.cjs', '.github/actions/package.json', '.github/actions/package-lock.json',
-    'protocol/test.proto', '.github/scripts/work-init.sh', '.github/dependabot.yml',
+    '.github/scripts/work-init.sh', '.github/dependabot.yml',
     '.github/workflows/unknown.yaml', '.github/actions/unknown.js', '.github/tests/unknown.cjs',
-    '.github/tests/go.mod', '.github/tests/../../service/main.go', '.policy.yml\nservice/main.go',
+    '.github/tests/go.mod', '.github/tests/../../service/main.go',
     '.github/actions/ci-checks-elsewhere/helper.cjs', '.github/actions/ci-checks/../actions/unknown.js',
     '.github/actions/ci-checks//unknown.cjs', '.github/actions/ci-checks/../../service/main.go',
-    '.github/actions/ci-checks/unknown.cjs\nservice/main.go', 'AGENTS.md ', 'agents.md']) {
+    '.github/actions/ci-checks/unknown.cjs\nservice/main.go', 'agents.md']) {
     assert.equal(workflowPolicyOnly([unknown]), false, unknown);
     assert.equal(workflowPolicyOnly([...allowed, unknown]), false, unknown);
+  }
+});
+
+test('code and Go dependencies require full QA alone or mixed with all reviewed support paths', () => {
+  for (const code of ['service/main.go', 'sdk/go.mod', 'go.work', 'go.work.sum',
+    'Dockerfile', 'Makefile', 'buf.yaml', 'protocol/test.proto']) {
+    assert.equal(workflowPolicyOnly([code]), false, code);
+    assert.equal(workflowPolicyOnly([...allowed, code]), false, code);
   }
 });
 

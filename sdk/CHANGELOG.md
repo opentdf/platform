@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.35.0](https://github.com/opentdf/platform/compare/sdk/v0.34.0...sdk/v0.35.0) (2026-10-02)
+
+
+### Bug Fixes
+
+* **sdk:** bound zip64 reader offsets against the archive (DSPX-4590) ([#4043](https://github.com/opentdf/platform/issues/4043)) ([85179a6](https://github.com/opentdf/platform/commit/85179a6fb689403a43e66238d4cd587c18771ec5))
+* **sdk:** read the TDF manifest under the spec name manifest.json ([#4063](https://github.com/opentdf/platform/issues/4063)) ([a36b5df](https://github.com/opentdf/platform/commit/a36b5dfd59a11e76c8a3ac10466b5f1b5a5bce27))
+
 ## [0.34.0](https://github.com/opentdf/platform/compare/sdk/v0.33.0...sdk/v0.34.0) (2026-09-28)
 
 

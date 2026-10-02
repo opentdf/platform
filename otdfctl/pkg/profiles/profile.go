@@ -106,6 +106,10 @@ func Migrate(to ProfileDriver, from ProfileDriver) error {
 		if err != nil {
 			return err
 		}
+		// Check aliases within the source even when the destination has no profile.
+		if err := profileStore.CheckUnknownTo(profileStore); err != nil {
+			return err
+		}
 		profileStores = append(profileStores, profileStore)
 	}
 	if err := sourceGlobal.CheckUnknownTo(osprofiles.GetGlobalConfig(toProfiler)); err != nil {

@@ -73,6 +73,10 @@ func MergeCore(object map[string]json.RawMessage, core any) (map[string]json.Raw
 // encoding/json, including omitted members. Unknown nested members are retained;
 // differing opaque values across aliases are rejected rather than choosing one.
 func mergeStructFields(target, fields map[string]json.RawMessage, typ reflect.Type) error {
+	return mergeStructFieldsOwned(target, fields, typ, coreFieldNames(typ))
+}
+
+func mergeStructFieldsOwned(target, fields map[string]json.RawMessage, typ reflect.Type, names []string) error {
 	if typ == nil {
 		return nil
 	}
@@ -92,7 +96,7 @@ func mergeStructFields(target, fields map[string]json.RawMessage, typ reflect.Ty
 			continue
 		}
 		if name == "" && field.Anonymous && embeddedStruct(field.Type) != nil {
-			if err := mergeStructFields(target, fields, field.Type); err != nil {
+			if err := mergeStructFieldsOwned(target, fields, field.Type, names); err != nil {
 				return err
 			}
 			continue
@@ -105,7 +109,7 @@ func mergeStructFields(target, fields map[string]json.RawMessage, typ reflect.Ty
 		}
 		value, present := fields[name]
 		for key, old := range target {
-			if !strings.EqualFold(key, name) {
+			if coreFieldOwner(key, names) != name {
 				continue
 			}
 			if present && embeddedStruct(field.Type) != nil {
@@ -156,6 +160,49 @@ func embeddedStruct(typ reflect.Type) reflect.Type {
 		return typ
 	}
 	return nil
+}
+
+// coreFieldNames keeps declared exact names separate from folded aliases, including
+// promoted anonymous fields at the same JSON object boundary.
+func coreFieldNames(typ reflect.Type) []string {
+	if typ == nil || embeddedStruct(typ) == nil {
+		return nil
+	}
+	typ = embeddedStruct(typ)
+	var names []string
+	for i := range typ.NumField() {
+		field := typ.Field(i)
+		name := strings.Split(field.Tag.Get("json"), ",")[0]
+		if name == "-" {
+			continue
+		}
+		if name == "" && field.Anonymous && embeddedStruct(field.Type) != nil {
+			names = append(names, coreFieldNames(field.Type)...)
+			continue
+		}
+		if !field.IsExported() {
+			continue
+		}
+		if name == "" {
+			name = field.Name
+		}
+		names = append(names, name)
+	}
+	return names
+}
+
+func coreFieldOwner(key string, names []string) string {
+	for _, name := range names {
+		if key == name {
+			return name
+		}
+	}
+	for _, name := range names {
+		if strings.EqualFold(key, name) {
+			return name
+		}
+	}
+	return ""
 }
 
 func deleteOwnedFields(fields map[string]json.RawMessage, typ reflect.Type) {
@@ -225,6 +272,10 @@ func MergeUnknownNested(source, destination map[string]json.RawMessage, core any
 }
 
 func mergeUnknownStructFields(source, destination map[string]json.RawMessage, typ reflect.Type, path string) error {
+	return mergeUnknownStructFieldsOwned(source, destination, typ, path, coreFieldNames(typ))
+}
+
+func mergeUnknownStructFieldsOwned(source, destination map[string]json.RawMessage, typ reflect.Type, path string, names []string) error {
 	typ = embeddedStruct(typ)
 	if typ == nil {
 		return nil
@@ -236,7 +287,7 @@ func mergeUnknownStructFields(source, destination map[string]json.RawMessage, ty
 			continue
 		}
 		if name == "" && field.Anonymous && embeddedStruct(field.Type) != nil {
-			if err := mergeUnknownStructFields(source, destination, field.Type, path); err != nil {
+			if err := mergeUnknownStructFieldsOwned(source, destination, field.Type, path, names); err != nil {
 				return err
 			}
 			continue
@@ -248,7 +299,7 @@ func mergeUnknownStructFields(source, destination map[string]json.RawMessage, ty
 			name = field.Name
 		}
 		for sourceKey, sourceValue := range source {
-			if !strings.EqualFold(sourceKey, name) {
+			if coreFieldOwner(sourceKey, names) != name {
 				continue
 			}
 			var sourceFields map[string]json.RawMessage
@@ -256,7 +307,7 @@ func mergeUnknownStructFields(source, destination map[string]json.RawMessage, ty
 				continue
 			}
 			for destinationKey, destinationValue := range destination {
-				if !strings.EqualFold(destinationKey, name) {
+				if coreFieldOwner(destinationKey, names) != name {
 					continue
 				}
 				var destinationFields map[string]json.RawMessage

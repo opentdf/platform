@@ -114,8 +114,16 @@ func (p *Store) UnknownFields() map[string]json.RawMessage {
 	return store.UnknownFields(p.object, p.config)
 }
 
+// CheckUnknownTo reports opaque fields or namespaces that migration would overwrite.
+func (p *Store) CheckUnknownTo(destination *Store) error {
+	return store.CheckOpaqueConflicts(p.object, destination.object, p.config)
+}
+
 // CopyUnknownTo transfers opaque top-level fields without changing core fields.
 func (p *Store) CopyUnknownTo(destination *Store) error {
+	if err := p.CheckUnknownTo(destination); err != nil {
+		return err
+	}
 	unknown := p.UnknownFields()
 	if len(unknown) == 0 {
 		return nil

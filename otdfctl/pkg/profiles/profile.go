@@ -104,6 +104,21 @@ func Migrate(to ProfileDriver, from ProfileDriver) error {
 		}
 		profileStores = append(profileStores, profileStore)
 	}
+	if err := sourceGlobal.CheckUnknownTo(osprofiles.GetGlobalConfig(toProfiler)); err != nil {
+		return err
+	}
+	for i, name := range profilesToMigrate {
+		if !osprofiles.GetGlobalConfig(toProfiler).ProfileExists(name) {
+			continue
+		}
+		destination, err := osprofiles.GetProfile[*ProfileConfig](toProfiler, name)
+		if err != nil {
+			return err
+		}
+		if err := profileStores[i].CheckUnknownTo(destination); err != nil {
+			return err
+		}
+	}
 
 	slog.Debug("migrating profiles",
 		slog.Any("count", len(profilesToMigrate)),

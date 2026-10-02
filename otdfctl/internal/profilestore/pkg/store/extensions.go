@@ -1,6 +1,7 @@
 package store
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -8,7 +9,10 @@ import (
 	"strings"
 )
 
-var ErrInvalidExtensions = errors.New("invalid extensions")
+var (
+	ErrInvalidExtensions = errors.New("invalid extensions")
+	ErrOpaqueConflict    = errors.New("conflicting opaque configuration")
+)
 
 // DecodeObject validates a stored JSON object and its optional namespaced payloads.
 // Raw values are never decoded into consumer types by the storage engine.
@@ -89,6 +93,12 @@ func mergeStructFields(target, fields map[string]json.RawMessage, typ reflect.Ty
 		if name == "-" {
 			continue
 		}
+		if name == "" && field.Anonymous && embeddedStruct(field.Type) != nil {
+			if err := mergeStructFields(target, fields, field.Type); err != nil {
+				return err
+			}
+			continue
+		}
 		if name == "" {
 			name = field.Name
 		}
@@ -133,19 +143,71 @@ func UnknownFields(object map[string]json.RawMessage, core any) map[string]json.
 			fields[key] = value
 		}
 	}
-	owned := reflect.TypeOf(core)
-	for owned.Kind() == reflect.Pointer {
-		owned = owned.Elem()
+	deleteOwnedFields(fields, reflect.TypeOf(core))
+	return fields
+}
+
+func embeddedStruct(typ reflect.Type) reflect.Type {
+	for typ.Kind() == reflect.Pointer {
+		typ = typ.Elem()
 	}
-	for i := range owned.NumField() {
-		field := owned.Field(i)
+	if typ.Kind() == reflect.Struct {
+		return typ
+	}
+	return nil
+}
+
+func deleteOwnedFields(fields map[string]json.RawMessage, typ reflect.Type) {
+	if typ == nil || embeddedStruct(typ) == nil {
+		return
+	}
+	typ = embeddedStruct(typ)
+	for i := range typ.NumField() {
+		field := typ.Field(i)
+		if !field.IsExported() {
+			continue
+		}
 		name := strings.Split(field.Tag.Get("json"), ",")[0]
+		if name == "-" {
+			continue
+		}
+		if name == "" && field.Anonymous && embeddedStruct(field.Type) != nil {
+			deleteOwnedFields(fields, field.Type)
+			continue
+		}
 		if name == "" {
 			name = field.Name
 		}
 		delete(fields, name)
 	}
-	return fields
+}
+
+// CheckOpaqueConflicts rejects a migration that would overwrite destination-owned opaque values.
+func CheckOpaqueConflicts(source, destination map[string]json.RawMessage, core any) error {
+	for key, value := range UnknownFields(source, core) {
+		if existing, ok := destination[key]; ok && !sameJSON(value, existing) {
+			return fmt.Errorf("%w: field %q", ErrOpaqueConflict, key)
+		}
+	}
+	sourceExtensions, err := Extensions(source)
+	if err != nil {
+		return err
+	}
+	destinationExtensions, err := Extensions(destination)
+	if err != nil {
+		return err
+	}
+	for namespace, value := range sourceExtensions {
+		if existing, ok := destinationExtensions[namespace]; ok && !sameJSON(value, existing) {
+			return fmt.Errorf("%w: extension %q", ErrOpaqueConflict, namespace)
+		}
+	}
+	return nil
+}
+
+func sameJSON(a, b json.RawMessage) bool {
+	var compactA, compactB bytes.Buffer
+	return json.Compact(&compactA, a) == nil && json.Compact(&compactB, b) == nil && bytes.Equal(compactA.Bytes(), compactB.Bytes())
 }
 
 // PutExtension returns a copy with one namespace changed, without mutating

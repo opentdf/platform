@@ -24,6 +24,8 @@ permissions: {}
 
 jobs:
   go:
+    needs: changes
+    if: needs.changes.outputs.workflow_only != 'true'
     runs-on: ubuntu-22.04
     permissions:
       checks: write
@@ -118,7 +120,7 @@ jobs:
         if: env.IS_RELEASE_BRANCH == 'false'
 
   comment-govulncheck:
-    if: github.event_name == 'pull_request' && !github.event.pull_request.head.repo.fork && !cancelled()
+    if: github.event_name == 'pull_request' && !github.event.pull_request.head.repo.fork && !cancelled() && needs.go.result != 'skipped'
     permissions:
       contents: read
       pull-requests: write
@@ -170,6 +172,8 @@ jobs:
           delete: true
 
   integration:
+    needs: changes
+    if: needs.changes.outputs.workflow_only != 'true'
     permissions:
       contents: read
     name: integration tests
@@ -247,6 +251,8 @@ jobs:
         run: test/rego/custom-entity.bats
 
   benchmark:
+    needs: changes
+    if: needs.changes.outputs.workflow_only != 'true'
     permissions:
       contents: read
     name: benchmark tests
@@ -435,6 +441,7 @@ jobs:
     runs-on: ubuntu-22.04
     outputs:
       proto: ${{ steps.check.outputs.proto }}
+      workflow_only: ${{ steps.scope.outputs.workflow_only }}
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
@@ -455,7 +462,19 @@ jobs:
             echo "proto=true" >> "$GITHUB_OUTPUT"
           fi
 
+      - name: Classify workflow and policy support changes
+        id: scope
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          WORKFLOW_REF: ${{ github.workflow_ref }}
+          REPOSITORY: ${{ github.repository }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: node .github/actions/ci-changes.cjs
+
   image:
+    needs: changes
+    if: needs.changes.outputs.workflow_only != 'true'
     permissions:
       contents: read
     name: image build
@@ -474,6 +493,8 @@ jobs:
           push: false
 
   platform-xtest:
+    needs: changes
+    if: needs.changes.outputs.workflow_only != 'true'
     permissions:
       contents: read
       packages: read
@@ -486,6 +507,8 @@ jobs:
       platform-ref: ${{ github.event.pull_request.head.sha || github.sha }} lts
 
   tests-bdd:
+    needs: changes
+    if: needs.changes.outputs.workflow_only != 'true'
     name: Cucumber BDD Tests
     runs-on: ubuntu-22.04
     strategy:
@@ -547,6 +570,8 @@ jobs:
 
   # test latest otdfctl CLI 'main' against platform PR branch
   otdfctl-test:
+    needs: changes
+    if: needs.changes.outputs.workflow_only != 'true'
     permissions:
       contents: read
     name: otdfctl e2e tests
@@ -621,6 +646,7 @@ jobs:
   ci:
     permissions: {}
     needs:
+      - changes
       - buflint
       - go
       - image
@@ -631,13 +657,43 @@ jobs:
       - tests-bdd
       - otdfctl-test
     runs-on: ubuntu-22.04
-    if: ${{ !cancelled() }}
+    # Report even when the classifier fails or a dependency is cancelled/skipped.
+    if: ${{ always() }}
     steps:
-      - if: contains(needs.*.result, 'failure')
-        name: Check for failed jobs
-        run: echo "One or more jobs failed. Please look at the failed jobs for details." && exit 1
+      - name: Check required job results
+        env:
+          NEEDS_JSON: ${{ toJSON(needs) }}
+          EVENT_NAME: ${{ github.event_name }}
+        run: |
+          node <<'NODE'
+          const needs = JSON.parse(process.env.NEEDS_JSON);
+          const outputs = needs.changes.outputs;
+          if (needs.changes.result !== 'success' ||
+              !['true', 'false'].includes(outputs.workflow_only) ||
+              !['true', 'false'].includes(outputs.proto)) {
+            throw new Error('Change classification failed or returned invalid outputs');
+          }
+          const isPR = process.env.EVENT_NAME === 'pull_request';
+          if (outputs.workflow_only === 'true' && !isPR) {
+            throw new Error('Only workflow/policy-only PRs may skip Go QA');
+          }
+          const gated = ['go', 'image', 'integration', 'benchmark', 'license',
+            'platform-xtest', 'tests-bdd', 'otdfctl-test'];
+          for (const job of gated) {
+            const expected = outputs.workflow_only === 'true' ? 'skipped' : 'success';
+            if (needs[job].result !== expected) {
+              throw new Error(`${job}: expected ${expected}, got ${needs[job].result}`);
+            }
+          }
+          const bufExpected = isPR && outputs.proto === 'false' ? 'skipped' : 'success';
+          if (needs.buflint.result !== bufExpected) {
+            throw new Error(`buflint: expected ${bufExpected}, got ${needs.buflint.result}`);
+          }
+          NODE
 
   license:
+    needs: changes
+    if: needs.changes.outputs.workflow_only != 'true'
     permissions:
       contents: read
     name: license check

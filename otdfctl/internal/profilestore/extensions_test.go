@@ -129,6 +129,33 @@ func TestMalformedExtensionsDoNotOverwrite(t *testing.T) {
 	}
 }
 
+func TestStaleHandleRejectsMalformedLatestWithoutOverwrite(t *testing.T) {
+	keyring.MockInit()
+	const ns = "stale_malformed_test"
+	p, err := New(ns, WithKeyringStore())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := p.AddProfile(&fixtureProfile{Name: "alpha"}, true); err != nil {
+		t.Fatal(err)
+	}
+	profile, err := GetProfile[*fixtureProfile](p, "alpha")
+	if err != nil {
+		t.Fatal(err)
+	}
+	const malformed = `{"profile":"alpha","extensions":[]}`
+	if err := keyring.Set(ns, "profile-alpha", malformed); err != nil {
+		t.Fatal(err)
+	}
+	if err := profile.SetExtension("owner", json.RawMessage(`1`)); !errors.Is(err, store.ErrInvalidExtensions) {
+		t.Fatalf("malformed latest configuration accepted: %v", err)
+	}
+	got, err := keyring.Get(ns, "profile-alpha")
+	if err != nil || got != malformed {
+		t.Fatalf("malformed data overwritten: %s %v", got, err)
+	}
+}
+
 func TestPinnedOriginalFileFixtureExtensionSave(t *testing.T) {
 	keyring.MockInit()
 	dir := t.TempDir()
@@ -187,4 +214,115 @@ func TestPinnedOriginalFileFixtureExtensionSave(t *testing.T) {
 	}
 	assertExtension(t, alpha.Extension, "future", `{"x":2}`)
 	assertExtension(t, GetGlobalConfig(p).Extension, "future", `{"x":1}`)
+}
+
+func TestCoreSavePreservesUnknownNestedAndClearsOmitted(t *testing.T) {
+	keyring.MockInit()
+	const ns = "nested_core_test"
+	if err := keyring.Set(ns, "global", `{"version":"1.0","profiles":["alpha"],"defaultProfile":"alpha"}`); err != nil {
+		t.Fatal(err)
+	}
+	original := `{"profile":"alpha","endpoint":"old","outputFormat":"json","authCredentials":{"authType":"client-credentials","clientId":"old","clientSecret":"old","future":{"inner":7},"accessToken":{"clientId":"old","accessToken":"old","refreshToken":"old","expiration":1,"futureToken":true}},"futureTop":[1,2]}`
+	if err := keyring.Set(ns, "profile-alpha", original); err != nil {
+		t.Fatal(err)
+	}
+	p, err := New(ns, WithKeyringStore())
+	if err != nil {
+		t.Fatal(err)
+	}
+	profile, err := GetProfile[*fixtureProfile](p, "alpha")
+	if err != nil {
+		t.Fatal(err)
+	}
+	core, ok := profile.Profile.(*fixtureProfile)
+	if !ok {
+		t.Fatal("incorrect profile type")
+	}
+	core.Endpoint = "new"
+	core.OutputFormat = ""
+	core.AuthCredentials.ClientID = "new"
+	core.AuthCredentials.ClientSecret = ""
+	if err := profile.Save(); err != nil {
+		t.Fatal(err)
+	}
+	data, err := keyring.Get(ns, "profile-alpha")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var result map[string]json.RawMessage
+	if err := json.Unmarshal([]byte(data), &result); err != nil {
+		t.Fatal(err)
+	}
+	if _, present := result["outputFormat"]; present {
+		t.Fatal("omitted output format retained")
+	}
+	if string(result["futureTop"]) != `[1,2]` || string(result["endpoint"]) != `"new"` {
+		t.Fatalf("top-level fields changed: %s", data)
+	}
+	var auth map[string]json.RawMessage
+	if err := json.Unmarshal(result["authCredentials"], &auth); err != nil {
+		t.Fatal(err)
+	}
+	if _, present := auth["clientSecret"]; present {
+		t.Fatal("omitted client secret retained")
+	}
+	if string(auth["future"]) != `{"inner":7}` || string(auth["clientId"]) != `"new"` {
+		t.Fatalf("auth fields changed: %s", data)
+	}
+}
+
+func TestSequentialStaleHandlesRebaseExtensions(t *testing.T) {
+	for _, driver := range []string{"file", "keyring"} {
+		t.Run(driver, func(t *testing.T) {
+			keyring.MockInit()
+			option := WithKeyringStore()
+			if driver == "file" {
+				option = WithFileStore(t.TempDir())
+			}
+			const ns = "stale_handles_test"
+			first, err := New(ns, option)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := first.AddProfile(&fixtureProfile{Name: "alpha"}, true); err != nil {
+				t.Fatal(err)
+			}
+			second, err := New(ns, option)
+			if err != nil {
+				t.Fatal(err)
+			}
+			firstProfile, err := GetProfile[*fixtureProfile](first, "alpha")
+			if err != nil {
+				t.Fatal(err)
+			}
+			secondProfile, err := GetProfile[*fixtureProfile](second, "alpha")
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := firstProfile.SetExtension("a", json.RawMessage(`1`)); err != nil {
+				t.Fatal(err)
+			}
+			if err := secondProfile.SetExtension("b", json.RawMessage(`2`)); err != nil {
+				t.Fatal(err)
+			}
+			if err := GetGlobalConfig(first).SetExtension("a", json.RawMessage(`1`)); err != nil {
+				t.Fatal(err)
+			}
+			if err := GetGlobalConfig(second).SetExtension("b", json.RawMessage(`2`)); err != nil {
+				t.Fatal(err)
+			}
+			loaded, err := New(ns, option)
+			if err != nil {
+				t.Fatal(err)
+			}
+			loadedProfile, err := GetProfile[*fixtureProfile](loaded, "alpha")
+			if err != nil {
+				t.Fatal(err)
+			}
+			for _, get := range []func(string) (json.RawMessage, bool, error){loadedProfile.Extension, GetGlobalConfig(loaded).Extension} {
+				assertExtension(t, get, "a", `1`)
+				assertExtension(t, get, "b", `2`)
+			}
+		})
+	}
 }

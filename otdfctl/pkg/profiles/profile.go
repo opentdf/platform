@@ -85,11 +85,12 @@ func Migrate(to ProfileDriver, from ProfileDriver) error {
 	}
 
 	profilesToMigrate := osprofiles.ListProfiles(fromProfiler)
-	globalExtensions, err := osprofiles.GetGlobalConfig(fromProfiler).Extensions()
+	sourceGlobal := osprofiles.GetGlobalConfig(fromProfiler)
+	globalExtensions, err := sourceGlobal.Extensions()
 	if err != nil {
 		return err
 	}
-	if len(profilesToMigrate) == 0 && len(globalExtensions) == 0 {
+	if len(profilesToMigrate) == 0 && len(globalExtensions) == 0 && len(sourceGlobal.UnknownFields()) == 0 {
 		return nil
 	}
 
@@ -127,6 +128,9 @@ func Migrate(to ProfileDriver, from ProfileDriver) error {
 		if err != nil {
 			return err
 		}
+		if err := store.CopyUnknownTo(destination); err != nil {
+			return err
+		}
 		values, err := store.Extensions()
 		if err != nil {
 			return err
@@ -143,6 +147,9 @@ func Migrate(to ProfileDriver, from ProfileDriver) error {
 		)
 	}
 
+	if err := sourceGlobal.CopyUnknownTo(osprofiles.GetGlobalConfig(toProfiler)); err != nil {
+		return err
+	}
 	for namespace, payload := range globalExtensions {
 		if err := osprofiles.GetGlobalConfig(toProfiler).SetExtension(namespace, payload); err != nil {
 			return err

@@ -188,3 +188,119 @@ func TestMigrateRejectsMalformedProfileWithoutOverwritingSource(t *testing.T) {
 		t.Fatal("destination profile created")
 	}
 }
+
+func TestMigratePreservesUnknownTopLevelFields(t *testing.T) {
+	if runtime.GOOS != "darwin" && runtime.GOOS != "linux" {
+		t.Skip("filesystem location not asserted on this OS")
+	}
+	keyring.MockInit()
+	t.Setenv("HOME", t.TempDir())
+	const global = `{"version":"1.0","profiles":["alpha"],"defaultProfile":"alpha","futureGlobal":{"nested":1}}`
+	const profile = `{"profile":"alpha","endpoint":"https://example.invalid","authCredentials":{"authType":"client-credentials","clientId":"id"},"futureProfile":[null,{"x":true}]}`
+	if err := keyring.Set(config.AppName, "global", global); err != nil {
+		t.Fatal(err)
+	}
+	if err := keyring.Set(config.AppName, "profile-alpha", profile); err != nil {
+		t.Fatal(err)
+	}
+	if err := Migrate(ProfileDriverFileSystem, ProfileDriverKeyring); err != nil {
+		t.Fatal(err)
+	}
+	assertUnknownMigratedFields(t, true)
+	if err := Migrate(ProfileDriverKeyring, ProfileDriverFileSystem); err != nil {
+		t.Fatal(err)
+	}
+	data, err := keyring.Get(config.AppName, "global")
+	if err != nil || !bytes.Contains([]byte(data), []byte(`"futureGlobal":{"nested":1}`)) {
+		t.Fatalf("unknown global field lost on reverse migration: %s %v", data, err)
+	}
+	assertUnknownMigratedFields(t, false)
+}
+
+func TestMigrateGlobalOnlyUnknownWithoutExtensions(t *testing.T) {
+	if runtime.GOOS != "darwin" && runtime.GOOS != "linux" {
+		t.Skip("filesystem location not asserted on this OS")
+	}
+	keyring.MockInit()
+	t.Setenv("HOME", t.TempDir())
+	if err := keyring.Set(config.AppName, "global", `{"version":"1.0","profiles":[],"defaultProfile":"","futureGlobal":{"nested":1}}`); err != nil {
+		t.Fatal(err)
+	}
+	if err := Migrate(ProfileDriverFileSystem, ProfileDriverKeyring); err != nil {
+		t.Fatal(err)
+	}
+	assertUnknownMigratedFields(t, true)
+}
+
+func assertUnknownMigratedFields(t *testing.T, withFile bool) {
+	t.Helper()
+	driver := ProfileDriverKeyring
+	if withFile {
+		driver = ProfileDriverFileSystem
+	}
+	profiler, err := CreateProfiler(driver)
+	if err != nil {
+		t.Fatal(err)
+	}
+	globalFields := osprofiles.GetGlobalConfig(profiler).UnknownFields()
+	if string(globalFields["futureGlobal"]) != `{"nested":1}` {
+		t.Fatalf("global unknown field lost: %s", globalFields["futureGlobal"])
+	}
+	if len(osprofiles.ListProfiles(profiler)) == 0 {
+		return
+	}
+	stored, err := osprofiles.GetProfile[*ProfileConfig](profiler, "alpha")
+	if err != nil {
+		t.Fatal(err)
+	}
+	fields := stored.UnknownFields()
+	if string(fields["futureProfile"]) != `[null,{"x":true}]` {
+		t.Fatalf("profile unknown field lost: %s", fields["futureProfile"])
+	}
+}
+
+func TestProfileCoreSettersPreserveUnknownNestedCredentials(t *testing.T) {
+	keyring.MockInit()
+	const global = `{"version":"1.0","profiles":["alpha"],"defaultProfile":"alpha"}`
+	const profile = `{"profile":"alpha","endpoint":"https://old.invalid","outputFormat":"json","authCredentials":{"authType":"access-token","clientId":"old","futureAuth":{"flag":true},"accessToken":{"clientId":"id","accessToken":"token","refreshToken":"refresh","expiration":10,"futureToken":42}}}`
+	if err := keyring.Set(config.AppName, "global", global); err != nil {
+		t.Fatal(err)
+	}
+	if err := keyring.Set(config.AppName, "profile-alpha", profile); err != nil {
+		t.Fatal(err)
+	}
+	stored, err := LoadOtdfctlProfileStore(ProfileDriverKeyring, "alpha")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := stored.SetEndpoint("https://new.invalid"); err != nil {
+		t.Fatal(err)
+	}
+	credentials := stored.GetAuthCredentials()
+	credentials.ClientID = "new"
+	credentials.AccessToken.Expiration = 11
+	if err := stored.SetAuthCredentials(credentials); err != nil {
+		t.Fatal(err)
+	}
+	data, err := keyring.Get(config.AppName, "profile-alpha")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var result struct {
+		Endpoint        string `json:"endpoint"`
+		AuthCredentials struct {
+			ClientID    string          `json:"clientId"`
+			FutureAuth  json.RawMessage `json:"futureAuth"`
+			AccessToken struct {
+				Expiration  int64           `json:"expiration"`
+				FutureToken json.RawMessage `json:"futureToken"`
+			} `json:"accessToken"`
+		} `json:"authCredentials"`
+	}
+	if err := json.Unmarshal([]byte(data), &result); err != nil {
+		t.Fatal(err)
+	}
+	if result.Endpoint != "https://new.invalid:443" || result.AuthCredentials.ClientID != "new" || result.AuthCredentials.AccessToken.Expiration != 11 || string(result.AuthCredentials.FutureAuth) != `{"flag":true}` || string(result.AuthCredentials.AccessToken.FutureToken) != `42` {
+		t.Fatalf("core update erased unknown nested fields: %s", data)
+	}
+}

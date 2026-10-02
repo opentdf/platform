@@ -109,9 +109,45 @@ func (p *Store) Extension(namespace string) (json.RawMessage, bool, error) {
 	return store.Extension(p.object, namespace)
 }
 
+// UnknownFields returns opaque top-level fields other than extensions.
+func (p *Store) UnknownFields() map[string]json.RawMessage {
+	return store.UnknownFields(p.object, p.config)
+}
+
+// CopyUnknownTo transfers opaque top-level fields without changing core fields.
+func (p *Store) CopyUnknownTo(destination *Store) error {
+	unknown := p.UnknownFields()
+	if len(unknown) == 0 {
+		return nil
+	}
+	object := make(map[string]json.RawMessage, len(destination.object))
+	for key, value := range destination.object {
+		object[key] = value
+	}
+	for key, value := range unknown {
+		object[key] = value
+	}
+	if err := destination.store.Set(object); err != nil {
+		return err
+	}
+	destination.object = object
+	return nil
+}
+
 // SetExtension persists one namespace without changing the remaining configuration.
 func (p *Store) SetExtension(namespace string, payload json.RawMessage) error {
-	object, err := store.PutExtension(p.object, namespace, payload)
+	if namespace == "" || len(payload) == 0 || !json.Valid(payload) {
+		return store.ErrInvalidExtensions
+	}
+	data, err := p.store.Get()
+	if err != nil {
+		return err
+	}
+	latest, err := store.DecodeObject(data)
+	if err != nil {
+		return err
+	}
+	object, err := store.PutExtension(latest, namespace, payload)
 	if err != nil {
 		return err
 	}

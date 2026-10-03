@@ -25,8 +25,6 @@ import (
 // holding per-call state in a field rather than on the stack corrupts one of
 // the two manifests, and the damage is silent: the manifest is well-formed,
 // carries splits that do not reconstruct the DEK, and fails only at decrypt.
-//
-// Experimental: not part of the stable SDK API; may change or be removed.
 type KeySplitter interface {
 	// Split evaluates the ABAC policy expressed by attrs, produces N
 	// splits of dek per the resulting boolean expression, and returns
@@ -42,8 +40,6 @@ type KeySplitter interface {
 
 // Split is one XOR share of the DEK bound to one or more KAS
 // servers.
-//
-// Experimental: not part of the stable SDK API; may change or be removed.
 type Split struct {
 	// Data is this share of the DEK: the value that, XOR'd with every
 	// other share in the result, reproduces the DEK. With a single
@@ -66,8 +62,6 @@ type Split struct {
 // SplitResult is what KeySplitter.Split returns: the shares plus the
 // KAS wrapping keys needed to encrypt each share into a KeyAccess
 // object.
-//
-// Experimental: not part of the stable SDK API; may change or be removed.
 type SplitResult struct {
 	// KASPublicKeys maps KAS URL to the wrapping key to use for that
 	// URL. Populated for every URL referenced by any split.
@@ -94,8 +88,6 @@ type SplitResult struct {
 // Validate sees only the shares, so it is half the contract: it can
 // confirm they agree with each other, but not that they agree with the
 // key. VerifyReconstruction is the other half.
-//
-// Experimental: not part of the stable SDK API; may change or be removed.
 func (r *SplitResult) Validate() error {
 	if r == nil || len(r.Splits) == 0 {
 		return errors.New("chunked: splitter returned no splits")
@@ -160,8 +152,6 @@ func (r *SplitResult) Validate() error {
 // With a single split there is nothing to XOR against, so the share
 // must equal dek verbatim; the loop below expresses that as the
 // degenerate case rather than special-casing it.
-//
-// Experimental: not part of the stable SDK API; may change or be removed.
 func (r *SplitResult) VerifyReconstruction(dek []byte) error {
 	if r == nil || len(r.Splits) == 0 {
 		return errors.New("chunked: splitter returned no splits")
@@ -194,8 +184,6 @@ func (r *SplitResult) VerifyReconstruction(dek []byte) error {
 }
 
 // KASPublicKey is the wrapping key resolved for one KAS URL.
-//
-// Experimental: not part of the stable SDK API; may change or be removed.
 type KASPublicKey struct {
 	// Algorithm identifies the wrapping scheme. It must be one of the
 	// values ocrypto.ParseKeyType accepts, e.g. ocrypto.RSA2048Key or
@@ -252,19 +240,55 @@ var ErrSplitterUnsupportedAlgorithm = errors.New("chunked: unsupported KAS key a
 // Attributes are ignored; the entire DEK is bound to the caller's
 // default KAS. Callers with attribute-based key splits requirements
 // should inject their own splitter via WithChunkedKeySplitter.
-//
-// Experimental: not part of the stable SDK API; may change or be removed.
 func DefaultKeySplitter() KeySplitter { return &singleKASSplitter{} }
 
-// singleKASSplitter binds the full DEK to a single KAS. Attributes
-// are ignored; splitting into multi-KAS OR-of-AND shares is beyond
-// this default's scope.
+// singleKASSplitter binds the full DEK to a single KAS. Splitting into
+// multi-KAS OR-of-AND shares is beyond this default's scope.
+//
+// Attributes are only carried into the policy document, never consulted for
+// key placement -- which is correct as long as they name no KAS of their own.
+// An attribute that does carry a grant is asking for the key to be somewhere
+// this splitter will not put it, and Split refuses rather than quietly
+// ignoring the request; see ErrSplitterIgnoresGrants.
 type singleKASSplitter struct{}
+
+// ErrSplitterIgnoresGrants is returned by the default key splitter when an
+// attribute value carries a KAS grant of its own.
+//
+// Honoring such a grant is the job of a multi-KAS splitter. This one would
+// wrap the whole DEK to the default KAS instead, producing a TDF that looks
+// correct everywhere it is inspected -- the policy names the attribute, the
+// manifest names a KAS, the round trip succeeds -- while the key sits at a KAS
+// the attribute never authorized and never reaches the one it did. Nothing
+// downstream compares the two, so the only place it can be caught is here.
+//
+// Supply a splitter that understands the grant model via
+// [WithChunkedKeySplitter].
+var ErrSplitterIgnoresGrants = errors.New("chunked: the default key splitter cannot honor attribute KAS grants")
 
 // Split returns one split covering the full DEK, addressed to
 // defaultKAS. Errors when defaultKAS is nil, has no public key or
-// URI, or names an algorithm this SDK cannot wrap for.
-func (s *singleKASSplitter) Split(_ context.Context, _ []*policy.Value, dek []byte, defaultKAS *policy.SimpleKasKey) (*SplitResult, error) {
+// URI, names an algorithm this SDK cannot wrap for, or when any
+// attribute carries a KAS grant this splitter cannot honor.
+func (s *singleKASSplitter) Split(_ context.Context, attrs []*policy.Value, dek []byte, defaultKAS *policy.SimpleKasKey) (*SplitResult, error) {
+	// Checked before the default KAS, so a caller with real grants is told
+	// what is actually wrong rather than being sent to configure a default
+	// KAS that would not have been the right answer anyway.
+	//
+	// Grants are inherited, so all three levels count: a value's own, its
+	// attribute definition's, and its namespace's. KasKeys is the newer
+	// spelling of the same intent and is checked alongside Grants at each.
+	for i, v := range attrs {
+		switch {
+		case len(v.GetGrants()) > 0 || len(v.GetKasKeys()) > 0:
+			return nil, fmt.Errorf("%w: value %q (index %d) names its own KAS", ErrSplitterIgnoresGrants, v.GetFqn(), i)
+		case len(v.GetAttribute().GetGrants()) > 0 || len(v.GetAttribute().GetKasKeys()) > 0:
+			return nil, fmt.Errorf("%w: the attribute definition of %q (index %d) names its own KAS", ErrSplitterIgnoresGrants, v.GetFqn(), i)
+		case len(v.GetAttribute().GetNamespace().GetGrants()) > 0 || len(v.GetAttribute().GetNamespace().GetKasKeys()) > 0:
+			return nil, fmt.Errorf("%w: the namespace of %q (index %d) names its own KAS", ErrSplitterIgnoresGrants, v.GetFqn(), i)
+		}
+	}
+
 	if defaultKAS == nil || defaultKAS.GetPublicKey() == nil || defaultKAS.GetPublicKey().GetPem() == "" {
 		return nil, ErrSplitterRequiresDefaultKAS
 	}
@@ -348,6 +372,52 @@ type staticKeyAccess struct {
 
 func (r staticKeyAccess) resolve(_ context.Context, _ []byte, _ *chunkedFinalizeConfig) (string, []KeyAccess, error) {
 	return r.policy, r.kaos, nil
+}
+
+// sdkKeyAccess resolves key access through the platform, the way SDK.CreateTDF
+// does: the attributes settled by Finalize are run through autoconfigure to
+// find the KAS servers that grant them, and the DEK is split across the
+// resulting plan.
+//
+// This is what SDK.NewChunkedWriter installs in place of DefaultKeySplitter,
+// which is single-KAS and attribute-blind. Resolution is deferred to Finalize
+// rather than done at construction because a chunked caller may still be adding
+// attributes while segments are in flight.
+type sdkKeyAccess struct {
+	// sdk is the platform connection used to resolve grants and fetch KAS
+	// public keys.
+	sdk SDK
+
+	// opts are the TDFOptions given to SDK.NewChunkedWriter. They are replayed
+	// on each Finalize so that resolution sees the attributes as of that call.
+	opts []TDFOption
+}
+
+func (r sdkKeyAccess) resolve(ctx context.Context, dek []byte, cfg *chunkedFinalizeConfig) (string, []KeyAccess, error) {
+	opts := r.opts
+	if len(cfg.attributes) > 0 {
+		opts = append(slices.Clone(opts), WithDataAttributeValues(cfg.attributes...))
+	}
+	tdfConfig, err := newTDFConfig(opts...)
+	if err != nil {
+		return "", nil, err
+	}
+	tdfConfig.metaData = cfg.encryptedMetadata
+
+	// A caller-named KAS is a decision, not a hint: honor it instead of asking
+	// the platform which KAS the attributes point at. Autoconfigure has to go
+	// off for that, since initKAOTemplate refuses to run both.
+	if cfg.defaultKAS != nil {
+		tdfConfig.autoconfigure = false
+		if err := populateKasInfoFromBaseKey(cfg.defaultKAS, tdfConfig); err != nil {
+			return "", nil, err
+		}
+	}
+
+	if err := tdfConfig.initKAOTemplate(ctx, r.sdk); err != nil {
+		return "", nil, err
+	}
+	return r.sdk.resolveKeyAccess(ctx, tdfConfig, dek)
 }
 
 // splitterKeyAccess adapts a public KeySplitter to keyAccessResolver.

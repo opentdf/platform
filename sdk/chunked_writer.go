@@ -100,8 +100,6 @@ func defaultArchiveWriterFactory(c clock) zipstream.SegmentWriter {
 }
 
 // Sentinel errors returned by [ChunkedWriter].
-//
-// Experimental: not part of the stable SDK API; may change or be removed.
 var (
 	// ErrChunkedAlreadyFinalized is returned when a ChunkedWriter
 	// method is called after Finalize has already succeeded.
@@ -188,8 +186,6 @@ var (
 // off-thread or in parallel — then call Finalize to close the
 // archive. Contrast with SDK.CreateTDF, which requires the full
 // plaintext up front.
-//
-// Experimental: not part of the stable SDK API; may change or be removed.
 type ChunkedWriter interface {
 	// Finalize completes TDF creation. Every option applies only to
 	// this Finalize call; writer-level defaults set at NewChunked*
@@ -266,8 +262,6 @@ type ChunkedWriter interface {
 
 // ChunkedSegmentResult carries the ZIP bytes for one segment plus its
 // integrity metadata.
-//
-// Experimental: not part of the stable SDK API; may change or be removed.
 type ChunkedSegmentResult struct {
 	// EncryptedSize is the ciphertext byte length including nonce and
 	// GCM tag. It is the size the manifest records for this segment,
@@ -304,8 +298,6 @@ type ChunkedSegmentResult struct {
 
 // ChunkedFinalizeResult carries the finalized TDF's closing bytes and
 // metadata about what was written.
-//
-// Experimental: not part of the stable SDK API; may change or be removed.
 type ChunkedFinalizeResult struct {
 	// Data is the ZIP closing bytes, in order: the payload's data
 	// descriptor, the embedded manifest entry (its own local file
@@ -398,6 +390,15 @@ type chunkedWriterConfig struct {
 	// keyAccess is set.
 	splitter KeySplitter
 
+	// splitterSet records whether WithChunkedKeySplitter was given, so
+	// that SDK.NewChunkedWriter can tell "left at the default" from
+	// "deliberately overridden" and only replace the former.
+	splitterSet bool
+
+	// tdfOptions shape key access resolved against the platform. Only
+	// meaningful for SDK.NewChunkedWriter; see WithChunkedTDFOptions.
+	tdfOptions []TDFOption
+
 	// useHex hex-encodes segment, root, and assertion signatures
 	// before base64, producing the doubly-encoded form that readers
 	// older than 4.3.0 require. Set by WithChunkedTargetMode.
@@ -441,13 +442,9 @@ type chunkedFinalizeConfig struct {
 
 // ChunkedWriterOption configures a ChunkedWriter at construction
 // time.
-//
-// Experimental: not part of the stable SDK API; may change or be removed.
 type ChunkedWriterOption func(*chunkedWriterConfig) error
 
 // ChunkedFinalizeOption configures a single Finalize call.
-//
-// Experimental: not part of the stable SDK API; may change or be removed.
 type ChunkedFinalizeOption func(*chunkedFinalizeConfig) error
 
 // segmentSlot is one entry in the writer's segment table. The slot
@@ -536,10 +533,21 @@ type chunkedWriter struct {
 	useHex bool
 }
 
-// NewChunkedWriter constructs a per-segment TDF writer. WriteSegment
-// may be called from several goroutines at once so long as each
-// targets a distinct segment index; two concurrent calls for the same
-// index are not allowed, and one of them will fail with
+// defaultChunkedWriterConfig is the starting point both constructors apply
+// options over.
+func defaultChunkedWriterConfig() chunkedWriterConfig {
+	return chunkedWriterConfig{
+		archiveFactory: defaultArchiveWriterFactory,
+		cipherFactory:  defaultSegmentCipherFactory,
+		clock:          systemClock{},
+		rand:           rand.Reader,
+		splitter:       DefaultKeySplitter(),
+	}
+}
+
+// WriteSegment may be called from several goroutines at once so long
+// as each targets a distinct segment index; two concurrent calls for
+// the same index are not allowed, and one of them will fail with
 // ErrChunkedSegmentAlreadyWritten rather than corrupt the archive.
 //
 // Finalize must happen-after every WriteSegment returns. The writer
@@ -555,20 +563,48 @@ type chunkedWriter struct {
 // WithChunkedDefaultKAS) are supplied through options; the clock,
 // cipher, archive-writer and entropy seams are unexported test seams
 // and are not reachable from outside this package.
-//
-// Experimental: not part of the stable SDK API; may change or be removed.
 func NewChunkedWriter(_ context.Context, opts ...ChunkedWriterOption) (ChunkedWriter, error) {
-	cfg := chunkedWriterConfig{
-		archiveFactory: defaultArchiveWriterFactory,
-		cipherFactory:  defaultSegmentCipherFactory,
-		clock:          systemClock{},
-		rand:           rand.Reader,
-		splitter:       DefaultKeySplitter(),
-	}
+	cfg := defaultChunkedWriterConfig()
 	for _, opt := range opts {
 		if err := opt(&cfg); err != nil {
 			return nil, err
 		}
+	}
+	return newChunkedWriter(cfg)
+}
+
+// NewChunkedWriter creates a TDF from segments that may arrive in any order,
+// with key access resolved against the platform this SDK is connected to.
+// Attributes are run through the same autoconfigure path SDK.CreateTDF uses, so
+// a caller gets multi-KAS attribute grants without implementing a KeySplitter.
+//
+// Options are the same as for the package-level [NewChunkedWriter]. Pass the
+// TDFOptions that shape key access — [WithDataAttributes], [WithKasInformation],
+// [WithWrappingKeyAlg] and so on — through [WithChunkedTDFOptions]; they are
+// replayed at Finalize. Supplying [WithChunkedKeySplitter] opts out of platform
+// resolution entirely and the given splitter is used as-is.
+//
+// Unlike SDK.CreateTDF, key access is resolved at Finalize rather than up front,
+// because a chunked caller may still be adding attributes while segments are in
+// flight. An unreachable KAS therefore surfaces at Finalize, after segments have
+// already been handed back.
+//
+// Naming no KAS is not an error: with no [WithChunkedDefaultKAS] and no attribute
+// that grants one, resolution falls through to the platform's base key, exactly as
+// SDK.CreateTDF does. [WithKasInformation] does not change that — it fills
+// kasInfoList but leaves autoconfigure on, so a platform with a base key configured
+// overwrites it and logs "base key is enabled, overwriting kasInfoList with base key
+// info". To pin key access to a KAS of your choosing, pass [WithChunkedDefaultKAS];
+// that is the only option here that turns autoconfigure off.
+func (s SDK) NewChunkedWriter(_ context.Context, opts ...ChunkedWriterOption) (ChunkedWriter, error) {
+	cfg := defaultChunkedWriterConfig()
+	for _, opt := range opts {
+		if err := opt(&cfg); err != nil {
+			return nil, err
+		}
+	}
+	if !cfg.splitterSet {
+		cfg.keyAccess = sdkKeyAccess{sdk: s, opts: cfg.tdfOptions}
 	}
 	return newChunkedWriter(cfg)
 }

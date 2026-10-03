@@ -1,17 +1,101 @@
 # Contributing to OpenTDF
 
-This project requires two things from every commit:
+Thank you for your interest in contributing to OpenTDF! This document describes
+how to engage with the community, report issues, request features, and contribute
+code.
 
-1. **DCO sign-off** — a `Signed-off-by` trailer asserting your right to contribute the code
-2. **Commit signature verification** — a cryptographic (GPG or SSH) signature proving the commit came from you
+## Code of Conduct
 
-Both are enforced by CI and org-level rulesets. The combined command is:
+This project is governed by the OpenTDF [Code of Conduct](CODE_OF_CONDUCT.md).
+By participating, you are expected to uphold this code.
 
-```bash
-git commit -s -S -m "Your descriptive commit message here"
+## Community Feedback
+
+| Goal | Where to go |
+|---|---|
+| Report a bug | [Open an issue](https://github.com/opentdf/platform/issues/new/choose) |
+| Request a feature or share an idea | [Start a Discussion](https://github.com/opentdf/platform/discussions) |
+| Ask a question | [GitHub Discussions — Q&A](https://github.com/opentdf/platform/discussions/categories/q-a) |
+| Suggest a docs improvement | [Open an issue in opentdf/docs](https://github.com/opentdf/docs/issues/new) |
+
+Feature requests and questions from all OpenTDF repos are welcome here —
+platform Discussions is the central community space for the project.
+
+## How to Contribute
+
+1. **Check first**: look at [open issues](https://github.com/opentdf/platform/issues)
+   and [Discussions](https://github.com/opentdf/platform/discussions) to avoid
+   duplicating effort.
+2. **Align before building**: for anything non-trivial, open an issue or Discussion
+   to agree on approach before investing in a PR.
+3. **Fork and branch**: fork the repository and create a branch from `main`
+   (see [Branch Naming](#branch-naming) below).
+4. **Make your changes**: follow the [Development Setup](#development-setup) and guidelines below.
+5. **Sign off and sign your commits**: see [DCO](#developer-certificate-of-origin-dco) and [Commit Signature Verification](#commit-signature-verification) below.
+6. **Open a pull request**: a [maintainer](CODEOWNERS) will review and merge.
+
+## Development Setup
+
+For a complete walkthrough, see [docs/Contributing.md](docs/Contributing.md).
+
+Quick summary:
+1. Install [Go](https://go.dev/) (see `go.mod` for the required version).
+2. Run `.github/scripts/init-temp-keys.sh` to create local dev keys.
+3. Run `docker compose up` to start Postgres and Keycloak.
+4. Copy and configure `opentdf-dev.yaml` as your `opentdf.yaml`.
+5. Run `go run github.com/opentdf/platform/service start` to start the server.
+
+## Branch Naming
+
+Use `<type>/<short-description>`:
+
+| Type | When to use |
+|---|---|
+| `feat` | New feature or capability |
+| `fix` | Bug fix |
+| `chore` | Maintenance, dependency updates, CI |
+| `docs` | Documentation only |
+| `refactor` | Code restructuring without behavior change |
+| `test` | Adding or updating tests |
+
+If the branch is tied to a ticket, you may prefix it with the ticket ID:
+`feat/DSPX-1234-short-description`.
+
+Examples: `feat/attribute-wildcard`, `fix/kas-timeout`, `docs/contributing-guide`
+
+## Commit Messages
+
+This project follows [Conventional Commits](https://www.conventionalcommits.org/):
+
+```
+<type>(<scope>): <short description>
+
+[optional body]
+
+[optional footer(s)]
 ```
 
-Read on for setup details.
+- **type**: same values as branch naming above
+- **scope**: optional, the subsystem affected (e.g., `sdk`, `kas`, `policy`)
+- **description**: present tense, lowercase, no trailing period
+- **body**: explain *why*, not *what* — the diff shows what changed
+
+Examples:
+```
+feat(sdk): add wildcard support for attribute values
+
+fix(kas): correct timeout handling on rewrap requests
+
+docs: add branch naming and commit format guide
+```
+
+## Pull Request Guidelines
+
+- Reference the relevant issue or Discussion in the PR description.
+- Keep PRs focused — one logical change per PR is easier to review and revert.
+- Update documentation for any interface or behavior changes.
+- Ensure all CI checks pass before requesting review.
+- Run `make lint` and `make test` before pushing.
 
 ---
 

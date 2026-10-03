@@ -100,13 +100,19 @@ func (p *KeyIndexer) FindKeyByAlgorithm(ctx context.Context, algorithm string, i
 }
 
 func (p *KeyIndexer) FindKeyByID(ctx context.Context, id trust.KeyIdentifier) (trust.KeyDetails, error) {
+	return p.FindKeyWith(ctx, trust.FindKeyOptions{KeyOptions: trust.KeyOptions{ID: id}})
+}
+
+// FindKeyWith returns a key using the requested options.
+// If opts.KASURI is empty, the indexer's configured KAS URI is used.
+func (p *KeyIndexer) FindKeyWith(ctx context.Context, opts trust.FindKeyOptions) (trust.KeyDetails, error) {
 	req := &kasregistry.GetKeyRequest{
 		Identifier: &kasregistry.GetKeyRequest_Key{
 			Key: &kasregistry.KasKeyIdentifier{
 				Identifier: &kasregistry.KasKeyIdentifier_Uri{
-					Uri: p.kasURI,
+					Uri: p.kasURIOrDefault(opts.KASURI),
 				},
-				Kid: string(id),
+				Kid: string(opts.ID),
 			},
 		},
 	}
@@ -123,9 +129,11 @@ func (p *KeyIndexer) FindKeyByID(ctx context.Context, id trust.KeyIdentifier) (t
 }
 
 func (p *KeyIndexer) ListKeys(ctx context.Context) ([]trust.KeyDetails, error) {
-	return p.ListKeysWith(ctx, trust.ListKeyOptions{LegacyOnly: false})
+	return p.ListKeysWith(ctx, trust.ListKeyOptions{})
 }
 
+// ListKeysWith returns keys using the requested options.
+// If opts.KASURI is empty, the indexer's configured KAS URI is used.
 func (p *KeyIndexer) ListKeysWith(ctx context.Context, opts trust.ListKeyOptions) ([]trust.KeyDetails, error) {
 	var legacyOnly *bool
 	if opts.LegacyOnly {
@@ -134,7 +142,7 @@ func (p *KeyIndexer) ListKeysWith(ctx context.Context, opts trust.ListKeyOptions
 
 	req := &kasregistry.ListKeysRequest{
 		KasFilter: &kasregistry.ListKeysRequest_KasUri{
-			KasUri: p.kasURI,
+			KasUri: p.kasURIOrDefault(opts.KASURI),
 		},
 		Legacy: legacyOnly,
 	}
@@ -152,6 +160,13 @@ func (p *KeyIndexer) ListKeysWith(ctx context.Context, opts trust.ListKeyOptions
 	}
 
 	return keys, nil
+}
+
+func (p *KeyIndexer) kasURIOrDefault(kasURI string) string {
+	if kasURI == "" {
+		return p.kasURI
+	}
+	return kasURI
 }
 
 func (p *KeyAdapter) ID() trust.KeyIdentifier {

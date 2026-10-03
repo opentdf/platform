@@ -12,9 +12,21 @@ import (
 // KeyType represents the format in which a key can be exported
 type KeyType int
 
-// Key Options to pass into ListKeysWith
-// when filtering keys
+// KeyOptions configures behavior common to key lookup and listing operations.
+type KeyOptions struct {
+	// ID identifies the key to find.
+	ID     KeyIdentifier
+	KASURI string
+}
+
+// FindKeyOptions configures a key lookup.
+type FindKeyOptions struct {
+	KeyOptions
+}
+
+// ListKeyOptions configures key listing and filtering.
 type ListKeyOptions struct {
+	KeyOptions
 	LegacyOnly bool
 }
 
@@ -73,6 +85,9 @@ type KeyIndex interface {
 
 	// FindKeyByID returns a key with the specified ID
 	FindKeyByID(ctx context.Context, id KeyIdentifier) (KeyDetails, error)
+
+	// FindKeyWith returns a key using the specified options.
+	FindKeyWith(ctx context.Context, opts FindKeyOptions) (KeyDetails, error)
 
 	// ListKeys returns all available keys
 	ListKeys(ctx context.Context) ([]KeyDetails, error)

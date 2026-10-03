@@ -1,0 +1,27 @@
+{
+  "id": "neg-missing-kas-and-url-001",
+  "description": "Neither kas nor url is present.",
+  "conformance": [
+    "KAO-C-003"
+  ],
+  "category": "negative",
+  "algorithm": "n/a",
+  "manifestSchemaVersion": "4.4.0",
+  "inputs": {
+    "kao": {
+      "alg": "RSA-OAEP-256",
+      "kid": "rsa-2048-test",
+      "sid": "s-0",
+      "protectedKey": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+      "policyBinding": {
+        "alg": "HS256",
+        "hash": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
+      }
+    },
+    "policy": "eyJ1dWlkIjoiMTIzNDU2NzgtMTIzNC00MzIxLTk4NzYtMTIzNDU2Nzg5YWJjIiwiYm9keSI6eyJkYXRhQXR0cmlidXRlcyI6W3siYXR0cmlidXRlIjoiaHR0cHM6Ly9leGFtcGxlLmNvbS9hdHRyL0NsYXNzaWZpY2F0aW9uL3ZhbHVlL1B1YmxpYyJ9XSwiZGlzc2VtIjpbXX19"
+  },
+  "expected": {
+    "outcome": "reject",
+    "errorCode": "kao.missing_required_field"
+  }
+}

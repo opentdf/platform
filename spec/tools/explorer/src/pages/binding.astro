@@ -1,0 +1,14 @@
+---
+import Layout from "@/layouts/Layout.astro";
+import BindingPlayground from "@/components/BindingPlayground";
+---
+
+<Layout title="Policy-binding playground">
+  <h1 class="text-2xl font-bold mb-4">Policy-binding playground</h1>
+  <p class="text-sm text-slate-600 mb-6">
+    HMAC-SHA256 over the canonical policy bytes (BaseTDF-KAO §5.2). Paste any
+    DEK share and policy to compute the v4.4 binding; paste a stored hash to
+    verify, with legacy hex-then-base64 auto-detection (KAO-C-220).
+  </p>
+  <BindingPlayground client:load />
+</Layout>

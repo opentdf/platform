@@ -2,6 +2,7 @@ name: SonarCloud
 on:
   schedule:
     - cron: "0 5 * * 2,4,6"
+  workflow_dispatch:
 #  pull_request:
 #    types:
 #      - opened
@@ -65,7 +66,7 @@ jobs:
           name: code-coverage-report
 
       - name: "SonarCloud Scan"
-        uses: SonarSource/sonarqube-scan-action@fd88b7d7ccbaefd23d8f36f73b59db7a3d246602 #v6.0.0
+        uses: SonarSource/sonarqube-scan-action@22918119ff8e1ca75a623e15c8296b6ea4fbe28f # v8.2.1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # Needed to get PR information, if any
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}

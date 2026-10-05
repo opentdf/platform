@@ -1,4 +1,4 @@
-package profiles
+package extensions_test
 
 import (
 	"encoding/json"
@@ -7,6 +7,8 @@ import (
 	"testing"
 
 	osprofiles "github.com/opentdf/platform/otdfctl/internal/profilestore"
+	"github.com/opentdf/platform/otdfctl/pkg/profiles"
+	"github.com/opentdf/platform/otdfctl/pkg/profiles/extensions"
 	"github.com/zalando/go-keyring"
 )
 
@@ -16,18 +18,18 @@ func TestTypedExtensionDecodeErrorReturnsZeroWithoutMutation(t *testing.T) {
 		Enabled bool   `json:"enabled"`
 	}
 	keyring.MockInit()
-	profiler, err := CreateProfiler(ProfileDriverKeyring)
+	profiler, err := profiles.CreateProfiler(profiles.ProfileDriverKeyring)
 	if err != nil {
 		t.Fatal(err)
 	}
-	cfg, err := NewExtensionConfig(profiler, WithGlobalExtension[settings]("alpha"), WithProfileExtension[settings]("alpha"))
+	cfg, err := extensions.NewConfig(profiler, extensions.WithGlobal[settings]("alpha"), extensions.WithProfile[settings]("alpha"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := profiler.AddProfile(&ProfileConfig{Name: "fixture"}, false); err != nil {
+	if err := profiler.AddProfile(&profiles.ProfileConfig{Name: "fixture"}, false); err != nil {
 		t.Fatal(err)
 	}
-	profile, err := osprofiles.GetProfile[*ProfileConfig](profiler, "fixture")
+	profile, err := osprofiles.GetProfile[*profiles.ProfileConfig](profiler, "fixture")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -39,15 +41,15 @@ func TestTypedExtensionDecodeErrorReturnsZeroWithoutMutation(t *testing.T) {
 		read func() (settings, bool, error)
 		get  func(string) (json.RawMessage, bool, error)
 	}{
-		{"global", global.SetExtension, func() (settings, bool, error) { return ReadGlobalExtension[settings](cfg, "alpha") }, global.Extension},
-		{"profile", profile.SetExtension, func() (settings, bool, error) { return ReadProfileExtension[settings](cfg, "fixture", "alpha") }, profile.Extension},
+		{"global", global.SetExtension, func() (settings, bool, error) { return extensions.ReadGlobal[settings](cfg, "alpha") }, global.Extension},
+		{"profile", profile.SetExtension, func() (settings, bool, error) { return extensions.ReadProfile[settings](cfg, "fixture", "alpha") }, profile.Extension},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			if err := test.set("alpha", json.RawMessage(original)); err != nil {
 				t.Fatal(err)
 			}
 			value, present, err := test.read()
-			if value != (settings{}) || !present || !errors.Is(err, ErrExtensionDecode) || strings.Contains(err.Error(), "synthetic-token") {
+			if value != (settings{}) || !present || !errors.Is(err, extensions.ErrExtensionDecode) || strings.Contains(err.Error(), "synthetic-token") {
 				t.Fatal("failed read returned a partial value, absence, or unsanitized error")
 			}
 			got, present, err := test.get("alpha")

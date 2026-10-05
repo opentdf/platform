@@ -153,11 +153,18 @@ make_kid_free_tdf() {
   fi
   mv "$manifest.tmp" "$manifest"
   cp "$source" "$target"
-  if ! zip -q -d "$target" 0.manifest.json || ! zip -q -j "$target" "$manifest"; then
+  # The SDK's streaming ZIP reader expects TDF entries to be stored rather than
+  # compressed. Re-add the modified manifest with method 0 for compatibility.
+  if ! zip -q -d "$target" 0.manifest.json || ! zip -q -0 -j "$target" "$manifest"; then
     rm -r "$workdir"
     return 1
   fi
   if ! unzip -tq "$target" >/dev/null; then
+    rm -r "$workdir"
+    return 1
+  fi
+  if ! zipinfo -v "$target" 0.manifest.json | grep -q 'compression method:.*none (stored)'; then
+    echo "rewritten TDF manifest is compressed" >&2
     rm -r "$workdir"
     return 1
   fi

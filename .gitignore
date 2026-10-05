@@ -29,7 +29,6 @@ opentdf.yaml
 
 # Generated files
 tmp-gen/
-/examples/examples
 /**/kas-*.pem
 !/service/pkg/server/testdata/kas-*.pem
 /opentdf
@@ -45,7 +44,6 @@ sdk/nanotest1.ntdf
 *.zip
 sensitive.txt.tdf
 keys/
-/examples/sensitive.txt.ntdf
 sensitive.txt.ntdf
 traces/
 

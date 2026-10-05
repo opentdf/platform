@@ -31,7 +31,6 @@ jobs:
           cache-dependency-path: |
             service/go.sum
             sdk/go.sum
-            examples/go.sum
             protocol/go/go.sum
 
       - name: "Generate Golang Test Reports"

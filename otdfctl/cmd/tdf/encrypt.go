@@ -3,6 +3,7 @@ package tdf
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"io"
 	"log/slog"
 	"mime"
@@ -17,10 +18,14 @@ import (
 	"github.com/opentdf/platform/otdfctl/pkg/handlers"
 	"github.com/opentdf/platform/otdfctl/pkg/man"
 	"github.com/opentdf/platform/otdfctl/pkg/streamio"
+	"github.com/opentdf/platform/sdk"
 	"github.com/spf13/cobra"
 )
 
-const encryptedOutputFileMode = 0o644
+const (
+	encryptedOutputFileMode = 0o644
+	noKIDInKAOFlag          = "no-kid-in-kao"
+)
 
 var (
 	attrValues []string
@@ -84,8 +89,6 @@ func detectMimeType(in io.Reader, fileExt string) (string, io.Reader, error) {
 
 func encryptRun(cmd *cobra.Command, args []string) {
 	c := cli.New(cmd, args, cli.WithPrintJSON())
-	h := common.NewHandler(c)
-	defer h.Close()
 
 	var filePath string
 	var fileExt string
@@ -100,19 +103,21 @@ func encryptRun(cmd *cobra.Command, args []string) {
 	tdfType := c.Flags.GetOptionalString("tdf-type")
 	kasURLPath := c.Flags.GetOptionalString("kas-url-path")
 	wrappingKeyAlgStr := c.Flags.GetOptionalString("wrapping-key-algorithm")
+	noKIDInKAO := c.Flags.GetOptionalBool(noKIDInKAOFlag)
+
+	hooks := []handlers.Hook{}
+	if noKIDInKAO {
+		hooks = append(hooks, handlers.PreSDKHook(func(handlers.PreSDKHookContext) []sdk.Option {
+			return []sdk.Option{sdk.WithNoKIDInKAO()}
+		}))
+	}
+	h := common.NewHandler(c, hooks...)
+	defer h.Close()
+
 	targetMode := c.Flags.GetOptionalString("target-mode")
-	var wrappingKeyAlgorithm ocrypto.KeyType
-	switch wrappingKeyAlgStr {
-	case string(ocrypto.RSA2048Key):
-		wrappingKeyAlgorithm = ocrypto.RSA2048Key
-	case string(ocrypto.EC256Key):
-		wrappingKeyAlgorithm = ocrypto.EC256Key
-	case string(ocrypto.EC384Key):
-		wrappingKeyAlgorithm = ocrypto.EC384Key
-	case string(ocrypto.EC521Key):
-		wrappingKeyAlgorithm = ocrypto.EC521Key
-	default:
-		wrappingKeyAlgorithm = ocrypto.RSA2048Key
+	wrappingKeyAlgorithm, err := ocrypto.ParseKeyType(wrappingKeyAlgStr)
+	if err != nil {
+		cli.ExitWithError("Invalid wrapping key algorithm", err)
 	}
 
 	piped, hasPiped, err := streamio.PipeReader(os.Stdin)
@@ -282,5 +287,10 @@ func InitEncryptCommand() {
 		encryptDoc.GetDocFlag("target-mode").Default,
 		encryptDoc.GetDocFlag("target-mode").Description,
 	)
+	// Development-only compatibility switch used to generate legacy fixtures.
+	encryptDoc.Flags().Bool(noKIDInKAOFlag, false, "omit key identifiers from key access objects")
+	if err := encryptDoc.Flags().MarkHidden(noKIDInKAOFlag); err != nil {
+		panic(fmt.Sprintf("failed to hide development flag %q: %v", noKIDInKAOFlag, err))
+	}
 	encryptDoc.GroupID = TDF
 }

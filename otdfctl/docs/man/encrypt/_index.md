@@ -20,6 +20,11 @@ command:
         - ec:secp256r1
         - ec:secp384r1
         - ec:secp521r1
+        - hpqt:xwing
+        - hpqt:secp256r1-mlkem768
+        - hpqt:secp384r1-mlkem1024
+        - mlkem:768
+        - mlkem:1024
       default: rsa:2048  
     - name: mime-type
       description: The MIME type of the input data. If not provided, the MIME type is inferred from the input data.
@@ -82,6 +87,11 @@ The wrapping-key-algorithm specifies the algorithm to use for the wrapping key. 
 - ec:secp256r1
 - ec:secp384r1
 - ec:secp521r1
+- hpqt:xwing
+- hpqt:secp256r1-mlkem768
+- hpqt:secp384r1-mlkem1024
+- mlkem:768
+- mlkem:1024
 
 Example
 ```shell

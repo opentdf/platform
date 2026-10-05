@@ -17,6 +17,17 @@ setup_file() {
   export WITH_CREDS="--with-client-creds-file $CREDSFILE"
   export DEBUG_LEVEL="--log-level debug"
   export HOST=http://localhost:8080
+  export PLATFORM_DIR="${PLATFORM_DIR:-../otdf-test-platform}"
+  export PLATFORM_CONFIG="$PLATFORM_DIR/opentdf.yaml"
+  export PLATFORM_CONFIG_BACKUP="$PLATFORM_DIR/opentdf.encrypt-decrypt.backup.yaml"
+  export MODERN_ROTATION_FIXTURE="$PWD/e2e/fixtures/kas-modern-rotation.yaml"
+  export LEGACY_KAS_FIXTURE="$PWD/e2e/fixtures/kas-legacy-config.yaml"
+
+  cp "$PLATFORM_CONFIG" "$PLATFORM_CONFIG_BACKUP"
+  openssl genpkey -algorithm RSA -out "$PLATFORM_DIR/kas-r2-private.pem" -pkeyopt rsa_keygen_bits:2048
+  openssl rsa -in "$PLATFORM_DIR/kas-r2-private.pem" -pubout -out "$PLATFORM_DIR/kas-r2-cert.pem"
+  openssl ecparam -name prime256v1 -genkey -noout -out "$PLATFORM_DIR/kas-e2-private.pem"
+  openssl ec -in "$PLATFORM_DIR/kas-e2-private.pem" -pubout -out "$PLATFORM_DIR/kas-e2-cert.pem"
 
   export INFILE_GO_MOD=go.mod
   export OUTFILE_GO_MOD=go.mod.tdf
@@ -79,12 +90,60 @@ setup() {
 }
 
 teardown() {
-    rm -f $OUTFILE_GO_MOD $RESULTFILE_GO_MOD $OUTFILE_TXT
+    rm -f $OUTFILE_GO_MOD $RESULTFILE_GO_MOD $OUTFILE_TXT algorithm-*.txt algorithm-*.txt.tdf legacy-*.txt legacy-*.txt.tdf
 }
 
 teardown_file(){
+    cp "$PLATFORM_CONFIG_BACKUP" "$PLATFORM_CONFIG"
+    wait_for_platform_reload
     ./otdfctl --host "$HOST" $WITH_CREDS $DEBUG_LEVEL policy attributes namespaces unsafe delete --id "$NS_ID" --force
-    rm -f $SIGNED_ASSERTIONS_HS256 $SIGNED_ASSERTION_VERIFICATON_HS256 $SIGNED_ASSERTIONS_RS256 $SIGNED_ASSERTION_VERIFICATON_RS256 $RS_PRIVATE_KEY $RS_PUBLIC_KEY
+    rm -f $SIGNED_ASSERTIONS_HS256 $SIGNED_ASSERTION_VERIFICATON_HS256 $SIGNED_ASSERTIONS_RS256 $SIGNED_ASSERTION_VERIFICATON_RS256 $RS_PRIVATE_KEY $RS_PUBLIC_KEY "$PLATFORM_CONFIG_BACKUP" "$PLATFORM_DIR/kas-r2-private.pem" "$PLATFORM_DIR/kas-r2-cert.pem" "$PLATFORM_DIR/kas-e2-private.pem" "$PLATFORM_DIR/kas-e2-cert.pem"
+}
+
+wait_for_platform_reload() {
+  sleep 4
+  for _ in $(seq 1 15); do
+    if curl -fsS "$HOST/healthz" | jq -e '.status == "SERVING"' >/dev/null; then
+      return 0
+    fi
+    sleep 2
+  done
+  echo "platform did not become healthy after configuration reload" >&2
+  return 1
+}
+
+apply_kas_fixture() {
+  local fixture=$1
+  FIXTURE="$fixture" yq eval '
+    .services.kas = load(strenv(FIXTURE)).services.kas |
+    .server.cryptoProvider = load(strenv(FIXTURE)).server.cryptoProvider
+  ' -i "$PLATFORM_CONFIG"
+  wait_for_platform_reload
+}
+
+restore_platform_config() {
+  cp "$PLATFORM_CONFIG_BACKUP" "$PLATFORM_CONFIG"
+  wait_for_platform_reload
+}
+
+assert_algorithm_roundtrip() {
+  local algorithm=$1
+  local kao_type=$2
+  local kid=$3
+  local slug=$4
+  local plaintext="algorithm-$slug.txt"
+  local ciphertext="$plaintext.tdf"
+  local expected="Hello $algorithm wrappers!"
+
+  printf '%s' "$expected" > "$plaintext"
+  ./otdfctl encrypt --host "$HOST" --tls-no-verify $DEBUG_LEVEL $WITH_CREDS \
+    --wrapping-key-algorithm "$algorithm" --attr "$FQN" --out "$ciphertext" "$plaintext"
+
+  local inspect_output
+  inspect_output=$(./otdfctl --host "$HOST" --tls-no-verify $WITH_CREDS inspect "$ciphertext")
+  assert_equal "$(jq -r '.manifest.encryptionInformation.keyAccess[0].type' <<< "$inspect_output")" "$kao_type"
+  assert_equal "$(jq -r '.manifest.encryptionInformation.keyAccess[0].kid' <<< "$inspect_output")" "$kid"
+  assert_equal "$(./otdfctl decrypt --host "$HOST" --tls-no-verify $DEBUG_LEVEL $WITH_CREDS "$ciphertext")" "$expected"
 }
 
 @test "roundtrip TDF3, no attributes, file" {
@@ -343,4 +402,65 @@ teardown_file(){
   run sh -c "./otdfctl decrypt --host $HOST --tls-no-verify $DEBUG_LEVEL $WITH_CREDS $OUTFILE_GO_MOD"
   assert_failure
   assert_output --partial "required obligations: [$OBL_VAL_FQN]"
+}
+
+@test "roundtrip TDF3 with EC wrapped KAO" {
+  assert_algorithm_roundtrip "ec:secp256r1" "ec-wrapped" "ec1" "ec"
+}
+
+@test "roundtrip TDF3 with X-Wing wrapped KAO" {
+  assert_algorithm_roundtrip "hpqt:xwing" "hybrid-wrapped" "x1" "xwing"
+}
+
+@test "roundtrip TDF3 with P256+ML-KEM-768 wrapped KAO" {
+  assert_algorithm_roundtrip "hpqt:secp256r1-mlkem768" "hybrid-wrapped" "h1" "p256-mlkem768"
+}
+
+@test "roundtrip TDF3 with P384+ML-KEM-1024 wrapped KAO" {
+  assert_algorithm_roundtrip "hpqt:secp384r1-mlkem1024" "hybrid-wrapped" "h2" "p384-mlkem1024"
+}
+
+@test "roundtrip TDF3 with ML-KEM-768 wrapped KAO" {
+  assert_algorithm_roundtrip "mlkem:768" "mlkem-wrapped" "m1" "mlkem768"
+}
+
+@test "roundtrip TDF3 with ML-KEM-1024 wrapped KAO" {
+  assert_algorithm_roundtrip "mlkem:1024" "mlkem-wrapped" "m2" "mlkem1024"
+}
+
+@test "legacy no-KID TDF decrypts after key rotation" {
+  restore_platform_config
+  printf '%s' "Hello Legacy" > legacy-no-kid.txt
+  printf '%s' "Hello with Key Identifier" > legacy-with-kid.txt
+
+  ./otdfctl encrypt --host "$HOST" --tls-no-verify $DEBUG_LEVEL $WITH_CREDS --no-kid-in-kao --out legacy-no-kid.txt.tdf legacy-no-kid.txt
+  ./otdfctl encrypt --host "$HOST" --tls-no-verify $DEBUG_LEVEL $WITH_CREDS --out legacy-with-kid.txt.tdf legacy-with-kid.txt
+
+  no_kid=$(./otdfctl --host "$HOST" --tls-no-verify $WITH_CREDS inspect legacy-no-kid.txt.tdf | jq -r '.manifest.encryptionInformation.keyAccess[0].kid // ""')
+  with_kid=$(./otdfctl --host "$HOST" --tls-no-verify $WITH_CREDS inspect legacy-with-kid.txt.tdf | jq -r '.manifest.encryptionInformation.keyAccess[0].kid')
+  assert_equal "$no_kid" ""
+  assert_equal "$with_kid" "r1"
+
+  apply_kas_fixture "$MODERN_ROTATION_FIXTURE"
+
+  printf '%s' "rotated" > legacy-rotated.txt
+  ./otdfctl encrypt --host "$HOST" --tls-no-verify $DEBUG_LEVEL $WITH_CREDS --out legacy-rotated.txt.tdf legacy-rotated.txt
+  rotated_kid=$(./otdfctl --host "$HOST" --tls-no-verify $WITH_CREDS inspect legacy-rotated.txt.tdf | jq -r '.manifest.encryptionInformation.keyAccess[0].kid')
+  assert_equal "$rotated_kid" "r2"
+  assert_equal "$(./otdfctl decrypt --host "$HOST" --tls-no-verify $DEBUG_LEVEL $WITH_CREDS legacy-no-kid.txt.tdf)" "Hello Legacy"
+  assert_equal "$(./otdfctl decrypt --host "$HOST" --tls-no-verify $DEBUG_LEVEL $WITH_CREDS legacy-with-kid.txt.tdf)" "Hello with Key Identifier"
+}
+
+@test "legacy KAS and crypto provider configuration decrypts existing TDFs" {
+  restore_platform_config
+  printf '%s' "Hello Legacy Config" > legacy-config-no-kid.txt
+  printf '%s' "Hello Legacy Config with KID" > legacy-config-with-kid.txt
+
+  ./otdfctl encrypt --host "$HOST" --tls-no-verify $DEBUG_LEVEL $WITH_CREDS --no-kid-in-kao --out legacy-config-no-kid.txt.tdf legacy-config-no-kid.txt
+  ./otdfctl encrypt --host "$HOST" --tls-no-verify $DEBUG_LEVEL $WITH_CREDS --out legacy-config-with-kid.txt.tdf legacy-config-with-kid.txt
+
+  apply_kas_fixture "$LEGACY_KAS_FIXTURE"
+
+  assert_equal "$(./otdfctl decrypt --host "$HOST" --tls-no-verify $DEBUG_LEVEL $WITH_CREDS legacy-config-no-kid.txt.tdf)" "Hello Legacy Config"
+  assert_equal "$(./otdfctl decrypt --host "$HOST" --tls-no-verify $DEBUG_LEVEL $WITH_CREDS legacy-config-with-kid.txt.tdf)" "Hello Legacy Config with KID"
 }

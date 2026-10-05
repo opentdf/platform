@@ -68,7 +68,7 @@ func TestJITPDP_AuditFailurePreservesDecision(t *testing.T) {
 			p := &JustInTimePDP{
 				logger: log,
 				sdk: &otdfSDK.SDK{
-					Attributes: decisionAttrFake(definitionFQN, valueFQN, "abc"),
+					Attributes: decisionAttrFake(valueFQN),
 					EntityResolutionV2: &recordingERSV2Client{resolveResponse: &entityresolutionV2.ResolveEntitiesResponse{
 						EntityRepresentations: []*entityresolutionV2.EntityRepresentation{entityRepWithClientID(tc.clientID)},
 					}},

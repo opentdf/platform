@@ -342,7 +342,11 @@ components:
           $ref: '#/components/schemas/authorization.v2.EntityIdentifier'
         action:
           title: action
-          description: name on action is required
+          description: |-
+            Name on action is required. Use the reserved name `*` to check whether one
+             concrete action permits each complete resource. This entitlement-only mode
+             does not evaluate action-specific obligations and must not include action.id.
+             An optional action.namespace ID or FQN limits which concrete actions are considered.
           $ref: '#/components/schemas/policy.Action'
         resources:
           type: array
@@ -388,6 +392,11 @@ components:
         has(this.action.name)
         ```
 
+        action.id must not be provided when action.name is *:
+        ```
+        this.action.name != '*' || this.action.id == ''
+        ```
+
     authorization.v2.GetDecisionMultiResourceResponse:
       type: object
       properties:
@@ -412,7 +421,11 @@ components:
           $ref: '#/components/schemas/authorization.v2.EntityIdentifier'
         action:
           title: action
-          description: name on action is required
+          description: |-
+            Name on action is required. Use the reserved name `*` to check whether one
+             concrete action permits the complete resource. This entitlement-only mode
+             does not evaluate action-specific obligations and must not include action.id.
+             An optional action.namespace ID or FQN limits which concrete actions are considered.
           $ref: '#/components/schemas/policy.Action'
         resource:
           title: resource
@@ -452,6 +465,11 @@ components:
         action.name must be provided:
         ```
         has(this.action.name)
+        ```
+
+        action.id must not be provided when action.name is *:
+        ```
+        this.action.name != '*' || this.action.id == ''
         ```
 
     authorization.v2.GetDecisionResponse:

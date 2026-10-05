@@ -147,7 +147,9 @@ func newTestObligationsPDP(t *testing.T) *obligations.ObligationsPolicyDecisionP
 	return oPDP
 }
 
-func decisionAttrFake(definitionFQN, valueFQN, clientID string) *fakeAttributesClient {
+func decisionAttrFake(valueFQN string) *fakeAttributesClient {
+	const definitionFQN = "https://example.com/attr/classification"
+	const clientID = "abc"
 	sm := &policy.SubjectMapping{
 		Id:                  "sm-1",
 		AttributeValue:      &policy.Value{Fqn: valueFQN},
@@ -185,7 +187,7 @@ func TestJITPDP_GetDecision_TargetedPermit(t *testing.T) {
 	definitionFQN := "https://example.com/attr/classification"
 	valueFQN := definitionFQN + "/value/confidential"
 
-	attrFake := decisionAttrFake(definitionFQN, valueFQN, "abc")
+	attrFake := decisionAttrFake(valueFQN)
 	ers := &recordingERSV2Client{resolveResponse: &entityresolutionV2.ResolveEntitiesResponse{
 		EntityRepresentations: []*entityresolutionV2.EntityRepresentation{entityRepWithClientID("abc")},
 	}}
@@ -206,12 +208,60 @@ func TestJITPDP_GetDecision_TargetedPermit(t *testing.T) {
 	assert.Equal(t, []string{valueFQN}, attrFake.requests[0].GetFqns())
 }
 
+func TestJITPDP_GetDecision_AnyActionIgnoresActionSpecificObligations(t *testing.T) {
+	definitionFQN := "https://example.com/attr/classification"
+	valueFQN := definitionFQN + "/value/confidential"
+	obligationFQN := "https://example.com/obl/watermark/value/required"
+
+	attrFake := decisionAttrFake(valueFQN)
+	ers := &recordingERSV2Client{resolveResponse: &entityresolutionV2.ResolveEntitiesResponse{
+		EntityRepresentations: []*entityresolutionV2.EntityRepresentation{entityRepWithClientID("abc")},
+	}}
+	obligationsPDP, err := obligations.NewObligationsPolicyDecisionPoint(
+		context.Background(),
+		logger.CreateTestLogger(),
+		map[string]*attrs.GetAttributeValuesByFqnsResponse_AttributeAndValue{
+			valueFQN: {
+				Attribute: &policy.Attribute{Fqn: definitionFQN},
+				Value:     &policy.Value{Fqn: valueFQN},
+			},
+		},
+		nil,
+		[]*policy.Obligation{{Values: []*policy.ObligationValue{{
+			Fqn: obligationFQN,
+			Triggers: []*policy.ObligationTrigger{{
+				Action:         &policy.Action{Name: "read"},
+				AttributeValue: &policy.Value{Fqn: valueFQN},
+			}},
+		}}}},
+	)
+	require.NoError(t, err)
+	p := &JustInTimePDP{
+		logger:                        logger.CreateTestLogger(),
+		sdk:                           &otdfSDK.SDK{Attributes: attrFake, EntityResolutionV2: ers},
+		obligationsPDP:                obligationsPDP,
+		registeredResourceValuesByFQN: make(map[string]*policy.RegisteredResourceValue),
+	}
+
+	ctx := audit.ContextWithActorID(context.Background(), "test-actor")
+	concreteDecision, err := p.GetDecision(ctx, entityChainIdentifier(), &policy.Action{Name: "read"}, attrValueResource(valueFQN), nil, nil)
+	require.NoError(t, err)
+	require.False(t, concreteDecision.AllPermitted)
+	require.Equal(t, []string{obligationFQN}, concreteDecision.Results[0].RequiredObligationValueFQNs)
+
+	anyDecision, err := p.GetDecision(ctx, entityChainIdentifier(), &policy.Action{Name: AnyActionName}, attrValueResource(valueFQN), nil, nil)
+	require.NoError(t, err)
+	require.True(t, anyDecision.AllPermitted)
+	require.True(t, anyDecision.Results[0].ObligationsSatisfied)
+	require.Empty(t, anyDecision.Results[0].RequiredObligationValueFQNs)
+}
+
 func TestJITPDP_GetDecision_TargetedDenyOnEntityMismatch(t *testing.T) {
 	definitionFQN := "https://example.com/attr/classification"
 	valueFQN := definitionFQN + "/value/confidential"
 
 	// Subject mapping requires clientId "abc" but the entity presents "other".
-	attrFake := decisionAttrFake(definitionFQN, valueFQN, "abc")
+	attrFake := decisionAttrFake(valueFQN)
 	ers := &recordingERSV2Client{resolveResponse: &entityresolutionV2.ResolveEntitiesResponse{
 		EntityRepresentations: []*entityresolutionV2.EntityRepresentation{entityRepWithClientID("other")},
 	}}

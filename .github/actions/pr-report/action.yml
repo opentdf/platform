@@ -1,0 +1,42 @@
+name: Submit PR report section
+description: Upload a complete replacement section as data; never writes a PR comment.
+inputs:
+  section-id:
+    description: Stable section ID declared in the trusted comment template
+    required: true
+  title:
+    description: Section title (plain text)
+    required: true
+  status:
+    description: pending, passed, failed, cancelled, or unavailable
+    required: true
+  summary-file:
+    description: Optional UTF-8 top-level summary file
+    required: false
+  details-file:
+    description: Optional UTF-8 expandable details file
+    required: false
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
+      with:
+        node-version: '24'
+        package-manager-cache: false
+    - name: Serialize section
+      shell: bash
+      env:
+        REPORT_SECTION: ${{ inputs.section-id }}
+        REPORT_TITLE: ${{ inputs.title }}
+        REPORT_STATUS: ${{ inputs.status }}
+        REPORT_SUMMARY: ${{ inputs.summary-file }}
+        REPORT_DETAILS: ${{ inputs.details-file }}
+        REPORT_DIR: ${{ runner.temp }}/pr-report-${{ inputs.section-id }}
+      run: node "$GITHUB_ACTION_PATH/../ci-checks/pr-report.cjs" submit
+    - uses: actions/upload-artifact@0b2256b8c012f0828dc542b3febcab082c67f72b # v4.3.4
+      with:
+        name: pr-report-${{ inputs.section-id }}-${{ github.run_id }}-${{ github.run_attempt }}
+        path: ${{ runner.temp }}/pr-report-${{ inputs.section-id }}/section.json
+        retention-days: 14
+        if-no-files-found: error
+        overwrite: true

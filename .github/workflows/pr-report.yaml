@@ -1,0 +1,34 @@
+name: PR report
+on:
+  workflow_run: # zizmor: ignore[dangerous-triggers] default-branch code only; bounded artifacts are parsed as data, never extracted/executed
+    workflows: [Checks]
+    types: [requested, in_progress, completed]
+  workflow_dispatch:
+permissions: {}
+# Not a queue: superseded pending runs are recovered by scanning every open PR.
+concurrency:
+  group: pr-report-writer
+  cancel-in-progress: false
+jobs:
+  publish:
+    runs-on: ubuntu-22.04
+    permissions:
+      actions: read
+      contents: read
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          persist-credentials: false
+      - uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
+        with:
+          node-version: '24'
+          package-manager-cache: false
+      - name: Install only trusted publisher runtime dependencies (no lifecycle scripts)
+        run: npm ci --omit=dev --ignore-scripts
+        working-directory: .github/actions/ci-checks
+      - name: Reconcile all open PR reports from structured artifacts
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: node .github/actions/ci-checks/pr-report.cjs publish

@@ -20,7 +20,9 @@ test('required ci always reports and depends on classifier and every required QA
     assert.equal(workflow.jobs[job].if, condition);
   }
   assert.equal(workflow.jobs.buflint.if, "needs.changes.outputs.proto == 'true' || github.event_name != 'pull_request'");
-  assert.match(workflow.jobs['comment-govulncheck'].if, /needs.go.result != 'skipped'/);
+  assert.match(workflow.jobs['report-govulncheck'].if, /always\(\)/);
+  assert.equal(workflow.jobs['comment-govulncheck'], undefined);
+  assert.equal(workflow.jobs['comment-benchmark'], undefined);
   assert.equal(workflow.jobs.go.steps.find(step => step.name === 'govulncheck').if,
     "github.event_name != 'merge_group'");
   assert.ok(!workflow.jobs.ci.needs.includes('authorization-scale'), 'scale remains report only');
@@ -63,6 +65,7 @@ test('focused workflow covers all helper, test, manifest and checks edits indepe
     assert.deepEqual(tests.on[event].paths, [
       '.github/actions/ci-checks/**', '.github/ignore-checks-workflow-policy-paths.json',
       '.github/workflows/checks.yaml', '.github/workflows/ci-unit-tests.yaml',
+      '.github/actions/pr-report/**', '.github/comment-template.md', '.github/workflows/pr-report.yaml',
     ]);
   }
   for (const file of ['ci-changes.cjs', 'ci-changes.test.cjs', 'ci-results.js',
@@ -74,4 +77,44 @@ test('focused workflow covers all helper, test, manifest and checks edits indepe
     assert.equal(tests.jobs.test.steps.find(step => step.run === run)['working-directory'],
       '.github/actions/ci-checks');
   }
+});
+
+test('report writer is trusted, serialized and separate from read-only artifact producers', () => {
+  const publisher = readWorkflow('pr-report.yaml');
+  assert.deepEqual(publisher.on.workflow_run, { workflows: ['Checks'], types: ['requested', 'in_progress', 'completed'] });
+  assert.equal(publisher.on.pull_request_target, undefined);
+  assert.deepEqual(publisher.permissions, {});
+  assert.deepEqual(publisher.concurrency, { group: 'pr-report-writer', 'cancel-in-progress': false });
+  assert.deepEqual(publisher.jobs.publish.permissions, { actions: 'read', contents: 'read', 'pull-requests': 'write' });
+  assert.equal(publisher.jobs.publish.steps[0].with.ref, '${{ github.event.repository.default_branch }}');
+  assert.equal(publisher.jobs.publish.steps[0].with['persist-credentials'], false);
+  for (const producer of ['benchmark', 'report-govulncheck']) {
+    assert.deepEqual(workflow.jobs[producer].permissions, { contents: 'read' });
+    assert.ok(workflow.jobs[producer].steps.some(s => s.uses === './.github/actions/pr-report'));
+  }
+  const action = YAML.parse(fs.readFileSync(path.join(root, '.github/actions/pr-report/action.yml'), 'utf8'));
+  assert.equal(action.runs.using, 'composite');
+  assert.ok(!JSON.stringify(action).includes('createComment'));
+  const upload = action.runs.steps.find(step => step.uses?.startsWith('actions/upload-artifact@'));
+  assert.equal(upload.with.overwrite, true);
+  assert.match(upload.with.name, /github.run_attempt/);
+  const nodeSteps = [...action.runs.steps, ...publisher.jobs.publish.steps].filter(step => step.uses?.startsWith('actions/setup-node@'));
+  assert.equal(nodeSteps.length, 2);
+  for (const step of nodeSteps) {
+    assert.equal(step.with['node-version'], '24');
+    assert.equal(step.with['package-manager-cache'], false);
+  }
+  const govNode = workflow.jobs['report-govulncheck'].steps.find(step => step.uses?.startsWith('actions/setup-node@'));
+  assert.equal(govNode.with['node-version'], '24');
+  assert.equal(govNode.with['package-manager-cache'], false);
+  assert.equal(action.runs.steps.find(step => step.name === 'Serialize section').run, 'node "$GITHUB_ACTION_PATH/../ci-checks/pr-report.cjs" submit');
+  const install = publisher.jobs.publish.steps.find(step => step.run?.startsWith('npm ci'));
+  assert.equal(install.run, 'npm ci --omit=dev --ignore-scripts');
+  assert.equal(install['working-directory'], '.github/actions/ci-checks');
+  assert.equal(install.env, undefined);
+  assert.equal(publisher.jobs.publish.steps.at(-1).run, 'node .github/actions/ci-checks/pr-report.cjs publish');
+  assert.ok(!JSON.stringify([action, publisher, readWorkflow('ci-unit-tests.yaml')]).match(/python|ruff/i));
+  assert.equal(workflow.jobs['report-govulncheck'].steps.find(s => s.id === 'aggregate').run, 'node .github/actions/ci-checks/pr-report-govulncheck.cjs');
+  assert.equal(workflow.jobs['platform-xtest'].with['consolidated-pr-report'], "${{ github.event_name == 'pull_request' && !github.event.pull_request.head.repo.fork && github.event.pull_request.user.login != 'dependabot[bot]' }}");
+  assert.equal(workflow.jobs['platform-xtest'].permissions.actions, 'read');
 });

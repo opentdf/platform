@@ -7,6 +7,9 @@ on:
       - '.github/ignore-checks-workflow-policy-paths.json'
       - '.github/workflows/checks.yaml'
       - '.github/workflows/ci-unit-tests.yaml'
+      - '.github/actions/pr-report/**'
+      - '.github/comment-template.md'
+      - '.github/workflows/pr-report.yaml'
   push:
     branches: [main]
     paths:
@@ -14,6 +17,9 @@ on:
       - '.github/ignore-checks-workflow-policy-paths.json'
       - '.github/workflows/checks.yaml'
       - '.github/workflows/ci-unit-tests.yaml'
+      - '.github/actions/pr-report/**'
+      - '.github/comment-template.md'
+      - '.github/workflows/pr-report.yaml'
 
 permissions: {}
 

@@ -111,7 +111,6 @@ remain authoritative; this comment is informational only.
 ## Offline verification
 
 ```sh
-python3 -m unittest discover -s .github/actions/pr-report -p 'test_*.py'
 (cd .github/actions/ci-checks && npm ci --ignore-scripts && npm test)
 ```
 
@@ -120,9 +119,25 @@ artifacts, escaping/length, whole-section replacement, idempotent stable comment
 reuse, serialized arrivals/creation, recovery after pending replacement,
 producer failure/cancellation, fork restrictions, and pagination. Workflow tests
 check the trusted checkout, permissions, and serialization group. The existing
-Node CI suite also renders actual Python publisher output with the same
-`markdown-it` CommonMark tooling used in independent review. This pinned
+Node CI suite directly exercises the JavaScript publisher and renders its output
+with the same `markdown-it` CommonMark tooling used in independent review. This pinned
 **test-only** dependency checks real subsequent headings/details boundaries for
 truncated/unmatched fences, mismatched closers, and ordinary code/Markdown;
-the publisher itself remains dependency-free Python standard library.
+the publisher runs on **Node 24**, the same supported version as the existing CI
+helper suite. Reporting code lives in `.github/actions/ci-checks`, sharing its
+existing package/lockfile rather than adding another dependency manifest.
+The trusted publisher installs only production dependencies with
+`npm ci --omit=dev --ignore-scripts`, before the token-bearing publish step:
+`yauzl` (3.4.0) provides maintained ZIP metadata/stream parsing and size checks;
+`buffer-crc32` (1.0.0) preserves checksum verification; Microsoft's `jsonc-parser`
+(3.3.1) detects duplicate decoded JSON property names before `JSON.parse`.
+Single-member/local-header checks, actual decompressed byte bounds, strict UTF-8,
+and CRC checks apply without extracting files. Native Node fetch manually strips
+authorization on cross-origin artifact redirects and bounds streamed downloads.
+Submit and govulncheck translation use only Node built-ins, with no npm install
+needed in producers. The composite action sets up Node 24; the govulncheck
+translator job also sets up Node 24 before aggregation. `markdown-it`, `yaml`,
+and `yazl` (test ZIP generation only) remain dev dependencies and are excluded
+from privileged runtime installation. Static equivalence fixtures record exact
+rendered output from the approved pre-migration head; tests need no other runtime.
 Live Actions integration and maintainer review are separate rollout gates.

@@ -19,6 +19,10 @@ inputs:
 runs:
   using: composite
   steps:
+    - uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
+      with:
+        node-version: '24'
+        package-manager-cache: false
     - name: Serialize section
       shell: bash
       env:
@@ -28,7 +32,7 @@ runs:
         REPORT_SUMMARY: ${{ inputs.summary-file }}
         REPORT_DETAILS: ${{ inputs.details-file }}
         REPORT_DIR: ${{ runner.temp }}/pr-report-${{ inputs.section-id }}
-      run: python3 "$GITHUB_ACTION_PATH/report.py" submit
+      run: node "$GITHUB_ACTION_PATH/../ci-checks/pr-report.cjs" submit
     - uses: actions/upload-artifact@0b2256b8c012f0828dc542b3febcab082c67f72b # v4.3.4
       with:
         name: pr-report-${{ inputs.section-id }}-${{ github.run_id }}-${{ github.run_attempt }}

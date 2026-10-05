@@ -1,29 +1,16 @@
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
-const path = require('node:path');
-const { spawnSync } = require('node:child_process');
 const MarkdownIt = require('markdown-it');
-const root = path.resolve(__dirname, '../../..');
+const report = require('./pr-report.cjs');
 const renderer = new MarkdownIt('commonmark', { html: true });
-const render = String.raw`
-import importlib.util, json, sys
-spec = importlib.util.spec_from_file_location('report', '.github/actions/pr-report/report.py')
-report = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(report)
-value = json.load(sys.stdin)
-sections = {id: dict(title=title, status='passed', summary='**Passed**', details='[Results](https://github.com/opentdf/platform)') for id, (title, _) in report.PRODUCERS.items()}
-sections['benchmarks'].update(value)
-print(report.render(list(report.PRODUCERS), sections, 'a' * 40, None))
-`;
 
 function actualComment(value) {
-  const result = spawnSync('python3', ['-c', render], {
-    cwd: root, input: JSON.stringify(value), encoding: 'utf8',
-    env: { ...process.env, PYTHONDONTWRITEBYTECODE: '1' }
-  });
-  assert.equal(result.status, 0, result.stderr);
-  const tokens = renderer.parse(result.stdout, {});
-  const html = renderer.render(result.stdout);
+  const sections = Object.fromEntries(Object.entries(report.PRODUCERS).map(([id, [title]]) => [id,
+    { title, status: 'passed', summary: '**Passed**', details: '[Results](https://github.com/opentdf/platform)' }]));
+  Object.assign(sections.benchmarks, value);
+  const source = report.render(Object.keys(report.PRODUCERS), sections, 'a'.repeat(40), null);
+  const tokens = renderer.parse(source, {});
+  const html = renderer.render(source);
   const headings = tokens.flatMap((token, index) => token.type === 'heading_open' && token.tag === 'h2' ? [tokens[index + 1].children.map(child => child.content).join('')] : []);
   assert.deepEqual(headings, ['Benchmarks — passed', 'Govulncheck — passed', 'X-Test — passed']);
   // Inspect rendered HTML, not just Markdown delimiters. A closing wrapper
@@ -32,8 +19,8 @@ function actualComment(value) {
   assert.equal((html.match(/<\/details>/g) || []).length, 3);
   assert.match(html, /<strong>Passed<\/strong>/);
   assert.match(html, /<a href="https:\/\/github.com\/opentdf\/platform">Results<\/a>/);
-  assert.ok(result.stdout.length < 60000);
-  return { source: result.stdout, html, tokens };
+  assert.ok(source.length < 60000);
+  return { source, html, tokens };
 }
 
 for (const fence of ['```', '~~~']) {
@@ -70,6 +57,8 @@ test('repair rechecks fence-like tail lines and respects invalid backtick info/i
   actualComment({ details: '\t~~~\n\tindented code\n\t~~~' });
   actualComment({ details: '- item\n  ```text\n  code\n```' });
   actualComment({ details: '> ```text\n> quoted code\n```' });
+  actualComment({ details: '```text\u2028info\nbody' });
+  actualComment({ summary: '~~~text\u2029info\nbody' });
 });
 
 test('very long delimiters stay bounded without appended delimiter-sized repairs', () => {

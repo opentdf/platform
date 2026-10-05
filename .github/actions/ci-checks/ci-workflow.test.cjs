@@ -95,8 +95,26 @@ test('report writer is trusted, serialized and separate from read-only artifact 
   const action = YAML.parse(fs.readFileSync(path.join(root, '.github/actions/pr-report/action.yml'), 'utf8'));
   assert.equal(action.runs.using, 'composite');
   assert.ok(!JSON.stringify(action).includes('createComment'));
-  assert.equal(action.runs.steps[1].with.overwrite, true);
-  assert.match(action.runs.steps[1].with.name, /github.run_attempt/);
+  const upload = action.runs.steps.find(step => step.uses?.startsWith('actions/upload-artifact@'));
+  assert.equal(upload.with.overwrite, true);
+  assert.match(upload.with.name, /github.run_attempt/);
+  const nodeSteps = [...action.runs.steps, ...publisher.jobs.publish.steps].filter(step => step.uses?.startsWith('actions/setup-node@'));
+  assert.equal(nodeSteps.length, 2);
+  for (const step of nodeSteps) {
+    assert.equal(step.with['node-version'], '24');
+    assert.equal(step.with['package-manager-cache'], false);
+  }
+  const govNode = workflow.jobs['report-govulncheck'].steps.find(step => step.uses?.startsWith('actions/setup-node@'));
+  assert.equal(govNode.with['node-version'], '24');
+  assert.equal(govNode.with['package-manager-cache'], false);
+  assert.equal(action.runs.steps.find(step => step.name === 'Serialize section').run, 'node "$GITHUB_ACTION_PATH/../ci-checks/pr-report.cjs" submit');
+  const install = publisher.jobs.publish.steps.find(step => step.run?.startsWith('npm ci'));
+  assert.equal(install.run, 'npm ci --omit=dev --ignore-scripts');
+  assert.equal(install['working-directory'], '.github/actions/ci-checks');
+  assert.equal(install.env, undefined);
+  assert.equal(publisher.jobs.publish.steps.at(-1).run, 'node .github/actions/ci-checks/pr-report.cjs publish');
+  assert.ok(!JSON.stringify([action, publisher, readWorkflow('ci-unit-tests.yaml')]).match(/python|ruff/i));
+  assert.equal(workflow.jobs['report-govulncheck'].steps.find(s => s.id === 'aggregate').run, 'node .github/actions/ci-checks/pr-report-govulncheck.cjs');
   assert.equal(workflow.jobs['platform-xtest'].with['consolidated-pr-report'], "${{ github.event_name == 'pull_request' && !github.event.pull_request.head.repo.fork && github.event.pull_request.user.login != 'dependabot[bot]' }}");
   assert.equal(workflow.jobs['platform-xtest'].permissions.actions, 'read');
 });

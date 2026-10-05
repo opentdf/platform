@@ -1,0 +1,27 @@
+name: PR report
+on:
+  workflow_run: # zizmor: ignore[dangerous-triggers] default-branch code only; bounded artifacts are parsed as data, never extracted/executed
+    workflows: [Checks]
+    types: [requested, in_progress, completed]
+  workflow_dispatch:
+permissions: {}
+# Not a queue: superseded pending runs are recovered by scanning every open PR.
+concurrency:
+  group: pr-report-writer
+  cancel-in-progress: false
+jobs:
+  publish:
+    runs-on: ubuntu-22.04
+    permissions:
+      actions: read
+      contents: read
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          persist-credentials: false
+      - name: Reconcile all open PR reports from structured artifacts
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 .github/actions/pr-report/report.py publish

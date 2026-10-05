@@ -126,6 +126,45 @@ restore_platform_config() {
   wait_for_platform_reload
 }
 
+# Produce the legacy KAO shape without exposing legacy-writing behavior through
+# the CLI. KID is not covered by the payload root signature or policy binding;
+# omitting it makes KAS select from keys marked legacy during rewrap.
+make_kid_free_tdf() {
+  local source=$1
+  local target=$2
+  local workdir
+  local manifest
+
+  workdir=$(mktemp -d) || return 1
+  manifest="$workdir/0.manifest.json"
+
+  if ! unzip -p "$source" 0.manifest.json > "$manifest"; then
+    rm -r "$workdir"
+    return 1
+  fi
+  if ! jq -e '.encryptionInformation.keyAccess | length > 0 and all(.[]; has("kid"))' "$manifest" >/dev/null; then
+    echo "source TDF does not contain KIDs to remove" >&2
+    rm -r "$workdir"
+    return 1
+  fi
+  if ! jq 'del(.encryptionInformation.keyAccess[].kid)' "$manifest" > "$manifest.tmp"; then
+    rm -r "$workdir"
+    return 1
+  fi
+  mv "$manifest.tmp" "$manifest"
+  cp "$source" "$target"
+  if ! zip -q -d "$target" 0.manifest.json || ! zip -q -j "$target" "$manifest"; then
+    rm -r "$workdir"
+    return 1
+  fi
+  if ! unzip -tq "$target" >/dev/null; then
+    rm -r "$workdir"
+    return 1
+  fi
+
+  rm -r "$workdir"
+}
+
 assert_algorithm_roundtrip() {
   local algorithm=$1
   local kao_type=$2
@@ -433,7 +472,8 @@ assert_algorithm_roundtrip() {
   printf '%s' "Hello Legacy" > legacy-no-kid.txt
   printf '%s' "Hello with Key Identifier" > legacy-with-kid.txt
 
-  ./otdfctl encrypt --host "$HOST" --tls-no-verify $DEBUG_LEVEL $WITH_CREDS --no-kid-in-kao --out legacy-no-kid.txt.tdf legacy-no-kid.txt
+  ./otdfctl encrypt --host "$HOST" --tls-no-verify $DEBUG_LEVEL $WITH_CREDS --out legacy-no-kid-source.txt.tdf legacy-no-kid.txt
+  make_kid_free_tdf legacy-no-kid-source.txt.tdf legacy-no-kid.txt.tdf
   ./otdfctl encrypt --host "$HOST" --tls-no-verify $DEBUG_LEVEL $WITH_CREDS --out legacy-with-kid.txt.tdf legacy-with-kid.txt
 
   no_kid=$(./otdfctl --host "$HOST" --tls-no-verify $WITH_CREDS inspect legacy-no-kid.txt.tdf | jq -r '.manifest.encryptionInformation.keyAccess[0].kid // ""')
@@ -456,7 +496,8 @@ assert_algorithm_roundtrip() {
   printf '%s' "Hello Legacy Config" > legacy-config-no-kid.txt
   printf '%s' "Hello Legacy Config with KID" > legacy-config-with-kid.txt
 
-  ./otdfctl encrypt --host "$HOST" --tls-no-verify $DEBUG_LEVEL $WITH_CREDS --no-kid-in-kao --out legacy-config-no-kid.txt.tdf legacy-config-no-kid.txt
+  ./otdfctl encrypt --host "$HOST" --tls-no-verify $DEBUG_LEVEL $WITH_CREDS --out legacy-config-no-kid-source.txt.tdf legacy-config-no-kid.txt
+  make_kid_free_tdf legacy-config-no-kid-source.txt.tdf legacy-config-no-kid.txt.tdf
   ./otdfctl encrypt --host "$HOST" --tls-no-verify $DEBUG_LEVEL $WITH_CREDS --out legacy-config-with-kid.txt.tdf legacy-config-with-kid.txt
 
   apply_kas_fixture "$LEGACY_KAS_FIXTURE"

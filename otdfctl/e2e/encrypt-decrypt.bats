@@ -132,6 +132,9 @@ apply_kas_fixture() {
 }
 
 restore_platform_config() {
+  if cmp -s "$PLATFORM_CONFIG_BACKUP" "$PLATFORM_CONFIG"; then
+    return 0
+  fi
   cp "$PLATFORM_CONFIG_BACKUP" "$PLATFORM_CONFIG"
   wait_for_platform_reload r1 ec1
 }

@@ -137,10 +137,15 @@ def template_order(template):
     return slots
 
 
-def safe_text(text, limit, markdown=False):
-    # Neutralize mentions, HTML, and Markdown formatting in producer-controlled text.
+def safe_text(text, limit, plain=False):
+    # Preserve producer Markdown, but never allow raw HTML, marker injection,
+    # or mentions. Section titles alone are rendered as plain text.
     text = html.escape(text, quote=False).replace("@", "@\u200b")
-    if markdown:
+    if not plain:
+        # '<' stays escaped, so raw tags/comments cannot open. Preserve '>'
+        # for Markdown blockquotes and comparisons in benchmark tables.
+        text = text.replace("&gt;", ">")
+    if plain:
         text = re.sub(r"([\\`*_{}\[\]()#+.!|>-])", r"\\\1", text)
     return text[:limit] + (
         "\n… (truncated; see workflow artifacts)" if len(text) > limit else ""
@@ -155,12 +160,12 @@ def render(order, sections, sha, run):
         data = sections[section]
         body.append(f"## {safe_text(data['title'], 160, True)} — {data['status']}")
         if data.get("summary"):
-            body.append(safe_text(data["summary"], 1500, True))
+            body.append(safe_text(data["summary"], 1500))
         if data.get("details"):
             body.append(
-                "<details><summary>Details</summary>\n\n<pre>"
+                "<details><summary>Details</summary>\n\n"
                 + safe_text(data["details"], 9000)
-                + "</pre>\n</details>"
+                + "\n\n</details>"
             )
     result = "\n\n".join(body)
     if len(result) > 60000:

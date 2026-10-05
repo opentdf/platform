@@ -19,10 +19,12 @@ scripts, arbitrary Markdown layout, duplicate IDs, or unknown IDs are accepted.
 The publisher reads this template from each PR's **trusted base SHA**, never the
 PR head. The marker, head SHA, run link, attempt, and artifact identity are
 publisher-owned. Producer titles and contents cannot control comment identity.
-Producer text is rendered literally (including benchmark Markdown) with HTML,
-mentions, and summary Markdown escaped; details are optional collapsed plain
-text. Long displayed fields are explicitly truncated, with a run/artifact
-reference retained. The final comment is bounded below GitHub's 65,536-character
+Producer summaries and optional collapsed details render Markdown (including
+bold, headings, benchmark tables, and links). Raw HTML, marker injection, and
+mentions are neutralized before rendering; section titles remain plain text.
+GitHub's Markdown renderer applies its own link/HTML sanitization as well.
+Long displayed fields are explicitly truncated, with a run/artifact reference
+retained. The final comment is bounded below GitHub's 65,536-character
 limit. The earliest bot-owned matching marker comment is reused; it is not
 literally pinned. Older independent comments are not deleted retroactively.
 
@@ -62,9 +64,13 @@ uses artifact overwrite at the same run/attempt/section name. Retries render the
 same body and avoid a redundant comment write. The publisher always recomputes
 complete state, so sequentialized concurrent section arrivals retain all
 available current-attempt sections. Partial reruns do not revive prior-attempt
-results; sections not regenerated are unavailable. X-Test exports the existing
-`xct` aggregate, not optional benchmark/ZIP64 results, and excludes earlier
-attempts' artifact links.
+results; sections not regenerated are unavailable. X-Test derives the complete
+expected `xct` Cartesian product from resolved platform tags and SDK versions,
+then requires exactly one completed current-attempt job per expected identity.
+Missing, duplicate, unexpected, or unfinished cells are unavailable even if
+`needs.xct.result` retained earlier successes. Only all-success current-attempt
+conclusions can report passed. Optional benchmark/ZIP64 jobs are not included,
+and earlier attempts' artifact links are excluded.
 
 Artifacts and their text remain **untrusted PR-produced assertions**, not
 cryptographic attestations or CI authorization. Job-name validation establishes

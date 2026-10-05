@@ -187,10 +187,54 @@ class ReportTests(unittest.TestCase):
         self.assertTrue(text.startswith(report.MARKER))
         self.assertNotIn("<script>", text)
         self.assertNotIn("@someone", text)
-        self.assertIn("&lt;/pre&gt;", text)
+        self.assertIn("&lt;/pre>", text)
         self.assertIn("truncated", text)
         self.assertLess(len(text), 60000)
-        self.assertIn("\\[click\\]", text)
+        self.assertIn("[click](https://evil)", text)
+        self.assertNotIn("<pre>", text)
+
+    def test_markdown_summary_only_details_only_and_both(self):
+        summary = (
+            "**Passed** — [run](https://github.com/opentdf/platform/actions/runs/7)"
+        )
+        details = "### Measurements\n\n> Current run\n\n| Case | Time |\n| --- | --- |\n| Bulk | **10 ms** |\n\n[artifact](https://github.com/opentdf/platform/actions/runs/7/artifacts/1)"
+        for has_summary, has_details in [(True, False), (False, True), (True, True)]:
+            sections = {
+                s: data(
+                    s,
+                    summary=summary if has_summary else "",
+                    details=details if has_details else "",
+                )
+                for s in report.PRODUCERS
+            }
+            text = report.render(list(report.PRODUCERS), sections, SHA, RUN)
+            self.assertEqual(summary in text, has_summary)
+            self.assertEqual(details in text, has_details)
+            self.assertEqual(
+                "<details><summary>Details</summary>\n\n" in text, has_details
+            )
+            self.assertNotIn("<pre>", text)
+            self.assertNotIn(r"\*", text)
+            self.assertNotIn(r"\|", text)
+
+    def test_markdown_does_not_allow_raw_html_marker_or_mentions(self):
+        unsafe = (
+            report.MARKER
+            + "\n</details><script>alert(1)</script>\n@someone @opentdf/maintainers\n**safe bold**"
+        )
+        sections = {
+            s: data(s, title="**plain title**", summary=unsafe, details=unsafe)
+            for s in report.PRODUCERS
+        }
+        text = report.render(list(report.PRODUCERS), sections, SHA, RUN)
+        self.assertEqual(text.count(report.MARKER), 1)
+        self.assertEqual(text.count("</details>"), len(report.PRODUCERS))
+        self.assertNotIn("<script>", text)
+        self.assertNotIn("@someone", text)
+        self.assertNotIn("@opentdf/maintainers", text)
+        self.assertIn("&lt;!-- opentdf-pr-report:v1 -->", text)
+        self.assertIn("**safe bold**", text)
+        self.assertIn(r"\*\*plain title\*\*", text)
 
     def test_archive_rejects_paths_extra_members_and_bombs(self):
         self.assertEqual(report.decode_archive(archive(data())), data())

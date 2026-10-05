@@ -442,7 +442,7 @@ jobs:
       packages: read
       pull-requests: write
       checks: write
-    uses: opentdf/tests/.github/workflows/xtest.yml@697093b07de20dd6d5f6b9a9d548875dbb2b7b37 # companion opt-in PR report exporter; merge tests first
+    uses: opentdf/tests/.github/workflows/xtest.yml@b1405a5ea1d9dcd0d7bfa4276117ba6247d45ed8 # companion opt-in PR report exporter; merge tests first
     with:
       consolidated-pr-report: ${{ github.event_name == 'pull_request' && !github.event.pull_request.head.repo.fork && github.event.pull_request.user.login != 'dependabot[bot]' }}
       focus-sdk: go

@@ -95,35 +95,45 @@ teardown() {
 
 teardown_file(){
     cp "$PLATFORM_CONFIG_BACKUP" "$PLATFORM_CONFIG"
-    wait_for_platform_reload
+    wait_for_platform_reload r1 ec1
     ./otdfctl --host "$HOST" $WITH_CREDS $DEBUG_LEVEL policy attributes namespaces unsafe delete --id "$NS_ID" --force
     rm -f $SIGNED_ASSERTIONS_HS256 $SIGNED_ASSERTION_VERIFICATON_HS256 $SIGNED_ASSERTIONS_RS256 $SIGNED_ASSERTION_VERIFICATON_RS256 $RS_PRIVATE_KEY $RS_PUBLIC_KEY "$PLATFORM_CONFIG_BACKUP" "$PLATFORM_DIR/kas-r2-private.pem" "$PLATFORM_DIR/kas-r2-cert.pem" "$PLATFORM_DIR/kas-e2-private.pem" "$PLATFORM_DIR/kas-e2-cert.pem"
 }
 
 wait_for_platform_reload() {
-  sleep 4
-  for _ in $(seq 1 15); do
-    if curl -fsS "$HOST/healthz" | jq -e '.status == "SERVING"' >/dev/null; then
+  local expected_rsa_kid=$1
+  local expected_ec_kid=$2
+  local rsa_kid=""
+  local ec_kid=""
+
+  for _ in $(seq 1 20); do
+    rsa_kid=$(curl -fsS -H 'Content-Type: application/json' -d '{"algorithm":"rsa:2048"}' \
+      "$HOST/kas.AccessService/PublicKey" | jq -r '.kid // empty') || rsa_kid=""
+    ec_kid=$(curl -fsS -H 'Content-Type: application/json' -d '{"algorithm":"ec:secp256r1"}' \
+      "$HOST/kas.AccessService/PublicKey" | jq -r '.kid // empty') || ec_kid=""
+    if [[ "$rsa_kid" == "$expected_rsa_kid" && "$ec_kid" == "$expected_ec_kid" ]]; then
       return 0
     fi
     sleep 2
   done
-  echo "platform did not become healthy after configuration reload" >&2
+  echo "KAS configuration did not reload: expected RSA/EC KIDs $expected_rsa_kid/$expected_ec_kid, got $rsa_kid/$ec_kid" >&2
   return 1
 }
 
 apply_kas_fixture() {
   local fixture=$1
+  local expected_rsa_kid=$2
+  local expected_ec_kid=$3
   FIXTURE="$fixture" yq eval '
     .services.kas = load(strenv(FIXTURE)).services.kas |
     .server.cryptoProvider = load(strenv(FIXTURE)).server.cryptoProvider
   ' -i "$PLATFORM_CONFIG"
-  wait_for_platform_reload
+  wait_for_platform_reload "$expected_rsa_kid" "$expected_ec_kid"
 }
 
 restore_platform_config() {
   cp "$PLATFORM_CONFIG_BACKUP" "$PLATFORM_CONFIG"
-  wait_for_platform_reload
+  wait_for_platform_reload r1 ec1
 }
 
 # Produce the legacy KAO shape without exposing legacy-writing behavior through
@@ -488,7 +498,7 @@ assert_algorithm_roundtrip() {
   assert_equal "$no_kid" ""
   assert_equal "$with_kid" "r1"
 
-  apply_kas_fixture "$MODERN_ROTATION_FIXTURE"
+  apply_kas_fixture "$MODERN_ROTATION_FIXTURE" r2 e2
 
   printf '%s' "rotated" > legacy-rotated.txt
   ./otdfctl encrypt --host "$HOST" --tls-no-verify $DEBUG_LEVEL $WITH_CREDS --out legacy-rotated.txt.tdf legacy-rotated.txt
@@ -507,7 +517,7 @@ assert_algorithm_roundtrip() {
   make_kid_free_tdf legacy-config-no-kid-source.txt.tdf legacy-config-no-kid.txt.tdf
   ./otdfctl encrypt --host "$HOST" --tls-no-verify $DEBUG_LEVEL $WITH_CREDS --out legacy-config-with-kid.txt.tdf legacy-config-with-kid.txt
 
-  apply_kas_fixture "$LEGACY_KAS_FIXTURE"
+  apply_kas_fixture "$LEGACY_KAS_FIXTURE" r1 e1
 
   assert_equal "$(./otdfctl decrypt --host "$HOST" --tls-no-verify $DEBUG_LEVEL $WITH_CREDS legacy-config-no-kid.txt.tdf)" "Hello Legacy Config"
   assert_equal "$(./otdfctl decrypt --host "$HOST" --tls-no-verify $DEBUG_LEVEL $WITH_CREDS legacy-config-with-kid.txt.tdf)" "Hello Legacy Config with KID"

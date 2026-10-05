@@ -24,7 +24,16 @@ bold, headings, benchmark tables, and links). Raw HTML, marker injection, and
 mentions are neutralized before rendering; section titles remain plain text.
 GitHub's Markdown renderer applies its own link/HTML sanitization as well.
 Long displayed fields are explicitly truncated, with a run/artifact reference
-retained. The final comment is bounded below GitHub's 65,536-character
+retained. After truncation, unmatched root backtick/tilde fences and fence-like
+lines in their tail are escaped so they cannot consume publisher-owned details
+wrappers or later sections. This also repairs already-unmatched input fences;
+ordinary matched fences still render as code. Fence-like lines indented by up
+to three spaces are aligned to the root before matching, avoiding list/quote
+container ambiguity at section boundaries (nested fence alignment may change).
+Closing-fence character, minimum length, and trailing whitespace follow
+CommonMark rules; four-space/tab-indented code is not treated as a root fence.
+No arbitrarily long closing delimiter is appended, and the final comment-size
+bound still applies. The final comment is bounded below GitHub's 65,536-character
 limit. The earliest bot-owned matching marker comment is reused; it is not
 literally pinned. Older independent comments are not deleted retroactively.
 
@@ -110,5 +119,10 @@ Tests cover schema/identity, archive bounds, stale runs/attempts, missing/duplic
 artifacts, escaping/length, whole-section replacement, idempotent stable comment
 reuse, serialized arrivals/creation, recovery after pending replacement,
 producer failure/cancellation, fork restrictions, and pagination. Workflow tests
-check the trusted checkout, permissions, and serialization group. Live Actions
-integration and maintainer review are separate rollout gates.
+check the trusted checkout, permissions, and serialization group. The existing
+Node CI suite also renders actual Python publisher output with the same
+`markdown-it` CommonMark tooling used in independent review. This pinned
+**test-only** dependency checks real subsequent headings/details boundaries for
+truncated/unmatched fences, mismatched closers, and ordinary code/Markdown;
+the publisher itself remains dependency-free Python standard library.
+Live Actions integration and maintainer review are separate rollout gates.

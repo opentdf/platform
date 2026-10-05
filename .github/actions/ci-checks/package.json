@@ -2,9 +2,10 @@
   "name": "platform-ci-tests",
   "private": true,
   "scripts": {
-    "test": "node --test ci-changes.test.cjs ci-results.test.cjs ci-workflow.test.cjs"
+    "test": "node --test ci-changes.test.cjs ci-results.test.cjs ci-workflow.test.cjs pr-report-boundaries.test.cjs"
   },
   "devDependencies": {
+    "markdown-it": "15.0.2",
     "yaml": "2.9.1"
   }
 }

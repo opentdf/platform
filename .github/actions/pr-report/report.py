@@ -137,6 +137,42 @@ def template_order(template):
     return slots
 
 
+def isolate_fences(text):
+    """Neutralize an unmatched root fence and fence-like lines in its tail.
+
+    Normalize fence-like lines with up to three spaces to the root so list or
+    quote containers cannot turn a presumed closer into a new root opener.
+    A closing fence must use the opener's character, be at least as long, and
+    have only spaces/tabs after it. Escaping the entire unmatched tail prevents a shorter
+    or different would-be closer from becoming a new opener after repair.
+    Matched fences are preserved; no unbounded closing delimiter is appended.
+    """
+    lines = text.replace("\r\n", "\n").replace("\r", "\n").split("\n")
+    pattern = re.compile(r"^( {0,3})(`{3,}|~{3,})(.*)$")
+    opener = None
+    for index, line in enumerate(lines):
+        match = pattern.match(line)
+        if not match:
+            continue
+        indent, fence, rest = match.groups()
+        lines[index] = line[len(indent) :]
+        if opener is None:
+            if fence[0] == "`" and "`" in rest:
+                continue  # Backtick fence info strings cannot contain backticks.
+            opener = (index, fence[0], len(fence))
+        elif (
+            fence[0] == opener[1] and len(fence) >= opener[2] and not rest.strip(" \t")
+        ):
+            opener = None
+    if opener is not None:
+        for index in range(opener[0], len(lines)):
+            match = pattern.match(lines[index])
+            if match:
+                indent = len(match[1])
+                lines[index] = lines[index][:indent] + "\\" + lines[index][indent:]
+    return "\n".join(lines)
+
+
 def safe_text(text, limit, plain=False):
     # Preserve producer Markdown, but never allow raw HTML, marker injection,
     # or mentions. Section titles alone are rendered as plain text.
@@ -147,7 +183,10 @@ def safe_text(text, limit, plain=False):
         text = text.replace("&gt;", ">")
     if plain:
         text = re.sub(r"([\\`*_{}\[\]()#+.!|>-])", r"\\\1", text)
-    return text[:limit] + (
+    displayed = text[:limit]
+    if not plain:
+        displayed = isolate_fences(displayed)
+    return displayed + (
         "\n… (truncated; see workflow artifacts)" if len(text) > limit else ""
     )
 

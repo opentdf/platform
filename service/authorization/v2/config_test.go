@@ -46,6 +46,7 @@ func Test_ValidateConfig_DefaultRequestLimits(t *testing.T) {
 	assert.Equal(t, 20, config.RequestLimits.ResourceAttributeValuesFqnsMax)
 	assert.Equal(t, 10, config.RequestLimits.EntityIdentifierEntityChainEntitiesMax)
 	assert.Equal(t, 50, config.RequestLimits.DecisionRequestFulfillableObligationFqnsMax)
+	assert.Equal(t, 1000, config.RequestLimits.GetEntitlementsResourcesMax)
 	assert.Equal(t, 1000, config.RequestLimits.GetDecisionMultiResourceResourcesMax)
 	assert.Equal(t, 200, config.RequestLimits.GetDecisionBulkDecisionRequestsMax)
 }
@@ -76,6 +77,13 @@ func Test_ValidateConfig_InvalidRequestLimits(t *testing.T) {
 				config.RequestLimits.DecisionRequestFulfillableObligationFqnsMax = 0
 			},
 			expectedErr: "decision_request_fulfillable_obligation_fqns_max [0] must be greater than 0",
+		},
+		{
+			name: "entitlements resources max must be positive",
+			mutate: func(config *Config) {
+				config.RequestLimits.GetEntitlementsResourcesMax = 0
+			},
+			expectedErr: "get_entitlements_resources_max [0] must be greater than 0",
 		},
 		{
 			name: "multi resource request max must be positive",

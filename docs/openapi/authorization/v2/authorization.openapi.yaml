@@ -477,15 +477,17 @@ components:
             optional parameter to return all entitled values for attribute definitions with hierarchy rules, propagating
              down the hierarchical values instead of returning solely the value that is directly entitled
           nullable: true
+        resources:
+          type: array
+          items:
+            $ref: '#/components/schemas/authorization.v2.Resource'
+          title: resources
+          description: optional resources to scope returned entitlements and to resolve resource-dependent direct entitlements
       title: GetEntitlementsRequest
       required:
         - entityIdentifier
       additionalProperties: false
-      description: |-
-        What is permitted to the identified entity/entities (actor), broken down as permitted actions on attribute value FQNs?
-
-         Note: the v1 API parameter 'scope' has been dropped, and it is recommended to use
-         GetDecision if the resource is known
+      description: What is permitted to the identified entity/entities (actor), broken down as permitted actions on attribute value FQNs?
     authorization.v2.GetEntitlementsResponse:
       type: object
       properties:

@@ -338,48 +338,7 @@ func (p *PolicyDecisionPoint) GetDecision(
 	}
 	l.DebugContext(ctx, "evaluated subject mappings", slog.Any("entitled_value_fqns_to_actions", entitledFQNsToActions))
 
-	if p.allowDirectEntitlements {
-		p.logger.DebugContext(ctx, "setting direct entitlements on entity representation",
-			slog.Any("entity_id", entityRepresentation.GetOriginalId()),
-		)
-
-		for _, directEntitlement := range entityRepresentation.GetDirectEntitlements() {
-			fqn := directEntitlement.GetAttributeValueFqn()
-			if p.isDeactivatedValueFQN(ctx, fqn) {
-				l.DebugContext(ctx, "skipping direct entitlement of deactivated attribute value",
-					slog.String("attribute_value_fqn", fqn),
-				)
-				continue
-			}
-			actionNames := directEntitlement.GetActions()
-			// In strict namespaced-policy mode, direct-entitlement actions must carry
-			// the same namespace context as the entitled attribute value so they can
-			// satisfy namespace-aware action matching during rule evaluation.
-			var actionNamespace *policy.Namespace
-			if attrAndValue, ok := decisionableAttributes[fqn]; ok {
-				actionNamespace = attrAndValue.GetAttribute().GetNamespace()
-			} else if fallbackAttrAndValue, ok2 := p.allEntitleableAttributesByValueFQN[fqn]; ok2 {
-				// Fallback for direct entitlements that may not be present in the
-				// narrowed decisionable set for this specific request.
-				actionNamespace = fallbackAttrAndValue.GetAttribute().GetNamespace()
-			}
-
-			// Merge direct-entitlement actions with subject-mapping actions for the
-			// same value FQN instead of replacing them.
-			actions, ok := entitledFQNsToActions[fqn]
-			if !ok {
-				actions = make([]*policy.Action, 0, len(actionNames))
-			}
-			for _, name := range actionNames {
-				actions = append(actions, &policy.Action{
-					Name:      name,
-					Namespace: actionNamespace,
-				})
-			}
-
-			entitledFQNsToActions[fqn] = actions
-		}
-	}
+	p.mergeDirectEntitlements(ctx, l, entityRepresentation, decisionableAttributes, entitledFQNsToActions)
 
 	// Evaluate dynamic, definition-level value entitlement mappings and merge
 	// their results into the entitled FQNs before rule evaluation.
@@ -577,6 +536,15 @@ func (p *PolicyDecisionPoint) GetEntitlements(
 		return nil, fmt.Errorf("error evaluating subject mappings for entitlement: %w", err)
 	}
 	l.DebugContext(ctx, "evaluated subject mappings", slog.Any("entitlements_by_entity_id", entityIDsToFQNsToActions))
+	for _, entityRepresentation := range entityRepresentations {
+		entityID := entityRepresentation.GetOriginalId()
+		fqnsToActions := entityIDsToFQNsToActions[entityID]
+		if fqnsToActions == nil {
+			fqnsToActions = make(subjectmappingbuiltin.AttributeValueFQNsToActions)
+		}
+		p.mergeDirectEntitlements(ctx, l, entityRepresentation, entitleableAttributes, fqnsToActions)
+		entityIDsToFQNsToActions[entityID] = fqnsToActions
+	}
 
 	var result []*authz.EntityEntitlements
 	for entityID, fqnsToActions := range entityIDsToFQNsToActions {
@@ -688,6 +656,77 @@ func (p *PolicyDecisionPoint) GetEntitlementsRegisteredResource(
 	)
 
 	return result, nil
+}
+
+// mergeDirectEntitlements adds direct grants to evaluated subject-mapping entitlements. Both
+// GetDecision and GetEntitlements use this path so action normalization and active-state checks agree.
+func (p *PolicyDecisionPoint) mergeDirectEntitlements(
+	ctx context.Context,
+	l *logger.Logger,
+	entityRepresentation *entityresolutionV2.EntityRepresentation,
+	entitleableAttributes map[string]*attrs.GetAttributeValuesByFqnsResponse_AttributeAndValue,
+	entitledFQNsToActions subjectmappingbuiltin.AttributeValueFQNsToActions,
+) {
+	if !p.allowDirectEntitlements {
+		return
+	}
+
+	p.logger.DebugContext(ctx, "setting direct entitlements on entity representation",
+		slog.Any("entity_id", entityRepresentation.GetOriginalId()),
+	)
+	for _, directEntitlement := range entityRepresentation.GetDirectEntitlements() {
+		fqn := strings.ToLower(directEntitlement.GetAttributeValueFqn())
+		if fqn == "" || p.isDeactivatedValueFQN(ctx, fqn) {
+			l.DebugContext(ctx, "skipping invalid or deactivated direct entitlement",
+				slog.String("attribute_value_fqn", fqn),
+			)
+			continue
+		}
+
+		attributeAndValue, found := entitleableAttributes[fqn]
+		if !found {
+			attributeAndValue, found = p.allEntitleableAttributesByValueFQN[fqn]
+		}
+		if !found {
+			definition, err := getDefinition(fqn, p.allAttributesByDefinitionFQN)
+			if err != nil {
+				l.DebugContext(ctx, "skipping direct entitlement outside known policy",
+					slog.String("attribute_value_fqn", fqn),
+				)
+				continue
+			}
+			parsed, err := identifier.Parse[*identifier.FullyQualifiedAttribute](fqn)
+			if err != nil {
+				l.DebugContext(ctx, "skipping malformed direct entitlement",
+					slog.String("attribute_value_fqn", fqn),
+				)
+				continue
+			}
+			attributeAndValue = &attrs.GetAttributeValuesByFqnsResponse_AttributeAndValue{
+				Attribute: definition,
+				Value:     &policy.Value{Fqn: fqn, Value: parsed.Value},
+			}
+		}
+		// Direct values must participate in comprehensive hierarchy expansion even when the
+		// filtered subject-mapping view did not contain the value.
+		entitleableAttributes[fqn] = attributeAndValue
+		actionNamespace := attributeAndValue.GetAttribute().GetNamespace()
+
+		directActions := make([]*policy.Action, 0, len(directEntitlement.GetActions()))
+		for _, name := range directEntitlement.GetActions() {
+			if name != "" {
+				directActions = append(directActions, &policy.Action{Name: name, Namespace: actionNamespace})
+			}
+		}
+		if len(directActions) == 0 {
+			continue
+		}
+		entitledFQNsToActions[fqn] = mergeDeduplicatedActions(
+			make(map[string]*policy.Action),
+			entitledFQNsToActions[fqn],
+			directActions,
+		)
+	}
 }
 
 // isDeactivatedValueFQN reports whether the value FQN, or the definition owning it, is deactivated.

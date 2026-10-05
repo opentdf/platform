@@ -145,6 +145,7 @@ func (as *Service) GetEntitlements(ctx context.Context, req *connect.Request[aut
 
 	entityIdentifier := req.Msg.GetEntityIdentifier()
 	withComprehensiveHierarchy := req.Msg.GetWithComprehensiveHierarchy()
+	resources := req.Msg.GetResources()
 
 	// When authorization service can consume cached policy, switch to the other PDP (process based on policy passed in)
 	pdp, err := access.NewJustInTimePDP(ctx, as.logger, as.sdk, as.cache, as.config.AllowDirectEntitlements, as.config.AllowDynamicValueMappings, as.config.EnforceNamespacedEntitlements)
@@ -152,7 +153,7 @@ func (as *Service) GetEntitlements(ctx context.Context, req *connect.Request[aut
 		return nil, statusifyError(ctx, as.logger, errors.Join(ErrFailedToGetEntitlements, ErrFailedToInitPDP, err))
 	}
 
-	entitlements, err := pdp.GetEntitlements(ctx, entityIdentifier, withComprehensiveHierarchy)
+	entitlements, err := pdp.GetEntitlements(ctx, entityIdentifier, resources, withComprehensiveHierarchy)
 	if err != nil {
 		return nil, statusifyError(ctx, as.logger, errors.Join(ErrFailedToGetEntitlements, err))
 	}

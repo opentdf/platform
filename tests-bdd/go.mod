@@ -9,7 +9,7 @@ require (
 	github.com/jackc/pgx/v5 v5.9.2
 	github.com/lestrrat-go/jwx/v2 v2.1.6
 	github.com/opentdf/platform/lib/fixtures v0.3.0
-	github.com/opentdf/platform/lib/identifier v0.0.2
+	github.com/opentdf/platform/lib/identifier v0.4.0
 	github.com/opentdf/platform/lib/ocrypto v0.14.0
 	github.com/opentdf/platform/protocol/go v0.37.0
 	github.com/opentdf/platform/sdk v0.25.0

@@ -943,7 +943,7 @@ func TestChunkedOptionsRejectNil(t *testing.T) {
 		opt  ChunkedWriterOption
 	}{
 		{"archive writer factory", withChunkedArchiveWriterFactory(nil)},
-		{"cipher factory", withChunkedCipherFactory(nil)},
+		{"sealer factory", withChunkedSealerFactory(nil)},
 		{"clock", withChunkedClock(nil)},
 		{"key splitter", WithChunkedKeySplitter(nil)},
 		{"rand", withChunkedRand(nil)},
@@ -1594,15 +1594,15 @@ func TestChunkedWriteSegmentContextCancellationFreesIndex(t *testing.T) {
 // errCipherFailed is the injected cipher failure.
 var errCipherFailed = errors.New("cipher failed")
 
-// failingCipher fails or panics on every call, depending on how it is
+// failingSealer fails or panics on every call, depending on how it is
 // built. Segment encryption is the one step before the archive is
 // touched, so it exercises the reservation-rollback path with
 // archiveWriteAttempted still false.
-type failingCipher struct {
+type failingSealer struct {
 	panics bool
 }
 
-func (c failingCipher) EncryptInPlace(_ []byte) ([]byte, []byte, error) {
+func (c failingSealer) Seal(_ []byte) ([]byte, []byte, error) {
 	if c.panics {
 		panic("cipher exploded")
 	}
@@ -1616,8 +1616,8 @@ func (c failingCipher) EncryptInPlace(_ []byte) ([]byte, []byte, error) {
 // that was never written.
 func TestChunkedCipherFailureReleasesIndex(t *testing.T) {
 	ctx := context.Background()
-	writer, _ := newChunkedWriterForTest(ctx, t, withChunkedCipherFactory(func([]byte) (segmentCipher, error) {
-		return failingCipher{}, nil
+	writer, _ := newChunkedWriterForTest(ctx, t, withChunkedSealerFactory(func([]byte) (segmentSealer, error) {
+		return failingSealer{}, nil
 	}))
 
 	_, err := writer.WriteSegment(ctx, 0, []byte("doomed"))
@@ -1638,8 +1638,8 @@ func TestChunkedCipherFailureReleasesIndex(t *testing.T) {
 // recovers and retries has to find it free.
 func TestChunkedCipherPanicReleasesIndex(t *testing.T) {
 	ctx := context.Background()
-	writer, _ := newChunkedWriterForTest(ctx, t, withChunkedCipherFactory(func([]byte) (segmentCipher, error) {
-		return failingCipher{panics: true}, nil
+	writer, _ := newChunkedWriterForTest(ctx, t, withChunkedSealerFactory(func([]byte) (segmentSealer, error) {
+		return failingSealer{panics: true}, nil
 	}))
 
 	func() {
@@ -1833,11 +1833,11 @@ func TestChunkedAttributes(t *testing.T) {
 	})
 }
 
-// blockingCipher lets a test hold one WriteSegment inside encryption
+// blockingSealer lets a test hold one WriteSegment inside encryption
 // while it inspects writer state from another goroutine. started fires
 // once the call is inside; release unblocks it.
-type blockingCipher struct {
-	inner   segmentCipher
+type blockingSealer struct {
+	inner   segmentSealer
 	target  int
 	calls   int
 	mu      sync.Mutex
@@ -1845,7 +1845,7 @@ type blockingCipher struct {
 	release chan struct{}
 }
 
-func (c *blockingCipher) EncryptInPlace(data []byte) ([]byte, []byte, error) {
+func (c *blockingSealer) Seal(data []byte) ([]byte, []byte, error) {
 	c.mu.Lock()
 	n := c.calls
 	c.calls++
@@ -1854,7 +1854,7 @@ func (c *blockingCipher) EncryptInPlace(data []byte) ([]byte, []byte, error) {
 		close(c.started)
 		<-c.release
 	}
-	return c.inner.EncryptInPlace(data)
+	return c.inner.Seal(data)
 }
 
 // TestChunkedGetManifestDuringInFlightWrite pins that a reserved but
@@ -1866,7 +1866,7 @@ func (c *blockingCipher) EncryptInPlace(data []byte) ([]byte, []byte, error) {
 // the whole point of the snapshot.
 func TestChunkedGetManifestDuringInFlightWrite(t *testing.T) {
 	ctx := context.Background()
-	cipher := &blockingCipher{
+	cipher := &blockingSealer{
 		// Segments 0 and 2 go through; the third call -- index 1 -- is
 		// held. Leaving a written index above the blocked one is what
 		// lets the keepSegments check below reach its per-index branch
@@ -1875,8 +1875,8 @@ func TestChunkedGetManifestDuringInFlightWrite(t *testing.T) {
 		started: make(chan struct{}),
 		release: make(chan struct{}),
 	}
-	writer, _ := newChunkedWriterForTest(ctx, t, withChunkedCipherFactory(func(dek []byte) (segmentCipher, error) {
-		inner, err := defaultSegmentCipherFactory(dek)
+	writer, _ := newChunkedWriterForTest(ctx, t, withChunkedSealerFactory(func(dek []byte) (segmentSealer, error) {
+		inner, err := defaultSegmentSealerFactory(dek)
 		if err != nil {
 			return nil, err
 		}
@@ -1926,14 +1926,14 @@ func TestChunkedGetManifestDuringInFlightWrite(t *testing.T) {
 func TestChunkedFinalizeRejectsInFlightWrite(t *testing.T) {
 	ctx := context.Background()
 	s := newChunkedTestSDK(t)
-	cipher := &blockingCipher{
+	cipher := &blockingSealer{
 		// Call 0 is segment 0; call 1 -- segment 1 -- is held open.
 		target:  1,
 		started: make(chan struct{}),
 		release: make(chan struct{}),
 	}
-	writer, kasBundle := newChunkedWriterForTest(ctx, t, withChunkedCipherFactory(func(dek []byte) (segmentCipher, error) {
-		inner, err := defaultSegmentCipherFactory(dek)
+	writer, kasBundle := newChunkedWriterForTest(ctx, t, withChunkedSealerFactory(func(dek []byte) (segmentSealer, error) {
+		inner, err := defaultSegmentSealerFactory(dek)
 		if err != nil {
 			return nil, err
 		}

@@ -14,8 +14,8 @@ import (
 const (
 	tdf3KeySize            = 2048
 	defaultMaxManifestSize = 10 * 1024 * 1024 // 10 MB
-	defaultSegmentSize     = 2 * 1024 * 1024  // 2mb
-	maxSegmentSize         = defaultSegmentSize * 2
+	preferredSegmentSize   = 2 * 1024 * 1024  // 2mb
+	maxSegmentSize         = 4 * 1024 * 1024  // 4mb
 	minSegmentSize         = 16 * 1024
 	DefaultRSAKeySize      = 2048
 	ECKeySize256           = 256
@@ -25,7 +25,41 @@ const (
 	// inputSizeUnknown marks a payload whose length cannot be established
 	// before it is read.
 	inputSizeUnknown = -1
+
+	// targetPayloadCapacity is the payload size the default segment size is
+	// sized to reach: 256 TiB, less one segment for the rounding in
+	// [segmentCount]. It is the parent epic's 50 TiB target with room to
+	// spare, and it is what makes the segment size grow rather than the
+	// reachable payload shrink when [ocrypto.MaxSeals] drops.
+	targetPayloadCapacity = 256*1024*1024*1024*1024 - maxSegmentSize
 )
+
+// defaultSegmentSize is the plaintext segment size used when a caller does not
+// set one with [WithSegmentSize].
+//
+// It is derived, not fixed, because the number of segments one key may encrypt
+// is not fixed: see [ocrypto.MaxSeals] and [maxPayloadSegments]. Where
+// that ceiling drops -- under FIPS 140-3, where the IV must come from an RBG
+// and so is only probabilistically unique -- this grows to keep the reachable
+// payload at targetPayloadCapacity instead. Together with maxPayloadSegments
+// it is the entire application-visible surface of that mode.
+var defaultSegmentSize = deriveDefaultSegmentSize()
+
+// deriveDefaultSegmentSize picks the smallest segment size at or above
+// preferredSegmentSize, capped at maxSegmentSize, that lets maxPayloadSegments
+// segments cover targetPayloadCapacity.
+//
+// Capping wins over the capacity goal: a segment size beyond maxSegmentSize
+// would be rejected by [WithSegmentSize] and inflate the per-segment buffer
+// every writer allocates. If the cap is reached before the target, the
+// reachable payload is simply smaller, and [segmentCount] says so.
+func deriveDefaultSegmentSize() int64 {
+	size := int64(preferredSegmentSize)
+	for size < maxSegmentSize && maxPayloadSegments*size < targetPayloadCapacity {
+		size *= 2
+	}
+	return size
+}
 
 // TDFFormat once selected a manifest serialization. Only JSON was ever
 // implemented, and nothing reads this.

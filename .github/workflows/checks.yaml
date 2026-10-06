@@ -655,21 +655,26 @@ jobs:
         run: |
           sudo apt update
           sudo apt install -y parallel
+      - name: Generate a key with a 128-byte KID for the existing KAS
+        id: long-kid-key
+        run: |
+          kid=$(openssl rand -hex 64)
+          openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 -out otdfctl/kas-long-kid-private.pem
+          openssl pkey -in otdfctl/kas-long-kid-private.pem -pubout -out otdfctl/kas-long-kid-public.pem
+          echo "kid=$kid" >> "$GITHUB_OUTPUT"
+          extra_keys=$(jq -cn --arg kid "$kid" --rawfile private otdfctl/kas-long-kid-private.pem --rawfile cert otdfctl/kas-long-kid-public.pem '[{kid: $kid, alg: "rsa:2048", privateKey: $private, cert: $cert}]')
+          echo "extra-keys=$extra_keys" >> "$GITHUB_OUTPUT"
       - uses: ./test/start-up-with-containers
         with:
           platform-ref: ${{ github.event.pull_request.head.sha || github.sha }}
           ec-tdf-enabled: "true"
           provision-policy-fixtures: "false"
-      - uses: ./test/start-additional-kas
-        with:
-          kas-port: "8181"
-          kas-name: long-kid
-          key-management: "true"
-          root-key: a8c4824daafcfa38ed0d13002e92b08720e6c4fcee67d52e954c1a6e045907d1
+          extra-keys: ${{ steps.long-kid-key.outputs.extra-keys }}
       - uses: ./otdfctl/e2e
         with:
           testrail-run-name-for-cli-test: ${{ inputs.testrail-run-name-for-cli-test }}
         env:
+          OTDFCTL_TEST_LONG_KID: ${{ steps.long-kid-key.outputs.kid }}
           TESTRAIL_USER: ${{ secrets.TESTRAIL_USER }}
           TESTRAIL_PASS: ${{ secrets.TESTRAIL_PASS }}
 

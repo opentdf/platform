@@ -29,8 +29,8 @@ setup_file() {
   export OUTFILE_TXT=secret.txt.tdf
 
   NS_ID=$(./otdfctl --host $HOST $WITH_CREDS $DEBUG_LEVEL policy attributes namespaces create -n "testing-enc-dec.io" --json | jq -r '.id')
-  ATTR_ID=$(./otdfctl --host $HOST $WITH_CREDS $DEBUG_LEVEL policy attributes create --namespace "$NS_ID" -n attr1 -r ALL_OF --json | jq -r '.id')
-  export VAL_ID=$(./otdfctl --host $HOST $WITH_CREDS $DEBUG_LEVEL policy attributes values create --attribute-id "$ATTR_ID" -v value1 --json | jq -r '.id')
+  export ATTR_ID=$(./otdfctl --host $HOST $WITH_CREDS $DEBUG_LEVEL policy attributes create --namespace "$NS_ID" -n attr1 -r ALL_OF --json | jq -r '.id')
+  VAL_ID=$(./otdfctl --host $HOST $WITH_CREDS $DEBUG_LEVEL policy attributes values create --attribute-id "$ATTR_ID" -v value1 --json | jq -r '.id')
   ATTR_OBL_VAL_OUTPUT=$(./otdfctl --host $HOST $WITH_CREDS $DEBUG_LEVEL policy attributes values create --attribute-id "$ATTR_ID" -v test_attr_obligation_value --json)
   export ATTR_OBL_VAL_ID=$(echo $ATTR_OBL_VAL_OUTPUT | jq -r '.id')
   export ATTR_OBL_VAL_FQN=$(echo $ATTR_OBL_VAL_OUTPUT | jq -r '.fqn')
@@ -68,7 +68,8 @@ setup_file() {
   jq --arg pem "$(<$RS_PUBLIC_KEY)" '.keys.assertion1.key = $pem' $SIGNED_ASSERTION_VERIFICATON_RS256 > tmp.json && mv tmp.json $SIGNED_ASSERTION_VERIFICATON_RS256
 
   
-  SM=$(./otdfctl --host $HOST $WITH_CREDS $DEBUG_LEVEL policy subject-mappings create --action 'read' -a "$VAL_ID" --subject-condition-set-new "$SCS")
+  SM=$(./otdfctl --host $HOST $WITH_CREDS $DEBUG_LEVEL policy subject-mappings create --action 'read' -a "$VAL_ID" --subject-condition-set-new "$SCS" --json)
+  export SCS_ID=$(echo "$SM" | jq -r '.subject_condition_set.id')
   export FQN="https://testing-enc-dec.io/attr/attr1/value/value1"
   export MIXED_CASE_FQN="https://Testing-Enc-Dec.io/attr/Attr1/value/VALUE1"
 }
@@ -80,13 +81,17 @@ setup() {
 
 teardown() {
     if [[ -n "${LONG_KID_KEY_SYSTEM_ID:-}" ]]; then
-        run ./otdfctl --host "$HOST" $WITH_CREDS policy attributes values key remove --value "$VAL_ID" --key-id "$LONG_KID_KEY_SYSTEM_ID"
+        run ./otdfctl --host "$HOST" $WITH_CREDS policy attributes values key remove --value "$LONG_KID_VALUE_ID" --key-id "$LONG_KID_KEY_SYSTEM_ID"
         assert_success
         run ./otdfctl --host "$HOST" $WITH_CREDS policy kas-registry key unsafe delete --id "$LONG_KID_KEY_SYSTEM_ID" --key-id "$LONG_KID" --kas-uri "$LONG_KID_KAS_URI" --force
         assert_success
     fi
-    if [[ -n "${LONG_KID_KAS_ID:-}" ]]; then
-        run ./otdfctl --host "$HOST" $WITH_CREDS policy kas-registry delete --id "$LONG_KID_KAS_ID" --force
+    if [[ -n "${LONG_KID_VALUE_ID:-}" ]]; then
+        run ./otdfctl --host "$HOST" $WITH_CREDS policy attributes values unsafe delete --id "$LONG_KID_VALUE_ID" --force
+        assert_success
+    fi
+    if [[ -n "${LONG_KID_CREATED_KAS_ID:-}" ]]; then
+        run ./otdfctl --host "$HOST" $WITH_CREDS policy kas-registry delete --id "$LONG_KID_CREATED_KAS_ID" --force
         assert_success
     fi
     rm -f $OUTFILE_GO_MOD $RESULTFILE_GO_MOD $OUTFILE_TXT
@@ -105,25 +110,40 @@ teardown_file(){
 
 @test "roundtrip TDF3 with a generated key whose KID is 128 bytes" {
   # ASCII makes this KID exactly 128 bytes and 128 characters.
-  LONG_KID=$(openssl rand -hex 64)
-  LONG_KID_KAS_URI="${OTDFCTL_TEST_KEY_MANAGEMENT_KAS_URI:-http://localhost:8181}"
-  # Matches the root key of the key-managed KAS started by CI.
-  local wrapping_key="a8c4824daafcfa38ed0d13002e92b08720e6c4fcee67d52e954c1a6e045907d1"
+  # CI generates this key pair and loads it into the existing KAS via extra-keys.
+  LONG_KID="$OTDFCTL_TEST_LONG_KID"
+  LONG_KID_KAS_URI="$HOST/kas"
+  local public_key_pem
+  public_key_pem=$(base64 < "${OTDFCTL_TEST_LONG_KID_PUBLIC_KEY_FILE:-./kas-long-kid-public.pem}" | tr -d '\n')
   assert_equal "$(printf '%s' "$LONG_KID" | wc -c | tr -d ' ')" "128"
 
-  run ./otdfctl --host "$HOST" $WITH_CREDS policy kas-registry create --uri "$LONG_KID_KAS_URI" --name "long-kid-${RANDOM}" --json
+  run ./otdfctl --host "$HOST" $WITH_CREDS policy kas-registry list --search "$LONG_KID_KAS_URI" --json
   assert_success
-  LONG_KID_KAS_ID=$(echo "$output" | jq -r '.id')
+  LONG_KID_KAS_ID=$(echo "$output" | jq -r --arg uri "$LONG_KID_KAS_URI" '.key_access_servers[]? | select(.uri == $uri) | .id')
+  if [[ -z "$LONG_KID_KAS_ID" ]]; then
+    run ./otdfctl --host "$HOST" $WITH_CREDS policy kas-registry create --uri "$LONG_KID_KAS_URI" --name "long-kid-${RANDOM}" --json
+    assert_success
+    LONG_KID_KAS_ID=$(echo "$output" | jq -r '.id')
+    LONG_KID_CREATED_KAS_ID="$LONG_KID_KAS_ID"
+  fi
 
-  run ./otdfctl --host "$HOST" $WITH_CREDS policy kas-registry key create --kas "$LONG_KID_KAS_ID" --key-id "$LONG_KID" --algorithm rsa:2048 --mode local --wrapping-key-id test-root-key --wrapping-key "$wrapping_key" --json
+  run ./otdfctl --host "$HOST" $WITH_CREDS policy attributes values create --attribute-id "$ATTR_ID" --value "long-kid-${RANDOM}" --json
+  assert_success
+  LONG_KID_VALUE_ID=$(echo "$output" | jq -r '.id')
+  local value_fqn
+  value_fqn=$(echo "$output" | jq -r '.fqn')
+  run ./otdfctl --host "$HOST" $WITH_CREDS policy subject-mappings create --action read -a "$LONG_KID_VALUE_ID" --subject-condition-set-id "$SCS_ID"
+  assert_success
+
+  run ./otdfctl --host "$HOST" $WITH_CREDS policy kas-registry key create --kas "$LONG_KID_KAS_ID" --key-id "$LONG_KID" --algorithm rsa:2048 --mode public_key --public-key-pem "$public_key_pem" --json
   assert_success
   LONG_KID_KEY_SYSTEM_ID=$(echo "$output" | jq -r '.key.id')
   assert_equal "$(echo "$output" | jq -r '.key.key_id')" "$LONG_KID"
 
-  run ./otdfctl --host "$HOST" $WITH_CREDS policy attributes values key assign --value "$VAL_ID" --key-id "$LONG_KID_KEY_SYSTEM_ID"
+  run ./otdfctl --host "$HOST" $WITH_CREDS policy attributes values key assign --value "$LONG_KID_VALUE_ID" --key-id "$LONG_KID_KEY_SYSTEM_ID"
   assert_success
 
-  run ./otdfctl encrypt --host "$HOST" $WITH_CREDS --tdf-type tdf3 --wrapping-key-algorithm rsa:2048 -a "$FQN" -o "$OUTFILE_GO_MOD" "$INFILE_GO_MOD"
+  run ./otdfctl encrypt --host "$HOST" $WITH_CREDS --tdf-type tdf3 --wrapping-key-algorithm rsa:2048 -a "$value_fqn" -o "$OUTFILE_GO_MOD" "$INFILE_GO_MOD"
   assert_success
   run ./otdfctl --host "$HOST" $WITH_CREDS inspect "$OUTFILE_GO_MOD"
   assert_success

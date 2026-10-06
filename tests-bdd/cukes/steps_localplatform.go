@@ -300,12 +300,16 @@ func (s *LocalPlatformStepDefinitions) aEmptyLocalPlatform(ctx context.Context) 
 }
 
 func (s *LocalPlatformStepDefinitions) aEmptyLocalPlatformWithHTTPWriteTimeout(ctx context.Context, duration string) (context.Context, error) {
+	return s.aEmptyLocalPlatformWithTemplateAndHTTPWriteTimeout(ctx, "", duration)
+}
+
+func (s *LocalPlatformStepDefinitions) aEmptyLocalPlatformWithTemplateAndHTTPWriteTimeout(ctx context.Context, platformTemplate, duration string) (context.Context, error) {
 	timeout, err := time.ParseDuration(duration)
 	if err != nil || timeout <= 0 {
 		return ctx, fmt.Errorf("invalid HTTP write timeout %q", duration)
 	}
 	kt := template.Must(template.New("kc").Parse(keycloakBaseTemplate))
-	return s.commonLocalPlatform(ctx, &platformStartOptions{kcProvisionPath: kt, httpWriteTimeout: timeout})
+	return s.commonLocalPlatform(ctx, &platformStartOptions{platformProvisionPath: &platformTemplate, kcProvisionPath: kt, httpWriteTimeout: timeout})
 }
 
 func (s *LocalPlatformStepDefinitions) aDefaultLocalPlatform(ctx context.Context) (context.Context, error) {
@@ -631,6 +635,7 @@ func RegisterLocalPlatformStepDefinitions(ctx *godog.ScenarioContext, x *Platfor
 	}
 	ctx.Step(`^an empty local platform$`, platformStepDefinitions.aEmptyLocalPlatform)
 	ctx.Step(`^an empty local platform with HTTP write timeout "([^"]*)"$`, platformStepDefinitions.aEmptyLocalPlatformWithHTTPWriteTimeout)
+	ctx.Step(`^an empty local platform with platform template "([^"]*)" and HTTP write timeout "([^"]*)"$`, platformStepDefinitions.aEmptyLocalPlatformWithTemplateAndHTTPWriteTimeout)
 	ctx.Step(`^a default local platform$`, platformStepDefinitions.aDefaultLocalPlatform)
 	ctx.Step(`^a default local platform with platform template "([^"]*)"$`, platformStepDefinitions.aDefaultLocalPlatformWithTemplate)
 	ctx.Step(`^I use the platform as "([^"]*)"$`, platformStepDefinitions.iUseThePlatformAs)

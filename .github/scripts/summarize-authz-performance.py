@@ -21,6 +21,8 @@ def validate_result(result):
         raise ValueError("missing case results")
     if not isinstance(result.get("fixture", ""), str):
         raise ValueError("invalid fixture description")
+    if result.get("path", "subject-mapping") not in ("subject-mapping", "direct-entitlement"):
+        raise ValueError("invalid entitlement path")
     names = set()
     for case in cases:
         if any(not isinstance(case.get(key), str) or not case[key] for key in ("name", "user", "action")):
@@ -64,7 +66,7 @@ def read_results(text):
             results.append(result)
         except (ValueError, TypeError, AttributeError, KeyError):
             malformed += 1
-    return sorted(results, key=lambda row: (row["concurrency"], row["seed"])), malformed
+    return sorted(results, key=lambda row: (row["concurrency"], row.get("path", "subject-mapping") == "direct-entitlement", row["seed"])), malformed
 
 
 def milliseconds(nanoseconds):
@@ -84,19 +86,19 @@ def render(text, outcome):
         if results[0].get("fixture"):
             lines += [cell(results[0]["fixture"]), ""]
         lines += [
-            "| Concurrency | Requests | Cases used | Median | p95 | Maximum | Requests/s | Failures | Correctness |",
-            "| ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- |",
+            "| Entitlement path | Concurrency | Requests | Cases used | Median | p95 | Maximum | Requests/s | Failures | Correctness |",
+            "| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- |",
         ]
         for row in results:
             used = sum(c["requests"] > 0 for c in row["cases"])
             rate = f"{row['requests'] / (row['wall_ns'] / 1_000_000_000):,.2f}" if row["wall_ns"] else "n/a"
-            cells = [str(row["concurrency"]), str(row["requests"]), f"{used}/{len(row['cases'])}"]
+            cells = [row.get("path", "subject-mapping"), str(row["concurrency"]), str(row["requests"]), f"{used}/{len(row['cases'])}"]
             cells += [milliseconds(row[key]) for key in ("median_ns", "p95_ns", "maximum_ns")]
             cells += [rate, str(row["failures"]), "FAIL" if row["failures"] else "PASS"]
             lines.append("| " + " | ".join(cells) + " |")
         lines += ["", "Fixture setup is excluded. Latency covers the whole multi-resource request. Throughput includes failed requests; inspect correctness alongside it. Cases selected zero times remain visible below. For generated cases, resource labels name pools; the variants column shows distinct request variants used/available."]
         for row in results:
-            lines += ["", "<details>", f"<summary>Case selection and failures at concurrency {row['concurrency']}</summary>", "",
+            lines += ["", "<details>", f"<summary>{row.get('path', 'subject-mapping')}: case selection and failures at concurrency {row['concurrency']}</summary>", "",
                       f"Seed: {row['seed']}. Request timeout: {row['timeout_ns'] / 1_000_000_000:g} s. Load duration: {row['wall_ns'] / 1_000_000_000:,.2f} s. Resources requested: {row['resources_requested']:,}.", "",
                       "| Case | User | Action | Resources | Expected decisions | Selected | Failures | First error | Variants used/available |",
                       "| --- | --- | --- | --- | --- | ---: | ---: | --- | ---: |"]

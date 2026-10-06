@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/cucumber/godog"
+	messages "github.com/cucumber/messages/go/v21"
 
 	authz "github.com/opentdf/platform/protocol/go/authorization/v2"
 	"github.com/opentdf/platform/protocol/go/policy"
@@ -86,6 +87,44 @@ func prepareScaleUsers(ctx context.Context, values, seed int) (context.Context, 
 		}
 	}
 	GetPlatformScenarioContext(ctx).RecordObject(scaleUsersKey, users)
+	return ctx, nil
+}
+
+// Keep the policy, resource population, and expected decisions identical. Direct
+// entities carry only grants, so subject mappings cannot supply their permits.
+func setScaleEntitlements(ctx context.Context, source, attributeRef string) (context.Context, error) {
+	scenario := GetPlatformScenarioContext(ctx)
+	if source != "subject-mapping" && source != "direct-entitlement" {
+		return ctx, fmt.Errorf("unknown entitlement source %q", source)
+	}
+	scenario.RecordObject("scale-entitlement-path", source)
+	if source == "subject-mapping" {
+		return ctx, nil
+	}
+	users, ok := scenario.GetObject(scaleUsersKey).([]scaleUser)
+	if !ok {
+		return ctx, errors.New("scale users must be prepared before direct entitlements")
+	}
+	attribute, attributeOK := scenario.GetObject(attributeRef).(*policy.Attribute)
+	classification, classificationOK := scenario.GetObject("classification").(*policy.Attribute)
+	region, regionOK := scenario.GetObject("region").(*policy.Attribute)
+	if !attributeOK || !classificationOK || !regionOK {
+		return ctx, errors.New("scale attributes must exist before direct entitlements")
+	}
+	for _, user := range users {
+		table := &godog.Table{Rows: []*messages.PickleTableRow{{Cells: []*messages.PickleTableCell{
+			{Value: directEntitlementColumnAttributeFQN}, {Value: directEntitlementColumnActions},
+		}}}}
+		grants := scaleDocument{projects: user.projects, clearance: user.clearance, regions: []string{user.region}}
+		for _, fqn := range scaleDocumentFQNs(grants, attribute, classification, region) {
+			table.Rows = append(table.Rows, &messages.PickleTableRow{Cells: []*messages.PickleTableCell{
+				{Value: fqn}, {Value: "read,write"},
+			}})
+		}
+		if _, err := (&DirectEntitlementsStepDefinitions{}).thereIsAClaimsSubjectEntityReferencedAsWithDirectEntitlements(ctx, user.name, table); err != nil {
+			return ctx, err
+		}
+	}
 	return ctx, nil
 }
 

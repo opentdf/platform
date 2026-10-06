@@ -12,10 +12,13 @@ Feature: Mixed authorization traffic at large policy scale
   Requests vary read, write, denied delete, and one or three resources.
   The seed reproduces both selections at every concurrency level. Setup is excluded.
   Latency is report-only; incorrect decisions, errors, and 30-second timeouts fail.
+  Run the same workload with subject mappings and equivalent direct entitlements.
+  Caching is disabled in both paths. The direct path uses the claims ERS and carries
+  grants on the entity rather than matching its Keycloak attributes.
 
-  Scenario: Random entitlement requests across concurrency levels
+  Scenario Outline: Random <entitlements> requests across concurrency levels
     Given representative scale users hold subsets of 6000 project values with seed 4625
-    And an empty local platform with HTTP write timeout "35s"
+    And an empty local platform with platform template "<template>" and HTTP write timeout "35s"
     And I submit a request to create a namespace with name "scale.example" and reference id "scale_ns"
     And I send a request to create an attribute referenced as "projects" in namespace "scale_ns" named "project" with rule "allOf" and 6001 generated values in batches of 25
     Then the response should be successful
@@ -38,9 +41,15 @@ Feature: Mixed authorization traffic at large policy scale
       | region/region-e         | .attributes.regions[]   | region-e  | read,write |
       | region/region-f         | .attributes.regions[]   | region-f  | read,write |
       | region/region-g         | .attributes.regions[]   | region-g  | read,write |
+    And scale users use "<entitlements>" entitlements for attribute "projects"
     When I send 200 generated authorization requests at these concurrency levels with seed 4625, request timeout "30s", attribute "projects", and 1000 documents:
       | concurrency |
       | 1           |
       | 10          |
       | 25          |
       | 50          |
+
+    Examples:
+      | entitlements       | template                                               |
+      | subject-mapping    | cukes/resources/platform.template                      |
+      | direct-entitlement | cukes/resources/platform.direct_entitlements.template  |

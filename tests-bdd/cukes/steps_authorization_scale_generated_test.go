@@ -10,9 +10,42 @@ import (
 	"time"
 
 	authz "github.com/opentdf/platform/protocol/go/authorization/v2"
+	"github.com/opentdf/platform/protocol/go/entity"
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/types/known/structpb"
 )
+
+func TestScaleDirectEntitlementsCannotFallBackToSubjectMappingClaims(t *testing.T) {
+	scenario := &PlatformScenarioContext{objects: make(map[string]any)}
+	ctx := context.WithValue(t.Context(), platformScenarioContextKey{}, scenario)
+	scenario.RecordObject(scaleUsersKey, []scaleUser{{name: "alice", projects: []int{2, 7}, clearance: 1, region: "region-b"}})
+	scenario.RecordObject("projects", &policy.Attribute{Fqn: "https://scale.example/attr/project"})
+	scenario.RecordObject("classification", &policy.Attribute{Fqn: "https://scale.example/attr/classification"})
+	scenario.RecordObject("region", &policy.Attribute{Fqn: "https://scale.example/attr/region"})
+	_, err := setScaleEntitlements(ctx, "direct-entitlement", "projects")
+	require.NoError(t, err)
+	user, ok := scenario.GetObject("alice").(*entity.Entity)
+	require.True(t, ok)
+	var claims structpb.Struct
+	require.NoError(t, user.GetClaims().UnmarshalTo(&claims))
+	require.Len(t, claims.GetFields(), 1, "mapping selectors must not have claims to match")
+	grants, ok := claims.AsMap()[directEntitlementsClaimKey].([]any)
+	require.True(t, ok)
+	want := []string{
+		"https://scale.example/attr/classification/value/high",
+		"https://scale.example/attr/project/value/v0002",
+		"https://scale.example/attr/project/value/v0007",
+		"https://scale.example/attr/region/value/region-b",
+	}
+	require.Len(t, grants, len(want))
+	for i, grant := range grants {
+		got, grantOK := grant.(map[string]any)
+		require.True(t, grantOK)
+		require.Equal(t, want[i], got[directEntitlementColumnAttributeFQN])
+		require.Equal(t, []any{"read", "write"}, got[directEntitlementColumnActions])
+	}
+}
 
 func TestScaleDocumentExpectations(t *testing.T) {
 	user := scaleUser{projects: []int{2, 7}, clearance: 1, region: scaleRegions[1]}

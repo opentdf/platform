@@ -173,10 +173,11 @@ func (s *KasRegistryKeySuite) Test_CreateKasKey_KeyIDLength() {
 	}{
 		{name: "previous limit", kid: strings.Repeat("a", 36)},
 		{name: "above previous limit", kid: strings.Repeat("b", 37)},
-		{name: "maximum characters", kid: strings.Repeat("c", 128)},
-		{name: "too many characters", kid: strings.Repeat("d", 129), invalid: true},
-		{name: "multibyte maximum", kid: strings.Repeat("é", 128)},
-		{name: "multibyte too long", kid: strings.Repeat("é", 129), invalid: true},
+		{name: "maximum bytes", kid: strings.Repeat("c", 128)},
+		{name: "too many bytes", kid: strings.Repeat("d", 129), invalid: true},
+		{name: "trailing space exceeds limit", kid: strings.Repeat("e", 128) + " ", invalid: true},
+		{name: "multibyte maximum", kid: strings.Repeat("é", 64)},
+		{name: "multibyte too long", kid: strings.Repeat("é", 64) + "a", invalid: true},
 	} {
 		s.Run(tc.name, func() {
 			resp, err := s.db.PolicyClient.CreateKey(s.ctx, &kasregistry.CreateKeyRequest{
@@ -187,7 +188,7 @@ func (s *KasRegistryKeySuite) Test_CreateKasKey_KeyIDLength() {
 				PublicKeyCtx: &policy.PublicKeyCtx{Pem: keyCtx},
 			})
 			if tc.invalid {
-				s.Require().ErrorContains(err, "value too long for type character varying(128)")
+				s.Require().ErrorIs(err, db.ErrCheckViolation)
 				s.Nil(resp)
 				return
 			}

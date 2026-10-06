@@ -142,7 +142,7 @@ func (c PolicyDBClient) ListAttributes(ctx context.Context, r *attributes.ListAt
 		if _, err := uuid.Parse(namespace); err == nil {
 			namespaceID = namespace
 		} else {
-			namespaceName = strings.ToLower(namespace)
+			namespaceName = normalizeNamespaceFQN(namespace)
 		}
 	}
 

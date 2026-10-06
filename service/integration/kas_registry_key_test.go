@@ -173,11 +173,10 @@ func (s *KasRegistryKeySuite) Test_CreateKasKey_KeyIDLength() {
 	}{
 		{name: "previous limit", kid: strings.Repeat("a", 36)},
 		{name: "above previous limit", kid: strings.Repeat("b", 37)},
-		{name: "maximum bytes", kid: strings.Repeat("c", 256)},
-		{name: "too many bytes", kid: strings.Repeat("d", 257), invalid: true},
-		{name: "trailing space exceeds limit", kid: strings.Repeat("e", 256) + " ", invalid: true},
+		{name: "maximum characters", kid: strings.Repeat("c", 128)},
+		{name: "too many characters", kid: strings.Repeat("d", 129), invalid: true},
 		{name: "multibyte maximum", kid: strings.Repeat("é", 128)},
-		{name: "multibyte too long", kid: strings.Repeat("é", 128) + "a", invalid: true},
+		{name: "multibyte too long", kid: strings.Repeat("é", 129), invalid: true},
 	} {
 		s.Run(tc.name, func() {
 			resp, err := s.db.PolicyClient.CreateKey(s.ctx, &kasregistry.CreateKeyRequest{
@@ -188,7 +187,7 @@ func (s *KasRegistryKeySuite) Test_CreateKasKey_KeyIDLength() {
 				PublicKeyCtx: &policy.PublicKeyCtx{Pem: keyCtx},
 			})
 			if tc.invalid {
-				s.Require().ErrorIs(err, db.ErrCheckViolation)
+				s.Require().ErrorContains(err, "value too long for type character varying(128)")
 				s.Nil(resp)
 				return
 			}
@@ -218,7 +217,7 @@ func (s *KasRegistryKeySuite) Test_KeyIDLengthMigration() {
 
 	resp, err := s.db.PolicyClient.CreateKey(s.ctx, &kasregistry.CreateKeyRequest{
 		KasId:        s.kasKeys[0].KeyAccessServerID,
-		KeyId:        strings.Repeat("migration", 28),
+		KeyId:        strings.Repeat("migration", 14),
 		KeyAlgorithm: policy.Algorithm_ALGORITHM_RSA_2048,
 		KeyMode:      policy.KeyMode_KEY_MODE_REMOTE,
 		PublicKeyCtx: &policy.PublicKeyCtx{Pem: keyCtx},

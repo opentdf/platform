@@ -284,6 +284,29 @@ func (s *DynamicValueMappingsSuite) TestListByDefinition() {
 	s.Equal(attr.GetId(), resp.GetDynamicValueMappings()[0].GetAttributeDefinition().GetId())
 }
 
+// Namespace FQNs match case-insensitively on create and in the list filter.
+func (s *DynamicValueMappingsSuite) TestNamespaceFqn_IsCaseInsensitive() {
+	attr := s.createDefinition("dvem_ns_fqn_case", policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF)
+	created, err := s.db.PolicyClient.CreateDynamicValueMapping(s.ctx, &dynamicvaluemapping.CreateDynamicValueMappingRequest{
+		AttributeDefinitionId: attr.GetId(),
+		ValueResolver:         s.resolver(".caseAssignments[]", policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_IN),
+		// By name, so it resolves to the namespace's own standard action.
+		Actions:      []*policy.Action{{Name: policydb.ActionRead.String()}},
+		NamespaceFqn: "https://EXAMPLE.COM",
+	})
+	s.Require().NoError(err)
+
+	for _, fqn := range []string{"https://example.com", "https://Example.Com"} {
+		resp, err := s.db.PolicyClient.ListDynamicValueMappings(s.ctx, &dynamicvaluemapping.ListDynamicValueMappingsRequest{
+			AttributeDefinitionId: attr.GetId(),
+			NamespaceFqn:          fqn,
+		})
+		s.Require().NoError(err, fqn)
+		s.Require().Len(resp.GetDynamicValueMappings(), 1, fqn)
+		s.Equal(created.GetId(), resp.GetDynamicValueMappings()[0].GetId(), fqn)
+	}
+}
+
 func (s *DynamicValueMappingsSuite) TestListByDefinition_Pagination() {
 	attr := s.createDefinition("dvem_list_page", policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF)
 	for _, selector := range []string{".a[]", ".b[]", ".c[]"} {

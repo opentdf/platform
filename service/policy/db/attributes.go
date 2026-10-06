@@ -142,7 +142,7 @@ func (c PolicyDBClient) ListAttributes(ctx context.Context, r *attributes.ListAt
 		if _, err := uuid.Parse(namespace); err == nil {
 			namespaceID = namespace
 		} else {
-			namespaceName = strings.ToLower(namespace)
+			namespaceName = normalizeNamespaceFQN(namespace)
 		}
 	}
 
@@ -582,7 +582,7 @@ func (c PolicyDBClient) UnsafeDeleteAttribute(ctx context.Context, existing *pol
 		return nil, fmt.Errorf("attribute not found: %w", db.ErrNotFound)
 	}
 
-	if existing.GetFqn() != fqn {
+	if !strings.EqualFold(existing.GetFqn(), fqn) {
 		return nil, fmt.Errorf("fqn mismatch: %w", db.ErrNotFound)
 	}
 

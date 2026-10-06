@@ -1158,6 +1158,20 @@ func (s *NamespacesSuite) Test_UnsafeDeleteNamespace_ShouldBeAbleToRecreateDelet
 	s.NotNil(n)
 }
 
+// The FQN confirmation names the same namespace in any casing; a different
+// namespace is still rejected (Test_UnsafeDeleteNamespace_DoesNotExist_ShouldFail).
+func (s *NamespacesSuite) Test_UnsafeDeleteNamespace_UpperCaseFqn_Succeeds() {
+	created, err := s.db.PolicyClient.CreateNamespace(s.ctx, &namespaces.CreateNamespaceRequest{Name: "unsafe-delete-case.com"})
+	s.Require().NoError(err)
+	got, err := s.db.PolicyClient.GetNamespace(s.ctx, created.GetId())
+	s.Require().NoError(err)
+
+	_, err = s.db.PolicyClient.UnsafeDeleteNamespace(s.ctx, got, strings.ToUpper(got.GetFqn()))
+	s.Require().NoError(err)
+	_, err = s.db.PolicyClient.GetNamespace(s.ctx, created.GetId())
+	s.Require().ErrorIs(err, db.ErrNotFound)
+}
+
 func (s *NamespacesSuite) Test_UnsafeDeleteNamespace_DoesNotExist_ShouldFail() {
 	ns, err := s.db.PolicyClient.UnsafeDeleteNamespace(s.ctx, &policy.Namespace{}, "does.not.exist")
 	s.Require().Error(err)
@@ -1626,6 +1640,29 @@ func (s *NamespacesSuite) Test_GetNamespace_ByIdAndName_ReturnSameResult() {
 
 		// Verify both return the same namespace
 		s.True(proto.Equal(nsByID, nsByName))
+	}
+}
+
+func (s *NamespacesSuite) Test_GetNamespace_ByFqn_IsCaseInsensitive() {
+	created, err := s.db.PolicyClient.CreateNamespace(s.ctx, &namespaces.CreateNamespaceRequest{Name: "Case-Lookup.Example.org"})
+	s.Require().NoError(err)
+	s.Require().NotNil(created)
+	defer func() {
+		_, err := s.db.PolicyClient.UnsafeDeleteNamespace(s.ctx, created, created.GetFqn())
+		s.Require().NoError(err)
+	}()
+	s.Equal("case-lookup.example.org", created.GetName())
+
+	for _, fqn := range []string{
+		"https://case-lookup.example.org",
+		"https://CASE-LOOKUP.EXAMPLE.ORG",
+		"https://Case-Lookup.Example.org",
+		"CASE-lookup.example.ORG",
+	} {
+		got, err := s.db.PolicyClient.GetNamespace(s.ctx, &namespaces.GetNamespaceRequest_Fqn{Fqn: fqn})
+		s.Require().NoError(err, fqn)
+		s.Equal(created.GetId(), got.GetId(), fqn)
+		s.Equal("https://case-lookup.example.org", got.GetFqn(), fqn)
 	}
 }
 

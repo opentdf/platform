@@ -131,7 +131,7 @@ func (c PolicyDBClient) CreateRegisteredResource(ctx context.Context, r *registe
 
 	row, err := c.queries.createRegisteredResource(ctx, createRegisteredResourceParams{
 		NamespaceID:  pgtypeUUID(namespaceID),
-		NamespaceFqn: pgtypeText(namespaceFqn),
+		NamespaceFqn: pgtypeText(normalizeNamespaceFQN(namespaceFqn)),
 		Name:         name,
 		Metadata:     metadataJSON,
 	})
@@ -178,7 +178,7 @@ func (c PolicyDBClient) GetRegisteredResource(ctx context.Context, r *registered
 			}
 			params.NamespaceID = parsedID
 		} else if r.GetNamespaceFqn() != "" {
-			params.NamespaceFqn = pgtypeText(r.GetNamespaceFqn())
+			params.NamespaceFqn = pgtypeText(normalizeNamespaceFQN(r.GetNamespaceFqn()))
 		}
 	default:
 		return nil, db.ErrSelectIdentifierInvalid
@@ -234,7 +234,7 @@ func (c PolicyDBClient) ListRegisteredResources(ctx context.Context, r *register
 
 	list, err := c.queries.listRegisteredResources(ctx, listRegisteredResourcesParams{
 		NamespaceID:   parsedID,
-		NamespaceFqn:  pgtypeText(r.GetNamespaceFqn()),
+		NamespaceFqn:  pgtypeText(normalizeNamespaceFQN(r.GetNamespaceFqn())),
 		Search:        search,
 		Limit:         limit,
 		Offset:        offset,

@@ -411,7 +411,7 @@ func (p *PolicyDecisionPoint) GetDecision(
 	}
 
 	for idx, resource := range resources {
-		resourceDecision, err := getResourceDecision(ctx, l, decisionableAttributes, p.allRegisteredResourceValuesByFQN, entitledFQNsToActions, action, resource, p.namespacedPolicy)
+		resourceDecision, err := getResourceDecisionForRequestedAction(ctx, l, decisionableAttributes, p.allRegisteredResourceValuesByFQN, entitledFQNsToActions, action, resource, p.namespacedPolicy)
 		if err != nil || resourceDecision == nil {
 			return nil, nil, fmt.Errorf("error evaluating a decision on resource [%v]: %w", resource, err)
 		}
@@ -489,7 +489,7 @@ func (p *PolicyDecisionPoint) GetDecisionRegisteredResource(
 			requiredNamespaceFQN = attrAndValue.GetAttribute().GetNamespace().GetFqn()
 		}
 
-		if !isRequestedActionMatch(ctx, l, action, requiredNamespaceFQN, aavAction, p.namespacedPolicy) {
+		if !isAnyAction(action) && !isRequestedActionMatch(ctx, l, action, requiredNamespaceFQN, aavAction, p.namespacedPolicy) {
 			l.DebugContext(ctx, "skipping action not matching Decision Request action",
 				slog.String("action_name", aavAction.GetName()),
 				slog.String("attribute_value_fqn", attrValFQN),
@@ -521,7 +521,7 @@ func (p *PolicyDecisionPoint) GetDecisionRegisteredResource(
 	}
 
 	for idx, resource := range resources {
-		resourceDecision, err := getResourceDecision(ctx, l, decisionableAttributes, p.allRegisteredResourceValuesByFQN, entitledFQNsToActions, action, resource, p.namespacedPolicy)
+		resourceDecision, err := getResourceDecisionForRequestedAction(ctx, l, decisionableAttributes, p.allRegisteredResourceValuesByFQN, entitledFQNsToActions, action, resource, p.namespacedPolicy)
 		if err != nil || resourceDecision == nil {
 			return nil, nil, fmt.Errorf("error evaluating a decision on resource [%v]: %w", resource, err)
 		}

@@ -207,16 +207,21 @@ func (p *JustInTimePDP) GetDecision(
 		skipEnvironmentEntities = true
 	)
 
-	// Because there are three possible types of entities, check obligations first to more easily handle decisioning logic
-	obligationDecision, err := p.obligationsPDP.GetAllTriggeredObligationsAreFulfilled(
-		ctx,
-		resources,
-		action,
-		requestContext,
-		fulfillableObligationValueFQNs,
-	)
-	if err != nil {
-		return nil, fmt.Errorf("failed to check obligations: %w", err)
+	// Because there are three possible types of entities, check obligations first to more easily handle decisioning logic.
+	// Any-action decisions answer an entitlement-discovery question rather than authorizing a concrete action, so action-specific
+	// obligations do not apply. A caller must make a concrete-action decision before performing that action.
+	obligationDecision := obligations.ObligationPolicyDecision{AllObligationsSatisfied: true}
+	if !isAnyAction(action) {
+		obligationDecision, err = p.obligationsPDP.GetAllTriggeredObligationsAreFulfilled(
+			ctx,
+			resources,
+			action,
+			requestContext,
+			fulfillableObligationValueFQNs,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("failed to check obligations: %w", err)
+		}
 	}
 	hasRequiredObligations := len(obligationDecision.RequiredObligationValueFQNs) > 0
 	allObligationsSatisfied := (!hasRequiredObligations || obligationDecision.AllObligationsSatisfied)

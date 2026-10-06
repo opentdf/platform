@@ -95,21 +95,41 @@ func (s *HealthCheckSuite) TestRegisterReadinessCheck() {
 	s.NoError(err)
 }
 
-func (s *HealthCheckSuite) TestRegisterHealthCheckAlreadyExists() {
-	// TestRegisterReadinessCheckAlreadyExists tests the registration of a health check that already exists.
-
-	// Register the health check.
+func (s *HealthCheckSuite) TestRegisterReadinessCheckCombinesChecksForNamespace() {
+	calls := make([]string, 0, 2)
 	err := RegisterReadinessCheck("service_2", func(context.Context) error {
+		calls = append(calls, "first")
 		return nil
 	})
 	s.Require().NoError(err)
 
-	// Check the health check.
 	err = RegisterReadinessCheck("service_2", func(context.Context) error {
+		calls = append(calls, "second")
 		return nil
 	})
+	s.Require().NoError(err)
 
-	s.Error(err)
+	err = serviceHealthChecks["service_2"](context.Background())
+	s.NoError(err)
+	s.Equal([]string{"first", "second"}, calls)
+}
+
+func (s *HealthCheckSuite) TestRegisterReadinessCheckReturnsFirstError() {
+	secondCalled := false
+	err := RegisterReadinessCheck("service_2", func(context.Context) error {
+		return assert.AnError
+	})
+	s.Require().NoError(err)
+
+	err = RegisterReadinessCheck("service_2", func(context.Context) error {
+		secondCalled = true
+		return nil
+	})
+	s.Require().NoError(err)
+
+	err = serviceHealthChecks["service_2"](context.Background())
+	s.ErrorIs(err, assert.AnError)
+	s.False(secondCalled)
 }
 
 func (s *HealthCheckSuite) TestCheck() {

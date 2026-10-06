@@ -965,6 +965,39 @@ func (s *SubjectMappingsSuite) Test_ListSubjectMappings_ByNamespaceFqn_Succeeds(
 	s.True(foundCom)
 }
 
+func (s *SubjectMappingsSuite) Test_SubjectMappings_NamespaceFqn_IsCaseInsensitive() {
+	comNsID := s.exampleComNsID()
+	comAttrValID := s.f.GetAttributeValueKey("example.com/attr/attr1/value/value2").ID
+	comSCS := s.newSCSInNamespace(comNsID)
+
+	// Create resolves the namespace from an upper-case FQN.
+	sm, err := s.db.PolicyClient.CreateSubjectMapping(s.ctx, &subjectmapping.CreateSubjectMappingRequest{
+		AttributeValueId:              comAttrValID,
+		Actions:                       []*policy.Action{{Name: "ns_fqn_case_insensitive"}},
+		ExistingSubjectConditionSetId: comSCS.GetId(),
+		NamespaceFqn:                  "https://EXAMPLE.COM",
+	})
+	s.Require().NoError(err)
+	defer func() {
+		_, _ = s.db.PolicyClient.DeleteSubjectMapping(s.ctx, sm.GetId())
+	}()
+	s.Equal(comNsID, sm.GetNamespace().GetId())
+
+	// List filters by a mixed-case FQN.
+	listRsp, err := s.db.PolicyClient.ListSubjectMappings(s.ctx, &subjectmapping.ListSubjectMappingsRequest{
+		NamespaceFqn: "https://Example.Com",
+	})
+	s.Require().NoError(err)
+	found := false
+	for _, listed := range listRsp.GetSubjectMappings() {
+		s.Equal(comNsID, listed.GetNamespace().GetId())
+		if listed.GetId() == sm.GetId() {
+			found = true
+		}
+	}
+	s.True(found)
+}
+
 func (s *SubjectMappingsSuite) Test_ListSubjectMappings_ByNamespaceId_NoResults_Succeeds() {
 	emptyNs, err := s.db.PolicyClient.CreateNamespace(s.ctx, &namespaces.CreateNamespaceRequest{
 		Name: "list-sm-no-results.example",

@@ -193,6 +193,18 @@ func (s *ObligationsSuite) Test_GetObligation_Succeeds() {
 	s.deleteObligations([]string{createdObl.GetId()})
 }
 
+func (s *ObligationsSuite) Test_GetObligation_ByFqn_NamespaceIsCaseInsensitive() {
+	namespaceID, namespaceFQN, namespace := s.getNamespaceData(nsExampleCom)
+	createdObl := s.createObligation(namespaceID, oblName, oblVals)
+	defer s.deleteObligations([]string{createdObl.GetId()})
+
+	obl, err := s.db.PolicyClient.GetObligation(s.ctx, &obligations.GetObligationRequest{
+		Fqn: strings.ToUpper(namespaceFQN) + "/obl/" + oblName,
+	})
+	s.Require().NoError(err)
+	s.assertObligationBasics(obl, oblName, namespaceID, namespace.Name, namespaceFQN)
+}
+
 func (s *ObligationsSuite) Test_GetObligation_WithTriggers_Succeeds() {
 	namespaceID, namespaceFQN, namespace := s.getNamespaceData(nsExampleCom)
 	createdObl := s.createObligation(namespaceID, oblName+"-with-triggers", nil)

@@ -131,7 +131,7 @@ func (c PolicyDBClient) CreateRegisteredResource(ctx context.Context, r *registe
 
 	row, err := c.queries.createRegisteredResource(ctx, createRegisteredResourceParams{
 		NamespaceID:  pgtypeUUID(namespaceID),
-		NamespaceFqn: pgtypeText(namespaceFqn),
+		NamespaceFqn: pgtypeText(strings.ToLower(namespaceFqn)),
 		Name:         name,
 		Metadata:     metadataJSON,
 	})
@@ -178,7 +178,7 @@ func (c PolicyDBClient) GetRegisteredResource(ctx context.Context, r *registered
 			}
 			params.NamespaceID = parsedID
 		} else if r.GetNamespaceFqn() != "" {
-			params.NamespaceFqn = pgtypeText(r.GetNamespaceFqn())
+			params.NamespaceFqn = pgtypeText(strings.ToLower(r.GetNamespaceFqn()))
 		}
 	default:
 		return nil, db.ErrSelectIdentifierInvalid
@@ -234,7 +234,7 @@ func (c PolicyDBClient) ListRegisteredResources(ctx context.Context, r *register
 
 	list, err := c.queries.listRegisteredResources(ctx, listRegisteredResourcesParams{
 		NamespaceID:   parsedID,
-		NamespaceFqn:  pgtypeText(r.GetNamespaceFqn()),
+		NamespaceFqn:  pgtypeText(strings.ToLower(r.GetNamespaceFqn())),
 		Search:        search,
 		Limit:         limit,
 		Offset:        offset,
@@ -389,7 +389,7 @@ func (c PolicyDBClient) GetRegisteredResourceValue(ctx context.Context, r *regis
 		params.Name = pgtypeText(parsed.Name)
 		params.Value = pgtypeText(parsed.Value)
 		if parsed.Namespace != "" {
-			params.NamespaceFqn = pgtypeText("https://" + parsed.Namespace)
+			params.NamespaceFqn = pgtypeText("https://" + strings.ToLower(parsed.Namespace))
 		}
 	default:
 		// unexpected type

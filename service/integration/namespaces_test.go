@@ -1629,6 +1629,29 @@ func (s *NamespacesSuite) Test_GetNamespace_ByIdAndName_ReturnSameResult() {
 	}
 }
 
+func (s *NamespacesSuite) Test_GetNamespace_ByFqn_IsCaseInsensitive() {
+	created, err := s.db.PolicyClient.CreateNamespace(s.ctx, &namespaces.CreateNamespaceRequest{Name: "Case-Lookup.Example.org"})
+	s.Require().NoError(err)
+	s.Require().NotNil(created)
+	defer func() {
+		_, err := s.db.PolicyClient.UnsafeDeleteNamespace(s.ctx, created, created.GetFqn())
+		s.Require().NoError(err)
+	}()
+	s.Equal("case-lookup.example.org", created.GetName())
+
+	for _, fqn := range []string{
+		"https://case-lookup.example.org",
+		"https://CASE-LOOKUP.EXAMPLE.ORG",
+		"https://Case-Lookup.Example.org",
+		"CASE-lookup.example.ORG",
+	} {
+		got, err := s.db.PolicyClient.GetNamespace(s.ctx, &namespaces.GetNamespaceRequest_Fqn{Fqn: fqn})
+		s.Require().NoError(err, fqn)
+		s.Equal(created.GetId(), got.GetId(), fqn)
+		s.Equal("https://case-lookup.example.org", got.GetFqn(), fqn)
+	}
+}
+
 // createSortTestNamespaces creates namespaces with the given prefixes, adding 5ms gaps
 // between creations for distinct timestamps. Returns the namespace IDs in creation order.
 func (s *NamespacesSuite) createSortTestNamespaces(prefixes []string) []string {

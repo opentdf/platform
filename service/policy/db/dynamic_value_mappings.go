@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/opentdf/platform/protocol/go/common"
@@ -123,7 +124,7 @@ func (c PolicyDBClient) ListDynamicValueMappings(ctx context.Context, r *dynamic
 
 	rows, err := c.queries.listDynamicValueMappings(ctx, listDynamicValueMappingsParams{
 		NamespaceID:           pgtypeUUID(r.GetNamespaceId()),
-		NamespaceFqn:          pgtypeText(r.GetNamespaceFqn()),
+		NamespaceFqn:          pgtypeText(strings.ToLower(r.GetNamespaceFqn())),
 		AttributeDefinitionID: pgtypeUUID(r.GetAttributeDefinitionId()),
 		Limit:                 limit,
 		Offset:                offset,

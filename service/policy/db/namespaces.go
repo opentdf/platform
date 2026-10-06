@@ -30,7 +30,7 @@ func (c PolicyDBClient) GetNamespace(ctx context.Context, identifier any) (*poli
 		}
 		params = getNamespaceParams{ID: id}
 	case *namespaces.GetNamespaceRequest_Fqn:
-		params = getNamespaceParams{Name: pgtypeText(i.Fqn)}
+		params = getNamespaceParams{Name: pgtypeText(strings.ToLower(i.Fqn))}
 	case string:
 		id := pgtypeUUID(i)
 		if !id.Valid {

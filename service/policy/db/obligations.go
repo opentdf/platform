@@ -77,7 +77,7 @@ func (c PolicyDBClient) CreateObligation(ctx context.Context, r *obligations.Cre
 	}
 	queryParams := createObligationParams{
 		NamespaceID:  pgtypeUUID(namespaceID),
-		NamespaceFqn: pgtypeText(namespaceFqn),
+		NamespaceFqn: pgtypeText(strings.ToLower(namespaceFqn)),
 		Name:         name,
 		Metadata:     metadataJSON,
 		Values:       values,
@@ -131,7 +131,7 @@ func (c PolicyDBClient) GetObligation(ctx context.Context, r *obligations.GetObl
 	queryParams := getObligationParams{
 		ID:           parsedID,
 		Name:         pgtypeText(oblName),
-		NamespaceFqn: pgtypeText(nsFQN),
+		NamespaceFqn: pgtypeText(strings.ToLower(nsFQN)),
 	}
 
 	row, err := c.queries.getObligation(ctx, queryParams)
@@ -173,7 +173,7 @@ func (c PolicyDBClient) GetObligationsByFQNs(ctx context.Context, r *obligations
 	oblNames := make([]string, 0, len(r.GetFqns()))
 	for _, fqn := range r.GetFqns() {
 		nsFQN, oblName := identifier.BreakOblFQN(fqn)
-		nsFQNs = append(nsFQNs, nsFQN)
+		nsFQNs = append(nsFQNs, strings.ToLower(nsFQN))
 		oblNames = append(oblNames, oblName)
 	}
 
@@ -241,7 +241,7 @@ func (c PolicyDBClient) ListObligations(ctx context.Context, r *obligations.List
 
 	rows, err := c.queries.listObligations(ctx, listObligationsParams{
 		NamespaceID:   parsedID,
-		NamespaceFqn:  pgtypeText(r.GetNamespaceFqn()),
+		NamespaceFqn:  pgtypeText(strings.ToLower(r.GetNamespaceFqn())),
 		Search:        searchTerm,
 		Limit:         limit,
 		Offset:        offset,
@@ -352,7 +352,7 @@ func (c PolicyDBClient) DeleteObligation(ctx context.Context, r *obligations.Del
 	nsFQN, oblName := identifier.BreakOblFQN(r.GetFqn())
 	queryParams := deleteObligationParams{
 		ID:           pgtypeText(r.GetId()),
-		NamespaceFqn: pgtypeText(nsFQN),
+		NamespaceFqn: pgtypeText(strings.ToLower(nsFQN)),
 		Name:         pgtypeText(oblName),
 	}
 
@@ -393,7 +393,7 @@ func (c PolicyDBClient) CreateObligationValue(ctx context.Context, r *obligation
 	queryParams := createObligationValueParams{
 		ID:           parsedID,
 		Name:         pgtypeText(oblName),
-		NamespaceFqn: pgtypeText(nsFQN),
+		NamespaceFqn: pgtypeText(strings.ToLower(nsFQN)),
 		Value:        value,
 		Metadata:     metadataJSON,
 	}
@@ -468,7 +468,7 @@ func (c PolicyDBClient) GetObligationValue(ctx context.Context, r *obligations.G
 		ID:           parsedID,
 		Name:         pgtypeText(oblName),
 		Value:        pgtypeText(oblVal),
-		NamespaceFqn: pgtypeText(nsFQN),
+		NamespaceFqn: pgtypeText(strings.ToLower(nsFQN)),
 	}
 
 	row, err := c.queries.getObligationValue(ctx, queryParams)
@@ -517,7 +517,7 @@ func (c PolicyDBClient) GetObligationValuesByFQNs(ctx context.Context, r *obliga
 	oblVals := make([]string, 0, len(r.GetFqns()))
 	for _, fqn := range r.GetFqns() {
 		nsFQN, oblName, oblVal := identifier.BreakOblValFQN(fqn)
-		nsFQNs = append(nsFQNs, nsFQN)
+		nsFQNs = append(nsFQNs, strings.ToLower(nsFQN))
 		oblNames = append(oblNames, oblName)
 		oblVals = append(oblVals, oblVal)
 	}
@@ -652,7 +652,7 @@ func (c PolicyDBClient) DeleteObligationValue(ctx context.Context, r *obligation
 	nsFQN, oblName, valName := identifier.BreakOblValFQN(r.GetFqn())
 	queryParams := deleteObligationValueParams{
 		ID:           pgtypeText(r.GetId()),
-		NamespaceFqn: pgtypeText(nsFQN),
+		NamespaceFqn: pgtypeText(strings.ToLower(nsFQN)),
 		Name:         pgtypeText(oblName),
 		Value:        pgtypeText(valName),
 	}
@@ -841,7 +841,7 @@ func (c PolicyDBClient) ListObligationTriggers(ctx context.Context, r *obligatio
 
 	rows, err := c.queries.listObligationTriggers(ctx, listObligationTriggersParams{
 		NamespaceID:  pgtypeUUID(r.GetNamespaceId()),
-		NamespaceFqn: pgtypeText(r.GetNamespaceFqn()),
+		NamespaceFqn: pgtypeText(strings.ToLower(r.GetNamespaceFqn())),
 		Offset:       offset,
 		Limit:        limit,
 	})

@@ -110,7 +110,7 @@ func (s *HealthCheckSuite) TestRegisterReadinessCheckCombinesChecksForNamespace(
 	s.Require().NoError(err)
 
 	err = serviceHealthChecks["service_2"](context.Background())
-	s.NoError(err)
+	s.Require().NoError(err)
 	s.Equal([]string{"first", "second"}, calls)
 }
 
@@ -128,7 +128,7 @@ func (s *HealthCheckSuite) TestRegisterReadinessCheckReturnsFirstError() {
 	s.Require().NoError(err)
 
 	err = serviceHealthChecks["service_2"](context.Background())
-	s.ErrorIs(err, assert.AnError)
+	s.Require().ErrorIs(err, assert.AnError)
 	s.False(secondCalled)
 }
 

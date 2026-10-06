@@ -101,18 +101,9 @@ func encryptRun(cmd *cobra.Command, args []string) {
 	kasURLPath := c.Flags.GetOptionalString("kas-url-path")
 	wrappingKeyAlgStr := c.Flags.GetOptionalString("wrapping-key-algorithm")
 	targetMode := c.Flags.GetOptionalString("target-mode")
-	var wrappingKeyAlgorithm ocrypto.KeyType
-	switch wrappingKeyAlgStr {
-	case string(ocrypto.RSA2048Key):
-		wrappingKeyAlgorithm = ocrypto.RSA2048Key
-	case string(ocrypto.EC256Key):
-		wrappingKeyAlgorithm = ocrypto.EC256Key
-	case string(ocrypto.EC384Key):
-		wrappingKeyAlgorithm = ocrypto.EC384Key
-	case string(ocrypto.EC521Key):
-		wrappingKeyAlgorithm = ocrypto.EC521Key
-	default:
-		wrappingKeyAlgorithm = ocrypto.RSA2048Key
+	wrappingKeyAlgorithm, err := ocrypto.ParseKeyType(wrappingKeyAlgStr)
+	if err != nil {
+		cli.ExitWithError("Invalid wrapping key algorithm", err)
 	}
 
 	piped, hasPiped, err := streamio.PipeReader(os.Stdin)

@@ -65,7 +65,6 @@ jobs:
             ers
             kas
             authz
-            examples
             release
             # release branches (e.g. release/service/v0.7)
             release\/([a-z/]+\/)?v\d+\.\d+(\.\d+)?

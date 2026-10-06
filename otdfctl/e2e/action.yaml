@@ -30,7 +30,7 @@ runs:
         cd ../otdfctl_v0.26.2
         GOWORK=off go build -o ../otdfctl/otdfctl_v0.26.2 .
         echo "LEGACY_OTDFCTL_BIN=./otdfctl_v0.26.2" >> $GITHUB_ENV
-    - name: Install keyring dependencies
+    - name: Install test dependencies
       shell: bash
       run: |
         sudo apt-get update
@@ -38,7 +38,7 @@ runs:
         # streaming suite's peak-RSS case needs it and would otherwise skip
         # itself silently -- and that case is the only proof that encrypt and
         # decrypt have not gone back to buffering the whole payload.
-        sudo apt-get install -y gnome-keyring time
+        sudo apt-get install -y gnome-keyring time unzip zip
       working-directory: otdfctl
     - name: Setup Bats and bats libs
       uses: bats-core/bats-action@2.0.0

@@ -300,14 +300,29 @@ runs:
       shell: bash
       if: ${{ inputs.pqc-enabled == 'true' }}
       run: |
-        if [ ! -f kas-xwing-private.pem ]; then
-          echo "PQC key files not found; skipping PQC configuration (platform may not support PQC key types)" 1>&2
-          exit 0
-        fi
+        required_pqc_keys=(
+          kas-xwing-private.pem kas-xwing-public.pem
+          kas-p256mlkem768-private.pem kas-p256mlkem768-public.pem
+          kas-p384mlkem1024-private.pem kas-p384mlkem1024-public.pem
+          kas-mlkem768-private.pem kas-mlkem768-public.pem
+          kas-mlkem1024-private.pem kas-mlkem1024-public.pem
+        )
+        for key_file in "${required_pqc_keys[@]}"; do
+          if [ ! -f "$key_file" ]; then
+            go run ./service/cmd/keygen -output .
+            break
+          fi
+        done
+        for key_file in "${required_pqc_keys[@]}"; do
+          if [ ! -f "$key_file" ]; then
+            echo "required PQC key file was not generated: $key_file" 1>&2
+            exit 1
+          fi
+        done
         yq e '
           (.services.kas.preview.hybrid_tdf_enabled = true)
-          | (.services.kas.keyring += [{"kid":"x1","alg":"hpqt:xwing"},{"kid":"h1","alg":"hpqt:secp256r1-mlkem768"},{"kid":"h2","alg":"hpqt:secp384r1-mlkem1024"}])
-          | (.server.cryptoProvider.standard.keys += [{"kid":"x1","alg":"hpqt:xwing","private":"kas-xwing-private.pem","cert":"kas-xwing-public.pem"},{"kid":"h1","alg":"hpqt:secp256r1-mlkem768","private":"kas-p256mlkem768-private.pem","cert":"kas-p256mlkem768-public.pem"},{"kid":"h2","alg":"hpqt:secp384r1-mlkem1024","private":"kas-p384mlkem1024-private.pem","cert":"kas-p384mlkem1024-public.pem"}])
+          | (.services.kas.keyring += [{"kid":"x1","alg":"hpqt:xwing"},{"kid":"h1","alg":"hpqt:secp256r1-mlkem768"},{"kid":"h2","alg":"hpqt:secp384r1-mlkem1024"},{"kid":"m1","alg":"mlkem:768"},{"kid":"m2","alg":"mlkem:1024"}])
+          | (.server.cryptoProvider.standard.keys += [{"kid":"x1","alg":"hpqt:xwing","private":"kas-xwing-private.pem","cert":"kas-xwing-public.pem"},{"kid":"h1","alg":"hpqt:secp256r1-mlkem768","private":"kas-p256mlkem768-private.pem","cert":"kas-p256mlkem768-public.pem"},{"kid":"h2","alg":"hpqt:secp384r1-mlkem1024","private":"kas-p384mlkem1024-private.pem","cert":"kas-p384mlkem1024-public.pem"},{"kid":"m1","alg":"mlkem:768","private":"kas-mlkem768-private.pem","cert":"kas-mlkem768-public.pem"},{"kid":"m2","alg":"mlkem:1024","private":"kas-mlkem1024-private.pem","cert":"kas-mlkem1024-public.pem"}])
         ' -i opentdf.yaml
       working-directory: otdf-test-platform
     - name: Enable DPoP nonce challenge

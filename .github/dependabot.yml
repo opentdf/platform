@@ -18,10 +18,9 @@ updates:
   # Dependabot for internal deps
   # Add explicit entry as any go.mods need internal dep checks
 
-  # examples + BDD tests grouped together
+  # BDD tests
   - package-ecosystem: gomod
     directories:
-      - "/examples"
       - "/tests-bdd"
     commit-message:
       prefix: "fix(deps)"

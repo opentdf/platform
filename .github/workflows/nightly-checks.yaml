@@ -26,7 +26,6 @@ jobs:
           go-version-file: "platform/go.work"
           check-latest: false
           cache-dependency-path: |
-            platform/examples/go.sum
             platform/otdfctl/go.sum
             platform/protocol/go/go.sum
             platform/sdk/go.sum

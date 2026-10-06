@@ -9,7 +9,6 @@ COPY sdk/ sdk/
 COPY lib/ lib/
 COPY service/ service/
 COPY otdfctl/ otdfctl/
-COPY examples/ examples/
 COPY tests-bdd/ tests-bdd/
 COPY go.work ./
 RUN cd service \

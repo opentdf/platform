@@ -11,7 +11,7 @@ require (
 	github.com/opentdf/platform/lib/fixtures v0.3.0
 	github.com/opentdf/platform/lib/identifier v0.0.2
 	github.com/opentdf/platform/lib/ocrypto v0.14.0
-	github.com/opentdf/platform/protocol/go v0.37.0
+	github.com/opentdf/platform/protocol/go v0.41.0
 	github.com/opentdf/platform/sdk v0.25.0
 	github.com/opentdf/platform/service v0.7.2
 	github.com/spf13/pflag v1.0.10
@@ -24,7 +24,7 @@ require (
 )
 
 require (
-	buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go v1.36.11-20260415201107-50325440f8f2.1 // indirect
+	buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go v1.36.11-20260709200747-435963d16310.1 // indirect
 	buf.build/go/protovalidate v0.13.1 // indirect
 	cel.dev/expr v0.25.2 // indirect
 	connectrpc.com/grpchealth v1.4.0 // indirect

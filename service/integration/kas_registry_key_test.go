@@ -20,6 +20,7 @@ import (
 	"github.com/opentdf/platform/protocol/go/policy/unsafe"
 	"github.com/opentdf/platform/service/internal/fixtures"
 	"github.com/opentdf/platform/service/pkg/db"
+	"github.com/opentdf/platform/service/policy/db/migrations"
 	"github.com/stretchr/testify/suite"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
@@ -162,6 +163,88 @@ func (s *KasRegistryKeySuite) Test_CreateKasKey_Success() {
 		Kid:    resp.GetKasKey().GetKey().GetKeyId(),
 	})
 	s.Require().NoError(err)
+}
+
+func (s *KasRegistryKeySuite) Test_CreateKasKey_KeyIDLength() {
+	for _, tc := range []struct {
+		name    string
+		kid     string
+		invalid bool
+	}{
+		{name: "previous limit", kid: strings.Repeat("a", 36)},
+		{name: "above previous limit", kid: strings.Repeat("b", 37)},
+		{name: "maximum bytes", kid: strings.Repeat("c", 256)},
+		{name: "too many bytes", kid: strings.Repeat("d", 257), invalid: true},
+		{name: "trailing space exceeds limit", kid: strings.Repeat("e", 256) + " ", invalid: true},
+		{name: "multibyte maximum", kid: strings.Repeat("é", 128)},
+		{name: "multibyte too long", kid: strings.Repeat("é", 128) + "a", invalid: true},
+	} {
+		s.Run(tc.name, func() {
+			resp, err := s.db.PolicyClient.CreateKey(s.ctx, &kasregistry.CreateKeyRequest{
+				KasId:        s.kasKeys[0].KeyAccessServerID,
+				KeyId:        tc.kid,
+				KeyAlgorithm: policy.Algorithm_ALGORITHM_RSA_2048,
+				KeyMode:      policy.KeyMode_KEY_MODE_REMOTE,
+				PublicKeyCtx: &policy.PublicKeyCtx{Pem: keyCtx},
+			})
+			if tc.invalid {
+				s.Require().ErrorIs(err, db.ErrCheckViolation)
+				s.Nil(resp)
+				return
+			}
+			s.Require().NoError(err)
+			s.T().Cleanup(func() {
+				s.cleanupKeys([]string{resp.GetKasKey().GetKey().GetId()}, nil)
+			})
+			s.Equal(tc.kid, resp.GetKasKey().GetKey().GetKeyId())
+
+			key, err := s.db.PolicyClient.GetKey(s.ctx, &kasregistry.GetKeyRequest_Key{
+				Key: &kasregistry.KasKeyIdentifier{
+					Identifier: &kasregistry.KasKeyIdentifier_KasId{KasId: s.kasKeys[0].KeyAccessServerID},
+					Kid:        tc.kid,
+				},
+			})
+			s.Require().NoError(err)
+			s.Equal(tc.kid, key.GetKey().GetKeyId())
+		})
+	}
+}
+
+func (s *KasRegistryKeySuite) Test_KeyIDLengthMigration() {
+	migrationSQL, err := migrations.FS.ReadFile("20261005000000_expand_kas_key_id.sql")
+	s.Require().NoError(err)
+	upSQL, downSQL, found := strings.Cut(string(migrationSQL), "-- +goose Down")
+	s.Require().True(found)
+
+	resp, err := s.db.PolicyClient.CreateKey(s.ctx, &kasregistry.CreateKeyRequest{
+		KasId:        s.kasKeys[0].KeyAccessServerID,
+		KeyId:        strings.Repeat("migration", 28),
+		KeyAlgorithm: policy.Algorithm_ALGORITHM_RSA_2048,
+		KeyMode:      policy.KeyMode_KEY_MODE_REMOTE,
+		PublicKeyCtx: &policy.PublicKeyCtx{Pem: keyCtx},
+	})
+	s.Require().NoError(err)
+
+	// Rolling back with a long KID must fail atomically, preserving the key and views.
+	_, err = s.db.Client.Pgx.Exec(s.ctx, downSQL)
+	s.Require().Error(err)
+	key, err := s.db.PolicyClient.GetKey(s.ctx, &kasregistry.GetKeyRequest_Id{Id: resp.GetKasKey().GetKey().GetId()})
+	s.Require().NoError(err)
+	s.Equal(resp.GetKasKey().GetKey().GetKeyId(), key.GetKey().GetKeyId())
+	for _, view := range []string{"active_namespace_public_keys_view", "active_definition_public_keys_view", "active_value_public_keys_view"} {
+		_, err = s.db.Client.Pgx.Exec(s.ctx, "SELECT * FROM "+s.db.TableName(view)+" LIMIT 0")
+		s.Require().NoError(err)
+	}
+	s.cleanupKeys([]string{key.GetKey().GetId()}, nil)
+
+	// Once long KIDs are removed, rollback and upgrade preserve existing keys.
+	_, err = s.db.Client.Pgx.Exec(s.ctx, downSQL)
+	s.Require().NoError(err)
+	_, err = s.db.Client.Pgx.Exec(s.ctx, upSQL)
+	s.Require().NoError(err)
+	key, err = s.db.PolicyClient.GetKey(s.ctx, &kasregistry.GetKeyRequest_Id{Id: s.kasKeys[0].ID})
+	s.Require().NoError(err)
+	s.Equal(s.kasKeys[0].KeyID, key.GetKey().GetKeyId())
 }
 
 func (s *KasRegistryKeySuite) Test_CreateKasKey_Legacy_Success() {
@@ -3193,7 +3276,6 @@ func (s *KasRegistryKeySuite) rotateOneSortTestKey(keyIDs []string, idx int) str
 
 	ts := time.Now().UnixNano()
 	rotated, err := s.db.PolicyClient.RotateKey(s.ctx, activeKey, &kasregistry.RotateKeyRequest_NewKey{
-		// key_id is varchar(36), so keep the generated IDs short
 		KeyId:        fmt.Sprintf("rot-%d", ts),
 		Algorithm:    policy.Algorithm_ALGORITHM_RSA_2048,
 		KeyMode:      policy.KeyMode_KEY_MODE_CONFIG_ROOT_KEY,

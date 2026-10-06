@@ -660,6 +660,12 @@ jobs:
           platform-ref: ${{ github.event.pull_request.head.sha || github.sha }}
           ec-tdf-enabled: "true"
           provision-policy-fixtures: "false"
+      - uses: ./test/start-additional-kas
+        with:
+          kas-port: "8181"
+          kas-name: long-kid
+          key-management: "true"
+          root-key: a8c4824daafcfa38ed0d13002e92b08720e6c4fcee67d52e954c1a6e045907d1
       - uses: ./otdfctl/e2e
         with:
           testrail-run-name-for-cli-test: ${{ inputs.testrail-run-name-for-cli-test }}

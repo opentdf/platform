@@ -16,7 +16,7 @@ setup_file() {
   echo -n '{"clientId":"opentdf","clientSecret":"secret"}' > $CREDSFILE
   export WITH_CREDS="--with-client-creds-file $CREDSFILE"
   export DEBUG_LEVEL="--log-level debug"
-  export HOST=http://localhost:8080
+  export HOST="${OTDFCTL_TEST_HOST:-http://localhost:8080}"
 
   export INFILE_GO_MOD=go.mod
   export OUTFILE_GO_MOD=go.mod.tdf
@@ -30,7 +30,7 @@ setup_file() {
 
   NS_ID=$(./otdfctl --host $HOST $WITH_CREDS $DEBUG_LEVEL policy attributes namespaces create -n "testing-enc-dec.io" --json | jq -r '.id')
   ATTR_ID=$(./otdfctl --host $HOST $WITH_CREDS $DEBUG_LEVEL policy attributes create --namespace "$NS_ID" -n attr1 -r ALL_OF --json | jq -r '.id')
-  VAL_ID=$(./otdfctl --host $HOST $WITH_CREDS $DEBUG_LEVEL policy attributes values create --attribute-id "$ATTR_ID" -v value1 --json | jq -r '.id')
+  export VAL_ID=$(./otdfctl --host $HOST $WITH_CREDS $DEBUG_LEVEL policy attributes values create --attribute-id "$ATTR_ID" -v value1 --json | jq -r '.id')
   ATTR_OBL_VAL_OUTPUT=$(./otdfctl --host $HOST $WITH_CREDS $DEBUG_LEVEL policy attributes values create --attribute-id "$ATTR_ID" -v test_attr_obligation_value --json)
   export ATTR_OBL_VAL_ID=$(echo $ATTR_OBL_VAL_OUTPUT | jq -r '.id')
   export ATTR_OBL_VAL_FQN=$(echo $ATTR_OBL_VAL_OUTPUT | jq -r '.fqn')
@@ -79,6 +79,16 @@ setup() {
 }
 
 teardown() {
+    if [[ -n "${LONG_KID_KEY_SYSTEM_ID:-}" ]]; then
+        run ./otdfctl --host "$HOST" $WITH_CREDS policy attributes values key remove --value "$VAL_ID" --key-id "$LONG_KID_KEY_SYSTEM_ID"
+        assert_success
+        run ./otdfctl --host "$HOST" $WITH_CREDS policy kas-registry key unsafe delete --id "$LONG_KID_KEY_SYSTEM_ID" --key-id "$LONG_KID" --kas-uri "$LONG_KID_KAS_URI" --force
+        assert_success
+    fi
+    if [[ -n "${LONG_KID_KAS_ID:-}" ]]; then
+        run ./otdfctl --host "$HOST" $WITH_CREDS policy kas-registry delete --id "$LONG_KID_KAS_ID" --force
+        assert_success
+    fi
     rm -f $OUTFILE_GO_MOD $RESULTFILE_GO_MOD $OUTFILE_TXT
 }
 
@@ -91,6 +101,40 @@ teardown_file(){
   ./otdfctl encrypt -o $OUTFILE_GO_MOD --host $HOST --tls-no-verify $DEBUG_LEVEL $WITH_CREDS --tdf-type tdf3 $INFILE_GO_MOD
   ./otdfctl decrypt -o $RESULTFILE_GO_MOD --host $HOST --tls-no-verify $DEBUG_LEVEL $WITH_CREDS --tdf-type tdf3 $OUTFILE_GO_MOD
   diff $INFILE_GO_MOD $RESULTFILE_GO_MOD
+}
+
+@test "roundtrip TDF3 with a generated key whose KID is 128 bytes" {
+  # ASCII makes this KID exactly 128 bytes and 128 characters.
+  LONG_KID=$(openssl rand -hex 64)
+  LONG_KID_KAS_URI="${OTDFCTL_TEST_KEY_MANAGEMENT_KAS_URI:-http://localhost:8181}"
+  # Matches the root key of the key-managed KAS started by CI.
+  local wrapping_key="a8c4824daafcfa38ed0d13002e92b08720e6c4fcee67d52e954c1a6e045907d1"
+  assert_equal "$(printf '%s' "$LONG_KID" | wc -c | tr -d ' ')" "128"
+
+  run ./otdfctl --host "$HOST" $WITH_CREDS policy kas-registry create --uri "$LONG_KID_KAS_URI" --name "long-kid-${RANDOM}" --json
+  assert_success
+  LONG_KID_KAS_ID=$(echo "$output" | jq -r '.id')
+
+  run ./otdfctl --host "$HOST" $WITH_CREDS policy kas-registry key create --kas "$LONG_KID_KAS_ID" --key-id "$LONG_KID" --algorithm rsa:2048 --mode local --wrapping-key-id test-root-key --wrapping-key "$wrapping_key" --json
+  assert_success
+  LONG_KID_KEY_SYSTEM_ID=$(echo "$output" | jq -r '.key.id')
+  assert_equal "$(echo "$output" | jq -r '.key.key_id')" "$LONG_KID"
+
+  run ./otdfctl --host "$HOST" $WITH_CREDS policy attributes values key assign --value "$VAL_ID" --key-id "$LONG_KID_KEY_SYSTEM_ID"
+  assert_success
+
+  run ./otdfctl encrypt --host "$HOST" $WITH_CREDS --tdf-type tdf3 --wrapping-key-algorithm rsa:2048 -a "$FQN" -o "$OUTFILE_GO_MOD" "$INFILE_GO_MOD"
+  assert_success
+  run ./otdfctl --host "$HOST" $WITH_CREDS inspect "$OUTFILE_GO_MOD"
+  assert_success
+  assert_equal "$(echo "$output" | jq -r '.manifest.encryptionInformation.keyAccess | length')" "1"
+  assert_equal "$(echo "$output" | jq -r '.manifest.encryptionInformation.keyAccess[0].kid')" "$LONG_KID"
+  assert_equal "$(echo "$output" | jq -r '.manifest.encryptionInformation.keyAccess[0].url')" "$LONG_KID_KAS_URI"
+
+  run ./otdfctl decrypt --host "$HOST" $WITH_CREDS --tdf-type tdf3 -o "$RESULTFILE_GO_MOD" "$OUTFILE_GO_MOD"
+  assert_success
+  run cmp "$INFILE_GO_MOD" "$RESULTFILE_GO_MOD"
+  assert_success
 }
 
 @test "roundtrip TDF3, no attributes, ec-wrapping, file" {
@@ -307,7 +351,7 @@ teardown_file(){
 
 @test "roundtrip TDF3, with allowlist containing platform kas" {
   ./otdfctl encrypt -o $OUTFILE_GO_MOD --host $HOST --tls-no-verify $DEBUG_LEVEL $WITH_CREDS --tdf-type tdf3  $INFILE_GO_MOD
-  run sh -c "./otdfctl decrypt --host $HOST --tls-no-verify $DEBUG_LEVEL $WITH_CREDS --tdf-type tdf3 --kas-allowlist http://localhost:8080/kas $OUTFILE_GO_MOD"
+  run sh -c "./otdfctl decrypt --host $HOST --tls-no-verify $DEBUG_LEVEL $WITH_CREDS --tdf-type tdf3 --kas-allowlist $HOST/kas $OUTFILE_GO_MOD"
   assert_success
 }
 
@@ -315,7 +359,7 @@ teardown_file(){
   ./otdfctl encrypt -o $OUTFILE_GO_MOD --host $HOST --tls-no-verify $DEBUG_LEVEL $WITH_CREDS --tdf-type tdf3 $INFILE_GO_MOD
   run sh -c "./otdfctl decrypt --host $HOST --tls-no-verify $DEBUG_LEVEL $WITH_CREDS --tdf-type tdf3 --kas-allowlist http://not-a-real-kas.com/kas $OUTFILE_GO_MOD"
   assert_failure
-  assert_output --partial "KasAllowlist: kas url http://localhost:8080/kas is not allowed"
+  assert_output --partial "KasAllowlist: kas url $HOST/kas is not allowed"
 }
 
 @test "roundtrip TDF3, ignoring allowlist" {

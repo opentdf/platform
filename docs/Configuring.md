@@ -130,7 +130,7 @@ Root level key `server`
 | `auth.audience`         | The audience for the IDP.                                                                                     |         | OPENTDF_SERVER_AUTH_AUDIENCE         |
 | `auth.issuer`           | The issuer for the IDP.                                                                                       |         | OPENTDF_SERVER_AUTH_ISSUER           |
 | `auth.policy`           | The Casbin policy for enforcing authorization on endpoints. Described [below](#casbin-endpoint-authorization) |         |                                      |
-| `auth.cache_refresh`    | Interval in which the IDP jwks should be refreshed                                                            | `15m`   | OPENTDF_SERVER_AUTH_CACHE_REFRESH    |
+| `auth.cache_refresh_interval` | Interval in which the IDP jwks should be refreshed                                                      | `15m`   | OPENTDF_SERVER_AUTH_CACHE_REFRESH_INTERVAL |
 | `auth.dpopskew`         | The amount of time drift allowed between when the client generated a dpop proof and the server time.          | `1h`    | OPENTDF_SERVER_AUTH                  |
 | `auth.skew`             | The amount of time drift allowed between a tokens `exp` claim and the server time.                            | `1m`    | OPENTDF_SERVER_AUTH_SKEW             |
 | `auth.public_client_id` | [DEPRECATED] The oidc client id. This is leveraged by otdfctl.                                                |         | OPENTDF_SERVER_AUTH_PUBLIC_CLIENT_ID |
@@ -202,6 +202,20 @@ server:
       - 10.20.0.0/24 # Example connecting proxy subnet; replace for your deployment
       - 192.0.2.20/32 # Example Google frontend IP, if applicable
 ```
+
+### Troubleshooting access token errors
+
+When an access token is rejected, the caller receives `Unauthenticated` (HTTP 401) without the reason. The platform logs one `WARN` record containing the reason, the values that disagree, and a `remediation` attribute that says where to make the fix. Logged token claims are limited to `aud`, `azp`, `iss`, `exp`, `nbf`, `iat`, `kid`, and `alg`; the raw token and identity claims are never logged.
+
+| Log message | Cause | Where to fix it |
+| ----------- | ----- | --------------- |
+| `access token audience mismatch` | The token's `aud` does not include `server.auth.audience`. | **IdP:** add the platform audience to access tokens issued to the client in `token_azp` (Keycloak: add an *Audience* protocol mapper to the client's scopes). **Platform:** change `server.auth.audience` only if the expected value is wrong. If `token_aud` contains the client's own ID (`token_azp`), fix the IdP instead of setting `server.auth.audience` to the client ID, and check that the client sends its access token rather than its ID token. |
+| `access token issuer mismatch` | The token's `iss` differs from the `issuer` in the IdP's discovery document. | **Platform:** set `server.auth.issuer` to exactly the discovery document's `issuer`. **IdP:** if clients and the platform reach the IdP through different hostnames, configure a single public hostname (Keycloak: `KC_HOSTNAME`). |
+| `access token expired` | `exp` is in the past by more than `server.auth.skew`. | **Client:** obtain a fresh access token. **Hosts:** if freshly issued tokens are rejected, synchronize the platform and IdP clocks with NTP. |
+| `access token not yet valid` | `nbf` or `iat` is in the future by more than `server.auth.skew`. | **Hosts:** synchronize the platform and IdP clocks with NTP. |
+| `access token signature not verified` | The signature does not match any signing key published by the issuer. | **Client:** obtain the token from the configured issuer, not another IdP or realm. **Platform:** after the IdP rotates its keys, the cached key set refreshes every `server.auth.cache_refresh_interval`. |
+| `access token malformed` | The `Authorization` header does not carry a JWT. | **Client:** send the JWT access token issued by the IdP. Some IdPs issue opaque access tokens unless the client requests an audience. |
+| `access token audience is the requesting client ID` | Logged once, for an accepted token, when `server.auth.audience` equals the requesting client's ID. ID tokens carry that client ID as `aud`, so they are accepted as access tokens too. | **IdP:** add the platform's own audience to access tokens. **Platform:** set `server.auth.audience` to that audience. With Microsoft Entra ID, `aud` is the API's application ID, which differs from the calling client's ID, so this warning does not apply. |
 
 ### CORS Configuration
 

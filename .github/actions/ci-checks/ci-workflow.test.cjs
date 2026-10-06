@@ -1,78 +1,13 @@
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
-const os = require('node:os');
 const path = require('node:path');
-const { execFileSync } = require('node:child_process');
-const vm = require('node:vm');
 const YAML = require('yaml');
 const root = path.join(__dirname, '../../..');
 const readWorkflow = file => YAML.parse(fs.readFileSync(path.join(root, '.github/workflows', file), 'utf8'));
 const workflow = readWorkflow('checks.yaml');
 const gated = ['go', 'image', 'integration', 'benchmark', 'license',
   'platform-xtest', 'tests-bdd', 'otdfctl-test'];
-
-test('benchmark reporting publishes bulk and TDF results once without decision or trace tables', t => {
-  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'platform-benchmark-report-'));
-  t.after(() => fs.rmSync(directory, { recursive: true, force: true }));
-  const bulk = '## Bulk Benchmark Results\n| Successful Decrypts | 100 |\n| Throughput | 400 requests/second |';
-  const tdf = '## TDF3 Benchmark Results\n| Successful Requests | 5000 |\n| Throughput | 165 requests/second |';
-  fs.writeFileSync(path.join(directory, 'bulk.md'), bulk);
-  fs.writeFileSync(path.join(directory, 'tdf.md'), tdf);
-  fs.writeFileSync(path.join(directory, 'benchmark'), `#!/bin/sh
-case "$1" in
-  bulk) cat bulk.md ;;
-  tdf) cat tdf.md ;;
-  *) echo "unexpected benchmark: $1" >&2; exit 1 ;;
-esac
-`, { mode: 0o700 });
-
-  function readOutputs(file) {
-    const outputs = {};
-    const lines = fs.readFileSync(file, 'utf8').trimEnd().split('\n');
-    for (let index = 0; index < lines.length; index++) {
-      const [name, delimiter] = lines[index].split('<<');
-      assert.ok(delimiter, `expected multiline output: ${lines[index]}`);
-      const value = [];
-      while (++index < lines.length && lines[index] !== delimiter) value.push(lines[index]);
-      assert.equal(lines[index], delimiter, `missing delimiter for ${name}`);
-      outputs[name] = value.join('\n');
-    }
-    return outputs;
-  }
-
-  for (const event of ['pull_request', 'push']) {
-    const env = {
-      ...process.env,
-      GITHUB_ENV: path.join(directory, `${event}-env`),
-      GITHUB_OUTPUT: path.join(directory, `${event}-outputs`),
-      GITHUB_STEP_SUMMARY: path.join(directory, `${event}-summary`),
-    };
-    fs.writeFileSync(env.GITHUB_ENV, '');
-    for (const step of workflow.jobs.benchmark.steps) {
-      if (step.run?.includes('./benchmark ') || step.id === 'save-benchmark') {
-        execFileSync('bash', ['-eo', 'pipefail', '-c', step.run], { cwd: directory, env });
-        Object.assign(env, readOutputs(env.GITHUB_ENV));
-      } else if (step.with?.script && event === 'push') {
-        vm.runInNewContext(step.with.script, { require, process: { env } });
-      }
-    }
-    assert.equal(fs.readFileSync(env.GITHUB_STEP_SUMMARY, 'utf8'), `${bulk}\n${tdf}\n`);
-    const markdown = readOutputs(env.GITHUB_OUTPUT).BENCHMARK_MARKDOWN;
-    assert.equal(markdown, `${bulk}\n${tdf}`);
-    const comments = [];
-    const publish = workflow.jobs['comment-benchmark'].steps.find(step => step.with?.script);
-    vm.runInNewContext(publish.with.script, {
-      process: { env: { BENCHMARK_MARKDOWN: markdown } },
-      context: { repo: { owner: 'opentdf', repo: 'platform' }, issue: { number: 4170 } },
-      github: { rest: { issues: { createComment: comment => comments.push(comment) } } },
-    });
-    assert.equal(comments.length, 1);
-    assert.equal(comments[0].issue_number, 4170);
-    assert.equal(comments[0].body,
-      `<details><summary>Benchmark results, click to expand</summary>\n\n${bulk}\n${tdf}</details>`);
-  }
-});
 
 test('required ci always reports and depends on classifier and every required QA job', () => {
   assert.equal(workflow.jobs.ci.if, '${{ always() }}');

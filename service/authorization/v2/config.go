@@ -20,6 +20,7 @@ type RequestLimitsConfig struct {
 	ResourceAttributeValuesFqnsMax              int `mapstructure:"resource_attribute_values_fqns_max" json:"resource_attribute_values_fqns_max" default:"20"`
 	EntityIdentifierEntityChainEntitiesMax      int `mapstructure:"entity_identifier_entity_chain_entities_max" json:"entity_identifier_entity_chain_entities_max" default:"10"`
 	DecisionRequestFulfillableObligationFqnsMax int `mapstructure:"decision_request_fulfillable_obligation_fqns_max" json:"decision_request_fulfillable_obligation_fqns_max" default:"50"`
+	GetEntitlementsResourcesMax                 int `mapstructure:"get_entitlements_resources_max" json:"get_entitlements_resources_max" default:"1000"`
 	GetDecisionMultiResourceResourcesMax        int `mapstructure:"get_decision_multi_resource_resources_max" json:"get_decision_multi_resource_resources_max" default:"1000"`
 	GetDecisionBulkDecisionRequestsMax          int `mapstructure:"get_decision_bulk_decision_requests_max" json:"get_decision_bulk_decision_requests_max" default:"200"`
 }
@@ -33,6 +34,9 @@ func (c RequestLimitsConfig) Validate() error {
 	}
 	if c.DecisionRequestFulfillableObligationFqnsMax < 1 {
 		return requestLimitConfigError("decision_request_fulfillable_obligation_fqns_max", c.DecisionRequestFulfillableObligationFqnsMax)
+	}
+	if c.GetEntitlementsResourcesMax < 1 {
+		return requestLimitConfigError("get_entitlements_resources_max", c.GetEntitlementsResourcesMax)
 	}
 	if c.GetDecisionMultiResourceResourcesMax < 1 {
 		return requestLimitConfigError("get_decision_multi_resource_resources_max", c.GetDecisionMultiResourceResourcesMax)
@@ -105,6 +109,7 @@ func (c *Config) LogValue() slog.Value {
 				slog.Int("resource_attribute_values_fqns_max", c.RequestLimits.ResourceAttributeValuesFqnsMax),
 				slog.Int("entity_identifier_entity_chain_entities_max", c.RequestLimits.EntityIdentifierEntityChainEntitiesMax),
 				slog.Int("decision_request_fulfillable_obligation_fqns_max", c.RequestLimits.DecisionRequestFulfillableObligationFqnsMax),
+				slog.Int("get_entitlements_resources_max", c.RequestLimits.GetEntitlementsResourcesMax),
 				slog.Int("get_decision_multi_resource_resources_max", c.RequestLimits.GetDecisionMultiResourceResourcesMax),
 				slog.Int("get_decision_bulk_decision_requests_max", c.RequestLimits.GetDecisionBulkDecisionRequestsMax),
 			),

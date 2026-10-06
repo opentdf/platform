@@ -51,10 +51,23 @@ func Test_validateGetDecisionRequest_DefaultRequestLimits(t *testing.T) {
 func Test_validateGetEntitlementsRequest_DefaultRequestLimit(t *testing.T) {
 	service := newValidationTestService(t, nil)
 
-	err := service.validateGetEntitlementsRequest(newEntitlementsRequestWithEntityChainCount(11))
-	require.Error(t, err)
-	assert.Equal(t, connect.CodeInvalidArgument, connect.CodeOf(err))
-	assert.Contains(t, err.Error(), "entity_identifier.entity_chain.entities exceeds maximum count: got 11, max 10")
+	cases := []struct {
+		name        string
+		request     *authzV2.GetEntitlementsRequest
+		expectedErr string
+	}{
+		{name: "entity chain entities", request: newEntitlementsRequestWithEntityChainCount(11), expectedErr: "entity_identifier.entity_chain.entities exceeds maximum count: got 11, max 10"},
+		{name: "resources", request: newEntitlementsRequestWithResourceCount(1001), expectedErr: "resources exceeds maximum count: got 1001, max 1000"},
+		{name: "resource attribute values", request: newEntitlementsRequestWithAttributeValueCount(21), expectedErr: "resources[0].attribute_values.fqns exceeds maximum count: got 21, max 20"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			err := service.validateGetEntitlementsRequest(tc.request)
+			require.Error(t, err)
+			assert.Equal(t, connect.CodeInvalidArgument, connect.CodeOf(err))
+			assert.Contains(t, err.Error(), tc.expectedErr)
+		})
+	}
 }
 
 func Test_validateGetDecisionMultiResourceRequest_DefaultRequestLimits(t *testing.T) {
@@ -126,6 +139,8 @@ func Test_validateGetEntitlementsRequest_ExactlyAtDefaultLimitPasses(t *testing.
 	service := newValidationTestService(t, nil)
 
 	require.NoError(t, service.validateGetEntitlementsRequest(newEntitlementsRequestWithEntityChainCount(10)))
+	require.NoError(t, service.validateGetEntitlementsRequest(newEntitlementsRequestWithResourceCount(1000)))
+	require.NoError(t, service.validateGetEntitlementsRequest(newEntitlementsRequestWithAttributeValueCount(20)))
 }
 
 func Test_validateGetDecisionMultiResourceRequest_ExactlyAtDefaultLimitPasses(t *testing.T) {
@@ -147,6 +162,7 @@ func Test_validateDecisionRequests_UseCustomRequestLimits(t *testing.T) {
 		ResourceAttributeValuesFqnsMax:              21,
 		EntityIdentifierEntityChainEntitiesMax:      11,
 		DecisionRequestFulfillableObligationFqnsMax: 51,
+		GetEntitlementsResourcesMax:                 1001,
 		GetDecisionMultiResourceResourcesMax:        1001,
 		GetDecisionBulkDecisionRequestsMax:          201,
 	})
@@ -154,6 +170,7 @@ func Test_validateDecisionRequests_UseCustomRequestLimits(t *testing.T) {
 	require.NoError(t, service.validateGetDecisionRequest(newDecisionRequestWithEntityChainCount(11)))
 	require.NoError(t, service.validateGetDecisionRequest(newDecisionRequestWithAttributeValueCount(21)))
 	require.NoError(t, service.validateGetDecisionRequest(newDecisionRequestWithObligationCount(51)))
+	require.NoError(t, service.validateGetEntitlementsRequest(newEntitlementsRequestWithResourceCount(1001)))
 	require.NoError(t, service.validateGetDecisionMultiResourceRequest(newDecisionMultiResourceRequestWithResourceCount(1001), ""))
 	require.NoError(t, service.validateGetDecisionMultiResourceRequest(newDecisionMultiResourceRequestWithObligationCount(51), ""))
 	require.NoError(t, service.validateGetDecisionBulkRequest(newDecisionBulkRequestWithDecisionCount(201)))
@@ -259,6 +276,21 @@ func newEntitlementsRequestWithEntityChainCount(count int) *authzV2.GetEntitleme
 			},
 		},
 	}
+}
+
+func newEntitlementsRequestWithResourceCount(count int) *authzV2.GetEntitlementsRequest {
+	request := newEntitlementsRequestWithEntityChainCount(1)
+	request.Resources = make([]*authzV2.Resource, count)
+	for idx := range request.GetResources() {
+		request.Resources[idx] = &authzV2.Resource{Resource: &authzV2.Resource_RegisteredResourceValueFqn{RegisteredResourceValueFqn: sampleRegisteredResourceFQN}}
+	}
+	return request
+}
+
+func newEntitlementsRequestWithAttributeValueCount(count int) *authzV2.GetEntitlementsRequest {
+	request := newEntitlementsRequestWithEntityChainCount(1)
+	request.Resources = []*authzV2.Resource{{Resource: &authzV2.Resource_AttributeValues_{AttributeValues: &authzV2.Resource_AttributeValues{Fqns: newAttributeValueFQNs(count)}}}}
+	return request
 }
 
 func newDecisionRequestWithAttributeValueCount(count int) *authzV2.GetDecisionRequest {

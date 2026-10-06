@@ -121,7 +121,7 @@ func (e *accessTokenRejectedError) Error() string { return e.err.Error() }
 func (e *accessTokenRejectedError) Unwrap() error { return e.err }
 
 const (
-	troubleshootingDocsURL = "https://github.com/opentdf/platform/blob/main/docs/Configuring.md#troubleshooting-access-token-errors"
+	troubleshootingDocsRef = "the access token troubleshooting section in docs/Configuring.md"
 	maxLoggedClaimLength   = 256
 	maxLoggedAudiences     = 10
 )
@@ -140,7 +140,7 @@ func (v *TokenVerifier) logRejectedToken(ctx context.Context, tokenRaw string, e
 		v.log.WarnContext(ctx, "access token malformed", withRemediation(attrs,
 			"The Authorization header does not contain a well-formed JWT access token. "+
 				"Configure the client to send the JWT access token issued by the IdP; some IdPs issue opaque access tokens "+
-				"unless the client requests an audience. See "+troubleshootingDocsURL)...)
+				"unless the client requests an audience. See "+troubleshootingDocsRef+".")...)
 		return
 	}
 
@@ -156,14 +156,14 @@ func (v *TokenVerifier) logRejectedToken(ctx context.Context, tokenRaw string, e
 		remediation := fmt.Sprintf("The token's aud claim does not include the platform audience %q. Fix it in one place: "+
 			"(1) IdP: add %q to the aud claim of access tokens issued to the calling client (token_azp); "+
 			"in Keycloak, add an Audience protocol mapper to the client's scopes. "+
-			"(2) Platform: if the expected audience is wrong, change server.auth.audience (env OPENTDF_SERVER_AUTH_AUDIENCE). See %s",
-			cfg.Audience, cfg.Audience, troubleshootingDocsURL)
+			"(2) Platform: if the expected audience is wrong, change server.auth.audience (env OPENTDF_SERVER_AUTH_AUDIENCE). See %s.",
+			cfg.Audience, cfg.Audience, troubleshootingDocsRef)
 		if audienceContainsAZP(unverified) {
 			remediation = fmt.Sprintf("The token's aud claim contains the calling client's own ID (token_azp) instead of the platform audience %q. "+
 				"Fix this in the IdP, not the platform: add %q to the aud claim of access tokens issued to that client "+
 				"(Keycloak: add an Audience protocol mapper to the client's scopes). Do not set server.auth.audience to the client ID. "+
-				"If the client is sending an ID token, change it to send the access token instead. See %s",
-				cfg.Audience, cfg.Audience, troubleshootingDocsURL)
+				"If the client is sending an ID token, change it to send the access token instead. See %s.",
+				cfg.Audience, cfg.Audience, troubleshootingDocsRef)
 		}
 		v.log.WarnContext(ctx, "access token audience mismatch", withRemediation(attrs, remediation)...)
 	case errors.Is(err, jwt.ErrInvalidIssuer()):
@@ -175,8 +175,8 @@ func (v *TokenVerifier) logRejectedToken(ctx context.Context, tokenRaw string, e
 			"The token's iss claim does not match the issuer %q advertised by the IdP's discovery document. "+
 				"(1) Platform: set server.auth.issuer (env OPENTDF_SERVER_AUTH_ISSUER) to exactly the issuer in the IdP's discovery document. "+
 				"(2) IdP: if clients and the platform reach the IdP through different hostnames, configure a single public hostname "+
-				"for the IdP (Keycloak: KC_HOSTNAME) so every token carries the same iss. See %s",
-			cfg.Issuer, troubleshootingDocsURL))...)
+				"for the IdP (Keycloak: KC_HOSTNAME) so every token carries the same iss. See %s.",
+			cfg.Issuer, troubleshootingDocsRef))...)
 	case errors.Is(err, jwt.ErrTokenExpired()):
 		attrs = append(attrs,
 			slog.Time("token_exp", unverified.Expiration()),
@@ -187,8 +187,8 @@ func (v *TokenVerifier) logRejectedToken(ctx context.Context, tokenRaw string, e
 			"The token expired more than the allowed clock skew (%s) ago. "+
 				"(1) Client: obtain a fresh access token instead of reusing an old one. "+
 				"(2) Hosts: if freshly issued tokens are rejected, the platform's and the IdP's clocks disagree; synchronize both with NTP. "+
-				"The tolerance is server.auth.skew. See %s",
-			cfg.TokenSkew, troubleshootingDocsURL))...)
+				"The tolerance is server.auth.skew. See %s.",
+			cfg.TokenSkew, troubleshootingDocsRef))...)
 	case errors.Is(err, jwt.ErrTokenNotYetValid()), errors.Is(err, jwt.ErrInvalidIssuedAt()):
 		attrs = append(attrs,
 			slog.Time("token_nbf", unverified.NotBefore()),
@@ -198,8 +198,8 @@ func (v *TokenVerifier) logRejectedToken(ctx context.Context, tokenRaw string, e
 		)
 		v.log.WarnContext(ctx, "access token not yet valid", withRemediation(attrs, fmt.Sprintf(
 			"The token's nbf or iat time is later than the platform's clock by more than the allowed skew (%s). "+
-				"The platform's and the IdP's clocks disagree; synchronize both with NTP. The tolerance is server.auth.skew. See %s",
-			cfg.TokenSkew, troubleshootingDocsURL))...)
+				"The platform's and the IdP's clocks disagree; synchronize both with NTP. The tolerance is server.auth.skew. See %s.",
+			cfg.TokenSkew, troubleshootingDocsRef))...)
 	case !jwt.IsValidationError(err):
 		attrs = append(attrs, slog.String("expected_issuer", cfg.Issuer))
 		attrs = append(attrs, signatureHeaderAttrs(tokenRaw)...)
@@ -207,11 +207,11 @@ func (v *TokenVerifier) logRejectedToken(ctx context.Context, tokenRaw string, e
 			"The token's signature could not be verified with the signing keys published by the issuer %q. "+
 				"(1) Client: the token may come from a different IdP or realm than server.auth.issuer; obtain it from the configured issuer. "+
 				"(2) Platform: if the IdP recently rotated its signing keys, the cached key set refreshes every "+
-				"server.auth.cache_refresh_interval. See %s",
-			cfg.Issuer, troubleshootingDocsURL))...)
+				"server.auth.cache_refresh_interval. See %s.",
+			cfg.Issuer, troubleshootingDocsRef))...)
 	default:
 		v.log.WarnContext(ctx, "access token rejected", withRemediation(attrs,
-			"The err attribute names the claim that failed validation. See "+troubleshootingDocsURL)...)
+			"The err attribute names the claim that failed validation. See "+troubleshootingDocsRef+".")...)
 	}
 }
 
@@ -233,7 +233,7 @@ func (v *TokenVerifier) warnIfAudienceIsRequestingClient(ctx context.Context, to
 			slog.String("remediation", "server.auth.audience equals the ID of the client requesting tokens, "+
 				"so ID tokens issued to that client are also accepted as access tokens. "+
 				"Configure the IdP to add the platform's own audience to access tokens (Keycloak: Audience protocol mapper), "+
-				"then set server.auth.audience (env OPENTDF_SERVER_AUTH_AUDIENCE) to that value. See "+troubleshootingDocsURL),
+				"then set server.auth.audience (env OPENTDF_SERVER_AUTH_AUDIENCE) to that value. See "+troubleshootingDocsRef+"."),
 		)
 	})
 }

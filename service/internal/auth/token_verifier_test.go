@@ -381,7 +381,8 @@ func TestTokenVerifier_VerifyAccessToken_LogsActionableFailure(t *testing.T) {
 
 			remediation, ok := record["remediation"].(string)
 			require.True(t, ok, "remediation attribute is a string")
-			assert.Contains(t, remediation, "docs/Configuring.md#troubleshooting-access-token-errors")
+			assert.Contains(t, remediation, "docs/Configuring.md", "remediation points to the troubleshooting docs")
+			assert.NotContains(t, remediation, "https://", "docs are referenced by path, not a version-pinned URL")
 			for _, name := range tc.remediationNames {
 				assert.Contains(t, remediation, name)
 			}

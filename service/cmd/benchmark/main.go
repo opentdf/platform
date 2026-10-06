@@ -9,15 +9,13 @@ import (
 
 func main() {
 	if len(os.Args) == 1 {
-		exitWithError(errors.New("usage: benchmark <bulk|decision-v2|tdf|traces> [flags]"))
+		exitWithError(errors.New("usage: benchmark <bulk|tdf|traces> [flags]"))
 	}
 
 	var err error
 	switch os.Args[1] {
 	case "bulk":
 		err = runBulk(os.Args[2:])
-	case "decision-v2":
-		err = runDecisionV2(os.Args[2:])
 	case "tdf":
 		err = runTDF(os.Args[2:])
 	case "traces":

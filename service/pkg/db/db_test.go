@@ -1,11 +1,74 @@
 package db
 
 import (
+	"context"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+type pingOnlyPGX struct {
+	PgxIface
+	ping func(context.Context) error
+}
+
+func (p pingOnlyPGX) Ping(ctx context.Context) error {
+	return p.ping(ctx)
+}
+
+func TestClientReadinessCheck(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name    string
+		pingErr error
+		wantErr error
+	}{
+		{
+			name: "reachable database is ready",
+		},
+		{
+			name:    "ping failure is not ready",
+			pingErr: assert.AnError,
+			wantErr: assert.AnError,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+
+			client := Client{Pgx: pingOnlyPGX{
+				ping: func(context.Context) error { return test.pingErr },
+			}}
+
+			err := client.ReadinessCheck(time.Second)(t.Context())
+			if test.wantErr == nil {
+				require.NoError(t, err)
+				return
+			}
+
+			require.ErrorIs(t, err, test.wantErr)
+			assert.ErrorContains(t, err, "database not ready")
+		})
+	}
+}
+
+func TestClientReadinessCheckTimesOutHungPing(t *testing.T) {
+	t.Parallel()
+
+	client := Client{Pgx: pingOnlyPGX{
+		ping: func(ctx context.Context) error {
+			<-ctx.Done()
+			return ctx.Err()
+		},
+	}}
+
+	err := client.ReadinessCheck(time.Millisecond)(t.Context())
+	require.ErrorIs(t, err, context.DeadlineExceeded)
+}
 
 func Test_BuildConfig_ConnString(t *testing.T) {
 	tests := []struct {

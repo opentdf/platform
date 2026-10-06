@@ -122,3 +122,9 @@ func RegisterReadinessCheck(namespace string, service func(context.Context) erro
 
 	return nil
 }
+
+// ResetReadinessChecks removes checks left by a prior server lifecycle. Services
+// register their checks again as they start.
+func ResetReadinessChecks() {
+	serviceHealthChecks = make(map[string]func(context.Context) error)
+}

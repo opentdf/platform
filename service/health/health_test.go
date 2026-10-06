@@ -2,13 +2,68 @@ package health
 
 import (
 	"context"
+	"net/http"
+	"net/http/httptest"
 	"testing"
+	"time"
 
 	"connectrpc.com/grpchealth"
 	"github.com/opentdf/platform/service/logger"
+	"github.com/opentdf/platform/service/pkg/db"
+	"github.com/opentdf/platform/service/pkg/serviceregistry"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
+
+type pingOnlyPGX struct {
+	db.PgxIface
+	ping func(context.Context) error
+}
+
+func (p pingOnlyPGX) Ping(ctx context.Context) error {
+	return p.ping(ctx)
+}
+
+func TestDatabaseReadinessAffectsOnlyReadinessEndpoint(t *testing.T) {
+	ResetReadinessChecks()
+	t.Cleanup(ResetReadinessChecks)
+
+	pingErr := error(nil)
+	client := db.Client{Pgx: pingOnlyPGX{
+		ping: func(context.Context) error { return pingErr },
+	}}
+	require.NoError(t, RegisterReadinessCheck("policy", client.ReadinessCheck(databaseCheckTimeout)))
+
+	lgr, err := logger.NewLogger(logger.Config{Output: "stdout", Level: "info", Type: "json"})
+	require.NoError(t, err)
+	registration := NewRegistration()
+	_, registerHandler := registration.RegisterFunc(serviceregistry.RegistrationParams{
+		Logger: lgr,
+		WellKnownConfig: func(string, any) error {
+			return nil
+		},
+	})
+	mux := http.NewServeMux()
+	require.NoError(t, registerHandler(t.Context(), mux))
+
+	assertStatus := func(path string, want int) {
+		t.Helper()
+		request := httptest.NewRequest(http.MethodGet, path, nil)
+		response := httptest.NewRecorder()
+		mux.ServeHTTP(response, request)
+		assert.Equal(t, want, response.Code)
+	}
+
+	assertStatus("/healthz?service=all", http.StatusOK)
+
+	// Simulate a database connection that was healthy at startup and then dropped.
+	pingErr = assert.AnError
+	assertStatus("/healthz?service=all", http.StatusServiceUnavailable)
+	assertStatus("/healthz", http.StatusOK)
+}
+
+const databaseCheckTimeout = 100 * time.Millisecond
 
 type HealthCheckSuite struct {
 	suite.Suite
@@ -19,7 +74,7 @@ func (s *HealthCheckSuite) SetupSuite() {
 
 func (s *HealthCheckSuite) TearDownTest() {
 	// Because its a global we need to reset it after each test
-	serviceHealthChecks = make(map[string]func(context.Context) error)
+	ResetReadinessChecks()
 }
 
 func TestHealthCheckSuite(t *testing.T) {

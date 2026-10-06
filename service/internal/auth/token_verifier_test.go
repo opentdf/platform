@@ -106,6 +106,16 @@ func (f *tokenVerifierFixture) signToken(t *testing.T, issuer, audience string, 
 func (f *tokenVerifierFixture) signClaims(t *testing.T, claims map[string]any, signer *rsa.PrivateKey) string {
 	t.Helper()
 
+	keyID := f.keyID
+	if signer != f.privateKey {
+		keyID = "other-key"
+	}
+	return signClaimsWithKeyID(t, claims, signer, keyID)
+}
+
+func signClaimsWithKeyID(t *testing.T, claims map[string]any, signer *rsa.PrivateKey, keyID string) string {
+	t.Helper()
+
 	token := jwt.New()
 	for name, value := range claims {
 		require.NoError(t, token.Set(name, value))
@@ -113,11 +123,6 @@ func (f *tokenVerifierFixture) signClaims(t *testing.T, claims map[string]any, s
 
 	key, err := jwk.FromRaw(signer)
 	require.NoError(t, err)
-
-	keyID := f.keyID
-	if signer != f.privateKey {
-		keyID = "other-key"
-	}
 
 	require.NoError(t, key.Set(jws.KeyIDKey, keyID))
 	require.NoError(t, key.Set(jwk.AlgorithmKey, jwa.RS256))
@@ -433,6 +438,40 @@ func TestTokenVerifier_VerifyAccessToken_TruncatesLoggedClaims(t *testing.T) {
 	require.True(t, ok)
 	assert.LessOrEqual(t, len(aud), 10, "the number of logged audiences is capped")
 	assert.Equal(t, "aud-0", aud[0])
+}
+
+func TestTokenVerifier_VerifyAccessToken_TruncatesTokenDerivedErrorText(t *testing.T) {
+	fixture := newTokenVerifierFixture(t)
+	verifier, logs := newLoggingTokenVerifier(t, fixture, "test-audience")
+
+	otherKey, err := rsa.GenerateKey(rand.Reader, 2048)
+	require.NoError(t, err)
+
+	// jwx quotes an unknown kid in its key lookup error, so the err attribute
+	// carries caller-controlled text.
+	now := time.Now()
+	token := signClaimsWithKeyID(t, map[string]any{
+		jwt.IssuerKey:     fixture.server.URL,
+		jwt.AudienceKey:   []string{"test-audience"},
+		jwt.IssuedAtKey:   now,
+		jwt.ExpirationKey: now.Add(time.Hour),
+	}, otherKey, strings.Repeat("k", 5000))
+
+	_, err = verifier.VerifyAccessToken(t.Context(), token)
+	require.Error(t, err)
+
+	records := warnRecords(t, logs)
+	require.Len(t, records, 1)
+	assert.Equal(t, "access token signature not verified", records[0][slog.MessageKey])
+
+	errText, ok := records[0]["err"].(string)
+	require.True(t, ok)
+	assert.LessOrEqual(t, len(errText), 300, "token-derived text in err is truncated")
+	assert.Contains(t, errText, "failed to find key with key ID", "err keeps the leading diagnostic detail")
+
+	kid, ok := records[0]["token_kid"].(string)
+	require.True(t, ok)
+	assert.LessOrEqual(t, len(kid), 300)
 }
 
 func TestTokenVerifier_VerifyAccessToken_WarnsOnceWhenAudienceIsRequestingClient(t *testing.T) {

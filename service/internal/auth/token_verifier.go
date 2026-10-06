@@ -133,7 +133,8 @@ const (
 // The raw token and identity claims such as sub and email are never logged.
 func (v *TokenVerifier) logRejectedToken(ctx context.Context, tokenRaw string, err error) {
 	cfg := v.oidcConfiguration
-	attrs := []any{slog.Any("err", err)}
+	// jwx error text can quote token values such as an unknown kid.
+	attrs := []any{slog.String("err", truncateClaim(err.Error()))}
 
 	unverified, parseErr := jwt.ParseInsecure([]byte(tokenRaw))
 	if parseErr != nil {

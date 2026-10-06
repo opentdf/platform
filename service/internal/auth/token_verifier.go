@@ -121,7 +121,7 @@ func (e *accessTokenRejectedError) Error() string { return e.err.Error() }
 func (e *accessTokenRejectedError) Unwrap() error { return e.err }
 
 const (
-	troubleshootingDocsRef = "the access token troubleshooting section in docs/Configuring.md"
+	troubleshootingDocsRef = "'Troubleshooting access token errors' in the documentation bundled with your deployment"
 	maxLoggedClaimLength   = 256
 	maxLoggedAudiences     = 10
 )

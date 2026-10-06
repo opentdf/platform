@@ -1741,18 +1741,21 @@ func (s *RegisteredResourcesSuite) Test_GetRegisteredResource_ByNameWithNamespac
 	s.Require().NoError(err)
 	s.NotNil(created)
 
-	got, err := s.db.PolicyClient.GetRegisteredResource(s.ctx, &registeredresources.GetRegisteredResourceRequest{
-		Identifier: &registeredresources.GetRegisteredResourceRequest_Name{
-			Name: name,
-		},
-		NamespaceFqn: nsFQN,
-	})
-	s.Require().NoError(err)
-	s.NotNil(got)
-	s.Equal(created.GetId(), got.GetId())
-	s.Equal(name, got.GetName())
-	s.NotNil(got.GetNamespace())
-	s.Equal(nsID, got.GetNamespace().GetId())
+	// Namespace FQNs match case-insensitively.
+	for _, fqn := range []string{nsFQN, strings.ToUpper(nsFQN)} {
+		got, err := s.db.PolicyClient.GetRegisteredResource(s.ctx, &registeredresources.GetRegisteredResourceRequest{
+			Identifier: &registeredresources.GetRegisteredResourceRequest_Name{
+				Name: name,
+			},
+			NamespaceFqn: fqn,
+		})
+		s.Require().NoError(err, fqn)
+		s.NotNil(got, fqn)
+		s.Equal(created.GetId(), got.GetId(), fqn)
+		s.Equal(name, got.GetName(), fqn)
+		s.NotNil(got.GetNamespace(), fqn)
+		s.Equal(nsID, got.GetNamespace().GetId(), fqn)
+	}
 }
 
 func (s *RegisteredResourcesSuite) Test_ListRegisteredResources_FilterByNamespaceID_Succeeds() {
@@ -1795,20 +1798,23 @@ func (s *RegisteredResourcesSuite) Test_ListRegisteredResources_FilterByNamespac
 	s.Require().NoError(err)
 	s.NotNil(created)
 
-	list, err := s.db.PolicyClient.ListRegisteredResources(s.ctx, &registeredresources.ListRegisteredResourcesRequest{
-		NamespaceFqn: nsFQN,
-	})
-	s.Require().NoError(err)
-	s.NotNil(list)
+	// Namespace FQNs match case-insensitively.
+	for _, fqn := range []string{nsFQN, strings.ToUpper(nsFQN)} {
+		list, err := s.db.PolicyClient.ListRegisteredResources(s.ctx, &registeredresources.ListRegisteredResourcesRequest{
+			NamespaceFqn: fqn,
+		})
+		s.Require().NoError(err, fqn)
+		s.NotNil(list, fqn)
 
-	found := false
-	for _, r := range list.GetResources() {
-		s.Equal(nsID, r.GetNamespace().GetId(), "all listed resources should belong to the filtered namespace")
-		if r.GetId() == created.GetId() {
-			found = true
+		found := false
+		for _, r := range list.GetResources() {
+			s.Equal(nsID, r.GetNamespace().GetId(), "all listed resources should belong to the filtered namespace: %s", fqn)
+			if r.GetId() == created.GetId() {
+				found = true
+			}
 		}
+		s.True(found, "created resource should be in the filtered list: %s", fqn)
 	}
-	s.True(found, "created resource should be in the filtered list")
 }
 
 func (s *RegisteredResourcesSuite) Test_ListRegisteredResources_SearchByName_Succeeds() {

@@ -30,7 +30,7 @@ func (c PolicyDBClient) GetNamespace(ctx context.Context, identifier any) (*poli
 		}
 		params = getNamespaceParams{ID: id}
 	case *namespaces.GetNamespaceRequest_Fqn:
-		params = getNamespaceParams{Name: pgtypeText(strings.ToLower(i.Fqn))}
+		params = getNamespaceParams{Name: pgtypeText(normalizeNamespaceFQN(i.Fqn))}
 	case string:
 		id := pgtypeUUID(i)
 		if !id.Valid {
@@ -172,6 +172,13 @@ func (c PolicyDBClient) ListAllNamespaces(ctx context.Context) ([]*policy.Namesp
 		}
 	}
 	return nsList, nil
+}
+
+// normalizeNamespaceFQN prepares a namespace FQN (or bare name) for lookup.
+// Namespace names are stored lower-cased, so every namespace FQN input must go
+// through this before it reaches a query.
+func normalizeNamespaceFQN(fqn string) string {
+	return strings.ToLower(fqn)
 }
 
 func (c PolicyDBClient) CreateNamespace(ctx context.Context, r *namespaces.CreateNamespaceRequest) (*policy.Namespace, error) {
@@ -329,7 +336,7 @@ func (c PolicyDBClient) UnsafeDeleteNamespace(ctx context.Context, existing *pol
 		return nil, fmt.Errorf("namespace not found: %w", db.ErrNotFound)
 	}
 
-	if existing.GetFqn() != fqn {
+	if !strings.EqualFold(existing.GetFqn(), fqn) {
 		return nil, fmt.Errorf("fqn mismatch: %w", db.ErrNotFound)
 	}
 

@@ -52,7 +52,7 @@ func (c PolicyDBClient) GetAction(ctx context.Context, req *actions.GetActionReq
 			}
 			getActionParams.NamespaceID = parsedID
 		} else if req.GetNamespaceFqn() != "" {
-			getActionParams.NamespaceFqn = pgtypeText(strings.ToLower(req.GetNamespaceFqn()))
+			getActionParams.NamespaceFqn = pgtypeText(normalizeNamespaceFQN(req.GetNamespaceFqn()))
 		}
 	default:
 		return nil, db.ErrSelectIdentifierInvalid
@@ -91,7 +91,7 @@ func (c PolicyDBClient) ListActions(ctx context.Context, req *actions.ListAction
 
 	list, err := c.queries.listActions(ctx, listActionsParams{
 		NamespaceID:  pgtypeUUID(req.GetNamespaceId()),
-		NamespaceFqn: pgtypeText(strings.ToLower(req.GetNamespaceFqn())),
+		NamespaceFqn: pgtypeText(normalizeNamespaceFQN(req.GetNamespaceFqn())),
 		Limit:        limit,
 		Offset:       offset,
 	})
@@ -165,7 +165,7 @@ func (c PolicyDBClient) CreateAction(ctx context.Context, req *actions.CreateAct
 		Name:         name,
 		Metadata:     metadataJSON,
 		NamespaceID:  parsedID,
-		NamespaceFqn: pgtypeText(strings.ToLower(namespaceFQN)),
+		NamespaceFqn: pgtypeText(normalizeNamespaceFQN(namespaceFQN)),
 	}
 
 	createdID, err := c.queries.createCustomAction(ctx, createParams)

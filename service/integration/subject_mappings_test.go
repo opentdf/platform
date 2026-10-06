@@ -1663,24 +1663,27 @@ func (s *SubjectMappingsSuite) Test_ListSubjectConditionSets_ByNamespaceFqn_Succ
 		_, _ = s.db.PolicyClient.DeleteSubjectConditionSet(s.ctx, netSCS.GetId())
 	}()
 
-	listRsp, err := s.db.PolicyClient.ListSubjectConditionSets(s.ctx, &subjectmapping.ListSubjectConditionSetsRequest{
-		NamespaceFqn: "https://example.com",
-	})
-	s.Require().NoError(err)
-	s.NotNil(listRsp)
+	// Namespace FQNs match case-insensitively.
+	for _, fqn := range []string{"https://example.com", "https://EXAMPLE.com"} {
+		listRsp, err := s.db.PolicyClient.ListSubjectConditionSets(s.ctx, &subjectmapping.ListSubjectConditionSetsRequest{
+			NamespaceFqn: fqn,
+		})
+		s.Require().NoError(err, fqn)
+		s.NotNil(listRsp, fqn)
 
-	listed := listRsp.GetSubjectConditionSets()
-	s.NotEmpty(listed)
+		listed := listRsp.GetSubjectConditionSets()
+		s.NotEmpty(listed, fqn)
 
-	foundCom := false
-	for _, scs := range listed {
-		s.Equal(comNsID, scs.GetNamespace().GetId())
-		if scs.GetId() == comSCS.GetId() {
-			foundCom = true
+		foundCom := false
+		for _, scs := range listed {
+			s.Equal(comNsID, scs.GetNamespace().GetId(), fqn)
+			if scs.GetId() == comSCS.GetId() {
+				foundCom = true
+			}
+			s.NotEqual(netSCS.GetId(), scs.GetId(), fqn)
 		}
-		s.NotEqual(netSCS.GetId(), scs.GetId())
+		s.True(foundCom, fqn)
 	}
-	s.True(foundCom)
 }
 
 func (s *SubjectMappingsSuite) Test_ListSubjectConditionSets_ByNamespaceId_ExcludesUnnamespaced() {

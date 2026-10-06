@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"strings"
 	"testing"
 	"time"
 
@@ -815,31 +816,37 @@ func (s *ResourceMappingsSuite) Test_ListResourceMappings_FilterByNamespaceFqn_S
 	})
 	s.Require().NoError(err)
 
-	listRsp, err := s.db.PolicyClient.ListResourceMappings(s.ctx, &resourcemapping.ListResourceMappingsRequest{
-		NamespaceFqn: nsA.GetFqn(),
-	})
-	s.Require().NoError(err)
-	s.Require().NotNil(listRsp)
+	// Namespace FQNs match case-insensitively.
+	for _, fqn := range []string{nsA.GetFqn(), strings.ToUpper(nsA.GetFqn())} {
+		listRsp, err := s.db.PolicyClient.ListResourceMappings(s.ctx, &resourcemapping.ListResourceMappingsRequest{
+			NamespaceFqn: fqn,
+		})
+		s.Require().NoError(err, fqn)
+		s.Require().NotNil(listRsp, fqn)
 
-	s.Len(listRsp.GetResourceMappings(), 1, "filter should return only the mapping owned by namespace A")
-	s.Equal(createdA.GetId(), listRsp.GetResourceMappings()[0].GetId())
-	s.Equal(nsA.GetFqn(), listRsp.GetResourceMappings()[0].GetNamespace().GetFqn())
+		s.Len(listRsp.GetResourceMappings(), 1, "filter should return only the mapping owned by namespace A: %s", fqn)
+		s.Equal(createdA.GetId(), listRsp.GetResourceMappings()[0].GetId(), fqn)
+		s.Equal(nsA.GetFqn(), listRsp.GetResourceMappings()[0].GetNamespace().GetFqn(), fqn)
+	}
 }
 
 func (s *ResourceMappingsSuite) Test_ListResourceMappingGroups_WithNamespaceFqn_Succeeds() {
 	ns, group, cleanup := s.createIsolatedNamespaceAndGroup("rmg-list-ns-fqn")
 	defer cleanup()
 
-	listRsp, err := s.db.PolicyClient.ListResourceMappingGroups(s.ctx, &resourcemapping.ListResourceMappingGroupsRequest{
-		NamespaceFqn: ns.GetFqn(),
-	})
-	s.Require().NoError(err)
-	s.Require().NotNil(listRsp)
+	// Namespace FQNs match case-insensitively.
+	for _, fqn := range []string{ns.GetFqn(), strings.ToUpper(ns.GetFqn())} {
+		listRsp, err := s.db.PolicyClient.ListResourceMappingGroups(s.ctx, &resourcemapping.ListResourceMappingGroupsRequest{
+			NamespaceFqn: fqn,
+		})
+		s.Require().NoError(err, fqn)
+		s.Require().NotNil(listRsp, fqn)
 
-	list := listRsp.GetResourceMappingGroups()
-	s.Len(list, 1, "isolated namespace should own exactly one group")
-	s.Equal(group.GetId(), list[0].GetId())
-	s.Equal(ns.GetId(), list[0].GetNamespaceId())
+		list := listRsp.GetResourceMappingGroups()
+		s.Len(list, 1, "isolated namespace should own exactly one group: %s", fqn)
+		s.Equal(group.GetId(), list[0].GetId(), fqn)
+		s.Equal(ns.GetId(), list[0].GetNamespaceId(), fqn)
+	}
 }
 
 func (s *ResourceMappingsSuite) Test_ListResourceMappings_NoPagination_Succeeds() {

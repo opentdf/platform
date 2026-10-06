@@ -2099,6 +2099,23 @@ func (s *AttributesSuite) Test_UnsafeDeleteAttribute() {
 	s.NotNil(createdAttr)
 }
 
+// The FQN confirmation names the same attribute in any casing; a different FQN
+// is still rejected (Test_UnsafeDeleteAttribute_WithBadFqnFails).
+func (s *AttributesSuite) Test_UnsafeDeleteAttribute_UpperCaseFqn_Succeeds() {
+	created, err := s.db.PolicyClient.CreateAttribute(s.ctx, &attributes.CreateAttributeRequest{
+		Name:        "test__unsafe_delete_attribute_case",
+		NamespaceId: fixtureNamespaceID,
+		Rule:        policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
+	})
+	s.Require().NoError(err)
+	got, err := s.db.PolicyClient.GetAttribute(s.ctx, created.GetId())
+	s.Require().NoError(err)
+
+	deleted, err := s.db.PolicyClient.UnsafeDeleteAttribute(s.ctx, got, strings.ToUpper(got.GetFqn()))
+	s.Require().NoError(err)
+	s.Equal(created.GetId(), deleted.GetId())
+}
+
 func (s *AttributesSuite) Test_UnsafeDeleteAttribute_WithBadFqnFails() {
 	created, _ := s.db.PolicyClient.CreateAttribute(s.ctx, &attributes.CreateAttributeRequest{
 		Name:        "test__delete_attribute_with_bad_fqn",

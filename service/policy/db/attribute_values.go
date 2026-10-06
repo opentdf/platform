@@ -266,7 +266,7 @@ func (c PolicyDBClient) UnsafeDeleteAttributeValue(ctx context.Context, toDelete
 	id := r.GetId()
 	fqn := r.GetFqn()
 
-	if fqn != toDelete.GetFqn() {
+	if !strings.EqualFold(fqn, toDelete.GetFqn()) {
 		return nil, fmt.Errorf("fqn mismatch [%s]: %w", fqn, db.ErrNotFound)
 	}
 

@@ -128,7 +128,7 @@ func (c PolicyDBClient) ListSubjectConditionSets(ctx context.Context, r *subject
 
 	list, err := c.queries.listSubjectConditionSets(ctx, listSubjectConditionSetsParams{
 		NamespaceID:   pgtypeUUID(r.GetNamespaceId()),
-		NamespaceFqn:  pgtypeText(strings.ToLower(r.GetNamespaceFqn())),
+		NamespaceFqn:  pgtypeText(normalizeNamespaceFQN(r.GetNamespaceFqn())),
 		Search:        search,
 		Limit:         limit,
 		Offset:        offset,
@@ -372,7 +372,7 @@ func (c PolicyDBClient) ListSubjectMappings(ctx context.Context, r *subjectmappi
 
 	list, err := c.queries.listSubjectMappings(ctx, listSubjectMappingsParams{
 		NamespaceID:   pgtypeUUID(r.GetNamespaceId()),
-		NamespaceFqn:  pgtypeText(strings.ToLower(r.GetNamespaceFqn())),
+		NamespaceFqn:  pgtypeText(normalizeNamespaceFQN(r.GetNamespaceFqn())),
 		Search:        search,
 		Limit:         limit,
 		Offset:        offset,

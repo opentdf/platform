@@ -205,6 +205,87 @@ func (s *ObligationsSuite) Test_GetObligation_ByFqn_NamespaceIsCaseInsensitive()
 	s.assertObligationBasics(obl, oblName, namespaceID, namespace.Name, namespaceFQN)
 }
 
+// Every obligation path that takes a namespace FQN matches it case-insensitively.
+// Obligation names and values are matched case-insensitively too.
+func (s *ObligationsSuite) Test_Obligations_NamespaceFqn_IsCaseInsensitive() {
+	namespaceID, namespaceFQN, _ := s.getNamespaceData(nsExampleCom)
+	upperNS := strings.ToUpper(namespaceFQN)
+	name := fmt.Sprintf("case-obl-%d", time.Now().UnixNano())
+	value := "case-val"
+
+	obl, err := s.db.PolicyClient.CreateObligation(s.ctx, &obligations.CreateObligationRequest{
+		NamespaceFqn: upperNS,
+		Name:         name,
+	})
+	s.Require().NoError(err)
+	s.Equal(namespaceID, obl.GetNamespace().GetId())
+
+	oblFQN := namespaceFQN + "/obl/" + name
+	oblFQNs := []string{upperNS + "/obl/" + name, namespaceFQN + "/obl/" + strings.ToUpper(name)}
+
+	action, err := s.db.PolicyClient.CreateAction(s.ctx, &actions.CreateActionRequest{
+		Name:        fmt.Sprintf("case-action-%d", time.Now().UnixNano()),
+		NamespaceId: namespaceID,
+	})
+	s.Require().NoError(err)
+
+	val, err := s.db.PolicyClient.CreateObligationValue(s.ctx, &obligations.CreateObligationValueRequest{
+		ObligationFqn: oblFQNs[0],
+		Value:         value,
+		Triggers: []*obligations.ValueTriggerRequest{{
+			Action:         &common.IdNameIdentifier{Name: action.GetName()},
+			AttributeValue: &common.IdFqnIdentifier{Fqn: "https://example.com/attr/attr1/value/value1"},
+		}},
+	})
+	s.Require().NoError(err)
+	s.Equal(obl.GetId(), val.GetObligation().GetId())
+
+	for _, fqn := range oblFQNs {
+		got, err := s.db.PolicyClient.GetObligation(s.ctx, &obligations.GetObligationRequest{Fqn: fqn})
+		s.Require().NoError(err, fqn)
+		s.Equal(obl.GetId(), got.GetId(), fqn)
+
+		byFQNs, err := s.db.PolicyClient.GetObligationsByFQNs(s.ctx, &obligations.GetObligationsByFQNsRequest{Fqns: []string{fqn}})
+		s.Require().NoError(err, fqn)
+		s.Require().Len(byFQNs, 1, fqn)
+		s.Equal(obl.GetId(), byFQNs[0].GetId(), fqn)
+
+		valFQN := fqn + "/value/" + strings.ToUpper(value)
+		gotVal, err := s.db.PolicyClient.GetObligationValue(s.ctx, &obligations.GetObligationValueRequest{Fqn: valFQN})
+		s.Require().NoError(err, valFQN)
+		s.Equal(val.GetId(), gotVal.GetId(), valFQN)
+
+		valsByFQNs, err := s.db.PolicyClient.GetObligationValuesByFQNs(s.ctx, &obligations.GetObligationValuesByFQNsRequest{Fqns: []string{valFQN}})
+		s.Require().NoError(err, valFQN)
+		s.Require().Len(valsByFQNs, 1, valFQN)
+		s.Equal(val.GetId(), valsByFQNs[0].GetId(), valFQN)
+	}
+
+	list, _, err := s.db.PolicyClient.ListObligations(s.ctx, &obligations.ListObligationsRequest{NamespaceFqn: upperNS})
+	s.Require().NoError(err)
+	found := false
+	for _, o := range list {
+		s.Equal(namespaceID, o.GetNamespace().GetId())
+		found = found || o.GetId() == obl.GetId()
+	}
+	s.True(found, "obligation listed by upper-case namespace FQN")
+
+	triggers, _, err := s.db.PolicyClient.ListObligationTriggers(s.ctx, &obligations.ListObligationTriggersRequest{NamespaceFqn: upperNS})
+	s.Require().NoError(err)
+	foundTrigger := false
+	for _, t := range triggers {
+		foundTrigger = foundTrigger || t.GetObligationValue().GetId() == val.GetId()
+	}
+	s.True(foundTrigger, "trigger listed by upper-case namespace FQN")
+
+	_, err = s.db.PolicyClient.DeleteObligationValue(s.ctx, &obligations.DeleteObligationValueRequest{Fqn: oblFQNs[1] + "/value/" + value})
+	s.Require().NoError(err)
+	_, err = s.db.PolicyClient.DeleteObligation(s.ctx, &obligations.DeleteObligationRequest{Fqn: oblFQNs[0]})
+	s.Require().NoError(err)
+	_, err = s.db.PolicyClient.GetObligation(s.ctx, &obligations.GetObligationRequest{Fqn: oblFQN})
+	s.Require().ErrorIs(err, db.ErrNotFound)
+}
+
 func (s *ObligationsSuite) Test_GetObligation_WithTriggers_Succeeds() {
 	namespaceID, namespaceFQN, namespace := s.getNamespaceData(nsExampleCom)
 	createdObl := s.createObligation(namespaceID, oblName+"-with-triggers", nil)

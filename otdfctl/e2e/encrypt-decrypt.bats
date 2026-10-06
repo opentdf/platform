@@ -26,7 +26,7 @@ setup_file() {
   cp "$PLATFORM_CONFIG" "$PLATFORM_CONFIG_BACKUP"
   openssl genpkey -algorithm RSA -out "$PLATFORM_DIR/kas-r2-private.pem" -pkeyopt rsa_keygen_bits:2048
   openssl rsa -in "$PLATFORM_DIR/kas-r2-private.pem" -pubout -out "$PLATFORM_DIR/kas-r2-cert.pem"
-  openssl ecparam -name prime256v1 -genkey -noout -out "$PLATFORM_DIR/kas-e2-private.pem"
+  openssl genpkey -algorithm EC -pkeyopt ec_paramgen_curve:P-256 -out "$PLATFORM_DIR/kas-e2-private.pem"
   openssl ec -in "$PLATFORM_DIR/kas-e2-private.pem" -pubout -out "$PLATFORM_DIR/kas-e2-cert.pem"
 
   export INFILE_GO_MOD=go.mod

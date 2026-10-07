@@ -249,7 +249,7 @@ func TestJITPDP_UncachedDirectDecisions(t *testing.T) {
 			{"action_mismatch", &attrs.GetEntitleableAttributesByFqnsResponse_EntitleableValue{Fqn: valueFQN}, true, "write", false},
 		} {
 			t.Run(rule.String()+"/"+tc.name, func(t *testing.T) {
-				attrFake := &fakeAttributesClient{respFunc: func(req *attrs.GetEntitleableAttributesByFqnsRequest) (*attrs.GetEntitleableAttributesByFqnsResponse, error) {
+				attrFake := &fakeAttributesClient{respFunc: func(_ *attrs.GetEntitleableAttributesByFqnsRequest) (*attrs.GetEntitleableAttributesByFqnsResponse, error) {
 					resp := &attrs.GetEntitleableAttributesByFqnsResponse{}
 					if tc.knownDefinition {
 						def := &attrs.GetEntitleableAttributesByFqnsResponse_EntitleableDefinition{Rule: rule}

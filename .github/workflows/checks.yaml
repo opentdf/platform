@@ -456,7 +456,6 @@ jobs:
     strategy:
       fail-fast: false
     permissions:
-      id-token: write
       contents: read
     steps:
       - name: Install Dependencies
@@ -473,13 +472,18 @@ jobs:
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           persist-credentials: false
-      - uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5 # v5.5.0
+      # setup-go v5.5.0. This read-only job builds tests and uploads reports, not release binaries.
+      - uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5 # zizmor: ignore[cache-poisoning]
         with:
           go-version-file: go.work
-          cache: false
+          cache: true
+          cache-dependency-path: "**/go.sum"
 
       - name: Test authorization summary renderer
         run: python3 -m unittest discover -s .github/scripts -p 'test_summarize_authz_performance.py'
+
+      - name: Compile BDD test suite
+        run: go test -c -tags=cukes -o "$RUNNER_TEMP/bdd-tests" ./tests-bdd
 
       - name: Build local platform-cukes image for testing
         run: docker build -t platform-cukes .
@@ -488,7 +492,7 @@ jobs:
         id: bdd
         shell: bash
         run: |
-          CUKES_LOG_HANDLER=console go test ./tests-bdd -v -timeout=20m --tags=cukes --godog.random --godog.tags='~@scale' --godog.format="cucumber:$(pwd)/cukes_platform_report.json,pretty:$(pwd)/cukes_platform_report.log,pretty" ./features 2>&1 | tee cukes_test_output.log
+          CUKES_LOG_HANDLER=console go test ./tests-bdd -count=1 -v -timeout=20m --tags=cukes --godog.random --godog.tags='~@scale' --godog.format="cucumber:$(pwd)/cukes_platform_report.json,pretty:$(pwd)/cukes_platform_report.log,pretty" ./features 2>&1 | tee cukes_test_output.log
 
       - name: Check for undefined steps
         run: |
@@ -540,10 +544,15 @@ jobs:
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           persist-credentials: false
-      - uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5 # v5.5.0
+      # setup-go v5.5.0. This read-only job builds tests and uploads reports, not release binaries.
+      - uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5 # zizmor: ignore[cache-poisoning]
         with:
           go-version-file: go.work
-          cache: false
+          cache: true
+          cache-dependency-path: "**/go.sum"
+
+      - name: Compile BDD test suite
+        run: go test -c -tags=cukes -o "$RUNNER_TEMP/bdd-tests" ./tests-bdd
 
       - name: Build local platform-cukes image for testing
         run: docker build -t platform-cukes .
@@ -552,7 +561,7 @@ jobs:
         id: scale
         shell: bash
         run: |
-          CUKES_LOG_HANDLER=console go test ./tests-bdd -v -timeout=20m --tags=cukes --godog.tags=@scale --godog.format="cucumber:$(pwd)/cukes_platform_report.json,pretty:$(pwd)/cukes_platform_report.log,pretty" ./features 2>&1 | tee cukes_test_output.log
+          CUKES_LOG_HANDLER=console go test ./tests-bdd -count=1 -v -timeout=20m --tags=cukes --godog.tags=@scale --godog.format="cucumber:$(pwd)/cukes_platform_report.json,pretty:$(pwd)/cukes_platform_report.log,pretty" ./features 2>&1 | tee cukes_test_output.log
 
       - name: Summarize authorization performance
         if: ${{ !cancelled() }}

@@ -171,6 +171,40 @@ func TestGeneratedScaleCasesVaryRealResourcesAndKeepValidRequests(t *testing.T) 
 	t.Logf("%d case categories, %d distinct FQNs in the resource pool", len(cases), len(seen))
 }
 
+func TestDynamicScaleRequestsUseUnprovisionedValues(t *testing.T) {
+	scenario := &PlatformScenarioContext{objects: make(map[string]any)}
+	ctx := context.WithValue(t.Context(), platformScenarioContextKey{}, scenario)
+	ctx, err := prepareScaleUsers(ctx, 6000, 4625)
+	require.NoError(t, err)
+	scenario.RecordObject("projects", &policy.Attribute{Fqn: "https://scale.example/attr/project", Values: make([]*policy.Value, 6001)})
+	scenario.RecordObject("classification", &policy.Attribute{Fqn: "https://scale.example/attr/classification"})
+	scenario.RecordObject("region", &policy.Attribute{Fqn: "https://scale.example/attr/region"})
+	scenario.RecordObject("scale-dynamic-projects", &policy.Attribute{Fqn: "https://scale.example/attr/project-dynamic"})
+	cases, err := buildGeneratedScaleCases(ctx, "projects", 100, 4625)
+	require.NoError(t, err)
+	permitted, denied := false, false
+	for _, item := range cases {
+		for _, expected := range item.expected {
+			permitted = permitted || expected == authz.Decision_DECISION_PERMIT
+			denied = denied || expected == authz.Decision_DECISION_DENY
+		}
+		for _, request := range item.variants {
+			for _, resource := range request.GetResources() {
+				projects := 0
+				for _, fqn := range resource.GetAttributeValues().GetFqns() {
+					require.NotContains(t, fqn, "/attr/project/value/", "static subject mappings must not supply project grants")
+					if strings.Contains(fqn, "/attr/project-dynamic/value/") {
+						projects++
+					}
+				}
+				require.Positive(t, projects, "each resource must exercise dynamic project resolution")
+			}
+		}
+	}
+	require.True(t, permitted)
+	require.True(t, denied)
+}
+
 func TestScaleLoadSelectsResourceVariants(t *testing.T) {
 	item := loadTestCase("generated")
 	for i := range 50 {

@@ -5,6 +5,7 @@ import json
 from pathlib import Path
 
 MARKER = "AUTHZ_PERFORMANCE "
+ENTITLEMENT_PATHS = ("subject-mapping", "direct-entitlement", "dynamic-value-mapping")
 NUMBERS = (
     "seed", "concurrency", "requests", "resources_requested", "wall_ns",
     "median_ns", "p95_ns", "maximum_ns", "timeout_ns", "failures",
@@ -21,7 +22,7 @@ def validate_result(result):
         raise ValueError("missing case results")
     if not isinstance(result.get("fixture", ""), str):
         raise ValueError("invalid fixture description")
-    if result.get("path", "subject-mapping") not in ("subject-mapping", "direct-entitlement"):
+    if result.get("path", "subject-mapping") not in ENTITLEMENT_PATHS:
         raise ValueError("invalid entitlement path")
     names = set()
     for case in cases:
@@ -66,7 +67,7 @@ def read_results(text):
             results.append(result)
         except (ValueError, TypeError, AttributeError, KeyError):
             malformed += 1
-    return sorted(results, key=lambda row: (row["concurrency"], row.get("path", "subject-mapping") == "direct-entitlement", row["seed"])), malformed
+    return sorted(results, key=lambda row: (row["concurrency"], ENTITLEMENT_PATHS.index(row.get("path", "subject-mapping")), row["seed"])), malformed
 
 
 def milliseconds(nanoseconds):
@@ -85,6 +86,8 @@ def render(text, outcome):
     if results:
         if results[0].get("fixture"):
             lines += [cell(results[0]["fixture"]), ""]
+        if any(row.get("path") == "dynamic-value-mapping" for row in results):
+            lines += ["Dynamic mappings resolve unprovisioned project values under a separate definition. The provisioned policy remains as background load; classification and regions use subject mappings.", ""]
         lines += [
             "| Entitlement path | Concurrency | Requests | Cases used | Median | p95 | Maximum | Requests/s | Failures | Correctness |",
             "| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- |",

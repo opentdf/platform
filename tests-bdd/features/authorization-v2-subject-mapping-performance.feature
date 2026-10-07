@@ -12,9 +12,13 @@ Feature: Mixed authorization traffic at large policy scale
   Requests vary read, write, denied delete, and one or three resources.
   The seed reproduces both selections at every concurrency level. Setup is excluded.
   Latency is report-only; incorrect decisions, errors, and 30-second timeouts fail.
-  Run the same workload with subject mappings and equivalent direct entitlements.
-  Caching is disabled in both paths. The direct path uses the claims ERS and carries
+  Run the same workload with subject mappings, direct entitlements, and dynamic mappings.
+  Caching is disabled in all paths. The direct path uses the claims ERS and carries
   grants on the entity rather than matching its Keycloak attributes.
+  The dynamic path keeps the same large policy as background load, but requests
+  unprovisioned project values under a separate allOf definition. Its IN resolver
+  matches the user's project list for read/write. Classification and regions
+  continue to use subject mappings; the seed and expected decisions are unchanged.
 
   Scenario Outline: Random <entitlements> requests across concurrency levels
     Given representative scale users hold subsets of 6000 project values with seed 4625
@@ -50,6 +54,7 @@ Feature: Mixed authorization traffic at large policy scale
       | 50          |
 
     Examples:
-      | entitlements       | template                                               |
-      | subject-mapping    | cukes/resources/platform.template                      |
-      | direct-entitlement | cukes/resources/platform.direct_entitlements.template  |
+      | entitlements          | template                                                 |
+      | subject-mapping       | cukes/resources/platform.template                        |
+      | direct-entitlement    | cukes/resources/platform.direct_entitlements.template    |
+      | dynamic-value-mapping | cukes/resources/platform.dynamic_value_mappings.template |

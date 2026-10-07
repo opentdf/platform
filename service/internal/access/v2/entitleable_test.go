@@ -11,6 +11,7 @@ import (
 	"github.com/opentdf/platform/sdk/sdkconnect"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/types/known/wrapperspb"
 
 	otdfSDK "github.com/opentdf/platform/sdk"
 )
@@ -220,4 +221,38 @@ func TestFetchEntitleableAttributes_AllowTraversalEmptyValueRegistersDefinition(
 	assert.Equal(t, definitionFQN, defs[0].GetFqn())
 	assert.Empty(t, defs[0].GetValues())
 	assert.Empty(t, sms)
+}
+
+func TestFetchEntitleableAttributesRetainsInactiveValues(t *testing.T) {
+	for _, rule := range []policy.AttributeRuleTypeEnum{
+		policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
+		policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY,
+	} {
+		t.Run(rule.String(), func(t *testing.T) {
+			definitionFQN := "https://example.com/attr/classification"
+			valueFQN := definitionFQN + "/value/inactive"
+			unknownFQN := "https://example.com/attr/unknown/value/missing"
+			fake := &fakeAttributesClient{respFunc: func(_ *attrs.GetEntitleableAttributesByFqnsRequest) (*attrs.GetEntitleableAttributesByFqnsResponse, error) {
+				return &attrs.GetEntitleableAttributesByFqnsResponse{
+					Definitions: map[string]*attrs.GetEntitleableAttributesByFqnsResponse_EntitleableDefinition{
+						definitionFQN: {Rule: rule},
+					},
+					FqnEntitleableAttributes: map[string]*attrs.GetEntitleableAttributesByFqnsResponse_EntitleableAttribute{
+						valueFQN: {DefinitionFqn: definitionFQN, Value: &attrs.GetEntitleableAttributesByFqnsResponse_EntitleableValue{
+							Fqn: valueFQN, ValueId: "inactive-id", Active: wrapperspb.Bool(false),
+						}},
+					},
+				}, nil
+			}}
+			definitions, _, err := fetchEntitleableAttributes(t.Context(), newSDKWithAttributes(fake), []string{valueFQN, unknownFQN})
+			require.NoError(t, err)
+			require.Len(t, fake.requests, 1)
+			require.Len(t, definitions, 1)
+			require.Len(t, definitions[0].GetValues(), 1)
+			value := definitions[0].GetValues()[0]
+			assert.Equal(t, "inactive-id", value.GetId())
+			require.NotNil(t, value.GetActive())
+			assert.False(t, value.GetActive().GetValue())
+		})
+	}
 }

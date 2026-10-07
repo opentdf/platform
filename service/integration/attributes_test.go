@@ -1760,12 +1760,17 @@ func (s *AttributesSuite) Test_GetEntitleableAttributesByFqns_ActiveValuesAndNor
 	s.Equal(high, values[0].GetFqn())
 	s.Equal(low, values[1].GetFqn())
 	// Traversal must not turn an explicitly inactive value into an unknown value.
-	_, err = s.db.PolicyClient.GetEntitleableAttributesByFqns(s.ctx, &attributes.GetEntitleableAttributesByFqnsRequest{Fqns: []string{low, mid}})
-	s.Require().ErrorIs(err, db.ErrAttributeValueInactive)
+	resp, err = s.db.PolicyClient.GetEntitleableAttributesByFqns(s.ctx, &attributes.GetEntitleableAttributesByFqnsRequest{Fqns: []string{low, mid}})
+	s.Require().NoError(err)
+	s.Require().Len(resp.GetFqnEntitleableAttributes(), 2)
+	inactive := resp.GetFqnEntitleableAttributes()[mid].GetValue()
+	s.Require().NotNil(inactive.GetActive())
+	s.False(inactive.GetActive().GetValue())
 	_, err = s.db.PolicyClient.DeactivateAttribute(s.ctx, created.GetId())
 	s.Require().NoError(err)
-	_, err = s.db.PolicyClient.GetEntitleableAttributesByFqns(s.ctx, &attributes.GetEntitleableAttributesByFqnsRequest{Fqns: []string{low}})
-	s.Require().ErrorIs(err, db.ErrNotFound)
+	resp, err = s.db.PolicyClient.GetEntitleableAttributesByFqns(s.ctx, &attributes.GetEntitleableAttributesByFqnsRequest{Fqns: []string{low}})
+	s.Require().NoError(err)
+	s.Empty(resp.GetFqnEntitleableAttributes())
 }
 
 func (s *AttributesSuite) Test_GetEntitleableAttributesByFqns_UnprovisionedValues() {
@@ -1789,7 +1794,7 @@ func (s *AttributesSuite) Test_GetEntitleableAttributesByFqns_UnprovisionedValue
 			missing := got.GetFqn() + "/value/new"
 			unknown := "https://entitleable-unprovisioned.example/attr/unknown/value/new"
 			request := &attributes.GetEntitleableAttributesByFqnsRequest{
-				Fqns: []string{high.GetFqn(), mid.GetFqn(), missing, unknown}, IncludeUnprovisionedValues: true,
+				Fqns: []string{high.GetFqn(), mid.GetFqn(), missing, unknown},
 			}
 			resp, err := s.db.PolicyClient.GetEntitleableAttributesByFqns(s.ctx, request)
 			s.Require().NoError(err)
@@ -1815,10 +1820,6 @@ func (s *AttributesSuite) Test_GetEntitleableAttributesByFqns_UnprovisionedValue
 				s.Equal(high.GetFqn(), values[0].GetFqn())
 				s.Equal(low.GetFqn(), values[1].GetFqn())
 			}
-			_, err = s.db.PolicyClient.GetEntitleableAttributesByFqns(s.ctx, &attributes.GetEntitleableAttributesByFqnsRequest{Fqns: []string{missing}})
-			s.Require().ErrorIs(err, db.ErrNotFound)
-			_, err = s.db.PolicyClient.GetEntitleableAttributesByFqns(s.ctx, &attributes.GetEntitleableAttributesByFqnsRequest{Fqns: []string{mid.GetFqn()}})
-			s.Require().ErrorIs(err, db.ErrAttributeValueInactive)
 			_, err = s.db.PolicyClient.DeactivateAttribute(s.ctx, got.GetId())
 			s.Require().NoError(err)
 			resp, err = s.db.PolicyClient.GetEntitleableAttributesByFqns(s.ctx, request)
@@ -1836,7 +1837,7 @@ func (s *AttributesSuite) Test_GetEntitleableAttributesByFqns_UnprovisionedValue
 	_, err = s.db.PolicyClient.DeactivateNamespace(s.ctx, ns.GetId())
 	s.Require().NoError(err)
 	resp, err := s.db.PolicyClient.GetEntitleableAttributesByFqns(s.ctx, &attributes.GetEntitleableAttributesByFqnsRequest{
-		Fqns: []string{got.GetFqn() + "/value/new"}, IncludeUnprovisionedValues: true,
+		Fqns: []string{got.GetFqn() + "/value/new"},
 	})
 	s.Require().NoError(err)
 	s.Empty(resp.GetDefinitions())
@@ -1848,23 +1849,15 @@ func (s *AttributesSuite) Test_GetEntitleableAttributesByFqns_EmptyAndMixedMissi
 	s.Require().NoError(err)
 	s.Empty(resp.GetDefinitions())
 	s.Empty(resp.GetFqnEntitleableAttributes())
-	_, err = s.db.PolicyClient.GetEntitleableAttributesByFqns(s.ctx, &attributes.GetEntitleableAttributesByFqnsRequest{
+	resp, err = s.db.PolicyClient.GetEntitleableAttributesByFqns(s.ctx, &attributes.GetEntitleableAttributesByFqnsRequest{
 		Fqns: []string{"https://example.com/attr/attr1/value/value1", "https://entitleable-dne.example/attr/nope/value/nope"},
 	})
-	s.Require().ErrorIs(err, db.ErrNotFound)
+	s.Require().NoError(err)
+	s.Require().Len(resp.GetFqnEntitleableAttributes(), 1)
+	s.Contains(resp.GetFqnEntitleableAttributes(), "https://example.com/attr/attr1/value/value1")
 }
 
-func (s *AttributesSuite) Test_GetEntitleableAttributesByFqns_NonExistentFqn_Fails() {
-	// Matches GetAttributeValuesByFqns: a requested FQN that does not exist errors
-	// rather than being silently absent.
-	_, err := s.db.PolicyClient.GetEntitleableAttributesByFqns(s.ctx, &attributes.GetEntitleableAttributesByFqnsRequest{
-		Fqns: []string{"https://entitleable-dne.example/attr/nope/value/nope"},
-	})
-	s.Require().Error(err)
-	s.Require().ErrorIs(err, db.ErrNotFound)
-}
-
-func (s *AttributesSuite) Test_GetEntitleableAttributesByFqns_MissingValueAllowTraversal() {
+func (s *AttributesSuite) Test_GetEntitleableAttributesByFqns_MissingValueRegardlessOfTraversal() {
 	ns, err := s.db.PolicyClient.CreateNamespace(s.ctx, &namespaces.CreateNamespaceRequest{Name: "entitleable-traversal.example"})
 	s.Require().NoError(err)
 	for _, tc := range []struct {
@@ -1888,10 +1881,6 @@ func (s *AttributesSuite) Test_GetEntitleableAttributesByFqns_MissingValueAllowT
 			resp, err := s.db.PolicyClient.GetEntitleableAttributesByFqns(s.ctx, &attributes.GetEntitleableAttributesByFqnsRequest{
 				Fqns: []string{missingFqn},
 			})
-			if !tc.allowTraversal {
-				s.Require().ErrorIs(err, db.ErrNotFound)
-				return
-			}
 			s.Require().NoError(err)
 
 			got, err := s.db.PolicyClient.GetAttribute(s.ctx, created.GetId())
@@ -1903,7 +1892,7 @@ func (s *AttributesSuite) Test_GetEntitleableAttributesByFqns_MissingValueAllowT
 			s.Equal(ns.GetId(), def.GetNamespace().GetId())
 			s.Equal(got.GetNamespace().GetFqn(), def.GetNamespace().GetFqn())
 
-			// Traversal returns definition context with no persisted value or mappings.
+			// Both traversal settings return definition context without a persisted value.
 			e := resp.GetFqnEntitleableAttributes()[missingFqn]
 			s.Require().NotNil(e)
 			s.Equal(defFqn, e.GetDefinitionFqn())

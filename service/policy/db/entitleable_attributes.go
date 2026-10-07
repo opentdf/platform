@@ -2,7 +2,6 @@ package db
 
 import (
 	"context"
-	"fmt"
 	"strings"
 
 	"github.com/opentdf/platform/protocol/go/policy"
@@ -11,9 +10,9 @@ import (
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
-// resolveEntitleableValueFqns preserves value lookup semantics without hydrating
-// encryption policy or resource mappings that authorization never consumes.
-func (c *PolicyDBClient) resolveEntitleableValueFqns(ctx context.Context, fqns []string, includeUnprovisioned bool) ([]string, map[string]*attributes.GetAttributeValuesByFqnsResponse_AttributeAndValue, error) {
+// resolveEntitleableValueFqns returns policy context for the PDP without hydrating
+// encryption policy or resource mappings.
+func (c *PolicyDBClient) resolveEntitleableValueFqns(ctx context.Context, fqns []string) ([]string, map[string]*attributes.GetAttributeValuesByFqnsResponse_AttributeAndValue, error) {
 	normalized := make([]string, len(fqns))
 	definitionFqns := make([]string, 0, len(fqns))
 	seenDefinitions := make(map[string]struct{}, len(fqns))
@@ -36,7 +35,6 @@ func (c *PolicyDBClient) resolveEntitleableValueFqns(ctx context.Context, fqns [
 		return nil, nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
 	definitions := make(map[string]*policy.Attribute, len(definitionFqns))
-	traversable := make(map[string]bool, len(definitionFqns))
 	pairs := make(map[string]*attributes.GetAttributeValuesByFqnsResponse_AttributeAndValue, len(fqns))
 	for _, row := range rows {
 		attr, exists := definitions[row.DefinitionFqn]
@@ -47,15 +45,11 @@ func (c *PolicyDBClient) resolveEntitleableValueFqns(ctx context.Context, fqns [
 				Namespace: &policy.Namespace{Id: row.NamespaceID, Name: row.NamespaceName, Fqn: row.NamespaceFqn},
 			}
 			definitions[row.DefinitionFqn] = attr
-			traversable[row.DefinitionFqn] = row.AllowTraversal
 		}
 		if row.ValueID == "" {
 			continue
 		}
 		_, isRequested := requested[row.ValueFqn]
-		if !row.ValueActive && isRequested && !includeUnprovisioned {
-			return nil, nil, fmt.Errorf("value fqn [%s] inactive: %w", row.ValueFqn, db.ErrAttributeValueInactive)
-		}
 		value := &policy.Value{Id: row.ValueID, Fqn: row.ValueFqn, Active: wrapperspb.Bool(row.ValueActive)}
 		if row.ValueActive {
 			attr.Values = append(attr.Values, value)
@@ -69,14 +63,9 @@ func (c *PolicyDBClient) resolveEntitleableValueFqns(ctx context.Context, fqns [
 			continue
 		}
 		defFqn := definitionFqnFromValueFqn(fqn)
-		if traversable[defFqn] || (includeUnprovisioned && definitions[defFqn] != nil) {
-			pairs[fqn] = &attributes.GetAttributeValuesByFqnsResponse_AttributeAndValue{Attribute: definitions[defFqn]}
-			continue
+		if definition := definitions[defFqn]; definition != nil {
+			pairs[fqn] = &attributes.GetAttributeValuesByFqnsResponse_AttributeAndValue{Attribute: definition}
 		}
-		if includeUnprovisioned {
-			continue
-		}
-		return nil, nil, fmt.Errorf("could not find value for FQN [%s]: %w", fqn, db.ErrNotFound)
 	}
 	return normalized, pairs, nil
 }

@@ -10173,6 +10173,24 @@ Fully Qualified Names of attribute values (i.e. https://&lt;namespace&gt;/attr/&
 Fully Qualified Names of attribute values (i.e. https://&lt;namespace&gt;/attr/&lt;attribute_name&gt;/value/&lt;value_name&gt;), normalized to lower case. </p></td>
                 </tr>
               
+                <tr>
+                  <td>include_unprovisioned_values</td>
+                  <td><a href="#bool">bool</a></td>
+                  <td></td>
+                  <td><p>Return active definition context for values that have not been provisioned,
+regardless of allow_traversal. Unknown definitions are omitted. Inactive
+persisted values retain their identity with active=false, so callers cannot
+mistake them for unprovisioned values. The caller still decides entitlement.
+When false, existing strict lookup behavior is preserved. </p></td>
+                </tr>
+
+                <tr>
+                  <td>include_dynamic_value_mappings</td>
+                  <td><a href="#bool">bool</a></td>
+                  <td></td>
+                  <td><p>Include dynamic mappings only for the referenced active definitions. </p></td>
+                </tr>
+
             </tbody>
           </table>
 
@@ -10309,6 +10327,13 @@ namespaced-policy decisioning and registered-resource matching. Only the
 identity is populated; grants, keys, and metadata are not. </p></td>
                 </tr>
               
+                <tr>
+                  <td>dynamic_value_mappings</td>
+                  <td><a href="#policy.DynamicValueMapping">policy.DynamicValueMapping</a></td>
+                  <td>repeated</td>
+                  <td><p>Populated only when include_dynamic_value_mappings is requested. </p></td>
+                </tr>
+
             </tbody>
           </table>
 
@@ -10347,6 +10372,13 @@ identity is populated; grants, keys, and metadata are not. </p></td>
                   <td><p>subject mappings used to resolve entitlements for this value </p></td>
                 </tr>
               
+                <tr>
+                  <td>active</td>
+                  <td><a href="#google.protobuf.BoolValue">google.protobuf.BoolValue</a></td>
+                  <td></td>
+                  <td><p>Present for persisted values. Unprovisioned values have no active state. </p></td>
+                </tr>
+
             </tbody>
           </table>
 

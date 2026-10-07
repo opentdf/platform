@@ -1216,6 +1216,88 @@ components:
         - booleanOperator
       additionalProperties: false
       description: A collection of Conditions evaluated by the boolean_operator provided
+    policy.DynamicValueMapping:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+        attributeDefinition:
+          title: attribute_definition
+          description: the Attribute Definition whose values are entitled dynamically
+          $ref: '#/components/schemas/policy.Attribute'
+        valueResolver:
+          title: value_resolver
+          description: the dynamic resolver matched against the requested resource value segment
+          $ref: '#/components/schemas/policy.DynamicValueResolver'
+        subjectConditionSet:
+          title: subject_condition_set
+          description: |-
+            optional static pre-gate on the entity, evaluated with normal SubjectConditionSet
+             semantics (no dynamic overload). When present, both the gate and the resolver must
+             pass for entitlement.
+          $ref: '#/components/schemas/policy.SubjectConditionSet'
+        actions:
+          type: array
+          items:
+            $ref: '#/components/schemas/policy.Action'
+          title: actions
+          description: the actions permitted by subjects in this mapping
+        namespace:
+          title: namespace
+          description: the namespace containing this mapping
+          $ref: '#/components/schemas/policy.Namespace'
+        metadata:
+          title: metadata
+          $ref: '#/components/schemas/common.Metadata'
+      title: DynamicValueMapping
+      additionalProperties: false
+      description: |-
+        Dynamic Value Mapping: a Policy assigning permitted action(s) to
+        dynamically-requested values under an Attribute Definition. It raises entitlement
+        authority from a concrete Attribute Value to the Attribute Definition: at decision time
+        the value_resolver compares the requested resource value segment against the entity
+        representation, avoiding pre-provisioning a value + subject mapping per discrete value.
+
+        Combination semantics: multiple dynamic value mappings on the same definition are OR-ed (any
+        match entitles); within a mapping, the optional subject_condition_set's subject sets are AND-ed
+        (every set must pass), matching subject mapping evaluation.
+
+        Coexistence: a definition with a dynamic value mapping cannot also carry value-level subject
+        mappings, and values under such a definition cannot be added to a registered resource's action
+        attribute values (those values resolve at decision time, so they are not meaningful as static
+        registered-resource entitlements).
+    policy.DynamicValueResolver:
+      type: object
+      properties:
+        subjectExternalSelectorValue:
+          type: string
+          title: subject_external_selector_value
+          description: |-
+            a selector for a field value on a flattened Entity Representation (such as from
+             idP/LDAP), e.g. ".patientAssignments[]"
+        operator:
+          not:
+            enum:
+              - 2
+          title: operator
+          description: |-
+            how the requested resource value segment is compared against each value the selector
+             resolves from the entity representation. NOT_IN is unsupported because dynamic resolution
+             is existential over the resolved entity values. IN_CONTAINS is substring-based and
+             over-matches by design (e.g. "admin" matches "superadmin", "admin-readonly"); prefer IN
+             unless substring matching is genuinely intended.
+          $ref: '#/components/schemas/policy.SubjectMappingOperatorEnum'
+      title: DynamicValueResolver
+      required:
+        - subjectExternalSelectorValue
+        - operator
+      additionalProperties: false
+      description: |-
+        Dynamic Value Resolver: the dynamic half of a DynamicValueMapping. It resolves a selector
+        against the entity representation, then tests whether any resolved entity value matches the
+        requested resource value segment under the operator. The match is inherently existential over
+        the resolved entity values.
     policy.KasPublicKey:
       type: object
       properties:
@@ -2257,6 +2339,19 @@ components:
           description: |-
             Required
              Fully Qualified Names of attribute values (i.e. https://<namespace>/attr/<attribute_name>/value/<value_name>), normalized to lower case.
+        includeUnprovisionedValues:
+          type: boolean
+          title: include_unprovisioned_values
+          description: |-
+            Return active definition context for values that have not been provisioned,
+             regardless of allow_traversal. Unknown definitions are omitted. Inactive
+             persisted values retain their identity with active=false, so callers cannot
+             mistake them for unprovisioned values. The caller still decides entitlement.
+             When false, existing strict lookup behavior is preserved.
+        includeDynamicValueMappings:
+          type: boolean
+          title: include_dynamic_value_mappings
+          description: Include dynamic mappings only for the referenced active definitions.
       title: GetEntitleableAttributesByFqnsRequest
       additionalProperties: false
       description: |-
@@ -2338,6 +2433,12 @@ components:
              namespaced-policy decisioning and registered-resource matching. Only the
              identity is populated; grants, keys, and metadata are not.
           $ref: '#/components/schemas/policy.Namespace'
+        dynamicValueMappings:
+          type: array
+          items:
+            $ref: '#/components/schemas/policy.DynamicValueMapping'
+          title: dynamic_value_mappings
+          description: Populated only when include_dynamic_value_mappings is requested.
       title: EntitleableDefinition
       additionalProperties: false
       description: |-
@@ -2360,6 +2461,10 @@ components:
             $ref: '#/components/schemas/policy.SubjectMapping'
           title: subject_mappings
           description: subject mappings used to resolve entitlements for this value
+        active:
+          title: active
+          description: Present for persisted values. Unprovisioned values have no active state.
+          $ref: '#/components/schemas/google.protobuf.BoolValue'
       title: EntitleableValue
       additionalProperties: false
       description: An attribute value plus the subject mappings that entitle it.

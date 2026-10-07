@@ -63,7 +63,7 @@ type AttributesServiceClient interface {
 	// requested attribute value FQNs, for client-side key split construction.
 	GetKeyMappingsByFqns(ctx context.Context, in *GetKeyMappingsByFqnsRequest, opts ...grpc.CallOption) (*GetKeyMappingsByFqnsResponse, error)
 	// Returns only entitlement-relevant information (rule, value identity, ordered
-	// definition values, and subject mappings) for the requested attribute value
+	// definition values, subject mappings, and dynamic mappings) for the requested attribute value
 	// FQNs, for server-side decisioning / entitlement resolution.
 	GetEntitleableAttributesByFqns(ctx context.Context, in *GetEntitleableAttributesByFqnsRequest, opts ...grpc.CallOption) (*GetEntitleableAttributesByFqnsResponse, error)
 	CreateAttribute(ctx context.Context, in *CreateAttributeRequest, opts ...grpc.CallOption) (*CreateAttributeResponse, error)
@@ -318,7 +318,7 @@ type AttributesServiceServer interface {
 	// requested attribute value FQNs, for client-side key split construction.
 	GetKeyMappingsByFqns(context.Context, *GetKeyMappingsByFqnsRequest) (*GetKeyMappingsByFqnsResponse, error)
 	// Returns only entitlement-relevant information (rule, value identity, ordered
-	// definition values, and subject mappings) for the requested attribute value
+	// definition values, subject mappings, and dynamic mappings) for the requested attribute value
 	// FQNs, for server-side decisioning / entitlement resolution.
 	GetEntitleableAttributesByFqns(context.Context, *GetEntitleableAttributesByFqnsRequest) (*GetEntitleableAttributesByFqnsResponse, error)
 	CreateAttribute(context.Context, *CreateAttributeRequest) (*CreateAttributeResponse, error)

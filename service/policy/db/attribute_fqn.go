@@ -267,10 +267,9 @@ func (c *PolicyDBClient) GetKeyMappingsByFqns(ctx context.Context, r *attributes
 // the value-level subject mappings. It runs two selective queries: the attribute
 // FQN lookup for rule/value/sibling data, and a single subject-mapping-by-FQN
 // query, avoiding the full-policy load used by the entitlement path today.
-// Missing values return definition context when allow_traversal or
-// include_unprovisioned_values is enabled. The latter omits unknown/inactive
-// definitions and retains inactive value identities for the caller to deny.
-// Dynamic mappings are fetched only for referenced definitions when requested.
+// Unprovisioned values retain active definition context. Unknown/inactive parents
+// are omitted; inactive values retain their identity and state for the PDP to deny.
+// Dynamic mappings are fetched only for referenced definitions.
 func (c *PolicyDBClient) GetEntitleableAttributesByFqns(ctx context.Context, r *attributes.GetEntitleableAttributesByFqnsRequest) (*attributes.GetEntitleableAttributesByFqnsResponse, error) {
 	ctx, span := c.Start(ctx, "DB:GetEntitleableAttributesByFqns")
 	defer span.End()
@@ -282,7 +281,7 @@ func (c *PolicyDBClient) GetEntitleableAttributesByFqns(ctx context.Context, r *
 			FqnEntitleableAttributes: map[string]*attributes.GetEntitleableAttributesByFqnsResponse_EntitleableAttribute{},
 		}, nil
 	}
-	normalized, pairs, err := c.resolveEntitleableValueFqns(ctx, fqns, r.GetIncludeUnprovisionedValues())
+	normalized, pairs, err := c.resolveEntitleableValueFqns(ctx, fqns)
 	if err != nil {
 		return nil, err
 	}
@@ -369,10 +368,8 @@ func (c *PolicyDBClient) GetEntitleableAttributesByFqns(ctx context.Context, r *
 			Value:         entitleableValue(fqn, pair.GetValue()),
 		}
 	}
-	if r.GetIncludeDynamicValueMappings() {
-		if err := c.addEntitleableDynamicValueMappings(ctx, rsp); err != nil {
-			return nil, err
-		}
+	if err := c.addEntitleableDynamicValueMappings(ctx, rsp); err != nil {
+		return nil, err
 	}
 
 	return rsp, nil

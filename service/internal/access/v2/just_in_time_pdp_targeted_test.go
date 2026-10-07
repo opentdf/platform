@@ -5,7 +5,6 @@ import (
 	"errors"
 	"testing"
 
-	"connectrpc.com/connect"
 	authzV2 "github.com/opentdf/platform/protocol/go/authorization/v2"
 	"github.com/opentdf/platform/protocol/go/entity"
 	entityresolutionV2 "github.com/opentdf/platform/protocol/go/entityresolution/v2"
@@ -229,14 +228,14 @@ func TestJITPDP_GetDecision_TargetedDenyOnEntityMismatch(t *testing.T) {
 	assert.False(t, decision.AllPermitted)
 }
 
-func TestJITPDP_GetDecision_NotFoundDegradesToDeny(t *testing.T) {
+func TestJITPDP_GetDecision_UnknownFQNIsDenied(t *testing.T) {
 	definitionFQN := "https://example.com/attr/classification"
 	valueFQN := definitionFQN + "/value/finance"
 
-	// The attributes service returns NotFound for the requested value (does not exist in policy).
+	// Unknown definitions are omitted from the policy response.
 	attrFake := &fakeAttributesClient{
 		respFunc: func(_ *attrs.GetEntitleableAttributesByFqnsRequest) (*attrs.GetEntitleableAttributesByFqnsResponse, error) {
-			return nil, connect.NewError(connect.CodeNotFound, errors.New("not found"))
+			return &attrs.GetEntitleableAttributesByFqnsResponse{}, nil
 		},
 	}
 	ers := &recordingERSV2Client{resolveResponse: &entityresolutionV2.ResolveEntitiesResponse{
@@ -251,7 +250,7 @@ func TestJITPDP_GetDecision_NotFoundDegradesToDeny(t *testing.T) {
 
 	ctx := audit.ContextWithActorID(context.Background(), "test-actor")
 	decision, err := p.GetDecision(ctx, entityChainIdentifier(), &policy.Action{Name: "read"}, attrValueResource(valueFQN), nil, nil)
-	// A NotFound must degrade to a per-resource deny, not surface as an internal error.
+	// Missing policy context produces a per-resource deny.
 	require.NoError(t, err)
 	require.NotNil(t, decision)
 	assert.False(t, decision.AllPermitted)
@@ -268,30 +267,23 @@ func TestJITPDP_GetDecision_MixedKnownUnknownFQNsPreservesKnown(t *testing.T) {
 		SubjectConditionSet: clientIDInConditionSet("abc"),
 		Actions:             []*policy.Action{{Name: "read"}},
 	}
-	// The server rejects any batch containing the unknown FQN with NotFound; a per-FQN retry resolves
-	// the known FQN and skips the unknown one.
+	// One batch returns the known value and definition context for the unprovisioned value.
 	attrFake := &fakeAttributesClient{
-		respFunc: func(req *attrs.GetEntitleableAttributesByFqnsRequest) (*attrs.GetEntitleableAttributesByFqnsResponse, error) {
-			for _, f := range req.GetFqns() {
-				if f == unknownFQN {
-					return nil, connect.NewError(connect.CodeNotFound, errors.New("not found"))
-				}
-			}
-			resp := &attrs.GetEntitleableAttributesByFqnsResponse{
+		respFunc: func(_ *attrs.GetEntitleableAttributesByFqnsRequest) (*attrs.GetEntitleableAttributesByFqnsResponse, error) {
+			return &attrs.GetEntitleableAttributesByFqnsResponse{
 				Definitions: map[string]*attrs.GetEntitleableAttributesByFqnsResponse_EntitleableDefinition{
 					definitionFQN: {Rule: policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF},
 				},
-				FqnEntitleableAttributes: make(map[string]*attrs.GetEntitleableAttributesByFqnsResponse_EntitleableAttribute),
-			}
-			for _, f := range req.GetFqns() {
-				resp.FqnEntitleableAttributes[f] = &attrs.GetEntitleableAttributesByFqnsResponse_EntitleableAttribute{
-					DefinitionFqn: definitionFQN,
-					Value:         &attrs.GetEntitleableAttributesByFqnsResponse_EntitleableValue{Fqn: f, ValueId: f + "-id", SubjectMappings: []*policy.SubjectMapping{sm}},
-				}
-			}
-			return resp, nil
+				FqnEntitleableAttributes: map[string]*attrs.GetEntitleableAttributesByFqnsResponse_EntitleableAttribute{
+					knownFQN: {DefinitionFqn: definitionFQN, Value: &attrs.GetEntitleableAttributesByFqnsResponse_EntitleableValue{
+						Fqn: knownFQN, ValueId: "known-id", SubjectMappings: []*policy.SubjectMapping{sm},
+					}},
+					unknownFQN: {DefinitionFqn: definitionFQN, Value: &attrs.GetEntitleableAttributesByFqnsResponse_EntitleableValue{Fqn: unknownFQN}},
+				},
+			}, nil
 		},
 	}
+
 	ers := &recordingERSV2Client{resolveResponse: &entityresolutionV2.ResolveEntitiesResponse{
 		EntityRepresentations: []*entityresolutionV2.EntityRepresentation{entityRepWithClientID("abc")},
 	}}
@@ -311,6 +303,7 @@ func TestJITPDP_GetDecision_MixedKnownUnknownFQNsPreservesKnown(t *testing.T) {
 	decision, err := p.GetDecision(ctx, entityChainIdentifier(), &policy.Action{Name: "read"}, resources, nil, nil)
 	require.NoError(t, err)
 	require.NotNil(t, decision)
+	require.Len(t, attrFake.requests, 1)
 	require.Len(t, decision.Results, 2)
 	// The known resource is still decided (entitled); only the unknown one is denied.
 	assert.True(t, decision.Results[0].Entitled, "known resource should remain entitled")

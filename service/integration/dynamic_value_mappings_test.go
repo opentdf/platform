@@ -113,13 +113,9 @@ func (s *DynamicValueMappingsSuite) TestEntitleableDynamicMappings() {
 	got, err := s.db.PolicyClient.GetAttribute(s.ctx, attr.GetId())
 	s.Require().NoError(err)
 	request := &attributes.GetEntitleableAttributesByFqnsRequest{
-		Fqns: []string{got.GetFqn() + "/value/new"}, IncludeUnprovisionedValues: true,
+		Fqns: []string{got.GetFqn() + "/value/new"},
 	}
 	resp, err := s.db.PolicyClient.GetEntitleableAttributesByFqns(s.ctx, request)
-	s.Require().NoError(err)
-	s.Empty(resp.GetDefinitions()[got.GetFqn()].GetDynamicValueMappings())
-	request.IncludeDynamicValueMappings = true
-	resp, err = s.db.PolicyClient.GetEntitleableAttributesByFqns(s.ctx, request)
 	s.Require().NoError(err)
 	s.Require().Len(resp.GetDefinitions(), 1)
 	def := resp.GetDefinitions()[got.GetFqn()]

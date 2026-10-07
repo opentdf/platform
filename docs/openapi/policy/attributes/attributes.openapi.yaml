@@ -199,7 +199,7 @@ paths:
       summary: GetEntitleableAttributesByFqns
       description: |-
         Returns only entitlement-relevant information (rule, value identity, ordered
-         definition values, and subject mappings) for the requested attribute value
+         definition values, subject mappings, and dynamic mappings) for the requested attribute value
          FQNs, for server-side decisioning / entitlement resolution.
       operationId: policy.attributes.AttributesService.GetEntitleableAttributesByFqns
       parameters:
@@ -2339,19 +2339,6 @@ components:
           description: |-
             Required
              Fully Qualified Names of attribute values (i.e. https://<namespace>/attr/<attribute_name>/value/<value_name>), normalized to lower case.
-        includeUnprovisionedValues:
-          type: boolean
-          title: include_unprovisioned_values
-          description: |-
-            Return active definition context for values that have not been provisioned,
-             regardless of allow_traversal. Unknown definitions are omitted. Inactive
-             persisted values retain their identity with active=false, so callers cannot
-             mistake them for unprovisioned values. The caller still decides entitlement.
-             When false, existing strict lookup behavior is preserved.
-        includeDynamicValueMappings:
-          type: boolean
-          title: include_dynamic_value_mappings
-          description: Include dynamic mappings only for the referenced active definitions.
       title: GetEntitleableAttributesByFqnsRequest
       additionalProperties: false
       description: |-
@@ -2363,9 +2350,11 @@ components:
         the subject mappings needed to resolve entitlements. Hierarchy definitions
         additionally carry their ordered values with subject mappings, for hierarchy
         rule propagation. It does not return KAS keys, grants, resource mappings,
-        obligations, or metadata. A value that does not exist under a definition with
-        allow_traversal is returned with its definition and an empty value identity (no
-        value_id, no subject mappings).
+        obligations, or metadata. Unprovisioned values retain their active parent
+        definition with an empty value identity. Persisted inactive values retain
+        their identity and inactive state. Unknown or inactive parents are omitted.
+        Dynamic mappings are scoped to the returned definitions. The PDP decides
+        whether the returned policy entitles the request.
     policy.attributes.GetEntitleableAttributesByFqnsResponse:
       type: object
       properties:
@@ -2438,7 +2427,7 @@ components:
           items:
             $ref: '#/components/schemas/policy.DynamicValueMapping'
           title: dynamic_value_mappings
-          description: Populated only when include_dynamic_value_mappings is requested.
+          description: Dynamic mappings for this definition, for evaluation by the PDP.
       title: EntitleableDefinition
       additionalProperties: false
       description: |-

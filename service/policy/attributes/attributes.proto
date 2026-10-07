@@ -431,9 +431,11 @@ message GetKeyMappingsByFqnsResponse {
    the subject mappings needed to resolve entitlements. Hierarchy definitions
    additionally carry their ordered values with subject mappings, for hierarchy
    rule propagation. It does not return KAS keys, grants, resource mappings,
-   obligations, or metadata. A value that does not exist under a definition with
-   allow_traversal is returned with its definition and an empty value identity (no
-   value_id, no subject mappings).
+   obligations, or metadata. Unprovisioned values retain their active parent
+   definition with an empty value identity. Persisted inactive values retain
+   their identity and inactive state. Unknown or inactive parents are omitted.
+   Dynamic mappings are scoped to the returned definitions. The PDP decides
+   whether the returned policy entitles the request.
 */
 message GetEntitleableAttributesByFqnsRequest {
   // Required
@@ -442,14 +444,6 @@ message GetEntitleableAttributesByFqnsRequest {
     min_items: 1
     max_items: 250
   }];
-  // Return active definition context for values that have not been provisioned,
-  // regardless of allow_traversal. Unknown definitions are omitted. Inactive
-  // persisted values retain their identity with active=false, so callers cannot
-  // mistake them for unprovisioned values. The caller still decides entitlement.
-  // When false, existing strict lookup behavior is preserved.
-  bool include_unprovisioned_values = 2;
-  // Include dynamic mappings only for the referenced active definitions.
-  bool include_dynamic_value_mappings = 3;
 }
 message GetEntitleableAttributesByFqnsResponse {
   // An attribute value plus the subject mappings that entitle it.
@@ -477,7 +471,7 @@ message GetEntitleableAttributesByFqnsResponse {
     // namespaced-policy decisioning and registered-resource matching. Only the
     // identity is populated; grants, keys, and metadata are not.
     policy.Namespace namespace = 3;
-    // Populated only when include_dynamic_value_mappings is requested.
+    // Dynamic mappings for this definition, for evaluation by the PDP.
     repeated policy.DynamicValueMapping dynamic_value_mappings = 4;
   }
   message EntitleableAttribute {
@@ -621,7 +615,7 @@ service AttributesService {
     option idempotency_level = NO_SIDE_EFFECTS;
   }
   // Returns only entitlement-relevant information (rule, value identity, ordered
-  // definition values, and subject mappings) for the requested attribute value
+  // definition values, subject mappings, and dynamic mappings) for the requested attribute value
   // FQNs, for server-side decisioning / entitlement resolution.
   rpc GetEntitleableAttributesByFqns(GetEntitleableAttributesByFqnsRequest) returns (GetEntitleableAttributesByFqnsResponse) {
     option idempotency_level = NO_SIDE_EFFECTS;

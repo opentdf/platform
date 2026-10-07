@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"strings"
 
-	"connectrpc.com/connect"
 	"github.com/opentdf/platform/protocol/go/policy"
 	attrs "github.com/opentdf/platform/protocol/go/policy/attributes"
 	otdfSDK "github.com/opentdf/platform/sdk"
@@ -30,7 +29,7 @@ const maxEntitleableFQNsPerRequest = 250
 // SubjectMappings and then appends the slice's mappings, so populating both would double-count.
 //
 // Definitions are registered even when a requested value resolves with an empty identity (a value
-// that does not exist under an allow_traversal definition), so the decision path can still
+// that has not been provisioned under an active definition), so the decision path can still
 // synthesize direct-entitlement / dynamic-mapping values from the definition. Missing FQNs are
 // omitted (not an error): the v2 decision path denies per-resource on unknown FQNs. Empty but
 // non-nil slices are returned when nothing resolves, since NewPolicyDecisionPoint rejects nil inputs.
@@ -75,15 +74,15 @@ func fetchEntitleableAttributes(
 		return attribute
 	}
 
-	addValue := func(definitionFQN string, attribute *policy.Attribute, valueID, valueFQN string) {
+	addValue := func(definitionFQN string, attribute *policy.Attribute, value *attrs.GetEntitleableAttributesByFqnsResponse_EntitleableValue) {
+		valueFQN := value.GetFqn()
 		valuesSeen := valuesSeenByDefinition[definitionFQN]
 		if _, ok := valuesSeen[valueFQN]; ok {
 			return
 		}
 		valuesSeen[valueFQN] = struct{}{}
 		attribute.Values = append(attribute.Values, &policy.Value{
-			Id:  valueID,
-			Fqn: valueFQN,
+			Id: value.GetValueId(), Fqn: valueFQN, Active: value.GetActive(),
 		})
 	}
 
@@ -102,7 +101,7 @@ func fetchEntitleableAttributes(
 				return fmt.Errorf("entitleable attribute %q references missing definition %q", fqn, definitionFQN)
 			}
 			// Register the definition regardless of value presence so direct-entitlement / dynamic
-			// synthesis can resolve the parent definition for allow_traversal values.
+			// synthesis can resolve the parent definition for unprovisioned values.
 			attribute := ensureDefinition(definitionFQN, def)
 
 			if def.GetRule() == policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY {
@@ -114,71 +113,37 @@ func fetchEntitleableAttributes(
 						if sibling.GetValueId() == "" {
 							continue
 						}
-						addValue(definitionFQN, attribute, sibling.GetValueId(), sibling.GetFqn())
+						addValue(definitionFQN, attribute, sibling)
 						subjectMappings = append(subjectMappings, sibling.GetSubjectMappings()...)
 					}
+				}
+				// Retain inactive requested values separately from active hierarchy siblings.
+				if value := entitleable.GetValue(); value.GetValueId() != "" && isExplicitlyInactive(value.GetActive()) {
+					addValue(definitionFQN, attribute, value)
 				}
 				continue
 			}
 
 			// Non-hierarchy: add the concrete value when present. An empty value identity is an
-			// allow_traversal miss; the definition stays registered but no concrete value is added.
+			// unprovisioned value; the definition stays registered but no concrete value is added.
 			value := entitleable.GetValue()
 			if value.GetValueId() == "" {
 				continue
 			}
-			addValue(definitionFQN, attribute, value.GetValueId(), value.GetFqn())
+			addValue(definitionFQN, attribute, value)
 			subjectMappings = append(subjectMappings, value.GetSubjectMappings()...)
-		}
-		return nil
-	}
-
-	getBatch := func(fqns []string) (*attrs.GetEntitleableAttributesByFqnsResponse, error) {
-		return sdk.Attributes.GetEntitleableAttributesByFqns(ctx, &attrs.GetEntitleableAttributesByFqnsRequest{Fqns: fqns})
-	}
-
-	// fetchOne resolves a single FQN, reporting skip=true when it does not exist in policy.
-	fetchOne := func(fqn string) (*attrs.GetEntitleableAttributesByFqnsResponse, bool, error) {
-		resp, err := getBatch([]string{fqn})
-		if err != nil {
-			if connect.CodeOf(err) == connect.CodeNotFound {
-				return nil, true, nil
-			}
-			return nil, false, fmt.Errorf("failed to get entitleable attributes by fqns: %w", err)
-		}
-		return resp, false, nil
-	}
-
-	// processBatch resolves a batch, falling back to per-FQN resolution on a batch NotFound. The
-	// server rejects the whole batch with NotFound if any requested FQN does not exist, so the retry
-	// keeps the values that DO exist and skips the missing ones (denied per-resource downstream). This
-	// preserves valid decisions in a multi-resource request that also references an unknown FQN.
-	processBatch := func(batch []string) error {
-		resp, err := getBatch(batch)
-		if err == nil {
-			return process(resp, batch)
-		}
-		if connect.CodeOf(err) != connect.CodeNotFound {
-			return fmt.Errorf("failed to get entitleable attributes by fqns: %w", err)
-		}
-		for _, fqn := range batch {
-			single, skip, ferr := fetchOne(fqn)
-			if ferr != nil {
-				return ferr
-			}
-			if skip {
-				continue
-			}
-			if perr := process(single, []string{fqn}); perr != nil {
-				return perr
-			}
 		}
 		return nil
 	}
 
 	for start := 0; start < len(normalizedFQNs); start += maxEntitleableFQNsPerRequest {
 		end := min(start+maxEntitleableFQNsPerRequest, len(normalizedFQNs))
-		if err := processBatch(normalizedFQNs[start:end]); err != nil {
+		batch := normalizedFQNs[start:end]
+		resp, err := sdk.Attributes.GetEntitleableAttributesByFqns(ctx, &attrs.GetEntitleableAttributesByFqnsRequest{Fqns: batch})
+		if err != nil {
+			return nil, nil, fmt.Errorf("failed to get entitleable attributes by fqns: %w", err)
+		}
+		if err := process(resp, batch); err != nil {
 			return nil, nil, err
 		}
 	}

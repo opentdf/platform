@@ -406,6 +406,12 @@ files. A dependency change may remain cold in a PR until it reaches `main`.
 runs. The separate **Compile BDD test suite** step makes compilation time visible
 without mixing it with container startup and scenario execution.
 
+Both suites also restore Docker build layers and load `platform-cukes:latest`
+locally. Only functional BDD on pushes to `main` exports the shared Docker cache.
+The Dockerfile downloads modules before copying sources, so source-only changes
+preserve the dependency layer. This cache is separate from the host Go cache;
+cache export failures leave tests running without an updated Docker cache.
+
 Compare runs after a successful push to `main` has populated the cache, and record
 cold misses separately. PR reruns do not create their own warm cache. Record cache
 hits, compilation, image build, and test-step durations, and verify

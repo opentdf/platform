@@ -38,6 +38,7 @@ var (
 )
 
 type JustInTimePDP struct {
+	reuse  *requestReuse
 	logger *logger.Logger
 	sdk    *otdfSDK.SDK
 	// embedded obligations PDP
@@ -346,7 +347,7 @@ func (p *JustInTimePDP) GetEntitlements(
 // buildInnerPDP fetches the entitleable attributes for the provided value FQNs and constructs a
 // request-scoped PolicyDecisionPoint from them plus the fully-loaded registered resources and
 // dynamic value mappings.
-func (p *JustInTimePDP) buildInnerPDP(ctx context.Context, valueFQNs []string) (*PolicyDecisionPoint, error) {
+func (p *JustInTimePDP) buildInnerPDPUncached(ctx context.Context, valueFQNs []string) (*PolicyDecisionPoint, error) {
 	// Direct entitlements / dynamic value mappings require the full policy load (see NewJustInTimePDP).
 	if p.fullPolicyPDP != nil {
 		return p.fullPolicyPDP, nil
@@ -457,7 +458,7 @@ func (p *JustInTimePDP) getMatchedSubjectMappings(
 }
 
 // resolveEntitiesFromEntityChain roundtrips caller-provided entity chains through ERS.
-func (p *JustInTimePDP) resolveEntitiesFromEntityChain(
+func (p *JustInTimePDP) resolveEntitiesFromEntityChainUncached(
 	ctx context.Context,
 	entityChain *entity.EntityChain,
 	skipEnvironmentEntities bool,
@@ -548,7 +549,7 @@ func entityRepresentationsFromResolvedChain(entityChain *entity.EntityChain, ski
 
 // resolveEntitiesFromToken roundtrips to ERS to resolve the provided token
 // and optionally skips environment entities (which is expected behavior in decision flow)
-func (p *JustInTimePDP) resolveEntitiesFromToken(
+func (p *JustInTimePDP) resolveEntitiesFromTokenUncached(
 	ctx context.Context,
 	token *entity.Token,
 	skipEnvironmentEntities bool,

@@ -152,10 +152,11 @@ var rewrapParams = RewrapAuditEventParams{
 			},
 		},
 	},
-	TDFFormat:     "test-tdf-format",
-	Algorithm:     "test-algorithm",
-	PolicyBinding: "test-policy-binding",
-	KeyID:         "r1",
+	TDFFormat:      "test-tdf-format",
+	Algorithm:      "test-algorithm",
+	PolicyBinding:  "test-policy-binding",
+	KeyID:          "r1",
+	SessionKeyType: "test-session-key-type",
 }
 
 var policyCRUDParams = PolicyEventParams{
@@ -271,6 +272,7 @@ func TestAuditRewrapSuccess(t *testing.T) {
 			},
 			"eventMetaData": {
 			  "algorithm": "%s",
+				"sessionKeyType": "%s",
 				"keyID": "%s",
 				"policyBinding": "%s",
 				"tdfFormat": "%s"
@@ -290,6 +292,7 @@ func TestAuditRewrapSuccess(t *testing.T) {
 		rewrapAttrsJSON,
 		TestActorID,
 		rewrapParams.Algorithm,
+		rewrapParams.SessionKeyType,
 		rewrapParams.KeyID,
 		rewrapParams.PolicyBinding,
 		rewrapParams.TDFFormat,
@@ -330,6 +333,7 @@ func TestAuditRewrapFailure(t *testing.T) {
 			},
 			"eventMetaData": {
 			  "algorithm": "%s",
+				"sessionKeyType": "%s",
 				"keyID": "%s",
 				"policyBinding": "%s",
 				"tdfFormat": "%s"
@@ -349,6 +353,7 @@ func TestAuditRewrapFailure(t *testing.T) {
 		rewrapAttrsJSON,
 		TestActorID,
 		rewrapParams.Algorithm,
+		rewrapParams.SessionKeyType,
 		rewrapParams.KeyID,
 		rewrapParams.PolicyBinding,
 		rewrapParams.TDFFormat,

@@ -601,6 +601,7 @@ jobs:
         with:
           platform-ref: ${{ github.event.pull_request.head.sha || github.sha }}
           ec-tdf-enabled: "true"
+          # ML-KEM session keys (decrypt --session-key-algorithm mlkem:*) need the KAS mlkem preview flag
           pqc-enabled: "true"
           provision-policy-fixtures: "false"
       - uses: ./otdfctl/e2e

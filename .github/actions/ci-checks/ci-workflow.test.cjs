@@ -62,7 +62,7 @@ test('focused workflow covers all helper, test, manifest and checks edits indepe
   for (const event of ['pull_request', 'push']) {
     assert.deepEqual(tests.on[event].paths, [
       '.github/actions/ci-checks/**', '.github/ignore-checks-workflow-policy-paths.json',
-      '.github/workflows/checks.yaml', '.github/workflows/ci-unit-tests.yaml',
+      '.github/workflows/checks.yaml', '.github/workflows/bdd.yaml', '.github/workflows/ci-unit-tests.yaml',
     ]);
   }
   for (const file of ['ci-changes.cjs', 'ci-changes.test.cjs', 'ci-results.js',

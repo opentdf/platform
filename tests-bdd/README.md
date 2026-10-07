@@ -395,6 +395,34 @@ All 3 scenarios should pass (57 steps, 0 failures). You'll see LDAP testcontaine
 - LDAP test data lives in `service/entityresolution/integration/ldap_test_data/` and is shared with the Go integration tests.
 - The `--copy-service` flag is used with the LDAP container to avoid macOS `sed -i` compatibility issues with bind mounts.
 
+### Comparing CI performance
+
+The functional BDD and authorization-scale jobs share `.github/workflows/bdd.yaml`
+and restore Go module downloads and compiled packages. Only successful functional
+BDD runs on pushes to `main` save the shared cache; PR and scale runs restore only.
+Cache keys include the runner OS/architecture, actual Go version, and all `go.sum`
+files. A dependency change may remain cold in a PR until it reaches `main`.
+`-count=1` keeps test results uncached, so every scenario still
+runs. The separate **Compile BDD test suite** step makes compilation time visible
+without mixing it with container startup and scenario execution.
+
+Compare runs after a successful push to `main` has populated the cache, and record
+cold misses separately. PR reruns do not create their own warm cache. Record cache
+hits, compilation, image build, and test-step durations, and verify
+that the functional scenario count stays unchanged. GitHub job durations also
+include cache uploads and other cleanup, so check both step and total job times.
+
+Before these optimizations, two successful October 6, 2026 runs each passed 116
+functional scenarios and started 85 Platform instances:
+
+| Run | Image build | Go download and compilation before suite setup | Scenario Platform startup total |
+| --- | --- | --- | --- |
+| [37525342135](https://github.com/opentdf/platform/actions/runs/37525342135) | 106s | 83s | 155s |
+| [37528870922](https://github.com/opentdf/platform/actions/runs/37528870922) | 130s | 119s | 297s |
+
+Startup totals cover database creation through Platform readiness. They exclude
+the shared Keycloak/Postgres startup and later scenario assertions.
+
 ## TODO
 - Improve execution time for platform testing
   - Remove keycloak with wiremock/mock or mock

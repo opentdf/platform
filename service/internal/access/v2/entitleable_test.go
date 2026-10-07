@@ -2,6 +2,7 @@ package access
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 	"testing"
@@ -31,7 +32,7 @@ func (f *fakeAttributesClient) GetEntitleableAttributesByFqns(_ context.Context,
 }
 
 func (*fakeAttributesClient) ListAttributes(context.Context, *attrs.ListAttributesRequest) (*attrs.ListAttributesResponse, error) {
-	return nil, fmt.Errorf("full attribute listing is not allowed in targeted decisions")
+	return nil, errors.New("full attribute listing is not allowed in targeted decisions")
 }
 
 func newSDKWithAttributes(f *fakeAttributesClient) *otdfSDK.SDK {

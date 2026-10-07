@@ -1,7 +1,13 @@
 package ocrypto
 
 import (
+	"crypto/ecdsa"
+	"crypto/elliptic"
+	"crypto/rand"
+	"crypto/rsa"
 	"crypto/sha256"
+	"crypto/x509"
+	"encoding/pem"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -66,6 +72,55 @@ func TestECKeyPair(t *testing.T) {
 			t.Fatalf("did not fail as expected: NewECKeyPair(%d): %v", modeBad, err)
 		}
 	}
+}
+
+func TestECPrivateKeyFromPem(t *testing.T) {
+	curves := []struct {
+		name  string
+		curve elliptic.Curve
+	}{
+		{"P-256", elliptic.P256()},
+		{"P-384", elliptic.P384()},
+		{"P-521", elliptic.P521()},
+	}
+
+	for _, tc := range curves {
+		ecdsaKey, err := ecdsa.GenerateKey(tc.curve, rand.Reader)
+		require.NoError(t, err, "fail on ecdsa.GenerateKey for %s", tc.name)
+
+		// PKCS8 encoding ("BEGIN PRIVATE KEY"), e.g. `openssl genpkey`
+		pkcs8Bytes, err := x509.MarshalPKCS8PrivateKey(ecdsaKey)
+		require.NoError(t, err, "fail on x509.MarshalPKCS8PrivateKey for %s", tc.name)
+		pkcs8Pem := pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: pkcs8Bytes})
+
+		// SEC1 / RFC 5915 encoding ("BEGIN EC PRIVATE KEY"), e.g. `openssl ecparam -genkey`
+		sec1Bytes, err := x509.MarshalECPrivateKey(ecdsaKey)
+		require.NoError(t, err, "fail on x509.MarshalECPrivateKey for %s", tc.name)
+		sec1Pem := pem.EncodeToMemory(&pem.Block{Type: "EC PRIVATE KEY", Bytes: sec1Bytes})
+
+		fromPKCS8, err := ECPrivateKeyFromPem(pkcs8Pem)
+		require.NoError(t, err, "fail on ECPrivateKeyFromPem with PKCS8 encoding for %s", tc.name)
+
+		fromSEC1, err := ECPrivateKeyFromPem(sec1Pem)
+		require.NoError(t, err, "fail on ECPrivateKeyFromPem with SEC1 encoding for %s", tc.name)
+
+		// Both encodings of the same key must yield the same ECDH key
+		require.True(t, fromPKCS8.Equal(fromSEC1),
+			"PKCS8 and SEC1 decodings of the same %s key differ", tc.name)
+	}
+
+	// Not PEM at all
+	_, err := ECPrivateKeyFromPem([]byte("not a pem"))
+	require.Error(t, err, "non-PEM input must be rejected")
+
+	// Valid PKCS8, but not an EC key
+	rsaKey, err := rsa.GenerateKey(rand.Reader, 2048)
+	require.NoError(t, err, "fail on rsa.GenerateKey")
+	rsaBytes, err := x509.MarshalPKCS8PrivateKey(rsaKey)
+	require.NoError(t, err, "fail on x509.MarshalPKCS8PrivateKey for RSA")
+	rsaPem := pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: rsaBytes})
+	_, err = ECPrivateKeyFromPem(rsaPem)
+	require.Error(t, err, "non-EC PKCS8 key must be rejected")
 }
 
 func TestECRewrapKeyGenerate(t *testing.T) {

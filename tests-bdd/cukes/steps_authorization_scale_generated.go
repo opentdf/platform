@@ -11,9 +11,12 @@ import (
 	"time"
 
 	"github.com/cucumber/godog"
+	messages "github.com/cucumber/messages/go/v21"
 
 	authz "github.com/opentdf/platform/protocol/go/authorization/v2"
 	"github.com/opentdf/platform/protocol/go/policy"
+	"github.com/opentdf/platform/protocol/go/policy/attributes"
+	"github.com/opentdf/platform/protocol/go/policy/dynamicvaluemapping"
 )
 
 const (
@@ -86,6 +89,84 @@ func prepareScaleUsers(ctx context.Context, values, seed int) (context.Context, 
 		}
 	}
 	GetPlatformScenarioContext(ctx).RecordObject(scaleUsersKey, users)
+	return ctx, nil
+}
+
+// Select the entitlement source while keeping the workload and oracle unchanged.
+// Direct entities carry only grants, so subject mappings cannot supply permits.
+func setScaleEntitlements(ctx context.Context, source, attributeRef string) (context.Context, error) {
+	scenario := GetPlatformScenarioContext(ctx)
+	if source != "subject-mapping" && source != "direct-entitlement" && source != "dynamic-value-mapping" {
+		return ctx, fmt.Errorf("unknown entitlement source %q", source)
+	}
+	scenario.RecordObject("scale-entitlement-path", source)
+	if source == "subject-mapping" {
+		return ctx, nil
+	}
+	if source == "dynamic-value-mapping" {
+		return createScaleDynamicValueMapping(ctx, attributeRef)
+	}
+	users, ok := scenario.GetObject(scaleUsersKey).([]scaleUser)
+	if !ok {
+		return ctx, errors.New("scale users must be prepared before direct entitlements")
+	}
+	attribute, attributeOK := scenario.GetObject(attributeRef).(*policy.Attribute)
+	classification, classificationOK := scenario.GetObject("classification").(*policy.Attribute)
+	region, regionOK := scenario.GetObject("region").(*policy.Attribute)
+	if !attributeOK || !classificationOK || !regionOK {
+		return ctx, errors.New("scale attributes must exist before direct entitlements")
+	}
+	for _, user := range users {
+		table := &godog.Table{Rows: []*messages.PickleTableRow{{Cells: []*messages.PickleTableCell{
+			{Value: directEntitlementColumnAttributeFQN}, {Value: directEntitlementColumnActions},
+		}}}}
+		grants := scaleDocument{projects: user.projects, clearance: user.clearance, regions: []string{user.region}}
+		for _, fqn := range scaleDocumentFQNs(grants, attribute, classification, region) {
+			table.Rows = append(table.Rows, &messages.PickleTableRow{Cells: []*messages.PickleTableCell{
+				{Value: fqn}, {Value: "read,write"},
+			}})
+		}
+		if _, err := (&DirectEntitlementsStepDefinitions{}).thereIsAClaimsSubjectEntityReferencedAsWithDirectEntitlements(ctx, user.name, table); err != nil {
+			return ctx, err
+		}
+	}
+	return ctx, nil
+}
+
+// Keep the provisioned policy as background load. Project requests use a separate
+// definition with no stored values or subject mappings, so only the dynamic
+// resolver can grant them. Classification and region still use subject mappings.
+func createScaleDynamicValueMapping(ctx context.Context, attributeRef string) (context.Context, error) {
+	scenario := GetPlatformScenarioContext(ctx)
+	attribute, ok := scenario.GetObject(attributeRef).(*policy.Attribute)
+	if !ok {
+		return ctx, fmt.Errorf("missing scale attribute %q", attributeRef)
+	}
+	response, err := scenario.SDK.Attributes.CreateAttribute(ctx, &attributes.CreateAttributeRequest{
+		NamespaceId: attribute.GetNamespace().GetId(), Name: attribute.GetName() + "-dynamic", Rule: attribute.GetRule(),
+	})
+	if err != nil {
+		return ctx, err
+	}
+	dynamic := response.GetAttribute()
+	if dynamic.GetFqn() == "" || len(dynamic.GetValues()) != 0 {
+		return ctx, errors.New("dynamic scale definition must have an FQN and no stored values")
+	}
+	mapping, err := scenario.SDK.DynamicValueMapping.CreateDynamicValueMapping(ctx, &dynamicvaluemapping.CreateDynamicValueMappingRequest{
+		AttributeDefinitionFqn: dynamic.GetFqn(),
+		ValueResolver: &policy.DynamicValueResolver{
+			SubjectExternalSelectorValue: ".attributes.projects[]",
+			Operator:                     policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_IN,
+		},
+		Actions: []*policy.Action{{Name: scaleRead}, {Name: scaleWrite}},
+	})
+	if err != nil {
+		return ctx, err
+	}
+	if mapping.GetDynamicValueMapping().GetId() == "" {
+		return ctx, errors.New("dynamic scale mapping returned no identity")
+	}
+	scenario.RecordObject("scale-dynamic-projects", dynamic)
 	return ctx, nil
 }
 
@@ -176,6 +257,10 @@ func buildGeneratedScaleCases(ctx context.Context, attributeRef string, count, s
 	if !ok || len(attribute.GetValues()) < 501 {
 		return nil, errors.New("missing large scale attribute")
 	}
+	resourceAttribute := attribute
+	if dynamic, dynamicOK := scenario.GetObject("scale-dynamic-projects").(*policy.Attribute); dynamicOK {
+		resourceAttribute = dynamic
+	}
 	classification, ok := scenario.GetObject("classification").(*policy.Attribute)
 	if !ok {
 		return nil, errors.New("missing classification attribute")
@@ -212,7 +297,7 @@ func buildGeneratedScaleCases(ctx context.Context, attributeRef string, count, s
 					labels[i] = category + " pool"
 					request.Resources = append(request.Resources, &authz.Resource{
 						EphemeralId: id,
-						Resource:    &authz.Resource_AttributeValues_{AttributeValues: &authz.Resource_AttributeValues{Fqns: scaleDocumentFQNs(doc, attribute, classification, region)}},
+						Resource:    &authz.Resource_AttributeValues_{AttributeValues: &authz.Resource_AttributeValues{Fqns: scaleDocumentFQNs(doc, resourceAttribute, classification, region)}},
 					})
 				}
 				name := strings.Join([]string{user.name, action, category, strings.Join(decisions, "/")}, " ")

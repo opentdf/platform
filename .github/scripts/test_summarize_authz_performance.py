@@ -78,6 +78,25 @@ class SummaryTests(unittest.TestCase):
         self.assertIn("No authorization measurements", result.stdout)
         self.assertIn("BDD step outcome: **failure**", result.stdout)
 
+    def test_cli_distinguishes_entitlement_paths_at_the_same_concurrency(self):
+        with tempfile.TemporaryDirectory() as directory:
+            log = Path(directory) / "scale.log"
+            log.write_text(self.record(path="direct-entitlement", median_ns=900000000) + "\n" +
+                           self.record(path="dynamic-value-mapping", median_ns=800000000) + "\n" +
+                           self.record(path="subject-mapping"))
+            result = subprocess.run(
+                [sys.executable, str(Path(__file__).with_name("summarize-authz-performance.py")),
+                 str(log), "--bdd-outcome", "success"],
+                capture_output=True, text=True, check=True,
+            )
+        self.assertIn("| subject-mapping | 50 | 200 | 2/2 | 100.00 ms |", result.stdout)
+        self.assertIn("| direct-entitlement | 50 | 200 | 2/2 | 900.00 ms |", result.stdout)
+        self.assertIn("| dynamic-value-mapping | 50 | 200 | 2/2 | 800.00 ms |", result.stdout)
+        self.assertIn("direct-entitlement: case selection", result.stdout)
+        self.assertIn("dynamic-value-mapping: case selection", result.stdout)
+        self.assertLess(result.stdout.index("| subject-mapping |"), result.stdout.index("| direct-entitlement |"))
+        self.assertLess(result.stdout.index("| direct-entitlement |"), result.stdout.index("| dynamic-value-mapping |"))
+
     def test_malformed_and_inconsistent_counts_are_not_passes(self):
         rendered, errors = summary.render(self.record() + "\n" + summary.MARKER + "{}", "failure")
         self.assertEqual(errors, 1)

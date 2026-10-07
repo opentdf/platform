@@ -18,6 +18,8 @@ db:
 services:
   authorization:
     allow_direct_entitlements: true
+    entitlement_policy_cache:
+      enabled: false
   kas:
     registered_kas_uri: http://{{ .hostname }}:{{ .platformPort }}
     key_management: false
@@ -39,6 +41,10 @@ services:
     mode: claims
     allow_direct_entitlements: true
 server:
+{{- if .httpWriteTimeout }}
+  http:
+    writeTimeout: {{ .httpWriteTimeout }}
+{{- end }}
   public_hostname: {{ .hostname }}
   tls:
     enabled: false

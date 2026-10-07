@@ -40,6 +40,7 @@ type authorizationCaseResult struct {
 }
 
 type authorizationPerformanceResult struct {
+	Path               string                    `json:"path,omitempty"`
 	Fixture            string                    `json:"fixture,omitempty"`
 	Seed               int                       `json:"seed"`
 	Concurrency        int                       `json:"concurrency"`
@@ -113,6 +114,9 @@ func validateScaleDecision(response *authz.GetDecisionMultiResourceResponse, exp
 func reportAuthorizationLoad(ctx context.Context, cases []authorizationScaleCase, requests, concurrency, seed int, timeout time.Duration) (context.Context, error) {
 	scenario := GetPlatformScenarioContext(ctx)
 	result, runErr := runAuthorizationScaleLoad(ctx, cases, requests, concurrency, seed, timeout, scenario.SDK.AuthorizationV2.GetDecisionMultiResource)
+	if path, ok := scenario.GetObject("scale-entitlement-path").(string); ok {
+		result.Path = path
+	}
 	if fixture, ok := scenario.GetObject("scale-fixture-description").(string); ok {
 		result.Fixture = fixture
 	}

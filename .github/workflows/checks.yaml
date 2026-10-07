@@ -552,7 +552,7 @@ jobs:
         id: scale
         shell: bash
         run: |
-          CUKES_LOG_HANDLER=console go test ./tests-bdd -v -timeout=20m --tags=cukes --godog.tags=@scale --godog.format="cucumber:$(pwd)/cukes_platform_report.json,pretty:$(pwd)/cukes_platform_report.log,pretty" ./features 2>&1 | tee cukes_test_output.log
+          CUKES_LOG_HANDLER=console go test ./tests-bdd -v -timeout=45m --tags=cukes --godog.tags=@scale --godog.format="cucumber:$(pwd)/cukes_platform_report.json,pretty:$(pwd)/cukes_platform_report.log,pretty" ./features 2>&1 | tee cukes_test_output.log
 
       - name: Summarize authorization performance
         if: ${{ !cancelled() }}

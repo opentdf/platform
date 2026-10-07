@@ -30,6 +30,10 @@ func (f *fakeAttributesClient) GetEntitleableAttributesByFqns(_ context.Context,
 	return f.respFunc(req)
 }
 
+func (*fakeAttributesClient) ListAttributes(context.Context, *attrs.ListAttributesRequest) (*attrs.ListAttributesResponse, error) {
+	return nil, fmt.Errorf("full attribute listing is not allowed in targeted decisions")
+}
+
 func newSDKWithAttributes(f *fakeAttributesClient) *otdfSDK.SDK {
 	return &otdfSDK.SDK{Attributes: f}
 }

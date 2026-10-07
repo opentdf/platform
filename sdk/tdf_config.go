@@ -500,7 +500,7 @@ func WithSessionKeyType(keyType ocrypto.KeyType) TDFReaderOption {
 	return func(c *TDFReaderConfig) error {
 		kasSessionKey, err := ocrypto.NewKeyPair(keyType)
 		if err != nil {
-			return fmt.Errorf("failed to create RSA key pair: %w", err)
+			return fmt.Errorf("failed to create %v key pair: %w", keyType, err)
 		}
 		c.kasSessionKey = kasSessionKey
 		return nil

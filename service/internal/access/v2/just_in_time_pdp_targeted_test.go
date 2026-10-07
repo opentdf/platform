@@ -248,14 +248,16 @@ func TestJITPDP_UncachedDynamicDecisions(t *testing.T) {
 	valueFQN := defFQN + "/value/alpha"
 	ns := &policy.Namespace{Id: "namespace-id", Fqn: "https://example.com"}
 	for _, tc := range []struct {
-		name                                                        string
-		persisted, inactive, gated, gateMismatch, namespaceMismatch bool
-		operator                                                    policy.SubjectMappingOperatorEnum
-		action                                                      string
-		permit                                                      bool
+		name                                                                  string
+		persisted, inactive, gated, gateMismatch, namespaceMismatch, disabled bool
+		operator                                                              policy.SubjectMappingOperatorEnum
+		action                                                                string
+		permit                                                                bool
 	}{
 		{name: "unprovisioned", operator: policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_IN, action: "read", permit: true},
 		{name: "active", persisted: true, operator: policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_IN, action: "read", permit: true},
+		{name: "disabled_unprovisioned", disabled: true, operator: policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_IN, action: "read"},
+		{name: "disabled_persisted", disabled: true, persisted: true, operator: policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_IN, action: "read"},
 		{name: "inactive", persisted: true, inactive: true, operator: policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_IN, action: "read"},
 		{name: "contains", operator: policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_IN_CONTAINS, action: "read", permit: true},
 		{name: "gate_allow", gated: true, operator: policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_IN, action: "read", permit: true},
@@ -276,7 +278,7 @@ func TestJITPDP_UncachedDynamicDecisions(t *testing.T) {
 			if tc.namespaceMismatch {
 				mapping.Actions[0].Namespace = &policy.Namespace{Fqn: "https://other.example"}
 			}
-			attrFake := &fakeAttributesClient{respFunc: func(req *attrs.GetEntitleableAttributesByFqnsRequest) (*attrs.GetEntitleableAttributesByFqnsResponse, error) {
+			attrFake := &fakeAttributesClient{respFunc: func(_ *attrs.GetEntitleableAttributesByFqnsRequest) (*attrs.GetEntitleableAttributesByFqnsResponse, error) {
 				value := &attrs.GetEntitleableAttributesByFqnsResponse_EntitleableValue{Fqn: valueFQN}
 				if tc.persisted {
 					value.ValueId = "value-id"
@@ -299,7 +301,7 @@ func TestJITPDP_UncachedDynamicDecisions(t *testing.T) {
 			p, err := NewJustInTimePDP(context.Background(), logger.CreateTestLogger(), &otdfSDK.SDK{
 				Attributes: attrFake, EntityResolutionV2: ers, RegisteredResources: emptyRegisteredResourcesClient{},
 				Obligations: emptyObligationsClient{}, DynamicValueMapping: rejectFullDynamicMappingsClient{},
-			}, &decisionPolicyStore{}, false, true, true)
+			}, &decisionPolicyStore{}, false, !tc.disabled, true)
 			require.NoError(t, err)
 			decision, err := p.GetDecision(audit.ContextWithActorID(context.Background(), "test-actor"), entityChainIdentifier(),
 				&policy.Action{Name: tc.action, Namespace: ns}, attrValueResource(valueFQN), nil, nil)

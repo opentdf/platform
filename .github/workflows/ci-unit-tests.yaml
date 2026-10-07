@@ -6,6 +6,7 @@ on:
       - '.github/actions/ci-checks/**'
       - '.github/ignore-checks-workflow-policy-paths.json'
       - '.github/workflows/checks.yaml'
+      - '.github/workflows/bdd.yaml'
       - '.github/workflows/ci-unit-tests.yaml'
   push:
     branches: [main]
@@ -13,6 +14,7 @@ on:
       - '.github/actions/ci-checks/**'
       - '.github/ignore-checks-workflow-policy-paths.json'
       - '.github/workflows/checks.yaml'
+      - '.github/workflows/bdd.yaml'
       - '.github/workflows/ci-unit-tests.yaml'
 
 permissions: {}

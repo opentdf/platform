@@ -397,20 +397,24 @@ All 3 scenarios should pass (57 steps, 0 failures). You'll see LDAP testcontaine
 
 ### Comparing CI performance
 
-The functional BDD and authorization-scale jobs cache Go module downloads and
-compiled packages. `-count=1` keeps test results uncached, so every scenario still
+The functional BDD and authorization-scale jobs share `.github/workflows/bdd.yaml`
+and restore Go module downloads and compiled packages. Only successful functional
+BDD runs on pushes to `main` save the shared cache; PR and scale runs restore only.
+Cache keys include the runner OS/architecture, actual Go version, and all `go.sum`
+files. A dependency change may remain cold in a PR until it reaches `main`.
+`-count=1` keeps test results uncached, so every scenario still
 runs. The separate **Compile BDD test suite** step makes compilation time visible
 without mixing it with container startup and scenario execution.
 
-Both jobs also restore Docker build layers from the GitHub Actions cache and load
-the image into the local Docker daemon as `platform-cukes:latest`. Functional BDD
-owns the shared cache export; authorization-scale only restores it. The Dockerfile
-downloads modules before copying sources, so source-only changes preserve the dependency layer.
-This cache is separate from the host Go cache. Cache export failures leave tests
-running without an updated Docker cache.
+Both suites also restore Docker build layers and load `platform-cukes:latest`
+locally. Only functional BDD on pushes to `main` exports the shared Docker cache.
+The Dockerfile downloads modules before copying sources, so source-only changes
+preserve the dependency layer. This cache is separate from the host Go cache;
+cache export failures leave tests running without an updated Docker cache.
 
-Compare repeated runs of the same commit, including a cold run and a warm run.
-Record cache hits, compilation, image build, and test-step durations, and verify
+Compare runs after a successful push to `main` has populated the cache, and record
+cold misses separately. PR reruns do not create their own warm cache. Record cache
+hits, compilation, image build, and test-step durations, and verify
 that the functional scenario count stays unchanged. GitHub job durations also
 include cache uploads and other cleanup, so check both step and total job times.
 

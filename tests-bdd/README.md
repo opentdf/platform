@@ -418,6 +418,11 @@ functional scenarios and started 85 Platform instances:
 Startup totals cover database creation through Platform readiness. They exclude
 the shared Keycloak/Postgres startup and later scenario assertions.
 
+Platform health checks run every 100ms with a 200ms per-request timeout. Startup
+has a 40-second deadline, or the scenario's earlier context deadline, so faster
+polling does not reduce the allowance for a slow startup. Scenario policy and
+database isolation stay unchanged.
+
 ## TODO
 - Improve execution time for platform testing
   - Remove keycloak with wiremock/mock or mock

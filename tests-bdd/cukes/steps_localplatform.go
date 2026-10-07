@@ -211,7 +211,7 @@ func (s *LocalPlatformStepDefinitions) commonLocalPlatform(ctx context.Context, 
 		})
 
 		logger.Debug("waiting for platform to start")
-		if err := waitForPlatform(platformEndpoint); err != nil {
+		if err := waitForPlatform(ctx, platformEndpoint); err != nil {
 			return ctx, err
 		}
 	} else {
@@ -242,7 +242,7 @@ func (s *LocalPlatformStepDefinitions) commonLocalPlatform(ctx context.Context, 
 
 		// Wait for platform to be ready
 		logger.Debug("waiting for platform to start")
-		if err := waitForPlatform(platformEndpoint); err != nil {
+		if err := waitForPlatform(ctx, platformEndpoint); err != nil {
 			return ctx, err
 		}
 
@@ -364,33 +364,32 @@ func (s *LocalPlatformStepDefinitions) aLocalPlatformWithTemplates(ctx context.C
 	return s.commonLocalPlatform(ctx, &platformStartOptions{platformProvisionPath: &platformTemplate, kcProvisionPath: kt})
 }
 
-func waitForPlatform(platformEndpoint string) error {
-	tries := 0
-	const maxTries = 30
-	const timeout = time.Millisecond * 200
+func waitForPlatform(ctx context.Context, platformEndpoint string) error {
+	const (
+		requestTimeout = 200 * time.Millisecond
+		pollInterval   = 100 * time.Millisecond
+		// The old 31 attempts could take over 36 seconds including HTTP timeouts.
+		startupTimeout = 40 * time.Second
+	)
+	ctx, cancel := context.WithTimeout(ctx, startupTimeout)
+	defer cancel()
+	httpClient := &http.Client{Timeout: requestTimeout}
+	ticker := time.NewTicker(pollInterval)
+	defer ticker.Stop()
 	healthEndpoint := platformEndpoint + "/healthz?service=all"
 	slog.Debug("waiting for platform health check", slog.String("endpoint", healthEndpoint))
-	for {
-		httpClient := &http.Client{Timeout: timeout}
-		resp, err := httpClient.Get(healthEndpoint) //nolint:noctx //test only health check
-		tries++
-		if err == nil && resp != nil && resp.StatusCode == http.StatusOK {
+	for tries := 1; ; tries++ {
+		req, err := http.NewRequestWithContext(ctx, http.MethodGet, healthEndpoint, nil)
+		if err != nil {
+			return fmt.Errorf("create platform health check: %w", err)
+		}
+		resp, err := httpClient.Do(req)
+		if resp != nil {
 			_ = resp.Body.Close()
+		}
+		if err == nil && resp != nil && resp.StatusCode == http.StatusOK {
 			slog.Debug("platform health check passed", slog.Int("tries", tries))
 			return nil
-		} else if tries > maxTries {
-			if resp != nil {
-				_ = resp.Body.Close()
-				slog.Debug("platform health check failed",
-					slog.Int("status", resp.StatusCode),
-					slog.Int("tries", tries),
-					slog.Any("err", err))
-			} else {
-				slog.Debug("platform health check failed",
-					slog.Int("tries", tries),
-					slog.Any("err", err))
-			}
-			return errors.New("timeout waiting for platform to start")
 		}
 		if tries%10 == 0 {
 			if err != nil {
@@ -403,7 +402,11 @@ func waitForPlatform(platformEndpoint string) error {
 					slog.Int("status", resp.StatusCode))
 			}
 		}
-		time.Sleep(time.Second)
+		select {
+		case <-ctx.Done():
+			return fmt.Errorf("waiting for platform to start: %w", ctx.Err())
+		case <-ticker.C:
+		}
 	}
 }
 

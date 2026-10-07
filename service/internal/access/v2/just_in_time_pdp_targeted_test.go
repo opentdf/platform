@@ -10,6 +10,7 @@ import (
 	entityresolutionV2 "github.com/opentdf/platform/protocol/go/entityresolution/v2"
 	"github.com/opentdf/platform/protocol/go/policy"
 	attrs "github.com/opentdf/platform/protocol/go/policy/attributes"
+	"github.com/opentdf/platform/protocol/go/policy/dynamicvaluemapping"
 	policyobligations "github.com/opentdf/platform/protocol/go/policy/obligations"
 	"github.com/opentdf/platform/protocol/go/policy/registeredresources"
 	"github.com/opentdf/platform/protocol/go/policy/subjectmapping"
@@ -189,6 +190,8 @@ type decisionPolicyStore struct {
 	attributes                          []*policy.Attribute
 	subjectMappings                     []*policy.SubjectMapping
 	attributeReads, subjectMappingReads int
+	dynamicMappings                     []*policy.DynamicValueMapping
+	dynamicMappingReads                 int
 }
 
 type emptyRegisteredResourcesClient struct {
@@ -225,6 +228,87 @@ func (s *decisionPolicyStore) ListAllAttributes(context.Context) ([]*policy.Attr
 func (s *decisionPolicyStore) ListAllSubjectMappings(context.Context) ([]*policy.SubjectMapping, error) {
 	s.subjectMappingReads++
 	return s.subjectMappings, nil
+}
+
+func (s *decisionPolicyStore) ListAllDynamicValueMappings(context.Context) ([]*policy.DynamicValueMapping, error) {
+	s.dynamicMappingReads++
+	return s.dynamicMappings, nil
+}
+
+type rejectFullDynamicMappingsClient struct {
+	sdkconnect.DynamicValueMappingServiceClient
+}
+
+func (rejectFullDynamicMappingsClient) ListDynamicValueMappings(context.Context, *dynamicvaluemapping.ListDynamicValueMappingsRequest) (*dynamicvaluemapping.ListDynamicValueMappingsResponse, error) {
+	return nil, errors.New("full dynamic mapping listing is not allowed in targeted decisions")
+}
+
+func TestJITPDP_UncachedDynamicDecisions(t *testing.T) {
+	defFQN := "https://example.com/attr/projects"
+	valueFQN := defFQN + "/value/alpha"
+	ns := &policy.Namespace{Id: "namespace-id", Fqn: "https://example.com"}
+	for _, tc := range []struct {
+		name                                                        string
+		persisted, inactive, gated, gateMismatch, namespaceMismatch bool
+		operator                                                    policy.SubjectMappingOperatorEnum
+		action                                                      string
+		permit                                                      bool
+	}{
+		{name: "unprovisioned", operator: policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_IN, action: "read", permit: true},
+		{name: "active", persisted: true, operator: policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_IN, action: "read", permit: true},
+		{name: "inactive", persisted: true, inactive: true, operator: policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_IN, action: "read"},
+		{name: "contains", operator: policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_IN_CONTAINS, action: "read", permit: true},
+		{name: "gate_allow", gated: true, operator: policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_IN, action: "read", permit: true},
+		{name: "gate_deny", gated: true, gateMismatch: true, operator: policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_IN, action: "read"},
+		{name: "namespace_mismatch", namespaceMismatch: true, operator: policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_IN, action: "read"},
+		{name: "action_mismatch", operator: policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_IN, action: "write"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			mapping := &policy.DynamicValueMapping{
+				Id: "mapping-id", Namespace: ns,
+				AttributeDefinition: &policy.Attribute{Fqn: defFQN, Namespace: ns, Rule: policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF},
+				ValueResolver:       &policy.DynamicValueResolver{SubjectExternalSelectorValue: ".projects[]", Operator: tc.operator},
+				Actions:             []*policy.Action{{Name: "read", Namespace: ns}},
+			}
+			if tc.gated {
+				mapping.SubjectConditionSet = clientIDInConditionSet("abc")
+			}
+			if tc.namespaceMismatch {
+				mapping.Actions[0].Namespace = &policy.Namespace{Fqn: "https://other.example"}
+			}
+			attrFake := &fakeAttributesClient{respFunc: func(req *attrs.GetEntitleableAttributesByFqnsRequest) (*attrs.GetEntitleableAttributesByFqnsResponse, error) {
+				value := &attrs.GetEntitleableAttributesByFqnsResponse_EntitleableValue{Fqn: valueFQN}
+				if tc.persisted {
+					value.ValueId = "value-id"
+					value.Active = wrapperspb.Bool(!tc.inactive)
+				}
+				return &attrs.GetEntitleableAttributesByFqnsResponse{
+					Definitions: map[string]*attrs.GetEntitleableAttributesByFqnsResponse_EntitleableDefinition{
+						defFQN: {Rule: policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF, Namespace: ns, DynamicValueMappings: []*policy.DynamicValueMapping{mapping}},
+					},
+					FqnEntitleableAttributes: map[string]*attrs.GetEntitleableAttributesByFqnsResponse_EntitleableAttribute{valueFQN: {DefinitionFqn: defFQN, Value: value}},
+				}, nil
+			}}
+			clientID := "abc"
+			if tc.gateMismatch {
+				clientID = "other"
+			}
+			props, err := structpb.NewStruct(map[string]any{"clientId": clientID, "projects": []any{"alpha", "beta"}})
+			require.NoError(t, err)
+			ers := &recordingERSV2Client{resolveResponse: &entityresolutionV2.ResolveEntitiesResponse{EntityRepresentations: []*entityresolutionV2.EntityRepresentation{{OriginalId: "e1", AdditionalProps: []*structpb.Struct{props}}}}}
+			p, err := NewJustInTimePDP(context.Background(), logger.CreateTestLogger(), &otdfSDK.SDK{
+				Attributes: attrFake, EntityResolutionV2: ers, RegisteredResources: emptyRegisteredResourcesClient{},
+				Obligations: emptyObligationsClient{}, DynamicValueMapping: rejectFullDynamicMappingsClient{},
+			}, &decisionPolicyStore{}, false, true, true)
+			require.NoError(t, err)
+			decision, err := p.GetDecision(audit.ContextWithActorID(context.Background(), "test-actor"), entityChainIdentifier(),
+				&policy.Action{Name: tc.action, Namespace: ns}, attrValueResource(valueFQN), nil, nil)
+			require.NoError(t, err)
+			assert.Equal(t, tc.permit, decision.AllPermitted)
+			require.Len(t, attrFake.requests, 1)
+			assert.Equal(t, []string{valueFQN}, attrFake.requests[0].GetFqns())
+		})
+	}
 }
 
 func TestJITPDP_UncachedDirectDecisions(t *testing.T) {
@@ -285,7 +369,7 @@ func TestJITPDP_UncachedDirectDecisions(t *testing.T) {
 	}
 }
 
-func TestJITPDP_DirectCacheAndEnumerationRetainFullPolicy(t *testing.T) {
+func TestJITPDP_CacheAndEnumerationRetainFullPolicy(t *testing.T) {
 	defFQN := "https://example.com/attr/classification"
 	valueFQN := defFQN + "/value/high"
 	sm := &policy.SubjectMapping{
@@ -311,7 +395,7 @@ func TestJITPDP_DirectCacheAndEnumerationRetainFullPolicy(t *testing.T) {
 		Attributes: attrFake, EntityResolutionV2: ers,
 		SubjectMapping: &fakeSubjectMappingClient{resp: &subjectmapping.MatchSubjectMappingsResponse{SubjectMappings: []*policy.SubjectMapping{sm}}},
 	}
-	p, err := NewJustInTimePDP(context.Background(), logger.CreateTestLogger(), sdk, store, true, false, false)
+	p, err := NewJustInTimePDP(context.Background(), logger.CreateTestLogger(), sdk, store, true, true, false)
 	require.NoError(t, err)
 	require.NotNil(t, p.fullPolicyPDP)
 	inner, err := p.buildInnerPDP(context.Background(), []string{valueFQN})
@@ -319,6 +403,7 @@ func TestJITPDP_DirectCacheAndEnumerationRetainFullPolicy(t *testing.T) {
 	assert.Same(t, p.fullPolicyPDP, inner)
 	assert.Equal(t, 1, store.attributeReads)
 	assert.Equal(t, 1, store.subjectMappingReads)
+	assert.Equal(t, 1, store.dynamicMappingReads)
 
 	// An uncached enumeration still reads the broader policy, including hierarchy siblings.
 	p.fullPolicyPDP = nil
@@ -329,6 +414,7 @@ func TestJITPDP_DirectCacheAndEnumerationRetainFullPolicy(t *testing.T) {
 	assert.Contains(t, entitlements[0].GetActionsPerAttributeValueFqn(), defFQN+"/value/low")
 	assert.Equal(t, 2, store.attributeReads)
 	assert.Equal(t, 2, store.subjectMappingReads)
+	assert.Equal(t, 2, store.dynamicMappingReads)
 }
 
 func TestJITPDP_GetDecision_TargetedPermit(t *testing.T) {

@@ -22,7 +22,7 @@ const maxEntitleableFQNsPerRequest = 250
 // It mirrors the v1 authorization service's retrieveAttributeDefinitions
 // (service/authorization/authorization.go); keep the two in sync. The v1 version returns a
 // map[valueFQN]*AttributeAndValue for OPA input, whereas the v2 PDP is built from
-// []*policy.Attribute + []*policy.SubjectMapping, so this emits those two slices instead.
+// []*policy.Attribute + []*policy.SubjectMapping, so this returns definitions and mappings as separate slices.
 //
 // Subject mappings are carried ONLY in the returned slice, never on definition.Values[*].
 // SubjectMappings: NewPolicyDecisionPoint seeds each value from the definition keeping its
@@ -37,7 +37,7 @@ func fetchEntitleableAttributes(
 	ctx context.Context,
 	sdk *otdfSDK.SDK,
 	valueFQNs []string,
-) ([]*policy.Attribute, []*policy.SubjectMapping, error) {
+) ([]*policy.Attribute, []*policy.SubjectMapping, []*policy.DynamicValueMapping, error) {
 	// Normalize + dedupe requested value FQNs to lower case.
 	normalizedFQNs := make([]string, 0, len(valueFQNs))
 	seen := make(map[string]struct{}, len(valueFQNs))
@@ -59,6 +59,7 @@ func fetchEntitleableAttributes(
 	// Hierarchy definitions are expanded (ordered siblings + their SMs) exactly once.
 	hierarchyExpanded := make(map[string]struct{})
 	subjectMappings := make([]*policy.SubjectMapping, 0)
+	dynamicMappings := make([]*policy.DynamicValueMapping, 0)
 
 	ensureDefinition := func(definitionFQN string, def *attrs.GetEntitleableAttributesByFqnsResponse_EntitleableDefinition) *policy.Attribute {
 		if existing, ok := definitionsByFQN[definitionFQN]; ok {
@@ -69,6 +70,7 @@ func fetchEntitleableAttributes(
 			Namespace: def.GetNamespace(),
 			Rule:      def.GetRule(),
 		}
+		dynamicMappings = append(dynamicMappings, def.GetDynamicValueMappings()...)
 		definitionsByFQN[definitionFQN] = attribute
 		valuesSeenByDefinition[definitionFQN] = make(map[string]struct{})
 		return attribute
@@ -141,10 +143,10 @@ func fetchEntitleableAttributes(
 		batch := normalizedFQNs[start:end]
 		resp, err := sdk.Attributes.GetEntitleableAttributesByFqns(ctx, &attrs.GetEntitleableAttributesByFqnsRequest{Fqns: batch})
 		if err != nil {
-			return nil, nil, fmt.Errorf("failed to get entitleable attributes by fqns: %w", err)
+			return nil, nil, nil, fmt.Errorf("failed to get entitleable attributes by fqns: %w", err)
 		}
 		if err := process(resp, batch); err != nil {
-			return nil, nil, err
+			return nil, nil, nil, err
 		}
 	}
 
@@ -152,5 +154,5 @@ func fetchEntitleableAttributes(
 	for _, def := range definitionsByFQN {
 		definitions = append(definitions, def)
 	}
-	return definitions, subjectMappings, nil
+	return definitions, subjectMappings, dynamicMappings, nil
 }

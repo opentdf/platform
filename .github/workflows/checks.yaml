@@ -454,7 +454,7 @@ jobs:
     name: Cucumber BDD Tests
     permissions:
       contents: read
-    uses: ./.github/workflows/bdd.yaml
+    uses: ./.github/workflows/bdd.yaml # zizmor: ignore[self-repository] actionlint v1.7.12 does not support $/ workflow calls
 
   # Characterize the baseline independently of the required ci check.
   authorization-scale:
@@ -463,7 +463,7 @@ jobs:
     name: Authorization scale (report only)
     permissions:
       contents: read
-    uses: ./.github/workflows/bdd.yaml
+    uses: ./.github/workflows/bdd.yaml # zizmor: ignore[self-repository] actionlint v1.7.12 does not support $/ workflow calls
     with:
       scale: true
 

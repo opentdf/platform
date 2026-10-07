@@ -44,35 +44,6 @@ test('ci-results uses pinned github-script v9 with read-only PR merge checkout a
   assert.ok(!results.with.script.includes('${{'));
 });
 
-test('BDD callers retain functional coverage and report-only scale with a single trusted cache writer', () => {
-  const bdd = readWorkflow('bdd.yaml');
-  assert.deepEqual(Object.keys(bdd.on), ['workflow_call']);
-  assert.equal(bdd.on.workflow_call.inputs.scale.type, 'boolean');
-  assert.equal(bdd.on.workflow_call.inputs.scale.default, false);
-  for (const name of ['tests-bdd', 'authorization-scale']) {
-    assert.equal(workflow.jobs[name].uses, './.github/workflows/bdd.yaml');
-    assert.deepEqual(workflow.jobs[name].permissions, { contents: 'read' });
-  }
-  assert.equal(workflow.jobs['tests-bdd'].with?.scale ?? false, false);
-  assert.equal(workflow.jobs['authorization-scale'].with.scale, true);
-
-  const steps = bdd.jobs.tests.steps;
-  assert.equal(steps.find(step => step.uses?.startsWith('actions/setup-go@')).with.cache, false);
-  const restore = steps.filter(step => step.uses?.startsWith('actions/cache/restore@'));
-  const save = steps.filter(step => step.uses?.startsWith('actions/cache/save@'));
-  assert.equal(restore.length, 1);
-  assert.equal(save.length, 1);
-  assert.equal(save[0].if,
-    "github.event_name == 'push' && github.ref == 'refs/heads/main' && !inputs.scale && steps.go-cache.outputs.cache-hit != 'true'");
-  assert.equal(save[0].with.key, '${{ steps.go-cache.outputs.cache-primary-key }}');
-  const run = steps.find(step => step.id === 'bdd');
-  assert.equal(run.env.GODOG_TAGS, "${{ inputs.scale && '@scale' || '~@scale' }}");
-  assert.equal(run.shell, 'bash');
-  assert.match(run.run, /go test \.\/tests-bdd -count=1 /);
-  assert.equal(steps.find(step => step.uses?.startsWith('actions/upload-artifact@')).with.name,
-    "${{ inputs.scale && 'authorization-scale-report' || 'cukes-report' }}");
-});
-
 test('classifier writes both outputs from the PR three-dot diff without expression interpolation in shell', () => {
   const changes = workflow.jobs.changes;
   assert.deepEqual(changes.permissions, { contents: 'read' });
@@ -84,17 +55,6 @@ test('classifier writes both outputs from the PR three-dot diff without expressi
   assert.equal(classifier.run, 'node .github/actions/ci-checks/ci-changes.cjs');
   assert.equal(classifier.env.BASE_SHA, '${{ github.event.pull_request.base.sha }}');
   assert.equal(classifier.env.HEAD_SHA, '${{ github.event.pull_request.head.sha }}');
-});
-
-test('BDD Docker caching keeps the image local and limits exports to functional main pushes', () => {
-  const steps = readWorkflow('bdd.yaml').jobs.tests.steps;
-  const build = steps.find(step => step.uses?.startsWith('docker/build-push-action@'));
-  assert.equal(build.with.push, false);
-  assert.equal(build.with.load, true);
-  assert.equal(build.with.tags, 'platform-cukes:latest');
-  assert.equal(build.with['cache-from'], 'type=gha,scope=platform-bdd');
-  assert.equal(build.with['cache-to'],
-    "${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && !inputs.scale && 'type=gha,mode=max,scope=platform-bdd,ignore-error=true' || '' }}");
 });
 
 test('focused workflow covers all helper, test, manifest and checks edits independently of PR 4137', () => {

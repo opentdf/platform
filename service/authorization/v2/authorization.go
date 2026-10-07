@@ -17,7 +17,6 @@ import (
 	"github.com/opentdf/platform/service/internal/access/v2"
 	"github.com/opentdf/platform/service/logger"
 	ctxAuth "github.com/opentdf/platform/service/pkg/auth"
-	"github.com/opentdf/platform/service/pkg/cache"
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
 	"go.opentelemetry.io/otel/trace"
 	"google.golang.org/protobuf/types/known/wrapperspb"
@@ -85,12 +84,6 @@ func NewRegistration() *serviceregistry.Service[authzV2Connect.AuthorizationServ
 					return as, nil
 				}
 
-				cacheClient, err := srp.NewCacheClient(cache.Options{})
-				if err != nil || cacheClient == nil {
-					l.Error("failed to create platform cache client", slog.Any("error", err))
-					panic(fmt.Errorf("failed to create platform cache client: %w", err))
-				}
-
 				refreshInterval, err := time.ParseDuration(authZCfg.Cache.RefreshInterval)
 				if err != nil {
 					l.Error("failed to parse entitlement policy cache refresh interval", slog.Any("error", err))
@@ -98,7 +91,9 @@ func NewRegistration() *serviceregistry.Service[authzV2Connect.AuthorizationServ
 				}
 
 				retriever := access.NewEntitlementPolicyRetriever(as.sdk)
-				as.cache, err = NewEntitlementPolicyCache(context.Background(), l, retriever, cacheClient, refreshInterval, authZCfg.AllowDynamicValueMappings)
+				as.cache, err = NewEntitlementPolicyCache(context.Background(), l, retriever, refreshInterval, access.PolicyOptions{
+					AllowDirectEntitlements: authZCfg.AllowDirectEntitlements, AllowDynamicValueMappings: authZCfg.AllowDynamicValueMappings, NamespacedPolicy: authZCfg.EnforceNamespacedEntitlements,
+				})
 				if err != nil {
 					l.Error("failed to create entitlement policy cache", slog.Any("error", err))
 					panic(fmt.Errorf("failed to create entitlement policy cache: %w", err))

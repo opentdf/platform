@@ -402,6 +402,13 @@ compiled packages. `-count=1` keeps test results uncached, so every scenario sti
 runs. The separate **Compile BDD test suite** step makes compilation time visible
 without mixing it with container startup and scenario execution.
 
+Both jobs also restore Docker build layers from the GitHub Actions cache and load
+the image into the local Docker daemon as `platform-cukes:latest`. Functional BDD
+owns the shared cache export; authorization-scale only restores it. The Dockerfile
+downloads modules before copying sources, so source-only changes preserve the dependency layer.
+This cache is separate from the host Go cache. Cache export failures leave tests
+running without an updated Docker cache.
+
 Compare repeated runs of the same commit, including a cold run and a warm run.
 Record cache hits, compilation, image build, and test-step durations, and verify
 that the functional scenario count stays unchanged. GitHub job durations also

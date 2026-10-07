@@ -1768,6 +1768,81 @@ func (s *AttributesSuite) Test_GetEntitleableAttributesByFqns_ActiveValuesAndNor
 	s.Require().ErrorIs(err, db.ErrNotFound)
 }
 
+func (s *AttributesSuite) Test_GetEntitleableAttributesByFqns_UnprovisionedValues() {
+	ns, err := s.db.PolicyClient.CreateNamespace(s.ctx, &namespaces.CreateNamespaceRequest{Name: "entitleable-unprovisioned.example"})
+	s.Require().NoError(err)
+	for _, rule := range []policy.AttributeRuleTypeEnum{
+		policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
+		policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY,
+	} {
+		s.Run(rule.String(), func() {
+			created, err := s.db.PolicyClient.CreateAttribute(s.ctx, &attributes.CreateAttributeRequest{
+				Name: strings.ToLower(rule.String()), NamespaceId: ns.GetId(), Rule: rule,
+				Values: []string{"high", "mid", "low"},
+			})
+			s.Require().NoError(err)
+			got, err := s.db.PolicyClient.GetAttribute(s.ctx, created.GetId())
+			s.Require().NoError(err)
+			high, mid, low := got.GetValues()[0], got.GetValues()[1], got.GetValues()[2]
+			_, err = s.db.PolicyClient.DeactivateAttributeValue(s.ctx, mid.GetId())
+			s.Require().NoError(err)
+			missing := got.GetFqn() + "/value/new"
+			unknown := "https://entitleable-unprovisioned.example/attr/unknown/value/new"
+			request := &attributes.GetEntitleableAttributesByFqnsRequest{
+				Fqns: []string{high.GetFqn(), mid.GetFqn(), missing, unknown}, IncludeUnprovisionedValues: true,
+			}
+			resp, err := s.db.PolicyClient.GetEntitleableAttributesByFqns(s.ctx, request)
+			s.Require().NoError(err)
+			s.Len(resp.GetDefinitions(), 1)
+			s.Len(resp.GetFqnEntitleableAttributes(), 3)
+			s.NotContains(resp.GetFqnEntitleableAttributes(), unknown)
+			active := resp.GetFqnEntitleableAttributes()[high.GetFqn()].GetValue()
+			s.Equal(high.GetId(), active.GetValueId())
+			s.True(active.GetActive().GetValue())
+			inactive := resp.GetFqnEntitleableAttributes()[mid.GetFqn()].GetValue()
+			s.Equal(mid.GetId(), inactive.GetValueId())
+			s.Require().NotNil(inactive.GetActive())
+			s.False(inactive.GetActive().GetValue())
+			unprovisioned := resp.GetFqnEntitleableAttributes()[missing]
+			s.Require().NotNil(unprovisioned)
+			s.Equal(got.GetFqn(), unprovisioned.GetDefinitionFqn())
+			s.Empty(unprovisioned.GetValue().GetValueId())
+			s.Nil(unprovisioned.GetValue().GetActive())
+			s.Empty(unprovisioned.GetValue().GetSubjectMappings())
+			if rule == policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY {
+				values := resp.GetDefinitions()[got.GetFqn()].GetValues()
+				s.Require().Len(values, 2)
+				s.Equal(high.GetFqn(), values[0].GetFqn())
+				s.Equal(low.GetFqn(), values[1].GetFqn())
+			}
+			_, err = s.db.PolicyClient.GetEntitleableAttributesByFqns(s.ctx, &attributes.GetEntitleableAttributesByFqnsRequest{Fqns: []string{missing}})
+			s.Require().ErrorIs(err, db.ErrNotFound)
+			_, err = s.db.PolicyClient.GetEntitleableAttributesByFqns(s.ctx, &attributes.GetEntitleableAttributesByFqnsRequest{Fqns: []string{mid.GetFqn()}})
+			s.Require().ErrorIs(err, db.ErrAttributeValueInactive)
+			_, err = s.db.PolicyClient.DeactivateAttribute(s.ctx, got.GetId())
+			s.Require().NoError(err)
+			resp, err = s.db.PolicyClient.GetEntitleableAttributesByFqns(s.ctx, request)
+			s.Require().NoError(err)
+			s.Empty(resp.GetDefinitions())
+			s.Empty(resp.GetFqnEntitleableAttributes())
+		})
+	}
+	created, err := s.db.PolicyClient.CreateAttribute(s.ctx, &attributes.CreateAttributeRequest{
+		Name: "inactive_namespace", NamespaceId: ns.GetId(), Rule: policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF,
+	})
+	s.Require().NoError(err)
+	got, err := s.db.PolicyClient.GetAttribute(s.ctx, created.GetId())
+	s.Require().NoError(err)
+	_, err = s.db.PolicyClient.DeactivateNamespace(s.ctx, ns.GetId())
+	s.Require().NoError(err)
+	resp, err := s.db.PolicyClient.GetEntitleableAttributesByFqns(s.ctx, &attributes.GetEntitleableAttributesByFqnsRequest{
+		Fqns: []string{got.GetFqn() + "/value/new"}, IncludeUnprovisionedValues: true,
+	})
+	s.Require().NoError(err)
+	s.Empty(resp.GetDefinitions())
+	s.Empty(resp.GetFqnEntitleableAttributes())
+}
+
 func (s *AttributesSuite) Test_GetEntitleableAttributesByFqns_EmptyAndMixedMissing() {
 	resp, err := s.db.PolicyClient.GetEntitleableAttributesByFqns(s.ctx, &attributes.GetEntitleableAttributesByFqnsRequest{})
 	s.Require().NoError(err)

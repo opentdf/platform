@@ -15,6 +15,7 @@ import (
 	"github.com/opentdf/platform/service/pkg/db"
 	policydb "github.com/opentdf/platform/service/policy/db"
 	"github.com/stretchr/testify/suite"
+	"google.golang.org/protobuf/proto"
 )
 
 type DynamicValueMappingsSuite struct {
@@ -82,6 +83,73 @@ func (s *DynamicValueMappingsSuite) TestCreateWithStaticGate() {
 	s.Require().NoError(err)
 	s.Require().NotNil(got.GetSubjectConditionSet(), "static pre-gate should be hydrated")
 	s.NotEmpty(got.GetSubjectConditionSet().GetSubjectSets())
+}
+
+func (s *DynamicValueMappingsSuite) TestEntitleableDynamicMappings() {
+	attr := s.createDefinition("dvem_entitleable", policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF)
+	unrelated := s.createDefinition("dvem_entitleable_other", policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF)
+	_, err := s.db.PolicyClient.CreateDynamicValueMapping(s.ctx, &dynamicvaluemapping.CreateDynamicValueMappingRequest{
+		AttributeDefinitionId: unrelated.GetId(), ValueResolver: s.resolver(".other[]", policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_IN),
+		Actions: []*policy.Action{s.readAction()},
+	})
+	s.Require().NoError(err)
+	want := map[string]*policy.DynamicValueMapping{}
+	for _, gated := range []bool{false, true} {
+		request := &dynamicvaluemapping.CreateDynamicValueMappingRequest{
+			AttributeDefinitionId: attr.GetId(), ValueResolver: s.resolver(".projects[]", policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_IN),
+			Actions: []*policy.Action{s.readAction()},
+		}
+		if gated {
+			request.NamespaceFqn = "https://example.com"
+			request.Actions = []*policy.Action{{Name: policydb.ActionRead.String()}}
+			request.NewSubjectConditionSet = s.sampleSCSCreate()
+		}
+		created, err := s.db.PolicyClient.CreateDynamicValueMapping(s.ctx, request)
+		s.Require().NoError(err)
+		got, err := s.db.PolicyClient.GetDynamicValueMapping(s.ctx, created.GetId())
+		s.Require().NoError(err)
+		want[created.GetId()] = got
+	}
+	got, err := s.db.PolicyClient.GetAttribute(s.ctx, attr.GetId())
+	s.Require().NoError(err)
+	request := &attributes.GetEntitleableAttributesByFqnsRequest{
+		Fqns: []string{got.GetFqn() + "/value/new"}, IncludeUnprovisionedValues: true,
+	}
+	resp, err := s.db.PolicyClient.GetEntitleableAttributesByFqns(s.ctx, request)
+	s.Require().NoError(err)
+	s.Empty(resp.GetDefinitions()[got.GetFqn()].GetDynamicValueMappings())
+	request.IncludeDynamicValueMappings = true
+	resp, err = s.db.PolicyClient.GetEntitleableAttributesByFqns(s.ctx, request)
+	s.Require().NoError(err)
+	s.Require().Len(resp.GetDefinitions(), 1)
+	def := resp.GetDefinitions()[got.GetFqn()]
+	s.Require().Len(def.GetDynamicValueMappings(), 2)
+	for _, mapping := range def.GetDynamicValueMappings() {
+		expected := want[mapping.GetId()]
+		s.Require().NotNil(expected, "only the requested definition's mappings are returned")
+		s.True(proto.Equal(expected.GetValueResolver(), mapping.GetValueResolver()))
+		s.Equal(expected.GetSubjectConditionSet().GetId(), mapping.GetSubjectConditionSet().GetId())
+		s.Equal(expected.GetSubjectConditionSet().GetNamespace().GetFqn(), mapping.GetSubjectConditionSet().GetNamespace().GetFqn())
+		s.Len(mapping.GetSubjectConditionSet().GetSubjectSets(), len(expected.GetSubjectConditionSet().GetSubjectSets()))
+		for i, subjectSet := range expected.GetSubjectConditionSet().GetSubjectSets() {
+			s.True(proto.Equal(subjectSet, mapping.GetSubjectConditionSet().GetSubjectSets()[i]))
+		}
+		s.Require().Len(mapping.GetActions(), 1)
+		s.Equal(expected.GetActions()[0].GetId(), mapping.GetActions()[0].GetId())
+		s.Equal(expected.GetActions()[0].GetName(), mapping.GetActions()[0].GetName())
+		s.Equal(expected.GetActions()[0].GetNamespace().GetFqn(), mapping.GetActions()[0].GetNamespace().GetFqn())
+		s.Equal(expected.GetNamespace().GetFqn(), mapping.GetNamespace().GetFqn())
+		s.Equal(got.GetFqn(), mapping.GetAttributeDefinition().GetFqn())
+		s.Equal(got.GetRule(), mapping.GetAttributeDefinition().GetRule())
+		s.Equal(got.GetNamespace().GetFqn(), mapping.GetAttributeDefinition().GetNamespace().GetFqn())
+		s.Empty(mapping.GetAttributeDefinition().GetValues())
+		s.Nil(mapping.GetMetadata())
+	}
+	_, err = s.db.PolicyClient.DeactivateAttribute(s.ctx, attr.GetId())
+	s.Require().NoError(err)
+	resp, err = s.db.PolicyClient.GetEntitleableAttributesByFqns(s.ctx, request)
+	s.Require().NoError(err)
+	s.Empty(resp.GetDefinitions())
 }
 
 func (s *DynamicValueMappingsSuite) TestRejectsHierarchyDefinition() {

@@ -8,11 +8,12 @@ import (
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/attributes"
 	"github.com/opentdf/platform/service/pkg/db"
+	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
 // resolveEntitleableValueFqns preserves value lookup semantics without hydrating
 // encryption policy or resource mappings that authorization never consumes.
-func (c *PolicyDBClient) resolveEntitleableValueFqns(ctx context.Context, fqns []string) ([]string, map[string]*attributes.GetAttributeValuesByFqnsResponse_AttributeAndValue, error) {
+func (c *PolicyDBClient) resolveEntitleableValueFqns(ctx context.Context, fqns []string, includeUnprovisioned bool) ([]string, map[string]*attributes.GetAttributeValuesByFqnsResponse_AttributeAndValue, error) {
 	normalized := make([]string, len(fqns))
 	definitionFqns := make([]string, 0, len(fqns))
 	seenDefinitions := make(map[string]struct{}, len(fqns))
@@ -52,14 +53,13 @@ func (c *PolicyDBClient) resolveEntitleableValueFqns(ctx context.Context, fqns [
 			continue
 		}
 		_, isRequested := requested[row.ValueFqn]
-		if !row.ValueActive {
-			if isRequested {
-				return nil, nil, fmt.Errorf("value fqn [%s] inactive: %w", row.ValueFqn, db.ErrAttributeValueInactive)
-			}
-			continue
+		if !row.ValueActive && isRequested && !includeUnprovisioned {
+			return nil, nil, fmt.Errorf("value fqn [%s] inactive: %w", row.ValueFqn, db.ErrAttributeValueInactive)
 		}
-		value := &policy.Value{Id: row.ValueID, Fqn: row.ValueFqn}
-		attr.Values = append(attr.Values, value)
+		value := &policy.Value{Id: row.ValueID, Fqn: row.ValueFqn, Active: wrapperspb.Bool(row.ValueActive)}
+		if row.ValueActive {
+			attr.Values = append(attr.Values, value)
+		}
 		if isRequested {
 			pairs[row.ValueFqn] = &attributes.GetAttributeValuesByFqnsResponse_AttributeAndValue{Attribute: attr, Value: value}
 		}
@@ -69,8 +69,11 @@ func (c *PolicyDBClient) resolveEntitleableValueFqns(ctx context.Context, fqns [
 			continue
 		}
 		defFqn := definitionFqnFromValueFqn(fqn)
-		if traversable[defFqn] {
+		if traversable[defFqn] || (includeUnprovisioned && definitions[defFqn] != nil) {
 			pairs[fqn] = &attributes.GetAttributeValuesByFqnsResponse_AttributeAndValue{Attribute: definitions[defFqn]}
+			continue
+		}
+		if includeUnprovisioned {
 			continue
 		}
 		return nil, nil, fmt.Errorf("could not find value for FQN [%s]: %w", fqn, db.ErrNotFound)

@@ -442,6 +442,14 @@ message GetEntitleableAttributesByFqnsRequest {
     min_items: 1
     max_items: 250
   }];
+  // Return active definition context for values that have not been provisioned,
+  // regardless of allow_traversal. Unknown definitions are omitted. Inactive
+  // persisted values retain their identity with active=false, so callers cannot
+  // mistake them for unprovisioned values. The caller still decides entitlement.
+  // When false, existing strict lookup behavior is preserved.
+  bool include_unprovisioned_values = 2;
+  // Include dynamic mappings only for the referenced active definitions.
+  bool include_dynamic_value_mappings = 3;
 }
 message GetEntitleableAttributesByFqnsResponse {
   // An attribute value plus the subject mappings that entitle it.
@@ -452,6 +460,8 @@ message GetEntitleableAttributesByFqnsResponse {
     string value_id = 2;
     // subject mappings used to resolve entitlements for this value
     repeated policy.SubjectMapping subject_mappings = 3;
+    // Present for persisted values. Unprovisioned values have no active state.
+    google.protobuf.BoolValue active = 4;
   }
   // An attribute definition referenced by one or more requested value FQNs,
   // returned once regardless of how many of its values were requested.
@@ -467,6 +477,8 @@ message GetEntitleableAttributesByFqnsResponse {
     // namespaced-policy decisioning and registered-resource matching. Only the
     // identity is populated; grants, keys, and metadata are not.
     policy.Namespace namespace = 3;
+    // Populated only when include_dynamic_value_mappings is requested.
+    repeated policy.DynamicValueMapping dynamic_value_mappings = 4;
   }
   message EntitleableAttribute {
     // the FQN of the parent definition, a key into `definitions`

@@ -397,13 +397,18 @@ All 3 scenarios should pass (57 steps, 0 failures). You'll see LDAP testcontaine
 
 ### Comparing CI performance
 
-The functional BDD and authorization-scale jobs cache Go module downloads and
-compiled packages. `-count=1` keeps test results uncached, so every scenario still
+The functional BDD and authorization-scale jobs share `.github/workflows/bdd.yaml`
+and restore Go module downloads and compiled packages. Only successful functional
+BDD runs on pushes to `main` save the shared cache; PR and scale runs restore only.
+Cache keys include the runner OS/architecture, actual Go version, and all `go.sum`
+files. A dependency change may remain cold in a PR until it reaches `main`.
+`-count=1` keeps test results uncached, so every scenario still
 runs. The separate **Compile BDD test suite** step makes compilation time visible
 without mixing it with container startup and scenario execution.
 
-Compare repeated runs of the same commit, including a cold run and a warm run.
-Record cache hits, compilation, image build, and test-step durations, and verify
+Compare runs after a successful push to `main` has populated the cache, and record
+cold misses separately. PR reruns do not create their own warm cache. Record cache
+hits, compilation, image build, and test-step durations, and verify
 that the functional scenario count stays unchanged. GitHub job durations also
 include cache uploads and other cleanup, so check both step and total job times.
 

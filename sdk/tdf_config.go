@@ -156,6 +156,9 @@ type TDFConfig struct {
 	useHex                     bool
 	excludeVersionFromManifest bool
 	addDefaultAssertion        bool
+	// maxSegmentEncryptions overrides maxAESGCMSegmentsPerDEK when non-zero.
+	// Only tests set it, through withMaxSegmentEncryptions.
+	maxSegmentEncryptions uint64
 }
 
 func newTDFConfig(opt ...TDFOption) (*TDFConfig, error) {
@@ -250,6 +253,15 @@ func WithMetaData(metaData string) TDFOption {
 func WithMimeType(mimeType string) TDFOption {
 	return func(c *TDFConfig) error {
 		c.mimeType = mimeType
+		return nil
+	}
+}
+
+// withMaxSegmentEncryptions lowers the AES-GCM segment encryption cap so tests
+// can reach ErrAESGCMExhausted without encrypting 2^32 segments.
+func withMaxSegmentEncryptions(n uint64) TDFOption {
+	return func(c *TDFConfig) error {
+		c.maxSegmentEncryptions = n
 		return nil
 	}
 }

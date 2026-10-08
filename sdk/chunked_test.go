@@ -2631,3 +2631,78 @@ func TestChunkedGetManifestDoesNotBlockWriteSegment(t *testing.T) {
 	require.NoError(t, err)
 	assert.Len(t, later.Segments, 2)
 }
+
+// TestChunkedAESGCMExhausted checks the writer refuses, before
+// encrypting, the segment that would take it past its per-DEK AES-GCM
+// encryption cap, and that the refusal matches ErrAESGCMExhausted.
+func TestChunkedAESGCMExhausted(t *testing.T) {
+	ctx := context.Background()
+	encrypts := 0
+	writer, _ := newChunkedWriterForTest(ctx, t,
+		withChunkedMaxEncryptions(2),
+		withChunkedCipherFactory(func(dek []byte) (segmentCipher, error) {
+			inner, err := defaultSegmentCipherFactory(dek)
+			if err != nil {
+				return nil, err
+			}
+			return countingCipher{inner: inner, count: &encrypts}, nil
+		}),
+	)
+
+	for i := range 2 {
+		_, err := writer.WriteSegment(ctx, i, []byte("ok"))
+		require.NoError(t, err, "segment %d", i)
+	}
+	_, err := writer.WriteSegment(ctx, 2, []byte("too many"))
+	require.ErrorIs(t, err, ErrAESGCMExhausted)
+	assert.Equal(t, 2, encrypts, "the refused segment must not be encrypted")
+
+	// The refusal does not wedge the index or the writer: what was
+	// written still finalizes.
+	fin, err := writer.Finalize(ctx)
+	require.NoError(t, err)
+	assert.Len(t, fin.Manifest.Segments, 2)
+}
+
+// TestChunkedAESGCMExhaustedCountsAttempts checks a failed encryption
+// still spends from the cap. The attempt drew an IV, so a retry must
+// not get it back.
+func TestChunkedAESGCMExhaustedCountsAttempts(t *testing.T) {
+	ctx := context.Background()
+	writer, _ := newChunkedWriterForTest(ctx, t,
+		withChunkedMaxEncryptions(1),
+		withChunkedCipherFactory(func([]byte) (segmentCipher, error) {
+			return failingCipher{}, nil
+		}),
+	)
+
+	_, err := writer.WriteSegment(ctx, 0, []byte("doomed"))
+	require.ErrorIs(t, err, errCipherFailed)
+	_, err = writer.WriteSegment(ctx, 0, []byte("retry"))
+	require.ErrorIs(t, err, ErrAESGCMExhausted)
+}
+
+// TestChunkedDefaultMaxEncryptions pins the default cap: 2^32 - 1
+// payload segments per DEK, keeping the random-IV collision chance
+// under the NIST SP 800-38D 2^-32 ceiling.
+func TestChunkedDefaultMaxEncryptions(t *testing.T) {
+	ctx := context.Background()
+	writer, _ := newChunkedWriterForTest(ctx, t)
+	inner, ok := writer.(*chunkedWriter)
+	require.True(t, ok)
+	assert.Equal(t, uint64(1<<32-1), inner.maxEncryptions)
+
+	_, err := NewChunkedWriter(ctx, withChunkedMaxEncryptions(0))
+	require.Error(t, err)
+}
+
+// countingCipher counts the encryptions it performs.
+type countingCipher struct {
+	inner segmentCipher
+	count *int
+}
+
+func (c countingCipher) EncryptInPlace(data []byte) ([]byte, []byte, error) {
+	*c.count++
+	return c.inner.EncryptInPlace(data)
+}

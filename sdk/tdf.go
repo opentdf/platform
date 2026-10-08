@@ -65,6 +65,17 @@ const (
 	// measured neither way is read to EOF with no segment ceiling; DSPX-4905 tracks
 	// giving it one.
 	maxPayloadSegments = math.MaxInt32
+
+	// maxAESGCMSegmentsPerDEK is the most payload segment encryptions a writer
+	// attempts under one DEK before failing with ErrAESGCMExhausted.
+	//
+	// Segment IVs are random 96 bits, so k encryptions collide with probability
+	// about k^2 / 2^97. NIST SP 800-38D §8 caps that at 2^-32, so k must stay at
+	// or below about 2^32.5. This uses 2^32 - 1: invocation 0 under the key is
+	// set aside for key access metadata, leaving 2^32 - 1 for the payload, which
+	// is also the limit of a 32-bit invocation counter. Attempts are counted, not
+	// successes, because a failed write has still used an IV.
+	maxAESGCMSegmentsPerDEK uint64 = 1<<32 - 1
 )
 
 // Loads and reads ZTDF files
@@ -366,6 +377,7 @@ func (s SDK) newTDFChunkedWriter(ctx context.Context, tdfConfig *TDFConfig, zipM
 		// cannot be verified by any reader. TDFConfig sets its two the same way.
 		excludeVersion: tdfConfig.excludeVersionFromManifest,
 		keyAccess:      staticKeyAccess{kaos: kaos, policy: base64Policy},
+		maxEncryptions: tdfConfig.maxSegmentEncryptions,
 		segmentSize:    tdfConfig.defaultSegmentSize,
 		useHex:         tdfConfig.useHex,
 	})

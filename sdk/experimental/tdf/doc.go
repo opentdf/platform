@@ -198,6 +198,7 @@
 //   - ErrInvalidSegmentIndex: Invalid segment index provided
 //   - ErrSegmentAlreadyWritten: Duplicate segment index
 //   - ErrMissingSegmentZero: Finalize called without segment 0
+//   - ErrAESGCMExhausted: Too many segment encryptions under one key
 //   - ErrUnsupportedRootIntegrityAlgorithm, ErrUnsupportedSegmentIntegrityAlgorithm:
 //     NewWriter was asked for an algorithm other than the default
 //

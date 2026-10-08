@@ -13,7 +13,7 @@ setup_file() {
   bats_load_library bats-assert
   load "otdfctl-utils.sh"
   export WITH_CREDS='--with-client-creds-file ./creds.json'
-  export HOST='--host http://localhost:8080'
+  export HOST="--host ${OTDFCTL_TEST_HOST:-http://localhost:8080}"
   # This command is not a 'kas-registry key' subcommand, so it won't use run_otdfctl_key
   export KAS_URI="https://test-kas-with-keys.com"
   export KAS_NAME="kas-registry-for-keys-test"
@@ -102,6 +102,21 @@ format_kas_name_as_uri() {
   assert_not_equal "$(echo "$output" | jq -r .key.private_key_ctx.wrapped_key)" ""
   assert_not_equal "$(echo "$output" | jq -r .key.metadata.created_at)" "null"
   assert_not_equal "$(echo "$output" | jq -r .key.metadata.updated_at)" "null"
+}
+
+@test "kas-keys: reject a KID over 128 bytes" {
+  # ASCII makes this KID exactly 129 bytes and 129 characters.
+  local key_id="$(openssl rand -hex 64)x"
+  assert_equal "$(printf '%s' "$key_id" | wc -c | tr -d ' ')" "129"
+
+  run_otdfctl_key create --kas "$KAS_REGISTRY_ID" --key-id "$key_id" --algorithm rsa:2048 --mode local --wrapping-key-id wrapping-key-1 --wrapping-key "$WRAPPING_KEY" --json
+  assert_failure
+  assert_output --partial "Failed to create kas key"
+  assert_output --partial "resource creation failed"
+
+  run_otdfctl_key list --kas "$KAS_REGISTRY_ID" --json
+  assert_success
+  assert_equal "$(echo "$output" | jq --arg kid "$key_id" '[.kas_keys[]? | select(.key.key_id == $kid)] | length')" "0"
 }
 
 @test "kas-keys: create key (local mode, ec:secp256r1)" {

@@ -110,22 +110,15 @@ teardown_file(){
 
 @test "roundtrip TDF3 with a generated key whose KID is 128 bytes" {
   # ASCII makes this KID exactly 128 bytes and 128 characters.
-  # CI generates this key pair and loads it into the existing KAS via extra-keys.
-  LONG_KID="$OTDFCTL_TEST_LONG_KID"
-  LONG_KID_KAS_URI="$HOST/kas"
-  local public_key_pem
-  public_key_pem=$(base64 < "${OTDFCTL_TEST_LONG_KID_PUBLIC_KEY_FILE:-./kas-long-kid-public.pem}" | tr -d '\n')
+  LONG_KID=$(openssl rand -hex 64)
+  LONG_KID_KAS_URI="${OTDFCTL_TEST_KEY_MANAGEMENT_KAS_URI:-http://localhost:8181}"
+  # Matches the root key of the key-managed KAS started by CI.
+  local wrapping_key="a8c4824daafcfa38ed0d13002e92b08720e6c4fcee67d52e954c1a6e045907d1"
   assert_equal "$(printf '%s' "$LONG_KID" | wc -c | tr -d ' ')" "128"
 
-  run ./otdfctl --host "$HOST" $WITH_CREDS policy kas-registry list --search "$LONG_KID_KAS_URI" --json
+  run ./otdfctl --host "$HOST" $WITH_CREDS policy kas-registry create --uri "$LONG_KID_KAS_URI" --name "long-kid-${RANDOM}" --json
   assert_success
-  LONG_KID_KAS_ID=$(echo "$output" | jq -r --arg uri "$LONG_KID_KAS_URI" '.key_access_servers[]? | select(.uri == $uri) | .id')
-  if [[ -z "$LONG_KID_KAS_ID" ]]; then
-    run ./otdfctl --host "$HOST" $WITH_CREDS policy kas-registry create --uri "$LONG_KID_KAS_URI" --name "long-kid-${RANDOM}" --json
-    assert_success
-    LONG_KID_KAS_ID=$(echo "$output" | jq -r '.id')
-    LONG_KID_CREATED_KAS_ID="$LONG_KID_KAS_ID"
-  fi
+  LONG_KID_CREATED_KAS_ID=$(echo "$output" | jq -r '.id')
 
   run ./otdfctl --host "$HOST" $WITH_CREDS policy attributes values create --attribute-id "$ATTR_ID" --value "long-kid-${RANDOM}" --json
   assert_success
@@ -135,7 +128,7 @@ teardown_file(){
   run ./otdfctl --host "$HOST" $WITH_CREDS policy subject-mappings create --action read -a "$LONG_KID_VALUE_ID" --subject-condition-set-id "$SCS_ID"
   assert_success
 
-  run ./otdfctl --host "$HOST" $WITH_CREDS policy kas-registry key create --kas "$LONG_KID_KAS_ID" --key-id "$LONG_KID" --algorithm rsa:2048 --mode public_key --public-key-pem "$public_key_pem" --json
+  run ./otdfctl --host "$HOST" $WITH_CREDS policy kas-registry key create --kas "$LONG_KID_CREATED_KAS_ID" --key-id "$LONG_KID" --algorithm rsa:2048 --mode local --wrapping-key-id test-root-key --wrapping-key "$wrapping_key" --json
   assert_success
   LONG_KID_KEY_SYSTEM_ID=$(echo "$output" | jq -r '.key.id')
   assert_equal "$(echo "$output" | jq -r '.key.key_id')" "$LONG_KID"

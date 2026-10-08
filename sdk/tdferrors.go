@@ -18,6 +18,11 @@ var (
 	// segments than the archive writer can count.
 	errTooManySegments = errors.New("tdf: input size needs more segments than the archive can address")
 
+	// errSealerKeySize rejects a key that is not a 32-byte AES-256 key where
+	// one is required to address a sealer in the message registry. Reported
+	// with the length only; the key itself is secret.
+	errSealerKeySize = errors.New("tdf: key is not a 32-byte AES-256 key")
+
 	// Exposed tamper detection errors, Catch all possible tamper errors with errors.Is(ErrTampered)
 	ErrTampered                = errors.New("tamper detected")
 	ErrRootSigValidation       = fmt.Errorf("[%w] tdf: failed integrity check on root signature", ErrTampered)

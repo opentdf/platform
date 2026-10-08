@@ -1795,8 +1795,11 @@ func Test_SegmentCount(t *testing.T) {
 		{inputSize: segmentSize + 1, segmentSize: segmentSize, expected: 2},
 		{inputSize: 3 * segmentSize, segmentSize: segmentSize, expected: 3},
 		// inputSize + segmentSize - 1 wraps negative here, so the textbook ceiling
-		// division would report a negative count.
-		{inputSize: math.MaxInt64, segmentSize: 1 << 33, expected: 1 << 30},
+		// division would report a negative count. The segment size is large
+		// enough that the resulting count stays under maxPayloadSegments in
+		// both IV modes -- the overflow is what this row is for, and hitting
+		// the ceiling instead is Test_SegmentCountTooManySegments's job.
+		{inputSize: math.MaxInt64, segmentSize: 1 << 38, expected: 1 << 25},
 	} {
 		count, err := segmentCount(test.inputSize, test.segmentSize)
 		require.NoError(t, err, "segmentCount(%d, %d)", test.inputSize, test.segmentSize)

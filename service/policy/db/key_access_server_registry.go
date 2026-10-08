@@ -832,7 +832,7 @@ func (c PolicyDBClient) RotateKey(ctx context.Context, activeKey *policy.KasKey,
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
 	if count == 0 {
-		return nil, db.ErrKeyNotActive
+		return nil, db.ErrNotFound
 	}
 
 	rotatedOutKey, err := c.GetKey(ctx, &kasregistry.GetKeyRequest_Id{Id: activeKey.GetKey().GetId()})

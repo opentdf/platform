@@ -62,7 +62,7 @@ func (s *KasRegistryKeySuite) Test_RotateKey_RejectsPersistedNonActiveSource() {
 				resp, err = tx.RotateKey(s.ctx, source, rotationSuccessor())
 				return err
 			})
-			s.Require().ErrorIs(err, db.ErrKeyNotActive)
+			s.Require().ErrorIs(err, db.ErrNotFound)
 			s.Nil(resp)
 			s.assertRotationKeyCount(source.GetKasId(), 1)
 			persisted, err := s.db.PolicyClient.GetKey(s.ctx, &kasregistry.GetKeyRequest_Id{Id: source.GetKey().GetId()})
@@ -73,12 +73,12 @@ func (s *KasRegistryKeySuite) Test_RotateKey_RejectsPersistedNonActiveSource() {
 	}
 }
 
-func (s *KasRegistryKeySuite) Test_RotateKey_MissingSourceDuringTransactionFailsPrecondition() {
+func (s *KasRegistryKeySuite) Test_RotateKey_MissingSourceDuringTransactionNotFound() {
 	err := s.db.PolicyClient.RunInTx(s.ctx, func(tx *policydb.PolicyDBClient) error {
 		_, err := tx.RotateKey(s.ctx, &policy.KasKey{Key: &policy.AsymmetricKey{Id: uuid.NewString()}}, rotationSuccessor())
 		return err
 	})
-	s.Require().ErrorIs(err, db.ErrKeyNotActive)
+	s.Require().ErrorIs(err, db.ErrNotFound)
 }
 
 func (s *KasRegistryKeySuite) Test_RotateKey_MissingSourceRPCRemainsNotFound() {
@@ -130,7 +130,7 @@ func (s *KasRegistryKeySuite) Test_RotateKey_ConcurrentRequestsHaveOneSuccessor(
 	for range 2 {
 		r := <-results
 		if r.err != nil {
-			s.Require().ErrorIs(r.err, db.ErrKeyNotActive)
+			s.Require().ErrorIs(r.err, db.ErrNotFound)
 			s.Nil(r.resp)
 			conflicts++
 			continue

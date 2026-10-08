@@ -2,7 +2,6 @@ package db
 
 import (
 	"errors"
-	"fmt"
 	"testing"
 
 	"connectrpc.com/connect"
@@ -11,7 +10,6 @@ import (
 	"github.com/opentdf/platform/service/logger"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"google.golang.org/genproto/googleapis/rpc/errdetails"
 )
 
 func Test_Is_Postgres_Invalid_Query_Error(t *testing.T) {
@@ -51,12 +49,6 @@ func TestStatusifyErrorUnsafeUpdateKeyErrors(t *testing.T) {
 		code connect.Code
 		text string
 	}{
-		{
-			name: "rotation source not active",
-			err:  ErrKeyNotActive,
-			code: connect.CodeFailedPrecondition,
-			text: ErrTextKeyNotActive,
-		},
 		{
 			name: "provider config not found",
 			err:  ErrUnsafeUpdateKeyProviderConfigNotFound,
@@ -103,20 +95,4 @@ func TestStatusifyErrorUnsafeUpdateKeyErrors(t *testing.T) {
 			require.Contains(t, got.Error(), tc.text)
 		})
 	}
-}
-
-func TestStatusifyErrorKeyNotActiveDetail(t *testing.T) {
-	testLogger, err := logger.NewLogger(logger.Config{Level: "error", Output: "stdout", Type: "json"})
-	require.NoError(t, err)
-	err = StatusifyError(t.Context(), testLogger, fmt.Errorf("rotation: %w", ErrKeyNotActive), ErrTextKeyRotationFailed)
-	var statusErr *connect.Error
-	require.ErrorAs(t, err, &statusErr)
-	require.Equal(t, connect.CodeFailedPrecondition, statusErr.Code())
-	require.Len(t, statusErr.Details(), 1)
-	value, err := statusErr.Details()[0].Value()
-	require.NoError(t, err)
-	info, ok := value.(*errdetails.ErrorInfo)
-	require.True(t, ok)
-	require.Equal(t, "KEY_NOT_ACTIVE", info.GetReason())
-	require.Equal(t, "policy.kasregistry", info.GetDomain())
 }

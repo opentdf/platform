@@ -33,6 +33,12 @@ Prefer `make` targets at repo root:
 
 ## Testing Guidelines
 
+### Package and test boundaries
+
+- A distinct consumer-facing API can live in a cohesive Go package when it reflects a real ownership or dependency boundary, not solely to hide tests. Check import direction and avoid import cycles.
+- Keep unit tests beside the package they test, grouped by behavior or contract rather than by PR or bug.
+- Put reusable fixtures in `testdata`; do not add production exports solely to relocate tests. Confirm new test packages are included by `go test ./...` in the relevant module.
+
 ### Required Tests Before Committing
 
 **CRITICAL**: All Go code changes must pass these checks before being marked as complete:

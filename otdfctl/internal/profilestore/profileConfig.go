@@ -2,6 +2,7 @@ package profilestore
 
 import (
 	"encoding/json"
+	"reflect"
 
 	"github.com/opentdf/platform/otdfctl/internal/profilestore/internal/global"
 	"github.com/opentdf/platform/otdfctl/internal/profilestore/pkg/store"
@@ -13,6 +14,7 @@ type ProfileStore struct {
 	// Profile is the struct that holds the profile data and satisfies the NamedProfile interface.
 	// Exported to allow write/read access to the profile data being stored.
 	Profile NamedProfile
+	object  map[string]json.RawMessage
 }
 
 // NamedProfile is the holder of a profile containing a name and all stored profile data.
@@ -74,20 +76,104 @@ func LoadProfileStore[T NamedProfile](serviceNamespace string, newStore store.Ne
 }
 
 // Generic wrapper for working with specific types
-func GetStoredProfile[T NamedProfile](store *ProfileStore) (T, error) {
+func GetStoredProfile[T NamedProfile](profileStore *ProfileStore) (T, error) {
 	var profile T
-	data, err := store.store.Get()
+	data, err := profileStore.store.Get()
 	if err != nil {
 		return profile, err
 	}
-	err = json.Unmarshal(data, &profile)
-	store.Profile = profile
-	return profile, err
+	object, err := store.DecodeObject(data)
+	if err != nil {
+		return profile, err
+	}
+	if err := json.Unmarshal(data, &profile); err != nil {
+		return profile, err
+	}
+	profileStore.object = object
+	profileStore.Profile = profile
+	return profile, nil
 }
 
 // Save the current profile data to the store
 func (p *ProfileStore) Save() error {
-	return p.store.Set(p.Profile)
+	latest := p.object
+	if p.store.Exists() {
+		data, err := p.store.Get()
+		if err != nil {
+			return err
+		}
+		latest, err = store.DecodeObject(data)
+		if err != nil {
+			return err
+		}
+	}
+	return p.saveCore(latest)
+}
+
+// Extensions returns opaque payloads; missing extensions are represented by an empty map.
+func (p *ProfileStore) Extensions() (map[string]json.RawMessage, error) {
+	return store.Extensions(p.object)
+}
+
+func (p *ProfileStore) Extension(namespace string) (json.RawMessage, bool, error) {
+	return store.Extension(p.object, namespace)
+}
+
+// UnknownFields returns opaque top-level fields other than extensions.
+func (p *ProfileStore) UnknownFields() map[string]json.RawMessage {
+	return store.UnknownFields(p.object, p.Profile)
+}
+
+// CheckUnknownTo reports opaque fields or namespaces that migration would overwrite.
+func (p *ProfileStore) CheckUnknownTo(destination *ProfileStore) error {
+	return store.CheckOpaqueConflicts(p.object, destination.object, p.Profile)
+}
+
+// CopyUnknownTo transfers opaque top-level members without changing core fields.
+func (p *ProfileStore) CopyUnknownTo(destination *ProfileStore) error {
+	if err := p.CheckUnknownTo(destination); err != nil {
+		return err
+	}
+	unknown := p.UnknownFields()
+	object, err := store.MergeUnknownNested(p.object, destination.object, p.Profile)
+	if err != nil {
+		return err
+	}
+	if len(unknown) == 0 && reflect.DeepEqual(object, destination.object) {
+		return nil
+	}
+	for key, value := range unknown {
+		object[key] = value
+	}
+	if err := destination.store.Set(object); err != nil {
+		return err
+	}
+	destination.object = object
+	return nil
+}
+
+// SetExtension replaces one namespace in the latest persisted profile.
+func (p *ProfileStore) SetExtension(namespace string, payload json.RawMessage) error {
+	if namespace == "" || len(payload) == 0 || !json.Valid(payload) {
+		return store.ErrInvalidExtensions
+	}
+	data, err := p.store.Get()
+	if err != nil {
+		return err
+	}
+	latest, err := store.DecodeObject(data)
+	if err != nil {
+		return err
+	}
+	object, err := store.PutExtension(latest, namespace, payload)
+	if err != nil {
+		return err
+	}
+	if err := p.store.Set(object); err != nil {
+		return err
+	}
+	p.object = object
+	return nil
 }
 
 // Delete the current profile from the store
@@ -98,6 +184,31 @@ func (p *ProfileStore) Delete() error {
 // Profile Name
 func (p *ProfileStore) GetProfileName() string {
 	return p.Profile.GetName()
+}
+
+// create never uses the update path: an observed record or lookup error must
+// not become a merge/write. The underlying drivers do not provide atomic create.
+func (p *ProfileStore) create() error {
+	exists, err := store.ExistsForCreate(p.store)
+	if err != nil {
+		return err
+	}
+	if exists {
+		return ErrProfileNameConflict
+	}
+	return p.saveCore(nil)
+}
+
+func (p *ProfileStore) saveCore(latest map[string]json.RawMessage) error {
+	object, err := store.MergeCore(latest, p.Profile)
+	if err != nil {
+		return err
+	}
+	if err := p.store.Set(object); err != nil {
+		return err
+	}
+	p.object = object
+	return nil
 }
 
 // utility functions

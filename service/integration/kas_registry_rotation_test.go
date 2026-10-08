@@ -126,7 +126,7 @@ func (s *KasRegistryKeySuite) Test_RotateKey_ConcurrentRequestsHaveOneSuccessor(
 	s.assertRotationKeyCount(source.GetKasId(), 2)
 	s.Equal(policy.KeyStatus_KEY_STATUS_ACTIVE, winner.GetKasKey().GetKey().GetKeyStatus())
 	s.Equal(map[string]string{
-		"org_id": "test-org", "later": "value", "rotated_to_kid": winner.GetKasKey().GetKey().GetKeyId(),
+		"org_id": "test-org", "later": "value",
 	}, winner.GetRotatedResources().GetRotatedOutKey().GetKey().GetMetadata().GetLabels())
 	persisted, err := s.db.PolicyClient.GetNamespace(s.ctx, &namespaces.GetNamespaceRequest_NamespaceId{NamespaceId: namespace.GetId()})
 	s.Require().NoError(err)
@@ -161,7 +161,7 @@ func (s *KasRegistryKeySuite) Test_RotateKey_RollbackRestoresStatusLabelsBaseAnd
 	s.Require().NoError(err)
 	s.Require().Len(persisted.GetKasKeys(), 1)
 	s.Equal(source.GetKey().GetKeyId(), persisted.GetKasKeys()[0].GetPublicKey().GetKid())
-	// Failure creating the successor must roll back the status/lineage as well.
+	// Failure creating the successor must roll back the status as well.
 	newKey.KeyId = source.GetKey().GetKeyId()
 	err = s.db.PolicyClient.RunInTx(s.ctx, func(tx *policydb.PolicyDBClient) error {
 		_, err := tx.RotateKey(s.ctx, source, newKey)

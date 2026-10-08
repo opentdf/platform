@@ -1302,44 +1302,24 @@ func (q *Queries) listKeys(ctx context.Context, arg listKeysParams) ([]listKeysR
 
 const rotateActiveKey = `-- name: rotateActiveKey :execrows
 UPDATE key_access_server_keys
-SET
-    key_status = $1::integer,
-    metadata = jsonb_set(
-        COALESCE(metadata, '{}'::jsonb),
-        '{labels}',
-        COALESCE(metadata->'labels', '{}'::jsonb)
-            || jsonb_build_object('rotated_to_kid', $2::text)
-    )
-WHERE id = $3 AND key_status = $4::integer
+SET key_status = $1::integer
+WHERE id = $2 AND key_status = $3::integer
 `
 
 type rotateActiveKeyParams struct {
 	RotatedStatus int32  `json:"rotated_status"`
-	NewKid        string `json:"new_kid"`
 	ID            string `json:"id"`
 	ActiveStatus  int32  `json:"active_status"`
 }
 
 // The status predicate is rechecked after acquiring the row lock, so concurrent
-// rotations cannot both create a successor. Merge persisted labels atomically.
+// rotations cannot both create a successor.
 //
 //	UPDATE key_access_server_keys
-//	SET
-//	    key_status = $1::integer,
-//	    metadata = jsonb_set(
-//	        COALESCE(metadata, '{}'::jsonb),
-//	        '{labels}',
-//	        COALESCE(metadata->'labels', '{}'::jsonb)
-//	            || jsonb_build_object('rotated_to_kid', $2::text)
-//	    )
-//	WHERE id = $3 AND key_status = $4::integer
+//	SET key_status = $1::integer
+//	WHERE id = $2 AND key_status = $3::integer
 func (q *Queries) rotateActiveKey(ctx context.Context, arg rotateActiveKeyParams) (int64, error) {
-	result, err := q.db.Exec(ctx, rotateActiveKey,
-		arg.RotatedStatus,
-		arg.NewKid,
-		arg.ID,
-		arg.ActiveStatus,
-	)
+	result, err := q.db.Exec(ctx, rotateActiveKey, arg.RotatedStatus, arg.ID, arg.ActiveStatus)
 	if err != nil {
 		return 0, err
 	}

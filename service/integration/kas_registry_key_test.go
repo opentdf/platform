@@ -1704,7 +1704,7 @@ func (s *KasRegistryKeySuite) Test_SetBaseKey_CannotSetNonActiveKey_Fails() {
 	s.Require().ErrorContains(err, "cannot set key of status")
 }
 
-func (s *KasRegistryKeySuite) Test_RotateKey_MetadataPreservedWithSuccessor_Success() {
+func (s *KasRegistryKeySuite) Test_RotateKey_MetadataUnchanged_Success() {
 	keyIDs := make([]string, 0)
 	kasIDs := make([]string, 0)
 	s.T().Cleanup(func() {
@@ -1764,7 +1764,6 @@ func (s *KasRegistryKeySuite) Test_RotateKey_MetadataPreservedWithSuccessor_Succ
 	})
 	s.Require().NoError(err)
 	s.Equal(policy.KeyStatus_KEY_STATUS_ROTATED, oldKey.GetKey().GetKeyStatus())
-	labels["rotated_to_kid"] = newKey.GetKeyId()
 	s.Require().Equal(labels, oldKey.GetKey().GetMetadata().GetLabels())
 }
 

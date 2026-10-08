@@ -827,7 +827,6 @@ func (c PolicyDBClient) RotateKey(ctx context.Context, activeKey *policy.KasKey,
 		ID:            activeKey.GetKey().GetId(),
 		ActiveStatus:  int32(policy.KeyStatus_KEY_STATUS_ACTIVE),
 		RotatedStatus: int32(policy.KeyStatus_KEY_STATUS_ROTATED),
-		NewKid:        newKey.GetKeyId(),
 	})
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)

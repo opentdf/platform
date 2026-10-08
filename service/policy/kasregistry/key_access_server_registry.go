@@ -426,6 +426,12 @@ func (s KeyAccessServerRegistry) RotateKey(ctx context.Context, r *connect.Reque
 		},
 	}
 
+	if original.GetKey().GetKeyStatus() != policy.KeyStatus_KEY_STATUS_ACTIVE {
+		s.logger.LogPolicyCRUDFailure(ctx, auditParams)
+		return nil, db.StatusifyError(ctx, s.logger, db.ErrKeyNotActive, db.ErrTextKeyRotationFailed,
+			slog.String("active_key_id", objectID), slog.String("key_status", original.GetKey().GetKeyStatus().String()))
+	}
+
 	err = s.dbClient.RunInTx(ctx, func(txClient *policydb.PolicyDBClient) error {
 		resp, err = txClient.RotateKey(ctx, original, r.Msg.GetNewKey())
 		if err != nil {

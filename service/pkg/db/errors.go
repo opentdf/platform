@@ -33,6 +33,7 @@ var (
 	ErrIdentifierDeprecated                      = errors.New("ErrIdentifierDeprecated: identifier is deprecated")
 	ErrCannotUpdateToUnspecified                 = errors.New("ErrCannotUpdateToUnspecified: cannot update to unspecified value")
 	ErrKeyRotationFailed                         = errors.New("ErrTextKeyRotationFailed: key rotation failed")
+	ErrKeyNotActive                              = errors.New("ErrKeyNotActive: key must be ACTIVE")
 	ErrExpectedBase64EncodedValue                = errors.New("ErrExpectedBase64EncodedValue: expected base64 encoded value")
 	ErrUnencryptedPrivateKey                     = errors.New("ErrUnencryptedPrivateKey: unencrypted private key not allowed")
 	ErrMarshalValueFailed                        = errors.New("ErrMashalValueFailed: failed to marshal value")
@@ -136,6 +137,7 @@ const (
 	ErrorTextIdentifierDeprecated                      = "identifier is deprecated"
 	ErrorTextUpdateToUnspecified                       = "cannot update to unspecified value"
 	ErrTextKeyRotationFailed                           = "key rotation failed"
+	ErrorTextKeyNotActive                              = "key must be ACTIVE"
 	ErrorTextExpectedBase64EncodedValue                = "expected base64 encoded value"
 	ErrorTextUnencryptedPrivateKey                     = "unencrypted private key not allowed"
 	ErrorTextMarshalFailed                             = "failed to marshal value"
@@ -207,6 +209,10 @@ func StatusifyError(ctx context.Context, l *logger.Logger, err error, fallbackEr
 	if errors.Is(err, ErrKeyRotationFailed) {
 		l.ErrorContext(ctx, ErrTextKeyRotationFailed, logs...)
 		return connect.NewError(connect.CodeInternal, errors.New(ErrTextKeyRotationFailed))
+	}
+	if errors.Is(err, ErrKeyNotActive) {
+		l.ErrorContext(ctx, ErrorTextKeyNotActive, logs...)
+		return connect.NewError(connect.CodeFailedPrecondition, errors.New(ErrorTextKeyNotActive))
 	}
 	if errors.Is(err, ErrExpectedBase64EncodedValue) {
 		l.ErrorContext(ctx, ErrorTextExpectedBase64EncodedValue, logs...)

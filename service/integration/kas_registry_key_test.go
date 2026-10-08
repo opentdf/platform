@@ -1412,7 +1412,7 @@ func (s *KasRegistryKeySuite) Test_RotateKey_NoBaseKeyRotated_Success() {
 	})
 	s.Require().NoError(err)
 
-	// Ensure there is no default key mapping
+	// Ensure the unrelated key is the base key.
 	baseKey, err := s.db.PolicyClient.GetBaseKey(s.ctx)
 	s.Require().NoError(err)
 	s.Require().NotNil(baseKey)
@@ -1422,11 +1422,113 @@ func (s *KasRegistryKeySuite) Test_RotateKey_NoBaseKeyRotated_Success() {
 	s.NotNil(rotatedInKey)
 	keyIDs = append(keyIDs, rotatedInKey.GetKasKey().GetKey().GetId())
 
-	// Check that the rotated in key is now the ZTDF default key.
+	// Rotating another key must leave the unrelated base key unchanged.
 	baseKey, err = s.db.PolicyClient.GetBaseKey(s.ctx)
 	s.Require().NoError(err)
 	s.Require().NotNil(baseKey)
 	s.Equal(keyMap[nonRotateKey].GetKey().GetKeyId(), baseKey.GetPublicKey().GetKid())
+	s.NotEqual(rotatedInKey.GetKasKey().GetKey().GetKeyId(), baseKey.GetPublicKey().GetKid())
+}
+
+func (s *KasRegistryKeySuite) Test_RotateKey_NonActiveSource_NotFound() {
+	kas, err := s.db.PolicyClient.CreateKeyAccessServer(s.ctx, &kasregistry.CreateKeyAccessServerRequest{
+		Name: "test_rotate_non_active_key_kas",
+		Uri:  "https://test-rotate-non-active-key.opentdf.io",
+	})
+	s.Require().NoError(err)
+	keyMap := s.setupKeysForRotate(kas.GetId())
+	keyIDs := []string{keyMap[rotateKey].GetKey().GetId(), keyMap[nonRotateKey].GetKey().GetId()}
+	s.T().Cleanup(func() { s.cleanupKeys(keyIDs, []string{kas.GetId()}) })
+	newKey := kasregistry.RotateKeyRequest_NewKey{
+		KeyId:         uuid.NewString(),
+		Algorithm:     policy.Algorithm_ALGORITHM_RSA_2048,
+		KeyMode:       policy.KeyMode_KEY_MODE_CONFIG_ROOT_KEY,
+		PublicKeyCtx:  &policy.PublicKeyCtx{Pem: keyCtx},
+		PrivateKeyCtx: &policy.PrivateKeyCtx{KeyId: validKeyID1, WrappedKey: keyCtx},
+	}
+	// Status updates are internal to the DB package; public UpdateKey only updates metadata.
+	_, err = s.db.PolicyClient.Pgx.Exec(s.ctx,
+		"UPDATE key_access_server_keys SET key_status = $1 WHERE id = $2", int32(policy.KeyStatus_KEY_STATUS_ROTATED), keyMap[rotateKey].GetKey().GetId())
+	s.Require().NoError(err)
+	// The snapshot still says ACTIVE; rotation must check persisted status.
+	s.Equal(policy.KeyStatus_KEY_STATUS_ACTIVE, keyMap[rotateKey].GetKey().GetKeyStatus())
+	response, err := s.db.PolicyClient.RotateKey(s.ctx, keyMap[rotateKey], &newKey)
+	s.Require().ErrorIs(err, db.ErrNotFound)
+	s.Nil(response)
+	persisted, err := s.db.PolicyClient.GetKey(s.ctx, &kasregistry.GetKeyRequest_Id{Id: keyMap[rotateKey].GetKey().GetId()})
+	s.Require().NoError(err)
+	s.Require().NotNil(persisted)
+	s.Equal(policy.KeyStatus_KEY_STATUS_ROTATED, persisted.GetKey().GetKeyStatus())
+}
+
+func (s *KasRegistryKeySuite) Test_RotateKey_ConcurrentRequestsHaveOneSuccessor() {
+	kas, err := s.db.PolicyClient.CreateKeyAccessServer(s.ctx, &kasregistry.CreateKeyAccessServerRequest{
+		Name: "test_rotate_concurrent_key_kas",
+		Uri:  "https://test-rotate-concurrent-key.opentdf.io",
+	})
+	s.Require().NoError(err)
+	keyMap := s.setupKeysForRotate(kas.GetId())
+	keyIDs := []string{keyMap[rotateKey].GetKey().GetId(), keyMap[nonRotateKey].GetKey().GetId()}
+	s.T().Cleanup(func() { s.cleanupKeys(keyIDs, []string{kas.GetId()}) })
+	type result struct {
+		kid      string
+		response *kasregistry.RotateKeyResponse
+		err      error
+	}
+	start := make(chan struct{})
+	ready := make(chan struct{}, 2)
+	results := make(chan result, 2)
+	for range 2 {
+		go func() {
+			newKey := kasregistry.RotateKeyRequest_NewKey{
+				KeyId:         uuid.NewString(),
+				Algorithm:     policy.Algorithm_ALGORITHM_RSA_2048,
+				KeyMode:       policy.KeyMode_KEY_MODE_CONFIG_ROOT_KEY,
+				PublicKeyCtx:  &policy.PublicKeyCtx{Pem: keyCtx},
+				PrivateKeyCtx: &policy.PrivateKeyCtx{KeyId: validKeyID1, WrappedKey: keyCtx},
+			}
+			ready <- struct{}{}
+			<-start
+			response, err := s.db.PolicyClient.RotateKey(s.ctx, keyMap[rotateKey], &newKey)
+			results <- result{kid: newKey.GetKeyId(), response: response, err: err}
+		}()
+	}
+	for range 2 {
+		<-ready
+	}
+	close(start)
+	winners, conflicts := 0, 0
+	var winnerKID, loserKID string
+	for range 2 {
+		res := <-results
+		if res.err != nil {
+			s.Require().ErrorIs(res.err, db.ErrNotFound)
+			s.Nil(res.response)
+			loserKID = res.kid
+			conflicts++
+			continue
+		}
+		s.Require().NotNil(res.response)
+		keyIDs = append(keyIDs, res.response.GetKasKey().GetKey().GetId())
+		winnerKID = res.kid
+		winners++
+	}
+	s.Equal(1, winners)
+	s.Equal(1, conflicts)
+	rotated, err := s.db.PolicyClient.GetKey(s.ctx, &kasregistry.GetKeyRequest_Id{Id: keyMap[rotateKey].GetKey().GetId()})
+	s.Require().NoError(err)
+	s.Equal(policy.KeyStatus_KEY_STATUS_ROTATED, rotated.GetKey().GetKeyStatus())
+	keys, err := s.db.PolicyClient.ListKeys(s.ctx, &kasregistry.ListKeysRequest{
+		KasFilter: &kasregistry.ListKeysRequest_KasId{KasId: kas.GetId()},
+	})
+	s.Require().NoError(err)
+	s.Len(keys.GetKasKeys(), 3, "source, unrelated fixture key, and one successor")
+	listedKIDs := make([]string, 0, len(keys.GetKasKeys()))
+	for _, key := range keys.GetKasKeys() {
+		listedKIDs = append(listedKIDs, key.GetKey().GetKeyId())
+	}
+	s.Contains(listedKIDs, winnerKID)
+	s.NotContains(listedKIDs, loserKID)
 }
 
 func (s *KasRegistryKeySuite) Test_RotateKey_BaseKeyRotated_Success() {

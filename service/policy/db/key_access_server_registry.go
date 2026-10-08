@@ -831,16 +831,14 @@ func (c PolicyDBClient) RotateKey(ctx context.Context, activeKey *policy.KasKey,
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
-	// Distinguish an absent source from one whose persisted status changed since
-	// the service read it. Never rely on the caller's snapshot for the guard.
-	rotatedOutKey, err := c.GetKey(ctx, &kasregistry.GetKeyRequest_Id{Id: activeKey.GetKey().GetId()})
-	if err != nil {
-		return nil, err
-	}
 	if count == 0 {
 		return nil, db.ErrKeyNotActive
 	}
 
+	rotatedOutKey, err := c.GetKey(ctx, &kasregistry.GetKeyRequest_Id{Id: activeKey.GetKey().GetId()})
+	if err != nil {
+		return nil, err
+	}
 	newKasKey, err := c.CreateKey(ctx, &kasregistry.CreateKeyRequest{
 		KasId:            activeKey.GetKasId(),
 		KeyId:            newKey.GetKeyId(),

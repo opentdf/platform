@@ -4,13 +4,17 @@ import (
 	"errors"
 	"fmt"
 
+	"connectrpc.com/connect"
 	"github.com/google/uuid"
 	"github.com/opentdf/platform/protocol/go/common"
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/kasregistry"
 	"github.com/opentdf/platform/protocol/go/policy/namespaces"
+	"github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/pkg/db"
+	"github.com/opentdf/platform/service/pkg/serviceregistry"
 	policydb "github.com/opentdf/platform/service/policy/db"
+	servicekasregistry "github.com/opentdf/platform/service/policy/kasregistry"
 )
 
 func rotationSuccessor() *kasregistry.RotateKeyRequest_NewKey {
@@ -69,12 +73,26 @@ func (s *KasRegistryKeySuite) Test_RotateKey_RejectsPersistedNonActiveSource() {
 	}
 }
 
-func (s *KasRegistryKeySuite) Test_RotateKey_MissingSourceRemainsNotFound() {
+func (s *KasRegistryKeySuite) Test_RotateKey_MissingSourceDuringTransactionFailsPrecondition() {
 	err := s.db.PolicyClient.RunInTx(s.ctx, func(tx *policydb.PolicyDBClient) error {
 		_, err := tx.RotateKey(s.ctx, &policy.KasKey{Key: &policy.AsymmetricKey{Id: uuid.NewString()}}, rotationSuccessor())
 		return err
 	})
-	s.Require().ErrorIs(err, db.ErrNotFound)
+	s.Require().ErrorIs(err, db.ErrKeyNotActive)
+}
+
+func (s *KasRegistryKeySuite) Test_RotateKey_MissingSourceRPCRemainsNotFound() {
+	registration := servicekasregistry.NewRegistration("policy", serviceregistry.DBRegister{})
+	service, _ := registration.RegisterFunc(serviceregistry.RegistrationParams{
+		DBClient: s.db.Client,
+		Logger:   logger.CreateTestLogger(),
+	})
+	response, err := service.RotateKey(s.ctx, connect.NewRequest(&kasregistry.RotateKeyRequest{
+		ActiveKey: &kasregistry.RotateKeyRequest_Id{Id: uuid.NewString()},
+		NewKey:    rotationSuccessor(),
+	}))
+	s.Require().Equal(connect.CodeNotFound, connect.CodeOf(err))
+	s.Nil(response)
 }
 
 func (s *KasRegistryKeySuite) Test_RotateKey_ConcurrentRequestsHaveOneSuccessor() {

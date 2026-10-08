@@ -351,6 +351,20 @@ SET
     metadata = COALESCE(sqlc.narg('metadata'), metadata)
 WHERE id = $1;
 
+-- name: rotateActiveKey :execrows
+-- The status predicate is rechecked after acquiring the row lock, so concurrent
+-- rotations cannot both create a successor. Merge persisted labels atomically.
+UPDATE key_access_server_keys
+SET
+    key_status = @rotated_status::integer,
+    metadata = jsonb_set(
+        COALESCE(metadata, '{}'::jsonb),
+        '{labels}',
+        COALESCE(metadata->'labels', '{}'::jsonb)
+            || jsonb_build_object('rotated_to_kid', @new_kid::text)
+    )
+WHERE id = @id AND key_status = @active_status::integer;
+
 -- name: unsafeUpdateKey :execrows
 UPDATE key_access_server_keys
 SET

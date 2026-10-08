@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.25.4](https://github.com/opentdf/platform/compare/service/v0.25.3...service/v0.25.4) (2026-10-07)
+
+
+### Bug Fixes
+
+* **core:** DSPX-5056 align v0.25 tracing schemas with OTel 1.45 ([#4198](https://github.com/opentdf/platform/issues/4198)) ([f75c2f5](https://github.com/opentdf/platform/commit/f75c2f5f23cdd544d44d202d5604a759fb090cc5))
+
 ## [0.25.3](https://github.com/opentdf/platform/compare/service/v0.25.2...service/v0.25.3) (2026-09-10)
 
 

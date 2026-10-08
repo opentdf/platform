@@ -27,6 +27,7 @@ type RewrapAuditEventParams struct {
 	PolicyBinding  string
 	KeyID          string
 	SessionKeyType string
+	isDenied       bool
 }
 
 func CreateRewrapAuditEvent(ctx context.Context, params RewrapAuditEventParams) (*EventObject, error) {
@@ -34,8 +35,11 @@ func CreateRewrapAuditEvent(ctx context.Context, params RewrapAuditEventParams) 
 
 	// Assign action result
 	auditEventActionResult := ActionResultError
-	if params.IsSuccess {
+	switch {
+	case params.IsSuccess:
 		auditEventActionResult = ActionResultSuccess
+	case params.isDenied:
+		auditEventActionResult = ActionResultFailure
 	}
 
 	attrFQNS := make([]string, len(params.Policy.Body.DataAttributes))

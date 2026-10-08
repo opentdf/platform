@@ -1248,6 +1248,12 @@ format_kas_name_as_uri() {
   assert_equal "$(echo "$output" | jq -r .rotated_resources.rotated_out_key.key.id)" "${OLD_KEY_SYSTEM_ID}"
   assert_equal "$(echo "$output" | jq -r .rotated_resources.rotated_out_key.key.key_id)" "${OLD_KEY_ID}"
   assert_equal "$(echo "$output" | jq -r .rotated_resources.rotated_out_key.key.key_status)" "2" # rotated (old key should be marked as rotated)
+
+  # A rotated source must be rejected before creating another successor.
+  run_otdfctl_key rotate --key "${OLD_KEY_SYSTEM_ID}" --key-id "$(generate_key_id)" --algorithm "rsa:2048" --mode "local" --wrapping-key-id "wrapping-key-2" --wrapping-key "${WRAPPING_KEY}" --json
+  assert_failure
+  assert_output --partial "failed_precondition"
+  assert_output --partial "key must be ACTIVE"
 }
 
 @test "kas-keys: rotate key by UUID-form user key-id and kasId" {

@@ -14,11 +14,19 @@ import (
 	"github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/logger/audit"
 	"github.com/opentdf/platform/service/pkg/config"
+	"github.com/opentdf/platform/service/pkg/db"
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
+	"go.opentelemetry.io/otel/trace"
 	"google.golang.org/grpc"
 )
+
+type pingOnlyPGX struct {
+	db.PgxIface
+}
+
+func (pingOnlyPGX) Ping(context.Context) error { return nil }
 
 type spyTestService struct {
 	wasCalled  bool
@@ -393,6 +401,54 @@ func (suite *ServiceTestSuite) TestStartServicesWithVariousCases() {
 
 	// call close function
 	registry.Shutdown()
+}
+
+func (suite *ServiceTestSuite) TestStartServicesRegistersDBReadinessOncePerNamespace() {
+	ctx := context.Background()
+	registry := serviceregistry.NewServiceRegistry()
+	dbRegister := serviceregistry.DBRegister{Required: true}
+
+	for _, serviceName := range []string{"FirstDBService", "SecondDBService"} {
+		registration, _ := mockTestServiceRegistry(mockTestServiceOptions{
+			namespace:     "dbtest",
+			serviceName:   serviceName,
+			serviceObject: TestService{},
+			dbRegister:    dbRegister,
+		})
+		suite.Require().NoError(registry.RegisterService(registration, "dbtest"))
+	}
+
+	otdf, err := mockOpenTDFServer()
+	suite.Require().NoError(err)
+	newLogger, err := logger.NewLogger(logger.Config{Output: "stdout", Level: "info", Type: "json"})
+	suite.Require().NoError(err)
+
+	createdClients := 0
+	registeredChecks := 0
+	err = startServices(ctx, startServicesParams{
+		cfg: &config.Config{
+			Mode:     []string{"dbtest"},
+			Logger:   logger.Config{Output: "stdout", Level: "info", Type: "json"},
+			Services: map[string]config.ServiceConfig{"dbtest": {}},
+		},
+		otdf:   otdf,
+		logger: newLogger,
+		reg:    registry,
+		newDBClient: func(context.Context, logger.Config, db.Config, trace.Tracer, string, *embed.FS) (*db.Client, error) {
+			createdClients++
+			return &db.Client{Pgx: pingOnlyPGX{}}, nil
+		},
+		registerReadinessCheck: func(namespace string, check func(context.Context) error) error {
+			registeredChecks++
+			suite.Equal("dbtest", namespace)
+			suite.NoError(check(ctx))
+			return nil
+		},
+	})
+
+	suite.Require().NoError(err)
+	suite.Equal(1, createdClients)
+	suite.Equal(1, registeredChecks)
 }
 
 // Test service negation functionality

@@ -225,6 +225,21 @@ func (c *Client) Schema() string {
 	return c.config.Schema
 }
 
+// ReadinessCheck returns a readiness function that verifies the database is
+// reachable within the supplied timeout.
+func (c *Client) ReadinessCheck(timeout time.Duration) func(context.Context) error {
+	return func(ctx context.Context) error {
+		ctx, cancel := context.WithTimeout(ctx, timeout)
+		defer cancel()
+
+		if err := c.Pgx.Ping(ctx); err != nil {
+			return fmt.Errorf("database not ready: %w", err)
+		}
+
+		return nil
+	}
+}
+
 func (c *Client) Close() {
 	c.Pgx.Close()
 	c.SQLDB.Close()

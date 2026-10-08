@@ -57,7 +57,14 @@ choose the first default when it is empty.
 
 These are not transactions across global/profile records or processes. Failed
 registration may leave an unregistered record, which a retry rejects rather than
-overwriting. Inventory is cached, not a live cross-process snapshot. Constructors
+overwriting. Create-only checks propagate lookup errors instead of relying on the
+legacy boolean existence check; an observed record is never merged as an update.
+These checks are not atomic against concurrent writers. Custom drivers without an
+error-aware presence method must return `nil, nil` or `fs.ErrNotExist` from `Get`
+for genuine absence; any successful non-nil payload is considered present.
+Registration endpoint-validation failures return `profiles.ErrProfileEndpointInvalid`
+without exposing URL-bearing parse errors through text or error chains.
+Inventory is cached, not a live cross-process snapshot. Constructors
 `CreateProfiler`/`NewProfiler` initialize missing global records and can upgrade
 the stored version; they are **not read-only inspection**. The facade does not
 invoke driver migration. Nil, zero-value or cleaned-up profilers return

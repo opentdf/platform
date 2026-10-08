@@ -82,7 +82,8 @@ func RegisterProfile(profiler *Profiler, cfg *ProfileConfig) (*OtdfctlProfileSto
 	}
 	u, err := utils.NormalizeEndpoint(cfg.Endpoint)
 	if err != nil {
-		return nil, err
+		// Parse errors retain the entire supplied URL, possibly including secrets.
+		return nil, ErrProfileEndpointInvalid
 	}
 	pc := *cfg
 	pc.Endpoint = u.String()

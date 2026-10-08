@@ -187,10 +187,7 @@ func RegisterProfile(p *Profiler, profile NamedProfile) (*ProfileStore, error) {
 	if err != nil {
 		return nil, err
 	}
-	if profileStore.store.Exists() {
-		return nil, ErrProfileNameConflict
-	}
-	if err := profileStore.Save(); err != nil {
+	if err := profileStore.create(); err != nil {
 		return nil, err
 	}
 	if err := p.globalStore.AddProfile(name); err != nil {

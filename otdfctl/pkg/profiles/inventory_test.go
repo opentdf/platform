@@ -3,6 +3,8 @@ package profiles_test
 import (
 	"encoding/json"
 	"errors"
+	"net/url"
+	"strings"
 	"testing"
 
 	"github.com/opentdf/platform/otdfctl/pkg/config"
@@ -241,6 +243,37 @@ func TestProfileFacadeInvalidEngineAndOrphanCollision(t *testing.T) {
 	}
 	if _, err := profiles.GetDefault(p); !errors.Is(err, profiles.ErrInvalidProfiler) {
 		t.Fatal(err)
+	}
+}
+
+func TestProfileRegistrationSanitizesEndpointErrors(t *testing.T) {
+	p, err := profiles.CreateProfiler(profiles.ProfileDriverMemory)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, endpoint := range []string{
+		"https://user:synthetic-password@example.invalid:bad",
+		"https://example.invalid:bad?token=synthetic-query-token",
+		"https://user:synthetic-password@example.invalid:bad?token=synthetic-query-token",
+		"", "ftp://example.invalid",
+	} {
+		// Do not use a secret-bearing endpoint as a subtest name/log message.
+		_, err := profiles.RegisterProfile(p, &profiles.ProfileConfig{Name: "invalid", Endpoint: endpoint})
+		if !errors.Is(err, profiles.ErrProfileEndpointInvalid) {
+			t.Fatal("registration did not return the sanitized public sentinel")
+		}
+		if strings.Contains(err.Error(), "synthetic-") || strings.Contains(err.Error(), endpoint) && endpoint != "" {
+			t.Fatal("endpoint leaked through error text")
+		}
+		var parseError *url.Error
+		if errors.As(err, &parseError) || errors.Unwrap(err) != nil {
+			t.Fatal("registration exposed underlying URL parse error")
+		}
+		requireDefault(t, p, "")
+		inventory, err := profiles.ListProfiles(p)
+		if err != nil || len(inventory) != 0 {
+			t.Fatal("invalid endpoint mutated inventory")
+		}
 	}
 }
 

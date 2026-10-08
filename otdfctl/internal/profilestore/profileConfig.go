@@ -107,15 +107,7 @@ func (p *ProfileStore) Save() error {
 			return err
 		}
 	}
-	object, err := store.MergeCore(latest, p.Profile)
-	if err != nil {
-		return err
-	}
-	if err := p.store.Set(object); err != nil {
-		return err
-	}
-	p.object = object
-	return nil
+	return p.saveCore(latest)
 }
 
 // Extensions returns opaque payloads; missing extensions are represented by an empty map.
@@ -192,6 +184,31 @@ func (p *ProfileStore) Delete() error {
 // Profile Name
 func (p *ProfileStore) GetProfileName() string {
 	return p.Profile.GetName()
+}
+
+// create never uses the update path: an observed record or lookup error must
+// not become a merge/write. The underlying drivers do not provide atomic create.
+func (p *ProfileStore) create() error {
+	exists, err := store.ExistsForCreate(p.store)
+	if err != nil {
+		return err
+	}
+	if exists {
+		return ErrProfileNameConflict
+	}
+	return p.saveCore(nil)
+}
+
+func (p *ProfileStore) saveCore(latest map[string]json.RawMessage) error {
+	object, err := store.MergeCore(latest, p.Profile)
+	if err != nil {
+		return err
+	}
+	if err := p.store.Set(object); err != nil {
+		return err
+	}
+	p.object = object
+	return nil
 }
 
 // utility functions

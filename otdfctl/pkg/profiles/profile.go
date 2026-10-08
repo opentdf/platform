@@ -33,7 +33,7 @@ func newFileStoreProfiler() (*osprofiles.Profiler, error) {
 	return profiler, nil
 }
 
-func NewProfiler(store string) (*osprofiles.Profiler, error) {
+func NewProfiler(store string) (*Profiler, error) {
 	driverType, err := ToProfileDriver(store)
 	if err != nil {
 		return nil, err
@@ -58,7 +58,7 @@ func ToProfileDriver(driverType string) (ProfileDriver, error) {
 	}
 }
 
-func CreateProfiler(driverType ProfileDriver) (*osprofiles.Profiler, error) {
+func CreateProfiler(driverType ProfileDriver) (*Profiler, error) {
 	switch driverType {
 	case ProfileDriverMemory:
 		return osprofiles.New(config.AppName, osprofiles.WithInMemoryStore())

@@ -176,8 +176,13 @@ func (p *Store) ProfileExists(profileName string) bool {
 }
 
 func (p *Store) AddProfile(profileName string) error {
+	previous := p.config.Profiles
 	p.config.Profiles = append(p.config.Profiles, profileName)
-	return p.save()
+	if err := p.save(); err != nil {
+		p.config.Profiles = previous
+		return err
+	}
+	return nil
 }
 
 func (p *Store) ListProfiles() []string {
@@ -203,8 +208,13 @@ func (p *Store) RemoveProfileForce(profileName string) error {
 }
 
 func (p *Store) SetDefaultProfile(profileName string) error {
+	previous := p.config.DefaultProfile
 	p.config.DefaultProfile = profileName
-	return p.save()
+	if err := p.save(); err != nil {
+		p.config.DefaultProfile = previous
+		return err
+	}
+	return nil
 }
 
 func (p *Store) GetDefaultProfile() string {

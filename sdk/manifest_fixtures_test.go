@@ -10,21 +10,10 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// Fixtures for tests that feed hand-built, possibly malformed, manifests and
-// archives to IsValidTdf and LoadTDF.
+// minimalManifestJSON satisfies the lax schema.
+const minimalManifestJSON = `{"payload":{"type":"reference","url":"0.payload","protocol":"zip","isEncrypted":true},` +
+	`"encryptionInformation":{}}`
 
-// minimalManifestJSON is a manifest that satisfies the lax schema; isEncrypted
-// is a parameter so tests can flip it.
-func minimalManifestJSON(isEncrypted bool) string {
-	enc := "true"
-	if !isEncrypted {
-		enc = "false"
-	}
-	return `{"payload":{"type":"reference","url":"0.payload","protocol":"zip","isEncrypted":` + enc +
-		`},"encryptionInformation":{}}`
-}
-
-// zipWithManifest stores manifest and a small payload in a well-formed zip.
 func zipWithManifest(t testing.TB, manifest string) []byte {
 	t.Helper()
 	buf := &bytes.Buffer{}

@@ -10,30 +10,25 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// Regression fixtures for DSPX-5102 / opentdf/platform#4202: a JSON null
-// statement must not panic the caller.
-
-// nullStatementManifestJSON carries a case-variant duplicate of "statement"
-// whose value is null. encoding/json matches keys case-insensitively, so it
-// runs Statement.UnmarshalJSON with "null", which used to dereference nil.
+// DSPX-5102 / opentdf/platform#4202: the case-variant key "Statement" matches
+// case-insensitively, so null reaches Statement.UnmarshalJSON.
 const nullStatementManifestJSON = `{"payload":{"type":"reference","url":"0.payload","protocol":"zip","isEncrypted":true},"encryptionInformation":{},` +
 	`"assertions":[{"id":"a","type":"other","scope":"tdo","appliesToState":"encrypted","statement":{"value":"ok"},"Statement":null}]}`
 
-// The null-statement manifest is schema-valid, so IsValidTdf accepts it, and
-// LoadTDF defers key access to the first read. What matters is that nothing
-// panics: LoadTDF used to dereference nil while decoding the manifest, and
-// the first read of this keyless TDF must fail cleanly.
 func TestNullStatementManifestDoesNotPanic(t *testing.T) {
 	data := zipWithManifest(t, nullStatementManifestJSON)
 
-	require.NotPanics(t, func() { _, _ = IsValidTdf(bytes.NewReader(data)) })
+	var (
+		valid bool
+		err   error
+	)
+	require.NotPanics(t, func() { valid, err = IsValidTdf(bytes.NewReader(data)) })
+	require.NoError(t, err)
+	require.True(t, valid)
 
 	s := newLoadTestSDK()
 	for _, intensity := range []SchemaValidationIntensity{Skip, Lax, Strict} {
-		var (
-			r   *Reader
-			err error
-		)
+		var r *Reader
 		require.NotPanics(t, func() {
 			r, err = s.LoadTDF(bytes.NewReader(data), WithSchemaValidation(intensity), WithIgnoreAllowlist(true))
 		})
@@ -54,6 +49,14 @@ func TestStatementUnmarshalJSONNull(t *testing.T) {
 		assert.Equal(t, Statement{Format: "f", Schema: "s", Value: "v"}, s)
 	})
 
+	t.Run("null as the only statement leaves it zero", func(t *testing.T) {
+		var a Assertion
+		require.NotPanics(t, func() {
+			require.NoError(t, json.Unmarshal([]byte(`{"id":"a","statement":null}`), &a))
+		})
+		assert.Equal(t, Statement{}, a.Statement)
+	})
+
 	t.Run("case-variant null key keeps the earlier statement", func(t *testing.T) {
 		var a Assertion
 		require.NotPanics(t, func() {
@@ -70,4 +73,26 @@ func TestStatementUnmarshalJSONNull(t *testing.T) {
 		require.Len(t, m.Assertions, 1)
 		assert.Equal(t, "ok", m.Assertions[0].Statement.Value)
 	})
+}
+
+// Null-as-unset is only safe because the hash covers the statement, so
+// tampering with a signed one fails verification.
+func TestNullStatementChangesAssertionHash(t *testing.T) {
+	signed := Assertion{
+		ID:             "a",
+		Type:           "other",
+		Scope:          "tdo",
+		AppliesToState: "encrypted",
+		Statement:      Statement{Format: "f", Schema: "s", Value: "v"},
+	}
+	signedHash, err := signed.GetHash()
+	require.NoError(t, err)
+
+	var tampered Assertion
+	require.NoError(t, json.Unmarshal([]byte(
+		`{"id":"a","type":"other","scope":"tdo","appliesToState":"encrypted","statement":null}`), &tampered))
+	tamperedHash, err := tampered.GetHash()
+	require.NoError(t, err)
+
+	assert.NotEqual(t, signedHash, tamperedHash)
 }

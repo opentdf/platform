@@ -7,12 +7,14 @@ import (
 	"crypto/elliptic"
 	"crypto/rand"
 	"crypto/rsa"
+	"crypto/sha256"
 	"crypto/x509"
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
 	"encoding/pem"
 	"errors"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"os"
@@ -21,7 +23,9 @@ import (
 	"testing"
 	"time"
 
+	"connectrpc.com/connect"
 	"google.golang.org/protobuf/encoding/protojson"
+	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/structpb"
 
 	"github.com/lestrrat-go/jwx/v2/jwa"
@@ -582,7 +586,7 @@ func TestParseAndVerifyRequest(t *testing.T) {
 			}
 			p.Preview = tt.preview
 
-			verified, _, err := p.extractSRTBody(
+			verified, _, _, err := p.extractSRTBody(
 				ctx,
 				http.Header{},
 				&kaspb.RewrapRequest{
@@ -630,7 +634,7 @@ func Test_SignedRequestBody_When_Bad_Signature_Expect_Failure(t *testing.T) {
 	p := &Provider{
 		Logger: badLogger,
 	}
-	verified, _, err := p.extractSRTBody(
+	verified, _, _, err := p.extractSRTBody(
 		ctx,
 		http.Header{},
 		&kaspb.RewrapRequest{
@@ -1575,9 +1579,14 @@ func TestVerifySRTSignature(t *testing.T) {
 
 type rewrapAuthorizationV2Stub struct {
 	decision authzV2.Decision
+	err      error
+	multiErr error
 }
 
 func (s rewrapAuthorizationV2Stub) GetDecision(_ context.Context, req *authzV2.GetDecisionRequest) (*authzV2.GetDecisionResponse, error) {
+	if s.err != nil {
+		return nil, s.err
+	}
 	return &authzV2.GetDecisionResponse{
 		Decision: &authzV2.ResourceDecision{
 			EphemeralResourceId: req.GetResource().GetEphemeralId(),
@@ -1586,8 +1595,18 @@ func (s rewrapAuthorizationV2Stub) GetDecision(_ context.Context, req *authzV2.G
 	}, nil
 }
 
-func (rewrapAuthorizationV2Stub) GetDecisionMultiResource(context.Context, *authzV2.GetDecisionMultiResourceRequest) (*authzV2.GetDecisionMultiResourceResponse, error) {
-	return nil, errors.New("unexpected GetDecisionMultiResource call")
+func (s rewrapAuthorizationV2Stub) GetDecisionMultiResource(_ context.Context, req *authzV2.GetDecisionMultiResourceRequest) (*authzV2.GetDecisionMultiResourceResponse, error) {
+	if s.multiErr != nil {
+		return nil, s.multiErr
+	}
+	decisions := make([]*authzV2.ResourceDecision, 0, len(req.GetResources()))
+	for _, resource := range req.GetResources() {
+		decisions = append(decisions, &authzV2.ResourceDecision{
+			EphemeralResourceId: resource.GetEphemeralId(),
+			Decision:            s.decision,
+		})
+	}
+	return &authzV2.GetDecisionMultiResourceResponse{ResourceDecisions: decisions}, nil
 }
 
 func (rewrapAuthorizationV2Stub) GetDecisionBulk(context.Context, *authzV2.GetDecisionBulkRequest) (*authzV2.GetDecisionBulkResponse, error) {
@@ -1603,11 +1622,13 @@ func TestTDF3RewrapEmitsAuditEventForAuthorizationDecision(t *testing.T) {
 		name            string
 		decision        authzV2.Decision
 		wantAuditResult audit.ActionResult
+		wantReason      string
 	}{
 		{
 			name:            "deny emits failure-result rewrap audit event",
 			decision:        authzV2.Decision_DECISION_DENY,
 			wantAuditResult: audit.ActionResultFailure,
+			wantReason:      rewrapReasonPolicyDenied,
 		},
 		{
 			name:            "permit emits success-result rewrap audit event",
@@ -1644,8 +1665,324 @@ func TestTDF3RewrapEmitsAuditEventForAuthorizationDecision(t *testing.T) {
 			require.Equal(t, audit.VerbRewrap, events[0].Verb)
 			require.Equal(t, audit.ActionTypeRewrap, events[0].Action.Type)
 			require.Equal(t, tt.wantAuditResult, events[0].Action.Result)
+			if tt.wantReason == "" {
+				require.NotContains(t, events[0].EventMetaData, "failure_reason")
+			} else {
+				require.Equal(t, tt.wantReason, events[0].EventMetaData["failure_reason"])
+			}
+			require.Equal(t, true, events[0].EventMetaData["policy_verified"])
 		})
 	}
+}
+
+func TestTDF3RewrapAuditsPreAuthorizationFailures(t *testing.T) {
+	tests := []struct {
+		name       string
+		mutate     func(*Provider, []*kaspb.UnsignedRewrapRequest_WithPolicyRequest)
+		wantReason string
+		wantTamper bool
+	}{
+		{
+			name: "policy binding missing",
+			mutate: func(_ *Provider, requests []*kaspb.UnsignedRewrapRequest_WithPolicyRequest) {
+				requests[0].GetKeyAccessObjects()[0].GetKeyAccessObject().PolicyBinding = nil
+			},
+			wantReason: rewrapReasonPolicyBindingMissing,
+			wantTamper: true,
+		},
+		{
+			name: "policy binding malformed",
+			mutate: func(_ *Provider, requests []*kaspb.UnsignedRewrapRequest_WithPolicyRequest) {
+				requests[0].GetKeyAccessObjects()[0].GetKeyAccessObject().PolicyBinding.Hash = "%%%"
+			},
+			wantReason: rewrapReasonPolicyBindingMalformed,
+			wantTamper: true,
+		},
+		{
+			name: "policy binding mismatch",
+			mutate: func(_ *Provider, requests []*kaspb.UnsignedRewrapRequest_WithPolicyRequest) {
+				requests[0].GetKeyAccessObjects()[0].GetKeyAccessObject().PolicyBinding.Hash = base64.StdEncoding.EncodeToString(make([]byte, sha256.Size))
+			},
+			wantReason: rewrapReasonPolicyBindingMismatch,
+			wantTamper: true,
+		},
+		{
+			name: "policy body invalid",
+			mutate: func(_ *Provider, requests []*kaspb.UnsignedRewrapRequest_WithPolicyRequest) {
+				requests[0].Policy.Body = "not-base64"
+			},
+			wantReason: rewrapReasonPolicyBodyInvalid,
+			wantTamper: true,
+		},
+		{
+			name: "dek decryption fails",
+			mutate: func(_ *Provider, requests []*kaspb.UnsignedRewrapRequest_WithPolicyRequest) {
+				requests[0].GetKeyAccessObjects()[0].GetKeyAccessObject().WrappedKey = []byte("not-a-wrapped-key")
+			},
+			wantReason: rewrapReasonDEKDecryptFailed,
+			wantTamper: true,
+		},
+		{
+			name: "unsupported key type",
+			mutate: func(_ *Provider, requests []*kaspb.UnsignedRewrapRequest_WithPolicyRequest) {
+				requests[0].GetKeyAccessObjects()[0].GetKeyAccessObject().KeyType = "unsupported"
+			},
+			wantReason: rewrapReasonUnsupportedKeyType,
+		},
+		{
+			name: "disabled key type",
+			mutate: func(_ *Provider, requests []*kaspb.UnsignedRewrapRequest_WithPolicyRequest) {
+				requests[0].GetKeyAccessObjects()[0].GetKeyAccessObject().KeyType = "ec-wrapped"
+			},
+			wantReason: rewrapReasonKeyTypeDisabled,
+		},
+		{
+			name: "invalid EC ephemeral key",
+			mutate: func(provider *Provider, requests []*kaspb.UnsignedRewrapRequest_WithPolicyRequest) {
+				provider.Preview.ECTDFEnabled = true
+				kao := requests[0].GetKeyAccessObjects()[0].GetKeyAccessObject()
+				kao.KeyType = "ec-wrapped"
+				kao.EphemeralPublicKey = "not-a-public-key"
+			},
+			wantReason: rewrapReasonInvalidEphemeralKey,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var events []audit.Event
+			provider := newTDF3AuditTestProvider(t, rewrapAuthorizationV2Stub{
+				decision: authzV2.Decision_DECISION_PERMIT,
+			}, func(_ context.Context, event audit.Event) error {
+				events = append(events, event)
+				return nil
+			})
+			requests := makeRewrapRequests(t, fauxPolicyBytes(t), false)
+			kao := requests[0].GetKeyAccessObjects()[0].GetKeyAccessObject()
+			wrappedKey, err := base64.StdEncoding.DecodeString(string(kao.GetWrappedKey()))
+			require.NoError(t, err)
+			kao.WrappedKey = wrappedKey
+			tt.mutate(provider, requests)
+
+			_, _, err = provider.tdf3Rewrap(t.Context(), requests, rsaPublic, &entityInfo{Token: "test-token"}, &AdditionalRewrapContext{})
+			require.NoError(t, err)
+			require.Len(t, events, 1)
+			require.Equal(t, audit.ActionResultFailure, events[0].Action.Result)
+			require.Equal(t, tt.wantReason, events[0].EventMetaData["failure_reason"])
+			require.Equal(t, tt.wantTamper, events[0].EventMetaData["suspected_tamper"])
+			require.Equal(t, false, events[0].EventMetaData["policy_verified"])
+			require.Equal(t, "123", events[0].EventMetaData["kao_id"])
+			require.NotContains(t, events[0].EventMetaData, "error")
+			require.Empty(t, events[0].Object.Attributes.Attrs)
+			if tt.wantReason == rewrapReasonPolicyBodyInvalid {
+				require.Equal(t, "123", events[0].Object.ID)
+			} else {
+				require.NotEmpty(t, events[0].Object.ID)
+				require.NotEqual(t, "123", events[0].Object.ID)
+			}
+		})
+	}
+}
+
+func TestTDF3RewrapAuditsEachKAOWithoutOverwritingEarlierFailure(t *testing.T) {
+	var events []audit.Event
+	provider := newTDF3AuditTestProvider(t, rewrapAuthorizationV2Stub{
+		decision: authzV2.Decision_DECISION_PERMIT,
+	}, func(_ context.Context, event audit.Event) error {
+		events = append(events, event)
+		return nil
+	})
+	requests := makeRewrapRequests(t, fauxPolicyBytes(t), false)
+	validKAO := requests[0].GetKeyAccessObjects()[0]
+	wrappedKey, err := base64.StdEncoding.DecodeString(string(validKAO.GetKeyAccessObject().GetWrappedKey()))
+	require.NoError(t, err)
+	validKAO.KeyAccessObject.WrappedKey = wrappedKey
+	validKAO.KeyAccessObjectId = "valid-kao"
+
+	invalidKAO, cloneOK := proto.Clone(validKAO).(*kaspb.UnsignedRewrapRequest_WithKeyAccessObject)
+	require.True(t, cloneOK)
+	invalidKAO.GetKeyAccessObject().PolicyBinding = nil
+	invalidKAO.KeyAccessObjectId = "invalid-kao"
+	requests[0].KeyAccessObjects = append(requests[0].KeyAccessObjects, invalidKAO)
+
+	_, _, err = provider.tdf3Rewrap(t.Context(), requests, rsaPublic, &entityInfo{Token: "test-token"}, &AdditionalRewrapContext{})
+	require.NoError(t, err)
+	require.Len(t, events, 2)
+
+	eventsByKAOID := make(map[string]audit.Event, len(events))
+	for _, event := range events {
+		kaoID, ok := event.EventMetaData["kao_id"].(string)
+		require.True(t, ok)
+		eventsByKAOID[kaoID] = event
+	}
+	require.Contains(t, eventsByKAOID, "valid-kao")
+	require.Contains(t, eventsByKAOID, "invalid-kao")
+	require.Equal(t, audit.ActionResultSuccess, eventsByKAOID["valid-kao"].Action.Result)
+	require.Equal(t, audit.ActionResultFailure, eventsByKAOID["invalid-kao"].Action.Result)
+	require.Equal(t, rewrapReasonPolicyBindingMissing, eventsByKAOID["invalid-kao"].EventMetaData["failure_reason"])
+}
+
+func TestTDF3RewrapAuditsAuthorizationErrors(t *testing.T) {
+	tests := []struct {
+		name         string
+		requestCount int
+		authErr      error
+		wantResult   audit.ActionResult
+		wantReason   string
+	}{
+		{
+			name:         "singular internal authorization error",
+			requestCount: 1,
+			authErr:      connect.NewError(connect.CodeUnavailable, errors.New("unavailable")),
+			wantResult:   audit.ActionResultError,
+			wantReason:   rewrapReasonAuthzUnavailable,
+		},
+		{
+			name:         "singular rejected authorization error",
+			requestCount: 1,
+			authErr:      connect.NewError(connect.CodePermissionDenied, errors.New("denied")),
+			wantResult:   audit.ActionResultFailure,
+			wantReason:   rewrapReasonAuthzRejected,
+		},
+		{
+			name:         "multi-resource internal authorization error",
+			requestCount: 2,
+			authErr:      connect.NewError(connect.CodeUnavailable, errors.New("unavailable")),
+			wantResult:   audit.ActionResultError,
+			wantReason:   rewrapReasonAuthzUnavailable,
+		},
+		{
+			name:         "multi-resource rejected authorization error",
+			requestCount: 2,
+			authErr:      connect.NewError(connect.CodePermissionDenied, errors.New("denied")),
+			wantResult:   audit.ActionResultFailure,
+			wantReason:   rewrapReasonAuthzRejected,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var events []audit.Event
+			stub := rewrapAuthorizationV2Stub{decision: authzV2.Decision_DECISION_PERMIT}
+			if tt.requestCount == 1 {
+				stub.err = tt.authErr
+			} else {
+				stub.multiErr = tt.authErr
+			}
+			provider := newTDF3AuditTestProvider(t, stub, func(_ context.Context, event audit.Event) error {
+				events = append(events, event)
+				return nil
+			})
+
+			requests := make([]*kaspb.UnsignedRewrapRequest_WithPolicyRequest, 0, tt.requestCount)
+			for i := range tt.requestCount {
+				request := makeRewrapRequests(t, fauxPolicyBytes(t), false)[0]
+				request.Policy.Id = fmt.Sprintf("policy-%d", i)
+				request.KeyAccessObjects[0].KeyAccessObjectId = fmt.Sprintf("kao-%d", i)
+				kao := request.GetKeyAccessObjects()[0].GetKeyAccessObject()
+				wrappedKey, err := base64.StdEncoding.DecodeString(string(kao.GetWrappedKey()))
+				require.NoError(t, err)
+				kao.WrappedKey = wrappedKey
+				requests = append(requests, request)
+			}
+
+			_, _, err := provider.tdf3Rewrap(t.Context(), requests, rsaPublic, &entityInfo{Token: "test-token"}, &AdditionalRewrapContext{})
+			require.NoError(t, err)
+			require.Len(t, events, tt.requestCount)
+			for _, event := range events {
+				require.Equal(t, tt.wantResult, event.Action.Result)
+				require.Equal(t, tt.wantReason, event.EventMetaData["failure_reason"])
+				require.Equal(t, true, event.EventMetaData["policy_verified"])
+			}
+		})
+	}
+}
+
+func TestRewrapAuditsRequestLevelFailures(t *testing.T) {
+	tests := []struct {
+		name       string
+		request    func(*testing.T) *kaspb.RewrapRequest
+		wantReason string
+	}{
+		{
+			name: "invalid SRT",
+			request: func(*testing.T) *kaspb.RewrapRequest {
+				return &kaspb.RewrapRequest{SignedRequestToken: "not-a-jwt"}
+			},
+			wantReason: rewrapReasonSRTInvalid,
+		},
+		{
+			name: "invalid client public key",
+			request: func(t *testing.T) *kaspb.RewrapRequest {
+				return &kaspb.RewrapRequest{
+					SignedRequestToken: string(makeRewrapBodyWithKey(t, fauxPolicyBytes(t), false, "not-a-public-key")),
+				}
+			},
+			wantReason: rewrapReasonInvalidClientPublicKey,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var events []audit.Event
+			baseLogger := slog.New(slog.DiscardHandler)
+			provider := &Provider{Logger: &logger.Logger{
+				Logger: baseLogger,
+				Audit: audit.CreateAuditLogger(*baseLogger, audit.WithProcessor(audit.ProcessorFunc(func(_ context.Context, event audit.Event) error {
+					events = append(events, event)
+					return nil
+				}))),
+			}}
+
+			_, err := provider.Rewrap(t.Context(), connect.NewRequest(tt.request(t)))
+			require.Error(t, err)
+			require.Len(t, events, 1)
+			require.Equal(t, audit.ActionResultFailure, events[0].Action.Result)
+			require.Equal(t, tt.wantReason, events[0].EventMetaData["failure_reason"])
+			require.Equal(t, false, events[0].EventMetaData["policy_verified"])
+			require.Empty(t, events[0].Object.ID)
+			require.Empty(t, events[0].Object.Attributes.Attrs)
+		})
+	}
+}
+
+func TestAuditRewrapOutcomesClassifiesEncapsulationFailureAsError(t *testing.T) {
+	var events []audit.Event
+	baseLogger := slog.New(slog.DiscardHandler)
+	provider := &Provider{Logger: &logger.Logger{
+		Logger: baseLogger,
+		Audit: audit.CreateAuditLogger(*baseLogger, audit.WithProcessor(audit.ProcessorFunc(func(_ context.Context, event audit.Event) error {
+			events = append(events, event)
+			return nil
+		}))),
+	}}
+	requests := makeRewrapRequests(t, fauxPolicyBytes(t), false)
+	request := requests[0]
+	kao := request.GetKeyAccessObjects()[0]
+	policy := &Policy{}
+	decodedPolicy, err := base64.StdEncoding.DecodeString(request.GetPolicy().GetBody())
+	require.NoError(t, err)
+	require.NoError(t, json.Unmarshal(decodedPolicy, policy))
+	results := map[*kaspb.UnsignedRewrapRequest_WithPolicyRequest]map[string]kaoResult{
+		request: {
+			kao.GetKeyAccessObjectId(): {
+				ID:    kao.GetKeyAccessObjectId(),
+				Error: err400("bad key for rewrap"),
+				Audit: rewrapAuditOutcome{
+					Result:         audit.ActionResultError,
+					FailureReason:  rewrapReasonEncapsulationFailed,
+					PolicyVerified: true,
+					Classified:     true,
+				},
+			},
+		},
+	}
+
+	provider.auditRewrapOutcomes(t.Context(), requests, results, map[*kaspb.UnsignedRewrapRequest_WithPolicyRequest]*Policy{request: policy}, nil, string(ocrypto.RSA2048Key))
+	require.Len(t, events, 1)
+	require.Equal(t, audit.ActionResultError, events[0].Action.Result)
+	require.Equal(t, rewrapReasonEncapsulationFailed, events[0].EventMetaData["failure_reason"])
+	require.Equal(t, true, events[0].EventMetaData["policy_verified"])
 }
 
 func newTDF3AuditTestProvider(t *testing.T, authorizationClient rewrapAuthorizationV2Stub, processor audit.ProcessorFunc) *Provider {

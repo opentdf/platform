@@ -139,6 +139,9 @@ Root level key `server`
 | `cryptoProvider`        | A list of public/private keypairs and their use. Described [below](#crypto-provider)                          | empty   |                                      |
 | `enable_pprof`          | Enable Go performance profiling under `/debug/pprof/`; uses HTTP authentication and authorization when server authentication is enabled, with collection durations capped at 30 seconds | `false` | OPENTDF_SERVER_ENABLE_PPROF          |
 | `grpc.reflection`       | The configuration for the grpc server.                                                                        | `true`  | OPENTDF_SERVER_GRPC_REFLECTION       |
+| `grpc.maxRecvMsgSize`   | Maximum size in bytes of a request message from external Connect, gRPC, and gRPC-Web clients, measured after decompression. Larger messages fail with `resource_exhausted` (HTTP 429 for Connect). Values of zero or less use the default. | `4194304` | OPENTDF_SERVER_GRPC_MAXRECVMSGSIZE |
+| `grpc.maxCallRecvMsgSize` | Maximum size in bytes of a response message the in-process client accepts when platform services call each other. | `4194304` | OPENTDF_SERVER_GRPC_MAXCALLRECVMSGSIZE |
+| `grpc.maxCallSendMsgSize` | Maximum size in bytes of a request message the in-process client sends when platform services call each other. | `4194304` | OPENTDF_SERVER_GRPC_MAXCALLSENDMSGSIZE |
 | `public_hostname`       | The public facing hostname for the server.                                                                    |         | OPENTDF_SERVER_PUBLIC_HOSTNAME       |
 | `host`                  | The host address for the server.                                                                              | `""`    | OPENTDF_SERVER_HOST                  |
 | `http.trustedProxies`   | Proxy CIDRs allowed to supply client-IP forwarding headers.                                                   | `[]`    | OPENTDF_SERVER_HTTP_TRUSTEDPROXIES   |

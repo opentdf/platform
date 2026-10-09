@@ -4,8 +4,11 @@ package zipstream
 
 import (
 	"bytes"
+	"math"
+	"strings"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -111,4 +114,62 @@ func TestManifest_OversizedSpecNameDoesNotFallBack(t *testing.T) {
 	require.Error(t, err)
 	require.NotErrorIs(t, err, errZipFileNotFound)
 	require.Empty(t, manifest)
+}
+
+// TestManifest_NoDefaultSizeCap asserts a default reader returns a manifest
+// past the former 10 MB default cap. Very large payloads carry manifests far
+// bigger than that (DSPX-4502), so the default is no cap at all.
+func TestManifest_NoDefaultSizeCap(t *testing.T) {
+	big := `{"pad":"` + strings.Repeat("a", 11*1024*1024) + `"}`
+	data := buildRawZip(t, []rawZipEntry{
+		{name: TDFPayloadFileName, data: []byte("payload bytes")},
+		{name: TDFManifestFileName, data: []byte(big)},
+	}, false)
+
+	reader, err := NewTDFReader(bytes.NewReader(data))
+	require.NoError(t, err)
+	manifest, err := reader.Manifest()
+	require.NoError(t, err)
+	assert.Len(t, manifest, len(big))
+
+	// A non-positive explicit limit also means no cap.
+	reader, err = NewTDFReader(bytes.NewReader(data), WithTDFManifestMaxSize(0))
+	require.NoError(t, err)
+	_, err = reader.Manifest()
+	require.NoError(t, err)
+}
+
+// TestManifest_ExplicitSizeCapEnforced asserts an opt-in cap still applies,
+// with the boundary inclusive.
+func TestManifest_ExplicitSizeCapEnforced(t *testing.T) {
+	data := buildRawZip(t, []rawZipEntry{
+		{name: TDFPayloadFileName, data: []byte("payload bytes")},
+		{name: TDFManifestFileName, data: []byte(otherManifest)},
+	}, false)
+
+	reader, err := NewTDFReader(bytes.NewReader(data), WithTDFManifestMaxSize(int64(len(otherManifest))))
+	require.NoError(t, err)
+	_, err = reader.Manifest()
+	require.NoError(t, err)
+
+	reader, err = NewTDFReader(bytes.NewReader(data), WithTDFManifestMaxSize(int64(len(otherManifest)-1)))
+	require.NoError(t, err)
+	_, err = reader.Manifest()
+	require.ErrorContains(t, err, "size too large")
+}
+
+// TestManifest_DeclaredSizeBeyondArchiveRejectedWithoutCap asserts that with
+// no size cap, a manifest entry declaring more bytes than the archive holds is
+// still refused -- by the archive bounds, before any allocation.
+func TestManifest_DeclaredSizeBeyondArchiveRejectedWithoutCap(t *testing.T) {
+	for _, size := range []uint64{beyondEOF, beyondInt64, math.MaxUint64} {
+		data := buildRawZip(t, []rawZipEntry{
+			{name: TDFPayloadFileName, data: []byte("payload bytes")},
+			{name: TDFManifestFileName, data: []byte(otherManifest), zip64: true, zip64CompressedSize: size},
+		}, false)
+
+		_, err := NewTDFReader(bytes.NewReader(data))
+		require.ErrorIs(t, err, errZipFormat)
+		require.ErrorContains(t, err, "file data at")
+	}
 }

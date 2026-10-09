@@ -316,3 +316,13 @@ func TestWritersAlwaysEmitIsEncryptedTrue(t *testing.T) {
 		assert.True(t, valid)
 	}
 }
+
+// IsValidTdf applies no manifest size cap: a schema-valid manifest past the
+// former 10 MB default is accepted.
+func TestIsValidTdf_NoDefaultManifestSizeCap(t *testing.T) {
+	m := `{"payload":{"type":"reference","url":"0.payload","protocol":"zip","isEncrypted":true},` +
+		`"encryptionInformation":{},"pad":"` + strings.Repeat("a", 11*1024*1024) + `"}`
+	valid, err := IsValidTdf(bytes.NewReader(zipWithManifest(t, m)))
+	require.NoError(t, err)
+	assert.True(t, valid)
+}

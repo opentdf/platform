@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.39.0](https://github.com/opentdf/platform/compare/otdfctl/v0.38.0...otdfctl/v0.39.0) (2026-10-09)
+
+
+### Features
+
+* **cli:** deprecate KAS URL path flag ([#4201](https://github.com/opentdf/platform/issues/4201)) ([af6b1f8](https://github.com/opentdf/platform/commit/af6b1f89bf8560ef598bff008fcc16cf30141250))
+* **kas:** support ML-KEM client session keys in rewrap ([#3814](https://github.com/opentdf/platform/issues/3814)) ([b81da1e](https://github.com/opentdf/platform/commit/b81da1eea030e75925187a2d6b11bcc763f67d60))
+
+
+### Bug Fixes
+
+* **cli:** drop the encrypt-side stdin spool ([#3948](https://github.com/opentdf/platform/issues/3948)) ([5603c2e](https://github.com/opentdf/platform/commit/5603c2eca9a445eb58b974df393b64adb4d36635))
+* **cli:** validate endpoint before profile creation ([#4130](https://github.com/opentdf/platform/issues/4130)) ([a2f1327](https://github.com/opentdf/platform/commit/a2f1327aa6358b55c65d3a50bd73ab0ec28b6014))
+* **deps:** bump SDK from v0.32.0 to v0.33.0 in /otdfctl ([#4110](https://github.com/opentdf/platform/issues/4110)) ([87dcf1c](https://github.com/opentdf/platform/commit/87dcf1c848ec392a39509609b04f321888fb0609))
+
 ## [0.38.0](https://github.com/opentdf/platform/compare/otdfctl/v0.37.0...otdfctl/v0.38.0) (2026-09-22)
 
 

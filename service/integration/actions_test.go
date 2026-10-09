@@ -27,7 +27,7 @@ type ActionsSuite struct {
 
 func (s *ActionsSuite) SetupSuite() {
 	slog.Info("setting up db.Actions test suite")
-	s.ctx = context.Background()
+	s.ctx = s.T().Context()
 	c := *Config
 
 	c.DB.Schema = "test_opentdf_actions"

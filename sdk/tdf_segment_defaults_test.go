@@ -2,7 +2,6 @@ package sdk
 
 import (
 	"bytes"
-	"context"
 	"encoding/json"
 	"hash/crc32"
 	"io"
@@ -55,7 +54,7 @@ func (s *TDFSuite) rewriteManifest(tdfBytes []byte, mutate func(integrityInfo ma
 	rewritten, err := json.Marshal(manifest)
 	s.Require().NoError(err)
 
-	ctx := context.Background()
+	ctx := s.T().Context()
 	writer := zipstream.NewSegmentTDFWriter(1)
 	defer func() { s.Require().NoError(writer.Close()) }()
 

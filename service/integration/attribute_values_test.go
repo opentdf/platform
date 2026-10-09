@@ -35,7 +35,7 @@ type AttributeValuesSuite struct {
 
 func (s *AttributeValuesSuite) SetupSuite() {
 	slog.Info("setting up db.AttributeValues test suite")
-	s.ctx = context.Background()
+	s.ctx = s.T().Context()
 	fixtureNamespaceID = s.f.GetNamespaceKey("example.com").ID
 	fixtureKeyAccessServerID = s.f.GetKasRegistryKey("key_access_server_1").ID
 	c := *Config

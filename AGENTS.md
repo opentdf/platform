@@ -84,3 +84,4 @@ The command prints the run URL. Poll it with `gh run view <run-id> --repo opentd
 ## Security & Configuration Tips
 
 - Don’t commit secrets/keys. Use local configs like `opentdf-dev.yaml` and follow `SECURITY.md`.
+- Avoid privileged PR triggers by default. If `pull_request_target` is required for base-trusted automation, review and justify the trust boundary first: never check out or execute PR-controlled head/merge code, explicitly use trusted default-branch code, and grant only necessary permissions. Only then use a narrowly documented inline `zizmor: ignore[dangerous-triggers]` for that trigger, as in `.github/workflows/label.yaml`; an ignore is not generically safe and must not suppress other findings.

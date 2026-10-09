@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.35.0](https://github.com/opentdf/platform/compare/sdk/v0.34.0...sdk/v0.35.0) (2026-10-09)
+
+
+### Features
+
+* **kas:** support ML-KEM client session keys in rewrap ([#3814](https://github.com/opentdf/platform/issues/3814)) ([b81da1e](https://github.com/opentdf/platform/commit/b81da1eea030e75925187a2d6b11bcc763f67d60))
+* **sdk:** return ErrAESGCMExhausted when IV collision risk exceeds 2^-32 (DSPX-4492) ([#4203](https://github.com/opentdf/platform/issues/4203)) ([55a9b57](https://github.com/opentdf/platform/commit/55a9b57f34af252dbffdd609f2840cf0cf58132d))
+
+
+### Bug Fixes
+
+* **sdk:** bound zip64 reader offsets against the archive (DSPX-4590) ([#4043](https://github.com/opentdf/platform/issues/4043)) ([85179a6](https://github.com/opentdf/platform/commit/85179a6fb689403a43e66238d4cd587c18771ec5))
+* **sdk:** read the TDF manifest under the spec name manifest.json ([#4063](https://github.com/opentdf/platform/issues/4063)) ([a36b5df](https://github.com/opentdf/platform/commit/a36b5dfd59a11e76c8a3ac10466b5f1b5a5bce27))
+
 ## [0.34.0](https://github.com/opentdf/platform/compare/sdk/v0.33.0...sdk/v0.34.0) (2026-09-28)
 
 

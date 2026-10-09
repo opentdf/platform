@@ -660,13 +660,20 @@ func (i connectInterceptor) WrapStreamingHandler(next connect.StreamingHandlerFu
 // request context with configured token claims needed by later middleware. It
 // covers unary, streaming, and bidi RPCs; streaming RPCs are authenticated once
 // at stream establishment.
+//
+// When ConnectAuthNRequestGate already authenticated the request, the
+// interceptor reuses the gate's context and only sets DPoP-Nonce response
+// headers; validating the same DPoP proof twice would trip replay detection.
 func (a Authentication) ConnectAuthNInterceptor() connect.Interceptor {
 	return connectInterceptor{
 		unary: func(next connect.UnaryFunc) connect.UnaryFunc {
 			return func(ctx context.Context, req connect.AnyRequest) (connect.AnyResponse, error) {
-				ctx, cerr := a.authenticateConnect(ctx, req.Spec().Procedure, req.HTTPMethod(), req.Header())
-				if cerr != nil {
-					return nil, cerr
+				if !authenticatedByGate(ctx) {
+					authedCtx, cerr := a.authenticateConnect(ctx, req.Spec().Procedure, req.HTTPMethod(), req.Header())
+					if cerr != nil {
+						return nil, cerr
+					}
+					ctx = authedCtx
 				}
 
 				// Always send a fresh nonce in successful responses when nonces are enabled.
@@ -691,10 +698,13 @@ func (a Authentication) ConnectAuthNInterceptor() connect.Interceptor {
 		},
 		stream: func(next connect.StreamingHandlerFunc) connect.StreamingHandlerFunc {
 			return func(ctx context.Context, conn connect.StreamingHandlerConn) error {
-				// Streaming RPCs are always POST and expose no HTTPMethod on the conn.
-				ctx, cerr := a.authenticateConnect(ctx, conn.Spec().Procedure, http.MethodPost, conn.RequestHeader())
-				if cerr != nil {
-					return cerr
+				if !authenticatedByGate(ctx) {
+					// Streaming RPCs are always POST and expose no HTTPMethod on the conn.
+					authedCtx, cerr := a.authenticateConnect(ctx, conn.Spec().Procedure, http.MethodPost, conn.RequestHeader())
+					if cerr != nil {
+						return cerr
+					}
+					ctx = authedCtx
 				}
 				if publicRoute, _ := ctxAuth.PublicRouteFromContext(ctx); !publicRoute && a.dpopNonceManager.requireNonce {
 					conn.ResponseHeader().Set("DPoP-Nonce", a.dpopNonceManager.getCurrentNonce())

@@ -1773,8 +1773,8 @@ func (s *AttributesSuite) Test_GetEntitleableAttributesByFqns_ActiveValuesAndNor
 	s.Empty(resp.GetFqnEntitleableAttributes())
 }
 
-func (s *AttributesSuite) Test_GetEntitleableAttributesByFqns_UnprovisionedValues() {
-	ns, err := s.db.PolicyClient.CreateNamespace(s.ctx, &namespaces.CreateNamespaceRequest{Name: "entitleable-unprovisioned.example"})
+func (s *AttributesSuite) Test_GetEntitleableAttributesByFqns_ValueStates() {
+	ns, err := s.db.PolicyClient.CreateNamespace(s.ctx, &namespaces.CreateNamespaceRequest{Name: "entitleable-value-states.example"})
 	s.Require().NoError(err)
 	for _, rule := range []policy.AttributeRuleTypeEnum{
 		policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
@@ -1792,7 +1792,7 @@ func (s *AttributesSuite) Test_GetEntitleableAttributesByFqns_UnprovisionedValue
 			_, err = s.db.PolicyClient.DeactivateAttributeValue(s.ctx, mid.GetId())
 			s.Require().NoError(err)
 			missing := got.GetFqn() + "/value/new"
-			unknown := "https://entitleable-unprovisioned.example/attr/unknown/value/new"
+			unknown := "https://entitleable-value-states.example/attr/unknown/value/new"
 			request := &attributes.GetEntitleableAttributesByFqnsRequest{
 				Fqns: []string{high.GetFqn(), mid.GetFqn(), missing, unknown},
 			}
@@ -1808,12 +1808,12 @@ func (s *AttributesSuite) Test_GetEntitleableAttributesByFqns_UnprovisionedValue
 			s.Equal(mid.GetId(), inactive.GetValueId())
 			s.Require().NotNil(inactive.GetActive())
 			s.False(inactive.GetActive().GetValue())
-			unprovisioned := resp.GetFqnEntitleableAttributes()[missing]
-			s.Require().NotNil(unprovisioned)
-			s.Equal(got.GetFqn(), unprovisioned.GetDefinitionFqn())
-			s.Empty(unprovisioned.GetValue().GetValueId())
-			s.Nil(unprovisioned.GetValue().GetActive())
-			s.Empty(unprovisioned.GetValue().GetSubjectMappings())
+			missingValue := resp.GetFqnEntitleableAttributes()[missing]
+			s.Require().NotNil(missingValue)
+			s.Equal(got.GetFqn(), missingValue.GetDefinitionFqn())
+			s.Empty(missingValue.GetValue().GetValueId())
+			s.Nil(missingValue.GetValue().GetActive())
+			s.Empty(missingValue.GetValue().GetSubjectMappings())
 			if rule == policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY {
 				values := resp.GetDefinitions()[got.GetFqn()].GetValues()
 				s.Require().Len(values, 2)

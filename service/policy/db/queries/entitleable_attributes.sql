@@ -11,7 +11,7 @@ WITH definitions AS (
     WHERE df.fqn = ANY(@definition_fqns::text[]) AND ad.active = TRUE
 ), requested_values AS (
     -- Keep inactive requested values so the caller rejects them instead of treating
-    -- them as unprovisioned values.
+    -- them as missing policy values.
     SELECT av.id, av.attribute_definition_id, av.active, vf.fqn
     FROM attribute_fqns vf
     JOIN attribute_values av ON av.id = vf.value_id
@@ -28,7 +28,7 @@ WITH definitions AS (
     JOIN attribute_fqns vf ON vf.value_id = av.id
     WHERE d.rule = 'HIERARCHY' AND NOT EXISTS (SELECT 1 FROM requested_values rv WHERE rv.id = av.id)
 )
--- Keep active definition context even when the requested value is unprovisioned.
+-- Keep active definition context even when the requested policy value is missing.
 SELECT d.id AS definition_id, d.definition_fqn, d.rule,
     ns.id AS namespace_id, ns.name AS namespace_name, nf.fqn AS namespace_fqn,
     COALESCE(v.id::text, '')::text AS value_id,

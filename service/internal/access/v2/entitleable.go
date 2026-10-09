@@ -29,7 +29,7 @@ const maxEntitleableFQNsPerRequest = 250
 // SubjectMappings and then appends the slice's mappings, so populating both would double-count.
 //
 // Definitions are registered even when a requested value resolves with an empty identity (a value
-// that has not been provisioned under an active definition), so the decision path can still
+// that has not been created under an active definition), so the decision path can still
 // synthesize direct-entitlement / dynamic-mapping values from the definition. Missing FQNs are
 // omitted (not an error): the v2 decision path denies per-resource on unknown FQNs. Empty but
 // non-nil slices are returned when nothing resolves, since NewPolicyDecisionPoint rejects nil inputs.
@@ -103,7 +103,7 @@ func fetchEntitleableAttributes(
 				return fmt.Errorf("entitleable attribute %q references missing definition %q", fqn, definitionFQN)
 			}
 			// Register the definition regardless of value presence so direct-entitlement / dynamic
-			// synthesis can resolve the parent definition for unprovisioned values.
+			// synthesis can resolve the parent definition for missing policy values.
 			attribute := ensureDefinition(definitionFQN, def)
 
 			if def.GetRule() == policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY {
@@ -127,7 +127,7 @@ func fetchEntitleableAttributes(
 			}
 
 			// Non-hierarchy: add the concrete value when present. An empty value identity is an
-			// unprovisioned value; the definition stays registered but no concrete value is added.
+			// missing policy value; the definition stays registered but no concrete value is added.
 			value := entitleable.GetValue()
 			if value.GetValueId() == "" {
 				continue

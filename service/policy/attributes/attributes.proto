@@ -431,7 +431,7 @@ message GetKeyMappingsByFqnsResponse {
    the subject mappings needed to resolve entitlements. Hierarchy definitions
    additionally carry their ordered values with subject mappings, for hierarchy
    rule propagation. It does not return KAS keys, grants, resource mappings,
-   obligations, or metadata. Unprovisioned values retain their active parent
+   obligations, or metadata. Missing policy values retain their active parent
    definition with an empty value identity. Persisted inactive values retain
    their identity and inactive state. Unknown or inactive parents are omitted.
    Dynamic mappings are scoped to the returned definitions. The PDP decides
@@ -454,7 +454,7 @@ message GetEntitleableAttributesByFqnsResponse {
     string value_id = 2;
     // subject mappings used to resolve entitlements for this value
     repeated policy.SubjectMapping subject_mappings = 3;
-    // Present for persisted values. Unprovisioned values have no active state.
+    // Present for persisted values. Missing policy values have no active state.
     google.protobuf.BoolValue active = 4;
   }
   // An attribute definition referenced by one or more requested value FQNs,

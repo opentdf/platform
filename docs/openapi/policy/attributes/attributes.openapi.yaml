@@ -2350,7 +2350,7 @@ components:
         the subject mappings needed to resolve entitlements. Hierarchy definitions
         additionally carry their ordered values with subject mappings, for hierarchy
         rule propagation. It does not return KAS keys, grants, resource mappings,
-        obligations, or metadata. Unprovisioned values retain their active parent
+        obligations, or metadata. Missing policy values retain their active parent
         definition with an empty value identity. Persisted inactive values retain
         their identity and inactive state. Unknown or inactive parents are omitted.
         Dynamic mappings are scoped to the returned definitions. The PDP decides
@@ -2452,7 +2452,7 @@ components:
           description: subject mappings used to resolve entitlements for this value
         active:
           title: active
-          description: Present for persisted values. Unprovisioned values have no active state.
+          description: Present for persisted values. Missing policy values have no active state.
           $ref: '#/components/schemas/google.protobuf.BoolValue'
       title: EntitleableValue
       additionalProperties: false

@@ -462,6 +462,13 @@ func (reader Reader) ReadAllFileData(filename string, maxSize int64) ([]byte, er
 	if !ok {
 		return nil, errZipFileNotFound
 	}
+	// NewReader guarantees a non-negative length, but this is the last stop
+	// before make([]byte, length), so refuse a negative one here as well
+	// rather than panic should that invariant ever slip.
+	if fileNameEntry.length < 0 || fileNameEntry.index < 0 {
+		return nil, fmt.Errorf("%w: %s: entry of %d bytes at %d",
+			errZipFileSizeError, filename, fileNameEntry.length, fileNameEntry.index)
+	}
 	if fileNameEntry.length > maxSize {
 		return nil, fmt.Errorf("%s size too large: %d KiB", filename, fileNameEntry.length/1024) //nolint:mnd // convert byte->kb
 	}
@@ -483,6 +490,9 @@ func (reader Reader) ReadFileSize(filename string) (int64, error) {
 // Unlike most golang io read methods, this function leaves
 // the byte array empty on error states to simplify reader logic.
 func readBytes(readerSeeker io.ReadSeeker, index, size int64) ([]byte, error) {
+	if index < 0 || size < 0 {
+		return nil, fmt.Errorf("%w: read of %d bytes at %d", errZipFileSizeError, size, index)
+	}
 	if _, err := readerSeeker.Seek(index, io.SeekStart); err != nil {
 		return nil, fmt.Errorf("readerSeeker.Seek failed: %w", err)
 	}

@@ -5,6 +5,7 @@ package zipstream
 import (
 	"bytes"
 	"encoding/base64"
+	"math"
 	"strings"
 	"testing"
 
@@ -160,6 +161,17 @@ func FuzzReader(f *testing.F) {
 			zip64CompressedSize: beyondInt64,
 		},
 		{name: "0.manifest.json", data: []byte(`{"m":1}`)},
+	}, false))
+
+	// ZIP64 stored size 0xFFFFFFFFFFFFFFFF on a lone manifest entry, int64 -1
+	// once narrowed: the opentdf/platform#4202 makeslice panic.
+	f.Add(buildRawZip(f, []rawZipEntry{
+		{
+			name:                "0.manifest.json",
+			data:                []byte(`{"m":1}`),
+			zip64:               true,
+			zip64CompressedSize: math.MaxUint64,
+		},
 	}, false))
 
 	// A stored size inside the archive but past the central directory. It is

@@ -1,6 +1,7 @@
 package sdk
 
 import (
+	"bytes"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -217,6 +218,14 @@ func (a Assertion) GetHash() ([]byte, error) {
 }
 
 func (s *Statement) UnmarshalJSON(data []byte) error {
+	// encoding/json hands a JSON null to UnmarshalJSON for non-pointer
+	// fields, including case-variant duplicates such as "Statement": null
+	// alongside "statement". Follow the json.Unmarshaler convention and treat
+	// null as a no-op.
+	if bytes.Equal(bytes.TrimSpace(data), []byte("null")) {
+		return nil
+	}
+
 	// Define a custom struct for deserialization
 	type Alias Statement
 	aux := &struct {
@@ -226,7 +235,9 @@ func (s *Statement) UnmarshalJSON(data []byte) error {
 		Alias: (*Alias)(s),
 	}
 
-	if err := json.Unmarshal(data, &aux); err != nil {
+	// Decode into aux itself, not &aux: a pointer-to-pointer lets a null
+	// input reset aux to nil, which the field access below would dereference.
+	if err := json.Unmarshal(data, aux); err != nil {
 		return err
 	}
 

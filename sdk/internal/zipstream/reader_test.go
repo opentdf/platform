@@ -6,6 +6,7 @@ import (
 	"archive/zip"
 	"bytes"
 	"io"
+	"math"
 	"os"
 	"strconv"
 	"strings"
@@ -307,6 +308,42 @@ func TestReadBytesZeroLengthAtEOF(t *testing.T) {
 
 	require.NoError(t, err)
 	assert.Empty(t, got)
+}
+
+// TestReadBytesRejectsNegativeArguments asserts readBytes refuses a negative
+// size or index instead of reaching make([]byte, size), which panics for a
+// negative size.
+func TestReadBytesRejectsNegativeArguments(t *testing.T) {
+	for _, tc := range []struct{ index, size int64 }{{0, -1}, {-1, 1}, {0, math.MinInt64}} {
+		var (
+			got []byte
+			err error
+		)
+		require.NotPanics(t, func() { got, err = readBytes(bytes.NewReader([]byte("abc")), tc.index, tc.size) })
+		require.ErrorIs(t, err, errZipFileSizeError)
+		assert.Nil(t, got)
+	}
+}
+
+// TestReadAllFileDataRejectsNegativeEntry asserts the read helpers stay
+// panic-free even if an entry with a negative length or index were ever
+// recorded. NewReader rules these out, so the entry is planted directly.
+func TestReadAllFileDataRejectsNegativeEntry(t *testing.T) {
+	for _, entry := range []zipFileEntry{{index: 0, length: -1}, {index: -1, length: 1}} {
+		reader := Reader{
+			readSeeker:  bytes.NewReader([]byte("abc")),
+			fileEntries: map[string]zipFileEntry{"0.manifest.json": entry},
+		}
+		require.NotPanics(t, func() {
+			got, err := reader.ReadAllFileData("0.manifest.json", 1024)
+			require.ErrorIs(t, err, errZipFileSizeError)
+			assert.Nil(t, got)
+
+			got, err = reader.ReadFileData("0.manifest.json", 0, 1)
+			require.ErrorIs(t, err, errZipFileSizeError)
+			assert.Nil(t, got)
+		})
+	}
 }
 
 // TestReadAllFileDataOverChunkedSeeker drives the same short read through the

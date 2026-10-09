@@ -63,6 +63,7 @@ func FuzzLoadTDF(f *testing.F) {
 	mockWellKnown := newMockWellKnownService(createWellKnown(nil), nil)
 	sdk := newSDK()
 	sdk.wellknownConfiguration = mockWellKnown
+	sdk.conn = &ConnectRPCConnection{Client: http.DefaultClient}
 	f.Add(writeBytes(func(writer io.Writer) error {
 		reader := bytes.NewReader([]byte("AAA"))
 		_, err := sdk.CreateTDF(writer, reader, func(tdfConfig *TDFConfig) error {
@@ -169,6 +170,13 @@ func FuzzLoadTDF(f *testing.F) {
 		"HCNSOqYACBQAAAgUAAFBLAQItAC0ACAAAAF2uLzFp296fHwAAAB8AAAAJAAAAAAAAAAAAAA" +
 		"AAAAAAAAAwLnBheWxvYWRQSwECLQAtAAgAAABdri8x1I6pgAIFAAACBQAADwAAAAAAAAAAA" +
 		"AAAAABWAAAAMC5tYW5pZmVzdC5qc29uUEsFBgAAAAACAAIAdAAAAJUFAAAAAA=="))
+	// DSPX-5102 / opentdf/platform#4202: a ZIP64 stored size of
+	// 0xFFFFFFFFFFFFFFFF on the manifest entry (int64 -1, makeslice panic),
+	// a case-variant "Statement": null (nil dereference while decoding), and
+	// a manifest declaring a cleartext payload.
+	f.Add(malformedZip64ManifestTDF(f))
+	f.Add(zipWithManifest(f, nullStatementManifestJSON))
+	f.Add(zipWithManifest(f, minimalManifestJSON(false)))
 	// large segment sizes
 	// commented out because payload is too large to provide an efficient seed context - only use for manual testing
 	/*f.Add(writeBytes(func(writer io.Writer) error {
@@ -188,7 +196,9 @@ func FuzzLoadTDF(f *testing.F) {
 	}))*/
 
 	f.Fuzz(func(t *testing.T, data []byte) {
-		r, err := sdk.LoadTDF(bytes.NewReader(data))
+		// Skip the KAS allowlist lookup: there is no registry here, and the
+		// lookup failing first would keep every input away from the parser.
+		r, err := sdk.LoadTDF(bytes.NewReader(data), WithIgnoreAllowlist(true))
 		if err != nil {
 			assert.Nil(t, r)
 			return

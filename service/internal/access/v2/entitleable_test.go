@@ -2,6 +2,7 @@ package access
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 	"testing"
@@ -11,6 +12,7 @@ import (
 	"github.com/opentdf/platform/sdk/sdkconnect"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/types/known/wrapperspb"
 
 	otdfSDK "github.com/opentdf/platform/sdk"
 )
@@ -27,6 +29,10 @@ type fakeAttributesClient struct {
 func (f *fakeAttributesClient) GetEntitleableAttributesByFqns(_ context.Context, req *attrs.GetEntitleableAttributesByFqnsRequest) (*attrs.GetEntitleableAttributesByFqnsResponse, error) {
 	f.requests = append(f.requests, req)
 	return f.respFunc(req)
+}
+
+func (*fakeAttributesClient) ListAttributes(context.Context, *attrs.ListAttributesRequest) (*attrs.ListAttributesResponse, error) {
+	return nil, errors.New("full attribute listing is not allowed in targeted decisions")
 }
 
 func newSDKWithAttributes(f *fakeAttributesClient) *otdfSDK.SDK {
@@ -60,7 +66,7 @@ func TestFetchEntitleableAttributes_MapsAndDedupes(t *testing.T) {
 	}
 
 	// Uppercase + duplicate inputs should be normalized and deduped to a single requested FQN.
-	defs, sms, err := fetchEntitleableAttributes(context.Background(), newSDKWithAttributes(fake), []string{strings.ToUpper(valueFQN), valueFQN})
+	defs, sms, _, err := fetchEntitleableAttributes(context.Background(), newSDKWithAttributes(fake), []string{strings.ToUpper(valueFQN), valueFQN})
 	require.NoError(t, err)
 	require.Len(t, fake.requests, 1)
 	assert.Equal(t, []string{valueFQN}, fake.requests[0].GetFqns())
@@ -80,11 +86,12 @@ func TestFetchEntitleableAttributes_MapsAndDedupes(t *testing.T) {
 
 func TestFetchEntitleableAttributes_Batches(t *testing.T) {
 	definitionFQN := "https://example.com/attr/classification"
+	mapping := &policy.DynamicValueMapping{Id: "mapping-id", AttributeDefinition: &policy.Attribute{Fqn: definitionFQN}}
 	fake := &fakeAttributesClient{
 		respFunc: func(req *attrs.GetEntitleableAttributesByFqnsRequest) (*attrs.GetEntitleableAttributesByFqnsResponse, error) {
 			resp := &attrs.GetEntitleableAttributesByFqnsResponse{
 				Definitions: map[string]*attrs.GetEntitleableAttributesByFqnsResponse_EntitleableDefinition{
-					definitionFQN: {Rule: policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF},
+					definitionFQN: {Rule: policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF, DynamicValueMappings: []*policy.DynamicValueMapping{mapping}},
 				},
 				FqnEntitleableAttributes: make(map[string]*attrs.GetEntitleableAttributesByFqnsResponse_EntitleableAttribute),
 			}
@@ -103,11 +110,13 @@ func TestFetchEntitleableAttributes_Batches(t *testing.T) {
 		fqns[i] = fmt.Sprintf("%s/value/value-%03d", definitionFQN, i)
 	}
 
-	defs, _, err := fetchEntitleableAttributes(context.Background(), newSDKWithAttributes(fake), fqns)
+	defs, _, mappings, err := fetchEntitleableAttributes(context.Background(), newSDKWithAttributes(fake), fqns)
 	require.NoError(t, err)
 	require.Len(t, fake.requests, 2)
 	assert.Len(t, fake.requests[0].GetFqns(), maxEntitleableFQNsPerRequest)
 	assert.Len(t, fake.requests[1].GetFqns(), 1)
+	require.Len(t, mappings, 1, "the same definition's mappings must not repeat across batches")
+	assert.Equal(t, "mapping-id", mappings[0].GetId())
 	// All values map to the one definition.
 	require.Len(t, defs, 1)
 	assert.Len(t, defs[0].GetValues(), len(fqns))
@@ -143,7 +152,7 @@ func TestFetchEntitleableAttributes_Hierarchy(t *testing.T) {
 		},
 	}
 
-	defs, sms, err := fetchEntitleableAttributes(context.Background(), newSDKWithAttributes(fake), []string{high})
+	defs, sms, _, err := fetchEntitleableAttributes(context.Background(), newSDKWithAttributes(fake), []string{high})
 	require.NoError(t, err)
 	require.Len(t, defs, 1)
 	// Ordered sibling values are populated for hierarchy definitions.
@@ -166,7 +175,7 @@ func TestFetchEntitleableAttributes_MissingFqnOmitted(t *testing.T) {
 		},
 	}
 
-	defs, sms, err := fetchEntitleableAttributes(context.Background(), newSDKWithAttributes(fake), []string{"https://example.com/attr/classification/value/missing"})
+	defs, sms, _, err := fetchEntitleableAttributes(context.Background(), newSDKWithAttributes(fake), []string{"https://example.com/attr/classification/value/missing"})
 	require.NoError(t, err)
 	assert.NotNil(t, defs)
 	assert.NotNil(t, sms)
@@ -189,14 +198,14 @@ func TestFetchEntitleableAttributes_MissingDefinitionErrors(t *testing.T) {
 		},
 	}
 
-	defs, sms, err := fetchEntitleableAttributes(context.Background(), newSDKWithAttributes(fake), []string{valueFQN})
+	defs, sms, _, err := fetchEntitleableAttributes(context.Background(), newSDKWithAttributes(fake), []string{valueFQN})
 	require.Error(t, err)
 	assert.Nil(t, defs)
 	assert.Nil(t, sms)
 	assert.Contains(t, err.Error(), "references missing definition")
 }
 
-func TestFetchEntitleableAttributes_AllowTraversalEmptyValueRegistersDefinition(t *testing.T) {
+func TestFetchEntitleableAttributes_MissingPolicyValueRegistersDefinition(t *testing.T) {
 	definitionFQN := "https://example.com/attr/classification"
 	valueFQN := definitionFQN + "/value/adhoc"
 	fake := &fakeAttributesClient{
@@ -206,18 +215,52 @@ func TestFetchEntitleableAttributes_AllowTraversalEmptyValueRegistersDefinition(
 					definitionFQN: {Rule: policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF},
 				},
 				FqnEntitleableAttributes: map[string]*attrs.GetEntitleableAttributesByFqnsResponse_EntitleableAttribute{
-					// allow_traversal miss: value returned with empty identity.
+					// Missing policy value: returned with empty identity.
 					valueFQN: {DefinitionFqn: definitionFQN, Value: &attrs.GetEntitleableAttributesByFqnsResponse_EntitleableValue{}},
 				},
 			}, nil
 		},
 	}
 
-	defs, sms, err := fetchEntitleableAttributes(context.Background(), newSDKWithAttributes(fake), []string{valueFQN})
+	defs, sms, _, err := fetchEntitleableAttributes(context.Background(), newSDKWithAttributes(fake), []string{valueFQN})
 	require.NoError(t, err)
 	// Definition is registered (for direct-entitlement synthesis) but carries no concrete value.
 	require.Len(t, defs, 1)
 	assert.Equal(t, definitionFQN, defs[0].GetFqn())
 	assert.Empty(t, defs[0].GetValues())
 	assert.Empty(t, sms)
+}
+
+func TestFetchEntitleableAttributesRetainsInactiveValues(t *testing.T) {
+	for _, rule := range []policy.AttributeRuleTypeEnum{
+		policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
+		policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY,
+	} {
+		t.Run(rule.String(), func(t *testing.T) {
+			definitionFQN := "https://example.com/attr/classification"
+			valueFQN := definitionFQN + "/value/inactive"
+			unknownFQN := "https://example.com/attr/unknown/value/missing"
+			fake := &fakeAttributesClient{respFunc: func(_ *attrs.GetEntitleableAttributesByFqnsRequest) (*attrs.GetEntitleableAttributesByFqnsResponse, error) {
+				return &attrs.GetEntitleableAttributesByFqnsResponse{
+					Definitions: map[string]*attrs.GetEntitleableAttributesByFqnsResponse_EntitleableDefinition{
+						definitionFQN: {Rule: rule},
+					},
+					FqnEntitleableAttributes: map[string]*attrs.GetEntitleableAttributesByFqnsResponse_EntitleableAttribute{
+						valueFQN: {DefinitionFqn: definitionFQN, Value: &attrs.GetEntitleableAttributesByFqnsResponse_EntitleableValue{
+							Fqn: valueFQN, ValueId: "inactive-id", Active: wrapperspb.Bool(false),
+						}},
+					},
+				}, nil
+			}}
+			definitions, _, _, err := fetchEntitleableAttributes(t.Context(), newSDKWithAttributes(fake), []string{valueFQN, unknownFQN})
+			require.NoError(t, err)
+			require.Len(t, fake.requests, 1)
+			require.Len(t, definitions, 1)
+			require.Len(t, definitions[0].GetValues(), 1)
+			value := definitions[0].GetValues()[0]
+			assert.Equal(t, "inactive-id", value.GetId())
+			require.NotNil(t, value.GetActive())
+			assert.False(t, value.GetActive().GetValue())
+		})
+	}
 }

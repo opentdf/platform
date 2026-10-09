@@ -830,6 +830,9 @@ func retrieveAttributeDefinitions(ctx context.Context, attrFqns []string, sdk *o
 			if !ok || entitleable.GetValue().GetValueId() == "" {
 				return nil, status.Error(codes.NotFound, db.ErrTextNotFound)
 			}
+			if active := entitleable.GetValue().GetActive(); active != nil && !active.GetValue() {
+				return nil, connect.NewError(connect.CodeInvalidArgument, db.ErrAttributeValueInactive)
+			}
 
 			definitionFQN := entitleable.GetDefinitionFqn()
 			definition, ok := resp.GetDefinitions()[definitionFQN]

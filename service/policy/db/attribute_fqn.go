@@ -267,7 +267,7 @@ func (c *PolicyDBClient) GetKeyMappingsByFqns(ctx context.Context, r *attributes
 // the value-level subject mappings. It runs two selective queries: the attribute
 // FQN lookup for rule/value/sibling data, and a single subject-mapping-by-FQN
 // query, avoiding the full-policy load used by the entitlement path today.
-// Unprovisioned values retain active definition context. Unknown/inactive parents
+// Missing policy values retain active definition context. Unknown/inactive parents
 // are omitted; inactive values retain their identity and state for the PDP to deny.
 // Dynamic mappings are fetched only for referenced definitions.
 func (c *PolicyDBClient) GetEntitleableAttributesByFqns(ctx context.Context, r *attributes.GetEntitleableAttributesByFqnsRequest) (*attributes.GetEntitleableAttributesByFqnsResponse, error) {
@@ -360,7 +360,7 @@ func (c *PolicyDBClient) GetEntitleableAttributesByFqns(ctx context.Context, r *
 			rsp.Definitions[defFqn] = def
 		}
 
-		// For an unprovisioned value, pair.GetValue() is nil: GetId() yields "" and
+		// For a missing policy value, pair.GetValue() is nil: GetId() yields "" and
 		// there are no value-level subject mappings, so the entry carries only the
 		// definition context and an empty value identity.
 		rsp.FqnEntitleableAttributes[fqn] = &attributes.GetEntitleableAttributesByFqnsResponse_EntitleableAttribute{

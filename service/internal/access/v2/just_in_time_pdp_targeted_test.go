@@ -248,16 +248,17 @@ func TestJITPDP_UncachedDynamicDecisions(t *testing.T) {
 	valueFQN := defFQN + "/value/alpha"
 	ns := &policy.Namespace{Id: "namespace-id", Fqn: "https://example.com"}
 	for _, tc := range []struct {
-		name                                                                  string
-		persisted, inactive, gated, gateMismatch, namespaceMismatch, disabled bool
-		operator                                                              policy.SubjectMappingOperatorEnum
-		action                                                                string
-		permit                                                                bool
+		name                                                        string
+		persisted, inactive, gated, gateMismatch, namespaceMismatch bool
+		dynamicMappingsDisabled                                     bool
+		operator                                                    policy.SubjectMappingOperatorEnum
+		action                                                      string
+		permit                                                      bool
 	}{
-		{name: "unprovisioned", operator: policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_IN, action: "read", permit: true},
+		{name: "missing_policy_value", operator: policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_IN, action: "read", permit: true},
 		{name: "active", persisted: true, operator: policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_IN, action: "read", permit: true},
-		{name: "disabled_unprovisioned", disabled: true, operator: policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_IN, action: "read"},
-		{name: "disabled_persisted", disabled: true, persisted: true, operator: policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_IN, action: "read"},
+		{name: "dynamic_mapping_disabled_for_missing_policy_value", dynamicMappingsDisabled: true, operator: policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_IN, action: "read"},
+		{name: "dynamic_mapping_disabled_for_persisted_value", dynamicMappingsDisabled: true, persisted: true, operator: policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_IN, action: "read"},
 		{name: "inactive", persisted: true, inactive: true, operator: policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_IN, action: "read"},
 		{name: "contains", operator: policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_IN_CONTAINS, action: "read", permit: true},
 		{name: "gate_allow", gated: true, operator: policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_IN, action: "read", permit: true},
@@ -301,7 +302,7 @@ func TestJITPDP_UncachedDynamicDecisions(t *testing.T) {
 			p, err := NewJustInTimePDP(context.Background(), logger.CreateTestLogger(), &otdfSDK.SDK{
 				Attributes: attrFake, EntityResolutionV2: ers, RegisteredResources: emptyRegisteredResourcesClient{},
 				Obligations: emptyObligationsClient{}, DynamicValueMapping: rejectFullDynamicMappingsClient{},
-			}, &decisionPolicyStore{}, false, !tc.disabled, true)
+			}, &decisionPolicyStore{}, false, !tc.dynamicMappingsDisabled, true)
 			require.NoError(t, err)
 			decision, err := p.GetDecision(audit.ContextWithActorID(context.Background(), "test-actor"), entityChainIdentifier(),
 				&policy.Action{Name: tc.action, Namespace: ns}, attrValueResource(valueFQN), nil, nil)
@@ -328,7 +329,7 @@ func TestJITPDP_UncachedDirectDecisions(t *testing.T) {
 			action          string
 			permit          bool
 		}{
-			{"unprovisioned", &attrs.GetEntitleableAttributesByFqnsResponse_EntitleableValue{Fqn: valueFQN}, true, "read", true},
+			{"missing_policy_value", &attrs.GetEntitleableAttributesByFqnsResponse_EntitleableValue{Fqn: valueFQN}, true, "read", true},
 			{"active", &attrs.GetEntitleableAttributesByFqnsResponse_EntitleableValue{Fqn: valueFQN, ValueId: "value-id", Active: wrapperspb.Bool(true)}, true, "read", true},
 			{"inactive", &attrs.GetEntitleableAttributesByFqnsResponse_EntitleableValue{Fqn: valueFQN, ValueId: "value-id", Active: wrapperspb.Bool(false)}, true, "read", false},
 			{"unknown_definition", nil, false, "read", false},
@@ -506,7 +507,7 @@ func TestJITPDP_GetDecision_MixedKnownUnknownFQNsPreservesKnown(t *testing.T) {
 		SubjectConditionSet: clientIDInConditionSet("abc"),
 		Actions:             []*policy.Action{{Name: "read"}},
 	}
-	// One batch returns the known value and definition context for the unprovisioned value.
+	// One batch returns the known value and definition context for the missing policy value.
 	attrFake := &fakeAttributesClient{
 		respFunc: func(_ *attrs.GetEntitleableAttributesByFqnsRequest) (*attrs.GetEntitleableAttributesByFqnsResponse, error) {
 			return &attrs.GetEntitleableAttributesByFqnsResponse{

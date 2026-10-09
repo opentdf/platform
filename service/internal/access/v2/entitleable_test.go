@@ -205,7 +205,7 @@ func TestFetchEntitleableAttributes_MissingDefinitionErrors(t *testing.T) {
 	assert.Contains(t, err.Error(), "references missing definition")
 }
 
-func TestFetchEntitleableAttributes_AllowTraversalEmptyValueRegistersDefinition(t *testing.T) {
+func TestFetchEntitleableAttributes_MissingPolicyValueRegistersDefinition(t *testing.T) {
 	definitionFQN := "https://example.com/attr/classification"
 	valueFQN := definitionFQN + "/value/adhoc"
 	fake := &fakeAttributesClient{
@@ -215,7 +215,7 @@ func TestFetchEntitleableAttributes_AllowTraversalEmptyValueRegistersDefinition(
 					definitionFQN: {Rule: policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF},
 				},
 				FqnEntitleableAttributes: map[string]*attrs.GetEntitleableAttributesByFqnsResponse_EntitleableAttribute{
-					// allow_traversal miss: value returned with empty identity.
+					// Missing policy value: returned with empty identity.
 					valueFQN: {DefinitionFqn: definitionFQN, Value: &attrs.GetEntitleableAttributesByFqnsResponse_EntitleableValue{}},
 				},
 			}, nil

@@ -93,23 +93,23 @@ func (s *DynamicValueMappingsSuite) TestEntitleableDynamicMappings() {
 		Actions: []*policy.Action{s.readAction()},
 	})
 	s.Require().NoError(err)
-	want := map[string]*policy.DynamicValueMapping{}
-	for _, gated := range []bool{false, true} {
-		request := &dynamicvaluemapping.CreateDynamicValueMappingRequest{
-			AttributeDefinitionId: attr.GetId(), ValueResolver: s.resolver(".projects[]", policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_IN),
-			Actions: []*policy.Action{s.readAction()},
-		}
-		if gated {
-			request.NamespaceFqn = "https://example.com"
-			request.Actions = []*policy.Action{{Name: policydb.ActionRead.String()}}
-			request.NewSubjectConditionSet = s.sampleSCSCreate()
-		}
-		created, err := s.db.PolicyClient.CreateDynamicValueMapping(s.ctx, request)
-		s.Require().NoError(err)
-		got, err := s.db.PolicyClient.GetDynamicValueMapping(s.ctx, created.GetId())
-		s.Require().NoError(err)
-		want[created.GetId()] = got
-	}
+	ungatedCreated, err := s.db.PolicyClient.CreateDynamicValueMapping(s.ctx, &dynamicvaluemapping.CreateDynamicValueMappingRequest{
+		AttributeDefinitionId: attr.GetId(), ValueResolver: s.resolver(".projects[]", policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_IN),
+		Actions: []*policy.Action{s.readAction()},
+	})
+	s.Require().NoError(err)
+	ungated, err := s.db.PolicyClient.GetDynamicValueMapping(s.ctx, ungatedCreated.GetId())
+	s.Require().NoError(err)
+	gatedCreated, err := s.db.PolicyClient.CreateDynamicValueMapping(s.ctx, &dynamicvaluemapping.CreateDynamicValueMappingRequest{
+		AttributeDefinitionId: attr.GetId(), ValueResolver: s.resolver(".projects[]", policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_IN),
+		NamespaceFqn:           "https://example.com",
+		Actions:                []*policy.Action{{Name: policydb.ActionRead.String()}},
+		NewSubjectConditionSet: s.sampleSCSCreate(),
+	})
+	s.Require().NoError(err)
+	gated, err := s.db.PolicyClient.GetDynamicValueMapping(s.ctx, gatedCreated.GetId())
+	s.Require().NoError(err)
+	want := map[string]*policy.DynamicValueMapping{ungated.GetId(): ungated, gated.GetId(): gated}
 	got, err := s.db.PolicyClient.GetAttribute(s.ctx, attr.GetId())
 	s.Require().NoError(err)
 	request := &attributes.GetEntitleableAttributesByFqnsRequest{
@@ -120,16 +120,12 @@ func (s *DynamicValueMappingsSuite) TestEntitleableDynamicMappings() {
 	s.Require().Len(resp.GetDefinitions(), 1)
 	def := resp.GetDefinitions()[got.GetFqn()]
 	s.Require().Len(def.GetDynamicValueMappings(), 2)
+	mappingsByID := make(map[string]*policy.DynamicValueMapping, 2)
 	for _, mapping := range def.GetDynamicValueMappings() {
 		expected := want[mapping.GetId()]
 		s.Require().NotNil(expected, "only the requested definition's mappings are returned")
+		mappingsByID[mapping.GetId()] = mapping
 		s.True(proto.Equal(expected.GetValueResolver(), mapping.GetValueResolver()))
-		s.Equal(expected.GetSubjectConditionSet().GetId(), mapping.GetSubjectConditionSet().GetId())
-		s.Equal(expected.GetSubjectConditionSet().GetNamespace().GetFqn(), mapping.GetSubjectConditionSet().GetNamespace().GetFqn())
-		s.Len(mapping.GetSubjectConditionSet().GetSubjectSets(), len(expected.GetSubjectConditionSet().GetSubjectSets()))
-		for i, subjectSet := range expected.GetSubjectConditionSet().GetSubjectSets() {
-			s.True(proto.Equal(subjectSet, mapping.GetSubjectConditionSet().GetSubjectSets()[i]))
-		}
 		s.Require().Len(mapping.GetActions(), 1)
 		s.Equal(expected.GetActions()[0].GetId(), mapping.GetActions()[0].GetId())
 		s.Equal(expected.GetActions()[0].GetName(), mapping.GetActions()[0].GetName())
@@ -140,6 +136,17 @@ func (s *DynamicValueMappingsSuite) TestEntitleableDynamicMappings() {
 		s.Equal(got.GetNamespace().GetFqn(), mapping.GetAttributeDefinition().GetNamespace().GetFqn())
 		s.Empty(mapping.GetAttributeDefinition().GetValues())
 		s.Nil(mapping.GetMetadata())
+	}
+	s.Require().Len(mappingsByID, 2, "both gated and ungated mappings are returned")
+	s.Nil(mappingsByID[ungated.GetId()].GetSubjectConditionSet(), "ungated mappings have no condition set")
+	gotGate := mappingsByID[gated.GetId()].GetSubjectConditionSet()
+	wantGate := gated.GetSubjectConditionSet()
+	s.Require().NotNil(gotGate, "gated mappings retain their condition set")
+	s.Equal(wantGate.GetId(), gotGate.GetId())
+	s.Equal(wantGate.GetNamespace().GetFqn(), gotGate.GetNamespace().GetFqn())
+	s.Require().Len(gotGate.GetSubjectSets(), len(wantGate.GetSubjectSets()))
+	for i, subjectSet := range wantGate.GetSubjectSets() {
+		s.True(proto.Equal(subjectSet, gotGate.GetSubjectSets()[i]))
 	}
 	_, err = s.db.PolicyClient.DeactivateAttribute(s.ctx, attr.GetId())
 	s.Require().NoError(err)

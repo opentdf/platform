@@ -1989,7 +1989,7 @@ func (x *GetKeyMappingsByFqnsResponse) GetFqnKeyMappings() map[string]*GetKeyMap
 // the subject mappings needed to resolve entitlements. Hierarchy definitions
 // additionally carry their ordered values with subject mappings, for hierarchy
 // rule propagation. It does not return KAS keys, grants, resource mappings,
-// obligations, or metadata. Unprovisioned values retain their active parent
+// obligations, or metadata. Missing policy values retain their active parent
 // definition with an empty value identity. Persisted inactive values retain
 // their identity and inactive state. Unknown or inactive parents are omitted.
 // Dynamic mappings are scoped to the returned definitions. The PDP decides
@@ -3007,7 +3007,7 @@ type GetEntitleableAttributesByFqnsResponse_EntitleableValue struct {
 	ValueId string `protobuf:"bytes,2,opt,name=value_id,json=valueId,proto3" json:"value_id,omitempty"`
 	// subject mappings used to resolve entitlements for this value
 	SubjectMappings []*policy.SubjectMapping `protobuf:"bytes,3,rep,name=subject_mappings,json=subjectMappings,proto3" json:"subject_mappings,omitempty"`
-	// Present for persisted values. Unprovisioned values have no active state.
+	// Present for persisted values. Missing policy values have no active state.
 	Active *wrapperspb.BoolValue `protobuf:"bytes,4,opt,name=active,proto3" json:"active,omitempty"`
 }
 

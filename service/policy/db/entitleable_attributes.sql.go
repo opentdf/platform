@@ -20,7 +20,7 @@ WITH definitions AS (
     WHERE df.fqn = ANY($1::text[]) AND ad.active = TRUE
 ), requested_values AS (
     -- Keep inactive requested values so the caller rejects them instead of treating
-    -- them as unprovisioned values.
+    -- them as missing policy values.
     SELECT av.id, av.attribute_definition_id, av.active, vf.fqn
     FROM attribute_fqns vf
     JOIN attribute_values av ON av.id = vf.value_id
@@ -68,7 +68,7 @@ type getEntitleableAttributeValuesRow struct {
 
 // Authorization needs value identity and rule context, not grants, keys, or resource
 // mappings. Only hierarchy definitions need their other active values, in policy order.
-// Keep active definition context even when the requested value is unprovisioned.
+// Keep active definition context even when the requested policy value is missing.
 //
 //	WITH definitions AS (
 //	    -- Resolve only active definitions and namespaces referenced by the requested FQNs.
@@ -80,7 +80,7 @@ type getEntitleableAttributeValuesRow struct {
 //	    WHERE df.fqn = ANY($1::text[]) AND ad.active = TRUE
 //	), requested_values AS (
 //	    -- Keep inactive requested values so the caller rejects them instead of treating
-//	    -- them as unprovisioned values.
+//	    -- them as missing policy values.
 //	    SELECT av.id, av.attribute_definition_id, av.active, vf.fqn
 //	    FROM attribute_fqns vf
 //	    JOIN attribute_values av ON av.id = vf.value_id

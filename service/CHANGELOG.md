@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.29.0](https://github.com/opentdf/platform/compare/service/v0.28.0...service/v0.29.0) (2026-10-09)
+
+
+### Features
+
+* **kas:** support ML-KEM client session keys in rewrap ([#3814](https://github.com/opentdf/platform/issues/3814)) ([b81da1e](https://github.com/opentdf/platform/commit/b81da1eea030e75925187a2d6b11bcc763f67d60))
+
+
+### Bug Fixes
+
+* **authz:** keep shared policy values immutable ([#3987](https://github.com/opentdf/platform/issues/3987)) ([f992b60](https://github.com/opentdf/platform/commit/f992b60d902feede61bc5d66f91dee5fd647c3e7))
+* **core:** distinguish rewrap denials ([#4204](https://github.com/opentdf/platform/issues/4204)) ([4d9e555](https://github.com/opentdf/platform/commit/4d9e555bddf0c850190680807118fbac1851a9aa))
+* **core:** report database readiness failures ([#4178](https://github.com/opentdf/platform/issues/4178)) ([6d3a01a](https://github.com/opentdf/platform/commit/6d3a01a0d3f7233eddb9031cf2d5bcda426c569d))
+* **ers:** prevent entitlement claims from reaching subject mappings ([#4184](https://github.com/opentdf/platform/issues/4184)) ([27075a7](https://github.com/opentdf/platform/commit/27075a770a858ab700042f6e727d2f2a8ad484c0))
+* **policy:** match namespace FQNs case-insensitively ([#4182](https://github.com/opentdf/platform/issues/4182)) ([04b97fb](https://github.com/opentdf/platform/commit/04b97fb9a2d6374204158445366d26c2f6a88b90))
+
 ## [0.28.0](https://github.com/opentdf/platform/compare/service/v0.27.0...service/v0.28.0) (2026-10-02)
 
 

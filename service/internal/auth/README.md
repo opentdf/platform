@@ -7,6 +7,7 @@ This package handles authentication (authn) and authorization (authz) for the Op
 ```
 auth/
 ├── authn.go           # Authentication middleware and token validation
+├── connect_gate.go    # Connect request gate that authenticates before body decoding
 ├── config.go          # Configuration types
 ├── discovery.go       # OIDC discovery
 └── authz/             # Authorization interfaces and implementations
@@ -16,6 +17,17 @@ auth/
         ├── v1/        # Legacy path + action authorization
         └── v2/        # RPC + dimensions authorization
 ```
+
+## Connect Request Flow
+
+External Connect requests pass through these stages:
+
+1. The HTTP router stores the request's HTTP method in the context (`ContextWithHTTPMethod`).
+2. `ConnectAuthNRequestGate` authenticates the request from its headers, including DPoP proof validation, before Connect reads, decompresses, or unmarshals the body. Unauthenticated requests are rejected without decoding the body.
+3. `ConnectAuthNInterceptor` sets `DPoP-Nonce` response headers when nonces are required. It authenticates only when the gate did not run, such as for handlers built outside the platform server.
+4. `ConnectAuthZInterceptor` authorizes the request. Unary authorization may read the decoded message through resource resolvers.
+
+The in-process (IPC) server does not use the gate; `IPCUnaryServerInterceptor` handles its requests. Requests rejected by the gate never reach the interceptor chain, so tracing interceptors record no span for them.
 
 ## Authz v1
 

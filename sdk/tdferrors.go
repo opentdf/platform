@@ -18,6 +18,17 @@ var (
 	// segments than the archive writer can count.
 	errTooManySegments = errors.New("tdf: input size needs more segments than the archive can address")
 
+	// ErrAESGCMExhausted is returned by a TDF writer that refuses to encrypt
+	// another segment under its data encryption key (DEK). Payload segment IVs
+	// are random 96-bit values, so the chance that any two collide grows with
+	// the square of the segment count (about k^2 / 2^97 for k segments). NIST SP
+	// 800-38D §8 limits that probability to 2^-32 per key, which is reached near
+	// 2^32 encryptions; see maxAESGCMSegmentsPerDEK. A collision would expose the
+	// XOR of two plaintexts and allow forgery under the DEK, so the writer fails
+	// rather than continue. Start a new TDF, which draws a new DEK, or use a
+	// larger segment size.
+	ErrAESGCMExhausted = errors.New("tdf: AES-GCM IV collision limit reached for this data encryption key")
+
 	// Exposed tamper detection errors, Catch all possible tamper errors with errors.Is(ErrTampered)
 	ErrTampered                = errors.New("tamper detected")
 	ErrRootSigValidation       = fmt.Errorf("[%w] tdf: failed integrity check on root signature", ErrTampered)

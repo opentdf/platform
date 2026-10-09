@@ -56,6 +56,19 @@ func withChunkedCipherFactory(f segmentCipherFactory) ChunkedWriterOption {
 	}
 }
 
+// withChunkedMaxEncryptions lowers the AES-GCM segment encryption cap
+// so tests can reach ErrAESGCMExhausted without encrypting 2^32
+// segments. n must be positive.
+func withChunkedMaxEncryptions(n uint64) ChunkedWriterOption {
+	return func(c *chunkedWriterConfig) error {
+		if n == 0 {
+			return errors.New("chunked: max encryptions must be positive")
+		}
+		c.maxEncryptions = n
+		return nil
+	}
+}
+
 // withChunkedClock overrides the time source used by the
 // [ChunkedWriter] and, through it, by the zipstream layer that stamps
 // ZIP header timestamps. Tests inject fixedClock for deterministic

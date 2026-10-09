@@ -1740,6 +1740,36 @@ func (s *TDFSuite) Test_CreateTDF_InputSizeBounds() {
 		s.Empty(tdf.Bytes())
 	})
 
+	s.Run("AES-GCM exhaustion stops a stream of unknown length", func() {
+		payload := bytes.Repeat([]byte("e"), 3*minSegmentSize)
+		reader := nonSeekableReader{bytes.NewReader(payload)}
+		_, err := s.sdk.CreateTDF(&bytes.Buffer{}, reader,
+			append(opts, WithSegmentSize(minSegmentSize), withMaxSegmentEncryptions(2))...)
+		s.Require().ErrorIs(err, ErrAESGCMExhausted)
+	})
+
+	s.Run("AES-GCM exhaustion stops a payload of known length", func() {
+		payload := bytes.Repeat([]byte("f"), 3*minSegmentSize)
+		_, err := s.sdk.CreateTDF(&bytes.Buffer{}, bytes.NewReader(payload),
+			append(opts, WithSegmentSize(minSegmentSize), withMaxSegmentEncryptions(2))...)
+		s.Require().ErrorIs(err, ErrAESGCMExhausted)
+	})
+
+	s.Run("a payload at the AES-GCM cap is written", func() {
+		payload := bytes.Repeat([]byte("g"), 2*minSegmentSize)
+		var tdf bytes.Buffer
+		_, err := s.sdk.CreateTDF(&tdf, nonSeekableReader{bytes.NewReader(payload)},
+			append(opts, WithSegmentSize(minSegmentSize), withMaxSegmentEncryptions(2))...)
+		s.Require().NoError(err)
+
+		r, err := s.sdk.LoadTDF(bytes.NewReader(tdf.Bytes()), readOpts...)
+		s.Require().NoError(err)
+		var decrypted bytes.Buffer
+		_, err = r.WriteTo(&decrypted)
+		s.Require().NoError(err)
+		s.Equal(payload, decrypted.Bytes())
+	})
+
 	s.Run("a reader shorter than the declared size is rejected", func() {
 		reader := nonSeekableReader{bytes.NewReader([]byte("Virtru"))}
 		_, err := s.sdk.CreateTDF(&bytes.Buffer{}, reader, append(opts, WithInputSize(64))...)

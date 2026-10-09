@@ -1,7 +1,6 @@
 package v1
 
 import (
-	"context"
 	"errors"
 	"strings"
 	"testing"
@@ -119,7 +118,7 @@ func (s *AuthorizerSuite) TestAuthorizePathHandlingHeuristic() {
 		},
 	})
 
-	decision, err := authorizer.Authorize(context.Background(), &authz.Request{
+	decision, err := authorizer.Authorize(s.T().Context(), &authz.Request{
 		Token:  token,
 		RPC:    "/some.Service/Method",
 		Action: "read",
@@ -127,7 +126,7 @@ func (s *AuthorizerSuite) TestAuthorizePathHandlingHeuristic() {
 	s.Require().NoError(err)
 	s.True(decision.Allowed, "gRPC path should be allowed")
 
-	decision, err = authorizer.Authorize(context.Background(), &authz.Request{
+	decision, err = authorizer.Authorize(s.T().Context(), &authz.Request{
 		Token:  token,
 		RPC:    "/http/path",
 		Action: "read",
@@ -147,7 +146,7 @@ func (s *AuthorizerSuite) TestAuthorizeDeniedResultReturnsDeniedDecision() {
 	}, s.logger)
 	s.Require().NoError(err)
 
-	decision, err := authorizer.Authorize(context.Background(), &authz.Request{
+	decision, err := authorizer.Authorize(s.T().Context(), &authz.Request{
 		Token:  jwt.New(),
 		RPC:    "/policy.attributes.AttributesService/GetAttribute",
 		Action: "read",
@@ -170,7 +169,7 @@ func (s *AuthorizerSuite) TestAuthorizeAllowedResultReturnsAllowedDecision() {
 	}, s.logger)
 	s.Require().NoError(err)
 
-	decision, err := authorizer.Authorize(context.Background(), &authz.Request{
+	decision, err := authorizer.Authorize(s.T().Context(), &authz.Request{
 		Token:  jwt.New(),
 		RPC:    "/kas/v2/rewrap",
 		Action: "write",
@@ -192,7 +191,7 @@ func (s *AuthorizerSuite) TestAuthorizeEnforcementErrorReturnsSystemError() {
 	}, s.logger)
 	s.Require().NoError(err)
 
-	decision, err := authorizer.Authorize(context.Background(), &authz.Request{
+	decision, err := authorizer.Authorize(s.T().Context(), &authz.Request{
 		Token:  jwt.New(),
 		RPC:    "/kas/v2/rewrap",
 		Action: "write",

@@ -35,7 +35,7 @@ func tracedContext(t *testing.T) context.Context {
 	})
 	require.True(t, spanCtx.IsValid())
 
-	return trace.ContextWithSpanContext(context.Background(), spanCtx)
+	return trace.ContextWithSpanContext(t.Context(), spanCtx)
 }
 
 // logJSON emits a record through handler and returns the decoded output.
@@ -64,7 +64,7 @@ func Test_TraceHandler_NoSpanOnContext(t *testing.T) {
 	buf := &bytes.Buffer{}
 	handler := newContextAttrsHandler(slog.NewJSONHandler(buf, nil), traceContextAttrs)
 
-	out := logJSON(context.Background(), t, buf, handler)
+	out := logJSON(t.Context(), t, buf, handler)
 
 	assert.NotContains(t, out, traceIDKey)
 	assert.NotContains(t, out, spanIDKey)
@@ -74,7 +74,7 @@ func Test_TraceHandler_NoSpanOnContext(t *testing.T) {
 func Test_TraceHandler_InvalidSpanContext(t *testing.T) {
 	buf := &bytes.Buffer{}
 	handler := newContextAttrsHandler(slog.NewJSONHandler(buf, nil), traceContextAttrs)
-	ctx := trace.ContextWithSpanContext(context.Background(), trace.NewSpanContext(trace.SpanContextConfig{}))
+	ctx := trace.ContextWithSpanContext(t.Context(), trace.NewSpanContext(trace.SpanContextConfig{}))
 
 	out := logJSON(ctx, t, buf, handler)
 
@@ -98,8 +98,8 @@ func Test_TraceHandler_EnabledDelegates(t *testing.T) {
 	inner := slog.NewJSONHandler(&bytes.Buffer{}, &slog.HandlerOptions{Level: slog.LevelWarn})
 	handler := newContextAttrsHandler(inner, traceContextAttrs)
 
-	assert.False(t, handler.Enabled(context.Background(), slog.LevelInfo))
-	assert.True(t, handler.Enabled(context.Background(), slog.LevelError))
+	assert.False(t, handler.Enabled(t.Context(), slog.LevelInfo))
+	assert.True(t, handler.Enabled(t.Context(), slog.LevelError))
 }
 
 // Sources are applied in order, so a logger with both trace and request
@@ -110,7 +110,7 @@ func Test_ContextAttrsHandler_AppliesSourcesInOrder(t *testing.T) {
 	second := func(context.Context) []slog.Attr { return []slog.Attr{slog.Int("order", 2)} }
 
 	handler := newContextAttrsHandler(slog.NewJSONHandler(buf, nil), first, second)
-	logJSON(context.Background(), t, buf, handler)
+	logJSON(t.Context(), t, buf, handler)
 
 	assert.Regexp(t, `"order":1.*"order":2`, buf.String())
 }

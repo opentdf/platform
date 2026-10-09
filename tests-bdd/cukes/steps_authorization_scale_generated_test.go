@@ -125,7 +125,7 @@ func TestScaleFixtureDistributionAndDistinctConditions(t *testing.T) {
 
 func TestGeneratedScaleCasesVaryRealResourcesAndKeepValidRequests(t *testing.T) {
 	scenario := &PlatformScenarioContext{objects: make(map[string]any)}
-	ctx := context.WithValue(context.Background(), platformScenarioContextKey{}, scenario)
+	ctx := context.WithValue(t.Context(), platformScenarioContextKey{}, scenario)
 	ctx, err := prepareScaleUsers(ctx, 6000, 4625)
 	require.NoError(t, err)
 	scenario.RecordObject("projects", &policy.Attribute{Fqn: "https://scale.example/attr/project", Values: make([]*policy.Value, 6001)})

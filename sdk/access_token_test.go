@@ -14,7 +14,7 @@ import (
 func TestAccessToken_ReturnsTokenFromSource(t *testing.T) {
 	s := &SDK{tokenSource: FakeAccessTokenSource{accessToken: "test-token"}}
 
-	tok, err := s.Auth().AccessToken(context.Background())
+	tok, err := s.Auth().AccessToken(t.Context())
 	require.NoError(t, err)
 	assert.Equal(t, auth.AccessToken("test-token"), tok)
 }
@@ -22,7 +22,7 @@ func TestAccessToken_ReturnsTokenFromSource(t *testing.T) {
 func TestAccessToken_NoTokenSource(t *testing.T) {
 	s := &SDK{}
 
-	tok, err := s.Auth().AccessToken(context.Background())
+	tok, err := s.Auth().AccessToken(t.Context())
 	require.ErrorIs(t, err, ErrNoAccessTokenSource)
 	assert.Empty(t, tok)
 }
@@ -30,7 +30,7 @@ func TestAccessToken_NoTokenSource(t *testing.T) {
 func TestAccessToken_EmptyToken(t *testing.T) {
 	s := &SDK{tokenSource: FakeAccessTokenSource{accessToken: ""}}
 
-	tok, err := s.Auth().AccessToken(context.Background())
+	tok, err := s.Auth().AccessToken(t.Context())
 	require.ErrorIs(t, err, ErrAccessTokenInvalid)
 	assert.Empty(t, tok)
 }
@@ -58,7 +58,7 @@ func (r *recordingTokenSource) MakeToken(func(jwk.Key) ([]byte, error)) ([]byte,
 }
 
 func TestAccessToken_ForwardsContextAndClient(t *testing.T) {
-	ctx := context.WithValue(context.Background(), recordCtxKey{}, "value")
+	ctx := context.WithValue(t.Context(), recordCtxKey{}, "value")
 	client := &http.Client{}
 
 	rec := &recordingTokenSource{token: "test-token"}

@@ -60,7 +60,7 @@ type DifferentNamespaceEntities struct {
 
 func (s *ObligationTriggersSuite) SetupSuite() {
 	slog.Info("setting up db.Obligations test suite")
-	s.ctx = context.Background()
+	s.ctx = s.T().Context()
 	c := *Config
 	c.DB.Schema = "test_opentdf_obligation_triggers"
 	s.db = fixtures.NewDBInterface(s.ctx, c)

@@ -170,7 +170,7 @@ func (s *RoundtripSuite) CreateTestData() error {
 	// create namespace example.com
 	var exampleNamespace *policy.Namespace
 	slog.Info("listing namespaces")
-	listResp, err := client.Namespaces.ListNamespaces(context.Background(), &namespaces.ListNamespacesRequest{})
+	listResp, err := client.Namespaces.ListNamespaces(s.T().Context(), &namespaces.ListNamespacesRequest{})
 	if err != nil {
 		return err
 	}
@@ -188,7 +188,7 @@ func (s *RoundtripSuite) CreateTestData() error {
 
 	if exampleNamespace == nil {
 		slog.Info("creating new namespace")
-		resp, err := client.Namespaces.CreateNamespace(context.Background(), &namespaces.CreateNamespaceRequest{
+		resp, err := client.Namespaces.CreateNamespace(s.T().Context(), &namespaces.CreateNamespaceRequest{
 			Name: "example.com",
 		})
 		if err != nil {
@@ -201,7 +201,7 @@ func (s *RoundtripSuite) CreateTestData() error {
 
 	// Create the attributes
 	slog.Info("creating attribute language with allOf rule")
-	_, err = client.Attributes.CreateAttribute(context.Background(), &attributes.CreateAttributeRequest{
+	_, err = client.Attributes.CreateAttribute(s.T().Context(), &attributes.CreateAttributeRequest{
 		Name:        "language",
 		NamespaceId: exampleNamespace.GetId(),
 		Rule:        *policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF.Enum(),
@@ -223,7 +223,7 @@ func (s *RoundtripSuite) CreateTestData() error {
 	}
 
 	slog.Info("creating attribute color with anyOf rule")
-	_, err = client.Attributes.CreateAttribute(context.Background(), &attributes.CreateAttributeRequest{
+	_, err = client.Attributes.CreateAttribute(s.T().Context(), &attributes.CreateAttributeRequest{
 		Name:        "color",
 		NamespaceId: exampleNamespace.GetId(),
 		Rule:        *policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF.Enum(),
@@ -245,7 +245,7 @@ func (s *RoundtripSuite) CreateTestData() error {
 	}
 
 	slog.Info("creating attribute cards with hierarchy rule")
-	_, err = client.Attributes.CreateAttribute(context.Background(), &attributes.CreateAttributeRequest{
+	_, err = client.Attributes.CreateAttribute(s.T().Context(), &attributes.CreateAttributeRequest{
 		Name:        "cards",
 		NamespaceId: exampleNamespace.GetId(),
 		Rule:        *policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY.Enum(),
@@ -268,7 +268,7 @@ func (s *RoundtripSuite) CreateTestData() error {
 
 	slog.Info("##################################\n#######################################")
 
-	allAttr, err := client.Attributes.ListAttributes(context.Background(), &attributes.ListAttributesRequest{})
+	allAttr, err := client.Attributes.ListAttributes(s.T().Context(), &attributes.ListAttributesRequest{})
 	if err != nil {
 		slog.Error("could not list attributes", slog.String("error", err.Error()))
 		return err
@@ -279,7 +279,7 @@ func (s *RoundtripSuite) CreateTestData() error {
 
 	// get the attribute ids for the values were mapping to the client
 	var attributeValueIDs []string
-	fqnResp, err := client.Attributes.GetAttributeValuesByFqns(context.Background(), &attributes.GetAttributeValuesByFqnsRequest{
+	fqnResp, err := client.Attributes.GetAttributeValuesByFqns(s.T().Context(), &attributes.GetAttributeValuesByFqnsRequest{
 		Fqns: attributesToMap,
 	})
 	if err != nil {
@@ -293,7 +293,7 @@ func (s *RoundtripSuite) CreateTestData() error {
 	// create subject mappings
 	slog.Info("creating subject mappings", slog.String("client_id", s.ClientID))
 	for _, attributeID := range attributeValueIDs {
-		_, err = client.SubjectMapping.CreateSubjectMapping(context.Background(), &subjectmapping.CreateSubjectMappingRequest{
+		_, err = client.SubjectMapping.CreateSubjectMapping(s.T().Context(), &subjectmapping.CreateSubjectMappingRequest{
 			AttributeValueId: attributeID,
 			Actions: []*policy.Action{
 				{Name: actions.ActionNameCreate},

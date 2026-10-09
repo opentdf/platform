@@ -60,9 +60,7 @@ func unverifiedBase64Bytes(str string) []byte {
 }
 
 func FuzzLoadTDF(f *testing.F) {
-	mockWellKnown := newMockWellKnownService(createWellKnown(nil), nil)
-	sdk := newSDK()
-	sdk.wellknownConfiguration = mockWellKnown
+	sdk := newLoadTestSDK()
 	f.Add(writeBytes(func(writer io.Writer) error {
 		reader := bytes.NewReader([]byte("AAA"))
 		_, err := sdk.CreateTDF(writer, reader, func(tdfConfig *TDFConfig) error {
@@ -76,6 +74,8 @@ func FuzzLoadTDF(f *testing.F) {
 		require.NoError(f, err)
 		return err
 	}))
+	// DSPX-5102
+	f.Add(zipWithManifest(f, nullStatementManifestJSON))
 	// seed with large manifest allocation up front
 	f.Add(unverifiedBase64Bytes("UEsDBC0ACAAAAH11LzEAAAAAAAAAAAAAAAAJAAAAM" +
 		"C5wYXlsb2Fk5LJYrTiapi/CUQ0dlqMU0/VmunX+qRIyQghasf6aEVBLBwgke7o5HwAAAB8A" +
@@ -169,6 +169,8 @@ func FuzzLoadTDF(f *testing.F) {
 		"HCNSOqYACBQAAAgUAAFBLAQItAC0ACAAAAF2uLzFp296fHwAAAB8AAAAJAAAAAAAAAAAAAA" +
 		"AAAAAAAAAwLnBheWxvYWRQSwECLQAtAAgAAABdri8x1I6pgAIFAAACBQAADwAAAAAAAAAAA" +
 		"AAAAABWAAAAMC5tYW5pZmVzdC5qc29uUEsFBgAAAAACAAIAdAAAAJUFAAAAAA=="))
+	// small and schema-valid, so mutations reach manifest parsing
+	f.Add(zipWithManifest(f, minimalManifestJSON))
 	// large segment sizes
 	// commented out because payload is too large to provide an efficient seed context - only use for manual testing
 	/*f.Add(writeBytes(func(writer io.Writer) error {
@@ -188,7 +190,8 @@ func FuzzLoadTDF(f *testing.F) {
 	}))*/
 
 	f.Fuzz(func(t *testing.T, data []byte) {
-		r, err := sdk.LoadTDF(bytes.NewReader(data))
+		// no registry here; the allowlist lookup would reject every input first
+		r, err := sdk.LoadTDF(bytes.NewReader(data), WithIgnoreAllowlist(true))
 		if err != nil {
 			assert.Nil(t, r)
 			return

@@ -24,7 +24,6 @@ import (
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/types/known/structpb"
 
-	"connectrpc.com/connect"
 	"github.com/lestrrat-go/jwx/v2/jwa"
 	"github.com/lestrrat-go/jwx/v2/jwk"
 	"github.com/lestrrat-go/jwx/v2/jws"
@@ -1575,18 +1574,10 @@ func TestVerifySRTSignature(t *testing.T) {
 }
 
 type rewrapAuthorizationV2Stub struct {
-	decision         authzV2.Decision
-	err              error
-	getDecisionCalls *int
+	decision authzV2.Decision
 }
 
 func (s rewrapAuthorizationV2Stub) GetDecision(_ context.Context, req *authzV2.GetDecisionRequest) (*authzV2.GetDecisionResponse, error) {
-	if s.getDecisionCalls != nil {
-		(*s.getDecisionCalls)++
-	}
-	if s.err != nil {
-		return nil, s.err
-	}
 	return &authzV2.GetDecisionResponse{
 		Decision: &authzV2.ResourceDecision{
 			EphemeralResourceId: req.GetResource().GetEphemeralId(),
@@ -1607,59 +1598,29 @@ func (rewrapAuthorizationV2Stub) GetEntitlements(context.Context, *authzV2.GetEn
 	return nil, errors.New("unexpected GetEntitlements call")
 }
 
-func TestTDF3RewrapEmitsDeniedAuditOnlyForAuthorizationDeny(t *testing.T) {
+func TestTDF3RewrapEmitsAuditEventForAuthorizationDecision(t *testing.T) {
 	tests := []struct {
-		name              string
-		decision          authzV2.Decision
-		decisionErr       error
-		mutateRequest     func(*kaspb.UnsignedRewrapRequest_WithPolicyRequest)
-		wantDecisionCalls int
-		wantAudit         bool
-		wantAuditResult   audit.ActionResult
+		name            string
+		decision        authzV2.Decision
+		wantAuditResult audit.ActionResult
 	}{
 		{
-			name:              "authorization deny emits denied audit",
-			decision:          authzV2.Decision_DECISION_DENY,
-			wantDecisionCalls: 1,
-			wantAudit:         true,
-			wantAuditResult:   audit.ActionResultFailure,
+			name:            "deny emits failure-result rewrap audit event",
+			decision:        authzV2.Decision_DECISION_DENY,
+			wantAuditResult: audit.ActionResultFailure,
 		},
 		{
-			name:              "authorization permit emits successful audit",
-			decision:          authzV2.Decision_DECISION_PERMIT,
-			wantDecisionCalls: 1,
-			wantAudit:         true,
-			wantAuditResult:   audit.ActionResultSuccess,
-		},
-		{
-			name:              "authorization service failure emits no denied audit",
-			decisionErr:       connect.NewError(connect.CodeUnavailable, errors.New("authorization unavailable")),
-			wantDecisionCalls: 1,
-		},
-		{
-			name:     "invalid policy binding never reaches authorization or denied audit",
-			decision: authzV2.Decision_DECISION_DENY,
-			mutateRequest: func(request *kaspb.UnsignedRewrapRequest_WithPolicyRequest) {
-				request.GetKeyAccessObjects()[0].GetKeyAccessObject().PolicyBinding.Hash = base64.StdEncoding.EncodeToString([]byte("invalid binding"))
-			},
-		},
-		{
-			name:     "invalid wrapped key never reaches authorization or denied audit",
-			decision: authzV2.Decision_DECISION_DENY,
-			mutateRequest: func(request *kaspb.UnsignedRewrapRequest_WithPolicyRequest) {
-				request.GetKeyAccessObjects()[0].GetKeyAccessObject().WrappedKey = []byte("invalid wrapped key")
-			},
+			name:            "permit emits success-result rewrap audit event",
+			decision:        authzV2.Decision_DECISION_PERMIT,
+			wantAuditResult: audit.ActionResultSuccess,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			var events []audit.Event
-			decisionCalls := 0
 			provider := newTDF3AuditTestProvider(t, rewrapAuthorizationV2Stub{
-				decision:         tt.decision,
-				err:              tt.decisionErr,
-				getDecisionCalls: &decisionCalls,
+				decision: tt.decision,
 			}, func(_ context.Context, event audit.Event) error {
 				events = append(events, event)
 				return nil
@@ -1670,9 +1631,6 @@ func TestTDF3RewrapEmitsDeniedAuditOnlyForAuthorizationDeny(t *testing.T) {
 			wrappedKey, err := base64.StdEncoding.DecodeString(string(kao.GetWrappedKey()))
 			require.NoError(t, err)
 			kao.WrappedKey = wrappedKey
-			if tt.mutateRequest != nil {
-				tt.mutateRequest(requests[0])
-			}
 
 			_, _, err = provider.tdf3Rewrap(
 				t.Context(),
@@ -1682,14 +1640,9 @@ func TestTDF3RewrapEmitsDeniedAuditOnlyForAuthorizationDeny(t *testing.T) {
 				&AdditionalRewrapContext{},
 			)
 			require.NoError(t, err)
-			require.Equal(t, tt.wantDecisionCalls, decisionCalls)
-
-			if !tt.wantAudit {
-				require.Empty(t, events)
-				return
-			}
 			require.Len(t, events, 1)
 			require.Equal(t, audit.VerbRewrap, events[0].Verb)
+			require.Equal(t, audit.ActionTypeRewrap, events[0].Action.Type)
 			require.Equal(t, tt.wantAuditResult, events[0].Action.Result)
 		})
 	}

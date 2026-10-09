@@ -3,6 +3,7 @@ package tdf
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"io"
 	"log/slog"
 	"mime"
@@ -268,6 +269,12 @@ func InitEncryptCommand() {
 		encryptDoc.GetDocFlag("kas-url-path").Default,
 		encryptDoc.GetDocFlag("kas-url-path").Description,
 	)
+	if err := encryptDoc.Flags().MarkDeprecated(
+		encryptDoc.GetDocFlag("kas-url-path").Name,
+		"use platform KAS grants and well-known base-key discovery; this flag will be removed in a future release",
+	); err != nil {
+		panic(fmt.Sprintf("failed to mark kas-url-path flag deprecated: %v", err))
+	}
 	encryptDoc.Flags().String(
 		encryptDoc.GetDocFlag("target-mode").Name,
 		encryptDoc.GetDocFlag("target-mode").Default,

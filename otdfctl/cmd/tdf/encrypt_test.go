@@ -194,3 +194,12 @@ func TestDetectMimeTypeEmptyPayload(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "text/plain", got)
 }
+
+func TestInitEncryptCommandDeprecatesKASURLPath(t *testing.T) {
+	InitEncryptCommand()
+
+	flag := EncryptCmd.Flags().Lookup("kas-url-path")
+	require.NotNil(t, flag)
+	assert.Equal(t, "/kas", flag.DefValue)
+	assert.Contains(t, flag.Deprecated, "well-known base-key discovery")
+}

@@ -36,7 +36,7 @@ command:
         - tdf3
       default: ztdf
     - name: kas-url-path
-      description: URL path to the KAS service at the platform endpoint domain. Leading slash is required if needed.
+      description: DEPRECATED Use platform KAS grants and well-known base-key discovery. URL path to the KAS service at the platform endpoint domain. Leading slash is required if needed.
       default: /kas
     - name: target-mode
       description: The target TDF spec version (e.g., "4.3.0"); intended for legacy compatibility and subject to removal.

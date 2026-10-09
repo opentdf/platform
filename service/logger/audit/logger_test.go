@@ -67,7 +67,7 @@ func TestPolicyHelperReturnsConstructionError(t *testing.T) {
 func TestRewrapFailureOverridesSuccessfulAccess(t *testing.T) {
 	l, output := createTestLogger()
 	params := rewrapParams
-	params.IsSuccess = true
+	params.Result = ActionResultSuccess
 	require.NoError(t, l.RewrapFailure(t.Context(), params))
 	entry, _ := extractLogEntry(t, output)
 	payload := decodeAuditPayload(t, entry.Audit)
@@ -77,11 +77,18 @@ func TestRewrapFailureOverridesSuccessfulAccess(t *testing.T) {
 func TestRewrapDeniedOverridesSuccessfulAccess(t *testing.T) {
 	l, output := createTestLogger()
 	params := rewrapParams
-	params.IsSuccess = true
+	params.Result = ActionResultSuccess
 	require.NoError(t, l.RewrapDenied(t.Context(), params))
 	entry, _ := extractLogEntry(t, output)
 	payload := decodeAuditPayload(t, entry.Audit)
 	require.Equal(t, ActionResultFailure.String(), requireMap(t, payload["action"])["result"])
+}
+
+func TestRewrapRejectsUnsupportedResult(t *testing.T) {
+	l, _ := createTestLogger()
+	params := rewrapParams
+	params.Result = ActionResultEncrypt
+	require.ErrorIs(t, l.Rewrap(t.Context(), params), ErrInvalidEvent)
 }
 
 func TestBuiltInRecordingPreservesCanceledProducerContext(t *testing.T) {
@@ -163,6 +170,7 @@ var rewrapParams = RewrapAuditEventParams{
 			},
 		},
 	},
+	PolicyVerified: true,
 	TDFFormat:      "test-tdf-format",
 	Algorithm:      "test-algorithm",
 	PolicyBinding:  "test-policy-binding",
@@ -286,7 +294,9 @@ func TestAuditRewrapSuccess(t *testing.T) {
 				"sessionKeyType": "%s",
 				"keyID": "%s",
 				"policyBinding": "%s",
-				"tdfFormat": "%s"
+				"tdfFormat": "%s",
+				"policy_verified": true,
+				"suspected_tamper": false
 			},
 			"clientInfo": {
 			  "userAgent": "%s",
@@ -347,7 +357,10 @@ func TestAuditRewrapFailure(t *testing.T) {
 				"sessionKeyType": "%s",
 				"keyID": "%s",
 				"policyBinding": "%s",
-				"tdfFormat": "%s"
+				"tdfFormat": "%s",
+				"failure_reason": "rewrap_error",
+				"policy_verified": true,
+				"suspected_tamper": false
 			},
 			"clientInfo": {
 			  "userAgent": "%s",

@@ -20,37 +20,56 @@ type KasAttribute struct {
 }
 
 type RewrapAuditEventParams struct {
-	Policy         KasPolicy
-	IsSuccess      bool
-	TDFFormat      string
-	Algorithm      string
-	PolicyBinding  string
-	KeyID          string
-	SessionKeyType string
-	isDenied       bool
+	Policy          KasPolicy
+	PolicyID        string
+	Result          ActionResult
+	FailureReason   string
+	SuspectedTamper bool
+	PolicyVerified  bool
+	KAOID           string
+	TDFFormat       string
+	Algorithm       string
+	PolicyBinding   string
+	KeyID           string
+	SessionKeyType  string
 }
 
 func CreateRewrapAuditEvent(ctx context.Context, params RewrapAuditEventParams) (*EventObject, error) {
 	auditDataFromContext := GetAuditDataFromContext(ctx)
 
-	// Assign action result
-	auditEventActionResult := ActionResultError
-	switch {
-	case params.IsSuccess:
-		auditEventActionResult = ActionResultSuccess
-	case params.isDenied:
-		auditEventActionResult = ActionResultFailure
+	objectID := params.PolicyID
+	if params.Policy.UUID != uuid.Nil {
+		objectID = params.Policy.UUID.String()
 	}
 
-	attrFQNS := make([]string, len(params.Policy.Body.DataAttributes))
-	for i, attr := range params.Policy.Body.DataAttributes {
-		attrFQNS[i] = attr.URI
+	attrFQNS := make([]string, 0)
+	if params.PolicyVerified {
+		attrFQNS = make([]string, len(params.Policy.Body.DataAttributes))
+		for i, attr := range params.Policy.Body.DataAttributes {
+			attrFQNS[i] = attr.URI
+		}
+	}
+
+	eventMetadata := auditEventMetadata{
+		"keyID":            params.KeyID,
+		"policyBinding":    params.PolicyBinding,
+		"tdfFormat":        params.TDFFormat,
+		"algorithm":        params.Algorithm,
+		"sessionKeyType":   params.SessionKeyType,
+		"policy_verified":  params.PolicyVerified,
+		"suspected_tamper": params.SuspectedTamper,
+	}
+	if params.FailureReason != "" {
+		eventMetadata["failure_reason"] = params.FailureReason
+	}
+	if params.KAOID != "" {
+		eventMetadata["kao_id"] = params.KAOID
 	}
 
 	return &EventObject{
 		Object: auditEventObject{
 			Type: ObjectTypeKeyObject,
-			ID:   params.Policy.UUID.String(),
+			ID:   objectID,
 			Attributes: eventObjectAttributes{
 				EventObjectAttributes: EventObjectAttributes{
 					Assertions:  []string{}, // Assertions aren't passed in the rewrap policy body
@@ -62,7 +81,7 @@ func CreateRewrapAuditEvent(ctx context.Context, params RewrapAuditEventParams) 
 		Action: eventAction{
 			EventObjectAction: EventObjectAction{
 				Type:   ActionTypeRewrap,
-				Result: auditEventActionResult,
+				Result: params.Result,
 			},
 		},
 		Actor: auditEventActor{
@@ -71,13 +90,7 @@ func CreateRewrapAuditEvent(ctx context.Context, params RewrapAuditEventParams) 
 				Attributes: make([]any, 0),
 			},
 		},
-		EventMetaData: auditEventMetadata{
-			"keyID":          params.KeyID,
-			"policyBinding":  params.PolicyBinding,
-			"tdfFormat":      params.TDFFormat,
-			"algorithm":      params.Algorithm,
-			"sessionKeyType": params.SessionKeyType,
-		},
+		EventMetaData: eventMetadata,
 		ClientInfo: eventClientInfo{
 			EventClientInfo: EventClientInfo{
 				Platform:  "kas",

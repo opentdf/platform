@@ -2,6 +2,7 @@ package audit
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"time"
 )
@@ -125,22 +126,54 @@ func (a *Logger) RecordTimeout() time.Duration {
 
 // RewrapSuccess records a completed rewrap and returns any recording error.
 func (a *Logger) RewrapSuccess(ctx context.Context, params RewrapAuditEventParams) error {
-	params.IsSuccess = true
-	params.isDenied = false
-	return a.rewrapBase(ctx, params)
+	params.Result = ActionResultSuccess
+	params.PolicyVerified = true
+	return a.Rewrap(ctx, params)
 }
 
 // RewrapDenied records a rewrap rejected by an authorization decision.
 func (a *Logger) RewrapDenied(ctx context.Context, params RewrapAuditEventParams) error {
-	params.IsSuccess = false
-	params.isDenied = true
-	return a.rewrapBase(ctx, params)
+	params.Result = ActionResultFailure
+	params.PolicyVerified = true
+	if params.FailureReason == "" {
+		params.FailureReason = "policy_denied"
+	}
+	return a.Rewrap(ctx, params)
 }
 
 // RewrapFailure records a failed rewrap and returns any recording error.
 func (a *Logger) RewrapFailure(ctx context.Context, params RewrapAuditEventParams) error {
-	params.IsSuccess = false
-	params.isDenied = false
+	params.Result = ActionResultError
+	params.PolicyVerified = true
+	if params.FailureReason == "" {
+		params.FailureReason = "rewrap_error"
+	}
+	return a.Rewrap(ctx, params)
+}
+
+// Rewrap records a rewrap outcome whose result and metadata were classified by
+// the caller. It is used when a rewrap fails before the success/denial helpers
+// can accurately describe the outcome.
+func (a *Logger) Rewrap(ctx context.Context, params RewrapAuditEventParams) error {
+	switch params.Result {
+	case ActionResultSuccess:
+	case ActionResultFailure:
+		if params.FailureReason == "" {
+			params.FailureReason = "rewrap_rejected"
+		}
+	case ActionResultError:
+		if params.FailureReason == "" {
+			params.FailureReason = "rewrap_error"
+		}
+	case ActionResultEncrypt,
+		ActionResultBlock,
+		ActionResultIgnore,
+		ActionResultOverride,
+		ActionResultCancel:
+		return fmt.Errorf("%w: unsupported rewrap result %q", ErrInvalidEvent, params.Result.String())
+	default:
+		return fmt.Errorf("%w: unknown rewrap result %d", ErrInvalidEvent, params.Result)
+	}
 	return a.rewrapBase(ctx, params)
 }
 

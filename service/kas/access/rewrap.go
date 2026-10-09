@@ -43,10 +43,36 @@ import (
 
 const (
 	kTDF3Algorithm                = "rsa:2048"
+	kTDF3Format                   = "tdf3"
 	kFailedStatus                 = "fail"
 	kPermitStatus                 = "permit"
 	additionalRewrapContextHeader = "X-Rewrap-Additional-Context"
 	requiredObligationsHeader     = "X-Required-Obligations"
+
+	rewrapReasonPolicyBindingMismatch  = "policy_binding_mismatch"
+	rewrapReasonPolicyBindingMissing   = "policy_binding_missing"
+	rewrapReasonPolicyBindingMalformed = "policy_binding_malformed"
+	rewrapReasonPolicyBodyInvalid      = "policy_body_invalid"
+	rewrapReasonDEKDecryptFailed       = "dek_decrypt_failed"
+	rewrapReasonKAOInvalid             = "kao_invalid"
+	rewrapReasonUnsupportedKeyType     = "unsupported_key_type"
+	rewrapReasonKeyTypeDisabled        = "key_type_disabled"
+	rewrapReasonInvalidEphemeralKey    = "invalid_ephemeral_key"
+	rewrapReasonPolicyDenied           = "policy_denied"
+	rewrapReasonAuthzUnavailable       = "authz_unavailable"
+	rewrapReasonContextCancelled       = "context_cancelled"
+	rewrapReasonAuthzRejected          = "authz_rejected"
+	rewrapReasonInvalidClientPublicKey = "invalid_client_public_key"
+	rewrapReasonECRewrapDisabled       = "ec_rewrap_disabled"
+	rewrapReasonSessionKeyError        = "session_key_error"
+	rewrapReasonEncapsulationFailed    = "encapsulation_failed"
+	rewrapReasonSRTInvalid             = "srt_invalid"
+	rewrapReasonSRTSignatureInvalid    = "srt_signature_invalid"
+	rewrapReasonRequestBodyInvalid     = "request_body_invalid"
+	rewrapReasonMissingAccessToken     = "missing_access_token"
+	rewrapReasonInvalidRewrapContext   = "invalid_rewrap_context"
+	rewrapReasonInvalidRequest         = "invalid_request"
+	rewrapReasonIncomplete             = "rewrap_incomplete"
 )
 
 var (
@@ -83,6 +109,20 @@ type kaoResult struct {
 	// Optional: Present for EC wrapped responses
 	EphemeralPublicKey  []byte
 	RequiredObligations []string
+	Audit               rewrapAuditOutcome
+}
+
+type rewrapAuditOutcome struct {
+	Result          audit.ActionResult
+	FailureReason   string
+	SuspectedTamper bool
+	PolicyVerified  bool
+	Classified      bool
+}
+
+type requestRewrapAuditOutcome struct {
+	PolicyID string
+	Outcome  rewrapAuditOutcome
 }
 
 // From policy ID to KAO ID to result
@@ -370,7 +410,7 @@ func extractAndConvertV1SRTBody(body []byte) (kaspb.UnsignedRewrapRequest, error
 	}, nil
 }
 
-func (p *Provider) extractSRTBody(ctx context.Context, headers http.Header, in *kaspb.RewrapRequest) (*kaspb.UnsignedRewrapRequest, bool, error) {
+func (p *Provider) extractSRTBody(ctx context.Context, headers http.Header, in *kaspb.RewrapRequest) (*kaspb.UnsignedRewrapRequest, bool, rewrapAuditOutcome, error) {
 	isV1 := false
 	// First load legacy method for verifying SRT
 	if vpk, ok := headers["X-Virtrupubkey"]; ok && len(vpk) == 1 {
@@ -392,16 +432,16 @@ func (p *Provider) extractSRTBody(ctx context.Context, headers http.Header, in *
 
 	token, rbString, parseErr := p.parseSRT(ctx, srt)
 	if parseErr != nil {
-		return nil, false, parseErr
+		return nil, false, rejectedRewrapOutcome(rewrapReasonSRTInvalid, false), parseErr
 	}
 
 	if validateErr := p.validateSRTClaims(ctx, token, requireVerification); validateErr != nil {
-		return nil, false, validateErr
+		return nil, false, rejectedRewrapOutcome(rewrapReasonSRTInvalid, false), validateErr
 	}
 
 	if requireVerification {
 		if err := p.verifySRTSignature(ctx, srt, dpopJWK); err != nil {
-			return nil, false, err
+			return nil, false, rejectedRewrapOutcome(rewrapReasonSRTSignatureInvalid, true), err
 		}
 	}
 
@@ -415,7 +455,7 @@ func (p *Provider) extractSRTBody(ctx context.Context, headers http.Header, in *
 			slog.Any("err_v2", err),
 			slog.Int("rb_string_length", len(rbString)),
 		)
-		return nil, false, err400("invalid request body")
+		return nil, false, rejectedRewrapOutcome(rewrapReasonRequestBodyInvalid, false), err400("invalid request body")
 	}
 	if len(requestBody.GetRequests()) == 0 {
 		p.Logger.DebugContext(ctx, "legacy v1 SRT")
@@ -429,7 +469,7 @@ func (p *Provider) extractSRTBody(ctx context.Context, headers http.Header, in *
 				slog.Int("rb_string_length", len(rbString)),
 				slog.Int("rewrap_body_length", len(requestBody.String())),
 			)
-			return nil, false, err400("invalid request body")
+			return nil, false, rejectedRewrapOutcome(rewrapReasonRequestBodyInvalid, false), err400("invalid request body")
 		}
 		isV1 = true
 	}
@@ -444,7 +484,7 @@ func (p *Provider) extractSRTBody(ctx context.Context, headers http.Header, in *
 	block, _ := pem.Decode([]byte(requestBody.GetClientPublicKey()))
 	if block == nil {
 		p.Logger.WarnContext(ctx, "missing clientPublicKey")
-		return nil, isV1, err400("clientPublicKey failure")
+		return nil, isV1, rejectedRewrapOutcome(rewrapReasonInvalidClientPublicKey, false), err400("clientPublicKey failure")
 	}
 
 	// Pure ML-KEM client session keys are SPKI-wrapped under the NIST ML-KEM
@@ -456,26 +496,35 @@ func (p *Provider) extractSRTBody(ctx context.Context, headers http.Header, in *
 		(oid.Equal(ocrypto.OIDMLKEM768) || oid.Equal(ocrypto.OIDMLKEM1024)) {
 		if !p.Preview.MLKEMTDFEnabled {
 			p.Logger.ErrorContext(ctx, "ml-kem session key rewrap not enabled", slog.String("key_type", oid.String()))
-			return nil, isV1, err400("clientPublicKey unsupported type")
+			return nil, isV1, rejectedRewrapOutcome(rewrapReasonInvalidClientPublicKey, false), err400("clientPublicKey unsupported type")
 		}
-		return &requestBody, isV1, nil
+		return &requestBody, isV1, rewrapAuditOutcome{}, nil
 	}
 
 	// Try to parse the clientPublicKey
 	clientPublicKey, err := x509.ParsePKIXPublicKey(block.Bytes)
 	if err != nil {
 		p.Logger.WarnContext(ctx, "failure to parse clientPublicKey", slog.Any("error", err))
-		return nil, isV1, err400("clientPublicKey parse failure")
+		return nil, isV1, rejectedRewrapOutcome(rewrapReasonInvalidClientPublicKey, false), err400("clientPublicKey parse failure")
 	}
 	// Check to make sure the clientPublicKey is a supported key type
 	switch clientPublicKey.(type) {
 	case *rsa.PublicKey:
-		return &requestBody, isV1, nil
+		return &requestBody, isV1, rewrapAuditOutcome{}, nil
 	case *ecdsa.PublicKey:
-		return &requestBody, isV1, nil
+		return &requestBody, isV1, rewrapAuditOutcome{}, nil
 	default:
 		p.Logger.WarnContext(ctx, "unsupported clientPublicKey type", slog.String("type", fmt.Sprintf("%T", clientPublicKey)))
-		return nil, isV1, err400("clientPublicKey unsupported type")
+		return nil, isV1, rejectedRewrapOutcome(rewrapReasonInvalidClientPublicKey, false), err400("clientPublicKey unsupported type")
+	}
+}
+
+func rejectedRewrapOutcome(reason string, suspectedTamper bool) rewrapAuditOutcome {
+	return rewrapAuditOutcome{
+		Result:          audit.ActionResultFailure,
+		FailureReason:   reason,
+		SuspectedTamper: suspectedTamper,
+		Classified:      true,
 	}
 }
 
@@ -550,19 +599,41 @@ func getEntityInfo(ctx context.Context, logger *logger.Logger) (*entityInfo, err
 	return info, nil
 }
 
-func failedKAORewrapWithObligations(res map[string]kaoResult, kao *kaspb.UnsignedRewrapRequest_WithKeyAccessObject, err error, requiredObligations []string) {
+func failedKAORewrapWithObligations(res map[string]kaoResult, kao *kaspb.UnsignedRewrapRequest_WithKeyAccessObject, err error, requiredObligations []string, reason string) {
 	res[kao.GetKeyAccessObjectId()] = kaoResult{
 		ID:                  kao.GetKeyAccessObjectId(),
 		Error:               err,
 		RequiredObligations: requiredObligations,
+		Audit: rewrapAuditOutcome{
+			Result:         audit.ActionResultFailure,
+			FailureReason:  reason,
+			PolicyVerified: true,
+			Classified:     true,
+		},
 	}
 }
 
-func failedKAORewrap(res map[string]kaoResult, kao *kaspb.UnsignedRewrapRequest_WithKeyAccessObject, err error) {
+func failedKAORewrap(res map[string]kaoResult, kao *kaspb.UnsignedRewrapRequest_WithKeyAccessObject, err error, reason string, suspectedTamper bool) {
 	res[kao.GetKeyAccessObjectId()] = kaoResult{
 		ID:    kao.GetKeyAccessObjectId(),
 		Error: err,
+		Audit: rewrapAuditOutcome{
+			Result:          audit.ActionResultFailure,
+			FailureReason:   reason,
+			SuspectedTamper: suspectedTamper,
+			Classified:      true,
+		},
 	}
+}
+
+func erroredKAORewrap(res map[string]kaoResult, kao *kaspb.UnsignedRewrapRequest_WithKeyAccessObject, err error, reason string) {
+	current := res[kao.GetKeyAccessObjectId()]
+	current.ID = kao.GetKeyAccessObjectId()
+	current.Error = err
+	current.Audit.Result = audit.ActionResultError
+	current.Audit.FailureReason = reason
+	current.Audit.Classified = true
+	res[kao.GetKeyAccessObjectId()] = current
 }
 
 func addResultsToResponse(response *kaspb.RewrapResponse, result policyKAOResults) {
@@ -605,16 +676,27 @@ func (p *Provider) Rewrap(ctx context.Context, req *connect.Request[kaspb.Rewrap
 	in := req.Msg
 	p.Logger.DebugContext(ctx, "REWRAP")
 
-	body, isV1, err := p.extractSRTBody(ctx, req.Header(), in)
+	body, isV1, requestOutcome, err := p.extractSRTBody(ctx, req.Header(), in)
 	if err != nil {
 		p.Logger.TraceContext(ctx, "srt extraction failure", slog.Any("srt", body), slog.Any("error", err))
 		p.Logger.DebugContext(ctx, "unverifiable srt", slog.Any("error", err))
+		p.recordRewrapAuditEvent(ctx, audit.RewrapAuditEventParams{
+			Result:          requestOutcome.Result,
+			FailureReason:   requestOutcome.FailureReason,
+			SuspectedTamper: requestOutcome.SuspectedTamper,
+			TDFFormat:       kTDF3Format,
+		})
 		return nil, err
 	}
 
 	entityInfo, err := getEntityInfo(ctx, p.Logger)
 	if err != nil {
 		p.Logger.DebugContext(ctx, "no entity info", slog.Any("error", err))
+		p.recordRewrapAuditEvent(ctx, audit.RewrapAuditEventParams{
+			Result:        audit.ActionResultFailure,
+			FailureReason: rewrapReasonMissingAccessToken,
+			TDFFormat:     kTDF3Format,
+		})
 		return nil, err
 	}
 
@@ -634,11 +716,21 @@ func (p *Provider) Rewrap(ctx context.Context, req *connect.Request[kaspb.Rewrap
 	additionalRewrapContext, err := getAdditionalRewrapContext(req.Header())
 	if err != nil {
 		p.Logger.WarnContext(ctx, "failed to get additional rewrap context", slog.Any("error", err))
+		p.recordRewrapAuditEvent(ctx, audit.RewrapAuditEventParams{
+			Result:        audit.ActionResultFailure,
+			FailureReason: rewrapReasonInvalidRewrapContext,
+			TDFFormat:     kTDF3Format,
+		})
 		return nil, err400("failed to get additional rewrap context")
 	}
 	resp.SessionPublicKey, results, err = p.tdf3Rewrap(ctx, tdf3Reqs, body.GetClientPublicKey(), entityInfo, additionalRewrapContext)
 	if err != nil {
 		p.Logger.WarnContext(ctx, "status 400, tdf3 rewrap failure", slog.Any("error", err))
+		p.recordRewrapAuditEvent(ctx, audit.RewrapAuditEventParams{
+			Result:        audit.ActionResultError,
+			FailureReason: rewrapReasonIncomplete,
+			TDFFormat:     kTDF3Format,
+		})
 		return nil, err
 	}
 	addResultsToResponse(resp, results)
@@ -646,6 +738,11 @@ func (p *Provider) Rewrap(ctx context.Context, req *connect.Request[kaspb.Rewrap
 	if isV1 {
 		if len(results) != 1 {
 			p.Logger.WarnContext(ctx, "status 400 due to wrong result set size", slog.Any("results", results))
+			p.recordRewrapAuditEvent(ctx, audit.RewrapAuditEventParams{
+				Result:        audit.ActionResultFailure,
+				FailureReason: rewrapReasonInvalidRequest,
+				TDFFormat:     kTDF3Format,
+			})
 			return nil, err400("invalid request")
 		}
 		kaoResults := *getMapValue(results)
@@ -656,6 +753,11 @@ func (p *Provider) Rewrap(ctx context.Context, req *connect.Request[kaspb.Rewrap
 				slog.Any("kao_results", kaoResults),
 				slog.Any("results", results),
 			)
+			p.recordRewrapAuditEvent(ctx, audit.RewrapAuditEventParams{
+				Result:        audit.ActionResultFailure,
+				FailureReason: rewrapReasonInvalidRequest,
+				TDFFormat:     kTDF3Format,
+			})
 			return nil, err400("invalid request")
 		}
 		kao := *getMapValue(kaoResults)
@@ -702,14 +804,14 @@ func (p *Provider) verifyRewrapRequests(ctx context.Context, req *kaspb.Unsigned
 
 	for _, kao := range req.GetKeyAccessObjects() {
 		if policyErr != nil {
-			failedKAORewrap(results, kao, err400("bad request")) // Generic: corrupted policy body may indicate tamper
+			failedKAORewrap(results, kao, err400("bad request"), rewrapReasonPolicyBodyInvalid, true) // Generic: corrupted policy body may indicate tamper
 			continue
 		}
 
 		// Check if KeyAccessObject is nil
 		if kao.GetKeyAccessObject() == nil {
 			p.Logger.WarnContext(ctx, "key access object is nil", slog.String("kao_id", kao.GetKeyAccessObjectId()))
-			failedKAORewrap(results, kao, err400("key access object is nil"))
+			failedKAORewrap(results, kao, err400("key access object is nil"), rewrapReasonKAOInvalid, false)
 			continue
 		}
 
@@ -717,7 +819,7 @@ func (p *Provider) verifyRewrapRequests(ctx context.Context, req *kaspb.Unsigned
 		wrappedKey := kao.GetKeyAccessObject().GetWrappedKey()
 		if len(wrappedKey) == 0 {
 			p.Logger.WarnContext(ctx, "wrapped key is empty", slog.String("kao_id", kao.GetKeyAccessObjectId()))
-			failedKAORewrap(results, kao, err400("wrapped key is empty"))
+			failedKAORewrap(results, kao, err400("wrapped key is empty"), rewrapReasonKAOInvalid, false)
 			continue
 		}
 
@@ -728,7 +830,7 @@ func (p *Provider) verifyRewrapRequests(ctx context.Context, req *kaspb.Unsigned
 
 			if !p.Preview.ECTDFEnabled {
 				p.Logger.WarnContext(ctx, "ec-wrapped not enabled")
-				failedKAORewrap(results, kao, err400("ec-wrapped not enabled"))
+				failedKAORewrap(results, kao, err400("ec-wrapped not enabled"), rewrapReasonKeyTypeDisabled, false)
 				continue
 			}
 
@@ -744,7 +846,7 @@ func (p *Provider) verifyRewrapRequests(ctx context.Context, req *kaspb.Unsigned
 					slog.Any("kao", kao),
 					slog.Any("error", err),
 				)
-				failedKAORewrap(results, kao, err400("invalid ephemeral public key"))
+				failedKAORewrap(results, kao, err400("invalid ephemeral public key"), rewrapReasonInvalidEphemeralKey, false)
 				continue
 			}
 
@@ -756,7 +858,7 @@ func (p *Provider) verifyRewrapRequests(ctx context.Context, req *kaspb.Unsigned
 					slog.Any("kao", kao),
 					slog.Any("error", err),
 				)
-				failedKAORewrap(results, kao, err400("unsupported EC key size"))
+				failedKAORewrap(results, kao, err400("unsupported EC key size"), rewrapReasonInvalidEphemeralKey, false)
 				continue
 			}
 
@@ -769,7 +871,7 @@ func (p *Provider) verifyRewrapRequests(ctx context.Context, req *kaspb.Unsigned
 					slog.Any("kao", kao),
 					slog.Any("error", err),
 				)
-				failedKAORewrap(results, kao, err400("invalid ephemeral public key PEM"))
+				failedKAORewrap(results, kao, err400("invalid ephemeral public key PEM"), rewrapReasonInvalidEphemeralKey, false)
 				continue
 			}
 
@@ -781,14 +883,14 @@ func (p *Provider) verifyRewrapRequests(ctx context.Context, req *kaspb.Unsigned
 					slog.Any("kao", kao),
 					slog.Any("error", err),
 				)
-				failedKAORewrap(results, kao, err400("invalid ephemeral public key"))
+				failedKAORewrap(results, kao, err400("invalid ephemeral public key"), rewrapReasonInvalidEphemeralKey, false)
 				continue
 			}
 
 			ecPub, ok := pub.(*ecdsa.PublicKey)
 			if !ok {
 				p.Logger.WarnContext(ctx, "not an EC public key", slog.Any("error", err))
-				failedKAORewrap(results, kao, err400("ephemeral key is not EC"))
+				failedKAORewrap(results, kao, err400("ephemeral key is not EC"), rewrapReasonInvalidEphemeralKey, false)
 				continue
 			}
 
@@ -796,7 +898,7 @@ func (p *Provider) verifyRewrapRequests(ctx context.Context, req *kaspb.Unsigned
 			compressedKey, err := ocrypto.CompressedECPublicKey(mode, *ecPub)
 			if err != nil {
 				p.Logger.WarnContext(ctx, "failed to compress public key", slog.Any("error", err))
-				failedKAORewrap(results, kao, err400("invalid EC public key"))
+				failedKAORewrap(results, kao, err400("invalid EC public key"), rewrapReasonInvalidEphemeralKey, false)
 				continue
 			}
 
@@ -804,13 +906,13 @@ func (p *Provider) verifyRewrapRequests(ctx context.Context, req *kaspb.Unsigned
 			dek, err = p.KeyDelegator.Decrypt(ctx, kid, kao.GetKeyAccessObject().GetWrappedKey(), compressedKey)
 			if err != nil {
 				p.Logger.WarnContext(ctx, "failed to decrypt EC key", slog.Any("error", err))
-				failedKAORewrap(results, kao, err400("bad request"))
+				failedKAORewrap(results, kao, err400("bad request"), rewrapReasonDEKDecryptFailed, true)
 				continue
 			}
 		case "hybrid-wrapped":
 			if !p.Preview.HybridTDFEnabled {
 				p.Logger.WarnContext(ctx, "hybrid-wrapped not enabled")
-				failedKAORewrap(results, kao, err400("bad request"))
+				failedKAORewrap(results, kao, err400("bad request"), rewrapReasonKeyTypeDisabled, false)
 				continue
 			}
 
@@ -818,13 +920,13 @@ func (p *Provider) verifyRewrapRequests(ctx context.Context, req *kaspb.Unsigned
 			dek, err = p.KeyDelegator.Decrypt(ctx, kid, kao.GetKeyAccessObject().GetWrappedKey(), nil)
 			if err != nil {
 				p.Logger.WarnContext(ctx, "failed to decrypt hybrid key", slog.Any("error", err))
-				failedKAORewrap(results, kao, err400("bad request"))
+				failedKAORewrap(results, kao, err400("bad request"), rewrapReasonDEKDecryptFailed, true)
 				continue
 			}
 		case "mlkem-wrapped":
 			if !p.Preview.MLKEMTDFEnabled {
 				p.Logger.WarnContext(ctx, "mlkem-wrapped not enabled")
-				failedKAORewrap(results, kao, err400("bad request"))
+				failedKAORewrap(results, kao, err400("bad request"), rewrapReasonKeyTypeDisabled, false)
 				continue
 			}
 
@@ -832,7 +934,7 @@ func (p *Provider) verifyRewrapRequests(ctx context.Context, req *kaspb.Unsigned
 			dek, err = p.KeyDelegator.Decrypt(ctx, kid, kao.GetKeyAccessObject().GetWrappedKey(), nil)
 			if err != nil {
 				p.Logger.WarnContext(ctx, "failed to decrypt ML-KEM key", slog.Any("error", err))
-				failedKAORewrap(results, kao, err400("bad request"))
+				failedKAORewrap(results, kao, err400("bad request"), rewrapReasonDEKDecryptFailed, true)
 				continue
 			}
 		case "wrapped":
@@ -844,7 +946,7 @@ func (p *Provider) verifyRewrapRequests(ctx context.Context, req *kaspb.Unsigned
 				kidsToCheck = p.listLegacyKeys(ctx)
 				if len(kidsToCheck) == 0 {
 					p.Logger.WarnContext(ctx, "failure to find legacy kids for rsa")
-					failedKAORewrap(results, kao, err400("no legacy key IDs found"))
+					failedKAORewrap(results, kao, err400("no legacy key IDs found"), rewrapReasonDEKDecryptFailed, true)
 					continue
 				}
 			}
@@ -863,19 +965,19 @@ func (p *Provider) verifyRewrapRequests(ctx context.Context, req *kaspb.Unsigned
 			p.Logger.WarnContext(ctx, "unsupported key type",
 				slog.String("key_type", keyType),
 				slog.String("kao_id", kao.GetKeyAccessObjectId()))
-			failedKAORewrap(results, kao, err400("unsupported key type"))
+			failedKAORewrap(results, kao, err400("unsupported key type"), rewrapReasonUnsupportedKeyType, false)
 			continue
 		}
 		if err != nil {
 			p.Logger.WarnContext(ctx, "failure to decrypt dek", slog.Any("error", err))
-			failedKAORewrap(results, kao, err400("bad request")) // Generic: involves secret key material
+			failedKAORewrap(results, kao, err400("bad request"), rewrapReasonDEKDecryptFailed, true) // Generic: involves secret key material
 			continue
 		}
 
 		// Check if policy binding is nil
 		if kao.GetKeyAccessObject().GetPolicyBinding() == nil {
 			p.Logger.WarnContext(ctx, "policy binding is nil", slog.String("kao_id", kao.GetKeyAccessObjectId()))
-			failedKAORewrap(results, kao, err400("missing policy binding"))
+			failedKAORewrap(results, kao, err400("missing policy binding"), rewrapReasonPolicyBindingMissing, true)
 			continue
 		}
 
@@ -885,7 +987,7 @@ func (p *Provider) verifyRewrapRequests(ctx context.Context, req *kaspb.Unsigned
 		n, err := base64.StdEncoding.Decode(policyBinding, []byte(policyBindingB64Encoded))
 		if err != nil {
 			p.Logger.WarnContext(ctx, "invalid policy binding encoding", slog.Any("error", err))
-			failedKAORewrap(results, kao, err400("bad request")) // Generic: malformed binding may indicate tamper
+			failedKAORewrap(results, kao, err400("bad request"), rewrapReasonPolicyBindingMalformed, true) // Generic: malformed binding may indicate tamper
 			continue
 		}
 		if n == 64 { //nolint:mnd // 32 bytes of hex encoded data = 256 bit sha-2
@@ -901,13 +1003,16 @@ func (p *Provider) verifyRewrapRequests(ctx context.Context, req *kaspb.Unsigned
 		// Verify policy binding using the UnwrappedKeyData interface
 		if err := dek.VerifyBinding(ctx, []byte(req.GetPolicy().GetBody()), policyBinding); err != nil {
 			p.Logger.WarnContext(ctx, "failure to verify policy binding", slog.Any("error", err))
-			failedKAORewrap(results, kao, err400("bad request")) // Generic: involves secret key material
+			failedKAORewrap(results, kao, err400("bad request"), rewrapReasonPolicyBindingMismatch, true) // Generic: involves secret key material
 			continue
 		}
 
 		results[kao.GetKeyAccessObjectId()] = kaoResult{
 			ID:  kao.GetKeyAccessObjectId(),
 			DEK: dek,
+			Audit: rewrapAuditOutcome{
+				PolicyVerified: true,
+			},
 		}
 
 		anyValidKAOs = true
@@ -959,16 +1064,34 @@ func (p *Provider) tdf3Rewrap(ctx context.Context, requests []*kaspb.UnsignedRew
 	}
 
 	results := make(policyKAOResults)
+	requestResults := make(map[*kaspb.UnsignedRewrapRequest_WithPolicyRequest]map[string]kaoResult)
+	auditPolicies := make(map[*kaspb.UnsignedRewrapRequest_WithPolicyRequest]*Policy)
+	requestOutcomes := make([]requestRewrapAuditOutcome, 0)
+	sessionKeyType := ""
+	defer func() {
+		p.auditRewrapOutcomes(ctx, requests, requestResults, auditPolicies, requestOutcomes, sessionKeyType)
+	}()
+
 	var policies []*Policy
 	policyReqs := make(map[*Policy]*kaspb.UnsignedRewrapRequest_WithPolicyRequest)
 	for _, req := range requests {
 		if req == nil || req.GetPolicy() == nil || req.GetPolicy().GetId() == "" {
 			p.Logger.WarnContext(ctx, "rewrap: nil request or policy")
+			requestOutcomes = append(requestOutcomes, requestRewrapAuditOutcome{
+				PolicyID: req.GetPolicy().GetId(),
+				Outcome: rewrapAuditOutcome{
+					Result:        audit.ActionResultFailure,
+					FailureReason: rewrapReasonInvalidRequest,
+					Classified:    true,
+				},
+			})
 			continue
 		}
 		policy, kaoResults, err := p.verifyRewrapRequests(ctx, req)
 		policyID := req.GetPolicy().GetId()
 		results[policyID] = kaoResults
+		requestResults[req] = kaoResults
+		auditPolicies[req] = policy
 		if err != nil {
 			// Store per-KAO results even on error so tamper signals (e.g. corrupted
 			// policy body → generic "bad request") reach the SDK rather than being
@@ -979,6 +1102,23 @@ func (p *Provider) tdf3Rewrap(ctx context.Context, requests []*kaspb.UnsignedRew
 				slog.String("policy_id", policyID),
 				slog.Any("error", err),
 			)
+			if len(req.GetKeyAccessObjects()) == 0 {
+				reason := rewrapReasonKAOInvalid
+				suspectedTamper := false
+				if policy == nil {
+					reason = rewrapReasonPolicyBodyInvalid
+					suspectedTamper = true
+				}
+				requestOutcomes = append(requestOutcomes, requestRewrapAuditOutcome{
+					PolicyID: policyID,
+					Outcome: rewrapAuditOutcome{
+						Result:          audit.ActionResultFailure,
+						FailureReason:   reason,
+						SuspectedTamper: suspectedTamper,
+						Classified:      true,
+					},
+				})
+			}
 			continue
 		}
 		policies = append(policies, policy)
@@ -1013,9 +1153,13 @@ func (p *Provider) tdf3Rewrap(ctx context.Context, requests []*kaspb.UnsignedRew
 			slog.Any("fulfillable_obligation_fqns", additionalRewrapContext.Obligations.FulfillableFQNs),
 		)
 		if isInternal {
-			failAllKaos(requests, results, err500("internal: "+category))
+			reason := rewrapReasonAuthzUnavailable
+			if category == AccessErrCategoryContextCancelled {
+				reason = rewrapReasonContextCancelled
+			}
+			failAllKAOsWithAuditOutcome(requests, requestResults, err500("internal: "+category), audit.ActionResultError, reason)
 		} else {
-			failAllKaos(requests, results, err403("forbidden: "+category))
+			failAllKAOsWithAuditOutcome(requests, requestResults, err403("forbidden: "+category), audit.ActionResultFailure, rewrapReasonAuthzRejected)
 		}
 		return "", results, nil
 	}
@@ -1023,9 +1167,10 @@ func (p *Provider) tdf3Rewrap(ctx context.Context, requests []*kaspb.UnsignedRew
 	asymEncrypt, err := ocrypto.FromPublicPEMWithSalt(clientPublicKey, security.TDFSalt(), nil)
 	if err != nil {
 		p.Logger.WarnContext(ctx, "ocrypto.NewAsymEncryption", slog.Any("error", err))
-		failAllKaos(requests, results, err400("invalid request"))
+		failAllKAOsWithAuditOutcome(requests, requestResults, err400("invalid request"), audit.ActionResultFailure, rewrapReasonInvalidClientPublicKey)
 		return "", results, nil
 	}
+	sessionKeyType = string(asymEncrypt.KeyType())
 	encap := security.OCEncapsulator{PublicKeyEncryptor: asymEncrypt}
 
 	var sessionKey string
@@ -1033,13 +1178,12 @@ func (p *Provider) tdf3Rewrap(ctx context.Context, requests []*kaspb.UnsignedRew
 		sessionKey, err = e.PublicKeyInPemFormat()
 		if err != nil {
 			p.Logger.ErrorContext(ctx, "unable to serialize ephemeral key", slog.Any("error", err))
-			// This may be a 500, but could also be caused by a bad clientPublicKey
-			failAllKaos(requests, results, err400("invalid request"))
+			failAllKAOsWithAuditOutcome(requests, requestResults, err400("invalid request"), audit.ActionResultError, rewrapReasonSessionKeyError)
 			return "", results, nil
 		}
 		if !p.Preview.ECTDFEnabled {
 			p.Logger.ErrorContext(ctx, "ec rewrap not enabled")
-			failAllKaos(requests, results, err400("invalid request"))
+			failAllKAOsWithAuditOutcome(requests, requestResults, err400("invalid request"), audit.ActionResultFailure, rewrapReasonECRewrapDisabled)
 			return "", results, nil
 		}
 	}
@@ -1054,16 +1198,13 @@ func (p *Provider) tdf3Rewrap(ctx context.Context, requests []*kaspb.UnsignedRew
 			continue
 		}
 
-		kaoResults, ok := results[req.GetPolicy().GetId()]
+		kaoResults, ok := requestResults[req]
 		if !ok { // this should not happen
 			//nolint:sloglint // reference to key is intentional
 			p.Logger.WarnContext(ctx, "policy not found in policyReq response", "policy.uuid", policy.UUID)
 			continue
 		}
 		access := pdpAccess.Access
-
-		// Audit the TDF3 Rewrap
-		kasPolicy := ConvertToAuditKasPolicy(*policy)
 
 		for _, kao := range req.GetKeyAccessObjects() {
 			kaoID := kao.GetKeyAccessObjectId()
@@ -1072,26 +1213,8 @@ func (p *Provider) tdf3Rewrap(ctx context.Context, requests []*kaspb.UnsignedRew
 				continue
 			}
 
-			policyBinding := kao.GetKeyAccessObject().GetPolicyBinding().GetHash()
-			auditEventParams := audit.RewrapAuditEventParams{
-				Policy:         kasPolicy,
-				IsSuccess:      access,
-				TDFFormat:      "tdf3",
-				Algorithm:      req.GetAlgorithm(),
-				PolicyBinding:  policyBinding,
-				KeyID:          kao.GetKeyAccessObject().GetKid(),
-				SessionKeyType: string(asymEncrypt.KeyType()),
-			}
-
 			if !access {
-				if auditErr := p.Logger.Audit.RewrapDenied(ctx, auditEventParams); auditErr != nil {
-					p.Logger.ErrorContext(context.WithoutCancel(ctx), "failed to record rewrap audit event",
-						slog.String("kao_id", kaoID),
-						slog.String("policy_id", policy.UUID.String()),
-						slog.String("rewrap_outcome", "denied"),
-						slog.Any("error", auditErr))
-				}
-				failedKAORewrapWithObligations(kaoResults, kao, err403("forbidden"), requiredObligationsForPolicy)
+				failedKAORewrapWithObligations(kaoResults, kao, err403("forbidden"), requiredObligationsForPolicy, rewrapReasonPolicyDenied)
 				continue
 			}
 
@@ -1100,15 +1223,7 @@ func (p *Provider) tdf3Rewrap(ctx context.Context, requests []*kaspb.UnsignedRew
 			if err != nil {
 				//nolint:sloglint // reference to camelcase key is intentional
 				p.Logger.WarnContext(ctx, "rewrap: Export with encryptor failed", slog.String("clientPublicKey", clientPublicKey), slog.Any("error", err))
-				auditEventParams.IsSuccess = false
-				if auditErr := p.Logger.Audit.RewrapFailure(ctx, auditEventParams); auditErr != nil {
-					p.Logger.ErrorContext(context.WithoutCancel(ctx), "failed to record rewrap audit event",
-						slog.String("kao_id", kaoID),
-						slog.String("policy_id", policy.UUID.String()),
-						slog.String("rewrap_outcome", "failed"),
-						slog.Any("error", auditErr))
-				}
-				failedKAORewrap(kaoResults, kao, err400("bad key for rewrap"))
+				erroredKAORewrap(kaoResults, kao, err400("bad key for rewrap"), rewrapReasonEncapsulationFailed)
 				continue
 			}
 			kaoResults[kaoID] = kaoResult{
@@ -1116,25 +1231,111 @@ func (p *Provider) tdf3Rewrap(ctx context.Context, requests []*kaspb.UnsignedRew
 				Encapped:            encryptedKey,
 				EphemeralPublicKey:  asymEncrypt.EphemeralKey(),
 				RequiredObligations: requiredObligationsForPolicy,
-			}
-
-			if auditErr := p.Logger.Audit.RewrapSuccess(ctx, auditEventParams); auditErr != nil {
-				p.Logger.ErrorContext(context.WithoutCancel(ctx), "failed to record rewrap audit event",
-					slog.String("kao_id", kaoID),
-					slog.String("policy_id", policy.UUID.String()),
-					slog.String("rewrap_outcome", "success"),
-					slog.Any("error", auditErr))
+				Audit: rewrapAuditOutcome{
+					Result:         audit.ActionResultSuccess,
+					PolicyVerified: true,
+					Classified:     true,
+				},
 			}
 		}
 	}
 	return sessionKey, results, nil
 }
 
-func failAllKaos(reqs []*kaspb.UnsignedRewrapRequest_WithPolicyRequest, results policyKAOResults, err error) {
+func failAllKAOsWithAuditOutcome(reqs []*kaspb.UnsignedRewrapRequest_WithPolicyRequest, results map[*kaspb.UnsignedRewrapRequest_WithPolicyRequest]map[string]kaoResult, err error, result audit.ActionResult, reason string) {
 	for _, req := range reqs {
-		for _, kao := range req.GetKeyAccessObjects() {
-			failedKAORewrap(results[req.GetPolicy().GetId()], kao, err)
+		if req == nil || req.GetPolicy() == nil {
+			continue
 		}
+		policyResults := results[req]
+		if policyResults == nil {
+			continue
+		}
+		for _, kao := range req.GetKeyAccessObjects() {
+			kaoID := kao.GetKeyAccessObjectId()
+			current := policyResults[kaoID]
+			current.ID = kaoID
+			// Keep the legacy response behavior (the stage-wide error applies to
+			// every KAO) without erasing a more specific earlier audit outcome.
+			current.Error = err
+			if !current.Audit.Classified || current.DEK != nil {
+				current.Audit.Result = result
+				current.Audit.FailureReason = reason
+				current.Audit.Classified = true
+			}
+			policyResults[kaoID] = current
+		}
+	}
+}
+
+// auditRewrapOutcomes is the sole KAO-level emission point. Iterating the
+// original requests, rather than the response maps, guarantees one event per
+// submitted KAO even when different requests reuse a policy ID.
+func (p *Provider) auditRewrapOutcomes(
+	ctx context.Context,
+	requests []*kaspb.UnsignedRewrapRequest_WithPolicyRequest,
+	results map[*kaspb.UnsignedRewrapRequest_WithPolicyRequest]map[string]kaoResult,
+	policies map[*kaspb.UnsignedRewrapRequest_WithPolicyRequest]*Policy,
+	requestOutcomes []requestRewrapAuditOutcome,
+	sessionKeyType string,
+) {
+	for _, requestOutcome := range requestOutcomes {
+		p.recordRewrapAuditEvent(ctx, audit.RewrapAuditEventParams{
+			PolicyID:        requestOutcome.PolicyID,
+			Result:          requestOutcome.Outcome.Result,
+			FailureReason:   requestOutcome.Outcome.FailureReason,
+			SuspectedTamper: requestOutcome.Outcome.SuspectedTamper,
+			PolicyVerified:  requestOutcome.Outcome.PolicyVerified,
+			TDFFormat:       kTDF3Format,
+		})
+	}
+
+	for _, req := range requests {
+		if req == nil || req.GetPolicy() == nil || req.GetPolicy().GetId() == "" {
+			continue
+		}
+		policyID := req.GetPolicy().GetId()
+		policyResults := results[req]
+		for _, kao := range req.GetKeyAccessObjects() {
+			kaoID := kao.GetKeyAccessObjectId()
+			kaoRes, ok := policyResults[kaoID]
+			if !ok || !kaoRes.Audit.Classified {
+				kaoRes.Audit = rewrapAuditOutcome{
+					Result:         audit.ActionResultError,
+					FailureReason:  rewrapReasonIncomplete,
+					PolicyVerified: kaoRes.Audit.PolicyVerified,
+					Classified:     true,
+				}
+			}
+
+			params := audit.RewrapAuditEventParams{
+				PolicyID:        policyID,
+				Result:          kaoRes.Audit.Result,
+				FailureReason:   kaoRes.Audit.FailureReason,
+				SuspectedTamper: kaoRes.Audit.SuspectedTamper,
+				PolicyVerified:  kaoRes.Audit.PolicyVerified,
+				KAOID:           kaoID,
+				TDFFormat:       kTDF3Format,
+				Algorithm:       req.GetAlgorithm(),
+				PolicyBinding:   kao.GetKeyAccessObject().GetPolicyBinding().GetHash(),
+				KeyID:           kao.GetKeyAccessObject().GetKid(),
+				SessionKeyType:  sessionKeyType,
+			}
+			if policies[req] != nil {
+				params.Policy = ConvertToAuditKasPolicy(*policies[req])
+			}
+			p.recordRewrapAuditEvent(ctx, params)
+		}
+	}
+}
+
+func (p *Provider) recordRewrapAuditEvent(ctx context.Context, params audit.RewrapAuditEventParams) {
+	if auditErr := p.Logger.Audit.Rewrap(ctx, params); auditErr != nil {
+		p.Logger.ErrorContext(context.WithoutCancel(ctx), "failed to record rewrap audit event",
+			slog.String("kao_id", params.KAOID),
+			slog.String("policy_id", params.PolicyID),
+			slog.String("rewrap_outcome", params.Result.String()),
+			slog.Any("error", auditErr))
 	}
 }
 

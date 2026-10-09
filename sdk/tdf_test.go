@@ -2901,6 +2901,16 @@ func (s *TDFSuite) Test_LargeManifest_WithMaxManifest() {
 	_, err = s.sdk.LoadTDF(tdfAbove, WithMaxManifestSize(maxManifestSize))
 	s.Require().Error(err, "Manifest above max size should fail to load")
 	s.Require().ErrorContains(err, "size too large")
+
+	// Case 3: no default cap. A manifest past the former 10 MB default loads
+	// with default options; large payloads need it (DSPX-4502).
+	manifestHuge := createLargeManifest(11 * 1024 * 1024)
+	_, err = s.sdk.LoadTDF(createTestTDF(manifestHuge, []byte("payload")))
+	s.Require().NoError(err, "Manifest above 10 MB should load with no explicit limit")
+
+	// Case 4: an explicit limit has to be positive.
+	_, err = s.sdk.LoadTDF(createTestTDF(manifestBelow, []byte("payload")), WithMaxManifestSize(0))
+	s.Require().Error(err)
 }
 
 // create tdf

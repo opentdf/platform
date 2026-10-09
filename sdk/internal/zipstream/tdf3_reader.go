@@ -6,19 +6,22 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math"
 )
 
 type TDFReader struct {
-	archiveReader   Reader
+	archiveReader Reader
+	// manifestMaxSize caps the manifest entry in bytes. Zero, the default,
+	// means no cap: the archive bounds checks in NewReader already keep a
+	// declared size within the physical archive, and very large payloads
+	// legitimately carry manifests well beyond any fixed limit.
 	manifestMaxSize int64
 }
 
-const (
-	manifestMaxSize = 1024 * 1024 * 10 // 10 MB
-)
-
 type TDFReaderOptions func(*TDFReader)
 
+// WithTDFManifestMaxSize caps the manifest size in bytes. A size of zero or
+// less means no cap.
 func WithTDFManifestMaxSize(size int64) TDFReaderOptions {
 	return func(tdfReader *TDFReader) {
 		tdfReader.manifestMaxSize = size
@@ -32,7 +35,7 @@ func NewTDFReader(readSeeker io.ReadSeeker, opt ...TDFReaderOptions) (TDFReader,
 		return TDFReader{}, err
 	}
 
-	tdfArchiveReader := TDFReader{manifestMaxSize: manifestMaxSize}
+	tdfArchiveReader := TDFReader{}
 	tdfArchiveReader.archiveReader = archiveReader
 	for _, o := range opt {
 		o(&tdfArchiveReader)
@@ -49,9 +52,13 @@ func NewTDFReader(readSeeker io.ReadSeeker, opt ...TDFReaderOptions) (TDFReader,
 // both report the wrong reason and, in an archive holding both, hand back the
 // superseded manifest.
 func (tdfReader TDFReader) Manifest() (string, error) {
-	fileContent, err := tdfReader.archiveReader.ReadAllFileData(TDFManifestFileNameSpec, tdfReader.manifestMaxSize)
+	maxSize := tdfReader.manifestMaxSize
+	if maxSize <= 0 {
+		maxSize = math.MaxInt64
+	}
+	fileContent, err := tdfReader.archiveReader.ReadAllFileData(TDFManifestFileNameSpec, maxSize)
 	if errors.Is(err, errZipFileNotFound) {
-		fileContent, err = tdfReader.archiveReader.ReadAllFileData(TDFManifestFileName, tdfReader.manifestMaxSize)
+		fileContent, err = tdfReader.archiveReader.ReadAllFileData(TDFManifestFileName, maxSize)
 		if errors.Is(err, errZipFileNotFound) {
 			return "", fmt.Errorf("no %s or %s entry: %w", TDFManifestFileNameSpec, TDFManifestFileName, err)
 		}

@@ -317,7 +317,7 @@ func captureStdoutLine(t *testing.T, fn func()) map[string]any {
 }
 
 func (suite *ServiceTestSuite) TestStartServicesWithVariousCases() {
-	ctx := context.Background()
+	ctx := suite.T().Context()
 
 	registry := serviceregistry.NewServiceRegistry()
 
@@ -404,7 +404,7 @@ func (suite *ServiceTestSuite) TestStartServicesWithVariousCases() {
 }
 
 func (suite *ServiceTestSuite) TestStartServicesRegistersDBReadinessOncePerNamespace() {
-	ctx := context.Background()
+	ctx := suite.T().Context()
 	registry := serviceregistry.NewServiceRegistry()
 	dbRegister := serviceregistry.DBRegister{Required: true}
 
@@ -753,7 +753,7 @@ func (m *mockOrderTrackingService) RegisterHTTPHandlers(context.Context, *http.S
 }
 
 func (suite *ServiceTestSuite) TestStartServices_StartsInRegistrationOrder() {
-	ctx := context.Background()
+	ctx := suite.T().Context()
 	startOrderTracker := make([]string, 0)
 	registry := serviceregistry.NewServiceRegistry()
 

@@ -29,7 +29,7 @@ type migrationTestHarness struct {
 
 func newMigrationTestHarness(t *testing.T, schema string) *migrationTestHarness {
 	t.Helper()
-	ctx := context.Background()
+	ctx := t.Context()
 	c := *Config
 	c.DB.Schema = schema
 

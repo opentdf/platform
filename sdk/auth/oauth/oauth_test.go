@@ -1,7 +1,6 @@
 package oauth
 
 import (
-	"context"
 	"crypto/rand"
 	"crypto/rsa"
 	"io"
@@ -70,7 +69,7 @@ func TestGetTokenExchangeRequest_SubjectTokenType(t *testing.T) {
 		t.Helper()
 		key := makeKey(t)
 		req, err := getTokenExchangeRequest(
-			context.Background(),
+			t.Context(),
 			"https://idp.example.com/token",
 			"",
 			[]string{"openid"},

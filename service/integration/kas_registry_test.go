@@ -32,7 +32,7 @@ type KasRegistrySuite struct {
 
 func (s *KasRegistrySuite) SetupSuite() {
 	slog.Info("setting up db.KasRegistry test suite")
-	s.ctx = context.Background()
+	s.ctx = s.T().Context()
 	c := *Config
 	c.DB.Schema = "test_opentdf_kas_registry"
 	s.db = fixtures.NewDBInterface(s.ctx, c)

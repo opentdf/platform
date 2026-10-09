@@ -41,7 +41,7 @@ type KeyManagementSuite struct {
 
 func (s *KeyManagementSuite) SetupSuite() {
 	slog.Info("setting up db.KeyManagement test suite")
-	s.ctx = context.Background()
+	s.ctx = s.T().Context()
 	c := *Config
 	c.DB.Schema = "test_opentdf_provider_config"
 	s.db = fixtures.NewDBInterface(s.ctx, c)

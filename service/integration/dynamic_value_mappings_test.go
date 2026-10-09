@@ -27,7 +27,7 @@ type DynamicValueMappingsSuite struct {
 
 func (s *DynamicValueMappingsSuite) SetupSuite() {
 	slog.Info("setting up db.DynamicValueMappings test suite")
-	s.ctx = context.Background()
+	s.ctx = s.T().Context()
 	c := *Config
 	c.DB.Schema = "test_opentdf_dynamic_value_mappings"
 	s.db = fixtures.NewDBInterface(s.ctx, c)

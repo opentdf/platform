@@ -126,12 +126,21 @@ func (a *Logger) RecordTimeout() time.Duration {
 // RewrapSuccess records a completed rewrap and returns any recording error.
 func (a *Logger) RewrapSuccess(ctx context.Context, params RewrapAuditEventParams) error {
 	params.IsSuccess = true
+	params.isDenied = false
+	return a.rewrapBase(ctx, params)
+}
+
+// RewrapDenied records a rewrap rejected by an authorization decision.
+func (a *Logger) RewrapDenied(ctx context.Context, params RewrapAuditEventParams) error {
+	params.IsSuccess = false
+	params.isDenied = true
 	return a.rewrapBase(ctx, params)
 }
 
 // RewrapFailure records a failed rewrap and returns any recording error.
 func (a *Logger) RewrapFailure(ctx context.Context, params RewrapAuditEventParams) error {
 	params.IsSuccess = false
+	params.isDenied = false
 	return a.rewrapBase(ctx, params)
 }
 

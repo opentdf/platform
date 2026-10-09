@@ -1084,7 +1084,7 @@ func (p *Provider) tdf3Rewrap(ctx context.Context, requests []*kaspb.UnsignedRew
 			}
 
 			if !access {
-				if auditErr := p.Logger.Audit.RewrapFailure(ctx, auditEventParams); auditErr != nil {
+				if auditErr := p.Logger.Audit.RewrapDenied(ctx, auditEventParams); auditErr != nil {
 					p.Logger.ErrorContext(context.WithoutCancel(ctx), "failed to record rewrap audit event",
 						slog.String("kao_id", kaoID),
 						slog.String("policy_id", policy.UUID.String()),

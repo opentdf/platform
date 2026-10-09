@@ -28,6 +28,7 @@ func TestBuiltInHelpersReturnProcessorErrors(t *testing.T) {
 		record func(context.Context, *Logger) error
 	}{
 		{"rewrap success", VerbRewrap, func(ctx context.Context, l *Logger) error { return l.RewrapSuccess(ctx, rewrapParams) }},
+		{"rewrap denied", VerbRewrap, func(ctx context.Context, l *Logger) error { return l.RewrapDenied(ctx, rewrapParams) }},
 		{"rewrap failure", VerbRewrap, func(ctx context.Context, l *Logger) error { return l.RewrapFailure(ctx, rewrapParams) }},
 		{"policy success", VerbPolicyCRUD, func(ctx context.Context, l *Logger) error { return l.PolicyCRUDSuccess(ctx, policyCRUDParams) }},
 		{"policy failure", VerbPolicyCRUD, func(ctx context.Context, l *Logger) error { return l.PolicyCRUDFailure(ctx, policyCRUDParams) }},
@@ -71,6 +72,16 @@ func TestRewrapFailureOverridesSuccessfulAccess(t *testing.T) {
 	entry, _ := extractLogEntry(t, output)
 	payload := decodeAuditPayload(t, entry.Audit)
 	require.Equal(t, ActionResultError.String(), requireMap(t, payload["action"])["result"])
+}
+
+func TestRewrapDeniedOverridesSuccessfulAccess(t *testing.T) {
+	l, output := createTestLogger()
+	params := rewrapParams
+	params.IsSuccess = true
+	require.NoError(t, l.RewrapDenied(t.Context(), params))
+	entry, _ := extractLogEntry(t, output)
+	payload := decodeAuditPayload(t, entry.Audit)
+	require.Equal(t, ActionResultFailure.String(), requireMap(t, payload["action"])["result"])
 }
 
 func TestBuiltInRecordingPreservesCanceledProducerContext(t *testing.T) {

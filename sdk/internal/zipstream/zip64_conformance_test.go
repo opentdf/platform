@@ -378,6 +378,9 @@ func TestReaderRejectsZip64ValuesBeyondArchive(t *testing.T) {
 		field string
 	}{
 		{"stored size above MaxInt64", rawZipEntry{zip64CompressedSize: beyondInt64}, "file data at"},
+		// base+delta wraps for this value but not for the rows around it, so only it
+		// catches an additive bounds check (opentdf/platform#4202).
+		{"stored size MaxUint64", rawZipEntry{zip64CompressedSize: math.MaxUint64}, "file data at"},
 		{"stored size past EOF", rawZipEntry{zip64CompressedSize: beyondEOF}, "file data at"},
 		{"header offset above MaxInt64", rawZipEntry{zip64LocalHeaderOffset: beyondInt64}, "local file header"},
 		{"header offset past EOF", rawZipEntry{zip64LocalHeaderOffset: beyondEOF}, "local file header"},

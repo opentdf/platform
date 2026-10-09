@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"testing"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -61,7 +62,10 @@ func newMigrationTestHarness(t *testing.T, schema string) *migrationTestHarness 
 
 	t.Cleanup(func() {
 		sqlDB.Close()
-		dropSchema(ctx, t, dbClient, schema)
+		// t.Context() is canceled before cleanups run, so use a fresh bounded context.
+		cleanupCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		defer cancel()
+		dropSchema(cleanupCtx, t, dbClient, schema)
 		dbClient.Pgx.Close()
 	})
 

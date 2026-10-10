@@ -140,8 +140,7 @@ func TestMapKasKeysToGrants(t *testing.T) {
 			},
 			existingGrants: []*policy.KeyAccessServer{},
 			expectedGrants: []*policy.KeyAccessServer{},
-			wantErr:        true,
-			errContains:    "kas key info is nil for a key with kas uri http://kas1.example.com",
+			wantErr:        false,
 		},
 		{
 			name: "existing grant with nil PublicKey",

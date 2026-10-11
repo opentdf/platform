@@ -1,0 +1,22 @@
+syntax = "proto3";
+
+package kasbroker;
+
+import "kas/kas.proto";
+
+// KASBrokerService exposes platform-side brokered KAS operations.
+//
+// Phase 1 keeps the seam intentionally narrow: the broker lives in its own
+// namespace so core deployments are not presented as KAS services, while the
+// request and response payloads stay aligned with the existing KAS Rewrap
+// contract.
+service KASBrokerService {
+  // Rewrap brokers a platform-mediated rewrap request through the core service
+  // boundary.
+  //
+  // Phase-1 auth, forwarding, target-selection, and capability behavior are
+  // defined by the phase-1 spec and implementation. This proto intentionally
+  // captures only the RPC seam so later broker phases can evolve without
+  // overloading the wire contract.
+  rpc Rewrap(kas.RewrapRequest) returns (kas.RewrapResponse) {}
+}

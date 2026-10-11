@@ -20,7 +20,7 @@ var _ types.Mapper = (*Mapper)(nil)
 // NewMapper creates a new SQL mapper
 func NewMapper() *Mapper {
 	return &Mapper{
-		providerType: "sql",
+		providerType: providerTypeSQL,
 	}
 }
 
@@ -135,7 +135,7 @@ func (m *Mapper) GetSupportedTransformations() []string {
 
 // ApplyTransformation applies SQL-specific transformations
 func (m *Mapper) ApplyTransformation(value interface{}, transformationName string) (interface{}, error) {
-	return transformation.DefaultRegistry.ApplyTransformation(value, transformationName, "sql")
+	return transformation.DefaultRegistry.ApplyTransformation(value, transformationName, providerTypeSQL)
 }
 
 // sanitizeParameterValue ensures parameter values are safe for SQL queries
@@ -172,5 +172,5 @@ func isValidSQLIdentifier(name string) bool {
 
 // isTransformationSupported checks if a transformation is supported by SQL mapper
 func (m *Mapper) isTransformationSupported(transformationName string) bool {
-	return transformation.IsSupportedByProvider(transformationName, "sql")
+	return transformation.IsSupportedByProvider(transformationName, providerTypeSQL)
 }

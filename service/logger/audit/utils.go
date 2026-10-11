@@ -171,6 +171,7 @@ type eventClientInfo struct {
 	EventClientInfo
 }
 
+//nolint:sloglint // audit event field names are a published contract enforced as reserved paths in schema.go; renaming them would break downstream SIEM consumers
 func (e eventClientInfo) LogValue() slog.Value {
 	return slog.GroupValue(
 		slog.String("userAgent", e.UserAgent),
@@ -185,6 +186,7 @@ type ContextData struct {
 	ActorID   string
 }
 
+//nolint:sloglint // audit event field names are a published contract enforced as reserved paths in schema.go; renaming them would break downstream SIEM consumers
 func (c ContextData) LogValue() slog.Value {
 	return slog.GroupValue(
 		slog.String("requestID", c.RequestID.String()),

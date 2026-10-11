@@ -1,0 +1,188 @@
+---
+import Layout from "@/layouts/Layout.astro";
+
+export function getStaticPaths() {
+  return [
+    "RSA-OAEP",
+    "RSA-OAEP-256",
+    "ECDH-HKDF",
+    "ML-KEM-768",
+    "ML-KEM-1024",
+    "X-ECDH-ML-KEM-768",
+  ].map((alg) => ({ params: { algorithm: alg } }));
+}
+
+const { algorithm } = Astro.params;
+
+type AlgorithmDoc = {
+  category: string;
+  source: string;
+  steps: { encrypt: string[]; decrypt: string[] };
+  keyFields: { protectedKey: string; ephemeralKey: string | "not used" };
+  conformance: string[];
+};
+
+const DOCS: Record<string, AlgorithmDoc> = {
+  "RSA-OAEP": {
+    category: "wrapping (RSA-OAEP, SHA-1 MGF)",
+    source: "BaseTDF-KAO §4.1",
+    steps: {
+      encrypt: ["protectedKey = Base64(RSA-OAEP-SHA1(kas_pk, DEK_share))"],
+      decrypt: ["DEK_share = RSA-OAEP-SHA1-Decrypt(kas_sk, Base64Decode(protectedKey))"],
+    },
+    keyFields: {
+      protectedKey: "Base64-encoded RSA-OAEP ciphertext (SHA-1 MGF)",
+      ephemeralKey: "not used",
+    },
+    conformance: ["KAO-C-100", "KAO-C-102"],
+  },
+  "RSA-OAEP-256": {
+    category: "wrapping (RSA-OAEP, SHA-256 MGF)",
+    source: "BaseTDF-KAO §4.1",
+    steps: {
+      encrypt: ["protectedKey = Base64(RSA-OAEP-SHA256(kas_pk, DEK_share))"],
+      decrypt: ["DEK_share = RSA-OAEP-SHA256-Decrypt(kas_sk, Base64Decode(protectedKey))"],
+    },
+    keyFields: {
+      protectedKey: "Base64-encoded RSA-OAEP ciphertext (SHA-256 MGF)",
+      ephemeralKey: "not used",
+    },
+    conformance: ["KAO-C-101", "KAO-C-102"],
+  },
+  "ECDH-HKDF": {
+    category: "agreement (ephemeral ECDH + HKDF + AES-256-GCM)",
+    source: "BaseTDF-KAO §4.2",
+    steps: {
+      encrypt: [
+        "shared = ECDH(eph_sk, kas_ec_pk)",
+        "key = HKDF-SHA256(salt = SHA256('TDF'), ikm = shared, info = '', len = 32)",
+        "protectedKey = Base64(AES-256-GCM(key, DEK_share))",
+        "ephemeralKey = PEM(eph_pk)",
+      ],
+      decrypt: [
+        "shared = ECDH(kas_ec_sk, PEM_parse(ephemeralKey))",
+        "key = HKDF-SHA256(salt = SHA256('TDF'), ikm = shared, info = '', len = 32)",
+        "DEK_share = AES-256-GCM-Decrypt(key, Base64Decode(protectedKey))",
+      ],
+    },
+    keyFields: {
+      protectedKey: "Base64-encoded AES-256-GCM ciphertext",
+      ephemeralKey: "PEM-encoded ephemeral EC public key",
+    },
+    conformance: ["KAO-C-120", "KAO-C-121", "KAO-C-122"],
+  },
+  "ML-KEM-768": {
+    category: "encapsulation (FIPS 203, 1088-byte ciphertext)",
+    source: "BaseTDF-KAO §4.3",
+    steps: {
+      encrypt: [
+        "(ct, ss) = ML-KEM-768.Encapsulate(kas_mlkem_pk)",
+        "key = HKDF-SHA256(salt = '', ikm = ss, info = 'BaseTDF-KEM', len = 32)",
+        "protectedKey = Base64(AES-256-GCM(key, DEK_share))",
+        "ephemeralKey = Base64(ct)",
+      ],
+      decrypt: [
+        "ss = ML-KEM-768.Decapsulate(kas_mlkem_sk, Base64Decode(ephemeralKey))",
+        "key = HKDF-SHA256(salt = '', ikm = ss, info = 'BaseTDF-KEM', len = 32)",
+        "DEK_share = AES-256-GCM-Decrypt(key, Base64Decode(protectedKey))",
+      ],
+    },
+    keyFields: {
+      protectedKey: "Base64-encoded AES-256-GCM ciphertext",
+      ephemeralKey: "Base64-encoded 1088-byte KEM ciphertext",
+    },
+    conformance: ["KAO-C-140", "KAO-C-141", "KAO-C-142", "KAO-C-143"],
+  },
+  "ML-KEM-1024": {
+    category: "encapsulation (FIPS 203, 1568-byte ciphertext)",
+    source: "BaseTDF-KAO §4.3",
+    steps: {
+      encrypt: [
+        "(ct, ss) = ML-KEM-1024.Encapsulate(kas_mlkem_pk)",
+        "key = HKDF-SHA256(salt = '', ikm = ss, info = 'BaseTDF-KEM', len = 32)",
+        "protectedKey = Base64(AES-256-GCM(key, DEK_share))",
+        "ephemeralKey = Base64(ct)",
+      ],
+      decrypt: [
+        "ss = ML-KEM-1024.Decapsulate(kas_mlkem_sk, Base64Decode(ephemeralKey))",
+        "key = HKDF-SHA256(salt = '', ikm = ss, info = 'BaseTDF-KEM', len = 32)",
+        "DEK_share = AES-256-GCM-Decrypt(key, Base64Decode(protectedKey))",
+      ],
+    },
+    keyFields: {
+      protectedKey: "Base64-encoded AES-256-GCM ciphertext",
+      ephemeralKey: "Base64-encoded 1568-byte KEM ciphertext",
+    },
+    conformance: ["KAO-C-140", "KAO-C-141", "KAO-C-142", "KAO-C-143"],
+  },
+  "X-ECDH-ML-KEM-768": {
+    category: "hybrid (P-256 ECDH ⊕ ML-KEM-768)",
+    source: "BaseTDF-KAO §4.4",
+    steps: {
+      encrypt: [
+        "ss_classical = ECDH(eph_ec_sk, kas_ec_pk)",
+        "(ct_pqc, ss_pqc) = ML-KEM-768.Encapsulate(kas_mlkem_pk)",
+        "combined = HKDF-SHA256(salt = SHA256('BaseTDF-Hybrid'), ikm = ss_classical || ss_pqc, info = 'BaseTDF-Hybrid-Key', len = 32)",
+        "protectedKey = Base64(AES-256-GCM(combined, DEK_share))",
+        "ephemeralKey = Base64(eph_ec_pk_uncompressed (65) || ct_pqc (1088))",
+      ],
+      decrypt: [
+        "raw = Base64Decode(ephemeralKey)",
+        "ss_classical = ECDH(kas_ec_sk, raw[0..65])",
+        "ss_pqc = ML-KEM-768.Decapsulate(kas_mlkem_sk, raw[65..1153])",
+        "combined = HKDF-SHA256(salt = SHA256('BaseTDF-Hybrid'), ikm = ss_classical || ss_pqc, info = 'BaseTDF-Hybrid-Key', len = 32)",
+        "DEK_share = AES-256-GCM-Decrypt(combined, Base64Decode(protectedKey))",
+      ],
+    },
+    keyFields: {
+      protectedKey: "Base64-encoded AES-256-GCM ciphertext",
+      ephemeralKey: "Base64-encoded 1153-byte EC point (65) || ML-KEM ct (1088)",
+    },
+    conformance: ["KAO-C-160", "KAO-C-161", "KAO-C-162", "KAO-C-163"],
+  },
+};
+
+const doc = DOCS[algorithm];
+---
+
+<Layout title={`KAO algorithm: ${algorithm}`}>
+  <h1 class="text-2xl font-bold">{algorithm}</h1>
+  <p class="text-sm text-slate-600 mt-1">
+    Category: {doc.category}. Source: <code>{doc.source}</code>.
+  </p>
+
+  <section class="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+    <div class="border rounded p-4 bg-white">
+      <h2 class="font-semibold text-sm mb-2">Encrypt (TDF creation)</h2>
+      <ol class="text-xs font-mono space-y-2 list-decimal list-inside">
+        {doc.steps.encrypt.map((s) => <li>{s}</li>)}
+      </ol>
+    </div>
+    <div class="border rounded p-4 bg-white">
+      <h2 class="font-semibold text-sm mb-2">Decrypt (KAS rewrap)</h2>
+      <ol class="text-xs font-mono space-y-2 list-decimal list-inside">
+        {doc.steps.decrypt.map((s) => <li>{s}</li>)}
+      </ol>
+    </div>
+  </section>
+
+  <section class="mt-6 border rounded p-4 bg-white">
+    <h2 class="font-semibold text-sm mb-2">Field shape</h2>
+    <table class="text-sm w-full">
+      <tbody>
+        <tr><td class="pr-4 align-top w-40"><code>protectedKey</code></td><td>{doc.keyFields.protectedKey}</td></tr>
+        <tr><td class="pr-4 align-top"><code>ephemeralKey</code></td><td>{doc.keyFields.ephemeralKey}</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section class="mt-6 border rounded p-4 bg-white">
+    <h2 class="font-semibold text-sm mb-2">Conformance</h2>
+    <p class="text-sm">{doc.conformance.join(" · ")}</p>
+  </section>
+
+  <p class="mt-6 text-xs text-slate-500">
+    See <a class="underline" href="../basetdf/basetdf-kao.md">BaseTDF-KAO</a>{" "}
+    and <a class="underline" href="../basetdf/basetdf-kao-conformance.md">BaseTDF-KAO-CONF</a>.
+  </p>
+</Layout>

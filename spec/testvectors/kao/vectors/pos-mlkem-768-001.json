@@ -1,0 +1,49 @@
+{
+  "id": "pos-mlkem-768-001",
+  "description": "ML-KEM-768 encapsulation + AES-GCM wrap with deterministic DRBG seed.",
+  "conformance": [
+    "KAO-C-001",
+    "KAO-C-030",
+    "KAO-C-140",
+    "KAO-C-142",
+    "KAO-C-143"
+  ],
+  "category": "positive",
+  "algorithm": "ML-KEM-768",
+  "manifestSchemaVersion": "4.4.0",
+  "inputs": {
+    "kao": {
+      "alg": "ML-KEM-768",
+      "kas": "https://kas.example.com",
+      "kid": "ml-kem-768-test",
+      "sid": "s-0",
+      "protectedKey": "AAECAwQFBgcICQoLQ3xREDru9Qe/GPL2keeDFJxSS3uZhWrw275ztLmdiRd2C5OoBXO+in0/7ptKUvIH",
+      "ephemeralKey": "5JM1SriIrVsS2q8cu7rnfyuvQu1GLGJWKJ8l21Gx0vfb8iMiWKECQpiQfquQUdTHS2d7oAGNm3t9k/O8MTguVThdXZKAz8RxtojUliNEkv7QfsTWFXyyAht8W1LANsdHMaqhEj2lBmzwKJ5he+imnpGCQTNRY10omHqykQMH8Emc8oK2vKjcxZ+26kDorfOoQ8OsbM5ue5CNRzU24N9rMeMpWpAcFUsDCoiom/JWb25U8MWvy+tDIJ/xtOiJqJwOPiSaMGf0rhv9R8Q8gl63dgp/6eYfVDGuX21ra4hTG+pL7GMTsK3azx5Man7Iyy1zFRFlVAeXpb/C3sXPQdK7qxoGAclbZrIIZymjrDLskgp6RmGNrN18Gjz6qlPU4cBlixcO6N4HQ4mYt1cRJn5FZlrPfj2LaeMpP/Yym35IS3wow/DKt6gYisKu+azzgFlXKf1H7KvrIZEdo60xb4ei1xkwaxjp9KKr1qHvJ4fXSJChrNTbzUJnjfxi1KaiEC2lbJLk/GE2v6b3Bb2KFv3AMwD4PPvoO+JOn73baYi1ZkQ5RCtIfVAVKGmQye85DAw5pc2eCrAgrVCqzIFPJ5umisMzkTiEKZOKC4z41pG/Q0Da2u1wA4bpkz0JxTNeXpeIP6liDVyN7ntWHS+WbUd29/oMWTzuzRsjjp3Hmt2sJGzBl7wD7Cihga0Fc3Hg8yZzwEWussNuXnvj7eyMuXQLO6IWT0BIdeex0Wyfx2kngQKD4Go4U0NfoUMX+lehi/ffJphfPBttQooC4GZG2oijnBhXbtY7qWEkGIROHWXYWu/onFG01SrHssWDEcNbZWNwyhdWsl+MjN6L8VzPjdpDVy9bpVrleHcv9nsJ2XOYx5eFprGUBTl1Z6ur1kiVcQSPS/1dz5ckngavZJWuoz0tJx1otJxZJD6IGoGmuom70iFZwakVxlUdm0ChQg0ppWwaDrSxxTUya9+KgkYMQqTlEc23cg2PbEoD2GcZTwBmybwq/hs0YJPyW32ZP9LLyzAsm6GKJ7P88PkhtcR7kG9SuDHwxFPReu6QLJureBy5IMccOHjz9t9uHE6xT/sxd3MIbxxQkbFk8kRwhTV7286S+oup3cGEiWTCZlrfosXoU1iWcAdE3OTXV6A5tzptPXQoVZAoUgGz2OAqpmihb8qdl7x6NR3580oaPSXwfmxjGy6VcZxK3wLlX8ArdxIGEgMb4Ubyrd+EYHdrexa8/CLTzzE4jt4gPPtGYcGSxJELU7zl1x8HN7RyG68fxYYzfJ30ghEVgp9efP39dj8nVJKpM7QTrRk8hYGWossRJvRIOwpSviXCtvM+4KnSTfUi0RCWUKLhK5UCfpXQq65xjQCnODguaT+J4AADKvD3EWXjTSCCRsa7xLWUJsv6+l3PMkFJeAZyh4jtCPQOdCxIC9T6CFNaWeKMJWRVlzLqZc5/Rh8=",
+      "policyBinding": {
+        "alg": "HS256",
+        "hash": "pTejsj6nAGsYTpJuLYsAertyrCY6GWVdDVQNG6D1O7A="
+      }
+    },
+    "policy": "eyJ1dWlkIjoiMTIzNDU2NzgtMTIzNC00MzIxLTk4NzYtMTIzNDU2Nzg5YWJjIiwiYm9keSI6eyJkYXRhQXR0cmlidXRlcyI6W3siYXR0cmlidXRlIjoiaHR0cHM6Ly9leGFtcGxlLmNvbS9hdHRyL0NsYXNzaWZpY2F0aW9uL3ZhbHVlL1B1YmxpYyJ9XSwiZGlzc2VtIjpbXX19",
+    "keys": {
+      "kas": "keys/ml-kem-768-test.json"
+    }
+  },
+  "expected": {
+    "outcome": "accept",
+    "policyBindingValid": true,
+    "recoveredDek": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+    "normalizedKao": {
+      "alg": "ML-KEM-768",
+      "kas": "https://kas.example.com",
+      "kid": "ml-kem-768-test",
+      "sid": "s-0",
+      "protectedKey": "AAECAwQFBgcICQoLQ3xREDru9Qe/GPL2keeDFJxSS3uZhWrw275ztLmdiRd2C5OoBXO+in0/7ptKUvIH",
+      "ephemeralKey": "5JM1SriIrVsS2q8cu7rnfyuvQu1GLGJWKJ8l21Gx0vfb8iMiWKECQpiQfquQUdTHS2d7oAGNm3t9k/O8MTguVThdXZKAz8RxtojUliNEkv7QfsTWFXyyAht8W1LANsdHMaqhEj2lBmzwKJ5he+imnpGCQTNRY10omHqykQMH8Emc8oK2vKjcxZ+26kDorfOoQ8OsbM5ue5CNRzU24N9rMeMpWpAcFUsDCoiom/JWb25U8MWvy+tDIJ/xtOiJqJwOPiSaMGf0rhv9R8Q8gl63dgp/6eYfVDGuX21ra4hTG+pL7GMTsK3azx5Man7Iyy1zFRFlVAeXpb/C3sXPQdK7qxoGAclbZrIIZymjrDLskgp6RmGNrN18Gjz6qlPU4cBlixcO6N4HQ4mYt1cRJn5FZlrPfj2LaeMpP/Yym35IS3wow/DKt6gYisKu+azzgFlXKf1H7KvrIZEdo60xb4ei1xkwaxjp9KKr1qHvJ4fXSJChrNTbzUJnjfxi1KaiEC2lbJLk/GE2v6b3Bb2KFv3AMwD4PPvoO+JOn73baYi1ZkQ5RCtIfVAVKGmQye85DAw5pc2eCrAgrVCqzIFPJ5umisMzkTiEKZOKC4z41pG/Q0Da2u1wA4bpkz0JxTNeXpeIP6liDVyN7ntWHS+WbUd29/oMWTzuzRsjjp3Hmt2sJGzBl7wD7Cihga0Fc3Hg8yZzwEWussNuXnvj7eyMuXQLO6IWT0BIdeex0Wyfx2kngQKD4Go4U0NfoUMX+lehi/ffJphfPBttQooC4GZG2oijnBhXbtY7qWEkGIROHWXYWu/onFG01SrHssWDEcNbZWNwyhdWsl+MjN6L8VzPjdpDVy9bpVrleHcv9nsJ2XOYx5eFprGUBTl1Z6ur1kiVcQSPS/1dz5ckngavZJWuoz0tJx1otJxZJD6IGoGmuom70iFZwakVxlUdm0ChQg0ppWwaDrSxxTUya9+KgkYMQqTlEc23cg2PbEoD2GcZTwBmybwq/hs0YJPyW32ZP9LLyzAsm6GKJ7P88PkhtcR7kG9SuDHwxFPReu6QLJureBy5IMccOHjz9t9uHE6xT/sxd3MIbxxQkbFk8kRwhTV7286S+oup3cGEiWTCZlrfosXoU1iWcAdE3OTXV6A5tzptPXQoVZAoUgGz2OAqpmihb8qdl7x6NR3580oaPSXwfmxjGy6VcZxK3wLlX8ArdxIGEgMb4Ubyrd+EYHdrexa8/CLTzzE4jt4gPPtGYcGSxJELU7zl1x8HN7RyG68fxYYzfJ30ghEVgp9efP39dj8nVJKpM7QTrRk8hYGWossRJvRIOwpSviXCtvM+4KnSTfUi0RCWUKLhK5UCfpXQq65xjQCnODguaT+J4AADKvD3EWXjTSCCRsa7xLWUJsv6+l3PMkFJeAZyh4jtCPQOdCxIC9T6CFNaWeKMJWRVlzLqZc5/Rh8=",
+      "policyBinding": {
+        "alg": "HS256",
+        "hash": "pTejsj6nAGsYTpJuLYsAertyrCY6GWVdDVQNG6D1O7A="
+      }
+    }
+  }
+}

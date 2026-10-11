@@ -1,0 +1,7 @@
+{
+  "id": "ml-kem-1024-test",
+  "algorithm": "ML-KEM-1024",
+  "bundle": "ml-kem-1024-test.json",
+  "provenance": "Deterministic from DRBG seed 33cc92da223f00fa41a280c308af147de4ddad8dba7a492ee9f13e856ebec76bef6d95b331c317ee1e020edaa327190f via kyber_py ML-KEM-1024 (gen_test_keys.py)",
+  "WARNING": "NON-PRODUCTION TEST KEY -- DO NOT USE"
+}

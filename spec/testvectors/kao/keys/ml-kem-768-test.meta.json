@@ -1,0 +1,7 @@
+{
+  "id": "ml-kem-768-test",
+  "algorithm": "ML-KEM-768",
+  "bundle": "ml-kem-768-test.json",
+  "provenance": "Deterministic from DRBG seed c75a1342192ee6378edb68d305bad0494aa5428305c66d2229e605f3fdf4933c64a33b319547e79b4788758f70424c02 via kyber_py ML-KEM-768 (gen_test_keys.py)",
+  "WARNING": "NON-PRODUCTION TEST KEY -- DO NOT USE"
+}

@@ -121,6 +121,10 @@ func (d *DelegatingKeyService) FindKeyByID(ctx context.Context, id KeyIdentifier
 	return d.index.FindKeyByID(ctx, id)
 }
 
+func (d *DelegatingKeyService) FindKeyWith(ctx context.Context, opts FindKeyOptions) (KeyDetails, error) {
+	return d.index.FindKeyWith(ctx, opts)
+}
+
 func (d *DelegatingKeyService) ListKeys(ctx context.Context) ([]KeyDetails, error) {
 	return d.index.ListKeys(ctx)
 }
@@ -159,8 +163,8 @@ func (d *DelegatingKeyService) Name() string {
 	return "DelegatingKeyService"
 }
 
-func (d *DelegatingKeyService) Decrypt(ctx context.Context, keyID KeyIdentifier, ciphertext []byte, ephemeralPublicKey []byte) (ocrypto.ProtectedKey, error) {
-	keyDetails, err := d.index.FindKeyByID(ctx, keyID)
+func (d *DelegatingKeyService) Decrypt(ctx context.Context, keyID KeyIdentifier, kasURI string, ciphertext []byte, ephemeralPublicKey []byte) (ocrypto.ProtectedKey, error) {
+	keyDetails, err := d.FindKeyWith(ctx, FindKeyOptions{KeyOptions: KeyOptions{ID: keyID, KASURI: kasURI}})
 	if err != nil {
 		return nil, fmt.Errorf("decrypt: unable to find key by ID '%s' within index %s: %w", keyID, d.index, err)
 	}

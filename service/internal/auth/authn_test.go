@@ -994,6 +994,31 @@ func (s *AuthSuite) Test_MuxHandler_DPoPProofError_IssuesInvalidProofChallenge()
 	s.Empty(rec.Header().Get("DPoP-Nonce"))
 }
 
+func (s *AuthSuite) Test_MuxHandler_AuthenticationFailure_DoesNotLogDPoPProof() {
+	var logs bytes.Buffer
+	auth := s.newAuthDPoP(false)
+	auth.logger = &logger.Logger{Logger: slog.New(slog.NewJSONHandler(&logs, nil))}
+	auth._testCheckTokenFunc = func(ctx context.Context, _ []string, _ receiverInfo, _ []string) (jwt.Token, context.Context, error) {
+		return nil, ctx, &DPoPProofError{err: errors.New("incorrect `htu` claim in DPoP JWT")}
+	}
+
+	handler := auth.MuxHandler(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {}))
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodPost, dpopChallengeRoute, nil)
+	req.Header.Set("Authorization", "DPoP access-token")
+	req.Header.Set("DPoP", "reusable-proof")
+	handler.ServeHTTP(rec, req)
+
+	s.Equal(http.StatusUnauthorized, rec.Code)
+	s.Contains(logs.String(), `"level":"WARN"`)
+	s.Contains(logs.String(), "incorrect `htu` claim in DPoP JWT")
+	s.Contains(logs.String(), `"request_method":"POST"`)
+	s.Contains(logs.String(), `"dpop_proof_count":1`)
+	s.Contains(logs.String(), `"dpop_nonce_required":false`)
+	s.Contains(logs.String(), `"dpop_strict_htu":false`)
+	s.NotContains(logs.String(), "reusable-proof")
+}
+
 func (s *AuthSuite) Test_MuxHandler_DPoPProofError_IncludesNonceWhenRequired() {
 	auth := s.newAuthDPoP(true)
 	rec := s.muxAuthErrorRecorder(auth, &DPoPProofError{err: errors.New("DPoP proof replay detected")})

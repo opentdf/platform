@@ -332,11 +332,12 @@ func (p *JustInTimePDP) GetDecision(
 	}, nil
 }
 
-// GetEntitlements retrieves the entitlements for the provided entity identifier.
-// It resolves the entity identifier to get the entity representations and then calls the embedded PDP to get the entitlements.
+// GetEntitlements retrieves the entitlements for the provided entity identifier, optionally scoped to resources.
+// Resource scope is passed through token resolution so entity resolvers can produce resource-dependent direct entitlements.
 func (p *JustInTimePDP) GetEntitlements(
 	ctx context.Context,
 	entityIdentifier *authzV2.EntityIdentifier,
+	resources []*authzV2.Resource,
 	withComprehensiveHierarchy bool,
 ) ([]*authzV2.EntityEntitlements, error) {
 	p.logger.DebugContext(ctx, "getting entitlements - resolving entity chain")
@@ -344,7 +345,7 @@ func (p *JustInTimePDP) GetEntitlements(
 	var (
 		entityRepresentations   []*entityresolutionV2.EntityRepresentation
 		err                     error
-		skipEnvironmentEntities = false
+		skipEnvironmentEntities = true
 	)
 
 	switch entityIdentifier.GetIdentifier().(type) {
@@ -352,7 +353,7 @@ func (p *JustInTimePDP) GetEntitlements(
 		entityRepresentations, err = p.resolveEntitiesFromEntityChain(ctx, entityIdentifier.GetEntityChain(), skipEnvironmentEntities)
 
 	case *authzV2.EntityIdentifier_Token:
-		entityRepresentations, err = p.resolveEntitiesFromToken(ctx, entityIdentifier.GetToken(), skipEnvironmentEntities, []*authzV2.Resource{})
+		entityRepresentations, err = p.resolveEntitiesFromToken(ctx, entityIdentifier.GetToken(), skipEnvironmentEntities, resources)
 
 	case *authzV2.EntityIdentifier_RegisteredResourceValueFqn:
 		p.logger.DebugContext(ctx, "getting entitlements - resolving registered resource value FQN")
@@ -362,10 +363,14 @@ func (p *JustInTimePDP) GetEntitlements(
 		if err != nil {
 			return nil, fmt.Errorf("failed to build policy decision point: %w", err)
 		}
-		return innerPDP.GetEntitlementsRegisteredResource(ctx, regResValueFQN, withComprehensiveHierarchy)
+		entitlements, err := innerPDP.GetEntitlementsRegisteredResource(ctx, regResValueFQN, withComprehensiveHierarchy)
+		if err != nil {
+			return nil, err
+		}
+		return p.filterEntitlementsToResources(entitlements, resources), nil
 
 	case *authzV2.EntityIdentifier_WithRequestToken:
-		entityRepresentations, err = p.resolveEntitiesFromRequestToken(ctx, entityIdentifier.GetWithRequestToken(), skipEnvironmentEntities, []*authzV2.Resource{})
+		entityRepresentations, err = p.resolveEntitiesFromRequestToken(ctx, entityIdentifier.GetWithRequestToken(), skipEnvironmentEntities, resources)
 
 	default:
 		return nil, fmt.Errorf("entity type %T: %w", entityIdentifier.GetIdentifier(), ErrInvalidEntityType)
@@ -378,8 +383,9 @@ func (p *JustInTimePDP) GetEntitlements(
 	if err != nil {
 		return nil, fmt.Errorf("failed to get matched subject mappings: %w", err)
 	}
-	// If no subject mappings matched, return empty entitlements
-	if len(matchedSubjectMappings) == 0 {
+	// Direct entitlements do not require subject mappings. Preserve the no-match shortcut only when
+	// no resolved subject entity carries direct entitlements that this PDP is configured to honor.
+	if len(matchedSubjectMappings) == 0 && !p.hasDirectEntitlements(entityRepresentations) {
 		p.logger.DebugContext(ctx, "matched subject mappings is empty")
 		return nil, nil
 	}
@@ -394,7 +400,40 @@ func (p *JustInTimePDP) GetEntitlements(
 	if err != nil {
 		return nil, fmt.Errorf("failed to get entitlements: %w", err)
 	}
-	return entitlements, nil
+	return p.filterEntitlementsToResources(entitlements, resources), nil
+}
+
+func (p *JustInTimePDP) hasDirectEntitlements(entityRepresentations []*entityresolutionV2.EntityRepresentation) bool {
+	if !p.allowDirectEntitlements {
+		return false
+	}
+	for _, entityRepresentation := range entityRepresentations {
+		if len(entityRepresentation.GetDirectEntitlements()) > 0 {
+			return true
+		}
+	}
+	return false
+}
+
+// filterEntitlementsToResources applies request scope after hierarchy expansion and entitlement
+// source merging. An omitted resource list retains the existing unscoped behavior.
+func (p *JustInTimePDP) filterEntitlementsToResources(entitlements []*authzV2.EntityEntitlements, resources []*authzV2.Resource) []*authzV2.EntityEntitlements {
+	if len(resources) == 0 {
+		return entitlements
+	}
+
+	scope := make(map[string]struct{})
+	for _, fqn := range p.resourceValueFQNs(resources) {
+		scope[strings.ToLower(fqn)] = struct{}{}
+	}
+	for _, entityEntitlements := range entitlements {
+		for fqn := range entityEntitlements.GetActionsPerAttributeValueFqn() {
+			if _, ok := scope[strings.ToLower(fqn)]; !ok {
+				delete(entityEntitlements.GetActionsPerAttributeValueFqn(), fqn)
+			}
+		}
+	}
+	return entitlements
 }
 
 // buildInnerPDP fetches the entitleable attributes for the provided value FQNs and constructs a

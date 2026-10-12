@@ -525,6 +525,7 @@ Root level key `authorization`
 | `request_limits.resource_attribute_values_fqns_max` | Maximum attribute value FQNs allowed in Decision Requests | `20` | |
 | `request_limits.entity_identifier_entity_chain_entities_max` | Maximum entities allowed in Decision Request entity chains | `10` | |
 | `request_limits.decision_request_fulfillable_obligation_fqns_max` | Maximum fulfillable obligation FQNs allowed per Decision Request | `50` | |
+| `request_limits.get_entitlements_resources_max` | Maximum resources allowed in `GetEntitlementsRequest` | `1000` | |
 | `request_limits.get_decision_multi_resource_resources_max` | Maximum resources allowed in `GetDecisionMultiResourceRequest` | `1000` | |
 | `request_limits.get_decision_bulk_decision_requests_max` | Maximum decision requests allowed in `GetDecisionBulkRequest` | `200` | |
 
@@ -550,6 +551,7 @@ services:
       resource_attribute_values_fqns_max: 20
       entity_identifier_entity_chain_entities_max: 10
       decision_request_fulfillable_obligation_fqns_max: 50
+      get_entitlements_resources_max: 1000
       get_decision_multi_resource_resources_max: 1000
       get_decision_bulk_decision_requests_max: 200
 ```

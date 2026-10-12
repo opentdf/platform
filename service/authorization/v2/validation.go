@@ -18,7 +18,21 @@ func (as *Service) validateGetDecisionRequest(request *authzV2.GetDecisionReques
 }
 
 func (as *Service) validateGetEntitlementsRequest(request *authzV2.GetEntitlementsRequest) error {
-	return as.validateEntityIdentifierRequestLimits(request.GetEntityIdentifier(), "entity_identifier")
+	if err := as.validateEntityIdentifierRequestLimits(request.GetEntityIdentifier(), "entity_identifier"); err != nil {
+		return err
+	}
+
+	resources := request.GetResources()
+	if len(resources) > as.config.RequestLimits.GetEntitlementsResourcesMax {
+		return limitExceededError("resources", len(resources), as.config.RequestLimits.GetEntitlementsResourcesMax)
+	}
+	for idx, resource := range resources {
+		if err := as.validateResourceRequestLimits(resource, fmt.Sprintf("resources[%d]", idx)); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 func (as *Service) validateGetDecisionMultiResourceRequest(request *authzV2.GetDecisionMultiResourceRequest, prefix string) error {

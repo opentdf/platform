@@ -180,14 +180,14 @@ message GetDecisionBulkResponse {
 
 // What is permitted to the identified entity/entities (actor), broken down as permitted actions on attribute value FQNs?
 //
-// Note: the v1 API parameter 'scope' has been dropped, and it is recommended to use
-// GetDecision if the resource is known
 message GetEntitlementsRequest {
   // an entity must be identified for entitlement decisioning
   EntityIdentifier entity_identifier = 1 [(buf.validate.field).required = true];
   // optional parameter to return all entitled values for attribute definitions with hierarchy rules, propagating
   // down the hierarchical values instead of returning solely the value that is directly entitled
   optional bool with_comprehensive_hierarchy = 2;
+  // optional resources to scope returned entitlements and to resolve resource-dependent direct entitlements
+  repeated Resource resources = 3;
 }
 message GetEntitlementsResponse {
   repeated EntityEntitlements entitlements = 1;

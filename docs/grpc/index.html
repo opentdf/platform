@@ -5804,7 +5804,7 @@ i.e. https://&lt;namespace&gt;/obl/&lt;definition name&gt;/value/&lt;value&gt; <
         
       
         <h3 id="authorization.v2.GetEntitlementsRequest">GetEntitlementsRequest</h3>
-        <p>What is permitted to the identified entity/entities (actor), broken down as permitted actions on attribute value FQNs?</p><p>Note: the v1 API parameter 'scope' has been dropped, and it is recommended to use</p><p>GetDecision if the resource is known</p>
+        <p>What is permitted to the identified entity/entities (actor), broken down as permitted actions on attribute value FQNs?</p>
 
         
           <table class="field-table">
@@ -5828,6 +5828,13 @@ i.e. https://&lt;namespace&gt;/obl/&lt;definition name&gt;/value/&lt;value&gt; <
 down the hierarchical values instead of returning solely the value that is directly entitled </p></td>
                 </tr>
               
+                <tr>
+                  <td>resources</td>
+                  <td><a href="#authorization.v2.Resource">Resource</a></td>
+                  <td>repeated</td>
+                  <td><p>optional resources to scope returned entitlements and to resolve resource-dependent direct entitlements </p></td>
+                </tr>
+
             </tbody>
           </table>
 
@@ -19662,4 +19669,3 @@ Kas Key RPCs
     </table>
   </body>
 </html>
-

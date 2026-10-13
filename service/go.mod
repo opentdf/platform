@@ -5,6 +5,7 @@ go 1.26.0
 require (
 	buf.build/go/protovalidate v1.0.0
 	connectrpc.com/connect v1.21.0
+	connectrpc.com/connect/v2 v2.0.0
 	connectrpc.com/grpchealth v1.5.0
 	connectrpc.com/grpcreflect v1.3.0
 	connectrpc.com/otelconnect v0.12.0
@@ -56,7 +57,6 @@ require (
 )
 
 require (
-	connectrpc.com/connect/v2 v2.0.0 // indirect
 	github.com/cloudflare/circl v1.6.3 // indirect
 	github.com/docker/go-connections v0.6.0 // indirect
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.29.0 // indirect

@@ -9,9 +9,7 @@ import (
 // otelconnect that injects OpenTelemetry trace context into outbound requests
 // and creates per-RPC spans and metrics.
 func ConnectClientTraceInterceptor() (connect.Interceptor, error) {
-	return otelconnect.NewInterceptor(
-		otelconnect.WithoutTraceEvents(),
-	)
+	return otelconnect.NewInterceptor()
 }
 
 // ConnectServerTraceInterceptor returns a Connect interceptor backed by
@@ -20,12 +18,15 @@ func ConnectClientTraceInterceptor() (connect.Interceptor, error) {
 // User-Agent header as request metadata.
 //
 // WithTrustRemote makes server spans children of the incoming trace rather
-// than linked root spans. WithoutServerPeerAttributes reduces cardinality.
+// than linked root spans. otelconnect omits server peer attributes and
+// per-message trace events by default.
 func ConnectServerTraceInterceptor() (connect.Interceptor, error) {
-	return otelconnect.NewInterceptor(
+	return otelconnect.NewInterceptor(serverTraceOptions()...)
+}
+
+func serverTraceOptions() []otelconnect.Option {
+	return []otelconnect.Option{
 		otelconnect.WithTrustRemote(),
-		otelconnect.WithoutServerPeerAttributes(),
-		otelconnect.WithoutTraceEvents(),
 		otelconnect.WithTraceRequestHeader("User-Agent"),
-	)
+	}
 }

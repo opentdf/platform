@@ -16,7 +16,7 @@ func Test_InitTracer_CompatibleResourceSchemas_Succeeds(t *testing.T) {
 	// import. If they drift, such as SDK schema 1.41.0 with semconv schema 1.26.0,
 	// InitTracer returns "conflicting Schema URL" and require.NoError fails.
 	// The file exporter avoids needing a collector; all exporters use this merge.
-	shutdown, err := InitTracer(context.Background(), Config{
+	shutdown, err := InitTracer(t.Context(), Config{
 		Enabled: true,
 		Provider: ProviderConfig{
 			Name: ProviderFile,
@@ -37,7 +37,7 @@ func Test_InitTracer_ShutdownFlushesAfterContextCancellation(t *testing.T) {
 		otel.SetTextMapPropagator(previousPropagator)
 	})
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
 	path := filepath.Join(t.TempDir(), "traces.json")
 	shutdown, err := InitTracer(ctx, Config{

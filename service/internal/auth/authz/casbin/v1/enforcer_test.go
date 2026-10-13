@@ -780,7 +780,7 @@ func (s *AuthnCasbinSuite) Test_Override_Of_Groups_Claim() {
 
 func (s *AuthnCasbinSuite) enforce(enforcer *Enforcer, tok jwt.Token, resource, action string) (bool, error) {
 	result, err := enforcer.enforce(
-		context.Background(),
+		s.T().Context(),
 		tok,
 		authz.RoleRequest{
 			Resource: resource,

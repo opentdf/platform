@@ -2871,7 +2871,7 @@ func (s *TDFSuite) Test_LargeManifest_WithMaxManifest() {
 		tdfBuffer := new(bytes.Buffer)
 		writer := zipstream.NewSegmentTDFWriter(1, zipstream.WithZip64Mode(zipstream.Zip64Auto))
 
-		segmentHeader, err := writer.WriteSegment(context.Background(), 0, uint64(len(payload)), crc32.ChecksumIEEE(payload))
+		segmentHeader, err := writer.WriteSegment(s.T().Context(), 0, uint64(len(payload)), crc32.ChecksumIEEE(payload))
 		s.Require().NoError(err)
 		if len(segmentHeader) > 0 {
 			_, err = tdfBuffer.Write(segmentHeader)
@@ -2880,7 +2880,7 @@ func (s *TDFSuite) Test_LargeManifest_WithMaxManifest() {
 		_, err = tdfBuffer.Write(payload)
 		s.Require().NoError(err)
 
-		finalBytes, err := writer.Finalize(context.Background(), manifest)
+		finalBytes, err := writer.Finalize(s.T().Context(), manifest)
 		s.Require().NoError(err)
 		_, err = tdfBuffer.Write(finalBytes)
 		s.Require().NoError(err)
@@ -2964,7 +2964,7 @@ func (s *TDFSuite) testDecryptWithReader(sdk *SDK, tdfFile, decryptedTdfFileName
 	r, err := sdk.LoadTDF(readSeeker, test.opts...)
 	s.Require().NoError(err)
 
-	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(300*time.Minute))
+	ctx, cancel := context.WithDeadline(s.T().Context(), time.Now().Add(300*time.Minute))
 	defer cancel()
 	err = r.Init(ctx)
 	s.Require().NoError(err)

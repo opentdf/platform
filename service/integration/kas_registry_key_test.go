@@ -53,7 +53,7 @@ type KasRegistryKeySuite struct {
 
 func (s *KasRegistryKeySuite) SetupSuite() {
 	slog.Info("setting up db.KasKeys test suite")
-	s.ctx = context.Background()
+	s.ctx = s.T().Context()
 	c := *Config
 	c.DB.Schema = "test_opentdf_kas_keys"
 	s.db = fixtures.NewDBInterface(s.ctx, c)

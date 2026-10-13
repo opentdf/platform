@@ -101,7 +101,7 @@ func TestJITPDP_GetEntitlements_TargetedFetch(t *testing.T) {
 		sdk:    &otdfSDK.SDK{Attributes: attrFake, SubjectMapping: smFake, EntityResolutionV2: ers},
 	}
 
-	ents, err := p.GetEntitlements(context.Background(), entityChainIdentifier(), false)
+	ents, err := p.GetEntitlements(t.Context(), entityChainIdentifier(), false)
 	require.NoError(t, err)
 	require.Len(t, ents, 1)
 	assert.Equal(t, "e1", ents[0].GetEphemeralId())
@@ -127,7 +127,7 @@ func TestJITPDP_GetEntitlements_NoMatchReturnsNil(t *testing.T) {
 		sdk:    &otdfSDK.SDK{Attributes: attrFake, SubjectMapping: smFake, EntityResolutionV2: ers},
 	}
 
-	ents, err := p.GetEntitlements(context.Background(), entityChainIdentifier(), false)
+	ents, err := p.GetEntitlements(t.Context(), entityChainIdentifier(), false)
 	require.NoError(t, err)
 	assert.Nil(t, ents)
 	// No match means no entitleable fetch is performed.
@@ -137,7 +137,7 @@ func TestJITPDP_GetEntitlements_NoMatchReturnsNil(t *testing.T) {
 func newTestObligationsPDP(t *testing.T) *obligations.ObligationsPolicyDecisionPoint {
 	t.Helper()
 	oPDP, err := obligations.NewObligationsPolicyDecisionPoint(
-		context.Background(),
+		t.Context(),
 		logger.CreateTestLogger(),
 		make(map[string]*attrs.GetAttributeValuesByFqnsResponse_AttributeAndValue),
 		make(map[string]*policy.RegisteredResourceValue),
@@ -196,7 +196,7 @@ func TestJITPDP_GetDecision_TargetedPermit(t *testing.T) {
 		registeredResourceValuesByFQN: make(map[string]*policy.RegisteredResourceValue),
 	}
 
-	ctx := audit.ContextWithActorID(context.Background(), "test-actor")
+	ctx := audit.ContextWithActorID(t.Context(), "test-actor")
 	decision, err := p.GetDecision(ctx, entityChainIdentifier(), &policy.Action{Name: "read"}, attrValueResource(valueFQN), nil, nil)
 	require.NoError(t, err)
 	require.NotNil(t, decision)
@@ -222,7 +222,7 @@ func TestJITPDP_GetDecision_TargetedDenyOnEntityMismatch(t *testing.T) {
 		registeredResourceValuesByFQN: make(map[string]*policy.RegisteredResourceValue),
 	}
 
-	ctx := audit.ContextWithActorID(context.Background(), "test-actor")
+	ctx := audit.ContextWithActorID(t.Context(), "test-actor")
 	decision, err := p.GetDecision(ctx, entityChainIdentifier(), &policy.Action{Name: "read"}, attrValueResource(valueFQN), nil, nil)
 	require.NoError(t, err)
 	require.NotNil(t, decision)
@@ -249,7 +249,7 @@ func TestJITPDP_GetDecision_NotFoundDegradesToDeny(t *testing.T) {
 		registeredResourceValuesByFQN: make(map[string]*policy.RegisteredResourceValue),
 	}
 
-	ctx := audit.ContextWithActorID(context.Background(), "test-actor")
+	ctx := audit.ContextWithActorID(t.Context(), "test-actor")
 	decision, err := p.GetDecision(ctx, entityChainIdentifier(), &policy.Action{Name: "read"}, attrValueResource(valueFQN), nil, nil)
 	// A NotFound must degrade to a per-resource deny, not surface as an internal error.
 	require.NoError(t, err)
@@ -307,7 +307,7 @@ func TestJITPDP_GetDecision_MixedKnownUnknownFQNsPreservesKnown(t *testing.T) {
 		{Resource: &authzV2.Resource_AttributeValues_{AttributeValues: &authzV2.Resource_AttributeValues{Fqns: []string{unknownFQN}}}},
 	}
 
-	ctx := audit.ContextWithActorID(context.Background(), "test-actor")
+	ctx := audit.ContextWithActorID(t.Context(), "test-actor")
 	decision, err := p.GetDecision(ctx, entityChainIdentifier(), &policy.Action{Name: "read"}, resources, nil, nil)
 	require.NoError(t, err)
 	require.NotNil(t, decision)
@@ -324,7 +324,7 @@ func TestJITPDP_buildInnerPDP_UsesFullPolicyPDPWhenSet(t *testing.T) {
 	definitionFQN := "https://example.com/attr/classification"
 	valueFQN := definitionFQN + "/value/confidential"
 	fullPDP, err := NewPolicyDecisionPoint(
-		context.Background(),
+		t.Context(),
 		logger.CreateTestLogger(),
 		[]*policy.Attribute{{
 			Fqn:    definitionFQN,
@@ -350,7 +350,7 @@ func TestJITPDP_buildInnerPDP_UsesFullPolicyPDPWhenSet(t *testing.T) {
 		fullPolicyPDP: fullPDP,
 	}
 
-	got, err := p.buildInnerPDP(context.Background(), []string{valueFQN})
+	got, err := p.buildInnerPDP(t.Context(), []string{valueFQN})
 	require.NoError(t, err)
 	assert.Same(t, fullPDP, got)
 	assert.Empty(t, attrFake.requests)
@@ -376,7 +376,7 @@ func TestJITPDP_GetDecision_TargetedDenyOnUnknownFQN(t *testing.T) {
 		registeredResourceValuesByFQN: make(map[string]*policy.RegisteredResourceValue),
 	}
 
-	ctx := audit.ContextWithActorID(context.Background(), "test-actor")
+	ctx := audit.ContextWithActorID(t.Context(), "test-actor")
 	decision, err := p.GetDecision(ctx, entityChainIdentifier(), &policy.Action{Name: "read"}, attrValueResource(valueFQN), nil, nil)
 	require.NoError(t, err)
 	require.NotNil(t, decision)

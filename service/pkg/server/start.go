@@ -175,6 +175,8 @@ func Start(f ...StartOptions) error {
 	// Programmatic Connect/IPC interceptors (not config-driven)
 	cfg.Server.ExtraConnectInterceptors = append(cfg.Server.ExtraConnectInterceptors, startConfig.extraConnectInterceptors...)
 	cfg.Server.ExtraIPCInterceptors = append(cfg.Server.ExtraIPCInterceptors, startConfig.extraIPCInterceptors...)
+	cfg.Server.ExtraConnectServerInterceptors = append(cfg.Server.ExtraConnectServerInterceptors, startConfig.extraConnectServerInterceptors...)
+	cfg.Server.ExtraIPCServerInterceptors = append(cfg.Server.ExtraIPCServerInterceptors, startConfig.extraIPCServerInterceptors...)
 
 	// Set Default Policy
 	if startConfig.builtinPolicyOverride != "" {
@@ -312,12 +314,12 @@ func Start(f ...StartOptions) error {
 		if err := validateExternalInterceptorFactory(factory); err != nil {
 			return err
 		}
-		interceptor, err := factory.Factory(newInterceptorParams(factory, cfg, client, logger))
+		extra, err := buildExternalInterceptor(factory, newInterceptorParams(factory, cfg, client, logger))
 		if err != nil {
-			return fmt.Errorf("failed to create external connect interceptor %q: %w", factory.Name, err)
+			return err
 		}
-		if interceptor != nil {
-			otdf.ConnectRPC.Interceptors = append(otdf.ConnectRPC.Interceptors, connect.WithInterceptors(interceptor))
+		if extra.V1 != nil || extra.V2 != nil {
+			otdf.ConnectRPC.AddExtraInterceptors(extra)
 		}
 	}
 
@@ -376,10 +378,27 @@ func validateExternalInterceptorFactory(factory InterceptorFactory) error {
 	if factory.Name == "" {
 		return ErrExternalInterceptorFactoryNameRequired
 	}
-	if factory.Factory == nil {
+	if factory.Factory == nil && factory.ServerFactory == nil {
 		return ErrExternalInterceptorFactoryFuncRequired
 	}
 	return nil
+}
+
+// buildExternalInterceptor runs a factory's connect-go v1 and v2 constructors.
+func buildExternalInterceptor(factory InterceptorFactory, params InterceptorParams) (ConnectServerInterceptor, error) {
+	extra := ConnectServerInterceptor{Name: factory.Name}
+	var err error
+	if factory.Factory != nil {
+		if extra.V1, err = factory.Factory(params); err != nil {
+			return extra, fmt.Errorf("failed to create external connect interceptor %q: %w", factory.Name, err)
+		}
+	}
+	if factory.ServerFactory != nil {
+		if extra.V2, err = factory.ServerFactory(params); err != nil {
+			return extra, fmt.Errorf("failed to create external connect interceptor %q: %w", factory.Name, err)
+		}
+	}
+	return extra, nil
 }
 
 func newInterceptorParams(factory InterceptorFactory, cfg *config.Config, client *sdk.SDK, logger *logger.Logger) InterceptorParams {

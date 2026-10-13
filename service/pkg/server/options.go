@@ -9,8 +9,10 @@ import (
 	"time"
 
 	"connectrpc.com/connect"
+	connectv2 "connectrpc.com/connect/v2"
 	"github.com/casbin/casbin/v2/persist"
 	"github.com/opentdf/platform/sdk"
+	"github.com/opentdf/platform/service/internal/server"
 	"github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/logger/audit"
 	"github.com/opentdf/platform/service/pkg/authz"
@@ -27,12 +29,22 @@ type InterceptorParams struct {
 	Config config.InterceptorConfig
 }
 
-// InterceptorFactory creates a named external Connect interceptor. Returning a
-// nil interceptor skips registration for that factory.
+// InterceptorFactory creates a named external Connect interceptor in its
+// connect-go v1 form, its v2 form, or both. Factory results apply to services
+// on v1 and ServerFactory results to services on v2; platform services run on
+// v2. A factory whose forms are all nil is skipped. When one form is set and
+// the other is nil, services on the other version cannot be registered.
 type InterceptorFactory struct {
-	Name    string
-	Factory func(InterceptorParams) (connect.Interceptor, error)
+	Name          string
+	Factory       func(InterceptorParams) (connect.Interceptor, error)
+	ServerFactory func(InterceptorParams) (connectv2.ServerInterceptor, error)
 }
+
+// ConnectServerInterceptor is a programmatic server interceptor in its
+// connect-go v1 and v2 forms. Each service runs the form for its connect-go
+// version, and a service cannot be registered while an interceptor lacks that
+// form, so the interceptor is never skipped.
+type ConnectServerInterceptor = server.ExtraInterceptor
 
 type StartConfig struct {
 	ConfigKey             string
@@ -47,9 +59,11 @@ type StartConfig struct {
 	configLoaders         []config.Loader
 	configLoaderOrder     []string
 
-	extraConnectInterceptors     []connect.Interceptor
-	extraIPCInterceptors         []connect.Interceptor
-	externalInterceptorFactories []InterceptorFactory
+	extraConnectInterceptors       []connect.Interceptor
+	extraIPCInterceptors           []connect.Interceptor
+	extraConnectServerInterceptors []ConnectServerInterceptor
+	extraIPCServerInterceptors     []ConnectServerInterceptor
+	externalInterceptorFactories   []InterceptorFactory
 
 	trustKeyManagerCtxs []trust.NamedKeyManagerCtxFactory
 
@@ -267,7 +281,10 @@ func WithConfigLoaderOrder(loaderOrder []string) StartOptions {
 	}
 }
 
-// WithConnectInterceptors appends additional Connect interceptors (server-side) applied to all RPCs.
+// WithConnectInterceptors appends additional connect-go v1 server interceptors.
+//
+// Deprecated: platform services run on connect-go v2, and the platform fails to
+// start while an interceptor has no v2 form. Use WithConnectServerInterceptors.
 func WithConnectInterceptors(interceptors ...connect.Interceptor) StartOptions {
 	return func(c StartConfig) StartConfig {
 		c.extraConnectInterceptors = append(c.extraConnectInterceptors, interceptors...)
@@ -286,10 +303,32 @@ func WithExternalInterceptorFactories(factories ...InterceptorFactory) StartOpti
 	}
 }
 
-// WithIPCInterceptors appends additional Connect interceptors for in-process IPC server.
+// WithIPCInterceptors appends additional connect-go v1 server interceptors for
+// the in-process IPC server.
+//
+// Deprecated: platform services run on connect-go v2, and the platform fails to
+// start while an interceptor has no v2 form. Use WithIPCServerInterceptors.
 func WithIPCInterceptors(interceptors ...connect.Interceptor) StartOptions {
 	return func(c StartConfig) StartConfig {
 		c.extraIPCInterceptors = append(c.extraIPCInterceptors, interceptors...)
+		return c
+	}
+}
+
+// WithConnectServerInterceptors appends server interceptors applied to every
+// RPC on the external server, after the platform's interceptors.
+func WithConnectServerInterceptors(interceptors ...ConnectServerInterceptor) StartOptions {
+	return func(c StartConfig) StartConfig {
+		c.extraConnectServerInterceptors = append(c.extraConnectServerInterceptors, interceptors...)
+		return c
+	}
+}
+
+// WithIPCServerInterceptors appends server interceptors applied to every RPC on
+// the in-process IPC server, after the platform's interceptors.
+func WithIPCServerInterceptors(interceptors ...ConnectServerInterceptor) StartOptions {
+	return func(c StartConfig) StartConfig {
+		c.extraIPCServerInterceptors = append(c.extraIPCServerInterceptors, interceptors...)
 		return c
 	}
 }

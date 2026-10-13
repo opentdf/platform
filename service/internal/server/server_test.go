@@ -8,11 +8,13 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"reflect"
+	"strconv"
 	"strings"
 	"sync/atomic"
 	"testing"
 
 	"connectrpc.com/connect"
+	connectv2 "connectrpc.com/connect/v2"
 	"github.com/creasty/defaults"
 	"github.com/go-chi/cors"
 	"github.com/opentdf/platform/service/internal/auth"
@@ -733,6 +735,27 @@ func noopInterceptor() connect.Interceptor {
 	})
 }
 
+func noopServerInterceptor() connectv2.ServerInterceptor {
+	return func(next connectv2.ServerFunc) connectv2.ServerFunc { return next }
+}
+
+// testConnectRPCInterceptors builds newConnectRPC inputs with no-op v2 forms
+// for each v1 interceptor.
+func testConnectRPCInterceptors(authInts, extraInts []connect.Interceptor) connectRPCInterceptors {
+	ints := connectRPCInterceptors{
+		auth:        authInts,
+		requestIP:   noopInterceptor(),
+		requestIPV2: noopServerInterceptor(),
+	}
+	for range authInts {
+		ints.authV2 = append(ints.authV2, noopServerInterceptor())
+	}
+	for i, extra := range extraInts {
+		ints.extras = append(ints.extras, ExtraInterceptor{Name: strconv.Itoa(i), V1: extra, V2: noopServerInterceptor()})
+	}
+	return ints
+}
+
 func TestNewConnectRPC(t *testing.T) {
 	testLogger := logger.CreateTestLogger()
 
@@ -795,7 +818,7 @@ func TestNewConnectRPC(t *testing.T) {
 				Auth: auth.Config{Enabled: tt.authEnabled},
 			}
 
-			result, err := newConnectRPC(cfg, tt.authInts, tt.extraInts, noopInterceptor(), testLogger)
+			result, err := newConnectRPC(cfg, testConnectRPCInterceptors(tt.authInts, tt.extraInts), testLogger)
 			if tt.wantErr {
 				require.Error(t, err)
 				assert.Nil(t, result)
@@ -857,7 +880,7 @@ func TestNewConnectRPC_InterceptorOrdering(t *testing.T) {
 			callOrder = nil
 
 			cfg := Config{Auth: auth.Config{Enabled: tt.authEnabled}}
-			result, err := newConnectRPC(cfg, tt.authInts, tt.extras, noopInterceptor(), testLogger)
+			result, err := newConnectRPC(cfg, testConnectRPCInterceptors(tt.authInts, tt.extras), testLogger)
 			require.NoError(t, err)
 
 			// Register a minimal unary handler to exercise the interceptor chain

@@ -74,7 +74,7 @@ func FuzzLoadTDF(f *testing.F) {
 		require.NoError(f, err)
 		return err
 	}))
-	// DSPX-5102
+	// assertion with a case-variant "Statement": null key alongside "statement" must not panic
 	f.Add(zipWithManifest(f, nullStatementManifestJSON))
 	// seed with large manifest allocation up front
 	f.Add(unverifiedBase64Bytes("UEsDBC0ACAAAAH11LzEAAAAAAAAAAAAAAAAJAAAAM" +

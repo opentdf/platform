@@ -109,7 +109,7 @@ func (s *AuthSuite) Test_ConnectAuthNInterceptorV2_RejectsBeforeReadingBody() {
 			fake := &fakeAccessServiceV2{}
 			server, read := s.newV2KASServer(s.auth, fake)
 
-			resp := postConnectUnary(s.T(), server, rewrapProcedure, tc.body, tc.header)
+			resp := postConnectUnary(s.T(), server, tc.body, tc.header)
 
 			s.Equal(http.StatusUnauthorized, resp.StatusCode)
 			s.Zero(read.Load(), "the body must not be read before authentication")
@@ -144,7 +144,7 @@ func (s *AuthSuite) Test_ConnectAuthNInterceptorV2_ReadLimitAppliesAfterAuthenti
 			fake := &fakeAccessServiceV2{}
 			server, _ := s.newV2KASServer(s.auth, fake, connecthttp.WithReadMaxBytes(limit))
 
-			resp := postConnectUnary(s.T(), server, rewrapProcedure, tc.body, tc.header)
+			resp := postConnectUnary(s.T(), server, tc.body, tc.header)
 
 			s.Equal(tc.wantStatus, resp.StatusCode)
 			s.Equal(tc.wantCalled, fake.rewrapCalls.Load() == 1)

@@ -138,10 +138,10 @@ func gzipBytes(t *testing.T, b []byte) []byte {
 	return buf.Bytes()
 }
 
-// postConnectUnary sends a raw Connect unary request with a binary protobuf body.
-func postConnectUnary(t *testing.T, server *memhttp.Server, procedure string, body []byte, header http.Header) *http.Response {
+// postConnectUnary sends a raw Connect unary Rewrap request with a binary protobuf body.
+func postConnectUnary(t *testing.T, server *memhttp.Server, body []byte, header http.Header) *http.Response {
 	t.Helper()
-	req, err := http.NewRequestWithContext(t.Context(), http.MethodPost, memhttpBaseURL(server)+procedure, bytes.NewReader(body))
+	req, err := http.NewRequestWithContext(t.Context(), http.MethodPost, memhttpBaseURL(server)+rewrapProcedure, bytes.NewReader(body))
 	require.NoError(t, err)
 	req.Header.Set("Content-Type", "application/proto")
 	req.Header.Set("Connect-Protocol-Version", "1")
@@ -217,7 +217,7 @@ func (s *AuthSuite) Test_ConnectAuthNRequestGate_RejectsBeforeDecode() {
 		fake := &countingAccessServer{}
 		server := s.newGatedKASServer(s.auth, fake)
 
-		resp := postConnectUnary(s.T(), server, rewrapProcedure, undecodable, nil)
+		resp := postConnectUnary(s.T(), server, undecodable, nil)
 
 		s.Equal(http.StatusUnauthorized, resp.StatusCode)
 		s.Zero(fake.rewrapCalls.Load())
@@ -227,7 +227,7 @@ func (s *AuthSuite) Test_ConnectAuthNRequestGate_RejectsBeforeDecode() {
 		fake := &countingAccessServer{}
 		server := s.newInterceptorKASServer(s.auth, fake)
 
-		resp := postConnectUnary(s.T(), server, rewrapProcedure, undecodable, nil)
+		resp := postConnectUnary(s.T(), server, undecodable, nil)
 
 		s.Equal(http.StatusBadRequest, resp.StatusCode, "without the gate the body is unmarshaled before authentication")
 		s.Zero(fake.rewrapCalls.Load())
@@ -265,7 +265,7 @@ func (s *AuthSuite) Test_ConnectAuthNRequestGate_RunsBeforeReadLimit() {
 			fake := &countingAccessServer{}
 			server := s.newGatedKASServer(s.auth, fake, connect.WithReadMaxBytes(limit))
 
-			resp := postConnectUnary(s.T(), server, rewrapProcedure, tc.body, tc.header)
+			resp := postConnectUnary(s.T(), server, tc.body, tc.header)
 
 			s.Equal(tc.wantStatus, resp.StatusCode)
 			s.Equal(tc.wantCalled, fake.rewrapCalls.Load() == 1)

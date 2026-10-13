@@ -299,12 +299,12 @@ func TestJITPDP_UncachedDynamicDecisions(t *testing.T) {
 			props, err := structpb.NewStruct(map[string]any{"clientId": clientID, "projects": []any{"alpha", "beta"}})
 			require.NoError(t, err)
 			ers := &recordingERSV2Client{resolveResponse: &entityresolutionV2.ResolveEntitiesResponse{EntityRepresentations: []*entityresolutionV2.EntityRepresentation{{OriginalId: "e1", AdditionalProps: []*structpb.Struct{props}}}}}
-			p, err := NewJustInTimePDP(context.Background(), logger.CreateTestLogger(), &otdfSDK.SDK{
+			p, err := NewJustInTimePDP(t.Context(), logger.CreateTestLogger(), &otdfSDK.SDK{
 				Attributes: attrFake, EntityResolutionV2: ers, RegisteredResources: emptyRegisteredResourcesClient{},
 				Obligations: emptyObligationsClient{}, DynamicValueMapping: rejectFullDynamicMappingsClient{},
 			}, &decisionPolicyStore{}, false, !tc.dynamicMappingsDisabled, true)
 			require.NoError(t, err)
-			decision, err := p.GetDecision(audit.ContextWithActorID(context.Background(), "test-actor"), entityChainIdentifier(),
+			decision, err := p.GetDecision(audit.ContextWithActorID(t.Context(), "test-actor"), entityChainIdentifier(),
 				&policy.Action{Name: tc.action, Namespace: ns}, attrValueResource(valueFQN), nil, nil)
 			require.NoError(t, err)
 			assert.Equal(t, tc.permit, decision.AllPermitted)
@@ -412,12 +412,12 @@ func TestJITPDP_UncachedDirectDecisions(t *testing.T) {
 				rep.DirectEntitlements = []*entityresolutionV2.DirectEntitlement{{AttributeValueFqn: valueFQN, Actions: []string{"read"}}}
 				ers := &recordingERSV2Client{resolveResponse: &entityresolutionV2.ResolveEntitiesResponse{EntityRepresentations: []*entityresolutionV2.EntityRepresentation{rep}}}
 				store := &decisionPolicyStore{}
-				p, err := NewJustInTimePDP(context.Background(), logger.CreateTestLogger(), &otdfSDK.SDK{
+				p, err := NewJustInTimePDP(t.Context(), logger.CreateTestLogger(), &otdfSDK.SDK{
 					Attributes: attrFake, EntityResolutionV2: ers,
 					RegisteredResources: emptyRegisteredResourcesClient{}, Obligations: emptyObligationsClient{},
 				}, store, true, false, false)
 				require.NoError(t, err)
-				ctx := audit.ContextWithActorID(context.Background(), "test-actor")
+				ctx := audit.ContextWithActorID(t.Context(), "test-actor")
 				decision, err := p.GetDecision(ctx, entityChainIdentifier(), &policy.Action{Name: tc.action}, attrValueResource(valueFQN), nil, nil)
 				require.NoError(t, err)
 				assert.Equal(t, tc.permit, decision.AllPermitted)
@@ -456,10 +456,10 @@ func TestJITPDP_CacheAndEnumerationRetainFullPolicy(t *testing.T) {
 		Attributes: attrFake, EntityResolutionV2: ers,
 		SubjectMapping: &fakeSubjectMappingClient{resp: &subjectmapping.MatchSubjectMappingsResponse{SubjectMappings: []*policy.SubjectMapping{sm}}},
 	}
-	p, err := NewJustInTimePDP(context.Background(), logger.CreateTestLogger(), sdk, store, true, true, false)
+	p, err := NewJustInTimePDP(t.Context(), logger.CreateTestLogger(), sdk, store, true, true, false)
 	require.NoError(t, err)
 	require.NotNil(t, p.fullPolicyPDP)
-	inner, err := p.buildInnerPDP(context.Background(), []string{valueFQN})
+	inner, err := p.buildInnerPDP(t.Context(), []string{valueFQN})
 	require.NoError(t, err)
 	assert.Same(t, p.fullPolicyPDP, inner)
 	assert.Equal(t, 1, store.attributeReads)
@@ -468,7 +468,7 @@ func TestJITPDP_CacheAndEnumerationRetainFullPolicy(t *testing.T) {
 
 	// An uncached enumeration still reads the broader policy, including hierarchy siblings.
 	p.fullPolicyPDP = nil
-	entitlements, err := p.GetEntitlements(context.Background(), entityChainIdentifier(), true)
+	entitlements, err := p.GetEntitlements(t.Context(), entityChainIdentifier(), true)
 	require.NoError(t, err)
 	require.Len(t, entitlements, 1)
 	assert.Contains(t, entitlements[0].GetActionsPerAttributeValueFqn(), valueFQN)

@@ -8,6 +8,8 @@ import (
 	"testing"
 
 	"connectrpc.com/connect"
+	connectv2 "connectrpc.com/connect/v2"
+	"connectrpc.com/connect/v2/connecthttp"
 	"github.com/opentdf/platform/service/tracing"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -232,4 +234,48 @@ func TestTraceContextPropagation_NoTraceContext(t *testing.T) {
 	require.True(t, serverTraceID.IsValid(), "server span should still be created")
 	assert.NotEqual(t, clientTraceID, serverTraceID,
 		"server should have a different trace ID when no propagator is configured")
+}
+
+// TestTraceContextPropagation_V2Server verifies that a connect-go v2 server
+// joins the trace a v1 client starts.
+func TestTraceContextPropagation_V2Server(t *testing.T) {
+	tp := setupOTel(t)
+
+	serverInt, err := tracing.ConnectServerTraceInterceptorV2()
+	require.NoError(t, err)
+	clientInt, err := tracing.ConnectClientTraceInterceptor()
+	require.NoError(t, err)
+
+	var serverTraceID trace.TraceID
+	server := connectv2.NewServer(serverInt)
+	server.Register(connectv2.Method{
+		Spec: connectv2.Spec{Procedure: "/test.v1.TestService/Ping", StreamType: connectv2.StreamTypeUnary},
+		Handler: func(ctx context.Context, _ connectv2.Spec, stream connectv2.ServerStream) error {
+			var req emptypb.Empty
+			if err := stream.Receive(&req); err != nil {
+				return err
+			}
+			serverTraceID = trace.SpanContextFromContext(ctx).TraceID()
+			return stream.Send(&emptypb.Empty{})
+		},
+	})
+	mux := http.NewServeMux()
+	connecthttp.Mount(mux, server)
+	srv := httptest.NewServer(mux)
+	defer srv.Close()
+
+	client := connect.NewClient[emptypb.Empty, emptypb.Empty](
+		srv.Client(),
+		srv.URL+"/test.v1.TestService/Ping",
+		connect.WithInterceptors(clientInt),
+	)
+
+	ctx, span := tp.Tracer("test").Start(context.Background(), "client-call")
+	clientTraceID := span.SpanContext().TraceID()
+	_, err = client.CallUnary(ctx, connect.NewRequest(&emptypb.Empty{}))
+	span.End()
+	require.NoError(t, err)
+
+	assert.True(t, serverTraceID.IsValid(), "server trace ID should be valid")
+	assert.Equal(t, clientTraceID, serverTraceID, "server must see the same trace ID as the client")
 }

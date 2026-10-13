@@ -5,8 +5,10 @@ import (
 	"net/http"
 
 	"connectrpc.com/connect"
+	connectv2 "connectrpc.com/connect/v2"
 	"github.com/google/uuid"
 	sdkAudit "github.com/opentdf/platform/sdk/audit"
+	"github.com/opentdf/platform/service/internal/connectcompat"
 	"github.com/opentdf/platform/service/internal/server/realip"
 )
 
@@ -19,6 +21,16 @@ func ContextServerInterceptor() connect.UnaryInterceptorFunc {
 	}
 
 	return connect.UnaryInterceptorFunc(interceptor)
+}
+
+// ContextServerInterceptorV2 is ContextServerInterceptor for connect-go v2
+// servers.
+func ContextServerInterceptorV2() connectv2.ServerInterceptor {
+	return func(next connectv2.ServerFunc) connectv2.ServerFunc {
+		return func(ctx context.Context, spec connectv2.Spec, stream connectv2.ServerStream) error {
+			return next(withRequestContext(ctx, connectcompat.RequestHeader(ctx)), spec, stream)
+		}
+	}
 }
 
 // withRequestContext stores the request ID, client IP, and user agent from the

@@ -2,6 +2,7 @@ package tracing
 
 import (
 	"connectrpc.com/connect"
+	connectv2 "connectrpc.com/connect/v2"
 	"connectrpc.com/otelconnect"
 )
 
@@ -22,6 +23,12 @@ func ConnectClientTraceInterceptor() (connect.Interceptor, error) {
 // per-message trace events by default.
 func ConnectServerTraceInterceptor() (connect.Interceptor, error) {
 	return otelconnect.NewInterceptor(serverTraceOptions()...)
+}
+
+// ConnectServerTraceInterceptorV2 is ConnectServerTraceInterceptor for
+// connect-go v2 servers.
+func ConnectServerTraceInterceptorV2() (connectv2.ServerInterceptor, error) {
+	return otelconnect.NewServerInterceptor(serverTraceOptions()...)
 }
 
 func serverTraceOptions() []otelconnect.Option {

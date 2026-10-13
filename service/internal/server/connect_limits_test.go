@@ -214,11 +214,17 @@ func newReadLimitTestHandler(opts ...connect.HandlerOption) (http.Handler, *atom
 // serveConnectUnary sends body as a binary Connect unary request.
 func serveConnectUnary(t *testing.T, handler http.Handler, body []byte, compress bool) *httptest.ResponseRecorder {
 	t.Helper()
+	return serveConnectUnaryTo(t, handler, readLimitTestProcedure, body, compress)
+}
+
+// serveConnectUnaryTo sends body as a binary Connect unary request to procedure.
+func serveConnectUnaryTo(t *testing.T, handler http.Handler, procedure string, body []byte, compress bool) *httptest.ResponseRecorder {
+	t.Helper()
 
 	if compress {
 		body = gzipCompress(t, body)
 	}
-	req := httptest.NewRequest(http.MethodPost, readLimitTestProcedure, bytes.NewReader(body))
+	req := httptest.NewRequest(http.MethodPost, procedure, bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/proto")
 	req.Header.Set("Connect-Protocol-Version", "1")
 	if compress {

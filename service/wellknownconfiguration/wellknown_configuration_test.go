@@ -5,7 +5,7 @@ import (
 	"errors"
 	"testing"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 	wellknown "github.com/opentdf/platform/protocol/go/wellknownconfiguration"
 	"github.com/opentdf/platform/service/logger"
 	"github.com/stretchr/testify/assert"
@@ -87,15 +87,15 @@ func (s *WellKnownConfigurationSuite) TestUpdateConfigurationBaseKey() {
 }
 
 func (s *WellKnownConfigurationSuite) TestGetWellKnownConfiguration_EmptyConfig() {
-	req := connect.NewRequest(&wellknown.GetWellKnownConfigurationRequest{})
+	req := &wellknown.GetWellKnownConfigurationRequest{}
 	resp, err := s.service.GetWellKnownConfiguration(context.Background(), req)
 
 	s.Require().NoError(err)
 	s.NotNil(resp)
-	s.NotNil(resp.Msg.GetConfiguration())
+	s.NotNil(resp.GetConfiguration())
 
 	// Should return an empty struct
-	s.Empty(resp.Msg.GetConfiguration().GetFields())
+	s.Empty(resp.GetConfiguration().GetFields())
 }
 
 func (s *WellKnownConfigurationSuite) TestGetWellKnownConfiguration_WithConfigurations() {
@@ -121,15 +121,15 @@ func (s *WellKnownConfigurationSuite) TestGetWellKnownConfiguration_WithConfigur
 	UpdateConfigurationBaseKey(baseConfig)
 
 	// Get the configuration
-	req := connect.NewRequest(&wellknown.GetWellKnownConfigurationRequest{})
+	req := &wellknown.GetWellKnownConfigurationRequest{}
 	resp, err := s.service.GetWellKnownConfiguration(context.Background(), req)
 
 	s.Require().NoError(err)
 	s.NotNil(resp)
-	s.NotNil(resp.Msg.GetConfiguration())
+	s.NotNil(resp.GetConfiguration())
 
 	// Verify all configurations are present
-	fields := resp.Msg.GetConfiguration().GetFields()
+	fields := resp.GetConfiguration().GetFields()
 	s.Len(fields, 3) // service1, service2, base_key
 
 	// Verify service1 configuration
@@ -164,15 +164,15 @@ func (s *WellKnownConfigurationSuite) TestGetWellKnownConfiguration_KeyManagersS
 	err := RegisterConfiguration("key_managers", keyManagersConfig)
 	s.Require().NoError(err)
 
-	req := connect.NewRequest(&wellknown.GetWellKnownConfigurationRequest{})
+	req := &wellknown.GetWellKnownConfigurationRequest{}
 	resp, err := s.service.GetWellKnownConfiguration(context.Background(), req)
 
 	s.Require().NoError(err)
 	s.NotNil(resp)
-	s.NotNil(resp.Msg.GetConfiguration())
+	s.NotNil(resp.GetConfiguration())
 
 	// Verify key managers configuration is present and structured correctly
-	fields := resp.Msg.GetConfiguration().GetFields()
+	fields := resp.GetConfiguration().GetFields()
 	keyManagersField, exists := fields["key_managers"]
 	s.True(exists)
 	s.NotNil(keyManagersField.GetStructValue())
@@ -206,7 +206,7 @@ func (s *WellKnownConfigurationSuite) TestGetWellKnownConfiguration_InvalidData(
 	err := RegisterConfiguration("invalid_service", invalidConfig)
 	s.Require().NoError(err)
 
-	req := connect.NewRequest(&wellknown.GetWellKnownConfigurationRequest{})
+	req := &wellknown.GetWellKnownConfigurationRequest{}
 	resp, err := s.service.GetWellKnownConfiguration(context.Background(), req)
 
 	s.Require().Error(err)
@@ -243,12 +243,12 @@ func (s *WellKnownConfigurationSuite) TestConcurrentAccess() {
 	}
 
 	// Verify all configurations were registered
-	req := connect.NewRequest(&wellknown.GetWellKnownConfigurationRequest{})
+	req := &wellknown.GetWellKnownConfigurationRequest{}
 	resp, err := s.service.GetWellKnownConfiguration(context.Background(), req)
 
 	s.Require().NoError(err)
 	s.NotNil(resp)
-	s.Len(resp.Msg.GetConfiguration().GetFields(), numGoroutines)
+	s.Len(resp.GetConfiguration().GetFields(), numGoroutines)
 }
 
 func TestRegisterConfiguration_Standalone(t *testing.T) {
@@ -283,6 +283,6 @@ func TestNewRegistration(t *testing.T) {
 	assert.NotNil(t, registration)
 	assert.Equal(t, "wellknown", registration.Namespace)
 	assert.NotNil(t, registration.ServiceDesc)
-	assert.NotNil(t, registration.ConnectRPCFunc)
+	assert.NotNil(t, registration.ConnectRPCRegisterFunc)
 	assert.NotNil(t, registration.RegisterFunc)
 }

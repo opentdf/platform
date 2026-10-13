@@ -7,10 +7,10 @@ import (
 
 	"github.com/go-viper/mapstructure/v2"
 	ersV2 "github.com/opentdf/platform/protocol/go/entityresolution/v2"
-	"github.com/opentdf/platform/protocol/go/entityresolution/v2/entityresolutionv2connect"
 	claims "github.com/opentdf/platform/service/entityresolution/claims/v2"
 	keycloak "github.com/opentdf/platform/service/entityresolution/keycloak/v2"
 	multistrategyv2 "github.com/opentdf/platform/service/entityresolution/multi-strategy/v2"
+	"github.com/opentdf/platform/service/internal/connectv2/entityresolution/v2/entityresolutionv2connectv2"
 	"github.com/opentdf/platform/service/pkg/cache"
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
 	"go.opentelemetry.io/otel/trace"
@@ -28,18 +28,18 @@ const (
 )
 
 type EntityResolution struct {
-	entityresolutionv2connect.EntityResolutionServiceHandler
+	entityresolutionv2connectv2.EntityResolutionServiceHandler
 	trace.Tracer
 }
 
-func NewRegistration() *serviceregistry.Service[entityresolutionv2connect.EntityResolutionServiceHandler] {
-	return &serviceregistry.Service[entityresolutionv2connect.EntityResolutionServiceHandler]{
-		ServiceOptions: serviceregistry.ServiceOptions[entityresolutionv2connect.EntityResolutionServiceHandler]{
-			Namespace:      "entityresolution",
-			Version:        "v2",
-			ServiceDesc:    &ersV2.EntityResolutionService_ServiceDesc,
-			ConnectRPCFunc: entityresolutionv2connect.NewEntityResolutionServiceHandler,
-			RegisterFunc: func(srp serviceregistry.RegistrationParams) (entityresolutionv2connect.EntityResolutionServiceHandler, serviceregistry.HandlerServer) {
+func NewRegistration() *serviceregistry.Service[entityresolutionv2connectv2.EntityResolutionServiceHandler] {
+	return &serviceregistry.Service[entityresolutionv2connectv2.EntityResolutionServiceHandler]{
+		ServiceOptions: serviceregistry.ServiceOptions[entityresolutionv2connectv2.EntityResolutionServiceHandler]{
+			Namespace:              "entityresolution",
+			Version:                "v2",
+			ServiceDesc:            &ersV2.EntityResolutionService_ServiceDesc,
+			ConnectRPCRegisterFunc: entityresolutionv2connectv2.RegisterEntityResolutionServiceHandler,
+			RegisterFunc: func(srp serviceregistry.RegistrationParams) (entityresolutionv2connectv2.EntityResolutionServiceHandler, serviceregistry.HandlerServer) {
 				var inputConfig ERSConfig
 
 				if err := mapstructure.Decode(srp.Config, &inputConfig); err != nil {

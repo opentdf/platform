@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 	"github.com/open-policy-agent/opa/v1/ast"
 	"github.com/open-policy-agent/opa/v1/rego"
 	"github.com/opentdf/platform/protocol/go/authorization"
@@ -263,12 +263,10 @@ func TestGetEntitlementsEvaluatesRegoWithoutMatchedSelectors(t *testing.T) {
 		Tracer: noop.NewTracerProvider().Tracer(""),
 	}
 
-	resp, err := as.GetEntitlements(t.Context(), &connect.Request[authorization.GetEntitlementsRequest]{
-		Msg: &authorization.GetEntitlementsRequest{Entities: []*authorization.Entity{{Id: "e1"}}},
-	})
+	resp, err := as.GetEntitlements(t.Context(), &authorization.GetEntitlementsRequest{Entities: []*authorization.Entity{{Id: "e1"}}})
 	require.NoError(t, err)
-	require.Len(t, resp.Msg.GetEntitlements(), 1)
-	assert.Equal(t, []string{"https://example.com/attr/classification/value/confidential"}, resp.Msg.GetEntitlements()[0].GetAttributeValueFqns())
+	require.Len(t, resp.GetEntitlements(), 1)
+	assert.Equal(t, []string{"https://example.com/attr/classification/value/confidential"}, resp.GetEntitlements()[0].GetAttributeValueFqns())
 	assert.Empty(t, matchSubjectMappingsRequests)
 	assert.Empty(t, getEntitleableAttributesRequests)
 	assert.Zero(t, listAttributesCallCount)

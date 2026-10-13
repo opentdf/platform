@@ -9,7 +9,7 @@ import (
 	"strings"
 
 	"connectrpc.com/connect"
-	"connectrpc.com/grpchealth"
+	"connectrpc.com/grpchealth/v2"
 	"github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
 	healthpb "google.golang.org/grpc/health/grpc_health_v1"
@@ -24,9 +24,9 @@ type HealthService struct { //nolint:revive // HealthService is a valid name for
 func NewRegistration() *serviceregistry.Service[grpchealth.Checker] {
 	return &serviceregistry.Service[grpchealth.Checker]{
 		ServiceOptions: serviceregistry.ServiceOptions[grpchealth.Checker]{
-			Namespace:      "health",
-			ServiceDesc:    &healthpb.Health_ServiceDesc,
-			ConnectRPCFunc: grpchealth.NewHandler,
+			Namespace:              "health",
+			ServiceDesc:            &healthpb.Health_ServiceDesc,
+			ConnectRPCRegisterFunc: grpchealth.Register,
 			RegisterFunc: func(srp serviceregistry.RegistrationParams) (grpchealth.Checker, serviceregistry.HandlerServer) {
 				err := srp.WellKnownConfig("health", map[string]any{
 					"endpoint": "/healthz",

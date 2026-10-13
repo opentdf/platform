@@ -6,7 +6,6 @@ import (
 	"testing"
 	"time"
 
-	"connectrpc.com/connect"
 	"github.com/opentdf/platform/protocol/go/entity"
 	entityresolutionV2 "github.com/opentdf/platform/protocol/go/entityresolution/v2"
 	"github.com/stretchr/testify/require"
@@ -77,9 +76,9 @@ func (suite *ResolvedTokenChainContractSuite) RunWithAdapter(t *testing.T, adapt
 	}
 
 	t.Run(adapter.GetScopeName()+"_MixedValidInvalidTokenBatchFailsClosed", func(t *testing.T) {
-		resp, err := implementation.CreateEntityChainsFromTokens(t.Context(), connect.NewRequest(&entityresolutionV2.CreateEntityChainsFromTokensRequest{
+		resp, err := implementation.CreateEntityChainsFromTokens(t.Context(), &entityresolutionV2.CreateEntityChainsFromTokensRequest{
 			Tokens: []*entity.Token{expectations[0].Token, {EphemeralId: "invalid-token", Jwt: "not-a-jwt"}},
-		}))
+		})
 		require.Error(t, err)
 		require.Nil(t, resp, "failed batch must not return partial chains")
 	})
@@ -99,13 +98,13 @@ func (suite *ResolvedTokenChainContractSuite) assertResolvedTokenChains(
 		byTokenID[expectation.Token.GetEphemeralId()] = expectation
 	}
 
-	resp, err := implementation.CreateEntityChainsFromTokens(t.Context(), connect.NewRequest(&entityresolutionV2.CreateEntityChainsFromTokensRequest{
+	resp, err := implementation.CreateEntityChainsFromTokens(t.Context(), &entityresolutionV2.CreateEntityChainsFromTokensRequest{
 		Tokens: tokens,
-	}))
+	})
 	require.NoError(t, err)
-	require.Len(t, resp.Msg.GetEntityChains(), len(expectations))
+	require.Len(t, resp.GetEntityChains(), len(expectations))
 
-	for _, chain := range resp.Msg.GetEntityChains() {
+	for _, chain := range resp.GetEntityChains() {
 		expectation, ok := byTokenID[chain.GetEphemeralId()]
 		require.True(t, ok, "unexpected or duplicate chain %q", chain.GetEphemeralId())
 		delete(byTokenID, chain.GetEphemeralId())

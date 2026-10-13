@@ -5,7 +5,6 @@ import (
 	"errors"
 	"testing"
 
-	"connectrpc.com/connect"
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/kasregistry"
 	"github.com/opentdf/platform/service/internal/auth/authz"
@@ -210,10 +209,10 @@ func Test_ListKeysUsesResolvedAuthorizedResponse(t *testing.T) {
 	ctx := authz.ContextWithResolverContext(t.Context(), &resolverCtx)
 	svc := KeyAccessServerRegistry{logger: logger.CreateTestLogger()}
 
-	got, err := svc.ListKeys(ctx, connect.NewRequest(&kasregistry.ListKeysRequest{}))
+	got, err := svc.ListKeys(ctx, &kasregistry.ListKeysRequest{})
 
 	require.NoError(t, err)
-	require.Same(t, resp, got.Msg)
+	require.Same(t, resp, got)
 }
 
 func TestListKeysAuthzResolver_KasIDFilterUsesReturnedKeyURIs(t *testing.T) {

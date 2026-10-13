@@ -6,7 +6,7 @@ require (
 	buf.build/go/protovalidate v1.0.0
 	connectrpc.com/connect v1.21.0
 	connectrpc.com/connect/v2 v2.0.0
-	connectrpc.com/grpchealth v1.5.0
+	connectrpc.com/grpchealth/v2 v2.0.0
 	connectrpc.com/grpcreflect v1.3.0
 	connectrpc.com/otelconnect v0.12.0
 	connectrpc.com/validate v0.6.0

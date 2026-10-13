@@ -6,10 +6,10 @@ import (
 	"fmt"
 	"log/slog"
 
-	"connectrpc.com/connect"
+	"connectrpc.com/connect/v2"
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/registeredresources"
-	"github.com/opentdf/platform/protocol/go/policy/registeredresources/registeredresourcesconnect"
+	"github.com/opentdf/platform/service/internal/connectv2/policy/registeredresources/registeredresourcesconnectv2"
 	"github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/logger/audit"
 	"github.com/opentdf/platform/service/pkg/config"
@@ -42,19 +42,19 @@ func OnConfigUpdate(s *RegisteredResourcesService) serviceregistry.OnConfigUpdat
 	}
 }
 
-func NewRegistration(ns string, dbRegister serviceregistry.DBRegister) *serviceregistry.Service[registeredresourcesconnect.RegisteredResourcesServiceHandler] {
+func NewRegistration(ns string, dbRegister serviceregistry.DBRegister) *serviceregistry.Service[registeredresourcesconnectv2.RegisteredResourcesServiceHandler] {
 	rrService := new(RegisteredResourcesService)
 	onUpdateConfigHook := OnConfigUpdate(rrService)
 
-	return &serviceregistry.Service[registeredresourcesconnect.RegisteredResourcesServiceHandler]{
+	return &serviceregistry.Service[registeredresourcesconnectv2.RegisteredResourcesServiceHandler]{
 		Close: rrService.Close,
-		ServiceOptions: serviceregistry.ServiceOptions[registeredresourcesconnect.RegisteredResourcesServiceHandler]{
-			Namespace:      ns,
-			DB:             dbRegister,
-			ServiceDesc:    &registeredresources.RegisteredResourcesService_ServiceDesc,
-			ConnectRPCFunc: registeredresourcesconnect.NewRegisteredResourcesServiceHandler,
-			OnConfigUpdate: onUpdateConfigHook,
-			RegisterFunc: func(srp serviceregistry.RegistrationParams) (registeredresourcesconnect.RegisteredResourcesServiceHandler, serviceregistry.HandlerServer) {
+		ServiceOptions: serviceregistry.ServiceOptions[registeredresourcesconnectv2.RegisteredResourcesServiceHandler]{
+			Namespace:              ns,
+			DB:                     dbRegister,
+			ServiceDesc:            &registeredresources.RegisteredResourcesService_ServiceDesc,
+			ConnectRPCRegisterFunc: registeredresourcesconnectv2.RegisterRegisteredResourcesServiceHandler,
+			OnConfigUpdate:         onUpdateConfigHook,
+			RegisterFunc: func(srp serviceregistry.RegistrationParams) (registeredresourcesconnectv2.RegisteredResourcesServiceHandler, serviceregistry.HandlerServer) {
 				logger := srp.Logger
 				cfg, err := policyconfig.GetSharedPolicyConfig(srp.Config)
 				if err != nil {
@@ -88,7 +88,7 @@ func (s *RegisteredResourcesService) Close() {
 
 /// Registered Resources Handlers
 
-func (s *RegisteredResourcesService) CreateRegisteredResource(ctx context.Context, req *connect.Request[registeredresources.CreateRegisteredResourceRequest]) (*connect.Response[registeredresources.CreateRegisteredResourceResponse], error) {
+func (s *RegisteredResourcesService) CreateRegisteredResource(ctx context.Context, req *registeredresources.CreateRegisteredResourceRequest) (*registeredresources.CreateRegisteredResourceResponse, error) {
 	rsp := &registeredresources.CreateRegisteredResourceResponse{}
 
 	auditParams := audit.PolicyEventParams{
@@ -96,16 +96,16 @@ func (s *RegisteredResourcesService) CreateRegisteredResource(ctx context.Contex
 		ObjectType: audit.ObjectTypeRegisteredResource,
 	}
 
-	s.logger.DebugContext(ctx, "creating registered resource", slog.String("name", req.Msg.GetName()))
+	s.logger.DebugContext(ctx, "creating registered resource", slog.String("name", req.GetName()))
 
 	// --- BEGIN namespace enforcement (remove when enforce_namespace flag is phased out) ---
-	if s.config.NamespacedPolicy && req.Msg.GetNamespaceId() == "" && req.Msg.GetNamespaceFqn() == "" {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errNamespacedPolicyNamespaceRequired)
+	if s.config.NamespacedPolicy && req.GetNamespaceId() == "" && req.GetNamespaceFqn() == "" {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errNamespacedPolicyNamespaceRequired.Error()).WithCause(errNamespacedPolicyNamespaceRequired)
 	}
 	// --- END namespace enforcement ---
 
 	err := s.dbClient.RunInTx(ctx, func(txClient *policydb.PolicyDBClient) error {
-		resource, err := txClient.CreateRegisteredResource(ctx, req.Msg)
+		resource, err := txClient.CreateRegisteredResource(ctx, req)
 		if err != nil {
 			return err
 		}
@@ -118,40 +118,40 @@ func (s *RegisteredResourcesService) CreateRegisteredResource(ctx context.Contex
 	})
 	if err != nil {
 		s.logger.LogPolicyCRUDFailure(ctx, auditParams)
-		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextCreationFailed, slog.String("registered_resource", req.Msg.String()))
+		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextCreationFailed, slog.String("registered_resource", req.String()))
 	}
 	s.logger.LogPolicyCRUDSuccess(ctx, auditParams)
 
-	return connect.NewResponse(rsp), nil
+	return rsp, nil
 }
 
-func (s *RegisteredResourcesService) GetRegisteredResource(ctx context.Context, req *connect.Request[registeredresources.GetRegisteredResourceRequest]) (*connect.Response[registeredresources.GetRegisteredResourceResponse], error) {
+func (s *RegisteredResourcesService) GetRegisteredResource(ctx context.Context, req *registeredresources.GetRegisteredResourceRequest) (*registeredresources.GetRegisteredResourceResponse, error) {
 	rsp := &registeredresources.GetRegisteredResourceResponse{}
 
-	s.logger.DebugContext(ctx, "getting registered resource", slog.Any("identifier", req.Msg.GetIdentifier()))
+	s.logger.DebugContext(ctx, "getting registered resource", slog.Any("identifier", req.GetIdentifier()))
 
-	resource, err := s.dbClient.GetRegisteredResource(ctx, req.Msg)
+	resource, err := s.dbClient.GetRegisteredResource(ctx, req)
 	if err != nil {
-		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextGetRetrievalFailed, slog.Any("identifier", req.Msg.GetIdentifier()))
+		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextGetRetrievalFailed, slog.Any("identifier", req.GetIdentifier()))
 	}
 	rsp.Resource = resource
 
-	return connect.NewResponse(rsp), nil
+	return rsp, nil
 }
 
-func (s *RegisteredResourcesService) ListRegisteredResources(ctx context.Context, req *connect.Request[registeredresources.ListRegisteredResourcesRequest]) (*connect.Response[registeredresources.ListRegisteredResourcesResponse], error) {
+func (s *RegisteredResourcesService) ListRegisteredResources(ctx context.Context, req *registeredresources.ListRegisteredResourcesRequest) (*registeredresources.ListRegisteredResourcesResponse, error) {
 	s.logger.DebugContext(ctx, "listing registered resources")
 
-	rsp, err := s.dbClient.ListRegisteredResources(ctx, req.Msg)
+	rsp, err := s.dbClient.ListRegisteredResources(ctx, req)
 	if err != nil {
 		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextListRetrievalFailed)
 	}
 
-	return connect.NewResponse(rsp), nil
+	return rsp, nil
 }
 
-func (s *RegisteredResourcesService) UpdateRegisteredResource(ctx context.Context, req *connect.Request[registeredresources.UpdateRegisteredResourceRequest]) (*connect.Response[registeredresources.UpdateRegisteredResourceResponse], error) {
-	resourceID := req.Msg.GetId()
+func (s *RegisteredResourcesService) UpdateRegisteredResource(ctx context.Context, req *registeredresources.UpdateRegisteredResourceRequest) (*registeredresources.UpdateRegisteredResourceResponse, error) {
+	resourceID := req.GetId()
 
 	rsp := &registeredresources.UpdateRegisteredResourceResponse{}
 
@@ -173,7 +173,7 @@ func (s *RegisteredResourcesService) UpdateRegisteredResource(ctx context.Contex
 			return err
 		}
 
-		updated, err := txClient.UpdateRegisteredResource(ctx, req.Msg)
+		updated, err := txClient.UpdateRegisteredResource(ctx, req)
 		if err != nil {
 			return err
 		}
@@ -186,15 +186,15 @@ func (s *RegisteredResourcesService) UpdateRegisteredResource(ctx context.Contex
 	})
 	if err != nil {
 		s.logger.LogPolicyCRUDFailure(ctx, auditParams)
-		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextUpdateFailed, slog.String("registered_resource", req.Msg.String()))
+		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextUpdateFailed, slog.String("registered_resource", req.String()))
 	}
 	s.logger.LogPolicyCRUDSuccess(ctx, auditParams)
 
-	return connect.NewResponse(rsp), nil
+	return rsp, nil
 }
 
-func (s *RegisteredResourcesService) DeleteRegisteredResource(ctx context.Context, req *connect.Request[registeredresources.DeleteRegisteredResourceRequest]) (*connect.Response[registeredresources.DeleteRegisteredResourceResponse], error) {
-	resourceID := req.Msg.GetId()
+func (s *RegisteredResourcesService) DeleteRegisteredResource(ctx context.Context, req *registeredresources.DeleteRegisteredResourceRequest) (*registeredresources.DeleteRegisteredResourceResponse, error) {
+	resourceID := req.GetId()
 
 	rsp := &registeredresources.DeleteRegisteredResourceResponse{}
 
@@ -209,19 +209,19 @@ func (s *RegisteredResourcesService) DeleteRegisteredResource(ctx context.Contex
 	deleted, err := s.dbClient.DeleteRegisteredResource(ctx, resourceID)
 	if err != nil {
 		s.logger.LogPolicyCRUDFailure(ctx, auditParams)
-		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextDeletionFailed, slog.String("registered_resource", req.Msg.String()))
+		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextDeletionFailed, slog.String("registered_resource", req.String()))
 	}
 
 	s.logger.LogPolicyCRUDSuccess(ctx, auditParams)
 
 	rsp.Resource = deleted
 
-	return connect.NewResponse(rsp), nil
+	return rsp, nil
 }
 
 /// Registered Resource Values Handlers
 
-func (s *RegisteredResourcesService) CreateRegisteredResourceValue(ctx context.Context, req *connect.Request[registeredresources.CreateRegisteredResourceValueRequest]) (*connect.Response[registeredresources.CreateRegisteredResourceValueResponse], error) {
+func (s *RegisteredResourcesService) CreateRegisteredResourceValue(ctx context.Context, req *registeredresources.CreateRegisteredResourceValueRequest) (*registeredresources.CreateRegisteredResourceValueResponse, error) {
 	rsp := &registeredresources.CreateRegisteredResourceValueResponse{}
 
 	auditParams := audit.PolicyEventParams{
@@ -229,10 +229,10 @@ func (s *RegisteredResourcesService) CreateRegisteredResourceValue(ctx context.C
 		ObjectType: audit.ObjectTypeRegisteredResourceValue,
 	}
 
-	s.logger.DebugContext(ctx, "creating registered resource value", slog.String("value", req.Msg.GetValue()))
+	s.logger.DebugContext(ctx, "creating registered resource value", slog.String("value", req.GetValue()))
 
 	err := s.dbClient.RunInTx(ctx, func(txClient *policydb.PolicyDBClient) error {
-		value, err := txClient.CreateRegisteredResourceValue(ctx, req.Msg)
+		value, err := txClient.CreateRegisteredResourceValue(ctx, req)
 		if err != nil {
 			return err
 		}
@@ -245,56 +245,56 @@ func (s *RegisteredResourcesService) CreateRegisteredResourceValue(ctx context.C
 	})
 	if err != nil {
 		s.logger.LogPolicyCRUDFailure(ctx, auditParams)
-		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextCreationFailed, slog.String("registered_resource_value", req.Msg.String()))
+		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextCreationFailed, slog.String("registered_resource_value", req.String()))
 	}
 	s.logger.LogPolicyCRUDSuccess(ctx, auditParams)
 
-	return connect.NewResponse(rsp), nil
+	return rsp, nil
 }
 
-func (s *RegisteredResourcesService) GetRegisteredResourceValue(ctx context.Context, req *connect.Request[registeredresources.GetRegisteredResourceValueRequest]) (*connect.Response[registeredresources.GetRegisteredResourceValueResponse], error) {
+func (s *RegisteredResourcesService) GetRegisteredResourceValue(ctx context.Context, req *registeredresources.GetRegisteredResourceValueRequest) (*registeredresources.GetRegisteredResourceValueResponse, error) {
 	rsp := &registeredresources.GetRegisteredResourceValueResponse{}
 
-	s.logger.DebugContext(ctx, "getting registered resource value", slog.Any("identifier", req.Msg.GetIdentifier()))
+	s.logger.DebugContext(ctx, "getting registered resource value", slog.Any("identifier", req.GetIdentifier()))
 
-	value, err := s.dbClient.GetRegisteredResourceValue(ctx, req.Msg)
+	value, err := s.dbClient.GetRegisteredResourceValue(ctx, req)
 	if err != nil {
-		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextGetRetrievalFailed, slog.Any("identifier", req.Msg.GetIdentifier()))
+		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextGetRetrievalFailed, slog.Any("identifier", req.GetIdentifier()))
 	}
 	rsp.Value = value
 
-	return connect.NewResponse(rsp), nil
+	return rsp, nil
 }
 
-func (s *RegisteredResourcesService) GetRegisteredResourceValuesByFQNs(ctx context.Context, req *connect.Request[registeredresources.GetRegisteredResourceValuesByFQNsRequest]) (*connect.Response[registeredresources.GetRegisteredResourceValuesByFQNsResponse], error) {
+func (s *RegisteredResourcesService) GetRegisteredResourceValuesByFQNs(ctx context.Context, req *registeredresources.GetRegisteredResourceValuesByFQNsRequest) (*registeredresources.GetRegisteredResourceValuesByFQNsResponse, error) {
 	rsp := &registeredresources.GetRegisteredResourceValuesByFQNsResponse{}
 
-	s.logger.DebugContext(ctx, "getting registered resource values by FQNs", slog.Any("fqns", req.Msg.GetFqns()))
+	s.logger.DebugContext(ctx, "getting registered resource values by FQNs", slog.Any("fqns", req.GetFqns()))
 
-	fqnValueMap, err := s.dbClient.GetRegisteredResourceValuesByFQNs(ctx, req.Msg)
+	fqnValueMap, err := s.dbClient.GetRegisteredResourceValuesByFQNs(ctx, req)
 	if err != nil {
-		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextGetRetrievalFailed, slog.Any("fqns", req.Msg.GetFqns()))
+		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextGetRetrievalFailed, slog.Any("fqns", req.GetFqns()))
 	}
 	rsp.FqnValueMap = fqnValueMap
 
-	return connect.NewResponse(rsp), nil
+	return rsp, nil
 }
 
-func (s *RegisteredResourcesService) ListRegisteredResourceValues(ctx context.Context, req *connect.Request[registeredresources.ListRegisteredResourceValuesRequest]) (*connect.Response[registeredresources.ListRegisteredResourceValuesResponse], error) {
+func (s *RegisteredResourcesService) ListRegisteredResourceValues(ctx context.Context, req *registeredresources.ListRegisteredResourceValuesRequest) (*registeredresources.ListRegisteredResourceValuesResponse, error) {
 	s.logger.DebugContext(ctx, "listing registered resource values")
 
-	rsp, err := s.dbClient.ListRegisteredResourceValues(ctx, req.Msg)
+	rsp, err := s.dbClient.ListRegisteredResourceValues(ctx, req)
 	if err != nil {
 		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextListRetrievalFailed)
 	}
 
 	s.logger.DebugContext(ctx, "listed registered resource values")
 
-	return connect.NewResponse(rsp), nil
+	return rsp, nil
 }
 
-func (s *RegisteredResourcesService) UpdateRegisteredResourceValue(ctx context.Context, req *connect.Request[registeredresources.UpdateRegisteredResourceValueRequest]) (*connect.Response[registeredresources.UpdateRegisteredResourceValueResponse], error) {
-	valueID := req.Msg.GetId()
+func (s *RegisteredResourcesService) UpdateRegisteredResourceValue(ctx context.Context, req *registeredresources.UpdateRegisteredResourceValueRequest) (*registeredresources.UpdateRegisteredResourceValueResponse, error) {
+	valueID := req.GetId()
 
 	rsp := &registeredresources.UpdateRegisteredResourceValueResponse{}
 
@@ -316,7 +316,7 @@ func (s *RegisteredResourcesService) UpdateRegisteredResourceValue(ctx context.C
 			return err
 		}
 
-		updated, err := txClient.UpdateRegisteredResourceValue(ctx, req.Msg)
+		updated, err := txClient.UpdateRegisteredResourceValue(ctx, req)
 		if err != nil {
 			return err
 		}
@@ -330,15 +330,15 @@ func (s *RegisteredResourcesService) UpdateRegisteredResourceValue(ctx context.C
 	})
 	if err != nil {
 		s.logger.LogPolicyCRUDFailure(ctx, auditParams)
-		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextUpdateFailed, slog.String("registered_resource_value", req.Msg.String()))
+		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextUpdateFailed, slog.String("registered_resource_value", req.String()))
 	}
 	s.logger.LogPolicyCRUDSuccess(ctx, auditParams)
 
-	return connect.NewResponse(rsp), nil
+	return rsp, nil
 }
 
-func (s *RegisteredResourcesService) DeleteRegisteredResourceValue(ctx context.Context, req *connect.Request[registeredresources.DeleteRegisteredResourceValueRequest]) (*connect.Response[registeredresources.DeleteRegisteredResourceValueResponse], error) {
-	valueID := req.Msg.GetId()
+func (s *RegisteredResourcesService) DeleteRegisteredResourceValue(ctx context.Context, req *registeredresources.DeleteRegisteredResourceValueRequest) (*registeredresources.DeleteRegisteredResourceValueResponse, error) {
+	valueID := req.GetId()
 
 	rsp := &registeredresources.DeleteRegisteredResourceValueResponse{}
 
@@ -358,12 +358,12 @@ func (s *RegisteredResourcesService) DeleteRegisteredResourceValue(ctx context.C
 	})
 	if err != nil {
 		s.logger.LogPolicyCRUDFailure(ctx, auditParams)
-		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextDeletionFailed, slog.String("registered_resource_value", req.Msg.String()))
+		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextDeletionFailed, slog.String("registered_resource_value", req.String()))
 	}
 
 	s.logger.LogPolicyCRUDSuccess(ctx, auditParams)
 
 	rsp.Value = deleted
 
-	return connect.NewResponse(rsp), nil
+	return rsp, nil
 }

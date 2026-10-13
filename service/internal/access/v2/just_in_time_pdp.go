@@ -412,6 +412,11 @@ func (p *JustInTimePDP) buildInnerPDP(ctx context.Context, valueFQNs []string) (
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch entitleable attributes: %w", err)
 	}
+	// Disabled mappings must not make missing policy values decisionable.
+	// Remove this guard when allow_dynamic_value_mappings is retired.
+	if !p.allowDynamicValueMappings {
+		dynamicValueMappings = nil
+	}
 	pdp, err := NewPolicyDecisionPoint(
 		ctx,
 		p.logger,

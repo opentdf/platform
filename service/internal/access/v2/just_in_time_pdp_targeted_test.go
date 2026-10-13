@@ -314,6 +314,64 @@ func TestJITPDP_UncachedDynamicDecisions(t *testing.T) {
 	}
 }
 
+// Remove this disabled-feature regression when allow_dynamic_value_mappings is retired.
+func TestJITPDP_DisabledDynamicMappingsDoNotAffectAnyOfDecision(t *testing.T) {
+	defFQN := "https://example.com/attr/projects"
+	knownFQN := defFQN + "/value/alpha"
+	missingFQN := defFQN + "/value/missing"
+	clientID := "dynamic-flag-test"
+	for _, tc := range []struct {
+		name                            string
+		mappingsPresent, includeMissing bool
+		permit                          bool
+	}{
+		{name: "known_value_without_mappings", permit: true},
+		{name: "known_value_with_disabled_mappings", mappingsPresent: true, permit: true},
+		{name: "missing_value_without_mappings", includeMissing: true},
+		{name: "missing_value_with_disabled_mappings", mappingsPresent: true, includeMissing: true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			response, err := decisionAttrFake(defFQN, knownFQN, clientID).respFunc(&attrs.GetEntitleableAttributesByFqnsRequest{})
+			require.NoError(t, err)
+			if tc.includeMissing {
+				response.FqnEntitleableAttributes[missingFQN] = &attrs.GetEntitleableAttributesByFqnsResponse_EntitleableAttribute{
+					DefinitionFqn: defFQN,
+					Value:         &attrs.GetEntitleableAttributesByFqnsResponse_EntitleableValue{Fqn: missingFQN},
+				}
+			}
+			if tc.mappingsPresent {
+				response.Definitions[defFQN].DynamicValueMappings = []*policy.DynamicValueMapping{{
+					Id:                  "mapping-id",
+					AttributeDefinition: &policy.Attribute{Fqn: defFQN, Rule: policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF},
+					ValueResolver:       &policy.DynamicValueResolver{SubjectExternalSelectorValue: ".clientId", Operator: policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_IN},
+					Actions:             []*policy.Action{{Name: "read"}},
+				}}
+			}
+			attrFake := &fakeAttributesClient{respFunc: func(*attrs.GetEntitleableAttributesByFqnsRequest) (*attrs.GetEntitleableAttributesByFqnsResponse, error) {
+				return response, nil
+			}}
+			ers := &recordingERSV2Client{resolveResponse: &entityresolutionV2.ResolveEntitiesResponse{
+				EntityRepresentations: []*entityresolutionV2.EntityRepresentation{entityRepWithClientID(clientID)},
+			}}
+			pdp, err := NewJustInTimePDP(t.Context(), logger.CreateTestLogger(), &otdfSDK.SDK{
+				Attributes: attrFake, EntityResolutionV2: ers,
+				RegisteredResources: emptyRegisteredResourcesClient{}, Obligations: emptyObligationsClient{},
+			}, &decisionPolicyStore{}, false, false, false)
+			require.NoError(t, err)
+			resources := attrValueResource(knownFQN)
+			if tc.includeMissing {
+				resources[0].GetAttributeValues().Fqns = append(resources[0].GetAttributeValues().Fqns, missingFQN)
+			}
+			decision, err := pdp.GetDecision(audit.ContextWithActorID(t.Context(), "test-actor"), entityChainIdentifier(),
+				&policy.Action{Name: "read"}, resources, nil, nil)
+			require.NoError(t, err)
+			assert.Equal(t, tc.permit, decision.AllPermitted)
+			require.Len(t, decision.Results, 1)
+			assert.Equal(t, tc.permit, decision.Results[0].Entitled)
+		})
+	}
+}
+
 func TestJITPDP_UncachedDirectDecisions(t *testing.T) {
 	defFQN := "https://example.com/attr/projects"
 	valueFQN := defFQN + "/value/alpha"

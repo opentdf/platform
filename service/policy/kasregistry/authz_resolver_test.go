@@ -35,14 +35,14 @@ func TestGetKeyAuthzResolver_UsesRequestURI(t *testing.T) {
 	const kasURI = "https://kas-a.example.com"
 	svc := KeyAccessServerRegistry{}
 
-	resolverCtx, err := svc.getKeyAuthzResolver(t.Context(), connect.NewRequest(&kasregistry.GetKeyRequest{
+	resolverCtx, err := svc.getKeyAuthzResolver(t.Context(), &kasregistry.GetKeyRequest{
 		Identifier: &kasregistry.GetKeyRequest_Key{
 			Key: &kasregistry.KasKeyIdentifier{
 				Identifier: &kasregistry.KasKeyIdentifier_Uri{Uri: kasURI},
 				Kid:        validKeyID,
 			},
 		},
-	}))
+	})
 
 	require.NoError(t, err)
 	require.Len(t, resolverCtx.Resources, 1)
@@ -114,7 +114,7 @@ func TestGetKeyAuthzResolver_DBLookupErrorFailsResolution(t *testing.T) {
 func TestGetKeyAuthzResolver_InvalidRequestType(t *testing.T) {
 	svc := KeyAccessServerRegistry{}
 
-	_, err := svc.getKeyAuthzResolver(t.Context(), connect.NewRequest(&kasregistry.ListKeysRequest{}))
+	_, err := svc.getKeyAuthzResolver(t.Context(), &kasregistry.ListKeysRequest{})
 
 	require.ErrorIs(t, err, errUnexpectedGetKeyAuthzRequestType)
 }
@@ -122,7 +122,7 @@ func TestGetKeyAuthzResolver_InvalidRequestType(t *testing.T) {
 func TestGetKeyAuthzResolver_UnsupportedIdentifier(t *testing.T) {
 	svc := KeyAccessServerRegistry{}
 
-	_, err := svc.getKeyAuthzResolver(t.Context(), connect.NewRequest(&kasregistry.GetKeyRequest{}))
+	_, err := svc.getKeyAuthzResolver(t.Context(), &kasregistry.GetKeyRequest{})
 
 	require.ErrorIs(t, err, errUnsupportedGetKeyIdentifier)
 }
@@ -308,7 +308,7 @@ func TestListKeysAuthzResolver_DBLookupErrorFailsResolution(t *testing.T) {
 func TestListKeysAuthzResolver_InvalidRequestType(t *testing.T) {
 	svc := KeyAccessServerRegistry{}
 
-	_, err := svc.listKeysAuthzResolver(t.Context(), connect.NewRequest(&kasregistry.GetKeyRequest{}))
+	_, err := svc.listKeysAuthzResolver(t.Context(), &kasregistry.GetKeyRequest{})
 
 	require.ErrorIs(t, err, errUnexpectedListKeysAuthzRequestType)
 }

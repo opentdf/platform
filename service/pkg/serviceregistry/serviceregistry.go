@@ -77,8 +77,8 @@ type RegistrationParams struct {
 	//
 	// Example:
 	//   srp.AuthzResolverRegistry.MustRegister("UpdateAttribute",
-	//       func(ctx context.Context, req connect.AnyRequest) (authz.ResolverContext, error) {
-	//           msg := req.Any().(*pb.UpdateAttributeRequest)
+	//       func(ctx context.Context, req proto.Message) (authz.ResolverContext, error) {
+	//           msg := req.(*pb.UpdateAttributeRequest)
 	//           // ... resolve dimensions using db client ...
 	//       },
 	//   )

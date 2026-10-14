@@ -91,20 +91,34 @@ teardown_file() {
   assert_success
   [ "$(echo "$output" | jq -r '.id')" = "$NS_ID" ]
   [ "$(echo "$output" | jq -r '.name')" = "$NS_NAME" ]
+
+  NS_FQN=$(echo "$output" | jq -r '.fqn')
+  run_otdfctl_ns get --fqn "$NS_FQN" --json
+  assert_success
+  [ "$(echo "$output" | jq -r '.id')" = "$NS_ID" ]
+  [ "$(echo "$output" | jq -r '.fqn')" = "$NS_FQN" ]
 }
 
 @test "Get a namespace - Bad" {
   run_otdfctl_ns get
   assert_failure
-  assert_output --partial 'required flag(s) "id" not set'
+  assert_output --partial "at least one of the flags in the group"
+
+  run_otdfctl_ns get --id "$NS_ID" --fqn "https://$NS_NAME"
+  assert_failure
+  assert_output --partial "if any flags in the group"
 
   run_otdfctl_ns get --id 'example.com'
   assert_failure
-  assert_output --partial "Flag '--id' received value 'example.com' must be a valid UUID"
+  assert_output --partial "Optional flag '--id' received value 'example.com' and must be a valid UUID if used"
 
   run_otdfctl_ns get --id 'demo.com' --json
   assert_failure
-  assert_output --partial "Flag '--id' received value 'demo.com' must be a valid UUID"
+  assert_output --partial "Optional flag '--id' received value 'demo.com' and must be a valid UUID if used"
+
+  run_otdfctl_ns get --fqn "https://missing-$RANDOM.example.com" --json
+  assert_failure
+  assert_output --partial "ERROR"
 }
 
 @test "List namespaces - when active" {

@@ -99,6 +99,22 @@ func injectListSearchFlag(listDoc *man.Doc) {
 	listDoc.Flags().String(searchFlag.Name, searchFlag.Default, searchFlag.Description)
 }
 
+// injectIDFQNLookupFlags adds the two alternative identifiers supported by
+// policy get commands and requires callers to provide exactly one of them.
+func injectIDFQNLookupFlags(getDoc *man.Doc) {
+	getDoc.AddStringFlag(&getDoc.Command, "id")
+	getDoc.AddStringFlag(&getDoc.Command, "fqn")
+	getDoc.MarkFlagsMutuallyExclusive("id", "fqn")
+	getDoc.MarkFlagsOneRequired("id", "fqn")
+}
+
+func getIDFQNLookupIdentifier(c *cli.Cli) string {
+	if id := c.Flags.GetOptionalID("id"); id != "" {
+		return id
+	}
+	return c.Flags.GetRequiredString("fqn")
+}
+
 func getSortOption(c *cli.Cli) handlers.SortOption {
 	sort, err := handlers.NewSortOption(c.Flags.GetOptionalString("sort"), c.Flags.GetOptionalString("order"))
 	if err != nil {

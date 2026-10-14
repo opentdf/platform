@@ -20,9 +20,13 @@ type KasAttribute struct {
 }
 
 type RewrapAuditEventParams struct {
-	Policy          KasPolicy
-	PolicyID        string
-	Result          ActionResult
+	Policy   KasPolicy
+	PolicyID string
+
+	// IsSuccess is retained for callers of CreateRewrapAuditEvent.
+	//
+	// Deprecated: use Logger.Rewrap or one of the Logger rewrap helpers.
+	IsSuccess       bool
 	FailureReason   string
 	SuspectedTamper bool
 	PolicyVerified  bool
@@ -32,9 +36,22 @@ type RewrapAuditEventParams struct {
 	PolicyBinding   string
 	KeyID           string
 	SessionKeyType  string
+	isDenied        bool
 }
 
+// CreateRewrapAuditEvent retains the legacy IsSuccess/isDenied result mapping.
 func CreateRewrapAuditEvent(ctx context.Context, params RewrapAuditEventParams) (*EventObject, error) {
+	result := ActionResultError
+	switch {
+	case params.IsSuccess:
+		result = ActionResultSuccess
+	case params.isDenied:
+		result = ActionResultFailure
+	}
+	return createRewrapAuditEvent(ctx, result, params)
+}
+
+func createRewrapAuditEvent(ctx context.Context, result ActionResult, params RewrapAuditEventParams) (*EventObject, error) {
 	auditDataFromContext := GetAuditDataFromContext(ctx)
 
 	objectID := params.PolicyID
@@ -81,7 +98,7 @@ func CreateRewrapAuditEvent(ctx context.Context, params RewrapAuditEventParams) 
 		Action: eventAction{
 			EventObjectAction: EventObjectAction{
 				Type:   ActionTypeRewrap,
-				Result: params.Result,
+				Result: result,
 			},
 		},
 		Actor: auditEventActor{

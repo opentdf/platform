@@ -31,7 +31,7 @@ func TestCreateRewrapAuditEventHappyPath(t *testing.T) {
 
 	params := RewrapAuditEventParams{
 		Policy:         kasPolicy,
-		Result:         ActionResultSuccess,
+		IsSuccess:      true,
 		PolicyVerified: true,
 		TDFFormat:      TestTDFFormat,
 		Algorithm:      TestAlgorithm,
@@ -121,7 +121,7 @@ func TestCreateRewrapAuditEventOmitsUnverifiedPolicyAttributes(t *testing.T) {
 			}},
 		},
 		PolicyID:        "client-policy-id",
-		Result:          ActionResultFailure,
+		isDenied:        true,
 		FailureReason:   "policy_binding_mismatch",
 		SuspectedTamper: true,
 		PolicyVerified:  false,
@@ -136,4 +136,28 @@ func TestCreateRewrapAuditEventOmitsUnverifiedPolicyAttributes(t *testing.T) {
 	require.Equal(t, true, event.EventMetaData["suspected_tamper"])
 	require.Equal(t, false, event.EventMetaData["policy_verified"])
 	require.Equal(t, "kao-1", event.EventMetaData["kao_id"])
+}
+
+func TestCreateRewrapAuditEventSupportsLegacyIsSuccess(t *testing.T) {
+	tests := []struct {
+		name       string
+		isSuccess  bool
+		isDenied   bool
+		wantResult ActionResult
+	}{
+		{name: "success", isSuccess: true, wantResult: ActionResultSuccess},
+		{name: "denied", isDenied: true, wantResult: ActionResultFailure},
+		{name: "error", isSuccess: false, wantResult: ActionResultError},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			event, err := CreateRewrapAuditEvent(createTestContext(t), RewrapAuditEventParams{
+				IsSuccess: tt.isSuccess,
+				isDenied:  tt.isDenied,
+			})
+			require.NoError(t, err)
+			require.Equal(t, tt.wantResult, event.Action.Result)
+		})
+	}
 }

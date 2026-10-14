@@ -126,36 +126,33 @@ func (a *Logger) RecordTimeout() time.Duration {
 
 // RewrapSuccess records a completed rewrap and returns any recording error.
 func (a *Logger) RewrapSuccess(ctx context.Context, params RewrapAuditEventParams) error {
-	params.Result = ActionResultSuccess
 	params.PolicyVerified = true
-	return a.Rewrap(ctx, params)
+	return a.Rewrap(ctx, ActionResultSuccess, params)
 }
 
 // RewrapDenied records a rewrap rejected by an authorization decision.
 func (a *Logger) RewrapDenied(ctx context.Context, params RewrapAuditEventParams) error {
-	params.Result = ActionResultFailure
 	params.PolicyVerified = true
 	if params.FailureReason == "" {
 		params.FailureReason = "policy_denied"
 	}
-	return a.Rewrap(ctx, params)
+	return a.Rewrap(ctx, ActionResultFailure, params)
 }
 
 // RewrapFailure records a failed rewrap and returns any recording error.
 func (a *Logger) RewrapFailure(ctx context.Context, params RewrapAuditEventParams) error {
-	params.Result = ActionResultError
 	params.PolicyVerified = true
 	if params.FailureReason == "" {
 		params.FailureReason = "rewrap_error"
 	}
-	return a.Rewrap(ctx, params)
+	return a.Rewrap(ctx, ActionResultError, params)
 }
 
 // Rewrap records a rewrap outcome whose result and metadata were classified by
 // the caller. It is used when a rewrap fails before the success/denial helpers
 // can accurately describe the outcome.
-func (a *Logger) Rewrap(ctx context.Context, params RewrapAuditEventParams) error {
-	switch params.Result {
+func (a *Logger) Rewrap(ctx context.Context, result ActionResult, params RewrapAuditEventParams) error {
+	switch result {
 	case ActionResultSuccess:
 	case ActionResultFailure:
 		if params.FailureReason == "" {
@@ -170,11 +167,11 @@ func (a *Logger) Rewrap(ctx context.Context, params RewrapAuditEventParams) erro
 		ActionResultIgnore,
 		ActionResultOverride,
 		ActionResultCancel:
-		return fmt.Errorf("%w: unsupported rewrap result %q", ErrInvalidEvent, params.Result.String())
+		return fmt.Errorf("%w: unsupported rewrap result %q", ErrInvalidEvent, result.String())
 	default:
-		return fmt.Errorf("%w: unknown rewrap result %d", ErrInvalidEvent, params.Result)
+		return fmt.Errorf("%w: unknown rewrap result %d", ErrInvalidEvent, result)
 	}
-	return a.rewrapBase(ctx, params)
+	return a.rewrapBase(ctx, result, params)
 }
 
 // PolicyCRUDSuccess records a successful operation after its database commit.
@@ -205,8 +202,8 @@ func (a *Logger) GetDecisionV2(ctx context.Context, params GetDecisionV2EventPar
 	return a.Record(ctx, *event)
 }
 
-func (a *Logger) rewrapBase(ctx context.Context, params RewrapAuditEventParams) error {
-	event, err := CreateRewrapAuditEvent(ctx, params)
+func (a *Logger) rewrapBase(ctx context.Context, result ActionResult, params RewrapAuditEventParams) error {
+	event, err := createRewrapAuditEvent(ctx, result, params)
 	if err != nil {
 		return err
 	}

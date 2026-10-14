@@ -67,7 +67,7 @@ func TestPolicyHelperReturnsConstructionError(t *testing.T) {
 func TestRewrapFailureOverridesSuccessfulAccess(t *testing.T) {
 	l, output := createTestLogger()
 	params := rewrapParams
-	params.Result = ActionResultSuccess
+	params.IsSuccess = true
 	require.NoError(t, l.RewrapFailure(t.Context(), params))
 	entry, _ := extractLogEntry(t, output)
 	payload := decodeAuditPayload(t, entry.Audit)
@@ -77,7 +77,7 @@ func TestRewrapFailureOverridesSuccessfulAccess(t *testing.T) {
 func TestRewrapDeniedOverridesSuccessfulAccess(t *testing.T) {
 	l, output := createTestLogger()
 	params := rewrapParams
-	params.Result = ActionResultSuccess
+	params.IsSuccess = true
 	require.NoError(t, l.RewrapDenied(t.Context(), params))
 	entry, _ := extractLogEntry(t, output)
 	payload := decodeAuditPayload(t, entry.Audit)
@@ -86,9 +86,7 @@ func TestRewrapDeniedOverridesSuccessfulAccess(t *testing.T) {
 
 func TestRewrapRejectsUnsupportedResult(t *testing.T) {
 	l, _ := createTestLogger()
-	params := rewrapParams
-	params.Result = ActionResultEncrypt
-	require.ErrorIs(t, l.Rewrap(t.Context(), params), ErrInvalidEvent)
+	require.ErrorIs(t, l.Rewrap(t.Context(), ActionResultEncrypt, rewrapParams), ErrInvalidEvent)
 }
 
 func TestBuiltInRecordingPreservesCanceledProducerContext(t *testing.T) {

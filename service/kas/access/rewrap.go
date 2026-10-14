@@ -678,10 +678,16 @@ func (p *Provider) Rewrap(ctx context.Context, req *connect.Request[kaspb.Rewrap
 
 	body, isV1, requestOutcome, err := p.extractSRTBody(ctx, req.Header(), in)
 	if err != nil {
+		if !requestOutcome.Classified {
+			requestOutcome = rewrapAuditOutcome{
+				Result:        audit.ActionResultError,
+				FailureReason: rewrapReasonIncomplete,
+				Classified:    true,
+			}
+		}
 		p.Logger.TraceContext(ctx, "srt extraction failure", slog.Any("srt", body), slog.Any("error", err))
 		p.Logger.DebugContext(ctx, "unverifiable srt", slog.Any("error", err))
-		p.recordRewrapAuditEvent(ctx, audit.RewrapAuditEventParams{
-			Result:          requestOutcome.Result,
+		p.recordRewrapAuditEvent(ctx, requestOutcome.Result, audit.RewrapAuditEventParams{
 			FailureReason:   requestOutcome.FailureReason,
 			SuspectedTamper: requestOutcome.SuspectedTamper,
 			TDFFormat:       kTDF3Format,
@@ -692,8 +698,7 @@ func (p *Provider) Rewrap(ctx context.Context, req *connect.Request[kaspb.Rewrap
 	entityInfo, err := getEntityInfo(ctx, p.Logger)
 	if err != nil {
 		p.Logger.DebugContext(ctx, "no entity info", slog.Any("error", err))
-		p.recordRewrapAuditEvent(ctx, audit.RewrapAuditEventParams{
-			Result:        audit.ActionResultFailure,
+		p.recordRewrapAuditEvent(ctx, audit.ActionResultFailure, audit.RewrapAuditEventParams{
 			FailureReason: rewrapReasonMissingAccessToken,
 			TDFFormat:     kTDF3Format,
 		})
@@ -716,8 +721,7 @@ func (p *Provider) Rewrap(ctx context.Context, req *connect.Request[kaspb.Rewrap
 	additionalRewrapContext, err := getAdditionalRewrapContext(req.Header())
 	if err != nil {
 		p.Logger.WarnContext(ctx, "failed to get additional rewrap context", slog.Any("error", err))
-		p.recordRewrapAuditEvent(ctx, audit.RewrapAuditEventParams{
-			Result:        audit.ActionResultFailure,
+		p.recordRewrapAuditEvent(ctx, audit.ActionResultFailure, audit.RewrapAuditEventParams{
 			FailureReason: rewrapReasonInvalidRewrapContext,
 			TDFFormat:     kTDF3Format,
 		})
@@ -726,8 +730,7 @@ func (p *Provider) Rewrap(ctx context.Context, req *connect.Request[kaspb.Rewrap
 	resp.SessionPublicKey, results, err = p.tdf3Rewrap(ctx, tdf3Reqs, body.GetClientPublicKey(), entityInfo, additionalRewrapContext)
 	if err != nil {
 		p.Logger.WarnContext(ctx, "status 400, tdf3 rewrap failure", slog.Any("error", err))
-		p.recordRewrapAuditEvent(ctx, audit.RewrapAuditEventParams{
-			Result:        audit.ActionResultError,
+		p.recordRewrapAuditEvent(ctx, audit.ActionResultError, audit.RewrapAuditEventParams{
 			FailureReason: rewrapReasonIncomplete,
 			TDFFormat:     kTDF3Format,
 		})
@@ -738,8 +741,7 @@ func (p *Provider) Rewrap(ctx context.Context, req *connect.Request[kaspb.Rewrap
 	if isV1 {
 		if len(results) != 1 {
 			p.Logger.WarnContext(ctx, "status 400 due to wrong result set size", slog.Any("results", results))
-			p.recordRewrapAuditEvent(ctx, audit.RewrapAuditEventParams{
-				Result:        audit.ActionResultFailure,
+			p.recordRewrapAuditEvent(ctx, audit.ActionResultFailure, audit.RewrapAuditEventParams{
 				FailureReason: rewrapReasonInvalidRequest,
 				TDFFormat:     kTDF3Format,
 			})
@@ -753,8 +755,7 @@ func (p *Provider) Rewrap(ctx context.Context, req *connect.Request[kaspb.Rewrap
 				slog.Any("kao_results", kaoResults),
 				slog.Any("results", results),
 			)
-			p.recordRewrapAuditEvent(ctx, audit.RewrapAuditEventParams{
-				Result:        audit.ActionResultFailure,
+			p.recordRewrapAuditEvent(ctx, audit.ActionResultFailure, audit.RewrapAuditEventParams{
 				FailureReason: rewrapReasonInvalidRequest,
 				TDFFormat:     kTDF3Format,
 			})
@@ -1280,9 +1281,8 @@ func (p *Provider) auditRewrapOutcomes(
 	sessionKeyType string,
 ) {
 	for _, requestOutcome := range requestOutcomes {
-		p.recordRewrapAuditEvent(ctx, audit.RewrapAuditEventParams{
+		p.recordRewrapAuditEvent(ctx, requestOutcome.Outcome.Result, audit.RewrapAuditEventParams{
 			PolicyID:        requestOutcome.PolicyID,
-			Result:          requestOutcome.Outcome.Result,
 			FailureReason:   requestOutcome.Outcome.FailureReason,
 			SuspectedTamper: requestOutcome.Outcome.SuspectedTamper,
 			PolicyVerified:  requestOutcome.Outcome.PolicyVerified,
@@ -1310,7 +1310,6 @@ func (p *Provider) auditRewrapOutcomes(
 
 			params := audit.RewrapAuditEventParams{
 				PolicyID:        policyID,
-				Result:          kaoRes.Audit.Result,
 				FailureReason:   kaoRes.Audit.FailureReason,
 				SuspectedTamper: kaoRes.Audit.SuspectedTamper,
 				PolicyVerified:  kaoRes.Audit.PolicyVerified,
@@ -1324,17 +1323,17 @@ func (p *Provider) auditRewrapOutcomes(
 			if policies[req] != nil {
 				params.Policy = ConvertToAuditKasPolicy(*policies[req])
 			}
-			p.recordRewrapAuditEvent(ctx, params)
+			p.recordRewrapAuditEvent(ctx, kaoRes.Audit.Result, params)
 		}
 	}
 }
 
-func (p *Provider) recordRewrapAuditEvent(ctx context.Context, params audit.RewrapAuditEventParams) {
-	if auditErr := p.Logger.Audit.Rewrap(ctx, params); auditErr != nil {
+func (p *Provider) recordRewrapAuditEvent(ctx context.Context, result audit.ActionResult, params audit.RewrapAuditEventParams) {
+	if auditErr := p.Logger.Audit.Rewrap(ctx, result, params); auditErr != nil {
 		p.Logger.ErrorContext(context.WithoutCancel(ctx), "failed to record rewrap audit event",
 			slog.String("kao_id", params.KAOID),
 			slog.String("policy_id", params.PolicyID),
-			slog.String("rewrap_outcome", params.Result.String()),
+			slog.String("rewrap_outcome", result.String()),
 			slog.Any("error", auditErr))
 	}
 }

@@ -438,6 +438,7 @@ func (p *JustInTimePDP) getMatchedSubjectMappings(
 			}
 			for _, item := range flattened.Items {
 				if _, ok := subjectPropertySet[item.Key]; !ok {
+					subjectPropertySet[item.Key] = struct{}{}
 					subjectProperties = append(subjectProperties, &policy.SubjectProperty{
 						ExternalSelectorValue: item.Key,
 					})

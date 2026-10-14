@@ -35,7 +35,7 @@ type ResourceMappingsSuite struct {
 
 func (s *ResourceMappingsSuite) SetupSuite() {
 	slog.Info("setting up db.ResourceMappings test suite")
-	s.ctx = context.Background()
+	s.ctx = s.T().Context()
 	c := *Config
 	c.DB.Schema = "test_opentdf_resource_mappings"
 	s.db = fixtures.NewDBInterface(s.ctx, c)

@@ -266,7 +266,7 @@ func TestLogSupportedMechanisms_EmitsInfoLine(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			buf.Reset()
-			logSupportedMechanisms(context.Background(), l, kd, tc.cfg)
+			logSupportedMechanisms(t.Context(), l, kd, tc.cfg)
 
 			data := strings.TrimSpace(buf.String())
 			require.NotEmpty(t, data)
@@ -302,9 +302,9 @@ func TestLogSupportedMechanisms_NilSafe(t *testing.T) {
 	kd := trust.NewDelegatingKeyService(stubKeyIndex{}, l, nil)
 
 	// All three permutations of nil arg should be a no-op.
-	logSupportedMechanisms(context.Background(), nil, kd, &access.KASConfig{})
-	logSupportedMechanisms(context.Background(), l, nil, &access.KASConfig{})
-	logSupportedMechanisms(context.Background(), l, kd, nil)
+	logSupportedMechanisms(t.Context(), nil, kd, &access.KASConfig{})
+	logSupportedMechanisms(t.Context(), l, nil, &access.KASConfig{})
+	logSupportedMechanisms(t.Context(), l, kd, nil)
 
 	assert.Empty(t, buf.String(), "no log output expected when args are nil")
 }

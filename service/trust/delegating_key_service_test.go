@@ -235,7 +235,7 @@ func (suite *DelegatingKeyServiceTestSuite) SetupTest() {
 func (suite *DelegatingKeyServiceTestSuite) TestFindKeyByAlgorithm() {
 	suite.mockIndex.On("FindKeyByAlgorithm", mock.Anything, "RSA", true).Return(&MockKeyDetails{}, nil)
 
-	keyDetails, err := suite.service.FindKeyByAlgorithm(context.Background(), "RSA", true)
+	keyDetails, err := suite.service.FindKeyByAlgorithm(suite.T().Context(), "RSA", true)
 	suite.Require().NoError(err)
 	suite.NotNil(keyDetails)
 }
@@ -243,7 +243,7 @@ func (suite *DelegatingKeyServiceTestSuite) TestFindKeyByAlgorithm() {
 func (suite *DelegatingKeyServiceTestSuite) TestFindKeyByID() {
 	suite.mockIndex.On("FindKeyByID", mock.Anything, KeyIdentifier("key1")).Return(&MockKeyDetails{}, nil)
 
-	keyDetails, err := suite.service.FindKeyByID(context.Background(), KeyIdentifier("key1"))
+	keyDetails, err := suite.service.FindKeyByID(suite.T().Context(), KeyIdentifier("key1"))
 	suite.Require().NoError(err)
 	suite.NotNil(keyDetails)
 }
@@ -251,7 +251,7 @@ func (suite *DelegatingKeyServiceTestSuite) TestFindKeyByID() {
 func (suite *DelegatingKeyServiceTestSuite) TestListKeys() {
 	suite.mockIndex.On("ListKeys", mock.Anything).Return([]KeyDetails{&MockKeyDetails{}}, nil)
 
-	keys, err := suite.service.ListKeys(context.Background())
+	keys, err := suite.service.ListKeys(suite.T().Context())
 	suite.Require().NoError(err)
 	suite.Len(keys, 1)
 }
@@ -265,7 +265,7 @@ func (suite *DelegatingKeyServiceTestSuite) TestListKeysWith_Legacy() {
 
 	suite.mockIndex.On("ListKeysWith", mock.Anything, ListKeyOptions{LegacyOnly: true}).Return([]KeyDetails{legacyKey}, nil)
 
-	keys, err := suite.service.ListKeysWith(context.Background(), ListKeyOptions{LegacyOnly: true})
+	keys, err := suite.service.ListKeysWith(suite.T().Context(), ListKeyOptions{LegacyOnly: true})
 	suite.Require().NoError(err)
 	suite.Len(keys, 1)
 	suite.True(keys[0].IsLegacy())
@@ -285,7 +285,7 @@ func (suite *DelegatingKeyServiceTestSuite) TestDecrypt() {
 		return suite.mockManagerA, nil
 	})
 
-	protectedKey, err := suite.service.Decrypt(context.Background(), KeyIdentifier("key1"), []byte("ciphertext"), []byte("ephemeralKey"))
+	protectedKey, err := suite.service.Decrypt(suite.T().Context(), KeyIdentifier("key1"), []byte("ciphertext"), []byte("ephemeralKey"))
 	suite.Require().NoError(err)
 	suite.NotNil(protectedKey)
 }
@@ -304,7 +304,7 @@ func (suite *DelegatingKeyServiceTestSuite) TestDeriveKey() {
 		return suite.mockManagerA, nil
 	})
 
-	protectedKey, err := suite.service.DeriveKey(context.Background(), KeyIdentifier("key1"), []byte("ephemeralKey"), elliptic.P256())
+	protectedKey, err := suite.service.DeriveKey(suite.T().Context(), KeyIdentifier("key1"), []byte("ephemeralKey"), elliptic.P256())
 	suite.Require().NoError(err)
 	suite.NotNil(protectedKey)
 }
@@ -316,7 +316,7 @@ func (suite *DelegatingKeyServiceTestSuite) TestGenerateECSessionKey() {
 	suite.service.defaultMode = keyManagerDesignation{Manager: "default"}
 	suite.mockManagerA.On("GenerateECSessionKey", mock.Anything, "ephemeralPublicKey").Return(&MockEncapsulator{}, nil)
 
-	encapsulator, err := suite.service.GenerateECSessionKey(context.Background(), "ephemeralPublicKey")
+	encapsulator, err := suite.service.GenerateECSessionKey(suite.T().Context(), "ephemeralPublicKey")
 	suite.Require().NoError(err)
 	suite.IsType(&MockEncapsulator{}, encapsulator)
 }
@@ -379,7 +379,7 @@ func TestDelegatingKeyService_SupportedAlgorithms(t *testing.T) {
 			t.Parallel()
 			d := NewDelegatingKeyService(&MockKeyIndex{}, logger.CreateTestLogger(), nil)
 			tc.register(t, d)
-			got := d.SupportedAlgorithms(context.Background())
+			got := d.SupportedAlgorithms(t.Context())
 			if got == nil {
 				got = []ocrypto.KeyType{}
 			}
@@ -406,7 +406,7 @@ func TestDelegatingKeyService_SupportedAlgorithms_DoesNotInvokeFactories(t *test
 	d.RegisterKeyManagerCtxWithAlgorithms("a", counting, []ocrypto.KeyType{"rsa:2048"})
 	d.RegisterKeyManagerCtxWithAlgorithms("b", counting, []ocrypto.KeyType{"ec:secp256r1"})
 
-	_ = d.SupportedAlgorithms(context.Background())
+	_ = d.SupportedAlgorithms(t.Context())
 
 	assert.Zero(t, invocations.Load(), "SupportedAlgorithms must not invoke any registered factory")
 	assert.Empty(t, d.managers, "SupportedAlgorithms must not populate the manager cache")
@@ -423,7 +423,7 @@ func TestDelegatingKeyService_RegisterKeyManagerCtxWithAlgorithms_CopiesSlice(t 
 
 	algs[0] = "tampered"
 
-	got := d.SupportedAlgorithms(context.Background())
+	got := d.SupportedAlgorithms(t.Context())
 	want := []ocrypto.KeyType{"ec:secp256r1", "rsa:2048"}
 	require.Equal(t, want, got, "registration must copy the algorithm slice")
 }

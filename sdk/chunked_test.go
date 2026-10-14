@@ -37,7 +37,7 @@ import (
 // reads the resulting TDF back through the mainline SDK.LoadTDF path
 // (single-KAS, RSA-2048), verifying end-to-end interop.
 func TestChunkedRoundTrip(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	s := newChunkedTestSDK(t)
 	writer, kasBundle := newChunkedWriterForTest(ctx, t)
 
@@ -63,7 +63,7 @@ func TestChunkedRoundTrip(t *testing.T) {
 // segments from the manifest and the mainline reader decrypts only the
 // retained ones.
 func TestChunkedKeepSegments(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	s := newChunkedTestSDK(t)
 	writer, kasBundle := newChunkedWriterForTest(ctx, t)
 
@@ -92,7 +92,7 @@ func TestChunkedKeepSegments(t *testing.T) {
 // and CRC already include it. Omitting a dropped segment's bytes when
 // assembling the file must not silently produce a readable TDF.
 func TestChunkedKeepSegmentsRequiresDroppedBytesAppended(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	s := newChunkedTestSDK(t)
 	writer, kasBundle := newChunkedWriterForTest(ctx, t)
 
@@ -130,7 +130,7 @@ func TestChunkedKeepSegmentsRequiresDroppedBytesAppended(t *testing.T) {
 // Finalize land in the manifest signed with the default HS256-over-DEK
 // key, and that the mainline reader verifies them on the way back out.
 func TestChunkedFinalizeSignsAssertions(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	s := newChunkedTestSDK(t)
 	writer, kasBundle := newChunkedWriterForTest(ctx, t)
 
@@ -169,7 +169,7 @@ func TestChunkedFinalizeSignsAssertions(t *testing.T) {
 // ChunkedWriter: segments may be written in any order provided the
 // caller concatenates TDFData in index order before Finalize.Data.
 func TestChunkedOutOfOrderWrites(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	s := newChunkedTestSDK(t)
 	writer, kasBundle := newChunkedWriterForTest(ctx, t)
 
@@ -212,7 +212,7 @@ func TestChunkedOutOfOrderWrites(t *testing.T) {
 // fixtures (DEK / session-key randomness still varies the payload
 // and KAS-wrap ciphertexts, which is not the scope of this test).
 func TestChunkedClockThreadedToZipHeaders(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 
 	// Pick a 2-second-aligned instant so DOS timestamp truncation is
 	// a no-op.
@@ -239,7 +239,7 @@ func TestChunkedClockThreadedToZipHeaders(t *testing.T) {
 // WriteSegment and Finalize returns for a call that is out of sequence
 // with the writer's lifecycle.
 func TestChunkedRejectsInvalidSequencing(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 
 	for _, tc := range []struct {
 		name    string
@@ -304,7 +304,7 @@ func TestChunkedRejectsInvalidSequencing(t *testing.T) {
 // reserves a fixed block of indices and fills only the front of it, so
 // the written indices have large gaps but are still emitted in order.
 func TestChunkedKeepSegmentsSparse(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	s := newChunkedTestSDK(t)
 	w, kasBundle := newChunkedWriterForTest(ctx, t)
 
@@ -354,7 +354,7 @@ func TestChunkedKeepSegmentsSparse(t *testing.T) {
 // strictly ascending order, with no gaps that would shift a later
 // segment's offset.
 func TestChunkedKeepSegmentsRejects(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 
 	for _, tc := range []struct {
 		name       string
@@ -402,7 +402,7 @@ func TestChunkedKeepSegmentsRejects(t *testing.T) {
 // not be a ZIP container at all; refusing is the only safe answer,
 // since by Finalize the caller has already uploaded what it encrypted.
 func TestChunkedFinalizeRequiresSegmentZero(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	s := newChunkedTestSDK(t)
 	w, kasBundle := newChunkedWriterForTest(ctx, t)
 
@@ -449,7 +449,7 @@ func TestChunkedFinalizeRequiresSegmentZero(t *testing.T) {
 // with the same sentinel rather than the archive layer's wrapped
 // "segment missing".
 func TestChunkedFinalizeWithNoSegments(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	w, _ := newChunkedWriterForTest(ctx, t)
 
 	_, err := w.Finalize(ctx)
@@ -461,7 +461,7 @@ func TestChunkedFinalizeWithNoSegments(t *testing.T) {
 // is a pre-finalize snapshot, so it must keep working while segment 0
 // is still outstanding.
 func TestChunkedGetManifestWithoutSegmentZero(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	w, _ := newChunkedWriterForTest(ctx, t)
 
 	_, err := w.WriteSegment(ctx, 5, []byte("hello-"))
@@ -478,7 +478,7 @@ func TestChunkedGetManifestWithoutSegmentZero(t *testing.T) {
 // snapshot of the currently-written segments prior to Finalize and
 // the frozen manifest afterwards.
 func TestChunkedGetManifestBeforeFinalize(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	w, _ := newChunkedWriterForTest(ctx, t)
 
 	_, err := w.WriteSegment(ctx, 0, []byte("first"))
@@ -694,7 +694,7 @@ func newChunkedTestSDK(t *testing.T) SDK {
 // writer emits, so they cannot silently drift from the ones
 // SDK.CreateTDF produces via the shared createKeyAccess helper.
 func TestChunkedKAOShape(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	writer, kasBundle := newChunkedWriterForTest(ctx, t)
 
 	writeChunkedSegments(ctx, t, writer, [][]byte{[]byte("payload")})
@@ -823,7 +823,7 @@ func TestChunkedKeyAccessRejectsShareWithNoKAS(t *testing.T) {
 // let a caller's edit come back out of a later GetManifest, or race
 // one.
 func TestChunkedFinalizeManifestIsIndependent(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	writer, _ := newChunkedWriterForTest(ctx, t)
 
 	_, err := writer.WriteSegment(ctx, 0, []byte("payload"))
@@ -848,7 +848,7 @@ func TestChunkedFinalizeManifestIsIndependent(t *testing.T) {
 // readers require, and that the mainline reader -- which infers legacy
 // mode solely from a missing schemaVersion -- still round-trips it.
 func TestChunkedLegacyTargetMode(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	s := newChunkedTestSDK(t)
 	writer, kasBundle := newChunkedWriterForTest(ctx, t, WithChunkedTargetMode("4.2.2"))
 
@@ -888,7 +888,7 @@ func TestChunkedLegacyTargetMode(t *testing.T) {
 // TestChunkedCurrentTargetMode pins the 4.3.0-and-later form so a
 // regression in either direction is caught.
 func TestChunkedCurrentTargetMode(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	s := newChunkedTestSDK(t)
 	writer, kasBundle := newChunkedWriterForTest(ctx, t, WithChunkedTargetMode("4.3.0"))
 
@@ -915,7 +915,7 @@ func TestChunkedCurrentTargetMode(t *testing.T) {
 // TestChunkedTargetModeInvalid rejects a non-semver target mode at
 // construction rather than at Finalize.
 func TestChunkedTargetModeInvalid(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	kasBundle := newChunkedFakeKAS(t)
 	defer kasBundle.server.Close()
 
@@ -934,7 +934,7 @@ func TestChunkedTargetModeInvalid(t *testing.T) {
 // key splitter, not until Finalize, after the caller has already
 // encrypted and uploaded every segment.
 func TestChunkedOptionsRejectNil(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	kasBundle := newChunkedFakeKAS(t)
 	defer kasBundle.server.Close()
 
@@ -964,7 +964,7 @@ func TestChunkedOptionsRejectNil(t *testing.T) {
 // the writer emits: an HS256 root over the aggregate hash, and GMAC
 // segment hashes read out of the AEAD tag.
 func TestChunkedIntegrityAlgorithmsAreFixed(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	writer, _ := newChunkedWriterForTest(ctx, t)
 
 	_, err := writer.WriteSegment(ctx, 0, []byte("first"))
@@ -1037,7 +1037,7 @@ func flakyArchiveWriterFactory(failIndex, failures int) ChunkedWriterOption {
 // normally (see segmentOrderLocked). Only index 0 is special, because
 // it carries the ZIP local file header.
 func TestChunkedArchiveFailureKeepsManifestHonest(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	s := newChunkedTestSDK(t)
 	writer, kasBundle := newChunkedWriterForTest(ctx, t, flakyArchiveWriterFactory(1, 1))
 
@@ -1079,7 +1079,7 @@ func TestChunkedArchiveFailureKeepsManifestHonest(t *testing.T) {
 // releases its index, so a transient archive failure leaves the index
 // writable rather than permanently blocking Finalize.
 func TestChunkedSegmentRetryAfterArchiveFailure(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	s := newChunkedTestSDK(t)
 	writer, kasBundle := newChunkedWriterForTest(ctx, t, flakyArchiveWriterFactory(1, 1))
 
@@ -1175,7 +1175,7 @@ func (f *postWriteFailArchiveWriter) CleanupSegment(index int) error {
 // if the archive still counted them every offset after segment 1 would
 // be wrong. Only reading the payload back proves it does not.
 func TestChunkedWriteSegmentCleansUpArchiveOnFailure(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	s := newChunkedTestSDK(t)
 	archive := &postWriteFailArchiveWriter{failIndex: 1, failures: 1}
 	writer, kasBundle := newChunkedWriterForTest(ctx, t, withChunkedArchiveWriterFactory(func(c clock) zipstream.SegmentWriter {
@@ -1233,7 +1233,7 @@ func TestChunkedWriteSegmentCleansUpArchiveOnFailure(t *testing.T) {
 // ordering directly, without needing a goroutine to lose the race
 // often enough to be reliable.
 func TestChunkedCleanupRunsBeforeReleasingIndex(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	archive := &postWriteFailArchiveWriter{failIndex: 1, failures: 1}
 	writer, _ := newChunkedWriterForTest(ctx, t, withChunkedArchiveWriterFactory(func(c clock) zipstream.SegmentWriter {
 		archive.SegmentWriter = defaultArchiveWriterFactory(c)
@@ -1255,7 +1255,7 @@ func TestChunkedCleanupRunsBeforeReleasingIndex(t *testing.T) {
 // goroutine, so -race never saw the locking around w.mu, and neither
 // the reservation nor the rollback path was observed under contention.
 func TestChunkedConcurrentWrites(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	s := newChunkedTestSDK(t)
 	writer, kasBundle := newChunkedWriterForTest(ctx, t)
 
@@ -1320,7 +1320,7 @@ func TestChunkedConcurrentWrites(t *testing.T) {
 // wins and the rest are rejected. The reservation is what makes this
 // deterministic, so it is worth pinning under -race.
 func TestChunkedConcurrentDuplicateIndex(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	writer, _ := newChunkedWriterForTest(ctx, t)
 
 	const racers = 8
@@ -1413,7 +1413,7 @@ func TestChunkedTrailerFailureFencesWriter(t *testing.T) {
 		{"close after finalize", false, true, ErrChunkedCloseFailed, errArchiveCloseFailed},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			ctx := context.Background()
+			ctx := t.Context()
 			writer, _ := newChunkedWriterForTest(ctx, t, withChunkedArchiveWriterFactory(func(c clock) zipstream.SegmentWriter {
 				return &trailerFailArchiveWriter{
 					SegmentWriter: defaultArchiveWriterFactory(c),
@@ -1480,7 +1480,7 @@ func (f *nonMutatingFinalizeArchiveWriter) Finalize(ctx context.Context, manifes
 // too wide went unnoticed precisely because only the post-mutation case
 // was exercised.
 func TestChunkedNonMutatingTrailerFailureKeepsWriterUsable(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	s := newChunkedTestSDK(t)
 	writer, kasBundle := newChunkedWriterForTest(ctx, t, withChunkedArchiveWriterFactory(func(c clock) zipstream.SegmentWriter {
 		return &nonMutatingFinalizeArchiveWriter{
@@ -1533,7 +1533,7 @@ func TestChunkedNonMutatingTrailerFailureKeepsWriterUsable(t *testing.T) {
 // consequence: fencing here would destroy an already-encrypted,
 // already-uploaded payload and blame the archive for a deadline.
 func TestChunkedFinalizeContextCancellationIsRetryable(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	s := newChunkedTestSDK(t)
 	writer, kasBundle := newChunkedWriterForTest(ctx, t)
 
@@ -1575,7 +1575,7 @@ func TestChunkedFinalizeContextCancellationIsRetryable(t *testing.T) {
 // now also blocks Finalize outright, so the recovery path matters more
 // than it did.
 func TestChunkedWriteSegmentContextCancellationFreesIndex(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	writer, _ := newChunkedWriterForTest(ctx, t)
 
 	expired, cancel := context.WithCancel(ctx)
@@ -1615,7 +1615,7 @@ func (c failingCipher) EncryptInPlace(_ []byte) ([]byte, []byte, error) {
 // every retry returns ErrChunkedSegmentAlreadyWritten for a segment
 // that was never written.
 func TestChunkedCipherFailureReleasesIndex(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	writer, _ := newChunkedWriterForTest(ctx, t, withChunkedCipherFactory(func([]byte) (segmentCipher, error) {
 		return failingCipher{}, nil
 	}))
@@ -1637,7 +1637,7 @@ func TestChunkedCipherFailureReleasesIndex(t *testing.T) {
 // reservation and the commit -- cannot strand the index; a caller that
 // recovers and retries has to find it free.
 func TestChunkedCipherPanicReleasesIndex(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	writer, _ := newChunkedWriterForTest(ctx, t, withChunkedCipherFactory(func([]byte) (segmentCipher, error) {
 		return failingCipher{panics: true}, nil
 	}))
@@ -1710,7 +1710,7 @@ func (s *xorSplitter) Split(_ context.Context, _ []*policy.Value, dek []byte, _ 
 // A writer-side change that emitted the right number of KAOs with the
 // wrong sids fails nowhere until decryption.
 func TestChunkedMultiSplitRoundTrip(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	s := newChunkedTestSDK(t)
 
 	kasA := newChunkedFakeKAS(t)
@@ -1757,7 +1757,7 @@ func TestChunkedMultiSplitRoundTrip(t *testing.T) {
 // endpoint each key access object names -- so a regression in the
 // override precedence is invisible without checking both.
 func TestChunkedAttributes(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 
 	initial := []*policy.Value{{Fqn: "https://example.com/attr/initial/value/one"}}
 	override := []*policy.Value{
@@ -1865,7 +1865,7 @@ func (c *blockingCipher) EncryptInPlace(data []byte) ([]byte, []byte, error) {
 // fail outright -- and GetManifest running alongside in-flight writes is
 // the whole point of the snapshot.
 func TestChunkedGetManifestDuringInFlightWrite(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	cipher := &blockingCipher{
 		// Segments 0 and 2 go through; the third call -- index 1 -- is
 		// held. Leaving a written index above the blocked one is what
@@ -1924,7 +1924,7 @@ func TestChunkedGetManifestDuringInFlightWrite(t *testing.T) {
 // the racing WriteSegment returns success. Refusing costs a retry;
 // proceeding costs the payload.
 func TestChunkedFinalizeRejectsInFlightWrite(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	s := newChunkedTestSDK(t)
 	cipher := &blockingCipher{
 		// Call 0 is segment 0; call 1 -- segment 1 -- is held open.
@@ -1998,7 +1998,7 @@ func TestChunkedRealisticSegmentSizes(t *testing.T) {
 	if testing.Short() {
 		t.Skip("allocates ~6 MiB and encrypts it")
 	}
-	ctx := context.Background()
+	ctx := t.Context()
 	s := newChunkedTestSDK(t)
 	writer, kasBundle := newChunkedWriterForTest(ctx, t)
 
@@ -2067,7 +2067,7 @@ func (s partialSplitter) Split(_ context.Context, _ []*policy.Value, dek []byte,
 // emit a TDF whose KAO set silently omits that KAS -- and if every URL
 // on a split were missing, the share would be unrecoverable.
 func TestChunkedFinalizeRejectsUnresolvedKAS(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	kasBundle := newChunkedFakeKAS(t)
 	defer kasBundle.server.Close()
 
@@ -2136,7 +2136,7 @@ func TestChunkedFinalizeRejectsNonReconstructingSplitter(t *testing.T) {
 		{"share shorter than the DEK", true, "the length of the DEK"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			ctx := context.Background()
+			ctx := t.Context()
 			kasBundle := newChunkedFakeKAS(t)
 			t.Cleanup(kasBundle.server.Close)
 
@@ -2196,7 +2196,7 @@ func (s dekZeroingSplitter) Split(_ context.Context, _ []*policy.Value, dek []by
 // one does -- with the wrapped key still correct, so the KAS grants
 // access and the failure surfaces only at the last step.
 func TestChunkedSplitterCannotDamageTheDEK(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	s := newChunkedTestSDK(t)
 	kasBundle := newChunkedFakeKAS(t)
 	t.Cleanup(kasBundle.server.Close)
@@ -2228,7 +2228,7 @@ func TestChunkedSplitterCannotDamageTheDEK(t *testing.T) {
 // quietly loosened after the fact is the one mistake here that nothing
 // downstream can detect.
 func TestChunkedInitialAttributesAreCloned(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	const want = "https://example.com/attr/clone/value/original"
 
 	attrs := []*policy.Value{{Fqn: want}}
@@ -2258,7 +2258,7 @@ func TestChunkedInitialAttributesAreCloned(t *testing.T) {
 // WithChunkedSegments drops segment 2 from the manifest while the archive
 // still counts its bytes and the caller must still append them.
 func TestChunkedEncryptedSizeIsNotTheByteCount(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	writer, _ := newChunkedWriterForTest(ctx, t)
 
 	chunks := [][]byte{[]byte("keep-0-"), []byte("keep-1-"), []byte("drop-2!")}
@@ -2301,7 +2301,7 @@ func TestChunkedEncryptedSizeIsNotTheByteCount(t *testing.T) {
 // the default is what a caller who never sets one ships, so it is as
 // much a part of the contract as the option.
 func TestChunkedMimeType(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	writer, _ := newChunkedWriterForTest(ctx, t)
 	writeChunkedSegments(ctx, t, writer, [][]byte{[]byte("payload")})
 
@@ -2330,7 +2330,7 @@ func TestChunkedZeroLengthSegments(t *testing.T) {
 		{"empty payload", [][]byte{{}}, ""},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			ctx := context.Background()
+			ctx := t.Context()
 			s := newChunkedTestSDK(t)
 			writer, kasBundle := newChunkedWriterForTest(ctx, t)
 
@@ -2360,7 +2360,7 @@ func TestChunkedZeroLengthSegments(t *testing.T) {
 // concurrent GetManifest -- in the writer's own record of what the
 // archive bytes say.
 func TestChunkedManifestCloneIsDeep(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	writer, _ := newChunkedWriterForTest(ctx, t)
 	writeChunkedSegments(ctx, t, writer, [][]byte{[]byte("payload")})
 
@@ -2436,7 +2436,7 @@ func TestChunkedEmptyAttributeFQNRejected(t *testing.T) {
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			ctx := context.Background()
+			ctx := t.Context()
 			writer, _ := newChunkedWriterForTest(ctx, t, WithChunkedInitialAttributes(tc.attrs))
 			writeChunkedSegments(ctx, t, writer, [][]byte{[]byte("payload")})
 
@@ -2484,7 +2484,7 @@ func (f *cleanupFailArchiveWriter) CleanupSegment(index int) error {
 // That assembles into a file readers accept and misread, which is exactly the
 // failure mode worth trading a dead writer for.
 func TestChunkedCleanupFailureFencesWriter(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	writer, _ := newChunkedWriterForTest(ctx, t,
 		withChunkedArchiveWriterFactory(func(clock clock) zipstream.SegmentWriter {
 			return &cleanupFailArchiveWriter{
@@ -2530,7 +2530,7 @@ func TestChunkedCleanupFailureFencesWriter(t *testing.T) {
 // literally. The empty string is what a caller forwarding an unset field
 // passes, and a manifest with no MIME type at all is not what they meant.
 func TestChunkedEmptyMimeTypeFallsBackToDefault(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	writer, _ := newChunkedWriterForTest(ctx, t)
 	writeChunkedSegments(ctx, t, writer, [][]byte{[]byte("payload")})
 
@@ -2569,7 +2569,7 @@ func (s *blockingSplitter) Split(ctx context.Context, attrs []*policy.Value, dek
 // the write lock for its duration. This test deadlocks on the old shape
 // and passes on the new one.
 func TestChunkedGetManifestDoesNotBlockWriteSegment(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	kasBundle := newChunkedFakeKAS(t)
 	t.Cleanup(kasBundle.server.Close)
 

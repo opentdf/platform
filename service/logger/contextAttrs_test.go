@@ -36,7 +36,7 @@ func Test_ContextAttrs_RegisteredFuncAddsAttrs(t *testing.T) {
 	buf := &bytes.Buffer{}
 	handler := newContextAttrsHandler(slog.NewJSONHandler(buf, nil), contextAttrSources(Config{ContextAttrs: []ContextAttrFunc{callerAttrs}})...)
 
-	out := logJSON(callerContext(context.Background()), t, buf, handler)
+	out := logJSON(callerContext(t.Context()), t, buf, handler)
 
 	assert.Equal(t, testCaller, out[callerAttrKey])
 }
@@ -45,7 +45,7 @@ func Test_ContextAttrs_NilReturnAddsNothing(t *testing.T) {
 	buf := &bytes.Buffer{}
 	handler := newContextAttrsHandler(slog.NewJSONHandler(buf, nil), contextAttrSources(Config{ContextAttrs: []ContextAttrFunc{callerAttrs}})...)
 
-	out := logJSON(context.Background(), t, buf, handler)
+	out := logJSON(t.Context(), t, buf, handler)
 
 	assert.NotContains(t, out, callerAttrKey, "an absent value must omit the key, not emit an empty string")
 }
@@ -112,7 +112,7 @@ func Test_ContextAttrs_NilFuncIsSkipped(t *testing.T) {
 		require.NoError(t, err)
 
 		require.NotPanics(t, func() {
-			lg.InfoContext(callerContext(context.Background()), "handled request")
+			lg.InfoContext(callerContext(t.Context()), "handled request")
 		})
 	})
 	require.Len(t, lines, 1)

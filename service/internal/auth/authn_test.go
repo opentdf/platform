@@ -203,7 +203,7 @@ func (s *AuthSuite) SetupTest() {
 	s.Require().NoError(err)
 
 	auth, err := NewAuthenticator(
-		context.Background(),
+		s.T().Context(),
 		Config{
 			AuthNConfig: AuthNConfig{
 				Issuer:    s.server.URL,
@@ -401,7 +401,7 @@ func (s *AuthSuite) Test_IPCUnaryServerInterceptor() {
 	s.Require().NoError(err)
 
 	type contextKey string
-	mockCtx := context.WithValue(context.Background(), contextKey("mockKey"), "mockValue")
+	mockCtx := context.WithValue(s.T().Context(), contextKey("mockKey"), "mockValue")
 	s.auth._testCheckTokenFunc = func(_ context.Context, authHeader []string, _ receiverInfo, _ []string) (jwt.Token, context.Context, error) {
 		if len(authHeader) == 0 {
 			return nil, nil, errors.New("missing authorization header")
@@ -416,7 +416,7 @@ func (s *AuthSuite) Test_IPCUnaryServerInterceptor() {
 	validAuthHeader := http.Header{}
 	validAuthHeader.Add("Authorization", "Bearer valid")
 	t1Path := "/kas.AccessService/Rewrap"
-	nextCtx, err := s.auth.ipcReauthCheck(context.Background(), t1Path, validAuthHeader)
+	nextCtx, err := s.auth.ipcReauthCheck(s.T().Context(), t1Path, validAuthHeader)
 	s.Require().NoError(err)
 	s.Require().NotNil(nextCtx)
 	s.Equal("mockValue", nextCtx.Value(contextKey("mockKey")))
@@ -430,20 +430,20 @@ func (s *AuthSuite) Test_IPCUnaryServerInterceptor() {
 	s.Equal("mockClientID", authzClientID)
 
 	// Test with a route not requiring reauthorization
-	nextCtx, err = s.auth.ipcReauthCheck(context.Background(), "/kas.AccessService/PublicKey", nil)
+	nextCtx, err = s.auth.ipcReauthCheck(s.T().Context(), "/kas.AccessService/PublicKey", nil)
 	s.Require().NoError(err)
 	s.Require().NotNil(nextCtx)
 	s.Nil(nextCtx.Value(contextKey("mockKey")))
 
 	// Test with missing authorization header
-	_, err = s.auth.ipcReauthCheck(context.Background(), "/kas.AccessService/Rewrap", nil)
+	_, err = s.auth.ipcReauthCheck(s.T().Context(), "/kas.AccessService/Rewrap", nil)
 	s.Require().Error(err)
 	s.Contains(err.Error(), "missing authorization header")
 
 	// Test with invalid token
 	unauthHeader := http.Header{}
 	unauthHeader.Add("Authorization", "Bearer invalid")
-	_, err = s.auth.ipcReauthCheck(context.Background(), "/kas.AccessService/Rewrap", unauthHeader)
+	_, err = s.auth.ipcReauthCheck(s.T().Context(), "/kas.AccessService/Rewrap", unauthHeader)
 	s.Require().Error(err)
 	s.Contains(err.Error(), "unauthenticated")
 }
@@ -929,7 +929,7 @@ func (s *AuthSuite) Test_CheckToken_When_JWT_Expired_Expect_Error() {
 	s.NotNil(signedTok)
 	s.Require().NoError(err)
 
-	_, _, err = s.auth.checkToken(context.Background(), []string{"Bearer " + string(signedTok)}, receiverInfo{}, nil)
+	_, _, err = s.auth.checkToken(s.T().Context(), []string{"Bearer " + string(signedTok)}, receiverInfo{}, nil)
 	s.Require().Error(err)
 	s.Equal("\"exp\" not satisfied", err.Error())
 }
@@ -957,7 +957,7 @@ func (s *AuthSuite) Test_ConnectAuthNInterceptor_When_Authorization_Header_Missi
 
 	_, err := interceptor.WrapUnary(func(ctx context.Context, req connect.AnyRequest) (connect.AnyResponse, error) {
 		return next(ctx, req)
-	})(context.Background(), req)
+	})(s.T().Context(), req)
 
 	s.Require().Error(err)
 
@@ -1040,7 +1040,7 @@ func (s *AuthSuite) Test_ConnectAuthNInterceptor_DPoPNonceError_IssuesUseNonceCh
 }
 
 func (s *AuthSuite) Test_CheckToken_When_Authorization_Header_Invalid_Expect_Error() {
-	_, _, err := s.auth.checkToken(context.Background(), []string{"DPOP "}, receiverInfo{}, nil)
+	_, _, err := s.auth.checkToken(s.T().Context(), []string{"DPOP "}, receiverInfo{}, nil)
 	s.Require().Error(err)
 	s.Equal("not of type bearer or dpop", err.Error())
 }
@@ -1060,7 +1060,7 @@ func (s *AuthSuite) Test_CheckToken_When_Authorization_Header_Invalid_Does_Not_L
 			auth := *s.auth
 			auth.logger = &logger.Logger{Logger: slog.New(slog.NewJSONHandler(&logs, nil))}
 
-			_, _, err := auth.checkToken(context.Background(), []string{tc.authHeader}, receiverInfo{}, nil)
+			_, _, err := auth.checkToken(s.T().Context(), []string{tc.authHeader}, receiverInfo{}, nil)
 
 			s.Require().Error(err)
 			s.Equal("not of type bearer or dpop", err.Error())
@@ -1079,7 +1079,7 @@ func (s *AuthSuite) Test_CheckToken_When_Missing_Issuer_Expect_Error() {
 	s.NotNil(signedTok)
 	s.Require().NoError(err)
 
-	_, _, err = s.auth.checkToken(context.Background(), []string{"Bearer " + string(signedTok)}, receiverInfo{}, nil)
+	_, _, err = s.auth.checkToken(s.T().Context(), []string{"Bearer " + string(signedTok)}, receiverInfo{}, nil)
 	s.Require().Error(err)
 	s.Equal("\"iss\" not satisfied: claim \"iss\" does not exist", err.Error())
 }
@@ -1094,7 +1094,7 @@ func (s *AuthSuite) Test_CheckToken_When_Invalid_Issuer_Value_Expect_Error() {
 	s.NotNil(signedTok)
 	s.Require().NoError(err)
 
-	_, _, err = s.auth.checkToken(context.Background(), []string{"Bearer " + string(signedTok)}, receiverInfo{}, nil)
+	_, _, err = s.auth.checkToken(s.T().Context(), []string{"Bearer " + string(signedTok)}, receiverInfo{}, nil)
 	s.Require().Error(err)
 	s.Contains(err.Error(), "\"iss\" not satisfied: values do not match")
 }
@@ -1108,7 +1108,7 @@ func (s *AuthSuite) Test_CheckToken_When_Audience_Missing_Expect_Error() {
 	s.NotNil(signedTok)
 	s.Require().NoError(err)
 
-	_, _, err = s.auth.checkToken(context.Background(), []string{"Bearer " + string(signedTok)}, receiverInfo{}, nil)
+	_, _, err = s.auth.checkToken(s.T().Context(), []string{"Bearer " + string(signedTok)}, receiverInfo{}, nil)
 	s.Require().Error(err)
 	s.Equal("claim \"aud\" not found", err.Error())
 }
@@ -1123,7 +1123,7 @@ func (s *AuthSuite) Test_CheckToken_When_Audience_Invalid_Expect_Error() {
 	s.NotNil(signedTok)
 	s.Require().NoError(err)
 
-	_, _, err = s.auth.checkToken(context.Background(), []string{"Bearer " + string(signedTok)}, receiverInfo{}, nil)
+	_, _, err = s.auth.checkToken(s.T().Context(), []string{"Bearer " + string(signedTok)}, receiverInfo{}, nil)
 	s.Require().Error(err)
 	s.Equal("\"aud\" not satisfied", err.Error())
 }
@@ -1139,7 +1139,7 @@ func (s *AuthSuite) Test_CheckToken_When_Valid_No_DPoP_Expect_Error() {
 	s.NotNil(signedTok)
 	s.Require().NoError(err)
 
-	_, _, err = s.auth.checkToken(context.Background(), []string{"Bearer " + string(signedTok)}, receiverInfo{}, nil)
+	_, _, err = s.auth.checkToken(s.T().Context(), []string{"Bearer " + string(signedTok)}, receiverInfo{}, nil)
 	s.Require().Error(err)
 	s.Require().Contains(err.Error(), "dpop")
 }
@@ -1221,7 +1221,7 @@ func (s *AuthSuite) TestInvalid_DPoP_Cases() {
 		s.Run(testCase.errorMessage, func() {
 			dpopToken := makeDPoPToken(s.T(), testCase)
 			_, _, err = s.auth.checkToken(
-				context.Background(),
+				s.T().Context(),
 				[]string{"DPoP " + string(testCase.accessToken)},
 				receiverInfo{
 					u: []string{"/a/path"},
@@ -1273,7 +1273,7 @@ func (s *AuthSuite) Test_CheckToken_AcceptsDPoP_GET() {
 	})
 
 	_, _, err = s.auth.checkToken(
-		context.Background(),
+		s.T().Context(),
 		[]string{"DPoP " + string(signedTok)},
 		receiverInfo{
 			u: []string{
@@ -1324,10 +1324,10 @@ func (s *AuthSuite) Test_CheckToken_RejectsReplayedDPoP() {
 
 	ri := receiverInfo{u: []string{"/a/path"}, m: []string{http.MethodPost}}
 
-	_, _, err = s.auth.checkToken(context.Background(), []string{"DPoP " + string(signedTok)}, ri, []string{dpopToken})
+	_, _, err = s.auth.checkToken(s.T().Context(), []string{"DPoP " + string(signedTok)}, ri, []string{dpopToken})
 	s.Require().NoError(err, "first presentation of the proof should succeed")
 
-	_, _, err = s.auth.checkToken(context.Background(), []string{"DPoP " + string(signedTok)}, ri, []string{dpopToken})
+	_, _, err = s.auth.checkToken(s.T().Context(), []string{"DPoP " + string(signedTok)}, ri, []string{dpopToken})
 	s.Require().Error(err, "replaying the same proof should be rejected")
 	s.Contains(err.Error(), "replay")
 }
@@ -1515,7 +1515,7 @@ func (s *AuthSuite) TestDPoPEndToEnd_Connect() {
 		connect.WithInterceptors(addingInterceptor.AddCredentialsConnect()),
 	)
 
-	_, err = client.Rewrap(context.Background(), connect.NewRequest(&kas.RewrapRequest{}))
+	_, err = client.Rewrap(s.T().Context(), connect.NewRequest(&kas.RewrapRequest{}))
 	s.Require().NoError(err)
 
 	// interceptor propagated clientID from the token at the configured claim
@@ -1598,7 +1598,7 @@ func (s *AuthSuite) Test_Allowing_Auth_With_No_DPoP() {
 	config := Config{}
 	config.AuthNConfig = authnConfig
 	auth, err := NewAuthenticator(
-		context.Background(), config, &logger.Logger{
+		s.T().Context(), config, &logger.Logger{
 			Logger: slog.New(slog.Default().Handler()),
 		},
 		func(_ string, _ any) error { return nil },
@@ -1616,7 +1616,7 @@ func (s *AuthSuite) Test_Allowing_Auth_With_No_DPoP() {
 	s.NotNil(signedTok)
 	s.Require().NoError(err)
 
-	_, ctx, err := auth.checkToken(context.Background(), []string{"Bearer " + string(signedTok)}, receiverInfo{}, nil)
+	_, ctx, err := auth.checkToken(s.T().Context(), []string{"Bearer " + string(signedTok)}, receiverInfo{}, nil)
 	s.Require().NoError(err)
 	s.Require().Nil(ctxAuth.GetJWKFromContext(ctx, logger.CreateTestLogger()))
 }

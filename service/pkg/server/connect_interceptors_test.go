@@ -1,7 +1,6 @@
 package server
 
 import (
-	"context"
 	"errors"
 	"net/http"
 	"testing"
@@ -123,6 +122,6 @@ func TestRegisterConnectRPCHandler(t *testing.T) {
 			ServiceDesc: &grpc.ServiceDesc{ServiceName: "registration.v1.TestService"},
 		}}
 
-		require.NoError(t, registerConnectRPCHandler(context.Background(), svc, newRPC(), log))
+		require.NoError(t, registerConnectRPCHandler(t.Context(), svc, newRPC(), log))
 	})
 }

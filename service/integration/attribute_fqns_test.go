@@ -52,7 +52,7 @@ func TestAttributeFqnSuite(t *testing.T) {
 
 func (s *AttributeFqnSuite) SetupSuite() {
 	slog.Info("setting up db.AttributeFqn test suite")
-	s.ctx = context.Background()
+	s.ctx = s.T().Context()
 	c := *Config
 	c.DB.Schema = "test_opentdf_attribute_fqn"
 	s.db = fixtures.NewDBInterface(s.ctx, c)

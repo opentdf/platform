@@ -1,7 +1,6 @@
 package ldap
 
 import (
-	"context"
 	"crypto/tls"
 	"errors"
 	"testing"
@@ -165,7 +164,7 @@ func (s *ProviderSuite) TestResolveEntityBuildsSearchRequest() {
 		},
 	}
 
-	result, err := provider.ResolveEntity(context.Background(), strategy, map[string]interface{}{
+	result, err := provider.ResolveEntity(s.T().Context(), strategy, map[string]interface{}{
 		"username": "alice",
 	})
 	s.Require().NoError(err)

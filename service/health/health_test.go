@@ -91,7 +91,7 @@ func (s *HealthCheckSuite) TestRegisterReadinessCheck() {
 	s.Require().NoError(err)
 
 	// Check the health check.
-	err = serviceHealthChecks["service_1"](context.Background())
+	err = serviceHealthChecks["service_1"](s.T().Context())
 	s.NoError(err)
 }
 
@@ -109,7 +109,7 @@ func (s *HealthCheckSuite) TestRegisterReadinessCheckCombinesChecksForNamespace(
 	})
 	s.Require().NoError(err)
 
-	err = serviceHealthChecks["service_2"](context.Background())
+	err = serviceHealthChecks["service_2"](s.T().Context())
 	s.Require().NoError(err)
 	s.Equal([]string{"first", "second"}, calls)
 }
@@ -127,7 +127,7 @@ func (s *HealthCheckSuite) TestRegisterReadinessCheckReturnsFirstError() {
 	})
 	s.Require().NoError(err)
 
-	err = serviceHealthChecks["service_2"](context.Background())
+	err = serviceHealthChecks["service_2"](s.T().Context())
 	s.Require().ErrorIs(err, assert.AnError)
 	s.False(secondCalled)
 }
@@ -148,7 +148,7 @@ func (s *HealthCheckSuite) TestCheck() {
 	s.Require().NoError(err)
 
 	// Check the health check.
-	result, err := hs.Check(context.Background(), &grpchealth.CheckRequest{
+	result, err := hs.Check(s.T().Context(), &grpchealth.CheckRequest{
 		Service: "all",
 	})
 	s.Require().NoError(err)
@@ -160,7 +160,7 @@ func (s *HealthCheckSuite) TestCheckServiceUnknown() {
 	hs := &HealthService{}
 
 	// Check the health check.
-	result, err := hs.Check(context.Background(), &grpchealth.CheckRequest{
+	result, err := hs.Check(s.T().Context(), &grpchealth.CheckRequest{
 		Service: "unknown",
 	})
 	s.Require().NoError(err)
@@ -188,7 +188,7 @@ func (s *HealthCheckSuite) TestCheckNotServing() {
 	s.Require().NoError(err)
 
 	// Check the health check.
-	result, err := hs.Check(context.Background(), &grpchealth.CheckRequest{
+	result, err := hs.Check(s.T().Context(), &grpchealth.CheckRequest{
 		Service: "failing",
 	})
 	s.Require().NoError(err)

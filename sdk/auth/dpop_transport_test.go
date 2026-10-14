@@ -417,7 +417,7 @@ func TestDPoPTransport_NonceRetryReplaysConnectUnaryBody(t *testing.T) {
 
 	// A non-trivial body — mirrors what otdfctl sends for any unary RPC with
 	// payload (e.g. policy attributes value key assign, KAS Rewrap).
-	resp, err := client.PublicKey(context.Background(), connect.NewRequest(&kas.PublicKeyRequest{
+	resp, err := client.PublicKey(t.Context(), connect.NewRequest(&kas.PublicKeyRequest{
 		Algorithm: "rsa:2048",
 		Fmt:       "pem",
 	}))

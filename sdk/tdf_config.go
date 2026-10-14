@@ -12,15 +12,14 @@ import (
 )
 
 const (
-	tdf3KeySize            = 2048
-	defaultMaxManifestSize = 10 * 1024 * 1024 // 10 MB
-	defaultSegmentSize     = 2 * 1024 * 1024  // 2mb
-	maxSegmentSize         = defaultSegmentSize * 2
-	minSegmentSize         = 16 * 1024
-	DefaultRSAKeySize      = 2048
-	ECKeySize256           = 256
-	ECKeySize384           = 384
-	ECKeySize521           = 521
+	tdf3KeySize        = 2048
+	defaultSegmentSize = 2 * 1024 * 1024 // 2mb
+	maxSegmentSize     = defaultSegmentSize * 2
+	minSegmentSize     = 16 * 1024
+	DefaultRSAKeySize  = 2048
+	ECKeySize256       = 256
+	ECKeySize384       = 384
+	ECKeySize521       = 521
 
 	// inputSizeUnknown marks a payload whose length cannot be established
 	// before it is read.
@@ -377,7 +376,7 @@ type TDFReaderConfig struct {
 	kasAllowlist              AllowList // KAS URLs that are allowed to be used for reading TDFs
 	ignoreAllowList           bool      // If true, the kasAllowlist will be ignored, and all KAS URLs will be allowed
 	fulfillableObligationFQNs []string
-	maxManifestSize           int64
+	maxManifestSize           int64 // 0 means no limit; see WithMaxManifestSize
 }
 
 type AllowList map[string]bool
@@ -451,7 +450,6 @@ func (a AllowList) Add(kasURL string) error {
 func newTDFReaderConfig(opt ...TDFReaderOption) (*TDFReaderConfig, error) {
 	c := &TDFReaderConfig{
 		disableAssertionVerification: false,
-		maxManifestSize:              defaultMaxManifestSize,
 	}
 
 	for _, o := range opt {
@@ -472,11 +470,12 @@ func newTDFReaderConfig(opt ...TDFReaderOption) (*TDFReaderConfig, error) {
 	return c, nil
 }
 
-// WithMaxManifestSize sets the maximum allowed manifest size for the TDF reader.
-// By default, the maximum manifest size is 10 MB.
-// The manifest size is proportional to the sum of the sizes of the policy and the number of segments in the payload.
-// Setting this limit helps prevent denial of service attacks due to large policies or overly segmented files.
-// Use this option to override the default limit; the size parameter specifies the maximum size in bytes.
+// WithMaxManifestSize sets the maximum allowed manifest size, in bytes, for the TDF reader.
+// By default there is no limit: the manifest grows with the policy size and the number of
+// segments, so very large payloads legitimately carry very large manifests. A declared
+// manifest size is always bounded by the archive itself, so this option is not needed to
+// reject forged ZIP sizes; use it to cap how much memory a manifest read may allocate.
+// size must be greater than 0.
 func WithMaxManifestSize(size int64) TDFReaderOption {
 	return func(c *TDFReaderConfig) error {
 		if size <= 0 {

@@ -41,7 +41,7 @@ var (
 
 func (s *NamespacesSuite) SetupSuite() {
 	slog.Info("setting up db.Namespaces test suite")
-	s.ctx = context.Background()
+	s.ctx = s.T().Context()
 	c := *Config
 	c.DB.Schema = "test_opentdf_namespaces"
 	s.db = fixtures.NewDBInterface(s.ctx, c)

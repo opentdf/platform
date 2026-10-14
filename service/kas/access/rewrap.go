@@ -116,12 +116,36 @@ type kaoResult struct {
 	Audit               rewrapAuditOutcome
 }
 
+// rewrapOutcomeKind classifies a rewrap audit outcome. The zero value is
+// pending so an outcome that was never classified cannot be emitted as success.
+type rewrapOutcomeKind uint8
+
+const (
+	rewrapOutcomePending rewrapOutcomeKind = iota
+	rewrapOutcomeSuccess
+	rewrapOutcomeFailure
+	rewrapOutcomeError
+)
+
+func (k rewrapOutcomeKind) actionResult() audit.ActionResult {
+	switch k {
+	case rewrapOutcomeSuccess:
+		return audit.ActionResultSuccess
+	case rewrapOutcomeFailure:
+		return audit.ActionResultFailure
+	case rewrapOutcomeError, rewrapOutcomePending:
+		// Pending is reported as an error, never as success.
+		return audit.ActionResultError
+	default:
+		return audit.ActionResultError
+	}
+}
+
 type rewrapAuditOutcome struct {
-	Result          audit.ActionResult
+	Kind            rewrapOutcomeKind
 	FailureReason   string
 	SuspectedTamper bool
 	PolicyVerified  bool
-	Classified      bool
 }
 
 type requestRewrapAuditOutcome struct {
@@ -525,10 +549,9 @@ func (p *Provider) extractSRTBody(ctx context.Context, headers http.Header, in *
 
 func rejectedRewrapOutcome(reason string, suspectedTamper bool) rewrapAuditOutcome {
 	return rewrapAuditOutcome{
-		Result:          audit.ActionResultFailure,
+		Kind:            rewrapOutcomeFailure,
 		FailureReason:   reason,
 		SuspectedTamper: suspectedTamper,
-		Classified:      true,
 	}
 }
 
@@ -609,10 +632,9 @@ func failedKAORewrapWithObligations(res map[string]kaoResult, kao *kaspb.Unsigne
 		Error:               err,
 		RequiredObligations: requiredObligations,
 		Audit: rewrapAuditOutcome{
-			Result:         audit.ActionResultFailure,
+			Kind:           rewrapOutcomeFailure,
 			FailureReason:  reason,
 			PolicyVerified: true,
-			Classified:     true,
 		},
 	}
 }
@@ -622,10 +644,9 @@ func failedKAORewrap(res map[string]kaoResult, kao *kaspb.UnsignedRewrapRequest_
 		ID:    kao.GetKeyAccessObjectId(),
 		Error: err,
 		Audit: rewrapAuditOutcome{
-			Result:          audit.ActionResultFailure,
+			Kind:            rewrapOutcomeFailure,
 			FailureReason:   reason,
 			SuspectedTamper: suspectedTamper,
-			Classified:      true,
 		},
 	}
 }
@@ -634,9 +655,8 @@ func erroredKAORewrap(res map[string]kaoResult, kao *kaspb.UnsignedRewrapRequest
 	current := res[kao.GetKeyAccessObjectId()]
 	current.ID = kao.GetKeyAccessObjectId()
 	current.Error = err
-	current.Audit.Result = audit.ActionResultError
+	current.Audit.Kind = rewrapOutcomeError
 	current.Audit.FailureReason = reason
-	current.Audit.Classified = true
 	res[kao.GetKeyAccessObjectId()] = current
 }
 
@@ -708,16 +728,15 @@ func (p *Provider) Rewrap(ctx context.Context, req *connect.Request[kaspb.Rewrap
 
 	body, isV1, requestOutcome, err := p.extractSRTBody(ctx, req.Header(), in)
 	if err != nil {
-		if !requestOutcome.Classified {
+		if requestOutcome.Kind == rewrapOutcomePending {
 			requestOutcome = rewrapAuditOutcome{
-				Result:        audit.ActionResultError,
+				Kind:          rewrapOutcomeError,
 				FailureReason: rewrapReasonIncomplete,
-				Classified:    true,
 			}
 		}
 		p.Logger.TraceContext(ctx, "srt extraction failure", slog.Any("srt", body), slog.Any("error", err))
 		p.Logger.DebugContext(ctx, "unverifiable srt", slog.Any("error", err))
-		p.recordRewrapAuditEvent(ctx, requestOutcome.Result, audit.RewrapAuditEventParams{
+		p.recordRewrapAuditEvent(ctx, requestOutcome.Kind.actionResult(), audit.RewrapAuditEventParams{
 			FailureReason:   requestOutcome.FailureReason,
 			SuspectedTamper: requestOutcome.SuspectedTamper,
 			TDFFormat:       kTDF3Format,
@@ -1125,9 +1144,8 @@ func (p *Provider) tdf3Rewrap(ctx context.Context, requests []*kaspb.UnsignedRew
 			requestOutcomes = append(requestOutcomes, requestRewrapAuditOutcome{
 				PolicyID: req.GetPolicy().GetId(),
 				Outcome: rewrapAuditOutcome{
-					Result:        audit.ActionResultFailure,
+					Kind:          rewrapOutcomeFailure,
 					FailureReason: rewrapReasonInvalidRequest,
-					Classified:    true,
 				},
 			})
 			continue
@@ -1157,10 +1175,9 @@ func (p *Provider) tdf3Rewrap(ctx context.Context, requests []*kaspb.UnsignedRew
 				requestOutcomes = append(requestOutcomes, requestRewrapAuditOutcome{
 					PolicyID: policyID,
 					Outcome: rewrapAuditOutcome{
-						Result:          audit.ActionResultFailure,
+						Kind:            rewrapOutcomeFailure,
 						FailureReason:   reason,
 						SuspectedTamper: suspectedTamper,
-						Classified:      true,
 					},
 				})
 			}
@@ -1202,9 +1219,9 @@ func (p *Provider) tdf3Rewrap(ctx context.Context, requests []*kaspb.UnsignedRew
 			if category == AccessErrCategoryContextCancelled {
 				reason = rewrapReasonContextCancelled
 			}
-			failAllKAOsWithAuditOutcome(requests, requestResults, err500("internal: "+category), audit.ActionResultError, reason)
+			failAllKAOsWithAuditOutcome(requests, requestResults, err500("internal: "+category), rewrapOutcomeError, reason)
 		} else {
-			failAllKAOsWithAuditOutcome(requests, requestResults, err403("forbidden: "+category), audit.ActionResultFailure, rewrapReasonAuthzRejected)
+			failAllKAOsWithAuditOutcome(requests, requestResults, err403("forbidden: "+category), rewrapOutcomeFailure, rewrapReasonAuthzRejected)
 		}
 		return "", results, nil
 	}
@@ -1212,7 +1229,7 @@ func (p *Provider) tdf3Rewrap(ctx context.Context, requests []*kaspb.UnsignedRew
 	asymEncrypt, err := ocrypto.FromPublicPEMWithSalt(clientPublicKey, security.TDFSalt(), nil)
 	if err != nil {
 		p.Logger.WarnContext(ctx, "ocrypto.NewAsymEncryption", slog.Any("error", err))
-		failAllKAOsWithAuditOutcome(requests, requestResults, err400("invalid request"), audit.ActionResultFailure, rewrapReasonInvalidClientPublicKey)
+		failAllKAOsWithAuditOutcome(requests, requestResults, err400("invalid request"), rewrapOutcomeFailure, rewrapReasonInvalidClientPublicKey)
 		return "", results, nil
 	}
 	sessionKeyType = string(asymEncrypt.KeyType())
@@ -1223,12 +1240,12 @@ func (p *Provider) tdf3Rewrap(ctx context.Context, requests []*kaspb.UnsignedRew
 		sessionKey, err = e.PublicKeyInPemFormat()
 		if err != nil {
 			p.Logger.ErrorContext(ctx, "unable to serialize ephemeral key", slog.Any("error", err))
-			failAllKAOsWithAuditOutcome(requests, requestResults, err400("invalid request"), audit.ActionResultError, rewrapReasonSessionKeyError)
+			failAllKAOsWithAuditOutcome(requests, requestResults, err400("invalid request"), rewrapOutcomeError, rewrapReasonSessionKeyError)
 			return "", results, nil
 		}
 		if !p.Preview.ECTDFEnabled {
 			p.Logger.ErrorContext(ctx, "ec rewrap not enabled")
-			failAllKAOsWithAuditOutcome(requests, requestResults, err400("invalid request"), audit.ActionResultFailure, rewrapReasonECRewrapDisabled)
+			failAllKAOsWithAuditOutcome(requests, requestResults, err400("invalid request"), rewrapOutcomeFailure, rewrapReasonECRewrapDisabled)
 			return "", results, nil
 		}
 	}
@@ -1277,9 +1294,8 @@ func (p *Provider) tdf3Rewrap(ctx context.Context, requests []*kaspb.UnsignedRew
 				EphemeralPublicKey:  asymEncrypt.EphemeralKey(),
 				RequiredObligations: requiredObligationsForPolicy,
 				Audit: rewrapAuditOutcome{
-					Result:         audit.ActionResultSuccess,
+					Kind:           rewrapOutcomeSuccess,
 					PolicyVerified: true,
-					Classified:     true,
 				},
 			}
 		}
@@ -1287,7 +1303,7 @@ func (p *Provider) tdf3Rewrap(ctx context.Context, requests []*kaspb.UnsignedRew
 	return sessionKey, results, nil
 }
 
-func failAllKAOsWithAuditOutcome(reqs []*kaspb.UnsignedRewrapRequest_WithPolicyRequest, results map[*kaspb.UnsignedRewrapRequest_WithPolicyRequest]map[string]kaoResult, err error, result audit.ActionResult, reason string) {
+func failAllKAOsWithAuditOutcome(reqs []*kaspb.UnsignedRewrapRequest_WithPolicyRequest, results map[*kaspb.UnsignedRewrapRequest_WithPolicyRequest]map[string]kaoResult, err error, kind rewrapOutcomeKind, reason string) {
 	for _, req := range reqs {
 		if req == nil || req.GetPolicy() == nil {
 			continue
@@ -1303,10 +1319,9 @@ func failAllKAOsWithAuditOutcome(reqs []*kaspb.UnsignedRewrapRequest_WithPolicyR
 			// Keep the legacy response behavior (the stage-wide error applies to
 			// every KAO) without erasing a more specific earlier audit outcome.
 			current.Error = err
-			if !current.Audit.Classified || current.DEK != nil {
-				current.Audit.Result = result
+			if current.Audit.Kind == rewrapOutcomePending || current.DEK != nil {
+				current.Audit.Kind = kind
 				current.Audit.FailureReason = reason
-				current.Audit.Classified = true
 			}
 			policyResults[kaoID] = current
 		}
@@ -1325,7 +1340,7 @@ func (p *Provider) auditRewrapOutcomes(
 	sessionKeyType string,
 ) {
 	for _, requestOutcome := range requestOutcomes {
-		p.recordRewrapAuditEvent(ctx, requestOutcome.Outcome.Result, audit.RewrapAuditEventParams{
+		p.recordRewrapAuditEvent(ctx, requestOutcome.Outcome.Kind.actionResult(), audit.RewrapAuditEventParams{
 			PolicyID:        requestOutcome.PolicyID,
 			FailureReason:   requestOutcome.Outcome.FailureReason,
 			SuspectedTamper: requestOutcome.Outcome.SuspectedTamper,
@@ -1343,12 +1358,11 @@ func (p *Provider) auditRewrapOutcomes(
 		for _, kao := range req.GetKeyAccessObjects() {
 			kaoID := kao.GetKeyAccessObjectId()
 			kaoRes, ok := policyResults[kaoID]
-			if !ok || !kaoRes.Audit.Classified {
+			if !ok || kaoRes.Audit.Kind == rewrapOutcomePending {
 				kaoRes.Audit = rewrapAuditOutcome{
-					Result:         audit.ActionResultError,
+					Kind:           rewrapOutcomeError,
 					FailureReason:  rewrapReasonIncomplete,
 					PolicyVerified: kaoRes.Audit.PolicyVerified,
-					Classified:     true,
 				}
 			}
 
@@ -1367,7 +1381,7 @@ func (p *Provider) auditRewrapOutcomes(
 			if policies[req] != nil {
 				params.Policy = ConvertToAuditKasPolicy(*policies[req])
 			}
-			p.recordRewrapAuditEvent(ctx, kaoRes.Audit.Result, params)
+			p.recordRewrapAuditEvent(ctx, kaoRes.Audit.Kind.actionResult(), params)
 		}
 	}
 }

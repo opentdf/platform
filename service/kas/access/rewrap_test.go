@@ -1938,10 +1938,10 @@ func TestVerifyRewrapRequestsClassifiesKeyLookupFailuresWithoutTamper(t *testing
 			result := results[kao.GetKeyAccessObjectId()]
 			require.Equal(t, connect.CodeInvalidArgument, connect.CodeOf(result.Error))
 			require.Contains(t, result.Error.Error(), tt.wantMessage)
-			require.Equal(t, tt.wantResult, result.Audit.Result)
+			require.Equal(t, tt.wantResult, result.Audit.Kind.actionResult())
 			require.Equal(t, tt.wantReason, result.Audit.FailureReason)
 			require.False(t, result.Audit.SuspectedTamper)
-			require.True(t, result.Audit.Classified)
+			require.NotEqual(t, rewrapOutcomePending, result.Audit.Kind)
 		})
 	}
 }
@@ -2001,10 +2001,10 @@ func TestRecordDEKFailureFlagsTamperOnlyForUnwrapFailures(t *testing.T) {
 			recordDEKFailure(results, kao, tt.err)
 
 			result := results["kao-0"]
-			require.Equal(t, tt.wantResult, result.Audit.Result)
+			require.Equal(t, tt.wantResult, result.Audit.Kind.actionResult())
 			require.Equal(t, tt.wantReason, result.Audit.FailureReason)
 			require.Equal(t, tt.wantTamper, result.Audit.SuspectedTamper)
-			require.True(t, result.Audit.Classified)
+			require.NotEqual(t, rewrapOutcomePending, result.Audit.Kind)
 			// Responses stay generic regardless of the audit classification.
 			require.Equal(t, connect.CodeInvalidArgument, connect.CodeOf(result.Error))
 			require.Contains(t, result.Error.Error(), "bad request")
@@ -2159,10 +2159,9 @@ func TestAuditRewrapOutcomesClassifiesEncapsulationFailureAsError(t *testing.T) 
 				ID:    kao.GetKeyAccessObjectId(),
 				Error: err400("bad key for rewrap"),
 				Audit: rewrapAuditOutcome{
-					Result:         audit.ActionResultError,
+					Kind:           rewrapOutcomeError,
 					FailureReason:  rewrapReasonEncapsulationFailed,
 					PolicyVerified: true,
-					Classified:     true,
 				},
 			},
 		},
@@ -2173,6 +2172,61 @@ func TestAuditRewrapOutcomesClassifiesEncapsulationFailureAsError(t *testing.T) 
 	require.Equal(t, audit.ActionResultError, events[0].Action.Result)
 	require.Equal(t, rewrapReasonEncapsulationFailed, events[0].EventMetaData["failure_reason"])
 	require.Equal(t, true, events[0].EventMetaData["policy_verified"])
+}
+
+func TestAuditRewrapOutcomesReportsUnclassifiedKAOsAsIncomplete(t *testing.T) {
+	require.NotEqual(t, audit.ActionResultSuccess, rewrapAuditOutcome{}.Kind.actionResult(),
+		"zero-value outcome must never be emitted as success")
+
+	tests := []struct {
+		name         string
+		present      bool
+		wantVerified bool
+	}{
+		{
+			name: "kao missing from results",
+		},
+		{
+			name:         "verified kao never rewrapped",
+			present:      true,
+			wantVerified: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var events []audit.Event
+			baseLogger := slog.New(slog.DiscardHandler)
+			provider := &Provider{Logger: &logger.Logger{
+				Logger: baseLogger,
+				Audit: audit.CreateAuditLogger(*baseLogger, audit.WithProcessor(audit.ProcessorFunc(func(_ context.Context, event audit.Event) error {
+					events = append(events, event)
+					return nil
+				}))),
+			}}
+			requests := makeRewrapRequests(t, fauxPolicyBytes(t), false)
+			request := requests[0]
+			kao := request.GetKeyAccessObjects()[0]
+			results := map[*kaspb.UnsignedRewrapRequest_WithPolicyRequest]map[string]kaoResult{request: {}}
+			if tt.present {
+				dek, err := ocrypto.NewAESProtectedKey(make([]byte, 32))
+				require.NoError(t, err)
+				results[request][kao.GetKeyAccessObjectId()] = kaoResult{
+					ID:    kao.GetKeyAccessObjectId(),
+					DEK:   dek,
+					Audit: rewrapAuditOutcome{PolicyVerified: true},
+				}
+			}
+
+			provider.auditRewrapOutcomes(t.Context(), requests, results, nil, nil, string(ocrypto.RSA2048Key))
+			require.Len(t, events, 1)
+			require.Equal(t, audit.ActionResultError, events[0].Action.Result)
+			require.Equal(t, rewrapReasonIncomplete, events[0].EventMetaData["failure_reason"])
+			require.Equal(t, tt.wantVerified, events[0].EventMetaData["policy_verified"])
+			require.Equal(t, false, events[0].EventMetaData["suspected_tamper"])
+			require.Equal(t, kao.GetKeyAccessObjectId(), events[0].EventMetaData["kao_id"])
+		})
+	}
 }
 
 func newTDF3AuditTestProvider(t *testing.T, authorizationClient rewrapAuthorizationV2Stub, processor audit.ProcessorFunc) *Provider {

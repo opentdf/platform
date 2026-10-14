@@ -23,7 +23,7 @@ func mustGenerateRSAKey(t *testing.T) *rsa.PrivateKey {
 
 func TestTokenExpiration_RespectsLeeway(t *testing.T) {
 	expiredToken := Token{
-		received:  time.Now().Add(-DefaultTokenExpirationBuffer - 10*time.Second),
+		received:  time.Now().Add(-defaultTokenExpirationBuffer - 10*time.Second),
 		ExpiresIn: 5,
 	}
 	if !expiredToken.Expired() {
@@ -32,7 +32,7 @@ func TestTokenExpiration_RespectsLeeway(t *testing.T) {
 
 	goodToken := Token{
 		received:  time.Now(),
-		ExpiresIn: 2 * int64(DefaultTokenExpirationBuffer/time.Second),
+		ExpiresIn: 2 * int64(defaultTokenExpirationBuffer/time.Second),
 	}
 
 	if goodToken.Expired() {
@@ -41,7 +41,7 @@ func TestTokenExpiration_RespectsLeeway(t *testing.T) {
 
 	justOverBorderToken := Token{
 		received:  time.Now(),
-		ExpiresIn: int64(DefaultTokenExpirationBuffer/time.Second) - 1,
+		ExpiresIn: int64(defaultTokenExpirationBuffer/time.Second) - 1,
 	}
 
 	if !justOverBorderToken.Expired() {
@@ -58,7 +58,7 @@ func Test_Token_ExpiredWithBuffer(t *testing.T) {
 	}{
 		{name: "WithinCustomWindow", remaining: time.Minute, buffer: 90 * time.Second, expired: true},
 		{name: "OutsideCustomWindow", remaining: 2 * time.Minute, buffer: 90 * time.Second},
-		{name: "OutsideDefaultWindow", remaining: time.Minute, buffer: DefaultTokenExpirationBuffer},
+		{name: "OutsideDefaultWindow", remaining: time.Minute, buffer: defaultTokenExpirationBuffer},
 		{name: "ZeroBufferValid", remaining: 5 * time.Second},
 		{name: "ZeroBufferExpired", remaining: -time.Second, expired: true},
 	}

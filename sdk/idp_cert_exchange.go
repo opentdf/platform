@@ -38,7 +38,7 @@ func NewCertExchangeTokenSource(logger *slog.Logger, info oauth.CertExchangeInfo
 		credentials:           credentials,
 		tokenMutex:            &sync.Mutex{},
 		key:                   dpopKey,
-		tokenExpirationBuffer: oauth.DefaultTokenExpirationBuffer,
+		tokenExpirationBuffer: defaultTokenExpirationBuffer,
 	}
 
 	return &exchangeSource, nil

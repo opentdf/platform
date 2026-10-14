@@ -90,7 +90,7 @@ func NewIDPAccessTokenSource(
 		dpopKey:               dpopKey,
 		dpopPEM:               dpopPublicKeyPEM,
 		tokenMutex:            &sync.Mutex{},
-		tokenExpirationBuffer: oauth.DefaultTokenExpirationBuffer,
+		tokenExpirationBuffer: defaultTokenExpirationBuffer,
 	}
 
 	return &tokenSource, nil

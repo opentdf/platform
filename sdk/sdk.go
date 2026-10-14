@@ -14,6 +14,7 @@ import (
 	"net/url"
 	"strings"
 	"sync"
+	"time"
 
 	"connectrpc.com/connect"
 	"github.com/lestrrat-go/jwx/v2/jwk"
@@ -23,13 +24,14 @@ import (
 	"github.com/opentdf/platform/protocol/go/wellknownconfiguration/wellknownconfigurationconnect"
 	"github.com/opentdf/platform/sdk/audit"
 	"github.com/opentdf/platform/sdk/auth"
-	"github.com/opentdf/platform/sdk/auth/oauth"
 	"github.com/opentdf/platform/sdk/httputil"
 	"github.com/opentdf/platform/sdk/internal/zipstream"
 	"github.com/opentdf/platform/sdk/sdkconnect"
 	"github.com/xeipuuv/gojsonschema"
 	healthpb "google.golang.org/grpc/health/grpc_health_v1"
 )
+
+const defaultTokenExpirationBuffer = 10 * time.Second
 
 const (
 	// Failure while connecting to a service.
@@ -115,7 +117,7 @@ func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 
 	// Set default options
 	cfg := &config{
-		tokenExpirationBuffer: oauth.DefaultTokenExpirationBuffer,
+		tokenExpirationBuffer: defaultTokenExpirationBuffer,
 		httpClient: httputil.SafeHTTPClientWithTLSConfig(&tls.Config{
 			MinVersion: tls.VersionTLS12,
 		}),

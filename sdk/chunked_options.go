@@ -213,6 +213,20 @@ func WithChunkedTargetMode(mode string) ChunkedWriterOption {
 	}
 }
 
+// WithChunkedSpecCompliantPolicyBinding writes each key access object's
+// policy binding hash as Base64(HMAC), the form the TDF spec defines,
+// instead of the legacy Base64(hex(HMAC)). See
+// WithSpecCompliantPolicyBinding for the compatibility caveat. A
+// pre-4.3.0 WithChunkedTargetMode overrides this option.
+//
+// Experimental: not part of the stable SDK API; may change or be removed.
+func WithChunkedSpecCompliantPolicyBinding() ChunkedWriterOption {
+	return func(c *chunkedWriterConfig) error {
+		c.specCompliantPolicyBinding = true
+		return nil
+	}
+}
+
 // WithChunkedMimeType records the payload MIME type in the manifest.
 //
 // Experimental: not part of the stable SDK API; may change or be removed.

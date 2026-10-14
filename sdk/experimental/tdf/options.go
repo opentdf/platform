@@ -139,6 +139,10 @@ type WriterConfig struct {
 	// targetMode is the TDF spec version to write for, as semver.
 	// Empty selects the current format. See WithTargetMode.
 	targetMode string
+
+	// specCompliantPolicyBinding writes policy bindings in the spec's
+	// Base64(HMAC) form. See WithSpecCompliantPolicyBinding.
+	specCompliantPolicyBinding bool
 }
 
 // ReaderConfig contains configuration options for TDF Reader creation.
@@ -410,6 +414,21 @@ func WithExcludeVersionFromManifest(_ bool) Option[*WriterFinalizeConfig] {
 func WithTargetMode(mode string) Option[*WriterConfig] {
 	return func(c *WriterConfig) {
 		c.targetMode = mode
+	}
+}
+
+// WithSpecCompliantPolicyBinding writes each key access object's policy
+// binding hash as Base64(HMAC), the form the TDF spec defines, instead of
+// the legacy Base64(hex(HMAC)) written by default.
+//
+// Only a KAS carrying the policy binding dual-accept fix can verify the
+// spec's form directly. The SDK's reader re-encodes it for older KAS, but
+// other and older readers forward it unchanged, so a TDF written with this
+// option may not decrypt through an older reader against an older KAS. A
+// pre-4.3.0 [WithTargetMode] overrides this option.
+func WithSpecCompliantPolicyBinding() Option[*WriterConfig] {
+	return func(c *WriterConfig) {
+		c.specCompliantPolicyBinding = true
 	}
 }
 

@@ -18,6 +18,7 @@ flowchart TD
     K -->|ok| M{Key manager available?}
     M -->|no| E3["ERROR<br/>key_manager_unavailable"]
     M -->|yes| D{"Policy parses, DEK decrypts,<br/>and binding verifies?"}
+    D -->|"decrypt error<br/>or cancelled"| E4["ERROR<br/>dek_decrypt_error · context_cancelled"]
     D -->|no| F3["FAILURE · suspected_tamper: true<br/>policy_body_invalid · dek_decrypt_failed<br/>policy_binding_missing · policy_binding_malformed<br/>policy_binding_mismatch"]
     D -->|yes| E{Authorization}
     E -->|deny| F4["FAILURE<br/>policy_denied"]
@@ -56,8 +57,10 @@ flowchart TD
 | Key lookup | Key ID not found or no legacy RSA key IDs | failure | `key_not_found` | false | false | KAO |
 | Key lookup | Registry unavailable | error | `key_lookup_failed` | false | false | KAO |
 | Key management | Manager unavailable | error | `key_manager_unavailable` | false | false | KAO |
+| Key management | DEK decryption failed without an unwrap error | error | `dek_decrypt_error` | false | false | KAO |
+| Key management | Context cancelled during DEK decryption | error | `context_cancelled` | false | false | KAO |
 | Integrity | Policy body invalid | failure | `policy_body_invalid` | true | false | KAO |
-| Integrity | DEK decryption failed | failure | `dek_decrypt_failed` | true | false | KAO |
+| Integrity | DEK unwrap failed (`trust.ErrDecryptFailed`) | failure | `dek_decrypt_failed` | true | false | KAO |
 | Integrity | Policy binding missing | failure | `policy_binding_missing` | true | false | KAO |
 | Integrity | Policy binding malformed | failure | `policy_binding_malformed` | true | false | KAO |
 | Integrity | Policy binding mismatch | failure | `policy_binding_mismatch` | true | false | KAO |

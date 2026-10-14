@@ -54,6 +54,7 @@ const (
 	rewrapReasonPolicyBindingMalformed = "policy_binding_malformed"
 	rewrapReasonPolicyBodyInvalid      = "policy_body_invalid"
 	rewrapReasonDEKDecryptFailed       = "dek_decrypt_failed"
+	rewrapReasonDEKDecryptError        = "dek_decrypt_error"
 	rewrapReasonKeyLookupFailed        = "key_lookup_failed"
 	rewrapReasonKeyManagerUnavailable  = "key_manager_unavailable"
 	rewrapReasonKeyNotFound            = "key_not_found"
@@ -652,7 +653,17 @@ func recordDEKFailure(res map[string]kaoResult, kao *kaspb.UnsignedRewrapRequest
 		erroredKAORewrap(res, kao, err400("bad request"), rewrapReasonKeyManagerUnavailable)
 		return
 	}
-	failedKAORewrap(res, kao, err400("bad request"), rewrapReasonDEKDecryptFailed, true)
+	// Responses stay generic because they involve secret key material. Only a
+	// manager-reported unwrap failure is suspected tampering; any other error
+	// is indistinguishable from an outage (KMS/HSM, config) and is not flagged.
+	switch {
+	case errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded):
+		erroredKAORewrap(res, kao, err400("bad request"), rewrapReasonContextCancelled)
+	case errors.Is(err, trust.ErrDecryptFailed):
+		failedKAORewrap(res, kao, err400("bad request"), rewrapReasonDEKDecryptFailed, true)
+	default:
+		erroredKAORewrap(res, kao, err400("bad request"), rewrapReasonDEKDecryptError)
+	}
 }
 
 func addResultsToResponse(response *kaspb.RewrapResponse, result policyKAOResults) {

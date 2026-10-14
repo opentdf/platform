@@ -455,6 +455,16 @@ func TestBasicManager_Decrypt(t *testing.T) {
 		})
 	}
 
+	t.Run("corrupted RSA ciphertext is an unwrap failure", func(t *testing.T) {
+		mockDetails := new(MockKeyDetails)
+		mockDetails.On("ID").Return(trust.KeyIdentifier("rsa-kid-corrupt"))
+		mockDetails.On("Algorithm").Return(AlgorithmRSA2048)
+		mockDetails.On("ExportPrivateKey").Return(&trust.PrivateKey{WrappedKey: wrappedRSAPrivKeyStr}, nil)
+
+		_, err := bm.Decrypt(t.Context(), mockDetails, []byte("not-a-wrapped-key"), nil)
+		require.ErrorIs(t, err, trust.ErrDecryptFailed)
+	})
+
 	t.Run("fail ExportPrivateKey", func(t *testing.T) {
 		mockDetails := new(MockKeyDetails)
 		mockDetails.On("ID").Return(trust.KeyIdentifier("fail-export"))
@@ -463,6 +473,7 @@ func TestBasicManager_Decrypt(t *testing.T) {
 		_, err := bm.Decrypt(t.Context(), mockDetails, []byte("ct"), nil)
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "failed to get private key")
+		assert.NotErrorIs(t, err, trust.ErrDecryptFailed)
 	})
 
 	t.Run("fail unwrap", func(t *testing.T) {
@@ -480,6 +491,7 @@ func TestBasicManager_Decrypt(t *testing.T) {
 		_, err = bm.Decrypt(t.Context(), mockDetails, []byte("ct"), nil)
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "failed to unwrap private key")
+		assert.NotErrorIs(t, err, trust.ErrDecryptFailed)
 	})
 
 	t.Run("fail FromPrivatePEM", func(t *testing.T) {

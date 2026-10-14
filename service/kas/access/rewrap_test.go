@@ -1946,6 +1946,72 @@ func TestVerifyRewrapRequestsClassifiesKeyLookupFailuresWithoutTamper(t *testing
 	}
 }
 
+func TestRecordDEKFailureFlagsTamperOnlyForUnwrapFailures(t *testing.T) {
+	tests := []struct {
+		name       string
+		err        error
+		wantResult audit.ActionResult
+		wantReason string
+		wantTamper bool
+	}{
+		{
+			name:       "manager reported unwrap failure",
+			err:        fmt.Errorf("%w: rsa decrypt failed", trust.ErrDecryptFailed),
+			wantResult: audit.ActionResultFailure,
+			wantReason: rewrapReasonDEKDecryptFailed,
+			wantTamper: true,
+		},
+		{
+			name:       "context canceled",
+			err:        fmt.Errorf("kms call: %w", context.Canceled),
+			wantResult: audit.ActionResultError,
+			wantReason: rewrapReasonContextCancelled,
+		},
+		{
+			name:       "context deadline exceeded",
+			err:        fmt.Errorf("kms call: %w", context.DeadlineExceeded),
+			wantResult: audit.ActionResultError,
+			wantReason: rewrapReasonContextCancelled,
+		},
+		{
+			name:       "unclassified manager error",
+			err:        connect.NewError(connect.CodeUnavailable, errors.New("hsm unavailable")),
+			wantResult: audit.ActionResultError,
+			wantReason: rewrapReasonDEKDecryptError,
+		},
+		{
+			name:       "key lookup failure",
+			err:        fmt.Errorf("%w: registry unavailable", trust.ErrKeyLookup),
+			wantResult: audit.ActionResultError,
+			wantReason: rewrapReasonKeyLookupFailed,
+		},
+		{
+			name:       "key manager unavailable",
+			err:        fmt.Errorf("%w: no factory", trust.ErrKeyManagerUnavailable),
+			wantResult: audit.ActionResultError,
+			wantReason: rewrapReasonKeyManagerUnavailable,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			kao := &kaspb.UnsignedRewrapRequest_WithKeyAccessObject{KeyAccessObjectId: "kao-0"}
+			results := map[string]kaoResult{}
+
+			recordDEKFailure(results, kao, tt.err)
+
+			result := results["kao-0"]
+			require.Equal(t, tt.wantResult, result.Audit.Result)
+			require.Equal(t, tt.wantReason, result.Audit.FailureReason)
+			require.Equal(t, tt.wantTamper, result.Audit.SuspectedTamper)
+			require.True(t, result.Audit.Classified)
+			// Responses stay generic regardless of the audit classification.
+			require.Equal(t, connect.CodeInvalidArgument, connect.CodeOf(result.Error))
+			require.Contains(t, result.Error.Error(), "bad request")
+		})
+	}
+}
+
 func TestTDF3RewrapAuditsAuthorizationErrors(t *testing.T) {
 	tests := []struct {
 		name         string

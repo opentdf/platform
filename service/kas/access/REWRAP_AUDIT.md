@@ -1,30 +1,26 @@
 # Rewrap audit outcomes
 
-KAS records one `rewrap` audit event for each key access object (KAO) it
-processes. A failure that prevents KAO processing or cannot be attributed to a
-KAO produces a request-level event instead. All rewrap events use
-`action.type: rewrap` and `object.type: key_object`.
-
-- `success`: KAS returned the rewrapped key.
-- `failure`: KAS deliberately rejected the request, including authorization
-  denials, validation failures, and suspected tamper.
-- `error`: KAS or a dependency could not complete the operation.
+- KAS emits one event per processed key access object (KAO).
+- Failures before KAO processing emit one request-level event.
+- All events use `action.type: rewrap` and `object.type: key_object`.
+- Results are `success` (key returned), `failure` (request rejected), or `error`
+  (KAS or a dependency could not finish).
 
 ```mermaid
 flowchart TD
     A[Rewrap request] --> B{Request can be processed?}
-    B -->|no| F1["FAILURE · request level<br/>SRT, request body, token, context,<br/>client key, or policy request invalid"]
-    B -->|yes| C{"Per KAO: KAO and key type valid?"}
+    B -->|no| F1["FAILURE · request level<br/>SRT, body, token, context,<br/>client key, or policy request invalid"]
+    B -->|yes| C{"KAO and key type valid?"}
     C -->|no| F2["FAILURE<br/>kao_invalid · key_type_disabled<br/>unsupported_key_type · invalid_ephemeral_key"]
-    C -->|yes| D{"Policy parses, DEK decrypts,<br/>and policy binding verifies?"}
+    C -->|yes| D{"Policy parses, DEK decrypts,<br/>and binding verifies?"}
     D -->|no| F3["FAILURE · suspected_tamper: true<br/>policy_body_invalid · dek_decrypt_failed<br/>policy_binding_missing · policy_binding_malformed<br/>policy_binding_mismatch"]
-    D -->|yes| E{Authorization decision}
+    D -->|yes| E{Authorization}
     E -->|deny| F4["FAILURE<br/>policy_denied"]
-    E -->|rejected by authorization service| F5["FAILURE<br/>authz_rejected"]
+    E -->|rejected| F5["FAILURE<br/>authz_rejected"]
     E -->|unavailable or cancelled| E1["ERROR<br/>authz_unavailable · context_cancelled"]
     E -->|permit| G{Session key and encapsulation}
-    G -->|invalid client key or EC disabled| F6["FAILURE<br/>invalid_client_public_key · ec_rewrap_disabled"]
-    G -->|KAS-side fault| E2["ERROR<br/>session_key_error · encapsulation_failed"]
+    G -->|invalid key or EC disabled| F6["FAILURE<br/>invalid_client_public_key · ec_rewrap_disabled"]
+    G -->|KAS fault| E2["ERROR<br/>session_key_error · encapsulation_failed"]
     G -->|ok| S[SUCCESS]
 
     classDef success fill:#d4edda,stroke:#28a745,color:#000
@@ -35,63 +31,52 @@ flowchart TD
     class E1,E2 error
 ```
 
-The diagram summarizes the main processing flow. The table below is the
-complete outcome reference.
+## Outcome matrix
 
-| Stage | Case | `action.result` | `failure_reason` | `suspected_tamper` | `policy_verified` | Scope |
+| Stage | Case | Result | `failure_reason` | Tamper | Verified | Scope |
 |---|---|---|---|---|---|---|
-| Request | SRT cannot be parsed or its claims are invalid | `failure` | `srt_invalid` | `false` | `false` | request |
-| Request | SRT signature verification fails | `failure` | `srt_signature_invalid` | `true` | `false` | request |
-| Request | Request body inside the SRT is invalid | `failure` | `request_body_invalid` | `false` | `false` | request |
-| Request | Client public key is missing, unparseable, or unsupported | `failure` | `invalid_client_public_key` | `false` | `false` | request |
-| Request | Access token or entity information is missing | `failure` | `missing_access_token` | `false` | `false` | request |
-| Request | `X-Rewrap-Additional-Context` is invalid | `failure` | `invalid_rewrap_context` | `false` | `false` | request |
-| Policy request | Request or policy is nil, or the policy ID is empty | `failure` | `invalid_request` | `false` | `false` | request |
-| Policy request | No KAOs and the policy body is valid | `failure` | `kao_invalid` | `false` | `false` | request |
-| Policy request | No KAOs and the policy body is invalid | `failure` | `policy_body_invalid` | `true` | `false` | request |
-| KAO validation | KAO is nil or its wrapped key is empty | `failure` | `kao_invalid` | `false` | `false` | KAO |
-| KAO validation | EC, hybrid, or ML-KEM key type is disabled | `failure` | `key_type_disabled` | `false` | `false` | KAO |
-| KAO validation | Key type is unsupported | `failure` | `unsupported_key_type` | `false` | `false` | KAO |
-| KAO validation | EC ephemeral key has invalid PEM, size, type, or compression | `failure` | `invalid_ephemeral_key` | `false` | `false` | KAO |
-| Integrity | Policy body cannot be decoded or parsed | `failure` | `policy_body_invalid` | `true` | `false` | KAO |
-| Integrity | DEK decryption fails for RSA, EC, hybrid, or ML-KEM | `failure` | `dek_decrypt_failed` | `true` | `false` | KAO |
-| Integrity | No legacy RSA key IDs are available | `failure` | `dek_decrypt_failed` | `true` | `false` | KAO |
-| Integrity | Policy binding is missing | `failure` | `policy_binding_missing` | `true` | `false` | KAO |
-| Integrity | Policy binding is malformed | `failure` | `policy_binding_malformed` | `true` | `false` | KAO |
-| Integrity | Policy binding does not match | `failure` | `policy_binding_mismatch` | `true` | `false` | KAO |
-| Authorization | Decision is deny | `failure` | `policy_denied` | `false` | `true` | KAO |
-| Authorization | Authorization service rejects the call with a non-internal error | `failure` | `authz_rejected` | `false` | `true` | KAO |
-| Authorization | Authorization service returns an internal error | `error` | `authz_unavailable` | `false` | `true` | KAO |
-| Authorization | Request context is cancelled | `error` | `context_cancelled` | `false` | `true` | KAO |
-| Rewrap | Encryptor cannot be built from the client public key | `failure` | `invalid_client_public_key` | `false` | `true` | KAO |
-| Rewrap | EC client key is used while EC rewrap is disabled | `failure` | `ec_rewrap_disabled` | `false` | `true` | KAO |
-| Rewrap | Ephemeral session key cannot be serialized | `error` | `session_key_error` | `false` | `true` | KAO |
-| Rewrap | Encapsulating the DEK for the client fails | `error` | `encapsulation_failed` | `false` | `true` | KAO |
-| Complete | Rewrapped key is returned | `success` | — | `false` | `true` | KAO |
-| Fallback | A KAO reaches emission without a classification | `error` | `rewrap_incomplete` | `false` | preserved | KAO |
-| Defensive fallback | A legacy v1 result cardinality invariant fails | `failure` | `invalid_request` | `false` | `false` | request |
-| Defensive fallback | TDF3 rewrap unexpectedly returns an error | `error` | `rewrap_incomplete` | `false` | `false` | request |
+| Request | SRT parse or claims invalid | failure | `srt_invalid` | false | false | request |
+| Request | SRT signature invalid | failure | `srt_signature_invalid` | true | false | request |
+| Request | SRT request body invalid | failure | `request_body_invalid` | false | false | request |
+| Request | Client key missing, invalid, or unsupported | failure | `invalid_client_public_key` | false | false | request |
+| Request | Access token or entity missing | failure | `missing_access_token` | false | false | request |
+| Request | Additional context invalid | failure | `invalid_rewrap_context` | false | false | request |
+| Policy request | Request or policy nil; policy ID empty | failure | `invalid_request` | false | false | request |
+| Policy request | No KAOs; policy valid | failure | `kao_invalid` | false | false | request |
+| Policy request | No KAOs; policy invalid | failure | `policy_body_invalid` | true | false | request |
+| KAO validation | KAO nil or wrapped key empty | failure | `kao_invalid` | false | false | KAO |
+| KAO validation | EC, hybrid, or ML-KEM disabled | failure | `key_type_disabled` | false | false | KAO |
+| KAO validation | Key type unsupported | failure | `unsupported_key_type` | false | false | KAO |
+| KAO validation | EC ephemeral key invalid | failure | `invalid_ephemeral_key` | false | false | KAO |
+| Integrity | Policy body invalid | failure | `policy_body_invalid` | true | false | KAO |
+| Integrity | DEK decryption failed | failure | `dek_decrypt_failed` | true | false | KAO |
+| Integrity | No legacy RSA key IDs | failure | `dek_decrypt_failed` | true | false | KAO |
+| Integrity | Policy binding missing | failure | `policy_binding_missing` | true | false | KAO |
+| Integrity | Policy binding malformed | failure | `policy_binding_malformed` | true | false | KAO |
+| Integrity | Policy binding mismatch | failure | `policy_binding_mismatch` | true | false | KAO |
+| Authorization | Decision denied | failure | `policy_denied` | false | true | KAO |
+| Authorization | Service rejected request | failure | `authz_rejected` | false | true | KAO |
+| Authorization | Service unavailable | error | `authz_unavailable` | false | true | KAO |
+| Authorization | Context cancelled | error | `context_cancelled` | false | true | KAO |
+| Rewrap | Client encryptor creation failed | failure | `invalid_client_public_key` | false | true | KAO |
+| Rewrap | EC rewrap disabled | failure | `ec_rewrap_disabled` | false | true | KAO |
+| Rewrap | Session key serialization failed | error | `session_key_error` | false | true | KAO |
+| Rewrap | DEK encapsulation failed | error | `encapsulation_failed` | false | true | KAO |
+| Complete | Rewrapped key returned | success | — | false | true | KAO |
+| Fallback | KAO unclassified | error | `rewrap_incomplete` | false | preserved | KAO |
+| Defensive | Legacy v1 result count invalid | failure | `invalid_request` | false | false | request |
+| Defensive | TDF3 rewrap returned an error | error | `rewrap_incomplete` | false | false | request |
 
-The defensive fallback events guard invariants after normal KAO processing and
-may therefore accompany KAO-level events. They are not replacements for the
-normal per-KAO emission path.
+Defensive request events may accompany KAO events.
 
-## Metadata and downstream handling
+## Metadata
 
-Every non-success event includes `eventMetaData.failure_reason`. Every rewrap
-event includes the boolean fields `policy_verified` and `suspected_tamper`.
-KAO-level events also include `kao_id`; request-level events omit it.
-
-The object ID is the parsed policy UUID when available and otherwise the policy
-ID supplied by the client. A request-level event may have no object ID when the
-failure occurs before a policy can be identified. Policy attributes are included
-in `object.attributes` only after the policy body and binding have been verified.
-
-When authorization, session-key creation, or another whole stage fails, the
-response error applies to every KAO. It does not replace a more specific audit
-outcome already assigned to a KAO. For example, a KAO that failed policy-binding
-verification keeps `policy_binding_mismatch` even if a later stage also fails.
-
-Downstream mappings must treat authorization denials as `failure`, not the
-legacy `error` value. Consumers can route potential integrity incidents using
-`suspected_tamper: true`.
+- Non-success events include `failure_reason`.
+- All events include `policy_verified` and `suspected_tamper`; only KAO events
+  include `kao_id`.
+- `object.id` is the parsed policy UUID, then the client policy ID, or empty when
+  no policy is identifiable.
+- `object.attributes` is populated only after policy verification.
+- Stage-wide failures preserve earlier, more specific KAO audit outcomes.
+- Downstream mappings must treat denials as `failure`; use
+  `suspected_tamper: true` for integrity alerts.

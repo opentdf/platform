@@ -26,24 +26,17 @@ after a commit does not undo the operation.
 
 ## Rewrap outcome contract
 
-KAS records one rewrap event for each KAO it processes. Failures that occur
-before any KAO can be processed produce one request-level event instead. The
-`action.result` values have these meanings:
-
-- `success`: KAS returned the rewrapped key.
-- `failure`: KAS rejected the request, including authorization denials,
-  validation failures, and suspected tamper.
-- `error`: KAS or a dependency could not complete the operation.
-
-Every non-success event includes `eventMetaData.failure_reason`. Rewrap metadata
-always includes `policy_verified` and `suspected_tamper`; KAO-level events also
-include `kao_id`. Attributes from an unverified policy are never emitted as
-trusted object attributes. Downstream audit mappings must match denials as
-`failure` (not the legacy `error`) and may route tamper alerts using
-`suspected_tamper: true`.
+- KAS records one event per processed KAO; pre-KAO failures produce one
+  request-level event.
+- Results are `success` (key returned), `failure` (request rejected), or `error`
+  (KAS or a dependency could not finish).
+- Non-success events include `failure_reason`. All events include
+  `policy_verified` and `suspected_tamper`; KAO events also include `kao_id`.
+- Unverified policy attributes are omitted. Downstream mappings must treat
+  denials as `failure` and can route `suspected_tamper: true`.
 
 See the [KAS rewrap audit outcomes](../../kas/access/REWRAP_AUDIT.md) reference
-for the processing flow and complete failure-reason taxonomy.
+for the flow and failure-reason taxonomy.
 
 ## Processing and delivery
 

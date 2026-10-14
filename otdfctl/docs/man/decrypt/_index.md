@@ -31,6 +31,14 @@ command:
         EXPERIMENTAL: path to JSON file of keys to verify signed assertions. See examples for more information.
     - name: kas-allowlist
       description: A custom allowlist of comma-separated KAS Urls, e.g. `https://example.com/kas,http://localhost:8080`. If none specified, the platform will use the list of KASes in the KAS registry. To ignore the allowlist, use a quoted wildcard e.g. `--kas-allowlist '*'` **WARNING:** Bypassing the allowlist may expose you to potential security risks, as untrusted KAS URLs could be used.
+    - name: offset
+      description: >
+        EXPERIMENTAL: Plaintext byte offset to start decrypting from. Only the segments covering the requested range are read.
+      default: 0
+    - name: length
+      description: >
+        EXPERIMENTAL: Number of plaintext bytes to decrypt starting at --offset. A negative value (the default, -1) decrypts to the end.
+      default: -1
 ---
 
 Decrypt a Trusted Data Format (TDF) file and output the contents to stdout or a file in the current working directory.
@@ -51,6 +59,21 @@ otdfctl decrypt hello.txt.tdf -o hello.txt
 # decrypt piped TDF content and write to hello.txt file
 cat hello.txt.tdf | otdfctl decrypt -o hello.txt
 ```
+
+Decrypt a plaintext byte range, or a TDF served over HTTP(S) -- EXPERIMENTAL
+
+```shell
+# decrypt 4096 bytes starting at plaintext offset 1048576
+otdfctl decrypt big.tdf --offset 1048576 --length 4096
+
+# decrypt a remote TDF using HTTP range requests; only the manifest and the
+# segments covering the range are downloaded (the server must support Range)
+otdfctl decrypt https://example.com/big.tdf --offset 1048576 --length 4096
+```
+
+Output is streamed: if decryption fails partway (for example on a tampered
+segment), stdout may already hold the verified segments before it, and the
+command exits non-zero. A file given with `-o` is only written on success.
 
 Advanced piping is supported
 

@@ -242,3 +242,51 @@ func customUnzip(t *testing.T) {
 		}
 	}
 }
+
+// oneByteReadSeeker returns at most one byte per Read, like a network reader may.
+type oneByteReadSeeker struct{ *bytes.Reader }
+
+func (r oneByteReadSeeker) Read(p []byte) (int, error) {
+	if len(p) > 1 {
+		p = p[:1]
+	}
+	return r.Reader.Read(p)
+}
+
+func TestReaderShortReads(t *testing.T) {
+	want := bytes.Repeat([]byte("0123456789"), 100)
+
+	var archive bytes.Buffer
+	writer := zip.NewWriter(&archive)
+	entry, err := writer.CreateHeader(&zip.FileHeader{Name: "0.payload", Method: zip.Store})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := entry.Write(want); err != nil {
+		t.Fatal(err)
+	}
+	if err := writer.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	reader, err := NewReader(oneByteReadSeeker{bytes.NewReader(archive.Bytes())})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	got, err := reader.ReadAllFileData("0.payload", int64(len(want)))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(got, want) {
+		t.Fatal("ReadAllFileData returned wrong data on short reads")
+	}
+
+	got, err = reader.ReadFileData("0.payload", 7, 13)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(got, want[7:20]) {
+		t.Fatal("ReadFileData returned wrong data on short reads")
+	}
+}

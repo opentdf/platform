@@ -373,8 +373,9 @@ func readBytes(readerSeeker io.ReadSeeker, index, size int64) ([]byte, error) {
 	}
 
 	buf := make([]byte, size)
-	n, err := readerSeeker.Read(buf)
-	if errors.Is(err, io.EOF) {
+	// ReadFull: a single Read may return fewer bytes (e.g. network-backed readers).
+	n, err := io.ReadFull(readerSeeker, buf)
+	if errors.Is(err, io.EOF) || errors.Is(err, io.ErrUnexpectedEOF) {
 		return buf[:n], io.EOF
 	}
 

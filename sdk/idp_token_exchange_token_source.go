@@ -43,7 +43,7 @@ func (i *IDPTokenExchangeTokenSource) AccessTokenCredential(ctx context.Context,
 	i.tokenMutex.Lock()
 	defer i.tokenMutex.Unlock()
 
-	if i.token == nil || i.token.ExpiredWithBuffer(i.tokenExpirationBuffer) {
+	if i.token == nil || i.token.ShouldRenew(i.tokenExpirationBuffer) {
 		tok, err := oauth.DoTokenExchange(ctx, client, i.idpTokenEndpoint.String(), i.scopes, i.credentials, i.TokenExchangeInfo, i.dpopKey)
 		if err != nil {
 			return auth.AccessTokenCredential{}, err

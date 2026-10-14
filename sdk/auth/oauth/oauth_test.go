@@ -21,9 +21,9 @@ func mustGenerateRSAKey(t *testing.T) *rsa.PrivateKey {
 	return k
 }
 
-func TestTokenExpiration_RespectsLeeway(t *testing.T) {
+func Test_Token_Expired(t *testing.T) {
 	expiredToken := Token{
-		received:  time.Now().Add(-defaultTokenExpirationBuffer - 10*time.Second),
+		received:  time.Now().Add(-10 * time.Second),
 		ExpiresIn: 5,
 	}
 	if !expiredToken.Expired() {
@@ -32,35 +32,38 @@ func TestTokenExpiration_RespectsLeeway(t *testing.T) {
 
 	goodToken := Token{
 		received:  time.Now(),
-		ExpiresIn: 2 * int64(defaultTokenExpirationBuffer/time.Second),
+		ExpiresIn: 60,
 	}
 
 	if goodToken.Expired() {
 		t.Fatalf("token should not be expired")
 	}
 
-	justOverBorderToken := Token{
+	nearExpiryToken := Token{
 		received:  time.Now(),
-		ExpiresIn: int64(defaultTokenExpirationBuffer/time.Second) - 1,
+		ExpiresIn: 5,
 	}
 
-	if !justOverBorderToken.Expired() {
+	if nearExpiryToken.Expired() {
 		t.Fatalf("token should not be expired")
+	}
+	if (Token{received: time.Now().Add(-time.Hour)}).Expired() {
+		t.Fatal("token without expires_in should not expire")
 	}
 }
 
-func Test_Token_ExpiredWithBuffer(t *testing.T) {
+func Test_Token_ShouldRenew(t *testing.T) {
 	tests := []struct {
 		name      string
 		remaining time.Duration
 		buffer    time.Duration
-		expired   bool
+		renew     bool
 	}{
-		{name: "WithinCustomWindow", remaining: time.Minute, buffer: 90 * time.Second, expired: true},
+		{name: "WithinCustomWindow", remaining: time.Minute, buffer: 90 * time.Second, renew: true},
 		{name: "OutsideCustomWindow", remaining: 2 * time.Minute, buffer: 90 * time.Second},
-		{name: "OutsideDefaultWindow", remaining: time.Minute, buffer: defaultTokenExpirationBuffer},
+		{name: "OutsideTenSecondWindow", remaining: time.Minute, buffer: 10 * time.Second},
 		{name: "ZeroBufferValid", remaining: 5 * time.Second},
-		{name: "ZeroBufferExpired", remaining: -time.Second, expired: true},
+		{name: "ZeroBufferExpired", remaining: -time.Second, renew: true},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
@@ -68,15 +71,15 @@ func Test_Token_ExpiredWithBuffer(t *testing.T) {
 				received:  time.Now().Add(test.remaining - time.Hour),
 				ExpiresIn: 3600,
 			}
-			if expired := token.ExpiredWithBuffer(test.buffer); expired != test.expired {
-				t.Fatalf("ExpiredWithBuffer(%s) = %t, want %t", test.buffer, expired, test.expired)
+			if renew := token.ShouldRenew(test.buffer); renew != test.renew {
+				t.Fatalf("ShouldRenew(%s) = %t, want %t", test.buffer, renew, test.renew)
 			}
 		})
 	}
 
 	t.Run("MissingExpiry", func(t *testing.T) {
 		token := Token{received: time.Now().Add(-time.Hour)}
-		if token.ExpiredWithBuffer(90 * time.Second) {
+		if token.ShouldRenew(90 * time.Second) {
 			t.Fatal("token without expires_in should not expire")
 		}
 	})

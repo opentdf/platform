@@ -77,7 +77,6 @@ flowchart TD
 | Complete | Rewrapped key returned | success | — | false | true | KAO |
 | Fallback | KAO unclassified | error | `rewrap_incomplete` | false | preserved | KAO |
 | Defensive | Legacy v1 result count invalid | failure | `invalid_request` | false | false | request |
-| Defensive | TDF3 rewrap returned an error | error | `rewrap_incomplete` | false | false | request |
 
 Defensive request events may accompany KAO events.
 

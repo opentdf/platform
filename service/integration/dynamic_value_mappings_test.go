@@ -15,6 +15,7 @@ import (
 	"github.com/opentdf/platform/service/pkg/db"
 	policydb "github.com/opentdf/platform/service/policy/db"
 	"github.com/stretchr/testify/suite"
+	"google.golang.org/protobuf/proto"
 )
 
 type DynamicValueMappingsSuite struct {
@@ -82,6 +83,76 @@ func (s *DynamicValueMappingsSuite) TestCreateWithStaticGate() {
 	s.Require().NoError(err)
 	s.Require().NotNil(got.GetSubjectConditionSet(), "static pre-gate should be hydrated")
 	s.NotEmpty(got.GetSubjectConditionSet().GetSubjectSets())
+}
+
+func (s *DynamicValueMappingsSuite) TestEntitleableDynamicMappings() {
+	attr := s.createDefinition("dvem_entitleable", policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF)
+	unrelated := s.createDefinition("dvem_entitleable_other", policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF)
+	_, err := s.db.PolicyClient.CreateDynamicValueMapping(s.ctx, &dynamicvaluemapping.CreateDynamicValueMappingRequest{
+		AttributeDefinitionId: unrelated.GetId(), ValueResolver: s.resolver(".other[]", policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_IN),
+		Actions: []*policy.Action{s.readAction()},
+	})
+	s.Require().NoError(err)
+	ungatedCreated, err := s.db.PolicyClient.CreateDynamicValueMapping(s.ctx, &dynamicvaluemapping.CreateDynamicValueMappingRequest{
+		AttributeDefinitionId: attr.GetId(), ValueResolver: s.resolver(".projects[]", policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_IN),
+		Actions: []*policy.Action{s.readAction()},
+	})
+	s.Require().NoError(err)
+	ungated, err := s.db.PolicyClient.GetDynamicValueMapping(s.ctx, ungatedCreated.GetId())
+	s.Require().NoError(err)
+	gatedCreated, err := s.db.PolicyClient.CreateDynamicValueMapping(s.ctx, &dynamicvaluemapping.CreateDynamicValueMappingRequest{
+		AttributeDefinitionId: attr.GetId(), ValueResolver: s.resolver(".projects[]", policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_IN),
+		NamespaceFqn:           "https://example.com",
+		Actions:                []*policy.Action{{Name: policydb.ActionRead.String()}},
+		NewSubjectConditionSet: s.sampleSCSCreate(),
+	})
+	s.Require().NoError(err)
+	gated, err := s.db.PolicyClient.GetDynamicValueMapping(s.ctx, gatedCreated.GetId())
+	s.Require().NoError(err)
+	want := map[string]*policy.DynamicValueMapping{ungated.GetId(): ungated, gated.GetId(): gated}
+	got, err := s.db.PolicyClient.GetAttribute(s.ctx, attr.GetId())
+	s.Require().NoError(err)
+	request := &attributes.GetEntitleableAttributesByFqnsRequest{
+		Fqns: []string{got.GetFqn() + "/value/new"},
+	}
+	resp, err := s.db.PolicyClient.GetEntitleableAttributesByFqns(s.ctx, request)
+	s.Require().NoError(err)
+	s.Require().Len(resp.GetDefinitions(), 1)
+	def := resp.GetDefinitions()[got.GetFqn()]
+	s.Require().Len(def.GetDynamicValueMappings(), 2)
+	mappingsByID := make(map[string]*policy.DynamicValueMapping, 2)
+	for _, mapping := range def.GetDynamicValueMappings() {
+		expected := want[mapping.GetId()]
+		s.Require().NotNil(expected, "only the requested definition's mappings are returned")
+		mappingsByID[mapping.GetId()] = mapping
+		s.True(proto.Equal(expected.GetValueResolver(), mapping.GetValueResolver()))
+		s.Require().Len(mapping.GetActions(), 1)
+		s.Equal(expected.GetActions()[0].GetId(), mapping.GetActions()[0].GetId())
+		s.Equal(expected.GetActions()[0].GetName(), mapping.GetActions()[0].GetName())
+		s.Equal(expected.GetActions()[0].GetNamespace().GetFqn(), mapping.GetActions()[0].GetNamespace().GetFqn())
+		s.Equal(expected.GetNamespace().GetFqn(), mapping.GetNamespace().GetFqn())
+		s.Equal(got.GetFqn(), mapping.GetAttributeDefinition().GetFqn())
+		s.Equal(got.GetRule(), mapping.GetAttributeDefinition().GetRule())
+		s.Equal(got.GetNamespace().GetFqn(), mapping.GetAttributeDefinition().GetNamespace().GetFqn())
+		s.Empty(mapping.GetAttributeDefinition().GetValues())
+		s.Nil(mapping.GetMetadata())
+	}
+	s.Require().Len(mappingsByID, 2, "both gated and ungated mappings are returned")
+	s.Nil(mappingsByID[ungated.GetId()].GetSubjectConditionSet(), "ungated mappings have no condition set")
+	gotGate := mappingsByID[gated.GetId()].GetSubjectConditionSet()
+	wantGate := gated.GetSubjectConditionSet()
+	s.Require().NotNil(gotGate, "gated mappings retain their condition set")
+	s.Equal(wantGate.GetId(), gotGate.GetId())
+	s.Equal(wantGate.GetNamespace().GetFqn(), gotGate.GetNamespace().GetFqn())
+	s.Require().Len(gotGate.GetSubjectSets(), len(wantGate.GetSubjectSets()))
+	for i, subjectSet := range wantGate.GetSubjectSets() {
+		s.True(proto.Equal(subjectSet, gotGate.GetSubjectSets()[i]))
+	}
+	_, err = s.db.PolicyClient.DeactivateAttribute(s.ctx, attr.GetId())
+	s.Require().NoError(err)
+	resp, err = s.db.PolicyClient.GetEntitleableAttributesByFqns(s.ctx, request)
+	s.Require().NoError(err)
+	s.Empty(resp.GetDefinitions())
 }
 
 func (s *DynamicValueMappingsSuite) TestRejectsHierarchyDefinition() {

@@ -1163,6 +1163,9 @@ func (c PolicyDBClient) rotateBaseKey(ctx context.Context, rotatedOutKeyID *poli
 	if err != nil {
 		return err
 	}
+	if baseKey.GetPublicKey().GetKid() == "" || baseKey.GetKasUri() == "" {
+		return nil
+	}
 	if baseKey.GetPublicKey().GetKid() == rotatedOutKeyID.GetKey().GetKeyId() && baseKey.GetKasUri() == rotatedOutKeyID.GetKasUri() {
 		_, err := c.SetBaseKey(ctx, &kasregistry.SetBaseKeyRequest{
 			ActiveKey: &kasregistry.SetBaseKeyRequest_Id{

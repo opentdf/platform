@@ -47,6 +47,7 @@ const (
 	ErrPlatformTokenEndpointNotFound = Error("token_endpoint not found in well-known idp configuration")
 	ErrPlatformEndpointNotFound      = Error("platform_endpoint not found in well-known configuration")
 	ErrAccessTokenInvalid            = Error("access token is invalid")
+	ErrTokenExpirationBufferInvalid  = Error("token expiration buffer must not be negative")
 	ErrNoAccessTokenSource           = Error("no access token source configured; SDK was created without credentials")
 	ErrWellKnowConfigEmpty           = Error("well-known configuration is empty")
 	ErrAttributeNotFound             = Error("attribute not found")
@@ -125,7 +126,7 @@ func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 		opt(cfg)
 	}
 	if cfg.tokenExpirationBuffer < 0 {
-		return nil, errors.New("token expiration buffer must not be negative")
+		return nil, ErrTokenExpirationBufferInvalid
 	}
 
 	// Set default logger if none provided

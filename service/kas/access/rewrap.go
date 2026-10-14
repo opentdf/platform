@@ -55,6 +55,7 @@ const (
 	rewrapReasonPolicyBodyInvalid      = "policy_body_invalid"
 	rewrapReasonDEKDecryptFailed       = "dek_decrypt_failed"
 	rewrapReasonKeyLookupFailed        = "key_lookup_failed"
+	rewrapReasonKeyManagerUnavailable  = "key_manager_unavailable"
 	rewrapReasonKeyNotFound            = "key_not_found"
 	rewrapReasonKAOInvalid             = "kao_invalid"
 	rewrapReasonUnsupportedKeyType     = "unsupported_key_type"
@@ -640,11 +641,15 @@ func erroredKAORewrap(res map[string]kaoResult, kao *kaspb.UnsignedRewrapRequest
 
 func recordDEKFailure(res map[string]kaoResult, kao *kaspb.UnsignedRewrapRequest_WithKeyAccessObject, err error) {
 	if errors.Is(err, trust.ErrKeyLookup) {
-		if connect.CodeOf(err) == connect.CodeNotFound {
+		if errors.Is(err, security.ErrCertNotFound) || connect.CodeOf(err) == connect.CodeNotFound {
 			failedKAORewrap(res, kao, err400("key not found"), rewrapReasonKeyNotFound, false)
 			return
 		}
 		erroredKAORewrap(res, kao, err500("key lookup failed"), rewrapReasonKeyLookupFailed)
+		return
+	}
+	if errors.Is(err, trust.ErrKeyManagerUnavailable) {
+		erroredKAORewrap(res, kao, err500("key manager unavailable"), rewrapReasonKeyManagerUnavailable)
 		return
 	}
 	failedKAORewrap(res, kao, err400("bad request"), rewrapReasonDEKDecryptFailed, true)

@@ -79,6 +79,7 @@ func (f *fakeKeyDetails) ProviderConfig() *policy.KeyProviderConfig {
 type fakeKeyIndex struct {
 	keys    []trust.KeyDetails
 	err     error
+	found   trust.KeyDetails
 	findErr error
 }
 
@@ -99,6 +100,9 @@ func (f *fakeKeyIndex) FindKeyByAlgorithm(context.Context, string, bool) (trust.
 func (f *fakeKeyIndex) FindKeyByID(context.Context, trust.KeyIdentifier) (trust.KeyDetails, error) {
 	if f.findErr != nil {
 		return nil, f.findErr
+	}
+	if f.found != nil {
+		return f.found, nil
 	}
 	return nil, errors.New("not implemented")
 }
@@ -1894,6 +1898,20 @@ func TestVerifyRewrapRequestsClassifiesKeyLookupFailuresWithoutTamper(t *testing
 			index:      &fakeKeyIndex{findErr: connect.NewError(connect.CodeNotFound, errors.New("key not found"))},
 			wantResult: audit.ActionResultFailure,
 			wantReason: rewrapReasonKeyNotFound,
+		},
+		{
+			name:       "in-process key ID not found",
+			kid:        "missing-kid",
+			index:      &fakeKeyIndex{findErr: security.ErrCertNotFound},
+			wantResult: audit.ActionResultFailure,
+			wantReason: rewrapReasonKeyNotFound,
+		},
+		{
+			name:       "key manager unavailable",
+			kid:        "test-kid",
+			index:      &fakeKeyIndex{found: &fakeKeyDetails{id: "test-kid", algorithm: "rsa:2048"}},
+			wantResult: audit.ActionResultError,
+			wantReason: rewrapReasonKeyManagerUnavailable,
 		},
 	}
 

@@ -15,7 +15,9 @@ flowchart TD
     C -->|yes| K{Key lookup}
     K -->|not found| F7["FAILURE<br/>key_not_found"]
     K -->|unavailable| E0["ERROR<br/>key_lookup_failed"]
-    K -->|ok| D{"Policy parses, DEK decrypts,<br/>and binding verifies?"}
+    K -->|ok| M{Key manager available?}
+    M -->|no| E3["ERROR<br/>key_manager_unavailable"]
+    M -->|yes| D{"Policy parses, DEK decrypts,<br/>and binding verifies?"}
     D -->|no| F3["FAILURE · suspected_tamper: true<br/>policy_body_invalid · dek_decrypt_failed<br/>policy_binding_missing · policy_binding_malformed<br/>policy_binding_mismatch"]
     D -->|yes| E{Authorization}
     E -->|deny| F4["FAILURE<br/>policy_denied"]
@@ -31,7 +33,7 @@ flowchart TD
     classDef error fill:#e2e3e5,stroke:#6c757d,color:#000
     class S success
     class F1,F2,F3,F4,F5,F6,F7 failure
-    class E0,E1,E2 error
+    class E0,E1,E2,E3 error
 ```
 
 ## Outcome matrix
@@ -53,6 +55,7 @@ flowchart TD
 | KAO validation | EC ephemeral key invalid | failure | `invalid_ephemeral_key` | false | false | KAO |
 | Key lookup | Key ID not found or no legacy RSA key IDs | failure | `key_not_found` | false | false | KAO |
 | Key lookup | Registry unavailable | error | `key_lookup_failed` | false | false | KAO |
+| Key management | Manager unavailable | error | `key_manager_unavailable` | false | false | KAO |
 | Integrity | Policy body invalid | failure | `policy_body_invalid` | true | false | KAO |
 | Integrity | DEK decryption failed | failure | `dek_decrypt_failed` | true | false | KAO |
 | Integrity | Policy binding missing | failure | `policy_binding_missing` | true | false | KAO |

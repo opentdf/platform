@@ -110,11 +110,11 @@ teardown_file() {
 
   run_otdfctl_ns get --id 'example.com'
   assert_failure
-  assert_output --partial "Flag '--id' received value 'example.com' must be a valid UUID"
+  assert_output --partial "Optional flag '--id' received value 'example.com' and must be a valid UUID if used"
 
   run_otdfctl_ns get --id 'demo.com' --json
   assert_failure
-  assert_output --partial "Flag '--id' received value 'demo.com' must be a valid UUID"
+  assert_output --partial "Optional flag '--id' received value 'demo.com' and must be a valid UUID if used"
 
   run_otdfctl_ns get --fqn "https://missing-$RANDOM.example.com" --json
   assert_failure

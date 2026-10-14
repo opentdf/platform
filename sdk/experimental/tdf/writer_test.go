@@ -5,6 +5,8 @@ package tdf
 import (
 	"bytes"
 	"crypto/rand"
+	"crypto/sha256"
+	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
 	"io"
@@ -63,6 +65,7 @@ func TestWriterEndToEnd(t *testing.T) {
 		{"HybridXWingFlow", testHybridXWingFlow},
 		{"HybridP256MLKEM768Flow", testHybridP256MLKEM768Flow},
 		{"HybridP384MLKEM1024Flow", testHybridP384MLKEM1024Flow},
+		{"PolicyBindingEncoding", testPolicyBindingEncoding},
 	}
 
 	for _, tc := range testCases {
@@ -322,6 +325,45 @@ func testBasicTDFCreationFlow(t *testing.T) {
 	assert.Equal(t, "AES-256-GCM", finalizeResult.Manifest.Method.Algorithm, "Algorithm should be AES-256-GCM")
 	assert.True(t, finalizeResult.Manifest.Method.IsStreamable, "Should be marked as streamable")
 	assert.NotEmpty(t, finalizeResult.Manifest.Policy, "Policy should not be empty")
+}
+
+// testPolicyBindingEncoding checks the policy binding stays the legacy
+// Base64(hex(HMAC)) by default and becomes the spec's Base64(HMAC) on opt-in,
+// unless a pre-4.3.0 target mode asks for legacy output.
+func testPolicyBindingEncoding(t *testing.T) {
+	for _, tc := range []struct {
+		name    string
+		opts    []Option[*WriterConfig]
+		wantLen int
+	}{
+		{name: "default stays legacy", wantLen: 2 * sha256.Size},
+		{name: "spec-compliant opt-in", opts: []Option[*WriterConfig]{WithSpecCompliantPolicyBinding()}, wantLen: sha256.Size},
+		{
+			name:    "legacy target mode overrides opt-in",
+			opts:    []Option[*WriterConfig]{WithSpecCompliantPolicyBinding(), WithTargetMode("4.2.2")},
+			wantLen: 2 * sha256.Size,
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx := t.Context()
+			writer, err := NewWriter(ctx, tc.opts...)
+			require.NoError(t, err)
+			_, err = writer.WriteSegment(ctx, 0, []byte("bound"))
+			require.NoError(t, err)
+
+			fin, err := writer.Finalize(ctx, WithAttributeValues([]*policy.Value{
+				createTestAttribute("https://example.com/attr/Classification/value/Public", testKAS1, "kid1"),
+			}))
+			require.NoError(t, err)
+
+			require.Len(t, fin.Manifest.KeyAccessObjs, 1)
+			binding, ok := fin.Manifest.KeyAccessObjs[0].PolicyBinding.(PolicyBinding)
+			require.True(t, ok, "policy binding should be a PolicyBinding, got %T", fin.Manifest.KeyAccessObjs[0].PolicyBinding)
+			decoded, err := base64.StdEncoding.DecodeString(binding.Hash)
+			require.NoError(t, err)
+			assert.Len(t, decoded, tc.wantLen)
+		})
+	}
 }
 
 // testSingleSegmentWithAttributes tests TDF creation with attribute-based key splitting

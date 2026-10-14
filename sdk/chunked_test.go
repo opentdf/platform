@@ -6,6 +6,7 @@ import (
 	"context"
 	"crypto/ecdsa"
 	"crypto/rand"
+	"crypto/sha256"
 	"crypto/subtle"
 	"crypto/x509"
 	"encoding/hex"
@@ -640,7 +641,9 @@ func (k *chunkedFakeKAS) Rewrap(_ context.Context, in *connect.Request[kaspb.Rew
 
 // verifyChunkedPolicyBinding recomputes the HMAC a KAS checks before it will
 // release a key share, and compares it constant-time to the one the KAO
-// carries.
+// carries. It accepts only the legacy Base64(hex(HMAC)) form, like every
+// released KAS, so a reader that forwards a spec-compliant binding unchanged
+// fails here as it would against a deployed KAS.
 func verifyChunkedPolicyBinding(binding *kaspb.PolicyBinding, share []byte, base64Policy string) error {
 	if binding == nil {
 		return errors.New("policy binding missing")
@@ -746,7 +749,7 @@ func TestChunkedECKeyAccess(t *testing.T) {
 		}},
 	}}
 
-	kaos, err := buildKeyAccessObjects(shares, `{"uuid":"test"}`, "")
+	kaos, err := buildKeyAccessObjects(shares, `{"uuid":"test"}`, "", false)
 	require.NoError(t, err)
 	require.Len(t, kaos, 1)
 
@@ -812,7 +815,7 @@ func TestChunkedKeyAccessRejectsShareWithNoKAS(t *testing.T) {
 		{id: "orphaned", data: dek},
 	}
 
-	_, err = buildKeyAccessObjects(shares, `{"uuid":"test"}`, "")
+	_, err = buildKeyAccessObjects(shares, `{"uuid":"test"}`, "", false)
 	require.Error(t, err, "a share with no KAS to unwrap it makes the DEK unrecoverable")
 	assert.Contains(t, err.Error(), "orphaned", "the error must name the split that cannot be recovered")
 }
@@ -910,6 +913,67 @@ func TestChunkedCurrentTargetMode(t *testing.T) {
 	plain, err := io.ReadAll(reader)
 	require.NoError(t, err)
 	assert.Equal(t, []byte("current"), plain)
+}
+
+// TestChunkedPolicyBindingEncoding pins which policy binding form each
+// configuration writes, and that every form decrypts through a KAS that only
+// verifies the legacy one -- as every released KAS does. The spec-compliant
+// case passes only because the reader re-encodes the binding in its rewrap
+// request.
+func TestChunkedPolicyBindingEncoding(t *testing.T) {
+	tests := []struct {
+		name string
+		opts []ChunkedWriterOption
+		// wantLen is the binding's length once base64-decoded: 64 for the
+		// legacy Base64(hex(HMAC)), 32 for the spec's Base64(HMAC).
+		wantLen int
+	}{
+		{
+			name:    "default stays legacy",
+			wantLen: 2 * sha256.Size,
+		},
+		{
+			name:    "spec-compliant opt-in",
+			opts:    []ChunkedWriterOption{WithChunkedSpecCompliantPolicyBinding()},
+			wantLen: sha256.Size,
+		},
+		{
+			name:    "legacy target mode overrides opt-in",
+			opts:    []ChunkedWriterOption{WithChunkedSpecCompliantPolicyBinding(), WithChunkedTargetMode("4.2.2")},
+			wantLen: 2 * sha256.Size,
+		},
+		{
+			name:    "legacy target mode overrides opt-in in either order",
+			opts:    []ChunkedWriterOption{WithChunkedTargetMode("4.2.2"), WithChunkedSpecCompliantPolicyBinding()},
+			wantLen: 2 * sha256.Size,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ctx := t.Context()
+			s := newChunkedTestSDK(t)
+			writer, kasBundle := newChunkedWriterForTest(ctx, t, tt.opts...)
+
+			body := writeChunkedSegments(ctx, t, writer, [][]byte{[]byte("bound")})
+			fin, err := writer.Finalize(ctx)
+			require.NoError(t, err)
+
+			require.Len(t, fin.Manifest.KeyAccessObjs, 1)
+			binding, ok := fin.Manifest.KeyAccessObjs[0].PolicyBinding.(PolicyBinding)
+			require.True(t, ok, "policy binding should be a PolicyBinding, got %T", fin.Manifest.KeyAccessObjs[0].PolicyBinding)
+			decoded, err := ocrypto.Base64Decode([]byte(binding.Hash))
+			require.NoError(t, err)
+			assert.Len(t, decoded, tt.wantLen)
+
+			reader, err := s.LoadTDF(bytes.NewReader(bytes.Join([][]byte{body, fin.Data}, nil)),
+				WithKasAllowlist([]string{kasBundle.url}),
+			)
+			require.NoError(t, err)
+			plain, err := io.ReadAll(reader)
+			require.NoError(t, err)
+			assert.Equal(t, []byte("bound"), plain)
+		})
+	}
 }
 
 // TestChunkedTargetModeInvalid rejects a non-semver target mode at

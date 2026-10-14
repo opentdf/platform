@@ -54,6 +54,8 @@ const (
 	rewrapReasonPolicyBindingMalformed = "policy_binding_malformed"
 	rewrapReasonPolicyBodyInvalid      = "policy_body_invalid"
 	rewrapReasonDEKDecryptFailed       = "dek_decrypt_failed"
+	rewrapReasonKeyLookupFailed        = "key_lookup_failed"
+	rewrapReasonKeyNotFound            = "key_not_found"
 	rewrapReasonKAOInvalid             = "kao_invalid"
 	rewrapReasonUnsupportedKeyType     = "unsupported_key_type"
 	rewrapReasonKeyTypeDisabled        = "key_type_disabled"
@@ -636,6 +638,18 @@ func erroredKAORewrap(res map[string]kaoResult, kao *kaspb.UnsignedRewrapRequest
 	res[kao.GetKeyAccessObjectId()] = current
 }
 
+func recordDEKFailure(res map[string]kaoResult, kao *kaspb.UnsignedRewrapRequest_WithKeyAccessObject, err error) {
+	if errors.Is(err, trust.ErrKeyLookup) {
+		if connect.CodeOf(err) == connect.CodeNotFound {
+			failedKAORewrap(res, kao, err400("key not found"), rewrapReasonKeyNotFound, false)
+			return
+		}
+		erroredKAORewrap(res, kao, err500("key lookup failed"), rewrapReasonKeyLookupFailed)
+		return
+	}
+	failedKAORewrap(res, kao, err400("bad request"), rewrapReasonDEKDecryptFailed, true)
+}
+
 func addResultsToResponse(response *kaspb.RewrapResponse, result policyKAOResults) {
 	for policyID, policyMap := range result {
 		policyResults := &kaspb.PolicyRewrapResult{
@@ -802,8 +816,17 @@ func (p *Provider) verifyRewrapRequests(ctx context.Context, req *kaspb.Unsigned
 	if policyErr == nil {
 		policyErr = json.Unmarshal(sDecPolicy, policy)
 	}
+	kaoIDCounts := make(map[string]int, len(req.GetKeyAccessObjects()))
+	for _, kao := range req.GetKeyAccessObjects() {
+		kaoIDCounts[kao.GetKeyAccessObjectId()]++
+	}
 
 	for _, kao := range req.GetKeyAccessObjects() {
+		if kaoIDCounts[kao.GetKeyAccessObjectId()] > 1 {
+			p.Logger.WarnContext(ctx, "duplicate key access object ID", slog.String("kao_id", kao.GetKeyAccessObjectId()))
+			failedKAORewrap(results, kao, err400("duplicate key access object ID"), rewrapReasonKAOInvalid, false)
+			continue
+		}
 		if policyErr != nil {
 			failedKAORewrap(results, kao, err400("bad request"), rewrapReasonPolicyBodyInvalid, true) // Generic: corrupted policy body may indicate tamper
 			continue
@@ -907,7 +930,7 @@ func (p *Provider) verifyRewrapRequests(ctx context.Context, req *kaspb.Unsigned
 			dek, err = p.KeyDelegator.Decrypt(ctx, kid, kao.GetKeyAccessObject().GetWrappedKey(), compressedKey)
 			if err != nil {
 				p.Logger.WarnContext(ctx, "failed to decrypt EC key", slog.Any("error", err))
-				failedKAORewrap(results, kao, err400("bad request"), rewrapReasonDEKDecryptFailed, true)
+				recordDEKFailure(results, kao, err)
 				continue
 			}
 		case "hybrid-wrapped":
@@ -921,7 +944,7 @@ func (p *Provider) verifyRewrapRequests(ctx context.Context, req *kaspb.Unsigned
 			dek, err = p.KeyDelegator.Decrypt(ctx, kid, kao.GetKeyAccessObject().GetWrappedKey(), nil)
 			if err != nil {
 				p.Logger.WarnContext(ctx, "failed to decrypt hybrid key", slog.Any("error", err))
-				failedKAORewrap(results, kao, err400("bad request"), rewrapReasonDEKDecryptFailed, true)
+				recordDEKFailure(results, kao, err)
 				continue
 			}
 		case "mlkem-wrapped":
@@ -935,7 +958,7 @@ func (p *Provider) verifyRewrapRequests(ctx context.Context, req *kaspb.Unsigned
 			dek, err = p.KeyDelegator.Decrypt(ctx, kid, kao.GetKeyAccessObject().GetWrappedKey(), nil)
 			if err != nil {
 				p.Logger.WarnContext(ctx, "failed to decrypt ML-KEM key", slog.Any("error", err))
-				failedKAORewrap(results, kao, err400("bad request"), rewrapReasonDEKDecryptFailed, true)
+				recordDEKFailure(results, kao, err)
 				continue
 			}
 		case "wrapped":
@@ -944,10 +967,15 @@ func (p *Provider) verifyRewrapRequests(ctx context.Context, req *kaspb.Unsigned
 				kid := trust.KeyIdentifier(kao.GetKeyAccessObject().GetKid())
 				kidsToCheck = []trust.KeyIdentifier{kid}
 			} else {
-				kidsToCheck = p.listLegacyKeys(ctx)
+				kidsToCheck, err = p.listLegacyKeys(ctx)
+				if err != nil {
+					p.Logger.WarnContext(ctx, "failure to list legacy KIDs for RSA", slog.Any("error", err))
+					erroredKAORewrap(results, kao, err500("key lookup failed"), rewrapReasonKeyLookupFailed)
+					continue
+				}
 				if len(kidsToCheck) == 0 {
 					p.Logger.WarnContext(ctx, "failure to find legacy kids for rsa")
-					failedKAORewrap(results, kao, err400("no legacy key IDs found"), rewrapReasonDEKDecryptFailed, true)
+					failedKAORewrap(results, kao, err400("no legacy key IDs found"), rewrapReasonKeyNotFound, false)
 					continue
 				}
 			}
@@ -971,7 +999,7 @@ func (p *Provider) verifyRewrapRequests(ctx context.Context, req *kaspb.Unsigned
 		}
 		if err != nil {
 			p.Logger.WarnContext(ctx, "failure to decrypt dek", slog.Any("error", err))
-			failedKAORewrap(results, kao, err400("bad request"), rewrapReasonDEKDecryptFailed, true) // Generic: involves secret key material
+			recordDEKFailure(results, kao, err)
 			continue
 		}
 
@@ -1031,7 +1059,7 @@ func (p *Provider) verifyRewrapRequests(ctx context.Context, req *kaspb.Unsigned
 	return policy, results, nil
 }
 
-func (p *Provider) listLegacyKeys(ctx context.Context) []trust.KeyIdentifier {
+func (p *Provider) listLegacyKeys(ctx context.Context) ([]trust.KeyIdentifier, error) {
 	var kidsToCheck []trust.KeyIdentifier
 	p.Logger.InfoContext(ctx, "kid free kao")
 	if len(p.Keyring) > 0 {
@@ -1041,20 +1069,20 @@ func (p *Provider) listLegacyKeys(ctx context.Context) []trust.KeyIdentifier {
 				kidsToCheck = append(kidsToCheck, trust.KeyIdentifier(k.KID))
 			}
 		}
-		return kidsToCheck
+		return kidsToCheck, nil
 	}
 
 	k, err := p.KeyDelegator.ListKeysWith(ctx, trust.ListKeyOptions{LegacyOnly: true})
 	if err != nil {
 		p.Logger.WarnContext(ctx, "checkpoint KeyIndex.ListKeys failed", slog.Any("error", err))
-	} else {
-		for _, key := range k {
-			if key.Algorithm() == ocrypto.RSA2048Key && key.IsLegacy() {
-				kidsToCheck = append(kidsToCheck, key.ID())
-			}
+		return nil, err
+	}
+	for _, key := range k {
+		if key.Algorithm() == ocrypto.RSA2048Key && key.IsLegacy() {
+			kidsToCheck = append(kidsToCheck, key.ID())
 		}
 	}
-	return kidsToCheck
+	return kidsToCheck, nil
 }
 
 func (p *Provider) tdf3Rewrap(ctx context.Context, requests []*kaspb.UnsignedRewrapRequest_WithPolicyRequest, clientPublicKey string, entityInfo *entityInfo, additionalRewrapContext *AdditionalRewrapContext) (string, policyKAOResults, error) {

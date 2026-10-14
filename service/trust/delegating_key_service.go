@@ -16,6 +16,9 @@ import (
 	"github.com/opentdf/platform/service/pkg/cache"
 )
 
+// ErrKeyLookup identifies failures that occur before a key manager performs a cryptographic operation.
+var ErrKeyLookup = errors.New("key lookup failed")
+
 type KeyManagerFactoryOptions struct {
 	Logger *logger.Logger
 	Cache  *cache.Cache
@@ -162,7 +165,7 @@ func (d *DelegatingKeyService) Name() string {
 func (d *DelegatingKeyService) Decrypt(ctx context.Context, keyID KeyIdentifier, ciphertext []byte, ephemeralPublicKey []byte) (ocrypto.ProtectedKey, error) {
 	keyDetails, err := d.index.FindKeyByID(ctx, keyID)
 	if err != nil {
-		return nil, fmt.Errorf("decrypt: unable to find key by ID '%s' within index %s: %w", keyID, d.index, err)
+		return nil, fmt.Errorf("%w: unable to find key by ID '%s' within index %s: %w", ErrKeyLookup, keyID, d.index, err)
 	}
 
 	pcfg := keyDetails.ProviderConfig()

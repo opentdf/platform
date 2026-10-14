@@ -12,7 +12,10 @@ flowchart TD
     B -->|no| F1["FAILURE · request level<br/>SRT, body, token, context,<br/>client key, or policy request invalid"]
     B -->|yes| C{"KAO and key type valid?"}
     C -->|no| F2["FAILURE<br/>kao_invalid · key_type_disabled<br/>unsupported_key_type · invalid_ephemeral_key"]
-    C -->|yes| D{"Policy parses, DEK decrypts,<br/>and binding verifies?"}
+    C -->|yes| K{Key lookup}
+    K -->|not found| F7["FAILURE<br/>key_not_found"]
+    K -->|unavailable| E0["ERROR<br/>key_lookup_failed"]
+    K -->|ok| D{"Policy parses, DEK decrypts,<br/>and binding verifies?"}
     D -->|no| F3["FAILURE · suspected_tamper: true<br/>policy_body_invalid · dek_decrypt_failed<br/>policy_binding_missing · policy_binding_malformed<br/>policy_binding_mismatch"]
     D -->|yes| E{Authorization}
     E -->|deny| F4["FAILURE<br/>policy_denied"]
@@ -27,8 +30,8 @@ flowchart TD
     classDef failure fill:#fde2e1,stroke:#d9534f,color:#000
     classDef error fill:#e2e3e5,stroke:#6c757d,color:#000
     class S success
-    class F1,F2,F3,F4,F5,F6 failure
-    class E1,E2 error
+    class F1,F2,F3,F4,F5,F6,F7 failure
+    class E0,E1,E2 error
 ```
 
 ## Outcome matrix
@@ -44,13 +47,14 @@ flowchart TD
 | Policy request | Request or policy nil; policy ID empty | failure | `invalid_request` | false | false | request |
 | Policy request | No KAOs; policy valid | failure | `kao_invalid` | false | false | request |
 | Policy request | No KAOs; policy invalid | failure | `policy_body_invalid` | true | false | request |
-| KAO validation | KAO nil or wrapped key empty | failure | `kao_invalid` | false | false | KAO |
+| KAO validation | KAO nil, duplicate ID, or wrapped key empty | failure | `kao_invalid` | false | false | KAO |
 | KAO validation | EC, hybrid, or ML-KEM disabled | failure | `key_type_disabled` | false | false | KAO |
 | KAO validation | Key type unsupported | failure | `unsupported_key_type` | false | false | KAO |
 | KAO validation | EC ephemeral key invalid | failure | `invalid_ephemeral_key` | false | false | KAO |
+| Key lookup | Key ID not found or no legacy RSA key IDs | failure | `key_not_found` | false | false | KAO |
+| Key lookup | Registry unavailable | error | `key_lookup_failed` | false | false | KAO |
 | Integrity | Policy body invalid | failure | `policy_body_invalid` | true | false | KAO |
 | Integrity | DEK decryption failed | failure | `dek_decrypt_failed` | true | false | KAO |
-| Integrity | No legacy RSA key IDs | failure | `dek_decrypt_failed` | true | false | KAO |
 | Integrity | Policy binding missing | failure | `policy_binding_missing` | true | false | KAO |
 | Integrity | Policy binding malformed | failure | `policy_binding_malformed` | true | false | KAO |
 | Integrity | Policy binding mismatch | failure | `policy_binding_mismatch` | true | false | KAO |

@@ -77,8 +77,9 @@ func (f *fakeKeyDetails) ProviderConfig() *policy.KeyProviderConfig {
 }
 
 type fakeKeyIndex struct {
-	keys []trust.KeyDetails
-	err  error
+	keys    []trust.KeyDetails
+	err     error
+	findErr error
 }
 
 func (f *fakeKeyIndex) String() string {
@@ -96,6 +97,9 @@ func (f *fakeKeyIndex) FindKeyByAlgorithm(context.Context, string, bool) (trust.
 }
 
 func (f *fakeKeyIndex) FindKeyByID(context.Context, trust.KeyIdentifier) (trust.KeyDetails, error) {
+	if f.findErr != nil {
+		return nil, f.findErr
+	}
 	return nil, errors.New("not implemented")
 }
 
@@ -167,7 +171,8 @@ func TestListLegacyKeys_KeyringPopulated(t *testing.T) {
 		},
 	}
 
-	kids := p.listLegacyKeys(t.Context())
+	kids, err := p.listLegacyKeys(t.Context())
+	require.NoError(t, err)
 	assert.ElementsMatch(t, []trust.KeyIdentifier{"legacy1", "legacy2"}, kids)
 }
 
@@ -186,7 +191,8 @@ func TestListLegacyKeys_KeyIndexPopulated(t *testing.T) {
 		Logger:       testLogger,
 		KeyDelegator: delegator,
 	}
-	kids := p.listLegacyKeys(t.Context())
+	kids, err := p.listLegacyKeys(t.Context())
+	require.NoError(t, err)
 	assert.ElementsMatch(t, []trust.KeyIdentifier{"id1", "id4"}, kids)
 }
 
@@ -197,7 +203,8 @@ func TestListLegacyKeys_Empty(t *testing.T) {
 		Logger:       testLogger,
 		KeyDelegator: delegator,
 	}
-	kids := p.listLegacyKeys(t.Context())
+	kids, err := p.listLegacyKeys(t.Context())
+	require.NoError(t, err)
 	assert.Empty(t, kids)
 }
 
@@ -210,7 +217,8 @@ func TestListLegacyKeys_KeyIndexError(t *testing.T) {
 		Logger:       testLogger,
 		KeyDelegator: delegator,
 	}
-	kids := p.listLegacyKeys(t.Context())
+	kids, err := p.listLegacyKeys(t.Context())
+	require.Error(t, err)
 	assert.Empty(t, kids)
 }
 
@@ -1820,6 +1828,96 @@ func TestTDF3RewrapAuditsEachKAOWithoutOverwritingEarlierFailure(t *testing.T) {
 	require.Equal(t, audit.ActionResultSuccess, eventsByKAOID["valid-kao"].Action.Result)
 	require.Equal(t, audit.ActionResultFailure, eventsByKAOID["invalid-kao"].Action.Result)
 	require.Equal(t, rewrapReasonPolicyBindingMissing, eventsByKAOID["invalid-kao"].EventMetaData["failure_reason"])
+}
+
+func TestAuditRewrapOutcomesRejectsDuplicateKAOIDs(t *testing.T) {
+	var events []audit.Event
+	provider := newTDF3AuditTestProvider(t, rewrapAuthorizationV2Stub{}, func(_ context.Context, event audit.Event) error {
+		events = append(events, event)
+		return nil
+	})
+	requests := makeRewrapRequests(t, fauxPolicyBytes(t), false)
+	request := requests[0]
+	firstKAO := request.GetKeyAccessObjects()[0]
+	wrappedKey, err := base64.StdEncoding.DecodeString(string(firstKAO.GetKeyAccessObject().GetWrappedKey()))
+	require.NoError(t, err)
+	firstKAO.GetKeyAccessObject().WrappedKey = wrappedKey
+
+	duplicateKAO, cloneOK := proto.Clone(firstKAO).(*kaspb.UnsignedRewrapRequest_WithKeyAccessObject)
+	require.True(t, cloneOK)
+	duplicateKAO.GetKeyAccessObject().PolicyBinding = nil
+	request.KeyAccessObjects = append(request.KeyAccessObjects, duplicateKAO)
+
+	policy, results, err := provider.verifyRewrapRequests(t.Context(), request)
+	require.ErrorIs(t, err, errNoValidKeyAccessObjects)
+	provider.auditRewrapOutcomes(
+		t.Context(),
+		requests,
+		map[*kaspb.UnsignedRewrapRequest_WithPolicyRequest]map[string]kaoResult{request: results},
+		map[*kaspb.UnsignedRewrapRequest_WithPolicyRequest]*Policy{request: policy},
+		nil,
+		"",
+	)
+
+	require.Len(t, events, 2)
+	for _, event := range events {
+		require.Equal(t, audit.ActionResultFailure, event.Action.Result)
+		require.Equal(t, rewrapReasonKAOInvalid, event.EventMetaData["failure_reason"])
+		require.Equal(t, false, event.EventMetaData["suspected_tamper"])
+	}
+}
+
+func TestVerifyRewrapRequestsClassifiesKeyLookupFailuresWithoutTamper(t *testing.T) {
+	tests := []struct {
+		name       string
+		kid        string
+		index      *fakeKeyIndex
+		wantResult audit.ActionResult
+		wantReason string
+	}{
+		{
+			name:       "registry unavailable for explicit key ID",
+			kid:        "test-kid",
+			index:      &fakeKeyIndex{findErr: connect.NewError(connect.CodeUnavailable, errors.New("registry unavailable"))},
+			wantResult: audit.ActionResultError,
+			wantReason: rewrapReasonKeyLookupFailed,
+		},
+		{
+			name:       "registry unavailable while listing legacy keys",
+			index:      &fakeKeyIndex{err: connect.NewError(connect.CodeUnavailable, errors.New("registry unavailable"))},
+			wantResult: audit.ActionResultError,
+			wantReason: rewrapReasonKeyLookupFailed,
+		},
+		{
+			name:       "explicit key ID not found",
+			kid:        "missing-kid",
+			index:      &fakeKeyIndex{findErr: connect.NewError(connect.CodeNotFound, errors.New("key not found"))},
+			wantResult: audit.ActionResultFailure,
+			wantReason: rewrapReasonKeyNotFound,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			provider := newTDF3AuditTestProvider(t, rewrapAuthorizationV2Stub{}, nil)
+			provider.Keyring = nil
+			provider.KeyDelegator = trust.NewDelegatingKeyService(tt.index, logger.CreateTestLogger(), nil)
+			request := makeRewrapRequests(t, fauxPolicyBytes(t), false)[0]
+			kao := request.GetKeyAccessObjects()[0]
+			wrappedKey, err := base64.StdEncoding.DecodeString(string(kao.GetKeyAccessObject().GetWrappedKey()))
+			require.NoError(t, err)
+			kao.GetKeyAccessObject().WrappedKey = wrappedKey
+			kao.GetKeyAccessObject().Kid = tt.kid
+
+			_, results, err := provider.verifyRewrapRequests(t.Context(), request)
+			require.ErrorIs(t, err, errNoValidKeyAccessObjects)
+			result := results[kao.GetKeyAccessObjectId()]
+			require.Equal(t, tt.wantResult, result.Audit.Result)
+			require.Equal(t, tt.wantReason, result.Audit.FailureReason)
+			require.False(t, result.Audit.SuspectedTamper)
+			require.True(t, result.Audit.Classified)
+		})
+	}
 }
 
 func TestTDF3RewrapAuditsAuthorizationErrors(t *testing.T) {

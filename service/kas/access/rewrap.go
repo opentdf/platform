@@ -642,14 +642,14 @@ func erroredKAORewrap(res map[string]kaoResult, kao *kaspb.UnsignedRewrapRequest
 func recordDEKFailure(res map[string]kaoResult, kao *kaspb.UnsignedRewrapRequest_WithKeyAccessObject, err error) {
 	if errors.Is(err, trust.ErrKeyLookup) {
 		if errors.Is(err, security.ErrCertNotFound) || connect.CodeOf(err) == connect.CodeNotFound {
-			failedKAORewrap(res, kao, err400("key not found"), rewrapReasonKeyNotFound, false)
+			failedKAORewrap(res, kao, err400("bad request"), rewrapReasonKeyNotFound, false)
 			return
 		}
-		erroredKAORewrap(res, kao, err500("key lookup failed"), rewrapReasonKeyLookupFailed)
+		erroredKAORewrap(res, kao, err400("bad request"), rewrapReasonKeyLookupFailed)
 		return
 	}
 	if errors.Is(err, trust.ErrKeyManagerUnavailable) {
-		erroredKAORewrap(res, kao, err500("key manager unavailable"), rewrapReasonKeyManagerUnavailable)
+		erroredKAORewrap(res, kao, err400("bad request"), rewrapReasonKeyManagerUnavailable)
 		return
 	}
 	failedKAORewrap(res, kao, err400("bad request"), rewrapReasonDEKDecryptFailed, true)
@@ -975,7 +975,7 @@ func (p *Provider) verifyRewrapRequests(ctx context.Context, req *kaspb.Unsigned
 				kidsToCheck, err = p.listLegacyKeys(ctx)
 				if err != nil {
 					p.Logger.WarnContext(ctx, "failure to list legacy KIDs for RSA", slog.Any("error", err))
-					erroredKAORewrap(results, kao, err500("key lookup failed"), rewrapReasonKeyLookupFailed)
+					erroredKAORewrap(results, kao, err400("no legacy key IDs found"), rewrapReasonKeyLookupFailed)
 					continue
 				}
 				if len(kidsToCheck) == 0 {

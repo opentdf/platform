@@ -1873,45 +1873,51 @@ func TestAuditRewrapOutcomesRejectsDuplicateKAOIDs(t *testing.T) {
 
 func TestVerifyRewrapRequestsClassifiesKeyLookupFailuresWithoutTamper(t *testing.T) {
 	tests := []struct {
-		name       string
-		kid        string
-		index      *fakeKeyIndex
-		wantResult audit.ActionResult
-		wantReason string
+		name        string
+		kid         string
+		index       *fakeKeyIndex
+		wantResult  audit.ActionResult
+		wantReason  string
+		wantMessage string
 	}{
 		{
-			name:       "registry unavailable for explicit key ID",
-			kid:        "test-kid",
-			index:      &fakeKeyIndex{findErr: connect.NewError(connect.CodeUnavailable, errors.New("registry unavailable"))},
-			wantResult: audit.ActionResultError,
-			wantReason: rewrapReasonKeyLookupFailed,
+			name:        "registry unavailable for explicit key ID",
+			kid:         "test-kid",
+			index:       &fakeKeyIndex{findErr: connect.NewError(connect.CodeUnavailable, errors.New("registry unavailable"))},
+			wantResult:  audit.ActionResultError,
+			wantReason:  rewrapReasonKeyLookupFailed,
+			wantMessage: "bad request",
 		},
 		{
-			name:       "registry unavailable while listing legacy keys",
-			index:      &fakeKeyIndex{err: connect.NewError(connect.CodeUnavailable, errors.New("registry unavailable"))},
-			wantResult: audit.ActionResultError,
-			wantReason: rewrapReasonKeyLookupFailed,
+			name:        "registry unavailable while listing legacy keys",
+			index:       &fakeKeyIndex{err: connect.NewError(connect.CodeUnavailable, errors.New("registry unavailable"))},
+			wantResult:  audit.ActionResultError,
+			wantReason:  rewrapReasonKeyLookupFailed,
+			wantMessage: "no legacy key IDs found",
 		},
 		{
-			name:       "explicit key ID not found",
-			kid:        "missing-kid",
-			index:      &fakeKeyIndex{findErr: connect.NewError(connect.CodeNotFound, errors.New("key not found"))},
-			wantResult: audit.ActionResultFailure,
-			wantReason: rewrapReasonKeyNotFound,
+			name:        "explicit key ID not found",
+			kid:         "missing-kid",
+			index:       &fakeKeyIndex{findErr: connect.NewError(connect.CodeNotFound, errors.New("key not found"))},
+			wantResult:  audit.ActionResultFailure,
+			wantReason:  rewrapReasonKeyNotFound,
+			wantMessage: "bad request",
 		},
 		{
-			name:       "in-process key ID not found",
-			kid:        "missing-kid",
-			index:      &fakeKeyIndex{findErr: security.ErrCertNotFound},
-			wantResult: audit.ActionResultFailure,
-			wantReason: rewrapReasonKeyNotFound,
+			name:        "in-process key ID not found",
+			kid:         "missing-kid",
+			index:       &fakeKeyIndex{findErr: security.ErrCertNotFound},
+			wantResult:  audit.ActionResultFailure,
+			wantReason:  rewrapReasonKeyNotFound,
+			wantMessage: "bad request",
 		},
 		{
-			name:       "key manager unavailable",
-			kid:        "test-kid",
-			index:      &fakeKeyIndex{found: &fakeKeyDetails{id: "test-kid", algorithm: "rsa:2048"}},
-			wantResult: audit.ActionResultError,
-			wantReason: rewrapReasonKeyManagerUnavailable,
+			name:        "key manager unavailable",
+			kid:         "test-kid",
+			index:       &fakeKeyIndex{found: &fakeKeyDetails{id: "test-kid", algorithm: "rsa:2048"}},
+			wantResult:  audit.ActionResultError,
+			wantReason:  rewrapReasonKeyManagerUnavailable,
+			wantMessage: "bad request",
 		},
 	}
 
@@ -1930,6 +1936,8 @@ func TestVerifyRewrapRequestsClassifiesKeyLookupFailuresWithoutTamper(t *testing
 			_, results, err := provider.verifyRewrapRequests(t.Context(), request)
 			require.ErrorIs(t, err, errNoValidKeyAccessObjects)
 			result := results[kao.GetKeyAccessObjectId()]
+			require.Equal(t, connect.CodeInvalidArgument, connect.CodeOf(result.Error))
+			require.Contains(t, result.Error.Error(), tt.wantMessage)
 			require.Equal(t, tt.wantResult, result.Audit.Result)
 			require.Equal(t, tt.wantReason, result.Audit.FailureReason)
 			require.False(t, result.Audit.SuspectedTamper)

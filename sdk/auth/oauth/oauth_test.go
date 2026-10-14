@@ -23,7 +23,7 @@ func mustGenerateRSAKey(t *testing.T) *rsa.PrivateKey {
 
 func TestTokenExpiration_RespectsLeeway(t *testing.T) {
 	expiredToken := Token{
-		received:  time.Now().Add(-tokenExpirationBuffer - 10*time.Second),
+		received:  time.Now().Add(-DefaultTokenExpirationBuffer - 10*time.Second),
 		ExpiresIn: 5,
 	}
 	if !expiredToken.Expired() {
@@ -32,7 +32,7 @@ func TestTokenExpiration_RespectsLeeway(t *testing.T) {
 
 	goodToken := Token{
 		received:  time.Now(),
-		ExpiresIn: 2 * int64(tokenExpirationBuffer/time.Second),
+		ExpiresIn: 2 * int64(DefaultTokenExpirationBuffer/time.Second),
 	}
 
 	if goodToken.Expired() {
@@ -41,12 +41,45 @@ func TestTokenExpiration_RespectsLeeway(t *testing.T) {
 
 	justOverBorderToken := Token{
 		received:  time.Now(),
-		ExpiresIn: int64(tokenExpirationBuffer/time.Second) - 1,
+		ExpiresIn: int64(DefaultTokenExpirationBuffer/time.Second) - 1,
 	}
 
 	if !justOverBorderToken.Expired() {
 		t.Fatalf("token should not be expired")
 	}
+}
+
+func Test_Token_ExpiredWithBuffer(t *testing.T) {
+	tests := []struct {
+		name      string
+		remaining time.Duration
+		buffer    time.Duration
+		expired   bool
+	}{
+		{name: "WithinCustomWindow", remaining: time.Minute, buffer: 90 * time.Second, expired: true},
+		{name: "OutsideCustomWindow", remaining: 2 * time.Minute, buffer: 90 * time.Second},
+		{name: "OutsideDefaultWindow", remaining: time.Minute, buffer: DefaultTokenExpirationBuffer},
+		{name: "ZeroBufferValid", remaining: 5 * time.Second},
+		{name: "ZeroBufferExpired", remaining: -time.Second, expired: true},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			token := Token{
+				received:  time.Now().Add(test.remaining - time.Hour),
+				ExpiresIn: 3600,
+			}
+			if expired := token.ExpiredWithBuffer(test.buffer); expired != test.expired {
+				t.Fatalf("ExpiredWithBuffer(%s) = %t, want %t", test.buffer, expired, test.expired)
+			}
+		})
+	}
+
+	t.Run("MissingExpiry", func(t *testing.T) {
+		token := Token{received: time.Now().Add(-time.Hour)}
+		if token.ExpiredWithBuffer(90 * time.Second) {
+			t.Fatal("token without expires_in should not expire")
+		}
+	})
 }
 
 // TestGetTokenExchangeRequest_SubjectTokenType verifies that the RFC 8693 required

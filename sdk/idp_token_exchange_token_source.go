@@ -4,6 +4,7 @@ import (
 	"context"
 	"log/slog"
 	"net/http"
+	"time"
 
 	"github.com/lestrrat-go/jwx/v2/jwk"
 	"github.com/opentdf/platform/lib/ocrypto"
@@ -42,7 +43,7 @@ func (i *IDPTokenExchangeTokenSource) AccessTokenCredential(ctx context.Context,
 	i.tokenMutex.Lock()
 	defer i.tokenMutex.Unlock()
 
-	if i.token == nil || i.token.Expired() {
+	if i.token == nil || i.token.ExpiredWithBuffer(i.tokenExpirationBuffer) {
 		tok, err := oauth.DoTokenExchange(ctx, client, i.idpTokenEndpoint.String(), i.scopes, i.credentials, i.TokenExchangeInfo, i.dpopKey)
 		if err != nil {
 			return auth.AccessTokenCredential{}, err
@@ -69,8 +70,9 @@ func newIDPTokenExchangeTokenSourceFromJWK(
 	idpTokenEndpoint string,
 	scopes []string,
 	key jwk.Key,
+	buffer time.Duration,
 ) (*IDPTokenExchangeTokenSource, error) {
-	idpSource, err := newIDPAccessTokenSourceFromJWK(credentials, idpTokenEndpoint, scopes, key)
+	idpSource, err := newIDPAccessTokenSourceFromJWK(credentials, idpTokenEndpoint, scopes, key, buffer)
 	if err != nil {
 		return nil, err
 	}

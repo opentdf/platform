@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/url"
 	"sync"
+	"time"
 
 	"github.com/lestrrat-go/jwx/v2/jwa"
 	"github.com/lestrrat-go/jwx/v2/jwk"
@@ -52,14 +53,15 @@ func getNewDPoPKey(dpopKeyPair *ocrypto.RsaKeyPair) (string, jwk.Key, *ocrypto.A
 // IDPAccessTokenSource credentials that allow us to connect to an IDP and obtain an access token that is bound
 // to a DPoP key
 type IDPAccessTokenSource struct {
-	credentials      oauth.ClientCredentials
-	idpTokenEndpoint url.URL
-	token            *oauth.Token
-	scopes           []string
-	dpopKey          jwk.Key
-	asymDecryption   ocrypto.AsymDecryption
-	dpopPEM          string
-	tokenMutex       *sync.Mutex
+	credentials           oauth.ClientCredentials
+	idpTokenEndpoint      url.URL
+	token                 *oauth.Token
+	scopes                []string
+	dpopKey               jwk.Key
+	asymDecryption        ocrypto.AsymDecryption
+	dpopPEM               string
+	tokenMutex            *sync.Mutex
+	tokenExpirationBuffer time.Duration
 }
 
 func NewIDPAccessTokenSource(
@@ -80,14 +82,15 @@ func NewIDPAccessTokenSource(
 
 	tokenSource := IDPAccessTokenSource{
 		// logger:           log,
-		credentials:      credentials,
-		idpTokenEndpoint: *endpoint,
-		token:            nil,
-		scopes:           scopes,
-		asymDecryption:   *asymDecryption,
-		dpopKey:          dpopKey,
-		dpopPEM:          dpopPublicKeyPEM,
-		tokenMutex:       &sync.Mutex{},
+		credentials:           credentials,
+		idpTokenEndpoint:      *endpoint,
+		token:                 nil,
+		scopes:                scopes,
+		asymDecryption:        *asymDecryption,
+		dpopKey:               dpopKey,
+		dpopPEM:               dpopPublicKeyPEM,
+		tokenMutex:            &sync.Mutex{},
+		tokenExpirationBuffer: oauth.DefaultTokenExpirationBuffer,
 	}
 
 	return &tokenSource, nil
@@ -104,7 +107,7 @@ func (t *IDPAccessTokenSource) AccessTokenCredential(_ context.Context, client *
 	t.tokenMutex.Lock()
 	defer t.tokenMutex.Unlock()
 
-	if t.token == nil || t.token.Expired() {
+	if t.token == nil || t.token.ExpiredWithBuffer(t.tokenExpirationBuffer) {
 		tok, err := oauth.GetAccessToken(client, t.idpTokenEndpoint.String(), t.scopes, t.credentials, t.dpopKey)
 		if err != nil {
 			return auth.AccessTokenCredential{}, fmt.Errorf("error getting access token: %w", err)
@@ -128,16 +131,18 @@ func newIDPAccessTokenSourceFromJWK(
 	idpTokenEndpoint string,
 	scopes []string,
 	key jwk.Key,
+	buffer time.Duration,
 ) (*IDPAccessTokenSource, error) {
 	endpoint, err := url.Parse(idpTokenEndpoint)
 	if err != nil {
 		return nil, fmt.Errorf("invalid url [%s]: %w", idpTokenEndpoint, err)
 	}
 	return &IDPAccessTokenSource{
-		credentials:      credentials,
-		idpTokenEndpoint: *endpoint,
-		scopes:           scopes,
-		dpopKey:          key,
-		tokenMutex:       &sync.Mutex{},
+		credentials:           credentials,
+		idpTokenEndpoint:      *endpoint,
+		scopes:                scopes,
+		dpopKey:               key,
+		tokenMutex:            &sync.Mutex{},
+		tokenExpirationBuffer: buffer,
 	}, nil
 }

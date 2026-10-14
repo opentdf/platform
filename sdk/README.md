@@ -195,6 +195,20 @@ The SDK supports multiple authentication methods:
 sdk.WithClientCredentials("client-id", "client-secret", []string{"scope1", "scope2"})
 ```
 
+**Early Token Renewal:**
+
+Use `sdk.WithTokenExpirationBuffer(90 * time.Second)` at SDK initialization to
+renew SDK-managed access tokens when less than 90 seconds remain. The default is
+10 seconds; zero disables early renewal, and negative durations are rejected.
+Renewal happens on the next token request, not on a background timer, and does
+not change a token already attached to an in-flight request. This option applies
+to client credentials, token exchange, and certificate exchange. Custom OAuth2
+token sources manage their own expiration policy.
+
+Keep the buffer shorter than the token lifetime to avoid renewing on every
+request. The buffer is an early-renewal margin, not server-side clock-skew
+tolerance.
+
 **TLS/mTLS Authentication:**
 ```go
 import "crypto/tls"

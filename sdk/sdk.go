@@ -23,6 +23,7 @@ import (
 	"github.com/opentdf/platform/protocol/go/wellknownconfiguration/wellknownconfigurationconnect"
 	"github.com/opentdf/platform/sdk/audit"
 	"github.com/opentdf/platform/sdk/auth"
+	"github.com/opentdf/platform/sdk/auth/oauth"
 	"github.com/opentdf/platform/sdk/httputil"
 	"github.com/opentdf/platform/sdk/internal/zipstream"
 	"github.com/opentdf/platform/sdk/sdkconnect"
@@ -113,6 +114,7 @@ func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 
 	// Set default options
 	cfg := &config{
+		tokenExpirationBuffer: oauth.DefaultTokenExpirationBuffer,
 		httpClient: httputil.SafeHTTPClientWithTLSConfig(&tls.Config{
 			MinVersion: tls.VersionTLS12,
 		}),
@@ -121,6 +123,9 @@ func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 	// Apply options
 	for _, opt := range opts {
 		opt(cfg)
+	}
+	if cfg.tokenExpirationBuffer < 0 {
+		return nil, errors.New("token expiration buffer must not be negative")
 	}
 
 	// Set default logger if none provided
@@ -376,11 +381,11 @@ func buildIDPTokenSourceFromJWK(c *config, key jwk.Key) (auth.AccessTokenSource,
 	case c.oauthAccessTokenSource != nil:
 		return newOAuthAccessTokenSourceFromJWK(c.oauthAccessTokenSource, c.scopes, key), nil
 	case c.certExchange != nil:
-		return newCertExchangeTokenSourceFromJWK(c.logger, *c.certExchange, *c.clientCredentials, c.tokenEndpoint, key)
+		return newCertExchangeTokenSourceFromJWK(c.logger, *c.certExchange, *c.clientCredentials, c.tokenEndpoint, key, c.tokenExpirationBuffer)
 	case c.tokenExchange != nil:
-		return newIDPTokenExchangeTokenSourceFromJWK(c.logger, *c.tokenExchange, *c.clientCredentials, c.tokenEndpoint, c.scopes, key)
+		return newIDPTokenExchangeTokenSourceFromJWK(c.logger, *c.tokenExchange, *c.clientCredentials, c.tokenEndpoint, c.scopes, key, c.tokenExpirationBuffer)
 	default:
-		return newIDPAccessTokenSourceFromJWK(*c.clientCredentials, c.tokenEndpoint, c.scopes, key)
+		return newIDPAccessTokenSourceFromJWK(*c.clientCredentials, c.tokenEndpoint, c.scopes, key, c.tokenExpirationBuffer)
 	}
 }
 

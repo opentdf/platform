@@ -20,9 +20,8 @@ import (
 	"github.com/opentdf/platform/sdk/httputil"
 )
 
-const (
-	tokenExpirationBuffer = 10 * time.Second
-)
+// DefaultTokenExpirationBuffer is the early-renewal window for SDK-managed tokens.
+const DefaultTokenExpirationBuffer = 10 * time.Second
 
 const defaultSubjectTokenType = "urn:ietf:params:oauth:token-type:access_token" //nolint:gosec // OAuth token type URN, not a credential
 
@@ -53,13 +52,19 @@ type Token struct {
 }
 
 func (t Token) Expired() bool {
+	return t.ExpiredWithBuffer(DefaultTokenExpirationBuffer)
+}
+
+// ExpiredWithBuffer reports whether the token expires within buffer.
+// Tokens without an expires_in value are treated as non-expiring.
+func (t Token) ExpiredWithBuffer(buffer time.Duration) bool {
 	if t.ExpiresIn == 0 {
 		return false
 	}
 
 	expirationTime := t.received.Add(time.Second * time.Duration(t.ExpiresIn))
 
-	return time.Now().After(expirationTime.Add(-tokenExpirationBuffer))
+	return time.Now().After(expirationTime.Add(-buffer))
 }
 
 func getAccessTokenRequest(tokenEndpoint, dpopNonce string, scopes []string, clientCredentials ClientCredentials, privateJWK *jwk.Key) (*http.Request, error) {

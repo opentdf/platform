@@ -6,6 +6,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/opentdf/platform/lib/ocrypto"
+	"github.com/stretchr/testify/require"
 )
 
 func TestCreateRewrapAuditEventHappyPath(t *testing.T) {
@@ -31,6 +32,7 @@ func TestCreateRewrapAuditEventHappyPath(t *testing.T) {
 	params := RewrapAuditEventParams{
 		Policy:         kasPolicy,
 		IsSuccess:      true,
+		PolicyVerified: true,
 		TDFFormat:      TestTDFFormat,
 		Algorithm:      TestAlgorithm,
 		PolicyBinding:  TestPolicyBinding,
@@ -79,11 +81,13 @@ func TestCreateRewrapAuditEventHappyPath(t *testing.T) {
 	}
 
 	expectedEventMetaData := auditEventMetadata{
-		"keyID":          keyID,
-		"policyBinding":  TestPolicyBinding,
-		"tdfFormat":      TestTDFFormat,
-		"algorithm":      TestAlgorithm,
-		"sessionKeyType": sessionKeyType,
+		"keyID":            keyID,
+		"policyBinding":    TestPolicyBinding,
+		"tdfFormat":        TestTDFFormat,
+		"algorithm":        TestAlgorithm,
+		"sessionKeyType":   sessionKeyType,
+		"policy_verified":  true,
+		"suspected_tamper": false,
 	}
 	if !reflect.DeepEqual(event.EventMetaData, expectedEventMetaData) {
 		t.Fatalf("event metadata did not match expected: got %+v, want %+v", event.EventMetaData, expectedEventMetaData)
@@ -105,4 +109,60 @@ func TestCreateRewrapAuditEventHappyPath(t *testing.T) {
 	}
 
 	validateRecentEventTimestamp(t, event)
+}
+
+func TestCreateRewrapAuditEventOmitsUnverifiedPolicyAttributes(t *testing.T) {
+	policyID := uuid.New()
+	params := RewrapAuditEventParams{
+		Policy: KasPolicy{
+			UUID: policyID,
+			Body: KasPolicyBody{DataAttributes: []KasAttribute{
+				{URI: "https://attacker.example/unverified"},
+			}},
+		},
+		PolicyID:        "client-policy-id",
+		isDenied:        true,
+		FailureReason:   "policy_binding_mismatch",
+		SuspectedTamper: true,
+		PolicyVerified:  false,
+		KAOID:           "kao-1",
+	}
+
+	event, err := createRewrapAuditEvent(createTestContext(t), ActionResultFailure, params)
+	require.NoError(t, err)
+	require.Equal(t, "client-policy-id", event.Object.ID)
+	require.Empty(t, event.Object.Attributes.Attrs)
+	require.Equal(t, "policy_binding_mismatch", event.EventMetaData["failure_reason"])
+	require.Equal(t, true, event.EventMetaData["suspected_tamper"])
+	require.Equal(t, false, event.EventMetaData["policy_verified"])
+	require.Equal(t, policyID.String(), event.EventMetaData["claimed_policy_uuid"])
+	require.Equal(t, "kao-1", event.EventMetaData["kao_id"])
+}
+
+func TestCreateRewrapAuditEventSupportsLegacyIsSuccess(t *testing.T) {
+	policyID := uuid.New()
+	tests := []struct {
+		name       string
+		isSuccess  bool
+		isDenied   bool
+		wantResult ActionResult
+	}{
+		{name: "success", isSuccess: true, wantResult: ActionResultSuccess},
+		{name: "denied", isDenied: true, wantResult: ActionResultFailure},
+		{name: "error", isSuccess: false, wantResult: ActionResultError},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			event, err := CreateRewrapAuditEvent(createTestContext(t), RewrapAuditEventParams{
+				IsSuccess: tt.isSuccess,
+				isDenied:  tt.isDenied,
+				Policy:    KasPolicy{UUID: policyID},
+			})
+			require.NoError(t, err)
+			require.Equal(t, tt.wantResult, event.Action.Result)
+			require.Equal(t, policyID.String(), event.Object.ID)
+			require.Equal(t, true, event.EventMetaData["policy_verified"])
+		})
+	}
 }

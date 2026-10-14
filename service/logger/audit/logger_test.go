@@ -84,6 +84,11 @@ func TestRewrapDeniedOverridesSuccessfulAccess(t *testing.T) {
 	require.Equal(t, ActionResultFailure.String(), requireMap(t, payload["action"])["result"])
 }
 
+func TestRewrapRejectsUnsupportedResult(t *testing.T) {
+	l, _ := createTestLogger()
+	require.ErrorIs(t, l.Rewrap(t.Context(), ActionResultEncrypt, rewrapParams), ErrInvalidEvent)
+}
+
 func TestBuiltInRecordingPreservesCanceledProducerContext(t *testing.T) {
 	type ownerKey struct{}
 	var processed bool
@@ -163,6 +168,7 @@ var rewrapParams = RewrapAuditEventParams{
 			},
 		},
 	},
+	PolicyVerified: true,
 	TDFFormat:      "test-tdf-format",
 	Algorithm:      "test-algorithm",
 	PolicyBinding:  "test-policy-binding",
@@ -286,7 +292,9 @@ func TestAuditRewrapSuccess(t *testing.T) {
 				"sessionKeyType": "%s",
 				"keyID": "%s",
 				"policyBinding": "%s",
-				"tdfFormat": "%s"
+				"tdfFormat": "%s",
+				"policy_verified": true,
+				"suspected_tamper": false
 			},
 			"clientInfo": {
 			  "userAgent": "%s",
@@ -347,7 +355,10 @@ func TestAuditRewrapFailure(t *testing.T) {
 				"sessionKeyType": "%s",
 				"keyID": "%s",
 				"policyBinding": "%s",
-				"tdfFormat": "%s"
+				"tdfFormat": "%s",
+				"failure_reason": "rewrap_error",
+				"policy_verified": true,
+				"suspected_tamper": false
 			},
 			"clientInfo": {
 			  "userAgent": "%s",

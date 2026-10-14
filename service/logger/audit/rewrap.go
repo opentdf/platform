@@ -20,37 +20,80 @@ type KasAttribute struct {
 }
 
 type RewrapAuditEventParams struct {
-	Policy         KasPolicy
-	IsSuccess      bool
-	TDFFormat      string
-	Algorithm      string
-	PolicyBinding  string
-	KeyID          string
-	SessionKeyType string
-	isDenied       bool
+	Policy   KasPolicy
+	PolicyID string
+
+	// IsSuccess is retained for callers of CreateRewrapAuditEvent.
+	//
+	// Deprecated: use Logger.Rewrap or one of the Logger rewrap helpers.
+	IsSuccess       bool
+	FailureReason   string
+	SuspectedTamper bool
+	PolicyVerified  bool
+	KAOID           string
+	TDFFormat       string
+	Algorithm       string
+	PolicyBinding   string
+	KeyID           string
+	SessionKeyType  string
+	isDenied        bool
 }
 
+// CreateRewrapAuditEvent retains the legacy IsSuccess/isDenied result mapping.
 func CreateRewrapAuditEvent(ctx context.Context, params RewrapAuditEventParams) (*EventObject, error) {
-	auditDataFromContext := GetAuditDataFromContext(ctx)
-
-	// Assign action result
-	auditEventActionResult := ActionResultError
+	result := ActionResultError
 	switch {
 	case params.IsSuccess:
-		auditEventActionResult = ActionResultSuccess
+		result = ActionResultSuccess
 	case params.isDenied:
-		auditEventActionResult = ActionResultFailure
+		result = ActionResultFailure
+	}
+	// This legacy helper predates PolicyVerified and was only used after policy
+	// verification. Preserve its original UUID and attribute behavior.
+	params.PolicyVerified = true
+	return createRewrapAuditEvent(ctx, result, params)
+}
+
+func createRewrapAuditEvent(ctx context.Context, result ActionResult, params RewrapAuditEventParams) (*EventObject, error) {
+	auditDataFromContext := GetAuditDataFromContext(ctx)
+
+	eventMetadata := auditEventMetadata{
+		"keyID":            params.KeyID,
+		"policyBinding":    params.PolicyBinding,
+		"tdfFormat":        params.TDFFormat,
+		"algorithm":        params.Algorithm,
+		"sessionKeyType":   params.SessionKeyType,
+		"policy_verified":  params.PolicyVerified,
+		"suspected_tamper": params.SuspectedTamper,
+	}
+	if params.FailureReason != "" {
+		eventMetadata["failure_reason"] = params.FailureReason
+	}
+	if params.KAOID != "" {
+		eventMetadata["kao_id"] = params.KAOID
 	}
 
-	attrFQNS := make([]string, len(params.Policy.Body.DataAttributes))
-	for i, attr := range params.Policy.Body.DataAttributes {
-		attrFQNS[i] = attr.URI
+	objectID := params.PolicyID
+	if params.Policy.UUID != uuid.Nil {
+		if params.PolicyVerified {
+			objectID = params.Policy.UUID.String()
+		} else {
+			eventMetadata["claimed_policy_uuid"] = params.Policy.UUID.String()
+		}
+	}
+
+	attrFQNS := make([]string, 0)
+	if params.PolicyVerified {
+		attrFQNS = make([]string, len(params.Policy.Body.DataAttributes))
+		for i, attr := range params.Policy.Body.DataAttributes {
+			attrFQNS[i] = attr.URI
+		}
 	}
 
 	return &EventObject{
 		Object: auditEventObject{
 			Type: ObjectTypeKeyObject,
-			ID:   params.Policy.UUID.String(),
+			ID:   objectID,
 			Attributes: eventObjectAttributes{
 				EventObjectAttributes: EventObjectAttributes{
 					Assertions:  []string{}, // Assertions aren't passed in the rewrap policy body
@@ -62,7 +105,7 @@ func CreateRewrapAuditEvent(ctx context.Context, params RewrapAuditEventParams) 
 		Action: eventAction{
 			EventObjectAction: EventObjectAction{
 				Type:   ActionTypeRewrap,
-				Result: auditEventActionResult,
+				Result: result,
 			},
 		},
 		Actor: auditEventActor{
@@ -71,13 +114,7 @@ func CreateRewrapAuditEvent(ctx context.Context, params RewrapAuditEventParams) 
 				Attributes: make([]any, 0),
 			},
 		},
-		EventMetaData: auditEventMetadata{
-			"keyID":          params.KeyID,
-			"policyBinding":  params.PolicyBinding,
-			"tdfFormat":      params.TDFFormat,
-			"algorithm":      params.Algorithm,
-			"sessionKeyType": params.SessionKeyType,
-		},
+		EventMetaData: eventMetadata,
 		ClientInfo: eventClientInfo{
 			EventClientInfo: EventClientInfo{
 				Platform:  "kas",

@@ -4,7 +4,9 @@ import (
 	"crypto/rand"
 	"crypto/rsa"
 	"io"
+	"net/http"
 	"net/url"
+	"strings"
 	"testing"
 	"time"
 
@@ -40,8 +42,9 @@ func Test_Token_Expired(t *testing.T) {
 	}
 
 	nearExpiryToken := Token{
-		received:  time.Now(),
-		ExpiresIn: 5,
+		received:         time.Now(),
+		ExpiresIn:        5,
+		ExpirationBuffer: 90 * time.Second,
 	}
 
 	if nearExpiryToken.Expired() {
@@ -68,21 +71,39 @@ func Test_Token_ShouldRenew(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			token := Token{
-				received:  time.Now().Add(test.remaining - time.Hour),
-				ExpiresIn: 3600,
+				received:         time.Now().Add(test.remaining - time.Hour),
+				ExpiresIn:        3600,
+				ExpirationBuffer: test.buffer,
 			}
-			if renew := token.ShouldRenew(test.buffer); renew != test.renew {
-				t.Fatalf("ShouldRenew(%s) = %t, want %t", test.buffer, renew, test.renew)
+			if renew := token.ShouldRenew(); renew != test.renew {
+				t.Fatalf("ShouldRenew() = %t, want %t", renew, test.renew)
 			}
 		})
 	}
 
 	t.Run("MissingExpiry", func(t *testing.T) {
-		token := Token{received: time.Now().Add(-time.Hour)}
-		if token.ShouldRenew(90 * time.Second) {
+		token := Token{received: time.Now().Add(-time.Hour), ExpirationBuffer: 90 * time.Second}
+		if token.ShouldRenew() {
 			t.Fatal("token without expires_in should not expire")
 		}
 	})
+}
+
+func Test_Token_ProcessResponse_DefaultsExpirationBuffer(t *testing.T) {
+	response := &http.Response{
+		StatusCode: http.StatusOK,
+		Body:       io.NopCloser(strings.NewReader(`{"access_token":"test-token","expires_in":5}`)),
+	}
+	token, err := processResponse(response)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if token.ExpirationBuffer != 10*time.Second {
+		t.Fatalf("ExpirationBuffer = %s, want 10s", token.ExpirationBuffer)
+	}
+	if !token.ShouldRenew() || token.Expired() {
+		t.Fatal("token should need renewal without being expired")
+	}
 }
 
 // TestGetTokenExchangeRequest_SubjectTokenType verifies that the RFC 8693 required

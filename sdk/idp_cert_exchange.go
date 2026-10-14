@@ -54,12 +54,13 @@ func (c *CertExchangeTokenSource) AccessTokenCredential(ctx context.Context, _ *
 	c.tokenMutex.Lock()
 	defer c.tokenMutex.Unlock()
 
-	if c.token == nil || c.token.ShouldRenew(c.tokenExpirationBuffer) {
+	if c.token == nil || c.token.ShouldRenew() {
 		tok, err := oauth.DoCertExchange(ctx, c.IdpEndpoint, c.info, c.credentials, c.key)
 		if err != nil {
 			return auth.AccessTokenCredential{}, err
 		}
 
+		tok.ExpirationBuffer = c.tokenExpirationBuffer
 		c.token = tok
 	}
 

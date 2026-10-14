@@ -23,6 +23,7 @@ func Test_SDK_TokenExpirationBuffer_RenewsBeforeExpiry(t *testing.T) {
 		expectedRequests int64
 	}{
 		{name: "DefaultCachesValidToken", expiresIn: 60, expectedRequests: 1},
+		{name: "DefaultRenewsWithinTenSeconds", expiresIn: 5, expectedRequests: 2},
 		{
 			name:             "CustomRenewsWithinNinetySeconds",
 			expiresIn:        60,

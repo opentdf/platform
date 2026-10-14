@@ -107,11 +107,12 @@ func (t *IDPAccessTokenSource) AccessTokenCredential(_ context.Context, client *
 	t.tokenMutex.Lock()
 	defer t.tokenMutex.Unlock()
 
-	if t.token == nil || t.token.ShouldRenew(t.tokenExpirationBuffer) {
+	if t.token == nil || t.token.ShouldRenew() {
 		tok, err := oauth.GetAccessToken(client, t.idpTokenEndpoint.String(), t.scopes, t.credentials, t.dpopKey)
 		if err != nil {
 			return auth.AccessTokenCredential{}, fmt.Errorf("error getting access token: %w", err)
 		}
+		tok.ExpirationBuffer = t.tokenExpirationBuffer
 		t.token = tok
 	}
 

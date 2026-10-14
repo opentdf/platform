@@ -99,12 +99,66 @@ teardown_file() {
   [ "$(echo "$output" | jq -r '.namespace.id')" = "$NS_ID" ]
   [ "$(echo "$output" | jq -r '.namespace.name')" = "$NS_NAME" ]
   [ "$(echo "$output" | jq -r '.metadata.labels.key')" = "value" ]
+
+  ATTR_FQN=$(echo "$output" | jq -r '.fqn')
+  run_otdfctl_attr get --fqn "$ATTR_FQN" --json
+  assert_success
+  [ "$(echo "$output" | jq -r '.id')" = "$ATTR_ID" ]
+  [ "$(echo "$output" | jq -r '.fqn')" = "$ATTR_FQN" ]
 }
 
 @test "Get an attribute definition - Bad" {
-  # no id flag
+  # no identifier flag
   run_otdfctl_attr get
   assert_failure
+  assert_output --partial "at least one of the flags in the group"
+
+  run_otdfctl_attr get --id "$ATTR_ID" --fqn "https://$NS_NAME/attr/$ATTR_NAME_RANDOM"
+  assert_failure
+  assert_output --partial "if any flags in the group"
+
+  run_otdfctl_attr get --id "not-a-uuid"
+  assert_failure
+  assert_output --partial "must be a valid UUID"
+
+  run_otdfctl_attr get --fqn "https://$NS_NAME/attr/missing-$RANDOM" --json
+  assert_failure
+  assert_output --partial "ERROR"
+}
+
+@test "Get an attribute value by ID or FQN" {
+  run_otdfctl_attr create --name attr-value-get --namespace "$NS_ID" --rule ANY_OF -v test-value --json
+  assert_success
+  CREATED_ID=$(echo "$output" | jq -r '.id')
+  VALUE_ID=$(echo "$output" | jq -r '.values[0].id')
+  VALUE_FQN=$(echo "$output" | jq -r '.values[0].fqn')
+
+  run_otdfctl_attr values get --id "$VALUE_ID" --json
+  assert_success
+  assert_equal "$(echo "$output" | jq -r '.id')" "$VALUE_ID"
+
+  run_otdfctl_attr values get --fqn "$VALUE_FQN" --json
+  assert_success
+  assert_equal "$(echo "$output" | jq -r '.id')" "$VALUE_ID"
+  assert_equal "$(echo "$output" | jq -r '.fqn')" "$VALUE_FQN"
+
+  run_otdfctl_attr values get
+  assert_failure
+  assert_output --partial "at least one of the flags in the group"
+
+  run_otdfctl_attr values get --id "$VALUE_ID" --fqn "$VALUE_FQN"
+  assert_failure
+  assert_output --partial "if any flags in the group"
+
+  run_otdfctl_attr values get --id "not-a-uuid"
+  assert_failure
+  assert_output --partial "must be a valid UUID"
+
+  run_otdfctl_attr values get --fqn "https://$NS_NAME/attr/attr-value-get/value/missing-$RANDOM" --json
+  assert_failure
+  assert_output --partial "ERROR"
+
+  ./otdfctl $HOST $WITH_CREDS policy attributes unsafe delete --force --id "$CREATED_ID"
 }
 
 @test "Update an attribute definition (Safe) - Good" {

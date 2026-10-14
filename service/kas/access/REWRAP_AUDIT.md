@@ -10,15 +10,19 @@
 flowchart TD
     A[Rewrap request] --> B{Request can be processed?}
     B -->|no| F1["FAILURE · request level<br/>SRT, body, token, context,<br/>client key, or policy request invalid"]
-    B -->|yes| C{"KAO and key type valid?"}
-    C -->|no| F2["FAILURE<br/>kao_invalid · key_type_disabled<br/>unsupported_key_type · invalid_ephemeral_key"]
-    C -->|yes| K{Key lookup}
+    B -->|yes| C{Duplicate KAO ID?}
+    C -->|yes| F2A["FAILURE<br/>kao_invalid"]
+    C -->|no| P{Policy body valid?}
+    P -->|no| F3A["FAILURE · suspected_tamper: true<br/>policy_body_invalid"]
+    P -->|yes| V{"KAO and key type valid?"}
+    V -->|no| F2["FAILURE<br/>kao_invalid · key_type_disabled<br/>unsupported_key_type · invalid_ephemeral_key"]
+    V -->|yes| K{Key lookup}
     K -->|not found| F7["FAILURE<br/>key_not_found"]
     K -->|unavailable| E0["ERROR<br/>key_lookup_failed"]
     K -->|ok| M{Key manager available?}
     M -->|no| E3["ERROR<br/>key_manager_unavailable"]
-    M -->|yes| D{"Policy parses, DEK decrypts,<br/>and binding verifies?"}
-    D -->|no| F3["FAILURE · suspected_tamper: true<br/>policy_body_invalid · dek_decrypt_failed<br/>policy_binding_missing · policy_binding_malformed<br/>policy_binding_mismatch"]
+    M -->|yes| D{"DEK decrypts and<br/>binding verifies?"}
+    D -->|no| F3["FAILURE · suspected_tamper: true<br/>dek_decrypt_failed · policy_binding_missing<br/>policy_binding_malformed · policy_binding_mismatch"]
     D -->|yes| E{Authorization}
     E -->|deny| F4["FAILURE<br/>policy_denied"]
     E -->|rejected| F5["FAILURE<br/>authz_rejected"]
@@ -32,7 +36,7 @@ flowchart TD
     classDef failure fill:#fde2e1,stroke:#d9534f,color:#000
     classDef error fill:#e2e3e5,stroke:#6c757d,color:#000
     class S success
-    class F1,F2,F3,F4,F5,F6,F7 failure
+    class F1,F2,F2A,F3,F3A,F4,F5,F6,F7 failure
     class E0,E1,E2,E3 error
 ```
 
@@ -49,14 +53,15 @@ flowchart TD
 | Policy request | Request or policy nil; policy ID empty | failure | `invalid_request` | false | false | request |
 | Policy request | No KAOs; policy valid | failure | `kao_invalid` | false | false | request |
 | Policy request | No KAOs; policy invalid | failure | `policy_body_invalid` | true | false | request |
-| KAO validation | KAO nil, duplicate ID, or wrapped key empty | failure | `kao_invalid` | false | false | KAO |
+| KAO validation | Duplicate KAO ID | failure | `kao_invalid` | false | false | KAO |
+| Integrity | Policy body invalid | failure | `policy_body_invalid` | true | false | KAO |
+| KAO validation | KAO nil or wrapped key empty | failure | `kao_invalid` | false | false | KAO |
 | KAO validation | EC, hybrid, or ML-KEM disabled | failure | `key_type_disabled` | false | false | KAO |
 | KAO validation | Key type unsupported | failure | `unsupported_key_type` | false | false | KAO |
 | KAO validation | EC ephemeral key invalid | failure | `invalid_ephemeral_key` | false | false | KAO |
 | Key lookup | Key ID not found or no legacy RSA key IDs | failure | `key_not_found` | false | false | KAO |
 | Key lookup | Registry unavailable | error | `key_lookup_failed` | false | false | KAO |
 | Key management | Manager unavailable | error | `key_manager_unavailable` | false | false | KAO |
-| Integrity | Policy body invalid | failure | `policy_body_invalid` | true | false | KAO |
 | Integrity | DEK decryption failed | failure | `dek_decrypt_failed` | true | false | KAO |
 | Integrity | Policy binding missing | failure | `policy_binding_missing` | true | false | KAO |
 | Integrity | Policy binding malformed | failure | `policy_binding_malformed` | true | false | KAO |
@@ -81,8 +86,8 @@ Defensive request events may accompany KAO events.
 - Non-success events include `failure_reason`.
 - All events include `policy_verified` and `suspected_tamper`; only KAO events
   include `kao_id`.
-- `object.id` is the parsed policy UUID, then the client policy ID, or empty when
-  no policy is identifiable.
+- `object.id` is the verified policy UUID, then the request policy ID, or empty.
+- Unverified parsed UUIDs are recorded as `claimed_policy_uuid` metadata.
 - `object.attributes` is populated only after policy verification.
 - Stage-wide failures preserve earlier, more specific KAO audit outcomes.
 - Downstream mappings must treat denials as `failure`; use

@@ -1786,11 +1786,11 @@ func TestTDF3RewrapAuditsPreAuthorizationFailures(t *testing.T) {
 			require.Equal(t, "123", events[0].EventMetaData["kao_id"])
 			require.NotContains(t, events[0].EventMetaData, "error")
 			require.Empty(t, events[0].Object.Attributes.Attrs)
+			require.Equal(t, "123", events[0].Object.ID)
 			if tt.wantReason == rewrapReasonPolicyBodyInvalid {
-				require.Equal(t, "123", events[0].Object.ID)
+				require.NotContains(t, events[0].EventMetaData, "claimed_policy_uuid")
 			} else {
-				require.NotEmpty(t, events[0].Object.ID)
-				require.NotEqual(t, "123", events[0].Object.ID)
+				require.Equal(t, fauxPolicy().UUID.String(), events[0].EventMetaData["claimed_policy_uuid"])
 			}
 		})
 	}

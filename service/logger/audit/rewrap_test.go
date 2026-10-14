@@ -128,17 +128,19 @@ func TestCreateRewrapAuditEventOmitsUnverifiedPolicyAttributes(t *testing.T) {
 		KAOID:           "kao-1",
 	}
 
-	event, err := CreateRewrapAuditEvent(createTestContext(t), params)
+	event, err := createRewrapAuditEvent(createTestContext(t), ActionResultFailure, params)
 	require.NoError(t, err)
-	require.Equal(t, policyID.String(), event.Object.ID)
+	require.Equal(t, "client-policy-id", event.Object.ID)
 	require.Empty(t, event.Object.Attributes.Attrs)
 	require.Equal(t, "policy_binding_mismatch", event.EventMetaData["failure_reason"])
 	require.Equal(t, true, event.EventMetaData["suspected_tamper"])
 	require.Equal(t, false, event.EventMetaData["policy_verified"])
+	require.Equal(t, policyID.String(), event.EventMetaData["claimed_policy_uuid"])
 	require.Equal(t, "kao-1", event.EventMetaData["kao_id"])
 }
 
 func TestCreateRewrapAuditEventSupportsLegacyIsSuccess(t *testing.T) {
+	policyID := uuid.New()
 	tests := []struct {
 		name       string
 		isSuccess  bool
@@ -155,9 +157,12 @@ func TestCreateRewrapAuditEventSupportsLegacyIsSuccess(t *testing.T) {
 			event, err := CreateRewrapAuditEvent(createTestContext(t), RewrapAuditEventParams{
 				IsSuccess: tt.isSuccess,
 				isDenied:  tt.isDenied,
+				Policy:    KasPolicy{UUID: policyID},
 			})
 			require.NoError(t, err)
 			require.Equal(t, tt.wantResult, event.Action.Result)
+			require.Equal(t, policyID.String(), event.Object.ID)
+			require.Equal(t, true, event.EventMetaData["policy_verified"])
 		})
 	}
 }

@@ -48,24 +48,14 @@ func CreateRewrapAuditEvent(ctx context.Context, params RewrapAuditEventParams) 
 	case params.isDenied:
 		result = ActionResultFailure
 	}
+	// This legacy helper predates PolicyVerified and was only used after policy
+	// verification. Preserve its original UUID and attribute behavior.
+	params.PolicyVerified = true
 	return createRewrapAuditEvent(ctx, result, params)
 }
 
 func createRewrapAuditEvent(ctx context.Context, result ActionResult, params RewrapAuditEventParams) (*EventObject, error) {
 	auditDataFromContext := GetAuditDataFromContext(ctx)
-
-	objectID := params.PolicyID
-	if params.Policy.UUID != uuid.Nil {
-		objectID = params.Policy.UUID.String()
-	}
-
-	attrFQNS := make([]string, 0)
-	if params.PolicyVerified {
-		attrFQNS = make([]string, len(params.Policy.Body.DataAttributes))
-		for i, attr := range params.Policy.Body.DataAttributes {
-			attrFQNS[i] = attr.URI
-		}
-	}
 
 	eventMetadata := auditEventMetadata{
 		"keyID":            params.KeyID,
@@ -81,6 +71,23 @@ func createRewrapAuditEvent(ctx context.Context, result ActionResult, params Rew
 	}
 	if params.KAOID != "" {
 		eventMetadata["kao_id"] = params.KAOID
+	}
+
+	objectID := params.PolicyID
+	if params.Policy.UUID != uuid.Nil {
+		if params.PolicyVerified {
+			objectID = params.Policy.UUID.String()
+		} else {
+			eventMetadata["claimed_policy_uuid"] = params.Policy.UUID.String()
+		}
+	}
+
+	attrFQNS := make([]string, 0)
+	if params.PolicyVerified {
+		attrFQNS = make([]string, len(params.Policy.Body.DataAttributes))
+		for i, attr := range params.Policy.Body.DataAttributes {
+			attrFQNS[i] = attr.URI
+		}
 	}
 
 	return &EventObject{

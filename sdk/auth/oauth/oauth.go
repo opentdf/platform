@@ -56,7 +56,8 @@ func (t Token) Expired() bool {
 	if t.ExpiresIn == 0 {
 		return false
 	}
-	return !time.Now().Before(t.received.Add(time.Second * time.Duration(t.ExpiresIn)))
+	expirationTime := t.received.Add(time.Second * time.Duration(t.ExpiresIn))
+	return !time.Now().Before(expirationTime)
 }
 
 // ShouldRenew reports whether the token expires within its ExpirationBuffer.

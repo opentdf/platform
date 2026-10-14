@@ -397,7 +397,7 @@ func (s StandardCrypto) RSADecrypt(_ crypto.Hash, kid string, _ string, cipherte
 
 	data, err := rsa.asymDecryption.Decrypt(ciphertext)
 	if err != nil {
-		return nil, fmt.Errorf("error decrypting data: %w", err)
+		return nil, fmt.Errorf("%w: error decrypting data: %w", trust.ErrDecryptFailed, err)
 	}
 
 	return data, nil
@@ -482,7 +482,7 @@ func (s *StandardCrypto) Decrypt(_ context.Context, keyID trust.KeyIdentifier, c
 
 		rawKey, err = ed.DecryptWithEphemeralKey(ciphertext, ephemeralPublicKey)
 		if err != nil {
-			return nil, fmt.Errorf("failed to decrypt with ephemeral key: %w", err)
+			return nil, fmt.Errorf("%w: failed to decrypt with ephemeral key: %w", trust.ErrDecryptFailed, err)
 		}
 
 	case StandardRSACrypto:
@@ -492,7 +492,7 @@ func (s *StandardCrypto) Decrypt(_ context.Context, keyID trust.KeyIdentifier, c
 
 		rawKey, err = key.asymDecryption.Decrypt(ciphertext)
 		if err != nil {
-			return nil, fmt.Errorf("error decrypting data: %w", err)
+			return nil, fmt.Errorf("%w: error decrypting data: %w", trust.ErrDecryptFailed, err)
 		}
 
 	case StandardKEMCrypto:
@@ -502,7 +502,7 @@ func (s *StandardCrypto) Decrypt(_ context.Context, keyID trust.KeyIdentifier, c
 
 		rawKey, err = key.decryptor.Decrypt(ciphertext)
 		if err != nil {
-			return nil, fmt.Errorf("failed to decrypt with %s: %w", key.Algorithm, err)
+			return nil, fmt.Errorf("%w: failed to decrypt with %s: %w", trust.ErrDecryptFailed, key.Algorithm, err)
 		}
 
 	default:

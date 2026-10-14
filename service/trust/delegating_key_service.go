@@ -21,6 +21,11 @@ var (
 	ErrKeyLookup = errors.New("key lookup failed")
 	// ErrKeyManagerUnavailable identifies failures constructing the manager that owns a resolved key.
 	ErrKeyManagerUnavailable = errors.New("key manager unavailable")
+	// ErrDecryptFailed identifies a wrapped key that could not be unwrapped with
+	// resolved key material, e.g. tampered or mismatched ciphertext. Key managers
+	// should wrap only the cryptographic step with it, not key loading or
+	// infrastructure failures, since callers treat it as possible tampering.
+	ErrDecryptFailed = errors.New("key unwrap failed")
 )
 
 type KeyManagerFactoryOptions struct {

@@ -82,6 +82,15 @@ func TestStandardCryptoDecrypt(t *testing.T) {
 	t.Run("missing key", func(t *testing.T) {
 		_, err := cryptoProvider.Decrypt(t.Context(), trust.KeyIdentifier("missing"), nil, nil)
 		require.Error(t, err)
+		require.NotErrorIs(t, err, trust.ErrDecryptFailed)
+	})
+
+	t.Run("corrupted rsa ciphertext is an unwrap failure", func(t *testing.T) {
+		_, err := cryptoProvider.Decrypt(t.Context(), trust.KeyIdentifier(material.rsaKid), []byte("not-a-wrapped-key"), nil)
+		require.ErrorIs(t, err, trust.ErrDecryptFailed)
+
+		_, err = cryptoProvider.RSADecrypt(0, material.rsaKid, "", []byte("not-a-wrapped-key"))
+		require.ErrorIs(t, err, trust.ErrDecryptFailed)
 	})
 
 	t.Run("rsa with ephemeral key", func(t *testing.T) {

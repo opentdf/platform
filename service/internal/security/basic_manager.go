@@ -89,7 +89,7 @@ func (b *BasicManager) Decrypt(ctx context.Context, keyDetails trust.KeyDetails,
 	case ocrypto.RSA2048Key, ocrypto.RSA4096Key:
 		plaintext, err := decrypter.Decrypt(ciphertext)
 		if err != nil {
-			return nil, fmt.Errorf("failed to decrypt with RSA: %w", err)
+			return nil, fmt.Errorf("%w: failed to decrypt with RSA: %w", trust.ErrDecryptFailed, err)
 		}
 		return ocrypto.NewAESProtectedKey(plaintext)
 	case ocrypto.EC256Key, ocrypto.EC384Key, ocrypto.EC521Key:
@@ -103,7 +103,7 @@ func (b *BasicManager) Decrypt(ctx context.Context, keyDetails trust.KeyDetails,
 		}
 		plaintext, err := ecDecryptor.DecryptWithEphemeralKey(ciphertext, ephemeralPublicKey)
 		if err != nil {
-			return nil, fmt.Errorf("failed to decrypt with ephemeral key: %w", err)
+			return nil, fmt.Errorf("%w: failed to decrypt with ephemeral key: %w", trust.ErrDecryptFailed, err)
 		}
 		return ocrypto.NewAESProtectedKey(plaintext)
 	}
@@ -120,7 +120,7 @@ func (b *BasicManager) Decrypt(ctx context.Context, keyDetails trust.KeyDetails,
 		}
 		plaintext, err := decrypter.Decrypt(ciphertext)
 		if err != nil {
-			return nil, fmt.Errorf("failed to decrypt with %s: %w", alg, err)
+			return nil, fmt.Errorf("%w: failed to decrypt with %s: %w", trust.ErrDecryptFailed, alg, err)
 		}
 		return ocrypto.NewAESProtectedKey(plaintext)
 	}

@@ -25,6 +25,12 @@ const (
 	VerbRewrap     Verb = "rewrap"
 )
 
+const (
+	rewrapReasonPolicyDenied = "policy_denied"
+	rewrapReasonError        = "rewrap_error"
+	rewrapReasonRejected     = "rewrap_rejected"
+)
+
 var logLevelNames = map[slog.Leveler]string{
 	LevelAudit: LevelAuditStr,
 }
@@ -134,7 +140,7 @@ func (a *Logger) RewrapSuccess(ctx context.Context, params RewrapAuditEventParam
 func (a *Logger) RewrapDenied(ctx context.Context, params RewrapAuditEventParams) error {
 	params.PolicyVerified = true
 	if params.FailureReason == "" {
-		params.FailureReason = "policy_denied"
+		params.FailureReason = rewrapReasonPolicyDenied
 	}
 	return a.Rewrap(ctx, ActionResultFailure, params)
 }
@@ -143,7 +149,7 @@ func (a *Logger) RewrapDenied(ctx context.Context, params RewrapAuditEventParams
 func (a *Logger) RewrapFailure(ctx context.Context, params RewrapAuditEventParams) error {
 	params.PolicyVerified = true
 	if params.FailureReason == "" {
-		params.FailureReason = "rewrap_error"
+		params.FailureReason = rewrapReasonError
 	}
 	return a.Rewrap(ctx, ActionResultError, params)
 }
@@ -156,11 +162,11 @@ func (a *Logger) Rewrap(ctx context.Context, result ActionResult, params RewrapA
 	case ActionResultSuccess:
 	case ActionResultFailure:
 		if params.FailureReason == "" {
-			params.FailureReason = "rewrap_rejected"
+			params.FailureReason = rewrapReasonRejected
 		}
 	case ActionResultError:
 		if params.FailureReason == "" {
-			params.FailureReason = "rewrap_error"
+			params.FailureReason = rewrapReasonError
 		}
 	case ActionResultEncrypt,
 		ActionResultBlock,

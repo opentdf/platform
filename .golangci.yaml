@@ -153,6 +153,9 @@ linters:
         rules:
           json: snake
           mapstructure: snake
+    usetesting:
+      context-background: true
+      context-todo: true
   exclusions:
     generated: lax
     presets:

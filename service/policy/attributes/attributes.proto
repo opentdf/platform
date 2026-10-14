@@ -431,9 +431,11 @@ message GetKeyMappingsByFqnsResponse {
    the subject mappings needed to resolve entitlements. Hierarchy definitions
    additionally carry their ordered values with subject mappings, for hierarchy
    rule propagation. It does not return KAS keys, grants, resource mappings,
-   obligations, or metadata. A value that does not exist under a definition with
-   allow_traversal is returned with its definition and an empty value identity (no
-   value_id, no subject mappings).
+   obligations, or metadata. Missing policy values retain their active parent
+   definition with an empty value identity. Persisted inactive values retain
+   their identity and inactive state. Unknown or inactive parents are omitted.
+   Dynamic mappings are scoped to the returned definitions. The PDP decides
+   whether the returned policy entitles the request.
 */
 message GetEntitleableAttributesByFqnsRequest {
   // Required
@@ -452,6 +454,8 @@ message GetEntitleableAttributesByFqnsResponse {
     string value_id = 2;
     // subject mappings used to resolve entitlements for this value
     repeated policy.SubjectMapping subject_mappings = 3;
+    // Present for persisted values. Missing policy values have no active state.
+    google.protobuf.BoolValue active = 4;
   }
   // An attribute definition referenced by one or more requested value FQNs,
   // returned once regardless of how many of its values were requested.
@@ -467,6 +471,8 @@ message GetEntitleableAttributesByFqnsResponse {
     // namespaced-policy decisioning and registered-resource matching. Only the
     // identity is populated; grants, keys, and metadata are not.
     policy.Namespace namespace = 3;
+    // Dynamic mappings for this definition, for evaluation by the PDP.
+    repeated policy.DynamicValueMapping dynamic_value_mappings = 4;
   }
   message EntitleableAttribute {
     // the FQN of the parent definition, a key into `definitions`
@@ -609,7 +615,7 @@ service AttributesService {
     option idempotency_level = NO_SIDE_EFFECTS;
   }
   // Returns only entitlement-relevant information (rule, value identity, ordered
-  // definition values, and subject mappings) for the requested attribute value
+  // definition values, subject mappings, and dynamic mappings) for the requested attribute value
   // FQNs, for server-side decisioning / entitlement resolution.
   rpc GetEntitleableAttributesByFqns(GetEntitleableAttributesByFqnsRequest) returns (GetEntitleableAttributesByFqnsResponse) {
     option idempotency_level = NO_SIDE_EFFECTS;

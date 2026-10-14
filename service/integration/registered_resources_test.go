@@ -32,7 +32,7 @@ type RegisteredResourcesSuite struct {
 
 func (s *RegisteredResourcesSuite) SetupSuite() {
 	slog.Info("setting up db.RegisteredResources test suite")
-	s.ctx = context.Background()
+	s.ctx = s.T().Context()
 	c := *Config
 	c.DB.Schema = "test_opentdf_registered_resources"
 	s.db = fixtures.NewDBInterface(s.ctx, c)

@@ -56,7 +56,7 @@ func (s *ResolverSuite) TestRegistry_RegisterAndGet() {
 	s.NotNil(resolver)
 
 	// Verify the resolver is the same by calling it
-	_, _ = resolver(context.Background(), nil)
+	_, _ = resolver(s.T().Context(), nil)
 	s.True(called)
 }
 
@@ -354,8 +354,8 @@ func (s *ResolverSuite) TestScoped_MultipleServicesIsolation() {
 	s.NotNil(rB)
 
 	// Verify they're distinct resolvers
-	ctxA, _ := rA(context.Background(), nil)
-	ctxB, _ := rB(context.Background(), nil)
+	ctxA, _ := rA(s.T().Context(), nil)
+	ctxB, _ := rB(s.T().Context(), nil)
 
 	s.Equal("A", (*ctxA.Resources[0])["service"])
 	s.Equal("B", (*ctxB.Resources[0])["service"])
@@ -488,12 +488,12 @@ func (s *ResolverSuite) TestFullWorkflow_ServiceRegistration() {
 	s.False(ok)
 
 	// Verify resolver execution
-	createCtx, err := createResolver(context.Background(), nil)
+	createCtx, err := createResolver(s.T().Context(), nil)
 	s.Require().NoError(err)
 	s.Len(createCtx.Resources, 1)
 	s.Equal("create", (*createCtx.Resources[0])["action"])
 
-	getCtx, err := getResolver(context.Background(), nil)
+	getCtx, err := getResolver(s.T().Context(), nil)
 	s.Require().NoError(err)
 	s.Len(getCtx.Resources, 1)
 	s.Equal("read", (*getCtx.Resources[0])["action"])

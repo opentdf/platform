@@ -1984,6 +1984,40 @@ func (s *TDFSuite) Test_ValidateSchema() {
 			err:    ErrInvalidPerSchema,
 			failOn: Strict,
 		},
+		{
+			// tdf_spec_version at the manifest root is a deprecated name for
+			// schemaVersion that archival TDFs carry; the reader accepts it.
+			// Neither bundled schema declares it there, but neither sets
+			// additionalProperties either, so every intensity accepts it too.
+			// Pinned so that adding additionalProperties cannot quietly put
+			// schema validation at odds with the reader.
+			n: "deprecated root spec version name",
+			changer: func(_ *testing.T, dst io.Writer, f *zip.File) error {
+				rc, err := f.Open()
+				if err != nil {
+					return err
+				}
+
+				if f.Name != "0.manifest.json" {
+					_, err = io.Copy(dst, rc)
+					return err
+				}
+				// Read file from json as a map
+				var data map[string]interface{}
+				err = json.NewDecoder(rc).Decode(&data)
+				if err != nil {
+					return err
+				}
+
+				delete(data, "schemaVersion")
+				data["tdf_spec_version"] = TDFSpecVersion
+
+				err = json.NewEncoder(dst).Encode(data)
+				return err
+			},
+			err:    nil,
+			failOn: unreasonable,
+		},
 	} {
 		s.Run(test.n, func() {
 			// create .txt file
@@ -2871,7 +2905,7 @@ func (s *TDFSuite) Test_LargeManifest_WithMaxManifest() {
 		tdfBuffer := new(bytes.Buffer)
 		writer := zipstream.NewSegmentTDFWriter(1, zipstream.WithZip64Mode(zipstream.Zip64Auto))
 
-		segmentHeader, err := writer.WriteSegment(context.Background(), 0, uint64(len(payload)), crc32.ChecksumIEEE(payload))
+		segmentHeader, err := writer.WriteSegment(s.T().Context(), 0, uint64(len(payload)), crc32.ChecksumIEEE(payload))
 		s.Require().NoError(err)
 		if len(segmentHeader) > 0 {
 			_, err = tdfBuffer.Write(segmentHeader)
@@ -2880,7 +2914,7 @@ func (s *TDFSuite) Test_LargeManifest_WithMaxManifest() {
 		_, err = tdfBuffer.Write(payload)
 		s.Require().NoError(err)
 
-		finalBytes, err := writer.Finalize(context.Background(), manifest)
+		finalBytes, err := writer.Finalize(s.T().Context(), manifest)
 		s.Require().NoError(err)
 		_, err = tdfBuffer.Write(finalBytes)
 		s.Require().NoError(err)
@@ -2901,6 +2935,16 @@ func (s *TDFSuite) Test_LargeManifest_WithMaxManifest() {
 	_, err = s.sdk.LoadTDF(tdfAbove, WithMaxManifestSize(maxManifestSize))
 	s.Require().Error(err, "Manifest above max size should fail to load")
 	s.Require().ErrorContains(err, "size too large")
+
+	// Case 3: no default cap. A manifest past the former 10 MB default loads
+	// with default options; large payloads need it (DSPX-4502).
+	manifestHuge := createLargeManifest(11 * 1024 * 1024)
+	_, err = s.sdk.LoadTDF(createTestTDF(manifestHuge, []byte("payload")))
+	s.Require().NoError(err, "Manifest above 10 MB should load with no explicit limit")
+
+	// Case 4: an explicit limit has to be positive.
+	_, err = s.sdk.LoadTDF(createTestTDF(manifestBelow, []byte("payload")), WithMaxManifestSize(0))
+	s.Require().Error(err)
 }
 
 // create tdf
@@ -2964,7 +3008,7 @@ func (s *TDFSuite) testDecryptWithReader(sdk *SDK, tdfFile, decryptedTdfFileName
 	r, err := sdk.LoadTDF(readSeeker, test.opts...)
 	s.Require().NoError(err)
 
-	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(300*time.Minute))
+	ctx, cancel := context.WithDeadline(s.T().Context(), time.Now().Add(300*time.Minute))
 	defer cancel()
 	err = r.Init(ctx)
 	s.Require().NoError(err)

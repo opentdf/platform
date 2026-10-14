@@ -823,14 +823,22 @@ func (c PolicyDBClient) RotateKey(ctx context.Context, activeKey *policy.KasKey,
 		},
 	}
 
-	rotatedOutKey, err := c.updateKeyInternal(ctx, updateKeyParams{
-		ID:        activeKey.GetKey().GetId(),
-		KeyStatus: pgtypeInt4(int32(policy.KeyStatus_KEY_STATUS_ROTATED), true),
+	count, err := c.queries.rotateActiveKey(ctx, rotateActiveKeyParams{
+		ID:            activeKey.GetKey().GetId(),
+		ActiveStatus:  int32(policy.KeyStatus_KEY_STATUS_ACTIVE),
+		RotatedStatus: int32(policy.KeyStatus_KEY_STATUS_ROTATED),
 	})
+	if err != nil {
+		return nil, db.WrapIfKnownInvalidQueryErr(err)
+	}
+	if count == 0 {
+		return nil, db.ErrNotFound
+	}
+
+	rotatedOutKey, err := c.GetKey(ctx, &kasregistry.GetKeyRequest_Id{Id: activeKey.GetKey().GetId()})
 	if err != nil {
 		return nil, err
 	}
-
 	newKasKey, err := c.CreateKey(ctx, &kasregistry.CreateKeyRequest{
 		KasId:            activeKey.GetKasId(),
 		KeyId:            newKey.GetKeyId(),
@@ -1154,6 +1162,9 @@ func (c PolicyDBClient) rotateBaseKey(ctx context.Context, rotatedOutKeyID *poli
 	baseKey, err := c.GetBaseKey(ctx)
 	if err != nil {
 		return err
+	}
+	if baseKey.GetPublicKey().GetKid() == "" || baseKey.GetKasUri() == "" {
+		return nil
 	}
 	if baseKey.GetPublicKey().GetKid() == rotatedOutKeyID.GetKey().GetKeyId() && baseKey.GetKasUri() == rotatedOutKeyID.GetKasUri() {
 		_, err := c.SetBaseKey(ctx, &kasregistry.SetBaseKeyRequest{

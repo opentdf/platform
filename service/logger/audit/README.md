@@ -36,10 +36,14 @@ before any KAO can be processed produce one request-level event instead. The
 - `error`: KAS or a dependency could not complete the operation.
 
 Every non-success event includes `eventMetaData.failure_reason`. Rewrap metadata
-also includes `kao_id`, `policy_verified`, and `suspected_tamper` when applicable.
-Attributes from an unverified policy are never emitted as trusted object
-attributes. Downstream audit mappings must match denials as `failure` (not the
-legacy `error`) and may route tamper alerts using `suspected_tamper: true`.
+always includes `policy_verified` and `suspected_tamper`; KAO-level events also
+include `kao_id`. Attributes from an unverified policy are never emitted as
+trusted object attributes. Downstream audit mappings must match denials as
+`failure` (not the legacy `error`) and may route tamper alerts using
+`suspected_tamper: true`.
+
+See the [KAS rewrap audit outcomes](../../kas/access/REWRAP_AUDIT.md) reference
+for the processing flow and complete failure-reason taxonomy.
 
 ## Processing and delivery
 

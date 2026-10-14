@@ -387,28 +387,3 @@ func (f *flakySealer) Seal(data []byte) ([]byte, []byte, error) {
 	}
 	return header, ciphertext, err
 }
-
-// TestDerivedSegmentSizing pins the arithmetic that keeps the reachable
-// payload at targetPayloadCapacity as the seal ceiling moves. It is the whole
-// application-visible consequence of the RBG fallback, and it must hold
-// without a FIPS build to check it in.
-func TestDerivedSegmentSizing(t *testing.T) {
-	assert.GreaterOrEqual(t, defaultSegmentSize, int64(preferredSegmentSize))
-	assert.LessOrEqual(t, defaultSegmentSize, int64(maxSegmentSize))
-	assert.Positive(t, maxPayloadSegments)
-	assert.LessOrEqual(t, maxPayloadSegments, int64(math.MaxInt32))
-	assert.GreaterOrEqual(t, maxPayloadSegments*defaultSegmentSize, int64(targetPayloadCapacity),
-		"the default segment size must keep targetPayloadCapacity reachable")
-
-	// Both ceilings, checked against the derivation rather than against
-	// whichever one this build happens to use.
-	for _, maxSeals := range []uint32{math.MaxUint32, 1 << 26} {
-		segments := min(int64(maxSeals), int64(math.MaxInt32))
-		size := int64(preferredSegmentSize)
-		for size < maxSegmentSize && segments*size < targetPayloadCapacity {
-			size *= 2
-		}
-		assert.GreaterOrEqual(t, segments*size, int64(targetPayloadCapacity),
-			"max seals %d needs a segment size the cap does not allow", maxSeals)
-	}
-}

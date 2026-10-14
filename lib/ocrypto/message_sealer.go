@@ -20,16 +20,11 @@ const sealCounterSize = 4
 // 32-bit counter is subtracted, so the two fields exactly fill the IV.
 const fixedFieldSize = GcmStandardNonceSize - sealCounterSize
 
-// maxDeterministicSeals is the exclusive seal ceiling for the deterministic
-// construction. NIST SP 800-38D permits the full 2^32 values of a 32-bit
-// invocation field; we stop one short so the bound itself stays representable
-// as a uint32.
-const maxDeterministicSeals uint32 = 1<<32 - 1
-
-// maxRandomNonceSeals is the exclusive seal ceiling when IVs come from an RBG
-// instead. See MaxSeals for why it is so much smaller than
-// maxDeterministicSeals.
-const maxRandomNonceSeals uint32 = 1 << 26
+// maxSeals is the exclusive seal ceiling for one sealer, on both IV paths.
+// NIST SP 800-38D permits the full 2^32 values of a 32-bit invocation field;
+// we stop one short so the bound itself stays representable as a uint32. See
+// MaxSeals for why the random-IV fallback shares it.
+const maxSeals uint32 = 1<<32 - 1
 
 // probeKeySize is an AES-256 key length, used only for the capability probe.
 const probeKeySize = 32
@@ -67,23 +62,18 @@ var deterministicIVs = sync.OnceValue(func() bool {
 })
 
 // MaxSeals is the number of encryptions one AesGcmSealer may perform. Seal
-// enforces it, so callers only need it to size their own work -- see the SDK's
-// segment-count and segment-size ceilings.
+// enforces it, so callers only need it to size their own work.
 //
-// It is 2^32-1 with the deterministic construction, where non-repetition is a
-// property of the counter and NIST SP 800-38D 8.3's 2^32 limit on the
-// invocation field is the only bound.
-//
-// On the random-IV fallback it drops to 2^26. Uniqueness there is
-// probabilistic: over n random 96-bit IVs the chance of a collision is about
-// n^2/2^97, so 2^32 invocations sit at 2^-33 while 2^26 buys 2^-45 -- a 4096x
-// margin under NIST's approved ceiling, at the cost of a proportionally
-// smaller payload.
+// It is 2^32-1 on both IV paths. With the deterministic construction,
+// non-repetition is a property of the counter and NIST SP 800-38D 8.3's 2^32
+// limit on the invocation field is the only bound. On the random-IV fallback
+// uniqueness is probabilistic: over n random 96-bit IVs the chance of a
+// collision is about n^2/2^97, so 2^32-1 invocations sit at about 2^-33, inside
+// the 2^-32 that SP 800-38D 8 permits. Sharing the bound keeps FIPS 140-3 out of
+// every caller's sizing: the mode changes how an IV is chosen, never how many
+// encryptions a key allows.
 func MaxSeals() uint32 {
-	if deterministicIVs() {
-		return maxDeterministicSeals
-	}
-	return maxRandomNonceSeals
+	return maxSeals
 }
 
 // AesGcmSealer encrypts under one key, constructing each AES-GCM IV from a
@@ -131,14 +121,13 @@ type AesGcmSealer struct {
 // caller-supplied AES-GCM IVs, or where FIPS 140-3 is enabled and a
 // caller-supplied IV would make encryption a non-approved service, the sealer
 // falls back to random IVs. The fallback is total and internal -- same API,
-// same wire bytes, same call sites -- and surfaces only as the smaller
-// MaxSeals.
+// same wire bytes, same call sites, same MaxSeals.
 func NewAESGcmSealer(key []byte) (*AesGcmSealer, error) {
 	var fixed [fixedFieldSize]byte
 	if _, err := io.ReadFull(rand.Reader, fixed[:]); err != nil {
 		return nil, fmt.Errorf("reading IV fixed field: %w", err)
 	}
-	return newAESGcmSealer(key, fixed, !deterministicIVs(), MaxSeals())
+	return newAESGcmSealer(key, fixed, !deterministicIVs(), maxSeals)
 }
 
 // newAESGcmSealer is the injectable form of NewAESGcmSealer: tests pin the

@@ -181,21 +181,18 @@ var (
 	ErrChunkedSegmentAlreadyWritten = errors.New("chunked: segment already written")
 
 	// ErrChunkedSegmentIndexExhausted is returned when WriteSegment
-	// receives an index past [maxPayloadSegments], the number of
-	// segments one key may encrypt.
+	// receives an index past [maxPayloadSegments], the most segments
+	// the archive can address.
 	//
 	// Distinct from ErrChunkedInvalidSegmentIndex on purpose: a
 	// negative index is a bug in the caller, while this is a capacity
 	// limit the caller can act on, and the remedy is named in the
-	// message. It is reachable in normal use where the IV must come
-	// from an RBG -- 1 TiB at the minimum segment size -- because
-	// uniqueness is only probabilistic there and the ceiling drops to
-	// hold the collision probability down. See
-	// [ocrypto.MaxSeals].
+	// message. The key's own encryption limit is separate and is
+	// reported as [ErrAESGCMExhausted].
 	//
 	// Nothing was written and the writer is not fenced; the index
 	// never entered the segment table.
-	ErrChunkedSegmentIndexExhausted = errors.New("chunked: too many segments for one key; use a larger segment size")
+	ErrChunkedSegmentIndexExhausted = errors.New("chunked: segment index exceeds what the archive can address; use a larger segment size")
 
 	// ErrChunkedWriteInFlight is returned by Finalize when a
 	// WriteSegment has reserved an index but the archive has not yet
@@ -409,11 +406,6 @@ type chunkedWriterConfig struct {
 	// Defaults to a splitterKeyAccess over splitter.
 	keyAccess keyAccessResolver
 
-	// maxEncryptions caps the segment encryptions attempted under the
-	// DEK. Zero means maxAESGCMSegmentsPerDEK; tests set a small value
-	// to reach the cap without encrypting billions of segments.
-	maxEncryptions uint64
-
 	// rand is the entropy source used to generate the DEK. Defaults
 	// to crypto/rand.Reader.
 	rand io.Reader
@@ -515,14 +507,6 @@ type chunkedWriter struct {
 	// excludeVersion omits schemaVersion from the manifest unless a
 	// Finalize option overrides it.
 	excludeVersion bool
-
-	// encryptions counts the segment encryptions attempted under dek,
-	// including ones that later failed. Guarded by mu.
-	encryptions uint64
-
-	// maxEncryptions is the most segment encryptions this writer will
-	// attempt; see maxAESGCMSegmentsPerDEK.
-	maxEncryptions uint64
 
 	// unusable is non-nil once the archive has been left in a state no
 	// later call can recover from: its Finalize failed partway through
@@ -633,15 +617,10 @@ func newChunkedWriter(cfg chunkedWriterConfig) (*chunkedWriter, error) {
 	if keyAccess == nil {
 		keyAccess = splitterKeyAccess{splitter: cfg.splitter}
 	}
-	maxEncryptions := cfg.maxEncryptions
-	if maxEncryptions == 0 {
-		maxEncryptions = maxAESGCMSegmentsPerDEK
-	}
 	return &chunkedWriter{
 		archiveWriter:     cfg.archiveFactory(cfg.clock),
 		dek:               dek,
 		excludeVersion:    cfg.excludeVersion,
-		maxEncryptions:    maxEncryptions,
 		initialAttributes: cfg.initialAttributes,
 		initialDefaultKAS: cfg.initialDefaultKAS,
 		keyAccess:         keyAccess,
@@ -801,14 +780,6 @@ func (w *chunkedWriter) WriteSegment(ctx context.Context, index int, data []byte
 		w.mu.Unlock()
 		return nil, ErrChunkedSegmentAlreadyWritten
 	}
-	// Every attempt below encrypts under a fresh random IV, so it is counted
-	// here, before encrypting, and is not given back if the write fails.
-	if w.encryptions >= w.maxEncryptions {
-		w.mu.Unlock()
-		return nil, fmt.Errorf("%w: segment %d: %d segment encryptions already attempted, limit is %d",
-			ErrAESGCMExhausted, index, w.encryptions, w.maxEncryptions)
-	}
-	w.encryptions++
 	// Reserve the index so a concurrent write to the same one is
 	// rejected, but leave the slot unwritten: the segment does not
 	// count as written until its bytes are in the archive.
@@ -883,9 +854,13 @@ func (w *chunkedWriter) WriteSegment(ctx context.Context, index int, data []byte
 	// Every call takes the next counter value, so a retry of a failed index is
 	// sealed under a fresh IV and never repeats one -- whatever this function's
 	// error handling does. It is not free: the value is spent whether or not
-	// the archive goes on to accept the segment, and on the RBG fallback that
-	// counter is the key's encryption budget.
+	// the archive goes on to accept the segment. The sealer's counter is the
+	// key's only encryption budget, on the RBG fallback as well, and running
+	// it out is reported as ErrAESGCMExhausted.
 	header, ciphertext, err := w.stream.Seal(data)
+	if errors.Is(err, ocrypto.ErrSealerExhausted) {
+		return nil, fmt.Errorf("%w: segment %d: %w", ErrAESGCMExhausted, index, err)
+	}
 	if err != nil {
 		return nil, fmt.Errorf("encrypt segment %d: %w", index, err)
 	}

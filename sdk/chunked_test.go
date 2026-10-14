@@ -18,6 +18,7 @@ import (
 	"net/http/httptest"
 	"slices"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -2632,21 +2633,21 @@ func TestChunkedGetManifestDoesNotBlockWriteSegment(t *testing.T) {
 	assert.Len(t, later.Segments, 2)
 }
 
-// TestChunkedAESGCMExhausted checks the writer refuses, before
-// encrypting, the segment that would take it past its per-DEK AES-GCM
-// encryption cap, and that the refusal matches ErrAESGCMExhausted.
+// TestChunkedAESGCMExhausted checks the writer reports a DEK sealer that
+// has run out of encryptions as ErrAESGCMExhausted, that the refused
+// segment is never encrypted, and that the refusal leaves the writer
+// usable.
 func TestChunkedAESGCMExhausted(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	encrypts := 0
 	writer, _ := newChunkedWriterForTest(ctx, t,
-		withChunkedMaxEncryptions(2),
-		withChunkedSealerFactory(func(dek []byte) (segmentSealer, error) {
+		withChunkedSealerFactory(limitedSealerFactory(2, func(dek []byte) (segmentSealer, error) {
 			inner, err := defaultSegmentSealerFactory(dek)
 			if err != nil {
 				return nil, err
 			}
 			return countingSealer{inner: inner, count: &encrypts}, nil
-		}),
+		})),
 	)
 
 	for i := range 2 {
@@ -2655,6 +2656,7 @@ func TestChunkedAESGCMExhausted(t *testing.T) {
 	}
 	_, err := writer.WriteSegment(ctx, 2, []byte("too many"))
 	require.ErrorIs(t, err, ErrAESGCMExhausted)
+	require.ErrorIs(t, err, ocrypto.ErrSealerExhausted)
 	assert.Equal(t, 2, encrypts, "the refused segment must not be encrypted")
 
 	// The refusal does not wedge the index or the writer: what was
@@ -2665,15 +2667,14 @@ func TestChunkedAESGCMExhausted(t *testing.T) {
 }
 
 // TestChunkedAESGCMExhaustedCountsAttempts checks a failed encryption
-// still spends from the cap. The attempt drew an IV, so a retry must
-// not get it back.
+// still spends from the sealer's budget. The attempt drew an IV, so a
+// retry must not get it back.
 func TestChunkedAESGCMExhaustedCountsAttempts(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	writer, _ := newChunkedWriterForTest(ctx, t,
-		withChunkedMaxEncryptions(1),
-		withChunkedSealerFactory(func([]byte) (segmentSealer, error) {
+		withChunkedSealerFactory(limitedSealerFactory(1, func([]byte) (segmentSealer, error) {
 			return failingSealer{}, nil
-		}),
+		})),
 	)
 
 	_, err := writer.WriteSegment(ctx, 0, []byte("doomed"))
@@ -2682,18 +2683,14 @@ func TestChunkedAESGCMExhaustedCountsAttempts(t *testing.T) {
 	require.ErrorIs(t, err, ErrAESGCMExhausted)
 }
 
-// TestChunkedDefaultMaxEncryptions pins the default cap: 2^32 - 1
-// payload segments per DEK, keeping the random-IV collision chance
-// under the NIST SP 800-38D 2^-32 ceiling.
-func TestChunkedDefaultMaxEncryptions(t *testing.T) {
-	ctx := context.Background()
-	writer, _ := newChunkedWriterForTest(ctx, t)
-	inner, ok := writer.(*chunkedWriter)
-	require.True(t, ok)
-	assert.Equal(t, uint64(1<<32-1), inner.maxEncryptions)
-
-	_, err := NewChunkedWriter(ctx, withChunkedMaxEncryptions(0))
-	require.Error(t, err)
+// TestChunkedDefaultSealerBudget pins the default budget: the writer's
+// sealer allows 2^32 - 1 encryptions under the DEK in every mode, so the
+// FIPS 140-3 fallback changes how IVs are chosen, not how many segments
+// a TDF may hold.
+func TestChunkedDefaultSealerBudget(t *testing.T) {
+	assert.Equal(t, uint32(1<<32-1), ocrypto.MaxSeals())
+	assert.Less(t, int64(maxPayloadSegments), int64(ocrypto.MaxSeals()),
+		"a declared size must be refused before its key could run out")
 }
 
 // countingSealer counts the encryptions it performs.
@@ -2705,4 +2702,31 @@ type countingSealer struct {
 func (c countingSealer) Seal(data []byte) ([]byte, []byte, error) {
 	*c.count++
 	return c.inner.Seal(data)
+}
+
+// limitedSealerFactory wraps next so its sealer refuses every call past
+// the first n with ocrypto.ErrSealerExhausted, before reaching the inner
+// sealer -- the contract of ocrypto.AesGcmSealer, at a limit a test can
+// reach. Refused calls still count.
+func limitedSealerFactory(n uint64, next segmentSealerFactory) segmentSealerFactory {
+	return func(dek []byte) (segmentSealer, error) {
+		inner, err := next(dek)
+		if err != nil {
+			return nil, err
+		}
+		return &limitedSealer{inner: inner, limit: n}, nil
+	}
+}
+
+type limitedSealer struct {
+	inner segmentSealer
+	limit uint64
+	used  atomic.Uint64
+}
+
+func (l *limitedSealer) Seal(data []byte) ([]byte, []byte, error) {
+	if l.used.Add(1) > l.limit {
+		return nil, nil, fmt.Errorf("%w: limit is %d", ocrypto.ErrSealerExhausted, l.limit)
+	}
+	return l.inner.Seal(data)
 }

@@ -1,7 +1,7 @@
 ---
 # Required
 status: 'proposed'
-date: '2026-09-29'
+date: '2026-10-14'
 tags:
  - sdk
  - ocrypto
@@ -27,8 +27,10 @@ collision probability is about `n²/2^97`.
 The parent epic (DSPX-4502, *Large File TDF Security and Support*) targets
 50 TiB payloads. A 50 TiB file at the 16 KiB minimum segment size needs 2^31.6
 segments and lands at `P ≈ 2^-33.7`, essentially *on* NIST's approved ceiling
-with no margin. A stream whose length cannot be measured has no segment
-ceiling at all today (DSPX-4905).
+with no margin. #4203 (DSPX-4492) added the hard stop: a writer refuses, with
+`ErrAESGCMExhausted`, to encrypt more than 2^32-1 segments under one DEK,
+counting attempts, on every write path including streams of unknown length. That
+keeps random IVs at or under `P ≈ 2^-33`, but uniqueness is still a probability.
 
 An IV collision under a reused key is not graceful degradation: the two
 ciphertexts XOR to the XOR of their plaintexts, **and** the GHASH subkey
@@ -65,7 +67,8 @@ Go will not let us construct it that way**.
 **FIPS strategy**
 
 * Hard error where a caller-supplied IV is unavailable
-* Detect policy, fall back to random IVs, and reduce the seal cap
+* Detect policy, fall back to random IVs, and keep the seal cap
+* Detect policy, fall back to random IVs, and reduce the seal cap to 2^26
 * Probe `cipher.NewGCM` only, and fall back on failure
 * `fips140.WithoutEnforcement`
 * Require Go 1.26 and branch on `fips140.Enforced()`
@@ -79,12 +82,16 @@ every `Seal` takes the next counter value. The writer holds one sealer for the
 DEK, and each key access object's metadata is sealed by a throwaway sealer of
 its own.
 
-Chosen: **detect policy, fall back to random IVs, and reduce the seal cap**.
+Chosen: **detect policy, fall back to random IVs, and keep the seal cap**.
 `ocrypto` checks `fips140.Enabled()` first and probes `cipher.NewGCM` second,
 behind a `sync.OnceValue`. The fallback is total and internal — same API, same
-wire bytes, same call sites — and surfaces only as a smaller `MaxSeals()`, from
-which the SDK derives its segment sizing. On that path the same counter is the
-key's encryption budget.
+wire bytes, same call sites, and the same `MaxSeals()` of 2^32-1 that #4203
+already enforced on random IVs. On that path the counter no longer builds the
+IV but is still the key's encryption budget, so the writer has one counter and
+one error: `ocrypto.ErrSealerExhausted`, reported as `ErrAESGCMExhausted`.
+
+The cross-SDK record is virtru-corp/adr#368, which asks for a 2^26 cap in FIPS
+mode; the Go supplement (virtru-corp/adr#373) records why Go keeps 2^32-1.
 
 ### Consequences
 
@@ -110,13 +117,15 @@ key's encryption budget.
   between them.
 * 🟥 **Bad**, because the IV no longer says which segment it encrypts:
   concurrent writers take counters in arrival order.
-* 🟥 **Bad**, because a retried or discarded seal spends a counter value, so a
-  payload at exactly `maxPayloadSegments` segments has no headroom for
-  retries. `ErrSealerExhausted` is the backstop.
-* 🟥 **Bad**, because under FIPS 140-3 the SDK behaves measurably differently:
-  `MaxSeals()` drops from 2^32-1 to 2^26 and the default segment size grows
-  from 2 MiB to 4 MiB. That difference is deliberate and is the only
-  application-visible one.
+* 🟥 **Bad**, because a retried or discarded seal spends a counter value, so
+  the exhaustion bound depends on failure history.
+* 🟩 **Good**, because FIPS 140-3 changes nothing an application can see: the
+  cap, the default segment size and the exhaustion error are the same in every
+  mode, and are what #4203 shipped.
+* 🟥 **Bad**, because under FIPS 140-3 uniqueness is still probabilistic, and a
+  writer that reaches the cap sits at `P ≈ 2^-33` — inside SP 800-38D's
+  2^-32, but with a 2× margin rather than the 4096× a 2^26 cap would give. At
+  the 2 MiB default a 50 TiB payload is `P ≈ 2^-47.7`.
 * 🟥 **Bad**, because in non-FIPS builds Go's module indicator now records
   segment encryption as a **non-approved service**: `GCM.Seal` calls
   `fips140.RecordNonApproved()` where `SealWithRandomNonce` calls
@@ -137,8 +146,10 @@ key's encryption budget.
   and concurrent writes take distinct counters under one fixed field, a
   retried segment takes a fresh IV, metadata is sealed by its own sealer (in
   both the chunked writer and `CreateTDF`), metadata may change between
-  manifest builds, the segment-index ceiling, and the derived segment sizing
-  for *both* values `MaxSeals()` can take.
+  manifest builds, and the segment-index ceiling. `sdk/chunked_test.go` and
+  `sdk/tdf_test.go` check that an exhausted sealer surfaces as
+  `ErrAESGCMExhausted`, is refused before encrypting, counts failed attempts,
+  and stops `CreateTDF` for known- and unknown-length input.
 * The SDK suite passes under `GODEBUG=fips140=on`, which is the claim that the
   fallback is invisible above `ocrypto`. Tests that assert header *bytes* probe
   for the mode and skip or relax to a uniqueness check.
@@ -199,17 +210,29 @@ This is also web-sdk's `GcmIvCounter.next()`.
 * 🟥 **Bad**, because enabling FIPS would break every writer, which is the
   opposite of the "no changes outside `ocrypto`" driver.
 
-#### Detect policy, fall back, reduce the cap (chosen)
+#### Detect policy, fall back, keep the cap (chosen)
 
 * 🟩 **Good**, because it catches `fips140=on`, where `cipher.NewGCM` succeeds
   but the resulting `Seal` is non-approved.
 * 🟩 **Good**, because it needs only `fips140.Enabled()` (Go 1.24), and the
   probe covers `fips140=only` and anything not yet anticipated.
-* 🟩 **Good**, because the consequence reaches applications through one
-  number, `MaxSeals()`, from which the segment sizing is derived.
+* 🟩 **Good**, because no application can tell the modes apart: one
+  `MaxSeals()`, one default segment size, one error.
 * 🟩 **Good**, because the counter that builds IVs on one path is the budget on
   the other, so both paths share one exhaustion rule and one error.
 * 🟥 **Bad**, because it keeps two code paths in `Seal` forever.
+* 🟥 **Bad**, because the fallback's worst case is `P ≈ 2^-33`, at NIST's
+  ceiling rather than well under it.
+
+#### Detect policy, fall back, reduce the cap to 2^26
+
+This was the first version of both #4118 and this design, written before #4203.
+
+* 🟩 **Good**, because `P ≈ 2^-45` at the cap, a 4096× margin.
+* 🟥 **Bad**, because it needs a derived default segment size (4 MiB under
+  FIPS) to keep large payloads reachable, making FIPS visible to applications.
+* 🟥 **Bad**, because it shrinks what FIPS builds could already write once #4203
+  shipped: from about 8 PiB to 128 TiB at 2 MiB segments.
 
 #### Probe `cipher.NewGCM` only
 
@@ -235,11 +258,10 @@ This is also web-sdk's `GcmIvCounter.next()`.
 
 * NIST SP 800-38D §8.2.1 (deterministic construction), §8.2.2 (RBG-based),
   §8.3 (invocation limits).
-* Cap selection. On the fallback `MaxSeals()` is 2^26, six bits under NIST's
-  approved 2^32 ceiling — a 4096× margin on collision probability,
-  `P ≈ 2^-45` — which still reaches 256 TiB at the 4 MiB maximum segment size,
-  5× the epic's 50 TiB target. 2^24 (`P ≈ 2^-49`) would reach only 64 TiB and
-  was rejected as too tight.
+* Cap selection. `MaxSeals()` is 2^32-1 in every mode: the 32-bit invocation
+  field's limit for the counter, and `P ≈ 2^-33` for random IVs, inside
+  SP 800-38D §8's 2^-32. A caller that wants more margin under FIPS can choose a
+  larger segment size; halving the segment count quarters `P`.
 * Go's own approved deterministic GCM,
   `crypto/internal/fips140/aes/gcm.NewGCMWithCounterNonce` (FIPS 140-3 IG C.H
   Scenario 3), is unexported and uses a 32-bit prefix with a 64-bit
@@ -252,6 +274,6 @@ This is also web-sdk's `GcmIvCounter.next()`.
   in the public API.
 * Peer tickets: DSPX-4493 (this work), DSPX-4495 (java-sdk), DSPX-4496
   (web-sdk, merged; `lib/tdf3/src/ciphers/gcm-iv-counter.ts`). The FIPS
-  fallback and its 2^26 cap are **Go-specific and should not be mirrored**.
-  DSPX-4492 owns risk quantification for the existing construction; DSPX-4905
-  owns the unmeasurable-stream segment ceiling.
+  fallback is **Go-specific and should not be mirrored**. DSPX-4492 owns risk
+  quantification and the `ErrAESGCMExhausted` stop (#4203); DSPX-4905 owns the
+  rest of the unmeasurable-stream work.

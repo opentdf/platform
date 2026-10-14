@@ -54,39 +54,18 @@ const (
 	kAssertionHash         = "assertionHash"
 	hexSemverThreshold     = "4.3.0"
 
-	// maxAESGCMSegmentsPerDEK is the most payload segment encryptions a writer
-	// attempts under one DEK before failing with ErrAESGCMExhausted.
+	// maxPayloadSegments caps the segment count a declared input size may imply.
+	// The archive writer counts segments with an int, so the count has to fit one
+	// on every platform the SDK builds for. A payload that needs more segments than
+	// this — 4 PiB at the default segment size — is beyond what CreateTDF can write
+	// anyway, and is better refused than silently mis-sized.
 	//
-	// Segment IVs are random 96 bits, so k encryptions collide with probability
-	// about k^2 / 2^97. NIST SP 800-38D §8 caps that at 2^-32, so k must stay at
-	// or below about 2^32.5. This uses 2^32 - 1: invocation 0 under the key is
-	// set aside for key access metadata, leaving 2^32 - 1 for the payload, which
-	// is also the limit of a 32-bit invocation counter. Attempts are counted, not
-	// successes, because a failed write has still used an IV.
-	maxAESGCMSegmentsPerDEK uint64 = 1<<32 - 1
+	// It is smaller than [ocrypto.MaxSeals], so a payload whose length resolves is
+	// refused here before its key could run out of encryptions. A stream that can
+	// be measured neither way is read to EOF and bounded only by the DEK's sealer,
+	// which fails with [ErrAESGCMExhausted]; DSPX-4905 tracks the rest.
+	maxPayloadSegments = math.MaxInt32
 )
-
-// maxPayloadSegments caps the segment count a declared input size may imply.
-// The archive writer counts segments with an int, so the count has to fit one
-// on every platform the SDK builds for, and every segment spends one seal of
-// the DEK's sealer, so this is the smaller of those two ceilings and
-// [ocrypto.MaxSeals].
-//
-// It is therefore not a constant. Under FIPS 140-3 the IV must come from an
-// RBG, which makes uniqueness probabilistic rather than structural, and
-// MaxSeals drops far enough to bind here; [defaultSegmentSize] grows to
-// compensate. A payload needing more segments than this is better refused than
-// silently mis-sized.
-//
-// It counts segments, not seals: a retried segment spends a second seal, so a
-// payload at exactly this many segments has no headroom for retries, and the
-// sealer's own ceiling ([ocrypto.ErrSealerExhausted]) is the backstop.
-//
-// This bounds only a payload whose length resolves, declared through
-// [WithInputSize] or recovered from a seekable reader. A stream that can be
-// measured neither way is read to EOF with no segment ceiling; DSPX-4905 tracks
-// giving it one.
-var maxPayloadSegments = min(int64(ocrypto.MaxSeals()), int64(math.MaxInt32))
 
 // Loads and reads ZTDF files
 type Reader struct {
@@ -367,6 +346,10 @@ func (s SDK) newTDFChunkedWriter(ctx context.Context, tdfConfig *TDFConfig, zipM
 		return nil, fmt.Errorf("fail to create a new split key: %w", err)
 	}
 
+	sealerFactory := tdfConfig.sealerFactory
+	if sealerFactory == nil {
+		sealerFactory = defaultSegmentSealerFactory
+	}
 	return newChunkedWriter(chunkedWriterConfig{
 		archiveFactory: func(c clock) zipstream.SegmentWriter {
 			archiveOpts := []zipstream.Option{
@@ -380,14 +363,13 @@ func (s SDK) newTDFChunkedWriter(ctx context.Context, tdfConfig *TDFConfig, zipM
 		},
 		clock:         systemClock{},
 		dek:           dek,
-		sealerFactory: defaultSegmentSealerFactory,
+		sealerFactory: sealerFactory,
 		// Set together, at construction, because they have to be: hex-then-base64
 		// signatures are written during WriteSegment, long before any Finalize
 		// option is seen, and a manifest carrying one setting without the other
 		// cannot be verified by any reader. TDFConfig sets its two the same way.
 		excludeVersion: tdfConfig.excludeVersionFromManifest,
 		keyAccess:      staticKeyAccess{kaos: kaos, policy: base64Policy},
-		maxEncryptions: tdfConfig.maxSegmentEncryptions,
 		segmentSize:    tdfConfig.defaultSegmentSize,
 		useHex:         tdfConfig.useHex,
 	})

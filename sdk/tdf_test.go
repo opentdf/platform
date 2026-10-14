@@ -1744,14 +1744,14 @@ func (s *TDFSuite) Test_CreateTDF_InputSizeBounds() {
 		payload := bytes.Repeat([]byte("e"), 3*minSegmentSize)
 		reader := nonSeekableReader{bytes.NewReader(payload)}
 		_, err := s.sdk.CreateTDF(&bytes.Buffer{}, reader,
-			append(opts, WithSegmentSize(minSegmentSize), withMaxSegmentEncryptions(2))...)
+			append(opts, WithSegmentSize(minSegmentSize), withSegmentSealerFactory(limitedSealerFactory(2, defaultSegmentSealerFactory)))...)
 		s.Require().ErrorIs(err, ErrAESGCMExhausted)
 	})
 
 	s.Run("AES-GCM exhaustion stops a payload of known length", func() {
 		payload := bytes.Repeat([]byte("f"), 3*minSegmentSize)
 		_, err := s.sdk.CreateTDF(&bytes.Buffer{}, bytes.NewReader(payload),
-			append(opts, WithSegmentSize(minSegmentSize), withMaxSegmentEncryptions(2))...)
+			append(opts, WithSegmentSize(minSegmentSize), withSegmentSealerFactory(limitedSealerFactory(2, defaultSegmentSealerFactory)))...)
 		s.Require().ErrorIs(err, ErrAESGCMExhausted)
 	})
 
@@ -1759,7 +1759,7 @@ func (s *TDFSuite) Test_CreateTDF_InputSizeBounds() {
 		payload := bytes.Repeat([]byte("g"), 2*minSegmentSize)
 		var tdf bytes.Buffer
 		_, err := s.sdk.CreateTDF(&tdf, nonSeekableReader{bytes.NewReader(payload)},
-			append(opts, WithSegmentSize(minSegmentSize), withMaxSegmentEncryptions(2))...)
+			append(opts, WithSegmentSize(minSegmentSize), withSegmentSealerFactory(limitedSealerFactory(2, defaultSegmentSealerFactory)))...)
 		s.Require().NoError(err)
 
 		r, err := s.sdk.LoadTDF(bytes.NewReader(tdf.Bytes()), readOpts...)
@@ -1826,8 +1826,8 @@ func Test_SegmentCount(t *testing.T) {
 		{inputSize: 3 * segmentSize, segmentSize: segmentSize, expected: 3},
 		// inputSize + segmentSize - 1 wraps negative here, so the textbook ceiling
 		// division would report a negative count. The segment size is large
-		// enough that the resulting count stays under maxPayloadSegments in
-		// both IV modes -- the overflow is what this row is for, and hitting
+		// enough that the resulting count stays under maxPayloadSegments --
+		// the overflow is what this row is for, and hitting
 		// the ceiling instead is Test_SegmentCountTooManySegments's job.
 		{inputSize: math.MaxInt64, segmentSize: 1 << 38, expected: 1 << 25},
 	} {

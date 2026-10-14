@@ -19,14 +19,17 @@ var (
 	errTooManySegments = errors.New("tdf: input size needs more segments than the archive can address")
 
 	// ErrAESGCMExhausted is returned by a TDF writer that refuses to encrypt
-	// another segment under its data encryption key (DEK). Payload segment IVs
-	// are random 96-bit values, so the chance that any two collide grows with
-	// the square of the segment count (about k^2 / 2^97 for k segments). NIST SP
-	// 800-38D §8 limits that probability to 2^-32 per key, which is reached near
-	// 2^32 encryptions; see maxAESGCMSegmentsPerDEK. A collision would expose the
-	// XOR of two plaintexts and allow forgery under the DEK, so the writer fails
-	// rather than continue. Start a new TDF, which draws a new DEK, or use a
-	// larger segment size.
+	// another segment under its data encryption key (DEK), because the DEK's
+	// sealer has spent all [ocrypto.MaxSeals] (2^32 - 1) encryptions. Attempts
+	// are counted, not successes: a failed or retried write has still used an IV.
+	//
+	// Segment IVs are a per-key counter (NIST SP 800-38D §8.2.1), whose 32-bit
+	// invocation field is what runs out. Under FIPS 140-3 they are random 96-bit
+	// values instead, and the same limit keeps the collision probability (about
+	// k^2 / 2^97 for k segments) under the 2^-32 that SP 800-38D §8 permits. A
+	// repeated IV would expose the XOR of two plaintexts and allow forgery under
+	// the DEK, so the writer fails rather than continue. Start a new TDF, which
+	// draws a new DEK, or use a larger segment size.
 	ErrAESGCMExhausted = errors.New("tdf: AES-GCM IV collision limit reached for this data encryption key")
 
 	// Exposed tamper detection errors, Catch all possible tamper errors with errors.Is(ErrTampered)

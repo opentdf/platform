@@ -37,12 +37,10 @@ func TestFixedFieldAndCounterFillTheNonce(t *testing.T) {
 	assert.Equal(t, GcmStandardNonceSize, fixedFieldSize+sealCounterSize)
 }
 
-func TestMaxSealsMatchesMode(t *testing.T) {
-	if deterministicIVs() {
-		assert.Equal(t, maxDeterministicSeals, MaxSeals())
-	} else {
-		assert.Equal(t, maxRandomNonceSeals, MaxSeals())
-	}
+// TestMaxSealsIsTheSameInEveryMode pins that the FIPS fallback changes how an
+// IV is chosen, not how many encryptions a key allows: 2^32-1 either way.
+func TestMaxSealsIsTheSameInEveryMode(t *testing.T) {
+	assert.Equal(t, uint32(1<<32-1), MaxSeals())
 }
 
 // TestAesGcmSealerHeaderLayout pins the exact IV bytes: the fixed field
@@ -51,7 +49,7 @@ func TestAesGcmSealerHeaderLayout(t *testing.T) {
 	requireDeterministic(t)
 
 	fixed := testFixedField(t, "0011223344556677")
-	sealer, err := newAESGcmSealer(make([]byte, 32), fixed, false, maxDeterministicSeals)
+	sealer, err := newAESGcmSealer(make([]byte, 32), fixed, false, maxSeals)
 	require.NoError(t, err)
 
 	for n := range uint32(4) {
@@ -64,7 +62,7 @@ func TestAesGcmSealerHeaderLayout(t *testing.T) {
 	}
 
 	// And the last value below the ceiling.
-	sealer.next.Store(uint64(maxDeterministicSeals - 1))
+	sealer.next.Store(uint64(maxSeals - 1))
 	header, _, err := sealer.Seal([]byte("payload"))
 	require.NoError(t, err)
 	assert.Equal(t, []byte{0xff, 0xff, 0xff, 0xfe}, header[fixedFieldSize:])
@@ -157,7 +155,7 @@ widely adopted for its performance`,
 		copy(fixed[:], iv[:fixedFieldSize])
 		counter := binary.BigEndian.Uint32(iv[fixedFieldSize:])
 
-		sealer, err := newAESGcmSealer(key, fixed, false, maxDeterministicSeals)
+		sealer, err := newAESGcmSealer(key, fixed, false, maxSeals)
 		require.NoError(t, err)
 		sealer.next.Store(uint64(counter))
 
@@ -219,7 +217,7 @@ func TestAesGcmSealerConcurrentSeal(t *testing.T) {
 	requireDeterministic(t)
 
 	fixed := testFixedField(t, "8899aabbccddeeff")
-	sealer, err := newAESGcmSealer(make([]byte, 32), fixed, false, maxDeterministicSeals)
+	sealer, err := newAESGcmSealer(make([]byte, 32), fixed, false, maxSeals)
 	require.NoError(t, err)
 
 	const seals = 128
@@ -257,7 +255,7 @@ func TestRandomFallbackProducesDistinctHeaders(t *testing.T) {
 	require.NoError(t, err)
 	fixed := testFixedField(t, "0011223344556677")
 
-	sealer, err := newAESGcmSealer(key, fixed, true, maxRandomNonceSeals)
+	sealer, err := newAESGcmSealer(key, fixed, true, maxSeals)
 	require.NoError(t, err)
 
 	aesGcm, err := NewAESGcm(key)

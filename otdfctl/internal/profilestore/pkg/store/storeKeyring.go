@@ -3,6 +3,7 @@ package store
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 
 	"github.com/zalando/go-keyring"
 )
@@ -25,6 +26,19 @@ var NewKeyringStore NewStoreInterface = func(serviceNamespace, key string, _ ...
 func (k *keyringStore) Exists() bool {
 	s, err := keyring.Get(k.namespace, k.key)
 	return err == nil && s != ""
+}
+
+// ExistsWithError is used by create-only registration; unlike legacy Exists,
+// a successful empty record is present and only ErrNotFound means absence.
+func (k *keyringStore) ExistsWithError() (bool, error) {
+	_, err := keyring.Get(k.namespace, k.key)
+	if errors.Is(err, keyring.ErrNotFound) {
+		return false, nil
+	}
+	if err != nil {
+		return false, err
+	}
+	return true, nil
 }
 
 func (k *keyringStore) Get() ([]byte, error) {

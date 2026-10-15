@@ -165,6 +165,37 @@ func (p *Profiler) AddProfile(profile NamedProfile, setDefault bool) error {
 	return nil
 }
 
+// RegisterProfile creates and registers a profile without choosing a default.
+// Unlike AddProfile, even the first registration preserves an empty default.
+// A failed registration may leave an unregistered profile record; retries reject
+// that collision rather than overwriting it. This is not a multi-record transaction.
+func RegisterProfile(p *Profiler, profile NamedProfile) (*ProfileStore, error) {
+	if p == nil || p.globalStore == nil {
+		return nil, ErrInvalidProfiler
+	}
+	if profile == nil {
+		return nil, ErrMissingCurrentProfile
+	}
+	name := profile.GetName()
+	if err := validateProfileName(name); err != nil {
+		return nil, err
+	}
+	if p.globalStore.ProfileExists(name) {
+		return nil, ErrProfileNameConflict
+	}
+	profileStore, err := NewProfileStore(p.config.configName, newStoreFactory(p.config.driver), profile)
+	if err != nil {
+		return nil, err
+	}
+	if err := profileStore.create(); err != nil {
+		return nil, err
+	}
+	if err := p.globalStore.AddProfile(name); err != nil {
+		return nil, err
+	}
+	return profileStore, nil
+}
+
 // GetCurrentProfile returns the current stored profile
 func GetCurrentProfile(p *Profiler) (*ProfileStore, error) {
 	if p.currentProfileStore == nil {

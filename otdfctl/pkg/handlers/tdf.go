@@ -127,10 +127,11 @@ type DecryptOptions struct {
 	KASAllowList                  []string
 	IgnoreAllowlist               bool
 	FulfillableObligations        []string
-	// Offset and Length select a plaintext byte range; a negative Length reads
-	// to the end. Only the segments covering the range are read and decrypted.
-	Offset int64
-	Length int64
+	// RangeOffset and RangeLimit select a plaintext byte range; a negative
+	// RangeLimit reads to the end. Only the segments covering the range are read
+	// and decrypted.
+	RangeOffset int64
+	RangeLimit  int64
 }
 
 // errRangeComplete stops Reader.WriteTo once the requested range is written.
@@ -171,7 +172,7 @@ var _ io.WriterTo = (*sdk.Reader)(nil)
 // in must be seekable because the TDF's manifest lives at the end of the
 // archive; callers with a pipe need to spool it first.
 func (h Handler) Decrypt(ctx context.Context, out io.Writer, in io.ReadSeeker, o DecryptOptions) error {
-	if o.Offset < 0 {
+	if o.RangeOffset < 0 {
 		return errors.New("offset must not be negative")
 	}
 
@@ -215,14 +216,14 @@ func (h Handler) Decrypt(ctx context.Context, out io.Writer, in io.ReadSeeker, o
 		return err
 	}
 
-	if _, err := r.Seek(o.Offset, io.SeekStart); err != nil {
-		return fmt.Errorf("offset %d is beyond the end of the payload: %w", o.Offset, err)
+	if _, err := r.Seek(o.RangeOffset, io.SeekStart); err != nil {
+		return fmt.Errorf("offset %d is beyond the end of the payload: %w", o.RangeOffset, err)
 	}
-	if o.Length == 0 {
+	if o.RangeLimit == 0 {
 		return nil
 	}
-	if o.Length > 0 {
-		out = &rangeWriter{w: out, remaining: o.Length}
+	if o.RangeLimit > 0 {
+		out = &rangeWriter{w: out, remaining: o.RangeLimit}
 	}
 	//nolint:errorlint // callers intended to test error equality directly
 	if _, err := io.Copy(out, r); err != nil && err != io.EOF && !errors.Is(err, errRangeComplete) {

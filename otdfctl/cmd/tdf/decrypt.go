@@ -110,8 +110,8 @@ func decryptRun(cmd *cobra.Command, args []string) {
 		SessionKeyAlgorithm:           sessionKeyAlgorithm,
 		KASAllowList:                  kasAllowList,
 		IgnoreAllowlist:               ignoreAllowlist,
-		Offset:                        decryptOffset,
-		Length:                        decryptLength,
+		RangeOffset:                   decryptOffset,
+		RangeLimit:                    decryptLength,
 	})
 	if err != nil {
 		fail("Failed to decrypt file", err)

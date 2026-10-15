@@ -8,6 +8,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"io"
+	"math"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -655,6 +656,16 @@ func testErrorConditions(t *testing.T) {
 		// Try negative segment index
 		_, err = writer.WriteSegment(ctx, -1, []byte("test"))
 		assert.ErrorIs(t, err, ErrInvalidSegmentIndex, "Should reject negative segment index")
+	})
+
+	t.Run("SegmentIndexExhausted", func(t *testing.T) {
+		writer, err := NewWriter(ctx)
+		require.NoError(t, err)
+
+		// The archive addresses at most MaxInt32 segments, so that index is the first refused.
+		_, err = writer.WriteSegment(ctx, math.MaxInt32, []byte("test"))
+		require.ErrorIs(t, err, ErrSegmentIndexExhausted)
+		assert.NotErrorIs(t, err, ErrInvalidSegmentIndex)
 	})
 
 	t.Run("DuplicateSegment", func(t *testing.T) {

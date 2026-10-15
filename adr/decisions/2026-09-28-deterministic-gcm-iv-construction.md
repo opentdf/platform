@@ -42,7 +42,7 @@ will not let us construct it that way** (FIPS 140-3).
 * Readers must not be able to tell the SDKs' constructions apart; web-sdk
   (DSPX-4496) has already merged a counter.
 * Enabling FIPS 140-3 should need no change outside `lib/ocrypto`.
-* The public `ocrypto` API should not expose raw nonce bytes.
+* The public `ocrypto` API should not accept raw nonce bytes from callers.
 * The code that keeps IVs unique should be small enough to audit in one sitting.
 
 ## Considered Options
@@ -177,7 +177,7 @@ Also web-sdk's `GcmIvCounter.next()`.
 
 The first version of both #4118 and #4121, written before #4203.
 
-* 🟩 **Good**, because `P ≈ 2^-45` at the cap, a 4096× margin.
+* 🟩 **Good**, because `P ≈ 2^-45` at the cap, an 8192× margin.
 * 🟥 **Bad**, because it needs a FIPS-only default segment size (4 MiB) to keep
   large payloads reachable, making FIPS visible to applications.
 * 🟥 **Bad**, because it shrinks what FIPS builds can write after #4203: from
@@ -205,7 +205,7 @@ The first version of both #4118 and #4121, written before #4203.
 * A caller that wants more margin under FIPS can use larger segments; halving
   the segment count quarters `P`.
 * Go's own approved deterministic GCM, `NewGCMWithCounterNonce` (FIPS 140-3
-  IG C.H Scenario 3), is unexported and uses a 32-bit prefix with a 64-bit
+  IG C.H Scenario 3), is internal to the Go FIPS module and uses a 32-bit prefix with a 64-bit
   counter, which does not match this 8‖4 layout.
 * API precedent: libsodium `crypto_secretstream`, Tink `StreamingAEAD`, Rust
   `aead::stream` and the AWS Encryption SDK expose keyed objects with no raw

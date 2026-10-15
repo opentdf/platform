@@ -55,7 +55,7 @@ records how it was built and how to verify it.
 - `maxPayloadSegments` is `MaxInt32` (archive addressing). `WriteSegment`
   rejects a larger index with `ErrChunkedSegmentIndexExhausted` before
   reserving it.
-- Segment sizes are fixed: 2 MiB default, 4 MiB max, 16 KiB min.
+- Segment sizes are the same in every FIPS mode: 2 MiB default, 4 MiB max, 16 KiB min.
 - Test seams: `withChunkedSealerFactory` and `withSegmentSealerFactory`. The
   exhaustion tests inject a sealer that enforces a small limit.
 

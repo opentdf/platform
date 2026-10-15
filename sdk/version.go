@@ -22,5 +22,7 @@ func SupportedFeatures() []string {
 		"dpop",                 // RFC 9449 DPoP (Demonstrating Proof-of-Possession)
 		"dpop_nonce_challenge", // RFC 9449 §8 server-issued DPoP-Nonce challenge/retry
 		"connectrpc",           // Connect RPC protocol support
+		"partial_decrypt",      // decrypt a plaintext byte range (otdfctl decrypt --offset/--length)
+		"http_range_source",    // load a TDF from an http(s) URL via range requests (LoadTDFFromURL)
 	}
 }

@@ -8,7 +8,10 @@ import (
 	"net/http"
 )
 
-var errRangeNotSupported = errors.New("server did not honor the HTTP range request")
+// ErrRangeNotSupported is returned when the server ignores or mangles an HTTP
+// range request (for example a 200 with the whole resource, or a Content-Range
+// that does not match the request).
+var ErrRangeNotSupported = errors.New("server did not honor the HTTP range request")
 
 // HTTPRangeReader is an io.ReadSeeker over an HTTP(S) resource. Each Read issues
 // a single range request, so only the bytes actually read are fetched.
@@ -26,6 +29,9 @@ type HTTPRangeReader struct {
 // NewHTTPRangeReader returns an io.ReadSeeker for url. The server must support
 // range requests (respond 206 Partial Content). A nil client uses
 // http.DefaultClient.
+//
+// ctx is retained and bounds every range request made by later Reads, so it
+// must remain valid for as long as the reader is used.
 func NewHTTPRangeReader(ctx context.Context, client *http.Client, url string) (*HTTPRangeReader, error) {
 	if client == nil {
 		client = http.DefaultClient
@@ -57,8 +63,14 @@ func (r *HTTPRangeReader) Read(p []byte) (int, error) {
 	if remaining := r.size - r.offset; int64(len(p)) > remaining {
 		p = p[:remaining]
 	}
-	if _, err := r.fetch(p, r.offset); err != nil {
+	size, err := r.fetch(p, r.offset)
+	if err != nil {
 		return 0, err
+	}
+	// A different total means the resource changed since the probe; carrying
+	// on would mix bytes from two versions of the TDF.
+	if size != r.size {
+		return 0, fmt.Errorf("remote resource size changed from %d to %d bytes", r.size, size)
 	}
 	r.offset += int64(len(p))
 	return len(p), nil
@@ -99,16 +111,22 @@ func (r *HTTPRangeReader) fetch(p []byte, offset int64) (int64, error) {
 	}
 	defer resp.Body.Close()
 
-	// A 200 means the server ignored Range and is sending the whole resource.
-	if resp.StatusCode != http.StatusPartialContent {
-		return 0, fmt.Errorf("%w: status %d for bytes %d-%d", errRangeNotSupported, resp.StatusCode, offset, end)
+	switch {
+	case resp.StatusCode == http.StatusOK:
+		// The server ignored Range and is sending the whole resource.
+		return 0, fmt.Errorf("%w: status 200 for bytes %d-%d", ErrRangeNotSupported, offset, end)
+	case resp.StatusCode >= http.StatusMultipleChoices && resp.StatusCode < http.StatusBadRequest:
+		// Location is left out of the message: it can carry presigned tokens.
+		return 0, fmt.Errorf("range request redirected (%s); redirects are not followed, use the final URL", resp.Status)
+	case resp.StatusCode != http.StatusPartialContent:
+		return 0, fmt.Errorf("range request for bytes %d-%d failed: %s", offset, end, resp.Status)
 	}
 	var gotStart, gotEnd, size int64
 	if _, err := fmt.Sscanf(resp.Header.Get("Content-Range"), "bytes %d-%d/%d", &gotStart, &gotEnd, &size); err != nil {
-		return 0, fmt.Errorf("%w: invalid Content-Range %q", errRangeNotSupported, resp.Header.Get("Content-Range"))
+		return 0, fmt.Errorf("%w: invalid Content-Range %q", ErrRangeNotSupported, resp.Header.Get("Content-Range"))
 	}
 	if gotStart != offset || gotEnd != end {
-		return 0, fmt.Errorf("%w: requested bytes %d-%d, got %d-%d", errRangeNotSupported, offset, end, gotStart, gotEnd)
+		return 0, fmt.Errorf("%w: requested bytes %d-%d, got %d-%d", ErrRangeNotSupported, offset, end, gotStart, gotEnd)
 	}
 	if _, err := io.ReadFull(resp.Body, p); err != nil {
 		return 0, fmt.Errorf("reading range response failed: %w", err)
@@ -121,6 +139,10 @@ func (r *HTTPRangeReader) fetch(p []byte, offset int64) (int64, error) {
 //
 // Requests use the SDK's unauthenticated HTTP client (TLS settings applied, no
 // redirects); platform credentials are never sent to the TDF host.
+//
+// ctx bounds every range request made through the returned Reader, including
+// segment fetches by Read, ReadAt and WriteTo, so it must remain valid for as
+// long as the Reader is used. KAS rewrap is not covered by ctx.
 func (s SDK) LoadTDFFromURL(ctx context.Context, url string, opts ...TDFReaderOption) (*Reader, error) {
 	r, err := NewHTTPRangeReader(ctx, s.httpClient, url)
 	if err != nil {

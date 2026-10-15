@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"sync/atomic"
 	"time"
 )
@@ -69,7 +70,44 @@ func (s *TDFSuite) Test_LoadTDFFromURL_RangeNotSupported() {
 	defer server.Close()
 
 	_, err := s.sdk.LoadTDFFromURL(context.Background(), server.URL)
-	s.Require().ErrorIs(err, errRangeNotSupported)
+	s.Require().ErrorIs(err, ErrRangeNotSupported)
+}
+
+func (s *TDFSuite) Test_HTTPRangeReader_ErrorStatus() {
+	for _, status := range []int{http.StatusNotFound, http.StatusFound, http.StatusForbidden} {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			if status == http.StatusFound {
+				w.Header().Set("Location", "/elsewhere")
+			}
+			w.WriteHeader(status)
+		}))
+		_, err := NewHTTPRangeReader(context.Background(), s.sdk.httpClient, server.URL)
+		server.Close()
+		s.Require().Error(err, "status %d", status)
+		s.Require().NotErrorIs(err, ErrRangeNotSupported, "status %d", status)
+		if status == http.StatusFound {
+			s.Contains(err.Error(), "redirects are not followed")
+		}
+	}
+}
+
+func (s *TDFSuite) Test_HTTPRangeReader_SizeChanged() {
+	var grown atomic.Bool
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		data := "0123456789"
+		if grown.Load() {
+			data += "abc"
+		}
+		http.ServeContent(w, r, "", time.Time{}, strings.NewReader(data))
+	}))
+	defer server.Close()
+
+	r, err := NewHTTPRangeReader(context.Background(), nil, server.URL)
+	s.Require().NoError(err)
+
+	grown.Store(true) // resource changes after the probe
+	_, err = r.Read(make([]byte, 4))
+	s.Require().ErrorContains(err, "size changed from 10 to 13")
 }
 
 func (s *TDFSuite) Test_HTTPRangeReader_Seek() {

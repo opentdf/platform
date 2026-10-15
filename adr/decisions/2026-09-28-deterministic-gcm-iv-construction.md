@@ -1,7 +1,7 @@
 ---
 # Required
 status: 'proposed'
-date: '2026-10-14'
+date: '2026-10-15'
 tags:
  - sdk
  - ocrypto
@@ -17,41 +17,31 @@ informed: 'OpenTDF SDK consumers'
 
 ## Context and Problem Statement
 
-Every payload segment the Go SDK writes is encrypted with
-`cipher.NewGCMWithRandomNonce`: the 12-byte IV is drawn at random inside the
-standard library and the writer never sees it. That is NIST SP 800-38D
-**§8.2.2 (RBG-based)** IV construction, which §8.3 caps at 2^32 invocations per
-key because uniqueness is only probabilistic — over `n` random 96-bit IVs the
-collision probability is about `n²/2^97`.
+The Go SDK encrypted every payload segment with `cipher.NewGCMWithRandomNonce`:
+NIST SP 800-38D **§8.2.2 (RBG-based)** IVs. Over `n` random 96-bit IVs the
+collision probability is about `n²/2^97`, and §8 caps it at 2^-32 per key.
 
-The parent epic (DSPX-4502, *Large File TDF Security and Support*) targets
-50 TiB payloads. A 50 TiB file at the 16 KiB minimum segment size needs 2^31.6
-segments and lands at `P ≈ 2^-33.7`, essentially *on* NIST's approved ceiling
-with no margin. #4203 (DSPX-4492) added the hard stop: a writer refuses, with
-`ErrAESGCMExhausted`, to encrypt more than 2^32-1 segments under one DEK,
-counting attempts, on every write path including streams of unknown length. That
-keeps random IVs at or under `P ≈ 2^-33`, but uniqueness is still a probability.
+The parent epic (DSPX-4502) targets 50 TiB payloads. At the 16 KiB minimum
+segment size that is 2^31.6 segments and `P ≈ 2^-33.7`, essentially on NIST's
+ceiling. #4203 (DSPX-4492) added a hard stop, `ErrAESGCMExhausted` after
+2^32-1 encryptions per DEK, but with random IVs uniqueness is still a
+probability.
 
-An IV collision under a reused key is not graceful degradation: the two
-ciphertexts XOR to the XOR of their plaintexts, **and** the GHASH subkey
-becomes recoverable, which forges authentication tags for everything else under
-that key.
+An IV collision under one key exposes the XOR of the two plaintexts **and** the
+GHASH subkey, which forges tags for everything else under that key.
 
-Two decisions follow, recorded together because the second only exists as a
-consequence of the first: **how to construct the IV**, and **what to do where
-Go will not let us construct it that way**.
+Two decisions follow: **how to construct the IV**, and **what to do where Go
+will not let us construct it that way** (FIPS 140-3).
 
 ## Decision Drivers
 
-* The wire format must not change. Readers take the IV off the wire as the
-  segment's 12-byte prefix, and TDFs written before this change must keep
-  decrypting indefinitely.
-* `chunkedWriter.WriteSegment(ctx, index, data)` accepts **sparse,
-  out-of-order and concurrent** indices, and a failed write may be retried.
-* All three OpenTDF SDKs must land on a construction readers cannot tell
-  apart; web-sdk (DSPX-4496) has already merged a counter.
-* Enabling FIPS 140-3 should require no application or library change outside
-  `lib/ocrypto`.
+* The wire format must not change, and TDFs written before this change must
+  keep decrypting.
+* `chunkedWriter.WriteSegment(ctx, index, data)` accepts sparse, out-of-order
+  and concurrent indices, and a failed write may be retried.
+* Readers must not be able to tell the SDKs' constructions apart; web-sdk
+  (DSPX-4496) has already merged a counter.
+* Enabling FIPS 140-3 should need no change outside `lib/ocrypto`.
 * The public `ocrypto` API should not expose raw nonce bytes.
 * The code that keeps IVs unique should be small enough to audit in one sitting.
 
@@ -67,92 +57,65 @@ Go will not let us construct it that way**.
 **FIPS strategy**
 
 * Hard error where a caller-supplied IV is unavailable
-* Detect policy, fall back to random IVs, and keep the seal cap
-* Detect policy, fall back to random IVs, and reduce the seal cap to 2^26
-* Probe `cipher.NewGCM` only, and fall back on failure
+* Detect policy, fall back to random IVs, keep the 2^32-1 cap
+* Detect policy, fall back to random IVs, reduce the cap to 2^26
+* Probe `cipher.NewGCM` only
 * `fips140.WithoutEnforcement`
 * Require Go 1.26 and branch on `fips140.Enforced()`
 
 ## Decision Outcome
 
-Chosen: **§8.2.1 deterministic, stateful**, with
+Chosen: **§8.2.1 deterministic, stateful**:
 `IV = 64-bit per-sealer random fixed field ‖ 32-bit big-endian counter`. An
-`ocrypto.AesGcmSealer` owns one key, its fixed field, and an atomic counter;
-every `Seal` takes the next counter value. The writer holds one sealer for the
-DEK, and each key access object's metadata is sealed by a throwaway sealer of
-its own.
+`ocrypto.AesGcmSealer` owns one key, its fixed field and an atomic counter;
+every `Seal` takes the next value. The writer holds one sealer for the DEK, and
+each sealing of key access metadata uses a throwaway sealer of its own.
 
-Chosen: **detect policy, fall back to random IVs, and keep the seal cap**.
-`ocrypto` checks `fips140.Enabled()` first and probes `cipher.NewGCM` second,
-behind a `sync.OnceValue`. The fallback is total and internal — same API, same
-wire bytes, same call sites, and the same `MaxSeals()` of 2^32-1 that #4203
-already enforced on random IVs. On that path the counter no longer builds the
-IV but is still the key's encryption budget, so the writer has one counter and
-one error: `ocrypto.ErrSealerExhausted`, reported as `ErrAESGCMExhausted`.
+Chosen: **detect policy, fall back to random IVs, keep the 2^32-1 cap**.
+`ocrypto` checks `fips140.Enabled()`, then probes `cipher.NewGCM`, once per
+process. The fallback is internal and total: same API, same wire bytes, same
+`MaxSeals()`. On that path the counter no longer builds the IV but is still the
+key's encryption budget, so there is one counter and one error
+(`ocrypto.ErrSealerExhausted`, reported as `ErrAESGCMExhausted`).
 
-The cross-SDK record is virtru-corp/adr#368, which asks for a 2^26 cap in FIPS
-mode; the Go supplement (virtru-corp/adr#373) records why Go keeps 2^32-1.
+The cross-SDK rules are in virtru-corp/adr#368, which asks for a 2^26 cap in
+FIPS mode. The Go supplement, virtru-corp/adr#373, records why Go keeps 2^32-1.
 
 ### Consequences
 
-* 🟩 **Good**, because non-repetition under one sealer is a property of the
-  counter rather than a probability, removing the birthday bound as a
-  constraint on payload size.
-* 🟩 **Good**, because the wire format is untouched: writer-side only, no
-  manifest field and no spec version change, and no reader-side validation
-  that would break pre-existing TDFs.
-* 🟩 **Good**, because callers hold no ordinal. Sparse, out-of-order,
-  concurrent and retried writes each take a fresh IV, so retry safety is a
-  property of the construction rather than of `WriteSegment`'s error handling.
-* 🟩 **Good**, because the state lives with the key and nowhere else. There is
-  no message ID to thread through key access resolution, no key→sealer
-  registry, no reserved metadata part, and no pin on the encrypted metadata:
-  re-sealing metadata on every manifest build simply takes a new IV.
-* 🟩 **Good**, because the AEAD is built once per key instead of once per
-  segment, and the hot path costs one atomic add.
+* 🟩 **Good**, because uniqueness under one sealer is a property of the
+  counter, not a probability, so the birthday bound no longer limits payload
+  size.
+* 🟩 **Good**, because the wire format is untouched and readers are unchanged.
+* 🟩 **Good**, because callers hold no ordinal: every write, including a retry,
+  takes a fresh IV, whatever `WriteSegment`'s error handling does.
+* 🟩 **Good**, because the state lives with the key and nowhere else: no message
+  ID, no key→sealer registry, no reserved metadata slot, no metadata pin.
+* 🟩 **Good**, because FIPS mode changes nothing an application can see: the
+  cap, the default segment size and the error are the same in every mode.
 * 🟥 **Bad**, because in a single-split TDF the metadata key *is* the DEK, and
-  the metadata and payload sealers count independently from 0. They are kept
-  apart only by their independently drawn 64-bit fixed fields, a `2^-64`
-  chance per metadata seal. That is structural within a sealer, probabilistic
-  between them.
-* 🟥 **Bad**, because the IV no longer says which segment it encrypts:
-  concurrent writers take counters in arrival order.
-* 🟥 **Bad**, because a retried or discarded seal spends a counter value, so
-  the exhaustion bound depends on failure history.
-* 🟩 **Good**, because FIPS 140-3 changes nothing an application can see: the
-  cap, the default segment size and the exhaustion error are the same in every
-  mode, and are what #4203 shipped.
-* 🟥 **Bad**, because under FIPS 140-3 uniqueness is still probabilistic, and a
-  writer that reaches the cap sits at `P ≈ 2^-33` — inside SP 800-38D's
-  2^-32, but with a 2× margin rather than the 4096× a 2^26 cap would give. At
-  the 2 MiB default a 50 TiB payload is `P ≈ 2^-47.7`.
-* 🟥 **Bad**, because in non-FIPS builds Go's module indicator now records
-  segment encryption as a **non-approved service**: `GCM.Seal` calls
-  `fips140.RecordNonApproved()` where `SealWithRandomNonce` calls
-  `RecordApproved()`. The indicator lands the right way round — under
-  `fips140=only`, the only mode where anyone reads it, the fallback keeps it
-  approved — but the distinction is worth knowing.
+  the two sealers are kept apart only by their random fixed fields: about
+  2^-64 per metadata seal.
+* 🟥 **Bad**, because a retried or discarded seal spends a counter value, and
+  the IV no longer says which segment it encrypts.
+* 🟥 **Bad**, because under FIPS a writer at the cap sits at `P ≈ 2^-33`, a 2×
+  margin under NIST's ceiling. (At the 2 MiB default, 50 TiB is `P ≈ 2^-47.7`.)
+* 🟥 **Bad**, because in non-FIPS builds Go's service indicator records segment
+  encryption as non-approved. Nobody reads it outside FIPS mode, and in FIPS
+  mode the fallback keeps it approved.
 
 ## Validation
 
-* Encrypt-direction known-answer tests in `lib/ocrypto/message_sealer_test.go`
-  pin the IV byte layout against fixtures rather than against the
-  implementation, by seeding the fixed field and counter. This is what recovers
-  the auditability an opaque API gives up, and is the reason it is not
-  optional. The same file covers exhaustion without wrap, concurrent counters
-  landing on exactly `0..n-1`, and distinct fixed fields for two sealers over
-  one key.
-* `sdk/chunked_iv_test.go` covers the writer's half: sequential, out-of-order
-  and concurrent writes take distinct counters under one fixed field, a
-  retried segment takes a fresh IV, metadata is sealed by its own sealer (in
-  both the chunked writer and `CreateTDF`), metadata may change between
-  manifest builds, and the segment-index ceiling. `sdk/chunked_test.go` and
-  `sdk/tdf_test.go` check that an exhausted sealer surfaces as
-  `ErrAESGCMExhausted`, is refused before encrypting, counts failed attempts,
-  and stops `CreateTDF` for known- and unknown-length input.
+* `lib/ocrypto/message_sealer_test.go` pins the IV byte layout with
+  known-answer tests against fixtures, by seeding the fixed field and counter.
+  These recover the auditability an opaque API gives up, so they are not
+  optional. It also covers exhaustion without wrap, concurrent counters and
+  distinct fixed fields per sealer.
+* `sdk/chunked_iv_test.go` covers out-of-order, concurrent and retried writes,
+  metadata on its own sealer, and metadata changing between manifest builds.
+  `sdk/chunked_test.go` and `sdk/tdf_test.go` cover `ErrAESGCMExhausted`.
 * The SDK suite passes under `GODEBUG=fips140=on`, which is the claim that the
-  fallback is invisible above `ocrypto`. Tests that assert header *bytes* probe
-  for the mode and skip or relax to a uniqueness check.
+  fallback is invisible above `ocrypto`.
 
 ## Pros and Cons of the Options
 
@@ -160,120 +123,94 @@ mode; the Go supplement (virtru-corp/adr#373) records why Go keeps 2^32-1.
 
 #### Keep RBG-based IVs (§8.2.2)
 
-* 🟩 **Good**, because no change, and it is an approved construction.
-* 🟥 **Bad**, because the collision bound is the thing the epic outgrows.
-* 🟥 **Bad**, because the exposure of an unmeasurable stream is unbounded.
+What #4203 ships, with its hard stop.
+
+* 🟩 **Good**, because it needs no change and is approved everywhere.
+* 🟥 **Bad**, because uniqueness stays probabilistic, at NIST's ceiling for
+  50 TiB at small segment sizes.
 
 #### §8.2.1 deterministic, stateless
 
-`IV = per-message random ID ‖ part number`, part 0 reserved for metadata and
-segment `i` taking part `i + 1`. This was the first implementation (#4118).
+`IV = per-message ID ‖ part number`, part 0 for metadata and segment `i` at
+part `i + 1`. The first implementation (#4118).
 
-* 🟩 **Good**, because it survives sparse, out-of-order, concurrent and
-  retried writes without shared state.
-* 🟩 **Good**, because the index↔IV correspondence is inspectable.
-* 🟥 **Bad**, because the caller owns uniqueness, and a caller that passes one
-  part twice gets IV reuse with no diagnostic.
-* 🟥 **Bad**, because a retry re-derives the same IV, so retry safety rests on
-  `WriteSegment` never emitting bytes on a path that later fails — one
-  refactor away from being false.
-* 🟥 **Bad**, because the reserved metadata part must be spent exactly once
-  under a key that, for a single split, is the DEK: that forced a key→sealer
-  registry shared between `CreateTDF` and the writer, a message ID threaded
-  through key access resolution, a per-key metadata cache, and a pin refusing
-  changed metadata (`ErrChunkedMetadataChanged`).
+* 🟩 **Good**, because it needs no shared state, and an IV identifies its
+  segment.
+* 🟥 **Bad**, because a retry re-derives the same IV, so retry safety depends
+  on `WriteSegment` never emitting bytes on a path that later fails.
+* 🟥 **Bad**, because the single reserved metadata part needed a key→sealer
+  registry, a message ID threaded through key access resolution, and a pin
+  refusing changed metadata (`ErrChunkedMetadataChanged`).
 
 #### §8.2.1 deterministic, stateful (chosen)
 
-This is also web-sdk's `GcmIvCounter.next()`.
+Also web-sdk's `GcmIvCounter.next()`.
 
-* 🟩 **Good**, because the caller cannot repeat an ordinal.
-* 🟩 **Good**, because the shared counter is one `atomic.Uint64` add, not a
-  mutex, on the segment hot path.
-* 🟥 **Bad**, because a retried write burns a counter value, making the
-  exhaustion bound depend on failure history.
-* 🟥 **Bad**, because it destroys the index↔IV correspondence for
-  out-of-order writes.
+* 🟩 **Good**, because the caller cannot repeat an IV, and the hot path is one
+  atomic add.
+* 🟥 **Bad**, because retries spend budget, and out-of-order writes lose the
+  index↔IV correspondence.
 
 #### Per-segment key derivation
 
 * 🟩 **Good**, because IV reuse across segments stops mattering.
-* 🟥 **Bad**, because it changes what the KAS hands back and how the reader
-  decrypts — a wire and spec change across all three SDKs, for a problem the
-  IV construction solves on the writer alone.
+* 🟥 **Bad**, because it changes the format for all three SDKs, for a problem
+  the writer can solve alone.
 
 ### FIPS strategy
 
 #### Hard error where a caller-supplied IV is unavailable
 
-* 🟩 **Good**, because the construction is then the same everywhere.
-* 🟥 **Bad**, because enabling FIPS would break every writer, which is the
-  opposite of the "no changes outside `ocrypto`" driver.
+* 🟥 **Bad**, because enabling FIPS would break every writer.
 
-#### Detect policy, fall back, keep the cap (chosen)
+#### Detect policy, fall back, keep the 2^32-1 cap (chosen)
 
-* 🟩 **Good**, because it catches `fips140=on`, where `cipher.NewGCM` succeeds
-  but the resulting `Seal` is non-approved.
-* 🟩 **Good**, because it needs only `fips140.Enabled()` (Go 1.24), and the
-  probe covers `fips140=only` and anything not yet anticipated.
-* 🟩 **Good**, because no application can tell the modes apart: one
-  `MaxSeals()`, one default segment size, one error.
-* 🟩 **Good**, because the counter that builds IVs on one path is the budget on
-  the other, so both paths share one exhaustion rule and one error.
-* 🟥 **Bad**, because it keeps two code paths in `Seal` forever.
-* 🟥 **Bad**, because the fallback's worst case is `P ≈ 2^-33`, at NIST's
-  ceiling rather than well under it.
+* 🟩 **Good**, because the policy check catches `fips140=on`, where
+  `cipher.NewGCM` works but its `Seal` is non-approved, and the probe catches
+  `fips140=only` and anything unforeseen.
+* 🟩 **Good**, because it needs only Go 1.24 (`fips140.Enabled()`).
+* 🟩 **Good**, because applications cannot tell the modes apart.
+* 🟥 **Bad**, because `Seal` keeps two code paths, and the fallback's worst case
+  is at NIST's ceiling rather than well under it.
 
 #### Detect policy, fall back, reduce the cap to 2^26
 
-This was the first version of both #4118 and this design, written before #4203.
+The first version of both #4118 and #4121, written before #4203.
 
 * 🟩 **Good**, because `P ≈ 2^-45` at the cap, a 4096× margin.
-* 🟥 **Bad**, because it needs a derived default segment size (4 MiB under
-  FIPS) to keep large payloads reachable, making FIPS visible to applications.
-* 🟥 **Bad**, because it shrinks what FIPS builds could already write once #4203
-  shipped: from about 8 PiB to 128 TiB at 2 MiB segments.
+* 🟥 **Bad**, because it needs a FIPS-only default segment size (4 MiB) to keep
+  large payloads reachable, making FIPS visible to applications.
+* 🟥 **Bad**, because it shrinks what FIPS builds can write after #4203: from
+  about 8 PiB to 128 TiB at 2 MiB segments.
 
 #### Probe `cipher.NewGCM` only
 
-* 🟩 **Good**, because it is version- and GODEBUG-independent.
-* 🟥 **Bad**, because it silently keeps deterministic IVs under
-  `fips140=on` — a production FIPS deployment — recording every segment
-  encryption as a non-approved service. **Rejected for this reason.**
+* 🟥 **Bad**, because it silently keeps deterministic IVs under `fips140=on` —
+  a production FIPS deployment — making every segment encryption
+  non-approved.
 
 #### `fips140.WithoutEnforcement`
 
-* 🟩 **Good**, because deterministic IVs would be kept in every mode.
-* 🟥 **Bad**, because it is Go 1.26, and because silently disabling an
-  enforcement the operator explicitly asked for — while still recording the
-  service as non-approved — is the wrong trade.
+* 🟥 **Bad**, because it is Go 1.26, and it silently disables an enforcement the
+  operator asked for.
 
 #### Require Go 1.26 and branch on `fips140.Enforced()`
 
-* 🟩 **Good**, because it distinguishes the modes exactly.
 * 🟥 **Bad**, because it puts a Go 1.26 floor on a published module for a
-  distinction `fips140.Enabled()` plus a probe already covers well enough.
+  distinction `fips140.Enabled()` plus a probe already covers.
 
 ## More Information
 
-* NIST SP 800-38D §8.2.1 (deterministic construction), §8.2.2 (RBG-based),
-  §8.3 (invocation limits).
-* Cap selection. `MaxSeals()` is 2^32-1 in every mode: the 32-bit invocation
-  field's limit for the counter, and `P ≈ 2^-33` for random IVs, inside
-  SP 800-38D §8's 2^-32. A caller that wants more margin under FIPS can choose a
-  larger segment size; halving the segment count quarters `P`.
-* Go's own approved deterministic GCM,
-  `crypto/internal/fips140/aes/gcm.NewGCMWithCounterNonce` (FIPS 140-3 IG C.H
-  Scenario 3), is unexported and uses a 32-bit prefix with a 64-bit
-  strictly-increasing counter — close in spirit to this construction, but
-  incompatible with our 8‖4 split. It is the right citation for *why* the
-  fallback exists, not a path out of it.
-* API shape precedent: libsodium `crypto_secretstream`, Google Tink
-  `StreamingAEAD`, Rust `aead::stream`, and the AWS Encryption SDK all expose a
-  keyed object built from a per-message random value, with no raw nonce bytes
-  in the public API.
-* Peer tickets: DSPX-4493 (this work), DSPX-4495 (java-sdk), DSPX-4496
-  (web-sdk, merged; `lib/tdf3/src/ciphers/gcm-iv-counter.ts`). The FIPS
-  fallback is **Go-specific and should not be mirrored**. DSPX-4492 owns risk
-  quantification and the `ErrAESGCMExhausted` stop (#4203); DSPX-4905 owns the
+* NIST SP 800-38D §8.2.1 (deterministic), §8.2.2 (RBG-based), §8.3 (limits).
+* A caller that wants more margin under FIPS can use larger segments; halving
+  the segment count quarters `P`.
+* Go's own approved deterministic GCM, `NewGCMWithCounterNonce` (FIPS 140-3
+  IG C.H Scenario 3), is unexported and uses a 32-bit prefix with a 64-bit
+  counter, which does not match this 8‖4 layout.
+* API precedent: libsodium `crypto_secretstream`, Tink `StreamingAEAD`, Rust
+  `aead::stream` and the AWS Encryption SDK expose keyed objects with no raw
+  nonces.
+* Tickets: DSPX-4493 (this work), DSPX-4495 (java-sdk), DSPX-4496 (web-sdk).
+  The FIPS fallback is **Go-specific and should not be mirrored**. DSPX-4492
+  owns risk quantification and `ErrAESGCMExhausted` (#4203); DSPX-4905 owns the
   rest of the unmeasurable-stream work.

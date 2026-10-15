@@ -196,6 +196,7 @@
 //
 //   - ErrAlreadyFinalized: Writer has been finalized
 //   - ErrInvalidSegmentIndex: Invalid segment index provided
+//   - ErrSegmentIndexExhausted: Segment index beyond what the archive can address
 //   - ErrSegmentAlreadyWritten: Duplicate segment index
 //   - ErrMissingSegmentZero: Finalize called without segment 0
 //   - ErrAESGCMExhausted: Too many segment encryptions under one key

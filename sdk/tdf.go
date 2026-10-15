@@ -54,16 +54,19 @@ const (
 	kAssertionHash         = "assertionHash"
 	hexSemverThreshold     = "4.3.0"
 
-	// maxPayloadSegments caps the segment count a declared input size may imply.
-	// The archive writer counts segments with an int, so the count has to fit one
-	// on every platform the SDK builds for. A payload that needs more segments than
+	// maxPayloadSegments caps the segment count a known input size may imply, and
+	// is the exclusive bound on every segment index WriteSegment accepts. The
+	// archive writer counts segments with an int, so the count has to fit one on
+	// every platform the SDK builds for. A payload that needs more segments than
 	// this — 4 PiB at the default segment size — is beyond what CreateTDF can write
 	// anyway, and is better refused than silently mis-sized.
 	//
-	// It is smaller than [ocrypto.MaxSeals], so a payload whose length resolves is
-	// refused here before its key could run out of encryptions. A stream that can
-	// be measured neither way is read to EOF and bounded only by the DEK's sealer,
-	// which fails with [ErrAESGCMExhausted]; DSPX-4905 tracks the rest.
+	// It is smaller than [ocrypto.MaxSeals], so it is the limit CreateTDF hits
+	// first. A payload whose length resolves is refused up front; a stream that can
+	// be measured neither way is read until its segment index reaches this bound
+	// and fails with [ErrChunkedSegmentIndexExhausted]. CreateTDF seals each index
+	// once, so it never reaches [ErrAESGCMExhausted]; only a ChunkedWriter caller
+	// retrying failed writes can. DSPX-4905 tracks the rest.
 	maxPayloadSegments = math.MaxInt32
 )
 

@@ -181,8 +181,8 @@ var (
 	ErrChunkedSegmentAlreadyWritten = errors.New("chunked: segment already written")
 
 	// ErrChunkedSegmentIndexExhausted is returned when WriteSegment
-	// receives an index past [maxPayloadSegments], the most segments
-	// the archive can address.
+	// receives an index at or past [maxPayloadSegments], the most
+	// segments the archive can address.
 	//
 	// Distinct from ErrChunkedInvalidSegmentIndex on purpose: a
 	// negative index is a bug in the caller, while this is a capacity

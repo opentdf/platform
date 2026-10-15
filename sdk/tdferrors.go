@@ -23,6 +23,10 @@ var (
 	// sealer has spent all [ocrypto.MaxSeals] (2^32 - 1) encryptions. Attempts
 	// are counted, not successes: a failed or retried write has still used an IV.
 	//
+	// The segment-index limit, [ErrChunkedSegmentIndexExhausted], is lower, so
+	// CreateTDF, which seals each index once, stops there first. In practice only
+	// a ChunkedWriter caller retrying failed writes can reach this error.
+	//
 	// Segment IVs are a per-key counter (NIST SP 800-38D §8.2.1), whose 32-bit
 	// invocation field is what runs out. Under FIPS 140-3 they are random 96-bit
 	// values instead, and the same limit keeps the collision probability (about
@@ -30,7 +34,7 @@ var (
 	// repeated IV would expose the XOR of two plaintexts and allow forgery under
 	// the DEK, so the writer fails rather than continue. Start a new TDF, which
 	// draws a new DEK, or use a larger segment size.
-	ErrAESGCMExhausted = errors.New("tdf: AES-GCM IV collision limit reached for this data encryption key")
+	ErrAESGCMExhausted = errors.New("tdf: AES-GCM encryption limit reached for this data encryption key; start a new TDF")
 
 	// Exposed tamper detection errors, Catch all possible tamper errors with errors.Is(ErrTampered)
 	ErrTampered                = errors.New("tamper detected")

@@ -1,5 +1,26 @@
 # Changelog
 
+## [0.29.0](https://github.com/opentdf/platform/compare/service/v0.28.0...service/v0.29.0) (2026-10-15)
+
+
+### Features
+
+* **kas:** support ML-KEM client session keys in rewrap ([#3814](https://github.com/opentdf/platform/issues/3814)) ([b81da1e](https://github.com/opentdf/platform/commit/b81da1eea030e75925187a2d6b11bcc763f67d60))
+
+
+### Bug Fixes
+
+* **authz:** keep shared policy values immutable ([#3987](https://github.com/opentdf/platform/issues/3987)) ([f992b60](https://github.com/opentdf/platform/commit/f992b60d902feede61bc5d66f91dee5fd647c3e7))
+* **authz:** scope uncached decisions to requested attribute policy ([#4192](https://github.com/opentdf/platform/issues/4192)) ([15aa0cc](https://github.com/opentdf/platform/commit/15aa0cc4d0183871e20438006e89ac7f5b496046))
+* **core:** distinguish rewrap denials ([#4204](https://github.com/opentdf/platform/issues/4204)) ([4d9e555](https://github.com/opentdf/platform/commit/4d9e555bddf0c850190680807118fbac1851a9aa))
+* **core:** limit request message size on external Connect handlers ([#4215](https://github.com/opentdf/platform/issues/4215)) ([beba549](https://github.com/opentdf/platform/commit/beba549ab19c05e3a5b542b016315235ef4dda26))
+* **core:** report database readiness failures ([#4178](https://github.com/opentdf/platform/issues/4178)) ([6d3a01a](https://github.com/opentdf/platform/commit/6d3a01a0d3f7233eddb9031cf2d5bcda426c569d))
+* **deps:** bump github.com/opentdf/platform/protocol/go from 0.41.0 to 0.42.0 in /service ([#4228](https://github.com/opentdf/platform/issues/4228)) ([4e2ab71](https://github.com/opentdf/platform/commit/4e2ab713f5cd05d6513294df29ee00e026fd612d))
+* **ers:** prevent entitlement claims from reaching subject mappings ([#4184](https://github.com/opentdf/platform/issues/4184)) ([27075a7](https://github.com/opentdf/platform/commit/27075a770a858ab700042f6e727d2f2a8ad484c0))
+* **kas:** complete rewrap audit coverage ([#4205](https://github.com/opentdf/platform/issues/4205)) ([568d23e](https://github.com/opentdf/platform/commit/568d23ea9316044abc422659b26aa356d08edef0))
+* **policy:** match namespace FQNs case-insensitively ([#4182](https://github.com/opentdf/platform/issues/4182)) ([04b97fb](https://github.com/opentdf/platform/commit/04b97fb9a2d6374204158445366d26c2f6a88b90))
+* **policy:** reject concurrent and non-active key rotations ([#4200](https://github.com/opentdf/platform/issues/4200)) ([5679545](https://github.com/opentdf/platform/commit/567954501feaa7d380b6579dc1747fec27667f31))
+
 ## [0.28.0](https://github.com/opentdf/platform/compare/service/v0.27.0...service/v0.28.0) (2026-10-02)
 
 

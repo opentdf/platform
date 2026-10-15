@@ -1,7 +1,7 @@
 ---
 # Required
 status: 'proposed'
-date: '2026-10-15'
+date: '2026-09-28'
 tags:
  - sdk
  - ocrypto
@@ -97,7 +97,7 @@ FIPS mode. The Go supplement, virtru-corp/adr#373, records why Go keeps 2^32-1.
   the two sealers are kept apart only by their random fixed fields: about
   2^-64 per metadata seal.
 * 🟥 **Bad**, because a retried or discarded seal spends a counter value, and
-  the IV no longer says which segment it encrypts.
+  the IV does not say which segment it encrypts.
 * 🟥 **Bad**, because under FIPS a writer at the cap sits at `P ≈ 2^-33`, a 2×
   margin under NIST's ceiling. (At the 2 MiB default, 50 TiB is `P ≈ 2^-47.7`.)
 * 🟥 **Bad**, because in non-FIPS builds Go's service indicator records segment
@@ -166,8 +166,8 @@ Also web-sdk's `GcmIvCounter.next()`.
 #### Detect policy, fall back, keep the 2^32-1 cap (chosen)
 
 * 🟩 **Good**, because the policy check catches `fips140=on`, where
-  `cipher.NewGCM` works but its `Seal` is non-approved, and the probe catches
-  `fips140=only` and anything unforeseen.
+  `cipher.NewGCM` works but its `Seal` is non-approved, and `fips140=only`
+  alike; the probe catches anything unforeseen.
 * 🟩 **Good**, because it needs only Go 1.24 (`fips140.Enabled()`).
 * 🟩 **Good**, because applications cannot tell the modes apart.
 * 🟥 **Bad**, because `Seal` keeps two code paths, and the fallback's worst case
@@ -181,7 +181,7 @@ The first version of both #4118 and #4121, written before #4203.
 * 🟥 **Bad**, because it needs a FIPS-only default segment size (4 MiB) to keep
   large payloads reachable, making FIPS visible to applications.
 * 🟥 **Bad**, because it shrinks what FIPS builds can write after #4203: from
-  about 8 PiB to 128 TiB at 2 MiB segments.
+  about 4 PiB (the segment-index limit) to 128 TiB at 2 MiB segments.
 
 #### Probe `cipher.NewGCM` only
 

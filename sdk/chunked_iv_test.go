@@ -371,6 +371,47 @@ func TestChunkedSegmentIVRetryTakesFreshIV(t *testing.T) {
 	assertCountedHeaders(t, headers)
 }
 
+// TestChunkedSegmentIVRetryAfterArchiveFailure is the same property on the
+// path retries actually take: the segment is sealed, the archive refuses it,
+// and the caller retries the index with different plaintext. The retry must
+// seal again under a fresh IV rather than reuse anything from the attempt the
+// archive refused, and the finished TDF must still decrypt.
+func TestChunkedSegmentIVRetryAfterArchiveFailure(t *testing.T) {
+	ctx := t.Context()
+	s := newChunkedTestSDK(t)
+	rec := &recordingSealers{}
+	writer, kasBundle := newChunkedWriterForTest(ctx, t, rec.option(), flakyArchiveWriterFactory(1, 1))
+
+	var body bytes.Buffer
+	write := func(index int, chunk string) error {
+		seg, err := writer.WriteSegment(ctx, index, []byte(chunk))
+		if err != nil {
+			return err
+		}
+		_, err = io.Copy(&body, seg.TDFData)
+		require.NoError(t, err)
+		return nil
+	}
+
+	require.NoError(t, write(0, "hello, "))
+	require.ErrorIs(t, write(1, "doomed "), errArchiveWriteFailed)
+	require.NoError(t, write(1, "chunked "))
+
+	headers := rec.snapshot()
+	require.Len(t, headers, 3, "the refused attempt and its retry are sealed separately")
+	assertCountedHeaders(t, headers)
+
+	fin, err := writer.Finalize(ctx)
+	require.NoError(t, err)
+	reader, err := s.LoadTDF(bytes.NewReader(bytes.Join([][]byte{body.Bytes(), fin.Data}, nil)),
+		WithKasAllowlist([]string{kasBundle.url}),
+	)
+	require.NoError(t, err)
+	plain, err := io.ReadAll(reader)
+	require.NoError(t, err)
+	assert.Equal(t, []byte("hello, chunked "), plain)
+}
+
 // flakySealer seals, then discards the result and fails while *fail is set --
 // the shape of any failure after encryption. Unlike failingSealer it can be
 // switched off, so one writer can see both a failure and the retry that

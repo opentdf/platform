@@ -391,6 +391,21 @@ func TestFIPSSelectsRandomIVs(t *testing.T) {
 	}
 }
 
+// TestNonFIPSSelectsDeterministicIVs is the other direction of
+// TestFIPSSelectsRandomIVs. Every counter-path test skips when deterministic
+// IVs are unavailable, so without this a broken probe would quietly switch the
+// whole process to random IVs and leave the suite green.
+func TestNonFIPSSelectsDeterministicIVs(t *testing.T) {
+	if fips140.Enabled() {
+		t.Skip("FIPS 140-3 is enabled; TestFIPSSelectsRandomIVs covers this mode")
+	}
+	require.True(t, deterministicIVs(), "FIPS 140-3 is off but deterministic IVs were not selected")
+
+	sealer, err := NewAESGcmSealer(make([]byte, 32))
+	require.NoError(t, err)
+	assert.False(t, sealer.random)
+}
+
 func assertRandomIVsSelected(t *testing.T) {
 	t.Helper()
 	require.False(t, deterministicIVs(), "FIPS 140-3 is enabled but deterministic IVs were selected")

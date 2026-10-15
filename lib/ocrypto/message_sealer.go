@@ -43,9 +43,9 @@ var ErrSealerExhausted = errors.New("encryption limit for one key exhausted; sta
 // where SealWithRandomNonce calls RecordApproved), so a construction probe
 // alone would silently keep deterministic IVs in a production FIPS
 // deployment. fips140.Enabled reports on, only, and build-time GOFIPS140
-// alike. The probe then covers GODEBUG=fips140=only, which refuses
-// cipher.NewGCM outright, and any future restriction we have not anticipated;
-// falling back is safe whatever the reason.
+// alike, so it also covers GODEBUG=fips140=only, where cipher.NewGCM would be
+// refused outright. The probe guards only against restrictions we have not
+// anticipated; falling back is safe whatever the reason.
 //
 // fips140.Enabled is Go 1.24. fips140.Enforced, which would distinguish the
 // modes, is Go 1.26 and would put that floor on a published module.
@@ -91,11 +91,13 @@ func MaxSeals() uint32 {
 // no ordinal to get wrong. The price is that an IV says nothing about which
 // segment it encrypts -- concurrent callers take counters in arrival order.
 //
-// Use one sealer for every encryption under a key. Two sealers over the same
-// key count independently, and are kept apart only by their fixed fields
-// being drawn at random: a collision needs both 64-bit values to match.
+// Prefer one sealer for every encryption under a key. Two sealers over the
+// same key count independently; on the counter path they are kept apart only
+// by their randomly drawn fixed fields, so a collision needs the two fixed
+// fields to match (2^-64) and their counter ranges to overlap.
 //
-// A sealer is safe for concurrent use and must not be copied.
+// A sealer is safe for concurrent use and must not be copied; go vet's
+// copylocks check enforces this through the embedded atomic.Uint64.
 //
 // There is deliberately no Unseal. Readers must keep accepting messages whose
 // IVs were drawn at random, so nothing may validate the construction on the
@@ -133,7 +135,7 @@ func NewAESGcmSealer(key []byte) (*AesGcmSealer, error) {
 // newAESGcmSealer is the injectable form of NewAESGcmSealer: tests pin the
 // fixed field for known-answer vectors, and pick the random path and a limit
 // small enough to exhaust without touching process-global state.
-func newAESGcmSealer(key []byte, fixed [fixedFieldSize]byte, random bool, maxSeals uint32) (*AesGcmSealer, error) {
+func newAESGcmSealer(key []byte, fixed [fixedFieldSize]byte, random bool, limit uint32) (*AesGcmSealer, error) {
 	if len(key) == 0 {
 		return nil, ErrInvalidKeyData
 	}
@@ -152,7 +154,7 @@ func newAESGcmSealer(key []byte, fixed [fixedFieldSize]byte, random bool, maxSea
 		return nil, fmt.Errorf("%w: %w", ErrUnsupportedAESGCMConfiguration, err)
 	}
 
-	return &AesGcmSealer{aead: aead, fixed: fixed, max: maxSeals, random: random}, nil
+	return &AesGcmSealer{aead: aead, fixed: fixed, max: limit, random: random}, nil
 }
 
 // Seal encrypts plaintext, returning its header followed by its

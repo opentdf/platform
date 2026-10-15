@@ -18,10 +18,10 @@ import (
 	"github.com/opentdf/platform/sdk/internal/zipstream"
 )
 
-// The injection seams below — the clock, the segment cipher, the archive
+// The injection seams below — the clock, the segment sealer, the archive
 // writer and the entropy source — are unexported on purpose. Each exists so
-// in-package tests can pin non-deterministic behavior; none is reachable from
-// outside. For archiveWriterFactory it is the signature that closes the seam,
+// in-package tests can pin non-deterministic behavior or inject failures and
+// limits; none is reachable from outside. For archiveWriterFactory it is the signature that closes the seam,
 // not the return type's implementability: a struct declared anywhere with the
 // right method set satisfies zipstream.SegmentWriter, but no code outside this
 // package can spell `func(clock) zipstream.SegmentWriter` — clock is
@@ -65,15 +65,19 @@ func (c fixedClock) Now() time.Time { return c.T }
 // Every call must produce a header never produced before under that key.
 // Nothing downstream checks: the segment still decrypts, because the reader
 // takes whatever header the writer prepended.
+//
+// Once the key's encryption budget is spent, Seal must return an error
+// wrapping ocrypto.ErrSealerExhausted; WriteSegment maps only that error to
+// ErrAESGCMExhausted and reports any other as a generic encryption failure.
 type segmentSealer interface {
-	// Seal returns (header, ciphertext, error). It must allocate its output
-	// and must neither retain nor modify data, which WriteSegment passes
-	// through from its caller.
-	Seal(data []byte) ([]byte, []byte, error)
+	// Seal must allocate its output and must neither retain nor modify data,
+	// which WriteSegment passes through from its caller.
+	Seal(data []byte) (header, ciphertext []byte, err error)
 }
 
 // segmentSealerFactory builds a segmentSealer from the writer-generated DEK.
-// Tests inject failing and blocking sealers.
+// Tests inject sealers to observe or perturb sealing: limiting, failing,
+// blocking and recording ones.
 type segmentSealerFactory func(dek []byte) (segmentSealer, error)
 
 // defaultSegmentSealerFactory wraps ocrypto.NewAESGcmSealer (AES-256-GCM with
@@ -81,6 +85,7 @@ type segmentSealerFactory func(dek []byte) (segmentSealer, error)
 func defaultSegmentSealerFactory(dek []byte) (segmentSealer, error) {
 	sealer, err := ocrypto.NewAESGcmSealer(dek)
 	if err != nil {
+		// Return a bare nil: a nil *AesGcmSealer would make a non-nil interface.
 		return nil, err
 	}
 	return sealer, nil
@@ -497,9 +502,9 @@ type chunkedWriter struct {
 	// archiveWriter handles the underlying ZIP archive creation.
 	archiveWriter zipstream.SegmentWriter
 
-	// stream seals payload segments under the DEK. Its counter is the only
-	// state the IV construction needs.
-	stream segmentSealer
+	// sealer seals payload segments under the DEK. It is shared by every
+	// WriteSegment call, so all segments draw from one IV counter.
+	sealer segmentSealer
 
 	// dek is the Data Encryption Key. 32 bytes (AES-256).
 	dek []byte
@@ -626,7 +631,7 @@ func newChunkedWriter(cfg chunkedWriterConfig) (*chunkedWriter, error) {
 		keyAccess:         keyAccess,
 		segments:          make(map[int]*segmentSlot),
 		segmentSize:       cfg.segmentSize,
-		stream:            stream,
+		sealer:            stream,
 		useHex:            cfg.useHex,
 	}, nil
 }
@@ -857,7 +862,7 @@ func (w *chunkedWriter) WriteSegment(ctx context.Context, index int, data []byte
 	// the archive goes on to accept the segment. The sealer's counter is the
 	// key's only encryption budget, on the RBG fallback as well, and running
 	// it out is reported as ErrAESGCMExhausted.
-	header, ciphertext, err := w.stream.Seal(data)
+	header, ciphertext, err := w.sealer.Seal(data)
 	if errors.Is(err, ocrypto.ErrSealerExhausted) {
 		return nil, fmt.Errorf("%w: segment %d: %w", ErrAESGCMExhausted, index, err)
 	}

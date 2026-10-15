@@ -33,7 +33,7 @@ var (
 	// k^2 / 2^97 for k segments) under the 2^-32 that SP 800-38D §8 permits. A
 	// repeated IV would expose the XOR of two plaintexts and allow forgery under
 	// the DEK, so the writer fails rather than continue. Start a new TDF, which
-	// draws a new DEK, or use a larger segment size.
+	// draws a new DEK.
 	ErrAESGCMExhausted = errors.New("tdf: AES-GCM encryption limit reached for this data encryption key; start a new TDF")
 
 	// Exposed tamper detection errors, Catch all possible tamper errors with errors.Is(ErrTampered)

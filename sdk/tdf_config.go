@@ -155,8 +155,8 @@ type TDFConfig struct {
 	useHex                     bool
 	excludeVersionFromManifest bool
 	addDefaultAssertion        bool
-	// sealerFactory overrides the payload segment sealer when non-nil. Only
-	// tests set it, through withSegmentSealerFactory.
+	// sealerFactory builds the payload segment sealer. Only tests override
+	// the default, through withSegmentSealerFactory.
 	sealerFactory segmentSealerFactory
 }
 
@@ -166,6 +166,7 @@ func newTDFConfig(opt ...TDFOption) (*TDFConfig, error) {
 		defaultSegmentSize:  defaultSegmentSize,
 		inputSize:           inputSizeUnknown,
 		addDefaultAssertion: false,
+		sealerFactory:       defaultSegmentSealerFactory,
 	}
 
 	for _, o := range opt {
@@ -256,10 +257,13 @@ func WithMimeType(mimeType string) TDFOption {
 	}
 }
 
-// withSegmentSealerFactory replaces the payload segment sealer, so tests can
-// reach ErrAESGCMExhausted without encrypting 2^32 segments.
+// withSegmentSealerFactory replaces the payload segment sealer; tests use it to
+// impose a small limit or observe headers. The factory must not be nil.
 func withSegmentSealerFactory(f segmentSealerFactory) TDFOption {
 	return func(c *TDFConfig) error {
+		if f == nil {
+			return errors.New("tdf: sealer factory must not be nil")
+		}
 		c.sealerFactory = f
 		return nil
 	}

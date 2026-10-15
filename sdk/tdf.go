@@ -66,7 +66,8 @@ const (
 	// be measured neither way is read until its segment index reaches this bound
 	// and fails with [ErrChunkedSegmentIndexExhausted]. CreateTDF seals each index
 	// once, so it never reaches [ErrAESGCMExhausted]; only a ChunkedWriter caller
-	// retrying failed writes can. DSPX-4905 tracks the rest.
+	// retrying failed writes can. DSPX-4905 tracks an up-front ceiling for streams
+	// of unknown length, which today fail only after writing MaxInt32 segments.
 	maxPayloadSegments = math.MaxInt32
 )
 
@@ -349,10 +350,6 @@ func (s SDK) newTDFChunkedWriter(ctx context.Context, tdfConfig *TDFConfig, zipM
 		return nil, fmt.Errorf("fail to create a new split key: %w", err)
 	}
 
-	sealerFactory := tdfConfig.sealerFactory
-	if sealerFactory == nil {
-		sealerFactory = defaultSegmentSealerFactory
-	}
 	return newChunkedWriter(chunkedWriterConfig{
 		archiveFactory: func(c clock) zipstream.SegmentWriter {
 			archiveOpts := []zipstream.Option{
@@ -366,7 +363,7 @@ func (s SDK) newTDFChunkedWriter(ctx context.Context, tdfConfig *TDFConfig, zipM
 		},
 		clock:         systemClock{},
 		dek:           dek,
-		sealerFactory: sealerFactory,
+		sealerFactory: tdfConfig.sealerFactory,
 		// Set together, at construction, because they have to be: hex-then-base64
 		// signatures are written during WriteSegment, long before any Finalize
 		// option is seen, and a manifest carrying one setting without the other
@@ -660,14 +657,16 @@ func createPolicyBinding(symKey []byte, base64Policy string) PolicyBinding {
 // encryptMetadata seals key access object metadata under a split share.
 //
 // The sealer is built for this one encryption and discarded, so the header is
-// a fresh random fixed field and counter 0. In a single-split TDF the share is
-// the DEK itself, which the payload sealer also counts under; the two are kept
-// apart only by their independently drawn fixed fields (a 2^-64 chance of
-// collision), not by sharing a counter.
+// a fresh random fixed field and counter 0 (on the random-IV fallback, a fully
+// random IV). In a single-split TDF the share is the DEK itself, which the
+// payload sealer also counts under; on the counter path the two are kept apart
+// only by their independently drawn fixed fields (a 2^-64 chance of collision
+// per metadata seal), not by sharing a counter. Each GetManifest call re-seals
+// the metadata, so k builds collide with probability about k^2 / 2^65.
 func encryptMetadata(symKey []byte, metaData string) (string, error) {
 	sealer, err := ocrypto.NewAESGcmSealer(symKey)
 	if err != nil {
-		return "", fmt.Errorf("ocrypto.NewAESGcmSealer failed:%w", err)
+		return "", fmt.Errorf("ocrypto.NewAESGcmSealer failed: %w", err)
 	}
 
 	header, ciphertext, err := sealer.Seal([]byte(metaData))
@@ -680,10 +679,9 @@ func encryptMetadata(symKey []byte, metaData string) (string, error) {
 // encodeEncryptedMetadata renders a sealed metadata blob as the manifest's
 // base64(JSON) EncryptedMetadata.
 //
-// Cipher is header||ciphertext and Iv is the header, so the Iv == Cipher[:12]
-// relationship that readers assume -- ours ignores Iv entirely and feeds the
-// whole blob to Decrypt -- now holds by construction rather than by the
-// coincidence of a random nonce prefix. The wire shape is unchanged.
+// Cipher is header||ciphertext and Iv is the header, so Iv == Cipher[:12].
+// Our reader ignores Iv and passes the whole Cipher blob to Decrypt; other
+// readers may rely on Iv.
 func encodeEncryptedMetadata(header, ciphertext []byte) (string, error) {
 	emb := make([]byte, 0, len(header)+len(ciphertext))
 	emb = append(emb, header...)
@@ -694,7 +692,7 @@ func encodeEncryptedMetadata(header, ciphertext []byte) (string, error) {
 		Iv:     string(ocrypto.Base64Encode(header)),
 	})
 	if err != nil {
-		return "", fmt.Errorf(" json.Marshal failed:%w", err)
+		return "", fmt.Errorf("json.Marshal failed: %w", err)
 	}
 	return string(ocrypto.Base64Encode(metadataJSON)), nil
 }

@@ -51,7 +51,9 @@ type Token struct {
 	received         time.Time
 }
 
-// Expired reports whether the token's lifetime has elapsed, without a renewal buffer.
+// Expired reports whether the token's lifetime has elapsed.
+// Use `ShouldRenew()` to determine if the expiration may happen
+// before `ExpirationBuffer` units of time from now.
 func (t Token) Expired() bool {
 	if t.ExpiresIn == 0 {
 		return false

@@ -1033,7 +1033,9 @@ func (r *Reader) WriteTo(writer io.Writer) (int64, error) {
 			return totalBytes, err
 		}
 
-		if decryptedDataOffset+segSize < r.cursor {
+		// <= also skips the segment ending exactly at the cursor; it would
+		// otherwise be read and decrypted only to write zero bytes.
+		if decryptedDataOffset+segSize <= r.cursor {
 			decryptedDataOffset += segSize
 			payloadReadOffset += encryptedSegSize
 			continue

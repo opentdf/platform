@@ -65,8 +65,8 @@ var deterministicIVs = sync.OnceValue(func() bool {
 // enforces it, so callers only need it to size their own work.
 //
 // It is 2^32-1 on both IV paths. With the deterministic construction,
-// non-repetition is a property of the counter and NIST SP 800-38D 8.3's 2^32
-// limit on the invocation field is the only bound. On the random-IV fallback
+// non-repetition is a property of the counter, and the 32-bit invocation field
+// of NIST SP 800-38D 8.2.1 is the only bound. On the random-IV fallback
 // uniqueness is probabilistic: over n random 96-bit IVs the chance of a
 // collision is about n^2/2^97, so 2^32-1 invocations sit at about 2^-33, inside
 // the 2^-32 that SP 800-38D 8 permits. Sharing the bound keeps FIPS 140-3 out of
@@ -175,9 +175,11 @@ func (s *AesGcmSealer) Seal(plaintext []byte) ([]byte, []byte, error) {
 	if s.random {
 		// The IV is drawn inside the AEAD and prepended; split it back off so
 		// the caller sees the same two values it gets from the counter path.
+		// The header's capacity is clipped so appending to it reallocates
+		// rather than overwriting the ciphertext that shares its array.
 		//nolint:gosec // G407 reads the nil nonce as hardcoded; NewGCMWithRandomNonce requires it and draws the IV itself.
 		sealed := s.aead.Seal(nil, nil, plaintext, nil)
-		return sealed[:GcmStandardNonceSize], sealed[GcmStandardNonceSize:], nil
+		return sealed[:GcmStandardNonceSize:GcmStandardNonceSize], sealed[GcmStandardNonceSize:], nil
 	}
 
 	header := make([]byte, GcmStandardNonceSize)

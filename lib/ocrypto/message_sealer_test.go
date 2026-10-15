@@ -2,9 +2,12 @@ package ocrypto
 
 import (
 	"bytes"
+	"crypto/fips140"
 	"crypto/rand"
 	"encoding/binary"
 	"encoding/hex"
+	"os"
+	"os/exec"
 	"strings"
 	"sync"
 	"testing"
@@ -193,6 +196,37 @@ func TestAesGcmSealerExhaustsWithoutWrapping(t *testing.T) {
 	}
 }
 
+// TestAesGcmSealerStopsAtTheRealCeiling checks the production limit rather
+// than a small injected one. Counter values at and past 2^32-1 must fail on
+// both paths; in particular 2^32 must not truncate back to counter 0.
+func TestAesGcmSealerStopsAtTheRealCeiling(t *testing.T) {
+	for _, random := range []bool{false, true} {
+		name := "deterministic"
+		if random {
+			name = "random"
+		}
+		t.Run(name, func(t *testing.T) {
+			if !random {
+				requireDeterministic(t)
+			}
+			sealer, err := newAESGcmSealer(make([]byte, 32), testFixedField(t, "0011223344556677"), random, maxSeals)
+			require.NoError(t, err)
+
+			sealer.next.Store(uint64(maxSeals - 1))
+			_, _, err = sealer.Seal([]byte("payload"))
+			require.NoError(t, err, "the last value below the ceiling")
+
+			for _, next := range []uint64{uint64(maxSeals), 1 << 32, 1<<32 + 1} {
+				sealer.next.Store(next)
+				header, ciphertext, err := sealer.Seal([]byte("payload"))
+				require.ErrorIs(t, err, ErrSealerExhausted, "counter %d", next)
+				assert.Nil(t, header)
+				assert.Nil(t, ciphertext)
+			}
+		})
+	}
+}
+
 func TestAesGcmSealerRejectsBadKey(t *testing.T) {
 	_, err := NewAESGcmSealer(nil)
 	require.ErrorIs(t, err, ErrInvalidKeyData)
@@ -308,4 +342,68 @@ func TestRandomFallbackBudgetIsConcurrencySafe(t *testing.T) {
 
 	// Exactly the budget gets through no matter how many callers race for it.
 	assert.Equal(t, budget, sealed)
+}
+
+// TestRandomFallbackHeaderDoesNotAliasCiphertext: on the random path header and
+// ciphertext are cut from one buffer. Appending to the header must not reach
+// into the ciphertext.
+func TestRandomFallbackHeaderDoesNotAliasCiphertext(t *testing.T) {
+	key := make([]byte, 32)
+	sealer, err := newAESGcmSealer(key, [fixedFieldSize]byte{}, true, maxSeals)
+	require.NoError(t, err)
+
+	header, ciphertext, err := sealer.Seal([]byte("payload"))
+	require.NoError(t, err)
+	want := bytes.Clone(ciphertext)
+
+	_ = append(header, bytes.Repeat([]byte{0xaa}, len(ciphertext))...)
+	assert.Equal(t, want, ciphertext)
+
+	aesGcm, err := NewAESGcm(key)
+	require.NoError(t, err)
+	plain, err := aesGcm.Decrypt(append(bytes.Clone(header), ciphertext...))
+	require.NoError(t, err)
+	assert.Equal(t, "payload", string(plain))
+}
+
+// fipsChildEnv marks a re-executed test binary running under a FIPS GODEBUG.
+const fipsChildEnv = "OCRYPTO_SEALER_FIPS_CHILD"
+
+// TestFIPSSelectsRandomIVs checks that NewAESGcmSealer itself, not just the
+// injectable form, takes the random-IV path whenever FIPS 140-3 is enabled.
+// GODEBUG=fips140 is read at startup, so the test re-runs its own binary in
+// each mode rather than relying on CI to set it.
+func TestFIPSSelectsRandomIVs(t *testing.T) {
+	if fips140.Enabled() {
+		assertRandomIVsSelected(t)
+		return
+	}
+	if os.Getenv(fipsChildEnv) != "" {
+		t.Fatal("child process started under a FIPS GODEBUG but fips140.Enabled() is false")
+	}
+	for _, mode := range []string{"on", "only"} {
+		t.Run(mode, func(t *testing.T) {
+			cmd := exec.CommandContext(t.Context(), os.Args[0], "-test.run=^TestFIPSSelectsRandomIVs$", "-test.count=1")
+			cmd.Env = append(os.Environ(), "GODEBUG=fips140="+mode, fipsChildEnv+"=1")
+			out, err := cmd.CombinedOutput()
+			require.NoError(t, err, "GODEBUG=fips140=%s:\n%s", mode, out)
+		})
+	}
+}
+
+func assertRandomIVsSelected(t *testing.T) {
+	t.Helper()
+	require.False(t, deterministicIVs(), "FIPS 140-3 is enabled but deterministic IVs were selected")
+
+	sealer, err := NewAESGcmSealer(make([]byte, 32))
+	require.NoError(t, err)
+	require.True(t, sealer.random)
+
+	// Under the counter construction these would share the 8-byte fixed field
+	// and differ only in the counter (0, then 1).
+	h1, _, err := sealer.Seal([]byte("payload"))
+	require.NoError(t, err)
+	h2, _, err := sealer.Seal([]byte("payload"))
+	require.NoError(t, err)
+	assert.NotEqual(t, h1[:fixedFieldSize], h2[:fixedFieldSize])
 }

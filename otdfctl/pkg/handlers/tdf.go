@@ -119,12 +119,41 @@ func (h Handler) Encrypt(ctx context.Context, out io.Writer, in io.Reader, o Enc
 // holds for SessionKeyAlgorithm in particular: the empty string is not a valid
 // ocrypto.KeyType, so it is left unset rather than forwarded.
 type DecryptOptions struct {
+	// URL, when set, loads the TDF over HTTP(S) range requests instead of from in.
+	URL                           string
 	AssertionVerificationKeysFile string
 	DisableAssertionCheck         bool
 	SessionKeyAlgorithm           ocrypto.KeyType
 	KASAllowList                  []string
 	IgnoreAllowlist               bool
 	FulfillableObligations        []string
+	// RangeOffset and RangeLimit select a plaintext byte range; a negative
+	// RangeLimit reads to the end. Only the segments covering the range are read
+	// and decrypted.
+	RangeOffset int64
+	RangeLimit  int64
+}
+
+// errRangeComplete stops Reader.WriteTo once the requested range is written.
+var errRangeComplete = errors.New("requested range written")
+
+// rangeWriter passes through at most remaining bytes, then returns
+// errRangeComplete so the reader stops before fetching another segment.
+type rangeWriter struct {
+	w         io.Writer
+	remaining int64
+}
+
+func (rw *rangeWriter) Write(p []byte) (int, error) {
+	if int64(len(p)) > rw.remaining {
+		p = p[:rw.remaining]
+	}
+	n, err := rw.w.Write(p)
+	rw.remaining -= int64(n)
+	if err == nil && rw.remaining == 0 {
+		err = errRangeComplete
+	}
+	return n, err
 }
 
 // The assertion below is what keeps Decrypt's io.Copy streaming one segment at
@@ -143,56 +172,83 @@ var _ io.WriterTo = (*sdk.Reader)(nil)
 // in must be seekable because the TDF's manifest lives at the end of the
 // archive; callers with a pipe need to spool it first.
 func (h Handler) Decrypt(ctx context.Context, out io.Writer, in io.ReadSeeker, o DecryptOptions) error {
-	switch sdk.GetTdfType(in) {
-	case sdk.Standard:
-		opts := []sdk.TDFReaderOption{
-			sdk.WithDisableAssertionVerification(o.DisableAssertionCheck),
-			sdk.WithIgnoreAllowlist(o.IgnoreAllowlist),
-			sdk.WithTDFFulfillableObligationFQNs(o.FulfillableObligations),
-		}
-		// Forwarding an unset algorithm would fail in ocrypto.NewKeyPair before
-		// the TDF is read at all. Omitting the option instead lets the SDK apply
-		// its own RSA-2048 default, which is the algorithm the CLI asks for.
-		if o.SessionKeyAlgorithm != "" {
-			opts = append(opts, sdk.WithSessionKeyType(o.SessionKeyAlgorithm))
-		}
-		if o.KASAllowList != nil {
-			opts = append(opts, sdk.WithKasAllowlist(o.KASAllowList))
-		}
-		var assertionVerificationKeys sdk.AssertionVerificationKeys
-		if o.AssertionVerificationKeysFile != "" {
-			// read the file
-			assertionVerificationBytes, err := utils.ReadBytesFromFile(o.AssertionVerificationKeysFile, MaxAssertionsFileSize)
-			if err != nil {
-				return fmt.Errorf("unable to read assertions verification keys file: %w", err)
-			}
-			err = json.Unmarshal(assertionVerificationBytes, &assertionVerificationKeys)
-			if err != nil {
-				return fmt.Errorf("unable to unmarshal assertion verification keys json: %w", err)
-			}
-			for assertionName, key := range assertionVerificationKeys.Keys {
-				correctedKey, err := correctKeyType(key, true)
-				if err != nil {
-					return fmt.Errorf("error with assertion signing key: %w", err)
-				}
-				assertionVerificationKeys.Keys[assertionName] = sdk.AssertionKey{Alg: key.Alg, Key: correctedKey}
-			}
-			opts = append(opts, sdk.WithAssertionVerificationKeys(assertionVerificationKeys))
-		}
-		r, err := h.sdk.LoadTDF(in, opts...)
+	if o.RangeOffset < 0 {
+		return errors.New("offset must not be negative")
+	}
+
+	opts := []sdk.TDFReaderOption{
+		sdk.WithDisableAssertionVerification(o.DisableAssertionCheck),
+		sdk.WithIgnoreAllowlist(o.IgnoreAllowlist),
+		sdk.WithTDFFulfillableObligationFQNs(o.FulfillableObligations),
+	}
+	// Forwarding an unset algorithm would fail in ocrypto.NewKeyPair before
+	// the TDF is read at all. Omitting the option instead lets the SDK apply
+	// its own RSA-2048 default, which is the algorithm the CLI asks for.
+	if o.SessionKeyAlgorithm != "" {
+		opts = append(opts, sdk.WithSessionKeyType(o.SessionKeyAlgorithm))
+	}
+	if o.KASAllowList != nil {
+		opts = append(opts, sdk.WithKasAllowlist(o.KASAllowList))
+	}
+	if o.AssertionVerificationKeysFile != "" {
+		assertionVerificationKeys, err := readAssertionVerificationKeys(o.AssertionVerificationKeysFile)
 		if err != nil {
 			return err
 		}
-		//nolint:errorlint // callers intended to test error equality directly
-		if _, err = io.Copy(out, r); err != nil && err != io.EOF {
-			return formatDecryptError(ctx, r.Obligations, err)
+		opts = append(opts, sdk.WithAssertionVerificationKeys(assertionVerificationKeys))
+	}
+
+	var r *sdk.Reader
+	var err error
+	if o.URL != "" {
+		r, err = h.sdk.LoadTDFFromURL(ctx, o.URL, opts...)
+	} else {
+		switch sdk.GetTdfType(in) {
+		case sdk.Standard:
+			r, err = h.sdk.LoadTDF(in, opts...)
+		case sdk.Invalid:
+			return errors.New("invalid TDF")
+		default:
+			return errors.New("unknown TDF type")
 		}
-	case sdk.Invalid:
-		return errors.New("invalid TDF")
-	default:
-		return errors.New("unknown TDF type")
+	}
+	if err != nil {
+		return err
+	}
+
+	if _, err := r.Seek(o.RangeOffset, io.SeekStart); err != nil {
+		return fmt.Errorf("offset %d is beyond the end of the payload: %w", o.RangeOffset, err)
+	}
+	if o.RangeLimit == 0 {
+		return nil
+	}
+	if o.RangeLimit > 0 {
+		out = &rangeWriter{w: out, remaining: o.RangeLimit}
+	}
+	//nolint:errorlint // callers intended to test error equality directly
+	if _, err := io.Copy(out, r); err != nil && err != io.EOF && !errors.Is(err, errRangeComplete) {
+		return formatDecryptError(ctx, r.Obligations, err)
 	}
 	return nil
+}
+
+func readAssertionVerificationKeys(path string) (sdk.AssertionVerificationKeys, error) {
+	var keys sdk.AssertionVerificationKeys
+	b, err := utils.ReadBytesFromFile(path, MaxAssertionsFileSize)
+	if err != nil {
+		return keys, fmt.Errorf("unable to read assertions verification keys file: %w", err)
+	}
+	if err := json.Unmarshal(b, &keys); err != nil {
+		return keys, fmt.Errorf("unable to unmarshal assertion verification keys json: %w", err)
+	}
+	for assertionName, key := range keys.Keys {
+		correctedKey, err := correctKeyType(key, true)
+		if err != nil {
+			return keys, fmt.Errorf("error with assertion signing key: %w", err)
+		}
+		keys.Keys[assertionName] = sdk.AssertionKey{Alg: key.Alg, Key: correctedKey}
+	}
+	return keys, nil
 }
 
 // InspectTDF reads the manifest and attributes of a TDF.

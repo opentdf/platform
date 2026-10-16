@@ -583,7 +583,10 @@ func (s SDK) resolveKeyAccess(ctx context.Context, tdfConfig *TDFConfig, dek []b
 	for _, attribute := range tdfConfig.attributes {
 		fqns = append(fqns, attribute.String())
 	}
-	return resolvePolicyAndKeyAccess(fqns, shares, tdfConfig.metaData)
+	// A pre-4.3.0 target keeps the legacy binding: it asks for output that legacy
+	// readers and KAS accept, whatever else was requested.
+	hexlessPolicyBinding := tdfConfig.hexlessPolicyBinding && !tdfConfig.useHex
+	return resolvePolicyAndKeyAccess(fqns, shares, tdfConfig.metaData, hexlessPolicyBinding)
 }
 
 // templateSplitShares groups the KAO template by split ID and divides the DEK across
@@ -654,11 +657,19 @@ func manifestSegmentIntegrityAlg(alg string) SegmentIntegrityAlg {
 // createPolicyBinding binds a key split to the policy it unlocks, keyed on the split
 // itself so that a KAS can verify the policy it is asked to enforce is the one the
 // creator bound.
-func createPolicyBinding(symKey []byte, base64Policy string) PolicyBinding {
-	policyBindingHash := hex.EncodeToString(ocrypto.CalculateSHA256Hmac(symKey, []byte(base64Policy)))
+//
+// The spec defines the hash as Base64(HMAC), which hexless selects. Writers have
+// always emitted Base64(hex(HMAC)) instead, and no KAS released before the dual-accept
+// fix can verify the spec's form, so the legacy form stays the default until fixed KAS
+// are broadly deployed.
+func createPolicyBinding(symKey []byte, base64Policy string, hexless bool) PolicyBinding {
+	mac := ocrypto.CalculateSHA256Hmac(symKey, []byte(base64Policy))
+	if !hexless {
+		mac = []byte(hex.EncodeToString(mac))
+	}
 	return PolicyBinding{
 		Alg:  hmacIntegrityAlgorithm,
-		Hash: string(ocrypto.Base64Encode([]byte(policyBindingHash))),
+		Hash: string(ocrypto.Base64Encode(mac)),
 	}
 }
 
@@ -1324,6 +1335,20 @@ func (r *Reader) UnsafePayloadKeyRetrieval() ([]byte, error) {
 	return r.payloadKey, nil
 }
 
+// legacyPolicyBindingHash returns a policy binding hash as the legacy Base64(hex(HMAC))
+// for a rewrap request. Every KAS verifies that form, but none released before the
+// dual-accept fix can verify the spec's Base64(HMAC): older ones always hex-decode it,
+// later ones compare an untrimmed decode buffer. Re-encoding the spec's 32-byte form
+// lets a TDF that carries it decrypt through any of them. Anything else is passed
+// through unchanged for the KAS to judge.
+func legacyPolicyBindingHash(hash string) string {
+	mac, err := ocrypto.Base64Decode([]byte(hash))
+	if err != nil || len(mac) != sha256.Size {
+		return hash
+	}
+	return string(ocrypto.Base64Encode([]byte(hex.EncodeToString(mac))))
+}
+
 func createRewrapRequest(_ context.Context, r *Reader) (map[string]*kas.UnsignedRewrapRequest_WithPolicyRequest, error) {
 	kasReqs := make(map[string]*kas.UnsignedRewrapRequest_WithPolicyRequest)
 	for i, kao := range r.manifest.KeyAccessObjs {
@@ -1362,7 +1387,7 @@ func createRewrapRequest(_ context.Context, r *Reader) (map[string]*kas.Unsigned
 				Kid:      kao.KID,
 				Protocol: kao.Protocol,
 				PolicyBinding: &kas.PolicyBinding{
-					Hash:      hash,
+					Hash:      legacyPolicyBindingHash(hash),
 					Algorithm: alg,
 				},
 				SplitId:            kao.SplitID,

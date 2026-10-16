@@ -143,8 +143,8 @@ func NewWriter(ctx context.Context, opts ...Option[*WriterConfig]) (*Writer, err
 		sdk.WithChunkedKeySplitter(xorSplitter{}),
 		sdk.WithChunkedTargetMode(config.targetMode),
 	}
-	if config.specCompliantPolicyBinding {
-		chunkedOpts = append(chunkedOpts, sdk.WithChunkedSpecCompliantPolicyBinding())
+	if config.hexlessPolicyBinding {
+		chunkedOpts = append(chunkedOpts, sdk.WithChunkedHexlessPolicyBinding())
 	}
 	inner, err := sdk.NewChunkedWriter(ctx, chunkedOpts...)
 	if err != nil {

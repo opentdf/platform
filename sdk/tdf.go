@@ -585,8 +585,8 @@ func (s SDK) resolveKeyAccess(ctx context.Context, tdfConfig *TDFConfig, dek []b
 	}
 	// A pre-4.3.0 target keeps the legacy binding: it asks for output that legacy
 	// readers and KAS accept, whatever else was requested.
-	specCompliantPolicyBinding := tdfConfig.specCompliantPolicyBinding && !tdfConfig.useHex
-	return resolvePolicyAndKeyAccess(fqns, shares, tdfConfig.metaData, specCompliantPolicyBinding)
+	hexlessPolicyBinding := tdfConfig.hexlessPolicyBinding && !tdfConfig.useHex
+	return resolvePolicyAndKeyAccess(fqns, shares, tdfConfig.metaData, hexlessPolicyBinding)
 }
 
 // templateSplitShares groups the KAO template by split ID and divides the DEK across
@@ -658,13 +658,13 @@ func manifestSegmentIntegrityAlg(alg string) SegmentIntegrityAlg {
 // itself so that a KAS can verify the policy it is asked to enforce is the one the
 // creator bound.
 //
-// The spec defines the hash as Base64(HMAC), which specCompliant selects. Writers have
+// The spec defines the hash as Base64(HMAC), which hexless selects. Writers have
 // always emitted Base64(hex(HMAC)) instead, and no KAS released before the dual-accept
 // fix can verify the spec's form, so the legacy form stays the default until fixed KAS
 // are broadly deployed.
-func createPolicyBinding(symKey []byte, base64Policy string, specCompliant bool) PolicyBinding {
+func createPolicyBinding(symKey []byte, base64Policy string, hexless bool) PolicyBinding {
 	mac := ocrypto.CalculateSHA256Hmac(symKey, []byte(base64Policy))
-	if !specCompliant {
+	if !hexless {
 		mac = []byte(hex.EncodeToString(mac))
 	}
 	return PolicyBinding{

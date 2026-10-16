@@ -140,9 +140,9 @@ type WriterConfig struct {
 	// Empty selects the current format. See WithTargetMode.
 	targetMode string
 
-	// specCompliantPolicyBinding writes policy bindings in the spec's
-	// Base64(HMAC) form. See WithSpecCompliantPolicyBinding.
-	specCompliantPolicyBinding bool
+	// hexlessPolicyBinding writes policy bindings as Base64(HMAC),
+	// without the legacy hex layer. See WithHexlessPolicyBinding.
+	hexlessPolicyBinding bool
 }
 
 // ReaderConfig contains configuration options for TDF Reader creation.
@@ -417,18 +417,19 @@ func WithTargetMode(mode string) Option[*WriterConfig] {
 	}
 }
 
-// WithSpecCompliantPolicyBinding writes each key access object's policy
-// binding hash as Base64(HMAC), the form the TDF spec defines, instead of
-// the legacy Base64(hex(HMAC)) written by default.
+// WithHexlessPolicyBinding writes each key access object's policy
+// binding hash as Base64(HMAC), dropping the hex layer of the legacy
+// Base64(hex(HMAC)) written by default. Base64(HMAC) is the form the TDF
+// spec defines.
 //
 // Only a KAS carrying the policy binding dual-accept fix can verify the
-// spec's form directly. The SDK's reader re-encodes it for older KAS, but
+// hexless form directly. The SDK's reader re-encodes it for older KAS, but
 // other and older readers forward it unchanged, so a TDF written with this
 // option may not decrypt through an older reader against an older KAS. A
 // pre-4.3.0 [WithTargetMode] overrides this option.
-func WithSpecCompliantPolicyBinding() Option[*WriterConfig] {
+func WithHexlessPolicyBinding() Option[*WriterConfig] {
 	return func(c *WriterConfig) {
-		c.specCompliantPolicyBinding = true
+		c.hexlessPolicyBinding = true
 	}
 }
 

@@ -398,11 +398,10 @@ type chunkedWriterConfig struct {
 	// which is right when every segment is the same length.
 	segmentSize int64
 
-	// specCompliantPolicyBinding writes policy bindings in the spec's
-	// Base64(HMAC) form rather than the legacy Base64(hex(HMAC)). Ignored
-	// when keyAccess is set or useHex is. Set by
-	// WithChunkedSpecCompliantPolicyBinding.
-	specCompliantPolicyBinding bool
+	// hexlessPolicyBinding writes policy bindings as Base64(HMAC) rather
+	// than the legacy Base64(hex(HMAC)). Ignored when keyAccess is set or
+	// useHex is. Set by WithChunkedHexlessPolicyBinding.
+	hexlessPolicyBinding bool
 
 	// splitter maps attribute values to DEK splits at Finalize time.
 	// Defaults to DefaultKeySplitter (single-KAS only). Ignored when
@@ -614,7 +613,7 @@ func newChunkedWriter(cfg chunkedWriterConfig) (*chunkedWriter, error) {
 		keyAccess = splitterKeyAccess{
 			splitter: cfg.splitter,
 			// A pre-4.3.0 target keeps the legacy binding, as on the CreateTDF path.
-			specCompliantPolicyBinding: cfg.specCompliantPolicyBinding && !cfg.useHex,
+			hexlessPolicyBinding: cfg.hexlessPolicyBinding && !cfg.useHex,
 		}
 	}
 	maxEncryptions := cfg.maxEncryptions

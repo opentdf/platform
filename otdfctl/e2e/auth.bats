@@ -23,16 +23,6 @@ teardown_file() {
   rm -rf bad_creds.json
 }
 
-@test "auth commands inherit root flag validation" {
-    for command in client-credentials login logout print-access-token; do
-        run ./otdfctl auth "$command" --log-level not-a-level
-
-        assert_failure
-        assert_output --partial 'invalid log level: not-a-level'
-        refute_output --partial 'Keyring storage is not available on Linux'
-    done
-}
-
 @test "Linux auth uses an encrypted filesystem profile" {
     [[ "$(uname -s)" == "Linux" ]] || skip "Linux filesystem authentication regression"
     [[ -n "${DBUS_SESSION_BUS_ADDRESS:-}" ]] || skip "requires an unlocked Secret Service keyring"

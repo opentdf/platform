@@ -5677,7 +5677,10 @@ this case the resource acts as and represents a single entity for authorization/
                   <td>action</td>
                   <td><a href="#policy.Action">policy.Action</a></td>
                   <td></td>
-                  <td><p>name on action is required </p></td>
+                  <td><p>Name on action is required. Use the reserved name `*` to check whether one
+concrete action permits each complete resource. This entitlement-only mode
+does not evaluate action-specific obligations and must not include action.id.
+An optional action.namespace ID or FQN limits which concrete actions are considered. </p></td>
                 </tr>
               
                 <tr>
@@ -5754,7 +5757,10 @@ i.e. https://&lt;namespace&gt;/obl/&lt;definition name&gt;/value/&lt;value&gt; <
                   <td>action</td>
                   <td><a href="#policy.Action">policy.Action</a></td>
                   <td></td>
-                  <td><p>name on action is required </p></td>
+                  <td><p>Name on action is required. Use the reserved name `*` to check whether one
+concrete action permits the complete resource. This entitlement-only mode
+does not evaluate action-specific obligations and must not include action.id.
+An optional action.namespace ID or FQN limits which concrete actions are considered. </p></td>
                 </tr>
               
                 <tr>

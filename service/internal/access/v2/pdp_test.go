@@ -4271,6 +4271,89 @@ func (s *PDPTestSuite) Test_GetDecision_DirectEntitlements() {
 	})
 }
 
+func (s *PDPTestSuite) Test_GetDecision_AnyActionDirectEntitlements() {
+	ctx := s.T().Context()
+	definitionFQN := "https://demo.com/attr/any-action"
+	firstValueFQN := definitionFQN + "/value/first"
+	secondValueFQN := definitionFQN + "/value/second"
+	attribute := &policy.Attribute{
+		Fqn:  definitionFQN,
+		Rule: policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
+		Values: []*policy.Value{
+			{Fqn: firstValueFQN, Value: "first"},
+			{Fqn: secondValueFQN, Value: "second"},
+		},
+	}
+	pdp, err := NewPolicyDecisionPoint(ctx, s.logger, []*policy.Attribute{attribute}, []*policy.SubjectMapping{}, nil, true, false)
+	s.Require().NoError(err)
+
+	combinedResource := createAttributeValueResource("combined", firstValueFQN, secondValueFQN)
+	separateResources := []*authz.Resource{
+		createAttributeValueResource("first", firstValueFQN),
+		createAttributeValueResource("second", secondValueFQN),
+	}
+
+	s.Run("one concrete action permits the complete resource", func() {
+		entity := &entityresolutionV2.EntityRepresentation{DirectEntitlements: []*entityresolutionV2.DirectEntitlement{
+			{AttributeValueFqn: firstValueFQN, Actions: []string{actions.ActionNameRead, actions.ActionNameDelete}},
+			{AttributeValueFqn: secondValueFQN, Actions: []string{actions.ActionNameRead}},
+		}}
+		decision, _, decisionErr := pdp.GetDecision(ctx, entity, &policy.Action{Name: AnyActionName}, []*authz.Resource{combinedResource})
+		s.Require().NoError(decisionErr)
+		s.True(decision.AllPermitted)
+	})
+
+	s.Run("different actions cannot be combined within one resource", func() {
+		entity := &entityresolutionV2.EntityRepresentation{DirectEntitlements: []*entityresolutionV2.DirectEntitlement{
+			{AttributeValueFqn: firstValueFQN, Actions: []string{actions.ActionNameRead}},
+			{AttributeValueFqn: secondValueFQN, Actions: []string{actions.ActionNameUpdate}},
+		}}
+		decision, _, decisionErr := pdp.GetDecision(ctx, entity, &policy.Action{Name: AnyActionName}, []*authz.Resource{combinedResource})
+		s.Require().NoError(decisionErr)
+		s.False(decision.AllPermitted)
+	})
+
+	s.Run("different resources may be permitted by different actions", func() {
+		entity := &entityresolutionV2.EntityRepresentation{DirectEntitlements: []*entityresolutionV2.DirectEntitlement{
+			{AttributeValueFqn: firstValueFQN, Actions: []string{actions.ActionNameRead}},
+			{AttributeValueFqn: secondValueFQN, Actions: []string{actions.ActionNameUpdate}},
+		}}
+		decision, _, decisionErr := pdp.GetDecision(ctx, entity, &policy.Action{Name: AnyActionName}, separateResources)
+		s.Require().NoError(decisionErr)
+		s.True(decision.AllPermitted)
+		s.Require().Len(decision.Results, 2)
+		s.True(decision.Results[0].Entitled)
+		s.True(decision.Results[1].Entitled)
+	})
+}
+
+func (s *PDPTestSuite) Test_GetDecision_AnyActionPreservesHierarchy() {
+	ctx := s.T().Context()
+	definitionFQN := "https://demo.com/attr/clearance"
+	highValueFQN := definitionFQN + "/value/high"
+	lowValueFQN := definitionFQN + "/value/low"
+	attribute := &policy.Attribute{
+		Fqn:  definitionFQN,
+		Rule: policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY,
+		Values: []*policy.Value{
+			{Fqn: highValueFQN, Value: "high"},
+			{Fqn: lowValueFQN, Value: "low"},
+		},
+	}
+	pdp, err := NewPolicyDecisionPoint(ctx, s.logger, []*policy.Attribute{attribute}, []*policy.SubjectMapping{}, nil, true, false)
+	s.Require().NoError(err)
+	entity := &entityresolutionV2.EntityRepresentation{DirectEntitlements: []*entityresolutionV2.DirectEntitlement{{
+		AttributeValueFqn: highValueFQN,
+		Actions:           []string{actions.ActionNameRead},
+	}}}
+
+	decision, _, err := pdp.GetDecision(ctx, entity, &policy.Action{Name: AnyActionName}, []*authz.Resource{
+		createAttributeValueResource("lower-resource", lowValueFQN),
+	})
+	s.Require().NoError(err)
+	s.True(decision.AllPermitted)
+}
+
 func (s *PDPTestSuite) Test_GetDecision_DirectEntitlements_StrictNamespacedPolicy() {
 	ctx := s.T().Context()
 
@@ -4328,6 +4411,18 @@ func (s *PDPTestSuite) Test_GetDecision_DirectEntitlements_StrictNamespacedPolic
 	s.Run("denies when explicit request namespace mismatches", func() {
 		decision, _, decisionErr := pdp.GetDecision(ctx, entityRep, &policy.Action{
 			Name:      actions.ActionNameCreate,
+			Namespace: namespace1,
+		}, []*authz.Resource{
+			createAttributeValueResource(attr2ValueFQN, attr2ValueFQN),
+		})
+		s.Require().NoError(decisionErr)
+		s.Require().NotNil(decision)
+		s.False(decision.AllPermitted)
+	})
+
+	s.Run("any action honors explicit request namespace", func() {
+		decision, _, decisionErr := pdp.GetDecision(ctx, entityRep, &policy.Action{
+			Name:      AnyActionName,
 			Namespace: namespace1,
 		}, []*authz.Resource{
 			createAttributeValueResource(attr2ValueFQN, attr2ValueFQN),

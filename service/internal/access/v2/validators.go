@@ -18,6 +18,24 @@ var (
 	ErrInvalidEntitledFQNsToActions = errors.New("access: invalid entitled FQNs to actions")
 )
 
+// AnyActionName is the reserved action name used by decision requests that ask
+// whether an entity is entitled to at least one action on each resource.
+const AnyActionName = "*"
+
+func isAnyAction(action *policy.Action) bool {
+	return action != nil && action.GetName() == AnyActionName
+}
+
+func validateDecisionAction(action *policy.Action) error {
+	if action.GetName() == "" {
+		return fmt.Errorf("action required with name: %w", ErrInvalidAction)
+	}
+	if isAnyAction(action) && action.GetId() != "" {
+		return fmt.Errorf("any-action request cannot specify action.id: %w", ErrInvalidAction)
+	}
+	return nil
+}
+
 // validateGetDecision validates the input parameters for GetDecision:
 //
 //   - entityRepresentation: must not be nil
@@ -27,8 +45,8 @@ func validateGetDecision(entityRepresentation *entityresolutionV2.EntityRepresen
 	if err := validateEntityRepresentations([]*entityresolutionV2.EntityRepresentation{entityRepresentation}); err != nil {
 		return fmt.Errorf("invalid entity representation: %w", err)
 	}
-	if action.GetName() == "" {
-		return fmt.Errorf("action required with name: %w", ErrInvalidAction)
+	if err := validateDecisionAction(action); err != nil {
+		return err
 	}
 	if len(resources) == 0 {
 		return fmt.Errorf("resources are empty: %w", ErrInvalidResource)
@@ -49,8 +67,8 @@ func validateGetDecisionRegisteredResource(registeredResourceValueFQN string, ac
 	if _, err := identifier.Parse[*identifier.FullyQualifiedRegisteredResourceValue](registeredResourceValueFQN); err != nil {
 		return err
 	}
-	if action.GetName() == "" {
-		return fmt.Errorf("action required with name: %w", ErrInvalidAction)
+	if err := validateDecisionAction(action); err != nil {
+		return err
 	}
 	if len(resources) == 0 {
 		return fmt.Errorf("resources are empty: %w", ErrInvalidResource)

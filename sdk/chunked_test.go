@@ -642,7 +642,7 @@ func (k *chunkedFakeKAS) Rewrap(_ context.Context, in *connect.Request[kaspb.Rew
 // verifyChunkedPolicyBinding recomputes the HMAC a KAS checks before it will
 // release a key share, and compares it constant-time to the one the KAO
 // carries. It accepts only the legacy Base64(hex(HMAC)) form, like every
-// released KAS, so a reader that forwards a spec-compliant binding unchanged
+// released KAS, so a reader that forwards a hexless binding unchanged
 // fails here as it would against a deployed KAS.
 func verifyChunkedPolicyBinding(binding *kaspb.PolicyBinding, share []byte, base64Policy string) error {
 	if binding == nil {
@@ -917,7 +917,7 @@ func TestChunkedCurrentTargetMode(t *testing.T) {
 
 // TestChunkedPolicyBindingEncoding pins which policy binding form each
 // configuration writes, and that every form decrypts through a KAS that only
-// verifies the legacy one -- as every released KAS does. The spec-compliant
+// verifies the legacy one -- as every released KAS does. The hexless
 // case passes only because the reader re-encodes the binding in its rewrap
 // request.
 func TestChunkedPolicyBindingEncoding(t *testing.T) {
@@ -933,18 +933,18 @@ func TestChunkedPolicyBindingEncoding(t *testing.T) {
 			wantLen: 2 * sha256.Size,
 		},
 		{
-			name:    "spec-compliant opt-in",
-			opts:    []ChunkedWriterOption{WithChunkedSpecCompliantPolicyBinding()},
+			name:    "hexless opt-in",
+			opts:    []ChunkedWriterOption{WithChunkedHexlessPolicyBinding()},
 			wantLen: sha256.Size,
 		},
 		{
 			name:    "legacy target mode overrides opt-in",
-			opts:    []ChunkedWriterOption{WithChunkedSpecCompliantPolicyBinding(), WithChunkedTargetMode("4.2.2")},
+			opts:    []ChunkedWriterOption{WithChunkedHexlessPolicyBinding(), WithChunkedTargetMode("4.2.2")},
 			wantLen: 2 * sha256.Size,
 		},
 		{
 			name:    "legacy target mode overrides opt-in in either order",
-			opts:    []ChunkedWriterOption{WithChunkedTargetMode("4.2.2"), WithChunkedSpecCompliantPolicyBinding()},
+			opts:    []ChunkedWriterOption{WithChunkedTargetMode("4.2.2"), WithChunkedHexlessPolicyBinding()},
 			wantLen: 2 * sha256.Size,
 		},
 	}

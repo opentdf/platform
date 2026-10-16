@@ -714,10 +714,10 @@ func (s *TDFSuite) Test_PolicyBindingEncoding() {
 		wantHex bool
 	}{
 		{name: "default stays legacy", wantHex: true},
-		{name: "spec-compliant opt-in", opts: []TDFOption{WithSpecCompliantPolicyBinding()}},
+		{name: "hexless opt-in", opts: []TDFOption{WithHexlessPolicyBinding()}},
 		{
 			name:    "legacy target mode overrides opt-in",
-			opts:    []TDFOption{WithSpecCompliantPolicyBinding(), WithTargetMode("4.2.2")},
+			opts:    []TDFOption{WithHexlessPolicyBinding(), WithTargetMode("4.2.2")},
 			wantHex: true,
 		},
 	} {

@@ -337,10 +337,10 @@ func testPolicyBindingEncoding(t *testing.T) {
 		wantLen int
 	}{
 		{name: "default stays legacy", wantLen: 2 * sha256.Size},
-		{name: "spec-compliant opt-in", opts: []Option[*WriterConfig]{WithSpecCompliantPolicyBinding()}, wantLen: sha256.Size},
+		{name: "hexless opt-in", opts: []Option[*WriterConfig]{WithHexlessPolicyBinding()}, wantLen: sha256.Size},
 		{
 			name:    "legacy target mode overrides opt-in",
-			opts:    []Option[*WriterConfig]{WithSpecCompliantPolicyBinding(), WithTargetMode("4.2.2")},
+			opts:    []Option[*WriterConfig]{WithHexlessPolicyBinding(), WithTargetMode("4.2.2")},
 			wantLen: 2 * sha256.Size,
 		},
 	} {

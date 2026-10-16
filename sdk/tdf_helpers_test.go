@@ -142,7 +142,7 @@ func TestCreatePolicyBinding(t *testing.T) {
 
 	// The spec's form is Base64(HMAC), without the hex layer. Same key and
 	// policy as the vector above, so both decode to the same 32-byte HMAC.
-	t.Run("known answer, spec-compliant", func(t *testing.T) {
+	t.Run("known answer, hexless", func(t *testing.T) {
 		fixedKey := make([]byte, kKeySize)
 		for i := range fixedKey {
 			fixedKey[i] = byte(i)
@@ -194,7 +194,7 @@ func TestLegacyPolicyBindingHash(t *testing.T) {
 		in   string
 		want string
 	}{
-		{name: "spec-compliant binding is re-encoded", in: raw, want: legacy},
+		{name: "hexless binding is re-encoded", in: raw, want: legacy},
 		{name: "legacy binding passes through", in: legacy, want: legacy},
 		{name: "invalid base64 passes through", in: "not!base64", want: "not!base64"},
 		{name: "other lengths pass through", in: "AAAAAAAAAAAAAAAAAAAAAA==", want: "AAAAAAAAAAAAAAAAAAAAAA=="},

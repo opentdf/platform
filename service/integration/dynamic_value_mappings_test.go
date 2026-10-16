@@ -6,7 +6,6 @@ import (
 	"testing"
 
 	"github.com/opentdf/platform/protocol/go/policy"
-	"github.com/opentdf/platform/protocol/go/policy/actions"
 	"github.com/opentdf/platform/protocol/go/policy/attributes"
 	"github.com/opentdf/platform/protocol/go/policy/dynamicvaluemapping"
 	"github.com/opentdf/platform/protocol/go/policy/registeredresources"
@@ -466,14 +465,7 @@ func (s *DynamicValueMappingsSuite) createDefinition(name string, rule policy.At
 }
 
 func (s *DynamicValueMappingsSuite) readAction() *policy.Action {
-	action, err := s.db.PolicyClient.GetAction(s.ctx, &actions.GetActionRequest{
-		Identifier: &actions.GetActionRequest_Name{
-			Name: policydb.ActionRead.String(),
-		},
-		NamespaceFqn: "https://example.com",
-	})
-	s.Require().NoError(err)
-	return action
+	return &policy.Action{Name: policydb.ActionRead.String()}
 }
 
 func (s *DynamicValueMappingsSuite) resolver(selector string, operator policy.SubjectMappingOperatorEnum) *policy.DynamicValueResolver {

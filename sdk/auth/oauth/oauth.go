@@ -20,9 +20,7 @@ import (
 	"github.com/opentdf/platform/sdk/httputil"
 )
 
-const (
-	tokenExpirationBuffer = 10 * time.Second
-)
+const defaultTokenExpirationBuffer = 10 * time.Second
 
 const defaultSubjectTokenType = "urn:ietf:params:oauth:token-type:access_token" //nolint:gosec // OAuth token type URN, not a credential
 
@@ -45,21 +43,35 @@ type TokenExchangeInfo struct {
 }
 
 type Token struct {
-	AccessToken string `json:"access_token"`
-	TokenType   string `json:"token_type"`
-	ExpiresIn   int64  `json:"expires_in,omitempty"`
-	Scope       string `json:"scope,omitempty"`
-	received    time.Time
+	AccessToken      string        `json:"access_token"`
+	TokenType        string        `json:"token_type"`
+	ExpiresIn        int64         `json:"expires_in,omitempty"`
+	Scope            string        `json:"scope,omitempty"`
+	ExpirationBuffer time.Duration `json:"-"`
+	received         time.Time
 }
 
+// Expired reports whether the token's lifetime has elapsed.
+// Use `ShouldRenew()` to determine if the expiration may happen
+// before `ExpirationBuffer` units of time from now.
 func (t Token) Expired() bool {
+	if t.ExpiresIn == 0 {
+		return false
+	}
+	expirationTime := t.received.Add(time.Second * time.Duration(t.ExpiresIn))
+	return !time.Now().Before(expirationTime)
+}
+
+// ShouldRenew reports whether the token expires within its ExpirationBuffer.
+// Tokens without an expires_in value are treated as non-expiring.
+func (t Token) ShouldRenew() bool {
 	if t.ExpiresIn == 0 {
 		return false
 	}
 
 	expirationTime := t.received.Add(time.Second * time.Duration(t.ExpiresIn))
 
-	return time.Now().After(expirationTime.Add(-tokenExpirationBuffer))
+	return !time.Now().Before(expirationTime.Add(-t.ExpirationBuffer))
 }
 
 func getAccessTokenRequest(tokenEndpoint, dpopNonce string, scopes []string, clientCredentials ClientCredentials, privateJWK *jwk.Key) (*http.Request, error) {
@@ -197,6 +209,7 @@ func processResponse(resp *http.Response) (*Token, error) {
 	}
 
 	token.received = time.Now().Round(0)
+	token.ExpirationBuffer = defaultTokenExpirationBuffer
 
 	return token, nil
 }

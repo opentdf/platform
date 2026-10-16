@@ -4,7 +4,9 @@ import (
 	"crypto/rand"
 	"crypto/rsa"
 	"io"
+	"net/http"
 	"net/url"
+	"strings"
 	"testing"
 	"time"
 
@@ -21,9 +23,9 @@ func mustGenerateRSAKey(t *testing.T) *rsa.PrivateKey {
 	return k
 }
 
-func TestTokenExpiration_RespectsLeeway(t *testing.T) {
+func Test_Token_Expired(t *testing.T) {
 	expiredToken := Token{
-		received:  time.Now().Add(-tokenExpirationBuffer - 10*time.Second),
+		received:  time.Now().Add(-10 * time.Second),
 		ExpiresIn: 5,
 	}
 	if !expiredToken.Expired() {
@@ -32,20 +34,75 @@ func TestTokenExpiration_RespectsLeeway(t *testing.T) {
 
 	goodToken := Token{
 		received:  time.Now(),
-		ExpiresIn: 2 * int64(tokenExpirationBuffer/time.Second),
+		ExpiresIn: 60,
 	}
 
 	if goodToken.Expired() {
 		t.Fatalf("token should not be expired")
 	}
 
-	justOverBorderToken := Token{
-		received:  time.Now(),
-		ExpiresIn: int64(tokenExpirationBuffer/time.Second) - 1,
+	nearExpiryToken := Token{
+		received:         time.Now(),
+		ExpiresIn:        5,
+		ExpirationBuffer: 90 * time.Second,
 	}
 
-	if !justOverBorderToken.Expired() {
+	if nearExpiryToken.Expired() {
 		t.Fatalf("token should not be expired")
+	}
+	if (Token{received: time.Now().Add(-time.Hour)}).Expired() {
+		t.Fatal("token without expires_in should not expire")
+	}
+}
+
+func Test_Token_ShouldRenew(t *testing.T) {
+	tests := []struct {
+		name      string
+		remaining time.Duration
+		buffer    time.Duration
+		renew     bool
+	}{
+		{name: "WithinCustomWindow", remaining: time.Minute, buffer: 90 * time.Second, renew: true},
+		{name: "OutsideCustomWindow", remaining: 2 * time.Minute, buffer: 90 * time.Second},
+		{name: "OutsideTenSecondWindow", remaining: time.Minute, buffer: 10 * time.Second},
+		{name: "ZeroBufferValid", remaining: 5 * time.Second},
+		{name: "ZeroBufferExpired", remaining: -time.Second, renew: true},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			token := Token{
+				received:         time.Now().Add(test.remaining - time.Hour),
+				ExpiresIn:        3600,
+				ExpirationBuffer: test.buffer,
+			}
+			if renew := token.ShouldRenew(); renew != test.renew {
+				t.Fatalf("ShouldRenew() = %t, want %t", renew, test.renew)
+			}
+		})
+	}
+
+	t.Run("MissingExpiry", func(t *testing.T) {
+		token := Token{received: time.Now().Add(-time.Hour), ExpirationBuffer: 90 * time.Second}
+		if token.ShouldRenew() {
+			t.Fatal("token without expires_in should not expire")
+		}
+	})
+}
+
+func Test_Token_ProcessResponse_DefaultsExpirationBuffer(t *testing.T) {
+	response := &http.Response{
+		StatusCode: http.StatusOK,
+		Body:       io.NopCloser(strings.NewReader(`{"access_token":"test-token","expires_in":5}`)),
+	}
+	token, err := processResponse(response)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if token.ExpirationBuffer != 10*time.Second {
+		t.Fatalf("ExpirationBuffer = %s, want 10s", token.ExpirationBuffer)
+	}
+	if !token.ShouldRenew() || token.Expired() {
+		t.Fatal("token should need renewal without being expired")
 	}
 }
 

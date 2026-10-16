@@ -73,7 +73,7 @@ require (
 	github.com/containerd/errdefs v1.0.0 // indirect
 	github.com/containerd/errdefs/pkg v0.3.0 // indirect
 	github.com/ebitengine/purego v0.10.0 // indirect
-	github.com/go-asn1-ber/asn1-ber v1.5.8-0.20250403174932-29230038a667 // indirect
+	github.com/go-asn1-ber/asn1-ber v1.5.8 // indirect
 	github.com/go-ldap/ldap/v3 v3.4.12
 	github.com/moby/go-archive v0.3.0 // indirect
 	github.com/shirou/gopsutil/v4 v4.26.3 // indirect

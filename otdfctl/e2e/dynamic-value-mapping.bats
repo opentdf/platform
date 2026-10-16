@@ -43,7 +43,7 @@ teardown_file() {
 }
 
 @test "Create dynamic value mapping" {
-    run ./otdfctl $HOST $WITH_CREDS policy dynamic-value-mappings create --attribute "$DVM_ATTR_ID" --selector "$SELECTOR" --operator IN --action "$ACTION_READ_NAME"
+    run ./otdfctl $HOST $WITH_CREDS policy dynamic-value-mappings create --namespace "$NS_ID" --attribute "$DVM_ATTR_ID" --selector "$SELECTOR" --operator IN --action "$ACTION_READ_NAME"
         assert_success
         assert_output --partial "Attribute Definition: Id"
         assert_output --partial "Resolver: Selector"
@@ -51,7 +51,7 @@ teardown_file() {
         assert_line --regexp "Attribute Definition: Id.*$DVM_ATTR_ID"
 
     # json shape
-    run ./otdfctl $HOST $WITH_CREDS policy dynamic-value-mappings create --attribute "$DVM_ATTR_ID" --selector "$SELECTOR" --operator IN_CONTAINS --action "$ACTION_READ_NAME" --json
+    run ./otdfctl $HOST $WITH_CREDS policy dynamic-value-mappings create --namespace "$NS_ID" --attribute "$DVM_ATTR_ID" --selector "$SELECTOR" --operator IN_CONTAINS --action "$ACTION_READ_NAME" --json
         assert_success
         [ "$(echo "$output" | jq -r '.attribute_definition.id')" = "$DVM_ATTR_ID" ]
         [ "$(echo "$output" | jq -r '.value_resolver.subject_external_selector_value')" = "$SELECTOR" ]
@@ -61,7 +61,7 @@ teardown_file() {
 }
 
 @test "Create dynamic value mapping with a static pre-gate subject condition set" {
-    run ./otdfctl $HOST $WITH_CREDS policy dynamic-value-mappings create --attribute "$DVM_ATTR_ID" --selector "$SELECTOR" --operator IN --action "$ACTION_READ_NAME" --subject-condition-set "$SCS_1" --json
+    run ./otdfctl $HOST $WITH_CREDS policy dynamic-value-mappings create --namespace "$NS_ID" --attribute "$DVM_ATTR_ID" --selector "$SELECTOR" --operator IN --action "$ACTION_READ_NAME" --subject-condition-set "$SCS_1" --json
         assert_success
         assert_not_equal "$(echo "$output" | jq -r '.subject_condition_set.id')" "null"
         assert_not_equal "$(echo "$output" | jq -r '.subject_condition_set.id')" ""
@@ -69,7 +69,7 @@ teardown_file() {
 }
 
 @test "Create dynamic value mapping by attribute definition FQN" {
-    run ./otdfctl $HOST $WITH_CREDS policy dynamic-value-mappings create --attribute "$DVM_ATTR_FQN" --selector "$SELECTOR" --operator IN --action "$ACTION_READ_NAME" --json
+    run ./otdfctl $HOST $WITH_CREDS policy dynamic-value-mappings create --namespace "$NS_ID" --attribute "$DVM_ATTR_FQN" --selector "$SELECTOR" --operator IN --action "$ACTION_READ_NAME" --json
         assert_success
         assert_equal "$(echo "$output" | jq -r '.attribute_definition.fqn')" "$DVM_ATTR_FQN"
 }
@@ -85,29 +85,34 @@ teardown_file() {
 }
 
 @test "Create dynamic value mapping rejects invalid input" {
+    # namespace is always required, regardless of namespaced_policy
+    run_otdfctl_dvm create --attribute "$DVM_ATTR_ID" --selector "$SELECTOR" --operator IN --action "$ACTION_READ_NAME"
+        assert_failure
+        assert_output --partial 'required flag(s) "namespace" not set'
+
     # NOT_IN operator is rejected client-side
-    run_otdfctl_dvm create --attribute "$DVM_ATTR_ID" --selector "$SELECTOR" --operator NOT_IN --action "$ACTION_READ_NAME"
+    run_otdfctl_dvm create --namespace "$NS_ID" --attribute "$DVM_ATTR_ID" --selector "$SELECTOR" --operator NOT_IN --action "$ACTION_READ_NAME"
         assert_failure
         assert_output --partial "invalid --operator"
 
     # operator is required
-    run_otdfctl_dvm create --attribute "$DVM_ATTR_ID" --selector "$SELECTOR" --action "$ACTION_READ_NAME"
+    run_otdfctl_dvm create --namespace "$NS_ID" --attribute "$DVM_ATTR_ID" --selector "$SELECTOR" --action "$ACTION_READ_NAME"
         assert_failure
         assert_output --partial 'required flag(s) "operator" not set'
 
     # an attribute definition reference is required
-    run_otdfctl_dvm create --selector "$SELECTOR" --operator IN --action "$ACTION_READ_NAME"
+    run_otdfctl_dvm create --namespace "$NS_ID" --selector "$SELECTOR" --operator IN --action "$ACTION_READ_NAME"
         assert_failure
         assert_output --partial 'required flag(s) "attribute" not set'
 
     # an action is required
-    run_otdfctl_dvm create --attribute "$DVM_ATTR_ID" --selector "$SELECTOR" --operator IN
+    run_otdfctl_dvm create --namespace "$NS_ID" --attribute "$DVM_ATTR_ID" --selector "$SELECTOR" --operator IN
         assert_failure
         assert_output --partial 'required flag(s) "action" not set'
 }
 
 @test "Create dynamic value mapping rejects a HIERARCHY definition" {
-    run_otdfctl_dvm create --attribute "$DVM_HIER_ATTR_ID" --selector "$SELECTOR" --operator IN --action "$ACTION_READ_NAME"
+    run_otdfctl_dvm create --namespace "$NS_ID" --attribute "$DVM_HIER_ATTR_ID" --selector "$SELECTOR" --operator IN --action "$ACTION_READ_NAME"
         assert_failure
 }
 
@@ -124,7 +129,7 @@ teardown_file() {
     assert_success
 
     # a dynamic value mapping on the same definition must be rejected by the server
-    run_otdfctl_dvm create --attribute "$coex_attr_id" --selector "$SELECTOR" --operator IN --action "$ACTION_READ_NAME"
+    run_otdfctl_dvm create --namespace "$NS_ID" --attribute "$coex_attr_id" --selector "$SELECTOR" --operator IN --action "$ACTION_READ_NAME"
         assert_failure
 }
 
@@ -151,7 +156,7 @@ teardown_file() {
 }
 
 @test "List dynamic value mappings" {
-    created=$(./otdfctl $HOST $WITH_CREDS policy dvm create --attribute "$DVM_ATTR_ID" --selector "$SELECTOR" --operator IN --action "$ACTION_READ_NAME" --json | jq -r '.id')
+    created=$(./otdfctl $HOST $WITH_CREDS policy dvm create --namespace "$NS_ID" --attribute "$DVM_ATTR_ID" --selector "$SELECTOR" --operator IN --action "$ACTION_READ_NAME" --json | jq -r '.id')
 
     run_otdfctl_dvm list
         assert_success
@@ -205,7 +210,7 @@ teardown_file() {
 }
 
 @test "Update a dynamic value mapping" {
-    created=$(./otdfctl $HOST $WITH_CREDS policy dvm create --attribute "$DVM_ATTR_ID" --selector "$SELECTOR" --operator IN --action "$ACTION_READ_NAME" --json | jq -r '.id')
+    created=$(./otdfctl $HOST $WITH_CREDS policy dvm create --namespace "$NS_ID" --attribute "$DVM_ATTR_ID" --selector "$SELECTOR" --operator IN --action "$ACTION_READ_NAME" --json | jq -r '.id')
 
     # replace the actions
     run_otdfctl_dvm update --id "$created" --action "$ACTION_CREATE_NAME" --json
@@ -232,7 +237,7 @@ teardown_file() {
 }
 
 @test "Delete dynamic value mapping" {
-    to_delete=$(./otdfctl $HOST $WITH_CREDS policy dvm create --attribute "$DVM_ATTR_ID" --selector "$SELECTOR" --operator IN --action "$ACTION_READ_NAME" --json | jq -r '.id')
+    to_delete=$(./otdfctl $HOST $WITH_CREDS policy dvm create --namespace "$NS_ID" --attribute "$DVM_ATTR_ID" --selector "$SELECTOR" --operator IN --action "$ACTION_READ_NAME" --json | jq -r '.id')
 
     run_otdfctl_dvm delete --id "$to_delete" --force
         assert_success

@@ -33,8 +33,8 @@ Feature: Encrypt and decrypt with dynamic value mappings
 
   Scenario: IN operator permits an exact department match and denies others
     Given I send a request to create a dynamic value mapping with:
-      | attribute_definition_fqn      | selector               | operator | standard actions | reference_id |
-      | https://example.com/attr/team | .attributes.department[] | IN       | read             | dvm_team     |
+      | namespace_fqn      | attribute_definition_fqn      | selector                 | operator | standard actions | reference_id |
+      | https://example.com | https://example.com/attr/team | .attributes.department[] | IN       | read             | dvm_team     |
     And the response should be successful
     When I encrypt plaintext "team engineering" with attributes "https://example.com/attr/team/value/engineering" stored as "tdf_in"
     And using token "alice_tok", decrypt "tdf_in" stored as "alice_in"
@@ -44,8 +44,8 @@ Feature: Encrypt and decrypt with dynamic value mappings
 
   Scenario: IN_CONTAINS operator permits a substring match
     Given I send a request to create a dynamic value mapping with:
-      | attribute_definition_fqn         | selector               | operator    | standard actions | reference_id |
-      | https://example.com/attr/project | .attributes.department[] | IN_CONTAINS | read             | dvm_project  |
+      | namespace_fqn      | attribute_definition_fqn         | selector                 | operator    | standard actions | reference_id |
+      | https://example.com | https://example.com/attr/project | .attributes.department[] | IN_CONTAINS | read             | dvm_project  |
     And the response should be successful
     When I encrypt plaintext "substring match" with attributes "https://example.com/attr/project/value/engineer" stored as "tdf_contains"
     And using token "alice_tok", decrypt "tdf_contains" stored as "alice_contains"
@@ -60,8 +60,8 @@ Feature: Encrypt and decrypt with dynamic value mappings
     And a subject set referenced as "ss_alpha" containing the condition groups "cg_alpha"
     And I send a request to create a subject condition set referenced as "scs_alpha" containing subject sets "ss_alpha"
     And I send a request to create a dynamic value mapping with:
-      | attribute_definition_fqn      | selector               | operator | standard actions | condition_set_name | reference_id |
-      | https://example.com/attr/team | .attributes.department[] | IN       | read             | scs_alpha          | dvm_gated    |
+      | namespace_fqn      | attribute_definition_fqn      | selector                 | operator | standard actions | condition_set_name | reference_id |
+      | https://example.com | https://example.com/attr/team | .attributes.department[] | IN       | read             | scs_alpha          | dvm_gated    |
     And the response should be successful
     When I encrypt plaintext "gated engineering" with attributes "https://example.com/attr/team/value/engineering" stored as "tdf_gated"
     And using token "alice_tok", decrypt "tdf_gated" stored as "alice_gated"
@@ -72,8 +72,8 @@ Feature: Encrypt and decrypt with dynamic value mappings
 
   Scenario: ALL_OF multi-value requires entitlement to every bound value
     Given I send a request to create a dynamic value mapping with:
-      | attribute_definition_fqn           | selector              | operator | standard actions | reference_id  |
-      | https://example.com/attr/clearance | .attributes.clearance[] | IN       | read             | dvm_clearance |
+      | namespace_fqn      | attribute_definition_fqn           | selector                | operator | standard actions | reference_id  |
+      | https://example.com | https://example.com/attr/clearance | .attributes.clearance[] | IN       | read             | dvm_clearance |
     And the response should be successful
     When I encrypt plaintext "all of clearance" with attributes "https://example.com/attr/clearance/value/alpha,https://example.com/attr/clearance/value/beta" stored as "tdf_allof"
     And using token "alice_tok", decrypt "tdf_allof" stored as "alice_allof"
